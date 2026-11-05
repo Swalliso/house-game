@@ -395,5 +395,10 @@ export interface RunCodeData {
 // ---------------------------------------------------------------------------------------
 // The API.
 
+export type { Rules } from './run.ts';
+export { createRules, IllegalAction } from './run.ts';
+export { encodeRunCode, decodeRunCode, contentHash } from './runcode.ts';
 export { shapeCells, placedCells, uniqueRotations, rotateCells, parseShape } from './grid.ts';
 export { isSunny, terrainAt } from './lot.ts';
+export { cardText, effectText, selectorText } from './text.ts';
+export { earnedFor, roundHalfUp, weekTotal } from './scoring.ts';
