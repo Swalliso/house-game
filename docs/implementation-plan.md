@@ -1,6 +1,6 @@
 # Open House — Implementation Plan
 
-**Status:** Proposed · revised 2026-11-05.
+**Status:** Approved · 2026-11-05. The statuses in §1d were applied to `decisions.md` in M0.
 - **Confirmed so far:**
   - §1b, except the camera change
   - the 1080p design target, and Pages serving `develop` at `/dev/` (D-060)
@@ -8,7 +8,7 @@
   - D-048 to D-051 (D-052 since superseded by D-053), D-053, D-054, and D-056
   - D-019's names, and LimeZu for the final art
   - the directions of D-055 and D-057 to D-059
-- The rest waits on approval (§1d). No code until it's approved.
+- The rest was approved with the plan on 2026-11-05 (§1d).
 **Revised 2026-11-05 after team feedback** (D-048 to D-052):
 - **A 24×24 lot with real terrain** (woods, a creek, finds), plus a camera: §3, §4 Layout rules, Appendix A and B.
 - **Fixtures are in the jam build:** cards you draw or buy and install in a piece you've already placed, a room or a yard piece (§4, §5, M3a).
@@ -97,6 +97,8 @@ These four stay Accepted, with an "Amended by" pointer to the entry that changes
 | **D-051** The shop | Two more Rare blueprints with ×Mult (18 in all); a seventh tool kind, Remodel Plans, which levels a set (12 tools); It's a House and Rush Order become +Mult; Last-Minute Push becomes ×Mult. *Confirmed.* | D-056 |
 
 ### 1c. New decisions (logged in `decisions.md`)
+
+The Status column is as of planning. With the plan's approval, everything still Proposed here became Accepted (§1d); `decisions.md` has the current status of each.
 
 | # | Decision | Needed by | Status |
 |---|---|---|---|
@@ -221,7 +223,7 @@ The repo has no code, tooling, or CLAUDE.md yet: just four markdown docs at the 
 | Tests | Vitest 5 + `fast-check` | |
 | Format | Prettier | Avoids formatting churn between sessions |
 | Purity | `tsconfig.rules.json` without DOM types, plus a ~15-line Vitest test that scans `src/rules` for `Math.random`, `Date`, `window`, `document`, `localStorage`, and UI imports | Replaces ESLint, which isn't worth its setup in a jam |
-| Hosting | GitHub Pages via one Actions workflow: a test job on every push and PR, and a deploy job on pushes to `main` or `develop` that builds both into one site, `main` at the root and `develop` at `/dev/` (D-060). An itch.io page is optional. | The repo is public. The Pages source, the default branch, and the `github-pages` environment's branch rules are set once (M0). |
+| Hosting | GitHub Pages via two Actions workflows: `ci.yml` runs the `test` job on every PR, and `deploy.yml` runs on pushes to `main` or `develop`, tests both, and builds them into one site, `main` at the root and `develop` at `/dev/` (D-060, D-063). An itch.io page is optional. | The repo is public. The Pages source, the default branch, and the `github-pages` environment's branch rules are set once (M0). |
 
 ### Why not Phaser?
 
@@ -255,7 +257,7 @@ house-game/
 ├── tsconfig.json             # everything: DOM + JSX for ui/, Node types for sim/
 ├── tsconfig.rules.json       # src/rules + src/content only, NO DOM lib: `document` is a compile error
 ├── .github/CODEOWNERS        # @Swalliso owns every file (D-061)
-├── .github/workflows/ci.yml  # test job on every push/PR; deploy job builds main → / and develop → /dev/
+├── .github/workflows/        # ci.yml: the test job on every PR; deploy.yml: main → / and develop → /dev/ (D-063)
 ├── src/
 │   ├── rules/                # PURE game rules
 │   │   ├── index.ts          # the public API and all shared types; ui/ and sim/ import only from here
@@ -914,8 +916,8 @@ Shape variants (L-Kitchen, the long Hallway) are separate cards that share a typ
   - `main` holds releases. You open and merge a PR from `develop` into `main` whenever it's a good point for a release; tagging it (`v0.1`, …) is optional.
 - **Protected branches (D-061):**
   - `develop` and `main` change only through PRs. Nobody can push to them directly, force-push, or delete them.
-  - Every PR needs your review as code owner (`.github/CODEOWNERS`) and a passing CI job `test`.
-  - My PRs come from your account and an author can't approve their own PR, so you merge them by ticking *Merge without waiting for requirements to be met*.
+  - Every PR needs a passing CI job `test`. Since D-064, no code-owner review is required, so you merge your own PRs normally.
+  - I merge my setup and fix PRs once `test` passes, and phase PRs after you say the playtest went well. Releases into `main` are yours (D-064).
   - Release PRs into `main` must be merge commits.
 - **Two links on GitHub Pages (D-060):**
   - releases at https://swalliso.github.io/house-game/
@@ -951,6 +953,7 @@ Shape variants (L-Kitchen, the long Hallway) are separate cards that share a typ
 - **One Actions workflow (`ci.yml`):**
   - a test job (typecheck, tests, build) on every push and PR to `develop` and `main`. Its id is exactly `test`, with no `name:` and no matrix, because the rulesets require a check by that name.
   - a deploy job on pushes to either branch. It checks out both branch tips, builds each with its channel (`main`, `dev`), and publishes one site: `main` at the root and `develop` at `/dev/`. Until `main` has a build, the root is a placeholder that links to `/dev/`.
+  - *Changed by D-063 during M0:* `ci.yml` runs `test` on PRs and on `phase/**` and `fix/**` pushes, and `deploy.yml` tests both branches before publishing, so a broken `develop` never blocks a release.
   - deploys run one at a time, in a `pages` concurrency group
 - Move the docs into `docs/`. Add `CLAUDE.md` (§11) and `README.md`. Update `jam-scope.md` to match the decisions (§1d).
 - **Done when:** CI is green on the M0 PR into `develop`; after it merges, `/dev/` shows the placeholder page and the root shows its placeholder; `npm run dev` works locally.

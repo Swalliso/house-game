@@ -1,0 +1,34 @@
+# Typecheck, tests, and the build for every pull request and for pushes to phase and fix
+# branches. Deploys nothing; deploy.yml publishes main and develop (D-063).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: ['phase/**', 'fix/**']
+
+permissions:
+  contents: read
+
+# A newer push to the same branch or PR cancels the older run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # The rulesets on develop and main require a check named exactly "test" (D-061).
+  # Keep this job id, and don't give it a name or a matrix.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build

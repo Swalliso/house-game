@@ -1,0 +1,63 @@
+:root {
+  color-scheme: light;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
+  color: #3b2f2a;
+  background: #f4ead8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+#app {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+}
+
+.placeholder {
+  text-align: center;
+  padding: 2rem;
+}
+
+.placeholder h1 {
+  margin: 0;
+  font-size: clamp(2.5rem, 8vw, 4.5rem);
+  letter-spacing: 0.02em;
+}
+
+.placeholder .tagline {
+  margin: 0.5rem 0 1.5rem;
+  font-size: 1.5rem;
+  font-style: italic;
+}
+
+.placeholder .note {
+  margin: 0;
+  opacity: 0.75;
+}
+
+/* The build stamp: channel · git short SHA (implementation-plan.md §6). */
+.build-label {
+  position: fixed;
+  right: 0.5rem;
+  bottom: 0.4rem;
+  font:
+    12px/1.2 ui-monospace,
+    'SF Mono',
+    Menlo,
+    Consolas,
+    monospace;
+  opacity: 0.6;
+  user-select: all;
+}

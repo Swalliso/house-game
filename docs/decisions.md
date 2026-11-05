@@ -51,7 +51,7 @@ You run a home-building company. Each run is one contract: one client, one plot 
 **Status:** Accepted · 2026-11-04
 **Decision:** Once a milestone's target is met with weeks to spare, the player can complete it early for a bonus (budget for each week saved, plus a score bonus) or keep building through the remaining weeks to get more pieces down.
 **Why:** A real greed-versus-growth decision. Modeled on Combolands' "Complete milestone early" button (see `research.md`).
-**Proposed addition:** an auto-complete toggle for players who want to skip the decision. *(Resolved by D-040: included, off by default.)*
+**Addition:** an auto-complete toggle for players who want to skip the decision. *Resolved by D-040 (Accepted): included, off by default.*
 **Amended by:** D-040 (Accepted 2026-11-04): the skipped weeks fast-forward, and the reward scales with the phase.
 
 ### D-007 · The yard is part of the build
@@ -109,7 +109,7 @@ The board sits behind a small `BoardView` interface, so Phaser could replace jus
 **Considered:** Phaser 4 board + DOM panels (runner-up), PixiJS + DOM, all-Phaser. Amends the Phaser hint in D-027.
 **Note 2026-11-05:** with the 24×24 lot (D-048) the board is 576 cells. Preact and the DOM, with no Phaser, still holds.
 **Amended by:** D-049 (Accepted 2026-11-05): the input bullet changes from a CSS grid of cells to pointer arithmetic on one element, and terrain becomes one layer that re-renders only when terrain changes.
-*Proposed amendment (D-057, 2026-11-05):* for pixel art, terrain is drawn into one canvas layer and pieces use a sprite atlas. SVG stays for outlines and highlights.
+**Amended by:** D-057 (Accepted 2026-11-05 with the plan): for pixel art, terrain is drawn into one canvas layer and pieces use a sprite atlas. SVG stays for outlines and highlights.
 
 ### D-040 · Early completion fast-forwards the rest of the phase
 **Status:** Accepted · 2026-11-04 (confirmed by the team)
@@ -138,14 +138,14 @@ The board sits behind a small `BoardView` interface, so Phaser could replace jus
 **Status:** Accepted · 2026-11-04 (confirmed by the team)
 **Decision:** Keep the 7 construction-phase milestones, with 4 weeks each instead of 6: 28 placements, about 20 minutes. Weeks per milestone is a number in `balance.ts`.
 **Why:** 42 placements plus 6 shops is 35–45 minutes for a first run, longer than most jam players give a game, and a late loss wastes 25 minutes. A shorter run also leaves the lot about 60% full instead of nearly full (on 12×12; on the 24×24 lot of D-048, 28 placements cover about 15%, and D-049 handles emptiness instead of fill).
-**Changes:** D-029 (Proposed), its starting numbers.
+**Changes:** D-029 (Accepted), its starting numbers.
 
 ### D-048 · Lot size: 24×24
 **Status:** Accepted · 2026-11-05 (requested by the team)
 **Decision:** The lot is 24×24 tiles instead of 12×12. Width and height are separate numbers in `balance.ts`, and the rules work at any size.
 **Why:** A yard needs room to feel like a yard, and terrain such as a creek needs room to be interesting. The game is turn-based and light, so where fun and performance pull apart, fun wins. A finished house covers roughly 15% of the lot, so tiles stop being scarce; what's scarce is the 28 placements and the best tiles. D-007 still holds in that sense: each placement is a house-or-yard choice.
 **Considered:** 12×12, the original placeholder. 20×20 and 24×18 (24×18 fits a 16:9 screen with bigger cells); both stay a one-line change if the M1 playtest finds the cells too small or the lot too empty.
-**Changes:** D-029 (Proposed), its lot size. The terrain and rules that make the size work are in D-049. D-033's reasoning cites 144 cells; Preact and the DOM still hold at 576, and its input bullet changes through D-049.
+**Changes:** D-029 (Accepted), its lot size. The terrain and rules that make the size work are in D-049. D-033's reasoning cites 144 cells; Preact and the DOM still hold at 576, and its input bullet changes through D-049.
 
 ### D-049 · Terrain and big-lot rules
 **Status:** Accepted · 2026-11-05 (confirmed by the team)
@@ -163,7 +163,7 @@ The board sits behind a small `BoardView` interface, so Phaser could replace jus
 - The front yard is counted by rows (nearer the street than the house's front), so it stays a real position on a wide lot.
 - Bigger yard shapes: the Lawn is 2×2, the Fence comes as a 1×4 and a 5-tile L, and the Driveway as 1×3 and 1×5.
 - The board draws terrain as one layer that re-renders only when terrain changes, and maps the pointer to a cell by arithmetic. A camera fits the lot to the screen, with zoom and pan.
-  *Proposed amendment (D-057, 2026-11-05):* for pixel art, the camera zooms in whole-number scales by re-laying out the board rather than with a CSS transform, which blurs canvases in Safari.
+  *Amended by D-057 (Accepted 2026-11-05 with the plan):* for pixel art, the camera zooms in whole-number scales by re-laying out the board rather than with a CSS transform, which blurs canvases in Safari.
 - The sim ranks candidate placements by a cheap local score and scores only the top few exactly.
 
 **Why:** On 24×24, 28 placements cover about 15% of the lot. Without dense terrain and bigger yard pieces, three things go wrong:
@@ -173,7 +173,7 @@ The board sits behind a small `BoardView` interface, so Phaser could replace jus
 
 With these rules, where to put the house becomes the run's first big decision.
 **Considered:** Revealing the lot in stages. A footbridge across the creek (Stretch). A hill that gives a View (Stretch). Special features such as an ancient oak or the neighbor's cemetery (Stretch, and cheap now that terrain is data).
-**Changes:** D-013 (Accepted): finds are a budget source. D-033 (Accepted): its input layer, from a CSS grid of cells to pointer arithmetic. D-035 (Proposed): terrain neighbors. D-046 (Proposed): the fenced-yard rule. `content-brainstorm.md` §2 and §4 (a Draft): new terrain and bigger yard shapes.
+**Changes:** D-013 (Accepted): finds are a budget source. D-033 (Accepted): its input layer, from a CSS grid of cells to pointer arithmetic. D-035 (Accepted): terrain neighbors. D-046 (Accepted): the fenced-yard rule. `content-brainstorm.md` §2 and §4 (a Draft): new terrain and bigger yard shapes.
 
 ### D-050 · Fixtures are in the jam build
 **Status:** Accepted · 2026-11-05 (requested and confirmed by the team; `jam-scope.md` listed fixtures as Stretch)
@@ -218,7 +218,7 @@ With these rules, where to put the house becomes the run's first big decision.
 - D-004 (Accepted): tools and bought fixtures are free actions during a week, and none adds a second piece.
 - D-013 (Accepted): selling, the skip reward, and Savings Account interest are budget sources.
 
-Also: D-036 and D-043 (Proposed), where hand size becomes the `handSize` rule (3 by default, 4 with Bigger Truck). D-046 (Proposed), where this replaces its shop defaults in Appendix A (one paid refresh per visit, no selling).
+Also: D-036 and D-043 (Accepted), where hand size becomes the `handSize` rule (3 by default, 4 with Bigger Truck). D-046 (Accepted), where this replaces its shop defaults in Appendix A (one paid refresh per visit, no selling).
 
 ### D-052 · Schedule: feature freeze at the end of day 4
 **Status:** Superseded by D-053 · 2026-11-05 (the team is two people with no day timeboxes)
@@ -235,7 +235,7 @@ Also: D-036 and D-043 (Proposed), where hand size becomes the `handSize` rule (3
 - Each milestone is timeboxed to its day. Unfinished work goes to the cut list instead of moving the freeze.
 
 **Why:** The previous plan built features until day 5 and held one playtest, on the evening of day 6, which left no time to act on what friends found. This kind of game gets fun through tuning, and the sim and the daily link make tuning cheap once the systems exist.
-**Changes:** D-029 (Proposed), its suggested build order.
+**Changes:** D-029 (Accepted), its suggested build order.
 
 ### D-047 · Desktop first
 **Status:** Accepted · 2026-11-05 (confirmed by the team)
@@ -257,7 +257,7 @@ Also: D-036 and D-043 (Proposed), where hand size becomes the `handSize` rule (3
 - Before each playtest, Claude runs the tests and the sim, plays a quick run in the browser pane, and writes a short note on what to try.
 
 **Why:** The other jam members are building their own games, so there are no parallel tracks to coordinate. There's until next week to build and playtest before sharing with the larger group, and playtesting at every phase catches what isn't working while it's still cheap to change.
-**Changes:** Supersedes D-052. D-029 (Proposed): its suggested build order.
+**Changes:** Supersedes D-052. D-029 (Accepted): its suggested build order.
 
 ### D-054 · Branches: develop and main
 **Status:** Accepted · 2026-11-05 (requested by the team)
@@ -269,7 +269,7 @@ Also: D-036 and D-043 (Proposed), where hand size becomes the `handSize` rule (3
 - Playtests run locally from `develop` or a phase branch.
 
 **Why:** Keeps `main` and the public link stable while work is in progress, and makes each phase one reviewable diff.
-**Changes:** D-034 (Proposed): its hosting bullet.
+**Changes:** D-034 (Accepted): its hosting bullet.
 **Amended by:** D-060 (Accepted 2026-11-05): Pages also serves `develop` at `/dev/`; `develop` is the GitHub default branch; releases are PRs from `develop` into `main` that the user opens and merges, and tagging is optional.
 
 ### D-060 · GitHub Pages: releases at the root, develop at /dev/
@@ -287,7 +287,8 @@ Also: D-036 and D-043 (Proposed), where hand size becomes the `handSize` rule (3
 - Local playtests still work too: `npm run dev`.
 
 **Why:** The team wants a link for other jam members while the stable link stays on releases. Building both branches into one artifact is the simplest way for one Pages site to serve two branches.
-**Changes:** D-054 (Accepted): Pages and the release flow. D-034 (Proposed): hosting.
+**Changes:** D-054 (Accepted): Pages and the release flow. D-034 (Accepted): hosting.
+**Amended by:** D-063 (Accepted 2026-11-05): CI and deploys are separate workflows, each branch is tested before it's published, and a broken `develop` never blocks a release.
 
 ### D-061 · Branch protection: develop and main change only by pull request
 **Status:** Accepted · 2026-11-05 (requested by the team)
@@ -310,6 +311,7 @@ Also: D-036 and D-043 (Proposed), where hand size becomes the `handSize` rule (3
 - Requiring branches to be up to date before merging: it would force merging `main` back into `develop` after every release.
 
 **Changes:** D-054 and D-060 (Accepted): now enforced by rules.
+**Amended by:** D-064 (Accepted 2026-11-05): no code-owner review is required any more, so the user merges their own PRs normally, and Claude merges its setup and fix PRs. PRs only, the `test` check, no force pushes or deletion, and merge commits only on `main` all stay.
 
 ### D-019 · Score name
 **Status:** Accepted · 2026-11-05 (chosen by the team)
@@ -332,86 +334,50 @@ Also: D-036 and D-043 (Proposed), where hand size becomes the `handSize` rule (3
 
 **Why:** In Balatro and Combolands, big moments come from multipliers. Making them powerful but rare and conditional means you plan for them rather than stumble into them. Balatro puts ×Mult on 70% of its Rare jokers and 3% of its Common ones, and its players confuse +Mult with ×Mult when they look alike. Keeping multiplication in one weekly step avoids D-037's ×15–×36 per-piece blowups. Targets come from the sim's median curve, which ×Mult may steepen.
 **Changes:**
-- D-037 (Proposed): the week's formula.
-- D-021 (Proposed): how specs pay.
+- D-037 (Accepted): the week's formula.
+- D-021 (Accepted): how specs pay.
 - D-019: the layers' names (Comfort, Charm, Sparkle, Wow).
 - D-050 and D-051 (Accepted): adds the Chandelier (11 fixtures), Model Home and Ahead of Schedule (18 blueprints), and the Remodel Plans tool kind (12 tools); turns It's a House and Rush Order into +Mult; turns Last-Minute Push into ×Mult.
 
----
-
-## Proposed
-
-### D-015 · Start small, grow into the corporation
-**Status:** Proposed
-The company starts as a two-person outfit with a pickup truck, and growing it is the meta-progression. Players name their company, and the name shows up next to shared scores.
-
-### D-016 · Unlocks over power
-**Status:** Proposed
-Meta-progression unlocks new crews, clients, and pieces rather than permanent stat boosts, so runs stay challenging. The currency is Reputation, earned from finished jobs, with a bonus for early completions.
-
-### D-017 · Difficulty is a separate setting
-**Status:** Proposed
-Contract difficulty tiers add HOA rules, rush jobs (fewer weeks), and tight budgets (a pricier shop), independent of which client you get.
-
 ### D-018 · Milestones are construction phases
-**Status:** Proposed
+**Status:** Accepted · 2026-11-05 (with the plan's approval)
 Groundbreaking → Foundation → Framing → Roofing → Drywall → Finishes → Final Walkthrough. Each milestone is a client walkthrough.
 
 ### D-020 · Pieces built from tags and effect types
-**Status:** Proposed
+**Status:** Accepted · 2026-11-05 (with the plan's approval), as refined by D-038
 Every piece has tags (Quiet, Loud, Social, Wet, Sunny, Outdoor, Kid, Pet, Green, Dark, …) and effects built from a small shared set of effect types. Clients, change orders, HOA rules, and shop upgrades target tags, so new content is mostly data. See `content-brainstorm.md`.
-See also D-038 (Proposed): the data format, piece-id targets, relational selectors, and four more effect kinds.
+See also D-038 (Accepted): the data format, piece-id targets, relational selectors, and four more effect kinds.
 
 ### D-021 · Client spec checklist
-**Status:** Proposed
+**Status:** Accepted · 2026-11-05 (with the plan's approval), as amended by D-056: each spec met adds +0.25 Mult
 Each client has a short spec checklist (e.g., 4 Bedrooms, 2 Bathrooms, a Fenced Yard), and each item met multiplies weekly score. Together with the client's tastes, this is how clients judge the house differently.
-See also D-037 (Proposed): spec bonuses add (+25% each) rather than compound. D-056 (Accepted 2026-11-05): each spec met adds +0.25 to the week's Mult.
-
-### D-022 · Daily Lot
-**Status:** Proposed
-The same lot, client, and card draws for everyone each day, with a shorter run and a copyable result line for the group chat.
-
-### D-023 · One extra floor at most for the jam: the basement
-**Status:** Proposed
-Floors are layers on the same grid with a floor switcher, with the other floor shown faded for reference. The staircase is a piece you draft. Basement only, and only as a stretch goal.
-
-### D-024 · Endless mode after the Final Walkthrough
-**Status:** Proposed
-After winning, keep going with rising targets and more change orders. Nearly free if the milestone system keeps generating phases.
+See also D-037 (Accepted): spec bonuses add (+25% each) rather than compound. D-056 (Accepted 2026-11-05): each spec met adds +0.25 to the week's Mult.
 
 ### D-025 · House data separate from run data
-**Status:** Proposed
+**Status:** Accepted · 2026-11-05 (with the plan's approval). The state shape is in `implementation-plan.md` §4 (`HouseState` separate from `RunState`).
 Keeps the door open for a future renovation mode that starts from an existing house.
 
 ### D-027 · Tech defaults
-**Status:** Proposed
+**Status:** Accepted · 2026-11-05 (with the plan's approval), as amended by D-033 (rendering) and D-034 (versions and hosting)
 TypeScript + Vite. The game rules live in a pure TypeScript module with no rendering code, covered by unit tests, with a thin rendering layer on top (Phaser is a good fit for the board and animations; settle this during planning). Seeded randomness from day one. Static hosting (itch.io or GitHub Pages) so friends can play from a link. Where the repo's existing conventions differ, follow the repo.
-Rendering settled by D-033 (Accepted 2026-11-04): Preact and the DOM, not Phaser. Versions and hosting: D-034 (Proposed).
+Rendering settled by D-033 (Accepted 2026-11-04): Preact and the DOM, not Phaser. Versions and hosting: D-034 (Accepted).
 
 ### D-028 · Score accumulates across the run
-**Status:** Proposed
+**Status:** Accepted · 2026-11-05 (with the plan's approval)
 One running total, with each milestone at a higher total, shown as a single progress bar with phase markers. Weekly earnings are never wasted, so choosing to keep building instead of completing early always adds to the total.
 
 ### D-029 · Jam scope and starting numbers
-**Status:** Proposed
+**Status:** Accepted · 2026-11-05 (with the plan's approval), as amended by D-042, D-044, D-046, D-048, D-049, and D-053. `jam-scope.md` was updated to match in M0.
 See `jam-scope.md` for what's in, what's stretch, what's out, placeholder numbers, and a suggested build order.
-Amended by D-042 (Accepted 2026-11-04): 4 weeks per milestone instead of 6. Amended by D-048 (Accepted 2026-11-05): a 24×24 lot instead of 12×12; see also D-049 (terrain) and D-053 (the phased build), both Accepted. See also D-044 (Proposed): the sim moves to M2; D-046 (Proposed): early-completion reward numbers.
+Amended by D-042 (Accepted 2026-11-04): 4 weeks per milestone instead of 6. Amended by D-048 (Accepted 2026-11-05): a 24×24 lot instead of 12×12; see also D-049 (terrain) and D-053 (the phased build), both Accepted. See also D-044 (Accepted): the sim moves to M2; D-046 (Accepted): early-completion reward numbers.
 
 ### D-030 · Placeholder art first
-**Status:** Proposed
+**Status:** Accepted · 2026-11-05 (with the plan's approval), as refined by D-057
 Build with simple shapes and labels until the core loop is fun, then do an art and sound pass. CC0 asset packs are fine for the jam.
 *Refined by D-057 (2026-11-05): the final look is cozy pixel art, and placeholders are simple sprites in the final atlas format, so swapping in real art is free.*
 
-### D-031 · Client rarity tiers
-**Status:** Proposed
-Common, Uncommon, and Rare clients. The proposed lineup is in `content-brainstorm.md`, section 10.
-
-### D-032 · Job board at run start
-**Status:** Proposed
-Choose from two or three contracts, each one a client plus a lot.
-
 ### D-034 · Toolchain, hosting, and repo layout
-**Status:** Proposed · 2026-11-04
+**Status:** Accepted · 2026-11-05 (with the plan's approval); proposed 2026-11-04
 **Decision:**
 - npm and Node 26.
 - TypeScript pinned to ~6.0, the last JavaScript-based compiler, verified with this stack.
@@ -422,10 +388,11 @@ Choose from two or three contracts, each one a client plus a lot.
 
 **Why:** D-027's defaults, with versions checked on 2026-11-04. Pages gives a live link without secrets.
 **Amended by:** D-054 (Accepted 2026-11-05): work lands on `develop`. D-060 (Accepted 2026-11-05): Pages serves `main` at the root and `develop` at `/dev/`, and `develop` is the GitHub default branch.
+**Refined by:** D-062 (2026-11-05): the versions, JSX setup, build stamp, purity checks, and deploy details chosen in M0.
 
 ### D-035 · Board rules: adjacency, lot features, one house
-**Status:** Proposed · 2026-11-04
-**Confirmed 2026-11-04:** indoor rooms must connect into one house. **Confirmed 2026-11-05:** the terrain-neighbor rules from D-049. The rest awaits plan approval.
+**Status:** Accepted · 2026-11-05 (with the plan's approval); proposed 2026-11-04
+**Confirmed 2026-11-04:** indoor rooms must connect into one house. **Confirmed 2026-11-05:** the terrain-neighbor rules from D-049. The rest was accepted with the plan.
 **Decision:**
 - Adjacency is orthogonal (no diagonals), and each distinct neighbor counts once.
 - Each Tree tile is a Quiet, Green neighbor, so effects that count Trees have a cap. The Pond and the Creek each count once. The Street is one Loud neighbor along the bottom edge. Boulders and finds give nothing (D-049).
@@ -436,8 +403,8 @@ Choose from two or three contracts, each one a client plus a lot.
 **Considered:** Rooms anywhere; 8-way adjacency (Combolands).
 
 ### D-036 · Week flow
-**Status:** Proposed · 2026-11-04
-**Confirmed 2026-11-04:** Pass (amends D-004). **Confirmed 2026-11-05:** the free actions and hand size from D-050 and D-051. The rest of this entry awaits plan approval.
+**Status:** Accepted · 2026-11-05 (with the plan's approval); proposed 2026-11-04
+**Confirmed 2026-11-04:** Pass (amends D-004). **Confirmed 2026-11-05:** the free actions and hand size from D-050 and D-051. The rest was accepted with the plan.
 **Decision:**
 - **Start of week:** transforms resolve, then a hand of distinct cards is drawn: 3 by default, set by the `handSize` rule (pieces, plus fixtures from phase 2; D-050). If nothing in the week's first hand fits, there's one free redraw.
 - **During the week:** reroll, demolish, installing a fixture from supplies, and using a tool are free actions (D-050, D-051). Then place one piece, install a drawn fixture, or **Pass**. A placement stays tentative until **End week**, so undo is free.
@@ -447,7 +414,7 @@ Choose from two or three contracts, each one a client plus a lot.
 **Changes:** D-004 (Accepted). Each week is still one turn, but Pass places nothing.
 
 ### D-037 · Scoring math and the live preview
-**Status:** Proposed · 2026-11-04
+**Status:** Accepted · 2026-11-05 (with the plan's approval); proposed 2026-11-04
 **Decision:**
 - Each piece earns `floor((max(0, points) × max(0, 100 + Σ pct) + 50) / 100)` in integer math. Percentage bonuses add rather than compound, and "earns nothing" overrides to 0.
 - Sets and specs are week-level terms: the week's score is Points × Mult (D-056), and each spec met adds +0.25 to Mult.
@@ -457,7 +424,7 @@ Choose from two or three contracts, each one a client plus a lot.
 *Refined by D-056 (2026-11-05): the week's score becomes Points × Mult, with rare ×Mult sources. Per-piece percentages still add.*
 
 ### D-038 · Content is typed data
-**Status:** Proposed · 2026-11-04
+**Status:** Accepted · 2026-11-05 (with the plan's approval); proposed 2026-11-04
 **Decision:**
 - Pieces, features, sets, blueprints, clients, crews, change orders, and balance numbers are typed object literals in `src/content`.
 - The rules implement a fixed set of building blocks: effect kinds, selectors (including relational ones such as "touching X" and "in the fenced yard"), piece and house conditions, and modifiers. An escape hatch covers true one-offs.
@@ -467,7 +434,7 @@ Choose from two or three contracts, each one a client plus a lot.
 **Why:** Refines D-020. The Core content needs piece-id targets, relational selectors, four more effect kinds (per-tile, link, requires, conditional), and a separate set definition.
 
 ### D-039 · Randomness, run codes, replays
-**Status:** Proposed · 2026-11-04
+**Status:** Accepted · 2026-11-05 (with the plan's approval); proposed 2026-11-04
 **Decision:**
 - A hand-rolled `sfc32` generator.
 - Every random decision derives a fresh stream from the run seed and a key (`lot/<attempt>`, `draw/<phase>/<slot>/<n>`, `shop/<phase>/<refresh>`, `crate/<phase>/<refresh>/<slot>`, `find/<x>,<y>`, `co/<phase>`, `jobs/<i>`).
@@ -477,7 +444,7 @@ Choose from two or three contracts, each one a client plus a lot.
 **Why:** Keyed streams stop rerolls, overtime, or early completion from shifting later hands or the shop. That keeps bug reports reproducible and makes the Daily Lot (D-022) fair. The build stamp copes with deploys on every push.
 
 ### D-043 · Draws: distinct, weighted, phase-gated
-**Status:** Proposed · 2026-11-04
+**Status:** Accepted · 2026-11-05 (with the plan's approval); proposed 2026-11-04
 **Decision:**
 - Each hand holds `handSize` (3 by default) distinct card types: pieces, plus fixtures from phase 2 (D-050).
 - Weights are integers (10 = normal) and come only from the piece, client, and crew, so they're fixed for the run.
@@ -488,17 +455,17 @@ Choose from two or three contracts, each one a client plus a lot.
 **Why:** With uniform draws, the Hendersons' checklist takes a median of 23–24 weeks to complete, and about 6% of runs never finish it (estimate from a planning model). With weighting, the median is 14–16. The phase gate keeps the first run learnable.
 
 ### D-044 · The sim sets milestone targets
-**Status:** Proposed · 2026-11-04
+**Status:** Accepted · 2026-11-05 (with the plan's approval); proposed 2026-11-04
 **Decision:**
 - A minimal headless sim (random and greedy bots, about 200 runs) arrives in M2, not M5.
 - Targets are a rising fraction of the median greedy-bot score at each milestone (about 0.6 → 0.85), times a per-client factor.
 - Per-piece, per-client, early-completion, and shop reports come in M3 and M4. A planner bot and fuller sweeps come in M6, only as needed (D-053).
 
 **Why:** Score grows roughly with the square of the week, so hand-picked targets will be wrong, and they shift with every content change.
-**Changes:** D-029 (Proposed), its suggested build order.
+**Changes:** D-029 (Accepted), its suggested build order.
 
 ### D-045 · First-run onboarding without saved progress
-**Status:** Proposed · 2026-11-04
+**Status:** Accepted · 2026-11-05 (with the plan's approval); proposed 2026-11-04
 **Decision:**
 - Every run, including the first, starts with the job board and a crew pick (D-012, D-032). On a first visit, the Hendersons and the General Contractor are marked "Recommended for your first job".
 - Phase 1 draws mostly simple pieces (D-055).
@@ -509,8 +476,8 @@ Choose from two or three contracts, each one a client plus a lot.
 **Considered:** A fixed first contract. Rejected because it changes D-012 and needs a saved run count.
 
 ### D-046 · Defaults for the rules the docs leave open
-**Status:** Proposed · 2026-11-04
-**Confirmed 2026-11-04:** economy pieces are a budget source (amends D-013). **Confirmed 2026-11-05:** the fenced-yard rule from D-049. The rest of this entry awaits plan approval.
+**Status:** Accepted · 2026-11-05 (with the plan's approval); proposed 2026-11-04
+**Confirmed 2026-11-04:** economy pieces are a budget source (amends D-013). **Confirmed 2026-11-05:** the fenced-yard rule from D-049. The rest was accepted with the plan.
 **Decision:** Appendix A of `implementation-plan.md` lists every rule the docs leave open, with a default. The ones that change a number or content item in the existing docs are:
 - **Budget:** economy pieces (paying every 2–3 weeks), change-order rewards, and set rewards are budget sources too (amends D-013).
 - **Early completion reward:** placeholders of +2 budget and 10% of the phase's earnings per week saved, replacing +1 budget and an undefined "+10% phase bonus".
@@ -522,10 +489,10 @@ Choose from two or three contracts, each one a client plus a lot.
 - **Hallway:** links every room touching it, not just the rooms at its two ends.
 
 **Why:** Each one fixes a contradiction or a degenerate case the design review found (see `implementation-plan.md` §2).
-**Changes:** D-013 (Accepted), by adding budget sources; D-029 (Proposed), its early-completion numbers.
+**Changes:** D-013 (Accepted), by adding budget sources; D-029 (Accepted), its early-completion numbers.
 
 ### D-055 · Simple pieces are more likely early in a run
-**Status:** The direction is Accepted · 2026-11-05 (the team's request); the weights below are Proposed.
+**Status:** Accepted · 2026-11-05: the direction at the team's request, and the weights below with the plan's approval.
 **Decision:**
 - Every piece has a complexity from 1 to 3:
   - 1: plain earners (Bedroom, Kitchen, Lawn)
@@ -536,10 +503,10 @@ Choose from two or three contracts, each one a client plus a lot.
 - `fromPhase` stays only as a hard gate where a card can't work yet (fixtures, from phase 2).
 
 **Why:** The team wants early phases to feel like Combolands: the simple, readable pieces show up first, and the game opens up as you learn it. Luck be a Landlord also offers mostly simple symbols early. Weighting rather than locking out keeps surprises possible.
-**Changes:** D-043 and D-045 (Proposed), their phase gate.
+**Changes:** D-043 and D-045 (Accepted), their phase gate.
 
 ### D-057 · Art: cozy top-down pixel art
-**Status:** The direction is Accepted · 2026-11-05 (the team's request); the details below are Proposed.
+**Status:** Accepted · 2026-11-05: the direction at the team's request, and the details below with the plan's approval.
 **Confirmed 2026-11-05:** design for 1080p and up, since the team expects most players to have at least a 1080p screen. The whole lot fits at a crisp 2× there; smaller windows pan at 2×, with the Fit overview.
 **Decision:**
 - Cozy pixel art like Combolands: detailed enough to read what you're building, not so detailed that it distracts.
@@ -559,13 +526,13 @@ Choose from two or three contracts, each one a client plus a lot.
   - Every asset is recorded in `assets/licenses.json` and `CREDITS.md`.
 
 **Why:** The team chose the look. The rendering rules come from browser constraints: pixel art blurs at fractional scales and under transforms in Safari. The licensing rules keep a public repo safe.
-**Changes:** Resolves the art Open question. D-030 (Proposed): placeholders become sprites. Pending confirmation:
+**Changes:** Resolves the art Open question. D-030: placeholders become sprites. Confirmed 2026-11-05, the first on its own and the other two with the plan:
+- D-047 (Accepted): the 1080p design target.
 - D-049 (Accepted): the camera, from a CSS transform to re-layout in whole steps, with 2× panning rather than fitting at 1280×720.
-- D-047 (Accepted): the 1080p design target. *Confirmed 2026-11-05.*
 - D-033 (Accepted): terrain in a canvas layer and pieces from a sprite atlas.
 
 ### D-058 · Sound: calm music, rewards that escalate
-**Status:** The direction is Accepted · 2026-11-05 (the team's request); the details below are Proposed.
+**Status:** Accepted · 2026-11-05: the direction at the team's request, and the details below with the plan's approval.
 **Decision:**
 - **Music:**
   - calm: 70–90 BPM, sparse plucked and mallet instruments, rests
@@ -582,7 +549,7 @@ Choose from two or three contracts, each one a client plus a lot.
 **Changes:** Resolves the sound Open question.
 
 ### D-059 · Juice is a core feature
-**Status:** The direction is Accepted · 2026-11-05 (the team's request); the details below are Proposed.
+**Status:** Accepted · 2026-11-05: the direction at the team's request, and the details below with the plan's approval.
 **Decision:**
 - Reward feedback is built from the vertical slice on, not left for polish: the M1 slice has the tally director, the Points × Mult counters, the pitch ladder, and one big-week tier.
 - M5 builds the full celebration ladder (`implementation-plan.md` §12):
@@ -596,6 +563,85 @@ Choose from two or three contracts, each one a client plus a lot.
 
 **Why:** In these games, the satisfaction of a big combo is the product. Research says medium-to-high juice beats both none and extreme, and that unskippable or slow celebrations wear thin after many viewings.
 **Changes:** None to settled decisions. Juice isn't on the cut list.
+
+### D-062 · M0 setup details
+**Status:** Accepted · 2026-11-05, with the M0 pull request. Implementation details within D-034 and D-060.
+**Decision:**
+- **Versions,** checked on npm on 2026-11-05: Vite 8.3, TypeScript 6.0.3 (`~6.0.3`), Vitest 5.1, Preact 10.29 with `@preact/signals` 2.11, fast-check 4.10, Prettier 3.9, and `@types/node` 26. The lockfile pins the exact versions. CI uses `actions/checkout@v7`, `setup-node@v7`, `upload-pages-artifact@v5`, and `deploy-pages@v5`.
+- **JSX:** Vite 8's built-in Oxc transform compiles Preact's JSX (`oxc.jsx.importSource` in `vite.config.ts`). There's no `@preact/preset-vite`, so no Babel; the cost is no Prefresh hot reload, so editing a component reloads the page. CSS still hot-reloads, and from M1 a reload resumes the saved run. `preact/debug` loads in dev builds only.
+- **Build stamp:** `vite.config.ts` defines `__BUILD_SHA__` (`git rev-parse --short=7 HEAD`) and `__BUILD_CHANNEL__` (from `VITE_CHANNEL`: `main`, `dev`, or `local`, the default; any other value fails the build). Only `src/ui/build-info.ts` reads them, and the corner label shows `channel · sha`. The rules stay build-agnostic: the UI will pass the build into run codes.
+- **Purity:** `src/rules` and `src/content` may import only from each other: no packages, no Node built-ins, no `src/ui`. `src/rules/purity.test.ts` reads the syntax tree and also bans `Math.random`, `Date`, and browser globals, so card text such as "Date Night" is fine. `tsconfig.rules.json` turns JSX off, because Preact's JSX types pull in the DOM lib; a test checks that the rules program loads no DOM, Node, or Vite types. It also resolves imports the way Node does (`nodenext`), so an import without its `.ts` extension, which Vite accepts but the sim's Node can't run, fails the typecheck.
+- **Deploy:** see D-063. Until `main` has a `package.json`, the root is `.github/pages-placeholder/index.html` from `develop`.
+- **Assets:** `assets/licenses.json` is an object keyed by each file's path under `assets/`, with `source`, `author`, and `license`. `CREDITS.md` shows the format.
+- **Tooling:** Prettier with single quotes and 100 columns. It skips `docs/`, so the planning docs keep their hand formatting, and CI doesn't check formatting. Vitest only looks in `src/`, `sim/`, and `scripts/`, Vite's dev-server watcher ignores this checkout's own `.claude/`, and Prettier ignores `.claude/worktrees/`, because the main checkout holds Claude's worktrees there. The watcher's pattern is anchored to the checkout, because every worktree's own path contains `/.claude/`. `.claude/launch.json` has `dev` and `preview` servers for the browser pane.
+
+**Why:** These are choices D-034 left open. Each keeps the setup small: fewer dependencies, checks that catch mistakes early, and and checks before anything is published.
+**Considered:** `@preact/preset-vite` for Prefresh hot reload, which brings Babel and is easy to add later if reloads get annoying. A regex purity test, which flags comments and card text.
+
+### D-063 · CI and deploys are separate, and a broken develop never blocks a release
+**Status:** Accepted · 2026-11-05 (the team's request, following the team's earlier projects Dig Deep and Spore & Sprawl)
+**Decision:**
+- **Two workflows:**
+  - `ci.yml` runs the required `test` job (typecheck, tests, build) on every pull request and on pushes to `phase/**` and `fix/**` branches. It deploys nothing.
+  - `deploy.yml` runs on pushes to `main` and `develop`, and by hand.
+- **Each branch is tested before it's published.** Pages holds one site, so every deploy still rebuilds both branch tips, but each one's `npm test` and `npm run build` (which typechecks) must pass first.
+- **A broken `develop` never blocks a release.** On a push to `main`, a `develop` that fails is left out, so `/dev/` is missing until it's fixed. On a push to `develop`, a failing `develop` fails the run and the live site stays as it was.
+- The build job can only read the repo; only the small deploy job can write to Pages. `configure-pages` is dropped, since nothing used its output.
+
+**Why:** The team wants `main` and `develop` deploys kept apart, as in Dig Deep and Spore & Sprawl, where this exact pattern runs. D-062's single job tested only the pushed commit, so a release also rebuilt whatever `develop` was, and a `develop` that didn't build blocked every deploy, releases included.
+**Considered:** Reusing the other branch's last good build from an earlier run's artifact, which would keep `/dev/` up during a release with a broken `develop`, at the cost of more moving parts. A second Pages site for `/dev/`, which needs another repo.
+**Changes:** D-060 (Accepted): its "one deploy job" detail. D-062: its Deploy bullet. Pushes to `develop` and `main` are now tested inside `deploy.yml` rather than by the `test` job, which stays the required check on pull requests.
+
+### D-064 · Merging: the user merges their own PRs, and Claude merges setup and fix PRs
+**Status:** Accepted · 2026-11-05 (the team's request)
+**Decision:**
+- **No code-owner review is required** on `develop` or `main`, as in Dig Deep and Spore & Sprawl: zero approvals. Everything else in D-061 stays: changes only by PR, the `test` check must pass, no force pushes or deletion, and `main` takes merge commits only. CODEOWNERS stays, so the user is still asked to review every PR. Claude's tools aren't allowed to loosen branch rules, so the user makes this change in the repo's ruleset settings.
+- **Auto-merge is on** for the repo.
+- **Claude merges its own PRs into `develop`:**
+  - setup, fix, and CI PRs (M0, and `fix/…` branches) as soon as `test` passes, with GitHub's auto-merge and a merge commit
+  - phase PRs (`phase/m1-…` to `phase/m6-…`) only after the user says the playtest went well
+- Claude watches CI on its own PRs and fixes failures. In this repo it may switch on the app's PR monitor and auto-merge without asking each time (`.claude/settings.json`).
+- **`main` is the user's:** Claude never merges into `main` and opens a release PR only when asked.
+
+**Why:** Claude pushes with the user's account, and GitHub doesn't let an author approve their own PR, so a required code-owner review meant the user had to tick "Merge without waiting for requirements to be met" on every PR, their own included. Small fixes shouldn't wait on the user, while each phase still lands as one reviewed diff after its playtest (D-054).
+**Considered:** Keeping the review requirement and having Claude merge with the admin bypass, which also skips the `test` check. Merging every PR once CI passes, phases included. Merging only when the user says so.
+**Changes:** D-061 (Accepted): the code-owner review, and "Claude never merges PRs". D-054 (Accepted): unchanged; phases still merge after their playtest.
+
+---
+
+## Proposed
+
+### D-015 · Start small, grow into the corporation
+**Status:** Proposed
+The company starts as a two-person outfit with a pickup truck, and growing it is the meta-progression. Players name their company, and the name shows up next to shared scores.
+
+### D-016 · Unlocks over power
+**Status:** Proposed
+Meta-progression unlocks new crews, clients, and pieces rather than permanent stat boosts, so runs stay challenging. The currency is Reputation, earned from finished jobs, with a bonus for early completions.
+
+### D-017 · Difficulty is a separate setting
+**Status:** Proposed
+Contract difficulty tiers add HOA rules, rush jobs (fewer weeks), and tight budgets (a pricier shop), independent of which client you get.
+
+### D-022 · Daily Lot
+**Status:** Proposed
+The same lot, client, and card draws for everyone each day, with a shorter run and a copyable result line for the group chat.
+
+### D-023 · One extra floor at most for the jam: the basement
+**Status:** Proposed
+Floors are layers on the same grid with a floor switcher, with the other floor shown faded for reference. The staircase is a piece you draft. Basement only, and only as a stretch goal.
+
+### D-024 · Endless mode after the Final Walkthrough
+**Status:** Proposed
+After winning, keep going with rising targets and more change orders. Nearly free if the milestone system keeps generating phases.
+
+### D-031 · Client rarity tiers
+**Status:** Proposed
+Common, Uncommon, and Rare clients. The proposed lineup is in `content-brainstorm.md`, section 10.
+
+### D-032 · Job board at run start
+**Status:** Proposed
+Choose from two or three contracts, each one a client plus a lot.
 
 ---
 
