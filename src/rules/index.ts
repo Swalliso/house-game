@@ -6,6 +6,9 @@
 // Pure means no DOM, no Preact, no Math.random, no Date, and imports only from src/rules
 // and src/content. tsconfig.rules.json and purity.test.ts enforce it.
 
+import { CONTENT } from '../content/index.ts';
+import { createRules as bindRules } from './run.ts';
+
 // ---------------------------------------------------------------------------------------
 // Ids. String-literal unions, so a typo in content is a compile error (D-038). Later phases
 // extend them.
@@ -402,3 +405,8 @@ export { shapeCells, placedCells, uniqueRotations, rotateCells, parseShape } fro
 export { isSunny, terrainAt } from './lot.ts';
 export { cardText, effectText, selectorText } from './text.ts';
 export { earnedFor, roundHalfUp, weekTotal } from './scoring.ts';
+
+export { CONTENT, SCORE_LABELS } from '../content/index.ts';
+
+/** The game's own rules, bound to the real content. Tests can build others with createRules(). */
+export const rules = bindRules(CONTENT);
