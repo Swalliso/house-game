@@ -22,7 +22,9 @@ function table(rows: (string | number)[][]): string {
   const widths = cells[0]!.map((_, c) => Math.max(...cells.map((r) => r[c]!.length)));
   return cells
     .map((r, i) => {
-      const line = r.map((v, c) => (c === 0 ? v.padEnd(widths[c]!) : v.padStart(widths[c]!))).join('  ');
+      const line = r
+        .map((v, c) => (c === 0 ? v.padEnd(widths[c]!) : v.padStart(widths[c]!)))
+        .join('  ');
       return i === 0 ? `${line}\n${widths.map((w) => '─'.repeat(w)).join('  ')}` : line;
     })
     .join('\n');
@@ -94,21 +96,44 @@ export function report(content: Content, records: readonly RunRecord[], title: s
         ` · lost at milestone ${lostAt || '–'}`,
       `Overtime weeks used per run ${avg((r) => r.overtimeUsed).toFixed(2)}` +
         ` · passes ${avg((r) => r.passes).toFixed(1)} · rerolls ${avg((r) => r.rerolls).toFixed(1)}`,
-      `Lot fill at the end: p50 ${percentile(records.map((r) => r.fillPct), 50).toFixed(1)}%` +
-        ` (p10 ${percentile(records.map((r) => r.fillPct), 10).toFixed(1)}%,` +
-        ` p90 ${percentile(records.map((r) => r.fillPct), 90).toFixed(1)}%)`,
+      `Lot fill at the end: p50 ${percentile(
+        records.map((r) => r.fillPct),
+        50,
+      ).toFixed(1)}%` +
+        ` (p10 ${percentile(
+          records.map((r) => r.fillPct),
+          10,
+        ).toFixed(1)}%,` +
+        ` p90 ${percentile(
+          records.map((r) => r.fillPct),
+          90,
+        ).toFixed(1)}%)`,
       `Fences: ${avg((r) => r.fencePlacements).toFixed(2)} placed per run;` +
         ` runs ending with a fenced yard ${pct(records.filter((r) => r.fencedYard > 0).length, records.length)}`,
       probes.length > 0
         ? `Enclosure cost after milestone 3 (Fence cards for the cheapest fenced yard):` +
-          ` p25 ${percentile(probes.map((p) => p.placements), 25)}` +
-          ` · p50 ${percentile(probes.map((p) => p.placements), 50)}` +
-          ` · p75 ${percentile(probes.map((p) => p.placements), 75)}` +
+          ` p25 ${percentile(
+            probes.map((p) => p.placements),
+            25,
+          )}` +
+          ` · p50 ${percentile(
+            probes.map((p) => p.placements),
+            50,
+          )}` +
+          ` · p75 ${percentile(
+            probes.map((p) => p.placements),
+            75,
+          )}` +
           ` · ${pct(probes.length, records.filter((r) => r.cleared >= 3).length)} of houses can be fenced in ≤ 6` +
-          ` · yard p50 ${percentile(probes.map((p) => p.yard), 50)} tiles`
+          ` · yard p50 ${percentile(
+            probes.map((p) => p.yard),
+            50,
+          )} tiles`
         : 'Enclosure cost: not probed',
-      `Time per run: p50 ${percentile(records.map((r) => r.ms), 50).toFixed(0)} ms,` +
-        ` max ${Math.max(...records.map((r) => r.ms)).toFixed(0)} ms`,
+      `Time per run: p50 ${percentile(
+        records.map((r) => r.ms),
+        50,
+      ).toFixed(0)} ms,` + ` max ${Math.max(...records.map((r) => r.ms)).toFixed(0)} ms`,
     ].join('\n'),
   );
   return out.join('\n');

@@ -16,7 +16,11 @@ const PER_CARD = 2;
 const SET_HINTS = 4;
 
 /** The plays worth scoring exactly, by the cheap estimate. */
-export function shortlist(rules: Rules, state: RunState, plays: readonly PlaceAction[]): PlaceAction[] {
+export function shortlist(
+  rules: Rules,
+  state: RunState,
+  plays: readonly PlaceAction[],
+): PlaceAction[] {
   const ranked = plays
     .map((play, k) => ({ play, k, est: rules.estimatePlay(state, play) }))
     .sort((a, b) => b.est.delta - a.est.delta || a.k - b.k);

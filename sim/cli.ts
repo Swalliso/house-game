@@ -123,7 +123,12 @@ function main(): number {
 
   if (values['suggest-targets']) {
     // Untargeted: every target 0, so no run ends early and the median curve is complete.
-    const free = createRules(withTargets(CONTENT, CONTENT.balance.phases.map(() => 0)));
+    const free = createRules(
+      withTargets(
+        CONTENT,
+        CONTENT.balance.phases.map(() => 0),
+      ),
+    );
     console.log(`Suggesting targets from ${runs} untargeted greedy runs…`);
     const untargeted = runMany(free, POLICIES.greedy!, runs, values.seed);
     const s = suggestTargets(CONTENT, untargeted);

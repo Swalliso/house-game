@@ -45,7 +45,8 @@ export function enclosureCost(rules: Rules, state: RunState): EnclosureCost | nu
   }
   for (let i = 0; i < N; i++) {
     const t = terrainAt(lot, i % W, Math.floor(i / W));
-    if (t && content.features[t].blocks && content.features[t].clear !== 'buildOver') noFence[i] = 1;
+    if (t && content.features[t].blocks && content.features[t].clear !== 'buildOver')
+      noFence[i] = 1;
   }
   const minYard = content.balance.fencedYardMin;
   const fenceCards = Object.values(content.pieces).filter((d) => d.wall && d.drawWeight > 0);
@@ -112,7 +113,14 @@ export function enclosureCost(rules: Rules, state: RunState): EnclosureCost | nu
     let nextUid = state.house.nextUid;
     const pieces: PlacedPiece[] = [...state.house.pieces];
     for (const f of fences) {
-      pieces.push({ uid: nextUid++, defId: f.def.id, x: f.x, y: f.y, rot: f.rot, placedWeek: state.week });
+      pieces.push({
+        uid: nextUid++,
+        defId: f.def.id,
+        x: f.x,
+        y: f.y,
+        rot: f.rot,
+        placedWeek: state.week,
+      });
     }
     const house: HouseState = { ...state.house, pieces, nextUid };
     if (rules.fencedYards({ ...state, house }).length <= before) continue;
@@ -148,7 +156,11 @@ interface FencePlacement {
 /** Greedy set cover of the boundary with Fence cards that avoid the yard and blocked tiles. */
 function cover(
   cand: { yard: number[]; boundary: number[] },
-  shapes: { def: { id: PlacedPiece['defId'] }; rot: Rot; cells: readonly { x: number; y: number }[] }[],
+  shapes: {
+    def: { id: PlacedPiece['defId'] };
+    rot: Rot;
+    cells: readonly { x: number; y: number }[];
+  }[],
   W: number,
   H: number,
   wall: Uint8Array,
