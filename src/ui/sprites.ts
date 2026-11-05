@@ -19,7 +19,24 @@ export const PIECE_SPRITES: Record<PieceId, { floor: SpriteId; furniture: Sprite
   lKitchen: { floor: 'floor-kitchen', furniture: 'stove' },
   diningRoom: { floor: 'floor-parquet', furniture: 'table' },
   livingRoom: { floor: 'floor-carpet', furniture: 'sofa' },
+  // Stand-ins until the M2 sprites are drawn.
+  closet: { floor: 'floor-wood', furniture: 'table' },
+  hallway: { floor: 'floor-parquet', furniture: 'floor-parquet' },
+  longHallway: { floor: 'floor-parquet', furniture: 'floor-parquet' },
+  garage: { floor: 'sidewalk', furniture: 'table' },
+  homeOffice: { floor: 'floor-carpet', furniture: 'table' },
   lawn: { floor: 'lawn', furniture: 'flowers' },
+  sapling: { floor: 'lawn', furniture: 'tree' },
+  flowerBed: { floor: 'lawn', furniture: 'flowers' },
+  herbGarden: { floor: 'lawn', furniture: 'flowers' },
+  patio: { floor: 'sidewalk', furniture: 'table' },
+  fence: { floor: 'boulder', furniture: 'boulder' },
+  lFence: { floor: 'boulder', furniture: 'boulder' },
+  driveway: { floor: 'sidewalk', furniture: 'sidewalk' },
+  longDriveway: { floor: 'sidewalk', furniture: 'sidewalk' },
+  doghouse: { floor: 'floor-wood', furniture: 'bed' },
+  treehouse: { floor: 'floor-wood', furniture: 'tree' },
+  greenhouse: { floor: 'floor-tile', furniture: 'flowers' },
 };
 
 export function spritePos(id: SpriteId): { x: number; y: number } {

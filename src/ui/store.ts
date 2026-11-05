@@ -28,7 +28,9 @@ const SAVE_KEY = `openhouse:${BUILD_CHANNEL}:run`;
 // ---------------------------------------------------------------------------------------
 // The run.
 
-export const run = signal<RunState>(rules.newRun({ seed: 'placeholder', mode: 'standard' }));
+export const run = signal<RunState>(
+  rules.newRun({ seed: 'placeholder', crewId: 'generalContractor', mode: 'standard' }),
+);
 export const log = signal<readonly Action[]>([]);
 
 /** A one-line note for the player, such as "The game updated, so this is a fresh run." */
@@ -201,7 +203,7 @@ export function startRun(
 
 export function newRun(seed = randomSeed()): void {
   notice.value = null;
-  startRun({ seed, mode: 'standard' });
+  startRun({ seed, crewId: 'generalContractor', mode: 'standard' });
 }
 
 /** Sends an action to the rules. Illegal actions are a bug in the UI, not a crash. */

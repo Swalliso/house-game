@@ -26,17 +26,42 @@ export const BALANCE: Balance = {
 
   weeksPerPhase: 4, // D-042
 
-  // M1's three milestones (D-018's first three phases), with hand-set rising targets. From a
-  // throwaway greedy bot on 120 seeds (median cumulative Wow 57, 317, and 1,017 at weeks 4, 8,
-  // and 12): about 0.55, 0.65, and 0.7 of it, so the first milestone nearly always passes. The
-  // sim replaces them in M2.
+  // D-018's seven milestones. The targets are written by `npm run sim -- --suggest-targets`
+  // (D-044): α × the greedy bot's median cumulative Wow at each milestone. Keep the markers.
+  // sim:targets:start
   phases: [
     { name: 'Groundbreaking', target: 30 },
     { name: 'Foundation', target: 200 },
     { name: 'Framing', target: 700 },
+    { name: 'Roofing', target: 1600 },
+    { name: 'Drywall', target: 3000 },
+    { name: 'Finishes', target: 5000 },
+    { name: 'Final Walkthrough', target: 8000 },
   ],
+  // sim:targets:end
 
-  handSize: 3, // D-036
+  // Run-level rules before crew modifiers (Appendix A · M2). The General Contractor adds a
+  // reroll. earlyRewardPct scales the early-completion bonus (100 = as below).
+  rules: {
+    rerollsPerPhase: 1,
+    demolitions: 2,
+    overtime: 2,
+    handSize: 3, // D-036
+    earlyRewardPct: 100,
+  },
+
+  // D-040 placeholders, per week saved, by phase (the last entry repeats): +2 budget, and 10%
+  // of this phase's earnings as Wow.
+  early: {
+    budgetPerWeek: [2],
+    scorePct: [10],
+  },
+
+  // Appendix A · M3a: +3 budget per milestone met. It accrues from M2; the shop spends it in M3.
+  milestoneBudget: 3,
+
+  // §4: a fenced yard has at least 4 tiles.
+  fencedYardMin: 4,
 
   // D-055: draw-weight percentages for complexity 1, 2, and 3, by phase; the last row repeats.
   complexityPct: [
