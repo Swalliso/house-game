@@ -41,8 +41,10 @@ export default defineConfig(({ mode }) => {
       jsx: { runtime: 'automatic', importSource: 'preact' },
     },
     server: {
-      // The main checkout holds Claude's worktrees in .claude/worktrees/.
-      watch: { ignored: ['**/.claude/**'] },
+      // The main checkout holds Claude's worktrees in .claude/worktrees/, so don't watch them.
+      // Anchored to this checkout: chokidar matches absolute paths, and every worktree's own
+      // path contains /.claude/, so a bare '**/.claude/**' would stop a worktree watching anything.
+      watch: { ignored: [`${import.meta.dirname}/.claude/**`] },
     },
     test: {
       // Explicit roots, so tests in .claude/worktrees/ never run from the main checkout.

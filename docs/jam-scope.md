@@ -55,7 +55,7 @@ TypeScript + Vite with a pure rules module, Preact and the DOM for rendering, se
 
 ## Build order
 
-Eight phases, M0 to M7, each ending in a playtest (D-053). See §7 of `implementation-plan.md`.
+Eight phases, M0 to M7 (D-053): M1 to M6 each end in a playtest, M0 is setup, and M7 is the release. See §7 of `implementation-plan.md`.
 
 ## Definition of done
 

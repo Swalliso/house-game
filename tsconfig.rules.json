@@ -10,7 +10,11 @@
     "types": [],
     // No JSX here: Preact's JSX types would pull the DOM lib back in.
     "jsx": "preserve",
-    "jsxImportSource": null
+    "jsxImportSource": null,
+    // Resolve imports the way Node does, since the sim runs these files directly:
+    // `./grid` (no extension) is an error here, though Vite would accept it.
+    "module": "nodenext",
+    "moduleResolution": "nodenext"
   },
   "include": ["src/rules", "src/content"],
   "exclude": ["**/*.test.ts"]
