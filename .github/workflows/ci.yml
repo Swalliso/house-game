@@ -1,13 +1,19 @@
+# Typecheck, tests, and the build for every pull request and for pushes to phase and fix
+# branches. Deploys nothing; deploy.yml publishes main and develop (D-063).
 name: CI
 
 on:
-  push:
-    branches: [develop, main]
   pull_request:
-    branches: [develop, main]
+  push:
+    branches: ['phase/**', 'fix/**']
 
 permissions:
   contents: read
+
+# A newer push to the same branch or PR cancels the older run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   # The rulesets on develop and main require a check named exactly "test" (D-061).
@@ -26,76 +32,3 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
-
-  # One Pages site from both branch tips: main at the root, develop at /dev/ (D-060).
-  # A Pages site holds one artifact at a time, so every deploy builds both.
-  deploy:
-    if: github.event_name == 'push'
-    needs: test
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    concurrency:
-      group: pages
-      cancel-in-progress: false
-    steps:
-      - name: Check out develop
-        uses: actions/checkout@v7
-        with:
-          ref: develop
-          path: develop
-          persist-credentials: false
-      - name: Check out main
-        uses: actions/checkout@v7
-        with:
-          ref: main
-          path: main
-          persist-credentials: false
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: develop/.nvmrc
-
-      - name: Build develop (channel dev)
-        working-directory: develop
-        env:
-          VITE_CHANNEL: dev
-        run: |
-          npm ci
-          npm run build
-
-      - name: Build main (channel main)
-        working-directory: main
-        env:
-          VITE_CHANNEL: main
-        run: |
-          if [ -f package.json ]; then
-            npm ci
-            npm run build
-          else
-            echo "main has no package.json yet, so the root gets the placeholder page"
-          fi
-
-      - name: Assemble the site
-        run: |
-          mkdir site
-          if [ -f main/package.json ]; then
-            cp -R main/dist/. site/
-          else
-            cp -R develop/.github/pages-placeholder/. site/
-          fi
-          mkdir site/dev
-          cp -R develop/dist/. site/dev/
-          echo "main: $(git -C main rev-parse --short=7 HEAD), develop: $(git -C develop rev-parse --short=7 HEAD)"
-          find site -maxdepth 2 | sort
-
-      - uses: actions/configure-pages@v6
-      - uses: actions/upload-pages-artifact@v5
-        with:
-          path: site
-      - id: deployment
-        uses: actions/deploy-pages@v5

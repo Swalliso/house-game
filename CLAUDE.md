@@ -22,14 +22,18 @@ build one house for one client, placing one piece per week.
 - New content is data in src/content. Add an effect kind only when data can't
   express it, and test it.
 - "Fixtures" are game content: upgrades installed in a placed piece.
-- develop is the default branch. Work on a phase branch off develop and open a
-  PR into develop. main holds releases: the user opens develop → main PRs.
-  Rulesets (D-061) block direct pushes to develop and main, so always push a
-  branch and open a PR. Never merge PRs yourself; the user merges. The required
-  CI check is the job `test`, and release PRs into main use merge commits.
+- develop is the default branch. Work on a phase/<id> or fix/<topic> branch off
+  develop and open a PR into develop. Rulesets (D-061, D-064) block direct pushes
+  to develop and main, so always push a branch and open a PR. The required check
+  is the job `test` in .github/workflows/ci.yml.
+- Merging (D-064): turn on the PR monitor for your own PRs. Setup and fix PRs:
+  turn on auto-merge (merge commit), so they merge once `test` passes. Phase PRs:
+  merge only after the user says the playtest went well. Never merge into main:
+  the user opens and merges develop → main release PRs, as merge commits.
 - Pages: releases at https://swalliso.github.io/house-game/, develop at /dev/.
-  Every build shows its channel (main, dev, local) and git short SHA in a corner;
-  CI sets VITE_CHANNEL. Saves are namespaced by channel.
+  deploy.yml tests both branches before publishing, and a broken develop never
+  blocks a release (D-063). Every build shows its channel (main, dev, local) and
+  git short SHA in a corner; CI sets VITE_CHANNEL. Saves are namespaced by channel.
 - Score layers: code says points / mult / xMult / total; the UI says
   Comfort / Charm / Sparkle / Wow (D-019). Labels live in one constants file.
 - Juice is core (D-059): timing numbers live in src/ui/fx/feel.ts. Pixel art
