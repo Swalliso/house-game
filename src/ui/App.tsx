@@ -1,14 +1,139 @@
-import { BUILD_LABEL } from './build-info.ts';
+// The M1 slice's one screen: the top bar, the score and inspect panels, the board, the hand,
+// and the controls strip, with overlays for banners, the end screen, and settings.
 
-// M0 placeholder. M1 replaces this with the title screen and the vertical slice.
+import { useEffect } from 'preact/hooks';
+import { audio } from './audio/audio.ts';
+import { Board, rotate } from './board/Board.tsx';
+import { BUILD_LABEL } from './build-info.ts';
+import { ErrorBoundary } from './ErrorBoundary.tsx';
+import { busy, setHold, skip } from './fx/director.ts';
+import {
+  cancelPlacement,
+  copyFallback,
+  requestEndWeek,
+  selectCard,
+  settingsOpen,
+} from './hud/actions.ts';
+import { Hand } from './hud/Hand.tsx';
+import { Inspect } from './hud/Inspect.tsx';
+import { ScorePanel } from './hud/ScorePanel.tsx';
+import { TopBar } from './hud/TopBar.tsx';
+import {
+  CopyFallback,
+  EndScreen,
+  MilestoneBanner,
+  Notice,
+  SmallScreenNotice,
+  TargetFlash,
+  Toast,
+  useSkipOnClick,
+} from './screens/Overlays.tsx';
+import { SettingsPanel } from './screens/Settings.tsx';
+import { selected } from './store.ts';
+
+function useKeyboard(): void {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      audio.unlock();
+      const target = e.target as HTMLElement | null;
+      if (settingsOpen.value || copyFallback.value) {
+        if (e.key === 'Escape') {
+          settingsOpen.value = false;
+          copyFallback.value = null;
+        }
+        return;
+      }
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      // A button or link the player reached with the keyboard keeps Enter and Space. One that
+      // only has focus because it was clicked (not :focus-visible) doesn't, so Enter after
+      // clicking a card still ends the week.
+      const keyboardFocused =
+        !!target?.closest('button, a, [role=button]') && target.matches(':focus-visible');
+      if ((e.key === 'Enter' || e.key === ' ') && keyboardFocused) return;
+      if (e.key === ' ') {
+        e.preventDefault();
+        if (busy.value) setHold(true);
+        return;
+      }
+      if (e.key === 'Enter') {
+        // Always claim Enter, repeats included, so holding it can't click a focused button
+        // over and over and pass week after week.
+        e.preventDefault();
+        if (!e.repeat) requestEndWeek();
+        return;
+      }
+      if (e.repeat) return;
+      if (e.key === '1' || e.key === '2' || e.key === '3') selectCard(Number(e.key) - 1);
+      else if (e.key === 'r' || e.key === 'R') {
+        if (selected.value !== null) rotate();
+      } else if (e.key === 'Escape') {
+        if (busy.value) skip();
+        else cancelPlacement();
+      }
+    };
+    const onUp = (e: KeyboardEvent) => {
+      if (e.key === ' ') setHold(false);
+    };
+    // A key or button released outside the window never sends its up event.
+    const release = () => setHold(false);
+    const onVisibility = () => document.hidden && release();
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('keyup', onUp);
+    window.addEventListener('blur', release);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('keyup', onUp);
+      window.removeEventListener('blur', release);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, []);
+}
+
+function Game() {
+  useKeyboard();
+  useSkipOnClick();
+  return (
+    <div class="game">
+      <TopBar />
+      <aside class="left">
+        <ScorePanel />
+        <Inspect />
+      </aside>
+      <main class="center">
+        <Board />
+        <MilestoneBanner />
+        <TargetFlash />
+      </main>
+      <aside class="right">
+        <Hand />
+        <EndScreen />
+      </aside>
+      <footer class="hints">
+        Pick a card (1–3) · R or right-click to rotate · click to place · Enter to end the week ·
+        hold Space to speed up the tally, click to skip it
+      </footer>
+      <Notice />
+      <Toast />
+      <SettingsPanel />
+      <CopyFallback />
+    </div>
+  );
+}
+
 export function App() {
+  useEffect(() => {
+    const unlock = () => audio.unlock();
+    window.addEventListener('pointerdown', unlock);
+    return () => window.removeEventListener('pointerdown', unlock);
+  }, []);
   return (
     <>
-      <main class="placeholder">
-        <h1>Open House</h1>
-        <p class="tagline">It's a house.</p>
-        <p class="note">A roguelite house builder, under construction.</p>
-      </main>
+      <ErrorBoundary>
+        <Game />
+      </ErrorBoundary>
+      <SmallScreenNotice />
       <BuildLabel />
     </>
   );
