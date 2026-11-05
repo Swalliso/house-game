@@ -31,7 +31,8 @@ Other commands:
 | ------------------- | ------------------------------------------------------------- |
 | `npm test`          | runs the tests                                                |
 | `npm run typecheck` | type-checks everything, and `src/rules` again without the DOM |
-| `npm run build`     | type-checks and builds into `dist/`                           |
+| `npm run atlas`     | rebuilds the sprite atlas in `assets/` from `art/`            |
+| `npm run build`     | rebuilds the atlas, type-checks, and builds into `dist/`      |
 | `npm run preview`   | serves the `dist/` build                                      |
 | `npm run format`    | formats the code with Prettier                                |
 
@@ -46,8 +47,12 @@ records the build, the setup, and every action you took.
    you did, what you expected, and what happened instead.
 
 A run code replays the exact run on the build it came from, so the bug can be reproduced and
-turned into a test. Run codes arrive with the first playable build (M1); until then, include
-the build label from the corner of the screen.
+turned into a test. To open one, add it to the address: `…/house-game/dev/?run=OH1.…`. If the
+game crashes, its "Something broke" screen has the run code and a link that opens a GitHub
+issue with it filled in.
+
+To play a particular lot, add `?seed=` and any word: `…/house-game/dev/?seed=maple`. A reload
+resumes your run in progress.
 
 ## Docs
 
