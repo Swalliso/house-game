@@ -992,54 +992,6 @@ h3 {
 .notice .close {
   padding: 2px 8px;
 }
-.end-screen {
-  padding: 18px 20px;
-  border-radius: 14px;
-  background: #fff8e8;
-  border: 3px solid var(--wood-dark);
-  box-shadow: 0 12px 36px rgb(60 40 20 / 0.35);
-}
-.end-screen.won {
-  border-color: var(--sparkle);
-}
-.end-screen .caption {
-  font-style: italic;
-  font-size: 22px;
-  margin: 0 0 4px;
-}
-.end-screen h2 {
-  font-size: 18px;
-}
-.verdict {
-  font-size: 26px;
-  font-weight: 900;
-  color: var(--sparkle);
-  margin: 4px 0 10px;
-}
-.end-screen.lost .verdict {
-  color: var(--muted);
-}
-.end-screen dl {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 4px 12px;
-  margin: 0 0 10px;
-}
-.end-screen dt {
-  color: var(--muted);
-}
-.end-screen dd {
-  margin: 0;
-  font-weight: 800;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-.end-buttons {
-  display: flex;
-  gap: 8px;
-  margin-top: 12px;
-}
-
 .modal-backdrop {
   position: fixed;
   inset: 0;

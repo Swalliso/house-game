@@ -1,6 +1,7 @@
 // A piece on the board, drawn as a cutaway (§12, Art): its floor sprite on every cell, walls
 // on exposed edges (heavier outside, light from the top-left), one furniture sprite, and the
-// piece's weekly score as a small digit in its bottom-right cell.
+// piece's weekly score as a small digit in its bottom-right cell. A piece whose requirement
+// isn't met earns nothing and wears a ⚠ badge in its top-left cell.
 
 import type { JSX } from 'preact';
 import { useEffect, useRef } from 'preact/hooks';
@@ -38,6 +39,8 @@ interface Props {
   occ?: Occupancy;
   uid?: number;
   earned?: number;
+  /** An unmet requirement, as text (PieceScore.unmet): the piece earns nothing. */
+  unmet?: string;
   class?: string;
   style?: JSX.CSSProperties;
   settle?: number;
@@ -50,6 +53,7 @@ export function PieceShape({
   occ,
   uid,
   earned,
+  unmet,
   class: cls,
   style,
   settle,
@@ -119,6 +123,8 @@ export function PieceShape({
 
   const spot = furnitureSpot(cells);
   const digit = digitCell(cells);
+  const shown = unmet ? 0 : earned;
+  const first = unmet ? [...cells].sort((a, b) => a.y - b.y || a.x - b.x)[0]! : null;
 
   return (
     <div
@@ -156,16 +162,30 @@ export function PieceShape({
           ...spriteStyle(sprites.furniture, scale),
         }}
       />
-      {earned !== undefined && (
+      {shown !== undefined && (
         <div
-          class={`digit ${earned === 0 ? 'zero' : ''}`}
+          class={`digit ${shown === 0 ? 'zero' : ''}`}
           style={{
             left: `${(digit.x - minX + 1) * px}px`,
             top: `${(digit.y - minY + 1) * px}px`,
             fontSize: `${Math.max(11, 5 * scale)}px`,
           }}
         >
-          {earned}
+          {shown}
+        </div>
+      )}
+      {first && (
+        <div
+          class="unmet-badge"
+          title={`Earns nothing: it must be ${unmet}`}
+          aria-label={`Earns nothing: it must be ${unmet}`}
+          style={{
+            left: `${(first.x - minX) * px + Math.max(1, scale)}px`,
+            top: `${(first.y - minY) * px + Math.max(1, scale)}px`,
+            fontSize: `${Math.max(11, 4.5 * scale)}px`,
+          }}
+        >
+          {'\u26A0\uFE0E'}
         </div>
       )}
     </div>

@@ -44,12 +44,33 @@ export const FEEL = {
   /** Squash-and-wobble on a triggering piece. */
   wobble: { ms: 260, scale: 1.12 },
 
+  /** Each fast-forwarded week when a milestone completes early (D-040). */
+  fastForward: { weekMs: 420 },
+
+  /** A demolition's puff. */
+  demolishMs: 500,
+
+  /** How long the tally waits on a milestone banner before playing what comes next. */
+  milestoneHoldMs: 900,
+
   /** Banners. */
   bannerMs: 2200,
   targetFlashMs: 1400,
 
   /** The placed piece's settle. */
   placeMs: 220,
+
+  /** The camera (§12, Art; D-057): wheel zoom in whole steps, drag to pan. */
+  camera: {
+    /** A left-button drag pans once it has moved this many px; a shorter one is a click. */
+    dragPx: 5,
+    /** Wheel events closer together than this are one gesture; a gesture's first event zooms at once. */
+    wheelGestureMs: 220,
+    /** Within a gesture, each further zoom step takes this much wheel travel (px). */
+    wheelStepPx: 80,
+    /** And at least this long between steps, so a trackpad fling doesn't race to the end. */
+    wheelStepGapMs: 120,
+  },
 } as const;
 
 export type TallySpeed = (typeof FEEL.speeds)[number];

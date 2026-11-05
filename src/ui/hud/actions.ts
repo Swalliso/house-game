@@ -3,9 +3,22 @@
 import { signal } from '@preact/signals';
 import { audio } from '../audio/audio.ts';
 import { busy, skip } from '../fx/director.ts';
-import { endWeek, newRun, notice, preview, run, runCode, selected, tentative } from '../store.ts';
+import {
+  demolishArmed,
+  endWeek,
+  newRun,
+  notice,
+  preview,
+  run,
+  runCode,
+  selected,
+  tentative,
+  tool,
+} from '../store.ts';
 
 export const settingsOpen = signal(false);
+/** The How to play sheet, from the title screen or the top bar. */
+export const howToPlayOpen = signal(false);
 export const toast = signal<{ id: number; text: string } | null>(null);
 let toastId = 0;
 
@@ -48,13 +61,41 @@ export function startNewRun(): void {
 export function selectCard(i: number): void {
   const s = run.value;
   if (s.screen !== 'build' || i >= s.hand.length) return;
+  if (tool.value === 'demolish') {
+    tool.value = 'build';
+    demolishArmed.value = null;
+  }
   if (busy.value) skip();
   tentative.value = null;
   selected.value = selected.value === i ? null : i;
   audio.play('select');
 }
 
+/** Demolish mode (D, or the Demolish button): a click on the lot demolishes instead of building. */
+export function toggleDemolish(): void {
+  const s = run.value;
+  if (tool.value === 'demolish') {
+    tool.value = 'build';
+    demolishArmed.value = null;
+    return;
+  }
+  if (s.screen !== 'build' || s.demolitionsLeft <= 0) {
+    audio.play('illegal');
+    return;
+  }
+  // A card only being looked at goes back to the hand; a placement waiting for End week stays.
+  if (!tentative.value) selected.value = null;
+  demolishArmed.value = null;
+  tool.value = 'demolish';
+  audio.play('select', { rate: 0.7 });
+}
+
 export function cancelPlacement(): void {
+  if (tool.value === 'demolish') {
+    tool.value = 'build';
+    demolishArmed.value = null;
+    return;
+  }
   if (tentative.value) tentative.value = null;
   else selected.value = null;
 }
