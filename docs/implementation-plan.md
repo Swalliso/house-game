@@ -1,6 +1,6 @@
 # Open House — Implementation Plan
 
-**Status:** Proposed · revised 2026-11-05.
+**Status:** Approved · 2026-11-05. The statuses in §1d were applied to `decisions.md` in M0.
 - **Confirmed so far:**
   - §1b, except the camera change
   - the 1080p design target, and Pages serving `develop` at `/dev/` (D-060)
@@ -8,7 +8,7 @@
   - D-048 to D-051 (D-052 since superseded by D-053), D-053, D-054, and D-056
   - D-019's names, and LimeZu for the final art
   - the directions of D-055 and D-057 to D-059
-- The rest waits on approval (§1d). No code until it's approved.
+- The rest was approved with the plan on 2026-11-05 (§1d).
 **Revised 2026-11-05 after team feedback** (D-048 to D-052):
 - **A 24×24 lot with real terrain** (woods, a creek, finds), plus a camera: §3, §4 Layout rules, Appendix A and B.
 - **Fixtures are in the jam build:** cards you draw or buy and install in a piece you've already placed, a room or a yard piece (§4, §5, M3a).
@@ -97,6 +97,8 @@ These four stay Accepted, with an "Amended by" pointer to the entry that changes
 | **D-051** The shop | Two more Rare blueprints with ×Mult (18 in all); a seventh tool kind, Remodel Plans, which levels a set (12 tools); It's a House and Rush Order become +Mult; Last-Minute Push becomes ×Mult. *Confirmed.* | D-056 |
 
 ### 1c. New decisions (logged in `decisions.md`)
+
+The Status column is as of planning. With the plan's approval, everything still Proposed here became Accepted (§1d); `decisions.md` has the current status of each.
 
 | # | Decision | Needed by | Status |
 |---|---|---|---|
