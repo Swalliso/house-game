@@ -29,14 +29,17 @@ export const BALANCE: Balance = {
   // D-018's seven milestones. The targets are written by `npm run sim -- --suggest-targets`
   // (D-044): α × the greedy bot's median cumulative Wow at each milestone. Keep the markers.
   // sim:targets:start
+  // From `npm run sim -- --suggest-targets --runs 200` (D-072): α × the greedy bot's
+  // median cumulative Wow at each milestone, with α set so greedy's estimated survival
+  // follows 100%, 98%, 95%, 85%, 72%, 58%, 45%.
   phases: [
-    { name: 'Groundbreaking', target: 30 },
-    { name: 'Foundation', target: 200 },
-    { name: 'Framing', target: 700 },
-    { name: 'Roofing', target: 1600 },
-    { name: 'Drywall', target: 3000 },
-    { name: 'Finishes', target: 5000 },
-    { name: 'Final Walkthrough', target: 8000 },
+    { name: 'Groundbreaking', target: 15 }, // median 42, α 0.36
+    { name: 'Foundation', target: 120 }, // median 167, α 0.72
+    { name: 'Framing', target: 270 }, // median 475, α 0.57
+    { name: 'Roofing', target: 650 }, // median 952, α 0.68
+    { name: 'Drywall', target: 1350 }, // median 1715, α 0.79
+    { name: 'Finishes', target: 2900 }, // median 2808, α 1.03
+    { name: 'Final Walkthrough', target: 5300 }, // median 4257, α 1.25
   ],
   // sim:targets:end
 
