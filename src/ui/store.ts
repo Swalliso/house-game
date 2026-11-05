@@ -13,6 +13,9 @@ import {
   shapeCells,
   type Action,
   type Cell,
+  type DebugAction,
+  type DemolishPreview,
+  type EarlyOffer,
   type GameEvent,
   type PlaceAction,
   type Preview,
@@ -24,6 +27,21 @@ import { BUILD_CHANNEL, BUILD_SHA } from './build-info.ts';
 
 export const CONTENT_HASH = contentHash(CONTENT);
 const SAVE_KEY = `openhouse:${BUILD_CHANNEL}:run`;
+
+// ---------------------------------------------------------------------------------------
+// The app's screens. The title screen comes first unless a link starts a run (?run=, ?seed=).
+
+export const appScreen = signal<'title' | 'game'>('title');
+/** The ?debug panel (implementation-plan.md §7, M2 · Debug tools). */
+export const debugEnabled = (() => {
+  try {
+    return new URLSearchParams(location.search).has('debug');
+  } catch {
+    return false;
+  }
+})();
+/** A run in progress was loaded from the save, so the title screen can offer Continue. */
+export const canContinue = signal(false);
 
 // ---------------------------------------------------------------------------------------
 // The run.
@@ -40,6 +58,11 @@ export const crash = signal<{ message: string; stack?: string; action?: Action }
 
 // ---------------------------------------------------------------------------------------
 // What the player is doing this week.
+
+/** What a click on the lot does: build the selected card, or demolish (a free action). */
+export const tool = signal<'build' | 'demolish'>('build');
+/** In demolish mode, the tile clicked once: a second click (or Demolish) confirms. */
+export const demolishArmed = signal<Cell | null>(null);
 
 /** The hand card being placed, if any. */
 export const selected = signal<number | null>(null);
@@ -81,6 +104,25 @@ export const activePlay = computed<PlaceAction | null>(() => {
 export const preview = computed<Preview | null>(() => {
   const play = activePlay.value;
   return play && run.value.screen === 'build' ? rules.preview(run.value, play) : null;
+});
+
+/** What demolishing the hovered (or armed) tile would do, in demolish mode. */
+export const demolishPreview = computed<DemolishPreview | null>(() => {
+  if (tool.value !== 'demolish' || run.value.screen !== 'build') return null;
+  const cell = demolishArmed.value ?? hoverCell.value;
+  return cell ? rules.previewDemolish(run.value, cell.x, cell.y) : null;
+});
+
+/** Early completion: whether it's offered now, and what it would pay (D-040). */
+export const earlyOffer = computed<EarlyOffer>(() => rules.canCompleteEarly(run.value));
+
+/**
+ * The forecast line (§4): the score plus this week's total, with the placement being looked at
+ * if it's legal, for each week left in the phase. A rough guide, not a promise.
+ */
+export const forecast = computed(() => {
+  const p = preview.value;
+  return rules.forecast(run.value, p?.legal ? activePlay.value : null);
 });
 
 /** What the house earns per week as it stands: the corner digits and the inspect panel. */
@@ -169,6 +211,8 @@ function resetWeek(): void {
   selected.value = null;
   tentative.value = null;
   rotation.value = 0;
+  demolishArmed.value = null;
+  tool.value = 'build';
 }
 
 /** Listeners for each action's events: the tally director subscribes. */
@@ -189,7 +233,18 @@ export function startRun(
   setup: RunSetup,
   actions: readonly Action[] = [],
 ): { failedAt?: number; error?: string } {
-  const result = rules.replay(setup, actions);
+  let result: ReturnType<typeof rules.replay>;
+  try {
+    result = rules.replay(setup, actions);
+  } catch (e) {
+    // A setup this build can't start (an unknown crew): a fresh run instead.
+    result = rules.replay(
+      { seed: randomSeed(), crewId: 'generalContractor', mode: 'standard' },
+      [],
+    );
+    actions = [];
+    notice.value = { text: `That run couldn't start: ${e instanceof Error ? e.message : e}` };
+  }
   batch(() => {
     run.value = result.state;
     log.value = result.failedAt === undefined ? actions : actions.slice(0, result.failedAt);
@@ -204,10 +259,23 @@ export function startRun(
 export function newRun(seed = randomSeed()): void {
   notice.value = null;
   startRun({ seed, crewId: 'generalContractor', mode: 'standard' });
+  canContinue.value = false;
+  appScreen.value = 'game';
+}
+
+/** Back to the run that was loaded from the save. */
+export function continueRun(): void {
+  appScreen.value = 'game';
+}
+
+export function goToTitle(): void {
+  resetWeek();
+  canContinue.value = run.value.screen === 'build' && log.value.length > 0;
+  appScreen.value = 'title';
 }
 
 /** Sends an action to the rules. Illegal actions are a bug in the UI, not a crash. */
-export function dispatch(action: Action): boolean {
+export function dispatch(action: Action, opts: { keepWeek?: boolean } = {}): boolean {
   const before = run.value;
   let result: ReturnType<typeof rules.apply>;
   try {
@@ -227,11 +295,48 @@ export function dispatch(action: Action): boolean {
   batch(() => {
     run.value = result.state;
     log.value = [...log.value, action];
-    resetWeek();
+    if (opts.keepWeek) {
+      // A free action keeps the card being placed, unless the hand changed under it.
+      if (action.t === 'reroll' || action.t === 'debug') {
+        selected.value = null;
+        tentative.value = null;
+      } else if (tentative.value && !rules.checkPlay(result.state, tentative.value).legal) {
+        tentative.value = null;
+      }
+      demolishArmed.value = null;
+    } else {
+      resetWeek();
+    }
   });
   save();
   listeners.forEach((l) => l(result.events, before, result.state));
   return true;
+}
+
+// Free actions: they don't end the week.
+
+export function reroll(): boolean {
+  return dispatch({ t: 'reroll' }, { keepWeek: true });
+}
+
+export function demolishAt(x: number, y: number): boolean {
+  const ok = dispatch({ t: 'demolish', x, y }, { keepWeek: true });
+  if (ok) tool.value = 'build';
+  return ok;
+}
+
+/** Completes the milestone now; the rest of the phase fast-forwards (D-040). */
+export function completeEarly(): boolean {
+  return dispatch({ t: 'completeEarly' });
+}
+
+export function setAutoComplete(on: boolean): boolean {
+  return dispatch({ t: 'setAutoComplete', on }, { keepWeek: true });
+}
+
+/** The ?debug panel's cheats. They're actions, so the run code still replays. */
+export function debugAction(action: DebugAction): boolean {
+  return dispatch(action, { keepWeek: true });
 }
 
 /** End week: commit the tentative placement, or pass. */
@@ -266,6 +371,7 @@ export function loadInitialRun(): void {
     const previous = keepPreviousRun(saved);
     if (loadRunCode(fromUrl)) {
       if (previous) addNote('Your run in progress was put aside.', previous);
+      appScreen.value = 'game';
       return;
     }
     // The link couldn't be read: say why once the fallback run has loaded.
@@ -283,18 +389,23 @@ export function loadInitialRun(): void {
     if (saved.build === BUILD_SHA && decoded.ok) {
       const { failedAt } = startRun(decoded.data.setup, decoded.data.actions);
       if (failedAt === undefined) {
+        // The title screen offers Continue for a run in progress.
+        canContinue.value = run.value.screen === 'build' && log.value.length > 0;
+        appScreen.value = 'title';
         if (linkError) addNote(linkError);
         return;
       }
     }
     const previous = keepPreviousRun(saved);
-    newRun();
-    addNote('The game updated, so this is a fresh run.', previous);
+    startRun({ seed: randomSeed(), crewId: 'generalContractor', mode: 'standard' });
+    addNote('The game updated, so your last run couldn’t continue.', previous);
     if (linkError) addNote(linkError);
+    appScreen.value = 'title';
     return;
   }
-  newRun();
+  startRun({ seed: randomSeed(), crewId: 'generalContractor', mode: 'standard' });
   if (linkError) addNote(linkError);
+  appScreen.value = 'title';
 }
 
 /** Adds a sentence to the note, keeping any old run code it already offers. */
