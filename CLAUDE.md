@@ -27,9 +27,11 @@ build one house for one client, placing one piece per week.
   to develop and main, so always push a branch and open a PR. The required check
   is the job `test` in .github/workflows/ci.yml.
 - Merging (D-064): turn on the PR monitor for your own PRs. Setup and fix PRs:
-  turn on auto-merge (merge commit), so they merge once `test` passes. Phase PRs:
-  merge only after the user says the playtest went well. Never merge into main:
-  the user opens and merges develop → main release PRs, as merge commits.
+  turn on auto-merge (merge commit) right after opening them, so they merge once
+  `test` passes; GitHub refuses auto-merge on a PR that's already mergeable, so
+  merge that one with `gh pr merge --merge` (never `--admin`). Phase PRs: merge
+  only after the user says the playtest went well. Never merge into main: the
+  user opens and merges develop → main release PRs, as merge commits.
 - Pages: releases at https://swalliso.github.io/house-game/, develop at /dev/.
   deploy.yml tests both branches before publishing, and a broken develop never
   blocks a release (D-063). Every build shows its channel (main, dev, local) and
