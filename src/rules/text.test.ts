@@ -21,7 +21,7 @@ describe('card text', () => {
     ]);
     expect(cardText(C, C.pieces.livingRoom)).toEqual({
       effects: ['+2 per touching view (up to 3)'],
-      notes: ['Views: Trees, the Pond, and the Creek.'],
+      notes: ['Views: Trees, the Pond, the Creek, Flower Beds, Herb Gardens, and Greenhouses.'],
     });
     expect(cardText(C, C.pieces.lawn).effects).toEqual([
       '+1 every week',

@@ -13,18 +13,21 @@
 import type {
   Cell,
   Content,
+  FeatureId,
   HouseState,
   Legality,
+  PieceCondition,
   PieceDef,
   PieceId,
   PlacedPiece,
   Rot,
+  Selector,
   TerrainId,
 } from './index.ts';
 import { cellIndex, inBounds, ORTHOGONAL, placedCells } from './grid.ts';
 import { terrainAt } from './lot.ts';
-import { pieceDef, type Layout } from './layout.ts';
-import { meetsCondition } from './selectors.ts';
+import { isRoom, pieceDef, type Layout } from './layout.ts';
+import { isType, meetsCondition } from './selectors.ts';
 import { conditionText } from './text.ts';
 
 export const REASONS = {
@@ -87,7 +90,18 @@ export function checkPlacement(
     (e): e is Extract<typeof e, { kind: 'requires' }> => e.kind === 'requires' && e.blocksPlacement,
   );
   if (blocking.length === 0) return { legal: true, cells, clearedTrees };
-  // Requirements are checked on the house as it would be, with any Trees under it gone.
+  // The common case (touching the street, a Driveway, a Tree) is exact from the tiles around
+  // the piece, so the bots' scans don't build a layout per candidate.
+  let quick = true;
+  for (const e of blocking) {
+    const met = quickTouching(content, layout, e.condition, cells);
+    if (met === false) {
+      return fail(`${def.name} must be built ${conditionText(content, e.condition)}.`);
+    }
+    if (met === null) quick = false;
+  }
+  if (quick) return { legal: true, cells, clearedTrees };
+  // Otherwise requirements are checked on the house as it would be, with Trees under it gone.
   const added = addPiece(layout.house, def.id, x, y, rot, week, clearedTrees);
   const after = layoutOf(added.house);
   for (const e of blocking) {
@@ -96,6 +110,89 @@ export function checkPlacement(
     }
   }
   return { legal: true, cells, clearedTrees, house: added.house, piece: added.piece };
+}
+
+/**
+ * A `touching` condition whose selector names only lot features and pieces that can't be
+ * linked or are connectors (so links and the Hallway rule can't change the answer), decided
+ * from the tiles around the cells. Null when the condition isn't that simple.
+ */
+function quickTouching(
+  content: Content,
+  layout: Layout,
+  cond: PieceCondition,
+  cells: readonly Cell[],
+): boolean | null {
+  if (!('touching' in cond) || !simpleSelector(content, cond.touching)) return null;
+  const { lot } = layout.house;
+  const { width: w, height: h } = lot;
+  const own = new Set(cells.map((c) => cellIndex(w, c.x, c.y)));
+  const seen = new Set<string>();
+  let n = 0;
+  const count = (key: string, matched: boolean) => {
+    if (!matched || seen.has(key)) return;
+    seen.add(key);
+    n++;
+  };
+  for (const c of cells) {
+    for (const [dx, dy] of ORTHOGONAL) {
+      const nx = c.x + dx;
+      const ny = c.y + dy;
+      if (!inBounds(w, h, nx, ny)) {
+        if (ny === h) count('street', simpleMatch(content, cond.touching, null, 'street'));
+        continue;
+      }
+      const i = cellIndex(w, nx, ny);
+      if (own.has(i)) continue;
+      const uid = layout.occupant[i]!;
+      if (uid >= 0) {
+        const other = pieceDef(content, layout.byUid.get(uid)!);
+        if (!other.connector) count(`p${uid}`, simpleMatch(content, cond.touching, other, null));
+        continue;
+      }
+      const t = terrainAt(lot, nx, ny);
+      if (t === null || content.features[t].inert) continue;
+      // Bodies count once; any other feature tile counts on its own.
+      count(content.features[t].body ? t : `t${i}`, simpleMatch(content, cond.touching, null, t));
+    }
+  }
+  return n >= (cond.min ?? 1);
+}
+
+/** Feature and piece-id terms only, naming no room (rooms can be linked through Hallways). */
+function simpleSelector(content: Content, sel: Selector): boolean {
+  if (sel === 'all') return false;
+  if ('feature' in sel) return true;
+  if ('piece' in sel) {
+    const ids = typeof sel.piece === 'string' ? [sel.piece] : sel.piece;
+    return Object.values(content.pieces).every(
+      (d) => !ids.some((id) => d.id === id || d.countsAs === id) || !isRoom(d),
+    );
+  }
+  if ('any' in sel) return sel.any.every((s) => simpleSelector(content, s));
+  return false;
+}
+
+function simpleMatch(
+  content: Content,
+  sel: Selector,
+  piece: PieceDef | null,
+  feature: FeatureId | null,
+): boolean {
+  if (sel === 'all') return false;
+  if ('any' in sel) return sel.any.some((s) => simpleMatch(content, s, piece, feature));
+  if ('feature' in sel) {
+    if (!feature) return false;
+    return typeof sel.feature === 'string'
+      ? sel.feature === feature
+      : sel.feature.includes(feature);
+  }
+  if ('piece' in sel) {
+    if (!piece) return false;
+    const ids = typeof sel.piece === 'string' ? [sel.piece] : sel.piece;
+    return ids.some((id) => isType(piece, id));
+  }
+  return false;
 }
 
 function touchesIndoor(content: Content, layout: Layout, cells: readonly Cell[]): boolean {

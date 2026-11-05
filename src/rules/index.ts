@@ -637,6 +637,28 @@ export interface RunCodeData {
   pending?: PlaceAction;
 }
 
+/** What the inspect panel says about a placed piece's place in the layout. */
+export interface PieceInfo {
+  /** Effective tags: its own, plus Dark (interior) and Sunny (on a sunny tile). */
+  tags: readonly Tag[];
+  /** For rooms: whether it touches the outside. */
+  side: 'exterior' | 'interior' | null;
+  /** Regions every tile of it is in. */
+  regions: readonly Region[];
+  view: boolean;
+  /** Rooms it's linked to through Hallways. */
+  linked: readonly number[];
+  /** Tiles of the fenced yards it borders or sits in. */
+  fencedYardTiles: number;
+}
+
+/** What the inspect panel says about a lot tile. */
+export interface TileInfo {
+  regions: readonly Region[];
+  /** Tiles in the fenced yard this tile is in, or 0. */
+  fencedYardTiles: number;
+}
+
 /** Why a free action or button is unavailable, for greying it out with a reason. */
 export interface Availability {
   ok: boolean;
@@ -646,7 +668,9 @@ export interface Availability {
 // ---------------------------------------------------------------------------------------
 // The API.
 
-export type { Rules } from './run.ts';
+export type { EarlyOffer, Rules } from './run.ts';
+export type { Estimate } from './estimate.ts';
+export { stream, type Rng } from './rng.ts';
 export { createRules, IllegalAction } from './run.ts';
 export { encodeRunCode, decodeRunCode, contentHash } from './runcode.ts';
 export { shapeCells, placedCells, uniqueRotations, rotateCells, parseShape } from './grid.ts';

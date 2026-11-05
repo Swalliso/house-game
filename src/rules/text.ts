@@ -95,7 +95,14 @@ export function selectorText(content: Content, sel: Selector, phrasing: Phrasing
       conj,
     );
   if ('all' in sel) {
-    // Tags read as adjectives on the one noun: "Sunny room".
+    // Tags read as adjectives on the one noun: "Sunny room". "Gives a view" reads as a
+    // clause on the rest: "yard pieces that give a view".
+    const isSource = (s: Selector) => s !== 'all' && 'property' in s && s.property === 'viewSource';
+    if (sel.all.some(isSource) && sel.all.length > 1) {
+      const others = sel.all.filter((s) => !isSource(s));
+      const noun = selectorText(content, { all: others }, phrasing);
+      return `${noun} that ${many ? 'give' : 'gives'} a view`;
+    }
     const tags = sel.all.filter((s): s is { tag: Tag } => s !== 'all' && 'tag' in s);
     const rest = sel.all.filter((s) => s === 'all' || !('tag' in s));
     const noun =
@@ -257,9 +264,12 @@ export function cardText(content: Content, def: PieceDef): CardText {
     notes.push(sentence.charAt(0).toUpperCase() + sentence.slice(1));
   }
   if (props.has('viewSource')) {
-    const sources = features
-      .filter((f) => f.viewSource)
-      .map((f) => featureNoun(content, f.id, true));
+    const sources = [
+      ...features.filter((f) => f.viewSource).map((f) => featureNoun(content, f.id, true)),
+      ...Object.values(content.pieces)
+        .filter((p) => p.givesView && !p.countsAs)
+        .map((p) => plural(p.name)),
+    ];
     notes.push(`Views: ${joinWords(sources, 'and')}.`);
   }
   return { effects, notes };

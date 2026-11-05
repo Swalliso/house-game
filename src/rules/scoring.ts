@@ -173,7 +173,8 @@ function applyEffect(
       const raw = tiles * effect.perTile;
       const value = effect.cap === undefined ? raw : Math.min(effect.cap, raw);
       const capped = value < raw ? ` (up to ${effect.cap})` : '';
-      add(value, `Fenced yard of ${tiles} ${tiles === 1 ? 'tile' : 'tiles'}${capped}`);
+      const yards = ids.length === 1 ? 'Fenced yard of' : `${ids.length} fenced yards,`;
+      add(value, `${yards} ${tiles} ${tiles === 1 ? 'tile' : 'tiles'}${capped}`);
       break;
     }
     case 'perTile': {
@@ -253,10 +254,12 @@ export function tallyHouse(
   const scores: PieceScore[] = pieces.map((piece) => {
     const a = acc.get(piece.uid)!;
     const why = unmet.get(piece.uid);
-    const lines = withLines ? [...a.own, ...a.auras] : [];
-    if (why !== undefined && withLines) {
-      lines.unshift({ label: `Needs ${why}: earns nothing`, op: 'none', value: 0, from: [] });
-    }
+    // An unmet requirement zeroes the piece, so its only line says why.
+    const lines = !withLines
+      ? []
+      : why === undefined
+        ? [...a.own, ...a.auras]
+        : [{ label: `Earns nothing: it must be ${why}`, op: 'none' as const, value: 0, from: [] }];
     budget += why === undefined ? a.budget : 0;
     return {
       uid: piece.uid,

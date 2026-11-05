@@ -193,7 +193,8 @@ describe('milestones', () => {
     let s = onEmptyLot(r);
     s = r.apply(s, PASS).state;
     const end1 = r.apply(s, PASS);
-    expect(types(end1.events)).toEqual(['tally', 'milestone', 'handDrawn']);
+    // A target of 0 is met as the next phase starts, so it says so at once.
+    expect(types(end1.events)).toEqual(['tally', 'milestone', 'targetReached', 'handDrawn']);
     expect(end1.events[1]).toMatchObject({ result: 'onTime', phase: 0 });
     expect(end1.state).toMatchObject({
       phase: 1,

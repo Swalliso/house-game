@@ -32,8 +32,10 @@ import type {
   Legality,
   MilestoneRecord,
   MilestoneResult,
+  PieceInfo,
   PieceScore,
   PlaceAction,
+  Region,
   Play,
   Preview,
   PreviewLine,
@@ -43,11 +45,13 @@ import type {
   RunState,
   SetScore,
   Tally,
+  TileInfo,
   WeekScore,
 } from './index.ts';
 import { drawHand, slotKey } from './draw.ts';
-import { bounds, cellIndex, shapeCells, uniqueRotations } from './grid.ts';
-import { layoutCache } from './layout.ts';
+import { estimatePlay, type Estimate } from './estimate.ts';
+import { bounds, cellIndex, placedCells, shapeCells, uniqueRotations } from './grid.ts';
+import { fencedYardsBordered, layoutCache, pieceIn, REGION_BIT } from './layout.ts';
 import { generateLot } from './lot.ts';
 import {
   earlyBonus,
@@ -66,8 +70,8 @@ import {
   REASONS,
   type PlacementCheck,
 } from './placement.ts';
-import { ageOf, onCadence, tallyHouse } from './scoring.ts';
-import { effectText, ordinal } from './text.ts';
+import { ageOf, onCadence, tallyHouse, unmetRequirement } from './scoring.ts';
+import { conditionText, ordinal } from './text.ts';
 
 export class IllegalAction extends Error {
   readonly reason: string;
@@ -121,6 +125,20 @@ export interface Rules {
   previewDemolish(state: RunState, x: number, y: number): DemolishPreview;
   /** A piece's timers as text: "Becomes a Tree at the start of week 9". */
   pieceTimers(state: RunState, uid: number): string[];
+  /** Every legal placement of every card in the hand (distinct rotations). */
+  legalPlacements(state: RunState): PlaceAction[];
+  /**
+   * A cheap local estimate of a legal play's change to the week's total, for ranking
+   * candidates before scoring the best few exactly (§4, Performance). `setHint` marks plays
+   * that might complete a set.
+   */
+  estimatePlay(state: RunState, play: PlaceAction): Estimate;
+  /** The tile counts of the house's fenced yards. */
+  fencedYards(state: RunState): readonly number[];
+  /** Every tile in a fenced yard, as lot indexes (y × width + x), for the board's tint. */
+  fencedTiles(state: RunState): readonly number[];
+  describePiece(state: RunState, uid: number): PieceInfo | null;
+  describeTile(state: RunState, x: number, y: number): TileInfo | null;
   replay(setup: RunSetup, actions: readonly Action[]): ReplayResult;
 }
 
@@ -407,6 +425,11 @@ export function createRules(content: Content): Rules {
       phaseStartScore: score,
       rerollsLeft: rule(s, 'rerollsPerPhase'),
     };
+    // A phase can start with its target already met (a big early bonus): say so at once.
+    const nextTarget = phaseTarget(b, next.phase);
+    if (score >= nextTarget) {
+      events.push({ t: 'targetReached', phase: next.phase, target: nextTarget, score });
+    }
     return startWeek(next, events);
   }
 
@@ -470,7 +493,7 @@ export function createRules(content: Content): Rules {
     if (
       typeof setup.seed !== 'string' ||
       setup.mode !== 'standard' ||
-      !content.crews[setup.crewId]
+      !Object.hasOwn(content.crews, setup.crewId)
     ) {
       throw new Error('Bad run setup');
     }
@@ -517,7 +540,9 @@ export function createRules(content: Content): Rules {
         if (!Number.isInteger(action.amount)) throw new IllegalAction('Bad amount.');
         return { ...s, budget: Math.max(0, s.budget + action.amount) };
       case 'giveCard':
-        if (!content.pieces[action.id]) throw new IllegalAction('Unknown piece.');
+        if (typeof action.id !== 'string' || !Object.hasOwn(content.pieces, action.id)) {
+          throw new IllegalAction('Unknown piece.');
+        }
         return { ...s, hand: [...s.hand, { kind: 'piece', id: action.id }] };
       case 'forceMiss':
         return { ...s, forcedMiss: s.phase };
@@ -666,15 +691,20 @@ export function createRules(content: Content): Rules {
     const def = content.pieces[piece.defId];
     const out: string[] = [];
     const age = ageOf(piece, state.week);
+    const unmet = unmetRequirement(content, layoutOf(state.house), def, uid);
     const next = (every: number) => {
       for (let a = age; a < age + every; a++) if (onCadence(a, every)) return piece.placedWeek + a;
       return state.week;
     };
     for (const e of def.effects) {
       if (e.kind === 'transform') {
-        out.push(
-          `${effectText(content, e)}: at the start of week ${piece.placedWeek + e.afterWeeks}`,
-        );
+        const into =
+          'piece' in e.into
+            ? content.pieces[e.into.piece].name
+            : content.features[e.into.feature].name;
+        out.push(`Becomes a ${into} at the start of week ${piece.placedWeek + e.afterWeeks}`);
+      } else if (unmet && (e.kind === 'rhythm' || e.kind === 'economy')) {
+        out.push(`Paused: it must be ${conditionText(content, unmet.condition)}`);
       } else if (e.kind === 'rhythm') {
         const w = next(e.every);
         out.push(w === state.week ? `Pays +${e.amount} this week` : `Next +${e.amount}: week ${w}`);
@@ -687,7 +717,7 @@ export function createRules(content: Content): Rules {
         );
       }
     }
-    return out;
+    return [...new Set(out)];
   }
 
   function preview(state: RunState, play: Play): Preview {
@@ -785,7 +815,19 @@ export function createRules(content: Content): Rules {
   }
 
   function replay(setup: RunSetup, actions: readonly Action[]): ReplayResult {
-    let state = newRun(setup);
+    let state: RunState;
+    try {
+      state = newRun(setup);
+    } catch (e) {
+      // A setup this build can't start (a crew it doesn't have): fail softly at step 0, from
+      // the same seed with the default crew, so a stale code never crashes the page.
+      const fallback = Object.keys(content.crews)[0] as RunSetup['crewId'];
+      return {
+        state: newRun({ seed: String(setup?.seed ?? ''), crewId: fallback, mode: 'standard' }),
+        failedAt: 0,
+        error: `This build can’t start that run: ${e instanceof Error ? e.message : String(e)}`,
+      };
+    }
     for (let i = 0; i < actions.length; i++) {
       try {
         state = apply(state, actions[i]!).state;
@@ -813,7 +855,8 @@ export function createRules(content: Content): Rules {
     weeksLeft,
     forecast: (state, play) => {
       if (state.screen !== 'build') return state.score;
-      const weekly = play ? scoreOnly(state, play) : passTally(state).total;
+      const legal = play ? checkPlay(state, play).legal : false;
+      const weekly = play && legal ? scoreOnly(state, play) : passTally(state).total;
       return state.score + weekly * weeksLeft(state);
     },
     rule,
@@ -821,6 +864,56 @@ export function createRules(content: Content): Rules {
     canCompleteEarly,
     previewDemolish,
     pieceTimers,
+    legalPlacements: (state) => {
+      const out: PlaceAction[] = [];
+      state.hand.forEach((_, i) => eachLegalSpot(state, i, (play) => void out.push(play)));
+      return out;
+    },
+    estimatePlay: (state, play) => {
+      const def = cardDef(state, play.i);
+      return estimatePlay(
+        content,
+        layoutOf(state.house),
+        passTally(state),
+        def,
+        placedCells(def.shape, play.x, play.y, play.rot),
+      );
+    },
+    fencedYards: (state) => layoutOf(state.house).fencedSizes,
+    fencedTiles: (state) => {
+      const ids = layoutOf(state.house).fencedId;
+      const out: number[] = [];
+      ids.forEach((id, i) => id >= 0 && out.push(i));
+      return out;
+    },
+    describePiece: (state, uid) => {
+      const layout = layoutOf(state.house);
+      if (!layout.byUid.has(uid)) return null;
+      const regions = (Object.keys(REGION_BIT) as Region[]).filter((r) => pieceIn(layout, uid, r));
+      return {
+        tags: [...(layout.tags.get(uid) ?? [])],
+        side: layout.exterior.has(uid) ? 'exterior' : layout.interior.has(uid) ? 'interior' : null,
+        regions,
+        view: layout.hasView.has(uid),
+        linked: [...(layout.links.get(uid) ?? [])].sort((a, b) => a - b),
+        fencedYardTiles: fencedYardsBordered(layout, uid).reduce(
+          (a, id) => a + layout.fencedSizes[id]!,
+          0,
+        ),
+      };
+    },
+    describeTile: (state, x, y) => {
+      const layout = layoutOf(state.house);
+      const { width, height } = state.house.lot;
+      if (x < 0 || y < 0 || x >= width || y >= height) return null;
+      const i = cellIndex(width, x, y);
+      const bits = layout.regionBits[i]!;
+      const id = layout.fencedId[i]!;
+      return {
+        regions: (Object.keys(REGION_BIT) as Region[]).filter((r) => bits & REGION_BIT[r]),
+        fencedYardTiles: id >= 0 ? layout.fencedSizes[id]! : 0,
+      };
+    },
     replay,
   };
 }

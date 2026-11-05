@@ -415,11 +415,12 @@ export function fencedYardsBordered(layout: Layout, uid: number): number[] {
       const nx = c.x + dx;
       const ny = c.y + dy;
       if (!inBounds(w, h, nx, ny)) continue;
-      const i = cellIndex(w, nx, ny);
-      if (layout.occupant[i] === uid) continue;
-      const id = layout.fencedId[i]!;
+      const id = layout.fencedId[cellIndex(w, nx, ny)]!;
       if (id >= 0) ids.add(id);
     }
+    // A yard piece inside a fenced yard sits in it.
+    const own = layout.fencedId[cellIndex(w, c.x, c.y)]!;
+    if (own >= 0) ids.add(own);
   }
   return [...ids].sort((a, b) => a - b);
 }
