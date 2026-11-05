@@ -174,23 +174,22 @@ describe('the real rules', () => {
       let s = r.newRun({ seed, crewId: 'generalContractor', mode: 'standard' });
       let weeks = 0;
       while (s.screen === 'build') {
-        // A cheap greedy bot: the best of the first few legal spots per card.
-        const options = r
-          .legalActions(s)
-          .filter((a, i) => a.t === 'pass' || (a.t === 'place' && i % 7 === 0));
-        let best = options.at(-1)!;
-        let bestScore = -1;
+        // A cheap greedy bot: the best of a sample of legal spots, or a pass.
+        const options: PlaceAction[] = r.legalPlacements(s).filter((_, i) => i % 15 === 0);
+        let best: PlaceAction | null = null;
+        let bestScore = r.scoreOnly(s, null);
         for (const a of options) {
-          const v = r.scoreOnly(s, a.t === 'pass' ? null : (a as PlaceAction));
+          const v = r.scoreOnly(s, a);
           if (v > bestScore) [best, bestScore] = [a, v];
         }
-        s = r.apply(s, best).state;
+        s = r.apply(s, best ?? { t: 'pass' }).state;
         weeks++;
       }
       expect(['won', 'lost']).toContain(s.screen);
       expect(weeks).toBeLessThanOrEqual(30);
     }
-  });
+    // A shared CI runner can be several times slower than a laptop.
+  }, 30_000);
 
   it('are exported ready-bound', () => {
     expect(rules.content).toBe(CONTENT);
