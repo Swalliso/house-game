@@ -108,5 +108,9 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      # Pages names each deployment after the commit. If one hangs and times out, GitHub
+      # cancels it, and re-running that run (or dispatching this workflow on the same commit)
+      # stalls again on the cancelled deployment. A new commit gets a fresh deployment, so
+      # push or merge any change. This happened to the M1 merge (d688f64) on 2026-11-05.
       - id: deployment
         uses: actions/deploy-pages@v5
