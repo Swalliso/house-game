@@ -1,0 +1,50 @@
+# The shared placeholder palette (implementation-plan.md §12 Art, D-057).
+# One character per color: `<char> #rrggbb  what it's for`. '.' is reserved for transparent.
+# 24-32 colors in all, at most 8 in any one sprite. scripts/build-atlas.ts reads this file.
+# Terrain is muted and low-contrast; pieces get the stronger colors and dark outlines.
+
+# Neutrals: outlines, asphalt, stone, concrete, porcelain
+k #2a2431  deepest outline (plum black)
+q #46404f  dark slate: stone and appliance outlines, asphalt grit
+a #58535f  asphalt
+d #7c7684  dark gray: stone shade, burner rings
+m #a39d9b  gray: stone, concrete joints, kitchen tiles
+l #c9c1b5  light gray: concrete, porcelain shade
+c #e7dbbd  cream: sheets, kitchen tiles
+w #f6f0e2  off-white: porcelain, pillows, tablecloth
+
+# Terrain grass (muted), the sunny side (warmer), and ground shadow
+f #5d7a4d  grass dark
+g #6b8a57  grass
+h #799862  grass light
+G #869b59  sunny grass
+H #95aa66  sunny grass light
+F #4f6944  shadow on grass
+
+# Foliage: tree canopies, leaves, the sofa
+T #2d4a33  foliage outline
+t #3f6b40  foliage shade
+u #568a4b  foliage
+
+# Lawn (bright and mown, unlike the terrain)
+L #7fc35a  lawn
+M #66aa45  lawn stripe
+
+# Water, the bathroom, and the blue blanket
+B #2d5276  deep water, blue shade
+b #3f7199  water, blue
+r #8fc4d9  ripple, blue highlight
+p #b7d9e3  pale blue tile
+P #87b3c4  tile grout
+
+# Wood
+o #5a3826  wood outline (dark brown)
+x #87552f  wood dark
+y #a87341  wood
+z #c99559  wood light
+
+# Carpet and accents
+C #c49690  carpet (dusty rose)
+D #b07e7b  carpet pattern
+R #c9473e  red: flowers, knobs
+Y #e3b33d  yellow: flowers, road paint
