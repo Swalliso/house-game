@@ -76,12 +76,11 @@ function writeTargets(s: TargetSuggestion, runs: number): void {
   const start = text.indexOf('  // sim:targets:start');
   const end = text.indexOf('  // sim:targets:end');
   if (start < 0 || end < 0) throw new Error('balance.ts has lost its sim:targets markers');
-  const plateau = s.alphas[s.alphas.length - 1]!;
   const lines = [
     '  // sim:targets:start',
-    `  // From \`npm run sim -- --suggest-targets --runs ${runs}\`: α × the greedy bot's median`,
-    `  // cumulative Wow at each milestone, α rising from 0.6 to ${plateau.toFixed(2)} (calibrated so greedy`,
-    `  // wins about ${Math.round(s.estimate.winRate * 100)}% by estimate).`,
+    `  // From \`npm run sim -- --suggest-targets --runs ${runs}\` (D-072): α × the greedy bot's`,
+    `  // median cumulative Wow at each milestone, with α set so greedy's estimated survival`,
+    `  // follows ${s.goals.map((g) => `${Math.round(g * 100)}%`).join(', ')}.`,
     '  phases: [',
     ...CONTENT.balance.phases.map(
       (p, k) =>
@@ -138,7 +137,7 @@ function main(): number {
           (p, k) =>
             `  ${k + 1}. ${p.name.padEnd(18)} median ${Math.round(s.medians[k]!).toLocaleString('en-US').padStart(8)}` +
             `  α ${s.alphas[k]!.toFixed(2)}  target ${s.targets[k]!.toLocaleString('en-US').padStart(8)}` +
-            `  (est. ${Math.round(s.estimate.survival[k]! * 100)}% meet it)`,
+            `  (est. ${Math.round(s.estimate.survival[k]! * 100)}% get this far; goal ${Math.round(s.goals[k]! * 100)}%)`,
         )
         .join('\n'),
     );

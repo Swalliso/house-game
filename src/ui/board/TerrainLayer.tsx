@@ -1,10 +1,19 @@
 // The terrain: one canvas of (lot width × 16) × ((lot height + 1) × 16) pixels, smoothing off,
 // shown at that size × scale with image-rendering: pixelated (§12, Rendering). The extra row
 // is the street. It redraws only when the lot changes (building over a Tree replaces it).
+// Over it, under the pieces, a soft tint shows the house's fenced yards.
 
-import { useEffect, useRef } from 'preact/hooks';
-import { isSunny, terrainAt, type Lot } from '../../rules/index.ts';
+import { useEffect, useMemo, useRef } from 'preact/hooks';
+import {
+  isSunny,
+  rules,
+  terrainAt,
+  type Cell,
+  type Lot,
+  type RunState,
+} from '../../rules/index.ts';
 import { atlasImage, spritePos, TILE, type SpriteId } from '../sprites.ts';
+import { cellsOutline } from './geometry.ts';
 
 /** A stable per-tile variation that isn't game randomness. */
 function tileHash(x: number, y: number): number {
@@ -66,4 +75,45 @@ export function TerrainLayer({ lot, scale }: { lot: Lot; scale: number }) {
       aria-hidden="true"
     />
   );
+}
+
+/**
+ * A set of cells drawn as one SVG region: a fill, and an outline around the region's edge.
+ * The look comes from the class (board-m2.css). Fills the board; never takes the pointer.
+ */
+export function Outline({
+  cells,
+  scale,
+  lot,
+  class: cls,
+}: {
+  cells: readonly Cell[];
+  scale: number;
+  lot: Lot;
+  class: string;
+}) {
+  const px = TILE * scale;
+  const { fill, edge } = useMemo(() => cellsOutline(cells, px), [cells, px]);
+  if (cells.length === 0) return null;
+  return (
+    <svg
+      class={`cells-outline ${cls}`}
+      width={lot.width * px}
+      height={(lot.height + 1) * px}
+      aria-hidden="true"
+    >
+      <path class="fill" d={fill} />
+      <path class="edge" d={edge} />
+    </svg>
+  );
+}
+
+/** The fenced yards (rules.fencedTiles), tinted under the pieces so players can see them. */
+export function YardTint({ state, scale }: { state: RunState; scale: number }) {
+  const { house } = state;
+  const cells = useMemo(() => {
+    const w = house.lot.width;
+    return rules.fencedTiles(state).map((i) => ({ x: i % w, y: Math.floor(i / w) }));
+  }, [house]); // The yards depend only on the house.
+  return <Outline cells={cells} scale={scale} lot={house.lot} class="yard-tint" />;
 }

@@ -84,7 +84,7 @@ export function center(cells: readonly Cell[]): { x: number; y: number } {
 
 /**
  * The default zoom (§12, Art): whole device pixels, at least 2×, as large as fits. The lot
- * plus the street row below it; M2 adds zoom, pan, and the Fit overview.
+ * plus the street row below it. The camera (camera.ts) starts here.
  */
 export function fitScale(
   availWidth: number,
@@ -96,4 +96,87 @@ export function fitScale(
   const byH = Math.floor((availHeight * dpr) / ((lotH + 1) * 16)) / dpr;
   const byW = Math.floor((availWidth * dpr) / (lotW * 16)) / dpr;
   return Math.max(2, Math.min(byH, byW));
+}
+
+/**
+ * The Fit overview (§12, Art): the largest scale that shows the whole lot and the street,
+ * the one exception to whole-number scales. Cells stay a whole number of device pixels, so
+ * the grid lines up even though the sprites' pixels come out slightly uneven.
+ */
+export function overviewScale(
+  availWidth: number,
+  availHeight: number,
+  lotW: number,
+  lotH: number,
+): number {
+  const dpr = window.devicePixelRatio || 1;
+  const cell = Math.min(availWidth / lotW, availHeight / (lotH + 1));
+  return Math.max(1, Math.floor(cell * dpr)) / dpr / 16;
+}
+
+/**
+ * Where a label over some cells goes, in tiles: centered above them, or below them at the
+ * top edge, and kept away from the lot's side edges.
+ */
+export function labelSpot(
+  cells: readonly Cell[],
+  lotW: number,
+): { x: number; y: number; below: boolean } {
+  const c = center(cells);
+  const top = Math.min(...cells.map((q) => q.y));
+  const below = top < 1;
+  return {
+    x: Math.min(Math.max(c.x, 3), lotW - 3),
+    y: below ? Math.max(...cells.map((q) => q.y)) + 1 : top,
+    below,
+  };
+}
+
+const r2 = (n: number) => Math.round(n * 100) / 100;
+
+/**
+ * SVG paths for a set of cells at `px` per cell: `fill` covers every cell, `edge` traces the
+ * region's outline (runs merged, so dashes flow along a whole side).
+ */
+export function cellsOutline(cells: Iterable<Cell>, px: number): { fill: string; edge: string } {
+  const list = [...cells];
+  const has = new Set(list.map((c) => `${c.x},${c.y}`));
+  const inSet = (x: number, y: number) => has.has(`${x},${y}`);
+  const rows = new Map<number, number[]>();
+  const cols = new Map<number, number[]>();
+  const add = (m: Map<number, number[]>, line: number, at: number) => {
+    const runs = m.get(line);
+    if (runs) runs.push(at);
+    else m.set(line, [at]);
+  };
+  let fill = '';
+  for (const c of list) {
+    fill += `M${r2(c.x * px)} ${r2(c.y * px)}h${r2(px)}v${r2(px)}h${r2(-px)}z`;
+    if (!inSet(c.x, c.y - 1)) add(rows, c.y, c.x);
+    if (!inSet(c.x, c.y + 1)) add(rows, c.y + 1, c.x);
+    if (!inSet(c.x - 1, c.y)) add(cols, c.x, c.y);
+    if (!inSet(c.x + 1, c.y)) add(cols, c.x + 1, c.y);
+  }
+  let edge = '';
+  const trace = (m: Map<number, number[]>, horizontal: boolean) => {
+    for (const [line, starts] of m) {
+      starts.sort((a, b) => a - b);
+      let i = 0;
+      while (i < starts.length) {
+        const from = starts[i]!;
+        let to = from + 1;
+        while (i + 1 < starts.length && starts[i + 1] === to) {
+          i++;
+          to++;
+        }
+        i++;
+        edge += horizontal
+          ? `M${r2(from * px)} ${r2(line * px)}H${r2(to * px)}`
+          : `M${r2(line * px)} ${r2(from * px)}V${r2(to * px)}`;
+      }
+    }
+  };
+  trace(rows, true);
+  trace(cols, false);
+  return { fill, edge };
 }

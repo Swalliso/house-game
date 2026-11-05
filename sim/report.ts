@@ -140,19 +140,22 @@ export function report(content: Content, records: readonly RunRecord[], title: s
 }
 
 // ---------------------------------------------------------------------------------------
-// Target suggestion (D-044, §8): each target is α × the greedy bot's median cumulative Wow at
-// that milestone, with α rising from about 0.6 (the first milestone teaches) to a plateau by
-// milestones 4–5. The plateau is calibrated so greedy wins about 45% of runs, estimated from
-// the untargeted runs' weekly scores with overtime modelled (a missed milestone borrows up to
-// two extra weeks, which shift later milestones by as much).
+// Target suggestion (D-044, D-072, §8). Each target is α × the greedy bot's median cumulative
+// Wow at that milestone. The plan's starting curve (α 0.6 rising to a flat 0.85) can't meet
+// §8's criteria: greedy's spread is wide, so a flat 0.85 lets it win most runs, and any
+// plateau high enough for a ~45% win rate fails it at milestone 3 a quarter of the time. So
+// α is set per milestone, to a survival curve that meets the criteria:
+// - milestone 1 teaches: α is low enough that random play usually passes it, so random fails
+//   at milestone 2 or 3 instead;
+// - greedy clears milestones 1–3 about 95% of the time;
+// - then survival falls evenly to about 45% (greedy's win rate) at the last milestone.
+// Survival is estimated from untargeted runs' weekly scores with overtime modelled (a missed
+// milestone borrows up to two extra weeks, which shift later milestones by as much).
 
-export const ALPHA_START = 0.6;
-
-export function alphaCurve(plateau: number, phases: number): number[] {
-  return Array.from({ length: phases }, (_, k) =>
-    k >= 4 ? plateau : ALPHA_START + ((plateau - ALPHA_START) * k) / 4,
-  );
-}
+/** α for the teaching milestone. */
+export const ALPHA_FIRST = 0.4;
+/** Greedy's goal survival through each milestone after the first. */
+export const SURVIVAL_GOALS: readonly number[] = [1, 0.98, 0.95, 0.85, 0.72, 0.58, 0.45];
 
 /** Cumulative Wow at week w (1-based), extrapolating past the run's end by its last week. */
 function scoreAt(weekly: readonly number[], w: number): number {
@@ -200,13 +203,13 @@ export interface TargetSuggestion {
   medians: number[];
   alphas: number[];
   targets: number[];
+  goals: number[];
   estimate: { survival: number[]; winRate: number };
 }
 
 export function suggestTargets(
   content: Content,
   untargeted: readonly RunRecord[],
-  goalWinRate = 0.45,
 ): TargetSuggestion {
   const W = content.balance.weeksPerPhase;
   const phases = content.balance.phases.length;
@@ -217,23 +220,34 @@ export function suggestTargets(
       50,
     ),
   );
-  const build = (plateau: number) => {
-    const alphas = alphaCurve(plateau, phases);
-    const targets = medians.map((m, k) => tidy(m * alphas[k]!));
-    // Targets must rise.
-    for (let k = 1; k < targets.length; k++) {
-      if (targets[k]! <= targets[k - 1]!) targets[k] = tidy(targets[k - 1]! * 1.1 + 5);
+  const goals = Array.from(
+    { length: phases },
+    (_, k) => SURVIVAL_GOALS[Math.min(k, SURVIVAL_GOALS.length - 1)]!,
+  );
+  goals[phases - 1] = SURVIVAL_GOALS[SURVIVAL_GOALS.length - 1]!;
+  const targets: number[] = [tidy(medians[0]! * ALPHA_FIRST)];
+  for (let k = 1; k < phases; k++) {
+    // The highest target that keeps estimated survival through milestone k at its goal.
+    let lo = targets[k - 1]! + 1;
+    let hi = Math.max(lo + 1, Math.ceil(medians[k]! * 4));
+    const survives = (t: number) =>
+      estimateSurvival(untargeted, [...targets, t], W, overtime).survival[k]! >= goals[k]!;
+    if (!survives(lo)) hi = lo;
+    while (hi - lo > 1) {
+      const mid = Math.floor((lo + hi) / 2);
+      if (survives(mid)) lo = mid;
+      else hi = mid;
     }
-    return { alphas, targets, estimate: estimateSurvival(untargeted, targets, W, overtime) };
-  };
-  // Bisect the plateau: a higher α means harder targets and a lower win rate.
-  let lo = 0.6;
-  let hi = 1.4;
-  for (let i = 0; i < 30; i++) {
-    const mid = (lo + hi) / 2;
-    if (build(mid).estimate.winRate > goalWinRate) lo = mid;
-    else hi = mid;
+    // Tidy, but never above what meets the goal, and always rising.
+    let t = tidy(lo);
+    if (t > lo) t = tidy(Math.max(targets[k - 1]! + 1, lo * 0.98));
+    targets.push(Math.max(t, targets[k - 1]! + 5));
   }
-  const plateau = Math.round(((lo + hi) / 2) * 100) / 100;
-  return { medians, ...build(plateau) };
+  return {
+    medians,
+    alphas: targets.map((t, k) => t / Math.max(1, medians[k]!)),
+    targets,
+    goals,
+    estimate: estimateSurvival(untargeted, targets, W, overtime),
+  };
 }

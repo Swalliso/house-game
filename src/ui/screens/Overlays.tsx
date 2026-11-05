@@ -1,13 +1,11 @@
 // Overlays: the milestone banner, the target flash, notes and toasts, the small-screen notice
-// (D-047), and the run-end screen.
+// (D-047). The run-end screen is in EndScreen.tsx.
 
 import { useEffect, useState } from 'preact/hooks';
-import { CONTENT, rules, SCORE_LABELS } from '../../rules/index.ts';
-import { banner, busy, flash, skip } from '../fx/director.ts';
+import { banner, busy, flash, played, skip } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
-import { formatNumber } from '../format.ts';
-import { copyFallback, copyRunCode, copyText, startNewRun, toast } from '../hud/actions.ts';
-import { log, notice, run } from '../store.ts';
+import { copyFallback, copyText, toast } from '../hud/actions.ts';
+import { notice } from '../store.ts';
 
 export function MilestoneBanner() {
   const b = banner.value;
@@ -24,7 +22,8 @@ export function TargetFlash() {
   const f = flash.value;
   const [shown, setShown] = useState<number | null>(null);
   useEffect(() => {
-    if (!f) return;
+    if (!f || f.id <= played.flash) return;
+    played.flash = f.id;
     setShown(f.id);
     const t = setTimeout(() => setShown(null), FEEL.targetFlashMs);
     return () => clearTimeout(t);
@@ -85,60 +84,13 @@ export function SmallScreenNotice() {
   );
 }
 
-/** The run-end screen: the house stays visible beside it, captioned "It's a house." */
-export function EndScreen() {
-  const s = run.value;
-  // Let the last tally and banner play before the end screen covers them.
-  if (s.screen === 'build' || busy.value) return null;
-  const won = s.screen === 'won';
-  const phases = CONTENT.balance.phases;
-  const reached = won ? phases.length : s.phase;
-  const verdict = rules.verdict(s);
-  return (
-    <section class={`end-screen ${won ? 'won' : 'lost'}`} aria-label="The run is over">
-      <p class="caption">It's a house.</p>
-      <h2>
-        {won
-          ? `${phases[phases.length - 1]!.name} complete`
-          : `The client walked at ${phases[s.phase]!.name}`}
-      </h2>
-      <p class="verdict">{verdict}</p>
-      <dl>
-        <dt>{SCORE_LABELS.total}</dt>
-        <dd>{formatNumber(s.score)}</dd>
-        <dt>Milestones</dt>
-        <dd>
-          {reached} of {phases.length}
-        </dd>
-        <dt>Pieces built</dt>
-        <dd>{s.house.pieces.length}</dd>
-        <dt>Weeks</dt>
-        <dd>{log.value.length}</dd>
-      </dl>
-      <p class="muted">
-        {won
-          ? 'That’s the whole slice: 3 milestones, 12 weeks.'
-          : `It needed ${formatNumber(rules.target(s))} ${SCORE_LABELS.total}.`}
-      </p>
-      <div class="end-buttons">
-        <button type="button" class="primary" onClick={startNewRun}>
-          New run
-        </button>
-        <button type="button" onClick={() => void copyRunCode()}>
-          Copy run code
-        </button>
-      </div>
-    </section>
-  );
-}
-
 /** A click anywhere outside the panels skips the tally (the board handles its own clicks). */
 export function useSkipOnClick(): void {
   useEffect(() => {
     const onDown = (e: PointerEvent) => {
       if (!busy.value || e.button !== 0) return;
       const target = e.target as HTMLElement | null;
-      if (target?.closest('button, input, .board')) return;
+      if (target?.closest('button, input, select, .board-scroll, .debug-panel')) return;
       skip();
     };
     window.addEventListener('pointerdown', onDown);

@@ -7,6 +7,7 @@ import { FEEL } from '../fx/feel.ts';
 import { formatMult, formatNumber, signed } from '../format.ts';
 import { currentTally, pace as paceSignal, preview } from '../store.ts';
 import { Celebration } from './Celebration.tsx';
+import './hud-m2.css';
 
 function Delta({ n, mult = false }: { n: number; mult?: boolean }) {
   if (n === 0) return null;
@@ -67,7 +68,7 @@ export function ScorePanel() {
   let label = 'Each week, as built';
   if (view) {
     shown = { points: view.points, mult: view.mult, total: view.total };
-    label = 'This week';
+    label = view.fastForward ? 'Fast-forward' : 'This week';
   } else if (p?.legal) {
     shown = p.after;
     before = p.before;
@@ -76,6 +77,10 @@ export function ScorePanel() {
   const ratio = shown.total === null ? 0 : shown.total / Math.max(1, view ? view.pace : pace);
   const glow =
     ratio >= FEEL.glowPace ? Math.min(1, Math.log(ratio + 1) / Math.log(FEEL.bigWeekPace * 3)) : 0;
+  // This week's budget from economy pieces: the house as built, or with the placement. The
+  // tally's own count shows it as a popup, so it's left out while one plays.
+  const budget = view ? null : p?.legal ? p.budgetAfter : tally.budget;
+  const budgetBefore = !view && p?.legal ? p.budgetBefore : null;
   const gained = new Set(p?.legal ? p.setsGained.map((s) => s.key) : []);
   const sets =
     view || !p?.legal
@@ -110,6 +115,17 @@ export function ScorePanel() {
         </div>
       </div>
       {view?.big && <div class="big-week">Big week!</div>}
+      {budget !== null && (budget > 0 || (budgetBefore ?? 0) > 0) && (
+        <p class="budget-line" title="Budget is spent in the shop from the next update">
+          +{formatNumber(budget)} budget this week
+          {budgetBefore !== null && budget !== budgetBefore && (
+            <span class={`budget-delta ${budget > budgetBefore ? 'good' : 'bad'}`}>
+              {' '}
+              {budget > budgetBefore ? '▲' : '▼'} {signed(budget - budgetBefore)}
+            </span>
+          )}
+        </p>
+      )}
       <h3>Sets</h3>
       <SetList sets={sets} gained={gained} lost={p?.legal && !view ? p.setsLost : []} />
     </section>
