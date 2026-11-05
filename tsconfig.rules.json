@@ -1,0 +1,17 @@
+{
+  // The pure rules module and its content data, checked with no DOM and no Node or
+  // Vite types: `document`, `window`, `localStorage`, `console`, `process`, and
+  // `import.meta.env` are compile errors here. Math.random, Date, and imports from
+  // outside src/rules and src/content are caught by src/rules/purity.test.ts.
+  // Tests are excluded: they run under Vitest and are checked by tsconfig.json.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2024"],
+    "types": [],
+    // No JSX here: Preact's JSX types would pull the DOM lib back in.
+    "jsx": "preserve",
+    "jsxImportSource": null
+  },
+  "include": ["src/rules", "src/content"],
+  "exclude": ["**/*.test.ts"]
+}
