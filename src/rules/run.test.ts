@@ -217,7 +217,12 @@ describe('milestones', () => {
     expect(second.events.some((e) => e.t === 'targetReached')).toBe(false);
     // Phase 2 starts from the score so far, and pace is measured from there.
     expect(second.state).toMatchObject({ phase: 1, phaseStartScore: 6 });
-    expect(r.pace(second.state)).toBe(Math.ceil((100 - 6) / 2));
+    expect(r.pace(second.state)).toBe((100 - 6) / 2);
+  });
+
+  it('pace is what is left of the target spread over the weeks, unrounded', () => {
+    const r = createRules(withTargets([7, 30]));
+    expect(r.pace(onEmptyLot(r))).toBe(3.5);
   });
 
   it('pace is never below 1, even once the target is met', () => {

@@ -24,7 +24,8 @@ export function phaseName(b: Balance, phase: number): string {
  */
 export function paceFor(b: Balance, phase: number, phaseStartScore: number): number {
   const needed = phaseTarget(b, phase) - phaseStartScore;
-  return Math.max(1, Math.ceil(needed / b.weeksPerPhase));
+  // A UI yardstick, not a score, so it may be fractional (30 over 4 weeks is 7.5).
+  return Math.max(1, needed / b.weeksPerPhase);
 }
 
 /** The run-end verdict by score band (§12). A lost run gets the lowest one. */

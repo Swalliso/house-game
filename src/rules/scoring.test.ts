@@ -38,7 +38,7 @@ describe('the scoring formula', () => {
     expect(weekTotal(-3, 150)).toBe(0);
   });
 
-  it('adds percentages rather than compounding them', () => {
+  it('treats a +200% total as ×3 (auras adding is tested below)', () => {
     expect(earnedFor(4, 100 + 100)).toBe(12); // +200% is ×3, not ×4
   });
 });
@@ -203,6 +203,13 @@ describe('effect kinds', () => {
     const rows2 = ['T..P...', 'T..P...', '...P...', 'CCC....', '.......', '.......'];
     // Trees (0,0) and (0,1), the pond once, the creek once = 4 sources, capped at 3.
     expect(earned(C, rows2, [['livingRoom', 1, 0]], 1)).toBe(6);
+    // Under the cap: three pond tiles are one view, but two Tree tiles are two.
+    expect(earned(C, ['..P....', '..P....', '..P....', '.......'], [['livingRoom', 0, 0]], 1)).toBe(
+      2,
+    );
+    expect(earned(C, ['..T....', '..T....', '.......', '.......'], [['livingRoom', 0, 0]], 1)).toBe(
+      4,
+    );
   });
 });
 
@@ -275,6 +282,43 @@ describe('sets', () => {
       ['livingRoom', 6, 2],
     ]);
     expect(keys).toEqual(['entertainer:1,3,4']);
+  });
+
+  it('never reshuffle or break a held set when a piece is added (completion order)', () => {
+    const rows = emptyRows(16, 10);
+    const base: Placement[] = [
+      ['kitchen', 4, 3],
+      ['diningRoom', 6, 3],
+      ['diningRoom', 2, 3],
+      ['livingRoom', 0, 3],
+      ['kitchen', 8, 3],
+      ['livingRoom', 10, 3],
+    ];
+    const before = ids(C, rows, base);
+    expect(before).toEqual(['entertainer:1,3,4', 'entertainer:2,5,6']);
+    // A Living Room touching only the second Dining Room used to pull it into a new instance
+    // and leave the house with one Entertainer instead of two.
+    const after = ids(C, rows, [...base, ['livingRoom', 6, 0]]);
+    expect(after).toEqual(before);
+  });
+
+  it('keep Jack-and-Jill stable when a later Bedroom lets an earlier Bathroom complete', () => {
+    const rows = emptyRows(12, 12);
+    // Bathroom 2 touches Bedroom 1 only; Bathroom 3 sits between Bedrooms 1 and 4.
+    const base: Placement[] = [
+      ['bedroom', 2, 2],
+      ['bathroom', 2, 4],
+      ['bathroom', 4, 2],
+      ['bedroom', 5, 2],
+    ];
+    expect(ids(C, rows, base)).toEqual(['jackAndJill:1,3,4']);
+    // Before, a Bedroom beside Bathroom 2 let it (the earlier hub) take Bedroom 1 and strand
+    // Bathroom 3. Now Bedroom 1 stays in its set, and Bathroom 2 waits for another Bedroom.
+    expect(ids(C, rows, [...base, ['bedroom', 0, 4]])).toEqual(['jackAndJill:1,3,4']);
+    expect(ids(C, rows, [...base, ['bedroom', 3, 4]])).toEqual(['jackAndJill:1,3,4']);
+    expect(ids(C, rows, [...base, ['bathroom', 7, 2], ['bedroom', 8, 2]])).toEqual([
+      'jackAndJill:1,3,4',
+    ]);
   });
 
   it('pay Points and Mult every week, and Points × Mult makes the total', () => {

@@ -73,6 +73,9 @@ describe('properties', () => {
         const play = randomAction(state, `${seed}/play`, 99);
         const passTally = rules.apply(state, { t: 'pass' }).events.find((e) => e.t === 'tally')!;
         if (play.t === 'place') {
+          // Hovering previews many spots on the same state, so the cached "before" is what the
+          // UI sees: warm the cache with another spot first.
+          rules.preview(state, randomAction(state, `${seed}/warm`, 98) as PlaceAction);
           const p = rules.preview(state, play);
           expect(p.legal).toBe(true);
           const real = rules.apply(state, play).events.find((e) => e.t === 'tally')!;

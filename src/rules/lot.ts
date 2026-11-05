@@ -6,7 +6,9 @@ import type { Cell, Lot, LotBalance, TerrainId } from './index.ts';
 import { cellIndex, inBounds, ORTHOGONAL } from './grid.ts';
 import { stream, type Rng } from './rng.ts';
 
+/** What sits on a tile; null for open ground or anywhere off the lot. */
 export function terrainAt(lot: Lot, x: number, y: number): TerrainId | null {
+  if (!inBounds(lot.width, lot.height, x, y)) return null;
   return lot.terrain[cellIndex(lot.width, x, y)] ?? null;
 }
 

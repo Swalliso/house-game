@@ -67,9 +67,38 @@ describe('lot generation', () => {
         expect(n).toBeLessThanOrEqual(2);
         expect(n).toBeGreaterThanOrEqual(1);
       }
-      // It enters from the back edge or a side and leaves by a side.
-      const onSide = cells.filter((c) => c.x === 0 || c.x === lot.width - 1);
-      expect(onSide.length).toBeGreaterThanOrEqual(1);
+      // One connected piece, with exactly two ends: one on the back edge or a side, one on a side.
+      const seen = new Set([key(cells[0]!.x, cells[0]!.y)]);
+      const stack = [cells[0]!];
+      while (stack.length > 0) {
+        const c = stack.pop()!;
+        for (const [dx, dy] of [
+          [1, 0],
+          [-1, 0],
+          [0, 1],
+          [0, -1],
+        ]) {
+          const k = key(c.x + dx!, c.y + dy!);
+          if (set.has(k) && !seen.has(k)) {
+            seen.add(k);
+            stack.push({ x: c.x + dx!, y: c.y + dy! });
+          }
+        }
+      }
+      expect(seen.size).toBe(cells.length);
+      const ends = cells.filter(
+        (c) =>
+          [
+            [1, 0],
+            [-1, 0],
+            [0, 1],
+            [0, -1],
+          ].filter(([dx, dy]) => set.has(key(c.x + dx!, c.y + dy!))).length === 1,
+      );
+      expect(ends).toHaveLength(2);
+      const onSide = (c: { x: number }) => c.x === 0 || c.x === lot.width - 1;
+      expect(ends.every((c) => c.y === 0 || onSide(c))).toBe(true);
+      expect(ends.some(onSide)).toBe(true);
       // It never touches the pond.
       for (const c of cells) {
         for (const [dx, dy] of [
@@ -106,6 +135,10 @@ describe('lot generation', () => {
     // Too few free street-edge tiles.
     const blocked = lotFromRows(['......', '......', '......', 'BBBBB.']);
     expect(lotProblems(blocked, b).join()).toMatch(/street-edge/);
+    // Too much water and rock: under 85% of tiles free.
+    const rocky = lotFromRows(['BBBB..', 'PP....', '......', '......']);
+    expect(lotProblems(rocky, b).join()).toMatch(/free of water and boulders/);
+    expect(lotProblems(lotFromRows(['B.....', '......', '......', '......']), b)).toEqual([]);
     // A creek on the street edge.
     const wet = lotFromRows(['......', '......', '......', '...C..']);
     expect(lotProblems(wet, b).join()).toMatch(/touches the street/);

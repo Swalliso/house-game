@@ -1,12 +1,14 @@
 // Set matching (implementation-plan.md §5; Appendix A · M4a, which M1 brings forward for
-// Jack-and-Jill and Entertainer). Instances are matched greedily in placement order, and a
-// piece joins at most one instance per set type. A set pays its Points and +Mult every week
-// it holds, like a poker hand.
+// Jack-and-Jill and Entertainer). A piece joins at most one instance per set type. A set pays
+// its Points and +Mult every week it holds, like a poker hand.
 //
 // - A set with a hub (Jack-and-Jill's Bathroom) needs the hub to touch every other member.
 // - A connected set (Entertainer) needs its members to form one connected group.
-// For each unused piece in placement order, the earliest-placed completion is taken: a small
-// depth-first search, so an early wrong pick can't hide a valid instance.
+//
+// "Greedily in placement order" is read as completion order: walking the pieces in placement
+// order, each one forms an instance with earlier, still-unused pieces if it can. An instance
+// then depends only on pieces placed before the one that completed it, so placing a new piece
+// can add a set but never reshuffle or break one the house already holds (D-065).
 
 import type { Content, PieceDef, PieceId, SetDef, SetScore } from './index.ts';
 import { pieceDef, type Layout } from './layout.ts';
@@ -43,86 +45,107 @@ export function matchSets(content: Content, layout: Layout, level = 1): SetScore
 }
 
 function matchSet(content: Content, layout: Layout, set: SetDef): number[][] {
-  const candidates: { uid: number; type: PieceId }[] = [];
+  const candidates: Candidate[] = [];
   for (const piece of layout.house.pieces) {
     const type = memberType(set, pieceDef(content, piece));
     if (type) candidates.push({ uid: piece.uid, type });
   }
+  const total = Object.values(set.members).reduce((a, b) => a + (b ?? 0), 0);
   const used = new Set<number>();
   const instances: number[][] = [];
-
-  if (set.hub) {
-    for (const hub of candidates) {
-      if (hub.type !== set.hub || used.has(hub.uid)) continue;
-      const need = new Map(Object.entries(set.members) as [PieceId, number][]);
-      need.set(set.hub, (need.get(set.hub) ?? 1) - 1);
-      const chosen = [hub.uid];
-      for (const other of candidates) {
-        if (other.uid === hub.uid || used.has(other.uid)) continue;
-        const left = need.get(other.type) ?? 0;
-        if (left > 0 && touches(layout, hub.uid, other.uid)) {
-          chosen.push(other.uid);
-          need.set(other.type, left - 1);
-        }
-      }
-      if ([...need.values()].every((n) => n === 0)) {
-        chosen.forEach((u) => used.add(u));
-        instances.push(chosen);
-      }
-    }
-    return instances;
-  }
-
-  const total = Object.values(set.members).reduce((a, b) => a + (b ?? 0), 0);
-  for (const seed of candidates) {
-    if (used.has(seed.uid)) continue;
+  candidates.forEach((newest, k) => {
+    const pool = candidates.slice(0, k).filter((c) => !used.has(c.uid));
     const need = new Map(Object.entries(set.members) as [PieceId, number][]);
-    need.set(seed.type, need.get(seed.type)! - 1);
-    const found = set.connected
-      ? searchConnected(layout, candidates, used, [seed.uid], need, total)
-      : searchAny(candidates, used, [seed.uid], need, total);
+    need.set(newest.type, need.get(newest.type)! - 1);
+    const found = set.hub
+      ? withHub(layout, set.hub, newest, pool, need)
+      : set.connected
+        ? searchConnected(layout, pool, [newest.uid], need, total)
+        : searchAny(pool, [newest.uid], need, total);
     if (found) {
       found.forEach((u) => used.add(u));
       instances.push(found);
     }
-  }
+  });
   return instances;
 }
 
-/** Depth-first: grow a connected group in placement order until every need is met. */
-function searchConnected(
+interface Candidate {
+  uid: number;
+  type: PieceId;
+}
+
+const satisfied = (need: ReadonlyMap<PieceId, number>) => [...need.values()].every((n) => n === 0);
+
+/** Takes the earliest pool pieces touching the hub until every need is met. */
+function fillAroundHub(
   layout: Layout,
-  candidates: readonly { uid: number; type: PieceId }[],
-  used: ReadonlySet<number>,
+  hub: number,
+  pool: readonly Candidate[],
   chosen: number[],
   need: Map<PieceId, number>,
-  total: number,
 ): number[] | null {
-  if (chosen.length === total) return chosen;
-  for (const c of candidates) {
-    if (used.has(c.uid) || chosen.includes(c.uid) || (need.get(c.type) ?? 0) <= 0) continue;
-    if (!chosen.some((u) => touches(layout, u, c.uid))) continue;
-    need.set(c.type, need.get(c.type)! - 1);
+  for (const c of pool) {
+    if (satisfied(need)) break;
+    if (chosen.includes(c.uid) || (need.get(c.type) ?? 0) <= 0) continue;
+    if (!touches(layout, hub, c.uid)) continue;
     chosen.push(c.uid);
-    const found = searchConnected(layout, candidates, used, chosen, need, total);
+    need.set(c.type, need.get(c.type)! - 1);
+  }
+  return satisfied(need) ? chosen : null;
+}
+
+/** An instance around a hub that includes the newest piece: as the hub, or touching one. */
+function withHub(
+  layout: Layout,
+  hubType: PieceId,
+  newest: Candidate,
+  pool: readonly Candidate[],
+  need: Map<PieceId, number>,
+): number[] | null {
+  if (newest.type === hubType) return fillAroundHub(layout, newest.uid, pool, [newest.uid], need);
+  for (const hub of pool) {
+    if (hub.type !== hubType || !touches(layout, hub.uid, newest.uid)) continue;
+    const n = new Map(need);
+    n.set(hubType, n.get(hubType)! - 1);
+    const found = fillAroundHub(layout, hub.uid, pool, [hub.uid, newest.uid], n);
     if (found) return found;
-    chosen.pop();
-    need.set(c.type, need.get(c.type)! + 1);
   }
   return null;
 }
 
-/** For sets that needn't connect (Full House, from M4a): the earliest unused piece of each type. */
-function searchAny(
-  candidates: readonly { uid: number; type: PieceId }[],
-  used: ReadonlySet<number>,
+/** Depth-first: grow a connected group from the newest piece, in placement order. */
+function searchConnected(
+  layout: Layout,
+  pool: readonly Candidate[],
   chosen: number[],
   need: Map<PieceId, number>,
   total: number,
 ): number[] | null {
-  for (const c of candidates) {
+  if (chosen.length === total) return [...chosen];
+  for (const c of pool) {
+    if (chosen.includes(c.uid) || (need.get(c.type) ?? 0) <= 0) continue;
+    if (!chosen.some((u) => touches(layout, u, c.uid))) continue;
+    need.set(c.type, need.get(c.type)! - 1);
+    chosen.push(c.uid);
+    const found = searchConnected(layout, pool, chosen, need, total);
+    chosen.pop();
+    need.set(c.type, need.get(c.type)! + 1);
+    if (found) return found;
+  }
+  return null;
+}
+
+/** For sets that needn't connect (Full House, from M4a): the earliest pool piece of each type. */
+function searchAny(
+  pool: readonly Candidate[],
+  chosen: number[],
+  need: Map<PieceId, number>,
+  total: number,
+): number[] | null {
+  for (const c of pool) {
     if (chosen.length === total) break;
-    if (used.has(c.uid) || chosen.includes(c.uid) || (need.get(c.type) ?? 0) <= 0) continue;
+    if (chosen.includes(c.uid) || (need.get(c.type) ?? 0) <= 0) continue;
     need.set(c.type, need.get(c.type)! - 1);
     chosen.push(c.uid);
   }

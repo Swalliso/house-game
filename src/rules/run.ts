@@ -63,6 +63,8 @@ export interface Rules {
   target(state: RunState): number;
   pace(state: RunState): number;
   phaseName(phase: number): string;
+  /** The run-end verdict by score band (§12); the lowest one until the run is won. */
+  verdict(state: RunState): string;
   replay(setup: RunSetup, actions: readonly Action[]): ReplayResult;
 }
 
@@ -401,6 +403,7 @@ export function createRules(content: Content): Rules {
     target: (state) => phaseTarget(b, state.phase),
     pace: (state) => paceFor(b, state.phase, state.phaseStartScore),
     phaseName: (phase) => phaseName(b, phase),
+    verdict: (state) => verdictFor(b, state.score, state.screen === 'won'),
     replay,
   };
 }

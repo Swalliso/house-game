@@ -12,7 +12,9 @@ export function drawWeights(content: Content, phase: number): { card: Card; weig
   const out: { card: Card; weight: number }[] = [];
   for (const def of Object.values(content.pieces)) {
     if (def.fromPhase > phase) continue;
-    const weight = Math.floor((def.drawWeight * row[def.complexity - 1]!) / 100);
+    // Weights in hundredths (drawWeight × percent), so nothing rounds away: a weight-10
+    // complexity-3 piece at 5% stays drawable, just rarely (D-055).
+    const weight = def.drawWeight * row[def.complexity - 1]!;
     if (weight > 0) out.push({ card: { kind: 'piece', id: def.id }, weight });
   }
   return out;
