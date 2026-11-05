@@ -1,5 +1,9 @@
-// The pieces (Appendix B of implementation-plan.md). M1's slice: six pieces as seven cards.
-// Numbers are placeholders for the sim to tune (from M2).
+// The base-pool pieces (Appendix B of implementation-plan.md): 9 indoor types, 7 yard types,
+// and 3 "-house" outbuildings, as 23 cards (shape variants are separate cards sharing a type).
+// Shapes and tags Appendix B leaves open come from content-brainstorm.md §3, §4, and §6
+// (D-067). Complexity is Appendix A · M1's list (D-055). Every card is weight 10, so a type
+// with two cards comes up about twice as often. Numbers are placeholders for the sim and
+// playtests to tune.
 
 import type { PieceDef, PieceId } from '../rules/index.ts';
 
@@ -41,8 +45,8 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
       { kind: 'neighbor', match: { piece: 'kitchen' }, amount: -2 },
     ],
   },
-  // Kitchen and L-Kitchen are two cards sharing a type. Both earn per touching Dining Room;
-  // the Herb Garden joins that list when it arrives in M2.
+  // Kitchen and L-Kitchen are two cards sharing a type. Both earn per touching Dining Room or
+  // Herb Garden.
   kitchen: {
     id: 'kitchen',
     name: 'Kitchen',
@@ -53,7 +57,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     drawWeight: 10,
     complexity: 1,
     fromPhase: 0,
-    effects: [{ kind: 'neighbor', match: { piece: 'diningRoom' }, amount: 2 }],
+    effects: [{ kind: 'neighbor', match: { piece: ['diningRoom', 'herbGarden'] }, amount: 2 }],
   },
   lKitchen: {
     id: 'lKitchen',
@@ -66,7 +70,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     drawWeight: 10,
     complexity: 1,
     fromPhase: 0,
-    effects: [{ kind: 'neighbor', match: { piece: 'diningRoom' }, amount: 2 }],
+    effects: [{ kind: 'neighbor', match: { piece: ['diningRoom', 'herbGarden'] }, amount: 2 }],
   },
   diningRoom: {
     id: 'diningRoom',
@@ -94,6 +98,84 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     fromPhase: 0,
     effects: [{ kind: 'neighbor', match: { property: 'viewSource' }, amount: 2, max: 3 }],
   },
+  closet: {
+    id: 'closet',
+    name: 'Closet',
+    tier: 'core',
+    category: 'indoor',
+    shape: ['#'],
+    tags: [],
+    drawWeight: 10,
+    complexity: 1,
+    fromPhase: 0,
+    // A small steady earner; it completes the Suite set when sets arrive in M4a.
+    effects: [{ kind: 'steady', amount: 1 }],
+  },
+  // Hallway and Long Hallway: two cards sharing a type. A connector links every room touching
+  // it (or a connected group of them), and isn't a room or a neighbor for bonuses itself.
+  hallway: {
+    id: 'hallway',
+    name: 'Hallway',
+    tier: 'core',
+    category: 'indoor',
+    connector: true,
+    shape: ['##'],
+    tags: [],
+    drawWeight: 10,
+    complexity: 3,
+    fromPhase: 0,
+    effects: [{ kind: 'link' }],
+  },
+  longHallway: {
+    id: 'longHallway',
+    name: 'Long Hallway',
+    tier: 'core',
+    category: 'indoor',
+    connector: true,
+    countsAs: 'hallway',
+    shape: ['###'],
+    tags: [],
+    drawWeight: 10,
+    complexity: 3,
+    fromPhase: 0,
+    effects: [{ kind: 'link' }],
+  },
+  garage: {
+    id: 'garage',
+    name: 'Garage',
+    tier: 'core',
+    category: 'indoor',
+    shape: ['##', '##'],
+    tags: ['Loud'],
+    drawWeight: 10,
+    complexity: 2,
+    fromPhase: 0,
+    effects: [
+      {
+        kind: 'requires',
+        condition: { touching: { any: [{ feature: 'street' }, { piece: 'driveway' }] } },
+        blocksPlacement: true,
+      },
+      { kind: 'steady', amount: 1 },
+      { kind: 'economy', budget: 1, every: 3 }, // garage sales
+    ],
+  },
+  homeOffice: {
+    id: 'homeOffice',
+    name: 'Home Office',
+    tier: 'core',
+    category: 'indoor',
+    shape: ['##'],
+    tags: ['Quiet'],
+    drawWeight: 10,
+    complexity: 2,
+    fromPhase: 0,
+    effects: [
+      { kind: 'steady', amount: 2 },
+      { kind: 'neighbor', match: { tag: 'Loud' }, amount: -2 },
+      { kind: 'economy', budget: 1, every: 2 },
+    ],
+  },
   lawn: {
     id: 'lawn',
     name: 'Lawn',
@@ -107,6 +189,201 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     effects: [
       { kind: 'steady', amount: 1 },
       { kind: 'neighbor', match: { piece: 'lawn' }, amount: 1, max: 4 },
+    ],
+  },
+  sapling: {
+    id: 'sapling',
+    name: 'Sapling',
+    tier: 'core',
+    category: 'yard',
+    shape: ['#'],
+    tags: ['Green'],
+    drawWeight: 10,
+    complexity: 2,
+    fromPhase: 0,
+    effects: [
+      { kind: 'steady', amount: 1 },
+      // At the start of a week, 4 weeks after planting, it becomes a mature Tree: a lot
+      // feature (Quiet, Green, a view), so it no longer counts as a piece.
+      { kind: 'transform', into: { feature: 'tree' }, afterWeeks: 4 },
+    ],
+  },
+  flowerBed: {
+    id: 'flowerBed',
+    name: 'Flower Bed',
+    tier: 'core',
+    category: 'yard',
+    givesView: true,
+    shape: ['#'],
+    tags: ['Green', 'Pretty'],
+    drawWeight: 10,
+    complexity: 2,
+    fromPhase: 0,
+    effects: [
+      { kind: 'steady', amount: 1 },
+      // Curb appeal.
+      { kind: 'conditional', when: { in: 'frontYard' }, effect: { kind: 'steady', amount: 2 } },
+      { kind: 'neighbor', match: { piece: 'flowerBed' }, amount: 1 },
+    ],
+  },
+  herbGarden: {
+    id: 'herbGarden',
+    name: 'Herb Garden',
+    tier: 'core',
+    category: 'yard',
+    givesView: true,
+    shape: ['##'],
+    tags: ['Green'],
+    drawWeight: 10,
+    complexity: 2,
+    fromPhase: 0,
+    effects: [
+      { kind: 'perTile', region: 'sunny', amount: 1 },
+      { kind: 'aura', match: { piece: 'kitchen' }, scope: 'adjacent', pct: 25 },
+    ],
+  },
+  patio: {
+    id: 'patio',
+    name: 'Patio',
+    tier: 'core',
+    category: 'yard',
+    shape: ['##', '##'],
+    tags: ['Outdoor', 'Social'],
+    drawWeight: 10,
+    complexity: 1,
+    fromPhase: 0,
+    effects: [
+      { kind: 'neighbor', match: { piece: ['livingRoom', 'kitchen'] }, amount: 2 },
+      { kind: 'neighbor', match: { property: 'viewSource' }, amount: 1, max: 3 },
+    ],
+  },
+  // Fence and L-Fence: two cards sharing a type (D-049). Fences are walls for the fenced-yard
+  // flood fill, and earn per tile of the fenced yards they border, capped in total.
+  fence: {
+    id: 'fence',
+    name: 'Fence',
+    tier: 'core',
+    category: 'yard',
+    wall: true,
+    shape: ['####'],
+    tags: [],
+    drawWeight: 10,
+    complexity: 3,
+    fromPhase: 0,
+    effects: [{ kind: 'enclosure', perTile: 1, cap: 6 }],
+  },
+  lFence: {
+    id: 'lFence',
+    name: 'L-Fence',
+    tier: 'core',
+    category: 'yard',
+    wall: true,
+    countsAs: 'fence',
+    shape: ['#..', '#..', '###'],
+    tags: [],
+    drawWeight: 10,
+    complexity: 3,
+    fromPhase: 0,
+    effects: [{ kind: 'enclosure', perTile: 1, cap: 6 }],
+  },
+  // Driveway and Long Driveway: two cards sharing a type (D-049). The only pieces that can be
+  // built over the creek (a culvert), so a house on the far bank can still have a Garage.
+  driveway: {
+    id: 'driveway',
+    name: 'Driveway',
+    tier: 'core',
+    category: 'yard',
+    canCover: ['creek'],
+    shape: ['###'],
+    tags: [],
+    drawWeight: 10,
+    complexity: 2,
+    fromPhase: 0,
+    effects: [
+      {
+        kind: 'requires',
+        condition: { touching: { any: [{ feature: 'street' }, { piece: 'driveway' }] } },
+        blocksPlacement: true,
+      },
+      { kind: 'conditional', when: { in: 'frontYard' }, effect: { kind: 'steady', amount: 1 } },
+    ],
+  },
+  longDriveway: {
+    id: 'longDriveway',
+    name: 'Long Driveway',
+    tier: 'core',
+    category: 'yard',
+    canCover: ['creek'],
+    countsAs: 'driveway',
+    shape: ['#####'],
+    tags: [],
+    drawWeight: 10,
+    complexity: 2,
+    fromPhase: 0,
+    effects: [
+      {
+        kind: 'requires',
+        condition: { touching: { any: [{ feature: 'street' }, { piece: 'driveway' }] } },
+        blocksPlacement: true,
+      },
+      { kind: 'conditional', when: { in: 'frontYard' }, effect: { kind: 'steady', amount: 1 } },
+    ],
+  },
+  // The "-house" family: small outbuildings that all carry the House tag.
+  doghouse: {
+    id: 'doghouse',
+    name: 'Doghouse',
+    tier: 'core',
+    category: 'outbuilding',
+    shape: ['#'],
+    tags: ['Pet', 'House'],
+    drawWeight: 10,
+    complexity: 3,
+    fromPhase: 0,
+    effects: [
+      // It can be built anywhere, but earns only inside a fenced yard.
+      { kind: 'requires', condition: { in: 'fencedYard' }, blocksPlacement: false },
+      { kind: 'steady', amount: 1 },
+      { kind: 'neighbor', match: { piece: 'lawn' }, amount: 1 },
+    ],
+  },
+  treehouse: {
+    id: 'treehouse',
+    name: 'Treehouse',
+    tier: 'core',
+    category: 'outbuilding',
+    shape: ['##', '##'],
+    tags: ['Kid', 'House'],
+    drawWeight: 10,
+    complexity: 2,
+    fromPhase: 0,
+    effects: [
+      { kind: 'requires', condition: { touching: { feature: 'tree' } }, blocksPlacement: true },
+      // Appendix B gives it only the Kid bonus, and the base pool has no other Kid piece until
+      // the shop's Playroom (M3), so a small steady earning keeps it from being a dead card.
+      { kind: 'steady', amount: 2 },
+      { kind: 'neighbor', match: { tag: 'Kid' }, amount: 2 },
+    ],
+  },
+  greenhouse: {
+    id: 'greenhouse',
+    name: 'Greenhouse',
+    tier: 'core',
+    category: 'outbuilding',
+    givesView: true,
+    shape: ['##', '##'],
+    tags: ['Green', 'House'],
+    drawWeight: 10,
+    complexity: 3,
+    fromPhase: 0,
+    // Boosts the gardens around it (yard pieces that give a view: Flower Beds, Herb Gardens).
+    effects: [
+      {
+        kind: 'aura',
+        match: { all: [{ property: 'viewSource' }, { property: 'yard' }] },
+        scope: 'adjacent',
+        pct: 50,
+      },
     ],
   },
 };

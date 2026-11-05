@@ -3,7 +3,7 @@
 // action log, so a run code replays any bug. The rules have no btoa or TextEncoder (no DOM
 // lib), so UTF-8 and base64url are done by hand here.
 
-import type { Action, Content, PlaceAction, RunCodeData, RunSetup } from './index.ts';
+import type { Action, Content, PieceId, PlaceAction, RunCodeData, RunSetup } from './index.ts';
 import { fnv1a } from './rng.ts';
 
 const PREFIX = 'OH1.';
@@ -114,12 +114,49 @@ function isPlace(v: unknown): v is PlaceAction {
   );
 }
 
-function isAction(v: unknown): v is Action {
-  return isPlace(v) || (isObject(v) && v.t === 'pass');
+/**
+ * Rebuilds an action from untrusted JSON with only its known fields, or null if it isn't one.
+ * Piece ids and crews are checked against the content when the code replays.
+ */
+function cleanAction(v: unknown): Action | null {
+  if (!isObject(v)) return null;
+  switch (v.t) {
+    case 'place':
+      return isPlace(v) ? { t: 'place', from: 'hand', i: v.i, x: v.x, y: v.y, rot: v.rot } : null;
+    case 'pass':
+      return { t: 'pass' };
+    case 'reroll':
+      return { t: 'reroll' };
+    case 'completeEarly':
+      return { t: 'completeEarly' };
+    case 'demolish':
+      return isInt(v.x) && isInt(v.y) ? { t: 'demolish', x: v.x, y: v.y } : null;
+    case 'setAutoComplete':
+      return typeof v.on === 'boolean' ? { t: 'setAutoComplete', on: v.on } : null;
+    case 'debug':
+      switch (v.op) {
+        case 'addScore':
+        case 'addBudget':
+          return isInt(v.amount) ? { t: 'debug', op: v.op, amount: v.amount } : null;
+        case 'giveCard':
+          return typeof v.id === 'string'
+            ? { t: 'debug', op: 'giveCard', id: v.id as PieceId }
+            : null;
+        case 'forceMiss':
+          return { t: 'debug', op: 'forceMiss' };
+      }
+      return null;
+  }
+  return null;
 }
 
 function isSetup(v: unknown): v is RunSetup {
-  return isObject(v) && typeof v.seed === 'string' && v.mode === 'standard';
+  return (
+    isObject(v) &&
+    typeof v.seed === 'string' &&
+    typeof v.crewId === 'string' &&
+    v.mode === 'standard'
+  );
 }
 
 /** Never throws: a bad or stale code is an error result, so loading never crashes the page. */
@@ -137,7 +174,8 @@ export function decodeRunCode(code: string): DecodeResult {
   if (typeof build !== 'string' || typeof hash !== 'string' || !isSetup(setup)) {
     return { ok: false, error: 'That run code is missing its setup.' };
   }
-  if (!Array.isArray(actions) || !actions.every(isAction)) {
+  const cleaned = Array.isArray(actions) ? actions.map(cleanAction) : null;
+  if (!cleaned || cleaned.some((a) => a === null)) {
     return { ok: false, error: 'That run code has an action this build doesn’t know.' };
   }
   if (pending !== undefined && !isPlace(pending)) {
@@ -146,12 +184,8 @@ export function decodeRunCode(code: string): DecodeResult {
   const data: RunCodeData = {
     build,
     contentHash: hash,
-    setup: { seed: setup.seed, mode: setup.mode },
-    actions: actions.map((a) =>
-      a.t === 'pass'
-        ? { t: 'pass' }
-        : { t: 'place', from: 'hand', i: a.i, x: a.x, y: a.y, rot: a.rot },
-    ),
+    setup: { seed: setup.seed, crewId: setup.crewId, mode: setup.mode },
+    actions: cleaned as Action[],
     ...(pending
       ? {
           pending: {

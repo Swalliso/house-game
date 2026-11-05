@@ -19,7 +19,26 @@ export const PIECE_SPRITES: Record<PieceId, { floor: SpriteId; furniture: Sprite
   lKitchen: { floor: 'floor-kitchen', furniture: 'stove' },
   diningRoom: { floor: 'floor-parquet', furniture: 'table' },
   livingRoom: { floor: 'floor-carpet', furniture: 'sofa' },
+  closet: { floor: 'floor-wood', furniture: 'wardrobe' },
+  hallway: { floor: 'floor-hall', furniture: 'plant' },
+  longHallway: { floor: 'floor-hall', furniture: 'plant' },
+  garage: { floor: 'floor-garage', furniture: 'car' },
+  homeOffice: { floor: 'floor-office', furniture: 'desk' },
   lawn: { floor: 'lawn', furniture: 'flowers' },
+  sapling: { floor: 'grass-0', furniture: 'sapling' },
+  // Where the floor is the whole picture, the furniture is the same sprite (it lands on a
+  // whole cell, or the sprite repeats every 8px, so it shows no seam) or the empty 'none'.
+  // Sprites don't rotate, so the fence is drawn as a panel that also reads stacked.
+  flowerBed: { floor: 'flowerbed', furniture: 'flowerbed' },
+  herbGarden: { floor: 'herbs', furniture: 'herbs' },
+  patio: { floor: 'patio', furniture: 'parasol' },
+  fence: { floor: 'fence', furniture: 'none' },
+  lFence: { floor: 'fence', furniture: 'none' },
+  driveway: { floor: 'driveway', furniture: 'driveway' },
+  longDriveway: { floor: 'driveway', furniture: 'driveway' },
+  doghouse: { floor: 'grass-0', furniture: 'doghouse' },
+  treehouse: { floor: 'canopy', furniture: 'treehouse' },
+  greenhouse: { floor: 'greenhouse', furniture: 'greenhouse' },
 };
 
 export function spritePos(id: SpriteId): { x: number; y: number } {

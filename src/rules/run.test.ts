@@ -18,7 +18,7 @@ function withTargets(targets: number[]): Content {
 
 /** A run on an empty lot, so placements are easy to reason about. */
 function onEmptyLot(r = rules, seed = 'empty'): RunState {
-  const s = r.newRun({ seed, mode: 'standard' });
+  const s = r.newRun({ seed, crewId: 'generalContractor', mode: 'standard' });
   return { ...s, house: { ...s.house, lot: lotFromRows(emptyRows(12, 12)) } };
 }
 
@@ -40,12 +40,16 @@ function withHand(s: RunState, ...ids: RunState['hand'][number]['id'][]): RunSta
 
 describe('a new run', () => {
   it('starts at week 1 with a hand, from the seed', () => {
-    const s = rules.newRun({ seed: 'start', mode: 'standard' });
+    const s = rules.newRun({ seed: 'start', crewId: 'generalContractor', mode: 'standard' });
     expect(s).toMatchObject({ phase: 0, slot: 1, week: 1, draws: 1, score: 0, screen: 'build' });
     expect(s.hand).toHaveLength(3);
     expect(s.house.pieces).toEqual([]);
-    expect(rules.newRun({ seed: 'start', mode: 'standard' })).toEqual(s);
-    expect(rules.newRun({ seed: 'other', mode: 'standard' }).house.lot).not.toEqual(s.house.lot);
+    expect(rules.newRun({ seed: 'start', crewId: 'generalContractor', mode: 'standard' })).toEqual(
+      s,
+    );
+    expect(
+      rules.newRun({ seed: 'other', crewId: 'generalContractor', mode: 'standard' }).house.lot,
+    ).not.toEqual(s.house.lot);
   });
 });
 
@@ -155,8 +159,8 @@ describe('a week', () => {
 });
 
 describe('milestones', () => {
-  it('a missed target at the phase end loses the run (no overtime until M2)', () => {
-    let s = onEmptyLot();
+  it('a missed target at the phase end loses the run once overtime is spent', () => {
+    let s = { ...onEmptyLot(), overtimeLeft: 0 };
     s = rules.apply(s, PASS).state;
     const { state, events } = rules.apply(s, PASS);
     expect(types(events)).toEqual(['tally', 'milestone', 'runEnded']);
@@ -167,6 +171,9 @@ describe('milestones', () => {
       result: 'failed',
       target: 5,
       score: 0,
+      weeksSaved: 0,
+      overtimeUsed: 0,
+      reward: { budget: 0, score: 0 },
     });
     expect(events[2]).toEqual({
       t: 'runEnded',
@@ -186,7 +193,8 @@ describe('milestones', () => {
     let s = onEmptyLot(r);
     s = r.apply(s, PASS).state;
     const end1 = r.apply(s, PASS);
-    expect(types(end1.events)).toEqual(['tally', 'milestone', 'handDrawn']);
+    // A target of 0 is met as the next phase starts, so it says so at once.
+    expect(types(end1.events)).toEqual(['tally', 'milestone', 'targetReached', 'handDrawn']);
     expect(end1.events[1]).toMatchObject({ result: 'onTime', phase: 0 });
     expect(end1.state).toMatchObject({
       phase: 1,
@@ -233,10 +241,13 @@ describe('milestones', () => {
 });
 
 describe('legal actions', () => {
-  it('lists every distinct legal placement, then pass', () => {
+  it('lists every distinct legal placement, then pass and the free actions', () => {
     const s = withHand(onEmptyLot(), 'bedroom', 'bathroom', 'lKitchen');
     const actions = rules.legalActions(s);
-    expect(actions.at(-1)).toEqual(PASS);
+    const free = actions.filter((a) => a.t !== 'place');
+    // A new run: two rerolls (the General Contractor's extra), nothing to demolish yet, and
+    // the target isn't met, so no early completion.
+    expect(free).toEqual([PASS, { t: 'reroll' }]);
     const per = (i: number) =>
       actions.filter((a): a is PlaceAction => a.t === 'place' && a.i === i).length;
     expect(per(0)).toBe(11 * 11); // a 2×2 has one rotation

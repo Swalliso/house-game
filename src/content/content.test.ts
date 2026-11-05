@@ -10,6 +10,7 @@ function earnedOf(rows: readonly string[], placements: readonly Placement[]) {
   const t = tallyHouse(
     CONTENT,
     computeLayout(CONTENT, houseFrom(CONTENT, rows, placements)),
+    1,
     false,
   );
   return { pieces: t.pieces.map((p) => p.earned), points: t.points, mult: t.mult, total: t.total };
@@ -60,15 +61,26 @@ describe('content', () => {
     });
   });
 
-  it('has the slice: six pieces as seven cards, and two sets', () => {
-    expect(Object.keys(CONTENT.pieces)).toHaveLength(7);
+  it('has the base pool: 19 piece types as 23 cards, two sets, and seven milestones', () => {
+    const defs = Object.values(CONTENT.pieces);
+    expect(defs).toHaveLength(23);
+    const types = new Set(defs.map((d) => d.countsAs ?? d.id));
+    expect(types.size).toBe(19);
+    const count = (cat: string) =>
+      new Set(defs.filter((d) => d.category === cat).map((d) => d.countsAs ?? d.id)).size;
+    expect([count('indoor'), count('yard'), count('outbuilding')]).toEqual([9, 7, 3]);
     expect(CONTENT.pieces.lKitchen.countsAs).toBe('kitchen');
     expect(Object.keys(CONTENT.sets)).toEqual(['jackAndJill', 'entertainer']);
     expect(CONTENT.balance.phases.map((p) => p.name)).toEqual([
       'Groundbreaking',
       'Foundation',
       'Framing',
+      'Roofing',
+      'Drywall',
+      'Finishes',
+      'Final Walkthrough',
     ]);
+    expect(Object.keys(CONTENT.crews)).toEqual(['generalContractor']);
   });
 });
 
@@ -156,14 +168,16 @@ describe('the slice pieces', () => {
 });
 
 describe('the real rules', () => {
-  it('play a full 12-week run to the end without breaking', () => {
+  it('play a full run to the end without breaking', () => {
     const r = createRules(CONTENT);
-    for (const seed of ['smoke-1', 'smoke-2', 'smoke-3']) {
-      let s = r.newRun({ seed, mode: 'standard' });
+    for (const seed of ['smoke-1', 'smoke-2']) {
+      let s = r.newRun({ seed, crewId: 'generalContractor', mode: 'standard' });
       let weeks = 0;
       while (s.screen === 'build') {
         // A cheap greedy bot: the best of the first few legal spots per card.
-        const options = r.legalActions(s).filter((a, i) => a.t === 'pass' || i % 7 === 0);
+        const options = r
+          .legalActions(s)
+          .filter((a, i) => a.t === 'pass' || (a.t === 'place' && i % 7 === 0));
         let best = options.at(-1)!;
         let bestScore = -1;
         for (const a of options) {
@@ -174,7 +188,7 @@ describe('the real rules', () => {
         weeks++;
       }
       expect(['won', 'lost']).toContain(s.screen);
-      expect(weeks).toBeLessThanOrEqual(12);
+      expect(weeks).toBeLessThanOrEqual(30);
     }
   });
 

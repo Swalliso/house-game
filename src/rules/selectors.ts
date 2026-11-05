@@ -1,18 +1,32 @@
-// Selectors: which pieces or lot features an effect looks at (implementation-plan.md §5).
-//
-// M1's tag resolution is the first two steps of §4's order: layout facts, then a piece's own
-// tags (a feature's tags come from its FeatureDef). Type identity matches the id or `countsAs`.
-// M2 adds Dark and Sunny from the layout; later phases add tag modifiers.
+// Selectors and piece conditions: which pieces or lot features an effect looks at
+// (implementation-plan.md §5), and the tag-resolution order (§4):
+//   1. layout facts
+//   2. own tags, plus Dark if interior and Sunny if on a sunny tile (layout.tags)
+//   3. grantTag and removeTag modifiers (from M3)
+//   4. type identity: `{ piece: X }` matches id X or `countsAs: X`
+//   5. conditions, specs, and sets
+//   6. per-piece effects
+// A feature's tags come from its FeatureDef.
 
-import type { Content, PieceDef, PieceId, Selector, Tag } from './index.ts';
-import { neighborFeature, pieceDef, type Layout, type Neighbor } from './layout.ts';
+import type { Content, PieceCondition, PieceDef, PieceId, Selector, Tag } from './index.ts';
+import {
+  fencedYardsBordered,
+  isRoom,
+  neighborFeature,
+  pieceDef,
+  pieceIn,
+  type Layout,
+  type Neighbor,
+} from './layout.ts';
+import { matchSets } from './sets.ts';
 
 export function isType(def: PieceDef, id: PieceId): boolean {
   return def.id === id || def.countsAs === id;
 }
 
-export function pieceTags(def: PieceDef): readonly Tag[] {
-  return def.tags;
+/** A piece's effective tags (§4 steps 1–2). */
+export function pieceTags(layout: Layout, uid: number): ReadonlySet<Tag> {
+  return layout.tags.get(uid) ?? new Set();
 }
 
 /** Does this neighbor (a piece, a tile feature, or the street) match the selector? */
@@ -36,6 +50,8 @@ export function matchesNeighbor(
       : sel.feature.includes(feature);
   }
   if ('tag' in sel) return def.tags.includes(sel.tag);
+  // A feature is never in a region or touching anything, for selectors' purposes.
+  if ('in' in sel || 'touching' in sel) return false;
   // A feature is never indoor, a yard piece, a room, or a piece with a view.
   return sel.property === 'viewSource' && !!def.viewSource;
 }
@@ -59,18 +75,73 @@ export function matchesPiece(
       : sel.piece.some((id) => isType(def, id));
   }
   if ('feature' in sel) return false;
-  if ('tag' in sel) return pieceTags(def).includes(sel.tag);
+  if ('tag' in sel) return pieceTags(layout, uid).has(sel.tag);
+  if ('in' in sel) return pieceIn(layout, uid, sel.in);
+  if ('touching' in sel) return countTouching(content, layout, uid, sel.touching) >= (sel.min ?? 1);
   switch (sel.property) {
     case 'indoor':
     case 'yard':
     case 'outbuilding':
       return def.category === sel.property;
     case 'room':
-      // Every M1 indoor piece is a room; the Hallway (M2) is the first connector.
-      return def.category === 'indoor';
+      return isRoom(def);
+    case 'exterior':
+      return layout.exterior.has(uid);
+    case 'interior':
+      return layout.interior.has(uid);
     case 'view':
       return layout.hasView.has(uid);
     case 'viewSource':
       return !!def.givesView;
   }
+}
+
+/** Distinct neighbors (for scoring: links count, connectors don't) matching the selector. */
+export function countTouching(
+  content: Content,
+  layout: Layout,
+  uid: number,
+  sel: Selector,
+): number {
+  let n = 0;
+  for (const nb of layout.neighbors.get(uid) ?? []) {
+    if (matchesNeighbor(content, layout, sel, nb)) n++;
+  }
+  return n;
+}
+
+const setMembersCache = new WeakMap<Layout, Map<string, Set<number>>>();
+
+/** The uids in held instances of each set, computed once per layout. */
+function setMembers(content: Content, layout: Layout): Map<string, Set<number>> {
+  let m = setMembersCache.get(layout);
+  if (!m) {
+    m = new Map();
+    for (const s of matchSets(content, layout)) {
+      let set = m.get(s.set);
+      if (!set) m.set(s.set, (set = new Set()));
+      for (const u of s.members) set.add(u);
+    }
+    setMembersCache.set(layout, m);
+  }
+  return m;
+}
+
+/** Does a piece meet a condition (for `requires` and `conditional`)? */
+export function meetsCondition(
+  content: Content,
+  layout: Layout,
+  cond: PieceCondition,
+  uid: number,
+): boolean {
+  if ('and' in cond) return cond.and.every((c) => meetsCondition(content, layout, c, uid));
+  if ('or' in cond) return cond.or.some((c) => meetsCondition(content, layout, c, uid));
+  if ('not' in cond) return !meetsCondition(content, layout, cond.not, uid);
+  if ('touching' in cond) {
+    return countTouching(content, layout, uid, cond.touching) >= (cond.min ?? 1);
+  }
+  if ('in' in cond) return pieceIn(layout, uid, cond.in);
+  if ('borders' in cond) return fencedYardsBordered(layout, uid).length > 0;
+  if ('is' in cond) return matchesPiece(content, layout, cond.is, uid);
+  return setMembers(content, layout).get(cond.inSet)?.has(uid) ?? false;
 }

@@ -1,10 +1,11 @@
 // The content registry and validateContent() (implementation-plan.md §5): the checks types
 // can't make. DATA ONLY lives in the other files here.
 
-import type { Content, PieceId, Selector } from '../rules/index.ts';
+import type { Content, Effect, PieceCondition, PieceId, Selector } from '../rules/index.ts';
 import { isConnected, parseShape } from '../rules/grid.ts';
 import { cardText } from '../rules/text.ts';
 import { BALANCE } from './balance.ts';
+import { CREWS } from './crews.ts';
 import { FEATURES } from './features.ts';
 import { PIECES } from './pieces.ts';
 import { SETS } from './sets.ts';
@@ -15,15 +16,67 @@ export const CONTENT: Content = {
   pieces: PIECES,
   features: FEATURES,
   sets: SETS,
+  crews: CREWS,
   balance: BALANCE,
 };
 
 function selectorPieceIds(sel: Selector, out: PieceId[]): void {
   if (sel === 'all') return;
   if ('piece' in sel) out.push(...(typeof sel.piece === 'string' ? [sel.piece] : sel.piece));
+  else if ('touching' in sel) selectorPieceIds(sel.touching, out);
   else if ('any' in sel) sel.any.forEach((s) => selectorPieceIds(s, out));
   else if ('all' in sel) sel.all.forEach((s) => selectorPieceIds(s, out));
   else if ('not' in sel) selectorPieceIds(sel.not, out);
+}
+
+function conditionPieceIds(cond: PieceCondition, out: PieceId[]): void {
+  if ('and' in cond) cond.and.forEach((c) => conditionPieceIds(c, out));
+  else if ('or' in cond) cond.or.forEach((c) => conditionPieceIds(c, out));
+  else if ('not' in cond) conditionPieceIds(cond.not, out);
+  else if ('touching' in cond) selectorPieceIds(cond.touching, out);
+  else if ('is' in cond) selectorPieceIds(cond.is, out);
+}
+
+/** Problems with one effect, as readable strings. */
+function effectProblems(effect: Effect, where: string, nested: boolean): string[] {
+  const problems: string[] = [];
+  const positiveInt = (n: number | undefined, what: string) => {
+    if (n !== undefined && (!Number.isInteger(n) || n < 1))
+      problems.push(`${where}: ${what} must be ≥ 1`);
+  };
+  switch (effect.kind) {
+    case 'aura':
+      if (!effect.pct && !effect.amount) problems.push(`${where}: an aura needs pct or amount`);
+      break;
+    case 'rhythm':
+      positiveInt(effect.every, 'rhythm every');
+      break;
+    case 'economy':
+      positiveInt(effect.every, 'economy every');
+      break;
+    case 'transform':
+      positiveInt(effect.afterWeeks, 'transform afterWeeks');
+      if (nested) problems.push(`${where}: a transform can't be conditional`);
+      break;
+    case 'link':
+    case 'requires':
+      if (nested) problems.push(`${where}: a ${effect.kind} can't be conditional`);
+      break;
+    case 'conditional':
+      if (nested) problems.push(`${where}: conditionals don't nest`);
+      problems.push(...effectProblems(effect.effect, where, true));
+      break;
+  }
+  return problems;
+}
+
+function effectPieceIds(effect: Effect, out: PieceId[]): void {
+  if (effect.kind === 'neighbor' || effect.kind === 'aura') selectorPieceIds(effect.match, out);
+  else if (effect.kind === 'requires') conditionPieceIds(effect.condition, out);
+  else if (effect.kind === 'conditional') {
+    conditionPieceIds(effect.when, out);
+    effectPieceIds(effect.effect, out);
+  } else if (effect.kind === 'transform' && 'piece' in effect.into) out.push(effect.into.piece);
 }
 
 /** Problems with the content, as readable strings; empty when it's fine. */
@@ -52,13 +105,20 @@ export function validateContent(content: Content): string[] {
       problems.push(`${where}: drawWeight must be a whole number ≥ 0`);
     }
     for (const effect of def.effects) {
-      if (effect.kind === 'steady') continue;
       const ids: PieceId[] = [];
-      selectorPieceIds(effect.match, ids);
+      effectPieceIds(effect, ids);
       ids.forEach((id) => known(id, `${where} effect`));
-      if (effect.kind === 'aura' && !effect.pct && !effect.amount) {
-        problems.push(`${where}: an aura needs pct or amount`);
-      }
+      problems.push(...effectProblems(effect, where, false));
+    }
+    const links = def.effects.some((e) => e.kind === 'link');
+    if (links && (!def.connector || def.category !== 'indoor')) {
+      problems.push(`${where}: only an indoor connector can link`);
+    }
+    if (def.effects.filter((e) => e.kind === 'transform').length > 1) {
+      problems.push(`${where}: at most one transform`);
+    }
+    for (const t of def.canCover ?? []) {
+      if (!content.features[t]) problems.push(`${where}: canCover has unknown feature "${t}"`);
     }
     const text = cardText(content, def);
     if (
@@ -86,8 +146,18 @@ export function validateContent(content: Content): string[] {
       problems.push(`${where}: the hub must be a member, once`);
   }
 
+  for (const [key, crew] of Object.entries(content.crews)) {
+    if (crew.id !== key) problems.push(`crew ${key}: id is "${crew.id}"`);
+  }
   const b = content.balance;
   if (b.phases.length === 0) problems.push('balance: no phases');
+  if (b.early.budgetPerWeek.length === 0 || b.early.scorePct.length === 0) {
+    problems.push('balance: early needs at least one entry per list');
+  }
+  for (const [key, v] of Object.entries(b.rules)) {
+    if (!Number.isInteger(v) || v < 0)
+      problems.push(`balance: rule ${key} must be a whole number ≥ 0`);
+  }
   b.phases.forEach((p, i) => {
     if (i > 0 && p.target <= b.phases[i - 1]!.target)
       problems.push(`balance: target ${i + 1} doesn't rise`);
@@ -98,8 +168,9 @@ export function validateContent(content: Content): string[] {
   const drawable = Object.values(content.pieces).filter(
     (p) => p.drawWeight > 0 && p.fromPhase === 0,
   );
-  if (drawable.length < b.handSize) problems.push('balance: fewer drawable cards than a hand');
-  if (b.weeksPerPhase < 1 || b.handSize < 1)
+  if (drawable.length < b.rules.handSize)
+    problems.push('balance: fewer drawable cards than a hand');
+  if (b.weeksPerPhase < 1 || b.rules.handSize < 1)
     problems.push('balance: weeks and hand size must be ≥ 1');
   const v = b.verdicts;
   if (v.length === 0 || v[0]!.minPctOfTarget !== 0)
