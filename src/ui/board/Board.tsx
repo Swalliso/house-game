@@ -59,7 +59,7 @@ function useBoardScale(ref: { current: HTMLElement | null }, lotW: number, lotH:
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const measure = () => setScale(fitScale(el.clientWidth - 16, el.clientHeight - 16, lotW, lotH));
+    const measure = () => setScale(fitScale(el.clientWidth - 12, el.clientHeight - 12, lotW, lotH));
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);

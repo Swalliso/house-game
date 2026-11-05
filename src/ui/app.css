@@ -93,6 +93,16 @@ button:focus-visible,
   grid-template-rows: auto minmax(0, 1fr) auto;
   height: 100%;
 }
+/* Narrower panels on smaller screens, so the lot's full width fits at 2× from 1280px. */
+@media (max-width: 1500px) {
+  .game {
+    grid-template-columns: 238px minmax(0, 1fr) 238px;
+  }
+  .left,
+  .right {
+    padding: 8px 6px;
+  }
+}
 .topbar {
   grid-column: 1 / -1;
 }
@@ -229,7 +239,7 @@ h3 {
   inset: 0;
   overflow: auto;
   display: flex;
-  padding: 8px;
+  padding: 6px;
 }
 .board {
   position: relative;
@@ -863,13 +873,11 @@ h3 {
   border-color: var(--bad);
 }
 .key-hint {
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
+  margin-left: 8px;
   font-size: 11px;
   font-weight: 600;
   opacity: 0.6;
+  white-space: nowrap;
 }
 
 /* --- Overlays ----------------------------------------------------------------------- */
