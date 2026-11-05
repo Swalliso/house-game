@@ -60,8 +60,10 @@ export const BALANCE: Balance = {
   // Appendix A · M3a: +3 budget per milestone met. It accrues from M2; the shop spends it in M3.
   milestoneBudget: 3,
 
-  // §4: a fenced yard has at least 4 tiles.
-  fencedYardMin: 4,
+  // A fenced yard has at least 10 tiles (D-069, amending D-046's 4, confirmed 2026-11-05): at
+  // 4, one Fence closes a pocket in a notch of the house; at 10 the sim's enclosure probe says
+  // a yard costs 2–3 Fence cards, as §8 asks, and a Fence then always reaches its +6 cap.
+  fencedYardMin: 10,
 
   // D-055: draw-weight percentages for complexity 1, 2, and 3, by phase; the last row repeats.
   complexityPct: [
