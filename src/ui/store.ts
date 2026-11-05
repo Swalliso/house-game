@@ -34,7 +34,7 @@ export const log = signal<readonly Action[]>([]);
 /** A one-line note for the player, such as "The game updated, so this is a fresh run." */
 export const notice = signal<{ text: string; oldCode?: string } | null>(null);
 /** Set when something broke: the error boundary shows it with the run code. */
-export const crash = signal<{ message: string; stack?: string } | null>(null);
+export const crash = signal<{ message: string; stack?: string; action?: Action } | null>(null);
 
 // ---------------------------------------------------------------------------------------
 // What the player is doing this week.
@@ -102,6 +102,49 @@ export function runCode(withPending = true): string {
     actions: log.value,
     ...(pending ? { pending } : {}),
   });
+}
+
+/**
+ * The run code for a crash report: the action that crashed goes on the end, so replaying the
+ * code fails at that step with the same error; otherwise the placement being looked at.
+ */
+export function crashRunCode(): string {
+  const c = crash.value;
+  const pending = tentative.value ?? activePlay.value;
+  return encodeRunCode({
+    build: BUILD_SHA,
+    contentHash: CONTENT_HASH,
+    setup: run.value.setup,
+    actions: c?.action ? [...log.value, c.action] : log.value,
+    ...(!c?.action && pending ? { pending } : {}),
+  });
+}
+
+const PREVIOUS_KEY = `openhouse:${BUILD_CHANNEL}:previous`;
+
+function readSave(): { build?: unknown; code?: unknown } | null {
+  try {
+    const saved: unknown = JSON.parse(localStorage.getItem(SAVE_KEY) ?? 'null');
+    return saved && typeof saved === 'object' ? saved : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Before a link or a game update replaces the saved run, keep its code (in the browser and in
+ * the note), so a run in progress is never silently lost. Returns the code if it had any weeks.
+ */
+function keepPreviousRun(saved: { code?: unknown } | null): string | undefined {
+  if (typeof saved?.code !== 'string') return undefined;
+  const decoded = decodeRunCode(saved.code);
+  if (decoded.ok && decoded.data.actions.length === 0) return undefined;
+  try {
+    localStorage.setItem(PREVIOUS_KEY, saved.code);
+  } catch {
+    // Best effort.
+  }
+  return saved.code;
 }
 
 function save(): void {
@@ -174,7 +217,8 @@ export function dispatch(action: Action): boolean {
     }
     crash.value = {
       message: e instanceof Error ? e.message : String(e),
-      stack: (e as Error)?.stack,
+      stack: e instanceof Error ? e.stack : undefined,
+      action,
     };
     return false;
   }
@@ -214,28 +258,50 @@ export function loadInitialRun(): void {
       `${location.pathname}${query ? `?${query}` : ''}${location.hash}`,
     );
   }
-  if (fromUrl && loadRunCode(fromUrl)) return;
-  if (seedParam) {
-    newRun(seedParam);
-    return;
+  const saved = readSave();
+  let linkError: string | undefined;
+  if (fromUrl) {
+    const previous = keepPreviousRun(saved);
+    if (loadRunCode(fromUrl)) {
+      if (previous) addNote('Your run in progress was put aside.', previous);
+      return;
+    }
+    // The link couldn't be read: say why once the fallback run has loaded.
+    linkError = notice.value?.text;
+    notice.value = null;
   }
-  let saved: { build?: unknown; code?: unknown } | null = null;
-  try {
-    saved = JSON.parse(localStorage.getItem(SAVE_KEY) ?? 'null');
-  } catch {
-    saved = null;
+  if (seedParam) {
+    const previous = keepPreviousRun(saved);
+    newRun(seedParam);
+    if (previous) addNote('Your run in progress was put aside.', previous);
+    return;
   }
   if (saved && typeof saved.code === 'string') {
     const decoded = decodeRunCode(saved.code);
     if (saved.build === BUILD_SHA && decoded.ok) {
       const { failedAt } = startRun(decoded.data.setup, decoded.data.actions);
-      if (failedAt === undefined) return;
+      if (failedAt === undefined) {
+        if (linkError) addNote(linkError);
+        return;
+      }
     }
+    const previous = keepPreviousRun(saved);
     newRun();
-    notice.value = { text: 'The game updated, so this is a fresh run.', oldCode: saved.code };
+    addNote('The game updated, so this is a fresh run.', previous);
+    if (linkError) addNote(linkError);
     return;
   }
   newRun();
+  if (linkError) addNote(linkError);
+}
+
+/** Adds a sentence to the note, keeping any old run code it already offers. */
+function addNote(text: string, oldCode?: string): void {
+  const current = notice.value;
+  notice.value = {
+    text: current ? `${current.text} ${text}` : text,
+    oldCode: oldCode ?? current?.oldCode,
+  };
 }
 
 /** Loads a pasted run code. Returns false (with a note) if it can't be read at all. */

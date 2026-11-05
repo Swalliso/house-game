@@ -1,7 +1,7 @@
 // M1's one celebration tier (§12, The celebration ladder): a big week, at 2× pace or more,
 // bursts confetti and coins from the score panel. Reduce motion swaps the burst for a glow.
 
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { celebration } from '../fx/director.ts';
 import { settings } from '../settings.ts';
 
@@ -19,12 +19,16 @@ interface Bit {
 
 export function Celebration() {
   const c = celebration.value;
+  const anchor = useRef<HTMLDivElement>(null);
+  const [at, setAt] = useState({ x: 0, y: 0 });
   const [bits, setBits] = useState<Bit[]>([]);
   useEffect(() => {
     if (!c || settings.value.reduceMotion) {
       setBits([]);
       return;
     }
+    const r = anchor.current?.getBoundingClientRect();
+    if (r) setAt({ x: r.left, y: r.top });
     const n = 46;
     const next: Bit[] = Array.from({ length: n }, (_, i) => {
       const angle = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 1.3;
@@ -43,22 +47,25 @@ export function Celebration() {
     const t = setTimeout(() => setBits([]), 1800);
     return () => clearTimeout(t);
   }, [c?.id]);
-  if (!c) return null;
   return (
-    <div class="celebration" aria-hidden="true" key={c.id}>
-      {bits.map((b) => (
-        <span
-          key={b.id}
-          class={b.coin ? 'coin' : 'confetti'}
-          style={{
-            '--dx': `${b.dx}px`,
-            '--dy': `${b.dy}px`,
-            '--spin': `${b.spin}deg`,
-            animationDelay: `${b.delay}ms`,
-            background: b.coin ? undefined : b.color,
-          }}
-        />
-      ))}
+    <div class="celebration-anchor" ref={anchor} aria-hidden="true">
+      {bits.length > 0 && (
+        <div class="celebration" style={{ left: `${at.x}px`, top: `${at.y}px` }}>
+          {bits.map((b) => (
+            <span
+              key={b.id}
+              class={b.coin ? 'coin' : 'confetti'}
+              style={{
+                '--dx': `${b.dx}px`,
+                '--dy': `${b.dy}px`,
+                '--spin': `${b.spin}deg`,
+                animationDelay: `${b.delay}ms`,
+                background: b.coin ? undefined : b.color,
+              }}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -13,6 +13,12 @@ import { cardsFit, inspected, rotation, run, selected, tentative } from '../stor
 import { rotate } from '../board/Board.tsx';
 import { cancelPlacement, passArmed, requestEndWeek, selectCard } from './actions.ts';
 
+/**
+ * The game's own buttons don't take focus from a mouse click, so the keyboard shortcuts (Enter
+ * to end the week) keep working after one. Tab still reaches them, and then Enter presses them.
+ */
+const noFocus = (e: MouseEvent) => e.preventDefault();
+
 function ShapeMini({ id, rot }: { id: CardData['id']; rot: Rot }) {
   const def = CONTENT.pieces[id];
   const cells = rotateCells(parseShape(def.shape), rot);
@@ -45,6 +51,7 @@ function CardView({ card, i }: { card: CardData; i: number }) {
     <button
       type="button"
       class={`card ${def.category} ${isSelected ? 'selected' : ''} ${fits ? '' : 'no-fit'}`}
+      onMouseDown={noFocus}
       onClick={() => selectCard(i)}
       onMouseEnter={() => selected.value === null && (inspected.value = { kind: 'card', i })}
       aria-pressed={isSelected}
@@ -88,6 +95,7 @@ export function Hand() {
         <button
           type="button"
           class="rotate"
+          onMouseDown={noFocus}
           onClick={rotate}
           disabled={!placing}
           title="Rotate (R or right-click)"
@@ -95,7 +103,7 @@ export function Hand() {
           ⟳ Rotate
         </button>
         {placing && (
-          <button type="button" onClick={cancelPlacement} title="Esc">
+          <button type="button" onMouseDown={noFocus} onClick={cancelPlacement} title="Esc">
             {pending ? 'Move it' : 'Cancel'}
           </button>
         )}
@@ -103,6 +111,7 @@ export function Hand() {
       <button
         type="button"
         class={`end-week ${pending ? 'ready' : ''} ${armed ? 'confirm' : ''}`}
+        onMouseDown={noFocus}
         onClick={requestEndWeek}
       >
         {pending ? 'End week · build it' : armed ? 'Pass? Press again' : 'Pass this week'}

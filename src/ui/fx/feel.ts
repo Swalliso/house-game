@@ -6,8 +6,6 @@ export const FEEL = {
   tally: {
     /** Per piece trigger. Balatro uses 750–940 ms, but a house has 20–40 pieces. */
     stepMs: 450,
-    /** Pieces that earn nothing still flash, quickly. */
-    zeroStepMs: 140,
     /** Floating popups hold for the step minus this. */
     popupShortenMs: 150,
     /** Each set held lights up, adding Comfort, then Charm. */

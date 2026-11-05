@@ -73,6 +73,8 @@ let skipping = false;
 let holding = false;
 let accelerator = 0;
 let chain: Promise<void> = Promise.resolve();
+/** Bumped when the run is replaced, so a tally still playing for the old run goes quiet. */
+let generation = 0;
 
 export function skip(): void {
   if (busy.value) skipping = true;
@@ -125,7 +127,7 @@ function popup(x: number, y: number, text: string, kind: PopupKind, stepMs: numb
   if (skipping) return;
   const ms = Math.max(350, (stepMs - FEEL.tally.popupShortenMs) / effectiveSpeed() + 450);
   // Keep popups on the board: the top row's would rise off its edge.
-  const p: Popup = { id: nextId++, x, y: Math.max(1.4, y), text, kind, ms };
+  const p: Popup = { id: nextId++, x, y, text, kind, ms };
   popups.value = [...popups.value, p];
   setTimeout(() => {
     popups.value = popups.value.filter((q) => q.id !== p.id);
@@ -137,14 +139,17 @@ function shake(px: number): void {
   fxHooks.shake((px * settings.value.shake) / 50);
 }
 
-/** The middle of a piece in lot coordinates, for popups. */
+/**
+ * The middle of a piece in lot coordinates, for popups. Kept at least 2 rows down, so popups
+ * near the top edge rise into view, and stacked popups keep their spacing.
+ */
 function pieceCenter(state: RunState, uid: number): { x: number; y: number } {
   const piece = state.house.pieces.find((p) => p.uid === uid);
-  if (!piece) return { x: 0, y: 0 };
+  if (!piece) return { x: 0, y: 2 };
   const def = CONTENT.pieces[piece.defId];
   const rows = piece.rot % 2 === 0 ? def.shape.length : def.shape[0]!.length;
   const cols = piece.rot % 2 === 0 ? def.shape[0]!.length : def.shape.length;
-  return { x: piece.x + cols / 2, y: piece.y + rows / 2 };
+  return { x: piece.x + cols / 2, y: Math.max(2, piece.y + rows / 2) };
 }
 
 function centroid(state: RunState, uids: readonly number[]): { x: number; y: number } {
@@ -158,6 +163,7 @@ function centroid(state: RunState, uids: readonly number[]): { x: number; y: num
 const formatCharm = (hundredths: number) => (hundredths / 100).toFixed(2).replace(/\.?0+$/, '');
 
 async function play(events: GameEvent[], before: RunState, after: RunState): Promise<void> {
+  const gen = generation;
   skipping = false;
   accelerator = 0;
   busy.value = true;
@@ -272,7 +278,7 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
       });
       shownScore.value = to;
       const reached = events.find((e) => e.t === 'targetReached');
-      if (reached && !skipping) {
+      if (reached && !skipping && gen === generation) {
         flash.value = { id: nextId++, text: 'Target reached!' };
         audio.play('target');
       }
@@ -283,7 +289,7 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
     shownRun.value = null;
 
     const milestone = events.find((e) => e.t === 'milestone');
-    if (milestone && milestone.t === 'milestone') {
+    if (milestone && milestone.t === 'milestone' && gen === generation) {
       const ended = events.find((e) => e.t === 'runEnded');
       const good = milestone.result === 'onTime';
       banner.value = {
@@ -312,6 +318,9 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
       busy.value = false;
     });
     skipping = false;
+    // A held Space or right button re-arms this on its next event; don't let a lost key-up
+    // leave every later tally on fast-forward.
+    holding = false;
   }
 }
 
@@ -322,6 +331,7 @@ onEvents((events, before, after) => {
 });
 
 onRunReset(() => {
+  generation++;
   skipping = true;
   batch(() => {
     popups.value = [];

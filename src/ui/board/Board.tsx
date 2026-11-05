@@ -4,7 +4,7 @@
 // pan, and the Fit overview come in M2.
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
-import { CONTENT, placedCells, type Cell, type SourceRef } from '../../rules/index.ts';
+import { CONTENT, placedCells, rules, type Cell, type SourceRef } from '../../rules/index.ts';
 import { audio } from '../audio/audio.ts';
 import {
   busy,
@@ -37,7 +37,18 @@ import { formatNumber } from '../format.ts';
 export function rotate(): void {
   const r = ((rotation.value + 1) % 4) as 0 | 1 | 2 | 3;
   rotation.value = r;
-  if (tentative.value) tentative.value = { ...tentative.value, rot: r };
+  const pending = tentative.value;
+  if (pending) {
+    const turned = { ...pending, rot: r };
+    // A tentative placement turns where it is if it still fits there; otherwise it goes back
+    // to following the pointer, so End week never tries to build somewhere illegal.
+    tentative.value = rules.checkPlay(run.value, turned).legal ? turned : null;
+    if (!tentative.value) {
+      hoverCell.value = { x: pending.x, y: pending.y };
+      audio.play('illegal');
+      return;
+    }
+  }
   audio.play('rotate');
 }
 
@@ -115,22 +126,24 @@ export function Board() {
     return y === lot.height ? 'street' : { x, y };
   };
 
+  /** What the inspect panel shows for the cell under the pointer, when nothing is being placed. */
+  const inspectAt = (e: PointerEvent, c: Cell | 'street' | null) => {
+    if (selected.value !== null || tentative.value) return;
+    if (c === 'street') {
+      const x = Math.floor((e.clientX - boardRef.current!.getBoundingClientRect().left) / px);
+      inspected.value = { kind: 'street', x };
+    } else if (c) {
+      const uid = uidAt(occ, c.x, c.y);
+      inspected.value = uid ? { kind: 'piece', uid } : { kind: 'tile', x: c.x, y: c.y };
+    }
+  };
+
   const onPointerMove = (e: PointerEvent) => {
     const c = cellAt(e);
     const cell = c === 'street' ? null : c;
     const prev = hoverCell.value;
     if (cell?.x !== prev?.x || cell?.y !== prev?.y) hoverCell.value = cell;
-    if (selected.value === null && !tentative.value) {
-      if (c === 'street')
-        inspected.value = {
-          kind: 'street',
-          x: Math.floor((e.clientX - boardRef.current!.getBoundingClientRect().left) / px),
-        };
-      else if (c) {
-        const uid = uidAt(occ, c.x, c.y);
-        inspected.value = uid ? { kind: 'piece', uid } : { kind: 'tile', x: c.x, y: c.y };
-      }
-    }
+    inspectAt(e, c);
   };
 
   const onPointerDown = (e: PointerEvent) => {
@@ -144,9 +157,10 @@ export function Board() {
       skip();
       return;
     }
-    // Touch: the first tap also moves the hover cell there.
+    // Touch has no hover: a tap moves the hover cell there and inspects what it hit.
     const c = cellAt(e);
     if (c && c !== 'street') hoverCell.value = c;
+    inspectAt(e, c);
     if (selected.value !== null) {
       tentative.value = null;
       placeTentatively();
@@ -223,6 +237,14 @@ function Ghost({
   const px = TILE * scale;
   const c = center(cells);
   const inside = cells.filter((cell) => cell.x >= 0 && cell.y >= 0);
+  // Keep the label on the board: away from the side edges, and below the ghost at the top.
+  const lotW = run.value.house.lot.width;
+  const top = Math.min(...cells.map((q) => q.y));
+  const below = top < 1;
+  const label = {
+    left: `${Math.min(Math.max(c.x, 3), lotW - 3) * px}px`,
+    top: `${(below ? Math.max(...cells.map((q) => q.y)) + 1 : top) * px}px`,
+  };
   return (
     <>
       <PieceShape
@@ -232,18 +254,15 @@ function Ghost({
         class={`ghost ${legal ? 'legal' : 'illegal'} ${pending ? 'pending' : ''}`}
       />
       {!legal && inside.length > 0 && (
-        <div
-          class="ghost-reason"
-          style={{ left: `${c.x * px}px`, top: `${Math.min(...cells.map((q) => q.y)) * px}px` }}
-        >
+        <div class={`ghost-reason ${below ? 'below' : ''}`} style={label}>
           <span aria-hidden="true">✕ </span>
           {p?.reason ?? 'Can’t build there'}
         </div>
       )}
       {legal && p && (
         <div
-          class={`ghost-delta ${p.delta > 0 ? 'good' : p.delta < 0 ? 'bad' : ''}`}
-          style={{ left: `${c.x * px}px`, top: `${Math.min(...cells.map((q) => q.y)) * px}px` }}
+          class={`ghost-delta ${p.delta > 0 ? 'good' : p.delta < 0 ? 'bad' : ''} ${below ? 'below' : ''}`}
+          style={label}
         >
           {p.delta > 0 ? '▲ +' : p.delta < 0 ? '▼ −' : ''}
           {formatNumber(Math.abs(p.delta))} Wow{pending ? ' · End week to build' : ''}
@@ -318,7 +337,7 @@ function Badges({ scale }: { scale: number }) {
           class={`badge ${m.kind} ${m.good ? 'good' : 'bad'}`}
           style={{ left: `${m.x * px}px`, top: `${m.y * px}px` }}
         >
-          {m.text}
+          <span class="glyph">{m.text}</span>
         </div>
       ))}
     </div>

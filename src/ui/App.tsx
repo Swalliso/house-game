@@ -36,8 +36,6 @@ function useKeyboard(): void {
     const onKey = (e: KeyboardEvent) => {
       audio.unlock();
       const target = e.target as HTMLElement | null;
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (settingsOpen.value || copyFallback.value) {
         if (e.key === 'Escape') {
           settingsOpen.value = false;
@@ -45,9 +43,24 @@ function useKeyboard(): void {
         }
         return;
       }
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      // A button or link the player reached with the keyboard keeps Enter and Space. One that
+      // only has focus because it was clicked (not :focus-visible) doesn't, so Enter after
+      // clicking a card still ends the week.
+      const keyboardFocused =
+        !!target?.closest('button, a, [role=button]') && target.matches(':focus-visible');
+      if ((e.key === 'Enter' || e.key === ' ') && keyboardFocused) return;
       if (e.key === ' ') {
         e.preventDefault();
         if (busy.value) setHold(true);
+        return;
+      }
+      if (e.key === 'Enter') {
+        // Always claim Enter, repeats included, so holding it can't click a focused button
+        // over and over and pass week after week.
+        e.preventDefault();
+        if (!e.repeat) requestEndWeek();
         return;
       }
       if (e.repeat) return;
@@ -57,19 +70,23 @@ function useKeyboard(): void {
       } else if (e.key === 'Escape') {
         if (busy.value) skip();
         else cancelPlacement();
-      } else if (e.key === 'Enter') {
-        e.preventDefault();
-        requestEndWeek();
       }
     };
     const onUp = (e: KeyboardEvent) => {
       if (e.key === ' ') setHold(false);
     };
+    // A key or button released outside the window never sends its up event.
+    const release = () => setHold(false);
+    const onVisibility = () => document.hidden && release();
     window.addEventListener('keydown', onKey);
     window.addEventListener('keyup', onUp);
+    window.addEventListener('blur', release);
+    document.addEventListener('visibilitychange', onVisibility);
     return () => {
       window.removeEventListener('keydown', onKey);
       window.removeEventListener('keyup', onUp);
+      window.removeEventListener('blur', release);
+      document.removeEventListener('visibilitychange', onVisibility);
     };
   }, []);
 }

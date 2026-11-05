@@ -102,6 +102,17 @@ button:focus-visible,
   .right {
     padding: 8px 6px;
   }
+  .layer-value {
+    font-size: 21px;
+  }
+  .layer-name {
+    font-size: 10px;
+    letter-spacing: 0;
+  }
+  .op {
+    font-size: 16px;
+    padding-top: 14px;
+  }
 }
 .topbar {
   grid-column: 1 / -1;
@@ -335,7 +346,7 @@ h3 {
   opacity: 1;
   animation: pending-pulse 1.4s ease-in-out infinite;
 }
-.ghost.pending .cell::after {
+.ghost.pending.legal .cell::after {
   background: none;
   box-shadow: inset 0 0 0 2px var(--good);
 }
@@ -357,6 +368,10 @@ h3 {
   pointer-events: none;
   background: #fffaf1;
   border: 2px solid var(--muted);
+}
+.ghost-reason.below,
+.ghost-delta.below {
+  transform: translate(-50%, 6px);
 }
 .ghost-reason {
   border-color: var(--bad);
@@ -416,7 +431,8 @@ h3 {
   background: var(--bad);
   transform: translate(-50%, -50%) rotate(45deg);
 }
-.badge.source.bad::first-line {
+.badge.source.bad .glyph {
+  display: inline-block;
   transform: rotate(-45deg);
 }
 .badge.cleared {
@@ -634,14 +650,20 @@ h3 {
   margin: 0;
 }
 
-.celebration {
+/* The burst is fixed to the viewport, so the narrow, scrolling left column can't clip it. */
+.celebration-anchor {
   position: absolute;
   left: 50%;
   top: 40%;
   width: 0;
   height: 0;
+}
+.celebration {
+  position: fixed;
+  width: 0;
+  height: 0;
   pointer-events: none;
-  z-index: 5;
+  z-index: 30;
 }
 .celebration .confetti,
 .celebration .coin {
@@ -955,6 +977,10 @@ h3 {
   align-items: center;
   gap: 10px;
   max-width: min(720px, 90vw);
+}
+.notice {
+  top: auto;
+  bottom: 84px;
 }
 .toast {
   top: auto;

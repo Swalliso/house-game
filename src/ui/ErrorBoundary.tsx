@@ -2,14 +2,15 @@
 // "Something broke" with the run code and a feedback link, so every crash becomes a bug report.
 
 import { Component, type ComponentChildren } from 'preact';
+import { useRef, useState } from 'preact/hooks';
 import { BUILD_LABEL } from './build-info.ts';
-import { crash, newRun, runCode } from './store.ts';
+import { crash, crashRunCode, newRun } from './store.ts';
 
 const ISSUES = 'https://github.com/Swalliso/house-game/issues/new';
 
 function safeRunCode(): string {
   try {
-    return runCode();
+    return crashRunCode();
   } catch {
     return '(the run code could not be made)';
   }
@@ -36,20 +37,33 @@ export function issueUrl(message: string, code: string): string {
 
 export function CrashScreen({ message }: { message: string }) {
   const code = safeRunCode();
+  const box = useRef<HTMLTextAreaElement>(null);
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+    } catch {
+      // The clipboard is off limits here: select the code so it can be copied by hand.
+      box.current?.focus();
+      box.current?.select();
+    }
+  };
   return (
     <div class="crash" role="alert">
       <div class="crash-card">
         <h1>Something broke.</h1>
         <p>Sorry! Copy the run code and send it along: it replays exactly what happened.</p>
         <textarea
+          ref={box}
           readOnly
           value={code}
           rows={4}
           onFocus={(e) => (e.target as HTMLTextAreaElement).select()}
         />
         <div class="crash-buttons">
-          <button type="button" onClick={() => void navigator.clipboard?.writeText(code)}>
-            Copy run code
+          <button type="button" onClick={() => void copy()}>
+            {copied ? 'Copied' : 'Copy run code'}
           </button>
           <a class="button" href={issueUrl(message, code)} target="_blank" rel="noreferrer">
             Report it on GitHub
@@ -74,16 +88,18 @@ export function CrashScreen({ message }: { message: string }) {
 }
 
 interface State {
-  error: Error | null;
+  error: unknown;
 }
 
 export class ErrorBoundary extends Component<{ children: ComponentChildren }, State> {
   override state: State = { error: null };
 
-  override componentDidCatch(error: Error): void {
+  override componentDidCatch(error: unknown): void {
     console.error(error);
-    crash.value = { message: error.message, stack: error.stack };
-    this.setState({ error });
+    // Anything can be thrown, not only Errors.
+    const message = error instanceof Error ? error.message : String(error);
+    crash.value = { message, stack: error instanceof Error ? error.stack : undefined };
+    this.setState({ error: error ?? 'error' });
   }
 
   override render() {

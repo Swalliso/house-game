@@ -3,7 +3,7 @@
 import { signal } from '@preact/signals';
 import { audio } from '../audio/audio.ts';
 import { busy, skip } from '../fx/director.ts';
-import { newRun, notice, run, runCode, selected, tentative, endWeek } from '../store.ts';
+import { endWeek, newRun, notice, preview, run, runCode, selected, tentative } from '../store.ts';
 
 export const settingsOpen = signal(false);
 export const toast = signal<{ id: number; text: string } | null>(null);
@@ -72,6 +72,10 @@ export function requestEndWeek(): void {
     return;
   }
   passArmed.value = false;
+  if (tentative.value && !preview.value?.legal) {
+    audio.play('illegal');
+    return;
+  }
   if (busy.value) skip();
   endWeek();
 }

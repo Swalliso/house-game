@@ -6,6 +6,7 @@ import type { JSX } from 'preact';
 import { useEffect, useRef } from 'preact/hooks';
 import type { Cell, PieceId } from '../../rules/index.ts';
 import { FEEL } from '../fx/feel.ts';
+import { settings } from '../settings.ts';
 import { PIECE_SPRITES, spriteStyle, TILE } from '../sprites.ts';
 import { digitCell, furnitureSpot, isIndoor, uidAt, type Occupancy } from './geometry.ts';
 
@@ -72,7 +73,7 @@ export function PieceShape({
   }, [uid]);
 
   useEffect(() => {
-    if (!settle || !ref.current) return;
+    if (!settle || !ref.current || settings.value.reduceMotion) return;
     ref.current.animate(
       [
         { transform: 'translateY(-6%) scale(1.06)', opacity: 0.6 },
