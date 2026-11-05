@@ -1,0 +1,117 @@
+// The error boundary (implementation-plan.md §6): any exception in apply or rendering shows
+// "Something broke" with the run code and a feedback link, so every crash becomes a bug report.
+
+import { Component, type ComponentChildren } from 'preact';
+import { useRef, useState } from 'preact/hooks';
+import { BUILD_LABEL } from './build-info.ts';
+import { crash, crashRunCode, newRun } from './store.ts';
+
+const ISSUES = 'https://github.com/Swalliso/house-game/issues/new';
+
+function safeRunCode(): string {
+  try {
+    return crashRunCode();
+  } catch {
+    return '(the run code could not be made)';
+  }
+}
+
+export function issueUrl(message: string, code: string): string {
+  const body = [
+    '**What happened?**',
+    '',
+    '',
+    '**What were you doing just before?**',
+    '',
+    '',
+    `Build: \`${BUILD_LABEL}\``,
+    `Error: \`${message}\``,
+    '',
+    'Run code (open it with `?run=` to replay):',
+    '```',
+    code,
+    '```',
+  ].join('\n');
+  return `${ISSUES}?${new URLSearchParams({ title: `Bug: ${message.slice(0, 80)}`, body })}`;
+}
+
+export function CrashScreen({ message }: { message: string }) {
+  const code = safeRunCode();
+  const box = useRef<HTMLTextAreaElement>(null);
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+    } catch {
+      // The clipboard is off limits here: select the code so it can be copied by hand.
+      box.current?.focus();
+      box.current?.select();
+    }
+  };
+  return (
+    <div class="crash" role="alert">
+      <div class="crash-card">
+        <h1>Something broke.</h1>
+        <p>Sorry! Copy the run code and send it along: it replays exactly what happened.</p>
+        <textarea
+          ref={box}
+          readOnly
+          value={code}
+          rows={4}
+          onFocus={(e) => (e.target as HTMLTextAreaElement).select()}
+        />
+        <div class="crash-buttons">
+          <button type="button" onClick={() => void copy()}>
+            {copied ? 'Copied' : 'Copy run code'}
+          </button>
+          <a class="button" href={issueUrl(message, code)} target="_blank" rel="noreferrer">
+            Report it on GitHub
+          </a>
+          <button
+            type="button"
+            onClick={() => {
+              crash.value = null;
+              newRun();
+            }}
+          >
+            Start a new run
+          </button>
+        </div>
+        <details>
+          <summary>Details</summary>
+          <pre>{message}</pre>
+        </details>
+      </div>
+    </div>
+  );
+}
+
+interface State {
+  error: unknown;
+}
+
+export class ErrorBoundary extends Component<{ children: ComponentChildren }, State> {
+  override state: State = { error: null };
+
+  override componentDidCatch(error: unknown): void {
+    console.error(error);
+    // Anything can be thrown, not only Errors.
+    const message = error instanceof Error ? error.message : String(error);
+    crash.value = { message, stack: error instanceof Error ? error.stack : undefined };
+    this.setState({ error: error ?? 'error' });
+  }
+
+  override render() {
+    const c = crash.value;
+    if (c) {
+      return <CrashScreen message={c.message} key={c.message} />;
+    }
+    if (this.state.error) {
+      // The crash was cleared (a new run): render the game again.
+      queueMicrotask(() => this.setState({ error: null }));
+      return null;
+    }
+    return this.props.children;
+  }
+}

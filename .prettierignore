@@ -1,0 +1,8 @@
+# Hand-written planning docs: keep their formatting as written.
+docs/
+# Claude worktrees live inside the main checkout.
+.claude/worktrees/
+# Generated
+dist/
+package-lock.json
+assets/atlas.json

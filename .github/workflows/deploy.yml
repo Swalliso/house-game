@@ -1,0 +1,116 @@
+# Publish one GitHub Pages site built from two branches (D-060, D-063):
+#   main    -> https://swalliso.github.io/house-game/      (releases, channel `main`)
+#   develop -> https://swalliso.github.io/house-game/dev/  (work in progress, channel `dev`)
+# A Pages deploy replaces the whole site, so every run rebuilds both branches, and each one's
+# tests and build must pass before it's published. A broken develop never blocks a release: on
+# a push to main it's left out (so /dev/ is missing until develop is fixed); on a push to
+# develop the run fails and the live site stays as it was. Until main has a package.json, the
+# root is the placeholder page in .github/pages-placeholder/.
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+
+# One deploy at a time; a newer push waits for the running one instead of cancelling it.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          path: main
+          persist-credentials: false
+      # Problems with develop only fail the run when develop is what was pushed.
+      - id: checkout-develop
+        name: Check out develop
+        uses: actions/checkout@v7
+        continue-on-error: ${{ github.ref_name != 'develop' }}
+        with:
+          ref: develop
+          path: develop
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26 # keep in step with .nvmrc
+          cache: npm
+          cache-dependency-path: '*/package-lock.json'
+
+      - name: Test and build main (releases, at the root)
+        working-directory: main
+        env:
+          VITE_CHANNEL: main
+        run: |
+          if [ ! -f package.json ]; then
+            echo "main has no package.json yet, so the root gets the placeholder page"
+            exit 0
+          fi
+          npm ci
+          npm test
+          npm run build
+
+      - id: build-develop
+        name: Test and build develop (work in progress, at /dev/)
+        if: steps.checkout-develop.outcome == 'success'
+        continue-on-error: ${{ github.ref_name != 'develop' }}
+        working-directory: develop
+        env:
+          VITE_CHANNEL: dev
+        run: |
+          npm ci
+          npm test
+          npm run build
+
+      - name: Put the site together
+        env:
+          DEVELOP_BUILT: ${{ steps.build-develop.outcome == 'success' }}
+        run: |
+          mkdir site
+          if [ -f main/package.json ]; then
+            cp -R main/dist/. site/
+          elif [ -d develop/.github/pages-placeholder ]; then
+            cp -R develop/.github/pages-placeholder/. site/
+          else
+            echo "::error::main has no build yet and develop's placeholder page is missing"
+            exit 1
+          fi
+          if [ "$DEVELOP_BUILT" = "true" ]; then
+            mkdir site/dev
+            cp -R develop/dist/. site/dev/
+            echo "develop: $(git -C develop rev-parse --short=7 HEAD) at /dev/"
+          else
+            echo "::warning::develop didn't build, so this deploy has no /dev/ site"
+          fi
+          echo "main: $(git -C main rev-parse --short=7 HEAD) at the root"
+          find site -maxdepth 2 | sort
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      # Pages names each deployment after the commit. If one hangs and times out, GitHub
+      # cancels it, and re-running that run (or dispatching this workflow on the same commit)
+      # stalls again on the cancelled deployment. A new commit gets a fresh deployment, so
+      # push or merge any change. This happened to the M1 merge (d688f64) on 2026-11-05.
+      - id: deployment
+        uses: actions/deploy-pages@v5
