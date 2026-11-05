@@ -4,6 +4,7 @@
 - **Confirmed so far:**
   - §1b, except the camera change
   - the 1080p design target, and Pages serving `develop` at `/dev/` (D-060)
+  - branch protection on `develop` and `main` (D-061)
   - D-048 to D-051 (D-052 since superseded by D-053), D-053, D-054, and D-056
   - D-019's names, and LimeZu for the final art
   - the directions of D-055 and D-057 to D-059
@@ -127,6 +128,7 @@ These four stay Accepted, with an "Amended by" pointer to the entry that changes
 | D-058 | Sound: calm music, with reward sounds that escalate with the size of the moment | M1 / M5 | Direction **Accepted**; details Proposed |
 | D-059 | Juice is a core feature: a tiered celebration ladder from the slice on | M1 / M5 | Direction **Accepted**; details Proposed |
 | D-060 | Pages serves `main` at the root and `develop` at `/dev/`; `develop` is the default branch; releases are PRs you open from `develop` into `main` (amends D-054) | M0 | **Accepted** (the team's request) |
+| D-061 | Branch protection: `develop` and `main` change only by PR, with your code-owner review and the CI job `test`; `main` takes merge commits only; you can bypass only inside a PR | M0 | **Accepted** (the team's request); set up 2026-11-05 |
 
 ### 1d. What changes status on approval
 
@@ -252,6 +254,7 @@ house-game/
 ├── package.json  .nvmrc  vite.config.ts  .prettierrc
 ├── tsconfig.json             # everything: DOM + JSX for ui/, Node types for sim/
 ├── tsconfig.rules.json       # src/rules + src/content only, NO DOM lib: `document` is a compile error
+├── .github/CODEOWNERS        # @Swalliso owns every file (D-061)
 ├── .github/workflows/ci.yml  # test job on every push/PR; deploy job builds main → / and develop → /dev/
 ├── src/
 │   ├── rules/                # PURE game rules
@@ -909,6 +912,11 @@ Shape variants (L-Kitchen, the long Hallway) are separate cards that share a typ
   - `develop` is cut from `main`, is the GitHub default branch, and is where work lands.
   - Each phase gets a branch off `develop` (for example `phase/m1-slice`). It merges into `develop` by PR after its playtest, so every phase is one reviewable diff.
   - `main` holds releases. You open and merge a PR from `develop` into `main` whenever it's a good point for a release; tagging it (`v0.1`, …) is optional.
+- **Protected branches (D-061):**
+  - `develop` and `main` change only through PRs. Nobody can push to them directly, force-push, or delete them.
+  - Every PR needs your review as code owner (`.github/CODEOWNERS`) and a passing CI job `test`.
+  - My PRs come from your account and an author can't approve their own PR, so you merge them by ticking *Merge without waiting for requirements to be met*.
+  - Release PRs into `main` must be merge commits.
 - **Two links on GitHub Pages (D-060):**
   - releases at https://swalliso.github.io/house-game/
   - the latest `develop` at https://swalliso.github.io/house-game/dev/, to share work in progress with other jam members
@@ -939,8 +947,9 @@ Shape variants (L-Kitchen, the long Hallway) are separate cards that share a typ
   - the `github-pages` environment allows deployments from both `main` and `develop`
   - your main checkout is on `develop`
   - `art-source/` is in the repo's local `.git/info/exclude`, which covers every branch and worktree
+  - branch rulesets for `develop` and `main`, and `.github/CODEOWNERS` (D-061)
 - **One Actions workflow (`ci.yml`):**
-  - a test job (typecheck, tests, build) on every push and PR to `develop` and `main`
+  - a test job (typecheck, tests, build) on every push and PR to `develop` and `main`. Its id is exactly `test`, with no `name:` and no matrix, because the rulesets require a check by that name.
   - a deploy job on pushes to either branch. It checks out both branch tips, builds each with its channel (`main`, `dev`), and publishes one site: `main` at the root and `develop` at `/dev/`. Until `main` has a build, the root is a placeholder that links to `/dev/`.
   - deploys run one at a time, in a `pages` concurrency group
 - Move the docs into `docs/`. Add `CLAUDE.md` (§11) and `README.md`. Update `jam-scope.md` to match the decisions (§1d).
@@ -1306,7 +1315,9 @@ build one house for one client, placing one piece per week.
 - "Fixtures" are game content: upgrades installed in a placed piece.
 - develop is the default branch. Work on a phase branch off develop and open a
   PR into develop. main holds releases: the user opens develop → main PRs.
-  Never commit straight to main.
+  Rulesets (D-061) block direct pushes to develop and main, so always push a
+  branch and open a PR. Never merge PRs yourself; the user merges. The required
+  CI check is the job `test`, and release PRs into main use merge commits.
 - Pages: releases at https://swalliso.github.io/house-game/, develop at /dev/.
   Saves are namespaced by channel (main, dev, local).
 - Score layers: code says points / mult / xMult / total; the UI says

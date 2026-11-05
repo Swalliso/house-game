@@ -289,6 +289,28 @@ Also: D-036 and D-043 (Proposed), where hand size becomes the `handSize` rule (3
 **Why:** The team wants a link for other jam members while the stable link stays on releases. Building both branches into one artifact is the simplest way for one Pages site to serve two branches.
 **Changes:** D-054 (Accepted): Pages and the release flow. D-034 (Proposed): hosting.
 
+### D-061 · Branch protection: develop and main change only by pull request
+**Status:** Accepted · 2026-11-05 (requested by the team)
+**Decision:**
+- Two repository rulesets, "develop: changes by pull request" and "main: releases by pull request". On both branches:
+  - no deleting the branch, and no force pushes
+  - changes arrive only through pull requests; nobody pushes directly
+  - a code owner's review is required. `.github/CODEOWNERS` makes the user (`@Swalliso`) the owner of every file.
+  - the CI job `test` must pass
+- **`main` takes merge commits only,** so `develop` stays an ancestor of `main` and release PRs never re-show changes that were already released. `develop` takes any merge method.
+- **The repository admin (the user) may bypass these rules only inside a pull request:** they can merge a PR that lacks the review, but nobody can push straight to either branch.
+- **Claude pushes with the user's account,** and GitHub doesn't let an author approve their own PR. So Claude's PRs also need that bypass: the user ticks "Merge without waiting for requirements to be met". Claude never merges PRs; the user does.
+- **Nobody else can push anyway:** the user is the only collaborator, and outsiders can only fork and open PRs, which need the user's review.
+- CODEOWNERS reaches `main` with the first release PR. Until then nothing on `main` changes except through a PR the user merges.
+
+**Why:** The repo is public, and the user wants to be the gatekeeper of every change. The rules turn the agreed workflow (D-054, D-060) into something GitHub enforces rather than a promise: no accidental pushes or force pushes to the two long-lived branches, CI before every merge, and the code owner on every change.
+**Considered:**
+- Requiring an approval with no bypass: it deadlocks, since an author can't approve their own PR.
+- A separate GitHub account for Claude, so the user can approve its PRs normally: possible later, if the bypass click gets old.
+- Requiring branches to be up to date before merging: it would force merging `main` back into `develop` after every release.
+
+**Changes:** D-054 and D-060 (Accepted): now enforced by rules.
+
 ### D-019 · Score name
 **Status:** Accepted · 2026-11-05 (chosen by the team)
 **Decision:** The week's three layers (D-056) are **Comfort** (what pieces earn; blue), **Charm** (the additive multiplier; rose), and **Sparkle** (the rare ×Mult; gold). The score is **Wow**: each week's total and the run total. In the tally: "Comfort 240 × Charm 2.5, Sparkle ×2 = 1,200 Wow". The code keeps the neutral names `points`, `mult`, `xMult`, and `total`.

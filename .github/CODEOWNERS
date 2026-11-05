@@ -1,0 +1,4 @@
+# Code owners for Open House (D-061 in decisions.md).
+# @Swalliso owns every file, so every pull request into develop or main
+# needs their review. The branch rulesets enforce it.
+* @Swalliso
