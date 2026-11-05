@@ -92,7 +92,8 @@ function Stats({ s }: { s: RunState }) {
       <h3>The run</h3>
       <dl class="run-end-stats">
         <dt>Pieces built</dt>
-        <dd>{s.house.pieces.length}</dd>
+        {/* Every placement takes the next uid, so this counts demolished and grown pieces too. */}
+        <dd>{s.house.nextUid - 1}</dd>
         <dt>Weeks played</dt>
         <dd>{s.week}</dd>
         <dt>Budget earned</dt>
