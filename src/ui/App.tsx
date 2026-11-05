@@ -36,7 +36,7 @@ import {
 } from './screens/Overlays.tsx';
 import { SettingsPanel } from './screens/Settings.tsx';
 import { Title } from './screens/Title.tsx';
-import { appScreen, run, selected } from './store.ts';
+import { appScreen, run, selected, tool } from './store.ts';
 
 function anyModalOpen(): boolean {
   return settingsOpen.value || howToPlayOpen.value || !!copyFallback.value;
@@ -62,21 +62,31 @@ function useModalKeys(): void {
   }, []);
 }
 
+/**
+ * Whether the player is moving through the page with the keyboard (Tab) rather than the
+ * mouse. Chrome makes any focused element match :focus-visible on a keydown, so that can't
+ * tell a button reached with Tab from one that was clicked.
+ */
+let keyboardNav = false;
+window.addEventListener('keydown', (e) => e.key === 'Tab' && (keyboardNav = true), true);
+window.addEventListener('pointerdown', () => (keyboardNav = false), true);
+
 function useKeyboard(): void {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       audio.unlock();
+      // A key a sheet already handled (Esc closing Settings) does nothing else.
+      if (e.defaultPrevented) return;
       const target = e.target instanceof HTMLElement ? e.target : null;
       // Sheets take the keyboard; useModalKeys closes them on Esc.
       if (anyModalOpen()) return;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
       if (target?.tagName === 'SELECT') return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
-      // A button or link the player reached with the keyboard keeps Enter and Space. One that
-      // only has focus because it was clicked (not :focus-visible) doesn't, so Enter after
-      // clicking a card still ends the week.
-      const keyboardFocused =
-        !!target?.closest('button, a, [role=button]') && target.matches(':focus-visible');
+      // A button or link the player reached with Tab keeps Enter and Space. One that only has
+      // focus because it was clicked doesn't, so Enter after clicking a button still ends the
+      // week.
+      const keyboardFocused = !!target?.closest('button, a, [role=button]') && keyboardNav;
       if ((e.key === 'Enter' || e.key === ' ') && keyboardFocused) return;
       if (e.key === ' ') {
         e.preventDefault();
@@ -94,7 +104,8 @@ function useKeyboard(): void {
       if (e.key === '1' || e.key === '2' || e.key === '3' || e.key === '4') {
         selectCard(Number(e.key) - 1);
       } else if (e.key === 'r' || e.key === 'R') {
-        if (selected.value !== null) rotate();
+        // In demolish mode a pending placement is hidden, so R leaves it alone.
+        if (selected.value !== null && tool.value !== 'demolish') rotate();
       } else if (e.key === 'd' || e.key === 'D') {
         if (run.value.screen === 'build') toggleDemolish();
       } else if (e.key === '+' || e.key === '=') zoomIn();

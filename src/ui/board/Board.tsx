@@ -158,6 +158,8 @@ interface Drag {
   panning: boolean;
   /** A tally was playing at the press: the click skips it instead of acting. */
   skip: boolean;
+  /** Another finger joined (touch): the gesture never counts as a tap. */
+  multi?: boolean;
 }
 
 export function Board() {
@@ -325,8 +327,18 @@ export function Board() {
   };
 
   const onPointerMove = (e: PointerEvent) => {
+    let d = drag.current;
+    // One pointer per gesture: a second finger's moves are ignored.
+    if (d && d.id !== e.pointerId && e.pointerType === 'touch') return;
     pointer.current = { x: e.clientX, y: e.clientY };
-    const d = drag.current;
+    // The button came up somewhere we never heard about: drop the press, back to hovering.
+    if (d && d.id === e.pointerId && e.pointerType === 'mouse') {
+      const bit = d.button === 1 ? 4 : 1;
+      if (!(e.buttons & bit)) {
+        if (d.panning) endPan(e);
+        drag.current = d = null;
+      }
+    }
     if (d && d.id === e.pointerId) {
       const dx = e.clientX - d.x;
       const dy = e.clientY - d.y;
@@ -356,6 +368,17 @@ export function Board() {
     }
     if (e.button !== 0 && e.button !== 1) return;
     const el = scrollRef.current!;
+    if (drag.current && drag.current.id !== e.pointerId) {
+      // A second finger: keep tracking the first, and make the gesture a non-tap.
+      drag.current.multi = true;
+      return;
+    }
+    // Capture the press, so its moves and release reach the board even off its edge.
+    try {
+      el.setPointerCapture(e.pointerId);
+    } catch {
+      // The pointer is already gone.
+    }
     drag.current = {
       id: e.pointerId,
       button: e.button,
@@ -384,9 +407,10 @@ export function Board() {
       if (e.pointerType !== 'touch') setHover(c);
       return;
     }
-    if (d.button !== 0) return;
+    if (d.button !== 0 || d.multi) return;
     if (d.skip) {
-      skip();
+      // Only if the tally is still playing: a banner it revealed since the press stays up.
+      if (busy.value) skip();
       return;
     }
     // Touch has no hover: a tap moves the hover cell there and inspects what it hit.
@@ -402,7 +426,8 @@ export function Board() {
     }
   };
 
-  const onPointerCancel = () => {
+  const onPointerCancel = (e: PointerEvent) => {
+    if (drag.current && drag.current.id !== e.pointerId) return;
     if (drag.current?.panning) setPanning(false);
     drag.current = null;
   };
@@ -435,6 +460,7 @@ export function Board() {
         onPointerDown={onPointerDown}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerCancel}
+        onLostPointerCapture={onPointerCancel}
         onPointerLeave={(e) => {
           pointer.current = null;
           // A finger lifting "leaves" too; keep a tap's hover so its ghost stays put.

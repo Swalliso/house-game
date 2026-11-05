@@ -210,8 +210,9 @@ function HowToPlayText() {
             back yard.
           </li>
           <li>
-            <b>A fenced yard</b> is closed in by Fences and the house: {b.fencedYardMin} or more
-            tiles, none touching the street.
+            <b>A fenced yard</b> is an area closed in by Fences, the house, and the lot's edges. It
+            must border a Fence and the house, have {b.fencedYardMin} or more tiles, and not touch
+            the street. A house near a side or back edge needs fewer Fences.
           </li>
         </ul>
       </Section>

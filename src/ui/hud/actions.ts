@@ -64,6 +64,8 @@ export function selectCard(i: number): void {
   if (tool.value === 'demolish') {
     tool.value = 'build';
     demolishArmed.value = null;
+    // Back to building: the card being placed stays picked, with its pending placement.
+    if (selected.value === i) return;
   }
   if (busy.value) skip();
   tentative.value = null;

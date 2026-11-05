@@ -2,7 +2,7 @@
 // (D-047). The run-end screen is in EndScreen.tsx.
 
 import { useEffect, useState } from 'preact/hooks';
-import { banner, busy, flash, skip } from '../fx/director.ts';
+import { banner, busy, flash, played, skip } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
 import { copyFallback, copyText, toast } from '../hud/actions.ts';
 import { notice } from '../store.ts';
@@ -22,7 +22,8 @@ export function TargetFlash() {
   const f = flash.value;
   const [shown, setShown] = useState<number | null>(null);
   useEffect(() => {
-    if (!f) return;
+    if (!f || f.id <= played.flash) return;
+    played.flash = f.id;
     setShown(f.id);
     const t = setTimeout(() => setShown(null), FEEL.targetFlashMs);
     return () => clearTimeout(t);
@@ -89,7 +90,7 @@ export function useSkipOnClick(): void {
     const onDown = (e: PointerEvent) => {
       if (!busy.value || e.button !== 0) return;
       const target = e.target as HTMLElement | null;
-      if (target?.closest('button, input, select, .board, .debug-panel')) return;
+      if (target?.closest('button, input, select, .board-scroll, .debug-panel')) return;
       skip();
     };
     window.addEventListener('pointerdown', onDown);

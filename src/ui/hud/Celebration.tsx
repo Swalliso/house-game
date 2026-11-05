@@ -2,7 +2,7 @@
 // bursts confetti and coins from the score panel. Reduce motion swaps the burst for a glow.
 
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { celebration } from '../fx/director.ts';
+import { celebration, played } from '../fx/director.ts';
 import { settings } from '../settings.ts';
 
 const COLORS = ['#e8b04a', '#e06c8c', '#5b8fd6', '#7fbf6a', '#f2e3b3'];
@@ -23,10 +23,11 @@ export function Celebration() {
   const [at, setAt] = useState({ x: 0, y: 0 });
   const [bits, setBits] = useState<Bit[]>([]);
   useEffect(() => {
-    if (!c || settings.value.reduceMotion) {
+    if (!c || settings.value.reduceMotion || c.id <= played.celebration) {
       setBits([]);
       return;
     }
+    played.celebration = c.id;
     const r = anchor.current?.getBoundingClientRect();
     if (r) setAt({ x: r.left, y: r.top });
     const n = 46;

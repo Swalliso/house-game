@@ -10,7 +10,7 @@
 // while Space or the right mouse button is held. A click skips to the result.
 
 import { batch, signal } from '@preact/signals';
-import { CONTENT, type GameEvent, type RunState } from '../../rules/index.ts';
+import { CONTENT, SCORE_LABELS, type GameEvent, type RunState } from '../../rules/index.ts';
 import { audio } from '../audio/audio.ts';
 import { settings } from '../settings.ts';
 import { onEvents, onRunReset } from '../store.ts';
@@ -66,6 +66,11 @@ export const flash = signal<{ id: number; text: string } | null>(null);
  * until the milestone lands, since the rules have already moved on.
  */
 export const shownRun = signal<RunState | null>(null);
+/**
+ * One-shot effects (celebration, flash, justPlaced) carry an id: a consumer plays each id
+ * once, so remounting the game screen (Menu, then Continue) doesn't replay them.
+ */
+export const played = { celebration: 0, flash: 0, settle: 0 };
 /** The piece that was just placed, for its settle animation. */
 export const justPlaced = signal<{ uid: number; id: number } | null>(null);
 
@@ -151,8 +156,14 @@ function shake(px: number): void {
  * The middle of a piece in lot coordinates, for popups. Kept at least 2 rows down, so popups
  * near the top edge rise into view, and stacked popups keep their spacing.
  */
-function pieceCenter(state: RunState, uid: number): { x: number; y: number } {
-  const piece = state.house.pieces.find((p) => p.uid === uid);
+function pieceCenter(states: readonly RunState[], uid: number): { x: number; y: number } {
+  // A Sapling that matured at the start of the next week is gone from the state after the
+  // action, but its last tally still scores it: find it in the state before.
+  let piece: RunState['house']['pieces'][number] | undefined;
+  for (const state of states) {
+    piece = state.house.pieces.find((p) => p.uid === uid);
+    if (piece) break;
+  }
   if (!piece) return { x: 0, y: 2 };
   const def = CONTENT.pieces[piece.defId];
   const rows = piece.rot % 2 === 0 ? def.shape.length : def.shape[0]!.length;
@@ -160,8 +171,8 @@ function pieceCenter(state: RunState, uid: number): { x: number; y: number } {
   return { x: piece.x + cols / 2, y: Math.max(2, piece.y + rows / 2) };
 }
 
-function centroid(state: RunState, uids: readonly number[]): { x: number; y: number } {
-  const cs = uids.map((u) => pieceCenter(state, u));
+function centroid(states: readonly RunState[], uids: readonly number[]): { x: number; y: number } {
+  const cs = uids.map((u) => pieceCenter(states, u));
   return {
     x: cs.reduce((a, c) => a + c.x, 0) / Math.max(1, cs.length),
     y: cs.reduce((a, c) => a + c.y, 0) / Math.max(1, cs.length),
@@ -247,7 +258,7 @@ async function playTally(
     view.activeUid = piece.uid;
     tallyView.value = { ...view };
     if (!skipping) {
-      const c = pieceCenter(after, piece.uid);
+      const c = pieceCenter([after, base], piece.uid);
       popup(c.x, c.y, `+${piece.earned}`, 'points', FEEL.tally.stepMs);
       audio.ladder(step);
       if (motion()) fxHooks.wobble(piece.uid);
@@ -262,7 +273,7 @@ async function playTally(
     view.stage = 'sets';
     const name = CONTENT.sets[set.set].name;
     highlighted.value = set.members;
-    const c = centroid(after, set.members);
+    const c = centroid([after, base], set.members);
     view.points += set.points;
     tallyView.value = { ...view };
     if (!skipping) {
@@ -277,7 +288,13 @@ async function playTally(
     view.mult += set.mult;
     tallyView.value = { ...view };
     if (!skipping) {
-      popup(c.x, c.y + 0.6, `+${formatCharm(set.mult)} Charm`, 'mult', FEEL.tally.setStepMs / 2);
+      popup(
+        c.x,
+        c.y + 0.6,
+        `+${formatCharm(set.mult)} ${SCORE_LABELS.mult}`,
+        'mult',
+        FEEL.tally.setStepMs / 2,
+      );
       audio.play('chime');
     }
     await wait(FEEL.tally.setStepMs / 2);
@@ -350,7 +367,7 @@ function milestoneBanner(e: Extract<GameEvent, { t: 'milestone' }>, ended: boole
       const weeks = `${e.weeksSaved} ${e.weeksSaved === 1 ? 'week' : 'weeks'}`;
       showBanner(
         `${e.name} complete, ${weeks} early!`,
-        `+${formatNumber(e.reward.score)} Wow early bonus, and +${e.reward.budget} budget. ${onTo}`,
+        `+${formatNumber(e.reward.score)} ${SCORE_LABELS.total} early bonus, and +${e.reward.budget} budget. ${onTo}`,
         'good',
         FEEL.bannerMs * 1.3,
       );
@@ -362,7 +379,7 @@ function milestoneBanner(e: Extract<GameEvent, { t: 'milestone' }>, ended: boole
     case 'failed':
       showBanner(
         `${e.name} missed`,
-        `${formatNumber(e.score)} of ${formatNumber(e.target)} Wow. The client walks the site…`,
+        `${formatNumber(e.score)} of ${formatNumber(e.target)} ${SCORE_LABELS.total}. The client walks the site…`,
         'bad',
       );
       break;
@@ -441,7 +458,7 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
         case 'overtimeUsed':
           showBanner(
             'Overtime!',
-            `${formatNumber(e.score)} of ${formatNumber(e.target)} Wow. One more week to reach it` +
+            `${formatNumber(e.score)} of ${formatNumber(e.target)} ${SCORE_LABELS.total}. One more week to reach it` +
               ` (${e.overtimeLeft} overtime ${e.overtimeLeft === 1 ? 'week' : 'weeks'} left after this).`,
             'bad',
             FEEL.bannerMs * 1.3,
@@ -491,5 +508,6 @@ onRunReset(() => {
     banner.value = null;
     celebration.value = null;
     flash.value = null;
+    justPlaced.value = null;
   });
 });

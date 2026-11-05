@@ -6,6 +6,7 @@
 import type { JSX } from 'preact';
 import { useEffect, useRef } from 'preact/hooks';
 import type { Cell, PieceId } from '../../rules/index.ts';
+import { played } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
 import { settings } from '../settings.ts';
 import { PIECE_SPRITES, spriteStyle, TILE } from '../sprites.ts';
@@ -77,7 +78,8 @@ export function PieceShape({
   }, [uid]);
 
   useEffect(() => {
-    if (!settle || !ref.current || settings.value.reduceMotion) return;
+    if (!settle || settle <= played.settle || !ref.current || settings.value.reduceMotion) return;
+    played.settle = settle;
     ref.current.animate(
       [
         { transform: 'translateY(-6%) scale(1.06)', opacity: 0.6 },
