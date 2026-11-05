@@ -143,8 +143,22 @@ describe('effect kinds', () => {
     expect(t.pieces[1]).toMatchObject({ earned: 0 }); // the Dining Room earns nothing itself
   });
 
-  it('two auras add their percentages', () => {
+  it('two auras add their percentages, shown as one line', () => {
     // Kitchen between two Dining Rooms: 2 + 2 = 4 points, +100% = 8.
+    const t = tally(C, emptyRows(8, 6), [
+      ['diningRoom', 0, 0],
+      ['kitchen', 2, 0],
+      ['diningRoom', 4, 0],
+    ]);
+    expect(t.pieces[1]!.lines.at(-1)).toEqual({
+      label: '2 Dining Rooms next door',
+      op: 'pct',
+      value: 100,
+      from: [
+        { kind: 'piece', uid: 1 },
+        { kind: 'piece', uid: 3 },
+      ],
+    });
     expect(
       earned(
         C,

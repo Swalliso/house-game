@@ -10,7 +10,7 @@
 //   Total  = floor((Points × Mult + 50) / 100)
 // Integer math throughout, rounding half up, so every browser and Node agree.
 
-import type { BreakdownLine, Content, PieceScore, Tally } from './index.ts';
+import type { BreakdownLine, Content, PieceDef, PieceScore, Tally } from './index.ts';
 import { neighborRef, pieceDef, type Layout, type Neighbor } from './layout.ts';
 import { matchesNeighbor, matchesPiece } from './selectors.ts';
 import { matchSets } from './sets.ts';
@@ -42,14 +42,42 @@ function neighborLabel(content: Content, layout: Layout, matched: readonly Neigh
   return `Touching ${countedNames(names)}`;
 }
 
+interface Acc {
+  points: number;
+  pct: number;
+  own: BreakdownLine[];
+  auras: BreakdownLine[];
+  /** Where each source piece type's aura line sits in `auras`, keyed `<piece id>|<op>`. */
+  auraAt: Map<string, number>;
+}
+
+/** Auras of one kind from several neighbors read as one line: "2 Dining Rooms next door +100%". */
+function addAura(target: Acc, def: PieceDef, op: 'add' | 'pct', value: number, uid: number): void {
+  const key = `${def.id}|${op}`;
+  const from = { kind: 'piece', uid } as const;
+  const i = target.auraAt.get(key);
+  if (i === undefined) {
+    target.auraAt.set(key, target.auras.length);
+    target.auras.push({ label: `${def.name} next door`, op, value, from: [from] });
+    return;
+  }
+  const old = target.auras[i]!;
+  const n = old.from.length + 1;
+  target.auras[i] = {
+    label: `${n} ${def.name.endsWith('s') ? def.name : `${def.name}s`} next door`,
+    op,
+    value: old.value + value,
+    from: [...old.from, from],
+  };
+}
+
 /** Tallies the house as it stands. Without lines it's the cheap path for scoreOnly() and bots. */
 export function tallyHouse(content: Content, layout: Layout, withLines: boolean): Tally {
   const { pieces } = layout.house;
-  const acc = new Map<
-    number,
-    { points: number; pct: number; own: BreakdownLine[]; auras: BreakdownLine[] }
-  >();
-  for (const piece of pieces) acc.set(piece.uid, { points: 0, pct: 0, own: [], auras: [] });
+  const acc = new Map<number, Acc>();
+  for (const piece of pieces) {
+    acc.set(piece.uid, { points: 0, pct: 0, own: [], auras: [], auraAt: new Map() });
+  }
 
   for (const piece of pieces) {
     const def = pieceDef(content, piece);
@@ -85,15 +113,13 @@ export function tallyHouse(content: Content, layout: Layout, withLines: boolean)
           for (const n of neighbors) {
             if (n.kind !== 'piece' || !matchesPiece(content, layout, effect.match, n.uid)) continue;
             const target = acc.get(n.uid)!;
-            const from = [{ kind: 'piece', uid: piece.uid } as const];
-            const label = `${def.name} next door`;
             if (effect.pct) {
               target.pct += effect.pct;
-              if (withLines) target.auras.push({ label, op: 'pct', value: effect.pct, from });
+              if (withLines) addAura(target, def, 'pct', effect.pct, piece.uid);
             }
             if (effect.amount) {
               target.points += effect.amount;
-              if (withLines) target.auras.push({ label, op: 'add', value: effect.amount, from });
+              if (withLines) addAura(target, def, 'add', effect.amount, piece.uid);
             }
           }
           break;
