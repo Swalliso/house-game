@@ -246,7 +246,7 @@ Also: D-036 and D-043 (Proposed), where hand size becomes the `handSize` rule (3
 - Below about 900px wide, a "best played on a computer" notice replaces any attempt at a phone layout.
 
 **Why:** Friends will open the link from a group chat, and the itch.io embed is a fixed size. Both need deciding before the layout is built. The team agreed on 2026-11-05 not to aim for mobile.
-*Proposed amendment (D-057, 2026-11-05):* a 1600×900 itch.io embed, so the 24×24 lot fits at a crisp 2×. 1280×720 stays the minimum.
+**Amended by:** D-057 (confirmed by the team 2026-11-05): the design target is 1920×1080, since most players have at least a 1080p screen. The whole 24×24 lot fits there at a crisp 2×. 1280×720 still works, by panning. An itch.io page is optional now that Pages hosts both builds (D-060); if we make one, its embed is 1600×900 with fullscreen.
 
 ### D-053 · A two-person, phased build with a playtest after each phase
 **Status:** Accepted · 2026-11-05 (requested by the team)
@@ -270,6 +270,24 @@ Also: D-036 and D-043 (Proposed), where hand size becomes the `handSize` rule (3
 
 **Why:** Keeps `main` and the public link stable while work is in progress, and makes each phase one reviewable diff.
 **Changes:** D-034 (Proposed): its hosting bullet.
+**Amended by:** D-060 (Accepted 2026-11-05): Pages also serves `develop` at `/dev/`; `develop` is the GitHub default branch; releases are PRs from `develop` into `main` that the user opens and merges, and tagging is optional.
+
+### D-060 · GitHub Pages: releases at the root, develop at /dev/
+**Status:** Accepted · 2026-11-05 (requested by the team)
+**Decision:**
+- **Two builds on one GitHub Pages site:**
+  - `main` at the root: https://swalliso.github.io/house-game/
+  - `develop` at `/dev/`: https://swalliso.github.io/house-game/dev/, a work-in-progress build that can be shared with other jam members
+  - before the first release, the root shows a short placeholder that links to `/dev/`
+- **One deploy job builds both:** a push to either branch runs it. It builds both branch tips into one Pages artifact, because a Pages site holds one artifact at a time. Vite's relative `base: './'` lets the same build work at either path.
+- **Saves stay separate:** both builds share one origin, so saves and settings are namespaced by channel (`main`, `dev`, `local`). The build label shows the channel and the short SHA.
+- **`develop` is the GitHub default branch,** so PRs, and new work generally, target it.
+- **Releases are manual:** the user opens and merges a PR from `develop` into `main` at a good point. A tag (`v0.1`, …) is optional.
+- **The `github-pages` environment allows both branches to deploy.** By default it allows only one, and a deploy from the other branch fails with an "environment protection rules" error.
+- Local playtests still work too: `npm run dev`.
+
+**Why:** The team wants a link for other jam members while the stable link stays on releases. Building both branches into one artifact is the simplest way for one Pages site to serve two branches.
+**Changes:** D-054 (Accepted): Pages and the release flow. D-034 (Proposed): hosting.
 
 ### D-019 · Score name
 **Status:** Accepted · 2026-11-05 (chosen by the team)
@@ -381,7 +399,7 @@ Choose from two or three contracts, each one a client plus a lot.
 - The design docs move into `docs/`, and a short `CLAUDE.md` points future sessions to them.
 
 **Why:** D-027's defaults, with versions checked on 2026-11-04. Pages gives a live link without secrets.
-**Amended by:** D-054 (Accepted 2026-11-05): work lands on `develop`, and only `main` deploys to Pages.
+**Amended by:** D-054 (Accepted 2026-11-05): work lands on `develop`. D-060 (Accepted 2026-11-05): Pages serves `main` at the root and `develop` at `/dev/`, and `develop` is the GitHub default branch.
 
 ### D-035 · Board rules: adjacency, lot features, one house
 **Status:** Proposed · 2026-11-04
@@ -500,6 +518,7 @@ Choose from two or three contracts, each one a client plus a lot.
 
 ### D-057 · Art: cozy top-down pixel art
 **Status:** The direction is Accepted · 2026-11-05 (the team's request); the details below are Proposed.
+**Confirmed 2026-11-05:** design for 1080p and up, since the team expects most players to have at least a 1080p screen. The whole lot fits at a crisp 2× there; smaller windows pan at 2×, with the Fit overview.
 **Decision:**
 - Cozy pixel art like Combolands: detailed enough to read what you're building, not so detailed that it distracts.
 - 16×16 tiles, one shared palette of 24–32 colors, colored dark outlines, and light from the top-left.
@@ -510,17 +529,17 @@ Choose from two or three contracts, each one a client plus a lot.
   - the default zoom is at least 2×, panning when the lot overflows: at 1080p the whole lot fits at 2×, and at 1280×720 it pans
   - the one exception is the Fit overview, which shows the whole lot at the largest scale that fits, even a non-integer one (1.75× at 720p)
   - short juice tweens (pops, wobble, the celebration zooms) may use transforms
-- Proposed: a 1600×900 itch.io embed (D-047 keeps the 1280×720 minimum).
+- If we make an itch.io page, its embed is 1600×900 with fullscreen. The main way to share is Pages (D-060).
 - **Sources:**
   - Claude-drawn placeholder sprites in the final atlas format from M1.
   - **Final art (chosen by the team, 2026-11-05):** LimeZu's Modern Interiors and Modern Exteriors, which the user buys, plus LimeZu's free Serene Village (CC BY 4.0) for terrain and water. The license is paid, allows commercial use, forbids redistribution, and requires credit.
-  - The full packs stay out of the public repo in a gitignored `art-source/` folder. Only the sprites we use are cut into `assets/`, which LimeZu has said is fine for open-source projects.
+  - The full packs stay out of the public repo, in an `art-source/` folder in the main checkout that git ignores through the repo's local exclude file (and, from M0, `.gitignore`). Only the sprites we use are cut into `assets/`, which LimeZu has said is fine for open-source projects.
   - Every asset is recorded in `assets/licenses.json` and `CREDITS.md`.
 
 **Why:** The team chose the look. The rendering rules come from browser constraints: pixel art blurs at fractional scales and under transforms in Safari. The licensing rules keep a public repo safe.
 **Changes:** Resolves the art Open question. D-030 (Proposed): placeholders become sprites. Pending confirmation:
 - D-049 (Accepted): the camera, from a CSS transform to re-layout in whole steps, with 2× panning rather than fitting at 1280×720.
-- D-047 (Accepted): a proposed 1600×900 embed.
+- D-047 (Accepted): the 1080p design target. *Confirmed 2026-11-05.*
 - D-033 (Accepted): terrain in a canvas layer and pieces from a sprite atlas.
 
 ### D-058 · Sound: calm music, rewards that escalate

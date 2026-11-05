@@ -2,7 +2,8 @@
 
 **Status:** Proposed · revised 2026-11-05.
 - **Confirmed so far:**
-  - §1b, except the camera and embed changes
+  - §1b, except the camera change
+  - the 1080p design target, and Pages serving `develop` at `/dev/` (D-060)
   - D-048 to D-051 (D-052 since superseded by D-053), D-053, D-054, and D-056
   - D-019's names, and LimeZu for the final art
   - the directions of D-055 and D-057 to D-059
@@ -25,7 +26,7 @@
 ## 0. Summary
 
 - **The idea holds up.** Every pillar we borrow comes from a hit (Combolands, Islanders, Luck be a Landlord, Balatro). The risks are in execution: readability, run length, luck, and a few mechanics that don't work as written. §2 lists them and the fixes.
-- **Stack:** TypeScript 6 + Vite 8 + Vitest 5, npm, Node 26. Preact 10 renders everything, including the board (HTML/CSS with a canvas terrain layer, atlas sprites, and SVG outlines). No Phaser. Deploys to GitHub Pages on every push to `main`.
+- **Stack:** TypeScript 6 + Vite 8 + Vitest 5, npm, Node 26. Preact 10 renders everything, including the board (HTML/CSS with a canvas terrain layer, atlas sprites, and SVG outlines). No Phaser. GitHub Pages serves releases from `main` at the root and the work-in-progress `develop` build at `/dev/` (D-060).
 - **Shape:** `src/rules` is a pure rules module (no DOM, no `Math.random`, no clock). It's a reducer: `apply(state, action) → { state, events }`. The UI renders state, asks the rules for placement previews, and animates the events. The headless sim drives the same reducer with bots.
 - **The lot is 24×24 with real terrain:** woods, a creek, a pond, boulders, a sunny side, and a couple of finds worth building toward. Where you put the house is the first big decision of a run (D-048, D-049).
 - **Fixtures and a real shop:** fixtures are upgrades installed in a piece you've already placed (a room or a yard piece). You draw them (installing one is your week) or buy them (installing one is free). The shop sells five kinds of goods plus crates and services, with rarity, a sale, and selling for half (D-050, D-051).
@@ -85,12 +86,12 @@ These four stay Accepted, with an "Amended by" pointer to the entry that changes
 | **D-007** Every tile is a choice between house and yard | No wording change. On a 24×24 lot, space itself isn't scarce. What's scarce is your 28 placements and the good tiles: the ring around the house, the creek bank, the edge of the woods, the sunny side. Each placement is still a house-or-yard choice. | D-048 |
 | **D-033** Board rendering | Preact and the DOM, no Phaser, is unchanged. One bullet changes: input was a CSS grid with one element per cell; now the pointer maps to a cell by arithmetic, and terrain is one layer that re-renders only when terrain changes. Its reasoning said "144 cells"; it's 576 now. | D-048, D-049 |
 
-**Raised by the second 2026-11-05 revision.** The fixture and shop changes were confirmed with the multiplier model on 2026-11-05. The camera and embed changes wait for plan approval.
+**Raised by the second 2026-11-05 revision.** The fixture and shop changes were confirmed with the multiplier model, and the 1080p target on its own, all on 2026-11-05. The camera change waits for plan approval.
 
 | Accepted | Change | Entry |
 |---|---|---|
 | **D-049** The camera | It zooms in whole-number pixel scales by re-laying out the board, not with a CSS transform, because Safari blurs pixel art under transforms | D-057 |
-| **D-047** Desktop first | 1280×720 stays the minimum, but the proposed itch.io embed is 1600×900, so the 24×24 lot fits at a crisp 2× | D-057 |
+| **D-047** Desktop first | *Confirmed 2026-11-05:* the design target is 1920×1080, where the whole lot fits at a crisp 2×. 1280×720 still works by panning. An itch.io page is optional; if we make one, its embed is 1600×900. | D-057 |
 | **D-050** Fixtures | One more, the Rare Chandelier, a ×Mult source (11 in all). *Confirmed.* | D-056 |
 | **D-051** The shop | Two more Rare blueprints with ×Mult (18 in all); a seventh tool kind, Remodel Plans, which levels a set (12 tools); It's a House and Rush Order become +Mult; Last-Minute Push becomes ×Mult. *Confirmed.* | D-056 |
 
@@ -125,6 +126,7 @@ These four stay Accepted, with an "Amended by" pointer to the entry that changes
 | D-057 | Art: cozy top-down pixel art, rooms shown as a cutaway with furniture, integer scaling | M1 / M5 | Direction **Accepted**; details Proposed |
 | D-058 | Sound: calm music, with reward sounds that escalate with the size of the moment | M1 / M5 | Direction **Accepted**; details Proposed |
 | D-059 | Juice is a core feature: a tiered celebration ladder from the slice on | M1 / M5 | Direction **Accepted**; details Proposed |
+| D-060 | Pages serves `main` at the root and `develop` at `/dev/`; `develop` is the default branch; releases are PRs you open from `develop` into `main` (amends D-054) | M0 | **Accepted** (the team's request) |
 
 ### 1d. What changes status on approval
 
@@ -217,7 +219,7 @@ The repo has no code, tooling, or CLAUDE.md yet: just four markdown docs at the 
 | Tests | Vitest 5 + `fast-check` | |
 | Format | Prettier | Avoids formatting churn between sessions |
 | Purity | `tsconfig.rules.json` without DOM types, plus a ~15-line Vitest test that scans `src/rules` for `Math.random`, `Date`, `window`, `document`, `localStorage`, and UI imports | Replaces ESLint, which isn't worth its setup in a jam |
-| Hosting | GitHub Pages via one Actions workflow (test job → deploy job on `main`); manual itch.io upload for the jam | The repo is public. Pages needs a one-time switch to *Source: GitHub Actions* in repo settings, which you'll need to flip yourself. |
+| Hosting | GitHub Pages via one Actions workflow: a test job on every push and PR, and a deploy job on pushes to `main` or `develop` that builds both into one site, `main` at the root and `develop` at `/dev/` (D-060). An itch.io page is optional. | The repo is public. The Pages source, the default branch, and the `github-pages` environment's branch rules are set once (M0). |
 
 ### Why not Phaser?
 
@@ -240,7 +242,8 @@ house-game/
 ├── README.md                 # play link, how to run locally, how to report a bug
 ├── CREDITS.md                # every art, sound, and music asset, with its license
 ├── .gitignore                # node_modules/, dist/, art-source/
-├── art-source/               # gitignored: the purchased LimeZu packs, never committed
+├── art-source/               # only in the main checkout (/Users/sam/Desktop/Code/house-game): the purchased LimeZu packs, never committed.
+│                             # The atlas script finds it from any worktree through `git rev-parse --git-common-dir`.
 ├── art/                      # placeholder sprite sources: palette-indexed 16×16 grids, as text
 ├── scripts/build-atlas.ts    # turns art/ grids and sprites cut from art-source/ into assets/atlas.png + atlas.json
 ├── assets/                   # sprites, atlas, audio; licenses.json records source, author, and license per file
@@ -249,7 +252,7 @@ house-game/
 ├── package.json  .nvmrc  vite.config.ts  .prettierrc
 ├── tsconfig.json             # everything: DOM + JSX for ui/, Node types for sim/
 ├── tsconfig.rules.json       # src/rules + src/content only, NO DOM lib: `document` is a compile error
-├── .github/workflows/ci.yml  # test job on every push/PR; deploy job on main
+├── .github/workflows/ci.yml  # test job on every push/PR; deploy job builds main → / and develop → /dev/
 ├── src/
 │   ├── rules/                # PURE game rules
 │   │   ├── index.ts          # the public API and all shared types; ui/ and sim/ import only from here
@@ -877,11 +880,11 @@ Shape variants (L-Kitchen, the long Hallway) are separate cards that share a typ
 - **No floating-point drift:** scores are integers, and percentages use integer math (§4). No `Math.pow`, `exp`, or trig in the rules.
 - **Run codes:**
   - `OH1.` + base64url of `{ build, contentHash, setup, actions, pending? }`.
-  - `build` is the git short SHA, stamped in by Vite and shown in a corner of the UI.
+  - `build` is the git short SHA, stamped in by Vite. The UI shows it in a corner with the channel: `main`, `dev`, or `local`.
   - `pending` is an optional tentative placement, so a "the preview said +12 but I got +9" bug can be reproduced.
   - A **Copy run code** button and a `?run=` URL parameter replay a run. A bug report is one string and becomes a regression test.
   - To reproduce a code from an older build: `git checkout <build>` and replay locally.
-- **Save and resume:** the same structure goes to `localStorage` after every action (best-effort; itch.io's iframe can lose storage). On load:
+- **Save and resume:** the same structure goes to `localStorage` after every action (best-effort; itch.io's iframe can lose storage). Keys are namespaced by channel, because the release and `/dev/` builds share one origin (D-060). On load:
   - same `build` and replay succeeds → resume
   - otherwise → a short "The game updated, so this is a fresh run" note, with the old run code kept for a bug report
 
@@ -902,12 +905,14 @@ Shape variants (L-Kitchen, the long Hallway) are separate cards that share a typ
   - from M2, runs the target sim (`--suggest-targets`)
   - plays a quick run in the browser pane, and fixes anything broken
   - writes a one-screen note: what's new, what to try, and the playtest questions
-- **Branches (D-054):**
-  - `main` holds releases only, and deploys to GitHub Pages.
-  - `develop` is cut from `main` and is where work lands.
+- **Branches (D-054, D-060):**
+  - `develop` is cut from `main`, is the GitHub default branch, and is where work lands.
   - Each phase gets a branch off `develop` (for example `phase/m1-slice`). It merges into `develop` by PR after its playtest, so every phase is one reviewable diff.
-  - A release merges `develop` into `main` with a tag (`v0.1`, `v0.2`, …), whenever you want something shareable.
-- **Playtests run locally:** `npm run dev`, which Claude can open in the browser pane, or `npm run build && npm run preview` for the production build. Shared links come from releases on Pages.
+  - `main` holds releases. You open and merge a PR from `develop` into `main` whenever it's a good point for a release; tagging it (`v0.1`, …) is optional.
+- **Two links on GitHub Pages (D-060):**
+  - releases at https://swalliso.github.io/house-game/
+  - the latest `develop` at https://swalliso.github.io/house-game/dev/, to share work in progress with other jam members
+- **Playtests run locally** with `npm run dev`, which Claude can open in the browser pane, or `npm run build && npm run preview` for the production build. Once a phase merges, the same build is also at `/dev/`.
 - **Contracts as we go:** each phase writes out the full types for what it builds in `rules/index.ts`. Later phases extend them. Nothing needs freezing for parallel work.
 
 ### Phase overview
@@ -921,19 +926,25 @@ Shape variants (L-Kitchen, the long Hallway) are separate cards that share a typ
 | M4 · Clients and variety | M4a (clients, sets), then M4b (change orders, crews, hints) | Do clients feel different? Are sets and multipliers worth planning for? |
 | M5 · Feel: juice, art, sound | The full reward feedback, the pixel-art pass, music and sound | Does it feel rewarding? Do big moments land? Is the music calm? |
 | M6 · Balance and polish | Full sim, tuning, the end screen, a codex if time allows | Would you show this to the group? |
-| M7 · Release | Merge to `main`, tag, deploy, optional itch.io page | (shared with the group) |
+| M7 · Release | Your PR from `develop` into `main`, which updates the root link; optional itch.io page | (shared with the group) |
 
 ### M0 · Setup
 
 - The planning docs are already on `develop` (committed 2026-11-05, before any code). Branch `phase/m0-setup` from it.
-- `.gitignore` (`node_modules/`, `dist/`, `art-source/`), an empty `assets/licenses.json`, and `CREDITS.md`. Only then is it safe to unzip the paid art packs into `art-source/`.
+- `.gitignore` (`node_modules/`, `dist/`, `art-source/`), an empty `assets/licenses.json`, and `CREDITS.md`. The `.gitignore` backs up the local exclude that's already in place.
 - npm project with Vite, Preact 10, TS 6, Vitest, and Prettier; the two tsconfigs; the purity test.
-- **One Actions workflow:**
-  - a test job on every push and PR to `develop` and `main`
-  - a deploy job to Pages on pushes to `main` only
-  - *You* switch Pages to *Source: GitHub Actions* once.
+- **GitHub setup: already done (2026-11-05, with your OK, via the `gh` CLI):**
+  - `develop` is the default branch, and the local `origin/HEAD` follows it
+  - Pages is on, with *GitHub Actions* as its source, at https://swalliso.github.io/house-game/
+  - the `github-pages` environment allows deployments from both `main` and `develop`
+  - your main checkout is on `develop`
+  - `art-source/` is in the repo's local `.git/info/exclude`, which covers every branch and worktree
+- **One Actions workflow (`ci.yml`):**
+  - a test job (typecheck, tests, build) on every push and PR to `develop` and `main`
+  - a deploy job on pushes to either branch. It checks out both branch tips, builds each with its channel (`main`, `dev`), and publishes one site: `main` at the root and `develop` at `/dev/`. Until `main` has a build, the root is a placeholder that links to `/dev/`.
+  - deploys run one at a time, in a `pages` concurrency group
 - Move the docs into `docs/`. Add `CLAUDE.md` (§11) and `README.md`. Update `jam-scope.md` to match the decisions (§1d).
-- **Done when:** CI is green on the M0 PR into `develop`, and `npm run dev` shows a placeholder page.
+- **Done when:** CI is green on the M0 PR into `develop`; after it merges, `/dev/` shows the placeholder page and the root shows its placeholder; `npm run dev` works locally.
 
 ### M1 · Vertical slice
 
@@ -1137,8 +1148,8 @@ The full treatment of what makes these games feel good (D-057, D-058, D-059, and
 
 ### M7 · Release
 
-- Merge `develop` into `main` with a tag; Pages deploys it.
-- Optionally, an itch.io page: cover image, 3 screenshots, short description, controls, and a 1600×900 embed with fullscreen (D-057, if approved; otherwise 1280×720, D-047).
+- You open and merge a PR from `develop` into `main` (tag it if you like). The deploy job updates the root link. Earlier releases can happen at any good point, not only here.
+- Optionally, an itch.io page: cover image, 3 screenshots, short description, controls, and a 1600×900 embed with fullscreen (D-047, D-057).
 
 ### If time runs short
 
@@ -1293,8 +1304,11 @@ build one house for one client, placing one piece per week.
 - New content is data in src/content. Add an effect kind only when data can't
   express it, and test it.
 - "Fixtures" are game content: upgrades installed in a placed piece.
-- Work on a phase branch off develop and open a PR into develop. main holds
-  releases only. Never commit straight to main.
+- develop is the default branch. Work on a phase branch off develop and open a
+  PR into develop. main holds releases: the user opens develop → main PRs.
+  Never commit straight to main.
+- Pages: releases at https://swalliso.github.io/house-game/, develop at /dev/.
+  Saves are namespaced by channel (main, dev, local).
 - Score layers: code says points / mult / xMult / total; the UI says
   Comfort / Charm / Sparkle / Wow (D-019). Labels live in one constants file.
 - Juice is core (D-059): timing numbers live in src/ui/fx/feel.ts. Pixel art
@@ -1441,9 +1455,9 @@ Intensity is measured against **pace**: `max(1, (this phase's target − the sco
 
 - **The grid:** 16×16-pixel tiles. Combolands looks like 16px tiles drawn at 3× on a 1080p screen.
 - **Scale:** whole-number device-pixel scales. `fitScale = floor(available height × devicePixelRatio ÷ (lot height × 16)) ÷ devicePixelRatio`, and the default zoom is `max(2, fitScale)`, panning when the lot overflows.
-  - At 1080p the lot is crisp at 2× (32px cells, a 768px board).
+  - **The design target is 1080p** (confirmed 2026-11-05; most players have at least a 1080p screen). The whole lot is crisp there at 2× (32px cells, a 768px board), with room for the top bar.
   - At 1280×720 a 24×24 lot can't fit at 2×. The default there is 2× with panning, with UI panels overlaying the board's margins (Combolands' panels sit over the sea around its island). The Fit button is the one exception to whole numbers: it shows the whole lot at the largest scale that fits (1.75× at 720p), with slightly uneven pixels.
-  - Proposed: a 1600×900 itch.io embed, where 2× fits with room for the top bar. 1280×720 stays the minimum (D-047).
+  - If we make an itch.io page, its embed is 1600×900 with fullscreen. 1280×720 stays the minimum (D-047).
 - **Rooms are a cutaway,** like The Sims' walls-down view:
   - a floor fill by room type
   - 1px interior wall lines, 2–3px exterior walls
@@ -1475,8 +1489,8 @@ Intensity is measured against **pace**: `max(1, (this phase's target − the sco
 
 **Your to-dos, whenever convenient:**
 - Buy LimeZu Modern Interiors and Modern Exteriors and download Serene Village.
-- Unzip them into `art-source/`, after the M0 PR merges, so the ignore rule is in place first.
-- In M0, switch GitHub Pages to *Source: GitHub Actions*.
+- Unzip them into `/Users/sam/Desktop/Code/house-game/art-source/`. Git already ignores it there, in every branch and worktree.
+- ~~Switch GitHub Pages to GitHub Actions~~: done 2026-11-05.
 
 Avoid:
 - the free tiers of Sprout Lands, Cozy Farm, Modern Interiors, and Cute Fantasy, which are non-commercial or private only
