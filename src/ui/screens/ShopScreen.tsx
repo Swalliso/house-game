@@ -2,12 +2,18 @@
 // good with rarity borders and labels, the sale, the rising refresh, the services (rerolls,
 // demolitions, and D-076's strike), and Leave, which starts the next milestone. Selling is in
 // the inventory beside it. The UI never prices anything: the rules' shopOffers() does.
+//
+// M5a draws it as a wood sheet over the board: the budget as the header's hero counter, the
+// goods as paper cards of one size packed onto shelves (each with its art, its kind and
+// rarity, a coin price, and Buy), a plank tag per section, and a full section said once at
+// its tag instead of on every card. Hidden, the shop leaves a handle at the board's foot.
 
-import { signal } from '@preact/signals';
 import { useEffect } from 'preact/hooks';
+import { signal } from '@preact/signals';
 import {
   CONTENT,
   rules,
+  SHOP_REASONS,
   type CardType,
   type OfferView,
   type ServiceId,
@@ -15,15 +21,36 @@ import {
 import { audio } from '../audio/audio.ts';
 import { busy } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
+import { shopHidden } from '../hud/actions.ts';
 import { BudgetCount } from '../hud/BudgetCount.tsx';
-import { GoodBody, goodName, goodRarity, offerGood, type GoodRef } from '../hud/goods.tsx';
+import { TagChips } from '../hud/Hand.tsx';
+import { PieceArt, ShapeGlyph } from '../hud/PieceArt.tsx';
+import {
+  goodKind,
+  goodLines,
+  goodName,
+  goodRarity,
+  offerGood,
+  RARITY_LABEL,
+  type GoodRef,
+} from '../hud/goods.tsx';
 import { Tip } from '../hud/Tip.tsx';
-import { FIXTURE_GLYPHS, TOOL_GLYPHS } from '../sprites.ts';
+import {
+  Button,
+  Card,
+  Chip,
+  Icon,
+  Panel,
+  Price,
+  type CardTone,
+  type IconName,
+} from '../kit/kit.tsx';
 import { buy, inspected, leaveShop, pickOption, refreshShop, run } from '../store.ts';
+import { Notes } from './Overlays.tsx';
 import './shop.css';
 
-/** The shop is hidden to look at the lot (it's still open). */
-export const shopHidden = signal(false);
+export { shopHidden };
+
 /** The strike service's picker is open. */
 const striking = signal<number | null>(null);
 /** Offers just bought, for their pop. */
@@ -36,6 +63,26 @@ const SERVICE_TEXT: Record<ServiceId, string> = {
   demolition: 'One more demolition: clear a piece, a boulder, or something in the way.',
   strike: 'Pick a card type: it’s never drawn again this run.',
 };
+
+const SERVICE_ICON: Record<ServiceId, IconName> = {
+  reroll: 'reroll',
+  demolition: 'hammer',
+  strike: 'cross',
+};
+
+/** The reasons that are about your goods, not the card: said once, at the section's tag. */
+const FULL_REASONS: ReadonlySet<string> = new Set([
+  SHOP_REASONS.blueprintsFull,
+  SHOP_REASONS.reserveFull,
+  SHOP_REASONS.suppliesFull,
+]);
+
+/** The reasons a card's price and Buy already say: the price turns orange, Buy is greyed. */
+const QUIET_REASONS: ReadonlySet<string> = new Set([
+  SHOP_REASONS.budget,
+  SHOP_REASONS.sold,
+  SHOP_REASONS.picking,
+]);
 
 function buyOffer(o: OfferView): void {
   if (!o.ok) {
@@ -53,71 +100,100 @@ function buyOffer(o: OfferView): void {
   }
 }
 
-function Price({ o }: { o: OfferView }) {
+/** The kind's own icon, for the art slot, until each good has a sprite of its own. */
+function kindIcon(o: OfferView['offer']): IconName {
+  switch (o.kind) {
+    case 'service':
+      return SERVICE_ICON[o.service];
+    case 'piece':
+      return 'House';
+    default:
+      return o.kind;
+  }
+}
+
+/** A good's picture: a piece's own floor and furniture, or its kind's icon, drawn large. */
+function OfferArt({ offer }: { offer: OfferView['offer'] }) {
+  if (offer.kind === 'piece') return <PieceArt id={offer.id} />;
+  return <Icon name={kindIcon(offer)} class="art-icon" />;
+}
+
+/** A piece's kind, for its card's tint and band (and lawn behind a yard piece's picture). */
+function pieceTone(good: GoodRef | null): CardTone | undefined {
+  if (good?.kind !== 'piece') return undefined;
+  const def = CONTENT.pieces[good.id];
+  if (def.connector) return 'hall';
+  if (def.category === 'indoor') return 'room';
+  return def.category === 'yard' ? 'yard' : 'outbuilding';
+}
+
+/** A good's chips: its kind (where its shelf mixes kinds), its rarity, and a piece's tags. */
+function OfferChips({ good, kind = false }: { good: GoodRef; kind?: boolean }) {
+  const rarity = goodRarity(good);
   return (
-    <span class="price">
-      {o.onSale && <s class="full-price">{o.fullPrice}</s>}
-      <strong>{o.price}</strong>
-      <span class="price-unit"> budget</span>
-    </span>
+    <>
+      {kind && <Chip tone="wood">{goodKind(good)}</Chip>}
+      {rarity && (
+        <Tip term="rarity">
+          <Chip tone={rarity}>{RARITY_LABEL[rarity]}</Chip>
+        </Tip>
+      )}
+      {good.kind === 'piece' && <TagChips tags={CONTENT.pieces[good.id].tags} />}
+    </>
   );
 }
 
-function OfferCard({ o }: { o: OfferView }) {
+function OfferCard({ o, full, mixed }: { o: OfferView; full: boolean; mixed: boolean }) {
   const good = offerGood(o.offer);
   const sold = o.offer.kind !== 'service' && !!o.offer.sold;
-  const rarity = o.rarity;
-  const glyph =
-    o.offer.kind === 'fixture'
-      ? FIXTURE_GLYPHS[o.offer.id]
-      : o.offer.kind === 'tool'
-        ? TOOL_GLYPHS[o.offer.id]
-        : null;
+  const blockedByFull = !o.ok && !sold && full && FULL_REASONS.has(o.reason ?? '');
+  const short = !o.ok && o.reason === SHOP_REASONS.budget;
+  const alert =
+    !o.ok && !sold && !blockedByFull && o.reason && !QUIET_REASONS.has(o.reason)
+      ? o.reason
+      : undefined;
+  const service = o.offer.kind === 'service' ? o.offer.service : null;
   return (
-    <article
-      class={`offer kind-${o.offer.kind} ${rarity ? `rarity-${rarity}` : ''} ${o.onSale ? 'on-sale' : ''} ${sold ? 'sold' : ''} ${justBought.value === o.i ? 'just-bought' : ''}`}
+    <Card
+      class={`offer kind-${o.offer.kind} ${o.onSale ? 'on-sale' : ''} ${sold ? 'sold' : ''} ${justBought.value === o.i ? 'just-bought' : ''}`}
+      tone={pieceTone(good)}
+      rarity={o.rarity}
+      title={o.name}
+      lead={service ? <Icon name={SERVICE_ICON[service]} /> : undefined}
+      aside={o.offer.kind === 'piece' ? <ShapeGlyph id={o.offer.id} /> : undefined}
+      art={service ? undefined : <OfferArt offer={o.offer} />}
+      chips={good ? <OfferChips good={good} kind={mixed} /> : undefined}
+      lines={good ? goodLines(good) : undefined}
+      note={service ? SERVICE_TEXT[service] : undefined}
+      alert={alert}
       onMouseEnter={() => good && (inspected.value = { kind: 'offer', i: o.i })}
     >
-      {o.onSale && (
-        <span class="sale-ribbon">
+      {o.rarity === 'rare' && <span class="offer-shine" aria-hidden="true" />}
+      {o.onSale && !sold && (
+        <span class="sale-tag">
           <Tip term="sale">Sale</Tip>
         </span>
       )}
-      <header>
-        {glyph && (
-          <span class="glyph" aria-hidden="true">
-            {glyph}
-          </span>
-        )}
-        <h3>{o.name}</h3>
-      </header>
-      {good ? (
-        <GoodBody good={good} />
-      ) : (
-        o.offer.kind === 'service' && <p class="service-text">{SERVICE_TEXT[o.offer.service]}</p>
-      )}
-      <footer>
+      <footer class="offer-foot">
         {sold ? (
           <span class="sold-stamp">Sold</span>
         ) : (
           <>
-            <Price o={o} />
-            <button
-              type="button"
+            <Price price={o.price} full={o.onSale ? o.fullPrice : undefined} short={short} />
+            <Button
+              size="sm"
               class="buy"
               onMouseDown={noFocus}
               onClick={() => buyOffer(o)}
               disabled={!o.ok}
               title={o.ok ? `Buy ${o.name}` : o.reason}
             >
-              Buy
-            </button>
+              {blockedByFull ? 'Full' : 'Buy'}
+            </Button>
           </>
         )}
       </footer>
-      {/* Always there, so a card never changes height when the budget does. */}
-      <p class="offer-reason">{!o.ok && !sold ? o.reason : '\u00a0'}</p>
-    </article>
+    </Card>
   );
 }
 
@@ -125,18 +201,38 @@ function Section({
   title,
   offers,
   term,
+  compact = false,
 }: {
   title: string;
   offers: readonly OfferView[];
   term?: Parameters<typeof Tip>[0]['term'];
+  /** Text-only goods (the services): no art slot. */
+  compact?: boolean;
 }) {
   if (offers.length === 0) return null;
+  // Every card that can't be bought is blocked by the same full slots: say it once, here.
+  const blocked = offers.filter((o) => !o.ok && !(o.offer.kind !== 'service' && o.offer.sold));
+  const fullReason =
+    blocked.length > 0 && blocked.every((o) => FULL_REASONS.has(o.reason ?? ''))
+      ? blocked[0]!.reason
+      : undefined;
+  const mixed = new Set(offers.map((o) => o.offer.kind)).size > 1;
   return (
-    <section class="shop-section">
-      <h2>{term ? <Tip term={term}>{title}</Tip> : title}</h2>
+    <section class={`shelf ${compact ? 'compact' : ''}`}>
+      <header class="shelf-head">
+        <h2 class="plank-tag">{term ? <Tip term={term}>{title}</Tip> : title}</h2>
+      </header>
+      {fullReason && (
+        <p class="shelf-full" role="note">
+          <Icon name="warn" />
+          <span>
+            {fullReason} <span aria-hidden="true">→</span>
+          </span>
+        </p>
+      )}
       <div class="offers">
         {offers.map((o) => (
-          <OfferCard key={`${o.i}-${o.name}`} o={o} />
+          <OfferCard key={`${o.i}-${o.name}`} o={o} full={!!fullReason} mixed={mixed} />
         ))}
       </div>
     </section>
@@ -162,37 +258,43 @@ function StrikePicker() {
   const fixtures = options.filter((t) => t.kind === 'fixture');
   const struck = s.struck.map(name);
   return (
-    <div class="strike-picker" role="dialog" aria-label="Strike a card type">
-      <div class="strike-sheet">
-        <h2>Strike a card ({offer?.price ?? '?'} budget)</h2>
-        <p class="muted">
+    <div class="shop-scrim" role="dialog" aria-label="Strike a card type">
+      <Panel
+        class="shop-pick strike-sheet"
+        title={
+          <>
+            Strike a card <Price price={offer?.price ?? 0} />
+          </>
+        }
+      >
+        <p class="pick-note">
           It’s never drawn again this run. Shape variants go with it (Fence takes the L-Fence).
         </p>
-        <h3>Pieces</h3>
+        <h3 class="plank-tag">Pieces</h3>
         <div class="strike-options">
           {pieces.map((t) => (
-            <button key={t.id} type="button" onClick={() => pick(t)}>
+            <Button key={t.id} size="sm" onClick={() => pick(t)}>
               {name(t)}
-            </button>
+            </Button>
           ))}
         </div>
         {fixtures.length > 0 && (
           <>
-            <h3>Fixtures</h3>
+            <h3 class="plank-tag">Fixtures</h3>
             <div class="strike-options">
               {fixtures.map((t) => (
-                <button key={t.id} type="button" onClick={() => pick(t)}>
+                <Button key={t.id} size="sm" onClick={() => pick(t)}>
                   {name(t)}
-                </button>
+                </Button>
               ))}
             </div>
           </>
         )}
-        {struck.length > 0 && <p class="muted">Already struck: {struck.join(', ')}.</p>}
-        <button type="button" class="strike-cancel" onClick={close}>
-          Cancel
-        </button>
-      </div>
+        {struck.length > 0 && <p class="pick-note">Already struck: {struck.join(', ')}.</p>}
+        <div class="pick-foot">
+          <Button onClick={close}>Cancel</Button>
+        </div>
+      </Panel>
     </div>
   );
 }
@@ -211,28 +313,32 @@ function CrateOption({ good, i, ok }: { good: GoodRef; i: number; ok: boolean })
     if (rarity === 'rare') audio.play('sparkle', { delay });
     else audio.play('plink', { rate: 1 + i * 0.2, delay });
   }, []);
+  const offer = good as OfferView['offer'];
   return (
-    <article
-      class={`offer crate-option ${rarity ? `rarity-${rarity}` : ''}`}
+    <Card
+      class="offer crate-option"
+      tone={pieceTone(good)}
+      rarity={rarity}
+      title={goodName(good)}
+      art={<OfferArt offer={offer} />}
+      chips={<OfferChips good={good} />}
+      lines={goodLines(good)}
+      alert={ok ? undefined : 'No room: sell something first'}
       style={{ '--beat': `${beatMs}ms` }}
     >
-      <header>
-        <h3>{goodName(good)}</h3>
-      </header>
-      <GoodBody good={good} />
-      <footer>
-        <button
-          type="button"
+      {rarity === 'rare' && <span class="offer-shine" aria-hidden="true" />}
+      <footer class="offer-foot">
+        <Button
+          size="sm"
           class="buy"
           disabled={!ok}
           title={ok ? `Keep ${goodName(good)}` : 'No room: sell something first'}
           onClick={() => (pickOption(i) ? audio.play('buy') : audio.play('illegal'))}
         >
           Keep
-        </button>
+        </Button>
       </footer>
-      {!ok && <p class="offer-reason">No room: sell something first.</p>}
-    </article>
+    </Card>
   );
 }
 
@@ -254,19 +360,41 @@ function CratePickSheet() {
       ? 'Free: keep one Common blueprint, to start your rule book.'
       : 'Keep one. Sell from your goods on the right to make room.';
   return (
-    <div class="crate-pick" role="dialog" aria-label={title}>
-      <div class="crate-sheet">
-        <h2>{title}</h2>
-        <p class="muted">{detail}</p>
+    <div class="shop-scrim" role="dialog" aria-label={title}>
+      <Panel
+        class="shop-pick crate-sheet"
+        title={
+          <>
+            <Icon name="crate" /> {title}
+          </>
+        }
+      >
+        <p class="pick-note">{detail}</p>
         <div class="crate-options">
           {open.options.map((o, i) => (
             <CrateOption key={`${i}-${o.id}`} good={o as GoodRef} i={i} ok={legal.has(i)} />
           ))}
         </div>
-        <button type="button" class="strike-cancel" onClick={() => pickOption(-1)}>
-          Set it aside
-        </button>
-      </div>
+        <div class="pick-foot">
+          <Button onClick={() => pickOption(-1)}>Set it aside</Button>
+        </div>
+      </Panel>
+    </div>
+  );
+}
+
+/** The hidden shop's handle, at the foot of the board: it slides the sheet back up. */
+function ShopHandle() {
+  return (
+    <div class="shop-handle-place">
+      <Button
+        variant="wood"
+        class="shop-handle"
+        onClick={() => (shopHidden.value = false)}
+        title="The shop is still open"
+      >
+        <span aria-hidden="true">↑</span> Back to the shop
+      </Button>
     </div>
   );
 }
@@ -276,13 +404,7 @@ export function ShopScreen() {
   const visit = s.offers?.shop;
   // The shop waits for the milestone's tally and banner to finish.
   if (s.screen !== 'shop' || !visit || busy.value) return null;
-  if (shopHidden.value) {
-    return (
-      <button type="button" class="shop-reopen" onClick={() => (shopHidden.value = false)}>
-        Back to the shop
-      </button>
-    );
-  }
+  if (shopHidden.value) return <ShopHandle />;
   const offers = rules.shopOffers(s);
   const refresh = rules.canRefresh(s);
   // A shop the ?debug panel opened mid-week goes back to that week.
@@ -292,22 +414,25 @@ export function ShopScreen() {
   const cards = offers.filter((o) => o.offer.kind === 'piece' || o.offer.kind === 'fixture');
   const skip = CONTENT.balance.shop.skipReward;
   return (
-    <div class="shop" role="region" aria-label={`Shop ${visit.number}`}>
-      <header class="shop-head">
-        <div>
-          <h1>The supply yard</h1>
-          <p class="muted">
+    <section class="shop panel ui" role="region" aria-label={`Shop ${visit.number}`}>
+      <header class="shop-head panel-head">
+        <div class="shop-name">
+          <h1 class="shop-title">The supply yard</h1>
+          <p class="shop-sub">
             Shop {visit.number} of {CONTENT.balance.phases.length - 1}
             {visit.forced ? ' (debug)' : ''} · next up: {next}
           </p>
         </div>
         <div class="shop-budget" aria-label={`Budget ${s.budget}`}>
+          <Tip term="budget">
+            <Icon name="coin" class="shop-coin" label="Budget" />
+          </Tip>
           {/* Counts like the top bar's; quiet, since the top bar's plays the coins. */}
-          <Tip term="budget">Budget</Tip> <BudgetCount value={s.budget} quiet />
+          <BudgetCount value={s.budget} quiet />
         </div>
-        <div class="shop-buttons">
-          <button
-            type="button"
+        <div class="shop-tools">
+          <Button
+            icon="reroll"
             onMouseDown={noFocus}
             onClick={() =>
               refreshShop() ? audio.play('rotate', { rate: 0.8 }) : audio.play('illegal')
@@ -315,40 +440,59 @@ export function ShopScreen() {
             disabled={!refresh.ok}
             title={refresh.ok ? 'New goods (not the services)' : refresh.reason}
           >
-            <Tip term="refresh">Refresh</Tip> · {refresh.price}
-          </button>
-          <button type="button" onMouseDown={noFocus} onClick={() => (shopHidden.value = true)}>
-            Look at the lot
-          </button>
-          <button
-            type="button"
-            class="leave"
+            <Tip term="refresh">Refresh</Tip>
+            <Price price={refresh.price} short={!refresh.ok && refresh.price > s.budget} />
+          </Button>
+          <Button
+            icon="fit"
+            class="shop-look"
             onMouseDown={noFocus}
-            onClick={() => leaveShop()}
-            title={
-              visit.boughtAny ? leaveLabel : `${leaveLabel}, and +${skip} budget for saving up`
-            }
+            onClick={() => (shopHidden.value = true)}
+            title="Hide the shop to look at the lot (it stays open)"
+            aria-label="Look at the lot"
           >
-            {leaveLabel}
-            {!visit.boughtAny && skip > 0 && (
-              <span class="skip-hint">
-                {' '}
-                · <Tip term="skipReward">+{skip} for saving</Tip>
-              </span>
-            )}
-          </button>
+            <span class="shop-look-text">Look at the lot</span>
+          </Button>
         </div>
       </header>
-      <div class="shop-body">
-        <Section title="Blueprints" offers={of('blueprint')} term="blueprints" />
-        <Section title="Pieces and fixtures" offers={cards} term="fixture" />
-        <Section title="Tools" offers={of('tool')} term="tools" />
-        <Section title="Crates" offers={of('crate')} term="crates" />
-        <Section title="Company upgrade" offers={of('upgrade')} term="upgrades" />
-        <Section title="Services" offers={of('service')} term="services" />
+      <Notes docked />
+      <div class="panel-body shop-body">
+        <div class="shelves">
+          <Section title="Blueprints" offers={of('blueprint')} term="blueprints" />
+          <Section title="Pieces and fixtures" offers={cards} term="fixture" />
+          <Section title="Tools" offers={of('tool')} term="tools" />
+          <Section title="Crates" offers={of('crate')} term="crates" />
+          <Section title="Company upgrade" offers={of('upgrade')} term="upgrades" />
+          <Section title="Services" offers={of('service')} term="services" compact />
+        </div>
       </div>
+      {/* Leaving is the sheet's one primary action, at its foot like End week's (D-087). */}
+      <footer class="shop-foot">
+        <p class="shop-foot-hint">
+          <span class="hint-long">Sell from your goods on the right </span>
+          <span class="hint-short">Sell on the right </span>
+          <span aria-hidden="true">→</span>
+        </p>
+        <Button
+          variant="primary"
+          size="lg"
+          class="leave"
+          onMouseDown={noFocus}
+          onClick={() => leaveShop()}
+          title={visit.boughtAny ? leaveLabel : `${leaveLabel}, and +${skip} budget for saving up`}
+        >
+          {leaveLabel}
+          {!visit.boughtAny && skip > 0 && (
+            <span class="skip-hint">
+              <Tip term="skipReward">+{skip}</Tip>
+              <Icon name="coin" />
+              <span class="skip-word">for saving</span>
+            </span>
+          )}
+        </Button>
+      </footer>
       <StrikePicker />
       <CratePickSheet />
-    </div>
+    </section>
   );
 }

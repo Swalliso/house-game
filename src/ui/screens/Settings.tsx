@@ -1,32 +1,22 @@
 // Settings (§12, Settings and accessibility, from M1): tally speed, Reduce motion, screen
 // shake, volume, and (M5a) the readable font. Flashing and the music slider come with M5.
+//
+// M5a draws it as a wood sheet with the kit's pixel controls, grouped as the UI audit asked:
+// the game, motion, sound, and the display.
 
+import type { ComponentChildren } from 'preact';
 import { FEEL } from '../fx/feel.ts';
 import { settingsOpen } from '../hud/actions.ts';
+import { Button, Segmented, Sheet, Slider, Switch } from '../kit/kit.tsx';
 import { settings, updateSettings } from '../settings.ts';
+import './settings.css';
 
-function Slider({
-  label,
-  value,
-  onInput,
-}: {
-  label: string;
-  value: number;
-  onInput: (v: number) => void;
-}) {
+function Group({ title, children }: { title: string; children: ComponentChildren }) {
   return (
-    <label class="slider">
-      <span>{label}</span>
-      <input
-        type="range"
-        min={0}
-        max={100}
-        step={5}
-        value={value}
-        onInput={(e) => onInput(Number((e.target as HTMLInputElement).value))}
-      />
-      <span class="value">{value}</span>
-    </label>
+    <section class="set-group">
+      <h3 class="plank-tag set-title">{title}</h3>
+      {children}
+    </section>
   );
 }
 
@@ -35,71 +25,46 @@ export function SettingsPanel() {
   const s = settings.value;
   const close = () => (settingsOpen.value = false);
   return (
-    <div class="modal-backdrop" onClick={close}>
-      <div
-        class="modal settings"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Settings"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2>Settings</h2>
-        <fieldset>
-          <legend>Tally speed</legend>
-          <div class="segmented">
-            {FEEL.speeds.map((speed) => (
-              <button
-                key={speed}
-                type="button"
-                class={s.tallySpeed === speed ? 'on' : ''}
-                aria-pressed={s.tallySpeed === speed}
-                onClick={() => updateSettings({ tallySpeed: speed })}
-              >
-                {speed}×
-              </button>
-            ))}
-          </div>
-          <p class="muted">
-            Hold Space or the right mouse button to speed up a tally; click to skip it.
-          </p>
-        </fieldset>
-        <label class="toggle">
-          <input
-            type="checkbox"
-            checked={s.reduceMotion}
-            onChange={(e) =>
-              updateSettings({ reduceMotion: (e.target as HTMLInputElement).checked })
-            }
+    <Sheet
+      title="Settings"
+      class="settings"
+      onClose={close}
+      footer={
+        <Button variant="primary" onClick={close}>
+          Done
+        </Button>
+      }
+    >
+      <Group title="Game">
+        <div class="set-row">
+          <span class="set-label">Tally speed</span>
+          <Segmented
+            label="Tally speed"
+            value={s.tallySpeed}
+            onChange={(tallySpeed) => updateSettings({ tallySpeed })}
+            options={FEEL.speeds.map((speed) => ({ value: speed, label: `${speed}×` }))}
           />
-          <span>Reduce motion</span>
-          <span class="muted"> (no wobble, shake, or confetti)</span>
-        </label>
-        <fieldset>
-          <legend>Text</legend>
-          <div class="segmented" role="group" aria-label="Text">
-            <button
-              type="button"
-              class={s.readableFont ? '' : 'on'}
-              aria-pressed={!s.readableFont}
-              onClick={() => updateSettings({ readableFont: false })}
-            >
-              Pixel font
-            </button>
-            <button
-              type="button"
-              class={s.readableFont ? 'on' : ''}
-              aria-pressed={s.readableFont}
-              onClick={() => updateSettings({ readableFont: true })}
-            >
-              Readable font
-            </button>
-          </div>
-        </fieldset>
+        </div>
+        <p class="set-note">
+          Hold Space or the right mouse button to speed up a tally; click to skip it.
+        </p>
+      </Group>
+      <Group title="Motion">
+        <Switch
+          class="set-switch"
+          checked={s.reduceMotion}
+          onChange={(reduceMotion) => updateSettings({ reduceMotion })}
+        >
+          Reduce motion
+        </Switch>
+        <p class="set-note">No wobble, shake, or confetti.</p>
         <Slider
           label="Screen shake"
           value={s.shake}
           onInput={(shake) => updateSettings({ shake })}
         />
+      </Group>
+      <Group title="Sound">
         <Slider
           label="Volume"
           value={s.masterVolume}
@@ -110,12 +75,21 @@ export function SettingsPanel() {
           value={s.sfxVolume}
           onInput={(sfxVolume) => updateSettings({ sfxVolume })}
         />
-        <div class="modal-buttons">
-          <button type="button" class="primary" onClick={close}>
-            Done
-          </button>
+      </Group>
+      <Group title="Display">
+        <div class="set-row">
+          <span class="set-label">Text</span>
+          <Segmented
+            label="Text"
+            value={s.readableFont ? 'readable' : 'pixel'}
+            onChange={(v) => updateSettings({ readableFont: v === 'readable' })}
+            options={[
+              { value: 'pixel', label: 'Pixel font' },
+              { value: 'readable', label: 'Readable font' },
+            ]}
+          />
         </div>
-      </div>
-    </div>
+      </Group>
+    </Sheet>
   );
 }

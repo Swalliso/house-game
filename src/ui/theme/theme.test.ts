@@ -7,26 +7,20 @@ import { join, relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { CONTENT } from '../../rules/index.ts';
 import { gridProblems, gridRows, gridSize, ICON_SIZES, UI_PALETTE } from './art.ts';
-import { FRAMES, PATTERNS } from './frames.ts';
+import { FRAMES, PARTS, PATTERNS } from './frames.ts';
 import { ICONS } from './icons.ts';
+import { SCENERY } from './scenery.ts';
 import { pictureScale, uiPixel, uiPixelDevice } from './pixel.ts';
 
 const UI = join(import.meta.dirname, '..');
 const TOKENS = readFileSync(join(import.meta.dirname, 'tokens.css'), 'utf8');
 
 /**
- * Stylesheets that still hold raw colors, until part 2 of M5a's UI pass (the shop, the title,
- * the end screen) and the board's own passes (pieces, popups) move them to tokens. Each one
- * that's migrated comes off this list, and the test keeps it off.
+ * Stylesheets that still hold raw colors, until the board's own passes (the pieces, the ghost,
+ * the popups, in app.css and board-m2.css) and a pass on the ?debug panel move them to tokens.
+ * Each one that's migrated comes off this list, and the test keeps it off.
  */
-const LEGACY = [
-  'app.css',
-  'board/board-m2.css',
-  'debug/debug.css',
-  'screens/end.css',
-  'screens/shop.css',
-  'screens/title.css',
-];
+const LEGACY = ['app.css', 'board/board-m2.css', 'debug/debug.css'];
 
 function stylesheets(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
@@ -117,6 +111,14 @@ describe('the tokens', () => {
       ['ink', 'tint-hall'],
       ['ink', 'tint-fixture'],
       ['ink', 'dark-fill'],
+      // Part 2: the shop's tinted cards and notes, the toast, the leave button's bonus.
+      ['ink', 'uncommon-tint'],
+      ['ink', 'rare-tint'],
+      ['bad', 'paper'],
+      ['bad', 'rare-tint'],
+      ['ink-soft', 'uncommon-tint'],
+      ['on-wood', 'ink'],
+      ['ink', 'action-hi'],
     ] as const;
     const low = pairs.flatMap(([text, bg]) => {
       const a = t.get(text);
@@ -144,7 +146,9 @@ describe('the pixel art', () => {
   const grids: [string, string][] = [
     ...Object.entries(FRAMES).map(([n, f]): [string, string] => [n, f.grid]),
     ...Object.entries(PATTERNS),
+    ...Object.entries(PARTS),
     ...Object.entries(ICONS),
+    ...Object.entries(SCENERY),
   ];
 
   it('is drawn in rectangular grids, in the palette', () => {

@@ -1,8 +1,10 @@
 // The interface's primitives (M5a): Panel, Card, Button, Chip, Plaque (the Counter), Icon,
-// Keycap, and Well. Their look is in kit.css; every screen builds from these, so the pixel style, the
+// Keycap, Well, and for the sheets and Settings: Sheet, Switch, Slider, Segmented, and Price.
+// Their look is in kit.css; every screen builds from these, so the pixel style, the
 // readable-font switch, and the states stay the same everywhere.
 
-import type { ComponentChildren, JSX } from 'preact';
+import type { ComponentChildren, JSX, Ref } from 'preact';
+import { useRef } from 'preact/hooks';
 import { ICON_SIZES, type IconName } from '../theme/art.ts';
 
 export type { IconName };
@@ -264,4 +266,215 @@ export function Keycap({ children }: { children: ComponentChildren }) {
 /** An empty slot, recessed. */
 export function Well({ class: cls, label }: { class?: string; label?: string }) {
   return <span class={`well ${cls ?? ''}`} role={label ? 'img' : undefined} aria-label={label} />;
+}
+
+/**
+ * A sheet over the page (Settings, How to play, a copy fallback): a wood panel on a scrim, with
+ * a close button on its plank. A press that starts on the scrim and ends there closes it, so a
+ * drag out of the sheet doesn't. The caller handles Esc and focus (App.tsx closes the top
+ * sheet on Esc).
+ */
+export function Sheet({
+  title,
+  onClose,
+  class: cls,
+  label,
+  head,
+  footer,
+  bodyRef,
+  dialogRef,
+  onKeyDown,
+  children,
+}: {
+  title: ComponentChildren;
+  onClose: () => void;
+  class?: string;
+  /** The dialog's name for screen readers, when the title isn't plain text. */
+  label?: string;
+  /** More on the plank, before the close button. */
+  head?: ComponentChildren;
+  /** A row under the body that never scrolls away: the sheet's buttons. */
+  footer?: ComponentChildren;
+  bodyRef?: Ref<HTMLDivElement>;
+  dialogRef?: Ref<HTMLDivElement>;
+  onKeyDown?: (e: KeyboardEvent) => void;
+  children?: ComponentChildren;
+}) {
+  const downOnScrim = useRef(false);
+  return (
+    <div
+      class="sheet-scrim"
+      onPointerDown={(e) => (downOnScrim.current = e.target === e.currentTarget)}
+      onClick={(e) => {
+        if (e.target === e.currentTarget && downOnScrim.current) onClose();
+      }}
+    >
+      <div
+        ref={dialogRef}
+        class={`sheet ${cls ?? ''}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label={label ?? (typeof title === 'string' ? title : undefined)}
+        onKeyDown={onKeyDown}
+      >
+        <Panel
+          title={title}
+          head={
+            <>
+              {head}
+              <Button
+                size="sm"
+                iconOnly
+                icon="close"
+                class="sheet-close"
+                onClick={onClose}
+                aria-label="Close"
+                title="Close (Esc)"
+              />
+            </>
+          }
+          bodyClass="sheet-body"
+        >
+          <div class="sheet-scroll" ref={bodyRef} tabIndex={-1}>
+            {children}
+          </div>
+          {footer !== undefined && <div class="sheet-footer">{footer}</div>}
+        </Panel>
+      </div>
+    </div>
+  );
+}
+
+/** An on/off switch: a real checkbox, drawn as a pixel switch. */
+export function Switch({
+  checked,
+  onChange,
+  disabled = false,
+  class: cls,
+  title,
+  onMouseDown,
+  children,
+}: {
+  checked: boolean;
+  /** The new value; return false to put the switch back (the change was refused). */
+  onChange: (on: boolean) => boolean | void;
+  disabled?: boolean;
+  class?: string;
+  title?: string;
+  onMouseDown?: (e: MouseEvent) => void;
+  /** The switch's label, after it. */
+  children?: ComponentChildren;
+}) {
+  return (
+    <label
+      class={`switch ${checked ? 'on' : ''} ${disabled ? 'disabled' : ''} ${cls ?? ''}`}
+      title={title}
+      onMouseDown={onMouseDown}
+    >
+      <input
+        type="checkbox"
+        role="switch"
+        checked={checked}
+        disabled={disabled}
+        onChange={(e) => {
+          const box = e.currentTarget;
+          if (onChange(box.checked) === false) box.checked = checked;
+        }}
+      />
+      <span class="switch-track" aria-hidden="true">
+        <span class="switch-knob" />
+      </span>
+      {children !== undefined && <span class="switch-text">{children}</span>}
+    </label>
+  );
+}
+
+/** A slider from 0 to 100: a dark trough filled with wood up to a paper knob. */
+export function Slider({
+  label,
+  value,
+  onInput,
+  min = 0,
+  max = 100,
+  step = 5,
+}: {
+  label: ComponentChildren;
+  value: number;
+  onInput: (v: number) => void;
+  min?: number;
+  max?: number;
+  step?: number;
+}) {
+  const fill = ((value - min) / Math.max(1, max - min)) * 100;
+  return (
+    <label class="slider">
+      <span class="slider-label">{label}</span>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        style={{ '--fill': `${fill}%` }}
+        onInput={(e) => onInput(Number((e.target as HTMLInputElement).value))}
+      />
+      <span class="slider-value num" aria-hidden="true">
+        {value}
+      </span>
+    </label>
+  );
+}
+
+/** A row of choices, one of them pressed in: the tally's speed, the font. */
+export function Segmented<T extends string | number>({
+  options,
+  value,
+  onChange,
+  label,
+}: {
+  options: readonly { value: T; label: ComponentChildren; title?: string }[];
+  value: T;
+  onChange: (v: T) => void;
+  /** The group's name for screen readers. */
+  label: string;
+}) {
+  return (
+    <div class="segmented" role="group" aria-label={label}>
+      {options.map((o) => (
+        <button
+          key={String(o.value)}
+          type="button"
+          class={`seg ${o.value === value ? 'on' : ''}`}
+          aria-pressed={o.value === value}
+          title={o.title}
+          onClick={() => onChange(o.value)}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** A price: the coin and the number, with the full price struck through on a sale. */
+export function Price({
+  price,
+  full,
+  short = false,
+  class: cls,
+}: {
+  price: number;
+  /** The price before a sale, struck through when it's higher. */
+  full?: number;
+  /** Too dear right now: the number in the bad color (with its reason elsewhere). */
+  short?: boolean;
+  class?: string;
+}) {
+  return (
+    <span class={`price ${short ? 'short' : ''} ${cls ?? ''}`}>
+      <Icon name="coin" />
+      {full !== undefined && full > price && <s class="price-full num">{full}</s>}
+      <span class="price-now num">{price}</span>
+    </span>
+  );
 }

@@ -1,28 +1,60 @@
-/* Tooltips (D-077, D-086): a dotted underline marks a term; one fixed bubble explains it.
-   Part 2 of M5a's UI pass draws the bubble as a paper note. */
+/* Tooltips (D-077, D-086): a dotted underline marks a term; one fixed note explains it. M5a
+   draws the note in paper with an ink ring, a hard shadow and a pixel tail (theme/frames.ts),
+   and the underline as pixel dots. */
 
 .tip {
-  text-decoration: underline dotted;
-  text-underline-offset: 3px;
+  --tip-line: currentColor;
+  background: linear-gradient(to right, var(--tip-line) 50%, transparent 50%) repeat-x left bottom /
+    calc(var(--px) * 2) var(--px);
+  padding-bottom: var(--px);
   cursor: help;
+}
+/* A term on a chip or an icon is marked by its chip, not by dots under it. */
+.tip:has(> .chip),
+.tip:has(> .icon) {
+  background: none;
+  padding-bottom: 0;
+}
+.tip:focus-visible {
+  outline: var(--px) solid var(--focus-outer);
+  outline-offset: var(--px);
+  box-shadow: 0 0 0 calc(var(--px) * 2) var(--focus-inner);
 }
 .tip-bubble {
   position: fixed;
   z-index: 100;
-  width: 280px;
-  transform: translate(-50%, -100%);
+  width: calc(var(--px) * 160);
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: var(--ink);
-  color: var(--on-wood);
-  font-size: 13px;
-  line-height: 1.35;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3) calc(var(--space-2) + var(--px));
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--card);
+  background-clip: padding-box;
+  box-shadow:
+    inset 0 calc(var(--px) * -1) 0 var(--card-lo),
+    var(--shadow-float);
+  color: var(--ink);
   pointer-events: none;
-  box-shadow: var(--shadow-float);
 }
-.tip-bubble.below {
-  transform: translate(-50%, 0);
+.tip-title {
+  font-weight: 700;
+}
+/* The tail, pointing at the term: under the note, or over it when the note sits below. */
+.tip-bubble::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  /* --tail-x is from the note's outer edge; this box starts inside its ring. */
+  left: calc(var(--tail-x) - var(--px));
+  width: calc(var(--px) * 9);
+  height: calc(var(--px) * 5);
+  background: var(--art-tipTail) no-repeat 0 0 / 100% 100%;
+  image-rendering: pixelated;
+}
+.tip-bubble.below::after {
+  top: auto;
+  bottom: 100%;
+  transform: scaleY(-1);
 }

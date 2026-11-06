@@ -190,66 +190,6 @@
   opacity: 0.35;
 }
 
-/* --- The auto-complete switch: a real checkbox, drawn as a pixel switch ------------------ */
-
-.tb-switch {
-  flex: none;
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  white-space: nowrap;
-  cursor: pointer;
-}
-.tb-switch input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: 0;
-  opacity: 0;
-}
-.switch-track {
-  position: relative;
-  flex: none;
-  width: calc(var(--px) * 16);
-  height: calc(var(--px) * 10);
-  border: var(--px) solid transparent;
-  border-image: var(--art-ring) 1 / var(--px);
-  background: var(--wood-deep);
-  background-clip: padding-box;
-  box-shadow: inset 0 var(--px) 0 var(--ink);
-}
-.switch-knob {
-  position: absolute;
-  top: var(--px);
-  left: var(--px);
-  width: calc(var(--px) * 6);
-  height: calc(var(--px) * 6);
-  border: var(--px) solid transparent;
-  border-image: var(--art-ring) 1 / var(--px);
-  background: var(--card);
-  background-clip: padding-box;
-  box-shadow: inset 0 calc(var(--px) * -1) 0 var(--card-lo);
-  transition: transform var(--dur-hover) ease-out;
-}
-.tb-switch input:checked + .switch-track {
-  background: var(--action);
-  box-shadow: inset 0 var(--px) 0 var(--action-shade);
-}
-.tb-switch input:checked + .switch-track .switch-knob {
-  transform: translateX(calc(var(--px) * 6));
-}
-.tb-switch input:focus-visible + .switch-track {
-  box-shadow: var(--ring-focus);
-}
-.tb-switch.disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-.reduce-motion .switch-knob {
-  transition: none;
-}
-
 /* --- Complete early: offered once the target is met ---------------------------------- */
 
 .tb-early {

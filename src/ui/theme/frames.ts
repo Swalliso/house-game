@@ -79,3 +79,47 @@ export const PATTERNS = {
     hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh
   `,
 } as const;
+
+/**
+ * Small pieces drawn onto the chrome, each one image: a milestone ribbon's tails (the left one;
+ * the right one is the same, mirrored) and a tooltip's tail (pointing down; flipped when the
+ * note sits below its term).
+ */
+export const PARTS = {
+  /** A ribbon's tail, behind a gold banner: a notched end. */
+  ribbonGold: `
+    kkkkkkkkkkkkkk
+    kYYYYYYYYYYYYk
+    .kYYYYYYYYYYYk
+    ..kYYYYYYYYYYk
+    ...kYYYYYYYYYk
+    ....kYYYYYYYYk
+    ...kYYYYYYYYYk
+    ..kYYYYYYYYYYk
+    .kYYYYYYYYYYYk
+    kYYYYYYYYYYYYk
+    kkkkkkkkkkkkkk
+  `,
+  /** The same tail, behind an orange banner (a missed milestone, overtime). */
+  ribbonOrange: `
+    kkkkkkkkkkkkkk
+    kNNNNNNNNNNNNk
+    .kNNNNNNNNNNNk
+    ..kNNNNNNNNNNk
+    ...kNNNNNNNNNk
+    ....kNNNNNNNNk
+    ...kNNNNNNNNNk
+    ..kNNNNNNNNNNk
+    .kNNNNNNNNNNNk
+    kNNNNNNNNNNNNk
+    kkkkkkkkkkkkkk
+  `,
+  /** A tooltip's tail: its top row is the note's bottom edge, opened up. */
+  tipTail: `
+    kPPPPPPPk
+    .kPPPPPk.
+    ..kPPPk..
+    ...kPk...
+    ....k....
+  `,
+} as const;

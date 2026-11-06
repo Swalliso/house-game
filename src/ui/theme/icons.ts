@@ -102,6 +102,25 @@ export const ICONS = {
     kyyykyyyk
     kkkkkkkkk
   `,
+  /** ✓: done, met (the end screen's milestones). */
+  check: `
+    .....kk
+    ....kkk
+    kk.kkk.
+    kkkkk..
+    .kkk...
+    ..k....
+  `,
+  /** ○: not reached yet. */
+  pending: `
+    ..sss..
+    .s...s.
+    s.....s
+    s.....s
+    s.....s
+    .s...s.
+    ..sss..
+  `,
   /** An overtime week: a clock. */
   clock: `
     ..kkkk..
@@ -244,6 +263,100 @@ export const ICONS = {
     .kPPkPk.
     .kPPkPk.
     .kkkkkk.
+  `,
+  // --- Kinds of goods (12×12): the shop's art slots, until each good has its own sprite -------
+  /** A blueprint: a house drawn on blue paper. */
+  blueprint: `
+    kkkkkkkkk...
+    kjjjjjjjjk..
+    kjjjjjjjjBk.
+    kjjjjwjjjBBk
+    kjjjwjwjjkkk
+    kjjwjjjwjjjk
+    kjwwwwwwwjjk
+    kjjwjjjwjjjk
+    kjjwjwjwjjjk
+    kjjwwwwwjjjk
+    kjjjjjjjjjjk
+    kkkkkkkkkkkk
+  `,
+  /** A fixture: a pendant lamp. */
+  fixture: `
+    .....kk.....
+    .....kk.....
+    ....kkkk....
+    ...kHhhok...
+    ..kHhhhhok..
+    .kHhhhhhhok.
+    kkkkkkkkkkkk
+    ....kuyk....
+    ....kyYk....
+    .....kk.....
+  `,
+  /** A tool: a toolbox. */
+  tool: `
+    ....kkkk....
+    ...kk..kk...
+    kkkkkkkkkkkk
+    kxxxxxxxxxxk
+    kxxxxxxxxxxk
+    kkkkkHHkkkkk
+    kXXXXkkXXXXk
+    kXXXXXXXXXXk
+    kXXXXXXXXXXk
+    kkkkkkkkkkkk
+  `,
+  /** A crate: a wooden box, braced. */
+  crate: `
+    kkkkkkkkkkkk
+    kHHHHHHHHHok
+    kkkkkkkkkkkk
+    khhkllllkhok
+    khhlkllkhhok
+    khhllkkhhhok
+    khhllkkhhhok
+    khhlkllkhhok
+    khhkllllkhok
+    kkkkkkkkkkkk
+    kmmmmmmmmmdk
+    kkkkkkkkkkkk
+  `,
+  /** A company upgrade: the crew's hard hat. */
+  upgrade: `
+    ............
+    ....kkkk....
+    ...kuyyyk...
+    ..kuyykyYk..
+    .kuyyykyyYk.
+    .kyyyykyyYk.
+    kkkkkkkkkkkk
+    kyyyyyyyyYYk
+    .kkkkkkkkkk.
+  `,
+  /** A notice: a letter. */
+  mail: `
+    kkkkkkkkkkkk
+    kkPPPPPPPPkk
+    kPkPPPPPPkPk
+    kPPkPPPPkPPk
+    kPPPkkkkPPPk
+    kPPPPPPPPPPk
+    kPPPPPPPPPPk
+    kkkkkkkkkkkk
+  `,
+  /** The house is finished: a trophy. */
+  trophy: `
+    .kkkkkkkkkk.
+    kkuyyyyyyYkk
+    kykuyyyyyYkk
+    kykuyyyyyYkk
+    .kkuyyyyyYk.
+    ..kkuyyyYkk.
+    ....kkyYk...
+    .....kYk....
+    ....kkYkk...
+    ...kYYYYYk..
+    ...kkkkkkk..
   `,
   // --- Buttons (12×12, but for the two free actions) -----------------------------------------
   gear: `

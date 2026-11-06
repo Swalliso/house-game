@@ -15,3 +15,6 @@ applyArt();
 // The chrome's own motion (hover lifts, presses, sheets), from feel.ts like every timing.
 const style = document.documentElement.style;
 for (const [name, ms] of Object.entries(FEEL.chrome)) style.setProperty(`--dur-${name}`, `${ms}ms`);
+style.setProperty('--dur-shop-pop', `${FEEL.shop.popMs}ms`);
+style.setProperty('--dur-shop-turn', `${FEEL.shop.turnMs}ms`);
+style.setProperty('--dur-shop-shimmer', `${FEEL.shop.shimmerMs}ms`);

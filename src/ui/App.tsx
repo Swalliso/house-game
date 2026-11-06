@@ -34,10 +34,9 @@ import { HowToPlay } from './screens/HowToPlay.tsx';
 import {
   CopyFallback,
   MilestoneBanner,
-  Notice,
+  Notes,
   SmallScreenNotice,
   TargetFlash,
-  Toast,
   useSkipOnClick,
 } from './screens/Overlays.tsx';
 import { SettingsPanel } from './screens/Settings.tsx';
@@ -169,6 +168,7 @@ function Game() {
       </aside>
       <main class="center">
         <Board />
+        <Notes />
         <MilestoneBanner />
         <TargetFlash />
         <EndCaption />
@@ -190,9 +190,14 @@ export function App() {
   return (
     <>
       <ErrorBoundary>
-        {appScreen.value === 'title' ? <Title /> : <Game />}
-        <Notice />
-        <Toast />
+        {appScreen.value === 'title' ? (
+          <>
+            <Title />
+            <Notes />
+          </>
+        ) : (
+          <Game />
+        )}
         <GameMenu />
         <HowToPlay />
         <SettingsPanel />

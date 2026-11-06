@@ -68,5 +68,45 @@
     "w": 32,
     "h": 32,
     "spec": "09b4f6656b16d96e"
+  },
+  "title-car": {
+    "w": 61,
+    "h": 37,
+    "spec": "4b82e7246ba4d6cf"
+  },
+  "title-oak": {
+    "w": 68,
+    "h": 62,
+    "spec": "986050260030124e"
+  },
+  "title-planter": {
+    "w": 29,
+    "h": 19,
+    "spec": "417c610fa134d9b2"
+  },
+  "title-planter-pink": {
+    "w": 29,
+    "h": 19,
+    "spec": "92f6b40594d375f0"
+  },
+  "title-shrub": {
+    "w": 18,
+    "h": 24,
+    "spec": "4c290f805245c15c"
+  },
+  "title-tree": {
+    "w": 47,
+    "h": 55,
+    "spec": "927ab0b9a2634215"
+  },
+  "title-villa": {
+    "w": 144,
+    "h": 208,
+    "spec": "9aadab72a2c2498a"
+  },
+  "title-villa-blue": {
+    "w": 144,
+    "h": 208,
+    "spec": "dab035ba361c6812"
   }
 }

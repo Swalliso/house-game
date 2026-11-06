@@ -118,5 +118,45 @@
     "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png [16, 112, 16, 16]",
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/title-car.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/10_Vehicles_16x16.png [96, 26, 61, 37]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/title-oak.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/7_Villas_16x16.png [200, 690, 68, 62]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/title-planter.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/7_Villas_16x16.png [386, 537, 29, 19]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/title-planter-pink.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/7_Villas_16x16.png [418, 569, 29, 19]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/title-shrub.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_16x16.png [359, 966, 18, 24]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/title-tree.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/7_Villas_16x16.png [368, 617, 47, 55]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/title-villa.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/7_Villas_16x16.png [0, 0, 144, 208]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/title-villa-blue.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/7_Villas_16x16.png [160, 224, 144, 208]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
   }
 }

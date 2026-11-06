@@ -1,0 +1,145 @@
+/* How to play (M5a): a wood sheet, each section under a plank tag, the formula as the score
+   panel's plaques, and keycaps for the controls. Built on kit.css. */
+
+.sheet.howto {
+  width: min(calc(var(--px) * 300), 94vw);
+}
+.howto-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.howto-section p,
+.howto-section ul,
+.howto-section ol,
+.howto-section dl {
+  margin: 0;
+}
+.howto-section ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: 0;
+  list-style: none;
+}
+/* Bullets are little ink squares, as on the cards. */
+.howto-section ul > li {
+  position: relative;
+  padding-left: var(--space-4);
+}
+.howto-section ul > li::before {
+  content: '';
+  position: absolute;
+  left: var(--space-1);
+  top: calc(var(--px) * 4);
+  width: calc(var(--px) * 2);
+  height: calc(var(--px) * 2);
+  background: var(--ink);
+}
+.howto-section a {
+  color: var(--wood-deep);
+  font-weight: 700;
+}
+.howto-section a:focus-visible {
+  outline: var(--px) solid var(--focus-outer);
+  box-shadow: 0 0 0 calc(var(--px) * 2) var(--focus-inner);
+}
+.howto-note {
+  color: var(--ink-soft);
+}
+
+/* Groundbreaking → … → Final Walkthrough: chips joined by arrows. */
+.howto-phases {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) 0;
+  padding: 0;
+  list-style: none;
+}
+.howto-phases li {
+  display: inline-flex;
+  align-items: center;
+}
+.howto-phase {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-1);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--card);
+  background-clip: padding-box;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.howto-arrow {
+  padding: 0 var(--space-1);
+  color: var(--ink-soft);
+}
+
+/* The formula, as the score panel draws it. */
+.howto-formula {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.howto-formula .plaque {
+  padding: var(--space-2) var(--space-2) calc(var(--space-2) - var(--px));
+}
+.howto-wow.plaque {
+  box-shadow:
+    inset 0 0 0 calc(var(--px) * 2) var(--wood-hi),
+    inset 0 0 0 calc(var(--px) * 3) var(--wood),
+    inset 0 calc(var(--px) * -4) 0 calc(var(--px) * 1) var(--card-lo);
+  padding-inline: var(--space-3);
+}
+.howto-op {
+  font-family: var(--font-display);
+  font-size: var(--fs-num);
+  color: var(--ink-soft);
+}
+
+.howto-actions {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-2) var(--space-3);
+}
+.howto-actions dt {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+  font-weight: 700;
+}
+.howto-actions dt .icon {
+  margin-top: calc(var(--px) * 1);
+}
+.howto-actions dd {
+  margin: 0;
+}
+
+.howto-keys {
+  display: grid;
+  grid-template-columns: max-content 1fr max-content 1fr;
+  gap: var(--space-2) var(--space-3);
+  align-items: center;
+}
+.howto-keys dt {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  white-space: nowrap;
+}
+.howto-keys dd {
+  margin: 0;
+}
+.howto-or {
+  padding: 0 var(--space-1);
+  color: var(--ink-soft);
+}
+@media (max-width: 1100px) {
+  .howto-keys {
+    grid-template-columns: max-content 1fr;
+  }
+}

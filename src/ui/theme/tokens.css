@@ -102,6 +102,23 @@
   --dark-fill: #d8d0e0; /* a Dark tag's chip */
   --hatch: rgb(237 147 30 / 0.3); /* bad-fill, over a card that fits nowhere */
 
+  /* --- A shop card's fill by rarity (its band and label carry the rarity, D-087) -------- */
+  --uncommon-tint: #edf3fa;
+  --rare-tint: #fcf1c6;
+
+  /* --- Juice on the chrome: a Rare's shimmer, and the stepped glows of a crate's options -- */
+  --shine: rgb(255 255 255 / 0.7);
+  --glow-rare: rgb(242 178 43 / 0.55);
+  --glow-rare-soft: rgb(242 178 43 / 0.25);
+  --glow-uncommon: rgb(66 128 221 / 0.45);
+  --glow-uncommon-soft: rgb(66 128 221 / 0.2);
+
+  /* --- The title screen's sky: flat bands, palest at the horizon (no text on them) ------- */
+  --sky-1: #86c4e6;
+  --sky-2: #9dd0ec;
+  --sky-3: #b4dcf0;
+  --sky-4: #cbe7f2;
+
   /* --- Focus: a double ring that reads on paper and on wood --------------------------- */
   --focus-outer: var(--ink);
   --focus-inner: var(--sparkle);

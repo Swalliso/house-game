@@ -7,7 +7,7 @@ import { signal } from '@preact/signals';
 import { CONTENT, rules, SCORE_LABELS } from '../../rules/index.ts';
 import { busy, shownRun, shownScore, skip } from '../fx/director.ts';
 import { formatNumber } from '../format.ts';
-import { Button, Icon } from '../kit/kit.tsx';
+import { Button, Icon, Switch } from '../kit/kit.tsx';
 import { completeEarly, earlyOffer, forecast, preview, run, setAutoComplete } from '../store.ts';
 import { howToPlayOpen, menuOpen, openSettings } from './actions.ts';
 import { BudgetCount } from './BudgetCount.tsx';
@@ -186,31 +186,18 @@ function Resources() {
 
 function AutoComplete() {
   const s = run.value;
-  const on = s.autoComplete;
   const ended = s.screen === 'won' || s.screen === 'lost';
   return (
-    <label
-      class={`tb-switch ${on ? 'on' : ''} ${ended ? 'disabled' : ''}`}
+    <Switch
+      class="tb-switch"
+      checked={s.autoComplete}
+      disabled={ended}
       title="Complete each milestone as soon as its target is met"
       onMouseDown={noFocus}
+      onChange={(want) => setAutoComplete(want)}
     >
-      <input
-        type="checkbox"
-        role="switch"
-        checked={on}
-        disabled={ended}
-        onChange={(e) => {
-          const want = e.currentTarget.checked;
-          if (!setAutoComplete(want)) e.currentTarget.checked = run.value.autoComplete;
-        }}
-      />
-      <span class="switch-track" aria-hidden="true">
-        <span class="switch-knob" />
-      </span>
-      <span class="switch-text">
-        Auto<span class="switch-text-more">-complete</span>
-      </span>
-    </label>
+      Auto<span class="switch-text-more">-complete</span>
+    </Switch>
   );
 }
 

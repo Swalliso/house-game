@@ -8,8 +8,9 @@
 // so every art pixel lands on whole device pixels. Nothing is fetched, and nothing changes
 // after startup.
 
-import { FRAMES, PATTERNS } from './frames.ts';
+import { FRAMES, PARTS, PATTERNS } from './frames.ts';
 import { ICONS } from './icons.ts';
+import { SCENERY } from './scenery.ts';
 
 /** LimeZu's colors (its Modern Interiors and Modern Exteriors palettes), one character each. */
 export const UI_PALETTE: Readonly<Record<string, string>> = {
@@ -122,15 +123,22 @@ export function gridDataUrl(rows: readonly string[]): string {
 
 export type IconName = keyof typeof ICONS;
 export type FrameName = keyof typeof FRAMES;
+export type SceneryName = keyof typeof SCENERY;
 
 /** Each icon's size in art px (one --px each), for its box. */
 export const ICON_SIZES = Object.fromEntries(
   Object.entries(ICONS).map(([name, grid]) => [name, gridSize(gridRows(grid))]),
 ) as Record<IconName, { w: number; h: number }>;
 
+/** Each scenery piece's size in art px, for its box. */
+export const SCENERY_SIZES = Object.fromEntries(
+  Object.entries(SCENERY).map(([name, grid]) => [name, gridSize(gridRows(grid))]),
+) as Record<SceneryName, { w: number; h: number }>;
+
 /**
- * Publishes every frame, pattern and icon as a CSS custom property on the page:
- * `--art-<frame>`, `--art-<pattern>`, `--art-icon-<icon>`. Runs once, at startup.
+ * Publishes every frame, pattern, part, icon and scenery piece as a CSS custom property on the
+ * page: `--art-<frame>`, `--art-<pattern>`, `--art-<part>`, `--art-icon-<icon>`,
+ * `--art-scene-<piece>`. Runs once, at startup.
  */
 export function applyArt(): void {
   const style = document.documentElement.style;
@@ -138,5 +146,7 @@ export function applyArt(): void {
     style.setProperty(`--art-${name}`, `url("${gridDataUrl(gridRows(grid))}")`);
   for (const [name, frame] of Object.entries(FRAMES)) publish(name, frame.grid);
   for (const [name, grid] of Object.entries(PATTERNS)) publish(name, grid);
+  for (const [name, grid] of Object.entries(PARTS)) publish(name, grid);
   for (const [name, grid] of Object.entries(ICONS)) publish(`icon-${name}`, grid);
+  for (const [name, grid] of Object.entries(SCENERY)) publish(`scene-${name}`, grid);
 }

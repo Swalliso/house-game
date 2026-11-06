@@ -532,6 +532,315 @@
   background: var(--meter-tick, var(--shade));
 }
 
+/* --- A plank tag: a small wood label over a group (Settings, How to play, the shop) -------- */
+
+.plank-tag {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0 var(--space-2) var(--px);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--art-plank) repeat left top / calc(var(--px) * 48) calc(var(--px) * 10);
+  background-color: var(--wood-hi);
+  background-clip: padding-box;
+  box-shadow:
+    inset 0 var(--px) 0 var(--wood-shine),
+    inset 0 calc(var(--px) * -1) 0 var(--wood-light);
+  font-family: var(--font-text);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+/* --- Switch: a real checkbox, drawn as a pixel switch ------------------------------------- */
+
+.switch {
+  flex: none;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.switch input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+}
+.switch-track {
+  position: relative;
+  flex: none;
+  width: calc(var(--px) * 16);
+  height: calc(var(--px) * 10);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--wood-deep);
+  background-clip: padding-box;
+  box-shadow: inset 0 var(--px) 0 var(--ink);
+}
+.switch-knob {
+  position: absolute;
+  top: var(--px);
+  left: var(--px);
+  width: calc(var(--px) * 6);
+  height: calc(var(--px) * 6);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--card);
+  background-clip: padding-box;
+  box-shadow: inset 0 calc(var(--px) * -1) 0 var(--card-lo);
+  transition: transform var(--dur-hover) ease-out;
+}
+.switch input:checked + .switch-track {
+  background: var(--action);
+  box-shadow: inset 0 var(--px) 0 var(--action-shade);
+}
+.switch input:checked + .switch-track .switch-knob {
+  transform: translateX(calc(var(--px) * 6));
+}
+.switch input:focus-visible + .switch-track {
+  box-shadow: var(--ring-focus);
+}
+.switch.disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.reduce-motion .switch-knob {
+  transition: none;
+}
+
+/* --- Slider: a dark trough, filled with wood up to a paper knob ---------------------------- */
+
+.slider {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(calc(var(--px) * 60), calc(var(--px) * 90)) calc(
+      var(--px) * 16
+    );
+  align-items: center;
+  gap: var(--space-3);
+}
+.slider input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: calc(var(--px) * 12);
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.slider input[type='range']::-webkit-slider-runnable-track {
+  height: calc(var(--px) * 6);
+  background: linear-gradient(to right, var(--wood-hi) 0 var(--fill), var(--wood-deep) var(--fill));
+  box-shadow:
+    0 0 0 var(--px) var(--ink),
+    inset 0 var(--px) 0 var(--shade);
+}
+.slider input[type='range']::-moz-range-track {
+  height: calc(var(--px) * 6);
+  background: linear-gradient(to right, var(--wood-hi) 0 var(--fill), var(--wood-deep) var(--fill));
+  box-shadow:
+    0 0 0 var(--px) var(--ink),
+    inset 0 var(--px) 0 var(--shade);
+}
+.slider input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: calc(var(--px) * 6);
+  height: calc(var(--px) * 10);
+  margin-top: calc(var(--px) * -2);
+  border: none;
+  border-radius: 0;
+  background: var(--card);
+  box-shadow:
+    0 0 0 var(--px) var(--ink),
+    inset 0 calc(var(--px) * -2) 0 var(--card-lo),
+    inset 0 var(--px) 0 var(--card-hi);
+}
+.slider input[type='range']::-moz-range-thumb {
+  width: calc(var(--px) * 6);
+  height: calc(var(--px) * 10);
+  border: none;
+  border-radius: 0;
+  background: var(--card);
+  box-shadow:
+    0 0 0 var(--px) var(--ink),
+    inset 0 calc(var(--px) * -2) 0 var(--card-lo),
+    inset 0 var(--px) 0 var(--card-hi);
+}
+.slider input[type='range']:focus-visible {
+  outline: none;
+}
+.slider input[type='range']:focus-visible::-webkit-slider-thumb {
+  box-shadow:
+    0 0 0 var(--px) var(--focus-inner),
+    0 0 0 calc(var(--px) * 2) var(--focus-outer);
+}
+.slider input[type='range']:focus-visible::-moz-range-thumb {
+  box-shadow:
+    0 0 0 var(--px) var(--focus-inner),
+    0 0 0 calc(var(--px) * 2) var(--focus-outer);
+}
+.slider-value {
+  text-align: right;
+}
+
+/* --- Segmented: a row of choices in a trough, the chosen one pressed in --------------------- */
+
+.segmented {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--px);
+  padding: var(--px);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--wood-deep);
+  background-clip: padding-box;
+}
+.seg {
+  min-height: calc(var(--px) * 15);
+  margin: 0;
+  padding: 0 var(--space-2) var(--px);
+  border: 0;
+  border-radius: 0;
+  background: var(--card);
+  box-shadow:
+    inset 0 var(--px) 0 var(--card-hi),
+    inset 0 calc(var(--px) * -2) 0 var(--card-lo);
+  font-family: var(--font-text);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  font-weight: 700;
+  color: var(--ink);
+  cursor: pointer;
+}
+/* Pressed in: sunk a UI pixel, its face lit wood, its lip gone. */
+.seg.on,
+.seg.on:active:not(:disabled) {
+  transform: translateY(var(--px));
+  border-bottom-width: 0;
+  padding-bottom: 0;
+  background: var(--wood-hi);
+  box-shadow: inset 0 var(--px) 0 var(--wood);
+  cursor: default;
+}
+.seg:active:not(:disabled) {
+  border-bottom-width: 0;
+}
+.seg:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus-inset);
+}
+
+/* --- Price: the coin and the number ------------------------------------------------------- */
+
+.price {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-family: var(--font-display);
+  font-size: var(--fs-num);
+  line-height: 1;
+  white-space: nowrap;
+}
+/* The price before a sale: struck through with a line of its own, in pixels. */
+.price-full {
+  position: relative;
+  margin-right: var(--px);
+  color: var(--ink-soft);
+  text-decoration: none;
+}
+.price-full::after {
+  content: '';
+  position: absolute;
+  left: calc(var(--px) * -1);
+  right: calc(var(--px) * -1);
+  top: calc(50% - var(--px));
+  height: calc(var(--px) * 2);
+  background: var(--bad);
+}
+.price.short .price-now {
+  color: var(--bad);
+}
+
+/* --- Sheet: a wood panel over a scrim (Settings, How to play) ------------------------------ */
+
+.sheet-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: var(--scrim);
+}
+.sheet {
+  display: flex;
+  flex-direction: column;
+  width: min(calc(var(--px) * 230), 94vw);
+  max-height: min(90vh, calc(var(--px) * 460));
+  animation: sheet-in var(--dur-modal) ease-out;
+}
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--px) * 4));
+  }
+}
+.reduce-motion .sheet {
+  animation: none;
+}
+.sheet > .panel {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.sheet .panel-head {
+  min-height: calc(var(--px) * 18);
+}
+.sheet .panel-title {
+  font-size: var(--fs-title);
+  line-height: var(--lh-body);
+}
+.sheet-close.btn {
+  --btn-h: calc(var(--px) * 15);
+  margin-right: calc(var(--px) * -2);
+}
+.panel-body.sheet-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0;
+  gap: 0;
+}
+.sheet-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  scrollbar-width: thin;
+  scrollbar-color: var(--wood) var(--paper-inset);
+}
+.sheet-scroll:focus {
+  outline: none;
+}
+.sheet-footer {
+  flex: none;
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-top: var(--px) solid var(--paper-line);
+}
+
 /* --- Focus, for anything else the keyboard reaches ---------------------------------------- */
 
 /* :where() keeps this at no specificity, so a primitive's own focus ring always wins. */
