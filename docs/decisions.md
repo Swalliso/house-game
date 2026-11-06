@@ -189,6 +189,7 @@ With these rules, where to put the house becomes the run's first big decision.
 **Why:** Fixtures make the house better without making it bigger, so late placements still matter (the snowball problem in `implementation-plan.md` §2), and every hand offers a choice between growing and improving. Combolands' closest equivalent is its single-building upgrades, which are bought consumables. Floor Plan draws features into existing rooms the way our hands draw fixtures. The cost decides the split: a drawn fixture costs a week, so it competes with a piece, and a bought one costs budget, so it's free to install.
 **Considered:** Every install as a free action, which turns the hand into a shopping list. Every install costing a week, which makes bought fixtures a poor buy. Fixtures only in the shop.
 **Changes:** D-004 (Accepted): a week's turn can be an install instead of a placement. A week never gets a second piece. `jam-scope.md`: Fixtures move from Stretch into the jam build.
+**2026-11-06 (D-095, Proposed):** Garden Lights in a Sapling vanished when it became a Tree, since a Tree is a lot feature, not a piece. A piece that becomes a lot feature now can't hold a fixture. How a fixture leaves is unchanged.
 
 ### D-051 · The shop: five kinds of goods
 **Status:** Accepted · 2026-11-05 (confirmed by the team)
@@ -922,6 +923,28 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - The lot test also checks the real lot balance over 1,000 seeds, before the finds go down: the finds are placed after the checks by design, and an Old Shed on the street's side can tip 3 lots in 1,000 a fraction under `minStreetSidePct`.
 
 **Changes:** D-072 (Accepted): how greedy ranks plays, and how the targets are checked; its targets stand. D-084 (Accepted): its Sim line, since the default bot no longer strikes. The team confirmed both on 2026-11-06. D-085 (Proposed): its numbers came from the old greedy. D-088 (Proposed): the shop bot's strike, reroll, and Catalog rules, and the reports.
+
+### D-095 · A piece that becomes a lot feature can't hold a fixture
+**Status:** Proposed · 2026-11-06, with the fix/transform-fixtures pull request. It fills a gap in D-050, which says how a fixture leaves but not what happens when its host transforms.
+**Decision:**
+- A fixture can't go in a piece that becomes a lot feature. Today that's only the Sapling, which becomes a Tree.
+- The install check says so. Pointing a fixture at a Sapling shows "A Sapling becomes a Tree, so it can't hold a fixture." The Sapling isn't offered as a host, so Garden Lights with only a Sapling to go in are greyed out and count as not fitting for the free redraw.
+- A fixture that doesn't fit the piece anyway, such as a Sprinkler, still says where it goes.
+- A piece that transforms into another piece would keep its fixture, as a Bay Window stays when its room becomes interior.
+
+**Why:** Garden Lights fit any yard piece, and the Sapling is one. When the Sapling became a Tree, its piece left the house and took the lights with it. The preview didn't warn about it, and the only thing on screen was "Grew into a Tree!". §4 names two ways a fixture leaves: a new one replaces it, or its host is demolished. The check is in the rules, so every fixture gets it, including new ones written as data, without naming the Sapling.
+**Considered:**
+- Taking the Sapling out of Garden Lights' `fits`. It's one line of data, but the card would read "Fits a yard piece and anything but Saplings" unless the text code learns a new phrasing, and every later yard fixture would have to repeat it.
+- Returning the fixture to supplies when its host transforms. Demolition gives no refund (D-050), and supplies can be full.
+- Keeping the loss and warning about it in the install preview and the transform's popup. That's more UI work, and the player still loses the card.
+
+**Changes:** D-050 (Accepted): adds where a fixture can't go; how it leaves is unchanged. `implementation-plan.md` §4's fixture rules and the note under Appendix B's fixtures table. Garden Lights' card still says "Fits any yard piece". The sim's bots choose hosts through the same check, so they no longer put fixtures in Saplings.
+
+### D-096 · The tally's closing beats aren't auto-accelerated
+**Status:** Proposed · 2026-11-06, with the fix/ui-audit-bugs pull request (the UI and juice audit, item 9). It changes a detail of §12's Timing, approved with the plan under D-059, so it waits on the team's yes.
+**Decision:** Auto-acceleration speeds up a tally's steps only: the triggers, the sets, and the ×Mult stamps. From the multiply moment on, the beats play at the chosen speed: the pause, the total's hold, the count-up, the target's ding, and the milestone's hold. Holding Space or the right button still fast-forwards them, and a click still skips.
+**Why:** The accelerator kept growing through those beats, so the longest weeks, usually the biggest, got the shortest payoff. A 25-trigger week at 1× is at about 2× by the multiply moment, so its 0.4 s pause took about 0.2 s. The steps are where a long week drags; the payoff is short at any length.
+**Changes:** `implementation-plan.md` §12, Timing. D-059 (Accepted) still holds: the tally speeds itself up.
 
 ### D-015 · Start small, grow into the corporation
 **Status:** Proposed

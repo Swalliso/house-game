@@ -543,6 +543,7 @@ Derived from `HouseState`, cached by house object identity:
   - Each piece holds one fixture. Installing a second replaces the first, and the preview shows what's lost.
   - A fixture's modifiers apply to its host only (the `{ host: true }` selector), from the tally of the week it's installed.
   - It goes when its host is demolished; there's no refund.
+  - A piece that becomes a lot feature (the Sapling, which becomes a Tree) can't hold one, since the fixture would go with it (D-095).
   - It doesn't change the host's shape, category, or connectivity.
 
 ### Performance
@@ -1402,8 +1403,9 @@ The team treats reward feel as core: big combos should feel like Balatro and Com
 **Timing:**
 - About 0.45 s per trigger at 1× speed. Balatro uses 0.75–0.94 s, but a house has 20–40 pieces. Popups hold for the step minus 0.15 s.
 - **Auto-acceleration**, as in Balatro, so long weeks never drag:
-  - an accelerator grows by 0.2 × speed per second during a tally
+  - an accelerator grows by 0.2 × speed per second during a tally's steps: the triggers, the sets, and the ×Mult stamps
   - effective speed is the chosen speed + max(0, accelerator − 1), capped at +8×
+  - the closing beats, from the multiply moment on, play at the chosen speed, so the biggest weeks keep their payoff (D-096)
 - **Speed setting:** 0.5×, 1×, 2×, 4×, 8×.
 - Hold Space (or the right mouse button) to fast-forward, or click to jump to the result. The final number is never hidden.
 
@@ -1836,7 +1838,7 @@ Every fixture's modifiers target `{ host: true }`, written as "host" here. Draw 
 | Garden Lights | any yard piece | `grantTag host Pretty`; `earn {host ∧ in frontYard} +50` | Common | M3a |
 | **Chandelier** *(D-056)* | dining room or living room | `xMult times 125 when {host: {inSet: entertainer}}`: ×1.25 Mult while its room is part of an Entertainer. Shop only (draw weight 0). | Rare | M3a |
 
-`fits` is checked when a fixture is installed. A Bay Window stays if its room later becomes interior.
+`fits` is checked when a fixture is installed. A Bay Window stays if its room later becomes interior. No fixture goes in a Sapling, which becomes a Tree, so Garden Lights fit every yard piece but that one (D-095).
 
 ### Sets
 

@@ -59,8 +59,11 @@ button,
   text-decoration: none;
   display: inline-block;
 }
-button:hover:not(:disabled),
-.button:hover {
+/* The plain button's hover. :where() keeps it at the base rule's specificity, so a variant's
+   own fill (the shop's Leave, a card's tint or hatching) always wins: a hover never replaces
+   it. Variants that want a hover brighten or lift with rules of their own. */
+button:where(:hover:not(:disabled)),
+.button:where(:hover) {
   background: #fff3df;
 }
 button:active:not(:disabled) {
@@ -143,6 +146,8 @@ button:focus-visible,
   grid-row: 2;
   overflow: auto;
   padding: 10px;
+  /* A focused card scrolls clear of the sticky End week (.hand-actions, about 70px tall). */
+  scroll-padding-bottom: 76px;
 }
 .hints {
   grid-column: 1 / -1;
@@ -169,6 +174,10 @@ h2 {
 h3 {
   font-size: 13px;
   margin: 12px 0 6px;
+}
+/* Section headings read in small caps; card titles (a shop offer, a crate option) don't.
+   :where() keeps the bare h3's specificity, so each panel's own h3 rules still win. */
+:where(.score-panel, .inspect, .inventory, .run-end, .strike-sheet, .howto-section) h3 {
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -238,6 +247,9 @@ h3 {
   background: linear-gradient(90deg, #f1c46b, #f6dd9d);
   transition: width 0.25s ease-out;
 }
+.reduce-motion .bar .fill {
+  transition: none;
+}
 .bar .fill.met {
   background: linear-gradient(90deg, #9fd27f, #cdebb3);
 }
@@ -298,8 +310,10 @@ h3 {
   filter: brightness(1.18) drop-shadow(0 0 4px #fff8d0);
   z-index: 2;
 }
+/* A held set's pieces during its beat in the tally: Charm's rose, like the placement preview's
+   sets and the set's name. Sparkle's gold is for ×Mult only (D-019). */
 .piece.lit {
-  filter: drop-shadow(0 0 3px var(--sparkle)) drop-shadow(0 0 6px #f6d58a);
+  filter: drop-shadow(0 0 3px var(--charm)) drop-shadow(0 0 6px #f2a9bd);
   z-index: 2;
 }
 .piece.set-preview {
@@ -476,8 +490,9 @@ h3 {
   color: var(--charm);
   font-size: 18px;
 }
+/* A set's name, in Charm's color: Sparkle's gold is for ×Mult only (D-019). */
 .popup.set {
-  color: var(--sparkle);
+  color: var(--charm);
   font-size: 24px;
 }
 @keyframes popup-rise {
@@ -552,10 +567,6 @@ h3 {
 }
 .layer.charm {
   color: var(--charm);
-}
-.layer.charm .layer-value::before {
-  content: '×';
-  font-size: 0.7em;
 }
 .layer.wow {
   color: var(--wow);
@@ -796,6 +807,10 @@ h3 {
   opacity: 0.55;
   background: repeating-linear-gradient(45deg, #f1e9da 0 6px, #e8dcc5 6px 12px);
 }
+/* On hover a card keeps its tint (or its hatching), a little brighter. */
+.card:hover:not(:disabled) {
+  filter: brightness(1.04);
+}
 .no-fit-reason {
   font-weight: 700;
   color: #9a4a0a;
@@ -874,6 +889,21 @@ h3 {
 }
 .mini-cell.lawn {
   background: #6fb35a;
+}
+/* End week: on a short window (1280×720, D-047) the column scrolls, so End week sticks to its
+   bottom and stays in view, like the end screen's buttons (end.css). Only End week, so it
+   covers as little of the cards as it can; .right's scroll-padding-bottom keeps a focused
+   card clear of it. */
+.hand-actions {
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  bottom: -12px;
+  margin: 0 -14px -12px;
+  padding: 10px 14px 12px;
+  background: var(--panel);
+  border-top: 1px solid var(--panel-edge);
+  border-radius: 0 0 11px 11px;
 }
 .hand-buttons {
   display: flex;
@@ -965,6 +995,20 @@ h3 {
     -3px 0 0 #fff;
   pointer-events: none;
   animation: popup-fade 1.4s forwards;
+}
+/* A neutral note (a free redraw, the saving-up bonus): a paper slip like .notice, not the
+   green of a success. */
+.target-flash.note {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--ink);
+  white-space: nowrap;
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: 2px solid var(--panel-edge);
+  background: #fffaf1;
+  box-shadow: 0 6px 18px rgb(60 40 20 / 0.2);
+  text-shadow: none;
 }
 .notice,
 .toast {

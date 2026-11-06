@@ -3,8 +3,10 @@
 // installing another replaces it (the preview shows what's lost). Its modifiers apply to its
 // host only, from the tally of the week it's installed, and it goes when its host is
 // demolished, with no refund. It never changes the host's shape, category, or connectivity.
+// A piece that becomes a lot feature (the Sapling, which becomes a Tree) can't hold one,
+// since the fixture would go with it (D-095).
 
-import type { Content, FixtureId, HouseState } from './index.ts';
+import type { Content, FeatureId, FixtureId, HouseState, PieceDef } from './index.ts';
 import { pieceDef, type Layout } from './layout.ts';
 import { matchesPiece } from './selectors.ts';
 import { selectorText } from './text.ts';
@@ -42,7 +44,30 @@ export function checkInstall(
       replaces,
     };
   }
+  // A host that becomes a lot feature would take the fixture with it (D-095). Checked after
+  // `fits`, so a fixture that doesn't fit anyway says where it goes.
+  const hostDef = pieceDef(content, piece);
+  const feature = becomesFeature(hostDef);
+  if (feature) {
+    // "A Sapling becomes a Tree".
+    const host = `${/^[AEIOU]/i.test(hostDef.name) ? 'An' : 'A'} ${hostDef.name}`;
+    const into = content.features[feature].name;
+    const an = /^[AEIOU]/i.test(into) ? 'an' : 'a';
+    return {
+      legal: false,
+      reason: `${host} becomes ${an} ${into}, so it can’t hold a fixture.`,
+      replaces,
+    };
+  }
   return replaces ? { legal: true, replaces } : { legal: true };
+}
+
+/** The lot feature a piece turns into (the Sapling's Tree), if it has such a transform. */
+function becomesFeature(def: PieceDef): FeatureId | undefined {
+  for (const e of def.effects) {
+    if (e.kind === 'transform' && 'feature' in e.into) return e.into.feature;
+  }
+  return undefined;
 }
 
 /** "any room", "a Kitchen", "an exterior room". */

@@ -435,7 +435,10 @@ export function createRules(content: Content): Rules {
   // -------------------------------------------------------------------------------------
   // Transitions.
 
-  /** Start of week, step 1: pieces old enough transform. The Sapling becomes a Tree tile. */
+  /**
+   * Start of week, step 1: pieces old enough transform. The Sapling becomes a Tree tile; it
+   * never holds a fixture (checkInstall, D-095), so none is lost with it.
+   */
   function resolveTransforms(state: RunState, events: GameEvent[]): RunState {
     let house = state.house;
     for (const piece of state.house.pieces) {

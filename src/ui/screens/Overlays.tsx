@@ -29,8 +29,9 @@ export function TargetFlash() {
     return () => clearTimeout(t);
   }, [f?.id]);
   if (!f || shown !== f.id) return null;
+  // 'note' is a neutral notice (a free redraw, the saving-up bonus), not the green success.
   return (
-    <div class="target-flash" key={f.id} role="status">
+    <div class={`target-flash ${f.tone}`} key={f.id} role="status">
       {f.text}
     </div>
   );

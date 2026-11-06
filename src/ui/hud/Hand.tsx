@@ -271,15 +271,19 @@ export function Hand() {
           Click a piece or boulder to demolish it · Esc to cancel
         </p>
       )}
-      <button
-        type="button"
-        class={`end-week ${pending ? 'ready' : ''} ${armed ? 'confirm' : ''} ${demolishing ? 'compact' : ''}`}
-        onMouseDown={noFocus}
-        onClick={requestEndWeek}
-      >
-        {endLabel}
-        <span class="key-hint">Enter</span>
-      </button>
+      {/* End week sticks to the column's bottom, so it stays in view on a short window. Only it
+          does: Rotate and Cancel have keys, and the cards above shouldn't be covered more. */}
+      <div class="hand-actions">
+        <button
+          type="button"
+          class={`end-week ${pending ? 'ready' : ''} ${armed ? 'confirm' : ''} ${demolishing ? 'compact' : ''}`}
+          onMouseDown={noFocus}
+          onClick={requestEndWeek}
+        >
+          {endLabel}
+          <span class="key-hint">Enter</span>
+        </button>
+      </div>
     </section>
   );
 }
