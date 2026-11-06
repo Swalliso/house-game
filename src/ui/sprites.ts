@@ -111,6 +111,14 @@ export function spritePos(id: SpriteId): { x: number; y: number; w: number; h: n
   return { x, y, w, h };
 }
 
+/** An animated sprite's frames: how many, frame k's x offset (k × stride), and each frame's ms. */
+export function spriteFrames(id: SpriteId): { frames: number; stride: number; ms: number } | null {
+  const s = atlas.sprites[id];
+  return 'frames' in s && 'stride' in s && 'ms' in s
+    ? { frames: s.frames, stride: s.stride, ms: s.ms }
+    : null;
+}
+
 /**
  * CSS for a sprite as a background at `scale` CSS px per art px. The element's box is the
  * caller's: w × scale by h × scale shows the whole sprite (a cell-sized sprite fills a cell).

@@ -8,6 +8,11 @@
 //   outline color where the mask meets anything else, a white fill inside), heavier outside
 //   than between rooms, with door gaps the floor runs through, window glass, garage door rails
 //   and doormats. Furniture tucks under the bands and never spills into the next room.
+// - The fixtures that are part of a room rather than furniture (rooms.ts places the rest):
+//   Soundproofing pads the north faces, Blackout Curtains hang on them and cover the windows, a
+//   Skylight lights a patch of floor, a Chandelier hangs over the room with its glow on the
+//   floor, and a Bay Window is a cell of glass with its bay outside. All our own drawings, in
+//   LimeZu's palette and ink.
 //
 // Both cover the house's bounding box plus a margin; `x` and `y` place them on the lot, in art px.
 
@@ -20,6 +25,7 @@ import {
   roomAt,
   type HouseModel,
   type Rect,
+  type Room,
 } from '../board/house-model.ts';
 import { CELL, PIECE_SPRITES, spritePos, type SpriteId } from '../sprites.ts';
 import type { PieceId } from '../../rules/index.ts';
@@ -55,6 +61,50 @@ const RAIL_LINE: Rgb = [0x9a, 0x9c, 0xa8];
 const MAT: Rgb = [0x96, 0x62, 0x40];
 const MAT_EDGE: Rgb = [0x5c, 0x3a, 0x2c];
 const MAT_LINE: Rgb = [0xb0, 0x7c, 0x54];
+/** Soundproofing's padded panels: a seam, the pad, its lit top and its shaded bottom. */
+const PAD = {
+  seam: [0x2f, 0x2f, 0x45] as Rgb,
+  pad: [0x55, 0x55, 0x7a] as Rgb,
+  lit: [0x6d, 0x6d, 0x94] as Rgb,
+  shade: [0x46, 0x46, 0x68] as Rgb,
+};
+/** Blackout Curtains: heavy navy drapes in folds, on a wooden rod. */
+const DRAPE = {
+  cloth: [0x34, 0x35, 0x5c] as Rgb,
+  dark: [0x24, 0x25, 0x44] as Rgb,
+  lit: [0x48, 0x4a, 0x7c] as Rgb,
+  rod: [0x7a, 0x56, 0x38] as Rgb,
+};
+/** A Skylight's patch of sun on the floor, and the Chandelier's warm glow. */
+const SUN = { rgb: [0xff, 0xfb, 0xe8] as Rgb, alpha: 0.4 } as const;
+const GLOW = { rgb: [0xff, 0xe2, 0x96] as Rgb, alpha: 0.2 } as const;
+
+/**
+ * The Chandelier, our own drawing (LimeZu has none): four candles on a gold ring with a crystal
+ * drop, hung on a chain. k ink, G gold, g its shade, w wax, F and f the flames, c crystal.
+ */
+const CHANDELIER = [
+  '.......k.......',
+  '.......k.......',
+  '.F...F.k.F...F.',
+  '.f...f.k.f...f.',
+  'kwk.kwkGkwk.kwk',
+  'kGGGGGGGGGGGGGk',
+  '.kgGgGgGgGgGgk.',
+  '..kkgGGGGGgkk..',
+  '....kkgGgkk....',
+  '......kck......',
+  '.......k.......',
+] as const;
+const CHANDELIER_INK: Readonly<Record<string, Rgb>> = {
+  k: INK,
+  G: [0xe8, 0xb2, 0x3c],
+  g: [0xa8, 0x70, 0x1c],
+  w: [0xf4, 0xea, 0xd0],
+  F: [0xff, 0xe6, 0x80],
+  f: [0xff, 0x9b, 0x3a],
+  c: [0xcf, 0xee, 0xfa],
+};
 
 /** The house's shadow on the lot: light from the top-left (D-057). */
 export const HOUSE_SHADOW = { dx: 3, dy: 4, rgb: [0x14, 0x24, 0x18] as Rgb, alpha: 0.3 } as const;
@@ -309,7 +359,158 @@ export function paintFloors(
       shade.rect({ x: e.gap.x, y: e.gap.y, w: e.gap.w + WALL.shadow, h: e.gap.h }, false);
   }
   shade.forEach((px, py) => cv.blend(px, py, FLOOR_SHADOW.rgb, FLOOR_SHADOW.alpha));
+  for (const r of m.rooms.values()) {
+    if (r.fixture === 'soundproofing') padFaces(cv, m, r);
+    else if (r.fixture === 'blackoutCurtains') drapeFace(cv, m, r);
+  }
   return cv.pixels();
+}
+
+/** A room's floor inside its walls (over its box) and the floor's top under the north faces. */
+function floorBox(m: HouseModel, r: Room): Rect {
+  const cells = r.cells;
+  const x0 = r.box.x / CELL;
+  const y0 = r.box.y / CELL;
+  const x1 = x0 + r.box.w / CELL;
+  const y1 = y0 + r.box.h / CELL;
+  const side = (s: 'N' | 'E' | 'S' | 'W') =>
+    Math.max(
+      0,
+      ...cells
+        .filter((c) =>
+          s === 'N'
+            ? c.y === y0
+            : s === 'S'
+              ? c.y === y1 - 1
+              : s === 'W'
+                ? c.x === x0
+                : c.x === x1 - 1,
+        )
+        .map((c) => inset(m, c.x, c.y, s)),
+    );
+  const face = cells.some((c) => c.y === y0 && hasFace(m, c.x, c.y)) ? WALL.face : 0;
+  const top = r.box.y + side('N') + face;
+  return {
+    x: r.box.x + side('W'),
+    y: top,
+    w: r.box.w - side('W') - side('E'),
+    h: r.box.y + r.box.h - side('S') - top,
+  };
+}
+
+/** The x ranges of each of a room's north faces, with their tops: where the face sprite was drawn. */
+function faces(m: HouseModel, r: Room): { x0: number; x1: number; top: number }[] {
+  const out: { x0: number; x1: number; top: number }[] = [];
+  for (const c of r.cells) {
+    if (!hasFace(m, c.x, c.y)) continue;
+    const X0 = c.x * CELL;
+    const top = c.y * CELL + inset(m, c.x, c.y, 'N');
+    for (const [a, z] of without(X0, X0 + CELL, faceGaps(m, c.x, c.y)))
+      out.push({ x0: a, x1: z, top });
+  }
+  return out;
+}
+
+/** Soundproofing: the north faces padded, rows of pads offset like bricks, over the baseboard. */
+function padFaces(cv: Canvas, m: HouseModel, r: Room): void {
+  for (const f of faces(m, r)) {
+    for (let fy = 0; fy < WALL.face - 2; fy++) {
+      for (let x = f.x0; x < f.x1; x++) {
+        const row = fy < 3 ? 0 : 1;
+        const lx = (x + row * 3) % 6;
+        const ly = fy % 3;
+        cv.set(
+          x,
+          f.top + fy,
+          lx === 0 ? PAD.seam : ly === 0 ? PAD.lit : ly === 2 ? PAD.shade : PAD.pad,
+        );
+      }
+    }
+  }
+}
+
+/** Blackout Curtains: closed drapes on a rod across the middle of the room's widest north face. */
+function drapeFace(cv: Canvas, m: HouseModel, r: Room): void {
+  // The widest stretch of face, by row.
+  const spans = faces(m, r).sort((p, q) => p.top - q.top || p.x0 - q.x0);
+  const merged: { x0: number; x1: number; top: number }[] = [];
+  for (const f of spans) {
+    const last = merged[merged.length - 1];
+    if (last && last.top === f.top && last.x1 === f.x0) last.x1 = f.x1;
+    else merged.push({ ...f });
+  }
+  const best = merged.sort((p, q) => q.x1 - q.x0 - (p.x1 - p.x0) || p.top - q.top)[0];
+  if (!best) return;
+  const w = Math.min(best.x1 - best.x0 - 4, 30);
+  if (w < 8) return;
+  const x0 = Math.floor((best.x0 + best.x1 - w) / 2);
+  const mid = x0 + Math.floor(w / 2);
+  for (let fy = 0; fy < WALL.face; fy++) {
+    for (let x = x0; x < x0 + w; x++) {
+      const k = (x - x0) % 3;
+      const color =
+        fy === 0
+          ? DRAPE.rod
+          : x === mid || x === mid - 1
+            ? DRAPE.dark
+            : fy === WALL.face - 1
+              ? DRAPE.dark
+              : k === 0
+                ? DRAPE.dark
+                : k === 1
+                  ? DRAPE.lit
+                  : DRAPE.cloth;
+      cv.set(x, best.top + fy, color);
+    }
+  }
+  // The rod's ends.
+  cv.set(x0 - 1, best.top, INK);
+  cv.set(x0 + w, best.top, INK);
+}
+
+/** A Skylight: a patch of sun in four panes, the frame's shadow between them, over the floor and whatever stands there. */
+function sunPatch(cv: Canvas, m: HouseModel, r: Room): void {
+  const f = floorBox(m, r);
+  const w = Math.max(10, Math.min(30, f.w - 14));
+  const h = Math.max(8, Math.min(22, f.h - 12));
+  const x0 = Math.floor(f.x + (f.w - w) / 2);
+  const y0 = Math.floor(f.y + (f.h - h) / 2);
+  const mx = x0 + Math.floor(w / 2);
+  const my = y0 + Math.floor(h / 2);
+  for (let y = y0 - 1; y <= y0 + h; y++) {
+    for (let x = x0 - 1; x <= x0 + w; x++) {
+      const rim = x < x0 || y < y0 || x >= x0 + w || y >= y0 + h;
+      if (!rim && (x === mx || y === my)) continue;
+      cv.blend(x, y, SUN.rgb, rim ? SUN.alpha / 3 : SUN.alpha);
+    }
+  }
+}
+
+/** The Chandelier's warm light around it, in three steps (pixel light, not a smooth ramp). */
+function glow(cv: Canvas, cx: number, cy: number, rx: number, ry: number): void {
+  for (let y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++) {
+    for (let x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) {
+      const d = ((x + 0.5 - cx) / rx) ** 2 + ((y + 0.5 - cy) / ry) ** 2;
+      if (d >= 1) continue;
+      cv.blend(
+        x,
+        y,
+        GLOW.rgb,
+        d < 0.3 ? GLOW.alpha : d < 0.65 ? GLOW.alpha * 0.66 : GLOW.alpha * 0.33,
+      );
+    }
+  }
+}
+
+/** Where the Chandelier hangs: over the middle of the room's floor. */
+export function chandelierAt(
+  m: HouseModel,
+  r: Room,
+): { x: number; y: number; w: number; h: number } {
+  const f = floorBox(m, r);
+  const w = CHANDELIER[0].length;
+  const h = CHANDELIER.length;
+  return { x: Math.floor(f.x + (f.w - w) / 2), y: Math.floor(f.y + f.h / 2 - h + 2), w, h };
 }
 
 /** The wall bands as a mask: outside walls inside their rooms, walls between rooms straddling the line. */
@@ -389,26 +590,64 @@ export function paintWalls(m: HouseModel): Pixels | null {
     cv.set(px, py, edgePx ? INK : BAND);
   });
 
-  // Windows: glass across the band, framed in ink, with a mullion and a few glints.
+  // Windows: glass across the band, framed in ink, with a mullion and a few glints. A Bay
+  // Window's glass has a mullion every few px and its bay outside; Blackout Curtains draw drapes
+  // across a room's glass.
   for (const w of m.windows) {
     const flat = w.side === 'N' || w.side === 'S';
     const { x, y, w: rw, h: rh } = w.rect;
     const along = flat ? rw : rh;
     const across = flat ? rh : rw;
+    const dark = m.rooms.get(w.uid)?.fixture === 'blackoutCurtains';
     for (let j = 0; j < rh; j++) {
       for (let i = 0; i < rw; i++) {
         if (!mask.has(x + i, y + j)) continue;
         const a = flat ? i : j;
         const c = flat ? j : i;
-        const color =
-          a === 0 || a === along - 1 || c === 0 || c === across - 1
-            ? INK
-            : a === Math.floor(along / 2)
-              ? MULLION
-              : (a + c) % 5 === 1
-                ? GLINT
-                : GLASS;
+        const frame = a === 0 || a === along - 1 || c === 0 || c === across - 1;
+        const color = frame
+          ? INK
+          : dark
+            ? a % 3 === 0
+              ? DRAPE.dark
+              : a % 3 === 1
+                ? DRAPE.lit
+                : DRAPE.cloth
+            : w.bay
+              ? a % 7 === 0
+                ? MULLION
+                : (a + c) % 5 === 1
+                  ? GLINT
+                  : GLASS
+              : a === Math.floor(along / 2)
+                ? MULLION
+                : (a + c) % 5 === 1
+                  ? GLINT
+                  : GLASS;
         cv.set(x + i, y + j, color);
+      }
+    }
+    if (w.bay) {
+      const b = w.bay;
+      for (let j = 0; j < b.h; j++) {
+        for (let i = 0; i < b.w; i++) {
+          const a = flat ? i : j;
+          const c = flat ? j : i;
+          const along2 = flat ? b.w : b.h;
+          const across2 = flat ? b.h : b.w;
+          // Its far side and its two ends in ink; glass between, with a sill along the wall.
+          const far = w.side === 'N' || w.side === 'W' ? c === 0 : c === across2 - 1;
+          const near = w.side === 'N' || w.side === 'W' ? c === across2 - 1 : c === 0;
+          const color =
+            far || a === 0 || a === along2 - 1
+              ? INK
+              : near
+                ? BAND
+                : (a + c) % 4 === 1
+                  ? GLINT
+                  : GLASS;
+          cv.set(b.x + i, b.y + j, color);
+        }
       }
     }
   }
@@ -466,6 +705,20 @@ export function paintWalls(m: HouseModel): Pixels | null {
         cv.set(r.x + i, r.y + j, rim ? MAT_EDGE : stripe ? MAT_LINE : MAT);
       }
     }
+  }
+  // A Skylight's sun falls on the floor and the furniture alike; the Chandelier hangs over its
+  // room in its own light.
+  for (const r of m.rooms.values()) {
+    if (r.fixture === 'skylight') sunPatch(cv, m, r);
+    if (r.fixture !== 'chandelier') continue;
+    const at = chandelierAt(m, r);
+    glow(cv, at.x + at.w / 2, at.y + at.h / 2 + 2, 15, 11);
+    CHANDELIER.forEach((row, j) => {
+      for (let i = 0; i < row.length; i++) {
+        const c = CHANDELIER_INK[row[i]!];
+        if (c) cv.set(at.x + i, at.y + j, c);
+      }
+    });
   }
   return cv.pixels();
 }

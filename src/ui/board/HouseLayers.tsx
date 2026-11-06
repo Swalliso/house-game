@@ -30,10 +30,18 @@ import {
   type AtlasPixels,
   type Pixels,
 } from '../art/house-paint.ts';
-import { itemRows, roomItems, type Item } from '../art/rooms.ts';
+import { itemRows, roomItems, roomLayout, type Item } from '../art/rooms.ts';
 import { highlighted, justPlaced, played, tallyView } from '../fx/director.ts';
 import { settings } from '../settings.ts';
-import { atlasImage, CELL, cellUnit, FIXTURE_GLYPHS, spritePos, spriteStyle } from '../sprites.ts';
+import {
+  atlasImage,
+  CELL,
+  cellUnit,
+  FIXTURE_GLYPHS,
+  spriteFrames,
+  spritePos,
+  spriteStyle,
+} from '../sprites.ts';
 import { currentTally, preview, tool } from '../store.ts';
 import { cellsOutline, digitCell, type Occupancy } from './geometry.ts';
 import { inset, pieceModel, type HouseModel } from './house-model.ts';
@@ -119,7 +127,11 @@ export function WallsLayer(p: { lot: Lot; scale: number; model: HouseModel }) {
   return <HouseCanvas {...p} layer="walls" />;
 }
 
-/** An item's rows under the walls (`bottom`: all of them, unless it rises over its room's north wall) or over them (`top`). */
+/**
+ * An item's rows under the walls (`bottom`: all of them, unless it rises over its room's north
+ * wall) or over them (`top`). An animated sprite's frames sit side by side in a strip that slides
+ * behind the item's box (transform only), under the walls; its top stays on the first frame.
+ */
 function ItemPart({
   item,
   box,
@@ -137,17 +149,35 @@ function ItemPart({
   const [from, to] = rows;
   const style = spriteStyle(item.sprite, scale);
   const [bx, by] = style.backgroundPosition!.split(' ').map((v) => Number.parseFloat(v));
+  const place = {
+    left: `${(item.x - box.x) * scale}px`,
+    top: `${(item.y + from - box.y) * scale}px`,
+    width: `${w * scale}px`,
+    height: `${(to - from) * scale}px`,
+  };
+  const anim = part === 'bottom' ? spriteFrames(item.sprite) : null;
+  if (anim) {
+    return (
+      <div class="item" style={{ ...place, overflow: 'hidden' }}>
+        <div
+          class="item-frames"
+          style={{
+            ...style,
+            backgroundPosition: `${bx}px ${by! - from * scale}px`,
+            width: `${anim.stride * anim.frames * scale}px`,
+            height: '100%',
+            animationDuration: `${anim.ms * anim.frames}ms`,
+            animationTimingFunction: `steps(${anim.frames})`,
+            '--item-frames': `${-anim.stride * anim.frames * scale}px`,
+          }}
+        />
+      </div>
+    );
+  }
   return (
     <div
       class="item"
-      style={{
-        ...style,
-        backgroundPosition: `${bx}px ${by! - from * scale}px`,
-        left: `${(item.x - box.x) * scale}px`,
-        top: `${(item.y + from - box.y) * scale}px`,
-        width: `${w * scale}px`,
-        height: `${(to - from) * scale}px`,
-      }}
+      style={{ ...style, ...place, backgroundPosition: `${bx}px ${by! - from * scale}px` }}
     />
   );
 }
@@ -419,6 +449,9 @@ export function LabelsLayer({
         const ins = (c: Cell, side: 'N' | 'E' | 'S' | 'W') =>
           room ? inset(model, c.x, c.y, side) * scale : 0;
         const shown = score ? (score.unmet ? 0 : score.earned) : undefined;
+        // A room's fixture shows as art where it fits (rooms.ts, house-paint.ts); its badge
+        // stands in when it doesn't, and for the yard's fixtures.
+        const badged = !!piece.fixture && (!room || !roomLayout(model, piece.uid).fixtureShown);
         const d = digitCell(cells);
         const topRow = Math.min(...cells.map((c) => c.y));
         const tr = {
@@ -441,7 +474,7 @@ export function LabelsLayer({
                 }}
               />
             )}
-            {piece.fixture && (
+            {badged && piece.fixture && (
               <FixtureBadge
                 id={piece.fixture.id}
                 left={(tr.x + 1) * px - ins(tr, 'E') - gap}

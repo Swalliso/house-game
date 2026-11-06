@@ -3,21 +3,36 @@
     "pack": "mi",
     "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floors_16x16.png",
     "rect": [16, 400, 16, 16],
-    "ops": [{ "op": "tile", "size": [32, 32] }],
+    "ops": [
+      {
+        "op": "tile",
+        "size": [32, 32]
+      }
+    ],
     "note": "The Closet's floor: pale maple boards (block 0, 11), its plain seamless tile repeated to one 32 px cell. Lighter than the Bedroom's honey planks, so a closet off a bedroom reads as its own room (D-093)."
   },
   "floor-mudroom": {
     "pack": "mi",
     "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floors_16x16.png",
     "rect": [144, 464, 16, 16],
-    "ops": [{ "op": "tile", "size": [32, 32] }],
+    "ops": [
+      {
+        "op": "tile",
+        "size": [32, 32]
+      }
+    ],
     "note": "The Mudroom's floor: grey slate tiles with light grout (block 2, 13), its plain seamless tile repeated to one 32 px cell. A hard-wearing entry floor, unlike the Bathroom's blue tiles."
   },
   "floor-playroom": {
     "pack": "mi",
     "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floors_16x16.png",
     "rect": [144, 304, 16, 16],
-    "ops": [{ "op": "tile", "size": [32, 32] }],
+    "ops": [
+      {
+        "op": "tile",
+        "size": [32, 32]
+      }
+    ],
     "note": "The Playroom's floor: lavender tiles like a foam play mat (block 2, 8), its plain seamless tile repeated to one 32 px cell. No other room has a purple floor, so it isn't mistaken for the Living Room."
   },
   "face-bedroom": {
@@ -25,8 +40,20 @@
     "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png",
     "rect": [16, 6, 16, 6],
     "ops": [
-      { "op": "compose", "size": [16, 8], "layers": [{ "rect": [16, 30, 16, 2], "at": [0, 6] }] },
-      { "op": "tile", "size": [32, 8] }
+      {
+        "op": "compose",
+        "size": [16, 8],
+        "layers": [
+          {
+            "rect": [16, 30, 16, 2],
+            "at": [0, 6]
+          }
+        ]
+      },
+      {
+        "op": "tile",
+        "size": [32, 8]
+      }
     ],
     "note": "The north wall face of a bedroom (teal and sand diamonds on lilac): the wall block at [0, 0]'s middle tile column, its top 6 rows of wallpaper under the band, then its last 2 rows (the baseboard and the outline along the floor), repeated to one 32 px cell. The house draws it under each north wall (the audit prototype's 8 px stub); the band itself is drawn from the wall mask."
   },
@@ -35,8 +62,20 @@
     "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png",
     "rect": [368, 230, 16, 6],
     "ops": [
-      { "op": "compose", "size": [16, 8], "layers": [{ "rect": [368, 254, 16, 2], "at": [0, 6] }] },
-      { "op": "tile", "size": [32, 8] }
+      {
+        "op": "compose",
+        "size": [16, 8],
+        "layers": [
+          {
+            "rect": [368, 254, 16, 2],
+            "at": [0, 6]
+          }
+        ]
+      },
+      {
+        "op": "tile",
+        "size": [32, 8]
+      }
     ],
     "note": "The north wall face of a bathroom (white tiles with blue grout): the wall block at [352, 224]'s middle tile column, its top 6 rows of wallpaper under the band, then its last 2 rows (the baseboard and the outline along the floor), repeated to one 32 px cell. The house draws it under each north wall (the audit prototype's 8 px stub); the band itself is drawn from the wall mask."
   },
@@ -45,8 +84,20 @@
     "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png",
     "rect": [16, 294, 16, 6],
     "ops": [
-      { "op": "compose", "size": [16, 8], "layers": [{ "rect": [16, 318, 16, 2], "at": [0, 6] }] },
-      { "op": "tile", "size": [32, 8] }
+      {
+        "op": "compose",
+        "size": [16, 8],
+        "layers": [
+          {
+            "rect": [16, 318, 16, 2],
+            "at": [0, 6]
+          }
+        ]
+      },
+      {
+        "op": "tile",
+        "size": [32, 8]
+      }
     ],
     "note": "The north wall face of a kitchen (cream with a butter-yellow stripe): the wall block at [0, 288]'s middle tile column, its top 6 rows of wallpaper under the band, then its last 2 rows (the baseboard and the outline along the floor), repeated to one 32 px cell. The house draws it under each north wall (the audit prototype's 8 px stub); the band itself is drawn from the wall mask."
   },
@@ -55,8 +106,20 @@
     "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png",
     "rect": [368, 390, 16, 6],
     "ops": [
-      { "op": "compose", "size": [16, 8], "layers": [{ "rect": [368, 414, 16, 2], "at": [0, 6] }] },
-      { "op": "tile", "size": [32, 8] }
+      {
+        "op": "compose",
+        "size": [16, 8],
+        "layers": [
+          {
+            "rect": [368, 414, 16, 2],
+            "at": [0, 6]
+          }
+        ]
+      },
+      {
+        "op": "tile",
+        "size": [32, 8]
+      }
     ],
     "note": "The north wall face of a dining room (cream over a green dado): the wall block at [352, 384]'s middle tile column, its top 6 rows of wallpaper under the band, then its last 2 rows (the baseboard and the outline along the floor), repeated to one 32 px cell. The house draws it under each north wall (the audit prototype's 8 px stub); the band itself is drawn from the wall mask."
   },
@@ -65,8 +128,20 @@
     "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png",
     "rect": [16, 358, 16, 6],
     "ops": [
-      { "op": "compose", "size": [16, 8], "layers": [{ "rect": [16, 382, 16, 2], "at": [0, 6] }] },
-      { "op": "tile", "size": [32, 8] }
+      {
+        "op": "compose",
+        "size": [16, 8],
+        "layers": [
+          {
+            "rect": [16, 382, 16, 2],
+            "at": [0, 6]
+          }
+        ]
+      },
+      {
+        "op": "tile",
+        "size": [32, 8]
+      }
     ],
     "note": "The north wall face of a living room (warm sand): the wall block at [0, 352]'s middle tile column, its top 6 rows of wallpaper under the band, then its last 2 rows (the baseboard and the outline along the floor), repeated to one 32 px cell. The house draws it under each north wall (the audit prototype's 8 px stub); the band itself is drawn from the wall mask."
   },
@@ -75,8 +150,20 @@
     "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png",
     "rect": [16, 134, 16, 6],
     "ops": [
-      { "op": "compose", "size": [16, 8], "layers": [{ "rect": [16, 158, 16, 2], "at": [0, 6] }] },
-      { "op": "tile", "size": [32, 8] }
+      {
+        "op": "compose",
+        "size": [16, 8],
+        "layers": [
+          {
+            "rect": [16, 158, 16, 2],
+            "at": [0, 6]
+          }
+        ]
+      },
+      {
+        "op": "tile",
+        "size": [32, 8]
+      }
     ],
     "note": "The north wall face of a closet (grey beige): the wall block at [0, 128]'s middle tile column, its top 6 rows of wallpaper under the band, then its last 2 rows (the baseboard and the outline along the floor), repeated to one 32 px cell. The house draws it under each north wall (the audit prototype's 8 px stub); the band itself is drawn from the wall mask."
   },
@@ -85,8 +172,20 @@
     "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png",
     "rect": [16, 102, 16, 6],
     "ops": [
-      { "op": "compose", "size": [16, 8], "layers": [{ "rect": [16, 126, 16, 2], "at": [0, 6] }] },
-      { "op": "tile", "size": [32, 8] }
+      {
+        "op": "compose",
+        "size": [16, 8],
+        "layers": [
+          {
+            "rect": [16, 126, 16, 2],
+            "at": [0, 6]
+          }
+        ]
+      },
+      {
+        "op": "tile",
+        "size": [32, 8]
+      }
     ],
     "note": "The north wall face of a hallway (plain cream): the wall block at [0, 96]'s middle tile column, its top 6 rows of wallpaper under the band, then its last 2 rows (the baseboard and the outline along the floor), repeated to one 32 px cell. The house draws it under each north wall (the audit prototype's 8 px stub); the band itself is drawn from the wall mask."
   },
@@ -95,8 +194,20 @@
     "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png",
     "rect": [16, 486, 16, 6],
     "ops": [
-      { "op": "compose", "size": [16, 8], "layers": [{ "rect": [16, 510, 16, 2], "at": [0, 6] }] },
-      { "op": "tile", "size": [32, 8] }
+      {
+        "op": "compose",
+        "size": [16, 8],
+        "layers": [
+          {
+            "rect": [16, 510, 16, 2],
+            "at": [0, 6]
+          }
+        ]
+      },
+      {
+        "op": "tile",
+        "size": [32, 8]
+      }
     ],
     "note": "The north wall face of a garage (grey concrete): the wall block at [0, 480]'s middle tile column, its top 6 rows of wallpaper under the band, then its last 2 rows (the baseboard and the outline along the floor), repeated to one 32 px cell. The house draws it under each north wall (the audit prototype's 8 px stub); the band itself is drawn from the wall mask."
   },
@@ -105,8 +216,20 @@
     "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png",
     "rect": [368, 326, 16, 6],
     "ops": [
-      { "op": "compose", "size": [16, 8], "layers": [{ "rect": [368, 350, 16, 2], "at": [0, 6] }] },
-      { "op": "tile", "size": [32, 8] }
+      {
+        "op": "compose",
+        "size": [16, 8],
+        "layers": [
+          {
+            "rect": [368, 350, 16, 2],
+            "at": [0, 6]
+          }
+        ]
+      },
+      {
+        "op": "tile",
+        "size": [32, 8]
+      }
     ],
     "note": "The north wall face of a home office (sage green): the wall block at [352, 320]'s middle tile column, its top 6 rows of wallpaper under the band, then its last 2 rows (the baseboard and the outline along the floor), repeated to one 32 px cell. The house draws it under each north wall (the audit prototype's 8 px stub); the band itself is drawn from the wall mask."
   },
@@ -115,8 +238,20 @@
     "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png",
     "rect": [368, 134, 16, 6],
     "ops": [
-      { "op": "compose", "size": [16, 8], "layers": [{ "rect": [368, 158, 16, 2], "at": [0, 6] }] },
-      { "op": "tile", "size": [32, 8] }
+      {
+        "op": "compose",
+        "size": [16, 8],
+        "layers": [
+          {
+            "rect": [368, 158, 16, 2],
+            "at": [0, 6]
+          }
+        ]
+      },
+      {
+        "op": "tile",
+        "size": [32, 8]
+      }
     ],
     "note": "The north wall face of a playroom (sky blue): the wall block at [352, 128]'s middle tile column, its top 6 rows of wallpaper under the band, then its last 2 rows (the baseboard and the outline along the floor), repeated to one 32 px cell. The house draws it under each north wall (the audit prototype's 8 px stub); the band itself is drawn from the wall mask."
   },
@@ -125,8 +260,20 @@
     "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png",
     "rect": [192, 358, 16, 6],
     "ops": [
-      { "op": "compose", "size": [16, 8], "layers": [{ "rect": [192, 382, 16, 2], "at": [0, 6] }] },
-      { "op": "tile", "size": [32, 8] }
+      {
+        "op": "compose",
+        "size": [16, 8],
+        "layers": [
+          {
+            "rect": [192, 382, 16, 2],
+            "at": [0, 6]
+          }
+        ]
+      },
+      {
+        "op": "tile",
+        "size": [32, 8]
+      }
     ],
     "note": "The north wall face of a library (red-brown wood panelling): the wall block at [176, 352]'s middle tile column, its top 6 rows of wallpaper under the band, then its last 2 rows (the baseboard and the outline along the floor), repeated to one 32 px cell. The house draws it under each north wall (the audit prototype's 8 px stub); the band itself is drawn from the wall mask."
   },
@@ -135,8 +282,20 @@
     "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png",
     "rect": [16, 262, 16, 6],
     "ops": [
-      { "op": "compose", "size": [16, 8], "layers": [{ "rect": [16, 286, 16, 2], "at": [0, 6] }] },
-      { "op": "tile", "size": [32, 8] }
+      {
+        "op": "compose",
+        "size": [16, 8],
+        "layers": [
+          {
+            "rect": [16, 286, 16, 2],
+            "at": [0, 6]
+          }
+        ]
+      },
+      {
+        "op": "tile",
+        "size": [32, 8]
+      }
     ],
     "note": "The north wall face of a mudroom (cream brick): the wall block at [0, 256]'s middle tile column, its top 6 rows of wallpaper under the band, then its last 2 rows (the baseboard and the outline along the floor), repeated to one 32 px cell. The house draws it under each north wall (the audit prototype's 8 px stub); the band itself is drawn from the wall mask."
   },
@@ -145,9 +304,762 @@
     "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png",
     "rect": [368, 294, 16, 6],
     "ops": [
-      { "op": "compose", "size": [16, 8], "layers": [{ "rect": [368, 318, 16, 2], "at": [0, 6] }] },
-      { "op": "tile", "size": [32, 8] }
+      {
+        "op": "compose",
+        "size": [16, 8],
+        "layers": [
+          {
+            "rect": [368, 318, 16, 2],
+            "at": [0, 6]
+          }
+        ]
+      },
+      {
+        "op": "tile",
+        "size": [32, 8]
+      }
     ],
     "note": "The north wall face of a sunroom (mint stripes): the wall block at [352, 288]'s middle tile column, its top 6 rows of wallpaper under the band, then its last 2 rows (the baseboard and the outline along the floor), repeated to one 32 px cell. The house draws it under each north wall (the audit prototype's 8 px stub); the band itself is drawn from the wall mask."
+  },
+  "bed-double-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png",
+    "rect": [195, 333, 26, 40],
+    "note": "A Bedroom's double bed with a pale blue duvet, headboard against the north wall. Bedrooms take the duvets in turn, so two never look copy-pasted."
+  },
+  "bed-double-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png",
+    "rect": [131, 333, 26, 40],
+    "note": "A Bedroom's double bed with a lime and yellow striped duvet, headboard against the north wall. Bedrooms take the duvets in turn, so two never look copy-pasted."
+  },
+  "bed-double-2": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png",
+    "rect": [163, 333, 26, 40],
+    "note": "A Bedroom's double bed with a blue striped duvet, headboard against the north wall. Bedrooms take the duvets in turn, so two never look copy-pasted."
+  },
+  "bed-double-3": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png",
+    "rect": [227, 333, 26, 40],
+    "note": "A Bedroom's double bed with a green striped duvet, headboard against the north wall. Bedrooms take the duvets in turn, so two never look copy-pasted."
+  },
+  "nightstand-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png",
+    "rect": [96, 164, 16, 24],
+    "note": "A nightstand in honey wood, either side of a Bedroom's bed when the north wall has room."
+  },
+  "nightstand-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png",
+    "rect": [112, 164, 16, 24],
+    "note": "A nightstand in cherry wood, either side of a Bedroom's bed when the north wall has room."
+  },
+  "nightstand-2": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png",
+    "rect": [128, 164, 16, 24],
+    "note": "A nightstand in pale ash wood, either side of a Bedroom's bed when the north wall has room."
+  },
+  "rug-round-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png",
+    "rect": [8, 353, 33, 30],
+    "note": "A round pink rug, drawn under a Bedroom's bed."
+  },
+  "rug-round-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png",
+    "rect": [56, 353, 33, 30],
+    "note": "A round brown rug, the other Bedroom rug."
+  },
+  "bunk-bed-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png",
+    "rect": [4, 1383, 40, 41],
+    "note": "Bunk Beds (fixture), blue bedding, with a ladder: they replace the Bedroom's double bed, so a room that counts twice reads as one at a glance."
+  },
+  "bunk-bed-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png",
+    "rect": [52, 1383, 40, 41],
+    "note": "Bunk Beds (fixture), green bedding, with a ladder: they replace the Bedroom's double bed, so a room that counts twice reads as one at a glance."
+  },
+  "bunk-bed-2": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png",
+    "rect": [100, 1383, 40, 41],
+    "note": "Bunk Beds (fixture), lilac bedding, with a ladder: they replace the Bedroom's double bed, so a room that counts twice reads as one at a glance."
+  },
+  "toilet-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/3_Bathroom_16x16.png",
+    "rect": [113, 7, 14, 10],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [14, 26],
+        "layers": [
+          {
+            "rect": [113, 25, 14, 16],
+            "at": [0, 10]
+          }
+        ]
+      }
+    ],
+    "note": "A Bathroom's toilet with a wooden seat, tank against the north wall. Spliced to 26 px tall (the tank, then the seat ring and bowl: the raised lid's rows are left out), so in a one-cell Bathroom it rises over the wall band but not past it."
+  },
+  "toilet-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/3_Bathroom_16x16.png",
+    "rect": [161, 7, 14, 10],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [14, 26],
+        "layers": [
+          {
+            "rect": [161, 25, 14, 16],
+            "at": [0, 10]
+          }
+        ]
+      }
+    ],
+    "note": "A Bathroom's toilet with a white seat, tank against the north wall. Spliced to 26 px tall (the tank, then the seat ring and bowl: the raised lid's rows are left out), so in a one-cell Bathroom it rises over the wall band but not past it."
+  },
+  "toilet-2": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/3_Bathroom_16x16.png",
+    "rect": [129, 7, 14, 10],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [14, 26],
+        "layers": [
+          {
+            "rect": [129, 25, 14, 16],
+            "at": [0, 10]
+          }
+        ]
+      }
+    ],
+    "note": "A Bathroom's toilet with a beige seat, tank against the north wall. Spliced to 26 px tall (the tank, then the seat ring and bowl: the raised lid's rows are left out), so in a one-cell Bathroom it rises over the wall band but not past it."
+  },
+  "bath-mat": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/3_Bathroom_16x16.png",
+    "rect": [3, 458, 26, 15],
+    "note": "A striped bath mat, on a Bathroom's floor when it fits."
+  },
+  "fridge": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png",
+    "rect": [144, 375, 16, 36],
+    "note": "A white fridge, at the end of a kitchen counter run."
+  },
+  "range": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png",
+    "rect": [128, 178, 16, 25],
+    "note": "A range with four burners and an oven: every kitchen's key item."
+  },
+  "counter-sink": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png",
+    "rect": [49, 112, 8, 11],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [32, 24],
+        "at": [0, 13],
+        "layers": [
+          {
+            "rect": [64, 112, 16, 11],
+            "at": [8, 13]
+          },
+          {
+            "rect": [103, 112, 8, 11],
+            "at": [24, 13]
+          },
+          {
+            "rect": [64, 22, 16, 10],
+            "at": [0, 3]
+          },
+          {
+            "rect": [96, 22, 16, 10],
+            "at": [16, 3]
+          },
+          {
+            "rect": [133, 113, 26, 11],
+            "at": [3, 1]
+          }
+        ]
+      }
+    ],
+    "note": "A 32 px kitchen counter with a sink: the white counter top over the cabinet strip (its two outlined ends and a pair of doors), with the sink and its tap on top."
+  },
+  "counter": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png",
+    "rect": [49, 112, 8, 11],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [16, 24],
+        "at": [0, 13],
+        "layers": [
+          {
+            "rect": [103, 112, 8, 11],
+            "at": [8, 13]
+          },
+          {
+            "rect": [64, 22, 8, 10],
+            "at": [0, 3]
+          },
+          {
+            "rect": [104, 22, 8, 10],
+            "at": [8, 3]
+          }
+        ]
+      }
+    ],
+    "note": "A 16 px kitchen counter: the counter top over the cabinet strip, cut down to its two outlined ends. It fills a run between the range and the fridge."
+  },
+  "kitchen-island": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png",
+    "rect": [49, 112, 8, 11],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [40, 25],
+        "at": [0, 14],
+        "layers": [
+          {
+            "rect": [64, 112, 32, 11],
+            "at": [8, 14]
+          },
+          {
+            "rect": [103, 112, 8, 11],
+            "at": [32, 14]
+          },
+          {
+            "rect": [64, 22, 24, 10],
+            "at": [0, 4]
+          },
+          {
+            "rect": [96, 22, 16, 10],
+            "at": [24, 4]
+          },
+          {
+            "rect": [17, 369, 13, 11],
+            "at": [14, 0]
+          }
+        ]
+      }
+    ],
+    "note": "Kitchen Island (fixture): a free-standing counter in the middle of the Kitchen, its top over a row of cabinet doors, with a bowl of fruit on it so it reads at a glance."
+  },
+  "dining-table-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png",
+    "rect": [57, 240, 30, 42],
+    "note": "A Dining Room's table in pale oak, long side north to south."
+  },
+  "dining-table-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png",
+    "rect": [105, 240, 30, 42],
+    "note": "A Dining Room's table in cherry, long side north to south."
+  },
+  "dining-table-2": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png",
+    "rect": [57, 288, 30, 42],
+    "note": "A Dining Room's table in honey, long side north to south."
+  },
+  "chair-east-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png",
+    "rect": [114, 177, 13, 21],
+    "note": "A dining chair in honey wood, facing east: it stands west of the table."
+  },
+  "chair-west-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png",
+    "rect": [113, 209, 13, 21],
+    "note": "A dining chair in honey wood, facing west: it stands east of the table."
+  },
+  "chair-east-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png",
+    "rect": [66, 177, 13, 21],
+    "note": "A dining chair in cherry wood, facing east: it stands west of the table."
+  },
+  "chair-west-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png",
+    "rect": [65, 209, 13, 21],
+    "note": "A dining chair in cherry wood, facing west: it stands east of the table."
+  },
+  "chair-east-2": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png",
+    "rect": [98, 177, 13, 21],
+    "note": "A dining chair in pale wood, facing east: it stands west of the table."
+  },
+  "chair-west-2": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png",
+    "rect": [97, 209, 13, 21],
+    "note": "A dining chair in pale wood, facing west: it stands east of the table."
+  },
+  "breakfast-table": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png",
+    "rect": [114, 177, 13, 21],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [38, 21],
+        "layers": [
+          {
+            "rect": [113, 209, 13, 21],
+            "at": [25, 0]
+          },
+          {
+            "rect": [1, 177, 14, 14],
+            "at": [12, 7]
+          }
+        ]
+      }
+    ],
+    "note": "A kitchen's breakfast table: a small honey-wood table between two chairs, one cut so it's placed as one piece where the floor is free."
+  },
+  "mat-square-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/1_Generic_16x16.png",
+    "rect": [129, 1073, 30, 30],
+    "note": "A square mat with a brown border, under a table or an armchair."
+  },
+  "mat-square-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/1_Generic_16x16.png",
+    "rect": [129, 1121, 30, 30],
+    "note": "A square mat with an olive border."
+  },
+  "mat-square-2": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/1_Generic_16x16.png",
+    "rect": [129, 1169, 30, 30],
+    "note": "A square mat with a wine border."
+  },
+  "sofa-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/2_LivingRoom_16x16.png",
+    "rect": [16, 453, 48, 29],
+    "note": "A three-seat slate blue sofa, facing south: a Living Room's key item. Living Rooms take the colors in turn."
+  },
+  "sofa-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/2_LivingRoom_16x16.png",
+    "rect": [64, 453, 48, 29],
+    "note": "A three-seat light grey sofa, facing south: a Living Room's key item. Living Rooms take the colors in turn."
+  },
+  "sofa-2": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/2_LivingRoom_16x16.png",
+    "rect": [112, 454, 48, 26],
+    "note": "A three-seat tan sofa, facing south: a Living Room's key item. Living Rooms take the colors in turn."
+  },
+  "sofa-3": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/2_LivingRoom_16x16.png",
+    "rect": [112, 487, 48, 25],
+    "note": "A three-seat lavender sofa, facing south: a Living Room's key item. Living Rooms take the colors in turn."
+  },
+  "plant-potted": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/2_LivingRoom_16x16.png",
+    "rect": [167, 9, 18, 31],
+    "note": "A potted plant: Living Rooms, Hallways, Bedrooms and the Sunroom put them in corners."
+  },
+  "rug-wide-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/1_Generic_16x16.png",
+    "rect": [146, 68, 60, 40],
+    "note": "A wide red and gold rug, under a landscape Living Room's coffee table."
+  },
+  "rug-wide-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/1_Generic_16x16.png",
+    "rect": [146, 116, 60, 40],
+    "note": "A wide blue and gold rug."
+  },
+  "rug-tall-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/1_Generic_16x16.png",
+    "rect": [212, 84, 39, 58],
+    "note": "A tall blue and gold rug, for a portrait Living Room (sprites never turn, so the rug has its own upright cut)."
+  },
+  "rug-tall-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/1_Generic_16x16.png",
+    "rect": [212, 148, 39, 58],
+    "note": "A tall red and gold rug."
+  },
+  "coffee-table": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/1_Generic_16x16.png",
+    "rect": [85, 104, 38, 21],
+    "note": "A low wooden coffee table, in front of the sofa."
+  },
+  "fireplace": {
+    "pack": "mi",
+    "file": "3_Animated_objects/16x16/spritesheets/animated_chimney.png",
+    "rect": [0, 0, 32, 40],
+    "frames": {
+      "count": 3,
+      "dx": 32,
+      "dy": 0,
+      "ms": 160
+    },
+    "note": "Fireplace (fixture): a stove with its flue going up the north wall, its flame flickering over three frames."
+  },
+  "clothes-rail": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/21_Clothing_Store.png",
+    "rect": [149, 252, 22, 24],
+    "note": "A garment rail of hanging clothes: a Closet's key item."
+  },
+  "shoes-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/21_Clothing_Store.png",
+    "rect": [186, 200, 12, 8],
+    "note": "A pair of brown shoes on the floor of a Closet or a Mudroom."
+  },
+  "shoes-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/21_Clothing_Store.png",
+    "rect": [202, 200, 12, 8],
+    "note": "A pair of green shoes on the floor of a Closet or a Mudroom."
+  },
+  "shoes-2": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/21_Clothing_Store.png",
+    "rect": [218, 200, 12, 8],
+    "note": "A pair of blue shoes on the floor of a Closet or a Mudroom."
+  },
+  "coat-rack": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/21_Clothing_Store.png",
+    "rect": [2, 874, 11, 30],
+    "note": "A standing coat rack, in a Mudroom or a hall."
+  },
+  "bench": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/21_Clothing_Store.png",
+    "rect": [64, 887, 32, 25],
+    "note": "A wooden bench, for taking boots off in a Mudroom."
+  },
+  "washer": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/3_Bathroom_16x16.png",
+    "rect": [198, 12, 20, 29],
+    "note": "A washing machine: a Mudroom's key item."
+  },
+  "runner-h-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/1_Generic_16x16.png",
+    "rect": [129, 1105, 15, 6],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [15, 12],
+        "layers": [
+          {
+            "rect": [129, 1113, 15, 6],
+            "at": [0, 6]
+          }
+        ]
+      }
+    ],
+    "note": "A hall runner's west end (the short mat's left half), two of its middle rows left out so it's 12 px deep: it fits a hall between two outside walls."
+  },
+  "runner-h-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/1_Generic_16x16.png",
+    "rect": [160, 1105, 16, 6],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [16, 12],
+        "layers": [
+          {
+            "rect": [160, 1113, 16, 6],
+            "at": [0, 6]
+          }
+        ]
+      }
+    ],
+    "note": "A hall runner's middle, repeated between its ends, two of its middle rows left out so it's 12 px deep: it fits a hall between two outside walls."
+  },
+  "runner-h-2": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/1_Generic_16x16.png",
+    "rect": [144, 1105, 15, 6],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [15, 12],
+        "layers": [
+          {
+            "rect": [144, 1113, 15, 6],
+            "at": [0, 6]
+          }
+        ]
+      }
+    ],
+    "note": "A hall runner's east end (the short mat's right half), two of its middle rows left out so it's 12 px deep: it fits a hall between two outside walls."
+  },
+  "runner-v-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/1_Generic_16x16.png",
+    "rect": [129, 1073, 7, 15],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [14, 15],
+        "layers": [
+          {
+            "rect": [152, 1073, 7, 15],
+            "at": [7, 0]
+          }
+        ]
+      }
+    ],
+    "note": "An upright hall runner's north end: the square mat's outer columns side by side, 14 px wide (rugs don't turn, so upright halls get their own)."
+  },
+  "runner-v-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/1_Generic_16x16.png",
+    "rect": [129, 1080, 7, 16],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [14, 16],
+        "layers": [
+          {
+            "rect": [152, 1080, 7, 16],
+            "at": [7, 0]
+          }
+        ]
+      }
+    ],
+    "note": "An upright hall runner's middle, repeated between its ends: the square mat's outer columns side by side, 14 px wide (rugs don't turn, so upright halls get their own)."
+  },
+  "runner-v-2": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/1_Generic_16x16.png",
+    "rect": [129, 1088, 7, 15],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [14, 15],
+        "layers": [
+          {
+            "rect": [152, 1088, 7, 15],
+            "at": [7, 0]
+          }
+        ]
+      }
+    ],
+    "note": "An upright hall runner's south end: the square mat's outer columns side by side, 14 px wide (rugs don't turn, so upright halls get their own)."
+  },
+  "car-rear-0": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/10_Vehicles_16x16.png",
+    "rect": [64, 6, 32, 57],
+    "note": "A blue car seen from behind, parked nose-in through a south garage door."
+  },
+  "car-front-0": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/10_Vehicles_16x16.png",
+    "rect": [160, 6, 32, 57],
+    "note": "A blue car seen from the front, parked nose-in through a north garage door."
+  },
+  "car-rear-1": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/10_Vehicles_16x16.png",
+    "rect": [256, 6, 32, 57],
+    "note": "A red car seen from behind, parked nose-in through a south garage door."
+  },
+  "car-front-1": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/10_Vehicles_16x16.png",
+    "rect": [352, 6, 32, 57],
+    "note": "A red car seen from the front, parked nose-in through a north garage door."
+  },
+  "car-right-0": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/10_Vehicles_16x16.png",
+    "rect": [3, 27, 61, 37],
+    "note": "A blue car from the side, facing east: parked nose-in through a west garage door."
+  },
+  "car-left-0": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/10_Vehicles_16x16.png",
+    "rect": [3, 27, 61, 37],
+    "ops": [
+      {
+        "op": "flipX"
+      }
+    ],
+    "note": "The blue car facing west (mirrored): parked nose-in through an east garage door."
+  },
+  "car-right-1": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/10_Vehicles_16x16.png",
+    "rect": [195, 27, 61, 37],
+    "note": "A red car from the side, facing east: parked nose-in through a west garage door."
+  },
+  "car-left-1": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/10_Vehicles_16x16.png",
+    "rect": [195, 27, 61, 37],
+    "ops": [
+      {
+        "op": "flipX"
+      }
+    ],
+    "note": "The red car facing west (mirrored): parked nose-in through an east garage door."
+  },
+  "boxes": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/1_Generic_16x16.png",
+    "rect": [192, 947, 32, 28],
+    "note": "A stack of cardboard boxes against a Garage's north wall."
+  },
+  "desk-pc": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/5_Classroom_and_library_16x16.png",
+    "rect": [117, 170, 22, 38],
+    "note": "A desk with a computer: a Home Office's key item."
+  },
+  "desk-study": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/5_Classroom_and_library_16x16.png",
+    "rect": [121, 58, 28, 22],
+    "note": "A low desk with an open book and a pencil cup, for a Home Office too shallow for the computer desk."
+  },
+  "plant-small": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/2_LivingRoom_16x16.png",
+    "rect": [2, 86, 12, 12],
+    "note": "A small potted plant, where a big one won't fit."
+  },
+  "pot-flowers-0": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png",
+    "rect": [128, 890, 15, 22],
+    "note": "A clay pot of yellow flowers, in a Sunroom's corners."
+  },
+  "pot-flowers-1": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png",
+    "rect": [208, 955, 15, 21],
+    "note": "A clay pot of pink flowers, in a Sunroom's corners."
+  },
+  "pot-flowers-2": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png",
+    "rect": [128, 952, 15, 24],
+    "note": "A clay pot of white flowers, in a Sunroom's corners."
+  },
+  "bookcase-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/5_Classroom_and_library_16x16.png",
+    "rect": [96, 118, 32, 34],
+    "note": "A cherry bookcase full of books."
+  },
+  "bookcase-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/5_Classroom_and_library_16x16.png",
+    "rect": [160, 118, 32, 34],
+    "note": "A honey bookcase full of books."
+  },
+  "bookcase-2": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/5_Classroom_and_library_16x16.png",
+    "rect": [128, 118, 32, 34],
+    "note": "A pale bookcase full of books."
+  },
+  "globe": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/5_Classroom_and_library_16x16.png",
+    "rect": [209, 17, 13, 21],
+    "note": "A globe on a stand, beside a bookcase."
+  },
+  "armchair-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/14_Basement_16x16.png",
+    "rect": [102, 531, 20, 24],
+    "note": "A sky blue armchair, facing south: Libraries and Sunrooms."
+  },
+  "armchair-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/14_Basement_16x16.png",
+    "rect": [134, 563, 20, 24],
+    "note": "A cream armchair, facing south: Libraries and Sunrooms."
+  },
+  "armchair-2": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/14_Basement_16x16.png",
+    "rect": [102, 563, 20, 24],
+    "note": "A red armchair, facing south: Libraries and Sunrooms."
+  },
+  "armchair-3": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/14_Basement_16x16.png",
+    "rect": [134, 531, 20, 24],
+    "note": "A pale blue armchair, facing south: Libraries and Sunrooms."
+  },
+  "toy-box": {
+    "pack": "mi",
+    "file": "3_Animated_objects/16x16/spritesheets/animated_toybox_full.png",
+    "rect": [1, 9, 15, 15],
+    "note": "A toy chest (the animated toy box's first frame), against a Playroom's north wall."
+  },
+  "teddy-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png",
+    "rect": [7, 38, 18, 17],
+    "note": "A teddy bear sitting on a Playroom's floor."
+  },
+  "teddy-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png",
+    "rect": [39, 38, 20, 17],
+    "note": "A teddy bear with a green scarf."
+  },
+  "rug-check": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png",
+    "rect": [209, 1153, 30, 23],
+    "note": "A pink checked play rug."
+  },
+  "toy-train": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png",
+    "rect": [37, 475, 55, 19],
+    "note": "A toy train of three cars on the Playroom floor."
+  },
+  "plant-tall": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/1_Generic_16x16.png",
+    "rect": [133, 905, 22, 30],
+    "note": "A big leafy potted plant: a Sunroom's key item."
   }
 }

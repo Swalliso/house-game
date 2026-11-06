@@ -1,4 +1,214 @@
 {
+  "armchair-0": {
+    "w": 20,
+    "h": 24,
+    "spec": "e210fd27efda18e3"
+  },
+  "armchair-1": {
+    "w": 20,
+    "h": 24,
+    "spec": "446aa690bea5710d"
+  },
+  "armchair-2": {
+    "w": 20,
+    "h": 24,
+    "spec": "41e87f71f5a49ff7"
+  },
+  "armchair-3": {
+    "w": 20,
+    "h": 24,
+    "spec": "2655c2039c0fbe24"
+  },
+  "bath-mat": {
+    "w": 26,
+    "h": 15,
+    "spec": "1e152df8cbc26feb"
+  },
+  "bed-double-0": {
+    "w": 26,
+    "h": 40,
+    "spec": "2af39f94db7dd67c"
+  },
+  "bed-double-1": {
+    "w": 26,
+    "h": 40,
+    "spec": "ab864db974a9ad5a"
+  },
+  "bed-double-2": {
+    "w": 26,
+    "h": 40,
+    "spec": "1037cc53425e654e"
+  },
+  "bed-double-3": {
+    "w": 26,
+    "h": 40,
+    "spec": "5a904589741a93a2"
+  },
+  "bench": {
+    "w": 32,
+    "h": 25,
+    "spec": "443418f35e32072d"
+  },
+  "bookcase-0": {
+    "w": 32,
+    "h": 34,
+    "spec": "1d1de52989472c3f"
+  },
+  "bookcase-1": {
+    "w": 32,
+    "h": 34,
+    "spec": "923d946db4e8c6ea"
+  },
+  "bookcase-2": {
+    "w": 32,
+    "h": 34,
+    "spec": "a367f6b48c46dbe6"
+  },
+  "boxes": {
+    "w": 32,
+    "h": 28,
+    "spec": "1a4e2fa5ae384459"
+  },
+  "breakfast-table": {
+    "w": 38,
+    "h": 21,
+    "spec": "5a73ddf494c9cdb4"
+  },
+  "bunk-bed-0": {
+    "w": 40,
+    "h": 41,
+    "spec": "45ba8b5168e2c1b5"
+  },
+  "bunk-bed-1": {
+    "w": 40,
+    "h": 41,
+    "spec": "a18da4c7a8929a41"
+  },
+  "bunk-bed-2": {
+    "w": 40,
+    "h": 41,
+    "spec": "24153a418bea6e94"
+  },
+  "car-front-0": {
+    "w": 32,
+    "h": 57,
+    "spec": "0ab759278f21b2b3"
+  },
+  "car-front-1": {
+    "w": 32,
+    "h": 57,
+    "spec": "f7ff3646e65d1a24"
+  },
+  "car-left-0": {
+    "w": 61,
+    "h": 37,
+    "spec": "201f3855070dec3f"
+  },
+  "car-left-1": {
+    "w": 61,
+    "h": 37,
+    "spec": "89816694f212e3f7"
+  },
+  "car-rear-0": {
+    "w": 32,
+    "h": 57,
+    "spec": "fd2219c3eeea72b9"
+  },
+  "car-rear-1": {
+    "w": 32,
+    "h": 57,
+    "spec": "0a39970711044d99"
+  },
+  "car-right-0": {
+    "w": 61,
+    "h": 37,
+    "spec": "8668c6c014b963a7"
+  },
+  "car-right-1": {
+    "w": 61,
+    "h": 37,
+    "spec": "fd68e32426aabde5"
+  },
+  "chair-east-0": {
+    "w": 13,
+    "h": 21,
+    "spec": "2c9463a4fb390a24"
+  },
+  "chair-east-1": {
+    "w": 13,
+    "h": 21,
+    "spec": "2bf5a4c756f98fb6"
+  },
+  "chair-east-2": {
+    "w": 13,
+    "h": 21,
+    "spec": "c54554f9be3398b2"
+  },
+  "chair-west-0": {
+    "w": 13,
+    "h": 21,
+    "spec": "52cbce56378fd3da"
+  },
+  "chair-west-1": {
+    "w": 13,
+    "h": 21,
+    "spec": "1c58a87ea9579b9f"
+  },
+  "chair-west-2": {
+    "w": 13,
+    "h": 21,
+    "spec": "b6cd928e39a4bdbc"
+  },
+  "clothes-rail": {
+    "w": 22,
+    "h": 24,
+    "spec": "3853212ad9d40b97"
+  },
+  "coat-rack": {
+    "w": 11,
+    "h": 30,
+    "spec": "ce698b0dfa3b5e90"
+  },
+  "coffee-table": {
+    "w": 38,
+    "h": 21,
+    "spec": "1927e1b792ed048c"
+  },
+  "counter": {
+    "w": 16,
+    "h": 24,
+    "spec": "8e46dc4b14fda039"
+  },
+  "counter-sink": {
+    "w": 32,
+    "h": 24,
+    "spec": "f904eafcd376d12b"
+  },
+  "desk-pc": {
+    "w": 22,
+    "h": 38,
+    "spec": "49149575daf90b0c"
+  },
+  "desk-study": {
+    "w": 28,
+    "h": 22,
+    "spec": "11ea0a47070607f1"
+  },
+  "dining-table-0": {
+    "w": 30,
+    "h": 42,
+    "spec": "483f1c970f9a485c"
+  },
+  "dining-table-1": {
+    "w": 30,
+    "h": 42,
+    "spec": "ac83af163a280039"
+  },
+  "dining-table-2": {
+    "w": 30,
+    "h": 42,
+    "spec": "101176d64f208178"
+  },
   "face-bathroom": {
     "w": 32,
     "h": 8,
@@ -63,6 +273,13 @@
     "w": 32,
     "h": 8,
     "spec": "033ce8cfebbc7841"
+  },
+  "fireplace": {
+    "w": 32,
+    "h": 40,
+    "frames": 3,
+    "ms": 160,
+    "spec": "c69a26d932dc8253"
   },
   "floor-carpet": {
     "w": 32,
@@ -129,6 +346,16 @@
     "h": 32,
     "spec": "de5cf37c8c6fb466"
   },
+  "fridge": {
+    "w": 16,
+    "h": 36,
+    "spec": "719fa072682c6f57"
+  },
+  "globe": {
+    "w": 13,
+    "h": 21,
+    "spec": "3835ee8e99fc10d9"
+  },
   "grass-0": {
     "w": 32,
     "h": 32,
@@ -148,5 +375,215 @@
     "w": 32,
     "h": 32,
     "spec": "09b4f6656b16d96e"
+  },
+  "kitchen-island": {
+    "w": 40,
+    "h": 25,
+    "spec": "430b5f625899d2a7"
+  },
+  "mat-square-0": {
+    "w": 30,
+    "h": 30,
+    "spec": "098496c0735ab2a7"
+  },
+  "mat-square-1": {
+    "w": 30,
+    "h": 30,
+    "spec": "899dfe287dad8a66"
+  },
+  "mat-square-2": {
+    "w": 30,
+    "h": 30,
+    "spec": "e6fc0d05861a8a38"
+  },
+  "nightstand-0": {
+    "w": 16,
+    "h": 24,
+    "spec": "a337ba679832da9f"
+  },
+  "nightstand-1": {
+    "w": 16,
+    "h": 24,
+    "spec": "f2e8048d009b8e76"
+  },
+  "nightstand-2": {
+    "w": 16,
+    "h": 24,
+    "spec": "953b838611dd2429"
+  },
+  "plant-potted": {
+    "w": 18,
+    "h": 31,
+    "spec": "07fc1c4fdfbd4854"
+  },
+  "plant-small": {
+    "w": 12,
+    "h": 12,
+    "spec": "3dbfb6af96a7871f"
+  },
+  "plant-tall": {
+    "w": 22,
+    "h": 30,
+    "spec": "59908f0b58c62a92"
+  },
+  "pot-flowers-0": {
+    "w": 15,
+    "h": 22,
+    "spec": "c07a62850028367d"
+  },
+  "pot-flowers-1": {
+    "w": 15,
+    "h": 21,
+    "spec": "3fb03fdd598a772f"
+  },
+  "pot-flowers-2": {
+    "w": 15,
+    "h": 24,
+    "spec": "79b55d3c0fd600c8"
+  },
+  "range": {
+    "w": 16,
+    "h": 25,
+    "spec": "eb540ce831bdb24d"
+  },
+  "rug-check": {
+    "w": 30,
+    "h": 23,
+    "spec": "d9a017c099171626"
+  },
+  "rug-round-0": {
+    "w": 33,
+    "h": 30,
+    "spec": "34054bc441bb4ba6"
+  },
+  "rug-round-1": {
+    "w": 33,
+    "h": 30,
+    "spec": "30916a84f84a60f4"
+  },
+  "rug-tall-0": {
+    "w": 39,
+    "h": 58,
+    "spec": "c8af4dc94dc49bf2"
+  },
+  "rug-tall-1": {
+    "w": 39,
+    "h": 58,
+    "spec": "606aafd6ed39642b"
+  },
+  "rug-wide-0": {
+    "w": 60,
+    "h": 40,
+    "spec": "aa493067f0fd9e96"
+  },
+  "rug-wide-1": {
+    "w": 60,
+    "h": 40,
+    "spec": "692c9b8d61b8046b"
+  },
+  "runner-h-0": {
+    "w": 15,
+    "h": 12,
+    "spec": "5194b5f7c0367536"
+  },
+  "runner-h-1": {
+    "w": 16,
+    "h": 12,
+    "spec": "612fb2ca2795f4a1"
+  },
+  "runner-h-2": {
+    "w": 15,
+    "h": 12,
+    "spec": "0ff81b79418a6c89"
+  },
+  "runner-v-0": {
+    "w": 14,
+    "h": 15,
+    "spec": "9d4c34f455c7e8cb"
+  },
+  "runner-v-1": {
+    "w": 14,
+    "h": 16,
+    "spec": "10cba0c713f81f78"
+  },
+  "runner-v-2": {
+    "w": 14,
+    "h": 15,
+    "spec": "5f634e141202bb5a"
+  },
+  "shoes-0": {
+    "w": 12,
+    "h": 8,
+    "spec": "93da5cc79772c44d"
+  },
+  "shoes-1": {
+    "w": 12,
+    "h": 8,
+    "spec": "8328aebc22570732"
+  },
+  "shoes-2": {
+    "w": 12,
+    "h": 8,
+    "spec": "a8307296a170b747"
+  },
+  "sofa-0": {
+    "w": 48,
+    "h": 29,
+    "spec": "61287ffcdb2c193f"
+  },
+  "sofa-1": {
+    "w": 48,
+    "h": 29,
+    "spec": "b508256c2886488f"
+  },
+  "sofa-2": {
+    "w": 48,
+    "h": 26,
+    "spec": "1a0fa4e54cc6503c"
+  },
+  "sofa-3": {
+    "w": 48,
+    "h": 25,
+    "spec": "449c3566b9945536"
+  },
+  "teddy-0": {
+    "w": 18,
+    "h": 17,
+    "spec": "606c53e1d83849e4"
+  },
+  "teddy-1": {
+    "w": 20,
+    "h": 17,
+    "spec": "05f8d1ba9b990cd3"
+  },
+  "toilet-0": {
+    "w": 14,
+    "h": 26,
+    "spec": "4a25dbf61a45ccc5"
+  },
+  "toilet-1": {
+    "w": 14,
+    "h": 26,
+    "spec": "9c991c5e7688f357"
+  },
+  "toilet-2": {
+    "w": 14,
+    "h": 26,
+    "spec": "645109615f327a46"
+  },
+  "toy-box": {
+    "w": 15,
+    "h": 15,
+    "spec": "f92c6d8287526c1c"
+  },
+  "toy-train": {
+    "w": 55,
+    "h": 19,
+    "spec": "44b66ee108e719d8"
+  },
+  "washer": {
+    "w": 20,
+    "h": 29,
+    "spec": "91a6006c96d4873c"
   }
 }

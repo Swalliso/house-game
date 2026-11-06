@@ -12,7 +12,8 @@
 //   adds as few doors as it takes to reach every room. Doors keep to side walls and the ends
 //   of north walls: a north wall's middle is for furniture.
 // - Windows go in outside walls, about one per two cells of straight wall, except in closets,
-//   garages and hallways.
+//   garages and hallways. A Bay Window (fixture) turns one cell of outside wall into glass with a
+//   bay outside it, the street side first.
 //
 // Geometry is in art px on the lot (CELL per cell, x right, y down); WALL has the sizes.
 
@@ -21,6 +22,7 @@ import {
   rules,
   terrainAt,
   type Cell,
+  type FixtureId,
   type HouseState,
   type PieceId,
   type PlacedPiece,
@@ -56,6 +58,9 @@ export const WALL = {
   rail: 4,
   /** The floor's shadow under a north face and beside a west wall. */
   shadow: 3,
+  /** A Bay Window: its glass stops this far from the cell's corners, and its bay juts out this far. */
+  bayMargin: 3,
+  bay: 4,
 } as const;
 
 export interface Rect {
@@ -110,6 +115,8 @@ export interface WindowPane {
   side: Side;
   /** The glass, across the whole depth of the outside wall's band. */
   rect: Rect;
+  /** A Bay Window (fixture): a whole cell of glass, and the bay that juts out past the wall. */
+  bay?: Rect;
 }
 
 export interface Room {
@@ -118,6 +125,8 @@ export interface Room {
   cells: readonly Cell[];
   /** Its bounding box. */
   box: Rect;
+  /** Its fixture, if it has one. */
+  fixture?: FixtureId;
 }
 
 export interface HouseModel {
@@ -352,6 +361,9 @@ const DRIVEWAYS: ReadonlySet<PieceId> = new Set(['driveway', 'longDriveway']);
 
 const isConnector = (id: PieceId) => !!CONTENT.pieces[id].connector;
 
+/** How far down a side wall a door goes, from its top (0) to its bottom (1): clear of north-wall furniture. */
+const SIDE_DOOR = 0.7;
+
 /** A run of wall between two pieces along one line. */
 interface Run {
   a: number;
@@ -392,6 +404,7 @@ function buildModel(house: HouseState, links: HallLinks, openings: boolean): Hou
       defId: p.defId,
       cells,
       box: { x: x0 * CELL, y: y0 * CELL, w: (x1 - x0) * CELL, h: (y1 - y0) * CELL },
+      ...(p.fixture ? { fixture: p.fixture.id } : {}),
     });
     bx0 = Math.min(bx0, x0);
     by0 = Math.min(by0, y0);
@@ -455,8 +468,9 @@ function addOpenings(m: HouseModel, house: HouseState, links: HallLinks): void {
   const gaps: Rect[] = [];
   const free = (r: Rect) => !gaps.some((g) => overlaps(grow(r, 3), g));
 
-  // Garage doors: each Garage's outside edges facing a Driveway or the street, on the side
-  // with the most of them (ties: south, east, west, north).
+  // Garage doors: on the side of each Garage with the most outside edges facing a Driveway or
+  // the street (ties: south, east, west, north), across all of that side's outside edges: a
+  // double door, so the car drives in square through it even off a one-cell Driveway.
   for (const r of m.rooms.values()) {
     if (r.defId !== 'garage') continue;
     const facing = (c: Cell, s: Side) => {
@@ -474,7 +488,9 @@ function addOpenings(m: HouseModel, house: HouseState, links: HallLinks): void {
     }
     if (!best) continue;
     const side = best;
-    const cells = r.cells.filter((c) => facing(c, side)).sort((p, q) => p.y - q.y || p.x - q.x);
+    const cells = r.cells
+      .filter((c) => edge(m, c.x, c.y, side) === EDGE.outer)
+      .sort((p, q) => p.y - q.y || p.x - q.x);
     // One garage door per straight run of them.
     let run: Cell[] = [];
     const flush = () => {
@@ -537,7 +553,7 @@ function addOpenings(m: HouseModel, house: HouseState, links: HallLinks): void {
     let lo = inset(m, c.x, c.y, 'N') + (hasFace(m, c.x, c.y) ? WALL.face : 0);
     if (lo > bottom) lo = inset(m, c.x, c.y, 'N') + 2;
     if (lo > bottom) return null;
-    const off = Math.floor((lo + bottom) / 2);
+    const off = Math.floor(lo + (bottom - lo) * SIDE_DOOR);
     return { x: s === 'W' ? X0 : X0 + CELL - WALL.out, y: Y0 + off, w: WALL.out, h: size };
   };
   /** Whether the column below a south edge is clear of the house down to the street. */
@@ -700,8 +716,9 @@ function addOpenings(m: HouseModel, house: HouseState, links: HallLinks): void {
         lo = run.from + Math.max(zone(x - 1), zone(x));
         hi = run.to - Math.max(inset(m, x - 1, yBot, 'S'), inset(m, x, yBot, 'S')) - 1 - size;
         if (lo > hi) continue;
-        // The middle of the run, then outward.
-        const mid = Math.floor((lo + hi) / 2);
+        // Down the run, then outward: furniture stands against the north walls, so a side
+        // wall's south part is the free one in both rooms.
+        const mid = Math.floor(lo + (hi - lo) * SIDE_DOOR);
         order = [];
         for (let d = 0; d <= hi - lo; d++) {
           if (mid - d >= lo) order.push(mid - d);
@@ -819,6 +836,32 @@ function addOpenings(m: HouseModel, house: HouseState, links: HallLinks): void {
     inside = reached();
   }
 
+  // A Bay Window: one cell of outside wall, the street side first, then the middle of the
+  // room's wall, clear of its doors. It takes the place of the windows there.
+  const bays: Rect[] = [];
+  for (const r of m.rooms.values()) {
+    if (r.fixture !== 'bayWindow') continue;
+    const box = r.box;
+    let best: { c: Cell; s: Side; score: number } | null = null;
+    for (const c of r.cells) {
+      for (const s of ['S', 'E', 'W', 'N'] as const) {
+        if (edge(m, c.x, c.y, s) !== EDGE.outer) continue;
+        const rect = bayGlass(c, s);
+        if (exits.some((e) => overlaps(grow(rect, 3), e.gap))) continue;
+        const along =
+          s === 'N' || s === 'S'
+            ? Math.abs((c.x + 0.5) * CELL - (box.x + box.w / 2))
+            : Math.abs((c.y + 0.5) * CELL - (box.y + box.h / 2));
+        const score = ['S', 'E', 'W', 'N'].indexOf(s) * 1000 + along;
+        if (!best || score < best.score) best = { c, s, score };
+      }
+    }
+    if (!best) continue;
+    const rect = bayGlass(best.c, best.s);
+    windows.push({ uid: r.uid, side: best.s, rect, bay: bayOut(best.c, best.s) });
+    bays.push(rect);
+  }
+
   // Windows: in outside walls, about one per two cells of straight wall (one per cell in a
   // Sunroom), centered on each run; never in a door.
   for (const r of m.rooms.values()) {
@@ -859,10 +902,36 @@ function addOpenings(m: HouseModel, house: HouseState, links: HallLinks): void {
                 h: size,
               };
           if (exits.some((e) => overlaps(grow(rect, 3), e.gap))) continue;
+          if (bays.some((b) => overlaps(grow(rect, 2), b))) continue;
           windows.push({ uid: r.uid, side: s, rect });
         }
         i = j;
       }
     }
   }
+}
+
+/** A Bay Window's glass: the outside wall's band along cell c's side, but its corners. */
+function bayGlass(c: Cell, s: Side): Rect {
+  const X0 = c.x * CELL;
+  const Y0 = c.y * CELL;
+  const m = WALL.bayMargin;
+  return s === 'N' || s === 'S'
+    ? { x: X0 + m, y: s === 'N' ? Y0 : Y0 + CELL - WALL.out, w: CELL - 2 * m, h: WALL.out }
+    : { x: s === 'W' ? X0 : X0 + CELL - WALL.out, y: Y0 + m, w: WALL.out, h: CELL - 2 * m };
+}
+
+/** The bay itself: glass jutting out past the wall, a little narrower than the opening. */
+function bayOut(c: Cell, s: Side): Rect {
+  const X0 = c.x * CELL;
+  const Y0 = c.y * CELL;
+  const m = WALL.bayMargin + 2;
+  const d = WALL.bay;
+  return s === 'N'
+    ? { x: X0 + m, y: Y0 - d, w: CELL - 2 * m, h: d }
+    : s === 'S'
+      ? { x: X0 + m, y: Y0 + CELL, w: CELL - 2 * m, h: d }
+      : s === 'W'
+        ? { x: X0 - d, y: Y0 + m, w: d, h: CELL - 2 * m }
+        : { x: X0 + CELL, y: Y0 + m, w: d, h: CELL - 2 * m };
 }

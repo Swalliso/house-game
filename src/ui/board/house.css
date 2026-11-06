@@ -42,6 +42,21 @@
   position: absolute;
   image-rendering: pixelated;
 }
+/* An animated item's frames side by side, stepping left one frame at a time (the Fireplace's
+   flame): the frames are its own, so it's transform only. */
+.item-frames {
+  image-rendering: pixelated;
+  animation-name: item-frames;
+  animation-iteration-count: infinite;
+}
+@keyframes item-frames {
+  to {
+    transform: translateX(var(--item-frames));
+  }
+}
+.reduce-motion .item-frames {
+  animation: none;
+}
 
 /* --- Highlights: outlines, never filters on whole pieces --------------------------- */
 

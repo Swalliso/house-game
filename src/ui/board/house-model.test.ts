@@ -248,7 +248,9 @@ describe('back and garage doors', () => {
     expect(m.garageDoors).toHaveLength(1);
     expect(m.garageDoors[0]!.side).toBe('S');
     expect(edge(m, 4, 3, 'S')).toBe(EDGE.garage);
-    expect(edge(m, 5, 3, 'S')).toBe(EDGE.outer); // grass beside the Driveway
+    // A double door across the Garage's side, so the car drives in square off a one-cell Driveway.
+    expect(edge(m, 5, 3, 'S')).toBe(EDGE.garage);
+    expect(m.garageDoors[0]!.cells).toHaveLength(2);
     const toStreet = modelOf(house([['garage', 4, 10]]));
     expect(toStreet.garageDoors[0]!.cells).toHaveLength(2);
     expect(edge(toStreet, 4, 11, 'S')).toBe(EDGE.garage);
