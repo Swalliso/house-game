@@ -1177,9 +1177,6 @@ export function createRules(content: Content): Rules {
       action.t === 'leaveShop' ||
       action.t === 'pick';
     if (state.screen === 'build' && shopOnly) throw new IllegalAction(SHOP_REASONS.notOpen);
-    if (state.screen === 'shop' && action.t === 'useTool') {
-      throw new IllegalAction('Tools are used while building.');
-    }
     // An open crate waits for its pick (or a discard); selling to make room is fine.
     if (state.offers?.pick && shopOnly && action.t !== 'pick') {
       throw new IllegalAction(SHOP_REASONS.picking);
