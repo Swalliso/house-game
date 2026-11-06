@@ -374,11 +374,9 @@
 
 /* --- Focus, for anything else the keyboard reaches ---------------------------------------- */
 
-.ui :focus-visible {
+/* :where() keeps this at no specificity, so a primitive's own focus ring always wins. */
+:where(.ui :focus-visible) {
   outline: var(--px) solid var(--focus-outer);
   outline-offset: 0;
   box-shadow: 0 0 0 calc(var(--px) * 2) var(--focus-inner);
-}
-.ui .btn:focus-visible {
-  outline: none;
 }

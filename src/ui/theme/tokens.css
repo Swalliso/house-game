@@ -100,7 +100,7 @@
   --tint-room-band: #d0be9c;
   --lawn: #63a650; /* behind a yard piece's picture */
   --dark-fill: #d8d0e0; /* a Dark tag's chip */
-  --hatch: rgb(237 147 30 / 0.4); /* bad-fill, over a card that fits nowhere */
+  --hatch: rgb(237 147 30 / 0.3); /* bad-fill, over a card that fits nowhere */
 
   /* --- Focus: a double ring that reads on paper and on wood --------------------------- */
   --focus-outer: var(--ink);
