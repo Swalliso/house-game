@@ -296,9 +296,10 @@ house-game/
 │   │   └── audio/            # Web Audio wrapper: buses, scheduler, pitch ladder, music stems
 │   └── main.tsx
 └── sim/
-    ├── cli.ts                # node sim/cli.ts --runs 200 --policy greedy ...
-    ├── policies/             # random, greedy (M2); planner and early-completion variants (M6)
-    └── report.ts             # percentiles, survival, suggested targets
+    ├── cli.ts                # node sim/cli.ts --runs 200 --policy greedy ...; --check, --ban, --gift
+    ├── simulate.ts           # one run through apply(): the run record, step caps, SimError
+    ├── policies/             # random, novice, greedy and its variants; chaos (for tests); planner (M6)
+    └── report.ts             # the report, §8's criteria, suggested targets
 ```
 
 Tests are co-located (`scoring.test.ts` next to `scoring.ts`).
@@ -1197,8 +1198,12 @@ The auto-complete toggle isn't on this list: M2 builds it, and D-040 (Accepted) 
 The rules are pure, so the sim is the same `apply()` driven by bots in Node: no browser, no build step.
 
 ```
-npm run sim -- --runs 200 --policy greedy --client hendersons --crew gc
+npm run sim -- --runs 200 --policy greedy
+npm run sim -- --check
+npm run sim -- --ban blueprint:fengShui
 ```
+
+`--client` and `--crew` come with M4's clients and crews. `npm run sim -- --help` lists the rest.
 
 ### M2 version: the minimum that answers "are the targets right?"
 
@@ -1207,25 +1212,26 @@ npm run sim -- --runs 200 --policy greedy --client hendersons --crew gc
   - `greedy`: the best `scoreOnly` delta this week
 - **Process:** one process, about 200 runs, top-K candidate ranking, and the 1-second benchmark gate.
 - **Report:** cumulative score at each milestone (p10, p50, p90) and survival per milestone, plus lot fill and placements spent on enclosures, as a console table.
-- **`--suggest-targets`:** cumulative score grows roughly with the square of the week, so targets follow the sim's median curve, a power curve so far, not ×2 per milestone. ×Mult may steepen it; the M3 and M4 reports will show by how much. Each target is `α × median greedy score` at that milestone, with α rising from about 0.6 (the first milestone teaches and should almost always pass) to about 0.85 by milestones 4–5, then flat.
+- **`--suggest-targets`:** cumulative score grows roughly with the square of the week, so targets follow the sim's median curve, a power curve so far, not ×2 per milestone. ×Mult may steepen it; the M3 and M4 reports will show by how much. Each target is `α × median greedy score` at that milestone, with α rising from about 0.6 (the first milestone teaches and should almost always pass) to about 0.85 by milestones 4–5, then flat. (D-072 sets α per milestone instead. Since D-089 the fit uses seeds `sim-*` and is checked on held-out seeds `check-*`.)
 
 ### Added in M3 and M4
 
-- **Policies:** the M3b shop bot (value per budget) and tool rules, and a default change-order policy: accept requests, decline restrictions.
-- **Reports:**
+- **Policies:** the M3b shop bot (value per budget) and tool rules, and a default change-order policy: accept requests, decline restrictions. Since D-089: `novice` (a random card that fits, at its best spot), greedy's `--early` and `--strikes` variants, and a chaos bot for tests.
+- **Reports** (all but the per-client one exist since D-089):
   - per-piece pick rate, score share, and dead-card rate
-  - per-client piece mixes and win rates
+  - per-client piece mixes and win rates (M4)
   - early-completion choices and their payoff, per phase
   - shop: how often each good is offered, bought, and in winning runs; budget left unspent
   - fixtures and tools: how often each is used, and the weekly gain it brought
   - house siting (distance from the street and from the edges)
   - JSON output for spreadsheets
+- **Paired A/B runs** (D-089): `--ban kind:id` and `--gift kind:id` on the same seeds, reporting the seeds won by only one arm. Use 400 or more runs before acting on a difference under about 7 points.
 
 ### Added in M6, only as needed
 
 - **More bots:**
   - `planner`: greedy plus weights for missing spec items, unfinished sets, and early long-term earners
-  - `early:always`, `early:never`, `early:smart`: early-completion variants
+  - `early:smart`: early-completion choices by expected payoff. `early:always` and `early:never` exist since D-089, as `--early always` and `--early never`.
 - **Reports:** per-crew win rates, overtime use, free redraws and passes, and what top-scoring houses contain.
 - **Worker threads**, if a full sweep is slow.
 
@@ -1239,9 +1245,17 @@ npm run sim -- --runs 200 --policy greedy --client hendersons --crew gc
 - **No must-buy:** no blueprint, upgrade, or tool appears in more than about 60% of `planner` wins, and every one appears in some.
 - **Fences pay their way:** a fenced yard costs `greedy` 2–3 placements on a typical lot.
 
+**Checking them** (D-089): `npm run sim -- --check` runs greedy, random, novice, and greedy with `--early always` on held-out seeds, and prints each criterion as PASS, FAIL, or NOT MEASURED. The verdict follows the estimate; it's "sure" when the 95% interval sits on the same side of the line. How each is measured:
+- `random` loses at or before milestone 3 in at least 95% of runs.
+- Milestone 1 teaches: `novice` passes it in at least 90% of runs.
+- `greedy` clears milestones 1–3 in 92–98% of runs, and wins 40–50%.
+- Early completion: `--early always` and `--early never` win within 10 points of each other, paired by seed, and the report prints the median ratio of their final scores. `early:smart`'s 25% waits for M6.
+- Fences: the enclosure probe's median is 2–3 Fence cards, and at least 50% of greedy runs are offered that many Fence cards by milestone 4.
+- `planner`, no must-buy, and the client and crew spread print as NOT MEASURED until M4 and M6. Until then, `--ban` on paired seeds stands in for no must-buy.
+
 ### Determinism
 
-Same seed and policy give identical results (a test). Each run is a pure function of seed, policy, and content, so the worker count never matters.
+Same seed and policy give identical results (a test). Each run is a pure function of seed, policy, and content, so the worker count never matters. A run past 400 actions in a week or 20,000 in all stops with a SimError that carries its run code (D-089), so a looping bot fails fast instead of hanging CI.
 
 ---
 
@@ -1257,7 +1271,7 @@ Same seed and policy give identical results (a test). Each run is a pure functio
   - fixtures: install from the hand and from supplies, replacement, removal with the host
   - the shop: stock per visit, the sale, refresh and service prices, selling, crates, the skip reward
   - each tool kind and each change-order kind
-- **Property tests** (fast-check), kept to the few that pay for themselves:
+- **Property tests** (fast-check, on TEST_CONTENT; the chaos test checks the first one on the real content), kept to the few that pay for themselves:
   - `preview(s, p).after` equals the `tally` total from `apply(s, p)` for a placement or an install, and `preview(s, p).before` equals the one from `apply(s, pass)`
   - `scoreOnly` equals `preview().after`
   - `replay(log)` reproduces the state
@@ -1265,7 +1279,9 @@ Same seed and policy give identical results (a test). Each run is a pure functio
   - a free action (a supplies install or a tool) never changes `week` or any later week's hand; only Catalog redraws the current one
 - **Content:** `validateContent()`, plus each client's witness layout meeting all its specs.
 - **Purity test:** see §3.
-- **Smoke sim in `npm test`:** the random bot, 5 seeded runs per Core client, under 30 seconds. It covers the "no run-breaking bugs" definition of done. Greedy runs stay in `npm run sim`.
+- **Smoke sim in `npm test`:** the random bot, 5 seeded runs per Core client, under 30 seconds. It covers the "no run-breaking bugs" definition of done. Since D-089 greedy also plays the same 5 seeds to the end, each replayed from its run code, with at least 3 reaching shop 3 and using a tool or supply; it must beat random on every seed; and the step cap must stop a looping bot. Balance stays in `npm run sim`.
+- **Chaos test on the real content** (D-089): a bot that tries every kind of action, with debug cheats to reach the economy, all seven phases, and the six shops. After every step it checks the state's invariants and preview() against apply(), and that a malformed action throws IllegalAction without changing anything. Each run replays from its run code. Across its seeds it must reach every action, every tool kind, every milestone result, a win, and a loss; if a content change leaves a gap, it plays up to 6 more seeds before it fails. It runs through `simulateRun`, so the step caps apply.
+- **Real-content pins:** `src/content/tools.test.ts` pins the real tools, upgrades, and crates (ids, prices, and one effect each), like `fixtures.test.ts` does for fixtures.
 - **UI:** no unit tests for the jam. Screens are checked by playing them locally before each playtest, with the `?debug` panel used to reach late-run screens quickly.
 
 ---

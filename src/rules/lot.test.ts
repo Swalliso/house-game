@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Lot, TerrainId } from './index.ts';
 import { generateLot, isSunny, lotFromRows, lotProblems, lotToRows, terrainAt } from './lot.ts';
 import { TEST_LOT_BALANCE as B } from './testing.ts';
+import { CONTENT } from '../content/index.ts';
 
 const count = (lot: Lot, t: TerrainId) => lot.terrain.filter((x) => x === t).length;
 
@@ -42,6 +43,24 @@ describe('lot generation', () => {
     const avg = terrainTotal / 1000;
     expect(avg).toBeGreaterThan(90);
     expect(avg).toBeLessThan(150);
+  });
+
+  it('passes the checks with the real lot balance for 1,000 seeds, before its finds go down', () => {
+    // The finds (an Old Shed, Time Capsules) are placed after the checks, by design, so a 2×2
+    // Old Shed on the street's side can tip a lot a fraction under minStreetSidePct (3 seeds in
+    // 1,000). The checks are about the terrain the lot was drawn with: read it without the finds.
+    const real = CONTENT.balance.lot;
+    let finds = 0;
+    for (let i = 0; i < 1000; i++) {
+      const lot = generateLot(`seed-${i}`, real);
+      const bare: Lot = {
+        ...lot,
+        terrain: lot.terrain.map((t) => (t === 'oldShed' || t === 'timeCapsule' ? null : t)),
+      };
+      expect(lotProblems(bare, real)).toEqual([]);
+      if (count(lot, 'oldShed') > 0 && count(lot, 'timeCapsule') > 0) finds++;
+    }
+    expect(finds).toBe(1000);
   });
 
   it('makes a 1-tile-wide creek from the back edge or a side to a side, never touching the pond', () => {

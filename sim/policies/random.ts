@@ -2,7 +2,9 @@
 // never rerolls, demolishes, or completes early. It sets the floor the targets must beat:
 // random play should fail by milestone 2 or 3. From M3 it also shops at random (a pick from
 // an open crate, now and then a random buy, then leaving), and now and then uses a random
-// tool, so the smoke sim covers the economy.
+// tool. Its runs rarely get past shop 1 or afford a tool, so the chaos test (chaos.test.ts),
+// not this bot, covers the economy (D-089). It picks uniformly over every card × spot, so it
+// favours yard cards, which fit in more places; novice.ts is the floor for milestone 1.
 
 import type { Action, Rng, Rules, RunState } from '../../src/rules/index.ts';
 

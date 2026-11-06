@@ -1,5 +1,6 @@
 # Typecheck, tests, and the build for every pull request and for pushes to phase and fix
-# branches. Deploys nothing; deploy.yml publishes main and develop (D-063).
+# branches, plus an informational sim check on pull requests. Deploys nothing; deploy.yml
+# publishes main and develop (D-063).
 name: CI
 
 on:
@@ -20,6 +21,8 @@ jobs:
   # Keep this job id, and don't give it a name or a matrix.
   test:
     runs-on: ubuntu-latest
+    # A test that hangs (a bot that loops) fails here instead of at GitHub's 6-hour limit.
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
         with:
@@ -32,3 +35,41 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+
+  # Informational, never required (D-089): §8's starting criteria on held-out seeds, from
+  # `npm run sim -- --check`, written to the run's summary page. Read it on balance and content
+  # pull requests. A failed run or a slow benchmark marks the step, but never fails the job;
+  # the criteria's verdicts are only printed.
+  sim:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: npm run sim -- --check
+        continue-on-error: true
+        run: |
+          set +e
+          npm run --silent sim -- --check > sim-check.raw 2>&1
+          status=$?
+          # Drop the progress counters ("greedy: 25/200", written with carriage returns).
+          tr '\r' '\n' < sim-check.raw \
+            | grep -vE '^[[:space:]]*[^:]+: [0-9]+/[0-9]+[[:space:]]*$' > sim-check.txt
+          cat sim-check.txt
+          {
+            echo '## Sim check (informational, D-089)'
+            echo
+            echo "\`npm run sim -- --check\` exited with $status (1: a run failed or the benchmark gate did)."
+            echo
+            echo '```text'
+            cat sim-check.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit $status

@@ -1,78 +1,169 @@
 // The greedy bot (§8): the placement with the best exact scoreOnly() total this week.
 //
 // It ranks every legal placement by the rules' cheap local estimate and scores only the best
-// few exactly (§4, Performance): the top TOP_K overall, the top PER_CARD of each card, and the
-// top SET_HINTS of those that might complete a set, since sets move the week's Mult. Ties go
-// to a random one of the best, from the seeded stream, so houses vary between runs.
+// few exactly (§4, Performance): the top TOP_K overall, the top PER_CARD of each card, and up
+// to HINT_CAP of the plays the estimate flags as blind spots (one that might complete a set,
+// a Fence that would close a fenced yard, a Hallway that would link rooms), since those move
+// the week in ways the estimate can't see. Estimate ties break by a seeded key per play
+// (rankPlays), never by list position: legalPlacements runs from the back row, so ranking by
+// position built every house against the back of the lot. Exact ties go to a random one of
+// the best, from the same stream, so houses vary between runs.
 //
 // When even the best placement wouldn't raise this week's total, it rerolls if it can, and
-// passes rather than lose score. It never demolishes or completes early (the early-completion
-// bots come in M6). From M3 it shops with the shop bot, uses tools and supplies first
-// (shop.ts), places reserve pieces, and scores hand fixtures' installs exactly (there are few).
+// passes rather than lose score. It never demolishes. Its options (makeGreedy) set when it
+// completes a milestone early ('never' by default; 'always' as soon as it can; 'last' only in
+// the phase's last week) and whether it buys the strike service. It shops with the shop bot,
+// uses tools and supplies first (shop.ts), places reserve pieces, and scores hand fixtures'
+// installs exactly (there are few).
 
 import type {
   Action,
+  Estimate,
   InstallAction,
   PlaceAction,
   Rng,
   Rules,
   RunState,
 } from '../../src/rules/index.ts';
-import { shopAct, useTools } from './shop.ts';
+import type { Policy } from './index.ts';
+import { shopAct, useTools, type StrikeMode } from './shop.ts';
 
 export const TOP_K = 12;
 const PER_CARD = 2;
-const SET_HINTS = 4;
+/** At most this many hinted plays (set, yard, link) are scored exactly, best estimate first. */
+export const HINT_CAP = 24;
 
-/** The plays worth scoring exactly, by the cheap estimate. */
+/** When greedy completes a milestone early: 'last' only when it saves exactly one week. */
+export type EarlyMode = 'never' | 'always' | 'last';
+
+export interface GreedyOptions {
+  /** Default 'never'. */
+  early?: EarlyMode;
+  /** Default 'none': it never buys the strike service. 'fixed' strikes by STRIKE_ORDER. */
+  strikes?: StrikeMode;
+}
+
+export interface RankedPlay {
+  play: PlaceAction;
+  est: Estimate;
+  /** The seeded tie-break key. */
+  key: number;
+}
+
+/**
+ * A play's tie-break key: a hash of the salt and the play itself, so the order of the plays
+ * list never matters and the same salt always ranks the same plays alike.
+ */
+export function tieKey(salt: number, p: PlaceAction): number {
+  let h = salt ^ Math.imul(p.x + 1, 0x9e3779b1);
+  h = Math.imul(h ^ (h >>> 15), 0x85ebca77) ^ Math.imul(p.y + 1, 0xc2b2ae3d);
+  h = Math.imul(h ^ (h >>> 13), 0x27d4eb2f) ^ (p.rot + 4 * p.i + (p.from === 'reserve' ? 64 : 0));
+  h = Math.imul(h ^ (h >>> 16), 0x21f0aaad);
+  h = Math.imul(h ^ (h >>> 15), 0x735a2d97);
+  return (h ^ (h >>> 15)) >>> 0;
+}
+
+/**
+ * The plays ranked by the rules' estimate, best first; estimate ties by the seeded key. The
+ * one ranking every bot uses (the greedy shortlist, the shop bot's placements, the novice).
+ * Draw the salt once per decision (rng.u32()), so the rest of the bot's stream doesn't shift
+ * with the number of plays.
+ */
+export function rankPlays(
+  rules: Rules,
+  state: RunState,
+  plays: readonly PlaceAction[],
+  salt: number,
+): RankedPlay[] {
+  return plays
+    .map((play) => ({ play, est: rules.estimatePlay(state, play), key: tieKey(salt, play) }))
+    .sort((a, b) => b.est.delta - a.est.delta || a.key - b.key);
+}
+
+const hinted = (est: Estimate) => est.setHint || est.yardHint || est.linkHint;
+
+/** The plays worth scoring exactly, by the cheap estimate, in rank order. */
 export function shortlist(
   rules: Rules,
   state: RunState,
   plays: readonly PlaceAction[],
+  salt: number,
 ): PlaceAction[] {
-  const ranked = plays
-    .map((play, k) => ({ play, k, est: rules.estimatePlay(state, play) }))
-    .sort((a, b) => b.est.delta - a.est.delta || a.k - b.k);
-  const chosen = new Set<number>();
-  ranked.slice(0, TOP_K).forEach((r) => chosen.add(r.k));
+  const ranked = rankPlays(rules, state, plays, salt);
+  const chosen = new Uint8Array(ranked.length);
   const perCard = new Map<number, number>();
   let hints = 0;
-  for (const r of ranked) {
-    const n = perCard.get(r.play.i) ?? 0;
-    if (n < PER_CARD) {
-      perCard.set(r.play.i, n + 1);
-      chosen.add(r.k);
+  ranked.forEach((r, n) => {
+    if (n < TOP_K) chosen[n] = 1;
+    const card = r.play.i * 2 + (r.play.from === 'reserve' ? 1 : 0);
+    const k = perCard.get(card) ?? 0;
+    if (k < PER_CARD) {
+      perCard.set(card, k + 1);
+      chosen[n] = 1;
     }
-    if (r.est.setHint && hints < SET_HINTS) {
+    if (hints < HINT_CAP && hinted(r.est)) {
       hints++;
-      chosen.add(r.k);
+      chosen[n] = 1;
     }
-  }
-  return ranked.filter((r) => chosen.has(r.k)).map((r) => r.play);
+  });
+  return ranked.filter((_, n) => chosen[n] === 1).map((r) => r.play);
 }
 
-export const greedy = {
-  name: 'greedy',
-  act(rules: Rules, state: RunState, rng: Rng): Action {
-    if (state.screen === 'shop') return shopAct(rules, state, rng);
-    const free = useTools(rules, state);
-    if (free) return free;
-    const plays = rules.legalPlacements(state);
-    const installs = rules.legalPlays(state).filter((p): p is InstallAction => p.t === 'install');
-    const passTotal = rules.scoreOnly(state, null);
-    let best: (PlaceAction | InstallAction)[] = [];
-    let bestTotal = -Infinity;
-    for (const play of [...shortlist(rules, state, plays), ...installs]) {
-      const total = rules.scoreOnly(state, play);
-      if (total > bestTotal) {
-        bestTotal = total;
-        best = [play];
-      } else if (total === bestTotal) best.push(play);
-    }
-    if (best.length === 0 || bestTotal <= passTotal) {
-      if (rules.canReroll(state).ok) return { t: 'reroll' };
-      if (best.length === 0 || bestTotal < passTotal) return { t: 'pass' };
-    }
-    return rng.pick(best);
-  },
-};
+/** Should the bot complete the milestone early now? */
+function completesEarly(rules: Rules, state: RunState, mode: EarlyMode): boolean {
+  if (mode === 'never') return false;
+  const offer = rules.canCompleteEarly(state);
+  return offer.ok && (mode === 'always' || offer.weeksSaved === 1);
+}
+
+/** The policy's label for reports: 'greedy', or 'greedy · early always · strikes fixed'. */
+function labelOf(early: EarlyMode, strikes: StrikeMode): string {
+  const parts = ['greedy'];
+  if (early !== 'never') parts.push(`early ${early}`);
+  if (strikes !== 'none') parts.push(`strikes ${strikes}`);
+  return parts.join(' · ');
+}
+
+/**
+ * A greedy bot with these options. Every variant is named 'greedy', so the same seed keys
+ * the same streams and variants play alike until their choices differ; `label` tells them apart.
+ */
+export function makeGreedy(opts: GreedyOptions = {}): Policy {
+  const early = opts.early ?? 'never';
+  const strikes = opts.strikes ?? 'none';
+  return {
+    name: 'greedy',
+    label: labelOf(early, strikes),
+    act(rules: Rules, state: RunState, rng: Rng): Action {
+      const salt = rng.u32();
+      if (state.screen === 'shop') return shopAct(rules, state, rng, { salt, strikes, early });
+      if (completesEarly(rules, state, early)) return { t: 'completeEarly' };
+      const free = useTools(rules, state, salt);
+      if (free) return free;
+      const plays: PlaceAction[] = [];
+      const installs: InstallAction[] = [];
+      for (const p of rules.legalPlays(state)) {
+        if (p.t === 'place') plays.push(p);
+        else installs.push(p);
+      }
+      const passTotal = rules.scoreOnly(state, null);
+      let best: (PlaceAction | InstallAction)[] = [];
+      let bestTotal = -Infinity;
+      for (const play of [...shortlist(rules, state, plays, salt), ...installs]) {
+        const total = rules.scoreOnly(state, play);
+        if (total > bestTotal) {
+          bestTotal = total;
+          best = [play];
+        } else if (total === bestTotal) best.push(play);
+      }
+      if (best.length === 0 || bestTotal <= passTotal) {
+        if (rules.canReroll(state).ok) return { t: 'reroll' };
+        if (best.length === 0 || bestTotal < passTotal) return { t: 'pass' };
+      }
+      return rng.pick(best);
+    },
+  };
+}
+
+/** The default greedy bot: never early, no strikes. */
+export const greedy: Policy = makeGreedy();
