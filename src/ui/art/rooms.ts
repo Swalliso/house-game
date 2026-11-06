@@ -28,9 +28,11 @@
 // (house-paint.ts, the model's bay). RoomLayout.fixtureShown is false when a room's fixture
 // can't be drawn, so its badge shows instead and a purchase is always visible.
 //
-// Rooms of one type differ by their rank among the house's rooms of that type (by uid: the
-// order they were placed) and by their uid's hash, never by chance, so a house always looks the
-// same and three Bedrooms don't look copy-pasted.
+// Rooms of one type differ in color (duvets, sofas, woods, rugs): each takes the color its uid's
+// hash picks, or the next one if an older room of its type has it, so up to the palette's size
+// they never look copy-pasted, and demolishing a room leaves the others as they were (unless it
+// had bumped one). Small choices (which corner, which side) go by the hash too. Never by chance:
+// a house always looks the same.
 
 import type { FixtureId, PieceId } from '../../rules/index.ts';
 import {
@@ -319,7 +321,7 @@ interface Want {
 }
 
 interface Ctx {
-  /** This room's place among the house's rooms of its type, by uid. */
+  /** This room's color: an index into its type's palettes (variants), as `palette` picks it. */
   rank: number;
   /** A stable per-room number for small choices (which corner, which side). */
   hash: number;
@@ -920,15 +922,51 @@ function car(L: Layout, w: Want, c: Ctx): boolean {
   return true;
 }
 
+/** How many colors each room type's main piece comes in (its beds, sofas, tables...). */
+const COLORS: Readonly<Partial<Record<PieceId, number>>> = {
+  bedroom: BEDS.length,
+  bathroom: TOILETS.length,
+  diningRoom: TABLES.length,
+  livingRoom: SOFAS.length,
+  closet: SHOES.length,
+  garage: 2,
+  homeOffice: BOOKCASES.length,
+  playroom: TEDDIES.length,
+  library: BOOKCASES.length,
+  mudroom: SHOES.length,
+  sunroom: ARMCHAIRS.length,
+};
+
+/**
+ * A room's color: the one its uid's hash picks, or the next one free of the older rooms of its
+ * type (in uid order, so in placement order). Distinct up to the palette's size, and stable: an
+ * older room's color never depends on a newer one.
+ */
+function palette(m: HouseModel, room: Room): number {
+  const n = COLORS[room.defId] ?? 1;
+  const taken = new Set<number>();
+  const same = [...m.rooms.values()]
+    .filter((r) => r.defId === room.defId)
+    .sort((a, b) => a.uid - b.uid);
+  for (const r of same) {
+    const start = uidHash(r.uid, 11) % n;
+    let c = start;
+    for (let k = 0; k < n; k++) {
+      c = (start + k) % n;
+      if (!taken.has(c)) break;
+    }
+    if (taken.size >= n) c = start;
+    if (r.uid === room.uid) return c;
+    taken.add(c);
+  }
+  return 0;
+}
+
 function layOut(m: HouseModel, uid: number): RoomLayout {
   const room = m.rooms.get(uid);
   const spec = room && (SPECS as Partial<Record<PieceId, (c: Ctx) => Want[]>>)[room.defId];
   if (!room || !spec) return { items: [], fixtureShown: !room?.fixture };
-  const same = [...m.rooms.values()]
-    .filter((r) => r.defId === room.defId)
-    .map((r) => r.uid)
-    .sort((a, b) => a - b);
-  const c: Ctx = { rank: same.indexOf(uid), hash: uidHash(uid, 7), fixture: room.fixture };
+  const c: Ctx = { rank: palette(m, room), hash: uidHash(uid, 7), fixture: room.fixture };
   const wants = spec(c);
   const L = new Layout(analyze(m, room));
   const done = new Set<Want>();

@@ -251,6 +251,21 @@ describe('room layouts', () => {
     expect(new Set(beds).size).toBe(3);
   });
 
+  it('keep their colors when a newer room of their type comes or goes', () => {
+    const beds = (specs: Spec[]) => {
+      const m = modelOf(house(specs));
+      return [...m.rooms.keys()].map(
+        (uid) => roomItems(m, uid).find((it) => it.sprite.startsWith('bed-'))?.sprite,
+      );
+    };
+    const two: Spec[] = [
+      ['bedroom', 1, 1],
+      ['bedroom', 3, 1],
+    ];
+    const three: Spec[] = [...two, ['bedroom', 5, 1]];
+    expect(beds(three).slice(0, 2)).toEqual(beds(two));
+  });
+
   it('are the same every time, and cached per model', () => {
     const specs: Spec[] = [
       ['livingRoom', 2, 2],
