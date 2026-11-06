@@ -23,9 +23,11 @@ function tileHash(x: number, y: number): number {
 }
 
 function draw(ctx: CanvasRenderingContext2D, img: HTMLImageElement, lot: Lot): void {
+  // M5a shim, until the 32 px cells (D-095): each sprite's whole rect (32×32, the placeholders
+  // doubled) goes into one 16 px tile, and with smoothing off that gives back their own pixels.
   const put = (id: SpriteId, x: number, y: number) => {
     const p = spritePos(id);
-    ctx.drawImage(img, p.x, p.y, TILE, TILE, x * TILE, y * TILE, TILE, TILE);
+    ctx.drawImage(img, p.x, p.y, p.w, p.h, x * TILE, y * TILE, TILE, TILE);
   };
   ctx.imageSmoothingEnabled = false;
   for (let y = 0; y < lot.height; y++) {

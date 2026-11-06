@@ -1,12 +1,14 @@
-// The sprite atlas (D-057): 16×16 sprites in 18×18 cells (1px extruded), built from art/ by
-// scripts/build-atlas.ts. Pieces use it as a CSS background; the terrain canvas draws from it.
-// Positions are whole multiples of the scale, so pixel art stays crisp.
+// The sprite atlas (D-057, D-095), built by scripts/build-atlas.ts from the art/ placeholders
+// (doubled to 32×32) and the LimeZu cuts in assets/limezu/ (at their own sizes). atlas.json
+// (version 2) gives each sprite's rect, { x, y, w, h }, at even positions and extruded by 1px.
+// Pieces use it as a CSS background; the terrain canvas draws from it.
 
 import atlasUrl from '../../assets/atlas.png';
 import atlas from '../../assets/atlas.json';
 import type { FixtureId, PieceId, Supply, ToolId } from '../rules/index.ts';
 
 export type SpriteId = keyof typeof atlas.sprites;
+/** The board's cell size in CSS px at scale 1 (until the switch to 32 px cells, D-095). */
 export const TILE = 16;
 
 export const ATLAS_URL: string = atlasUrl;
@@ -85,17 +87,29 @@ export function supplyGlyph(s: Supply): string {
   return s.kind === 'fixture' ? FIXTURE_GLYPHS[s.id] : TOOL_GLYPHS[s.id];
 }
 
-export function spritePos(id: SpriteId): { x: number; y: number } {
-  return atlas.sprites[id];
+/** A sprite's rect in the atlas (an animation's first frame). */
+export function spritePos(id: SpriteId): { x: number; y: number; w: number; h: number } {
+  const { x, y, w, h } = atlas.sprites[id];
+  return { x, y, w, h };
 }
 
-/** CSS for a sprite at a whole-number scale. */
+/**
+ * CSS for a sprite drawn into one TILE × scale box, at a whole-number scale.
+ *
+ * M5a shim, until the board lays out 32 px cells (D-095): the atlas holds every sprite at 32 art
+ * px per cell, the placeholders doubled, but the board still lays out 16 px cells. So the
+ * sprite's whole rect is shrunk into the box (by TILE / w), and nearest-neighbor halving gives
+ * back the placeholders' own pixels. Atlas positions are even, so every whole scale still lands
+ * on whole CSS pixels. The 32 px switch replaces this with a plain `scale` per art pixel.
+ */
 export function spriteStyle(id: SpriteId, scale: number): Record<string, string> {
-  const { x, y } = spritePos(id);
+  const { x, y, w, h } = spritePos(id);
+  const kx = (TILE * scale) / w;
+  const ky = (TILE * scale) / h;
   return {
     backgroundImage: `url(${atlasUrl})`,
-    backgroundPosition: `${-x * scale}px ${-y * scale}px`,
-    backgroundSize: `${atlas.width * scale}px ${atlas.height * scale}px`,
+    backgroundPosition: `${-x * kx}px ${-y * ky}px`,
+    backgroundSize: `${atlas.width * kx}px ${atlas.height * ky}px`,
     backgroundRepeat: 'no-repeat',
     imageRendering: 'pixelated',
   };
