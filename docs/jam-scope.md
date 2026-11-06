@@ -17,7 +17,7 @@
 - **Crews:** General Contractor, Landscaper, Architect.
 - **Content:** the Core-tier items in `content-brainstorm.md`, as written in Appendix B of `implementation-plan.md`. Five pieces that were Stretch there (Sunroom, Hot Tub, Fire Pit, Henhouse, Birdhouse) are Core shop pieces now (D-051).
 - **End screen:** the finished house captioned "It's a house.", the score, and a copyable result line.
-- **Art and sound:** cozy pixel art from LimeZu's 16px packs, at 32 art px per cell (2×2 tiles, D-095), with Claude-drawn placeholder sprites from M1 (D-057). A first pass at juice from M1 (D-059). Calm music with reward sounds that escalate with the size of the moment (D-058). The full art pass is M5a, before M4, and the sound pass M5b, after it (D-095).
+- **Art and sound:** cozy pixel art from LimeZu's 16px packs, at 32 art px per cell (2×2 tiles, D-097), with Claude-drawn placeholder sprites from M1 (D-057). A first pass at juice from M1 (D-059). Calm music with reward sounds that escalate with the size of the moment (D-058). The full art pass is M5a, before M4, and the sound pass M5b, after it (D-097).
 
 ## Stretch (only if time allows)
 
@@ -55,7 +55,7 @@ TypeScript + Vite with a pure rules module, Preact and the DOM for rendering, se
 
 ## Build order
 
-Eight phases, M0 to M7 (D-053): M1 to M6 each end in a playtest, M0 is setup, and M7 is the release. M5 is split in two, each with its own playtest: M5a (art, UI chrome, and the visual juice) comes before M4, and M5b (sound and music) after it (D-095). See §7 of `implementation-plan.md`.
+Eight phases, M0 to M7 (D-053): M1 to M6 each end in a playtest, M0 is setup, and M7 is the release. M5 is split in two, each with its own playtest: M5a (art, UI chrome, and the visual juice) comes before M4, and M5b (sound and music) after it (D-097). See §7 of `implementation-plan.md`.
 
 ## Definition of done
 

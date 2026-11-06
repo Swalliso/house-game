@@ -10,12 +10,12 @@ Open House is a game jam entry for the theme "It's a house," built with Claude C
   licenses. Both let you edit and use the asset in any commercial or non-commercial project,
   require credit to LimeZu, and forbid reselling or distributing the asset to others. Modern
   Exteriors' license also allows using it in open-source projects, GitHub included; Modern
-  Interiors' license doesn't mention open source (D-057, D-095). The repository holds only the
+  Interiors' license doesn't mention open source (D-057, D-097). The repository holds only the
   sprites we use, cut from the packs into `assets/limezu/` (and packed into `assets/atlas.png`)
   by `npm run art:cut`, each recorded in `assets/licenses.json` with its sheet and rect. The
-  packs stay in the gitignored `art-source/` (D-095).
+  packs stay in the gitignored `art-source/` (D-097).
 - **Placeholder sprites** (`art/*.txt`, packed into `assets/atlas.png`): drawn for Open House
-  by Claude Code. Our own work. LimeZu cuts replace them one by one in M5a (D-095): so far the
+  by Claude Code. Our own work. LimeZu cuts replace them one by one in M5a (D-097): so far the
   floors and the grass.
 - **Placeholder sound effects:** generated in the browser with
   [ZzFX](https://github.com/KilledByAPixel/ZzFX) by Frank Force (MIT). Its sample builder is

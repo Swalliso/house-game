@@ -1,4 +1,4 @@
-// A small zip reader for the LimeZu packs in art-source/ (scripts/cut-art.ts, D-095). It reads
+// A small zip reader for the LimeZu packs in art-source/ (scripts/cut-art.ts, D-097). It reads
 // the central directory, then one entry at a time by positioned reads, so a 230 MB zip is never
 // loaded whole. Stored and Deflate entries only; zip64, encryption, and multi-disk archives are
 // errors (the packs need none of them). It only returns bytes: nothing is extracted to disk,

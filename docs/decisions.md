@@ -248,7 +248,7 @@ Also: D-036 and D-043 (Accepted), where hand size becomes the `handSize` rule (3
 
 **Why:** Friends will open the link from a group chat, and the itch.io embed is a fixed size. Both need deciding before the layout is built. The team agreed on 2026-11-05 not to aim for mobile.
 **Amended by:** D-057 (confirmed by the team 2026-11-05): the design target is 1920×1080, since most players have at least a 1080p screen. The whole 24×24 lot fits there at a crisp 2×. 1280×720 still works, by panning. An itch.io page is optional now that Pages hosts both builds (D-060); if we make one, its embed is 1600×900 with fullscreen.
-**Amended by:** D-095 (Accepted 2026-11-06): with 32 art px per cell, the whole lot fits at 1080p at 1×, the same size on screen as the 16 px art's 2×.
+**Amended by:** D-097 (Accepted 2026-11-06): with 32 art px per cell, the whole lot fits at 1080p at 1×, the same size on screen as the 16 px art's 2×.
 
 ### D-053 · A two-person, phased build with a playtest after each phase
 **Status:** Accepted · 2026-11-05 (requested by the team)
@@ -260,7 +260,7 @@ Also: D-036 and D-043 (Accepted), where hand size becomes the `handSize` rule (3
 
 **Why:** The other jam members are building their own games, so there are no parallel tracks to coordinate. There's until next week to build and playtest before sharing with the larger group, and playtesting at every phase catches what isn't working while it's still cheap to change.
 **Changes:** Supersedes D-052. D-029 (Accepted): its suggested build order.
-**Amended by:** D-095 (Accepted 2026-11-06): M5 splits in two, each ending in a playtest. M5a (art, UI chrome, and the visual juice) comes before M4, and M5b (sound and music) after it.
+**Amended by:** D-097 (Accepted 2026-11-06): M5 splits in two, each ending in a playtest. M5a (art, UI chrome, and the visual juice) comes before M4, and M5b (sound and music) after it.
 
 ### D-054 · Branches: develop and main
 **Status:** Accepted · 2026-11-05 (requested by the team)
@@ -534,8 +534,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - D-049 (Accepted): the camera, from a CSS transform to re-layout in whole steps, with 2× panning rather than fitting at 1280×720.
 - D-033 (Accepted): terrain in a canvas layer and pieces from a sprite atlas.
 
-**Amended by:** D-095 (Accepted 2026-11-06): a cell is 32 art px, a 2×2 block of LimeZu's 16 px tiles, and the default zoom is never below 1× (at 1080p, the same size on screen as 2× was). Rooms get several furniture sprites. The palette is LimeZu's, with the color limits only for the placeholders, and Serene Village isn't needed.
-**2026-11-06 (M5a review):** no link or quote is recorded for "LimeZu has said" in the Sources bullet, and the two packs' licenses differ on open source. See D-095's license note.
+**Amended by:** D-097 (Accepted 2026-11-06): a cell is 32 art px, a 2×2 block of LimeZu's 16 px tiles, and the default zoom is never below 1× (at 1080p, the same size on screen as 2× was). Rooms get several furniture sprites. The palette is LimeZu's, with the color limits only for the placeholders, and Serene Village isn't needed.
+**2026-11-06 (M5a review):** no link or quote is recorded for "LimeZu has said" in the Sources bullet, and the two packs' licenses differ on open source. See D-097's license note.
 
 ### D-058 · Sound: calm music, rewards that escalate
 **Status:** Accepted · 2026-11-05: the direction at the team's request, and the details below with the plan's approval.
@@ -636,7 +636,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - **The atlas:** `art/` holds the placeholder sprites as palette-indexed 16×16 text grids, and `scripts/build-atlas.ts` packs them into `assets/atlas.png` and `atlas.json` (18×18 cells: each sprite extruded by 1px). The generated files are committed, so `npm run dev` works without a build step; `npm run build` regenerates them, and a test fails if `atlas.json` is stale. LimeZu sprites cut from `art-source/` will join the same atlas.
 
 **Why:** One place answers "where did this come from, and may we ship it?" for code as well as art. Vendoring keeps the audio side-effect free and dependency free.
-**Amended by:** D-095 (Accepted 2026-11-06): the atlas (version 2) packs the placeholders doubled to 32×32 and LimeZu cuts of any size from `assets/limezu/`, which `npm run art:cut` writes from the manifests in `art/limezu/`. A cut replaces the placeholder with its id.
+**Amended by:** D-097 (Accepted 2026-11-06): the atlas (version 2) packs the placeholders doubled to 32×32 and LimeZu cuts of any size from `assets/limezu/`, which `npm run art:cut` writes from the manifests in `art/limezu/`. A cut replaces the placeholder with its id.
 
 ### D-067 · M1 content defaults
 **Status:** Accepted · 2026-11-05: held up in playtest 1 (confirmed by the team with the M2 brief). The targets were replaced by the sim's in M2 (D-072).
@@ -661,7 +661,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - **The default zoom** counts the street row, so the lot and the street fit together at the largest whole scale of at least 2×. A smaller window scrolls until M2's camera.
 
 **Why:** Choices the plan leaves to the build, picked so the slice can answer playtest 1's questions.
-**Amended by:** D-095 (Accepted 2026-11-06): with 32 art px per cell, the default zoom is at least 1×, the same 32 CSS px per cell as 2× was.
+**Amended by:** D-097 (Accepted 2026-11-06): with 32 art px per cell, the default zoom is at least 1×, the same 32 CSS px per cell as 2× was.
 
 ### D-069 · A fenced yard needs at least 10 tiles
 **Status:** Accepted · 2026-11-05 (chosen by the team in the M2 build, from the sim's enclosure probe)
@@ -711,7 +711,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - **The ?debug panel** is a small floating panel: jump to a milestone with a bot-built house, meet the target or force a miss, add budget, give a card, and instant tallies.
 
 **Why:** Choices §7 leaves to the build.
-**Amended by:** D-095 (Accepted 2026-11-06): with 32 art px per cell, the default is the largest scale that fits, never below 1×, and the wheel steps in whole device pixels per art pixel up to 3×: 1×, 2× and 3× at a devicePixelRatio of 1, and 0.5× steps on a Retina screen. Fit is still the one fractional scale.
+**Amended by:** D-097 (Accepted 2026-11-06): with 32 art px per cell, the default is the largest scale that fits, never below 1×, and the wheel steps in whole device pixels per art pixel up to 3×: 1×, 2× and 3× at a devicePixelRatio of 1, and 0.5× steps on a Retina screen. Fit is still the one fractional scale.
 
 ### D-083 · Weekend Crew: D-075's banked building, as a tool
 **Status:** Accepted · 2026-11-05 (the team chose it for M3, resolving D-075). The price is a placeholder.
@@ -740,7 +740,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **Changes:** D-043 (Accepted): draw weights stay fixed for the run except for struck types. D-051 (Accepted): a third service.
 **2026-11-06 (D-089, confirmed by the team):** the Sim line's order came from M2's greedy, which couldn't see yards or links and built at the back of the lot, so it struck the very cards D-074 and D-080 ask about. The default bot now strikes nothing; `--strikes fixed` keeps this order for comparisons. The service itself is unchanged.
 
-### D-095 · Art at 32 px cells, and the look-and-feel pass before M4
+### D-097 · Art at 32 px cells, and the look-and-feel pass before M4
 **Status:** Accepted · 2026-11-06. The team chose 32 px cells after a visual audit that rendered the playtest-3 house (seed jbf3zs, week 21) both ways with LimeZu's art.
 **Finding:**
 - LimeZu's furniture is drawn for rooms about 4 tiles wide, in a 3/4 view: a double bed is 26×40 px, a toilet 14×34, a fireplace 32×40, the car 32×57. At 16 px per cell a 2×2 Bedroom is 32×32 px and a Bathroom 16×16, so 12 of the 15 room types can't show their key item, and the house reads as a floor plan with icons.
@@ -1212,7 +1212,7 @@ New content is preferred over raising existing numbers.
 - D-053, §7, and jam-scope.md's build order, if chains get a phase of their own.
 - Check against D-093 (chain items shouldn't reward repeating a room type) and D-090 (under these rules, a fixture that pays budget each time its host fires would pay once a week).
 
-**2026-11-06 (D-095):** M5 is now split, and M5a, with the visual juice and its tally work, comes before M4. So the Recommendation's "M5" is M5a: option 1 would land in M5a's juice stage. Options 2 and 3 can no longer land in M4 and still have the juice built around them: they would either come before M5a's juice stage, or add their "Again!" steps and arcs to the tally when they land in M4.
+**2026-11-06 (D-097):** M5 is now split, and M5a, with the visual juice and its tally work, comes before M4. So the Recommendation's "M5" is M5a: option 1 would land in M5a's juice stage. Options 2 and 3 can no longer land in M4 and still have the juice built around them: they would either come before M5a's juice stage, or add their "Again!" steps and arcs to the tally when they land in M4.
 
 ### Earlier open questions
 

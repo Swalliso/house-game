@@ -346,7 +346,7 @@ This pass researched what makes combo games feel rewarding, for D-055 to D-059 a
 - **Asset licenses**, checked on each asset page:
   - **Kenney** (Tiny Town, Roguelike Indoors, RPG Urban): CC0.
   - **LimeZu Modern Interiors and Modern Exteriors:** paid, commercial use allowed, no redistribution, credit required. LimeZu said open-source projects may include the parts they use.
-    - *Checked 2026-11-06 against the licenses in the zips:* Modern Exteriors' (`Modern_Exteriors_License.pdf`) adds "Use the asset in open source projects (ex GitHub)". Modern Interiors' (`LICENSE.txt`) and both itch.io pages don't mention open source; both forbid reselling or distributing "the asset". We have no link or quote for LimeZu's statement above (D-095).
+    - *Checked 2026-11-06 against the licenses in the zips:* Modern Exteriors' (`Modern_Exteriors_License.pdf`) adds "Use the asset in open source projects (ex GitHub)". Modern Interiors' (`LICENSE.txt`) and both itch.io pages don't mention open source; both forbid reselling or distributing "the asset". We have no link or quote for LimeZu's statement above (D-097).
   - **LimeZu Serene Village Revamped:** CC BY 4.0.
   - **Ninja Adventure:** CC0, and includes music and sound effects.
   - **Free tiers of Sprout Lands, Cozy Farm, Modern Interiors, and Cute Fantasy:** non-commercial or private only.

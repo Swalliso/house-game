@@ -217,8 +217,8 @@ The repo has no code, tooling, or CLAUDE.md yet: just four markdown docs at the 
 | Language | TypeScript **~6.0.3**, strict | The last JavaScript-based compiler, verified with the rest of this stack. TS 7 (the Go compiler) is new and has no stable API yet. Settings: `erasableSyntaxOnly`, `verbatimModuleSyntax`, `allowImportingTsExtensions`, `noUncheckedIndexedAccess`. |
 | Build and dev | Vite 8 | `base: './'`, so one build works on GitHub Pages and itch.io |
 | UI | Preact **10** + `@preact/signals` | About 9 kB gzip. Preact 11 is out, but it's newer than Claude's training data and the game needs nothing from it. |
-| Board | HTML/CSS with pixel art (D-057): terrain drawn into one canvas layer, redrawn only when terrain changes; pieces as absolutely positioned elements using a sprite atlas; SVG for outlines and highlights. The pointer position maps to a cell by arithmetic, so there's no element per cell. The camera zooms in whole device pixels per art pixel by re-laying out the board (never `transform: scale()`, which blurs pixel art in Safari), with drag to pan and a Fit button. | Behind a small `BoardView` interface. At 1080p the 24×24 lot fits at 1× (32 art px per cell, D-095); at 1280×720 it pans at 1×, with a Fit overview (§12). |
-| Juice | Web Animations API + CSS; one canvas overlay for particles; a first pass in M1, the full ladder in M5a (§12, D-095) | |
+| Board | HTML/CSS with pixel art (D-057): terrain drawn into one canvas layer, redrawn only when terrain changes; pieces as absolutely positioned elements using a sprite atlas; SVG for outlines and highlights. The pointer position maps to a cell by arithmetic, so there's no element per cell. The camera zooms in whole device pixels per art pixel by re-laying out the board (never `transform: scale()`, which blurs pixel art in Safari), with drag to pan and a Fit button. | Behind a small `BoardView` interface. At 1080p the 24×24 lot fits at 1× (32 art px per cell, D-097); at 1280×720 it pans at 1×, with a Fit overview (§12). |
+| Juice | Web Animations API + CSS; one canvas overlay for particles; a first pass in M1, the full ladder in M5a (§12, D-097) | |
 | Audio | Our own Web Audio wrapper, about 200–300 lines: buses, an audio-clock scheduler, the in-key pitch ladder, stem crossfades, ducking (§12). `zzfx` for placeholder sound effects. | Howler and Tone.js aren't needed. |
 | Tests | Vitest 5 + `fast-check` | |
 | Format | Prettier | Avoids formatting churn between sessions |
@@ -249,7 +249,7 @@ house-game/
 ├── art-source/               # only in the main checkout (/Users/sam/Desktop/Code/house-game): the purchased LimeZu packs, never committed.
 │                             # The cut script finds it from any worktree through `git rev-parse --git-common-dir`.
 ├── art/                      # placeholder sprite sources: palette-indexed 16×16 grids, as text
-│   └── limezu/               # manifests: each LimeZu sprite we use, where it is in the packs, and its edits (D-095)
+│   └── limezu/               # manifests: each LimeZu sprite we use, where it is in the packs, and its edits (D-097)
 ├── scripts/cut-art.ts        # cuts the manifests' sprites from art-source/ into assets/limezu/ (local only)
 ├── scripts/build-atlas.ts    # packs the art/ placeholders and the assets/limezu/ cuts into assets/atlas.png + atlas.json
 ├── assets/                   # atlas, LimeZu cuts, audio; licenses.json records source, author, and license per file
@@ -313,7 +313,7 @@ Tests are co-located (`scoring.test.ts` next to `scoring.ts`).
 | `npm run dev` | Vite dev server |
 | `npm test` | Vitest: rules, content validation, client witness layouts, the purity test, a quick smoke sim |
 | `npm run typecheck` | `tsc` on both configs |
-| `npm run art:cut` | cuts the LimeZu sprites the manifests in `art/limezu/` list from the packs in `art-source/` into `assets/limezu/`, with their license records. Local only (D-095). |
+| `npm run art:cut` | cuts the LimeZu sprites the manifests in `art/limezu/` list from the packs in `art-source/` into `assets/limezu/`, with their license records. Local only (D-097). |
 | `npm run atlas` | rebuilds `assets/atlas.png` and `atlas.json` from the `art/` placeholders and the committed cuts in `assets/limezu/` |
 | `npm run build` | atlas + typecheck + Vite build, stamped with the git short SHA |
 | `npm run sim -- …` | headless simulation (§8) |
@@ -943,7 +943,7 @@ Shape variants (L-Kitchen, the long Hallway) are separate cards that share a typ
 | M6 · Balance and polish | Full sim, tuning, the end screen, a codex if time allows | Would you show this to the group? |
 | M7 · Release | Your PR from `develop` into `main`, which updates the root link; optional itch.io page | (shared with the group) |
 
-M5 is split (D-095): M5a, the look and feel, comes after M3 and before M4, and M5b, the sound, after M4. Each ends in a playtest.
+M5 is split (D-097): M5a, the look and feel, comes after M3 and before M4, and M5b, the sound, after M4. Each ends in a playtest.
 
 ### M0 · Setup
 
@@ -1094,7 +1094,7 @@ M5 is split (D-095): M5a, the look and feel, comes after M3 and before M4, and M
 
 ### M5a · Look and feel: art, UI chrome, and the visual juice
 
-After M3 and before M4 (D-095): the visual half of what makes these games feel good (D-057, D-059, and §12). The sound half is M5b, after M4.
+After M3 and before M4 (D-097): the visual half of what makes these games feel good (D-057, D-059, and §12). The sound half is M5b, after M4.
 
 - **Art (§12, Art):**
   - LimeZu's art at 32 art px per cell, cut from the packs by `npm run art:cut`, with the camera's new scales
@@ -1158,7 +1158,7 @@ After M3 and before M4 (D-095): the visual half of what makes these games feel g
 
 ### M5b · Sound and music
 
-After M4 (D-095). The sound half of the feel pass (D-058 and §12).
+After M4 (D-097). The sound half of the feel pass (D-058 and §12).
 
 - at least 2–3 calm tracks of 2–3 minutes, each with 3–4 synced stems (building, shop, milestone review, crate) (§12)
 - the reward sound set, with pitch ladders in the music's key
@@ -1499,18 +1499,18 @@ Intensity is measured against **pace**: `max(1, (this phase's target − the sco
 - **Never:** CC BY-NC, CC BY-SA, GPL, or anything taken from another game. That includes Balatro's sounds, which are rehosted online.
 - **Records:** every file goes in `assets/licenses.json` (source URL, author, license), and `CREDITS.md` lists them.
 
-### Art (D-057, D-095)
+### Art (D-057, D-097)
 
-- **The grid:** one game cell is 32 art px, a 2×2 block of LimeZu's 16 px tiles (D-095). LimeZu draws furniture in a 3/4 view for rooms about 4 tiles wide (a double bed is 26×40 px), so at one tile per cell a Bedroom couldn't hold its bed. Combolands looks like 16px tiles drawn at 3× on a 1080p screen.
+- **The grid:** one game cell is 32 art px, a 2×2 block of LimeZu's 16 px tiles (D-097). LimeZu draws furniture in a 3/4 view for rooms about 4 tiles wide (a double bed is 26×40 px), so at one tile per cell a Bedroom couldn't hold its bed. Combolands looks like 16px tiles drawn at 3× on a 1080p screen.
 - **Scale:** `scale` is CSS px per art px, in whole device pixels per art pixel: k ÷ devicePixelRatio, k a whole number. The default zoom is the largest such scale at which the lot and its street row fit, and never below 1×, panning when the lot overflows.
   - **The design target is 1080p** (confirmed 2026-11-05; most players have at least a 1080p screen). The whole lot fits there at 1×: 32 CSS px per cell, an 800px board with the street row, the same size on screen as 2× was with 16 px art, with room for the top bar.
   - At 1280×720 the lot can't fit at 1×. The default there is 1× with panning, with UI panels overlaying the board's margins (Combolands' panels sit over the sea around its island).
   - The wheel steps one device pixel per art pixel at a time, up to 3×: 1×, 2×, and 3× at a devicePixelRatio of 1, and 0.5× to 3× by halves on a Retina screen.
   - The Fit button is the one exception to whole numbers: it shows the whole lot at the largest scale that fits (about 0.75× at 720p), with slightly uneven pixels.
-  - Not yet at 125% and 150% display scaling (a devicePixelRatio of 1.25 or 1.5): there 1× isn't whole device pixels, and the default is 1× with uneven pixels whenever the next whole step up doesn't fit, as in every window up to 1920×1080. The team picks the rule (D-095's note has the options).
+  - Not yet at 125% and 150% display scaling (a devicePixelRatio of 1.25 or 1.5): there 1× isn't whole device pixels, and the default is 1× with uneven pixels whenever the next whole step up doesn't fit, as in every window up to 1920×1080. The team picks the rule (D-097's note has the options).
   - The costs: finer pixels on a 1080p monitor (a Retina screen still shows each art pixel as 2×2 device pixels), and a smaller board on a 1440p screen at a devicePixelRatio of 1.
   - If we make an itch.io page, its embed is 1600×900 with fullscreen. 1280×720 stays the minimum (D-047).
-- **Rooms are a walls-down cutaway,** like The Sims, built in the UI from the placed pieces (D-095):
+- **Rooms are a walls-down cutaway,** like The Sims, built in the UI from the placed pieces (D-097):
   - a floor per room type
   - walls as bands in LimeZu's style (its outline color around a light fill), drawn from a mask over the whole house: about 6 art px on outside edges and 4 between rooms, with 8px north wall faces and 3px floor shadows. These are the audit prototype's numbers, for the house stage to tune.
   - a wall between every two pieces, same type included, so rooms never merge visually (D-093)
@@ -1532,7 +1532,7 @@ Intensity is measured against **pace**: `max(1, (this phase's target − the sco
   - the pieces' score digits, their fixture and ⚠ badges (size and inset), and the placeholder walls are sized in sixteenths of a cell, so 1× shows them as 2× did with 16 px art, and they grow with the zoom
   - the title screen's street is one canvas, like the terrain, so its tiles show no seams at 125% or 150% display scaling. It keeps its old tile sizes (64, 48, or 32 CSS px by the window's height), rounded to whole device pixels per art pixel (down on a tie) and never under 32 CSS px, so the footer stays on the far sidewalk. On a Retina screen it's as it was. At a devicePixelRatio of 1 the 48 px size comes out at 32; at 1.25 every size comes out at 51.2; at 1.5 the 48 and 32 px sizes come out at 42.7.
   - **zoom changes the scale and re-lays out the board in whole steps, never with `transform: scale()`**: Safari blurs canvases under a scaling transform (a WebKit bug open since 2018). Transforms are only for short juice tweens. This changes D-049's camera.
-- **The pipeline (D-095):**
+- **The pipeline (D-097):**
   - `art/limezu/*.json` are the manifests: each LimeZu sprite we use, by its atlas id, with its pack (`mi` Modern Interiors or `me` Modern Exteriors), its path in the pack's zip, its rect, and any animation frames or edits (`tile`, `recolor`, `keyOut`, `flipX`, `compose`). One file per part of the game, so stages don't edit the same file.
   - `npm run art:cut` (`scripts/cut-art.ts`) runs locally only. It reads the zips in `art-source/` without extracting anything, and writes only the listed sprites to `assets/limezu/` (an animation's frames side by side), `assets/limezu/index.json` (each cut's size, frames, and a hash of its manifest entry), and one `assets/licenses.json` record per cut. It removes cuts no manifest lists.
   - `npm run atlas` packs the placeholders, doubled to 32×32, with the committed cuts at their own sizes, and a cut replaces the placeholder with its id. So CI never needs the packs, and art lands one sprite at a time.
@@ -1542,11 +1542,11 @@ Intensity is measured against **pace**: `max(1, (this phase's target − the sco
 
 | Option | What | License and cost | Fit |
 |---|---|---|---|
-| **A. LimeZu Modern Interiors + Modern Exteriors**, plus LimeZu Serene Village for terrain and water | One artist: modern suburban houses, furniture, and exteriors at 16px | Paid packs (about $1.50–$3 and $5): commercial use allowed, no redistribution, credit required. Serene Village: free, CC BY 4.0. | The most coherent. Keep the full packs out of the public repo and commit only the sprites we use; LimeZu has said that's fine for open-source projects (no link recorded; D-095's license note). You'd buy them. |
+| **A. LimeZu Modern Interiors + Modern Exteriors**, plus LimeZu Serene Village for terrain and water | One artist: modern suburban houses, furniture, and exteriors at 16px | Paid packs (about $1.50–$3 and $5): commercial use allowed, no redistribution, credit required. Serene Village: free, CC BY 4.0. | The most coherent. Keep the full packs out of the public repo and commit only the sprites we use; LimeZu has said that's fine for open-source projects (no link recorded; D-097's license note). You'd buy them. |
 | **B. A free CC0 mix:** Kenney Tiny Town, Kenney Roguelike Indoors, Ninja Adventure | Exteriors, interiors, extras | CC0, free | The styles clash (outlined versus not), so it needs a palette remap and an outline pass at build time |
 | **C. Sprites Claude draws** | 16×16 palette-indexed grids, turned into the atlas at build time | Ours | Fine for terrain, floors, fences, and simple furniture; weak for complex objects. Quality has to be judged by eye. |
 
-**Chosen (2026-11-05):** C for placeholders from M1, in the final atlas format and sprite ids, so swapping is free later. A for the final art: you buy the two LimeZu packs and put them in the gitignored `art-source/` folder, and Claude cuts the sprites we use into `assets/`. B stays the free fallback. Since D-095, Serene Village isn't needed: Modern Exteriors covers terrain and water in the same artist's palette.
+**Chosen (2026-11-05):** C for placeholders from M1, in the final atlas format and sprite ids, so swapping is free later. A for the final art: you buy the two LimeZu packs and put them in the gitignored `art-source/` folder, and Claude cuts the sprites we use into `assets/`. B stays the free fallback. Since D-097, Serene Village isn't needed: Modern Exteriors covers terrain and water in the same artist's palette.
 
 **Your to-dos, whenever convenient:**
 - ~~Buy LimeZu Modern Interiors and Modern Exteriors~~: done 2026-11-05. Their zips are in `/Users/sam/Desktop/Code/house-game/art-source/`, which git ignores in every branch and worktree. `npm run art:cut` reads the zips as they are, so there's nothing to unzip.

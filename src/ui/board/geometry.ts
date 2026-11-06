@@ -84,7 +84,7 @@ export function center(cells: readonly Cell[]): { x: number; y: number } {
 }
 
 // ---------------------------------------------------------------------------------------
-// Scales (§12, Art; D-095). A scale is CSS px per art px, and one cell is CELL art px. The
+// Scales (§12, Art; D-097). A scale is CSS px per art px, and one cell is CELL art px. The
 // camera's scales are whole device pixels per art pixel, k ÷ devicePixelRatio: 1×, 2× and 3×
 // at a devicePixelRatio of 1, and 0.5× steps on a Retina screen. Fit is the one exception,
 // apart from the default's 1× floor at 125% and 150% display scaling (see fitScale).
@@ -135,7 +135,7 @@ export function zoomStep(scale: number, dir: 1 | -1, dpr: number): number {
  * plus the street row below it fit, never below 1× (a smaller view pans) and never above the
  * camera's largest zoom. The camera (camera.ts) starts here. At a devicePixelRatio between 1
  * and 2, 1× isn't whole device pixels, so when nothing larger fits the default has uneven
- * pixels and isn't a zoom step; the team picks the rule there (D-095's note).
+ * pixels and isn't a zoom step; the team picks the rule there (D-097's note).
  */
 export function fitScale(
   availWidth: number,

@@ -1,11 +1,11 @@
 // Builds the sprite atlas (implementation-plan.md §3 "Scripts" and §12 "Art"; D-057, D-066,
-// D-095).
+// D-097).
 //
 // It packs two kinds of sprite:
 // - Placeholders: art/palette.txt maps one character to a color, and each art/<id>.txt is a
 //   16×16 grid of palette characters, with '.' for transparent. They're validated as before
 //   (at most 32 palette colors, 8 per sprite) and doubled to 32×32 with nearest neighbor, so
-//   a placeholder fills one 32 art px cell (D-095).
+//   a placeholder fills one 32 art px cell (D-097).
 // - LimeZu cuts: assets/limezu/<id>.png at its own size, listed in assets/limezu/index.json.
 //   `npm run art:cut` (scripts/cut-art.ts) writes them from the packs, and they're committed,
 //   so this script (and CI) never needs the packs. A cut replaces the placeholder with its id.
@@ -30,7 +30,7 @@ import { decodePng, encodePng, type RgbaImage } from './png.ts';
 
 /** The placeholders' grid size, in pixels. */
 export const PLACEHOLDER_SIZE = 16;
-/** Art px per game cell (D-095): the atlas's `cell`, and the size placeholders are doubled to. */
+/** Art px per game cell (D-097): the atlas's `cell`, and the size placeholders are doubled to. */
 export const ART_CELL = 32;
 /** How much a placeholder is scaled up in the atlas. */
 export const PLACEHOLDER_SCALE = ART_CELL / PLACEHOLDER_SIZE;

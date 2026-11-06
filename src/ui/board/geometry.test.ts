@@ -1,4 +1,4 @@
-// The board's scales (§12, Art; D-095): CSS px per art px, with one cell CELL art px.
+// The board's scales (§12, Art; D-097): CSS px per art px, with one cell CELL art px.
 
 import { describe, expect, it } from 'vitest';
 import { CELL, cellUnit } from '../sprites.ts';

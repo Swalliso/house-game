@@ -1,4 +1,4 @@
-// The sprite atlas (D-057, D-095), built by scripts/build-atlas.ts from the art/ placeholders
+// The sprite atlas (D-057, D-097), built by scripts/build-atlas.ts from the art/ placeholders
 // (doubled to 32×32) and the LimeZu cuts in assets/limezu/ (at their own sizes). atlas.json
 // (version 2) gives each sprite's rect, { x, y, w, h }, at even positions and extruded by 1px.
 // Pieces use it as a CSS background; the terrain canvas draws from it.
@@ -13,7 +13,7 @@ import type { FixtureId, PieceId, Supply, ToolId } from '../rules/index.ts';
 
 export type SpriteId = keyof typeof atlas.sprites;
 
-/** Art px per game cell: a 2×2 block of LimeZu's 16 px tiles (D-095). */
+/** Art px per game cell: a 2×2 block of LimeZu's 16 px tiles (D-097). */
 export const CELL = 32;
 
 /**

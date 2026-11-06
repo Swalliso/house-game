@@ -1,4 +1,4 @@
-// Cuts the LimeZu sprites we use out of the packs (D-095; implementation-plan.md §12 Art).
+// Cuts the LimeZu sprites we use out of the packs (D-097; implementation-plan.md §12 Art).
 //
 // art/limezu/*.json are the manifests: one file per part of the game, so work on the terrain
 // and work on the house never edit the same file. Each maps sprite ids (the atlas's ids,

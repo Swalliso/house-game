@@ -1,5 +1,5 @@
 // PNG encoding and decoding for the art scripts: build-atlas.ts writes the atlas, and cut-art.ts
-// reads LimeZu's sheets and writes the cuts (D-066, D-095). No npm dependencies: node:zlib does
+// reads LimeZu's sheets and writes the cuts (D-066, D-097). No npm dependencies: node:zlib does
 // the deflate.
 //
 // The decoder reads what the packs hold: 8-bit grayscale, RGB, palette, gray with alpha, and
