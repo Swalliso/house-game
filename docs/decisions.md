@@ -1020,17 +1020,72 @@ New content is preferred over raising existing numbers.
 **Would change:** D-087.
 
 ### D-093 · Houses that look like houses
-**Status:** Open · 2026-11-06, from playtest 3. The team wants its own research session before anything is built.
-**Finding:** Houses come out unrealistic. The playtest house had 4 Living Rooms, 2 Kitchens, 2 Home Offices, and 3 Bedrooms sharing 1 Bathroom, spread across the house. Scoring rewards repeating the strongest rooms wherever they combo. research.md notes the same problem in Floor Plan and Dream Home (the best house can have five adjacent dining rooms and no kitchen), and that Dream Home pushes back with functionality bonuses.
+**Status:** Open · 2026-11-06, from playtest 3. Researched the same day in a session of its own (research.md, "Update: houses that look like houses"). The options and a recommendation are below, and the choice is the team's.
+**Finding:** Houses come out unrealistic. The playtest house had 4 Living Rooms, 2 Kitchens, 2 Home Offices, and 3 Bedrooms sharing 1 Bathroom, spread across the house. Scoring rewards repeating the strongest rooms wherever they combo. Floor Plan's reviewers describe the same absurd winning houses (five dining rooms side by side; no kitchen). Dream Home pushes back by merging touching rooms of a type, and with small functionality bonuses.
+**The sim agrees** (200 greedy runs; the numbers are for the 124 wins):
+- Houses average 3.4 Living Rooms, 2.7 Kitchens, and 2.1 Dining Rooms. 72% have two or more Kitchens, and 67% have three or more Living Rooms.
+- Houses average 1.6 Bathrooms for 3.5 Bedrooms, and 23% have none.
+- Only 2% pass research.md's plausibility check.
+- Repeats mostly sit apart: in 37% of the houses with more than one Living Room, no two of them touch.
+- **Causes:**
+  - No effect counts copies of a type.
+  - Sets pay per instance, and 47% of houses hold two or more Entertainers.
+  - The Kitchen has two cards, so it's offered twice as often as other rooms.
+  - The Bathroom pays little: +3 for its first Bedroom.
 **Idea (the team's):** more sets, and other ways to make houses look and feel like real houses.
-**To research:**
-- More sets and kinds of set (M4a adds Suite and Full House, D-056).
-- Diminishing returns, or a taste, for repeated room types.
-- Rooms of one type that touch merging into one bigger room.
-- Zones or wings (living, sleeping, service).
-- Client specs that describe a real household. M4a's specs already ask for bedrooms and bathrooms.
-**To decide:** after the research.
-**Would change:** D-056's set ladder, and possibly D-020 (pieces built from tags) and M4a's clients.
+**Options:** research.md has the in-memory experiments behind each sim number below. They all ran at today's targets.
+1. **Household specs.** Each client's checklist describes their household, with a ceiling as well as a floor, so a second Kitchen loses a spec instead of just adding Comfort. For example, every client wants one Kitchen and a Bathroom for every two Bedrooms, and the Hendersons want 4–5 Bedrooms. Juniper's 4–8 rooms already works this way.
+   - *Data:* `count` specs with `min` and `max`, in M4a's format. "A Bathroom for every two Bedrooms" needs either a new condition kind that compares two counts, or fixed numbers per client.
+   - *Cost:* content, plus that condition kind (small, with tests) if wanted. The targets need a re-fit, because specs add Charm.
+   - *Touches:*
+     - D-021.
+     - Appendix A · M4a's rule that specs are achievements. Each household spec needs a floor ("one Kitchen"), not just a ceiling ("no second Kitchen").
+     - Appendix B's Clients table.
+     - D-085's targets.
+   - *Sim:* M4's per-client piece mixes (§8), plus a house report: room counts, repeats, Bedrooms per Bathroom, and the plausibility check.
+     - Three such specs at +0.25 each raised plausible wins from 2% to 54%, and cut two-Kitchen houses from 72% to 10%.
+     - At +0.1 each, plausible wins reached only 19%.
+     - The win rate rose from 62% to 86%.
+2. **One Entertainer per house, and sets that describe a house.**
+   - The Entertainer holds once per house (`maxInstances: 1`, the field M4a builds for Full House). Suite and Jack-and-Jill can still repeat, since a house has several bedrooms.
+   - New sets could describe a whole house, each once per house, on the ladder below Full House: a Starter Home (Bedroom, Bathroom, Kitchen, Living Room), or a Family Home. Castles of Mad King Ludwig has a bonus card for having all 8 room types.
+   - *Data:* SetDef as it is, plus `maxInstances`. A set's one-time `reward` on first completion could pay budget (D-090), like Castles' completion rewards.
+   - *Cost:* data, plus re-balancing the ladder.
+   - *Touches:* D-056's ladder (Accepted), the Sets in Appendices A · M4a and B, the Remodel Plans tools, and the Architect and Thanksgiving (both use `setBonus`).
+   - *Sim:* how often each set is held, and its share of Charm. Capping the Entertainer cut houses holding two or more from 47% to 0%, and cost 12% of the median Wow. It barely changed the Kitchen count, because Kitchens pay on their own.
+3. **Diminishing returns.** A house needs only so many of a room type. Past that, each copy earns less, and its breakdown says so ("3rd Living Room").
+   - *Data:* `perCountOver` (Juniper's taste) can already express this, as a taste. But percentages add (D-037), so −25% is a small cut on a Kitchen that already has +150%. A real version is a new term applied after percentages, such as a per-type count on PieceDef past which copies earn half.
+   - *Cost:* a taste is data. The new term is small rule work, with text and tests, and changes D-037's formula.
+   - *Touches:* D-037 (Accepted), D-020, D-038.
+   - *Sim:* counts per type, and earnings per copy.
+     - At −25% per extra copy, houses with three or more Living Rooms fell from 67% to 46% (8% at −50% with the Entertainer cap), but two-Kitchen houses stayed near 69%.
+     - The bot routes around penalties. Docking Bedrooms that lack a Bathroom made it build fewer Bedrooms, and houses with no Bathroom rose from 23% to 31%.
+4. **Merging.** Touching rooms of one type become one bigger room, as in Dream Home. Two touching Living Rooms make one, which counts once for sets and specs, scores its effects once over the combined outline, and earns a size bonus, up to a cap.
+   - *Cost:* the largest of the five. Rooms made of several pieces affect layout, scoring, sets, demolition, card text, and the art.
+   - *Touches:* D-035, D-037, D-065, D-057.
+   - *Sim:* group sizes per type. Merging alone changes little, because greedy keeps repeats apart (only 20% of Living Room pairs touch), so it also needs a reason to merge.
+5. **Zones and wings.** Rooms prefer their own zone: sleeping (Bedroom, Bathroom, Closet), living (Kitchen, Dining Room, Living Room), and service (Garage, Mudroom).
+   - Bedrooms already earn +1 per Quiet neighbor and −2 per Loud one, and the bot never puts a Bedroom against a Loud piece.
+   - A wing could be a set with a Hallway as a member, which would give Hallways a job (D-074). Or it could be a spec with the `group` condition ("the Bedrooms form one group").
+   - *Data:* existing effects, set members, and `group` (M4a builds it for the Barkers).
+   - *Cost:* content only.
+   - *Touches:* the content defaults of D-071 and D-082, and Appendix B. D-079 is the warning: same-type bonuses make clumps.
+   - *Sim:* the share of Bedrooms in the largest sleeping group, and Hallway pick rates. Zones arrange a house but don't cap repeats, so they'd go with options 1–3, not replace them.
+**Recommendation:**
+- **In M4a, with the clients and sets:** option 1, and the Entertainer cap from option 2.
+  - Give each client household specs with a floor and a ceiling: one Kitchen, plus their Bedroom and Bathroom counts, as `count` specs in M4a's format. Add the condition that compares counts only if fixed counts don't hold up in the sim.
+  - Hold the Entertainer to once per house with `maxInstances: 1`.
+  - Re-fit the targets afterward, as M4a means to anyway. In the experiment, which stood in for M4a's specs, the specs and the cap together raised greedy's win rate from 62% to 85% at today's targets.
+  - Add the house report to §8's per-client piece mixes, with a criterion such as "most greedy wins pass the plausibility check".
+- **After playtest 4, if houses still repeat or sprawl:** option 3 as a term after percentages, or option 5's wings.
+- **Park option 4** until after the jam. It costs the most, and doesn't fix scattered repeats on its own.
+- **Keep the Kitchen's two cards.** Halving their weights only cut two-Kitchen houses to 58%, and cost 12 points of win rate. The specs do the job.
+**To decide:** which options, and whether option 1 and the Entertainer cap land in M4a.
+**Would change:**
+- D-021's specs and Appendix B's Clients (household specs).
+- D-056 and the Sets in Appendices A and B (one Entertainer per house).
+- D-085's targets, and §8's reports.
+- Options 3–5 would also change D-037, D-035, or D-071 and D-082.
 
 ### Earlier open questions
 
