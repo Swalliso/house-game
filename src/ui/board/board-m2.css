@@ -19,32 +19,7 @@
   cursor: grabbing;
 }
 
-.camera-controls {
-  position: absolute;
-  right: 10px;
-  bottom: 10px;
-  z-index: 15;
-  display: flex;
-  gap: 4px;
-  padding: 4px;
-  border-radius: 10px;
-  background: rgb(251 245 234 / 0.9);
-  border: 1px solid var(--panel-edge);
-  box-shadow: 0 3px 10px rgb(60 40 20 / 0.18);
-}
-.camera-controls button {
-  min-width: 32px;
-  padding: 3px 8px;
-  font-size: 15px;
-  font-weight: 800;
-  line-height: 1.2;
-}
-.camera-controls button.on,
-.camera-controls button.on:hover:not(:disabled) {
-  background: var(--wood);
-  border-color: var(--wood-dark);
-  color: #fff8ee;
-}
+/* The zoom buttons are styled in hud/board-chrome.css. */
 
 /* Cells under 32 CSS px (below 1×, or Fit on a small screen): smaller badges and labels, so
    they don't bury the cells. */

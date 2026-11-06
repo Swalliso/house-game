@@ -5,6 +5,7 @@
 import { signal } from '@preact/signals';
 import type { ComponentChildren } from 'preact';
 import { CONTENT, glossary, type Term } from '../../rules/index.ts';
+import './tip.css';
 
 const GLOSSARY = glossary(CONTENT);
 

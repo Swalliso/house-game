@@ -1,0 +1,28 @@
+/* Tooltips (D-077, D-086): a dotted underline marks a term; one fixed bubble explains it.
+   Part 2 of M5a's UI pass draws the bubble as a paper note. */
+
+.tip {
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  cursor: help;
+}
+.tip-bubble {
+  position: fixed;
+  z-index: 100;
+  width: 280px;
+  transform: translate(-50%, -100%);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--ink);
+  color: var(--on-wood);
+  font-size: 13px;
+  line-height: 1.35;
+  pointer-events: none;
+  box-shadow: var(--shadow-float);
+}
+.tip-bubble.below {
+  transform: translate(-50%, 0);
+}

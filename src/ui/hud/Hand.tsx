@@ -1,24 +1,22 @@
-// The week's hand: three cards with generated text (D-038), a rotate button, the free actions
-// (reroll, demolish), and End week. A card with nowhere legal to go is greyed out with the reason.
+// The week's hand: three cards with generated text (D-038), the free actions (reroll,
+// demolish), and the action bar (rotate, cancel, End week). A card with nowhere legal to go is
+// hatched, with the reason. M5a draws it in the pixel style: each card shows its piece's
+// picture, its kind and tags as icon chips, and End week is the view's one primary button.
 
 import {
   cardText,
   CONTENT,
-  rotateCells,
-  parseShape,
   rules,
   fixtureText,
   type Card as CardData,
   type PieceDef,
-  type PieceId,
-  type Rot,
+  type Tag,
 } from '../../rules/index.ts';
 import {
   cardsFit,
   demolishArmed,
   inspected,
   reroll,
-  rotation,
   run,
   movingUid,
   selected,
@@ -27,6 +25,8 @@ import {
   tool,
 } from '../store.ts';
 import { rotate } from '../board/Board.tsx';
+import { Button, Chip, Icon, Keycap, Panel } from '../kit/kit.tsx';
+import type { IconName } from '../theme/art.ts';
 import {
   cancelPlacement,
   isSelected as isPicked,
@@ -34,7 +34,9 @@ import {
   requestEndWeek,
   selectCard,
 } from './actions.ts';
-import './hud-m2.css';
+import { PieceArt, ShapeGlyph } from './PieceArt.tsx';
+import { RARITY_LABEL } from './goods.tsx';
+import './hand.css';
 
 /**
  * The game's own buttons don't take focus from a mouse click, so the keyboard shortcuts (Enter
@@ -42,32 +44,32 @@ import './hud-m2.css';
  */
 const noFocus = (e: MouseEvent) => e.preventDefault();
 
-function kindLabel(def: PieceDef): string {
-  if (def.connector) return 'Hallway';
-  if (def.category === 'indoor') return 'Room';
-  if (def.category === 'yard') return 'Yard';
-  return 'Outbuilding';
+type Kind = 'room' | 'yard' | 'hall' | 'outbuilding';
+
+function kindOf(def: PieceDef): Kind {
+  if (def.connector) return 'hall';
+  if (def.category === 'indoor') return 'room';
+  if (def.category === 'yard') return 'yard';
+  return 'outbuilding';
 }
 
-function ShapeMini({ id, rot }: { id: PieceId; rot: Rot }) {
-  const def = CONTENT.pieces[id];
-  const cells = rotateCells(parseShape(def.shape), rot);
-  const w = Math.max(...cells.map((c) => c.x)) + 1;
-  const h = Math.max(...cells.map((c) => c.y)) + 1;
+const KIND_LABEL: Record<Kind, string> = {
+  room: 'Room',
+  yard: 'Yard',
+  hall: 'Hallway',
+  outbuilding: 'Outbuilding',
+};
+
+/** A card's tags as chips, each with its icon (the icon set is named after the tags). */
+export function TagChips({ tags }: { tags: readonly Tag[] }) {
   return (
-    <div
-      class="shape-mini"
-      style={{ gridTemplateColumns: `repeat(${w}, 12px)`, gridTemplateRows: `repeat(${h}, 12px)` }}
-      aria-hidden="true"
-    >
-      {cells.map((c) => (
-        <span
-          key={`${c.x},${c.y}`}
-          class={`mini-cell ${id}`}
-          style={{ gridColumn: c.x + 1, gridRow: c.y + 1 }}
-        />
+    <>
+      {tags.map((t) => (
+        <Chip key={t} icon={t as IconName}>
+          {t}
+        </Chip>
       ))}
-    </div>
+    </>
   );
 }
 
@@ -86,41 +88,51 @@ function pickCard(i: number): void {
   selectCard(i);
 }
 
+function NoFit({ text }: { text: string }) {
+  return (
+    <span class="hand-card-nofit">
+      <Icon name="cross" />
+      {text}
+    </span>
+  );
+}
+
 function CardView({ card, i }: { card: CardData; i: number }) {
   if (card.kind === 'fixture') return <FixtureCardView id={card.id} i={i} />;
   const def = CONTENT.pieces[card.id];
   const text = cardText(CONTENT, def);
   const fits = cardsFit.value[i] ?? true;
   const isSelected = isPicked('hand', i);
-  const rot = isSelected ? rotation.value : 0;
+  const kind = kindOf(def);
   return (
     <button
       type="button"
-      class={`card ${def.category} ${isSelected ? 'selected' : ''} ${fits ? '' : 'no-fit'}`}
+      class={`hand-card pcard kind-${kind} ${isSelected ? 'selected' : ''} ${fits ? '' : 'no-fit'}`}
       onMouseDown={noFocus}
       onClick={() => pickCard(i)}
       onMouseEnter={() => selected.value === null && (inspected.value = { kind: 'card', i })}
       aria-pressed={isSelected}
       title={fits ? undefined : 'There’s nowhere on the lot this fits right now'}
     >
-      <div class="card-head">
-        <span class="key">{i + 1}</span>
-        <span class="card-name">{def.name}</span>
-        <span class="card-kind">{kindLabel(def)}</span>
-      </div>
-      <div class="card-body">
-        <ShapeMini id={card.id} rot={rot} />
-        <ul class="effects">
-          {text.effects.map((t) => (
-            <li key={t}>{t}</li>
-          ))}
-        </ul>
-      </div>
-      <div class="card-foot">
-        <span class="tags">{def.tags.join(' · ')}</span>
-        {text.notes.length > 0 && <span class="notes">{text.notes.join(' ')}</span>}
-      </div>
-      {!fits && <div class="no-fit-reason">Nowhere fits</div>}
+      <span class="hand-card-head">
+        <Keycap>{i + 1}</Keycap>
+        <span class="hand-card-name">{def.name}</span>
+        <ShapeGlyph id={card.id} />
+      </span>
+      <span class="hand-card-art">
+        <PieceArt id={card.id} />
+      </span>
+      <ul class="hand-card-effects">
+        {text.effects.map((t) => (
+          <li key={t}>{t}</li>
+        ))}
+      </ul>
+      {text.notes.length > 0 && <span class="hand-card-notes">{text.notes.join(' ')}</span>}
+      <span class="hand-card-tags">
+        <Chip tone="wood">{KIND_LABEL[kind]}</Chip>
+        <TagChips tags={def.tags} />
+      </span>
+      {!fits && <NoFit text="Nowhere fits" />}
     </button>
   );
 }
@@ -140,26 +152,27 @@ function FixtureCardView({
   return (
     <button
       type="button"
-      class={`card fixture rarity-${def.rarity} ${isSelected ? 'selected' : ''} ${fits ? '' : 'no-fit'}`}
+      class={`hand-card pcard kind-fixture rarity-${def.rarity} ${isSelected ? 'selected' : ''} ${fits ? '' : 'no-fit'}`}
       onMouseDown={noFocus}
       onClick={() => pickCard(i)}
       aria-pressed={isSelected}
       title={fits ? undefined : 'Nothing on the lot can hold it yet'}
     >
-      <div class="card-head">
-        <span class="key">{i + 1}</span>
-        <span class="card-name">{def.name}</span>
-        <span class="card-kind">Fixture</span>
-      </div>
-      <div class="card-body">
-        <ul class="effects">
-          <li>{text.fits}</li>
-          {text.effects.map((t) => (
-            <li key={t}>{t}</li>
-          ))}
-        </ul>
-      </div>
-      {!fits && <div class="no-fit-reason">Nothing to put it in</div>}
+      <span class="hand-card-head">
+        <Keycap>{i + 1}</Keycap>
+        <span class="hand-card-name">{def.name}</span>
+      </span>
+      <ul class="hand-card-effects">
+        <li>{text.fits}</li>
+        {text.effects.map((t) => (
+          <li key={t}>{t}</li>
+        ))}
+      </ul>
+      <span class="hand-card-tags">
+        <Chip tone="wood">Fixture</Chip>
+        <Chip tone={def.rarity}>{RARITY_LABEL[def.rarity]}</Chip>
+      </span>
+      {!fits && <NoFit text="Nothing to put it in" />}
     </button>
   );
 }
@@ -181,28 +194,31 @@ function FreeActions() {
     if (!tentative.value) selected.value = null;
     tool.value = 'demolish';
   };
+  const rerolls = s.rerollsLeft + s.bonusRerolls;
   return (
     <div class="free-actions" role="group" aria-label="Free actions: they don’t end the week">
-      <button
-        type="button"
+      <Button
+        size="sm"
+        icon="reroll"
         class="free-action reroll"
         onMouseDown={noFocus}
         onClick={() => void reroll()}
         disabled={!can.ok}
         title={
           can.ok
-            ? 'Swap this hand for three new cards. It doesn’t end the week.'
+            ? `Swap this hand for three new cards. It doesn’t end the week. ${s.rerollsLeft} left this milestone${s.bonusRerolls > 0 ? `, and ${s.bonusRerolls} kept` : ''}.`
             : (can.reason ?? 'You can’t reroll now.')
         }
       >
-        <span class="free-action-name">⟲ Reroll</span>
-        <span class="free-action-count">
-          ({s.rerollsLeft} left this milestone
-          {s.bonusRerolls > 0 ? `, +${s.bonusRerolls} kept` : ''})
+        Reroll
+        <span class="count" aria-label={`${rerolls} left`}>
+          {rerolls}
         </span>
-      </button>
-      <button
-        type="button"
+      </Button>
+      <Button
+        size="sm"
+        icon="hammer"
+        variant={demolishing ? 'danger' : 'secondary'}
         class={`free-action demolish ${demolishing ? 'active' : ''}`}
         onMouseDown={noFocus}
         onClick={toggleDemolish}
@@ -216,9 +232,11 @@ function FreeActions() {
               : 'No demolitions left this run'
         }
       >
-        <span class="free-action-name">{demolishing ? 'Stop demolishing' : 'Demolish'}</span>
-        <span class="free-action-count">({s.demolitionsLeft} left)</span>
-      </button>
+        {demolishing ? 'Stop' : 'Demolish'}
+        <span class="count" aria-label={`${s.demolitionsLeft} left`}>
+          {s.demolitionsLeft}
+        </span>
+      </Button>
     </div>
   );
 }
@@ -233,57 +251,78 @@ export function Hand() {
   // Only pieces turn: a fixture or a tool doesn't, except the Moving Truck's carried piece.
   const sel = selection.value;
   const canTurn = sel?.kind === 'piece' || (sel?.kind === 'tool' && movingUid.value !== null);
-  const endLabel = pending ? 'End week · build it' : armed ? 'Pass? Press again' : 'Pass this week';
+  // The long label, and a short one for a narrow column (hand.css).
+  const [endLabel, endShort] = pending
+    ? ['End week', 'End week']
+    : armed
+      ? ['Pass? Press again', 'Again?']
+      : ['Pass this week', 'Pass'];
   return (
-    <section class="hand" aria-label="This week's cards">
-      <h2>Pick one to build</h2>
-      {s.freeRedrawUsed && (
-        <p
-          class="free-redraw"
-          title="None of the first three cards fit anywhere, so this hand was drawn again for free."
-        >
-          Free redraw used
-        </p>
-      )}
+    <Panel
+      class="hand"
+      title="Pick a card"
+      label="This week's cards"
+      head={
+        s.freeRedrawUsed && (
+          <span
+            class="free-redraw"
+            title="None of the first three cards fit anywhere, so this hand was drawn again for free."
+          >
+            Free redraw
+          </span>
+        )
+      }
+    >
       {s.hand.map((card, i) => (
         <CardView key={`${s.week}-${s.draws}-${i}`} card={card} i={i} />
       ))}
       <FreeActions />
-      <div class="hand-buttons">
-        <button
-          type="button"
+      {demolishing && (
+        <p class="demolish-hint" role="status">
+          <Icon name="hammer" />
+          Click a piece or boulder to demolish it · Esc to stop
+        </p>
+      )}
+      {/* The action bar sticks to the column's bottom, so End week stays in view on a short
+          window. One row: Rotate and Cancel are square buttons beside it. */}
+      <div class="hand-actions">
+        <Button
+          iconOnly
+          size="lg"
+          icon="rotate"
           class="rotate"
           onMouseDown={noFocus}
           onClick={rotate}
           disabled={!placing || demolishing || !canTurn}
           title="Rotate (R or right-click)"
-        >
-          ⟳ Rotate
-        </button>
+          aria-label="Rotate"
+        />
         {placing && !demolishing && (
-          <button type="button" onMouseDown={noFocus} onClick={cancelPlacement} title="Esc">
-            {pending ? 'Move it' : 'Cancel'}
-          </button>
+          <Button
+            iconOnly
+            size="lg"
+            icon="close"
+            class="cancel"
+            onMouseDown={noFocus}
+            onClick={cancelPlacement}
+            title={pending ? 'Move it (Esc)' : 'Put it back (Esc)'}
+            aria-label={pending ? 'Move it' : 'Put it back'}
+          />
         )}
-      </div>
-      {demolishing && (
-        <p class="demolish-hint" role="status">
-          Click a piece or boulder to demolish it · Esc to cancel
-        </p>
-      )}
-      {/* End week sticks to the column's bottom, so it stays in view on a short window. Only it
-          does: Rotate and Cancel have keys, and the cards above shouldn't be covered more. */}
-      <div class="hand-actions">
-        <button
-          type="button"
-          class={`end-week ${pending ? 'ready' : ''} ${armed ? 'confirm' : ''} ${demolishing ? 'compact' : ''}`}
+        <Button
+          size="lg"
+          variant={pending ? 'primary' : armed ? 'armed' : 'secondary'}
+          class={`end-week ${pending ? 'ready' : ''} ${armed ? 'confirm' : ''}`}
           onMouseDown={noFocus}
           onClick={requestEndWeek}
         >
-          {endLabel}
-          <span class="key-hint">Enter</span>
-        </button>
+          <span class="end-week-label">{endLabel}</span>
+          <span class="end-week-short" aria-hidden="true">
+            {endShort}
+          </span>
+          <Keycap>Enter</Keycap>
+        </Button>
       </div>
-    </section>
+    </Panel>
   );
 }

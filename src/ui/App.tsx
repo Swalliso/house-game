@@ -14,11 +14,15 @@ import {
   cancelPlacement,
   copyFallback,
   howToPlayOpen,
+  menuOpen,
   requestEndWeek,
   selectCard,
   settingsOpen,
   toggleDemolish,
 } from './hud/actions.ts';
+import { Hints } from './hud/Hints.tsx';
+import './hud/board-chrome.css';
+import { GameMenu } from './hud/Menu.tsx';
 import { Hand } from './hud/Hand.tsx';
 import { Inspect } from './hud/Inspect.tsx';
 import { Inventory } from './hud/Inventory.tsx';
@@ -42,13 +46,16 @@ import { Title } from './screens/Title.tsx';
 import { appScreen, run, selected, tool } from './store.ts';
 
 function anyModalOpen(): boolean {
-  return settingsOpen.value || howToPlayOpen.value || !!copyFallback.value;
+  return settingsOpen.value || howToPlayOpen.value || menuOpen.value || !!copyFallback.value;
 }
 
+/** Esc closes the top sheet: Settings or How to play over the menu go first. */
 function closeModals(): void {
-  settingsOpen.value = false;
-  howToPlayOpen.value = false;
-  copyFallback.value = null;
+  if (copyFallback.value) copyFallback.value = null;
+  else if (settingsOpen.value || howToPlayOpen.value) {
+    settingsOpen.value = false;
+    howToPlayOpen.value = false;
+  } else menuOpen.value = false;
 }
 
 /** Esc closes a sheet on any screen. */
@@ -168,11 +175,7 @@ function Game() {
         <ShopScreen />
       </main>
       <aside class="right">{right}</aside>
-      <footer class="hints">
-        {screen === 'shop'
-          ? 'Buy goods for the house · hover anything to read it · sell from your supplies and blueprints · Start the next milestone when you’re done'
-          : 'Pick a card (1–3) · R or right-click to rotate · click to place · Enter to end the week · D to demolish · scroll to zoom, drag to pan, F to fit · hold Space to speed up the tally, click to skip it'}
-      </footer>
+      <Hints />
     </div>
   );
 }
@@ -190,6 +193,7 @@ export function App() {
         {appScreen.value === 'title' ? <Title /> : <Game />}
         <Notice />
         <Toast />
+        <GameMenu />
         <HowToPlay />
         <SettingsPanel />
         <CopyFallback />

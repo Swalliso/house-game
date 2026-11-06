@@ -1,0 +1,32 @@
+/* The controls strip (M5a): the keys for what you're doing now, as keycaps. */
+
+.hints {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-5);
+  min-height: calc(var(--px) * 16);
+  padding: var(--space-1) var(--space-6);
+  background: var(--wood-deep);
+  border-top: var(--px) solid var(--ink);
+  color: var(--on-wood);
+}
+.hint {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.hint .keycap {
+  padding-top: 0;
+}
+.hint-text {
+  margin-left: var(--px);
+}
+/* A short window gives the board the room (D-047's 1280×720). */
+@media (max-height: 800px) {
+  .hints {
+    display: none;
+  }
+}

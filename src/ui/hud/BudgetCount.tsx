@@ -11,6 +11,7 @@ import { FEEL } from '../fx/feel.ts';
 import { budgetStepMs } from '../fx/juice.ts';
 import { formatNumber } from '../format.ts';
 import { settings } from '../settings.ts';
+import './budget.css';
 
 let jumps = 0;
 

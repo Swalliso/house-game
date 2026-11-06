@@ -1,23 +1,18 @@
-// The top bar: the milestone and week, Wow against the target with the forecast, the run's
-// resources (budget, overtime), the auto-complete switch, Complete early, and the run's buttons.
+// The top bar: the milestone and week on a plaque, Wow against the target on the milestone
+// meter (week ticks, the forecast, the target's flag), the run's resources (budget, overtime),
+// the auto-complete switch, Complete early, and the run's buttons: How to play, Settings, and
+// the Menu, which holds Copy run code and the seed (M5a).
 
 import { signal } from '@preact/signals';
 import { CONTENT, rules, SCORE_LABELS } from '../../rules/index.ts';
 import { busy, shownRun, shownScore, skip } from '../fx/director.ts';
 import { formatNumber } from '../format.ts';
-import {
-  completeEarly,
-  earlyOffer,
-  forecast,
-  goToTitle,
-  preview,
-  run,
-  setAutoComplete,
-} from '../store.ts';
-import { copyRunCode, howToPlayOpen, openSettings } from './actions.ts';
+import { Button, Icon } from '../kit/kit.tsx';
+import { completeEarly, earlyOffer, forecast, preview, run, setAutoComplete } from '../store.ts';
+import { howToPlayOpen, menuOpen, openSettings } from './actions.ts';
 import { BudgetCount } from './BudgetCount.tsx';
 import { Tip } from './Tip.tsx';
-import './hud-m2.css';
+import './topbar.css';
 
 /** Complete early takes a second press within this long, like Pass. */
 const CONFIRM_MS = 2500;
@@ -54,12 +49,18 @@ function PhaseBlock() {
   const ended = s.screen === 'won' || s.screen === 'lost';
   const shopping = s.screen === 'shop';
   return (
-    <div class="phase" aria-label="Milestone and week">
-      <div class="phase-name">{rules.phaseName(s.phase)}</div>
-      <div class="tb-small muted">
-        milestone {s.phase + 1} of {phases.length}
+    <div
+      class="tb-phase"
+      aria-label="Milestone and week"
+      title={`Milestone ${s.phase + 1} of ${phases.length} · week ${s.week} of the run's ${runWeeks}`}
+    >
+      <div class="tb-phase-line">
+        <span class="tb-phase-name">{rules.phaseName(s.phase)}</span>
+        <span class="tb-phase-count">
+          {s.phase + 1}/{phases.length}
+        </span>
       </div>
-      <div class="week">
+      <div class="tb-week">
         {ended ? (
           'Run over'
         ) : shopping ? (
@@ -69,18 +70,24 @@ function PhaseBlock() {
             class="overtime-week"
             title="An extra week to reach the target. The next milestone still gets all its weeks."
           >
-            Overtime week {s.overtimeWeek}
+            Overtime {s.overtimeWeek}
           </span>
         ) : (
           `Week ${s.slot} of ${weeks}`
         )}
-        <span class="muted">
+        <span class="tb-run-week">
           {' '}
-          · week {s.week} of {runWeeks}
+          · {s.week}/{runWeeks}
         </span>
       </div>
     </div>
   );
+}
+
+/** Where the meter's ticks go: the phase's start, then an even share of the target each week. */
+function weekTicks(start: number, target: number, weeks: number): number[] {
+  const from = Math.min(1, start / Math.max(1, target));
+  return Array.from({ length: weeks - 1 }, (_, k) => from + ((1 - from) * (k + 1)) / weeks);
 }
 
 function Progress() {
@@ -100,44 +107,52 @@ function Progress() {
   const guide =
     `A rough guide, not a promise: this week's ${SCORE_LABELS.total} for each week left in ` +
     `${phase}.${placing ? ' It includes the piece you’re placing.' : ''}`;
+  const ticks = weekTicks(s.phaseStartScore, target, CONTENT.balance.weeksPerPhase);
   return (
-    <div class="progress" aria-label={`${SCORE_LABELS.total} ${score} of ${target}`}>
-      <div class="progress-numbers">
-        <span class="wow">{formatNumber(score)}</span>
-        <span class="muted">
-          {' '}
-          / {formatNumber(target)} {SCORE_LABELS.total}
+    <div class="tb-progress" aria-label={`${SCORE_LABELS.total} ${score} of ${target}`}>
+      <div class="tb-progress-line">
+        <span class="tb-score">
+          <span class="num tb-wow">{formatNumber(score)}</span>
+          <span class="tb-target">
+            {' '}
+            / {formatNumber(target)} {SCORE_LABELS.total}
+          </span>
         </span>
         {met && (
-          <span class="reached" title="Target met">
-            {' '}
-            ✓<span class="reached-text"> target met</span>
+          <span class="tb-met" title="Target met">
+            ✓<span class="tb-met-text"> Target met</span>
+          </span>
+        )}
+        {showForecast && (
+          <span
+            class={`tb-forecast ${fMet ? 'met' : ''} ${placing ? 'placing' : ''}`}
+            title={guide}
+          >
+            Forecast ~{formatNumber(f)}
           </span>
         )}
       </div>
-      <div class="bar" title={showForecast ? guide : undefined}>
-        {showForecast && f > score && (
-          <div
-            class={`forecast-fill ${placing ? 'placing' : ''} ${fMet ? 'met' : ''}`}
-            style={{ width: `${fpct}%` }}
-          />
-        )}
-        <div class={`fill ${met ? 'met' : ''}`} style={{ width: `${pct}%` }} />
-        {showForecast && f > score && (
-          <div
-            class={`forecast-tick ${placing ? 'placing' : ''}`}
-            style={{ left: `calc(${fpct}% - 2px)` }}
-          />
-        )}
-      </div>
-      {showForecast && (
-        <div
-          class={`forecast-label ${fMet ? 'met' : ''} ${placing ? 'placing' : ''}`}
-          title={guide}
-        >
-          Forecast ~{formatNumber(f)} by the end of {phase}
+      <div class="tb-meter-row">
+        <div class="meter tb-meter" title={showForecast ? guide : undefined}>
+          {showForecast && f > score && (
+            <div
+              class={`tb-forecast-fill ${placing ? 'placing' : ''} ${fMet ? 'met' : ''}`}
+              style={{ width: `${fpct}%` }}
+            />
+          )}
+          <div class={`meter-fill tb-fill ${met ? 'met' : ''}`} style={{ width: `${pct}%` }} />
+          {ticks.map((t) => (
+            <div key={t} class="meter-tick" style={{ left: `${t * 100}%` }} />
+          ))}
+          {showForecast && f > score && (
+            <div
+              class={`tb-forecast-tick ${placing ? 'placing' : ''}`}
+              style={{ left: `${fpct}%` }}
+            />
+          )}
         </div>
-      )}
+        <Icon name="flag" class="tb-flag" label={`Target: ${formatNumber(target)}`} />
+      </div>
     </div>
   );
 }
@@ -148,9 +163,12 @@ function Resources() {
   const left = Math.max(0, s.overtimeLeft);
   const overtimeTitle = 'Overtime weeks left: spent automatically when a target is missed';
   return (
-    <div class="tb-resources">
+    <>
       <div class="tb-budget">
-        <Tip term="budget">Budget</Tip> <BudgetCount value={s.budget} />
+        <Tip term="budget">
+          <Icon name="coin" label="Budget" />
+        </Tip>
+        <BudgetCount value={s.budget} />
       </div>
       <div
         class="tb-overtime"
@@ -159,11 +177,10 @@ function Resources() {
         role="img"
       >
         {Array.from({ length: Math.max(total, left) }, (_, i) => (
-          <span key={i} class={`clock ${i < left ? '' : 'spent'}`} aria-hidden="true" />
+          <Icon key={i} name="clock" class={i < left ? '' : 'spent'} />
         ))}
-        <span class="tb-small muted"> ×{left}</span>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -190,7 +207,9 @@ function AutoComplete() {
       <span class="switch-track" aria-hidden="true">
         <span class="switch-knob" />
       </span>
-      <span class="switch-text">Auto-complete</span>
+      <span class="switch-text">
+        Auto<span class="switch-text-more">-complete</span>
+      </span>
     </label>
   );
 }
@@ -204,8 +223,8 @@ function CompleteEarly() {
   const detail = `saves ${plural(offer.weeksSaved, 'week')} · ${bonus}`;
   const phase = rules.phaseName(run.value.phase);
   return (
-    <button
-      type="button"
+    <Button
+      variant={armed ? 'armed' : 'primary'}
       class={`tb-early ${armed ? 'confirm' : ''}`}
       onMouseDown={noFocus}
       onClick={requestCompleteEarly}
@@ -213,50 +232,47 @@ function CompleteEarly() {
       aria-label={armed ? 'Press again to complete early' : `Complete early: ${detail}`}
     >
       <span class="tb-early-label">
-        {armed ? 'Press again to complete' : <Tip term="early">Complete early</Tip>}
+        {armed ? 'Press again' : <Tip term="early">Complete early</Tip>}
       </span>
-      <span class="tb-early-detail">{detail}</span>
-    </button>
+      <span class="tb-early-detail">
+        +{formatNumber(offer.bonus.score)}
+        <span class="tb-early-word"> {SCORE_LABELS.total}</span> +{offer.bonus.budget}
+        <Icon name="coin" />
+      </span>
+    </Button>
   );
 }
 
 export function TopBar() {
-  const s = shownRun.value ?? run.value;
   return (
-    <header class="topbar m2">
-      <div class="brand">
-        Open House
-        <span class="seed" title="This run's seed">
-          #{s.setup.seed}
-        </span>
-      </div>
+    <header class="topbar ui">
       <PhaseBlock />
       <Progress />
       <Resources />
       <AutoComplete />
       <CompleteEarly />
-      <nav class="buttons">
-        <button type="button" onClick={goToTitle} title="Back to the title screen">
-          Menu
-        </button>
-        <button
-          type="button"
+      <nav class="tb-buttons" aria-label="Game">
+        <Button
+          iconOnly
+          icon="help"
           onClick={() => (howToPlayOpen.value = true)}
           aria-label="How to play"
           title="How to play"
-        >
-          ?
-        </button>
-        <button
-          type="button"
-          onClick={() => void copyRunCode()}
-          title="Copy a code that replays this run exactly"
-        >
-          Copy run code
-        </button>
-        <button type="button" onClick={openSettings} aria-label="Settings" title="Settings">
-          ⚙
-        </button>
+        />
+        <Button
+          iconOnly
+          icon="gear"
+          onClick={openSettings}
+          aria-label="Settings"
+          title="Settings"
+        />
+        <Button
+          iconOnly
+          icon="menu"
+          onClick={() => (menuOpen.value = true)}
+          aria-label="Menu"
+          title="Menu: copy the run code, or quit to the title"
+        />
       </nav>
     </header>
   );

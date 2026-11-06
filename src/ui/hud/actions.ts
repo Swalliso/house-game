@@ -20,6 +20,8 @@ import {
 } from '../store.ts';
 
 export const settingsOpen = signal(false);
+/** The top bar's menu: Copy run code, the seed, How to play, Settings, and Quit to title. */
+export const menuOpen = signal(false);
 /** The How to play sheet, from the title screen or the top bar. */
 export const howToPlayOpen = signal(false);
 export const toast = signal<{ id: number; text: string } | null>(null);

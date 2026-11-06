@@ -126,6 +126,18 @@ export const FEEL = {
     ms: 1800,
   },
 
+  /**
+   * The interface's own motion (M5a): theme.ts publishes each as --dur-<name> for the CSS.
+   * Hover lifts a control one UI pixel, a press sinks it one; a modal pops in.
+   */
+  chrome: {
+    hover: 120,
+    press: 80,
+    modal: 180,
+    /** The milestone meter's fill and forecast sliding to a new value. */
+    meter: 250,
+  },
+
   /** The camera (§12, Art; D-057): wheel zoom in whole steps, drag to pan. */
   camera: {
     /** A left-button drag pans once it has moved this many px; a shorter one is a click. */

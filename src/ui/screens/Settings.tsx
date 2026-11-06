@@ -1,5 +1,5 @@
 // Settings (§12, Settings and accessibility, from M1): tally speed, Reduce motion, screen
-// shake, and volume. Flashing, the music slider, and the readable font come with M5.
+// shake, volume, and (M5a) the readable font. Flashing and the music slider come with M5.
 
 import { FEEL } from '../fx/feel.ts';
 import { settingsOpen } from '../hud/actions.ts';
@@ -74,6 +74,27 @@ export function SettingsPanel() {
           <span>Reduce motion</span>
           <span class="muted"> (no wobble, shake, or confetti)</span>
         </label>
+        <fieldset>
+          <legend>Text</legend>
+          <div class="segmented" role="group" aria-label="Text">
+            <button
+              type="button"
+              class={s.readableFont ? '' : 'on'}
+              aria-pressed={!s.readableFont}
+              onClick={() => updateSettings({ readableFont: false })}
+            >
+              Pixel font
+            </button>
+            <button
+              type="button"
+              class={s.readableFont ? 'on' : ''}
+              aria-pressed={s.readableFont}
+              onClick={() => updateSettings({ readableFont: true })}
+            >
+              Readable font
+            </button>
+          </div>
+        </fieldset>
         <Slider
           label="Screen shake"
           value={s.shake}

@@ -1,0 +1,384 @@
+/* The interface's primitives (M5a): the pixel text, Panel, Card, Button, Chip, Plaque (the
+   Counter), Icon, Keycap, Well, and Meter. kit.tsx renders them; components adjust them with
+   their own classes and the custom properties below, never with raw colors (tokens.css).
+
+   Frames are 9-slice art (theme/frames.ts) applied with border-image at whole multiples of
+   --px; a frame's middle is the element's own background, clipped to the padding box, so the
+   notched corners stay transparent. Shadows are hard, never blurred. Hover lifts one UI pixel,
+   a press sinks one, focus draws an ink-and-gold ring, and no state replaces a variant's fill. */
+
+/* --- The pixel interface's text -------------------------------------------------------- */
+
+/* Anything drawn in the pixel style opts in with .ui: Pixel Operator 8 at 8 × --px (or the
+   readable font, D-059). */
+.ui {
+  font-family: var(--font-text);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  font-weight: 400;
+  font-synthesis: none;
+  color: var(--ink);
+  image-rendering: pixelated;
+  -webkit-font-smoothing: none;
+}
+.ui h2,
+.ui h3,
+.ui strong,
+.ui b {
+  font-weight: 700;
+}
+[data-font='readable'] .ui {
+  -webkit-font-smoothing: auto;
+}
+.ui .num,
+.num {
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Panel: a wood frame, a plank header, a paper body ---------------------------------- */
+
+.panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border: calc(var(--px) * 5) solid transparent;
+  border-image: var(--art-wood) 5 / calc(var(--px) * 5);
+  background: var(--paper);
+  background-clip: padding-box;
+  box-shadow: var(--shadow-card);
+}
+/* The plank: wood grain (theme/frames.ts), a lit top edge, and a dark line under it. */
+.panel-head,
+.plank {
+  background: var(--art-plank) repeat left top / calc(var(--px) * 48) calc(var(--px) * 10);
+  background-color: var(--wood-hi);
+  box-shadow:
+    inset 0 var(--px) 0 var(--wood-shine),
+    inset 0 calc(var(--px) * -2) 0 var(--wood-light),
+    inset 0 calc(var(--px) * -3) 0 var(--wood-deep);
+  color: var(--ink);
+}
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: none;
+  min-height: calc(var(--px) * 13);
+  padding: var(--px) var(--space-3) calc(var(--px) * 3);
+}
+.panel-title {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-body);
+  line-height: var(--lh-tight);
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  min-width: 0;
+}
+
+/* --- Card: paper, an ink ring, and a band inside it (rarity, kind, or selection) ---------- */
+
+.pcard {
+  --card-fill: var(--card);
+  --card-band: transparent;
+  position: relative;
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--card-fill);
+  background-clip: padding-box;
+  box-shadow:
+    inset 0 0 0 var(--px) var(--card-band),
+    inset var(--px) var(--px) 0 var(--px) var(--card-hi),
+    var(--shadow-card);
+}
+
+/* --- Button ----------------------------------------------------------------------------- */
+
+.btn {
+  --btn-face: var(--card);
+  --btn-hi: var(--card-hi);
+  --btn-lip: var(--card-lo);
+  --btn-h: calc(var(--px) * 20);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--btn-h);
+  margin: 0;
+  padding: 0 var(--space-3) var(--px);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  border-radius: 0;
+  background: var(--btn-face);
+  background-clip: padding-box;
+  box-shadow:
+    inset 0 var(--px) 0 var(--btn-hi),
+    inset 0 calc(var(--px) * -2) 0 var(--btn-lip);
+  font-family: var(--font-text);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  font-weight: 700;
+  color: var(--ink);
+  text-align: center;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition: transform var(--dur-hover) ease-out;
+}
+.btn:hover:not(:disabled) {
+  transform: translateY(calc(var(--px) * -1));
+}
+.btn:active:not(:disabled) {
+  transform: translateY(var(--px));
+  box-shadow:
+    inset 0 var(--px) 0 var(--btn-lip),
+    inset 0 calc(var(--px) * -1) 0 var(--btn-lip);
+  transition-duration: var(--dur-press);
+}
+.btn:focus-visible {
+  outline: none;
+  box-shadow:
+    inset 0 var(--px) 0 var(--btn-hi),
+    inset 0 calc(var(--px) * -2) 0 var(--btn-lip),
+    var(--ring-focus);
+}
+.btn:disabled {
+  --btn-face: var(--paper-inset);
+  --btn-hi: var(--paper-inset);
+  --btn-lip: var(--paper-inset);
+  border-image-source: var(--art-ringSoft);
+  color: var(--ink-faint);
+  cursor: default;
+}
+.reduce-motion .btn {
+  transition: none;
+}
+.reduce-motion .btn:hover:not(:disabled),
+.reduce-motion .btn:active:not(:disabled) {
+  transform: none;
+}
+.btn-primary {
+  --btn-face: var(--action);
+  --btn-hi: var(--action-hi);
+  --btn-lip: var(--action-shade);
+}
+.btn-danger {
+  --btn-face: var(--danger);
+  --btn-hi: var(--danger-hi);
+  --btn-lip: var(--danger-shade);
+  color: var(--on-wood);
+}
+.btn-armed {
+  --btn-face: var(--armed);
+  --btn-hi: var(--armed-hi);
+  --btn-lip: var(--armed-shade);
+}
+.btn-wood {
+  --btn-face: var(--wood-hi);
+  --btn-hi: var(--wood-shine);
+  --btn-lip: var(--wood);
+}
+.btn-sm {
+  --btn-h: calc(var(--px) * 16);
+  padding: 0 var(--space-2) var(--px);
+  gap: var(--space-1);
+}
+.btn-lg {
+  --btn-h: calc(var(--px) * 28);
+  padding: 0 var(--space-4) var(--px);
+}
+.btn-icon {
+  width: var(--btn-h);
+  padding: 0 0 var(--px);
+}
+.btn-block {
+  display: flex;
+  width: 100%;
+}
+.btn .btn-sub {
+  font-weight: 400;
+}
+
+/* --- Chip: a small label with an icon ---------------------------------------------------- */
+
+.chip {
+  --chip-fill: var(--card);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  max-width: 100%;
+  min-height: calc(var(--px) * 12);
+  padding: 0 calc(var(--px) * 3);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--chip-fill);
+  background-clip: padding-box;
+  font-family: var(--font-text);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  font-weight: 400;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.chip-wood {
+  --chip-fill: var(--wood-hi);
+}
+.chip-inset {
+  --chip-fill: var(--paper-inset);
+}
+.chip-rare {
+  --chip-fill: var(--sparkle);
+}
+.chip-uncommon {
+  --chip-fill: var(--comfort-tint);
+  color: var(--rarity-uncommon-text);
+}
+.chip-common {
+  color: var(--rarity-common-text);
+}
+
+/* --- Plaque: a number on a tinted plate (the Counter) ------------------------------------ */
+
+.plaque {
+  --plaque-fill: var(--card);
+  --plaque-ink: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-1) var(--space-2);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--plaque-fill);
+  background-clip: padding-box;
+  box-shadow:
+    inset 0 var(--px) 0 var(--card-hi),
+    inset 0 calc(var(--px) * -1) 0 var(--plaque-shade, var(--card-lo));
+  font-family: var(--font-display);
+  font-size: var(--fs-num);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--plaque-ink);
+  white-space: nowrap;
+}
+.plaque-comfort {
+  --plaque-fill: var(--comfort-tint);
+  --plaque-ink: var(--comfort);
+  --plaque-shade: var(--comfort-shade);
+}
+.plaque-charm {
+  --plaque-fill: var(--charm-tint);
+  --plaque-ink: var(--charm-deep);
+  --plaque-shade: var(--charm-shade);
+}
+.plaque-sparkle {
+  --plaque-fill: var(--sparkle);
+  --plaque-shade: var(--sparkle-deep);
+}
+.plaque-wood {
+  --plaque-fill: var(--wood-hi);
+  --plaque-shade: var(--wood);
+}
+
+/* --- Icon: one art px per UI pixel ------------------------------------------------------- */
+
+.icon {
+  display: inline-block;
+  flex: none;
+  width: calc(var(--w) * var(--px));
+  height: calc(var(--h) * var(--px));
+  background: var(--icon) no-repeat 0 0 / 100% 100%;
+  image-rendering: pixelated;
+  vertical-align: calc(var(--px) * -1);
+}
+
+/* --- Keycap ------------------------------------------------------------------------------ */
+
+.keycap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  min-width: calc(var(--px) * 12);
+  height: calc(var(--px) * 12);
+  padding: 0 calc(var(--px) * 2) var(--px);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--card);
+  background-clip: padding-box;
+  box-shadow: inset 0 calc(var(--px) * -2) 0 var(--card-lo);
+  font-family: var(--font-text);
+  font-size: var(--fs-body);
+  line-height: 1;
+  font-weight: 400;
+  color: var(--ink);
+}
+
+/* --- Well: an empty, recessed slot -------------------------------------------------------- */
+
+.well {
+  display: inline-block;
+  border: var(--px) solid transparent;
+  border-image: var(--art-ringSoft) 1 / var(--px);
+  background: var(--paper-inset);
+  background-clip: padding-box;
+  box-shadow: inset 0 var(--px) 0 var(--card-lo);
+}
+
+/* --- Meter: a trough with a fill, ticks, and a flag ---------------------------------------- */
+
+.meter {
+  position: relative;
+  height: calc(var(--px) * 9);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--wood-deep);
+  background-clip: padding-box;
+  box-shadow: inset 0 var(--px) 0 var(--ink);
+}
+.meter-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: var(--sparkle);
+  box-shadow:
+    inset 0 var(--px) 0 var(--gold-hi),
+    inset 0 calc(var(--px) * -2) 0 var(--sparkle-deep);
+}
+.meter-fill.met {
+  background: var(--action);
+  box-shadow:
+    inset 0 var(--px) 0 var(--action-hi),
+    inset 0 calc(var(--px) * -2) 0 var(--action-shade);
+}
+.meter-tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: var(--px);
+  background: var(--meter-tick, var(--shade));
+}
+
+/* --- Focus, for anything else the keyboard reaches ---------------------------------------- */
+
+.ui :focus-visible {
+  outline: var(--px) solid var(--focus-outer);
+  outline-offset: 0;
+  box-shadow: 0 0 0 calc(var(--px) * 2) var(--focus-inner);
+}
+.ui .btn:focus-visible {
+  outline: none;
+}

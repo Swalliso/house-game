@@ -15,6 +15,11 @@ export interface Settings {
   /** 0–100. */
   masterVolume: number;
   sfxVolume: number;
+  /**
+   * The readable-font option (§12, Settings; D-059): every UI text in the system font instead
+   * of the pixel fonts, at its own sizes.
+   */
+  readableFont: boolean;
 }
 
 const KEY = 'openhouse:settings';
@@ -34,6 +39,7 @@ export function defaultSettings(): Settings {
     shake: 50,
     masterVolume: 70,
     sfxVolume: 80,
+    readableFont: false,
   };
 }
 
@@ -53,6 +59,7 @@ function loadStored(): Partial<Settings> {
       out.tallySpeed = raw.tallySpeed as TallySpeed;
     }
     if (typeof raw.reduceMotion === 'boolean') out.reduceMotion = raw.reduceMotion;
+    if (typeof raw.readableFont === 'boolean') out.readableFont = raw.readableFont;
     for (const k of ['shake', 'masterVolume', 'sfxVolume'] as const) {
       if (k in raw) out[k] = clamp100(raw[k], d[k]);
     }
@@ -80,4 +87,5 @@ effect(() => {
   const s = settings.value;
   audio.setVolumes({ master: s.masterVolume / 100, sfx: s.sfxVolume / 100 });
   document.documentElement.classList.toggle('reduce-motion', s.reduceMotion);
+  document.documentElement.dataset.font = s.readableFont ? 'readable' : 'pixel';
 });

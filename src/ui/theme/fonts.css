@@ -1,0 +1,46 @@
+/* The pixel fonts (CC0; assets/licenses.json, CREDITS.md). Both are drawn on an 8 px grid, so
+   they're used at 8 × --px and its multiples (tokens.css).
+
+   - 'OH Text' is Pixel Operator 8 by Jayvee Enaguas, regular and bold, for body text. It lacks
+     a few symbols the game's text uses (− ≥ ≤ → ← ↑ ↓ ✓ ½), which come from Public Pixel
+     through the unicode-range faces below.
+   - 'OH Display' is Public Pixel by GGBotNet: chunky and monospaced, so counters don't jitter
+     as they count. Numbers and display titles.
+
+   Glyphs neither font has (▲ ▼ ✕ ★ ✦ ⚠) are drawn as icons (theme/art.ts) where it matters,
+   and otherwise fall back to the system font. */
+
+@font-face {
+  font-family: 'OH Text';
+  src: url('../../../assets/fonts/PixelOperator8.ttf') format('truetype');
+  font-weight: 400;
+  font-display: block;
+}
+@font-face {
+  font-family: 'OH Text';
+  src: url('../../../assets/fonts/PixelOperator8-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-display: block;
+}
+/* The same weights as the faces above, so each pair is one face to the browser and the
+   unicode-range picks per character. */
+@font-face {
+  font-family: 'OH Text';
+  src: url('../../../assets/fonts/PublicPixel.ttf') format('truetype');
+  font-weight: 400;
+  font-display: block;
+  unicode-range: U+00BD, U+2190-2193, U+2212, U+2264-2265, U+2302, U+25A0-25A1, U+25CF, U+2713;
+}
+@font-face {
+  font-family: 'OH Text';
+  src: url('../../../assets/fonts/PublicPixel.ttf') format('truetype');
+  font-weight: 700;
+  font-display: block;
+  unicode-range: U+00BD, U+2190-2193, U+2212, U+2264-2265, U+2302, U+25A0-25A1, U+25CF, U+2713;
+}
+@font-face {
+  font-family: 'OH Display';
+  src: url('../../../assets/fonts/PublicPixel.ttf') format('truetype');
+  font-weight: 400 700;
+  font-display: block;
+}

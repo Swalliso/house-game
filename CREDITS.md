@@ -17,6 +17,9 @@ Open House is a game jam entry for the theme "It's a house," built with Claude C
 - **Placeholder sprites** (`art/*.txt`, packed into `assets/atlas.png`): drawn for Open House
   by Claude Code. Our own work. LimeZu cuts replace them one by one in M5a (D-097): so far the
   floors and the grass.
+- **The interface's frames and icons** (`src/ui/theme/frames.ts`, `src/ui/theme/icons.ts`):
+  drawn for Open House by Claude Code as text grids in LimeZu's palette, and turned into
+  images in the browser at startup. Our own work.
 - **Placeholder sound effects:** generated in the browser with
   [ZzFX](https://github.com/KilledByAPixel/ZzFX) by Frank Force (MIT). Its sample builder is
   vendored in `src/ui/audio/zzfx.ts` with its license notice.
@@ -40,6 +43,18 @@ What we accept (D-057, D-058): CC0 first, CC BY with credit, and paid packs whos
 allows commercial use (only the sprites we use are committed; the packs stay in the
 gitignored `art-source/`). Never non-commercial (NC), share-alike (SA), GPL, or anything
 taken from another game.
+
+## Fonts
+
+Both are CC0 1.0 (public domain); the legal code is in `assets/fonts/CC0-1.0.txt`.
+
+- **[Public Pixel](https://ggbot.itch.io/public-pixel-font)** by GGBotNet
+  (`assets/fonts/PublicPixel.ttf`): numbers and display text.
+- **[Pixel Operator](https://www.dafont.com/pixel-operator.font)** by Jayvee Enaguas
+  (HarvettFox96), its 8 px cut, regular and bold (`assets/fonts/PixelOperator8.ttf`,
+  `assets/fonts/PixelOperator8-Bold.ttf`): body text.
+
+Settings has a readable-font option that shows every text in the system's own font instead.
 
 ## Code
 

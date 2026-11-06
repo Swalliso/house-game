@@ -3,6 +3,7 @@
 // From M2 it also shows a piece's layout facts (tags, regions, view, links, fenced yards), its
 // timers, unmet requirements, budget, and what the demolish tool would remove.
 
+import type { ComponentChildren } from 'preact';
 import {
   cardText,
   CONTENT,
@@ -34,8 +35,10 @@ import {
   toolPreview,
   useToolNow,
 } from '../store.ts';
+import { Button, Icon } from '../kit/kit.tsx';
+import type { IconName } from '../theme/art.ts';
 import { GoodBody, goodName, offerGood, type GoodRef } from './goods.tsx';
-import './hud-m2.css';
+import './inspect.css';
 
 const REGION_CHIP: Record<Region, string> = {
   sunny: 'Sunny side',
@@ -86,7 +89,8 @@ function Unmet({ why }: { why: string | undefined }) {
   if (why === undefined) return null;
   return (
     <p class="warn" role="note">
-      <span aria-hidden="true">⚠ </span>Earns nothing: it must be {why}
+      <Icon name="warn" />
+      <span>Earns nothing: it must be {why}</span>
     </p>
   );
 }
@@ -118,6 +122,7 @@ function TagChips({ tags, own }: { tags: readonly Tag[]; own: readonly Tag[] }) 
             class={`chip ${special ? `chip-${t.toLowerCase()}` : ''} ${fromLayout ? 'from-layout' : ''}`}
             title={fromLayout ? LAYOUT_TAG_TITLE[t] : undefined}
           >
+            <Icon name={t as IconName} />
             {t}
           </span>
         );
@@ -203,8 +208,8 @@ function ToolInfo({ id, i }: { id: ToolId; i: number }) {
       {how && <p class="muted">{how}</p>}
       {p && !p.ok && (
         <p class="reason">
-          <span aria-hidden="true">✕ </span>
-          {p.reason}
+          <Icon name="cross" />
+          <span>{p.reason}</span>
         </p>
       )}
       {p?.ok && (
@@ -214,14 +219,9 @@ function ToolInfo({ id, i }: { id: ToolId; i: number }) {
         </p>
       )}
       {!aimed && (
-        <button
-          type="button"
-          class="sell-button use-tool"
-          disabled={!p?.ok}
-          onClick={() => useToolNow({ t: 'useTool', i })}
-        >
+        <Button class="use-tool" disabled={!p?.ok} onClick={() => useToolNow({ t: 'useTool', i })}>
           Use {def.name}
-        </button>
+        </Button>
       )}
     </>
   );
@@ -261,8 +261,8 @@ function PlacingInfo() {
       <>
         <h2>{name}</h2>
         <p class="reason">
-          <span aria-hidden="true">✕ </span>
-          {p.reason}
+          <Icon name="cross" />
+          <span>{p.reason}</span>
         </p>
         {install && <GoodBody good={{ kind: 'fixture', id: sel.id }} />}
       </>
@@ -316,23 +316,33 @@ function PlacingInfo() {
       )}
       {p.setsGained.map((set) => (
         <p key={set.key} class="set-note good">
-          ★ Completes {CONTENT.sets[set.set].name}: +{set.points} {SCORE_LABELS.points}, +
-          {formatMult(set.mult)} {SCORE_LABELS.mult}
+          <Icon name="star" />
+          <span>
+            Completes {CONTENT.sets[set.set].name}: +{set.points} {SCORE_LABELS.points}, +
+            {formatMult(set.mult)} {SCORE_LABELS.mult}
+          </span>
         </p>
       ))}
       {p.setsLost.map((set) => (
         <p key={set.key} class="set-note bad">
-          ✕ Breaks {CONTENT.sets[set.set].name}
+          <Icon name="cross" />
+          <span>Breaks {CONTENT.sets[set.set].name}</span>
         </p>
       ))}
       {p.xMults.map((x) => (
         <p key={`${x.source.kind}:${x.label}`} class="set-note sparkle">
-          ✦ {SCORE_LABELS.xMult}: {x.label} ×{formatMult(x.times)} {SCORE_LABELS.mult}
+          <Icon name="sparkle" />
+          <span>
+            {SCORE_LABELS.xMult}: {x.label} ×{formatMult(x.times)} {SCORE_LABELS.mult}
+          </span>
         </p>
       ))}
       {p.finds.map((f) => (
-        <p key={`${f.x},${f.y}`} class="set-note good">
-          ★ Digs up the {CONTENT.features[f.feature].name}: {rewardText(CONTENT, f.reward)}
+        <p key={`${f.x},${f.y}`} class="set-note find">
+          <Icon name="star" />
+          <span>
+            Digs up the {CONTENT.features[f.feature].name}: {rewardText(CONTENT, f.reward)}
+          </span>
         </p>
       ))}
       {p.clearedTrees.length > 0 && (
@@ -369,14 +379,14 @@ function ItemInfo({
         <p class="muted">Bought in week {s.blueprints[sellAs.i]?.boughtWeek}.</p>
       )}
       {canSell && (
-        <button
-          type="button"
+        <Button
           class="sell-button"
+          icon="coin"
           onClick={() => sell(sellAs.from, sellAs.i)}
           title="Selling pays half its price, rounded down"
         >
           Sell for {price} budget
-        </button>
+        </Button>
       )}
     </>
   );
@@ -406,8 +416,8 @@ function DemolishInfo() {
       <>
         <h2>{name ? `Demolish ${name}?` : 'Demolish'}</h2>
         <p class="reason">
-          <span aria-hidden="true">✕ </span>
-          {d.reason ?? 'That can’t be demolished.'}
+          <Icon name="cross" />
+          <span>{d.reason ?? 'That can’t be demolished.'}</span>
         </p>
       </>
     );
@@ -440,21 +450,26 @@ const FEATURE_TEXT: Record<string, string> = {
 export function Inspect() {
   if (tool.value === 'demolish') {
     return (
-      <section class="inspect">
+      <InspectPanel>
         <DemolishInfo />
-      </section>
+      </InspectPanel>
     );
   }
   if (selected.value !== null) {
     return (
-      <section class="inspect">
+      <InspectPanel>
         <PlacingInfo />
-      </section>
+      </InspectPanel>
     );
   }
   const what = inspected.value;
   const s = run.value;
-  let body = <p class="muted">Point at anything on the lot to see what it is and what it earns.</p>;
+  let body = (
+    <>
+      <h2>Inspect</h2>
+      <p class="muted">Point at anything on the lot to see what it is and what it earns.</p>
+    </>
+  );
   if (what?.kind === 'piece') {
     const piece = s.house.pieces.find((p) => p.uid === what.uid);
     const score = currentTally.value.pieces.find((p) => p.uid === what.uid);
@@ -568,5 +583,14 @@ export function Inspect() {
     const g = o && offerGood(o);
     if (g) body = <ItemInfo good={g} />;
   }
-  return <section class="inspect">{body}</section>;
+  return <InspectPanel>{body}</InspectPanel>;
+}
+
+/** A wood panel whose first heading is its plank (inspect.css). */
+function InspectPanel({ children }: { children: ComponentChildren }) {
+  return (
+    <section class="inspect panel ui" aria-label="Inspect">
+      <div class="panel-body">{children}</div>
+    </section>
+  );
 }
