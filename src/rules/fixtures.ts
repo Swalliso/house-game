@@ -24,13 +24,21 @@ export function checkInstall(
   if (!piece) return { legal: false, reason: 'Pick a piece on the lot to put it in.' };
   const replaces = piece.fixture?.id;
   if (replaces === fixture) {
-    return { legal: false, reason: `It already has a ${def.name}.`, replaces };
+    return {
+      legal: false,
+      reason: `It already has ${def.name.endsWith('s') ? 'its' : 'a'} ${def.name}.`,
+      replaces,
+    };
   }
   if (!matchesPiece(content, layout, def.fits, uid)) {
     const host = pieceDef(content, piece).name;
+    // "Bunk Beds go", "A Fireplace goes".
+    const plural = def.name.endsWith('s');
+    const subject = plural ? def.name : `${/^[AEIOU]/i.test(def.name) ? 'An' : 'A'} ${def.name}`;
+    const an = /^[AEIOU]/i.test(host) ? 'an' : 'a';
     return {
       legal: false,
-      reason: `A ${def.name} goes in ${fitsText(content, fixture)}, not a ${host}.`,
+      reason: `${subject} ${plural ? 'go' : 'goes'} in ${fitsText(content, fixture)}, not ${an} ${host}.`,
       replaces,
     };
   }

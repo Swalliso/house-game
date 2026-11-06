@@ -511,16 +511,13 @@ describe('fitsText and fixtureText', () => {
     }
   });
 
-  // Suspected bug: fitsText's own doc comment gives "an exterior room" as an example, and
-  // Appendix B's Fits column says "an exterior room", but { all: [room, exterior] } reads as
-  // "a room and exterior room".
+  // Appendix B's Fits column says "an exterior room": { all: [room, exterior] } reads so.
   it('a Bay Window fits "an exterior room"', () => {
     expect(fitsText(C, 'bayWindow')).toBe('an exterior room');
     expect(fixtureText(CONTENT, CONTENT.fixtures.bayWindow).fits).toBe('Fits an exterior room');
   });
 
-  // Suspected bug: the Chandelier reads "while it’s part of a Entertainer" (conditionText's
-  // inSet case doesn't use the a/an article helper).
+  // "part of an Entertainer", not "a Entertainer".
   it('real fixture texts never put "a" before a vowel', () => {
     for (const def of Object.values(CONTENT.fixtures)) {
       const text = fixtureText(CONTENT, def);

@@ -224,8 +224,15 @@ export function effectText(content: Content, effect: Effect): string {
       const what = conditionText(content, effect.condition);
       return effect.blocksPlacement ? `Must be built ${what}` : `Earns nothing unless ${what}`;
     }
-    case 'conditional':
-      return `${effectText(content, effect.effect)} ${conditionPhrase(content, effect.when)}`;
+    case 'conditional': {
+      const inner = effectText(content, effect.effect);
+      // A region aura already says where it reaches (the Mudroom's fenced yard).
+      const said =
+        'borders' in effect.when &&
+        effect.effect.kind === 'aura' &&
+        effect.effect.scope === 'region';
+      return said ? inner : `${inner} ${conditionPhrase(content, effect.when)}`;
+    }
   }
 }
 
@@ -375,7 +382,7 @@ export function modifierText(content: Content, mod: Modifier): string {
       return `${subjectText(content, mod.target)} earn ${signed(mod.pct)}%${when}`;
     }
     case 'bestPiece':
-      return `Each week, your top earner earns ${signed(mod.pct)}% more`;
+      return `Each week, your top earner earns ${signed(mod.pct)}%`;
     case 'mult': {
       const per = mod.per
         ? ` per ${selectorText(content, mod.per, 'one').replace(/\bneighbor\b/, 'piece')}`
