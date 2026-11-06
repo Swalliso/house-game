@@ -7,6 +7,7 @@ import {
   cardText,
   CONTENT,
   fixtureText,
+  rewardText,
   regionText,
   rules,
   SCORE_LABELS,
@@ -327,6 +328,11 @@ function PlacingInfo() {
       {p.xMults.map((x) => (
         <p key={`${x.source.kind}:${x.label}`} class="set-note sparkle">
           ✦ {SCORE_LABELS.xMult}: {x.label} ×{formatMult(x.times)} {SCORE_LABELS.mult}
+        </p>
+      ))}
+      {p.finds.map((f) => (
+        <p key={`${f.x},${f.y}`} class="set-note good">
+          ★ Digs up the {CONTENT.features[f.feature].name}: {rewardText(CONTENT, f.reward)}
         </p>
       ))}
       {p.clearedTrees.length > 0 && (

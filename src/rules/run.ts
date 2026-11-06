@@ -1516,6 +1516,7 @@ export function createRules(content: Content): Rules {
       clearedTrees: [],
       upcoming: [],
       xMults: beforeTally?.xMults ?? [],
+      finds: [],
     });
     if (!beforeTally)
       return empty(state.screen === 'shop' ? 'The shop is open.' : 'The run is over.');
@@ -1564,6 +1565,11 @@ export function createRules(content: Content): Rules {
       clearedTrees: check.clearedTrees,
       upcoming: week.placed ? pieceTimers({ ...state, house: week.house }, focus) : [],
       xMults: week.tally.xMults,
+      finds: (check.finds ?? []).flatMap((c) => {
+        const feature = state.house.lot.terrain[cellIndex(state.house.lot.width, c.x, c.y)];
+        const reward = feature ? content.features[feature].reward : undefined;
+        return feature && reward ? [{ x: c.x, y: c.y, feature, reward }] : [];
+      }),
       ...(week.installed
         ? {
             host: week.installed.uid,

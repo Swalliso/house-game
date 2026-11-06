@@ -1144,6 +1144,8 @@ export interface Preview {
   replaces?: FixtureId;
   /** The ×Mult sources with the play, so a Sparkle can light up before it's committed. */
   xMults: readonly XMultTerm[];
+  /** Finds the play would dig up (a Time Capsule), each with what it pays. */
+  finds: readonly { x: number; y: number; feature: TerrainId; reward: Reward }[];
 }
 
 /** What demolishing at a spot would do, for the demolish tool's hover. */

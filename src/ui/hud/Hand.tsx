@@ -20,7 +20,9 @@ import {
   reroll,
   rotation,
   run,
+  movingUid,
   selected,
+  selection,
   tentative,
   tool,
 } from '../store.ts';
@@ -194,7 +196,10 @@ function FreeActions() {
         }
       >
         <span class="free-action-name">⟲ Reroll</span>
-        <span class="free-action-count">({s.rerollsLeft} left this milestone)</span>
+        <span class="free-action-count">
+          ({s.rerollsLeft} left this milestone
+          {s.bonusRerolls > 0 ? `, +${s.bonusRerolls} kept` : ''})
+        </span>
       </button>
       <button
         type="button"
@@ -225,6 +230,9 @@ export function Hand() {
   const pending = tentative.value;
   const armed = passArmed.value;
   const demolishing = tool.value === 'demolish';
+  // Only pieces turn: a fixture or a tool doesn't, except the Moving Truck's carried piece.
+  const sel = selection.value;
+  const canTurn = sel?.kind === 'piece' || (sel?.kind === 'tool' && movingUid.value !== null);
   const endLabel = pending ? 'End week · build it' : armed ? 'Pass? Press again' : 'Pass this week';
   return (
     <section class="hand" aria-label="This week's cards">
@@ -247,7 +255,7 @@ export function Hand() {
           class="rotate"
           onMouseDown={noFocus}
           onClick={rotate}
-          disabled={!placing || demolishing}
+          disabled={!placing || demolishing || !canTurn}
           title="Rotate (R or right-click)"
         >
           ⟳ Rotate
