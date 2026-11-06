@@ -30,7 +30,7 @@ import {
   type AtlasPixels,
   type Pixels,
 } from '../art/house-paint.ts';
-import { roomItems, type Item } from '../art/rooms.ts';
+import { itemRows, roomItems, type Item } from '../art/rooms.ts';
 import { highlighted, justPlaced, played, tallyView } from '../fx/director.ts';
 import { settings } from '../settings.ts';
 import { atlasImage, CELL, cellUnit, FIXTURE_GLYPHS, spritePos, spriteStyle } from '../sprites.ts';
@@ -119,7 +119,7 @@ export function WallsLayer(p: { lot: Lot; scale: number; model: HouseModel }) {
   return <HouseCanvas {...p} layer="walls" />;
 }
 
-/** An item's part: all of it, or the rows above (`top`) or below its `over` line. */
+/** An item's rows under the walls (`bottom`: all of them, unless it rises over its room's north wall) or over them (`top`). */
 function ItemPart({
   item,
   box,
@@ -129,13 +129,12 @@ function ItemPart({
   item: Item;
   box: { x: number; y: number };
   scale: number;
-  part: 'all' | 'top' | 'bottom';
+  part: 'top' | 'bottom';
 }) {
-  const { w, h } = spritePos(item.sprite);
-  const cut = item.over === undefined ? 0 : Math.min(Math.max(item.over - item.y, 0), h);
-  const from = part === 'bottom' ? cut : 0;
-  const to = part === 'top' ? cut : h;
-  if (to <= from) return null;
+  const { w } = spritePos(item.sprite);
+  const rows = itemRows(item)[part];
+  if (!rows) return null;
+  const [from, to] = rows;
   const style = spriteStyle(item.sprite, scale);
   const [bx, by] = style.backgroundPosition!.split(' ').map((v) => Number.parseFloat(v));
   return (
@@ -239,9 +238,7 @@ export function OverhangLayer({ model, scale }: { model: HouseModel; scale: numb
   return (
     <div class="overhang">
       {[...model.rooms.values()].map((room) => {
-        const tops = roomItems(model, room.uid).filter(
-          (it) => it.over !== undefined && it.y < it.over,
-        );
+        const tops = roomItems(model, room.uid).filter((it) => itemRows(it).top);
         return tops.length > 0 ? (
           <RoomOverhang key={room.uid} uid={room.uid} model={model} items={tops} scale={scale} />
         ) : null;

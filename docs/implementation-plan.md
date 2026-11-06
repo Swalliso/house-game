@@ -1516,7 +1516,12 @@ Intensity is measured against **pace**: `max(1, (this phase's target − the sco
   - a floor per room type
   - walls as bands in LimeZu's style (its outline color around a light fill), drawn from a mask over the whole house: about 6 art px on outside edges and 4 between rooms, with 8px north wall faces and 3px floor shadows. These are the audit prototype's numbers, for the house stage to tune.
   - a wall between every two pieces, same type included, so rooms never merge visually (D-093)
-  - doorways (about 14 px) between touching rooms, windows (about 12 px) in outside walls, and a front door, chosen by fixed rules and a tile hash, never by chance. They're decoration and change no score.
+  - doorways (14 px), windows (12 px) in outside walls, and a front door, chosen by fixed rules and a hash of the piece, never by chance. They're decoration and change no score (`src/ui/board/house-model.ts`):
+    - Hallways open into every room the rules link through them.
+    - The front door (16 px, with a doormat) goes in a south wall with nothing of the house between it and the street, near the front, in the best entry room (a Mudroom or a hall first). It never opens onto a Tree, water, a boulder, the Old Shed, a Fence or an outbuilding, and paved ground (a Patio or a Driveway) or the sidewalk beats grass.
+    - A back door opens onto each touching Patio or Hot Tub, and a Garage's door faces its Driveway or the street.
+    - Then a door tree from the entry, public rooms first, reaches every room with as few doors as it takes, so bedrooms keep their walls for furniture. Doors keep to side walls and the ends of north walls.
+    - Windows go about one per two cells of outside wall (one per cell in a Sunroom), never in closets, garages or hallways.
   - several LimeZu furniture sprites per room, laid out by rules per room type and footprint, never rotated (they're drawn in 3/4 view), varying by piece
   - an installed fixture shows as a sprite where it fits, and as a badge otherwise
   - yard pieces are flat top-down, and the "-house" outbuildings get small roofs
@@ -1529,9 +1534,10 @@ Intensity is measured against **pace**: `max(1, (this phase's target − the sco
 - **UI chrome:** wood-panel frames and a chunky pixel font, as in Combolands, plus the readable-font option.
 - **Rendering:**
   - terrain is drawn into a canvas of (lot width × 32) × ((lot height + 1) × 32) art px, 768×800 for 24×24 with the street row, with smoothing off, shown at that size × scale with `image-rendering: pixelated`, and redrawn only when terrain changes
-  - pieces are absolutely positioned elements using a CSS-background atlas, placed at whole multiples of 32 × scale and rounded to device pixels
+  - the house is drawn in the board's layers (`src/ui/board/layers.ts`): a floor canvas (floors, north wall faces, floor shadows, the house's shadow) under one element per piece for its furniture, then a walls canvas (bands, doorways, windows, doormats), the overhang, outline highlights, and the labels. The canvases redraw only when the house changes, never on hover, a tally step, or zoom
+  - furniture and yard pieces are absolutely positioned elements using a CSS-background atlas, placed at whole multiples of 32 × scale and rounded to device pixels
   - atlas sprites start at even positions and are extruded by 1px, so fractional screen scales show no seams
-  - the pieces' score digits, their fixture and ⚠ badges (size and inset), and the placeholder walls are sized in sixteenths of a cell, so 1× shows them as 2× did with 16 px art, and they grow with the zoom
+  - the pieces' score digits, their fixture and ⚠ badges (size and inset, inside the room's walls), and the yard pieces' placeholder edges are sized in sixteenths of a cell, so 1× shows them as 2× did with 16 px art, and they grow with the zoom
   - the title screen's street is one canvas, like the terrain, so its tiles show no seams at 125% or 150% display scaling. It keeps its old tile sizes (64, 48, or 32 CSS px by the window's height), rounded to whole device pixels per art pixel (down on a tie) and never under 32 CSS px, so the footer stays on the far sidewalk. On a Retina screen it's as it was. At a devicePixelRatio of 1 the 48 px size comes out at 32; at 1.25 every size comes out at 51.2; at 1.5 the 48 and 32 px sizes come out at 42.7.
   - **zoom changes the scale and re-lays out the board in whole steps, never with `transform: scale()`**: Safari blurs canvases under a scaling transform (a WebKit bug open since 2018). Transforms are only for short juice tweens. This changes D-049's camera.
 - **The pipeline (D-097):**

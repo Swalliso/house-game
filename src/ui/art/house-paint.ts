@@ -235,22 +235,16 @@ function faceGaps(m: HouseModel, x: number, y: number): [number, number][] {
   return out;
 }
 
-/** [from, to) minus the gaps, as runs. */
-function without(from: number, to: number, gaps: [number, number][]): [number, number][] {
-  let runs: [number, number][] = [[from, to]];
-  for (const [g0, g1] of gaps) {
-    runs = runs.flatMap(([a, b]): [number, number][] =>
-      g1 <= a || g0 >= b
-        ? [[a, b]]
-        : (
-            [
-              [a, g0],
-              [g1, b],
-            ] as [number, number][]
-          ).filter(([p, q]) => q > p),
-    );
+/** [from, to) minus the gaps (inside it), as runs. */
+function without(from: number, to: number, gaps: readonly [number, number][]): [number, number][] {
+  const out: [number, number][] = [];
+  let x = from;
+  for (const [g0, g1] of [...gaps].sort((p, q) => p[0] - q[0])) {
+    if (g0 > x) out.push([x, g0]);
+    x = Math.max(x, g1);
   }
-  return runs;
+  if (x < to) out.push([x, to]);
+  return out;
 }
 
 /**
@@ -270,7 +264,8 @@ export function paintFloors(
   const indoorPx = (px: number, py: number) =>
     roomAt(m, Math.floor(px / CELL), Math.floor(py / CELL)) !== 0;
 
-  // The house's shadow: off its cells, where the house shifted down and right would be.
+  // The house's shadow: off its cells, where the house shifted down and right would be. (Yard
+  // ground painted here goes first, so the house's shadow falls on it.)
   if (shadow) {
     for (let py = cv.y; py < cv.y + cv.h; py++) {
       for (let px = cv.x; px < cv.x + cv.w; px++) {

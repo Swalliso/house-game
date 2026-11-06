@@ -22,6 +22,19 @@ export interface Item {
   over?: number;
 }
 
+/**
+ * Which rows of an item's sprite (from its top, [from, to)) go under the walls (`bottom`) and
+ * on the overhang above them (`top`): the rows above its `over` line rise over the north wall.
+ */
+export function itemRows(item: Item): {
+  top: [number, number] | null;
+  bottom: [number, number] | null;
+} {
+  const { h } = spritePos(item.sprite);
+  const cut = item.over === undefined ? 0 : Math.min(Math.max(item.over - item.y, 0), h);
+  return { top: cut > 0 ? [0, cut] : null, bottom: cut < h ? [cut, h] : null };
+}
+
 const cache = new WeakMap<HouseModel, Map<number, readonly Item[]>>();
 
 /** The items in room `uid` of the model, back to front. Cached per model. */

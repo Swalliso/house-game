@@ -519,8 +519,6 @@ function addOpenings(m: HouseModel, house: HouseState, links: HallLinks): void {
     cell: Cell;
     side: Side;
     onto: number;
-    ontoId: PieceId | null;
-    street: boolean;
     gap: Rect;
     score: number;
   }
@@ -583,16 +581,7 @@ function addOpenings(m: HouseModel, house: HouseState, links: HallLinks): void {
               // The front of the house: each row nearer the street counts.
               c.y * 30 -
               centered * 0.05;
-          out.push({
-            uid: r.uid,
-            cell: c,
-            side: s,
-            onto: p?.uid ?? 0,
-            ontoId: p?.defId ?? null,
-            street,
-            gap,
-            score,
-          });
+          out.push({ uid: r.uid, cell: c, side: s, onto: p?.uid ?? 0, gap, score });
         }
       }
     }
@@ -754,26 +743,14 @@ function addOpenings(m: HouseModel, house: HouseState, links: HallLinks): void {
   };
   /** The best doorway between two touching pieces, over all their runs. */
   const doorBetween = (a: number, b: number): Doorway | null => {
-    let best: (Doorway & { pref: number }) | null = null;
+    let best: { run: Run; gap: Rect; clear: Rect; pref: number } | null = null;
     for (const run of runsOf.get(pairKey(a, b)) ?? []) {
       const d = doorIn(run);
-      if (!d) continue;
-      if (!best || d.pref < best.pref) {
-        best = {
-          a: run.a,
-          b: run.b,
-          dir: run.dir,
-          gap: d.gap,
-          clear: d.clear,
-          why: 'tree',
-          pref: d.pref,
-        };
-      }
+      if (d && (!best || d.pref < best.pref)) best = { run, ...d };
     }
     if (!best) return null;
-    const { pref, ...door } = best;
-    void pref;
-    return door;
+    const { run, gap, clear } = best;
+    return { a: run.a, b: run.b, dir: run.dir, gap, clear, why: 'tree' };
   };
 
   // Union-find over the pieces, joined by doorways.
@@ -793,13 +770,14 @@ function addOpenings(m: HouseModel, house: HouseState, links: HallLinks): void {
   };
 
   // Hallways open into every room the rules link through them, and into touching Hallways.
+  // (A room linked to nothing, the only one on its Hallways, gets its door from the tree.)
   const touching = [...runsOf.keys()].map((k) => k.split('-').map(Number) as [number, number]);
   touching.sort((p, q) => p[0] - q[0] || p[1] - q[1]);
+  const linked = (u: number) => (links.get(u)?.length ?? 0) > 0;
   for (const [a, b] of touching) {
     const ca = isConnector(defOf(a));
     const cb = isConnector(defOf(b));
     if (!ca && !cb) continue;
-    const linked = (u: number) => (links.get(u)?.length ?? 0) > 0;
     if ((ca && cb) || (ca && linked(b)) || (cb && linked(a))) {
       const d = doorBetween(a, b);
       if (d) addDoor({ ...d, why: 'hall' });
