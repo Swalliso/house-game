@@ -30,8 +30,17 @@ const root = resolve(import.meta.dirname, '..');
 const { palette, sprites } = readArt(join(root, 'art'));
 const SIZE = PLACEHOLDER_SIZE;
 
-/** Terrain and floors tile edge to edge, so they must be fully opaque. */
-const OPAQUE = [
+/**
+ * Terrain and floors tile edge to edge, so they must be fully opaque: every floor, grass, and
+ * water sprite, placeholder or cut, and the street, sidewalk, and lawn.
+ */
+function isOpaque(id: string): boolean {
+  return /^(floor|grass|water)-/.test(id) || ['street', 'sidewalk', 'lawn'].includes(id);
+}
+/** Overlays and furniture sit on top of a tile, on a transparent background. */
+const OVERLAYS = ['tree', 'boulder', 'bed', 'tub', 'stove', 'table', 'sofa', 'flowers'];
+/** Ids the UI references by name (src/ui/sprites.ts and the terrain layer). */
+const REQUIRED = [
   'grass-0',
   'grass-1',
   'grass-2',
@@ -46,11 +55,8 @@ const OPAQUE = [
   'floor-parquet',
   'floor-carpet',
   'lawn',
+  ...OVERLAYS,
 ];
-/** Overlays and furniture sit on top of a tile, on a transparent background. */
-const OVERLAYS = ['tree', 'boulder', 'bed', 'tub', 'stove', 'table', 'sofa', 'flowers'];
-/** Every id the UI references (src/ui/sprites.ts and the terrain layer). */
-const REQUIRED = [...OPAQUE, ...OVERLAYS];
 
 const row = (s: string) => s.padEnd(SIZE, '.');
 const blank = () => Array.from({ length: SIZE }, () => '.'.repeat(SIZE));
@@ -123,8 +129,8 @@ describe('the art in art/', () => {
 
   it('keeps terrain and floors opaque and overlays on a transparent background', () => {
     const byId = new Map(sprites.map((s) => [s.id, s]));
-    for (const id of OPAQUE) {
-      expect(byId.get(id)!.rows.join(''), id).not.toContain('.');
+    for (const sprite of sprites.filter((s) => isOpaque(s.id))) {
+      expect(sprite.rows.join(''), sprite.id).not.toContain('.');
     }
     for (const id of OVERLAYS) {
       const rows = byId.get(id)!.rows;
@@ -403,11 +409,15 @@ describe('the committed atlas', () => {
 
   it('has every sprite the UI references, with terrain and floors opaque', () => {
     for (const id of REQUIRED) expect(atlas.json.sprites, id).toHaveProperty([id]);
-    for (const id of OPAQUE) {
-      const { x, y, w, h } = atlas.json.sprites[id]!;
+    for (const id of Object.keys(atlas.json.sprites).filter(isOpaque)) {
+      const { x, y, w, h, frames = 1, stride = 0 } = atlas.json.sprites[id]!;
       let clear = 0;
-      for (let py = y; py < y + h; py++) {
-        for (let px = x; px < x + w; px++) if (pixel(atlas, px, py)[3] !== 255) clear++;
+      for (let k = 0; k < frames; k++) {
+        for (let py = y; py < y + h; py++) {
+          for (let px = x + k * stride; px < x + k * stride + w; px++) {
+            if (pixel(atlas, px, py)[3] !== 255) clear++;
+          }
+        }
       }
       expect(clear, `${id}: pixels that aren't fully opaque`).toBe(0);
     }

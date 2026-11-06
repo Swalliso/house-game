@@ -6,11 +6,14 @@ Open House is a game jam entry for the theme "It's a house," built with Claude C
 
 - **Art by [LimeZu](https://limezu.itch.io/):** sprites from
   [Modern Interiors](https://limezu.itch.io/moderninteriors) and
-  [Modern Exteriors](https://limezu.itch.io/modernexteriors), used under the packs' licenses:
-  use in any project with credit to LimeZu, and never redistribute the packs. So the repository
-  holds only the sprites we use, cut from the packs into `assets/limezu/` (and packed into
-  `assets/atlas.png`) by `npm run art:cut`, each recorded in `assets/licenses.json` with its
-  sheet and rect. The packs stay in the gitignored `art-source/` (D-095).
+  [Modern Exteriors](https://limezu.itch.io/modernexteriors), paid packs used under their
+  licenses. Both let you edit and use the asset in any commercial or non-commercial project,
+  require credit to LimeZu, and forbid reselling or distributing the asset to others. Modern
+  Exteriors' license also allows using it in open-source projects, GitHub included; Modern
+  Interiors' license doesn't mention open source (D-057, D-095). The repository holds only the
+  sprites we use, cut from the packs into `assets/limezu/` (and packed into `assets/atlas.png`)
+  by `npm run art:cut`, each recorded in `assets/licenses.json` with its sheet and rect. The
+  packs stay in the gitignored `art-source/` (D-095).
 - **Placeholder sprites** (`art/*.txt`, packed into `assets/atlas.png`): drawn for Open House
   by Claude Code. Our own work. LimeZu cuts replace them one by one in M5a (D-095): so far the
   floors and the grass.

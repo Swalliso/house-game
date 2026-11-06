@@ -9,6 +9,7 @@ import {
   minZoom,
   overviewScale,
   snapZoom,
+  streetScale,
   zoomStep,
 } from './geometry.ts';
 
@@ -106,6 +107,34 @@ describe('the zoom steps', () => {
     expect(snapZoom(0.5, 1)).toBe(1);
     expect(snapZoom(3, 1.25)).toBe(2.4);
     expect(snapZoom(2, 1)).toBe(2);
+  });
+});
+
+describe('the title screen’s street', () => {
+  /** A street tile's size in CSS px, for a window this tall. */
+  const tile = (height: number, dpr: number) => +(CELL * streetScale(height, dpr)).toFixed(2);
+
+  it('keeps the 16 px art’s tile sizes on a Retina screen: 64, 48, or 32 CSS px', () => {
+    expect([tile(1100, 2), tile(900, 2), tile(700, 2)]).toEqual([64, 48, 32]);
+  });
+
+  it('rounds to whole device pixels per art pixel, down on a tie, at a ratio of 1', () => {
+    expect([tile(1100, 1), tile(900, 1), tile(700, 1)]).toEqual([64, 32, 32]);
+  });
+
+  it('never goes under 32 CSS px at 125% and 150%, so the footer stays on the sidewalk', () => {
+    expect([tile(1100, 1.25), tile(900, 1.25), tile(700, 1.25)]).toEqual([51.2, 51.2, 51.2]);
+    expect([tile(1100, 1.5), tile(900, 1.5), tile(600, 1.5)]).toEqual([64, 42.67, 42.67]);
+  });
+
+  it('is whole device pixels per art pixel at any ratio', () => {
+    for (const dpr of [0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3]) {
+      for (const height of [600, 800, 1100]) {
+        const k = streetScale(height, dpr) * dpr;
+        expect(Math.abs(k - Math.round(k)), `${height} at ${dpr}`).toBeLessThan(1e-9);
+        expect(CELL * streetScale(height, dpr), `${height} at ${dpr}`).toBeGreaterThanOrEqual(32);
+      }
+    }
   });
 });
 

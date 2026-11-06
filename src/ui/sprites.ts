@@ -57,7 +57,7 @@ export const PIECE_SPRITES: Record<PieceId, { floor: SpriteId; furniture: Sprite
   greenhouse: { floor: 'greenhouse', furniture: 'greenhouse' },
   // Special pieces (M3a).
   playroom: { floor: 'floor-carpet', furniture: 'toys' },
-  library: { floor: 'floor-parquet', furniture: 'books' },
+  library: { floor: 'floor-library', furniture: 'books' },
   mudroom: { floor: 'floor-tile', furniture: 'boots' },
   pool: { floor: 'pool', furniture: 'pool' },
   sunroom: { floor: 'floor-sunroom', furniture: 'plant' },

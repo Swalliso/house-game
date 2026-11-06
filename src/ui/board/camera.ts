@@ -2,7 +2,8 @@
 // scale (CSS px per art px; a cell is CELL × scale CSS px) and re-laying it out, never with
 // transform: scale(), which blurs pixel art in Safari. Zoom levels are whole device pixels per
 // art pixel, from one device pixel up to 3×: 1×, 2× and 3× at a devicePixelRatio of 1, and
-// 0.5× steps on a Retina screen. The Fit overview is the one fractional scale. The board pans
+// 0.5× steps on a Retina screen. The Fit overview is the one fractional scale, except that at a
+// devicePixelRatio between 1 and 2 the default can be 1× (D-095's note). The board pans
 // with its scroll container (drag, or the middle button), and a zoom keeps the point under
 // the pointer (or the middle of the view) where it was.
 

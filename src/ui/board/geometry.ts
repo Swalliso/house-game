@@ -86,7 +86,8 @@ export function center(cells: readonly Cell[]): { x: number; y: number } {
 // ---------------------------------------------------------------------------------------
 // Scales (§12, Art; D-095). A scale is CSS px per art px, and one cell is CELL art px. The
 // camera's scales are whole device pixels per art pixel, k ÷ devicePixelRatio: 1×, 2× and 3×
-// at a devicePixelRatio of 1, and 0.5× steps on a Retina screen. Fit is the one exception.
+// at a devicePixelRatio of 1, and 0.5× steps on a Retina screen. Fit is the one exception,
+// apart from the default's 1× floor at 125% and 150% display scaling (see fitScale).
 
 /** The camera zooms in up to this scale; its last step is the largest k ÷ dpr not above it. */
 export const MAX_ZOOM = 3;
@@ -132,7 +133,9 @@ export function zoomStep(scale: number, dir: 1 | -1, dpr: number): number {
 /**
  * The default zoom (§12, Art): the largest whole device pixels per art pixel at which the lot
  * plus the street row below it fit, never below 1× (a smaller view pans) and never above the
- * camera's largest zoom. The camera (camera.ts) starts here.
+ * camera's largest zoom. The camera (camera.ts) starts here. At a devicePixelRatio between 1
+ * and 2, 1× isn't whole device pixels, so when nothing larger fits the default has uneven
+ * pixels and isn't a zoom step; the team picks the rule there (D-095's note).
  */
 export function fitScale(
   availWidth: number,
@@ -160,6 +163,19 @@ export function overviewScale(
 ): number {
   const cell = Math.min(availWidth / lotW, availHeight / (lotH + 1));
   return Math.max(1, Math.floor(cell * dpr)) / dpr / CELL;
+}
+
+/**
+ * The title screen's street (§12, Art): tiles of 64, 48, or 32 CSS px by the window's height,
+ * the sizes the 16 px art had, at the nearest whole device pixels per art pixel (down on a
+ * tie), and never under 32 CSS px, so the footer stays on the far sidewalk. On a Retina screen
+ * the street is as it was. At a devicePixelRatio of 1 the 48 px size comes out at 32, and at
+ * 1.25 every size at 51.2; at 1.5 the 48 and 32 px sizes come out at 42.7.
+ */
+export function streetScale(windowHeight: number, dpr: number): number {
+  const tile = windowHeight >= 1000 ? 64 : windowHeight >= 760 ? 48 : 32;
+  const nearest = Math.ceil(devicePx(tile / CELL, dpr) - 0.5);
+  return Math.max(nearest, Math.ceil(devicePx(1, dpr))) / dpr;
 }
 
 /**

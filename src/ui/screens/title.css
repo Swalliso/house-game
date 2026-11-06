@@ -188,18 +188,10 @@
 .title-street {
   flex: none;
   overflow: hidden;
-  white-space: nowrap;
 }
-.title-street-row {
-  display: flex;
-}
-.title-tile {
-  position: relative;
-  flex: none;
-}
-.title-tile-top {
-  position: absolute;
-  inset: 0;
+.title-street canvas {
+  display: block;
+  image-rendering: pixelated;
 }
 
 .title-footer {

@@ -2,12 +2,13 @@
 // Start, How to play, and Settings, over a little street drawn from the sprite atlas.
 
 import './title.css';
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { rules, SCORE_LABELS } from '../../rules/index.ts';
 import { audio } from '../audio/audio.ts';
+import { streetScale } from '../board/geometry.ts';
 import { formatNumber } from '../format.ts';
 import { howToPlayOpen, settingsOpen } from '../hud/actions.ts';
-import { CELL, spriteStyle, type SpriteId } from '../sprites.ts';
+import { atlasImage, CELL, spritePos, type SpriteId } from '../sprites.ts';
 import { canContinue, continueRun, newRun, run } from '../store.ts';
 
 /** What the save holds, for the Continue button: "Framing, week 10 · 1,240 Wow". */
@@ -92,7 +93,9 @@ function HouseSilhouette() {
 
 // ---------------------------------------------------------------------------------------
 // The street along the bottom: a strip of lawn with trees and a fence, the sidewalk, the
-// street, and the far sidewalk. Each tile is one CELL-sized sprite.
+// street, and the far sidewalk. Each tile is one CELL-sized sprite, drawn into one canvas as
+// the board's terrain is: at 125% or 150% display scaling a tile is a fractional number of CSS
+// px, and tiles as separate elements show hairline seams between them.
 
 function useViewport(): { w: number; h: number; dpr: number } {
   const read = () => ({
@@ -109,18 +112,6 @@ function useViewport(): { w: number; h: number; dpr: number } {
   return size;
 }
 
-/**
- * The street's scale (CSS px per art px): tiles of 64, 48, or 32 CSS px by the window's
- * height, as with the 16 px art, rounded to the nearest whole device pixels per art pixel
- * (D-095) so the pixels stay crisp, and down on a tie. So on a Retina screen the street is as
- * it was, and at a devicePixelRatio of 1 the 48 px size comes out at 32.
- */
-function streetScale(height: number, dpr: number): number {
-  const tile = height >= 1000 ? 64 : height >= 760 ? 48 : 32;
-  const k = Math.ceil(Math.round((tile / CELL) * dpr * 1e6) / 1e6 - 0.5);
-  return Math.max(1, k) / dpr;
-}
-
 const GRASS: readonly SpriteId[] = ['grass-0', 'grass-1', 'grass-2'];
 
 /** The lawn row's tile at column i: a fixed pattern, so the street looks the same every time. */
@@ -133,33 +124,55 @@ function lawnTile(i: number): { floor: SpriteId; top?: SpriteId } {
   return { floor };
 }
 
+/** The street's 4 rows of `cols` tiles, in art px: one CELL per tile. */
+function drawStreet(ctx: CanvasRenderingContext2D, img: HTMLImageElement, cols: number): void {
+  const put = (id: SpriteId, x: number, y: number) => {
+    const p = spritePos(id);
+    ctx.drawImage(img, p.x, p.y, p.w, p.h, x * CELL, y * CELL, p.w, p.h);
+  };
+  ctx.imageSmoothingEnabled = false;
+  for (let i = 0; i < cols; i++) {
+    const t = lawnTile(i);
+    put(t.floor, i, 0);
+    if (t.top) put(t.top, i, 0);
+    put('sidewalk', i, 1);
+    put('street', i, 2);
+    put('sidewalk', i, 3);
+  }
+}
+
 function Street() {
   const { w, h, dpr } = useViewport();
   const scale = streetScale(h, dpr);
   const px = CELL * scale;
   const cols = Math.ceil(w / px) + 1;
-  const tile = (id: SpriteId) => ({
-    width: `${px}px`,
-    height: `${px}px`,
-    ...spriteStyle(id, scale),
-  });
-  const row = (id: SpriteId) =>
-    Array.from({ length: cols }, (_, i) => <div key={i} class="title-tile" style={tile(id)} />);
+  const ref = useRef<HTMLCanvasElement>(null);
+  const [img, setImg] = useState<HTMLImageElement | null>(null);
+  useEffect(() => {
+    let live = true;
+    atlasImage()
+      .then((loaded) => {
+        if (live) setImg(loaded);
+      })
+      .catch((e) => console.error(e));
+    return () => {
+      live = false;
+    };
+  }, []);
+  // A new column count resizes the canvas, which clears it: redraw before the browser paints,
+  // so a window resize never shows an empty street.
+  useLayoutEffect(() => {
+    const ctx = ref.current?.getContext('2d');
+    if (img && ctx) drawStreet(ctx, img, cols);
+  }, [img, cols]);
   return (
     <div class="title-street" aria-hidden="true">
-      <div class="title-street-row">
-        {Array.from({ length: cols }, (_, i) => {
-          const t = lawnTile(i);
-          return (
-            <div key={i} class="title-tile" style={tile(t.floor)}>
-              {t.top && <div class="title-tile-top" style={tile(t.top)} />}
-            </div>
-          );
-        })}
-      </div>
-      <div class="title-street-row">{row('sidewalk')}</div>
-      <div class="title-street-row">{row('street')}</div>
-      <div class="title-street-row">{row('sidewalk')}</div>
+      <canvas
+        ref={ref}
+        width={cols * CELL}
+        height={4 * CELL}
+        style={{ width: `${cols * px}px`, height: `${4 * px}px` }}
+      />
     </div>
   );
 }

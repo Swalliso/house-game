@@ -32,7 +32,7 @@
     "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floors_16x16.png",
     "rect": [144, 208, 16, 16],
     "ops": [{ "op": "tile", "size": [32, 32] }],
-    "note": "The Library's own floor: red-brown planks laid like bricks (the audit's floor table: block 2, 5). The block's plain seamless tile, without the shadow baked into its left column, repeated to one 32 px cell. Nothing draws it until the house stage gives every room type its own floor."
+    "note": "The Library's floor: red-brown planks laid like bricks (the audit's floor table: block 2, 5). The block's plain seamless tile, without the shadow baked into its left column, repeated to one 32 px cell."
   },
   "floor-office": {
     "pack": "mi",
@@ -46,7 +46,7 @@
     "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floors_16x16.png",
     "rect": [144, 176, 16, 16],
     "ops": [{ "op": "tile", "size": [32, 32] }],
-    "note": "The Dining Room's floor (and the Library's until it gets floor-library): red-brown herringbone parquet (block 2, 4), its plain seamless tile repeated to one 32 px cell."
+    "note": "The Dining Room's floor: red-brown herringbone parquet (block 2, 4), its plain seamless tile repeated to one 32 px cell."
   },
   "floor-sunroom": {
     "pack": "mi",

@@ -1107,6 +1107,7 @@ After M3 and before M4 (D-095): the visual half of what makes these games feel g
   - the tiered celebration ladder (§12)
   - distinct moments for a set completing, a Rhythm payout, a find, opening a crate, and a Rare in the shop. A spec being met gets its moment in M4a, with the specs.
   - screen shake and particles, with Reduce motion, the Screen shake slider, and the Flashing toggle
+  - D-094 (chain reactions, Open) would change the tally's order and add steps to it. Raise it with the team before the juice stage reworks the tally.
 - **Playtest 5a:**
   - Does the house look like a house?
   - Can you read every piece at a glance?
@@ -1119,6 +1120,7 @@ After M3 and before M4 (D-095): the visual half of what makes these games feel g
 
 - Clients:
   - the spec checklist, live with progress ("Bedrooms 3/4")
+  - a moment for a spec being met, built from M5a's celebration pieces (§12)
   - tastes and pool weights
   - `targetPct`
   - rarity
@@ -1505,6 +1507,7 @@ Intensity is measured against **pace**: `max(1, (this phase's target − the sco
   - At 1280×720 the lot can't fit at 1×. The default there is 1× with panning, with UI panels overlaying the board's margins (Combolands' panels sit over the sea around its island).
   - The wheel steps one device pixel per art pixel at a time, up to 3×: 1×, 2×, and 3× at a devicePixelRatio of 1, and 0.5× to 3× by halves on a Retina screen.
   - The Fit button is the one exception to whole numbers: it shows the whole lot at the largest scale that fits (about 0.75× at 720p), with slightly uneven pixels.
+  - Not yet at 125% and 150% display scaling (a devicePixelRatio of 1.25 or 1.5): there 1× isn't whole device pixels, and the default is 1× with uneven pixels whenever the next whole step up doesn't fit, as in every window up to 1920×1080. The team picks the rule (D-095's note has the options).
   - The costs: finer pixels on a 1080p monitor (a Retina screen still shows each art pixel as 2×2 device pixels), and a smaller board on a 1440p screen at a devicePixelRatio of 1.
   - If we make an itch.io page, its embed is 1600×900 with fullscreen. 1280×720 stays the minimum (D-047).
 - **Rooms are a walls-down cutaway,** like The Sims, built in the UI from the placed pieces (D-095):
@@ -1527,7 +1530,7 @@ Intensity is measured against **pace**: `max(1, (this phase's target − the sco
   - pieces are absolutely positioned elements using a CSS-background atlas, placed at whole multiples of 32 × scale and rounded to device pixels
   - atlas sprites start at even positions and are extruded by 1px, so fractional screen scales show no seams
   - the pieces' score digits, their fixture and ⚠ badges (size and inset), and the placeholder walls are sized in sixteenths of a cell, so 1× shows them as 2× did with 16 px art, and they grow with the zoom
-  - the title screen's street keeps its old tile sizes (64, 48, or 32 CSS px by the window's height), rounded to whole device pixels per art pixel: on a Retina screen it's as it was, and at a devicePixelRatio of 1 the 48 px size comes out at 32
+  - the title screen's street is one canvas, like the terrain, so its tiles show no seams at 125% or 150% display scaling. It keeps its old tile sizes (64, 48, or 32 CSS px by the window's height), rounded to whole device pixels per art pixel (down on a tie) and never under 32 CSS px, so the footer stays on the far sidewalk. On a Retina screen it's as it was. At a devicePixelRatio of 1 the 48 px size comes out at 32; at 1.25 every size comes out at 51.2; at 1.5 the 48 and 32 px sizes come out at 42.7.
   - **zoom changes the scale and re-lays out the board in whole steps, never with `transform: scale()`**: Safari blurs canvases under a scaling transform (a WebKit bug open since 2018). Transforms are only for short juice tweens. This changes D-049's camera.
 - **The pipeline (D-095):**
   - `art/limezu/*.json` are the manifests: each LimeZu sprite we use, by its atlas id, with its pack (`mi` Modern Interiors or `me` Modern Exteriors), its path in the pack's zip, its rect, and any animation frames or edits (`tile`, `recolor`, `keyOut`, `flipX`, `compose`). One file per part of the game, so stages don't edit the same file.
@@ -1539,7 +1542,7 @@ Intensity is measured against **pace**: `max(1, (this phase's target − the sco
 
 | Option | What | License and cost | Fit |
 |---|---|---|---|
-| **A. LimeZu Modern Interiors + Modern Exteriors**, plus LimeZu Serene Village for terrain and water | One artist: modern suburban houses, furniture, and exteriors at 16px | Paid packs (about $1.50–$3 and $5): commercial use allowed, no redistribution, credit required. Serene Village: free, CC BY 4.0. | The most coherent. Keep the full packs out of the public repo and commit only the sprites we use; LimeZu has said that's fine for open-source projects. You'd buy them. |
+| **A. LimeZu Modern Interiors + Modern Exteriors**, plus LimeZu Serene Village for terrain and water | One artist: modern suburban houses, furniture, and exteriors at 16px | Paid packs (about $1.50–$3 and $5): commercial use allowed, no redistribution, credit required. Serene Village: free, CC BY 4.0. | The most coherent. Keep the full packs out of the public repo and commit only the sprites we use; LimeZu has said that's fine for open-source projects (no link recorded; D-095's license note). You'd buy them. |
 | **B. A free CC0 mix:** Kenney Tiny Town, Kenney Roguelike Indoors, Ninja Adventure | Exteriors, interiors, extras | CC0, free | The styles clash (outlined versus not), so it needs a palette remap and an outline pass at build time |
 | **C. Sprites Claude draws** | 16×16 palette-indexed grids, turned into the atlas at build time | Ours | Fine for terrain, floors, fences, and simple furniture; weak for complex objects. Quality has to be judged by eye. |
 

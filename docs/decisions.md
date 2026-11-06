@@ -535,6 +535,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - D-033 (Accepted): terrain in a canvas layer and pieces from a sprite atlas.
 
 **Amended by:** D-095 (Accepted 2026-11-06): a cell is 32 art px, a 2×2 block of LimeZu's 16 px tiles, and the default zoom is never below 1× (at 1080p, the same size on screen as 2× was). Rooms get several furniture sprites. The palette is LimeZu's, with the color limits only for the placeholders, and Serene Village isn't needed.
+**2026-11-06 (M5a review):** no link or quote is recorded for "LimeZu has said" in the Sources bullet, and the two packs' licenses differ on open source. See D-095's license note.
 
 ### D-058 · Sound: calm music, rewards that escalate
 **Status:** Accepted · 2026-11-05: the direction at the team's request, and the details below with the plan's approval.
@@ -776,6 +777,20 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - D-068 and D-073: the default zoom's floor, and the zoom steps.
 - D-053 and §7: the phase order.
 - §12 Art: the wall widths and the terrain canvas size.
+
+**2026-11-06 (M5a review), the licenses, to settle before this work is pushed:** the two packs' licenses differ on open source.
+- Modern Exteriors' (`Modern_Exteriors_License.pdf` in its zip) allows using the asset in open-source projects, GitHub included. The 4 grass cuts come from it.
+- Modern Interiors' (`LICENSE.txt` in its zip, and its itch.io page) doesn't mention open source, and forbids distributing the asset to others. The 10 floor cuts come from it.
+- So those floors rest on D-057's "LimeZu has said that's fine for open-source projects", which has no recorded link or quote.
+- *To decide:* link LimeZu's statement in `research.md` and D-057, or get LimeZu's OK in writing. Until then, the Modern Interiors cuts could stay out of the repo, with the placeholder floors in their place.
+
+**2026-11-06 (M5a review), the default zoom at 125% and 150%, for the team:** at a devicePixelRatio between 1 and 2 (Windows' 125% and 150% display scaling), 1× isn't a whole number of device pixels per art pixel. The whole steps on either side are 1/dpr and 2/dpr: 0.8× and 1.6× at 1.25, 0.67× and 1.33× at 1.5.
+- When 2/dpr doesn't fit, the default is 1× (`fitScale`), with uneven pixels (1.25 or 1.5 device px per art px). That's every window from 1280×720 to 1920×1080 CSS px. 1× isn't one of the wheel's steps, and Fit goes back to the zoom from before it, so after the first zoom step nothing returns to the default until a reload.
+- So "in whole device pixels" and "Fit stays the one fractional scale" don't hold at these ratios yet. On develop, the 16 px art's default was crisp at 150% (2×: 3 device px per art px), and at 125% only in large windows (2.4×).
+- *Options:*
+  1. The smallest whole step from 1× up (1.6× or 1.33×). It's crisp and fits this decision's wording, but cells are 51 or 43 CSS px, so the board pans more: at 125%, a 1920×1080 window no longer fits the lot.
+  2. The visual audit's rule: whole steps, and uneven pixels only where cells would drop below about 24 CSS px. That gives a crisp 0.8× at 125% (25.6 CSS px cells, the whole lot fits) and keeps the uneven 1× at 150%. It goes below this decision's 1× floor.
+  3. Keep 1× (the board the same size on screen as before), list the uneven pixels as a cost here and in §12, and make 1× a wheel step at these ratios.
 
 ---
 
@@ -1196,6 +1211,8 @@ New content is preferred over raising existing numbers.
 - §4's scoring pipeline, API (`PieceScore`, `Preview.lines`, the `tally` event, Crown Jewel's step) and Performance; §5's effect and modifier kinds; §8's reports; §9's property tests; §12's tally; Appendix A (`maxActivations`, the ×Mult goods); and Appendix B (the new items).
 - D-053, §7, and jam-scope.md's build order, if chains get a phase of their own.
 - Check against D-093 (chain items shouldn't reward repeating a room type) and D-090 (under these rules, a fixture that pays budget each time its host fires would pay once a week).
+
+**2026-11-06 (D-095):** M5 is now split, and M5a, with the visual juice and its tally work, comes before M4. So the Recommendation's "M5" is M5a: option 1 would land in M5a's juice stage. Options 2 and 3 can no longer land in M4 and still have the juice built around them: they would either come before M5a's juice stage, or add their "Again!" steps and arcs to the tally when they land in M4.
 
 ### Earlier open questions
 

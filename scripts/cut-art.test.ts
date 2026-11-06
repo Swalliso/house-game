@@ -524,8 +524,9 @@ describe('npm run art:cut, on packs made in the test', () => {
     expect(cut().written).toEqual([]);
   });
 
-  it('removes cuts no manifest lists, with their records', () => {
+  it('removes cuts no manifest lists, with their records, and leaves other files alone', () => {
     writeFileSync(join(assets, 'limezu', 'old-cut.png'), encodePng(1, 1, new Uint8Array(4)));
+    writeFileSync(join(assets, 'limezu', 'notes.txt'), 'not a cut\n');
     writeManifests({
       'floors.json': interiors,
       'terrain.json': { 'water-test': exteriors['water-test'] },
@@ -536,9 +537,11 @@ describe('npm run art:cut, on packs made in the test', () => {
     expect(readdirSync(join(assets, 'limezu')).sort()).toEqual([
       'floor-test.png',
       'index.json',
+      'notes.txt',
       'water-test.png',
     ]);
     expect(Object.keys(licenses())).not.toContain('limezu/grass-test.png');
+    rmSync(join(assets, 'limezu', 'notes.txt'));
   });
 
   it('changes nothing when an entry fails', () => {
@@ -606,9 +609,13 @@ describe('the committed LimeZu cuts', () => {
   it('has nothing in assets/limezu/ that no manifest lists', () => {
     for (const name of files) {
       if (name === 'index.json') continue;
-      const id = name.endsWith('.png') ? name.slice(0, -'.png'.length) : null;
+      // art:cut removes only .png cuts, so anything else has to go by hand.
       expect(
-        id !== null && manifests.has(id),
+        name.endsWith('.png'),
+        `assets/limezu/${name} isn't a cut: only <id>.png files and index.json belong there, so delete it`,
+      ).toBe(true);
+      expect(
+        manifests.has(name.slice(0, -'.png'.length)),
         `assets/limezu/${name} isn't in any art/limezu/*.json: list it, or run \`npm run art:cut\` to remove it`,
       ).toBe(true);
     }
