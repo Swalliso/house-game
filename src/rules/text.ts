@@ -510,7 +510,10 @@ export type Term =
   | 'refresh'
   | 'skipReward'
   | 'services'
-  | 'strike';
+  | 'strike'
+  | 'tools'
+  | 'crates'
+  | 'upgrades';
 
 export function glossary(content: Content): Record<Term, { title: string; text: string }> {
   const b = content.balance;
@@ -591,6 +594,18 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
     services: {
       title: 'Services',
       text: `Rerolls and demolitions to keep: ${svc.reroll.base} budget each at first, ${svc.reroll.step} more each time you buy one, for the rest of the run (up to ${svc.reroll.max}). Bought rerolls never run out.`,
+    },
+    tools: {
+      title: 'Tools',
+      text: 'One-shot tricks that wait in your supplies. Using one is free: it doesn’t use your week.',
+    },
+    crates: {
+      title: 'Crates',
+      text: `Open one and keep 1 of ${b.shop.crateOptions} goods inside. You need room for its kind of good.`,
+    },
+    upgrades: {
+      title: 'Company upgrades',
+      text: 'Permanent for the run: more slots, a bigger hand, more rerolls, lower prices, or interest on your savings. One a visit.',
     },
     strike: {
       title: 'Strike a card',

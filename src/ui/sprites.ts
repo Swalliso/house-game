@@ -4,7 +4,7 @@
 
 import atlasUrl from '../../assets/atlas.png';
 import atlas from '../../assets/atlas.json';
-import type { FixtureId, PieceId } from '../rules/index.ts';
+import type { FixtureId, PieceId, Supply, ToolId } from '../rules/index.ts';
 
 export type SpriteId = keyof typeof atlas.sprites;
 export const TILE = 16;
@@ -65,6 +65,25 @@ export const FIXTURE_GLYPHS: Record<FixtureId, string> = {
   gardenLights: '\u2726', // ✦
   chandelier: '\u2748', // ❈
 };
+
+/** A text glyph per tool, for its supply slot and its shop card. */
+export const TOOL_GLYPHS: Record<ToolId, string> = {
+  movingTruck: '\u21C4', // ⇄
+  copyMachine: '\u2398', // ⎘
+  rushOrder: '\u23F1\uFE0E', // ⏱
+  openHouseParty: '\u266A\uFE0E', // ♪
+  catalog: '\u2630', // ☰
+  fertilizer: '\u2618\uFE0E', // ☘
+  inspectorsVisit: '\u2611\uFE0E', // ☑
+  dumpster: '\u2672', // ♲
+  remodelJackAndJill: '\u2191', // ↑
+  remodelEntertainer: '\u2191', // ↑
+  weekendCrew: '\u2692\uFE0E', // ⚒
+};
+
+export function supplyGlyph(s: Supply): string {
+  return s.kind === 'fixture' ? FIXTURE_GLYPHS[s.id] : TOOL_GLYPHS[s.id];
+}
 
 export function spritePos(id: SpriteId): { x: number; y: number } {
   return atlas.sprites[id];

@@ -27,6 +27,9 @@ import {
   type RunSetup,
   type RunState,
   type SellAction,
+  type ToolId,
+  type ToolPreview,
+  type UseToolAction,
 } from '../rules/index.ts';
 import { BUILD_CHANNEL, BUILD_SHA } from './build-info.ts';
 import { occupancy, uidAt } from './board/geometry.ts';
@@ -82,6 +85,10 @@ export const hoverCell = signal<Cell | null>(null);
 export const tentative = signal<PlaceAction | InstallAction | null>(null);
 /** A supply install's first click: a second click on the same piece installs it (D-073). */
 export const installArmed = signal<number | null>(null);
+/** The Moving Truck: the piece picked up to move, by uid. */
+export const movingUid = signal<number | null>(null);
+/** A tool's first click on the lot (a Copy Machine target, a Moving Truck spot): a second confirms. */
+export const toolArmed = signal<UseToolAction | null>(null);
 /** What the inspect panel shows when nothing is being placed. */
 export const inspected = signal<Inspected | null>(null);
 
@@ -93,12 +100,14 @@ export type Inspected =
   | { kind: 'reserve'; i: number }
   | { kind: 'supply'; i: number }
   | { kind: 'blueprint'; i: number }
+  | { kind: 'upgrade'; i: number }
   | { kind: 'offer'; i: number };
 
 /** What's selected: a piece to place or a fixture to install, and where it's from. */
 export const selection = computed<
   | { kind: 'piece'; id: PieceId; from: 'hand' | 'reserve'; i: number }
   | { kind: 'fixture'; id: FixtureId; from: 'hand' | 'supplies'; i: number }
+  | { kind: 'tool'; id: ToolId; from: 'supplies'; i: number }
   | null
 >(() => {
   const i = selected.value;
@@ -110,7 +119,10 @@ export const selection = computed<
   }
   if (source.value === 'supplies') {
     const sup = s.supplies[i];
-    return sup?.kind === 'fixture' ? { kind: 'fixture', id: sup.id, from: 'supplies', i } : null;
+    if (!sup) return null;
+    return sup.kind === 'fixture'
+      ? { kind: 'fixture', id: sup.id, from: 'supplies', i }
+      : { kind: 'tool', id: sup.id, from: 'supplies', i };
   }
   const card = s.hand[i];
   if (!card) return null;
@@ -129,7 +141,7 @@ export const activePlay = computed<PlaceAction | InstallAction | null>(() => {
   if (tentative.value) return tentative.value;
   const sel = selection.value;
   const cell = hoverCell.value;
-  if (!sel || !cell) return null;
+  if (!sel || !cell || sel.kind === 'tool') return null;
   if (sel.kind === 'fixture') {
     const uid = installArmed.value ?? pieceAt(run.value, cell);
     return { t: 'install', from: sel.from, i: sel.i, uid };
@@ -178,6 +190,45 @@ export const currentTally = computed(() => rules.currentTally(run.value));
 /** The phase's pace (§12), the yardstick for the glow and the big-week tier. */
 export const pace = computed(() => rules.pace(run.value));
 
+/**
+ * The tool use under the cursor: the selected tool, with the piece under the pointer for the
+ * Copy Machine, or the picked-up piece at the pointer's spot for the Moving Truck.
+ */
+export const toolAction = computed<UseToolAction | null>(() => {
+  const sel = selection.value;
+  if (!sel || sel.kind !== 'tool') return null;
+  if (toolArmed.value) return toolArmed.value;
+  const use = CONTENT.tools[sel.id].use.kind;
+  const cell = hoverCell.value;
+  if (use === 'copy')
+    return cell ? { t: 'useTool', i: sel.i, target: { uid: pieceAt(run.value, cell) } } : null;
+  if (use === 'move') {
+    const uid = movingUid.value;
+    if (uid === null || !cell) return null;
+    const piece = run.value.house.pieces.find((p) => p.uid === uid);
+    if (!piece) return null;
+    const cells = shapeCells(CONTENT.pieces[piece.defId].shape, rotation.value);
+    const w = Math.max(...cells.map((c) => c.x)) + 1;
+    const h = Math.max(...cells.map((c) => c.y)) + 1;
+    return {
+      t: 'useTool',
+      i: sel.i,
+      target: {
+        uid,
+        x: cell.x - Math.floor((w - 1) / 2),
+        y: cell.y - Math.floor((h - 1) / 2),
+        rot: rotation.value,
+      },
+    };
+  }
+  return { t: 'useTool', i: sel.i };
+});
+
+export const toolPreview = computed<ToolPreview | null>(() => {
+  const a = toolAction.value;
+  return a && run.value.screen === 'build' ? rules.previewTool(run.value, a) : null;
+});
+
 /** Which cards have somewhere to go, for greying out the rest. */
 export const cardsFit = computed(() => run.value.hand.map((_, i) => rules.cardFits(run.value, i)));
 /** The same for reserve pieces and supplies. */
@@ -185,7 +236,12 @@ export const reserveFit = computed(() =>
   run.value.reserve.map((_, i) => rules.reserveFits(run.value, i)),
 );
 export const suppliesFit = computed(() =>
-  run.value.supplies.map((_, i) => rules.installHosts(run.value, 'supplies', i).length > 0),
+  run.value.supplies.map((sup, i) =>
+    sup.kind === 'fixture'
+      ? rules.installHosts(run.value, 'supplies', i).length > 0
+      : rules.canUseTool(run.value, { t: 'useTool', i }).ok ||
+        ['copy', 'move'].includes(CONTENT.tools[sup.id].use.kind),
+  ),
 );
 
 // ---------------------------------------------------------------------------------------
@@ -266,6 +322,8 @@ function resetWeek(): void {
   source.value = 'hand';
   tentative.value = null;
   installArmed.value = null;
+  movingUid.value = null;
+  toolArmed.value = null;
   rotation.value = 0;
   demolishArmed.value = null;
   tool.value = 'build';
@@ -277,6 +335,8 @@ export function selectItem(from: Source, i: number): void {
   batch(() => {
     tentative.value = null;
     installArmed.value = null;
+    movingUid.value = null;
+    toolArmed.value = null;
     source.value = from;
     selected.value = same ? null : i;
   });
@@ -373,6 +433,7 @@ export function dispatch(action: Action, opts: { keepWeek?: boolean } = {}): boo
         action.t === 'reroll' ||
         action.t === 'debug' ||
         action.t === 'sell' ||
+        action.t === 'useTool' ||
         (action.t === 'install' && action.from === 'supplies');
       if (changed) {
         selected.value = null;
@@ -382,6 +443,8 @@ export function dispatch(action: Action, opts: { keepWeek?: boolean } = {}): boo
         tentative.value = null;
       }
       installArmed.value = null;
+      movingUid.value = null;
+      toolArmed.value = null;
       demolishArmed.value = null;
     } else {
       resetWeek();
@@ -423,6 +486,16 @@ export function sell(from: SellAction['from'], i: number): boolean {
   const ok = dispatch({ t: 'sell', from, i }, { keepWeek: true });
   if (ok && inspected.value && inspected.value.kind !== 'piece') inspected.value = null;
   return ok;
+}
+
+/** Uses a supply tool: a free action, so the week goes on. */
+export function useToolNow(action: UseToolAction): boolean {
+  return dispatch(action, { keepWeek: true });
+}
+
+/** Keeps an option from the open crate, or (−1) sets the crate aside. */
+export function pickOption(i: number): boolean {
+  return dispatch({ t: 'pick', i });
 }
 
 // The shop (D-051).

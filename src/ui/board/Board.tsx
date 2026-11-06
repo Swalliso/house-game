@@ -17,6 +17,7 @@ import {
   type Cell,
   type DemolishPreview,
   type SourceRef,
+  type UseToolAction,
 } from '../../rules/index.ts';
 import { audio } from '../audio/audio.ts';
 import {
@@ -41,6 +42,7 @@ import {
   inspected,
   installArmed,
   installSupply,
+  movingUid,
   preview,
   rotation,
   run,
@@ -48,6 +50,10 @@ import {
   selection,
   tentative,
   tool,
+  toolAction,
+  toolArmed,
+  toolPreview,
+  useToolNow,
   type Inspected,
 } from '../store.ts';
 import { TILE } from '../sprites.ts';
@@ -75,8 +81,16 @@ const PAD = 6;
 
 /** Rotates the card being placed; a tentative placement turns where it is. */
 export function rotate(): void {
-  // A fixture has no shape to turn.
-  if (selection.value?.kind === 'fixture') return;
+  const sel = selection.value;
+  // A fixture has no shape to turn; a tool only turns the piece the Moving Truck carries.
+  if (sel?.kind === 'fixture') return;
+  if (sel?.kind === 'tool') {
+    if (movingUid.value === null) return;
+    rotation.value = ((rotation.value + 1) % 4) as 0 | 1 | 2 | 3;
+    toolArmed.value = null;
+    audio.play('rotate');
+    return;
+  }
   const r = ((rotation.value + 1) % 4) as 0 | 1 | 2 | 3;
   rotation.value = r;
   const pending = tentative.value;
@@ -126,6 +140,48 @@ const sameCell = (a: Cell | null | undefined, b: Cell | null | undefined): boole
   !!a && !!b && a.x === b.x && a.y === b.y;
 const hasCell = (cells: readonly Cell[], c: Cell): boolean =>
   cells.some((q) => q.x === c.x && q.y === c.y);
+
+const sameAction = (a: UseToolAction | null, b: UseToolAction | null): boolean =>
+  !!a && !!b && JSON.stringify(a) === JSON.stringify(b);
+
+/**
+ * A tool's click on the lot. The Copy Machine: click a piece twice. The Moving Truck: click a
+ * piece to pick it up, then a spot twice (R turns it). Other tools are used from their panel.
+ */
+function toolClick(c: Cell | 'street' | null, occUid: number): void {
+  const sel = selection.value;
+  if (!sel || sel.kind !== 'tool') return;
+  const use = CONTENT.tools[sel.id].use.kind;
+  if (use === 'move' && movingUid.value === null) {
+    const piece = occUid ? run.value.house.pieces.find((p) => p.uid === occUid) : undefined;
+    if (!piece) {
+      audio.play('illegal');
+      return;
+    }
+    movingUid.value = piece.uid;
+    rotation.value = piece.rot;
+    audio.play('select', { rate: 0.8 });
+    return;
+  }
+  if (use !== 'move' && use !== 'copy') return;
+  if (!c || c === 'street') return;
+  // The target under the pointer now, not the armed one: a click elsewhere re-arms there.
+  const armed = toolArmed.value;
+  toolArmed.value = null;
+  const action = toolAction.value;
+  const p = toolPreview.value;
+  if (!action || !p?.ok) {
+    audio.play('illegal');
+    return;
+  }
+  if (sameAction(armed, action)) {
+    if (useToolNow(action)) audio.play(use === 'move' ? 'place-room' : 'stamp');
+    else audio.play('illegal');
+    return;
+  }
+  toolArmed.value = action;
+  audio.play('select', { rate: 0.8 });
+}
 
 /** An empty tile clicked in demolish mode: it says why until the pointer moves on. */
 const demolishNote = signal<Cell | null>(null);
@@ -440,6 +496,10 @@ export function Board() {
       demolishClick(c);
       return;
     }
+    if (selection.value?.kind === 'tool') {
+      toolClick(c, c && c !== 'street' ? uidAt(occ, c.x, c.y) : 0);
+      return;
+    }
     if (selected.value !== null) {
       tentative.value = null;
       // A click on another piece re-arms a supply install there.
@@ -469,6 +529,7 @@ export function Board() {
     };
   })();
   const installing = !demolishing && activePlay.value?.t === 'install';
+  const tooling = !demolishing && selection.value?.kind === 'tool';
 
   const boardClass = [
     'board',
@@ -531,6 +592,7 @@ export function Board() {
           {demolishing && <DemolishTarget scale={scale} />}
           {ghostCells && <Ghost defId={ghostCells.defId} cells={ghostCells.cells} scale={scale} />}
           {installing && <InstallTarget scale={scale} />}
+          {tooling && <ToolTarget scale={scale} />}
           {p?.legal && <Badges scale={scale} />}
           <PopupLayer scale={scale} />
         </div>
@@ -651,6 +713,97 @@ function InstallTarget({ scale }: { scale: number }) {
         class={`install-target ${p.legal ? 'legal' : 'illegal'} ${armed || pending ? 'armed' : ''}`}
       />
       {label}
+    </>
+  );
+}
+
+/**
+ * The Copy Machine's and the Moving Truck's targets: the piece under the pointer outlined, or
+ * the carried piece's ghost at its new spot, with what it would do to the week's Wow.
+ */
+function ToolTarget({ scale }: { scale: number }) {
+  const sel = selection.value;
+  const state = run.value;
+  const { lot } = state.house;
+  const hover = hoverCell.value;
+  if (!sel || sel.kind !== 'tool' || !hover) return null;
+  const use = CONTENT.tools[sel.id].use.kind;
+  if (use !== 'move' && use !== 'copy') return null;
+  const px = TILE * scale;
+  const occ = occupancy(state.house);
+  const p = toolPreview.value;
+  const action = toolAction.value;
+  const armed = !!toolArmed.value;
+  const label = (cells: readonly Cell[], text: string, tone: string) => {
+    const spot = labelSpot(cells, lot.width);
+    return (
+      <div
+        class={`ghost-delta install-label ${tone} ${spot.below ? 'below' : ''}`}
+        style={{ left: `${spot.x * px}px`, top: `${spot.y * px}px` }}
+      >
+        {text}
+      </div>
+    );
+  };
+  const wow = (d: number) =>
+    d > 0
+      ? `▲ +${formatNumber(d)} ${SCORE_LABELS.total}`
+      : d < 0
+        ? `▼ −${formatNumber(-d)} ${SCORE_LABELS.total}`
+        : `±0 ${SCORE_LABELS.total}`;
+  if (use === 'copy' || movingUid.value === null) {
+    const uid = action?.target?.uid ?? uidAt(occ, hover.x, hover.y);
+    const cells = uid ? (occ.cells.get(uid) ?? [hover]) : [hover];
+    const piece = uid ? state.house.pieces.find((q) => q.uid === uid) : undefined;
+    const name = piece ? CONTENT.pieces[piece.defId].name : '';
+    const ok = use === 'copy' ? !!p?.ok : !!piece;
+    const text =
+      use === 'copy'
+        ? ok
+          ? `Copy the ${name} into your reserve · ${armed ? 'click again' : 'click twice'}`
+          : (p?.reason ?? 'Pick a piece to copy.')
+        : piece
+          ? `Pick up the ${name}`
+          : 'Pick a piece to move';
+    return (
+      <>
+        <Outline
+          cells={cells}
+          scale={scale}
+          lot={lot}
+          class={`install-target ${ok ? 'legal' : 'illegal'} ${armed ? 'armed' : ''}`}
+        />
+        {label(cells, text, ok ? 'good' : 'bad')}
+      </>
+    );
+  }
+  // Carrying a piece: its ghost at the pointer.
+  const piece = state.house.pieces.find((q) => q.uid === movingUid.value);
+  const t = action?.target;
+  if (!piece || !t || t.x === undefined || t.y === undefined) return null;
+  const cells = placedCells(CONTENT.pieces[piece.defId].shape, t.x, t.y, t.rot ?? 0);
+  const ok = !!p?.ok;
+  return (
+    <>
+      <Outline
+        cells={occ.cells.get(piece.uid) ?? []}
+        scale={scale}
+        lot={lot}
+        class="demolish-hint"
+      />
+      <PieceShape
+        defId={piece.defId}
+        cells={cells}
+        scale={scale}
+        class={`ghost ${ok ? 'legal' : 'illegal'} ${armed ? 'pending' : ''}`}
+      />
+      {label(
+        cells,
+        ok
+          ? `Move here: ${wow(p!.delta)} · ${armed ? 'click again' : 'click twice'}`
+          : `✕ ${p?.reason ?? 'It can’t go there.'}`,
+        ok ? (p!.delta > 0 ? 'good' : p!.delta < 0 ? 'bad' : '') : 'bad',
+      )}
     </>
   );
 }

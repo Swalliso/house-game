@@ -235,3 +235,26 @@
 .reduce-motion .sparkles li {
   animation: none;
 }
+
+.set-level {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 700;
+}
+.inventory .free-play {
+  margin: 6px 0 0;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: #e8f0fd;
+  color: #1f4f9a;
+  font-size: 12px;
+  font-weight: 700;
+}
+.inventory .slot.slot-upgrade {
+  border-color: var(--wood);
+  background: #f6ead6;
+  cursor: help;
+}
+.use-tool {
+  display: block;
+}
