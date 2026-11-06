@@ -17,9 +17,11 @@ Open House is a game jam entry for the theme "It's a house," built with Claude C
 - **Placeholder sprites** (`art/*.txt`, packed into `assets/atlas.png`): drawn for Open House
   by Claude Code. Our own work. LimeZu cuts replace them one by one in M5a (D-097): so far the
   floors and the grass.
-- **The interface's frames and icons** (`src/ui/theme/frames.ts`, `src/ui/theme/icons.ts`):
-  drawn for Open House by Claude Code as text grids in LimeZu's palette, and turned into
-  images in the browser at startup. Our own work.
+- **The interface's frames, icons and the title's sky** (`src/ui/theme/frames.ts`,
+  `src/ui/theme/icons.ts`, `src/ui/theme/scenery.ts`): drawn for Open House by Claude Code as
+  text grids in LimeZu's palette, and turned into images in the browser at startup. Our own
+  work. The title screen's houses, trees, planters and car are Modern Exteriors cuts
+  (`art/limezu/ui.json`).
 - **Placeholder sound effects:** generated in the browser with
   [ZzFX](https://github.com/KilledByAPixel/ZzFX) by Frank Force (MIT). Its sample builder is
   vendored in `src/ui/audio/zzfx.ts` with its license notice.

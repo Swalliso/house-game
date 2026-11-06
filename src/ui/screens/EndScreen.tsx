@@ -51,8 +51,8 @@ function Milestones({ s }: { s: RunState }) {
   const met = s.milestones.filter((m) => m.result !== 'failed').length;
   return (
     <section class="run-end-section">
-      <h3 class="plank-tag">
-        Milestones · {met} of {phases.length}
+      <h3 class="plank-tag" aria-label={`Milestones: ${met} of ${phases.length}`}>
+        Milestones · {met}/{phases.length}
       </h3>
       <ol class="run-end-milestones">
         {phases.map((p, i) => {
@@ -67,7 +67,7 @@ function Milestones({ s }: { s: RunState }) {
                   {p.name}
                   <span class="run-end-sr"> (not reached)</span>
                 </span>
-                <span class="of">of {formatNumber(target)}</span>
+                <span class="figures">of {formatNumber(target)}</span>
               </li>
             );
           }
@@ -76,9 +76,12 @@ function Milestones({ s }: { s: RunState }) {
             <li key={i} class={`${failed ? 'failed' : 'met'} ${m.result}`}>
               <Icon name={failed ? 'cross' : 'check'} class="mark" />
               <span class="name">{p.name}</span>
-              <span class="score num">{formatNumber(m.score)}</span>
-              <span class="tag">{resultTag(m)}</span>
-              <span class="of">of {formatNumber(m.target)}</span>
+              <span class="detail">
+                <span class="tag">{resultTag(m)}</span>
+                <span class="figures">
+                  <span class="score num">{formatNumber(m.score)}</span> of {formatNumber(m.target)}
+                </span>
+              </span>
             </li>
           );
         })}

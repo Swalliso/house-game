@@ -110,6 +110,11 @@
 .inv-sell {
   flex: none;
 }
+/* In the shop, Sell is compact, so the goods' names have room beside it. */
+.inv-sell.btn {
+  padding-inline: var(--space-1);
+  font-weight: 400;
+}
 /* A short window (1280×720): an empty row is just its count, so the hand starts higher. */
 @media (max-height: 800px) {
   .inv-row.is-empty .inv-slots {

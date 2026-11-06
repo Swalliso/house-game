@@ -107,25 +107,38 @@
   column-gap: var(--space-2);
   align-items: baseline;
 }
+/* Its name on the first line; how it went and its Wow against the target on the second. */
 .run-end-milestones .mark {
   grid-column: 1;
   grid-row: 1;
   align-self: center;
 }
 .run-end-milestones .name {
-  grid-column: 2;
+  grid-column: 2 / -1;
   grid-row: 1;
   font-weight: 700;
 }
-.run-end-milestones .score {
-  grid-column: 3;
-  grid-row: 1;
-  text-align: right;
+/* How it went, then its Wow against the target, which drops to a line of its own when the
+   column is too narrow for both. */
+.run-end-milestones .detail {
+  grid-column: 2 / -1;
+  grid-row: 2;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  column-gap: var(--space-2);
 }
 .run-end-milestones .tag {
-  grid-column: 2;
-  grid-row: 2;
   color: var(--ink-soft);
+}
+.run-end-milestones .figures {
+  margin-left: auto;
+  color: var(--ink-soft);
+  text-align: right;
+  white-space: nowrap;
+}
+.run-end-milestones .score {
+  color: var(--ink);
 }
 .run-end-milestones .early .tag {
   color: var(--sparkle-text);
@@ -135,21 +148,16 @@
   color: var(--bad);
   font-weight: 700;
 }
-.run-end-milestones .of {
-  grid-column: 3;
-  grid-row: 2;
-  color: var(--ink-soft);
-  text-align: right;
-  white-space: nowrap;
-}
 /* Not reached: greyed, on one line. */
 .run-end-milestones .todo {
   color: var(--ink-soft);
 }
 .run-end-milestones .todo .name {
+  grid-column: 2;
   font-weight: 400;
 }
-.run-end-milestones .todo .of {
+.run-end-milestones .todo .figures {
+  grid-column: 3;
   grid-row: 1;
 }
 
@@ -203,6 +211,9 @@
   .run-end-actions {
     margin: 0 calc(var(--space-2) * -1);
     padding: var(--space-2);
+  }
+  .run-end-actions .btn .icon {
+    display: none;
   }
 }
 

@@ -191,7 +191,8 @@
 }
 .title-name {
   margin: 0;
-  font-family: var(--font-display);
+  /* The wordmark is the logo: Public Pixel even with the readable font, at 48 px and up. */
+  font-family: 'OH Display', var(--font-system);
   font-size: var(--fs-banner);
   font-weight: 400;
   line-height: 1;
@@ -232,8 +233,9 @@
 .title-main.btn,
 .title-new.btn {
   min-width: calc(var(--px) * 150);
+  padding-block: var(--space-1) calc(var(--space-1) + var(--px));
   font-size: var(--fs-title);
-  line-height: var(--lh-body);
+  line-height: calc(var(--px) * 13);
 }
 .title-main-text {
   display: flex;
@@ -243,7 +245,7 @@
 .title-detail {
   font-size: var(--fs-body);
   font-weight: 400;
-  line-height: var(--lh-tight);
+  line-height: var(--lh-body);
 }
 .title-screen .rider-pair .btn {
   min-width: calc(var(--px) * 72);

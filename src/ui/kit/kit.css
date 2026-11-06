@@ -832,6 +832,13 @@
 .sheet-scroll:focus {
   outline: none;
 }
+/* A short window: tighter sheets, so more of each shows without scrolling. */
+@media (max-height: 800px) {
+  .sheet-scroll {
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+  }
+}
 .sheet-footer {
   flex: none;
   display: flex;
