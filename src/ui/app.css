@@ -146,6 +146,8 @@ button:focus-visible,
   grid-row: 2;
   overflow: auto;
   padding: 10px;
+  /* A focused card scrolls clear of the sticky End week (.hand-actions, about 70px tall). */
+  scroll-padding-bottom: 76px;
 }
 .hints {
   grid-column: 1 / -1;
@@ -306,8 +308,10 @@ h3 {
   filter: brightness(1.18) drop-shadow(0 0 4px #fff8d0);
   z-index: 2;
 }
+/* A held set's pieces during its beat in the tally: Charm's rose, like the placement preview's
+   sets and the set's name. Sparkle's gold is for ×Mult only (D-019). */
 .piece.lit {
-  filter: drop-shadow(0 0 3px var(--sparkle)) drop-shadow(0 0 6px #f6d58a);
+  filter: drop-shadow(0 0 3px var(--charm)) drop-shadow(0 0 6px #f2a9bd);
   z-index: 2;
 }
 .piece.set-preview {
@@ -884,12 +888,13 @@ h3 {
 .mini-cell.lawn {
   background: #6fb35a;
 }
-/* Rotate and End week: on a short window (1280×720, D-047) the column scrolls, so the row
-   sticks to its bottom and stays in view, like the end screen's buttons (end.css). */
+/* End week: on a short window (1280×720, D-047) the column scrolls, so End week sticks to its
+   bottom and stays in view, like the end screen's buttons (end.css). Only End week, so it
+   covers as little of the cards as it can; .right's scroll-padding-bottom keeps a focused
+   card clear of it. */
 .hand-actions {
   display: flex;
   flex-direction: column;
-  gap: 10px;
   position: sticky;
   bottom: -12px;
   margin: 0 -14px -12px;

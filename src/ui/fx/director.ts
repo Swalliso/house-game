@@ -104,6 +104,12 @@ let closing = false;
 let chain: Promise<void> = Promise.resolve();
 /** Bumped when the run is replaced, so a tally still playing for the old run goes quiet. */
 let generation = 0;
+/**
+ * Animated actions sent but not yet playing. The newest one's starting state is on show from
+ * the moment it's sent (onEvents), so a play with one waiting behind it hurries and leaves the
+ * top bar alone.
+ */
+let waiting = 0;
 
 export function skip(): void {
   if (busy.value) skipping = true;
@@ -122,16 +128,22 @@ function effectiveSpeed(): number {
   return tallySpeed({ chosen: settings.value.tallySpeed, accelerator, holding, closing });
 }
 
+/** Real time, fast-forwarded by holding: for a banner, which stays up in real time. */
+function realSpeed(): number {
+  return holding ? FEEL.tally.holdSpeed : 1;
+}
+
 /**
  * Waits `ms` of tally time, sped up by the speed setting, the accelerator (except in the
  * closing beats), and holding. Time is real elapsed time, so a slow or throttled frame rate
  * doesn't slow the tally down. `onProgress` gets the fraction done on each frame, for tweens;
- * `until` ends the wait early once it's true.
+ * `until` ends the wait early once it's true; `speed` replaces the tally's speed.
  */
 function wait(
   ms: number,
   onProgress?: (fraction: number) => void,
   until?: () => boolean,
+  speed: () => number = effectiveSpeed,
 ): Promise<void> {
   if (instantTally.value) skipping = true;
   if (skipping || ms <= 0) {
@@ -148,7 +160,7 @@ function wait(
       if (!closing) {
         accelerator += (FEEL.tally.accelPerSecond * settings.value.tallySpeed * dt) / 1000;
       }
-      remaining -= dt * effectiveSpeed();
+      remaining -= dt * speed();
       const done = remaining <= 0 || skipping || !!until?.();
       onProgress?.(done ? 1 : 1 - remaining / ms);
       if (done) resolve();
@@ -219,12 +231,69 @@ function weekShown(base: RunState, e: Extract<GameEvent, { t: 'tally' }>): RunSt
   };
 }
 
+/**
+ * The top bar's run and score, as a play sets them: not while a newer action waits behind it,
+ * since that one's starting state is on show already (onEvents).
+ */
+function setShownRun(state: RunState | null): void {
+  if (waiting === 0) shownRun.value = state;
+}
+function setShownScore(score: number | null): void {
+  if (waiting === 0) shownScore.value = score;
+}
+
+/** Whether an action's events have beats to play. Free actions with little to animate don't. */
+function animates(events: readonly GameEvent[]): boolean {
+  return events.some(
+    (e) =>
+      e.t === 'tally' ||
+      e.t === 'placed' ||
+      e.t === 'demolished' ||
+      e.t === 'installed' ||
+      e.t === 'moved' ||
+      e.t === 'findClaimed' ||
+      e.t === 'toolUsed',
+  );
+}
+
+/** A played week's tally view before its first step. */
+function tallyStart(e: Extract<GameEvent, { t: 'tally' }>): TallyView {
+  return {
+    stage: 'pieces',
+    sparkles: [],
+    points: 0,
+    mult: 100,
+    total: null,
+    activeUid: null,
+    pace: e.pace,
+    big: false,
+    fastForward: false,
+    weekTotal: e.tally.total,
+    pieces: e.tally.pieces,
+  };
+}
+
+/**
+ * What an animated action shows as it starts: the state before it in the top bar, and the week
+ * it tallies for the glow and the corner digits, through the placement's beat too (the rules
+ * have already moved on a week).
+ */
+function showStart(events: readonly GameEvent[], before: RunState): void {
+  const week = events.find((e) => e.t === 'tally');
+  batch(() => {
+    busy.value = true;
+    shownScore.value = before.score;
+    shownRun.value = before;
+    if (week?.t === 'tally' && !week.fastForward) tallyView.value = tallyStart(week);
+  });
+}
+
 /** A fast-forwarded week (D-040): no placement, just a quick count and the drain. */
 async function playFastForward(
   e: Extract<GameEvent, { t: 'tally' }>,
   base: RunState,
 ): Promise<void> {
-  shownRun.value = weekShown(base, e);
+  setShownRun(weekShown(base, e));
   closing = false;
   const t = e.tally;
   tallyView.value = {
@@ -255,9 +324,9 @@ async function playFastForward(
   const from = e.scoreBefore;
   const to = e.score;
   await wait(FEEL.fastForward.weekMs * 0.5, (f) => {
-    shownScore.value = Math.round(from + (to - from) * f);
+    setShownScore(Math.round(from + (to - from) * f));
   });
-  shownScore.value = to;
+  setShownScore(to);
 }
 
 /** A played week's tally: pieces, sets, the multiply moment, and the drain. */
@@ -267,22 +336,10 @@ async function playTally(
   after: RunState,
   newSets: ReadonlySet<string>,
 ): Promise<void> {
-  shownRun.value = weekShown(base, e);
+  setShownRun(weekShown(base, e));
   closing = false;
   const t = e.tally;
-  const view: TallyView = {
-    stage: 'pieces',
-    sparkles: [],
-    points: 0,
-    mult: 100,
-    total: null,
-    activeUid: null,
-    pace: e.pace,
-    big: false,
-    fastForward: false,
-    weekTotal: t.total,
-    pieces: t.pieces,
-  };
+  const view = tallyStart(e);
   tallyView.value = { ...view };
   let step = 0;
   for (const piece of t.pieces) {
@@ -412,11 +469,11 @@ async function playTally(
   const most = FEEL.tally.drainCoins;
   let coins = 0;
   await wait(FEEL.tally.drainMs, (f) => {
-    shownScore.value = Math.round(from + (to - from) * f);
+    setShownScore(Math.round(from + (to - from) * f));
     const due = Math.min(most, Math.ceil(f * Math.min(most, to - from)));
     while (!skipping && coins < due) audio.play('coin', { rate: 1 + coins++ * 0.06 });
   });
-  shownScore.value = to;
+  setShownScore(to);
 }
 
 /** Shows a banner for `ms` of real time, and returns that time. */
@@ -473,7 +530,11 @@ function milestoneBanner(e: Extract<GameEvent, { t: 'milestone' }>, ended: boole
 
 async function play(events: GameEvent[], before: RunState, after: RunState): Promise<void> {
   const gen = generation;
-  skipping = false;
+  const animated = animates(events);
+  if (animated) waiting--;
+  // With a newer action already waiting, the player has moved on: this one hurries, as one
+  // interrupted mid-tally does.
+  skipping = animated && waiting > 0;
   closing = false;
   accelerator = 0;
   busy.value = true;
@@ -484,26 +545,14 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
     // Free actions with little to animate (the shop's, the auto-complete toggle) finish at
     // once, with their shop beats: sounds and a note; the shop screen and the budget count do
     // the rest.
-    if (
-      !events.some(
-        (e) =>
-          e.t === 'tally' ||
-          e.t === 'placed' ||
-          e.t === 'demolished' ||
-          e.t === 'installed' ||
-          e.t === 'moved' ||
-          e.t === 'findClaimed' ||
-          e.t === 'toolUsed',
-      )
-    ) {
+    if (!animated) {
       for (const e of events) shopBeat(e);
       for (const e of events) {
         if (e.t === 'handDrawn' && e.reroll && !skipping) audio.play('rotate', { rate: 0.7 });
       }
       return;
     }
-    shownScore.value = before.score;
-    shownRun.value = before;
+    if (waiting === 0) showStart(events, before);
     let base = before;
     for (const [i, e] of events.entries()) {
       if (gen !== generation) return;
@@ -634,15 +683,16 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
           break;
         case 'milestone': {
           tallyView.value = null;
-          shownScore.value = null;
-          shownRun.value = null;
+          setShownScore(null);
+          setShownRun(null);
           const shown = milestoneBanner(e, ended);
           const id = banner.value?.id;
+          const gone = () => banner.value?.id !== id;
           closing = true;
-          // The shop opens over the board, banner and all, so it waits the banner out: as long
-          // as the banner is up at 1×, shorter when sped up, and never once it's gone.
-          const hold = toShop ? shown : FEEL.milestoneHoldMs;
-          await wait(hold, undefined, () => banner.value?.id !== id);
+          // The shop opens over the board, banner and all, so it waits the banner out in real
+          // time, as the banner stays up, at any tally speed: holding hurries it, a click skips.
+          if (toShop) await wait(shown, undefined, gone, realSpeed);
+          else await wait(FEEL.milestoneHoldMs, undefined, gone);
           break;
         }
         case 'handDrawn':
@@ -660,10 +710,13 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
   } finally {
     batch(() => {
       tallyView.value = null;
-      shownScore.value = null;
-      shownRun.value = null;
       highlighted.value = [];
-      busy.value = false;
+      // A newer action waiting behind this one keeps its starting state on show.
+      if (waiting === 0) {
+        shownScore.value = null;
+        shownRun.value = null;
+        busy.value = false;
+      }
     });
     skipping = false;
     closing = false;
@@ -718,6 +771,13 @@ onEvents((events, before, after) => {
   // A new action while a tally plays finishes that one at once, then plays its own.
   if (busy.value) skipping = true;
   chain = chain.then(() => play(events, before, after)).catch((e) => console.error(e));
+  if (animates(events)) {
+    // Its starting state goes on show now, not when play() starts a microtask later: the
+    // render this action queued comes first, and would show the state after it (the budget
+    // counting to its new value and back, the shop sheet mounting for a moment).
+    waiting++;
+    showStart(events, before);
+  }
 });
 
 onRunReset(() => {

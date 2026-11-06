@@ -249,30 +249,31 @@ export function Hand() {
         <CardView key={`${s.week}-${s.draws}-${i}`} card={card} i={i} />
       ))}
       <FreeActions />
-      {/* Sticks to the column's bottom, so End week stays in view on a short window. */}
-      <div class="hand-actions">
-        <div class="hand-buttons">
-          <button
-            type="button"
-            class="rotate"
-            onMouseDown={noFocus}
-            onClick={rotate}
-            disabled={!placing || demolishing || !canTurn}
-            title="Rotate (R or right-click)"
-          >
-            ⟳ Rotate
+      <div class="hand-buttons">
+        <button
+          type="button"
+          class="rotate"
+          onMouseDown={noFocus}
+          onClick={rotate}
+          disabled={!placing || demolishing || !canTurn}
+          title="Rotate (R or right-click)"
+        >
+          ⟳ Rotate
+        </button>
+        {placing && !demolishing && (
+          <button type="button" onMouseDown={noFocus} onClick={cancelPlacement} title="Esc">
+            {pending ? 'Move it' : 'Cancel'}
           </button>
-          {placing && !demolishing && (
-            <button type="button" onMouseDown={noFocus} onClick={cancelPlacement} title="Esc">
-              {pending ? 'Move it' : 'Cancel'}
-            </button>
-          )}
-        </div>
-        {demolishing && (
-          <p class="demolish-hint" role="status">
-            Click a piece or boulder to demolish it · Esc to cancel
-          </p>
         )}
+      </div>
+      {demolishing && (
+        <p class="demolish-hint" role="status">
+          Click a piece or boulder to demolish it · Esc to cancel
+        </p>
+      )}
+      {/* End week sticks to the column's bottom, so it stays in view on a short window. Only it
+          does: Rotate and Cancel have keys, and the cards above shouldn't be covered more. */}
+      <div class="hand-actions">
         <button
           type="button"
           class={`end-week ${pending ? 'ready' : ''} ${armed ? 'confirm' : ''} ${demolishing ? 'compact' : ''}`}

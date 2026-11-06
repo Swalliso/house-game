@@ -67,8 +67,8 @@ export const FEEL = {
 
   /**
    * How long the tally waits on a milestone banner before playing what comes next. When the
-   * shop follows, it waits the banner out instead, so the banner is read before the shop
-   * opens over it.
+   * shop follows, it waits the banner out instead, in real time at any tally speed (holding
+   * hurries it, a click skips it), so the banner is read before the shop opens over it.
    */
   milestoneHoldMs: 900,
   /** When a phase's last week crosses its target, the target's ding gets this long alone. */
@@ -108,7 +108,7 @@ export const FEEL = {
 
   /** The shop (§12, Shop and crates). */
   shop: {
-    /** A bought good's pop. */
+    /** How long a bought good keeps its just-bought class: longer than its pop (shop.css). */
     boughtMs: 600,
     /** An opened crate's options turn over this far apart, each with its sound. */
     crateStaggerMs: 220,

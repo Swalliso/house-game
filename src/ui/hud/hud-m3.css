@@ -25,6 +25,12 @@
   background: #fffdf8;
   max-width: 100%;
 }
+/* A slot's hover: the plain buttons' cream (app.css). :where() keeps it at the slot's own
+   specificity, so a fill of its own (a Rare's gold, an upgrade's wood, an empty slot's none)
+   wins. */
+.inventory .slot:where(:hover:not(:disabled)) {
+  background: #fff3df;
+}
 .inventory .slot.empty {
   display: inline-grid;
   place-items: center;

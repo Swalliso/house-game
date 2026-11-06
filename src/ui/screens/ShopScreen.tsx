@@ -198,10 +198,10 @@ function StrikePicker() {
 }
 
 /**
- * One of an open crate's options. It turns over on its beat (the CSS animation's delay), and
- * its sound is scheduled for the same beat when it appears: once, with or without Reduce
- * motion (which turns the animation off), and not twice for a Rare (its shimmer is an
- * animation of its own).
+ * One of an open crate's options. It turns over on its beat (--beat, the delay of its CSS
+ * animation and of a Rare's shimmer), and its sound is scheduled for the same beat when it
+ * appears: once, with or without Reduce motion (which turns the animation off), and not twice
+ * for a Rare (its shimmer is an animation of its own).
  */
 function CrateOption({ good, i, ok }: { good: GoodRef; i: number; ok: boolean }) {
   const rarity = goodRarity(good);
@@ -214,7 +214,7 @@ function CrateOption({ good, i, ok }: { good: GoodRef; i: number; ok: boolean })
   return (
     <article
       class={`offer crate-option ${rarity ? `rarity-${rarity}` : ''}`}
-      style={{ animationDelay: `${beatMs}ms` }}
+      style={{ '--beat': `${beatMs}ms` }}
     >
       <header>
         <h3>{goodName(good)}</h3>
