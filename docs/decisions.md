@@ -946,6 +946,23 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **Why:** The accelerator kept growing through those beats, so the longest weeks, usually the biggest, got the shortest payoff. A 25-trigger week at 1× is at about 2× by the multiply moment, so its 0.4 s pause took about 0.2 s. The steps are where a long week drags; the payoff is short at any length.
 **Changes:** `implementation-plan.md` §12, Timing. D-059 (Accepted) still holds: the tally speeds itself up.
 
+### D-098 · M5a interface defaults: the pixel UI
+**Status:** Proposed · 2026-11-06, with M5a's UI track (stage 2, part 1: the foundations, the build screen, the score panel and the top bar). Implementation details within D-057, D-059, D-097 and §12; the number may move when the stage's tracks merge.
+**Decision:**
+- **Tokens:** every color is a token in `src/ui/theme/tokens.css`, from LimeZu's palettes with its outline #3a3a50 as the ink, with the UI audit's contrast fixes (secondary text #565972, Comfort #3d56d2, Charm #a82b52, Sparkle a gold fill under ink text). `theme.test.ts` keeps raw colors out of every other stylesheet but a shrinking legacy list (the screens still to restyle, and the board's), and checks each text color on its backgrounds at 4.5:1.
+- **The UI pixel:** the chrome draws in its own pixel, `--px`: 2 CSS px at 1080p, rounded to whole device pixels and down on a tie, so 1.6 CSS px at 125% and 2 at 150% and 200%. Outlines, frames, shadows, spacing and pixel-font sizes are whole numbers of it. The board keeps the camera's scale.
+- **Fonts (CC0):** Pixel Operator 8 for text and Public Pixel for numbers, at 8 × `--px` and its multiples, so nothing in pixel mode is under 16 px at 1080p. Public Pixel supplies the symbols Pixel Operator 8 lacks (− ≥ ≤ → ← ✓); ▲ ▼ ✕ ★ ⚠ are icons.
+- **The readable-font option** (§12, D-059) is in Settings, saved with the others: every pixel text switches to the system font, at its own sizes.
+- **Frames and icons are our own drawings** in LimeZu's palette (`theme/frames.ts`, `theme/icons.ts`): text grids turned into images at startup. The chrome needs no Modern Interiors sprite (D-097's license note).
+- **The top bar:** the milestone on a plaque, the milestone meter with a tick per week and the target's flag, the budget beside a coin, the overtime clocks, the auto-complete switch, and Complete early. A Menu button opens a menu with Copy run code, the seed, How to play, Settings and Quit to title (the run stays saved for Continue). How to play and Settings keep their own buttons; the brand leaves the bar.
+- **The controls strip** shows the keys for what you're doing now, as keycaps, and hides on a window under 800 px tall.
+- **The hand:** each card shows its piece's picture (`PIECE_SPRITES`' floor and furniture) and its kind and tags as chips with icons. Reroll and Demolish sit above the cards. The sticky bar holds square Rotate and Cancel buttons and End week, the view's one lime button. On a window under 800 px tall the cards swap their pictures for a small shape.
+- **The inventory** stays hidden until the supply yard first opens, unless something's in it; empty slots are wells.
+- **The build stamp** moves to the bottom-left corner, clear of End week at 1280×720.
+
+**Why:** The UI and juice audit (2026-11-06) found an interface that read as a web app beside the pixel-art board, with text at 9–13 px, hairline edges and blue for six meanings. D-057 asks for wood-panel frames and a chunky pixel font with a readable option. The audit's design system turned that into tokens, one pixel unit and a few primitives, so every screen shifts together.
+**Changes:** None to settled decisions. D-073 (Accepted): the top bar keeps everything it lists. D-087 (Proposed): the inventory still sits above the hand.
+
 ### D-015 · Start small, grow into the corporation
 **Status:** Proposed
 The company starts as a two-person outfit with a pickup truck, and growing it is the meta-progression. Players name their company, and the name shows up next to shared scores.

@@ -36,7 +36,7 @@
 .equation {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: end;
+  align-items: start;
   gap: var(--space-2);
 }
 .layer {
@@ -78,7 +78,10 @@
   font-size: var(--fs-num-md);
   line-height: 1;
   color: var(--ink-soft);
-  padding-bottom: calc(var(--space-2) + var(--px));
+}
+/* The × sits level with the plaques, under the labels' line. */
+.equation > .op {
+  margin-top: calc(var(--lh-body) + var(--space-1) + var(--space-2) + var(--px));
 }
 
 /* Wow: the result, on its own row at the hero size, in ink on a framed plaque. */

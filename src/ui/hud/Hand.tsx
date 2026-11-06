@@ -273,30 +273,33 @@ export function Hand() {
         )
       }
     >
+      {/* The free actions sit above the cards, so they're in view whatever the hand's height. */}
+      <FreeActions />
       {s.hand.map((card, i) => (
         <CardView key={`${s.week}-${s.draws}-${i}`} card={card} i={i} />
       ))}
-      <FreeActions />
-      {demolishing && (
-        <p class="demolish-hint" role="status">
-          <Icon name="hammer" />
-          Click a piece or boulder to demolish it · Esc to stop
-        </p>
-      )}
       {/* The action bar sticks to the column's bottom, so End week stays in view on a short
-          window. One row: Rotate and Cancel are square buttons beside it. */}
+          window. One row: Rotate and Cancel are square buttons beside it; demolishing, the
+          hint takes their place. */}
       <div class="hand-actions">
-        <Button
-          iconOnly
-          size="lg"
-          icon="rotate"
-          class="rotate"
-          onMouseDown={noFocus}
-          onClick={rotate}
-          disabled={!placing || demolishing || !canTurn}
-          title="Rotate (R or right-click)"
-          aria-label="Rotate"
-        />
+        {demolishing ? (
+          <p class="demolish-hint" role="status">
+            <Icon name="hammer" />
+            <span>Click twice to demolish</span>
+          </p>
+        ) : (
+          <Button
+            iconOnly
+            size="lg"
+            icon="rotate"
+            class="rotate"
+            onMouseDown={noFocus}
+            onClick={rotate}
+            disabled={!placing || !canTurn}
+            title="Rotate (R or right-click)"
+            aria-label="Rotate"
+          />
+        )}
         {placing && !demolishing && (
           <Button
             iconOnly

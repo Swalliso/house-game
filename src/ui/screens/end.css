@@ -27,7 +27,7 @@
   top: 10px;
   font-size: 15px;
   line-height: 1;
-  color: var(--sparkle);
+  color: var(--sparkle-text);
   animation: run-end-twinkle 2.4s ease-in-out 3;
 }
 .run-end.won::before {
@@ -45,7 +45,7 @@
 .run-end-title {
   font-size: 14px;
   margin: 0;
-  color: var(--wood-dark);
+  color: var(--wood-deep);
 }
 .run-end.lost .run-end-title {
   color: var(--ink);
@@ -187,7 +187,7 @@
   border-radius: 6px;
   font-size: 12px;
   font-weight: 700;
-  color: var(--wood-dark);
+  color: var(--wood-deep);
   background: repeating-linear-gradient(45deg, #f1e9da 0 6px, #e8dcc5 6px 12px);
 }
 .run-end-actions {

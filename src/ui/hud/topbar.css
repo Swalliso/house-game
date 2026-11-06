@@ -11,7 +11,8 @@
   gap: var(--space-4);
   min-height: calc(var(--px) * 32);
   padding: var(--space-1) var(--space-3) calc(var(--space-1) + var(--px));
-  background: var(--wood-hi);
+  background: var(--art-plank) repeat 0 0 / calc(var(--px) * 48) calc(var(--px) * 10);
+  background-color: var(--wood-hi);
   border-bottom: var(--px) solid var(--ink);
   box-shadow:
     inset 0 var(--px) 0 var(--wood-shine),
@@ -82,8 +83,9 @@
 }
 .tb-met {
   flex: none;
-  padding: 0 var(--px);
-  background: var(--action);
+  padding: 0 var(--space-1);
+  background: var(--card);
+  box-shadow: inset 0 calc(var(--px) * -1) 0 var(--action-shade);
   font-weight: 700;
 }
 .tb-forecast {
@@ -143,7 +145,8 @@
   --meter-tick: var(--wood-night);
 }
 .tb-flag {
-  margin-left: calc(var(--px) * -1);
+  align-self: center;
+  margin-left: var(--px);
 }
 .reduce-motion .tb-fill,
 .reduce-motion .tb-forecast-fill,
@@ -260,8 +263,13 @@
 .tb-early-detail {
   display: flex;
   align-items: center;
-  gap: var(--px);
+  gap: var(--space-2);
   font-weight: 400;
+}
+.tb-early-budget {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--px);
 }
 .tb-early .tip {
   text-decoration: none;
@@ -283,6 +291,7 @@
     gap: var(--space-3);
   }
   .tb-met-text,
+  .tb-forecast-word,
   .switch-text-more,
   .tb-early-word,
   .tb-run-week {

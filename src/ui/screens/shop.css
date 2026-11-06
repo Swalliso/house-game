@@ -28,7 +28,7 @@
   align-items: center;
   gap: 16px;
   padding: 12px 16px;
-  background: var(--wood);
+  background: var(--wood-deep);
   color: #fffaf0;
   border-bottom: 3px solid var(--wood-dark);
 }

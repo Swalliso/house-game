@@ -543,11 +543,13 @@ export function Inspect() {
   } else if (what?.kind === 'card') {
     const card = s.hand[what.i];
     if (card) {
+      // The card's whole text, too: on a short window the hand's cards are cut down.
+      const good: GoodRef =
+        card.kind === 'piece' ? { kind: 'piece', id: card.id } : { kind: 'fixture', id: card.id };
       body = (
         <>
-          <h2>
-            {card.kind === 'piece' ? CONTENT.pieces[card.id].name : CONTENT.fixtures[card.id].name}
-          </h2>
+          <h2>{goodName(good)}</h2>
+          <GoodBody good={good} />
           <p class="muted">Click the card (or press {what.i + 1}), then point at the lot.</p>
         </>
       );

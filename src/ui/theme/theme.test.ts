@@ -177,7 +177,7 @@ describe('the pixel art', () => {
 });
 
 describe('the UI pixel', () => {
-  it('is 2 device px per CSS-2px at 1×, rounded to whole device pixels, down on a tie', () => {
+  it('is 2 CSS px at 1×, kept on whole device pixels, rounding down on a tie', () => {
     expect([1, 1.25, 1.5, 1.75, 2, 3].map(uiPixelDevice)).toEqual([2, 2, 3, 3, 4, 6]);
     expect(uiPixel(1)).toBe(2);
     expect(uiPixel(1.25)).toBeCloseTo(1.6);

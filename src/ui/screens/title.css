@@ -80,7 +80,7 @@
   font-weight: 900;
   line-height: 1;
   letter-spacing: -0.01em;
-  color: var(--wood-dark);
+  color: var(--wood-deep);
   text-shadow: 0 4px 0 var(--panel-edge);
 }
 
@@ -250,7 +250,7 @@
 
 .howto-section h3 {
   margin: 16px 0 6px;
-  color: var(--wood);
+  color: var(--wood-deep);
 }
 .howto-section p {
   margin: 4px 0;
@@ -263,7 +263,7 @@
   margin: 3px 0;
 }
 .howto-section a {
-  color: var(--wood);
+  color: var(--wood-deep);
   font-weight: 700;
 }
 

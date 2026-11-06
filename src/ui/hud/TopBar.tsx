@@ -128,7 +128,7 @@ function Progress() {
             class={`tb-forecast ${fMet ? 'met' : ''} ${placing ? 'placing' : ''}`}
             title={guide}
           >
-            Forecast ~{formatNumber(f)}
+            <span class="tb-forecast-word">Forecast </span>~{formatNumber(f)}
           </span>
         )}
       </div>
@@ -224,7 +224,7 @@ function CompleteEarly() {
   const phase = rules.phaseName(run.value.phase);
   return (
     <Button
-      variant={armed ? 'armed' : 'primary'}
+      variant={armed ? 'armed' : 'secondary'}
       class={`tb-early ${armed ? 'confirm' : ''}`}
       onMouseDown={noFocus}
       onClick={requestCompleteEarly}
@@ -235,9 +235,14 @@ function CompleteEarly() {
         {armed ? 'Press again' : <Tip term="early">Complete early</Tip>}
       </span>
       <span class="tb-early-detail">
-        +{formatNumber(offer.bonus.score)}
-        <span class="tb-early-word"> {SCORE_LABELS.total}</span> +{offer.bonus.budget}
-        <Icon name="coin" />
+        <span>
+          +{formatNumber(offer.bonus.score)}
+          <span class="tb-early-word"> {SCORE_LABELS.total}</span>
+        </span>
+        <span class="tb-early-budget">
+          +{offer.bonus.budget}
+          <Icon name="coin" />
+        </span>
       </span>
     </Button>
   );
