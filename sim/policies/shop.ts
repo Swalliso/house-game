@@ -2,15 +2,21 @@
 // applied, times the weeks left in the run, per unit of budget. It buys the best value while
 // the value clears a bar, picks from crates the same way, sells its weakest blueprint to make
 // room for a much better one, refreshes once when it's rich and nothing is worth buying, and
-// otherwise leaves.
+// otherwise leaves. The reroll service is worth nothing while it still holds a bonus reroll
+// (it used 1 of the 212 it bought in 100 runs when it bought them freely; it still buys about
+// one a run, and the state can't tell it whether the last phase ran out). It buys the strike
+// service only with strikes 'fixed', by STRIKE_ORDER; by default it never strikes, so reports
+// on the struck types (Driveway, Fence) aren't the bot's own doing.
 //
 // During a week it uses tools by simple rules (useTools): Remodel Plans and the Dumpster at
 // once, Fertilizer and the Copy Machine when they help, Weekend Crew when a placement would
 // help, Rush Order and Open House Party in a phase's last week when it's short of the target
-// (or in the run's last week), and the Catalog on a hand with nothing worth building. Supply
-// fixtures go in their best host. It never uses the Moving Truck.
+// (or in the run's last week), and a Catalog it was given on a hand with nothing worth
+// building. Supply fixtures go in their best host. It never uses the Moving Truck.
 //
-// Values are rough Wow-over-the-run estimates; the sim reports show what it buys.
+// Values are rough Wow-over-the-run estimates; the sim reports show what it buys. BOT_BLIND
+// lists the goods it values at 0 by construction, so their buy rate isn't read as weakness.
+// Options come in through ShopBot, never module state: policies are pure.
 
 import type {
   Action,
@@ -23,6 +29,36 @@ import type {
   ShopOffer,
   UseToolAction,
 } from '../../src/rules/index.ts';
+import { rankPlays, type EarlyMode } from './greedy.ts';
+
+/** Whether the bot buys the strike service: 'none' never; 'fixed' by STRIKE_ORDER. */
+export type StrikeMode = 'none' | 'fixed';
+
+/** What the shop and tool rules need from the policy besides its stream: the salt and options. */
+export interface ShopBot {
+  /** The decision's tie-break salt (greedy draws it once per decision). */
+  salt: number;
+  strikes?: StrikeMode;
+  /** With an early mode, Ahead of Schedule is valued as if one more milestone were early. */
+  early?: EarlyMode;
+}
+
+/**
+ * Goods the shop bot can't value or use, by good key (`tool:movingTruck`), with the reason. The
+ * report marks them, so their 0% buy rate reads as the bot's blind spot, not the good's.
+ */
+export const BOT_BLIND: Readonly<Record<string, string>> = {
+  'tool:movingTruck': 'no rule for moving pieces',
+  'tool:dumpster': 'never demolishes',
+  'service:demolition': 'never demolishes',
+  'blueprint:solarPanels': 'values Wow, not budget',
+  'blueprint:aheadOfSchedule': 'only with --early',
+  // A fair rule needs the special hand's expected best play, which it can't see without
+  // peeking at the draw. The old rule (no reroll left and nothing worth building) almost never
+  // fired: greedy bought 21 Catalogs in 100 runs and used none. So it's valued at 0, and a
+  // Catalog it's given still goes on such a hand.
+  'tool:catalog': 'no fair rule for when a special hand beats this one',
+};
 
 /** A good must earn at least this many weeks of current income per budget to be bought. */
 const BAR_WEEKS_PER_BUDGET = 0.12;
@@ -30,7 +66,7 @@ const BAR_WEEKS_PER_BUDGET = 0.12;
 const FUTURE_PIECES = 1.25;
 /** A reserve piece takes a week's build, so it's worth a share of what it adds. */
 const RESERVE_SHARE = 0.5;
-/** D-076's strike order: the card types the greedy bot finds least worth building (M2's reports). */
+/** D-076's strike order for strikes 'fixed': the types M2's greedy found least worth building. */
 export const STRIKE_ORDER = ['driveway', 'fence', 'hallway', 'doghouse', 'sapling'] as const;
 
 const total = (rules: Rules, s: RunState) => rules.currentTally(s).total;
@@ -50,17 +86,15 @@ function asBuild(s: RunState, patch: Partial<RunState>): RunState {
   return { ...s, screen: 'build', offers: undefined, ...patch };
 }
 
-/** The best change to this week's total from placing a piece (a shortlist by the estimate). */
-function bestPlacement(rules: Rules, s: RunState): number {
+/** The best change to this week's total from placing a piece (the top 8 by rankPlays). */
+function bestPlacement(rules: Rules, s: RunState, salt: number): number {
   const plays = rules.legalPlacements(s);
   if (plays.length === 0) return 0;
   const pass = rules.scoreOnly(s, null);
-  const ranked = plays
-    .map((p) => ({ p, est: rules.estimatePlay(s, p).delta }))
-    .sort((a, b) => b.est - a.est)
-    .slice(0, 8);
   let best = 0;
-  for (const r of ranked) best = Math.max(best, rules.scoreOnly(s, r.p) - pass);
+  for (const r of rankPlays(rules, s, plays, salt).slice(0, 8)) {
+    best = Math.max(best, rules.scoreOnly(s, r.play) - pass);
+  }
   return best;
 }
 
@@ -78,7 +112,7 @@ function bestInstall(rules: Rules, s: RunState): number {
 type Good = Exclude<ShopOffer, { kind: 'service' }> | PickOption;
 
 /** A good's value in Wow over the rest of the run (rough). */
-export function goodValue(rules: Rules, s: RunState, good: Good, rng: Rng): number {
+export function goodValue(rules: Rules, s: RunState, good: Good, rng: Rng, bot: ShopBot): number {
   const c = rules.content;
   const W = c.balance.weeksPerPhase;
   const left = weeksLeftInRun(rules, s);
@@ -86,10 +120,16 @@ export function goodValue(rules: Rules, s: RunState, good: Good, rng: Rng): numb
   switch (good.kind) {
     case 'blueprint': {
       if (s.blueprints.some((b) => b.id === good.id)) return 0;
-      const withIt = { ...s, blueprints: [...s.blueprints, { id: good.id, boughtWeek: s.week }] };
-      const normal = total(rules, withIt) - total(rules, s);
+      // An early-completing bot expects more early milestones (Ahead of Schedule counts them).
+      const base =
+        (bot.early ?? 'never') === 'never' ? s : { ...s, milestonesEarly: s.milestonesEarly + 1 };
+      const withIt = {
+        ...base,
+        blueprints: [...base.blueprints, { id: good.id, boughtWeek: s.week }],
+      };
+      const normal = total(rules, withIt) - total(rules, base);
       // Last-Minute Push and other last-week effects pay one week in W.
-      const last = total(rules, { ...withIt, slot: W }) - total(rules, { ...s, slot: W });
+      const last = total(rules, { ...withIt, slot: W }) - total(rules, { ...base, slot: W });
       let perWeek = ((W - 1) * normal + last) / W;
       // Good Bones keeps growing: on average it pays about half the weeks left more.
       const grows = c.blueprints[good.id].modifiers.some(
@@ -100,7 +140,7 @@ export function goodValue(rules: Rules, s: RunState, good: Good, rng: Rng): numb
     }
     case 'piece': {
       const b = asBuild(s, { hand: [{ kind: 'piece', id: good.id }], reserve: [] });
-      return bestPlacement(rules, b) * left * RESERVE_SHARE;
+      return bestPlacement(rules, b, bot.salt) * left * RESERVE_SHARE;
     }
     case 'fixture': {
       const b = asBuild(s, { supplies: [{ kind: 'fixture', id: good.id }] });
@@ -137,7 +177,7 @@ export function goodValue(rules: Rules, s: RunState, good: Good, rng: Rng): numb
         case 'advanceTimers':
           return weekly * 0.4;
         case 'specialHand':
-          return weekly * 0.3;
+          return 0; // BOT_BLIND: see there.
         case 'move':
         case 'reward':
           return 0;
@@ -160,7 +200,7 @@ export function goodValue(rules: Rules, s: RunState, good: Good, rng: Rng): numb
                 .map((d) => ({ kind: 'piece', id: d.id }));
       let best = 0;
       for (let k = 0; k < 3 && pool.length > 0; k++) {
-        best = Math.max(best, goodValue(rules, s, rng.pick(pool), rng));
+        best = Math.max(best, goodValue(rules, s, rng.pick(pool), rng, bot));
       }
       return best * 0.9;
     }
@@ -186,12 +226,15 @@ export function goodValue(rules: Rules, s: RunState, good: Good, rng: Rng): numb
   return 0;
 }
 
-function offerValue(rules: Rules, s: RunState, o: OfferView, rng: Rng): number {
+function offerValue(rules: Rules, s: RunState, o: OfferView, rng: Rng, bot: ShopBot): number {
   const offer = o.offer;
-  if (offer.kind !== 'service') return goodValue(rules, s, offer, rng);
+  if (offer.kind !== 'service') return goodValue(rules, s, offer, rng, bot);
   const weekly = Math.max(1, total(rules, s));
-  if (offer.service === 'reroll') return weekly * 0.4;
-  if (offer.service === 'strike') return weekly * 0.25 * phasesLeft(rules, s);
+  // It rarely runs out of the phase's own rerolls, so one in hand is plenty.
+  if (offer.service === 'reroll') return s.bonusRerolls >= 1 ? 0 : weekly * 0.4;
+  if (offer.service === 'strike') {
+    return bot.strikes === 'fixed' ? weekly * 0.25 * phasesLeft(rules, s) : 0;
+  }
   return 0;
 }
 
@@ -206,14 +249,14 @@ function strikeTarget(rules: Rules, s: RunState) {
 }
 
 /** One shop action: a pick, a buy, a sell to make room, a refresh, or leaving. */
-export function shopAct(rules: Rules, s: RunState, rng: Rng): Action {
+export function shopAct(rules: Rules, s: RunState, rng: Rng, bot: ShopBot): Action {
   const open = s.offers?.pick;
   if (open) {
     let best = -1;
     let bestValue = 0;
     open.options.forEach((o, i) => {
       const legal = rules.legalActions(s).some((a) => a.t === 'pick' && a.i === i);
-      const v = legal ? goodValue(rules, s, o, rng) : 0;
+      const v = legal ? goodValue(rules, s, o, rng, bot) : 0;
       if (legal && (best < 0 || v > bestValue)) [best, bestValue] = [i, v];
     });
     return { t: 'pick', i: best };
@@ -224,9 +267,10 @@ export function shopAct(rules: Rules, s: RunState, rng: Rng): Action {
   let pick: { o: OfferView; ratio: number } | null = null;
   for (const o of offers) {
     if (!o.ok) continue;
-    if (o.offer.kind === 'service' && o.offer.service === 'strike' && !strikeTarget(rules, s))
-      continue;
-    const ratio = offerValue(rules, s, o, rng) / Math.max(1, o.price);
+    if (o.offer.kind === 'service' && o.offer.service === 'strike') {
+      if (bot.strikes !== 'fixed' || !strikeTarget(rules, s)) continue;
+    }
+    const ratio = offerValue(rules, s, o, rng, bot) / Math.max(1, o.price);
     if (ratio >= bar && (!pick || ratio > pick.ratio)) pick = { o, ratio };
   }
   if (pick) {
@@ -247,7 +291,7 @@ export function shopAct(rules: Rules, s: RunState, rng: Rng): Action {
     const refund = rules.sellPrice(s, 'blueprints', weakest.i);
     for (const o of offers) {
       if (o.offer.kind !== 'blueprint' || o.offer.sold || o.price > s.budget + refund) continue;
-      const v = goodValue(rules, s, o.offer, rng);
+      const v = goodValue(rules, s, o.offer, rng, bot);
       if (v > weakest.value * 2 && v / o.price >= bar) {
         return { t: 'sell', from: 'blueprints', i: weakest.i };
       }
@@ -264,8 +308,8 @@ export function shopAct(rules: Rules, s: RunState, rng: Rng): Action {
 // ---------------------------------------------------------------------------------------
 // Tools and supplies during a week.
 
-/** A free action worth taking before the week's play, or null. */
-export function useTools(rules: Rules, s: RunState): Action | null {
+/** A free action worth taking before the week's play, or null. `salt` breaks placement ties. */
+export function useTools(rules: Rules, s: RunState, salt: number): Action | null {
   const c = rules.content;
   const W = c.balance.weeksPerPhase;
   const lastWeek = s.overtimeWeek > 0 || s.slot >= W;
@@ -301,7 +345,7 @@ export function useTools(rules: Rules, s: RunState): Action | null {
         }
         break;
       case 'extraPlay':
-        if (rules.canUseTool(s, plain).ok && bestPlacement(rules, s) > 0) return plain;
+        if (rules.canUseTool(s, plain).ok && bestPlacement(rules, s, salt) > 0) return plain;
         break;
       case 'copy': {
         const top = [...rules.currentTally(s).pieces].sort((a, b) => b.earned - a.earned)[0];
@@ -313,7 +357,7 @@ export function useTools(rules: Rules, s: RunState): Action | null {
       case 'specialHand':
         if (
           !rules.canReroll(s).ok &&
-          bestPlacement(rules, s) <= 0 &&
+          bestPlacement(rules, s, salt) <= 0 &&
           rules.canUseTool(s, plain).ok
         ) {
           return plain;
