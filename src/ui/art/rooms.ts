@@ -528,7 +528,8 @@ function kitchen(c: Ctx): Want[] {
 function hall(c: Ctx): Want[] {
   return [
     { sprites: [], slots: ['R'], runner: true },
-    { sprites: ['plant-potted', 'plant-small'], slots: corners(c, 'NW', 'NE') },
+    // In a corner, or in the middle of the wall where doors take the corners.
+    { sprites: ['plant-potted', 'plant-small'], slots: [...corners(c, 'NW', 'NE'), 'N'] },
     ...fireplace(c, 'N'),
     want('coat-rack', 'N'),
     want('plant-potted', 'S'),
