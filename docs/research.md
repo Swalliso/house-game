@@ -410,3 +410,206 @@ This pass researched what makes combo games feel rewarding, for D-055 to D-059 a
   - [MDN crisp pixel art](https://developer.mozilla.org/en-US/docs/Games/Techniques/Crisp_pixel_art_look)
   - [WebKit bug 185683](https://www2.webkit.org/show_bug.cgi?id=185683)
   - [Asset Forge](https://matthewdeaves.github.io/assetforge)
+
+---
+
+## Update: houses that look like houses (2026-11-06)
+
+This pass researched how other games reward plausible buildings without killing combos, for D-093. In playtest 3 the house had 4 Living Rooms, 2 Kitchens, 2 Home Offices, and 3 Bedrooms sharing 1 Bathroom. It starts from our own sim, then the comparables. Key claims were spot-checked against their sources. Items marked *(guide)* come from fan guides, wikis, transcriptions, or forum posts.
+
+### The sim baseline *(our measurements)*
+
+From 200 greedy runs (seeds `sim-0` to `sim-199`, default options, develop at `49dce94`), reading each run's house at the end. A script outside the repo did the reading and reproduces `npm run sim -- --runs 200 --policy greedy` run for run. The 124 wins are full 28-week houses, and the numbers are for them.
+
+- **Repeats are the norm:**
+  - Living Rooms average 3.4 per house: 90% of houses have two or more, 67% three or more, and one had 8.
+  - Kitchens average 2.7: 72% have two or more, 50% three or more.
+  - Dining Rooms average 2.1: 68% have two or more.
+  - 88% of houses have some room other than a Bedroom, Bathroom, or Closet three or more times.
+- **Bathrooms are scarce:** 1.6 per house against 3.5 Bedrooms. 23% of houses have none, and 40% have more than two Bedrooms per Bathroom.
+- **Only 2% pass a simple plausibility check.** The check: at least one Bedroom, Kitchen, and Bathroom; a Bathroom for every three Bedrooms; and at most one Kitchen, one Dining Room, two Living Rooms, one Garage, two Home Offices, and one of each special room. The playtest house fails it too.
+- **Repeats sit apart:**
+  - In houses with two or more of a type, the copies never touch in 37% of houses for Living Rooms, 44% for Kitchens, and 65% for Dining Rooms. They form one group in only 10–15%. Each copy wants its own view sources or its own Dining Rooms.
+  - Bedrooms cluster more, forming one group in 37% of houses, because each earns +1 per Quiet neighbor. Lawns and Treehouses almost always clump, by design.
+  - No Bedroom touches a Loud piece. That part of the zoning already works.
+- **Why repeats win:**
+  - **Nothing counts copies.** Each Living Room earns its own +2 per view, so four Living Rooms earn four sets of views.
+    - In the last week, a Living Room earns about 25 per copy, a Kitchen 22, a Bedroom 17, a Bathroom 9, and a Dining Room 5.
+    - Living Rooms make 22% of the run's Wow, and Kitchens 14%.
+  - **Sets pay per instance.** At the end, 47% of houses hold two or more Entertainers, and each pays 25 Points and +1 Charm a week. The sets' Points are 21% of the Wow, before their Charm.
+  - **The Kitchen has two cards** (Kitchen and L-Kitchen) at normal weight, so it's offered twice as often as any other room: about 7 times a run against 3.4 for the Living Room.
+  - **The Bathroom pays little.** It pays only for its first Bedroom (+3, capped because Jack-and-Jill pays for two), and loses 2 for each Kitchen it touches.
+
+### What changes the houses *(in-memory experiments)*
+
+These are the same 200 seeds with the rules changed in memory, in a scratch copy, at today's targets. The repo isn't changed.
+- "One Entertainer per house" uses the plan's `maxInstances` field, which M4a builds for Full House.
+- Specs are emulated as +0.25 Charm while their condition holds, the way M4a's will pay.
+- The room columns count won houses. The Wins column counts all 200 runs.
+
+| Change | Wins | 2+ Kitchens | 3+ Living Rooms | 2+ Dining Rooms | >2 Bedrooms per Bathroom | Plausible |
+|---|---|---|---|---|---|---|
+| Today | 62% | 72% | 67% | 68% | 40% | 2% |
+| Every copy of a room type earns −25% per copy past the first (all but Bedrooms, Bathrooms, and Closets) | 61% | 69% | 46% | 64% | 38% | 2% |
+| One Entertainer per house | 60% | 68% | 66% | 65% | 39% | 2% |
+| Both, at −50% a copy | 54% | 66% | 8% | 62% | 39% | 6% |
+| Kitchen cards at half weight | 50% | 58% | 69% | 56% | 37% | 3% |
+| A Bedroom with no Bathroom touching it (or linked by a Hallway) earns −50% | 56% | 85% | 66% | 71% | 21% | 1% |
+| A spec: one Kitchen | 78% | 31% | 61% | 64% | 38% | 11% |
+| Three household specs at +0.1 each | 75% | 45% | 45% | 41% | 22% | 19% |
+| Three household specs at +0.25 each | 86% | 10% | 11% | 10% | 13% | 54% |
+| The specs, one Entertainer, half-weight Kitchens, and −25% | 74% | 2% | 1% | 2% | 17% | 69% |
+
+The three household specs are:
+- exactly one Kitchen
+- a Bathroom for every two Bedrooms, with at least two Bedrooms
+- one or two Living Rooms, and at most one Dining Room
+
+What the experiments show:
+- **Percentages add (D-037), so a per-copy penalty is weak.** A Kitchen that touches three Dining Rooms already has +150%, and −25% barely dents it. The penalty trims Living Rooms but not Kitchens.
+- **Capping the Entertainer** removes repeated sets: houses holding two or more fall from 47% to 0%. It costs about 12% of the median Wow but barely changes the room counts. Kitchens pay on their own: +2 per Dining Room, the Dining Rooms' +50%, and the Patios' +2 per Kitchen.
+- **Penalties backfire, because the bot routes around them.** Docking Bedrooms that lack a Bathroom made it build fewer Bedrooms (3.5 down to 2.7) and more Kitchens. Houses with no Bathroom rose from 23% to 31%.
+- **Specs with a ceiling work.**
+  - Building a second Kitchen loses the "one Kitchen" spec, and that loss shows in the placement's preview. So the bot sees the cost at the moment it matters, and a player would too.
+  - The push scales with the spec's value: at +0.1 the specs moved much less.
+  - The specs also add Charm, so the win rate rose 24 points at today's targets. They'd need a re-fit, and D-085 already finds the middle of the run too easy.
+- **Side effects:**
+  - Yard repeats rise as rooms are capped: houses with three or more Patios go from 40% to 51%.
+  - Houses get smaller (a median of 11 rooms, down from 15), and the yard gets fuller.
+  - Most of the remaining no-Bathroom houses (19%) have 0–2 Bedrooms, so the Bathroom spec never applies to them. A client's own Bedroom count would close that gap.
+
+### Comparables
+
+- **Dream Home** (Rebel, 2016):
+  - **Merging:** touching cards of one room type on a floor merge into one room, up to the 1, 2, or 3 cards printed on the card. Bigger rooms score steeply: a Living Room is 1, 4, or 9 points at 1, 2, or 3 cards.
+  - **Finishing:** a room is finished at full size or once it holds a décor token, and you can't build the same type next to a finished room. Each décor token goes in one room of its type.
+  - **Functionality bonuses:** 3 points for a Bathroom on each upper floor, and 3 for a house with a Bathroom, a Kitchen, and a Bedroom (4 each with the Architect helper). Small cards add adjacency: a Pantry is 3 points next to a Kitchen, and a Sauna 3 next to a Bathroom.
+  - No rule we found caps how many rooms of one type you build. The printed cards weren't checked.
+- **Floor Plan** (Deep Water Games, 2020):
+  - **Rooms:** rectangles sized by two dice and labeled by one die: Closet, Washroom, Bedroom, Kitchen, Dining Room, or Living Room. Nothing requires a Kitchen, a Washroom, doors, or connected rooms.
+  - **Clients:** three client cards per game set the demands, such as a Bedroom with a window that looks out on a tree. A demand can be scored again with different rooms.
+  - **Reviewers agree the best houses are absurd:**
+    - BoardGameQuest: five dining rooms side by side, with no doors.
+    - AV Club: six bedrooms and one closet.
+    - What's Eric Playing: a win with no outside doors. The reviewer wished every house had to meet some basic requirements.
+- **Castles of Mad King Ludwig** (2014):
+  - **Completion rewards:** completing a room (every doorway joined) pays by its type:
+    - Food: another turn
+    - Living: re-score the room
+    - Activity: 5 points
+    - Sleeping: take up to 2 tiles from a stack and put them on top of the deck
+    - Utility: draw 2 bonus cards and keep 1
+    - Outdoor: 10,000 coins
+    - Corridor: a free Hallway or Stairs
+    - Downstairs: every second one takes another type's reward
+  - **Adjacency** counts each joined room once, however many doorways join them. Activity rooms' penalties need only touching.
+  - **End-game bonus cards** reward both specializing and variety. One counts the rooms of a chosen type, and another pays 7 points for having all 8 types. The King's Favors rank players on the count or footage of one type.
+- **Between Two Castles of Mad King Ludwig** (Stonemaier, 2018) *(guide: a rules transcription)*:
+  - Your 3rd room of a type earns that type's bonus (a Fountain, a Tower, a bonus card, and so on), and your 5th earns any specialty room. There's nothing at 2, 4, or 6+.
+  - A Sleeping room scores 4 if the castle has all 6 other regular types, and 1 otherwise.
+- **Islanders: New Shores** (2025):
+  - The Guild Hall scores for each different building in range and loses as much for each duplicate: +12 and −12 *(guide)*.
+  - A boon, Neighbourly, stops buildings from losing points for touching.
+  - Penalties work by range, so spreading duplicates out dodges them.
+- **Dorfromantik** *(guide)*: number quests need an exact count in an area, "+" quests at least that many, and flag quests only a closed area. Missing one costs nothing, and finishing one pays extra tiles.
+- **Kingdomino and Cascadia** *(rules summaries)*:
+  - Kingdomino scores each connected region of one terrain as its squares × its crowns.
+  - Cascadia scores only the largest connected corridor of each habitat, at 1 point a tile, plus a bonus for the biggest.
+  - In both, same-type tiles are worth more together, and a stray copy adds nothing.
+- **The Sims:**
+  - Players don't type rooms, and nothing scores the floor plan. In the original game, rooms feed a need of their own (Room), from size, light and windows, and décor, less dirt.
+  - The Sims 4 counts a lot's beds and bathrooms itself, and lists them in the lot's details *(forum)*.
+  - Community venues like restaurants and bars need a list of required objects to work, and residential lots need none *(forum, mod page)*.
+  - Dream Home Decorator's clients judge a renovation by their likes and dislikes, not a list of required objects. A reviewer found the feedback thin.
+- **RimWorld** *(wiki)*:
+  - A room's role comes from its furniture: one bed makes a bedroom, and several make a barracks.
+  - Sharing a bedroom costs mood, and eating at a table in a dining room lifts it.
+- **House Flipper 2** *(guides)*:
+  - Buyers ask for a household's worth of rooms. One Sakura buyer would like four bedrooms, two bathrooms, affordable furniture, and a small garden, and has hidden preferences besides.
+  - A room counts as a bedroom with a bed, and as a bathroom with a toilet, a sink, and a bath or shower.
+  - A base-game guide found no price gain past 3 bedrooms or 3 bathrooms. The total room count mattered more.
+- **Real houses** (NAHB, from Census data):
+  - New single-family homes started in 2025: 46.5% had 3 bedrooms, 31.7% had 4, 10.3% had 5 or more, and 11.5% had 2 or fewer.
+  - In 2024: 65% had 2 full bathrooms, 23% had 3, 7% had 4 or more, and 4.5% had 1 or fewer. 46% also had at least one half bath.
+  - So a typical new house has 3–4 bedrooms and 2 full baths: about 1.5–2 bedrooms per bathroom. Greedy's houses have 3.5 Bedrooms and 1.6 Bathrooms.
+
+### Takeaways for Open House
+
+- **What works elsewhere:**
+  - a household's needs (The Sims, RimWorld, House Flipper's buyers)
+  - small "is it a home?" bonuses (Dream Home)
+  - goals with exact or capped counts (Dorfromantik, and our own Juniper's 4–8 rooms)
+  - variety bonuses that compete with specializing (Castles, the Guild Hall)
+- **Floor Plan is the warning:** it has none of these, and its best houses are absurd.
+- **Merging** (Dream Home) makes repeats read as one bigger room, and pays for it with steep size scoring. Our repeats sit apart, though, so merging would need a second rule to pull them together.
+- **In our sim, specs with a ceiling beat penalties.** A spec you'd lose shows in the placement's preview, while a penalty just gets routed around.
+
+### Corrections to the notes above
+
+The 2026-11-04 comparables say Floor Plan and Dream Home can both reward absurd houses (five adjacent dining rooms; no kitchen). Both examples come from Floor Plan's reviews (BoardGameQuest and AV Club). Dream Home's merging and functionality bonuses are its pushback.
+
+### Combolands: what pays gold (for D-090)
+
+There's no official list. These notes come from player comments and the unofficial combolands.site compendium, so all of them are *(guide)*:
+
+- **Industrial** is called the best money guild, with Maritime and Commercial close behind:
+  - One building pays +1 gold whenever a nature tile or resource is removed.
+  - Workshops: one player earned about 100 gold in two weeks from enough Industrial workshops.
+  - Ore loops: the Gold Nugget heirloom makes Gold Ore, and a Depot pays +1 gold when ore moves into it and +1 when it's removed.
+- **Commercial:** the Gold Pan and the Vineyard are named as the early gold earners. One player's loop of a Gold Pan and two Marketplaces re-triggering each other paid about 20 gold a week.
+- **Herbs:** a Jewelry between two Apothecaries turns their herbs into gold.
+- **Agricultural** (demo v9): Manure paid +1 gold when it was removed.
+- **Sources that aren't placement:**
+  - heirlooms: the Ingot, Shears, and an unnamed relic that multiplies gold gain. Heirlooms also sell back for value.
+  - council requests, which pay out on completion
+  - early completion, at about 1 gold per week saved (our screenshots)
+- **For D-090:** the placement sources are a producer next to a trigger, removing nature, and turning a resource into gold. No source gives totals, so the share of a run's gold that comes from placement is unknown.
+
+### Sources
+
+- Dream Home:
+  - [Rules summary](https://lehi-innovation.github.io/boardgame-rules/rules/dream-home/)
+  - [Rulebook (RulesPal)](https://rulespal.com/dream-home/rulebook)
+  - [Opinionated Gamers review](https://opinionatedgamers.com/2016/11/29/dale-yu-review-of-dream-home/)
+- Floor Plan:
+  - [Rulebook (RulesPal)](https://rulespal.com/floor-plan/rulebook)
+  - [AV Club review](https://www.avclub.com/floor-plan-board-game-review)
+  - [BoardGameQuest review](https://boardgamequest.com/floor-plan-review)
+  - [What's Eric Playing](https://whatsericplaying.com/2020/08/31/floor-plan)
+- Castles of Mad King Ludwig:
+  - [Rules (BGA)](https://en.doc.boardgamearena.com/Gamehelpcastleofmadkingludwig)
+  - [Rulebook (RulesPal)](https://rulespal.com/castles-of-mad-king-ludwig/rulebook)
+- Between Two Castles: [Rulebook (RulesPal)](https://rulespal.com/between-two-castles-of-mad-king-ludwig/rulebook)
+- Islanders: New Shores:
+  - [CubeD3 review](https://www.cubed3.com/games/reviews/nintendo-switch/islanders-new-shores)
+  - [Trophy guide (Guild Hall values)](https://knoef.info/?p=87009)
+  - [Checkpoint Gaming review](https://checkpointgaming.net/reviews/2025/07/islanders-new-shores-review-a-whole-new-world/)
+- Dorfromantik: [Quests guide](https://gamepretty.com/dorfromantik-beginners-guide-quests-rewards-tile-placement/)
+- Kingdomino: [Rules (BGA)](https://en.doc.boardgamearena.com/Gamehelpkingdomino)
+- Cascadia:
+  - [Rules summary](https://lehi-innovation.github.io/boardgame-rules/rules/cascadia/)
+  - [How to play (Happy Piranha)](https://happypiranha.com/blogs/board-game-rules/how-to-play-cascadia-board-game-rules-instructions)
+- The Sims:
+  - [Room motive (Forbus, "The Sims Under the Hood")](https://users.cs.northwestern.edu/~forbus/c95-gd/lectures/The_Sims_Under_the_Hood_files/v3_slide0106.htm)
+  - [Windows and room score](https://www.thesimswiki.com/wiki/Window)
+  - [Bed and bath counts (forum)](https://forums.ea.com/discussions/the-sims-4-bug-reports-archive-en/fr-count-of-bedsbaths-for-rental-apartments-is-not-updated-after-editing/11635341/replies/11635346)
+  - [Venue requirements (forum)](https://forums.ea.com/discussions/the-sims-4-general-discussion-en/venue-requirements---why-none-for-residential/2114286)
+  - [No Venue Requirements mod](https://modthesims.info/d/543444)
+  - [Dream Home Decorator: listen to your clients](https://simscommunity.info/2021/06/01/the-sims-4-dream-home-decorator-listen-to-your-clients)
+  - [GamingTrend review](https://gamingtrend.com/reviews/shes-a-bit-of-a-fixer-upper-the-sims-4-dream-home-decorator-review/)
+- RimWorld:
+  - [Room roles](https://rimworldwiki.com/wiki/Room_roles)
+  - [Rooms](https://rimworldwiki.com/wiki/Rooms)
+- House Flipper 2:
+  - [Sakura DLC guide](https://www.treyexgaming.com/house-flipper-2-sakura-dlc-achievements-guide/)
+  - [Profit guide](https://gamesfuze.com/guides/house-flipper-2-how-to-make-profit-in-house-flipping-guide/)
+- Real houses (NAHB):
+  - [Bedrooms in 2025](https://eyeonhousing.org/2026/09/bedrooms-in-new-single-family-homes-in-2025/)
+  - [Bathrooms in 2024](https://eyeonhousing.org/2025/12/number-of-bathrooms-in-new-single-family-homes-in-2024/)
+- Combolands gold:
+  - [Forum: powerful combinations](https://steamcommunity.com/app/4075620/discussions/0/582807198746355731/)
+  - [Forum: earning lots of gold](https://steamcommunity.com/app/4075620/discussions/0/582807145029856051/)
+  - [Late-game guide](https://gameplay.tips/guides/combolands-roguelike-citybuilder-late-game-fishing-and-commercial-strategy.html)
+  - [combolands.site: gold](https://combolands.site/gold/)
+  - [combolands.site: buildings](https://combolands.site/buildings/)
+  - [combolands.site: heirlooms](https://combolands.site/heirlooms/)
