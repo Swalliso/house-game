@@ -906,7 +906,7 @@ Choose from two or three contracts, each one a client plus a lot.
 
 ## Open questions
 
-D-074 to D-080 came out of playtest 2 (M2, 2026-11-05), and D-090 to D-093 out of playtest 3 (M3, 2026-11-06). The team asked to hold off on changes until more of the game is in, so each one is Open until a later phase picks it up.
+D-074 to D-080 came out of playtest 2 (M2, 2026-11-05), D-090 to D-093 out of playtest 3 (M3, 2026-11-06), and D-094 out of the Combolands systems research the same day. The team asked to hold off on changes until more of the game is in, so each one is Open until a later phase picks it up.
 
 ### D-074 · Packs: Fences, Driveways, and Hallways that you shape
 **Status:** Open · 2026-11-05, from playtest 2. The direction is confirmed by the team: a week may place more than one piece, overriding D-004 once this is decided.
@@ -923,6 +923,7 @@ D-074 to D-080 came out of playtest 2 (M2, 2026-11-05), and D-090 to D-093 out o
 - How the sim's bots place packs, and whether the 1×N and L cards stay.
 **Would change:** D-004 and D-036 (one placement a week), D-049 (the bigger yard shapes), D-071 (the variant cards), and D-072 (the enclosure probe should include draw odds).
 **2026-11-06 (playtest 3):** still no Fences in the player's run. M4a's Hendersons want a fenced yard, and the Barkers one of 12 tiles.
+**2026-11-06 (Combolands research):** Combolands' walls, palisades, plateaus, and rails are building cards that each place several pieces, and two demo patches raised how many (walls 5 → 6, rails 2 → 3 → 4). Its walls were still skipped: one forum thread's opening post says enclosing anything takes two 6-wall cards and turns off the adjacency bonuses that make most points *(guide)*. See research.md's 2026-11-06 systems update.
 
 ### D-075 · Banked buildings: shop goods that place an extra piece in a week
 **Status:** Decided · 2026-11-05: the team chose a tool, Weekend Crew (D-083). Was Open, from playtest 2 (the team's idea, after Combolands' blueprints and potions).
@@ -955,6 +956,7 @@ D-074 to D-080 came out of playtest 2 (M2, 2026-11-05), and D-090 to D-093 out o
 - requirements (Garage, Driveway, Doghouse)
 - Hallway links, and timers
 **To decide:** When (with M3's shop, or with D-045's first-time hints in M4b), and how. The text should be generated from the rules data, as card text is (D-038).
+**2026-11-06 (Combolands research):** Combolands' most requested feature after launch was a compendium of the run's buildings, heirlooms, and councillors (v1.0.5), and v1.0.7 took a confusing "counts as fish" line off a card. See research.md's 2026-11-06 systems update.
 
 ### D-078 · Terrain and the house's position should matter more
 **Status:** Open · 2026-11-05, from playtest 2.
@@ -965,6 +967,7 @@ D-074 to D-080 came out of playtest 2 (M2, 2026-11-05), and D-090 to D-093 out o
 - Shading the front yard and the sunny side on the board while placing.
 New content is preferred over raising existing numbers.
 **2026-11-06 (playtest 3):** the player sites the house in the middle of the lot, neither near the street nor far back, and didn't feel pulled either way. D-089's sim says otherwise for greedy: houses 0–3 rows from the street win 69%, and 10 or more rows back 48%.
+**2026-11-06 (Combolands research):** in Combolands, each kind of map feature has buildings that need it, make it, or clear it for a payout, and players read the island before picking guilds. Here only the Sapling makes terrain, Boulders give nothing, and clearing a Tree pays nothing. See research.md's 2026-11-06 systems update.
 
 ### D-079 · Treehouses shouldn't reward clustering
 **Status:** Open · 2026-11-05, from playtest 2.
@@ -972,6 +975,7 @@ New content is preferred over raising existing numbers.
 **Idea (the team's):** Reward one Treehouse per forest. Pay per touching Tree, and don't let Treehouses count toward each other's Kid bonus, or penalize them for touching.
 **Would change:** D-071's Treehouse default.
 **2026-11-06 (playtest 3):** Treehouses feel better: not overpowered, but still worth building. Their rules haven't changed since playtest 2; the shop's goods grew the rest of the house around them. The Hendersons like Kid pieces (+50%, M4a), which may make them strong again.
+**2026-11-06 (Combolands research):** the Treehouse both reads Kid and is the base pool's only Kid piece (the Playroom is a shop piece), so Treehouses earn most by touching each other. Another Kid piece in the base pool would give them something else to touch, and another piece that reads Kid would give Kid pieces somewhere else to pay. Combolands keeps two of the same building out of each other's range *(guide)*.
 
 ### D-080 · The Driveway: legibility, and a purpose without a Garage
 **Status:** Open · 2026-11-05, from playtest 2.
@@ -984,6 +988,7 @@ New content is preferred over raising existing numbers.
 - Give it a bonus of its own.
 - Make a Garage likelier once a Driveway is down.
 **2026-11-06 (playtest 3):** the player built more Driveways this time (two Long Driveways in their run).
+**2026-11-06 (Combolands research):** a Combolands railroad makes everything beside it count as beside everything else along it *(guide)*. A Driveway could link the yard pieces along it the way a Hallway links rooms, which would give it a job without a Garage.
 
 ### D-090 · Budget from how you build
 **Status:** Open · 2026-11-06, from playtest 3.
@@ -996,6 +1001,7 @@ New content is preferred over raising existing numbers.
 - More finds that pay, like the Time Capsule.
 **To decide:** which sources, and how big. A run's total should stay near D-085's band, so milestones may pay less. How the shop bot values them.
 **Would change:** D-013 and D-085.
+**2026-11-06 (Combolands research):** research.md now lists what pays gold ("Combolands: what pays gold", in the houses update). The systems update adds three patterns: a paint that pays a coin each time its building fires, for 8 weeks *(guide)*; a Vault that scores from the gold you hold *(guide)*; and removals that pay, such as manure (demo v9). Here they'd be a fixture, a piece, and a demolition reward.
 
 ### D-091 · Finds worth building around
 **Status:** Open · 2026-11-06, from playtest 3.
@@ -1007,6 +1013,7 @@ New content is preferred over raising existing numbers.
 - Time Capsules get a choice of their own.
 **To decide:** which pieces, and how much; whether demolishing it still pays a tool; how the bots choose.
 **Would change:** D-082's finds, and Appendix B's Old Shed and Time Capsule rows.
+**2026-11-06 (Combolands research):** Combolands' rocks are an obstacle for some buildings and a resource for others: Barracks score for each rock nearby, and other buildings clear rock for value. An Old Shed that some pieces count, and that a salvage piece clears for more, would make keeping it a choice.
 
 ### D-092 · Telling whether a fixture is worth it
 **Status:** Open · 2026-11-06, from playtest 3.
@@ -1018,6 +1025,7 @@ New content is preferred over raising existing numbers.
 - A comparison with the fixture it would replace.
 **To decide:** which of these. The numbers come from `preview()`, so the UI still never scores anything itself.
 **Would change:** D-087.
+**2026-11-06 (Combolands research):** Combolands previews a building's score before you place it, yet a reviewer still wanted to try placements before committing (Geekly Grind), and its players asked for a compendium after launch.
 
 ### D-093 · Houses that look like houses
 **Status:** Open · 2026-11-06, from playtest 3. Researched the same day in a session of its own (research.md, "Update: houses that look like houses"). The options and a recommendation are below, and the choice is the team's.
@@ -1086,6 +1094,63 @@ New content is preferred over raising existing numbers.
 - D-056 and the Sets in Appendices A and B (one Entertainer per house).
 - D-085's targets, and §8's reports.
 - Options 3–5 would also change D-037, D-035, or D-071 and D-082.
+
+### D-094 · Chain reactions
+**Status:** Open · 2026-11-06, the team's request after the Combolands systems research (research.md, "Update: how Combolands' systems fit together, and chain reactions"). The options and a recommendation are below, and the choice is the team's.
+**Finding:**
+- Since D-036, a week is one scoring pass and no effect triggers another. That keeps the preview equal to the tally and rules out loops, but it leaves out what reviewers single out in Combolands and what Balatro's retriggers do: one piece setting off another.
+- Every interaction today is one hop. Auras change what a neighbor earns, links count as adjacency, and sets pay as a group. The tally pops pieces in placement order, so a big week reads as a list rather than a chain.
+- Neighbor and aura lines already record the pieces and lot features they count (`BreakdownLine.from`); modifier lines name their source only in the label.
+
+**Idea (the team's):** chain reactions like Combolands' and Balatro's.
+**Options:**
+1. **Show the chains we already have.** No rule change. The tally plays pieces depth first along what boosts what: from each piece not yet played, in placement order, it plays the piece, then each piece that piece boosts that hasn't played yet. Each piece plays once, and options 2 and 3's extra activations play inside the same walk, right after their causes. The preview draws the same arcs.
+   - *Cost:* UI only, part of M5's tally work.
+   - *Limit:* it's feel and legibility; no piece earns more than it does today.
+2. **Extra activations ("Again!").** A piece can activate more than once a week, and each extra activation adds its earnings again. Earnings are still worked out once, in today's pass, so percentages and fixtures keep their shape.
+   - *Data:* one modifier kind, `retrigger { target, times }`: the target activates `times` more a week, and an extra activation doesn't retrigger again. It goes on fixtures (target `{ host: true }`), blueprints, crews, tools (`weekModifiers`), and, from M4, tastes and phase change orders. A set that sets off its members would need a `SetDef` field or an `inSet` selector. For example, a Doorbell fixture (its host activates again), a Bedtime Stories blueprint (Bedrooms that touch a Kid piece activate again), or a Block Party tool (every piece activates once more this week).
+   - *Bound:* at most 3 activations per piece per week, its own included (`maxActivations` in `balance.ts`). Every activation counts, a relay's that earns nothing included, and one past the cap is dropped, not deferred. Counts are per placed piece, and no piece is added or removed during a tally. The resolution throws past 3 × pieces activations, so a bug fails fast instead of hanging.
+   - *Cost:* small: the kind, its card text, the tally's "Again!" step, and tests.
+3. **Relays: activations that spread.** A relay passes activations on, as in "when this activates, each touching Social piece activates again." Each activation of a relay sets off each piece it reaches once, never itself, so a chain can run from A to B to C.
+   - *Order:* activations resolve depth first. Pieces take their turns in the tally's order (option 1); a turn is one activation, then the piece's retriggers. Each activation, as it plays, sets off the pieces its relays reach, in placement order, and each of those plays at once, with everything it sets off, before the next. A piece's own turn always comes, so its extra activations stop at 2.
+   - *Bound:* option 2's cap. Every activation uses one of a piece's 3, so the resolution always ends, and two relays that reach each other both stop at the cap.
+   - *Data:* an effect kind shaped like `aura`: `relay { match: Selector; scope: 'adjacent' | 'region'; every?: number }`, on pieces. A fixture carries one through `grantEffect { target: { host: true }, effect: relay }`, as Good Bones grants growth. A relay may earn nothing itself and only pass activations on. As with auras, `adjacent` means scoring neighbors, so a relay reaches rooms linked by a Hallway.
+   - *Examples:*
+     - a Butler's Pantry: when it activates, each touching Kitchen and Dining Room activates again
+     - Wind Chimes for a Patio: touching Social pieces activate again
+     - an Intercom fixture: touching rooms activate again
+     - an Irrigation line that sets off the touching Green pieces every 2 weeks
+     - a Rare blueprint with a setup, in D-056's style: ×(1 + 0.05 per extra activation that earns Points this week), up to ×2. `plusPer` would gain a week stat (`extraActivations`) and a `max`.
+   - *Cost:* the resolution, the kind, text, termination and preview tests, and the tally playing the chain. More than option 2, but the same activation machinery.
+4. **One-time ripples.** Events that spread once and can't repeat. A Sapling that grows into a Tree also grows each touching Sapling a week, so an orchard grows in a wave; a piece with a Salvage fixture pays budget when it's demolished.
+   - *Rules:* a ripple is a one-time event, not an activation, so it may move a timer or pay once. Ripples resolve at the start of the week, after every transform: a Sapling that a ripple pushes past its timer becomes a Tree the next week, so the wave moves one ring a week, and `pieceTimers()` counts the ripple.
+   - *Cost:* content, plus a small hook per event.
+
+**Shared rules for options 2 and 3:**
+- An extra activation repeats only the piece's own earnings, with every term in them: percentages, fixtures, rhythm and growth payouts (0 in a Pool's off week), and capped terms, so a `max` or `cap` holds per activation. Its auras on its neighbors apply once. Sets (at their Remodel Plans level), specs, +Mult, and ×Mult pay once a week, however often their pieces activate. Extra activations never pay budget and never move timers. A piece with an unmet `requires` doesn't activate or relay; one under `earnNothing` still activates and relays, and adds 0.
+- `PieceScore` keeps `earned` (one activation) and gains `activations` and `weekly` (earned × activations), so the UI never multiplies. Its lines gain one per extra activation, naming the cause. The preview lists a piece when its `weekly` changes, and the property test checks that. The tally, the tile's digit, and Crown Jewel use `weekly`: the top earner is the piece with the highest `weekly`, ties going to the earliest placed, and its +100% applies to that.
+- Each piece's activations, and so the week's total, come out the same in any order; the order only decides how the tally plays them, and the rules produce it. `preview()` runs the same resolution. A §9 property test checks the counts against a plain fixpoint, and that no piece passes the cap.
+- The `tally` event lists every activation in play order with its cause (a piece, or a modifier's source), so the UI only plays it. An extra activation takes a shorter step than a turn (`againStepMs`, about 0.2 s, in `feel.ts`), a piece's retriggers play as one step ("Again ×2"), a relay pulses even when it earns nothing, and the pitch ladder climbs along a chain. At the cap, a 40-piece week would then take about 18 s at 1×, against about 12 s now. Card text and the inspect panel show the cap, since D-036 rejected a hidden one.
+- Chain pieces in the base pool are complexity 3 (D-055). Fixtures have no complexity, and shop goods ignore it, so chain fixtures, blueprints, and tools are Uncommon or Rare (shop 1 offers Commons only), and drawn chain fixtures join a phase after the other fixtures (`fromPhase` 2).
+- *Sim:* report activations per week, chain length, the share of Points from extra activations, how often a piece hits the cap, and the largest per-piece multiplier. `estimatePlay` counts activations, which are local: the candidate's own, from the relays it would touch and the retriggers that match it; its neighbors', from the pass tally; and one more for each neighbor a new relay would reach, under the cap. A play whose value it still can't see (a relay through a Hallway link, or a second hop) gets a `chainHint` and is scored exactly with the other hints (D-089).
+
+**Recommendation:**
+- **Option 1 in M5, whatever else is chosen.** It's the cheapest way to make today's interactions read as chains.
+- **Options 2 and 3 together, as a small phase between M4a and M4b, or inside M4b,** so M4b's crews and change orders can use them and M5's juice is built around them. Start with 4–6 chain items, and ask in its playtest whether a chain felt like the player's own doing.
+- **Option 4** where it fits the theme, starting with the Sapling wave.
+- **If time runs short:** option 2 alone gives the "Again!" moment with the least rule work, and relays wait until after the jam.
+- Re-fit the targets afterward (D-044), since extra activations raise Points.
+
+**To decide:** which options, and where they land (inside M4b, a phase between M4a and M4b, or after the jam); the cap; whether budget ever chains; whether a relay passes on the activations it receives (this entry assumes it does).
+
+**Would change:**
+- D-036: a week can include extra activations, within a cap that card text and the inspect panel show.
+- D-037: a piece contributes its earnings times its activations: ×3 at most, on top of percentages that add, so a +300% piece at the cap with Crown Jewel would earn ×24 its points, the range D-037 was written to avoid. Crown Jewel picks by that weekly amount.
+- D-056: Points include extra activations; +Mult and ×Mult apply once a week; option 3's Rare blueprint would be a fourth ×Mult blueprint.
+- D-050's and D-051's item counts, and D-089's hints.
+- §4's scoring pipeline, API (`PieceScore`, `Preview.lines`, the `tally` event, Crown Jewel's step) and Performance; §5's effect and modifier kinds; §8's reports; §9's property tests; §12's tally; Appendix A (`maxActivations`, the ×Mult goods); and Appendix B (the new items).
+- D-053, §7, and jam-scope.md's build order, if chains get a phase of their own.
+- Check against D-093 (chain items shouldn't reward repeating a room type) and D-090 (under these rules, a fixture that pays budget each time its host fires would pay once a week).
 
 ### Earlier open questions
 
