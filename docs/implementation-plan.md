@@ -540,6 +540,7 @@ Derived from `HouseState`, cached by house object identity:
   - Each piece holds one fixture. Installing a second replaces the first, and the preview shows what's lost.
   - A fixture's modifiers apply to its host only (the `{ host: true }` selector), from the tally of the week it's installed.
   - It goes when its host is demolished; there's no refund.
+  - A piece that becomes a lot feature (the Sapling, which becomes a Tree) can't hold one, since the fixture would go with it (D-095).
   - It doesn't change the host's shape, category, or connectivity.
 
 ### Performance
@@ -1806,7 +1807,7 @@ Every fixture's modifiers target `{ host: true }`, written as "host" here. Draw 
 | Garden Lights | any yard piece | `grantTag host Pretty`; `earn {host ∧ in frontYard} +50` | Common | M3a |
 | **Chandelier** *(D-056)* | dining room or living room | `xMult times 125 when {host: {inSet: entertainer}}`: ×1.25 Mult while its room is part of an Entertainer. Shop only (draw weight 0). | Rare | M3a |
 
-`fits` is checked when a fixture is installed. A Bay Window stays if its room later becomes interior.
+`fits` is checked when a fixture is installed. A Bay Window stays if its room later becomes interior. No fixture goes in a Sapling, which becomes a Tree, so Garden Lights fit every yard piece but that one (D-095).
 
 ### Sets
 

@@ -359,6 +359,46 @@ describe('the fixture goes with its host (§4)', () => {
   });
 });
 
+describe('a piece that becomes a lot feature can’t hold a fixture (D-095)', () => {
+  // A Lawn (uid 1) and a Sapling (uid 2). The Sapling becomes a Tree after 4 weeks, and the Tree
+  // is a lot feature, not a piece, so a fixture in the Sapling would go with it.
+  const LAWN_AND_SAPLING: Placement[] = [
+    ['lawn', 0, 0],
+    ['sapling', 5, 0],
+  ];
+  const reason = 'A Sapling becomes a Tree, so it can’t hold a fixture.';
+
+  it('Garden Lights fit any yard piece, but not a Sapling', () => {
+    const s = build(LAWN_AND_SAPLING, { hand: [fx('gardenLights')], supplies: ['gardenLights'] });
+    expect(R.checkPlay(s, fromHand(0, 2))).toMatchObject({ legal: false, reason });
+    expect(() => R.apply(s, fromHand(0, 2))).toThrow(reason);
+    expect(() => R.apply(s, fromSupplies(0, 2))).toThrow(reason);
+    // The reason the board and the inspect panel show when pointing the lights at the Sapling.
+    expect(R.preview(s, fromSupplies(0, 2))).toMatchObject({ legal: false, reason, delta: 0 });
+    // Only the Lawn is a host.
+    expect(R.installHosts(s, 'hand', 0)).toEqual([1]);
+    expect(R.installHosts(s, 'supplies', 0)).toEqual([1]);
+    expect(R.legalActions(s).filter((a) => a.t === 'install')).toEqual([
+      fromHand(0, 1),
+      fromSupplies(0, 1),
+    ]);
+  });
+
+  it('with only a Sapling on the lot, Garden Lights have no host, so the card doesn’t fit', () => {
+    const s = build([['sapling', 5, 0]], { hand: [fx('gardenLights')] });
+    expect(R.installHosts(s, 'hand', 0)).toEqual([]);
+    expect(R.cardFits(s, 0)).toBe(false);
+  });
+
+  it('a fixture that doesn’t fit a Sapling anyway still says where it goes', () => {
+    const s = build(LAWN_AND_SAPLING, { hand: [fx('sprinkler')] });
+    expect(R.checkPlay(s, fromHand(0, 2))).toMatchObject({
+      legal: false,
+      reason: 'A Sprinkler goes in a Lawn, not a Sapling.',
+    });
+  });
+});
+
 describe('fits, checked at install time (Appendix B)', () => {
   it('a Sprinkler can’t go in a Bedroom', () => {
     const s = build(ONE_BEDROOM, { hand: [fx('sprinkler')], supplies: ['sprinkler'] });

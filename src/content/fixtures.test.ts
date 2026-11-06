@@ -462,6 +462,12 @@ describe('Garden Lights', () => {
     expect(fits(open, more, 'gardenLights', 2)).toEqual({ legal: true });
     expect(fits(open, more, 'gardenLights', 1)).toMatchObject({ legal: false });
     expect(fits(open, more, 'gardenLights', 4)).toMatchObject({ legal: false });
+    // Nor a Sapling (uid 5): it becomes a Tree, a lot feature, and the lights would go with it
+    // (D-095).
+    expect(fits(open, [...more, ['sapling', 8, 0]], 'gardenLights', 5)).toEqual({
+      legal: false,
+      reason: 'A Sapling becomes a Tree, so it can’t hold a fixture.',
+    });
   });
 });
 
