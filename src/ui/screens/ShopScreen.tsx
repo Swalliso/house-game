@@ -47,6 +47,7 @@ import {
 } from '../kit/kit.tsx';
 import { buy, inspected, leaveShop, pickOption, refreshShop, run } from '../store.ts';
 import { Notes } from './Overlays.tsx';
+import { cardReason, fullReason, isSold, shelfReasons } from './shelves.ts';
 import './shop.css';
 
 /** The strike service's picker is open. */
@@ -67,20 +68,6 @@ const SERVICE_ICON: Record<ServiceId, IconName> = {
   demolition: 'hammer',
   strike: 'cross',
 };
-
-/** The reasons that are about your goods, not the card: said once, at the section's tag. */
-const FULL_REASONS: ReadonlySet<string> = new Set([
-  SHOP_REASONS.blueprintsFull,
-  SHOP_REASONS.reserveFull,
-  SHOP_REASONS.suppliesFull,
-]);
-
-/** The reasons a card's price and Buy already say: the price turns orange, Buy is greyed. */
-const QUIET_REASONS: ReadonlySet<string> = new Set([
-  SHOP_REASONS.budget,
-  SHOP_REASONS.sold,
-  SHOP_REASONS.picking,
-]);
 
 function buyOffer(o: OfferView): void {
   if (!o.ok) {
@@ -141,24 +128,12 @@ function OfferChips({ good, kind = false }: { good: GoodRef; kind?: boolean }) {
   );
 }
 
-function isSold(o: OfferView): boolean {
-  return o.offer.kind !== 'service' && !!o.offer.sold;
-}
-
-/** Why full slots keep you from buying this good, if they do: said once, at its shelf. */
-function fullReason(o: OfferView): string | null {
-  return !o.ok && !isSold(o) && o.reason && FULL_REASONS.has(o.reason) ? o.reason : null;
-}
-
 function OfferCard({ o, mixed }: { o: OfferView; mixed: boolean }) {
   const good = offerGood(o.offer);
   const sold = isSold(o);
   const blockedByFull = fullReason(o) !== null;
   const short = !o.ok && o.reason === SHOP_REASONS.budget;
-  const alert =
-    !o.ok && !sold && !blockedByFull && o.reason && !QUIET_REASONS.has(o.reason)
-      ? o.reason
-      : undefined;
+  const alert = cardReason(o) ?? undefined;
   const service = o.offer.kind === 'service' ? o.offer.service : null;
   return (
     <Card
@@ -212,20 +187,7 @@ interface Shelf {
   compact?: boolean;
 }
 
-/**
- * Full slots are about your goods, not a card, so each reason is said once in the shop, at the
- * first shelf it blocks (pieces and fixtures share a shelf, so it can say two).
- */
-function fullReasons(shelves: readonly Shelf[]): string[][] {
-  const said = new Set<string>();
-  return shelves.map((shelf) => {
-    const here = [...new Set(shelf.offers.flatMap((o) => fullReason(o) ?? []))];
-    const fresh = here.filter((r) => !said.has(r));
-    for (const r of fresh) said.add(r);
-    return fresh;
-  });
-}
-
+/** A shelf of one kind of good, with what full slots keep you from buying said at its tag. */
 function Section({ title, offers, term, compact = false, full }: Shelf & { full: string[] }) {
   if (offers.length === 0) return null;
   const mixed = new Set(offers.map((o) => o.offer.kind)).size > 1;
@@ -432,7 +394,7 @@ export function ShopScreen() {
     { title: 'Company upgrade', offers: of('upgrade'), term: 'upgrades' },
     { title: 'Services', offers: of('service'), term: 'services', compact: true },
   ];
-  const full = fullReasons(shelves);
+  const full = shelfReasons(shelves.map((shelf) => shelf.offers));
   const skip = CONTENT.balance.shop.skipReward;
   return (
     <section class="shop panel ui" role="region" aria-label={`Shop ${visit.number}`}>
