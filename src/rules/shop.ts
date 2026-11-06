@@ -388,19 +388,29 @@ export function crateOptions(
   const weights =
     source === 'housewarming' ? ([100, 0, 0] as const) : stockFor(content, shop).rarity;
   const contents = source === 'housewarming' ? 'blueprint' : content.crates[source].contents;
+  const inShop = new Set(
+    (state.offers?.shop?.offers ?? []).flatMap((o) => (o.kind === 'blueprint' ? [o.id] : [])),
+  );
   const out: PickOption[] = [];
   if (contents === 'blueprint') {
-    let left = (Object.keys(content.blueprints) as BlueprintId[]).filter(
+    const all = (Object.keys(content.blueprints) as BlueprintId[]).filter(
       (id) =>
         content.blueprints[id].offered &&
         !state.blueprints.some((b) => b.id === id) &&
         (source !== 'housewarming' || content.blueprints[id].rarity === 'common'),
     );
-    while (out.length < n) {
-      const id = pickByRarity(rng, weights, left, (x) => content.blueprints[x].rarity);
-      if (!id) break;
-      out.push({ kind: 'blueprint', id });
-      left = left.filter((x) => x !== id);
+    // The free gift prefers what the shop beside it isn't selling, and fills up from the rest.
+    const pools =
+      source === 'housewarming'
+        ? [all.filter((id) => !inShop.has(id)), all.filter((id) => inShop.has(id))]
+        : [all];
+    for (let left of pools) {
+      while (out.length < n) {
+        const id = pickByRarity(rng, weights, left, (x) => content.blueprints[x].rarity);
+        if (!id) break;
+        out.push({ kind: 'blueprint', id });
+        left = left.filter((x) => x !== id);
+      }
     }
   } else if (contents === 'fixture') {
     let left = Object.keys(content.fixtures) as FixtureId[];

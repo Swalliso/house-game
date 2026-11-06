@@ -936,6 +936,19 @@ describe('the Housewarming crate', () => {
     expect(types(events).at(-1)).toBe('shopOpened');
   });
 
+  it('prefers blueprints the shop beside it isn’t selling', () => {
+    for (let k = 0; k < 40; k++) {
+      const open = finishPhase(RH, RH.newRun(setup(`hw shop ${k}`))).state;
+      const inShop = open.offers!.shop!.offers.flatMap((o) =>
+        o.kind === 'blueprint' ? [o.id] : [],
+      );
+      const gift = open.offers!.pick!.options.map((o) => o.id);
+      // 6 Commons, 2 in the shop: the gift's 3 all come from the other 4.
+      expect(gift).toHaveLength(3);
+      for (const id of gift) expect(inShop).not.toContain(id);
+    }
+  });
+
   it('picking it is free and isn’t buying: leaving still pays the skip reward', () => {
     const open = finishPhase(RH, RH.newRun(setup('hw free'))).state;
     expect(open.budget).toBe(3);

@@ -113,7 +113,8 @@ function OfferCard({ o }: { o: OfferView }) {
           </>
         )}
       </footer>
-      {!o.ok && !sold && <p class="offer-reason">{o.reason}</p>}
+      {/* Always there, so a card never changes height when the budget does. */}
+      <p class="offer-reason">{!o.ok && !sold ? o.reason : '\u00a0'}</p>
     </article>
   );
 }
