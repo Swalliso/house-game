@@ -1,7 +1,72 @@
 {
+  "floor-carpet": {
+    "w": 32,
+    "h": 32,
+    "spec": "156370ea86a08f80"
+  },
+  "floor-garage": {
+    "w": 32,
+    "h": 32,
+    "spec": "278c5e711287532b"
+  },
+  "floor-hall": {
+    "w": 32,
+    "h": 32,
+    "spec": "f5c2323c9090bdfe"
+  },
+  "floor-kitchen": {
+    "w": 32,
+    "h": 32,
+    "spec": "6b27db7d78cf5819"
+  },
   "floor-library": {
     "w": 32,
     "h": 32,
     "spec": "b276ba4c3316518c"
+  },
+  "floor-office": {
+    "w": 32,
+    "h": 32,
+    "spec": "a681eee218046981"
+  },
+  "floor-parquet": {
+    "w": 32,
+    "h": 32,
+    "spec": "20f380ffb70be056"
+  },
+  "floor-sunroom": {
+    "w": 32,
+    "h": 32,
+    "spec": "a85973129c30c50c"
+  },
+  "floor-tile": {
+    "w": 32,
+    "h": 32,
+    "spec": "97321380064ec635"
+  },
+  "floor-wood": {
+    "w": 32,
+    "h": 32,
+    "spec": "de5cf37c8c6fb466"
+  },
+  "grass-0": {
+    "w": 32,
+    "h": 32,
+    "spec": "0fe4e49d269d5874"
+  },
+  "grass-1": {
+    "w": 32,
+    "h": 32,
+    "spec": "c45f94652f695d8f"
+  },
+  "grass-2": {
+    "w": 32,
+    "h": 32,
+    "spec": "97b6070fede635ae"
+  },
+  "grass-sunny": {
+    "w": 32,
+    "h": 32,
+    "spec": "09b4f6656b16d96e"
   }
 }

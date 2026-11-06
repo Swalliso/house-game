@@ -1,9 +1,72 @@
 {
+  "floor-carpet": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floors_16x16.png",
+    "rect": [80, 208, 16, 16],
+    "ops": [{ "op": "tile", "size": [32, 32] }],
+    "note": "The Living Room's floor (and the Playroom's for now): grey-brown planks, the audit's floor table block 1, 5. A block's top row and left column carry baked wall shadows, so this is its plain seamless tile, repeated to one 32 px cell. The id is the placeholder's; the house stage gives every room type its own floor."
+  },
+  "floor-garage": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floors_16x16.png",
+    "rect": [80, 528, 16, 16],
+    "ops": [{ "op": "tile", "size": [32, 32] }],
+    "note": "The Garage's floor: grey concrete (block 1, 15), its plain seamless tile repeated to one 32 px cell."
+  },
+  "floor-hall": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floors_16x16.png",
+    "rect": [16, 496, 16, 16],
+    "ops": [{ "op": "tile", "size": [32, 32] }],
+    "note": "The Hallways' floor: a beige runner with red diagonals (block 0, 14), its plain seamless tile repeated to one 32 px cell."
+  },
+  "floor-kitchen": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floors_16x16.png",
+    "rect": [208, 80, 16, 16],
+    "ops": [{ "op": "tile", "size": [32, 32] }],
+    "note": "The Kitchens' floor: grey checkered tiles (block 3, 1), its plain seamless tile repeated to one 32 px cell."
+  },
   "floor-library": {
     "pack": "mi",
     "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floors_16x16.png",
     "rect": [144, 208, 16, 16],
     "ops": [{ "op": "tile", "size": [32, 32] }],
     "note": "The Library's own floor: red-brown planks laid like bricks (the audit's floor table: block 2, 5). The block's plain seamless tile, without the shadow baked into its left column, repeated to one 32 px cell. Nothing draws it until the house stage gives every room type its own floor."
+  },
+  "floor-office": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floors_16x16.png",
+    "rect": [208, 432, 16, 16],
+    "ops": [{ "op": "tile", "size": [32, 32] }],
+    "note": "The Home Office's floor: dark oak planks (block 3, 12), its plain seamless tile repeated to one 32 px cell."
+  },
+  "floor-parquet": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floors_16x16.png",
+    "rect": [144, 176, 16, 16],
+    "ops": [{ "op": "tile", "size": [32, 32] }],
+    "note": "The Dining Room's floor (and the Library's until it gets floor-library): red-brown herringbone parquet (block 2, 4), its plain seamless tile repeated to one 32 px cell."
+  },
+  "floor-sunroom": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floors_16x16.png",
+    "rect": [144, 240, 16, 16],
+    "ops": [{ "op": "tile", "size": [32, 32] }],
+    "note": "The Sunroom's floor: terracotta tiles (block 2, 6), its plain seamless tile repeated to one 32 px cell."
+  },
+  "floor-tile": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floors_16x16.png",
+    "rect": [208, 464, 16, 16],
+    "ops": [{ "op": "tile", "size": [32, 32] }],
+    "note": "The Bathroom's floor (and the Mudroom's for now): pale blue diamond tiles (block 3, 13), its plain seamless tile repeated to one 32 px cell."
+  },
+  "floor-wood": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floors_16x16.png",
+    "rect": [16, 208, 16, 16],
+    "ops": [{ "op": "tile", "size": [32, 32] }],
+    "note": "The Bedroom's floor (and the Closet's for now): honey planks (block 0, 5), its plain seamless tile repeated to one 32 px cell."
   }
 }

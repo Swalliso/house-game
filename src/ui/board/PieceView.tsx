@@ -2,6 +2,10 @@
 // on exposed edges (heavier outside, light from the top-left), one furniture sprite, and the
 // piece's weekly score as a small digit in its bottom-right cell. A piece whose requirement
 // isn't met earns nothing and wears a ⚠ badge in its top-left cell.
+//
+// A cell is CELL × scale CSS px. The walls, the digit, the badges, and their offsets are
+// sized in sixteenths of a cell (cellUnit), as they were in pixels of the 16 px art, until the
+// house stage draws LimeZu's walls.
 
 import type { JSX } from 'preact';
 import { useEffect, useRef } from 'preact/hooks';
@@ -9,7 +13,7 @@ import { CONTENT, type Cell, type FixtureId, type PieceId } from '../../rules/in
 import { played } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
 import { settings } from '../settings.ts';
-import { FIXTURE_GLYPHS, PIECE_SPRITES, spriteStyle, TILE } from '../sprites.ts';
+import { CELL, cellUnit, FIXTURE_GLYPHS, PIECE_SPRITES, spriteStyle } from '../sprites.ts';
 import { digitCell, furnitureSpot, isIndoor, uidAt, type Occupancy } from './geometry.ts';
 
 const WALL_OUT = '#4a2f22';
@@ -63,7 +67,8 @@ export function PieceShape({
   settle,
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
-  const px = TILE * scale;
+  const px = CELL * scale;
+  const unit = cellUnit(px);
   const minX = Math.min(...cells.map((c) => c.x));
   const minY = Math.min(...cells.map((c) => c.y));
   const maxX = Math.max(...cells.map((c) => c.x));
@@ -116,9 +121,9 @@ export function PieceShape({
       // Interior walls draw on the top and left only, so a shared wall isn't doubled.
       if (kind === 'in' && (side === 'bottom' || side === 'right')) continue;
       const heavy = side === 'bottom' || side === 'right';
-      const t = (kind === 'out' ? (heavy ? 3 : 2) : 1) * scale;
+      const t = (kind === 'out' ? (heavy ? 3 : 2) : 1) * unit;
       const color = kind === 'out' ? WALL_OUT : kind === 'in' ? WALL_IN : HEDGE;
-      const w = kind === 'hedge' ? scale : t;
+      const w = kind === 'hedge' ? unit : t;
       const [x, y] =
         side === 'top' ? [0, w] : side === 'bottom' ? [0, -w] : side === 'left' ? [w, 0] : [-w, 0];
       out.push(`inset ${x}px ${y}px 0 0 ${color}`);
@@ -173,7 +178,7 @@ export function PieceShape({
           style={{
             left: `${(digit.x - minX + 1) * px}px`,
             top: `${(digit.y - minY + 1) * px}px`,
-            fontSize: `${Math.max(11, 5 * scale)}px`,
+            fontSize: `${Math.max(11, 5 * unit)}px`,
           }}
         >
           {shown}
@@ -186,9 +191,9 @@ export function PieceShape({
           title={`Earns nothing: it must be ${unmet}`}
           aria-label={`Earns nothing: it must be ${unmet}`}
           style={{
-            left: `${(first.x - minX) * px + Math.max(1, scale)}px`,
-            top: `${(first.y - minY) * px + Math.max(1, scale)}px`,
-            fontSize: `${Math.max(11, 4.5 * scale)}px`,
+            left: `${(first.x - minX) * px + Math.max(1, unit)}px`,
+            top: `${(first.y - minY) * px + Math.max(1, unit)}px`,
+            fontSize: `${Math.max(11, 4.5 * unit)}px`,
           }}
         >
           {'\u26A0\uFE0E'}
@@ -212,20 +217,21 @@ function FixtureBadge({
   minY: number;
   scale: number;
 }) {
-  const px = TILE * scale;
+  const px = CELL * scale;
+  const unit = cellUnit(px);
   const def = CONTENT.fixtures[id];
   // The top row's rightmost cell.
   const top = Math.min(...cells.map((c) => c.y));
   const right = Math.max(...cells.filter((c) => c.y === top).map((c) => c.x));
-  const size = Math.max(14, 6 * scale);
+  const size = Math.max(14, 6 * unit);
   return (
     <div
       class={`fixture-badge rarity-${def.rarity}`}
       title={`${def.name} (fixture)`}
       aria-label={`${def.name} installed`}
       style={{
-        left: `${(right - minX + 1) * px - size - Math.max(1, scale)}px`,
-        top: `${(top - minY) * px + Math.max(1, scale)}px`,
+        left: `${(right - minX + 1) * px - size - Math.max(1, unit)}px`,
+        top: `${(top - minY) * px + Math.max(1, unit)}px`,
         width: `${size}px`,
         height: `${size}px`,
         fontSize: `${Math.round(size * 0.72)}px`,

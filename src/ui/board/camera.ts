@@ -1,20 +1,20 @@
-// The camera (implementation-plan.md §12, Art; D-057). It zooms by changing the board's scale
-// and re-laying it out, never with transform: scale(), which blurs pixel art in Safari. Zoom
-// levels are whole numbers from 1× to 6×; the Fit overview is the one fractional scale. The
-// board pans with its scroll container (drag, or the middle button), and a zoom keeps the
-// point under the pointer (or the middle of the view) where it was.
+// The camera (implementation-plan.md §12, Art; D-057, D-095). It zooms by changing the board's
+// scale (CSS px per art px; a cell is CELL × scale CSS px) and re-laying it out, never with
+// transform: scale(), which blurs pixel art in Safari. Zoom levels are whole device pixels per
+// art pixel, from one device pixel up to 3×: 1×, 2× and 3× at a devicePixelRatio of 1, and
+// 0.5× steps on a Retina screen. The Fit overview is the one fractional scale. The board pans
+// with its scroll container (drag, or the middle button), and a zoom keeps the point under
+// the pointer (or the middle of the view) where it was.
 
 import { computed, signal } from '@preact/signals';
 import { FEEL } from '../fx/feel.ts';
-import { TILE } from '../sprites.ts';
-import { fitScale, overviewScale } from './geometry.ts';
-
-export const MIN_ZOOM = 1;
-export const MAX_ZOOM = 6;
+import { CELL } from '../sprites.ts';
+import { fitScale, overviewScale, snapZoom, zoomStep } from './geometry.ts';
 
 /**
- * The player's zoom: null until they pick one (the default, max(2, fitScale), follows the
- * window), a whole-number scale (kept when the window resizes), or 'fit' (recomputed).
+ * The player's zoom: null until they pick one (the default, fitScale, follows the window), a
+ * scale (kept when the window resizes, and snapped to whole device pixels on another
+ * screen), or 'fit' (recomputed).
  */
 export const zoom = signal<number | 'fit' | null>(null);
 
@@ -26,16 +26,22 @@ export const viewSize = signal<{ width: number; height: number; dpr: number } | 
 /** The lot's size in tiles, not counting the street row; set by the board. */
 export const lotSize = signal<{ width: number; height: number }>({ width: 24, height: 24 });
 
-/** The scale the board draws at: CSS px per sprite pixel. */
+/** The devicePixelRatio the board was measured at, or the window's before it measures. */
+function currentDpr(): number {
+  return viewSize.value?.dpr ?? (window.devicePixelRatio || 1);
+}
+
+/** The scale the board draws at: CSS px per art pixel. */
 export const cameraScale = computed<number>(() => {
   const z = zoom.value;
   const view = viewSize.value;
   const lot = lotSize.value;
-  if (typeof z === 'number') return z;
-  if (!view) return 2;
+  const dpr = currentDpr();
+  if (typeof z === 'number') return snapZoom(z, dpr);
+  if (!view) return 1;
   return z === 'fit'
-    ? overviewScale(view.width, view.height, lot.width, lot.height)
-    : fitScale(view.width, view.height, lot.width, lot.height);
+    ? overviewScale(view.width, view.height, lot.width, lot.height, dpr)
+    : fitScale(view.width, view.height, lot.width, lot.height, dpr);
 });
 
 export const isFit = computed(() => zoom.value === 'fit');
@@ -47,7 +53,7 @@ export const cameraEls: { scroll: HTMLElement | null; board: HTMLElement | null 
 };
 
 interface Anchor {
-  /** The lot point (in tiles) that should stay put… */
+  /** The lot point (in cells) that should stay put… */
   lotX: number;
   lotY: number;
   /** …at this screen point. */
@@ -57,7 +63,7 @@ interface Anchor {
 
 let pendingAnchor: Anchor | null = null;
 /** The scale the board's DOM is laid out at right now (it lags a zoom by one render). */
-let renderedScale = 2;
+let renderedScale = 1;
 let beforeFit: number | null = null;
 
 /** The lot point under a screen point, or under the middle of the view. */
@@ -68,7 +74,7 @@ function anchorAt(at?: { clientX: number; clientY: number }): Anchor | null {
   const clientX = at?.clientX ?? s.left + s.width / 2;
   const clientY = at?.clientY ?? s.top + s.height / 2;
   const b = board.getBoundingClientRect();
-  const px = TILE * renderedScale;
+  const px = CELL * renderedScale;
   return { lotX: (clientX - b.left) / px, lotY: (clientY - b.top) / px, clientX, clientY };
 }
 
@@ -90,19 +96,16 @@ export function applyZoomAnchor(scale: number): void {
   const { scroll, board } = cameraEls;
   if (!a || !scroll || !board) return;
   const b = board.getBoundingClientRect();
-  const px = TILE * scale;
+  const px = CELL * scale;
   scroll.scrollLeft += b.left + a.lotX * px - a.clientX;
   scroll.scrollTop += b.top + a.lotY * px - a.clientY;
 }
 
-/** One whole step in or out. From a fractional scale (Fit), the first step rounds. */
+/** One step in or out, in whole device pixels per art pixel. From Fit, the first step rounds. */
 function step(dir: 1 | -1, at?: { clientX: number; clientY: number }): void {
   const s = cameraScale.value;
-  const next =
-    dir > 0
-      ? Math.min(MAX_ZOOM, Math.floor(s + 1e-6) + 1)
-      : Math.max(MIN_ZOOM, Math.ceil(s - 1e-6) - 1);
-  if (dir > 0 ? next <= s : next >= s) return;
+  const next = zoomStep(s, dir, currentDpr());
+  if (next === s) return;
   setZoom(next, at);
 }
 
@@ -125,11 +128,13 @@ export function toggleFit(): void {
 }
 
 export function canZoomIn(): boolean {
-  return cameraScale.value < MAX_ZOOM;
+  const s = cameraScale.value;
+  return zoomStep(s, 1, currentDpr()) !== s;
 }
 
 export function canZoomOut(): boolean {
-  return cameraScale.value > MIN_ZOOM;
+  const s = cameraScale.value;
+  return zoomStep(s, -1, currentDpr()) !== s;
 }
 
 let wheelTravel = 0;

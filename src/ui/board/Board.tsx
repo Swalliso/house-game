@@ -56,7 +56,7 @@ import {
   useToolNow,
   type Inspected,
 } from '../store.ts';
-import { TILE } from '../sprites.ts';
+import { CELL } from '../sprites.ts';
 import {
   applyZoomAnchor,
   cameraEls,
@@ -78,6 +78,8 @@ import './board-m2.css';
 
 /** The scroll container's padding (app.css), kept clear around the board. */
 const PAD = 6;
+/** Cells smaller than this many CSS px get the smaller badges and labels (board-m2.css). */
+const SMALL_CELL_PX = 32;
 
 /** Rotates the card being placed; a tentative placement turns where it is. */
 export function rotate(): void {
@@ -249,7 +251,7 @@ export function Board() {
   const state = run.value;
   const { lot } = state.house;
   const scale = cameraScale.value;
-  const px = TILE * scale;
+  const px = CELL * scale;
   const demolishing = tool.value === 'demolish';
   const occ = occupancy(state.house);
   const tally = currentTally.value;
@@ -535,7 +537,7 @@ export function Board() {
     'board',
     !demolishing && selected.value !== null ? 'placing' : '',
     demolishing ? 'demolishing' : '',
-    scale < 2 ? 'small' : '',
+    px < SMALL_CELL_PX ? 'small' : '',
   ].join(' ');
 
   return (
@@ -614,7 +616,7 @@ function Ghost({
   const p = preview.value;
   const legal = !!p?.legal;
   const pending = !!tentative.value;
-  const px = TILE * scale;
+  const px = CELL * scale;
   const inside = cells.filter((cell) => cell.x >= 0 && cell.y >= 0);
   // Keep the label on the board: away from the side edges, and below the ghost at the top.
   const spot = labelSpot(cells, run.value.house.lot.width);
@@ -658,7 +660,7 @@ function InstallTarget({ scale }: { scale: number }) {
   const state = run.value;
   const { lot } = state.house;
   if (!p || !play || play.t !== 'install') return null;
-  const px = TILE * scale;
+  const px = CELL * scale;
   const hover = hoverCell.value;
   const cells: readonly Cell[] = p.cells.length > 0 ? p.cells : hover ? [hover] : [];
   if (cells.length === 0) return null;
@@ -729,7 +731,7 @@ function ToolTarget({ scale }: { scale: number }) {
   if (!sel || sel.kind !== 'tool' || !hover) return null;
   const use = CONTENT.tools[sel.id].use.kind;
   if (use !== 'move' && use !== 'copy') return null;
-  const px = TILE * scale;
+  const px = CELL * scale;
   const occ = occupancy(state.house);
   const p = toolPreview.value;
   const action = toolAction.value;
@@ -827,7 +829,7 @@ function DemolishTarget({ scale }: { scale: number }) {
   const note = demolishNote.value;
   const state = run.value;
   const { lot } = state.house;
-  const px = TILE * scale;
+  const px = CELL * scale;
   const hx = hover?.x;
   const hy = hover?.y;
   const other = useMemo(() => {
@@ -892,7 +894,7 @@ function DemolishTarget({ scale }: { scale: number }) {
 function Badges({ scale }: { scale: number }) {
   const p = preview.value!;
   const occ = occupancy(run.value.house);
-  const px = TILE * scale;
+  const px = CELL * scale;
   const marks: { key: string; x: number; y: number; text: string; good: boolean; kind: string }[] =
     [];
 
@@ -961,7 +963,7 @@ function Badges({ scale }: { scale: number }) {
 }
 
 function PopupLayer({ scale }: { scale: number }) {
-  const px = TILE * scale;
+  const px = CELL * scale;
   return (
     <div class="popups" aria-hidden="true">
       {popups.value.map((pop) => (

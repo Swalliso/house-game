@@ -1,7 +1,8 @@
-// The terrain: one canvas of (lot width × 16) × ((lot height + 1) × 16) pixels, smoothing off,
-// shown at that size × scale with image-rendering: pixelated (§12, Rendering). The extra row
-// is the street. It redraws only when the lot changes (building over a Tree replaces it).
-// Over it, under the pieces, a soft tint shows the house's fenced yards.
+// The terrain: one canvas of (lot width × CELL) × ((lot height + 1) × CELL) art px (768×800
+// for a 24×24 lot), smoothing off, shown at that size × scale with image-rendering: pixelated
+// (§12, Rendering). The extra row is the street. It redraws only when the lot changes
+// (building over a Tree replaces it). Over it, under the pieces, a soft tint shows the
+// house's fenced yards.
 
 import { useEffect, useMemo, useRef } from 'preact/hooks';
 import {
@@ -12,7 +13,7 @@ import {
   type Lot,
   type RunState,
 } from '../../rules/index.ts';
-import { atlasImage, spritePos, TILE, type SpriteId } from '../sprites.ts';
+import { atlasImage, CELL, spritePos, type SpriteId } from '../sprites.ts';
 import { cellsOutline } from './geometry.ts';
 
 /** A stable per-tile variation that isn't game randomness. */
@@ -23,11 +24,11 @@ function tileHash(x: number, y: number): number {
 }
 
 function draw(ctx: CanvasRenderingContext2D, img: HTMLImageElement, lot: Lot): void {
-  // M5a shim, until the 32 px cells (D-095): each sprite's whole rect (32×32, the placeholders
-  // doubled) goes into one 16 px tile, and with smoothing off that gives back their own pixels.
+  // Each sprite at its own size, from its cell's top-left corner: every terrain sprite is one
+  // CELL × CELL cell for now.
   const put = (id: SpriteId, x: number, y: number) => {
     const p = spritePos(id);
-    ctx.drawImage(img, p.x, p.y, p.w, p.h, x * TILE, y * TILE, TILE, TILE);
+    ctx.drawImage(img, p.x, p.y, p.w, p.h, x * CELL, y * CELL, p.w, p.h);
   };
   ctx.imageSmoothingEnabled = false;
   for (let y = 0; y < lot.height; y++) {
@@ -75,11 +76,11 @@ export function TerrainLayer({ lot, scale }: { lot: Lot; scale: number }) {
     <canvas
       ref={ref}
       class="terrain"
-      width={lot.width * TILE}
-      height={(lot.height + 1) * TILE}
+      width={lot.width * CELL}
+      height={(lot.height + 1) * CELL}
       style={{
-        width: `${lot.width * TILE * scale}px`,
-        height: `${(lot.height + 1) * TILE * scale}px`,
+        width: `${lot.width * CELL * scale}px`,
+        height: `${(lot.height + 1) * CELL * scale}px`,
       }}
       aria-hidden="true"
     />
@@ -101,7 +102,7 @@ export function Outline({
   lot: Lot;
   class: string;
 }) {
-  const px = TILE * scale;
+  const px = CELL * scale;
   const { fill, edge } = useMemo(() => cellsOutline(cells, px), [cells, px]);
   if (cells.length === 0) return null;
   return (

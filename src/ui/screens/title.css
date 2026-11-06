@@ -270,6 +270,10 @@
 .howto-section li {
   margin: 3px 0;
 }
+.howto-section a {
+  color: var(--wood);
+  font-weight: 700;
+}
 
 /* Groundbreaking → … → Final Walkthrough. */
 .howto-phases {

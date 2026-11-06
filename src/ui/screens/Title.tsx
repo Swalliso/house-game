@@ -7,7 +7,7 @@ import { rules, SCORE_LABELS } from '../../rules/index.ts';
 import { audio } from '../audio/audio.ts';
 import { formatNumber } from '../format.ts';
 import { howToPlayOpen, settingsOpen } from '../hud/actions.ts';
-import { spriteStyle, TILE, type SpriteId } from '../sprites.ts';
+import { CELL, spriteStyle, type SpriteId } from '../sprites.ts';
 import { canContinue, continueRun, newRun, run } from '../store.ts';
 
 /** What the save holds, for the Continue button: "Framing, week 10 · 1,240 Wow". */
@@ -71,7 +71,7 @@ export function Title() {
         </main>
       </div>
       <Street />
-      <footer class="title-footer">A game jam entry · theme: It's a house</footer>
+      <footer class="title-footer">A game jam entry · theme: It's a house · art by LimeZu</footer>
     </div>
   );
 }
@@ -92,10 +92,14 @@ function HouseSilhouette() {
 
 // ---------------------------------------------------------------------------------------
 // The street along the bottom: a strip of lawn with trees and a fence, the sidewalk, the
-// street, and the far sidewalk. Sprites render at whole-number scales.
+// street, and the far sidewalk. Each tile is one CELL-sized sprite.
 
-function useViewport(): { w: number; h: number } {
-  const read = () => ({ w: window.innerWidth, h: window.innerHeight });
+function useViewport(): { w: number; h: number; dpr: number } {
+  const read = () => ({
+    w: window.innerWidth,
+    h: window.innerHeight,
+    dpr: window.devicePixelRatio || 1,
+  });
   const [size, setSize] = useState(read);
   useEffect(() => {
     const onResize = () => setSize(read());
@@ -103,6 +107,18 @@ function useViewport(): { w: number; h: number } {
     return () => window.removeEventListener('resize', onResize);
   }, []);
   return size;
+}
+
+/**
+ * The street's scale (CSS px per art px): tiles of 64, 48, or 32 CSS px by the window's
+ * height, as with the 16 px art, rounded to the nearest whole device pixels per art pixel
+ * (D-095) so the pixels stay crisp, and down on a tie. So on a Retina screen the street is as
+ * it was, and at a devicePixelRatio of 1 the 48 px size comes out at 32.
+ */
+function streetScale(height: number, dpr: number): number {
+  const tile = height >= 1000 ? 64 : height >= 760 ? 48 : 32;
+  const k = Math.ceil(Math.round((tile / CELL) * dpr * 1e6) / 1e6 - 0.5);
+  return Math.max(1, k) / dpr;
 }
 
 const GRASS: readonly SpriteId[] = ['grass-0', 'grass-1', 'grass-2'];
@@ -118,9 +134,9 @@ function lawnTile(i: number): { floor: SpriteId; top?: SpriteId } {
 }
 
 function Street() {
-  const { w, h } = useViewport();
-  const scale = h >= 1000 ? 4 : h >= 760 ? 3 : 2;
-  const px = TILE * scale;
+  const { w, h, dpr } = useViewport();
+  const scale = streetScale(h, dpr);
+  const px = CELL * scale;
   const cols = Math.ceil(w / px) + 1;
   const tile = (id: SpriteId) => ({
     width: `${px}px`,

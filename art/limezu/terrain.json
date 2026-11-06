@@ -1,0 +1,78 @@
+{
+  "grass-0": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png",
+    "rect": [16, 112, 16, 16],
+    "ops": [
+      { "op": "tile", "size": [32, 32] },
+      {
+        "op": "recolor",
+        "map": { "#479757": "#5a8a5e", "#37854e": "#4c7a52", "#2d7256": "#436b52" }
+      }
+    ],
+    "note": "Open ground: LimeZu's base grass (the middle of its grass patch), repeated to one 32 px cell and muted with the audit prototype's terrain remap (its MUTE table, the colors this tile uses), so pieces stand out against the lot."
+  },
+  "grass-1": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png",
+    "rect": [16, 112, 16, 16],
+    "ops": [
+      { "op": "tile", "size": [32, 32] },
+      {
+        "op": "compose",
+        "size": [32, 32],
+        "layers": [{ "rect": [416, 32, 16, 16], "at": [16, 0] }]
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#479757": "#5a8a5e",
+          "#37854e": "#4c7a52",
+          "#2d7256": "#436b52",
+          "#53a65d": "#6a9a67"
+        }
+      }
+    ],
+    "note": "grass-0 with the smaller of the prototype's two light grass tufts in its top-right quarter, muted the same way."
+  },
+  "grass-2": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png",
+    "rect": [16, 112, 16, 16],
+    "ops": [
+      { "op": "tile", "size": [32, 32] },
+      {
+        "op": "compose",
+        "size": [32, 32],
+        "layers": [{ "rect": [400, 32, 16, 16], "at": [0, 16] }]
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#479757": "#5a8a5e",
+          "#37854e": "#4c7a52",
+          "#2d7256": "#436b52",
+          "#53a65d": "#6a9a67"
+        }
+      }
+    ],
+    "note": "grass-0 with the larger of the prototype's two light grass tufts in its bottom-left quarter, muted the same way. The rarest of the three."
+  },
+  "grass-sunny": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png",
+    "rect": [16, 112, 16, 16],
+    "ops": [
+      { "op": "tile", "size": [32, 32] },
+      {
+        "op": "recolor",
+        "map": { "#479757": "#6f9a4c", "#37854e": "#5c8a43", "#2d7256": "#4f7a45" }
+      },
+      {
+        "op": "recolor",
+        "map": { "#6f9a4c": "#7f9a5c", "#5c8a43": "#6e8a55", "#4f7a45": "#5f7652" }
+      }
+    ],
+    "note": "The sunny side: LimeZu has no sunny grass, so it's the same grass with the prototype's warm remap (its WARM table), then its terrain mute, as the prototype drew the warm strip. Brighter and yellower than grass-0."
+  }
+}

@@ -8,6 +8,7 @@ import {
   type PieceId,
   type PlacedPiece,
 } from '../../rules/index.ts';
+import { CELL } from '../sprites.ts';
 
 export interface Occupancy {
   width: number;
@@ -82,36 +83,83 @@ export function center(cells: readonly Cell[]): { x: number; y: number } {
   return { x: (minX + maxX + 1) / 2, y: (minY + maxY + 1) / 2 };
 }
 
+// ---------------------------------------------------------------------------------------
+// Scales (§12, Art; D-095). A scale is CSS px per art px, and one cell is CELL art px. The
+// camera's scales are whole device pixels per art pixel, k ÷ devicePixelRatio: 1×, 2× and 3×
+// at a devicePixelRatio of 1, and 0.5× steps on a Retina screen. Fit is the one exception.
+
+/** The camera zooms in up to this scale; its last step is the largest k ÷ dpr not above it. */
+export const MAX_ZOOM = 3;
+
+/** Whole device pixels per art pixel at `scale`, give or take float noise. */
+function devicePx(scale: number, dpr: number): number {
+  return Math.round(scale * dpr * 1e6) / 1e6;
+}
+
+/** The smallest zoom: one device pixel per art pixel (1× at a dpr of 1, 0.5× on Retina). */
+export function minZoom(dpr: number): number {
+  return 1 / dpr;
+}
+
+/** The largest zoom: the largest whole device pixels per art pixel up to MAX_ZOOM. */
+export function maxZoom(dpr: number): number {
+  return Math.max(1, Math.floor(devicePx(MAX_ZOOM, dpr))) / dpr;
+}
+
 /**
- * The default zoom (§12, Art): whole device pixels, at least 2×, as large as fits. The lot
- * plus the street row below it. The camera (camera.ts) starts here.
+ * A zoom the player picked, on this screen: the nearest whole device pixels per art pixel
+ * (moving the window to another screen keeps its size about the same), within the limits.
+ */
+export function snapZoom(scale: number, dpr: number): number {
+  const k = Math.max(1, Math.round(devicePx(scale, dpr)));
+  return Math.min(maxZoom(dpr), Math.max(minZoom(dpr), k / dpr));
+}
+
+/**
+ * One zoom step in (+1) or out (−1) from `scale`: the next whole device pixels per art pixel,
+ * within the limits. From a fractional scale (Fit), the first step rounds. Returns `scale`
+ * itself when there's no further step that way.
+ */
+export function zoomStep(scale: number, dir: 1 | -1, dpr: number): number {
+  const k = devicePx(scale, dpr);
+  const next =
+    dir > 0
+      ? Math.min(maxZoom(dpr), (Math.floor(k) + 1) / dpr)
+      : Math.max(minZoom(dpr), (Math.ceil(k) - 1) / dpr);
+  return (dir > 0 ? next > scale : next < scale) ? next : scale;
+}
+
+/**
+ * The default zoom (§12, Art): the largest whole device pixels per art pixel at which the lot
+ * plus the street row below it fit, never below 1× (a smaller view pans) and never above the
+ * camera's largest zoom. The camera (camera.ts) starts here.
  */
 export function fitScale(
   availWidth: number,
   availHeight: number,
   lotW: number,
   lotH: number,
+  dpr: number,
 ): number {
-  const dpr = window.devicePixelRatio || 1;
-  const byH = Math.floor((availHeight * dpr) / ((lotH + 1) * 16)) / dpr;
-  const byW = Math.floor((availWidth * dpr) / (lotW * 16)) / dpr;
-  return Math.max(2, Math.min(byH, byW));
+  const byH = Math.floor((availHeight * dpr) / ((lotH + 1) * CELL)) / dpr;
+  const byW = Math.floor((availWidth * dpr) / (lotW * CELL)) / dpr;
+  return Math.min(maxZoom(dpr), Math.max(1, Math.min(byH, byW)));
 }
 
 /**
  * The Fit overview (§12, Art): the largest scale that shows the whole lot and the street,
- * the one exception to whole-number scales. Cells stay a whole number of device pixels, so
- * the grid lines up even though the sprites' pixels come out slightly uneven.
+ * the one exception to whole device pixels per art pixel. Cells stay a whole number of device
+ * pixels, so the grid lines up even though the sprites' pixels come out slightly uneven.
  */
 export function overviewScale(
   availWidth: number,
   availHeight: number,
   lotW: number,
   lotH: number,
+  dpr: number,
 ): number {
-  const dpr = window.devicePixelRatio || 1;
   const cell = Math.min(availWidth / lotW, availHeight / (lotH + 1));
-  return Math.max(1, Math.floor(cell * dpr)) / dpr / 16;
+  return Math.max(1, Math.floor(cell * dpr)) / dpr / CELL;
 }
 
 /**

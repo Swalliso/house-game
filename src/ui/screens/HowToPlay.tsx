@@ -290,6 +290,19 @@ function HowToPlayText() {
           ))}
         </dl>
       </Section>
+
+      <Section title="Credits">
+        <ul>
+          <li>
+            Art by{' '}
+            <a href="https://limezu.itch.io/" target="_blank" rel="noreferrer">
+              LimeZu
+            </a>
+            , from Modern Interiors and Modern Exteriors, with placeholders drawn for Open House.
+          </li>
+          <li>Sound effects made with ZzFX by Frank Force.</li>
+        </ul>
+      </Section>
     </>
   );
 }

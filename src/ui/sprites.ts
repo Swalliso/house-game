@@ -2,14 +2,28 @@
 // (doubled to 32×32) and the LimeZu cuts in assets/limezu/ (at their own sizes). atlas.json
 // (version 2) gives each sprite's rect, { x, y, w, h }, at even positions and extruded by 1px.
 // Pieces use it as a CSS background; the terrain canvas draws from it.
+//
+// Sizes are in art px. A board `scale` is CSS px per art px, so one cell is CELL × scale CSS
+// px. Sprites come in any size: a cell's floor is CELL × CELL, and furniture may be smaller or
+// taller.
 
 import atlasUrl from '../../assets/atlas.png';
 import atlas from '../../assets/atlas.json';
 import type { FixtureId, PieceId, Supply, ToolId } from '../rules/index.ts';
 
 export type SpriteId = keyof typeof atlas.sprites;
-/** The board's cell size in CSS px at scale 1 (until the switch to 32 px cells, D-095). */
-export const TILE = 16;
+
+/** Art px per game cell: a 2×2 block of LimeZu's 16 px tiles (D-095). */
+export const CELL = 32;
+
+/**
+ * One sixteenth of a cell, in CSS px, for a cell of `px` CSS px: one pixel of the old 16 px
+ * art. Text, badges, offsets, and the placeholder walls are sized in these, so they keep the
+ * size they had at 2× with 16 px cells (1× now) and grow with the zoom the same way.
+ */
+export function cellUnit(px: number): number {
+  return px / 16;
+}
 
 export const ATLAS_URL: string = atlasUrl;
 
@@ -29,7 +43,7 @@ export const PIECE_SPRITES: Record<PieceId, { floor: SpriteId; furniture: Sprite
   lawn: { floor: 'lawn', furniture: 'flowers' },
   sapling: { floor: 'grass-0', furniture: 'sapling' },
   // Where the floor is the whole picture, the furniture is the same sprite (it lands on a
-  // whole cell, or the sprite repeats every 8px, so it shows no seam) or the empty 'none'.
+  // whole cell, or the sprite repeats every half cell, so it shows no seam) or the empty 'none'.
   // Sprites don't rotate, so the fence is drawn as a panel that also reads stacked.
   flowerBed: { floor: 'flowerbed', furniture: 'flowerbed' },
   herbGarden: { floor: 'herbs', furniture: 'herbs' },
@@ -94,22 +108,17 @@ export function spritePos(id: SpriteId): { x: number; y: number; w: number; h: n
 }
 
 /**
- * CSS for a sprite drawn into one TILE × scale box, at a whole-number scale.
- *
- * M5a shim, until the board lays out 32 px cells (D-095): the atlas holds every sprite at 32 art
- * px per cell, the placeholders doubled, but the board still lays out 16 px cells. So the
- * sprite's whole rect is shrunk into the box (by TILE / w), and nearest-neighbor halving gives
- * back the placeholders' own pixels. Atlas positions are even, so every whole scale still lands
- * on whole CSS pixels. The 32 px switch replaces this with a plain `scale` per art pixel.
+ * CSS for a sprite as a background at `scale` CSS px per art px. The element's box is the
+ * caller's: w × scale by h × scale shows the whole sprite (a cell-sized sprite fills a cell).
+ * Atlas positions are even, so a scale in half CSS px (0.5× steps on a Retina screen) still
+ * lands on whole CSS px; Fit's fractional scale relies on the 1px extrusion instead.
  */
 export function spriteStyle(id: SpriteId, scale: number): Record<string, string> {
-  const { x, y, w, h } = spritePos(id);
-  const kx = (TILE * scale) / w;
-  const ky = (TILE * scale) / h;
+  const { x, y } = spritePos(id);
   return {
     backgroundImage: `url(${atlasUrl})`,
-    backgroundPosition: `${-x * kx}px ${-y * ky}px`,
-    backgroundSize: `${atlas.width * kx}px ${atlas.height * ky}px`,
+    backgroundPosition: `${-x * scale}px ${-y * scale}px`,
+    backgroundSize: `${atlas.width * scale}px ${atlas.height * scale}px`,
     backgroundRepeat: 'no-repeat',
     imageRendering: 'pixelated',
   };

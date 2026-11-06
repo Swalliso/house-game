@@ -4,13 +4,21 @@ Open House is a game jam entry for the theme "It's a house," built with Claude C
 
 ## Art, sound, and music
 
-- **Placeholder sprites** (`art/`, packed into `assets/atlas.png`): drawn for Open House by
-  Claude Code. Our own work. LimeZu's packs replace them from M2 (D-057).
+- **Art by [LimeZu](https://limezu.itch.io/):** sprites from
+  [Modern Interiors](https://limezu.itch.io/moderninteriors) and
+  [Modern Exteriors](https://limezu.itch.io/modernexteriors), used under the packs' licenses:
+  use in any project with credit to LimeZu, and never redistribute the packs. So the repository
+  holds only the sprites we use, cut from the packs into `assets/limezu/` (and packed into
+  `assets/atlas.png`) by `npm run art:cut`, each recorded in `assets/licenses.json` with its
+  sheet and rect. The packs stay in the gitignored `art-source/` (D-095).
+- **Placeholder sprites** (`art/*.txt`, packed into `assets/atlas.png`): drawn for Open House
+  by Claude Code. Our own work. LimeZu cuts replace them one by one in M5a (D-095): so far the
+  floors and the grass.
 - **Placeholder sound effects:** generated in the browser with
   [ZzFX](https://github.com/KilledByAPixel/ZzFX) by Frank Force (MIT). Its sample builder is
   vendored in `src/ui/audio/zzfx.ts` with its license notice.
 
-No third-party art or recorded audio yet. Every asset we add is listed here and recorded in
+No recorded audio yet. Every asset we add is listed here and recorded in
 [`assets/licenses.json`](assets/licenses.json).
 
 `assets/licenses.json` maps each file's path under `assets/` to where it came from:
