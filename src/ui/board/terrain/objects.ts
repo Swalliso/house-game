@@ -213,26 +213,22 @@ export interface ArtBox {
 }
 
 /**
- * The box around everything that rises above its own cells (the canopy's), or null, in whole
- * cells: at Fit's fractional scale, cells are whole device pixels, so the canopy's pixels land
- * on the terrain's.
+ * The canopy canvas's box, or null when nothing rises above its own cells: the whole lot and
+ * the row above it (a tree in the top row rises past the lot's edge; the tallest rises 21 px).
+ * It keeps its size while trees come and go, so redrawing it never blanks it first, and it's
+ * whole cells, so at Fit's fractional scale its pixels land on the terrain's.
  */
-export function canopyBox(placed: readonly Placed[]): ArtBox | null {
-  let x0 = Infinity;
-  let y0 = Infinity;
-  let x1 = -Infinity;
-  let y1 = -Infinity;
+export function canopyBox(lot: Lot, placed: readonly Placed[]): ArtBox | null {
+  let top = 0;
+  let rises = false;
   for (const p of placed) {
     if (p.y >= p.top) continue;
-    x0 = Math.min(x0, p.x);
-    y0 = Math.min(y0, p.y);
-    x1 = Math.max(x1, p.x + p.w);
-    y1 = Math.max(y1, p.top);
+    rises = true;
+    top = Math.min(top, p.y);
   }
-  if (x1 < x0) return null;
-  const down = (v: number) => Math.floor(v / CELL) * CELL;
-  const up = (v: number) => Math.ceil(v / CELL) * CELL;
-  return { x: down(x0), y: down(y0), w: up(x1) - down(x0), h: up(y1) - down(y0) };
+  if (!rises) return null;
+  const y = Math.min(-CELL, Math.floor(top / CELL) * CELL);
+  return { x: 0, y, w: lot.width * CELL, h: lot.height * CELL - y };
 }
 
 function drawRows(

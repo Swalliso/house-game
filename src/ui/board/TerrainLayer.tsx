@@ -56,7 +56,7 @@ export function TerrainLayer({ lot, scale }: { lot: Lot; scale: number }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const canopyRef = useRef<HTMLCanvasElement>(null);
   const objects = useMemo(() => lotObjects(lot), [lot]);
-  const canopy = useMemo(() => canopyBox(objects), [objects]);
+  const canopy = useMemo(() => canopyBox(lot, objects), [lot, objects]);
   useEffect(() => {
     let cancelled = false;
     atlasImage()
@@ -99,7 +99,7 @@ export function TerrainLayer({ lot, scale }: { lot: Lot; scale: number }) {
   );
 }
 
-/** The canopy's canvas over its box, which may reach above the lot's top edge. */
+/** The canopy's canvas over its box, which reaches a row above the lot's top edge. */
 function CanopyCanvas({
   canvasRef,
   box,

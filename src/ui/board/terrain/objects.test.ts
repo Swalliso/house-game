@@ -194,12 +194,11 @@ describe('the finds', () => {
 });
 
 describe('the canopy', () => {
-  it('holds exactly the parts above their own cells, in whole cells', () => {
+  it('covers the lot and the row above it, so it keeps its size, when anything rises', () => {
     for (const lot of lots) {
       const placed = lotObjects(lot);
-      const box = canopyBox(placed)!;
-      expect(box).not.toBeNull();
-      for (const v of [box.x, box.y, box.w, box.h]) expect(Math.abs(v % CELL)).toBe(0);
+      const box = canopyBox(lot, placed)!;
+      expect(box).toEqual({ x: 0, y: -CELL, w: lot.width * CELL, h: (lot.height + 1) * CELL });
       for (const p of placed) {
         if (p.y >= p.top) continue;
         expect(p.x).toBeGreaterThanOrEqual(box.x);
@@ -208,7 +207,8 @@ describe('the canopy', () => {
         expect(p.top).toBeLessThanOrEqual(box.y + box.h);
       }
     }
-    expect(canopyBox(lotObjects(lotFromRows(['.B..', '..K.'])))).toBeNull();
+    const bare = lotFromRows(['.B..', '..K.']);
+    expect(canopyBox(bare, lotObjects(bare))).toBeNull();
   });
 
   it('is drawn in row order, south in front, like the terrain', () => {
