@@ -12,8 +12,11 @@ import {
   run,
   runCode,
   selected,
+  selectItem,
+  source,
   tentative,
   tool,
+  type Source,
 } from '../store.ts';
 
 export const settingsOpen = signal(false);
@@ -52,24 +55,24 @@ export function openSettings(): void {
 
 export function startNewRun(): void {
   const s = run.value;
-  const midRun = s.screen === 'build' && s.house.pieces.length > 0;
+  const midRun = (s.screen === 'build' || s.screen === 'shop') && s.house.pieces.length > 0;
   if (midRun && !window.confirm('Start a new run? This one will be lost.')) return;
   notice.value = null;
   newRun();
 }
 
-export function selectCard(i: number): void {
+export function selectCard(i: number, from: Source = 'hand'): void {
   const s = run.value;
-  if (s.screen !== 'build' || i >= s.hand.length) return;
+  const list = from === 'hand' ? s.hand : from === 'reserve' ? s.reserve : s.supplies;
+  if (s.screen !== 'build' || i >= list.length) return;
   if (tool.value === 'demolish') {
     tool.value = 'build';
     demolishArmed.value = null;
     // Back to building: the card being placed stays picked, with its pending placement.
-    if (selected.value === i) return;
+    if (selected.value === i && source.value === from) return;
   }
   if (busy.value) skip();
-  tentative.value = null;
-  selected.value = selected.value === i ? null : i;
+  selectItem(from, i);
   audio.play('select');
 }
 
@@ -100,6 +103,11 @@ export function cancelPlacement(): void {
   }
   if (tentative.value) tentative.value = null;
   else selected.value = null;
+}
+
+/** Is this item the one being placed or installed? */
+export function isSelected(from: Source, i: number): boolean {
+  return selected.value === i && source.value === from;
 }
 
 /** Passing places nothing all week, so it takes a second press within a few seconds. */

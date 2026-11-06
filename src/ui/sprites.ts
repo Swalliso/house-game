@@ -4,7 +4,7 @@
 
 import atlasUrl from '../../assets/atlas.png';
 import atlas from '../../assets/atlas.json';
-import type { PieceId } from '../rules/index.ts';
+import type { FixtureId, PieceId } from '../rules/index.ts';
 
 export type SpriteId = keyof typeof atlas.sprites;
 export const TILE = 16;
@@ -39,6 +39,31 @@ export const PIECE_SPRITES: Record<PieceId, { floor: SpriteId; furniture: Sprite
   doghouse: { floor: 'grass-0', furniture: 'doghouse' },
   treehouse: { floor: 'canopy', furniture: 'treehouse' },
   greenhouse: { floor: 'greenhouse', furniture: 'greenhouse' },
+  // Special pieces (M3a).
+  playroom: { floor: 'floor-carpet', furniture: 'toys' },
+  library: { floor: 'floor-parquet', furniture: 'books' },
+  mudroom: { floor: 'floor-tile', furniture: 'boots' },
+  pool: { floor: 'pool', furniture: 'pool' },
+  sunroom: { floor: 'floor-sunroom', furniture: 'plant' },
+  hotTub: { floor: 'patio', furniture: 'hottub' },
+  firePit: { floor: 'grass-0', furniture: 'firepit' },
+  henhouse: { floor: 'grass-0', furniture: 'henhouse' },
+  birdhouse: { floor: 'grass-0', furniture: 'birdhouse' },
+};
+
+/** A text glyph per fixture for its badge on the board and its card (placeholders, D-057). */
+export const FIXTURE_GLYPHS: Record<FixtureId, string> = {
+  fireplace: '\u2668\uFE0E', // ♨
+  skylight: '\u2600\uFE0E', // ☀
+  blackoutCurtains: '\u263E\uFE0E', // ☾
+  soundproofing: '\u266B\uFE0E', // ♫
+  kitchenIsland: '\u25AD', // ▭
+  bunkBeds: '\u2261', // ≡
+  bayWindow: '\u25EB', // ◫
+  sprinkler: '\u2749', // ❉
+  pergola: '\u2302', // ⌂
+  gardenLights: '\u2726', // ✦
+  chandelier: '\u2748', // ❈
 };
 
 export function spritePos(id: SpriteId): { x: number; y: number } {

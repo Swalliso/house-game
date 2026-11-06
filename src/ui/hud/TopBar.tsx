@@ -15,6 +15,8 @@ import {
   setAutoComplete,
 } from '../store.ts';
 import { copyRunCode, howToPlayOpen, openSettings } from './actions.ts';
+import { BudgetCount } from './BudgetCount.tsx';
+import { Tip } from './Tip.tsx';
 import './hud-m2.css';
 
 /** Complete early takes a second press within this long, like Pass. */
@@ -49,7 +51,8 @@ function PhaseBlock() {
   // Each overtime week used makes the run a week longer (D-041).
   const overtimeUsed = Math.max(0, rules.rule(s, 'overtime') - s.overtimeLeft);
   const runWeeks = phases.length * weeks + overtimeUsed;
-  const ended = s.screen !== 'build';
+  const ended = s.screen === 'won' || s.screen === 'lost';
+  const shopping = s.screen === 'shop';
   return (
     <div class="phase" aria-label="Milestone and week">
       <div class="phase-name">{rules.phaseName(s.phase)}</div>
@@ -59,6 +62,8 @@ function PhaseBlock() {
       <div class="week">
         {ended ? (
           'Run over'
+        ) : shopping ? (
+          'Shopping'
         ) : s.overtimeWeek > 0 ? (
           <span
             class="overtime-week"
@@ -144,8 +149,8 @@ function Resources() {
   const overtimeTitle = 'Overtime weeks left: spent automatically when a target is missed';
   return (
     <div class="tb-resources">
-      <div class="tb-budget" title="Spent in the shop from the next update">
-        Budget <strong>{formatNumber(s.budget)}</strong>
+      <div class="tb-budget">
+        <Tip term="budget">Budget</Tip> <BudgetCount value={s.budget} />
       </div>
       <div
         class="tb-overtime"

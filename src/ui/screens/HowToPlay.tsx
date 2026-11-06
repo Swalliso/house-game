@@ -240,6 +240,31 @@ function HowToPlayText() {
         </dl>
       </Section>
 
+      <Section title="Budget and the shop">
+        <ul>
+          <li>
+            You earn budget at each milestone ({b.milestoneBudget}), for each week saved by
+            completing early, from economy pieces, and by selling goods back for half.
+          </li>
+          <li>
+            After every milestone but the last, the shop opens. <b>Blueprints</b> bend the rules for
+            the whole run. <b>Pieces</b> wait in your reserve; placing one is a week's build.{' '}
+            <b>Fixtures</b> wait in your supplies and install for free.
+          </li>
+          <li>
+            One good is on sale each visit. Refreshing costs a little more each time. Leave without
+            buying and you get +{b.shop.skipReward} for saving up.
+          </li>
+          <li>
+            <b>Fixtures</b> also turn up in your hand from the second milestone: installing one from
+            the hand is your week's build. Each piece holds one; a new one replaces it.
+          </li>
+          <li>
+            <b>Strike a card</b> (a shop service) and that card type never comes up again this run.
+          </li>
+        </ul>
+      </Section>
+
       <Section title="Overtime">
         <p>
           Each run has {plural(overtime, 'overtime week')}. Miss a target and they're spent one at a

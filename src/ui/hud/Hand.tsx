@@ -7,8 +7,10 @@ import {
   rotateCells,
   parseShape,
   rules,
+  fixtureText,
   type Card as CardData,
   type PieceDef,
+  type PieceId,
   type Rot,
 } from '../../rules/index.ts';
 import {
@@ -23,7 +25,13 @@ import {
   tool,
 } from '../store.ts';
 import { rotate } from '../board/Board.tsx';
-import { cancelPlacement, passArmed, requestEndWeek, selectCard } from './actions.ts';
+import {
+  cancelPlacement,
+  isSelected as isPicked,
+  passArmed,
+  requestEndWeek,
+  selectCard,
+} from './actions.ts';
 import './hud-m2.css';
 
 /**
@@ -39,7 +47,7 @@ function kindLabel(def: PieceDef): string {
   return 'Outbuilding';
 }
 
-function ShapeMini({ id, rot }: { id: CardData['id']; rot: Rot }) {
+function ShapeMini({ id, rot }: { id: PieceId; rot: Rot }) {
   const def = CONTENT.pieces[id];
   const cells = rotateCells(parseShape(def.shape), rot);
   const w = Math.max(...cells.map((c) => c.x)) + 1;
@@ -71,16 +79,17 @@ function pickCard(i: number): void {
   if (tool.value === 'demolish') {
     stopDemolishing();
     // The card being placed stays picked: the click means "build", not "put it back".
-    if (selected.value === i) return;
+    if (isPicked('hand', i)) return;
   }
   selectCard(i);
 }
 
 function CardView({ card, i }: { card: CardData; i: number }) {
+  if (card.kind === 'fixture') return <FixtureCardView id={card.id} i={i} />;
   const def = CONTENT.pieces[card.id];
   const text = cardText(CONTENT, def);
   const fits = cardsFit.value[i] ?? true;
-  const isSelected = selected.value === i;
+  const isSelected = isPicked('hand', i);
   const rot = isSelected ? rotation.value : 0;
   return (
     <button
@@ -110,6 +119,45 @@ function CardView({ card, i }: { card: CardData; i: number }) {
         {text.notes.length > 0 && <span class="notes">{text.notes.join(' ')}</span>}
       </div>
       {!fits && <div class="no-fit-reason">Nowhere fits</div>}
+    </button>
+  );
+}
+
+/** A fixture card: it goes in a placed piece, as the week's turn (D-050). */
+function FixtureCardView({
+  id,
+  i,
+}: {
+  id: Extract<CardData, { kind: 'fixture' }>['id'];
+  i: number;
+}) {
+  const def = CONTENT.fixtures[id];
+  const text = fixtureText(CONTENT, def);
+  const fits = cardsFit.value[i] ?? true;
+  const isSelected = isPicked('hand', i);
+  return (
+    <button
+      type="button"
+      class={`card fixture rarity-${def.rarity} ${isSelected ? 'selected' : ''} ${fits ? '' : 'no-fit'}`}
+      onMouseDown={noFocus}
+      onClick={() => pickCard(i)}
+      aria-pressed={isSelected}
+      title={fits ? undefined : 'Nothing on the lot can hold it yet'}
+    >
+      <div class="card-head">
+        <span class="key">{i + 1}</span>
+        <span class="card-name">{def.name}</span>
+        <span class="card-kind">Fixture</span>
+      </div>
+      <div class="card-body">
+        <ul class="effects">
+          <li>{text.fits}</li>
+          {text.effects.map((t) => (
+            <li key={t}>{t}</li>
+          ))}
+        </ul>
+      </div>
+      {!fits && <div class="no-fit-reason">Nothing to put it in</div>}
     </button>
   );
 }

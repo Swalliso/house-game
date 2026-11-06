@@ -21,6 +21,8 @@ import {
 } from './hud/actions.ts';
 import { Hand } from './hud/Hand.tsx';
 import { Inspect } from './hud/Inspect.tsx';
+import { Inventory } from './hud/Inventory.tsx';
+import { TipLayer } from './hud/Tip.tsx';
 import { ScorePanel } from './hud/ScorePanel.tsx';
 import { TopBar } from './hud/TopBar.tsx';
 import { EndCaption, EndScreen } from './screens/EndScreen.tsx';
@@ -35,6 +37,7 @@ import {
   useSkipOnClick,
 } from './screens/Overlays.tsx';
 import { SettingsPanel } from './screens/Settings.tsx';
+import { ShopScreen } from './screens/ShopScreen.tsx';
 import { Title } from './screens/Title.tsx';
 import { appScreen, run, selected, tool } from './store.ts';
 
@@ -138,7 +141,18 @@ function useKeyboard(): void {
 function Game() {
   useKeyboard();
   useSkipOnClick();
-  const over = run.value.screen !== 'build' && !busy.value;
+  const screen = run.value.screen;
+  const over = (screen === 'won' || screen === 'lost') && !busy.value;
+  const right = over ? (
+    <EndScreen />
+  ) : screen === 'shop' ? (
+    <Inventory shop />
+  ) : (
+    <>
+      <Inventory />
+      <Hand />
+    </>
+  );
   return (
     <div class="game">
       <TopBar />
@@ -151,12 +165,13 @@ function Game() {
         <MilestoneBanner />
         <TargetFlash />
         <EndCaption />
+        <ShopScreen />
       </main>
-      <aside class="right">{over ? <EndScreen /> : <Hand />}</aside>
+      <aside class="right">{right}</aside>
       <footer class="hints">
-        Pick a card (1–3) · R or right-click to rotate · click to place · Enter to end the week · D
-        to demolish · scroll to zoom, drag to pan, F to fit · hold Space to speed up the tally,
-        click to skip it
+        {screen === 'shop'
+          ? 'Buy goods for the house · hover anything to read it · sell from your supplies and blueprints · Start the next milestone when you’re done'
+          : 'Pick a card (1–3) · R or right-click to rotate · click to place · Enter to end the week · D to demolish · scroll to zoom, drag to pan, F to fit · hold Space to speed up the tally, click to skip it'}
       </footer>
     </div>
   );
@@ -178,6 +193,7 @@ export function App() {
         <HowToPlay />
         <SettingsPanel />
         <CopyFallback />
+        <TipLayer />
       </ErrorBoundary>
       <SmallScreenNotice />
       <DebugPanel />

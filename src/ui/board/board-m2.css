@@ -173,3 +173,59 @@
   font-variant-emoji: text;
   box-shadow: 0 1px 0 rgb(42 29 22 / 0.35);
 }
+
+/* --- Fixtures (M3a) ---------------------------------------------------------------- */
+.install-target,
+.install-hint {
+  z-index: 3;
+}
+.install-target.legal .fill {
+  fill: rgb(47 111 208 / 0.18);
+}
+.install-target.legal .edge {
+  stroke: var(--good);
+  stroke-width: 3;
+}
+.install-target.armed .fill {
+  fill: rgb(47 111 208 / 0.34);
+}
+.install-target.armed {
+  animation: pending-pulse 1.1s ease-in-out infinite;
+}
+.reduce-motion .install-target.armed {
+  animation: none;
+}
+.install-target.illegal .fill {
+  fill: rgb(224 122 31 / 0.1);
+}
+.install-target.illegal .edge {
+  stroke: var(--bad);
+  stroke-width: 2;
+  stroke-dasharray: 4 3;
+  stroke-linecap: butt;
+}
+.piece .fixture-badge {
+  position: absolute;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  pointer-events: auto;
+  cursor: help;
+  border-radius: 50%;
+  background: #fffaf0;
+  color: var(--ink);
+  font-weight: 900;
+  line-height: 1;
+  font-variant-emoji: text;
+  border: 2px solid var(--rarity-common);
+  box-shadow: 0 1px 0 rgb(42 29 22 / 0.35);
+}
+.piece .fixture-badge.rarity-uncommon {
+  border-color: var(--rarity-uncommon);
+}
+.piece .fixture-badge.rarity-rare {
+  border-color: var(--rarity-rare);
+  box-shadow:
+    0 0 0 1px #fff3c4,
+    0 0 6px var(--rarity-rare);
+}

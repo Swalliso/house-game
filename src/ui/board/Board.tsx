@@ -39,10 +39,13 @@ import {
   demolishPreview,
   hoverCell,
   inspected,
+  installArmed,
+  installSupply,
   preview,
   rotation,
   run,
   selected,
+  selection,
   tentative,
   tool,
   type Inspected,
@@ -72,10 +75,12 @@ const PAD = 6;
 
 /** Rotates the card being placed; a tentative placement turns where it is. */
 export function rotate(): void {
+  // A fixture has no shape to turn.
+  if (selection.value?.kind === 'fixture') return;
   const r = ((rotation.value + 1) % 4) as 0 | 1 | 2 | 3;
   rotation.value = r;
   const pending = tentative.value;
-  if (pending) {
+  if (pending?.t === 'place') {
     const turned = { ...pending, rot: r };
     // A tentative placement turns where it is if it still fits there; otherwise it goes back
     // to following the pointer, so End week never tries to build somewhere illegal.
@@ -89,13 +94,28 @@ export function rotate(): void {
   audio.play('rotate');
 }
 
-/** A tap places tentatively; End week commits it (D-036, D-047). */
+/**
+ * A tap places tentatively; End week commits it (D-036, D-047). A hand fixture goes in
+ * tentatively the same way. A supply is a free action, so it takes two clicks on the same
+ * piece, like a demolition (D-073): the first arms it, the second installs it.
+ */
 function placeTentatively(): void {
   const play = activePlay.value;
   const p = preview.value;
   if (!play) return;
   if (!p?.legal) {
+    installArmed.value = null;
     audio.play('illegal');
+    return;
+  }
+  if (play.t === 'install' && play.from === 'supplies') {
+    if (installArmed.value === play.uid) {
+      if (installSupply(play.i, play.uid)) audio.play('place-room', { rate: 1.3 });
+      else audio.play('illegal');
+      return;
+    }
+    installArmed.value = play.uid;
+    audio.play('select', { rate: 0.8 });
     return;
   }
   tentative.value = { ...play };
@@ -422,6 +442,12 @@ export function Board() {
     }
     if (selected.value !== null) {
       tentative.value = null;
+      // A click on another piece re-arms a supply install there.
+      const sel = selection.value;
+      if (sel?.kind === 'fixture' && sel.from === 'supplies' && c && c !== 'street') {
+        const uid = uidAt(occ, c.x, c.y);
+        if (installArmed.value !== null && installArmed.value !== uid) installArmed.value = null;
+      }
       placeTentatively();
     }
   };
@@ -435,14 +461,14 @@ export function Board() {
   const ghostCells = (() => {
     if (demolishing) return null;
     const play = activePlay.value;
-    if (!play) return null;
-    const card = state.hand[play.i];
-    if (!card) return null;
+    const sel = selection.value;
+    if (!play || play.t !== 'place' || sel?.kind !== 'piece') return null;
     return {
-      defId: card.id,
-      cells: placedCells(CONTENT.pieces[card.id].shape, play.x, play.y, play.rot),
+      defId: sel.id,
+      cells: placedCells(CONTENT.pieces[sel.id].shape, play.x, play.y, play.rot),
     };
   })();
+  const installing = !demolishing && activePlay.value?.t === 'install';
 
   const boardClass = [
     'board',
@@ -492,6 +518,7 @@ export function Board() {
                 occ={occ}
                 earned={score?.earned}
                 unmet={score?.unmet}
+                fixture={piece.fixture?.id}
                 settle={placed?.uid === piece.uid ? placed.id : undefined}
                 class={[
                   view?.activeUid === piece.uid ? 'active' : '',
@@ -503,6 +530,7 @@ export function Board() {
           })}
           {demolishing && <DemolishTarget scale={scale} />}
           {ghostCells && <Ghost defId={ghostCells.defId} cells={ghostCells.cells} scale={scale} />}
+          {installing && <InstallTarget scale={scale} />}
           {p?.legal && <Badges scale={scale} />}
           <PopupLayer scale={scale} />
         </div>
@@ -554,6 +582,75 @@ function Ghost({
           {pending ? ' · End week to build' : ''}
         </div>
       )}
+    </>
+  );
+}
+
+/**
+ * Installing a fixture: the piece under the pointer outlined, blue if it can take it (with
+ * what it would do to the week's Wow, and what it would replace) or orange with why not.
+ */
+function InstallTarget({ scale }: { scale: number }) {
+  const p = preview.value;
+  const play = activePlay.value;
+  const state = run.value;
+  const { lot } = state.house;
+  if (!p || !play || play.t !== 'install') return null;
+  const px = TILE * scale;
+  const hover = hoverCell.value;
+  const cells: readonly Cell[] = p.cells.length > 0 ? p.cells : hover ? [hover] : [];
+  if (cells.length === 0) return null;
+  const spot = labelSpot(cells, lot.width);
+  const style = { left: `${spot.x * px}px`, top: `${spot.y * px}px` };
+  const below = spot.below ? 'below' : '';
+  const sel = selection.value;
+  const name = sel?.kind === 'fixture' ? CONTENT.fixtures[sel.id].name : 'fixture';
+  const pending = tentative.value?.t === 'install';
+  const armed = installArmed.value === play.uid && play.from === 'supplies';
+  let label;
+  if (p.legal) {
+    const wow = SCORE_LABELS.total;
+    const change =
+      p.delta > 0
+        ? `▲ +${formatNumber(p.delta)} ${wow}`
+        : p.delta < 0
+          ? `▼ −${formatNumber(-p.delta)} ${wow}`
+          : `±0 ${wow}`;
+    const replaces = p.replaces ? ` · replaces its ${CONTENT.fixtures[p.replaces].name}` : '';
+    const then = pending
+      ? ' · End week to install'
+      : play.from === 'supplies'
+        ? armed
+          ? ' · click again to install'
+          : ' · free: click twice'
+        : '';
+    label = (
+      <div
+        class={`ghost-delta install-label ${p.delta > 0 ? 'good' : p.delta < 0 ? 'bad' : ''} ${below}`}
+        style={style}
+      >
+        {name}: {change}
+        {replaces}
+        {then}
+      </div>
+    );
+  } else {
+    label = (
+      <div class={`ghost-reason ${below}`} style={style}>
+        <span aria-hidden="true">✕ </span>
+        {p.reason ?? 'It doesn’t go there.'}
+      </div>
+    );
+  }
+  return (
+    <>
+      <Outline
+        cells={cells}
+        scale={scale}
+        lot={lot}
+        class={`install-target ${p.legal ? 'legal' : 'illegal'} ${armed || pending ? 'armed' : ''}`}
+      />
+      {label}
     </>
   );
 }

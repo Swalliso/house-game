@@ -97,7 +97,7 @@ function Stats({ s }: { s: RunState }) {
         <dt>Weeks played</dt>
         <dd>{s.week}</dd>
         <dt>Budget earned</dt>
-        <dd>{formatNumber(s.budget)}</dd>
+        <dd>{formatNumber(s.budgetEarned)}</dd>
         <dt>Finished early</dt>
         <dd>{s.milestonesEarly}</dd>
         <dt>Overtime weeks</dt>
@@ -113,7 +113,7 @@ function Stats({ s }: { s: RunState }) {
  */
 export function EndScreen() {
   const s = run.value;
-  if (s.screen === 'build' || busy.value) return null;
+  if ((s.screen !== 'won' && s.screen !== 'lost') || busy.value) return null;
   const won = s.screen === 'won';
   const phases = CONTENT.balance.phases;
   const title = won
@@ -155,6 +155,6 @@ export function EndScreen() {
  */
 export function EndCaption() {
   const s = run.value;
-  if (s.screen === 'build' || busy.value || banner.value) return null;
+  if ((s.screen !== 'won' && s.screen !== 'lost') || busy.value || banner.value) return null;
   return <p class={`run-end-caption ${s.screen}`}>It’s a house.</p>;
 }
