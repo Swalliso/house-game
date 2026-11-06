@@ -76,28 +76,18 @@
 
 .demolish-hint {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-2);
-  flex: 1 1 60%;
-  min-width: 0;
   margin: 0;
-  padding: 0 var(--space-2);
+  padding: var(--space-1) var(--space-2);
   border: var(--px) solid transparent;
   border-image: var(--art-ring) 1 / var(--px);
   background: var(--armed-hi);
   background-clip: padding-box;
   font-weight: 700;
-  line-height: var(--lh-tight);
 }
-.hand-actions:has(.demolish-hint) .end-week {
-  flex: 0 1 auto;
-}
-.hand-actions:has(.demolish-hint) .end-week-label,
-.hand-actions:has(.demolish-hint) .end-week .keycap {
-  display: none;
-}
-.hand-actions:has(.demolish-hint) .end-week-short {
-  display: inline;
+.demolish-hint .icon {
+  margin-top: var(--px);
 }
 
 /* --- The action bar: sticky at the column's bottom ------------------------------------ */
@@ -156,5 +146,12 @@
   }
   .end-week-short {
     display: inline;
+  }
+  .hand-actions .btn-icon {
+    --btn-h: calc(var(--px) * 20);
+    align-self: center;
+  }
+  .hand-actions .end-week {
+    padding-inline: var(--space-2);
   }
 }
