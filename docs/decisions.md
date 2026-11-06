@@ -730,7 +730,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **Why:** D-076: removal in the spirit of Luck be a Landlord's tokens, and a clear use for budget, and so for early completion's reward.
 **Considered:** A company upgrade with 3 strikes. A few strikes per run.
 **Changes:** D-043 (Accepted): draw weights stay fixed for the run except for struck types. D-051 (Accepted): a third service.
-**2026-11-06 (D-089, to confirm):** the Sim line's order came from M2's greedy, which couldn't see yards or links and built at the back of the lot, so it struck the very cards D-074 and D-080 ask about. The default bot now strikes nothing; `--strikes fixed` keeps this order for comparisons. The service itself is unchanged.
+**2026-11-06 (D-089, confirmed by the team):** the Sim line's order came from M2's greedy, which couldn't see yards or links and built at the back of the lot, so it struck the very cards D-074 and D-080 ask about. The default bot now strikes nothing; `--strikes fixed` keeps this order for comparisons. The service itself is unchanged.
 
 ---
 
@@ -855,7 +855,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - The chaos test's coverage (every action, tool use, milestone result, good, and shop, a win and a loss) is checked across its fixed seeds; when a content change leaves a gap, it plays up to 6 more seeds, checked the same way, before it fails. One run starts with the ×Mult goods, whose conditions random play rarely meets.
 - The lot test also checks the real lot balance over 1,000 seeds, before the finds go down: the finds are placed after the checks by design, and an Old Shed on the street's side can tip 3 lots in 1,000 a fraction under `minStreetSidePct`.
 
-**Changes (Accepted ones to confirm):** D-072 (Accepted): how greedy ranks plays, and how the targets are checked; its targets stand. D-084 (Accepted): its Sim line, since the default bot no longer strikes. D-085 (Proposed): its numbers came from the old greedy. D-088 (Proposed): the shop bot's strike, reroll, and Catalog rules, and the reports.
+**Changes:** D-072 (Accepted): how greedy ranks plays, and how the targets are checked; its targets stand. D-084 (Accepted): its Sim line, since the default bot no longer strikes. The team confirmed both on 2026-11-06. D-085 (Proposed): its numbers came from the old greedy. D-088 (Proposed): the shop bot's strike, reroll, and Catalog rules, and the reports.
 
 ### D-015 · Start small, grow into the corporation
 **Status:** Proposed
