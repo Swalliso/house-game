@@ -574,7 +574,7 @@ export function createRules(content: Content): Rules {
     },
     drawSpecial: (state) => drawFor(state, state.draws, true),
     payReward: (state, reward, key, events) => payReward(state, reward, key, events),
-    payFinds: (state, finds, events) => payFinds(state, finds, events),
+    payFinds: (state, finds, events, lot) => payFinds(state, finds, events, lot),
   };
 
   function startWeek(state: RunState, events: GameEvent[]): RunState {

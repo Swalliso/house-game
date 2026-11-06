@@ -292,7 +292,8 @@ export function useTools(rules: Rules, s: RunState): Action | null {
         if (rules.canUseTool(s, plain).ok) return plain;
         break;
       case 'advanceTimers':
-        if (rules.previewTool(s, plain).delta > 0) return plain;
+        // Timers pay later, not always this week: use it unless it costs this week's total.
+        if (rules.previewTool(s, plain).delta >= 0) return plain;
         break;
       case 'weekModifiers':
         if (lastWeek && (s.score + rules.scoreOnly(s, null) < rules.target(s) || runsOut)) {

@@ -52,12 +52,12 @@ export const BALANCE: Balance = {
   // follows 100%, 98%, 95%, 85%, 72%, 58%, 45%.
   phases: [
     { name: 'Groundbreaking', target: 15 }, // median 42, α 0.36
-    { name: 'Foundation', target: 120 }, // median 167, α 0.72
-    { name: 'Framing', target: 270 }, // median 475, α 0.57
-    { name: 'Roofing', target: 650 }, // median 952, α 0.68
-    { name: 'Drywall', target: 1350 }, // median 1715, α 0.79
-    { name: 'Finishes', target: 2900 }, // median 2808, α 1.03
-    { name: 'Final Walkthrough', target: 5300 }, // median 4257, α 1.25
+    { name: 'Foundation', target: 150 }, // median 220, α 0.68
+    { name: 'Framing', target: 470 }, // median 582, α 0.81
+    { name: 'Roofing', target: 1050 }, // median 1408, α 0.75
+    { name: 'Drywall', target: 2250 }, // median 2693, α 0.84
+    { name: 'Finishes', target: 4950 }, // median 4459, α 1.11
+    { name: 'Final Walkthrough', target: 9750 }, // median 7528, α 1.30
   ],
   // sim:targets:end
 
@@ -85,8 +85,9 @@ export const BALANCE: Balance = {
     scorePct: [10],
   },
 
-  // Appendix A · M3a: +3 budget per milestone met.
-  milestoneBudget: 3,
+  // Appendix A · M3a's +3 budget per milestone, raised to 4 (D-085): with 3 the greedy bot earned
+  // a median 25 a run against the plan's 30–40, so the shop was too tight to plan around.
+  milestoneBudget: 4,
 
   // The shop (D-051, Appendix A · M3a). Shop k opens after milestone k, for k = 1–6.
   shop: {

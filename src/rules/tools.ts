@@ -33,7 +33,13 @@ export interface ToolCtx {
   checkMove(state: RunState, action: UseToolAction): PlacementCheck;
   drawSpecial(state: RunState): Card[];
   payReward(state: RunState, reward: Reward, key: string, events: GameEvent[]): RunState;
-  payFinds(state: RunState, finds: Legality['finds'], events: GameEvent[]): RunState;
+  /** `lot` is the lot before the play, which still has the finds on it. */
+  payFinds(
+    state: RunState,
+    finds: Legality['finds'],
+    events: GameEvent[],
+    lot: HouseState['lot'],
+  ): RunState;
 }
 
 export function toolAt(content: Content, state: RunState, i: number): ToolDef | null {
@@ -106,7 +112,7 @@ export function useTool(
         clearedTrees: check.clearedTrees,
       });
       s = { ...s, house: check.house! };
-      return ctx.payFinds(s, check.finds, events);
+      return ctx.payFinds(s, check.finds, events, state.house.lot);
     }
     case 'copy': {
       const piece = state.house.pieces.find((p) => p.uid === uid)!;

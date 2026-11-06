@@ -22,6 +22,7 @@ const HELP = `npm run sim -- [options]
                       bot's median curve, then report greedy and random against them
   --bench             only the benchmark gate: one greedy run on the densest of 50 lots < 1 s
   --no-gate           skip the benchmark gate
+  --json FILE         also write every run's record as JSON, for spreadsheets
   --help              this text
 
 Same seed and policy always give the same results.`;
@@ -100,6 +101,7 @@ function main(): number {
       'suggest-targets': { type: 'boolean', default: false },
       bench: { type: 'boolean', default: false },
       'no-gate': { type: 'boolean', default: false },
+      json: { type: 'string' },
       help: { type: 'boolean', default: false },
     },
   });
@@ -150,7 +152,12 @@ function main(): number {
     return values['no-gate'] || benchmarkGate(tuned) ? 0 : 1;
   }
 
-  console.log(report(CONTENT, runMany(rules, policy, runs, values.seed), policy.name));
+  const records = runMany(rules, policy, runs, values.seed);
+  console.log(report(CONTENT, records, policy.name));
+  if (values.json) {
+    writeFileSync(values.json, JSON.stringify(records, null, 1));
+    console.log(`Wrote ${records.length} run records to ${values.json}.`);
+  }
   if (policy.name === 'greedy' && !values['no-gate']) return benchmarkGate(rules) ? 0 : 1;
   return 0;
 }

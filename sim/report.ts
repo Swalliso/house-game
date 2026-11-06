@@ -1,6 +1,7 @@
-// The sim's report (§8, M2 version): cumulative Wow at each milestone (p10, p50, p90), survival
-// per milestone, win rate, lot fill, fence use and the enclosure probe, as console tables; and
-// the target suggestion (D-044).
+// The sim's report (§8): cumulative Wow at each milestone (p10, p50, p90), survival per
+// milestone, win rate, lot fill, fence use and the enclosure probe, as console tables; the
+// target suggestion (D-044); and from M3 the economy: how often each good is offered, bought,
+// and in winning runs, budget left unspent, and fixture and tool use with their weekly gain.
 
 import type { Content } from '../src/rules/index.ts';
 import type { RunRecord } from './simulate.ts';
@@ -136,6 +137,131 @@ export function report(content: Content, records: readonly RunRecord[], title: s
       ).toFixed(0)} ms,` + ` max ${Math.max(...records.map((r) => r.ms)).toFixed(0)} ms`,
     ].join('\n'),
   );
+  out.push(economyReport(content, records));
+  return out.join('\n');
+}
+
+const avgOf = (xs: readonly number[]) =>
+  xs.length === 0 ? NaN : xs.reduce((a, b) => a + b, 0) / xs.length;
+
+/** The good's name from its key (`blueprint:fengShui` → Feng Shui). */
+function goodName(content: Content, key: string): string {
+  const [kind, id] = key.split(':') as [string, string];
+  const table: Record<string, Record<string, { name: string }>> = {
+    blueprint: content.blueprints,
+    fixture: content.fixtures,
+    piece: content.pieces,
+    tool: content.tools,
+    crate: content.crates,
+    upgrade: content.upgrades,
+  };
+  if (kind === 'service')
+    return { reroll: '+1 reroll', demolition: '+1 demolition', strike: 'Strike a card' }[id] ?? id;
+  return table[kind]?.[id]?.name ?? key;
+}
+
+/** M3's economy tables: the shop, budget, fixtures, and tools. */
+export function economyReport(content: Content, records: readonly RunRecord[]): string {
+  const out: string[] = [];
+  const n = Math.max(1, records.length);
+  const wins = records.filter((r) => r.result === 'won');
+  const keys = new Set<string>();
+  for (const r of records) {
+    Object.keys(r.economy.offered).forEach((k) => keys.add(k));
+    Object.keys(r.economy.bought).forEach((k) => keys.add(k));
+    Object.keys(r.economy.picked).forEach((k) => keys.add(k));
+  }
+  const order = ['blueprint', 'piece', 'fixture', 'tool', 'crate', 'upgrade', 'service'];
+  const sorted = [...keys].sort(
+    (a, b) =>
+      order.indexOf(a.split(':')[0]!) - order.indexOf(b.split(':')[0]!) ||
+      goodName(content, a).localeCompare(goodName(content, b)),
+  );
+  const sum = (f: (r: RunRecord) => number) => records.reduce((a, r) => a + f(r), 0);
+  const rows: (string | number)[][] = [
+    ['Good', 'Kind', 'Offered', 'Bought', 'Buy rate', 'Picked', 'Runs w/ it', 'Wins w/ it'],
+  ];
+  for (const key of sorted) {
+    const offered = sum((r) => r.economy.offered[key] ?? 0);
+    const bought = sum((r) => r.economy.bought[key] ?? 0);
+    const picked = sum((r) => r.economy.picked[key] ?? 0);
+    const has = (r: RunRecord) => (r.economy.bought[key] ?? 0) + (r.economy.picked[key] ?? 0) > 0;
+    rows.push([
+      goodName(content, key),
+      key.split(':')[0]!,
+      offered,
+      bought,
+      pct(bought, offered),
+      picked,
+      pct(records.filter(has).length, records.length),
+      pct(wins.filter(has).length, wins.length),
+    ]);
+  }
+  out.push(
+    `\nShop: ${sum((r) => r.economy.visits)} visits, ${sum((r) => r.economy.refreshes)} refreshes`,
+  );
+  out.push(table(rows));
+  const left = records.map((r) => r.economy.budgetLeft);
+  const earned = records.map((r) => r.economy.budgetEarned);
+  out.push(
+    [
+      `Budget earned per run: p50 ${fmt(percentile(earned, 50))} (p10 ${fmt(percentile(earned, 10))}, p90 ${fmt(percentile(earned, 90))})`,
+      `Budget left unspent at the end: p50 ${fmt(percentile(left, 50))}, p90 ${fmt(percentile(left, 90))}, mean ${avgOf(left).toFixed(1)}`,
+      `Shop visits left without buying (skip reward): ${pct(
+        sum((r) => r.economy.skips),
+        sum((r) => r.economy.visits),
+      )}` + ` · goods sold per run ${(sum((r) => r.economy.sold) / n).toFixed(2)}`,
+    ].join('\n'),
+  );
+  const fixtureRows: (string | number)[][] = [
+    ['Fixture', 'Installs', 'From hand', 'From supplies', 'Avg weekly gain'],
+  ];
+  const fixtures = new Map<string, { hand: number; supplies: number; gains: number[] }>();
+  for (const r of records) {
+    for (const i of r.economy.installs) {
+      const f = fixtures.get(i.id) ?? { hand: 0, supplies: 0, gains: [] };
+      f[i.from]++;
+      f.gains.push(i.gain);
+      fixtures.set(i.id, f);
+    }
+  }
+  for (const [id, f] of [...fixtures].sort((a, b) => b[1].gains.length - a[1].gains.length)) {
+    fixtureRows.push([
+      content.fixtures[id as keyof typeof content.fixtures]?.name ?? id,
+      f.gains.length,
+      f.hand,
+      f.supplies,
+      avgOf(f.gains).toFixed(1),
+    ]);
+  }
+  out.push(
+    `\nFixtures: ${(sum((r) => r.economy.installs.length) / n).toFixed(2)} installs per run`,
+  );
+  out.push(fixtureRows.length > 1 ? table(fixtureRows) : '(none installed)');
+  const toolRows: (string | number)[][] = [['Tool', 'Uses', 'Runs using it', 'Avg weekly gain']];
+  const tools = new Map<string, { gains: number[]; runs: number }>();
+  for (const r of records) {
+    const seen = new Set<string>();
+    for (const t of r.economy.tools) {
+      const e = tools.get(t.id) ?? { gains: [], runs: 0 };
+      e.gains.push(t.gain);
+      if (!seen.has(t.id)) {
+        e.runs++;
+        seen.add(t.id);
+      }
+      tools.set(t.id, e);
+    }
+  }
+  for (const [id, t] of [...tools].sort((a, b) => b[1].gains.length - a[1].gains.length)) {
+    toolRows.push([
+      content.tools[id as keyof typeof content.tools]?.name ?? id,
+      t.gains.length,
+      pct(t.runs, records.length),
+      avgOf(t.gains).toFixed(1),
+    ]);
+  }
+  out.push(`\nTools: ${(sum((r) => r.economy.tools.length) / n).toFixed(2)} uses per run`);
+  out.push(toolRows.length > 1 ? table(toolRows) : '(none used)');
   return out.join('\n');
 }
 
