@@ -177,12 +177,14 @@
 .shelf-head h2 {
   font-size: var(--fs-body);
 }
-/* A full section, said once: the reason, pointing at the goods on the right. */
+/* A full section, said once: the reason, pointing at the goods on the right. It wraps to its
+   shelf's cards (width 0, min-width 100%), so it never widens the shelf off its row. */
 .shelf-full {
   display: flex;
   align-items: flex-start;
   gap: var(--space-1);
-  max-width: calc(var(--offer-w) * 3 + var(--space-3) * 2);
+  width: 0;
+  min-width: 100%;
   margin: 0;
   color: var(--bad);
   font-weight: 700;

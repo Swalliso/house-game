@@ -49,8 +49,6 @@ import { buy, inspected, leaveShop, pickOption, refreshShop, run } from '../stor
 import { Notes } from './Overlays.tsx';
 import './shop.css';
 
-export { shopHidden };
-
 /** The strike service's picker is open. */
 const striking = signal<number | null>(null);
 /** Offers just bought, for their pop. */
@@ -143,10 +141,19 @@ function OfferChips({ good, kind = false }: { good: GoodRef; kind?: boolean }) {
   );
 }
 
-function OfferCard({ o, full, mixed }: { o: OfferView; full: boolean; mixed: boolean }) {
+function isSold(o: OfferView): boolean {
+  return o.offer.kind !== 'service' && !!o.offer.sold;
+}
+
+/** Why full slots keep you from buying this good, if they do: said once, at its shelf. */
+function fullReason(o: OfferView): string | null {
+  return !o.ok && !isSold(o) && o.reason && FULL_REASONS.has(o.reason) ? o.reason : null;
+}
+
+function OfferCard({ o, mixed }: { o: OfferView; mixed: boolean }) {
   const good = offerGood(o.offer);
-  const sold = o.offer.kind !== 'service' && !!o.offer.sold;
-  const blockedByFull = !o.ok && !sold && full && FULL_REASONS.has(o.reason ?? '');
+  const sold = isSold(o);
+  const blockedByFull = fullReason(o) !== null;
   const short = !o.ok && o.reason === SHOP_REASONS.budget;
   const alert =
     !o.ok && !sold && !blockedByFull && o.reason && !QUIET_REASONS.has(o.reason)
@@ -197,42 +204,47 @@ function OfferCard({ o, full, mixed }: { o: OfferView; full: boolean; mixed: boo
   );
 }
 
-function Section({
-  title,
-  offers,
-  term,
-  compact = false,
-}: {
+interface Shelf {
   title: string;
   offers: readonly OfferView[];
   term?: Parameters<typeof Tip>[0]['term'];
   /** Text-only goods (the services): no art slot. */
   compact?: boolean;
-}) {
+}
+
+/**
+ * Full slots are about your goods, not a card, so each reason is said once in the shop, at the
+ * first shelf it blocks (pieces and fixtures share a shelf, so it can say two).
+ */
+function fullReasons(shelves: readonly Shelf[]): string[][] {
+  const said = new Set<string>();
+  return shelves.map((shelf) => {
+    const here = [...new Set(shelf.offers.flatMap((o) => fullReason(o) ?? []))];
+    const fresh = here.filter((r) => !said.has(r));
+    for (const r of fresh) said.add(r);
+    return fresh;
+  });
+}
+
+function Section({ title, offers, term, compact = false, full }: Shelf & { full: string[] }) {
   if (offers.length === 0) return null;
-  // Every card that can't be bought is blocked by the same full slots: say it once, here.
-  const blocked = offers.filter((o) => !o.ok && !(o.offer.kind !== 'service' && o.offer.sold));
-  const fullReason =
-    blocked.length > 0 && blocked.every((o) => FULL_REASONS.has(o.reason ?? ''))
-      ? blocked[0]!.reason
-      : undefined;
   const mixed = new Set(offers.map((o) => o.offer.kind)).size > 1;
   return (
     <section class={`shelf ${compact ? 'compact' : ''}`}>
       <header class="shelf-head">
         <h2 class="plank-tag">{term ? <Tip term={term}>{title}</Tip> : title}</h2>
       </header>
-      {fullReason && (
-        <p class="shelf-full" role="note">
+      {full.map((reason) => (
+        <p key={reason} class="shelf-full" role="note">
           <Icon name="warn" />
           <span>
-            {fullReason} <span aria-hidden="true">→</span>
+            {reason} <span aria-hidden="true">→</span>
           </span>
         </p>
-      )}
+      ))}
       <div class="offers">
         {offers.map((o) => (
-          <OfferCard key={`${o.i}-${o.name}`} o={o} full={!!fullReason} mixed={mixed} />
+          <OfferCard key={`${o.i}-${o.name}`} o={o} mixed={mixed} />
         ))}
       </div>
     </section>
@@ -412,6 +424,15 @@ export function ShopScreen() {
   const leaveLabel = visit.forced ? `Back to week ${s.slot}` : `Start ${next}`;
   const of = (kind: OfferView['offer']['kind']) => offers.filter((o) => o.offer.kind === kind);
   const cards = offers.filter((o) => o.offer.kind === 'piece' || o.offer.kind === 'fixture');
+  const shelves: Shelf[] = [
+    { title: 'Blueprints', offers: of('blueprint'), term: 'blueprints' },
+    { title: 'Pieces and fixtures', offers: cards, term: 'fixture' },
+    { title: 'Tools', offers: of('tool'), term: 'tools' },
+    { title: 'Crates', offers: of('crate'), term: 'crates' },
+    { title: 'Company upgrade', offers: of('upgrade'), term: 'upgrades' },
+    { title: 'Services', offers: of('service'), term: 'services', compact: true },
+  ];
+  const full = fullReasons(shelves);
   const skip = CONTENT.balance.shop.skipReward;
   return (
     <section class="shop panel ui" role="region" aria-label={`Shop ${visit.number}`}>
@@ -458,12 +479,9 @@ export function ShopScreen() {
       <Notes docked />
       <div class="panel-body shop-body">
         <div class="shelves">
-          <Section title="Blueprints" offers={of('blueprint')} term="blueprints" />
-          <Section title="Pieces and fixtures" offers={cards} term="fixture" />
-          <Section title="Tools" offers={of('tool')} term="tools" />
-          <Section title="Crates" offers={of('crate')} term="crates" />
-          <Section title="Company upgrade" offers={of('upgrade')} term="upgrades" />
-          <Section title="Services" offers={of('service')} term="services" compact />
+          {shelves.map((shelf, k) => (
+            <Section key={shelf.title} {...shelf} full={full[k]!} />
+          ))}
         </div>
       </div>
       {/* Leaving is the sheet's one primary action, at its foot like End week's (D-087). */}
