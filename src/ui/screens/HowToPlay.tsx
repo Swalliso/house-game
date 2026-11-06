@@ -3,13 +3,15 @@
 // the text keeps up with balance changes.
 //
 // M5a draws it as a wood sheet: each section under a plank tag, the formula as the score
-// panel's own plaques, the free actions with their icons, and the keys as keycaps.
+// panel's own plaques, each set as a picture of its pieces, the free actions with their
+// icons, and the keys as keycaps.
 
 import './howto.css';
 import { Fragment, type ComponentChildren } from 'preact';
 import { useEffect, useRef } from 'preact/hooks';
-import { CONTENT, rules, SCORE_LABELS } from '../../rules/index.ts';
+import { CONTENT, rules, SCORE_LABELS, type PieceId, type SetDef } from '../../rules/index.ts';
 import { howToPlayOpen } from '../hud/actions.ts';
+import { PieceArt } from '../hud/PieceArt.tsx';
 import { Button, Icon, Keycap, Plaque, Sheet, type IconName } from '../kit/kit.tsx';
 import { run } from '../store.ts';
 
@@ -96,6 +98,29 @@ function Section({
       </h3>
       {children}
     </section>
+  );
+}
+
+/**
+ * A set drawn from its own data: its members side by side, as they'd stand on the lot, with
+ * its hub in the middle (a Bathroom between two Bedrooms).
+ */
+function SetPicture({ set }: { set: SetDef }) {
+  const all = (Object.entries(set.members) as [PieceId, number][]).flatMap(([id, n]) =>
+    Array.from({ length: n }, () => id),
+  );
+  const others = set.hub ? all.filter((id) => id !== set.hub) : all;
+  const half = Math.ceil(others.length / 2);
+  const row = set.hub ? [...others.slice(0, half), set.hub, ...others.slice(half)] : all;
+  return (
+    <figure class="howto-set">
+      <div class="howto-set-pieces">
+        {row.map((id, k) => (
+          <PieceArt key={k} id={id} />
+        ))}
+      </div>
+      <figcaption>{set.name}</figcaption>
+    </figure>
   );
 }
 
@@ -201,6 +226,11 @@ function HowToPlayText() {
           )}
           <li>Hover a piece or a tile to see what it earns, and why.</li>
         </ul>
+        <div class="howto-sets">
+          {Object.values(CONTENT.sets).map((set) => (
+            <SetPicture key={set.id} set={set} />
+          ))}
+        </div>
       </Section>
 
       <Section title="The lot" icon="Outdoor">

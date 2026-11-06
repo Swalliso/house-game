@@ -101,6 +101,32 @@
   color: var(--ink-soft);
 }
 
+/* Each set, drawn from its members: a little plan on a well, its name under it. */
+.howto-sets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.howto-set {
+  --piece-edge: var(--ink);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0;
+  padding: var(--space-2) var(--space-3) var(--space-1);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ringSoft) 1 / var(--px);
+  background: var(--paper-inset);
+  background-clip: padding-box;
+}
+.howto-set-pieces {
+  display: flex;
+  align-items: flex-end;
+}
+.howto-set figcaption {
+  font-weight: 700;
+}
 .howto-actions {
   display: grid;
   grid-template-columns: max-content 1fr;
