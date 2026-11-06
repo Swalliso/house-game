@@ -4,6 +4,7 @@
 // the inventory beside it. The UI never prices anything: the rules' shopOffers() does.
 
 import { signal } from '@preact/signals';
+import { useEffect } from 'preact/hooks';
 import {
   CONTENT,
   rules,
@@ -13,7 +14,8 @@ import {
 } from '../../rules/index.ts';
 import { audio } from '../audio/audio.ts';
 import { busy } from '../fx/director.ts';
-import { formatNumber } from '../format.ts';
+import { FEEL } from '../fx/feel.ts';
+import { BudgetCount } from '../hud/BudgetCount.tsx';
 import { GoodBody, goodName, goodRarity, offerGood, type GoodRef } from '../hud/goods.tsx';
 import { Tip } from '../hud/Tip.tsx';
 import { FIXTURE_GLYPHS, TOOL_GLYPHS } from '../sprites.ts';
@@ -47,7 +49,7 @@ function buyOffer(o: OfferView): void {
   }
   if (buy(o.i)) {
     justBought.value = o.i;
-    setTimeout(() => justBought.value === o.i && (justBought.value = null), 600);
+    setTimeout(() => justBought.value === o.i && (justBought.value = null), FEEL.shop.boughtMs);
   }
 }
 
@@ -151,7 +153,8 @@ function StrikePicker() {
   const close = () => (striking.value = null);
   const pick = (t: CardType) => {
     striking.value = null;
-    if (buy(i, t)) audio.play('stamp');
+    // The purchase's sound comes with its 'bought' event, as for any good (director.ts).
+    buy(i, t);
   };
   const name = (t: CardType) =>
     t.kind === 'piece' ? CONTENT.pieces[t.id].name : CONTENT.fixtures[t.id].name;
@@ -195,6 +198,45 @@ function StrikePicker() {
 }
 
 /**
+ * One of an open crate's options. It turns over on its beat (the CSS animation's delay), and
+ * its sound is scheduled for the same beat when it appears: once, with or without Reduce
+ * motion (which turns the animation off), and not twice for a Rare (its shimmer is an
+ * animation of its own).
+ */
+function CrateOption({ good, i, ok }: { good: GoodRef; i: number; ok: boolean }) {
+  const rarity = goodRarity(good);
+  const beatMs = i * FEEL.shop.crateStaggerMs;
+  useEffect(() => {
+    const delay = beatMs / 1000;
+    if (rarity === 'rare') audio.play('sparkle', { delay });
+    else audio.play('plink', { rate: 1 + i * 0.2, delay });
+  }, []);
+  return (
+    <article
+      class={`offer crate-option ${rarity ? `rarity-${rarity}` : ''}`}
+      style={{ animationDelay: `${beatMs}ms` }}
+    >
+      <header>
+        <h3>{goodName(good)}</h3>
+      </header>
+      <GoodBody good={good} />
+      <footer>
+        <button
+          type="button"
+          class="buy"
+          disabled={!ok}
+          title={ok ? `Keep ${goodName(good)}` : 'No room: sell something first'}
+          onClick={() => (pickOption(i) ? audio.play('buy') : audio.play('illegal'))}
+        >
+          Keep
+        </button>
+      </footer>
+      {!ok && <p class="offer-reason">No room: sell something first.</p>}
+    </article>
+  );
+}
+
+/**
  * An opened crate (or the Housewarming gift): its options turn over one at a time, each with
  * a glow by rarity (§12, Shop and crates), and one can be kept. Sell first to make room.
  */
@@ -217,39 +259,9 @@ function CratePickSheet() {
         <h2>{title}</h2>
         <p class="muted">{detail}</p>
         <div class="crate-options">
-          {open.options.map((o, i) => {
-            const good = o as GoodRef;
-            const rarity = goodRarity(good);
-            const ok = legal.has(i);
-            return (
-              <article
-                key={`${i}-${o.id}`}
-                class={`offer crate-option ${rarity ? `rarity-${rarity}` : ''}`}
-                style={{ animationDelay: `${i * 220}ms` }}
-                onAnimationStart={() => {
-                  if (rarity === 'rare') audio.play('sparkle');
-                  else audio.play('plink', { rate: 1 + i * 0.2 });
-                }}
-              >
-                <header>
-                  <h3>{goodName(good)}</h3>
-                </header>
-                <GoodBody good={good} />
-                <footer>
-                  <button
-                    type="button"
-                    class="buy"
-                    disabled={!ok}
-                    title={ok ? `Keep ${goodName(good)}` : 'No room: sell something first'}
-                    onClick={() => (pickOption(i) ? audio.play('stamp') : audio.play('illegal'))}
-                  >
-                    Keep
-                  </button>
-                </footer>
-                {!ok && <p class="offer-reason">No room: sell something first.</p>}
-              </article>
-            );
-          })}
+          {open.options.map((o, i) => (
+            <CrateOption key={`${i}-${o.id}`} good={o as GoodRef} i={i} ok={legal.has(i)} />
+          ))}
         </div>
         <button type="button" class="strike-cancel" onClick={() => pickOption(-1)}>
           Set it aside
@@ -290,7 +302,8 @@ export function ShopScreen() {
           </p>
         </div>
         <div class="shop-budget" aria-label={`Budget ${s.budget}`}>
-          <Tip term="budget">Budget</Tip> <strong>{formatNumber(s.budget)}</strong>
+          {/* Counts like the top bar's; quiet, since the top bar's plays the coins. */}
+          <Tip term="budget">Budget</Tip> <BudgetCount value={s.budget} quiet />
         </div>
         <div class="shop-buttons">
           <button

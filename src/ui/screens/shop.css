@@ -65,6 +65,11 @@
   color: #fff;
   border-color: #1f4f9a;
 }
+/* A hover brightens the blue, never the plain buttons' cream (app.css). */
+.shop-buttons .leave:hover:not(:disabled),
+.shop-reopen:hover {
+  background: #3b7de0;
+}
 .shop-buttons .skip-hint {
   font-weight: 600;
   opacity: 0.9;
@@ -97,6 +102,12 @@
 }
 .offer:hover {
   transform: translateY(-2px);
+}
+.reduce-motion .offer {
+  transition: none;
+}
+.reduce-motion .offer:hover {
+  transform: none;
 }
 .offer header {
   display: flex;

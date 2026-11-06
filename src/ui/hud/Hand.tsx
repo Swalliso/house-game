@@ -249,37 +249,40 @@ export function Hand() {
         <CardView key={`${s.week}-${s.draws}-${i}`} card={card} i={i} />
       ))}
       <FreeActions />
-      <div class="hand-buttons">
+      {/* Sticks to the column's bottom, so End week stays in view on a short window. */}
+      <div class="hand-actions">
+        <div class="hand-buttons">
+          <button
+            type="button"
+            class="rotate"
+            onMouseDown={noFocus}
+            onClick={rotate}
+            disabled={!placing || demolishing || !canTurn}
+            title="Rotate (R or right-click)"
+          >
+            ⟳ Rotate
+          </button>
+          {placing && !demolishing && (
+            <button type="button" onMouseDown={noFocus} onClick={cancelPlacement} title="Esc">
+              {pending ? 'Move it' : 'Cancel'}
+            </button>
+          )}
+        </div>
+        {demolishing && (
+          <p class="demolish-hint" role="status">
+            Click a piece or boulder to demolish it · Esc to cancel
+          </p>
+        )}
         <button
           type="button"
-          class="rotate"
+          class={`end-week ${pending ? 'ready' : ''} ${armed ? 'confirm' : ''} ${demolishing ? 'compact' : ''}`}
           onMouseDown={noFocus}
-          onClick={rotate}
-          disabled={!placing || demolishing || !canTurn}
-          title="Rotate (R or right-click)"
+          onClick={requestEndWeek}
         >
-          ⟳ Rotate
+          {endLabel}
+          <span class="key-hint">Enter</span>
         </button>
-        {placing && !demolishing && (
-          <button type="button" onMouseDown={noFocus} onClick={cancelPlacement} title="Esc">
-            {pending ? 'Move it' : 'Cancel'}
-          </button>
-        )}
       </div>
-      {demolishing && (
-        <p class="demolish-hint" role="status">
-          Click a piece or boulder to demolish it · Esc to cancel
-        </p>
-      )}
-      <button
-        type="button"
-        class={`end-week ${pending ? 'ready' : ''} ${armed ? 'confirm' : ''} ${demolishing ? 'compact' : ''}`}
-        onMouseDown={noFocus}
-        onClick={requestEndWeek}
-      >
-        {endLabel}
-        <span class="key-hint">Enter</span>
-      </button>
     </section>
   );
 }
