@@ -1,71 +1,33 @@
-// A piece on the board, drawn as a cutaway (§12, Art): its floor sprite on every cell, walls
-// on exposed edges (heavier outside, light from the top-left), one furniture sprite, and the
-// piece's weekly score as a small digit in its bottom-right cell. A piece whose requirement
-// isn't met earns nothing and wears a ⚠ badge in its top-left cell.
+// A yard piece on the board, and the yard ghost: the placeholder look until the yard has its
+// own art in the house layers (the house stage's yard part). Its floor sprite on every cell,
+// a hedge line on its outside edges, and its one furniture sprite. Rooms are drawn by the
+// house layers (HouseLayers.tsx); every piece's digit and badges are in the labels layer.
 //
-// A cell is CELL × scale CSS px. The walls, the digit, the badges, and their offsets are
-// sized in sixteenths of a cell (cellUnit), as they were in pixels of the 16 px art, until the
-// house stage draws LimeZu's walls.
+// A cell is CELL × scale CSS px. The hedge is sized in sixteenths of a cell (cellUnit).
 
 import type { JSX } from 'preact';
 import { useEffect, useRef } from 'preact/hooks';
-import { CONTENT, type Cell, type FixtureId, type PieceId } from '../../rules/index.ts';
+import type { Cell, PieceId } from '../../rules/index.ts';
 import { played } from '../fx/director.ts';
-import { FEEL } from '../fx/feel.ts';
 import { settings } from '../settings.ts';
-import { CELL, cellUnit, FIXTURE_GLYPHS, PIECE_SPRITES, spriteStyle } from '../sprites.ts';
-import { digitCell, furnitureSpot, isIndoor, uidAt, type Occupancy } from './geometry.ts';
+import { CELL, cellUnit, PIECE_SPRITES, spriteStyle } from '../sprites.ts';
+import { furnitureSpot } from './geometry.ts';
+import { register, settle as settleFx } from './piece-fx.ts';
 
-const WALL_OUT = '#4a2f22';
-const WALL_IN = '#8a6a52';
 const HEDGE = '#3d6b35';
-
-/** Elements of placed pieces by uid, so the director can wobble them. */
-export const pieceElements = new Map<number, HTMLElement>();
-
-export function wobble(uid: number): void {
-  const el = pieceElements.get(uid);
-  el?.animate(
-    [
-      { transform: 'scale(1)' },
-      { transform: `scale(${FEEL.wobble.scale}, ${2 - FEEL.wobble.scale})` },
-      { transform: `scale(${2 - FEEL.wobble.scale * 0.97}, ${FEEL.wobble.scale * 0.97})` },
-      { transform: 'scale(1)' },
-    ],
-    { duration: FEEL.wobble.ms, easing: 'ease-out' },
-  );
-}
 
 interface Props {
   defId: PieceId;
   cells: readonly Cell[];
   scale: number;
-  /** For walls: who's next door. Absent for the ghost. */
-  occ?: Occupancy;
+  /** A placed piece's uid, so it can wobble and settle. Absent for the ghost. */
   uid?: number;
-  earned?: number;
-  /** An unmet requirement, as text (PieceScore.unmet): the piece earns nothing. */
-  unmet?: string;
-  /** The fixture installed in it (D-050), shown as a badge. */
-  fixture?: FixtureId;
   class?: string;
   style?: JSX.CSSProperties;
   settle?: number;
 }
 
-export function PieceShape({
-  defId,
-  cells,
-  scale,
-  occ,
-  uid,
-  earned,
-  unmet,
-  fixture,
-  class: cls,
-  style,
-  settle,
-}: Props) {
+export function PieceShape({ defId, cells, scale, uid, class: cls, style, settle }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const px = CELL * scale;
   const unit = cellUnit(px);
@@ -74,73 +36,40 @@ export function PieceShape({
   const maxX = Math.max(...cells.map((c) => c.x));
   const maxY = Math.max(...cells.map((c) => c.y));
   const own = new Set(cells.map((c) => `${c.x},${c.y}`));
-  const indoor = isIndoor(defId);
   const sprites = PIECE_SPRITES[defId];
 
   useEffect(() => {
     if (uid === undefined || !ref.current) return;
-    pieceElements.set(uid, ref.current);
-    return () => {
-      if (pieceElements.get(uid) === ref.current) pieceElements.delete(uid);
-    };
+    return register(uid, 'yard', ref.current);
   }, [uid]);
 
   useEffect(() => {
-    if (!settle || settle <= played.settle || !ref.current || settings.value.reduceMotion) return;
+    if (uid === undefined || !settle || settle <= played.settle || settings.value.reduceMotion)
+      return;
     played.settle = settle;
-    // At full opacity throughout: the pending ghost it replaces was drawn at full opacity.
-    ref.current.animate(
-      [
-        { transform: 'translateY(-6%) scale(1.06)' },
-        { transform: 'translateY(0) scale(0.98)' },
-        { transform: 'scale(1)' },
-      ],
-      { duration: FEEL.placeMs, easing: 'ease-out' },
-    );
+    settleFx(uid);
   }, [settle]);
 
-  const edge = (c: Cell, dx: number, dy: number) => {
-    if (own.has(`${c.x + dx},${c.y + dy}`)) return null;
-    if (!indoor) return 'hedge';
-    if (!occ) return 'out';
-    const other = uidAt(occ, c.x + dx, c.y + dy);
-    const p = other ? occ.byUid.get(other) : undefined;
-    return p && isIndoor(p.defId) ? 'in' : 'out';
-  };
-
-  const shadows = (c: Cell) => {
+  /** A hedge line on each outside edge. */
+  const hedge = (c: Cell) => {
     const out: string[] = [];
-    const sides: [number, number, string][] = [
-      [0, -1, 'top'],
-      [-1, 0, 'left'],
-      [0, 1, 'bottom'],
-      [1, 0, 'right'],
-    ];
-    for (const [dx, dy, side] of sides) {
-      const kind = edge(c, dx, dy);
-      if (!kind) continue;
-      // Interior walls draw on the top and left only, so a shared wall isn't doubled.
-      if (kind === 'in' && (side === 'bottom' || side === 'right')) continue;
-      const heavy = side === 'bottom' || side === 'right';
-      const t = (kind === 'out' ? (heavy ? 3 : 2) : 1) * unit;
-      const color = kind === 'out' ? WALL_OUT : kind === 'in' ? WALL_IN : HEDGE;
-      const w = kind === 'hedge' ? unit : t;
-      const [x, y] =
-        side === 'top' ? [0, w] : side === 'bottom' ? [0, -w] : side === 'left' ? [w, 0] : [-w, 0];
-      out.push(`inset ${x}px ${y}px 0 0 ${color}`);
+    for (const [dx, dy] of [
+      [0, -1],
+      [-1, 0],
+      [0, 1],
+      [1, 0],
+    ] as const) {
+      if (own.has(`${c.x + dx},${c.y + dy}`)) continue;
+      out.push(`inset ${-dx * unit}px ${-dy * unit}px 0 0 ${HEDGE}`);
     }
     return out.join(', ');
   };
 
   const spot = furnitureSpot(cells);
-  const digit = digitCell(cells);
-  const shown = unmet ? 0 : earned;
-  const first = unmet ? [...cells].sort((a, b) => a.y - b.y || a.x - b.x)[0]! : null;
-
   return (
     <div
       ref={ref}
-      class={`piece ${indoor ? 'indoor' : 'yard'} ${cls ?? ''}`}
+      class={`piece yard ${cls ?? ''}`}
       style={{
         left: `${minX * px}px`,
         top: `${minY * px}px`,
@@ -159,7 +88,7 @@ export function PieceShape({
             width: `${px}px`,
             height: `${px}px`,
             ...spriteStyle(sprites.floor, scale),
-            boxShadow: shadows(c),
+            boxShadow: hedge(c),
           }}
         />
       ))}
@@ -173,72 +102,6 @@ export function PieceShape({
           ...spriteStyle(sprites.furniture, scale),
         }}
       />
-      {shown !== undefined && (
-        <div
-          class={`digit ${shown === 0 ? 'zero' : ''}`}
-          style={{
-            left: `${(digit.x - minX + 1) * px}px`,
-            top: `${(digit.y - minY + 1) * px}px`,
-            fontSize: `${Math.max(11, 5 * unit)}px`,
-          }}
-        >
-          {shown}
-        </div>
-      )}
-      {fixture && <FixtureBadge id={fixture} cells={cells} minX={minX} minY={minY} scale={scale} />}
-      {first && (
-        <div
-          class="unmet-badge"
-          title={`Earns nothing: it must be ${unmet}`}
-          aria-label={`Earns nothing: it must be ${unmet}`}
-          style={{
-            left: `${(first.x - minX) * px + Math.max(1, unit)}px`,
-            top: `${(first.y - minY) * px + Math.max(1, unit)}px`,
-            fontSize: `${Math.max(11, 4.5 * unit)}px`,
-          }}
-        >
-          {'\u26A0\uFE0E'}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/** A fixture's badge in the piece's top-right cell, with its rarity's edge. */
-function FixtureBadge({
-  id,
-  cells,
-  minX,
-  minY,
-  scale,
-}: {
-  id: FixtureId;
-  cells: readonly Cell[];
-  minX: number;
-  minY: number;
-  scale: number;
-}) {
-  const px = CELL * scale;
-  const unit = cellUnit(px);
-  const def = CONTENT.fixtures[id];
-  // The top row's rightmost cell.
-  const top = Math.min(...cells.map((c) => c.y));
-  const right = Math.max(...cells.filter((c) => c.y === top).map((c) => c.x));
-  const size = Math.max(14, 6 * unit);
-  return (
-    <div
-      class={`fixture-badge rarity-${def.rarity}`}
-      title={`${def.name} (fixture)`}
-      aria-label={`${def.name} installed`}
-      style={{
-        left: `${(right - minX + 1) * px - size - Math.max(1, unit)}px`,
-        top: `${(top - minY) * px + Math.max(1, unit)}px`,
-        width: `${size}px`,
-        height: `${size}px`,
-        fontSize: `${Math.round(size * 0.72)}px`,
-      }}
-    >
-      {FIXTURE_GLYPHS[id]}
     </div>
   );
 }

@@ -1,0 +1,141 @@
+/* The house's layers on the board (HouseLayers.tsx), each on its z-index from layers.ts. */
+
+.house-floor,
+.house-walls {
+  position: absolute;
+  left: 0;
+  top: 0;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+.house-floor {
+  z-index: var(--z-floor);
+}
+.house-walls {
+  z-index: var(--z-walls);
+}
+
+/* One container per piece inside each layer, ordered among themselves by bottom row. */
+.items,
+.overhang,
+.labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.items {
+  z-index: var(--z-items);
+}
+.overhang {
+  z-index: var(--z-overhang);
+}
+.labels {
+  z-index: var(--z-labels);
+}
+.room-items,
+.room-overhang {
+  position: absolute;
+  /* The same origin in both layers, so an item and its top wobble as one. */
+  transform-origin: 50% 60%;
+}
+.item {
+  position: absolute;
+  image-rendering: pixelated;
+}
+
+/* --- Highlights: outlines, never filters on whole pieces --------------------------- */
+
+.highlights {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: var(--z-highlights);
+  overflow: visible;
+  pointer-events: none;
+}
+.highlights .edge {
+  fill: none;
+  stroke-linecap: square;
+}
+/* A piece's flash as it wobbles or settles (piece-fx.ts animates its opacity). */
+.hl-flash {
+  fill: #fffbe6;
+  opacity: 0;
+}
+/* The tally's scoring piece: a warm rim and a little light. */
+.hl-active .fill {
+  fill: rgb(255 248 208 / 0.2);
+}
+.hl-active .edge {
+  stroke: #fff3b8;
+  stroke-width: 3;
+}
+/* A set's members: Charm's rose (D-019) with a dashed edge, so it's never color alone. The
+   placement preview's new sets are lighter than a held set's beat in the tally. */
+.hl-set .fill {
+  fill: rgb(242 169 189 / 0.16);
+}
+.hl-set .edge {
+  stroke: var(--charm);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+  stroke-linecap: butt;
+}
+.hl-lit .fill {
+  fill: rgb(242 169 189 / 0.3);
+}
+.hl-lit .edge {
+  stroke: var(--charm);
+  stroke-width: 3;
+  stroke-dasharray: 8 4;
+  stroke-linecap: butt;
+}
+
+/* --- Labels -------------------------------------------------------------------------- */
+
+.digit-n {
+  display: inline-block;
+}
+
+/* --- The ghost of a room: the house's painters for that piece alone ------------------- */
+
+.ghost-room canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  image-rendering: pixelated;
+}
+/* Its tint, as the yard ghost's cells have it (app.css): blue and outlined when legal, hatched
+   orange when not (never color alone), just outlined while it waits for End week. */
+.ghost-tint {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+}
+.ghost-tint .edge {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: square;
+}
+.ghost-room.legal .ghost-tint .fill {
+  fill: rgb(47 111 208 / 0.18);
+}
+.ghost-room.legal .ghost-tint .edge {
+  stroke: var(--good);
+}
+.ghost-room.illegal .ghost-tint .fill {
+  fill: url(#ghost-hatch);
+}
+.ghost-room.illegal .ghost-tint .edge {
+  stroke: var(--bad);
+}
+.ghost-tint .hatch-on {
+  fill: rgb(224 122 31 / 0.75);
+}
+.ghost-tint .hatch-off {
+  fill: rgb(255 255 255 / 0.15);
+}
+.ghost-room.pending.legal .ghost-tint .fill {
+  fill: none;
+}

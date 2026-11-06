@@ -1,0 +1,153 @@
+{
+  "floor-closet": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floors_16x16.png",
+    "rect": [16, 400, 16, 16],
+    "ops": [{ "op": "tile", "size": [32, 32] }],
+    "note": "The Closet's floor: pale maple boards (block 0, 11), its plain seamless tile repeated to one 32 px cell. Lighter than the Bedroom's honey planks, so a closet off a bedroom reads as its own room (D-093)."
+  },
+  "floor-mudroom": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floors_16x16.png",
+    "rect": [144, 464, 16, 16],
+    "ops": [{ "op": "tile", "size": [32, 32] }],
+    "note": "The Mudroom's floor: grey slate tiles with light grout (block 2, 13), its plain seamless tile repeated to one 32 px cell. A hard-wearing entry floor, unlike the Bathroom's blue tiles."
+  },
+  "floor-playroom": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floors_16x16.png",
+    "rect": [144, 304, 16, 16],
+    "ops": [{ "op": "tile", "size": [32, 32] }],
+    "note": "The Playroom's floor: lavender tiles like a foam play mat (block 2, 8), its plain seamless tile repeated to one 32 px cell. No other room has a purple floor, so it isn't mistaken for the Living Room."
+  },
+  "face-bedroom": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png",
+    "rect": [16, 6, 16, 6],
+    "ops": [
+      { "op": "compose", "size": [16, 8], "layers": [{ "rect": [16, 30, 16, 2], "at": [0, 6] }] },
+      { "op": "tile", "size": [32, 8] }
+    ],
+    "note": "The north wall face of a bedroom (teal and sand diamonds on lilac): the wall block at [0, 0]'s middle tile column, its top 6 rows of wallpaper under the band, then its last 2 rows (the baseboard and the outline along the floor), repeated to one 32 px cell. The house draws it under each north wall (the audit prototype's 8 px stub); the band itself is drawn from the wall mask."
+  },
+  "face-bathroom": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png",
+    "rect": [368, 230, 16, 6],
+    "ops": [
+      { "op": "compose", "size": [16, 8], "layers": [{ "rect": [368, 254, 16, 2], "at": [0, 6] }] },
+      { "op": "tile", "size": [32, 8] }
+    ],
+    "note": "The north wall face of a bathroom (white tiles with blue grout): the wall block at [352, 224]'s middle tile column, its top 6 rows of wallpaper under the band, then its last 2 rows (the baseboard and the outline along the floor), repeated to one 32 px cell. The house draws it under each north wall (the audit prototype's 8 px stub); the band itself is drawn from the wall mask."
+  },
+  "face-kitchen": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png",
+    "rect": [16, 294, 16, 6],
+    "ops": [
+      { "op": "compose", "size": [16, 8], "layers": [{ "rect": [16, 318, 16, 2], "at": [0, 6] }] },
+      { "op": "tile", "size": [32, 8] }
+    ],
+    "note": "The north wall face of a kitchen (cream with a butter-yellow stripe): the wall block at [0, 288]'s middle tile column, its top 6 rows of wallpaper under the band, then its last 2 rows (the baseboard and the outline along the floor), repeated to one 32 px cell. The house draws it under each north wall (the audit prototype's 8 px stub); the band itself is drawn from the wall mask."
+  },
+  "face-dining-room": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png",
+    "rect": [368, 390, 16, 6],
+    "ops": [
+      { "op": "compose", "size": [16, 8], "layers": [{ "rect": [368, 414, 16, 2], "at": [0, 6] }] },
+      { "op": "tile", "size": [32, 8] }
+    ],
+    "note": "The north wall face of a dining room (cream over a green dado): the wall block at [352, 384]'s middle tile column, its top 6 rows of wallpaper under the band, then its last 2 rows (the baseboard and the outline along the floor), repeated to one 32 px cell. The house draws it under each north wall (the audit prototype's 8 px stub); the band itself is drawn from the wall mask."
+  },
+  "face-living-room": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png",
+    "rect": [16, 358, 16, 6],
+    "ops": [
+      { "op": "compose", "size": [16, 8], "layers": [{ "rect": [16, 382, 16, 2], "at": [0, 6] }] },
+      { "op": "tile", "size": [32, 8] }
+    ],
+    "note": "The north wall face of a living room (warm sand): the wall block at [0, 352]'s middle tile column, its top 6 rows of wallpaper under the band, then its last 2 rows (the baseboard and the outline along the floor), repeated to one 32 px cell. The house draws it under each north wall (the audit prototype's 8 px stub); the band itself is drawn from the wall mask."
+  },
+  "face-closet": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png",
+    "rect": [16, 134, 16, 6],
+    "ops": [
+      { "op": "compose", "size": [16, 8], "layers": [{ "rect": [16, 158, 16, 2], "at": [0, 6] }] },
+      { "op": "tile", "size": [32, 8] }
+    ],
+    "note": "The north wall face of a closet (grey beige): the wall block at [0, 128]'s middle tile column, its top 6 rows of wallpaper under the band, then its last 2 rows (the baseboard and the outline along the floor), repeated to one 32 px cell. The house draws it under each north wall (the audit prototype's 8 px stub); the band itself is drawn from the wall mask."
+  },
+  "face-hallway": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png",
+    "rect": [16, 102, 16, 6],
+    "ops": [
+      { "op": "compose", "size": [16, 8], "layers": [{ "rect": [16, 126, 16, 2], "at": [0, 6] }] },
+      { "op": "tile", "size": [32, 8] }
+    ],
+    "note": "The north wall face of a hallway (plain cream): the wall block at [0, 96]'s middle tile column, its top 6 rows of wallpaper under the band, then its last 2 rows (the baseboard and the outline along the floor), repeated to one 32 px cell. The house draws it under each north wall (the audit prototype's 8 px stub); the band itself is drawn from the wall mask."
+  },
+  "face-garage": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png",
+    "rect": [16, 486, 16, 6],
+    "ops": [
+      { "op": "compose", "size": [16, 8], "layers": [{ "rect": [16, 510, 16, 2], "at": [0, 6] }] },
+      { "op": "tile", "size": [32, 8] }
+    ],
+    "note": "The north wall face of a garage (grey concrete): the wall block at [0, 480]'s middle tile column, its top 6 rows of wallpaper under the band, then its last 2 rows (the baseboard and the outline along the floor), repeated to one 32 px cell. The house draws it under each north wall (the audit prototype's 8 px stub); the band itself is drawn from the wall mask."
+  },
+  "face-home-office": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png",
+    "rect": [368, 326, 16, 6],
+    "ops": [
+      { "op": "compose", "size": [16, 8], "layers": [{ "rect": [368, 350, 16, 2], "at": [0, 6] }] },
+      { "op": "tile", "size": [32, 8] }
+    ],
+    "note": "The north wall face of a home office (sage green): the wall block at [352, 320]'s middle tile column, its top 6 rows of wallpaper under the band, then its last 2 rows (the baseboard and the outline along the floor), repeated to one 32 px cell. The house draws it under each north wall (the audit prototype's 8 px stub); the band itself is drawn from the wall mask."
+  },
+  "face-playroom": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png",
+    "rect": [368, 134, 16, 6],
+    "ops": [
+      { "op": "compose", "size": [16, 8], "layers": [{ "rect": [368, 158, 16, 2], "at": [0, 6] }] },
+      { "op": "tile", "size": [32, 8] }
+    ],
+    "note": "The north wall face of a playroom (sky blue): the wall block at [352, 128]'s middle tile column, its top 6 rows of wallpaper under the band, then its last 2 rows (the baseboard and the outline along the floor), repeated to one 32 px cell. The house draws it under each north wall (the audit prototype's 8 px stub); the band itself is drawn from the wall mask."
+  },
+  "face-library": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png",
+    "rect": [192, 358, 16, 6],
+    "ops": [
+      { "op": "compose", "size": [16, 8], "layers": [{ "rect": [192, 382, 16, 2], "at": [0, 6] }] },
+      { "op": "tile", "size": [32, 8] }
+    ],
+    "note": "The north wall face of a library (red-brown wood panelling): the wall block at [176, 352]'s middle tile column, its top 6 rows of wallpaper under the band, then its last 2 rows (the baseboard and the outline along the floor), repeated to one 32 px cell. The house draws it under each north wall (the audit prototype's 8 px stub); the band itself is drawn from the wall mask."
+  },
+  "face-mudroom": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png",
+    "rect": [16, 262, 16, 6],
+    "ops": [
+      { "op": "compose", "size": [16, 8], "layers": [{ "rect": [16, 286, 16, 2], "at": [0, 6] }] },
+      { "op": "tile", "size": [32, 8] }
+    ],
+    "note": "The north wall face of a mudroom (cream brick): the wall block at [0, 256]'s middle tile column, its top 6 rows of wallpaper under the band, then its last 2 rows (the baseboard and the outline along the floor), repeated to one 32 px cell. The house draws it under each north wall (the audit prototype's 8 px stub); the band itself is drawn from the wall mask."
+  },
+  "face-sunroom": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png",
+    "rect": [368, 294, 16, 6],
+    "ops": [
+      { "op": "compose", "size": [16, 8], "layers": [{ "rect": [368, 318, 16, 2], "at": [0, 6] }] },
+      { "op": "tile", "size": [32, 8] }
+    ],
+    "note": "The north wall face of a sunroom (mint stripes): the wall block at [352, 288]'s middle tile column, its top 6 rows of wallpaper under the band, then its last 2 rows (the baseboard and the outline along the floor), repeated to one 32 px cell. The house draws it under each north wall (the audit prototype's 8 px stub); the band itself is drawn from the wall mask."
+  }
+}

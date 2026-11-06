@@ -1,8 +1,78 @@
 {
+  "face-bathroom": {
+    "w": 32,
+    "h": 8,
+    "spec": "cdfd88d7a6cc8d46"
+  },
+  "face-bedroom": {
+    "w": 32,
+    "h": 8,
+    "spec": "92c05941b1a2841e"
+  },
+  "face-closet": {
+    "w": 32,
+    "h": 8,
+    "spec": "04dedb29bc2ffb8b"
+  },
+  "face-dining-room": {
+    "w": 32,
+    "h": 8,
+    "spec": "d660c89a9a1a961f"
+  },
+  "face-garage": {
+    "w": 32,
+    "h": 8,
+    "spec": "fcc6cca80444850d"
+  },
+  "face-hallway": {
+    "w": 32,
+    "h": 8,
+    "spec": "c5e0808328a11dc3"
+  },
+  "face-home-office": {
+    "w": 32,
+    "h": 8,
+    "spec": "a1ad60e2fa00d9a5"
+  },
+  "face-kitchen": {
+    "w": 32,
+    "h": 8,
+    "spec": "0310c39172675698"
+  },
+  "face-library": {
+    "w": 32,
+    "h": 8,
+    "spec": "6446779d60b1793a"
+  },
+  "face-living-room": {
+    "w": 32,
+    "h": 8,
+    "spec": "aacccab106243fe6"
+  },
+  "face-mudroom": {
+    "w": 32,
+    "h": 8,
+    "spec": "1681cb069192b397"
+  },
+  "face-playroom": {
+    "w": 32,
+    "h": 8,
+    "spec": "336edf02fd3c8982"
+  },
+  "face-sunroom": {
+    "w": 32,
+    "h": 8,
+    "spec": "033ce8cfebbc7841"
+  },
   "floor-carpet": {
     "w": 32,
     "h": 32,
     "spec": "156370ea86a08f80"
+  },
+  "floor-closet": {
+    "w": 32,
+    "h": 32,
+    "spec": "052e3024633e3ed1"
   },
   "floor-garage": {
     "w": 32,
@@ -24,6 +94,11 @@
     "h": 32,
     "spec": "b276ba4c3316518c"
   },
+  "floor-mudroom": {
+    "w": 32,
+    "h": 32,
+    "spec": "197365b262e4a691"
+  },
   "floor-office": {
     "w": 32,
     "h": 32,
@@ -33,6 +108,11 @@
     "w": 32,
     "h": 32,
     "spec": "20f380ffb70be056"
+  },
+  "floor-playroom": {
+    "w": 32,
+    "h": 32,
+    "spec": "7016875d88a8bccf"
   },
   "floor-sunroom": {
     "w": 32,

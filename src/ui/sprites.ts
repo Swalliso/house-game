@@ -27,7 +27,11 @@ export function cellUnit(px: number): number {
 
 export const ATLAS_URL: string = atlasUrl;
 
-/** Each piece's floor and its one key furniture sprite (the cutaway look, §12 Art). */
+/**
+ * Each piece's floor and its one key furniture sprite: the piece's icon (the hand cards, the
+ * coming pile). Every room type has its own floor (D-093); the two kitchens share one, as do
+ * the two halls. The board's richer art (wall faces, furniture layouts) is in src/ui/art/.
+ */
 export const PIECE_SPRITES: Record<PieceId, { floor: SpriteId; furniture: SpriteId }> = {
   bedroom: { floor: 'floor-wood', furniture: 'bed' },
   bathroom: { floor: 'floor-tile', furniture: 'tub' },
@@ -35,7 +39,7 @@ export const PIECE_SPRITES: Record<PieceId, { floor: SpriteId; furniture: Sprite
   lKitchen: { floor: 'floor-kitchen', furniture: 'stove' },
   diningRoom: { floor: 'floor-parquet', furniture: 'table' },
   livingRoom: { floor: 'floor-carpet', furniture: 'sofa' },
-  closet: { floor: 'floor-wood', furniture: 'wardrobe' },
+  closet: { floor: 'floor-closet', furniture: 'wardrobe' },
   hallway: { floor: 'floor-hall', furniture: 'plant' },
   longHallway: { floor: 'floor-hall', furniture: 'plant' },
   garage: { floor: 'floor-garage', furniture: 'car' },
@@ -56,9 +60,9 @@ export const PIECE_SPRITES: Record<PieceId, { floor: SpriteId; furniture: Sprite
   treehouse: { floor: 'canopy', furniture: 'treehouse' },
   greenhouse: { floor: 'greenhouse', furniture: 'greenhouse' },
   // Special pieces (M3a).
-  playroom: { floor: 'floor-carpet', furniture: 'toys' },
+  playroom: { floor: 'floor-playroom', furniture: 'toys' },
   library: { floor: 'floor-library', furniture: 'books' },
-  mudroom: { floor: 'floor-tile', furniture: 'boots' },
+  mudroom: { floor: 'floor-mudroom', furniture: 'boots' },
   pool: { floor: 'pool', furniture: 'pool' },
   sunroom: { floor: 'floor-sunroom', furniture: 'plant' },
   hotTub: { floor: 'patio', furniture: 'hottub' },

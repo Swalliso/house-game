@@ -58,6 +58,13 @@ export const FEEL = {
 
   /** Squash-and-wobble on a triggering piece. */
   wobble: { ms: 260, scale: 1.12 },
+  /**
+   * A piece's floor flashes white as it wobbles or settles, peaking at this opacity: its floor
+   * and walls are drawn with the whole house, so the flash shows which room is reacting.
+   */
+  flash: { peak: 0.32 },
+  /** A wobbling piece's digit pops to this size, then back. */
+  digitBump: 1.35,
 
   /** Each fast-forwarded week when a milestone completes early (D-040). */
   fastForward: { weekMs: 420 },
