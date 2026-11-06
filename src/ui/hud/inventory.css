@@ -110,6 +110,12 @@
 .inv-sell {
   flex: none;
 }
+/* A short window (1280×720): an empty row is just its count, so the hand starts higher. */
+@media (max-height: 800px) {
+  .inv-row.is-empty .inv-slots {
+    display: none;
+  }
+}
 .free-play {
   margin: 0;
   padding: var(--space-1) var(--space-2);

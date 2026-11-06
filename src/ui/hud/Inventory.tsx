@@ -65,7 +65,7 @@ export function Inventory({ shop = false }: { shop?: boolean }) {
       label="Your company’s goods"
     >
       {showReserve && (
-        <div class="inv-row">
+        <div class={`inv-row ${s.reserve.length === 0 ? 'is-empty' : ''}`}>
           <h3 class="inv-label">
             <Tip term="reserve">Reserve</Tip>
             <span class="inv-count">
@@ -103,7 +103,7 @@ export function Inventory({ shop = false }: { shop?: boolean }) {
         </div>
       )}
       {showSupplies && (
-        <div class="inv-row">
+        <div class={`inv-row ${s.supplies.length === 0 ? 'is-empty' : ''}`}>
           <h3 class="inv-label">
             <Tip term="supplies">Supplies</Tip>
             <span class="inv-count">
@@ -155,7 +155,7 @@ export function Inventory({ shop = false }: { shop?: boolean }) {
         </div>
       )}
       {showBlueprints && (
-        <div class="inv-row">
+        <div class={`inv-row ${s.blueprints.length === 0 ? 'is-empty' : ''}`}>
           <h3 class="inv-label">
             <Tip term="blueprints">Blueprints</Tip>
             <span class="inv-count">

@@ -85,9 +85,15 @@ button:focus-visible,
   height: 100%;
   background: var(--wood-night);
 }
+/* A narrower window keeps the columns wide enough for the pixel text, and the board pans a
+   little more (it pans at 1280×720 anyway, D-097). */
 @media (max-width: 1500px) {
   .game {
-    --side: 264px;
+    --side: 280px;
+  }
+  .left,
+  .right {
+    padding: var(--space-1);
   }
 }
 .left {

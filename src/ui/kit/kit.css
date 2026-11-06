@@ -85,6 +85,18 @@
   padding: var(--space-3);
   min-width: 0;
 }
+/* A narrow window: tighter panels and cards, so a line holds more words. */
+@media (max-width: 1500px) {
+  .panel-body {
+    padding: var(--space-2);
+  }
+  .panel-head {
+    padding-inline: var(--space-2);
+  }
+  .pcard {
+    padding-inline: var(--space-2);
+  }
+}
 
 /* --- Card: paper, an ink ring, and a band inside it (rarity, kind, or selection) ---------- */
 

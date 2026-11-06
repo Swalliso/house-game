@@ -15,8 +15,8 @@
    ghost on the lot shows the shape. */
 .shape-glyph {
   display: none;
-  grid-template-columns: repeat(var(--cols), calc(var(--px) * 4));
-  grid-template-rows: repeat(var(--rows), calc(var(--px) * 4));
+  grid-template-columns: repeat(var(--cols), calc(var(--px) * 3));
+  grid-template-rows: repeat(var(--rows), calc(var(--px) * 3));
   gap: var(--px);
   flex: none;
 }
@@ -115,6 +115,12 @@
   padding: var(--space-2) var(--space-3) var(--space-3);
   background: var(--paper);
   box-shadow: 0 calc(var(--px) * -1) 0 var(--paper-line);
+}
+@media (max-width: 1500px) {
+  .hand-actions {
+    margin: 0 calc(var(--space-2) * -1) calc(var(--space-2) * -1);
+    padding: var(--space-2);
+  }
 }
 .hand-actions .end-week {
   flex: 1;

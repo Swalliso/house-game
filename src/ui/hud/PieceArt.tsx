@@ -65,7 +65,7 @@ export function PieceArt({ id, class: cls }: { id: PieceId; class?: string }) {
 
 /**
  * The piece's shape as little squares, for where its picture doesn't fit (a short window's
- * hand cards). One square per cell, four UI pixels across.
+ * hand cards). One square per cell, three UI pixels across.
  */
 export function ShapeGlyph({ id }: { id: PieceId }) {
   const cells = parseShape(CONTENT.pieces[id].shape);
