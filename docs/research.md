@@ -6,7 +6,7 @@ Reference notes on the games we're borrowing from. Facts are paraphrased from th
 
 ## Combolands: Roguelike Citybuilder (Crux Games, 2026)
 
-> **Update 2026-11-04:** several notes below are corrected by the "Update: reception, comparables, corrections" section at the end of this file. **2026-11-05:** the "Update: shop, items, and map" section adds detail on the shop, heirlooms, upgrades, potions, and the map, and the "Update: juice, sound, scoring, and art" section covers reward feedback, music, multipliers, and pixel art.
+> **Update 2026-11-04:** several notes below are corrected by the "Update: reception, comparables, corrections" section at the end of this file. **2026-11-05:** the "Update: shop, items, and map" section adds detail on the shop, heirlooms, upgrades, potions, and the map, and the "Update: juice, sound, scoring, and art" section covers reward feedback, music, multipliers, and pixel art. **2026-11-06:** "Update: houses that look like houses" is the research for D-093, and "Update: how Combolands' systems fit together, and chain reactions" covers how its buildings, items, and chains interact, for D-094.
 
 **Basics:** A pixel-art roguelike city builder from Crux Games, a two-person studio (makers of Terra Nil). Released August 24, 2026 on PC via Steam. It grew out of a free itch.io prototype called *Tiny Towns*. Very well received on Steam.
 
@@ -613,3 +613,140 @@ There's no official list. These notes come from player comments and the unoffici
   - [combolands.site: gold](https://combolands.site/gold/)
   - [combolands.site: buildings](https://combolands.site/buildings/)
   - [combolands.site: heirlooms](https://combolands.site/heirlooms/)
+
+---
+
+## Update: how Combolands' systems fit together, and chain reactions (2026-11-06)
+
+This pass looked at how Combolands' buildings, items, and events work together, rather than at one system, because the team's sense is that the way everything interacts is what makes it feel good. It also covers how its chains and Balatro's retriggers work, for D-094. It adds to the notes above rather than repeating them. Its claims were checked against their sources twice, independently: the developer's 16 Steam news posts (April to October 2026; the feed's other 3 items are GamingOnLinux articles), three reviews and an impressions piece, two Steam community guides, forum threads, the Balatro wiki, and our own code. Items marked *(guide)* come from guides, forum posts, or the unofficial combolands.site compendium.
+
+### Every building is one sentence
+
+A building reads as **when** it fires, **what** it looks at, and **what** it does. A small vocabulary for each lets 120+ buildings share one grammar, though readability is still mixed ("Combolands reception" above):
+
+| Part | Kinds | Examples |
+|---|---|---|
+| **When** | when placed; every few weeks; when another building triggers it; when a building in range is removed, or when it is itself; when a building in range gains a token; when nature appears next to it; growth, then a transform | A Guard Tower fires when a building in its range is removed *(guide)*. Frontier's Shaman fires when a building in its range gains a reroll *(guide)*. |
+| **What** | adjacent; in range (each building has its own radius); connected; enclosed; on top or below; a category; a map feature | Barracks score for each rock nearby. A Monument scores for each Residence connected to the Town Hall. |
+| **Does** | points, flat or per match; mult; trigger others; create; remove; transform; give a token (reroll, remove, gold, an upgrade); change a rule | A Forester makes forest, and a Woodcutter clears it for points *(guide)*. A Plaza lets the buildings beside it ignore the rule that keeps identical buildings apart *(guide)*. |
+
+- **Categories, not names.** Most effects read a category (Farm, Crop, Husbandry, Training, Nature, Sacred, Stall) or a map feature *(guide)*, so new buildings and items plug into old ones without anyone writing the pairs. Two of the same building can't sit in each other's range, so builds spread out *(guide)*.
+- **Neutral "glue" buildings change their neighbors' rules** instead of scoring *(guide)*:
+  - a Lamppost shortens its neighbors' timers by a week, and a Town Bell adds 1 to their range
+  - Scaffolding gives +1 mult to whatever is built on top of it
+  - a Conduit triggers up to two buildings in range, and a Post Office passes a trigger from the building below it to the one above
+  - a building beside a railroad counts as beside everything along it
+
+  Any guild can use them, so they're where guild pairs meet.
+- **The map takes part.** Rock, forest, flowers, bushes, and fish count as buildings *(guide)*. Some buildings need them, some make them, and some clear them for a payout; harvested bushes regrow after 4 weeks *(guide)*. A rework in the June 2026 demo (v9) shows the loop: manure pays a coin when it's removed, and a Composter removes the manure next to it and fires whenever something in its range is removed, giving each farm in range +0.1 mult.
+
+### Chain reactions
+
+Each of the three reviews describes a chain: one placement sets off a building, which sets off its neighbors.
+
+- **Buildings that start chains:**
+  - a Conduit triggers up to two buildings in range *(guide)*
+  - a Ballista turns to a random side every few weeks and triggers what's there, so a cluster of them sets each other off (Geekly Grind)
+  - a Trawler triggers a random ship, and with fish traps the chain reaches every ship in range (GameCritics)
+  - a Marketplace scores nothing itself but re-fires the stalls around it. Two Marketplaces re-fire each other once paint (Ghost or Rainbow) makes each count as what the other fires, and a Plaza or railroad puts them side by side *(guide)*.
+  - a Sparring Dummy fires every Training building in range and gives you a remove *(guide)*
+- **Tokens and removals carry chains.** A paint that gives a reroll whenever its building fires, on a building in a Shaman's range, chains through the reroll *(guide)*. Martial builds around removals: a Guard Tower fires when a building in its range is removed, and a Banner when it's removed itself *(guide)*, so one removal can set off every Guard Tower in range.
+- **Chains cross guilds.** One player's chain runs from a Lumber Mill through Engineering to Ballistas and a training dummy *(guide)*. In the same thread, one player says most guilds have at least one or two buildings that make a combo only their pairing can, and others name paint or overlapping tags as the bridge *(guide)*.
+- **Bounds:** most buildings fire at most 10 times a week *(guide)*. Loops still got through: a torch with several effigy pyres (fixed in demo v8; the notes don't say how it looped), and, in endless, a Chalice of Revision with a Flanged Mace, where each crop the Chalice creates starts with a fresh count *(guide)*. Players say re-creating a building is the only way past the cap *(guide)*. D-036 avoids loops like these.
+- **How it's shown:** points tally with a plink each (Aftermath); pop-ups such as +20 and ×1.5 sit over the buildings (Life Meets Pixel); a "magic" trail follows a combo across the screen once it gets big (demo v8); and a big score crashes building sprites together in a corner, stacking them into a tower on the biggest (Aftermath).
+- **Balatro works differently** (Balatro wiki):
+  - Scoring cards score left to right. After a card's own chips and modifiers, the jokers that react to it fire, left to right.
+  - A **retrigger** replays a card's sequence, from its chips through the jokers that react to it, but not the retrigger step: neither a Red Seal nor a retriggering joker fires again because of a retrigger. Each source gives a fixed count. A Red Seal retriggers its card once; Hack (each played 2 to 5), Sock and Buskin (face cards), Dusk (every card in a round's last hand), and Seltzer (every card for 10 hands) once each; Hanging Chad the first scoring card twice; Mime the abilities of cards held in hand. Retriggers stack by adding.
+  - Copy jokers add one more copy of another joker's ability: Blueprint the one to its right, Brainstorm the leftmost. About 29 jokers with passive effects can't be copied.
+  - Retriggers never set off retriggers, and a copy joker that would copy itself does nothing, so a hand's scoring is finite, though it can run to hundreds of triggers.
+- **So a chain takes three things:** something that fires something else, a bound, and a tally that shows each step as caused by the one before it. Balatro bounds its retriggers with a fixed count per source; Combolands bounds its chains with a cap per building.
+
+### Items work at different scopes
+
+The notes above list the shop's goods. Side by side, each kind acts at a different scope and for a different length of time, which is why one visit offers several kinds of choice:
+
+| Combolands | Acts on | Lasts | Open House |
+|---|---|---|---|
+| Building | a tile and its range | the run | pieces |
+| Neutral glue building | its neighbors' rules | the run | the Hallway's link (auras change only what neighbors earn) |
+| Paint or building supplies | one building | 2–10 weeks, or the run | fixtures, none of them timed |
+| Potion | the map | now, or the next action | tools |
+| Their blueprint | one placement, without spending a week | now | Weekend Crew (D-083) |
+| Token | one action | now | rerolls, demolitions |
+| Heirloom | the run | passive, in slots | blueprints |
+| Council vote | a category, or the run | a ladder that stacks | change orders, which don't stack |
+
+- **Timed paints pay as their building fires** *(guide)*: +100 points each time it fires (for 10 weeks), a remove (5), a reroll (6), a gold (8), a dismiss (3), or +0.1 enchant (2). The permanent ones rewrite: Ghost paint changes which category a building reads, and Rainbow paint makes it count as every category.
+- **Some heirlooms have a catch.** Coin Stack doubles gold *(guide)* but can lock you out of the shop; v1.0.7 added an indicator for that.
+- **Gold can score.** A Vault scores from the gold you hold *(guide)*, so gold is a score source as well as the shop's currency.
+- **Council ladders:** each finished request pays a vote for one councillor, and that councillor's votes climb a ladder. The Druid's ladder adds +0.25 mult for Nature and Sacred buildings on three of its five votes (Life Meets Pixel, read from a trailer frame), and the Artist gives paints and extra consumable slots on alternate votes *(guide)*. Some rungs rewrite rules: the Druid's fourth vote makes every Nature building count as Sacred (Life Meets Pixel), and the Ranger's second counts all trees as Frontier (GameCritics). Those rewrites are where long-term plans form.
+- **Collections make long arcs** *(guide)*: a Jewellery Box fills with 8 gems and sells for a crown, which sells for the vote that unlocks the Arcane guild, one of two secret guilds that can't be picked at the start but add a few buildings to later runs. A Civic temple built from corner pieces gives a legendary heirloom.
+
+### Guilds are verbs
+
+A guild is defined less by its theme than by what it feeds on *(our reading of the reviews and guides)*: Martial on removal, Frontier on the island's nature and on rerolls, Agricultural on growth (fields transform, then fire), Civic on plots that grow into houses, Commercial on gold and re-firing, Industrial on raw-to-product chains, and Maritime on water, where ships fire ships. Those are the seven pickable guilds; the two secret ones, Rogues and Arcane, come from council votes, and Rogues' buildings trigger other buildings and collect money *(guide)*. A pair is two verbs, and players read the island before picking. The risk is the pair collapsing: one forum thread's opening post says runs go all-in on one guild and use the other for scraps, though the replies disagree *(guide)*.
+
+### What changed from the first demo to v1.0.7
+
+The developer's posts show the direction they took:
+- generated islands (semi-procedural from the June 2026 demo) instead of the first demo's one map
+- unlocks that arrive gradually rather than all at once (the June 2026 demo), then sped up twice before launch (demo v9, and an August patch that lowered later guilds' thresholds)
+- council quests, which they describe as alternative mini-goals
+- multi-piece cards that place more pieces, raised in two demo patches with no reason given: walls 5 → 6, palisades 7 → 9, plateaus 3 → 4 → 5, rails 2 → 3 → 4
+- after launch, a compendium as the most requested feature (v1.0.5)
+- after launch, a confusing "counts as fish" line taken off fish traps (v1.0.7)
+
+### Open House through the same lens *(our reading of develop at `0541967`)*
+
+- **The vocabulary is mostly there.** Tags, relational selectors, regions, links, timers, transforms, `countsAs`, and `grantTag` cover most of Combolands' "what it looks at" and much of its "does". The gap is "when": every piece earns once a week from its own effects, and under D-036 no effect triggers another. Apart from the finds' one-time rewards (a Time Capsule when it's built over, the Old Shed when it's demolished), nothing pays on placement or demolition, and no piece fires because of another.
+- **Most tags have no piece that reads them.** Counting the 32 piece cards and the M3 content:
+  - pieces read only **Quiet**, **Loud**, **Kid** (the Treehouse), and **Pet** (the Mudroom)
+  - **Social** is on 7 piece cards, but only Party House and the Open House Party tool read it. Patio, Hot Tub, and Fire Pit name pieces instead.
+  - **Green**, **Pretty**, **Dark**, **Sunny**, and **House** are read only by a blueprint or a tool (and, from M4a, a client)
+  - nothing reads **Wet** or **Outdoor**
+
+  Treehouses pay for clustering (D-079) because the Treehouse both reads Kid and is the base pool's only Kid piece (the Playroom is a shop piece). Kid having one reader also leaves a `grantTag` fixture or blueprint little to work with.
+- **Rewrites stop at fixtures.** Skylight, Blackout Curtains, Kitchen Island, Bunk Beds, and Garden Lights each rewrite one host. No blueprint rewrites a tag for the whole house (the "tag conversion" heirlooms in the archetype list above); the only planned one is a change order, Eternal night (M4b).
+- **No glue pieces.** Auras change what neighbors earn and the Hallway links rooms, but no piece changes its neighbors' tags, caps, or timers. (The Flower Bed, Herb Garden, and Greenhouse give their neighbors a view, as a Tree does.)
+- **The lot is mostly fixed.** Only the Sapling makes terrain. Building over a Tree removes it for nothing, Boulders give nothing, and only the finds pay when cleared, so the Old Shed is cleared on sight (D-091).
+- **Change orders** (M4b) are planned as one offer after milestones 2, 4, and 6: requests and restrictions pay once, and phase effects change the next phase. Nothing builds up across a run.
+- **The tally shows each piece, not why.** Pieces pop in placement order. Neighbor and aura lines already record the pieces and lot features they count (`BreakdownLine.from`; modifier lines name their source only in the label), so the tally could show causes without the UI computing anything.
+
+### Takeaways for Open House
+
+- **Chains need a "when", a bound, and a tally that shows cause.** D-094 has the options. Earning once and then repeating it keeps the preview equal to the tally.
+- **Give tags readers before adding rewrites.** At least two pieces in different piece categories (indoor, yard, outbuilding) should read each tag. Then `grantTag` fixtures and blueprints, and relays that pass activations to a tag's pieces (D-094's option 3), become the big moments.
+- **Glue pieces** that change their neighbors' rules would be neutral ground any crew or client can build on, the way Combolands' neutral buildings are where its two guilds meet.
+- **Every lot feature wants a piece that needs it, one that makes it, and one that clears it for a payout** (D-078, D-090, D-091).
+- **Packs need to be generous** (D-074): Combolands raised its multi-piece cards' counts twice during the demo, and its walls were still skipped. One forum thread's opening post says enclosing anything takes two 6-wall cards and turns off the adjacency bonuses that make most points *(guide)*.
+- **Show what an item is worth where you buy it** (D-092): Combolands previews a building's score before you place it, yet a reviewer still wanted to try placements before committing (Geekly Grind), and players asked for a compendium.
+- **Change orders could offer a choice and build toward something:** two or three at once with their rewards shown, and rewards that climb toward a rule change instead of only paying budget. After the jam, unless M4b has room.
+- **Crews read better as verbs** (M4b): something the crew feeds on (growth, demolition, sets, chains). Appendix B's crews are mostly a draw weight plus a bonus; the Architect's +50% to sets comes closest.
+
+### Sources
+
+- Combolands:
+  - [Steam store page (120+ buildings)](https://store.steampowered.com/app/4075620/Combolands/)
+  - [Steam news and patch notes](https://api.steampowered.com/ISteamNews/GetNewsForApp/v2/?appid=4075620&count=40&maxlength=0)
+  - [GameCritics review](https://gamecritics.com/rorenado/combolands-review/)
+  - [The Geekly Grind review](https://www.thegeeklygrind.com/all-posts/combolands-review)
+  - [Life Meets Pixel review](https://lifemeetspixel.com/reviews/combolands-review)
+  - [Aftermath impressions](https://aftermath.site/combolands-roguelike-citybuilder-balatro/)
+  - [Steam guide: All about Paints](https://steamcommunity.com/sharedfiles/filedetails/?id=3802719979)
+  - [Steam guide: Quick Overview](https://steamcommunity.com/sharedfiles/filedetails/?id=3796876704)
+  - [Forum: optimal scaling for endless](https://steamcommunity.com/app/4075620/discussions/0/582806854239885649/)
+  - [Forum: infinite loop prevention](https://steamcommunity.com/app/4075620/discussions/0/582806854240007516/)
+  - [Forum: guilds don't seem very interactive](https://steamcommunity.com/app/4075620/discussions/0/574930637988024911/)
+  - [Forum: Marketplace and Scaffolding](https://steamcommunity.com/app/4075620/discussions/0/564797873721686838/)
+  - [Forum: the Wizard vote](https://steamcommunity.com/app/4075620/discussions/0/582807198746425458/)
+  - [Forum: the Civic temple](https://steamcommunity.com/app/4075620/discussions/0/564798191048999918/)
+  - [Forum: walls](https://steamcommunity.com/app/4075620/discussions/0/564797873721682770/)
+  - [Treyex beginner guide](https://www.treyexgaming.com/combolands-roguelike-citybuilder-beginner-guide-map/)
+  - [combolands.site: guilds](https://combolands.site/guilds/)
+- Balatro:
+  - [Jokers (retriggers)](https://balatrowiki.org/w/Jokers)
+  - [Activation sequence](https://balatrowiki.org/w/Guide:_Activation_Sequence)
+  - [Activation types](https://balatrowiki.org/w/Activation_Type)
+  - [Red Seal](https://balatrowiki.org/w/Red_Seal)
+  - [Blueprint](https://balatrowiki.org/w/Blueprint)
+  - [Brainstorm](https://balatrowiki.org/w/Brainstorm)
