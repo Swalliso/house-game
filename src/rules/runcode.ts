@@ -3,7 +3,19 @@
 // action log, so a run code replays any bug. The rules have no btoa or TextEncoder (no DOM
 // lib), so UTF-8 and base64url are done by hand here.
 
-import type { Action, Content, PieceId, PlaceAction, RunCodeData, RunSetup } from './index.ts';
+import type {
+  Action,
+  BlueprintId,
+  CardType,
+  Content,
+  FixtureId,
+  Good,
+  InstallAction,
+  PieceId,
+  PlaceAction,
+  RunCodeData,
+  RunSetup,
+} from './index.ts';
 import { fnv1a } from './rng.ts';
 
 const PREFIX = 'OH1.';
@@ -106,7 +118,7 @@ function isPlace(v: unknown): v is PlaceAction {
   return (
     isObject(v) &&
     v.t === 'place' &&
-    v.from === 'hand' &&
+    (v.from === 'hand' || v.from === 'reserve') &&
     isInt(v.i) &&
     isInt(v.x) &&
     isInt(v.y) &&
@@ -114,15 +126,65 @@ function isPlace(v: unknown): v is PlaceAction {
   );
 }
 
+function isInstall(v: unknown): v is InstallAction {
+  return (
+    isObject(v) &&
+    v.t === 'install' &&
+    (v.from === 'hand' || v.from === 'supplies') &&
+    isInt(v.i) &&
+    isInt(v.uid)
+  );
+}
+
+const cleanPlace = (v: PlaceAction): PlaceAction => ({
+  t: 'place',
+  from: v.from,
+  i: v.i,
+  x: v.x,
+  y: v.y,
+  rot: v.rot,
+});
+const cleanInstall = (v: InstallAction): InstallAction => ({
+  t: 'install',
+  from: v.from,
+  i: v.i,
+  uid: v.uid,
+});
+
+/** A card type (for the strike service), with only its two fields. Ids are checked on replay. */
+function cleanCardType(v: unknown): CardType | null {
+  if (!isObject(v) || typeof v.id !== 'string') return null;
+  if (v.kind === 'piece') return { kind: 'piece', id: v.id as PieceId };
+  if (v.kind === 'fixture') return { kind: 'fixture', id: v.id as FixtureId };
+  return null;
+}
+
+function cleanGood(v: unknown): Good | null {
+  if (!isObject(v) || typeof v.id !== 'string') return null;
+  switch (v.kind) {
+    case 'blueprint':
+      return { kind: 'blueprint', id: v.id as BlueprintId };
+    case 'piece':
+      return { kind: 'piece', id: v.id as PieceId };
+    case 'fixture':
+      return { kind: 'fixture', id: v.id as FixtureId };
+    case 'fixtureCard':
+      return { kind: 'fixtureCard', id: v.id as FixtureId };
+  }
+  return null;
+}
+
 /**
  * Rebuilds an action from untrusted JSON with only its known fields, or null if it isn't one.
- * Piece ids and crews are checked against the content when the code replays.
+ * Ids and crews are checked against the content when the code replays.
  */
 function cleanAction(v: unknown): Action | null {
   if (!isObject(v)) return null;
   switch (v.t) {
     case 'place':
-      return isPlace(v) ? { t: 'place', from: 'hand', i: v.i, x: v.x, y: v.y, rot: v.rot } : null;
+      return isPlace(v) ? cleanPlace(v) : null;
+    case 'install':
+      return isInstall(v) ? cleanInstall(v) : null;
     case 'pass':
       return { t: 'pass' };
     case 'reroll':
@@ -133,6 +195,20 @@ function cleanAction(v: unknown): Action | null {
       return isInt(v.x) && isInt(v.y) ? { t: 'demolish', x: v.x, y: v.y } : null;
     case 'setAutoComplete':
       return typeof v.on === 'boolean' ? { t: 'setAutoComplete', on: v.on } : null;
+    case 'sell':
+      return (v.from === 'blueprints' || v.from === 'supplies') && isInt(v.i)
+        ? { t: 'sell', from: v.from, i: v.i }
+        : null;
+    case 'buy': {
+      if (!isInt(v.i)) return null;
+      if (v.strike === undefined) return { t: 'buy', i: v.i };
+      const strike = cleanCardType(v.strike);
+      return strike ? { t: 'buy', i: v.i, strike } : null;
+    }
+    case 'refreshShop':
+      return { t: 'refreshShop' };
+    case 'leaveShop':
+      return { t: 'leaveShop' };
     case 'debug':
       switch (v.op) {
         case 'addScore':
@@ -144,6 +220,12 @@ function cleanAction(v: unknown): Action | null {
             : null;
         case 'forceMiss':
           return { t: 'debug', op: 'forceMiss' };
+        case 'forceShop':
+          return { t: 'debug', op: 'forceShop' };
+        case 'giveGood': {
+          const good = cleanGood(v.good);
+          return good ? { t: 'debug', op: 'giveGood', good } : null;
+        }
       }
       return null;
   }
@@ -178,7 +260,7 @@ export function decodeRunCode(code: string): DecodeResult {
   if (!cleaned || cleaned.some((a) => a === null)) {
     return { ok: false, error: 'That run code has an action this build doesn’t know.' };
   }
-  if (pending !== undefined && !isPlace(pending)) {
+  if (pending !== undefined && !isPlace(pending) && !isInstall(pending)) {
     return { ok: false, error: 'That run code has a damaged pending placement.' };
   }
   const data: RunCodeData = {
@@ -186,18 +268,7 @@ export function decodeRunCode(code: string): DecodeResult {
     contentHash: hash,
     setup: { seed: setup.seed, crewId: setup.crewId, mode: setup.mode },
     actions: cleaned as Action[],
-    ...(pending
-      ? {
-          pending: {
-            t: 'place',
-            from: 'hand',
-            i: pending.i,
-            x: pending.x,
-            y: pending.y,
-            rot: pending.rot,
-          },
-        }
-      : {}),
+    ...(pending ? { pending: isPlace(pending) ? cleanPlace(pending) : cleanInstall(pending) } : {}),
   };
   return { ok: true, data };
 }

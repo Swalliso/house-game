@@ -4,7 +4,10 @@
 // Points × Mult scoring, hands, and run codes. M2 adds the full run (7 milestones, overtime,
 // early completion with fast-forward, rerolls, demolitions, the free redraw, the forecast),
 // every layout property, the remaining effect kinds, the base-pool pieces, and crews' `rule`
-// modifiers (for the General Contractor).
+// modifiers (for the General Contractor). M3a adds the economy: the full modifier set and every
+// rule key, fixtures, blueprints, the special pieces, the reserve, supplies, and blueprint
+// slots, and the shop between milestones (offers, buying, selling, the sale, the refresh, and
+// the services, including D-076's strike).
 //
 // Pure means no DOM, no Preact, no Math.random, no Date, and imports only from src/rules
 // and src/content. tsconfig.rules.json and purity.test.ts enforce it.
@@ -42,7 +45,55 @@ export type PieceId =
   // "-house" outbuildings (base pool).
   | 'doghouse'
   | 'treehouse'
-  | 'greenhouse';
+  | 'greenhouse'
+  // Special pieces (weight 0): the shop, crates, and the Catalog (Appendix B).
+  | 'playroom'
+  | 'library'
+  | 'mudroom'
+  | 'pool'
+  | 'sunroom'
+  | 'hotTub'
+  | 'firePit'
+  | 'henhouse'
+  | 'birdhouse';
+
+/** Fixtures (D-050): installed in a placed piece. 7 for rooms, 3 for the yard, and the Chandelier. */
+export type FixtureId =
+  | 'fireplace'
+  | 'skylight'
+  | 'blackoutCurtains'
+  | 'soundproofing'
+  | 'kitchenIsland'
+  | 'bunkBeds'
+  | 'bayWindow'
+  | 'sprinkler'
+  | 'pergola'
+  | 'gardenLights'
+  | 'chandelier';
+
+/** Blueprints (D-051, D-056): run-long rule benders in their own slots. */
+export type BlueprintId =
+  | 'fengShui'
+  | 'curbAppeal'
+  | 'quietHours'
+  | 'greenThumb'
+  | 'partyHouse'
+  | 'waterfront'
+  | 'openConcept'
+  | 'goodBones'
+  | 'itsAHouse'
+  | 'countryLiving'
+  | 'moodLighting'
+  | 'showHome'
+  | 'solarPanels'
+  | 'crownJewel'
+  | 'dreamHome'
+  | 'lastMinutePush'
+  | 'modelHome'
+  | 'aheadOfSchedule';
+
+/** Shown on every blueprint, fixture, and tool as a colored border plus a label (D-051). */
+export type Rarity = 'common' | 'uncommon' | 'rare';
 
 /** Lot features (D-049). The street runs along the bottom edge, outside the grid. */
 export type FeatureId = 'street' | 'tree' | 'pond' | 'creek' | 'boulder';
@@ -102,6 +153,9 @@ export type Selector =
   | { feature: FeatureId | readonly FeatureId[] }
   | { tag: Tag } // effective tags: own tags, plus Dark if interior and Sunny if on a sunny tile
   | { property: Property }
+  /** Inside a fixture's modifiers: the piece it's installed in. */
+  | { host: true }
+  | { hasFixture: FixtureId | 'any' }
   | { in: Region } // every tile of the piece is in the region
   | { touching: Selector; min?: number } // pieces touching at least `min` (1) matches
   | { any: readonly Selector[] }
@@ -131,8 +185,12 @@ export type Effect =
   | { kind: 'steady'; amount: number }
   /** `amount` per distinct touching neighbor that matches, up to `max` of them. Negative = penalty. */
   | { kind: 'neighbor'; match: Selector; amount: number; max?: number }
-  /** Changes what each touching piece that matches earns: `pct` to its percentage, `amount` to its flat points. */
-  | { kind: 'aura'; match: Selector; scope: 'adjacent'; pct?: number; amount?: number }
+  /**
+   * Changes what each matching piece earns: `pct` to its percentage, `amount` to its flat
+   * points. `adjacent`: touching pieces. `region`: pieces in the fenced yards it borders (the
+   * Mudroom).
+   */
+  | { kind: 'aura'; match: Selector; scope: 'adjacent' | 'region'; pct?: number; amount?: number }
   /** Earns `amount` every `every`-th week of its life (the Pool). */
   | { kind: 'rhythm'; every: number; amount: number }
   /** Earns `perWeek` × the weeks it has stood, this one included, up to `max` (Good Bones). */
@@ -197,15 +255,70 @@ export interface FeatureDef {
   inert?: true;
 }
 
-/** The run-level numbers that modifiers can change (§5). Later phases add the shop's keys. */
+/** The run-level numbers that modifiers can change (§5). */
 export type RuleKey =
-  'rerollsPerPhase' | 'demolitions' | 'overtime' | 'handSize' | 'earlyRewardPct';
+  | 'rerollsPerPhase'
+  | 'demolitions'
+  | 'overtime'
+  | 'handSize'
+  | 'earlyRewardPct'
+  // The shop's goods (M3).
+  | 'reserveSlots'
+  | 'supplySlots'
+  | 'blueprintSlots'
+  | 'shopPricePct'
+  | 'specBonus'
+  | 'interestMax';
+
+/** Counts that can scale a ×Mult (Ahead of Schedule). */
+export type RunStat = 'milestonesEarly';
 
 /**
- * Run-level rule benders (§5). M2 has only `rule`, for crews. Values combine as
+ * Rule benders (§5): from crews, blueprints, fixtures (which target `{ host: true }`), company
+ * upgrades, and this week's tools; clients and change orders add their own in M4. Percentages
+ * and Mult are integers in hundredths. A `rule`'s value combines as
  * (base + Σ add) × (100 + Σ pct) / 100, rounded half up.
  */
-export type Modifier = { kind: 'rule'; key: RuleKey; add?: number; pct?: number };
+export type Modifier =
+  /** "Dark pieces earn double" is +100. `lastWeekOfPhase` counts only a week actually played. */
+  | { kind: 'earn'; target: Selector; pct: number; when?: 'lastWeekOfPhase' }
+  /** Crown Jewel: the week's top earner gets `pct` more, after every other term. */
+  | { kind: 'bestPiece'; pct: number }
+  /** +Mult, optionally per matching piece (It's a House). */
+  | { kind: 'mult'; add: number; per?: Selector }
+  /**
+   * ×Mult: `times + add × count`. Each distinct source multiplies the week's Mult once,
+   * however many pieces trigger it (D-056).
+   */
+  | {
+      kind: 'xMult';
+      times: number;
+      plusPer?: { per: Selector | RunStat; add: number };
+      when?: 'lastWeekOfPhase' | { host: PieceCondition };
+    }
+  | { kind: 'earnNothing'; target: Selector }
+  /** Tags are granted, then removed, matched against the piece's own and layout tags only. */
+  | { kind: 'grantTag'; target: Selector; tag: Tag }
+  | { kind: 'removeTag'; target: Selector; tag: Tag }
+  /** Bay Window: the piece has a view, and counts it as one more view for "per view" bonuses. */
+  | { kind: 'grantView'; target: Selector }
+  /** Soundproofing: penalties from matching neighbors (the street included) don't apply. */
+  | { kind: 'blockPenalties'; target: Selector; from: Selector }
+  /** Kitchen Island; Bunk Beds count `times` in count conditions (M4a's specs), once in sets. */
+  | { kind: 'countsAs'; target: Selector; as: PieceId; times?: number }
+  /** Open Concept: touching pieces of these types form linked groups, as a Hallway links rooms. */
+  | { kind: 'link'; among: readonly PieceId[] }
+  /** Good Bones: the effect is added to every matching piece; timers count from the grant. */
+  | { kind: 'grantEffect'; target: Selector; effect: Effect }
+  /** Juniper's room limit: every matching piece earns `pct` for each one over `over`. */
+  | { kind: 'perCountOver'; match: Selector; over: number; pct: number }
+  /** +N% to a set's (or every set's) Points and +Mult. */
+  | { kind: 'setBonus'; set?: SetId; pct: number }
+  /** Economy output of matching pieces. */
+  | { kind: 'budget'; target: Selector | 'all'; pct: number }
+  /** Clients and crews only, so weights stay fixed for the run (D-043). */
+  | { kind: 'drawWeight'; target: Selector; add?: number; pct?: number }
+  | { kind: 'rule'; key: RuleKey; add?: number; pct?: number };
 
 export interface CrewDef {
   id: CrewId;
@@ -230,6 +343,32 @@ export interface SetDef {
   mult: number;
   /** Added per level from Remodel Plans (M3b). Every set is level 1 until then. */
   level: { points: number; mult: number };
+}
+
+export interface FixtureDef {
+  id: FixtureId;
+  name: string;
+  tier: Tier;
+  rarity: Rarity;
+  /** Which placed pieces can host it, checked when it's installed. */
+  fits: Selector;
+  /** In the weekly draw from `fromPhase`; 0 = shop only (the Chandelier). */
+  drawWeight: number;
+  fromPhase: number;
+  price: number;
+  /** Their targets are `{ host: true }`. */
+  modifiers: readonly Modifier[];
+}
+
+export interface BlueprintDef {
+  id: BlueprintId;
+  name: string;
+  tier: Tier;
+  rarity: Rarity;
+  price: number;
+  modifiers: readonly Modifier[];
+  /** False for goods the shop holds back until their mechanic exists (Dream Home needs M4a's specs). */
+  offered: boolean;
 }
 
 export type Range = readonly [min: number, max: number];
@@ -282,8 +421,9 @@ export interface Balance {
     /** Percent of this phase's earnings, per week saved, paid as Wow. */
     scorePct: readonly number[];
   };
-  /** Budget paid at each milestone met (spending arrives with the shop in M3). */
+  /** Budget paid at each milestone met. */
   milestoneBudget: number;
+  shop: ShopBalance;
   /** The fewest tiles a fenced yard needs (§4). */
   fencedYardMin: number;
   /** D-055: draw-weight percentages by phase (the last row repeats), for complexity 1, 2, and 3. */
@@ -292,11 +432,49 @@ export interface Balance {
   verdicts: readonly VerdictDef[];
 }
 
+/** What a shop visit stocks (Appendix A · M3a), by shop; the last row repeats. */
+export interface ShopStock {
+  blueprints: number;
+  /** Special pieces or fixtures. */
+  cards: number;
+  /** Rarity weights for blueprint, fixture, and tool slots: Common, Uncommon, Rare. */
+  rarity: readonly [number, number, number];
+}
+
+export interface ServicePrice {
+  base: number;
+  /** Added per purchase, for the rest of the run, up to `max`. */
+  step: number;
+  max: number;
+}
+
+export interface ShopBalance {
+  /** Shop k (after milestone k) uses row k − 1; the last row repeats. */
+  stock: readonly ShopStock[];
+  /** Percent chance that a card slot is a fixture rather than a special piece. */
+  cardFixturePct: number;
+  /** A special piece's price (blueprints and fixtures carry their own). */
+  piecePrice: number;
+  /** The sale's price, as a percent of the price. */
+  salePct: number;
+  /** Selling pays this percent of the item's price, rounded down. */
+  sellPct: number;
+  /** The refresh: `base`, plus `step` per further refresh in the same visit. */
+  refresh: { base: number; step: number };
+  services: Readonly<Record<ServiceId, ServicePrice>>;
+  /** Leaving without buying anything pays this. */
+  skipReward: number;
+  /** D-076: a strike can't leave fewer drawable card types than this. */
+  strikeMinTypes: number;
+}
+
 export interface Content {
   pieces: Readonly<Record<PieceId, PieceDef>>;
   features: Readonly<Record<FeatureId, FeatureDef>>;
   sets: Readonly<Record<SetId, SetDef>>;
   crews: Readonly<Record<CrewId, CrewDef>>;
+  fixtures: Readonly<Record<FixtureId, FixtureDef>>;
+  blueprints: Readonly<Record<BlueprintId, BlueprintDef>>;
   balance: Balance;
 }
 
@@ -323,6 +501,10 @@ export interface PlacedPiece {
   y: number;
   rot: Rot;
   placedWeek: number;
+  /** Weeks added to its timers (Fertilizer, M3b). */
+  ageBonus?: number;
+  /** One per piece (D-050); installing another replaces it. Gone when the piece is demolished. */
+  fixture?: { id: FixtureId; week: number };
 }
 
 export interface HouseState {
@@ -332,7 +514,49 @@ export interface HouseState {
   nextUid: number;
 }
 
-export type Card = { kind: 'piece'; id: PieceId };
+/** A card in the hand: a piece, or (from phase 2) a fixture. */
+export type Card = { kind: 'piece'; id: PieceId } | { kind: 'fixture'; id: FixtureId };
+
+/** A card type that can be struck from the draws (D-076): a piece type (its countsAs root) or a fixture. */
+export type CardType = Card;
+
+/** What sits in a supply slot: bought fixtures (and tools, from M3b), used as free actions. */
+export type Supply = { kind: 'fixture'; id: FixtureId };
+
+export interface ReservePiece {
+  id: PieceId;
+  /** A crew's starting piece, in an extra slot that doesn't count against the reserve (M4b). */
+  crew?: true;
+}
+
+export interface OwnedBlueprint {
+  id: BlueprintId;
+  /** The week it was bought: Good Bones and other granted timers count from here. */
+  boughtWeek: number;
+}
+
+export type ServiceId = 'reroll' | 'demolition' | 'strike';
+
+export type ShopOffer =
+  | { kind: 'blueprint'; id: BlueprintId; sold?: true }
+  | { kind: 'piece'; id: PieceId; sold?: true }
+  | { kind: 'fixture'; id: FixtureId; sold?: true }
+  /** Services stay on offer: each purchase raises the price for the rest of the run. */
+  | { kind: 'service'; service: ServiceId };
+
+export interface ShopVisit {
+  /** Which shop this is: 1 after milestone 1, up to 6. */
+  number: number;
+  offers: readonly ShopOffer[];
+  /** The offer at the sale price this visit, if it's still for sale. */
+  sale: number | null;
+  /** Refreshes so far this visit. */
+  refreshes: number;
+  /** Anything bought or refreshed: leaving then pays no skip reward. */
+  boughtAny: boolean;
+  /** Opened by the ?debug panel mid-phase: leaving goes back to the same week. */
+  forced?: true;
+}
 
 export interface RunSetup {
   seed: string;
@@ -354,10 +578,12 @@ export interface WeekSummary extends WeekScore {
 
 export type MilestoneResult = 'onTime' | 'early' | 'overtime' | 'failed';
 
-/** What the milestone paid: the milestone's budget, plus the early bonus if any. */
+/** What the milestone paid: the milestone's budget, plus the early bonus and interest if any. */
 export interface MilestoneReward {
   budget: number;
   score: number;
+  /** Savings Account interest, included in `budget`. */
+  interest: number;
 }
 
 export interface MilestoneRecord {
@@ -387,11 +613,25 @@ export interface RunState {
   /** D-028: one running total of Wow. */
   score: number;
   phaseStartScore: number;
-  /** Accrues from economy pieces and milestones; spent in the shop from M3. */
+  /** Accrues from economy pieces, milestones, early completion, and the skip reward; spent in the shop. */
   budget: number;
+  /** Every budget earned this run (not refunds from selling), for the end screen. */
+  budgetEarned: number;
   hand: readonly Card[];
+  /** Bought pieces (`reserveSlots`, 2) wait here; placing one is the week's turn. */
+  reserve: readonly ReservePiece[];
+  /** Bought fixtures (`supplySlots`, 3), installed as free actions. */
+  supplies: readonly Supply[];
+  /** Run-long rule benders (`blueprintSlots`, 4), no duplicates. */
+  blueprints: readonly OwnedBlueprint[];
+  /** How many of each service have been bought: their prices rise per purchase. */
+  servicesBought: Readonly<Record<ServiceId, number>>;
+  /** Card types struck from the draws (D-076): never drawn again this run. */
+  struck: readonly CardType[];
   /** Reset to the `rerollsPerPhase` rule at each phase start; not carried over. */
   rerollsLeft: number;
+  /** Bought from the shop; spent after `rerollsLeft`, and never expire. */
+  bonusRerolls: number;
   demolitionsLeft: number;
   overtimeLeft: number;
   /** Whether this week's free redraw (none of the first hand fit) was used. */
@@ -403,7 +643,9 @@ export interface RunState {
   /** Each milestone resolved so far, in order. */
   milestones: readonly MilestoneRecord[];
   lastTally: WeekSummary | null;
-  screen: 'build' | 'won' | 'lost';
+  /** The shop opens after milestones 1–6 (D-051). */
+  screen: 'build' | 'shop' | 'won' | 'lost';
+  offers?: { shop?: ShopVisit };
   /** Set by the ?debug panel's cheats: this phase's regular end counts as a miss. */
   forcedMiss?: number;
   /** Set once any debug action has changed the run. */
@@ -415,11 +657,22 @@ export interface RunState {
 
 export interface PlaceAction {
   t: 'place';
-  from: 'hand';
+  /** A card from the hand, or a bought piece waiting in the reserve. Either is the week's turn. */
+  from: 'hand' | 'reserve';
   i: number;
   x: number;
   y: number;
   rot: Rot;
+}
+/**
+ * A fixture into a placed piece (D-050). From the hand it's the week's turn; from the supplies
+ * it's a free action. A piece holds one fixture: a new one replaces the old.
+ */
+export interface InstallAction {
+  t: 'install';
+  from: 'hand' | 'supplies';
+  i: number;
+  uid: number;
 }
 export type PassAction = { t: 'pass' };
 /** Free actions: they don't end the week. */
@@ -427,6 +680,12 @@ export type RerollAction = { t: 'reroll' };
 export type DemolishAction = { t: 'demolish'; x: number; y: number };
 export type CompleteEarlyAction = { t: 'completeEarly' };
 export type SetAutoCompleteAction = { t: 'setAutoComplete'; on: boolean };
+/** Sells a blueprint or a supply for half its price, on the build and shop screens. */
+export type SellAction = { t: 'sell'; from: 'blueprints' | 'supplies'; i: number };
+/** The shop's actions. `strike` names the card type for the strike service (D-076). */
+export type BuyAction = { t: 'buy'; i: number; strike?: CardType };
+export type RefreshShopAction = { t: 'refreshShop' };
+export type LeaveShopAction = { t: 'leaveShop' };
 /**
  * The ?debug panel's cheats. They are actions so that a run code still replays exactly, and
  * any of them marks the run as a debug run.
@@ -436,25 +695,48 @@ export type DebugAction =
   | { t: 'debug'; op: 'addBudget'; amount: number }
   | { t: 'debug'; op: 'giveCard'; id: PieceId }
   /** This phase's regular end counts as a miss, so overtime (or the loss) can be tried. */
-  | { t: 'debug'; op: 'forceMiss' };
+  | { t: 'debug'; op: 'forceMiss' }
+  /** Opens the shop now, as if the milestone had just been met (the week's hand is set aside). */
+  | { t: 'debug'; op: 'forceShop' }
+  /** Puts a good where buying it would: a blueprint, a reserve piece, a supply, or a hand card. */
+  | { t: 'debug'; op: 'giveGood'; good: Good };
+
+/** A good the debug panel can give: where it goes is where buying it would put it. */
+export type Good =
+  | { kind: 'blueprint'; id: BlueprintId }
+  | { kind: 'piece'; id: PieceId }
+  | { kind: 'fixture'; id: FixtureId }
+  /** A fixture card in the hand, so a hand install can be tried. */
+  | { kind: 'fixtureCard'; id: FixtureId };
 
 export type Action =
   | PlaceAction
+  | InstallAction
   | PassAction
   | RerollAction
   | DemolishAction
   | CompleteEarlyAction
   | SetAutoCompleteAction
+  | SellAction
+  | BuyAction
+  | RefreshShopAction
+  | LeaveShopAction
   | DebugAction;
 
-/** A week's play: a placement, or nothing (a pass). */
-export type Play = PlaceAction | null;
+/** A week's play: a placement, an install, or nothing (a pass). Previews take supply installs too. */
+export type Play = PlaceAction | InstallAction | null;
 
 /** What caused a breakdown line, so the UI can badge it. */
 export type SourceRef =
   | { kind: 'piece'; uid: number }
   | { kind: 'terrain'; feature: TerrainId; x: number; y: number }
   | { kind: 'street'; x: number };
+
+/** Where a modifier came from, for breakdown labels and the ×Mult order. */
+export type ModSource =
+  | { kind: 'crew'; id: CrewId }
+  | { kind: 'blueprint'; id: BlueprintId }
+  | { kind: 'fixture'; id: FixtureId; uid: number };
 
 export interface BreakdownLine {
   /** Plain language: "Touching Trees or Quiet neighbors (2)". */
@@ -490,9 +772,33 @@ export interface SetScore {
   mult: number;
 }
 
+/** A +Mult term from a modifier (It's a House, Rush Order), in hundredths. */
+export interface MultTerm {
+  source: ModSource;
+  label: string;
+  add: number;
+}
+
+/** A ×Mult source that landed this week, in the fixed order: sets, fixtures, blueprints, tools. */
+export interface XMultTerm {
+  source: ModSource | { kind: 'set'; id: SetId };
+  label: string;
+  /** In hundredths: 125 is ×1.25. */
+  times: number;
+  /** Mult before and after this source multiplied it. */
+  before: number;
+  after: number;
+}
+
 export interface Tally extends WeekScore {
   pieces: readonly PieceScore[];
   sets: readonly SetScore[];
+  /** +Mult from modifiers, after sets. */
+  multTerms: readonly MultTerm[];
+  /** ×Mult sources, each once, in order (D-056). */
+  xMults: readonly XMultTerm[];
+  /** Crown Jewel's piece, if any: its earnings before and after the bonus. */
+  best: { uid: number; pct: number; before: number; after: number } | null;
   /** Budget from economy pieces this week. */
   budget: number;
 }
@@ -567,7 +873,43 @@ export type GameEvent =
       overtimeUsed: number;
       reward: MilestoneReward;
     }
-  | { t: 'runEnded'; result: 'won' | 'lost'; score: number; phase: number; verdict: string };
+  | { t: 'runEnded'; result: 'won' | 'lost'; score: number; phase: number; verdict: string }
+  | {
+      t: 'installed';
+      uid: number;
+      fixture: FixtureId;
+      from: 'hand' | 'supplies';
+      /** The fixture it replaced, which is gone. */
+      replaced?: FixtureId;
+    }
+  | { t: 'shopOpened'; number: number; offers: readonly ShopOffer[]; sale: number | null }
+  | {
+      t: 'bought';
+      i: number;
+      offer: ShopOffer;
+      price: number;
+      budgetBefore: number;
+      budget: number;
+      /** The strike service's card type. */
+      strike?: CardType;
+    }
+  | {
+      t: 'sold';
+      from: 'blueprints' | 'supplies';
+      item: OwnedBlueprint['id'] | Supply['id'];
+      price: number;
+      budgetBefore: number;
+      budget: number;
+    }
+  | {
+      t: 'shopRefreshed';
+      refreshes: number;
+      price: number;
+      budget: number;
+      offers: readonly ShopOffer[];
+      sale: number | null;
+    }
+  | { t: 'shopClosed'; number: number; skipReward: number; budgetBefore: number; budget: number };
 
 export interface PreviewLine {
   uid: number;
@@ -599,6 +941,11 @@ export interface Preview {
   clearedTrees: readonly Cell[];
   /** Timers a single number can't show: "Becomes a Tree at the start of week 9". */
   upcoming: readonly string[];
+  /** For an install: the host, and the fixture the install would replace (and lose). */
+  host?: number;
+  replaces?: FixtureId;
+  /** The ×Mult sources with the play, so a Sparkle can light up before it's committed. */
+  xMults: readonly XMultTerm[];
 }
 
 /** What demolishing at a spot would do, for the demolish tool's hover. */
@@ -633,8 +980,8 @@ export interface RunCodeData {
   contentHash: string;
   setup: RunSetup;
   actions: readonly Action[];
-  /** A tentative placement, so a preview bug can be reproduced. */
-  pending?: PlaceAction;
+  /** A tentative placement or install, so a preview bug can be reproduced. */
+  pending?: PlaceAction | InstallAction;
 }
 
 /** What the inspect panel says about a placed piece's place in the layout. */
@@ -665,6 +1012,27 @@ export interface Availability {
   reason?: string;
 }
 
+/** A shop offer as the shop screen shows it. */
+export interface OfferView extends Availability {
+  i: number;
+  offer: ShopOffer;
+  name: string;
+  /** Blueprints, fixtures, and tools. */
+  rarity?: Rarity;
+  /** What it costs now: after the discount and the sale, or the service's current price. */
+  price: number;
+  /** Before the sale (the discount included), for the struck-through price. */
+  fullPrice: number;
+  onSale: boolean;
+}
+
+/** How many of each slot the run has, after upgrades. */
+export interface Slots {
+  reserve: number;
+  supplies: number;
+  blueprints: number;
+}
+
 // ---------------------------------------------------------------------------------------
 // The API.
 
@@ -675,9 +1043,22 @@ export { createRules, IllegalAction } from './run.ts';
 export { encodeRunCode, decodeRunCode, contentHash } from './runcode.ts';
 export { shapeCells, placedCells, uniqueRotations, rotateCells, parseShape } from './grid.ts';
 export { isSunny, terrainAt } from './lot.ts';
-export { cardText, conditionText, effectText, selectorText, regionText } from './text.ts';
+export {
+  blueprintText,
+  cardText,
+  conditionText,
+  effectText,
+  fixtureText,
+  glossary,
+  modifierText,
+  multNumber,
+  regionText,
+  selectorText,
+} from './text.ts';
+export type { Term } from './text.ts';
 export { earnedFor, roundHalfUp, weekTotal } from './scoring.ts';
 export { ruleValue } from './modifiers.ts';
+export { fitsText } from './fixtures.ts';
 
 export { CONTENT, SCORE_LABELS } from '../content/index.ts';
 

@@ -45,6 +45,7 @@ export function shortlist(
 export const greedy = {
   name: 'greedy',
   act(rules: Rules, state: RunState, rng: Rng): Action {
+    if (state.screen === 'shop') return { t: 'leaveShop' };
     const plays = rules.legalPlacements(state);
     const passTotal = rules.scoreOnly(state, null);
     let best: PlaceAction[] = [];

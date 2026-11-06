@@ -4,13 +4,17 @@
 // input and throws IllegalAction with a reason. resolveWeek() is the one end-of-week step;
 // apply() and preview() both call it, so they can't disagree.
 //
-// A week: place a card from the hand or pass (which ends the week), with free actions before
-// that: reroll, demolish, complete early, and the auto-complete toggle.
+// A week: place a card from the hand or the reserve, install a fixture from the hand, or pass
+// (each ends the week), with free actions before that: install from the supplies, sell, reroll,
+// demolish, complete early, and the auto-complete toggle.
 //
 // End of week: the tally adds to the score and budget. If auto-complete is on, the target is
 // met, and weeks remain, the milestone completes early. At the phase's last week (or an
 // overtime week): target met → the milestone resolves; otherwise an overtime week starts if
 // any are left (D-041), or the run is lost.
+//
+// Milestones: after milestones 1–6 the shop opens (D-051); leaving it starts the next phase.
+// After the last one the run is won.
 //
 // Start of week: transforms resolve (a Sapling old enough becomes a Tree), a hand is drawn,
 // and if none of it fits anywhere there's one free redraw.
@@ -22,16 +26,21 @@
 import type {
   Action,
   Availability,
+  BuyAction,
   Card,
   Cell,
   Content,
   DebugAction,
   DemolishPreview,
+  FixtureId,
   GameEvent,
   HouseState,
+  InstallAction,
   Legality,
   MilestoneRecord,
   MilestoneResult,
+  OfferView,
+  PieceDef,
   PieceInfo,
   PieceScore,
   PlaceAction,
@@ -43,15 +52,27 @@ import type {
   RuleKey,
   RunSetup,
   RunState,
+  SellAction,
   SetScore,
+  Slots,
   Tally,
   TileInfo,
   WeekScore,
 } from './index.ts';
 import { drawHand, slotKey } from './draw.ts';
 import { estimatePlay, type Estimate } from './estimate.ts';
+import { checkInstall, installHosts, withFixture } from './fixtures.ts';
 import { bounds, cellIndex, placedCells, shapeCells, uniqueRotations } from './grid.ts';
-import { fencedYardsBordered, layoutCache, pieceIn, REGION_BIT } from './layout.ts';
+import {
+  fencedYardsBordered,
+  isLayoutModifier,
+  layoutCache,
+  NO_LAYOUT_MODS,
+  pieceIn,
+  REGION_BIT,
+  type Layout,
+  type LayoutModifier,
+} from './layout.ts';
 import { generateLot } from './lot.ts';
 import {
   earlyBonus,
@@ -61,7 +82,7 @@ import {
   phaseTarget,
   verdictFor,
 } from './milestones.ts';
-import { ruleValue } from './modifiers.ts';
+import { crewRule, ruleFrom, runModifiers, type ActiveMod } from './modifiers.ts';
 import {
   addPiece,
   checkDemolish as checkDemolishOn,
@@ -70,7 +91,22 @@ import {
   REASONS,
   type PlacementCheck,
 } from './placement.ts';
-import { ageOf, onCadence, tallyHouse, unmetRequirement } from './scoring.ts';
+import { ageOf, onCadence, tallyHouse, unmetRequirement, type TallyContext } from './scoring.ts';
+import {
+  canStrike,
+  offerPrice,
+  openVisit,
+  refreshPrice,
+  refreshVisit,
+  reserveUsed,
+  roomFor,
+  sellPrice,
+  SHOP_REASONS,
+  slotsFor,
+  strikeOptions,
+  supplyPrice,
+  viewOffers,
+} from './shop.ts';
 import { conditionText, ordinal } from './text.ts';
 
 export class IllegalAction extends Error {
@@ -93,13 +129,18 @@ export interface Rules {
   newRun(setup: RunSetup): RunState;
   apply(state: RunState, action: Action): { state: RunState; events: GameEvent[] };
   /**
-   * Every legal action: each card at each distinct rotation and spot, pass, then the free
-   * actions (reroll, complete early, each demolition target). For bots and tests.
+   * Every legal action: each play (cards from the hand and the reserve at each distinct
+   * rotation and spot, fixtures in each host), pass, then the free actions (supply installs,
+   * sells, reroll, complete early, each demolition target); in the shop, each good to buy,
+   * sells, the refresh, and leaving. For bots and tests.
    */
   legalActions(state: RunState): Action[];
-  /** Whether a card has any legal spot, for greying it out. */
+  /** Whether a hand card has any legal spot (or, for a fixture, any host), for greying it out. */
   cardFits(state: RunState, i: number): boolean;
-  checkPlay(state: RunState, play: PlaceAction): Legality;
+  /** Whether a reserve piece has any legal spot. */
+  reserveFits(state: RunState, i: number): boolean;
+  checkPlay(state: RunState, play: PlaceAction | InstallAction): Legality;
+  /** A play's effect on this week's total. A supplies install previews as the same change. */
   preview(state: RunState, play: Play): Preview;
   /** The week's total with this play, without breakdown lines (the sim's cheap path). */
   scoreOnly(state: RunState, play: Play): number;
@@ -117,16 +158,21 @@ export interface Rules {
    * the play, if any) for each week left in the phase.
    */
   forecast(state: RunState, play?: Play): number;
-  /** A run-level rule's value, after the crew's modifiers. */
+  /** A run-level rule's value, after the crew's, blueprints', and upgrades' modifiers. */
   rule(state: RunState, key: RuleKey): number;
+  slots(state: RunState): Slots;
   canReroll(state: RunState): Availability;
   canCompleteEarly(state: RunState): EarlyOffer;
   /** What demolishing the tile at (x, y) would do. */
   previewDemolish(state: RunState, x: number, y: number): DemolishPreview;
   /** A piece's timers as text: "Becomes a Tree at the start of week 9". */
   pieceTimers(state: RunState, uid: number): string[];
-  /** Every legal placement of every card in the hand (distinct rotations). */
+  /** Every legal placement of every card in the hand and the reserve (distinct rotations). */
   legalPlacements(state: RunState): PlaceAction[];
+  /** Every legal play that ends the week: placements, and hand fixtures in each host. */
+  legalPlays(state: RunState): (PlaceAction | InstallAction)[];
+  /** The pieces a hand or supplies fixture could go in now. */
+  installHosts(state: RunState, from: 'hand' | 'supplies', i: number): number[];
   /**
    * A cheap local estimate of a legal play's change to the week's total, for ranking
    * candidates before scoring the best few exactly (§4, Performance). `setHint` marks plays
@@ -139,6 +185,13 @@ export interface Rules {
   fencedTiles(state: RunState): readonly number[];
   describePiece(state: RunState, uid: number): PieceInfo | null;
   describeTile(state: RunState, x: number, y: number): TileInfo | null;
+  /** The shop's offers with prices and whether each can be bought. Empty outside the shop. */
+  shopOffers(state: RunState): OfferView[];
+  canRefresh(state: RunState): Availability & { price: number };
+  /** What selling a blueprint or a supply pays now. */
+  sellPrice(state: RunState, from: SellAction['from'], i: number): number;
+  /** Card types the strike service could name now (D-076). */
+  strikeOptions(state: RunState): readonly Card[];
   replay(setup: RunSetup, actions: readonly Action[]): ReplayResult;
 }
 
@@ -146,28 +199,118 @@ interface WeekResult {
   house: HouseState;
   tally: Tally;
   placed: Extract<GameEvent, { t: 'placed' }> | null;
+  installed: Extract<GameEvent, { t: 'installed' }> | null;
 }
 
+/** A play's legality, with what resolving it needs. */
+type PlayCheck = PlacementCheck & {
+  install?: { uid: number; fixture: FixtureId; replaces?: FixtureId };
+};
+
 const NO_PLAY: Legality = { legal: false, cells: [], clearedTrees: [] };
+
+/** What a run's modifiers add up to, computed once per state. */
+interface RunMods {
+  active: readonly ActiveMod[];
+  layout: readonly LayoutModifier[];
+}
 
 export function createRules(content: Content): Rules {
   const b = content.balance;
   const W = b.weeksPerPhase;
   const layoutOf = layoutCache(content);
   const passCache = new WeakMap<RunState, Tally>();
+  const modsCache = new WeakMap<RunState, RunMods>();
+  // Equal layout-modifier lists share one array, so the layout cache hits across states.
+  const interned = new Map<string, readonly LayoutModifier[]>();
 
-  const rule = (state: RunState, key: RuleKey) => ruleValue(content, state.setup.crewId, key);
-
-  function cardDef(state: RunState, i: number) {
-    const card: Card | undefined = state.hand[i];
-    if (!card) throw new IllegalAction('There is no card there.');
-    return content.pieces[card.id];
+  function modsOf(state: RunState): RunMods {
+    let m = modsCache.get(state);
+    if (!m) {
+      const active = runModifiers(content, state);
+      const layoutList = active.map((a) => a.mod).filter(isLayoutModifier);
+      let layout = NO_LAYOUT_MODS;
+      if (layoutList.length > 0) {
+        const key = JSON.stringify(layoutList);
+        layout = interned.get(key) ?? layoutList;
+        interned.set(key, layout);
+      }
+      m = { active, layout };
+      modsCache.set(state, m);
+    }
+    return m;
   }
 
-  function checkPlay(state: RunState, play: PlaceAction): PlacementCheck {
-    if (state.screen !== 'build') return { ...NO_PLAY, reason: 'The run is over.' };
-    const card = Number.isInteger(play.i) ? state.hand[play.i] : undefined;
-    if (!card || play.from !== 'hand') return { ...NO_PLAY, reason: 'There is no card there.' };
+  /** The layout of a house (by default the state's) under the run's modifiers. */
+  const layoutFor = (state: RunState, house: HouseState = state.house): Layout =>
+    layoutOf(house, modsOf(state).layout);
+
+  const rule = (state: RunState, key: RuleKey) => ruleFrom(content, modsOf(state).active, key);
+
+  /** A phase's last week or an overtime week, actually played: Last-Minute Push's ×2. */
+  const isLastWeek = (state: RunState) => state.overtimeWeek > 0 || state.slot >= W;
+
+  function tallyCtx(state: RunState, fastForward: boolean): TallyContext {
+    return {
+      mods: modsOf(state).active,
+      setLevels: {},
+      lastWeek: !fastForward && isLastWeek(state),
+      stats: { milestonesEarly: state.milestonesEarly },
+    };
+  }
+
+  function tallyOf(state: RunState, house: HouseState, withLines: boolean, ff = false): Tally {
+    return tallyHouse(content, layoutFor(state, house), state.week, withLines, tallyCtx(state, ff));
+  }
+
+  /** The piece a placement would build: a hand card or a reserve piece. */
+  function placeDef(state: RunState, play: PlaceAction): PieceDef | null {
+    if (!Number.isInteger(play.i)) return null;
+    if (play.from === 'hand') {
+      const card = state.hand[play.i];
+      return card?.kind === 'piece' ? content.pieces[card.id] : null;
+    }
+    if (play.from === 'reserve') {
+      const r = state.reserve[play.i];
+      return r ? content.pieces[r.id] : null;
+    }
+    return null;
+  }
+
+  /** The fixture an install would put in: a hand card or a supply. */
+  function installFixture(state: RunState, play: InstallAction): FixtureId | null {
+    if (!Number.isInteger(play.i)) return null;
+    if (play.from === 'hand') {
+      const card = state.hand[play.i];
+      return card?.kind === 'fixture' ? card.id : null;
+    }
+    if (play.from === 'supplies') {
+      const s = state.supplies[play.i];
+      return s?.kind === 'fixture' ? s.id : null;
+    }
+    return null;
+  }
+
+  function checkPlay(state: RunState, play: PlaceAction | InstallAction): PlayCheck {
+    if (state.screen !== 'build') {
+      return {
+        ...NO_PLAY,
+        reason: state.screen === 'shop' ? 'The shop is open.' : 'The run is over.',
+      };
+    }
+    if (play.t === 'install') {
+      const fixture = installFixture(state, play);
+      if (!fixture) return { ...NO_PLAY, reason: 'There is no fixture there.' };
+      const check = checkInstall(content, layoutFor(state), fixture, play.uid);
+      if (!check.legal) return { ...NO_PLAY, reason: check.reason };
+      return {
+        ...NO_PLAY,
+        legal: true,
+        install: { uid: play.uid, fixture, replaces: check.replaces },
+      };
+    }
+    const def = placeDef(state, play);
+    if (!def) return { ...NO_PLAY, reason: 'There is no card there.' };
     if (
       ![0, 1, 2, 3].includes(play.rot) ||
       !Number.isInteger(play.x) ||
@@ -177,40 +320,46 @@ export function createRules(content: Content): Rules {
     }
     return checkPlacement(
       content,
-      layoutOf(state.house),
-      content.pieces[card.id],
+      layoutFor(state),
+      def,
       play.x,
       play.y,
       play.rot,
       state.week,
-      layoutOf,
+      (house) => layoutFor(state, house),
     );
   }
 
-  /** The end-of-week step: apply the week's play (checked here), then tally. */
-  function resolveWeek(
+  /** A play's change to the house (checked here), with its event. */
+  function applyPlay(
     state: RunState,
-    play: Play,
-    withLines: boolean,
-    legality?: PlacementCheck,
-  ): WeekResult {
-    if (!play) {
-      return {
-        house: state.house,
-        tally: tallyHouse(content, layoutOf(state.house), state.week, withLines),
-        placed: null,
-      };
-    }
-    const def = cardDef(state, play.i);
+    play: PlaceAction | InstallAction,
+    legality?: PlayCheck,
+  ): Omit<WeekResult, 'tally'> {
     const check = legality ?? checkPlay(state, play);
     if (!check.legal) throw new IllegalAction(check.reason ?? 'You can’t build there.');
+    if (play.t === 'install') {
+      const { uid, fixture, replaces } = check.install!;
+      return {
+        house: withFixture(state.house, uid, fixture, state.week),
+        placed: null,
+        installed: {
+          t: 'installed',
+          uid,
+          fixture,
+          from: play.from,
+          ...(replaces ? { replaced: replaces } : {}),
+        },
+      };
+    }
+    const def = placeDef(state, play)!;
     const { house, piece } =
       check.house && check.piece
         ? { house: check.house, piece: check.piece }
         : addPiece(state.house, def.id, play.x, play.y, play.rot, state.week, check.clearedTrees);
     return {
       house,
-      tally: tallyHouse(content, layoutOf(house), state.week, withLines),
+      installed: null,
       placed: {
         t: 'placed',
         uid: piece.uid,
@@ -222,6 +371,25 @@ export function createRules(content: Content): Rules {
         clearedTrees: check.clearedTrees,
       },
     };
+  }
+
+  /** The end-of-week step: apply the week's play (checked here), then tally. */
+  function resolveWeek(
+    state: RunState,
+    play: Play,
+    withLines: boolean,
+    legality?: PlayCheck,
+  ): WeekResult {
+    if (!play) {
+      return {
+        house: state.house,
+        tally: tallyOf(state, state.house, withLines),
+        placed: null,
+        installed: null,
+      };
+    }
+    const result = applyPlay(state, play, legality);
+    return { ...result, tally: tallyOf(state, result.house, withLines) };
   }
 
   function passTally(state: RunState): Tally {
@@ -242,7 +410,7 @@ export function createRules(content: Content): Rules {
     for (const piece of state.house.pieces) {
       const def = content.pieces[piece.defId];
       const t = def.effects.find((e) => e.kind === 'transform');
-      if (!t || t.kind !== 'transform' || state.week - piece.placedWeek < t.afterWeeks) continue;
+      if (!t || t.kind !== 'transform' || ageOf(piece, state.week) < t.afterWeeks) continue;
       const cells = shapeCells(def.shape, piece.rot).map((c) => ({
         x: c.x + piece.x,
         y: c.y + piece.y,
@@ -260,7 +428,7 @@ export function createRules(content: Content): Rules {
         house = {
           ...house,
           pieces: house.pieces.map((p) =>
-            p.uid === piece.uid ? { ...p, defId: into, placedWeek: state.week } : p,
+            p.uid === piece.uid ? { ...p, defId: into, placedWeek: state.week, ageBonus: 0 } : p,
           ),
         };
       }
@@ -269,21 +437,40 @@ export function createRules(content: Content): Rules {
     return house === state.house ? state : { ...state, house };
   }
 
+  function drawFor(state: RunState, n: number): Card[] {
+    return drawHand(
+      content,
+      state.setup.seed,
+      state.phase,
+      slotKey(state.slot, state.overtimeWeek),
+      n,
+      rule(state, 'handSize'),
+      { struck: state.struck, mods: modsOf(state).active.map((a) => a.mod) },
+    );
+  }
+
   function startWeek(state: RunState, events: GameEvent[]): RunState {
     let s = resolveTransforms(state, events);
-    const key = slotKey(s.slot, s.overtimeWeek);
-    const size = rule(s, 'handSize');
-    const hand = drawHand(content, s.setup.seed, s.phase, key, 0, size);
+    const hand = drawFor(s, 0);
     const drawn = { phase: s.phase, slot: s.slot, overtimeWeek: s.overtimeWeek, reroll: false };
     events.push({ t: 'handDrawn', ...drawn, hand, free: false });
     s = { ...s, draws: 1, hand, freeRedrawUsed: false };
     // Start of week, step 3: one free redraw if nothing in the first hand fits anywhere.
     if (hand.length > 0 && !hand.some((_, i) => cardFits(s, i))) {
-      const redraw = drawHand(content, s.setup.seed, s.phase, key, 1, size);
+      const redraw = drawFor(s, 1);
       events.push({ t: 'handDrawn', ...drawn, hand: redraw, free: true });
       s = { ...s, draws: 2, hand: redraw, freeRedrawUsed: true };
     }
     return s;
+  }
+
+  /** A phase starts (after the shop): say if its target is already met, then its first week. */
+  function startPhase(s: RunState, events: GameEvent[]): RunState {
+    const target = phaseTarget(b, s.phase);
+    if (s.score >= target) {
+      events.push({ t: 'targetReached', phase: s.phase, target, score: s.score });
+    }
+    return startWeek(s, events);
   }
 
   /** Adds a tally to the run: score, budget, the tally event, new sets, and targetReached. */
@@ -327,6 +514,7 @@ export function createRules(content: Content): Rules {
       house,
       score,
       budget,
+      budgetEarned: state.budgetEarned + tally.budget,
       hand: [],
       lastTally: {
         points: tally.points,
@@ -381,10 +569,17 @@ export function createRules(content: Content): Rules {
     events: GameEvent[],
   ): RunState {
     const target = phaseTarget(b, s.phase);
+    // Savings Account (M3b): +1 per 5 budget held, up to `interestMax`, before the reward.
+    const interest =
+      result === 'failed' ? 0 : Math.min(Math.floor(s.budget / 5), rule(s, 'interestMax'));
     const reward =
       result === 'failed'
-        ? { budget: 0, score: 0 }
-        : { budget: b.milestoneBudget + (bonus?.budget ?? 0), score: bonus?.score ?? 0 };
+        ? { budget: 0, score: 0, interest: 0 }
+        : {
+            budget: b.milestoneBudget + (bonus?.budget ?? 0) + interest,
+            score: bonus?.score ?? 0,
+            interest,
+          };
     const score = s.score + reward.score;
     const record: MilestoneRecord = {
       phase: s.phase,
@@ -400,6 +595,7 @@ export function createRules(content: Content): Rules {
       ...s,
       score,
       budget: s.budget + reward.budget,
+      budgetEarned: s.budgetEarned + reward.budget,
       hand: [],
       milestones: [...s.milestones, record],
       milestonesEarly: s.milestonesEarly + (result === 'early' ? 1 : 0),
@@ -422,15 +618,18 @@ export function createRules(content: Content): Rules {
       slot: 1,
       overtimeWeek: 0,
       week: s.week + 1,
+      draws: 0,
       phaseStartScore: score,
       rerollsLeft: rule(s, 'rerollsPerPhase'),
     };
-    // A phase can start with its target already met (a big early bonus): say so at once.
-    const nextTarget = phaseTarget(b, next.phase);
-    if (score >= nextTarget) {
-      events.push({ t: 'targetReached', phase: next.phase, target: nextTarget, score });
-    }
-    return startWeek(next, events);
+    // The shop opens after milestones 1–6 (D-051); shop k follows milestone k.
+    return openShop(next, next.phase, false, events);
+  }
+
+  function openShop(s: RunState, number: number, forced: boolean, events: GameEvent[]): RunState {
+    const shop = openVisit(content, s, number, forced);
+    events.push({ t: 'shopOpened', number, offers: shop.offers, sale: shop.sale });
+    return { ...s, screen: 'shop', hand: [], offers: { ...s.offers, shop } };
   }
 
   /**
@@ -455,7 +654,8 @@ export function createRules(content: Content): Rules {
       if (!(manual && k === 0)) {
         cur = resolveTransforms({ ...cur, slot: cur.slot + 1, week: cur.week + 1 }, events);
       }
-      cur = recordTally(cur, cur.house, passTally(cur), false, true, events);
+      // A fast-forwarded week isn't played, so Last-Minute Push's last week doesn't count.
+      cur = recordTally(cur, cur.house, tallyOf(cur, cur.house, true, true), false, true, events);
     }
     return resolveMilestone(cur, 'early', weeksSaved, bonus, events);
   }
@@ -466,7 +666,9 @@ export function createRules(content: Content): Rules {
 
   function canReroll(state: RunState): Availability {
     if (state.screen !== 'build') return { ok: false, reason: 'The run is over.' };
-    if (state.rerollsLeft <= 0) return { ok: false, reason: 'No rerolls left this phase.' };
+    if (state.rerollsLeft <= 0 && state.bonusRerolls <= 0) {
+      return { ok: false, reason: 'No rerolls left this phase.' };
+    }
     return { ok: true };
   }
 
@@ -484,6 +686,160 @@ export function createRules(content: Content): Rules {
     if (state.overtimeWeek > 0) return no('An overtime week can’t be completed early.');
     if (state.score < phaseTarget(b, state.phase)) return no('Reach the target first.');
     return { ok: true, weeksSaved, bonus };
+  }
+
+  // -------------------------------------------------------------------------------------
+  // The shop.
+
+  function visitOf(state: RunState) {
+    const visit = state.screen === 'shop' ? state.offers?.shop : undefined;
+    if (!visit) throw new IllegalAction(SHOP_REASONS.notOpen);
+    return visit;
+  }
+
+  function buy(state: RunState, action: BuyAction, events: GameEvent[]): RunState {
+    const visit = visitOf(state);
+    const offer = Number.isInteger(action.i) ? visit.offers[action.i] : undefined;
+    if (!offer) throw new IllegalAction('There’s nothing there to buy.');
+    if (offer.kind !== 'service' && offer.sold) throw new IllegalAction(SHOP_REASONS.sold);
+    const room = roomFor(content, state, offer);
+    if (!room.ok) throw new IllegalAction(room.reason!);
+    const { price } = offerPrice(content, state, visit, action.i);
+    if (price > state.budget) throw new IllegalAction(SHOP_REASONS.budget);
+    let s: RunState = { ...state, budget: state.budget - price };
+    switch (offer.kind) {
+      case 'blueprint':
+        s = { ...s, blueprints: [...s.blueprints, { id: offer.id, boughtWeek: s.week }] };
+        break;
+      case 'piece':
+        s = { ...s, reserve: [...s.reserve, { id: offer.id }] };
+        break;
+      case 'fixture':
+        s = { ...s, supplies: [...s.supplies, { kind: 'fixture', id: offer.id }] };
+        break;
+      case 'service': {
+        const bought = {
+          ...s.servicesBought,
+          [offer.service]: s.servicesBought[offer.service] + 1,
+        };
+        if (offer.service === 'reroll') s = { ...s, bonusRerolls: s.bonusRerolls + 1 };
+        else if (offer.service === 'demolition')
+          s = { ...s, demolitionsLeft: s.demolitionsLeft + 1 };
+        else {
+          const strike = action.strike!;
+          const can = canStrike(content, state, strike);
+          if (!can.ok) throw new IllegalAction(can.reason!);
+          s = { ...s, struck: [...s.struck, { kind: strike.kind, id: strike.id } as Card] };
+        }
+        s = { ...s, servicesBought: bought };
+        break;
+      }
+    }
+    const offers =
+      offer.kind === 'service'
+        ? visit.offers
+        : visit.offers.map((o, k) => (k === action.i ? { ...o, sold: true as const } : o));
+    // The sale ends when its good is sold.
+    const sale = visit.sale === action.i && offer.kind !== 'service' ? null : visit.sale;
+    s = { ...s, offers: { ...s.offers, shop: { ...visit, offers, sale, boughtAny: true } } };
+    events.push({
+      t: 'bought',
+      i: action.i,
+      offer,
+      price,
+      budgetBefore: state.budget,
+      budget: s.budget,
+      ...(offer.kind === 'service' && offer.service === 'strike' ? { strike: action.strike! } : {}),
+    });
+    return s;
+  }
+
+  function sell(state: RunState, action: SellAction, events: GameEvent[]): RunState {
+    if (state.screen !== 'build' && state.screen !== 'shop')
+      throw new IllegalAction('The run is over.');
+    if (!Number.isInteger(action.i)) throw new IllegalAction('There’s nothing there to sell.');
+    if (action.from === 'blueprints') {
+      const owned = state.blueprints[action.i];
+      if (!owned) throw new IllegalAction('There’s nothing there to sell.');
+      const price = sellPrice(content, state, content.blueprints[owned.id].price);
+      const s = {
+        ...state,
+        budget: state.budget + price,
+        blueprints: state.blueprints.filter((_, k) => k !== action.i),
+      };
+      events.push({
+        t: 'sold',
+        from: 'blueprints',
+        item: owned.id,
+        price,
+        budgetBefore: state.budget,
+        budget: s.budget,
+      });
+      return s;
+    }
+    if (action.from === 'supplies') {
+      const supply = state.supplies[action.i];
+      if (!supply) throw new IllegalAction('There’s nothing there to sell.');
+      const price = sellPrice(content, state, supplyPrice(content, supply));
+      const s = {
+        ...state,
+        budget: state.budget + price,
+        supplies: state.supplies.filter((_, k) => k !== action.i),
+      };
+      events.push({
+        t: 'sold',
+        from: 'supplies',
+        item: supply.id,
+        price,
+        budgetBefore: state.budget,
+        budget: s.budget,
+      });
+      return s;
+    }
+    throw new IllegalAction('You can only sell blueprints and supplies.');
+  }
+
+  function canRefresh(state: RunState): Availability & { price: number } {
+    const price = refreshPrice(content, state);
+    if (state.screen !== 'shop' || !state.offers?.shop) {
+      return { ok: false, reason: SHOP_REASONS.notOpen, price };
+    }
+    if (price > state.budget) return { ok: false, reason: SHOP_REASONS.budget, price };
+    return { ok: true, price };
+  }
+
+  function leaveShop(state: RunState, events: GameEvent[]): RunState {
+    const visit = visitOf(state);
+    const skip = visit.boughtAny ? 0 : b.shop.skipReward;
+    const { offers: _closed, ...rest } = state;
+    const s: RunState = {
+      ...rest,
+      screen: 'build',
+      budget: state.budget + skip,
+      budgetEarned: state.budgetEarned + skip,
+    };
+    events.push({
+      t: 'shopClosed',
+      number: visit.number,
+      skipReward: skip,
+      budgetBefore: state.budget,
+      budget: s.budget,
+    });
+    if (visit.forced) {
+      // A shop the ?debug panel opened mid-week: back to the same week, with a fresh hand.
+      const hand = drawFor(s, s.draws);
+      events.push({
+        t: 'handDrawn',
+        phase: s.phase,
+        slot: s.slot,
+        overtimeWeek: s.overtimeWeek,
+        hand,
+        free: false,
+        reroll: false,
+      });
+      return { ...s, hand, draws: s.draws + 1 };
+    }
+    return startPhase(s, events);
   }
 
   // -------------------------------------------------------------------------------------
@@ -510,10 +866,17 @@ export function createRules(content: Content): Rules {
       score: 0,
       phaseStartScore: 0,
       budget: 0,
+      budgetEarned: 0,
       hand: [],
-      rerollsLeft: ruleValue(content, clean.crewId, 'rerollsPerPhase'),
-      demolitionsLeft: ruleValue(content, clean.crewId, 'demolitions'),
-      overtimeLeft: ruleValue(content, clean.crewId, 'overtime'),
+      reserve: [],
+      supplies: [],
+      blueprints: [],
+      servicesBought: { reroll: 0, demolition: 0, strike: 0 },
+      struck: [],
+      rerollsLeft: crewRule(content, clean.crewId, 'rerollsPerPhase'),
+      bonusRerolls: 0,
+      demolitionsLeft: crewRule(content, clean.crewId, 'demolitions'),
+      overtimeLeft: crewRule(content, clean.crewId, 'overtime'),
       freeRedrawUsed: false,
       autoComplete: false,
       milestonesEarly: 0,
@@ -522,6 +885,35 @@ export function createRules(content: Content): Rules {
       screen: 'build',
     };
     return startWeek(state, []);
+  }
+
+  function giveGood(s: RunState, good: Extract<DebugAction, { op: 'giveGood' }>['good']): RunState {
+    if (!good || typeof good !== 'object') throw new IllegalAction('Unknown good.');
+    const slots = slotsFor(content, s);
+    switch (good.kind) {
+      case 'blueprint':
+        if (!Object.hasOwn(content.blueprints, good.id))
+          throw new IllegalAction('Unknown blueprint.');
+        if (s.blueprints.some((o) => o.id === good.id)) throw new IllegalAction(SHOP_REASONS.owned);
+        if (s.blueprints.length >= slots.blueprints)
+          throw new IllegalAction(SHOP_REASONS.blueprintsFull);
+        return { ...s, blueprints: [...s.blueprints, { id: good.id, boughtWeek: s.week }] };
+      case 'piece':
+        if (!Object.hasOwn(content.pieces, good.id)) throw new IllegalAction('Unknown piece.');
+        if (reserveUsed(s) >= slots.reserve) throw new IllegalAction(SHOP_REASONS.reserveFull);
+        return { ...s, reserve: [...s.reserve, { id: good.id }] };
+      case 'fixture':
+        if (!Object.hasOwn(content.fixtures, good.id)) throw new IllegalAction('Unknown fixture.');
+        if (s.supplies.length >= slots.supplies) throw new IllegalAction(SHOP_REASONS.suppliesFull);
+        return { ...s, supplies: [...s.supplies, { kind: 'fixture', id: good.id }] };
+      case 'fixtureCard':
+        if (!Object.hasOwn(content.fixtures, good.id)) throw new IllegalAction('Unknown fixture.');
+        if (s.screen !== 'build')
+          throw new IllegalAction('Cards go in the hand on the build screen.');
+        return { ...s, hand: [...s.hand, { kind: 'fixture', id: good.id }] };
+      default:
+        throw new IllegalAction('Unknown good.');
+    }
   }
 
   function applyDebug(state: RunState, action: DebugAction, events: GameEvent[]): RunState {
@@ -543,39 +935,76 @@ export function createRules(content: Content): Rules {
         if (typeof action.id !== 'string' || !Object.hasOwn(content.pieces, action.id)) {
           throw new IllegalAction('Unknown piece.');
         }
+        if (s.screen !== 'build')
+          throw new IllegalAction('Cards go in the hand on the build screen.');
         return { ...s, hand: [...s.hand, { kind: 'piece', id: action.id }] };
       case 'forceMiss':
         return { ...s, forcedMiss: s.phase };
+      case 'forceShop': {
+        if (s.screen !== 'build') throw new IllegalAction('The shop opens from the build screen.');
+        const number = Math.min(Math.max(1, s.phase + 1), phaseCount(b) - 1);
+        return openShop(s, number, true, events);
+      }
+      case 'giveGood':
+        return giveGood(s, action.good);
       default:
         throw new IllegalAction('Unknown debug action.');
     }
   }
 
+  /** Actions legal on each screen (§4, Transitions). Debug cheats are checked on their own. */
+  const SHOP_ACTIONS = new Set<Action['t']>([
+    'buy',
+    'sell',
+    'refreshShop',
+    'leaveShop',
+    'setAutoComplete',
+    'debug',
+  ]);
+
   function apply(state: RunState, action: Action): { state: RunState; events: GameEvent[] } {
-    if (state.screen !== 'build') throw new IllegalAction('The run is over.');
+    if (state.screen === 'won' || state.screen === 'lost')
+      throw new IllegalAction('The run is over.');
+    if (state.screen === 'shop' && !SHOP_ACTIONS.has(action.t)) {
+      throw new IllegalAction('The shop is open. Leave it to start the next phase.');
+    }
+    if (
+      state.screen === 'build' &&
+      (action.t === 'buy' || action.t === 'refreshShop' || action.t === 'leaveShop')
+    ) {
+      throw new IllegalAction(SHOP_REASONS.notOpen);
+    }
     const events: GameEvent[] = [];
     const done = (s: RunState) => ({ state: s, events });
     switch (action.t) {
       case 'pass':
-      case 'place': {
+      case 'place':
+      case 'install': {
         const play = action.t === 'pass' ? null : action;
+        if (play?.t === 'install' && play.from === 'supplies') {
+          // A free action: the fixture goes in, and the week goes on.
+          const week = applyPlay(state, play);
+          events.push(week.installed!);
+          return done({
+            ...state,
+            house: week.house,
+            supplies: state.supplies.filter((_, k) => k !== play.i),
+          });
+        }
         const week = resolveWeek(state, play, true);
         if (week.placed) events.push(week.placed);
-        const s = recordTally(state, week.house, week.tally, play === null, false, events);
+        if (week.installed) events.push(week.installed);
+        let s = state;
+        if (play?.t === 'place' && play.from === 'reserve') {
+          s = { ...s, reserve: s.reserve.filter((_, k) => k !== play.i) };
+        }
+        s = recordTally(s, week.house, week.tally, play === null, false, events);
         return done(afterTally(s, events));
       }
       case 'reroll': {
         const can = canReroll(state);
         if (!can.ok) throw new IllegalAction(can.reason!);
-        const key = slotKey(state.slot, state.overtimeWeek);
-        const hand = drawHand(
-          content,
-          state.setup.seed,
-          state.phase,
-          key,
-          state.draws,
-          rule(state, 'handSize'),
-        );
+        const hand = drawFor(state, state.draws);
         events.push({
           t: 'handDrawn',
           phase: state.phase,
@@ -585,16 +1014,19 @@ export function createRules(content: Content): Rules {
           free: false,
           reroll: true,
         });
+        // The phase's own rerolls go first; bought ones never expire.
+        const fromPhase = state.rerollsLeft > 0;
         return done({
           ...state,
           hand,
           draws: state.draws + 1,
-          rerollsLeft: state.rerollsLeft - 1,
+          rerollsLeft: fromPhase ? state.rerollsLeft - 1 : state.rerollsLeft,
+          bonusRerolls: fromPhase ? state.bonusRerolls : state.bonusRerolls - 1,
         });
       }
       case 'demolish': {
         if (state.demolitionsLeft <= 0) throw new IllegalAction(REASONS.noDemolitions);
-        const check = checkDemolishOn(content, layoutOf(state.house), action.x, action.y);
+        const check = checkDemolishOn(content, layoutFor(state), action.x, action.y);
         if (!check.legal) throw new IllegalAction(check.reason);
         const target = check.target;
         const house = removeTarget(state.house, target);
@@ -620,6 +1052,28 @@ export function createRules(content: Content): Rules {
       case 'setAutoComplete':
         if (typeof action.on !== 'boolean') throw new IllegalAction('Bad toggle.');
         return done({ ...state, autoComplete: action.on });
+      case 'sell':
+        return done(sell(state, action, events));
+      case 'buy':
+        return done(buy(state, action, events));
+      case 'refreshShop': {
+        const can = canRefresh(state);
+        if (!can.ok) throw new IllegalAction(can.reason!);
+        const visit = visitOf(state);
+        const next = refreshVisit(content, state, visit);
+        const budget = state.budget - can.price;
+        events.push({
+          t: 'shopRefreshed',
+          refreshes: next.refreshes,
+          price: can.price,
+          budget,
+          offers: next.offers,
+          sale: next.sale,
+        });
+        return done({ ...state, budget, offers: { ...state.offers, shop: next } });
+      }
+      case 'leaveShop':
+        return done(leaveShop(state, events));
       case 'debug':
         return done(applyDebug(state, action, events));
       default:
@@ -630,36 +1084,83 @@ export function createRules(content: Content): Rules {
   // -------------------------------------------------------------------------------------
   // Queries.
 
-  /** Calls `visit` for each legal placement of card i (distinct rotations); stops when it returns true. */
+  /** Calls `visit` for each legal placement of a piece (distinct rotations); stops when it returns true. */
   function eachLegalSpot(
     state: RunState,
+    from: PlaceAction['from'],
     i: number,
     visit: (play: PlaceAction) => boolean | void,
   ): void {
-    const card = state.hand[i];
-    if (!card || state.screen !== 'build') return;
-    const def = content.pieces[card.id];
+    if (state.screen !== 'build') return;
+    const def = placeDef(state, { t: 'place', from, i, x: 0, y: 0, rot: 0 });
+    if (!def) return;
     const { width, height } = state.house.lot;
     for (const rot of uniqueRotations(def.shape)) {
       const { w, h } = bounds(shapeCells(def.shape, rot));
       for (let y = 0; y + h <= height; y++) {
         for (let x = 0; x + w <= width; x++) {
-          const play: PlaceAction = { t: 'place', from: 'hand', i, x, y, rot };
+          const play: PlaceAction = { t: 'place', from, i, x, y, rot };
           if (checkPlay(state, play).legal && visit(play) === true) return;
         }
       }
     }
   }
 
-  function legalActions(state: RunState): Action[] {
+  function hostsFor(state: RunState, from: InstallAction['from'], i: number): number[] {
     if (state.screen !== 'build') return [];
-    const out: Action[] = [];
-    state.hand.forEach((_, i) => eachLegalSpot(state, i, (play) => void out.push(play)));
+    const fixture = installFixture(state, { t: 'install', from, i, uid: 0 });
+    return fixture ? installHosts(content, layoutFor(state), fixture) : [];
+  }
+
+  function legalPlacements(state: RunState): PlaceAction[] {
+    const out: PlaceAction[] = [];
+    state.hand.forEach((_, i) => eachLegalSpot(state, 'hand', i, (play) => void out.push(play)));
+    state.reserve.forEach((_, i) =>
+      eachLegalSpot(state, 'reserve', i, (play) => void out.push(play)),
+    );
+    return out;
+  }
+
+  function legalPlays(state: RunState): (PlaceAction | InstallAction)[] {
+    const out: (PlaceAction | InstallAction)[] = legalPlacements(state);
+    state.hand.forEach((card, i) => {
+      if (card.kind !== 'fixture') return;
+      for (const uid of hostsFor(state, 'hand', i))
+        out.push({ t: 'install', from: 'hand', i, uid });
+    });
+    return out;
+  }
+
+  function legalActions(state: RunState): Action[] {
+    if (state.screen === 'shop') {
+      const out: Action[] = [];
+      for (const o of viewOffers(content, state)) {
+        if (!o.ok) continue;
+        if (o.offer.kind === 'service' && o.offer.service === 'strike') {
+          for (const t of strikeOptions(content, state)) out.push({ t: 'buy', i: o.i, strike: t });
+        } else out.push({ t: 'buy', i: o.i });
+      }
+      state.blueprints.forEach((_, i) => out.push({ t: 'sell', from: 'blueprints', i }));
+      state.supplies.forEach((_, i) => out.push({ t: 'sell', from: 'supplies', i }));
+      if (canRefresh(state).ok) out.push({ t: 'refreshShop' });
+      out.push({ t: 'leaveShop' });
+      return out;
+    }
+    if (state.screen !== 'build') return [];
+    const out: Action[] = legalPlays(state);
     out.push({ t: 'pass' });
+    state.supplies.forEach((s, i) => {
+      if (s.kind !== 'fixture') return;
+      for (const uid of hostsFor(state, 'supplies', i)) {
+        out.push({ t: 'install', from: 'supplies', i, uid });
+      }
+    });
+    state.blueprints.forEach((_, i) => out.push({ t: 'sell', from: 'blueprints', i }));
+    state.supplies.forEach((_, i) => out.push({ t: 'sell', from: 'supplies', i }));
     if (canReroll(state).ok) out.push({ t: 'reroll' });
     if (canCompleteEarly(state).ok) out.push({ t: 'completeEarly' });
     if (state.demolitionsLeft > 0) {
-      const layout = layoutOf(state.house);
+      const layout = layoutFor(state);
       for (const piece of state.house.pieces) {
         const c = layout.cells.get(piece.uid)![0]!;
         if (checkDemolishOn(content, layout, c.x, c.y).legal) {
@@ -676,8 +1177,17 @@ export function createRules(content: Content): Rules {
   }
 
   function cardFits(state: RunState, i: number): boolean {
+    const card = state.hand[i];
+    if (!card) return false;
+    if (card.kind === 'fixture') return hostsFor(state, 'hand', i).length > 0;
     let fits = false;
-    eachLegalSpot(state, i, () => (fits = true));
+    eachLegalSpot(state, 'hand', i, () => (fits = true));
+    return fits;
+  }
+
+  function reserveFits(state: RunState, i: number): boolean {
+    let fits = false;
+    eachLegalSpot(state, 'reserve', i, () => (fits = true));
     return fits;
   }
 
@@ -691,9 +1201,10 @@ export function createRules(content: Content): Rules {
     const def = content.pieces[piece.defId];
     const out: string[] = [];
     const age = ageOf(piece, state.week);
-    const unmet = unmetRequirement(content, layoutOf(state.house), def, uid);
+    const unmet = unmetRequirement(content, layoutFor(state), def, uid);
     const next = (every: number) => {
-      for (let a = age; a < age + every; a++) if (onCadence(a, every)) return piece.placedWeek + a;
+      for (let a = age; a < age + every; a++)
+        if (onCadence(a, every)) return state.week + (a - age);
       return state.week;
     };
     for (const e of def.effects) {
@@ -702,7 +1213,8 @@ export function createRules(content: Content): Rules {
           'piece' in e.into
             ? content.pieces[e.into.piece].name
             : content.features[e.into.feature].name;
-        out.push(`Becomes a ${into} at the start of week ${piece.placedWeek + e.afterWeeks}`);
+        const when = state.week + Math.max(0, e.afterWeeks - age);
+        out.push(`Becomes a ${into} at the start of week ${when}`);
       } else if (unmet && (e.kind === 'rhythm' || e.kind === 'economy')) {
         out.push(`Paused: it must be ${conditionText(content, unmet.condition)}`);
       } else if (e.kind === 'rhythm') {
@@ -739,20 +1251,22 @@ export function createRules(content: Content): Rules {
       cells,
       clearedTrees: [],
       upcoming: [],
+      xMults: beforeTally?.xMults ?? [],
     });
-    if (!beforeTally) return empty('The run is over.');
+    if (!beforeTally)
+      return empty(state.screen === 'shop' ? 'The shop is open.' : 'The run is over.');
     if (!play) {
       return { ...empty(undefined), legal: true };
     }
     const check = checkPlay(state, play);
     if (!check.legal) return empty(check.reason, check.cells);
     const week = resolveWeek(state, play, true, check);
-    const newUid = week.placed!.uid;
+    const focus = week.placed?.uid ?? week.installed!.uid;
     const beforeEarned = new Map<number, PieceScore>(beforeTally.pieces.map((p) => [p.uid, p]));
     const lines: PreviewLine[] = [];
     let newPiece: PieceScore | null = null;
     for (const p of week.tally.pieces) {
-      const isNew = p.uid === newUid;
+      const isNew = p.uid === focus;
       if (isNew) newPiece = p;
       const was = beforeEarned.get(p.uid)?.earned ?? 0;
       if (isNew || was !== p.earned) {
@@ -770,6 +1284,7 @@ export function createRules(content: Content): Rules {
     const beforeKeys = new Set(beforeTally.sets.map((s) => s.key));
     const afterKeys = new Set(week.tally.sets.map((s) => s.key));
     const after = score(week.tally);
+    const cells = play.t === 'install' ? (layoutFor(state).cells.get(play.uid) ?? []) : check.cells;
     return {
       legal: true,
       before,
@@ -781,9 +1296,16 @@ export function createRules(content: Content): Rules {
       newPiece,
       setsGained: week.tally.sets.filter((s: SetScore) => !beforeKeys.has(s.key)),
       setsLost: beforeTally.sets.filter((s: SetScore) => !afterKeys.has(s.key)),
-      cells: check.cells,
+      cells,
       clearedTrees: check.clearedTrees,
-      upcoming: pieceTimers({ ...state, house: week.house }, newUid),
+      upcoming: week.placed ? pieceTimers({ ...state, house: week.house }, focus) : [],
+      xMults: week.tally.xMults,
+      ...(week.installed
+        ? {
+            host: week.installed.uid,
+            ...(week.installed.replaced ? { replaces: week.installed.replaced } : {}),
+          }
+        : {}),
     };
   }
 
@@ -798,7 +1320,7 @@ export function createRules(content: Content): Rules {
     const base = { before, after: before, delta: 0 };
     if (!beforeTally)
       return { legal: false, reason: 'The run is over.', target: null, cells: [], ...base };
-    const check = checkDemolishOn(content, layoutOf(state.house), x, y);
+    const check = checkDemolishOn(content, layoutFor(state), x, y);
     const target = !check.target
       ? null
       : check.target.kind === 'piece'
@@ -810,7 +1332,7 @@ export function createRules(content: Content): Rules {
       return { legal: false, reason: REASONS.noDemolitions, target, cells, ...base };
     }
     const house = removeTarget(state.house, check.target);
-    const after = score(tallyHouse(content, layoutOf(house), state.week, false));
+    const after = score(tallyOf(state, house, false));
     return { legal: true, target, cells, before, after, delta: after.total - before.total };
   }
 
@@ -844,6 +1366,7 @@ export function createRules(content: Content): Rules {
     apply,
     legalActions,
     cardFits,
+    reserveFits,
     checkPlay,
     preview,
     scoreOnly,
@@ -860,34 +1383,35 @@ export function createRules(content: Content): Rules {
       return state.score + weekly * weeksLeft(state);
     },
     rule,
+    slots: (state) => slotsFor(content, state),
     canReroll,
     canCompleteEarly,
     previewDemolish,
     pieceTimers,
-    legalPlacements: (state) => {
-      const out: PlaceAction[] = [];
-      state.hand.forEach((_, i) => eachLegalSpot(state, i, (play) => void out.push(play)));
-      return out;
-    },
+    legalPlacements,
+    legalPlays,
+    installHosts: hostsFor,
     estimatePlay: (state, play) => {
-      const def = cardDef(state, play.i);
+      const def = placeDef(state, play);
+      if (!def) throw new IllegalAction('There is no card there.');
       return estimatePlay(
         content,
-        layoutOf(state.house),
+        layoutFor(state),
         passTally(state),
         def,
         placedCells(def.shape, play.x, play.y, play.rot),
+        modsOf(state).active,
       );
     },
-    fencedYards: (state) => layoutOf(state.house).fencedSizes,
+    fencedYards: (state) => layoutFor(state).fencedSizes,
     fencedTiles: (state) => {
-      const ids = layoutOf(state.house).fencedId;
+      const ids = layoutFor(state).fencedId;
       const out: number[] = [];
       ids.forEach((id, i) => id >= 0 && out.push(i));
       return out;
     },
     describePiece: (state, uid) => {
-      const layout = layoutOf(state.house);
+      const layout = layoutFor(state);
       if (!layout.byUid.has(uid)) return null;
       const regions = (Object.keys(REGION_BIT) as Region[]).filter((r) => pieceIn(layout, uid, r));
       return {
@@ -903,7 +1427,7 @@ export function createRules(content: Content): Rules {
       };
     },
     describeTile: (state, x, y) => {
-      const layout = layoutOf(state.house);
+      const layout = layoutFor(state);
       const { width, height } = state.house.lot;
       if (x < 0 || y < 0 || x >= width || y >= height) return null;
       const i = cellIndex(width, x, y);
@@ -914,6 +1438,17 @@ export function createRules(content: Content): Rules {
         fencedYardTiles: id >= 0 ? layout.fencedSizes[id]! : 0,
       };
     },
+    shopOffers: (state) => viewOffers(content, state),
+    canRefresh,
+    sellPrice: (state, from, i) => {
+      if (from === 'blueprints') {
+        const o = state.blueprints[i];
+        return o ? sellPrice(content, state, content.blueprints[o.id].price) : 0;
+      }
+      const s = state.supplies[i];
+      return s ? sellPrice(content, state, supplyPrice(content, s)) : 0;
+    },
+    strikeOptions: (state) => strikeOptions(content, state),
     replay,
   };
 }

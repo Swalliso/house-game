@@ -2,16 +2,21 @@
 // Plain language, such as "+1 per touching Tree or Quiet neighbor (up to 3)".
 
 import type {
+  BlueprintDef,
   Content,
   Effect,
   FeatureId,
+  FixtureDef,
+  Modifier,
   PieceCondition,
   PieceDef,
   Property,
   Region,
+  RuleKey,
   Selector,
   Tag,
 } from './index.ts';
+import { SCORE_LABELS } from '../content/labels.ts';
 
 const PROPERTY_NOUNS: Record<Property, [one: string, many: string]> = {
   indoor: ['indoor piece', 'indoor pieces'],
@@ -83,6 +88,12 @@ export function selectorText(content: Content, sel: Selector, phrasing: Phrasing
   }
   if ('tag' in sel) return `${sel.tag} ${many ? 'neighbors' : 'neighbor'}`;
   if ('property' in sel) return PROPERTY_NOUNS[sel.property][many ? 1 : 0];
+  if ('host' in sel) return many ? 'its piece' : 'its piece';
+  if ('hasFixture' in sel) {
+    const what =
+      sel.hasFixture === 'any' ? 'a fixture' : article(content.fixtures[sel.hasFixture].name);
+    return `${many ? 'pieces' : 'piece'} with ${what}`;
+  }
   if ('in' in sel) return `${many ? 'pieces' : 'piece'} ${regionText(sel.in)}`;
   if ('touching' in sel) {
     const min = sel.min ?? 1;
@@ -104,7 +115,12 @@ export function selectorText(content: Content, sel: Selector, phrasing: Phrasing
       return `${noun} that ${many ? 'give' : 'gives'} a view`;
     }
     const tags = sel.all.filter((s): s is { tag: Tag } => s !== 'all' && 'tag' in s);
-    const rest = sel.all.filter((s) => s === 'all' || !('tag' in s));
+    // "Exterior room" already says "room".
+    const isProp = (s: Selector, p: Property) => s !== 'all' && 'property' in s && s.property === p;
+    const roomKind = sel.all.some((s) => isProp(s, 'exterior') || isProp(s, 'interior'));
+    const rest = sel.all.filter(
+      (s) => (s === 'all' || !('tag' in s)) && !(roomKind && isProp(s, 'room')),
+    );
     const noun =
       rest.length === 0
         ? many
@@ -154,8 +170,8 @@ export function conditionText(content: Content, cond: PieceCondition): string {
   }
   if ('in' in cond) return regionText(cond.in);
   if ('borders' in cond) return 'bordering a fenced yard';
-  if ('is' in cond) return `a ${selectorText(content, cond.is, 'one')}`;
-  return `part of a ${content.sets[cond.inSet].name}`;
+  if ('is' in cond) return article(selectorText(content, cond.is, 'one'));
+  return `part of ${article(content.sets[cond.inSet].name)}`;
 }
 
 export function effectText(content: Content, effect: Effect): string {
@@ -173,6 +189,10 @@ export function effectText(content: Content, effect: Effect): string {
       const parts: string[] = [];
       if (effect.pct) parts.push(`earn ${signed(effect.pct)}%`);
       if (effect.amount) parts.push(`get ${signed(effect.amount)}`);
+      if (effect.scope === 'region') {
+        const subject = who.replace(/\bneighbors\b/, 'pieces');
+        return `${subject.charAt(0).toUpperCase() + subject.slice(1)} in the fenced yard it borders ${parts.join(' and ')}`;
+      }
       return `Touching ${who} ${parts.join(' and ')}`;
     }
     case 'rhythm':
@@ -216,7 +236,7 @@ function conditionPhrase(content: Content, cond: PieceCondition): string {
 }
 
 function selectorTags(sel: Selector, out: Set<Tag>, props: Set<Property>): void {
-  if (sel === 'all') return;
+  if (sel === 'all' || 'host' in sel || 'hasFixture' in sel) return;
   if ('tag' in sel) out.add(sel.tag);
   else if ('property' in sel) props.add(sel.property);
   else if ('touching' in sel) selectorTags(sel.touching, out, props);
@@ -293,4 +313,277 @@ export function countedNames(names: readonly string[]): string {
 
 export function neighborName(content: Content, feature: FeatureId): string {
   return featureNoun(content, feature, false);
+}
+
+// ---------------------------------------------------------------------------------------
+// Modifiers: blueprints, fixtures, and (from M3b) tools and upgrades.
+
+/** Mult in hundredths as players read it: 15 → "0.15", 50 → "0.5", 200 → "2". */
+export function multNumber(hundredths: number): string {
+  const sign = hundredths < 0 ? '−' : '';
+  const a = Math.abs(hundredths);
+  const whole = Math.floor(a / 100);
+  const frac = a % 100;
+  if (frac === 0) return `${sign}${whole}`;
+  return `${sign}${whole}.${String(frac).padStart(2, '0').replace(/0$/, '')}`;
+}
+
+const isHost = (sel: Selector) => sel !== 'all' && 'host' in sel;
+
+/** A modifier's target as the subject of a sentence: "Quiet pieces", "Dark rooms", "Rooms". */
+function subjectText(content: Content, sel: Selector): string {
+  if (sel === 'all') return 'Every piece';
+  const text = selectorText(content, sel, 'some').replace(/\bneighbors\b/, 'pieces');
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+/** A fixture's host-plus-something target, as a phrase: "in a Living Room or Library". */
+function hostExtra(content: Content, sel: Selector): string | null {
+  if (sel === 'all' || !('all' in sel)) return null;
+  const rest = sel.all.filter((s) => !isHost(s));
+  if (rest.length !== sel.all.length - 1 || rest.length !== 1) return null;
+  const r = rest[0]!;
+  if (r !== 'all' && 'in' in r) return regionText(r.in);
+  return `in ${article(selectorText(content, r, 'one'))}`;
+}
+
+const RULE_TEXT: Record<RuleKey, (n: number) => string> = {
+  rerollsPerPhase: (n) => `${signed(n)} ${n === 1 ? 'reroll' : 'rerolls'} every phase`,
+  demolitions: (n) => `${signed(n)} ${n === 1 ? 'demolition' : 'demolitions'}`,
+  overtime: (n) => `${signed(n)} overtime ${n === 1 ? 'week' : 'weeks'}`,
+  handSize: (n) => `${signed(n)} ${n === 1 ? 'card' : 'cards'} in every hand`,
+  earlyRewardPct: (n) => `Completing early pays ${signed(n)}%`,
+  reserveSlots: (n) => `${signed(n)} reserve ${n === 1 ? 'slot' : 'slots'}`,
+  supplySlots: (n) => `${signed(n)} supply ${n === 1 ? 'slot' : 'slots'}`,
+  blueprintSlots: (n) => `${signed(n)} blueprint ${n === 1 ? 'slot' : 'slots'}`,
+  shopPricePct: (n) =>
+    `Shop goods cost ${n < 0 ? -n : n}% ${n < 0 ? 'less' : 'more'} (not services or the refresh)`,
+  specBonus: (n) =>
+    `Each spec met adds ${n < 0 ? '−' : '+'}${multNumber(Math.abs(n))} more ${SCORE_LABELS.mult}`,
+  interestMax: (n) => `At each milestone, +1 budget per 5 you hold (up to ${signed(n)})`,
+};
+
+/** A modifier as a sentence. Fixture modifiers target their host, so they read as "it". */
+export function modifierText(content: Content, mod: Modifier): string {
+  const { mult: CHARM } = SCORE_LABELS;
+  switch (mod.kind) {
+    case 'earn': {
+      const when = mod.when === 'lastWeekOfPhase' ? ' in a phase’s last week' : '';
+      if (isHost(mod.target)) return `Earns ${signed(mod.pct)}%${when}`;
+      const extra = hostExtra(content, mod.target);
+      if (extra) return `${signed(mod.pct)}% more ${extra}${when}`;
+      return `${subjectText(content, mod.target)} earn ${signed(mod.pct)}%${when}`;
+    }
+    case 'bestPiece':
+      return `Each week, your top earner earns ${signed(mod.pct)}% more`;
+    case 'mult': {
+      const per = mod.per
+        ? ` per ${selectorText(content, mod.per, 'one').replace(/\bneighbor\b/, 'piece')}`
+        : '';
+      return `${mod.add < 0 ? '−' : '+'}${multNumber(Math.abs(mod.add))} ${CHARM}${per}`;
+    }
+    case 'xMult': {
+      let amount = `×${multNumber(mod.times)} ${CHARM}`;
+      if (mod.plusPer) {
+        const per = mod.plusPer.per;
+        const what =
+          per === 'milestonesEarly'
+            ? 'milestone completed early'
+            : selectorText(content, per, 'one').replace(/\bneighbor\b/, 'piece');
+        amount = `×${multNumber(mod.times)} ${CHARM}, plus ${multNumber(mod.plusPer.add)} per ${what}`;
+      }
+      if (mod.when === 'lastWeekOfPhase') {
+        return `${amount} in each phase’s last week (played, not completed early)`;
+      }
+      if (typeof mod.when === 'object')
+        return `${amount} while it’s ${conditionText(content, mod.when.host)}`;
+      return amount;
+    }
+    case 'earnNothing':
+      return isHost(mod.target)
+        ? 'Earns nothing'
+        : `${subjectText(content, mod.target)} earn nothing`;
+    case 'grantTag':
+      return isHost(mod.target)
+        ? `Makes it ${mod.tag}`
+        : `${subjectText(content, mod.target)} are ${mod.tag}`;
+    case 'removeTag':
+      return isHost(mod.target)
+        ? `It’s never ${mod.tag}`
+        : `${subjectText(content, mod.target)} are never ${mod.tag}`;
+    case 'grantView':
+      return isHost(mod.target)
+        ? 'Gives it a view, which counts as one more view'
+        : `${subjectText(content, mod.target)} have a view`;
+    case 'blockPenalties': {
+      const from = selectorText(content, mod.from, 'some');
+      const street = content.features.street.tags.some(
+        (t) => mod.from !== 'all' && 'tag' in mod.from && mod.from.tag === t,
+      );
+      const who = isHost(mod.target) ? 'it' : selectorText(content, mod.target, 'some');
+      return `${from.charAt(0).toUpperCase() + from.slice(1)}${street ? ' (the street too)' : ''} can’t take points off ${who}`;
+    }
+    case 'countsAs': {
+      const name = content.pieces[mod.as].name;
+      const times = mod.times ?? 1;
+      const what = times === 1 ? article(name) : `${times} ${plural(name)}`;
+      const subject = isHost(mod.target) ? 'Counts' : `${subjectText(content, mod.target)} count`;
+      return `${subject} as ${what}${times === 1 ? ' too' : ' for the client'}`;
+    }
+    case 'link': {
+      const names = mod.among.map((id) => plural(content.pieces[id].name));
+      return `Touching ${joinWords(names, 'and')} are linked: each counts as touching the whole group`;
+    }
+    case 'grantEffect': {
+      const who = mod.target === 'all' ? 'Every piece' : subjectText(content, mod.target);
+      return `${who}: ${effectText(content, mod.effect).replace(/^./, (c) => c.toLowerCase())}`;
+    }
+    case 'perCountOver': {
+      const what = selectorText(content, mod.match, 'some');
+      return `${what.charAt(0).toUpperCase() + what.slice(1)} earn ${signed(mod.pct)}% for each one over ${mod.over}`;
+    }
+    case 'setBonus':
+      return `${mod.set ? content.sets[mod.set].name : 'Every set'} pays ${signed(mod.pct)}% more`;
+    case 'budget':
+      return `${mod.target === 'all' ? 'Every piece' : subjectText(content, mod.target)} pays ${signed(mod.pct)}% budget`;
+    case 'drawWeight': {
+      const what = selectorText(content, mod.target, 'some');
+      const amount = mod.pct ? `${signed(mod.pct)}%` : `${signed(mod.add ?? 0)}`;
+      return `${what.charAt(0).toUpperCase() + what.slice(1)} come up more often (${amount})`;
+    }
+    case 'rule': {
+      const n = mod.add ?? 0;
+      if (mod.pct && !mod.add) return RULE_TEXT[mod.key](mod.pct);
+      return RULE_TEXT[mod.key](n);
+    }
+  }
+}
+
+export interface FixtureText {
+  /** "Fits any room". */
+  fits: string;
+  effects: string[];
+}
+
+export function fixtureText(content: Content, def: FixtureDef): FixtureText {
+  const sel = def.fits;
+  let fits: string;
+  if (sel !== 'all' && 'property' in sel && sel.property === 'room') fits = 'Fits any room';
+  else if (sel !== 'all' && 'property' in sel && sel.property === 'yard')
+    fits = 'Fits any yard piece';
+  else fits = `Fits ${article(selectorText(content, sel, 'one'))}`;
+  return { fits, effects: def.modifiers.map((m) => modifierText(content, m)) };
+}
+
+export function blueprintText(content: Content, def: BlueprintDef): string[] {
+  return def.modifiers.map((m) => modifierText(content, m));
+}
+
+// ---------------------------------------------------------------------------------------
+// The glossary (D-077's first pass): what the game's terms mean, with their numbers from the
+// content, so a tooltip never goes stale when balance.ts changes.
+
+export type Term =
+  | 'comfort'
+  | 'charm'
+  | 'sparkle'
+  | 'wow'
+  | 'budget'
+  | 'early'
+  | 'fixture'
+  | 'reserve'
+  | 'supplies'
+  | 'blueprints'
+  | 'rarity'
+  | 'sale'
+  | 'refresh'
+  | 'skipReward'
+  | 'services'
+  | 'strike';
+
+export function glossary(content: Content): Record<Term, { title: string; text: string }> {
+  const b = content.balance;
+  const L = SCORE_LABELS;
+  const r = b.rules;
+  const svc = b.shop.services;
+  const earlyBudget = b.early.budgetPerWeek[0] ?? 0;
+  const earlyPct = b.early.scorePct[0] ?? 0;
+  const economy = Object.values(content.pieces)
+    .filter((p) => p.drawWeight > 0 && !p.countsAs && p.effects.some((e) => e.kind === 'economy'))
+    .map((p) => p.name);
+  return {
+    comfort: {
+      title: L.points,
+      text: `What your pieces earn each week from what they touch, plus each set’s ${L.points}.`,
+    },
+    charm: {
+      title: L.mult,
+      text: `Multiplies ${L.points}. It starts at ×1 and goes up for each set you hold, and with a few blueprints.`,
+    },
+    sparkle: {
+      title: L.xMult,
+      text: `Multiplies ${L.mult} itself. Rare: only a few Rare goods have it, and each needs a setup. Each source counts once a week.`,
+    },
+    wow: {
+      title: L.total,
+      text: `${L.points} × ${L.mult}, every week. It adds up over the run, and each milestone has a target.`,
+    },
+    budget: {
+      title: 'Budget',
+      text:
+        `Spent in the shop between milestones. You earn ${b.milestoneBudget} per milestone met, ` +
+        `${earlyBudget} per week saved by completing early, from ${joinWords(economy, 'and')}, ` +
+        `${b.shop.skipReward} for leaving the shop without buying, and by selling (half price).`,
+    },
+    early: {
+      title: 'Complete early',
+      text:
+        `Once the target is met, finish the milestone now. The weeks left play out quickly (pieces ` +
+        `still earn), and each week saved pays ${earlyBudget} budget and ${earlyPct}% of this ` +
+        `milestone’s ${L.total}.`,
+    },
+    fixture: {
+      title: 'Fixtures',
+      text:
+        'Upgrades for a piece you’ve built, one each. From your hand, installing one is the ' +
+        'week’s build; from your supplies, it’s free. A new one replaces the old, and it goes ' +
+        'if its piece is demolished.',
+    },
+    reserve: {
+      title: 'Reserve',
+      text: `Bought pieces wait here (${r.reserveSlots} slots). Placing one is your week’s build, any week you like.`,
+    },
+    supplies: {
+      title: 'Supplies',
+      text: `Bought fixtures wait here (${r.supplySlots} slots). Installing one is free: it doesn’t use your week. Sell for half price.`,
+    },
+    blueprints: {
+      title: 'Blueprints',
+      text: `Run-long rule benders, always on (${r.blueprintSlots} slots, no duplicates). Sell one for half its price.`,
+    },
+    rarity: {
+      title: 'Rarity',
+      text: `Common, Uncommon, or Rare. Later shops stock more Rare goods, and only Rare goods have ${L.xMult}.`,
+    },
+    sale: {
+      title: 'Sale',
+      text: `One good each visit is ${100 - b.shop.salePct}% off.`,
+    },
+    refresh: {
+      title: 'Refresh',
+      text: `New goods (not the services): ${b.shop.refresh.base} budget, then ${b.shop.refresh.step} more each time this visit. Back to ${b.shop.refresh.base} next visit.`,
+    },
+    skipReward: {
+      title: 'Saving up',
+      text: `Leave without buying or refreshing anything: +${b.shop.skipReward} budget.`,
+    },
+    services: {
+      title: 'Services',
+      text: `Rerolls and demolitions to keep: ${svc.reroll.base} budget each at first, ${svc.reroll.step} more each time you buy one, for the rest of the run (up to ${svc.reroll.max}). Bought rerolls never run out.`,
+    },
+    strike: {
+      title: 'Strike a card',
+      text: `Pick a card type: it’s never drawn again this run. ${svc.strike.base} budget, ${svc.strike.step} more each strike (up to ${svc.strike.max}).`,
+    },
+  };
 }

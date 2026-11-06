@@ -10,6 +10,7 @@ import type { Cell, Content, PieceDef, Selector, Tally } from './index.ts';
 import { cellIndex, inBounds, ORTHOGONAL } from './grid.ts';
 import { terrainAt } from './lot.ts';
 import { isRoom, pieceDef, REGION_BIT, type Layout, type Neighbor } from './layout.ts';
+import type { ActiveMod } from './modifiers.ts';
 import { isType, matchesNeighbor, matchesPiece } from './selectors.ts';
 import { earnedFor } from './scoring.ts';
 
@@ -107,7 +108,7 @@ function matchesNew(
       ? isType(def, sel.piece)
       : sel.piece.some((id) => isType(def, id));
   }
-  if ('feature' in sel) return false;
+  if ('feature' in sel || 'host' in sel || 'hasFixture' in sel) return false;
   if ('tag' in sel) return def.tags.includes(sel.tag) || (sel.tag === 'Sunny' && sunny);
   if ('in' in sel) return allIn(layout, cells, REGION_BIT[sel.in]);
   if ('touching' in sel) return false;
@@ -146,6 +147,7 @@ export function estimatePlay(
   tally: Tally,
   def: PieceDef,
   cells: readonly Cell[],
+  mods: readonly ActiveMod[] = [],
 ): Estimate {
   const neighbors = neighborsOf(content, layout, def, cells);
   const sunny = countIn(layout, cells, REGION_BIT.sunny) > 0;
@@ -199,6 +201,17 @@ export function estimatePlay(
     } else addOwn(e);
   }
 
+  // The run's percentage modifiers that would match the new piece (blueprints, the crew).
+  for (const { mod } of mods) {
+    if (
+      mod.kind === 'earn' &&
+      !mod.when &&
+      matchesNew(content, layout, mod.target, def, cells, sunny)
+    ) {
+      pct += mod.pct;
+    }
+  }
+
   // Neighbors' auras on the new piece, and the new piece's effect on each neighbor.
   let delta = 0;
   for (const n of neighbors) {
@@ -211,7 +224,11 @@ export function estimatePlay(
     let dPoints = 0;
     let dPct = 0;
     for (const e of odef.effects) {
-      if (e.kind === 'aura' && matchesNew(content, layout, e.match, def, cells, sunny)) {
+      if (
+        e.kind === 'aura' &&
+        e.scope === 'adjacent' &&
+        matchesNew(content, layout, e.match, def, cells, sunny)
+      ) {
         pct += e.pct ?? 0;
         points += e.amount ?? 0;
       } else if (e.kind === 'neighbor' && matchesNew(content, layout, e.match, def, cells, sunny)) {
@@ -223,7 +240,11 @@ export function estimatePlay(
     }
     if (!blocked) {
       for (const e of def.effects) {
-        if (e.kind === 'aura' && matchesPiece(content, layout, e.match, n.uid)) {
+        if (
+          e.kind === 'aura' &&
+          e.scope === 'adjacent' &&
+          matchesPiece(content, layout, e.match, n.uid)
+        ) {
           dPct += e.pct ?? 0;
           dPoints += e.amount ?? 0;
         }

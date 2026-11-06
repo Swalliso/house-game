@@ -62,7 +62,8 @@ describe('content', () => {
   });
 
   it('has the base pool: 19 piece types as 23 cards, two sets, and seven milestones', () => {
-    const defs = Object.values(CONTENT.pieces);
+    // The base pool is what the weekly draw deals; special pieces (weight 0) come from the shop.
+    const defs = Object.values(CONTENT.pieces).filter((d) => d.drawWeight > 0);
     expect(defs).toHaveLength(23);
     const types = new Set(defs.map((d) => d.countsAs ?? d.id));
     expect(types.size).toBe(19);
@@ -173,7 +174,11 @@ describe('the real rules', () => {
     for (const seed of ['smoke-1', 'smoke-2']) {
       let s = r.newRun({ seed, crewId: 'generalContractor', mode: 'standard' });
       let weeks = 0;
-      while (s.screen === 'build') {
+      while (s.screen === 'build' || s.screen === 'shop') {
+        if (s.screen === 'shop') {
+          s = r.apply(s, { t: 'leaveShop' }).state;
+          continue;
+        }
         // A cheap greedy bot: the best of a sample of legal spots, or a pass.
         const options: PlaceAction[] = r.legalPlacements(s).filter((_, i) => i % 15 === 0);
         let best: PlaceAction | null = null;

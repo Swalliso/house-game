@@ -1,5 +1,6 @@
 // The base-pool pieces (Appendix B of implementation-plan.md): 9 indoor types, 7 yard types,
-// and 3 "-house" outbuildings, as 23 cards (shape variants are separate cards sharing a type).
+// and 3 "-house" outbuildings, as 23 cards (shape variants are separate cards sharing a type),
+// then the 9 special pieces (weight 0): the shop's, the crates', and the Catalog's.
 // Shapes and tags Appendix B leaves open come from content-brainstorm.md §3, §4, and §6
 // (D-067). Complexity is Appendix A · M1's list (D-055). Every card is weight 10, so a type
 // with two cards comes up about twice as often. Numbers are placeholders for the sim and
@@ -385,5 +386,136 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
         pct: 50,
       },
     ],
+  },
+
+  // ---------------------------------------------------------------------------------------
+  // Special pieces (Appendix B; weight 0, so never in the base draw). The first four are Core
+  // pieces from content-brainstorm.md; the last five were Stretch and are promoted as shop
+  // pieces, so the shop has buildings worth buying (D-051). Shapes Appendix B leaves open are
+  // D-082's defaults: Playroom and Library 2×2, Mudroom 1×2, Pool 2×3.
+  playroom: {
+    id: 'playroom',
+    name: 'Playroom',
+    tier: 'core',
+    category: 'indoor',
+    shape: ['##', '##'],
+    tags: ['Loud', 'Kid'],
+    drawWeight: 0,
+    complexity: 2,
+    fromPhase: 0,
+    effects: [
+      { kind: 'neighbor', match: { piece: 'bedroom' }, amount: 2 },
+      // Noisy: the Quiet rooms around it lose a little.
+      { kind: 'aura', match: { tag: 'Quiet' }, scope: 'adjacent', amount: -2 },
+    ],
+  },
+  library: {
+    id: 'library',
+    name: 'Library',
+    tier: 'core',
+    category: 'indoor',
+    shape: ['##', '##'],
+    tags: ['Quiet'],
+    drawWeight: 0,
+    complexity: 1,
+    fromPhase: 0,
+    effects: [{ kind: 'neighbor', match: { tag: 'Quiet' }, amount: 2, max: 3 }],
+  },
+  mudroom: {
+    id: 'mudroom',
+    name: 'Mudroom',
+    tier: 'core',
+    category: 'indoor',
+    shape: ['##'],
+    tags: ['Pet'],
+    drawWeight: 0,
+    complexity: 3,
+    fromPhase: 0,
+    effects: [
+      {
+        kind: 'conditional',
+        when: { borders: 'fencedYard' },
+        effect: { kind: 'aura', match: { tag: 'Pet' }, scope: 'region', pct: 50 },
+      },
+    ],
+  },
+  pool: {
+    id: 'pool',
+    name: 'Pool',
+    tier: 'core',
+    category: 'yard',
+    shape: ['###', '###'],
+    tags: ['Wet', 'Sunny', 'Loud'],
+    drawWeight: 0,
+    complexity: 2,
+    fromPhase: 0,
+    effects: [
+      { kind: 'rhythm', every: 3, amount: 12 },
+      // Leaves in the water.
+      { kind: 'neighbor', match: { feature: 'tree' }, amount: -2, max: 3 },
+    ],
+  },
+  sunroom: {
+    id: 'sunroom',
+    name: 'Sunroom',
+    tier: 'core',
+    category: 'indoor',
+    shape: ['##', '##'],
+    tags: ['Sunny'],
+    drawWeight: 0,
+    complexity: 2,
+    fromPhase: 0,
+    effects: [{ kind: 'perTile', region: 'sunny', amount: 2 }],
+  },
+  hotTub: {
+    id: 'hotTub',
+    name: 'Hot Tub',
+    tier: 'core',
+    category: 'yard',
+    shape: ['#'],
+    tags: ['Wet', 'Social'],
+    drawWeight: 0,
+    complexity: 1,
+    fromPhase: 0,
+    effects: [{ kind: 'neighbor', match: { piece: 'patio' }, amount: 3 }],
+  },
+  firePit: {
+    id: 'firePit',
+    name: 'Fire Pit',
+    tier: 'core',
+    category: 'yard',
+    shape: ['#'],
+    tags: ['Social'],
+    drawWeight: 0,
+    complexity: 2,
+    fromPhase: 0,
+    effects: [{ kind: 'aura', match: { piece: 'patio' }, scope: 'adjacent', pct: 50 }],
+  },
+  henhouse: {
+    id: 'henhouse',
+    name: 'Henhouse',
+    tier: 'core',
+    category: 'outbuilding',
+    shape: ['##'],
+    tags: ['House'],
+    drawWeight: 0,
+    complexity: 2,
+    fromPhase: 0,
+    effects: [
+      { kind: 'economy', budget: 1, every: 2 }, // eggs
+      { kind: 'neighbor', match: { piece: ['herbGarden', 'flowerBed'] }, amount: 1 },
+    ],
+  },
+  birdhouse: {
+    id: 'birdhouse',
+    name: 'Birdhouse',
+    tier: 'core',
+    category: 'outbuilding',
+    shape: ['#'],
+    tags: ['House'],
+    drawWeight: 0,
+    complexity: 1,
+    fromPhase: 0,
+    effects: [{ kind: 'neighbor', match: { feature: 'tree' }, amount: 1, max: 3 }],
   },
 };

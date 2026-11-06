@@ -381,9 +381,15 @@ function debugAction(rng: Rng): Action {
 /**
  * Picks an action by a seeded stream: an unused kind half the time, else by weight. Random
  * building rarely meets a target, so near a phase's end a cheat usually covers the shortfall:
- * that keeps the run going into later phases and brings early completion within reach.
+ * that keeps the run going into later phases and brings early completion within reach. In the
+ * shop it buys or sells something now and then, and otherwise leaves.
  */
 function chooseAction(state: RunState, rng: Rng, used: ReadonlySet<Kind>): Action {
+  if (state.screen === 'shop') {
+    const shopping = rules.legalActions(state).filter((a) => a.t === 'buy' || a.t === 'sell');
+    if (shopping.length > 0 && rng.chance(60)) return rng.pick(shopping);
+    return { t: 'leaveShop' };
+  }
   const target = rules.target(state);
   if (state.score < target && rules.weeksLeft(state) <= 2 && rng.chance(60)) {
     return { t: 'debug', op: 'addScore', amount: target - state.score + rng.range(0, 20) };
@@ -423,10 +429,10 @@ function playRun(seed: string, steps: number): Played {
   const states: RunState[] = [];
   const events: GameEvent[][] = [];
   const used = new Set<Kind>();
-  for (let n = 0; n < steps && state.screen === 'build'; n++) {
+  for (let n = 0; n < steps && (state.screen === 'build' || state.screen === 'shop'); n++) {
     const action = chooseAction(state, rng, used);
     const result = rules.apply(state, action);
-    used.add(action.t as Kind);
+    if ((ALL_KINDS as readonly string[]).includes(action.t)) used.add(action.t as Kind);
     log.push(action);
     states.push(result.state);
     events.push(result.events);
@@ -441,8 +447,10 @@ describe('a real run replays exactly from its run code', () => {
   it.each(SEEDS)('seed %s', (seed) => {
     const played = playRun(seed, 24);
     const kinds = new Set(played.log.map((a) => a.t));
-    // The stream reached every kind of action, free ones included.
-    expect([...kinds].sort()).toEqual([...ALL_KINDS].sort());
+    // The stream reached every kind of action, free ones included, and shopped in a shop.
+    const SHOP: readonly string[] = ['buy', 'sell', 'leaveShop'];
+    expect([...kinds].filter((k) => !SHOP.includes(k)).sort()).toEqual([...ALL_KINDS].sort());
+    expect(kinds.has('buy') && kinds.has('leaveShop')).toBe(true);
     expect(played.log.length).toBeGreaterThanOrEqual(18);
     expect(played.final.debug).toBe(true);
     // It crossed milestones, one of them early, so the log replays fast-forwarded weeks too.
