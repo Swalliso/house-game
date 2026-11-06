@@ -25,7 +25,7 @@ import {
   tool,
 } from '../store.ts';
 import { rotate } from '../board/Board.tsx';
-import { Button, Chip, Icon, Keycap, Panel } from '../kit/kit.tsx';
+import { Button, Card, Chip, Icon, Keycap, Panel } from '../kit/kit.tsx';
 import type { IconName } from '../theme/art.ts';
 import {
   cancelPlacement,
@@ -88,15 +88,6 @@ function pickCard(i: number): void {
   selectCard(i);
 }
 
-function NoFit({ text }: { text: string }) {
-  return (
-    <span class="hand-card-nofit">
-      <Icon name="cross" />
-      {text}
-    </span>
-  );
-}
-
 function CardView({ card, i }: { card: CardData; i: number }) {
   if (card.kind === 'fixture') return <FixtureCardView id={card.id} i={i} />;
   const def = CONTENT.pieces[card.id];
@@ -105,35 +96,31 @@ function CardView({ card, i }: { card: CardData; i: number }) {
   const isSelected = isPicked('hand', i);
   const kind = kindOf(def);
   return (
-    <button
-      type="button"
-      class={`hand-card pcard kind-${kind} ${isSelected ? 'selected' : ''} ${fits ? '' : 'no-fit'}`}
+    <Card
+      as="button"
+      class="hand-card"
+      tone={kind}
+      selected={isSelected}
+      blocked={!fits}
+      lead={<Keycap>{i + 1}</Keycap>}
+      title={def.name}
+      aside={<ShapeGlyph id={card.id} />}
+      art={<PieceArt id={card.id} />}
+      lines={text.effects}
+      note={text.notes.length > 0 ? text.notes.join(' ') : undefined}
+      chips={
+        <>
+          <Chip tone="wood">{KIND_LABEL[kind]}</Chip>
+          <TagChips tags={def.tags} />
+        </>
+      }
+      alert={fits ? undefined : 'Nowhere fits'}
       onMouseDown={noFocus}
       onClick={() => pickCard(i)}
       onMouseEnter={() => selected.value === null && (inspected.value = { kind: 'card', i })}
       aria-pressed={isSelected}
-      title={fits ? undefined : 'There’s nowhere on the lot this fits right now'}
-    >
-      <span class="hand-card-head">
-        <Keycap>{i + 1}</Keycap>
-        <span class="hand-card-name">{def.name}</span>
-        <ShapeGlyph id={card.id} />
-      </span>
-      <span class="hand-card-art">
-        <PieceArt id={card.id} />
-      </span>
-      <ul class="hand-card-effects">
-        {text.effects.map((t) => (
-          <li key={t}>{t}</li>
-        ))}
-      </ul>
-      {text.notes.length > 0 && <span class="hand-card-notes">{text.notes.join(' ')}</span>}
-      <span class="hand-card-tags">
-        <Chip tone="wood">{KIND_LABEL[kind]}</Chip>
-        <TagChips tags={def.tags} />
-      </span>
-      {!fits && <NoFit text="Nowhere fits" />}
-    </button>
+      tooltip={fits ? undefined : 'There’s nowhere on the lot this fits right now'}
+    />
   );
 }
 
@@ -150,30 +137,28 @@ function FixtureCardView({
   const fits = cardsFit.value[i] ?? true;
   const isSelected = isPicked('hand', i);
   return (
-    <button
-      type="button"
-      class={`hand-card pcard kind-fixture rarity-${def.rarity} ${isSelected ? 'selected' : ''} ${fits ? '' : 'no-fit'}`}
+    <Card
+      as="button"
+      class="hand-card"
+      tone="fixture"
+      rarity={def.rarity}
+      selected={isSelected}
+      blocked={!fits}
+      lead={<Keycap>{i + 1}</Keycap>}
+      title={def.name}
+      lines={[text.fits, ...text.effects]}
+      chips={
+        <>
+          <Chip tone="wood">Fixture</Chip>
+          <Chip tone={def.rarity}>{RARITY_LABEL[def.rarity]}</Chip>
+        </>
+      }
+      alert={fits ? undefined : 'Nothing to put it in'}
       onMouseDown={noFocus}
       onClick={() => pickCard(i)}
       aria-pressed={isSelected}
-      title={fits ? undefined : 'Nothing on the lot can hold it yet'}
-    >
-      <span class="hand-card-head">
-        <Keycap>{i + 1}</Keycap>
-        <span class="hand-card-name">{def.name}</span>
-      </span>
-      <ul class="hand-card-effects">
-        <li>{text.fits}</li>
-        {text.effects.map((t) => (
-          <li key={t}>{t}</li>
-        ))}
-      </ul>
-      <span class="hand-card-tags">
-        <Chip tone="wood">Fixture</Chip>
-        <Chip tone={def.rarity}>{RARITY_LABEL[def.rarity]}</Chip>
-      </span>
-      {!fits && <NoFit text="Nothing to put it in" />}
-    </button>
+      tooltip={fits ? undefined : 'Nothing on the lot can hold it yet'}
+    />
   );
 }
 

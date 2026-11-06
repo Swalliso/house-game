@@ -91,7 +91,15 @@
 .pcard {
   --card-fill: var(--card);
   --card-band: transparent;
+  --piece-edge: var(--ink);
   position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+  width: 100%;
+  margin: 0;
+  padding: var(--space-2) var(--space-3) var(--space-3);
   border: var(--px) solid transparent;
   border-image: var(--art-ring) 1 / var(--px);
   background: var(--card-fill);
@@ -100,6 +108,146 @@
     inset 0 0 0 var(--px) var(--card-band),
     inset var(--px) var(--px) 0 var(--px) var(--card-hi),
     var(--shadow-card);
+  font: inherit;
+  color: var(--ink);
+  text-align: left;
+}
+/* By kind, a tint and a band inside the ring, with the kind's word on its chip. */
+.pcard.tone-room {
+  --card-fill: var(--tint-room);
+  --card-band: var(--tint-room-band);
+}
+.pcard.tone-yard {
+  --card-fill: var(--tint-yard);
+  --card-band: var(--tint-yard-band);
+}
+.pcard.tone-hall {
+  --card-fill: var(--tint-hall);
+  --card-band: var(--tint-hall-band);
+}
+.pcard.tone-outbuilding {
+  --card-fill: var(--tint-outbuilding);
+  --card-band: var(--tint-outbuilding-band);
+}
+.pcard.tone-fixture {
+  --card-fill: var(--tint-fixture);
+  --card-band: var(--tint-fixture-band);
+}
+/* Rarity (D-087): the band, beside the rarity's chip. */
+.pcard.rarity-common {
+  --card-band: var(--rarity-common);
+}
+.pcard.rarity-uncommon {
+  --card-band: var(--rarity-uncommon);
+}
+.pcard.rarity-rare {
+  --card-band: var(--rarity-rare);
+}
+/* A card you pick lifts a UI pixel on hover; picked, three, with an ink band. */
+.pcard-action {
+  cursor: pointer;
+  transition: transform var(--dur-hover) ease-out;
+}
+.pcard-action:hover {
+  transform: translateY(calc(var(--px) * -1));
+}
+.pcard-action:active {
+  transform: translateY(0);
+  transition-duration: var(--dur-press);
+}
+.pcard.is-selected {
+  --card-band: var(--ink);
+  transform: translateY(calc(var(--px) * -3));
+  box-shadow:
+    inset 0 0 0 calc(var(--px) * 2) var(--card-band),
+    var(--shadow-float);
+}
+.pcard:focus-visible {
+  outline: none;
+  box-shadow:
+    inset 0 0 0 var(--px) var(--card-band),
+    var(--shadow-card),
+    var(--ring-focus);
+}
+/* Blocked: hatched in the bad fill over its own tint, with the reason in its alert. */
+.pcard.is-blocked::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--hatch) 0 calc(var(--px) * 2),
+    transparent calc(var(--px) * 2) calc(var(--px) * 6)
+  );
+}
+.pcard.is-blocked .pcard-art {
+  opacity: 0.6;
+}
+.reduce-motion .pcard-action {
+  transition: none;
+}
+.reduce-motion .pcard-action:hover,
+.reduce-motion .pcard.is-selected {
+  transform: none;
+}
+.pcard-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.pcard-title {
+  flex: 1;
+  min-width: 0;
+  font-weight: 700;
+}
+/* The art slot: a recessed well, lawn behind the yard's pieces. */
+.pcard-art {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-1);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ringSoft) 1 / var(--px);
+  background: var(--art-bg, var(--paper-inset));
+  background-clip: padding-box;
+  box-shadow: inset 0 var(--px) 0 var(--shade);
+}
+.pcard.tone-yard .pcard-art,
+.pcard.tone-outbuilding .pcard-art {
+  --art-bg: var(--lawn);
+}
+.pcard-lines {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pcard-lines li {
+  position: relative;
+  padding-left: var(--space-3);
+}
+.pcard-lines li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: calc(var(--px) * 4);
+  width: calc(var(--px) * 2);
+  height: calc(var(--px) * 2);
+  background: var(--ink);
+}
+.pcard-note {
+  color: var(--ink-soft);
+}
+.pcard-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+.pcard-alert {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-weight: 700;
+  color: var(--bad);
 }
 
 /* --- Button ----------------------------------------------------------------------------- */
