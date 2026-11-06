@@ -11,7 +11,7 @@ import {
 import { tallyView } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
 import { formatMult, formatNumber, signed } from '../format.ts';
-import { currentTally, pace as paceSignal, preview } from '../store.ts';
+import { currentTally, pace as paceSignal, preview, run } from '../store.ts';
 import { Celebration } from './Celebration.tsx';
 import { Tip } from './Tip.tsx';
 import './hud-m2.css';
@@ -34,6 +34,7 @@ function SetList({
   gained: Set<string>;
   lost: readonly SetScore[];
 }) {
+  const levels = run.value.setLevels;
   if (sets.length === 0 && lost.length === 0) {
     return (
       <p class="sets-empty">
@@ -49,6 +50,7 @@ function SetList({
           <span class="set-name">
             {gained.has(s.key) ? '★ ' : ''}
             {CONTENT.sets[s.set].name}
+            {(levels[s.set] ?? 1) > 1 && <span class="set-level"> Lv {levels[s.set]}</span>}
           </span>
           <span class="comfort">+{s.points}</span>
           <span class="charm">+{formatMult(s.mult)}</span>
@@ -70,6 +72,9 @@ function Sparkles({ list }: { list: readonly XMultTerm[] }) {
   if (list.length === 0) return null;
   return (
     <ul class="sparkles" aria-label={SCORE_LABELS.xMult}>
+      <li class="sparkles-label">
+        <Tip term="sparkle">{SCORE_LABELS.xMult}</Tip>
+      </li>
       {list.map((x) => (
         <li
           key={`${x.source.kind}:${x.label}`}

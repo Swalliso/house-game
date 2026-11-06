@@ -8,9 +8,13 @@ import type { Balance, Rarity } from '../rules/index.ts';
 export const PRICES: {
   readonly blueprint: Readonly<Record<Rarity, number>>;
   readonly fixture: Readonly<Record<Rarity, number>>;
+  readonly tool: Readonly<Record<Rarity, number>>;
+  readonly crate: number;
 } = {
   blueprint: { common: 4, uncommon: 6, rare: 8 },
   fixture: { common: 2, uncommon: 3, rare: 4 },
+  tool: { common: 2, uncommon: 3, rare: 4 },
+  crate: 4,
 };
 
 export const BALANCE: Balance = {
@@ -31,6 +35,11 @@ export const BALANCE: Balance = {
     minFreeStreetTiles: 10,
     minStreetSidePct: 60,
     maxAttempts: 50,
+    // Finds (Appendix B, M3b): one Old Shed and one or two Time Capsules, placed after the
+    // checks on free ground, at least this many rows back from the street.
+    oldSheds: [1, 1],
+    timeCapsules: [1, 2],
+    findStreetGap: 4,
   },
 
   weeksPerPhase: 4, // D-042
@@ -43,12 +52,12 @@ export const BALANCE: Balance = {
   // follows 100%, 98%, 95%, 85%, 72%, 58%, 45%.
   phases: [
     { name: 'Groundbreaking', target: 15 }, // median 42, α 0.36
-    { name: 'Foundation', target: 120 }, // median 167, α 0.72
-    { name: 'Framing', target: 270 }, // median 475, α 0.57
-    { name: 'Roofing', target: 650 }, // median 952, α 0.68
-    { name: 'Drywall', target: 1350 }, // median 1715, α 0.79
-    { name: 'Finishes', target: 2900 }, // median 2808, α 1.03
-    { name: 'Final Walkthrough', target: 5300 }, // median 4257, α 1.25
+    { name: 'Foundation', target: 190 }, // median 223, α 0.85
+    { name: 'Framing', target: 490 }, // median 618, α 0.79
+    { name: 'Roofing', target: 1050 }, // median 1446, α 0.73
+    { name: 'Drywall', target: 2250 }, // median 2660, α 0.85
+    { name: 'Finishes', target: 4600 }, // median 4320, α 1.06
+    { name: 'Final Walkthrough', target: 9500 }, // median 7204, α 1.32
   ],
   // sim:targets:end
 
@@ -76,18 +85,53 @@ export const BALANCE: Balance = {
     scorePct: [10],
   },
 
-  // Appendix A · M3a: +3 budget per milestone met.
-  milestoneBudget: 3,
+  // Appendix A · M3a's +3 budget per milestone, raised to 4 (D-085): with 3 the greedy bot earned
+  // a median 25 a run against the plan's 30–40, so the shop was too tight to plan around.
+  milestoneBudget: 4,
 
   // The shop (D-051, Appendix A · M3a). Shop k opens after milestone k, for k = 1–6.
   shop: {
     stock: [
-      // Shop 1: 2 blueprints (Common only) and 2 cards; M3b adds the free Housewarming crate.
-      { blueprints: 2, cards: 2, rarity: [100, 0, 0] },
-      // Shops 2–3, then 4–6. Rarity weights: Common, Uncommon, Rare.
-      { blueprints: 3, cards: 2, rarity: [70, 25, 5] },
-      { blueprints: 3, cards: 2, rarity: [70, 25, 5] },
-      { blueprints: 3, cards: 2, rarity: [55, 33, 12] },
+      // Shop 1: 2 blueprints (Common only), 2 cards, and the free Housewarming crate (pick 1 of
+      // 3 Common blueprints), which teaches blueprints with something in hand.
+      {
+        blueprints: 2,
+        cards: 2,
+        tools: 0,
+        crates: 0,
+        upgrades: 0,
+        housewarming: 3,
+        rarity: [100, 0, 0],
+      },
+      // Shops 2–3, then 4–6: 3 blueprints, 2 cards, 2 tools, a crate, and an upgrade.
+      // Rarity weights: Common, Uncommon, Rare.
+      {
+        blueprints: 3,
+        cards: 2,
+        tools: 2,
+        crates: 1,
+        upgrades: 1,
+        housewarming: 0,
+        rarity: [70, 25, 5],
+      },
+      {
+        blueprints: 3,
+        cards: 2,
+        tools: 2,
+        crates: 1,
+        upgrades: 1,
+        housewarming: 0,
+        rarity: [70, 25, 5],
+      },
+      {
+        blueprints: 3,
+        cards: 2,
+        tools: 2,
+        crates: 1,
+        upgrades: 1,
+        housewarming: 0,
+        rarity: [55, 33, 12],
+      },
     ],
     // A card slot is a fixture half the time, otherwise a special piece.
     cardFixturePct: 50,
@@ -102,6 +146,8 @@ export const BALANCE: Balance = {
     },
     skipReward: 1, // leaving without buying anything
     strikeMinTypes: 8,
+    crateOptions: 3, // open a crate, keep 1 of 3
+    interestPer: 5, // Savings Account: +1 per 5 held, up to the interestMax rule
   },
 
   // A fenced yard has at least 10 tiles (D-069, amending D-046's 4, confirmed 2026-11-05): at

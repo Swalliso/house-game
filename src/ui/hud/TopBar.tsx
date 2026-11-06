@@ -212,7 +212,9 @@ function CompleteEarly() {
       title={`Finish ${phase} now: the weeks left play out quickly, and you get the early bonus (${bonus}). Press twice.`}
       aria-label={armed ? 'Press again to complete early' : `Complete early: ${detail}`}
     >
-      <span class="tb-early-label">{armed ? 'Press again to complete' : 'Complete early'}</span>
+      <span class="tb-early-label">
+        {armed ? 'Press again to complete' : <Tip term="early">Complete early</Tip>}
+      </span>
       <span class="tb-early-detail">{detail}</span>
     </button>
   );

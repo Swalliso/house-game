@@ -231,8 +231,9 @@ describe('when the shop opens', () => {
     // Shop 1: 2 blueprints + 2 cards + 3 services; shops 2 and 3 (row 2 repeats): 3 + 2 + 3.
     expect(seen).toEqual([
       { number: 1, offers: 7 },
-      { number: 2, offers: 8 },
-      { number: 3, offers: 8 },
+      // 3 blueprints, 2 cards, 2 tools, a crate, the upgrade, and 3 services (M3b).
+      { number: 2, offers: 12 },
+      { number: 3, offers: 12 },
     ]);
     expect(finishPhase(r, s).state.screen).toBe('won');
   });
@@ -273,7 +274,8 @@ describe('stock per visit', () => {
       const goods = stockGoods(C, withSeed(base, `s2/${k}`), 2, 0);
       const bps = goods.filter((o) => o.kind === 'blueprint');
       expect(bps).toHaveLength(3);
-      expect(goods.filter((o) => o.kind !== 'blueprint')).toHaveLength(2);
+      // 2 cards, 2 tools, and a crate (M3b); the upgrade isn't a refreshable good.
+      expect(goods.filter((o) => o.kind !== 'blueprint')).toHaveLength(5);
       const ids = bps.map((o) => (o.kind === 'blueprint' ? o.id : null));
       expect(new Set(ids).size).toBe(3);
       for (const id of ids) expect(['fengShui', 'crownJewel', 'dreamHome']).not.toContain(id);

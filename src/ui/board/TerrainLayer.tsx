@@ -42,6 +42,13 @@ function draw(ctx: CanvasRenderingContext2D, img: HTMLImageElement, lot: Lot): v
       put(grass, x, y);
       if (t === 'tree') put('tree', x, y);
       else if (t === 'boulder') put('boulder', x, y);
+      else if (t === 'timeCapsule') put('capsule', x, y);
+      else if (t === 'oldShed') {
+        // The shed's quadrant, from which of its neighbors are shed too.
+        const right = terrainAt(lot, x - 1, y) === 'oldShed';
+        const bottom = terrainAt(lot, x, y - 1) === 'oldShed';
+        put(bottom ? (right ? 'shed-3' : 'shed-2') : right ? 'shed-1' : 'shed-0', x, y);
+      }
     }
   }
   for (let x = 0; x < lot.width; x++) put('street', x, lot.height);

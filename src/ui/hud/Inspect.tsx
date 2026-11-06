@@ -7,6 +7,7 @@ import {
   cardText,
   CONTENT,
   fixtureText,
+  rewardText,
   regionText,
   rules,
   SCORE_LABELS,
@@ -15,6 +16,7 @@ import {
   type PieceInfo,
   type Region,
   type Tag,
+  type ToolId,
 } from '../../rules/index.ts';
 import { formatMult, formatNumber, signed } from '../format.ts';
 import {
@@ -25,9 +27,12 @@ import {
   preview,
   run,
   selected,
+  movingUid,
   selection,
   sell,
   tool,
+  toolPreview,
+  useToolNow,
 } from '../store.ts';
 import { GoodBody, goodName, offerGood, type GoodRef } from './goods.tsx';
 import './hud-m2.css';
@@ -176,10 +181,57 @@ function BudgetChange({ before, after }: { before: number; after: number }) {
   );
 }
 
+/** A selected tool: what it does, what using it would do this week, and Use (or how to aim it). */
+function ToolInfo({ id, i }: { id: ToolId; i: number }) {
+  const def = CONTENT.tools[id];
+  const use = def.use.kind;
+  const p = toolPreview.value;
+  const aimed = use === 'copy' || use === 'move';
+  const how =
+    use === 'copy'
+      ? 'Click a piece twice to copy it into your reserve.'
+      : use === 'move'
+        ? movingUid.value === null
+          ? 'Click the piece to move.'
+          : 'Click its new spot twice. R or right-click turns it.'
+        : null;
+  return (
+    <>
+      <h2>{def.name}</h2>
+      <GoodBody good={{ kind: 'tool', id }} />
+      <p class="muted">From your supplies: free, and the week goes on. It’s used up.</p>
+      {how && <p class="muted">{how}</p>}
+      {p && !p.ok && (
+        <p class="reason">
+          <span aria-hidden="true">✕ </span>
+          {p.reason}
+        </p>
+      )}
+      {p?.ok && (
+        <p class="total-line">
+          This week: {formatNumber(p.before.total)} → <strong>{formatNumber(p.after.total)}</strong>{' '}
+          {SCORE_LABELS.total}
+        </p>
+      )}
+      {!aimed && (
+        <button
+          type="button"
+          class="sell-button use-tool"
+          disabled={!p?.ok}
+          onClick={() => useToolNow({ t: 'useTool', i })}
+        >
+          Use {def.name}
+        </button>
+      )}
+    </>
+  );
+}
+
 function PlacingInfo() {
   const p = preview.value;
   const sel = selection.value;
   if (!sel) return null;
+  if (sel.kind === 'tool') return <ToolInfo id={sel.id} i={sel.i} />;
   const name = sel.kind === 'piece' ? CONTENT.pieces[sel.id].name : CONTENT.fixtures[sel.id].name;
   const install = sel.kind === 'fixture';
   const fromLine =
@@ -278,6 +330,11 @@ function PlacingInfo() {
           ✦ {SCORE_LABELS.xMult}: {x.label} ×{formatMult(x.times)} {SCORE_LABELS.mult}
         </p>
       ))}
+      {p.finds.map((f) => (
+        <p key={`${f.x},${f.y}`} class="set-note good">
+          ★ Digs up the {CONTENT.features[f.feature].name}: {rewardText(CONTENT, f.reward)}
+        </p>
+      ))}
       {p.clearedTrees.length > 0 && (
         <p class="muted">
           Clears {p.clearedTrees.length} {p.clearedTrees.length === 1 ? 'Tree' : 'Trees'}.
@@ -374,6 +431,10 @@ const FEATURE_TEXT: Record<string, string> = {
   creek:
     'Water, and a view. It counts once as a neighbor. Nothing can be built on it, except a Driveway.',
   boulder: 'Gives nothing, and blocks building. A demolition clears it.',
+  oldShed:
+    'An old shed in the way. It blocks building until it’s demolished, and there’s a random tool inside.',
+  timeCapsule:
+    'Something buried here. It doesn’t block building: the first piece built over it digs it up for +3 budget.',
 };
 
 export function Inspect() {
@@ -483,8 +544,16 @@ export function Inspect() {
     const sup = s.supplies[what.i];
     if (sup)
       body = (
-        <ItemInfo good={{ kind: 'fixture', id: sup.id }} sellAs={{ from: 'supplies', i: what.i }} />
+        <ItemInfo
+          good={
+            sup.kind === 'fixture' ? { kind: 'fixture', id: sup.id } : { kind: 'tool', id: sup.id }
+          }
+          sellAs={{ from: 'supplies', i: what.i }}
+        />
       );
+  } else if (what?.kind === 'upgrade') {
+    const u = s.upgrades[what.i];
+    if (u) body = <ItemInfo good={{ kind: 'upgrade', id: u }} />;
   } else if (what?.kind === 'blueprint') {
     const b = s.blueprints[what.i];
     if (b)

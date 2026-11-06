@@ -7,6 +7,8 @@ import type {
   BlueprintDef,
   BlueprintId,
   Content,
+  CrateDef,
+  CrateId,
   CrewDef,
   CrewId,
   FeatureDef,
@@ -23,6 +25,10 @@ import type {
   RunSetup,
   SetDef,
   SetId,
+  ToolDef,
+  ToolId,
+  UpgradeDef,
+  UpgradeId,
 } from './index.ts';
 import { placedCells } from './grid.ts';
 import { lotFromRows, terrainAt } from './lot.ts';
@@ -629,6 +635,27 @@ export const TEST_FEATURES: Record<FeatureId, FeatureDef> = {
     clear: 'demolish',
     inert: true,
   },
+  oldShed: {
+    id: 'oldShed',
+    name: 'Old Shed',
+    tier: 'core',
+    tags: [],
+    blocks: true,
+    clear: 'demolish',
+    inert: true,
+    size: [2, 2],
+    reward: { tool: 'random' },
+  },
+  timeCapsule: {
+    id: 'timeCapsule',
+    name: 'Time Capsule',
+    tier: 'core',
+    tags: [],
+    blocks: false,
+    clear: 'buildOver',
+    inert: true,
+    reward: { budget: 3 },
+  },
 };
 
 export const TEST_SETS: Record<SetId, SetDef> = {
@@ -670,6 +697,10 @@ export const TEST_LOT_BALANCE: LotBalance = {
   minFreeStreetTiles: 10,
   minStreetSidePct: 60,
   maxAttempts: 50,
+  // Rules tests place finds by hand (lotFromRows' S and K), so generated test lots have none.
+  oldSheds: [0, 0],
+  timeCapsules: [0, 0],
+  findStreetGap: 4,
 };
 
 export const TEST_BALANCE: Balance = {
@@ -696,8 +727,24 @@ export const TEST_BALANCE: Balance = {
   milestoneBudget: 3,
   shop: {
     stock: [
-      { blueprints: 2, cards: 2, rarity: [100, 0, 0] },
-      { blueprints: 3, cards: 2, rarity: [70, 25, 5] },
+      {
+        blueprints: 2,
+        cards: 2,
+        tools: 0,
+        crates: 0,
+        upgrades: 0,
+        housewarming: 0,
+        rarity: [100, 0, 0],
+      },
+      {
+        blueprints: 3,
+        cards: 2,
+        tools: 2,
+        crates: 1,
+        upgrades: 1,
+        housewarming: 0,
+        rarity: [70, 25, 5],
+      },
     ],
     cardFixturePct: 50,
     piecePrice: 3,
@@ -711,6 +758,8 @@ export const TEST_BALANCE: Balance = {
     },
     skipReward: 1,
     strikeMinTypes: 8,
+    crateOptions: 3,
+    interestPer: 5,
   },
   fencedYardMin: 4,
   complexityPct: [
@@ -724,6 +773,123 @@ export const TEST_BALANCE: Balance = {
   ],
 };
 
+const testTool = (
+  id: ToolId,
+  name: string,
+  rarity: Rarity,
+  use: ToolDef['use'],
+  offered = true,
+): ToolDef => ({ id, name, tier: 'core', rarity, price: PRICE[rarity], use, offered });
+
+export const TEST_TOOLS: Record<ToolId, ToolDef> = {
+  movingTruck: testTool('movingTruck', 'Moving Truck', 'uncommon', { kind: 'move' }),
+  copyMachine: testTool('copyMachine', 'Copy Machine', 'rare', { kind: 'copy' }),
+  rushOrder: testTool('rushOrder', 'Rush Order', 'common', {
+    kind: 'weekModifiers',
+    modifiers: [{ kind: 'mult', add: 50 }],
+  }),
+  openHouseParty: testTool('openHouseParty', 'Open House Party', 'common', {
+    kind: 'weekModifiers',
+    modifiers: [
+      { kind: 'earn', target: { tag: 'Social' }, pct: 100 },
+      { kind: 'earn', target: { tag: 'Pretty' }, pct: 100 },
+    ],
+  }),
+  catalog: testTool('catalog', 'Catalog', 'common', { kind: 'specialHand' }),
+  fertilizer: testTool('fertilizer', 'Fertilizer', 'uncommon', { kind: 'advanceTimers', weeks: 2 }),
+  inspectorsVisit: testTool(
+    'inspectorsVisit',
+    'Inspector’s Visit',
+    'uncommon',
+    { kind: 'weekModifiers', modifiers: [{ kind: 'rule', key: 'specBonus', add: 25 }] },
+    false,
+  ),
+  dumpster: testTool('dumpster', 'Dumpster', 'common', {
+    kind: 'reward',
+    reward: { demolitions: 2 },
+  }),
+  remodelJackAndJill: testTool('remodelJackAndJill', 'Remodel Plans: Jack-and-Jill', 'common', {
+    kind: 'levelSet',
+    set: 'jackAndJill',
+  }),
+  remodelEntertainer: testTool('remodelEntertainer', 'Remodel Plans: Entertainer', 'common', {
+    kind: 'levelSet',
+    set: 'entertainer',
+  }),
+  weekendCrew: testTool('weekendCrew', 'Weekend Crew', 'rare', { kind: 'extraPlay' }),
+};
+
+const testUpgrade = (
+  id: UpgradeId,
+  name: string,
+  price: number,
+  mod: UpgradeDef['modifiers'][number],
+): UpgradeDef => ({ id, name, tier: 'core', price, modifiers: [mod] });
+
+export const TEST_UPGRADES: Record<UpgradeId, UpgradeDef> = {
+  storageUnit: testUpgrade('storageUnit', 'Storage Unit', 6, {
+    kind: 'rule',
+    key: 'reserveSlots',
+    add: 1,
+  }),
+  toolBelt: testUpgrade('toolBelt', 'Tool Belt', 6, { kind: 'rule', key: 'supplySlots', add: 1 }),
+  draftingTable: testUpgrade('draftingTable', 'Drafting Table', 7, {
+    kind: 'rule',
+    key: 'blueprintSlots',
+    add: 1,
+  }),
+  biggerTruck: testUpgrade('biggerTruck', 'Bigger Truck', 8, {
+    kind: 'rule',
+    key: 'handSize',
+    add: 1,
+  }),
+  foreman: testUpgrade('foreman', 'Foreman', 7, { kind: 'rule', key: 'rerollsPerPhase', add: 1 }),
+  supplierDiscount: testUpgrade('supplierDiscount', 'Supplier Discount', 7, {
+    kind: 'rule',
+    key: 'shopPricePct',
+    pct: -25,
+  }),
+  savingsAccount: testUpgrade('savingsAccount', 'Savings Account', 6, {
+    kind: 'rule',
+    key: 'interestMax',
+    add: 3,
+  }),
+};
+
+export const TEST_CRATES: Record<CrateId, CrateDef> = {
+  blueprintFolio: {
+    id: 'blueprintFolio',
+    name: 'Blueprint Folio',
+    tier: 'core',
+    price: 4,
+    contents: 'blueprint',
+  },
+  fixtureCrate: {
+    id: 'fixtureCrate',
+    name: 'Fixture Crate',
+    tier: 'core',
+    price: 4,
+    contents: 'fixture',
+  },
+  gardenCenter: {
+    id: 'gardenCenter',
+    name: 'Garden Center',
+    tier: 'core',
+    price: 4,
+    contents: 'piece',
+    pool: 'all',
+    filter: { any: [{ property: 'yard' }, { property: 'outbuilding' }] },
+  },
+  showroom: {
+    id: 'showroom',
+    name: 'Showroom',
+    tier: 'core',
+    price: 4,
+    contents: 'piece',
+    pool: 'special',
+  },
+};
+
 export const TEST_CONTENT: Content = {
   pieces: TEST_PIECES,
   features: TEST_FEATURES,
@@ -731,6 +897,9 @@ export const TEST_CONTENT: Content = {
   crews: TEST_CREWS,
   fixtures: TEST_FIXTURES,
   blueprints: TEST_BLUEPRINTS,
+  tools: TEST_TOOLS,
+  upgrades: TEST_UPGRADES,
+  crates: TEST_CRATES,
   balance: TEST_BALANCE,
 };
 

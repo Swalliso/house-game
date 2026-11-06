@@ -120,6 +120,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  min-height: 30px;
   margin-top: 6px;
 }
 .offer .price strong {
@@ -270,4 +271,63 @@
 }
 .strike-cancel {
   margin-top: 12px;
+}
+
+/* Crates (M3b): the options turn over one at a time, glowing by rarity. */
+.crate-pick {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: grid;
+  place-items: center;
+  background: rgb(42 29 22 / 0.4);
+}
+.crate-sheet {
+  width: min(760px, 94%);
+  max-height: 90%;
+  overflow: auto;
+  padding: 16px 18px;
+  border-radius: 12px;
+  background: var(--panel);
+  border: 2px solid var(--wood);
+}
+.crate-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 10px 0 4px;
+}
+.crate-option {
+  animation: crate-turn 480ms ease-out both;
+}
+.crate-option.rarity-uncommon {
+  box-shadow: 0 0 12px rgb(63 120 192 / 0.45);
+}
+.crate-option.rarity-rare {
+  box-shadow:
+    0 0 0 1px #fff3c4 inset,
+    0 0 18px rgb(215 154 37 / 0.7);
+}
+@keyframes crate-turn {
+  from {
+    opacity: 0;
+    transform: rotateY(80deg) scale(0.9);
+  }
+  60% {
+    opacity: 1;
+    transform: rotateY(-8deg) scale(1.03);
+  }
+  to {
+    transform: none;
+  }
+}
+.reduce-motion .crate-option {
+  animation: none;
+}
+.offer.kind-upgrade {
+  border-color: var(--wood);
+  background: linear-gradient(#fffaf0, #f3e6cf);
+}
+.offer.kind-crate {
+  border-style: dashed;
 }

@@ -176,7 +176,8 @@ describe('the real rules', () => {
       let weeks = 0;
       while (s.screen === 'build' || s.screen === 'shop') {
         if (s.screen === 'shop') {
-          s = r.apply(s, { t: 'leaveShop' }).state;
+          // The Housewarming crate first (keep its first option), then leave.
+          s = r.apply(s, s.offers?.pick ? { t: 'pick', i: 0 } : { t: 'leaveShop' }).state;
           continue;
         }
         // A cheap greedy bot: the best of a sample of legal spots, or a pass.

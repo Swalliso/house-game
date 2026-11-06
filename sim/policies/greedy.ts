@@ -7,9 +7,18 @@
 //
 // When even the best placement wouldn't raise this week's total, it rerolls if it can, and
 // passes rather than lose score. It never demolishes or completes early (the early-completion
-// bots come in M6).
+// bots come in M6). From M3 it shops with the shop bot, uses tools and supplies first
+// (shop.ts), places reserve pieces, and scores hand fixtures' installs exactly (there are few).
 
-import type { Action, PlaceAction, Rng, Rules, RunState } from '../../src/rules/index.ts';
+import type {
+  Action,
+  InstallAction,
+  PlaceAction,
+  Rng,
+  Rules,
+  RunState,
+} from '../../src/rules/index.ts';
+import { shopAct, useTools } from './shop.ts';
 
 export const TOP_K = 12;
 const PER_CARD = 2;
@@ -45,12 +54,15 @@ export function shortlist(
 export const greedy = {
   name: 'greedy',
   act(rules: Rules, state: RunState, rng: Rng): Action {
-    if (state.screen === 'shop') return { t: 'leaveShop' };
+    if (state.screen === 'shop') return shopAct(rules, state, rng);
+    const free = useTools(rules, state);
+    if (free) return free;
     const plays = rules.legalPlacements(state);
+    const installs = rules.legalPlays(state).filter((p): p is InstallAction => p.t === 'install');
     const passTotal = rules.scoreOnly(state, null);
-    let best: PlaceAction[] = [];
+    let best: (PlaceAction | InstallAction)[] = [];
     let bestTotal = -Infinity;
-    for (const play of shortlist(rules, state, plays)) {
+    for (const play of [...shortlist(rules, state, plays), ...installs]) {
       const total = rules.scoreOnly(state, play);
       if (total > bestTotal) {
         bestTotal = total;

@@ -86,6 +86,16 @@ const GOODS: { value: string; label: string; group: string }[] = [
   ...Object.values(CONTENT.pieces)
     .filter((d) => d.drawWeight === 0)
     .map((d) => ({ value: `piece:${d.id}`, label: d.name, group: 'Special pieces → reserve' })),
+  ...Object.values(CONTENT.tools).map((d) => ({
+    value: `tool:${d.id}`,
+    label: `${d.name} (${d.rarity})`,
+    group: 'Tools → supplies',
+  })),
+  ...Object.values(CONTENT.upgrades).map((d) => ({
+    value: `upgrade:${d.id}`,
+    label: d.name,
+    group: 'Company upgrades',
+  })),
 ];
 const goodId = signal(GOODS[0]!.value);
 

@@ -250,7 +250,7 @@ describe('decoding rejects damaged M3a actions without throwing', () => {
     ['a strike as a bare string', { t: 'buy', i: 6, strike: 'fence' }],
     [
       'giveGood with an unknown kind',
-      { t: 'debug', op: 'giveGood', good: { kind: 'tool', id: 'x' } },
+      { t: 'debug', op: 'giveGood', good: { kind: 'crate', id: 'x' } },
     ],
     [
       'giveGood with a service',
@@ -721,8 +721,9 @@ describe('debug forceShop', () => {
       (phase) => r4.apply({ ...base, phase }, FORCE).state.offers!.shop!.number,
     );
     expect(numbers).toEqual([1, 2, 3, 3]);
-    // Shop 2 uses stock row 2: 3 blueprints and 2 cards, then the 3 services.
-    expect(r4.apply({ ...base, phase: 1 }, FORCE).state.offers!.shop!.offers).toHaveLength(8);
+    // Shop 2 uses stock row 2: 3 blueprints, 2 cards, 2 tools, a crate, an upgrade, then the 3
+    // services.
+    expect(r4.apply({ ...base, phase: 1 }, FORCE).state.offers!.shop!.offers).toHaveLength(12);
     // With TEST_CONTENT's two phases, phase 1 is capped at shop 1.
     const s = rules.newRun(setup('force-number'));
     expect(rules.apply({ ...s, phase: 1 }, FORCE).state.offers!.shop!.number).toBe(1);

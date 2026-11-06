@@ -21,9 +21,13 @@ export interface ActiveMod {
 }
 
 /** Just what the run's modifiers depend on, so tests and the sim can build one cheaply. */
-export type ModState = Pick<RunState, 'setup' | 'blueprints'>;
+export type ModState = Pick<RunState, 'setup' | 'blueprints'> &
+  Partial<Pick<RunState, 'upgrades' | 'timedEffects'>>;
 
-/** Every run-level modifier: the crew's, then each blueprint's in the order bought. */
+/**
+ * Every run-level modifier: the crew's, each blueprint's in the order bought, each company
+ * upgrade's, then this week's tools'.
+ */
 export function runModifiers(content: Content, state: ModState): ActiveMod[] {
   const crew = content.crews[state.setup.crewId];
   if (!crew) throw new Error(`Unknown crew "${state.setup.crewId}"`);
@@ -37,6 +41,16 @@ export function runModifiers(content: Content, state: ModState): ActiveMod[] {
     if (!def) throw new Error(`Unknown blueprint "${owned.id}"`);
     for (const mod of def.modifiers) {
       out.push({ mod, source: { kind: 'blueprint', id: def.id }, since: owned.boughtWeek });
+    }
+  }
+  for (const id of state.upgrades ?? []) {
+    const def = content.upgrades[id];
+    if (!def) throw new Error(`Unknown upgrade "${id}"`);
+    for (const mod of def.modifiers) out.push({ mod, source: { kind: 'upgrade', id }, since: 0 });
+  }
+  for (const effect of state.timedEffects ?? []) {
+    for (const mod of effect.modifiers) {
+      out.push({ mod, source: { kind: 'tool', id: effect.source }, since: effect.until.week });
     }
   }
   return out;
@@ -74,5 +88,9 @@ export function sourceName(content: Content, source: ModSource): string {
       return content.blueprints[source.id].name;
     case 'fixture':
       return content.fixtures[source.id].name;
+    case 'upgrade':
+      return content.upgrades[source.id].name;
+    case 'tool':
+      return content.tools[source.id].name;
   }
 }

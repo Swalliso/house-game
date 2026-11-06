@@ -4,7 +4,14 @@
 // milestone, lot fill, fence use, and the enclosure probe after milestone 3.
 
 import { performance } from 'node:perf_hooks';
-import type { Action, MilestoneResult, Rules, RunState } from '../src/rules/index.ts';
+import type {
+  Action,
+  MilestoneResult,
+  PickOption,
+  Rules,
+  RunState,
+  ShopOffer,
+} from '../src/rules/index.ts';
 import { placedCells, stream } from '../src/rules/index.ts';
 import { enclosureCost, type EnclosureCost } from './enclosure.ts';
 import type { Policy } from './policies/index.ts';
@@ -31,7 +38,33 @@ export interface RunRecord {
   overtimeUsed: number;
   /** The fewest Fence cards that would make a fenced yard, probed after milestone 3. */
   enclosure: EnclosureCost | null;
+  /** The economy (M3): what the shop offered and sold, and what fixtures and tools did. */
+  economy: Economy;
   ms: number;
+}
+
+export interface Economy {
+  /** Good key (`blueprint:fengShui`) → times on offer (each visit and refresh counts). */
+  offered: Record<string, number>;
+  bought: Record<string, number>;
+  /** Kept from crates and the Housewarming crate. */
+  picked: Record<string, number>;
+  sold: number;
+  refreshes: number;
+  /** Shop visits left without buying (the skip reward). */
+  skips: number;
+  visits: number;
+  budgetEarned: number;
+  /** Budget held when the run ended: never spent. */
+  budgetLeft: number;
+  /** Each fixture install: where from, and the change to that week's total. */
+  installs: { id: string; from: 'hand' | 'supplies'; gain: number }[];
+  /** Each tool use and the change to that week's total. */
+  tools: { id: string; gain: number }[];
+}
+
+export function goodKey(o: ShopOffer | PickOption): string {
+  return o.kind === 'service' ? `service:${o.service}` : `${o.kind}:${o.id}`;
 }
 
 export interface SimOptions {
@@ -61,6 +94,20 @@ export function simulateRun(
   let enclosure: EnclosureCost | null = null;
   let probed = false;
   let step = 0;
+  const economy: Economy = {
+    offered: {},
+    bought: {},
+    picked: {},
+    sold: 0,
+    refreshes: 0,
+    skips: 0,
+    visits: 0,
+    budgetEarned: 0,
+    budgetLeft: 0,
+    installs: [],
+    tools: [],
+  };
+  const bump = (into: Record<string, number>, key: string) => (into[key] = (into[key] ?? 0) + 1);
   while (
     (s.screen === 'build' || s.screen === 'shop') &&
     (opts.maxWeeks === undefined || s.week <= opts.maxWeeks)
@@ -71,6 +118,25 @@ export function simulateRun(
     }
     const rng = stream(seed, `bot/${policy.name}/${s.week}/${s.draws}/${step++}`);
     const action = policy.act(rules, s, rng);
+    // Each install's and tool's gain this week, measured before it happens.
+    if (action.t === 'install') {
+      const fixture = action.from === 'hand' ? s.hand[action.i] : s.supplies[action.i];
+      economy.installs.push({
+        id: fixture?.id ?? '?',
+        from: action.from,
+        gain: rules.preview(s, action).delta,
+      });
+    } else if (action.t === 'useTool') {
+      economy.tools.push({
+        id: s.supplies[action.i]?.id ?? '?',
+        gain: rules.previewTool(s, action).delta,
+      });
+    }
+    // Weekend Crew's gain is the free build it makes room for.
+    if (s.freePlay === 'ready' && (action.t === 'place' || action.t === 'install')) {
+      const crew = economy.tools.findLast((t) => t.id === 'weekendCrew');
+      if (crew) crew.gain = rules.preview(s, action).delta;
+    }
     const { state, events } = rules.apply(s, action);
     actions.push(action);
     if (action.t === 'reroll') rerolls++;
@@ -84,6 +150,18 @@ export function simulateRun(
       } else if (e.t === 'milestone') {
         milestones.push({ phase: e.phase, result: e.result, score: e.score, target: e.target });
         overtimeUsed += e.overtimeUsed;
+      } else if (e.t === 'shopOpened' || e.t === 'shopRefreshed') {
+        if (e.t === 'shopOpened') economy.visits++;
+        else economy.refreshes++;
+        for (const o of e.offers) bump(economy.offered, goodKey(o));
+      } else if (e.t === 'bought') {
+        bump(economy.bought, goodKey(e.offer));
+      } else if (e.t === 'picked') {
+        if (e.option) bump(economy.picked, goodKey(e.option));
+      } else if (e.t === 'sold') {
+        economy.sold++;
+      } else if (e.t === 'shopClosed') {
+        if (e.skipReward > 0) economy.skips++;
       }
     }
     s = state;
@@ -111,6 +189,7 @@ export function simulateRun(
       fencedYard: yards.reduce((a, b) => Math.max(a, b), 0),
       overtimeUsed,
       enclosure,
+      economy: { ...economy, budgetEarned: s.budgetEarned, budgetLeft: s.budget },
       ms: performance.now() - start,
     },
     actions,

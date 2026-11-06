@@ -455,7 +455,14 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
     // install) finish at once.
     if (
       !events.some(
-        (e) => e.t === 'tally' || e.t === 'placed' || e.t === 'demolished' || e.t === 'installed',
+        (e) =>
+          e.t === 'tally' ||
+          e.t === 'placed' ||
+          e.t === 'demolished' ||
+          e.t === 'installed' ||
+          e.t === 'moved' ||
+          e.t === 'findClaimed' ||
+          e.t === 'toolUsed',
       )
     ) {
       for (const e of events) {
@@ -473,7 +480,56 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
           justPlaced.value = { uid: e.uid, id: nextId++ };
           const yard = CONTENT.pieces[e.defId].category !== 'indoor';
           audio.play(yard ? 'place-yard' : 'place-room');
+          if (e.free && !skipping) {
+            const c = pieceCenter([after, base], e.uid);
+            popup(c.x, c.y - 0.6, 'Weekend Crew!', 'note', FEEL.installMs);
+          }
           await wait(FEEL.placeMs);
+          break;
+        }
+        case 'moved': {
+          justPlaced.value = { uid: e.uid, id: nextId++ };
+          if (!skipping) {
+            const c = pieceCenter([after, base], e.uid);
+            popup(c.x, c.y, 'Moved!', 'note', FEEL.installMs);
+            audio.play('place-room', { rate: 0.9 });
+          }
+          await wait(FEEL.placeMs);
+          break;
+        }
+        case 'toolUsed': {
+          if (!skipping) {
+            const lot = after.house.lot;
+            const def = CONTENT.tools[e.tool];
+            if (def.use.kind !== 'move') {
+              popup(
+                lot.width / 2,
+                Math.max(2, lot.height / 3),
+                `${def.name}!`,
+                'note',
+                FEEL.installMs,
+              );
+            }
+            audio.play('chime', { rate: 1.15 });
+          }
+          await wait(FEEL.installMs * 0.5);
+          break;
+        }
+        case 'findClaimed': {
+          if (!skipping) {
+            const name = CONTENT.features[e.feature].name;
+            const got = e.reward.tool
+              ? e.soldTool !== undefined
+                ? `${CONTENT.tools[e.reward.tool].name}, sold for ${e.soldTool}`
+                : CONTENT.tools[e.reward.tool].name
+              : e.reward.budget
+                ? `+${e.reward.budget} budget`
+                : '';
+            popup(e.x + 0.5, Math.max(1.5, e.y), `${name}: ${got}!`, 'sparkle', FEEL.sparkleStepMs);
+            audio.play('sparkle');
+            audio.play('coin', { delay: 0.1 });
+          }
+          await wait(FEEL.sparkleStepMs * 0.6);
           break;
         }
         case 'installed': {
@@ -584,6 +640,9 @@ function shopBeat(e: GameEvent): void {
     }
     case 'bought':
       audio.play('stamp', { rate: 1.2 });
+      break;
+    case 'picked':
+      if (e.option === null) audio.play('rotate', { rate: 0.8 });
       break;
     case 'sold':
       audio.play('rotate', { rate: 1.2 });

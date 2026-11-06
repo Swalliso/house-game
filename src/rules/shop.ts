@@ -15,14 +15,21 @@
 //   paid, so buying on sale and selling back is never a profit.
 // - The strike service (D-076) names a card type, which never comes up in the draws again.
 //   At least `strikeMinTypes` drawable types always remain.
+// - M3b: tools (rarity-weighted, into supplies), a crate (pick 1 of its options from the
+//   `crate/<shop>/<refresh>/<slot>` stream), and one company upgrade per visit from shop 2,
+//   from `shop/<shop>/upgrade` so a refresh keeps it. Shop 1 opens with the free Housewarming
+//   crate: 1 of 3 Common blueprints.
 
 import type {
   Availability,
   BlueprintId,
   CardType,
   Content,
+  CrateId,
+  CratePick,
   FixtureId,
   OfferView,
+  PickOption,
   PieceId,
   Rarity,
   RunState,
@@ -32,11 +39,14 @@ import type {
   ShopVisit,
   Slots,
   Supply,
+  ToolId,
+  UpgradeId,
 } from './index.ts';
 import { drawableTypes, isStruck } from './draw.ts';
 import { ruleValue } from './modifiers.ts';
 import { stream, type Rng } from './rng.ts';
 import { roundHalfUp } from './scoring.ts';
+import { matchesDef } from './selectors.ts';
 
 export const RARITIES: readonly Rarity[] = ['common', 'uncommon', 'rare'];
 export const SERVICES: readonly ServiceId[] = ['reroll', 'demolition', 'strike'];
@@ -50,6 +60,7 @@ export const SHOP_REASONS = {
   suppliesFull: 'Your supplies are full. Use or sell one first.',
   noStrike: 'There’s nothing left to strike.',
   notOpen: 'The shop isn’t open.',
+  picking: 'Pick from your crate first.',
 } as const;
 
 export function slotsFor(content: Content, state: RunState): Slots {
@@ -73,6 +84,7 @@ export function stockFor(content: Content, shop: number): ShopStock {
 export function offerRarity(content: Content, offer: ShopOffer): Rarity | undefined {
   if (offer.kind === 'blueprint') return content.blueprints[offer.id].rarity;
   if (offer.kind === 'fixture') return content.fixtures[offer.id].rarity;
+  if (offer.kind === 'tool') return content.tools[offer.id].rarity;
   return undefined;
 }
 
@@ -84,6 +96,12 @@ export function offerName(content: Content, offer: ShopOffer): string {
       return content.pieces[offer.id].name;
     case 'fixture':
       return content.fixtures[offer.id].name;
+    case 'tool':
+      return content.tools[offer.id].name;
+    case 'crate':
+      return content.crates[offer.id].name;
+    case 'upgrade':
+      return content.upgrades[offer.id].name;
     case 'service':
       return SERVICE_NAMES[offer.service];
   }
@@ -107,11 +125,19 @@ export function listPrice(
       return content.balance.shop.piecePrice;
     case 'fixture':
       return content.fixtures[offer.id].price;
+    case 'tool':
+      return content.tools[offer.id].price;
+    case 'crate':
+      return content.crates[offer.id].price;
+    case 'upgrade':
+      return content.upgrades[offer.id].price;
   }
 }
 
 export function supplyPrice(content: Content, supply: Supply): number {
-  return content.fixtures[supply.id].price;
+  return supply.kind === 'fixture'
+    ? content.fixtures[supply.id].price
+    : content.tools[supply.id].price;
 }
 
 /** A price after the `shopPricePct` rule (Supplier Discount), never below 1. */
@@ -197,8 +223,15 @@ export function roomFor(content: Content, state: RunState, offer: ShopOffer): Av
         ? { ok: false, reason: SHOP_REASONS.reserveFull }
         : { ok: true };
     case 'fixture':
+    case 'tool':
       return state.supplies.length >= slots.supplies
         ? { ok: false, reason: SHOP_REASONS.suppliesFull }
+        : { ok: true };
+    case 'crate':
+      return roomForKind(content, state, content.crates[offer.id].contents);
+    case 'upgrade':
+      return state.upgrades.includes(offer.id)
+        ? { ok: false, reason: SHOP_REASONS.owned }
         : { ok: true };
     case 'service':
       if (offer.service === 'strike' && strikeOptions(content, state).length === 0) {
@@ -225,6 +258,7 @@ export function viewOffers(content: Content, state: RunState): OfferView[] {
     if (offer.kind !== 'service' && offer.sold) {
       return { ...base, ok: false, reason: SHOP_REASONS.sold };
     }
+    if (state.offers?.pick) return { ...base, ok: false, reason: SHOP_REASONS.picking };
     const room = roomFor(content, state, offer);
     if (!room.ok) return { ...base, ...room };
     if (price > state.budget) return { ...base, ok: false, reason: SHOP_REASONS.budget };
@@ -310,11 +344,134 @@ export function stockGoods(
     out.push({ kind: 'piece', id });
     pieces = pieces.filter((x) => x !== id);
   }
+
+  let tools = (Object.keys(content.tools) as ToolId[]).filter((id) => content.tools[id].offered);
+  for (let k = 0; k < stock.tools; k++) {
+    const id = pickByRarity(rng, stock.rarity, tools, (x) => content.tools[x].rarity);
+    if (!id) break;
+    out.push({ kind: 'tool', id });
+    tools = tools.filter((x) => x !== id);
+  }
+
+  let crates = Object.keys(content.crates) as CrateId[];
+  for (let k = 0; k < stock.crates && crates.length > 0; k++) {
+    const id = rng.pick(crates);
+    out.push({ kind: 'crate', id });
+    crates = crates.filter((x) => x !== id);
+  }
   return out;
 }
 
-function withServices(goods: readonly ShopOffer[]): ShopOffer[] {
-  return [...goods, ...SERVICES.map((service): ShopOffer => ({ kind: 'service', service }))];
+/** The visit's company upgrade, fixed for the visit, never one the run owns. */
+function stockUpgrade(content: Content, state: RunState, shop: number): ShopOffer[] {
+  if (stockFor(content, shop).upgrades <= 0) return [];
+  const left = (Object.keys(content.upgrades) as UpgradeId[]).filter(
+    (id) => !state.upgrades.includes(id),
+  );
+  if (left.length === 0) return [];
+  return [{ kind: 'upgrade', id: stream(state.setup.seed, `shop/${shop}/upgrade`).pick(left) }];
+}
+
+/**
+ * The options in a crate: distinct, never an owned blueprint. Blueprints and fixtures roll
+ * rarity with the shop's weights; pieces come from the crate's pool, filtered.
+ */
+export function crateOptions(
+  content: Content,
+  state: RunState,
+  source: CratePick['source'],
+  key: string,
+  n: number = content.balance.shop.crateOptions,
+): PickOption[] {
+  const rng = stream(state.setup.seed, key);
+  const shop = state.offers?.shop?.number ?? Math.max(1, state.phase);
+  const weights =
+    source === 'housewarming' ? ([100, 0, 0] as const) : stockFor(content, shop).rarity;
+  const contents = source === 'housewarming' ? 'blueprint' : content.crates[source].contents;
+  const inShop = new Set(
+    (state.offers?.shop?.offers ?? []).flatMap((o) => (o.kind === 'blueprint' ? [o.id] : [])),
+  );
+  const out: PickOption[] = [];
+  if (contents === 'blueprint') {
+    const all = (Object.keys(content.blueprints) as BlueprintId[]).filter(
+      (id) =>
+        content.blueprints[id].offered &&
+        !state.blueprints.some((b) => b.id === id) &&
+        (source !== 'housewarming' || content.blueprints[id].rarity === 'common'),
+    );
+    // The free gift prefers what the shop beside it isn't selling, and fills up from the rest.
+    const pools =
+      source === 'housewarming'
+        ? [all.filter((id) => !inShop.has(id)), all.filter((id) => inShop.has(id))]
+        : [all];
+    for (let left of pools) {
+      while (out.length < n) {
+        const id = pickByRarity(rng, weights, left, (x) => content.blueprints[x].rarity);
+        if (!id) break;
+        out.push({ kind: 'blueprint', id });
+        left = left.filter((x) => x !== id);
+      }
+    }
+  } else if (contents === 'fixture') {
+    let left = Object.keys(content.fixtures) as FixtureId[];
+    while (out.length < n) {
+      const id = pickByRarity(rng, weights, left, (x) => content.fixtures[x].rarity);
+      if (!id) break;
+      out.push({ kind: 'fixture', id });
+      left = left.filter((x) => x !== id);
+    }
+  } else {
+    const crate = content.crates[source as CrateId];
+    let left = (Object.keys(content.pieces) as PieceId[]).filter((id) => {
+      const def = content.pieces[id];
+      if (crate.pool === 'special' && def.drawWeight !== 0) return false;
+      return !crate.filter || matchesDef(crate.filter, def);
+    });
+    while (out.length < n && left.length > 0) {
+      const id = rng.pick(left);
+      out.push({ kind: 'piece', id });
+      left = left.filter((x) => x !== id);
+    }
+  }
+  return out;
+}
+
+/** Whether there's a free slot of a kind of good, ownership aside. */
+function roomForKind(
+  content: Content,
+  state: RunState,
+  kind: 'blueprint' | 'fixture' | 'tool' | 'piece',
+): Availability {
+  const slots = slotsFor(content, state);
+  if (kind === 'blueprint') {
+    return state.blueprints.length >= slots.blueprints
+      ? { ok: false, reason: SHOP_REASONS.blueprintsFull }
+      : { ok: true };
+  }
+  if (kind === 'piece') {
+    return reserveUsed(state) >= slots.reserve
+      ? { ok: false, reason: SHOP_REASONS.reserveFull }
+      : { ok: true };
+  }
+  return state.supplies.length >= slots.supplies
+    ? { ok: false, reason: SHOP_REASONS.suppliesFull }
+    : { ok: true };
+}
+
+/** Whether a crate's option can be kept now (sell something first if not). */
+export function roomForOption(content: Content, state: RunState, o: PickOption): Availability {
+  if (o.kind === 'blueprint' && state.blueprints.some((b) => b.id === o.id)) {
+    return { ok: false, reason: SHOP_REASONS.owned };
+  }
+  return roomForKind(content, state, o.kind);
+}
+
+function withServices(goods: readonly ShopOffer[], upgrade: readonly ShopOffer[]): ShopOffer[] {
+  return [
+    ...goods,
+    ...upgrade,
+    ...SERVICES.map((service): ShopOffer => ({ kind: 'service', service })),
+  ];
 }
 
 /** The sale: one random good, from the visit's own stream. */
@@ -332,7 +489,7 @@ export function openVisit(
   const goods = stockGoods(content, state, shop, 0);
   return {
     number: shop,
-    offers: withServices(goods),
+    offers: withServices(goods, stockUpgrade(content, state, shop)),
     sale: pickSale(state, shop, 0, goods.length),
     refreshes: 0,
     boughtAny: false,
@@ -344,9 +501,10 @@ export function openVisit(
 export function refreshVisit(content: Content, state: RunState, visit: ShopVisit): ShopVisit {
   const refreshes = visit.refreshes + 1;
   const goods = stockGoods(content, state, visit.number, refreshes);
+  const upgrade = visit.offers.filter((o) => o.kind === 'upgrade');
   return {
     ...visit,
-    offers: withServices(goods),
+    offers: withServices(goods, upgrade),
     sale: pickSale(state, visit.number, refreshes, goods.length),
     refreshes,
     boughtAny: true,

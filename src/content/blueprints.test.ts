@@ -686,6 +686,8 @@ describe('Ahead of Schedule', () => {
     expect(r.currentTally(s)).toMatchObject({ total: 3, xMults: [] });
     s = r.apply(s, { t: 'completeEarly' }).state;
     expect(s).toMatchObject({ screen: 'shop', milestonesEarly: 1 });
+    // Shop 1 opens with the free Housewarming crate: set it aside, then leave.
+    s = r.apply(s, { t: 'pick', i: -1 }).state;
     s = r.apply(s, { t: 'leaveShop' }).state;
     expect(s).toMatchObject({ screen: 'build', phase: 1 });
     expect(r.currentTally(s)).toMatchObject({ mult: 120, total: 4 });

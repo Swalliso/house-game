@@ -14,10 +14,10 @@ import {
 import { audio } from '../audio/audio.ts';
 import { busy } from '../fx/director.ts';
 import { formatNumber } from '../format.ts';
-import { GoodBody, offerGood } from '../hud/goods.tsx';
+import { GoodBody, goodName, goodRarity, offerGood, type GoodRef } from '../hud/goods.tsx';
 import { Tip } from '../hud/Tip.tsx';
-import { FIXTURE_GLYPHS } from '../sprites.ts';
-import { buy, inspected, leaveShop, refreshShop, run } from '../store.ts';
+import { FIXTURE_GLYPHS, TOOL_GLYPHS } from '../sprites.ts';
+import { buy, inspected, leaveShop, pickOption, refreshShop, run } from '../store.ts';
 import './shop.css';
 
 /** The shop is hidden to look at the lot (it's still open). */
@@ -65,13 +65,22 @@ function OfferCard({ o }: { o: OfferView }) {
   const good = offerGood(o.offer);
   const sold = o.offer.kind !== 'service' && !!o.offer.sold;
   const rarity = o.rarity;
-  const glyph = o.offer.kind === 'fixture' ? FIXTURE_GLYPHS[o.offer.id] : null;
+  const glyph =
+    o.offer.kind === 'fixture'
+      ? FIXTURE_GLYPHS[o.offer.id]
+      : o.offer.kind === 'tool'
+        ? TOOL_GLYPHS[o.offer.id]
+        : null;
   return (
     <article
       class={`offer kind-${o.offer.kind} ${rarity ? `rarity-${rarity}` : ''} ${o.onSale ? 'on-sale' : ''} ${sold ? 'sold' : ''} ${justBought.value === o.i ? 'just-bought' : ''}`}
       onMouseEnter={() => good && (inspected.value = { kind: 'offer', i: o.i })}
     >
-      {o.onSale && <span class="sale-ribbon">Sale</span>}
+      {o.onSale && (
+        <span class="sale-ribbon">
+          <Tip term="sale">Sale</Tip>
+        </span>
+      )}
       <header>
         {glyph && (
           <span class="glyph" aria-hidden="true">
@@ -104,7 +113,8 @@ function OfferCard({ o }: { o: OfferView }) {
           </>
         )}
       </footer>
-      {!o.ok && !sold && <p class="offer-reason">{o.reason}</p>}
+      {/* Always there, so a card never changes height when the budget does. */}
+      <p class="offer-reason">{!o.ok && !sold ? o.reason : '\u00a0'}</p>
     </article>
   );
 }
@@ -184,6 +194,71 @@ function StrikePicker() {
   );
 }
 
+/**
+ * An opened crate (or the Housewarming gift): its options turn over one at a time, each with
+ * a glow by rarity (§12, Shop and crates), and one can be kept. Sell first to make room.
+ */
+function CratePickSheet() {
+  const s = run.value;
+  const open = s.offers?.pick;
+  if (!open) return null;
+  const legal = new Set(
+    rules.legalActions(s).flatMap((a) => (a.t === 'pick' && a.i >= 0 ? [a.i] : [])),
+  );
+  const title =
+    open.source === 'housewarming' ? 'A housewarming gift' : CONTENT.crates[open.source].name;
+  const detail =
+    open.source === 'housewarming'
+      ? 'Free: keep one Common blueprint, to start your rule book.'
+      : 'Keep one. Sell from your goods on the right to make room.';
+  return (
+    <div class="crate-pick" role="dialog" aria-label={title}>
+      <div class="crate-sheet">
+        <h2>{title}</h2>
+        <p class="muted">{detail}</p>
+        <div class="crate-options">
+          {open.options.map((o, i) => {
+            const good = o as GoodRef;
+            const rarity = goodRarity(good);
+            const ok = legal.has(i);
+            return (
+              <article
+                key={`${i}-${o.id}`}
+                class={`offer crate-option ${rarity ? `rarity-${rarity}` : ''}`}
+                style={{ animationDelay: `${i * 220}ms` }}
+                onAnimationStart={() => {
+                  if (rarity === 'rare') audio.play('sparkle');
+                  else audio.play('plink', { rate: 1 + i * 0.2 });
+                }}
+              >
+                <header>
+                  <h3>{goodName(good)}</h3>
+                </header>
+                <GoodBody good={good} />
+                <footer>
+                  <button
+                    type="button"
+                    class="buy"
+                    disabled={!ok}
+                    title={ok ? `Keep ${goodName(good)}` : 'No room: sell something first'}
+                    onClick={() => (pickOption(i) ? audio.play('stamp') : audio.play('illegal'))}
+                  >
+                    Keep
+                  </button>
+                </footer>
+                {!ok && <p class="offer-reason">No room: sell something first.</p>}
+              </article>
+            );
+          })}
+        </div>
+        <button type="button" class="strike-cancel" onClick={() => pickOption(-1)}>
+          Set it aside
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function ShopScreen() {
   const s = run.value;
   const visit = s.offers?.shop;
@@ -254,9 +329,13 @@ export function ShopScreen() {
       <div class="shop-body">
         <Section title="Blueprints" offers={of('blueprint')} term="blueprints" />
         <Section title="Pieces and fixtures" offers={cards} term="fixture" />
+        <Section title="Tools" offers={of('tool')} term="tools" />
+        <Section title="Crates" offers={of('crate')} term="crates" />
+        <Section title="Company upgrade" offers={of('upgrade')} term="upgrades" />
         <Section title="Services" offers={of('service')} term="services" />
       </div>
       <StrikePicker />
+      <CratePickSheet />
     </div>
   );
 }

@@ -35,6 +35,9 @@ function randomAction(state: RunState, seed: string, step: number, free = false)
   const rng = stream(seed, `test/${step}`);
   // The shop between milestones: sometimes buy what's affordable, then leave.
   if (state.screen === 'shop') {
+    // An open crate first: keep an option (or discard it).
+    const picks = rules.legalActions(state).filter((a) => a.t === 'pick');
+    if (picks.length > 0) return rng.pick(picks);
     const ok = rules.shopOffers(state).filter((o) => o.ok && o.offer.kind !== 'service');
     return ok.length > 0 && rng.chance(50) ? { t: 'buy', i: rng.pick(ok).i } : { t: 'leaveShop' };
   }

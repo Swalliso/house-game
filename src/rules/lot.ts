@@ -14,7 +14,7 @@ export function terrainAt(lot: Lot, x: number, y: number): TerrainId | null {
 
 const isWater = (t: TerrainId | null) => t === 'pond' || t === 'creek';
 /** Tiles nothing can be built on in M1 (only a Driveway crosses the creek, from M2). */
-export const isBlocked = (t: TerrainId | null) => isWater(t) || t === 'boulder';
+export const isBlocked = (t: TerrainId | null) => isWater(t) || t === 'boulder' || t === 'oldShed';
 
 /** The sunny side: `sunnyRows` rows along one edge, except Tree tiles. */
 export function isSunny(lot: Lot, x: number, y: number): boolean {
@@ -29,7 +29,10 @@ export function isSunny(lot: Lot, x: number, y: number): boolean {
   }
 }
 
-/** Builds a lot from ASCII rows, for tests and debugging: . ground, T tree, P pond, C creek, B boulder. */
+/**
+ * Builds a lot from ASCII rows, for tests and debugging: . ground, T tree, P pond, C creek,
+ * B boulder, S Old Shed, K Time Capsule.
+ */
 export function lotFromRows(rows: readonly string[], sunnySide: Lot['sunnySide'] = 'top'): Lot {
   const codes: Record<string, TerrainId | null> = {
     '.': null,
@@ -37,6 +40,8 @@ export function lotFromRows(rows: readonly string[], sunnySide: Lot['sunnySide']
     P: 'pond',
     C: 'creek',
     B: 'boulder',
+    S: 'oldShed',
+    K: 'timeCapsule',
   };
   const height = rows.length;
   const width = rows[0]?.length ?? 0;
@@ -52,7 +57,14 @@ export function lotFromRows(rows: readonly string[], sunnySide: Lot['sunnySide']
 }
 
 export function lotToRows(lot: Lot): string[] {
-  const codes: Record<TerrainId, string> = { tree: 'T', pond: 'P', creek: 'C', boulder: 'B' };
+  const codes: Record<TerrainId, string> = {
+    tree: 'T',
+    pond: 'P',
+    creek: 'C',
+    boulder: 'B',
+    oldShed: 'S',
+    timeCapsule: 'K',
+  };
   const rows: string[] = [];
   for (let y = 0; y < lot.height; y++) {
     let row = '';
@@ -131,10 +143,57 @@ export function lotProblems(lot: Lot, b: LotBalance): string[] {
 export function generateLot(seed: string, b: LotBalance): Lot {
   for (let attempt = 0; attempt < b.maxAttempts; attempt++) {
     const lot = tryLot(stream(seed, `lot/${attempt}`), b, attempt, true);
-    if (lotProblems(lot, b).length === 0) return lot;
+    if (lotProblems(lot, b).length === 0) return placeFinds(lot, seed, b);
   }
   // Practically unreachable (the tests check 1,000 seeds), but a creekless lot always passes.
-  return tryLot(stream(seed, `lot/${b.maxAttempts}`), b, b.maxAttempts, false);
+  return placeFinds(tryLot(stream(seed, `lot/${b.maxAttempts}`), b, b.maxAttempts, false), seed, b);
+}
+
+/**
+ * The finds (M3b): an Old Shed (2×2) and Time Capsules (1×1), on free ground, after the lot
+ * has passed its checks. They come from their own `lot/<attempt>/finds` stream, so adding them
+ * left every lot's terrain otherwise as it was. Each stays `findStreetGap` rows back from the
+ * street and doesn't touch another find.
+ */
+function placeFinds(lot: Lot, seed: string, b: LotBalance): Lot {
+  const rng = stream(seed, `lot/${lot.attempt}/finds`);
+  const { width: w, height: h } = lot;
+  const terrain = lot.terrain.slice();
+  const maxY = h - 1 - b.findStreetGap;
+  const free = (x: number, y: number) =>
+    inBounds(w, h, x, y) && y <= maxY && terrain[cellIndex(w, x, y)] === null;
+  const nearFind = (x: number, y: number) =>
+    ORTHOGONAL.some(([dx, dy]) => {
+      const t = inBounds(w, h, x + dx, y + dy) ? terrain[cellIndex(w, x + dx, y + dy)] : null;
+      return t === 'oldShed' || t === 'timeCapsule';
+    });
+  const sheds = rng.range(b.oldSheds[0], b.oldSheds[1]);
+  for (let k = 0; k < sheds; k++) {
+    for (let tries = 0; tries < 200; tries++) {
+      const x = rng.int(w - 1);
+      const y = rng.int(Math.max(1, maxY));
+      const cells = [
+        [x, y],
+        [x + 1, y],
+        [x, y + 1],
+        [x + 1, y + 1],
+      ] as const;
+      if (!cells.every(([cx, cy]) => free(cx, cy) && !nearFind(cx, cy))) continue;
+      for (const [cx, cy] of cells) terrain[cellIndex(w, cx, cy)] = 'oldShed';
+      break;
+    }
+  }
+  const capsules = rng.range(b.timeCapsules[0], b.timeCapsules[1]);
+  for (let k = 0; k < capsules; k++) {
+    for (let tries = 0; tries < 200; tries++) {
+      const x = rng.int(w);
+      const y = rng.int(Math.max(1, maxY + 1));
+      if (!free(x, y) || nearFind(x, y)) continue;
+      terrain[cellIndex(w, x, y)] = 'timeCapsule';
+      break;
+    }
+  }
+  return { ...lot, terrain };
 }
 
 function tryLot(rng: Rng, b: LotBalance, attempt: number, allowCreek: boolean): Lot {

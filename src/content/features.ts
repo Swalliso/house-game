@@ -43,4 +43,28 @@ export const FEATURES: Readonly<Record<FeatureId, FeatureDef>> = {
     clear: 'demolish',
     inert: true,
   },
+  // Finds (Appendix B, M3b): each pays once. They give nothing as neighbors.
+  // The Old Shed (2×2) blocks building until it's demolished, which pays a random tool.
+  oldShed: {
+    id: 'oldShed',
+    name: 'Old Shed',
+    tier: 'core',
+    tags: [],
+    blocks: true,
+    clear: 'demolish',
+    inert: true,
+    size: [2, 2],
+    reward: { tool: 'random' },
+  },
+  // A Time Capsule doesn't block: the first piece built over it pays.
+  timeCapsule: {
+    id: 'timeCapsule',
+    name: 'Time Capsule',
+    tier: 'core',
+    tags: [],
+    blocks: false,
+    clear: 'buildOver',
+    inert: true,
+    reward: { budget: 3 },
+  },
 };

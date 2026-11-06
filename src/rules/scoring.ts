@@ -303,6 +303,8 @@ const XMULT_ORDER: Record<XMultTerm['source']['kind'], number> = {
   set: 0,
   fixture: 1,
   blueprint: 2,
+  tool: 3,
+  upgrade: 4,
   crew: 4,
 };
 
