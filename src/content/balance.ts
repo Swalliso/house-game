@@ -52,12 +52,12 @@ export const BALANCE: Balance = {
   // follows 100%, 98%, 95%, 85%, 72%, 58%, 45%.
   phases: [
     { name: 'Groundbreaking', target: 15 }, // median 42, α 0.36
-    { name: 'Foundation', target: 150 }, // median 220, α 0.68
-    { name: 'Framing', target: 470 }, // median 582, α 0.81
-    { name: 'Roofing', target: 1050 }, // median 1408, α 0.75
-    { name: 'Drywall', target: 2250 }, // median 2693, α 0.84
-    { name: 'Finishes', target: 4950 }, // median 4459, α 1.11
-    { name: 'Final Walkthrough', target: 9750 }, // median 7528, α 1.30
+    { name: 'Foundation', target: 190 }, // median 223, α 0.85
+    { name: 'Framing', target: 490 }, // median 618, α 0.79
+    { name: 'Roofing', target: 1050 }, // median 1446, α 0.73
+    { name: 'Drywall', target: 2250 }, // median 2660, α 0.85
+    { name: 'Finishes', target: 4600 }, // median 4320, α 1.06
+    { name: 'Final Walkthrough', target: 9500 }, // median 7204, α 1.32
   ],
   // sim:targets:end
 

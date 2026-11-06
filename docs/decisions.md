@@ -778,8 +778,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 ### D-085 · M3 balance: the milestone budget and the targets
 **Status:** Proposed · 2026-11-05, with the M3 pull request; numbers for the sim and playtests to tune.
 **Decision:**
-- **Milestones pay 4 budget,** not Appendix A's 3. At 3 the greedy bot (which never completes early) earned a median 25 a run against the plan's 30–40, so the shop was too tight to plan around.
-- **Targets** (`--suggest-targets`, 200 runs, with the shop bot): 15, 150, 470, 1,050, 2,250, 4,950, 9,750 Wow, up from M2's last target of 5,300. The shop's blueprints, fixtures, and tools roughly double a late-run week. D-072's survival curve and criteria still hold: greedy clears milestones 1–3 95% of the time and wins 44%; random wins none and mostly fails at milestone 2.
+- **Milestones pay 4 budget,** not Appendix A's 3. At 3 the greedy bot (which never completes early) earned a median 25 a run against the plan's 30–40, so the shop was too tight to plan around. At 4 it earns a median 30 (p10 15, p90 42).
+- **Targets** (`--suggest-targets`, 200 runs, with the shop bot): 15, 190, 490, 1,050, 2,250, 4,600, 9,500 Wow, up from M2's 15, 120, 270, 650, 1,350, 2,900, 5,300. The shop's blueprints, fixtures, and tools roughly double a late-run week. D-072's survival curve and criteria still hold: greedy clears milestones 1–3 93% of the time and wins 44%; random wins none and fails at milestone 1 or 2.
 - The shop's other numbers are Appendix A's placeholders, in `balance.ts`.
 
 **Changes:** Appendix A · M3a's +3 per milestone. D-072's targets.
