@@ -19,6 +19,7 @@ import {
   type ToolId,
   type UpgradeId,
 } from '../../rules/index.ts';
+import { Tip } from './Tip.tsx';
 
 export const RARITY_LABEL: Record<Rarity, string> = {
   common: 'Common',
@@ -27,7 +28,11 @@ export const RARITY_LABEL: Record<Rarity, string> = {
 };
 
 export function RarityTag({ rarity }: { rarity: Rarity }) {
-  return <span class={`rarity-tag rarity-${rarity}`}>{RARITY_LABEL[rarity]}</span>;
+  return (
+    <Tip term="rarity">
+      <span class={`rarity-tag rarity-${rarity}`}>{RARITY_LABEL[rarity]}</span>
+    </Tip>
+  );
 }
 
 export type GoodRef =

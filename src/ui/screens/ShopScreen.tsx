@@ -76,7 +76,11 @@ function OfferCard({ o }: { o: OfferView }) {
       class={`offer kind-${o.offer.kind} ${rarity ? `rarity-${rarity}` : ''} ${o.onSale ? 'on-sale' : ''} ${sold ? 'sold' : ''} ${justBought.value === o.i ? 'just-bought' : ''}`}
       onMouseEnter={() => good && (inspected.value = { kind: 'offer', i: o.i })}
     >
-      {o.onSale && <span class="sale-ribbon">Sale</span>}
+      {o.onSale && (
+        <span class="sale-ribbon">
+          <Tip term="sale">Sale</Tip>
+        </span>
+      )}
       <header>
         {glyph && (
           <span class="glyph" aria-hidden="true">

@@ -72,6 +72,9 @@ function Sparkles({ list }: { list: readonly XMultTerm[] }) {
   if (list.length === 0) return null;
   return (
     <ul class="sparkles" aria-label={SCORE_LABELS.xMult}>
+      <li class="sparkles-label">
+        <Tip term="sparkle">{SCORE_LABELS.xMult}</Tip>
+      </li>
       {list.map((x) => (
         <li
           key={`${x.source.kind}:${x.label}`}

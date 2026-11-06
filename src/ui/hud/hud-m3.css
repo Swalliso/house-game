@@ -258,3 +258,11 @@
 .use-tool {
   display: block;
 }
+
+.sparkles li.sparkles-label {
+  padding: 1px 2px;
+  background: none;
+  border: none;
+  color: var(--sparkle);
+  animation: none;
+}
