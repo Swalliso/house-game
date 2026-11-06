@@ -786,6 +786,12 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 **Changes:** Appendix A · M3a's +3 per milestone. D-072's targets.
 **2026-11-06 (D-089):** these numbers came from the old greedy, whose estimate ties went to the back row, and whose shop bot always struck Driveways and Fences. On the same targets the new greedy clears milestones 1–3 in 93.5% [89.2–96.2] and wins 60.0% [53.1–66.5] (`--check`, 200 held-out runs), so the targets are now easy for it. The old greedy's 44% was also measured on the seeds the targets were fitted to; on held-out seeds it won about 52%. The budget numbers also came from a bot that never completes early; `--early always` shows what early completion earns. Re-running `--suggest-targets` is the team's call.
+**2026-11-06 (playtest 3):** the team found the run too easy once the shop's goods were in, and the budget about right: they could buy what they wanted without being able to buy everything. Their run (seed `jbf3zs`, build 77016ef) won with 14,116 Wow against 9,500, and earned 41 budget.
+- Milestones 1 and 2 were close: 20 against 15, and 247 against 190, which took a week of overtime.
+- From milestone 3 the targets stopped binding: 1,172 against 490, 2,515 against 1,050, 4,830 against 2,250, 8,954 against 4,600 (completed a week early), and 14,116 against 9,500.
+- Each of milestones 4, 5, and 6 was already met when its phase began, because the score carries over (D-028): 1,172 against 1,050, 2,515 against 2,250, and 4,830 against 4,600.
+- They completed early once and found it hard to judge whether it paid, since the targets weren't pressing.
+- D-089's unapplied fit (530 to 12,800) would still have lost to this run from milestone 3 on. A player who builds an engine pulls away in the middle of the run, so the curve's middle is too low, not just its end.
 
 ### D-086 · Tooltips, first pass (with the shop)
 **Status:** Proposed · 2026-11-05, with the M3 pull request (the team chose the light pass of D-077 for M3).
@@ -900,7 +906,7 @@ Choose from two or three contracts, each one a client plus a lot.
 
 ## Open questions
 
-These came out of playtest 2 (M2, 2026-11-05). The team asked to hold off on changes until more of the game is in, so each one is Open until a later phase picks it up.
+D-074 to D-080 came out of playtest 2 (M2, 2026-11-05), and D-090 to D-093 out of playtest 3 (M3, 2026-11-06). The team asked to hold off on changes until more of the game is in, so each one is Open until a later phase picks it up.
 
 ### D-074 · Packs: Fences, Driveways, and Hallways that you shape
 **Status:** Open · 2026-11-05, from playtest 2. The direction is confirmed by the team: a week may place more than one piece, overriding D-004 once this is decided.
@@ -916,6 +922,7 @@ These came out of playtest 2 (M2, 2026-11-05). The team asked to hold off on cha
 - How placing and previewing several segments works within one week.
 - How the sim's bots place packs, and whether the 1×N and L cards stay.
 **Would change:** D-004 and D-036 (one placement a week), D-049 (the bigger yard shapes), D-071 (the variant cards), and D-072 (the enclosure probe should include draw odds).
+**2026-11-06 (playtest 3):** still no Fences in the player's run. M4a's Hendersons want a fenced yard, and the Barkers one of 12 tiles.
 
 ### D-075 · Banked buildings: shop goods that place an extra piece in a week
 **Status:** Decided · 2026-11-05: the team chose a tool, Weekend Crew (D-083). Was Open, from playtest 2 (the team's idea, after Combolands' blueprints and potions).
@@ -957,12 +964,14 @@ These came out of playtest 2 (M2, 2026-11-05). The team asked to hold off on cha
 - Bigger terrain terms.
 - Shading the front yard and the sunny side on the board while placing.
 New content is preferred over raising existing numbers.
+**2026-11-06 (playtest 3):** the player sites the house in the middle of the lot, neither near the street nor far back, and didn't feel pulled either way. D-089's sim says otherwise for greedy: houses 0–3 rows from the street win 69%, and 10 or more rows back 48%.
 
 ### D-079 · Treehouses shouldn't reward clustering
 **Status:** Open · 2026-11-05, from playtest 2.
 **Finding:** Three Treehouses touching each other earned 288 Wow, more than every Bedroom in the run. Each counts the others as Kid neighbors, on top of D-071's extra +2.
 **Idea (the team's):** Reward one Treehouse per forest. Pay per touching Tree, and don't let Treehouses count toward each other's Kid bonus, or penalize them for touching.
 **Would change:** D-071's Treehouse default.
+**2026-11-06 (playtest 3):** Treehouses feel better: not overpowered, but still worth building. Their rules haven't changed since playtest 2; the shop's goods grew the rest of the house around them. The Hendersons like Kid pieces (+50%, M4a), which may make them strong again.
 
 ### D-080 · The Driveway: legibility, and a purpose without a Garage
 **Status:** Open · 2026-11-05, from playtest 2.
@@ -974,6 +983,54 @@ New content is preferred over raising existing numbers.
 - Make it a pack (D-074).
 - Give it a bonus of its own.
 - Make a Garage likelier once a Driveway is down.
+**2026-11-06 (playtest 3):** the player built more Driveways this time (two Long Driveways in their run).
+
+### D-090 · Budget from how you build
+**Status:** Open · 2026-11-06, from playtest 3.
+**Finding:** The budget felt about right. But it comes almost entirely from milestones: in the playtest run, 30 of 41 came from milestones and one early completion, and 11 from two Home Offices. Where and what you build barely changes what you earn.
+**Idea (the team's):** more ways to earn budget through placement, the way some Combolands buildings and interactions pay gold. (research.md doesn't yet say which ones.)
+**Options:**
+- Pieces that pay budget for their neighbors or their spot, beside today's economy pieces (Garage, Home Office, Henhouse) and Solar Panels (Sunny pieces pay).
+- Fixtures that pay budget.
+- Sets that pay budget once when completed (Appendix A allows a set's one-time reward), as some room-completion rewards in Castles of Mad King Ludwig pay money.
+- More finds that pay, like the Time Capsule.
+**To decide:** which sources, and how big. A run's total should stay near D-085's band, so milestones may pay less. How the shop bot values them.
+**Would change:** D-013 and D-085.
+
+### D-091 · Finds worth building around
+**Status:** Open · 2026-11-06, from playtest 3.
+**Finding:** The player noticed both finds, and demolished the Old Shed in the first week. Clearing it is a no-brainer: one demolition buys a random tool (a Rush Order, in their run) and frees a 2×2 that blocks building.
+**Idea (the team's):** the Old Shed boosts buildings where that makes sense, so keeping it competes with clearing it.
+**Options:**
+- Pieces that would use a shed (a Garage, a Henhouse, a garden) earn more while they touch it.
+- Its reward grows the longer it stands, so clearing it later pays a better tool.
+- Time Capsules get a choice of their own.
+**To decide:** which pieces, and how much; whether demolishing it still pays a tool; how the bots choose.
+**Would change:** D-082's finds, and Appendix B's Old Shed and Time Capsule rows.
+
+### D-092 · Telling whether a fixture is worth it
+**Status:** Open · 2026-11-06, from playtest 3.
+**Finding:** Fixtures feel okay, but it's hard to tell whether one is worthwhile. The shop shows a fixture's text alone. On the board, pointing at a piece shows that piece's earnings this week before and after (D-087), one host at a time. Nothing says what a fixture adds over the rest of the run. The player installed six in their run: two Fireplaces, two Pergolas, a Kitchen Island, and Bunk Beds.
+**Options:**
+- In the shop, a fixture names its best host in your house and what it would add this week.
+- While installing, every legal host shows its gain, so the best one stands out.
+- The gain over the weeks left, since a fixture stays for the run.
+- A comparison with the fixture it would replace.
+**To decide:** which of these. The numbers come from `preview()`, so the UI still never scores anything itself.
+**Would change:** D-087.
+
+### D-093 · Houses that look like houses
+**Status:** Open · 2026-11-06, from playtest 3. The team wants its own research session before anything is built.
+**Finding:** Houses come out unrealistic. The playtest house had 4 Living Rooms, 2 Kitchens, 2 Home Offices, and 3 Bedrooms sharing 1 Bathroom, spread across the house. Scoring rewards repeating the strongest rooms wherever they combo. research.md notes the same problem in Floor Plan and Dream Home (the best house can have five adjacent dining rooms and no kitchen), and that Dream Home pushes back with functionality bonuses.
+**Idea (the team's):** more sets, and other ways to make houses look and feel like real houses.
+**To research:**
+- More sets and kinds of set (M4a adds Suite and Full House, D-056).
+- Diminishing returns, or a taste, for repeated room types.
+- Rooms of one type that touch merging into one bigger room.
+- Zones or wings (living, sleeping, service).
+- Client specs that describe a real household. M4a's specs already ask for bedrooms and bathrooms.
+**To decide:** after the research.
+**Would change:** D-056's set ladder, and possibly D-020 (pieces built from tags) and M4a's clients.
 
 ### Earlier open questions
 
