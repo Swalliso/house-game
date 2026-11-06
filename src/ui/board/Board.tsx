@@ -72,9 +72,13 @@ import {
   zoomOut,
 } from './camera.ts';
 import { center, labelSpot, occupancy, uidAt } from './geometry.ts';
+import { layerVars } from './layers.ts';
 import { PieceShape, wobble } from './PieceView.tsx';
 import { Outline, TerrainLayer, YardTint } from './TerrainLayer.tsx';
 import './board-m2.css';
+
+/** The layers' z-indexes as CSS variables, set once on the board element. */
+const LAYER_VARS = layerVars();
 
 /** The scroll container's padding (app.css), kept clear around the board. */
 const PAD = 6;
@@ -562,7 +566,11 @@ export function Board() {
         <div
           ref={boardRef}
           class={boardClass}
-          style={{ width: `${lot.width * px}px`, height: `${(lot.height + 1) * px}px` }}
+          style={{
+            ...LAYER_VARS,
+            width: `${lot.width * px}px`,
+            height: `${(lot.height + 1) * px}px`,
+          }}
         >
           <TerrainLayer lot={lot} scale={scale} />
           <YardTint state={state} scale={scale} />

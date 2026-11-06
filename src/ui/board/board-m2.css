@@ -110,7 +110,7 @@
 }
 .demolish-target,
 .demolish-hint {
-  z-index: 3;
+  z-index: var(--z-targets);
 }
 /* Legal: a red wash and a solid edge. Armed: deeper, and it pulses. Illegal: dashed, no wash. */
 .demolish-target.legal .fill {
@@ -178,7 +178,7 @@
 /* --- Fixtures (M3a) ---------------------------------------------------------------- */
 .install-target,
 .install-hint {
-  z-index: 3;
+  z-index: var(--z-targets);
 }
 .install-target.legal .fill {
   fill: rgb(47 111 208 / 0.18);

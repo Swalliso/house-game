@@ -258,6 +258,8 @@ h3 {
 }
 .board {
   position: relative;
+  /* Its layers (board/layers.ts) stack among themselves, never with the page. */
+  isolation: isolate;
   margin: auto;
   flex: none;
   touch-action: none;
@@ -323,7 +325,7 @@ h3 {
 
 /* The ghost: blue and outlined when legal; orange and hatched when not (never color alone). */
 .ghost {
-  z-index: 3;
+  z-index: var(--z-ghost);
   opacity: 0.85;
 }
 .ghost .cell::after {
@@ -362,7 +364,7 @@ h3 {
 .ghost-reason,
 .ghost-delta {
   position: absolute;
-  z-index: 6;
+  z-index: var(--z-ghost-text);
   transform: translate(-50%, calc(-100% - 6px));
   white-space: nowrap;
   font-size: 13px;
@@ -397,7 +399,7 @@ h3 {
   pointer-events: none;
 }
 .badges {
-  z-index: 4;
+  z-index: var(--z-badges);
 }
 .badge {
   position: absolute;
@@ -449,7 +451,7 @@ h3 {
 }
 
 .popups {
-  z-index: 7;
+  z-index: var(--z-popups);
 }
 .popup {
   position: absolute;
