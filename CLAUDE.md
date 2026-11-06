@@ -54,6 +54,6 @@ build one house for one client, placing one piece per week.
 ## Commands
 
 npm run dev · npm test · npm run typecheck · npm run build · npm run format
-npm run sim -- --help (from M2)
+npm run sim -- --help · npm run sim -- --check (§8's criteria, held-out seeds; D-089)
 In the browser pane, `preview_start` with the "dev" config in .claude/launch.json.
 Bug reports are run codes: open them with ?run= or paste them into a replay test.
