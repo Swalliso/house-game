@@ -1,6 +1,7 @@
 /* The interface's primitives (M5a): the pixel text, Panel, Card, Button, Chip, Plaque (the
-   Counter), Icon, Keycap, Well, and Meter. kit.tsx renders them; components adjust them with
-   their own classes and the custom properties below, never with raw colors (tokens.css).
+   Counter), Icon, Keycap, Well, Meter, the plank tag, Switch, Slider, Segmented, Price, and
+   Sheet. kit.tsx renders them; components adjust them with their own classes and the custom
+   properties below, never with raw colors (tokens.css).
 
    Frames are 9-slice art (theme/frames.ts) applied with border-image at whole multiples of
    --px; a frame's middle is the element's own background, clipped to the padding box, so the

@@ -1,5 +1,6 @@
-/* Open House: the layout, the board's pieces and overlays, and the screens part 2 of M5a's UI
-   pass restyles. The tokens and the primitives are in theme/ and kit/. */
+/* Open House: the layout, and the board's pieces and overlays (the pieces and juice passes
+   restyle those). The tokens and primitives are in theme/ and kit/, each screen's styles
+   beside it. */
 
 :root {
   /* The tokens (colors, type, spacing) are in theme/tokens.css. */
@@ -129,7 +130,7 @@ button:focus-visible,
   scrollbar-width: thin;
   scrollbar-color: var(--wood) var(--wood-night);
 }
-/* The end screen and the shop's goods sit in the right column too; part 2 restyles them. */
+/* Anything in a side column that isn't a panel keeps its own height. */
 .right > :not(.panel) {
   flex: none;
 }

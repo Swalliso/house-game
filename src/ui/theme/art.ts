@@ -1,12 +1,13 @@
-// The interface's own pixel art (M5a): the 9-slice frames and the icons, drawn for Open House
-// in LimeZu's palette as text grids, one character per pixel ('.' is transparent). They're our
+// The interface's own pixel art (M5a): the 9-slice frames, small parts (a ribbon's tails, a
+// tooltip's tail), the icons, and the title's sky (scenery.ts), drawn for Open House in
+// LimeZu's palette as text grids, one character per pixel ('.' is transparent). They're our
 // own work, so they carry none of the packs' license questions (D-097's license note).
 //
 // At startup, applyArt() draws each grid into a small canvas and publishes it as a CSS custom
-// property, `--art-<name>: url(data:…)`. Frames are applied with border-image, icons as
-// backgrounds, all at whole multiples of the UI pixel (--px) with image-rendering: pixelated,
-// so every art pixel lands on whole device pixels. Nothing is fetched, and nothing changes
-// after startup.
+// property, `--art-<name>: url(data:…)`. Frames are applied with border-image, the rest as
+// backgrounds, at whole multiples of the UI pixel (--px; the sky at the title street's scale)
+// with image-rendering: pixelated, so every art pixel lands on whole device pixels. Nothing is
+// fetched, and nothing changes after startup.
 
 import { FRAMES, PARTS, PATTERNS } from './frames.ts';
 import { ICONS } from './icons.ts';

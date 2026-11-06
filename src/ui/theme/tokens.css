@@ -123,7 +123,7 @@
   --focus-outer: var(--ink);
   --focus-inner: var(--sparkle);
 
-  /* --- Legacy names, kept for the screens part 2 restyles (shop, title, end) ----------- */
+  /* --- Legacy names, for the stylesheets still on theme.test.ts's legacy list ---------- */
   --muted: var(--ink-soft);
   --panel: var(--card);
   --panel-edge: var(--paper-line);
