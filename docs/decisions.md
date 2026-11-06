@@ -41,6 +41,7 @@ You run a home-building company. Each run is one contract: one client, one plot 
 **Status:** Accepted · 2026-11-04
 **Decision:** Each week is one turn in which you place one piece. Every placed piece earns every week, so early placements earn more over time.
 **Amended by:** D-036: a week may also be passed without placing (confirmed 2026-11-04). D-050 and D-051 (Accepted 2026-11-05): a week's turn can instead be installing a drawn fixture; tools and bought fixtures are free actions, and no week ever gets a second piece.
+**To be amended by:** D-074 and D-075 (Open). The team confirmed after playtest 2 (2026-11-05) that a week may place more than one piece, through packs or banked buildings.
 
 ### D-005 · Milestones with rising targets
 **Status:** Accepted · 2026-11-04
@@ -661,6 +662,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **Why:** §8 asks that a fenced yard cost about 2–3 placements on a typical lot. The sim's enclosure probe (the fewest Fence cards that close a yard next to the greedy bot's house after milestone 3, 80 houses) found that at 4 tiles one Fence usually closes a pocket in a notch of the house (median 1 card). At 10 tiles the median is 2 and the middle half is 2–3, and every fenced yard pays a Fence its full +6.
 **Considered:** 8 tiles (median 2, but a quarter of houses close one with a single card). Keeping 4 (cheap, strong fences).
 **Changes:** D-046 (Accepted) and D-049 (Accepted): the fenced-yard rule's "at least 4 tiles".
+**Playtest 2:** fenced yards still felt too hard and not worth it, mostly because of drawing enough Fences. See D-074.
 
 ---
 
@@ -692,6 +694,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - **The Kitchen** now earns +2 per touching Herb Garden too (D-067 deferred it to M2).
 
 **Why:** Defaults so every base-pool piece is playable in M2; each is a line of data.
+**Playtest 2:** the Treehouse's extra +2 plus its Kid bonus made clusters too strong (D-079). The other defaults held.
 
 ### D-072 · The M2 sim and the first real targets
 **Status:** Proposed · 2026-11-05, with the M2 pull request.
@@ -704,6 +707,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 **Why:** §8 asks for the minimum that answers "are the targets right?". A greedy bot can't plan a fence, so the fence criterion needs its own measure.
 **Changes:** §8's starting α curve (a Proposed default), as above.
+**Playtest 2:** the targets felt fair, and milestone 1 at 15 Wow didn't feel too easy. The enclosure probe counts placements, not the odds of drawing the Fences, so it undersold the fence problem (D-074).
 
 ### D-073 · M2 interface defaults
 **Status:** Proposed · 2026-11-05, with the M2 pull request; to confirm at playtest 2.
@@ -758,6 +762,83 @@ Choose from two or three contracts, each one a client plus a lot.
 - **Company HQ screen:** a visual home for meta-progression.
 
 ## Open questions
+
+These came out of playtest 2 (M2, 2026-11-05). The team asked to hold off on changes until more of the game is in, so each one is Open until a later phase picks it up.
+
+### D-074 · Packs: Fences, Driveways, and Hallways that you shape
+**Status:** Open · 2026-11-05, from playtest 2. The direction is confirmed by the team: a week may place more than one piece, overriding D-004 once this is decided.
+**Finding:**
+- The player never built a fenced yard or used a Driveway, and found Hallways hard to get.
+- A fenced yard needs 2–3 Fence cards in the right shapes, plus open ground. Fences are complexity 3, so they're rare before milestone 4.
+- D-072's enclosure probe counted placements, not the odds of drawing that many Fences.
+- A Fence pays at most +6 a week.
+**Idea (the team's):** Fences, Driveways, and Hallways come as packs. One card places several segments of its type in one week, so the player shapes the run any way they like.
+**To decide:**
+- Pack size and the shape rules, for example a number of single tiles that must connect.
+- Whether a pack makes one piece or several, which matters for scoring, links, demolition, and the Fence's cap.
+- How placing and previewing several segments works within one week.
+- How the sim's bots place packs, and whether the 1×N and L cards stay.
+**Would change:** D-004 and D-036 (one placement a week), D-049 (the bigger yard shapes), D-071 (the variant cards), and D-072 (the enclosure probe should include draw odds).
+
+### D-075 · Banked buildings: shop goods that place an extra piece in a week
+**Status:** Open · 2026-11-05, from playtest 2 (the team's idea, after Combolands' blueprints and potions). The direction is confirmed by the team, as for D-074.
+**Idea:** Shop goods you hold and spend to place more than one building in a week.
+**Naming:** our Blueprints are run-long rule-benders (D-051), unlike Combolands' blueprints. So this would be a new kind of supply or a tool kind.
+**To decide:**
+- What it is: a tool, a reserve card, or a supply.
+- Its price, and whether it stacks.
+- How it works with the reserve (bought pieces wait there, D-051) and with packs (D-074).
+- The sim bots' policy for using it.
+**Would change:** D-004; D-051, which left out "a tool that plays a second piece in a week".
+
+### D-076 · Banning card types from the draws
+**Status:** Open · 2026-11-05, from playtest 2.
+**Idea:** Let the player strike a card type so it stops showing up, in the spirit of Luck be a Landlord's removal tokens.
+**Options:**
+- A shop service priced in budget. That would give budget, and so early completion's reward, a clear use.
+- A crew or upgrade perk.
+- A few per run.
+**Would change:** D-043 (draw weights are fixed for the run) and D-051 (the services).
+
+### D-077 · Tooltips that explain the game's terms
+**Status:** Open · 2026-11-05, from playtest 2.
+**Finding:** Early completion was tempting, but its payoff was unclear. Budget does nothing until the shop, and nothing says so. The Driveway's front-yard rule was hard to read (D-080).
+**Idea:** Hover tooltips for:
+- Comfort and Charm
+- budget and what it's for
+- the early-completion bonus
+- the front and back yards, and fenced yards
+- requirements (Garage, Driveway, Doghouse)
+- Hallway links, and timers
+**To decide:** When (with M3's shop, or with D-045's first-time hints in M4b), and how. The text should be generated from the rules data, as card text is (D-038).
+
+### D-078 · Terrain and the house's position should matter more
+**Status:** Open · 2026-11-05, from playtest 2.
+**Finding:** The player felt neither mattered. In their run, Charm produced 3,128 of 5,382 Wow (58%), and terrain and street lines were 21 of the last week's 100 flat points.
+**Options:**
+- Pieces and client specs that care about the lot. M4a's clients already ask for things like a fenced yard of 12 tiles.
+- Bigger terrain terms.
+- Shading the front yard and the sunny side on the board while placing.
+New content is preferred over raising existing numbers.
+
+### D-079 · Treehouses shouldn't reward clustering
+**Status:** Open · 2026-11-05, from playtest 2.
+**Finding:** Three Treehouses touching each other earned 288 Wow, more than every Bedroom in the run. Each counts the others as Kid neighbors, on top of D-071's extra +2.
+**Idea (the team's):** Reward one Treehouse per forest. Pay per touching Tree, and don't let Treehouses count toward each other's Kid bonus, or penalize them for touching.
+**Would change:** D-071's Treehouse default.
+
+### D-080 · The Driveway: legibility, and a purpose without a Garage
+**Status:** Open · 2026-11-05, from playtest 2.
+**Finding:**
+- The player read the Driveway as paying only when perpendicular to the street. In fact a 1×3 earns +1 either way. A Long Driveway standing up earns 0 when it reaches above the house's front row, because only the front yard pays.
+- With no Garage drawn, the Driveway has no purpose.
+**Options:**
+- Show the front yard on the board while placing.
+- Make it a pack (D-074).
+- Give it a bonus of its own.
+- Make a Garage likelier once a Driveway is down.
+
+### Earlier open questions
 
 - ~~Art direction and tone~~: decided by D-057 (cozy pixel art), 2026-11-05.
 - ~~Sound and music approach~~: decided by D-058 (calm music, escalating reward sounds), 2026-11-05.
