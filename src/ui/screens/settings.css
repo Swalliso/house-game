@@ -39,3 +39,18 @@
 .settings .slider-label {
   font-weight: 700;
 }
+/* A short window (1280×720): tighter groups, so every setting shows without scrolling. */
+@media (max-height: 800px) {
+  .settings .set-group {
+    gap: var(--space-1);
+  }
+  .settings .set-group + .set-group {
+    padding-top: var(--space-2);
+  }
+  .settings .set-title {
+    margin-bottom: 0;
+  }
+  .sheet.settings {
+    max-height: 96vh;
+  }
+}
