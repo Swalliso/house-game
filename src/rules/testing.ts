@@ -4,15 +4,21 @@
 
 import type {
   Balance,
+  BlueprintDef,
+  BlueprintId,
   Content,
   CrewDef,
   CrewId,
   FeatureDef,
   FeatureId,
+  FixtureDef,
+  FixtureId,
   HouseState,
   LotBalance,
+  Modifier,
   PieceDef,
   PieceId,
+  Rarity,
   Rot,
   RunSetup,
   SetDef,
@@ -315,6 +321,264 @@ export const TEST_PIECES: Record<PieceId, PieceDef> = {
       },
     ],
   }),
+  // Special pieces (weight 0: shop only).
+  playroom: piece({
+    id: 'playroom',
+    name: 'Playroom',
+    category: 'indoor',
+    shape: ['##', '##'],
+    tags: ['Loud', 'Kid'],
+    drawWeight: 0,
+    effects: [
+      { kind: 'neighbor', match: { piece: 'bedroom' }, amount: 2 },
+      { kind: 'aura', match: { tag: 'Quiet' }, scope: 'adjacent', amount: -2 },
+    ],
+  }),
+  library: piece({
+    id: 'library',
+    name: 'Library',
+    category: 'indoor',
+    shape: ['##', '##'],
+    tags: ['Quiet'],
+    drawWeight: 0,
+    effects: [{ kind: 'neighbor', match: { tag: 'Quiet' }, amount: 2, max: 3 }],
+  }),
+  mudroom: piece({
+    id: 'mudroom',
+    name: 'Mudroom',
+    category: 'indoor',
+    shape: ['##'],
+    tags: ['Pet'],
+    drawWeight: 0,
+    effects: [
+      {
+        kind: 'conditional',
+        when: { borders: 'fencedYard' },
+        effect: { kind: 'aura', match: { tag: 'Pet' }, scope: 'region', pct: 50 },
+      },
+    ],
+  }),
+  pool: piece({
+    id: 'pool',
+    name: 'Pool',
+    category: 'yard',
+    shape: ['###', '###'],
+    tags: ['Wet', 'Sunny', 'Loud'],
+    drawWeight: 0,
+    effects: [
+      { kind: 'rhythm', every: 3, amount: 12 },
+      { kind: 'neighbor', match: { feature: 'tree' }, amount: -2, max: 3 },
+    ],
+  }),
+  sunroom: piece({
+    id: 'sunroom',
+    name: 'Sunroom',
+    category: 'indoor',
+    shape: ['##', '##'],
+    tags: ['Sunny'],
+    drawWeight: 0,
+    effects: [{ kind: 'perTile', region: 'sunny', amount: 2 }],
+  }),
+  hotTub: piece({
+    id: 'hotTub',
+    name: 'Hot Tub',
+    category: 'yard',
+    shape: ['#'],
+    tags: ['Wet', 'Social'],
+    drawWeight: 0,
+    effects: [{ kind: 'neighbor', match: { piece: 'patio' }, amount: 3 }],
+  }),
+  firePit: piece({
+    id: 'firePit',
+    name: 'Fire Pit',
+    category: 'yard',
+    shape: ['#'],
+    tags: ['Social'],
+    drawWeight: 0,
+    effects: [{ kind: 'aura', match: { piece: 'patio' }, scope: 'adjacent', pct: 50 }],
+  }),
+  henhouse: piece({
+    id: 'henhouse',
+    name: 'Henhouse',
+    category: 'outbuilding',
+    shape: ['##'],
+    tags: ['House'],
+    drawWeight: 0,
+    effects: [
+      { kind: 'economy', budget: 1, every: 2 },
+      { kind: 'neighbor', match: { piece: ['herbGarden', 'flowerBed'] }, amount: 1 },
+    ],
+  }),
+  birdhouse: piece({
+    id: 'birdhouse',
+    name: 'Birdhouse',
+    category: 'outbuilding',
+    shape: ['#'],
+    tags: ['House'],
+    drawWeight: 0,
+    effects: [{ kind: 'neighbor', match: { feature: 'tree' }, amount: 1, max: 3 }],
+  }),
+};
+
+const HOST = { host: true } as const;
+const ROOM = { property: 'room' } as const;
+const PRICE: Record<Rarity, number> = { common: 2, uncommon: 3, rare: 4 };
+
+const fixture = (
+  id: FixtureId,
+  name: string,
+  rarity: Rarity,
+  fits: FixtureDef['fits'],
+  modifiers: readonly Modifier[],
+  drawWeight = 5,
+): FixtureDef => ({
+  id,
+  name,
+  tier: 'core',
+  rarity,
+  fits,
+  drawWeight,
+  fromPhase: 1,
+  price: PRICE[rarity],
+  modifiers,
+});
+
+/** The fixtures, as Appendix B encodes them (without D-082's +25%, so tests see the plain effects). */
+export const TEST_FIXTURES: Record<FixtureId, FixtureDef> = {
+  fireplace: fixture('fireplace', 'Fireplace', 'common', ROOM, [
+    { kind: 'earn', target: HOST, pct: 50 },
+    { kind: 'earn', target: { all: [HOST, { piece: ['livingRoom', 'library'] }] }, pct: 50 },
+  ]),
+  skylight: fixture('skylight', 'Skylight', 'common', ROOM, [
+    { kind: 'grantTag', target: HOST, tag: 'Sunny' },
+    { kind: 'removeTag', target: HOST, tag: 'Dark' },
+  ]),
+  blackoutCurtains: fixture('blackoutCurtains', 'Blackout Curtains', 'common', ROOM, [
+    { kind: 'grantTag', target: HOST, tag: 'Dark' },
+  ]),
+  soundproofing: fixture('soundproofing', 'Soundproofing', 'common', ROOM, [
+    { kind: 'blockPenalties', target: HOST, from: { tag: 'Loud' } },
+  ]),
+  kitchenIsland: fixture('kitchenIsland', 'Kitchen Island', 'uncommon', { piece: 'kitchen' }, [
+    { kind: 'countsAs', target: HOST, as: 'diningRoom' },
+    { kind: 'earn', target: HOST, pct: 25 },
+  ]),
+  bunkBeds: fixture('bunkBeds', 'Bunk Beds', 'uncommon', { piece: 'bedroom' }, [
+    { kind: 'countsAs', target: HOST, as: 'bedroom', times: 2 },
+  ]),
+  bayWindow: fixture(
+    'bayWindow',
+    'Bay Window',
+    'common',
+    { all: [ROOM, { property: 'exterior' }] },
+    [{ kind: 'grantView', target: HOST }],
+  ),
+  sprinkler: fixture('sprinkler', 'Sprinkler', 'common', { piece: 'lawn' }, [
+    { kind: 'earn', target: HOST, pct: 100 },
+  ]),
+  pergola: fixture('pergola', 'Pergola', 'uncommon', { piece: 'patio' }, [
+    { kind: 'grantView', target: HOST },
+    { kind: 'earn', target: HOST, pct: 50 },
+  ]),
+  gardenLights: fixture('gardenLights', 'Garden Lights', 'common', { property: 'yard' }, [
+    { kind: 'grantTag', target: HOST, tag: 'Pretty' },
+    { kind: 'earn', target: { all: [HOST, { in: 'frontYard' }] }, pct: 50 },
+  ]),
+  chandelier: fixture(
+    'chandelier',
+    'Chandelier',
+    'rare',
+    { piece: ['diningRoom', 'livingRoom'] },
+    [{ kind: 'xMult', times: 125, when: { host: { inSet: 'entertainer' } } }],
+    0,
+  ),
+};
+
+const bp = (
+  id: BlueprintId,
+  name: string,
+  rarity: Rarity,
+  modifiers: readonly Modifier[],
+  offered = true,
+): BlueprintDef => ({
+  id,
+  name,
+  tier: 'core',
+  rarity,
+  price: { common: 4, uncommon: 6, rare: 8 }[rarity],
+  modifiers,
+  offered,
+});
+
+export const TEST_BLUEPRINTS: Record<BlueprintId, BlueprintDef> = {
+  fengShui: bp('fengShui', 'Feng Shui', 'common', [
+    { kind: 'earn', target: { property: 'view' }, pct: 50 },
+  ]),
+  curbAppeal: bp('curbAppeal', 'Curb Appeal', 'common', [
+    { kind: 'earn', target: { in: 'frontYard' }, pct: 100 },
+  ]),
+  quietHours: bp('quietHours', 'Quiet Hours', 'common', [
+    { kind: 'earn', target: { tag: 'Quiet' }, pct: 50 },
+  ]),
+  greenThumb: bp('greenThumb', 'Green Thumb', 'common', [
+    { kind: 'earn', target: { tag: 'Green' }, pct: 50 },
+  ]),
+  partyHouse: bp('partyHouse', 'Party House', 'common', [
+    { kind: 'earn', target: { tag: 'Social' }, pct: 50 },
+  ]),
+  waterfront: bp('waterfront', 'Waterfront', 'common', [
+    { kind: 'earn', target: { touching: { feature: ['pond', 'creek'] } }, pct: 50 },
+  ]),
+  openConcept: bp('openConcept', 'Open Concept', 'uncommon', [
+    { kind: 'link', among: ['kitchen', 'diningRoom', 'livingRoom'] },
+  ]),
+  goodBones: bp('goodBones', 'Good Bones', 'uncommon', [
+    {
+      kind: 'grantEffect',
+      target: { property: 'room' },
+      effect: { kind: 'growth', perWeek: 1, max: 10 },
+    },
+  ]),
+  itsAHouse: bp('itsAHouse', 'It’s a House', 'uncommon', [
+    { kind: 'mult', add: 15, per: { tag: 'House' } },
+  ]),
+  countryLiving: bp('countryLiving', 'Country Living', 'uncommon', [
+    {
+      kind: 'grantEffect',
+      target: 'all',
+      effect: { kind: 'neighbor', match: { feature: 'tree' }, amount: 1, max: 3 },
+    },
+  ]),
+  moodLighting: bp('moodLighting', 'Mood Lighting', 'uncommon', [
+    { kind: 'earn', target: { all: [{ property: 'room' }, { tag: 'Dark' }] }, pct: 100 },
+  ]),
+  showHome: bp('showHome', 'Show Home', 'uncommon', [
+    { kind: 'earn', target: { hasFixture: 'any' }, pct: 50 },
+  ]),
+  solarPanels: bp('solarPanels', 'Solar Panels', 'uncommon', [
+    {
+      kind: 'grantEffect',
+      target: { tag: 'Sunny' },
+      effect: { kind: 'economy', budget: 1, every: 4 },
+    },
+  ]),
+  crownJewel: bp('crownJewel', 'Crown Jewel', 'rare', [{ kind: 'bestPiece', pct: 100 }]),
+  dreamHome: bp(
+    'dreamHome',
+    'Dream Home',
+    'rare',
+    [{ kind: 'rule', key: 'specBonus', add: 10 }],
+    false,
+  ),
+  lastMinutePush: bp('lastMinutePush', 'Last-Minute Push', 'rare', [
+    { kind: 'xMult', times: 200, when: 'lastWeekOfPhase' },
+  ]),
+  modelHome: bp('modelHome', 'Model Home', 'rare', [
+    { kind: 'xMult', times: 100, plusPer: { per: { hasFixture: 'any' }, add: 10 } },
+  ]),
+  aheadOfSchedule: bp('aheadOfSchedule', 'Ahead of Schedule', 'rare', [
+    { kind: 'xMult', times: 100, plusPer: { per: 'milestonesEarly', add: 20 } },
+  ]),
 };
 
 export const TEST_CREWS: Record<CrewId, CrewDef> = {
@@ -415,9 +679,39 @@ export const TEST_BALANCE: Balance = {
     { name: 'Groundbreaking', target: 5 },
     { name: 'Foundation', target: 30 },
   ],
-  rules: { rerollsPerPhase: 1, demolitions: 2, overtime: 2, handSize: 3, earlyRewardPct: 100 },
+  rules: {
+    rerollsPerPhase: 1,
+    demolitions: 2,
+    overtime: 2,
+    handSize: 3,
+    earlyRewardPct: 100,
+    reserveSlots: 2,
+    supplySlots: 3,
+    blueprintSlots: 4,
+    shopPricePct: 100,
+    specBonus: 25,
+    interestMax: 0,
+  },
   early: { budgetPerWeek: [2], scorePct: [10] },
   milestoneBudget: 3,
+  shop: {
+    stock: [
+      { blueprints: 2, cards: 2, rarity: [100, 0, 0] },
+      { blueprints: 3, cards: 2, rarity: [70, 25, 5] },
+    ],
+    cardFixturePct: 50,
+    piecePrice: 3,
+    salePct: 50,
+    sellPct: 50,
+    refresh: { base: 2, step: 1 },
+    services: {
+      reroll: { base: 1, step: 1, max: 4 },
+      demolition: { base: 1, step: 1, max: 4 },
+      strike: { base: 2, step: 1, max: 5 },
+    },
+    skipReward: 1,
+    strikeMinTypes: 8,
+  },
   fencedYardMin: 4,
   complexityPct: [
     [100, 30, 5],
@@ -435,6 +729,8 @@ export const TEST_CONTENT: Content = {
   features: TEST_FEATURES,
   sets: TEST_SETS,
   crews: TEST_CREWS,
+  fixtures: TEST_FIXTURES,
+  blueprints: TEST_BLUEPRINTS,
   balance: TEST_BALANCE,
 };
 

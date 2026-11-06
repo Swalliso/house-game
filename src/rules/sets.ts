@@ -10,7 +10,7 @@
 // then depends only on pieces placed before the one that completed it, so placing a new piece
 // can add a set but never reshuffle or break one the house already holds (D-065).
 
-import type { Content, PieceDef, PieceId, SetDef, SetScore } from './index.ts';
+import type { Content, PieceDef, PieceId, SetDef, SetId, SetScore } from './index.ts';
 import { pieceDef, type Layout } from './layout.ts';
 
 /** Which of the set's member types this piece fills, if any (its own id first, then countsAs). */
@@ -28,9 +28,15 @@ export function instanceKey(set: SetDef, members: readonly number[]): string {
   return `${set.id}:${[...members].sort((a, b) => a - b).join(',')}`;
 }
 
-export function matchSets(content: Content, layout: Layout, level = 1): SetScore[] {
+/** Every held set instance, paying at its set type's level (Remodel Plans; 1 when absent). */
+export function matchSets(
+  content: Content,
+  layout: Layout,
+  levels: Partial<Record<SetId, number>> = {},
+): SetScore[] {
   const out: SetScore[] = [];
   for (const set of Object.values(content.sets)) {
+    const level = levels[set.id] ?? 1;
     for (const members of matchSet(content, layout, set)) {
       out.push({
         set: set.id,

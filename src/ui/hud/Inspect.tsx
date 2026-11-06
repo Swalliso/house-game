@@ -6,6 +6,7 @@
 import {
   cardText,
   CONTENT,
+  fixtureText,
   regionText,
   rules,
   SCORE_LABELS,
@@ -24,8 +25,11 @@ import {
   preview,
   run,
   selected,
+  selection,
+  sell,
   tool,
 } from '../store.ts';
+import { GoodBody, goodName, offerGood, type GoodRef } from './goods.tsx';
 import './hud-m2.css';
 
 const REGION_CHIP: Record<Region, string> = {
@@ -174,37 +178,73 @@ function BudgetChange({ before, after }: { before: number; after: number }) {
 
 function PlacingInfo() {
   const p = preview.value;
-  const s = run.value;
-  const i = selected.value;
-  const card = i === null ? undefined : s.hand[i];
-  if (!card) return null;
-  const def = CONTENT.pieces[card.id];
+  const sel = selection.value;
+  if (!sel) return null;
+  const name = sel.kind === 'piece' ? CONTENT.pieces[sel.id].name : CONTENT.fixtures[sel.id].name;
+  const install = sel.kind === 'fixture';
+  const fromLine =
+    sel.from === 'reserve'
+      ? 'From your reserve: placing it is this week’s build.'
+      : sel.from === 'supplies'
+        ? 'From your supplies: installing it is free, so the week goes on.'
+        : install
+          ? 'From your hand: installing it is this week’s build.'
+          : null;
   if (!p) {
     return (
       <>
-        <h2>{def.name}</h2>
-        <p class="muted">Point at the lot to see what it would earn.</p>
+        <h2>{name}</h2>
+        {fromLine && <p class="muted">{fromLine}</p>}
+        <p class="muted">
+          {install
+            ? 'Point at a piece on the lot to see what it would do there.'
+            : 'Point at the lot to see what it would earn.'}
+        </p>
+        {install && <GoodBody good={{ kind: 'fixture', id: sel.id }} />}
       </>
     );
   }
   if (!p.legal) {
     return (
       <>
-        <h2>{def.name}</h2>
+        <h2>{name}</h2>
         <p class="reason">
           <span aria-hidden="true">✕ </span>
           {p.reason}
         </p>
+        {install && <GoodBody good={{ kind: 'fixture', id: sel.id }} />}
       </>
     );
   }
   const others = p.lines.filter((l) => !l.isNew);
   const unmet = p.newPiece?.unmet;
+  const host =
+    install && p.host !== undefined
+      ? run.value.house.pieces.find((q) => q.uid === p.host)
+      : undefined;
+  const hostLine = install ? p.lines.find((l) => l.isNew) : undefined;
   return (
     <>
-      <h2>
-        {def.name} <span class="earns">earns {p.newPiece?.earned ?? 0}</span>
-      </h2>
+      {install ? (
+        <h2>
+          {name} → {host ? CONTENT.pieces[host.defId].name : 'piece'}{' '}
+          <span class="earns">
+            {hostLine
+              ? `${hostLine.before} → ${hostLine.after}`
+              : `earns ${p.newPiece?.earned ?? 0}`}
+          </span>
+        </h2>
+      ) : (
+        <h2>
+          {name} <span class="earns">earns {p.newPiece?.earned ?? 0}</span>
+        </h2>
+      )}
+      {fromLine && <p class="muted">{fromLine}</p>}
+      {p.replaces && (
+        <p class="warn" role="note">
+          Replaces its {CONTENT.fixtures[p.replaces].name}, which is lost.
+        </p>
+      )}
       <Unmet why={unmet} />
       <Lines lines={p.newPiece?.lines ?? []} voided={unmet !== undefined} />
       {others.length > 0 && (
@@ -233,6 +273,11 @@ function PlacingInfo() {
           ✕ Breaks {CONTENT.sets[set.set].name}
         </p>
       ))}
+      {p.xMults.map((x) => (
+        <p key={`${x.source.kind}:${x.label}`} class="set-note sparkle">
+          ✦ {SCORE_LABELS.xMult}: {x.label} ×{formatMult(x.times)} {SCORE_LABELS.mult}
+        </p>
+      ))}
       {p.clearedTrees.length > 0 && (
         <p class="muted">
           Clears {p.clearedTrees.length} {p.clearedTrees.length === 1 ? 'Tree' : 'Trees'}.
@@ -244,6 +289,38 @@ function PlacingInfo() {
         This week: {formatNumber(p.before.total)} → <strong>{formatNumber(p.after.total)}</strong>{' '}
         {SCORE_LABELS.total}
       </p>
+    </>
+  );
+}
+
+/** A blueprint, supply, reserve piece, or shop offer: what it does, and Sell where it can be sold. */
+function ItemInfo({
+  good,
+  sellAs,
+}: {
+  good: GoodRef;
+  sellAs?: { from: 'blueprints' | 'supplies'; i: number };
+}) {
+  const s = run.value;
+  const price = sellAs ? rules.sellPrice(s, sellAs.from, sellAs.i) : 0;
+  const canSell = sellAs && (s.screen === 'build' || s.screen === 'shop');
+  return (
+    <>
+      <h2>{goodName(good)}</h2>
+      <GoodBody good={good} where={!sellAs && good.kind !== 'piece'} />
+      {good.kind === 'blueprint' && sellAs && (
+        <p class="muted">Bought in week {s.blueprints[sellAs.i]?.boughtWeek}.</p>
+      )}
+      {canSell && (
+        <button
+          type="button"
+          class="sell-button"
+          onClick={() => sell(sellAs.from, sellAs.i)}
+          title="Selling pays half its price, rounded down"
+        >
+          Sell for {price} budget
+        </button>
+      )}
     </>
   );
 }
@@ -350,6 +427,16 @@ export function Inspect() {
               <li key={t}>{t}</li>
             ))}
           </ul>
+          {piece.fixture && (
+            <>
+              <h3>Fixture: {CONTENT.fixtures[piece.fixture.id].name}</h3>
+              <ul class="effects">
+                {fixtureText(CONTENT, CONTENT.fixtures[piece.fixture.id]).effects.map((t) => (
+                  <li key={t}>{t}</li>
+                ))}
+              </ul>
+            </>
+          )}
         </>
       );
     }
@@ -382,11 +469,35 @@ export function Inspect() {
     if (card) {
       body = (
         <>
-          <h2>{CONTENT.pieces[card.id].name}</h2>
+          <h2>
+            {card.kind === 'piece' ? CONTENT.pieces[card.id].name : CONTENT.fixtures[card.id].name}
+          </h2>
           <p class="muted">Click the card (or press {what.i + 1}), then point at the lot.</p>
         </>
       );
     }
+  } else if (what?.kind === 'reserve') {
+    const r = s.reserve[what.i];
+    if (r) body = <ItemInfo good={{ kind: 'piece', id: r.id }} />;
+  } else if (what?.kind === 'supply') {
+    const sup = s.supplies[what.i];
+    if (sup)
+      body = (
+        <ItemInfo good={{ kind: 'fixture', id: sup.id }} sellAs={{ from: 'supplies', i: what.i }} />
+      );
+  } else if (what?.kind === 'blueprint') {
+    const b = s.blueprints[what.i];
+    if (b)
+      body = (
+        <ItemInfo
+          good={{ kind: 'blueprint', id: b.id }}
+          sellAs={{ from: 'blueprints', i: what.i }}
+        />
+      );
+  } else if (what?.kind === 'offer') {
+    const o = s.offers?.shop?.offers[what.i];
+    const g = o && offerGood(o);
+    if (g) body = <ItemInfo good={g} />;
   }
   return <section class="inspect">{body}</section>;
 }

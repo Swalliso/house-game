@@ -85,6 +85,16 @@ const COMPLEXITY: Record<PieceId, 1 | 2 | 3> = {
   longHallway: 3,
   doghouse: 3,
   greenhouse: 3,
+  // Special pieces (weight 0: shop only).
+  playroom: 2,
+  library: 1,
+  mudroom: 3,
+  pool: 2,
+  sunroom: 2,
+  hotTub: 1,
+  firePit: 2,
+  henhouse: 2,
+  birdhouse: 1,
 };
 
 /** The card's complexity matches Appendix A, and its text reads cleanly. */
@@ -106,7 +116,13 @@ const open = emptyRows(10, 10);
 describe('the base pool', () => {
   it('has a test below for every card, each with its Appendix A complexity', () => {
     expect(Object.keys(COMPLEXITY).sort()).toEqual(Object.keys(CONTENT.pieces).sort());
-    for (const def of Object.values(CONTENT.pieces)) expect(def.drawWeight).toBe(10);
+    // The base pool is the drawable cards; special pieces (weight 0) come from the shop.
+    const base = Object.values(CONTENT.pieces).filter((d) => d.drawWeight > 0);
+    expect(base).toHaveLength(23);
+    for (const def of base) expect(def.drawWeight).toBe(10);
+    for (const def of Object.values(CONTENT.pieces)) {
+      expect(def.complexity).toBe(COMPLEXITY[def.id]);
+    }
   });
 });
 

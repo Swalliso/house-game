@@ -60,6 +60,25 @@ export const FEEL = {
   /** The placed piece's settle. */
   placeMs: 220,
 
+  /**
+   * Budget counts coin by coin (§12, Shop and crates; Balatro's): 0.18 s a coin, faster above
+   * 9 and above 20, and one "+N" jump above 60. Spending counts down at the fastest rate.
+   */
+  budget: {
+    coinMs: 180,
+    fastAbove: 9,
+    fastMs: 90,
+    fasterAbove: 20,
+    fasterMs: 40,
+    jumpAbove: 60,
+  },
+
+  /** An installed fixture's pop on its piece. */
+  installMs: 360,
+
+  /** A ×Mult source's gold stamp in the tally (D-056): each lands on its own beat. */
+  sparkleStepMs: 650,
+
   /** The camera (§12, Art; D-057): wheel zoom in whole steps, drag to pan. */
   camera: {
     /** A left-button drag pans once it has moved this many px; a shorter one is a click. */

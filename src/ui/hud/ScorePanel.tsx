@@ -1,12 +1,19 @@
 // The week's score: Comfort × Charm = Wow (D-019, D-056). It shows the house as it stands,
 // the preview's change while placing, and the tally's counters while they tick.
 
-import { CONTENT, SCORE_LABELS, type SetScore, type WeekScore } from '../../rules/index.ts';
+import {
+  CONTENT,
+  SCORE_LABELS,
+  type SetScore,
+  type WeekScore,
+  type XMultTerm,
+} from '../../rules/index.ts';
 import { tallyView } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
 import { formatMult, formatNumber, signed } from '../format.ts';
 import { currentTally, pace as paceSignal, preview } from '../store.ts';
 import { Celebration } from './Celebration.tsx';
+import { Tip } from './Tip.tsx';
 import './hud-m2.css';
 
 function Delta({ n, mult = false }: { n: number; mult?: boolean }) {
@@ -58,6 +65,23 @@ function SetList({
   );
 }
 
+/** The week's ×Mult sources as gold stamps (D-056). */
+function Sparkles({ list }: { list: readonly XMultTerm[] }) {
+  if (list.length === 0) return null;
+  return (
+    <ul class="sparkles" aria-label={SCORE_LABELS.xMult}>
+      {list.map((x) => (
+        <li
+          key={`${x.source.kind}:${x.label}`}
+          title={`${SCORE_LABELS.xMult}: ×${formatMult(x.times)} ${SCORE_LABELS.mult}`}
+        >
+          ✦ {x.label} ×{formatMult(x.times)}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function ScorePanel() {
   const view = tallyView.value;
   const p = preview.value;
@@ -97,26 +121,33 @@ export function ScorePanel() {
       <h2>{label}</h2>
       <div class="equation">
         <div class={`layer comfort ${view?.stage === 'pieces' ? 'ticking' : ''}`}>
-          <div class="layer-name">{SCORE_LABELS.points}</div>
+          <div class="layer-name">
+            <Tip term="comfort">{SCORE_LABELS.points}</Tip>
+          </div>
           <div class="layer-value">{formatNumber(shown.points)}</div>
           {before && <Delta n={shown.points - before.points} />}
         </div>
         <div class="op">×</div>
         <div class={`layer charm ${view?.stage === 'sets' ? 'ticking' : ''}`}>
-          <div class="layer-name">{SCORE_LABELS.mult}</div>
+          <div class="layer-name">
+            <Tip term="charm">{SCORE_LABELS.mult}</Tip>
+          </div>
           <div class="layer-value">{formatMult(shown.mult)}</div>
           {before && <Delta n={shown.mult - before.mult} mult />}
         </div>
         <div class="op">=</div>
         <div class={`layer wow ${view?.stage === 'total' ? 'landed' : ''}`}>
-          <div class="layer-name">{SCORE_LABELS.total}</div>
+          <div class="layer-name">
+            <Tip term="wow">{SCORE_LABELS.total}</Tip>
+          </div>
           <div class="layer-value">{shown.total === null ? '…' : formatNumber(shown.total)}</div>
           {before && shown.total !== null && <Delta n={shown.total - before.total} />}
         </div>
       </div>
+      <Sparkles list={view ? view.sparkles : p?.legal ? p.xMults : tally.xMults} />
       {view?.big && <div class="big-week">Big week!</div>}
       {budget !== null && (budget > 0 || (budgetBefore ?? 0) > 0) && (
-        <p class="budget-line" title="Budget is spent in the shop from the next update">
+        <p class="budget-line">
           +{formatNumber(budget)} budget this week
           {budgetBefore !== null && budget !== budgetBefore && (
             <span class={`budget-delta ${budget > budgetBefore ? 'good' : 'bad'}`}>

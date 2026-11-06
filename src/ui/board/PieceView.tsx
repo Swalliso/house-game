@@ -5,11 +5,11 @@
 
 import type { JSX } from 'preact';
 import { useEffect, useRef } from 'preact/hooks';
-import type { Cell, PieceId } from '../../rules/index.ts';
+import { CONTENT, type Cell, type FixtureId, type PieceId } from '../../rules/index.ts';
 import { played } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
 import { settings } from '../settings.ts';
-import { PIECE_SPRITES, spriteStyle, TILE } from '../sprites.ts';
+import { FIXTURE_GLYPHS, PIECE_SPRITES, spriteStyle, TILE } from '../sprites.ts';
 import { digitCell, furnitureSpot, isIndoor, uidAt, type Occupancy } from './geometry.ts';
 
 const WALL_OUT = '#4a2f22';
@@ -42,6 +42,8 @@ interface Props {
   earned?: number;
   /** An unmet requirement, as text (PieceScore.unmet): the piece earns nothing. */
   unmet?: string;
+  /** The fixture installed in it (D-050), shown as a badge. */
+  fixture?: FixtureId;
   class?: string;
   style?: JSX.CSSProperties;
   settle?: number;
@@ -55,6 +57,7 @@ export function PieceShape({
   uid,
   earned,
   unmet,
+  fixture,
   class: cls,
   style,
   settle,
@@ -176,6 +179,7 @@ export function PieceShape({
           {shown}
         </div>
       )}
+      {fixture && <FixtureBadge id={fixture} cells={cells} minX={minX} minY={minY} scale={scale} />}
       {first && (
         <div
           class="unmet-badge"
@@ -190,6 +194,44 @@ export function PieceShape({
           {'\u26A0\uFE0E'}
         </div>
       )}
+    </div>
+  );
+}
+
+/** A fixture's badge in the piece's top-right cell, with its rarity's edge. */
+function FixtureBadge({
+  id,
+  cells,
+  minX,
+  minY,
+  scale,
+}: {
+  id: FixtureId;
+  cells: readonly Cell[];
+  minX: number;
+  minY: number;
+  scale: number;
+}) {
+  const px = TILE * scale;
+  const def = CONTENT.fixtures[id];
+  // The top row's rightmost cell.
+  const top = Math.min(...cells.map((c) => c.y));
+  const right = Math.max(...cells.filter((c) => c.y === top).map((c) => c.x));
+  const size = Math.max(14, 6 * scale);
+  return (
+    <div
+      class={`fixture-badge rarity-${def.rarity}`}
+      title={`${def.name} (fixture)`}
+      aria-label={`${def.name} installed`}
+      style={{
+        left: `${(right - minX + 1) * px - size - Math.max(1, scale)}px`,
+        top: `${(top - minY) * px + Math.max(1, scale)}px`,
+        width: `${size}px`,
+        height: `${size}px`,
+        fontSize: `${Math.round(size * 0.72)}px`,
+      }}
+    >
+      {FIXTURE_GLYPHS[id]}
     </div>
   );
 }

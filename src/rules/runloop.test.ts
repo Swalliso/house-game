@@ -85,6 +85,7 @@ const place = (i: number, x: number, y: number, rot: Rot = 0): PlaceAction => ({
 const PASS: Action = { t: 'pass' };
 const REROLL: Action = { t: 'reroll' };
 const COMPLETE_EARLY: Action = { t: 'completeEarly' };
+const LEAVE: Action = { t: 'leaveShop' };
 
 const types = (events: readonly GameEvent[]) => events.map((e) => e.t);
 
@@ -181,8 +182,14 @@ describe('overtime', () => {
     let s = applyAll(r, onEmptyLot(r), [PASS, PASS]).state;
     expect(s).toMatchObject({ overtimeWeek: 1, slot: 3, week: 3 });
     s = withHand(s, 'bedroom', 'lawn', 'kitchen');
-    const { state, events } = r.apply(s, place(0, 2, 2)); // the Bedroom earns 3
-    expect(types(events)).toEqual(['placed', 'tally', 'targetReached', 'milestone', 'handDrawn']);
+    const met = r.apply(s, place(0, 2, 2)); // the Bedroom earns 3
+    expect(types(met.events)).toEqual([
+      'placed',
+      'tally',
+      'targetReached',
+      'milestone',
+      'shopOpened',
+    ]);
     const record = {
       phase: 0,
       result: 'overtime',
@@ -190,10 +197,15 @@ describe('overtime', () => {
       score: 3,
       weeksSaved: 0,
       overtimeUsed: 1,
-      reward: { budget: 3, score: 0 },
+      reward: { budget: 3, score: 0, interest: 0 },
     };
-    expect(events[3]).toEqual({ t: 'milestone', name: 'Phase 1', ...record });
-    expect(events[4]).toEqual({
+    expect(met.events[3]).toEqual({ t: 'milestone', name: 'Phase 1', ...record });
+    expect(met.state).toMatchObject({ screen: 'shop', phase: 1, slot: 1, week: 4, hand: [] });
+    // Leaving the shop without buying pays the skip reward, then draws the first hand.
+    const { state, events } = r.apply(met.state, LEAVE);
+    expect(types(events)).toEqual(['shopClosed', 'handDrawn']);
+    expect(events[0]).toMatchObject({ skipReward: 1, budgetBefore: 3, budget: 4 });
+    expect(events[1]).toEqual({
       t: 'handDrawn',
       phase: 1,
       slot: 1,
@@ -210,8 +222,9 @@ describe('overtime', () => {
       overtimeLeft: 1, // overtime is per run, not per phase
       phaseStartScore: 3,
       score: 3,
-      budget: 3,
+      budget: 3 + 1,
       rerollsLeft: 2,
+      screen: 'build',
     });
     expect(state.milestones).toEqual([record]);
     expect(r.weeksLeft(state)).toBe(2);
@@ -256,7 +269,7 @@ describe('overtime', () => {
       score: 0,
       weeksSaved: 0,
       overtimeUsed: 2,
-      reward: { budget: 0, score: 0 },
+      reward: { budget: 0, score: 0, interest: 0 },
     };
     expect(events[1]).toEqual({ t: 'milestone', name: 'Groundbreaking', ...record });
     expect(events[2]).toEqual({
@@ -310,8 +323,16 @@ describe('early completion', () => {
     expect(r.canCompleteEarly(s)).toEqual({ ok: true, weeksSaved: 3, bonus });
     expect(r.legalActions(s)).toContainEqual(COMPLETE_EARLY);
 
-    const { state, events } = r.apply(s, COMPLETE_EARLY);
-    expect(types(events)).toEqual(['tally', 'tally', 'tally', 'milestone', 'handDrawn']);
+    const { state, events } = applyAll(r, s, [COMPLETE_EARLY, LEAVE]);
+    expect(types(events)).toEqual([
+      'tally',
+      'tally',
+      'tally',
+      'milestone',
+      'shopOpened',
+      'shopClosed',
+      'handDrawn',
+    ]);
     const tallies = eventsOf(events, 'tally');
     expect(tallies.map((t) => [t.week, t.slot, t.overtimeWeek, t.fastForward, t.passed])).toEqual([
       [2, 2, 0, true, false],
@@ -330,10 +351,11 @@ describe('early completion', () => {
       score: 116 + 9,
       weeksSaved: 3,
       overtimeUsed: 0,
-      reward: { budget: 3 + 6, score: 9 },
+      reward: { budget: 3 + 6, score: 9, interest: 0 },
     };
     expect(events[3]).toEqual({ t: 'milestone', name: 'Phase 1', ...record });
-    expect(events[4]).toMatchObject({
+    expect(events[5]).toMatchObject({ t: 'shopClosed', skipReward: 1, budget: 9 + 1 });
+    expect(events[6]).toMatchObject({
       t: 'handDrawn',
       phase: 1,
       slot: 1,
@@ -347,7 +369,7 @@ describe('early completion', () => {
       week: 5,
       score: 125,
       phaseStartScore: 125,
-      budget: 9,
+      budget: 9 + 1,
       milestonesEarly: 1,
       draws: 1,
     });
@@ -366,7 +388,7 @@ describe('early completion', () => {
       bonus: { score: 0, budget: 2 },
     });
     const { state, events } = r.apply(s, COMPLETE_EARLY);
-    expect(types(events)).toEqual(['tally', 'milestone', 'handDrawn']);
+    expect(types(events)).toEqual(['tally', 'milestone', 'shopOpened']);
     expect(events[0]).toMatchObject({ week: 2, slot: 2, fastForward: true, passed: false });
     expect(events[1]).toMatchObject({
       result: 'early',
@@ -374,7 +396,7 @@ describe('early completion', () => {
       score: 6,
       reward: { budget: 5, score: 0 },
     });
-    expect(state).toMatchObject({ phase: 1, week: 3, milestonesEarly: 1 });
+    expect(state).toMatchObject({ phase: 1, week: 3, milestonesEarly: 1, screen: 'shop' });
   });
 
   it('the bonus counts only this phase’s earnings so far, not the fast-forwarded weeks', () => {
@@ -433,7 +455,7 @@ describe('early completion', () => {
     let s = withHand(onEmptyLot(r), 'sapling', 'lawn', 'kitchen');
     s = r.apply(s, place(0, 5, 5)).state; // week 1: the Sapling earns 1
     expect(s).toMatchObject({ slot: 2, week: 2, score: 1 });
-    const { state, events } = r.apply(s, COMPLETE_EARLY); // saves weeks 2–6
+    const { state, events } = applyAll(r, s, [COMPLETE_EARLY, LEAVE]); // saves weeks 2–6
     expect(types(events)).toEqual([
       'tally',
       'tally',
@@ -442,6 +464,8 @@ describe('early completion', () => {
       'tally',
       'tally',
       'milestone',
+      'shopOpened',
+      'shopClosed',
       'handDrawn',
     ]);
     // Placed in week 1 with afterWeeks 4: it becomes a Tree at the start of week 5.
@@ -468,14 +492,14 @@ describe('early completion', () => {
       reward: { budget: 3 + 10, score: 1 },
     });
     expect(eventsOf(events, 'handDrawn')).toHaveLength(1);
-    expect(events[7]).toMatchObject({ phase: 1, slot: 1 });
+    expect(events[9]).toMatchObject({ phase: 1, slot: 1 });
     expect(state.house.pieces).toEqual([]);
     expect(state.house.lot.terrain[5 * 12 + 5]).toBe('tree');
   });
 
   it('completing the last phase early wins the run', () => {
     const r = createRules(content([20, 50], 4));
-    let s = applyAll(r, jackAndJillRun(r), [PASS, COMPLETE_EARLY]).state;
+    let s = applyAll(r, jackAndJillRun(r), [PASS, COMPLETE_EARLY, LEAVE]).state;
     expect(s).toMatchObject({ phase: 1, slot: 1, week: 5, score: 125, phaseStartScore: 125 });
     // Already over the next target, but this phase has earned nothing yet.
     expect(r.canCompleteEarly(s)).toEqual({
@@ -550,7 +574,7 @@ describe('auto-complete', () => {
       'tally',
       'tally',
       'milestone',
-      'handDrawn',
+      'shopOpened',
     ]);
     // The week just tallied isn't saved; weeks 2–4 are.
     const tallies = eventsOf(events, 'tally');
@@ -573,6 +597,7 @@ describe('auto-complete', () => {
       week: 5,
       milestonesEarly: 1,
       autoComplete: true,
+      screen: 'shop',
     });
   });
 
@@ -582,7 +607,7 @@ describe('auto-complete', () => {
     s = r.apply(s, PASS).state; // 29 < 40
     expect(s).toMatchObject({ phase: 0, slot: 2 });
     const { state, events } = r.apply(s, PASS); // 58 ≥ 40
-    expect(types(events)).toEqual(['tally', 'targetReached', 'milestone', 'handDrawn']);
+    expect(types(events)).toEqual(['tally', 'targetReached', 'milestone', 'shopOpened']);
     expect(events[2]).toMatchObject({
       result: 'onTime',
       weeksSaved: 0,
@@ -604,8 +629,8 @@ describe('auto-complete', () => {
   it('auto-completing the last phase wins the run', () => {
     const r = createRules(content([20, 50], 4));
     const s = { ...jackAndJillRun(r), autoComplete: true };
-    const first = r.apply(s, PASS);
-    expect(first.state).toMatchObject({ phase: 1, score: 125 });
+    const first = applyAll(r, s, [PASS, LEAVE]);
+    expect(first.state).toMatchObject({ phase: 1, score: 125, screen: 'build' });
     const { state, events } = r.apply(first.state, PASS);
     expect(types(events)).toEqual(['tally', 'tally', 'tally', 'tally', 'milestone', 'runEnded']);
     expect(events[4]).toMatchObject({ phase: 1, result: 'early', weeksSaved: 3 });
@@ -668,10 +693,10 @@ describe('rerolls', () => {
     expect(s.rerollsLeft).toBe(1);
     s = r.apply(s, PASS).state;
     expect(s).toMatchObject({ phase: 0, slot: 2, rerollsLeft: 1, draws: 1 });
-    s = r.apply(s, PASS).state;
+    s = applyAll(r, s, [PASS, LEAVE]).state;
     expect(s).toMatchObject({ phase: 1, slot: 1, rerollsLeft: 2 });
     // Unused rerolls don't carry over either.
-    s = applyAll(r, s, [PASS, PASS]).state;
+    s = applyAll(r, s, [PASS, PASS, LEAVE]).state;
     expect(s).toMatchObject({ phase: 2, rerollsLeft: 2 });
   });
 });
@@ -683,7 +708,7 @@ describe('the free redraw', () => {
   const ISLANDS = ['.B.B.', 'BBBBB', '.B.B.', 'BBBBB', '.B.B.'];
   const ONE_TILE = new Set<PieceId>(['bathroom', 'closet', 'sapling', 'flowerBed', 'doghouse']);
   const fitsIslands = (n: number, seed: string) =>
-    drawHand(C, seed, 0, '2', n, 3).some((c) => ONE_TILE.has(c.id));
+    drawHand(C, seed, 0, '2', n, 3).some((c) => c.kind === 'piece' && ONE_TILE.has(c.id));
 
   function findSeed(ok: (seed: string) => boolean): string {
     for (let i = 0; i < 2000; i++) if (ok(`redraw-${i}`)) return `redraw-${i}`;
@@ -790,7 +815,7 @@ describe('demolitions', () => {
     ]);
     expect(first.state.house.lot.terrain[0]).toBe(null);
     // Demolitions are per run: a new phase doesn't restore them.
-    s = applyAll(r, first.state, [PASS, PASS]).state;
+    s = applyAll(r, first.state, [PASS, PASS, LEAVE]).state;
     expect(s).toMatchObject({ phase: 1, demolitionsLeft: 1 });
     s = r.apply(s, { t: 'demolish', x: 1, y: 0 }).state;
     expect(s.demolitionsLeft).toBe(0);
@@ -929,9 +954,10 @@ describe('milestone rewards', () => {
   it('each met milestone pays milestoneBudget, and RunState.milestones records each', () => {
     const r = createRules(content([0, 0]));
     const first = applyAll(r, onEmptyLot(r), [PASS, PASS]);
-    expect(first.state).toMatchObject({ phase: 1, budget: 3 });
-    const end = applyAll(r, first.state, [PASS, PASS]);
-    expect(end.state).toMatchObject({ screen: 'won', budget: 6 });
+    expect(first.state).toMatchObject({ phase: 1, budget: 3, screen: 'shop' });
+    // Leaving the shop without buying adds the skip reward.
+    const end = applyAll(r, first.state, [LEAVE, PASS, PASS]);
+    expect(end.state).toMatchObject({ screen: 'won', budget: 3 + 1 + 3 });
     const met = (phase: number) => ({
       phase,
       result: 'onTime',
@@ -939,7 +965,7 @@ describe('milestone rewards', () => {
       score: 0,
       weeksSaved: 0,
       overtimeUsed: 0,
-      reward: { budget: 3, score: 0 },
+      reward: { budget: 3, score: 0, interest: 0 },
     });
     expect(end.state.milestones).toEqual([met(0), met(1)]);
   });
@@ -983,6 +1009,7 @@ describe('forecast', () => {
     s = rules.apply(s, place(0, 2, 2)).state; // 3
     s = rules.apply(s, PASS).state; // 6 ≥ 5: phase 1 is met
     expect(s.phase).toBe(1);
+    s = rules.apply(s, LEAVE).state;
     // Phase 2 (target 30): 2 weeks of 3, then overtime.
     s = applyAll(rules, s, [PASS, PASS]).state; // 12
     expect(s).toMatchObject({ overtimeWeek: 1, score: 12 });
@@ -1143,26 +1170,38 @@ describe('the order of events', () => {
     expect(events[4]).toMatchObject({ phase: 0, slot: 2 });
   });
 
-  it('a milestone week: the tally, the milestone, then the next phase’s first hand', () => {
+  it('a milestone week: the tally, the milestone, the shop, then the next phase’s first hand', () => {
     let s = withHand(onEmptyLot(), 'bedroom', 'lawn', 'kitchen');
     s = rules.apply(s, place(0, 2, 2)).state; // 3
     s = withHand(s, 'closet', 'lawn', 'kitchen');
-    const { events } = rules.apply(s, place(0, 4, 2)); // 3 + 4 ≥ 5 in the phase's last week
-    expect(types(events)).toEqual(['placed', 'tally', 'targetReached', 'milestone', 'handDrawn']);
-    expect(events[3]).toMatchObject({ phase: 0, result: 'onTime', score: 7 });
-    expect(events[4]).toMatchObject({ phase: 1, slot: 1 });
+    const met = rules.apply(s, place(0, 4, 2)); // 3 + 4 ≥ 5 in the phase's last week
+    expect(types(met.events)).toEqual([
+      'placed',
+      'tally',
+      'targetReached',
+      'milestone',
+      'shopOpened',
+    ]);
+    expect(met.events[3]).toMatchObject({ phase: 0, result: 'onTime', score: 7 });
+    expect(met.events[4]).toMatchObject({ t: 'shopOpened', number: 1 });
+    const { events } = rules.apply(met.state, LEAVE);
+    expect(types(events)).toEqual(['shopClosed', 'handDrawn']);
+    expect(events[1]).toMatchObject({ phase: 1, slot: 1 });
   });
 
-  it('a transform at the start of the next phase comes after the milestone, before the hand', () => {
+  it('a transform at the start of the next phase comes after the milestone and the shop, before the hand', () => {
     const r = createRules(content([0, 0, 0]));
     let s = withHand(onEmptyLot(r), 'sapling', 'lawn', 'kitchen');
-    s = applyAll(r, s, [place(0, 5, 5), PASS, PASS]).state; // weeks 1–3
+    s = applyAll(r, s, [place(0, 5, 5), PASS, LEAVE, PASS]).state; // weeks 1–3
     expect(s).toMatchObject({ phase: 1, slot: 2, week: 4 });
-    const { state, events } = r.apply(s, PASS); // week 4 ends phase 2; week 5 starts phase 3
+    // Week 4 ends phase 2; leaving the shop starts week 5, phase 3's first.
+    const { state, events } = applyAll(r, s, [PASS, LEAVE]);
     // With targets of 0, the new phase's target is met as it starts.
     expect(types(events)).toEqual([
       'tally',
       'milestone',
+      'shopOpened',
+      'shopClosed',
       'targetReached',
       'transformed',
       'handDrawn',

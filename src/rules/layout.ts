@@ -17,6 +17,12 @@
 //   rest); fenced yards (flood fill over non-wall tiles, bounded by indoor tiles, Fences, and
 //   the lot edge; fenced if it doesn't touch the street edge, has `fencedYardMin` tiles, and
 //   borders a Fence and the house).
+// - Layout modifiers (M3), from fixtures (on their host) and the run (blueprints), resolved in
+//   §4's order: own and layout tags first; then grantTag, then removeTag, with targets matched
+//   against those tags only; then countsAs (type identity); then grantView, which gives the
+//   view property and one more view for the piece's own "per view" bonuses; then link groups
+//   (Open Concept). Their targets see the layout as it stood before any modifier, with
+//   Hallway links only.
 
 import type {
   Cell,
@@ -24,21 +30,48 @@ import type {
   FeatureId,
   HouseState,
   Lot,
+  Modifier,
   PieceDef,
+  PieceId,
   PlacedPiece,
   Region,
+  Selector,
   SourceRef,
   Tag,
   TerrainId,
 } from './index.ts';
 import { cellIndex, inBounds, ORTHOGONAL, placedCells } from './grid.ts';
 import { isSunny } from './lot.ts';
+import { matchesPiece } from './selectors.ts';
 
 export type Neighbor =
   | { kind: 'piece'; uid: number }
   /** A tile feature. For a body (pond, creek), (x, y) is the first tile touched. */
   | { kind: 'terrain'; feature: TerrainId; x: number; y: number }
-  | { kind: 'street'; x: number };
+  | { kind: 'street'; x: number }
+  /** A granted view (a Bay Window): one more view for the piece's own "per view" bonuses. */
+  | { kind: 'view'; uid: number };
+
+/** The modifier kinds that change the layout rather than the tally. */
+export type LayoutModifier = Extract<
+  Modifier,
+  { kind: 'grantTag' | 'removeTag' | 'grantView' | 'countsAs' | 'link' }
+>;
+
+export const LAYOUT_KINDS: ReadonlySet<Modifier['kind']> = new Set([
+  'grantTag',
+  'removeTag',
+  'grantView',
+  'countsAs',
+  'link',
+]);
+
+export function isLayoutModifier(m: Modifier): m is LayoutModifier {
+  return LAYOUT_KINDS.has(m.kind);
+}
+
+/** No run-level layout modifiers (one shared array, so the layout cache keys on it). */
+export const NO_LAYOUT_MODS: readonly LayoutModifier[] = Object.freeze([]);
 
 /** Region bits per tile. */
 export const REGION_BIT: Readonly<Record<Region, number>> = {
@@ -77,12 +110,18 @@ export interface Layout {
   fencedId: Int32Array;
   /** Tiles in each fenced yard, by id. */
   fencedSizes: readonly number[];
-  /** The rooms each room is linked to through Hallways. */
+  /** The rooms each room is linked to through Hallways, and pieces linked by Open Concept. */
   links: ReadonlyMap<number, ReadonlySet<number>>;
+  /** Types each piece also counts as from modifiers (Kitchen Island), with how many times. */
+  countsAs: ReadonlyMap<number, ReadonlyMap<PieceId, number>>;
+  /** Pieces with a granted view (a Bay Window). */
+  grantedView: ReadonlySet<number>;
+  /** The run-level layout modifiers this layout was built with. */
+  mods: readonly LayoutModifier[];
 }
 
 export function neighborRef(n: Neighbor): SourceRef {
-  return n.kind === 'piece'
+  return n.kind === 'piece' || n.kind === 'view'
     ? { kind: 'piece', uid: n.uid }
     : n.kind === 'street'
       ? { kind: 'street', x: n.x }
@@ -90,7 +129,11 @@ export function neighborRef(n: Neighbor): SourceRef {
 }
 
 export function neighborFeature(n: Neighbor): FeatureId | null {
-  return n.kind === 'piece' ? null : n.kind === 'street' ? 'street' : n.feature;
+  return n.kind === 'piece' || n.kind === 'view'
+    ? null
+    : n.kind === 'street'
+      ? 'street'
+      : n.feature;
 }
 
 const bodyCache = new WeakMap<Content, WeakMap<Lot, Int32Array>>();
@@ -142,7 +185,11 @@ export function isRoom(def: PieceDef): boolean {
   return def.category === 'indoor' && !def.connector;
 }
 
-export function computeLayout(content: Content, house: HouseState): Layout {
+export function computeLayout(
+  content: Content,
+  house: HouseState,
+  mods: readonly LayoutModifier[] = NO_LAYOUT_MODS,
+): Layout {
   const { lot } = house;
   const { width: w, height: h, terrain } = lot;
   const size = w * h;
@@ -369,7 +416,7 @@ export function computeLayout(content: Content, house: HouseState): Layout {
     tags.set(piece.uid, set);
   }
 
-  return {
+  const layout: Layout = {
     house,
     occupant,
     byUid,
@@ -387,7 +434,170 @@ export function computeLayout(content: Content, house: HouseState): Layout {
     fencedId,
     fencedSizes,
     links,
+    countsAs: new Map(),
+    grantedView: new Set(),
+    mods,
   };
+  // With no fixtures and no run modifiers (every M2 house), that's the whole layout.
+  const all = layoutModifiers(content, house, mods);
+  return all.length === 0 ? layout : applyLayoutModifiers(content, layout, all);
+}
+
+/** A layout modifier with the piece its fixture is installed in, if it came from one. */
+interface HostedMod {
+  mod: LayoutModifier;
+  host?: number;
+}
+
+/** The run's layout modifiers, then each installed fixture's, on its host. */
+function layoutModifiers(
+  content: Content,
+  house: HouseState,
+  mods: readonly LayoutModifier[],
+): HostedMod[] {
+  const out: HostedMod[] = mods.map((mod) => ({ mod }));
+  for (const piece of house.pieces) {
+    if (!piece.fixture) continue;
+    const def = content.fixtures[piece.fixture.id];
+    if (!def) throw new Error(`Unknown fixture "${piece.fixture.id}"`);
+    for (const m of def.modifiers) if (isLayoutModifier(m)) out.push({ mod: m, host: piece.uid });
+  }
+  return out;
+}
+
+/**
+ * §4's tag-resolution order, steps 3 and 4, plus granted views and Open Concept's links. The
+ * targets are matched on `base`, the layout before any modifier.
+ */
+function applyLayoutModifiers(content: Content, base: Layout, all: readonly HostedMod[]): Layout {
+  const { house } = base;
+  // selectors.ts imports this module too; the cycle is fine, since both only call each other
+  // at run time.
+  const match = (sel: Selector, uid: number, host?: number) =>
+    matchesPiece(content, base, sel, uid, host);
+
+  // Step 3: grantTag, then removeTag.
+  const grants = new Map<number, Set<Tag>>();
+  const removes = new Map<number, Set<Tag>>();
+  for (const { mod, host } of all) {
+    if (mod.kind !== 'grantTag' && mod.kind !== 'removeTag') continue;
+    const into = mod.kind === 'grantTag' ? grants : removes;
+    for (const piece of house.pieces) {
+      if (!match(mod.target, piece.uid, host)) continue;
+      let set = into.get(piece.uid);
+      if (!set) into.set(piece.uid, (set = new Set()));
+      set.add(mod.tag);
+    }
+  }
+  let tags = base.tags;
+  if (grants.size > 0 || removes.size > 0) {
+    const next = new Map(base.tags);
+    for (const piece of house.pieces) {
+      const g = grants.get(piece.uid);
+      const r = removes.get(piece.uid);
+      if (!g && !r) continue;
+      const set = new Set(base.tags.get(piece.uid));
+      g?.forEach((t) => set.add(t));
+      r?.forEach((t) => set.delete(t));
+      next.set(piece.uid, set);
+    }
+    tags = next;
+  }
+
+  // Step 4: countsAs modifiers (Kitchen Island, Bunk Beds).
+  const countsAs = new Map<number, Map<PieceId, number>>();
+  for (const { mod, host } of all) {
+    if (mod.kind !== 'countsAs') continue;
+    for (const piece of house.pieces) {
+      if (!match(mod.target, piece.uid, host)) continue;
+      let m = countsAs.get(piece.uid);
+      if (!m) countsAs.set(piece.uid, (m = new Map()));
+      m.set(mod.as, Math.max(m.get(mod.as) ?? 0, mod.times ?? 1));
+    }
+  }
+
+  // Granted views: the view property, and one more view for "per view" bonuses.
+  const grantedView = new Set<number>();
+  for (const { mod, host } of all) {
+    if (mod.kind !== 'grantView') continue;
+    for (const piece of house.pieces)
+      if (match(mod.target, piece.uid, host)) grantedView.add(piece.uid);
+  }
+  let hasView = base.hasView;
+  if (grantedView.size > 0) {
+    const next = new Set(base.hasView);
+    grantedView.forEach((u) => next.add(u));
+    hasView = next;
+  }
+
+  // Open Concept: each connected group of pieces of these types is linked, like a Hallway's.
+  const isOf = (uid: number, among: readonly PieceId[]) => {
+    const def = pieceDef(content, base.byUid.get(uid)!);
+    const extra = countsAs.get(uid);
+    return among.some((id) => def.id === id || def.countsAs === id || !!extra?.has(id));
+  };
+  let links = base.links;
+  const linkMods = all.filter((h) => h.mod.kind === 'link');
+  if (linkMods.length > 0) {
+    const next = new Map<number, Set<number>>();
+    for (const [k, v] of base.links) next.set(k, new Set(v));
+    for (const { mod } of linkMods) {
+      if (mod.kind !== 'link') continue;
+      const seen = new Set<number>();
+      for (const piece of house.pieces) {
+        if (seen.has(piece.uid) || !isOf(piece.uid, mod.among)) continue;
+        const group: number[] = [];
+        const stack = [piece.uid];
+        seen.add(piece.uid);
+        while (stack.length > 0) {
+          const u = stack.pop()!;
+          group.push(u);
+          for (const n of base.touching.get(u)!) {
+            if (n.kind === 'piece' && !seen.has(n.uid) && isOf(n.uid, mod.among)) {
+              seen.add(n.uid);
+              stack.push(n.uid);
+            }
+          }
+        }
+        if (group.length < 2) continue;
+        for (const a of group) {
+          let set = next.get(a);
+          if (!set) next.set(a, (set = new Set()));
+          for (const b of group) if (b !== a) set.add(b);
+        }
+      }
+    }
+    links = next;
+  }
+
+  // Scoring neighbors again, where links or granted views changed them.
+  let neighbors = base.neighbors;
+  if (links !== base.links || grantedView.size > 0) {
+    const next = new Map<number, readonly Neighbor[]>();
+    for (const piece of house.pieces) {
+      const old = base.neighbors.get(piece.uid)!;
+      const linked = links.get(piece.uid);
+      const extra = linked
+        ? [...linked].filter((u) => !old.some((n) => n.kind === 'piece' && n.uid === u))
+        : [];
+      if (extra.length === 0 && !grantedView.has(piece.uid)) {
+        next.set(piece.uid, old);
+        continue;
+      }
+      const uids = new Set<number>();
+      for (const n of old) if (n.kind === 'piece') uids.add(n.uid);
+      extra.forEach((u) => uids.add(u));
+      const list: Neighbor[] = [...uids]
+        .sort((a, b) => a - b)
+        .map((uid): Neighbor => ({ kind: 'piece', uid }));
+      for (const n of old) if (n.kind !== 'piece') list.push(n);
+      if (grantedView.has(piece.uid)) list.push({ kind: 'view', uid: piece.uid });
+      next.set(piece.uid, list);
+    }
+    neighbors = next;
+  }
+
+  return { ...base, tags, countsAs, grantedView, hasView, links, neighbors };
 }
 
 /** How many of a piece's tiles are in the region. */
@@ -430,14 +640,21 @@ export function largestFencedYard(layout: Layout): number {
   return layout.fencedSizes.reduce((a, b) => Math.max(a, b), 0);
 }
 
-/** Layouts cached per house object, per content (a WeakMap each, so nothing leaks). */
-export function layoutCache(content: Content): (house: HouseState) => Layout {
-  const cache = new WeakMap<HouseState, Layout>();
-  return (house) => {
-    let layout = cache.get(house);
+export type LayoutOf = (house: HouseState, mods?: readonly LayoutModifier[]) => Layout;
+
+/**
+ * Layouts cached per house object and run-level modifier list, per content (WeakMaps, so
+ * nothing leaks). The rules intern each run's modifier list, so equal lists share one array.
+ */
+export function layoutCache(content: Content): LayoutOf {
+  const cache = new WeakMap<HouseState, WeakMap<readonly LayoutModifier[], Layout>>();
+  return (house, mods = NO_LAYOUT_MODS) => {
+    let perHouse = cache.get(house);
+    if (!perHouse) cache.set(house, (perHouse = new WeakMap()));
+    let layout = perHouse.get(mods);
     if (!layout) {
-      layout = computeLayout(content, house);
-      cache.set(house, layout);
+      layout = computeLayout(content, house, mods);
+      perHouse.set(mods, layout);
     }
     return layout;
   };

@@ -13,6 +13,10 @@
   --comfort: #3f78c0;
   --charm: #cc4f72;
   --sparkle: #d79a25;
+  /* Rarity (D-051): a colored border plus a label, never color alone. */
+  --rarity-common: #8a9a7b;
+  --rarity-uncommon: #3f78c0;
+  --rarity-rare: #c98a12;
   --wow: #3b2f2a;
   /* Good and bad: blue and orange, never color alone (D-047, §2). */
   --good: #2f6fd0;

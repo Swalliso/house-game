@@ -1,0 +1,237 @@
+/* M3a's HUD: the inventory (reserve, supplies, blueprints), fixture cards, rarity tags, the
+   Sell button, and tooltips (D-077). */
+
+.inventory {
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: 12px;
+  padding: 8px 12px 10px;
+  margin-bottom: 10px;
+}
+.inventory h3 {
+  margin: 4px 0 4px;
+  font-size: 12px;
+}
+.inventory .slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.inventory .slot {
+  padding: 3px 7px;
+  font-size: 12px;
+  border-radius: 7px;
+  border: 2px solid var(--panel-edge);
+  background: #fffdf8;
+  max-width: 100%;
+}
+.inventory .slot.empty {
+  display: inline-grid;
+  place-items: center;
+  min-width: 34px;
+  color: var(--muted);
+  border-style: dashed;
+  background: none;
+}
+.inventory .slot.selected {
+  border-color: var(--good);
+  box-shadow: 0 0 0 3px rgb(47 111 208 / 0.25);
+}
+.inventory .slot.no-fit {
+  opacity: 0.55;
+}
+.inventory .slot.rarity-common {
+  border-color: var(--rarity-common);
+}
+.inventory .slot.rarity-uncommon {
+  border-color: var(--rarity-uncommon);
+}
+.inventory .slot.rarity-rare {
+  border-color: var(--rarity-rare);
+  background: #fff7dc;
+}
+.inventory .slot .glyph {
+  margin-right: 3px;
+  font-variant-emoji: text;
+}
+.inventory .slot-wrap {
+  display: inline-flex;
+  gap: 2px;
+}
+.inventory .slot-sell {
+  padding: 2px 6px;
+  font-size: 11px;
+}
+.inventory.in-shop {
+  background: var(--panel);
+}
+
+.card.fixture {
+  background: linear-gradient(#fffdf8, #f6efe2);
+  border-color: var(--rarity-common);
+}
+.card.fixture.rarity-uncommon {
+  border-color: var(--rarity-uncommon);
+}
+.card.fixture.rarity-rare {
+  border-color: var(--rarity-rare);
+}
+.card.fixture.selected {
+  border-color: var(--good);
+}
+
+.rarity-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 1px solid;
+}
+.rarity-tag.rarity-common {
+  color: #586a4a;
+  border-color: var(--rarity-common);
+}
+.rarity-tag.rarity-uncommon {
+  color: #2a5a9a;
+  border-color: var(--rarity-uncommon);
+}
+.rarity-tag.rarity-rare {
+  color: #8a5a00;
+  border-color: var(--rarity-rare);
+  background: #fff3c4;
+}
+.good-kind {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.good-where {
+  font-size: 12px;
+}
+.sell-button {
+  margin-top: 8px;
+  font-weight: 700;
+}
+.set-note.sparkle {
+  color: #8a5a00;
+  font-weight: 700;
+}
+
+/* Tooltips (D-077). */
+.tip {
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  cursor: help;
+}
+.tip-bubble {
+  position: fixed;
+  z-index: 100;
+  width: 280px;
+  transform: translate(-50%, -100%);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #2a1d16;
+  color: #fffaf0;
+  font-size: 13px;
+  line-height: 1.35;
+  pointer-events: none;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.3);
+}
+.tip-bubble.below {
+  transform: translate(-50%, 0);
+}
+
+/* Special pieces' shape minis. */
+.mini-cell.playroom {
+  background: #e8a35a;
+}
+.mini-cell.library {
+  background: #8e6a4c;
+}
+.mini-cell.mudroom {
+  background: #a3967f;
+}
+.mini-cell.pool {
+  background: #5fb3d9;
+}
+.mini-cell.sunroom {
+  background: #f2cf5b;
+}
+.mini-cell.hotTub {
+  background: #7cc7d8;
+}
+.mini-cell.firePit {
+  background: #d8743a;
+}
+.mini-cell.henhouse {
+  background: #c9a26b;
+}
+.mini-cell.birdhouse {
+  background: #9b7a55;
+}
+
+.budget-count {
+  display: inline-block;
+  min-width: 1.5ch;
+  transition: transform 120ms ease-out;
+}
+.budget-count.up {
+  color: #ffe08a;
+  transform: scale(1.15);
+}
+.budget-count.down {
+  color: #ffd0b0;
+}
+.reduce-motion .budget-count {
+  transition: none;
+  transform: none;
+}
+
+/* ×Mult (D-056): gold Sparkle stamps, in the tally and in the score panel. */
+.popup.sparkle {
+  color: #8a5a00;
+  font-size: 22px;
+  padding: 1px 8px;
+  border-radius: 6px;
+  background: #fff3c4;
+  border: 2px solid var(--rarity-rare);
+  text-shadow: none;
+  box-shadow: 0 0 10px rgb(215 154 37 / 0.6);
+}
+.sparkles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.sparkles li {
+  padding: 1px 7px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #8a5a00;
+  background: #fff3c4;
+  border: 1px solid var(--rarity-rare);
+  animation: stamp-in 320ms ease-out;
+}
+@keyframes stamp-in {
+  from {
+    transform: scale(1.6) rotate(-8deg);
+    opacity: 0;
+  }
+}
+.reduce-motion .sparkles li {
+  animation: none;
+}

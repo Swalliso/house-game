@@ -12,18 +12,24 @@ import {
   rules,
   shapeCells,
   type Action,
+  type CardType,
   type Cell,
   type DebugAction,
   type DemolishPreview,
   type EarlyOffer,
   type GameEvent,
+  type InstallAction,
+  type PieceId,
+  type FixtureId,
   type PlaceAction,
   type Preview,
   type Rot,
   type RunSetup,
   type RunState,
+  type SellAction,
 } from '../rules/index.ts';
 import { BUILD_CHANNEL, BUILD_SHA } from './build-info.ts';
+import { occupancy, uidAt } from './board/geometry.ts';
 
 export const CONTENT_HASH = contentHash(CONTENT);
 const SAVE_KEY = `openhouse:${BUILD_CHANNEL}:run`;
@@ -64,13 +70,18 @@ export const tool = signal<'build' | 'demolish'>('build');
 /** In demolish mode, the tile clicked once: a second click (or Demolish) confirms. */
 export const demolishArmed = signal<Cell | null>(null);
 
-/** The hand card being placed, if any. */
+/** Where the selected item comes from: a hand card, a reserve piece, or a supply. */
+export type Source = 'hand' | 'reserve' | 'supplies';
+export const source = signal<Source>('hand');
+/** The item being placed or installed, by its index in `source`'s list, if any. */
 export const selected = signal<number | null>(null);
 export const rotation = signal<Rot>(0);
 /** The lot cell under the pointer. */
 export const hoverCell = signal<Cell | null>(null);
-/** A placement waiting for End week (D-036): a tap places tentatively. */
-export const tentative = signal<PlaceAction | null>(null);
+/** A placement (or a hand install) waiting for End week (D-036): a tap places tentatively. */
+export const tentative = signal<PlaceAction | InstallAction | null>(null);
+/** A supply install's first click: a second click on the same piece installs it (D-073). */
+export const installArmed = signal<number | null>(null);
 /** What the inspect panel shows when nothing is being placed. */
 export const inspected = signal<Inspected | null>(null);
 
@@ -78,23 +89,59 @@ export type Inspected =
   | { kind: 'piece'; uid: number }
   | { kind: 'tile'; x: number; y: number }
   | { kind: 'street'; x: number }
-  | { kind: 'card'; i: number };
+  | { kind: 'card'; i: number }
+  | { kind: 'reserve'; i: number }
+  | { kind: 'supply'; i: number }
+  | { kind: 'blueprint'; i: number }
+  | { kind: 'offer'; i: number };
 
-/** The placement under the cursor, centered on it, or the tentative one. */
-export const activePlay = computed<PlaceAction | null>(() => {
-  if (tentative.value) return tentative.value;
+/** What's selected: a piece to place or a fixture to install, and where it's from. */
+export const selection = computed<
+  | { kind: 'piece'; id: PieceId; from: 'hand' | 'reserve'; i: number }
+  | { kind: 'fixture'; id: FixtureId; from: 'hand' | 'supplies'; i: number }
+  | null
+>(() => {
   const i = selected.value;
+  const s = run.value;
+  if (i === null || s.screen !== 'build') return null;
+  if (source.value === 'reserve') {
+    const r = s.reserve[i];
+    return r ? { kind: 'piece', id: r.id, from: 'reserve', i } : null;
+  }
+  if (source.value === 'supplies') {
+    const sup = s.supplies[i];
+    return sup?.kind === 'fixture' ? { kind: 'fixture', id: sup.id, from: 'supplies', i } : null;
+  }
+  const card = s.hand[i];
+  if (!card) return null;
+  return card.kind === 'piece'
+    ? { kind: 'piece', id: card.id, from: 'hand', i }
+    : { kind: 'fixture', id: card.id, from: 'hand', i };
+});
+
+/** The piece on a lot cell, or 0. */
+export function pieceAt(state: RunState, cell: Cell): number {
+  return uidAt(occupancy(state.house), cell.x, cell.y);
+}
+
+/** The play under the cursor (a placement centered on it, or an install in the piece under it), or the tentative one. */
+export const activePlay = computed<PlaceAction | InstallAction | null>(() => {
+  if (tentative.value) return tentative.value;
+  const sel = selection.value;
   const cell = hoverCell.value;
-  const card = i === null ? undefined : run.value.hand[i];
-  if (i === null || !card || !cell) return null;
-  const def = CONTENT.pieces[card.id];
+  if (!sel || !cell) return null;
+  if (sel.kind === 'fixture') {
+    const uid = installArmed.value ?? pieceAt(run.value, cell);
+    return { t: 'install', from: sel.from, i: sel.i, uid };
+  }
+  const def = CONTENT.pieces[sel.id];
   const cells = shapeCells(def.shape, rotation.value);
   const w = Math.max(...cells.map((c) => c.x)) + 1;
   const h = Math.max(...cells.map((c) => c.y)) + 1;
   return {
     t: 'place',
-    from: 'hand',
-    i,
+    from: sel.from,
+    i: sel.i,
     x: cell.x - Math.floor((w - 1) / 2),
     y: cell.y - Math.floor((h - 1) / 2),
     rot: rotation.value,
@@ -133,6 +180,13 @@ export const pace = computed(() => rules.pace(run.value));
 
 /** Which cards have somewhere to go, for greying out the rest. */
 export const cardsFit = computed(() => run.value.hand.map((_, i) => rules.cardFits(run.value, i)));
+/** The same for reserve pieces and supplies. */
+export const reserveFit = computed(() =>
+  run.value.reserve.map((_, i) => rules.reserveFits(run.value, i)),
+);
+export const suppliesFit = computed(() =>
+  run.value.supplies.map((_, i) => rules.installHosts(run.value, 'supplies', i).length > 0),
+);
 
 // ---------------------------------------------------------------------------------------
 // Run codes and saves (implementation-plan.md §6).
@@ -209,10 +263,23 @@ export function randomSeed(): string {
 
 function resetWeek(): void {
   selected.value = null;
+  source.value = 'hand';
   tentative.value = null;
+  installArmed.value = null;
   rotation.value = 0;
   demolishArmed.value = null;
   tool.value = 'build';
+}
+
+/** Picks an item to place or install (or puts it back if it's already picked). */
+export function selectItem(from: Source, i: number): void {
+  const same = selected.value === i && source.value === from;
+  batch(() => {
+    tentative.value = null;
+    installArmed.value = null;
+    source.value = from;
+    selected.value = same ? null : i;
+  });
 }
 
 /** Listeners for each action's events: the tally director subscribes. */
@@ -270,8 +337,13 @@ export function continueRun(): void {
 
 export function goToTitle(): void {
   resetWeek();
-  canContinue.value = run.value.screen === 'build' && log.value.length > 0;
+  canContinue.value = inProgress() && log.value.length > 0;
   appScreen.value = 'title';
+}
+
+/** A run that hasn't ended: building, or in the shop between milestones. */
+export function inProgress(state: RunState = run.value): boolean {
+  return state.screen === 'build' || state.screen === 'shop';
 }
 
 /** Sends an action to the rules. Illegal actions are a bug in the UI, not a crash. */
@@ -296,13 +368,20 @@ export function dispatch(action: Action, opts: { keepWeek?: boolean } = {}): boo
     run.value = result.state;
     log.value = [...log.value, action];
     if (opts.keepWeek) {
-      // A free action keeps the card being placed, unless the hand changed under it.
-      if (action.t === 'reroll' || action.t === 'debug') {
+      // A free action keeps the card being placed, unless the list it came from changed.
+      const changed =
+        action.t === 'reroll' ||
+        action.t === 'debug' ||
+        action.t === 'sell' ||
+        (action.t === 'install' && action.from === 'supplies');
+      if (changed) {
         selected.value = null;
+        source.value = 'hand';
         tentative.value = null;
       } else if (tentative.value && !rules.checkPlay(result.state, tentative.value).legal) {
         tentative.value = null;
       }
+      installArmed.value = null;
       demolishArmed.value = null;
     } else {
       resetWeek();
@@ -332,6 +411,32 @@ export function completeEarly(): boolean {
 
 export function setAutoComplete(on: boolean): boolean {
   return dispatch({ t: 'setAutoComplete', on }, { keepWeek: true });
+}
+
+/** Installs a fixture from the supplies: a free action, so the week goes on (D-050). */
+export function installSupply(i: number, uid: number): boolean {
+  return dispatch({ t: 'install', from: 'supplies', i, uid }, { keepWeek: true });
+}
+
+/** Sells a blueprint or a supply for half its price, on the build or shop screen. */
+export function sell(from: SellAction['from'], i: number): boolean {
+  const ok = dispatch({ t: 'sell', from, i }, { keepWeek: true });
+  if (ok && inspected.value && inspected.value.kind !== 'piece') inspected.value = null;
+  return ok;
+}
+
+// The shop (D-051).
+
+export function buy(i: number, strike?: CardType): boolean {
+  return dispatch(strike ? { t: 'buy', i, strike } : { t: 'buy', i });
+}
+
+export function refreshShop(): boolean {
+  return dispatch({ t: 'refreshShop' });
+}
+
+export function leaveShop(): boolean {
+  return dispatch({ t: 'leaveShop' });
 }
 
 /** The ?debug panel's cheats. They're actions, so the run code still replays. */
@@ -390,7 +495,7 @@ export function loadInitialRun(): void {
       const { failedAt } = startRun(decoded.data.setup, decoded.data.actions);
       if (failedAt === undefined) {
         // The title screen offers Continue for a run in progress.
-        canContinue.value = run.value.screen === 'build' && log.value.length > 0;
+        canContinue.value = inProgress() && log.value.length > 0;
         appScreen.value = 'title';
         if (linkError) addNote(linkError);
         return;
@@ -433,12 +538,13 @@ export function loadRunCode(code: string): boolean {
   if (failedAt !== undefined)
     notes.push(`It stopped replaying at action ${failedAt + 1}: ${error}`);
   else notes.push(`Replayed ${data.actions.length} actions.`);
-  if (data.pending && failedAt === undefined) {
+  const pending = data.pending;
+  if (pending?.t === 'place' && pending.from === 'hand' && failedAt === undefined) {
     // Show the placement the report was looking at.
     batch(() => {
-      selected.value = data.pending!.i;
-      rotation.value = data.pending!.rot;
-      tentative.value = data.pending!;
+      selected.value = pending.i;
+      rotation.value = pending.rot;
+      tentative.value = pending;
     });
   }
   notice.value = { text: notes.join(' ') };

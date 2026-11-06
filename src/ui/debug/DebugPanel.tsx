@@ -10,6 +10,7 @@ import {
   SCORE_LABELS,
   stream,
   type Action,
+  type Good,
   type PieceId,
   type RunSetup,
   type RunState,
@@ -65,6 +66,34 @@ const jumpTo = signal(2);
 /** The card to give. */
 const PIECES = Object.values(CONTENT.pieces).sort((a, b) => a.name.localeCompare(b.name));
 const giveId = signal<PieceId>(PIECES[0]!.id);
+/** Every good the panel can give (M3), as `<kind>:<id>` with a label. */
+const GOODS: { value: string; label: string; group: string }[] = [
+  ...Object.values(CONTENT.blueprints).map((d) => ({
+    value: `blueprint:${d.id}`,
+    label: `${d.name} (${d.rarity})`,
+    group: 'Blueprints',
+  })),
+  ...Object.values(CONTENT.fixtures).map((d) => ({
+    value: `fixture:${d.id}`,
+    label: `${d.name} (${d.rarity})`,
+    group: 'Fixtures → supplies',
+  })),
+  ...Object.values(CONTENT.fixtures).map((d) => ({
+    value: `fixtureCard:${d.id}`,
+    label: d.name,
+    group: 'Fixtures → hand',
+  })),
+  ...Object.values(CONTENT.pieces)
+    .filter((d) => d.drawWeight === 0)
+    .map((d) => ({ value: `piece:${d.id}`, label: d.name, group: 'Special pieces → reserve' })),
+];
+const goodId = signal(GOODS[0]!.value);
+
+function goodOf(value: string): Good {
+  const [kind, id] = value.split(':') as [Good['kind'], string];
+  return { kind, id } as Good;
+}
+
 /** Set while the bot builds a house: what to show on the Go button. */
 const building = signal<string | null>(null);
 
@@ -89,7 +118,10 @@ async function botRunTo(
   };
   let step = 0;
   let lastWeek = s.week;
-  while (s.screen === 'build' && !(s.phase === goal && s.slot === 1 && s.overtimeWeek === 0)) {
+  // It stops at the start of milestone n: in the shop before it, if there is one.
+  const arrived = (q: RunState) =>
+    q.phase === goal && (q.screen === 'shop' || (q.slot === 1 && q.overtimeWeek === 0));
+  while ((s.screen === 'build' || s.screen === 'shop') && !arrived(s)) {
     if (actions.length > MAX_BOT_ACTIONS) throw new Error('The bot got stuck.');
     // Keyed like sim/simulate.ts, so this plays the same house as the sim on this seed.
     const rng = stream(setup.seed, `bot/${greedy.name}/${s.week}/${s.draws}/${step++}`);
@@ -134,7 +166,7 @@ async function jump(n: number): Promise<void> {
       notice.value = {
         text: `The bot’s run stopped replaying at action ${failedAt + 1}: ${error}`,
       };
-    } else if (state.screen !== 'build') {
+    } else if (state.screen !== 'build' && state.screen !== 'shop') {
       notice.value = { text: `The bot’s run ended before milestone ${n}.` };
     } else {
       showToast(`Milestone ${n}: ${PHASES[n - 1]?.name ?? ''}`);
@@ -189,6 +221,8 @@ export function DebugPanel() {
   if (!debugEnabled) return null;
   const s = run.value;
   const live = s.screen === 'build';
+  const going = live || s.screen === 'shop';
+  const groups = [...new Set(GOODS.map((g) => g.group))];
   const isOpen = open.value;
   const toggle = () => {
     open.value = !open.value;
@@ -273,7 +307,7 @@ export function DebugPanel() {
               <button
                 key={amount}
                 type="button"
-                disabled={!live}
+                disabled={!going}
                 onClick={() => debugAction({ t: 'debug', op: 'addBudget', amount })}
               >
                 +{amount}
@@ -300,6 +334,49 @@ export function DebugPanel() {
               type="button"
               disabled={!live}
               onClick={() => debugAction({ t: 'debug', op: 'giveCard', id: giveId.value })}
+            >
+              Give
+            </button>
+          </div>
+
+          <div class="debug-row">
+            <span class="debug-label">Shop</span>
+            <button
+              type="button"
+              disabled={!live}
+              onClick={() => debugAction({ t: 'debug', op: 'forceShop' })}
+              title="Open the shop that follows this milestone, now; leaving comes back to this week"
+            >
+              Force the shop
+            </button>
+          </div>
+
+          <div class="debug-row">
+            <label class="debug-label" for="debug-good">
+              Good
+            </label>
+            <select
+              id="debug-good"
+              value={goodId.value}
+              onChange={(e) => (goodId.value = (e.target as HTMLSelectElement).value)}
+            >
+              {groups.map((g) => (
+                <optgroup key={g} label={g}>
+                  {GOODS.filter((x) => x.group === g).map((x) => (
+                    <option key={x.value} value={x.value}>
+                      {x.label}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+            <button
+              type="button"
+              disabled={!going}
+              onClick={() =>
+                debugAction({ t: 'debug', op: 'giveGood', good: goodOf(goodId.value) })
+              }
+              title="Where buying it would put it"
             >
               Give
             </button>

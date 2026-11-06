@@ -6,7 +6,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import type { Action, PlaceAction, RunState } from './index.ts';
+import type { Action, InstallAction, PlaceAction, RunState } from './index.ts';
 import { stream } from './rng.ts';
 import { createRules } from './run.ts';
 import { TEST_CONTENT } from './testing.ts';
@@ -33,6 +33,18 @@ const rules = createRules(content);
  */
 function randomAction(state: RunState, seed: string, step: number, free = false): Action {
   const rng = stream(seed, `test/${step}`);
+  // The shop between milestones: sometimes buy what's affordable, then leave.
+  if (state.screen === 'shop') {
+    const ok = rules.shopOffers(state).filter((o) => o.ok && o.offer.kind !== 'service');
+    return ok.length > 0 && rng.chance(50) ? { t: 'buy', i: rng.pick(ok).i } : { t: 'leaveShop' };
+  }
+  // A fixture card in the hand: install it in a random host (the week's turn).
+  const fixtures = state.hand.flatMap((c, i) => (c.kind === 'fixture' ? [i] : []));
+  if (fixtures.length > 0 && rng.chance(30)) {
+    const i = rng.pick(fixtures);
+    const hosts = rules.installHosts(state, 'hand', i);
+    if (hosts.length > 0) return { t: 'install', from: 'hand', i, uid: rng.pick(hosts) };
+  }
   if (free) {
     const roll = rng.int(100);
     if (roll < 4) return { t: 'setAutoComplete', on: !state.autoComplete };
@@ -70,7 +82,11 @@ function playOut(
   let state = rules.newRun({ seed, crewId: 'generalContractor', mode: 'standard' });
   const states = [state];
   const actions: Action[] = [];
-  for (let step = 0; step < steps && state.screen === 'build'; step++) {
+  for (
+    let step = 0;
+    step < steps && (state.screen === 'build' || state.screen === 'shop');
+    step++
+  ) {
     const action = randomAction(state, seed, step, free);
     state = rules.apply(state, action).state;
     actions.push(action);
@@ -91,10 +107,11 @@ describe('properties', () => {
         if (state.screen !== 'build') return;
         const play = randomAction(state, `${seed}/play`, 99);
         const passTally = rules.apply(state, { t: 'pass' }).events.find((e) => e.t === 'tally')!;
-        if (play.t === 'place') {
+        if (play.t === 'place' || play.t === 'install') {
           // Hovering previews many spots on the same state, so the cached "before" is what the
           // UI sees: warm the cache with another spot first.
-          rules.preview(state, randomAction(state, `${seed}/warm`, 98) as PlaceAction);
+          const warm = randomAction(state, `${seed}/warm`, 98);
+          if (warm.t === 'place' || warm.t === 'install') rules.preview(state, warm);
           const p = rules.preview(state, play);
           expect(p.legal).toBe(true);
           const real = rules.apply(state, play).events.find((e) => e.t === 'tally')!;
@@ -112,6 +129,8 @@ describe('properties', () => {
           const changed = real.tally.pieces
             .filter((x) => beforeEarned.get(x.uid) !== x.earned)
             .map((x) => x.uid);
+          // An install always lists its host, like a new piece, even if its earnings hold.
+          if (play.t === 'install' && !changed.includes(play.uid)) changed.push(play.uid);
           expect(p.lines.map((l) => l.uid).sort()).toEqual(changed.sort());
           checked++;
         }

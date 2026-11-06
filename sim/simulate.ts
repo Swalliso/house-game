@@ -61,7 +61,10 @@ export function simulateRun(
   let enclosure: EnclosureCost | null = null;
   let probed = false;
   let step = 0;
-  while (s.screen === 'build' && (opts.maxWeeks === undefined || s.week <= opts.maxWeeks)) {
+  while (
+    (s.screen === 'build' || s.screen === 'shop') &&
+    (opts.maxWeeks === undefined || s.week <= opts.maxWeeks)
+  ) {
     if (probePhase !== null && !probed && s.phase === probePhase) {
       probed = true;
       enclosure = enclosureCost(rules, s);

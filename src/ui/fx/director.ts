@@ -10,14 +10,20 @@
 // while Space or the right mouse button is held. A click skips to the result.
 
 import { batch, signal } from '@preact/signals';
-import { CONTENT, SCORE_LABELS, type GameEvent, type RunState } from '../../rules/index.ts';
+import {
+  CONTENT,
+  SCORE_LABELS,
+  type GameEvent,
+  type RunState,
+  type XMultTerm,
+} from '../../rules/index.ts';
 import { audio } from '../audio/audio.ts';
 import { settings } from '../settings.ts';
 import { onEvents, onRunReset } from '../store.ts';
 import { formatNumber } from '../format.ts';
 import { FEEL } from './feel.ts';
 
-export type PopupKind = 'points' | 'mult' | 'set' | 'total' | 'note';
+export type PopupKind = 'points' | 'mult' | 'set' | 'total' | 'note' | 'sparkle';
 
 export interface Popup {
   id: number;
@@ -31,7 +37,9 @@ export interface Popup {
 }
 
 export interface TallyView {
-  stage: 'pieces' | 'sets' | 'multiply' | 'total';
+  stage: 'pieces' | 'sets' | 'sparkle' | 'multiply' | 'total';
+  /** The ×Mult sources that have landed so far this tally (gold Sparkle stamps). */
+  sparkles: readonly XMultTerm[];
   points: number;
   mult: number;
   total: number | null;
@@ -203,6 +211,7 @@ async function playFastForward(
   const t = e.tally;
   tallyView.value = {
     stage: 'total',
+    sparkles: t.xMults,
     points: t.points,
     mult: t.mult,
     total: t.total,
@@ -242,6 +251,7 @@ async function playTally(
   const t = e.tally;
   const view: TallyView = {
     stage: 'pieces',
+    sparkles: [],
     points: 0,
     mult: 100,
     total: null,
@@ -260,6 +270,9 @@ async function playTally(
     if (!skipping) {
       const c = pieceCenter([after, base], piece.uid);
       popup(c.x, c.y, `+${piece.earned}`, 'points', FEEL.tally.stepMs);
+      // Crown Jewel's top earner.
+      if (t.best?.uid === piece.uid)
+        popup(c.x, c.y - 0.7, '★ Top earner', 'sparkle', FEEL.tally.stepMs);
       audio.ladder(step);
       if (motion()) fxHooks.wobble(piece.uid);
       shake(FEEL.shake.triggerPx);
@@ -300,6 +313,46 @@ async function playTally(
     await wait(FEEL.tally.setStepMs / 2);
   }
   highlighted.value = [];
+
+  // +Mult from blueprints (It's a House) and this week's tools.
+  const lot = after.house.lot;
+  for (const m of t.multTerms) {
+    view.stage = 'sets';
+    view.mult += m.add;
+    tallyView.value = { ...view };
+    if (!skipping) {
+      popup(
+        lot.width / 2,
+        Math.max(2, lot.height / 3),
+        `${m.label}: +${formatCharm(m.add)} ${SCORE_LABELS.mult}`,
+        'mult',
+        FEEL.tally.setStepMs,
+      );
+      audio.play('chime', { rate: 1.1 });
+    }
+    await wait(FEEL.tally.setStepMs / 2);
+  }
+
+  // ×Mult (D-056): each source lands as its own gold Sparkle stamp, in the fixed order.
+  for (const x of t.xMults) {
+    view.stage = 'sparkle';
+    view.mult = x.after;
+    view.sparkles = [...view.sparkles, x];
+    tallyView.value = { ...view };
+    if (!skipping) {
+      const where =
+        x.source.kind === 'fixture'
+          ? pieceCenter([after, base], x.source.uid)
+          : { x: lot.width / 2, y: Math.max(2, lot.height / 3) };
+      popup(where.x, where.y, `${x.label} ×${formatCharm(x.times)}`, 'sparkle', FEEL.sparkleStepMs);
+      audio.play('stamp');
+      audio.play('sparkle', { delay: 0.08 });
+      if (x.source.kind === 'fixture' && motion()) fxHooks.wobble(x.source.uid);
+      shake(FEEL.shake.setPx);
+    }
+    await wait(FEEL.sparkleStepMs);
+  }
+  view.mult = t.mult;
 
   // The multiply moment.
   view.stage = 'multiply';
@@ -396,8 +449,15 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
   try {
     const newSets = new Set(events.flatMap((e) => (e.t === 'setCompleted' ? [e.key] : [])));
     const ended = events.some((e) => e.t === 'runEnded');
-    // Free actions with nothing to animate (the auto-complete toggle) finish at once.
-    if (!events.some((e) => e.t === 'tally' || e.t === 'placed' || e.t === 'demolished')) {
+    // Shop events: sounds and a note; the shop screen and the budget count do the rest.
+    for (const e of events) shopBeat(e);
+    // Free actions with little to animate (the auto-complete toggle, the shop, a free
+    // install) finish at once.
+    if (
+      !events.some(
+        (e) => e.t === 'tally' || e.t === 'placed' || e.t === 'demolished' || e.t === 'installed',
+      )
+    ) {
       for (const e of events) {
         if (e.t === 'handDrawn' && e.reroll && !skipping) audio.play('rotate', { rate: 0.7 });
       }
@@ -414,6 +474,19 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
           const yard = CONTENT.pieces[e.defId].category !== 'indoor';
           audio.play(yard ? 'place-yard' : 'place-room');
           await wait(FEEL.placeMs);
+          break;
+        }
+        case 'installed': {
+          const c = pieceCenter([after, base], e.uid);
+          if (!skipping) {
+            const name = CONTENT.fixtures[e.fixture].name;
+            const was = e.replaced ? ` (was ${CONTENT.fixtures[e.replaced].name})` : '';
+            popup(c.x, c.y, `${name}!${was}`, 'note', FEEL.installMs);
+            audio.play('place-room', { rate: 1.4 });
+            audio.play('chime', { delay: 0.06, rate: 1.3 });
+            if (motion()) fxHooks.wobble(e.uid);
+          }
+          await wait(FEEL.installMs * 0.6);
           break;
         }
         case 'demolished': {
@@ -491,6 +564,36 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
     // A held Space or right button re-arms this on its next event; don't let a lost key-up
     // leave every later tally on fast-forward.
     holding = false;
+  }
+}
+
+/** The shop's beats (§12, Shop and crates): Rare goods arrive with a shimmer and a sound. */
+function shopBeat(e: GameEvent): void {
+  if (skipping) return;
+  switch (e.t) {
+    case 'shopOpened':
+    case 'shopRefreshed': {
+      const rare = e.offers.some(
+        (o) =>
+          (o.kind === 'blueprint' && CONTENT.blueprints[o.id].rarity === 'rare') ||
+          (o.kind === 'fixture' && CONTENT.fixtures[o.id].rarity === 'rare'),
+      );
+      audio.play('chime', { rate: e.t === 'shopOpened' ? 0.9 : 1.1 });
+      if (rare) audio.play('sparkle', { delay: 0.25 });
+      break;
+    }
+    case 'bought':
+      audio.play('stamp', { rate: 1.2 });
+      break;
+    case 'sold':
+      audio.play('rotate', { rate: 1.2 });
+      break;
+    case 'shopClosed':
+      if (e.skipReward > 0)
+        flash.value = { id: nextId++, text: `+${e.skipReward} budget for saving up` };
+      break;
+    default:
+      break;
   }
 }
 

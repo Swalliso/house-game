@@ -7,7 +7,8 @@ import type { Action, Rng, Rules, RunState } from '../../src/rules/index.ts';
 export const random = {
   name: 'random',
   act(rules: Rules, state: RunState, rng: Rng): Action {
-    const plays = rules.legalPlacements(state);
+    if (state.screen === 'shop') return { t: 'leaveShop' };
+    const plays = rules.legalPlays(state);
     return plays.length > 0 ? rng.pick(plays) : { t: 'pass' };
   },
 };
