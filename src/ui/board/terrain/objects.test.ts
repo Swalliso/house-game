@@ -251,12 +251,17 @@ describe('the street', () => {
   });
 
   it('takes a fringe of the lot’s grass along its top, in the colors above, not under water', () => {
-    const blades = tiles.filter((t) => t.id.endsWith('edge'));
+    const blades = tiles.filter((t) => t.id.endsWith('edge') && !t.cols);
     expect(blades.map((t) => t.sx)).toEqual([0, 1, 2, 3, 6, 7]);
     for (const b of blades) {
       expect(b.sy).toBe(top);
       const sunny = isSunny(lot, Math.floor(b.sx / SUB), lot.height - 1);
       expect(b.id).toBe(sunny ? 'sun-edge' : 'woods-edge');
     }
+    // The shaded Tree's fringe takes the sunny side's blades where they spill into its shade
+    // above it: the last 6 px of its east subtile, beside the sunny cell.
+    expect(tiles.filter((t) => t.cols)).toEqual([
+      { id: 'sun-edge', ...blobTile('godot', E | SE | S | SW | W), sx: 1, sy: top, cols: [10, 16] },
+    ]);
   });
 });
