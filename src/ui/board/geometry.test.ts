@@ -3,6 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import { CELL, cellUnit } from '../sprites.ts';
 import {
+  boardRows,
   fitScale,
   MAX_ZOOM,
   maxZoom,
@@ -32,12 +33,18 @@ describe('cells', () => {
   });
 });
 
+describe('the board', () => {
+  it('is the lot, the street row, and two rows of road below it', () => {
+    expect(boardRows(24)).toBe(27);
+  });
+});
+
 describe('the default zoom', () => {
   // About the board's space in a 1920×1080 window: between the panels, under the top bar.
-  it('fits a 24×24 lot and its street at 1× at 1080p: 32 CSS px per cell, as 2× was', () => {
+  it('fits a 24×24 lot, its street and road at 1× at 1080p: 32 CSS px per cell', () => {
     const s = fitScale(1296, 970, 24, 24, 1);
     expect(s).toBe(1);
-    expect(CELL * s * 25).toBe(800);
+    expect(CELL * s * boardRows(24)).toBe(864);
   });
 
   it('is never below 1×, so a small window pans', () => {
@@ -46,14 +53,17 @@ describe('the default zoom', () => {
   });
 
   it('is the largest whole number of device pixels per art pixel that fits', () => {
-    // 1700 CSS px tall fits 2× (1600 px) at a dpr of 1, and 2× (3200 device px) at 2.
-    expect(fitScale(2000, 1700, 24, 24, 1)).toBe(2);
-    expect(fitScale(2000, 1700, 24, 24, 2)).toBe(2);
-    // 1300 CSS px fits 1.5× on Retina (2400 of 2600 device px) but only 1× at a dpr of 1.
+    // 1800 CSS px tall fits 2× (1728 px) at a dpr of 1, and 2× (3456 device px) at 2.
+    expect(fitScale(2000, 1800, 24, 24, 1)).toBe(2);
+    expect(fitScale(2000, 1800, 24, 24, 2)).toBe(2);
+    // 1700 CSS px doesn't: 1× at a dpr of 1, and 1.5× on Retina.
+    expect(fitScale(2000, 1700, 24, 24, 1)).toBe(1);
+    expect(fitScale(2000, 1700, 24, 24, 2)).toBe(1.5);
+    // 1300 CSS px fits 1.5× on Retina (2592 of 2600 device px) but only 1× at a dpr of 1.
     expect(fitScale(2000, 1300, 24, 24, 2)).toBe(1.5);
     expect(fitScale(2000, 1300, 24, 24, 1)).toBe(1);
     // The narrower side decides.
-    expect(fitScale(1200, 1700, 24, 24, 1)).toBe(1);
+    expect(fitScale(1200, 1800, 24, 24, 1)).toBe(1);
   });
 
   it('never goes past the camera’s largest zoom', () => {
@@ -139,13 +149,13 @@ describe('the title screen’s street', () => {
 });
 
 describe('Fit', () => {
-  it('shows the whole lot and street with cells of whole device pixels', () => {
-    // 1280×720: about 0.75×, cells of 24 CSS px.
+  it('shows the whole board with cells of whole device pixels', () => {
+    // 1280×720: about 0.69×, cells of 22 CSS px.
     const s = overviewScale(976, 610, 24, 24, 1);
-    expect(CELL * s).toBe(24);
-    expect(CELL * s * 25).toBeLessThanOrEqual(610);
+    expect(CELL * s).toBe(22);
+    expect(CELL * s * boardRows(24)).toBeLessThanOrEqual(610);
     // On Retina, cells are a whole number of device pixels, which can be half a CSS px.
-    expect(overviewScale(976, 610, 24, 24, 2) * CELL * 2).toBe(48);
-    expect(overviewScale(976, 615, 24, 24, 2) * CELL * 2).toBe(49);
+    expect(overviewScale(976, 610, 24, 24, 2) * CELL * 2).toBe(45);
+    expect(overviewScale(976, 621, 24, 24, 2) * CELL * 2).toBe(46);
   });
 });

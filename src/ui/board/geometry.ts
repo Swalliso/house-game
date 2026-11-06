@@ -92,6 +92,18 @@ export function center(cells: readonly Cell[]): { x: number; y: number } {
 /** The camera zooms in up to this scale; its last step is the largest k ÷ dpr not above it. */
 export const MAX_ZOOM = 3;
 
+/**
+ * Rows of road drawn below the street row (the rules' street, where pieces touch it and the
+ * pointer finds it): decoration only, nothing there takes a click. The board, the terrain
+ * canvas, the default zoom and Fit all count them.
+ */
+export const ROAD_ROWS = 2;
+
+/** The board's rows for a lot `lotH` cells tall: the lot, the street row, and the road. */
+export function boardRows(lotH: number): number {
+  return lotH + 1 + ROAD_ROWS;
+}
+
 /** Whole device pixels per art pixel at `scale`, give or take float noise. */
 function devicePx(scale: number, dpr: number): number {
   return Math.round(scale * dpr * 1e6) / 1e6;
@@ -132,10 +144,11 @@ export function zoomStep(scale: number, dir: 1 | -1, dpr: number): number {
 
 /**
  * The default zoom (§12, Art): the largest whole device pixels per art pixel at which the lot
- * plus the street row below it fit, never below 1× (a smaller view pans) and never above the
- * camera's largest zoom. The camera (camera.ts) starts here. At a devicePixelRatio between 1
- * and 2, 1× isn't whole device pixels, so when nothing larger fits the default has uneven
- * pixels and isn't a zoom step; the team picks the rule there (D-097's note).
+ * plus the street and the road below it (boardRows) fit, never below 1× (a smaller view pans)
+ * and never above the camera's largest zoom. The camera (camera.ts) starts here. At a
+ * devicePixelRatio between 1 and 2, 1× isn't whole device pixels, so when nothing larger fits
+ * the default has uneven pixels and isn't a zoom step; the team picks the rule there (D-097's
+ * note).
  */
 export function fitScale(
   availWidth: number,
@@ -144,15 +157,16 @@ export function fitScale(
   lotH: number,
   dpr: number,
 ): number {
-  const byH = Math.floor((availHeight * dpr) / ((lotH + 1) * CELL)) / dpr;
+  const byH = Math.floor((availHeight * dpr) / (boardRows(lotH) * CELL)) / dpr;
   const byW = Math.floor((availWidth * dpr) / (lotW * CELL)) / dpr;
   return Math.min(maxZoom(dpr), Math.max(1, Math.min(byH, byW)));
 }
 
 /**
- * The Fit overview (§12, Art): the largest scale that shows the whole lot and the street,
- * the one exception to whole device pixels per art pixel. Cells stay a whole number of device
- * pixels, so the grid lines up even though the sprites' pixels come out slightly uneven.
+ * The Fit overview (§12, Art): the largest scale that shows the whole board (the lot, the street
+ * and the road), the one exception to whole device pixels per art pixel. Cells stay a whole
+ * number of device pixels, so the grid lines up even though the sprites' pixels come out
+ * slightly uneven.
  */
 export function overviewScale(
   availWidth: number,
@@ -161,7 +175,7 @@ export function overviewScale(
   lotH: number,
   dpr: number,
 ): number {
-  const cell = Math.min(availWidth / lotW, availHeight / (lotH + 1));
+  const cell = Math.min(availWidth / lotW, availHeight / boardRows(lotH));
   return Math.max(1, Math.floor(cell * dpr)) / dpr / CELL;
 }
 

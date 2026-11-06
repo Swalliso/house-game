@@ -1504,11 +1504,11 @@ Intensity is measured against **pace**: `max(1, (this phase's target − the sco
 ### Art (D-057, D-097)
 
 - **The grid:** one game cell is 32 art px, a 2×2 block of LimeZu's 16 px tiles (D-097). LimeZu draws furniture in a 3/4 view for rooms about 4 tiles wide (a double bed is 26×40 px), so at one tile per cell a Bedroom couldn't hold its bed. Combolands looks like 16px tiles drawn at 3× on a 1080p screen.
-- **Scale:** `scale` is CSS px per art px, in whole device pixels per art pixel: k ÷ devicePixelRatio, k a whole number. The default zoom is the largest such scale at which the lot and its street row fit, and never below 1×, panning when the lot overflows.
-  - **The design target is 1080p** (confirmed 2026-11-05; most players have at least a 1080p screen). The whole lot fits there at 1×: 32 CSS px per cell, an 800px board with the street row, the same size on screen as 2× was with 16 px art, with room for the top bar.
+- **Scale:** `scale` is CSS px per art px, in whole device pixels per art pixel: k ÷ devicePixelRatio, k a whole number. The default zoom is the largest such scale at which the board fits (the lot, its street row, and the two rows of road drawn below it, `ROAD_ROWS` in `geometry.ts`), and never below 1×, panning when the board overflows.
+  - **The design target is 1080p** (confirmed 2026-11-05; most players have at least a 1080p screen). The whole lot fits there at 1×: 32 CSS px per cell, an 864px board with the street and the road, the lot the same size on screen as 2× was with 16 px art, with room for the top bar.
   - At 1280×720 the lot can't fit at 1×. The default there is 1× with panning, with UI panels overlaying the board's margins (Combolands' panels sit over the sea around its island).
   - The wheel steps one device pixel per art pixel at a time, up to 3×: 1×, 2×, and 3× at a devicePixelRatio of 1, and 0.5× to 3× by halves on a Retina screen.
-  - The Fit button is the one exception to whole numbers: it shows the whole lot at the largest scale that fits (about 0.75× at 720p), with slightly uneven pixels.
+  - The Fit button is the one exception to whole numbers: it shows the whole board at the largest scale that fits (about 0.69× at 720p), with slightly uneven pixels.
   - Not yet at 125% and 150% display scaling (a devicePixelRatio of 1.25 or 1.5): there 1× isn't whole device pixels, and the default is 1× with uneven pixels whenever the next whole step up doesn't fit, as in every window up to 1920×1080. The team picks the rule (D-097's note has the options).
   - The costs: finer pixels on a 1080p monitor (a Retina screen still shows each art pixel as 2×2 device pixels), and a smaller board on a 1440p screen at a devicePixelRatio of 1.
   - If we make an itch.io page, its embed is 1600×900 with fullscreen. 1280×720 stays the minimum (D-047).
@@ -1528,7 +1528,10 @@ Intensity is measured against **pace**: `max(1, (this phase's target − the sco
 - **Variety for free:** palette swaps per client or season (spring green, autumn rust, dusk with glowing windows), the way Combolands varies its islands.
 - **UI chrome:** wood-panel frames and a chunky pixel font, as in Combolands, plus the readable-font option.
 - **Rendering:**
-  - terrain is drawn into a canvas of (lot width × 32) × ((lot height + 1) × 32) art px, 768×800 for 24×24 with the street row, with smoothing off, shown at that size × scale with `image-rendering: pixelated`, and redrawn only when terrain changes
+  - terrain is drawn into a canvas of (lot width × 32) × ((lot height + 3) × 32) art px, 768×864 for 24×24 with the street row and the two rows of road, with smoothing off, shown at that size × scale with `image-rendering: pixelated`, and redrawn only when terrain changes
+  - what stands on the lot is placed by rule and tile hash (`src/ui/board/terrain/objects.ts`): one LimeZu tree per Tree cell, so the trees beside a piece can be counted, and a big tree only on a 2×2 block of Trees that no piece can touch; a darker woods floor with soft edges under the Tree cells; two or three rocks per Boulder; the Old Shed at LimeZu's size on its footprint; the Time Capsule's dug soil and shovel. Each sprite's part on its own cells goes on the terrain canvas, and what rises above them (tree tops) on a canopy canvas at `LAYER.canopy`, over the pieces and under their digits and badges (`LAYER.labels`). Neither takes the pointer.
+  - the street row is a sidewalk with its curb (the rules' street: clicks and the inspect panel find it there); the road below it, with a dashed line and the far curb, is decoration only
+  - around the board, the scroll area shows dimmed LimeZu grass that zooms and pans with the board, so the lot sits in a garden; a faint property line marks the lot's other three edges
   - the lot's water (the pond and the creek) has its own canvas over the water's bounding box, just above the terrain and below everything else: LimeZu's animated water, picked per 16 px subtile by `src/ui/board/autotile.ts`, redrawn only when its frame changes (about 8 a second), and still under Reduce motion or in a hidden tab
   - pieces are absolutely positioned elements using a CSS-background atlas, placed at whole multiples of 32 × scale and rounded to device pixels
   - atlas sprites start at even positions and are extruded by 1px, so fractional screen scales show no seams

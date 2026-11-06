@@ -249,7 +249,7 @@
         }
       }
     ],
-    "note": "Ponds and the creek: LimeZu's animated water, a 3 × 3 block of shore corners, edges and open water per frame (8 frames; LimeZu's preview runs them at 100 ms, slowed here for a calm lot). Its flat grass is keyed out so the lot's own grass, sunny or not, shows around the shore, and the grass blades at the water's edge are muted like grass-0. The water canvas picks each 16 px subtile's piece by autotile.ts quarterPiece."
+    "note": "Ponds and the creek: LimeZu's animated water, a 3 \u00d7 3 block of shore corners, edges and open water per frame (8 frames; LimeZu's preview runs them at 100 ms, slowed here for a calm lot). Its flat grass is keyed out so the lot's own grass, sunny or not, shows around the shore, and the grass blades at the water's edge are muted like grass-0. The water canvas picks each 16 px subtile's piece by autotile.ts quarterPiece."
   },
   "shore-corners": {
     "pack": "me",
@@ -275,7 +275,7 @@
         }
       }
     ],
-    "note": "The animated water's inner corners (a 2 × 2 block per frame, land in the middle), for bends in the creek and notches in a pond, edited like shore."
+    "note": "The animated water's inner corners (a 2 \u00d7 2 block per frame, land in the middle), for bends in the creek and notches in a pond, edited like shore."
   },
   "lily-0": {
     "pack": "me",
@@ -294,5 +294,474 @@
     "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png",
     "rect": [432, 112, 16, 16],
     "note": "One big lily pad on open water, three of three."
+  },
+  "tree-round": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_Singles_16x16/ME_Singles_Camping_16x16_Tree_170.png",
+    "rect": [0, 11, 32, 37],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#21983d": "#269340",
+          "#2da233": "#329d37",
+          "#49a92f": "#4ca434",
+          "#268b49": "#2a874a",
+          "#17704b": "#1b6c4a",
+          "#1f614f": "#225e4e",
+          "#1a5249": "#1c5047",
+          "#479757": "#5a8a5e",
+          "#37854e": "#4c7a52",
+          "#2d7256": "#436b52"
+        }
+      }
+    ],
+    "note": "The lot's commonest tree: LimeZu's round tree (Camping Tree_170, 32\u00d748, cropped to its 37 rows), its greens a little desaturated and its grass shadow in the lot's shaded grass, so the woods sit calmly behind the pieces. Drawn on its cell's bottom edge, it rises 5 px into the cell above (the canopy canvas)."
+  },
+  "tree-bushy": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_Singles_16x16/ME_Singles_Camping_16x16_Tree_260.png",
+    "rect": [0, 3, 32, 29],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#21983d": "#269340",
+          "#2da233": "#329d37",
+          "#49a92f": "#4ca434",
+          "#268b49": "#2a874a",
+          "#17704b": "#1b6c4a",
+          "#1f614f": "#225e4e",
+          "#1a5249": "#1c5047",
+          "#479757": "#5a8a5e",
+          "#37854e": "#4c7a52",
+          "#2d7256": "#436b52"
+        }
+      }
+    ],
+    "note": "A bushier, lower tree (Camping Tree_260), muted like tree-round. It stays inside its cell."
+  },
+  "tree-bush": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_Singles_16x16/ME_Singles_Camping_16x16_Tree_266.png",
+    "rect": [0, 8, 32, 24],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#21983d": "#269340",
+          "#2da233": "#329d37",
+          "#49a92f": "#4ca434",
+          "#268b49": "#2a874a",
+          "#17704b": "#1b6c4a",
+          "#1f614f": "#225e4e",
+          "#1a5249": "#1c5047",
+          "#479757": "#5a8a5e",
+          "#37854e": "#4c7a52",
+          "#2d7256": "#436b52"
+        }
+      }
+    ],
+    "note": "A small leaning bush of a tree (Camping Tree_266), muted like tree-round, for variety in the woods."
+  },
+  "tree-conifer": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_Singles_16x16/ME_Singles_Camping_16x16_Tree_182.png",
+    "rect": [0, 3, 32, 45],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#21983d": "#269340",
+          "#2da233": "#329d37",
+          "#49a92f": "#4ca434",
+          "#268b49": "#2a874a",
+          "#17704b": "#1b6c4a",
+          "#1f614f": "#225e4e",
+          "#1a5249": "#1c5047",
+          "#479757": "#5a8a5e",
+          "#37854e": "#4c7a52",
+          "#2d7256": "#436b52"
+        }
+      }
+    ],
+    "note": "A conifer (Camping Tree_182, 32\u00d748), muted like tree-round. It rises 13 px into the cell above."
+  },
+  "tree-conifer-cones": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_Singles_16x16/ME_Singles_Camping_16x16_Tree_185.png",
+    "rect": [0, 3, 32, 45],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#21983d": "#269340",
+          "#2da233": "#329d37",
+          "#49a92f": "#4ca434",
+          "#268b49": "#2a874a",
+          "#17704b": "#1b6c4a",
+          "#1f614f": "#225e4e",
+          "#1a5249": "#1c5047",
+          "#479757": "#5a8a5e",
+          "#37854e": "#4c7a52",
+          "#2d7256": "#436b52"
+        }
+      }
+    ],
+    "note": "The conifer with pine cones (Camping Tree_185), muted like tree-round."
+  },
+  "tree-pine": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_Singles_16x16/ME_Singles_Camping_16x16_Tree_206.png",
+    "rect": [0, 11, 32, 53],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#21983d": "#269340",
+          "#2da233": "#329d37",
+          "#49a92f": "#4ca434",
+          "#268b49": "#2a874a",
+          "#17704b": "#1b6c4a",
+          "#1f614f": "#225e4e",
+          "#1a5249": "#1c5047",
+          "#479757": "#5a8a5e",
+          "#37854e": "#4c7a52",
+          "#2d7256": "#436b52"
+        }
+      }
+    ],
+    "note": "A tall pine (Camping Tree_206, 32\u00d764), muted like tree-round. The tallest tree: it rises 21 px into the cell above."
+  },
+  "tree-apple": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_Singles_16x16/ME_Singles_Camping_16x16_Tree_257.png",
+    "rect": [0, 0, 32, 32],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#21983d": "#269340",
+          "#2da233": "#329d37",
+          "#49a92f": "#4ca434",
+          "#268b49": "#2a874a",
+          "#17704b": "#1b6c4a",
+          "#1f614f": "#225e4e",
+          "#1a5249": "#1c5047",
+          "#479757": "#5a8a5e",
+          "#37854e": "#4c7a52",
+          "#2d7256": "#436b52"
+        }
+      }
+    ],
+    "note": "A round apple tree (Camping Tree_257), muted like tree-round; its apples keep LimeZu's red."
+  },
+  "tree-bushy-apple": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_Singles_16x16/ME_Singles_Camping_16x16_Tree_263.png",
+    "rect": [0, 3, 32, 29],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#21983d": "#269340",
+          "#2da233": "#329d37",
+          "#49a92f": "#4ca434",
+          "#268b49": "#2a874a",
+          "#17704b": "#1b6c4a",
+          "#1f614f": "#225e4e",
+          "#1a5249": "#1c5047",
+          "#479757": "#5a8a5e",
+          "#37854e": "#4c7a52",
+          "#2d7256": "#436b52"
+        }
+      }
+    ],
+    "note": "The bushy tree with apples (Camping Tree_263), muted like tree-round."
+  },
+  "tree-big": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_Singles_16x16/ME_Singles_Camping_16x16_Tree_1.png",
+    "rect": [0, 11, 64, 52],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#21983d": "#269340",
+          "#2da233": "#329d37",
+          "#49a92f": "#4ca434",
+          "#268b49": "#2a874a",
+          "#17704b": "#1b6c4a",
+          "#1f614f": "#225e4e",
+          "#1a5249": "#1c5047",
+          "#479757": "#5a8a5e",
+          "#37854e": "#4c7a52",
+          "#2d7256": "#436b52"
+        }
+      }
+    ],
+    "note": "A big tree (Camping Tree_1, cropped to 64\u00d752, the audit prototype's pick), muted like tree-round. It stands on a 2 \u00d7 2 block of tree cells deep in the woods, where no piece can touch it, so the woods' edge trees stay one per cell."
+  },
+  "tree-big-apple": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_Singles_16x16/ME_Singles_Camping_16x16_Tree_16.png",
+    "rect": [0, 12, 64, 51],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#21983d": "#269340",
+          "#2da233": "#329d37",
+          "#49a92f": "#4ca434",
+          "#268b49": "#2a874a",
+          "#17704b": "#1b6c4a",
+          "#1f614f": "#225e4e",
+          "#1a5249": "#1c5047",
+          "#479757": "#5a8a5e",
+          "#37854e": "#4c7a52",
+          "#2d7256": "#436b52"
+        }
+      }
+    ],
+    "note": "The big tree with apples (Camping Tree_16, cropped to 64\u00d751), muted like tree-round. Now and then in place of tree-big."
+  },
+  "grass-woods": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png",
+    "rect": [16, 112, 16, 16],
+    "ops": [
+      {
+        "op": "tile",
+        "size": [32, 32]
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#479757": "#517f57",
+          "#37854e": "#46724c",
+          "#2d7256": "#3e6549"
+        }
+      }
+    ],
+    "note": "The woods' floor: grass-0 a step darker, under every tree cell, so a cluster of trees reads as one wood and the gaps between crowns are shade."
+  },
+  "woods-edge": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/Autotiles_16x16/Godot_Autotiles_16x16.png",
+    "rect": [0, 320, 192, 64],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#479757": "#5a8a5e",
+          "#37854e": "#4c7a52",
+          "#53a65d": "#6a9a67",
+          "#79a15c": "#86a571",
+          "#34555d": "#436b52"
+        }
+      }
+    ],
+    "note": "The woods floor's edge: LimeZu's grass edge (Godot autotile set 5, clear inside), in grass-0's colors, drawn on the woods' edge subtiles so the open grass reaches softly into the shade."
+  },
+  "rocks": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_16x16.png",
+    "rect": [304, 592, 48, 48],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#479757": "#5a8a5e",
+          "#37854e": "#4c7a52",
+          "#2d7256": "#436b52",
+          "#46a44d": "#6a9a67"
+        }
+      }
+    ],
+    "note": "Boulders: LimeZu's nine 16 \u00d7 16 rocks (Camping, a 3 \u00d7 3 block), the grass at their feet in grass-0's colors. A boulder cell shows two or three of them, picked by tile hash."
+  },
+  "rocks-sunny": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_16x16.png",
+    "rect": [304, 592, 48, 48],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#479757": "#7f9a5c",
+          "#37854e": "#6e8a55",
+          "#2d7256": "#5f7652",
+          "#46a44d": "#8fa868"
+        }
+      }
+    ],
+    "note": "The same rocks with the grass at their feet in grass-sunny's colors, for boulders on the sunny side."
+  },
+  "old-shed": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png",
+    "rect": [368, 608, 48, 64],
+    "note": "The Old Shed: LimeZu's weathered grey garden shack at its native 48 \u00d7 64, standing on the find's 2 \u00d7 2 footprint."
+  },
+  "time-capsule": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/Autotiles_16x16/Godot_Autotiles_16x16.png",
+    "rect": [128, 64, 16, 16],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [32, 32],
+        "layers": [
+          {
+            "rect": [176, 64, 16, 16],
+            "at": [16, 0]
+          },
+          {
+            "rect": [128, 112, 16, 16],
+            "at": [0, 16]
+          },
+          {
+            "rect": [176, 112, 16, 16],
+            "at": [16, 16]
+          },
+          {
+            "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/19_Graveyard_16x16.png",
+            "rect": [402, 245, 13, 22],
+            "at": [12, 3]
+          }
+        ]
+      },
+      {
+        "op": "keyOut",
+        "colors": ["#479757"]
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#37854e": "#4c7a52",
+          "#53a65d": "#6a9a67",
+          "#79a15c": "#86a571",
+          "#34555d": "#436b52"
+        }
+      }
+    ],
+    "note": "The Time Capsule: a round patch of dug soil (the corner tiles of Godot autotile set 1, LimeZu's dirt on grass, its flat grass keyed out) with a shovel stuck in it (Graveyard): dig here. The grass blades at its edge are in grass-0's colors."
+  },
+  "street-sidewalk": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/Autotiles_16x16/Godot_Autotiles_16x16.png",
+    "rect": [0, 1152, 192, 64],
+    "note": "The street's sidewalks: LimeZu's paving on asphalt (Godot autotile set 18), with the curb's lip on its south edge."
+  },
+  "street-asphalt": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/2_City_Terrains_16x16.png",
+    "rect": [16, 64, 16, 16],
+    "note": "The road: plain asphalt, one 16 px tile."
+  },
+  "street-line": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/Autotiles_16x16/Godot_Autotiles_16x16.png",
+    "rect": [32, 1648, 16, 16],
+    "note": "The road's center line: the straight east-west tile of Godot autotile set 25 (a yellow line on asphalt), every other tile for dashes."
+  },
+  "time-capsule-sunny": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/Autotiles_16x16/Godot_Autotiles_16x16.png",
+    "rect": [128, 64, 16, 16],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [32, 32],
+        "layers": [
+          {
+            "rect": [176, 64, 16, 16],
+            "at": [16, 0]
+          },
+          {
+            "rect": [128, 112, 16, 16],
+            "at": [0, 16]
+          },
+          {
+            "rect": [176, 112, 16, 16],
+            "at": [16, 16]
+          },
+          {
+            "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/19_Graveyard_16x16.png",
+            "rect": [402, 245, 13, 22],
+            "at": [12, 3]
+          }
+        ]
+      },
+      {
+        "op": "keyOut",
+        "colors": ["#479757"]
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#37854e": "#6e8a55",
+          "#53a65d": "#8fa868",
+          "#79a15c": "#a2b27a",
+          "#34555d": "#5f7652"
+        }
+      }
+    ],
+    "note": "The Time Capsule on the sunny side: the same, with the grass blades at its edge in grass-sunny's colors."
+  },
+  "grass-outside": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png",
+    "rect": [16, 112, 16, 16],
+    "ops": [
+      {
+        "op": "tile",
+        "size": [128, 128]
+      },
+      {
+        "op": "compose",
+        "size": [128, 128],
+        "layers": [
+          {
+            "rect": [400, 32, 16, 16],
+            "at": [5, 8]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [71, 15]
+          },
+          {
+            "rect": [400, 32, 16, 16],
+            "at": [37, 41]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [102, 57]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [13, 87]
+          },
+          {
+            "rect": [400, 32, 16, 16],
+            "at": [62, 99]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [109, 108]
+          }
+        ]
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#479757": "#537155",
+          "#37854e": "#47644a",
+          "#2d7256": "#3e5848",
+          "#53a65d": "#607f5e"
+        }
+      }
+    ],
+    "note": "Around the lot: LimeZu's grass with seven light tufts scattered on a 128 \u00d7 128 tile (4 \u00d7 4 cells, so the repeat doesn't show), darker and grayer than the lot's grass, so the lot sits in a garden and its edge still shows. The board's scroll area uses it as a CSS background."
   }
 }

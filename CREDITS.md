@@ -16,7 +16,8 @@ Open House is a game jam entry for the theme "It's a house," built with Claude C
   packs stay in the gitignored `art-source/` (D-097).
 - **Placeholder sprites** (`art/*.txt`, packed into `assets/atlas.png`): drawn for Open House
   by Claude Code. Our own work. LimeZu cuts replace them one by one in M5a (D-097): so far the
-  floors, and the lot's grass, sunny side, and water.
+  floors, and the whole lot: its grass, sunny side, water, woods, rocks, finds, street, and
+  the grass around it.
 - **Placeholder sound effects:** generated in the browser with
   [ZzFX](https://github.com/KilledByAPixel/ZzFX) by Frank Force (MIT). Its sample builder is
   vendored in `src/ui/audio/zzfx.ts` with its license notice.

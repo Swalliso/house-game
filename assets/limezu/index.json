@@ -64,10 +64,20 @@
     "h": 32,
     "spec": "97b6070fede635ae"
   },
+  "grass-outside": {
+    "w": 128,
+    "h": 128,
+    "spec": "19708c3fb9110cad"
+  },
   "grass-sunny": {
     "w": 32,
     "h": 32,
     "spec": "09b4f6656b16d96e"
+  },
+  "grass-woods": {
+    "w": 32,
+    "h": 32,
+    "spec": "d0c5d40705b424cc"
   },
   "lily-0": {
     "w": 16,
@@ -84,6 +94,21 @@
     "h": 16,
     "spec": "45006f37b06de7ac"
   },
+  "old-shed": {
+    "w": 48,
+    "h": 64,
+    "spec": "fa226425fcc6e3c0"
+  },
+  "rocks": {
+    "w": 48,
+    "h": 48,
+    "spec": "b49423093e1999eb"
+  },
+  "rocks-sunny": {
+    "w": 48,
+    "h": 48,
+    "spec": "c088917d465be5c1"
+  },
   "shore": {
     "w": 48,
     "h": 48,
@@ -98,10 +123,85 @@
     "ms": 130,
     "spec": "a7d394ef762dd640"
   },
+  "street-asphalt": {
+    "w": 16,
+    "h": 16,
+    "spec": "ff8c774a4953d1f6"
+  },
+  "street-line": {
+    "w": 16,
+    "h": 16,
+    "spec": "e048dd369db1cd17"
+  },
+  "street-sidewalk": {
+    "w": 192,
+    "h": 64,
+    "spec": "c57ed8e7b94f0ecb"
+  },
   "sun-edge": {
     "w": 192,
     "h": 64,
     "spec": "c82de262ecc30f17"
+  },
+  "time-capsule": {
+    "w": 32,
+    "h": 32,
+    "spec": "f28fdb4f45266c8c"
+  },
+  "time-capsule-sunny": {
+    "w": 32,
+    "h": 32,
+    "spec": "b3ca025abe7b0aa1"
+  },
+  "tree-apple": {
+    "w": 32,
+    "h": 32,
+    "spec": "06aea4724e521f73"
+  },
+  "tree-big": {
+    "w": 64,
+    "h": 52,
+    "spec": "8847037f0dbe4871"
+  },
+  "tree-big-apple": {
+    "w": 64,
+    "h": 51,
+    "spec": "cd392d360968c42d"
+  },
+  "tree-bush": {
+    "w": 32,
+    "h": 24,
+    "spec": "d4cdfd578acd8787"
+  },
+  "tree-bushy": {
+    "w": 32,
+    "h": 29,
+    "spec": "45fd55b4dc67f07a"
+  },
+  "tree-bushy-apple": {
+    "w": 32,
+    "h": 29,
+    "spec": "77ee8f1bc2fcbdec"
+  },
+  "tree-conifer": {
+    "w": 32,
+    "h": 45,
+    "spec": "dfff3ffa8bc6d734"
+  },
+  "tree-conifer-cones": {
+    "w": 32,
+    "h": 45,
+    "spec": "e72d67304b12b9a2"
+  },
+  "tree-pine": {
+    "w": 32,
+    "h": 53,
+    "spec": "e6034aacee0f95d6"
+  },
+  "tree-round": {
+    "w": 32,
+    "h": 37,
+    "spec": "ad12b4602c6e8b63"
   },
   "tuft-0": {
     "w": 16,
@@ -147,5 +247,10 @@
     "w": 16,
     "h": 16,
     "spec": "48ef859f63e0099b"
+  },
+  "woods-edge": {
+    "w": 192,
+    "h": 64,
+    "spec": "e9eeb33af3f43922"
   }
 }

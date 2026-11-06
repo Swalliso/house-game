@@ -72,7 +72,7 @@ import {
   zoomIn,
   zoomOut,
 } from './camera.ts';
-import { center, labelSpot, occupancy, uidAt } from './geometry.ts';
+import { boardRows, center, labelSpot, occupancy, uidAt } from './geometry.ts';
 import { layerVars } from './layers.ts';
 import { PieceShape, wobble } from './PieceView.tsx';
 import { Outline, TerrainLayer, YardTint } from './TerrainLayer.tsx';
@@ -555,6 +555,8 @@ export function Board() {
       <div
         class={`board-scroll ${panning ? 'panning' : ''}`}
         ref={scrollRef}
+        // A cell's size, for the lot's surroundings (terrain.css), which zoom with the board.
+        style={{ '--board-cell': `${px}px` }}
         onPointerMove={onPointerMove}
         onPointerDown={onPointerDown}
         onPointerUp={onPointerUp}
@@ -575,7 +577,7 @@ export function Board() {
           style={{
             ...LAYER_VARS,
             width: `${lot.width * px}px`,
-            height: `${(lot.height + 1) * px}px`,
+            height: `${boardRows(lot.height) * px}px`,
           }}
         >
           <TerrainLayer lot={lot} scale={scale} />
