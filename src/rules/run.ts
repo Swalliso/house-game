@@ -186,8 +186,9 @@ export interface Rules {
   installHosts(state: RunState, from: 'hand' | 'supplies', i: number): number[];
   /**
    * A cheap local estimate of a legal play's change to the week's total, for ranking
-   * candidates before scoring the best few exactly (§4, Performance). `setHint` marks plays
-   * that might complete a set.
+   * candidates before scoring the best few exactly (§4, Performance). Its hints mark plays
+   * whose payoff it can't see: `setHint`, one that might complete a set; `yardHint`, a Fence
+   * that would close a new fenced yard; `linkHint`, a Hallway that would link rooms anew.
    */
   estimatePlay(state: RunState, play: PlaceAction): Estimate;
   /** The tile counts of the house's fenced yards. */

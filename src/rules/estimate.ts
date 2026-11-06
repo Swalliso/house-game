@@ -2,9 +2,14 @@
 // §4, Performance): the new piece's own earnings plus its neighbors' changes, from the house's
 // layout as it stands, with no new layout built. The greedy bot ranks every candidate by it
 // and runs the exact scoreOnly() on the top few only. It's a ranking, not a score: it ignores
-// sets, links, views, Dark, and fenced yards the piece would create. `setHint` flags
-// candidates that might complete a set (a member type touching another member of that set),
-// so the bot always scores those exactly too.
+// sets, links, views, Dark, and fenced yards the piece would create. Three hints flag the
+// plays whose payoff it can't see, so the bot always scores those exactly too:
+// - setHint: a set member type touching another member of that set (it might complete one);
+// - yardHint: a wall piece (a Fence) that would close a fenced yard that isn't one now, by the
+//   layout's rule (a flood fill over non-wall tiles, off the street row, bordering a Fence and
+//   the house, with fencedYardMin tiles);
+// - linkHint: a linking connector (a Hallway) that would link two rooms not linked now.
+// Only wall pieces pay for the yard check and only connectors for the link check.
 
 import type { Cell, Content, PieceDef, Selector, Tally } from './index.ts';
 import { cellIndex, inBounds, ORTHOGONAL } from './grid.ts';
@@ -16,7 +21,12 @@ import { earnedFor } from './scoring.ts';
 
 export interface Estimate {
   delta: number;
+  /** It might complete a set: a member type touching another member of that set. */
   setHint: boolean;
+  /** A wall piece that would close a new fenced yard. */
+  yardHint: boolean;
+  /** A linking connector that would link two rooms that aren't linked now. */
+  linkHint: boolean;
 }
 
 /** The new piece's distinct physical neighbors, from the current layout (Trees under it are gone). */
@@ -272,5 +282,139 @@ export function estimatePlay(
     }
   }
 
-  return { delta: Math.round((delta * tally.mult) / 100), setHint };
+  return {
+    delta: Math.round((delta * tally.mult) / 100),
+    setHint,
+    yardHint: !!def.wall && closesYard(content, layout, cells),
+    linkHint: !!def.connector && linksRooms(content, layout, def, cells),
+  };
+}
+
+// ---------------------------------------------------------------------------------------
+// Fenced yards and links the play would make.
+
+/** Up, left, right, down: the fill pops the last one first, so it heads for the street row. */
+const STREETWARD: readonly (readonly [number, number])[] = [
+  [0, -1],
+  [-1, 0],
+  [1, 0],
+  [0, 1],
+];
+
+/** 1 on tiles covered by a wall piece (a Fence), per layout; indoor tiles are layout.indoorTile. */
+const fenceCache = new WeakMap<Layout, Uint8Array>();
+
+function fenceTiles(content: Content, layout: Layout): Uint8Array {
+  let fence = fenceCache.get(layout);
+  if (fence) return fence;
+  fence = new Uint8Array(layout.occupant.length);
+  for (let i = 0; i < fence.length; i++) {
+    const uid = layout.occupant[i]!;
+    if (uid >= 0 && pieceDef(content, layout.byUid.get(uid)!).wall) fence[i] = 1;
+  }
+  fenceCache.set(layout, fence);
+  return fence;
+}
+
+/**
+ * Would wall cells here close a fenced yard that isn't one now? Each region of non-wall tiles
+ * next to the new cells is flood-filled as layout.ts does it, stopping early at the street row.
+ * Walls only split regions, so a region that qualifies is new unless its tiles were already
+ * in a fenced yard (a Fence inside one only shrinks it).
+ */
+function closesYard(content: Content, layout: Layout, cells: readonly Cell[]): boolean {
+  if (!layout.hasIndoor) return false;
+  const { width: w, height: h } = layout.house.lot;
+  const indoor = layout.indoorTile;
+  const fence = fenceTiles(content, layout);
+  // 0 unseen, 1 the new cells, 2 + n flooded from the n-th start.
+  const mark = new Uint8Array(w * h);
+  for (const c of cells) mark[cellIndex(w, c.x, c.y)] = 1;
+  const wallAt = (i: number) => indoor[i] === 1 || fence[i] === 1 || mark[i] === 1;
+  const min = content.balance.fencedYardMin;
+  let starts = 0;
+  const stack: number[] = [];
+  for (const c of cells) {
+    for (const [dx, dy] of ORTHOGONAL) {
+      const sx = c.x + dx;
+      const sy = c.y + dy;
+      if (!inBounds(w, h, sx, sy)) continue;
+      const start = cellIndex(w, sx, sy);
+      if (mark[start] !== 0 || wallAt(start)) continue;
+      // Regions left unfinished (they reached the street) keep their mark, so a later start
+      // that runs into one is in that region too.
+      const id = 2 + (starts++ % 254);
+      mark[start] = id;
+      stack.length = 0;
+      stack.push(start);
+      let size = 0;
+      let open = false;
+      let houseSide = false;
+      while (stack.length > 0 && !open) {
+        const i = stack.pop()!;
+        size++;
+        const x = i % w;
+        const y = (i - x) / w;
+        if (y === h - 1) open = true;
+        for (const [ex, ey] of STREETWARD) {
+          const nx = x + ex;
+          const ny = y + ey;
+          if (!inBounds(w, h, nx, ny)) continue;
+          const j = cellIndex(w, nx, ny);
+          if (indoor[j] === 1) houseSide = true;
+          if (wallAt(j)) continue;
+          if (mark[j] === 0) {
+            mark[j] = id;
+            stack.push(j);
+          } else if (mark[j] !== id) open = true; // an unfinished region: it reached the street
+        }
+      }
+      // It borders a Fence: the new cells.
+      if (!open && houseSide && size >= min && layout.fencedId[start]! < 0) return true;
+    }
+  }
+  return false;
+}
+
+/** Would a linking connector here link two rooms that aren't linked now? */
+function linksRooms(
+  content: Content,
+  layout: Layout,
+  def: PieceDef,
+  cells: readonly Cell[],
+): boolean {
+  if (!def.effects.some((e) => e.kind === 'link')) return false;
+  const { width: w, height: h } = layout.house.lot;
+  const linker = (d: PieceDef) => !!d.connector && d.effects.some((e) => e.kind === 'link');
+  // The rooms it touches, and the rooms touching any linking group it joins.
+  const rooms = new Set<number>();
+  const seen = new Set<number>();
+  const stack: number[] = [];
+  for (const c of cells) {
+    for (const [dx, dy] of ORTHOGONAL) {
+      if (!inBounds(w, h, c.x + dx, c.y + dy)) continue;
+      const uid = layout.occupant[cellIndex(w, c.x + dx, c.y + dy)]!;
+      if (uid < 0 || seen.has(uid)) continue;
+      seen.add(uid);
+      const d = pieceDef(content, layout.byUid.get(uid)!);
+      if (isRoom(d)) rooms.add(uid);
+      else if (linker(d)) stack.push(uid);
+    }
+  }
+  while (stack.length > 0) {
+    const u = stack.pop()!;
+    for (const n of layout.touching.get(u) ?? []) {
+      if (n.kind !== 'piece' || seen.has(n.uid)) continue;
+      seen.add(n.uid);
+      const d = pieceDef(content, layout.byUid.get(n.uid)!);
+      if (isRoom(d)) rooms.add(n.uid);
+      else if (linker(d)) stack.push(n.uid);
+    }
+  }
+  if (rooms.size < 2) return false;
+  for (const r of rooms) {
+    const linked = layout.links.get(r);
+    for (const o of rooms) if (o !== r && !linked?.has(o)) return true;
+  }
+  return false;
 }
