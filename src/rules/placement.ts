@@ -36,6 +36,7 @@ export const REASONS = {
   pond: "You can't build on the pond.",
   creek: "You can't build on the creek.",
   boulder: "A boulder's in the way.",
+  oldShed: 'The Old Shed’s in the way: demolish it first.',
   disconnected: 'Rooms must connect to the house.',
   nothingThere: "There's nothing there to demolish.",
   water: "Water can't be demolished.",
@@ -74,22 +75,25 @@ export function checkPlacement(
     return fail(REASONS.occupied);
   }
   const clearedTrees: Cell[] = [];
+  // Finds built over (a Time Capsule): they're cleared like Trees, and each pays once.
+  const finds: Cell[] = [];
   for (const c of cells) {
     const t = terrainAt(lot, c.x, c.y);
     if (t === null) continue;
     const feature = content.features[t];
-    if (feature.clear === 'buildOver') clearedTrees.push(c);
+    if (feature.clear === 'buildOver') (feature.reward ? finds : clearedTrees).push(c);
     else if (feature.blocks && !def.canCover?.includes(t)) {
-      return fail(t === 'pond' || t === 'creek' ? REASONS[t] : REASONS.boulder);
+      return fail(t === 'pond' || t === 'creek' || t === 'oldShed' ? REASONS[t] : REASONS.boulder);
     }
   }
+  const found = finds.length > 0 ? { finds } : {};
   if (def.category === 'indoor' && layout.hasIndoor && !touchesIndoor(content, layout, cells)) {
     return fail(REASONS.disconnected);
   }
   const blocking = def.effects.filter(
     (e): e is Extract<typeof e, { kind: 'requires' }> => e.kind === 'requires' && e.blocksPlacement,
   );
-  if (blocking.length === 0) return { legal: true, cells, clearedTrees };
+  if (blocking.length === 0) return { legal: true, cells, clearedTrees, ...found };
   // The common case (touching the street, a Driveway, a Tree) is exact from the tiles around
   // the piece, so the bots' scans don't build a layout per candidate.
   let quick = true;
@@ -100,16 +104,16 @@ export function checkPlacement(
     }
     if (met === null) quick = false;
   }
-  if (quick) return { legal: true, cells, clearedTrees };
+  if (quick) return { legal: true, cells, clearedTrees, ...found };
   // Otherwise requirements are checked on the house as it would be, with Trees under it gone.
-  const added = addPiece(layout.house, def.id, x, y, rot, week, clearedTrees);
+  const added = addPiece(layout.house, def.id, x, y, rot, week, [...clearedTrees, ...finds]);
   const after = layoutOf(added.house);
   for (const e of blocking) {
     if (!meetsCondition(content, after, e.condition, added.piece.uid)) {
       return fail(`${def.name} must be built ${conditionText(content, e.condition)}.`);
     }
   }
-  return { legal: true, cells, clearedTrees, house: added.house, piece: added.piece };
+  return { legal: true, cells, clearedTrees, ...found, house: added.house, piece: added.piece };
 }
 
 /**
@@ -213,19 +217,65 @@ export function addPiece(
   y: number,
   rot: Rot,
   week: number,
-  clearedTrees: readonly Cell[],
+  cleared: readonly Cell[],
 ): { house: HouseState; piece: PlacedPiece } {
   const piece: PlacedPiece = { uid: house.nextUid, defId, x, y, rot, placedWeek: week };
-  let lot = house.lot;
-  if (clearedTrees.length > 0) {
-    const terrain = lot.terrain.slice();
-    for (const c of clearedTrees) terrain[cellIndex(lot.width, c.x, c.y)] = null;
-    lot = { ...lot, terrain };
-  }
   return {
-    house: { lot, pieces: [...house.pieces, piece], nextUid: house.nextUid + 1 },
+    house: {
+      lot: clearTiles(house.lot, cleared),
+      pieces: [...house.pieces, piece],
+      nextUid: house.nextUid + 1,
+    },
     piece,
   };
+}
+
+/** The lot with these tiles' features gone (Trees and finds built over). */
+export function clearTiles(lot: HouseState['lot'], cells: readonly Cell[]): HouseState['lot'] {
+  if (cells.length === 0) return lot;
+  const terrain = lot.terrain.slice();
+  for (const c of cells) terrain[cellIndex(lot.width, c.x, c.y)] = null;
+  return { ...lot, terrain };
+}
+
+/**
+ * Moving Truck (M3b): the piece, fixture and all, to (x, y, rot), keeping its uid, timers,
+ * and place in the placement order. Checked as a new placement on the house without it, and
+ * it can't split the house.
+ */
+export function checkMove(
+  content: Content,
+  layout: Layout,
+  uid: number,
+  x: number,
+  y: number,
+  rot: Rot,
+  week: number,
+  layoutOf: (house: HouseState) => Layout,
+): PlacementCheck & { piece?: PlacedPiece } {
+  const piece = layout.byUid.get(uid);
+  const none = { legal: false, cells: [], clearedTrees: [] };
+  if (!piece) return { ...none, reason: 'Pick a piece to move.' };
+  if (piece.x === x && piece.y === y && piece.rot === rot) {
+    return { ...none, reason: 'Pick a new spot for it.' };
+  }
+  const def = pieceDef(content, piece);
+  if (def.category === 'indoor' && wouldSplit(content, layout, uid)) {
+    return { ...none, reason: REASONS.split };
+  }
+  const without: HouseState = {
+    ...layout.house,
+    pieces: layout.house.pieces.filter((p) => p.uid !== uid),
+  };
+  const check = checkPlacement(content, layoutOf(without), def, x, y, rot, week, layoutOf);
+  if (!check.legal) return check;
+  const moved: PlacedPiece = { ...piece, x, y, rot };
+  const house: HouseState = {
+    ...layout.house,
+    lot: clearTiles(layout.house.lot, [...check.clearedTrees, ...(check.finds ?? [])]),
+    pieces: layout.house.pieces.map((p) => (p.uid === uid ? moved : p)),
+  };
+  return { ...check, house, piece: moved };
 }
 
 // ---------------------------------------------------------------------------------------
@@ -261,11 +311,36 @@ export function checkDemolish(
   }
   const t = terrainAt(lot, x, y);
   if (t === null) return { legal: false, reason: REASONS.nothingThere, target: null };
-  const target: DemolishTarget = { kind: 'feature', feature: t, cells: [{ x, y }] };
+  // A multi-tile object (the Old Shed) goes all at once.
+  const cells = content.features[t].size ? featureCells(lot, x, y) : [{ x, y }];
+  const target: DemolishTarget = { kind: 'feature', feature: t, cells };
   if (content.features[t].clear === 'demolish') return { legal: true, target };
   if (t === 'pond' || t === 'creek') return { legal: false, reason: REASONS.water, target };
   if (t === 'tree') return { legal: false, reason: REASONS.tree, target };
   return { legal: false, reason: REASONS.nothingThere, target };
+}
+
+/** Every tile of the object at (x, y): orthogonally connected tiles of the same feature, top-left first. */
+export function featureCells(lot: HouseState['lot'], x: number, y: number): Cell[] {
+  const t = terrainAt(lot, x, y);
+  if (t === null) return [];
+  const seen = new Set<number>([cellIndex(lot.width, x, y)]);
+  const out: Cell[] = [];
+  const stack: Cell[] = [{ x, y }];
+  while (stack.length > 0) {
+    const c = stack.pop()!;
+    out.push(c);
+    for (const [dx, dy] of ORTHOGONAL) {
+      const nx = c.x + dx;
+      const ny = c.y + dy;
+      if (!inBounds(lot.width, lot.height, nx, ny) || terrainAt(lot, nx, ny) !== t) continue;
+      const i = cellIndex(lot.width, nx, ny);
+      if (seen.has(i)) continue;
+      seen.add(i);
+      stack.push({ x: nx, y: ny });
+    }
+  }
+  return out.sort((a, b) => a.y - b.y || a.x - b.x);
 }
 
 /** Whether removing this indoor piece leaves the other indoor pieces in more than one group. */

@@ -7,7 +7,9 @@
 // modifiers (for the General Contractor). M3a adds the economy: the full modifier set and every
 // rule key, fixtures, blueprints, the special pieces, the reserve, supplies, and blueprint
 // slots, and the shop between milestones (offers, buying, selling, the sale, the refresh, and
-// the services, including D-076's strike).
+// the services, including D-076's strike). M3b adds tools (with D-075's Weekend Crew),
+// company upgrades, crates and the Housewarming crate, Savings Account interest, and the finds
+// (the Old Shed and Time Capsules).
 //
 // Pure means no DOM, no Preact, no Math.random, no Date, and imports only from src/rules
 // and src/content. tsconfig.rules.json and purity.test.ts enforce it.
@@ -92,11 +94,42 @@ export type BlueprintId =
   | 'modelHome'
   | 'aheadOfSchedule';
 
+/**
+ * Tools (M3b): one-shot free actions from the supplies. The Remodel Plans for Suite and Full
+ * House join once M4a adds those sets. Weekend Crew is D-075's banked building.
+ */
+export type ToolId =
+  | 'movingTruck'
+  | 'copyMachine'
+  | 'rushOrder'
+  | 'openHouseParty'
+  | 'catalog'
+  | 'fertilizer'
+  | 'inspectorsVisit'
+  | 'dumpster'
+  | 'remodelJackAndJill'
+  | 'remodelEntertainer'
+  | 'weekendCrew';
+
+/** Company upgrades (M3b): permanent `rule` modifiers, one offered per visit from shop 2. */
+export type UpgradeId =
+  | 'storageUnit'
+  | 'toolBelt'
+  | 'draftingTable'
+  | 'biggerTruck'
+  | 'foreman'
+  | 'supplierDiscount'
+  | 'savingsAccount';
+
+/** Crates (M3b): open one and keep 1 of 3. */
+export type CrateId = 'blueprintFolio' | 'fixtureCrate' | 'gardenCenter' | 'showroom';
+
 /** Shown on every blueprint, fixture, and tool as a colored border plus a label (D-051). */
 export type Rarity = 'common' | 'uncommon' | 'rare';
 
-/** Lot features (D-049). The street runs along the bottom edge, outside the grid. */
-export type FeatureId = 'street' | 'tree' | 'pond' | 'creek' | 'boulder';
+/** Lot features (D-049). The street runs along the bottom edge, outside the grid. Finds (M3b) pay once. */
+export type FeatureId =
+  'street' | 'tree' | 'pond' | 'creek' | 'boulder' | 'oldShed' | 'timeCapsule';
 /** The features that sit on tiles of the lot. */
 export type TerrainId = Exclude<FeatureId, 'street'>;
 
@@ -251,8 +284,25 @@ export interface FeatureDef {
   viewSource?: true;
   /** Orthogonally connected tiles of this feature count as one neighbor (the pond, the creek). */
   body?: true;
-  /** Lot features that give nothing as neighbors (boulders). */
+  /** Lot features that give nothing as neighbors (boulders, finds). */
   inert?: true;
+  /** A multi-tile object (the Old Shed's [2, 2]): demolishing any tile removes all of it. */
+  size?: readonly [number, number];
+  /** Finds: paid once, when cleared (the Old Shed) or first built over (a Time Capsule). */
+  reward?: Reward;
+}
+
+/** What a find, a tool, or (M4) a change order pays. */
+export interface Reward {
+  /** A one-time Wow payout. */
+  score?: number;
+  budget?: number;
+  /** Bought-style rerolls: they never expire. */
+  rerolls?: number;
+  demolitions?: number;
+  overtime?: number;
+  /** A tool into the supplies (or sold at once for half if they're full); 'random' from the offered tools. */
+  tool?: ToolId | 'random';
 }
 
 /** The run-level numbers that modifiers can change (§5). */
@@ -269,6 +319,25 @@ export type RuleKey =
   | 'shopPricePct'
   | 'specBonus'
   | 'interestMax';
+
+/** One small function per kind in rules/tools.ts (§5, Shop goods). */
+export type ToolUse =
+  /** Moving Truck: a placed piece, fixture and all, to another legal spot. */
+  | { kind: 'move' }
+  /** Copy Machine: a placed piece's card into the reserve. */
+  | { kind: 'copy' }
+  /** Rush Order, Open House Party, Inspector's Visit: this week's tally only. */
+  | { kind: 'weekModifiers'; modifiers: readonly Modifier[] }
+  /** Catalog: redraw this hand from special pieces and fixtures. */
+  | { kind: 'specialHand' }
+  /** Fertilizer: every timer on the lot moves forward. */
+  | { kind: 'advanceTimers'; weeks: number }
+  /** Dumpster. */
+  | { kind: 'reward'; reward: Reward }
+  /** Remodel Plans: +1 level for a set type, for the rest of the run. */
+  | { kind: 'levelSet'; set: SetId }
+  /** Weekend Crew (D-075): this week's next play doesn't end the week. */
+  | { kind: 'extraPlay' };
 
 /** Counts that can scale a ×Mult (Ahead of Schedule). */
 export type RunStat = 'milestonesEarly';
@@ -371,6 +440,44 @@ export interface BlueprintDef {
   offered: boolean;
 }
 
+export interface ToolDef {
+  id: ToolId;
+  name: string;
+  tier: Tier;
+  rarity: Rarity;
+  price: number;
+  use: ToolUse;
+  /** False while its mechanic is missing (Inspector's Visit needs M4a's specs). */
+  offered: boolean;
+}
+
+export interface UpgradeDef {
+  id: UpgradeId;
+  name: string;
+  tier: Tier;
+  price: number;
+  /** `rule` modifiers, permanent for the run. */
+  modifiers: readonly Modifier[];
+}
+
+export interface CrateDef {
+  id: CrateId;
+  name: string;
+  tier: Tier;
+  price: number;
+  contents: 'blueprint' | 'fixture' | 'piece';
+  /** For pieces: 'special' (the Showroom) or 'all' (base and special: the Garden Center). */
+  pool?: 'special' | 'all';
+  /** For pieces: which cards qualify (the Garden Center's yard pieces and outbuildings). */
+  filter?: Selector;
+}
+
+/** One of an opened crate's options. */
+export type PickOption =
+  | { kind: 'blueprint'; id: BlueprintId }
+  | { kind: 'fixture'; id: FixtureId }
+  | { kind: 'piece'; id: PieceId };
+
 export type Range = readonly [min: number, max: number];
 
 /** Lot generation (Appendix A · M1). */
@@ -392,6 +499,11 @@ export interface LotBalance {
   minFreeStreetTiles: number;
   minStreetSidePct: number;
   maxAttempts: number;
+  /** Finds (M3b): how many Old Sheds and Time Capsules a lot gets. */
+  oldSheds: Range;
+  timeCapsules: Range;
+  /** Finds stay at least this many rows clear of the street edge, so the front stays open. */
+  findStreetGap: number;
 }
 
 export interface PhaseDef {
@@ -437,6 +549,12 @@ export interface ShopStock {
   blueprints: number;
   /** Special pieces or fixtures. */
   cards: number;
+  tools: number;
+  crates: number;
+  /** Company upgrades: one per visit from the second shop. */
+  upgrades: number;
+  /** The free Housewarming crate (shop 1): this many Common blueprints to pick 1 from. */
+  housewarming: number;
   /** Rarity weights for blueprint, fixture, and tool slots: Common, Uncommon, Rare. */
   rarity: readonly [number, number, number];
 }
@@ -466,6 +584,10 @@ export interface ShopBalance {
   skipReward: number;
   /** D-076: a strike can't leave fewer drawable card types than this. */
   strikeMinTypes: number;
+  /** Options in an opened crate. */
+  crateOptions: number;
+  /** Savings Account interest: +1 budget per this many held, up to the `interestMax` rule. */
+  interestPer: number;
 }
 
 export interface Content {
@@ -475,6 +597,9 @@ export interface Content {
   crews: Readonly<Record<CrewId, CrewDef>>;
   fixtures: Readonly<Record<FixtureId, FixtureDef>>;
   blueprints: Readonly<Record<BlueprintId, BlueprintDef>>;
+  tools: Readonly<Record<ToolId, ToolDef>>;
+  upgrades: Readonly<Record<UpgradeId, UpgradeDef>>;
+  crates: Readonly<Record<CrateId, CrateDef>>;
   balance: Balance;
 }
 
@@ -520,8 +645,8 @@ export type Card = { kind: 'piece'; id: PieceId } | { kind: 'fixture'; id: Fixtu
 /** A card type that can be struck from the draws (D-076): a piece type (its countsAs root) or a fixture. */
 export type CardType = Card;
 
-/** What sits in a supply slot: bought fixtures (and tools, from M3b), used as free actions. */
-export type Supply = { kind: 'fixture'; id: FixtureId };
+/** What sits in a supply slot: bought fixtures and tools, used as free actions. */
+export type Supply = { kind: 'fixture'; id: FixtureId } | { kind: 'tool'; id: ToolId };
 
 export interface ReservePiece {
   id: PieceId;
@@ -541,6 +666,10 @@ export type ShopOffer =
   | { kind: 'blueprint'; id: BlueprintId; sold?: true }
   | { kind: 'piece'; id: PieceId; sold?: true }
   | { kind: 'fixture'; id: FixtureId; sold?: true }
+  | { kind: 'tool'; id: ToolId; sold?: true }
+  | { kind: 'crate'; id: CrateId; sold?: true }
+  /** Fixed for the visit: a refresh doesn't reroll it. */
+  | { kind: 'upgrade'; id: UpgradeId; sold?: true }
   /** Services stay on offer: each purchase raises the price for the rest of the run. */
   | { kind: 'service'; service: ServiceId };
 
@@ -556,6 +685,19 @@ export interface ShopVisit {
   boughtAny: boolean;
   /** Opened by the ?debug panel mid-phase: leaving goes back to the same week. */
   forced?: true;
+}
+
+/** An opened crate waiting for a choice: only `pick` (or -1 to discard) and `sell` until then. */
+export interface CratePick {
+  source: CrateId | 'housewarming';
+  options: readonly PickOption[];
+}
+
+/** A tool's effect that lasts until the end of a week (Rush Order). */
+export interface TimedEffect {
+  source: ToolId;
+  until: { week: number };
+  modifiers: readonly Modifier[];
 }
 
 export interface RunSetup {
@@ -624,6 +766,14 @@ export interface RunState {
   supplies: readonly Supply[];
   /** Run-long rule benders (`blueprintSlots`, 4), no duplicates. */
   blueprints: readonly OwnedBlueprint[];
+  /** Company upgrades, permanent for the run, no duplicates. */
+  upgrades: readonly UpgradeId[];
+  /** Each set type's level, from Remodel Plans; 1 when absent. */
+  setLevels: Partial<Record<SetId, number>>;
+  /** Tools' effects for this week's tally. */
+  timedEffects: readonly TimedEffect[];
+  /** Weekend Crew (D-075): 'ready' once used this week, 'used' after its free play. */
+  freePlay: 'none' | 'ready' | 'used';
   /** How many of each service have been bought: their prices rise per purchase. */
   servicesBought: Readonly<Record<ServiceId, number>>;
   /** Card types struck from the draws (D-076): never drawn again this run. */
@@ -645,7 +795,7 @@ export interface RunState {
   lastTally: WeekSummary | null;
   /** The shop opens after milestones 1–6 (D-051). */
   screen: 'build' | 'shop' | 'won' | 'lost';
-  offers?: { shop?: ShopVisit };
+  offers?: { shop?: ShopVisit; pick?: CratePick };
   /** Set by the ?debug panel's cheats: this phase's regular end counts as a miss. */
   forcedMiss?: number;
   /** Set once any debug action has changed the run. */
@@ -685,6 +835,17 @@ export type SellAction = { t: 'sell'; from: 'blueprints' | 'supplies'; i: number
 /** The shop's actions. `strike` names the card type for the strike service (D-076). */
 export type BuyAction = { t: 'buy'; i: number; strike?: CardType };
 export type RefreshShopAction = { t: 'refreshShop' };
+/** Keeps one of an opened crate's options; -1 discards the crate. */
+export type PickAction = { t: 'pick'; i: number };
+/**
+ * Uses a supply tool, a free action on the build screen. The Moving Truck needs a piece and
+ * a spot; the Copy Machine a piece.
+ */
+export type UseToolAction = {
+  t: 'useTool';
+  i: number;
+  target?: { uid: number; x?: number; y?: number; rot?: Rot };
+};
 export type LeaveShopAction = { t: 'leaveShop' };
 /**
  * The ?debug panel's cheats. They are actions so that a run code still replays exactly, and
@@ -706,6 +867,8 @@ export type Good =
   | { kind: 'blueprint'; id: BlueprintId }
   | { kind: 'piece'; id: PieceId }
   | { kind: 'fixture'; id: FixtureId }
+  | { kind: 'tool'; id: ToolId }
+  | { kind: 'upgrade'; id: UpgradeId }
   /** A fixture card in the hand, so a hand install can be tried. */
   | { kind: 'fixtureCard'; id: FixtureId };
 
@@ -721,6 +884,8 @@ export type Action =
   | BuyAction
   | RefreshShopAction
   | LeaveShopAction
+  | PickAction
+  | UseToolAction
   | DebugAction;
 
 /** A week's play: a placement, an install, or nothing (a pass). Previews take supply installs too. */
@@ -736,7 +901,9 @@ export type SourceRef =
 export type ModSource =
   | { kind: 'crew'; id: CrewId }
   | { kind: 'blueprint'; id: BlueprintId }
-  | { kind: 'fixture'; id: FixtureId; uid: number };
+  | { kind: 'fixture'; id: FixtureId; uid: number }
+  | { kind: 'upgrade'; id: UpgradeId }
+  | { kind: 'tool'; id: ToolId };
 
 export interface BreakdownLine {
   /** Plain language: "Touching Trees or Quiet neighbors (2)". */
@@ -814,6 +981,8 @@ export type GameEvent =
       free: boolean;
       /** A manual reroll. */
       reroll: boolean;
+      /** The Catalog's redraw from special pieces and fixtures. */
+      special?: true;
     }
   | {
       t: 'placed';
@@ -824,7 +993,34 @@ export type GameEvent =
       rot: Rot;
       cells: readonly Cell[];
       clearedTrees: readonly Cell[];
+      /** Weekend Crew's free play: the week goes on. */
+      free?: true;
     }
+  | {
+      t: 'moved';
+      uid: number;
+      defId: PieceId;
+      from: readonly Cell[];
+      cells: readonly Cell[];
+      clearedTrees: readonly Cell[];
+    }
+  | {
+      t: 'toolUsed';
+      tool: ToolId;
+      /** The piece it acted on (the Moving Truck's, the Copy Machine's). */
+      uid?: number;
+    }
+  | {
+      t: 'findClaimed';
+      feature: TerrainId;
+      x: number;
+      y: number;
+      /** What it paid: the random tool resolved, and whether it was sold for want of a slot. */
+      reward: Reward & { tool?: ToolId };
+      soldTool?: number;
+    }
+  | { t: 'crateOpened'; source: CratePick['source']; options: readonly PickOption[] }
+  | { t: 'picked'; source: CratePick['source']; option: PickOption | null }
   | {
       t: 'demolished';
       /** The piece removed, or the lot feature cleared. */
@@ -881,6 +1077,8 @@ export type GameEvent =
       from: 'hand' | 'supplies';
       /** The fixture it replaced, which is gone. */
       replaced?: FixtureId;
+      /** Weekend Crew's free play: the week goes on. */
+      free?: true;
     }
   | { t: 'shopOpened'; number: number; offers: readonly ShopOffer[]; sale: number | null }
   | {
@@ -965,6 +1163,8 @@ export interface Legality {
   reason?: string;
   cells: readonly Cell[];
   clearedTrees: readonly Cell[];
+  /** Finds the piece would be built over (a Time Capsule): each pays its reward. */
+  finds?: readonly Cell[];
 }
 
 export interface ReplayResult {
@@ -1036,7 +1236,7 @@ export interface Slots {
 // ---------------------------------------------------------------------------------------
 // The API.
 
-export type { EarlyOffer, Rules } from './run.ts';
+export type { EarlyOffer, Rules, ToolPreview } from './run.ts';
 export type { Estimate } from './estimate.ts';
 export { stream, type Rng } from './rng.ts';
 export { createRules, IllegalAction } from './run.ts';
@@ -1047,13 +1247,17 @@ export {
   blueprintText,
   cardText,
   conditionText,
+  crateText,
   effectText,
   fixtureText,
   glossary,
   modifierText,
   multNumber,
   regionText,
+  rewardText,
   selectorText,
+  toolText,
+  upgradeText,
 } from './text.ts';
 export type { Term } from './text.ts';
 export { earnedFor, roundHalfUp, weekTotal } from './scoring.ts';

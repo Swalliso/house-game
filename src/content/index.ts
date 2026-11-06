@@ -11,14 +11,17 @@ import type {
   Tag,
 } from '../rules/index.ts';
 import { isConnected, parseShape } from '../rules/grid.ts';
-import { cardText, modifierText } from '../rules/text.ts';
+import { cardText, modifierText, toolText } from '../rules/text.ts';
 import { BALANCE } from './balance.ts';
 import { BLUEPRINTS } from './blueprints.ts';
+import { CRATES } from './crates.ts';
 import { CREWS } from './crews.ts';
 import { FEATURES } from './features.ts';
 import { FIXTURES } from './fixtures.ts';
 import { PIECES } from './pieces.ts';
 import { SETS } from './sets.ts';
+import { TOOLS } from './tools.ts';
+import { UPGRADES } from './upgrades.ts';
 
 export { SCORE_LABELS } from './labels.ts';
 
@@ -29,6 +32,9 @@ export const CONTENT: Content = {
   crews: CREWS,
   fixtures: FIXTURES,
   blueprints: BLUEPRINTS,
+  tools: TOOLS,
+  upgrades: UPGRADES,
+  crates: CRATES,
   balance: BALANCE,
 };
 
@@ -242,6 +248,10 @@ export function validateContent(content: Content): string[] {
 
   for (const [key, def] of Object.entries(content.features)) {
     if (def.id !== key) problems.push(`feature ${key}: id is "${def.id}"`);
+    const tool = def.reward?.tool;
+    if (tool && tool !== 'random' && !content.tools[tool]) {
+      problems.push(`feature ${key}: unknown reward tool "${tool}"`);
+    }
   }
 
   for (const [key, set] of Object.entries(content.sets)) {
@@ -308,6 +318,50 @@ export function validateContent(content: Content): string[] {
       problems.push(`${where}: only Rare blueprints carry ×Mult`);
     }
   }
+  for (const [key, def] of Object.entries(content.tools)) {
+    const where = `tool ${key}`;
+    if (def.id !== key) problems.push(`${where}: id is "${def.id}"`);
+    if (!Number.isInteger(def.price) || def.price < 1) problems.push(`${where}: price must be ≥ 1`);
+    if (def.use.kind === 'weekModifiers') {
+      def.use.modifiers.forEach((m, k) =>
+        problems.push(
+          ...modifierProblems(content, m, `${where} modifier ${k}`, {
+            fixture: false,
+            drawWeight: false,
+          }),
+        ),
+      );
+    }
+    if (def.use.kind === 'levelSet' && !content.sets[def.use.set]) {
+      problems.push(`${where}: unknown set "${def.use.set}"`);
+    }
+    if (def.use.kind === 'advanceTimers' && def.use.weeks < 1) {
+      problems.push(`${where}: advanceTimers needs weeks ≥ 1`);
+    }
+    const text = toolText(content, def);
+    if (text.length === 0 || text.some((t) => !t || t.includes('undefined'))) {
+      problems.push(`${where}: text didn't generate`);
+    }
+  }
+
+  for (const [key, def] of Object.entries(content.upgrades)) {
+    const where = `upgrade ${key}`;
+    if (def.id !== key) problems.push(`${where}: id is "${def.id}"`);
+    if (!Number.isInteger(def.price) || def.price < 1) problems.push(`${where}: price must be ≥ 1`);
+    if (def.modifiers.some((m) => m.kind !== 'rule')) {
+      problems.push(`${where}: company upgrades are rule modifiers`);
+    }
+  }
+
+  for (const [key, def] of Object.entries(content.crates)) {
+    const where = `crate ${key}`;
+    if (def.id !== key) problems.push(`${where}: id is "${def.id}"`);
+    if (!Number.isInteger(def.price) || def.price < 1) problems.push(`${where}: price must be ≥ 1`);
+    if (def.contents !== 'piece' && (def.pool || def.filter)) {
+      problems.push(`${where}: only piece crates have a pool or a filter`);
+    }
+  }
+
   const b = content.balance;
   if (b.phases.length === 0) problems.push('balance: no phases');
   if (b.early.budgetPerWeek.length === 0 || b.early.scorePct.length === 0) {

@@ -15,6 +15,9 @@ import type {
   PlaceAction,
   RunCodeData,
   RunSetup,
+  ToolId,
+  UpgradeId,
+  UseToolAction,
 } from './index.ts';
 import { fnv1a } from './rng.ts';
 
@@ -168,10 +171,25 @@ function cleanGood(v: unknown): Good | null {
       return { kind: 'piece', id: v.id as PieceId };
     case 'fixture':
       return { kind: 'fixture', id: v.id as FixtureId };
+    case 'tool':
+      return { kind: 'tool', id: v.id as ToolId };
+    case 'upgrade':
+      return { kind: 'upgrade', id: v.id as UpgradeId };
     case 'fixtureCard':
       return { kind: 'fixtureCard', id: v.id as FixtureId };
   }
   return null;
+}
+
+/** A tool's target: a piece, and for the Moving Truck a spot and rotation. */
+function cleanToolTarget(v: unknown): UseToolAction['target'] | null {
+  if (!isObject(v) || !isInt(v.uid)) return null;
+  const spot = v.x !== undefined || v.y !== undefined || v.rot !== undefined;
+  if (!spot) return { uid: v.uid };
+  if (!isInt(v.x) || !isInt(v.y) || !(v.rot === 0 || v.rot === 1 || v.rot === 2 || v.rot === 3)) {
+    return null;
+  }
+  return { uid: v.uid, x: v.x, y: v.y, rot: v.rot };
 }
 
 /**
@@ -207,6 +225,14 @@ function cleanAction(v: unknown): Action | null {
     }
     case 'refreshShop':
       return { t: 'refreshShop' };
+    case 'pick':
+      return isInt(v.i) ? { t: 'pick', i: v.i } : null;
+    case 'useTool': {
+      if (!isInt(v.i)) return null;
+      if (v.target === undefined) return { t: 'useTool', i: v.i };
+      const target = cleanToolTarget(v.target);
+      return target ? { t: 'useTool', i: v.i, target } : null;
+    }
     case 'leaveShop':
       return { t: 'leaveShop' };
     case 'debug':

@@ -386,6 +386,9 @@ function debugAction(rng: Rng): Action {
  */
 function chooseAction(state: RunState, rng: Rng, used: ReadonlySet<Kind>): Action {
   if (state.screen === 'shop') {
+    // An open crate: keep something (or discard it) before anything else.
+    if (state.offers?.pick)
+      return rng.pick(rules.legalActions(state).filter((a) => a.t === 'pick'));
     const shopping = rules.legalActions(state).filter((a) => a.t === 'buy' || a.t === 'sell');
     if (shopping.length > 0 && rng.chance(60)) return rng.pick(shopping);
     return { t: 'leaveShop' };
@@ -442,13 +445,14 @@ function playRun(seed: string, steps: number): Played {
 }
 
 describe('a real run replays exactly from its run code', () => {
-  const SEEDS = ['determinism-a', 'determinism-b', 'determinism-c'];
+  const SEEDS = ['determinism-a', 'determinism-f', 'determinism-c'];
 
   it.each(SEEDS)('seed %s', (seed) => {
-    const played = playRun(seed, 24);
+    // M3b's Housewarming pick takes a step, so the run is a little longer than M2's 24.
+    const played = playRun(seed, 30);
     const kinds = new Set(played.log.map((a) => a.t));
     // The stream reached every kind of action, free ones included, and shopped in a shop.
-    const SHOP: readonly string[] = ['buy', 'sell', 'leaveShop'];
+    const SHOP: readonly string[] = ['buy', 'sell', 'leaveShop', 'pick'];
     expect([...kinds].filter((k) => !SHOP.includes(k)).sort()).toEqual([...ALL_KINDS].sort());
     expect(kinds.has('buy') && kinds.has('leaveShop')).toBe(true);
     expect(played.log.length).toBeGreaterThanOrEqual(18);

@@ -4,6 +4,7 @@
 import type {
   BlueprintDef,
   Content,
+  CrateDef,
   Effect,
   FeatureId,
   FixtureDef,
@@ -12,9 +13,12 @@ import type {
   PieceDef,
   Property,
   Region,
+  Reward,
   RuleKey,
   Selector,
   Tag,
+  ToolDef,
+  UpgradeDef,
 } from './index.ts';
 import { SCORE_LABELS } from '../content/labels.ts';
 
@@ -593,4 +597,71 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
       text: `Pick a card type: it’s never drawn again this run. ${svc.strike.base} budget, ${svc.strike.step} more each strike (up to ${svc.strike.max}).`,
     },
   };
+}
+
+// ---------------------------------------------------------------------------------------
+// Tools, company upgrades, and crates (M3b).
+
+/** What a tool does, as sentences. */
+export function toolText(content: Content, def: ToolDef): string[] {
+  const u = def.use;
+  switch (u.kind) {
+    case 'move':
+      return ['Move a placed piece, fixture and all, to another spot (it can’t split the house)'];
+    case 'copy':
+      return ['Copy a placed piece’s card into your reserve'];
+    case 'weekModifiers':
+      return [...u.modifiers.map((m) => modifierText(content, m)), 'For this week’s tally only'];
+    case 'specialHand':
+      return ['Redraw this hand from special pieces and fixtures (not a reroll)'];
+    case 'advanceTimers':
+      return [`Every timer on the lot jumps ${u.weeks} weeks ahead`];
+    case 'reward':
+      return [rewardText(content, u.reward)];
+    case 'levelSet': {
+      const set = content.sets[u.set];
+      const lv = set.level;
+      return [
+        `${set.name} goes up a level for the rest of the run: +${lv.points} ${SCORE_LABELS.points} and +${multNumber(lv.mult)} ${SCORE_LABELS.mult} each`,
+      ];
+    }
+    case 'extraPlay':
+      return ['This week’s next build doesn’t end the week: place two pieces this week'];
+  }
+}
+
+/** A reward as a phrase: "+2 demolitions", "+3 budget", "a random tool". */
+export function rewardText(content: Content, r: Reward): string {
+  const parts: string[] = [];
+  if (r.score) parts.push(`+${r.score} ${SCORE_LABELS.total}`);
+  if (r.budget) parts.push(`+${r.budget} budget`);
+  if (r.rerolls) parts.push(`+${r.rerolls} ${r.rerolls === 1 ? 'reroll' : 'rerolls'}`);
+  if (r.demolitions) {
+    parts.push(`+${r.demolitions} ${r.demolitions === 1 ? 'demolition' : 'demolitions'}`);
+  }
+  if (r.overtime) parts.push(`+${r.overtime} overtime ${r.overtime === 1 ? 'week' : 'weeks'}`);
+  if (r.tool) {
+    parts.push(r.tool === 'random' ? 'a random tool' : article(content.tools[r.tool].name));
+  }
+  const text = joinWords(parts, 'and');
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+export function upgradeText(content: Content, def: UpgradeDef): string[] {
+  return [...def.modifiers.map((m) => modifierText(content, m)), 'Permanent for the run'];
+}
+
+export function crateText(content: Content, def: CrateDef): string[] {
+  const n = content.balance.shop.crateOptions;
+  const what =
+    def.contents === 'blueprint'
+      ? 'blueprints'
+      : def.contents === 'fixture'
+        ? 'fixtures'
+        : def.pool === 'special'
+          ? 'special pieces'
+          : def.filter
+            ? `${selectorText(content, def.filter, 'some')}`
+            : 'pieces';
+  return [`Open it and keep 1 of ${n} ${what}`];
 }
