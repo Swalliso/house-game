@@ -98,5 +98,80 @@
     "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png [16, 112, 16, 16]",
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/lily-0.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png [400, 112, 16, 16]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/lily-1.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png [416, 112, 16, 16]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/lily-2.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png [432, 112, 16, 16]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/shore.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/Animated_16x16/Animated_Terrains_16x16/Water_Tileset_16x16.png [0, 0, 48, 48], 8 frames [48, 0] apart",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/shore-corners.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/Animated_16x16/Animated_Terrains_16x16/Water_Tileset_Outer_Corners_16x16.png [0, 0, 32, 32], 8 frames [32, 0] apart",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/sun-edge.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/Autotiles_16x16/Godot_Autotiles_16x16.png [0, 320, 192, 64]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/tuft-0.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png [400, 32, 16, 16]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/tuft-1.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png [416, 32, 16, 16]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/tuft-sunny-0.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png [400, 32, 16, 16]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/tuft-sunny-1.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png [416, 32, 16, 16]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/wildflowers-0.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/3_City_Props_16x16.png [432, 176, 16, 16]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/wildflowers-1.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/3_City_Props_16x16.png [432, 192, 16, 16]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/wildflowers-2.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/3_City_Props_16x16.png [432, 208, 16, 16]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/wildflowers-3.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/3_City_Props_16x16.png [432, 224, 16, 16]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/wildflowers-4.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/3_City_Props_16x16.png [432, 240, 16, 16]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
   }
 }

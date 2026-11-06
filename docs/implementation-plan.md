@@ -1529,6 +1529,7 @@ Intensity is measured against **pace**: `max(1, (this phase's target − the sco
 - **UI chrome:** wood-panel frames and a chunky pixel font, as in Combolands, plus the readable-font option.
 - **Rendering:**
   - terrain is drawn into a canvas of (lot width × 32) × ((lot height + 1) × 32) art px, 768×800 for 24×24 with the street row, with smoothing off, shown at that size × scale with `image-rendering: pixelated`, and redrawn only when terrain changes
+  - the lot's water (the pond and the creek) has its own canvas over the water's bounding box, just above the terrain and below everything else: LimeZu's animated water, picked per 16 px subtile by `src/ui/board/autotile.ts`, redrawn only when its frame changes (about 8 a second), and still under Reduce motion or in a hidden tab
   - pieces are absolutely positioned elements using a CSS-background atlas, placed at whole multiples of 32 × scale and rounded to device pixels
   - atlas sprites start at even positions and are extruded by 1px, so fractional screen scales show no seams
   - the pieces' score digits, their fixture and ⚠ badges (size and inset), and the placeholder walls are sized in sixteenths of a cell, so 1× shows them as 2× did with 16 px art, and they grow with the zoom

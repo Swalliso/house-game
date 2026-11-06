@@ -68,5 +68,84 @@
     "w": 32,
     "h": 32,
     "spec": "09b4f6656b16d96e"
+  },
+  "lily-0": {
+    "w": 16,
+    "h": 16,
+    "spec": "845d5f33af71467c"
+  },
+  "lily-1": {
+    "w": 16,
+    "h": 16,
+    "spec": "773461ea07e37003"
+  },
+  "lily-2": {
+    "w": 16,
+    "h": 16,
+    "spec": "45006f37b06de7ac"
+  },
+  "shore": {
+    "w": 48,
+    "h": 48,
+    "frames": 8,
+    "ms": 130,
+    "spec": "a590d97e646d6ccd"
+  },
+  "shore-corners": {
+    "w": 32,
+    "h": 32,
+    "frames": 8,
+    "ms": 130,
+    "spec": "a7d394ef762dd640"
+  },
+  "sun-edge": {
+    "w": 192,
+    "h": 64,
+    "spec": "c82de262ecc30f17"
+  },
+  "tuft-0": {
+    "w": 16,
+    "h": 16,
+    "spec": "31fb415dd7a541bb"
+  },
+  "tuft-1": {
+    "w": 16,
+    "h": 16,
+    "spec": "b34d48fbcd4f770e"
+  },
+  "tuft-sunny-0": {
+    "w": 16,
+    "h": 16,
+    "spec": "f34c48ee5efe19d7"
+  },
+  "tuft-sunny-1": {
+    "w": 16,
+    "h": 16,
+    "spec": "f04575ffed294387"
+  },
+  "wildflowers-0": {
+    "w": 16,
+    "h": 16,
+    "spec": "5d12301d9cec2db7"
+  },
+  "wildflowers-1": {
+    "w": 16,
+    "h": 16,
+    "spec": "74e7a69cd775ec8f"
+  },
+  "wildflowers-2": {
+    "w": 16,
+    "h": 16,
+    "spec": "fe6672817f14b4e9"
+  },
+  "wildflowers-3": {
+    "w": 16,
+    "h": 16,
+    "spec": "9cda911bb20c9795"
+  },
+  "wildflowers-4": {
+    "w": 16,
+    "h": 16,
+    "spec": "48ef859f63e0099b"
   }
 }

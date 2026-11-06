@@ -4,10 +4,17 @@
     "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png",
     "rect": [16, 112, 16, 16],
     "ops": [
-      { "op": "tile", "size": [32, 32] },
+      {
+        "op": "tile",
+        "size": [32, 32]
+      },
       {
         "op": "recolor",
-        "map": { "#479757": "#5a8a5e", "#37854e": "#4c7a52", "#2d7256": "#436b52" }
+        "map": {
+          "#479757": "#5a8a5e",
+          "#37854e": "#4c7a52",
+          "#2d7256": "#436b52"
+        }
       }
     ],
     "note": "Open ground: LimeZu's base grass (the middle of its grass patch), repeated to one 32 px cell and muted with the audit prototype's terrain remap (its MUTE table, the colors this tile uses), so pieces stand out against the lot."
@@ -17,11 +24,19 @@
     "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png",
     "rect": [16, 112, 16, 16],
     "ops": [
-      { "op": "tile", "size": [32, 32] },
+      {
+        "op": "tile",
+        "size": [32, 32]
+      },
       {
         "op": "compose",
         "size": [32, 32],
-        "layers": [{ "rect": [416, 32, 16, 16], "at": [16, 0] }]
+        "layers": [
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [16, 0]
+          }
+        ]
       },
       {
         "op": "recolor",
@@ -33,18 +48,26 @@
         }
       }
     ],
-    "note": "grass-0 with the smaller of the prototype's two light grass tufts in its top-right quarter, muted the same way."
+    "note": "grass-0 with the smaller of the prototype's two light grass tufts in its top-right quarter, muted the same way. The title screen's lawn uses it; the lot scatters tufts by subtile instead (tuft-*)."
   },
   "grass-2": {
     "pack": "me",
     "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png",
     "rect": [16, 112, 16, 16],
     "ops": [
-      { "op": "tile", "size": [32, 32] },
+      {
+        "op": "tile",
+        "size": [32, 32]
+      },
       {
         "op": "compose",
         "size": [32, 32],
-        "layers": [{ "rect": [400, 32, 16, 16], "at": [0, 16] }]
+        "layers": [
+          {
+            "rect": [400, 32, 16, 16],
+            "at": [0, 16]
+          }
+        ]
       },
       {
         "op": "recolor",
@@ -56,23 +79,220 @@
         }
       }
     ],
-    "note": "grass-0 with the larger of the prototype's two light grass tufts in its bottom-left quarter, muted the same way. The rarest of the three."
+    "note": "grass-0 with the larger of the prototype's two light grass tufts in its bottom-left quarter, muted the same way. The title screen's lawn uses it."
   },
   "grass-sunny": {
     "pack": "me",
     "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png",
     "rect": [16, 112, 16, 16],
     "ops": [
-      { "op": "tile", "size": [32, 32] },
       {
-        "op": "recolor",
-        "map": { "#479757": "#6f9a4c", "#37854e": "#5c8a43", "#2d7256": "#4f7a45" }
+        "op": "tile",
+        "size": [32, 32]
       },
       {
         "op": "recolor",
-        "map": { "#6f9a4c": "#7f9a5c", "#5c8a43": "#6e8a55", "#4f7a45": "#5f7652" }
+        "map": {
+          "#479757": "#6f9a4c",
+          "#37854e": "#5c8a43",
+          "#2d7256": "#4f7a45"
+        }
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#6f9a4c": "#7f9a5c",
+          "#5c8a43": "#6e8a55",
+          "#4f7a45": "#5f7652"
+        }
       }
     ],
     "note": "The sunny side: LimeZu has no sunny grass, so it's the same grass with the prototype's warm remap (its WARM table), then its terrain mute, as the prototype drew the warm strip. Brighter and yellower than grass-0."
+  },
+  "tuft-0": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png",
+    "rect": [400, 32, 16, 16],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#53a65d": "#6a9a67",
+          "#37854e": "#4c7a52",
+          "#479757": "#5a8a5e",
+          "#2d7256": "#436b52"
+        }
+      }
+    ],
+    "note": "The larger of LimeZu's two light grass tufts, an overlay for one 16 px subtile of open ground, muted like grass-0. The terrain draws one on about 1 subtile in 11, by tile hash."
+  },
+  "tuft-1": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png",
+    "rect": [416, 32, 16, 16],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#53a65d": "#6a9a67",
+          "#37854e": "#4c7a52",
+          "#479757": "#5a8a5e",
+          "#2d7256": "#436b52"
+        }
+      }
+    ],
+    "note": "The smaller light grass tuft, muted like grass-0."
+  },
+  "tuft-sunny-0": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png",
+    "rect": [400, 32, 16, 16],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#53a65d": "#8fa868",
+          "#37854e": "#6e8a55",
+          "#479757": "#7f9a5c",
+          "#2d7256": "#5f7652"
+        }
+      }
+    ],
+    "note": "tuft-0 for the sunny side: the prototype's warm remap then its mute, the colors grass-sunny uses."
+  },
+  "tuft-sunny-1": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png",
+    "rect": [416, 32, 16, 16],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#53a65d": "#8fa868",
+          "#37854e": "#6e8a55",
+          "#479757": "#7f9a5c",
+          "#2d7256": "#5f7652"
+        }
+      }
+    ],
+    "note": "tuft-1 for the sunny side."
+  },
+  "wildflowers-0": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/3_City_Props_16x16.png",
+    "rect": [432, 176, 16, 16],
+    "note": "Tiny scattered flowers, an overlay for one subtile of open ground (the prototype's flowers, about 1 subtile in 23). One of five."
+  },
+  "wildflowers-1": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/3_City_Props_16x16.png",
+    "rect": [432, 192, 16, 16],
+    "note": "Tiny scattered flowers, two of five."
+  },
+  "wildflowers-2": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/3_City_Props_16x16.png",
+    "rect": [432, 208, 16, 16],
+    "note": "Tiny scattered flowers, three of five."
+  },
+  "wildflowers-3": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/3_City_Props_16x16.png",
+    "rect": [432, 224, 16, 16],
+    "note": "Tiny scattered flowers, four of five."
+  },
+  "wildflowers-4": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/3_City_Props_16x16.png",
+    "rect": [432, 240, 16, 16],
+    "note": "Tiny scattered flowers, five of five."
+  },
+  "sun-edge": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/Autotiles_16x16/Godot_Autotiles_16x16.png",
+    "rect": [0, 320, 192, 64],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#479757": "#7f9a5c",
+          "#37854e": "#6e8a55",
+          "#53a65d": "#8fa868",
+          "#79a15c": "#a2b27a",
+          "#34555d": "#5f7652"
+        }
+      }
+    ],
+    "note": "The sunny side's edge: LimeZu's grass with a clear inside (Godot autotile set 5, 47 tiles in the Godot layout), in grass-sunny's colors. Drawn over the shaded subtiles next to the sunny side, so sunny grass tufts and their soft shadow reach a few px into the shade: the edge reads as sunlight, and a Tree inside the band gets a round patch of shade."
+  },
+  "shore": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/Animated_16x16/Animated_Terrains_16x16/Water_Tileset_16x16.png",
+    "rect": [0, 0, 48, 48],
+    "frames": {
+      "count": 8,
+      "dx": 48,
+      "dy": 0,
+      "ms": 130
+    },
+    "ops": [
+      {
+        "op": "keyOut",
+        "colors": ["#479757"]
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#37854e": "#4c7a52",
+          "#53a65d": "#6a9a67",
+          "#79a15c": "#86a571"
+        }
+      }
+    ],
+    "note": "Ponds and the creek: LimeZu's animated water, a 3 × 3 block of shore corners, edges and open water per frame (8 frames; LimeZu's preview runs them at 100 ms, slowed here for a calm lot). Its flat grass is keyed out so the lot's own grass, sunny or not, shows around the shore, and the grass blades at the water's edge are muted like grass-0. The water canvas picks each 16 px subtile's piece by autotile.ts quarterPiece."
+  },
+  "shore-corners": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/Animated_16x16/Animated_Terrains_16x16/Water_Tileset_Outer_Corners_16x16.png",
+    "rect": [0, 0, 32, 32],
+    "frames": {
+      "count": 8,
+      "dx": 32,
+      "dy": 0,
+      "ms": 130
+    },
+    "ops": [
+      {
+        "op": "keyOut",
+        "colors": ["#479757"]
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#37854e": "#4c7a52",
+          "#53a65d": "#6a9a67",
+          "#79a15c": "#86a571"
+        }
+      }
+    ],
+    "note": "The animated water's inner corners (a 2 × 2 block per frame, land in the middle), for bends in the creek and notches in a pond, edited like shore."
+  },
+  "lily-0": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png",
+    "rect": [400, 112, 16, 16],
+    "note": "Lily pads on open water (a whole 16 px water tile; its water is the open water's color). Drawn on some of a pond's open-water subtiles, by tile hash. One of three."
+  },
+  "lily-1": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png",
+    "rect": [416, 112, 16, 16],
+    "note": "Small lily pads on open water, two of three."
+  },
+  "lily-2": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png",
+    "rect": [432, 112, 16, 16],
+    "note": "One big lily pad on open water, three of three."
   }
 }
