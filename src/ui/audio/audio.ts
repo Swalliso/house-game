@@ -12,6 +12,7 @@ export type SoundId =
   | 'plink'
   | 'chime'
   | 'stamp'
+  | 'buy'
   | 'total'
   | 'coin'
   | 'big-week'
@@ -105,13 +106,20 @@ const SOUNDS: Record<SoundId, readonly Layer[]> = {
     { at: 0, params: [0.16, 0, G5 * 2, 0.003, 0, 0.35, 0, 1, , , , , , , , , , 0.5, 0.04] },
     { at: 0, params: [0.07, 0, G5 * 3, 0.002, 0, 0.18] },
   ],
-  // Sparkle (xMult), reserved and unused in M1: a lower bell, about 3 dB under the chime,
-  // with more low end and gong-like partials.
+  // Sparkle (×Mult): a lower bell, about 3 dB under the chime, with more low end and gong-like
+  // partials. Reserved: it plays for each ×Mult source and nothing else (§12, Sound; D-058).
   stamp: [
     { at: 0, params: [0.17, 0, C4, 0.005, 0, 1, 0, 1, , , , , 0.14, , , , , 0.6, 0.08, 0.15] },
     { at: 0, params: [0.155, 0, C3, 0.01, 0, 1.1, 0, 1, , , , , , , , , , 0.7, 0.1] },
     { at: 0, params: [0.054, 0, C4 * 2.76, 0.003, 0, 0.45] },
     { at: 0, params: [0.027, 0, C4 * 5.4, 0.002, 0, 0.2] },
+  ],
+  // A purchase, or a good gained (a crate's keep, a Copy Machine's copy): a coin's tick, then
+  // a bright, short ding a fourth above it, G to C.
+  buy: [
+    { at: 0, params: [0.3, 0, G6, 0.001, 0.005, 0.03, 1, 1, , , , , , , , , , 1, , , -2600] },
+    { at: 0.06, params: [0.26, 0, C7, 0.002, 0, 0.3, 0, 1, , , , , , , , , , 0.6, 0.02] },
+    { at: 0.06, params: [0.05, 0, C7 * 2, 0.001, 0, 0.1] },
   ],
   // The multiply moment: a rising whoomp, a breath of noise, and a note to land on.
   total: [

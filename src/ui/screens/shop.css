@@ -50,6 +50,13 @@
   margin-left: 4px;
   color: #ffe08a;
 }
+/* The buttons sit just right of the budget, so a jump's "+N" rises above the number instead. */
+.shop-budget .budget-jump {
+  left: auto;
+  right: 0;
+  bottom: 100%;
+  margin-left: 0;
+}
 .shop-buttons {
   display: flex;
   gap: 6px;
@@ -64,6 +71,11 @@
   background: #2f6fd0;
   color: #fff;
   border-color: #1f4f9a;
+}
+/* A hover brightens the blue, never the plain buttons' cream (app.css). */
+.shop-buttons .leave:hover:not(:disabled),
+.shop-reopen:hover {
+  background: #3b7de0;
 }
 .shop-buttons .skip-hint {
   font-weight: 600;
@@ -97,6 +109,12 @@
 }
 .offer:hover {
   transform: translateY(-2px);
+}
+.reduce-motion .offer {
+  transition: none;
+}
+.reduce-motion .offer:hover {
+  transform: none;
 }
 .offer header {
   display: flex;
@@ -212,6 +230,7 @@
   letter-spacing: 0.1em;
   transform: rotate(-6deg);
 }
+/* A bought good's pop. FEEL.shop.boughtMs keeps the class on a little longer than this. */
 .offer.just-bought {
   animation: bought 420ms ease-out;
 }
@@ -241,6 +260,11 @@
   background: #2f6fd0;
   color: #fff;
   border-color: #1f4f9a;
+}
+/* The press keeps the centering: the plain button's press nudge alone (app.css) would move it
+   half its width, out from under the pointer, and lose the click. */
+.shop-reopen:active:not(:disabled) {
+  transform: translate(-50%, 1px);
 }
 
 /* D-076: the strike picker. */
@@ -297,8 +321,13 @@
   gap: 10px;
   margin: 10px 0 4px;
 }
+/* --beat is when an option turns over (ShopScreen.tsx, FEEL.shop.crateStaggerMs). */
 .crate-option {
-  animation: crate-turn 480ms ease-out both;
+  animation: crate-turn 480ms ease-out var(--beat, 0ms) both;
+}
+/* A Rare option's shimmer waits for its turn too, so it crosses the card with its sound. */
+.crate-option.rarity-rare::after {
+  animation-delay: var(--beat, 0ms);
 }
 .crate-option.rarity-uncommon {
   box-shadow: 0 0 12px rgb(63 120 192 / 0.45);

@@ -31,6 +31,7 @@ import {
   tallyView,
 } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
+import { shakeOffsets } from '../fx/juice.ts';
 import { formatNumber } from '../format.ts';
 import {
   activePlay,
@@ -175,7 +176,8 @@ function toolClick(c: Cell | 'street' | null, occUid: number): void {
     return;
   }
   if (sameAction(armed, action)) {
-    if (useToolNow(action)) audio.play(use === 'move' ? 'place-room' : 'stamp');
+    // A copy is a good gained, not the ×Mult bell ('stamp'), which is for ×Mult only (D-058).
+    if (useToolNow(action)) audio.play(use === 'move' ? 'place-room' : 'buy');
     else audio.play('illegal');
     return;
   }
@@ -253,8 +255,10 @@ export function Board() {
   const demolishing = tool.value === 'demolish';
   const occ = occupancy(state.house);
   const tally = currentTally.value;
-  const scoreBy = new Map(tally.pieces.map((p) => [p.uid, p]));
   const view = tallyView.value;
+  // The corner digits: what each piece earns as the house stands, or, while a tally plays,
+  // what it earned in the week being tallied (the rules have already moved on a week).
+  const scoreBy = new Map((view?.pieces ?? tally.pieces).map((p) => [p.uid, p]));
   const lit = new Set(highlighted.value);
   const p = demolishing ? null : preview.value;
   const gained = new Set(p?.setsGained.flatMap((s) => s.members) ?? []);
@@ -264,17 +268,19 @@ export function Board() {
     fxHooks.wobble = wobble;
     fxHooks.shake = (amount: number) => {
       const el = boardRef.current;
-      if (!el || amount <= 0) return;
-      const a = Math.max(1, Math.round(amount));
+      // Whole CSS px, scaled by the Screen shake setting: a small enough one is none.
+      const o = shakeOffsets(amount);
+      if (!el || !o) return;
+      const { full: a, half: h } = o;
       el.animate(
         [
           { transform: 'translate(0, 0)' },
-          { transform: `translate(${a}px, ${-a / 2}px)` },
-          { transform: `translate(${-a}px, ${a / 2}px)` },
-          { transform: `translate(${a / 2}px, ${a}px)` },
+          { transform: `translate(${a}px, ${-h}px)` },
+          { transform: `translate(${-a}px, ${h}px)` },
+          { transform: `translate(${h}px, ${a}px)` },
           { transform: 'translate(0, 0)' },
         ],
-        { duration: 200, easing: 'ease-out' },
+        { duration: FEEL.shake.decayMs, easing: 'ease-out' },
       );
     };
   }, []);

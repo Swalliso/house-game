@@ -103,7 +103,10 @@ export function ScorePanel() {
     before = p.before;
     label = 'With this placement';
   }
-  const ratio = shown.total === null ? 0 : shown.total / Math.max(1, view ? view.pace : pace);
+  // A tally's glow comes from its event's total, so it stays lit through the count rather
+  // than going dark until the total lands.
+  const glowTotal = view ? view.weekTotal : shown.total;
+  const ratio = glowTotal === null ? 0 : glowTotal / Math.max(1, view ? view.pace : pace);
   const glow =
     ratio >= FEEL.glowPace ? Math.min(1, Math.log(ratio + 1) / Math.log(FEEL.bigWeekPace * 3)) : 0;
   // This week's budget from economy pieces: the house as built, or with the placement. The
@@ -125,11 +128,14 @@ export function ScorePanel() {
       <Celebration />
       <h2>{label}</h2>
       <div class="equation">
+        {/* The values are keyed by what they show, so the tick pulse restarts on every step. */}
         <div class={`layer comfort ${view?.stage === 'pieces' ? 'ticking' : ''}`}>
           <div class="layer-name">
             <Tip term="comfort">{SCORE_LABELS.points}</Tip>
           </div>
-          <div class="layer-value">{formatNumber(shown.points)}</div>
+          <div class="layer-value" key={shown.points}>
+            {formatNumber(shown.points)}
+          </div>
           {before && <Delta n={shown.points - before.points} />}
         </div>
         <div class="op">×</div>
@@ -137,7 +143,9 @@ export function ScorePanel() {
           <div class="layer-name">
             <Tip term="charm">{SCORE_LABELS.mult}</Tip>
           </div>
-          <div class="layer-value">{formatMult(shown.mult)}</div>
+          <div class="layer-value" key={shown.mult}>
+            {formatMult(shown.mult)}
+          </div>
           {before && <Delta n={shown.mult - before.mult} mult />}
         </div>
         <div class="op">=</div>

@@ -25,6 +25,12 @@
   background: #fffdf8;
   max-width: 100%;
 }
+/* A slot's hover: the plain buttons' cream (app.css). :where() keeps it at the slot's own
+   specificity, so a fill of its own (a Rare's gold, an upgrade's wood, an empty slot's none)
+   wins. */
+.inventory .slot:where(:hover:not(:disabled)) {
+  background: #fff3df;
+}
 .inventory .slot.empty {
   display: inline-grid;
   place-items: center;
@@ -195,6 +201,44 @@
 .reduce-motion .budget-count {
   transition: none;
   transform: none;
+}
+/* A gain too big to count coin by coin shows as one "+N" by the number (§12, Shop and crates).
+   It floats over its neighbors, so the bar's layout never shifts. */
+.budget-wrap {
+  position: relative;
+  display: inline-block;
+}
+.budget-jump {
+  position: absolute;
+  left: 100%;
+  bottom: 55%;
+  margin-left: 3px;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+  color: #ffe08a;
+  pointer-events: none;
+  animation-name: budget-jump;
+  animation-timing-function: ease-out;
+  animation-fill-mode: forwards;
+}
+@keyframes budget-jump {
+  0% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  15%,
+  75% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+.reduce-motion .budget-jump {
+  animation-name: popup-fade;
 }
 
 /* ×Mult (D-056): gold Sparkle stamps, in the tally and in the score panel. */

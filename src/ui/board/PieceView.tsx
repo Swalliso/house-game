@@ -83,10 +83,11 @@ export function PieceShape({
   useEffect(() => {
     if (!settle || settle <= played.settle || !ref.current || settings.value.reduceMotion) return;
     played.settle = settle;
+    // At full opacity throughout: the pending ghost it replaces was drawn at full opacity.
     ref.current.animate(
       [
-        { transform: 'translateY(-6%) scale(1.06)', opacity: 0.6 },
-        { transform: 'translateY(0) scale(0.98)', opacity: 1 },
+        { transform: 'translateY(-6%) scale(1.06)' },
+        { transform: 'translateY(0) scale(0.98)' },
         { transform: 'scale(1)' },
       ],
       { duration: FEEL.placeMs, easing: 'ease-out' },

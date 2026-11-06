@@ -1385,8 +1385,9 @@ The team treats reward feel as core: big combos should feel like Balatro and Com
 **Timing:**
 - About 0.45 s per trigger at 1× speed. Balatro uses 0.75–0.94 s, but a house has 20–40 pieces. Popups hold for the step minus 0.15 s.
 - **Auto-acceleration**, as in Balatro, so long weeks never drag:
-  - an accelerator grows by 0.2 × speed per second during a tally
+  - an accelerator grows by 0.2 × speed per second during a tally's steps: the triggers, the sets, and the ×Mult stamps
   - effective speed is the chosen speed + max(0, accelerator − 1), capped at +8×
+  - the closing beats, from the multiply moment on, play at the chosen speed, so the biggest weeks keep their payoff (D-096)
 - **Speed setting:** 0.5×, 1×, 2×, 4×, 8×.
 - Hold Space (or the right mouse button) to fast-forward, or click to jump to the result. The final number is never hidden.
 
