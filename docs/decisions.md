@@ -536,7 +536,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - D-033 (Accepted): terrain in a canvas layer and pieces from a sprite atlas.
 
 **Amended by:** D-097 (Accepted 2026-11-06): a cell is 32 art px, a 2×2 block of LimeZu's 16 px tiles, and the default zoom is never below 1× (at 1080p, the same size on screen as 2× was). Rooms get several furniture sprites. The palette is LimeZu's, with the color limits only for the placeholders, and Serene Village isn't needed.
-**2026-11-06 (M5a review):** no link or quote is recorded for "LimeZu has said" in the Sources bullet, and the two packs' licenses differ on open source. See D-097's license note.
+**2026-11-06 (M5a review):** no link or quote is recorded for "LimeZu has said" in the Sources bullet, and the two packs' licenses differ on open source. The team chose to keep the Sources bullet's approach for both packs; see D-097's license note.
 
 ### D-058 · Sound: calm music, rewards that escalate
 **Status:** Accepted · 2026-11-05: the direction at the team's request, and the details below with the plan's approval.
@@ -784,6 +784,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - Modern Interiors' (`LICENSE.txt` in its zip, and its itch.io page) doesn't mention open source, and forbids distributing the asset to others. The 10 floor cuts come from it.
 - So those floors rest on D-057's "LimeZu has said that's fine for open-source projects", which has no recorded link or quote.
 - *To decide:* link LimeZu's statement in `research.md` and D-057, or get LimeZu's OK in writing. Until then, the Modern Interiors cuts could stay out of the repo, with the placeholder floors in their place.
+- *Decided by the team, 2026-11-06:* commit as D-057 says, for both packs. The repo holds only the sprites the game uses, each cut on its own by `npm run art:cut` (never a sheet or a whole pack), recorded in `assets/licenses.json` with its pack, sheet and rect, and credited to LimeZu in `CREDITS.md` and in the game. Any LimeZu sprite may be used; a cut comes from one pack.
 
 **2026-11-06 (M5a review), the default zoom at 125% and 150%, for the team:** at a devicePixelRatio between 1 and 2 (Windows' 125% and 150% display scaling), 1× isn't a whole number of device pixels per art pixel. The whole steps on either side are 1/dpr and 2/dpr: 0.8× and 1.6× at 1.25, 0.67× and 1.33× at 1.5.
 - When 2/dpr doesn't fit, the default is 1× (`fitScale`), with uneven pixels (1.25 or 1.5 device px per art px). That's every window from 1280×720 to 1920×1080 CSS px. 1× isn't one of the wheel's steps, and Fit goes back to the zoom from before it, so after the first zoom step nothing returns to the default until a reload.
