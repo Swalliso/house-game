@@ -248,6 +248,7 @@ Also: D-036 and D-043 (Accepted), where hand size becomes the `handSize` rule (3
 
 **Why:** Friends will open the link from a group chat, and the itch.io embed is a fixed size. Both need deciding before the layout is built. The team agreed on 2026-11-05 not to aim for mobile.
 **Amended by:** D-057 (confirmed by the team 2026-11-05): the design target is 1920×1080, since most players have at least a 1080p screen. The whole 24×24 lot fits there at a crisp 2×. 1280×720 still works, by panning. An itch.io page is optional now that Pages hosts both builds (D-060); if we make one, its embed is 1600×900 with fullscreen.
+**Amended by:** D-095 (Accepted 2026-11-06): with 32 art px per cell, the whole lot fits at 1080p at 1×, the same size on screen as the 16 px art's 2×.
 
 ### D-053 · A two-person, phased build with a playtest after each phase
 **Status:** Accepted · 2026-11-05 (requested by the team)
@@ -259,6 +260,7 @@ Also: D-036 and D-043 (Accepted), where hand size becomes the `handSize` rule (3
 
 **Why:** The other jam members are building their own games, so there are no parallel tracks to coordinate. There's until next week to build and playtest before sharing with the larger group, and playtesting at every phase catches what isn't working while it's still cheap to change.
 **Changes:** Supersedes D-052. D-029 (Accepted): its suggested build order.
+**Amended by:** D-095 (Accepted 2026-11-06): M5 splits in two, each ending in a playtest. M5a (art, UI chrome, and the visual juice) comes before M4, and M5b (sound and music) after it.
 
 ### D-054 · Branches: develop and main
 **Status:** Accepted · 2026-11-05 (requested by the team)
@@ -532,6 +534,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - D-049 (Accepted): the camera, from a CSS transform to re-layout in whole steps, with 2× panning rather than fitting at 1280×720.
 - D-033 (Accepted): terrain in a canvas layer and pieces from a sprite atlas.
 
+**Amended by:** D-095 (Accepted 2026-11-06): a cell is 32 art px, a 2×2 block of LimeZu's 16 px tiles, and the default zoom is never below 1× (at 1080p, the same size on screen as 2× was). Rooms get several furniture sprites. The palette is LimeZu's, with the color limits only for the placeholders, and Serene Village isn't needed.
+
 ### D-058 · Sound: calm music, rewards that escalate
 **Status:** Accepted · 2026-11-05: the direction at the team's request, and the details below with the plan's approval.
 **Decision:**
@@ -631,6 +635,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - **The atlas:** `art/` holds the placeholder sprites as palette-indexed 16×16 text grids, and `scripts/build-atlas.ts` packs them into `assets/atlas.png` and `atlas.json` (18×18 cells: each sprite extruded by 1px). The generated files are committed, so `npm run dev` works without a build step; `npm run build` regenerates them, and a test fails if `atlas.json` is stale. LimeZu sprites cut from `art-source/` will join the same atlas.
 
 **Why:** One place answers "where did this come from, and may we ship it?" for code as well as art. Vendoring keeps the audio side-effect free and dependency free.
+**Amended by:** D-095 (Accepted 2026-11-06): the atlas (version 2) packs the placeholders doubled to 32×32 and LimeZu cuts of any size from `assets/limezu/`, which `npm run art:cut` writes from the manifests in `art/limezu/`. A cut replaces the placeholder with its id.
 
 ### D-067 · M1 content defaults
 **Status:** Accepted · 2026-11-05: held up in playtest 1 (confirmed by the team with the M2 brief). The targets were replaced by the sim's in M2 (D-072).
@@ -655,6 +660,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - **The default zoom** counts the street row, so the lot and the street fit together at the largest whole scale of at least 2×. A smaller window scrolls until M2's camera.
 
 **Why:** Choices the plan leaves to the build, picked so the slice can answer playtest 1's questions.
+**Amended by:** D-095 (Accepted 2026-11-06): with 32 art px per cell, the default zoom is at least 1×, the same 32 CSS px per cell as 2× was.
 
 ### D-069 · A fenced yard needs at least 10 tiles
 **Status:** Accepted · 2026-11-05 (chosen by the team in the M2 build, from the sim's enclosure probe)
@@ -704,6 +710,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - **The ?debug panel** is a small floating panel: jump to a milestone with a bot-built house, meet the target or force a miss, add budget, give a card, and instant tallies.
 
 **Why:** Choices §7 leaves to the build.
+**Amended by:** D-095 (Accepted 2026-11-06): with 32 art px per cell, the default is the largest scale that fits, never below 1×, and the wheel steps in whole device pixels per art pixel up to 3×: 1×, 2× and 3× at a devicePixelRatio of 1, and 0.5× steps on a Retina screen. Fit is still the one fractional scale.
 
 ### D-083 · Weekend Crew: D-075's banked building, as a tool
 **Status:** Accepted · 2026-11-05 (the team chose it for M3, resolving D-075). The price is a placeholder.
@@ -731,6 +738,44 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **Considered:** A company upgrade with 3 strikes. A few strikes per run.
 **Changes:** D-043 (Accepted): draw weights stay fixed for the run except for struck types. D-051 (Accepted): a third service.
 **2026-11-06 (D-089, confirmed by the team):** the Sim line's order came from M2's greedy, which couldn't see yards or links and built at the back of the lot, so it struck the very cards D-074 and D-080 ask about. The default bot now strikes nothing; `--strikes fixed` keeps this order for comparisons. The service itself is unchanged.
+
+### D-095 · Art at 32 px cells, and the look-and-feel pass before M4
+**Status:** Accepted · 2026-11-06. The team chose 32 px cells after a visual audit that rendered the playtest-3 house (seed jbf3zs, week 21) both ways with LimeZu's art.
+**Finding:**
+- LimeZu's furniture is drawn for rooms about 4 tiles wide, in a 3/4 view: a double bed is 26×40 px, a toilet 14×34, a fireplace 32×40, the car 32×57. At 16 px per cell a 2×2 Bedroom is 32×32 px and a Bathroom 16×16, so 12 of the 15 room types can't show their key item, and the house reads as a floor plan with icons.
+- At 32 px per cell (2×2 LimeZu tiles), every room type shows two to four real LimeZu pieces, the walls get doorways and windows, and a roof computed for any footprint looks like a real house.
+
+**Decision:**
+- **One cell is 32 art px,** a 2×2 block of LimeZu's 16 px tiles. Sprites are drawn in art px, and the board's scale is CSS px per art px. The text-grid placeholders are doubled to 32×32 when the atlas is built, until LimeZu cuts replace them.
+- **The camera:**
+  - The default is the largest scale that fits, in whole device pixels per art pixel and never below 1×. At 1080p the whole lot fits at 1×: 32 CSS px per cell, the same size on screen as before. At 1280×720 it pans.
+  - The wheel steps in whole device pixels per art pixel, up to 3×: 1×, 2× and 3× at a devicePixelRatio of 1, and 0.5× steps on a Retina screen.
+  - Fit stays the one fractional scale.
+- **Rooms are a walls-down cutaway built from the house,** all in the UI, from the placed pieces:
+  - Every room type has its own floor.
+  - Walls are bands in LimeZu's style, drawn from a mask: heavier on outside edges, lighter between rooms, with short north wall faces and floor shadows.
+  - There is a wall between every two pieces, same type included. Rooms never merge visually (D-093).
+  - Doorways between touching rooms, windows in outside walls, and a front door are chosen by fixed rules and a tile hash, never by chance. They are decoration and change no score.
+  - Furniture is laid out by rules per room type and footprint: several LimeZu sprites per room, never rotated (they're drawn in 3/4 view). Rooms of the same type vary by piece.
+  - Fixtures show as sprites where they fit, and as a badge otherwise.
+- **Palette:** LimeZu's, with its outline color #3a3a50 as the ink. Our own drawings sample it. The 32-color and 8-per-sprite limits apply only to the text-grid placeholders.
+- **Pipeline:**
+  - `art/limezu/*.json` lists each sprite we use: its pack, the path in the zip, its rect, and any frames or edits.
+  - `npm run art:cut` runs locally only. It reads the zips in `art-source/` and writes only the listed sprites to `assets/limezu/`.
+  - `npm run atlas` packs them with the placeholders at any size; a cut replaces the placeholder with the same id.
+  - Every cut has its own entry in `assets/licenses.json`. `CREDITS.md` and the game credit LimeZu.
+  - A test fails on a cut without a manifest entry or a license record.
+- **Order:** M5 splits. M5a (art, UI chrome, and the visual juice) comes now, before M4. M5b (sound and music) follows M4.
+- Serene Village isn't needed: Modern Exteriors covers terrain and water in the same artist's palette.
+
+**Why:** The team's worry was whether LimeZu's pieces could make a house that looks like a house. They can, at LimeZu's own proportions. The board stays the same size on screen. The costs are finer pixels on a 1080p monitor (a Retina screen still shows each art pixel as 2×2 device pixels), a smaller board on a 1440p screen at a devicePixelRatio of 1, and more art work.
+**Changes:**
+- D-057: its 16×16 tiles, one key furniture sprite, default zoom of at least 2×, the 24–32-color palette, and Serene Village.
+- D-047's 1080p amendment: the whole lot fits at 1×.
+- D-066: the atlas takes LimeZu PNG cuts of any size.
+- D-068 and D-073: the default zoom's floor, and the zoom steps.
+- D-053 and §7: the phase order.
+- §12 Art: the wall widths and the terrain canvas size.
 
 ---
 
