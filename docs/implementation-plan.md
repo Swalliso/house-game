@@ -1327,7 +1327,7 @@ Same seed and policy give identical results (a test). Each run is a pure functio
 
 ## 11. Proposed CLAUDE.md
 
-The repo has no CLAUDE.md, so M0 creates one with this content (the paths assume the move to `docs/`):
+The repo has no CLAUDE.md, so M0 creates one with this content (the paths assume the move to `docs/`). *CLAUDE.md is the live copy now, and it has moved on since: read it, not this section.*
 
 ```markdown
 # Open House
@@ -1504,13 +1504,13 @@ Intensity is measured against **pace**: `max(1, (this phase's target − the sco
 ### Art (D-057, D-097)
 
 - **The grid:** one game cell is 32 art px, a 2×2 block of LimeZu's 16 px tiles (D-097). LimeZu draws furniture in a 3/4 view for rooms about 4 tiles wide (a double bed is 26×40 px), so at one tile per cell a Bedroom couldn't hold its bed. Combolands looks like 16px tiles drawn at 3× on a 1080p screen.
-- **Scale:** `scale` is CSS px per art px, in whole device pixels per art pixel: k ÷ devicePixelRatio, k a whole number. The default zoom is the largest such scale at which the lot and its street row fit, and never below 1×, panning when the lot overflows.
+- **Scale:** `scale` is CSS px per art px, in whole device pixels per art pixel: k ÷ devicePixelRatio, k a whole number. The default zoom is the largest such scale at which the lot and its street row fit, and never below 1× rounded down to whole device pixels, panning when the lot overflows. So it's always one of the wheel's steps.
   - **The design target is 1080p** (confirmed 2026-11-05; most players have at least a 1080p screen). The whole lot fits there at 1×: 32 CSS px per cell, an 800px board with the street row, the same size on screen as 2× was with 16 px art, with room for the top bar.
   - At 1280×720 the lot can't fit at 1×. The default there is 1× with panning, with UI panels overlaying the board's margins (Combolands' panels sit over the sea around its island).
   - The wheel steps one device pixel per art pixel at a time, up to 3×: 1×, 2×, and 3× at a devicePixelRatio of 1, and 0.5× to 3× by halves on a Retina screen.
   - The Fit button is the one exception to whole numbers: it shows the whole lot at the largest scale that fits (about 0.75× at 720p), with slightly uneven pixels.
-  - Not yet at 125% and 150% display scaling (a devicePixelRatio of 1.25 or 1.5): there 1× isn't whole device pixels, and the default is 1× with uneven pixels whenever the next whole step up doesn't fit, as in every window up to 1920×1080. The team picks the rule (D-097's note has the options).
-  - The costs: finer pixels on a 1080p monitor (a Retina screen still shows each art pixel as 2×2 device pixels), and a smaller board on a 1440p screen at a devicePixelRatio of 1.
+  - Where display scaling isn't a whole number (125%, 150% or 175%: a devicePixelRatio of 1.25, 1.5 or 1.75, or browser zoom on top), 1× isn't whole device pixels, so the default's floor rounds it down to one device pixel per art pixel: 0.8×, 0.67× and 0.57×, cells of 25.6, 21.3 and 18.3 CSS px (D-097's zoom note). A window that holds two device pixels per art pixel gets 1.6× or 1.33×. Below a ratio of 1 (a browser zoomed out) the floor is one device pixel per art pixel, above 1×. A zoom step that lands back on the default, or leaving Fit, returns to it, and it follows the window again.
+  - The costs: finer pixels on a 1080p monitor (a Retina screen still shows each art pixel as 2×2 device pixels), a smaller board on a 1440p screen at a devicePixelRatio of 1, and where display scaling isn't a whole number a board 80%, 67% or 57% of 1×'s size (at 125%, 150% and 175%) when two device pixels per art pixel don't fit.
   - If we make an itch.io page, its embed is 1600×900 with fullscreen. 1280×720 stays the minimum (D-047).
 - **Rooms are a walls-down cutaway,** like The Sims, built in the UI from the placed pieces (D-097):
   - a floor per room type

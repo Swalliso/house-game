@@ -312,6 +312,19 @@ export function Board() {
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     window.addEventListener('resize', measure);
+    // A move to a screen with another devicePixelRatio needn't resize the window (a Mac's
+    // displays keep its CSS size), so watch the ratio too: each change re-measures and re-arms.
+    let ratio: MediaQueryList | null = null;
+    const onRatio = () => {
+      measure();
+      watchRatio();
+    };
+    const watchRatio = () => {
+      ratio?.removeEventListener('change', onRatio);
+      ratio = window.matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`);
+      ratio.addEventListener('change', onRatio);
+    };
+    watchRatio();
     const onWheel = (e: WheelEvent) => {
       // A sideways scroll (a trackpad, or Shift + wheel) pans natively.
       if (!e.ctrlKey && Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
@@ -322,6 +335,7 @@ export function Board() {
     return () => {
       ro.disconnect();
       window.removeEventListener('resize', measure);
+      ratio?.removeEventListener('change', onRatio);
       el.removeEventListener('wheel', onWheel);
       if (cameraEls.scroll === el) {
         cameraEls.scroll = null;
@@ -547,7 +561,9 @@ export function Board() {
     'board',
     !demolishing && selected.value !== null ? 'placing' : '',
     demolishing ? 'demolishing' : '',
-    px < SMALL_CELL_PX ? 'small' : '',
+    // With a hair of slack: at a ratio like 125% × 80% browser zoom (1.0000000149), 1× comes out
+    // a hair under 32 px and is still full size.
+    px < SMALL_CELL_PX - 1e-6 ? 'small' : '',
   ].join(' ');
 
   return (

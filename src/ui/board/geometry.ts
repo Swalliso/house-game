@@ -86,8 +86,7 @@ export function center(cells: readonly Cell[]): { x: number; y: number } {
 // ---------------------------------------------------------------------------------------
 // Scales (§12, Art; D-097). A scale is CSS px per art px, and one cell is CELL art px. The
 // camera's scales are whole device pixels per art pixel, k ÷ devicePixelRatio: 1×, 2× and 3×
-// at a devicePixelRatio of 1, and 0.5× steps on a Retina screen. Fit is the one exception,
-// apart from the default's 1× floor at 125% and 150% display scaling (see fitScale).
+// at a devicePixelRatio of 1, and 0.5× steps on a Retina screen. Fit is the one exception.
 
 /** The camera zooms in up to this scale; its last step is the largest k ÷ dpr not above it. */
 export const MAX_ZOOM = 3;
@@ -105,6 +104,17 @@ export function minZoom(dpr: number): number {
 /** The largest zoom: the largest whole device pixels per art pixel up to MAX_ZOOM. */
 export function maxZoom(dpr: number): number {
   return Math.max(1, Math.floor(devicePx(MAX_ZOOM, dpr))) / dpr;
+}
+
+/**
+ * The default zoom's floor (D-097's zoom note): 1× rounded down to whole device pixels per art
+ * pixel, and at least one. That's 1× at a devicePixelRatio of 1, 2 or 3; one device pixel per
+ * art pixel where display scaling isn't a whole number (0.8× at 125%, 0.67× at 150%, 0.57× at
+ * 175%), crisp where 1× would have uneven pixels; and above 1× below a ratio of 1, in a browser
+ * zoomed out (1.11× at 90%).
+ */
+export function defaultFloor(dpr: number): number {
+  return Math.max(1, Math.floor(devicePx(1, dpr))) / dpr;
 }
 
 /**
@@ -132,10 +142,10 @@ export function zoomStep(scale: number, dir: 1 | -1, dpr: number): number {
 
 /**
  * The default zoom (§12, Art): the largest whole device pixels per art pixel at which the lot
- * plus the street row below it fit, never below 1× (a smaller view pans) and never above the
- * camera's largest zoom. The camera (camera.ts) starts here. At a devicePixelRatio between 1
- * and 2, 1× isn't whole device pixels, so when nothing larger fits the default has uneven
- * pixels and isn't a zoom step; the team picks the rule there (D-097's note).
+ * plus the street row below it fit, never below defaultFloor (1×, rounded down to whole device
+ * pixels where display scaling isn't a whole number; a smaller view pans) and never above the
+ * camera's largest zoom. So it's always one of the zoom steps, and zooming back always finds
+ * it. The camera (camera.ts) starts here.
  */
 export function fitScale(
   availWidth: number,
@@ -146,7 +156,7 @@ export function fitScale(
 ): number {
   const byH = Math.floor((availHeight * dpr) / ((lotH + 1) * CELL)) / dpr;
   const byW = Math.floor((availWidth * dpr) / (lotW * CELL)) / dpr;
-  return Math.min(maxZoom(dpr), Math.max(1, Math.min(byH, byW)));
+  return Math.min(maxZoom(dpr), Math.max(defaultFloor(dpr), Math.min(byH, byW)));
 }
 
 /**
