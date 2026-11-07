@@ -216,7 +216,7 @@ const SHOP1 = shop1('m3b');
 
 describe('tools and crates on offer', () => {
   it('shop 2 offers 2 distinct tools after the cards, at 70/25/5, never Inspector’s Visit', () => {
-    expect(OFFERED_TOOLS).toHaveLength(10);
+    expect(OFFERED_TOOLS).toHaveLength(12);
     expect(OFFERED_TOOLS).not.toContain('inspectorsVisit');
     const count = rarityCount();
     const seen = new Set<ToolId>();

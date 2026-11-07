@@ -78,6 +78,8 @@ export const TOOL_GLYPHS: Record<ToolId, string> = {
   dumpster: '\u2672', // ♲
   remodelJackAndJill: '\u2191', // ↑
   remodelEntertainer: '\u2191', // ↑
+  remodelSuite: '\u2191', // ↑
+  remodelFullHouse: '\u2191', // ↑
   weekendCrew: '\u2692\uFE0E', // ⚒
 };
 

@@ -109,6 +109,8 @@ export type ToolId =
   | 'dumpster'
   | 'remodelJackAndJill'
   | 'remodelEntertainer'
+  | 'remodelSuite'
+  | 'remodelFullHouse'
   | 'weekendCrew';
 
 /** Company upgrades (M3b): permanent `rule` modifiers, one offered per visit from shop 2. */
@@ -133,10 +135,20 @@ export type FeatureId =
 /** The features that sit on tiles of the lot. */
 export type TerrainId = Exclude<FeatureId, 'street'>;
 
-export type SetId = 'jackAndJill' | 'entertainer';
+/** Sets (D-056): a poker-hand ladder. M4a adds the Suite and Full House. */
+export type SetId = 'jackAndJill' | 'suite' | 'entertainer' | 'fullHouse';
 
 /** Crews (D-012). The General Contractor is the default and, until M4b, the only one. */
 export type CrewId = 'generalContractor';
+
+/** Clients (M4a): who the house is for. Each brings a checklist, tastes, and a pool. */
+export type ClientId = 'hendersons' | 'vladislav' | 'barkers' | 'juniper' | 'dale';
+
+/**
+ * The checklist's headings: the house rules every client starts with (the household, the
+ * shape, the yard; house-systems-review.md §4), then the client's own wishes.
+ */
+export type SpecGroup = 'household' | 'shape' | 'yard' | 'wishes';
 
 export type Tag =
   | 'Quiet'
@@ -207,6 +219,50 @@ export type PieceCondition =
   | { and: readonly PieceCondition[] }
   | { or: readonly PieceCondition[] }
   | { not: PieceCondition };
+
+/**
+ * A condition about the whole house (§5): client specs, the house rules, and (M4b) change-order
+ * requests. Counts weigh a piece by its countsAs modifiers (Bunk Beds make a Bedroom count
+ * twice); lot features never count.
+ */
+export type HouseCondition =
+  | { count: Selector; min?: number; max?: number }
+  /** M4b: placed since the change order was accepted, still on the lot. */
+  | { countNew: Selector; min: number }
+  | { none: Selector }
+  /** Some piece matching the first touches one matching the second (links count). */
+  | { adjacentPair: readonly [Selector, Selector] }
+  /** The largest single fenced yard. */
+  | { fencedYardTiles: { min: number } }
+  /** The largest connected group of matching pieces' tiles. */
+  | { group: Selector; minTiles: number }
+  /** Held instances of a set. */
+  | { set: SetId; min?: number }
+  /** M4b: demolitions since the change order was accepted. */
+  | { demolishedSinceAccepted: { min: number } }
+  /**
+   * One count against another: at least one `count` for every `every` of `per`, and at least
+   * `min` (a Bathroom for every two Bedrooms, at least one).
+   */
+  | { ratio: { count: Selector; per: Selector; every: number; min?: number } }
+  /**
+   * The house's outline (Under one roof): how many rooms, how full the box around its indoor
+   * tiles is, and how long the box is against its width.
+   */
+  | {
+      outline: { minRooms: number; maxRooms?: number; minFillPct: number; maxAspect: number };
+    }
+  /**
+   * A yard that doesn't repeat (a tidy yard): at least `min` pieces matching `of`, and no type
+   * among them stands more than `maxEach` times. `exempt` types count toward `min` but never
+   * break it (Fences, Driveways, Saplings).
+   */
+  | { variety: { of: Selector; min: number; maxEach: number; exempt?: Selector } }
+  /** By milestone: the last stage whose phase has begun applies (a household that grows). */
+  | { stages: readonly { fromPhase: number; condition: HouseCondition }[] }
+  | { and: readonly HouseCondition[] }
+  | { or: readonly HouseCondition[] }
+  | { not: HouseCondition };
 
 /**
  * Effect kinds (§5). Timers count from the week a piece was placed: its age is
@@ -407,11 +463,50 @@ export interface SetDef {
   connected: boolean;
   /** The hub touches every other member (Jack-and-Jill's Bathroom). */
   hub?: PieceId;
+  /** At most this many instances in a house (One Entertainer per house; Full House). */
+  maxInstances?: number;
   /** Paid every week the set holds, like a poker hand's chips and mult. Mult is in hundredths. */
   points: number;
   mult: number;
+  /** A ×Mult while it holds, in hundredths (Full House: 200), first in the ×Mult order. */
+  times?: number;
   /** Added per level from Remodel Plans (M3b). Every set is level 1 until then. */
   level: { points: number; mult: number };
+}
+
+/** One line of a client's checklist: a house rule or one of the client's own wishes. */
+export interface SpecDef {
+  /** Stable within a client, for events and the UI: 'oneKitchen', 'fencedYard'. */
+  id: string;
+  /** "Room for everyone", "A fenced yard". */
+  name: string;
+  group: SpecGroup;
+  condition: HouseCondition;
+  /**
+   * Card text, where the generated text wouldn't read as well (the house rules write theirs
+   * from each client's numbers). Otherwise it's generated from the condition.
+   */
+  text?: string;
+}
+
+/**
+ * A client (M4a): one contract's household. Its checklist starts with the house rules (in
+ * this client's numbers), then its own wishes; each line met adds `specBonus` to the Mult.
+ */
+export interface ClientDef {
+  id: ClientId;
+  name: string;
+  rarity: Rarity;
+  tier: Tier;
+  /** One line for the job board. */
+  brief: string;
+  specs: readonly SpecDef[];
+  /** Likes and dislikes: `earn`, `earnNothing`, `perCountOver`, `budget`, and `rule` modifiers. */
+  tastes: readonly Modifier[];
+  /** `drawWeight` modifiers only: the client's spec pieces and signature pieces. */
+  pool: readonly Modifier[];
+  /** This client's targets as a percentage of the curve in balance.ts (set by the sim). */
+  targetPct: number;
 }
 
 export interface FixtureDef {
@@ -542,6 +637,15 @@ export interface Balance {
   complexityPct: readonly (readonly [number, number, number])[];
   /** Run-end verdicts by score band, lowest first (§12, The score's names). */
   verdicts: readonly VerdictDef[];
+  /**
+   * Renovate (house-systems-review.md §4): a room card whose type is at its limit levels up a
+   * room of that type instead. Each level adds flat Comfort, up to `maxLevel`.
+   */
+  renovate: { pointsPerLevel: number; maxLevel: number };
+  /** A card whose type is at its limit draws at this percent of its weight (D-043, amended). */
+  drawAtLimitPct: number;
+  /** The job board (D-032, D-045): its contracts, rarity weights, and the first visit's client. */
+  jobBoard: { contracts: number; rarity: Readonly<Record<Rarity, number>>; firstClient: ClientId };
 }
 
 /** What a shop visit stocks (Appendix A · M3a), by shop; the last row repeats. */
@@ -595,6 +699,7 @@ export interface Content {
   features: Readonly<Record<FeatureId, FeatureDef>>;
   sets: Readonly<Record<SetId, SetDef>>;
   crews: Readonly<Record<CrewId, CrewDef>>;
+  clients: Readonly<Record<ClientId, ClientDef>>;
   fixtures: Readonly<Record<FixtureId, FixtureDef>>;
   blueprints: Readonly<Record<BlueprintId, BlueprintDef>>;
   tools: Readonly<Record<ToolId, ToolDef>>;
@@ -630,6 +735,8 @@ export interface PlacedPiece {
   ageBonus?: number;
   /** One per piece (D-050); installing another replaces it. Gone when the piece is demolished. */
   fixture?: { id: FixtureId; week: number };
+  /** Renovations (M4a): each level adds Comfort. Kept through a move and a transform. */
+  level?: number;
 }
 
 export interface HouseState {
@@ -702,6 +809,8 @@ export interface TimedEffect {
 
 export interface RunSetup {
   seed: string;
+  /** The contract's client (M4a). */
+  clientId: ClientId;
   crewId: CrewId;
   mode: 'standard';
 }
@@ -716,6 +825,8 @@ export interface WeekScore {
 export interface WeekSummary extends WeekScore {
   /** Keys of the set instances held, for spotting new ones. */
   setInstances: readonly string[];
+  /** Whether each of the client's specs held, in checklist order, for specMet and specLost. */
+  specsMet: readonly boolean[];
 }
 
 export type MilestoneResult = 'onTime' | 'early' | 'overtime' | 'failed';
@@ -824,6 +935,16 @@ export interface InstallAction {
   i: number;
   uid: number;
 }
+/**
+ * Renovate (M4a): a room card whose type is at its limit, played on a room of that type, which
+ * gains a level. It's the week's turn, like placing.
+ */
+export interface RenovateAction {
+  t: 'renovate';
+  from: 'hand' | 'reserve';
+  i: number;
+  uid: number;
+}
 export type PassAction = { t: 'pass' };
 /** Free actions: they don't end the week. */
 export type RerollAction = { t: 'reroll' };
@@ -875,6 +996,7 @@ export type Good =
 export type Action =
   | PlaceAction
   | InstallAction
+  | RenovateAction
   | PassAction
   | RerollAction
   | DemolishAction
@@ -888,8 +1010,11 @@ export type Action =
   | UseToolAction
   | DebugAction;
 
-/** A week's play: a placement, an install, or nothing (a pass). Previews take supply installs too. */
-export type Play = PlaceAction | InstallAction | null;
+/**
+ * A week's play: a placement, an install, a Renovation, or nothing (a pass). Previews take
+ * supply installs too.
+ */
+export type Play = PlaceAction | InstallAction | RenovateAction | null;
 
 /** What caused a breakdown line, so the UI can badge it. */
 export type SourceRef =
@@ -900,6 +1025,8 @@ export type SourceRef =
 /** Where a modifier came from, for breakdown labels and the ×Mult order. */
 export type ModSource =
   | { kind: 'crew'; id: CrewId }
+  /** The client's tastes and pool. */
+  | { kind: 'client'; id: ClientId }
   | { kind: 'blueprint'; id: BlueprintId }
   | { kind: 'fixture'; id: FixtureId; uid: number }
   | { kind: 'upgrade'; id: UpgradeId }
@@ -957,10 +1084,20 @@ export interface XMultTerm {
   after: number;
 }
 
+/** One checklist line's result in a tally. */
+export interface SpecScore {
+  id: string;
+  met: boolean;
+}
+
 export interface Tally extends WeekScore {
   pieces: readonly PieceScore[];
   sets: readonly SetScore[];
-  /** +Mult from modifiers, after sets. */
+  /** The client's checklist, in order: each spec met adds `specBonus` to the Mult, after sets. */
+  specs: readonly SpecScore[];
+  /** What each spec met adds this week, in hundredths (the `specBonus` rule). */
+  specBonus: number;
+  /** +Mult from modifiers, after specs. */
   multTerms: readonly MultTerm[];
   /** ×Mult sources, each once, in order (D-056). */
   xMults: readonly XMultTerm[];
@@ -1055,6 +1192,20 @@ export type GameEvent =
       budget: number;
     }
   | { t: 'setCompleted'; set: SetId; key: string; members: readonly number[] }
+  /** A checklist line held this week that didn't last week (after the tally), or lost one. */
+  | { t: 'specMet'; id: string; index: number }
+  | { t: 'specLost'; id: string; index: number }
+  | {
+      t: 'renovated';
+      uid: number;
+      defId: PieceId;
+      /** The room's level now. */
+      level: number;
+      /** The card's type, which may differ from the room's (a Bedroom card on a member's room). */
+      card: PieceId;
+      /** Weekend Crew's free play: the week goes on. */
+      free?: true;
+    }
   | { t: 'targetReached'; phase: number; target: number; score: number }
   | { t: 'overtimeUsed'; phase: number; overtimeLeft: number; target: number; score: number }
   | {
@@ -1142,6 +1293,11 @@ export interface Preview {
   /** For an install: the host, and the fixture the install would replace (and lose). */
   host?: number;
   replaces?: FixtureId;
+  /** For a Renovation: the room, and the level it would reach. */
+  renovates?: { uid: number; level: number };
+  /** Checklist lines the play would turn on, and off (spec ids). */
+  specsGained: readonly string[];
+  specsLost: readonly string[];
   /** The ×Mult sources with the play, so a Sparkle can light up before it's committed. */
   xMults: readonly XMultTerm[];
   /** Finds the play would dig up (a Time Capsule), each with what it pays. */
@@ -1158,6 +1314,9 @@ export interface DemolishPreview {
   before: WeekScore;
   after: WeekScore;
   delta: number;
+  /** Checklist lines the demolition would turn on, and off (spec ids): "loses One Kitchen". */
+  specsGained: readonly string[];
+  specsLost: readonly string[];
 }
 
 export interface Legality {
@@ -1182,8 +1341,33 @@ export interface RunCodeData {
   contentHash: string;
   setup: RunSetup;
   actions: readonly Action[];
-  /** A tentative placement or install, so a preview bug can be reproduced. */
-  pending?: PlaceAction | InstallAction;
+  /** A tentative placement, install, or Renovation, so a preview bug can be reproduced. */
+  pending?: PlaceAction | InstallAction | RenovateAction;
+}
+
+/** One part of a checklist line's progress: "Bedrooms 3 (3–4)", "fill 61% (≥ 60%)". */
+export interface ProgressPart {
+  text: string;
+  ok: boolean;
+}
+
+/** A checklist line as the UI shows it (§7 M4a): the rule, whether it holds, and its progress. */
+export interface ChecklistLine {
+  id: string;
+  name: string;
+  group: SpecGroup;
+  met: boolean;
+  /** The whole rule as card text, every stage included (the progress shows the current one). */
+  text: string;
+  progress: readonly ProgressPart[];
+}
+
+/** A room type at its limit (from the checklist's ceilings): its cards can renovate instead. */
+export interface TypeLimit {
+  /** The types the limit counts (a Bedroom limit counts members' rooms too, M4b). */
+  types: readonly PieceId[];
+  max: number;
+  count: number;
 }
 
 /** What the inspect panel says about a placed piece's place in the layout. */
@@ -1253,17 +1437,21 @@ export {
   effectText,
   fixtureText,
   glossary,
+  houseConditionText,
   modifierText,
   multNumber,
   regionText,
   rewardText,
   selectorText,
+  specText,
   toolText,
   upgradeText,
 } from './text.ts';
 export type { Term } from './text.ts';
 export { earnedFor, roundHalfUp, weekTotal } from './scoring.ts';
 export { ruleValue } from './modifiers.ts';
+export { meetsHouse, outlineOf, progressOf } from './conditions.ts';
+export { jobBoard, type Contract } from './jobs.ts';
 export { fitsText } from './fixtures.ts';
 
 export { CONTENT, SCORE_LABELS } from '../content/index.ts';

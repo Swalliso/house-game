@@ -82,7 +82,12 @@ function playOut(
   steps: number,
   free = true,
 ): { states: RunState[]; actions: Action[] } {
-  let state = rules.newRun({ seed, crewId: 'generalContractor', mode: 'standard' });
+  let state = rules.newRun({
+    seed,
+    clientId: 'hendersons',
+    crewId: 'generalContractor',
+    mode: 'standard',
+  });
   const states = [state];
   const actions: Action[] = [];
   for (
@@ -151,7 +156,7 @@ describe('properties', () => {
       fc.property(seedArb, fc.integer({ min: 0, max: 14 }), (seed, steps) => {
         const { states, actions } = playOut(seed, steps);
         const replayed = rules.replay(
-          { seed, crewId: 'generalContractor', mode: 'standard' },
+          { seed, clientId: 'hendersons', crewId: 'generalContractor', mode: 'standard' },
           actions,
         );
         expect(replayed.failedAt).toBeUndefined();
@@ -164,11 +169,10 @@ describe('properties', () => {
   it('replay stops at the first action that fails, without throwing', () => {
     const { actions, states } = playOut('stale', 5, false);
     const bad: Action = { t: 'place', from: 'hand', i: 0, x: -5, y: 0, rot: 0 };
-    const result = rules.replay({ seed: 'stale', crewId: 'generalContractor', mode: 'standard' }, [
-      ...actions.slice(0, 3),
-      bad,
-      ...actions.slice(3),
-    ]);
+    const result = rules.replay(
+      { seed: 'stale', clientId: 'hendersons', crewId: 'generalContractor', mode: 'standard' },
+      [...actions.slice(0, 3), bad, ...actions.slice(3)],
+    );
     expect(result.failedAt).toBe(3);
     expect(result.error).toBe("That's off the lot.");
     expect(result.state).toEqual(states[3]);

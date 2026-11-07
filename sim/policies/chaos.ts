@@ -149,6 +149,8 @@ function buildGroups(
       weight: 12 * end,
       actions: of((a) => a.t === 'install' && a.from === 'hand'),
     },
+    // A Renovation (M4a), when a card's type is at its limit: a few rooms, like a fixture's hosts.
+    { kind: 'renovate', weight: 12 * end, actions: of((a) => a.t === 'renovate') },
     { kind: 'pass', weight: 6 * end, actions: [{ t: 'pass' }] },
     {
       kind: 'install:supplies',

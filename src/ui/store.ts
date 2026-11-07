@@ -56,7 +56,12 @@ export const canContinue = signal(false);
 // The run.
 
 export const run = signal<RunState>(
-  rules.newRun({ seed: 'placeholder', crewId: 'generalContractor', mode: 'standard' }),
+  rules.newRun({
+    seed: 'placeholder',
+    clientId: 'hendersons',
+    crewId: 'generalContractor',
+    mode: 'standard',
+  }),
 );
 export const log = signal<readonly Action[]>([]);
 
@@ -366,7 +371,7 @@ export function startRun(
   } catch (e) {
     // A setup this build can't start (an unknown crew): a fresh run instead.
     result = rules.replay(
-      { seed: randomSeed(), crewId: 'generalContractor', mode: 'standard' },
+      { seed: randomSeed(), clientId: 'hendersons', crewId: 'generalContractor', mode: 'standard' },
       [],
     );
     actions = [];
@@ -385,7 +390,7 @@ export function startRun(
 
 export function newRun(seed = randomSeed()): void {
   notice.value = null;
-  startRun({ seed, crewId: 'generalContractor', mode: 'standard' });
+  startRun({ seed, clientId: 'hendersons', crewId: 'generalContractor', mode: 'standard' });
   canContinue.value = false;
   appScreen.value = 'game';
 }
@@ -575,13 +580,23 @@ export function loadInitialRun(): void {
       }
     }
     const previous = keepPreviousRun(saved);
-    startRun({ seed: randomSeed(), crewId: 'generalContractor', mode: 'standard' });
+    startRun({
+      seed: randomSeed(),
+      clientId: 'hendersons',
+      crewId: 'generalContractor',
+      mode: 'standard',
+    });
     addNote('The game updated, so your last run couldn’t continue.', previous);
     if (linkError) addNote(linkError);
     appScreen.value = 'title';
     return;
   }
-  startRun({ seed: randomSeed(), crewId: 'generalContractor', mode: 'standard' });
+  startRun({
+    seed: randomSeed(),
+    clientId: 'hendersons',
+    crewId: 'generalContractor',
+    mode: 'standard',
+  });
   if (linkError) addNote(linkError);
   appScreen.value = 'title';
 }

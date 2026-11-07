@@ -71,6 +71,8 @@ const RARITY: Record<ToolId, Rarity> = {
   dumpster: 'common',
   remodelJackAndJill: 'common',
   remodelEntertainer: 'common',
+  remodelSuite: 'common',
+  remodelFullHouse: 'uncommon',
   weekendCrew: 'rare',
 };
 
@@ -101,9 +103,9 @@ describe('tools', () => {
     expect(PRICES.tool).toEqual({ common: 2, uncommon: 3, rare: 4 });
   });
 
-  it('the shop offers every one but Inspector’s Visit, which waits for M4a’s specs', () => {
+  it('the shop holds back the tools that wait for M4a’s content', () => {
     const held = Object.values(CONTENT.tools).filter((d) => !d.offered);
-    expect(held.map((d) => d.id)).toEqual(['inspectorsVisit']);
+    expect(held.map((d) => d.id)).toEqual(['inspectorsVisit', 'remodelSuite', 'remodelFullHouse']);
   });
 });
 

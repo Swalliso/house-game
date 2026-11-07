@@ -6,7 +6,8 @@
 //   Plans), extraPlay (Weekend Crew)
 // - each is a free action: the week, slot, draws, and hand stay (the Catalog's draws + 1)
 // - rules.canUseTool says why a use isn't allowed; rules.previewTool shows the house's pass
-//   tally before and after
+//   tally before and after, and the checklist lines the use would turn on and off (none
+//   here: TEST_CONTENT's clients have empty checklists)
 //
 // Rules tests use TEST_CONTENT (src/rules/testing.ts). Most houses are built on an empty 12×12
 // lot with houseFrom, so uids follow the placement order (1, 2, …) and every piece has
@@ -370,6 +371,8 @@ describe('Moving Truck (move)', () => {
       after: { points: 6, mult: 100, total: 6 },
       delta: 3,
       cells: [{ x: 2, y: 2 }],
+      specsGained: [],
+      specsLost: [],
     });
     // And the move does what it previewed.
     const { state } = R.apply(s, moveTo(0, 2, 2, 2));
@@ -388,6 +391,8 @@ describe('Moving Truck (move)', () => {
       after: now,
       delta: 0,
       cells: [],
+      specsGained: [],
+      specsLost: [],
     });
   });
 });
@@ -457,6 +462,8 @@ describe('Rush Order and Open House Party (weekModifiers)', () => {
       after: { points: 19, mult: 200, total: 38 },
       delta: 9,
       cells: [],
+      specsGained: [],
+      specsLost: [],
     });
   });
 
@@ -479,12 +486,13 @@ describe('Rush Order and Open House Party (weekModifiers)', () => {
   });
 
   it('also counts in a placement’s tally that same week', () => {
-    // The week's turn: a Closet (steady 1) beside the Bedroom at (3, 0), which ignores it.
-    // Points 19 + 1 = 20, × 2.0 → 40.
+    // The week's turn: a Closet (steady 1) beside the Bedroom at (3, 0), which ignores it, but
+    // which completes a Suite with that Bedroom and the Bathroom (15 Points, +0.5).
+    // Points 19 + 1 + 15 = 35, × 2.5 → 88 (87.5 rounds up).
     const s = build(JACK_AND_JILL, { tools: ['rushOrder'], hand: [pc('closet')] });
     const used = R.apply(s, use(0)).state;
     const { events } = R.apply(used, place(0, 5, 0));
-    expect(eventsOf(events, 'tally')[0]!.tally.total).toBe(40);
+    expect(eventsOf(events, 'tally')[0]!.tally.total).toBe(88);
   });
 
   it('applies to a manual complete-early’s fast-forwarded current week only', () => {
@@ -656,6 +664,8 @@ describe('Fertilizer (advanceTimers)', () => {
       after: { points: 15, mult: 100, total: 15 },
       delta: 12,
       cells: [],
+      specsGained: [],
+      specsLost: [],
     });
     const used = R.apply(s, use(0)).state;
     expect(R.pieceTimers(used, 2)).toEqual(['Pays +12 this week']);
@@ -736,6 +746,8 @@ describe('Dumpster (reward) and Remodel Plans (levelSet)', () => {
       after: { points: 27, mult: 175, total: 47 },
       delta: 18,
       cells: [],
+      specsGained: [],
+      specsLost: [],
     });
     const l2 = R.apply(s, use(0));
     expect(l2.events).toEqual([{ t: 'toolUsed', tool: 'remodelJackAndJill' }]);

@@ -8,6 +8,7 @@ import type {
   Effect,
   FeatureId,
   FixtureDef,
+  HouseCondition,
   Modifier,
   PieceCondition,
   PieceDef,
@@ -16,6 +17,7 @@ import type {
   Reward,
   RuleKey,
   Selector,
+  SpecDef,
   Tag,
   ToolDef,
   UpgradeDef,
@@ -56,7 +58,10 @@ export function ordinal(n: number): string {
 export type Phrasing = 'one' | 'some' | 'every';
 
 function plural(name: string): string {
-  return name.endsWith('s') ? name : `${name}s`;
+  if (name.endsWith('s')) return name;
+  // Library → Libraries, Nursery → Nurseries; Driveway stays Driveways.
+  if (/[^aeiou]y$/.test(name)) return `${name.slice(0, -1)}ies`;
+  return `${name}s`;
 }
 
 function featureNoun(content: Content, id: FeatureId, many: boolean): string {
@@ -118,7 +123,24 @@ export function selectorText(content: Content, sel: Selector, phrasing: Phrasing
       const noun = selectorText(content, { all: others }, phrasing);
       return `${noun} that ${many ? 'give' : 'gives'} a view`;
     }
+    // "Rooms with a view": having one reads as a clause on the rest too.
+    const isView = (s: Selector) => s !== 'all' && 'property' in s && s.property === 'view';
+    if (sel.all.some(isView) && sel.all.length > 1) {
+      const others = sel.all.filter((s) => !isView(s));
+      return `${selectorText(content, { all: others }, phrasing)} with a view`;
+    }
     const tags = sel.all.filter((s): s is { tag: Tag } => s !== 'all' && 'tag' in s);
+    // "Kid neighbor other than Treehouses": an excluded part reads as a clause at the end.
+    const nots = sel.all.filter((s): s is { not: Selector } => s !== 'all' && 'not' in s);
+    if (nots.length > 0 && nots.length < sel.all.length) {
+      const others = sel.all.filter((s) => s === 'all' || !('not' in s));
+      const head = selectorText(content, { all: others }, phrasing);
+      const except = joinWords(
+        nots.map((n) => selectorText(content, n.not, 'some')),
+        'or',
+      );
+      return `${head} other than ${except}`;
+    }
     // "Exterior room" already says "room".
     const isProp = (s: Selector, p: Property) => s !== 'all' && 'property' in s && s.property === p;
     const roomKind = sel.all.some((s) => isProp(s, 'exterior') || isProp(s, 'interior'));
@@ -143,9 +165,10 @@ function signed(n: number): string {
   return n < 0 ? `−${-n}` : `+${n}`;
 }
 
-function article(noun: string): string {
+/** "a Kitchen", "an Office", "an L-Kitchen" (a letter read aloud: "el"). */
+export function article(noun: string): string {
   if (noun.startsWith('the ')) return noun;
-  return /^[AEIOU]/i.test(noun) ? `an ${noun}` : `a ${noun}`;
+  return /^([AEIOU]|[AEFHILMNORSX]-)/i.test(noun) ? `an ${noun}` : `a ${noun}`;
 }
 
 /** "touching the street or a Driveway", "in the front yard", "bordering a fenced yard". */
@@ -176,6 +199,107 @@ export function conditionText(content: Content, cond: PieceCondition): string {
   if ('borders' in cond) return 'bordering a fenced yard';
   if ('is' in cond) return article(selectorText(content, cond.is, 'one'));
   return `part of ${article(content.sets[cond.inSet].name)}`;
+}
+
+/** A count's noun, for "exactly" and "at most": "one Library", "3 Dark rooms". */
+function counted(content: Content, sel: Selector, n: number): string {
+  return n === 1
+    ? `one ${selectorText(content, sel, 'one')}`
+    : `${n} ${selectorText(content, sel, 'some')}`;
+}
+
+/**
+ * A house condition as card text (specs, and M4b's requests): "3 or more Dark rooms", "a
+ * Kitchen beside a Dining Room". The house rules carry their own text (content/house-rules.ts).
+ */
+export function houseConditionText(content: Content, cond: HouseCondition): string {
+  if ('and' in cond)
+    return joinWords(
+      cond.and.map((c) => houseConditionText(content, c)),
+      'and',
+    );
+  if ('or' in cond)
+    return joinWords(
+      cond.or.map((c) => houseConditionText(content, c)),
+      'or',
+    );
+  if ('not' in cond) return `not ${houseConditionText(content, cond.not)}`;
+  if ('stages' in cond) {
+    return cond.stages
+      .map((st, k) => {
+        const text = houseConditionText(content, st.condition);
+        return k === 0 && st.fromPhase === 0
+          ? text
+          : `from ${content.balance.phases[st.fromPhase]?.name ?? `phase ${st.fromPhase + 1}`}, ${text}`;
+      })
+      .join('; ');
+  }
+  if ('count' in cond) {
+    const { min, max } = cond;
+    const many = selectorText(content, cond.count, 'some');
+    if (min !== undefined && max !== undefined) {
+      return min === max ? `exactly ${counted(content, cond.count, min)}` : `${min}–${max} ${many}`;
+    }
+    if (max !== undefined)
+      return max === 0 ? `no ${many}` : `at most ${counted(content, cond.count, max)}`;
+    const n = min ?? 0;
+    return n <= 1 ? article(selectorText(content, cond.count, 'one')) : `${n} or more ${many}`;
+  }
+  if ('countNew' in cond) {
+    return cond.min === 1
+      ? `a new ${selectorText(content, cond.countNew, 'one')}`
+      : `${cond.min} new ${selectorText(content, cond.countNew, 'some')}`;
+  }
+  if ('none' in cond) return `no ${selectorText(content, cond.none, 'some')}`;
+  if ('adjacentPair' in cond) {
+    const [a, b] = cond.adjacentPair;
+    return `${article(selectorText(content, a, 'one'))} beside ${article(selectorText(content, b, 'one'))}`;
+  }
+  if ('fencedYardTiles' in cond) {
+    const min = cond.fencedYardTiles.min;
+    return min <= content.balance.fencedYardMin
+      ? 'a fenced yard'
+      : `a fenced yard of ${min} or more tiles`;
+  }
+  if ('group' in cond) {
+    return `${cond.minTiles} or more tiles of ${selectorText(content, cond.group, 'some')} in one group`;
+  }
+  if ('set' in cond) {
+    const n = cond.min ?? 1;
+    const name = content.sets[cond.set].name;
+    return n === 1 ? article(name) : `${n} ${plural(name)}`;
+  }
+  if ('demolishedSinceAccepted' in cond) {
+    const n = cond.demolishedSinceAccepted.min;
+    return `demolish ${n === 1 ? 'a piece' : `${n} pieces`}`;
+  }
+  if ('ratio' in cond) {
+    const r = cond.ratio;
+    const each = r.every === 1 ? '' : `${r.every} `;
+    const least = r.min ? ` (at least ${r.min})` : '';
+    return `${article(selectorText(content, r.count, 'one'))} for every ${each}${selectorText(content, r.per, r.every === 1 ? 'one' : 'some')}${least}`;
+  }
+  if ('outline' in cond) {
+    const o = cond.outline;
+    const rooms =
+      o.maxRooms === undefined ? `${o.minRooms}+ rooms` : `${o.minRooms}–${o.maxRooms} rooms`;
+    const long =
+      o.maxAspect === 1
+        ? 'longer than'
+        : o.maxAspect === 2
+          ? 'longer than twice'
+          : `longer than ${o.maxAspect} times`;
+    return `${rooms}, filling at least ${o.minFillPct}% of their box, and the box is no ${long} its width`;
+  }
+  const v = cond.variety;
+  return `${v.min} or more ${selectorText(content, v.of, 'some')}, and none of a type stands ${v.maxEach + 1} or more times`;
+}
+
+/** A checklist line's card text: its own, or generated from its condition. */
+export function specText(content: Content, spec: SpecDef): string {
+  const text = spec.text ?? houseConditionText(content, spec.condition);
+  const sentence = text.charAt(0).toUpperCase() + text.slice(1);
+  return /[.!?]$/.test(sentence) ? sentence : `${sentence}.`;
 }
 
 export function effectText(content: Content, effect: Effect): string {

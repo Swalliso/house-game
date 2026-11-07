@@ -34,9 +34,12 @@ function owned(blueprints: readonly Owned[]) {
   );
 }
 
-/** The run's modifiers for these blueprints (and the General Contractor). */
+/** The run's modifiers for these blueprints (and the General Contractor), without a client's tastes. */
 function modsFor(blueprints: readonly Owned[]) {
-  return runModifiers(CONTENT, { setup: setup('blueprints'), blueprints: owned(blueprints) });
+  return runModifiers(CONTENT, {
+    setup: setup('blueprints'),
+    blueprints: owned(blueprints),
+  }).filter((m) => m.source.kind !== 'client');
 }
 
 function layoutWith(house: HouseState, blueprints: readonly Owned[]): Layout {

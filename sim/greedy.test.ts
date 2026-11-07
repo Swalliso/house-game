@@ -20,7 +20,7 @@ import { greedy, makeGreedy, POLICIES, type Policy } from './policies/index.ts';
 import { simulateRun } from './simulate.ts';
 
 const newRun = (seed: string) =>
-  rules.newRun({ seed, crewId: 'generalContractor', mode: 'standard' });
+  rules.newRun({ seed, clientId: 'hendersons', crewId: 'generalContractor', mode: 'standard' });
 const sameSpot = (a: PlaceAction) => (b: PlaceAction) =>
   a.from === b.from && a.i === b.i && a.x === b.x && a.y === b.y && a.rot === b.rot;
 const median = (xs: readonly number[]) => [...xs].sort((a, b) => a - b)[xs.length >> 1]!;

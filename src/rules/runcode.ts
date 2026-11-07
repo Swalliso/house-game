@@ -13,6 +13,7 @@ import type {
   InstallAction,
   PieceId,
   PlaceAction,
+  RenovateAction,
   RunCodeData,
   RunSetup,
   ToolId,
@@ -139,6 +140,16 @@ function isInstall(v: unknown): v is InstallAction {
   );
 }
 
+function isRenovate(v: unknown): v is RenovateAction {
+  return (
+    isObject(v) &&
+    v.t === 'renovate' &&
+    (v.from === 'hand' || v.from === 'reserve') &&
+    isInt(v.i) &&
+    isInt(v.uid)
+  );
+}
+
 const cleanPlace = (v: PlaceAction): PlaceAction => ({
   t: 'place',
   from: v.from,
@@ -153,6 +164,15 @@ const cleanInstall = (v: InstallAction): InstallAction => ({
   i: v.i,
   uid: v.uid,
 });
+
+/** A tentative play, with only its known fields. */
+function cleanPending(
+  v: PlaceAction | InstallAction | RenovateAction,
+): PlaceAction | InstallAction | RenovateAction {
+  if (v.t === 'place') return cleanPlace(v);
+  if (v.t === 'install') return cleanInstall(v);
+  return { t: 'renovate', from: v.from, i: v.i, uid: v.uid };
+}
 
 /** A card type (for the strike service), with only its two fields. Ids are checked on replay. */
 function cleanCardType(v: unknown): CardType | null {
@@ -194,7 +214,7 @@ function cleanToolTarget(v: unknown): UseToolAction['target'] | null {
 
 /**
  * Rebuilds an action from untrusted JSON with only its known fields, or null if it isn't one.
- * Ids and crews are checked against the content when the code replays.
+ * Ids, clients, and crews are checked against the content when the code replays.
  */
 function cleanAction(v: unknown): Action | null {
   if (!isObject(v)) return null;
@@ -203,6 +223,8 @@ function cleanAction(v: unknown): Action | null {
       return isPlace(v) ? cleanPlace(v) : null;
     case 'install':
       return isInstall(v) ? cleanInstall(v) : null;
+    case 'renovate':
+      return isRenovate(v) ? { t: 'renovate', from: v.from, i: v.i, uid: v.uid } : null;
     case 'pass':
       return { t: 'pass' };
     case 'reroll':
@@ -262,6 +284,7 @@ function isSetup(v: unknown): v is RunSetup {
   return (
     isObject(v) &&
     typeof v.seed === 'string' &&
+    typeof v.clientId === 'string' &&
     typeof v.crewId === 'string' &&
     v.mode === 'standard'
   );
@@ -286,15 +309,16 @@ export function decodeRunCode(code: string): DecodeResult {
   if (!cleaned || cleaned.some((a) => a === null)) {
     return { ok: false, error: 'That run code has an action this build doesn’t know.' };
   }
-  if (pending !== undefined && !isPlace(pending) && !isInstall(pending)) {
+  if (pending !== undefined && !isPlace(pending) && !isInstall(pending) && !isRenovate(pending)) {
     return { ok: false, error: 'That run code has a damaged pending placement.' };
   }
   const data: RunCodeData = {
     build,
     contentHash: hash,
-    setup: { seed: setup.seed, crewId: setup.crewId, mode: setup.mode },
+    // Field by field, so nothing else in the code reaches the rules. Ids are checked on replay.
+    setup: { seed: setup.seed, clientId: setup.clientId, crewId: setup.crewId, mode: setup.mode },
     actions: cleaned as Action[],
-    ...(pending ? { pending: isPlace(pending) ? cleanPlace(pending) : cleanInstall(pending) } : {}),
+    ...(pending ? { pending: cleanPending(pending) } : {}),
   };
   return { ok: true, data };
 }

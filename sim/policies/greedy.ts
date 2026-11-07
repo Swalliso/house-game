@@ -21,6 +21,7 @@ import type {
   Estimate,
   InstallAction,
   PlaceAction,
+  RenovateAction,
   Rng,
   Rules,
   RunState,
@@ -141,15 +142,16 @@ export function makeGreedy(opts: GreedyOptions = {}): Policy {
       const free = useTools(rules, state, salt);
       if (free) return free;
       const plays: PlaceAction[] = [];
-      const installs: InstallAction[] = [];
+      // Installs and Renovations are few, so each is scored exactly.
+      const exact: (InstallAction | RenovateAction)[] = [];
       for (const p of rules.legalPlays(state)) {
         if (p.t === 'place') plays.push(p);
-        else installs.push(p);
+        else exact.push(p);
       }
       const passTotal = rules.scoreOnly(state, null);
-      let best: (PlaceAction | InstallAction)[] = [];
+      let best: (PlaceAction | InstallAction | RenovateAction)[] = [];
       let bestTotal = -Infinity;
-      for (const play of [...shortlist(rules, state, plays, salt), ...installs]) {
+      for (const play of [...shortlist(rules, state, plays, salt), ...exact]) {
         const total = rules.scoreOnly(state, play);
         if (total > bestTotal) {
           bestTotal = total;

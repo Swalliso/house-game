@@ -171,4 +171,18 @@ export const BALANCE: Balance = {
     { name: 'Showhome', minPctOfTarget: 150 },
     { name: 'Dream Home', minPctOfTarget: 200 },
   ],
+
+  // Renovate (house-systems-review.md §4, D-093 option B): a room card whose type is at its
+  // limit levels up a room of that type instead: +4 Comfort a level, up to 2 levels.
+  renovate: { pointsPerLevel: 4, maxLevel: 2 },
+  // A type at its limit draws at half weight while it stays there (D-043, amended by D-093).
+  drawAtLimitPct: 50,
+
+  // The job board (Appendix A · M4a; D-026, D-045): 3 contracts, clients by rarity (no Rare is
+  // guaranteed), and the Hendersons as contract 0 on a first visit.
+  jobBoard: {
+    contracts: 3,
+    rarity: { common: 65, uncommon: 27, rare: 8 },
+    firstClient: 'hendersons',
+  },
 };

@@ -61,7 +61,7 @@ describe('content', () => {
     });
   });
 
-  it('has the base pool: 19 piece types as 23 cards, two sets, and seven milestones', () => {
+  it('has the base pool: 19 piece types as 23 cards, four sets, and seven milestones', () => {
     // The base pool is what the weekly draw deals; special pieces (weight 0) come from the shop.
     const defs = Object.values(CONTENT.pieces).filter((d) => d.drawWeight > 0);
     expect(defs).toHaveLength(23);
@@ -71,7 +71,7 @@ describe('content', () => {
       new Set(defs.filter((d) => d.category === cat).map((d) => d.countsAs ?? d.id)).size;
     expect([count('indoor'), count('yard'), count('outbuilding')]).toEqual([9, 7, 3]);
     expect(CONTENT.pieces.lKitchen.countsAs).toBe('kitchen');
-    expect(Object.keys(CONTENT.sets)).toEqual(['jackAndJill', 'entertainer']);
+    expect(Object.keys(CONTENT.sets)).toEqual(['jackAndJill', 'entertainer', 'suite', 'fullHouse']);
     expect(CONTENT.balance.phases.map((p) => p.name)).toEqual([
       'Groundbreaking',
       'Foundation',
@@ -172,7 +172,12 @@ describe('the real rules', () => {
   it('play a full run to the end without breaking', () => {
     const r = createRules(CONTENT);
     for (const seed of ['smoke-1', 'smoke-2']) {
-      let s = r.newRun({ seed, crewId: 'generalContractor', mode: 'standard' });
+      let s = r.newRun({
+        seed,
+        clientId: 'hendersons',
+        crewId: 'generalContractor',
+        mode: 'standard',
+      });
       let weeks = 0;
       while (s.screen === 'build' || s.screen === 'shop') {
         if (s.screen === 'shop') {

@@ -31,10 +31,11 @@ function build(
 
 /** The house's tally in `week`, with these blueprints (bought in week 1) if any. */
 function tallyOf(house: HouseState, week = 1, blueprints: readonly BlueprintId[] = []): Tally {
+  // The fixtures alone: no client's tastes (the Hendersons like Lawns).
   const mods = runModifiers(CONTENT, {
     setup: setup('fixtures'),
     blueprints: blueprints.map((id) => ({ id, boughtWeek: 1 })),
-  });
+  }).filter((m) => m.source.kind !== 'client');
   const layout = computeLayout(CONTENT, house, mods.map((m) => m.mod).filter(isLayoutModifier));
   return tallyHouse(CONTENT, layout, week, true, { ...NO_CONTEXT, mods });
 }

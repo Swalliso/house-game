@@ -111,6 +111,8 @@ function tally(content: Content, house: HouseState, o: TallyOpts = {}): Tally {
     setLevels: {},
     lastWeek: o.lastWeek ?? false,
     stats: { milestonesEarly: o.milestonesEarly ?? 0 },
+    specs: [],
+    phase: 0,
   });
 }
 
@@ -696,8 +698,9 @@ describe('countsAs', () => {
     expect(computeLayout(c, house).countsAs.get(1)?.get('bedroom')).toBe(2);
     const t = tally(c, house);
     expect(earned(t, 2)).toBe(1);
-    // Jack-and-Jill needs two Bedrooms: one with Bunk Beds is still one.
-    expect(t.sets).toEqual([]);
+    // Jack-and-Jill needs two Bedrooms: one with Bunk Beds is still one. (The Bedroom, Closet,
+    // and Bathroom do make a Suite.)
+    expect(t.sets.map((s) => s.set)).toEqual(['suite']);
   });
 });
 

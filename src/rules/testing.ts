@@ -6,6 +6,8 @@ import type {
   Balance,
   BlueprintDef,
   BlueprintId,
+  ClientDef,
+  ClientId,
   Content,
   CrateDef,
   CrateId,
@@ -680,6 +682,62 @@ export const TEST_SETS: Record<SetId, SetDef> = {
     mult: 100,
     level: { points: 15, mult: 50 },
   },
+  suite: {
+    id: 'suite',
+    name: 'Suite',
+    tier: 'core',
+    members: { bedroom: 1, bathroom: 1, closet: 1 },
+    connected: true,
+    points: 15,
+    mult: 50,
+    level: { points: 10, mult: 25 },
+  },
+  fullHouse: {
+    id: 'fullHouse',
+    name: 'Full House',
+    tier: 'core',
+    members: {
+      bedroom: 1,
+      bathroom: 1,
+      kitchen: 1,
+      diningRoom: 1,
+      livingRoom: 1,
+      closet: 1,
+      hallway: 1,
+      garage: 1,
+      homeOffice: 1,
+    },
+    connected: false,
+    maxInstances: 1,
+    points: 40,
+    mult: 100,
+    times: 200,
+    level: { points: 20, mult: 50 },
+  },
+};
+
+const testClient = (id: ClientId, name: string): ClientDef => ({
+  id,
+  name,
+  rarity: 'common',
+  tier: 'core',
+  brief: `${name}'s house.`,
+  specs: [],
+  tastes: [],
+  pool: [],
+  targetPct: 100,
+});
+
+/**
+ * Test clients have empty checklists, tastes, and pools, so rules tests that don't care about
+ * clients score as before; client tests add their own with withClient().
+ */
+export const TEST_CLIENTS: Record<ClientId, ClientDef> = {
+  hendersons: testClient('hendersons', 'The Hendersons'),
+  vladislav: { ...testClient('vladislav', 'Count Vladislav'), rarity: 'rare' },
+  barkers: testClient('barkers', 'The Barkers'),
+  juniper: { ...testClient('juniper', 'Juniper Vale'), rarity: 'uncommon' },
+  dale: testClient('dale', 'Dale'),
 };
 
 export const TEST_LOT_BALANCE: LotBalance = {
@@ -771,6 +829,13 @@ export const TEST_BALANCE: Balance = {
     { name: 'Starter Home', minPctOfTarget: 100 },
     { name: 'Dream Home', minPctOfTarget: 200 },
   ],
+  renovate: { pointsPerLevel: 4, maxLevel: 2 },
+  drawAtLimitPct: 50,
+  jobBoard: {
+    contracts: 3,
+    rarity: { common: 65, uncommon: 27, rare: 8 },
+    firstClient: 'hendersons',
+  },
 };
 
 const testTool = (
@@ -815,6 +880,14 @@ export const TEST_TOOLS: Record<ToolId, ToolDef> = {
   remodelEntertainer: testTool('remodelEntertainer', 'Remodel Plans: Entertainer', 'common', {
     kind: 'levelSet',
     set: 'entertainer',
+  }),
+  remodelSuite: testTool('remodelSuite', 'Remodel Plans: Suite', 'common', {
+    kind: 'levelSet',
+    set: 'suite',
+  }),
+  remodelFullHouse: testTool('remodelFullHouse', 'Remodel Plans: Full House', 'uncommon', {
+    kind: 'levelSet',
+    set: 'fullHouse',
   }),
   weekendCrew: testTool('weekendCrew', 'Weekend Crew', 'rare', { kind: 'extraPlay' }),
 };
@@ -895,6 +968,7 @@ export const TEST_CONTENT: Content = {
   features: TEST_FEATURES,
   sets: TEST_SETS,
   crews: TEST_CREWS,
+  clients: TEST_CLIENTS,
   fixtures: TEST_FIXTURES,
   blueprints: TEST_BLUEPRINTS,
   tools: TEST_TOOLS,
@@ -904,11 +978,21 @@ export const TEST_CONTENT: Content = {
 };
 
 /** The default setup for tests. */
-export const setup = (seed: string): RunSetup => ({
+export const setup = (seed: string, clientId: ClientId = 'hendersons'): RunSetup => ({
   seed,
+  clientId,
   crewId: 'generalContractor',
   mode: 'standard',
 });
+
+/** Content whose client (the Hendersons by default) has these fields. */
+export function withClient(
+  overrides: Partial<ClientDef>,
+  base: Content = TEST_CONTENT,
+  id: ClientId = 'hendersons',
+): Content {
+  return { ...base, clients: { ...base.clients, [id]: { ...base.clients[id], ...overrides } } };
+}
 
 export function withPieces(
   overrides: Partial<Record<PieceId, Partial<PieceDef>>>,

@@ -4,6 +4,7 @@
 import type {
   Content,
   Effect,
+  HouseCondition,
   Modifier,
   PieceCondition,
   PieceId,
@@ -11,9 +12,12 @@ import type {
   Tag,
 } from '../rules/index.ts';
 import { isConnected, parseShape } from '../rules/grid.ts';
-import { cardText, modifierText, toolText } from '../rules/text.ts';
+import { cardText, modifierText, specText, toolText } from '../rules/text.ts';
+import { drawWeights } from '../rules/draw.ts';
+import { isType } from '../rules/selectors.ts';
 import { BALANCE } from './balance.ts';
 import { BLUEPRINTS } from './blueprints.ts';
+import { CLIENTS } from './clients.ts';
 import { CRATES } from './crates.ts';
 import { CREWS } from './crews.ts';
 import { FEATURES } from './features.ts';
@@ -30,6 +34,7 @@ export const CONTENT: Content = {
   features: FEATURES,
   sets: SETS,
   crews: CREWS,
+  clients: CLIENTS,
   fixtures: FIXTURES,
   blueprints: BLUEPRINTS,
   tools: TOOLS,
@@ -45,6 +50,65 @@ function selectorPieceIds(sel: Selector, out: PieceId[]): void {
   else if ('any' in sel) sel.any.forEach((s) => selectorPieceIds(s, out));
   else if ('all' in sel) sel.all.forEach((s) => selectorPieceIds(s, out));
   else if ('not' in sel) selectorPieceIds(sel.not, out);
+}
+
+/** The piece ids a house condition names, for "every id resolves" and the spec-piece check. */
+function houseConditionPieceIds(cond: HouseCondition, out: PieceId[]): void {
+  if ('and' in cond) cond.and.forEach((c) => houseConditionPieceIds(c, out));
+  else if ('or' in cond) cond.or.forEach((c) => houseConditionPieceIds(c, out));
+  else if ('not' in cond) houseConditionPieceIds(cond.not, out);
+  else if ('stages' in cond) cond.stages.forEach((st) => houseConditionPieceIds(st.condition, out));
+  else if ('count' in cond) selectorPieceIds(cond.count, out);
+  else if ('countNew' in cond) selectorPieceIds(cond.countNew, out);
+  else if ('none' in cond) selectorPieceIds(cond.none, out);
+  else if ('adjacentPair' in cond) cond.adjacentPair.forEach((s) => selectorPieceIds(s, out));
+  else if ('group' in cond) selectorPieceIds(cond.group, out);
+  else if ('ratio' in cond) {
+    selectorPieceIds(cond.ratio.count, out);
+    selectorPieceIds(cond.ratio.per, out);
+  } else if ('variety' in cond) {
+    selectorPieceIds(cond.variety.of, out);
+    if (cond.variety.exempt) selectorPieceIds(cond.variety.exempt, out);
+  }
+}
+
+/** Problems with a house condition's numbers and stages. */
+function houseConditionProblems(content: Content, cond: HouseCondition, where: string): string[] {
+  const out: string[] = [];
+  const walk = (c: HouseCondition) => {
+    if ('and' in c) c.and.forEach(walk);
+    else if ('or' in c) c.or.forEach(walk);
+    else if ('not' in c) walk(c.not);
+    else if ('stages' in c) {
+      if (c.stages.length === 0 || c.stages[0]!.fromPhase !== 0) {
+        out.push(`${where}: stages start at phase 0`);
+      }
+      c.stages.forEach((st, k) => {
+        if (k > 0 && st.fromPhase <= c.stages[k - 1]!.fromPhase) {
+          out.push(`${where}: stages must rise`);
+        }
+        if (st.fromPhase >= content.balance.phases.length)
+          out.push(`${where}: no phase ${st.fromPhase}`);
+        walk(st.condition);
+      });
+    } else if ('count' in c) {
+      if (c.min === undefined && c.max === undefined)
+        out.push(`${where}: a count needs min or max`);
+      if (c.min !== undefined && c.max !== undefined && c.min > c.max)
+        out.push(`${where}: min > max`);
+    } else if ('ratio' in c) {
+      if (!Number.isInteger(c.ratio.every) || c.ratio.every < 1)
+        out.push(`${where}: ratio every ≥ 1`);
+    } else if ('set' in c) {
+      if (!content.sets[c.set]) out.push(`${where}: unknown set "${c.set}"`);
+    } else if ('outline' in c) {
+      const o = c.outline;
+      if (o.minFillPct < 0 || o.minFillPct > 100 || o.maxAspect < 1)
+        out.push(`${where}: outline numbers`);
+    }
+  };
+  walk(cond);
+  return out;
 }
 
 function conditionPieceIds(cond: PieceCondition, out: PieceId[]): void {
@@ -277,6 +341,56 @@ export function validateContent(content: Content): string[] {
         }),
       ),
     );
+  }
+
+  for (const [key, client] of Object.entries(content.clients)) {
+    const where = `client ${key}`;
+    if (client.id !== key) problems.push(`${where}: id is "${client.id}"`);
+    if (!Number.isInteger(client.targetPct) || client.targetPct < 1) {
+      problems.push(`${where}: targetPct must be a whole number ≥ 1`);
+    }
+    const ids = new Set<string>();
+    for (const spec of client.specs) {
+      const at = `${where} spec ${spec.id}`;
+      if (ids.has(spec.id)) problems.push(`${at}: duplicate id`);
+      ids.add(spec.id);
+      const named: PieceId[] = [];
+      houseConditionPieceIds(spec.condition, named);
+      named.forEach((id) => known(id, at));
+      problems.push(...houseConditionProblems(content, spec.condition, at));
+      const text = specText(content, spec);
+      if (!text || text.includes('undefined')) problems.push(`${at}: text didn't generate`);
+      // §5: every client's spec pieces can be drawn for that client (special ones via its pool).
+      if (spec.group === 'wishes') {
+        const weights = drawWeights(content, content.balance.complexityPct.length - 1, {
+          mods: client.pool,
+        });
+        for (const id of named) {
+          if (!content.pieces[id]) continue;
+          const def = content.pieces[id];
+          const drawable = weights.some(
+            (w) =>
+              w.card.kind === 'piece' && isType(content.pieces[w.card.id], def.countsAs ?? def.id),
+          );
+          if (!drawable) problems.push(`${at}: ${id} can't be drawn for this client`);
+        }
+      }
+    }
+    client.tastes.forEach((m, k) => {
+      problems.push(
+        ...modifierProblems(content, m, `${where} taste ${k}`, {
+          fixture: false,
+          drawWeight: true,
+        }),
+      );
+      if (m.kind === 'xMult') problems.push(`${where} taste ${k}: clients carry no ×Mult`);
+    });
+    client.pool.forEach((m, k) => {
+      if (m.kind !== 'drawWeight') problems.push(`${where} pool ${k}: the pool is drawWeight only`);
+      problems.push(
+        ...modifierProblems(content, m, `${where} pool ${k}`, { fixture: false, drawWeight: true }),
+      );
+    });
   }
 
   for (const [key, def] of Object.entries(content.fixtures)) {

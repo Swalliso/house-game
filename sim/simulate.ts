@@ -270,7 +270,12 @@ export function simulateRun(
   const maxStepsPerWeek = opts.maxStepsPerWeek ?? MAX_STEPS_PER_WEEK;
   const maxSteps = opts.maxSteps ?? MAX_STEPS;
   const label = policy.label ?? policy.name;
-  let s = rules.newRun({ seed, crewId: 'generalContractor', mode: 'standard' });
+  let s = rules.newRun({
+    seed,
+    clientId: 'hendersons',
+    crewId: 'generalContractor',
+    mode: 'standard',
+  });
   const { width, height } = s.house.lot;
   const rowsFromStreet = (y: number) => height - 1 - y;
   const actions: Action[] = [];

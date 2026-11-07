@@ -30,6 +30,7 @@ import type {
   InstallAction,
   MilestoneResult,
   PlaceAction,
+  RenovateAction,
   Rng,
   RunSetup,
   RunState,
@@ -74,6 +75,7 @@ const MAX_PROBLEMS = 25;
 
 const setupOf = (seed: string): RunSetup => ({
   seed,
+  clientId: 'hendersons',
   crewId: 'generalContractor',
   mode: 'standard',
 });
@@ -119,6 +121,7 @@ function badValues(x: unknown, path = '$', out: string[] = []): string[] {
 const ACTION_KINDS: Record<Action['t'], true> = {
   place: true,
   install: true,
+  renovate: true,
   pass: true,
   reroll: true,
   demolish: true,
@@ -236,14 +239,16 @@ class Checker {
   checkPlays(s: RunState, legal: readonly Action[], rng: Rng) {
     // legalActions lists legalPlays first, then the pass and the free actions.
     const plays = legal.filter(
-      (a): a is PlaceAction | InstallAction =>
-        a.t === 'place' || (a.t === 'install' && a.from === 'hand'),
+      (a): a is PlaceAction | InstallAction | RenovateAction =>
+        a.t === 'place' || a.t === 'renovate' || (a.t === 'install' && a.from === 'hand'),
     );
-    const sample: (PlaceAction | InstallAction)[] = [];
+    const sample: (PlaceAction | InstallAction | RenovateAction)[] = [];
     const reserve = plays.filter((p) => p.t === 'place' && p.from === 'reserve');
     const installs = plays.filter((p) => p.t === 'install');
+    const renovations = plays.filter((p) => p.t === 'renovate');
     if (reserve.length > 0) sample.push(rng.pick(reserve));
     if (installs.length > 0) sample.push(rng.pick(installs));
+    if (renovations.length > 0) sample.push(rng.pick(renovations));
     for (let k = 0; k < 2 && plays.length > 0; k++) sample.push(rng.pick(plays));
     s.supplies.forEach((sup, i) => {
       if (sup.kind !== 'fixture') return;
@@ -251,14 +256,16 @@ class Checker {
       if (hosts.length > 0)
         sample.push({ t: 'install', from: 'supplies', i, uid: rng.pick(hosts) });
     });
-    // cardFits and reserveFits agree with the plays listed.
+    // cardFits and reserveFits agree with the plays listed. A card that can only renovate
+    // doesn't fit (D-070), so Renovations don't count here.
+    const fits = plays.filter((p) => p.t !== 'renovate');
     s.hand.forEach((_, i) => {
-      const listed = plays.some((p) => p.from === 'hand' && p.i === i);
+      const listed = fits.some((p) => p.from === 'hand' && p.i === i);
       if (rules.cardFits(s, i) !== listed)
         this.fail('cardFits disagrees with legalPlays', { i, listed });
     });
     s.reserve.forEach((_, i) => {
-      const listed = plays.some((p) => p.from === 'reserve' && p.i === i);
+      const listed = fits.some((p) => p.from === 'reserve' && p.i === i);
       if (rules.reserveFits(s, i) !== listed)
         this.fail('reserveFits disagrees with legalPlays', { i, listed });
     });
@@ -268,7 +275,7 @@ class Checker {
     for (const play of sample) this.checkPlay(s, play, pass);
   }
 
-  checkPlay(s: RunState, play: PlaceAction | InstallAction, pass: Tally) {
+  checkPlay(s: RunState, play: PlaceAction | InstallAction | RenovateAction, pass: Tally) {
     const free = (play.t === 'install' && play.from === 'supplies') || s.freePlay === 'ready';
     const kind = `${play.t}:${play.from}${s.freePlay === 'ready' ? ':free' : ''}`;
     this.see(`check:preview:${kind}`);
@@ -610,6 +617,8 @@ class Checker {
       points += set.points;
       mult += set.mult;
     }
+    // Each checklist line met adds specBonus (M4a).
+    for (const sp of t.specs) if (sp.met) mult += t.specBonus;
     for (const m of t.multTerms) mult += m.add;
     for (const x of t.xMults) {
       if (x.before !== mult) this.fail('a ×Mult starts from the wrong Mult', { x, mult });
@@ -681,7 +690,11 @@ const prefixed = (prefix: string, names: readonly string[]) => names.map((n) => 
 
 /** What the runs must reach between them. */
 const COVERAGE: readonly string[] = [
-  ...prefixed('action', keys(ACTION_KINDS)),
+  // A Renovation needs a type at its limit, which the clients' house rules bring (M4a content).
+  ...prefixed(
+    'action',
+    keys(ACTION_KINDS).filter((k) => k !== 'renovate'),
+  ),
   ...prefixed('debug', keys(DEBUG_OPS)),
   ...prefixed('toolUse', keys(TOOL_USES)),
   ...prefixed('milestone', keys(RESULTS)),

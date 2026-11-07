@@ -387,7 +387,12 @@ function benchmarkGate(rules: Rules): { ok: boolean; record: RunRecord | null } 
   let most = -1;
   for (let i = 0; i < 50; i++) {
     const seed = `bench-${i}`;
-    const lot = rules.newRun({ seed, crewId: 'generalContractor', mode: 'standard' }).house.lot;
+    const lot = rules.newRun({
+      seed,
+      clientId: 'hendersons',
+      crewId: 'generalContractor',
+      mode: 'standard',
+    }).house.lot;
     const terrain = lot.terrain.filter((t) => t !== null).length;
     if (terrain > most) [densest, most] = [seed, terrain];
   }

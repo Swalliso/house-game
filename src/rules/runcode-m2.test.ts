@@ -17,7 +17,12 @@ import { CONTENT, createRules, rules } from './index.ts';
 import { stream, type Rng } from './rng.ts';
 import { base64urlEncode, contentHash, decodeRunCode, encodeRunCode } from './runcode.ts';
 
-const SETUP: RunSetup = { seed: 'runcode-m2', crewId: 'generalContractor', mode: 'standard' };
+const SETUP: RunSetup = {
+  seed: 'runcode-m2',
+  clientId: 'hendersons',
+  crewId: 'generalContractor',
+  mode: 'standard',
+};
 
 const BASE: RunCodeData = {
   build: 'm2test',
@@ -85,12 +90,13 @@ describe('run codes round-trip every M2 action kind', () => {
     expect(decoded.ok && encodeRunCode(decoded.data)).toBe(code);
   });
 
-  it("keeps the setup's crew, seed, and mode", () => {
+  it("keeps the setup's client, crew, seed, and mode", () => {
     const decoded = decodeRunCode(encodeRunCode(BASE));
     expect(decoded).toMatchObject({ ok: true });
     if (!decoded.ok) return;
     expect(decoded.data.setup).toStrictEqual({
       seed: 'runcode-m2',
+      clientId: 'hendersons',
       crewId: 'generalContractor',
       mode: 'standard',
     });
@@ -425,7 +431,12 @@ interface Played {
 }
 
 function playRun(seed: string, steps: number): Played {
-  const setup: RunSetup = { seed, crewId: 'generalContractor', mode: 'standard' };
+  const setup: RunSetup = {
+    seed,
+    clientId: 'hendersons',
+    crewId: 'generalContractor',
+    mode: 'standard',
+  };
   const rng = stream(seed, 'test/runcode-m2');
   let state = rules.newRun(setup);
   const log: Action[] = [];

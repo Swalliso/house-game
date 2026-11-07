@@ -1,11 +1,13 @@
 // Weighted hands (D-043, D-055): `handSize` distinct cards, each piece's draw weight scaled by
 // its complexity's percentage for the phase, so simple pieces show up more early in a run.
 // Fixtures join from their `fromPhase` at their own weight (D-050), and struck card types
-// (D-076) never come up again. Each hand has its own stream, `draw/<phase>/<slot>/<n>` (an
+// (D-076) never come up again. A type at its limit in the client's checklist (one Kitchen,
+// at most two Living Rooms, …) draws at `drawAtLimitPct` of its weight (D-093's half-weight
+// draws, amending D-043): the draw reads the house only through that. Each hand has its own stream, `draw/<phase>/<slot>/<n>` (an
 // overtime week's slot is `ot<k>`), so a reroll, a redraw, or an extra week never shifts any
 // later hand: a strike changes the pool, never the stream.
 
-import type { Card, CardType, Content, Modifier, PieceDef } from './index.ts';
+import type { Card, CardType, Content, Modifier, PieceDef, PieceId } from './index.ts';
 import { stream } from './rng.ts';
 import { matchesDef, rootType } from './selectors.ts';
 
@@ -38,6 +40,8 @@ export interface DrawOptions {
   mods?: readonly Modifier[];
   /** The Catalog (M3b): special pieces and drawable fixtures, at equal weight. */
   special?: boolean;
+  /** Root types at their limit in the checklist: they draw at `drawAtLimitPct` of their weight. */
+  atLimit?: ReadonlySet<PieceId>;
 }
 
 export function drawWeights(
@@ -61,6 +65,9 @@ export function drawWeights(
       // Weights in hundredths (drawWeight × percent), so nothing rounds away: a weight-10
       // complexity-3 piece at 5% stays drawable, just rarely (D-055).
       weight = weighted(def, def.drawWeight, mods) * row[def.complexity - 1]!;
+    }
+    if (opts.atLimit?.has(rootType(def))) {
+      weight = Math.floor((weight * content.balance.drawAtLimitPct) / 100);
     }
     if (weight > 0) out.push({ card, weight });
   }

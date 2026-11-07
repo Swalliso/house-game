@@ -461,7 +461,12 @@ describe('yard pieces', () => {
     });
 
     const r = createRules(CONTENT);
-    const start = r.newRun({ seed: 'sapling', crewId: 'generalContractor', mode: 'standard' });
+    const start = r.newRun({
+      seed: 'sapling',
+      clientId: 'hendersons',
+      crewId: 'generalContractor',
+      mode: 'standard',
+    });
     const lot = lotFromRows(emptyRows(12, 12));
     let s: RunState = {
       ...start,
