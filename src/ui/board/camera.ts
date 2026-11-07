@@ -3,19 +3,19 @@
 // transform: scale(), which blurs pixel art in Safari. Zoom levels are whole device pixels per
 // art pixel, from one device pixel up to 3×: 1×, 2× and 3× at a devicePixelRatio of 1, and
 // 0.5× steps on a Retina screen. The default (fitScale) is always one of them, 1× rounded down
-// to whole device pixels at 125% and 150% display scaling, and the Fit overview is the one
-// fractional scale. The board pans with its scroll container (drag, or the middle button), and
-// a zoom keeps the point under the pointer (or the middle of the view) where it was.
+// to whole device pixels where display scaling isn't a whole number, and the Fit overview is
+// the one fractional scale. The board pans with its scroll container (drag, or the middle
+// button), and a zoom keeps the point under the pointer (or the middle of the view) where it was.
 
 import { computed, signal } from '@preact/signals';
 import { FEEL } from '../fx/feel.ts';
 import { CELL } from '../sprites.ts';
-import { fitScale, overviewScale, snapZoom, zoomStep } from './geometry.ts';
+import { defaultFloor, fitScale, overviewScale, snapZoom, zoomStep } from './geometry.ts';
 
 /**
- * The player's zoom: null until they pick one (the default, fitScale, follows the window), a
- * scale (kept when the window resizes, and snapped to whole device pixels on another
- * screen), or 'fit' (recomputed).
+ * The player's zoom: null for the default (fitScale, which follows the window), both at first
+ * and once a zoom step lands back on it; a scale the player picked (kept when the window
+ * resizes, and snapped to whole device pixels on another screen); or 'fit' (recomputed).
  */
 export const zoom = signal<number | 'fit' | null>(null);
 
@@ -39,7 +39,8 @@ export const cameraScale = computed<number>(() => {
   const lot = lotSize.value;
   const dpr = currentDpr();
   if (typeof z === 'number') return snapZoom(z, dpr);
-  if (!view) return 1;
+  // Before the board first measures: the default's floor, one of this screen's steps.
+  if (!view) return defaultFloor(dpr);
   return z === 'fit'
     ? overviewScale(view.width, view.height, lot.width, lot.height, dpr)
     : fitScale(view.width, view.height, lot.width, lot.height, dpr);
@@ -102,12 +103,19 @@ export function applyZoomAnchor(scale: number): void {
   scroll.scrollTop += b.top + a.lotY * px - a.clientY;
 }
 
-/** One step in or out, in whole device pixels per art pixel. From Fit, the first step rounds. */
+/**
+ * One step in or out, in whole device pixels per art pixel. From Fit, the first step rounds. A
+ * step that lands on the default goes back to it, so the board follows the window again.
+ */
 function step(dir: 1 | -1, at?: { clientX: number; clientY: number }): void {
   const s = cameraScale.value;
-  const next = zoomStep(s, dir, currentDpr());
+  const dpr = currentDpr();
+  const next = zoomStep(s, dir, dpr);
   if (next === s) return;
-  setZoom(next, at);
+  const view = viewSize.value;
+  const lot = lotSize.value;
+  const home = view ? fitScale(view.width, view.height, lot.width, lot.height, dpr) : null;
+  setZoom(next === home ? null : next, at);
 }
 
 export function zoomIn(at?: { clientX: number; clientY: number }): void {

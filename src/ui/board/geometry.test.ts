@@ -166,10 +166,12 @@ describe('the default zoom at 125% and 150% display scaling (D-097’s zoom note
   });
 
   it('is the default where two device pixels per art pixel don’t fit', () => {
-    // About the board's room in a 1536×864 window (a 1920×1080 screen at 125%) and in a
+    // The board's room as measured in a 1536×864 window (a 1920×1080 screen at 125%) and in a
     // 1280×720 one (the same screen at 150%); a tiny window pans at the floor.
-    expect(fitScale(1150, 700, 24, 24, 1.25)).toBe(0.8);
-    expect(fitScale(976, 610, 24, 24, 1.5)).toBe(1 / 1.5);
+    expect(fitScale(914, 759, 24, 24, 1.25)).toBe(0.8);
+    expect(fitScale(792, 615, 24, 24, 1.5)).toBe(1 / 1.5);
+    // 175% display scaling: one device pixel per art pixel is 0.57×.
+    expect(fitScale(700, 500, 24, 24, 1.75)).toBe(1 / 1.75);
     expect(fitScale(400, 300, 24, 24, 1.25)).toBe(0.8);
     expect(fitScale(400, 300, 24, 24, 1.5)).toBe(1 / 1.5);
     // A window that holds two device pixels per art pixel gets them: 1.6× and 1.33×.

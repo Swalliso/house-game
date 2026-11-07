@@ -108,9 +108,10 @@ export function maxZoom(dpr: number): number {
 
 /**
  * The default zoom's floor (D-097's zoom note): 1× rounded down to whole device pixels per art
- * pixel, and at least one. That's 1× at a devicePixelRatio of 1, 2 or 3, and one device pixel
- * per art pixel at 125% and 150% display scaling: 0.8× and 0.67×, crisp where 1× would have
- * uneven pixels.
+ * pixel, and at least one. That's 1× at a devicePixelRatio of 1, 2 or 3; one device pixel per
+ * art pixel where display scaling isn't a whole number (0.8× at 125%, 0.67× at 150%, 0.57× at
+ * 175%), crisp where 1× would have uneven pixels; and above 1× below a ratio of 1, in a browser
+ * zoomed out (1.11× at 90%).
  */
 export function defaultFloor(dpr: number): number {
   return Math.max(1, Math.floor(devicePx(1, dpr))) / dpr;
@@ -142,9 +143,9 @@ export function zoomStep(scale: number, dir: 1 | -1, dpr: number): number {
 /**
  * The default zoom (§12, Art): the largest whole device pixels per art pixel at which the lot
  * plus the street row below it fit, never below defaultFloor (1×, rounded down to whole device
- * pixels at 125% and 150% display scaling; a smaller view pans) and never above the camera's
- * largest zoom. So it's always one of the zoom steps, and zooming back always finds it. The
- * camera (camera.ts) starts here.
+ * pixels where display scaling isn't a whole number; a smaller view pans) and never above the
+ * camera's largest zoom. So it's always one of the zoom steps, and zooming back always finds
+ * it. The camera (camera.ts) starts here.
  */
 export function fitScale(
   availWidth: number,

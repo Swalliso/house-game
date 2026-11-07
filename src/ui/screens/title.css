@@ -184,7 +184,7 @@
   }
 }
 
-/* The street: sprite tiles at a whole-number scale. */
+/* The street: sprite tiles at whole device pixels per art pixel (geometry.ts streetScale). */
 .title-street {
   flex: none;
   overflow: hidden;

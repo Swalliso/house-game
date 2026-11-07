@@ -1327,7 +1327,7 @@ Same seed and policy give identical results (a test). Each run is a pure functio
 
 ## 11. Proposed CLAUDE.md
 
-The repo has no CLAUDE.md, so M0 creates one with this content (the paths assume the move to `docs/`):
+The repo has no CLAUDE.md, so M0 creates one with this content (the paths assume the move to `docs/`). *CLAUDE.md is the live copy now, and it has moved on since: read it, not this section.*
 
 ```markdown
 # Open House
@@ -1361,10 +1361,9 @@ build one house for one client, placing one piece per week.
 - Score layers: code says points / mult / xMult / total; the UI says
   Comfort / Charm / Sparkle / Wow (D-019). Labels live in one constants file.
 - Juice is core (D-059): timing numbers live in src/ui/fx/feel.ts. Pixel art
-  renders at whole device pixels per art pixel (D-097); the Fit overview is the
-  one exception. The camera zooms by re-laying out the board, never with
-  transform: scale(). Short juice tweens (pops, wobble, celebration zooms) may
-  use transforms.
+  renders at whole-number scales; the Fit overview is the one exception. The
+  camera zooms by re-laying out the board, never with transform: scale().
+  Short juice tweens (pops, wobble, celebration zooms) may use transforms.
 - Assets: record every file in assets/licenses.json and CREDITS.md. Paid packs
   stay in the gitignored art-source/ folder; commit only the sprites we use.
   Never add NC, SA, or GPL assets, or anything taken from another game.
@@ -1510,8 +1509,8 @@ Intensity is measured against **pace**: `max(1, (this phase's target − the sco
   - At 1280×720 the lot can't fit at 1×. The default there is 1× with panning, with UI panels overlaying the board's margins (Combolands' panels sit over the sea around its island).
   - The wheel steps one device pixel per art pixel at a time, up to 3×: 1×, 2×, and 3× at a devicePixelRatio of 1, and 0.5× to 3× by halves on a Retina screen.
   - The Fit button is the one exception to whole numbers: it shows the whole lot at the largest scale that fits (about 0.75× at 720p), with slightly uneven pixels.
-  - At 125% and 150% display scaling (a devicePixelRatio of 1.25 or 1.5), 1× isn't whole device pixels, so the default's floor rounds it down to one device pixel per art pixel: 0.8× and 0.67×, cells of 25.6 and 21.3 CSS px (D-097's zoom note). A window that holds two device pixels per art pixel gets 1.6× or 1.33×.
-  - The costs: finer pixels on a 1080p monitor (a Retina screen still shows each art pixel as 2×2 device pixels), a smaller board on a 1440p screen at a devicePixelRatio of 1, and at 125% and 150% a board 80% or 67% of 1×'s size where two device pixels per art pixel don't fit.
+  - Where display scaling isn't a whole number (125%, 150% or 175%: a devicePixelRatio of 1.25, 1.5 or 1.75, or browser zoom on top), 1× isn't whole device pixels, so the default's floor rounds it down to one device pixel per art pixel: 0.8×, 0.67× and 0.57×, cells of 25.6, 21.3 and 18.3 CSS px (D-097's zoom note). A window that holds two device pixels per art pixel gets 1.6× or 1.33×. Below a ratio of 1 (a browser zoomed out) the floor is one device pixel per art pixel, above 1×. A zoom step that lands back on the default, or leaving Fit, returns to it, and it follows the window again.
+  - The costs: finer pixels on a 1080p monitor (a Retina screen still shows each art pixel as 2×2 device pixels), a smaller board on a 1440p screen at a devicePixelRatio of 1, and where display scaling isn't a whole number a board 80%, 67% or 57% of 1×'s size (at 125%, 150% and 175%) when two device pixels per art pixel don't fit.
   - If we make an itch.io page, its embed is 1600×900 with fullscreen. 1280×720 stays the minimum (D-047).
 - **Rooms are a walls-down cutaway,** like The Sims, built in the UI from the placed pieces (D-097):
   - a floor per room type
