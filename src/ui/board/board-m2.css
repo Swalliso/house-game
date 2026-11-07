@@ -158,8 +158,8 @@
 
 /* --- Unmet requirements ------------------------------------------------------------- */
 
-/* A ⚠ in the piece's top-left cell; its title says what it needs. */
-.piece .unmet-badge {
+/* A ⚠ in the piece's top-left cell, inside its walls; its title says what it needs. */
+.labels .unmet-badge {
   position: absolute;
   z-index: 1;
   pointer-events: auto;
@@ -205,7 +205,7 @@
   stroke-dasharray: 4 3;
   stroke-linecap: butt;
 }
-.piece .fixture-badge {
+.labels .fixture-badge {
   position: absolute;
   z-index: 1;
   display: grid;
@@ -221,10 +221,10 @@
   border: 2px solid var(--rarity-common);
   box-shadow: 0 1px 0 rgb(42 29 22 / 0.35);
 }
-.piece .fixture-badge.rarity-uncommon {
+.labels .fixture-badge.rarity-uncommon {
   border-color: var(--rarity-uncommon);
 }
-.piece .fixture-badge.rarity-rare {
+.labels .fixture-badge.rarity-rare {
   border-color: var(--rarity-rare);
   box-shadow:
     0 0 0 1px #fff3c4,

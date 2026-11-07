@@ -306,19 +306,8 @@ h3 {
   position: absolute;
   image-rendering: pixelated;
 }
-.piece.active {
-  filter: brightness(1.18) drop-shadow(0 0 4px #fff8d0);
-  z-index: 2;
-}
-/* A held set's pieces during its beat in the tally: Charm's rose, like the placement preview's
-   sets and the set's name. Sparkle's gold is for ×Mult only (D-019). */
-.piece.lit {
-  filter: drop-shadow(0 0 3px var(--charm)) drop-shadow(0 0 6px #f2a9bd);
-  z-index: 2;
-}
-.piece.set-preview {
-  filter: drop-shadow(0 0 2px var(--charm)) drop-shadow(0 0 5px #f2a9bd);
-}
+/* The tally's active piece, a held set's members, and the preview's sets are outlines in the
+   highlights layer (house.css): Charm's rose for sets, Sparkle's gold for ×Mult only (D-019). */
 .digit {
   position: absolute;
   transform: translate(calc(-100% - 2px), calc(-100% - 1px));
@@ -429,11 +418,14 @@ h3 {
   border-radius: 6px;
   border: 2px solid #fff;
 }
+/* White text, over the score panel's .delta.good and .delta.bad colors (same specificity, later). */
 .badge.delta.good {
   background: var(--good);
+  color: #fff;
 }
 .badge.delta.bad {
   background: var(--bad);
+  color: #fff;
 }
 /* Helpers are circles with +, hurters are diamonds with −. */
 .badge.source {

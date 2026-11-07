@@ -4,7 +4,7 @@
     "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floors_16x16.png",
     "rect": [80, 208, 16, 16],
     "ops": [{ "op": "tile", "size": [32, 32] }],
-    "note": "The Living Room's floor (and the Playroom's for now): grey-brown planks, the audit's floor table block 1, 5. A block's top row and left column carry baked wall shadows, so this is its plain seamless tile, repeated to one 32 px cell. The id is the placeholder's; the house stage gives every room type its own floor."
+    "note": "The Living Room's floor: grey-brown planks, the audit's floor table block 1, 5. A block's top row and left column carry baked wall shadows, so this is its plain seamless tile, repeated to one 32 px cell. The id is the placeholder's. Every room type has its own floor; the house stage's are in house.json."
   },
   "floor-garage": {
     "pack": "mi",
@@ -60,13 +60,13 @@
     "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floors_16x16.png",
     "rect": [208, 464, 16, 16],
     "ops": [{ "op": "tile", "size": [32, 32] }],
-    "note": "The Bathroom's floor (and the Mudroom's for now): pale blue diamond tiles (block 3, 13), its plain seamless tile repeated to one 32 px cell."
+    "note": "The Bathroom's floor: pale blue diamond tiles (block 3, 13), its plain seamless tile repeated to one 32 px cell."
   },
   "floor-wood": {
     "pack": "mi",
     "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floors_16x16.png",
     "rect": [16, 208, 16, 16],
     "ops": [{ "op": "tile", "size": [32, 32] }],
-    "note": "The Bedroom's floor (and the Closet's for now): honey planks (block 0, 5), its plain seamless tile repeated to one 32 px cell."
+    "note": "The Bedroom's floor: honey planks (block 0, 5), its plain seamless tile repeated to one 32 px cell."
   }
 }

@@ -1,6 +1,7 @@
-// The board (the BoardView of D-033): the terrain canvas, the fenced-yard tint, the pieces,
-// the ghost that follows the cursor, the preview's badges, the demolish tool's target, and
-// the tally's popups. The pointer maps to a cell by arithmetic on one element (D-049).
+// The board (the BoardView of D-033): the terrain canvas, the fenced-yard tint, the house's
+// layers (HouseLayers.tsx: floors, items, walls, highlights, labels), the ghost that follows
+// the cursor, the preview's badges, the demolish tool's target, and the tally's popups. The
+// pointer maps to a cell by arithmetic on one element (D-049).
 //
 // The camera (camera.ts) zooms by re-laying out the board at a new scale, never with a CSS
 // transform (D-057). Dragging pans the scroll container: a left-button drag past a few pixels
@@ -16,26 +17,18 @@ import {
   SCORE_LABELS,
   type Cell,
   type DemolishPreview,
+  type PieceId,
+  type Rot,
   type SourceRef,
   type UseToolAction,
 } from '../../rules/index.ts';
 import { audio } from '../audio/audio.ts';
-import {
-  busy,
-  fxHooks,
-  highlighted,
-  justPlaced,
-  popups,
-  setHold,
-  skip,
-  tallyView,
-} from '../fx/director.ts';
+import { busy, fxHooks, popups, setHold, skip } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
 import { shakeOffsets } from '../fx/juice.ts';
 import { formatNumber } from '../format.ts';
 import {
   activePlay,
-  currentTally,
   demolishArmed,
   demolishAt,
   demolishPreview,
@@ -72,18 +65,31 @@ import {
   zoomIn,
   zoomOut,
 } from './camera.ts';
+import { newRoomLook, roomLook } from '../art/rooms.ts';
+import { newPieceLook, pieceLook, yardModel } from '../art/yard.ts';
 import {
   boardRows,
   canopyRoom,
   center,
+  isIndoor,
   labelSpot,
   occupancy,
   startScrollTop,
   uidAt,
   viewReach,
 } from './geometry.ts';
+import { hallLinks, houseModel } from './house-model.ts';
+import {
+  FloorLayer,
+  GhostPiece,
+  HighlightsLayer,
+  ItemsLayer,
+  LabelsLayer,
+  OverhangLayer,
+  WallsLayer,
+} from './HouseLayers.tsx';
 import { layerVars } from './layers.ts';
-import { PieceShape, wobble } from './PieceView.tsx';
+import { wobble } from './piece-fx.ts';
 import { Outline, TerrainLayer, YardTint } from './TerrainLayer.tsx';
 import './board-m2.css';
 
@@ -271,16 +277,41 @@ export function Board() {
   // Room above the lot for its top row's tree tops, inside the scroll area (geometry.ts).
   const room = canopyRoom(scale, dpr);
   const demolishing = tool.value === 'demolish';
-  const occ = occupancy(state.house);
-  const tally = currentTally.value;
-  const view = tallyView.value;
-  // The corner digits: what each piece earns as the house stands, or, while a tally plays,
-  // what it earned in the week being tallied (the rules have already moved on a week).
-  const scoreBy = new Map((view?.pieces ?? tally.pieces).map((p) => [p.uid, p]));
-  const lit = new Set(highlighted.value);
+  const { house } = state;
+  const occ = occupancy(house);
+  // The house as drawn: walls, doorways and windows from the pieces, with the Hallways'
+  // doors from the rules' links. Cached per house, so hovering never rebuilds it.
+  const links = useMemo(() => hallLinks(state), [state]);
+  const model = houseModel(house, links);
+  // The yard pieces' ground and props, cached per house model.
+  const yard = yardModel(house, model);
   const p = demolishing ? null : preview.value;
-  const gained = new Set(p?.setsGained.flatMap((s) => s.members) ?? []);
-  const placed = justPlaced.value;
+  // The house's layers re-render only when the house or the zoom changes: the highlights and
+  // labels follow the tally and the preview by themselves, and never redraw a canvas.
+  const floorLayer = useMemo(
+    () => <FloorLayer lot={lot} scale={scale} model={model} yard={yard} />,
+    [lot, scale, model, yard],
+  );
+  const itemsLayer = useMemo(
+    () => <ItemsLayer house={house} model={model} yard={yard} scale={scale} />,
+    [house, model, yard, scale],
+  );
+  const wallsLayer = useMemo(
+    () => <WallsLayer lot={lot} scale={scale} model={model} />,
+    [lot, scale, model],
+  );
+  const overhangLayer = useMemo(
+    () => <OverhangLayer model={model} yard={yard} scale={scale} />,
+    [model, yard, scale],
+  );
+  const highlightsLayer = useMemo(
+    () => <HighlightsLayer house={house} occ={occ} lot={lot} scale={scale} />,
+    [house, occ, lot, scale],
+  );
+  const labelsLayer = useMemo(
+    () => <LabelsLayer house={house} model={model} yard={yard} occ={occ} scale={scale} />,
+    [house, model, yard, occ, scale],
+  );
 
   useEffect(() => {
     fxHooks.wobble = wobble;
@@ -563,6 +594,7 @@ export function Board() {
     if (!play || play.t !== 'place' || sel?.kind !== 'piece') return null;
     return {
       defId: sel.id,
+      rot: play.rot,
       cells: placedCells(CONTENT.pieces[sel.id].shape, play.x, play.y, play.rot),
     };
   })();
@@ -620,30 +652,21 @@ export function Board() {
           <div class="street-label" style={{ top: `${lot.height * px}px`, height: `${px}px` }}>
             Street
           </div>
-          {state.house.pieces.map((piece) => {
-            const score = scoreBy.get(piece.uid);
-            return (
-              <PieceShape
-                key={piece.uid}
-                uid={piece.uid}
-                defId={piece.defId}
-                cells={occ.cells.get(piece.uid)!}
-                scale={scale}
-                occ={occ}
-                earned={score?.earned}
-                unmet={score?.unmet}
-                fixture={piece.fixture?.id}
-                settle={placed?.uid === piece.uid ? placed.id : undefined}
-                class={[
-                  view?.activeUid === piece.uid ? 'active' : '',
-                  lit.has(piece.uid) ? 'lit' : '',
-                  gained.has(piece.uid) ? 'set-preview' : '',
-                ].join(' ')}
-              />
-            );
-          })}
+          {floorLayer}
+          {itemsLayer}
+          {wallsLayer}
+          {overhangLayer}
+          {highlightsLayer}
+          {labelsLayer}
           {demolishing && <DemolishTarget scale={scale} />}
-          {ghostCells && <Ghost defId={ghostCells.defId} cells={ghostCells.cells} scale={scale} />}
+          {ghostCells && (
+            <Ghost
+              defId={ghostCells.defId}
+              rot={ghostCells.rot}
+              cells={ghostCells.cells}
+              scale={scale}
+            />
+          )}
           {installing && <InstallTarget scale={scale} />}
           {tooling && <ToolTarget scale={scale} />}
           {p?.legal && <Badges scale={scale} />}
@@ -657,10 +680,12 @@ export function Board() {
 
 function Ghost({
   defId,
+  rot,
   cells,
   scale,
 }: {
-  defId: Parameters<typeof PieceShape>[0]['defId'];
+  defId: PieceId;
+  rot: Rot;
   cells: Cell[];
   scale: number;
 }) {
@@ -675,10 +700,16 @@ function Ghost({
   const label = { left: `${spot.x * px}px`, top: `${spot.y * px}px` };
   return (
     <>
-      <PieceShape
+      <GhostPiece
         defId={defId}
+        rot={rot}
         cells={cells}
         scale={scale}
+        look={
+          isIndoor(defId)
+            ? newRoomLook(run.value.house, defId)
+            : newPieceLook(run.value.house, defId)
+        }
         class={`ghost ${legal ? 'legal' : 'illegal'} ${pending ? 'pending' : ''}`}
       />
       {!legal && inside.length > 0 && (
@@ -844,10 +875,16 @@ function ToolTarget({ scale }: { scale: number }) {
         lot={lot}
         class="demolish-hint"
       />
-      <PieceShape
+      <GhostPiece
         defId={piece.defId}
+        rot={t.rot ?? 0}
         cells={cells}
         scale={scale}
+        look={
+          isIndoor(piece.defId)
+            ? roomLook(state.house, piece.uid)
+            : pieceLook(state.house, piece.uid)
+        }
         class={`ghost ${ok ? 'legal' : 'illegal'} ${armed ? 'pending' : ''}`}
       />
       {label(

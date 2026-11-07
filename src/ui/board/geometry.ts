@@ -48,28 +48,6 @@ export function isIndoor(id: PieceId): boolean {
   return CONTENT.pieces[id].category === 'indoor';
 }
 
-/** Where the furniture goes: the middle of a rectangle, or an L's corner cell. In tiles. */
-export function furnitureSpot(cells: readonly Cell[]): { x: number; y: number } {
-  const minX = Math.min(...cells.map((c) => c.x));
-  const minY = Math.min(...cells.map((c) => c.y));
-  const w = Math.max(...cells.map((c) => c.x)) - minX + 1;
-  const h = Math.max(...cells.map((c) => c.y)) - minY + 1;
-  if (cells.length === w * h) return { x: minX + (w - 1) / 2, y: minY + (h - 1) / 2 };
-  const key = new Set(cells.map((c) => `${c.x},${c.y}`));
-  let best = cells[0]!;
-  let bestN = -1;
-  for (const c of cells) {
-    const n = [
-      [1, 0],
-      [-1, 0],
-      [0, 1],
-      [0, -1],
-    ].filter(([dx, dy]) => key.has(`${c.x + dx!},${c.y + dy!}`)).length;
-    if (n > bestN) [best, bestN] = [c, n];
-  }
-  return { x: best.x, y: best.y };
-}
-
 /** The bottom-right cell, where the piece's weekly score digit sits (§12, Numbers). */
 export function digitCell(cells: readonly Cell[]): Cell {
   return [...cells].sort((a, b) => b.y - a.y || b.x - a.x)[0]!;
