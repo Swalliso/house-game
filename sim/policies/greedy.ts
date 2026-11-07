@@ -27,6 +27,7 @@ import type {
   RunState,
 } from '../../src/rules/index.ts';
 import type { Policy } from './index.ts';
+import { fencePlans } from '../enclosure.ts';
 import { shopAct, useTools, type StrikeMode } from './shop.ts';
 
 export const TOP_K = 12;
@@ -57,6 +58,13 @@ export interface RankedPlay {
  */
 export function tieKey(salt: number, p: PlaceAction): number {
   let h = salt ^ Math.imul(p.x + 1, 0x9e3779b1);
+  // A pack's tiles (D-102) tell apart plays at the same spot.
+  if (p.shape) {
+    for (const row of p.shape) {
+      for (let k = 0; k < row.length; k++) h = Math.imul(h ^ row.charCodeAt(k), 0x01000193);
+      h = Math.imul(h ^ 0x2f, 0x01000193);
+    }
+  }
   h = Math.imul(h ^ (h >>> 15), 0x85ebca77) ^ Math.imul(p.y + 1, 0xc2b2ae3d);
   h = Math.imul(h ^ (h >>> 13), 0x27d4eb2f) ^ (p.rot + 4 * p.i + (p.from === 'reserve' ? 64 : 0));
   h = Math.imul(h ^ (h >>> 16), 0x21f0aaad);
@@ -142,12 +150,19 @@ export function makeGreedy(opts: GreedyOptions = {}): Policy {
       const free = useTools(rules, state, salt);
       if (free) return free;
       const plays: PlaceAction[] = [];
-      // Installs and Renovations are few, so each is scored exactly.
-      const exact: (InstallAction | RenovateAction)[] = [];
+      // Installs and Renovations are few, so each is scored exactly. So are Fence packs that
+      // close a yard (D-102): the rules list only a pack's suggested shapes, and the first
+      // Fence earns nothing until its yard closes.
+      const exact: (PlaceAction | InstallAction | RenovateAction)[] = [];
       for (const p of rules.legalPlays(state)) {
-        if (p.t === 'place') plays.push(p);
-        else exact.push(p);
+        // A single tile of a pack isn't worth ranking: the planner below finds the ones that
+        // close a yard, and a lone Fence or Driveway tile earns next to nothing.
+        if (p.t === 'place') {
+          if (!(p.shape && p.shape.length === 1 && p.shape[0] === '#')) plays.push(p);
+        } else exact.push(p);
       }
+      state.hand.forEach((_, i) => exact.push(...fencePlans(rules, state, 'hand', i)));
+      state.reserve.forEach((_, i) => exact.push(...fencePlans(rules, state, 'reserve', i)));
       const passTotal = rules.scoreOnly(state, null);
       let best: (PlaceAction | InstallAction | RenovateAction)[] = [];
       let bestTotal = -Infinity;

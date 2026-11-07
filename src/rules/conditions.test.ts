@@ -655,19 +655,25 @@ describe('variety', () => {
   // Yard pieces spread over the lot, none touching.
   const FENCE: Placement = ['fence', 0, 0]; // x 0–3, y 0
   const FENCE_2: Placement = ['fence', 0, 2]; // x 0–3, y 2
-  const L_FENCE: Placement = ['lFence', 5, 0]; // (5,0) (5,1) (5,2) (6,2) (7,2)
+  // A Fence pack in the L it suggests (D-102): (5,0) (5,1) (5,2) (6,2) (7,2).
+  const L_FENCE: Placement = ['fence', 5, 0, 0, ['#..', '#..', '###']];
   const FLOWERS: Placement = ['flowerBed', 9, 0];
   const LAWN_1: Placement = ['lawn', 0, 4];
   const LAWN_2: Placement = ['lawn', 3, 4];
   const PATIO: Placement = ['patio', 6, 4];
 
-  it('reads types by their root (a Fence and an L-Fence are one), up to maxEach of each', () => {
-    expect(rootType(C.pieces.lFence)).toBe('fence');
-    // 2 Fences and an L-Fence: three of one type, more than maxEach 2.
+  it('reads types by their root (Fence packs of any shape are one), up to maxEach of each', () => {
+    // 2 Fences and an L-shaped one: three of one type, more than maxEach 2.
     expect(meets(layoutOf([FENCE, FENCE_2, L_FENCE, FLOWERS]), tidy())).toBe(false);
-    // A Fence and an L-Fence: two, which is fine.
+    // A Fence and an L-shaped one: two, which is fine.
     expect(meets(layoutOf([FENCE, L_FENCE, FLOWERS, LAWN_1]), tidy())).toBe(true);
     expect(meets(layoutOf([FENCE, FENCE_2, L_FENCE, LAWN_1]), tidy({ maxEach: 3 }))).toBe(true);
+    // Shape variants share their root too: an L-Kitchen is a Kitchen.
+    expect(rootType(C.pieces.lKitchen)).toBe('kitchen');
+    const rooms = (...more: Placement[]) =>
+      layoutOf([['kitchen', 0, 0], ['lKitchen', 2, 0], ['bedroom', 4, 0], ...more]);
+    expect(meets(rooms(['closet', 6, 0]), tidy({ of: ROOM }))).toBe(true); // 2 Kitchens
+    expect(meets(rooms(['kitchen', 6, 0]), tidy({ of: ROOM }))).toBe(false); // 3
   });
 
   it('counts exempt types toward min, but never against maxEach', () => {
@@ -971,7 +977,7 @@ describe('progressOf', () => {
     const fences = layoutOf([
       ['fence', 0, 0],
       ['fence', 0, 2],
-      ['lFence', 5, 0],
+      ['fence', 5, 0, 0, ['#..', '#..', '###']],
       ['flowerBed', 9, 0],
     ]);
     expect(progress(fences, tidy())).toEqual([

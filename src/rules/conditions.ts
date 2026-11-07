@@ -61,6 +61,9 @@ function weightOf(content: Content, layout: Layout, sel: Selector, uid: number):
   return w;
 }
 
+/** Counts per layout and selector object (content's selectors keep their identity), for the tally's specs. */
+const countCache = new WeakMap<Layout, Map<Selector, number>>();
+
 /** The weighted count of pieces matching a selector. */
 export function countMatching(
   content: Content,
@@ -68,11 +71,19 @@ export function countMatching(
   sel: Selector,
   sinceUid = 0,
 ): number {
+  let cache: Map<Selector, number> | undefined;
+  if (sinceUid === 0 && typeof sel === 'object') {
+    cache = countCache.get(layout);
+    if (!cache) countCache.set(layout, (cache = new Map()));
+    const hit = cache.get(sel);
+    if (hit !== undefined) return hit;
+  }
   let n = 0;
   for (const p of layout.house.pieces) {
     if (p.uid < sinceUid) continue;
     n += weightOf(content, layout, sel, p.uid);
   }
+  cache?.set(sel, n);
   return n;
 }
 

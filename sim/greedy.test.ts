@@ -15,6 +15,7 @@ import {
   type RunState,
 } from '../src/rules/index.ts';
 import { emptyRows, houseFrom } from '../src/rules/testing.ts';
+import { fencePlans } from './enclosure.ts';
 import { rankPlays, shortlist, TOP_K } from './policies/greedy.ts';
 import { greedy, makeGreedy, POLICIES, type Policy } from './policies/index.ts';
 import { simulateRun } from './simulate.ts';
@@ -22,7 +23,12 @@ import { simulateRun } from './simulate.ts';
 const newRun = (seed: string) =>
   rules.newRun({ seed, clientId: 'hendersons', crewId: 'generalContractor', mode: 'standard' });
 const sameSpot = (a: PlaceAction) => (b: PlaceAction) =>
-  a.from === b.from && a.i === b.i && a.x === b.x && a.y === b.y && a.rot === b.rot;
+  a.from === b.from &&
+  a.i === b.i &&
+  a.x === b.x &&
+  a.y === b.y &&
+  a.rot === b.rot &&
+  (a.shape ?? []).join('/') === (b.shape ?? []).join('/');
 const median = (xs: readonly number[]) => [...xs].sort((a, b) => a - b)[xs.length >> 1]!;
 
 /** The states a policy's run passes through at the start of these weeks' builds. */
@@ -96,9 +102,9 @@ describe('the greedy bot', () => {
     expect(lost).toBeLessThanOrEqual(0.02 * bestSum);
   }, 20_000);
 
-  it('scores a Fence that closes a fenced yard, though the estimate can’t see it', () => {
+  it('builds a Fence pack that closes a fenced yard, though the estimate can’t see it', () => {
     // Two Bedrooms on rows 3–4 of an empty lot; the yard behind them (columns 0–3, rows 0–2,
-    // 12 tiles) is open on its right. One Fence, upright in column 4, closes it.
+    // 12 tiles) is open on its right. A Fence pack of 3 tiles up column 4 closes it (D-102).
     const s: RunState = {
       ...newRun('fence'),
       house: houseFrom(CONTENT, emptyRows(24, 24), [
@@ -107,16 +113,39 @@ describe('the greedy bot', () => {
       ]),
       hand: (['fence', 'flowerBed', 'lawn'] as const).map((id) => ({ kind: 'piece', id })),
     };
-    const closing: PlaceAction = { t: 'place', from: 'hand', i: 0, x: 4, y: 0, rot: 1 };
+    // The rules list the pack's suggested shapes: the upright 1×4 in column 4 closes the yard,
+    // and the estimate flags it; ranked near the bottom, it's on the shortlist for its hint.
+    const upright: PlaceAction = {
+      t: 'place',
+      from: 'hand',
+      i: 0,
+      x: 4,
+      y: 0,
+      rot: 0,
+      shape: ['#', '#', '#', '#'],
+    };
     const plays = rules.legalPlacements(s);
-    expect(plays.filter((p) => rules.estimatePlay(s, p).yardHint)).toEqual([closing]);
+    expect(plays.some(sameSpot(upright))).toBe(true);
+    expect(rules.estimatePlay(s, upright).yardHint).toBe(true);
     const salt = stream('fence', 'shortlist').u32();
-    // Ranked near the bottom by the estimate, it's on the shortlist for its hint alone.
-    const rank = rankPlays(rules, s, plays, salt).findIndex((r) => sameSpot(closing)(r.play));
+    const rank = rankPlays(rules, s, plays, salt).findIndex((r) => sameSpot(upright)(r.play));
     expect(rank).toBeGreaterThan(TOP_K);
-    expect(shortlist(rules, s, plays, salt).some(sameSpot(closing))).toBe(true);
-    // And it's the week's best play (the Fence's enclosure bonus), so greedy builds it.
-    expect(greedy.act(rules, s, stream('fence', 'act'))).toEqual(closing);
+    expect(shortlist(rules, s, plays, salt).some(sameSpot(upright))).toBe(true);
+    // The fence planner finds the shortest run that closes it: 3 tiles up column 4.
+    expect(fencePlans(rules, s, 'hand', 0)[0]).toEqual({
+      t: 'place',
+      from: 'hand',
+      i: 0,
+      x: 4,
+      y: 0,
+      rot: 0,
+      shape: ['#', '#', '#'],
+    });
+    // And a closing pack is the week's best play (the Fence's enclosure bonus), so greedy
+    // builds one: the week after, the house has a fenced yard.
+    const act = greedy.act(rules, s, stream('fence', 'act'));
+    expect(act).toMatchObject({ t: 'place', from: 'hand', i: 0 });
+    expect(rules.fencedYards(rules.apply(s, act).state)).toHaveLength(1);
   });
 
   it('completes milestones early only when its early mode says so', () => {

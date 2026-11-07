@@ -680,7 +680,7 @@ describe('crates', () => {
     const defs = Object.values(C.pieces);
     const garden = defs.filter((d) => d.category !== 'indoor').map((d) => d.id);
     const special = defs.filter((d) => d.drawWeight === 0).map((d) => d.id);
-    expect(garden).toHaveLength(17); // 12 yard pieces and 5 outbuildings
+    expect(garden).toHaveLength(15); // 10 yard pieces (2 of them packs) and 5 outbuildings
     expect(special).toHaveLength(9);
     const cases: [CrateId, PieceId[]][] = [
       ['gardenCenter', garden],

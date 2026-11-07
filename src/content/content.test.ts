@@ -27,6 +27,9 @@ describe('content', () => {
       pieces: {
         ...CONTENT.pieces,
         lawn: { ...CONTENT.pieces.lawn, id: 'bedroom', shape: ['#.', '.#'] },
+        // A pack whose suggested shape has more tiles than it places, and shape variants.
+        fence: { ...CONTENT.pieces.fence, pack: { maxTiles: 3, shapes: [['##', '##']] } },
+        driveway: { ...CONTENT.pieces.driveway, countsAs: 'patio' },
       },
       balance: {
         ...CONTENT.balance,
@@ -39,6 +42,9 @@ describe('content', () => {
     const problems = validateContent(broken).join('\n');
     expect(problems).toMatch(/piece lawn: id is "bedroom"/);
     expect(problems).toMatch(/connected polyomino/);
+    expect(problems).toMatch(/piece fence: pack shape ####: Up to 3 tiles/);
+    expect(problems).toMatch(/piece fence: pack shape ##\/##: Up to 3 tiles/);
+    expect(problems).toMatch(/piece driveway: a pack has no shape variants/);
     expect(problems).toMatch(/target 2 doesn't rise/);
   });
 
@@ -61,15 +67,18 @@ describe('content', () => {
     });
   });
 
-  it('has the base pool: 19 piece types as 23 cards, four sets, and seven milestones', () => {
+  it('has the base pool: 19 piece types as 21 cards, four sets, and seven milestones', () => {
     // The base pool is what the weekly draw deals; special pieces (weight 0) come from the shop.
     const defs = Object.values(CONTENT.pieces).filter((d) => d.drawWeight > 0);
-    expect(defs).toHaveLength(23);
+    expect(defs).toHaveLength(21);
     const types = new Set(defs.map((d) => d.countsAs ?? d.id));
     expect(types.size).toBe(19);
     const count = (cat: string) =>
       new Set(defs.filter((d) => d.category === cat).map((d) => d.countsAs ?? d.id)).size;
     expect([count('indoor'), count('yard'), count('outbuilding')]).toEqual([9, 7, 3]);
+    // Two shape variants share a type; the Fence and the Driveway are packs instead (D-102).
+    expect(defs.filter((d) => d.countsAs).map((d) => d.id)).toEqual(['lKitchen', 'longHallway']);
+    expect(defs.filter((d) => d.pack).map((d) => d.id)).toEqual(['fence', 'driveway']);
     expect(CONTENT.pieces.lKitchen.countsAs).toBe('kitchen');
     expect(Object.keys(CONTENT.sets)).toEqual(['jackAndJill', 'entertainer', 'suite', 'fullHouse']);
     expect(CONTENT.balance.phases.map((p) => p.name)).toEqual([

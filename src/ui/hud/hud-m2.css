@@ -346,12 +346,10 @@
 .mini-cell.patio {
   background: #c9b9a3;
 }
-.mini-cell.fence,
-.mini-cell.lFence {
+.mini-cell.fence {
   background: #9b6b43;
 }
-.mini-cell.driveway,
-.mini-cell.longDriveway {
+.mini-cell.driveway {
   background: #7d7a74;
 }
 .mini-cell.doghouse {

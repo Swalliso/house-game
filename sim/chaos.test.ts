@@ -581,7 +581,7 @@ class Checker {
       if (uids.has(p.uid) || p.uid >= nextUid) this.fail('a bad uid', p.uid);
       uids.add(p.uid);
       const def = CONTENT.pieces[p.defId];
-      for (const c of placedCells(def.shape, p.x, p.y, p.rot)) {
+      for (const c of placedCells(p.shape ?? def.shape, p.x, p.y, p.rot)) {
         if (c.x < 0 || c.y < 0 || c.x >= lot.width || c.y >= lot.height) {
           this.fail('a piece off the lot', p);
           continue;

@@ -24,6 +24,17 @@ const place = (i: number, x: number, y: number, rot: 0 | 1 | 2 | 3 = 0): PlaceAc
   rot,
 });
 
+/** A Fence pack's play (D-102): 4 tiles in a row, across or upright, at (x, y). */
+const fence = (i: number, x: number, y: number, upright = false): PlaceAction => ({
+  t: 'place',
+  from: 'hand',
+  i,
+  x,
+  y,
+  rot: 0,
+  shape: upright ? ['#', '#', '#', '#'] : ['####'],
+});
+
 /** A house built unchecked on an empty 8×8 lot, with this hand. */
 function built(placements: Placement[], ...ids: PieceId[]): RunState {
   const s = rules.newRun(setup('estimate'));
@@ -103,7 +114,7 @@ describe('the greedy bot’s cheap estimate', () => {
 
   it('flags a Fence that closes a new fenced yard', () => {
     const s = built(corner, 'fence');
-    const closing = place(0, 4, 0, 1); // (4,0) .. (4,3)
+    const closing = fence(0, 4, 0, true); // (4,0) .. (4,3)
     expect(rules.fencedYards(s)).toEqual([]);
     expect(rules.estimatePlay(s, closing).yardHint).toBe(true);
     // The estimate can't see the yard's own payoff, which is why the hint exists.
@@ -114,8 +125,8 @@ describe('the greedy bot’s cheap estimate', () => {
   it('doesn’t flag a Fence that leaves the yard open, or one inside a yard already fenced', () => {
     const s = built(corner, 'fence');
     // One column further right: the yard leaks out under it, past the first Fence's end.
-    expect(rules.estimatePlay(s, place(0, 5, 0, 1)).yardHint).toBe(false);
-    expect(rules.estimatePlay(s, place(0, 0, 6)).yardHint).toBe(false);
+    expect(rules.estimatePlay(s, fence(0, 5, 0, true)).yardHint).toBe(false);
+    expect(rules.estimatePlay(s, fence(0, 0, 6)).yardHint).toBe(false);
     // Row 5 all Fence: everything behind it is one fenced yard, and a Fence inside it only
     // shrinks or splits that yard.
     const behind = built(
@@ -127,8 +138,18 @@ describe('the greedy bot’s cheap estimate', () => {
       'fence',
     );
     expect(rules.fencedYards(behind)).toEqual([36]);
-    expect(rules.estimatePlay(behind, place(0, 2, 3)).yardHint).toBe(false);
-    expect(rules.estimatePlay(behind, place(0, 3, 0, 1)).yardHint).toBe(false);
+    expect(rules.estimatePlay(behind, fence(0, 2, 3)).yardHint).toBe(false);
+    expect(rules.estimatePlay(behind, fence(0, 3, 0, true)).yardHint).toBe(false);
+  });
+
+  it('reads a pack’s own tiles: an L-shaped Fence closes the same yard', () => {
+    // The L's upright (4,0)..(4,2) closes the corner yard; its foot (5,2) (6,2) stays outside.
+    const s = built(corner, 'fence');
+    const L: PlaceAction = { ...fence(0, 4, 0), shape: ['#..', '#..', '###'] };
+    expect(rules.checkPlay(s, L).legal).toBe(true);
+    expect(rules.estimatePlay(s, L).yardHint).toBe(true);
+    expect(exact(s, L)).toBeGreaterThan(rules.estimatePlay(s, L).delta);
+    expect(rules.fencedYards(rules.apply(s, L).state)).toEqual([4]);
   });
 
   // Two Bedrooms with a Closet between them on row 0: they touch the Closet, not each other.

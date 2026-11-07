@@ -237,19 +237,10 @@ export const TEST_PIECES: Record<PieceId, PieceDef> = {
     category: 'yard',
     wall: true,
     shape: ['####'],
+    pack: { maxTiles: 8, shapes: [['####'], ['#..', '#..', '###']] },
     tags: [],
     complexity: 3,
-    effects: [{ kind: 'enclosure', perTile: 1, cap: 6 }],
-  }),
-  lFence: piece({
-    id: 'lFence',
-    name: 'L-Fence',
-    category: 'yard',
-    wall: true,
-    countsAs: 'fence',
-    shape: ['#..', '#..', '###'],
-    tags: [],
-    complexity: 3,
+    drawWeight: 20,
     effects: [{ kind: 'enclosure', perTile: 1, cap: 6 }],
   }),
   driveway: piece({
@@ -258,26 +249,10 @@ export const TEST_PIECES: Record<PieceId, PieceDef> = {
     category: 'yard',
     canCover: ['creek'],
     shape: ['###'],
+    pack: { maxTiles: 6, shapes: [['###'], ['#####']] },
     tags: [],
     complexity: 2,
-    effects: [
-      {
-        kind: 'requires',
-        condition: { touching: { any: [{ feature: 'street' }, { piece: 'driveway' }] } },
-        blocksPlacement: true,
-      },
-      { kind: 'conditional', when: { in: 'frontYard' }, effect: { kind: 'steady', amount: 1 } },
-    ],
-  }),
-  longDriveway: piece({
-    id: 'longDriveway',
-    name: 'Long Driveway',
-    category: 'yard',
-    canCover: ['creek'],
-    countsAs: 'driveway',
-    shape: ['#####'],
-    tags: [],
-    complexity: 2,
+    drawWeight: 20,
     effects: [
       {
         kind: 'requires',
@@ -1005,7 +980,8 @@ export function withPieces(
   return { ...base, pieces };
 }
 
-export type Placement = [PieceId, number, number, Rot?];
+/** A piece at (x, y), turned `rot`; a pack (D-102) can take its own tiles as ASCII rows. */
+export type Placement = [PieceId, number, number, Rot?, (readonly string[])?];
 
 /** A house on an ASCII lot (. ground, T tree, P pond, C creek, B boulder), pieces placed unchecked. */
 export function houseFrom(
@@ -1014,12 +990,12 @@ export function houseFrom(
   placements: readonly Placement[] = [],
 ): HouseState {
   let house: HouseState = { lot: lotFromRows(rows), pieces: [], nextUid: 1 };
-  for (const [id, x, y, rot = 0] of placements) {
+  for (const [id, x, y, rot = 0, shape] of placements) {
     // Building over Trees removes them, as a real placement would.
-    const cleared = placedCells(content.pieces[id].shape, x, y, rot).filter(
+    const cleared = placedCells(shape ?? content.pieces[id].shape, x, y, rot).filter(
       (c) => terrainAt(house.lot, c.x, c.y) === 'tree',
     );
-    house = addPiece(house, id, x, y, rot, 1, cleared).house;
+    house = addPiece(house, id, x, y, rot, 1, cleared, shape).house;
   }
   return house;
 }

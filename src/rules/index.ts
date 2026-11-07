@@ -40,10 +40,9 @@ export type PieceId =
   | 'flowerBed'
   | 'herbGarden'
   | 'patio'
+  // Packs (D-102): one card places several connected tiles as one piece.
   | 'fence'
-  | 'lFence'
   | 'driveway'
-  | 'longDriveway'
   // "-house" outbuildings (base pool).
   | 'doghouse'
   | 'treehouse'
@@ -326,6 +325,13 @@ export interface PieceDef {
   /** Hard gate: the earliest phase (0-based) it can be drawn. */
   fromPhase: number;
   effects: readonly Effect[];
+  /**
+   * A pack (D-102): the card places 1–`maxTiles` connected tiles that the player clicks out,
+   * as one piece with that shape. `shapes` are the ones it suggests, which the rules list (in
+   * every rotation, with a single tile) for bots. `shape` above is the card's picture, and the
+   * tiles of a pack piece built without its own (a test's house).
+   */
+  pack?: { maxTiles: number; shapes: readonly (readonly string[])[] };
 }
 
 export interface FeatureDef {
@@ -737,6 +743,8 @@ export interface PlacedPiece {
   fixture?: { id: FixtureId; week: number };
   /** Renovations (M4a): each level adds Comfort. Kept through a move and a transform. */
   level?: number;
+  /** A pack's own tiles (D-102), as ASCII rows; turned by `rot` like any shape. */
+  shape?: readonly string[];
 }
 
 export interface HouseState {
@@ -924,6 +932,11 @@ export interface PlaceAction {
   x: number;
   y: number;
   rot: Rot;
+  /**
+   * A pack card's tiles (D-102): ASCII rows, '#' filled, with a tile in the first row and the
+   * first column; (x, y) is its top-left corner and `rot` is 0. Only pack cards take one.
+   */
+  shape?: readonly string[];
 }
 /**
  * A fixture into a placed piece (D-050). From the hand it's the week's turn; from the supplies
@@ -1427,7 +1440,16 @@ export type { Estimate } from './estimate.ts';
 export { stream, type Rng } from './rng.ts';
 export { createRules, IllegalAction } from './run.ts';
 export { encodeRunCode, decodeRunCode, contentHash } from './runcode.ts';
-export { shapeCells, placedCells, uniqueRotations, rotateCells, parseShape } from './grid.ts';
+export {
+  cellsToShape,
+  packShapeProblem,
+  parseShape,
+  placedCells,
+  rotateCells,
+  rotateShape,
+  shapeCells,
+  uniqueRotations,
+} from './grid.ts';
 export { isSunny, terrainAt } from './lot.ts';
 export {
   blueprintText,

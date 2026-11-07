@@ -28,8 +28,9 @@
 // Lawns, 2 Doghouses.
 
 import { describe, expect, it } from 'vitest';
-import type { HouseState, PieceId, RunState } from '../rules/index.ts';
+import type { HouseState, PieceId, PlaceAction, RunState } from '../rules/index.ts';
 import { CONTENT, rules } from '../rules/index.ts';
+import { rotateShape } from '../rules/grid.ts';
 import { houseFrom, type Placement } from '../rules/testing.ts';
 
 const LOT = [
@@ -82,10 +83,17 @@ const PHASES = CONTENT.balance.phases.map((_, i) => i);
 /** The run with this house in place of its own (the house brings its lot). */
 const withHouse = (house: HouseState): RunState => ({ ...RUN, house });
 
-/** The rules' own check of building this piece next, from a hand holding its card. */
-function checkNext(house: HouseState, [id, x, y, rot = 0]: Placement) {
+/**
+ * The rules' own check of building this piece next, from a hand holding its card. A Fence is a
+ * pack (D-102), so its play carries its tiles, turned, as the board sends them: at rot 0.
+ */
+function checkNext(house: HouseState, [id, x, y, rot = 0, shape]: Placement) {
   const state: RunState = { ...withHouse(house), hand: [{ kind: 'piece', id }] };
-  return rules.checkPlay(state, { t: 'place', from: 'hand', i: 0, x, y, rot });
+  const def = CONTENT.pieces[id];
+  const play: PlaceAction = def.pack
+    ? { t: 'place', from: 'hand', i: 0, x, y, rot: 0, shape: rotateShape(shape ?? def.shape, rot) }
+    : { t: 'place', from: 'hand', i: 0, x, y, rot };
+  return rules.checkPlay(state, play);
 }
 
 /** Builds the placements one at a time, expecting each to be legal. */

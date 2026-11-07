@@ -204,7 +204,8 @@ export function computeLayout(
   let frontRow: number | null = null;
   for (const piece of house.pieces) {
     const def = pieceDef(content, piece);
-    const pc = placedCells(def.shape, piece.x, piece.y, piece.rot);
+    // A pack (D-102) carries its own tiles.
+    const pc = placedCells(piece.shape ?? def.shape, piece.x, piece.y, piece.rot);
     const indoor = def.category === 'indoor';
     for (const c of pc) {
       const i = cellIndex(w, c.x, c.y);

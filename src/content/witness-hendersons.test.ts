@@ -23,8 +23,9 @@
 //      ================   the street
 
 import { describe, expect, it } from 'vitest';
-import type { HouseState, PieceId, RunState } from '../rules/index.ts';
+import type { HouseState, PieceId, PlaceAction, RunState } from '../rules/index.ts';
 import { CONTENT, rules } from '../rules/index.ts';
+import { rotateShape } from '../rules/grid.ts';
 import { houseFrom, type Placement } from '../rules/testing.ts';
 
 /** A 16 × 14 lot. The street runs along the bottom edge, below row 13. */
@@ -79,10 +80,17 @@ const RUN: RunState = rules.newRun({
 /** Every milestone, 0-based. */
 const PHASES = CONTENT.balance.phases.map((_, phase) => phase);
 
-/** The rules' own check of a placement, with the piece's card in hand. */
-function checkPlace(house: HouseState, [id, x, y, rot = 0]: Placement) {
+/**
+ * The rules' own check of a placement, with the piece's card in hand. A Fence is a pack
+ * (D-102), so its play carries its tiles, turned, as the board sends them: at rot 0.
+ */
+function checkPlace(house: HouseState, [id, x, y, rot = 0, shape]: Placement) {
   const state: RunState = { ...RUN, house, hand: [{ kind: 'piece', id }] };
-  return rules.checkPlay(state, { t: 'place', from: 'hand', i: 0, x, y, rot });
+  const def = CONTENT.pieces[id];
+  const play: PlaceAction = def.pack
+    ? { t: 'place', from: 'hand', i: 0, x, y, rot: 0, shape: rotateShape(shape ?? def.shape, rot) }
+    : { t: 'place', from: 'hand', i: 0, x, y, rot };
+  return rules.checkPlay(state, play);
 }
 
 /** The ids of the checklist lines that don't hold. */

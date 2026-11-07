@@ -11,7 +11,7 @@ import type { Card, CardType, Content, Modifier, PieceDef, PieceId } from './ind
 import { stream } from './rng.ts';
 import { matchesDef, rootType } from './selectors.ts';
 
-/** Is this card of a struck type? Shape variants share their type (the L-Fence is a Fence). */
+/** Is this card of a struck type? Shape variants share their type (the L-Kitchen is a Kitchen). */
 export function isStruck(content: Content, struck: readonly CardType[], card: Card): boolean {
   if (struck.length === 0) return false;
   if (card.kind === 'fixture') return struck.some((s) => s.kind === 'fixture' && s.id === card.id);

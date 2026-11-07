@@ -24,8 +24,9 @@
 //            street
 
 import { describe, expect, it } from 'vitest';
-import type { ChecklistLine, HouseState, PieceId, RunState } from '../rules/index.ts';
+import type { ChecklistLine, HouseState, PieceId, PlaceAction, RunState } from '../rules/index.ts';
 import { CONTENT, rules } from '../rules/index.ts';
+import { rotateShape } from '../rules/grid.ts';
 import { houseFrom, type Placement } from '../rules/testing.ts';
 
 /** Woods in the back-left corner, a pond at the back-right, two boulders, two lone Trees. */
@@ -85,10 +86,17 @@ const START = rules.newRun({
 /** Dale's run with this house, at a milestone (0-based). */
 const at = (house: HouseState, phase = 0): RunState => ({ ...START, house, phase });
 
-/** The rules' own check of placing the piece on the house from the hand. */
-function checkPlace(house: HouseState, [id, x, y, rot = 0]: Placement) {
+/**
+ * The rules' own check of placing the piece on the house from the hand. A Driveway is a pack
+ * (D-102), so its play carries its tiles, turned, as the board sends them: at rot 0.
+ */
+function checkPlace(house: HouseState, [id, x, y, rot = 0, shape]: Placement) {
   const state: RunState = { ...at(house), hand: [{ kind: 'piece', id }] };
-  return rules.checkPlay(state, { t: 'place', from: 'hand', i: 0, x, y, rot });
+  const def = CONTENT.pieces[id];
+  const play: PlaceAction = def.pack
+    ? { t: 'place', from: 'hand', i: 0, x, y, rot: 0, shape: rotateShape(shape ?? def.shape, rot) }
+    : { t: 'place', from: 'hand', i: 0, x, y, rot };
+  return rules.checkPlay(state, play);
 }
 
 /** The lines that don't hold, as "name: progress", so a failure says what's missing. */

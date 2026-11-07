@@ -166,7 +166,7 @@ function StrikePicker() {
       <div class="strike-sheet">
         <h2>Strike a card ({offer?.price ?? '?'} budget)</h2>
         <p class="muted">
-          It’s never drawn again this run. Shape variants go with it (Fence takes the L-Fence).
+          It’s never drawn again this run. Shape variants go with it (Kitchen takes the L-Kitchen).
         </p>
         <h3>Pieces</h3>
         <div class="strike-options">

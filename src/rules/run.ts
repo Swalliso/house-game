@@ -56,6 +56,7 @@ import type {
   ReplayResult,
   Reward,
   RenovateAction,
+  Rot,
   RuleKey,
   RunSetup,
   RunState,
@@ -80,7 +81,15 @@ import {
 import { drawHand, slotKey } from './draw.ts';
 import { estimatePlay, type Estimate } from './estimate.ts';
 import { checkInstall, installHosts, withFixture } from './fixtures.ts';
-import { bounds, cellIndex, placedCells, shapeCells, uniqueRotations } from './grid.ts';
+import {
+  bounds,
+  cellIndex,
+  packShapeProblem,
+  placedCells,
+  rotateShape,
+  shapeCells,
+  uniqueRotations,
+} from './grid.ts';
 import {
   fencedYardsBordered,
   isLayoutModifier,
@@ -256,6 +265,13 @@ interface WeekResult {
   renovated: Extract<GameEvent, { t: 'renovated' }> | null;
 }
 
+/** One shape a card is listed at: a rotation of its own, or a pack's tiles at rot 0. */
+interface PlacementShape {
+  rot: Rot;
+  shape?: readonly string[];
+  cells: readonly Cell[];
+}
+
 /** A play's legality, with what resolving it needs. */
 type PlayCheck = PlacementCheck & {
   install?: { uid: number; fixture: FixtureId; replaces?: FixtureId };
@@ -401,6 +417,23 @@ export function createRules(content: Content): Rules {
     ) {
       return { ...NO_PLAY, reason: 'That is not a spot on the lot.' };
     }
+    // A pack (D-102) places the tiles the player clicked out; any other card, its own shape.
+    if (def.pack) {
+      if (play.shape === undefined) {
+        return {
+          ...NO_PLAY,
+          reason: `Click out the ${def.name}’s tiles: up to ${def.pack.maxTiles}.`,
+        };
+      }
+      const problem = packShapeProblem(play.shape, def.pack.maxTiles);
+      if (problem) return { ...NO_PLAY, reason: problem };
+      // The tiles are where they go: one way to write each placement.
+      if (play.rot !== 0) {
+        return { ...NO_PLAY, reason: `A ${def.name}’s tiles go down as clicked out, unturned.` };
+      }
+    } else if (play.shape !== undefined) {
+      return { ...NO_PLAY, reason: `A ${def.name} has its own shape.` };
+    }
     return checkPlacement(
       content,
       layoutFor(state),
@@ -410,6 +443,7 @@ export function createRules(content: Content): Rules {
       play.rot,
       state.week,
       (house) => layoutFor(state, house),
+      def.pack ? play.shape : def.shape,
     );
   }
 
@@ -495,10 +529,16 @@ export function createRules(content: Content): Rules {
     const { house, piece } =
       check.house && check.piece
         ? { house: check.house, piece: check.piece }
-        : addPiece(state.house, def.id, play.x, play.y, play.rot, state.week, [
-            ...check.clearedTrees,
-            ...(check.finds ?? []),
-          ]);
+        : addPiece(
+            state.house,
+            def.id,
+            play.x,
+            play.y,
+            play.rot,
+            state.week,
+            [...check.clearedTrees, ...(check.finds ?? [])],
+            def.pack ? play.shape : undefined,
+          );
     return {
       house,
       installed: null,
@@ -558,7 +598,7 @@ export function createRules(content: Content): Rules {
       const def = content.pieces[piece.defId];
       const t = def.effects.find((e) => e.kind === 'transform');
       if (!t || t.kind !== 'transform' || ageOf(piece, state.week) < t.afterWeeks) continue;
-      const cells = shapeCells(def.shape, piece.rot).map((c) => ({
+      const cells = shapeCells(piece.shape ?? def.shape, piece.rot).map((c) => ({
         x: c.x + piece.x,
         y: c.y + piece.y,
       }));
@@ -1464,6 +1504,35 @@ export function createRules(content: Content): Rules {
   // -------------------------------------------------------------------------------------
   // Queries.
 
+  const shapesCache = new Map<PieceDef, PlacementShape[]>();
+  /**
+   * The shapes a card is listed at: its distinct rotations, or for a pack (D-102) a single
+   * tile and each suggested shape in each rotation, as its own rows at rot 0.
+   */
+  function placementShapes(def: PieceDef): PlacementShape[] {
+    let out = shapesCache.get(def);
+    if (out) return out;
+    out = [];
+    if (!def.pack) {
+      for (const rot of uniqueRotations(def.shape)) {
+        out.push({ rot, cells: shapeCells(def.shape, rot) });
+      }
+    } else {
+      const seen = new Set<string>();
+      for (const s of [['#'], ...def.pack.shapes]) {
+        for (const rot of uniqueRotations(s)) {
+          const rows = rotateShape(s, rot);
+          const key = rows.join('/');
+          if (seen.has(key) || packShapeProblem(rows, def.pack.maxTiles)) continue;
+          seen.add(key);
+          out.push({ rot: 0, shape: rows, cells: shapeCells(rows, 0) });
+        }
+      }
+    }
+    shapesCache.set(def, out);
+    return out;
+  }
+
   /** Calls `visit` for each legal placement of a piece (distinct rotations); stops when it returns true. */
   function eachLegalSpot(
     state: RunState,
@@ -1475,11 +1544,13 @@ export function createRules(content: Content): Rules {
     const def = placeDef(state, { t: 'place', from, i, x: 0, y: 0, rot: 0 });
     if (!def) return;
     const { width, height } = state.house.lot;
-    for (const rot of uniqueRotations(def.shape)) {
-      const { w, h } = bounds(shapeCells(def.shape, rot));
+    for (const ps of placementShapes(def)) {
+      const { w, h } = bounds(ps.cells);
       for (let y = 0; y + h <= height; y++) {
         for (let x = 0; x + w <= width; x++) {
-          const play: PlaceAction = { t: 'place', from, i, x, y, rot };
+          const play: PlaceAction = ps.shape
+            ? { t: 'place', from, i, x, y, rot: ps.rot, shape: ps.shape }
+            : { t: 'place', from, i, x, y, rot: ps.rot };
           if (checkPlay(state, play).legal && visit(play) === true) return;
         }
       }
@@ -1883,7 +1954,7 @@ export function createRules(content: Content): Rules {
         layoutFor(state),
         passTally(state),
         def,
-        placedCells(def.shape, play.x, play.y, play.rot),
+        placedCells(play.shape ?? def.shape, play.x, play.y, play.rot),
         modsOf(state).active,
       );
     },

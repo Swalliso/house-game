@@ -14,8 +14,16 @@
 // - A tidy yard: 7 yard pieces, no type more than twice, and no Herb Garden (garlic).
 
 import { describe, expect, it } from 'vitest';
-import type { ChecklistLine, HouseState, Legality, PieceId, RunState } from '../rules/index.ts';
+import type {
+  ChecklistLine,
+  HouseState,
+  Legality,
+  PieceId,
+  PlaceAction,
+  RunState,
+} from '../rules/index.ts';
 import { CONTENT, rules } from '../rules/index.ts';
+import { rotateShape } from '../rules/grid.ts';
 import { houseFrom, type Placement } from '../rules/testing.ts';
 
 // 18 × 16, the street along the bottom edge: woods at the back left, the pond at the back
@@ -100,14 +108,22 @@ const run = rules.newRun({
 });
 const PHASES = CONTENT.balance.phases;
 
-/** Could a player place this piece from the hand on the house these placements build? */
-function checkPlace(built: readonly Placement[], [id, x, y, rot = 0]: Placement): Legality {
+/**
+ * Could a player place this piece from the hand on the house these placements build? A Fence or
+ * a Driveway is a pack (D-102), so its play carries its tiles, turned, as the board sends them:
+ * at rot 0.
+ */
+function checkPlace(built: readonly Placement[], [id, x, y, rot = 0, shape]: Placement): Legality {
   const state: RunState = {
     ...run,
     house: houseFrom(CONTENT, LOT, built),
     hand: [{ kind: 'piece', id }],
   };
-  return rules.checkPlay(state, { t: 'place', from: 'hand', i: 0, x, y, rot });
+  const def = CONTENT.pieces[id];
+  const play: PlaceAction = def.pack
+    ? { t: 'place', from: 'hand', i: 0, x, y, rot: 0, shape: rotateShape(shape ?? def.shape, rot) }
+    : { t: 'place', from: 'hand', i: 0, x, y, rot };
+  return rules.checkPlay(state, play);
 }
 
 /** The checklist lines a house misses at a milestone (0-based). */

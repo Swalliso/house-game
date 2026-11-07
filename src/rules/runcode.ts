@@ -118,6 +118,16 @@ const isObject = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v);
 const isInt = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v);
 
+/** A pack's tiles (D-102): a few short rows of '#' and '.'; the rules check the rest. */
+function isShape(v: unknown): v is string[] {
+  return (
+    Array.isArray(v) &&
+    v.length > 0 &&
+    v.length <= 16 &&
+    v.every((r) => typeof r === 'string' && r.length > 0 && r.length <= 16 && /^[#.]+$/.test(r))
+  );
+}
+
 function isPlace(v: unknown): v is PlaceAction {
   return (
     isObject(v) &&
@@ -126,7 +136,8 @@ function isPlace(v: unknown): v is PlaceAction {
     isInt(v.i) &&
     isInt(v.x) &&
     isInt(v.y) &&
-    (v.rot === 0 || v.rot === 1 || v.rot === 2 || v.rot === 3)
+    (v.rot === 0 || v.rot === 1 || v.rot === 2 || v.rot === 3) &&
+    (v.shape === undefined || isShape(v.shape))
   );
 }
 
@@ -157,6 +168,7 @@ const cleanPlace = (v: PlaceAction): PlaceAction => ({
   x: v.x,
   y: v.y,
   rot: v.rot,
+  ...(v.shape ? { shape: [...v.shape] } : {}),
 });
 const cleanInstall = (v: InstallAction): InstallAction => ({
   t: 'install',

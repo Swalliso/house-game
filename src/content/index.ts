@@ -11,7 +11,7 @@ import type {
   Selector,
   Tag,
 } from '../rules/index.ts';
-import { isConnected, parseShape } from '../rules/grid.ts';
+import { isConnected, packShapeProblem, parseShape } from '../rules/grid.ts';
 import { cardText, modifierText, specText, toolText } from '../rules/text.ts';
 import { drawWeights } from '../rules/draw.ts';
 import { isType } from '../rules/selectors.ts';
@@ -297,6 +297,17 @@ export function validateContent(content: Content): string[] {
     }
     if (def.effects.filter((e) => e.kind === 'transform').length > 1) {
       problems.push(`${where}: at most one transform`);
+    }
+    if (def.pack) {
+      // A pack (D-102): its picture and every suggested shape are tiles it can place.
+      if (!Number.isInteger(def.pack.maxTiles) || def.pack.maxTiles < 1) {
+        problems.push(`${where}: a pack's maxTiles must be ≥ 1`);
+      }
+      for (const shape of [def.shape, ...def.pack.shapes]) {
+        const problem = packShapeProblem(shape, def.pack.maxTiles);
+        if (problem) problems.push(`${where}: pack shape ${shape.join('/')}: ${problem}`);
+      }
+      if (def.countsAs) problems.push(`${where}: a pack has no shape variants`);
     }
     for (const t of def.canCover ?? []) {
       if (!content.features[t]) problems.push(`${where}: canCover has unknown feature "${t}"`);

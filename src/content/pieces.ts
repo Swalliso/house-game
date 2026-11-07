@@ -261,8 +261,10 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
       { kind: 'neighbor', match: { property: 'viewSource' }, amount: 1, max: 3 },
     ],
   },
-  // Fence and L-Fence: two cards sharing a type (D-049). Fences are walls for the fenced-yard
-  // flood fill, and earn per tile of the fenced yards they border, capped in total.
+  // The Fence is a pack (D-102): one card places 1–8 connected tiles in a week, as one piece
+  // (one enclosure payout). Fences are walls for the fenced-yard flood fill, and earn per tile
+  // of the fenced yards they border, capped in total. It replaced the 1×4 and L-Fence cards,
+  // at their combined weight; it suggests their shapes.
   fence: {
     id: 'fence',
     name: 'Fence',
@@ -270,28 +272,17 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     category: 'yard',
     wall: true,
     shape: ['####'],
+    pack: { maxTiles: 8, shapes: [['####'], ['#..', '#..', '###']] },
     tags: [],
-    drawWeight: 10,
+    drawWeight: 20,
     complexity: 3,
     fromPhase: 0,
     effects: [{ kind: 'enclosure', perTile: 1, cap: 6 }],
   },
-  lFence: {
-    id: 'lFence',
-    name: 'L-Fence',
-    tier: 'core',
-    category: 'yard',
-    wall: true,
-    countsAs: 'fence',
-    shape: ['#..', '#..', '###'],
-    tags: [],
-    drawWeight: 10,
-    complexity: 3,
-    fromPhase: 0,
-    effects: [{ kind: 'enclosure', perTile: 1, cap: 6 }],
-  },
-  // Driveway and Long Driveway: two cards sharing a type (D-049). The only pieces that can be
-  // built over the creek (a culvert), so a house on the far bank can still have a Garage.
+  // The Driveway is a pack (D-102): one card places 1–6 connected tiles that reach the street
+  // or a Driveway, as one piece. The only piece that can be built over the creek (a culvert),
+  // so a house on the far bank can still have a Garage. It replaced the 1×3 and 1×5 cards, at
+  // their combined weight.
   driveway: {
     id: 'driveway',
     name: 'Driveway',
@@ -299,29 +290,9 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     category: 'yard',
     canCover: ['creek'],
     shape: ['###'],
+    pack: { maxTiles: 6, shapes: [['###'], ['#####']] },
     tags: [],
-    drawWeight: 10,
-    complexity: 2,
-    fromPhase: 0,
-    effects: [
-      {
-        kind: 'requires',
-        condition: { touching: { any: [{ feature: 'street' }, { piece: 'driveway' }] } },
-        blocksPlacement: true,
-      },
-      { kind: 'conditional', when: { in: 'frontYard' }, effect: { kind: 'steady', amount: 1 } },
-    ],
-  },
-  longDriveway: {
-    id: 'longDriveway',
-    name: 'Long Driveway',
-    tier: 'core',
-    category: 'yard',
-    canCover: ['creek'],
-    countsAs: 'driveway',
-    shape: ['#####'],
-    tags: [],
-    drawWeight: 10,
+    drawWeight: 20,
     complexity: 2,
     fromPhase: 0,
     effects: [

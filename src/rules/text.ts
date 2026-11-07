@@ -401,10 +401,15 @@ export interface CardText {
   effects: string[];
   /** Reminders about lot features the effects mention: "The street is Loud." */
   notes: string[];
+  /** A pack (D-102): how many tiles one card places. */
+  pack?: string;
 }
 
 export function cardText(content: Content, def: PieceDef): CardText {
   const effects = def.effects.map((e) => effectText(content, e));
+  const pack = def.pack
+    ? `A pack: click out up to ${def.pack.maxTiles} tiles that touch, one piece in one week.`
+    : undefined;
   const tags = new Set<Tag>();
   const props = new Set<Property>();
   for (const e of def.effects) effectTags(e, tags, props);
@@ -427,7 +432,7 @@ export function cardText(content: Content, def: PieceDef): CardText {
     ];
     notes.push(`Views: ${joinWords(sources, 'and')}.`);
   }
-  return { effects, notes };
+  return pack ? { effects, notes, pack } : { effects, notes };
 }
 
 /** "The street is", "the Pond is", but "Trees are". */
