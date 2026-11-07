@@ -9,6 +9,7 @@ import {
   canopyRoom,
   defaultFloor,
   fitScale,
+  keepInView,
   MAX_ZOOM,
   maxZoom,
   minZoom,
@@ -268,6 +269,40 @@ describe('the default zoom at 125% and 150% display scaling (D-097’s zoom note
           expect(s).toBeGreaterThanOrEqual(defaultFloor(dpr));
           const up = zoomStep(s, 1, dpr);
           if (up !== s) expect(zoomStep(up, -1, dpr)).toBe(s);
+        },
+      ),
+    );
+  });
+});
+
+describe('a label by the pointer', () => {
+  it('stays where it is when it fits in the view', () => {
+    expect(keepInView(100, 300, 0, 720)).toBe(0);
+    expect(keepInView(4, 716, 0, 720)).toBe(0);
+  });
+
+  it('is nudged back inside the view, with a little room to spare', () => {
+    // Past the right edge by 80 px: 84 px left, in whole px.
+    expect(keepInView(500, 800, 0, 720)).toBe(-84);
+    expect(keepInView(500, 800.5, 0, 720)).toBe(-85);
+    // Past the left edge: to the right.
+    expect(keepInView(-40, 200, 0, 720)).toBe(44);
+    expect(keepInView(250, 400, 280, 1000)).toBe(34);
+  });
+
+  it('reads from its first word when it is wider than the view', () => {
+    expect(keepInView(-100, 900, 0, 720)).toBe(104);
+    expect(keepInView(100, 900, 0, 720)).toBe(-96);
+    fc.assert(
+      fc.property(
+        fc.integer({ min: -2000, max: 2000 }),
+        fc.integer({ min: 1, max: 1500 }),
+        fc.integer({ min: 100, max: 2000 }),
+        (left, width, view) => {
+          const dx = keepInView(left, left + width, 0, view);
+          // Its start is never cut off, and a label that fits is never cut off at its end.
+          expect(left + dx).toBeGreaterThanOrEqual(4);
+          if (width <= view - 8) expect(left + width + dx).toBeLessThanOrEqual(view - 4);
         },
       ),
     );

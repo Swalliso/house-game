@@ -9,7 +9,11 @@
   --label-band: var(--paper-line);
   position: absolute;
   z-index: var(--z-ghost-text);
-  transform: translate(-50%, calc(-100% - var(--space-1)));
+  /* Centered over its spot, nudged to stay in the board's view (Board.tsx BoardLabel). */
+  transform: translate(calc(-50% + var(--label-dx, 0px)), calc(-100% - var(--space-1)));
+  width: max-content;
+  /* A long one wraps rather than running past a narrow view. */
+  max-width: calc(var(--px) * 240);
   padding: 0 calc(var(--px) * 3);
   border: var(--px) solid transparent;
   border-image: var(--art-ring) 1 / var(--px);
@@ -24,7 +28,7 @@
   font-weight: 400;
   font-synthesis: none;
   color: var(--ink);
-  white-space: nowrap;
+  text-align: center;
   pointer-events: none;
   -webkit-font-smoothing: none;
 }
@@ -34,7 +38,7 @@
 }
 .board .ghost-reason.below,
 .board .ghost-delta.below {
-  transform: translate(-50%, var(--space-1));
+  transform: translate(calc(-50% + var(--label-dx, 0px)), var(--space-1));
 }
 .board .ghost-reason,
 .board .ghost-delta.bad {

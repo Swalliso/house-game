@@ -9,6 +9,7 @@
 // click acts on release.
 
 import { signal } from '@preact/signals';
+import type { ComponentChildren, JSX } from 'preact';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import {
   CONTENT,
@@ -72,6 +73,7 @@ import {
   canopyRoom,
   center,
   isIndoor,
+  keepInView,
   labelSpot,
   occupancy,
   startScrollTop,
@@ -679,6 +681,39 @@ export function Board() {
   );
 }
 
+/**
+ * A label by the pointer (the ghost's change or reason, the install, tool and demolish labels),
+ * centered over its spot (geometry.ts labelSpot) and nudged sideways to stay inside the board's
+ * view, which can be narrower than the lot: a long label near the view's edge would be cut off.
+ * The nudge is measured after each render and set as a CSS variable (labels.css), so it never
+ * renders twice; a pan without a new hover keeps the old nudge until the pointer moves.
+ */
+function BoardLabel({
+  class: cls,
+  style,
+  children,
+}: {
+  class: string;
+  style: JSX.CSSProperties;
+  children: ComponentChildren;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    const view = el?.closest('.board-scroll');
+    if (!el || !view) return;
+    el.style.removeProperty('--label-dx');
+    const r = el.getBoundingClientRect();
+    const v = view.getBoundingClientRect();
+    el.style.setProperty('--label-dx', `${keepInView(r.left, r.right, v.left, v.right)}px`);
+  });
+  return (
+    <div ref={ref} class={cls} style={style}>
+      {children}
+    </div>
+  );
+}
+
 function Ghost({
   defId,
   rot,
@@ -714,20 +749,20 @@ function Ghost({
         class={`ghost ${legal ? 'legal' : 'illegal'} ${pending ? 'pending' : ''}`}
       />
       {!legal && inside.length > 0 && (
-        <div class={`ghost-reason ${below ? 'below' : ''}`} style={label}>
+        <BoardLabel class={`ghost-reason ${below ? 'below' : ''}`} style={label}>
           <span aria-hidden="true">✕ </span>
           {p?.reason ?? 'Can’t build there'}
-        </div>
+        </BoardLabel>
       )}
       {legal && p && (
-        <div
+        <BoardLabel
           class={`ghost-delta ${p.delta > 0 ? 'good' : p.delta < 0 ? 'bad' : ''} ${below ? 'below' : ''}`}
           style={label}
         >
           {p.delta > 0 ? '▲ +' : p.delta < 0 ? '▼ −' : ''}
           {formatNumber(Math.abs(p.delta))} {SCORE_LABELS.total}
           {pending ? ' · End week to build' : ''}
-        </div>
+        </BoardLabel>
       )}
     </>
   );
@@ -772,21 +807,21 @@ function InstallTarget({ scale }: { scale: number }) {
           : ' · free: click twice'
         : '';
     label = (
-      <div
+      <BoardLabel
         class={`ghost-delta install-label ${p.delta > 0 ? 'good' : p.delta < 0 ? 'bad' : ''} ${below}`}
         style={style}
       >
         {name}: {change}
         {replaces}
         {then}
-      </div>
+      </BoardLabel>
     );
   } else {
     label = (
-      <div class={`ghost-reason ${below}`} style={style}>
+      <BoardLabel class={`ghost-reason ${below}`} style={style}>
         <span aria-hidden="true">✕ </span>
         {p.reason ?? 'It doesn’t go there.'}
-      </div>
+      </BoardLabel>
     );
   }
   return (
@@ -822,12 +857,12 @@ function ToolTarget({ scale }: { scale: number }) {
   const label = (cells: readonly Cell[], text: string, tone: string) => {
     const spot = labelSpot(cells, lot.width);
     return (
-      <div
+      <BoardLabel
         class={`ghost-delta install-label ${tone} ${spot.below ? 'below' : ''}`}
         style={{ left: `${spot.x * px}px`, top: `${spot.y * px}px` }}
       >
         {text}
-      </div>
+      </BoardLabel>
     );
   };
   const wow = (d: number) =>
@@ -952,17 +987,17 @@ function DemolishTarget({ scale }: { scale: number }) {
     const text = armed ? `Click again to demolish the ${name}` : `Demolish ${name}`;
     const tone = d.delta < 0 ? 'bad' : d.delta > 0 ? 'good' : '';
     label = (
-      <div class={`ghost-delta demolish-label ${tone} ${below}`} style={style}>
+      <BoardLabel class={`ghost-delta demolish-label ${tone} ${below}`} style={style}>
         {text}
         {change}
-      </div>
+      </BoardLabel>
     );
   } else {
     label = (
-      <div class={`ghost-reason ${below}`} style={style}>
+      <BoardLabel class={`ghost-reason ${below}`} style={style}>
         <span aria-hidden="true">✕ </span>
         {d.reason ?? 'That can’t be demolished.'}
-      </div>
+      </BoardLabel>
     );
   }
   return (

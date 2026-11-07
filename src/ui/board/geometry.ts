@@ -248,6 +248,25 @@ export function labelSpot(
   };
 }
 
+/**
+ * How far to nudge a label sideways, in whole CSS px, so it stays inside the board's view with
+ * `pad` px to spare: 0 if it fits where it is. A label wider than the view lines its start up
+ * with the view's left edge, so it reads from its first word.
+ */
+export function keepInView(
+  left: number,
+  right: number,
+  viewLeft: number,
+  viewRight: number,
+  pad = 4,
+): number {
+  const toLeftEdge = viewLeft + pad - left;
+  const toRightEdge = viewRight - pad - right;
+  if (toLeftEdge > 0) return Math.ceil(toLeftEdge);
+  if (toRightEdge < 0) return Math.max(Math.floor(toRightEdge), Math.ceil(toLeftEdge));
+  return 0;
+}
+
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
 /**
