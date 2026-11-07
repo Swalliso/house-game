@@ -11,7 +11,17 @@ import './title.css';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { rules, SCORE_LABELS } from '../../rules/index.ts';
 import { audio } from '../audio/audio.ts';
+import { blobTile, E, S, SE, SUB, SUBTILE, SW, W } from '../board/autotile.ts';
 import { streetScale } from '../board/geometry.ts';
+import { drawSprite } from '../board/terrain/atlas.ts';
+import { grassSprite } from '../board/terrain/grass.ts';
+import {
+  paintStreet,
+  pavingTile,
+  streetRows,
+  type StreetRow,
+  type StreetTile,
+} from '../board/terrain/street.ts';
 import { FEEL } from '../fx/feel.ts';
 import { formatNumber } from '../format.ts';
 import { howToPlayOpen, settingsOpen } from '../hud/actions.ts';
@@ -53,8 +63,8 @@ export function Title() {
       class="title-screen ui"
       style={{
         '--scene': `${scale}px`,
-        '--horizon': `${(STREET_ROWS + LAWN_ROWS) * CELL * scale}px`,
-        '--plant': `${(STREET_ROWS * CELL + PLANT) * scale}px`,
+        '--horizon': `${(STREET_H + LAWN_ROWS * CELL) * scale}px`,
+        '--plant': `${(STREET_H + PLANT) * scale}px`,
       }}
     >
       <Sky />
@@ -153,19 +163,23 @@ function Sky() {
 // ---------------------------------------------------------------------------------------
 // The scene along the bottom, one canvas like the board's terrain (so its tiles show no seams
 // at 125% or 150% display scaling): a lawn behind the street with the houses and trees on it,
-// then the street's own four rows (the front lawn with its shrubs and planters, the sidewalk,
-// the street, the far sidewalk). Each tile is one CELL-sized sprite.
+// then the front lawn with its shrubs and planters, and the street. The lawn and the street are
+// the lot's own (board/terrain): its grass strewn with tufts and flowers by tile hash, and its
+// sidewalk, curb, road and dashed line, so the first screen and the board look like one place.
 
-/** The street's rows: the front lawn, the sidewalk, the street, the far sidewalk. */
-const STREET_ROWS = 4;
+/**
+ * The street below the front lawn, in 16 px rows: the board's (the sidewalk and its curb, the
+ * road with its dashed line, the far curb), then a row of far sidewalk the credit stands on.
+ */
+const PAVING: readonly StreetRow[] = [...streetRows(), 'sidewalk'];
+/** The front lawn and the street, in art px. */
+const STREET_H = CELL + PAVING.length * SUBTILE;
 /** The lawn behind the street, where the houses stand. */
 const LAWN_ROWS = 3;
 /** How far into that lawn the sign's post is planted, in art px. */
 const PLANT = 40;
 /** Room above the lawn for the houses' roofs, in art px. */
 const ROOFS = 128;
-
-const GRASS: readonly SpriteId[] = ['grass-0', 'grass-1', 'grass-2'];
 
 /** Something standing on the scene: at a fraction of the window's width, `y` art px in. */
 interface Prop {
@@ -221,14 +235,28 @@ function drawScene(
   ctx.imageSmoothingEnabled = false;
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
   const horizon = ROOFS;
+  // The front lawn's top, and the sidewalk's, in 16 px rows.
   const street = horizon + LAWN_ROWS * CELL;
+  const top = (street + CELL) / SUBTILE;
+  const wide = cols * SUB;
+  // The lawns: the lot's shaded grass, with its tufts and flowers.
   for (let i = 0; i < cols; i++) {
-    for (let r = 0; r <= LAWN_ROWS; r++)
-      put(GRASS[(i * 5 + r * 3) % GRASS.length]!, i * CELL, horizon + r * CELL);
-    put('sidewalk', i * CELL, street + CELL);
-    put('street', i * CELL, street + 2 * CELL);
-    put('sidewalk', i * CELL, street + 3 * CELL);
+    for (let r = 0; r <= LAWN_ROWS; r++) put('grass-0', i * CELL, horizon + r * CELL);
   }
+  for (let sy = 0; sy < (LAWN_ROWS + 1) * SUB; sy++) {
+    for (let sx = 0; sx < wide; sx++) {
+      const id = grassSprite(sx, sy, false);
+      if (id) drawSprite(ctx, img, id, sx * SUBTILE, horizon + sy * SUBTILE);
+    }
+  }
+  // The street, and the front lawn's grass hanging over the sidewalk's edge, as on the board.
+  const tiles: StreetTile[] = [];
+  PAVING.forEach((kind, j) => {
+    for (let sx = 0; sx < wide; sx++) tiles.push(pavingTile(kind, sx, top + j));
+  });
+  const blades = blobTile('godot', E | SE | S | SW | W);
+  for (let sx = 0; sx < wide; sx++) tiles.push({ id: 'woods-edge', ...blades, sx, sy: top });
+  paintStreet(ctx, img, tiles);
   for (const prop of BACK) stand(prop, horizon);
   for (const prop of FRONT) stand(prop, street);
 }
@@ -237,7 +265,7 @@ function Scene({ w, scale }: { w: number; scale: number }) {
   const px = CELL * scale;
   const cols = Math.ceil(w / px) + 1;
   const viewW = w / scale;
-  const height = ROOFS + (LAWN_ROWS + STREET_ROWS) * CELL;
+  const height = ROOFS + LAWN_ROWS * CELL + STREET_H;
   const ref = useRef<HTMLCanvasElement>(null);
   const [img, setImg] = useState<HTMLImageElement | null>(null);
   useEffect(() => {
