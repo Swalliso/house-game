@@ -889,6 +889,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 **Why:** the review's §4. A household line alone didn't make the bot build a household; rooms that arrive as cards did.
 **Changes:** D-036 (Accepted): a start-of-week step. M4b's change orders: the Twins and Grandma's moving in become arrivals.
+**2026-11-07 (M4b):** built (D-105). The other clients' members: Count Vladislav's Renfield (Framing, a 1×2 room: +2, +1 per touching room up to 3), the Barkers' Nana (Drywall, 2×2: +3, +2 per Pet piece up to 2), Juniper's Rowan (Drywall, a 1×2 studio: +2, +2 per view up to 2), and Dale's daughter Ivy (Framing, 2×2, Kid: +3, +2 if touching a Home Office). Their Bedroom ranges go 1–2, then 2–3 from the arrival.
 
 ### D-100 · Half-weight draws for a type at its limit
 **Status:** Accepted · 2026-11-06 (D-093's option B).
@@ -1049,6 +1050,27 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 ---
 
 ## Proposed
+
+### D-105 · M4b rules structure: change orders, arrivals, and crews
+**Status:** Proposed · 2026-11-07, with the M4 pull request. Details within D-099, D-012, and Appendix A · M4b; numbers for the sim and playtest 4.
+**Decision:**
+- **Change orders:**
+  - one after each of milestones 2, 4, and 6 (`changeOrderAfter`), on its own screen before the shop, drawn from the `co/<milestone>` stream among the client's own orders, then the generic ones (Working from home, Heat wave), never one offered before in the run
+  - skipped: one already met, one needing more new pieces than a phase has weeks, a demolition request with no demolitions left, and one whose piece is neither in this phase's draw nor in the reserve. The plan's "less free space than it needs" isn't checked.
+  - **before the last phase, only phase effects:** a request's or a restriction's reward would come at the run's end, where budget buys nothing
+  - requests and restrictions can be declined at no cost; accepted, they run through the next phase and pay when its milestone is met (nothing if the run is lost). Rewards are budget, 3–5, in each order's definition.
+  - a phase effect is announced (it can't be declined) and runs as a timed effect until the next phase's milestone
+  - only a placement breaks a restriction (not a move or a transform); it stays legal, and the preview names the order it would break
+  - Declutter counts the pieces demolished since it was accepted, not Boulders or the Old Shed
+- **Arrivals** (D-099), as client data (`households.ts`): the Hendersons' twins (a Nursery, which grows into a Kids' Room 8 weeks after it's placed, keeping its level and fixture) at Framing and Grandma (Grandma's Room and a Bathroom card) at Drywall; Count Vladislav's Renfield at Framing; the Barkers' Nana at Drywall; Juniper's Rowan (a studio) at Drywall; and Dale's daughter Ivy at Framing.
+  - Bedroom ranges: the Hendersons 2–3, then 3–4 from Framing and 4–5 from Drywall; the other four 1–2, then 2–3 from their member's arrival. M4a's placeholder steps are gone.
+  - A member's room counts as a Bedroom everywhere a Bedroom counts: Room for everyone, the Bathroom ratio, the Bedroom limit, sets (a Nursery fills a Jack-and-Jill's Bedroom), and Bedroom effects. A member's card can't renovate, but a Bedroom card can renovate a member's room.
+  - Member cards wait in the reserve's extra slots, like a crew's starting cards: buying, crates, and tools count only bought pieces.
+- **Crews:** the Landscaper (yard pieces drawn +50% and earning +25%; starts with a Sapling and a Fence) and the Architect (the Playroom, Library, Mudroom, and Pool in the weekly draw at weight 5; every set pays +50%), picked on the job board after the contract. On a first visit the General Contractor is marked "Recommended for your first job" with the Hendersons.
+- **Debug ops:** force a change order (offered now, running through the current phase) or a client's arrival (its cards now, once).
+
+**Why:** the plan's M4b, D-099, and the sim's needs. The last-phase rule is new: without it, the offer after milestone 6 paid budget at the end of the run.
+**Changes:** jam-scope.md's change orders (the Twins and Grandma's moving in are arrivals now, D-099). Appendix A · M4b's skip rules (free space isn't checked).
 
 ### D-104 · Client numbers from M4a's sim: one signature room each, and the Hendersons' pool
 **Status:** Proposed · 2026-11-06, with the M4 pull request; numbers for the sim and playtest 4.

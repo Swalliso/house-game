@@ -1693,7 +1693,7 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
   - the shape: Under one roof (4+ rooms, filling 60% of their box, the box no longer than 2:1) and Cozy (6+ rooms, each touching 2+ rooms; a Hallway's link counts)
   - the yard: a tidy yard ("6 or more yard pieces, and no yard type stands 4 or more times"; outbuildings count; Fences, Driveways, and Saplings count toward the 6 but never break it)
   - a client wish that repeats a house rule becomes the client's numbers for it (the Hendersons' Bedrooms and Bathrooms; Juniper's 4–8 rooms is her Under one roof)
-  - until M4b's arrivals, Room for everyone steps up at Framing and Drywall: the ceiling +1 at Framing, both ends +1 more at Drywall (2–3, 2–4, 3–5 for the Hendersons)
+  - Room for everyone rises with the household's arrivals (M4b, D-099, D-105): both ends +1 at each arrival, and from that arrival on it needs the member's room. The Hendersons go 2–3, then 3–4 from Framing (the twins) and 4–5 from Drywall (Grandma); the other clients 1–2, then 2–3 from their member's arrival. (In M4a, before arrivals, it stepped up at Framing and Drywall.)
 - **Renovate** (D-098): a room card whose type is at its limit can level a room of that type instead: +4 Comfort a level, up to 2. Levels stay through the Moving Truck and transforms. It can be Weekend Crew's next play, and a card that can only renovate doesn't count as fitting for the free redraw.
 - **Half-weight draws** (D-100): a type at its limit draws at half weight while it stays there.
 - **The yard rules** (D-101): the Patio, Hot Tub, and Fire Pit earn nothing unless they touch a room (not blocking; a Hallway alone doesn't count); Treehouses don't count each other as Kid partners.
@@ -1921,7 +1921,7 @@ Every checklist starts with the seven house rules (D-097), in the client's numbe
 
 | Client | Specs | Tastes | Pool | Change orders | Built in |
 |---|---|---|---|---|---|
-| **Hendersons** | Bedrooms 2–3, rising with the household (their bedroom ≥ 4 and bathroom ≥ 2 are where it ends up); adjacentPair kitchen–diningRoom; fencedYardTiles ≥ 4 (any fenced yard, D-069) | `earn {tag Kid} +50`; `earn lawn +50`; `earn {tag Loud ∧ touching bedroom} −50` | bedroom, bathroom, diningRoom, fence +100% (not the Kitchen, D-104) | *Twins:* request `countNew bedroom ≥ 2`. *Golden retriever:* request `count {doghouse ∧ in fencedYard} ≥ 1`. *Thanksgiving:* phase `setBonus entertainer +100` | M4a / M4b |
+| **Hendersons** | Bedrooms 2–3, rising with the household (their bedroom ≥ 4 and bathroom ≥ 2 are where it ends up); adjacentPair kitchen–diningRoom; fencedYardTiles ≥ 4 (any fenced yard, D-069) | `earn {tag Kid} +50`; `earn lawn +50`; `earn {tag Loud ∧ touching bedroom} −50` | bedroom, bathroom, diningRoom, fence +100% (not the Kitchen, D-104) | *Golden retriever:* request `count {doghouse ∧ in fencedYard} ≥ 1`. *Thanksgiving:* phase `setBonus entertainer +100`. (*Twins* is now their arrival at Framing, D-099.) | M4a / M4b |
 | **Count Vladislav** | `count {room ∧ tag Dark} ≥ 3`; library = 1 (D-104) | `earn {tag Dark} +100`; `earnNothing {tag Sunny}`; `earn {touching tree} +50`; `earn herbGarden −100` | library add 20 | *The coven is visiting:* request `countNew {room ∧ interior} ≥ 2`. *Eternal night:* phase `grantTag {property room} Dark` | M4a / M4b |
 | **Barkers** | fencedYardTiles ≥ 12; doghouse ≥ 2; mudroom = 1 (D-104) | `earn {tag Pet} +50`; `earn lawn +50`; `earn flowerBed −50` | mudroom add 20; doghouse, fence +100% | *Another rescue:* request `countNew doghouse ≥ 1`. *Agility course:* request `group {lawn ∧ in fencedYard} minTiles 8` (two connected Lawns) | M4a / M4b |
 | **Juniper Vale** | her Under one roof: 4–8 rooms (was `and(count {room} ≥ 4, count {room} max 8)`); `count {room ∧ view} ≥ 2` | `perCountOver {room} over 8 −10`; `earn garage −100`; `rule earlyRewardPct +100` | — | *Declutter:* request `demolishedSinceAccepted ≥ 1`. *Tea garden:* request `countNew {patio ∧ view} ≥ 1` | M4a / M4b |
@@ -1940,5 +1940,5 @@ Every checklist starts with the seven house rules (D-097), in the client's numbe
 | Item | Encoding | Built in |
 |---|---|---|
 | Working from home | request `countNew homeOffice ≥ 1` | M4b |
-| Grandma's moving in | request `countNew {bedroom ∧ touching bathroom} ≥ 1` | M4b |
+| ~~Grandma's moving in~~ | now the Hendersons' arrival at Drywall (D-099) | M4b |
 | Heat wave | phase: pool +100; `{touching tree}` +100; `{room ∧ Sunny}` −50 | M4b |
