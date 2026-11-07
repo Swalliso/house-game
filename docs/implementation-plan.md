@@ -1712,8 +1712,8 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
 - **Pool:**
   - the base pool is 9 indoor + 7 yard + 3 "-house" pieces
   - each client's spec pieces get +100% weight, and their signature special pieces are added at weight 20
-  - Landscaper: yard pieces +50% weight and +25% earnings
-  - Architect: special rooms at weight 5, and sets +50%
+  - Landscaper: yard pieces +50% earnings (D-105; the plan's +50% weight and +25% earnings made it the weakest crew)
+  - Architect: special rooms at weight 5, and sets +10% (D-105; +50% made it the strongest by 23 points)
 - **Job board:**
   - 3 contracts with rarity weights Common 65, Uncommon 27, Rare 8
   - no guaranteed Rare (D-026)
@@ -1932,8 +1932,8 @@ Every checklist starts with the seven house rules (D-097), in the client's numbe
 | Crew | Encoding | Built in |
 |---|---|---|
 | General Contractor | `rule rerollsPerPhase +1` | M4b (default crew from M2) |
-| Landscaper | `drawWeight {yard} +50%`; `earn {yard} +25`; `startReserve [sapling, fence]` | M4b |
-| Architect | `drawWeight [playroom, library, mudroom, pool] add 5`; `setBonus +50` | M4b |
+| Landscaper | `earn {yard} +50` (was `drawWeight {yard} +50%`; `earn {yard} +25`, D-105); `startReserve [sapling, fence]` | M4b |
+| Architect | `drawWeight [playroom, library, mudroom, pool] add 5`; `setBonus +10` (was +50, D-105) | M4b |
 
 ### Generic change orders
 

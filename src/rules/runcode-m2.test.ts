@@ -457,7 +457,9 @@ function playRun(seed: string, steps: number): Played {
 }
 
 describe('a real run replays exactly from its run code', () => {
-  const SEEDS = ['determinism-a', 'determinism-f', 'determinism-c'];
+  // Seeds whose random stream reaches every kind of action; a content change can move a seed
+  // off one (M4b's targets moved determinism-a), so pick another that covers them all.
+  const SEEDS = ['determinism-i', 'determinism-f', 'determinism-c'];
 
   it.each(SEEDS)('seed %s', (seed) => {
     // M3b's Housewarming pick takes a step, so the run is a little longer than M2's 24.

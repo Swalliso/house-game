@@ -47,17 +47,19 @@ export const BALANCE: Balance = {
   // D-018's seven milestones. The targets are written by `npm run sim -- --suggest-targets`
   // (D-044): α × the greedy bot's median cumulative Wow at each milestone. Keep the markers.
   // sim:targets:start
-  // From `npm run sim -- --suggest-targets --runs 200` (D-072): α × the greedy bot's
-  // median cumulative Wow at each milestone, with α set so greedy's estimated survival
-  // follows 100%, 98%, 95%, 85%, 72%, 58%, 45%.
+  // From `npm run sim -- --suggest-targets --runs 2000 --crew all` (D-072, D-089, M4b): α × the
+  // greedy bot's median cumulative Wow at each milestone on seeds sim-*, with α set so greedy's
+  // estimated survival follows 100%, 98%, 95%, 85%, 72%, 58%, 45%. Held out, greedy won 41.2%
+  // against the fit's 46%, so milestones 4–7 are eased by 4%, as the systems review eased its
+  // curve (fitted 3,200, 7,150, 13,700, 25,500). Each client's targetPct scales these.
   phases: [
-    { name: 'Groundbreaking', target: 15 }, // median 42, α 0.36
-    { name: 'Foundation', target: 190 }, // median 223, α 0.85
-    { name: 'Framing', target: 490 }, // median 618, α 0.79
-    { name: 'Roofing', target: 1050 }, // median 1446, α 0.73
-    { name: 'Drywall', target: 2250 }, // median 2660, α 0.85
-    { name: 'Finishes', target: 4600 }, // median 4320, α 1.06
-    { name: 'Final Walkthrough', target: 9500 }, // median 7204, α 1.32
+    { name: 'Groundbreaking', target: 15 }, // median 71, α 0.21
+    { name: 'Foundation', target: 300 }, // median 506, α 0.59
+    { name: 'Framing', target: 1100 }, // median 1691, α 0.65
+    { name: 'Roofing', target: 3050 }, // median 3693, α 0.83
+    { name: 'Drywall', target: 6850 }, // median 7105, α 0.96
+    { name: 'Finishes', target: 13150 }, // median 11710, α 1.12
+    { name: 'Final Walkthrough', target: 24500 }, // median 19963, α 1.23
   ],
   // sim:targets:end
 
@@ -78,11 +80,12 @@ export const BALANCE: Balance = {
     interestMax: 0, // Savings Account: +3
   },
 
-  // D-040, per week saved, by phase (the last entry repeats): +2 budget, and 30% of this phase's
-  // earnings as Wow. At 10% greedy that always completes early won 12 points less than one that
-  // never does; at 30%, 10 (M4a's sim, 1,000 held-out runs).
+  // D-040, per week saved, by phase (the last entry repeats): +4 budget, and 30% of this phase's
+  // earnings as Wow. In M4b's sim (1,000 held-out runs), greedy that always completes early won
+  // 9.7 points less than one that never does at +2 budget, 5.7 at +4, and 1.7 at +6; more Wow
+  // (40%) didn't help.
   early: {
-    budgetPerWeek: [2],
+    budgetPerWeek: [4],
     scorePct: [30],
   },
 
