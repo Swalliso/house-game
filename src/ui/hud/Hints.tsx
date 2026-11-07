@@ -64,7 +64,9 @@ export function Hints() {
     hints = (
       <>
         <Hint keys={['R']}>rotate</Hint>
-        <Hint keys={['Click']}>{tentative.value ? 'move it' : 'place'}</Hint>
+        <Hint keys={['Click']} extra>
+          {tentative.value ? 'move it' : 'place'}
+        </Hint>
         <Hint keys={['Enter']}>end the week</Hint>
         <Hint keys={['Esc']}>{tentative.value ? 'pick it up' : 'put it back'}</Hint>
       </>
