@@ -215,6 +215,22 @@ describe('room layouts', () => {
     }
   });
 
+  it('keep the key pieces their doors would push out', () => {
+    // A one-cell-deep Mudroom with the front door in its south wall: its washer stands beside it.
+    const mud = modelOf(house([['mudroom', 4, 4]]));
+    expect(mud.exits.some((e) => e.uid === 1 && e.side === 'S')).toBe(true);
+    expect(roomItems(mud, 1).map((i) => i.sprite)).toContain('washer');
+    // A Dining Room whose front door takes its south wall's middle keeps a chair each side.
+    const dining = modelOf(house([['diningRoom', 4, 4]]));
+    const chairs = roomItems(dining, 1).filter((i) => i.sprite.startsWith('chair-'));
+    expect(chairs.filter((i) => i.sprite.startsWith('chair-east')).length).toBeGreaterThan(0);
+    expect(chairs.filter((i) => i.sprite.startsWith('chair-west')).length).toBeGreaterThan(0);
+    // A one-cell-wide Home Office with doors in its north wall and a side wall: still a desk.
+    const office = modelOf(boxedIn('homeOffice', 1, 'NE'));
+    expect(roomItems(office, 1).some((i) => i.sprite.startsWith('desk-'))).toBe(true);
+    expect(problems(office, 1)).toEqual([]);
+  });
+
   it('put the car in a Garage through its garage door, nose in', () => {
     // A Garage on the front row opens onto the street.
     const m = modelOf(house([['garage', 4, 10]]));
@@ -252,6 +268,32 @@ describe('room layouts', () => {
       (uid) => roomItems(m, uid).find((it) => it.sprite.startsWith('bed-'))!.sprite,
     );
     expect(new Set(beds).size).toBe(3);
+  });
+
+  it('vary rooms of a type in more than their key piece: Living Rooms differ in sofa and rug', () => {
+    // Four Living Rooms take the four colors; the two grey sofas never share a rug.
+    const m = modelOf(
+      house(
+        [
+          ['livingRoom', 1, 1, 0, 'fireplace'],
+          ['livingRoom', 4, 1, 0, 'fireplace'],
+          ['livingRoom', 7, 1, 0, 'fireplace'],
+          ['livingRoom', 10, 1, 0, 'fireplace'],
+        ],
+        14,
+      ),
+    );
+    const look = [1, 2, 3, 4].map((uid) => {
+      const sprites = roomItems(m, uid).map((i) => i.sprite);
+      return {
+        sofa: sprites.find((sp) => sp.startsWith('sofa-'))!,
+        rug: sprites.find((sp) => sp.startsWith('rug-'))!,
+      };
+    });
+    expect(new Set(look.map((l) => l.sofa)).size).toBe(4);
+    const greys = look.filter((l) => l.sofa === 'sofa-0' || l.sofa === 'sofa-1');
+    expect(greys).toHaveLength(2);
+    expect(greys[0]!.rug).not.toBe(greys[1]!.rug);
   });
 
   it('keep their colors when a newer room of their type comes or goes', () => {
@@ -363,6 +405,59 @@ describe('fixtures', () => {
       ).toBe(true);
       expect(layout.fixtureShown, `r${rot}`).toBe(true);
       expect(problems(m, 1), `r${rot}`).toEqual([]);
+    }
+  });
+
+  it('a Living Room keeps its sofa in every rotation, with a Fireplace or without', () => {
+    for (const fixture of [undefined, 'fireplace'] as const) {
+      for (const rot of [0, 1, 2, 3] as Rot[]) {
+        const m = modelOf(house([['livingRoom', 4, 4, rot, fixture]]));
+        const sprites = roomItems(m, 1).map((i) => i.sprite);
+        expect(
+          sprites.some((sp) => sp.startsWith('sofa-')),
+          `r${rot} ${fixture ?? ''}`,
+        ).toBe(true);
+        if (fixture) expect(sprites, `r${rot}`).toContain('fireplace');
+      }
+    }
+    // A landscape room has the wall for both: the sofa stands beside the fireplace.
+    const wide = roomItems(modelOf(house([['livingRoom', 4, 4, 1, 'fireplace']])), 1);
+    const fire = wide.find((i) => i.sprite === 'fireplace')!;
+    const sofa = wide.find((i) => i.sprite.startsWith('sofa-'))!;
+    expect(
+      Math.abs(sofa.y + spritePos(sofa.sprite).h - (fire.y + spritePos('fireplace').h)),
+    ).toBeLessThan(16);
+  });
+
+  it('a Library keeps a bookcase beside its Fireplace, or keeps the bookcase and the badge', () => {
+    for (const rot of [0, 1] as Rot[]) {
+      const { layout } = only('library', 'fireplace', rot);
+      const sprites = layout.items.map((i) => i.sprite);
+      expect(
+        sprites.some((sp) => sp.startsWith('bookcase')),
+        `r${rot}`,
+      ).toBe(true);
+      expect(sprites, `r${rot}`).toContain('fireplace');
+    }
+    // In any house, a Library with a Fireplace has a bookcase.
+    for (let seed = 1; seed <= 200; seed++) {
+      const m = modelOf(randomHouse(seed * 7919));
+      for (const r of m.rooms.values()) {
+        if (r.defId !== 'library' || r.fixture !== 'fireplace') continue;
+        const sprites = roomItems(m, r.uid).map((i) => i.sprite);
+        if (!sprites.some((sp) => sp.startsWith('bookcase'))) {
+          // Only where no bookcase stands at all, fireplace or not.
+          expect(sprites, `seed ${seed}`).not.toContain('fireplace');
+        }
+      }
+    }
+  });
+
+  it('a kitchen’s run has the range and the counter with the sink', () => {
+    for (const rot of [0, 1] as Rot[]) {
+      const sprites = only('kitchen', 'skylight', rot).layout.items.map((i) => i.sprite);
+      expect(sprites, `r${rot}`).toContain('range');
+      expect(sprites, `r${rot}`).toContain('counter-sink');
     }
   });
 

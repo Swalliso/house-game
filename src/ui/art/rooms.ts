@@ -6,7 +6,8 @@
 // The slots, ported from the audit prototype (render.py's slot rules) and the interiors picks:
 // - N: against a north wall run, the widest run first, centered, then sliding toward its ends.
 //   An N piece and the NL/NR pieces listed after it are planned as one group (a bed between its
-//   nightstands), and the group drops members until it fits.
+//   nightstands), and the group drops members until it fits: the room's fixture is kept first,
+//   then its members in the order they're listed (an earlier one over any number of later ones).
 // - NL/NR: beside what already stands on that run. NW/NE: at a run's west or east end.
 // - C: the free floor below what stands on the north wall. CL/CR: beside the last C piece.
 // - R: a rug or a hall's runner, centered on the floor, under everything else.
@@ -19,20 +20,24 @@
 // (Item.over). Pieces keep out of doorways and the walkways in front of them, off each other,
 // inside the walls (tucking a pixel under a side wall at most), and, where they can, off north
 // windows. A one-cell room's only piece (the toilet, the rail) may stand in a walkway and rise 8 px
-// further (the prototype's tight rule), and so may the Garage's car stand in one; never in an
-// opening. Anything that doesn't fit is skipped, and a room's key piece falls back to the middle
-// of the floor when its doors leave no wall free.
+// further (the prototype's tight rule), and so may the Garage's car stand in one, and a dining
+// table that would otherwise lose its chairs; never in an opening. Anything that doesn't fit is
+// skipped, and a room's key piece falls back to the middle of the floor when its doors leave no
+// wall free.
 //
-// Fixtures: the Fireplace, Bunk Beds and the Kitchen Island are furniture here. The Skylight,
+// Fixtures: the Fireplace, Bunk Beds and the Kitchen Island (in three sizes) are furniture here,
+// tried through all their slots before a stand-in (the bed Bunk Beds replace). The Skylight,
 // Soundproofing, Blackout Curtains, the Chandelier and the Bay Window are painted with the room
-// (house-paint.ts, the model's bay). RoomLayout.fixtureShown is false when a room's fixture
-// can't be drawn, so its badge shows instead and a purchase is always visible.
+// (house-paint.ts, the model's bay); the layout says where Blackout Curtains hang (in view, in
+// front of the furniture). RoomLayout.fixtureShown is false when a room's fixture can't be drawn
+// or wouldn't be seen, so its badge shows instead and a purchase is always visible.
 //
 // Rooms of one type differ in color (duvets, sofas, woods, rugs): each takes the color its uid's
 // hash picks, or the next one if an older room of its type has it, so up to the palette's size
 // they never look copy-pasted, and demolishing a room leaves the others as they were (unless it
 // had bumped one). Small choices (which corner, which side) go by the hash too. Never by chance:
-// a house always looks the same.
+// a house always looks the same. A ghost (pieceModel with a look) takes the colors and choices its
+// room will have once placed (newRoomLook), or has while the Moving Truck carries it (roomLook).
 
 import type { FixtureId, HouseState, PieceId } from '../../rules/index.ts';
 import {

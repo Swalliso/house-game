@@ -10,10 +10,11 @@
 //   than between rooms, with door gaps the floor runs through, window glass and garage door
 //   rails. Furniture tucks under the bands and never spills into the next room.
 // - The fixtures that are part of a room rather than furniture (rooms.ts places the rest):
-//   Soundproofing pads the north faces, Blackout Curtains hang on them and cover the windows, a
-//   Skylight lights a patch of floor, a Chandelier hangs over the room with its glow on the
+//   Soundproofing pads the room's side of its wall bands (over the furniture) and its north faces,
+//   Blackout Curtains cover the windows and hang on a north face where the layout says they're in
+//   view, a Skylight lights a patch of floor, a Chandelier hangs over the room with its glow on the
 //   floor, and a Bay Window is a cell of glass with its bay outside. All our own drawings, in
-//   LimeZu's palette and ink.
+//   LimeZu's palette (palette.ts) and ink.
 //
 // Each covers what it paints (the house's bounding box plus a margin; the floor canvas also the
 // yard's ground); `x` and `y` place them on the lot, in art px.
