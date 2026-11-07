@@ -100,7 +100,9 @@
   }
 }
 
-.demolish-hint {
+/* Scoped to the hand: the board's Outline uses .demolish-hint too (the Moving Truck's old spot,
+   another demolish target), and an unscoped rule filled that board-sized SVG with this paper. */
+.hand .demolish-hint {
   display: flex;
   align-items: flex-start;
   gap: var(--space-2);
@@ -112,7 +114,7 @@
   background-clip: padding-box;
   font-weight: 700;
 }
-.demolish-hint .icon {
+.hand .demolish-hint .icon {
   margin-top: var(--px);
 }
 
