@@ -87,7 +87,7 @@
   animation: none;
 }
 .demolish-target.illegal .fill {
-  fill: rgb(224 122 31 / 0.1);
+  fill: var(--target-illegal-fill);
 }
 .demolish-target.illegal .edge {
   stroke: var(--bad);
@@ -131,14 +131,14 @@
   z-index: var(--z-targets);
 }
 .install-target.legal .fill {
-  fill: rgb(47 111 208 / 0.18);
+  fill: var(--ghost-legal-fill);
 }
 .install-target.legal .edge {
   stroke: var(--good);
   stroke-width: 3;
 }
 .install-target.armed .fill {
-  fill: rgb(47 111 208 / 0.34);
+  fill: var(--ghost-legal-armed);
 }
 .install-target.armed {
   animation: pending-pulse 1.1s ease-in-out infinite;
@@ -147,7 +147,7 @@
   animation: none;
 }
 .install-target.illegal .fill {
-  fill: rgb(224 122 31 / 0.1);
+  fill: var(--target-illegal-fill);
 }
 .install-target.illegal .edge {
   stroke: var(--bad);
