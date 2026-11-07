@@ -24,7 +24,10 @@ export const zoom = signal<number | 'fit' | null>(null);
  * window to another screen changes the default and Fit scales); set by the board.
  */
 export const viewSize = signal<{ width: number; height: number; dpr: number } | null>(null);
-/** The lot's size in tiles, not counting the street row; set by the board. */
+/**
+ * The lot's size in tiles, not counting the street row or the road below it (the scales add
+ * them: geometry.ts boardRows); set by the board.
+ */
 export const lotSize = signal<{ width: number; height: number }>({ width: 24, height: 24 });
 
 /** The devicePixelRatio the board was measured at, or the window's before it measures. */

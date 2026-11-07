@@ -38,15 +38,17 @@ function isOpaque(id: string): boolean {
   return /^(floor|grass|water)-/.test(id) || ['street', 'sidewalk', 'lawn'].includes(id);
 }
 /** Overlays and furniture sit on top of a tile, on a transparent background. */
-const OVERLAYS = ['tree', 'boulder', 'bed', 'tub', 'stove', 'table', 'sofa', 'flowers'];
-/** Ids the UI references by name (src/ui/sprites.ts and the terrain layer). */
+const OVERLAYS = ['tree', 'bed', 'tub', 'stove', 'table', 'sofa', 'flowers'];
+/**
+ * Ids the UI references by name (src/ui/sprites.ts, the terrain layer, the title screen) that
+ * have a placeholder. Sprites that only exist as LimeZu cuts (autotile sets, the water's
+ * frames, the lot's overlays) need none: the committed cuts are always there.
+ */
 const REQUIRED = [
   'grass-0',
   'grass-1',
   'grass-2',
   'grass-sunny',
-  'water-0',
-  'water-1',
   'street',
   'sidewalk',
   'floor-wood',

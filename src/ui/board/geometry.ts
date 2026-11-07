@@ -91,6 +91,31 @@ export function center(cells: readonly Cell[]): { x: number; y: number } {
 /** The camera zooms in up to this scale; its last step is the largest k ÷ dpr not above it. */
 export const MAX_ZOOM = 3;
 
+/**
+ * Rows of road drawn below the street row (the rules' street, where pieces touch it and the
+ * pointer finds it): decoration only, nothing there takes a click. The board, the terrain
+ * canvas, the default zoom and Fit all count them.
+ */
+export const ROAD_ROWS = 2;
+
+/** The board's rows for a lot `lotH` cells tall: the lot, the street row, and the road. */
+export function boardRows(lotH: number): number {
+  return lotH + 1 + ROAD_ROWS;
+}
+
+/**
+ * Art px kept clear above the lot, inside the board's scroll area, for what rises past the lot's
+ * top edge: a tree in the top row (the tallest, a pine, rises 21 px, plus 2 px of jitter). The
+ * scroll area can't scroll to anything above its own top, so without this room the tree tops
+ * would be cut flat whenever the board fills the view. The default zoom and Fit count it.
+ */
+export const CANOPY_ROOM = 24;
+
+/** The canopy's room in CSS px at `scale`: whole device pixels, rounded up. */
+export function canopyRoom(scale: number, dpr: number): number {
+  return Math.ceil(devicePx(CANOPY_ROOM * scale, dpr)) / dpr;
+}
+
 /** Whole device pixels per art pixel at `scale`, give or take float noise. */
 function devicePx(scale: number, dpr: number): number {
   return Math.round(scale * dpr * 1e6) / 1e6;
@@ -142,10 +167,10 @@ export function zoomStep(scale: number, dir: 1 | -1, dpr: number): number {
 
 /**
  * The default zoom (§12, Art): the largest whole device pixels per art pixel at which the lot
- * plus the street row below it fit, never below defaultFloor (1×, rounded down to whole device
- * pixels where display scaling isn't a whole number; a smaller view pans) and never above the
- * camera's largest zoom. So it's always one of the zoom steps, and zooming back always finds
- * it. The camera (camera.ts) starts here.
+ * plus the street and the road below it (boardRows) and the canopy's room above it fit, never
+ * below defaultFloor (1×, rounded down to whole device pixels where display scaling isn't a
+ * whole number; a smaller view pans) and never above the camera's largest zoom. So it's always
+ * one of the zoom steps, and zooming back always finds it. The camera (camera.ts) starts here.
  */
 export function fitScale(
   availWidth: number,
@@ -154,15 +179,16 @@ export function fitScale(
   lotH: number,
   dpr: number,
 ): number {
-  const byH = Math.floor((availHeight * dpr) / ((lotH + 1) * CELL)) / dpr;
+  const byH = Math.floor((availHeight * dpr) / (boardRows(lotH) * CELL + CANOPY_ROOM)) / dpr;
   const byW = Math.floor((availWidth * dpr) / (lotW * CELL)) / dpr;
   return Math.min(maxZoom(dpr), Math.max(defaultFloor(dpr), Math.min(byH, byW)));
 }
 
 /**
- * The Fit overview (§12, Art): the largest scale that shows the whole lot and the street,
- * the one exception to whole device pixels per art pixel. Cells stay a whole number of device
- * pixels, so the grid lines up even though the sprites' pixels come out slightly uneven.
+ * The Fit overview (§12, Art): the largest scale that shows the whole board (the lot, the street
+ * and the road) and the canopy's room above it, the one exception to whole device pixels per
+ * art pixel. Cells stay a whole number of device pixels, so the grid lines up even though the
+ * sprites' pixels come out slightly uneven.
  */
 export function overviewScale(
   availWidth: number,
@@ -171,8 +197,46 @@ export function overviewScale(
   lotH: number,
   dpr: number,
 ): number {
-  const cell = Math.min(availWidth / lotW, availHeight / (lotH + 1));
-  return Math.max(1, Math.floor(cell * dpr)) / dpr / CELL;
+  const rows = boardRows(lotH);
+  const cell = Math.min(availWidth / lotW, availHeight / (rows + CANOPY_ROOM / CELL));
+  // Cells of n device px, with the room rounded up to whole device px (canopyRoom).
+  const fits = (n: number) =>
+    rows * n + Math.ceil(devicePx((n * CANOPY_ROOM) / CELL, 1)) <= availHeight * dpr + 1e-6;
+  let n = Math.max(1, Math.floor(cell * dpr));
+  while (n > 1 && !fits(n)) n--;
+  return n / dpr / CELL;
+}
+
+/**
+ * How far the view reaches past the board's left, right and top edges, in CSS px: where the road
+ * and the creek run on (terrain/outside.ts). `space` is the scroll area's content box with `pad`
+ * around it (the board's room above the lot comes off its top: canopyRoom); the board sits in
+ * its middle when it's smaller. Whole device px, rounded down, so a strip on the right never
+ * makes the scroll area wider. Before the board has measured (`space` null), just the padding.
+ */
+export function viewReach(
+  space: { readonly width: number; readonly height: number } | null,
+  lotW: number,
+  lotH: number,
+  scale: number,
+  dpr: number,
+  pad: number,
+): { left: number; right: number; top: number } {
+  const px = CELL * scale;
+  const room = canopyRoom(scale, dpr);
+  const slackX = space ? Math.max(0, (space.width - lotW * px) / 2) : 0;
+  const slackY = space ? Math.max(0, (space.height - room - boardRows(lotH) * px) / 2) : 0;
+  const side = Math.floor((pad + slackX) * dpr + 1e-6) / dpr;
+  return { left: side, right: side, top: pad + room + slackY };
+}
+
+/**
+ * Where a new run's view starts, as a scrollTop: at the bottom, but framing the street row
+ * rather than the road below it (decoration, a short pan away), so the road never costs a row
+ * of the lot in the first view.
+ */
+export function startScrollTop(scrollHeight: number, clientHeight: number, cellPx: number): number {
+  return Math.max(0, scrollHeight - clientHeight - ROAD_ROWS * cellPx);
 }
 
 /**

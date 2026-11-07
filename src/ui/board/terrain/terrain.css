@@ -1,0 +1,71 @@
+/* The lot's ground (TerrainLayer.tsx): a stacking context of its own at the bottom of the
+   board's layers (board/layers.ts), holding the terrain canvas, the water canvas above it, and
+   past the board's edges the road and the creek running on. The canopy canvas (tree tops) sits
+   outside it, over the pieces. None of them takes the pointer: the board maps the pointer to a
+   cell itself. */
+
+.board > .ground {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-terrain);
+  pointer-events: none;
+}
+.ground > .terrain {
+  z-index: var(--z-terrain);
+}
+.ground > .water {
+  position: absolute;
+  z-index: var(--z-water);
+  image-rendering: pixelated;
+}
+/* Before the terrain canvas in the group, so its first cell, tucked under the board's edge, is
+   hidden by the board. */
+.ground > .outside {
+  position: absolute;
+  image-rendering: pixelated;
+}
+.board > .canopy {
+  position: absolute;
+  z-index: var(--z-canopy);
+  pointer-events: none;
+  image-rendering: pixelated;
+}
+
+/* The lot's surroundings: dimmed grass (a LimeZu cut, 8 × 8 cells a tile) that zooms with the
+   board and pans with it, so the lot sits in a garden rather than on a page. The property line
+   marks the lot's edge on three sides; the street marks the fourth. */
+.center .board-scroll {
+  background-image: url('../../../../assets/limezu/grass-outside.png');
+  background-size: calc(var(--board-cell, 32px) * 8);
+  background-attachment: local;
+  image-rendering: pixelated;
+}
+.board-scroll > .board {
+  box-shadow: none;
+}
+.ground > .lot-line {
+  position: absolute;
+  left: 0;
+  top: 0;
+  box-shadow:
+    0 0 0 1px rgb(255 249 226 / 0.3),
+    0 0 0 3px rgb(30 44 32 / 0.18);
+  clip-path: inset(-4px -4px 0 -4px);
+}
+
+/* The street row is a light sidewalk: its label in LimeZu's ink. */
+.board .street-label {
+  color: rgb(58 58 80 / 0.55);
+}
+
+/* The canopy covers the bottom of a cell north of a tree, pieces included. A piece's digit and
+   badges belong above it, on the labels layer (board/layers.ts): lifted here while they're
+   still children of the piece, which forms no stacking context of its own at rest. During a
+   tally beat (.active, .lit, the wobble) it does, and they dip under the canopy for that beat.
+   The pieces track draws them in a labels layer of their own, outside the pieces, which ends
+   that; this rule goes when that merges. */
+.board .piece > .digit,
+.board .piece > .unmet-badge,
+.board .piece > .fixture-badge {
+  z-index: var(--z-labels);
+}
