@@ -1,6 +1,7 @@
 // The base-pool pieces (Appendix B of implementation-plan.md): 9 indoor types, 7 yard types,
 // and 3 "-house" outbuildings, as 23 cards (shape variants are separate cards sharing a type),
-// then the 9 special pieces (weight 0): the shop's, the crates', and the Catalog's.
+// then the 9 special pieces (weight 0): the shop's, the crates', and the Catalog's, then (M4b)
+// the 7 member rooms (weight 0), which arrive with the household (D-099).
 // Shapes and tags Appendix B leaves open come from content-brainstorm.md §3, §4, and §6
 // (D-067). Complexity is Appendix A · M1's list (D-055). Every card is weight 10, so a type
 // with two cards comes up about twice as often. Numbers are placeholders for the sim and
@@ -254,12 +255,17 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     complexity: 1,
     fromPhase: 0,
     effects: [
+      // The Patio rule (D-093): an outdoor room earns nothing unless it touches a room. It
+      // doesn't block placement, and touching only a Hallway doesn't count.
+      { kind: 'requires', condition: { touching: { property: 'room' } }, blocksPlacement: false },
       { kind: 'neighbor', match: { piece: ['livingRoom', 'kitchen'] }, amount: 2 },
       { kind: 'neighbor', match: { property: 'viewSource' }, amount: 1, max: 3 },
     ],
   },
-  // Fence and L-Fence: two cards sharing a type (D-049). Fences are walls for the fenced-yard
-  // flood fill, and earn per tile of the fenced yards they border, capped in total.
+  // The Fence is a pack (D-102): one card places 1–8 connected tiles in a week, as one piece
+  // (one enclosure payout). Fences are walls for the fenced-yard flood fill, and earn per tile
+  // of the fenced yards they border, capped in total. It replaced the 1×4 and L-Fence cards,
+  // at their combined weight; it suggests their shapes.
   fence: {
     id: 'fence',
     name: 'Fence',
@@ -267,28 +273,17 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     category: 'yard',
     wall: true,
     shape: ['####'],
+    pack: { maxTiles: 8, shapes: [['####'], ['#..', '#..', '###']] },
     tags: [],
-    drawWeight: 10,
+    drawWeight: 20,
     complexity: 3,
     fromPhase: 0,
     effects: [{ kind: 'enclosure', perTile: 1, cap: 6 }],
   },
-  lFence: {
-    id: 'lFence',
-    name: 'L-Fence',
-    tier: 'core',
-    category: 'yard',
-    wall: true,
-    countsAs: 'fence',
-    shape: ['#..', '#..', '###'],
-    tags: [],
-    drawWeight: 10,
-    complexity: 3,
-    fromPhase: 0,
-    effects: [{ kind: 'enclosure', perTile: 1, cap: 6 }],
-  },
-  // Driveway and Long Driveway: two cards sharing a type (D-049). The only pieces that can be
-  // built over the creek (a culvert), so a house on the far bank can still have a Garage.
+  // The Driveway is a pack (D-102): one card places 1–6 connected tiles that reach the street
+  // or a Driveway, as one piece. The only piece that can be built over the creek (a culvert),
+  // so a house on the far bank can still have a Garage. It replaced the 1×3 and 1×5 cards, at
+  // their combined weight.
   driveway: {
     id: 'driveway',
     name: 'Driveway',
@@ -296,29 +291,9 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     category: 'yard',
     canCover: ['creek'],
     shape: ['###'],
+    pack: { maxTiles: 6, shapes: [['###'], ['#####']] },
     tags: [],
-    drawWeight: 10,
-    complexity: 2,
-    fromPhase: 0,
-    effects: [
-      {
-        kind: 'requires',
-        condition: { touching: { any: [{ feature: 'street' }, { piece: 'driveway' }] } },
-        blocksPlacement: true,
-      },
-      { kind: 'conditional', when: { in: 'frontYard' }, effect: { kind: 'steady', amount: 1 } },
-    ],
-  },
-  longDriveway: {
-    id: 'longDriveway',
-    name: 'Long Driveway',
-    tier: 'core',
-    category: 'yard',
-    canCover: ['creek'],
-    countsAs: 'driveway',
-    shape: ['#####'],
-    tags: [],
-    drawWeight: 10,
+    drawWeight: 20,
     complexity: 2,
     fromPhase: 0,
     effects: [
@@ -363,7 +338,12 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
       // Appendix B gives it only the Kid bonus, and the base pool has no other Kid piece until
       // the shop's Playroom (M3), so a small steady earning keeps it from being a dead card.
       { kind: 'steady', amount: 2 },
-      { kind: 'neighbor', match: { tag: 'Kid' }, amount: 2 },
+      // Treehouses don't count each other (D-079, D-093), so a cluster isn't the best spot.
+      {
+        kind: 'neighbor',
+        match: { all: [{ tag: 'Kid' }, { not: { piece: 'treehouse' } }] },
+        amount: 2,
+      },
     ],
   },
   greenhouse: {
@@ -477,7 +457,12 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     drawWeight: 0,
     complexity: 1,
     fromPhase: 0,
-    effects: [{ kind: 'neighbor', match: { piece: 'patio' }, amount: 3 }],
+    effects: [
+      // The Patio rule (D-093): an outdoor room earns nothing unless it touches a room. It
+      // doesn't block placement, and touching only a Hallway doesn't count.
+      { kind: 'requires', condition: { touching: { property: 'room' } }, blocksPlacement: false },
+      { kind: 'neighbor', match: { piece: 'patio' }, amount: 3 },
+    ],
   },
   firePit: {
     id: 'firePit',
@@ -489,7 +474,12 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     drawWeight: 0,
     complexity: 2,
     fromPhase: 0,
-    effects: [{ kind: 'aura', match: { piece: 'patio' }, scope: 'adjacent', pct: 50 }],
+    effects: [
+      // The Patio rule (D-093): an outdoor room earns nothing unless it touches a room. It
+      // doesn't block placement, and touching only a Hallway doesn't count.
+      { kind: 'requires', condition: { touching: { property: 'room' } }, blocksPlacement: false },
+      { kind: 'aura', match: { piece: 'patio' }, scope: 'adjacent', pct: 50 },
+    ],
   },
   henhouse: {
     id: 'henhouse',
@@ -517,5 +507,150 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     complexity: 1,
     fromPhase: 0,
     effects: [{ kind: 'neighbor', match: { feature: 'tree' }, amount: 1, max: 3 }],
+  },
+
+  // ---------------------------------------------------------------------------------------
+  // Member rooms (M4b, D-099): each arrives in the reserve with a member of a client's
+  // household (households.ts); weight 0, and never drawn, sold, copied, or in a crate. Each
+  // counts as a Bedroom (Room for everyone, the Bathroom rule, the Bedroom limit, and sets),
+  // and from its member's arrival on, Room for everyone needs it. The Hendersons' are the
+  // systems review's (§4); the rest are simple, in the same range, each fitting its client.
+  nursery: {
+    id: 'nursery',
+    name: 'Nursery',
+    tier: 'core',
+    category: 'indoor',
+    countsAs: 'bedroom',
+    member: true,
+    shape: ['##', '##'],
+    tags: ['Quiet', 'Kid'],
+    drawWeight: 0,
+    complexity: 2,
+    fromPhase: 0,
+    effects: [
+      { kind: 'steady', amount: 2 },
+      { kind: 'neighbor', match: { piece: 'bedroom' }, amount: 2, max: 2 },
+      // The twins grow up: 8 weeks after it's placed, at the start of a week. Its shape is the
+      // Kids' Room's, so it grows in place, keeping its level and fixture (D-098).
+      { kind: 'transform', into: { piece: 'kidsRoom' }, afterWeeks: 8 },
+    ],
+  },
+  kidsRoom: {
+    id: 'kidsRoom',
+    name: 'Kids’ Room',
+    tier: 'core',
+    category: 'indoor',
+    countsAs: 'bedroom',
+    member: true,
+    shape: ['##', '##'],
+    tags: ['Kid'],
+    drawWeight: 0,
+    complexity: 1,
+    fromPhase: 0,
+    effects: [
+      { kind: 'steady', amount: 4 },
+      {
+        kind: 'neighbor',
+        match: { any: [{ tag: 'Kid' }, { feature: 'tree' }] },
+        amount: 2,
+        max: 3,
+      },
+    ],
+  },
+  grandmasRoom: {
+    id: 'grandmasRoom',
+    name: 'Grandma’s Room',
+    tier: 'core',
+    category: 'indoor',
+    countsAs: 'bedroom',
+    member: true,
+    shape: ['##', '##'],
+    tags: ['Quiet'],
+    drawWeight: 0,
+    complexity: 1,
+    fromPhase: 0,
+    effects: [
+      { kind: 'steady', amount: 3 },
+      {
+        kind: 'neighbor',
+        match: { piece: ['bathroom', 'livingRoom', 'kitchen'] },
+        amount: 2,
+        max: 3,
+      },
+      { kind: 'neighbor', match: { piece: ['flowerBed', 'herbGarden'] }, amount: 1, max: 2 },
+    ],
+  },
+  // Count Vladislav's man, Renfield: a small room that wants to be in the middle of the house,
+  // where it's Dark (and the Count's Dark pieces earn double).
+  renfieldsRoom: {
+    id: 'renfieldsRoom',
+    name: 'Renfield’s Room',
+    tier: 'core',
+    category: 'indoor',
+    countsAs: 'bedroom',
+    member: true,
+    shape: ['##'],
+    tags: ['Quiet'],
+    drawWeight: 0,
+    complexity: 1,
+    fromPhase: 0,
+    effects: [
+      { kind: 'steady', amount: 2 },
+      { kind: 'neighbor', match: { property: 'room' }, amount: 1, max: 3 },
+    ],
+  },
+  // The Barkers' Nana likes the dogs close by: a Doghouse outside her window, or the Mudroom.
+  nanasRoom: {
+    id: 'nanasRoom',
+    name: 'Nana’s Room',
+    tier: 'core',
+    category: 'indoor',
+    countsAs: 'bedroom',
+    member: true,
+    shape: ['##', '##'],
+    tags: ['Quiet'],
+    drawWeight: 0,
+    complexity: 1,
+    fromPhase: 0,
+    effects: [
+      { kind: 'steady', amount: 3 },
+      { kind: 'neighbor', match: { tag: 'Pet' }, amount: 2, max: 2 },
+    ],
+  },
+  // Juniper's Rowan paints: a small studio that wants a view (and Juniper wants rooms with one).
+  rowansStudio: {
+    id: 'rowansStudio',
+    name: 'Rowan’s Studio',
+    tier: 'core',
+    category: 'indoor',
+    countsAs: 'bedroom',
+    member: true,
+    shape: ['##'],
+    tags: ['Quiet'],
+    drawWeight: 0,
+    complexity: 1,
+    fromPhase: 0,
+    effects: [
+      { kind: 'steady', amount: 2 },
+      { kind: 'neighbor', match: { property: 'viewSource' }, amount: 2, max: 2 },
+    ],
+  },
+  // Dale's daughter Ivy does her homework beside his office.
+  ivysRoom: {
+    id: 'ivysRoom',
+    name: 'Ivy’s Room',
+    tier: 'core',
+    category: 'indoor',
+    countsAs: 'bedroom',
+    member: true,
+    shape: ['##', '##'],
+    tags: ['Kid'],
+    drawWeight: 0,
+    complexity: 1,
+    fromPhase: 0,
+    effects: [
+      { kind: 'steady', amount: 3 },
+      { kind: 'neighbor', match: { piece: 'homeOffice' }, amount: 2, max: 1 },
+    ],
   },
 };

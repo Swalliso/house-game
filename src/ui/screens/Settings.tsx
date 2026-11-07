@@ -3,6 +3,7 @@
 
 import { FEEL } from '../fx/feel.ts';
 import { settingsOpen } from '../hud/actions.ts';
+import { resetHints, seenHints } from '../hud/Hints.tsx';
 import { settings, updateSettings } from '../settings.ts';
 
 function Slider({
@@ -90,6 +91,14 @@ export function SettingsPanel() {
           onInput={(sfxVolume) => updateSettings({ sfxVolume })}
         />
         <div class="modal-buttons">
+          <button
+            type="button"
+            disabled={seenHints.value.size === 0}
+            onClick={resetHints}
+            title="Each first-time hint shows again when its moment comes"
+          >
+            Show the hints again
+          </button>
           <button type="button" class="primary" onClick={close}>
             Done
           </button>

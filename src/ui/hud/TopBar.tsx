@@ -1,8 +1,9 @@
-// The top bar: the milestone and week, Wow against the target with the forecast, the run's
-// resources (budget, overtime), the auto-complete switch, Complete early, and the run's buttons.
+// The top bar: the game's name with the run's client and crew, the milestone and week, Wow
+// against the target with the forecast, the run's resources (budget, overtime), the
+// auto-complete switch, Complete early, and the run's buttons.
 
 import { signal } from '@preact/signals';
-import { CONTENT, rules, SCORE_LABELS } from '../../rules/index.ts';
+import { CONTENT, modifierText, rules, SCORE_LABELS, type RunState } from '../../rules/index.ts';
 import { busy, shownRun, shownScore, skip } from '../fx/director.ts';
 import { formatNumber } from '../format.ts';
 import {
@@ -64,6 +65,8 @@ function PhaseBlock() {
           'Run over'
         ) : shopping ? (
           'Shopping'
+        ) : s.screen === 'changeOrder' ? (
+          'Change order'
         ) : s.overtimeWeek > 0 ? (
           <span
             class="overtime-week"
@@ -220,15 +223,42 @@ function CompleteEarly() {
   );
 }
 
+/**
+ * Who the house is for and who's building it, under the game's name: the client (their brief
+ * as a tip) and the crew (what it does all run as a tip).
+ */
+function RunWho({ s }: { s: RunState }) {
+  const client = CONTENT.clients[s.setup.clientId];
+  const crew = CONTENT.crews[s.setup.crewId];
+  const crewText = `${crew.blurb} All run: ${crew.modifiers.map((m) => modifierText(CONTENT, m)).join(' · ')}.`;
+  return (
+    <>
+      <span class="brand-who">
+        <Tip title={client.name} text={client.brief}>
+          {client.name}
+        </Tip>
+      </span>
+      <span class="brand-who">
+        <Tip title={`${crew.name}: your crew`} text={crewText}>
+          {crew.name}
+        </Tip>
+      </span>
+    </>
+  );
+}
+
 export function TopBar() {
   const s = shownRun.value ?? run.value;
   return (
     <header class="topbar m2">
       <div class="brand">
-        Open House
-        <span class="seed" title="This run's seed">
-          #{s.setup.seed}
+        <span class="brand-name">
+          Open House{' '}
+          <span class="seed" title="This run's seed">
+            #{s.setup.seed}
+          </span>
         </span>
+        <RunWho s={s} />
       </div>
       <PhaseBlock />
       <Progress />

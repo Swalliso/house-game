@@ -429,6 +429,7 @@ describe('early completion', () => {
     const doubled: Content = {
       ...base,
       crews: {
+        ...base.crews,
         generalContractor: {
           ...base.crews.generalContractor,
           modifiers: [
@@ -924,6 +925,46 @@ describe('demolitions', () => {
       cells: [{ x: 0, y: 0 }],
       delta: 0,
     });
+  });
+
+  it('previewDemolish names a set it would break, but not one that re-forms from other pieces', () => {
+    // The Jack-and-Jill: demolishing an end Bedroom breaks it, and apply agrees.
+    const s = withHouse(onEmptyLot(), emptyRows(12, 12), JACK_AND_JILL);
+    const set = rules.currentTally(s).sets[0]!;
+    expect(set).toMatchObject({ set: 'jackAndJill', members: [1, 2, 3], points: 10, mult: 50 });
+    const p = rules.previewDemolish(s, 0, 0);
+    expect(p).toMatchObject({ legal: true, setsGained: [], setsLost: [set] });
+    const after = rules.apply(s, { t: 'demolish', x: 0, y: 0 }).state;
+    expect(rules.currentTally(after).sets).toEqual([]);
+    expect(rules.currentTally(after).total).toBe(p.after.total);
+    // Nothing to break: no set flips, and an illegal target has none either.
+    expect(rules.previewDemolish(withHouse(onEmptyLot(), ['B...', '....']), 0, 0)).toMatchObject({
+      legal: true,
+      setsGained: [],
+      setsLost: [],
+    });
+    expect(rules.previewDemolish(s, 9, 9)).toMatchObject({ legal: false, setsLost: [] });
+
+    // A third Bedroom (uid 4) above the Bathroom: without Bedroom 1, the set re-forms from
+    // Bedrooms 3 and 4, so the preview breaks nothing, though the instance is a new one.
+    //   .44.
+    //   .44.
+    //   11b33
+    //   11.33
+    const three = withHouse(onEmptyLot(), emptyRows(12, 12), [
+      ['bedroom', 0, 2],
+      ['bathroom', 2, 2],
+      ['bedroom', 3, 2],
+      ['bedroom', 1, 0],
+    ]);
+    expect(rules.currentTally(three).sets.map((x) => x.key)).toEqual(['jackAndJill:1,2,3']);
+    expect(rules.previewDemolish(three, 0, 3)).toMatchObject({
+      legal: true,
+      setsGained: [],
+      setsLost: [],
+    });
+    const reformed = rules.apply(three, { t: 'demolish', x: 0, y: 3 }).state;
+    expect(rules.currentTally(reformed).sets.map((x) => x.key)).toEqual(['jackAndJill:2,3,4']);
   });
 
   it('a requirement that breaks later: the Garage earns nothing once its Driveway is gone', () => {

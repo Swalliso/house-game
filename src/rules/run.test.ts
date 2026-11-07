@@ -18,7 +18,12 @@ function withTargets(targets: number[]): Content {
 
 /** A run on an empty lot, so placements are easy to reason about. */
 function onEmptyLot(r = rules, seed = 'empty'): RunState {
-  const s = r.newRun({ seed, crewId: 'generalContractor', mode: 'standard' });
+  const s = r.newRun({
+    seed,
+    clientId: 'hendersons',
+    crewId: 'generalContractor',
+    mode: 'standard',
+  });
   return { ...s, house: { ...s.house, lot: lotFromRows(emptyRows(12, 12)) } };
 }
 
@@ -41,15 +46,30 @@ function withHand(s: RunState, ...ids: PieceId[]): RunState {
 
 describe('a new run', () => {
   it('starts at week 1 with a hand, from the seed', () => {
-    const s = rules.newRun({ seed: 'start', crewId: 'generalContractor', mode: 'standard' });
+    const s = rules.newRun({
+      seed: 'start',
+      clientId: 'hendersons',
+      crewId: 'generalContractor',
+      mode: 'standard',
+    });
     expect(s).toMatchObject({ phase: 0, slot: 1, week: 1, draws: 1, score: 0, screen: 'build' });
     expect(s.hand).toHaveLength(3);
     expect(s.house.pieces).toEqual([]);
-    expect(rules.newRun({ seed: 'start', crewId: 'generalContractor', mode: 'standard' })).toEqual(
-      s,
-    );
     expect(
-      rules.newRun({ seed: 'other', crewId: 'generalContractor', mode: 'standard' }).house.lot,
+      rules.newRun({
+        seed: 'start',
+        clientId: 'hendersons',
+        crewId: 'generalContractor',
+        mode: 'standard',
+      }),
+    ).toEqual(s);
+    expect(
+      rules.newRun({
+        seed: 'other',
+        clientId: 'hendersons',
+        crewId: 'generalContractor',
+        mode: 'standard',
+      }).house.lot,
     ).not.toEqual(s.house.lot);
   });
 });
@@ -96,7 +116,13 @@ describe('a week', () => {
       { uid: 1, defId: 'bedroom', x: 2, y: 2, rot: 0, placedWeek: 1 },
     ]);
     expect(state.score).toBe(3);
-    expect(state.lastTally).toEqual({ points: 3, mult: 100, total: 3, setInstances: [] });
+    expect(state.lastTally).toEqual({
+      points: 3,
+      mult: 100,
+      total: 3,
+      setInstances: [],
+      specsMet: [],
+    });
   });
 
   it('building over Trees removes them', () => {

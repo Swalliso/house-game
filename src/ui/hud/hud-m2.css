@@ -346,12 +346,10 @@
 .mini-cell.patio {
   background: #c9b9a3;
 }
-.mini-cell.fence,
-.mini-cell.lFence {
+.mini-cell.fence {
   background: #9b6b43;
 }
-.mini-cell.driveway,
-.mini-cell.longDriveway {
+.mini-cell.driveway {
   background: #7d7a74;
 }
 .mini-cell.doghouse {
@@ -374,10 +372,10 @@
   color: var(--wood);
 }
 .budget-delta.good {
-  color: var(--good);
+  color: var(--good-text);
 }
 .budget-delta.bad {
-  color: #b85c0c;
+  color: var(--bad-text);
 }
 
 /* --- Inspect ------------------------------------------------------------------------ */
@@ -457,10 +455,10 @@
   font-weight: 700;
 }
 .inspect .budget-change.good {
-  color: var(--good);
+  color: var(--good-text);
 }
 .inspect .budget-change.bad {
-  color: #b85c0c;
+  color: var(--bad-text);
 }
 .inspect .demolish-confirm {
   color: #9a4a0a;

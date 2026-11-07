@@ -1,7 +1,8 @@
 // A piece on the board, drawn as a cutaway (§12, Art): its floor sprite on every cell, walls
 // on exposed edges (heavier outside, light from the top-left), one furniture sprite, and the
 // piece's weekly score as a small digit in its bottom-right cell. A piece whose requirement
-// isn't met earns nothing and wears a ⚠ badge in its top-left cell.
+// isn't met earns nothing and wears a ⚠ badge in its top-left cell; a Renovated room's stars
+// go under it there, clear of the digit.
 
 import type { JSX } from 'preact';
 import { useEffect, useRef } from 'preact/hooks';
@@ -44,6 +45,10 @@ interface Props {
   unmet?: string;
   /** The fixture installed in it (D-050), shown as a badge. */
   fixture?: FixtureId;
+  /** A Renovated room's level (M4a), shown as stars in its top-left cell. */
+  level?: number;
+  /** Set when the director plays this room's Renovation: its badge pops. */
+  levelPop?: number;
   class?: string;
   style?: JSX.CSSProperties;
   settle?: number;
@@ -58,6 +63,8 @@ export function PieceShape({
   earned,
   unmet,
   fixture,
+  level,
+  levelPop,
   class: cls,
   style,
   settle,
@@ -181,20 +188,108 @@ export function PieceShape({
         </div>
       )}
       {fixture && <FixtureBadge id={fixture} cells={cells} minX={minX} minY={minY} scale={scale} />}
+      {!!level && (
+        <LevelBadge
+          level={level}
+          pop={levelPop}
+          cells={cells}
+          minX={minX}
+          minY={minY}
+          scale={scale}
+          unmet={!!first}
+          fixture={!!fixture}
+        />
+      )}
       {first && (
         <div
           class="unmet-badge"
           title={`Earns nothing: it must be ${unmet}`}
           aria-label={`Earns nothing: it must be ${unmet}`}
           style={{
-            left: `${(first.x - minX) * px + Math.max(1, scale)}px`,
-            top: `${(first.y - minY) * px + Math.max(1, scale)}px`,
-            fontSize: `${Math.max(11, 4.5 * scale)}px`,
+            left: `${(first.x - minX) * px + inset(scale)}px`,
+            top: `${(first.y - minY) * px + inset(scale)}px`,
+            fontSize: `${unmetFont(scale)}px`,
           }}
         >
           {'\u26A0\uFE0E'}
         </div>
       )}
+    </div>
+  );
+}
+
+// The corner badges' sizes in CSS px at a scale, so one can sit clear of another.
+/** How far a badge sits in from its cell's edges, and the gap between two stacked badges. */
+const inset = (scale: number) => Math.max(1, scale);
+const unmetFont = (scale: number) => Math.max(11, 4.5 * scale);
+/** The ⚠ badge's height: its font at line-height 1, a px of padding and of border each side. */
+const unmetHeight = (scale: number) => unmetFont(scale) + 4;
+const fixtureSize = (scale: number) => Math.max(14, 6 * scale);
+
+/**
+ * A Renovated room's level (M4a): a star per level in its top-left cell (the top row's
+ * leftmost), under the ⚠ badge there, and under the fixture's if the top row is that one cell.
+ * The corner digit sits in the bottom row's rightmost cell, so they never meet in a bigger room.
+ */
+function LevelBadge({
+  level,
+  pop,
+  cells,
+  minX,
+  minY,
+  scale,
+  unmet,
+  fixture,
+}: {
+  level: number;
+  /** The director's id when this room was just renovated: the badge pops once per id. */
+  pop?: number;
+  cells: readonly Cell[];
+  minX: number;
+  minY: number;
+  scale: number;
+  /** The room shows the ⚠ badge (an unmet requirement), in the same corner. */
+  unmet: boolean;
+  /** The room shows a fixture's badge, in its top row's rightmost cell. */
+  fixture: boolean;
+}) {
+  const px = TILE * scale;
+  const ref = useRef<HTMLDivElement>(null);
+  const top = Math.min(...cells.map((c) => c.y));
+  const row = cells.filter((c) => c.y === top);
+  const left = Math.min(...row.map((c) => c.x));
+  const size = Math.max(12, 5 * scale);
+  const above = Math.max(
+    unmet ? unmetHeight(scale) : 0,
+    fixture && row.length === 1 ? fixtureSize(scale) : 0,
+  );
+  const y = (top - minY) * px + inset(scale) + (above > 0 ? above + inset(scale) : 0);
+  useEffect(() => {
+    if (!pop || pop <= played.levelPop || !ref.current || settings.value.reduceMotion) return;
+    played.levelPop = pop;
+    ref.current.animate(
+      [
+        { transform: `scale(${FEEL.levelPop.scale})` },
+        { transform: 'scale(0.9)' },
+        { transform: 'scale(1)' },
+      ],
+      { duration: FEEL.levelPop.ms, easing: 'ease-out' },
+    );
+  }, [pop]);
+  return (
+    <div
+      ref={ref}
+      class="level-badge"
+      title={`Renovated: level ${level}`}
+      aria-label={`Renovated, level ${level}`}
+      style={{
+        left: `${(left - minX) * px + inset(scale)}px`,
+        top: `${y}px`,
+        height: `${size}px`,
+        fontSize: `${Math.max(10, 4 * scale)}px`,
+      }}
+    >
+      {'★'.repeat(level)}
     </div>
   );
 }
@@ -218,15 +313,15 @@ function FixtureBadge({
   // The top row's rightmost cell.
   const top = Math.min(...cells.map((c) => c.y));
   const right = Math.max(...cells.filter((c) => c.y === top).map((c) => c.x));
-  const size = Math.max(14, 6 * scale);
+  const size = fixtureSize(scale);
   return (
     <div
       class={`fixture-badge rarity-${def.rarity}`}
       title={`${def.name} (fixture)`}
       aria-label={`${def.name} installed`}
       style={{
-        left: `${(right - minX + 1) * px - size - Math.max(1, scale)}px`,
-        top: `${(top - minY) * px + Math.max(1, scale)}px`,
+        left: `${(right - minX + 1) * px - size - inset(scale)}px`,
+        top: `${(top - minY) * px + inset(scale)}px`,
         width: `${size}px`,
         height: `${size}px`,
         fontSize: `${Math.round(size * 0.72)}px`,

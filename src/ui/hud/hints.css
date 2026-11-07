@@ -1,0 +1,46 @@
+/* First-time hints (D-045): a small card by the panel it talks about, never over the lot or a
+   sheet's controls (Hints.tsx measures where), above the game (its celebration is 30) and
+   below notes (40) and modals (50). It takes the pointer only over its own card. */
+.first-hint {
+  position: fixed;
+  z-index: 38;
+  overflow-y: auto;
+  padding: 12px 14px 10px;
+  border: 2px solid var(--good);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--ink);
+  box-shadow: 0 8px 24px rgb(60 40 20 / 0.25);
+  animation: hint-in 0.3s cubic-bezier(0.2, 1.3, 0.4, 1) both;
+}
+.first-hint h2 {
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+.first-hint h2::before {
+  content: '💡 ';
+  font-variant-emoji: text;
+}
+.first-hint p {
+  margin: 0 0 8px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+/* In a side column, narrower: a touch smaller, so it stays short. */
+.first-hint:not(.at-besideChecklist) p {
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+.first-hint button {
+  font-weight: 800;
+  padding: 4px 12px;
+}
+@keyframes hint-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+.reduce-motion .first-hint {
+  animation: none;
+}

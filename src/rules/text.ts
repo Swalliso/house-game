@@ -3,11 +3,13 @@
 
 import type {
   BlueprintDef,
+  ChangeOrderDef,
   Content,
   CrateDef,
   Effect,
   FeatureId,
   FixtureDef,
+  HouseCondition,
   Modifier,
   PieceCondition,
   PieceDef,
@@ -16,6 +18,7 @@ import type {
   Reward,
   RuleKey,
   Selector,
+  SpecDef,
   Tag,
   ToolDef,
   UpgradeDef,
@@ -56,7 +59,10 @@ export function ordinal(n: number): string {
 export type Phrasing = 'one' | 'some' | 'every';
 
 function plural(name: string): string {
-  return name.endsWith('s') ? name : `${name}s`;
+  if (name.endsWith('s')) return name;
+  // Library → Libraries, Nursery → Nurseries; Driveway stays Driveways.
+  if (/[^aeiou]y$/.test(name)) return `${name.slice(0, -1)}ies`;
+  return `${name}s`;
 }
 
 function featureNoun(content: Content, id: FeatureId, many: boolean): string {
@@ -118,7 +124,30 @@ export function selectorText(content: Content, sel: Selector, phrasing: Phrasing
       const noun = selectorText(content, { all: others }, phrasing);
       return `${noun} that ${many ? 'give' : 'gives'} a view`;
     }
+    // "Rooms with a view": having one reads as a clause on the rest too.
+    const isView = (s: Selector) => s !== 'all' && 'property' in s && s.property === 'view';
+    if (sel.all.some(isView) && sel.all.length > 1) {
+      const others = sel.all.filter((s) => !isView(s));
+      return `${selectorText(content, { all: others }, phrasing)} with a view`;
+    }
+    // "Doghouses in a fenced yard": so does being in a region (M4b's change orders).
+    const region = sel.all.find((s): s is { in: Region } => s !== 'all' && 'in' in s);
+    if (region && sel.all.length > 1) {
+      const others = sel.all.filter((s) => s !== region);
+      return `${selectorText(content, { all: others }, phrasing)} ${regionText(region.in)}`;
+    }
     const tags = sel.all.filter((s): s is { tag: Tag } => s !== 'all' && 'tag' in s);
+    // "Kid neighbor other than Treehouses": an excluded part reads as a clause at the end.
+    const nots = sel.all.filter((s): s is { not: Selector } => s !== 'all' && 'not' in s);
+    if (nots.length > 0 && nots.length < sel.all.length) {
+      const others = sel.all.filter((s) => s === 'all' || !('not' in s));
+      const head = selectorText(content, { all: others }, phrasing);
+      const except = joinWords(
+        nots.map((n) => selectorText(content, n.not, 'some')),
+        'or',
+      );
+      return `${head} other than ${except}`;
+    }
     // "Exterior room" already says "room".
     const isProp = (s: Selector, p: Property) => s !== 'all' && 'property' in s && s.property === p;
     const roomKind = sel.all.some((s) => isProp(s, 'exterior') || isProp(s, 'interior'));
@@ -143,9 +172,30 @@ function signed(n: number): string {
   return n < 0 ? `−${-n}` : `+${n}`;
 }
 
-function article(noun: string): string {
-  if (noun.startsWith('the ')) return noun;
-  return /^[AEIOU]/i.test(noun) ? `an ${noun}` : `a ${noun}`;
+/**
+ * Whether a name (the first, in a list) is a possessive: "Grandma’s Room" is already definite,
+ * so it takes no article. A plural possessive (a "Kids’ Room") still does.
+ */
+function isPossessive(noun: string): boolean {
+  const first = noun.split(/,|\s(?:or|and)\s/)[0] ?? noun;
+  return /['’]s\b/.test(first);
+}
+
+/**
+ * "a Kitchen", "an Office", "an L-Kitchen" (a letter read aloud: "el"), and "Grandma’s Room": a
+ * possessive name takes no article.
+ */
+export function article(noun: string): string {
+  if (noun.startsWith('the ') || isPossessive(noun)) return noun;
+  return /^([AEIOU]|[AEFHILMNORSX]-)/i.test(noun) ? `an ${noun}` : `a ${noun}`;
+}
+
+/**
+ * A piece's name after "the" (or "this", "that"): "the Kitchen", "this Bedroom". A possessive
+ * name stands alone: "Renovate Grandma’s Room", never "the Grandma’s Room".
+ */
+export function definite(noun: string, word: 'the' | 'this' | 'that' = 'the'): string {
+  return isPossessive(noun) ? noun : `${word} ${noun}`;
 }
 
 /** "touching the street or a Driveway", "in the front yard", "bordering a fenced yard". */
@@ -176,6 +226,107 @@ export function conditionText(content: Content, cond: PieceCondition): string {
   if ('borders' in cond) return 'bordering a fenced yard';
   if ('is' in cond) return article(selectorText(content, cond.is, 'one'));
   return `part of ${article(content.sets[cond.inSet].name)}`;
+}
+
+/** A count's noun, for "exactly" and "at most": "one Library", "3 Dark rooms". */
+function counted(content: Content, sel: Selector, n: number): string {
+  return n === 1
+    ? `one ${selectorText(content, sel, 'one')}`
+    : `${n} ${selectorText(content, sel, 'some')}`;
+}
+
+/**
+ * A house condition as card text (specs, and M4b's requests): "3 or more Dark rooms", "a
+ * Kitchen beside a Dining Room". The house rules carry their own text (content/house-rules.ts).
+ */
+export function houseConditionText(content: Content, cond: HouseCondition): string {
+  if ('and' in cond)
+    return joinWords(
+      cond.and.map((c) => houseConditionText(content, c)),
+      'and',
+    );
+  if ('or' in cond)
+    return joinWords(
+      cond.or.map((c) => houseConditionText(content, c)),
+      'or',
+    );
+  if ('not' in cond) return `not ${houseConditionText(content, cond.not)}`;
+  if ('stages' in cond) {
+    return cond.stages
+      .map((st, k) => {
+        const text = houseConditionText(content, st.condition);
+        return k === 0 && st.fromPhase === 0
+          ? text
+          : `from ${content.balance.phases[st.fromPhase]?.name ?? `phase ${st.fromPhase + 1}`}, ${text}`;
+      })
+      .join('; ');
+  }
+  if ('count' in cond) {
+    const { min, max } = cond;
+    const many = selectorText(content, cond.count, 'some');
+    if (min !== undefined && max !== undefined) {
+      return min === max ? `exactly ${counted(content, cond.count, min)}` : `${min}–${max} ${many}`;
+    }
+    if (max !== undefined)
+      return max === 0 ? `no ${many}` : `at most ${counted(content, cond.count, max)}`;
+    const n = min ?? 0;
+    return n <= 1 ? article(selectorText(content, cond.count, 'one')) : `${n} or more ${many}`;
+  }
+  if ('countNew' in cond) {
+    return cond.min === 1
+      ? `a new ${selectorText(content, cond.countNew, 'one')}`
+      : `${cond.min} new ${selectorText(content, cond.countNew, 'some')}`;
+  }
+  if ('none' in cond) return `no ${selectorText(content, cond.none, 'some')}`;
+  if ('adjacentPair' in cond) {
+    const [a, b] = cond.adjacentPair;
+    return `${article(selectorText(content, a, 'one'))} beside ${article(selectorText(content, b, 'one'))}`;
+  }
+  if ('fencedYardTiles' in cond) {
+    const min = cond.fencedYardTiles.min;
+    return min <= content.balance.fencedYardMin
+      ? 'a fenced yard'
+      : `a fenced yard of ${min} or more tiles`;
+  }
+  if ('group' in cond) {
+    return `${cond.minTiles} or more tiles of ${selectorText(content, cond.group, 'some')} in one group`;
+  }
+  if ('set' in cond) {
+    const n = cond.min ?? 1;
+    const name = content.sets[cond.set].name;
+    return n === 1 ? article(name) : `${n} ${plural(name)}`;
+  }
+  if ('demolishedSinceAccepted' in cond) {
+    const n = cond.demolishedSinceAccepted.min;
+    return `demolish ${n === 1 ? 'a piece' : `${n} pieces`}`;
+  }
+  if ('ratio' in cond) {
+    const r = cond.ratio;
+    const each = r.every === 1 ? '' : `${r.every} `;
+    const least = r.min ? ` (at least ${r.min})` : '';
+    return `${article(selectorText(content, r.count, 'one'))} for every ${each}${selectorText(content, r.per, r.every === 1 ? 'one' : 'some')}${least}`;
+  }
+  if ('outline' in cond) {
+    const o = cond.outline;
+    const rooms =
+      o.maxRooms === undefined ? `${o.minRooms}+ rooms` : `${o.minRooms}–${o.maxRooms} rooms`;
+    const long =
+      o.maxAspect === 1
+        ? 'longer than'
+        : o.maxAspect === 2
+          ? 'longer than twice'
+          : `longer than ${o.maxAspect} times`;
+    return `${rooms}, filling at least ${o.minFillPct}% of their box, and the box is no ${long} its width`;
+  }
+  const v = cond.variety;
+  return `${v.min} or more ${selectorText(content, v.of, 'some')}, and none of a type stands ${v.maxEach + 1} or more times`;
+}
+
+/** A checklist line's card text: its own, or generated from its condition. */
+export function specText(content: Content, spec: SpecDef): string {
+  const text = spec.text ?? houseConditionText(content, spec.condition);
+  const sentence = text.charAt(0).toUpperCase() + text.slice(1);
+  return /[.!?]$/.test(sentence) ? sentence : `${sentence}.`;
 }
 
 export function effectText(content: Content, effect: Effect): string {
@@ -277,10 +428,40 @@ export interface CardText {
   effects: string[];
   /** Reminders about lot features the effects mention: "The street is Loud." */
   notes: string[];
+  /** A pack (D-102): how many tiles one card places. */
+  pack?: string;
+  /**
+   * A member's room (M4b, D-099): whose it is, that it counts as a Bedroom, and from when Room
+   * for everyone needs it: "The twins’ room: it counts as a Bedroom, and from Framing, Room for
+   * everyone needs it."
+   */
+  member?: string;
+}
+
+/** The possessive of a member's name: "The twins’", "Grandma’s". */
+function possessive(name: string): string {
+  return name.endsWith('s') ? `${name}’` : `${name}’s`;
+}
+
+/** A member room's line (M4b): whose it is, and what Room for everyone asks of it. */
+export function memberText(content: Content, def: PieceDef): string {
+  const bedroom = article(content.pieces[def.countsAs ?? 'bedroom'].name);
+  for (const client of Object.values(content.clients)) {
+    for (const a of client.household.arrivals) {
+      if (!a.room.includes(def.id)) continue;
+      const phase = content.balance.phases[a.phase]?.name ?? `phase ${a.phase + 1}`;
+      return `${possessive(a.name)} room: it counts as ${bedroom}, and from ${phase}, Room for everyone needs it.`;
+    }
+  }
+  return `A household member’s room: it counts as ${bedroom}.`;
 }
 
 export function cardText(content: Content, def: PieceDef): CardText {
   const effects = def.effects.map((e) => effectText(content, e));
+  const pack = def.pack
+    ? `A pack: click out up to ${def.pack.maxTiles} tiles that touch, one piece in one week.`
+    : undefined;
+  const member = def.member ? memberText(content, def) : undefined;
   const tags = new Set<Tag>();
   const props = new Set<Property>();
   for (const e of def.effects) effectTags(e, tags, props);
@@ -303,7 +484,7 @@ export function cardText(content: Content, def: PieceDef): CardText {
     ];
     notes.push(`Views: ${joinWords(sources, 'and')}.`);
   }
-  return { effects, notes };
+  return { effects, notes, ...(pack ? { pack } : {}), ...(member ? { member } : {}) };
 }
 
 /** "The street is", "the Pond is", but "Trees are". */
@@ -356,6 +537,26 @@ function hostExtra(content: Content, sel: Selector): string | null {
   const r = rest[0]!;
   if (r !== 'all' && 'in' in r) return regionText(r.in);
   return `in ${article(selectorText(content, r, 'one'))}`;
+}
+
+/**
+ * What an `earn` modifier is for, so its breakdown line can be told from its source's others
+ * ("Heat wave (Pools)", "Heat wave (touching a Tree)"): "Dark pieces", "touching a Tree", "in a
+ * Living Room or Library". Null for a fixture's own piece, which the fixture's name already says.
+ */
+export function earnTargetText(content: Content, sel: Selector): string | null {
+  if (sel === 'all') return 'every piece';
+  if (isHost(sel)) return null;
+  const extra = hostExtra(content, sel);
+  if (extra) return extra;
+  const text = selectorText(content, sel, 'some').replace(/\bneighbors\b/, 'pieces');
+  return 'touching' in sel ? text.replace(/^pieces /, '') : text;
+}
+
+/** The piece types a selector names directly (`{ piece }`), or null. */
+function pieceIds(sel: Selector): readonly PieceDef['id'][] | null {
+  if (sel === 'all' || !('piece' in sel)) return null;
+  return typeof sel.piece === 'string' ? [sel.piece] : sel.piece;
 }
 
 const RULE_TEXT: Record<RuleKey, (n: number) => string> = {
@@ -458,6 +659,17 @@ export function modifierText(content: Content, mod: Modifier): string {
     case 'budget':
       return `${mod.target === 'all' ? 'Every piece' : subjectText(content, mod.target)} pays ${signed(mod.pct)}% budget`;
     case 'drawWeight': {
+      // Weight added to pieces the draw leaves out (weight 0, the special rooms): they show up
+      // at all, which "more often" would undersell.
+      const ids = pieceIds(mod.target);
+      if (
+        !mod.pct &&
+        (mod.add ?? 0) > 0 &&
+        ids?.every((id) => content.pieces[id].drawWeight === 0)
+      ) {
+        const all = selectorText(content, mod.target, 'every');
+        return `${all.charAt(0).toUpperCase() + all.slice(1)} show up in the weekly draw`;
+      }
       const what = selectorText(content, mod.target, 'some');
       const amount = mod.pct ? `${signed(mod.pct)}%` : `${signed(mod.add ?? 0)}`;
       return `${what.charAt(0).toUpperCase() + what.slice(1)} come up more often (${amount})`;
@@ -513,7 +725,15 @@ export type Term =
   | 'strike'
   | 'tools'
   | 'crates'
-  | 'upgrades';
+  | 'upgrades'
+  | 'renovate'
+  | 'checklist'
+  | 'frontYard'
+  | 'backYard'
+  | 'fencedYard'
+  | 'requirement'
+  | 'link'
+  | 'timer';
 
 export function glossary(content: Content): Record<Term, { title: string; text: string }> {
   const b = content.balance;
@@ -525,6 +745,14 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
   const economy = Object.values(content.pieces)
     .filter((p) => p.drawWeight > 0 && !p.countsAs && p.effects.some((e) => e.kind === 'economy'))
     .map((p) => p.name);
+  // The base pool's requirements, as "a Garage touching the street or a Driveway".
+  const needs = Object.values(content.pieces)
+    .filter((p) => p.drawWeight > 0 && !p.countsAs)
+    .flatMap((p) =>
+      p.effects.flatMap((e) =>
+        e.kind === 'requires' ? [`${article(p.name)} ${conditionText(content, e.condition)}`] : [],
+      ),
+    );
   return {
     comfort: {
       title: L.points,
@@ -532,11 +760,11 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
     },
     charm: {
       title: L.mult,
-      text: `Multiplies ${L.points}. It starts at ×1 and goes up for each set you hold, and with a few blueprints.`,
+      text: `Multiplies ${L.points}. It starts at ×1 and goes up for each set you hold, each line of the client’s checklist that holds (+${multNumber(r.specBonus)}), and with a few blueprints.`,
     },
     sparkle: {
       title: L.xMult,
-      text: `Multiplies ${L.mult} itself. Rare: only a few Rare goods have it, and each needs a setup. Each source counts once a week.`,
+      text: `Multiplies ${L.mult} itself. Rare: the Full House set (×2) and a few Rare goods have it, and each needs a setup. Each source counts once a week.`,
     },
     wow: {
       title: L.total,
@@ -606,6 +834,56 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
     upgrades: {
       title: 'Company upgrades',
       text: 'Permanent for the run: more slots, a bigger hand, more rerolls, lower prices, or interest on your savings. One a visit.',
+    },
+    renovate: {
+      title: 'Renovate',
+      text:
+        `Once the house has all the rooms of a type its checklist wants (one Kitchen, its ` +
+        `Bedrooms, …), a card of that type can renovate one of them instead of being placed: ` +
+        `+${b.renovate.pointsPerLevel} ${L.points} a level, up to ${b.renovate.maxLevel}. ` +
+        `It’s the week’s build.`,
+    },
+    checklist: {
+      title: 'The checklist',
+      text:
+        `What the client wants: the house rules every client has, then their own wishes. Each ` +
+        `line adds +${multNumber(r.specBonus)} ${L.mult} in every week it holds, and a ` +
+        `demolition or a new piece can turn one off.`,
+    },
+    // The board's terms (D-077), for the inspect panel and the cards.
+    frontYard: {
+      title: 'Front yard',
+      text:
+        'The open ground between the house and the street: rows nearer the street than the ' +
+        'house’s front row. Before the first room goes in, the whole lot is front yard.',
+    },
+    backYard: {
+      title: 'Back yard',
+      text: 'The open ground level with the house or behind it, away from the street.',
+    },
+    fencedYard: {
+      title: 'Fenced yard',
+      text:
+        `Open ground closed in by the house, Fences, and the lot’s edge, with at least ` +
+        `${b.fencedYardMin} tiles. It must touch a Fence and the house, and not the street.`,
+    },
+    requirement: {
+      title: 'Requirements',
+      text:
+        `Some pieces need something to earn: ${joinWords(needs, 'and')}. If it isn’t met, ` +
+        `the piece earns nothing (⚠ on the board); a few can’t be placed without it.`,
+    },
+    link: {
+      title: 'Hallway links',
+      text:
+        'A Hallway earns nothing itself, but every room it touches counts as touching every ' +
+        'other room along it, for bonuses and sets.',
+    },
+    timer: {
+      title: 'Timers',
+      text:
+        'Some pieces change with time, counted in weeks from when they were placed: a Sapling ' +
+        'becomes a Tree. The inspect panel says when.',
     },
     strike: {
       title: 'Strike a card',
@@ -679,4 +957,31 @@ export function crateText(content: Content, def: CrateDef): string[] {
             ? `${selectorText(content, def.filter, 'some')}`
             : 'pieces';
   return [`Open it and keep 1 of ${n} ${what}`];
+}
+
+// ---------------------------------------------------------------------------------------
+// Change orders (M4b).
+
+/**
+ * A change order's rules as sentences, from its data: what a request asks and pays, what a
+ * restriction forbids and pays, or what a phase effect does.
+ */
+export function changeOrderText(content: Content, def: ChangeOrderDef): string[] {
+  const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+  switch (def.kind) {
+    case 'request':
+      return [
+        `${cap(houseConditionText(content, def.condition))}, by the next milestone`,
+        `Met: ${rewardText(content, def.reward)}`,
+      ];
+    case 'restriction': {
+      const what = selectorText(content, def.forbid, 'some').replace(/\bneighbors?\b/, 'pieces');
+      return [
+        `Place no ${what} until the next milestone`,
+        `Kept: ${rewardText(content, def.reward)}`,
+      ];
+    }
+    case 'phase':
+      return [...def.modifiers.map((m) => modifierText(content, m)), 'For the next phase'];
+  }
 }

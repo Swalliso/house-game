@@ -21,6 +21,13 @@
   /* Good and bad: blue and orange, never color alone (D-047, §2). */
   --good: #2f6fd0;
   --bad: #e07a1f;
+  /* Darker cuts of the same colors for small text, at least 4.5:1 (WCAG AA) on the panel and
+     its row tints; the tokens above stay for big numbers and marks. */
+  --comfort-text: #2f66b8;
+  --charm-text: #b23f63;
+  --good-text: #2a64c4;
+  /* Small orange text (AA 4.5:1 on the panel and the paper): the marks keep --bad. */
+  --bad-text: #a14f08;
   font-family:
     system-ui,
     -apple-system,
@@ -133,6 +140,53 @@ button:focus-visible,
   flex-direction: column;
   gap: 10px;
 }
+/* The left column never scrolls as a whole: the score panel keeps its height, and the
+   checklist and Inspect share the rest, each scrolling on its own if it must. The checklist
+   comes first, with Inspect kept to a few lines; while a play is looked at (placing,
+   installing, a tool, demolishing: .looking, App.tsx) Inspect comes first, and the checklist
+   keeps a few rows and scrolls the ones that flip into view (Checklist.tsx). */
+.left > .score-panel {
+  flex: none;
+}
+.left > .checklist {
+  flex: 0 1 auto;
+  min-height: 96px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+.left > .inspect {
+  flex: 0 1000 auto;
+  min-height: 160px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+/* Only "Point at anything…": just its own two lines, with no room kept for more. */
+.left > .inspect:has(> p.muted:only-child) {
+  flex-shrink: 0;
+  min-height: 0;
+}
+.left.looking > .checklist {
+  flex-shrink: 1000;
+}
+.left.looking > .inspect {
+  flex-shrink: 1;
+  min-height: 0;
+}
+/* On a short screen (1280×720) that still isn't room for a long preview, so while a play is
+   looked at the score panel keeps to its equation (Inspect's notes say which sets, lines, and
+   budget the play would change, and the checklist marks the lines), and the checklist keeps
+   its name and a row or two. */
+@media (max-height: 820px) {
+  .left.looking .score-detail,
+  .left.looking .score-panel .budget-line {
+    display: none;
+  }
+  .left.looking > .checklist {
+    min-height: 72px;
+  }
+}
 .center {
   grid-column: 2;
   grid-row: 2;
@@ -208,6 +262,15 @@ h3 {
   font-size: 12px;
   opacity: 0.75;
   font-family: ui-monospace, Menlo, monospace;
+}
+/* The run's client and crew, under the name (TopBar.tsx): small, so the bar stays one row at
+   1280px with Complete early showing. */
+.topbar .brand-who {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.2;
+  color: #f3e2cc;
 }
 .phase {
   line-height: 1.25;
@@ -403,6 +466,27 @@ h3 {
   border-color: var(--bad);
   color: #9a4a0a;
 }
+/* The ghost's labels (Board.tsx), stacked: its own, and a pack's next tile's nearest the
+   cells, so the two never overlap. */
+.ghost-labels {
+  position: absolute;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  transform: translate(-50%, calc(-100% - 6px));
+  pointer-events: none;
+}
+.ghost-labels.below {
+  flex-direction: column-reverse;
+  transform: translate(-50%, 6px);
+}
+.ghost-labels > .ghost-reason,
+.ghost-labels > .ghost-delta {
+  position: static;
+  transform: none;
+}
 
 .badges,
 .popups {
@@ -554,6 +638,12 @@ h3 {
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
+.layer.comfort .layer-name {
+  color: var(--comfort-text);
+}
+.layer.charm .layer-name {
+  color: var(--charm-text);
+}
 .layer-value {
   font-size: 28px;
   font-weight: 900;
@@ -606,10 +696,10 @@ h3 {
   font-weight: 800;
 }
 .delta.good {
-  color: var(--good);
+  color: var(--good-text);
 }
 .delta.bad {
-  color: #b85c0c;
+  color: var(--bad-text);
 }
 .big-week {
   margin-top: 6px;
@@ -644,11 +734,11 @@ h3 {
   font-weight: 600;
 }
 .sets .comfort {
-  color: var(--comfort);
+  color: var(--comfort-text);
   font-weight: 700;
 }
 .sets .charm {
-  color: var(--charm);
+  color: var(--charm-text);
   font-weight: 700;
 }
 .sets li.gained {
@@ -714,14 +804,13 @@ h3 {
 
 .inspect {
   font-size: 14px;
-  min-height: 160px;
 }
 .inspect p {
   margin: 4px 0;
 }
 .earns {
   font-weight: 600;
-  color: var(--comfort);
+  color: var(--comfort-text);
 }
 .lines {
   list-style: none;
@@ -754,7 +843,7 @@ h3 {
   font-weight: 700;
 }
 .set-note.good {
-  color: var(--charm);
+  color: var(--charm-text);
   font-weight: 700;
 }
 .set-note.bad {
@@ -887,6 +976,18 @@ h3 {
 }
 .mini-cell.lawn {
   background: #6fb35a;
+}
+/* Members' rooms (M4b): a Bedroom's color, with a dashed edge so a member's card stands out. */
+.mini-cell.nursery,
+.mini-cell.kidsRoom,
+.mini-cell.grandmasRoom,
+.mini-cell.renfieldsRoom,
+.mini-cell.nanasRoom,
+.mini-cell.rowansStudio,
+.mini-cell.ivysRoom {
+  background: #d9a877;
+  outline: 1px dashed rgb(94 59 38 / 0.7);
+  outline-offset: -1px;
 }
 /* End week: on a short window (1280×720, D-047) the column scrolls, so End week sticks to its
    bottom and stays in view, like the end screen's buttons (end.css). Only End week, so it
@@ -1039,6 +1140,25 @@ h3 {
 }
 .notice .close {
   padding: 2px 8px;
+}
+/* In the game, over the controls strip at the bottom (the build label keeps its corner), so
+   it never covers the lot or the shop's offers. */
+.notice.in-game {
+  bottom: 0;
+  left: 0;
+  right: 0;
+  transform: none;
+  max-width: none;
+  justify-content: center;
+  padding: 2px 12px;
+  border-width: 1px 0 0;
+  border-radius: 0;
+  box-shadow: 0 -4px 12px rgb(60 40 20 / 0.12);
+  font-size: 13px;
+}
+.notice.in-game button {
+  padding: 1px 8px;
+  font-size: 12px;
 }
 .modal-backdrop {
   position: fixed;

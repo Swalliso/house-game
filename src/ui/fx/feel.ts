@@ -58,6 +58,39 @@ export const FEEL = {
 
   /** Squash-and-wobble on a triggering piece. */
   wobble: { ms: 260, scale: 1.12 },
+  /** A pack's tiles (D-102): each click's tick rises in pitch by `step`, from `rate`. */
+  packTile: { rate: 0.85, step: 0.05 },
+  /** A Renovation (M4a): the room's level badge pops in. */
+  levelPop: { ms: 420, scale: 1.6 },
+  /** A Renovation's beat (M4a): the room wobbles, says its new level, and knocks twice. */
+  renovateMs: 480,
+
+  /**
+   * The client's checklist in the tally (M4a), after the sets: each line held lights its row
+   * and adds its Charm, a quick beat each, since a checklist has 8–10 lines. A line the week
+   * turned on (★, a pop) or off (✕, a shake) gets a longer beat, with its name on the board.
+   * A row's flash lasts as long as a popup for its beat would.
+   */
+  checklist: {
+    stepMs: 250,
+    flipMs: 700,
+    /**
+     * Two lines flipped in one week: the second's popups land this many tiles below the first's,
+     * so they clear its "+Charm" while it rises (at 2× zoom and up to about 4× tally speed).
+     */
+    flipRows: 1.5,
+    /** A held line's chime, under a line turned on (full volume). */
+    chimeGain: 0.55,
+    /** A line turned on pops its row to this scale, and its Charm to `charmScale`. */
+    popScale: 1.05,
+    charmScale: 1.4,
+    /** A line turned off shakes its row this many px (whole px). */
+    shakePx: 3,
+    /** The share of a row's flash its pop or shake takes; the tint fades over all of it. */
+    moveShare: 0.6,
+    /** The score panel's "N checklist lines" pulses as each line lands. */
+    tickMs: 200,
+  },
 
   /** Each fast-forwarded week when a milestone completes early (D-040). */
   fastForward: { weekMs: 420 },
@@ -66,9 +99,18 @@ export const FEEL = {
   demolishMs: 500,
 
   /**
+   * A piece growing into another at a week's start (the Nursery into a Kids' Room, a Sapling
+   * into a Tree): it wobbles, and its popup holds as a beat of `stepMs` would. In a phase's first
+   * week (as the shop closes) a household member may arrive too: the growth waits until their
+   * doorbell has rung and their cards have landed (FEEL.arrival), `afterArrivalMs` in all.
+   */
+  transform: { stepMs: 700, afterArrivalMs: 1000 },
+
+  /**
    * How long the tally waits on a milestone banner before playing what comes next. When the
-   * shop follows, it waits the banner out instead, in real time at any tally speed (holding
-   * hurries it, a click skips it), so the banner is read before the shop opens over it.
+   * shop or a change order follows, it waits the banner out instead, in real time at any tally
+   * speed (holding hurries it, a click skips it), so the banner is read before the sheet opens
+   * over it.
    */
   milestoneHoldMs: 900,
   /** When a phase's last week crosses its target, the target's ding gets this long alone. */
@@ -102,6 +144,36 @@ export const FEEL = {
 
   /** An installed fixture's pop on its piece. */
   installMs: 360,
+
+  /**
+   * Change orders (M4b). The sheet arrives with a paper flourish: it slides up from a slight
+   * tilt and settles, over a backdrop that fades in. Its keys wait for the flourish, so an
+   * Enter pressed for the week before can't answer it. An answer is stamped on the sheet, in
+   * real time (holding hurries it, a click skips it), before the shop opens.
+   */
+  changeOrder: {
+    inMs: 420,
+    /** The tilt it arrives from, in degrees. */
+    tiltDeg: -3,
+    keyDelayMs: 450,
+    /** The stamp lands in this long, then the sheet holds until `stampMs`. */
+    stampInMs: 160,
+    stampMs: 700,
+    /** A restriction broken (✕ on the piece), and each order resolving at its milestone. */
+    brokenMs: 650,
+    resolvedMs: 900,
+  },
+
+  /**
+   * A household member arriving (M4b, D-099): a banner and a doorbell (ding, then dong after
+   * `dongMs`), and their cards pop into the reserve once it has rung, with a shimmer.
+   */
+  arrival: {
+    dongMs: 300,
+    landDelayMs: 450,
+    popMs: 520,
+    popScale: 1.25,
+  },
 
   /** A ×Mult source's gold stamp in the tally (D-056): each lands on its own beat. */
   sparkleStepMs: 650,

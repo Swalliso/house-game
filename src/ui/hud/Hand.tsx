@@ -92,7 +92,8 @@ function CardView({ card, i }: { card: CardData; i: number }) {
   const text = cardText(CONTENT, def);
   const fits = cardsFit.value[i] ?? true;
   const isSelected = isPicked('hand', i);
-  const rot = isSelected ? rotation.value : 0;
+  // A pack (D-102) doesn't turn, so it never shows a turn left from another card this week.
+  const rot = isSelected && !def.pack ? rotation.value : 0;
   return (
     <button
       type="button"
@@ -114,6 +115,8 @@ function CardView({ card, i }: { card: CardData; i: number }) {
           {text.effects.map((t) => (
             <li key={t}>{t}</li>
           ))}
+          {/* A member's room (M4b): whose it is. Only the ?debug panel deals one. */}
+          {text.member && <li class="member-note">{text.member}</li>}
         </ul>
       </div>
       <div class="card-foot">
@@ -230,10 +233,21 @@ export function Hand() {
   const pending = tentative.value;
   const armed = passArmed.value;
   const demolishing = tool.value === 'demolish';
-  // Only pieces turn: a fixture or a tool doesn't, except the Moving Truck's carried piece.
+  // Only pieces turn: a fixture or a tool doesn't, except the Moving Truck's carried piece, and
+  // nor does a pack (D-102), which is the tiles clicked out (rotate() does nothing for them).
   const sel = selection.value;
-  const canTurn = sel?.kind === 'piece' || (sel?.kind === 'tool' && movingUid.value !== null);
-  const endLabel = pending ? 'End week · build it' : armed ? 'Pass? Press again' : 'Pass this week';
+  const canTurn =
+    (sel?.kind === 'piece' && !CONTENT.pieces[sel.id].pack) ||
+    (sel?.kind === 'tool' && movingUid.value !== null);
+  const endLabel = pending
+    ? pending.t === 'renovate'
+      ? 'End week · renovate it'
+      : 'End week · build it'
+    : armed
+      ? 'Pass? Press again'
+      : 'Pass this week';
+  // A pack (D-102) being clicked out: Cancel takes all its tiles off.
+  const packing = pending?.t === 'place' && !!pending.shape;
   return (
     <section class="hand" aria-label="This week's cards">
       <h2>Pick one to build</h2>
@@ -262,7 +276,7 @@ export function Hand() {
         </button>
         {placing && !demolishing && (
           <button type="button" onMouseDown={noFocus} onClick={cancelPlacement} title="Esc">
-            {pending ? 'Move it' : 'Cancel'}
+            {packing ? 'Clear tiles' : pending ? 'Move it' : 'Cancel'}
           </button>
         )}
       </div>

@@ -85,8 +85,9 @@ const open = emptyRows(10, 10);
 
 describe('special pieces', () => {
   it('are the 9 weight-0 pieces: never in the weekly draw, all in the shop and the Catalog', () => {
+    // Member rooms (M4b) are weight 0 too, but arrive with the household (households.test.ts).
     const weightless = (Object.keys(CONTENT.pieces) as PieceId[]).filter(
-      (id) => CONTENT.pieces[id].drawWeight === 0,
+      (id) => CONTENT.pieces[id].drawWeight === 0 && !CONTENT.pieces[id].member,
     );
     expect(weightless.sort()).toEqual([...SPECIAL].sort());
     for (let phase = 0; phase < CONTENT.balance.phases.length; phase++) {
@@ -285,41 +286,66 @@ describe('Sunroom', () => {
 });
 
 describe('Hot Tub', () => {
-  it('+3 per touching Patio', () => {
-    expectCard('hotTub', 'yard', ['Wet', 'Social'], ['+3 per touching Patio']);
+  it('+3 per touching Patio, while it touches a room', () => {
+    expectCard(
+      'hotTub',
+      'yard',
+      ['Wet', 'Social'],
+      ['Earns nothing unless touching a room', '+3 per touching Patio'],
+    );
     expect(earned(open, [['hotTub', 0, 0]])).toEqual([0]);
-    // Between two Patios: 3 + 3. It's no view or Kitchen, so the Patios get nothing.
-    expect(
-      earned(open, [
-        ['patio', 0, 0],
-        ['hotTub', 2, 0],
-        ['patio', 3, 0],
-      ]),
-    ).toEqual([0, 6, 0]);
+    // Between two Patios, above a Closet that all three touch: 3 + 3. It's no view or Kitchen,
+    // so the Patios get nothing.
+    const patios: Placement[] = [
+      ['patio', 0, 0],
+      ['hotTub', 2, 0],
+      ['patio', 3, 0],
+    ];
+    expect(earned(open, [...patios, ['closet', 2, 1]])).toEqual([0, 6, 0, 1]);
+    // The Patio rule (D-101): with no room it earns nothing, and a Hallway isn't a room.
+    expect(tally(open, patios).pieces[1]).toMatchObject({ earned: 0, unmet: 'touching a room' });
+    expect(earned(open, [...patios, ['hallway', 2, 1, 1]])).toEqual([0, 0, 0, 0]);
   });
 });
 
 describe('Fire Pit', () => {
-  it('touching Patios earn +50%; nothing else does', () => {
-    expectCard('firePit', 'yard', ['Social'], ['Touching Patios earn +50%']);
+  it('touching Patios earn +50% while it touches a room; nothing else does', () => {
+    expectCard(
+      'firePit',
+      'yard',
+      ['Social'],
+      ['Earns nothing unless touching a room', 'Touching Patios earn +50%'],
+    );
     expect(earned(open, [['firePit', 0, 0]])).toEqual([0]);
     // The Patio: +2 for the Kitchen and +2 for the Living Room, at +50%: 6. The Hot Tub beside
-    // the Fire Pit earns its plain 3.
-    expect(
-      earned(open, [
-        ['patio', 2, 0],
-        ['kitchen', 0, 0],
-        ['livingRoom', 4, 0],
-        ['firePit', 2, 2],
-        ['hotTub', 3, 2],
-      ]),
-    ).toEqual([6, 0, 0, 0, 3]);
-    // Two Fire Pits add up: +2 at +100% is 4, shown as one aura line.
-    const t = tally(open, [
+    // the Fire Pit earns its plain 3. Each touches a room (the Fire Pit the Kitchen, the Hot
+    // Tub the Living Room), as the Patio rule (D-101) asks.
+    const house: Placement[] = [
+      ['patio', 2, 0],
+      ['kitchen', 0, 1],
+      ['livingRoom', 4, 0],
+      ['firePit', 2, 2],
+      ['hotTub', 3, 2],
+    ];
+    expect(earned(open, house)).toEqual([6, 0, 0, 0, 3]);
+    // With the Kitchen a row up, the Fire Pit touches no room, so its aura doesn't apply and
+    // the Patio earns its plain 4.
+    const away = tally(open, [
       ['patio', 2, 0],
       ['kitchen', 0, 0],
+      ['livingRoom', 4, 0],
       ['firePit', 2, 2],
-      ['firePit', 3, 2],
+      ['hotTub', 3, 2],
+    ]);
+    expect(away.pieces.map((p) => p.earned)).toEqual([4, 0, 0, 0, 3]);
+    expect(away.pieces[3]!.unmet).toBe('touching a room');
+    // Two Fire Pits, each touching the Kitchen too, add up: +2 at +100% is 4, shown as one
+    // aura line.
+    const t = tally(open, [
+      ['patio', 2, 0],
+      ['kitchen', 0, 1],
+      ['firePit', 2, 2],
+      ['firePit', 1, 0],
     ]);
     expect(t.pieces[0]!.earned).toBe(4);
     expect(t.pieces[0]!.lines).toContainEqual({

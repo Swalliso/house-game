@@ -1,13 +1,14 @@
 // The greedy bot (§8): the placement with the best exact scoreOnly() total this week.
 //
-// It ranks every legal placement by the rules' cheap local estimate and scores only the best
-// few exactly (§4, Performance): the top TOP_K overall, the top PER_CARD of each card, and up
-// to HINT_CAP of the plays the estimate flags as blind spots (one that might complete a set,
-// a Fence that would close a fenced yard, a Hallway that would link rooms), since those move
-// the week in ways the estimate can't see. Estimate ties break by a seeded key per play
-// (rankPlays), never by list position: legalPlacements runs from the back row, so ranking by
-// position built every house against the back of the lot. Exact ties go to a random one of
-// the best, from the same stream, so houses vary between runs.
+// It ranks every legal placement by the rules' cheap local estimate (which sees the checklist
+// lines a play turns on or off that counts can decide) and scores only the best few exactly
+// (§4, Performance): the top TOP_K overall, the top PER_CARD of each card, and up to HINT_CAP
+// of the plays the estimate flags as blind spots (one that might complete a set, a Fence that
+// would close a fenced yard, a Hallway that would link rooms, a piece that would join an unmet
+// pair line's types), since those move the week in ways the estimate can't see. Estimate ties
+// break by a seeded key per play (rankPlays), never by list position: legalPlacements runs
+// from the back row, so ranking by position built every house against the back of the lot.
+// Exact ties go to a random one of the best, from the same stream, so houses vary between runs.
 //
 // When even the best placement wouldn't raise this week's total, it rerolls if it can, and
 // passes rather than lose score. It never demolishes. Its options (makeGreedy) set when it
@@ -21,16 +22,19 @@ import type {
   Estimate,
   InstallAction,
   PlaceAction,
+  RenovateAction,
   Rng,
   Rules,
   RunState,
 } from '../../src/rules/index.ts';
 import type { Policy } from './index.ts';
+import { fencePlans } from '../enclosure.ts';
+import { answerChangeOrder } from './orders.ts';
 import { shopAct, useTools, type StrikeMode } from './shop.ts';
 
 export const TOP_K = 12;
 const PER_CARD = 2;
-/** At most this many hinted plays (set, yard, link) are scored exactly, best estimate first. */
+/** At most this many hinted plays (set, yard, link, pair) are scored exactly, best first. */
 export const HINT_CAP = 24;
 
 /** When greedy completes a milestone early: 'last' only when it saves exactly one week. */
@@ -56,6 +60,13 @@ export interface RankedPlay {
  */
 export function tieKey(salt: number, p: PlaceAction): number {
   let h = salt ^ Math.imul(p.x + 1, 0x9e3779b1);
+  // A pack's tiles (D-102) tell apart plays at the same spot.
+  if (p.shape) {
+    for (const row of p.shape) {
+      for (let k = 0; k < row.length; k++) h = Math.imul(h ^ row.charCodeAt(k), 0x01000193);
+      h = Math.imul(h ^ 0x2f, 0x01000193);
+    }
+  }
   h = Math.imul(h ^ (h >>> 15), 0x85ebca77) ^ Math.imul(p.y + 1, 0xc2b2ae3d);
   h = Math.imul(h ^ (h >>> 13), 0x27d4eb2f) ^ (p.rot + 4 * p.i + (p.from === 'reserve' ? 64 : 0));
   h = Math.imul(h ^ (h >>> 16), 0x21f0aaad);
@@ -80,7 +91,7 @@ export function rankPlays(
     .sort((a, b) => b.est.delta - a.est.delta || a.key - b.key);
 }
 
-const hinted = (est: Estimate) => est.setHint || est.yardHint || est.linkHint;
+const hinted = (est: Estimate) => est.setHint || est.yardHint || est.linkHint || est.specHint;
 
 /** The plays worth scoring exactly, by the cheap estimate, in rank order. */
 export function shortlist(
@@ -135,21 +146,31 @@ export function makeGreedy(opts: GreedyOptions = {}): Policy {
     name: 'greedy',
     label: labelOf(early, strikes),
     act(rules: Rules, state: RunState, rng: Rng): Action {
+      // M4b: accept requests, decline restrictions, acknowledge phase effects.
+      if (state.screen === 'changeOrder') return answerChangeOrder(rules, state);
       const salt = rng.u32();
       if (state.screen === 'shop') return shopAct(rules, state, rng, { salt, strikes, early });
       if (completesEarly(rules, state, early)) return { t: 'completeEarly' };
       const free = useTools(rules, state, salt);
       if (free) return free;
       const plays: PlaceAction[] = [];
-      const installs: InstallAction[] = [];
+      // Installs and Renovations are few, so each is scored exactly. So are Fence packs that
+      // close a yard (D-102): the rules list only a pack's suggested shapes, and the first
+      // Fence earns nothing until its yard closes.
+      const exact: (PlaceAction | InstallAction | RenovateAction)[] = [];
       for (const p of rules.legalPlays(state)) {
-        if (p.t === 'place') plays.push(p);
-        else installs.push(p);
+        // A single tile of a pack isn't worth ranking: the planner below finds the ones that
+        // close a yard, and a lone Fence or Driveway tile earns next to nothing.
+        if (p.t === 'place') {
+          if (!(p.shape && p.shape.length === 1 && p.shape[0] === '#')) plays.push(p);
+        } else exact.push(p);
       }
+      state.hand.forEach((_, i) => exact.push(...fencePlans(rules, state, 'hand', i)));
+      state.reserve.forEach((_, i) => exact.push(...fencePlans(rules, state, 'reserve', i)));
       const passTotal = rules.scoreOnly(state, null);
-      let best: (PlaceAction | InstallAction)[] = [];
+      let best: (PlaceAction | InstallAction | RenovateAction)[] = [];
       let bestTotal = -Infinity;
-      for (const play of [...shortlist(rules, state, plays, salt), ...installs]) {
+      for (const play of [...shortlist(rules, state, plays, salt), ...exact]) {
         const total = rules.scoreOnly(state, play);
         if (total > bestTotal) {
           bestTotal = total;

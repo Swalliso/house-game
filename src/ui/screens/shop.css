@@ -161,6 +161,37 @@
   font-size: 12px;
   color: #9a4a0a;
 }
+/* D-103: a fixture's worth in your house (goods.tsx' FixtureWorth), just above its price: blue
+   with ▲ for a gain, orange with ▼ for a loss, muted when nothing takes it or it adds nothing.
+   It's small text, so it's in the darker text cuts, at least 4.5:1 (WCAG AA) where it sits,
+   near the foot of the card: over its tint, 4.6:1 on an Uncommon card's blue and 5:1 on a
+   Common card. A Rare card's gold takes no tint (the blue over it would be 4.46:1). */
+.offer .fixture-worth {
+  margin: 4px 0 0;
+  padding: 4px 7px;
+  border-radius: 6px;
+  border-left: 3px solid var(--good);
+  background: rgb(47 111 208 / 0.08);
+  color: var(--good-text);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+.offer .fixture-worth.bad {
+  border-left-color: var(--bad);
+  background: rgb(224 122 31 / 0.1);
+  color: var(--bad-text);
+}
+/* A little darker than --muted, which is 4.42:1 at the foot of a Rare card (this is 4.84:1). */
+.offer .fixture-worth.none {
+  border-left-color: var(--panel-edge);
+  background: none;
+  color: #76655a;
+  font-weight: 600;
+}
+.offer.rarity-rare .fixture-worth {
+  background: none;
+}
 .offer.rarity-common {
   border-color: var(--rarity-common);
 }

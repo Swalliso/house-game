@@ -195,6 +195,8 @@ export function goodValue(rules: Rules, s: RunState, good: Good, rng: Rng, bot: 
           : crate.contents === 'fixture'
             ? Object.values(c.fixtures).map((d) => ({ kind: 'fixture', id: d.id }))
             : Object.values(c.pieces)
+                // A member's room (M4b) is never in a crate.
+                .filter((d) => !d.member)
                 .filter((d) => (crate.pool === 'special' ? d.drawWeight === 0 : true))
                 .filter((d) => !crate.filter || d.category !== 'indoor')
                 .map((d) => ({ kind: 'piece', id: d.id }));
@@ -211,8 +213,11 @@ export function goodValue(rules: Rules, s: RunState, good: Good, rng: Rng, bot: 
           return weekly * left * 0.12;
         case 'foreman':
           return weekly * phasesLeft(rules, s) * 0.3;
-        case 'storageUnit':
-          return s.reserve.length >= slots.reserve ? weekly * left * 0.04 : weekly * 0.5;
+        case 'storageUnit': {
+          // Only bought pieces fill the slots (a crew's and an arrival's cards sit in extra ones).
+          const used = s.reserve.filter((r) => !r.crew && !r.arrival).length;
+          return used >= slots.reserve ? weekly * left * 0.04 : weekly * 0.5;
+        }
         case 'toolBelt':
           return s.supplies.length >= slots.supplies ? weekly * left * 0.04 : weekly * 0.5;
         case 'draftingTable':

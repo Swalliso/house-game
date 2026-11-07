@@ -1,6 +1,67 @@
 import { describe, expect, it } from 'vitest';
-import { cardText, countedNames, effectText, selectorText } from './text.ts';
+import {
+  article,
+  cardText,
+  countedNames,
+  definite,
+  earnTargetText,
+  effectText,
+  modifierText,
+  selectorText,
+} from './text.ts';
 import { TEST_CONTENT as C } from './testing.ts';
+import { CONTENT } from '../content/index.ts';
+
+describe('articles', () => {
+  it('a possessive name takes none: "Grandma’s Room", but "a Kids’ Room"', () => {
+    expect(article('Kitchen')).toBe('a Kitchen');
+    expect(article('Office')).toBe('an Office');
+    expect(article('Grandma’s Room')).toBe('Grandma’s Room');
+    expect(article('Kids’ Room')).toBe('a Kids’ Room');
+    // In a list, only the first name decides.
+    expect(article('Bedroom, Nursery, or Grandma’s Room')).toBe(
+      'a Bedroom, Nursery, or Grandma’s Room',
+    );
+    expect(definite('Kitchen')).toBe('the Kitchen');
+    expect(definite('Bedroom', 'this')).toBe('this Bedroom');
+    expect(definite('Grandma’s Room')).toBe('Grandma’s Room');
+    expect(definite('Renfield’s Room', 'that')).toBe('Renfield’s Room');
+    expect(definite('Kids’ Room')).toBe('the Kids’ Room');
+  });
+});
+
+describe('modifier text', () => {
+  it('says weight added to pieces the draw leaves out shows them at all: the Architect', () => {
+    const [specials] = CONTENT.crews.architect.modifiers;
+    expect(modifierText(CONTENT, specials!)).toBe(
+      'Playrooms, Libraries, Mudrooms, and Pools show up in the weekly draw',
+    );
+    expect(
+      modifierText(CONTENT, { kind: 'drawWeight', target: { piece: 'library' }, add: 20 }),
+    ).toBe('Libraries show up in the weekly draw');
+    // Pieces already in the draw come up more often.
+    expect(
+      modifierText(CONTENT, { kind: 'drawWeight', target: { piece: 'homeOffice' }, pct: 100 }),
+    ).toBe('Home Offices come up more often (+100%)');
+    expect(
+      modifierText(CONTENT, { kind: 'drawWeight', target: { piece: 'bedroom' }, add: 5 }),
+    ).toBe('Bedrooms come up more often (+5)');
+  });
+
+  it('names what an earn modifier is for, for telling breakdown lines apart', () => {
+    expect(earnTargetText(C, { piece: 'pool' })).toBe('Pools');
+    expect(earnTargetText(C, { tag: 'Dark' })).toBe('Dark pieces');
+    expect(earnTargetText(C, { touching: { feature: 'tree' } })).toBe('touching a Tree');
+    expect(earnTargetText(C, { all: [{ property: 'room' }, { tag: 'Sunny' }] })).toBe(
+      'Sunny rooms',
+    );
+    expect(earnTargetText(C, { all: [{ host: true }, { piece: ['livingRoom', 'library'] }] })).toBe(
+      'in a Living Room or Library',
+    );
+    // A fixture's own piece: its name says it all.
+    expect(earnTargetText(C, { host: true })).toBeNull();
+  });
+});
 
 describe('card text', () => {
   it('reads like a sentence for each effect kind', () => {

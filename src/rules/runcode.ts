@@ -5,14 +5,17 @@
 
 import type {
   Action,
+  ArrivalId,
   BlueprintId,
   CardType,
+  ChangeOrderId,
   Content,
   FixtureId,
   Good,
   InstallAction,
   PieceId,
   PlaceAction,
+  RenovateAction,
   RunCodeData,
   RunSetup,
   ToolId,
@@ -117,6 +120,16 @@ const isObject = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v);
 const isInt = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v);
 
+/** A pack's tiles (D-102): a few short rows of '#' and '.'; the rules check the rest. */
+function isShape(v: unknown): v is string[] {
+  return (
+    Array.isArray(v) &&
+    v.length > 0 &&
+    v.length <= 16 &&
+    v.every((r) => typeof r === 'string' && r.length > 0 && r.length <= 16 && /^[#.]+$/.test(r))
+  );
+}
+
 function isPlace(v: unknown): v is PlaceAction {
   return (
     isObject(v) &&
@@ -125,7 +138,8 @@ function isPlace(v: unknown): v is PlaceAction {
     isInt(v.i) &&
     isInt(v.x) &&
     isInt(v.y) &&
-    (v.rot === 0 || v.rot === 1 || v.rot === 2 || v.rot === 3)
+    (v.rot === 0 || v.rot === 1 || v.rot === 2 || v.rot === 3) &&
+    (v.shape === undefined || isShape(v.shape))
   );
 }
 
@@ -139,6 +153,16 @@ function isInstall(v: unknown): v is InstallAction {
   );
 }
 
+function isRenovate(v: unknown): v is RenovateAction {
+  return (
+    isObject(v) &&
+    v.t === 'renovate' &&
+    (v.from === 'hand' || v.from === 'reserve') &&
+    isInt(v.i) &&
+    isInt(v.uid)
+  );
+}
+
 const cleanPlace = (v: PlaceAction): PlaceAction => ({
   t: 'place',
   from: v.from,
@@ -146,6 +170,7 @@ const cleanPlace = (v: PlaceAction): PlaceAction => ({
   x: v.x,
   y: v.y,
   rot: v.rot,
+  ...(v.shape ? { shape: [...v.shape] } : {}),
 });
 const cleanInstall = (v: InstallAction): InstallAction => ({
   t: 'install',
@@ -153,6 +178,15 @@ const cleanInstall = (v: InstallAction): InstallAction => ({
   i: v.i,
   uid: v.uid,
 });
+
+/** A tentative play, with only its known fields. */
+function cleanPending(
+  v: PlaceAction | InstallAction | RenovateAction,
+): PlaceAction | InstallAction | RenovateAction {
+  if (v.t === 'place') return cleanPlace(v);
+  if (v.t === 'install') return cleanInstall(v);
+  return { t: 'renovate', from: v.from, i: v.i, uid: v.uid };
+}
 
 /** A card type (for the strike service), with only its two fields. Ids are checked on replay. */
 function cleanCardType(v: unknown): CardType | null {
@@ -194,7 +228,7 @@ function cleanToolTarget(v: unknown): UseToolAction['target'] | null {
 
 /**
  * Rebuilds an action from untrusted JSON with only its known fields, or null if it isn't one.
- * Ids and crews are checked against the content when the code replays.
+ * Ids, clients, and crews are checked against the content when the code replays.
  */
 function cleanAction(v: unknown): Action | null {
   if (!isObject(v)) return null;
@@ -203,6 +237,8 @@ function cleanAction(v: unknown): Action | null {
       return isPlace(v) ? cleanPlace(v) : null;
     case 'install':
       return isInstall(v) ? cleanInstall(v) : null;
+    case 'renovate':
+      return isRenovate(v) ? { t: 'renovate', from: v.from, i: v.i, uid: v.uid } : null;
     case 'pass':
       return { t: 'pass' };
     case 'reroll':
@@ -235,6 +271,8 @@ function cleanAction(v: unknown): Action | null {
     }
     case 'leaveShop':
       return { t: 'leaveShop' };
+    case 'answerChangeOrder':
+      return typeof v.accept === 'boolean' ? { t: 'answerChangeOrder', accept: v.accept } : null;
     case 'debug':
       switch (v.op) {
         case 'addScore':
@@ -252,6 +290,14 @@ function cleanAction(v: unknown): Action | null {
           const good = cleanGood(v.good);
           return good ? { t: 'debug', op: 'giveGood', good } : null;
         }
+        case 'forceChangeOrder':
+          return typeof v.id === 'string'
+            ? { t: 'debug', op: 'forceChangeOrder', id: v.id as ChangeOrderId }
+            : null;
+        case 'forceArrival':
+          return typeof v.id === 'string'
+            ? { t: 'debug', op: 'forceArrival', id: v.id as ArrivalId }
+            : null;
       }
       return null;
   }
@@ -262,6 +308,7 @@ function isSetup(v: unknown): v is RunSetup {
   return (
     isObject(v) &&
     typeof v.seed === 'string' &&
+    typeof v.clientId === 'string' &&
     typeof v.crewId === 'string' &&
     v.mode === 'standard'
   );
@@ -286,15 +333,16 @@ export function decodeRunCode(code: string): DecodeResult {
   if (!cleaned || cleaned.some((a) => a === null)) {
     return { ok: false, error: 'That run code has an action this build doesn’t know.' };
   }
-  if (pending !== undefined && !isPlace(pending) && !isInstall(pending)) {
+  if (pending !== undefined && !isPlace(pending) && !isInstall(pending) && !isRenovate(pending)) {
     return { ok: false, error: 'That run code has a damaged pending placement.' };
   }
   const data: RunCodeData = {
     build,
     contentHash: hash,
-    setup: { seed: setup.seed, crewId: setup.crewId, mode: setup.mode },
+    // Field by field, so nothing else in the code reaches the rules. Ids are checked on replay.
+    setup: { seed: setup.seed, clientId: setup.clientId, crewId: setup.crewId, mode: setup.mode },
     actions: cleaned as Action[],
-    ...(pending ? { pending: isPlace(pending) ? cleanPlace(pending) : cleanInstall(pending) } : {}),
+    ...(pending ? { pending: cleanPending(pending) } : {}),
   };
   return { ok: true, data };
 }

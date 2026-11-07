@@ -1,6 +1,7 @@
 // Shop goods as the HUD and the shop describe them: names, rarity labels, and the text the
 // rules generate from their data (D-038). Rarity is a colored border plus a label, never
-// color alone (D-051).
+// color alone (D-051). A fixture also says what it's worth in your house (D-103), from the
+// rules' fixtureValue: the UI only words the numbers.
 
 import {
   blueprintText,
@@ -8,17 +9,20 @@ import {
   CONTENT,
   crateText,
   fixtureText,
+  SCORE_LABELS,
   toolText,
   upgradeText,
   type BlueprintId,
   type CrateId,
   type FixtureId,
+  type FixtureValue,
   type PieceId,
   type Rarity,
   type ShopOffer,
   type ToolId,
   type UpgradeId,
 } from '../../rules/index.ts';
+import { signed } from '../format.ts';
 import { Tip } from './Tip.tsx';
 
 export const RARITY_LABEL: Record<Rarity, string> = {
@@ -136,5 +140,36 @@ export function GoodBody({ good, where = false }: { good: GoodRef; where?: boole
       </ul>
       {where && <p class="muted good-where">{goodWhere(good)}</p>}
     </>
+  );
+}
+
+/**
+ * D-103: a fixture's worth in your house, from the rules' fixtureValue: its best host, what it
+ * would add to the week's Wow there (in the shop, the next week's), and roughly what that comes
+ * to over the rest of the run. Blue with ▲ for a gain, orange with ▼ for a loss; muted when
+ * nothing takes it, or it adds nothing yet. The host is named as it's valued: in the shop, a
+ * Nursery that grows into a Kids' Room as the next phase starts is the Kids' Room.
+ */
+export function FixtureWorth({ value }: { value: FixtureValue | null }) {
+  const wow = SCORE_LABELS.total;
+  if (!value) return <p class="fixture-worth none">No piece here takes it yet</p>;
+  if (value.gain === 0) {
+    return <p class="fixture-worth none">Fits, but adds no {wow} to your house yet</p>;
+  }
+  const host = CONTENT.pieces[value.hostDefId].name;
+  const old = value.replaces ? `, replacing its ${CONTENT.fixtures[value.replaces].name}` : '';
+  const weeks = `${value.weeksLeft} ${value.weeksLeft === 1 ? 'week' : 'weeks'}`;
+  const gain = `${value.gain > 0 ? '▲' : '▼'} ${signed(value.gain)}`;
+  return (
+    <p class={`fixture-worth ${value.gain > 0 ? 'good' : 'bad'}`}>
+      Best in your {host}
+      {old}: {gain} {wow} a week ·{' '}
+      <Tip
+        title="Over the run"
+        text={`${signed(value.gain)} ${wow} a week for the ${weeks} left in the run, if the house stays as it is. It won’t, so take it as a rough guide.`}
+      >
+        about {signed(value.overRun)} over the run
+      </Tip>
+    </p>
   );
 }

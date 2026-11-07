@@ -13,11 +13,13 @@
 // A piece whose `requires` condition fails earns nothing and pays no budget, and none of its
 // effects (auras and granted ones included) apply; it still counts for sets. `blockPenalties`
 // (Soundproofing) drops negative neighbor terms and negative auras from matching neighbors.
+// A Renovated room (M4a) adds `renovate.pointsPerLevel` flat points per level, before its
+// percentages.
 // For the week (Mult in hundredths, starting at 100):
 //   Points = Σ earned + Σ set Points (at its level, scaled by `setBonus`)
-//   Mult   = 100 + Σ set Mult (the same) + Σ `mult` modifiers      (specs from M4a)
-//   ×Mult  = each distinct source once, in order: sets, fixtures, blueprints, tools:
-//            mult = floor((mult × times + 50) / 100)
+//   Mult   = 100 + Σ set Mult (the same) + specBonus × specs met + Σ `mult` modifiers
+//   ×Mult  = each distinct source once, in order: sets (Full House), fixtures, blueprints,
+//            tools: mult = floor((mult × times + 50) / 100)
 //   Total  = floor((Points × Mult + 50) / 100)
 // Integer math throughout, rounding half up, so every browser and Node agree.
 
@@ -33,9 +35,12 @@ import type {
   RunStat,
   Selector,
   SetId,
+  SpecDef,
+  SpecScore,
   Tally,
   XMultTerm,
 } from './index.ts';
+import { meetsHouse, type CondCtx } from './conditions.ts';
 import {
   fencedYardsBordered,
   neighborRef,
@@ -44,10 +49,17 @@ import {
   type Layout,
   type Neighbor,
 } from './layout.ts';
-import { sourceName, type ActiveMod } from './modifiers.ts';
+import { ruleFrom, sourceName, type ActiveMod } from './modifiers.ts';
 import { matchesNeighbor, matchesPiece, meetsCondition } from './selectors.ts';
 import { matchSets } from './sets.ts';
-import { conditionText, countedNames, neighborName, ordinal, regionText } from './text.ts';
+import {
+  conditionText,
+  countedNames,
+  earnTargetText,
+  neighborName,
+  ordinal,
+  regionText,
+} from './text.ts';
 
 /** a / b rounded half up, for non-negative integers. */
 export function roundHalfUp(numerator: number, denominator: number): number {
@@ -66,12 +78,16 @@ export function weekTotal(points: number, mult: number): number {
 
 /** Everything about the run that a tally needs beyond the house. */
 export interface TallyContext {
-  /** Run-level modifiers: the crew, blueprints, and (M3b) upgrades and this week's tools. */
+  /** Run-level modifiers: the crew, the client, blueprints, upgrades, and this week's tools. */
   mods: readonly ActiveMod[];
   setLevels: Partial<Record<SetId, number>>;
   /** A phase's last week or an overtime week, actually played (not fast-forwarded). */
   lastWeek: boolean;
   stats: Readonly<Record<RunStat, number>>;
+  /** The client's checklist (M4a): each spec met adds `specBonus` to the Mult. */
+  specs: readonly SpecDef[];
+  /** The current milestone, for specs that change by stage. */
+  phase: number;
 }
 
 export const NO_CONTEXT: TallyContext = {
@@ -79,7 +95,32 @@ export const NO_CONTEXT: TallyContext = {
   setLevels: {},
   lastWeek: false,
   stats: { milestonesEarly: 0 },
+  specs: [],
+  phase: 0,
 };
+
+const specCache = new WeakMap<Layout, WeakMap<readonly SpecDef[], Map<number, boolean[]>>>();
+
+/** Which of the client's specs the house meets, cached per layout, checklist, and phase. */
+export function specsMet(
+  content: Content,
+  layout: Layout,
+  specs: readonly SpecDef[],
+  phase: number,
+): readonly boolean[] {
+  if (specs.length === 0) return [];
+  let perLayout = specCache.get(layout);
+  if (!perLayout) specCache.set(layout, (perLayout = new WeakMap()));
+  let perSpecs = perLayout.get(specs);
+  if (!perSpecs) perLayout.set(specs, (perSpecs = new Map()));
+  let met = perSpecs.get(phase);
+  if (!met) {
+    const ctx: CondCtx = { phase };
+    met = specs.map((s) => meetsHouse(content, layout, s.condition, ctx));
+    perSpecs.set(phase, met);
+  }
+  return met;
+}
 
 interface Acc {
   points: number;
@@ -90,6 +131,31 @@ interface Acc {
   mods: BreakdownLine[];
   /** Where each source piece type's aura line sits in `auras`, keyed `<piece id>|<op>`. */
   auraAt: Map<string, number>;
+}
+
+/**
+ * Each `earn` modifier's breakdown label: its source's name, and, for a source with more than
+ * one (Heat wave's Pools, shade, and Sunny rooms; a client's tastes), what this one is for:
+ * "Heat wave (Sunny rooms)". So a piece's lines can always be told apart, and one effect reads
+ * the same on every piece. A fixture's own-piece line keeps the plain name ("Fireplace").
+ */
+function earnLabels(content: Content, mods: readonly ActiveMod[]): Map<ActiveMod, string> {
+  const earns = mods.filter((m) => m.mod.kind === 'earn');
+  const count = new Map<string, number>();
+  for (const m of earns) {
+    const key = JSON.stringify(m.source);
+    count.set(key, (count.get(key) ?? 0) + 1);
+  }
+  return new Map(
+    earns.map((m) => {
+      const name = sourceName(content, m.source);
+      const what =
+        m.mod.kind === 'earn' && count.get(JSON.stringify(m.source))! > 1
+          ? earnTargetText(content, m.mod.target)
+          : null;
+      return [m, what ? `${name} (${what})` : name];
+    }),
+  );
 }
 
 /** Auras of one kind from several neighbors read as one line: "2 Dining Rooms next door +100%". */
@@ -306,6 +372,8 @@ const XMULT_ORDER: Record<XMultTerm['source']['kind'], number> = {
   tool: 3,
   upgrade: 4,
   crew: 4,
+  client: 4,
+  changeOrder: 4,
 };
 
 /** A source as a key, so one source multiplies the week once (two Chandeliers are one source). */
@@ -383,6 +451,7 @@ export function tallyHouse(
   const ctx: Ctx = { content, layout, week, withLines, acc, blocks };
   const unmet = new Map<number, string>();
 
+  const perLevel = content.balance.renovate.pointsPerLevel;
   for (const piece of pieces) {
     const def = pieceDef(content, piece);
     const failed = unmetRequirement(content, layout, def, piece.uid);
@@ -394,11 +463,25 @@ export function tallyHouse(
     for (const g of granted.get(piece.uid) ?? []) {
       applyEffect(ctx, piece, def, g.effect, ` (${g.label})`, g.since);
     }
+    // Renovations (M4a): flat Comfort per level, before percentages.
+    if (piece.level) {
+      const a = acc.get(piece.uid)!;
+      a.points += perLevel * piece.level;
+      if (withLines) {
+        a.own.push({
+          label: `Renovated (level ${piece.level})`,
+          op: 'add',
+          value: perLevel * piece.level,
+          from: [],
+        });
+      }
+    }
   }
 
   // Percentage modifiers, earnNothing, and budget modifiers, per piece.
   const nothing = new Map<number, string>();
   const budgetPct = new Map<number, number>();
+  const labels = withLines ? earnLabels(content, mods) : null;
   for (const m of mods) {
     const { mod } = m;
     if (mod.kind === 'earn') {
@@ -407,14 +490,7 @@ export function tallyHouse(
         if (!matchesPiece(content, layout, mod.target, piece.uid, m.host)) continue;
         const a = acc.get(piece.uid)!;
         a.pct += mod.pct;
-        if (withLines) {
-          a.mods.push({
-            label: sourceName(content, m.source),
-            op: 'pct',
-            value: mod.pct,
-            from: [],
-          });
-        }
+        if (labels) a.mods.push({ label: labels.get(m)!, op: 'pct', value: mod.pct, from: [] });
       }
     } else if (mod.kind === 'perCountOver') {
       const over = countPieces(content, layout, mod.match, m.host) - mod.over;
@@ -529,6 +605,12 @@ export function tallyHouse(
     mult += s.mult;
   }
 
+  // Specs (M4a): each line of the client's checklist that holds adds specBonus.
+  const met = specsMet(content, layout, tc.specs, tc.phase);
+  const specBonus = tc.specs.length > 0 ? ruleFrom(content, mods, 'specBonus') : 0;
+  const specs: SpecScore[] = tc.specs.map((s, k) => ({ id: s.id, met: met[k]! }));
+  for (const s of specs) if (s.met) mult += specBonus;
+
   // +Mult modifiers.
   const multTerms: MultTerm[] = [];
   for (const m of mods) {
@@ -572,6 +654,22 @@ export function tallyHouse(
     found.set(key, { source: m.source, times, order: XMULT_ORDER[m.source.kind], at });
   });
   const xMults: XMultTerm[] = [];
+  // Sets first (D-056): a held set with a ×Mult (Full House) multiplies once per set type.
+  const setTimes = new Set<SetId>();
+  for (const s of sets) {
+    const def = content.sets[s.set];
+    if (def.times === undefined || def.times === 100 || setTimes.has(s.set)) continue;
+    setTimes.add(s.set);
+    const before = mult;
+    mult = Math.floor((Math.max(0, mult) * def.times + 50) / 100);
+    xMults.push({
+      source: { kind: 'set', id: s.set },
+      label: def.name,
+      times: def.times,
+      before,
+      after: mult,
+    });
+  }
   for (const x of [...found.values()].sort((a, b) => a.order - b.order || a.at - b.at)) {
     const before = mult;
     mult = Math.floor((Math.max(0, mult) * x.times + 50) / 100);
@@ -587,6 +685,8 @@ export function tallyHouse(
   return {
     pieces: scores,
     sets,
+    specs,
+    specBonus,
     multTerms,
     xMults,
     best,

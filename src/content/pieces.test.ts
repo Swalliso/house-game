@@ -37,7 +37,7 @@ function fencedSizes(rows: readonly string[], placements: readonly Placement[]):
   return [...computeLayout(CONTENT, houseFrom(CONTENT, rows, placements)).fencedSizes];
 }
 
-/** Can `id` be built at (x, y) on this house? */
+/** Can `id` be built at (x, y) on this house? A pack (D-102) can be given its own tiles. */
 function check(
   rows: readonly string[],
   placements: readonly Placement[],
@@ -45,9 +45,29 @@ function check(
   x: number,
   y: number,
   rot: Rot = 0,
+  shape?: readonly string[],
 ) {
   const house = houseFrom(CONTENT, rows, placements);
-  return checkPlacement(CONTENT, layoutOf(house), CONTENT.pieces[id], x, y, rot, 1, layoutOf);
+  const def = CONTENT.pieces[id];
+  return checkPlacement(CONTENT, layoutOf(house), def, x, y, rot, 1, layoutOf, shape ?? def.shape);
+}
+
+const R = createRules(CONTENT);
+const START = R.newRun({
+  seed: 'pieces',
+  clientId: 'hendersons',
+  crewId: 'generalContractor',
+  mode: 'standard',
+});
+
+/** The rules' own check of a pack card's play (D-102): these tiles at (x, y), from the hand. */
+function checkPack(rows: readonly string[], id: PieceId, x: number, y: number, shape: string[]) {
+  const s: RunState = {
+    ...START,
+    house: houseFrom(CONTENT, rows),
+    hand: [{ kind: 'piece', id }],
+  };
+  return R.checkPlay(s, { t: 'place', from: 'hand', i: 0, x, y, rot: 0, shape });
 }
 
 /** The shape as "x,y" cells in rotation 0, with its bounding box and distinct rotations. */
@@ -75,12 +95,10 @@ const COMPLEXITY: Record<PieceId, 1 | 2 | 3> = {
   herbGarden: 2,
   sapling: 2,
   driveway: 2,
-  longDriveway: 2,
   garage: 2,
   homeOffice: 2,
   treehouse: 2,
   fence: 3,
-  lFence: 3,
   hallway: 3,
   longHallway: 3,
   doghouse: 3,
@@ -95,6 +113,15 @@ const COMPLEXITY: Record<PieceId, 1 | 2 | 3> = {
   firePit: 2,
   henhouse: 2,
   birdhouse: 1,
+  // Member rooms (M4b): never drawn, so only Appendix A's labels: the Nursery's timer is a 2.
+  // Their tests are in households.test.ts.
+  nursery: 2,
+  kidsRoom: 1,
+  grandmasRoom: 1,
+  renfieldsRoom: 1,
+  nanasRoom: 1,
+  rowansStudio: 1,
+  ivysRoom: 1,
 };
 
 /** The card's complexity matches Appendix A, and its text reads cleanly. */
@@ -118,8 +145,10 @@ describe('the base pool', () => {
     expect(Object.keys(COMPLEXITY).sort()).toEqual(Object.keys(CONTENT.pieces).sort());
     // The base pool is the drawable cards; special pieces (weight 0) come from the shop.
     const base = Object.values(CONTENT.pieces).filter((d) => d.drawWeight > 0);
-    expect(base).toHaveLength(23);
-    for (const def of base) expect(def.drawWeight).toBe(10);
+    expect(base).toHaveLength(21);
+    // The two packs (D-102) took the weight of the two cards each one replaced.
+    expect(base.filter((d) => d.pack).map((d) => d.id)).toEqual(['fence', 'driveway']);
+    for (const def of base) expect(def.drawWeight, def.id).toBe(def.pack ? 20 : 10);
     for (const def of Object.values(CONTENT.pieces)) {
       expect(def.complexity).toBe(COMPLEXITY[def.id]);
     }
@@ -369,14 +398,18 @@ describe('indoor rooms', () => {
     expect(earned(rows, [['garage', 0, 4]])).toEqual([1]);
     expect(budgets(rows, [['garage', 0, 4]], 6)).toEqual([0, 0, 1, 0, 0, 1]);
     expect(tally(rows, [['garage', 0, 4]], 3).budget).toBe(1);
-    // Touching a Driveway, or a Long Driveway, also meets it (each driveway runs down to the
+    // Touching a Driveway pack, of 3 tiles or 5, also meets it (each one runs down to the
     // street, so the Garage itself doesn't touch it).
-    for (const drive of ['driveway', 'longDriveway'] as const) {
+    const drives: [string[], number][] = [
+      [['###'], 6],
+      [['#####'], 8],
+    ];
+    for (const [shape, height] of drives) {
       const t = tally(
-        emptyRows(6, drive === 'driveway' ? 6 : 8),
+        emptyRows(6, height),
         [
           ['garage', 0, 3],
-          [drive, 2, 3, 1],
+          ['driveway', 2, 3, 1, shape],
         ],
         3,
       );
@@ -461,7 +494,12 @@ describe('yard pieces', () => {
     });
 
     const r = createRules(CONTENT);
-    const start = r.newRun({ seed: 'sapling', crewId: 'generalContractor', mode: 'standard' });
+    const start = r.newRun({
+      seed: 'sapling',
+      clientId: 'hendersons',
+      crewId: 'generalContractor',
+      mode: 'standard',
+    });
     const lot = lotFromRows(emptyRows(12, 12));
     let s: RunState = {
       ...start,
@@ -539,8 +577,9 @@ describe('yard pieces', () => {
     ).toEqual([3, 2]);
   });
 
-  it('Patio: +2 per Living Room or Kitchen, +1 per view (up to 3)', () => {
+  it('Patio: earns only touching a room; +2 per Living Room or Kitchen, +1 per view (up to 3)', () => {
     expectCard('patio', [
+      'Earns nothing unless touching a room',
       '+2 per touching Living Room or Kitchen',
       '+1 per touching view (up to 3)',
     ]);
@@ -554,19 +593,50 @@ describe('yard pieces', () => {
         ['flowerBed', 2, 4],
       ]),
     ).toEqual([6, 0, 2, 3]);
-    // Eight Trees around it: three count.
-    expect(earned(['.TT.', 'T..T', 'T..T', '.TT.'], [['patio', 1, 1]])).toEqual([3]);
+    // Seven Trees and a Closet around it: three of the Trees count.
+    expect(
+      earned(
+        ['.TT.', '...T', 'T..T', '.TT.'],
+        [
+          ['patio', 1, 1],
+          ['closet', 0, 1],
+        ],
+      ),
+    ).toEqual([3, 1]);
     expect(
       earned(open, [
         ['patio', 2, 0],
         ['lKitchen', 0, 0],
       ]),
     ).toEqual([2, 0]);
+    // The Patio rule (D-101): by a Tree but touching no room, it earns nothing, though it's
+    // still legal. A Hallway isn't a room, and links only rooms, so one beside it doesn't help.
+    const tree = ['.T........', ...emptyRows(10, 9)];
+    expect(tally(tree, [['patio', 0, 1]]).pieces[0]).toMatchObject({
+      earned: 0,
+      unmet: 'touching a room',
+    });
+    expect(check(tree, [], 'patio', 0, 1).legal).toBe(true);
+    expect(
+      earned(tree, [
+        ['patio', 0, 1],
+        ['hallway', 2, 1, 1],
+      ]),
+    ).toEqual([0, 0]);
   });
 
-  it('Fence: a 1×4 wall, +1 per tile of the fenced yards it borders, up to 6', () => {
+  it('Fence: a wall, +1 per tile of the fenced yards it borders, up to 6', () => {
     expectCard('fence', ['+1 per tile of the fenced yards it borders (up to +6)']);
     expect(CONTENT.pieces.fence.wall).toBe(true);
+    // A pack (D-102): 1–8 touching tiles from one card. It suggests the 1×4 and the L it
+    // replaced; the 1×4 is the card's picture, and a test house's Fence without its own tiles.
+    expect(CONTENT.pieces.fence.pack).toEqual({
+      maxTiles: 8,
+      shapes: [['####'], ['#..', '#..', '###']],
+    });
+    expect(cardText(CONTENT, CONTENT.pieces.fence).pack).toBe(
+      'A pack: click out up to 8 tiles that touch, one piece in one week.',
+    );
     expect(shapeOf('fence')).toEqual({
       cells: ['0,0', '1,0', '2,0', '3,0'],
       w: 4,
@@ -609,47 +679,65 @@ describe('yard pieces', () => {
     ]);
   });
 
-  it('L-Fence: the 5-tile L, a Fence; a yard needs the house as well', () => {
-    expectCard('lFence', ['+1 per tile of the fenced yards it borders (up to +6)']);
-    const def = CONTENT.pieces.lFence;
-    expect(def.countsAs).toBe('fence');
-    expect(def.wall).toBe(true);
-    expect(def.effects).toEqual(CONTENT.pieces.fence.effects);
-    expect(shapeOf('lFence')).toEqual({
-      cells: ['0,0', '0,1', '0,2', '1,2', '2,2'],
-      w: 3,
-      h: 3,
-      rotations: 4,
+  it('Fence pack: one card, any 1–8 touching tiles as one piece; a yard needs the house as well', () => {
+    // One card: no shape variant shares its type any more.
+    expect(CONTENT.pieces.fence.countsAs).toBeUndefined();
+    expect(Object.values(CONTENT.pieces).filter((d) => d.countsAs === 'fence')).toEqual([]);
+    // The suggested shapes, and any other of up to 8 touching tiles; not 9, and not apart.
+    const L = ['#..', '#..', '###'];
+    for (const shape of [['#'], ['####'], L, ['####', '####'], ['#.#', '###']]) {
+      expect(checkPack(open, 'fence', 0, 0, shape).legal, shape.join('/')).toBe(true);
+    }
+    expect(checkPack(open, 'fence', 0, 0, ['#########'])).toMatchObject({
+      legal: false,
+      reason: 'Up to 8 tiles, all touching.',
     });
-    // A Fence and an L-Fence (its bar along the top) close 12 tiles in a corner, but with no
-    // house it's no yard.
+    expect(checkPack(open, 'fence', 0, 0, ['#.#'])).toMatchObject({
+      legal: false,
+      reason: 'A pack’s tiles must all touch.',
+    });
+    // A Fence and an L-shaped one (its bar along the top) close 12 tiles in a corner, but with
+    // no house it's no yard.
     const rows = emptyRows(6, 8);
     const corner: Placement[] = [
       ['fence', 2, 0, 1],
-      ['lFence', 3, 4, 1],
+      ['fence', 3, 4, 1, L],
     ];
     expect(fencedSizes(rows, corner)).toEqual([]);
     expect(earned(rows, corner)).toEqual([0, 0]);
-    // A Closet in the corner borders it: 11 tiles, and each earns its 6.
+    // A Closet in the corner borders it: 11 tiles, and each Fence earns its 6.
     const withCloset: Placement[] = [...corner, ['closet', 5, 0]];
     expect(fencedSizes(rows, withCloset)).toEqual([11]);
     expect(earned(rows, withCloset)).toEqual([6, 6, 1]);
-    // On its own against two Bedrooms: 12 tiles.
+    // One pack of 8 tiles does both their work, as one piece: one payout.
+    const onePack: Placement[] = [
+      ['fence', 2, 0, 0, ['#...', '#...', '#...', '#...', '####']],
+      ['closet', 5, 0],
+    ];
+    expect(fencedSizes(rows, onePack)).toEqual([11]);
+    expect(earned(rows, onePack)).toEqual([6, 1]);
+    // An L on its own against two Bedrooms: 12 tiles.
     const alone: Placement[] = [
       ['bedroom', 0, 0],
       ['bedroom', 0, 2],
-      ['lFence', 2, 4, 1],
+      ['fence', 2, 4, 1, L],
     ];
     expect(fencedSizes(emptyRows(5, 8), alone)).toEqual([12]);
     expect(earned(emptyRows(5, 8), alone)).toEqual([4, 4, 6]);
   });
 
-  it('Driveway: a 1×3 from the street or another Driveway; +1 in the front yard; crosses the creek', () => {
+  it('Driveway: a pack from the street or another Driveway; +1 in the front yard; crosses the creek', () => {
     expectCard('driveway', [
       'Must be built touching the street or a Driveway',
       '+1 every week in the front yard',
     ]);
     expect(CONTENT.pieces.driveway.canCover).toEqual(['creek']);
+    // A pack (D-102): 1–6 touching tiles from one card. It suggests the 1×3 and the 1×5 it
+    // replaced; the 1×3 is the card's picture, and a test house's Driveway without its own tiles.
+    expect(CONTENT.pieces.driveway.pack).toEqual({ maxTiles: 6, shapes: [['###'], ['#####']] });
+    expect(cardText(CONTENT, CONTENT.pieces.driveway).pack).toBe(
+      'A pack: click out up to 6 tiles that touch, one piece in one week.',
+    );
     expect(shapeOf('driveway')).toEqual({
       cells: ['0,0', '1,0', '2,0'],
       w: 3,
@@ -698,26 +786,38 @@ describe('yard pieces', () => {
     });
   });
 
-  it('Long Driveway: a 1×5 Driveway, so a Garage across the creek still reaches the street', () => {
-    expectCard('longDriveway', [
-      'Must be built touching the street or a Driveway',
-      '+1 every week in the front yard',
-    ]);
-    const def = CONTENT.pieces.longDriveway;
-    expect(def.countsAs).toBe('driveway');
-    expect(def.canCover).toEqual(['creek']);
-    expect(def.effects).toEqual(CONTENT.pieces.driveway.effects);
-    expect(shapeOf('longDriveway')).toEqual({
-      cells: ['0,0', '1,0', '2,0', '3,0', '4,0'],
-      w: 5,
-      h: 1,
-      rotations: 2,
+  it('Driveway pack: one card, 1–6 touching tiles; a long one takes a Garage across the creek', () => {
+    // One card: no shape variant shares its type any more.
+    expect(CONTENT.pieces.driveway.countsAs).toBeUndefined();
+    expect(Object.values(CONTENT.pieces).filter((d) => d.countsAs === 'driveway')).toEqual([]);
+    const LONG = ['#####'];
+    expect(earned(emptyRows(8, 8), [['driveway', 0, 7, 0, LONG]])).toEqual([1]);
+    // The suggested shapes, and any other of up to 6 touching tiles, when one of them reaches
+    // the street (each shape here ends on the street row); not 7.
+    const street = emptyRows(8, 8);
+    for (const shape of [
+      ['#'],
+      ['###'],
+      LONG,
+      ['######'],
+      ['#.', '#.', '##'],
+      ['##', '##', '##'],
+    ]) {
+      const legal = checkPack(street, 'driveway', 0, 8 - shape.length, shape).legal;
+      expect(legal, shape.join('/')).toBe(true);
+    }
+    expect(checkPack(street, 'driveway', 0, 7, ['#######'])).toMatchObject({
+      legal: false,
+      reason: 'Up to 6 tiles, all touching.',
     });
-    expect(earned(emptyRows(8, 8), [['longDriveway', 0, 7]])).toEqual([1]);
+    expect(checkPack(street, 'driveway', 0, 0, LONG)).toMatchObject({
+      legal: false,
+      reason: 'Driveway must be built touching the street or a Driveway.',
+    });
     // From the street across the creek at row 4; a Garage on the far bank touches it.
     const rows = ['........', '........', '........', '........', 'CCCCCCCC', ...emptyRows(8, 3)];
-    const drive: Placement[] = [['longDriveway', 3, 3, 1]];
-    expect(check(rows, [], 'longDriveway', 3, 3, 1).legal).toBe(true);
+    const drive: Placement[] = [['driveway', 3, 3, 1, LONG]];
+    expect(check(rows, [], 'driveway', 3, 3, 1, LONG).legal).toBe(true);
     expect(check(rows, drive, 'garage', 4, 2).legal).toBe(true);
     expect(check(rows, drive, 'garage', 6, 0).legal).toBe(false);
     // A short Driveway can chain off it.
@@ -759,16 +859,24 @@ describe('"-house" outbuildings', () => {
     expect(earned(emptyRows(6, 8), yard)).toEqual([4, 4, 6, 2, 1]);
   });
 
-  it('Treehouse: must touch a Tree; 2, +2 per Kid neighbor', () => {
+  it('Treehouse: must touch a Tree; 2, +2 per Kid neighbor other than Treehouses', () => {
     expectCard('treehouse', [
       'Must be built touching a Tree',
       '+2 every week',
-      '+2 per touching Kid neighbor',
+      '+2 per touching Kid neighbor other than Treehouses',
     ]);
     expect(CONTENT.pieces.treehouse.tags).toEqual(['Kid', 'House']);
     const rows = ['T.....', ...emptyRows(6, 5)];
     expect(earned(rows, [['treehouse', 1, 0]])).toEqual([2]);
-    // Two Treehouses, each by its own Tree, are each other's Kid neighbor.
+    // A Playroom is a Kid neighbor: 2 + 2.
+    expect(
+      earned(rows, [
+        ['treehouse', 1, 0],
+        ['playroom', 3, 0],
+      ]),
+    ).toEqual([4, 0]);
+    // Two Treehouses, each by its own Tree, are both Kid, but don't count each other (D-101),
+    // so a cluster isn't the best spot.
     expect(
       earned(
         ['T....T', ...emptyRows(6, 5)],
@@ -777,7 +885,7 @@ describe('"-house" outbuildings', () => {
           ['treehouse', 3, 0],
         ],
       ),
-    ).toEqual([4, 4]);
+    ).toEqual([2, 2]);
     expect(tally(rows, [['treehouse', 2, 2]]).pieces[0]).toMatchObject({
       earned: 0,
       unmet: 'touching a Tree',

@@ -28,7 +28,7 @@ export function occupancy(house: HouseState): Occupancy {
   const byUid = new Map<number, PlacedPiece>();
   const cells = new Map<number, Cell[]>();
   for (const p of house.pieces) {
-    const pc = placedCells(CONTENT.pieces[p.defId].shape, p.x, p.y, p.rot);
+    const pc = placedCells(p.shape ?? CONTENT.pieces[p.defId].shape, p.x, p.y, p.rot);
     for (const c of pc) uids[c.y * width + c.x] = p.uid;
     byUid.set(p.uid, p);
     cells.set(p.uid, pc);
@@ -116,15 +116,17 @@ export function overviewScale(
 
 /**
  * Where a label over some cells goes, in tiles: centered above them, or below them at the
- * top edge, and kept away from the lot's side edges.
+ * top edge, and kept away from the lot's side edges. `rows` is how many rows a label (or a
+ * stack of them) needs above the cells.
  */
 export function labelSpot(
   cells: readonly Cell[],
   lotW: number,
+  rows = 1,
 ): { x: number; y: number; below: boolean } {
   const c = center(cells);
   const top = Math.min(...cells.map((q) => q.y));
-  const below = top < 1;
+  const below = top < rows;
   return {
     x: Math.min(Math.max(c.x, 3), lotW - 3),
     y: below ? Math.max(...cells.map((q) => q.y)) + 1 : top,

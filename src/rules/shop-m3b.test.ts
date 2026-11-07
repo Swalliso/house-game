@@ -216,7 +216,7 @@ const SHOP1 = shop1('m3b');
 
 describe('tools and crates on offer', () => {
   it('shop 2 offers 2 distinct tools after the cards, at 70/25/5, never Inspector’s Visit', () => {
-    expect(OFFERED_TOOLS).toHaveLength(10);
+    expect(OFFERED_TOOLS).toHaveLength(12);
     expect(OFFERED_TOOLS).not.toContain('inspectorsVisit');
     const count = rarityCount();
     const seen = new Set<ToolId>();
@@ -679,8 +679,9 @@ describe('crates', () => {
     const base = withGoods(SHOP1, []);
     const defs = Object.values(C.pieces);
     const garden = defs.filter((d) => d.category !== 'indoor').map((d) => d.id);
-    const special = defs.filter((d) => d.drawWeight === 0).map((d) => d.id);
-    expect(garden).toHaveLength(17); // 12 yard pieces and 5 outbuildings
+    // Member rooms (M4b) are weight 0 too, but never in a crate.
+    const special = defs.filter((d) => d.drawWeight === 0 && !d.member).map((d) => d.id);
+    expect(garden).toHaveLength(15); // 10 yard pieces (2 of them packs) and 5 outbuildings
     expect(special).toHaveLength(9);
     const cases: [CrateId, PieceId[]][] = [
       ['gardenCenter', garden],

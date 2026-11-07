@@ -160,8 +160,10 @@ const COMMONS: BlueprintId[] = [
 const owned = (...ids: BlueprintId[]) => ids.map((id) => ({ id, boughtWeek: 1 }));
 
 const FENCE: Card = { kind: 'piece', id: 'fence' };
+const KITCHEN: Card = { kind: 'piece', id: 'kitchen' };
 const FIREPLACE: Card = { kind: 'fixture', id: 'fireplace' };
-const isFence = (c: Card) => c.kind === 'piece' && (c.id === 'fence' || c.id === 'lFence');
+/** A Kitchen card or its shape variant, the L-Kitchen. */
+const isKitchen = (c: Card) => c.kind === 'piece' && (c.id === 'kitchen' || c.id === 'lKitchen');
 
 // ---------------------------------------------------------------------------------------
 
@@ -624,22 +626,15 @@ describe('services', () => {
 describe('the strike (D-076)', () => {
   it('strikeOptions lists each drawable root type: no shape variants, special pieces, or Chandelier', () => {
     const opts = rules.strikeOptions(shop1());
-    // 19 base-pool piece types (the L-Kitchen, Long Hallway, L-Fence, and Long Driveway share
-    // theirs) and the 10 drawable fixtures.
+    // 19 base-pool piece types (the L-Kitchen and Long Hallway share theirs; the Fence and the
+    // Driveway are one pack card each) and the 10 drawable fixtures.
     expect(opts).toHaveLength(29);
     expect(opts).toEqual(drawableTypes(C));
     expect(opts).toContainEqual(FENCE);
+    expect(opts).toContainEqual({ kind: 'piece', id: 'driveway' });
     expect(opts).toContainEqual(FIREPLACE);
     const ids = opts.map((o) => o.id);
-    for (const id of [
-      'lFence',
-      'lKitchen',
-      'longHallway',
-      'longDriveway',
-      'library',
-      'pool',
-      'chandelier',
-    ]) {
+    for (const id of ['lKitchen', 'longHallway', 'library', 'pool', 'chandelier']) {
       expect(ids).not.toContain(id);
     }
   });
@@ -648,15 +643,16 @@ describe('the strike (D-076)', () => {
     const seed = 'struck';
     const s = { ...shop1(seed), budget: 20 };
     const strike = visitOf(s).offers.length - 1;
-    const { state, events } = applyAll(rules, s, [buy(strike, FENCE), buy(strike, FIREPLACE)]);
-    expect(state.struck).toEqual([FENCE, FIREPLACE]);
+    // The Kitchen, whose L-Kitchen shares its type.
+    const { state, events } = applyAll(rules, s, [buy(strike, KITCHEN), buy(strike, FIREPLACE)]);
+    expect(state.struck).toEqual([KITCHEN, FIREPLACE]);
     expect(eventsOf(events, 'bought').map((e) => [e.price, e.strike])).toEqual([
-      [2, FENCE],
+      [2, KITCHEN],
       [3, FIREPLACE],
     ]);
     const opts = rules.strikeOptions(state);
     expect(opts).toHaveLength(27);
-    expect(opts).not.toContainEqual(FENCE);
+    expect(opts).not.toContainEqual(KITCHEN);
 
     /** Phase 2's hands over 400 rerolls, after leaving the shop. */
     const hands = (from: RunState) => {
@@ -672,11 +668,12 @@ describe('the strike (D-076)', () => {
       return out.flat();
     };
     const struck = hands(state);
-    expect(struck.some(isFence)).toBe(false);
+    expect(struck.some(isKitchen)).toBe(false);
     expect(struck).not.toContainEqual(FIREPLACE);
-    // Without the strike, the same hands do show them.
+    // Without the strike, the same hands do show them, the L-Kitchen too.
     const control = hands(s);
-    expect(control.some(isFence)).toBe(true);
+    expect(control).toContainEqual(KITCHEN);
+    expect(control).toContainEqual({ kind: 'piece', id: 'lKitchen' });
     expect(control).toContainEqual(FIREPLACE);
   });
 
@@ -685,8 +682,8 @@ describe('the strike (D-076)', () => {
     const strike = visitOf(s).offers.length - 1;
     expect(illegal(() => rules.apply(s, buy(strike))).reason).toMatch(/Pick a card type/);
     expect(illegal(() => rules.apply(s, buy(strike, FENCE))).reason).toMatch(/already struck/);
-    // Only root types: the L-Fence is a Fence. Special pieces aren't in the draws.
-    expect(() => rules.apply(s, buy(strike, { kind: 'piece', id: 'lFence' }))).toThrow(
+    // Only root types: the L-Kitchen is a Kitchen. Special pieces aren't in the draws.
+    expect(() => rules.apply(s, buy(strike, { kind: 'piece', id: 'lKitchen' }))).toThrow(
       IllegalAction,
     );
     expect(() => rules.apply(s, buy(strike, { kind: 'piece', id: 'library' }))).toThrow(

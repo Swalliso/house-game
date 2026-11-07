@@ -1,8 +1,10 @@
 // The app: the title screen, then the game screen (the top bar, the score and inspect panels,
 // the board, the hand or the end screen, and the controls strip), with overlays for banners,
-// notes, settings, How to play, and the ?debug panel.
+// notes, settings, How to play, and the ?debug panel. The shop and (M4b) a change order are
+// sheets over the board.
 
 import { useEffect } from 'preact/hooks';
+import { rules } from '../rules/index.ts';
 import { audio } from './audio/audio.ts';
 import { Board, rotate } from './board/Board.tsx';
 import { toggleFit, zoomIn, zoomOut } from './board/camera.ts';
@@ -19,7 +21,9 @@ import {
   settingsOpen,
   toggleDemolish,
 } from './hud/actions.ts';
+import { Checklist } from './hud/Checklist.tsx';
 import { Hand } from './hud/Hand.tsx';
+import { Hints } from './hud/Hints.tsx';
 import { Inspect } from './hud/Inspect.tsx';
 import { Inventory } from './hud/Inventory.tsx';
 import { TipLayer } from './hud/Tip.tsx';
@@ -37,6 +41,8 @@ import {
   useSkipOnClick,
 } from './screens/Overlays.tsx';
 import { SettingsPanel } from './screens/Settings.tsx';
+import { ChangeOrderScreen, changeOrderKey } from './screens/ChangeOrderScreen.tsx';
+import { JobBoard } from './screens/JobBoard.tsx';
 import { ShopScreen } from './screens/ShopScreen.tsx';
 import { Title } from './screens/Title.tsx';
 import { appScreen, run, selected, tool } from './store.ts';
@@ -96,6 +102,21 @@ function useKeyboard(): void {
         if (busy.value) setHold(true);
         return;
       }
+      if (run.value.screen === 'changeOrder') {
+        // M4b: a change order waits for its answer. Only the sheet's keys work (Enter accepts,
+        // Esc or D declines one that can be declined); nothing reaches the week's controls
+        // behind it. Before the sheet is up, the milestone's beats play over the board: Esc
+        // skips them, and the camera's keys still work. Enter is always claimed, as below.
+        if (e.key === 'Enter') e.preventDefault();
+        if (e.repeat) return;
+        if (!busy.value) {
+          if (changeOrderKey(e.key)) e.preventDefault();
+        } else if (e.key === 'Escape') skip();
+        else if (e.key === '+' || e.key === '=') zoomIn();
+        else if (e.key === '-' || e.key === '_') zoomOut();
+        else if (e.key === 'f' || e.key === 'F') toggleFit();
+        return;
+      }
       if (e.key === 'Enter') {
         // Always claim Enter, repeats included, so holding it can't click a focused button
         // over and over and pass week after week.
@@ -138,11 +159,33 @@ function useKeyboard(): void {
   }, []);
 }
 
+/** The controls strip: only the keys that work on the screen showing. */
+function controlsText(): string {
+  const s = run.value;
+  if (s.screen === 'shop') {
+    return 'Buy goods for the house · hover anything to read it · sell from your supplies and blueprints · Start the next milestone when you’re done';
+  }
+  if (s.screen === 'changeOrder') {
+    // A phase effect can't be declined: Esc and D do nothing there (ChangeOrderScreen.tsx).
+    const declinable = rules.changeOrderOffer(s)?.declinable ?? true;
+    return declinable
+      ? 'A change order from the client · Enter to accept it · Esc or D to decline: it costs nothing · hold Space to speed up the beats, click to skip them'
+      : 'A change order from the client · Enter (or Got it) to note it: it can’t be declined · hold Space to speed up the beats, click to skip them';
+  }
+  if ((s.screen === 'won' || s.screen === 'lost') && !busy.value) {
+    return 'The run is over · look the house over: scroll to zoom, drag to pan, F to fit · Copy run code to share it';
+  }
+  return 'Pick a card (1–3) · R or right-click to rotate · click to place · Enter to end the week · D to demolish · scroll to zoom, drag to pan, F to fit · hold Space to speed up the tally, click to skip it';
+}
+
 function Game() {
   useKeyboard();
   useSkipOnClick();
   const screen = run.value.screen;
   const over = (screen === 'won' || screen === 'lost') && !busy.value;
+  // A play being looked at (placing, installing, a tool, demolishing): Inspect comes first in
+  // the left column, so its preview, warnings, and Use button are in view (app.css).
+  const looking = selected.value !== null || tool.value === 'demolish';
   const right = over ? (
     <EndScreen />
   ) : screen === 'shop' ? (
@@ -156,8 +199,9 @@ function Game() {
   return (
     <div class="game">
       <TopBar />
-      <aside class="left">
+      <aside class={looking ? 'left looking' : 'left'}>
         <ScorePanel />
+        <Checklist />
         <Inspect />
       </aside>
       <main class="center">
@@ -166,13 +210,10 @@ function Game() {
         <TargetFlash />
         <EndCaption />
         <ShopScreen />
+        <ChangeOrderScreen />
       </main>
       <aside class="right">{right}</aside>
-      <footer class="hints">
-        {screen === 'shop'
-          ? 'Buy goods for the house · hover anything to read it · sell from your supplies and blueprints · Start the next milestone when you’re done'
-          : 'Pick a card (1–3) · R or right-click to rotate · click to place · Enter to end the week · D to demolish · scroll to zoom, drag to pan, F to fit · hold Space to speed up the tally, click to skip it'}
-      </footer>
+      <footer class="hints">{controlsText()}</footer>
     </div>
   );
 }
@@ -187,7 +228,14 @@ export function App() {
   return (
     <>
       <ErrorBoundary>
-        {appScreen.value === 'title' ? <Title /> : <Game />}
+        {appScreen.value === 'title' ? (
+          <Title />
+        ) : appScreen.value === 'jobs' ? (
+          <JobBoard />
+        ) : (
+          <Game />
+        )}
+        {appScreen.value === 'game' && <Hints />}
         <Notice />
         <Toast />
         <HowToPlay />

@@ -1,0 +1,266 @@
+/* The job board (M4a): three contract cards on a wooden board, over the title screen's sky
+   and street. Rarity colors the card's edge; Recommended gets a ribbon. */
+
+.jobs-screen .title-sky {
+  padding: 28px 16px 20px;
+  /* The board comes first: on a short screen the street gives way, down to its lawn row,
+     before the board would scroll (the Take the job buttons and Back stay in view). */
+  flex: 1 1 auto;
+}
+.jobs-screen .title-street {
+  /* Weighted so the board's share of any squeeze is far under a pixel: no stray scrollbar. */
+  flex: 0 100000 auto;
+  min-height: var(--tile);
+}
+@media (max-height: 820px) {
+  .jobs-screen .title-sky {
+    padding: 12px 16px 10px;
+  }
+  .jobs-board {
+    padding: 14px 18px 12px;
+  }
+  .jobs-header {
+    margin-bottom: 10px;
+  }
+  .jobs-header h1 {
+    font-size: 24px;
+  }
+  .jobs-footer {
+    margin-top: 10px;
+  }
+}
+
+.jobs-board {
+  position: relative;
+  margin: auto;
+  width: min(980px, 100%);
+  background: var(--wood);
+  border: 3px solid var(--wood-dark);
+  border-radius: 16px;
+  padding: 18px 20px 14px;
+  box-shadow: 0 16px 44px rgb(60 40 20 / 0.3);
+  animation: title-card-in 0.4s cubic-bezier(0.2, 1.2, 0.4, 1) both;
+}
+
+.jobs-header {
+  text-align: center;
+  color: #fff6e6;
+  margin-bottom: 14px;
+}
+.jobs-header h1 {
+  margin: 0;
+  font-size: 28px;
+  letter-spacing: 0.5px;
+  text-shadow: 0 2px 0 var(--wood-dark);
+}
+.jobs-header p {
+  margin: 4px 0 0;
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.jobs-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+  align-items: stretch;
+}
+
+.contract {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  background: var(--panel);
+  border: 3px solid var(--panel-edge);
+  border-radius: 10px;
+  padding: 14px 14px 12px;
+  box-shadow: 0 3px 0 var(--wood-dark);
+  /* Pinned up one after another. */
+  animation: contract-in 0.35s cubic-bezier(0.2, 1.3, 0.4, 1) both;
+}
+@keyframes contract-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) rotate(-1.5deg);
+  }
+}
+.reduce-motion .contract,
+.reduce-motion .jobs-board {
+  animation: none;
+}
+.contract.rarity-common {
+  border-color: var(--rarity-common);
+}
+.contract.rarity-uncommon {
+  border-color: var(--rarity-uncommon);
+  background: linear-gradient(#fbfdff, #eef4fd);
+}
+.contract.rarity-rare {
+  border-color: var(--rarity-rare);
+  background: linear-gradient(#fffbea, #fbefc8);
+}
+.contract.recommended {
+  padding-top: 26px;
+}
+
+.contract-ribbon {
+  position: absolute;
+  top: -3px;
+  left: 12px;
+  right: 12px;
+  padding: 3px 8px;
+  border-radius: 0 0 8px 8px;
+  background: var(--good);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+}
+.contract-ribbon::before {
+  content: '★ ';
+}
+
+.contract-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.contract-head h2 {
+  margin: 0;
+  font-size: 19px;
+  color: var(--ink);
+}
+.contract-brief {
+  margin: 0;
+  font-style: italic;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.contract-top {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.contract-top-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.contract-lot {
+  margin: 0;
+  flex: none;
+  width: 104px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+.contract-lot canvas {
+  image-rendering: pixelated;
+  border: 2px solid var(--wood-dark);
+  border-radius: 4px;
+  background: #9fc56e;
+}
+.contract-lot figcaption {
+  font-size: 11px;
+  line-height: 1.25;
+  color: var(--muted);
+  text-align: center;
+}
+
+.contract-section h3 {
+  margin: 0 0 2px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--muted);
+}
+.contract-section p,
+.contract-section ul {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.contract-section ul {
+  padding-left: 16px;
+}
+.contract-tastes {
+  list-style: none;
+  padding-left: 0 !important;
+}
+.contract-tastes .mark {
+  display: inline-block;
+  width: 16px;
+  font-size: 11px;
+}
+.contract-tastes .good .mark {
+  color: var(--good);
+}
+.contract-tastes .bad .mark {
+  color: var(--bad);
+}
+.contract-tastes .pool {
+  color: var(--muted);
+}
+
+.contract-rules {
+  font-size: 13px;
+  color: var(--muted);
+}
+.contract-rules summary {
+  cursor: pointer;
+}
+.contract-rules ul {
+  margin: 4px 0 0;
+  padding-left: 16px;
+  color: var(--ink);
+}
+
+.contract-foot {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.contract-take {
+  flex: 1;
+  font-size: 16px;
+  font-weight: 800;
+  padding: 9px 14px;
+}
+.contract-foot kbd {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--muted);
+  border: 1px solid var(--panel-edge);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+
+.jobs-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+}
+/* Small text on the wood: at 0.9 it's still 4.75:1 (WCAG AA). */
+.jobs-keys {
+  color: #fff6e6;
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+/* M4b: who moves in mid-run, and when, above the household's Bedroom rule. */
+.contract-section .contract-arrivals {
+  margin-bottom: 3px;
+}

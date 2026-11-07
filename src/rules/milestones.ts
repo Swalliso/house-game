@@ -9,10 +9,14 @@ export function phaseCount(b: Balance): number {
   return b.phases.length;
 }
 
-export function phaseTarget(b: Balance, phase: number): number {
+/**
+ * The cumulative Wow needed by the end of a phase: the curve's target times the client's
+ * `targetPct` (M4a; 100 = the curve), rounded half up.
+ */
+export function phaseTarget(b: Balance, phase: number, targetPct = 100): number {
   const p = b.phases[phase];
   if (!p) throw new Error(`No phase ${phase}`);
-  return p.target;
+  return targetPct === 100 ? p.target : roundHalfUp(p.target * targetPct, 100);
 }
 
 export function phaseName(b: Balance, phase: number): string {
@@ -23,17 +27,22 @@ export function phaseName(b: Balance, phase: number): string {
  * The celebration ladder's yardstick (§12): what each week of the phase needs to earn, fixed
  * when the phase starts and never below 1, even once the target is met.
  */
-export function paceFor(b: Balance, phase: number, phaseStartScore: number): number {
-  const needed = phaseTarget(b, phase) - phaseStartScore;
+export function paceFor(
+  b: Balance,
+  phase: number,
+  phaseStartScore: number,
+  targetPct = 100,
+): number {
+  const needed = phaseTarget(b, phase, targetPct) - phaseStartScore;
   // A UI yardstick, not a score, so it may be fractional (30 over 4 weeks is 7.5).
   return Math.max(1, needed / b.weeksPerPhase);
 }
 
 /** The run-end verdict by score band (§12). A lost run gets the lowest one. */
-export function verdictFor(b: Balance, score: number, won: boolean): string {
+export function verdictFor(b: Balance, score: number, won: boolean, targetPct = 100): string {
   const lowest = b.verdicts[0]?.name ?? '';
   if (!won) return lowest;
-  const last = phaseTarget(b, b.phases.length - 1);
+  const last = phaseTarget(b, b.phases.length - 1, targetPct);
   let name = lowest;
   for (const v of b.verdicts) if (score * 100 >= last * v.minPctOfTarget) name = v.name;
   return name;

@@ -11,11 +11,13 @@ import { signal } from '@preact/signals';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import {
   CONTENT,
+  definite,
   placedCells,
   rules,
   SCORE_LABELS,
   type Cell,
   type DemolishPreview,
+  type SetScore,
   type SourceRef,
   type UseToolAction,
 } from '../../rules/index.ts';
@@ -25,6 +27,7 @@ import {
   fxHooks,
   highlighted,
   justPlaced,
+  justRenovated,
   popups,
   setHold,
   skip,
@@ -32,7 +35,7 @@ import {
 } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
 import { shakeOffsets } from '../fx/juice.ts';
-import { formatNumber } from '../format.ts';
+import { formatNumber, signed } from '../format.ts';
 import {
   activePlay,
   currentTally,
@@ -42,9 +45,14 @@ import {
   hoverCell,
   inspected,
   installArmed,
+  installGains,
   installSupply,
   movingUid,
+  packCells,
+  packNext,
+  packPlay,
   preview,
+  renovateUids,
   rotation,
   run,
   selected,
@@ -56,6 +64,7 @@ import {
   toolPreview,
   useToolNow,
   type Inspected,
+  type PackNext,
 } from '../store.ts';
 import { TILE } from '../sprites.ts';
 import {
@@ -72,10 +81,11 @@ import {
   zoomIn,
   zoomOut,
 } from './camera.ts';
-import { center, labelSpot, occupancy, uidAt } from './geometry.ts';
+import { center, furnitureSpot, labelSpot, occupancy, uidAt } from './geometry.ts';
 import { PieceShape, wobble } from './PieceView.tsx';
 import { Outline, TerrainLayer, YardTint } from './TerrainLayer.tsx';
 import './board-m2.css';
+import './install-gains.css';
 
 /** The scroll container's padding (app.css), kept clear around the board. */
 const PAD = 6;
@@ -85,6 +95,8 @@ export function rotate(): void {
   const sel = selection.value;
   // A fixture has no shape to turn; a tool only turns the piece the Moving Truck carries.
   if (sel?.kind === 'fixture') return;
+  // A pack (D-102) is the tiles clicked out, so it has nothing to turn.
+  if (sel?.kind === 'piece' && CONTENT.pieces[sel.id].pack) return;
   if (sel?.kind === 'tool') {
     if (movingUid.value === null) return;
     rotation.value = ((rotation.value + 1) % 4) as 0 | 1 | 2 | 3;
@@ -135,6 +147,32 @@ function placeTentatively(): void {
   }
   tentative.value = { ...play };
   audio.play('select', { rate: 0.8 });
+}
+
+/**
+ * A pack card (D-102): each click adds a tile to the pack waiting for End week, or takes one
+ * off. The pack stays legal: a click that would break it (water, a gap) is refused.
+ */
+function packClick(cell: Cell): void {
+  const sel = selection.value;
+  if (sel?.kind !== 'piece') return;
+  const pending = tentative.value;
+  const tiles = pending?.t === 'place' && pending.shape ? packCells(pending) : [];
+  const had = tiles.some((c) => c.x === cell.x && c.y === cell.y);
+  const next = had ? tiles.filter((c) => c.x !== cell.x || c.y !== cell.y) : [...tiles, cell];
+  if (next.length === 0) {
+    tentative.value = null;
+    audio.play('select', { rate: 0.7 });
+    return;
+  }
+  const play = packPlay(sel.from, sel.i, next);
+  if (!rules.checkPlay(run.value, play).legal) {
+    audio.play('illegal');
+    return;
+  }
+  tentative.value = play;
+  // Each tile a little higher, like counting them out.
+  audio.play('select', { rate: had ? 0.7 : FEEL.packTile.rate + next.length * FEEL.packTile.step });
 }
 
 const sameCell = (a: Cell | null | undefined, b: Cell | null | undefined): boolean =>
@@ -263,6 +301,7 @@ export function Board() {
   const p = demolishing ? null : preview.value;
   const gained = new Set(p?.setsGained.flatMap((s) => s.members) ?? []);
   const placed = justPlaced.value;
+  const renovated = justRenovated.value;
 
   useEffect(() => {
     fxHooks.wobble = wobble;
@@ -507,9 +546,17 @@ export function Board() {
       return;
     }
     if (selected.value !== null) {
+      const sel = selection.value;
+      if (
+        sel?.kind === 'piece' &&
+        CONTENT.pieces[sel.id].pack &&
+        activePlay.value?.t !== 'renovate'
+      ) {
+        if (c && c !== 'street') packClick(c);
+        return;
+      }
       tentative.value = null;
       // A click on another piece re-arms a supply install there.
-      const sel = selection.value;
       if (sel?.kind === 'fixture' && sel.from === 'supplies' && c && c !== 'street') {
         const uid = uidAt(occ, c.x, c.y);
         if (installArmed.value !== null && installArmed.value !== uid) installArmed.value = null;
@@ -531,10 +578,13 @@ export function Board() {
     if (!play || play.t !== 'place' || sel?.kind !== 'piece') return null;
     return {
       defId: sel.id,
-      cells: placedCells(CONTENT.pieces[sel.id].shape, play.x, play.y, play.rot),
+      cells: placedCells(play.shape ?? CONTENT.pieces[sel.id].shape, play.x, play.y, play.rot),
     };
   })();
   const installing = !demolishing && activePlay.value?.t === 'install';
+  // D-103: a fixture is selected, so every legal host shows its gain.
+  const choosingHost = !demolishing && selection.value?.kind === 'fixture';
+  const renovating = !demolishing && activePlay.value?.t === 'renovate';
   const tooling = !demolishing && selection.value?.kind === 'tool';
 
   const boardClass = [
@@ -586,6 +636,8 @@ export function Board() {
                 earned={score?.earned}
                 unmet={score?.unmet}
                 fixture={piece.fixture?.id}
+                level={piece.level}
+                levelPop={renovated?.uid === piece.uid ? renovated.id : undefined}
                 settle={placed?.uid === piece.uid ? placed.id : undefined}
                 class={[
                   view?.activeUid === piece.uid ? 'active' : '',
@@ -598,6 +650,9 @@ export function Board() {
           {demolishing && <DemolishTarget scale={scale} />}
           {ghostCells && <Ghost defId={ghostCells.defId} cells={ghostCells.cells} scale={scale} />}
           {installing && <InstallTarget scale={scale} />}
+          {choosingHost && <HostBadges scale={scale} />}
+          {!demolishing && <RenovateHints scale={scale} />}
+          {renovating && <RenovateTarget scale={scale} />}
           {tooling && <ToolTarget scale={scale} />}
           {p?.legal && <Badges scale={scale} />}
           <PopupLayer scale={scale} />
@@ -621,10 +676,26 @@ function Ghost({
   const legal = !!p?.legal;
   const pending = !!tentative.value;
   const px = TILE * scale;
+  const { lot } = run.value.house;
+  const def = CONTENT.pieces[defId];
+  // A pack being clicked out (D-102): the ghost is the tiles End week builds, and the tile under
+  // the pointer gets its own outline, saying what a click there would do.
+  const next = def.pack ? packNext.value : null;
+  // A pack: how many of its tiles are out, and what a click does next.
+  const then = !pending
+    ? 'click to start'
+    : next
+      ? 'End week to build'
+      : 'click to add or take off a tile · End week to build';
+  const pack = def.pack ? `${cells.length} of ${def.pack.maxTiles} tiles · ${then}` : null;
   const inside = cells.filter((cell) => cell.x >= 0 && cell.y >= 0);
-  // Keep the label on the board: away from the side edges, and below the ghost at the top.
-  const spot = labelSpot(cells, run.value.house.lot.width);
-  const below = spot.below;
+  // M4b: a running restriction this placement would break. It stays legal; it just pays nothing.
+  const breaks = legal && p?.breaks ? CONTENT.changeOrders[p.breaks].name : null;
+  // Keep the labels on the board: away from the side edges, and below the ghost at the top. A
+  // pack's next tile counts too, so its label and the ghost's stack clear of both (each label
+  // needs a row above them).
+  const rows = 1 + (next ? 1 : 0) + (breaks ? 1 : 0);
+  const spot = labelSpot(next ? [...cells, next.cell] : cells, lot.width, rows);
   const label = { left: `${spot.x * px}px`, top: `${spot.y * px}px` };
   return (
     <>
@@ -634,22 +705,147 @@ function Ghost({
         scale={scale}
         class={`ghost ${legal ? 'legal' : 'illegal'} ${pending ? 'pending' : ''}`}
       />
-      {!legal && inside.length > 0 && (
-        <div class={`ghost-reason ${below ? 'below' : ''}`} style={label}>
-          <span aria-hidden="true">✕ </span>
-          {p?.reason ?? 'Can’t build there'}
-        </div>
+      {next && (
+        <Outline
+          cells={[next.cell]}
+          scale={scale}
+          lot={lot}
+          class={`install-target pack-next ${!next.legal ? 'illegal' : next.kind === 'add' ? 'legal' : 'remove'}`}
+        />
       )}
-      {legal && p && (
-        <div
-          class={`ghost-delta ${p.delta > 0 ? 'good' : p.delta < 0 ? 'bad' : ''} ${below ? 'below' : ''}`}
-          style={label}
-        >
-          {p.delta > 0 ? '▲ +' : p.delta < 0 ? '▼ −' : ''}
-          {formatNumber(Math.abs(p.delta))} {SCORE_LABELS.total}
-          {pending ? ' · End week to build' : ''}
-        </div>
-      )}
+      <div class={`ghost-labels ${spot.below ? 'below' : ''}`} style={label}>
+        {!legal && inside.length > 0 && (
+          <div class="ghost-reason">
+            <span aria-hidden="true">✕ </span>
+            {p?.reason ?? 'Can’t build there'}
+          </div>
+        )}
+        {legal && p && (
+          <div class={`ghost-delta ${p.delta > 0 ? 'good' : p.delta < 0 ? 'bad' : ''}`}>
+            {p.delta > 0 ? '▲ +' : p.delta < 0 ? '▼ −' : ''}
+            {formatNumber(Math.abs(p.delta))} {SCORE_LABELS.total}
+            {pack ? ` · ${pack}` : pending ? ' · End week to build' : ''}
+          </div>
+        )}
+        {breaks && (
+          <div class="ghost-reason">
+            <span aria-hidden="true">✕ </span>
+            Breaks {breaks}
+          </div>
+        )}
+        {next && <PackNextLabel next={next} />}
+      </div>
+    </>
+  );
+}
+
+/**
+ * A pack's next tile (D-102): blue to add it, orange to take it off, or orange with the rules'
+ * reason when the pack that would leave isn't legal (a gap, too many tiles, water).
+ */
+function PackNextLabel({ next }: { next: PackNext }) {
+  if (!next.legal) {
+    return (
+      <div class="ghost-reason">
+        <span aria-hidden="true">✕ </span>
+        {next.kind === 'remove' ? 'Can’t take it off: ' : ''}
+        {next.reason ?? 'It can’t go there.'}
+      </div>
+    );
+  }
+  if (next.kind === 'remove') {
+    return (
+      <div class="ghost-delta bad">
+        <span aria-hidden="true">− </span>
+        Click to take off
+      </div>
+    );
+  }
+  return (
+    <div class="ghost-delta good">
+      <span aria-hidden="true">+ </span>
+      Click to add · {next.tiles} of {next.maxTiles} tiles
+    </div>
+  );
+}
+
+/** The rooms the selected card can renovate (M4a), outlined faintly so they're easy to find. */
+function RenovateHints({ scale }: { scale: number }) {
+  const uids = renovateUids.value;
+  const state = run.value;
+  if (uids.length === 0 || tentative.value) return null;
+  const occ = occupancy(state.house);
+  return (
+    <>
+      {uids.map((uid) => (
+        <Outline
+          key={uid}
+          cells={occ.cells.get(uid) ?? []}
+          scale={scale}
+          lot={state.house.lot}
+          class="renovate-hint"
+        />
+      ))}
+    </>
+  );
+}
+
+/**
+ * Renovating (M4a): the room under the pointer outlined, blue with the level it would reach
+ * and what it would do to the week's Wow, or orange with why not (not at the limit yet, the
+ * wrong room, fully renovated).
+ */
+function RenovateTarget({ scale }: { scale: number }) {
+  const p = preview.value;
+  const play = activePlay.value;
+  const state = run.value;
+  const { lot } = state.house;
+  if (!p || !play || play.t !== 'renovate') return null;
+  const occ = occupancy(state.house);
+  const cells = occ.cells.get(play.uid) ?? [];
+  if (cells.length === 0) return null;
+  const px = TILE * scale;
+  const spot = labelSpot(cells, lot.width);
+  const style = { left: `${spot.x * px}px`, top: `${spot.y * px}px` };
+  const below = spot.below ? 'below' : '';
+  const room = occ.byUid.get(play.uid);
+  const name = room ? CONTENT.pieces[room.defId].name : 'room';
+  const pending = tentative.value?.t === 'renovate';
+  let label;
+  if (p.legal && p.renovates) {
+    const wow = SCORE_LABELS.total;
+    const change =
+      p.delta > 0
+        ? `▲ +${formatNumber(p.delta)} ${wow}`
+        : p.delta < 0
+          ? `▼ −${formatNumber(-p.delta)} ${wow}`
+          : `±0 ${wow}`;
+    label = (
+      <div
+        class={`ghost-delta install-label ${p.delta > 0 ? 'good' : p.delta < 0 ? 'bad' : ''} ${below}`}
+        style={style}
+      >
+        Renovate {definite(name)} to level {p.renovates.level}: {change}
+        {pending ? ' · End week to renovate' : ''}
+      </div>
+    );
+  } else {
+    label = (
+      <div class={`ghost-reason ${below}`} style={style}>
+        <span aria-hidden="true">✕ </span>
+        {p.reason ?? 'It can’t be renovated.'}
+      </div>
+    );
+  }
+  return (
+    <>
+      <Outline
+        cells={cells}
+        scale={scale}
+        lot={lot}
+        class={`install-target renovate-target ${p.legal ? 'legal' : 'illegal'} ${pending ? 'armed' : ''}`}
+      />
+      {label}
     </>
   );
 }
@@ -723,6 +919,59 @@ function InstallTarget({ scale }: { scale: number }) {
   );
 }
 
+/** How far a host's gain badge sits below a preview mark on the same piece, in CSS px. */
+const MARK_CLEARANCE = 20;
+
+/**
+ * D-103: while a fixture is selected, every legal host wears what installing it there does to
+ * this week's Wow, net of any fixture it would replace (the rules' installGains, computed once
+ * per selection), and the best one, if it gains, is filled with a ★. The host being looked at
+ * (under the pointer, armed, or waiting for End week) has InstallTarget's label instead; a host
+ * the preview marks as helping or hurting it keeps its badge below that mark.
+ */
+function HostBadges({ scale }: { scale: number }) {
+  const gains = installGains.value;
+  const sel = selection.value;
+  if (gains.length === 0 || sel?.kind !== 'fixture') return null;
+  const occ = occupancy(run.value.house);
+  const px = TILE * scale;
+  const play = activePlay.value;
+  const looking = play?.t === 'install' ? play.uid : 0;
+  const p = preview.value;
+  const marked = new Set(
+    p?.legal
+      ? (p.newPiece?.lines ?? []).flatMap((l) =>
+          l.from.flatMap((ref) => (ref.kind === 'piece' ? [ref.uid] : [])),
+        )
+      : [],
+  );
+  const best = Math.max(...gains.map((g) => g.gain));
+  // A new selection mounts them afresh, so they pop in again.
+  return (
+    <div key={`${sel.from}-${sel.i}-${sel.id}`} class="host-badges" aria-hidden="true">
+      {gains.map((g) => {
+        const cells = occ.cells.get(g.uid);
+        if (!cells) return null;
+        const spot = furnitureSpot(cells);
+        const top = (spot.y + 0.5) * px + (marked.has(g.uid) ? MARK_CLEARANCE : 0);
+        const star = best > 0 && g.gain === best;
+        const tone = g.gain > 0 ? 'good' : g.gain < 0 ? 'bad' : '';
+        return (
+          <div
+            key={g.uid}
+            class={`host-badge ${tone} ${star ? 'best' : ''} ${g.uid === looking ? 'current' : ''}`}
+            style={{ left: `${(spot.x + 0.5) * px}px`, top: `${top}px` }}
+          >
+            {star ? '★ ' : ''}
+            {g.gain > 0 ? '▲ ' : g.gain < 0 ? '▼ ' : ''}
+            {signed(g.gain)}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 /**
  * The Copy Machine's and the Moving Truck's targets: the piece under the pointer outlined, or
  * the carried piece's ghost at its new spot, with what it would do to the week's Wow.
@@ -766,10 +1015,10 @@ function ToolTarget({ scale }: { scale: number }) {
     const text =
       use === 'copy'
         ? ok
-          ? `Copy the ${name} into your reserve · ${armed ? 'click again' : 'click twice'}`
+          ? `Copy ${definite(name)} into your reserve · ${armed ? 'click again' : 'click twice'}`
           : (p?.reason ?? 'Pick a piece to copy.')
         : piece
-          ? `Pick up the ${name}`
+          ? `Pick up ${definite(name)}`
           : 'Pick a piece to move';
     return (
       <>
@@ -787,7 +1036,7 @@ function ToolTarget({ scale }: { scale: number }) {
   const piece = state.house.pieces.find((q) => q.uid === movingUid.value);
   const t = action?.target;
   if (!piece || !t || t.x === undefined || t.y === undefined) return null;
-  const cells = placedCells(CONTENT.pieces[piece.defId].shape, t.x, t.y, t.rot ?? 0);
+  const cells = placedCells(piece.shape ?? CONTENT.pieces[piece.defId].shape, t.x, t.y, t.rot ?? 0);
   const ok = !!p?.ok;
   return (
     <>
@@ -806,7 +1055,7 @@ function ToolTarget({ scale }: { scale: number }) {
       {label(
         cells,
         ok
-          ? `Move here: ${wow(p!.delta)} · ${armed ? 'click again' : 'click twice'}`
+          ? `Move here: ${wow(p!.delta)}${breaksText(p!.setsLost)} · ${armed ? 'click again' : 'click twice'}`
           : `✕ ${p?.reason ?? 'It can’t go there.'}`,
         ok ? (p!.delta > 0 ? 'good' : p!.delta < 0 ? 'bad' : '') : 'bad',
       )}
@@ -819,6 +1068,12 @@ function targetName(target: DemolishPreview['target']): string {
   return 'feature' in target
     ? CONTENT.features[target.feature].name
     : CONTENT.pieces[target.defId].name;
+}
+
+/** " · ✕ breaks Jack-and-Jill": the sets a demolition or a move would break, for its label. */
+function breaksText(lost: readonly SetScore[]): string {
+  if (lost.length === 0) return '';
+  return ` · ✕ breaks ${lost.map((s) => CONTENT.sets[s.set].name).join(', ')}`;
 }
 
 /**
@@ -864,12 +1119,13 @@ function DemolishTarget({ scale }: { scale: number }) {
           ? ` · ▲ +${formatNumber(d.delta)} ${wow}/week`
           : '';
     const name = targetName(d.target);
-    const text = armed ? `Click again to demolish the ${name}` : `Demolish ${name}`;
+    const text = armed ? `Click again to demolish ${definite(name)}` : `Demolish ${name}`;
     const tone = d.delta < 0 ? 'bad' : d.delta > 0 ? 'good' : '';
     label = (
       <div class={`ghost-delta demolish-label ${tone} ${below}`} style={style}>
         {text}
         {change}
+        {breaksText(d.setsLost)}
       </div>
     );
   } else {
