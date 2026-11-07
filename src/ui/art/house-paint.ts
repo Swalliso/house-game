@@ -32,10 +32,10 @@ import {
   type Rect,
   type Room,
 } from '../board/house-model.ts';
-import { CELL, PIECE_SPRITES, spritePos, type SpriteId } from '../sprites.ts';
+import { CELL, spritePos, type SpriteId } from '../sprites.ts';
 import type { PieceId } from '../../rules/index.ts';
 import { artSize, drawingPixels, isDrawing, type ArtId } from './drawings.ts';
-import { roomLayout, type Item } from './rooms.ts';
+import { itemRows, roomLayout, type Item } from './rooms.ts';
 import type { Ground, YardLayout, YardModel } from './yard.ts';
 
 /** RGBA pixels (not premultiplied, like ImageData) at (x, y) on the lot, in art px. */
@@ -156,6 +156,28 @@ type RoomId = Extract<
   | 'sunroom'
 >;
 
+/**
+ * Each room type's floor (D-093: every room type its own; the two kitchens share one, as do the
+ * two halls). The hand's cards and the shop picture rooms with these too, through paintPiece.
+ */
+export const FLOOR: Readonly<Record<RoomId, SpriteId>> = {
+  bedroom: 'floor-wood',
+  bathroom: 'floor-tile',
+  kitchen: 'floor-kitchen',
+  lKitchen: 'floor-kitchen',
+  diningRoom: 'floor-parquet',
+  livingRoom: 'floor-carpet',
+  closet: 'floor-closet',
+  hallway: 'floor-hall',
+  longHallway: 'floor-hall',
+  garage: 'floor-garage',
+  homeOffice: 'floor-office',
+  playroom: 'floor-playroom',
+  library: 'floor-library',
+  mudroom: 'floor-mudroom',
+  sunroom: 'floor-sunroom',
+};
+
 /** Each room type's north wall face, in its own wallpaper (the two kitchens and the two halls share one). */
 export const FACE: Readonly<Record<RoomId, SpriteId>> = {
   bedroom: 'face-bedroom',
@@ -177,6 +199,10 @@ export const FACE: Readonly<Record<RoomId, SpriteId>> = {
 
 function faceOf(id: PieceId): SpriteId {
   return (FACE as Partial<Record<PieceId, SpriteId>>)[id] ?? 'face-hallway';
+}
+
+function floorOf(id: PieceId): SpriteId {
+  return (FLOOR as Partial<Record<PieceId, SpriteId>>)[id] ?? 'floor-hall';
 }
 
 /** A box of lot pixels being painted. */
@@ -419,7 +445,7 @@ export function paintFloors(
 
   const shade = new Mask(cv);
   for (const r of m.rooms.values()) {
-    const floor = PIECE_SPRITES[r.defId].floor;
+    const floor = floorOf(r.defId);
     const face = faceOf(r.defId);
     for (const c of r.cells) {
       const X0 = c.x * CELL;
@@ -800,8 +826,10 @@ export function paintWalls(m: HouseModel): Pixels | null {
 }
 
 /**
- * One piece alone, for the ghost (pieceModel): its floor, its items, then its walls over them,
- * in one box the size of the piece. Null with no room.
+ * One piece alone, for the ghost (pieceModel) and the cards' pictures: its floor, its items, its
+ * walls over them, then the tops of its tall items over the walls, as the board's overhang layer
+ * draws them (a bookcase or a fridge rising over the north wall band), in one box the size of the
+ * piece. Null with no room.
  */
 export function paintPiece(
   m: HouseModel,
@@ -816,6 +844,17 @@ export function paintPiece(
   for (const it of items) cv.blit(atlas, it.sprite, it.x, it.y);
   const walls = paintWalls(m);
   if (walls) cv.over(walls);
+  for (const it of items) {
+    const top = itemRows(it).top;
+    if (!top) continue;
+    const [from, to] = top;
+    cv.blit(atlas, it.sprite, it.x, it.y + from, {
+      x: 0,
+      y: from,
+      w: artSize(it.sprite).w,
+      h: to - from,
+    });
+  }
   return cv.pixels();
 }
 

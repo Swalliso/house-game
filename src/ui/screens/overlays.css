@@ -34,7 +34,7 @@
 .banner.bad {
   --ribbon: var(--bad-fill);
   --ribbon-hi: var(--armed-hi);
-  --ribbon-lo: var(--bad);
+  --ribbon-lo: var(--bad-deep);
   --ribbon-tail: var(--art-ribbonOrange);
 }
 /* The ribbon: a plate with notched tails folded behind its ends. */

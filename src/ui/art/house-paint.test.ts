@@ -8,10 +8,11 @@ import { decodePng } from '../../../scripts/png.ts';
 import type { FixtureId, HouseState, PieceId, PlacedPiece, Rot } from '../../rules/index.ts';
 import { lotFromRows } from '../../rules/lot.ts';
 import { houseModel, roomAt, WALL, type HouseModel } from '../board/house-model.ts';
-import { CELL, PIECE_SPRITES, spritePos, type SpriteId } from '../sprites.ts';
+import { CELL, spritePos, type SpriteId } from '../sprites.ts';
 import {
   BAND,
   FACE,
+  FLOOR,
   HOUSE_SHADOW,
   INK,
   chandelierAt,
@@ -23,7 +24,8 @@ import {
   type AtlasPixels,
   type Pixels,
 } from './house-paint.ts';
-import { roomItems } from './rooms.ts';
+import { itemRows, roomItems } from './rooms.ts';
+import { artSize, isDrawing } from './drawings.ts';
 import { pieceModel } from '../board/house-model.ts';
 import { yardModel, yardPieceLayout } from './yard.ts';
 
@@ -152,9 +154,7 @@ describe('the floor canvas', () => {
   it('lays each room’s own floor, with its wallpaper under the north wall', () => {
     const m = model([['library', 2, 2]]);
     const p = paintFloors(m, atlas, { shadow: false })!;
-    expect(pixel(p, 2 * CELL + 20, 3 * CELL + 20)).toEqual(
-      sprite(PIECE_SPRITES.library.floor, 20, 20),
-    );
+    expect(pixel(p, 2 * CELL + 20, 3 * CELL + 20)).toEqual(sprite(FLOOR.library, 20, 20));
     expect(pixel(p, 2 * CELL + 10, 2 * CELL + WALL.out + 3)).toEqual(sprite(FACE.library, 10, 3));
   });
 
@@ -201,6 +201,32 @@ describe('the ghost', () => {
     expect([p.x, p.y, p.w, p.h]).toEqual([0, 0, 2 * CELL, 2 * CELL]);
     expect(pixel(p, 0, 0)).toEqual([...INK, 255]);
     expect(pixel(p, CELL, CELL)[3]).toBe(255);
+  });
+
+  it('shows tall items rising over the north wall, as the board’s overhang does', () => {
+    // A Library's bookcase and globe stand against the north wall and rise over its band.
+    const m = pieceModel('library', 0);
+    const items = roomItems(m, 1);
+    const tall = items.filter((it) => itemRows(it).top);
+    expect(tall.length).toBeGreaterThan(0);
+    const p = paintPiece(m, atlas, items)!;
+    const walls = paintWalls(m)!;
+    let shown = 0;
+    for (const it of tall) {
+      if (isDrawing(it.sprite)) continue;
+      const [from, to] = itemRows(it).top!;
+      const { w } = artSize(it.sprite);
+      for (let y = from; y < to; y++) {
+        for (let x = 0; x < w; x++) {
+          const art = sprite(it.sprite, x, y);
+          // An opaque pixel of the item's top over the wall band is the item's, not the wall's.
+          if (art[3] !== 255 || pixel(walls, it.x + x, it.y + y)[3] === 0) continue;
+          expect(pixel(p, it.x + x, it.y + y), `${it.sprite} ${x},${y}`).toEqual(art);
+          shown++;
+        }
+      }
+    }
+    expect(shown).toBeGreaterThan(0);
   });
 });
 

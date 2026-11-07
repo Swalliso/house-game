@@ -320,8 +320,9 @@ function HowToPlayText() {
             <a href="https://limezu.itch.io/" target="_blank" rel="noreferrer">
               LimeZu
             </a>
-            , from Modern Interiors and Modern Exteriors, with placeholders drawn for Open House.
+            , from Modern Interiors and Modern Exteriors, with our own drawings in its palette.
           </li>
+          <li>Fonts: Public Pixel by GGBotNet and Pixel Operator by Jayvee Enaguas, both CC0.</li>
           <li>Sound effects made with ZzFX by Frank Force.</li>
         </ul>
       </Section>

@@ -6,6 +6,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { CONTENT } from '../../rules/index.ts';
+import { isLimeZuColor } from '../art/palette.ts';
 import { gridProblems, gridRows, gridSize, ICON_SIZES, UI_PALETTE } from './art.ts';
 import { FRAMES, PARTS, PATTERNS } from './frames.ts';
 import { ICONS } from './icons.ts';
@@ -77,6 +78,7 @@ describe('the tokens', () => {
     const pairs = [
       ['ink', 'paper'],
       ['ink', 'card'],
+      ['ink', 'card-hi'],
       ['ink', 'paper-inset'],
       ['ink-soft', 'paper'],
       ['ink-soft', 'card'],
@@ -135,12 +137,14 @@ describe('the tokens', () => {
   it("share the pixel art's palette: the art samples the same colors", () => {
     const t = tokens();
     const palette = new Set(Object.values(UI_PALETTE));
-    for (const name of ['ink', 'paper', 'card', 'wood-hi', 'wood-light', 'wood', 'wood-deep']) {
+    for (const name of ['ink', 'card-hi', 'wood-hi', 'wood-light', 'wood', 'wood-deep']) {
       expect(palette, name).toContain(t.get(name));
     }
-    for (const name of ['comfort', 'charm', 'sparkle', 'sparkle-deep', 'action', 'good', 'bad']) {
+    for (const name of ['comfort', 'charm', 'sparkle', 'sparkle-deep', 'action', 'good']) {
       expect(palette, name).toContain(t.get(name));
     }
+    // The orange ribbon's shade, under its tails.
+    expect(palette, 'bad-deep').toContain(t.get('bad-deep'));
   });
 });
 
@@ -155,6 +159,11 @@ describe('the pixel art', () => {
 
   it('is drawn in rectangular grids, in the palette', () => {
     expect(grids.flatMap(([name, grid]) => gridProblems(name, gridRows(grid)))).toEqual([]);
+  });
+
+  it("uses only LimeZu's colors (D-097: our own drawings sample its palette)", () => {
+    const off = Object.entries(UI_PALETTE).filter(([, hex]) => !isLimeZuColor(hex));
+    expect(off).toEqual([]);
   });
 
   it("frames' slices leave a middle", () => {

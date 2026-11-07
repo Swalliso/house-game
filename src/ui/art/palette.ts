@@ -27,6 +27,27 @@ export const LIMEZU_PALETTE: ReadonlySet<string> = new Set(
     .filter(Boolean),
 );
 
+/**
+ * The colors of Modern Interiors' palette (palette_interiors.png) that Modern Exteriors' lacks,
+ * and one its sheets use that neither palette file lists (6b5052, the Room_Builder's and the
+ * furniture's deep wood). With LIMEZU_PALETTE, every color LimeZu draws in: the interface's own
+ * drawings (theme/art.ts) keep to these.
+ */
+export const LIMEZU_INTERIORS_EXTRA: ReadonlySet<string> = new Set(
+  `
+  1652b9 4c4e8f 616355 645d9a 787b69 8d9580 91a5cf 949a8e a2a6a0 a7afa5 c56b9a fdfcfd
+  6b5052
+`
+    .split(/\s+/)
+    .filter(Boolean),
+);
+
+/** Whether a #rrggbb color is one LimeZu draws in, in either pack. */
+export function isLimeZuColor(hex: string): boolean {
+  const c = hex.replace('#', '').toLowerCase();
+  return LIMEZU_PALETTE.has(c) || LIMEZU_INTERIORS_EXTRA.has(c);
+}
+
 /** Whether an RGB color is one of LimeZu's. */
 export function inPalette(rgb: readonly number[]): boolean {
   const hex = rgb.slice(0, 3).map((v) => v.toString(16).padStart(2, '0'));

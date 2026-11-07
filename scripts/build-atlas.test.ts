@@ -37,12 +37,11 @@ const SIZE = PLACEHOLDER_SIZE;
 function isOpaque(id: string): boolean {
   return /^(floor|grass|water)-/.test(id) || ['street', 'sidewalk', 'lawn'].includes(id);
 }
-/** Overlays and furniture sit on top of a tile, on a transparent background. */
-const OVERLAYS = ['tree', 'bed', 'tub', 'stove', 'table', 'sofa', 'flowers'];
 /**
- * Ids the UI references by name (src/ui/sprites.ts, the terrain layer) that have a placeholder.
- * Sprites that only exist as LimeZu cuts (autotile sets, the water's frames, the lot's overlays,
- * the street, the title's scene) need none: the committed cuts are always there.
+ * Ids the UI draws by name that keep a placeholder under their cut: the lot's grass and the
+ * first rooms' floors. Everything else exists only as a LimeZu cut (furniture, props, autotile
+ * sets, the water's frames, the street, the title's scene): the committed cuts are always there,
+ * and the placeholders they replaced in M5a are gone.
  */
 const REQUIRED = [
   'grass-0',
@@ -52,8 +51,6 @@ const REQUIRED = [
   'floor-kitchen',
   'floor-parquet',
   'floor-carpet',
-  'lawn',
-  ...OVERLAYS,
 ];
 
 const row = (s: string) => s.padEnd(SIZE, '.');
@@ -125,14 +122,9 @@ describe('the art in art/', () => {
     }
   });
 
-  it('keeps terrain and floors opaque and overlays on a transparent background', () => {
-    const byId = new Map(sprites.map((s) => [s.id, s]));
+  it('keeps terrain and floors opaque', () => {
     for (const sprite of sprites.filter((s) => isOpaque(s.id))) {
       expect(sprite.rows.join(''), sprite.id).not.toContain('.');
-    }
-    for (const id of OVERLAYS) {
-      const rows = byId.get(id)!.rows;
-      expect(rows[0]!.charAt(0) + rows[SIZE - 1]!.charAt(0), id).toBe('..');
     }
   });
 });
@@ -209,7 +201,7 @@ describe('placeholders in the atlas', () => {
   });
 
   it('draw palette colors, and transparent dots', () => {
-    const sprite = sprites.find((s) => s.id === 'tree')!;
+    const sprite = sprites.find((s) => s.id === 'treehouse')!;
     const small = rasterize(sprite, palette);
     sprite.rows.forEach((r, y) => {
       for (let x = 0; x < SIZE; x++) {

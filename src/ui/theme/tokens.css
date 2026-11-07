@@ -66,6 +66,7 @@
   --bad: #a8480c; /* text 5.5:1 on --card */
   --bad-fill: #ed931e; /* hatching, the illegal ghost: ink on it 4.6:1 */
   --bad-tint: #ffe57b;
+  --bad-deep: #ae5539; /* the orange ribbon's shade and its tails' fold (art.ts N) */
   --danger: #c8402e; /* demolish: --on-wood text 4.6:1 */
   --danger-hi: #e07070;
   --danger-shade: #9e2b2d;

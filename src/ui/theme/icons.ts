@@ -260,8 +260,8 @@ export const ICONS = {
     .kxxxxk.
     kxxxxxxk
     kkkkkkkk
-    .kPPkPk.
-    .kPPkPk.
+    .kWWkWk.
+    .kWWkWk.
     .kkkkkk.
   `,
   // --- Fixtures (8×8): a fixture's badge on the board, its supply slot, and the shop's art slot
@@ -570,12 +570,12 @@ export const ICONS = {
   /** A notice: a letter. */
   mail: `
     kkkkkkkkkkkk
-    kkPPPPPPPPkk
-    kPkPPPPPPkPk
-    kPPkPPPPkPPk
-    kPPPkkkkPPPk
-    kPPPPPPPPPPk
-    kPPPPPPPPPPk
+    kkWWWWWWWWkk
+    kWkWWWWWWkWk
+    kWWkWWWWkWWk
+    kWWWkkkkWWWk
+    kWWWWWWWWWWk
+    kWWWWWWWWWWk
     kkkkkkkkkkkk
   `,
   /** The house is finished: a trophy. */

@@ -116,10 +116,10 @@ export const PARTS = {
   `,
   /** A tooltip's tail: its top row is the note's bottom edge, opened up. */
   tipTail: `
-    kPPPPPPPk
-    .kPPPPPk.
-    ..kPPPk..
-    ...kPk...
+    kWWWWWWWk
+    .kWWWWWk.
+    ..kWWWk..
+    ...kWk...
     ....k....
   `,
 } as const;

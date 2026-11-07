@@ -229,7 +229,7 @@
     "pack": "me",
     "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/7_Villas_16x16.png",
     "rect": [386, 537, 29, 19],
-    "note": "A Flower Bed: a terracotta planter of shrubs with blue flowers."
+    "note": "A Flower Bed: a terracotta planter of shrubs with blue flowers. The title street's front lawn has it too."
   },
   "planter-1": {
     "pack": "me",
@@ -247,7 +247,7 @@
     "pack": "me",
     "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/7_Villas_16x16.png",
     "rect": [418, 569, 29, 19],
-    "note": "A Flower Bed: the planter with pink flowers."
+    "note": "A Flower Bed: the planter with pink flowers. The title street's front lawn has it too."
   },
   "herb-planter": {
     "pack": "me",

@@ -14,19 +14,24 @@ Open House is a game jam entry for the theme "It's a house," built with Claude C
   sprites we use, cut from the packs into `assets/limezu/` (and packed into `assets/atlas.png`)
   by `npm run art:cut`, each recorded in `assets/licenses.json` with its sheet and rect. The
   packs stay in the gitignored `art-source/` (D-097).
-- **Placeholder sprites** (`art/*.txt`, packed into `assets/atlas.png`): drawn for Open House
-  by Claude Code. Our own work. LimeZu cuts replaced them in M5a (D-097): the whole lot (its
-  grass, sunny side, water, woods, rocks, finds, street, and the grass around it), and the house
-  and the yard (floors, wallpapers, furniture, the yard pieces and their props).
+- **Placeholder sprites** (`art/*.txt`): drawn for Open House by Claude Code. Our own work.
+  LimeZu cuts replaced them in M5a (D-097): the whole lot (its grass, sunny side, water, woods,
+  rocks, finds, street, and the grass around it), and the house and the yard (floors,
+  wallpapers, furniture, the yard pieces and their props). The few left in `art/` are each
+  covered by a cut of the same id, so `assets/atlas.png` holds none of them.
 - **The house's and the yard's own drawings** (`src/ui/art/drawings.ts`,
-  `src/ui/art/house-paint.ts`): the Doghouse, the hens, the Sprinkler, the walls and windows,
-  and the painted fixtures (the Chandelier, Blackout Curtains, Soundproofing, the Skylight's
-  light, the Bay Window), drawn for Open House by Claude Code in LimeZu's palette. Our own work.
+  `src/ui/art/house-paint.ts`, `src/ui/art/yard.ts`): the Doghouse, the hens, the Sprinkler,
+  the walls and windows, the painted fixtures (the Chandelier, Blackout Curtains, Soundproofing,
+  the Skylight's light, the Bay Window), and the yard's own touches (the Henhouse's straw, the
+  Sprinkler's wet patch, Garden Lights' light), drawn for Open House by Claude Code in LimeZu's
+  palette. Our own work.
 - **The interface's frames, icons and the title's sky** (`src/ui/theme/frames.ts`,
   `src/ui/theme/icons.ts`, `src/ui/theme/scenery.ts`): drawn for Open House by Claude Code as
   text grids in LimeZu's palette, and turned into images in the browser at startup. Our own
-  work. The title screen's houses, trees, planters and car are Modern Exteriors cuts
-  (`art/limezu/ui.json`).
+  work. The icons include one for each fixture and tool (their badges on the board, their
+  supply slots and their pictures in the shop). The title screen's houses, trees, shrub,
+  planters and car are Modern Exteriors cuts (`art/limezu/ui.json`, and the Flower Bed's
+  planters from `art/limezu/yard.json`), on the lot's own lawn and street (`art/limezu/terrain.json`).
 - **Placeholder sound effects:** generated in the browser with
   [ZzFX](https://github.com/KilledByAPixel/ZzFX) by Frank Force (MIT). Its sample builder is
   vendored in `src/ui/audio/zzfx.ts` with its license notice.

@@ -207,14 +207,14 @@ const BACK: readonly Prop[] = [
 
 /** The front lawn's shrubs and planters, clear of the villas' steps: `y` from the row's top. */
 const FRONT: readonly Prop[] = [
-  { id: 'title-planter', at: 0.06, y: 24 },
-  { id: 'title-planter-pink', at: 0.21, y: 24 },
+  { id: 'planter-0', at: 0.06, y: 24 },
+  { id: 'planter-3', at: 0.21, y: 24 },
   { id: 'title-shrub', at: 0.33, y: 27 },
   { id: 'title-shrub', at: 0.45, y: 26 },
   { id: 'title-shrub', at: 0.56, y: 27 },
   { id: 'title-shrub', at: 0.68, y: 26 },
-  { id: 'title-planter-pink', at: 0.775, y: 24 },
-  { id: 'title-planter', at: 0.94, y: 24 },
+  { id: 'planter-3', at: 0.775, y: 24 },
+  { id: 'planter-0', at: 0.94, y: 24 },
 ];
 
 function drawScene(

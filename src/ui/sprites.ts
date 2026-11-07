@@ -1,7 +1,8 @@
-// The sprite atlas (D-057, D-097), built by scripts/build-atlas.ts from the art/ placeholders
-// (doubled to 32×32) and the LimeZu cuts in assets/limezu/ (at their own sizes). atlas.json
-// (version 2) gives each sprite's rect, { x, y, w, h }, at even positions and extruded by 1px.
-// Pieces use it as a CSS background; the terrain canvas draws from it.
+// The sprite atlas (D-057, D-097), built by scripts/build-atlas.ts from the LimeZu cuts in
+// assets/limezu/ (at their own sizes), and any art/ placeholder no cut covers (doubled to 32×32;
+// today there are none). atlas.json (version 2) gives each sprite's rect, { x, y, w, h }, at even
+// positions and extruded by 1px. Furniture and props use it as a CSS background; the canvases
+// draw from it. The rooms' floors and wallpapers are in art/house-paint.ts (FLOOR, FACE).
 //
 // Sizes are in art px. A board `scale` is CSS px per art px, so one cell is CELL × scale CSS
 // px. Sprites come in any size: a cell's floor is CELL × CELL, and furniture may be smaller or
@@ -9,7 +10,7 @@
 
 import atlasUrl from '../../assets/atlas.png';
 import atlas from '../../assets/atlas.json';
-import type { FixtureId, PieceId, Supply, ToolId } from '../rules/index.ts';
+import type { FixtureId, Supply, ToolId } from '../rules/index.ts';
 import type { IconName } from './theme/art.ts';
 
 export type SpriteId = keyof typeof atlas.sprites;
@@ -27,50 +28,6 @@ export function cellUnit(px: number): number {
 }
 
 export const ATLAS_URL: string = atlasUrl;
-
-/**
- * Each piece's floor and its one key furniture sprite: the piece's icon (the hand cards, the
- * coming pile). Every room type has its own floor (D-093); the two kitchens share one, as do
- * the two halls. The board's richer art (wall faces, furniture layouts) is in src/ui/art/.
- */
-export const PIECE_SPRITES: Record<PieceId, { floor: SpriteId; furniture: SpriteId }> = {
-  bedroom: { floor: 'floor-wood', furniture: 'bed' },
-  bathroom: { floor: 'floor-tile', furniture: 'tub' },
-  kitchen: { floor: 'floor-kitchen', furniture: 'stove' },
-  lKitchen: { floor: 'floor-kitchen', furniture: 'stove' },
-  diningRoom: { floor: 'floor-parquet', furniture: 'table' },
-  livingRoom: { floor: 'floor-carpet', furniture: 'sofa' },
-  closet: { floor: 'floor-closet', furniture: 'wardrobe' },
-  hallway: { floor: 'floor-hall', furniture: 'plant' },
-  longHallway: { floor: 'floor-hall', furniture: 'plant' },
-  garage: { floor: 'floor-garage', furniture: 'car' },
-  homeOffice: { floor: 'floor-office', furniture: 'desk' },
-  lawn: { floor: 'lawn', furniture: 'flowers' },
-  sapling: { floor: 'grass-0', furniture: 'sapling' },
-  // Where the floor is the whole picture, the furniture is the same sprite (it lands on a
-  // whole cell, or the sprite repeats every half cell, so it shows no seam) or the empty 'none'.
-  // Sprites don't rotate, so the fence is drawn as a panel that also reads stacked.
-  flowerBed: { floor: 'flowerbed', furniture: 'flowerbed' },
-  herbGarden: { floor: 'herbs', furniture: 'herbs' },
-  patio: { floor: 'patio', furniture: 'parasol' },
-  fence: { floor: 'fence', furniture: 'none' },
-  lFence: { floor: 'fence', furniture: 'none' },
-  driveway: { floor: 'driveway', furniture: 'driveway' },
-  longDriveway: { floor: 'driveway', furniture: 'driveway' },
-  doghouse: { floor: 'grass-0', furniture: 'doghouse' },
-  treehouse: { floor: 'canopy', furniture: 'treehouse' },
-  greenhouse: { floor: 'greenhouse', furniture: 'greenhouse' },
-  // Special pieces (M3a).
-  playroom: { floor: 'floor-playroom', furniture: 'toys' },
-  library: { floor: 'floor-library', furniture: 'books' },
-  mudroom: { floor: 'floor-mudroom', furniture: 'boots' },
-  pool: { floor: 'pool', furniture: 'pool' },
-  sunroom: { floor: 'floor-sunroom', furniture: 'plant' },
-  hotTub: { floor: 'patio', furniture: 'hottub' },
-  firePit: { floor: 'grass-0', furniture: 'firepit' },
-  henhouse: { floor: 'grass-0', furniture: 'henhouse' },
-  birdhouse: { floor: 'grass-0', furniture: 'birdhouse' },
-};
 
 /**
  * Each fixture's icon (theme/icons.ts): its badge on the board where it can't be drawn, its

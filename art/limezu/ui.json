@@ -34,17 +34,5 @@
     "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_16x16.png",
     "rect": [359, 966, 18, 24],
     "note": "A small tree for the title street's front lawn, between the sign and the houses."
-  },
-  "title-planter": {
-    "pack": "me",
-    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/7_Villas_16x16.png",
-    "rect": [386, 537, 29, 19],
-    "note": "A wooden planter of blue flowers, for the title street's front lawn beside the villas' steps."
-  },
-  "title-planter-pink": {
-    "pack": "me",
-    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/7_Villas_16x16.png",
-    "rect": [418, 569, 29, 19],
-    "note": "The same planter with pink flowers."
   }
 }

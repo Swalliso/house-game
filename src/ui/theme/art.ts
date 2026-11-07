@@ -13,7 +13,11 @@ import { FRAMES, PARTS, PATTERNS } from './frames.ts';
 import { ICONS } from './icons.ts';
 import { SCENERY } from './scenery.ts';
 
-/** LimeZu's colors (its Modern Interiors and Modern Exteriors palettes), one character each. */
+/**
+ * LimeZu's colors, one character each: from its Modern Exteriors and Modern Interiors palettes,
+ * or (e) sampled from Modern Interiors' sheets. theme.test.ts holds every one to them
+ * (art/palette.ts).
+ */
 export const UI_PALETTE: Readonly<Record<string, string>> = {
   // Inks and greys.
   k: '#3a3a50', // ink: LimeZu's outline
@@ -24,10 +28,8 @@ export const UI_PALETTE: Readonly<Record<string, string>> = {
   G: '#b2aecb',
   L: '#d8d0e0',
   w: '#f8f8f8',
-  W: '#fefcfe', // card-hi
+  W: '#fefcfe', // card-hi, and the tooltip's paper
   // Paper.
-  p: '#f4efdf', // paper
-  P: '#fbf8ef', // card
   i: '#eee1b7', // paper-inset
   I: '#e0d0b2', // card-lo
   // Wood.
@@ -37,13 +39,13 @@ export const UI_PALETTE: Readonly<Record<string, string>> = {
   o: '#c78c59', // wood
   m: '#b5754d', // wood-mid
   d: '#a85f46', // wood-dark
-  e: '#6b5052', // wood-deep
+  e: '#6b5052', // wood-deep (Modern Interiors' Room_Builder and furniture sheets)
   // Gold and orange.
   u: '#fff59a',
   y: '#f8d239', // sparkle
   Y: '#f2b22b', // sparkle-deep
   n: '#ed931e', // bad-fill
-  N: '#a8480c', // bad
+  N: '#ae5539', // bad-deep: the orange ribbon's fold
   O: '#66451e',
   // Blues.
   c: '#c4d7e3', // comfort-tint
