@@ -6,29 +6,36 @@
  *
  * In a top-down 3/4 view, things further south are in front, so a layer that
  * draws above its own cells (tall furniture, tree tops) sits above everything
- * it can overlap. Inside the items layer, each piece's container orders itself
- * by its bottom row.
+ * it can overlap. Inside the items and overhang layers, each piece's container
+ * orders itself by its bottom row, and inside the labels layer the badges sit
+ * over the digits.
  */
 export const LAYER = {
-  /** Grass, the sunny side, tree bases, rocks, finds' footprints, the street (canvas). */
+  /**
+   * Grass, the sunny side, the woods' floor and tree bases, rocks, the finds, the street and
+   * the road (canvas). It shares a stacking group (`.ground`) with the water.
+   */
   terrain: 0,
-  /** Animated water over the water's bounding box (canvas). */
+  /** Animated water over the water's bounding box (canvas), inside the terrain's group. */
   water: 1,
-  /** Room floors, north wall faces, floor shadows, the house's shadow, yard ground (canvas). */
+  /**
+   * The yard's ground and curb cuts, the house's shadow, doormats, room floors, north wall
+   * faces and floor shadows (canvas).
+   */
   floor: 2,
   /** The front and back yard tint (SVG). */
   yardTint: 3,
   /** One DOM container per piece: furniture, props, fixtures. */
   items: 4,
-  /** Wall bands, door gaps, window glass, doormats (canvas). */
+  /** Wall bands, door gaps, window glass, garage rails, the painted fixtures (canvas). */
   walls: 5,
   /** Tall items above their own footprint: furniture over the north wall, outbuilding roofs. */
   overhang: 6,
   /** The roof, when the house is shown from outside (on demand). */
   roof: 7,
-  /** Tree tops and the shed's roof above their own cells (canvas). */
+  /** Tree tops above their own cells, over the lot and the row above it (canvas). */
   canopy: 8,
-  /** Active, lit, set-preview, and pending outlines (SVG). */
+  /** The tally's active piece, a held set's and the preview's sets, each piece's flash (SVG). */
   highlights: 9,
   /** Digits, fixture and unmet badges, the street's label. */
   labels: 10,
