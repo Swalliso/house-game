@@ -119,6 +119,20 @@
   --sky-3: #b4dcf0;
   --sky-4: #cbe7f2;
 
+  /* --- The board's overlays (board/house.css, board/terrain/terrain.css) ----------------
+     Highlights, the ghost's tint and the lot's edge, over the art at the camera's scale. */
+  --hl-flash: #fffbe6; /* a piece's floor as it wobbles or settles */
+  --hl-active-fill: rgb(255 248 208 / 0.2); /* the tally's scoring piece */
+  --hl-active-edge: #fff3b8;
+  --hl-set-fill: rgb(242 169 189 / 0.16); /* the preview's new sets, under a --charm edge */
+  --hl-lit-fill: rgb(242 169 189 / 0.3); /* a held set's beat in the tally */
+  --ghost-legal-fill: rgb(47 111 208 / 0.18);
+  --ghost-hatch-on: rgb(224 122 31 / 0.75); /* the illegal ghost's stripes */
+  --ghost-hatch-off: rgb(255 255 255 / 0.15);
+  --lot-line-hi: rgb(255 249 226 / 0.3); /* the property line's two rings */
+  --lot-line-lo: rgb(30 44 32 / 0.18);
+  --street-label: rgb(58 58 80 / 0.55); /* --ink, faded, on the sidewalk */
+
   /* --- Focus: a double ring that reads on paper and on wood --------------------------- */
   --focus-outer: var(--ink);
   --focus-inner: var(--sparkle);

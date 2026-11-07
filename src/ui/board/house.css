@@ -80,21 +80,21 @@
 }
 /* A piece's flash as it wobbles or settles (piece-fx.ts animates its opacity). */
 .hl-flash {
-  fill: #fffbe6;
+  fill: var(--hl-flash);
   opacity: 0;
 }
 /* The tally's scoring piece: a warm rim and a little light. */
 .hl-active .fill {
-  fill: rgb(255 248 208 / 0.2);
+  fill: var(--hl-active-fill);
 }
 .hl-active .edge {
-  stroke: #fff3b8;
+  stroke: var(--hl-active-edge);
   stroke-width: 3;
 }
 /* A set's members: Charm's rose (D-019) with a dashed edge, so it's never color alone. The
    placement preview's new sets are lighter than a held set's beat in the tally. */
 .hl-set .fill {
-  fill: rgb(242 169 189 / 0.16);
+  fill: var(--hl-set-fill);
 }
 .hl-set .edge {
   stroke: var(--charm);
@@ -103,7 +103,7 @@
   stroke-linecap: butt;
 }
 .hl-lit .fill {
-  fill: rgb(242 169 189 / 0.3);
+  fill: var(--hl-lit-fill);
 }
 .hl-lit .edge {
   stroke: var(--charm);
@@ -139,7 +139,7 @@
   stroke-linecap: square;
 }
 .ghost-piece.legal .ghost-tint .fill {
-  fill: rgb(47 111 208 / 0.18);
+  fill: var(--ghost-legal-fill);
 }
 .ghost-piece.legal .ghost-tint .edge {
   stroke: var(--good);
@@ -151,10 +151,10 @@
   stroke: var(--bad);
 }
 .ghost-tint .hatch-on {
-  fill: rgb(224 122 31 / 0.75);
+  fill: var(--ghost-hatch-on);
 }
 .ghost-tint .hatch-off {
-  fill: rgb(255 255 255 / 0.15);
+  fill: var(--ghost-hatch-off);
 }
 .ghost-piece.pending.legal .ghost-tint .fill {
   fill: none;
