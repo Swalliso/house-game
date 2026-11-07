@@ -1,0 +1,58 @@
+/* The budget's counter (BudgetCount.tsx): it counts coin by coin, pops on a change, and a gain
+   too big to count shows one "+N" by the number (§12, Shop and crates). The "+N" floats over
+   its neighbors, so the layout never shifts. A dark header sets --budget-up and --budget-down
+   to colors that read on it. */
+
+.budget-count {
+  display: inline-block;
+  min-width: 1.5ch;
+  transition: transform var(--dur-hover) ease-out;
+}
+.budget-count.up {
+  color: var(--budget-up, var(--good));
+  transform: scale(1.15);
+}
+.budget-count.down {
+  color: var(--budget-down, var(--bad));
+}
+.reduce-motion .budget-count {
+  transition: none;
+  transform: none;
+}
+.budget-wrap {
+  position: relative;
+  display: inline-block;
+}
+.budget-jump {
+  position: absolute;
+  left: 100%;
+  bottom: 55%;
+  margin-left: var(--px);
+  padding: 0 var(--px);
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--ink);
+  background: var(--gold-hi);
+  pointer-events: none;
+  animation-name: budget-jump;
+  animation-timing-function: ease-out;
+  animation-fill-mode: forwards;
+}
+@keyframes budget-jump {
+  0% {
+    opacity: 0;
+    transform: translateY(var(--px));
+  }
+  15%,
+  75% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(calc(var(--px) * -2));
+  }
+}
+.reduce-motion .budget-jump {
+  animation-name: popup-fade;
+}

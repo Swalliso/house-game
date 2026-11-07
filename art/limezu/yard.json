@@ -1,0 +1,501 @@
+{
+  "yard-lawn": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/13_School_16x16.png",
+    "rect": [320, 1600, 32, 32],
+    "note": "The Lawn's ground: the school pitch's mown stripes (a dark and a light 16 px stripe), one 32 px cell. Brighter than the lot's muted grass, so a Lawn reads as a kept lawn."
+  },
+  "yard-pavers": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png",
+    "rect": [432, 144, 32, 32],
+    "note": "The Patio's ground: herringbone brick pavers, one 32 px cell (the audit prototype's pick)."
+  },
+  "yard-concrete": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/Autotiles_16x16/Godot_Autotiles_16x16.png",
+    "rect": [144, 1312, 16, 16],
+    "ops": [
+      {
+        "op": "tile",
+        "size": [32, 32]
+      }
+    ],
+    "note": "The Driveways' ground and their curb cuts: the plain middle tile of the concrete set (Godot set 20, mask 255), repeated to one 32 px cell."
+  },
+  "yard-pool": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/Autotiles_16x16/Godot_Autotiles_16x16.png",
+    "rect": [128, 1088, 16, 16],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [48, 48],
+        "layers": [
+          {
+            "rect": [160, 1088, 16, 16],
+            "at": [16, 0]
+          },
+          {
+            "rect": [176, 1088, 16, 16],
+            "at": [32, 0]
+          },
+          {
+            "rect": [128, 1104, 16, 16],
+            "at": [0, 16]
+          },
+          {
+            "rect": [144, 1120, 16, 16],
+            "at": [16, 16]
+          },
+          {
+            "rect": [176, 1120, 16, 16],
+            "at": [32, 16]
+          },
+          {
+            "rect": [128, 1136, 16, 16],
+            "at": [0, 32]
+          },
+          {
+            "rect": [144, 1136, 16, 16],
+            "at": [16, 32]
+          },
+          {
+            "rect": [176, 1136, 16, 16],
+            "at": [32, 32]
+          }
+        ]
+      }
+    ],
+    "note": "The Pool's and the Hot Tub's water with white coping: the nine tiles of the pool set (Godot set 17) a rectangle needs, as a 3 \u00d7 3 sheet of 16 px tiles (corners, edges, the middle). The painters lay them out over any rectangle of 16 px subtiles."
+  },
+  "parasol-0": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/14_Swimming_Pool_16x16.png",
+    "rect": [240, 3, 47, 61],
+    "note": "A Patio's parasol: the blue and white umbrella on its stand."
+  },
+  "parasol-1": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/14_Swimming_Pool_16x16.png",
+    "rect": [288, 3, 47, 61],
+    "note": "A Patio's parasol: the green and white umbrella."
+  },
+  "parasol-2": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/14_Swimming_Pool_16x16.png",
+    "rect": [288, 67, 47, 61],
+    "note": "A Patio's parasol: the orange and white umbrella (the one on the sheet's second row, clear of the deck chair beside the first)."
+  },
+  "parasol-small-0": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/14_Swimming_Pool_16x16.png",
+    "rect": [244, 332, 23, 19],
+    "note": "A small orange parasol over a Patio's table, where a door opens onto the Patio and the full parasol would cover it (the audit prototype's parasol)."
+  },
+  "parasol-small-1": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/14_Swimming_Pool_16x16.png",
+    "rect": [292, 332, 23, 19],
+    "note": "A small red parasol over a Patio's table, where a door opens onto the Patio."
+  },
+  "patio-chair-e-0": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_16x16.png",
+    "rect": [402, 541, 13, 19],
+    "note": "A Patio's folding chair, blue, facing east."
+  },
+  "patio-chair-e-1": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_16x16.png",
+    "rect": [402, 573, 13, 19],
+    "note": "A Patio's folding chair, green, facing east."
+  },
+  "patio-chair-w-0": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_16x16.png",
+    "rect": [449, 605, 13, 19],
+    "note": "A Patio's folding chair, blue, facing west."
+  },
+  "patio-chair-w-1": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_16x16.png",
+    "rect": [402, 573, 13, 19],
+    "ops": [
+      {
+        "op": "flipX"
+      }
+    ],
+    "note": "A Patio's folding chair, green, facing west (the east-facing one mirrored)."
+  },
+  "patio-table": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/14_Swimming_Pool_16x16.png",
+    "rect": [402, 16, 12, 16],
+    "note": "A Patio's side table with drinks, between its chairs."
+  },
+  "pergola": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png",
+    "rect": [0, 608, 64, 61],
+    "note": "The Pergola (fixture): LimeZu's wooden pergola, exactly a Patio's 2 \u00d7 2 cells wide."
+  },
+  "picket-run": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png",
+    "rect": [368, 960, 16, 15],
+    "note": "The white picket fence's run of pickets, one 16 px tile: the Fences draw it east and west of each cell's middle."
+  },
+  "picket-post": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png",
+    "rect": [352, 960, 5, 16],
+    "note": "The picket fence's post (its corner post's left 5 columns): at a fence's ends, corners and turns."
+  },
+  "picket-strip": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png",
+    "rect": [352, 976, 5, 8],
+    "note": "The picket fence seen end on, running north and south: one 8 px repeat of its side strip (the pickets' caps)."
+  },
+  "pool-ladder": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/14_Swimming_Pool_16x16.png",
+    "rect": [130, 256, 15, 28],
+    "note": "The Pool's ladder: its rails curving into the water."
+  },
+  "pool-float-0": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/14_Swimming_Pool_16x16.png",
+    "rect": [288, 178, 32, 22],
+    "note": "A float on the Pool: the pink donut ring."
+  },
+  "hot-tub-bubbles": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/Animated_16x16/Animated_sheets_16x16/Bubbles_16x16.png",
+    "rect": [0, 0, 16, 16],
+    "frames": {
+      "count": 8,
+      "dx": 16,
+      "dy": 0,
+      "ms": 140
+    },
+    "ops": [
+      {
+        "op": "keyOut",
+        "colors": ["#3ca3b2"]
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#47babd": "#f0fbfc",
+          "#3fabb7": "#bfeaf0",
+          "#3aa0b2": "#8fd8e0"
+        }
+      }
+    ],
+    "note": "The Hot Tub's bubbles: LimeZu's 8-frame bubbles with their water keyed out, so they rise over the tub's own water, and lightened to foam so they read."
+  },
+  "fire-pit": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/Animated_16x16/Animated_sheets_16x16/Campfire_16x16.png",
+    "rect": [0, 0, 16, 32],
+    "frames": {
+      "count": 6,
+      "dx": 16,
+      "dy": 0,
+      "ms": 110
+    },
+    "note": "The Fire Pit: LimeZu's 6-frame campfire on its ring of logs and stones."
+  },
+  "stump-0": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_16x16.png",
+    "rect": [311, 562, 17, 14],
+    "note": "A stump to sit on by the Fire Pit: the whole stump below the one with the axe in it."
+  },
+  "stump-1": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_16x16.png",
+    "rect": [311, 562, 17, 14],
+    "ops": [
+      {
+        "op": "flipX"
+      }
+    ],
+    "note": "The Fire Pit's other stump: the first one mirrored, so the two don't look stamped."
+  },
+  "planter-0": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/7_Villas_16x16.png",
+    "rect": [386, 537, 29, 19],
+    "note": "A Flower Bed: a terracotta planter of shrubs with blue flowers. The title street's front lawn has it too."
+  },
+  "planter-1": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/7_Villas_16x16.png",
+    "rect": [418, 537, 29, 19],
+    "note": "A Flower Bed: the planter with yellow flowers."
+  },
+  "planter-2": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/7_Villas_16x16.png",
+    "rect": [386, 569, 29, 19],
+    "note": "A Flower Bed: the planter with white flowers."
+  },
+  "planter-3": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/7_Villas_16x16.png",
+    "rect": [418, 569, 29, 19],
+    "note": "A Flower Bed: the planter with pink flowers. The title street's front lawn has it too."
+  },
+  "herb-planter": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/7_Villas_16x16.png",
+    "rect": [386, 549, 29, 7],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [29, 21],
+        "at": [0, 14],
+        "layers": [
+          {
+            "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png",
+            "rect": [179, 864, 11, 15],
+            "at": [2, 1]
+          },
+          {
+            "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png",
+            "rect": [274, 865, 12, 14],
+            "at": [16, 2]
+          },
+          {
+            "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png",
+            "rect": [258, 896, 13, 15],
+            "at": [8, 0]
+          }
+        ]
+      }
+    ],
+    "note": "A Herb Garden's planter: the flower planters' terracotta box (its bottom 7 rows) with three garden herbs standing in it, so it reads as greens, not flowers."
+  },
+  "sapling-0": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_16x16.png",
+    "rect": [418, 834, 12, 14],
+    "note": "The Sapling: a young tree, the smaller of LimeZu's two."
+  },
+  "sapling-1": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_16x16.png",
+    "rect": [433, 832, 13, 16],
+    "note": "The Sapling: the larger of LimeZu's two young trees."
+  },
+  "greenhouse": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png",
+    "rect": [212, 752, 56, 28],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [56, 78],
+        "layers": [
+          {
+            "rect": [212, 798, 56, 50],
+            "at": [0, 28]
+          }
+        ]
+      }
+    ],
+    "note": "The Greenhouse: LimeZu's small glass greenhouse with its plants, its glass roof one pane shorter (18 rows of the repeating panes cut out), so it rises 14 px above its 2 \u00d7 2 footprint instead of a whole cell and hides less of what's behind it."
+  },
+  "coop-0": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png",
+    "rect": [227, 720, 8, 32],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [32, 32],
+        "layers": [
+          {
+            "rect": [240, 720, 16, 32],
+            "at": [8, 0]
+          },
+          {
+            "rect": [262, 720, 8, 32],
+            "at": [24, 0]
+          }
+        ]
+      }
+    ],
+    "note": "The Henhouse's coop: the wooden garden shed's front (its wall module, a round pop hole over the door) spliced from 43 to 32 px wide: its left boards, the middle with the hole, its right boards."
+  },
+  "coop-1": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png",
+    "rect": [275, 720, 8, 32],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [32, 32],
+        "layers": [
+          {
+            "rect": [288, 720, 16, 32],
+            "at": [8, 0]
+          },
+          {
+            "rect": [310, 720, 8, 32],
+            "at": [24, 0]
+          }
+        ]
+      }
+    ],
+    "note": "The Henhouse's coop in red: the red shed's front, spliced to 32 px the same way."
+  },
+  "coop-2": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png",
+    "rect": [323, 720, 8, 32],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [32, 32],
+        "layers": [
+          {
+            "rect": [336, 720, 16, 32],
+            "at": [8, 0]
+          },
+          {
+            "rect": [358, 720, 8, 32],
+            "at": [24, 0]
+          }
+        ]
+      }
+    ],
+    "note": "The Henhouse's coop in blue: the blue shed's front, spliced to 32 px the same way."
+  },
+  "treehouse": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/7_Villas_16x16.png",
+    "rect": [296, 880, 40, 27],
+    "ops": [
+      {
+        "op": "keyOut",
+        "colors": ["#37854e", "#2d7256", "#479757"]
+      },
+      {
+        "op": "compose",
+        "size": [64, 89],
+        "at": [12, 62],
+        "layers": [
+          {
+            "rect": [272, 833, 32, 12],
+            "at": [0, 46]
+          },
+          {
+            "rect": [320, 833, 32, 12],
+            "at": [32, 46]
+          },
+          {
+            "rect": [272, 876, 32, 4],
+            "at": [0, 58]
+          },
+          {
+            "rect": [320, 876, 32, 4],
+            "at": [32, 58]
+          },
+          {
+            "rect": [273, 768, 60, 8],
+            "at": [2, 0]
+          },
+          {
+            "rect": [273, 778, 60, 54],
+            "at": [2, 8]
+          },
+          {
+            "rect": [338, 807, 11, 25],
+            "at": [51, 62]
+          }
+        ]
+      }
+    ],
+    "note": "The Treehouse, from LimeZu's modular treehouse at its own scale: the trunk at the bottom (its grass keyed out, so it stands on any ground), the deck cut down to its back and front edges and spliced from 80 to 64 px wide, the cabin on it with 10 rows of its plank roof cut out, and the ladder from the deck to the ground. It rises 25 px above its 2 \u00d7 2 footprint."
+  },
+  "birdhouse-0": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png",
+    "rect": [450, 488, 11, 40],
+    "note": "The Birdhouse: the brown bird box on its tall pole."
+  },
+  "birdhouse-1": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png",
+    "rect": [466, 488, 11, 40],
+    "note": "The Birdhouse with a red roof."
+  },
+  "birdhouse-2": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png",
+    "rect": [482, 488, 11, 40],
+    "note": "The Birdhouse with a blue roof."
+  },
+  "birdhouse-3": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png",
+    "rect": [498, 488, 11, 40],
+    "note": "The Birdhouse with a pink roof."
+  },
+  "bollard": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/3_City_Props_16x16.png",
+    "rect": [340, 266, 8, 21],
+    "note": "Garden Lights (fixture): a small bollard lamp, two to a yard piece."
+  },
+  "car-rear-2": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/10_Vehicles_16x16.png",
+    "rect": [256, 70, 32, 57],
+    "note": "A parked car on a Driveway, orange, from behind (nose in)."
+  },
+  "car-right-2": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/10_Vehicles_16x16.png",
+    "rect": [195, 91, 61, 37],
+    "note": "A parked car on a Driveway, orange, side on, facing east."
+  },
+  "car-left-2": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/10_Vehicles_16x16.png",
+    "rect": [195, 91, 61, 37],
+    "ops": [
+      {
+        "op": "flipX"
+      }
+    ],
+    "note": "A parked car on a Driveway, orange, side on, facing west (mirrored)."
+  },
+  "car-rear-3": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/10_Vehicles_16x16.png",
+    "rect": [256, 134, 32, 57],
+    "note": "A parked car on a Driveway, grey, from behind (nose in)."
+  },
+  "car-right-3": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/10_Vehicles_16x16.png",
+    "rect": [195, 155, 61, 37],
+    "note": "A parked car on a Driveway, grey, side on, facing east."
+  },
+  "car-left-3": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/10_Vehicles_16x16.png",
+    "rect": [195, 155, 61, 37],
+    "ops": [
+      {
+        "op": "flipX"
+      }
+    ],
+    "note": "A parked car on a Driveway, grey, side on, facing west (mirrored)."
+  }
+}

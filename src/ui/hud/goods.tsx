@@ -20,6 +20,7 @@ import {
   type UpgradeId,
 } from '../../rules/index.ts';
 import { Tip } from './Tip.tsx';
+import './goods.css';
 
 export const RARITY_LABEL: Record<Rarity, string> = {
   common: 'Common',

@@ -13,9 +13,11 @@ l #c9c1b5  light gray: concrete, porcelain shade
 c #e7dbbd  cream: sheets, kitchen tiles
 w #f6f0e2  off-white: porcelain, pillows, tablecloth
 
-# Terrain grass (muted), the sunny side (warmer), and ground shadow
-f #5d7a4d  grass dark
-g #6b8a57  grass
+# Terrain grass (muted), the sunny side (warmer), and ground shadow. The lot's grass is cut
+# from LimeZu now (art/limezu/terrain.json), so f and g are its muted colors, for the
+# placeholders drawn over grass (the fence).
+f #4c7a52  grass dark
+g #5a8a5e  grass
 h #799862  grass light
 G #869b59  sunny grass
 H #95aa66  sunny grass light

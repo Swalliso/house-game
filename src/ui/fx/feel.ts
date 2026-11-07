@@ -58,6 +58,13 @@ export const FEEL = {
 
   /** Squash-and-wobble on a triggering piece. */
   wobble: { ms: 260, scale: 1.12 },
+  /**
+   * A piece's floor flashes white as it wobbles or settles, peaking at this opacity: its floor
+   * and walls are drawn with the whole house, so the flash shows which room is reacting.
+   */
+  flash: { peak: 0.32 },
+  /** A wobbling piece's digit pops to this size, then back. */
+  digitBump: 1.35,
 
   /** Each fast-forwarded week when a milestone completes early (D-040). */
   fastForward: { weekMs: 420 },
@@ -108,10 +115,16 @@ export const FEEL = {
 
   /** The shop (§12, Shop and crates). */
   shop: {
-    /** How long a bought good keeps its just-bought class: longer than its pop (shop.css). */
+    /** How long a bought good keeps its just-bought class: longer than its pop. */
     boughtMs: 600,
+    /** A bought good's pop (shop.css reads it as --dur-shop-pop). */
+    popMs: 420,
     /** An opened crate's options turn over this far apart, each with its sound. */
     crateStaggerMs: 220,
+    /** Each option's turn (--dur-shop-turn). */
+    turnMs: 480,
+    /** A Rare's glint crossing it as it arrives (--dur-shop-shimmer). */
+    shimmerMs: 1600,
   },
 
   /** M1's big-week burst of confetti and coins. */
@@ -124,6 +137,36 @@ export const FEEL = {
     delayMs: 120,
     /** The burst is cleared after this long. */
     ms: 1800,
+  },
+
+  /**
+   * The interface's own motion (M5a): theme.ts publishes each as --dur-<name> for the CSS.
+   * Hover lifts a control one UI pixel, a press sinks it one; a modal pops in.
+   */
+  chrome: {
+    hover: 120,
+    press: 80,
+    modal: 180,
+    /** The milestone meter's fill and forecast sliding to a new value. */
+    meter: 250,
+    /** The shop's sheet sliding up over the board. */
+    sheet: 260,
+    /** A milestone's ribbon stamping in (it stays up for bannerMs). */
+    banner: 380,
+    /**
+     * The target's stamp (and a neutral note) scaling in, and fading out at the end of its
+     * targetFlashMs. The scale is its own short animation, so the text is drawn crisp again
+     * once it lands.
+     */
+    stamp: 280,
+  },
+
+  /** The title screen's street (M5a): a car drives by now and then. */
+  title: {
+    /** Its speed, in art px a second (it moves a whole art px at a time). */
+    carPxPerSecond: 56,
+    /** How long the street stays empty between cars. */
+    carPauseMs: 5000,
   },
 
   /** The camera (§12, Art; D-057): wheel zoom in whole steps, drag to pan. */

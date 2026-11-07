@@ -1,0 +1,379 @@
+/* Overlays (M5a): the milestone's ribbon, the target's stamp, notes and toasts, the
+   small-screen notice, the copy fallback and the crash card. Built on kit.css.
+
+   Centered things are centered by a full-width row (flex), never by translate(-50%): a
+   transform can leave pixel text on half a pixel, and blur it. Transforms are only for the
+   short stamps and fades. */
+
+/* --- The milestone's ribbon ---------------------------------------------------------- */
+
+.banner-place {
+  position: absolute;
+  top: var(--space-5);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: flex;
+  justify-content: center;
+  padding: 0 var(--space-6);
+  pointer-events: none;
+}
+.banner {
+  --ribbon: var(--sparkle);
+  --ribbon-hi: var(--gold-hi);
+  --ribbon-lo: var(--sparkle-deep);
+  --ribbon-tail: var(--art-ribbonGold);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 100%;
+  pointer-events: auto;
+  cursor: pointer;
+  animation: banner-stamp var(--dur-banner) cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+.banner.bad {
+  --ribbon: var(--bad-fill);
+  --ribbon-hi: var(--armed-hi);
+  --ribbon-lo: var(--bad-deep);
+  --ribbon-tail: var(--art-ribbonOrange);
+}
+/* The ribbon: a plate with notched tails folded behind its ends. */
+.banner-ribbon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: calc(var(--px) * 22);
+  padding: var(--space-2) var(--space-5) calc(var(--space-2) + var(--px));
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--ribbon);
+  background-clip: padding-box;
+  box-shadow:
+    inset 0 var(--px) 0 var(--ribbon-hi),
+    inset 0 calc(var(--px) * -2) 0 var(--ribbon-lo),
+    var(--shadow-float);
+  font-size: var(--fs-title);
+  line-height: var(--lh-title);
+  font-weight: 700;
+  color: var(--ink);
+  text-align: center;
+}
+.banner-ribbon::before,
+.banner-ribbon::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  top: calc(var(--px) * 9);
+  width: calc(var(--px) * 14);
+  height: calc(var(--px) * 11);
+  background: var(--ribbon-tail) no-repeat 0 0 / 100% 100%;
+  image-rendering: pixelated;
+}
+.banner-ribbon::before {
+  left: calc(var(--px) * -10);
+}
+.banner-ribbon::after {
+  right: calc(var(--px) * -10);
+  transform: scaleX(-1);
+}
+.banner-ribbon .icon {
+  flex: none;
+}
+/* What it means, on a paper slip under the ribbon. */
+.banner-detail {
+  max-width: calc(var(--px) * 260);
+  margin: 0;
+  padding: var(--space-1) var(--space-3) calc(var(--space-1) + var(--px));
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  border-top-width: 0;
+  background: var(--card);
+  background-clip: padding-box;
+  box-shadow:
+    inset 0 calc(var(--px) * -1) 0 var(--card-lo),
+    var(--shadow-card);
+  text-align: center;
+}
+@keyframes banner-stamp {
+  0% {
+    opacity: 0;
+    transform: scale(1.4);
+  }
+  55% {
+    opacity: 1;
+    transform: scale(0.97);
+  }
+  100% {
+    transform: none;
+  }
+}
+@keyframes overlay-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+.reduce-motion .banner {
+  animation-name: overlay-fade-in;
+}
+
+/* --- The target's stamp, and a neutral note -------------------------------------------- */
+
+.flash-place {
+  position: absolute;
+  inset: 0;
+  z-index: 19;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.target-flash {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5) calc(var(--space-3) + var(--px));
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--action);
+  background-clip: padding-box;
+  box-shadow:
+    inset 0 var(--px) 0 var(--action-hi),
+    inset 0 calc(var(--px) * -3) 0 var(--action-shade),
+    var(--shadow-float);
+  font-family: var(--font-display);
+  font-size: var(--fs-num-md);
+  line-height: 1;
+  color: var(--ink);
+  white-space: nowrap;
+  /* Two animations: the stamp's scale lands in --dur-stamp, and the fade at the end only
+     touches opacity. While a transform animates, the browser draws the text as a scaled image,
+     so a single animation over the whole --flash-ms would keep the pixel text blurred. */
+  animation:
+    flash-stamp var(--dur-stamp) ease-out backwards,
+    flash-out var(--dur-stamp) ease-in calc(var(--flash-ms) - var(--dur-stamp)) forwards;
+}
+/* A neutral note (a free redraw, the saving-up bonus): a paper slip, not the success's lime. */
+.target-flash.note {
+  padding: var(--space-2) var(--space-4) calc(var(--space-2) + var(--px));
+  background: var(--card);
+  box-shadow:
+    inset 0 calc(var(--px) * -2) 0 var(--card-lo),
+    var(--shadow-float);
+  font-family: var(--font-text);
+  font-size: var(--fs-title);
+  line-height: var(--lh-title);
+  font-weight: 700;
+}
+@keyframes flash-stamp {
+  0% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(0.96);
+  }
+  100% {
+    transform: none;
+  }
+}
+@keyframes flash-out {
+  to {
+    opacity: 0;
+  }
+}
+.reduce-motion .target-flash {
+  animation:
+    overlay-fade-in var(--dur-stamp) ease-out backwards,
+    flash-out var(--dur-stamp) ease-in calc(var(--flash-ms) - var(--dur-stamp)) forwards;
+}
+
+/* --- Notes and toasts: top center, under the top bar ---------------------------------------- */
+
+.notes {
+  position: absolute;
+  top: var(--space-3);
+  left: 0;
+  right: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-4);
+  pointer-events: none;
+}
+/* Over the title screen, at the top of the window. */
+.title-screen ~ .notes {
+  position: fixed;
+}
+/* In the shop's sheet, under its header: in the flow, so it covers none of the goods, and
+   under a crate's or the strike's sheet (.shop-scrim) when one opens over the shelves. */
+.notes.docked {
+  position: static;
+  z-index: auto;
+  flex: none;
+  padding: var(--space-2) var(--space-4) 0;
+}
+/* A toast raised while a sheet or the menu is open sits over its scrim, where notes show. */
+.toast-layer {
+  position: fixed;
+  top: calc(var(--px) * 38);
+  left: 0;
+  right: 0;
+  z-index: 70;
+  display: flex;
+  justify-content: center;
+  padding: 0 var(--space-4);
+  pointer-events: none;
+}
+.notice,
+.toast {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: min(calc(var(--px) * 360), 100%);
+  padding: var(--space-1) var(--space-2) var(--space-1) var(--space-3);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--card);
+  background-clip: padding-box;
+  box-shadow:
+    inset 0 calc(var(--px) * -1) 0 var(--card-lo),
+    var(--shadow-float);
+  pointer-events: auto;
+  animation: note-in var(--dur-modal) ease-out;
+}
+.notice .icon {
+  flex: none;
+}
+.notice-text {
+  flex: 1;
+  min-width: 0;
+}
+.notice .btn {
+  flex: none;
+}
+.toast {
+  padding: var(--space-1) var(--space-3) calc(var(--space-1) + var(--px));
+  background: var(--ink);
+  box-shadow: var(--shadow-float);
+  color: var(--on-wood);
+  font-weight: 700;
+}
+@keyframes note-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--px) * -3));
+  }
+}
+.reduce-motion .notice,
+.reduce-motion .toast {
+  animation-name: overlay-fade-in;
+}
+
+/* --- Small screens, the copy fallback, and the crash card --------------------------------- */
+
+.small-screen {
+  display: none;
+}
+@media (max-width: 899px) {
+  .small-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    display: grid;
+    place-items: center;
+    padding: var(--space-5);
+    background: var(--wood-night);
+    text-align: center;
+  }
+}
+.small-screen-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: calc(var(--px) * 200);
+  padding: var(--space-5);
+  border: calc(var(--px) * 5) solid transparent;
+  border-image: var(--art-wood) 5 / calc(var(--px) * 5);
+  background: var(--paper);
+  background-clip: padding-box;
+}
+.small-screen-card h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-title);
+  line-height: var(--lh-title);
+  font-weight: 400;
+  color: var(--wood-deep);
+}
+.small-screen-card p {
+  margin: 0;
+}
+
+.sheet.copy-sheet {
+  width: min(calc(var(--px) * 220), 94vw);
+}
+.copy-note {
+  margin: 0;
+  color: var(--ink-soft);
+}
+.copy-text {
+  width: 100%;
+  padding: var(--space-2);
+  border: var(--px) solid var(--ink);
+  border-radius: 0;
+  background: var(--card);
+  color: var(--ink);
+  font:
+    12px/1.4 ui-monospace,
+    Menlo,
+    monospace;
+  word-break: break-all;
+  resize: vertical;
+}
+
+/* The crash card (ErrorBoundary.tsx) stays plain markup, so it shows even if the kit fails. */
+.crash {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: var(--space-5);
+  background: var(--wood-night);
+}
+.crash-card {
+  max-width: 560px;
+  padding: var(--space-4) var(--space-5);
+  border: calc(var(--px) * 5) solid transparent;
+  border-image: var(--art-wood) 5 / calc(var(--px) * 5);
+  background: var(--paper);
+  background-clip: padding-box;
+  color: var(--ink);
+}
+.crash-card h1 {
+  margin: 0 0 var(--space-2);
+  font-size: 22px;
+  color: var(--bad);
+}
+.crash-card textarea {
+  width: 100%;
+  border: var(--px) solid var(--ink);
+  border-radius: 0;
+  background: var(--card);
+  color: var(--ink);
+  font:
+    12px ui-monospace,
+    Menlo,
+    monospace;
+}
+.crash-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-2) 0;
+}

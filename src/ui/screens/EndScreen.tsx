@@ -2,6 +2,11 @@
 // final Wow, each milestone's result, and the run's stats, in the right-hand column. The house
 // stays on the board beside it, captioned "It's a house." A loss gets the same screen, gently.
 // Every number comes from the rules' state; the UI only counts and formats.
+//
+// M5a draws it as a wood panel: the verdict as a stamp (gold for a win), the final Wow on the
+// score panel's framed plaque, the milestones and the stats as rows with icons, and New run as
+// the one primary button, kept in view at the column's foot. The full-width finale with a
+// photo per milestone is M6's.
 
 import {
   CONTENT,
@@ -13,6 +18,7 @@ import {
 import { banner, busy } from '../fx/director.ts';
 import { formatNumber } from '../format.ts';
 import { copyRunCode, startNewRun } from '../hud/actions.ts';
+import { Button, Icon, Panel, type IconName } from '../kit/kit.tsx';
 import { goToTitle, run } from '../store.ts';
 import './end.css';
 
@@ -44,9 +50,12 @@ function Milestones({ s }: { s: RunState }) {
   const byPhase = new Map(s.milestones.map((m) => [m.phase, m]));
   const met = s.milestones.filter((m) => m.result !== 'failed').length;
   return (
-    <>
-      <h3>
-        Milestones · {met} of {phases.length}
+    <section class="run-end-section">
+      <h3 class="plank-tag" aria-label={`Milestones: ${met} of ${phases.length}`}>
+        Milestones
+        <span class="plank-count">
+          {met}/{phases.length}
+        </span>
       </h3>
       <ol class="run-end-milestones">
         {phases.map((p, i) => {
@@ -56,31 +65,42 @@ function Milestones({ s }: { s: RunState }) {
             const target = rules.target({ ...s, phase: i });
             return (
               <li key={i} class="todo">
-                <span class="mark" aria-hidden="true">
-                  ○
-                </span>
+                <Icon name="pending" class="mark" />
                 <span class="name">
                   {p.name}
                   <span class="run-end-sr"> (not reached)</span>
                 </span>
-                <span class="of">of {formatNumber(target)}</span>
+                <span class="figures">of {formatNumber(target)}</span>
               </li>
             );
           }
           const failed = m.result === 'failed';
           return (
             <li key={i} class={`${failed ? 'failed' : 'met'} ${m.result}`}>
-              <span class="mark" aria-hidden="true">
-                {failed ? '✕' : '✓'}
-              </span>
+              <Icon name={failed ? 'cross' : 'check'} class="mark" />
               <span class="name">{p.name}</span>
-              <span class="score">{formatNumber(m.score)}</span>
-              <span class="tag">{resultTag(m)}</span>
-              <span class="of">of {formatNumber(m.target)}</span>
+              <span class="detail">
+                <span class="tag">{resultTag(m)}</span>
+                <span class="figures">
+                  <span class="score num">{formatNumber(m.score)}</span> of {formatNumber(m.target)}
+                </span>
+              </span>
             </li>
           );
         })}
       </ol>
+    </section>
+  );
+}
+
+function Stat({ icon, label, value }: { icon: IconName; label: string; value: string | number }) {
+  return (
+    <>
+      <dt>
+        <Icon name={icon} />
+        {label}
+      </dt>
+      <dd class="num">{value}</dd>
     </>
   );
 }
@@ -88,22 +108,17 @@ function Milestones({ s }: { s: RunState }) {
 function Stats({ s }: { s: RunState }) {
   const overtime = s.milestones.reduce((sum, m) => sum + m.overtimeUsed, 0);
   return (
-    <>
-      <h3>The run</h3>
+    <section class="run-end-section">
+      <h3 class="plank-tag">The run</h3>
       <dl class="run-end-stats">
-        <dt>Pieces built</dt>
         {/* Every placement takes the next uid, so this counts demolished and grown pieces too. */}
-        <dd>{s.house.nextUid - 1}</dd>
-        <dt>Weeks played</dt>
-        <dd>{s.week}</dd>
-        <dt>Budget earned</dt>
-        <dd>{formatNumber(s.budgetEarned)}</dd>
-        <dt>Finished early</dt>
-        <dd>{s.milestonesEarly}</dd>
-        <dt>Overtime weeks</dt>
-        <dd>{overtime}</dd>
+        <Stat icon="House" label="Pieces built" value={s.house.nextUid - 1} />
+        <Stat icon="clock" label="Weeks played" value={s.week} />
+        <Stat icon="coin" label="Budget earned" value={formatNumber(s.budgetEarned)} />
+        <Stat icon="flag" label="Finished early" value={s.milestonesEarly} />
+        <Stat icon="warn" label="Overtime weeks" value={overtime} />
       </dl>
-    </>
+    </section>
   );
 }
 
@@ -120,14 +135,17 @@ export function EndScreen() {
     ? `${phases[phases.length - 1]?.name ?? 'The house'} complete`
     : `The client walked at ${rules.phaseName(s.phase)}`;
   return (
-    <section class={`run-end ${won ? 'won' : 'lost'}`} aria-labelledby="run-end-title">
+    <Panel
+      class={`run-end ${won ? 'won' : 'lost'}`}
+      title={won ? 'Job done!' : 'Run over'}
+      label={title}
+    >
       <header class="run-end-head">
-        <h2 id="run-end-title" class="run-end-title">
-          {title}
-        </h2>
+        {won && <Icon name="trophy" class="run-end-trophy" />}
+        <p class="run-end-title">{title}</p>
         <p class="run-end-verdict">{rules.verdict(s)}</p>
         <p class="run-end-score">
-          <span class="value">{formatNumber(s.score)}</span>
+          <span class="value num">{formatNumber(s.score)}</span>
           <span class="unit">{won ? WOW : `of ${formatNumber(rules.target(s))} ${WOW}`}</span>
         </p>
       </header>
@@ -135,26 +153,31 @@ export function EndScreen() {
       <Stats s={s} />
       {s.debug && <p class="run-end-debug">A debug run: cheats were used.</p>}
       <div class="run-end-actions">
-        <button type="button" class="primary" onClick={() => startNewRun()}>
+        <Button variant="primary" size="lg" block onClick={() => startNewRun()}>
           New run
-        </button>
-        <button type="button" onClick={() => void copyRunCode()}>
+        </Button>
+        <Button icon="copy" onClick={() => void copyRunCode()}>
           Copy run code
-        </button>
-        <button type="button" onClick={() => goToTitle()}>
+        </Button>
+        <Button icon="exit" onClick={() => goToTitle()}>
           Title
-        </button>
+        </Button>
       </div>
-    </section>
+    </Panel>
   );
 }
 
 /**
- * "It's a house." over the top of the board once the run is over. It waits for the run-end
- * banner to clear (that banner sits in the same spot), and never takes a click from the board.
+ * "It's a house." over the top of the board once the run is over: a little wood sign. It waits
+ * for the run-end banner to clear (that banner sits in the same spot), and never takes a click
+ * from the board.
  */
 export function EndCaption() {
   const s = run.value;
   if ((s.screen !== 'won' && s.screen !== 'lost') || busy.value || banner.value) return null;
-  return <p class={`run-end-caption ${s.screen}`}>It’s a house.</p>;
+  return (
+    <div class="run-end-caption-place">
+      <p class={`run-end-caption ui ${s.screen}`}>It’s a house.</p>
+    </div>
+  );
 }

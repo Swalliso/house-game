@@ -253,6 +253,7 @@ Also: D-036 and D-043 (Accepted), where hand size becomes the `handSize` rule (3
 
 **Why:** Friends will open the link from a group chat, and the itch.io embed is a fixed size. Both need deciding before the layout is built. The team agreed on 2026-11-05 not to aim for mobile.
 **Amended by:** D-057 (confirmed by the team 2026-11-05): the design target is 1920×1080, since most players have at least a 1080p screen. The whole 24×24 lot fits there at a crisp 2×. 1280×720 still works, by panning. An itch.io page is optional now that Pages hosts both builds (D-060); if we make one, its embed is 1600×900 with fullscreen.
+**Amended by:** D-097 (Accepted 2026-11-06): with 32 art px per cell, the whole lot fits at 1080p at 1×, the same size on screen as the 16 px art's 2×.
 
 ### D-053 · A two-person, phased build with a playtest after each phase
 **Status:** Accepted · 2026-11-05 (requested by the team)
@@ -264,6 +265,7 @@ Also: D-036 and D-043 (Accepted), where hand size becomes the `handSize` rule (3
 
 **Why:** The other jam members are building their own games, so there are no parallel tracks to coordinate. There's until next week to build and playtest before sharing with the larger group, and playtesting at every phase catches what isn't working while it's still cheap to change.
 **Changes:** Supersedes D-052. D-029 (Accepted): its suggested build order.
+**Amended by:** D-097 (Accepted 2026-11-06): M5 splits in two, each ending in a playtest. M5a (art, UI chrome, and the visual juice) comes before M4, and M5b (sound and music) after it. Since 2026-11-07, M5a's visual juice is its own pull request after M4, with its own playtest (D-097's juice note).
 
 ### D-054 · Branches: develop and main
 **Status:** Accepted · 2026-11-05 (requested by the team)
@@ -537,6 +539,9 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - D-049 (Accepted): the camera, from a CSS transform to re-layout in whole steps, with 2× panning rather than fitting at 1280×720.
 - D-033 (Accepted): terrain in a canvas layer and pieces from a sprite atlas.
 
+**Amended by:** D-097 (Accepted 2026-11-06): a cell is 32 art px, a 2×2 block of LimeZu's 16 px tiles, and the default zoom is never below 1× (at 1080p, the same size on screen as 2× was; where display scaling isn't a whole number, 1× rounded down to whole device pixels). Crisp now means whole device pixels per art pixel rather than whole-number scales: k ÷ devicePixelRatio, so 1×, 2× and 3× at a devicePixelRatio of 1 and 0.5× steps on a Retina screen, with Fit still the exception. Rooms get several furniture sprites. The palette is LimeZu's, with the color limits only for the placeholders, and Serene Village isn't needed.
+**2026-11-06 (M5a review):** no link or quote is recorded for "LimeZu has said" in the Sources bullet, and the two packs' licenses differ on open source. The team chose to keep the Sources bullet's approach for both packs; see D-097's license note.
+
 ### D-058 · Sound: calm music, rewards that escalate
 **Status:** Accepted · 2026-11-05: the direction at the team's request, and the details below with the plan's approval.
 **Decision:**
@@ -636,6 +641,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - **The atlas:** `art/` holds the placeholder sprites as palette-indexed 16×16 text grids, and `scripts/build-atlas.ts` packs them into `assets/atlas.png` and `atlas.json` (18×18 cells: each sprite extruded by 1px). The generated files are committed, so `npm run dev` works without a build step; `npm run build` regenerates them, and a test fails if `atlas.json` is stale. LimeZu sprites cut from `art-source/` will join the same atlas.
 
 **Why:** One place answers "where did this come from, and may we ship it?" for code as well as art. Vendoring keeps the audio side-effect free and dependency free.
+**Amended by:** D-097 (Accepted 2026-11-06): the atlas (version 2) packs the placeholders doubled to 32×32 and LimeZu cuts of any size from `assets/limezu/`, which `npm run art:cut` writes from the manifests in `art/limezu/`. A cut replaces the placeholder with its id.
 
 ### D-067 · M1 content defaults
 **Status:** Accepted · 2026-11-05: held up in playtest 1 (confirmed by the team with the M2 brief). The targets were replaced by the sim's in M2 (D-072).
@@ -660,6 +666,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - **The default zoom** counts the street row, so the lot and the street fit together at the largest whole scale of at least 2×. A smaller window scrolls until M2's camera.
 
 **Why:** Choices the plan leaves to the build, picked so the slice can answer playtest 1's questions.
+**Amended by:** D-097 (Accepted 2026-11-06): with 32 art px per cell, the default zoom is at least 1×, the same 32 CSS px per cell as 2× was. Where display scaling isn't a whole number (125%, 150%, 175%), the floor is 1× rounded down to whole device pixels (D-097's zoom note).
 
 ### D-069 · A fenced yard needs at least 10 tiles
 **Status:** Accepted · 2026-11-05 (chosen by the team in the M2 build, from the sim's enclosure probe)
@@ -710,6 +717,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - **The ?debug panel** is a small floating panel: jump to a milestone with a bot-built house, meet the target or force a miss, add budget, give a card, and instant tallies.
 
 **Why:** Choices §7 leaves to the build.
+**Amended by:** D-097 (Accepted 2026-11-06): with 32 art px per cell, the default is the largest scale that fits, never below 1× (rounded down to whole device pixels where display scaling isn't a whole number), and the wheel steps in whole device pixels per art pixel up to 3×: 1×, 2× and 3× at a devicePixelRatio of 1, and 0.5× steps on a Retina screen. Fit is still the one fractional scale.
 
 ### D-083 · Weekend Crew: D-075's banked building, as a tool
 **Status:** Accepted · 2026-11-05 (the team chose it for M3, resolving D-075). The price is a placeholder.
@@ -738,6 +746,71 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **Considered:** A company upgrade with 3 strikes. A few strikes per run.
 **Changes:** D-043 (Accepted): draw weights stay fixed for the run except for struck types. D-051 (Accepted): a third service.
 **2026-11-06 (D-089, confirmed by the team):** the Sim line's order came from M2's greedy, which couldn't see yards or links and built at the back of the lot, so it struck the very cards D-074 and D-080 ask about. The default bot now strikes nothing; `--strikes fixed` keeps this order for comparisons. The service itself is unchanged.
+
+### D-097 · Art at 32 px cells, and the look-and-feel pass before M4
+**Status:** Accepted · 2026-11-06. The team chose 32 px cells after a visual audit that rendered the playtest-3 house (seed jbf3zs, week 21) both ways with LimeZu's art.
+**Finding:**
+- LimeZu's furniture is drawn for rooms about 4 tiles wide, in a 3/4 view: a double bed is 26×40 px, a toilet 14×34, a fireplace 32×40, the car 32×57. At 16 px per cell a 2×2 Bedroom is 32×32 px and a Bathroom 16×16, so 12 of the 15 room types can't show their key item, and the house reads as a floor plan with icons.
+- At 32 px per cell (2×2 LimeZu tiles), every room type shows two to four real LimeZu pieces, the walls get doorways and windows, and a roof computed for any footprint looks like a real house.
+
+**Decision:**
+- **One cell is 32 art px,** a 2×2 block of LimeZu's 16 px tiles. Sprites are drawn in art px, and the board's scale is CSS px per art px. The text-grid placeholders are doubled to 32×32 when the atlas is built, until LimeZu cuts replace them.
+- **The camera:**
+  - The default is the largest scale that fits, in whole device pixels per art pixel and never below 1× rounded down to whole device pixels: 1× at a devicePixelRatio of 1 or 2, and 0.8×, 0.67× and 0.57× at 125%, 150% and 175% display scaling (the zoom note). So it's always one of the wheel's steps. At 1080p the whole lot fits at 1×: 32 CSS px per cell, the same size on screen as before. At 1280×720 it pans.
+  - The wheel steps in whole device pixels per art pixel, up to 3×: 1×, 2× and 3× at a devicePixelRatio of 1, and 0.5× steps on a Retina screen.
+  - Fit stays the one fractional scale.
+- **Rooms are a walls-down cutaway built from the house,** all in the UI, from the placed pieces:
+  - Every room type has its own floor.
+  - Walls are bands in LimeZu's style, drawn from a mask: heavier on outside edges, lighter between rooms, with short north wall faces and floor shadows.
+  - There is a wall between every two pieces, same type included. Rooms never merge visually (D-093).
+  - Doorways between touching rooms, windows in outside walls, and a front door are chosen by fixed rules and a tile hash, never by chance. They are decoration and change no score.
+  - Furniture is laid out by rules per room type and footprint: several LimeZu sprites per room, never rotated (they're drawn in 3/4 view). Rooms of the same type vary by piece.
+  - Fixtures show as sprites where they fit, and as a badge otherwise.
+- **Palette:** LimeZu's, with its outline color #3a3a50 as the ink. Our own drawings sample it. The 32-color and 8-per-sprite limits apply only to the text-grid placeholders.
+- **Pipeline:**
+  - `art/limezu/*.json` lists each sprite we use: its pack, the path in the zip, its rect, and any frames or edits.
+  - `npm run art:cut` runs locally only. It reads the zips in `art-source/` and writes only the listed sprites to `assets/limezu/`.
+  - `npm run atlas` packs them with the placeholders at any size; a cut replaces the placeholder with the same id.
+  - Every cut has its own entry in `assets/licenses.json`. `CREDITS.md` and the game credit LimeZu.
+  - A test fails on a cut without a manifest entry or a license record.
+- **Order:** M5 splits. M5a (art, UI chrome, and the visual juice) comes now, before M4. M5b (sound and music) follows M4. M5a's visual juice became its own pull request after M4 (the juice note).
+- Serene Village isn't needed: Modern Exteriors covers terrain and water in the same artist's palette.
+
+**Why:** The team's worry was whether LimeZu's pieces could make a house that looks like a house. They can, at LimeZu's own proportions. At a devicePixelRatio of 1 or 2 the board stays the same size on screen. The costs are finer pixels on a 1080p monitor (a Retina screen still shows each art pixel as 2×2 device pixels), a smaller board on a 1440p screen at a devicePixelRatio of 1 and where display scaling isn't a whole number (the zoom note), and more art work.
+**Changes:**
+- D-057: its 16×16 tiles, one key furniture sprite, default zoom of at least 2×, the 24–32-color palette, and Serene Village.
+- D-047's 1080p amendment: the whole lot fits at 1×.
+- D-066: the atlas takes LimeZu PNG cuts of any size.
+- D-068 and D-073: the default zoom's floor, and the zoom steps.
+- D-053 and §7: the phase order.
+- §12 Art: the wall widths and the terrain canvas size.
+
+**2026-11-06 (M5a review), the licenses, to settle before this work is pushed:** the two packs' licenses differ on open source.
+- Modern Exteriors' (`Modern_Exteriors_License.pdf` in its zip) allows using the asset in open-source projects, GitHub included. The 4 grass cuts come from it.
+- Modern Interiors' (`LICENSE.txt` in its zip, and its itch.io page) doesn't mention open source, and forbids distributing the asset to others. The 10 floor cuts come from it.
+- So those floors rest on D-057's "LimeZu has said that's fine for open-source projects", which has no recorded link or quote.
+- *To decide:* link LimeZu's statement in `research.md` and D-057, or get LimeZu's OK in writing. Until then, the Modern Interiors cuts could stay out of the repo, with the placeholder floors in their place.
+- *Decided by the team, 2026-11-06:* commit as D-057 says, for both packs. The repo holds only the sprites the game uses, each cut on its own by `npm run art:cut` (never a sheet or a whole pack), recorded in `assets/licenses.json` with its pack, sheet and rect, and credited to LimeZu in `CREDITS.md` and in the game. Any LimeZu sprite may be used; a cut comes from one pack.
+
+**2026-11-06 (M5a review), the default zoom at 125% and 150%, for the team:** at a devicePixelRatio between 1 and 2 (Windows' 125% and 150% display scaling), 1× isn't a whole number of device pixels per art pixel. The whole steps on either side are 1/dpr and 2/dpr: 0.8× and 1.6× at 1.25, 0.67× and 1.33× at 1.5.
+- When 2/dpr doesn't fit, the default is 1× (`fitScale`), with uneven pixels (1.25 or 1.5 device px per art px). That's every window from 1280×720 to 1920×1080 CSS px. 1× isn't one of the wheel's steps, and Fit goes back to the zoom from before it, so after the first zoom step nothing returns to the default until a reload.
+- So "in whole device pixels" and "Fit stays the one fractional scale" don't hold at these ratios yet. On develop, the 16 px art's default was crisp at 150% (2×: 3 device px per art px), and at 125% only in large windows (2.4×).
+- *Options:*
+  1. The smallest whole step from 1× up (1.6× or 1.33×). It's crisp and fits this decision's wording, but cells are 51 or 43 CSS px, so the board pans more: at 125%, a 1920×1080 window no longer fits the lot.
+  2. The visual audit's rule: whole steps, and uneven pixels only where cells would drop below about 24 CSS px. That gives a crisp 0.8× at 125% (25.6 CSS px cells, the whole lot fits) and keeps the uneven 1× at 150%. It goes below this decision's 1× floor.
+  3. Keep 1× (the board the same size on screen as before), list the uneven pixels as a cost here and in §12, and make 1× a wheel step at these ratios.
+- *Decided by the team, 2026-11-06:* round down, at every ratio, to whole device pixels per art pixel and at least one. The default's floor is 1× rounded down that way (`defaultFloor` in `geometry.ts`). Where display scaling isn't a whole number, that's one device pixel per art pixel: 0.8× at 125%, 0.67× at 150% and 0.57× at 175%, cells of 25.6, 21.3 and 18.3 CSS px. At a devicePixelRatio of 1, 2 or 3 it's 1× as before. It's option 2 without its 24 px exception.
+  - The default is always crisp and always one of the wheel's steps. A zoom step that lands on it, or leaving Fit, goes back to the default, which then follows the window again. Fit is the one fractional scale at every ratio.
+  - A window that holds two device pixels per art pixel gets them: 1.6× at 125%, 1.33× at 150%.
+  - Below a ratio of 1 (a browser zoomed out), one device pixel per art pixel is more than 1×: 1.11× at 90%. So zooming the browser out doesn't shrink the default board, where before it dropped art pixels.
+  - The cost: where two device pixels per art pixel don't fit, the board is 80%, 67% or 57% of 1×'s size on screen (at 125%, 150% and 175%), and its labels and badges cover more of each cell.
+
+**2026-11-07 (M5a final review), the hash behind the house's choices:** no tile hash is used, though this decision's text names one. The front door, the back doors and the windows break their ties by position (reading order). The doorways between rooms break theirs by the rooms' placement order (their uids) and a hash of a room's uid, and the rooms' and yard pieces' colors come from a hash of the piece's uid; the stage-2 brief allowed either. It's as deterministic, but the same footprint built in another order, or rebuilt after a demolition, can get other doorways between its rooms and other colors. D-100 (Proposed) records it under its Changes, for the team to accept with it. *Corrected 2026-11-07, with M5a's pull request:* this note first said the front door and the windows also went by the uid's hash.
+
+**2026-11-07 (M5a's pull request), the juice after M4:** M4 was built at the same time as M5a, on its own branch (`phase/m4-clients`, pull request #17). A trial merge of the two on 2026-11-07 conflicts in 23 files, and both number their new decisions from D-097.
+- *Decided by the team, 2026-11-07:* M5a's pull request holds the art, the lot, the house and the pixel UI (D-098 to D-100) and goes to playtest 5a now. The visual juice moves to its own pull request after M4 and before M5b, with its own playtest: §12's celebration ladder, §7's distinct moments, particles and the Flashing toggle, and the roof reveal at Roofing. It reworks the tally's director, `feel.ts` and the score panel, which M4 also changes, so building it before M4 merges would add more conflicts with M4.
+- M5a merges first, as this decision's order says. M4 then merges `develop`, numbers its decisions from D-101 and restyles its new screens (the job board and its crew pick, the checklist, the change-order sheet and the first-time hints) with M5a's interface (`src/ui/kit` and the theme's tokens). If M4 merges first, M5a renumbers instead.
+- D-094 (chain reactions, Open) is raised with the team before the juice pull request reworks the tally, as §7 says: option 1 would land in it, and options 2 and 3, if chosen, before it or with it (D-094's note of this date).
 
 ---
 
@@ -899,6 +972,72 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **Decision:** Auto-acceleration speeds up a tally's steps only: the triggers, the sets, and the ×Mult stamps. From the multiply moment on, the beats play at the chosen speed: the pause, the total's hold, the count-up, the target's ding, and the milestone's hold. Holding Space or the right button still fast-forwards them, and a click still skips.
 **Why:** The accelerator kept growing through those beats, so the longest weeks, usually the biggest, got the shortest payoff. A 25-trigger week at 1× is at about 2× by the multiply moment, so its 0.4 s pause took about 0.2 s. The steps are where a long week drags; the payoff is short at any length.
 **Changes:** `implementation-plan.md` §12, Timing. D-059 (Accepted) still holds: the tally speeds itself up.
+
+### D-098 · M5a interface defaults: the pixel UI
+**Status:** Proposed · 2026-11-06, with M5a's UI track (stage 2: part 1, the foundations, the build screen, the score panel and the top bar; part 2, the other screens). Implementation details within D-057, D-059, D-097 and §12. It kept its number when the stage's tracks merged; the lot's and the house's defaults are D-099 and D-100.
+**Decision:**
+- **Tokens:** every color is a token in `src/ui/theme/tokens.css`. The inks, the wood, the score layers' colors and most fills are LimeZu's (its outline #3a3a50 is the ink), with the UI audit's contrast fixes (secondary text #565972, Comfort #3d56d2, Charm #a82b52, Sparkle a gold fill under ink text). Some are the interface's own, not LimeZu's: the two papers (#f4efdf, #fbf8ef), text colors picked for contrast (losses #a8480c, Sparkle's text #8a5a00, the light text on wood), the danger red, the shop's rarity tints, the title's four sky bands, and the board's overlay washes and highlights. `theme.test.ts` keeps raw colors out of every other stylesheet but a shrinking legacy list (app.css's last board rules and the ?debug panel), and checks each text color on its backgrounds at 4.5:1.
+- **The UI pixel:** the chrome draws in its own pixel, `--px`: 2 CSS px at 1080p, rounded to whole device pixels and down on a tie, so 1.6 CSS px at 125% and 2 at 150% and 200%. Outlines, frames, shadows, spacing and pixel-font sizes are whole numbers of it. The board keeps the camera's scale. *Open for the team:* at 125% this makes pixel text 12.8 CSS px (16 device px, two per font pixel), so the 16 px floor holds in device pixels but not in CSS px. Rounding half up instead gives 2.4 CSS px and 19.2 px text, and lays the UI out like 1280×720 at 1×; that would also need the side columns sized in UI pixels (they're CSS px today, so they'd be narrower in UI pixels than at 1280×720).
+- **Fonts (CC0):** Pixel Operator 8 for text and Public Pixel for numbers, at 8 × `--px` and its multiples, so nothing in pixel mode is under 16 px at 1080p. Public Pixel supplies the symbols Pixel Operator 8 lacks (− ≥ ≤ → ← ✓); ▲ ▼ ✕ ★ ⚠ are icons.
+- **The readable-font option** (§12, D-059) is in Settings, saved with the others: every pixel text switches to the system font, at its own sizes.
+- **Frames and icons are our own drawings** in LimeZu's palette (`theme/frames.ts`, `theme/icons.ts`): text grids turned into images at startup. Every color they use is LimeZu's, from its two packs' palettes or (the deep wood, #6b5052) its Modern Interiors sheets; a test holds them to it. Each fixture and each tool has an 8×8 icon (the two Remodel Plans share one): a fixture's badge on the board, a supply's slot, and the shop's art slot where the board has no sprite for it. They were drawn while Modern Interiors' license was an open question (D-097's note); the team has since cleared that pack, so a LimeZu piece can replace any of them where it looks better (`art/limezu/ui-mi.json`).
+- **The top bar:** the milestone on a plaque, the milestone meter with a tick per week at the rules' pace and the target's flag (the score and its target always whole above it, the forecast's number beside them only where it fits whole: its fill and tick on the meter always show), the budget beside a coin, the overtime clocks, the auto-complete switch, and Complete early, whose two labels share one cell so it keeps its width when armed and the second press lands where the first did (D-073). A Menu button opens a menu with Copy run code, the seed, How to play, Settings and Quit to title (the run stays saved for Continue). How to play and Settings keep their own buttons; the brand leaves the bar.
+- **Coins come before amounts** everywhere, as on the budget's plaque: ●4, ●+1. Placed after a number, the coin read as a zero.
+- **Sheets and the menu hold the keyboard** while open: focus moves in (the menu's Resume, a sheet's text), Tab stays inside, and focus goes back where it was when they close. A press that starts inside and ends on the scrim doesn't close them.
+- **Pressing:** a hover lifts a control a UI pixel and a press sets it down; while pressed, its hit area reaches up over that travel, so a press at its top edge lands.
+- **The controls strip** shows the keys for what you're doing now, as keycaps. On a window under 800 px tall it sits under the board only, so the side columns keep their full height, and leaves out what's least needed there (Scroll to zoom, Click to place, and the shop's two hints, which the sheet's foot covers), so it's one line.
+- **The hand:** each card shows its piece's picture and its kind and tags as chips with icons. The picture is the piece as the board builds it, drawn unrotated by the board's own painters (the ghost's: a room's floor, furniture and outline walls, a yard piece's ground and props), and the shop's piece offers and How to play's sets use the same picture. Reroll and Demolish sit above the cards. The sticky bar holds square Rotate and Cancel buttons and End week, the view's one lime button, which sizes its words on its own width: it drops the Enter keycap first, then takes a short label (Pass, Again?). The picked card shows its shape as a small glyph, turned as the piece turns, so R shows with the pointer off the lot, and a card picked below the fold scrolls into view. On a window under 800 px tall the cards swap their pictures for that glyph, and in a narrow column Reroll and Demolish become an icon and a count on one row (Stop keeps its word while demolishing).
+- **The inventory** stays hidden until the supply yard first opens, unless something's in it; empty slots are wells. On a window under 800 px tall the build screen leaves its empty rows out (the shop shows them). A name too long for its slot ends in an ellipsis.
+- **The build stamp** moves to the bottom-left corner, clear of End week at 1280×720.
+- **The shop** (D-087's sheet over the board) is a wood sheet. The budget is its header's hero counter, beside Refresh and Look at the lot. The goods are paper cards of one size packed onto shelves, as many sections side by side as the width holds, each card with an art slot (a piece's picture; a fixture's art as the board draws it, the Fireplace's stove or the Bunk Beds, or its icon for the ones painted with their room; a tool's own icon; else its kind's icon), its rarity as a band and a chip, a coin price, and Buy. Each section with goods that full slots block says so at its plank tag, in the rules' words (the advice after the first sentence only the first time the shop says it), and those goods' Buy buttons read Full. A good the budget can't reach shows its price in orange and a Buy that reads "Need 2", never the color alone. Leave is the sheet's one lime button, in a foot like End week's, with its saving bonus. Rare goods glint as they arrive, and the sale is a wood price tag. Hidden, the shop leaves a handle at the board's foot. A crate's options and the strike picker are sheets of the same cards over the shelves, sized to the board with their options scrolling inside and Set it aside or Cancel always in view; crate options glow by rarity in hard pixel steps. Below 800 px of height the cards drop their art.
+- **The title screen** is a street at the street's whole-pixel scale: a banded sky with our own sun and clouds, and Modern Exteriors villas, trees, shrubs and planters on a lawn behind the street (`art/limezu/ui.json`), with a car that drives by (parked with Reduce motion). The lawn and the street are the lot's own (D-099): its grass with tufts and flowers, and the board's sidewalk, curb, road and dashed line. The menu is an "Open House" real-estate sign hanging from a post, its buttons hanging below it as riders. LimeZu is credited, with a link, on the far sidewalk. The wordmark stays in Public Pixel with the readable font, at 32 UI pixels (24 on a narrow window), so it's 48 px and up and on its font's grid in both modes.
+- **Overlays:** the milestone banner is a ribbon stamped in, gold for a milestone met and orange for a miss or overtime, with its detail on a paper slip. "Target reached!" is a lime stamp; neutral notes are paper slips. Notes and toasts sit at the top center of the board, under the top bar; while the shop is open they sit inside it, under its header (and under a crate's sheet), so they never cover the goods or the hand. A toast raised while a sheet or the menu is open shows over it.
+- **The board's labels** by the pointer (the ghost's change to the week's Wow or why it can't go there, and the install, tool and demolish labels) are the interface's chips: the pixel font, paper in the ink ring, a band in the label's tone, and a hard shadow. The preview's badges keep their small system-font numbers (a badge sits on one cell, and the pixel font has nothing under 16 px), square-cornered in the ink outline with a paper halo. The pieces' digits stay outlined system-font numbers that grow with the zoom. Their badges (a fixture that can't be drawn, an unmet requirement's ⚠) are square paper in LimeZu's ink, one icon pixel wide, around their pixel icon, a fixture's paper tinted by its rarity and the ⚠'s warning yellow, on whole device pixels.
+- **Tooltips** (D-086) are paper notes with a pixel tail pointing at the term, placed on whole pixels: over the term, or under it when the note, measured, doesn't fit above it, and always inside the window. Terms keep D-086's dotted underline, drawn as pixel dots. The audit's idea of dropping the underline outside prose would amend D-086, so it's left to the team.
+- **Settings** groups its controls (Game, Motion, Sound, Display) as pixel segmented controls, a switch and sliders. Settings, How to play and the copy fallback are wood sheets; How to play shows the formula as the score panel's own plaques, with icons and keycaps.
+- **The end screen** stays in the right column (M6 builds the full-width finale): "Job done!" or "Run over" on its plank, the verdict as a stamp (gold for a win), the final Wow on the framed plaque, the milestones and stats as rows with icons, and New run kept in view down to the window's foot. "It's a house." is a wood sign over the board.
+
+**Why:** The UI and juice audit (2026-11-06) found an interface that read as a web app beside the pixel-art board, with text at 9–13 px, hairline edges and blue for six meanings. D-057 asks for wood-panel frames and a chunky pixel font with a readable option. The audit's design system turned that into tokens, one pixel unit and a few primitives, so every screen shifts together.
+**Costs:** the pixel font is wide, so the side columns are wider: at 1280×720 their 280 px leave the board 720 px, and at 1× the lot is a little wider than its view, so it pans across as well as down (a new run shows 24 px less of each edge column; before M5a it fit across). The street's label sticks inside the view, so it still reads whole. Narrower columns would wrap the cards' text further and push the hand down; that trade is the team's to revisit.
+**Changes:** None to settled decisions. D-073 (Accepted): the top bar keeps everything it lists. D-087 (Proposed): the inventory still sits above the hand, and the shop keeps its sections and the leave button's saving bonus, the button moving to the sheet's foot. D-086 (Proposed): unchanged, the underline only redrawn.
+
+### D-099 · M5a lot defaults: the terrain in Modern Exteriors
+**Status:** Proposed · 2026-11-06, with M5a's lot track (stage 2) and its merge into the phase branch. Implementation details within D-049 and D-097; §12 Art's Rendering bullets describe them.
+**Decision:**
+- **Grass:** LimeZu's muted grass on every cell, with a tuft on about 1 subtile of open ground in 11 and tiny flowers on 1 in 23, by tile hash salted with the run's seed. The same run always looks the same, and no two runs share their decoration.
+- **The sunny side** follows `isSunny` exactly. LimeZu's grass edge, recolored, reaches 6 px into the shade beside it. A Tree inside the band stays in shade to its cell's edge, and no sunny edge faces the street.
+- **Water:** LimeZu's animated water (8 frames, 130 ms each) on its own canvas over the water's bounding box, autotiled per 16 px subtile, its bank's blades in the colors of the grass around it. The frames are painted side by side once per lot and CSS steps through them (transform only), so the water costs the main thread nothing between placements; it's still under Reduce motion and paused under the shop's sheet. A creek shows about 12 px of open water per cell (the static set's was about 22). Lily pads float on a pond's open water only.
+- **The woods:** one LimeZu tree per Tree cell (eight kinds by hash, nudged up to 2 px), greens at 92% saturation, on a step-darker woods floor with soft edges and a verge of grass where it meets the street. A big 64×52 tree stands only on a 2×2 block of Trees that no piece can touch, so every Tree a piece touches is a tree of its own and can be counted.
+- **The canopy:** what rises above its own cells (tree tops) is on a canopy canvas at `LAYER.canopy`, over the pieces and under their digits and badges, covering the lot and the row above it; it never takes the pointer. The terrain and water canvases share one `.ground` group at `LAYER.terrain`. The board keeps 24 art px clear above the lot (`CANOPY_ROOM`), so the top row's tree tops are never cut flat; the default zoom and Fit count it.
+- **Finds and rocks:** two or three LimeZu rocks per Boulder; the Old Shed is LimeZu's shack at its own 48×64; the Time Capsule is dug soil with a shovel in it.
+- **The street:** the street row is a sidewalk with its curb, the lot's grass hanging over its edge except where water or a piece meets it, so a Driveway runs onto the sidewalk. Its STREET label lies on the longest stretch of sidewalk with no curb cut, sticks inside the view's left edge, and is half size in a short row (0.5× on a Retina screen). Below it, `ROAD_ROWS = 2` rows of decoration: asphalt with a dashed line, then the far curb. The default zoom, Fit, the camera and the board's height count them, and the pointer finds nothing there. A new run starts scrolled to the street row, the road a short pan below.
+- **Around the board:** dimmed LimeZu grass (a 256 px tile with unevenly scattered tufts) that zooms and pans with the board, no drop shadow, and a faint property line on the lot's other three edges. The road and each creek mouth run on, dimmed, to the edges of the view.
+
+**Why:** The audit's prototype renders (scale-B, test-abc123-B) set the bar: a calm, muted garden that makes the house stand out, with every terrain rule still readable.
+**Costs:** the board is 864 px tall at 1080p (the lot still fits at 1×). Fit's cells are 34 px at 1080p with the M5a interface (35 on the lot's own branch) instead of 36, and about 22 px at 720p (0.69×) instead of 24 (0.75×). The default zoom's thresholds rise by 24 art px: 1.5× on a Retina screen needs 1332 CSS px of board height instead of 1296. Big trees are rarer than in the prototype. The atlas also packs the 256 px surroundings tile.
+**Changes:** None to settled decisions. D-097 (Accepted) holds, its board counting the road rows and the canopy's room.
+
+### D-100 · M5a house defaults: the cutaway and the yard
+**Status:** Proposed · 2026-11-06, with M5a's pieces track (stage 2) and its merge into the phase branch. Implementation details within D-093 and D-097; §12 Art describes each rule.
+**Decision:**
+- **Walls:** every cell edge is open floor, a wall between two pieces (same type included, D-093), an outside wall, or a garage door. They're LimeZu-style bands drawn from a pixel mask: 6 px outside and 4 px between rooms, with 8 px north wall faces in each room's wallpaper and 3 px floor shadows.
+- **Doors and windows** are decoration chosen by fixed rules. Ties go by position (reading order), and between rooms by the rooms' placement order and a hash of a room's uid:
+  - Hallways open into the rooms the rules link through them.
+  - The front door is on a south wall with nothing of the house between it and the street, in the best entry room (a Mudroom or hall first), never onto a tree, water, a boulder, the Old Shed, a fence or an outbuilding, paved ground preferred. It opens onto the woods only when nothing else can take it.
+  - A back door opens onto each touching Patio or Hot Tub; a garage door spans the Garage's side toward a Driveway or the street.
+  - Then a spanning tree from the entry, public rooms first, adds as few doors as it takes to reach every room. Doors keep to side walls (70% of the way down) and the ends of north walls, clear of the furniture.
+  - Windows: about one per two cells of outside wall, every cell in a Sunroom, none in Closets, Garages or Hallways.
+- **Layers** (`layers.ts`): a floor canvas (the yard's ground and curb cuts, the house's shadow, doormats, floors, wall faces), one items container per piece ordered by its bottom row, a walls canvas, the overhang, outline highlights (never CSS filters on whole pieces; sets in Charm's rose with a dashed edge), and the labels inside the walls. The canvases redraw only when the house changes, before the browser paints.
+- **Labels:** each piece's digit in its bottom-right cell, its badges in its top corners (a fixture that can't be drawn, top right; the ⚠, top left), sized with the cell, and never over the digit (`label-layout.ts`, tested at every zoom): where a badge would touch it (a one-cell or one-row piece), the badge rises to its cell's top edge over the wall band, then the digit drops toward the cell's bottom edge, then the badge shrinks.
+- **Furniture:** LimeZu pieces laid out by slot rules per room type and footprint (`rooms.ts`), from one in the smallest rooms (a one-cell Bathroom's toilet, a Closet's rail) to six in a Dining Room (a table, four chairs and a rug). Tall pieces rise over the north wall band, never past its top, on the overhang. Nothing stands in a doorway or the walkway in front of it; a dining table may cross a walkway, never the opening. Rooms of a type differ in color: the piece's hash, or the next color an older room of its type hasn't taken.
+- **Fixtures** show as art where they fit: the Fireplace (animated), Bunk Beds and the Kitchen Island as furniture; Soundproofing, Blackout Curtains, the Skylight, the Chandelier and the Bay Window painted with the room; the Sprinkler, the Pergola and Garden Lights in the yard. A fixture that can't be drawn keeps its badge, so a purchase is always visible.
+- **Yard pieces:** their ground is on the floor canvas (a Lawn's mown stripes, pavers, concrete with a curb cut through the street row, pools in LimeZu's coping), their props are items: a parasol and two chairs on a Patio (a small parasol where a door opens onto it), the house's one parked car on its oldest Driveway, planters, the Fire Pit's campfire, LimeZu's Greenhouse and Treehouse cut shorter (they rise 14 and 25 px), and a Henhouse made from a shed's front with two hens. Fences are a white picket line that joins another only through an end's open side, so each stays countable. Props keep off doors and their mats.
+- **Our own drawings** in LimeZu's palette where it has nothing: the Doghouse, the hens, the Sprinkler, and the painted fixtures. A test keeps their colors in LimeZu's palette.
+- **The ghost** (and the Moving Truck's carried piece) is drawn by the same painters, for that piece alone, as it will look once built, tall furniture rising over its north wall as on the board; so are the cards' and the shop's pictures of it.
+
+**Why:** The audit's prototype (house-B, test-abc123-B) showed that LimeZu's pieces at 32 px cells read as a real house when rules choose the doors, windows and furniture well.
+*Open for the team:* room colors. No rule that uses only the current house is both always distinct and always stable. Hash-then-next-free keeps older rooms fixed and same-type rooms distinct up to the palette's size, but demolishing a room can recolor a newer one it had bumped. A plain per-piece hash is always stable but lets two Bedrooms share a duvet.
+**Changes:** D-097 (Accepted): its doorways, windows and front door are chosen "by fixed rules and a tile hash"; here no tile hash is used: ties go by position, and between rooms by the rooms' uids and a hash of one (the colors come from a hash of the uid), which the stage-2 brief allowed. As deterministic, but the same footprint built in another order, or rebuilt after a demolition, can get other doorways between its rooms and other colors. D-093 (Open) is followed: a wall between every two pieces, every room type its own floor, no zone tints, doorways decoration only.
 
 ### D-015 · Start small, grow into the corporation
 **Status:** Proposed
@@ -1221,7 +1360,11 @@ New content is preferred over raising existing numbers.
 - D-053, §7, and jam-scope.md's build order, if chains get a phase of their own.
 - Check against D-093 (chain items shouldn't reward repeating a room type) and D-090 (under these rules, a fixture that pays budget each time its host fires would pay once a week).
 
+**2026-11-06 (D-097):** M5 is now split, and M5a, with the visual juice and its tally work, comes before M4. So the Recommendation's "M5" is M5a: option 1 would land in M5a's juice stage. Options 2 and 3 can no longer land in M4 and still have the juice built around them: they would either come before M5a's juice stage, or add their "Again!" steps and arcs to the tally when they land in M4.
+
 **2026-11-06 (systems review):** under the review's house rules, a house is paid to keep one Kitchen and at most two Living Rooms, and Renovate takes a repeated room card. So chain items needn't reward repeats, and a relay that reads Social would reward packing the shared rooms into a hub. Untested (`house-systems-review.md` §8).
+
+**2026-11-07 (D-097):** M5a's visual juice is now its own pull request after M4 (D-097's juice note), and M4 was built without chain reactions. So option 1 would land in that pull request, and options 2 and 3, if chosen, come after M4: before the juice pull request, so its tally is built around them, or with it.
 
 ### Earlier open questions
 

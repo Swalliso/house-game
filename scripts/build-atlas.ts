@@ -1,29 +1,51 @@
-// Builds the sprite atlas (implementation-plan.md §3 "Scripts" and §12 "Art", D-057).
+// Builds the sprite atlas (implementation-plan.md §3 "Scripts" and §12 "Art"; D-057, D-066,
+// D-097).
 //
-// Sources: art/palette.txt maps one character to a color, and each art/<id>.txt is a 16×16
-// grid of palette characters, with '.' for transparent. The script validates every sprite,
-// packs them in id order into a grid of 18×18 cells (the sprite plus a 1px border that repeats
-// its edge pixels, so fractional screen scales show no seams), and writes assets/atlas.png and
-// assets/atlas.json. The UI reads sprite positions from atlas.json by id.
+// It packs two kinds of sprite:
+// - Placeholders: art/palette.txt maps one character to a color, and each art/<id>.txt is a
+//   16×16 grid of palette characters, with '.' for transparent. They're validated as before
+//   (at most 32 palette colors, 8 per sprite) and doubled to 32×32 with nearest neighbor, so
+//   a placeholder fills one 32 art px cell (D-097).
+// - LimeZu cuts: assets/limezu/<id>.png at its own size, listed in assets/limezu/index.json.
+//   `npm run art:cut` (scripts/cut-art.ts) writes them from the packs, and they're committed,
+//   so this script (and CI) never needs the packs. A cut replaces the placeholder with its id.
+//
+// Every sprite, and every frame of an animation, is extruded by 1px (a border that repeats its
+// edge pixels, so fractional screen scales show no seams) and shelf-packed: tallest first,
+// then by id, at even coordinates, into a power-of-two width. It writes assets/atlas.png and
+// assets/atlas.json, version 2:
+//
+//   { version: 2, cell: 32, width, height, sprites: { id: { x, y, w, h, frames?, stride?, ms? } } }
+//
+// x, y, w, h are the sprite's rect (an animation's first frame). Frame k of an animation
+// starts at x + k × stride and shows for ms. The UI reads sprites by id.
 //
 // Run it with `npm run atlas` (plain `node scripts/build-atlas.ts`). `npm run build` runs it
-// first. No npm dependencies: the PNG encoder below uses node:zlib.
+// first. No npm dependencies: scripts/png.ts encodes and decodes with node:zlib.
 
-import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { deflateSync } from 'node:zlib';
+import { decodePng, encodePng, type RgbaImage } from './png.ts';
 
-/** Sprite size in pixels. */
-export const TILE = 16;
-/** Border repeated around each sprite. */
+/** The placeholders' grid size, in pixels. */
+export const PLACEHOLDER_SIZE = 16;
+/** Art px per game cell (D-097): the atlas's `cell`, and the size placeholders are doubled to. */
+export const ART_CELL = 32;
+/** How much a placeholder is scaled up in the atlas. */
+export const PLACEHOLDER_SCALE = ART_CELL / PLACEHOLDER_SIZE;
+/** Border repeated around each sprite and each frame. */
 export const EXTRUDE = 1;
-/** Atlas cell size: the sprite plus its border on both sides. */
-export const CELL = TILE + 2 * EXTRUDE;
+/** The atlas is at least this wide, and a power of two. */
+export const MIN_ATLAS_WIDTH = 256;
 export const MAX_PALETTE_COLORS = 32;
 export const MAX_SPRITE_COLORS = 8;
 export const TRANSPARENT = '.';
+/** Sprite ids: lowercase words joined by "-". */
+export const SPRITE_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const PALETTE_FILE = 'palette.txt';
+/** Empty pixels around the packed area: slots start at odd x and y, so sprites start at even. */
+const MARGIN = 1;
 
 export type Rgba = readonly [r: number, g: number, b: number, a: number];
 /** Palette character → color. */
@@ -35,13 +57,37 @@ export interface Sprite {
   readonly rows: readonly string[];
 }
 
+/** A sprite to pack: its pixels (an animation's frames side by side) and one frame's size. */
+export interface PackInput {
+  readonly id: string;
+  readonly image: RgbaImage;
+  readonly w: number;
+  readonly h: number;
+  /** 1 for a still sprite. */
+  readonly frames: number;
+  /** How long each frame shows; only for animations. */
+  readonly ms?: number;
+}
+
+export interface AtlasSprite {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  /** Animations only: the frame count, frame k's x offset (k × stride), and each frame's ms. */
+  frames?: number;
+  stride?: number;
+  ms?: number;
+}
+
 export interface AtlasJson {
-  tile: number;
+  version: 2;
+  /** Art px per game cell. */
   cell: number;
   width: number;
   height: number;
-  /** The top-left pixel of each sprite, inside its extruded border. */
-  sprites: Record<string, { x: number; y: number }>;
+  /** Each sprite's rect, inside its extruded border, by id. */
+  sprites: Record<string, AtlasSprite>;
 }
 
 export interface Atlas {
@@ -52,11 +98,28 @@ export interface Atlas {
   readonly json: AtlasJson;
 }
 
+/** One cut in assets/limezu/index.json (written by scripts/cut-art.ts). */
+export interface CutRecord {
+  /** One frame's size. */
+  readonly w: number;
+  readonly h: number;
+  /** Animations only. */
+  readonly frames?: number;
+  readonly ms?: number;
+  /** The hash of its manifest entry (cut-art.ts specHash), to tell when it needs a re-cut. */
+  readonly spec: string;
+}
+export type CutIndex = Readonly<Record<string, CutRecord>>;
+
 /** Splits a text file into lines, accepting CRLF and one trailing newline. */
 function textLines(text: string): string[] {
   const lines = text.split(/\r?\n/);
   if (lines.length > 0 && lines[lines.length - 1] === '') lines.pop();
   return lines;
+}
+
+function byString(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
 }
 
 /**
@@ -107,22 +170,23 @@ export function spriteColors(sprite: Sprite): string[] {
 /** Parses and validates art/<id>.txt: exactly 16 lines of 16 known characters, ≤ 8 colors. */
 export function parseSprite(id: string, text: string, palette: Palette): Sprite {
   const source = `art/${id}.txt`;
-  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id)) {
+  if (!SPRITE_ID.test(id)) {
     throw new Error(`${source}: sprite ids are lowercase words joined by "-"`);
   }
+  const size = PLACEHOLDER_SIZE;
   const rows = textLines(text);
-  if (rows.length !== TILE) {
+  if (rows.length !== size) {
     throw new Error(
-      `${source} has ${rows.length} lines; a sprite is exactly ${TILE} lines of ${TILE} characters`,
+      `${source} has ${rows.length} lines; a sprite is exactly ${size} lines of ${size} characters`,
     );
   }
   rows.forEach((row, y) => {
-    if (row.length !== TILE) {
+    if (row.length !== size) {
       throw new Error(
-        `${source} line ${y + 1} has ${row.length} characters; every line needs exactly ${TILE}`,
+        `${source} line ${y + 1} has ${row.length} characters; every line needs exactly ${size}`,
       );
     }
-    for (let x = 0; x < TILE; x++) {
+    for (let x = 0; x < size; x++) {
       const ch = row.charAt(x);
       if (ch !== TRANSPARENT && !palette.has(ch)) {
         throw new Error(
@@ -141,111 +205,41 @@ export function parseSprite(id: string, text: string, palette: Palette): Sprite 
   return sprite;
 }
 
-function byId(a: Sprite, b: Sprite): number {
-  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
-}
-
-/**
- * Packs sprites, sorted by id, into a roughly square grid of extruded cells.
- * Pure: the same sprites and palette always give the same pixels and JSON.
- */
-export function packAtlas(sprites: readonly Sprite[], palette: Palette): Atlas {
-  if (sprites.length === 0) throw new Error('packAtlas: no sprites to pack');
-  const sorted = [...sprites].sort(byId);
-  sorted.forEach((s, i) => {
-    if (i > 0 && sorted[i - 1]!.id === s.id) throw new Error(`packAtlas: "${s.id}" appears twice`);
-  });
-
-  const columns = Math.ceil(Math.sqrt(sorted.length));
-  const rowsOfCells = Math.ceil(sorted.length / columns);
-  const width = columns * CELL;
-  const height = rowsOfCells * CELL;
-  const rgba = new Uint8Array(width * height * 4);
-  const json: AtlasJson = { tile: TILE, cell: CELL, width, height, sprites: {} };
-
-  sorted.forEach((sprite, i) => {
-    const cellX = (i % columns) * CELL;
-    const cellY = Math.floor(i / columns) * CELL;
-    for (let py = 0; py < CELL; py++) {
-      // Border pixels clamp to the nearest edge pixel: that is the extrusion.
-      const sy = Math.min(TILE - 1, Math.max(0, py - EXTRUDE));
-      const row = sprite.rows[sy]!;
-      for (let px = 0; px < CELL; px++) {
-        const sx = Math.min(TILE - 1, Math.max(0, px - EXTRUDE));
-        const ch = row.charAt(sx);
-        if (ch === TRANSPARENT) continue;
-        const color = palette.get(ch);
-        if (!color) throw new Error(`packAtlas: "${sprite.id}" uses "${ch}", not in the palette`);
-        rgba.set(color, ((cellY + py) * width + cellX + px) * 4);
-      }
+/** A placeholder's pixels at 16×16. */
+export function rasterize(sprite: Sprite, palette: Palette): RgbaImage {
+  const size = PLACEHOLDER_SIZE;
+  const rgba = new Uint8Array(size * size * 4);
+  sprite.rows.forEach((row, y) => {
+    for (let x = 0; x < size; x++) {
+      const ch = row.charAt(x);
+      if (ch === TRANSPARENT) continue;
+      const color = palette.get(ch);
+      if (!color) throw new Error(`"${sprite.id}" uses "${ch}", not in the palette`);
+      rgba.set(color, (y * size + x) * 4);
     }
-    json.sprites[sprite.id] = { x: cellX + EXTRUDE, y: cellY + EXTRUDE };
   });
-
-  return { width, height, rgba, json };
+  return { width: size, height: size, rgba };
 }
 
-const CRC_TABLE = (() => {
-  const table = new Uint32Array(256);
-  for (let n = 0; n < 256; n++) {
-    let c = n;
-    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-    table[n] = c >>> 0;
-  }
-  return table;
-})();
-
-/** The CRC-32 that PNG chunks use (ISO 3309, polynomial 0xEDB88320). */
-export function crc32(bytes: Uint8Array): number {
-  let c = 0xffffffff;
-  for (const byte of bytes) c = CRC_TABLE[(c ^ byte) & 0xff]! ^ (c >>> 8);
-  return (c ^ 0xffffffff) >>> 0;
-}
-
-export const PNG_SIGNATURE = Uint8Array.of(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a);
-
-function pngChunk(type: string, data: Uint8Array): Buffer {
-  const typeAndData = Buffer.concat([Buffer.from(type, 'latin1'), data]);
-  const chunk = Buffer.alloc(8 + data.length + 4);
-  chunk.writeUInt32BE(data.length, 0);
-  typeAndData.copy(chunk, 4);
-  chunk.writeUInt32BE(crc32(typeAndData), 8 + data.length);
-  return chunk;
-}
-
-/** Encodes RGBA pixels as a PNG: 8-bit RGBA, no interlace, filter type 0 on every row. */
-export function encodePng(width: number, height: number, rgba: Uint8Array): Buffer {
-  if (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1) {
-    throw new Error(`encodePng: bad size ${width}×${height}`);
-  }
-  if (rgba.length !== width * height * 4) {
-    throw new Error(`encodePng: expected ${width * height * 4} bytes of RGBA, got ${rgba.length}`);
-  }
-  const stride = width * 4;
-  const raw = Buffer.alloc((stride + 1) * height);
+/** Scales an image up by a whole factor with nearest neighbor: each pixel becomes k × k. */
+export function scaleNearest(image: RgbaImage, k: number): RgbaImage {
+  if (!Number.isInteger(k) || k < 1) throw new Error(`scaleNearest: bad factor ${k}`);
+  const width = image.width * k;
+  const height = image.height * k;
+  const rgba = new Uint8Array(width * height * 4);
   for (let y = 0; y < height; y++) {
-    raw[y * (stride + 1)] = 0; // filter: none
-    raw.set(rgba.subarray(y * stride, (y + 1) * stride), y * (stride + 1) + 1);
+    for (let x = 0; x < width; x++) {
+      const src = (Math.floor(y / k) * image.width + Math.floor(x / k)) * 4;
+      rgba.set(image.rgba.subarray(src, src + 4), (y * width + x) * 4);
+    }
   }
-  const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(width, 0);
-  ihdr.writeUInt32BE(height, 4);
-  ihdr[8] = 8; // bit depth
-  ihdr[9] = 6; // color type: RGBA
-  ihdr[10] = 0; // compression: deflate
-  ihdr[11] = 0; // filter method
-  ihdr[12] = 0; // interlace: none
-  return Buffer.concat([
-    PNG_SIGNATURE,
-    pngChunk('IHDR', ihdr),
-    pngChunk('IDAT', deflateSync(raw, { level: 9 })),
-    pngChunk('IEND', new Uint8Array(0)),
-  ]);
+  return { width, height, rgba };
 }
 
-/** The text written to assets/atlas.json. */
-export function atlasJsonText(json: AtlasJson): string {
-  return `${JSON.stringify(json, null, 2)}\n`;
+/** A placeholder as the atlas packs it: doubled to one 32 px cell. */
+export function placeholderInput(sprite: Sprite, palette: Palette): PackInput {
+  const image = scaleNearest(rasterize(sprite, palette), PLACEHOLDER_SCALE);
+  return { id: sprite.id, image, w: image.width, h: image.height, frames: 1 };
 }
 
 /** Reads and validates art/: the palette and every sprite, sorted by id. */
@@ -258,24 +252,217 @@ export function readArt(artDir: string): { palette: Palette; sprites: Sprite[] }
       const id = name.slice(0, -'.txt'.length);
       return parseSprite(id, readFileSync(join(artDir, name), 'utf8'), palette);
     });
-  // Final art (M2+): sprites cut from the LimeZu packs in art-source/ plug in here. The script
-  // will find art-source/ in the main checkout through `git rev-parse --git-common-dir`, cut
-  // each sprite into the same 16×16 form under the same ids, and add it to `sprites`, so the
-  // UI needs no change. CI has no art-source/, so the cut sprites will be committed to assets/.
   return { palette, sprites };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isWhole(value: unknown, min: number): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= min;
+}
+
+/** Parses and validates assets/limezu/index.json. */
+export function parseCutIndex(text: string, source = 'assets/limezu/index.json'): CutIndex {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text);
+  } catch (error) {
+    throw new Error(`${source}: ${error instanceof Error ? error.message : String(error)}`);
+  }
+  if (!isRecord(raw)) throw new Error(`${source}: expected an object of cuts by id`);
+  const index: Record<string, CutRecord> = {};
+  for (const [id, value] of Object.entries(raw)) {
+    const where = `${source}: "${id}"`;
+    if (!SPRITE_ID.test(id)) throw new Error(`${where}: ids are lowercase words joined by "-"`);
+    if (!isRecord(value)) throw new Error(`${where}: expected an object`);
+    const { w, h, frames, ms, spec, ...rest } = value;
+    const extra = Object.keys(rest);
+    if (extra.length > 0) throw new Error(`${where}: unknown field "${extra[0]}"`);
+    if (!isWhole(w, 1) || !isWhole(h, 1)) throw new Error(`${where}: w and h must be whole, ≥ 1`);
+    if (typeof spec !== 'string' || spec === '') throw new Error(`${where}: spec must be a hash`);
+    if (frames === undefined && ms === undefined) {
+      index[id] = { w, h, spec };
+    } else if (isWhole(frames, 2) && isWhole(ms, 1)) {
+      index[id] = { w, h, frames, ms, spec };
+    } else {
+      throw new Error(`${where}: an animation needs frames (≥ 2) and ms (≥ 1)`);
+    }
+  }
+  return index;
+}
+
+/**
+ * Reads the committed LimeZu cuts in assets/limezu/: index.json and one <id>.png per entry,
+ * each checked against its recorded size. No folder or no index means no cuts yet.
+ */
+export function readCuts(dir: string): PackInput[] {
+  const indexPath = join(dir, 'index.json');
+  if (!existsSync(dir)) return [];
+  const pngs = readdirSync(dir).filter((name) => name.endsWith('.png'));
+  if (!existsSync(indexPath)) {
+    if (pngs.length === 0) return [];
+    throw new Error(`assets/limezu/ has cuts but no index.json: run \`npm run art:cut\``);
+  }
+  const index = parseCutIndex(readFileSync(indexPath, 'utf8'));
+  for (const name of pngs) {
+    if (!Object.hasOwn(index, name.slice(0, -'.png'.length))) {
+      throw new Error(`assets/limezu/${name} isn't in index.json: run \`npm run art:cut\``);
+    }
+  }
+  return Object.keys(index)
+    .sort(byString)
+    .map((id) => {
+      const record = index[id]!;
+      const file = `assets/limezu/${id}.png`;
+      const path = join(dir, `${id}.png`);
+      if (!existsSync(path)) throw new Error(`${file} is missing: run \`npm run art:cut\``);
+      const image = decodePng(readFileSync(path), file);
+      const frames = record.frames ?? 1;
+      if (image.width !== record.w * frames || image.height !== record.h) {
+        throw new Error(
+          `${file} is ${image.width}×${image.height}; index.json says ${frames} × ${record.w}×${record.h}`,
+        );
+      }
+      return {
+        id,
+        image,
+        w: record.w,
+        h: record.h,
+        frames,
+        ...(record.ms ? { ms: record.ms } : {}),
+      };
+    });
+}
+
+/** The placeholders, with each LimeZu cut replacing the placeholder that has its id. */
+export function mergeSprites(
+  placeholders: readonly PackInput[],
+  cuts: readonly PackInput[],
+): PackInput[] {
+  const byId = new Map<string, PackInput>();
+  for (const p of placeholders) byId.set(p.id, p);
+  for (const c of cuts) byId.set(c.id, c);
+  return [...byId.values()].sort((a, b) => byString(a.id, b.id));
+}
+
+/** Rounds up to an even number. */
+function even(n: number): number {
+  return n + (n & 1);
+}
+
+/**
+ * Shelf-packs sprites into one atlas. Each frame gets its own slot of (w + 2) × (h + 2),
+ * rounded up to even sizes; slots are placed tallest first, then by id, left to right in
+ * shelves, starting at odd coordinates, so every sprite's pixels start at even x and y (a whole
+ * number of CSS pixels at any whole or half scale). The width is the smallest power of two of at
+ * least 256 that's as wide as the slots' total area is square, or the widest slot.
+ * Pure: the same sprites always give the same pixels and JSON, in any input order.
+ */
+export function packAtlas(inputs: readonly PackInput[]): Atlas {
+  if (inputs.length === 0) throw new Error('packAtlas: no sprites to pack');
+  const seen = new Set<string>();
+  for (const s of inputs) {
+    if (seen.has(s.id)) throw new Error(`packAtlas: "${s.id}" appears twice`);
+    seen.add(s.id);
+    if (!isWhole(s.w, 1) || !isWhole(s.h, 1) || !isWhole(s.frames, 1)) {
+      throw new Error(`packAtlas: "${s.id}" has a bad size`);
+    }
+    if (s.image.width !== s.w * s.frames || s.image.height !== s.h) {
+      throw new Error(
+        `packAtlas: "${s.id}" is ${s.image.width}×${s.image.height}, not ${s.frames} × ${s.w}×${s.h}`,
+      );
+    }
+    if (s.frames > 1 && !isWhole(s.ms, 1)) {
+      throw new Error(`packAtlas: "${s.id}" is animated but has no ms`);
+    }
+  }
+
+  const slots = inputs.map((s) => {
+    const frameW = even(s.w + 2 * EXTRUDE);
+    return { s, frameW, w: frameW * s.frames, h: even(s.h + 2 * EXTRUDE), x: 0, y: 0 };
+  });
+  slots.sort((a, b) => b.h - a.h || byString(a.s.id, b.s.id));
+
+  const area = slots.reduce((sum, slot) => sum + slot.w * slot.h, 0);
+  const widest = Math.max(...slots.map((slot) => slot.w));
+  let width = MIN_ATLAS_WIDTH;
+  while (width * width < area || width < widest + 2 * MARGIN) width *= 2;
+
+  // Shelves: slots go left to right; one that doesn't fit starts a new shelf below. The first
+  // slot on a shelf is its tallest, since slots come tallest first.
+  let x = MARGIN;
+  let y = MARGIN;
+  let shelf = 0;
+  for (const slot of slots) {
+    if (x + slot.w > width - MARGIN) {
+      y += shelf;
+      x = MARGIN;
+      shelf = 0;
+    }
+    slot.x = x;
+    slot.y = y;
+    x += slot.w;
+    shelf = Math.max(shelf, slot.h);
+  }
+  const height = y + shelf + MARGIN;
+
+  const rgba = new Uint8Array(width * height * 4);
+  const sprites: Record<string, AtlasSprite> = {};
+  for (const { s, frameW, x: slotX, y: slotY } of slots) {
+    const ox = slotX + EXTRUDE;
+    const oy = slotY + EXTRUDE;
+    for (let k = 0; k < s.frames; k++) {
+      // Border pixels clamp to the nearest edge pixel of the same frame: that's the extrusion.
+      for (let py = -EXTRUDE; py < s.h + EXTRUDE; py++) {
+        const sy = Math.min(s.h - 1, Math.max(0, py));
+        for (let px = -EXTRUDE; px < s.w + EXTRUDE; px++) {
+          const sx = Math.min(s.w - 1, Math.max(0, px));
+          const src = (sy * s.image.width + k * s.w + sx) * 4;
+          const dst = ((oy + py) * width + ox + k * frameW + px) * 4;
+          rgba.set(s.image.rgba.subarray(src, src + 4), dst);
+        }
+      }
+    }
+    sprites[s.id] = {
+      x: ox,
+      y: oy,
+      w: s.w,
+      h: s.h,
+      ...(s.frames > 1 ? { frames: s.frames, stride: frameW, ms: s.ms! } : {}),
+    };
+  }
+
+  const json: AtlasJson = { version: 2, cell: ART_CELL, width, height, sprites: {} };
+  for (const id of Object.keys(sprites).sort(byString)) json.sprites[id] = sprites[id]!;
+  return { width, height, rgba, json };
+}
+
+/** Everything `npm run atlas` packs, from art/ and assets/limezu/ under the repo root. */
+export function readAtlasInputs(root: string): { inputs: PackInput[]; cuts: number } {
+  const { palette, sprites } = readArt(join(root, 'art'));
+  const placeholders = sprites.map((sprite) => placeholderInput(sprite, palette));
+  const cuts = readCuts(join(root, 'assets', 'limezu'));
+  return { inputs: mergeSprites(placeholders, cuts), cuts: cuts.length };
+}
+
+/** The text written to assets/atlas.json. */
+export function atlasJsonText(json: AtlasJson): string {
+  return `${JSON.stringify(json, null, 2)}\n`;
 }
 
 function main(): void {
   const root = resolve(import.meta.dirname, '..');
-  const { palette, sprites } = readArt(join(root, 'art'));
-  const atlas = packAtlas(sprites, palette);
+  const { inputs, cuts } = readAtlasInputs(root);
+  const atlas = packAtlas(inputs);
   writeFileSync(
     join(root, 'assets', 'atlas.png'),
     encodePng(atlas.width, atlas.height, atlas.rgba),
   );
   writeFileSync(join(root, 'assets', 'atlas.json'), atlasJsonText(atlas.json));
   console.log(
-    `atlas: ${sprites.length} sprites, ${palette.size} colors → assets/atlas.png (${atlas.width}×${atlas.height}) and assets/atlas.json`,
+    `atlas: ${inputs.length} sprites (${cuts} of them LimeZu cuts) → assets/atlas.png (${atlas.width}×${atlas.height}) and assets/atlas.json`,
   );
 }
 

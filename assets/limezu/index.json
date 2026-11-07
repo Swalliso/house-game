@@ -1,0 +1,1066 @@
+{
+  "armchair-0": {
+    "w": 20,
+    "h": 24,
+    "spec": "e210fd27efda18e3"
+  },
+  "armchair-1": {
+    "w": 20,
+    "h": 24,
+    "spec": "446aa690bea5710d"
+  },
+  "armchair-2": {
+    "w": 20,
+    "h": 24,
+    "spec": "41e87f71f5a49ff7"
+  },
+  "armchair-3": {
+    "w": 20,
+    "h": 24,
+    "spec": "2655c2039c0fbe24"
+  },
+  "bath-mat": {
+    "w": 26,
+    "h": 15,
+    "spec": "1e152df8cbc26feb"
+  },
+  "bed-double-0": {
+    "w": 26,
+    "h": 40,
+    "spec": "2af39f94db7dd67c"
+  },
+  "bed-double-1": {
+    "w": 26,
+    "h": 40,
+    "spec": "ab864db974a9ad5a"
+  },
+  "bed-double-2": {
+    "w": 26,
+    "h": 40,
+    "spec": "1037cc53425e654e"
+  },
+  "bed-double-3": {
+    "w": 26,
+    "h": 40,
+    "spec": "5a904589741a93a2"
+  },
+  "bench": {
+    "w": 32,
+    "h": 25,
+    "spec": "443418f35e32072d"
+  },
+  "birdhouse-0": {
+    "w": 11,
+    "h": 40,
+    "spec": "be99c126b14c2bef"
+  },
+  "birdhouse-1": {
+    "w": 11,
+    "h": 40,
+    "spec": "9e34d0d615b4271f"
+  },
+  "birdhouse-2": {
+    "w": 11,
+    "h": 40,
+    "spec": "3b45958b877e6b71"
+  },
+  "birdhouse-3": {
+    "w": 11,
+    "h": 40,
+    "spec": "c52812c3cbaec4a8"
+  },
+  "bollard": {
+    "w": 8,
+    "h": 21,
+    "spec": "5d1e231d714ee468"
+  },
+  "bookcase-0": {
+    "w": 32,
+    "h": 34,
+    "spec": "1d1de52989472c3f"
+  },
+  "bookcase-1": {
+    "w": 32,
+    "h": 34,
+    "spec": "923d946db4e8c6ea"
+  },
+  "bookcase-2": {
+    "w": 32,
+    "h": 34,
+    "spec": "a367f6b48c46dbe6"
+  },
+  "bookcase-narrow": {
+    "w": 14,
+    "h": 40,
+    "spec": "e7398ff4ffb95cb1"
+  },
+  "boxes": {
+    "w": 32,
+    "h": 28,
+    "spec": "1a4e2fa5ae384459"
+  },
+  "breakfast-table": {
+    "w": 38,
+    "h": 21,
+    "spec": "cd9ce5bbddae4f96"
+  },
+  "bunk-bed-0": {
+    "w": 40,
+    "h": 41,
+    "spec": "45ba8b5168e2c1b5"
+  },
+  "bunk-bed-1": {
+    "w": 40,
+    "h": 41,
+    "spec": "a18da4c7a8929a41"
+  },
+  "bunk-bed-2": {
+    "w": 40,
+    "h": 41,
+    "spec": "24153a418bea6e94"
+  },
+  "car-front-0": {
+    "w": 32,
+    "h": 57,
+    "spec": "0ab759278f21b2b3"
+  },
+  "car-front-1": {
+    "w": 32,
+    "h": 57,
+    "spec": "f7ff3646e65d1a24"
+  },
+  "car-left-0": {
+    "w": 61,
+    "h": 37,
+    "spec": "201f3855070dec3f"
+  },
+  "car-left-1": {
+    "w": 61,
+    "h": 37,
+    "spec": "89816694f212e3f7"
+  },
+  "car-left-2": {
+    "w": 61,
+    "h": 37,
+    "spec": "6fc508628bb76db2"
+  },
+  "car-left-3": {
+    "w": 61,
+    "h": 37,
+    "spec": "c4cb70ee8a498e1d"
+  },
+  "car-rear-0": {
+    "w": 32,
+    "h": 57,
+    "spec": "fd2219c3eeea72b9"
+  },
+  "car-rear-1": {
+    "w": 32,
+    "h": 57,
+    "spec": "0a39970711044d99"
+  },
+  "car-rear-2": {
+    "w": 32,
+    "h": 57,
+    "spec": "1a304406f1713c6e"
+  },
+  "car-rear-3": {
+    "w": 32,
+    "h": 57,
+    "spec": "448475c7702c5b47"
+  },
+  "car-right-0": {
+    "w": 61,
+    "h": 37,
+    "spec": "8668c6c014b963a7"
+  },
+  "car-right-1": {
+    "w": 61,
+    "h": 37,
+    "spec": "fd68e32426aabde5"
+  },
+  "car-right-2": {
+    "w": 61,
+    "h": 37,
+    "spec": "f0796cbb1ed34ae2"
+  },
+  "car-right-3": {
+    "w": 61,
+    "h": 37,
+    "spec": "0bbd9b7a4769ff04"
+  },
+  "chair-east-0": {
+    "w": 13,
+    "h": 21,
+    "spec": "c54554f9be3398b2"
+  },
+  "chair-east-1": {
+    "w": 13,
+    "h": 21,
+    "spec": "2bf5a4c756f98fb6"
+  },
+  "chair-east-2": {
+    "w": 13,
+    "h": 21,
+    "spec": "2c9463a4fb390a24"
+  },
+  "chair-west-0": {
+    "w": 13,
+    "h": 21,
+    "spec": "487a7a893565f67a"
+  },
+  "chair-west-1": {
+    "w": 13,
+    "h": 21,
+    "spec": "52cbce56378fd3da"
+  },
+  "chair-west-2": {
+    "w": 13,
+    "h": 21,
+    "spec": "1c58a87ea9579b9f"
+  },
+  "clothes-rail": {
+    "w": 22,
+    "h": 24,
+    "spec": "3853212ad9d40b97"
+  },
+  "coat-rack": {
+    "w": 11,
+    "h": 30,
+    "spec": "ce698b0dfa3b5e90"
+  },
+  "coffee-table": {
+    "w": 38,
+    "h": 21,
+    "spec": "1927e1b792ed048c"
+  },
+  "coop-0": {
+    "w": 32,
+    "h": 32,
+    "spec": "8218a0bdaa6d36fa"
+  },
+  "coop-1": {
+    "w": 32,
+    "h": 32,
+    "spec": "71d9e2052ce72186"
+  },
+  "coop-2": {
+    "w": 32,
+    "h": 32,
+    "spec": "e35f173aafc9aeb4"
+  },
+  "counter": {
+    "w": 16,
+    "h": 24,
+    "spec": "8e46dc4b14fda039"
+  },
+  "counter-sink": {
+    "w": 32,
+    "h": 24,
+    "spec": "f904eafcd376d12b"
+  },
+  "desk-pc": {
+    "w": 22,
+    "h": 38,
+    "spec": "49149575daf90b0c"
+  },
+  "desk-small": {
+    "w": 16,
+    "h": 21,
+    "spec": "4dde9d29fdfead82"
+  },
+  "desk-study": {
+    "w": 28,
+    "h": 22,
+    "spec": "11ea0a47070607f1"
+  },
+  "dining-table-0": {
+    "w": 30,
+    "h": 42,
+    "spec": "483f1c970f9a485c"
+  },
+  "dining-table-1": {
+    "w": 30,
+    "h": 42,
+    "spec": "ac83af163a280039"
+  },
+  "dining-table-2": {
+    "w": 30,
+    "h": 42,
+    "spec": "101176d64f208178"
+  },
+  "face-bathroom": {
+    "w": 32,
+    "h": 8,
+    "spec": "cdfd88d7a6cc8d46"
+  },
+  "face-bedroom": {
+    "w": 32,
+    "h": 8,
+    "spec": "92c05941b1a2841e"
+  },
+  "face-closet": {
+    "w": 32,
+    "h": 8,
+    "spec": "04dedb29bc2ffb8b"
+  },
+  "face-dining-room": {
+    "w": 32,
+    "h": 8,
+    "spec": "d660c89a9a1a961f"
+  },
+  "face-garage": {
+    "w": 32,
+    "h": 8,
+    "spec": "fcc6cca80444850d"
+  },
+  "face-hallway": {
+    "w": 32,
+    "h": 8,
+    "spec": "c5e0808328a11dc3"
+  },
+  "face-home-office": {
+    "w": 32,
+    "h": 8,
+    "spec": "a1ad60e2fa00d9a5"
+  },
+  "face-kitchen": {
+    "w": 32,
+    "h": 8,
+    "spec": "0310c39172675698"
+  },
+  "face-library": {
+    "w": 32,
+    "h": 8,
+    "spec": "6446779d60b1793a"
+  },
+  "face-living-room": {
+    "w": 32,
+    "h": 8,
+    "spec": "aacccab106243fe6"
+  },
+  "face-mudroom": {
+    "w": 32,
+    "h": 8,
+    "spec": "1681cb069192b397"
+  },
+  "face-playroom": {
+    "w": 32,
+    "h": 8,
+    "spec": "336edf02fd3c8982"
+  },
+  "face-sunroom": {
+    "w": 32,
+    "h": 8,
+    "spec": "033ce8cfebbc7841"
+  },
+  "fire-pit": {
+    "w": 16,
+    "h": 32,
+    "frames": 6,
+    "ms": 110,
+    "spec": "b95a7ec0abae8622"
+  },
+  "fireplace": {
+    "w": 32,
+    "h": 40,
+    "frames": 3,
+    "ms": 160,
+    "spec": "c69a26d932dc8253"
+  },
+  "floor-carpet": {
+    "w": 32,
+    "h": 32,
+    "spec": "156370ea86a08f80"
+  },
+  "floor-closet": {
+    "w": 32,
+    "h": 32,
+    "spec": "052e3024633e3ed1"
+  },
+  "floor-garage": {
+    "w": 32,
+    "h": 32,
+    "spec": "278c5e711287532b"
+  },
+  "floor-hall": {
+    "w": 32,
+    "h": 32,
+    "spec": "f5c2323c9090bdfe"
+  },
+  "floor-kitchen": {
+    "w": 32,
+    "h": 32,
+    "spec": "6b27db7d78cf5819"
+  },
+  "floor-library": {
+    "w": 32,
+    "h": 32,
+    "spec": "b276ba4c3316518c"
+  },
+  "floor-mudroom": {
+    "w": 32,
+    "h": 32,
+    "spec": "197365b262e4a691"
+  },
+  "floor-office": {
+    "w": 32,
+    "h": 32,
+    "spec": "a681eee218046981"
+  },
+  "floor-parquet": {
+    "w": 32,
+    "h": 32,
+    "spec": "20f380ffb70be056"
+  },
+  "floor-playroom": {
+    "w": 32,
+    "h": 32,
+    "spec": "7016875d88a8bccf"
+  },
+  "floor-sunroom": {
+    "w": 32,
+    "h": 32,
+    "spec": "a85973129c30c50c"
+  },
+  "floor-tile": {
+    "w": 32,
+    "h": 32,
+    "spec": "97321380064ec635"
+  },
+  "floor-wood": {
+    "w": 32,
+    "h": 32,
+    "spec": "de5cf37c8c6fb466"
+  },
+  "fridge": {
+    "w": 16,
+    "h": 36,
+    "spec": "719fa072682c6f57"
+  },
+  "globe": {
+    "w": 13,
+    "h": 21,
+    "spec": "3835ee8e99fc10d9"
+  },
+  "grass-0": {
+    "w": 32,
+    "h": 32,
+    "spec": "0fe4e49d269d5874"
+  },
+  "grass-outside": {
+    "w": 256,
+    "h": 256,
+    "spec": "20b95cd685aac9d4"
+  },
+  "grass-sunny": {
+    "w": 32,
+    "h": 32,
+    "spec": "09b4f6656b16d96e"
+  },
+  "grass-woods": {
+    "w": 32,
+    "h": 32,
+    "spec": "d0c5d40705b424cc"
+  },
+  "greenhouse": {
+    "w": 56,
+    "h": 78,
+    "spec": "6b08bf52467d70f9"
+  },
+  "herb-planter": {
+    "w": 29,
+    "h": 21,
+    "spec": "5d40a5ff010d55bf"
+  },
+  "hot-tub-bubbles": {
+    "w": 16,
+    "h": 16,
+    "frames": 8,
+    "ms": 140,
+    "spec": "f65064f25781787b"
+  },
+  "kitchen-island": {
+    "w": 40,
+    "h": 25,
+    "spec": "430b5f625899d2a7"
+  },
+  "kitchen-island-16": {
+    "w": 16,
+    "h": 25,
+    "spec": "d8ca5b21410bfe50"
+  },
+  "kitchen-island-24": {
+    "w": 24,
+    "h": 25,
+    "spec": "7e88e420045b0b86"
+  },
+  "lily-0": {
+    "w": 16,
+    "h": 16,
+    "spec": "845d5f33af71467c"
+  },
+  "lily-1": {
+    "w": 16,
+    "h": 16,
+    "spec": "773461ea07e37003"
+  },
+  "lily-2": {
+    "w": 16,
+    "h": 16,
+    "spec": "45006f37b06de7ac"
+  },
+  "mat-square-0": {
+    "w": 30,
+    "h": 30,
+    "spec": "098496c0735ab2a7"
+  },
+  "mat-square-1": {
+    "w": 30,
+    "h": 30,
+    "spec": "899dfe287dad8a66"
+  },
+  "mat-square-2": {
+    "w": 30,
+    "h": 30,
+    "spec": "e6fc0d05861a8a38"
+  },
+  "nightstand-0": {
+    "w": 16,
+    "h": 24,
+    "spec": "a337ba679832da9f"
+  },
+  "nightstand-1": {
+    "w": 16,
+    "h": 24,
+    "spec": "f2e8048d009b8e76"
+  },
+  "nightstand-2": {
+    "w": 16,
+    "h": 24,
+    "spec": "953b838611dd2429"
+  },
+  "old-shed": {
+    "w": 48,
+    "h": 64,
+    "spec": "fa226425fcc6e3c0"
+  },
+  "parasol-0": {
+    "w": 47,
+    "h": 61,
+    "spec": "58c39598043764c3"
+  },
+  "parasol-1": {
+    "w": 47,
+    "h": 61,
+    "spec": "433f2fc16da0fd7d"
+  },
+  "parasol-2": {
+    "w": 47,
+    "h": 61,
+    "spec": "2cf121286e6f7a9d"
+  },
+  "parasol-small-0": {
+    "w": 23,
+    "h": 19,
+    "spec": "e038e0780fa9f908"
+  },
+  "parasol-small-1": {
+    "w": 23,
+    "h": 19,
+    "spec": "1eb8639cba29ca9a"
+  },
+  "patio-chair-e-0": {
+    "w": 13,
+    "h": 19,
+    "spec": "0a7cbe755ee7d638"
+  },
+  "patio-chair-e-1": {
+    "w": 13,
+    "h": 19,
+    "spec": "bd777cf948518f3d"
+  },
+  "patio-chair-w-0": {
+    "w": 13,
+    "h": 19,
+    "spec": "c4d49bcfcfd28423"
+  },
+  "patio-chair-w-1": {
+    "w": 13,
+    "h": 19,
+    "spec": "7c1a5e037dc9a793"
+  },
+  "patio-table": {
+    "w": 12,
+    "h": 16,
+    "spec": "1f873c268c026da3"
+  },
+  "pergola": {
+    "w": 64,
+    "h": 61,
+    "spec": "d8f0a876160b86f5"
+  },
+  "picket-post": {
+    "w": 5,
+    "h": 16,
+    "spec": "f3c4fc8f6f096174"
+  },
+  "picket-run": {
+    "w": 16,
+    "h": 15,
+    "spec": "585bbbff3df3b8d5"
+  },
+  "picket-strip": {
+    "w": 5,
+    "h": 8,
+    "spec": "9319ca71b11eb72a"
+  },
+  "plant-potted": {
+    "w": 18,
+    "h": 31,
+    "spec": "07fc1c4fdfbd4854"
+  },
+  "plant-small": {
+    "w": 12,
+    "h": 14,
+    "spec": "e9027eaf740095be"
+  },
+  "plant-tall": {
+    "w": 22,
+    "h": 30,
+    "spec": "59908f0b58c62a92"
+  },
+  "planter-0": {
+    "w": 29,
+    "h": 19,
+    "spec": "417c610fa134d9b2"
+  },
+  "planter-1": {
+    "w": 29,
+    "h": 19,
+    "spec": "a9d951bb7d45c5cc"
+  },
+  "planter-2": {
+    "w": 29,
+    "h": 19,
+    "spec": "d32bf3939c40fc2b"
+  },
+  "planter-3": {
+    "w": 29,
+    "h": 19,
+    "spec": "92f6b40594d375f0"
+  },
+  "pool-float-0": {
+    "w": 32,
+    "h": 22,
+    "spec": "7024326f13cbd810"
+  },
+  "pool-ladder": {
+    "w": 15,
+    "h": 28,
+    "spec": "708218ea9020c766"
+  },
+  "pot-flowers-0": {
+    "w": 15,
+    "h": 22,
+    "spec": "c07a62850028367d"
+  },
+  "pot-flowers-1": {
+    "w": 15,
+    "h": 21,
+    "spec": "3fb03fdd598a772f"
+  },
+  "pot-flowers-2": {
+    "w": 15,
+    "h": 26,
+    "spec": "cd0adac31500ba62"
+  },
+  "range": {
+    "w": 16,
+    "h": 25,
+    "spec": "eb540ce831bdb24d"
+  },
+  "rocks": {
+    "w": 48,
+    "h": 48,
+    "spec": "b49423093e1999eb"
+  },
+  "rocks-sunny": {
+    "w": 48,
+    "h": 48,
+    "spec": "c088917d465be5c1"
+  },
+  "rug-check": {
+    "w": 30,
+    "h": 30,
+    "spec": "61115d83f6dbb87f"
+  },
+  "rug-round-0": {
+    "w": 33,
+    "h": 30,
+    "spec": "34054bc441bb4ba6"
+  },
+  "rug-round-1": {
+    "w": 33,
+    "h": 30,
+    "spec": "30916a84f84a60f4"
+  },
+  "rug-tall-0": {
+    "w": 40,
+    "h": 60,
+    "spec": "55447149141d4cc7"
+  },
+  "rug-tall-1": {
+    "w": 40,
+    "h": 60,
+    "spec": "ce4e4cf16c69e4e1"
+  },
+  "rug-wide-0": {
+    "w": 60,
+    "h": 40,
+    "spec": "aa493067f0fd9e96"
+  },
+  "rug-wide-1": {
+    "w": 60,
+    "h": 40,
+    "spec": "692c9b8d61b8046b"
+  },
+  "runner-h-0": {
+    "w": 15,
+    "h": 12,
+    "spec": "5194b5f7c0367536"
+  },
+  "runner-h-1": {
+    "w": 16,
+    "h": 12,
+    "spec": "612fb2ca2795f4a1"
+  },
+  "runner-h-2": {
+    "w": 15,
+    "h": 12,
+    "spec": "0ff81b79418a6c89"
+  },
+  "runner-v-0": {
+    "w": 14,
+    "h": 15,
+    "spec": "9d4c34f455c7e8cb"
+  },
+  "runner-v-1": {
+    "w": 14,
+    "h": 16,
+    "spec": "10cba0c713f81f78"
+  },
+  "runner-v-2": {
+    "w": 14,
+    "h": 15,
+    "spec": "5f634e141202bb5a"
+  },
+  "sapling-0": {
+    "w": 12,
+    "h": 14,
+    "spec": "ff34891613f5c1b9"
+  },
+  "sapling-1": {
+    "w": 13,
+    "h": 16,
+    "spec": "cd2713df38359a2b"
+  },
+  "shoes-0": {
+    "w": 12,
+    "h": 8,
+    "spec": "93da5cc79772c44d"
+  },
+  "shoes-1": {
+    "w": 12,
+    "h": 8,
+    "spec": "8328aebc22570732"
+  },
+  "shoes-2": {
+    "w": 12,
+    "h": 8,
+    "spec": "a8307296a170b747"
+  },
+  "shore": {
+    "w": 48,
+    "h": 48,
+    "frames": 8,
+    "ms": 130,
+    "spec": "a590d97e646d6ccd"
+  },
+  "shore-corners": {
+    "w": 32,
+    "h": 32,
+    "frames": 8,
+    "ms": 130,
+    "spec": "a7d394ef762dd640"
+  },
+  "shore-corners-sunny": {
+    "w": 32,
+    "h": 32,
+    "frames": 8,
+    "ms": 130,
+    "spec": "32103e7eed119585"
+  },
+  "shore-sunny": {
+    "w": 48,
+    "h": 48,
+    "frames": 8,
+    "ms": 130,
+    "spec": "c40cde0e1d81a770"
+  },
+  "sofa-0": {
+    "w": 48,
+    "h": 27,
+    "spec": "f29bf4250dbdcac8"
+  },
+  "sofa-1": {
+    "w": 48,
+    "h": 27,
+    "spec": "278bff86981fc70b"
+  },
+  "sofa-2": {
+    "w": 48,
+    "h": 26,
+    "spec": "233771982eca04c5"
+  },
+  "sofa-3": {
+    "w": 48,
+    "h": 25,
+    "spec": "b0c3129825b4e773"
+  },
+  "street-asphalt": {
+    "w": 16,
+    "h": 16,
+    "spec": "ff8c774a4953d1f6"
+  },
+  "street-line": {
+    "w": 16,
+    "h": 16,
+    "spec": "e048dd369db1cd17"
+  },
+  "street-sidewalk": {
+    "w": 192,
+    "h": 64,
+    "spec": "c57ed8e7b94f0ecb"
+  },
+  "stump-0": {
+    "w": 17,
+    "h": 14,
+    "spec": "bc911d19b8f490c5"
+  },
+  "stump-1": {
+    "w": 17,
+    "h": 14,
+    "spec": "22c24d68e0df9531"
+  },
+  "sun-edge": {
+    "w": 192,
+    "h": 64,
+    "spec": "c82de262ecc30f17"
+  },
+  "teddy-0": {
+    "w": 18,
+    "h": 17,
+    "spec": "606c53e1d83849e4"
+  },
+  "teddy-1": {
+    "w": 20,
+    "h": 17,
+    "spec": "05f8d1ba9b990cd3"
+  },
+  "time-capsule": {
+    "w": 32,
+    "h": 32,
+    "spec": "f28fdb4f45266c8c"
+  },
+  "time-capsule-sunny": {
+    "w": 32,
+    "h": 32,
+    "spec": "b3ca025abe7b0aa1"
+  },
+  "title-car": {
+    "w": 61,
+    "h": 37,
+    "spec": "4b82e7246ba4d6cf"
+  },
+  "title-oak": {
+    "w": 68,
+    "h": 62,
+    "spec": "986050260030124e"
+  },
+  "title-shrub": {
+    "w": 18,
+    "h": 24,
+    "spec": "4c290f805245c15c"
+  },
+  "title-tree": {
+    "w": 47,
+    "h": 55,
+    "spec": "927ab0b9a2634215"
+  },
+  "title-villa": {
+    "w": 144,
+    "h": 208,
+    "spec": "9aadab72a2c2498a"
+  },
+  "title-villa-blue": {
+    "w": 144,
+    "h": 208,
+    "spec": "dab035ba361c6812"
+  },
+  "toilet-0": {
+    "w": 14,
+    "h": 26,
+    "spec": "4a25dbf61a45ccc5"
+  },
+  "toilet-1": {
+    "w": 14,
+    "h": 26,
+    "spec": "9c991c5e7688f357"
+  },
+  "toilet-2": {
+    "w": 14,
+    "h": 26,
+    "spec": "645109615f327a46"
+  },
+  "toy-box": {
+    "w": 15,
+    "h": 15,
+    "spec": "f92c6d8287526c1c"
+  },
+  "toy-train": {
+    "w": 55,
+    "h": 19,
+    "spec": "44b66ee108e719d8"
+  },
+  "tree-apple": {
+    "w": 32,
+    "h": 32,
+    "spec": "06aea4724e521f73"
+  },
+  "tree-big": {
+    "w": 64,
+    "h": 52,
+    "spec": "8847037f0dbe4871"
+  },
+  "tree-big-apple": {
+    "w": 64,
+    "h": 51,
+    "spec": "cd392d360968c42d"
+  },
+  "tree-bush": {
+    "w": 32,
+    "h": 24,
+    "spec": "d4cdfd578acd8787"
+  },
+  "tree-bushy": {
+    "w": 32,
+    "h": 29,
+    "spec": "45fd55b4dc67f07a"
+  },
+  "tree-bushy-apple": {
+    "w": 32,
+    "h": 29,
+    "spec": "77ee8f1bc2fcbdec"
+  },
+  "tree-conifer": {
+    "w": 32,
+    "h": 45,
+    "spec": "dfff3ffa8bc6d734"
+  },
+  "tree-conifer-cones": {
+    "w": 32,
+    "h": 45,
+    "spec": "e72d67304b12b9a2"
+  },
+  "tree-pine": {
+    "w": 32,
+    "h": 53,
+    "spec": "e6034aacee0f95d6"
+  },
+  "tree-round": {
+    "w": 32,
+    "h": 37,
+    "spec": "ad12b4602c6e8b63"
+  },
+  "treehouse": {
+    "w": 64,
+    "h": 89,
+    "spec": "366a0fa4a7db5d1c"
+  },
+  "tuft-0": {
+    "w": 16,
+    "h": 16,
+    "spec": "31fb415dd7a541bb"
+  },
+  "tuft-1": {
+    "w": 16,
+    "h": 16,
+    "spec": "b34d48fbcd4f770e"
+  },
+  "tuft-sunny-0": {
+    "w": 16,
+    "h": 16,
+    "spec": "f34c48ee5efe19d7"
+  },
+  "tuft-sunny-1": {
+    "w": 16,
+    "h": 16,
+    "spec": "f04575ffed294387"
+  },
+  "washer": {
+    "w": 20,
+    "h": 26,
+    "spec": "a455eba8603b44fa"
+  },
+  "wildflowers-0": {
+    "w": 16,
+    "h": 16,
+    "spec": "5d12301d9cec2db7"
+  },
+  "wildflowers-1": {
+    "w": 16,
+    "h": 16,
+    "spec": "74e7a69cd775ec8f"
+  },
+  "wildflowers-2": {
+    "w": 16,
+    "h": 16,
+    "spec": "fe6672817f14b4e9"
+  },
+  "wildflowers-3": {
+    "w": 16,
+    "h": 16,
+    "spec": "9cda911bb20c9795"
+  },
+  "wildflowers-4": {
+    "w": 16,
+    "h": 16,
+    "spec": "48ef859f63e0099b"
+  },
+  "woods-edge": {
+    "w": 192,
+    "h": 64,
+    "spec": "e9eeb33af3f43922"
+  },
+  "yard-concrete": {
+    "w": 32,
+    "h": 32,
+    "spec": "094f91adeea8d839"
+  },
+  "yard-lawn": {
+    "w": 32,
+    "h": 32,
+    "spec": "96970c2311ccfd51"
+  },
+  "yard-pavers": {
+    "w": 32,
+    "h": 32,
+    "spec": "f7e984ecc8e97f61"
+  },
+  "yard-pool": {
+    "w": 48,
+    "h": 48,
+    "spec": "6c9f109b87ff0cab"
+  }
+}

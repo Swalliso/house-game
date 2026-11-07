@@ -1,0 +1,165 @@
+/* The house's layers on the board (HouseLayers.tsx), each on its z-index from layers.ts. */
+
+.house-floor,
+.house-walls {
+  position: absolute;
+  left: 0;
+  top: 0;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+.house-floor {
+  z-index: var(--z-floor);
+}
+.house-walls {
+  z-index: var(--z-walls);
+}
+
+/* The fenced yards' tint (TerrainLayer.tsx's YardTint) over the yard's ground on the floor canvas,
+   under the pieces' props. */
+.yard-tint {
+  z-index: var(--z-yard-tint);
+}
+
+/* One container per piece inside each layer, ordered among themselves by bottom row. */
+.items,
+.overhang,
+.labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.items {
+  z-index: var(--z-items);
+}
+.overhang {
+  z-index: var(--z-overhang);
+}
+.labels {
+  z-index: var(--z-labels);
+}
+.piece-items,
+.piece-overhang {
+  position: absolute;
+  /* The same origin in both layers, so an item and its top wobble as one. */
+  transform-origin: 50% 60%;
+}
+.item {
+  position: absolute;
+  image-rendering: pixelated;
+}
+/* An animated item's frames side by side, stepping left one frame at a time (the Fireplace's
+   flame): the frames are its own, so it's transform only. */
+.item-frames {
+  image-rendering: pixelated;
+  animation-name: item-frames;
+  animation-iteration-count: infinite;
+}
+@keyframes item-frames {
+  to {
+    transform: translateX(var(--item-frames));
+  }
+}
+.reduce-motion .item-frames {
+  animation: none;
+}
+
+/* --- Highlights: outlines, never filters on whole pieces --------------------------- */
+
+.highlights {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: var(--z-highlights);
+  overflow: visible;
+  pointer-events: none;
+}
+.highlights .edge {
+  fill: none;
+  stroke-linecap: square;
+}
+/* A piece's flash as it wobbles or settles (piece-fx.ts animates its opacity). */
+.hl-flash {
+  fill: var(--hl-flash);
+  opacity: 0;
+}
+/* The tally's scoring piece: a warm rim and a little light. */
+.hl-active .fill {
+  fill: var(--hl-active-fill);
+}
+.hl-active .edge {
+  stroke: var(--hl-active-edge);
+  stroke-width: 3;
+}
+/* A set's members: Charm's rose (D-019) with a dashed edge, so it's never color alone. The
+   placement preview's new sets are lighter than a held set's beat in the tally. */
+.hl-set .fill {
+  fill: var(--hl-set-fill);
+}
+.hl-set .edge {
+  stroke: var(--charm);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+  stroke-linecap: butt;
+}
+.hl-lit .fill {
+  fill: var(--hl-lit-fill);
+}
+.hl-lit .edge {
+  stroke: var(--charm);
+  stroke-width: 3;
+  stroke-dasharray: 8 4;
+  stroke-linecap: butt;
+}
+
+/* --- Labels -------------------------------------------------------------------------- */
+
+.digit-n {
+  display: inline-block;
+}
+
+/* --- The ghost: the house's and the yard's painters for that piece alone --------------- */
+
+/* Its canvas may reach above its cells (an outbuilding's roof): the canvas places itself. */
+.ghost-piece canvas {
+  position: absolute;
+  image-rendering: pixelated;
+}
+/* Its tint: blue and outlined when legal, hatched orange when not (never color alone), just
+   outlined while it waits for End week. */
+.ghost-tint {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+}
+.ghost-tint .edge {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: square;
+}
+.ghost-piece.legal .ghost-tint .fill {
+  fill: var(--ghost-legal-fill);
+}
+.ghost-piece.legal .ghost-tint .edge {
+  stroke: var(--good);
+}
+.ghost-piece.illegal .ghost-tint .fill {
+  fill: url(#ghost-hatch);
+}
+.ghost-piece.illegal .ghost-tint .edge {
+  stroke: var(--bad);
+}
+.ghost-tint .hatch-on {
+  fill: var(--ghost-hatch-on);
+}
+.ghost-tint .hatch-off {
+  fill: var(--ghost-hatch-off);
+}
+.ghost-piece.pending.legal .ghost-tint .fill {
+  fill: none;
+}
+/* Waiting for End week, it pulses (app.css's pending-pulse); not with Reduce motion on. */
+.reduce-motion .ghost.pending {
+  animation: none;
+}

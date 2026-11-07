@@ -1,6 +1,7 @@
-// The board (the BoardView of D-033): the terrain canvas, the fenced-yard tint, the pieces,
-// the ghost that follows the cursor, the preview's badges, the demolish tool's target, and
-// the tally's popups. The pointer maps to a cell by arithmetic on one element (D-049).
+// The board (the BoardView of D-033): the terrain canvas, the fenced-yard tint, the house's
+// layers (HouseLayers.tsx: floors, items, walls, highlights, labels), the ghost that follows
+// the cursor, the preview's badges, the demolish tool's target, and the tally's popups. The
+// pointer maps to a cell by arithmetic on one element (D-049).
 //
 // The camera (camera.ts) zooms by re-laying out the board at a new scale, never with a CSS
 // transform (D-057). Dragging pans the scroll container: a left-button drag past a few pixels
@@ -8,6 +9,7 @@
 // click acts on release.
 
 import { signal } from '@preact/signals';
+import type { ComponentChildren, JSX } from 'preact';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import {
   CONTENT,
@@ -16,26 +18,20 @@ import {
   SCORE_LABELS,
   type Cell,
   type DemolishPreview,
+  type Lot,
+  type PieceId,
+  type Rot,
   type SourceRef,
   type UseToolAction,
 } from '../../rules/index.ts';
 import { audio } from '../audio/audio.ts';
-import {
-  busy,
-  fxHooks,
-  highlighted,
-  justPlaced,
-  popups,
-  setHold,
-  skip,
-  tallyView,
-} from '../fx/director.ts';
+import { busy, fxHooks, popups, setHold, skip } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
 import { shakeOffsets } from '../fx/juice.ts';
 import { formatNumber } from '../format.ts';
+import { shopShown } from '../hud/actions.ts';
 import {
   activePlay,
-  currentTally,
   demolishArmed,
   demolishAt,
   demolishPreview,
@@ -57,7 +53,8 @@ import {
   useToolNow,
   type Inspected,
 } from '../store.ts';
-import { TILE } from '../sprites.ts';
+import { CELL } from '../sprites.ts';
+import { uiPixel } from '../theme/pixel.ts';
 import {
   applyZoomAnchor,
   cameraEls,
@@ -72,13 +69,46 @@ import {
   zoomIn,
   zoomOut,
 } from './camera.ts';
-import { center, labelSpot, occupancy, uidAt } from './geometry.ts';
-import { PieceShape, wobble } from './PieceView.tsx';
+import { newRoomLook, roomLook } from '../art/rooms.ts';
+import { newPieceLook, pieceLook, yardModel } from '../art/yard.ts';
+import {
+  boardRows,
+  canopyRoom,
+  center,
+  isIndoor,
+  keepInView,
+  labelSpot,
+  occupancy,
+  startScrollTop,
+  streetLabelRun,
+  streetLabelSize,
+  uidAt,
+  viewReach,
+  type Occupancy,
+} from './geometry.ts';
+import { hallLinks, houseModel } from './house-model.ts';
+import {
+  FloorLayer,
+  GhostPiece,
+  HighlightsLayer,
+  ItemsLayer,
+  LabelsLayer,
+  OverhangLayer,
+  WallsLayer,
+} from './HouseLayers.tsx';
+import { layerVars } from './layers.ts';
+import { wobble } from './piece-fx.ts';
 import { Outline, TerrainLayer, YardTint } from './TerrainLayer.tsx';
 import './board-m2.css';
+import './labels.css';
+
+/** The layers' z-indexes as CSS variables, set once on the board element. */
+const LAYER_VARS = layerVars();
 
 /** The scroll container's padding (app.css), kept clear around the board. */
 const PAD = 6;
+/** Cells smaller than this many CSS px get the smaller badges and labels (board-m2.css). */
+const SMALL_CELL_PX = 32;
 
 /** Rotates the card being placed; a tentative placement turns where it is. */
 export function rotate(): void {
@@ -251,18 +281,46 @@ export function Board() {
   const state = run.value;
   const { lot } = state.house;
   const scale = cameraScale.value;
-  const px = TILE * scale;
+  const px = CELL * scale;
+  const dpr = viewSize.value?.dpr ?? (window.devicePixelRatio || 1);
+  // Room above the lot for its top row's tree tops, inside the scroll area (geometry.ts).
+  const room = canopyRoom(scale, dpr);
   const demolishing = tool.value === 'demolish';
-  const occ = occupancy(state.house);
-  const tally = currentTally.value;
-  const view = tallyView.value;
-  // The corner digits: what each piece earns as the house stands, or, while a tally plays,
-  // what it earned in the week being tallied (the rules have already moved on a week).
-  const scoreBy = new Map((view?.pieces ?? tally.pieces).map((p) => [p.uid, p]));
-  const lit = new Set(highlighted.value);
+  const { house } = state;
+  const occ = occupancy(house);
+  // The house as drawn: walls, doorways and windows from the pieces, with the Hallways'
+  // doors from the rules' links. Cached per house, so hovering never rebuilds it.
+  const links = useMemo(() => hallLinks(state), [state]);
+  const model = houseModel(house, links);
+  // The yard pieces' ground and props, cached per house model.
+  const yard = yardModel(house, model);
   const p = demolishing ? null : preview.value;
-  const gained = new Set(p?.setsGained.flatMap((s) => s.members) ?? []);
-  const placed = justPlaced.value;
+  // The house's layers re-render only when the house or the zoom changes: the highlights and
+  // labels follow the tally and the preview by themselves, and never redraw a canvas.
+  const floorLayer = useMemo(
+    () => <FloorLayer lot={lot} scale={scale} model={model} yard={yard} />,
+    [lot, scale, model, yard],
+  );
+  const itemsLayer = useMemo(
+    () => <ItemsLayer house={house} model={model} yard={yard} scale={scale} />,
+    [house, model, yard, scale],
+  );
+  const wallsLayer = useMemo(
+    () => <WallsLayer lot={lot} scale={scale} model={model} />,
+    [lot, scale, model],
+  );
+  const overhangLayer = useMemo(
+    () => <OverhangLayer model={model} yard={yard} scale={scale} />,
+    [model, yard, scale],
+  );
+  const highlightsLayer = useMemo(
+    () => <HighlightsLayer house={house} occ={occ} lot={lot} scale={scale} />,
+    [house, occ, lot, scale],
+  );
+  const labelsLayer = useMemo(
+    () => <LabelsLayer house={house} model={model} yard={yard} occ={occ} scale={scale} dpr={dpr} />,
+    [house, model, yard, occ, scale, dpr],
+  );
 
   useEffect(() => {
     fxHooks.wobble = wobble;
@@ -306,6 +364,19 @@ export function Board() {
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     window.addEventListener('resize', measure);
+    // A move to a screen with another devicePixelRatio needn't resize the window (a Mac's
+    // displays keep its CSS size), so watch the ratio too: each change re-measures and re-arms.
+    let ratio: MediaQueryList | null = null;
+    const onRatio = () => {
+      measure();
+      watchRatio();
+    };
+    const watchRatio = () => {
+      ratio?.removeEventListener('change', onRatio);
+      ratio = window.matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`);
+      ratio.addEventListener('change', onRatio);
+    };
+    watchRatio();
     const onWheel = (e: WheelEvent) => {
       // A sideways scroll (a trackpad, or Shift + wheel) pans natively.
       if (!e.ctrlKey && Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
@@ -316,6 +387,7 @@ export function Board() {
     return () => {
       ro.disconnect();
       window.removeEventListener('resize', measure);
+      ratio?.removeEventListener('change', onRatio);
       el.removeEventListener('wheel', onWheel);
       if (cameraEls.scroll === el) {
         cameraEls.scroll = null;
@@ -386,7 +458,7 @@ export function Board() {
     if (needsCenter.current && viewSize.value && scale === cameraScale.value) {
       needsCenter.current = false;
       el.scrollLeft = (el.scrollWidth - el.clientWidth) / 2;
-      el.scrollTop = el.scrollHeight - el.clientHeight;
+      el.scrollTop = startScrollTop(el.scrollHeight, el.clientHeight, px);
     }
   });
 
@@ -531,6 +603,7 @@ export function Board() {
     if (!play || play.t !== 'place' || sel?.kind !== 'piece') return null;
     return {
       defId: sel.id,
+      rot: play.rot,
       cells: placedCells(CONTENT.pieces[sel.id].shape, play.x, play.y, play.rot),
     };
   })();
@@ -541,7 +614,11 @@ export function Board() {
     'board',
     !demolishing && selected.value !== null ? 'placing' : '',
     demolishing ? 'demolishing' : '',
-    scale < 2 ? 'small' : '',
+    // With a hair of slack: at a ratio like 125% × 80% browser zoom (1.0000000149), 1× comes out
+    // a hair under 32 px and is still full size.
+    px < SMALL_CELL_PX - 1e-6 ? 'small' : '',
+    // Under the shop's sheet: the water and the animated props hold still (terrain.css).
+    shopShown.value ? 'covered' : '',
   ].join(' ');
 
   return (
@@ -549,6 +626,9 @@ export function Board() {
       <div
         class={`board-scroll ${panning ? 'panning' : ''}`}
         ref={scrollRef}
+        // A cell's size, for the lot's surroundings (terrain.css), which zoom with the board; and
+        // over the padding at the top, the canopy's room.
+        style={{ '--board-cell': `${px}px`, paddingTop: `${PAD + room}px` }}
         onPointerMove={onPointerMove}
         onPointerDown={onPointerDown}
         onPointerUp={onPointerUp}
@@ -566,37 +646,36 @@ export function Board() {
         <div
           ref={boardRef}
           class={boardClass}
-          style={{ width: `${lot.width * px}px`, height: `${(lot.height + 1) * px}px` }}
+          style={{
+            ...LAYER_VARS,
+            width: `${lot.width * px}px`,
+            height: `${boardRows(lot.height) * px}px`,
+          }}
         >
-          <TerrainLayer lot={lot} scale={scale} />
+          <TerrainLayer
+            lot={lot}
+            scale={scale}
+            seed={state.setup.seed}
+            house={state.house}
+            around={viewReach(viewSize.value, lot.width, lot.height, scale, dpr, PAD)}
+          />
           <YardTint state={state} scale={scale} />
-          <div class="street-label" style={{ top: `${lot.height * px}px`, height: `${px}px` }}>
-            Street
-          </div>
-          {state.house.pieces.map((piece) => {
-            const score = scoreBy.get(piece.uid);
-            return (
-              <PieceShape
-                key={piece.uid}
-                uid={piece.uid}
-                defId={piece.defId}
-                cells={occ.cells.get(piece.uid)!}
-                scale={scale}
-                occ={occ}
-                earned={score?.earned}
-                unmet={score?.unmet}
-                fixture={piece.fixture?.id}
-                settle={placed?.uid === piece.uid ? placed.id : undefined}
-                class={[
-                  view?.activeUid === piece.uid ? 'active' : '',
-                  lit.has(piece.uid) ? 'lit' : '',
-                  gained.has(piece.uid) ? 'set-preview' : '',
-                ].join(' ')}
-              />
-            );
-          })}
+          <StreetLabel lot={lot} occ={occ} px={px} dpr={dpr} />
+          {floorLayer}
+          {itemsLayer}
+          {wallsLayer}
+          {overhangLayer}
+          {highlightsLayer}
+          {labelsLayer}
           {demolishing && <DemolishTarget scale={scale} />}
-          {ghostCells && <Ghost defId={ghostCells.defId} cells={ghostCells.cells} scale={scale} />}
+          {ghostCells && (
+            <Ghost
+              defId={ghostCells.defId}
+              rot={ghostCells.rot}
+              cells={ghostCells.cells}
+              scale={scale}
+            />
+          )}
           {installing && <InstallTarget scale={scale} />}
           {tooling && <ToolTarget scale={scale} />}
           {p?.legal && <Badges scale={scale} />}
@@ -608,19 +687,87 @@ export function Board() {
   );
 }
 
+/** A Driveway or a Long Driveway: where one meets the street, its concrete crosses the sidewalk. */
+const isDriveway = (id: PieceId) => (CONTENT.pieces[id].countsAs ?? id) === 'driveway';
+
+/**
+ * The street row's name, painted on the sidewalk: on its longest stretch with no curb cut
+ * (geometry.ts streetLabelRun), sized to the row (streetLabelSize), and sticky (terrain.css), so
+ * it stays whole inside the view's left edge while that stretch is in view, however the lot is
+ * panned across.
+ */
+function StreetLabel({ lot, occ, px, dpr }: { lot: Lot; occ: Occupancy; px: number; dpr: number }) {
+  const size = streetLabelSize(px, uiPixel(dpr), dpr);
+  const cuts = Array.from({ length: lot.width }, (_, x) => {
+    const p = occ.byUid.get(uidAt(occ, x, lot.height - 1));
+    return !!p && isDriveway(p.defId);
+  });
+  const { from, to } = streetLabelRun(cuts);
+  return (
+    <div
+      class="street-row"
+      style={{
+        left: `${from * px}px`,
+        top: `${lot.height * px}px`,
+        width: `${(to - from) * px}px`,
+        height: `${px}px`,
+      }}
+    >
+      <span class="street-label" style={{ fontSize: `${size}px` }}>
+        Street
+      </span>
+    </div>
+  );
+}
+
+/**
+ * A label by the pointer (the ghost's change or reason, the install, tool and demolish labels),
+ * centered over its spot (geometry.ts labelSpot) and nudged sideways to stay inside the board's
+ * view, which can be narrower than the lot: a long label near the view's edge would be cut off.
+ * The nudge is measured after each render and set as a CSS variable (labels.css), so it never
+ * renders twice; a pan without a new hover keeps the old nudge until the pointer moves.
+ */
+function BoardLabel({
+  class: cls,
+  style,
+  children,
+}: {
+  class: string;
+  style: JSX.CSSProperties;
+  children: ComponentChildren;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    const view = el?.closest('.board-scroll');
+    if (!el || !view) return;
+    el.style.removeProperty('--label-dx');
+    const r = el.getBoundingClientRect();
+    const v = view.getBoundingClientRect();
+    el.style.setProperty('--label-dx', `${keepInView(r.left, r.right, v.left, v.right)}px`);
+  });
+  return (
+    <div ref={ref} class={cls} style={style}>
+      {children}
+    </div>
+  );
+}
+
 function Ghost({
   defId,
+  rot,
   cells,
   scale,
 }: {
-  defId: Parameters<typeof PieceShape>[0]['defId'];
+  defId: PieceId;
+  rot: Rot;
   cells: Cell[];
   scale: number;
 }) {
   const p = preview.value;
   const legal = !!p?.legal;
   const pending = !!tentative.value;
-  const px = TILE * scale;
+  const px = CELL * scale;
   const inside = cells.filter((cell) => cell.x >= 0 && cell.y >= 0);
   // Keep the label on the board: away from the side edges, and below the ghost at the top.
   const spot = labelSpot(cells, run.value.house.lot.width);
@@ -628,27 +775,33 @@ function Ghost({
   const label = { left: `${spot.x * px}px`, top: `${spot.y * px}px` };
   return (
     <>
-      <PieceShape
+      <GhostPiece
         defId={defId}
+        rot={rot}
         cells={cells}
         scale={scale}
+        look={
+          isIndoor(defId)
+            ? newRoomLook(run.value.house, defId)
+            : newPieceLook(run.value.house, defId)
+        }
         class={`ghost ${legal ? 'legal' : 'illegal'} ${pending ? 'pending' : ''}`}
       />
       {!legal && inside.length > 0 && (
-        <div class={`ghost-reason ${below ? 'below' : ''}`} style={label}>
+        <BoardLabel class={`ghost-reason ${below ? 'below' : ''}`} style={label}>
           <span aria-hidden="true">✕ </span>
           {p?.reason ?? 'Can’t build there'}
-        </div>
+        </BoardLabel>
       )}
       {legal && p && (
-        <div
+        <BoardLabel
           class={`ghost-delta ${p.delta > 0 ? 'good' : p.delta < 0 ? 'bad' : ''} ${below ? 'below' : ''}`}
           style={label}
         >
           {p.delta > 0 ? '▲ +' : p.delta < 0 ? '▼ −' : ''}
           {formatNumber(Math.abs(p.delta))} {SCORE_LABELS.total}
           {pending ? ' · End week to build' : ''}
-        </div>
+        </BoardLabel>
       )}
     </>
   );
@@ -664,7 +817,7 @@ function InstallTarget({ scale }: { scale: number }) {
   const state = run.value;
   const { lot } = state.house;
   if (!p || !play || play.t !== 'install') return null;
-  const px = TILE * scale;
+  const px = CELL * scale;
   const hover = hoverCell.value;
   const cells: readonly Cell[] = p.cells.length > 0 ? p.cells : hover ? [hover] : [];
   if (cells.length === 0) return null;
@@ -693,21 +846,21 @@ function InstallTarget({ scale }: { scale: number }) {
           : ' · free: click twice'
         : '';
     label = (
-      <div
+      <BoardLabel
         class={`ghost-delta install-label ${p.delta > 0 ? 'good' : p.delta < 0 ? 'bad' : ''} ${below}`}
         style={style}
       >
         {name}: {change}
         {replaces}
         {then}
-      </div>
+      </BoardLabel>
     );
   } else {
     label = (
-      <div class={`ghost-reason ${below}`} style={style}>
+      <BoardLabel class={`ghost-reason ${below}`} style={style}>
         <span aria-hidden="true">✕ </span>
         {p.reason ?? 'It doesn’t go there.'}
-      </div>
+      </BoardLabel>
     );
   }
   return (
@@ -735,7 +888,7 @@ function ToolTarget({ scale }: { scale: number }) {
   if (!sel || sel.kind !== 'tool' || !hover) return null;
   const use = CONTENT.tools[sel.id].use.kind;
   if (use !== 'move' && use !== 'copy') return null;
-  const px = TILE * scale;
+  const px = CELL * scale;
   const occ = occupancy(state.house);
   const p = toolPreview.value;
   const action = toolAction.value;
@@ -743,12 +896,12 @@ function ToolTarget({ scale }: { scale: number }) {
   const label = (cells: readonly Cell[], text: string, tone: string) => {
     const spot = labelSpot(cells, lot.width);
     return (
-      <div
+      <BoardLabel
         class={`ghost-delta install-label ${tone} ${spot.below ? 'below' : ''}`}
         style={{ left: `${spot.x * px}px`, top: `${spot.y * px}px` }}
       >
         {text}
-      </div>
+      </BoardLabel>
     );
   };
   const wow = (d: number) =>
@@ -797,10 +950,16 @@ function ToolTarget({ scale }: { scale: number }) {
         lot={lot}
         class="demolish-hint"
       />
-      <PieceShape
+      <GhostPiece
         defId={piece.defId}
+        rot={t.rot ?? 0}
         cells={cells}
         scale={scale}
+        look={
+          isIndoor(piece.defId)
+            ? roomLook(state.house, piece.uid)
+            : pieceLook(state.house, piece.uid)
+        }
         class={`ghost ${ok ? 'legal' : 'illegal'} ${armed ? 'pending' : ''}`}
       />
       {label(
@@ -833,7 +992,7 @@ function DemolishTarget({ scale }: { scale: number }) {
   const note = demolishNote.value;
   const state = run.value;
   const { lot } = state.house;
-  const px = TILE * scale;
+  const px = CELL * scale;
   const hx = hover?.x;
   const hy = hover?.y;
   const other = useMemo(() => {
@@ -867,17 +1026,17 @@ function DemolishTarget({ scale }: { scale: number }) {
     const text = armed ? `Click again to demolish the ${name}` : `Demolish ${name}`;
     const tone = d.delta < 0 ? 'bad' : d.delta > 0 ? 'good' : '';
     label = (
-      <div class={`ghost-delta demolish-label ${tone} ${below}`} style={style}>
+      <BoardLabel class={`ghost-delta demolish-label ${tone} ${below}`} style={style}>
         {text}
         {change}
-      </div>
+      </BoardLabel>
     );
   } else {
     label = (
-      <div class={`ghost-reason ${below}`} style={style}>
+      <BoardLabel class={`ghost-reason ${below}`} style={style}>
         <span aria-hidden="true">✕ </span>
         {d.reason ?? 'That can’t be demolished.'}
-      </div>
+      </BoardLabel>
     );
   }
   return (
@@ -898,7 +1057,7 @@ function DemolishTarget({ scale }: { scale: number }) {
 function Badges({ scale }: { scale: number }) {
   const p = preview.value!;
   const occ = occupancy(run.value.house);
-  const px = TILE * scale;
+  const px = CELL * scale;
   const marks: { key: string; x: number; y: number; text: string; good: boolean; kind: string }[] =
     [];
 
@@ -967,7 +1126,7 @@ function Badges({ scale }: { scale: number }) {
 }
 
 function PopupLayer({ scale }: { scale: number }) {
-  const px = TILE * scale;
+  const px = CELL * scale;
   return (
     <div class="popups" aria-hidden="true">
       {popups.value.map((pop) => (

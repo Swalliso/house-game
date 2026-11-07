@@ -27,15 +27,16 @@ Then open the address it prints (usually http://localhost:5173/).
 
 Other commands:
 
-| Command             | Does                                                          |
-| ------------------- | ------------------------------------------------------------- |
-| `npm test`          | runs the tests                                                |
-| `npm run typecheck` | type-checks everything, and `src/rules` again without the DOM |
-| `npm run atlas`     | rebuilds the sprite atlas in `assets/` from `art/`            |
-| `npm run build`     | rebuilds the atlas, type-checks, and builds into `dist/`      |
-| `npm run preview`   | serves the `dist/` build                                      |
-| `npm run format`    | formats the code with Prettier                                |
-| `npm run sim`       | the headless sim: bots play runs and report (`-- --help`)     |
+| Command             | Does                                                                                         |
+| ------------------- | -------------------------------------------------------------------------------------------- |
+| `npm test`          | runs the tests                                                                               |
+| `npm run typecheck` | type-checks everything, and `src/rules` again without the DOM                                |
+| `npm run atlas`     | rebuilds the sprite atlas in `assets/` from `art/` and the LimeZu cuts in `assets/limezu/`   |
+| `npm run art:cut`   | cuts the LimeZu sprites listed in `art/limezu/` from the packs (only where `art-source/` is) |
+| `npm run build`     | rebuilds the atlas, type-checks, and builds into `dist/`                                     |
+| `npm run preview`   | serves the `dist/` build                                                                     |
+| `npm run format`    | formats the code with Prettier                                                               |
+| `npm run sim`       | the headless sim: bots play runs and report (`-- --help`)                                    |
 
 ## Report a bug
 

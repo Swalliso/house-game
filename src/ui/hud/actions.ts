@@ -1,9 +1,11 @@
 // Small UI actions shared by the HUD's buttons and the keyboard.
 
-import { signal } from '@preact/signals';
+import { computed, signal } from '@preact/signals';
 import { audio } from '../audio/audio.ts';
 import { busy, skip } from '../fx/director.ts';
+import { copyFallback, settingsOpen } from './modals.ts';
 import {
+  appScreen,
   demolishArmed,
   endWeek,
   newRun,
@@ -19,9 +21,14 @@ import {
   type Source,
 } from '../store.ts';
 
-export const settingsOpen = signal(false);
-/** The How to play sheet, from the title screen or the top bar. */
-export const howToPlayOpen = signal(false);
+export {
+  anyModalOpen,
+  closeTopModal,
+  copyFallback,
+  howToPlayOpen,
+  menuOpen,
+  settingsOpen,
+} from './modals.ts';
 export const toast = signal<{ id: number; text: string } | null>(null);
 let toastId = 0;
 
@@ -33,8 +40,17 @@ export function showToast(text: string): void {
   }, 2200);
 }
 
-/** Text to copy by hand, when the browser won't let us write the clipboard (some iframes). */
-export const copyFallback = signal<{ title: string; text: string } | null>(null);
+/** The shop is hidden to look at the lot (it's still open). */
+export const shopHidden = signal(false);
+/** The shop's sheet is on screen: notes then sit inside it, under its header (Overlays.tsx). */
+export const shopShown = computed(
+  () =>
+    appScreen.value === 'game' &&
+    run.value.screen === 'shop' &&
+    !!run.value.offers?.shop &&
+    !busy.value &&
+    !shopHidden.value,
+);
 
 export async function copyText(text: string, done = 'Copied'): Promise<void> {
   try {

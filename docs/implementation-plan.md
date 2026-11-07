@@ -217,8 +217,8 @@ The repo has no code, tooling, or CLAUDE.md yet: just four markdown docs at the 
 | Language | TypeScript **~6.0.3**, strict | The last JavaScript-based compiler, verified with the rest of this stack. TS 7 (the Go compiler) is new and has no stable API yet. Settings: `erasableSyntaxOnly`, `verbatimModuleSyntax`, `allowImportingTsExtensions`, `noUncheckedIndexedAccess`. |
 | Build and dev | Vite 8 | `base: './'`, so one build works on GitHub Pages and itch.io |
 | UI | Preact **10** + `@preact/signals` | About 9 kB gzip. Preact 11 is out, but it's newer than Claude's training data and the game needs nothing from it. |
-| Board | HTML/CSS with pixel art (D-057): terrain drawn into one canvas layer, redrawn only when terrain changes; pieces as absolutely positioned elements using a sprite atlas; SVG for outlines and highlights. The pointer position maps to a cell by arithmetic, so there's no element per cell. The camera zooms in whole-number pixel scales by re-laying out the board (never `transform: scale()`, which blurs pixel art in Safari), with drag to pan and a Fit button. | Behind a small `BoardView` interface. At 1080p the 24×24 lot fits at a crisp 2× (32px cells); at 1280×720 it pans at 2×, with a 1.75× Fit overview (§12). |
-| Juice | Web Animations API + CSS; one canvas overlay for particles; a first pass in M1, the full ladder in M5 (§12) | |
+| Board | HTML/CSS with pixel art (D-057): terrain drawn into one canvas layer, redrawn only when terrain changes; pieces as absolutely positioned elements using a sprite atlas; SVG for outlines and highlights. The pointer position maps to a cell by arithmetic, so there's no element per cell. The camera zooms in whole device pixels per art pixel by re-laying out the board (never `transform: scale()`, which blurs pixel art in Safari), with drag to pan and a Fit button. | Behind a small `BoardView` interface. At 1080p the 24×24 lot fits at 1× (32 art px per cell, D-097); at 1280×720 it pans at 1×, with a Fit overview (§12). |
+| Juice | Web Animations API + CSS; one canvas overlay for particles; a first pass in M1, the full ladder in M5a's juice, after M4 (§12, D-097) | |
 | Audio | Our own Web Audio wrapper, about 200–300 lines: buses, an audio-clock scheduler, the in-key pitch ladder, stem crossfades, ducking (§12). `zzfx` for placeholder sound effects. | Howler and Tone.js aren't needed. |
 | Tests | Vitest 5 + `fast-check` | |
 | Format | Prettier | Avoids formatting churn between sessions |
@@ -247,10 +247,12 @@ house-game/
 ├── CREDITS.md                # every art, sound, and music asset, with its license
 ├── .gitignore                # node_modules/, dist/, art-source/
 ├── art-source/               # only in the main checkout (/Users/sam/Desktop/Code/house-game): the purchased LimeZu packs, never committed.
-│                             # The atlas script finds it from any worktree through `git rev-parse --git-common-dir`.
+│                             # The cut script finds it from any worktree through `git rev-parse --git-common-dir`.
 ├── art/                      # placeholder sprite sources: palette-indexed 16×16 grids, as text
-├── scripts/build-atlas.ts    # turns art/ grids and sprites cut from art-source/ into assets/atlas.png + atlas.json
-├── assets/                   # sprites, atlas, audio; licenses.json records source, author, and license per file
+│   └── limezu/               # manifests: each LimeZu sprite we use, where it is in the packs, and its edits (D-097)
+├── scripts/cut-art.ts        # cuts the manifests' sprites from art-source/ into assets/limezu/ (local only)
+├── scripts/build-atlas.ts    # packs the art/ placeholders and the assets/limezu/ cuts into assets/atlas.png + atlas.json
+├── assets/                   # atlas, LimeZu cuts, audio; licenses.json records source, author, and license per file
 ├── docs/                     # decisions, jam scope, brainstorm, research, this plan
 ├── index.html
 ├── package.json  .nvmrc  vite.config.ts  .prettierrc
@@ -288,7 +290,10 @@ house-game/
 │   │   └── index.ts          # registry + validateContent()
 │   ├── ui/                   # Preact: renders state, calls rules, never computes scores
 │   │   ├── App.tsx  store.ts  ErrorBoundary.tsx
-│   │   ├── board/            # Board, Camera, TerrainLayer, PieceView, Ghost, Highlights (behind BoardView)
+│   │   ├── board/            # Board, camera, TerrainLayer (and terrain/), HouseLayers, the house model, layers, labels
+│   │   ├── art/              # the house's and the yard's painters and layouts: rooms, yard, our own drawings
+│   │   ├── kit/              # the pixel UI's primitives: Panel, Card, Button, Chip, Icon, Sheet…
+│   │   ├── theme/            # tokens, the UI pixel, fonts, and our own frames, icons and sky as text grids
 │   │   ├── hud/              # TopBar, ProgressBar, Hand, Card, Reserve, Supplies, BlueprintBar, ClientPanel, Inspect, Hints
 │   │   ├── screens/          # Title, RunSetup, ChangeOrder, Shop, End, Settings
 │   │   ├── fx/               # tally director, celebration ladder, floating numbers, particles; feel.ts holds the timing numbers
@@ -311,7 +316,8 @@ Tests are co-located (`scoring.test.ts` next to `scoring.ts`).
 | `npm run dev` | Vite dev server |
 | `npm test` | Vitest: rules, content validation, client witness layouts, the purity test, a quick smoke sim |
 | `npm run typecheck` | `tsc` on both configs |
-| `npm run atlas` | rebuilds `assets/atlas.png` and `atlas.json` from `art/` and the sprites cut from `art-source/` |
+| `npm run art:cut` | cuts the LimeZu sprites the manifests in `art/limezu/` list from the packs in `art-source/` into `assets/limezu/`, with their license records. Local only (D-097). |
+| `npm run atlas` | rebuilds `assets/atlas.png` and `atlas.json` from the `art/` placeholders and the committed cuts in `assets/limezu/` |
 | `npm run build` | atlas + typecheck + Vite build, stamped with the git short SHA |
 | `npm run sim -- …` | headless simulation (§8) |
 
@@ -935,10 +941,14 @@ Shape variants (L-Kitchen, the long Hallway) are separate cards that share a typ
 | M1 · Vertical slice | 12 weeks, 6 pieces, the 24×24 lot, the preview, a first pass at juice | Is the loop fun? Is the lot the right size? Does a big week feel good? |
 | M2 · Full run | 7 milestones, all base pieces, early completion, overtime, the sim | Does a whole run hold up? Are the targets fair? Is early completion a real choice? |
 | M3 · Economy, shop, fixtures | M3a, then M3b | Is the shop exciting? Do fixtures feel like upgrades? Is anything a must-buy? |
+| M5a · Look and feel | LimeZu's art at 32 px cells, the lot, the house cutaway, and the pixel UI | Does it look like a house? Can you read every piece at a glance? |
 | M4 · Clients and variety | M4a (clients, sets), then M4b (change orders, crews, hints) | Do clients feel different? Are sets and multipliers worth planning for? |
-| M5 · Feel: juice, art, sound | The full reward feedback, the pixel-art pass, music and sound | Does it feel rewarding? Do big moments land? Is the music calm? |
+| M5a · Juice | The full visual reward feedback and the roof reveal, in its own pull request | Do big moments land? Is anything too slow or too flashy? |
+| M5b · Sound and music | Music and the reward sound set | Is the music calm? Do the sounds fit the moments? |
 | M6 · Balance and polish | Full sim, tuning, the end screen, a codex if time allows | Would you show this to the group? |
 | M7 · Release | Your PR from `develop` into `main`, which updates the root link; optional itch.io page | (shared with the group) |
+
+M5 is split (D-097): M5a, the look and feel, comes after M3 and before M4, and M5b, the sound, after M4. M5a's visual juice is its own pull request after M4 and before M5b (D-097's juice note). Each ends in a playtest.
 
 ### M0 · Setup
 
@@ -1087,12 +1097,28 @@ Shape variants (L-Kitchen, the long Hallway) are separate cards that share a typ
 - Is any blueprint a must-buy, or never worth it?
 - Are the tools fun to use?
 
+### M5a · Look and feel: art and UI chrome
+
+After M3 and before M4 (D-097): the visual half of what makes these games feel good (D-057, D-059, and §12). Its juice is its own pull request after M4 (below), and the sound half is M5b, after that.
+
+- **Art (§12, Art):**
+  - LimeZu's art at 32 art px per cell, cut from the packs by `npm run art:cut`, with the camera's new scales
+  - terrain and the yard: muted grass, the sunny side, water, trees, and the yard pieces
+  - the house as a walls-down cutaway built from the placed pieces: a floor per room type, walls with doorways and windows, and several furniture sprites per room
+  - fixtures as sprites where they fit, and as badges otherwise
+  - UI chrome (wood-panel frames and the pixel font), with the readable-font option
+- **Playtest 5a:**
+  - Does the house look like a house?
+  - Can you read every piece at a glance?
+  - Is the pixel interface easy to read, and can you find everything?
+
 ### M4 · Clients, sets, change orders, and crews
 
 **M4a, first:**
 
 - Clients:
   - the spec checklist, live with progress ("Bedrooms 3/4")
+  - a moment for a spec being met; M5a's juice, after M4, gives it its full celebration (§12)
   - tastes and pool weights
   - `targetPct`
   - rarity
@@ -1128,28 +1154,30 @@ Shape variants (L-Kitchen, the long Hallway) are separate cards that share a typ
 - Does the crew pick matter?
 - Would a newcomer get through a first run with the hints?
 
-### M5 · Feel: juice, art, and sound
+### M5a's juice · its own pull request
 
-The full treatment of what makes these games feel good (D-057, D-058, D-059, and §12).
+After M4 and before M5b (D-097's juice note): the reward feedback on M5a's art, for M4's game.
 
-- **Juice:**
-  - the tiered celebration ladder (§12)
-  - distinct moments for a set completing, a spec being met, a Rhythm payout, a find, opening a crate, and a Rare in the shop
-  - screen shake and particles, with Reduce motion and Screen shake settings
-- **Art:**
-  - the pixel-art pass on terrain, pieces, fixtures, and UI chrome
-  - the cutaway view of rooms
-  - the roof reveal at the Roofing milestone
-- **Sound:**
-  - at least 2–3 calm tracks of 2–3 minutes, each with 3–4 synced stems (building, shop, milestone review, crate) (§12)
-  - the reward sound set, with pitch ladders in the music's key
-  - ducking under big moments
-  - master, music, and sound-effect volume, saved; the Screen shake slider, the Flashing toggle, and the readable-font option
-- **Playtest 5:**
+- the tiered celebration ladder (§12)
+- distinct moments for a set completing, a Rhythm payout, a find, opening a crate, a Rare in the shop, and a spec being met
+- screen shake and particles, with Reduce motion, the Screen shake slider, and the Flashing toggle
+- the roof reveal at the Roofing milestone
+- D-094 (chain reactions, Open) would change the tally's order and add steps to it. Raise it with the team before this pull request reworks the tally.
+- **Its playtest:**
   - Do big moments feel big, and small ones stay out of the way?
+  - Is anything too slow or too flashy?
+
+### M5b · Sound and music
+
+After M4 (D-097). The sound half of the feel pass (D-058 and §12).
+
+- at least 2–3 calm tracks of 2–3 minutes, each with 3–4 synced stems (building, shop, milestone review, crate) (§12)
+- the reward sound set, with pitch ladders in the music's key
+- ducking under big moments
+- master, music, and sound-effect volume, saved
+- **Playtest 5b:**
   - Is the music relaxing after 20 minutes?
-  - Can you read every piece at a glance?
-  - Is anything too slow, too loud, or too flashy?
+  - Do the reward sounds fit their moments, and does anything get too loud?
 
 ### M6 · Balance and polish
 
@@ -1309,7 +1337,7 @@ Same seed and policy give identical results (a test). Each run is a pure functio
 
 ## 11. Proposed CLAUDE.md
 
-The repo has no CLAUDE.md, so M0 creates one with this content (the paths assume the move to `docs/`):
+The repo has no CLAUDE.md, so M0 creates one with this content (the paths assume the move to `docs/`). *CLAUDE.md is the live copy now, and it has moved on since: read it, not this section.*
 
 ```markdown
 # Open House
@@ -1483,45 +1511,88 @@ Intensity is measured against **pace**: `max(1, (this phase's target − the sco
 - **Never:** CC BY-NC, CC BY-SA, GPL, or anything taken from another game. That includes Balatro's sounds, which are rehosted online.
 - **Records:** every file goes in `assets/licenses.json` (source URL, author, license), and `CREDITS.md` lists them.
 
-### Art (D-057)
+### Art (D-057, D-097)
 
-- **The grid:** 16×16-pixel tiles. Combolands looks like 16px tiles drawn at 3× on a 1080p screen.
-- **Scale:** whole-number device-pixel scales. `fitScale = floor(available height × devicePixelRatio ÷ (lot height × 16)) ÷ devicePixelRatio`, and the default zoom is `max(2, fitScale)`, panning when the lot overflows.
-  - **The design target is 1080p** (confirmed 2026-11-05; most players have at least a 1080p screen). The whole lot is crisp there at 2× (32px cells, a 768px board), with room for the top bar.
-  - At 1280×720 a 24×24 lot can't fit at 2×. The default there is 2× with panning, with UI panels overlaying the board's margins (Combolands' panels sit over the sea around its island). The Fit button is the one exception to whole numbers: it shows the whole lot at the largest scale that fits (1.75× at 720p), with slightly uneven pixels.
+- **The grid:** one game cell is 32 art px, a 2×2 block of LimeZu's 16 px tiles (D-097). LimeZu draws furniture in a 3/4 view for rooms about 4 tiles wide (a double bed is 26×40 px), so at one tile per cell a Bedroom couldn't hold its bed. Combolands looks like 16px tiles drawn at 3× on a 1080p screen.
+- **Scale:** `scale` is CSS px per art px, in whole device pixels per art pixel: k ÷ devicePixelRatio, k a whole number. The default zoom is the largest such scale at which the board fits (the lot, its street row, and the two rows of road drawn below it, `ROAD_ROWS` in `geometry.ts`, plus 24 art px of room above the lot for the top row's tree tops, `CANOPY_ROOM`), and never below 1× rounded down to whole device pixels, panning when the board overflows. So it's always one of the wheel's steps. A new run starts scrolled to the street row, the road a short pan below it.
+  - **The design target is 1080p** (confirmed 2026-11-05; most players have at least a 1080p screen). The whole lot fits there at 1×: 32 CSS px per cell, an 864px board with the street and the road, the lot the same size on screen as 2× was with 16 px art, with room for the top bar.
+  - At 1280×720 the lot can't fit at 1×. The default there is 1× with panning, with UI panels overlaying the board's margins (Combolands' panels sit over the sea around its island).
+  - The wheel steps one device pixel per art pixel at a time, up to 3×: 1×, 2×, and 3× at a devicePixelRatio of 1, and 0.5× to 3× by halves on a Retina screen.
+  - The Fit button is the one exception to whole numbers: it shows the whole board at the largest scale that fits (about 0.69× at 720p), with slightly uneven pixels.
+  - Where display scaling isn't a whole number (125%, 150% or 175%: a devicePixelRatio of 1.25, 1.5 or 1.75, or browser zoom on top), 1× isn't whole device pixels, so the default's floor rounds it down to one device pixel per art pixel: 0.8×, 0.67× and 0.57×, cells of 25.6, 21.3 and 18.3 CSS px (D-097's zoom note). A window that holds two device pixels per art pixel gets 1.6× or 1.33×. Below a ratio of 1 (a browser zoomed out) the floor is one device pixel per art pixel, above 1×. A zoom step that lands back on the default, or leaving Fit, returns to it, and it follows the window again.
+  - The costs: finer pixels on a 1080p monitor (a Retina screen still shows each art pixel as 2×2 device pixels), a smaller board on a 1440p screen at a devicePixelRatio of 1, and where display scaling isn't a whole number a board 80%, 67% or 57% of 1×'s size (at 125%, 150% and 175%) when two device pixels per art pixel don't fit.
   - If we make an itch.io page, its embed is 1600×900 with fullscreen. 1280×720 stays the minimum (D-047).
-- **Rooms are a cutaway,** like The Sims' walls-down view:
-  - a floor fill by room type
-  - 1px interior wall lines, 2–3px exterior walls
-  - one key furniture sprite per room (bed, stove, tub, sofa, desk)
-  - an installed fixture shows as its own small sprite
-  - yard pieces are flat top-down, and the "-house" outbuildings get small roofs
+- **Rooms are a walls-down cutaway,** like The Sims, built in the UI from the placed pieces (D-097):
+  - a floor per room type
+  - walls as bands in LimeZu's style (its outline color around a light fill), drawn from a mask over the whole house: about 6 art px on outside edges and 4 between rooms, with 8px north wall faces and 3px floor shadows. These are the audit prototype's numbers, for the house stage to tune.
+  - a wall between every two pieces, same type included, so rooms never merge visually (D-093)
+  - doorways (14 px), windows (12 px) in outside walls, and a front door, chosen by fixed rules, never by chance: ties go by position, and between rooms by the rooms' placement order and a hash of a room's uid. They're decoration and change no score (`src/ui/board/house-model.ts`):
+    - Hallways open into every room the rules link through them.
+    - The front door (16 px, with a doormat) goes in a south wall with nothing of the house between it and the street, near the front, in the best entry room (a Mudroom or a hall first). It goes through a Garage, a Bathroom or a Closet only when no other room has an outside wall a door can open from, on any side. It opens onto open ground, the street, or a Patio, Driveway or Lawn, and paved ground or the sidewalk beats grass; only when nothing around the house allows that (a house built into the woods) does a door open onto a Tree's tile, a Time Capsule's or a low yard piece (a Flower Bed, a Herb Garden, a Sapling). Never onto water, a boulder, the Old Shed, a Fence, an outbuilding or a Pool.
+    - A back door opens onto each touching Patio or Hot Tub, and a Garage's door faces its Driveway or the street, across the Garage's whole side (a double door), so the car drives in square even off a one-cell Driveway.
+    - Then a door tree from the entry, public rooms first, reaches every room with as few doors as it takes, so bedrooms keep their walls for furniture. Doors keep to side walls, low on them (furniture stands against the north walls, so a side wall's south part is free in both rooms), and to the ends of north walls.
+    - Windows go about one per two cells of outside wall (one per cell in a Sunroom), never in closets, garages or hallways.
+  - several LimeZu furniture sprites per room, laid out by rules per room type and footprint, never rotated (they're drawn in 3/4 view), varying by piece (`src/ui/art/rooms.ts`):
+    - Each room type lists its pieces, most important first, with slots ported from the audit prototype: against a north wall (the widest run, centered, then sliding), beside what stands there, in the middle of the free floor, a rug or runner centered under everything, against the south wall or in its corners, and the Garage's car nose-in through its door. A piece and the ones beside it (a bed between its nightstands) are planned together: the room's fixture first, then the pieces in the order the room lists them (an earlier one outranks any number of later ones), dropping the least important until they fit. A key piece falls back to the middle of the floor when its doors leave no wall free (a kitchen's range and its counter stand there as one block). A fixture's own sprite goes through all its slots before anything stands in for it.
+    - A Kitchen's run is the range and the counter with the sink (a plain counter where the sink won't fit), then the fridge where it still fits (on an L-Kitchen's other arm, or beside the run). A Dining Room's table keeps room for a chair each side: in the middle of the floor, else against the north wall's face, else over a door's walkway (never its opening), and the chairs keep out of the walkway. A Home Office too narrow or shallow for its desks gets a small writing desk.
+    - A piece against a north wall stands with its back on the floor's top edge, under the wall's face. A tall one (a fridge, a bookcase, a plant) rises over the wall band, never past its top edge, and its rows above the band are drawn on the overhang layer, over the walls.
+    - Nothing stands in a doorway or its walkway, on another piece (rugs and runners lie under everything), in the walls (a pixel's tuck at most), or over a north window if it can help it. Only a one-cell room's key piece (the toilet, the rail), the car and a dining table may stand in a walkway, never in the opening. What doesn't fit is left out.
+    - Some cuts are spliced or composed to fit 32 px rooms (`compose` in the manifest): a 26 px toilet, a 26 px washer (three rows of its plain top out, so it stands in a one-cell-deep Mudroom), 12 px hall runners in any length, counters with the sink, the island in 40, 24 and 16 px, a breakfast table, and the tan and lavender sofas put together from LimeZu's modular pieces.
+    - Rooms of a type differ in color (duvets, nightstand woods, sofas, rugs, tables and chairs, bookcases, armchairs, cars): each takes the color its piece's hash picks, or the next one an older room of its type hasn't taken. So up to the palette's size no two look alike, a new room never changes an older one, and a demolition changes a room only if the demolished one had taken its pick. Small choices (which corner, which side) go by the hash too. Never by chance. A Living Room's rug follows a different stride from its sofa, so its two grey sofas (slate and light grey) never share a rug. A room's ghost looks as the room will once placed: its colors as the house will give them, its choices, and (carried by the Moving Truck) its fixture.
+  - an installed fixture shows where it fits, and as its badge otherwise, so a purchase is always visible:
+    - furniture: the Fireplace (LimeZu's animated stove and flue, 32 px wide, so a one-cell or one-cell-deep room, or a Bedroom or Dining Room whose bed or table takes the room, keeps its badge). It takes a Living Room's north wall, with the sofa beside it where the wall is long enough (a landscape room) or in front of it; a Library's beside a bookcase (a narrow one where a full one won't fit beside it; where neither fits, the bookcase stays and the Fireplace shows as its badge); a Kitchen's beside the range, in the counter's place; a Sunroom's with pots of flowers; elsewhere beside the key piece. Bunk Beds stand in place of the bed, against the north wall or in the middle of the floor. The Kitchen Island is a counter with a bowl of fruit in the middle of the kitchen, 24 or 16 px wide where the full one won't fit (an L-Kitchen's arm, beside a door's walkway).
+    - painted with the room, our own drawings in LimeZu's palette: Soundproofing pads the room's side of its wall bands (on the walls canvas, over the furniture, so it always shows) and its north faces; Blackout Curtains draw drapes over the room's windows and hang across the widest stretch of north face the furniture leaves in view (a room with neither, like a Closet, keeps the badge); a Skylight lays a four-pane patch of sun over the floor and furniture; the Chandelier hangs over the room in its own light; and a Bay Window turns one cell of outside wall to glass, with its bay outside, the street side first
+    - the yard's fixtures show unless a door keeps them off (then their badge does): the Sprinkler on its Lawn with a wet patch round it, the Pergola over its Patio (in place of the parasol), and Garden Lights as a bollard at each front corner of the piece, each with its light on the ground
+- **The yard pieces** are laid out by rules from the placed pieces too, never by chance (`src/ui/art/yard.ts`):
+  - Their ground goes on the floor canvas, under the house's shadow: a Lawn's mown stripes, a Patio's herringbone pavers, a Driveway's concrete with a curb cut through the sidewalk where it meets the street, and a Pool's and a Hot Tub's water inside LimeZu's white coping (a 3 × 3 sheet of its tiles, laid over any rectangle). A flat piece has a darker 1 px edge, softer where it meets another piece of its kind (two Lawns, a Driveway and a Long Driveway), so touching pieces read as one patch and each stays countable (D-093). A piece's ground stays on its own cells.
+  - Their props stand on their cells as items, so they wobble and settle with their piece: a parasol over a table and two chairs on a Patio; the house's one parked car on its oldest Driveway with room for it (nose in, or side on facing the house), orange or grey so it never matches the Garage's; a Pool's ladder and float; the Hot Tub's foam; the Fire Pit's animated fire in front of two stumps; a planter on a Flower Bed, and one per cell of a Herb Garden with greens instead of flowers; the Sapling on its soil; LimeZu's Greenhouse and modular Treehouse; a shed's front as the Henhouse's coop, with two hens on straw behind a picket front in its other cell; a Birdhouse on its pole.
+  - Where LimeZu has none, our own drawings in its palette and ink: the Doghouse, the hens and the Sprinkler (`src/ui/art/drawings.ts`).
+  - No prop stands on an outside door's mat or in front of its opening (nor rises over one on the overhang layer): a Patio's table and seats move clear of the door that opens onto it, under a small parasol in place of the full one (the audit prototype's), a Pergola's slats may roof a mat but its posts never stand on one (its badge shows where they would), and the car parks further along its Driveway, or on the next one.
+  - A Fence is a white picket line through the middle of its cells, out to their edges at its ends, with a post at each end and turn (LimeZu's pickets, posts and end-on strip, after the exteriors audit's line autotile). Two Fences join only through an end's open side (the way its line runs on): in a corner or a T; end to end, each keeps its end post, so each stays countable; side by side, their ends never close them into a pen. A Fence's ghost is the Fence alone.
+  - What rises above a piece's own cells (the Greenhouse's roof, the Treehouse, a Birdhouse's box, a side-on car's roof) goes on the overhang layer, over the walls. The Greenhouse and the Treehouse are cut down to rise less than a cell, so a piece behind them still shows.
+  - Pieces of a type differ in color (parasols, planters, coops, birdhouses) the way rooms do, and a ghost takes the color its piece will have (or has, when the Moving Truck carries it, with its fixture).
 - **Readability:**
   - terrain is muted and low-contrast
-  - pieces have more contrast, with colored dark outlines that are heavier on the bottom and right (light from the top-left)
-  - one shared palette of 24–32 colors, at most 8 per sprite
+  - pieces have more contrast, with LimeZu's outline color #3a3a50 as the ink, and light from the top-left
+  - the palette is LimeZu's: our own drawings and the walls and fixtures we paint use only its colors (`src/ui/art/palette.ts`, Modern Exteriors' Palette.png, held by a test); light and shade blended over the art (shadows, sun, glow) aren't colors of their own. The interface's own drawings (`src/ui/theme/`: frames, icons, the title's sky) keep to LimeZu's two palettes and the colors of its sheets, also held by a test. The text-grid placeholders keep one shared palette of 24–32 colors, at most 8 per sprite.
   - every sprite passes a grayscale test at 1×
 - **Variety for free:** palette swaps per client or season (spring green, autumn rust, dusk with glowing windows), the way Combolands varies its islands.
 - **UI chrome:** wood-panel frames and a chunky pixel font, as in Combolands, plus the readable-font option.
 - **Rendering:**
-  - terrain is drawn into a canvas of (lot width × 16) × (lot height × 16) pixels, 384×384 for 24×24, with smoothing off, shown at that size × scale with `image-rendering: pixelated`, and redrawn only when terrain changes
-  - pieces are absolutely positioned elements using a CSS-background atlas, placed at whole multiples of 16 × scale and rounded to device pixels
-  - atlas tiles are extruded by 1px so fractional screen scales show no seams
+  - terrain is drawn into a canvas of (lot width × 32) × ((lot height + 3) × 32) art px, 768×864 for 24×24 with the street row and the two rows of road, with smoothing off, shown at that size × scale with `image-rendering: pixelated`, and redrawn only when terrain changes
+  - what stands on the lot is placed by rule and tile hash (`src/ui/board/terrain/objects.ts`), the hash salted with the run's seed, so every run's lot has its own tufts, flowers, and trees and the same run always looks the same: one LimeZu tree per Tree cell, so the trees beside a piece can be counted, and a big tree only on a 2×2 block of Trees that no piece can touch; a darker woods floor with soft edges under the Tree cells, closing with a verge of grass along the street; two or three rocks per Boulder; the Old Shed at LimeZu's size on its footprint; the Time Capsule's dug soil and shovel. Each sprite's part on its own cells goes on the terrain canvas, and what rises above them (tree tops) on a canopy canvas at `LAYER.canopy`, over the pieces and under their digits and badges (`LAYER.labels`). Neither takes the pointer. The board's scroll area keeps room above the lot (`CANOPY_ROOM`), so the top row's tree tops are never cut off.
+  - the sunny side follows `isSunny` exactly: a Tree inside the band stays in shade to its cell's edge, and no sunny edge faces the street
+  - the street row is a sidewalk with its curb (the rules' street: clicks and the inspect panel find it there), the lot's grass hanging over its edge except where water or a piece meets it; the road below it, with a dashed line and the far curb, is decoration only
+  - around the board, the scroll area shows dimmed LimeZu grass (an 8×8-cell tile with unevenly scattered tufts) that zooms and pans with the board, so the lot sits in a garden; a faint property line marks the lot's other three edges. The road and each creek mouth run on into it, dimmed like it, to the edges of the view (`src/ui/board/terrain/outside.ts`: one slice a cell deep, painted once per lot and repeated by CSS)
+  - the lot's water (the pond and the creek) has its own canvas over the water's bounding box, just above the terrain and below everything else: LimeZu's animated water, picked per 16 px subtile by `src/ui/board/autotile.ts`, its bank's grass blades in the sunny or shaded colors of the grass around it. Its 8 frames are painted side by side once per lot, and CSS steps through them (transform only, 130 ms a frame), so the water never wakes the main thread; it's still under Reduce motion and paused while the shop's sheet covers the board
+  - the terrain and canopy canvases redraw before the browser paints too (once the atlas has loaded), so a tree cleared for a piece goes in the same frame the piece appears
+  - the house and the yard are drawn in the board's layers (`src/ui/board/layers.ts`): a floor canvas (the yard's ground and curb cuts, the house's shadow, doormats, floors, north wall faces, floor shadows) under one element per piece for its furniture or props, then a walls canvas (bands, doorways, windows, and the painted fixtures' light and glass), the overhang, outline highlights, and the labels. The fenced yards' tint sits between the floor canvas and the props. The canvases redraw only when the house changes, never on hover, a tally step, or zoom, and before the browser paints (with the atlas's pixels kept once read), so a new room's floor and walls show in the same frame as its furniture
+  - a piece's parts in each layer (its items, their tops on the overhang, its flash, its digit) move as one: each animation is remembered while it plays, and a part that mounts mid-flight joins it where it has got to (`src/ui/board/piece-fx.ts`)
+  - an animated sprite (the Fireplace, the Fire Pit, the Hot Tub's foam, the Sprinkler) is its frames side by side, stepped behind the piece's box with a transform; reduced motion stops it
+  - furniture and yard props are absolutely positioned elements using a CSS-background atlas, placed at any art pixel × scale (a whole number of device pixels per art pixel at the camera's scales)
+  - atlas sprites start at even positions and are extruded by 1px, so fractional screen scales show no seams
+  - the pieces' score digits are sized in sixteenths of a cell (never under 11 CSS px), so 1× shows them as 2× did with 16 px art, and they grow with the zoom, in the piece's bottom-right cell inside its walls. A piece's badges (a fixture that can't be drawn, top right; an unmet requirement's ⚠, top left) are square paper in LimeZu's ink with their pixel icon, 14 CSS px at 1×, growing with the zoom and shrinking below 1× (never under 9 CSS px, nor under their icon at a device pixel a pixel), on whole device pixels. A badge never covers the digit (`src/ui/board/label-layout.ts`, tested at every zoom): one that shares the digit's row and would touch it rises to its cell's top edge, over the wall band, then the digit drops toward the cell's bottom edge, then the badge shrinks
+  - the street's label lies on the longest stretch of sidewalk with no curb cut, sticks inside the view's left edge so it reads whole however the lot is panned, and takes a smaller size in a short row (0.5× on a Retina screen)
+  - the title screen's street is one canvas, like the terrain, so its tiles show no seams at 125% or 150% display scaling. Its lawn and street are drawn by the lot's own painters (the grass with its tufts and flowers, and the board's sidewalk, curb, road and dashed line), with one more row of far sidewalk for the credit. It keeps its old tile sizes (64, 48, or 32 CSS px by the window's height), rounded to whole device pixels per art pixel (down on a tie) and never under 32 CSS px, so the footer stays on the far sidewalk. On a Retina screen it's as it was. At a devicePixelRatio of 1 the 48 px size comes out at 32; at 1.25 every size comes out at 51.2; at 1.5 the 48 and 32 px sizes come out at 42.7.
   - **zoom changes the scale and re-lays out the board in whole steps, never with `transform: scale()`**: Safari blurs canvases under a scaling transform (a WebKit bug open since 2018). Transforms are only for short juice tweens. This changes D-049's camera.
+- **The pipeline (D-097):**
+  - `art/limezu/*.json` are the manifests: each LimeZu sprite we use, by its atlas id, with its pack (`mi` Modern Interiors or `me` Modern Exteriors), its path in the pack's zip, its rect, and any animation frames or edits (`tile`, `recolor`, `keyOut`, `flipX`, `compose`). One file per part of the game, so stages don't edit the same file.
+  - `npm run art:cut` (`scripts/cut-art.ts`) runs locally only. It reads the zips in `art-source/` without extracting anything, and writes only the listed sprites to `assets/limezu/` (an animation's frames side by side), `assets/limezu/index.json` (each cut's size, frames, and a hash of its manifest entry), and one `assets/licenses.json` record per cut. It removes cuts no manifest lists.
+  - `npm run atlas` packs the placeholders, doubled to 32×32, with the committed cuts at their own sizes, and a cut replaces the placeholder with its id. So CI never needs the packs, and art lands one sprite at a time. Since M5a every placeholder left in `art/` is covered by a cut (the rest were deleted), so the atlas holds only cuts.
+  - Tests fail on a cut no manifest lists, a manifest entry without a committed cut, a cut older than its manifest entry, or a cut without a license record, and on any file under `assets/` without a record or a record without its file (`scripts/licenses.test.ts`). `CREDITS.md` and the game credit LimeZu.
 
 **Where the art comes from** (licenses checked on each asset page):
 
 | Option | What | License and cost | Fit |
 |---|---|---|---|
-| **A. LimeZu Modern Interiors + Modern Exteriors**, plus LimeZu Serene Village for terrain and water | One artist: modern suburban houses, furniture, and exteriors at 16px | Paid packs (about $1.50–$3 and $5): commercial use allowed, no redistribution, credit required. Serene Village: free, CC BY 4.0. | The most coherent. Keep the full packs out of the public repo and commit only the sprites we use; LimeZu has said that's fine for open-source projects. You'd buy them. |
+| **A. LimeZu Modern Interiors + Modern Exteriors**, plus LimeZu Serene Village for terrain and water | One artist: modern suburban houses, furniture, and exteriors at 16px | Paid packs (about $1.50–$3 and $5): commercial use allowed, no redistribution, credit required. Serene Village: free, CC BY 4.0. | The most coherent. Keep the full packs out of the public repo and commit only the sprites we use; LimeZu has said that's fine for open-source projects (no link recorded; D-097's license note). You'd buy them. |
 | **B. A free CC0 mix:** Kenney Tiny Town, Kenney Roguelike Indoors, Ninja Adventure | Exteriors, interiors, extras | CC0, free | The styles clash (outlined versus not), so it needs a palette remap and an outline pass at build time |
 | **C. Sprites Claude draws** | 16×16 palette-indexed grids, turned into the atlas at build time | Ours | Fine for terrain, floors, fences, and simple furniture; weak for complex objects. Quality has to be judged by eye. |
 
-**Chosen (2026-11-05):** C for placeholders from M1, in the final atlas format and sprite ids, so swapping is free later. A for the final art: you buy the two LimeZu packs and put them in the gitignored `art-source/` folder, and Claude cuts the sprites we use into `assets/`. B stays the free fallback.
+**Chosen (2026-11-05):** C for placeholders from M1, in the final atlas format and sprite ids, so swapping is free later. A for the final art: you buy the two LimeZu packs and put them in the gitignored `art-source/` folder, and Claude cuts the sprites we use into `assets/`. B stays the free fallback. Since D-097, Serene Village isn't needed: Modern Exteriors covers terrain and water in the same artist's palette.
 
 **Your to-dos, whenever convenient:**
-- Buy LimeZu Modern Interiors and Modern Exteriors and download Serene Village.
-- Unzip them into `/Users/sam/Desktop/Code/house-game/art-source/`. Git already ignores it there, in every branch and worktree.
+- ~~Buy LimeZu Modern Interiors and Modern Exteriors~~: done 2026-11-05. Their zips are in `/Users/sam/Desktop/Code/house-game/art-source/`, which git ignores in every branch and worktree. `npm run art:cut` reads the zips as they are, so there's nothing to unzip.
 - ~~Switch GitHub Pages to GitHub Actions~~: done 2026-11-05.
 
 Avoid:
