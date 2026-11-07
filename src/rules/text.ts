@@ -172,10 +172,30 @@ function signed(n: number): string {
   return n < 0 ? `−${-n}` : `+${n}`;
 }
 
-/** "a Kitchen", "an Office", "an L-Kitchen" (a letter read aloud: "el"). */
+/**
+ * Whether a name (the first, in a list) is a possessive: "Grandma’s Room" is already definite,
+ * so it takes no article. A plural possessive (a "Kids’ Room") still does.
+ */
+function isPossessive(noun: string): boolean {
+  const first = noun.split(/,|\s(?:or|and)\s/)[0] ?? noun;
+  return /['’]s\b/.test(first);
+}
+
+/**
+ * "a Kitchen", "an Office", "an L-Kitchen" (a letter read aloud: "el"), and "Grandma’s Room": a
+ * possessive name takes no article.
+ */
 export function article(noun: string): string {
-  if (noun.startsWith('the ')) return noun;
+  if (noun.startsWith('the ') || isPossessive(noun)) return noun;
   return /^([AEIOU]|[AEFHILMNORSX]-)/i.test(noun) ? `an ${noun}` : `a ${noun}`;
+}
+
+/**
+ * A piece's name after "the" (or "this", "that"): "the Kitchen", "this Bedroom". A possessive
+ * name stands alone: "Renovate Grandma’s Room", never "the Grandma’s Room".
+ */
+export function definite(noun: string, word: 'the' | 'this' | 'that' = 'the'): string {
+  return isPossessive(noun) ? noun : `${word} ${noun}`;
 }
 
 /** "touching the street or a Driveway", "in the front yard", "bordering a fenced yard". */
@@ -519,6 +539,26 @@ function hostExtra(content: Content, sel: Selector): string | null {
   return `in ${article(selectorText(content, r, 'one'))}`;
 }
 
+/**
+ * What an `earn` modifier is for, so its breakdown line can be told from its source's others
+ * ("Heat wave (Pools)", "Heat wave (touching a Tree)"): "Dark pieces", "touching a Tree", "in a
+ * Living Room or Library". Null for a fixture's own piece, which the fixture's name already says.
+ */
+export function earnTargetText(content: Content, sel: Selector): string | null {
+  if (sel === 'all') return 'every piece';
+  if (isHost(sel)) return null;
+  const extra = hostExtra(content, sel);
+  if (extra) return extra;
+  const text = selectorText(content, sel, 'some').replace(/\bneighbors\b/, 'pieces');
+  return 'touching' in sel ? text.replace(/^pieces /, '') : text;
+}
+
+/** The piece types a selector names directly (`{ piece }`), or null. */
+function pieceIds(sel: Selector): readonly PieceDef['id'][] | null {
+  if (sel === 'all' || !('piece' in sel)) return null;
+  return typeof sel.piece === 'string' ? [sel.piece] : sel.piece;
+}
+
 const RULE_TEXT: Record<RuleKey, (n: number) => string> = {
   rerollsPerPhase: (n) => `${signed(n)} ${n === 1 ? 'reroll' : 'rerolls'} every phase`,
   demolitions: (n) => `${signed(n)} ${n === 1 ? 'demolition' : 'demolitions'}`,
@@ -619,6 +659,17 @@ export function modifierText(content: Content, mod: Modifier): string {
     case 'budget':
       return `${mod.target === 'all' ? 'Every piece' : subjectText(content, mod.target)} pays ${signed(mod.pct)}% budget`;
     case 'drawWeight': {
+      // Weight added to pieces the draw leaves out (weight 0, the special rooms): they show up
+      // at all, which "more often" would undersell.
+      const ids = pieceIds(mod.target);
+      if (
+        !mod.pct &&
+        (mod.add ?? 0) > 0 &&
+        ids?.every((id) => content.pieces[id].drawWeight === 0)
+      ) {
+        const all = selectorText(content, mod.target, 'every');
+        return `${all.charAt(0).toUpperCase() + all.slice(1)} show up in the weekly draw`;
+      }
       const what = selectorText(content, mod.target, 'some');
       const amount = mod.pct ? `${signed(mod.pct)}%` : `${signed(mod.add ?? 0)}`;
       return `${what.charAt(0).toUpperCase() + what.slice(1)} come up more often (${amount})`;

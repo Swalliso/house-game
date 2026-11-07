@@ -842,7 +842,8 @@ describe('Remodel Plans: Suite and Full House (levelSet, in a run)', () => {
       give('remodelFullHouse'),
     ]).state;
     // Level 2: 60 Points, +1.5. Points 10 + 15 + 60 = 85; Mult 100 + 50 + 150 = 300, ×2 = 600;
-    // 85 × 6 = 510. These Hendersons have no checklist, so no line flips.
+    // 85 × 6 = 510. These Hendersons have no checklist, so no line flips; a level isn't a new
+    // set, so no set flips either.
     expect(R.previewTool(s, USE)).toEqual({
       ok: true,
       before: { points: 65, mult: 500, total: 325 },
@@ -851,6 +852,8 @@ describe('Remodel Plans: Suite and Full House (levelSet, in a run)', () => {
       cells: [],
       specsGained: [],
       specsLost: [],
+      setsGained: [],
+      setsLost: [],
     });
     const l2 = R.apply(s, USE);
     expect(l2.events).toEqual([{ t: 'toolUsed', tool: 'remodelFullHouse' }]);

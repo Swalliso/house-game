@@ -105,3 +105,17 @@
   color: var(--ink);
   font-style: italic;
 }
+
+/* M4b: a tag a modifier grants says where it's from, in the chip: "Dark · from Eternal night".
+   The source reads a little lighter than the tag. */
+.chip .chip-from {
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+/* "✕ Breaks: Jack-and-Jill" (a placement, a demolition, or a tool): the mark in orange, as the
+   checklist's "Turns off" has it. */
+.inspect .set-note.bad .mark {
+  color: var(--bad);
+  font-size: 0.8em;
+}

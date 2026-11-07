@@ -11,11 +11,13 @@ import { signal } from '@preact/signals';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import {
   CONTENT,
+  definite,
   placedCells,
   rules,
   SCORE_LABELS,
   type Cell,
   type DemolishPreview,
+  type SetScore,
   type SourceRef,
   type UseToolAction,
 } from '../../rules/index.ts';
@@ -823,7 +825,7 @@ function RenovateTarget({ scale }: { scale: number }) {
         class={`ghost-delta install-label ${p.delta > 0 ? 'good' : p.delta < 0 ? 'bad' : ''} ${below}`}
         style={style}
       >
-        Renovate the {name} to level {p.renovates.level}: {change}
+        Renovate {definite(name)} to level {p.renovates.level}: {change}
         {pending ? ' · End week to renovate' : ''}
       </div>
     );
@@ -1013,10 +1015,10 @@ function ToolTarget({ scale }: { scale: number }) {
     const text =
       use === 'copy'
         ? ok
-          ? `Copy the ${name} into your reserve · ${armed ? 'click again' : 'click twice'}`
+          ? `Copy ${definite(name)} into your reserve · ${armed ? 'click again' : 'click twice'}`
           : (p?.reason ?? 'Pick a piece to copy.')
         : piece
-          ? `Pick up the ${name}`
+          ? `Pick up ${definite(name)}`
           : 'Pick a piece to move';
     return (
       <>
@@ -1053,7 +1055,7 @@ function ToolTarget({ scale }: { scale: number }) {
       {label(
         cells,
         ok
-          ? `Move here: ${wow(p!.delta)} · ${armed ? 'click again' : 'click twice'}`
+          ? `Move here: ${wow(p!.delta)}${breaksText(p!.setsLost)} · ${armed ? 'click again' : 'click twice'}`
           : `✕ ${p?.reason ?? 'It can’t go there.'}`,
         ok ? (p!.delta > 0 ? 'good' : p!.delta < 0 ? 'bad' : '') : 'bad',
       )}
@@ -1066,6 +1068,12 @@ function targetName(target: DemolishPreview['target']): string {
   return 'feature' in target
     ? CONTENT.features[target.feature].name
     : CONTENT.pieces[target.defId].name;
+}
+
+/** " · ✕ breaks Jack-and-Jill": the sets a demolition or a move would break, for its label. */
+function breaksText(lost: readonly SetScore[]): string {
+  if (lost.length === 0) return '';
+  return ` · ✕ breaks ${lost.map((s) => CONTENT.sets[s.set].name).join(', ')}`;
 }
 
 /**
@@ -1111,12 +1119,13 @@ function DemolishTarget({ scale }: { scale: number }) {
           ? ` · ▲ +${formatNumber(d.delta)} ${wow}/week`
           : '';
     const name = targetName(d.target);
-    const text = armed ? `Click again to demolish the ${name}` : `Demolish ${name}`;
+    const text = armed ? `Click again to demolish ${definite(name)}` : `Demolish ${name}`;
     const tone = d.delta < 0 ? 'bad' : d.delta > 0 ? 'good' : '';
     label = (
       <div class={`ghost-delta demolish-label ${tone} ${below}`} style={style}>
         {text}
         {change}
+        {breaksText(d.setsLost)}
       </div>
     );
   } else {

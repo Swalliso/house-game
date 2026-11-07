@@ -8,14 +8,17 @@
 // M4b's change orders get theirs: a restriction broken (✕ on the piece), each order resolving
 // at its milestone (its reward counting into the budget), the sheet's arrival, and the answer's
 // stamp; and a household member's arrival (a banner, and their cards popping into the reserve).
-// Animation speed never affects the game.
+// A transform in a phase's first week comes with leaving the shop, not a tally, and gets its beat
+// there too. Animation speed never affects the game.
 //
 // Speed: the chosen tally speed, plus Balatro-style auto-acceleration during the steps, plus
 // fast-forward while Space or the right mouse button is held. A click skips to the result.
 
 import { batch, signal } from '@preact/signals';
 import {
+  article,
   CONTENT,
+  definite,
   rewardText,
   rules,
   SCORE_LABELS,
@@ -822,6 +825,7 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
       for (const e of events) {
         if (e.t === 'handDrawn' && e.reroll && !skipping) audio.play('rotate', { rate: 0.7 });
       }
+      growBeats(events, after, gen);
       return;
     }
     if (waiting === 0) showStart(events, before);
@@ -937,21 +941,10 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
           await wait(FEEL.demolishMs * 0.5);
           break;
         }
-        case 'transformed': {
-          const c = e.cells[0];
-          if (c && !skipping) {
-            const into = 'feature' in e.into ? 'a Tree' : `a ${CONTENT.pieces[e.into.piece].name}`;
-            popup(
-              c.x + 0.5,
-              Math.max(1.5, c.y),
-              `Grew into ${into}!`,
-              'note',
-              FEEL.tally.setStepMs,
-            );
-            audio.play('chime', { rate: 1.2 });
-          }
+        case 'transformed':
+          // After the tally, as the next week starts.
+          transformBeat(e, after);
           break;
-        }
         case 'tally':
           if (e.fastForward) await playFastForward(e, base);
           else await playTally(e, base, after, newSets, specFlips(events, i));
@@ -1211,6 +1204,59 @@ function arrivalBeat(e: Extract<GameEvent, { t: 'arrived' }>, after: RunState): 
   audio.play('chime', { rate: 1.12 });
   audio.play('chime', { rate: 0.89, delay: f.dongMs / 1000 });
   audio.play('sparkle', { delay: f.landDelayMs / 1000, gain: 0.6 });
+}
+
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/**
+ * A piece grows into another at a week's start (the Nursery into a Kids' Room, a Sapling into a
+ * Tree): it wobbles, says so on the board, and chimes. The score it changes has no other beat.
+ */
+function transformBeat(e: Extract<GameEvent, { t: 'transformed' }>, after: RunState): void {
+  const cells = e.cells;
+  if (skipping || cells.length === 0) return;
+  // Over the piece, but kept off the lot's side edges, as the checklist's popups are: the
+  // sentence is wide.
+  const w = after.house.lot.width;
+  const x = cells.reduce((a, c) => a + c.x + 0.5, 0) / cells.length;
+  const y = cells.reduce((a, c) => a + c.y + 0.5, 0) / cells.length;
+  const from = capitalize(definite(CONTENT.pieces[e.defId].name));
+  const into =
+    'feature' in e.into ? CONTENT.features[e.into.feature].name : CONTENT.pieces[e.into.piece].name;
+  popup(
+    Math.min(w * 0.75, Math.max(w * 0.25, x)),
+    Math.max(1.5, y),
+    `${from} grew into ${article(into)}!`,
+    'note',
+    FEEL.transform.stepMs,
+  );
+  audio.play('chime', { rate: 1.2 });
+  // A piece that grows into another keeps its place on the board (and its uid); a Sapling's
+  // Tree is the lot's.
+  if ('piece' in e.into && motion()) fxHooks.wobble(e.uid);
+}
+
+/**
+ * The transforms an action with no tally brings: leaving the shop starts a phase's first week,
+ * and a piece old enough grows then (the Nursery placed the week the twins arrive grows into a
+ * Kids' Room as Drywall starts). They play as the board appears, or, when a household member
+ * arrives that week too, once their banner's doorbell has rung and their cards have landed, so
+ * the two beats don't ring at once.
+ */
+function growBeats(events: readonly GameEvent[], after: RunState, gen: number): void {
+  const grown = events.filter(
+    (e): e is Extract<GameEvent, { t: 'transformed' }> => e.t === 'transformed',
+  );
+  if (grown.length === 0) return;
+  if (!events.some((e) => e.t === 'arrived')) {
+    for (const e of grown) transformBeat(e, after);
+    return;
+  }
+  setTimeout(() => {
+    // Not for a run that's gone, or over a tally that has started since.
+    if (gen !== generation || busy.value) return;
+    for (const e of grown) transformBeat(e, after);
+  }, FEEL.transform.afterArrivalMs);
 }
 
 onEvents((events, before, after) => {

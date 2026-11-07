@@ -238,6 +238,7 @@ describe('a placed pack is one piece', () => {
     // partly behind the house's front row (row 1) and partly in front, so in neither yard.
     expect(R.describePiece(state, 2)).toEqual({
       tags: ['Sunny'],
+      tagSources: { Sunny: [{ kind: 'sunny' }] },
       side: null,
       regions: ['sunny'],
       view: false,

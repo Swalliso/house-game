@@ -15,10 +15,18 @@ import type {
   Rules,
   RunState,
 } from './index.ts';
+import { withFixture } from './fixtures.ts';
 import { contentHash, decodeRunCode, encodeRunCode } from './runcode.ts';
 import { createRules, IllegalAction } from './run.ts';
 import { stream } from './rng.ts';
-import { emptyRows, houseFrom, setup, TEST_CONTENT as C, withClient } from './testing.ts';
+import {
+  emptyRows,
+  houseFrom,
+  setup,
+  TEST_CONTENT as C,
+  withClient,
+  type Placement,
+} from './testing.ts';
 
 /** Seven phases (D-018's count) of TEST_BALANCE's two weeks, every target 0. */
 function seven(content: Content = C, after: readonly number[] = [2, 4, 6]): Content {
@@ -507,7 +515,13 @@ describe('phase effects', () => {
     const t = r.apply(shop.state, { t: 'leaveShop' }).state;
     const during = r.currentTally(t).pieces[0]!;
     expect(during.pct).toBe(before.pct + 100);
-    expect(during.lines.some((l) => l.label === 'Heat wave' && l.value === 100)).toBe(true);
+    // Its line says which of its three effects it is.
+    expect(during.lines).toContainEqual({
+      label: 'Heat wave (touching a Tree)',
+      op: 'pct',
+      value: 100,
+      from: [],
+    });
     expect(r.activeChangeOrders(t)).toMatchObject([{ id: 'heatWave', kind: 'phase' }]);
     // It lasts through the phase's tallies (not just a week), and ends at its milestone.
     const week1 = r.apply(t, { t: 'pass' });
@@ -538,6 +552,46 @@ describe('phase effects', () => {
     const uid = t.house.pieces[0]!.uid;
     expect(r.describePiece(t, uid)?.tags).toContain('Dark');
     expect(r.describePiece({ ...t, timedEffects: [] }, uid)?.tags).not.toContain('Dark');
+  });
+
+  it('describePiece says where each tag comes from: the card, the layout, Eternal night, a fixture', () => {
+    const r = createRules(
+      seven(
+        withOrders(
+          { workingFromHome: { scope: 'dale' }, heatWave: { scope: 'dale' } },
+          withClient({ changeOrders: ['eternalNight'] }),
+        ),
+      ),
+    );
+    const s = offeredAfter2(r);
+    // Nine Bathrooms in a 3 × 3 block (uids 1–9; the middle one, uid 5, is interior), an
+    // exterior Bedroom (uid 10), and a Bedroom with Blackout Curtains (uid 11). None is sunny.
+    let house = houseFrom(C, emptyRows(10, 10), [
+      ...[5, 6, 7].flatMap((y) => [1, 2, 3].map((x): Placement => ['bathroom', x, y])),
+      ['bedroom', 6, 4],
+      ['bedroom', 6, 7],
+    ]);
+    house = withFixture(house, 11, 'blackoutCurtains', 1);
+    const before = { ...s, screen: 'build' as const, house };
+    const night = r.apply(
+      r.apply({ ...s, house }, { t: 'answerChangeOrder', accept: true }).state,
+      {
+        t: 'leaveShop',
+      },
+    ).state;
+    const sources = (state: RunState, uid: number) => r.describePiece(state, uid)!.tagSources;
+    const ETERNAL = { kind: 'changeOrder', id: 'eternalNight' } as const;
+    const CURTAINS = { kind: 'fixture', id: 'blackoutCurtains', uid: 11 } as const;
+
+    // Before the order: the card's tags, the interior room's Dark, the Curtains' Dark.
+    expect(sources(before, 10)).toEqual({ Quiet: [{ kind: 'card' }] });
+    expect(sources(before, 5)).toEqual({ Wet: [{ kind: 'card' }], Dark: [{ kind: 'interior' }] });
+    expect(sources(before, 11)).toEqual({ Quiet: [{ kind: 'card' }], Dark: [CURTAINS] });
+    // While it runs, every room is Dark from Eternal night too: an exterior room only from it.
+    expect(r.describePiece(night, 10)).toMatchObject({ side: 'exterior', tags: ['Quiet', 'Dark'] });
+    expect(sources(night, 10)).toEqual({ Quiet: [{ kind: 'card' }], Dark: [ETERNAL] });
+    expect(sources(night, 5).Dark).toEqual([{ kind: 'interior' }, ETERNAL]);
+    expect(sources(night, 11).Dark).toEqual([ETERNAL, CURTAINS]);
   });
 
   it('a tool’s timed effect still ends with its week beside a phase effect', () => {

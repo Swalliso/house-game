@@ -3,6 +3,31 @@
 
 .jobs-screen .title-sky {
   padding: 28px 16px 20px;
+  /* The board comes first: on a short screen the street gives way, down to its lawn row,
+     before the board would scroll (the Take the job buttons and Back stay in view). */
+  flex: 1 1 auto;
+}
+.jobs-screen .title-street {
+  /* Weighted so the board's share of any squeeze is far under a pixel: no stray scrollbar. */
+  flex: 0 100000 auto;
+  min-height: var(--tile);
+}
+@media (max-height: 820px) {
+  .jobs-screen .title-sky {
+    padding: 12px 16px 10px;
+  }
+  .jobs-board {
+    padding: 14px 18px 12px;
+  }
+  .jobs-header {
+    margin-bottom: 10px;
+  }
+  .jobs-header h1 {
+    font-size: 24px;
+  }
+  .jobs-footer {
+    margin-top: 10px;
+  }
 }
 
 .jobs-board {

@@ -67,6 +67,7 @@ import type {
   PieceInfo,
   PieceScore,
   PlaceAction,
+  PlacedPiece,
   Region,
   Play,
   Preview,
@@ -82,6 +83,8 @@ import type {
   SellAction,
   SetScore,
   Slots,
+  Tag,
+  TagSource,
   Tally,
   TileInfo,
   ToolId,
@@ -120,6 +123,7 @@ import {
   NO_LAYOUT_MODS,
   pieceIn,
   REGION_BIT,
+  tilesIn,
   type Layout,
   type LayoutModifier,
 } from './layout.ts';
@@ -169,6 +173,7 @@ import {
   article,
   changeOrderText,
   conditionText,
+  definite,
   ordinal,
   selectorText,
   specText,
@@ -314,6 +319,12 @@ export interface ToolPreview extends Availability {
   /** Checklist lines the use would turn on, and off (spec ids). */
   specsGained: readonly string[];
   specsLost: readonly string[];
+  /**
+   * Sets the use would complete, and break (a Moving Truck's move); one that re-forms from other
+   * pieces is neither, as in DemolishPreview.
+   */
+  setsGained: readonly SetScore[];
+  setsLost: readonly SetScore[];
 }
 
 interface WeekResult {
@@ -543,7 +554,9 @@ export function createRules(content: Content): Rules {
     }
     const level = target.level ?? 0;
     if (level >= b.renovate.maxLevel) {
-      return { ...NO_PLAY, reason: `That ${targetDef.name} is fully renovated.` };
+      // "That Kitchen", but "Grandma’s Room": a possessive name takes no determiner.
+      const room = capitalize(definite(targetDef.name, 'that'));
+      return { ...NO_PLAY, reason: `${room} is fully renovated.` };
     }
     const cells = layoutFor(state).cells.get(target.uid) ?? [];
     return {
@@ -2326,10 +2339,37 @@ export function createRules(content: Content): Rules {
     };
   }
 
+  /**
+   * The sets one tally holds that another doesn't, by key (as preview's), except that an
+   * instance re-formed from other pieces (the same set, new members) is neither lost nor
+   * gained: a lost instance and a gained one of the same set cancel out.
+   */
+  function setFlips(before: Tally, after: Tally): { setsGained: SetScore[]; setsLost: SetScore[] } {
+    const was = new Set(before.sets.map((s) => s.key));
+    const now = new Set(after.sets.map((s) => s.key));
+    const setsGained = after.sets.filter((s) => !was.has(s.key));
+    const setsLost: SetScore[] = [];
+    for (const s of before.sets) {
+      if (now.has(s.key)) continue;
+      const again = setsGained.findIndex((g) => g.set === s.set);
+      if (again >= 0) setsGained.splice(again, 1);
+      else setsLost.push(s);
+    }
+    return { setsGained, setsLost };
+  }
+
   function previewDemolish(state: RunState, x: number, y: number): DemolishPreview {
     const beforeTally = state.screen === 'build' ? passTally(state) : null;
     const before = beforeTally ? score(beforeTally) : { points: 0, mult: 100, total: 0 };
-    const base = { before, after: before, delta: 0, specsGained: [], specsLost: [] };
+    const base = {
+      before,
+      after: before,
+      delta: 0,
+      specsGained: [],
+      specsLost: [],
+      setsGained: [],
+      setsLost: [],
+    };
     if (!beforeTally)
       return { legal: false, reason: 'The run is over.', target: null, cells: [], ...base };
     const check = checkDemolishOn(content, layoutFor(state), x, y);
@@ -2354,7 +2394,44 @@ export function createRules(content: Content): Rules {
       after,
       delta: after.total - before.total,
       ...specFlips(beforeTally, afterTally),
+      ...setFlips(beforeTally, afterTally),
     };
+  }
+
+  /**
+   * Where each of a piece's effective tags comes from (describePiece): its card, the layout,
+   * then each modifier granting it, once each. The layout names a run modifier's grant by its
+   * index among the run's layout modifiers, which are this state's, in the same order (equal
+   * lists share one interned array).
+   */
+  function tagSourcesOf(
+    state: RunState,
+    layout: Layout,
+    piece: PlacedPiece,
+    tags: readonly Tag[],
+  ): Partial<Record<Tag, TagSource[]>> {
+    const own = content.pieces[piece.defId].tags;
+    const runLayout = modsOf(state).active.filter((a) => isLayoutModifier(a.mod));
+    const grants = layout.grants.get(piece.uid) ?? [];
+    const out: Partial<Record<Tag, TagSource[]>> = {};
+    for (const tag of tags) {
+      const from: TagSource[] = [];
+      if (own.includes(tag)) from.push({ kind: 'card' });
+      if (tag === 'Dark' && layout.interior.has(piece.uid)) from.push({ kind: 'interior' });
+      if (tag === 'Sunny' && tilesIn(layout, piece.uid, 'sunny') > 0) from.push({ kind: 'sunny' });
+      for (const g of grants) {
+        if (g.tag !== tag) continue;
+        const host = 'host' in g ? layout.byUid.get(g.host) : undefined;
+        const source: TagSource | undefined =
+          'mod' in g
+            ? runLayout[g.mod]?.source
+            : host?.fixture && { kind: 'fixture', id: host.fixture.id, uid: host.uid };
+        const key = JSON.stringify(source);
+        if (source && !from.some((f) => JSON.stringify(f) === key)) from.push(source);
+      }
+      out[tag] = from;
+    }
+    return out;
   }
 
   function replay(setup: RunSetup, actions: readonly Action[]): ReplayResult {
@@ -2441,10 +2518,13 @@ export function createRules(content: Content): Rules {
     },
     describePiece: (state, uid) => {
       const layout = layoutFor(state);
-      if (!layout.byUid.has(uid)) return null;
+      const piece = layout.byUid.get(uid);
+      if (!piece) return null;
       const regions = (Object.keys(REGION_BIT) as Region[]).filter((r) => pieceIn(layout, uid, r));
+      const tags = [...(layout.tags.get(uid) ?? [])];
       return {
-        tags: [...(layout.tags.get(uid) ?? [])],
+        tags,
+        tagSources: tagSourcesOf(state, layout, piece, tags),
         side: layout.exterior.has(uid) ? 'exterior' : layout.interior.has(uid) ? 'interior' : null,
         regions,
         view: layout.hasView.has(uid),
@@ -2488,6 +2568,8 @@ export function createRules(content: Content): Rules {
         cells: [] as readonly Cell[],
         specsGained: [],
         specsLost: [],
+        setsGained: [],
+        setsLost: [],
       };
       const can = canUseTool(toolCtx, state, action);
       if (!can.ok) return { ok: false, reason: can.reason, ...base };
@@ -2502,6 +2584,7 @@ export function createRules(content: Content): Rules {
         delta: after.total - before.total,
         cells,
         ...specFlips(passTally(state), afterTally),
+        ...setFlips(passTally(state), afterTally),
       };
     },
     changeOrderOffer: (state) => {

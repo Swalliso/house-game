@@ -38,7 +38,7 @@ export const CHANGE_ORDERS: Readonly<Record<ChangeOrderId, ChangeOrderDef>> = {
     scope: 'generic',
     tier: 'core',
     kind: 'phase',
-    text: 'Next phase, Pools and pieces in the shade earn double, and Sunny rooms earn half.',
+    text: 'This phase, Pools and pieces in the shade earn double, and Sunny rooms earn half.',
     modifiers: [
       { kind: 'earn', target: { piece: 'pool' }, pct: 100 },
       // Trees don't earn; the pieces beside them do (Appendix A's content wording).
@@ -65,7 +65,7 @@ export const CHANGE_ORDERS: Readonly<Record<ChangeOrderId, ChangeOrderDef>> = {
     scope: 'hendersons',
     tier: 'core',
     kind: 'phase',
-    text: 'Next phase, the Entertainer pays double.',
+    text: 'This phase, the Entertainer pays double.',
     modifiers: [{ kind: 'setBonus', set: 'entertainer', pct: 100 }],
   },
 
@@ -87,7 +87,7 @@ export const CHANGE_ORDERS: Readonly<Record<ChangeOrderId, ChangeOrderDef>> = {
     scope: 'vladislav',
     tier: 'core',
     kind: 'phase',
-    text: 'Next phase, every room counts as Dark.',
+    text: 'This phase, every room counts as Dark.',
     modifiers: [{ kind: 'grantTag', target: ROOM, tag: 'Dark' }],
   },
 
@@ -145,7 +145,7 @@ export const CHANGE_ORDERS: Readonly<Record<ChangeOrderId, ChangeOrderDef>> = {
     scope: 'dale',
     tier: 'core',
     kind: 'restriction',
-    text: 'Place nothing Loud next phase.',
+    text: 'Place nothing Loud this phase.',
     forbid: { tag: 'Loud' },
     reward: { budget: 4 },
   },

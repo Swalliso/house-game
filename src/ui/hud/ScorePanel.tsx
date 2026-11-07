@@ -222,17 +222,21 @@ export function ScorePanel() {
           )}
         </p>
       )}
-      <h3>Sets</h3>
-      <SetList sets={sets} gained={gained} lost={p?.legal && !view ? p.setsLost : []} />
-      {hasChecklist && (
-        <SpecCharm
-          count={specCount}
-          bonus={view ? view.specBonus : tally.specBonus}
-          before={!view && p?.legal ? held : null}
-          ticking={view?.stage === 'specs'}
-          waiting={!!view && view.specAt < 0}
-        />
-      )}
+      {/* On a short screen it gives way while a play is looked at (app.css): Inspect's notes
+          say which sets and checklist lines the play would change. */}
+      <div class="score-detail">
+        <h3>Sets</h3>
+        <SetList sets={sets} gained={gained} lost={p?.legal && !view ? p.setsLost : []} />
+        {hasChecklist && (
+          <SpecCharm
+            count={specCount}
+            bonus={view ? view.specBonus : tally.specBonus}
+            before={!view && p?.legal ? held : null}
+            ticking={view?.stage === 'specs'}
+            waiting={!!view && view.specAt < 0}
+          />
+        )}
+      </div>
     </section>
   );
 }

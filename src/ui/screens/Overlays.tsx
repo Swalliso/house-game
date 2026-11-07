@@ -5,7 +5,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { banner, busy, flash, played, skip } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
 import { copyFallback, copyText, toast } from '../hud/actions.ts';
-import { notice } from '../store.ts';
+import { appScreen, notice, run } from '../store.ts';
 
 export function MilestoneBanner() {
   const b = banner.value;
@@ -37,11 +37,25 @@ export function TargetFlash() {
   );
 }
 
+/** Where the run stood when the note came up. */
+let noteAt: { note: object; week: number; screen: string } | null = null;
+
+/**
+ * A note for the player ("Replayed 58 actions."). In the game it sits over the controls strip,
+ * never over the lot's street-side rows or the shop's offers, and it goes once the run moves
+ * on from where it came up (a week played, the shop, a change order), or with its ✕.
+ */
 export function Notice() {
   const n = notice.value;
+  const s = run.value;
+  useEffect(() => {
+    if (!n) return;
+    if (noteAt?.note !== n) noteAt = { note: n, week: s.week, screen: s.screen };
+    else if (noteAt.week !== s.week || noteAt.screen !== s.screen) notice.value = null;
+  }, [n, s.week, s.screen]);
   if (!n) return null;
   return (
-    <div class="notice" role="status">
+    <div class={appScreen.value === 'game' ? 'notice in-game' : 'notice'} role="status">
       <span>{n.text}</span>
       {n.oldCode && (
         <button type="button" onClick={() => void copyText(n.oldCode!, 'Old run code copied')}>

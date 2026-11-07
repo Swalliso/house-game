@@ -3,27 +3,32 @@
 // From M2 it also shows a piece's layout facts (tags, regions, view, links, fenced yards), its
 // timers, unmet requirements, budget, and what the demolish tool would remove. From M4a, the
 // checklist lines a play would turn on or off, and Renovations (D-098). From M4b, a running
-// restriction a placement would break, and whose a member's room is. The board's terms
-// (regions, requirements, links, timers, Renovate) explain themselves on hover (D-077).
+// restriction a placement would break, whose a member's room is, where a granted tag comes from
+// ("Dark · from Eternal night"), and the sets a demolition or a tool would break. The board's
+// terms (regions, requirements, links, timers, Renovate) explain themselves on hover (D-077).
 
 import type { ComponentChildren } from 'preact';
 import {
   cardText,
   CONTENT,
+  definite,
   fixtureText,
   glossary,
   rewardText,
   regionText,
   rules,
   SCORE_LABELS,
+  sourceName,
   terrainAt,
   type BreakdownLine,
   type ChangeOrderId,
+  type ModSource,
   type PieceId,
   type PieceInfo,
   type Region,
   type ReservePiece,
-  type Tag,
+  type SetScore,
+  type TagSource,
   type Term,
   type ToolId,
 } from '../../rules/index.ts';
@@ -91,11 +96,17 @@ function regionWords(text: string, region: Region): ComponentChildren {
   return term ? withTerm(text, term) : text;
 }
 
-/** Tags the layout gives, rather than the card: worth pointing out. */
-const LAYOUT_TAG_TITLE: Partial<Record<Tag, string>> = {
-  Dark: 'Interior rooms are Dark',
-  Sunny: 'On the sunny side',
-};
+/** A tag granted by a modifier (M4b): its fixture, a blueprint, or a change order's phase effect. */
+const isGrant = (s: TagSource): s is ModSource =>
+  s.kind !== 'card' && s.kind !== 'interior' && s.kind !== 'sunny';
+
+/** Why a piece has a tag its card doesn't give it, for the chip's tip. */
+function tagReason(s: TagSource): string | null {
+  if (s.kind === 'card') return null;
+  if (s.kind === 'interior') return 'Interior rooms are Dark';
+  if (s.kind === 'sunny') return 'On the sunny side';
+  return `From ${sourceName(CONTENT, s)}`;
+}
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -155,24 +166,67 @@ function Timers({ lines }: { lines: readonly string[] }) {
   );
 }
 
-function TagChips({ tags, own }: { tags: readonly Tag[]; own: readonly Tag[] }) {
-  if (tags.length === 0) return null;
+/**
+ * A placed piece's tags, from the rules' sources for each. One its card gives is plain. One the
+ * layout gives (an interior room's Dark, a sunny tile's Sunny) is bold, with why on hover. One
+ * a modifier grants says where it's from in its own words: "Dark · from Eternal night", "Sunny ·
+ * from Skylight" (M4b).
+ */
+function TagChips({ info }: { info: PieceInfo }) {
+  if (info.tags.length === 0) return null;
   return (
     <p class="chips" aria-label="Tags">
-      {tags.map((t) => {
-        const fromLayout = !own.includes(t);
+      {info.tags.map((t) => {
+        const sources = info.tagSources[t] ?? [];
+        const own = sources.some((s) => s.kind === 'card');
+        const granted = own ? [] : sources.filter(isGrant);
+        const why = own ? [] : sources.flatMap((s) => tagReason(s) ?? []);
         const special = t === 'Dark' || t === 'Sunny';
+        const cls = ['chip', special ? `chip-${t.toLowerCase()}` : '', own ? '' : 'from-layout'];
         return (
           <span
             key={t}
-            class={`chip ${special ? `chip-${t.toLowerCase()}` : ''} ${fromLayout ? 'from-layout' : ''}`}
-            title={fromLayout ? LAYOUT_TAG_TITLE[t] : undefined}
+            class={cls.filter(Boolean).join(' ')}
+            title={why.length > 0 ? why.join(' · ') : undefined}
           >
             {t}
+            {granted.length > 0 && (
+              <span class="chip-from">
+                {' '}
+                · from {granted.map((s) => sourceName(CONTENT, s)).join(', ')}
+              </span>
+            )}
           </span>
         );
       })}
     </p>
+  );
+}
+
+/**
+ * The sets a play, a demolition, or a tool would complete (★) or break (✕, orange), with what
+ * each pays every week it holds.
+ */
+function SetChanges({ gained, lost }: { gained: readonly SetScore[]; lost: readonly SetScore[] }) {
+  const { points: COMFORT, mult: CHARM } = SCORE_LABELS;
+  return (
+    <>
+      {gained.map((set) => (
+        <p key={set.key} class="set-note good">
+          ★ Completes {CONTENT.sets[set.set].name}: +{set.points} {COMFORT}, +{formatMult(set.mult)}{' '}
+          {CHARM}
+        </p>
+      ))}
+      {lost.map((set) => (
+        <p key={set.key} class="set-note bad">
+          <span class="mark" aria-hidden="true">
+            ✕{' '}
+          </span>
+          Breaks: {CONTENT.sets[set.set].name} (−{set.points} {COMFORT}, −{formatMult(set.mult)}{' '}
+          {CHARM})
+        </p>
+      ))}
+    </>
   );
 }
 
@@ -337,6 +391,7 @@ function ToolInfo({ id, i }: { id: ToolId; i: number }) {
           {p.reason}
         </p>
       )}
+      {p?.ok && <SetChanges gained={p.setsGained} lost={p.setsLost} />}
       {p?.ok && <SpecChanges gained={p.specsGained} lost={p.specsLost} />}
       {p?.ok && (
         <p class="total-line">
@@ -426,7 +481,7 @@ function PlacingInfo() {
     // The rules say why: not at the limit yet, the wrong room, or fully renovated.
     return (
       <>
-        <h2>{renovate ? `Renovate the ${roomName}?` : name}</h2>
+        <h2>{renovate ? `Renovate ${definite(roomName)}?` : name}</h2>
         <p class="reason">
           <span aria-hidden="true">✕ </span>
           {p.reason}
@@ -456,7 +511,7 @@ function PlacingInfo() {
         </h2>
       ) : renovate ? (
         <h2>
-          Renovate the {roomName} <span class="earns">{earns}</span>
+          Renovate {definite(roomName)} <span class="earns">{earns}</span>
         </h2>
       ) : (
         <h2>
@@ -471,8 +526,8 @@ function PlacingInfo() {
           <span class="mark" aria-hidden="true">
             {'★'.repeat(p.renovates.level)}{' '}
           </span>
-          <Tip term="renovate">Renovate</Tip>: this {roomName} goes to level {p.renovates.level} (
-          {RENOVATE_GAIN})
+          <Tip term="renovate">Renovate</Tip>: {definite(roomName, 'this')} goes to level{' '}
+          {p.renovates.level} ({RENOVATE_GAIN})
         </p>
       )}
       {p.replaces && (
@@ -497,17 +552,7 @@ function PlacingInfo() {
           </ul>
         </>
       )}
-      {p.setsGained.map((set) => (
-        <p key={set.key} class="set-note good">
-          ★ Completes {CONTENT.sets[set.set].name}: +{set.points} {SCORE_LABELS.points}, +
-          {formatMult(set.mult)} {SCORE_LABELS.mult}
-        </p>
-      ))}
-      {p.setsLost.map((set) => (
-        <p key={set.key} class="set-note bad">
-          ✕ Breaks {CONTENT.sets[set.set].name}
-        </p>
-      ))}
+      <SetChanges gained={p.setsGained} lost={p.setsLost} />
       <SpecChanges gained={p.specsGained} lost={p.specsLost} />
       {p.xMults.map((x) => (
         <p key={`${x.source.kind}:${x.label}`} class="set-note sparkle">
@@ -601,6 +646,7 @@ function DemolishInfo() {
     <>
       <h2>Demolish {name ?? 'this'}?</h2>
       <p class="muted">No refund. Points already earned stay. {left}</p>
+      <SetChanges gained={d.setsGained} lost={d.setsLost} />
       <SpecChanges gained={d.specsGained} lost={d.specsLost} />
       <p class="total-line">
         This week: {formatNumber(d.before.total)} → <strong>{formatNumber(d.after.total)}</strong>{' '}
@@ -662,11 +708,7 @@ export function Inspect() {
               <Tip term="renovate">Renovated</Tip>: level {piece.level}
             </p>
           )}
-          {info ? (
-            <TagChips tags={info.tags} own={def.tags} />
-          ) : (
-            <p class="muted">{def.tags.join(' · ')}</p>
-          )}
+          {info ? <TagChips info={info} /> : <p class="muted">{def.tags.join(' · ')}</p>}
           <Unmet why={score.unmet} />
           <Lines lines={score.lines} voided={score.unmet !== undefined} />
           {score.pct !== 0 && score.points > 0 && score.unmet === undefined && (

@@ -373,11 +373,32 @@ describe('Moving Truck (move)', () => {
       cells: [{ x: 2, y: 2 }],
       specsGained: [],
       specsLost: [],
+      setsGained: [],
+      setsLost: [],
     });
     // And the move does what it previewed.
     const { state } = R.apply(s, moveTo(0, 2, 2, 2));
     expect(R.currentTally(state).total).toBe(6);
     expect(earnedOf(R, state, 2)).toBe(3);
+  });
+
+  it('previewTool names a set the move would break, or complete', () => {
+    // An end Bedroom (uid 3) moved below the other: the Bathroom hub no longer touches both, so
+    // the Jack-and-Jill goes. The house stays in one piece.
+    const s = build(JACK_AND_JILL, { tools: ['movingTruck'] });
+    const set = R.currentTally(s).sets[0]!;
+    expect(set).toMatchObject({ set: 'jackAndJill', points: 10, mult: 50 });
+    const away = moveTo(0, 3, 0, 2);
+    expect(R.previewTool(s, away)).toMatchObject({ ok: true, setsGained: [], setsLost: [set] });
+    const { state } = R.apply(s, away);
+    expect(R.currentTally(state).sets).toEqual([]);
+    // Moving it back beside the Bathroom completes it again.
+    const back = { ...state, supplies: [tool('movingTruck')] };
+    expect(R.previewTool(back, moveTo(0, 3, 3, 0))).toMatchObject({
+      ok: true,
+      setsGained: [set],
+      setsLost: [],
+    });
   });
 
   it('previewTool of an illegal move gives its reason and no change', () => {
@@ -393,6 +414,8 @@ describe('Moving Truck (move)', () => {
       cells: [],
       specsGained: [],
       specsLost: [],
+      setsGained: [],
+      setsLost: [],
     });
   });
 });
@@ -464,6 +487,8 @@ describe('Rush Order and Open House Party (weekModifiers)', () => {
       cells: [],
       specsGained: [],
       specsLost: [],
+      setsGained: [],
+      setsLost: [],
     });
   });
 
@@ -666,6 +691,8 @@ describe('Fertilizer (advanceTimers)', () => {
       cells: [],
       specsGained: [],
       specsLost: [],
+      setsGained: [],
+      setsLost: [],
     });
     const used = R.apply(s, use(0)).state;
     expect(R.pieceTimers(used, 2)).toEqual(['Pays +12 this week']);
@@ -804,6 +831,9 @@ describe('Dumpster (reward) and Remodel Plans (levelSet)', () => {
       cells: [],
       specsGained: [],
       specsLost: [],
+      // The same instance at a higher level: neither a new set nor a lost one.
+      setsGained: [],
+      setsLost: [],
     });
     const l2 = R.apply(s, use(0));
     expect(l2.events).toEqual([{ t: 'toolUsed', tool: 'remodelJackAndJill' }]);

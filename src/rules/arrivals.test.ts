@@ -262,8 +262,9 @@ describe('member rooms', () => {
     const [bed, nursery] = s.house.pieces.map((p) => p.uid);
     expect(r.renovateTargets(s, 'hand', 0)).toEqual([bed, nursery]);
     expect(r.renovateTargets(s, 'reserve', 0)).toEqual([]);
+    // A possessive name takes no article: "Grandma’s Room card", not "A Grandma’s Room card".
     expect(r.checkPlay(s, { t: 'renovate', from: 'reserve', i: 0, uid: bed! }).reason).toBe(
-      'A Grandma’s Room card can’t renovate: it’s a household member’s room.',
+      'Grandma’s Room card can’t renovate: it’s a household member’s room.',
     );
     const { events } = r.apply(s, { t: 'renovate', from: 'hand', i: 0, uid: nursery! });
     expect(events[0]).toEqual({

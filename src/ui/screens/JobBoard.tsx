@@ -250,8 +250,14 @@ function ContractCard(props: {
           {(household || arrivals.length > 0) && (
             <section class="contract-section">
               <h3>Household</h3>
+              {household && (
+                <p>
+                  <Tip title={household.name} text={specText(CONTENT, household)}>
+                    {bedroomsText(client)}
+                  </Tip>
+                </p>
+              )}
               {arrivals.length > 0 && <MovingIn arrivals={arrivals} />}
-              {household && <p>{specText(CONTENT, household)}</p>}
             </section>
           )}
         </div>
@@ -308,6 +314,12 @@ function MovingIn({ arrivals }: { arrivals: readonly ArrivalDef[] }) {
       .
     </p>
   );
+}
+
+/** "2–3 Bedrooms to start": the household's opening range (the full rule is in its tip). */
+function bedroomsText(client: ClientDef): string {
+  const [min, max] = client.household.bedrooms;
+  return `${min === max ? min : `${min}–${max}`} Bedrooms to start`;
 }
 
 /** Whether a taste helps (a like, a bonus) or hurts (a dislike). */

@@ -52,7 +52,14 @@ import {
 import { ruleFrom, sourceName, type ActiveMod } from './modifiers.ts';
 import { matchesNeighbor, matchesPiece, meetsCondition } from './selectors.ts';
 import { matchSets } from './sets.ts';
-import { conditionText, countedNames, neighborName, ordinal, regionText } from './text.ts';
+import {
+  conditionText,
+  countedNames,
+  earnTargetText,
+  neighborName,
+  ordinal,
+  regionText,
+} from './text.ts';
 
 /** a / b rounded half up, for non-negative integers. */
 export function roundHalfUp(numerator: number, denominator: number): number {
@@ -124,6 +131,31 @@ interface Acc {
   mods: BreakdownLine[];
   /** Where each source piece type's aura line sits in `auras`, keyed `<piece id>|<op>`. */
   auraAt: Map<string, number>;
+}
+
+/**
+ * Each `earn` modifier's breakdown label: its source's name, and, for a source with more than
+ * one (Heat wave's Pools, shade, and Sunny rooms; a client's tastes), what this one is for:
+ * "Heat wave (Sunny rooms)". So a piece's lines can always be told apart, and one effect reads
+ * the same on every piece. A fixture's own-piece line keeps the plain name ("Fireplace").
+ */
+function earnLabels(content: Content, mods: readonly ActiveMod[]): Map<ActiveMod, string> {
+  const earns = mods.filter((m) => m.mod.kind === 'earn');
+  const count = new Map<string, number>();
+  for (const m of earns) {
+    const key = JSON.stringify(m.source);
+    count.set(key, (count.get(key) ?? 0) + 1);
+  }
+  return new Map(
+    earns.map((m) => {
+      const name = sourceName(content, m.source);
+      const what =
+        m.mod.kind === 'earn' && count.get(JSON.stringify(m.source))! > 1
+          ? earnTargetText(content, m.mod.target)
+          : null;
+      return [m, what ? `${name} (${what})` : name];
+    }),
+  );
 }
 
 /** Auras of one kind from several neighbors read as one line: "2 Dining Rooms next door +100%". */
@@ -449,6 +481,7 @@ export function tallyHouse(
   // Percentage modifiers, earnNothing, and budget modifiers, per piece.
   const nothing = new Map<number, string>();
   const budgetPct = new Map<number, number>();
+  const labels = withLines ? earnLabels(content, mods) : null;
   for (const m of mods) {
     const { mod } = m;
     if (mod.kind === 'earn') {
@@ -457,14 +490,7 @@ export function tallyHouse(
         if (!matchesPiece(content, layout, mod.target, piece.uid, m.host)) continue;
         const a = acc.get(piece.uid)!;
         a.pct += mod.pct;
-        if (withLines) {
-          a.mods.push({
-            label: sourceName(content, m.source),
-            op: 'pct',
-            value: mod.pct,
-            from: [],
-          });
-        }
+        if (labels) a.mods.push({ label: labels.get(m)!, op: 'pct', value: mod.pct, from: [] });
       }
     } else if (mod.kind === 'perCountOver') {
       const over = countPieces(content, layout, mod.match, m.host) - mod.over;

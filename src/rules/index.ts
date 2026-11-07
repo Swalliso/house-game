@@ -1541,6 +1541,12 @@ export interface DemolishPreview {
   /** Checklist lines the demolition would turn on, and off (spec ids): "loses One Kitchen". */
   specsGained: readonly string[];
   specsLost: readonly string[];
+  /**
+   * Sets the demolition would complete, and break: "breaks Jack-and-Jill". A set that re-forms
+   * from other pieces (the same set, new members) is neither.
+   */
+  setsGained: readonly SetScore[];
+  setsLost: readonly SetScore[];
 }
 
 /**
@@ -1653,10 +1659,22 @@ export interface TypeLimit {
   count: number;
 }
 
+/**
+ * Where a piece's effective tag comes from: its card, the layout (an interior room is Dark, a
+ * piece on a sunny tile is Sunny), or a modifier that grants it (its fixture, a blueprint, or a
+ * change order's phase effect, M4b), so the inspect panel can say: "Dark · from Eternal night".
+ */
+export type TagSource = { kind: 'card' } | { kind: 'interior' } | { kind: 'sunny' } | ModSource;
+
 /** What the inspect panel says about a placed piece's place in the layout. */
 export interface PieceInfo {
-  /** Effective tags: its own, plus Dark (interior) and Sunny (on a sunny tile). */
+  /**
+   * Effective tags: its own, plus Dark (interior) and Sunny (on a sunny tile), then those
+   * modifiers grant, less those they remove.
+   */
   tags: readonly Tag[];
+  /** Each effective tag's sources, in that order: card, layout, then each modifier granting it. */
+  tagSources: Readonly<Partial<Record<Tag, readonly TagSource[]>>>;
   /** For rooms: whether it touches the outside. */
   side: 'exterior' | 'interior' | null;
   /** Regions every tile of it is in. */
@@ -1722,11 +1740,13 @@ export {
 } from './grid.ts';
 export { isSunny, terrainAt } from './lot.ts';
 export {
+  article,
   blueprintText,
   cardText,
   changeOrderText,
   conditionText,
   crateText,
+  definite,
   effectText,
   fixtureText,
   glossary,
@@ -1742,7 +1762,7 @@ export {
 } from './text.ts';
 export type { Term } from './text.ts';
 export { earnedFor, roundHalfUp, weekTotal } from './scoring.ts';
-export { ruleValue } from './modifiers.ts';
+export { ruleValue, sourceName } from './modifiers.ts';
 export { meetsHouse, outlineOf, progressOf } from './conditions.ts';
 export { jobBoard, type Contract } from './jobs.ts';
 export { fitsText } from './fixtures.ts';

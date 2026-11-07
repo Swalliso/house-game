@@ -140,6 +140,53 @@ button:focus-visible,
   flex-direction: column;
   gap: 10px;
 }
+/* The left column never scrolls as a whole: the score panel keeps its height, and the
+   checklist and Inspect share the rest, each scrolling on its own if it must. The checklist
+   comes first, with Inspect kept to a few lines; while a play is looked at (placing,
+   installing, a tool, demolishing: .looking, App.tsx) Inspect comes first, and the checklist
+   keeps a few rows and scrolls the ones that flip into view (Checklist.tsx). */
+.left > .score-panel {
+  flex: none;
+}
+.left > .checklist {
+  flex: 0 1 auto;
+  min-height: 96px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+.left > .inspect {
+  flex: 0 1000 auto;
+  min-height: 160px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+/* Only "Point at anything…": just its own two lines, with no room kept for more. */
+.left > .inspect:has(> p.muted:only-child) {
+  flex-shrink: 0;
+  min-height: 0;
+}
+.left.looking > .checklist {
+  flex-shrink: 1000;
+}
+.left.looking > .inspect {
+  flex-shrink: 1;
+  min-height: 0;
+}
+/* On a short screen (1280×720) that still isn't room for a long preview, so while a play is
+   looked at the score panel keeps to its equation (Inspect's notes say which sets, lines, and
+   budget the play would change, and the checklist marks the lines), and the checklist keeps
+   its name and a row or two. */
+@media (max-height: 820px) {
+  .left.looking .score-detail,
+  .left.looking .score-panel .budget-line {
+    display: none;
+  }
+  .left.looking > .checklist {
+    min-height: 72px;
+  }
+}
 .center {
   grid-column: 2;
   grid-row: 2;
@@ -215,6 +262,15 @@ h3 {
   font-size: 12px;
   opacity: 0.75;
   font-family: ui-monospace, Menlo, monospace;
+}
+/* The run's client and crew, under the name (TopBar.tsx): small, so the bar stays one row at
+   1280px with Complete early showing. */
+.topbar .brand-who {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.2;
+  color: #f3e2cc;
 }
 .phase {
   line-height: 1.25;
@@ -748,7 +804,6 @@ h3 {
 
 .inspect {
   font-size: 14px;
-  min-height: 160px;
 }
 .inspect p {
   margin: 4px 0;
@@ -1085,6 +1140,25 @@ h3 {
 }
 .notice .close {
   padding: 2px 8px;
+}
+/* In the game, over the controls strip at the bottom (the build label keeps its corner), so
+   it never covers the lot or the shop's offers. */
+.notice.in-game {
+  bottom: 0;
+  left: 0;
+  right: 0;
+  transform: none;
+  max-width: none;
+  justify-content: center;
+  padding: 2px 12px;
+  border-width: 1px 0 0;
+  border-radius: 0;
+  box-shadow: 0 -4px 12px rgb(60 40 20 / 0.12);
+  font-size: 13px;
+}
+.notice.in-game button {
+  padding: 1px 8px;
+  font-size: 12px;
 }
 .modal-backdrop {
   position: fixed;

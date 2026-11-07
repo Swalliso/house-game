@@ -99,6 +99,14 @@ export const FEEL = {
   demolishMs: 500,
 
   /**
+   * A piece growing into another at a week's start (the Nursery into a Kids' Room, a Sapling
+   * into a Tree): it wobbles, and its popup holds as a beat of `stepMs` would. In a phase's first
+   * week (as the shop closes) a household member may arrive too: the growth waits until their
+   * doorbell has rung and their cards have landed (FEEL.arrival), `afterArrivalMs` in all.
+   */
+  transform: { stepMs: 700, afterArrivalMs: 1000 },
+
+  /**
    * How long the tally waits on a milestone banner before playing what comes next. When the
    * shop or a change order follows, it waits the banner out instead, in real time at any tally
    * speed (holding hurries it, a click skips it), so the banner is read before the sheet opens

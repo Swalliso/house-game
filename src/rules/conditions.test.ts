@@ -925,6 +925,53 @@ describe('progressOf', () => {
     expect(progress(suite, { set: 'suite' })).toEqual([{ text: 'Suite 1 of 1', ok: true }]);
   });
 
+  it('never asks a fenced yard for fewer tiles than fencedYardMin: no smaller yard is fenced', () => {
+    // The Hendersons' "any fenced yard" is min 4 under the real fencedYardMin of 10 (D-069);
+    // here, min 2 under TEST_BALANCE's 4.
+    expect(TEST_BALANCE.fencedYardMin).toBe(4);
+    const any: HouseCondition = { fencedYardTiles: { min: 2 } };
+    expect(progress(layoutOf(row('bedroom', 2)), any)).toEqual([
+      { text: '0 of 4 tiles', ok: false },
+    ]);
+    // A 3-tile pocket isn't a fenced yard, so it's still 0 of 4.
+    const three = layoutOf(
+      [
+        ['bedroom', 0, 0],
+        ['bedroom', 2, 0],
+        ['bathroom', 3, 2],
+        ['fence', 0, 3],
+      ],
+      [],
+      emptyRows(4, 4),
+    );
+    expect(progress(three, any)).toEqual([{ text: '0 of 4 tiles', ok: false }]);
+    // Any real yard is at least that big, and counts.
+    expect(progress(twoYards(), any)).toEqual([{ text: '6 of 4 tiles', ok: true }]);
+  });
+
+  it('says what an adjacent pair is missing: one of the two, or only their touching', () => {
+    const pair: HouseCondition = { adjacentPair: [KITCHEN, DINING] };
+    expect(progress(layoutOf([]), pair)).toEqual([
+      { text: 'no Kitchen or Dining Room yet', ok: false },
+    ]);
+    expect(progress(layoutOf([['kitchen', 0, 0]]), pair)).toEqual([
+      { text: 'no Dining Room yet', ok: false },
+    ]);
+    expect(progress(layoutOf([['diningRoom', 0, 0]]), pair)).toEqual([
+      { text: 'no Kitchen yet', ok: false },
+    ]);
+    const apart = layoutOf([
+      ['kitchen', 0, 0],
+      ['diningRoom', 5, 0],
+    ]);
+    expect(progress(apart, pair)).toEqual([{ text: 'not yet beside each other', ok: false }]);
+    const beside = layoutOf([
+      ['kitchen', 0, 0],
+      ['diningRoom', 2, 0],
+    ]);
+    expect(progress(beside, pair)).toEqual([{ text: 'beside each other', ok: true }]);
+  });
+
   it('reads a ratio as "<noun> have of need"', () => {
     expect(progress(household(3, 1), BATH_RATIO)).toEqual([
       { text: 'Bathrooms 1 of 2', ok: false },
@@ -994,7 +1041,7 @@ describe('progressOf', () => {
     ]);
   });
 
-  it('joins an and’s parts, shows an or’s first met part, and has none for not or adjacentPair', () => {
+  it('joins an and’s parts, shows an or’s first met part, and has none for not', () => {
     // Two Living Rooms and a Dining Room: A living room or two.
     const layout = layoutOf([
       ['livingRoom', 0, 0],
@@ -1021,7 +1068,10 @@ describe('progressOf', () => {
     expect(progress(layout, either)).toEqual([{ text: '1 Dining Room (≥ 1)', ok: true }]);
     expect(progress(layoutOf([]), either)).toEqual([]); // none met
     expect(progress(layout, { not: { count: POOL, min: 1 } })).toEqual([]);
-    expect(progress(layout, { adjacentPair: [LIVING, DINING] })).toEqual([]);
+    // An adjacent pair that holds says so (its misses are in their own test above).
+    expect(progress(layout, { adjacentPair: [LIVING, DINING] })).toEqual([
+      { text: 'beside each other', ok: true },
+    ]);
   });
 
   it('shows the current stage only, and nothing before the first', () => {

@@ -1,12 +1,22 @@
 /* The client's checklist (M4a): the client's tastes, the house rules, then the client's
    wishes. Met lines are compact; a line that doesn't hold, or that the play being looked at
    would flip, shows its progress. Good and bad are blue and orange with a mark, never color
-   alone. A row's flash in the tally is animated from Checklist.tsx, with FEEL's numbers. */
+   alone. A row's flash in the tally is animated from Checklist.tsx, with FEEL's numbers. When
+   the left column is short the checklist scrolls on its own (app.css), under its name. */
 
 .checklist h2 {
   display: flex;
   align-items: baseline;
   gap: 8px;
+  /* Stays at the top while the lines scroll under it, over the section's padding (a sticky
+     offset counts from inside the scroller's padding, hence −12px). */
+  position: sticky;
+  top: -12px;
+  z-index: 2;
+  margin: -12px -14px 2px;
+  padding: 12px 14px 6px;
+  /* Its last few pixels fade, so a row scrolling under it slips away rather than being cut. */
+  background: linear-gradient(var(--panel) calc(100% - 6px), rgb(251 245 234 / 0));
 }
 .checklist .check-count {
   margin-left: auto;
@@ -15,22 +25,29 @@
   color: var(--muted);
 }
 
-/* The client's tastes, under the name: ▲ a like or a bonus, ▼ a dislike. */
+/* The client's tastes, under the name, run on as one paragraph to keep the panel short: ▲ a
+   like or a bonus, ▼ a dislike. */
 .checklist .tastes {
   margin: -4px 0 4px;
   font-size: 12px;
   line-height: 1.35;
 }
 .checklist .taste {
-  display: flex;
-  gap: 5px;
+  display: inline;
+  margin-right: 10px;
+}
+.checklist .taste:last-child {
+  margin-right: 0;
+}
+.checklist .taste-lead {
+  white-space: nowrap;
 }
 .checklist .taste-mark {
-  flex: none;
+  display: inline-block;
   width: 12px;
+  margin-right: 3px;
   text-align: center;
   font-size: 10px;
-  line-height: 16px;
 }
 .checklist .taste.like .taste-mark {
   color: var(--good);
@@ -52,6 +69,53 @@
   font-weight: 600;
   color: var(--muted);
   margin: 6px 0 1px;
+}
+/* A house-rules group whose lines all hold, as one row: ▸ its name, ✓ n of n, its Charm. It
+   opens on a click (▾ folds it again). Its mark sits in the lines' mark column. */
+.checklist .check-fold {
+  display: grid;
+  grid-template-columns: 14px auto 1fr auto;
+  column-gap: 6px;
+  align-items: baseline;
+  width: calc(100% + 8px);
+  margin: 4px -4px 0;
+  padding: 2px 4px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  font-size: 11px;
+  text-align: left;
+  color: var(--muted);
+}
+.checklist .check-fold:hover {
+  background: #f3e9d6;
+}
+.checklist .check-fold:active {
+  transform: none;
+}
+.checklist .check-fold .fold-mark {
+  text-align: center;
+  font-size: 12px;
+}
+.checklist .check-fold .fold-name {
+  font-weight: 600;
+}
+.checklist .check-fold .fold-count {
+  font-weight: 700;
+  color: var(--good-text);
+}
+.checklist .check-fold .charm {
+  justify-self: end;
+  color: var(--charm-text);
+  font-weight: 700;
+  font-size: 12px;
+}
+.checklist .check-fold .charm.pending {
+  opacity: 0.35;
+}
+.checklist .check-group.folded + .check-group .check-fold,
+.checklist .check-group.folded + .check-group h4 {
+  margin-top: 1px;
 }
 .checklist ul {
   list-style: none;

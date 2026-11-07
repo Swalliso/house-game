@@ -347,9 +347,26 @@ export function progressOf(
     const bad = countMatching(content, layout, sel);
     return [{ text: `${bad} ${noun(sel, bad)} (none allowed)`, ok }];
   }
-  if ('adjacentPair' in cond) return [];
+  if ('adjacentPair' in cond) {
+    // What's missing: one of the two, or only their touching.
+    if (ok) return [{ text: 'beside each other', ok }];
+    const [a, b] = cond.adjacentPair;
+    const noA = countMatching(content, layout, a) === 0;
+    const noB = countMatching(content, layout, b) === 0;
+    const missing =
+      noA && noB
+        ? `no ${noun(a, 1)} or ${noun(b, 1)} yet`
+        : noA
+          ? `no ${noun(a, 1)} yet`
+          : noB
+            ? `no ${noun(b, 1)} yet`
+            : 'not yet beside each other';
+    return [{ text: missing, ok }];
+  }
   if ('fencedYardTiles' in cond) {
-    return [{ text: `${largestFencedYard(layout)} of ${cond.fencedYardTiles.min} tiles`, ok }];
+    // A yard under fencedYardMin isn't fenced at all (D-069), so that's the least it can need.
+    const need = Math.max(cond.fencedYardTiles.min, content.balance.fencedYardMin);
+    return [{ text: `${largestFencedYard(layout)} of ${need} tiles`, ok }];
   }
   if ('group' in cond) {
     return [{ text: `${largestGroup(content, layout, cond.group)} of ${cond.minTiles} tiles`, ok }];

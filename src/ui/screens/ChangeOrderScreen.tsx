@@ -16,10 +16,14 @@ import {
 import { audio } from '../audio/audio.ts';
 import { busy, orderStamp, type OrderStamp } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
-import { ProgressParts } from '../hud/Checklist.tsx';
+import { orderTerms, ProgressParts } from '../hud/Checklist.tsx';
 import { answerChangeOrder, run } from '../store.ts';
 import './change-order.css';
 
+/**
+ * The sheet's tag. It shows as the phase it runs through begins (the top bar already names
+ * it), so a phase effect is "This phase", as its sentence says (change-orders.ts).
+ */
 export const KIND_LABEL: Readonly<Record<ChangeOrderKind, string>> = {
   request: 'A request',
   restriction: 'A restriction',
@@ -117,7 +121,8 @@ export function ChangeOrderScreen() {
           “{view.text}”
         </p>
         <ul class="co-terms">
-          {view.terms.map((t) => (
+          {/* A phase effect's say what it changes; "Until" below says when (this phase). */}
+          {orderTerms(view.id, view.terms).map((t) => (
             <li key={t}>{t}</li>
           ))}
         </ul>
