@@ -68,6 +68,8 @@ function play(
   const list = inFlight(uid, start).filter((f) => f.part !== part);
   list.push({ part, frames, options, start });
   flights.set(uid, list);
+  // Forget the finished ones of pieces that won't play again (demolished, moved away).
+  if (flights.size > 64) for (const u of [...flights.keys()]) inFlight(u, start);
   get(uid, part)?.animate(frames, options);
 }
 
