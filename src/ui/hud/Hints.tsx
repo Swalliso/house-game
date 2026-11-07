@@ -1,12 +1,12 @@
 // First-time hints (D-045, M4b): a short card the first time each idea comes up, dismissed
 // with "Got it" and remembered in this browser (UI only, never game state). One shows at a
-// time, never during a tally. The numbers come from the rules' glossary, so they follow the
-// content.
+// time, never during a tally or under a banner (an arrival's). The numbers come from the
+// rules' glossary, so they follow the content.
 
 import { signal } from '@preact/signals';
 import { CONTENT, glossary, SCORE_LABELS } from '../../rules/index.ts';
 import { BUILD_CHANNEL } from '../build-info.ts';
-import { busy } from '../fx/director.ts';
+import { banner, busy } from '../fx/director.ts';
 import { appScreen, earlyOffer, run } from '../store.ts';
 import './hints.css';
 
@@ -99,7 +99,7 @@ const HINTS: Record<HintId, Hint> = {
 
 /** Which hint (if any) the run calls for now, first unseen in this order. */
 function current(seen: ReadonlySet<string>): HintId | null {
-  if (appScreen.value !== 'game' || busy.value) return null;
+  if (appScreen.value !== 'game' || busy.value || banner.value) return null;
   const s = run.value;
   const building = s.screen === 'build';
   const fixtureInSight =
@@ -110,8 +110,10 @@ function current(seen: ReadonlySet<string>): HintId | null {
     ['checklist', building && s.week >= 2],
     ['early', building && earlyOffer.value.ok],
     ['fixture', building && fixtureInSight],
-    ['changeOrder', (s.screen as string) === 'changeOrder'],
-    ['arrival', building && s.reserve.some((r) => 'arrival' in r && !!r.arrival)],
+    // M4b: the sheet is up (it waits for the milestone's beats), and a member's cards are in
+    // the reserve.
+    ['changeOrder', s.screen === 'changeOrder'],
+    ['arrival', building && s.reserve.some((r) => r.arrival !== undefined)],
   ];
   for (const [id, now] of due) if (now && !seen.has(id)) return id;
   return null;

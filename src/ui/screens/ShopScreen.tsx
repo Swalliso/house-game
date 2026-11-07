@@ -1,14 +1,18 @@
 // The shop between milestones (D-051; implementation-plan.md §7, M3a): a section per kind of
 // good with rarity borders and labels, the sale, the rising refresh, the services (rerolls,
 // demolitions, and D-076's strike), and Leave, which starts the next milestone. Selling is in
-// the inventory beside it. The UI never prices anything: the rules' shopOffers() does.
+// the inventory beside it. The UI never prices anything: the rules' shopOffers() does. Each
+// fixture, on sale or in a crate, says what it's worth in your house (D-103): the rules'
+// fixtureValue() does that.
 
-import { signal } from '@preact/signals';
+import { computed, signal } from '@preact/signals';
 import { useEffect } from 'preact/hooks';
 import {
   CONTENT,
   rules,
   type CardType,
+  type FixtureId,
+  type FixtureValue,
   type OfferView,
   type ServiceId,
 } from '../../rules/index.ts';
@@ -16,7 +20,14 @@ import { audio } from '../audio/audio.ts';
 import { busy } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
 import { BudgetCount } from '../hud/BudgetCount.tsx';
-import { GoodBody, goodName, goodRarity, offerGood, type GoodRef } from '../hud/goods.tsx';
+import {
+  FixtureWorth,
+  GoodBody,
+  goodName,
+  goodRarity,
+  offerGood,
+  type GoodRef,
+} from '../hud/goods.tsx';
 import { Tip } from '../hud/Tip.tsx';
 import { FIXTURE_GLYPHS, TOOL_GLYPHS } from '../sprites.ts';
 import { buy, inspected, leaveShop, pickOption, refreshShop, run } from '../store.ts';
@@ -28,6 +39,25 @@ export const shopHidden = signal(false);
 const striking = signal<number | null>(null);
 /** Offers just bought, for their pop. */
 const justBought = signal<number | null>(null);
+
+/**
+ * D-103: what each fixture on offer (or in an open crate) is worth in your house, from the
+ * rules' fixtureValue(): once per state, not per render.
+ */
+const fixtureValues = computed(() => {
+  const s = run.value;
+  const out = new Map<FixtureId, FixtureValue | null>();
+  if (s.screen !== 'shop') return out;
+  for (const o of [...(s.offers?.shop?.offers ?? []), ...(s.offers?.pick?.options ?? [])]) {
+    if (o.kind === 'fixture' && !out.has(o.id)) out.set(o.id, rules.fixtureValue(s, o.id));
+  }
+  return out;
+});
+
+/** A fixture's line: its best host in your house and what it would add (D-103). */
+function Worth({ id }: { id: FixtureId }) {
+  return <FixtureWorth value={fixtureValues.value.get(id) ?? null} />;
+}
 
 const noFocus = (e: MouseEvent) => e.preventDefault();
 
@@ -96,6 +126,7 @@ function OfferCard({ o }: { o: OfferView }) {
       ) : (
         o.offer.kind === 'service' && <p class="service-text">{SERVICE_TEXT[o.offer.service]}</p>
       )}
+      {o.offer.kind === 'fixture' && !sold && <Worth id={o.offer.id} />}
       <footer>
         {sold ? (
           <span class="sold-stamp">Sold</span>
@@ -220,6 +251,7 @@ function CrateOption({ good, i, ok }: { good: GoodRef; i: number; ok: boolean })
         <h3>{goodName(good)}</h3>
       </header>
       <GoodBody good={good} />
+      {good.kind === 'fixture' && <Worth id={good.id} />}
       <footer>
         <button
           type="button"

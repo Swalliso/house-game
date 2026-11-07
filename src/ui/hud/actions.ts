@@ -7,6 +7,7 @@ import { busy, skip } from '../fx/director.ts';
 import {
   demolishArmed,
   endWeek,
+  inProgress,
   openJobBoard,
   notice,
   preview,
@@ -56,7 +57,7 @@ export function openSettings(): void {
 
 export function startNewRun(): void {
   const s = run.value;
-  const midRun = (s.screen === 'build' || s.screen === 'shop') && s.house.pieces.length > 0;
+  const midRun = inProgress(s) && s.house.pieces.length > 0;
   if (midRun && !window.confirm('Start a new run? This one will be lost.')) return;
   notice.value = null;
   openJobBoard();

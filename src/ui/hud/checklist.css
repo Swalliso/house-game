@@ -143,3 +143,37 @@
   color: var(--bad-text);
   font-size: 18px;
 }
+
+/* M4b: who's still to move in, under the household's lines, until they arrive. */
+.check-arrival {
+  display: grid;
+  grid-template-columns: 14px 1fr;
+  column-gap: 6px;
+  align-items: baseline;
+  padding: 2px 4px;
+  margin: 0 -4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.check-arrival .check-mark {
+  text-align: center;
+}
+
+/* M4b: the change orders running. What one pays sits where a line's Charm does; a phase
+   effect's mark is plain, since it's neither met nor missed. */
+.check-line.order .order-pays {
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.check-line.order.phase .check-mark {
+  color: var(--muted);
+}
+/* A change order its milestone resolved, until the next phase's first week is played: the
+   result word in blue (met, kept) or orange (missed, broken), beside its ✓ or ✕. */
+.check-line.order.resolved.met .order-result {
+  color: var(--good-text);
+}
+.check-line.order.resolved.lost .order-result {
+  color: var(--bad-text);
+}

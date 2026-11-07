@@ -115,6 +115,8 @@ function CardView({ card, i }: { card: CardData; i: number }) {
           {text.effects.map((t) => (
             <li key={t}>{t}</li>
           ))}
+          {/* A member's room (M4b): whose it is. Only the ?debug panel deals one. */}
+          {text.member && <li class="member-note">{text.member}</li>}
         </ul>
       </div>
       <div class="card-foot">

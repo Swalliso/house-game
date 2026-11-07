@@ -2,7 +2,8 @@
 // Readability is in the slice (§2): the exact number on placement, and every piece it changes.
 // From M2 it also shows a piece's layout facts (tags, regions, view, links, fenced yards), its
 // timers, unmet requirements, budget, and what the demolish tool would remove. From M4a, the
-// checklist lines a play would turn on or off, and Renovations (D-098). The board's terms
+// checklist lines a play would turn on or off, and Renovations (D-098). From M4b, a running
+// restriction a placement would break, and whose a member's room is. The board's terms
 // (regions, requirements, links, timers, Renovate) explain themselves on hover (D-077).
 
 import type { ComponentChildren } from 'preact';
@@ -17,9 +18,11 @@ import {
   SCORE_LABELS,
   terrainAt,
   type BreakdownLine,
+  type ChangeOrderId,
   type PieceId,
   type PieceInfo,
   type Region,
+  type ReservePiece,
   type Tag,
   type Term,
   type ToolId,
@@ -44,6 +47,7 @@ import {
   useToolNow,
 } from '../store.ts';
 import { GoodBody, goodName, offerGood, type GoodRef } from './goods.tsx';
+import { arrivalOf, midName } from './household.ts';
 import { Tip } from './Tip.tsx';
 import './hud-m2.css';
 import './hud-m4.css';
@@ -263,6 +267,40 @@ function SpecChanges({ gained, lost }: { gained: readonly string[]; lost: readon
   );
 }
 
+/** A member's room (M4b, D-099): whose it is, that it counts as a Bedroom, and from when. */
+function MemberNote({ id }: { id: PieceId }) {
+  const member = cardText(CONTENT, CONTENT.pieces[id]).member;
+  return member ? <p class="member-note">{member}</p> : null;
+}
+
+/** A card in the reserve's extra slots (M4b): a household member's or the crew's. */
+function ExtraSlotNote({ r }: { r: ReservePiece }) {
+  const member = r.arrival !== undefined ? arrivalOf(run.value.setup.clientId, r.arrival) : null;
+  if (!member && !r.crew) return null;
+  return (
+    <p class="muted">
+      {member ? `Came with ${midName(member)}` : 'Your crew’s, from the start'}: in an extra slot,
+      so it doesn’t take one of your reserve’s.
+    </p>
+  );
+}
+
+/**
+ * A running restriction the placement would break (M4b): the placement stays legal, but the
+ * order pays nothing at its milestone.
+ */
+function BreaksNote({ id }: { id: ChangeOrderId }) {
+  const def = CONTENT.changeOrders[id];
+  const lost = def.kind === 'phase' ? '' : `: you’d lose its ${rewardText(CONTENT, def.reward)}`;
+  return (
+    <p class="warn" role="note">
+      <span aria-hidden="true">✕ </span>
+      Breaks {def.name}
+      {lost}
+    </p>
+  );
+}
+
 function BudgetChange({ before, after }: { before: number; after: number }) {
   if (before === after) return null;
   return (
@@ -366,11 +404,14 @@ function PlacingInfo() {
         : install
           ? 'From your hand: installing it is this week’s build.'
           : null;
+  // A member's room (M4b): whose it is.
+  const member = sel.kind === 'piece' && !renovate ? <MemberNote id={sel.id} /> : null;
   if (!p) {
     return (
       <>
         <h2>{name}</h2>
         {fromLine && <p class="muted">{fromLine}</p>}
+        {member}
         <p class="muted">
           {install
             ? 'Point at a piece on the lot to see what it would do there.'
@@ -423,6 +464,8 @@ function PlacingInfo() {
         </h2>
       )}
       {fromLine && <p class="muted">{fromLine}</p>}
+      {member}
+      {p.breaks && <BreaksNote id={p.breaks} />}
       {p.renovates && (
         <p class="renovate-note">
           <span class="mark" aria-hidden="true">
@@ -639,6 +682,7 @@ export function Inspect() {
               <li key={t}>{t}</li>
             ))}
           </ul>
+          {text.member && <p class="member-note">{text.member}</p>}
           {piece.fixture && (
             <>
               <h3>Fixture: {CONTENT.fixtures[piece.fixture.id].name}</h3>
@@ -690,7 +734,15 @@ export function Inspect() {
     }
   } else if (what?.kind === 'reserve') {
     const r = s.reserve[what.i];
-    if (r) body = <ItemInfo good={{ kind: 'piece', id: r.id }} />;
+    if (r) {
+      body = (
+        <>
+          <ItemInfo good={{ kind: 'piece', id: r.id }} />
+          <MemberNote id={r.id} />
+          <ExtraSlotNote r={r} />
+        </>
+      );
+    }
   } else if (what?.kind === 'supply') {
     const sup = s.supplies[what.i];
     if (sup)

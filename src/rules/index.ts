@@ -1543,6 +1543,39 @@ export interface DemolishPreview {
   specsLost: readonly string[];
 }
 
+/**
+ * D-103: one legal host for a fixture being installed, with what installing it there does to
+ * this week's total: its install preview's delta, net of the fixture it would replace.
+ */
+export interface InstallGain {
+  uid: number;
+  gain: number;
+  /** The fixture the host has now, which the install would replace (and lose). */
+  replaces?: FixtureId;
+}
+
+/**
+ * D-103: what a fixture not yet owned (a shop offer) would add: its best host in the house as it
+ * stands, and what installing it there does to this week's total (in the shop, the next week's).
+ */
+export interface FixtureValue {
+  /** The host (by uid) whose install gains the most; the first in placement order on a tie. */
+  host: number;
+  /**
+   * The host's piece as it's valued: in the shop, after the transforms that start the next
+   * week, so a Nursery that grows into a Kids' Room then is a Kids' Room here.
+   */
+  hostDefId: PieceId;
+  /** That install's preview delta, net of the fixture it would replace. */
+  gain: number;
+  /** The fixture the host has now, which installing would replace (and lose). */
+  replaces?: FixtureId;
+  /** Weeks still to play in the run, this one (in the shop, the next one) included. */
+  weeksLeft: number;
+  /** gain × weeksLeft: roughly what it adds over the rest of the run. */
+  overRun: number;
+}
+
 export interface Legality {
   legal: boolean;
   reason?: string;

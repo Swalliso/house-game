@@ -234,3 +234,8 @@
   font-size: 12px;
   opacity: 0.9;
 }
+
+/* M4b: who moves in mid-run, and when, above the household's Bedroom rule. */
+.contract-section .contract-arrivals {
+  margin-bottom: 3px;
+}

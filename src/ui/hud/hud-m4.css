@@ -62,3 +62,46 @@
   color: var(--comfort);
   letter-spacing: -1px;
 }
+
+/* M4b: the reserve's extra slots, after its own: a crew's starting cards and a household
+   member's, each with a tag ("Crew", "Twins"), since they don't count against the reserve. A
+   member's cards pop in as they arrive, after the doorbell (FEEL.arrival, inline). */
+.inventory .slot-tag {
+  margin-left: 5px;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: var(--wood);
+  color: #fffaf0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  vertical-align: 1px;
+}
+.inventory .slot.just-arrived {
+  animation-name: slot-arrive;
+  animation-timing-function: cubic-bezier(0.2, 1.4, 0.4, 1);
+  animation-fill-mode: both;
+}
+@keyframes slot-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.6);
+  }
+  45% {
+    opacity: 1;
+    transform: scale(var(--pop-scale, 1.25));
+  }
+  to {
+    transform: none;
+  }
+}
+.reduce-motion .inventory .slot.just-arrived {
+  animation: none;
+}
+
+/* M4b: a member's room, on its card and in Inspect: whose it is, and what Room for everyone
+   asks of it. */
+.member-note {
+  color: var(--ink);
+  font-style: italic;
+}

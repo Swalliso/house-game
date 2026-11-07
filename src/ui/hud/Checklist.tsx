@@ -2,18 +2,28 @@
 // household", "The shape", and "The yard", then the client's own wishes. Each line held adds
 // Charm. While a card is pointed at a spot, lines the play would turn on or off are marked;
 // while a tally plays, each line lights up as the tally reaches it (director.ts). The rules
-// work out every line and its progress: the UI never scores anything itself.
+// work out every line and its progress: the UI never scores anything itself. M4b adds who's
+// still to move in, under the household, and the change orders running, as their own group,
+// where the ones a milestone just resolved stay, marked with how they went, until the next
+// phase's first week is played.
 
 import { computed } from '@preact/signals';
+import type { ComponentChildren } from 'preact';
 import { useEffect, useRef } from 'preact/hooks';
 import {
+  changeOrderText,
   CONTENT,
   modifierText,
+  rewardText,
   rules,
   SCORE_LABELS,
+  type ChangeOrderRecord,
+  type ChangeOrderResult,
+  type ChangeOrderView,
   type ChecklistLine,
   type Modifier,
   type Play,
+  type ProgressPart,
   type RunState,
   type SpecGroup,
 } from '../../rules/index.ts';
@@ -22,6 +32,7 @@ import { FEEL } from '../fx/feel.ts';
 import { formatMult } from '../format.ts';
 import { settings } from '../settings.ts';
 import { activePlay, currentTally, preview, run } from '../store.ts';
+import { arrivalWeek, isPlural, overtimeUsed, upcomingArrivals } from './household.ts';
 import { Tip } from './Tip.tsx';
 import './checklist.css';
 
@@ -54,6 +65,37 @@ const looking = computed<Play>(() =>
 );
 /** Cached, so a tally's beats re-render the rows without asking the rules again. */
 const lines = computed(() => rules.checklist(judged.value, looking.value ?? undefined));
+/** M4b: the change orders running, as the run on show has them (a ✕ lands with its beat). */
+const orders = computed(() => rules.activeChangeOrders(judged.value));
+/**
+ * M4b: the change orders the last milestone resolved, with how each went (each turns with its
+ * beat). They stay until the next phase's first week is played, so a skipped beat, or the
+ * shop's sheet over the board, never hides a result; the end screen keeps the last milestone's.
+ */
+const resolvedOrders = computed<readonly ChangeOrderRecord[]>(() => {
+  const s = judged.value;
+  const phase =
+    s.screen === 'won' ? s.phase : s.slot === 1 && s.overtimeWeek === 0 ? s.phase - 1 : -1;
+  return s.changeOrders.filter((r) => r.result !== undefined && r.phase === phase);
+});
+
+/**
+ * A line's progress parts. A part that doesn't hold yet has a ✕, so it's never told by its
+ * color alone. The change order's sheet uses it too.
+ */
+export function ProgressParts({ parts }: { parts: readonly ProgressPart[] }) {
+  return (
+    <>
+      {parts.map((p, k) => (
+        <span key={k} class={p.ok ? 'ok' : 'miss'}>
+          {k > 0 ? ' · ' : ''}
+          {!p.ok && <span aria-hidden="true">✕ </span>}
+          {p.text}
+        </span>
+      ))}
+    </>
+  );
+}
 
 // A row's tint as it flashes: the preview's colors for a line turning on and off (checklist.css).
 const GAINED_TINT = 'rgb(253 238 242)';
@@ -142,14 +184,7 @@ function Line({
       </span>
       {showProgress && line.progress.length > 0 && (
         <span class="check-progress">
-          {/* A part that doesn't hold yet has a ✕, so it's never told by its color alone. */}
-          {line.progress.map((p, k) => (
-            <span key={k} class={p.ok ? 'ok' : 'miss'}>
-              {k > 0 ? ' · ' : ''}
-              {!p.ok && <span aria-hidden="true">✕ </span>}
-              {p.text}
-            </span>
-          ))}
+          <ProgressParts parts={line.progress} />
         </span>
       )}
       {change && <span class="check-change">{change === 'gained' ? 'turns on' : 'turns off'}</span>}
@@ -211,6 +246,139 @@ interface Row {
   pending: boolean;
 }
 
+/**
+ * Who's still to move in (M4b, D-099), under the household's lines until they arrive: "Grandma
+ * arrives at Drywall, week 17". Room for everyone's line already shows what they'll need.
+ */
+function ArrivalLines({ s }: { s: RunState }) {
+  const coming = upcomingArrivals(s);
+  if (coming.length === 0) return null;
+  const overtime = overtimeUsed(s);
+  return (
+    <>
+      {coming.map((a) => (
+        <li key={a.id} class="check-arrival">
+          <span class="check-mark" aria-hidden="true">
+            →
+          </span>
+          <span class="check-name">
+            <Tip title={a.name} text={a.text}>
+              {a.name}
+            </Tip>{' '}
+            {isPlural(a) ? 'arrive' : 'arrives'} at {rules.phaseName(a.phase)}, week{' '}
+            {arrivalWeek(a, overtime)}
+          </span>
+        </li>
+      ))}
+    </>
+  );
+}
+
+const ORDERS_TIP =
+  'The client changed their mind after a milestone. A request or a restriction you accepted ' +
+  'pays when its milestone is met, if you see it through; a phase effect just runs until then. ' +
+  'How each one went stays here until the next phase’s first week is played.';
+
+/** "the Framing milestone": where a change order resolves. */
+const milestoneOf = (phase: number) => `the ${rules.phaseName(phase)} milestone`;
+
+/**
+ * A change order running (M4b): a request with its progress (✓ once it would count as met), a
+ * restriction kept so far or broken (or about to be, by the placement being looked at), or a
+ * phase effect until its milestone, with what it pays.
+ */
+function OrderLine({ order, s, breaks }: { order: ChangeOrderView; s: RunState; breaks: boolean }) {
+  const brokenBy =
+    order.brokenBy !== undefined ? s.house.pieces.find((q) => q.uid === order.brokenBy) : undefined;
+  const broken = order.brokenBy !== undefined;
+  let mark = '•';
+  let tone = 'phase';
+  let status: ComponentChildren = `Until ${milestoneOf(order.phase)}`;
+  if (order.kind === 'request') {
+    mark = order.met ? '✓' : '·';
+    tone = order.met ? 'met' : 'unmet';
+    status = (
+      <>
+        {order.progress && <ProgressParts parts={order.progress} />} · by {milestoneOf(order.phase)}
+      </>
+    );
+  } else if (order.kind === 'restriction') {
+    if (broken) {
+      mark = '✕';
+      tone = 'lost';
+      status = brokenBy
+        ? `Broken by the ${CONTENT.pieces[brokenBy.defId].name}: it pays nothing`
+        : 'Broken: it pays nothing';
+    } else if (breaks) {
+      mark = '✕';
+      tone = 'lost';
+      status = 'This placement would break it';
+    } else {
+      mark = '✓';
+      tone = 'met';
+      status = `Kept so far · to ${milestoneOf(order.phase)}`;
+    }
+  }
+  const pays = order.reward ? rewardText(CONTENT, order.reward) : null;
+  const tip = `${order.text} ${order.terms.join('. ')}.`;
+  return (
+    <li class={`check-line order ${tone}`}>
+      <span class="check-mark" aria-hidden="true">
+        {mark}
+      </span>
+      <span class="check-name">
+        <Tip title={order.name} text={tip}>
+          {order.name}
+        </Tip>
+      </span>
+      <span class="order-pays">{pays && (broken ? <s>{pays}</s> : pays)}</span>
+      <span class="check-progress">{status}</span>
+    </li>
+  );
+}
+
+const RESULT_WORD: Readonly<Record<ChangeOrderResult, string>> = {
+  met: 'Met',
+  kept: 'Kept',
+  missed: 'Missed',
+  broken: 'Broken',
+  ended: 'Over',
+};
+
+/**
+ * A change order its milestone resolved (M4b): ✓ met or kept, with what it paid; ✕ missed or
+ * broken, its reward struck out; or a phase effect over. The result is a word and a mark, never
+ * color alone.
+ */
+function ResolvedLine({ record }: { record: ChangeOrderRecord }) {
+  const def = CONTENT.changeOrders[record.id];
+  const result = record.result!;
+  const paid = result === 'met' || result === 'kept';
+  const tone = paid ? 'met' : result === 'ended' ? 'phase' : 'lost';
+  const mark = paid ? '✓' : result === 'ended' ? '•' : '✕';
+  const reward = record.reward ?? (def.kind === 'phase' ? undefined : def.reward);
+  const pays = reward ? rewardText(CONTENT, reward) : null;
+  const at = milestoneOf(record.phase);
+  const tip = `${def.text} ${changeOrderText(CONTENT, def).join('. ')}.`;
+  return (
+    <li class={`check-line order resolved ${tone}`}>
+      <span class="check-mark" aria-hidden="true">
+        {mark}
+      </span>
+      <span class="check-name">
+        <Tip title={def.name} text={tip}>
+          {def.name}
+        </Tip>
+      </span>
+      <span class="order-pays">{pays && (paid ? pays : <s>{pays}</s>)}</span>
+      <span class="check-progress">
+        <strong class="order-result">{RESULT_WORD[result]}</strong>
+        {paid ? `: paid at ${at}` : result === 'ended' ? ` at ${at}` : `: nothing paid at ${at}`}
+      </span>
+    </li>
+  );
+}
+
 export function Checklist() {
   const view = tallyView.value;
   const base = judged.value;
@@ -239,6 +407,10 @@ export function Checklist() {
       .filter((r) => r.line.group === group)
       .map((r) => <Line key={r.line.id} {...r} bonus={bonus} />);
   const wishes = list('wishes');
+  const running = orders.value;
+  const done = resolvedOrders.value;
+  // A placement being looked at that would break a restriction (it stays legal).
+  const breaks = p?.legal ? p.breaks : undefined;
   return (
     <section class="checklist" aria-label="The client's checklist">
       <h2>
@@ -257,7 +429,10 @@ export function Checklist() {
           ls.length > 0 && (
             <div key={g} class="check-group">
               <h4>{GROUP_NAMES[g]}</h4>
-              <ul>{ls}</ul>
+              <ul>
+                {ls}
+                {g === 'household' && <ArrivalLines s={base} />}
+              </ul>
             </div>
           )
         );
@@ -266,6 +441,26 @@ export function Checklist() {
         <div class="check-group">
           <h3>{wishesTitle(client.name)}</h3>
           <ul>{wishes}</ul>
+        </div>
+      )}
+      {(running.length > 0 || done.length > 0) && (
+        <div class="check-group change-orders">
+          <h3>
+            <Tip title="Change orders" text={ORDERS_TIP}>
+              Change orders
+            </Tip>
+          </h3>
+          <ul>
+            {/* In the order answered: the ones resolved, then the ones running. A milestone's
+                resolve in that order too, so each row keeps its place as it turns. The ?debug
+                panel can force the same order twice. */}
+            {done.map((r, k) => (
+              <ResolvedLine key={`done-${r.id}-${k}`} record={r} />
+            ))}
+            {running.map((o, k) => (
+              <OrderLine key={`${o.id}-${k}`} order={o} s={base} breaks={breaks === o.id} />
+            ))}
+          </ul>
         </div>
       )}
     </section>

@@ -64,6 +64,8 @@ function PhaseBlock() {
           'Run over'
         ) : shopping ? (
           'Shopping'
+        ) : s.screen === 'changeOrder' ? (
+          'Change order'
         ) : s.overtimeWeek > 0 ? (
           <span
             class="overtime-week"

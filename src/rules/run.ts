@@ -53,9 +53,11 @@ import type {
   DebugAction,
   DemolishPreview,
   FixtureId,
+  FixtureValue,
   GameEvent,
   HouseState,
   InstallAction,
+  InstallGain,
   Legality,
   MilestoneRecord,
   MilestoneResult,
@@ -244,6 +246,21 @@ export interface Rules {
   checklist(state: RunState, play?: Play): ChecklistLine[];
   /** The pieces a hand or supplies fixture could go in now. */
   installHosts(state: RunState, from: 'hand' | 'supplies', i: number): number[];
+  /**
+   * D-103: every legal host of a hand or supplies fixture, in placement order, each with its
+   * install preview's delta (net of the fixture it would replace, which it names). Empty off
+   * the build screen.
+   */
+  installGains(state: RunState, from: 'hand' | 'supplies', i: number): InstallGain[];
+  /**
+   * D-103: what a fixture not yet owned would add, for the shop's line: the legal host in the
+   * house as it stands whose install gains this week's total the most, by that install's
+   * preview delta (as if bought into the supplies), with the weeks still to play in the run and
+   * gain × those weeks. In the shop it scores the next week, the next phase's first, after the
+   * transforms that start it, and names the host's piece as it is then (`hostDefId`). Null if
+   * no piece can take it, or off the build and shop screens.
+   */
+  fixtureValue(state: RunState, fixture: FixtureId): FixtureValue | null;
   /**
    * A cheap local estimate of a legal play's change to the week's total, for ranking
    * candidates before scoring the best few exactly (§4, Performance), checklist lines that
@@ -1943,6 +1960,66 @@ export function createRules(content: Content): Rules {
     return fixture ? installHosts(content, layoutFor(state), fixture) : [];
   }
 
+  /** D-103: each legal host with its install preview's delta, net of what it would replace. */
+  function installGains(state: RunState, from: InstallAction['from'], i: number): InstallGain[] {
+    return hostsFor(state, from, i).map((uid) => {
+      const p = preview(state, { t: 'install', from, i, uid });
+      return p.replaces ? { uid, gain: p.delta, replaces: p.replaces } : { uid, gain: p.delta };
+    });
+  }
+
+  /**
+   * Whether the state's week has started (its transforms, arrivals, and draw have run): on the
+   * build screen, and in a shop or change order the ?debug panel opened mid-week, which go back
+   * to it. A shop or change order a milestone opened comes before the next phase's first week,
+   * which leaving the shop starts. The end screens come after the run's last week.
+   */
+  function weekStarted(state: RunState): boolean {
+    if (state.screen === 'shop') return !!state.offers?.shop?.forced;
+    if (state.screen === 'changeOrder') return !!state.offers?.changeOrder?.forced;
+    return true;
+  }
+
+  /**
+   * The build screen's state for the week a fixture bought now would first earn in (D-103):
+   * this one, or in the shop the next phase's first week, its transforms resolved as leaving
+   * starts it (its arrivals only fill the reserve). A shop the ?debug panel opened mid-week
+   * goes back to that week. Null on the other screens.
+   */
+  function installWeek(state: RunState): RunState | null {
+    if (state.screen === 'build') return state;
+    if (state.screen !== 'shop') return null;
+    const { offers: _offers, ...rest } = state;
+    const s: RunState = { ...rest, screen: 'build' };
+    return weekStarted(state) ? s : resolveTransforms(s, []);
+  }
+
+  function fixtureValue(state: RunState, fixture: FixtureId): FixtureValue | null {
+    if (!Object.hasOwn(content.fixtures, fixture)) return null;
+    const week = installWeek(state);
+    if (!week) return null;
+    // As if bought: one more supply, whose free install previews as the same change.
+    const s: RunState = { ...week, supplies: [...week.supplies, { kind: 'fixture', id: fixture }] };
+    let best: InstallGain | null = null;
+    for (const g of installGains(s, 'supplies', s.supplies.length - 1)) {
+      if (!best || g.gain > best.gain) best = g;
+    }
+    if (!best) return null;
+    const host = best.uid;
+    // This phase's weeks left, then every later phase's (overtime can't be foreseen).
+    const weeks = weeksLeft(s) + Math.max(0, phaseCount(b) - 1 - s.phase) * W;
+    return {
+      host,
+      // The host as it's valued: in the shop, a Nursery that grows into a Kids' Room as the
+      // next phase starts is one here.
+      hostDefId: s.house.pieces.find((p) => p.uid === host)!.defId,
+      gain: best.gain,
+      ...(best.replaces ? { replaces: best.replaces } : {}),
+      weeksLeft: weeks,
+      overRun: best.gain * weeks,
+    };
+  }
+
   function legalPlacements(state: RunState): PlaceAction[] {
     const out: PlaceAction[] = [];
     state.hand.forEach((_, i) => eachLegalSpot(state, 'hand', i, (play) => void out.push(play)));
@@ -2085,6 +2162,10 @@ export function createRules(content: Content): Rules {
     const def = content.pieces[piece.defId];
     const out: string[] = [];
     const age = ageOf(piece, state.week);
+    // Transforms happen at a week's start. Once this week's has run, a piece already old
+    // enough (Fertilizer, mid-week) changes at the next one; in a shop or change order a
+    // milestone opened, the next phase's first week is still to start, so it changes then.
+    const soonest = weekStarted(state) ? 1 : 0;
     const unmet = unmetRequirement(content, layoutFor(state), def, uid);
     const next = (every: number) => {
       for (let a = age; a < age + every; a++)
@@ -2097,7 +2178,7 @@ export function createRules(content: Content): Rules {
           'piece' in e.into
             ? content.pieces[e.into.piece].name
             : content.features[e.into.feature].name;
-        const when = state.week + Math.max(0, e.afterWeeks - age);
+        const when = state.week + Math.max(soonest, e.afterWeeks - age);
         out.push(`Becomes a ${into} at the start of week ${when}`);
       } else if (unmet && (e.kind === 'rhythm' || e.kind === 'economy')) {
         out.push(`Paused: it must be ${conditionText(content, unmet.condition)}`);
@@ -2336,6 +2417,8 @@ export function createRules(content: Content): Rules {
     limits: limitsOf,
     checklist,
     installHosts: hostsFor,
+    installGains,
+    fixtureValue,
     estimatePlay: (state, play) => {
       const def = placeDef(state, play);
       if (!def) throw new IllegalAction('There is no card there.');

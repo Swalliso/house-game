@@ -33,7 +33,7 @@ import {
 } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
 import { shakeOffsets } from '../fx/juice.ts';
-import { formatNumber } from '../format.ts';
+import { formatNumber, signed } from '../format.ts';
 import {
   activePlay,
   currentTally,
@@ -43,6 +43,7 @@ import {
   hoverCell,
   inspected,
   installArmed,
+  installGains,
   installSupply,
   movingUid,
   packCells,
@@ -78,10 +79,11 @@ import {
   zoomIn,
   zoomOut,
 } from './camera.ts';
-import { center, labelSpot, occupancy, uidAt } from './geometry.ts';
+import { center, furnitureSpot, labelSpot, occupancy, uidAt } from './geometry.ts';
 import { PieceShape, wobble } from './PieceView.tsx';
 import { Outline, TerrainLayer, YardTint } from './TerrainLayer.tsx';
 import './board-m2.css';
+import './install-gains.css';
 
 /** The scroll container's padding (app.css), kept clear around the board. */
 const PAD = 6;
@@ -578,6 +580,8 @@ export function Board() {
     };
   })();
   const installing = !demolishing && activePlay.value?.t === 'install';
+  // D-103: a fixture is selected, so every legal host shows its gain.
+  const choosingHost = !demolishing && selection.value?.kind === 'fixture';
   const renovating = !demolishing && activePlay.value?.t === 'renovate';
   const tooling = !demolishing && selection.value?.kind === 'tool';
 
@@ -644,6 +648,7 @@ export function Board() {
           {demolishing && <DemolishTarget scale={scale} />}
           {ghostCells && <Ghost defId={ghostCells.defId} cells={ghostCells.cells} scale={scale} />}
           {installing && <InstallTarget scale={scale} />}
+          {choosingHost && <HostBadges scale={scale} />}
           {!demolishing && <RenovateHints scale={scale} />}
           {renovating && <RenovateTarget scale={scale} />}
           {tooling && <ToolTarget scale={scale} />}
@@ -682,10 +687,13 @@ function Ghost({
       : 'click to add or take off a tile · End week to build';
   const pack = def.pack ? `${cells.length} of ${def.pack.maxTiles} tiles · ${then}` : null;
   const inside = cells.filter((cell) => cell.x >= 0 && cell.y >= 0);
+  // M4b: a running restriction this placement would break. It stays legal; it just pays nothing.
+  const breaks = legal && p?.breaks ? CONTENT.changeOrders[p.breaks].name : null;
   // Keep the labels on the board: away from the side edges, and below the ghost at the top. A
-  // pack's next tile counts too, so its label and the ghost's stack clear of both (two labels
-  // need two rows above them).
-  const spot = next ? labelSpot([...cells, next.cell], lot.width, 2) : labelSpot(cells, lot.width);
+  // pack's next tile counts too, so its label and the ghost's stack clear of both (each label
+  // needs a row above them).
+  const rows = 1 + (next ? 1 : 0) + (breaks ? 1 : 0);
+  const spot = labelSpot(next ? [...cells, next.cell] : cells, lot.width, rows);
   const label = { left: `${spot.x * px}px`, top: `${spot.y * px}px` };
   return (
     <>
@@ -715,6 +723,12 @@ function Ghost({
             {p.delta > 0 ? '▲ +' : p.delta < 0 ? '▼ −' : ''}
             {formatNumber(Math.abs(p.delta))} {SCORE_LABELS.total}
             {pack ? ` · ${pack}` : pending ? ' · End week to build' : ''}
+          </div>
+        )}
+        {breaks && (
+          <div class="ghost-reason">
+            <span aria-hidden="true">✕ </span>
+            Breaks {breaks}
           </div>
         )}
         {next && <PackNextLabel next={next} />}
@@ -900,6 +914,59 @@ function InstallTarget({ scale }: { scale: number }) {
       />
       {label}
     </>
+  );
+}
+
+/** How far a host's gain badge sits below a preview mark on the same piece, in CSS px. */
+const MARK_CLEARANCE = 20;
+
+/**
+ * D-103: while a fixture is selected, every legal host wears what installing it there does to
+ * this week's Wow, net of any fixture it would replace (the rules' installGains, computed once
+ * per selection), and the best one, if it gains, is filled with a ★. The host being looked at
+ * (under the pointer, armed, or waiting for End week) has InstallTarget's label instead; a host
+ * the preview marks as helping or hurting it keeps its badge below that mark.
+ */
+function HostBadges({ scale }: { scale: number }) {
+  const gains = installGains.value;
+  const sel = selection.value;
+  if (gains.length === 0 || sel?.kind !== 'fixture') return null;
+  const occ = occupancy(run.value.house);
+  const px = TILE * scale;
+  const play = activePlay.value;
+  const looking = play?.t === 'install' ? play.uid : 0;
+  const p = preview.value;
+  const marked = new Set(
+    p?.legal
+      ? (p.newPiece?.lines ?? []).flatMap((l) =>
+          l.from.flatMap((ref) => (ref.kind === 'piece' ? [ref.uid] : [])),
+        )
+      : [],
+  );
+  const best = Math.max(...gains.map((g) => g.gain));
+  // A new selection mounts them afresh, so they pop in again.
+  return (
+    <div key={`${sel.from}-${sel.i}-${sel.id}`} class="host-badges" aria-hidden="true">
+      {gains.map((g) => {
+        const cells = occ.cells.get(g.uid);
+        if (!cells) return null;
+        const spot = furnitureSpot(cells);
+        const top = (spot.y + 0.5) * px + (marked.has(g.uid) ? MARK_CLEARANCE : 0);
+        const star = best > 0 && g.gain === best;
+        const tone = g.gain > 0 ? 'good' : g.gain < 0 ? 'bad' : '';
+        return (
+          <div
+            key={g.uid}
+            class={`host-badge ${tone} ${star ? 'best' : ''} ${g.uid === looking ? 'current' : ''}`}
+            style={{ left: `${(spot.x + 0.5) * px}px`, top: `${top}px` }}
+          >
+            {star ? '★ ' : ''}
+            {g.gain > 0 ? '▲ ' : g.gain < 0 ? '▼ ' : ''}
+            {signed(g.gain)}
+          </div>
+        );
+      })}
+    </div>
   );
 }
 

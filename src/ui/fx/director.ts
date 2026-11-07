@@ -5,6 +5,9 @@
 // each checklist line held adds its Charm (M4a), Comfort × Charm collapse into the week's Wow,
 // and the week drains into the run total. Fast-forwarded weeks (early completion) count
 // quickly; demolitions, transforms, overtime, and each milestone result get their own beat.
+// M4b's change orders get theirs: a restriction broken (✕ on the piece), each order resolving
+// at its milestone (its reward counting into the budget), the sheet's arrival, and the answer's
+// stamp; and a household member's arrival (a banner, and their cards popping into the reserve).
 // Animation speed never affects the game.
 //
 // Speed: the chosen tally speed, plus Balatro-style auto-acceleration during the steps, plus
@@ -13,7 +16,13 @@
 import { batch, signal } from '@preact/signals';
 import {
   CONTENT,
+  rewardText,
+  rules,
   SCORE_LABELS,
+  type ArrivalId,
+  type ChangeOrderId,
+  type ChangeOrderResult,
+  type ChangeOrderView,
   type ClientId,
   type GameEvent,
   type PieceScore,
@@ -23,6 +32,7 @@ import {
   type XMultTerm,
 } from '../../rules/index.ts';
 import { audio } from '../audio/audio.ts';
+import { arrivalOf, cardsPhrase, isPlural } from '../hud/household.ts';
 import { settings } from '../settings.ts';
 import { onEvents, onRunReset } from '../store.ts';
 import { formatNumber } from '../format.ts';
@@ -31,9 +41,11 @@ import { tallySpeed } from './juice.ts';
 
 /**
  * `spec` names a checklist line the week turned on, in Charm's color; `lost` one it turned off,
- * orange with a ✕ (both in checklist.css).
+ * orange with a ✕ (both in checklist.css). `order` is a change order paying (blue, ✓), and
+ * `quiet` one that didn't, or a phase effect ending (change-order.css).
  */
-export type PopupKind = 'points' | 'mult' | 'set' | 'spec' | 'lost' | 'total' | 'note' | 'sparkle';
+export type PopupKind =
+  'points' | 'mult' | 'set' | 'spec' | 'lost' | 'total' | 'note' | 'sparkle' | 'order' | 'quiet';
 
 export interface Popup {
   id: number;
@@ -123,6 +135,22 @@ export const played = { celebration: 0, flash: 0, settle: 0, levelPop: 0 };
 export const justPlaced = signal<{ uid: number; id: number } | null>(null);
 /** The room that was just renovated, for its level badge's pop. */
 export const justRenovated = signal<{ uid: number; id: number } | null>(null);
+
+/**
+ * A change order's answer, stamped on its sheet as the sheet goes (M4b): the sheet as it was
+ * answered, since the rules have already moved on to the shop (or back to the week).
+ */
+export interface OrderStamp {
+  id: number;
+  view: ChangeOrderView;
+  clientId: ClientId;
+  /** Offered by the ?debug panel mid-week: answering it goes back to that week. */
+  forced: boolean;
+  answer: 'accepted' | 'declined' | 'noted';
+}
+export const orderStamp = signal<OrderStamp | null>(null);
+/** A household member's cards, just in the reserve (M4b): the reserve pops them in. */
+export const justArrived = signal<{ arrival: ArrivalId; id: number } | null>(null);
 
 /** The board registers these, so the director can wobble pieces and shake the screen. */
 export const fxHooks: {
@@ -343,7 +371,10 @@ function setShownScore(score: number | null): void {
   if (waiting === 0) shownScore.value = score;
 }
 
-/** Whether an action's events have beats to play. Free actions with little to animate don't. */
+/**
+ * Whether an action's events have beats to play. Free actions with little to animate don't. A
+ * change order's answer does (M4b): its stamp holds the shop back until it lands.
+ */
 function animates(events: readonly GameEvent[]): boolean {
   return events.some(
     (e) =>
@@ -354,9 +385,34 @@ function animates(events: readonly GameEvent[]): boolean {
       e.t === 'renovated' ||
       e.t === 'moved' ||
       e.t === 'findClaimed' ||
-      e.t === 'toolUsed',
+      e.t === 'toolUsed' ||
+      e.t === 'changeOrderAnswered',
   );
 }
+
+/**
+ * The run as the top bar and the checklist show it, with a restriction broken (M4b): the
+ * checklist's row flips as the ✕ lands on the piece, not when the whole week has played.
+ */
+function withBroken(s: RunState, id: ChangeOrderId, uid: number): RunState {
+  return {
+    ...s,
+    changeOrders: s.changeOrders.map((r) =>
+      r.id === id && r.answer === 'accepted' && r.result === undefined && r.brokenBy === undefined
+        ? { ...r, brokenBy: uid }
+        : r,
+    ),
+  };
+}
+
+/** How a change order ended, after its name on the board: "Working from home: missed". */
+const RESULT_WORD: Readonly<Record<ChangeOrderResult, string>> = {
+  met: 'met',
+  missed: 'missed',
+  kept: 'kept',
+  broken: 'broken',
+  ended: 'over',
+};
 
 /** A played week's tally view before its first step: the checklist as it was last week. */
 function tallyStart(e: Extract<GameEvent, { t: 'tally' }>, flips: SpecFlips): TallyView {
@@ -386,6 +442,7 @@ function tallyStart(e: Extract<GameEvent, { t: 'tally' }>, flips: SpecFlips): Ta
 function showStart(events: readonly GameEvent[], before: RunState): void {
   const at = events.findIndex((e) => e.t === 'tally');
   const week = events[at];
+  const answered = events.find((e) => e.t === 'changeOrderAnswered');
   batch(() => {
     busy.value = true;
     shownScore.value = before.score;
@@ -393,7 +450,28 @@ function showStart(events: readonly GameEvent[], before: RunState): void {
     if (week?.t === 'tally' && !week.fastForward) {
       tallyView.value = tallyStart(week, specFlips(events, at));
     }
+    // M4b: a change order's sheet stays up, answered, for its stamp. Set at once, so the sheet
+    // never unmounts between the answer and the stamp (and plays its arrival again).
+    if (answered?.t === 'changeOrderAnswered' && !orderStamp.value) {
+      orderStamp.value = stampOf(answered, before);
+    }
   });
+}
+
+/** The sheet as it was answered, and the answer, for its stamp (M4b). */
+function stampOf(
+  e: Extract<GameEvent, { t: 'changeOrderAnswered' }>,
+  before: RunState,
+): OrderStamp | null {
+  const view = rules.changeOrderOffer(before);
+  if (!view) return null;
+  return {
+    id: nextId++,
+    view,
+    clientId: before.setup.clientId,
+    forced: !!before.offers?.changeOrder?.forced,
+    answer: e.kind === 'phase' ? 'noted' : e.accepted ? 'accepted' : 'declined',
+  };
 }
 
 /** A fast-forwarded week (D-040): no placement, just a quick count and the drain. */
@@ -731,12 +809,16 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
   try {
     const newSets = new Set(events.flatMap((e) => (e.t === 'setCompleted' ? [e.key] : [])));
     const ended = events.some((e) => e.t === 'runEnded');
-    const toShop = events.some((e) => e.t === 'shopOpened');
+    // The shop or a change order (M4b) opens a sheet over the board as this finishes.
+    const toSheet = events.some((e) => e.t === 'shopOpened' || e.t === 'changeOrderOffered');
     // Free actions with little to animate (the shop's, the auto-complete toggle) finish at
     // once, with their shop beats: sounds and a note; the shop screen and the budget count do
-    // the rest.
+    // the rest. So does a household member's arrival: its banner doesn't hold the week up.
     if (!animated) {
-      for (const e of events) shopBeat(e);
+      for (const e of events) {
+        shopBeat(e);
+        sheetBeat(e, after);
+      }
       for (const e of events) {
         if (e.t === 'handDrawn' && e.reroll && !skipping) audio.play('rotate', { rate: 0.7 });
       }
@@ -744,6 +826,15 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
     }
     if (waiting === 0) showStart(events, before);
     let base = before;
+    // M4b: the run as the milestone leaves it, before the change orders resolving after it
+    // pay: each one's reward counts into the budget, and its checklist row turns to how it
+    // went, on its own beat. `pending` holds their places in changeOrders, in their beats' order.
+    let afterMilestone: RunState | null = null;
+    let pending: number[] = [];
+    let paid = 0;
+    let resolved = 0;
+    /** The milestone's banner, when a sheet opens after it: the sheet takes over from it. */
+    let sheetBanner: number | undefined;
     for (const [i, e] of events.entries()) {
       if (gen !== generation) return;
       switch (e.t) {
@@ -891,15 +982,104 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
         case 'milestone': {
           tallyView.value = null;
           setShownScore(null);
-          setShownRun(null);
+          // The top bar moves on to the next phase. The change orders resolving next (M4b) pay
+          // on beats of their own, so their budget isn't in it yet, and the checklist shows
+          // them as they were until then.
+          const owed = events
+            .slice(i + 1)
+            .reduce((n, x) => n + (x.t === 'changeOrderResolved' ? (x.reward?.budget ?? 0) : 0), 0);
+          pending = after.changeOrders.flatMap((r, k) => {
+            const was = base.changeOrders[k];
+            return was && was.result === undefined && r.result !== undefined ? [k] : [];
+          });
+          afterMilestone =
+            pending.length > 0
+              ? {
+                  ...after,
+                  budget: after.budget - owed,
+                  changeOrders: after.changeOrders.map((r, k) =>
+                    pending.includes(k) ? base.changeOrders[k]! : r,
+                  ),
+                }
+              : null;
+          setShownRun(afterMilestone);
           const shown = milestoneBanner(e, ended);
           const id = banner.value?.id;
+          if (toSheet) sheetBanner = id;
           const gone = () => banner.value?.id !== id;
           closing = true;
-          // The shop opens over the board, banner and all, so it waits the banner out in real
-          // time, as the banner stays up, at any tally speed: holding hurries it, a click skips.
-          if (toShop) await wait(shown, undefined, gone, realSpeed);
+          // The shop (or a change order) opens over the board, banner and all, so it waits the
+          // banner out in real time, as the banner stays up, at any tally speed: holding hurries
+          // it, a click skips.
+          if (toSheet) await wait(shown, undefined, gone, realSpeed);
           else await wait(FEEL.milestoneHoldMs, undefined, gone);
+          break;
+        }
+        case 'changeOrderBroken': {
+          // M4b: the restriction pays nothing now. A ✕ on the piece that broke it, and the
+          // checklist's row flips with it.
+          base = withBroken(base, e.id, e.uid);
+          setShownRun(base);
+          if (!skipping) {
+            const c = pieceCenter([after, base], e.uid);
+            const name = CONTENT.changeOrders[e.id].name;
+            popup(c.x, c.y - 0.7, `✕ ${name}`, 'lost', FEEL.changeOrder.brokenMs);
+            audio.play('fail', { rate: 1.45, gain: 0.5 });
+            if (motion()) fxHooks.wobble(e.uid);
+          }
+          await wait(FEEL.changeOrder.brokenMs);
+          break;
+        }
+        case 'changeOrderResolved': {
+          // M4b, after the milestone: a request met or a restriction kept pays, and its reward
+          // counts into the budget; one missed or broken, or a phase effect ending, is a quiet
+          // line. Two at once stack, as the checklist's flips do. Its checklist row turns to
+          // how it went with it, and stays so even when this beat is skipped (Checklist.tsx).
+          const name = CONTENT.changeOrders[e.id].name;
+          const good = e.result === 'met' || e.result === 'kept';
+          if (afterMilestone) {
+            paid += e.reward?.budget ?? 0;
+            const k = pending.shift();
+            const shown: RunState = afterMilestone;
+            if (k !== undefined) {
+              afterMilestone = {
+                ...shown,
+                changeOrders: shown.changeOrders.map((r, j) =>
+                  j === k ? after.changeOrders[k]! : r,
+                ),
+              };
+            }
+            setShownRun({ ...afterMilestone, budget: afterMilestone.budget + paid });
+          }
+          if (!skipping) {
+            const home = houseCenter(after);
+            const y = home.y + resolved++ * FEEL.checklist.flipRows;
+            const text = good
+              ? `✓ ${name}: ${e.reward ? rewardText(CONTENT, e.reward) : RESULT_WORD[e.result]}`
+              : e.result === 'ended'
+                ? `${name} is ${RESULT_WORD.ended}`
+                : `✕ ${name}: ${RESULT_WORD[e.result]}`;
+            popup(home.x, y, text, good ? 'order' : 'quiet', FEEL.changeOrder.resolvedMs);
+            if (good) audio.play('chime', { rate: 1.25 });
+            else if (e.result !== 'ended') audio.play('rotate', { rate: 0.6, gain: 0.6 });
+          }
+          await wait(good ? FEEL.changeOrder.resolvedMs : FEEL.changeOrder.resolvedMs / 2);
+          break;
+        }
+        case 'changeOrderAnswered': {
+          // M4b: the answer is stamped on the sheet as it goes (ChangeOrderScreen.tsx; the stamp
+          // went on show with the action, in showStart), in real time: holding hurries it, a
+          // click skips it. The shop waits for it.
+          const stamp = orderStamp.value;
+          if (stamp && !skipping) {
+            // The stamp's thump, then a bright plink for a yes, or the paper swished aside.
+            audio.play('place-room', { rate: 1.35 });
+            if (stamp.answer === 'declined') audio.play('rotate', { rate: 0.7, delay: 0.08 });
+            else
+              audio.play('plink', { rate: stamp.answer === 'accepted' ? 1.5 : 1.2, delay: 0.07 });
+            await wait(FEEL.changeOrder.stampMs, undefined, undefined, realSpeed);
+          }
+          orderStamp.value = null;
           break;
         }
         case 'handDrawn':
@@ -912,12 +1092,23 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
       }
     }
     // The shop appears as this finishes, so its beats (its chime, a Rare's sparkle) play now,
-    // not at the click, before the tally and the milestone could give a Rare away.
-    if (gen === generation) for (const e of events) shopBeat(e);
+    // not at the click, before the tally and the milestone could give a Rare away. So does a
+    // change order's sheet, with its own.
+    if (gen === generation) {
+      // The sheet takes over from the milestone's banner. A hold or a skip cut its wait short,
+      // so it goes now (if it's still that one) rather than show through a change order's
+      // backdrop, and hold the first-time hints back, until its own time is up.
+      if (sheetBanner !== undefined && banner.value?.id === sheetBanner) banner.value = null;
+      for (const e of events) {
+        shopBeat(e);
+        sheetBeat(e, after);
+      }
+    }
   } finally {
     batch(() => {
       tallyView.value = null;
       highlighted.value = [];
+      orderStamp.value = null;
       // A newer action waiting behind this one keeps its starting state on show.
       if (waiting === 0) {
         shownScore.value = null;
@@ -974,6 +1165,54 @@ function shopBeat(e: GameEvent): void {
   }
 }
 
+/**
+ * M4b's beats as a screen changes: a change order's sheet arriving (its paper flourish is the
+ * sheet's own animation; this is its sound), and a household member moving in. They play as
+ * the sheet or the week appears, like the shop's.
+ */
+function sheetBeat(e: GameEvent, after: RunState): void {
+  switch (e.t) {
+    case 'changeOrderOffered':
+      // A swish as the paper slides in, and a tap as it lands.
+      audio.play('rotate', { rate: 0.55 });
+      audio.play('rotate', { rate: 0.8, delay: 0.09 });
+      audio.play('select', { rate: 0.7, delay: (FEEL.changeOrder.inMs * 0.7) / 1000 });
+      break;
+    case 'arrived':
+      arrivalBeat(e, after);
+      break;
+    default:
+      break;
+  }
+}
+
+/**
+ * A household member arrives (D-099): a banner over the board, a doorbell, and their cards
+ * popping into the reserve's extra slots (Inventory.tsx). It doesn't hold the week up: the
+ * banner goes on its own (or with a click on it), and the first-time hints wait for it.
+ */
+function arrivalBeat(e: Extract<GameEvent, { t: 'arrived' }>, after: RunState): void {
+  const a = arrivalOf(after.setup.clientId, e.arrival);
+  if (!a) return;
+  const pop = { arrival: e.arrival, id: nextId++ };
+  justArrived.value = pop;
+  setTimeout(() => {
+    if (justArrived.value?.id === pop.id) justArrived.value = null;
+  }, FEEL.arrival.landDelayMs + FEEL.arrival.popMs);
+  const have = isPlural(a) ? 'have' : 'has';
+  const are = e.cards.length === 1 ? 'is' : 'are';
+  showBanner(
+    `${a.name} ${have} arrived!`,
+    `${cardsPhrase(e.cards)} ${are} waiting in your reserve.`,
+    'good',
+  );
+  // A doorbell's ding-dong (a major third down), then the cards land with a shimmer.
+  const f = FEEL.arrival;
+  audio.play('chime', { rate: 1.12 });
+  audio.play('chime', { rate: 0.89, delay: f.dongMs / 1000 });
+  audio.play('sparkle', { delay: f.landDelayMs / 1000, gain: 0.6 });
+}
+
 onEvents((events, before, after) => {
   // A new action while a tally plays finishes that one at once, then plays its own.
   if (busy.value) skipping = true;
@@ -998,5 +1237,7 @@ onRunReset(() => {
     flash.value = null;
     justPlaced.value = null;
     justRenovated.value = null;
+    orderStamp.value = null;
+    justArrived.value = null;
   });
 });

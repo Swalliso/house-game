@@ -16,6 +16,7 @@ import {
   rules,
   specText,
   terrainAt,
+  type ArrivalDef,
   type ClientDef,
   type Contract,
   type CrewDef,
@@ -26,6 +27,7 @@ import {
 import { audio } from '../audio/audio.ts';
 import { copyFallback, howToPlayOpen, settingsOpen } from '../hud/actions.ts';
 import { RarityTag } from '../hud/goods.tsx';
+import { arrivalsOf, arrivalWeek, midName } from '../hud/household.ts';
 import { Tip } from '../hud/Tip.tsx';
 import { appScreen, firstVisit, jobBoardSeed, takeContract } from '../store.ts';
 import { Street } from './Title.tsx';
@@ -216,6 +218,7 @@ function ContractCard(props: {
     [contract.seed, contract.clientId],
   );
   const household = client.specs.find((s) => s.id === 'roomForEveryone');
+  const arrivals = arrivalsOf(contract.clientId);
   const wishes = client.specs.filter((s) => s.group === 'wishes');
   const houseRules = client.specs.filter((s) => s.group !== 'wishes');
   return (
@@ -244,10 +247,11 @@ function ContractCard(props: {
               ))}
             </ul>
           </section>
-          {household && (
+          {(household || arrivals.length > 0) && (
             <section class="contract-section">
               <h3>Household</h3>
-              <p>{specText(CONTENT, household)}</p>
+              {arrivals.length > 0 && <MovingIn arrivals={arrivals} />}
+              {household && <p>{specText(CONTENT, household)}</p>}
             </section>
           )}
         </div>
@@ -281,6 +285,28 @@ function ContractCard(props: {
         <kbd aria-hidden="true">{index + 1}</kbd>
       </footer>
     </li>
+  );
+}
+
+/**
+ * Who moves in mid-run (M4b, D-099), and when: "Moving in: the twins at Framing (week 9),
+ * Grandma at Drywall (week 17)". Each name's tip says what they bring.
+ */
+function MovingIn({ arrivals }: { arrivals: readonly ArrivalDef[] }) {
+  return (
+    <p class="contract-arrivals">
+      <strong>Moving in:</strong>{' '}
+      {arrivals.map((a, k) => (
+        <span key={a.id}>
+          {k > 0 ? ', ' : ''}
+          <Tip title={a.name} text={a.text}>
+            {midName(a)}
+          </Tip>{' '}
+          at {rules.phaseName(a.phase)} (week {arrivalWeek(a)})
+        </span>
+      ))}
+      .
+    </p>
   );
 }
 

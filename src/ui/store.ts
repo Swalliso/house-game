@@ -21,6 +21,7 @@ import {
   type EarlyOffer,
   type GameEvent,
   type InstallAction,
+  type InstallGain,
   type Play,
   type RenovateAction,
   type PieceId,
@@ -193,14 +194,26 @@ export const renovateUids = computed<readonly number[]>(() => {
 });
 
 /**
+ * D-103: while a fixture is selected (hand or supplies), every legal host with what installing
+ * it there does to this week's Wow, from the rules' installGains: once per selection (and per
+ * state), never per pointer move.
+ */
+export const installGains = computed<readonly InstallGain[]>(() => {
+  const sel = selection.value;
+  if (!sel || sel.kind !== 'fixture') return [];
+  return rules.installGains(run.value, sel.from, sel.i);
+});
+
+/**
  * The types the checklist caps for the selected card (a Bedroom card: Bedrooms), or null. A
- * card over a room of these types renovates it, or says why it can't yet.
+ * card over a room of these types renovates it, or says why it can't yet. Not a member's card
+ * (M4b, D-099): it counts as a Bedroom but can't renovate, so it only ever places.
  */
 const cappedTypes = computed<readonly PieceId[] | null>(() => {
   const sel = selection.value;
   if (!sel || sel.kind !== 'piece') return null;
   const def = CONTENT.pieces[sel.id];
-  if (def.category !== 'indoor') return null;
+  if (def.category !== 'indoor' || def.member) return null;
   const root = def.countsAs ?? def.id;
   return rules.limits(run.value).find((l) => l.types.includes(root))?.types ?? null;
 });
@@ -563,9 +576,12 @@ export function goToTitle(): void {
   appScreen.value = 'title';
 }
 
-/** A run that hasn't ended: building, or in the shop between milestones. */
+/**
+ * A run that hasn't ended: building, in the shop between milestones, or (M4b) with a change
+ * order waiting for its answer.
+ */
 export function inProgress(state: RunState = run.value): boolean {
-  return state.screen === 'build' || state.screen === 'shop';
+  return state.screen === 'build' || state.screen === 'shop' || state.screen === 'changeOrder';
 }
 
 /** Sends an action to the rules. Illegal actions are a bug in the UI, not a crash. */
@@ -672,6 +688,14 @@ export function refreshShop(): boolean {
 
 export function leaveShop(): boolean {
   return dispatch({ t: 'leaveShop' });
+}
+
+/**
+ * M4b: accepts or declines the change order waiting on its screen (a phase effect is only
+ * acknowledged: `accept` true). Then the shop opens, or a forced one goes back to its week.
+ */
+export function answerChangeOrder(accept: boolean): boolean {
+  return dispatch({ t: 'answerChangeOrder', accept });
 }
 
 /** The ?debug panel's cheats. They're actions, so the run code still replays. */

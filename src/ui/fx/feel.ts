@@ -100,8 +100,9 @@ export const FEEL = {
 
   /**
    * How long the tally waits on a milestone banner before playing what comes next. When the
-   * shop follows, it waits the banner out instead, in real time at any tally speed (holding
-   * hurries it, a click skips it), so the banner is read before the shop opens over it.
+   * shop or a change order follows, it waits the banner out instead, in real time at any tally
+   * speed (holding hurries it, a click skips it), so the banner is read before the sheet opens
+   * over it.
    */
   milestoneHoldMs: 900,
   /** When a phase's last week crosses its target, the target's ding gets this long alone. */
@@ -135,6 +136,36 @@ export const FEEL = {
 
   /** An installed fixture's pop on its piece. */
   installMs: 360,
+
+  /**
+   * Change orders (M4b). The sheet arrives with a paper flourish: it slides up from a slight
+   * tilt and settles, over a backdrop that fades in. Its keys wait for the flourish, so an
+   * Enter pressed for the week before can't answer it. An answer is stamped on the sheet, in
+   * real time (holding hurries it, a click skips it), before the shop opens.
+   */
+  changeOrder: {
+    inMs: 420,
+    /** The tilt it arrives from, in degrees. */
+    tiltDeg: -3,
+    keyDelayMs: 450,
+    /** The stamp lands in this long, then the sheet holds until `stampMs`. */
+    stampInMs: 160,
+    stampMs: 700,
+    /** A restriction broken (✕ on the piece), and each order resolving at its milestone. */
+    brokenMs: 650,
+    resolvedMs: 900,
+  },
+
+  /**
+   * A household member arriving (M4b, D-099): a banner and a doorbell (ding, then dong after
+   * `dongMs`), and their cards pop into the reserve once it has rung, with a shimmer.
+   */
+  arrival: {
+    dongMs: 300,
+    landDelayMs: 450,
+    popMs: 520,
+    popScale: 1.25,
+  },
 
   /** A ×Mult source's gold stamp in the tally (D-056): each lands on its own beat. */
   sparkleStepMs: 650,

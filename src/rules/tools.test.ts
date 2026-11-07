@@ -706,6 +706,62 @@ describe('Fertilizer (advanceTimers)', () => {
     expect(plain.state.house.pieces).toHaveLength(1);
   });
 
+  it('a Sapling made old enough mid-week says it changes next week, when it does', () => {
+    // Placed in week 1; by week 3 it's age 2, and Fertilizer's +2 makes it 4, old enough. A
+    // transform happens at a week's start, so this one comes at the start of week 4.
+    const s = build([['sapling', 5, 5]], { tools: ['fertilizer'] });
+    const week3 = applyAll(R, s, [PASS, PASS]).state;
+    expect(week3.week).toBe(3);
+    const used = R.apply(week3, use(0)).state;
+    expect(R.pieceTimers(used, 1)).toEqual(['Becomes a Tree at the start of week 4']);
+    const week4 = R.apply(used, PASS);
+    expect(eventsOf(week4.events, 'transformed')).toHaveLength(1);
+    expect(week4.state.week).toBe(4);
+  });
+
+  it('…and still next week in a shop or change order the debug panel opens mid-week', () => {
+    // Both go back to week 3, whose start has run: the Sapling becomes a Tree as week 4 starts.
+    const s = build([['sapling', 5, 5]], { tools: ['fertilizer'] });
+    const used = R.apply(applyAll(R, s, [PASS, PASS]).state, use(0)).state;
+    const shop = R.apply(used, { t: 'debug', op: 'forceShop' }).state;
+    const order = R.apply(used, { t: 'debug', op: 'forceChangeOrder', id: 'heatWave' }).state;
+    expect([shop.screen, order.screen]).toEqual(['shop', 'changeOrder']);
+    for (const q of [shop, order]) {
+      expect(R.pieceTimers(q, 1)).toEqual(['Becomes a Tree at the start of week 4']);
+    }
+    const back = R.apply(shop, { t: 'leaveShop' });
+    expect(eventsOf(back.events, 'transformed')).toEqual([]);
+    expect(back.state.week).toBe(3);
+    expect(eventsOf(R.apply(back.state, PASS).events, 'transformed')).toHaveLength(1);
+  });
+
+  it('between phases, a Sapling old enough says the next phase’s first week, when it changes', () => {
+    // Placed in week 1, it's 4 weeks old in week 5, the next phase's first. Milestone 1's shop
+    // (and a change order before it) come before week 5 starts: leaving the shop starts it,
+    // and the Sapling becomes a Tree then.
+    const timers = ['Becomes a Tree at the start of week 5'];
+    for (const after of [[], [1]]) {
+      const r = createRules(content([0, 0], 4, { changeOrderAfter: after }));
+      let s = applyAll(r, build([['sapling', 5, 5]], { rules: r }), [PASS, PASS, PASS]).state;
+      expect(r.pieceTimers(s, 1)).toEqual(timers);
+      s = r.apply(s, PASS).state;
+      if (after.length > 0) {
+        expect([s.screen, s.week]).toEqual(['changeOrder', 5]);
+        expect(r.pieceTimers(s, 1)).toEqual(timers);
+        // Only phase effects come before the last phase: acknowledged, then the shop.
+        s = r.apply(s, { t: 'answerChangeOrder', accept: true }).state;
+      }
+      expect([s.screen, s.week]).toEqual(['shop', 5]);
+      expect(s.house.pieces.map((p) => p.defId)).toEqual(['sapling']);
+      expect(r.pieceTimers(s, 1)).toEqual(timers);
+      const week5 = r.apply(s, { t: 'leaveShop' });
+      expect(eventsOf(week5.events, 'transformed')).toHaveLength(1);
+      expect(week5.state.week).toBe(5);
+      expect(week5.state.house.pieces).toEqual([]);
+      expect(terrainAt(week5.state, 5, 5)).toBe('tree');
+    }
+  });
+
   it('counts for economy cadence and Growth', () => {
     // Garage (budget 1 every 3rd week) touching the street, placed this week: age 0, no budget.
     // At age 2 it pays this week.
