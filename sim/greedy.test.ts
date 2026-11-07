@@ -112,7 +112,7 @@ describe('the greedy bot', () => {
     expect(states).toBeGreaterThanOrEqual(12);
     expect(hits / states).toBeGreaterThanOrEqual(0.85);
     expect(lost).toBeLessThanOrEqual(0.02 * bestSum);
-  }, 20_000);
+  }, 60_000); // ~12,800 plays scored exactly: 25 s on a slow CI runner
 
   it('keeps Under one roof when the spots a card likes best would break it', () => {
     // An 8 × 4 house at 2:1 (two Living Rooms, the Kitchen, the Dining Room, and Hallways)
