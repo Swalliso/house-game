@@ -1075,7 +1075,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
   - The plan's numbers (the Landscaper's yard draws +50% and earnings +25%, the Architect's sets +50%) failed §8's spread: the Architect won 60.9%, the General Contractor 37.9%, and the Landscaper 27.5% (1,000 held-out runs). Extra yard draws crowd out the rooms the checklist needs, and sets drive most of the Charm. At these numbers: 45.5%, 41.5%, and 39.7%.
 - **Debug ops:** force a change order (offered now, running through the current phase) or a client's arrival (its cards now, once).
 
-- **The UI** (2026-11-07): the change-order sheet takes its keys only after a short pause (so an Enter meant for End week can't answer it), and stamps the answer before the shop opens. Orders a milestone resolved stay in the checklist panel with their result until the next phase's first tally, so skipping the tally never hides them. An arrival's banner doesn't hold up the week.
+- **The UI** (2026-11-07): the left column fits 1280×720 and up: house-rule groups whose lines all hold fold into one row (they open while a line in them flips), and while a play is being looked at, Inspect comes first. A source with several earn lines names what each is for ("Count Vladislav (Dark pieces)"). A demolition's preview names the sets it would break; a set that re-forms from other pieces isn't counted. The change-order sheet takes its keys only after a short pause (so an Enter meant for End week can't answer it), and stamps the answer before the shop opens. Orders a milestone resolved stay in the checklist panel with their result until the next phase's first tally, so skipping the tally never hides them. An arrival's banner doesn't hold up the week.
 
 **Why:** the plan's M4b, D-099, and the sim's needs. The last-phase rule is new: without it, the offer after milestone 6 paid budget at the end of the run.
 **Changes:** jam-scope.md's change orders (the Twins and Grandma's moving in are arrivals now, D-099). Appendix A · M4b's skip rules (free space isn't checked).
@@ -1232,7 +1232,7 @@ D-074 to D-080 came out of playtest 2 (M2, 2026-11-05), D-090 to D-093 out of pl
 **Would change:** D-043 (draw weights are fixed for the run) and D-051 (the services).
 
 ### D-077 · Tooltips that explain the game's terms
-**Status:** Open · 2026-11-05, from playtest 2. Its first pass, with the shop, is D-086; the board's terms are still open.
+**Status:** Decided · 2026-11-07: built with M4 (below). Was Open, from playtest 2; its first pass, with the shop, is D-086.
 **Finding:** Early completion was tempting, but its payoff was unclear. Budget does nothing until the shop, and nothing says so. The Driveway's front-yard rule was hard to read (D-080).
 **Idea:** Hover tooltips for:
 - Comfort and Charm
@@ -1243,6 +1243,7 @@ D-074 to D-080 came out of playtest 2 (M2, 2026-11-05), D-090 to D-093 out of pl
 - Hallway links, and timers
 **To decide:** When (with M3's shop, or with D-045's first-time hints in M4b), and how. The text should be generated from the rules data, as card text is (D-038).
 **2026-11-06 (Combolands research):** Combolands' most requested feature after launch was a compendium of the run's buildings, heirlooms, and councillors (v1.0.5), and v1.0.7 took a confusing "counts as fish" line off a card. See research.md's 2026-11-06 systems update.
+**2026-11-07 (M4):** the board's terms are in the rules' glossary, written from the content: the front and back yards, fenced yards (with the 10-tile minimum), requirements (each base-pool piece's), Hallway links, timers, Renovate, and the checklist. Inspect puts them on its region names, requirement lines, link mentions, and timers, and a granted tag names where it came from ("Dark · from Eternal night"). First-time hints (D-045) cover the first week, the checklist, Complete early, the shop, a fixture, a change order, and an arrival.
 
 ### D-078 · Terrain and the house's position should matter more
 **Status:** Open · 2026-11-05, from playtest 2.
