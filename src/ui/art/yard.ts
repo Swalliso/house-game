@@ -15,8 +15,8 @@
 //   the hens. Fixtures: the Sprinkler on its Lawn, the Pergola over its Patio, Garden Lights as
 //   two bollards with their glow; a fixture's badge shows only where a door keeps it off.
 // - Nothing stands on an outside door's mat or in front of its opening: a Patio's seats move
-//   clear of the door that opens onto it (its parasol stays folded away), and the car parks
-//   further along its Driveway, or on the next one.
+//   clear of the door that opens onto it (under a small parasol in place of the full one), and
+//   the car parks further along its Driveway, or on the next one.
 // - Parts of items above their piece's own cells (the Greenhouse's roof, the Treehouse, a
 //   Birdhouse's box, a car's roof) carry `over`, and go on the overhang layer above the walls.
 //
@@ -403,17 +403,21 @@ class Yard {
     return this.box.w >= this.box.h;
   }
 
-  /** Whether a sprite with its top-left at (x, y) keeps off the keep-outs and the doors. */
-  fits(sprite: Item['sprite'], x: number, y: number): boolean {
+  /**
+   * Whether a sprite with its top-left at (x, y) keeps off the keep-outs and the doors: all of it,
+   * or just its `posts` (rects within it) for an open frame the doors show through (the Pergola).
+   */
+  fits(sprite: Item['sprite'], x: number, y: number, posts?: readonly Rect[]): boolean {
     const { w, h } = artSize(sprite);
     const foot = { x, y: y + Math.max(0, h - 8), w, h: Math.min(h, 8) };
     if (this.ctx.keepOut.some((k) => overlaps(foot, k))) return false;
-    return !this.ctx.doors.some((d) => overlaps({ x, y, w, h }, d));
+    const solid = posts?.map((r) => ({ ...r, x: x + r.x, y: y + r.y })) ?? [{ x, y, w, h }];
+    return !this.ctx.doors.some((d) => solid.some((r) => overlaps(r, d)));
   }
 
   /** Places a sprite with its top-left at (x, y), unless it would stand on a keep-out or a door. */
-  put(sprite: Item['sprite'], x: number, y: number): boolean {
-    if (!this.fits(sprite, x, y)) return false;
+  put(sprite: Item['sprite'], x: number, y: number, posts?: readonly Rect[]): boolean {
+    if (!this.fits(sprite, x, y, posts)) return false;
     this.items.push({ sprite, x, y });
     return true;
   }
@@ -537,6 +541,12 @@ function poolTiles(y: Yard): void {
 }
 
 const PARASOLS: readonly SpriteId[] = ['parasol-0', 'parasol-1', 'parasol-2'];
+const SMALL_PARASOLS: readonly SpriteId[] = ['parasol-small-0', 'parasol-small-1'];
+/** The Pergola's posts, within its sprite: the rest is slats a door's mat shows through. */
+const PERGOLA_POSTS: readonly Rect[] = [
+  { x: 1, y: 40, w: 11, h: 21 },
+  { x: 52, y: 40, w: 11, h: 21 },
+];
 const PLANTERS: readonly SpriteId[] = ['planter-0', 'planter-1', 'planter-2', 'planter-3'];
 const COOPS: readonly SpriteId[] = ['coop-0', 'coop-1', 'coop-2'];
 const BIRDHOUSES: readonly SpriteId[] = [
@@ -547,10 +557,18 @@ const BIRDHOUSES: readonly SpriteId[] = [
 ];
 
 /** A seat on each side of a little table, facing it: where they keep off the doors, or none. */
-function seats(y: Yard, x: number, base: number, offsets: readonly [number, number][]): boolean {
+function seats(
+  y: Yard,
+  x: number,
+  base: number,
+  offsets: readonly [number, number][],
+  parasol?: SpriteId,
+): boolean {
   const color = (y.hash >>> 4) % 2;
   return y.group(
     [
+      // A small parasol's canopy just over the table's top, behind the seats.
+      ...(parasol ? [[parasol, x - 5, base - 31] as [SpriteId, number, number]] : []),
       [color ? 'patio-chair-e-1' : 'patio-chair-e-0', x - 15, base - 19],
       [color ? 'patio-chair-w-1' : 'patio-chair-w-0', x + 14, base - 19],
       ['patio-table', x, base - 16],
@@ -576,8 +594,8 @@ const LAYOUTS: Partial<Record<PieceId, (y: Yard) => void>> = {
     y.edge(EDGE.pavers);
     const { x, y: top, w, h } = y.box;
     // The table in the middle, near the front; its seats either side. Where a door opens onto
-    // the patio, they move clear of its mat (to the back, or a side), and the parasol, whose
-    // canopy covers most of the patio, stays folded away.
+    // the patio, they move clear of its mat (to the back, or a side), and a small parasol over
+    // the table stands in for the full one, whose canopy covers most of the patio.
     const tx = x + w / 2 - 6;
     const base = top + h - 3;
     const room = (dy: number): [number, number][] => [
@@ -588,7 +606,8 @@ const LAYOUTS: Partial<Record<PieceId, (y: Yard) => void>> = {
     const moves = [...room(0), ...room(-(h - 26))];
     if (y.fixture === 'pergola') {
       seats(y, tx, base - 6, moves);
-      y.fixtureShown = y.put('pergola', x, top + h - 61);
+      // An open frame of slats on two posts: only its posts keep off a door's mat.
+      y.fixtureShown = y.put('pergola', x, top + h - 61, PERGOLA_POSTS);
     } else {
       // The parasol's stand behind the table, its canopy over the seats.
       const parasol = y.put(
@@ -596,7 +615,9 @@ const LAYOUTS: Partial<Record<PieceId, (y: Yard) => void>> = {
         x + Math.floor((w - 47) / 2),
         base - 61 - 4,
       );
-      seats(y, tx, base, parasol ? [[0, 0]] : moves);
+      if (parasol) seats(y, tx, base, [[0, 0]]);
+      else
+        seats(y, tx, base, moves, pick(SMALL_PARASOLS, y.ctx.color)) || seats(y, tx, base, moves);
     }
   },
 

@@ -321,8 +321,33 @@ describe('outside doors', () => {
       expect(overlaps(rect(it), door.mat), it.sprite).toBe(false);
       expect(overlaps(rect(it), door.gap), it.sprite).toBe(false);
     }
-    // Its table and seats still stand on it, clear of the door.
+    // Its table and seats still stand on it, clear of the door, under a small parasol (the
+    // full one would cover the door).
     expect(items.some((i) => i.sprite === 'patio-table')).toBe(true);
+    expect(items.some((i) => i.sprite.startsWith('parasol-small-'))).toBe(true);
+    expect(items.some((i) => /^parasol-\d/.test(i.sprite))).toBe(false);
+  });
+
+  it('let a Pergola’s slats cover a door’s mat, but never its posts', () => {
+    // South of the house, the door's mat is under its slats, clear of its posts: it shows.
+    const south = house([
+      ['livingRoom', 4, 2],
+      ['patio', 4, 5, 0, 'pergola'],
+    ]);
+    const sm = houseModel(south);
+    const l = yardModel(south, sm).pieces.get(2)!;
+    expect(l.items.some((i) => i.sprite === 'pergola')).toBe(true);
+    expect(l.fixtureShown).toBe(true);
+    // North of it, the door's mat is where a post would stand: the badge shows instead.
+    const north = house([
+      ['kitchen', 4, 4],
+      ['patio', 4, 2, 0, 'pergola'],
+    ]);
+    const nm = houseModel(north);
+    expect(nm.exits.some((e) => e.onto === 2 && e.side === 'N')).toBe(true);
+    const n = yardModel(north, nm).pieces.get(2)!;
+    expect(n.items.some((i) => i.sprite === 'pergola')).toBe(false);
+    expect(n.fixtureShown).toBe(false);
   });
 
   it('park the car further along, or on the next Driveway, off a door’s mat', () => {

@@ -87,6 +87,18 @@
     "rect": [288, 67, 47, 61],
     "note": "A Patio's parasol: the orange and white umbrella (the one on the sheet's second row, clear of the deck chair beside the first)."
   },
+  "parasol-small-0": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/14_Swimming_Pool_16x16.png",
+    "rect": [244, 332, 23, 19],
+    "note": "A small orange parasol over a Patio's table, where a door opens onto the Patio and the full parasol would cover it (the audit prototype's parasol)."
+  },
+  "parasol-small-1": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/14_Swimming_Pool_16x16.png",
+    "rect": [292, 332, 23, 19],
+    "note": "A small red parasol over a Patio's table, where a door opens onto the Patio."
+  },
   "patio-chair-e-0": {
     "pack": "me",
     "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_16x16.png",
