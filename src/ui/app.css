@@ -21,6 +21,13 @@
   /* Good and bad: blue and orange, never color alone (D-047, §2). */
   --good: #2f6fd0;
   --bad: #e07a1f;
+  /* Darker cuts of the same colors for small text, at least 4.5:1 (WCAG AA) on the panel and
+     its row tints; the tokens above stay for big numbers and marks. */
+  --comfort-text: #2f66b8;
+  --charm-text: #b23f63;
+  --good-text: #2a64c4;
+  /* Small orange text (AA 4.5:1 on the panel and the paper): the marks keep --bad. */
+  --bad-text: #a14f08;
   font-family:
     system-ui,
     -apple-system,
@@ -403,6 +410,27 @@ h3 {
   border-color: var(--bad);
   color: #9a4a0a;
 }
+/* The ghost's labels (Board.tsx), stacked: its own, and a pack's next tile's nearest the
+   cells, so the two never overlap. */
+.ghost-labels {
+  position: absolute;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  transform: translate(-50%, calc(-100% - 6px));
+  pointer-events: none;
+}
+.ghost-labels.below {
+  flex-direction: column-reverse;
+  transform: translate(-50%, 6px);
+}
+.ghost-labels > .ghost-reason,
+.ghost-labels > .ghost-delta {
+  position: static;
+  transform: none;
+}
 
 .badges,
 .popups {
@@ -554,6 +582,12 @@ h3 {
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
+.layer.comfort .layer-name {
+  color: var(--comfort-text);
+}
+.layer.charm .layer-name {
+  color: var(--charm-text);
+}
 .layer-value {
   font-size: 28px;
   font-weight: 900;
@@ -606,10 +640,10 @@ h3 {
   font-weight: 800;
 }
 .delta.good {
-  color: var(--good);
+  color: var(--good-text);
 }
 .delta.bad {
-  color: #b85c0c;
+  color: var(--bad-text);
 }
 .big-week {
   margin-top: 6px;
@@ -644,11 +678,11 @@ h3 {
   font-weight: 600;
 }
 .sets .comfort {
-  color: var(--comfort);
+  color: var(--comfort-text);
   font-weight: 700;
 }
 .sets .charm {
-  color: var(--charm);
+  color: var(--charm-text);
   font-weight: 700;
 }
 .sets li.gained {
@@ -721,7 +755,7 @@ h3 {
 }
 .earns {
   font-weight: 600;
-  color: var(--comfort);
+  color: var(--comfort-text);
 }
 .lines {
   list-style: none;
@@ -754,7 +788,7 @@ h3 {
   font-weight: 700;
 }
 .set-note.good {
-  color: var(--charm);
+  color: var(--charm-text);
   font-weight: 700;
 }
 .set-note.bad {
@@ -887,6 +921,18 @@ h3 {
 }
 .mini-cell.lawn {
   background: #6fb35a;
+}
+/* Members' rooms (M4b): a Bedroom's color, with a dashed edge so a member's card stands out. */
+.mini-cell.nursery,
+.mini-cell.kidsRoom,
+.mini-cell.grandmasRoom,
+.mini-cell.renfieldsRoom,
+.mini-cell.nanasRoom,
+.mini-cell.rowansStudio,
+.mini-cell.ivysRoom {
+  background: #d9a877;
+  outline: 1px dashed rgb(94 59 38 / 0.7);
+  outline-offset: -1px;
 }
 /* End week: on a short window (1280×720, D-047) the column scrolls, so End week sticks to its
    bottom and stays in view, like the end screen's buttons (end.css). Only End week, so it

@@ -1,12 +1,13 @@
 // Small UI actions shared by the HUD's buttons and the keyboard.
 
 import { signal } from '@preact/signals';
+import { rules } from '../../rules/index.ts';
 import { audio } from '../audio/audio.ts';
 import { busy, skip } from '../fx/director.ts';
 import {
   demolishArmed,
   endWeek,
-  newRun,
+  openJobBoard,
   notice,
   preview,
   run,
@@ -58,7 +59,7 @@ export function startNewRun(): void {
   const midRun = (s.screen === 'build' || s.screen === 'shop') && s.house.pieces.length > 0;
   if (midRun && !window.confirm('Start a new run? This one will be lost.')) return;
   notice.value = null;
-  newRun();
+  openJobBoard();
 }
 
 export function selectCard(i: number, from: Source = 'hand'): void {
@@ -123,7 +124,8 @@ export function requestEndWeek(): void {
     return;
   }
   passArmed.value = false;
-  if (tentative.value && !preview.value?.legal) {
+  // The play waiting for End week, not the pointer's (a pack's next tile can be illegal).
+  if (tentative.value && !rules.checkPlay(run.value, tentative.value).legal) {
     audio.play('illegal');
     return;
   }

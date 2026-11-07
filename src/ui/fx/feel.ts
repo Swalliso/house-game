@@ -58,6 +58,39 @@ export const FEEL = {
 
   /** Squash-and-wobble on a triggering piece. */
   wobble: { ms: 260, scale: 1.12 },
+  /** A pack's tiles (D-102): each click's tick rises in pitch by `step`, from `rate`. */
+  packTile: { rate: 0.85, step: 0.05 },
+  /** A Renovation (M4a): the room's level badge pops in. */
+  levelPop: { ms: 420, scale: 1.6 },
+  /** A Renovation's beat (M4a): the room wobbles, says its new level, and knocks twice. */
+  renovateMs: 480,
+
+  /**
+   * The client's checklist in the tally (M4a), after the sets: each line held lights its row
+   * and adds its Charm, a quick beat each, since a checklist has 8–10 lines. A line the week
+   * turned on (★, a pop) or off (✕, a shake) gets a longer beat, with its name on the board.
+   * A row's flash lasts as long as a popup for its beat would.
+   */
+  checklist: {
+    stepMs: 250,
+    flipMs: 700,
+    /**
+     * Two lines flipped in one week: the second's popups land this many tiles below the first's,
+     * so they clear its "+Charm" while it rises (at 2× zoom and up to about 4× tally speed).
+     */
+    flipRows: 1.5,
+    /** A held line's chime, under a line turned on (full volume). */
+    chimeGain: 0.55,
+    /** A line turned on pops its row to this scale, and its Charm to `charmScale`. */
+    popScale: 1.05,
+    charmScale: 1.4,
+    /** A line turned off shakes its row this many px (whole px). */
+    shakePx: 3,
+    /** The share of a row's flash its pop or shake takes; the tint fades over all of it. */
+    moveShare: 0.6,
+    /** The score panel's "N checklist lines" pulses as each line lands. */
+    tickMs: 200,
+  },
 
   /** Each fast-forwarded week when a milestone completes early (D-040). */
   fastForward: { weekMs: 420 },

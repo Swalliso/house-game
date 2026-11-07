@@ -8,7 +8,7 @@ import { audio } from '../audio/audio.ts';
 import { formatNumber } from '../format.ts';
 import { howToPlayOpen, settingsOpen } from '../hud/actions.ts';
 import { spriteStyle, TILE, type SpriteId } from '../sprites.ts';
-import { canContinue, continueRun, newRun, run } from '../store.ts';
+import { canContinue, continueRun, openJobBoard, run } from '../store.ts';
 
 /** What the save holds, for the Continue button: "Framing, week 10 · 1,240 Wow". */
 function savedRunLine(): string {
@@ -32,7 +32,7 @@ export function Title() {
   const onStart = () => {
     audio.unlock();
     if (saved && !window.confirm('Start a new run? The run in progress will be lost.')) return;
-    newRun();
+    openJobBoard();
   };
 
   return (
@@ -117,7 +117,8 @@ function lawnTile(i: number): { floor: SpriteId; top?: SpriteId } {
   return { floor };
 }
 
-function Street() {
+/** The street along the bottom of the title screen and the job board. */
+export function Street() {
   const { w, h } = useViewport();
   const scale = h >= 1000 ? 4 : h >= 760 ? 3 : 2;
   const px = TILE * scale;

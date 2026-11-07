@@ -1,0 +1,145 @@
+/* The client's checklist (M4a): the client's tastes, the house rules, then the client's
+   wishes. Met lines are compact; a line that doesn't hold, or that the play being looked at
+   would flip, shows its progress. Good and bad are blue and orange with a mark, never color
+   alone. A row's flash in the tally is animated from Checklist.tsx, with FEEL's numbers. */
+
+.checklist h2 {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.checklist .check-count {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+/* The client's tastes, under the name: ▲ a like or a bonus, ▼ a dislike. */
+.checklist .tastes {
+  margin: -4px 0 4px;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.checklist .taste {
+  display: flex;
+  gap: 5px;
+}
+.checklist .taste-mark {
+  flex: none;
+  width: 12px;
+  text-align: center;
+  font-size: 10px;
+  line-height: 16px;
+}
+.checklist .taste.like .taste-mark {
+  color: var(--good);
+}
+.checklist .taste.dislike .taste-mark {
+  color: var(--bad);
+}
+.checklist .taste.plain .taste-mark {
+  color: var(--muted);
+}
+.checklist h3 {
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 8px 0 2px;
+}
+.checklist h4 {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  margin: 6px 0 1px;
+}
+.checklist ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.check-line {
+  display: grid;
+  grid-template-columns: 14px 1fr auto;
+  column-gap: 6px;
+  align-items: baseline;
+  font-size: 13px;
+  padding: 2px 4px;
+  margin: 0 -4px;
+  border-radius: 4px;
+}
+.check-line .check-mark {
+  text-align: center;
+  font-weight: 700;
+}
+.check-line.met .check-mark {
+  color: var(--good);
+}
+.check-line.unmet .check-mark {
+  color: var(--muted);
+}
+.check-line.unmet .check-name {
+  color: var(--muted);
+}
+.check-line .check-name {
+  font-weight: 600;
+  min-width: 0;
+}
+.check-line .charm {
+  color: var(--charm-text);
+  font-weight: 700;
+  font-size: 12px;
+}
+/* In the tally, a line held whose Charm hasn't landed yet this week. */
+.check-line .charm.pending {
+  opacity: 0.35;
+}
+.check-progress,
+.check-change {
+  grid-column: 2 / 4;
+  font-size: 11px;
+  color: var(--muted);
+}
+/* A part that doesn't hold yet: a ✕ before it (Checklist.tsx), and orange. */
+.check-progress .miss {
+  color: #9a4a0a;
+}
+.check-line.gained {
+  background: #fdeef2;
+}
+.check-line.gained .check-mark {
+  color: var(--charm);
+}
+.check-line.gained .check-change {
+  color: var(--charm-text);
+}
+.check-line.lost {
+  background: #fdf1e4;
+}
+.check-line.lost .check-mark,
+.check-line.lost .check-change {
+  color: #9a4a0a;
+}
+.check-line.lost .check-name {
+  text-decoration: line-through;
+}
+
+/* The tally lighting a line: ★ for one the week turned on, ✕ for one it turned off. */
+.check-line.flash-met .check-mark {
+  color: var(--charm);
+}
+.check-line.flash-lost .check-mark {
+  color: #9a4a0a;
+}
+
+/* The tally's checklist popups on the board (director.ts): a line the week turned on, in
+   Charm's color, and one it turned off, orange with its ✕. A line's name is long, so they're
+   a little smaller than a set's. */
+.popup.spec {
+  color: var(--charm);
+  font-size: 20px;
+}
+.popup.lost {
+  color: var(--bad-text);
+  font-size: 18px;
+}

@@ -1,5 +1,6 @@
 // The week's score: Comfort × Charm = Wow (D-019, D-056). It shows the house as it stands,
-// the preview's change while placing, and the tally's counters while they tick.
+// the preview's change while placing, and the tally's counters while they tick. Under the
+// sets, the checklist's part of the Charm (M4a).
 
 import {
   CONTENT,
@@ -15,6 +16,7 @@ import { currentTally, pace as paceSignal, preview, run } from '../store.ts';
 import { Celebration } from './Celebration.tsx';
 import { Tip } from './Tip.tsx';
 import './hud-m2.css';
+import './hud-m4.css';
 
 function Delta({ n, mult = false }: { n: number; mult?: boolean }) {
   if (n === 0) return null;
@@ -64,6 +66,46 @@ function SetList({
         </li>
       ))}
     </ul>
+  );
+}
+
+/**
+ * The checklist's part of the Charm (M4a): the lines held and what they add, each line adding
+ * the tally's `specBonus`. While a play is looked at, its change; while a tally plays, the
+ * lines it has counted so far, pulsing as each lands.
+ */
+function SpecCharm({
+  count,
+  bonus,
+  before,
+  ticking,
+  waiting,
+}: {
+  count: number;
+  bonus: number;
+  /** The lines held before the play being looked at, if one is. */
+  before: number | null;
+  ticking: boolean;
+  /** In a tally that hasn't reached the checklist yet: nothing counted so far. */
+  waiting: boolean;
+}) {
+  return (
+    <p class={`spec-charm ${waiting ? 'waiting' : ''}`}>
+      {/* Keyed by the count while it ticks, so the pulse restarts on every line. */}
+      <span
+        key={ticking ? count : 'count'}
+        class={`spec-count ${ticking ? 'ticking' : ''}`}
+        style={ticking ? { animationDuration: `${FEEL.checklist.tickMs}ms` } : undefined}
+      >
+        {count}
+      </span>{' '}
+      <Tip term="checklist">checklist</Tip> {count === 1 ? 'line' : 'lines'}
+      {' · '}
+      <span class="charm">
+        +{formatMult(count * bonus)} {SCORE_LABELS.mult}
+      </span>
+      {before !== null && <Delta n={(count - before) * bonus} mult />}
+    </p>
   );
 }
 
@@ -118,6 +160,14 @@ export function ScorePanel() {
     view || !p?.legal
       ? tally.sets
       : [...tally.sets.filter((s) => !p.setsLost.some((l) => l.key === s.key)), ...p.setsGained];
+  // The checklist's lines held (M4a): as built, with the play's flips, or counted so far.
+  const held = tally.specs.filter((s) => s.met).length;
+  const specCount = view
+    ? view.specs.filter((s, k) => s.met && k <= view.specAt).length
+    : p?.legal
+      ? held + p.specsGained.length - p.specsLost.length
+      : held;
+  const hasChecklist = (view ? view.specs : tally.specs).length > 0;
 
   return (
     <section
@@ -139,7 +189,9 @@ export function ScorePanel() {
           {before && <Delta n={shown.points - before.points} />}
         </div>
         <div class="op">×</div>
-        <div class={`layer charm ${view?.stage === 'sets' ? 'ticking' : ''}`}>
+        <div
+          class={`layer charm ${view?.stage === 'sets' || view?.stage === 'specs' ? 'ticking' : ''}`}
+        >
           <div class="layer-name">
             <Tip term="charm">{SCORE_LABELS.mult}</Tip>
           </div>
@@ -172,6 +224,15 @@ export function ScorePanel() {
       )}
       <h3>Sets</h3>
       <SetList sets={sets} gained={gained} lost={p?.legal && !view ? p.setsLost : []} />
+      {hasChecklist && (
+        <SpecCharm
+          count={specCount}
+          bonus={view ? view.specBonus : tally.specBonus}
+          before={!view && p?.legal ? held : null}
+          ticking={view?.stage === 'specs'}
+          waiting={!!view && view.specAt < 0}
+        />
+      )}
     </section>
   );
 }

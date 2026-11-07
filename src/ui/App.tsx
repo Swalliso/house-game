@@ -19,7 +19,9 @@ import {
   settingsOpen,
   toggleDemolish,
 } from './hud/actions.ts';
+import { Checklist } from './hud/Checklist.tsx';
 import { Hand } from './hud/Hand.tsx';
+import { Hints } from './hud/Hints.tsx';
 import { Inspect } from './hud/Inspect.tsx';
 import { Inventory } from './hud/Inventory.tsx';
 import { TipLayer } from './hud/Tip.tsx';
@@ -37,6 +39,7 @@ import {
   useSkipOnClick,
 } from './screens/Overlays.tsx';
 import { SettingsPanel } from './screens/Settings.tsx';
+import { JobBoard } from './screens/JobBoard.tsx';
 import { ShopScreen } from './screens/ShopScreen.tsx';
 import { Title } from './screens/Title.tsx';
 import { appScreen, run, selected, tool } from './store.ts';
@@ -158,6 +161,7 @@ function Game() {
       <TopBar />
       <aside class="left">
         <ScorePanel />
+        <Checklist />
         <Inspect />
       </aside>
       <main class="center">
@@ -187,7 +191,14 @@ export function App() {
   return (
     <>
       <ErrorBoundary>
-        {appScreen.value === 'title' ? <Title /> : <Game />}
+        {appScreen.value === 'title' ? (
+          <Title />
+        ) : appScreen.value === 'jobs' ? (
+          <JobBoard />
+        ) : (
+          <Game />
+        )}
+        {appScreen.value === 'game' && <Hints />}
         <Notice />
         <Toast />
         <HowToPlay />

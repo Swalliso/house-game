@@ -1,0 +1,64 @@
+/* M4a's HUD: the score panel's checklist line, and the inspect panel's checklist flips and
+   Renovations. Good and bad are blue and orange with a mark, never color alone (D-047). Small
+   text takes the darker -text tokens (app.css); the marks keep the bright ones. The timing
+   numbers live in feel.ts and come in as inline durations. */
+
+/* "8 checklist lines · +2 Charm", under the sets: the checklist's part of the Charm. */
+.spec-charm {
+  margin: 4px 0 0;
+  padding-top: 4px;
+  border-top: 1px dotted var(--panel-edge);
+  font-size: 13px;
+  font-weight: 600;
+}
+.spec-charm .charm {
+  color: var(--charm-text);
+  font-weight: 700;
+}
+.spec-charm .delta {
+  display: inline;
+  margin-left: 6px;
+}
+/* A tally that hasn't reached the checklist yet: it counts up from 0 when it does. */
+.spec-charm.waiting {
+  opacity: 0.5;
+}
+/* In the tally, the count pulses as each line lands (the Charm layer's tick, app.css). */
+.spec-charm .spec-count.ticking {
+  display: inline-block;
+  animation-name: tick;
+  animation-timing-function: ease-out;
+}
+.reduce-motion .spec-charm .spec-count.ticking {
+  animation: none;
+}
+
+/* "▲ Turns on: One Kitchen", "▼ Turns off: A tidy yard". */
+.inspect .spec-note {
+  font-weight: 700;
+}
+.inspect .spec-note.good {
+  color: var(--good-text);
+}
+.inspect .spec-note.bad {
+  color: #9a4a0a;
+}
+.inspect .spec-note .mark {
+  font-size: 0.8em;
+}
+.inspect .spec-note.good .mark {
+  color: var(--good);
+}
+.inspect .spec-note.bad .mark {
+  color: var(--bad);
+}
+
+/* A Renovation's level (D-098): a star per level, as on the board, in Comfort's color. */
+.inspect .renovate-note {
+  color: var(--comfort-text);
+  font-weight: 700;
+}
+.inspect .renovate-note .mark {
+  color: var(--comfort);
+  letter-spacing: -1px;
+}
