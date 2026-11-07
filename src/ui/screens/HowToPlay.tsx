@@ -1,12 +1,17 @@
 // How to play: one short, scannable sheet, from the title screen or the game. The numbers
 // (hand size, rerolls, demolitions, overtime, the fenced yard's size) come from the rules, so
 // the text keeps up with balance changes.
+//
+// M5a draws it as a wood sheet: each section under a plank tag, the formula as the score
+// panel's own plaques, each set as a picture of its pieces, the free actions with their
+// icons, and the keys as keycaps.
 
-import './title.css';
+import './howto.css';
 import { Fragment, type ComponentChildren } from 'preact';
-import { useEffect, useRef } from 'preact/hooks';
-import { CONTENT, rules, SCORE_LABELS } from '../../rules/index.ts';
+import { CONTENT, rules, SCORE_LABELS, type PieceId, type SetDef } from '../../rules/index.ts';
 import { howToPlayOpen } from '../hud/actions.ts';
+import { PieceArt } from '../hud/PieceArt.tsx';
+import { Button, Icon, Keycap, Plaque, Sheet, type IconName } from '../kit/kit.tsx';
 import { run } from '../store.ts';
 
 /** Rendered always; it shows itself while howToPlayOpen is set. */
@@ -16,95 +21,74 @@ export function HowToPlay() {
 
 const close = () => (howToPlayOpen.value = false);
 
-const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
-
+/** The sheet's text takes focus, so the arrow keys and Page Down scroll it (Sheet). */
 function HowToPlayDialog() {
-  const dialog = useRef<HTMLDivElement>(null);
-  const body = useRef<HTMLDivElement>(null);
-  /** Whether the press began on the backdrop, so a drag out of the sheet doesn't close it. */
-  const downOnBackdrop = useRef(false);
-
-  // Focus the text, so the arrow keys and Page Down scroll it, and give focus back on close.
-  useEffect(() => {
-    const before = document.activeElement as HTMLElement | null;
-    body.current?.focus({ preventScroll: true });
-    return () => {
-      if (before?.isConnected) before.focus({ preventScroll: true });
-    };
-  }, []);
-
   const onKeyDown = (e: KeyboardEvent) => {
     // Keys typed in the sheet stay in the sheet: they never pick cards or end the week.
     e.stopPropagation();
     if (e.key === 'Escape') {
       e.preventDefault();
       close();
-    } else if (e.key === 'Tab') {
-      // Keep Tab inside the sheet.
-      const items = [...(dialog.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [])];
-      const first = items[0];
-      const last = items[items.length - 1];
-      if (!first || !last) return;
-      if (
-        e.shiftKey &&
-        (document.activeElement === first || !items.includes(document.activeElement as HTMLElement))
-      ) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
     }
   };
 
   return (
-    <div
-      class="modal-backdrop"
-      onPointerDown={(e) => (downOnBackdrop.current = e.target === e.currentTarget)}
-      onClick={(e) => {
-        if (e.target === e.currentTarget && downOnBackdrop.current) close();
-      }}
+    <Sheet
+      title="How to play"
+      class="howto"
+      onClose={close}
+      onKeyDown={onKeyDown}
+      footer={
+        <Button variant="primary" onClick={close}>
+          Got it
+        </Button>
+      }
     >
-      <div
-        ref={dialog}
-        class="modal howto"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="howto-title"
-        onKeyDown={onKeyDown}
-      >
-        <header class="howto-head">
-          <h2 id="howto-title">How to play</h2>
-          <button
-            type="button"
-            class="howto-x"
-            onClick={close}
-            aria-label="Close"
-            title="Close (Esc)"
-          >
-            ✕
-          </button>
-        </header>
-        <div class="howto-body" ref={body} tabIndex={-1}>
-          <HowToPlayText />
-        </div>
-        <div class="modal-buttons">
-          <button type="button" class="primary" onClick={close}>
-            Got it
-          </button>
-        </div>
-      </div>
-    </div>
+      <HowToPlayText />
+    </Sheet>
   );
 }
 
-function Section({ title, children }: { title: string; children: ComponentChildren }) {
+function Section({
+  title,
+  icon,
+  children,
+}: {
+  title: string;
+  icon?: IconName;
+  children: ComponentChildren;
+}) {
   return (
     <section class="howto-section">
-      <h3>{title}</h3>
+      <h3 class="plank-tag">
+        {icon && <Icon name={icon} />}
+        {title}
+      </h3>
       {children}
     </section>
+  );
+}
+
+/**
+ * A set drawn from its own data: its members side by side, as they'd stand on the lot, with
+ * its hub in the middle (a Bathroom between two Bedrooms).
+ */
+function SetPicture({ set }: { set: SetDef }) {
+  const all = (Object.entries(set.members) as [PieceId, number][]).flatMap(([id, n]) =>
+    Array.from({ length: n }, () => id),
+  );
+  const others = set.hub ? all.filter((id) => id !== set.hub) : all;
+  const half = Math.ceil(others.length / 2);
+  const row = set.hub ? [...others.slice(0, half), set.hub, ...others.slice(half)] : all;
+  return (
+    <figure class="howto-set">
+      <div class="howto-set-pieces">
+        {row.map((id, k) => (
+          <PieceArt key={k} id={id} />
+        ))}
+      </div>
+      <figcaption>{set.name}</figcaption>
+    </figure>
   );
 }
 
@@ -144,23 +128,33 @@ function HowToPlayText() {
 
   return (
     <>
-      <Section title="The goal">
+      <Section title="The goal" icon="House">
         <p>
           Build one house for one client. The build has {phases.length} milestones of{' '}
           {b.weeksPerPhase} weeks each:
         </p>
         <ol class="howto-phases">
-          {phases.map((p) => (
-            <li key={p.name}>{p.name}</li>
+          {phases.map((p, i) => (
+            <li key={p.name}>
+              <span class="howto-phase">
+                {i === phases.length - 1 && <Icon name="flag" />}
+                {p.name}
+              </span>
+              {i < phases.length - 1 && (
+                <span class="howto-arrow" aria-hidden="true">
+                  →
+                </span>
+              )}
+            </li>
           ))}
         </ol>
         <p>
-          Each milestone has a <span class="howto-wow">{L.total}</span> target. Reach it by the
-          milestone's last week to move on.
+          Each milestone has a <b>{L.total}</b> target. Reach it by the milestone's last week to
+          move on.
         </p>
       </Section>
 
-      <Section title="A week">
+      <Section title="A week" icon="clock">
         <ul>
           <li>
             Pick 1 of {hand} cards, place it on the lot, then press <b>End week</b>.
@@ -172,10 +166,21 @@ function HowToPlayText() {
         </ul>
       </Section>
 
-      <Section title="Scoring">
-        <p class="howto-formula">
-          <span class="howto-comfort">{L.points}</span> × <span class="howto-charm">{L.mult}</span>{' '}
-          = <span class="howto-wow">{L.total}</span>
+      <Section title="Scoring" icon="sparkle">
+        <p class="howto-formula" aria-label={`${L.points} × ${L.mult} = ${L.total}`}>
+          <Plaque tone="comfort" icon="comfort">
+            {L.points}
+          </Plaque>
+          <span class="howto-op" aria-hidden="true">
+            ×
+          </span>
+          <Plaque tone="charm" icon="charm">
+            {L.mult}
+          </Plaque>
+          <span class="howto-op" aria-hidden="true">
+            =
+          </span>
+          <Plaque class="howto-wow">{L.total}</Plaque>
         </p>
         <ul>
           <li>
@@ -189,9 +194,14 @@ function HowToPlayText() {
           )}
           <li>Hover a piece or a tile to see what it earns, and why.</li>
         </ul>
+        <div class="howto-sets">
+          {Object.values(CONTENT.sets).map((set) => (
+            <SetPicture key={set.id} set={set} />
+          ))}
+        </div>
       </Section>
 
-      <Section title="The lot">
+      <Section title="The lot" icon="Outdoor">
         <ul>
           <li>
             <b>Trees</b> are Quiet and give views.
@@ -217,30 +227,42 @@ function HowToPlayText() {
         </ul>
       </Section>
 
-      <Section title="Free actions">
-        <p class="muted">These don't use up your week.</p>
+      <Section title="Free actions" icon="hammer">
+        <p class="howto-note">These don't use up your week.</p>
         <dl class="howto-actions">
-          <dt>Reroll</dt>
+          <dt>
+            <Icon name="reroll" />
+            Reroll
+          </dt>
           <dd>
             Swap your hand for new cards. {rerolls} per milestone
             {crew ? ` with the ${crew}` : ''}.
           </dd>
-          <dt>Demolish</dt>
+          <dt>
+            <Icon name="hammer" />
+            Demolish
+          </dt>
           <dd>
             Clear a piece or a boulder, with no refund. {demolitions} per run. It never splits the
             house in two.
           </dd>
-          <dt>Complete early</dt>
+          <dt>
+            <Icon name="flag" />
+            Complete early
+          </dt>
           <dd>
             Once you've met the target, finish the milestone now. The weeks left play out on their
             own (your house keeps earning), and you get a bonus.
           </dd>
-          <dt>Auto-complete</dt>
+          <dt>
+            <Icon name="clock" />
+            Auto-complete
+          </dt>
           <dd>Turn it on and every milestone completes early as soon as its target is met.</dd>
         </dl>
       </Section>
 
-      <Section title="Budget and the shop">
+      <Section title="Budget and the shop" icon="coin">
         <ul>
           <li>
             You earn budget at each milestone ({b.milestoneBudget}), for each week saved by
@@ -265,7 +287,7 @@ function HowToPlayText() {
         </ul>
       </Section>
 
-      <Section title="Overtime">
+      <Section title="Overtime" icon="warn">
         <p>
           Each run has {plural(overtime, 'overtime week')}. Miss a target and they're spent one at a
           time, each with its own hand, to catch up. If you're still short when they run out, the
@@ -273,15 +295,15 @@ function HowToPlayText() {
         </p>
       </Section>
 
-      <Section title="Controls">
+      <Section title="Controls" icon="menu">
         <dl class="howto-keys">
           {CONTROLS.map(([keys, does]) => (
             <Fragment key={`${keys}-${does}`}>
               <dt>
                 {keys.split(' or ').map((k, i) => (
                   <Fragment key={k}>
-                    {i > 0 && ' or '}
-                    <kbd>{k}</kbd>
+                    {i > 0 && <span class="howto-or"> or </span>}
+                    <Keycap>{k}</Keycap>
                   </Fragment>
                 ))}
               </dt>
@@ -291,7 +313,7 @@ function HowToPlayText() {
         </dl>
       </Section>
 
-      <Section title="Credits">
+      <Section title="Credits" icon="star">
         <ul>
           <li>
             Art by{' '}

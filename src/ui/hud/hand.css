@@ -1,0 +1,266 @@
+/* The hand (M5a): paper cards with the piece's picture, the free actions, and the sticky action
+   bar with End week as the one primary button. Built on kit.css. */
+
+.hand .panel-body {
+  gap: var(--space-3);
+}
+.free-redraw {
+  flex: none;
+  color: var(--ink-soft);
+}
+
+/* --- A card: the Card primitive (kit.css), with the hand's own sizes ----------------------- */
+
+/* A short window (1280×720) fits more of the hand: the cards drop their pictures for their
+   shape's glyph (PieceArt.tsx), and the ghost on the lot shows the rest. The picked card shows
+   its glyph on any window, turned as the piece is turned, so R shows its effect even with the
+   pointer off the lot. */
+.shape-glyph {
+  display: none;
+  grid-template-columns: repeat(var(--cols), calc(var(--px) * var(--cell)));
+  grid-template-rows: repeat(var(--rows), calc(var(--px) * var(--cell)));
+  gap: calc(var(--px) * var(--gap));
+  flex: none;
+}
+.shape-glyph > span {
+  background: var(--ink-soft);
+}
+.hand-card.is-selected .shape-glyph {
+  display: grid;
+}
+.hand-card.is-selected .shape-glyph > span {
+  background: var(--ink);
+}
+@media (max-height: 800px) {
+  .hand .panel-body {
+    gap: var(--space-2);
+  }
+  .hand-card .pcard-art,
+  .hand-card .pcard-note {
+    display: none;
+  }
+  .shape-glyph {
+    display: grid;
+  }
+}
+
+/* --- The piece's picture ------------------------------------------------------------- */
+
+.piece-art {
+  position: relative;
+  display: block;
+  flex: none;
+  image-rendering: pixelated;
+}
+.piece-art-cell,
+.piece-art-furniture {
+  position: absolute;
+}
+
+/* --- Free actions -------------------------------------------------------------------- */
+
+.free-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  container: free-actions / inline-size;
+}
+.free-action {
+  flex: 1 1 auto;
+  justify-content: flex-start;
+  gap: var(--px);
+  padding-inline: calc(var(--px) * 3);
+}
+/* The count of what's left, as a little plaque at the button's end. */
+.free-action .count {
+  margin-left: auto;
+  padding: 0 var(--px);
+  background: var(--paper-inset);
+  box-shadow: inset 0 var(--px) 0 var(--card-lo);
+  font-family: var(--font-display);
+  font-weight: 400;
+  line-height: var(--lh-tight);
+}
+.free-action.btn-danger .count {
+  background: var(--danger-shade);
+  box-shadow: none;
+}
+/* A short window with a narrow column: both on one row as an icon and a count (their titles
+   and the controls strip name them), so the cards start higher. Demolishing, Stop keeps its
+   word. */
+@media (max-height: 800px) {
+  @container free-actions (max-width: 21em) {
+    .free-action:not(.active) .free-action-word {
+      display: none;
+    }
+    .free-action.btn {
+      flex: 0 1 auto;
+      gap: var(--space-2);
+    }
+  }
+}
+
+.demolish-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-1) var(--space-2);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--armed-hi);
+  background-clip: padding-box;
+  font-weight: 700;
+}
+.demolish-hint .icon {
+  margin-top: var(--px);
+}
+
+/* --- The action bar: sticky at the column's bottom ------------------------------------ */
+
+/* On a short window (1280×720, D-047) the column scrolls, so the bar sticks to its bottom and
+   stays in view, like the end screen's buttons; .right's scroll-padding-bottom keeps a focused
+   card clear of it. */
+.hand-actions {
+  position: sticky;
+  bottom: calc(var(--px) * -5);
+  z-index: 1;
+  display: flex;
+  gap: var(--space-2);
+  margin: 0 calc(var(--space-3) * -1) calc(var(--space-3) * -1);
+  padding: var(--space-2) var(--space-3) var(--space-3);
+  background: var(--paper);
+  box-shadow: 0 calc(var(--px) * -1) 0 var(--paper-line);
+}
+@media (max-width: 1500px) {
+  .hand-actions {
+    gap: var(--space-1);
+    margin: 0 calc(var(--space-2) * -1) calc(var(--space-2) * -1);
+    padding: var(--space-2);
+  }
+}
+.hand-actions .end-week {
+  flex: 1;
+  min-width: 0;
+  justify-content: space-between;
+}
+.end-week-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hand-actions .end-week .keycap {
+  font-weight: 400;
+}
+/* End week sizes its words on its own width, which Rotate and Cancel beside it take from: it
+   drops the keycap first (the controls strip shows Enter too), then takes the short label. The
+   widths each label needs were measured with its ring and padding (2.25rem): in the pixel font
+   at 2 CSS px a UI pixel, "Pass this week" is 12.75rem, "Pass? Press again" 15.75rem and "End
+   week" 7.6rem, and the keycap with its gap 5.5rem (rem, not em: Chrome reads a container
+   query's em as the root's). A smaller UI pixel (125%) only switches sooner than it must. The
+   readable font is the system's at fixed sizes, so its widths are in px, with room for wider
+   system fonts. */
+.hand-actions {
+  container: actions / inline-size;
+}
+.hand-actions .end-week {
+  container: end-week / inline-size;
+}
+.end-week-short {
+  display: none;
+}
+/* Below these widths the keycap goes, and the label centers: */
+@container end-week (max-width: 20.6rem) {
+  [data-font='pixel'] .end-week:not(.ready, .confirm) .keycap {
+    display: none;
+  }
+  [data-font='pixel'] .end-week:not(.ready, .confirm) .end-week-label {
+    margin-inline: auto;
+  }
+}
+@container end-week (max-width: 23.6rem) {
+  [data-font='pixel'] .end-week.confirm .keycap {
+    display: none;
+  }
+  [data-font='pixel'] .end-week.confirm .end-week-label {
+    margin-inline: auto;
+  }
+}
+@container end-week (max-width: 15.5rem) {
+  [data-font='pixel'] .end-week.ready .keycap {
+    display: none;
+  }
+  [data-font='pixel'] .end-week.ready .end-week-label {
+    margin-inline: auto;
+  }
+}
+@container end-week (max-width: 210px) {
+  [data-font='readable'] .end-week:not(.ready, .confirm) .keycap {
+    display: none;
+  }
+  [data-font='readable'] .end-week:not(.ready, .confirm) .end-week-label {
+    margin-inline: auto;
+  }
+}
+@container end-week (max-width: 236px) {
+  [data-font='readable'] .end-week.confirm .keycap {
+    display: none;
+  }
+  [data-font='readable'] .end-week.confirm .end-week-label {
+    margin-inline: auto;
+  }
+}
+@container end-week (max-width: 172px) {
+  [data-font='readable'] .end-week.ready .keycap {
+    display: none;
+  }
+  [data-font='readable'] .end-week.ready .end-week-label {
+    margin-inline: auto;
+  }
+}
+/* Below these, the short label takes over ("End week" is already short): */
+@container end-week (max-width: 15.1rem) {
+  [data-font='pixel'] .end-week:not(.ready, .confirm) .end-week-label {
+    display: none;
+  }
+  [data-font='pixel'] .end-week:not(.ready, .confirm) .end-week-short {
+    display: inline;
+    margin-inline: auto;
+  }
+}
+@container end-week (max-width: 18.1rem) {
+  [data-font='pixel'] .end-week.confirm .end-week-label {
+    display: none;
+  }
+  [data-font='pixel'] .end-week.confirm .end-week-short {
+    display: inline;
+    margin-inline: auto;
+  }
+}
+@container end-week (max-width: 152px) {
+  [data-font='readable'] .end-week:not(.ready, .confirm) .end-week-label {
+    display: none;
+  }
+  [data-font='readable'] .end-week:not(.ready, .confirm) .end-week-short {
+    display: inline;
+    margin-inline: auto;
+  }
+}
+@container end-week (max-width: 176px) {
+  [data-font='readable'] .end-week.confirm .end-week-label {
+    display: none;
+  }
+  [data-font='readable'] .end-week.confirm .end-week-short {
+    display: inline;
+    margin-inline: auto;
+  }
+}
+/* A narrow bar: smaller square buttons and padding, so End week keeps its words. */
+@container actions (max-width: 299px) {
+  .hand-actions .btn-icon {
+    --btn-h: calc(var(--px) * 20);
+    align-self: center;
+  }
+  .hand-actions .end-week {
+    padding-inline: var(--space-1);
+  }
+}

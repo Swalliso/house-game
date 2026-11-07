@@ -1,358 +1,293 @@
-/* The title screen and the How to play sheet. Colors and panels come from app.css's tokens. */
+/* The title screen (M5a): a banded sky, a street scene drawn at the street's whole-pixel scale
+   (--scene CSS px per art px, Title.tsx), and the menu as an "Open House" sign hanging from a
+   post planted in the lawn, its buttons hanging below it as riders. Built on kit.css.
 
-/* --- Title screen ------------------------------------------------------------------- */
+   --horizon is the lawn's far edge and --plant the post's foot, both measured from the bottom
+   of the window. */
 
 .title-screen {
   position: fixed;
   inset: 0;
   /* Above the game (its celebration is 30), below notes (40), modals (50), the build label. */
   z-index: 35;
-  display: flex;
-  flex-direction: column;
   overflow: hidden;
-  background: linear-gradient(180deg, #f5d6a8 0%, #f8e4c6 45%, var(--paper) 100%);
+  /* The sky: flat bands, palest at the horizon. */
+  background: linear-gradient(
+    to top,
+    var(--sky-4) 0 calc(var(--horizon) + var(--px) * 44),
+    var(--sky-3) 0 calc(var(--horizon) + var(--px) * 104),
+    var(--sky-2) 0 calc(var(--horizon) + var(--px) * 184),
+    var(--sky-1) 0
+  );
 }
+
+/* --- The sky's sun and clouds, at the scene's pixel size -------------------------------- */
 
 .title-sky {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-  display: flex;
-  padding: 56px 16px 24px;
-}
-
-.title-sun {
   position: absolute;
-  top: 7%;
+  inset: 0 0 var(--horizon);
+  pointer-events: none;
+}
+.sky-piece {
+  position: absolute;
+  width: calc(var(--w) * var(--scene));
+  height: calc(var(--h) * var(--scene));
+  background: var(--art) no-repeat 0 0 / 100% 100%;
+  image-rendering: pixelated;
+}
+.sky-sun {
+  top: 8%;
   right: 12%;
-  width: 180px;
-  height: 180px;
-  border-radius: 50%;
-  background: radial-gradient(
-    circle,
-    #fff1c9 0 38%,
-    rgb(255 228 160 / 0.55) 39% 52%,
-    transparent 70%
-  );
-  pointer-events: none;
+}
+.sky-cloud-a {
+  top: 14%;
+  left: 6%;
+}
+.sky-cloud-b {
+  top: 5%;
+  left: 27%;
+}
+.sky-cloud-c {
+  top: 27%;
+  right: 24%;
 }
 
-.title-card {
-  position: relative;
-  /* Auto margins center it, and unlike align-items they never clip it on a short screen. */
-  margin: auto;
-  text-align: center;
-  background: var(--panel);
-  border: 3px solid var(--wood-dark);
-  border-radius: 18px;
-  padding: 40px 44px 28px;
-  box-shadow: 0 16px 44px rgb(60 40 20 / 0.28);
-  animation: title-card-in 0.45s cubic-bezier(0.2, 1.2, 0.4, 1) both;
-}
-@keyframes title-card-in {
-  from {
-    opacity: 0;
-    transform: translateY(14px) scale(0.97);
-  }
-}
-.reduce-motion .title-card {
-  animation: none;
-}
+/* --- The scene: the lawn, the houses, the street, and a car -------------------------------- */
 
-/* A gable over the name: two strokes meeting at a point. */
-.title-roof {
+.title-scene {
   position: absolute;
-  left: 50%;
-  top: -32px;
-  width: 64px;
-  height: 64px;
-  transform: translateX(-50%) rotate(45deg);
-  border-top: 10px solid var(--wood);
-  border-left: 10px solid var(--wood);
-  border-radius: 4px 0 0 0;
-  background: linear-gradient(135deg, var(--panel) 0 50%, transparent 50%);
-}
-
-.title-name {
-  margin: 0;
-  font-size: clamp(48px, 7vw, 80px);
-  font-weight: 900;
-  line-height: 1;
-  letter-spacing: -0.01em;
-  color: var(--wood-dark);
-  text-shadow: 0 4px 0 var(--panel-edge);
-}
-
-.title-pitch {
-  margin: 14px 0 26px;
-  font-size: 18px;
-  color: var(--muted);
-}
-
-.title-buttons {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 10px;
-  width: min(320px, 80vw);
-  margin: 0 auto;
-}
-.title-buttons button {
-  font-size: 16px;
-  padding: 10px 16px;
-}
-.title-buttons .title-main {
-  font-size: 19px;
-  font-weight: 800;
-  padding: 12px 18px;
-}
-.title-detail {
-  display: block;
-  margin-top: 3px;
-  font-size: 13px;
-  font-weight: 600;
-  opacity: 0.85;
-  font-variant-numeric: tabular-nums;
-}
-.title-row {
-  display: flex;
-  gap: 10px;
-}
-.title-row button {
-  flex: 1;
-}
-
-/* The house on the horizon, left of the card. */
-.title-house {
-  position: absolute;
-  bottom: 0;
-  left: max(24px, calc(50% - 560px));
-  width: 210px;
-  height: 180px;
-  pointer-events: none;
-}
-.title-house-roof {
-  position: absolute;
-  top: 0;
   left: 0;
-  right: 0;
-  height: 84px;
-  background: var(--wood-dark);
-  clip-path: polygon(50% 0, 100% 100%, 0 100%);
-}
-.title-house-chimney {
-  position: absolute;
-  top: 18px;
-  right: 46px;
-  width: 20px;
-  height: 44px;
-  background: var(--wood);
-}
-.title-house-walls {
-  position: absolute;
   bottom: 0;
-  left: 22px;
-  right: 22px;
-  height: 100px;
-  background: #ead7b8;
-  border: 4px solid var(--wood-dark);
-  border-bottom: none;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-around;
-  padding: 0 12px;
+  pointer-events: none;
 }
-.title-house-window {
-  align-self: center;
-  width: 32px;
-  height: 32px;
-  background: #f6d58a;
-  border: 4px solid var(--wood-dark);
-  box-shadow: 0 0 14px rgb(246 213 138 / 0.8);
-}
-.title-house-door {
-  width: 32px;
-  height: 56px;
-  background: var(--wood);
-  border: 4px solid var(--wood-dark);
-  border-bottom: none;
-}
-@media (max-width: 1099px) {
-  .title-house {
-    display: none;
-  }
-}
-
-/* The street: sprite tiles at whole device pixels per art pixel (geometry.ts streetScale). */
-.title-street {
-  flex: none;
-  overflow: hidden;
-}
-.title-street canvas {
+.title-scene canvas {
   display: block;
   image-rendering: pixelated;
 }
+/* The car drives on the street's row (the second from the bottom), in whole art px. */
+.title-car {
+  position: absolute;
+  bottom: calc(var(--scene) * 34);
+  animation: title-drive var(--drive-ms) steps(var(--drive-steps), end) infinite;
+}
+.title-car.parked {
+  animation: none;
+}
+@keyframes title-drive {
+  to {
+    transform: translateX(var(--drive));
+  }
+}
+
+/* --- The sign: a post, an arm, the board, and the riders ---------------------------------- */
+
+.title-stage {
+  --sign-top: clamp(calc(var(--px) * 8), 12vh, calc(var(--px) * 64));
+  --chain: calc(var(--px) * 7);
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: var(--plant);
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+.sign {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* Room on the left for the post. */
+  padding: 0 0 0 calc(var(--px) * 16);
+  pointer-events: auto;
+  animation: sign-in var(--dur-banner) cubic-bezier(0.2, 1.3, 0.4, 1) both;
+}
+@keyframes sign-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--px) * -8));
+  }
+}
+.reduce-motion .sign {
+  animation: none;
+}
+/* The post, from the arm down into the lawn. */
+.sign-post {
+  position: absolute;
+  left: 0;
+  top: var(--sign-top);
+  bottom: 0;
+  width: calc(var(--px) * 8);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  border-bottom: 0;
+  background: var(--wood);
+  background-clip: padding-box;
+  box-shadow:
+    inset var(--px) 0 0 var(--wood-light),
+    inset calc(var(--px) * -2) 0 0 var(--wood-dark);
+}
+/* Its foot, planted: a little shade on the lawn. */
+.sign-post::after {
+  content: '';
+  position: absolute;
+  left: calc(var(--px) * -4);
+  right: calc(var(--px) * -6);
+  bottom: calc(var(--px) * -2);
+  height: calc(var(--px) * 3);
+  background: var(--shade);
+}
+/* The arm, across the top, a little past the board. */
+.sign-arm {
+  position: absolute;
+  left: calc(var(--px) * -2);
+  right: calc(var(--px) * -6);
+  top: var(--sign-top);
+  height: calc(var(--px) * 7);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--wood);
+  background-clip: padding-box;
+  box-shadow:
+    inset 0 var(--px) 0 var(--wood-hi),
+    inset 0 calc(var(--px) * -2) 0 var(--wood-dark);
+}
+/* Chains: dashes of ink, two per board and per rider. */
+.sign-board::before,
+.sign-board::after,
+.rider::before,
+.rider::after {
+  content: '';
+  position: absolute;
+  width: calc(var(--px) * 2);
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--ink) 0 calc(var(--px) * 2),
+    transparent 0 calc(var(--px) * 3)
+  );
+}
+.sign-board {
+  position: relative;
+  margin-top: calc(var(--sign-top) + var(--px) * 7 + var(--chain));
+  padding: var(--space-4) var(--space-6) var(--space-3);
+  border: calc(var(--px) * 5) solid transparent;
+  border-image: var(--art-wood) 5 / calc(var(--px) * 5);
+  background: var(--card);
+  background-clip: padding-box;
+  box-shadow: var(--shadow-float);
+  text-align: center;
+}
+.sign-board::before,
+.sign-board::after {
+  top: calc(var(--chain) * -1 - var(--px) * 5);
+  height: var(--chain);
+}
+.sign-board::before {
+  left: calc(var(--px) * 10);
+}
+.sign-board::after {
+  right: calc(var(--px) * 10);
+}
+.title-name {
+  margin: 0;
+  /* The wordmark is the logo: Public Pixel even with the readable font, sized from the UI pixel
+     itself (not the type tokens, which the readable font redefines), so each of its font
+     pixels is four UI pixels and lands on whole device pixels: 64 px at 1080p. */
+  font-family: 'OH Display', var(--font-system);
+  font-size: calc(var(--px) * 32);
+  font-weight: 400;
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--wood-deep);
+  /* One of the font's pixels of honey under each letter. */
+  text-shadow: 0 calc(var(--px) * 4) 0 var(--wood-light);
+  white-space: nowrap;
+  -webkit-font-smoothing: none;
+}
+.title-pitch {
+  margin: var(--space-4) auto 0;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.sign-riders {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--chain);
+  margin-top: var(--chain);
+}
+.rider {
+  position: relative;
+  display: flex;
+  gap: var(--space-3);
+}
+.rider::before,
+.rider::after {
+  top: calc(var(--chain) * -1);
+  height: var(--chain);
+}
+.rider::before {
+  left: calc(var(--px) * 12);
+}
+.rider::after {
+  right: calc(var(--px) * 12);
+}
+.title-main.btn,
+.title-new.btn {
+  min-width: calc(var(--px) * 150);
+  padding-block: var(--space-1) calc(var(--space-1) + var(--px));
+  font-size: var(--fs-title);
+  line-height: calc(var(--px) * 13);
+}
+.title-main-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.title-detail {
+  font-size: var(--fs-body);
+  font-weight: 400;
+  line-height: var(--lh-body);
+}
+.title-screen .rider-pair .btn {
+  min-width: calc(var(--px) * 72);
+}
+
+/* --- The credit, on the far sidewalk ---------------------------------------------------- */
 
 .title-footer {
   position: absolute;
-  left: 50%;
-  bottom: 8px;
-  transform: translateX(-50%);
-  white-space: nowrap;
-  font-size: 12px;
-  color: var(--ink);
-  background: rgb(251 245 234 / 0.88);
-  border: 1px solid var(--panel-edge);
-  border-radius: 999px;
-  padding: 3px 12px;
-}
-
-/* --- How to play -------------------------------------------------------------------- */
-
-.modal.howto {
-  width: min(640px, 94vw);
-  max-height: min(88vh, 900px);
-  padding: 0;
-  gap: 0;
-  overflow: hidden;
-}
-.howto-head {
+  left: 0;
+  right: 0;
+  bottom: var(--space-2);
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 14px 18px 10px 22px;
-  border-bottom: 1px solid var(--panel-edge);
+  justify-content: center;
+  pointer-events: none;
 }
-.howto-head h2 {
-  margin: 0;
-  font-size: 20px;
+.title-credit {
+  padding: 0 var(--space-2) var(--px);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--card);
+  background-clip: padding-box;
+  box-shadow: var(--shadow-card);
+  pointer-events: auto;
 }
-.howto-x {
-  padding: 2px 10px;
-}
-.howto-body {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 4px 22px 12px;
-  font-size: 14px;
-  line-height: 1.45;
-}
-.howto-body:focus {
-  outline: none;
-}
-.howto .modal-buttons {
-  padding: 10px 18px 14px;
-  border-top: 1px solid var(--panel-edge);
-}
-
-.howto-section h3 {
-  margin: 16px 0 6px;
-  color: var(--wood);
-}
-.howto-section p {
-  margin: 4px 0;
-}
-.howto-section ul {
-  margin: 4px 0;
-  padding-left: 20px;
-}
-.howto-section li {
-  margin: 3px 0;
-}
-.howto-section a {
-  color: var(--wood);
+.title-footer a {
+  color: var(--wood-deep);
   font-weight: 700;
 }
 
-/* Groundbreaking → … → Final Walkthrough. */
-.howto-phases {
-  list-style: none;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 0;
-  margin: 8px 0;
-  padding: 0;
-}
-.howto-phases li {
-  display: flex;
-  align-items: center;
-  font-size: 13px;
-  font-weight: 700;
-}
-.howto-phases li:not(:last-child)::after {
-  content: '→';
-  margin: 0 6px;
-  color: var(--muted);
-  font-weight: 400;
-}
-
-.howto-formula {
-  font-size: 18px;
-  font-weight: 900;
-  margin: 6px 0 8px !important;
-}
-.howto-comfort {
-  color: var(--comfort);
-  font-weight: 800;
-}
-.howto-charm {
-  color: var(--charm);
-  font-weight: 800;
-}
-.howto-wow {
-  color: var(--wow);
-  font-weight: 800;
-}
-
-.howto-actions {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 6px 14px;
-  margin: 8px 0 4px;
-}
-.howto-actions dt {
-  font-weight: 800;
-}
-.howto-actions dd {
-  margin: 0;
-}
-
-.howto-keys {
-  display: grid;
-  grid-template-columns: max-content 1fr max-content 1fr;
-  gap: 6px 12px;
-  align-items: center;
-  margin: 8px 0 4px;
-}
-.howto-keys dt {
-  text-align: right;
-  white-space: nowrap;
-  color: var(--muted);
-}
-.howto-keys dd {
-  margin: 0;
-}
-.howto kbd {
-  display: inline-block;
-  min-width: 22px;
-  padding: 1px 6px;
-  border: 1px solid var(--panel-edge);
-  border-bottom-width: 2px;
-  border-radius: 5px;
-  background: #fff;
-  color: var(--ink);
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.5;
-  text-align: center;
-}
-@media (max-width: 560px) {
-  .howto-keys {
-    grid-template-columns: max-content 1fr;
+/* A narrower window: a smaller wordmark, and the pitch on two lines, so the houses stay clear
+   of the sign. */
+@media (max-width: 1500px) {
+  .title-name {
+    font-size: calc(var(--px) * 24);
+    text-shadow: 0 calc(var(--px) * 3) 0 var(--wood-light);
+  }
+  .title-pitch {
+    max-width: calc(var(--px) * 240);
+    white-space: normal;
   }
 }

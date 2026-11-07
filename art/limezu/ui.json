@@ -1,0 +1,50 @@
+{
+  "title-villa": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/7_Villas_16x16.png",
+    "rect": [0, 0, 144, 208],
+    "note": "The title screen's street (UI track): a two-storey villa with an orange roof and a porch, its cast shadow included, standing on the lawn left of the Open House sign. Modern Exteriors, the pack whose license allows open-source projects."
+  },
+  "title-villa-blue": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/7_Villas_16x16.png",
+    "rect": [160, 224, 144, 208],
+    "note": "The same villa with a blue roof, the title street's neighbor on the right of the sign."
+  },
+  "title-tree": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/7_Villas_16x16.png",
+    "rect": [368, 617, 47, 55],
+    "note": "A round garden tree on its grass patch, for the title street's back lawn between the houses."
+  },
+  "title-oak": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/7_Villas_16x16.png",
+    "rect": [200, 690, 68, 62],
+    "note": "A broad oak, for the title street's back lawn."
+  },
+  "title-car": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/10_Vehicles_16x16.png",
+    "rect": [96, 26, 61, 37],
+    "note": "A blue hatchback seen from the side, facing right: it drives along the title street (parked when Reduce motion is on)."
+  },
+  "title-shrub": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_16x16.png",
+    "rect": [359, 966, 18, 24],
+    "note": "A small tree for the title street's front lawn, between the sign and the houses."
+  },
+  "title-planter": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/7_Villas_16x16.png",
+    "rect": [386, 537, 29, 19],
+    "note": "A wooden planter of blue flowers, for the title street's front lawn beside the villas' steps."
+  },
+  "title-planter-pink": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/7_Villas_16x16.png",
+    "rect": [418, 569, 29, 19],
+    "note": "The same planter with pink flowers."
+  }
+}

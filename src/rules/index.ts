@@ -1265,6 +1265,7 @@ export type { Term } from './text.ts';
 export { earnedFor, roundHalfUp, weekTotal } from './scoring.ts';
 export { ruleValue } from './modifiers.ts';
 export { fitsText } from './fixtures.ts';
+export { SHOP_REASONS } from './shop.ts';
 
 export { CONTENT, SCORE_LABELS } from '../content/index.ts';
 

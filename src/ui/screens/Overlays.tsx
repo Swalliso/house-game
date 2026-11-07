@@ -1,19 +1,37 @@
 // Overlays: the milestone banner, the target flash, notes and toasts, the small-screen notice
 // (D-047). The run-end screen is in EndScreen.tsx.
+//
+// M5a draws them in the pixel style: the milestone's banner is a ribbon stamped in, gold for a
+// milestone met and orange for one missed or in overtime; notes and toasts sit at the top
+// center, under the top bar, or inside the shop's sheet under its header, so they never cover
+// the goods or the hand. A toast raised while a sheet or the menu is open (Copy run code, from
+// the menu) shows over it instead.
 
 import { useEffect, useState } from 'preact/hooks';
 import { banner, busy, flash, played, skip } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
-import { copyFallback, copyText, toast } from '../hud/actions.ts';
+import { anyModalOpen, copyFallback, copyText, shopShown, toast } from '../hud/actions.ts';
+import { Button, Icon, Sheet } from '../kit/kit.tsx';
 import { notice } from '../store.ts';
+import './overlays.css';
 
 export function MilestoneBanner() {
   const b = banner.value;
   if (!b) return null;
   return (
-    <div class={`banner ${b.tone}`} key={b.id} role="status" onClick={() => (banner.value = null)}>
-      <div class="banner-title">{b.title}</div>
-      <div class="banner-detail">{b.detail}</div>
+    <div class="banner-place">
+      <div
+        class={`banner ui ${b.tone}`}
+        key={b.id}
+        role="status"
+        onClick={() => (banner.value = null)}
+      >
+        <div class="banner-ribbon">
+          <Icon name={b.tone === 'good' ? 'star' : 'warn'} />
+          <span class="banner-title">{b.title}</span>
+        </div>
+        {b.detail && <p class="banner-detail">{b.detail}</p>}
+      </div>
     </div>
   );
 }
@@ -29,57 +47,90 @@ export function TargetFlash() {
     return () => clearTimeout(t);
   }, [f?.id]);
   if (!f || shown !== f.id) return null;
-  // 'note' is a neutral notice (a free redraw, the saving-up bonus), not the green success.
+  // 'note' is a neutral notice (a free redraw, the saving-up bonus), not the success's stamp.
   return (
-    <div class={`target-flash ${f.tone}`} key={f.id} role="status">
-      {f.text}
-    </div>
-  );
-}
-
-export function Notice() {
-  const n = notice.value;
-  if (!n) return null;
-  return (
-    <div class="notice" role="status">
-      <span>{n.text}</span>
-      {n.oldCode && (
-        <button type="button" onClick={() => void copyText(n.oldCode!, 'Old run code copied')}>
-          Copy the old run code
-        </button>
-      )}
-      <button
-        type="button"
-        class="close"
-        onClick={() => (notice.value = null)}
-        aria-label="Dismiss"
+    <div class="flash-place">
+      <div
+        class={`target-flash ui ${f.tone}`}
+        key={f.id}
+        role="status"
+        style={{ '--flash-ms': `${FEEL.targetFlashMs}ms` }}
       >
-        ✕
-      </button>
+        {f.tone === 'good' && <Icon name="flag" />}
+        {f.text}
+      </div>
     </div>
   );
 }
 
-export function Toast() {
-  const t = toast.value;
-  return t ? (
-    <div class="toast" key={t.id} role="status">
-      {t.text}
+/**
+ * Notes and toasts, at the top center under the top bar. While the shop's sheet is open they
+ * sit inside it instead (`docked`, rendered by the shop), under its header. A toast waits in
+ * ModalToast while a sheet or the menu is open.
+ */
+export function Notes({ docked = false }: { docked?: boolean }) {
+  const n = notice.value;
+  const t = anyModalOpen() ? null : toast.value;
+  if (docked !== shopShown.value || (!n && !t)) return null;
+  return (
+    <div class={`notes ui ${docked ? 'docked' : ''}`}>
+      {n && (
+        <div class="notice" role="status">
+          <Icon name="mail" />
+          <span class="notice-text">{n.text}</span>
+          {n.oldCode && (
+            <Button
+              size="sm"
+              icon="copy"
+              onClick={() => void copyText(n.oldCode!, 'Old run code copied')}
+            >
+              Copy the old run code
+            </Button>
+          )}
+          <Button
+            size="sm"
+            iconOnly
+            icon="close"
+            class="notice-close"
+            onClick={() => (notice.value = null)}
+            aria-label="Dismiss"
+            title="Dismiss"
+          />
+        </div>
+      )}
+      {t && (
+        <div class="toast" key={t.id} role="status">
+          {t.text}
+        </div>
+      )}
     </div>
-  ) : null;
+  );
+}
+
+/** A toast raised while a sheet or the menu is open, over its scrim at the top center. */
+export function ModalToast() {
+  const t = toast.value;
+  if (!t || !anyModalOpen()) return null;
+  return (
+    <div class="toast-layer ui">
+      <div class="toast" key={t.id} role="status">
+        {t.text}
+      </div>
+    </div>
+  );
 }
 
 export function SmallScreenNotice() {
   const [dismissed, setDismissed] = useState(false);
   if (dismissed) return null;
   return (
-    <div class="small-screen">
-      <div>
+    <div class="small-screen ui">
+      <div class="small-screen-card">
         <h2>Open House</h2>
         <p>It's best played on a computer, with a mouse and a bigger screen.</p>
-        <button type="button" onClick={() => setDismissed(true)}>
+        <Button variant="primary" onClick={() => setDismissed(true)}>
           Play anyway
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -105,30 +156,25 @@ export function CopyFallback() {
   if (!c) return null;
   const close = () => (copyFallback.value = null);
   return (
-    <div class="modal-backdrop" onClick={close}>
-      <div
-        class="modal"
-        role="dialog"
-        aria-modal="true"
-        aria-label={c.title}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2>{c.title}</h2>
-        <p class="muted">This browser won't let the game copy it, so copy it from here.</p>
-        <textarea
-          class="copy-text"
-          readOnly
-          rows={5}
-          value={c.text}
-          ref={(el) => el?.select()}
-          onFocus={(e) => (e.target as HTMLTextAreaElement).select()}
-        />
-        <div class="modal-buttons">
-          <button type="button" class="primary" onClick={close}>
-            Done
-          </button>
-        </div>
-      </div>
-    </div>
+    <Sheet
+      title={c.title}
+      class="copy-sheet"
+      onClose={close}
+      footer={
+        <Button variant="primary" onClick={close}>
+          Done
+        </Button>
+      }
+    >
+      <p class="copy-note">This browser won't let the game copy it, so copy it from here.</p>
+      <textarea
+        class="copy-text"
+        readOnly
+        rows={5}
+        value={c.text}
+        data-autofocus
+        onFocus={(e) => (e.target as HTMLTextAreaElement).select()}
+      />
+    </Sheet>
   );
 }

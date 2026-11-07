@@ -1,14 +1,24 @@
 // The title screen (implementation-plan.md §7, M2): the name, a one-line pitch, and Continue,
 // Start, How to play, and Settings, over a little street drawn from the sprite atlas.
+//
+// M5a: it's the first thing a friend opening a shared link sees, so it's a scene. A banded
+// pixel sky with our own sun and clouds; LimeZu's villas and trees on a lawn behind the street
+// (Modern Exteriors cuts, art/limezu/ui.json); a car driving by (parked with Reduce motion);
+// and the menu as an "Open House" real-estate sign on a post, its buttons hanging below it
+// like the sign's riders. Everything in the scene is drawn at the street's whole-pixel scale.
 
 import './title.css';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { rules, SCORE_LABELS } from '../../rules/index.ts';
 import { audio } from '../audio/audio.ts';
 import { streetScale } from '../board/geometry.ts';
+import { FEEL } from '../fx/feel.ts';
 import { formatNumber } from '../format.ts';
 import { howToPlayOpen, settingsOpen } from '../hud/actions.ts';
-import { atlasImage, CELL, spritePos, type SpriteId } from '../sprites.ts';
+import { Button } from '../kit/kit.tsx';
+import { settings } from '../settings.ts';
+import { atlasImage, CELL, spritePos, spriteStyle, type SpriteId } from '../sprites.ts';
+import { SCENERY_SIZES, type SceneryName } from '../theme/art.ts';
 import { canContinue, continueRun, newRun, run } from '../store.ts';
 
 /** What the save holds, for the Continue button: "Framing, week 10 · 1,240 Wow". */
@@ -19,11 +29,13 @@ function savedRunLine(): string {
 
 export function Title() {
   const saved = canContinue.value;
-  const primary = useRef<HTMLButtonElement>(null);
+  const menu = useRef<HTMLElement>(null);
+  const { w, h, dpr } = useViewport();
+  const scale = streetScale(h, dpr);
 
-  // The primary button takes focus, so Enter starts (or continues) right away.
+  // The primary button (the first rider) takes focus, so Enter starts (or continues) right away.
   useEffect(() => {
-    primary.current?.focus({ preventScroll: true });
+    menu.current?.querySelector<HTMLButtonElement>('.title-main')?.focus({ preventScroll: true });
   }, [saved]);
 
   const onContinue = () => {
@@ -37,65 +49,67 @@ export function Title() {
   };
 
   return (
-    <div class="title-screen">
-      <div class="title-sky">
-        <div class="title-sun" aria-hidden="true" />
-        <HouseSilhouette />
-        <main class="title-card">
-          <div class="title-roof" aria-hidden="true" />
-          <h1 class="title-name">Open House</h1>
-          <p class="title-pitch">Build one house for one client, one piece a week.</p>
-          <nav class="title-buttons" aria-label="Main menu">
+    <div
+      class="title-screen ui"
+      style={{
+        '--scene': `${scale}px`,
+        '--horizon': `${(STREET_ROWS + LAWN_ROWS) * CELL * scale}px`,
+        '--plant': `${(STREET_ROWS * CELL + PLANT) * scale}px`,
+      }}
+    >
+      <Sky />
+      <Scene w={w} scale={scale} />
+      <main class="title-stage">
+        <div class="sign">
+          <span class="sign-post" aria-hidden="true" />
+          <span class="sign-arm" aria-hidden="true" />
+          <div class="sign-board">
+            <h1 class="title-name">Open House</h1>
+            <p class="title-pitch">Build one house for one client, one piece a week.</p>
+          </div>
+          <nav class="sign-riders" aria-label="Main menu" ref={menu}>
             {saved && (
-              <button type="button" class="primary title-main" ref={primary} onClick={onContinue}>
-                Continue
-                <span class="title-detail">{savedRunLine()}</span>
-              </button>
+              <div class="rider">
+                <Button variant="primary" size="lg" class="title-main" onClick={onContinue}>
+                  <span class="title-main-text">
+                    Continue
+                    <span class="title-detail">{savedRunLine()}</span>
+                  </span>
+                </Button>
+              </div>
             )}
-            <button
-              type="button"
-              class={saved ? 'title-main' : 'primary title-main'}
-              ref={saved ? undefined : primary}
-              onClick={onStart}
-            >
-              {saved ? 'New run' : 'Start'}
-            </button>
-            <div class="title-row">
-              <button type="button" onClick={() => (howToPlayOpen.value = true)}>
+            <div class="rider">
+              <Button
+                variant={saved ? 'wood' : 'primary'}
+                size="lg"
+                class={saved ? 'title-new' : 'title-main'}
+                onClick={onStart}
+              >
+                {saved ? 'New run' : 'Start'}
+              </Button>
+            </div>
+            <div class="rider rider-pair">
+              <Button variant="wood" icon="help" onClick={() => (howToPlayOpen.value = true)}>
                 How to play
-              </button>
-              <button type="button" onClick={() => (settingsOpen.value = true)}>
+              </Button>
+              <Button variant="wood" icon="gear" onClick={() => (settingsOpen.value = true)}>
                 Settings
-              </button>
+              </Button>
             </div>
           </nav>
-        </main>
-      </div>
-      <Street />
-      <footer class="title-footer">A game jam entry · theme: It's a house · art by LimeZu</footer>
+        </div>
+      </main>
+      <footer class="title-footer">
+        <span class="title-credit">
+          A game jam entry · theme: It's a house · art by{' '}
+          <a href="https://limezu.itch.io/" target="_blank" rel="noreferrer">
+            LimeZu
+          </a>
+        </span>
+      </footer>
     </div>
   );
 }
-
-function HouseSilhouette() {
-  return (
-    <div class="title-house" aria-hidden="true">
-      <div class="title-house-chimney" />
-      <div class="title-house-roof" />
-      <div class="title-house-walls">
-        <div class="title-house-window" />
-        <div class="title-house-door" />
-        <div class="title-house-window" />
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------------------
-// The street along the bottom: a strip of lawn with trees and a fence, the sidewalk, the
-// street, and the far sidewalk. Each tile is one CELL-sized sprite, drawn into one canvas as
-// the board's terrain is: at 125% or 150% display scaling a tile is a fractional number of CSS
-// px, and tiles as separate elements show hairline seams between them.
 
 function useViewport(): { w: number; h: number; dpr: number } {
   const read = () => ({
@@ -112,40 +126,118 @@ function useViewport(): { w: number; h: number; dpr: number } {
   return size;
 }
 
+// ---------------------------------------------------------------------------------------
+// The sky: flat bands (title.css) with our own sun and clouds, at the scene's pixel size.
+
+function SkyPiece({ name, class: cls }: { name: SceneryName; class: string }) {
+  const { w, h } = SCENERY_SIZES[name];
+  return (
+    <span
+      class={`sky-piece ${cls}`}
+      style={{ '--w': String(w), '--h': String(h), '--art': `var(--art-scene-${name})` }}
+    />
+  );
+}
+
+function Sky() {
+  return (
+    <div class="title-sky" aria-hidden="true">
+      <SkyPiece name="sun" class="sky-sun" />
+      <SkyPiece name="cloud" class="sky-cloud-a" />
+      <SkyPiece name="cloudSmall" class="sky-cloud-b" />
+      <SkyPiece name="cloudSmall" class="sky-cloud-c" />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------------------
+// The scene along the bottom, one canvas like the board's terrain (so its tiles show no seams
+// at 125% or 150% display scaling): a lawn behind the street with the houses and trees on it,
+// then the street's own four rows (the front lawn with its shrubs and planters, the sidewalk,
+// the street, the far sidewalk). Each tile is one CELL-sized sprite.
+
+/** The street's rows: the front lawn, the sidewalk, the street, the far sidewalk. */
+const STREET_ROWS = 4;
+/** The lawn behind the street, where the houses stand. */
+const LAWN_ROWS = 3;
+/** How far into that lawn the sign's post is planted, in art px. */
+const PLANT = 40;
+/** Room above the lawn for the houses' roofs, in art px. */
+const ROOFS = 128;
+
 const GRASS: readonly SpriteId[] = ['grass-0', 'grass-1', 'grass-2'];
 
-/** The lawn row's tile at column i: a fixed pattern, so the street looks the same every time. */
-function lawnTile(i: number): { floor: SpriteId; top?: SpriteId } {
-  const k = i % 13;
-  if (k >= 8 && k <= 10) return { floor: 'fence' };
-  const floor = GRASS[(i * 7) % GRASS.length]!;
-  if (k === 2 || k === 5) return { floor, top: 'tree' };
-  if (k === 0 || k === 12) return { floor, top: 'flowers' };
-  return { floor };
+/** Something standing on the scene: at a fraction of the window's width, `y` art px in. */
+interface Prop {
+  readonly id: SpriteId;
+  readonly at: number;
+  readonly y: number;
 }
 
-/** The street's 4 rows of `cols` tiles, in art px: one CELL per tile. */
-function drawStreet(ctx: CanvasRenderingContext2D, img: HTMLImageElement, cols: number): void {
+/**
+ * What stands on the back lawn, left to right, at a fraction of the window's width (so the
+ * sign in the middle stays clear at any size): `y` is how far in front of the horizon its base
+ * stands. Drawn back to front.
+ */
+const BACK: readonly Prop[] = [
+  { id: 'title-tree', at: 0.03, y: 14 },
+  { id: 'title-tree', at: 0.255, y: 10 },
+  { id: 'title-tree', at: 0.39, y: 16 },
+  { id: 'title-tree', at: 0.5, y: 10 },
+  { id: 'title-tree', at: 0.745, y: 12 },
+  { id: 'title-tree', at: 0.97, y: 16 },
+  { id: 'title-villa', at: 0.14, y: LAWN_ROWS * CELL },
+  { id: 'title-villa-blue', at: 0.86, y: LAWN_ROWS * CELL },
+  { id: 'title-oak', at: 0.62, y: 84 },
+];
+
+/** The front lawn's shrubs and planters, clear of the villas' steps: `y` from the row's top. */
+const FRONT: readonly Prop[] = [
+  { id: 'title-planter', at: 0.06, y: 24 },
+  { id: 'title-planter-pink', at: 0.21, y: 24 },
+  { id: 'title-shrub', at: 0.33, y: 27 },
+  { id: 'title-shrub', at: 0.45, y: 26 },
+  { id: 'title-shrub', at: 0.56, y: 27 },
+  { id: 'title-shrub', at: 0.68, y: 26 },
+  { id: 'title-planter-pink', at: 0.775, y: 24 },
+  { id: 'title-planter', at: 0.94, y: 24 },
+];
+
+function drawScene(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  cols: number,
+  viewW: number,
+): void {
   const put = (id: SpriteId, x: number, y: number) => {
     const p = spritePos(id);
-    ctx.drawImage(img, p.x, p.y, p.w, p.h, x * CELL, y * CELL, p.w, p.h);
+    ctx.drawImage(img, p.x, p.y, p.w, p.h, Math.round(x), Math.round(y), p.w, p.h);
+  };
+  /** A prop, standing on its base at `y`. */
+  const stand = (prop: Prop, y: number) => {
+    const p = spritePos(prop.id);
+    put(prop.id, prop.at * viewW - p.w / 2, y + prop.y - p.h);
   };
   ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  const horizon = ROOFS;
+  const street = horizon + LAWN_ROWS * CELL;
   for (let i = 0; i < cols; i++) {
-    const t = lawnTile(i);
-    put(t.floor, i, 0);
-    if (t.top) put(t.top, i, 0);
-    put('sidewalk', i, 1);
-    put('street', i, 2);
-    put('sidewalk', i, 3);
+    for (let r = 0; r <= LAWN_ROWS; r++)
+      put(GRASS[(i * 5 + r * 3) % GRASS.length]!, i * CELL, horizon + r * CELL);
+    put('sidewalk', i * CELL, street + CELL);
+    put('street', i * CELL, street + 2 * CELL);
+    put('sidewalk', i * CELL, street + 3 * CELL);
   }
+  for (const prop of BACK) stand(prop, horizon);
+  for (const prop of FRONT) stand(prop, street);
 }
 
-function Street() {
-  const { w, h, dpr } = useViewport();
-  const scale = streetScale(h, dpr);
+function Scene({ w, scale }: { w: number; scale: number }) {
   const px = CELL * scale;
   const cols = Math.ceil(w / px) + 1;
+  const viewW = w / scale;
+  const height = ROOFS + (LAWN_ROWS + STREET_ROWS) * CELL;
   const ref = useRef<HTMLCanvasElement>(null);
   const [img, setImg] = useState<HTMLImageElement | null>(null);
   useEffect(() => {
@@ -159,20 +251,48 @@ function Street() {
       live = false;
     };
   }, []);
-  // A new column count resizes the canvas, which clears it: redraw before the browser paints,
-  // so a window resize never shows an empty street.
+  // A new size resizes the canvas, which clears it: redraw before the browser paints, so a
+  // window resize never shows an empty street.
   useLayoutEffect(() => {
     const ctx = ref.current?.getContext('2d');
-    if (img && ctx) drawStreet(ctx, img, cols);
-  }, [img, cols]);
+    if (img && ctx) drawScene(ctx, img, cols, viewW);
+  }, [img, cols, viewW]);
   return (
-    <div class="title-street" aria-hidden="true">
+    <div class="title-scene" aria-hidden="true">
       <canvas
         ref={ref}
         width={cols * CELL}
-        height={4 * CELL}
-        style={{ width: `${cols * px}px`, height: `${4 * px}px` }}
+        height={height}
+        style={{ width: `${cols * px}px`, height: `${height * scale}px` }}
       />
+      <Car viewW={viewW} scale={scale} />
     </div>
+  );
+}
+
+/**
+ * A car driving along the street, left to right, then a pause off screen. It moves in whole art
+ * pixels (steps), like everything else in the scene. With Reduce motion it's parked.
+ */
+function Car({ viewW, scale }: { viewW: number; scale: number }) {
+  const car = spritePos('title-car');
+  const still = settings.value.reduceMotion;
+  const f = FEEL.title;
+  // Across the window and on past it for the pause, then back to the start, off screen left.
+  const distance =
+    Math.ceil(viewW) + 2 * car.w + Math.round((f.carPxPerSecond * f.carPauseMs) / 1000);
+  return (
+    <span
+      class={`title-car ${still ? 'parked' : ''}`}
+      style={{
+        ...spriteStyle('title-car', scale),
+        width: `${car.w * scale}px`,
+        height: `${car.h * scale}px`,
+        left: `${(still ? Math.round(viewW * 0.62) : -car.w) * scale}px`,
+        '--drive': `${distance * scale}px`,
+        '--drive-steps': String(distance),
+        '--drive-ms': `${Math.round((distance / f.carPxPerSecond) * 1000)}ms`,
+      }}
+    />
   );
 }
