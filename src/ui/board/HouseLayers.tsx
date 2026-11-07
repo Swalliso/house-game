@@ -595,6 +595,54 @@ export function LabelsLayer({
 }
 
 /**
+ * A piece drawn alone by the house's painters, in its own frame (its bounding box's top-left cell
+ * at (0, 0)): the box its canvas covers, in art px, and how to paint it. A room has its own
+ * outline walls and no doors; a yard piece has its ground and props, its box grown to hold
+ * whatever rises above its cells. The ghost uses it, and so do the cards' pictures (PieceArt).
+ */
+export interface PieceArtPlan {
+  readonly frame: Readonly<Rect>;
+  readonly paint: (atlas: AtlasPixels) => Pixels | null;
+}
+
+export function pieceArtPlan(defId: PieceId, rot: Rot, look?: PieceLook): PieceArtPlan {
+  if (isIndoor(defId)) {
+    const model = pieceModel(defId, rot, look);
+    const frame = { x: 0, y: 0, w: model.width * CELL, h: model.height * CELL };
+    return { frame, paint: (a: AtlasPixels) => paintPiece(model, a, roomItems(model, 1)) };
+  }
+  const layout = yardPieceLayout(defId, rot, look);
+  let x0 = layout.box.x;
+  let y0 = layout.box.y;
+  let x1 = layout.box.x + layout.box.w;
+  let y1 = layout.box.y + layout.box.h;
+  for (const it of layout.items) {
+    const { w, h } = artSize(it.sprite);
+    x0 = Math.min(x0, it.x);
+    y0 = Math.min(y0, it.y);
+    x1 = Math.max(x1, it.x + w);
+    y1 = Math.max(y1, it.y + h);
+  }
+  const frame = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+  return { frame, paint: (a: AtlasPixels) => paintYardPiece(layout, a) };
+}
+
+/**
+ * Paints a plan into a canvas as big as its frame: at once when the atlas is read, so it's never
+ * seen blank. Returns a canceller for a paint still waiting for the atlas.
+ */
+export function paintPieceArt(canvas: HTMLCanvasElement | null, plan: PieceArtPlan): () => void {
+  return withAtlas((atlas) => {
+    const ctx = canvas?.getContext('2d');
+    if (!ctx) return;
+    const { frame } = plan;
+    ctx.clearRect(0, 0, frame.w, frame.h);
+    const p = plan.paint(atlas);
+    if (p) put(ctx, { ...p, x: p.x - frame.x, y: p.y - frame.y });
+  });
+}
+
+/**
  * The piece being placed (or carried by the Moving Truck), drawn by the same painters as the
  * house for that piece alone: a room with its own outline walls and no doors, a yard piece with
  * its ground and props (and whatever rises above its cells), and the placement's tint over its
@@ -623,29 +671,10 @@ export function GhostPiece({
   const px = CELL * scale;
   const minX = Math.min(...cells.map((c) => c.x));
   const minY = Math.min(...cells.map((c) => c.y));
-  const indoor = isIndoor(defId);
-  // In the piece's own frame (its bounding box's top-left cell at (0, 0)): what the canvas covers.
-  const art = useMemo(() => {
-    if (indoor) {
-      const model = pieceModel(defId, rot, look);
-      const frame = { x: 0, y: 0, w: model.width * CELL, h: model.height * CELL };
-      return { frame, paint: (a: AtlasPixels) => paintPiece(model, a, roomItems(model, 1)) };
-    }
-    const layout = yardPieceLayout(defId, rot, look);
-    let x0 = layout.box.x;
-    let y0 = layout.box.y;
-    let x1 = layout.box.x + layout.box.w;
-    let y1 = layout.box.y + layout.box.h;
-    for (const it of layout.items) {
-      const { w, h } = artSize(it.sprite);
-      x0 = Math.min(x0, it.x);
-      y0 = Math.min(y0, it.y);
-      x1 = Math.max(x1, it.x + w);
-      y1 = Math.max(y1, it.y + h);
-    }
-    const frame = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
-    return { frame, paint: (a: AtlasPixels) => paintYardPiece(layout, a) };
-  }, [defId, rot, indoor, look?.color, look?.flip, look?.fixture]);
+  const art = useMemo(
+    () => pieceArtPlan(defId, rot, look),
+    [defId, rot, look?.color, look?.flip, look?.fixture],
+  );
   const { frame } = art;
   const bw = Math.max(...cells.map((c) => c.x)) - minX + 1;
   const bh = Math.max(...cells.map((c) => c.y)) - minY + 1;
@@ -659,17 +688,7 @@ export function GhostPiece({
     [cells, minX, minY, px],
   );
   // Before the browser paints, so the canvas is never seen blank (a new size clears it).
-  useLayoutEffect(
-    () =>
-      withAtlas((atlas) => {
-        const ctx = ref.current?.getContext('2d');
-        if (!ctx) return;
-        ctx.clearRect(0, 0, frame.w, frame.h);
-        const p = art.paint(atlas);
-        if (p) put(ctx, { ...p, x: p.x - frame.x, y: p.y - frame.y });
-      }),
-    [art],
-  );
+  useLayoutEffect(() => paintPieceArt(ref.current, art), [art]);
   return (
     <div
       class={`piece ghost-piece ${cls}`}

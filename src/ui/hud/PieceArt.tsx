@@ -1,65 +1,31 @@
-// A piece's picture for the interface (M5a): its shape, each cell its floor, and its key
-// furniture, from PIECE_SPRITES, the way the board draws it. Hand cards show it, and the shop's
-// art slots can. It's drawn unrotated, so a card never changes size when the piece turns, at
-// about 1 CSS px per art px on whole device pixels (pictureScale). The picked card's turn shows
-// on its ShapeGlyph instead.
+// A piece's picture for the interface (M5a): the piece as the board builds it, drawn by the
+// house's own painters (HouseLayers.tsx pieceArtPlan, as for the ghost): a room's floor,
+// furniture and outline walls, or a yard piece's ground and props. Hand cards show it, and so do
+// the shop's art slots and How to play's sets. It's drawn unrotated, so a card never changes
+// size when the piece turns, at about 1 CSS px per art px on whole device pixels (pictureScale).
+// The picked card's turn shows on its ShapeGlyph instead.
 
-import { CONTENT, parseShape, shapeCells, type PieceId, type Rot } from '../../rules/index.ts';
-import { furnitureSpot, isIndoor } from '../board/geometry.ts';
-import { CELL, PIECE_SPRITES, spritePos, spriteStyle } from '../sprites.ts';
+import { useLayoutEffect, useMemo, useRef } from 'preact/hooks';
+import { CONTENT, shapeCells, type PieceId, type Rot } from '../../rules/index.ts';
+import { isIndoor } from '../board/geometry.ts';
+import { paintPieceArt, pieceArtPlan } from '../board/HouseLayers.tsx';
 import { devicePixelRatio, pictureScale } from '../theme/pixel.ts';
 
 export function PieceArt({ id, class: cls }: { id: PieceId; class?: string }) {
   const scale = pictureScale(devicePixelRatio.value);
-  const px = CELL * scale;
-  const cells = parseShape(CONTENT.pieces[id].shape);
-  const w = Math.max(...cells.map((c) => c.x)) + 1;
-  const h = Math.max(...cells.map((c) => c.y)) + 1;
-  const own = new Set(cells.map((c) => `${c.x},${c.y}`));
-  const sprites = PIECE_SPRITES[id];
-  const spot = furnitureSpot(cells);
-  const furniture = spritePos(sprites.furniture);
-  // The piece's outline, on every edge it doesn't share with itself: a wall for a room.
-  const edges = (x: number, y: number) =>
-    [
-      [0, -1, '0 var(--px)'],
-      [0, 1, '0 calc(var(--px) * -1)'],
-      [-1, 0, 'var(--px) 0'],
-      [1, 0, 'calc(var(--px) * -1) 0'],
-    ]
-      .filter(([dx, dy]) => !own.has(`${x + Number(dx)},${y + Number(dy)}`))
-      .map(([, , offset]) => `inset ${offset} 0 var(--piece-edge)`)
-      .join(', ');
+  const plan = useMemo(() => pieceArtPlan(id, 0), [id]);
+  const ref = useRef<HTMLCanvasElement>(null);
+  // Before the browser paints, so the picture is never seen blank.
+  useLayoutEffect(() => paintPieceArt(ref.current, plan), [plan]);
+  const { frame } = plan;
+  const size = { width: `${frame.w * scale}px`, height: `${frame.h * scale}px` };
   return (
     <span
       class={`piece-art ${isIndoor(id) ? 'indoor' : 'yard'} ${cls ?? ''}`}
-      style={{ width: `${w * px}px`, height: `${h * px}px` }}
+      style={size}
       aria-hidden="true"
     >
-      {cells.map((c) => (
-        <span
-          key={`${c.x},${c.y}`}
-          class="piece-art-cell"
-          style={{
-            left: `${c.x * px}px`,
-            top: `${c.y * px}px`,
-            width: `${px}px`,
-            height: `${px}px`,
-            ...spriteStyle(sprites.floor, scale),
-            boxShadow: edges(c.x, c.y) || undefined,
-          }}
-        />
-      ))}
-      <span
-        class="piece-art-furniture"
-        style={{
-          left: `${(spot.x + 0.5) * px - (furniture.w * scale) / 2}px`,
-          top: `${(spot.y + 1) * px - furniture.h * scale}px`,
-          width: `${furniture.w * scale}px`,
-          height: `${furniture.h * scale}px`,
-          ...spriteStyle(sprites.furniture, scale),
-        }}
-      />
+      <canvas ref={ref} width={frame.w} height={frame.h} style={size} />
     </span>
   );
 }

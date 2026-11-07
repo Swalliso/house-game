@@ -108,7 +108,6 @@
   gap: var(--space-3);
 }
 .howto-set {
-  --piece-edge: var(--ink);
   display: flex;
   flex-direction: column;
   align-items: center;

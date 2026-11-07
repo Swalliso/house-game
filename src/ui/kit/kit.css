@@ -104,7 +104,6 @@
 .pcard {
   --card-fill: var(--card);
   --card-band: transparent;
-  --piece-edge: var(--ink);
   position: relative;
   display: flex;
   flex-direction: column;

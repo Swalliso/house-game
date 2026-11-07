@@ -52,9 +52,9 @@
   flex: none;
   image-rendering: pixelated;
 }
-.piece-art-cell,
-.piece-art-furniture {
-  position: absolute;
+.piece-art canvas {
+  display: block;
+  image-rendering: pixelated;
 }
 
 /* --- Free actions -------------------------------------------------------------------- */
