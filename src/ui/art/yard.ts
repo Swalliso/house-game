@@ -81,7 +81,9 @@ export interface YardModel {
 }
 
 // ---------------------------------------------------------------------------------------
-// The palette of the yard's own marks (edges, soil, glow), sampled from LimeZu's ground.
+// The yard's own marks. The materials laid over the ground (soil, hearth, straw, the wet patch)
+// are LimeZu's palette (palette.ts); a flat piece's darker edge, the lamps' light and the shadows
+// are light and shade blended over it.
 
 const EDGE = {
   lawn: { rgb: [0x24, 0x34, 0x24] as Rgb, alpha: 0.43, seam: 0.16 },
@@ -90,10 +92,12 @@ const EDGE = {
 } as const;
 /** Bare soil (a Sapling's ring, a Fire Pit's hearth), and the straw of a Henhouse's run. */
 const SOIL: Rgb = [0x7b, 0x5b, 0x3a];
-const HEARTH: Rgb = [0x4a, 0x3a, 0x36];
-const STRAW: Rgb = [0xd8, 0xb8, 0x6a];
+const HEARTH: Rgb = [0x57, 0x3c, 0x2c];
+const STRAW: Rgb = [0xe0, 0xb8, 0x70];
 /** The wet patch around the Sprinkler. */
-const WET: Rgb = [0x1e, 0x5a, 0x40];
+const WET: Rgb = [0x1a, 0x52, 0x49];
+/** The materials' colors, for the palette's test. */
+export const MATERIALS: readonly Rgb[] = [SOIL, HEARTH, STRAW, WET];
 /** Garden Lights' warm light on the ground. */
 const LAMPLIGHT: Rgb = [0xff, 0xe2, 0x96];
 /** A shadow on the ground (LimeZu's ink). */

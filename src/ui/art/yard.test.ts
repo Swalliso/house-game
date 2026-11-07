@@ -16,9 +16,20 @@ import {
 import { lotFromRows } from '../../rules/lot.ts';
 import { houseModel, overlaps } from '../board/house-model.ts';
 import { CELL } from '../sprites.ts';
-import { artFrames, artSize, DRAWINGS, drawingPixels, inKey, type DrawingId } from './drawings.ts';
+import {
+  artFrames,
+  artSize,
+  DRAWINGS,
+  drawingPixels,
+  inKey,
+  KEY,
+  type DrawingId,
+} from './drawings.ts';
+import { PAINTED } from './house-paint.ts';
+import { inPalette } from './palette.ts';
 import { itemRows, type Item } from './rooms.ts';
 import {
+  MATERIALS,
   newPieceLook,
   pieceLook,
   yardModel,
@@ -455,6 +466,15 @@ describe('ghosts', () => {
     const carried = house([['patio', 1, 1, 0, 'pergola']]);
     const ghost = yardPieceLayout('patio', 0, pieceLook(carried, 1));
     expect(ghost.items.map((i) => i.sprite)).toContain('pergola');
+  });
+});
+
+describe('LimeZu’s palette', () => {
+  it('colors our own drawings, the walls and fixtures we paint, and the yard’s materials', () => {
+    for (const [ch, rgba] of Object.entries(KEY))
+      expect(inPalette(rgba), `drawing ${ch}`).toBe(true);
+    PAINTED.forEach((rgb, i) => expect(inPalette(rgb), `painted ${i}: ${rgb}`).toBe(true));
+    MATERIALS.forEach((rgb, i) => expect(inPalette(rgb), `material ${i}: ${rgb}`).toBe(true));
   });
 });
 
