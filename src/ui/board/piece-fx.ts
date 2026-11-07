@@ -1,12 +1,11 @@
 // A piece's juice on the board (D-059): its parts in each layer react together. A room's floor
-// and walls are drawn with the whole house, so they never move: its items (and their parts on
-// the overhang) wobble, its floor flashes, and its digit pops. A yard piece is still one
-// element (until its art moves to the house layers) and wobbles whole.
+// and walls, and a yard piece's ground, are drawn with the whole house, so they never move: a
+// piece's items (and their parts on the overhang) wobble, its cells flash, and its digit pops.
 
 import { FEEL } from '../fx/feel.ts';
 
 /** A piece's elements in each layer. */
-export type Part = 'items' | 'overhang' | 'yard' | 'digit' | 'flash';
+export type Part = 'items' | 'overhang' | 'digit' | 'flash';
 
 const parts = new Map<number, Map<Part, Element>>();
 
@@ -45,7 +44,7 @@ export function wobble(uid: number): void {
     { transform: `scale(${2 - s * 0.97}, ${s * 0.97})` },
     { transform: 'scale(1)' },
   ];
-  for (const part of ['items', 'overhang', 'yard'] as const) {
+  for (const part of ['items', 'overhang'] as const) {
     get(uid, part)?.animate(frames, { duration: FEEL.wobble.ms, easing: 'ease-out' });
   }
   get(uid, 'digit')?.animate(
@@ -66,7 +65,7 @@ export function settle(uid: number): void {
     { transform: 'translateY(0) scale(0.98)' },
     { transform: 'scale(1)' },
   ];
-  for (const part of ['items', 'overhang', 'yard'] as const) {
+  for (const part of ['items', 'overhang'] as const) {
     get(uid, part)?.animate(frames, { duration: FEEL.placeMs, easing: 'ease-out' });
   }
   flash(uid, FEEL.placeMs * 2);

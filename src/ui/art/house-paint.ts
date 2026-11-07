@@ -1,20 +1,22 @@
 // The house's two canvases (D-097), painted as pixels: the browser only puts them, and tests
 // and offline renders read the same pixels. Pure: no DOM.
 //
-// - The floor canvas, under the furniture: each room's floor, short north wall faces in the
-//   room's wallpaper, the floor's shadows under them and beside west walls, and the house's
-//   soft shadow on the lot.
+// - The floor canvas, under the furniture and the yard's props: the yard's ground (yard.ts: lawns,
+//   pavers, concrete and curb cuts, pools), the house's soft shadow on the lot and on that ground,
+//   the doormats outside its doors, each room's floor, short north wall faces in the room's
+//   wallpaper, and the floor's shadows under them and beside west walls.
 // - The walls canvas, over the furniture: LimeZu-style bands drawn from a pixel mask (its
 //   outline color where the mask meets anything else, a white fill inside), heavier outside
-//   than between rooms, with door gaps the floor runs through, window glass, garage door rails
-//   and doormats. Furniture tucks under the bands and never spills into the next room.
+//   than between rooms, with door gaps the floor runs through, window glass and garage door
+//   rails. Furniture tucks under the bands and never spills into the next room.
 // - The fixtures that are part of a room rather than furniture (rooms.ts places the rest):
 //   Soundproofing pads the north faces, Blackout Curtains hang on them and cover the windows, a
 //   Skylight lights a patch of floor, a Chandelier hangs over the room with its glow on the
 //   floor, and a Bay Window is a cell of glass with its bay outside. All our own drawings, in
 //   LimeZu's palette and ink.
 //
-// Both cover the house's bounding box plus a margin; `x` and `y` place them on the lot, in art px.
+// Each covers what it paints (the house's bounding box plus a margin; the floor canvas also the
+// yard's ground); `x` and `y` place them on the lot, in art px.
 
 import {
   EDGE,
@@ -29,7 +31,9 @@ import {
 } from '../board/house-model.ts';
 import { CELL, PIECE_SPRITES, spritePos, type SpriteId } from '../sprites.ts';
 import type { PieceId } from '../../rules/index.ts';
+import { artSize, drawingPixels, isDrawing, type ArtId } from './drawings.ts';
 import type { Item } from './rooms.ts';
+import type { Ground, YardLayout, YardModel } from './yard.ts';
 
 /** RGBA pixels (not premultiplied, like ImageData) at (x, y) on the lot, in art px. */
 export interface Pixels {
@@ -156,12 +160,14 @@ function faceOf(id: PieceId): SpriteId {
 }
 
 /** A box of lot pixels being painted. */
-class Canvas {
+export class Canvas {
   readonly x: number;
   readonly y: number;
   readonly w: number;
   readonly h: number;
   readonly data: Uint8ClampedArray;
+  /** While set, only the lot pixels it accepts are painted (a yard piece's own cells). */
+  clip: ((px: number, py: number) => boolean) | null = null;
   constructor(x: number, y: number, w: number, h: number) {
     this.x = x;
     this.y = y;
@@ -170,11 +176,12 @@ class Canvas {
     this.data = new Uint8ClampedArray(w * h * 4);
   }
 
-  /** The index of lot pixel (px, py), or -1 off the canvas. */
+  /** The index of lot pixel (px, py), or -1 off the canvas (or outside the clip). */
   at(px: number, py: number): number {
     const x = px - this.x;
     const y = py - this.y;
-    return x < 0 || y < 0 || x >= this.w || y >= this.h ? -1 : (y * this.w + x) * 4;
+    if (x < 0 || y < 0 || x >= this.w || y >= this.h) return -1;
+    return this.clip && !this.clip(px, py) ? -1 : (y * this.w + x) * 4;
   }
 
   set(px: number, py: number, rgb: Rgb, alpha = 255): void {
@@ -198,14 +205,28 @@ class Canvas {
     d[i + 3] = out * 255;
   }
 
-  /** Copies part of an atlas sprite to lot pixel (px, py), over what's there. */
-  blit(atlas: AtlasPixels, id: SpriteId, px: number, py: number, src?: Rect): void {
-    const s = spritePos(id);
+  /**
+   * Copies part of an atlas sprite, or of one of our drawings (an animation's first frame), to lot
+   * pixel (px, py), over what's there.
+   */
+  blit(atlas: AtlasPixels, id: ArtId, px: number, py: number, src?: Rect): void {
+    let s: Rect;
+    let a: Uint8ClampedArray | Uint8Array;
+    let width: number;
+    if (isDrawing(id)) {
+      const d = drawingPixels(id);
+      s = { x: 0, y: 0, w: d.w, h: d.h };
+      a = d.data;
+      width = d.w * d.frames;
+    } else {
+      s = spritePos(id);
+      a = atlas.data;
+      width = atlas.width;
+    }
     const r = src ?? { x: 0, y: 0, w: s.w, h: s.h };
-    const a = atlas.data;
     for (let y = 0; y < r.h; y++) {
       for (let x = 0; x < r.w; x++) {
-        const si = ((s.y + r.y + y) * atlas.width + s.x + r.x + x) * 4;
+        const si = ((s.y + r.y + y) * width + s.x + r.x + x) * 4;
         const alpha = a[si + 3]!;
         if (alpha === 0) continue;
         const rgb: Rgb = [a[si]!, a[si + 1]!, a[si + 2]!];
@@ -298,33 +319,113 @@ function without(from: number, to: number, gaps: readonly [number, number][]): [
 }
 
 /**
- * The floor canvas's pixels: floors, north wall faces, floor shadows, and (with `shadow`) the
- * house's shadow on the lot. Null with no rooms.
+ * Paints ground (yard.ts): sprites, rects of color, and ovals of color in three steps. With
+ * `cells`, only on those cells: a yard piece's ground (a lamp's light, a wet patch) stays its own.
  */
-export function paintFloors(
-  m: HouseModel,
+export function paintGround(
+  cv: Canvas,
+  ops: readonly Ground[],
   atlas: AtlasPixels,
-  { shadow = true }: { shadow?: boolean } = {},
-): Pixels | null {
-  const b = m.bounds;
-  if (!b) return null;
-  const sx = shadow ? HOUSE_SHADOW.dx : 0;
-  const sy = shadow ? HOUSE_SHADOW.dy : 0;
-  const cv = new Canvas(b.x * CELL, b.y * CELL, b.w * CELL + sx, b.h * CELL + sy);
-  const indoorPx = (px: number, py: number) =>
-    roomAt(m, Math.floor(px / CELL), Math.floor(py / CELL)) !== 0;
+  cells?: readonly { x: number; y: number }[],
+): void {
+  if (cells) {
+    const own = new Set(cells.map((c) => c.y * 4096 + c.x));
+    cv.clip = (px, py) => own.has(Math.floor(py / CELL) * 4096 + Math.floor(px / CELL));
+  }
+  try {
+    paintOps(cv, ops, atlas);
+  } finally {
+    cv.clip = null;
+  }
+}
 
-  // The house's shadow: off its cells, where the house shifted down and right would be. (Yard
-  // ground painted here goes first, so the house's shadow falls on it.)
-  if (shadow) {
-    for (let py = cv.y; py < cv.y + cv.h; py++) {
-      for (let px = cv.x; px < cv.x + cv.w; px++) {
-        if (!indoorPx(px, py) && indoorPx(px - sx, py - sy)) {
-          cv.set(px, py, HOUSE_SHADOW.rgb, Math.round(HOUSE_SHADOW.alpha * 255));
+function paintOps(cv: Canvas, ops: readonly Ground[], atlas: AtlasPixels): void {
+  for (const g of ops) {
+    if (g.op === 'sprite') {
+      cv.blit(atlas, g.sprite, g.x, g.y, g.src);
+    } else if (g.op === 'rect') {
+      const { x, y, w, h } = g.rect;
+      for (let j = y; j < y + h; j++)
+        for (let i = x; i < x + w; i++) cv.blend(i, j, g.rgb, g.alpha);
+    } else {
+      // Pixel light, not a smooth ramp: full strength in the middle, then two thirds, then a third.
+      const { cx, cy, rx, ry } = g;
+      for (let j = Math.floor(cy - ry); j <= Math.ceil(cy + ry); j++) {
+        for (let i = Math.floor(cx - rx); i <= Math.ceil(cx + rx); i++) {
+          const d = ((i + 0.5 - cx) / rx) ** 2 + ((j + 0.5 - cy) / ry) ** 2;
+          if (d >= 1) continue;
+          cv.blend(i, j, g.rgb, d < 0.3 ? g.alpha : d < 0.65 ? g.alpha * 0.66 : g.alpha * 0.33);
         }
       }
     }
   }
+}
+
+/** A doormat: a coir mat with a darker rim and a stripe along it. */
+function doormat(cv: Canvas, r: Rect, flat: boolean): void {
+  for (let j = 0; j < r.h; j++) {
+    for (let i = 0; i < r.w; i++) {
+      const rim = i === 0 || j === 0 || i === r.w - 1 || j === r.h - 1;
+      const stripe = flat ? j === 2 && i > 1 && i < r.w - 2 : i === 2 && j > 1 && j < r.h - 2;
+      cv.set(r.x + i, r.y + j, rim ? MAT_EDGE : stripe ? MAT_LINE : MAT);
+    }
+  }
+}
+
+/**
+ * The floor canvas's pixels: the yard's ground (with `yard`), the house's shadow on the lot (with
+ * `shadow`), the doormats, floors, north wall faces and floor shadows. Null when there's nothing.
+ */
+export function paintFloors(
+  m: HouseModel,
+  atlas: AtlasPixels,
+  { shadow = true, yard }: { shadow?: boolean; yard?: YardModel } = {},
+): Pixels | null {
+  const b = m.bounds;
+  const sx = shadow ? HOUSE_SHADOW.dx : 0;
+  const sy = shadow ? HOUSE_SHADOW.dy : 0;
+  // What it paints: the house and its shadow, the doormats outside it, the yard's ground.
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let x1 = -Infinity;
+  let y1 = -Infinity;
+  const add = (r: Rect) => {
+    x0 = Math.min(x0, r.x);
+    y0 = Math.min(y0, r.y);
+    x1 = Math.max(x1, r.x + r.w);
+    y1 = Math.max(y1, r.y + r.h);
+  };
+  if (b) add({ x: b.x * CELL, y: b.y * CELL, w: b.w * CELL + sx, h: b.h * CELL + sy });
+  for (const e of m.exits) add(e.mat);
+  const yb = yard?.bounds;
+  if (yb) add({ x: yb.x * CELL, y: yb.y * CELL, w: yb.w * CELL, h: yb.h * CELL });
+  if (x0 === Infinity) return null;
+  const cv = new Canvas(x0, y0, x1 - x0, y1 - y0);
+  const indoorPx = (px: number, py: number) =>
+    roomAt(m, Math.floor(px / CELL), Math.floor(py / CELL)) !== 0;
+
+  // The yard's ground first, so the house's shadow falls on it.
+  if (yard) {
+    for (const l of yard.pieces.values()) paintGround(cv, l.ground, atlas, l.cells);
+    paintGround(cv, yard.curbs, atlas);
+  }
+  // The house's shadow: off its cells, where the house shifted down and right would be.
+  if (shadow && b) {
+    const alpha = HOUSE_SHADOW.alpha;
+    for (let py = b.y * CELL; py < (b.y + b.h) * CELL + sy; py++) {
+      for (let px = b.x * CELL; px < (b.x + b.w) * CELL + sx; px++) {
+        if (!indoorPx(px, py) && indoorPx(px - sx, py - sy)) {
+          const i = cv.at(px, py);
+          if (i >= 0 && cv.data[i + 3] === 0) {
+            cv.set(px, py, HOUSE_SHADOW.rgb, Math.round(alpha * 255));
+          } else cv.blend(px, py, HOUSE_SHADOW.rgb, alpha);
+        }
+      }
+    }
+  }
+  // A doormat outside each outside door, on the ground (the yard's props stand over them).
+  for (const e of m.exits) doormat(cv, e.mat, e.side === 'N' || e.side === 'S');
+  if (!b) return cv.pixels();
 
   const shade = new Mask(cv);
   for (const r of m.rooms.values()) {
@@ -567,8 +668,8 @@ export function wallMask(m: HouseModel, box: { x: number; y: number; w: number; 
   return mask;
 }
 
-/** Margin around the house for doormats. */
-const MARGIN = WALL.mat + 2;
+/** Margin around the house for a Bay Window's bay, which juts out past the wall. */
+const MARGIN = WALL.bay + 2;
 
 /** The walls canvas's pixels. Null with no rooms. */
 export function paintWalls(m: HouseModel): Pixels | null {
@@ -695,16 +796,6 @@ export function paintWalls(m: HouseModel): Pixels | null {
     } else {
       for (let y = g.y; y < g.y + g.h; y++) cv.blend(line, y, THRESHOLD.rgb, THRESHOLD.alpha * 1.6);
     }
-    // The doormat outside.
-    const r = e.mat;
-    const flat = e.side === 'N' || e.side === 'S';
-    for (let j = 0; j < r.h; j++) {
-      for (let i = 0; i < r.w; i++) {
-        const rim = i === 0 || j === 0 || i === r.w - 1 || j === r.h - 1;
-        const stripe = flat ? j === 2 && i > 1 && i < r.w - 2 : i === 2 && j > 1 && j < r.h - 2;
-        cv.set(r.x + i, r.y + j, rim ? MAT_EDGE : stripe ? MAT_LINE : MAT);
-      }
-    }
   }
   // A Skylight's sun falls on the floor and the furniture alike; the Chandelier hangs over its
   // room in its own light.
@@ -740,5 +831,27 @@ export function paintPiece(
   for (const it of items) cv.blit(atlas, it.sprite, it.x, it.y);
   const walls = paintWalls(m);
   if (walls) cv.over(walls);
+  return cv.pixels();
+}
+
+/**
+ * One yard piece alone, for the ghost (yardPieceLayout): its ground and all of its items, in a box
+ * its size grown to hold whatever rises above its cells.
+ */
+export function paintYardPiece(l: YardLayout, atlas: AtlasPixels): Pixels {
+  let x0 = l.box.x;
+  let y0 = l.box.y;
+  let x1 = l.box.x + l.box.w;
+  let y1 = l.box.y + l.box.h;
+  for (const it of l.items) {
+    const { w, h } = artSize(it.sprite);
+    x0 = Math.min(x0, it.x);
+    y0 = Math.min(y0, it.y);
+    x1 = Math.max(x1, it.x + w);
+    y1 = Math.max(y1, it.y + h);
+  }
+  const cv = new Canvas(x0, y0, x1 - x0, y1 - y0);
+  paintGround(cv, l.ground, atlas, l.cells);
+  for (const it of l.items) cv.blit(atlas, it.sprite, it.x, it.y);
   return cv.pixels();
 }

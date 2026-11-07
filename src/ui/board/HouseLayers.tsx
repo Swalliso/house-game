@@ -1,15 +1,18 @@
 // The house on the board (D-097), in the board's layers (layers.ts), bottom to top:
 // - floor: one canvas of floors, north wall faces, floor shadows and the house's shadow
+// - floor also holds the yard's ground (yard.ts), the doormats, and the curb cuts
 // - items: one container per piece, ordered by its bottom row: a room's furniture, or a yard
-//   piece (drawn as its placeholder cells until the yard has its own art)
-// - walls: one canvas of wall bands, doorways, windows, garage rails and doormats
-// - overhang: the parts of tall items that rise over their room's north wall
+//   piece's props (yard.ts)
+// - walls: one canvas of wall bands, doorways, windows and garage rails
+// - overhang: the parts of tall items that rise over their room's north wall, or above a yard
+//   piece's own cells (outbuildings' roofs, the Treehouse, a Birdhouse's box)
 // - highlights: the tally's active piece, a set's members, the placement's new sets, and each
 //   piece's flash, as outlines (never CSS filters on whole pieces)
 // - labels: each piece's digit and its fixture and ⚠ badges, inside its walls
 //
 // The canvases redraw only when the house changes: never on hover, a tally step, or zoom
-// (zoom only changes their CSS size). The house model and the rooms' items are cached per house.
+// (zoom only changes their CSS size). The house model, the rooms' items and the yard are cached
+// per house.
 
 import type { JSX } from 'preact';
 import { useEffect, useMemo, useRef } from 'preact/hooks';
@@ -24,28 +27,29 @@ import {
   type Rot,
 } from '../../rules/index.ts';
 import {
+  artFrames,
+  artSize,
+  drawingPixels,
+  isDrawing,
+  type ArtId,
+  type DrawingId,
+} from '../art/drawings.ts';
+import {
   paintFloors,
   paintPiece,
   paintWalls,
+  paintYardPiece,
   type AtlasPixels,
   type Pixels,
 } from '../art/house-paint.ts';
 import { itemRows, roomItems, roomLayout, type Item } from '../art/rooms.ts';
+import { yardPieceLayout, type Look, type YardModel } from '../art/yard.ts';
 import { highlighted, justPlaced, played, tallyView } from '../fx/director.ts';
 import { settings } from '../settings.ts';
-import {
-  atlasImage,
-  CELL,
-  cellUnit,
-  FIXTURE_GLYPHS,
-  spriteFrames,
-  spritePos,
-  spriteStyle,
-} from '../sprites.ts';
+import { atlasImage, CELL, cellUnit, FIXTURE_GLYPHS, spriteStyle } from '../sprites.ts';
 import { currentTally, preview, tool } from '../store.ts';
-import { cellsOutline, digitCell, type Occupancy } from './geometry.ts';
-import { inset, pieceModel, type HouseModel } from './house-model.ts';
-import { PieceShape } from './PieceView.tsx';
+import { cellsOutline, digitCell, isIndoor, type Occupancy } from './geometry.ts';
+import { inset, pieceModel, type HouseModel, type Rect } from './house-model.ts';
 import { register, settle as settleFx } from './piece-fx.ts';
 import './house.css';
 
@@ -75,11 +79,13 @@ function HouseCanvas({
   lot,
   scale,
   model,
+  yard,
   layer,
 }: {
   lot: Lot;
   scale: number;
   model: HouseModel;
+  yard?: YardModel;
   layer: 'floor' | 'walls';
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -96,14 +102,14 @@ function HouseCanvas({
         .then((atlas) => {
           if (cancelled) return;
           ctx.clearRect(0, 0, canvas.width, canvas.height);
-          put(ctx, paintFloors(model, atlas));
+          put(ctx, paintFloors(model, atlas, { ...(yard ? { yard } : {}) }));
         })
         .catch((e) => console.error(e));
     }
     return () => {
       cancelled = true;
     };
-  }, [model, layer]);
+  }, [model, yard, layer]);
   return (
     <canvas
       ref={ref}
@@ -119,7 +125,8 @@ function HouseCanvas({
   );
 }
 
-export function FloorLayer(p: { lot: Lot; scale: number; model: HouseModel }) {
+/** The floor canvas: the yard's ground, the house's shadow, doormats, floors and wall faces. */
+export function FloorLayer(p: { lot: Lot; scale: number; model: HouseModel; yard: YardModel }) {
   return <HouseCanvas {...p} layer="floor" />;
 }
 
@@ -127,10 +134,51 @@ export function WallsLayer(p: { lot: Lot; scale: number; model: HouseModel }) {
   return <HouseCanvas {...p} layer="walls" />;
 }
 
+const drawingUrls = new Map<DrawingId, string>();
+
+/** One of our drawings (drawings.ts) as an image, made once. */
+function drawingUrl(id: DrawingId): string {
+  let url = drawingUrls.get(id);
+  if (!url) {
+    const d = drawingPixels(id);
+    const c = document.createElement('canvas');
+    c.width = d.w * d.frames;
+    c.height = d.h;
+    const data = new Uint8ClampedArray(d.data);
+    c.getContext('2d')!.putImageData(new ImageData(data, c.width, c.height), 0, 0);
+    url = c.toDataURL();
+    drawingUrls.set(id, url);
+  }
+  return url;
+}
+
 /**
- * An item's rows under the walls (`bottom`: all of them, unless it rises over its room's north
- * wall) or over them (`top`). An animated sprite's frames sit side by side in a strip that slides
- * behind the item's box (transform only), under the walls; its top stays on the first frame.
+ * An item's art as a CSS background at `scale` CSS px per art px: an atlas sprite, or one of our
+ * drawings. (bx, by) is where its first frame's top-left starts.
+ */
+function artStyle(id: ArtId, scale: number): { style: JSX.CSSProperties; bx: number; by: number } {
+  if (isDrawing(id)) {
+    const d = drawingPixels(id);
+    return {
+      style: {
+        backgroundImage: `url(${drawingUrl(id)})`,
+        backgroundSize: `${d.w * d.frames * scale}px ${d.h * scale}px`,
+        backgroundRepeat: 'no-repeat',
+        imageRendering: 'pixelated',
+      },
+      bx: 0,
+      by: 0,
+    };
+  }
+  const style = spriteStyle(id, scale);
+  const [bx, by] = style.backgroundPosition!.split(' ').map((v) => Number.parseFloat(v));
+  return { style, bx: bx!, by: by! };
+}
+
+/**
+ * An item's rows under the walls (`bottom`: all of them, unless it rises above its cells) or over
+ * them (`top`). An animated item's frames sit side by side in a strip that slides behind the
+ * item's box (transform only), under the walls; its top stays on the first frame.
  */
 function ItemPart({
   item,
@@ -143,19 +191,18 @@ function ItemPart({
   scale: number;
   part: 'top' | 'bottom';
 }) {
-  const { w } = spritePos(item.sprite);
+  const { w } = artSize(item.sprite);
   const rows = itemRows(item)[part];
   if (!rows) return null;
   const [from, to] = rows;
-  const style = spriteStyle(item.sprite, scale);
-  const [bx, by] = style.backgroundPosition!.split(' ').map((v) => Number.parseFloat(v));
+  const { style, bx, by } = artStyle(item.sprite, scale);
   const place = {
     left: `${(item.x - box.x) * scale}px`,
     top: `${(item.y + from - box.y) * scale}px`,
     width: `${w * scale}px`,
     height: `${(to - from) * scale}px`,
   };
-  const anim = part === 'bottom' ? spriteFrames(item.sprite) : null;
+  const anim = part === 'bottom' ? artFrames(item.sprite) : null;
   if (anim) {
     return (
       <div class="item" style={{ ...place, overflow: 'hidden' }}>
@@ -163,7 +210,7 @@ function ItemPart({
           class="item-frames"
           style={{
             ...style,
-            backgroundPosition: `${bx}px ${by! - from * scale}px`,
+            backgroundPosition: `${bx}px ${by - from * scale}px`,
             width: `${anim.stride * anim.frames * scale}px`,
             height: '100%',
             animationDuration: `${anim.ms * anim.frames}ms`,
@@ -177,37 +224,36 @@ function ItemPart({
   return (
     <div
       class="item"
-      style={{ ...style, ...place, backgroundPosition: `${bx}px ${by! - from * scale}px` }}
+      style={{ ...style, ...place, backgroundPosition: `${bx}px ${by - from * scale}px` }}
     />
   );
 }
 
-/** A room's items under the walls. */
-function RoomItems({
+/** A piece's items under the walls: a room's furniture, or a yard piece's props. */
+function PieceItems({
   uid,
-  model,
+  box,
+  items,
   scale,
   settle,
 }: {
   uid: number;
-  model: HouseModel;
+  box: Rect;
+  items: readonly Item[];
   scale: number;
-  settle?: number;
+  settle?: number | undefined;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const room = model.rooms.get(uid)!;
-  const items = roomItems(model, uid);
   useEffect(() => (ref.current ? register(uid, 'items', ref.current) : undefined), [uid]);
   useEffect(() => {
     if (!settle || settle <= played.settle || settings.value.reduceMotion) return;
     played.settle = settle;
     settleFx(uid);
   }, [settle]);
-  const box = room.box;
   return (
     <div
       ref={ref}
-      class="room-items"
+      class="piece-items"
       style={{
         left: `${box.x * scale}px`,
         top: `${box.y * scale}px`,
@@ -224,18 +270,18 @@ function RoomItems({
 }
 
 /**
- * One container per piece: a room's furniture, or a yard piece's placeholder cells. Each
- * orders itself by its bottom row, so things further south are in front.
+ * One container per piece: a room's furniture, or a yard piece's props. Each orders itself by its
+ * bottom row, so things further south are in front.
  */
 export function ItemsLayer({
   house,
   model,
-  occ,
+  yard,
   scale,
 }: {
   house: HouseState;
   model: HouseModel;
-  occ: Occupancy;
+  yard: YardModel;
   scale: number;
 }) {
   const placed = justPlaced.value;
@@ -243,19 +289,19 @@ export function ItemsLayer({
     <div class="items">
       {house.pieces.map((p) => {
         const settle = placed?.uid === p.uid ? placed.id : undefined;
-        if (model.rooms.has(p.uid)) {
-          return <RoomItems key={p.uid} uid={p.uid} model={model} scale={scale} settle={settle} />;
-        }
-        const cells = occ.cells.get(p.uid)!;
+        const room = model.rooms.get(p.uid);
+        const at = room
+          ? { box: room.box, items: roomItems(model, p.uid) }
+          : yard.pieces.get(p.uid);
+        if (!at) return null;
         return (
-          <PieceShape
+          <PieceItems
             key={p.uid}
             uid={p.uid}
-            defId={p.defId}
-            cells={cells}
+            box={at.box}
+            items={at.items}
             scale={scale}
             settle={settle}
-            style={{ zIndex: Math.max(...cells.map((c) => c.y)) + 1 }}
           />
         );
       })}
@@ -263,38 +309,56 @@ export function ItemsLayer({
   );
 }
 
-/** The parts of tall items that rise over their room's north wall, above the walls. */
-export function OverhangLayer({ model, scale }: { model: HouseModel; scale: number }) {
+/**
+ * The parts of items above their own cells, above the walls: tall furniture over its room's north
+ * wall, and a yard piece's parts above its cells (outbuildings' roofs, the Treehouse, a car's roof).
+ */
+export function OverhangLayer({
+  model,
+  yard,
+  scale,
+}: {
+  model: HouseModel;
+  yard: YardModel;
+  scale: number;
+}) {
+  const tops = (items: readonly Item[]) => items.filter((it) => itemRows(it).top);
+  const parts = [
+    ...[...model.rooms.values()].map((r) => ({
+      uid: r.uid,
+      box: r.box,
+      items: tops(roomItems(model, r.uid)),
+    })),
+    ...[...yard.pieces.values()].map((l) => ({ uid: l.uid, box: l.box, items: tops(l.items) })),
+  ];
   return (
     <div class="overhang">
-      {[...model.rooms.values()].map((room) => {
-        const tops = roomItems(model, room.uid).filter((it) => itemRows(it).top);
-        return tops.length > 0 ? (
-          <RoomOverhang key={room.uid} uid={room.uid} model={model} items={tops} scale={scale} />
-        ) : null;
-      })}
+      {parts.map((p) =>
+        p.items.length > 0 ? (
+          <PieceOverhang key={p.uid} uid={p.uid} box={p.box} items={p.items} scale={scale} />
+        ) : null,
+      )}
     </div>
   );
 }
 
-function RoomOverhang({
+function PieceOverhang({
   uid,
-  model,
+  box,
   items,
   scale,
 }: {
   uid: number;
-  model: HouseModel;
+  box: Rect;
   items: readonly Item[];
   scale: number;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => (ref.current ? register(uid, 'overhang', ref.current) : undefined), [uid]);
-  const box = model.rooms.get(uid)!.box;
   return (
     <div
       ref={ref}
-      class="room-overhang"
+      class="piece-overhang"
       style={{
         left: `${box.x * scale}px`,
         top: `${box.y * scale}px`,
@@ -426,11 +490,13 @@ function FixtureBadge({
 export function LabelsLayer({
   house,
   model,
+  yard,
   occ,
   scale,
 }: {
   house: HouseState;
   model: HouseModel;
+  yard: YardModel;
   occ: Occupancy;
   scale: number;
 }) {
@@ -449,9 +515,13 @@ export function LabelsLayer({
         const ins = (c: Cell, side: 'N' | 'E' | 'S' | 'W') =>
           room ? inset(model, c.x, c.y, side) * scale : 0;
         const shown = score ? (score.unmet ? 0 : score.earned) : undefined;
-        // A room's fixture shows as art where it fits (rooms.ts, house-paint.ts); its badge
-        // stands in when it doesn't, and for the yard's fixtures.
-        const badged = !!piece.fixture && (!room || !roomLayout(model, piece.uid).fixtureShown);
+        // A fixture shows as art where it fits (rooms.ts, house-paint.ts, yard.ts); its badge
+        // stands in when it doesn't, so a purchase is always visible.
+        const badged =
+          !!piece.fixture &&
+          !(room
+            ? roomLayout(model, piece.uid).fixtureShown
+            : (yard.pieces.get(piece.uid)?.fixtureShown ?? false));
         const d = digitCell(cells);
         const topRow = Math.min(...cells.map((c) => c.y));
         const tr = {
@@ -504,29 +574,58 @@ export function LabelsLayer({
 }
 
 /**
- * The room being placed (or carried by the Moving Truck): drawn with the house's own painters
- * for that piece alone, its own outline walls and no doors, with the placement's tint over
- * each cell. Redrawn only when the piece or its rotation changes; moving it is CSS.
+ * The piece being placed (or carried by the Moving Truck), drawn by the same painters as the
+ * house for that piece alone: a room with its own outline walls and no doors, a yard piece with
+ * its ground and props (and whatever rises above its cells), and the placement's tint over its
+ * cells. Redrawn only when the piece or its rotation changes; moving it is CSS.
  */
-export function GhostRoom({
+export function GhostPiece({
   defId,
   rot,
   cells,
   scale,
+  look,
   class: cls,
 }: {
   defId: PieceId;
   rot: Rot;
   cells: readonly Cell[];
   scale: number;
+  /** A yard piece's color and fixture (yard.ts pieceLook, newPieceLook), as it will be placed. */
+  look?: Look | undefined;
   class: string;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
-  const model = pieceModel(defId, rot);
   const px = CELL * scale;
   const minX = Math.min(...cells.map((c) => c.x));
   const minY = Math.min(...cells.map((c) => c.y));
-  // One tint over the whole room, outlined around its edge: no grid lines across its walls.
+  const indoor = isIndoor(defId);
+  // In the piece's own frame (its bounding box's top-left cell at (0, 0)): what the canvas covers.
+  const art = useMemo(() => {
+    if (indoor) {
+      const model = pieceModel(defId, rot);
+      const frame = { x: 0, y: 0, w: model.width * CELL, h: model.height * CELL };
+      return { frame, paint: (a: AtlasPixels) => paintPiece(model, a, roomItems(model, 1)) };
+    }
+    const layout = yardPieceLayout(defId, rot, look);
+    let x0 = layout.box.x;
+    let y0 = layout.box.y;
+    let x1 = layout.box.x + layout.box.w;
+    let y1 = layout.box.y + layout.box.h;
+    for (const it of layout.items) {
+      const { w, h } = artSize(it.sprite);
+      x0 = Math.min(x0, it.x);
+      y0 = Math.min(y0, it.y);
+      x1 = Math.max(x1, it.x + w);
+      y1 = Math.max(y1, it.y + h);
+    }
+    const frame = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+    return { frame, paint: (a: AtlasPixels) => paintYardPiece(layout, a) };
+  }, [defId, rot, indoor, look?.color, look?.fixture]);
+  const { frame } = art;
+  const bw = Math.max(...cells.map((c) => c.x)) - minX + 1;
+  const bh = Math.max(...cells.map((c) => c.y)) - minY + 1;
+  // One tint over the whole piece, outlined around its edge: no grid lines across its walls.
   const tint = useMemo(
     () =>
       cellsOutline(
@@ -541,36 +640,37 @@ export function GhostRoom({
       .then((atlas) => {
         const ctx = ref.current?.getContext('2d');
         if (cancelled || !ctx) return;
-        ctx.clearRect(0, 0, model.width * CELL, model.height * CELL);
-        put(ctx, paintPiece(model, atlas, roomItems(model, 1)));
+        ctx.clearRect(0, 0, frame.w, frame.h);
+        const p = art.paint(atlas);
+        if (p) put(ctx, { ...p, x: p.x - frame.x, y: p.y - frame.y });
       })
       .catch((e) => console.error(e));
     return () => {
       cancelled = true;
     };
-  }, [model]);
+  }, [art]);
   return (
     <div
-      class={`piece ghost-room ${cls}`}
+      class={`piece ghost-piece ${cls}`}
       style={{
         left: `${minX * px}px`,
         top: `${minY * px}px`,
-        width: `${model.width * px}px`,
-        height: `${model.height * px}px`,
+        width: `${bw * px}px`,
+        height: `${bh * px}px`,
       }}
     >
       <canvas
         ref={ref}
-        width={model.width * CELL}
-        height={model.height * CELL}
-        style={{ width: `${model.width * px}px`, height: `${model.height * px}px` }}
+        width={frame.w}
+        height={frame.h}
+        style={{
+          left: `${frame.x * scale}px`,
+          top: `${frame.y * scale}px`,
+          width: `${frame.w * scale}px`,
+          height: `${frame.h * scale}px`,
+        }}
       />
-      <svg
-        class="ghost-tint"
-        width={model.width * px}
-        height={model.height * px}
-        aria-hidden="true"
-      >
+      <svg class="ghost-tint" width={bw * px} height={bh * px} aria-hidden="true">
         <defs>
           <pattern
             id="ghost-hatch"

@@ -18,12 +18,14 @@ import {
   paintFloors,
   paintPiece,
   paintWalls,
+  paintYardPiece,
   wallMask,
   type AtlasPixels,
   type Pixels,
 } from './house-paint.ts';
 import { roomItems } from './rooms.ts';
 import { pieceModel } from '../board/house-model.ts';
+import { yardModel, yardPieceLayout } from './yard.ts';
 
 const png = decodePng(readFileSync(new URL('../../../assets/atlas.png', import.meta.url)), 'atlas');
 const atlas: AtlasPixels = { width: png.width, height: png.height, data: png.rgba };
@@ -144,14 +146,6 @@ describe('the walls canvas', () => {
     expect(glass.slice(0, 3)).not.toEqual([...INK]);
     expect(glass.slice(0, 3)).not.toEqual([...BAND]);
   });
-
-  it('puts a doormat outside the front door', () => {
-    const m = model([['livingRoom', 3, 2]]);
-    const front = m.exits.find((e) => e.kind === 'front')!;
-    const p = paintWalls(m)!;
-    expect(pixel(p, front.mat.x + 2, front.mat.y + 2)[3]).toBe(255);
-    expect(front.mat.y).toBeGreaterThanOrEqual(5 * CELL);
-  });
 });
 
 describe('the floor canvas', () => {
@@ -176,13 +170,27 @@ describe('the floor canvas', () => {
     // Its first rows and columns are lit: the shadow starts dy below and dx right of the house.
     expect(pixel(p, right, 2 * CELL + HOUSE_SHADOW.dy - 1)[3]).toBe(0);
     expect(pixel(p, 2 * CELL + HOUSE_SHADOW.dx - 1, bottom)[3]).toBe(0);
-    // Never above or left of the house: light comes from the top-left.
+    // Never above or left of the house: light comes from the top-left. (The canvas reaches down
+    // to the doormat outside the front door.)
+    const mat = m.exits.find((e) => e.kind === 'front')!.mat;
     expect([p.x, p.y, p.w, p.h]).toEqual([
       2 * CELL,
       2 * CELL,
       2 * CELL + HOUSE_SHADOW.dx,
-      2 * CELL + HOUSE_SHADOW.dy,
+      Math.max(2 * CELL + HOUSE_SHADOW.dy, mat.y + mat.h - 2 * CELL),
     ]);
+  });
+
+  it('puts a doormat outside the front door, on the ground', () => {
+    const m = model([['livingRoom', 3, 2]]);
+    const front = m.exits.find((e) => e.kind === 'front')!;
+    expect(front.mat.y).toBeGreaterThanOrEqual(5 * CELL);
+    const p = paintFloors(m, atlas)!;
+    expect(pixel(p, front.mat.x + 2, front.mat.y + 2)[3]).toBe(255);
+    // Not on the walls canvas: the yard's props stand over it.
+    const walls = paintWalls(m)!;
+    const inside = front.mat.y + 2 < walls.y + walls.h && front.mat.x + 2 < walls.x + walls.w;
+    if (inside) expect(pixel(walls, front.mat.x + 2, front.mat.y + 2)[3]).toBe(0);
   });
 });
 
@@ -280,3 +288,72 @@ describe('fixtures painted with their room', () => {
 function overlapsX(a: { x: number; w: number }, b: { x: number; w: number }): boolean {
   return a.x < b.x + b.w && b.x < a.x + a.w;
 }
+
+describe('the yard’s ground on the floor canvas', () => {
+  function houseOf(specs: readonly (readonly [PieceId, number, number, Rot?, FixtureId?])[]) {
+    const pieces: PlacedPiece[] = specs.map(([defId, x, y, rot = 0, fixture], i) => ({
+      uid: i + 1,
+      defId,
+      x,
+      y,
+      rot,
+      placedWeek: 0,
+      ...(fixture ? { fixture: { id: fixture, week: 0 } } : {}),
+    }));
+    const house: HouseState = {
+      lot: lotFromRows(Array.from({ length: 10 }, () => '.'.repeat(10))),
+      pieces,
+      nextUid: pieces.length + 1,
+    };
+    const m = houseModel(house);
+    return { m, yard: yardModel(house, m) };
+  }
+
+  it('lays a Patio’s pavers, and the house’s shadow falls on them', () => {
+    const { m, yard } = houseOf([
+      ['bedroom', 2, 2],
+      ['patio', 4, 2],
+    ]);
+    const p = paintFloors(m, atlas, { yard })!;
+    // Away from the house, the pavers as they are.
+    expect(pixel(p, 5 * CELL + 10, 3 * CELL + 10)).toEqual(sprite('yard-pavers', 10, 10));
+    // In the house's shadow, darker but still the pavers (blended, not replaced).
+    const lit = sprite('yard-pavers', 1, 10);
+    const shaded = pixel(p, 4 * CELL + 1, 3 * CELL + 10);
+    expect(shaded[3]).toBe(255);
+    expect(shaded.slice(0, 3).reduce((a, b) => a + b)).toBeLessThan(
+      lit.slice(0, 3).reduce((a, b) => a + b),
+    );
+  });
+
+  it('cuts the curb: a Driveway’s concrete runs through the street row', () => {
+    const { m, yard } = houseOf([['driveway', 4, 7, 1]]);
+    const p = paintFloors(m, atlas, { yard })!;
+    expect(pixel(p, 4 * CELL + 10, 10 * CELL + 10)).toEqual(sprite('yard-concrete', 10, 10));
+    // Just the one cell of sidewalk under it.
+    expect([p.x, p.w]).toEqual([4 * CELL, CELL]);
+    expect(p.y + p.h).toBe(11 * CELL);
+  });
+
+  it('keeps a piece’s light on its own cells', () => {
+    const { m, yard } = houseOf([['flowerBed', 4, 4, 0, 'gardenLights']]);
+    const p = paintFloors(m, atlas, { yard })!;
+    for (let x = p.x; x < p.x + p.w; x++) {
+      for (let y = p.y; y < p.y + p.h; y++) {
+        const inside = x >= 4 * CELL && x < 5 * CELL && y >= 4 * CELL && y < 5 * CELL;
+        if (!inside) expect(pixel(p, x, y)[3]).toBe(0);
+      }
+    }
+  });
+
+  it('paints a yard piece’s ghost with what rises above its cells', () => {
+    const l = yardPieceLayout('greenhouse', 0);
+    const p = paintYardPiece(l, atlas);
+    expect(p.y).toBeLessThan(0);
+    expect(p.y + p.h).toBe(2 * CELL);
+    // The glass greenhouse is drawn: some pixels above the footprint are set.
+    let set = 0;
+    for (let x = p.x; x < p.x + p.w; x++) if (pixel(p, x, p.y + 4)[3] > 0) set++;
+    expect(set).toBeGreaterThan(0);
+  });
+});

@@ -49,6 +49,31 @@
     "h": 25,
     "spec": "443418f35e32072d"
   },
+  "birdhouse-0": {
+    "w": 11,
+    "h": 40,
+    "spec": "be99c126b14c2bef"
+  },
+  "birdhouse-1": {
+    "w": 11,
+    "h": 40,
+    "spec": "9e34d0d615b4271f"
+  },
+  "birdhouse-2": {
+    "w": 11,
+    "h": 40,
+    "spec": "3b45958b877e6b71"
+  },
+  "birdhouse-3": {
+    "w": 11,
+    "h": 40,
+    "spec": "c52812c3cbaec4a8"
+  },
+  "bollard": {
+    "w": 8,
+    "h": 21,
+    "spec": "5d1e231d714ee468"
+  },
   "bookcase-0": {
     "w": 32,
     "h": 34,
@@ -109,6 +134,16 @@
     "h": 37,
     "spec": "89816694f212e3f7"
   },
+  "car-left-2": {
+    "w": 61,
+    "h": 37,
+    "spec": "6fc508628bb76db2"
+  },
+  "car-left-3": {
+    "w": 61,
+    "h": 37,
+    "spec": "c4cb70ee8a498e1d"
+  },
   "car-rear-0": {
     "w": 32,
     "h": 57,
@@ -119,6 +154,16 @@
     "h": 57,
     "spec": "0a39970711044d99"
   },
+  "car-rear-2": {
+    "w": 32,
+    "h": 57,
+    "spec": "1a304406f1713c6e"
+  },
+  "car-rear-3": {
+    "w": 32,
+    "h": 57,
+    "spec": "448475c7702c5b47"
+  },
   "car-right-0": {
     "w": 61,
     "h": 37,
@@ -128,6 +173,16 @@
     "w": 61,
     "h": 37,
     "spec": "fd68e32426aabde5"
+  },
+  "car-right-2": {
+    "w": 61,
+    "h": 37,
+    "spec": "f0796cbb1ed34ae2"
+  },
+  "car-right-3": {
+    "w": 61,
+    "h": 37,
+    "spec": "0bbd9b7a4769ff04"
   },
   "chair-east-0": {
     "w": 13,
@@ -173,6 +228,21 @@
     "w": 38,
     "h": 21,
     "spec": "1927e1b792ed048c"
+  },
+  "coop-0": {
+    "w": 32,
+    "h": 32,
+    "spec": "8218a0bdaa6d36fa"
+  },
+  "coop-1": {
+    "w": 32,
+    "h": 32,
+    "spec": "71d9e2052ce72186"
+  },
+  "coop-2": {
+    "w": 32,
+    "h": 32,
+    "spec": "e35f173aafc9aeb4"
   },
   "counter": {
     "w": 16,
@@ -273,6 +343,13 @@
     "w": 32,
     "h": 8,
     "spec": "033ce8cfebbc7841"
+  },
+  "fire-pit": {
+    "w": 16,
+    "h": 32,
+    "frames": 6,
+    "ms": 110,
+    "spec": "b95a7ec0abae8622"
   },
   "fireplace": {
     "w": 32,
@@ -376,6 +453,23 @@
     "h": 32,
     "spec": "09b4f6656b16d96e"
   },
+  "greenhouse": {
+    "w": 56,
+    "h": 78,
+    "spec": "6b08bf52467d70f9"
+  },
+  "herb-planter": {
+    "w": 29,
+    "h": 21,
+    "spec": "5d40a5ff010d55bf"
+  },
+  "hot-tub-bubbles": {
+    "w": 16,
+    "h": 16,
+    "frames": 8,
+    "ms": 140,
+    "spec": "f65064f25781787b"
+  },
   "kitchen-island": {
     "w": 40,
     "h": 25,
@@ -411,6 +505,66 @@
     "h": 24,
     "spec": "953b838611dd2429"
   },
+  "parasol-0": {
+    "w": 47,
+    "h": 61,
+    "spec": "58c39598043764c3"
+  },
+  "parasol-1": {
+    "w": 47,
+    "h": 61,
+    "spec": "433f2fc16da0fd7d"
+  },
+  "parasol-2": {
+    "w": 47,
+    "h": 61,
+    "spec": "2cf121286e6f7a9d"
+  },
+  "patio-chair-e-0": {
+    "w": 13,
+    "h": 19,
+    "spec": "0a7cbe755ee7d638"
+  },
+  "patio-chair-e-1": {
+    "w": 13,
+    "h": 19,
+    "spec": "bd777cf948518f3d"
+  },
+  "patio-chair-w-0": {
+    "w": 13,
+    "h": 19,
+    "spec": "c4d49bcfcfd28423"
+  },
+  "patio-chair-w-1": {
+    "w": 13,
+    "h": 19,
+    "spec": "7c1a5e037dc9a793"
+  },
+  "patio-table": {
+    "w": 12,
+    "h": 16,
+    "spec": "1f873c268c026da3"
+  },
+  "pergola": {
+    "w": 64,
+    "h": 61,
+    "spec": "d8f0a876160b86f5"
+  },
+  "picket-post": {
+    "w": 5,
+    "h": 16,
+    "spec": "f3c4fc8f6f096174"
+  },
+  "picket-run": {
+    "w": 16,
+    "h": 15,
+    "spec": "585bbbff3df3b8d5"
+  },
+  "picket-strip": {
+    "w": 5,
+    "h": 8,
+    "spec": "9319ca71b11eb72a"
+  },
   "plant-potted": {
     "w": 18,
     "h": 31,
@@ -425,6 +579,36 @@
     "w": 22,
     "h": 30,
     "spec": "59908f0b58c62a92"
+  },
+  "planter-0": {
+    "w": 29,
+    "h": 19,
+    "spec": "417c610fa134d9b2"
+  },
+  "planter-1": {
+    "w": 29,
+    "h": 19,
+    "spec": "a9d951bb7d45c5cc"
+  },
+  "planter-2": {
+    "w": 29,
+    "h": 19,
+    "spec": "d32bf3939c40fc2b"
+  },
+  "planter-3": {
+    "w": 29,
+    "h": 19,
+    "spec": "92f6b40594d375f0"
+  },
+  "pool-float-0": {
+    "w": 32,
+    "h": 22,
+    "spec": "7024326f13cbd810"
+  },
+  "pool-ladder": {
+    "w": 14,
+    "h": 28,
+    "spec": "22f6acb9507f59b6"
   },
   "pot-flowers-0": {
     "w": 15,
@@ -511,6 +695,16 @@
     "h": 15,
     "spec": "5f634e141202bb5a"
   },
+  "sapling-0": {
+    "w": 12,
+    "h": 14,
+    "spec": "ff34891613f5c1b9"
+  },
+  "sapling-1": {
+    "w": 13,
+    "h": 16,
+    "spec": "cd2713df38359a2b"
+  },
   "shoes-0": {
     "w": 12,
     "h": 8,
@@ -545,6 +739,11 @@
     "w": 48,
     "h": 25,
     "spec": "449c3566b9945536"
+  },
+  "stump-0": {
+    "w": 9,
+    "h": 14,
+    "spec": "1ace7f0ba6406a05"
   },
   "teddy-0": {
     "w": 18,
@@ -581,9 +780,34 @@
     "h": 19,
     "spec": "44b66ee108e719d8"
   },
+  "treehouse": {
+    "w": 64,
+    "h": 89,
+    "spec": "366a0fa4a7db5d1c"
+  },
   "washer": {
     "w": 20,
     "h": 29,
     "spec": "91a6006c96d4873c"
+  },
+  "yard-concrete": {
+    "w": 32,
+    "h": 32,
+    "spec": "094f91adeea8d839"
+  },
+  "yard-lawn": {
+    "w": 32,
+    "h": 32,
+    "spec": "96970c2311ccfd51"
+  },
+  "yard-pavers": {
+    "w": 32,
+    "h": 32,
+    "spec": "f7e984ecc8e97f61"
+  },
+  "yard-pool": {
+    "w": 48,
+    "h": 48,
+    "spec": "6c9f109b87ff0cab"
   }
 }

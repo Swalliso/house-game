@@ -65,11 +65,12 @@ import {
   zoomIn,
   zoomOut,
 } from './camera.ts';
+import { newPieceLook, pieceLook, yardModel } from '../art/yard.ts';
 import { center, isIndoor, labelSpot, occupancy, uidAt } from './geometry.ts';
 import { hallLinks, houseModel } from './house-model.ts';
 import {
   FloorLayer,
-  GhostRoom,
+  GhostPiece,
   HighlightsLayer,
   ItemsLayer,
   LabelsLayer,
@@ -78,7 +79,6 @@ import {
 } from './HouseLayers.tsx';
 import { layerVars } from './layers.ts';
 import { wobble } from './piece-fx.ts';
-import { PieceShape } from './PieceView.tsx';
 import { Outline, TerrainLayer, YardTint } from './TerrainLayer.tsx';
 import './board-m2.css';
 
@@ -269,32 +269,34 @@ export function Board() {
   // doors from the rules' links. Cached per house, so hovering never rebuilds it.
   const links = useMemo(() => hallLinks(state), [state]);
   const model = houseModel(house, links);
+  // The yard pieces' ground and props, cached per house model.
+  const yard = yardModel(house, model);
   const p = demolishing ? null : preview.value;
   // The house's layers re-render only when the house or the zoom changes: the highlights and
   // labels follow the tally and the preview by themselves, and never redraw a canvas.
   const floorLayer = useMemo(
-    () => <FloorLayer lot={lot} scale={scale} model={model} />,
-    [lot, scale, model],
+    () => <FloorLayer lot={lot} scale={scale} model={model} yard={yard} />,
+    [lot, scale, model, yard],
   );
   const itemsLayer = useMemo(
-    () => <ItemsLayer house={house} model={model} occ={occ} scale={scale} />,
-    [house, model, occ, scale],
+    () => <ItemsLayer house={house} model={model} yard={yard} scale={scale} />,
+    [house, model, yard, scale],
   );
   const wallsLayer = useMemo(
     () => <WallsLayer lot={lot} scale={scale} model={model} />,
     [lot, scale, model],
   );
   const overhangLayer = useMemo(
-    () => <OverhangLayer model={model} scale={scale} />,
-    [model, scale],
+    () => <OverhangLayer model={model} yard={yard} scale={scale} />,
+    [model, yard, scale],
   );
   const highlightsLayer = useMemo(
     () => <HighlightsLayer house={house} occ={occ} lot={lot} scale={scale} />,
     [house, occ, lot, scale],
   );
   const labelsLayer = useMemo(
-    () => <LabelsLayer house={house} model={model} occ={occ} scale={scale} />,
-    [house, model, occ, scale],
+    () => <LabelsLayer house={house} model={model} yard={yard} occ={occ} scale={scale} />,
+    [house, model, yard, occ, scale],
   );
 
   useEffect(() => {
@@ -637,27 +639,6 @@ export function Board() {
   );
 }
 
-/** A piece as it would be placed: a room drawn by the house's painters, a yard piece as itself. */
-function PieceGhost({
-  defId,
-  rot,
-  cells,
-  scale,
-  class: cls,
-}: {
-  defId: PieceId;
-  rot: Rot;
-  cells: readonly Cell[];
-  scale: number;
-  class: string;
-}) {
-  return isIndoor(defId) ? (
-    <GhostRoom defId={defId} rot={rot} cells={cells} scale={scale} class={cls} />
-  ) : (
-    <PieceShape defId={defId} cells={cells} scale={scale} class={cls} />
-  );
-}
-
 function Ghost({
   defId,
   rot,
@@ -680,11 +661,12 @@ function Ghost({
   const label = { left: `${spot.x * px}px`, top: `${spot.y * px}px` };
   return (
     <>
-      <PieceGhost
+      <GhostPiece
         defId={defId}
         rot={rot}
         cells={cells}
         scale={scale}
+        look={isIndoor(defId) ? undefined : newPieceLook(run.value.house, defId)}
         class={`ghost ${legal ? 'legal' : 'illegal'} ${pending ? 'pending' : ''}`}
       />
       {!legal && inside.length > 0 && (
@@ -850,11 +832,12 @@ function ToolTarget({ scale }: { scale: number }) {
         lot={lot}
         class="demolish-hint"
       />
-      <PieceGhost
+      <GhostPiece
         defId={piece.defId}
         rot={t.rot ?? 0}
         cells={cells}
         scale={scale}
+        look={isIndoor(piece.defId) ? undefined : pieceLook(state.house, piece.uid)}
         class={`ghost ${ok ? 'legal' : 'illegal'} ${armed ? 'pending' : ''}`}
       />
       {label(

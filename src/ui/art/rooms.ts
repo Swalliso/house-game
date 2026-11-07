@@ -49,10 +49,11 @@ import {
   type Side,
 } from '../board/house-model.ts';
 import { CELL, spritePos, type SpriteId } from '../sprites.ts';
+import { artSize, type ArtId } from './drawings.ts';
 
-/** One sprite in a room. */
+/** One sprite in a room or a yard: an atlas sprite, or one of our drawings (drawings.ts). */
 export interface Item {
-  sprite: SpriteId;
+  sprite: ArtId;
   /** Its top-left on the lot, in art px. */
   x: number;
   y: number;
@@ -78,7 +79,7 @@ export function itemRows(item: Item): {
   top: [number, number] | null;
   bottom: [number, number] | null;
 } {
-  const { h } = spritePos(item.sprite);
+  const { h } = artSize(item.sprite);
   const cut = item.over === undefined ? 0 : Math.min(Math.max(item.over - item.y, 0), h);
   return { top: cut > 0 ? [0, cut] : null, bottom: cut < h ? [cut, h] : null };
 }
@@ -993,7 +994,7 @@ function layOut(m: HouseModel, uid: number): RoomLayout {
   }
   // Back to front: rugs and runners first, then by bottom edge, west to east.
   const items = L.placed
-    .map((p) => ({ p, flat: !p.rect, bottom: p.item.y + spritePos(p.item.sprite).h }))
+    .map((p) => ({ p, flat: !p.rect, bottom: p.item.y + artSize(p.item.sprite).h }))
     .sort(
       (a, b) => Number(b.flat) - Number(a.flat) || a.bottom - b.bottom || a.p.item.x - b.p.item.x,
     )

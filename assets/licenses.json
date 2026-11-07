@@ -79,6 +79,31 @@
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Interiors"
   },
+  "limezu/birdhouse-0.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png [450, 488, 11, 40]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/birdhouse-1.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png [466, 488, 11, 40]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/birdhouse-2.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png [482, 488, 11, 40]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/birdhouse-3.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png [498, 488, 11, 40]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/bollard.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/3_City_Props_16x16.png [340, 266, 8, 21]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
   "limezu/bookcase-0.png": {
     "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/5_Classroom_and_library_16x16.png [96, 118, 32, 34]",
     "author": "LimeZu",
@@ -139,6 +164,16 @@
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Exteriors"
   },
+  "limezu/car-left-2.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/10_Vehicles_16x16.png [195, 91, 61, 37]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/car-left-3.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/10_Vehicles_16x16.png [195, 155, 61, 37]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
   "limezu/car-rear-0.png": {
     "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/10_Vehicles_16x16.png [64, 6, 32, 57]",
     "author": "LimeZu",
@@ -149,6 +184,16 @@
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Exteriors"
   },
+  "limezu/car-rear-2.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/10_Vehicles_16x16.png [256, 70, 32, 57]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/car-rear-3.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/10_Vehicles_16x16.png [256, 134, 32, 57]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
   "limezu/car-right-0.png": {
     "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/10_Vehicles_16x16.png [3, 27, 61, 37]",
     "author": "LimeZu",
@@ -156,6 +201,16 @@
   },
   "limezu/car-right-1.png": {
     "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/10_Vehicles_16x16.png [195, 27, 61, 37]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/car-right-2.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/10_Vehicles_16x16.png [195, 91, 61, 37]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/car-right-3.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/10_Vehicles_16x16.png [195, 155, 61, 37]",
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Exteriors"
   },
@@ -203,6 +258,21 @@
     "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/1_Generic_16x16.png [85, 104, 38, 21]",
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/coop-0.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png [227, 720, 8, 32]; Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png [240, 720, 16, 32]; Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png [262, 720, 8, 32]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/coop-1.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png [275, 720, 8, 32]; Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png [288, 720, 16, 32]; Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png [310, 720, 8, 32]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/coop-2.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png [323, 720, 8, 32]; Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png [336, 720, 16, 32]; Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png [358, 720, 8, 32]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
   },
   "limezu/counter.png": {
     "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png [49, 112, 8, 11]; 1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png [103, 112, 8, 11]; 1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png [64, 22, 8, 10]; 1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png [104, 22, 8, 10]",
@@ -304,6 +374,11 @@
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Interiors"
   },
+  "limezu/fire-pit.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/Animated_16x16/Animated_sheets_16x16/Campfire_16x16.png [0, 0, 16, 32], 6 frames [16, 0] apart",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
   "limezu/fireplace.png": {
     "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 3_Animated_objects/16x16/spritesheets/animated_chimney.png [0, 0, 32, 40], 3 frames [32, 0] apart",
     "author": "LimeZu",
@@ -404,6 +479,21 @@
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Exteriors"
   },
+  "limezu/greenhouse.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png [212, 752, 56, 28]; Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png [212, 798, 56, 50]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/herb-planter.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/7_Villas_16x16.png [386, 549, 29, 7]; Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png [179, 864, 11, 15]; Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png [274, 865, 12, 14]; Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png [258, 896, 13, 15]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/hot-tub-bubbles.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/Animated_16x16/Animated_sheets_16x16/Bubbles_16x16.png [0, 0, 16, 16], 8 frames [16, 0] apart",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
   "limezu/kitchen-island.png": {
     "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png [49, 112, 8, 11]; 1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png [64, 112, 32, 11]; 1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png [103, 112, 8, 11]; 1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png [64, 22, 24, 10]; 1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png [96, 22, 16, 10]; 1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png [17, 369, 13, 11]",
     "author": "LimeZu",
@@ -439,6 +529,66 @@
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Interiors"
   },
+  "limezu/parasol-0.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/14_Swimming_Pool_16x16.png [240, 3, 47, 61]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/parasol-1.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/14_Swimming_Pool_16x16.png [288, 3, 47, 61]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/parasol-2.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/14_Swimming_Pool_16x16.png [288, 67, 47, 61]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/patio-chair-e-0.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_16x16.png [402, 541, 13, 19]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/patio-chair-e-1.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_16x16.png [402, 573, 13, 19]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/patio-chair-w-0.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_16x16.png [449, 605, 13, 19]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/patio-chair-w-1.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_16x16.png [402, 573, 13, 19]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/patio-table.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/14_Swimming_Pool_16x16.png [402, 16, 12, 16]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/pergola.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png [0, 608, 64, 61]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/picket-post.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png [352, 960, 5, 16]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/picket-run.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png [368, 960, 16, 15]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/picket-strip.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png [352, 976, 5, 8]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
   "limezu/plant-potted.png": {
     "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/2_LivingRoom_16x16.png [167, 9, 18, 31]",
     "author": "LimeZu",
@@ -453,6 +603,36 @@
     "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/1_Generic_16x16.png [133, 905, 22, 30]",
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/planter-0.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/7_Villas_16x16.png [386, 537, 29, 19]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/planter-1.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/7_Villas_16x16.png [418, 537, 29, 19]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/planter-2.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/7_Villas_16x16.png [386, 569, 29, 19]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/planter-3.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/7_Villas_16x16.png [418, 569, 29, 19]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/pool-float-0.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/14_Swimming_Pool_16x16.png [288, 178, 32, 22]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/pool-ladder.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/14_Swimming_Pool_16x16.png [130, 256, 14, 28]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
   },
   "limezu/pot-flowers-0.png": {
     "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png [128, 890, 15, 22]",
@@ -539,6 +719,16 @@
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Interiors"
   },
+  "limezu/sapling-0.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_16x16.png [418, 834, 12, 14]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/sapling-1.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_16x16.png [433, 832, 13, 16]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
   "limezu/shoes-0.png": {
     "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/21_Clothing_Store.png [186, 200, 12, 8]",
     "author": "LimeZu",
@@ -573,6 +763,11 @@
     "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/2_LivingRoom_16x16.png [112, 487, 48, 25]",
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/stump-0.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_16x16.png [311, 546, 9, 14]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
   },
   "limezu/teddy-0.png": {
     "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png [7, 38, 18, 17]",
@@ -609,9 +804,34 @@
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Interiors"
   },
+  "limezu/treehouse.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/7_Villas_16x16.png [296, 880, 40, 27]; Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/7_Villas_16x16.png [272, 833, 32, 12]; Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/7_Villas_16x16.png [320, 833, 32, 12]; Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/7_Villas_16x16.png [272, 876, 32, 4]; Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/7_Villas_16x16.png [320, 876, 32, 4]; Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/7_Villas_16x16.png [273, 768, 60, 8]; Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/7_Villas_16x16.png [273, 778, 60, 54]; Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/7_Villas_16x16.png [338, 807, 11, 25]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
   "limezu/washer.png": {
     "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/3_Bathroom_16x16.png [198, 12, 20, 29]",
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/yard-concrete.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/Autotiles_16x16/Godot_Autotiles_16x16.png [144, 1312, 16, 16]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/yard-lawn.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/13_School_16x16.png [320, 1600, 32, 32]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/yard-pavers.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png [432, 144, 32, 32]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/yard-pool.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/Autotiles_16x16/Godot_Autotiles_16x16.png [128, 1088, 16, 16]; Modern_Exteriors_16x16/Autotiles_16x16/Godot_Autotiles_16x16.png [160, 1088, 16, 16]; Modern_Exteriors_16x16/Autotiles_16x16/Godot_Autotiles_16x16.png [176, 1088, 16, 16]; Modern_Exteriors_16x16/Autotiles_16x16/Godot_Autotiles_16x16.png [128, 1104, 16, 16]; Modern_Exteriors_16x16/Autotiles_16x16/Godot_Autotiles_16x16.png [144, 1120, 16, 16]; Modern_Exteriors_16x16/Autotiles_16x16/Godot_Autotiles_16x16.png [176, 1120, 16, 16]; Modern_Exteriors_16x16/Autotiles_16x16/Godot_Autotiles_16x16.png [128, 1136, 16, 16]; Modern_Exteriors_16x16/Autotiles_16x16/Godot_Autotiles_16x16.png [144, 1136, 16, 16]; Modern_Exteriors_16x16/Autotiles_16x16/Godot_Autotiles_16x16.png [176, 1136, 16, 16]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
   }
 }

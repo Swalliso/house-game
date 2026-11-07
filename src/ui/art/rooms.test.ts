@@ -28,6 +28,7 @@ import {
   type Rect,
 } from '../board/house-model.ts';
 import { CELL, spritePos } from '../sprites.ts';
+import { artSize } from './drawings.ts';
 import { itemRows, roomItems, roomLayout, type Item } from './rooms.ts';
 
 const INDOOR = (Object.keys(CONTENT.pieces) as PieceId[]).filter(
@@ -72,7 +73,7 @@ const TIGHT = /^(toilet-|clothes-rail|car-)/;
 
 /** An item's footprint: its sprite below the line it rises over. */
 function foot(it: Item): Rect {
-  const { w, h } = spritePos(it.sprite);
+  const { w, h } = artSize(it.sprite);
   const top = it.over ?? it.y;
   return { x: it.x, y: top, w, h: it.y + h - top };
 }

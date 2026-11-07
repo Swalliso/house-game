@@ -15,6 +15,12 @@
   z-index: var(--z-walls);
 }
 
+/* The fenced yards' tint (TerrainLayer.tsx's YardTint) over the yard's ground on the floor canvas,
+   under the pieces' props. */
+.yard-tint {
+  z-index: var(--z-yard-tint);
+}
+
 /* One container per piece inside each layer, ordered among themselves by bottom row. */
 .items,
 .overhang,
@@ -32,8 +38,8 @@
 .labels {
   z-index: var(--z-labels);
 }
-.room-items,
-.room-overhang {
+.piece-items,
+.piece-overhang {
   position: absolute;
   /* The same origin in both layers, so an item and its top wobble as one. */
   transform-origin: 50% 60%;
@@ -112,16 +118,15 @@
   display: inline-block;
 }
 
-/* --- The ghost of a room: the house's painters for that piece alone ------------------- */
+/* --- The ghost: the house's and the yard's painters for that piece alone --------------- */
 
-.ghost-room canvas {
+/* Its canvas may reach above its cells (an outbuilding's roof): the canvas places itself. */
+.ghost-piece canvas {
   position: absolute;
-  left: 0;
-  top: 0;
   image-rendering: pixelated;
 }
-/* Its tint, as the yard ghost's cells have it (app.css): blue and outlined when legal, hatched
-   orange when not (never color alone), just outlined while it waits for End week. */
+/* Its tint: blue and outlined when legal, hatched orange when not (never color alone), just
+   outlined while it waits for End week. */
 .ghost-tint {
   position: absolute;
   left: 0;
@@ -133,16 +138,16 @@
   stroke-width: 2;
   stroke-linecap: square;
 }
-.ghost-room.legal .ghost-tint .fill {
+.ghost-piece.legal .ghost-tint .fill {
   fill: rgb(47 111 208 / 0.18);
 }
-.ghost-room.legal .ghost-tint .edge {
+.ghost-piece.legal .ghost-tint .edge {
   stroke: var(--good);
 }
-.ghost-room.illegal .ghost-tint .fill {
+.ghost-piece.illegal .ghost-tint .fill {
   fill: url(#ghost-hatch);
 }
-.ghost-room.illegal .ghost-tint .edge {
+.ghost-piece.illegal .ghost-tint .edge {
   stroke: var(--bad);
 }
 .ghost-tint .hatch-on {
@@ -151,6 +156,6 @@
 .ghost-tint .hatch-off {
   fill: rgb(255 255 255 / 0.15);
 }
-.ghost-room.pending.legal .ghost-tint .fill {
+.ghost-piece.pending.legal .ghost-tint .fill {
   fill: none;
 }
