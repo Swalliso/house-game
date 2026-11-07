@@ -4,12 +4,13 @@
 // (HouseLayers.tsx) places its elements where this says, and the tests hold it to its promise.
 //
 // The badges grow with the cell, and shrink with it below 1× (min(max(14, 6u), max(9, 0.45 ×
-// the cell)), u a sixteenth of a cell), on whole device pixels, with their pixel icon at whole
-// device pixels per icon pixel and an ink ring one icon pixel wide. Where a badge shares the
-// digit's cell (a one-cell piece, or a one-row piece's fixture), it rises to the cell's top edge
-// and the digit drops toward the cell's bottom edge, over the wall bands, as far as it takes to
-// keep them apart; in a cell too small even for that, the badge shrinks. So a badge never covers
-// the digit, at any zoom.
+// the cell)), u a sixteenth of a cell, and never under their icon and ring at a device pixel
+// each), on whole device pixels, with their pixel icon at whole device pixels per icon pixel and
+// an ink ring one icon pixel wide. Where a badge in the digit's row would touch it (a one-cell
+// piece, or a one-row piece's fixture), it rises to its cell's top edge and the digit drops
+// toward the cell's bottom edge, over the wall bands, as far as it takes to keep them apart; in
+// a cell too small even for that, the badge shrinks. So a badge never covers the digit, at any
+// zoom.
 
 import type { Cell } from '../../rules/index.ts';
 import { cellUnit } from '../sprites.ts';
