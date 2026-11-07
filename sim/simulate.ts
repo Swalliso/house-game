@@ -15,6 +15,9 @@ import type {
   Action,
   Card,
   Cell,
+  ChangeOrderId,
+  ChangeOrderRecord,
+  ChangeOrderResult,
   ClientId,
   CrewId,
   GameEvent,
@@ -88,6 +91,16 @@ export interface RunRecord {
   house: HouseStats;
   /** How the house went up, week by week (the systems review's run measures). */
   build: BuildStats;
+  /**
+   * M4b: each change order offered, in order: the answer, and how it resolved (no `result` if
+   * the run ended before its milestone was met).
+   */
+  changeOrders: {
+    id: ChangeOrderId;
+    phase: number;
+    answer: ChangeOrderRecord['answer'];
+    result?: ChangeOrderResult;
+  }[];
   ms: number;
 }
 
@@ -566,7 +579,7 @@ export function simulateRun(
 
   if (s.screen === 'build') countHand(s, s.hand, s.phase, false);
   while (
-    (s.screen === 'build' || s.screen === 'shop') &&
+    (s.screen === 'build' || s.screen === 'shop' || s.screen === 'changeOrder') &&
     (opts.maxWeeks === undefined || s.week <= opts.maxWeeks)
   ) {
     if (s.week !== stepWeek) {
@@ -768,6 +781,12 @@ export function simulateRun(
       finalScore: s.score,
       house: houseStats(content, s.house),
       build,
+      changeOrders: s.changeOrders.map((r) => ({
+        id: r.id,
+        phase: r.phase,
+        answer: r.answer,
+        ...(r.result ? { result: r.result } : {}),
+      })),
       ms: performance.now() - start,
     },
     actions,

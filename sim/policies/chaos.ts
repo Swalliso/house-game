@@ -4,6 +4,9 @@
 // and its fast-forward, overtime, the loss, and with its cheats all seven phases and the six
 // shops. It isn't trying to win, and its runs say nothing about balance. sim/chaos.test.ts
 // drives it through simulateRun (so the step caps apply) and checks every step it takes.
+// M4b: it answers change orders at random (now and then forcing one mid-week), plays the
+// household's arrivals from the reserve (now and then forcing one early), and the test runs
+// it with every crew and client.
 //
 // It picks a kind of action first and an action of that kind second, so a kind with many
 // listed actions (a placement at every spot, a strike per card type) can't crowd out the rest.
@@ -68,9 +71,10 @@ function goodsNow(rules: Rules, s: RunState): Good[] {
       if (!s.blueprints.some((b) => b.id === id)) out.push({ kind: 'blueprint', id });
     }
   }
-  if (s.reserve.filter((r) => !r.crew).length < slots.reserve) {
+  if (s.reserve.filter((r) => !r.crew && !r.arrival).length < slots.reserve) {
     for (const d of Object.values(c.pieces)) {
-      if (d.drawWeight === 0) out.push({ kind: 'piece', id: d.id });
+      // Special pieces; a member's room (M4b) only ever arrives with its member.
+      if (d.drawWeight === 0 && !d.member) out.push({ kind: 'piece', id: d.id });
     }
   }
   if (s.supplies.length < slots.supplies) {
@@ -141,6 +145,11 @@ function buildGroups(
   const fresh = all.filter((g) => !given.has(goodName(g)));
   const goods = fresh.length > 0 ? fresh : all;
   const pieceIds = Object.values(c.pieces).map((d) => d.id);
+  const orderIds = Object.values(c.changeOrders).map((d) => d.id);
+  // This household's members still to come.
+  const arrivals = c.clients[s.setup.clientId].household.arrivals
+    .map((a) => a.id)
+    .filter((id) => !s.arrived.includes(id));
   return [
     { kind: 'play', weight: 60 * end, actions: of((a) => a.t === 'place') },
     // A hand fixture has a few hosts against a placement's hundreds of spots: its own kind.
@@ -187,6 +196,29 @@ function buildGroups(
     // miss can end the run, so it stays rare.
     { kind: 'debug:forceShop', weight: 1, actions: [debug({ t: 'debug', op: 'forceShop' })] },
     { kind: null, weight: 1, actions: [debug({ t: 'debug', op: 'forceMiss' })] },
+    // M4b: a change order now (any one, even one offered before), and a member moving in early.
+    {
+      kind: 'debug:forceChangeOrder',
+      weight: 1,
+      actions: [debug({ t: 'debug', op: 'forceChangeOrder', id: rng.pick(orderIds) })],
+    },
+    {
+      kind: 'debug:forceArrival',
+      weight: 1,
+      actions: arrivals.map((id) => debug({ t: 'debug', op: 'forceArrival', id })),
+    },
+  ];
+}
+
+/** On the 'changeOrder' screen (M4b): an answer, accepting or declining at random. */
+function orderGroups(rules: Rules, s: RunState): Group[] {
+  const legal = rules.legalActions(s);
+  const answer = (accept: boolean) =>
+    legal.filter((a) => a.t === 'answerChangeOrder' && a.accept === accept);
+  return [
+    { kind: 'answer:accept', weight: 10, actions: answer(true) },
+    { kind: 'answer:decline', weight: 10, actions: answer(false) },
+    { kind: null, weight: 1, actions: [{ t: 'setAutoComplete', on: !s.autoComplete }] },
   ];
 }
 
@@ -268,7 +300,9 @@ export function makeChaos(opts: ChaosOptions = {}): Policy {
       const groups =
         s.screen === 'shop'
           ? shopGroups(rules, s, rng, steps)
-          : buildGroups(rules, s, rng, steps, given);
+          : s.screen === 'changeOrder'
+            ? orderGroups(rules, s)
+            : buildGroups(rules, s, rng, steps, given);
       const group = pickGroup(groups, used, rng);
       if (group.kind !== null) used.add(group.kind);
       const action = rng.pick(group.actions);

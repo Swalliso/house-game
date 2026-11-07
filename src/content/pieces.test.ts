@@ -113,6 +113,15 @@ const COMPLEXITY: Record<PieceId, 1 | 2 | 3> = {
   firePit: 2,
   henhouse: 2,
   birdhouse: 1,
+  // Member rooms (M4b): never drawn, so only Appendix A's labels: the Nursery's timer is a 2.
+  // Their tests are in households.test.ts.
+  nursery: 2,
+  kidsRoom: 1,
+  grandmasRoom: 1,
+  renfieldsRoom: 1,
+  nanasRoom: 1,
+  rowansStudio: 1,
+  ivysRoom: 1,
 };
 
 /** The card's complexity matches Appendix A, and its text reads cleanly. */

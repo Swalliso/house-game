@@ -9,7 +9,9 @@
 // slots, and the shop between milestones (offers, buying, selling, the sale, the refresh, and
 // the services, including D-076's strike). M3b adds tools (with D-075's Weekend Crew),
 // company upgrades, crates and the Housewarming crate, Savings Account interest, and the finds
-// (the Old Shed and Time Capsules).
+// (the Old Shed and Time Capsules). M4a adds clients, their checklists, sets, and Renovate. M4b
+// adds change orders (a 'changeOrder' screen after milestones 2, 4, and 6), the household's
+// arrivals (D-099: member rooms that land in the reserve), and the Landscaper and Architect.
 //
 // Pure means no DOM, no Preact, no Math.random, no Date, and imports only from src/rules
 // and src/content. tsconfig.rules.json and purity.test.ts enforce it.
@@ -56,7 +58,16 @@ export type PieceId =
   | 'hotTub'
   | 'firePit'
   | 'henhouse'
-  | 'birdhouse';
+  | 'birdhouse'
+  // Member rooms (M4b, D-099): each arrives with a member of a client's household, into the
+  // reserve. Never drawn, sold, or in the shop, a crate, or the Catalog; they count as Bedrooms.
+  | 'nursery'
+  | 'kidsRoom'
+  | 'grandmasRoom'
+  | 'renfieldsRoom'
+  | 'nanasRoom'
+  | 'rowansStudio'
+  | 'ivysRoom';
 
 /** Fixtures (D-050): installed in a placed piece. 7 for rooms, 3 for the yard, and the Chandelier. */
 export type FixtureId =
@@ -137,11 +148,38 @@ export type TerrainId = Exclude<FeatureId, 'street'>;
 /** Sets (D-056): a poker-hand ladder. M4a adds the Suite and Full House. */
 export type SetId = 'jackAndJill' | 'suite' | 'entertainer' | 'fullHouse';
 
-/** Crews (D-012). The General Contractor is the default and, until M4b, the only one. */
-export type CrewId = 'generalContractor';
+/** Crews (D-012): picked at the start of a run. The General Contractor is the default. */
+export type CrewId = 'generalContractor' | 'landscaper' | 'architect';
 
 /** Clients (M4a): who the house is for. Each brings a checklist, tastes, and a pool. */
 export type ClientId = 'hendersons' | 'vladislav' | 'barkers' | 'juniper' | 'dale';
+
+/** The household's arrivals (M4b, D-099): who moves in, by client. */
+export type ArrivalId = 'twins' | 'grandma' | 'renfield' | 'nana' | 'rowan' | 'ivy';
+
+/**
+ * Change orders (M4b, D-011): one offered after each of milestones 2, 4, and 6. Two generic
+ * ones apply to every client; each client has two of its own (Appendix B).
+ */
+export type ChangeOrderId =
+  // Generic.
+  | 'workingFromHome'
+  | 'heatWave'
+  // The Hendersons.
+  | 'goldenRetriever'
+  | 'thanksgiving'
+  // Count Vladislav.
+  | 'covenVisiting'
+  | 'eternalNight'
+  // The Barkers.
+  | 'anotherRescue'
+  | 'agilityCourse'
+  // Juniper Vale.
+  | 'declutter'
+  | 'teaGarden'
+  // Dale.
+  | 'bigDeadline'
+  | 'startedAPodcast';
 
 /**
  * The checklist's headings: the house rules every client starts with (the household, the
@@ -332,6 +370,13 @@ export interface PieceDef {
    * tiles of a pack piece built without its own (a test's house).
    */
   pack?: { maxTiles: number; shapes: readonly (readonly string[])[] };
+  /**
+   * A household member's room (M4b, D-099). It arrives in the reserve with its member and is
+   * never drawn, sold, copied, or in the shop, a crate, or the Catalog. It counts as a Bedroom
+   * (`countsAs: 'bedroom'`) everywhere a Bedroom counts, sets included, and its card can't
+   * renovate (a Bedroom card can renovate it).
+   */
+  member?: true;
 }
 
 export interface FeatureDef {
@@ -457,6 +502,8 @@ export interface CrewDef {
   tier: Tier;
   blurb: string;
   modifiers: readonly Modifier[];
+  /** Cards in the reserve from week 1, in extra slots that don't count against it (M4b). */
+  startReserve?: readonly PieceId[];
 }
 
 export interface SetDef {
@@ -496,6 +543,34 @@ export interface SpecDef {
 }
 
 /**
+ * A member of the household who moves in mid-run (M4b, D-099). Arrivals are fixed for the
+ * client, shown from week 1 (the job board), and can't be declined. At the first week of their
+ * phase (after transforms, before the draw) their cards go into the reserve's extra slots.
+ * From then on Room for everyone counts one more Bedroom at each end of its range and needs
+ * one of their rooms.
+ */
+export interface ArrivalDef {
+  id: ArrivalId;
+  /** "The twins", "Grandma". */
+  name: string;
+  /** The phase (0-based, at least 1) they arrive at: their cards land in its first week. */
+  phase: number;
+  /** What lands in the reserve: their room's card, and anything they bring (Grandma's Bathroom). */
+  cards: readonly PieceId[];
+  /** The member room types that count as theirs (the Nursery, and the Kids' Room it grows into). */
+  room: readonly PieceId[];
+  /** One line for the job board: who's coming, and when. */
+  text: string;
+}
+
+/** Who the house is for (M4b, D-099): the Bedrooms they need to start, and who's coming. */
+export interface Household {
+  /** Room for everyone's Bedroom range before anyone arrives: [min, max]. */
+  bedrooms: Range;
+  arrivals: readonly ArrivalDef[];
+}
+
+/**
  * A client (M4a): one contract's household. Its checklist starts with the house rules (in
  * this client's numbers), then its own wishes; each line met adds `specBonus` to the Mult.
  */
@@ -513,7 +588,37 @@ export interface ClientDef {
   pool: readonly Modifier[];
   /** This client's targets as a percentage of the curve in balance.ts (set by the sim). */
   targetPct: number;
+  /** M4b: the household and its arrivals; Room for everyone is built from it (house-rules.ts). */
+  household: Household;
+  /** M4b: the client's own change orders (scope = this client); the generic ones apply too. */
+  changeOrders: readonly ChangeOrderId[];
 }
+
+/**
+ * A change order (M4b; implementation-plan.md §5, Appendix B). One is offered after each of
+ * milestones 2, 4, and 6, from the client's own and the generic ones, and runs through the next
+ * phase, resolving at its milestone.
+ * - request: accept or decline; met at the milestone → `reward`. A temporary goal: it never
+ *   changes the checklist. `countNew` counts pieces placed since it was accepted.
+ * - restriction: accept or decline; placing a piece that matches `forbid` breaks it; kept to
+ *   the milestone → `reward`.
+ * - phase: announced (only acknowledged), then its modifiers apply for the next phase.
+ */
+export type ChangeOrderDef = {
+  id: ChangeOrderId;
+  name: string;
+  /** What it asks or does, as a sentence (generated text is in text.ts' changeOrderText). */
+  text: string;
+  /** 'generic' for every client, or the one client it belongs to. */
+  scope: 'generic' | ClientId;
+  tier: Tier;
+} & (
+  | { kind: 'request'; condition: HouseCondition; reward: Reward }
+  | { kind: 'restriction'; forbid: Selector; reward: Reward }
+  | { kind: 'phase'; modifiers: readonly Modifier[] }
+);
+
+export type ChangeOrderKind = ChangeOrderDef['kind'];
 
 export interface FixtureDef {
   id: FixtureId;
@@ -652,6 +757,11 @@ export interface Balance {
   drawAtLimitPct: number;
   /** The job board (D-032, D-045): its contracts, rarity weights, and the first visit's client. */
   jobBoard: { contracts: number; rarity: Readonly<Record<Rarity, number>>; firstClient: ClientId };
+  /**
+   * M4b: the milestones (1-based) after which one change order is offered, before the shop
+   * (2, 4, and 6). Never the last milestone: the run ends there.
+   */
+  changeOrderAfter: readonly number[];
 }
 
 /** What a shop visit stocks (Appendix A · M3a), by shop; the last row repeats. */
@@ -711,6 +821,7 @@ export interface Content {
   tools: Readonly<Record<ToolId, ToolDef>>;
   upgrades: Readonly<Record<UpgradeId, UpgradeDef>>;
   crates: Readonly<Record<CrateId, CrateDef>>;
+  changeOrders: Readonly<Record<ChangeOrderId, ChangeOrderDef>>;
   balance: Balance;
 }
 
@@ -763,10 +874,16 @@ export type CardType = Card;
 /** What sits in a supply slot: bought fixtures and tools, used as free actions. */
 export type Supply = { kind: 'fixture'; id: FixtureId } | { kind: 'tool'; id: ToolId };
 
+/**
+ * A card waiting in the reserve: bought, picked, or copied (in the `reserveSlots` slots), or in
+ * an extra slot that doesn't count against them: a crew's starting card or an arrival's (M4b).
+ */
 export interface ReservePiece {
   id: PieceId;
   /** A crew's starting piece, in an extra slot that doesn't count against the reserve (M4b). */
   crew?: true;
+  /** An arrival's card (D-099), in an extra slot that doesn't count against the reserve (M4b). */
+  arrival?: ArrivalId;
 }
 
 export interface OwnedBlueprint {
@@ -808,11 +925,48 @@ export interface CratePick {
   options: readonly PickOption[];
 }
 
-/** A tool's effect that lasts until the end of a week (Rush Order). */
+/**
+ * Modifiers for a while: a tool's for this week's tally (Rush Order, `until.week`), or (M4b) a
+ * change order's phase effect for the phase it runs through (Heat wave, `until.phase`).
+ */
 export interface TimedEffect {
-  source: ToolId;
-  until: { week: number };
+  /** A tool's id when `until` is a week; a change order's when it's a phase. */
+  source: ToolId | ChangeOrderId;
+  /** The last week, or the last phase (it ends when that phase's milestone resolves). */
+  until: { week: number } | { phase: number };
   modifiers: readonly Modifier[];
+}
+
+/** How an accepted change order ended (M4b). A phase effect just ends. */
+export type ChangeOrderResult = 'met' | 'missed' | 'kept' | 'broken' | 'ended';
+
+/** A change order offered after a milestone, waiting for its answer on the 'changeOrder' screen. */
+export interface ChangeOrderOffer {
+  id: ChangeOrderId;
+  /** The phase it would run through (0-based): it resolves when that phase's milestone does. */
+  phase: number;
+  /** Forced by the ?debug panel mid-week: answering it goes back to the same week. */
+  forced?: true;
+}
+
+/** A change order this run, once answered (M4b). */
+export interface ChangeOrderRecord {
+  id: ChangeOrderId;
+  /** The phase it runs through (0-based). */
+  phase: number;
+  answer: 'accepted' | 'declined' | 'acknowledged';
+  /** The week it was answered: the first week it counts in. */
+  week: number;
+  /** Requests: pieces with a uid from here on are new (the house's nextUid when accepted). */
+  sinceUid: number;
+  /** Requests: pieces demolished since it was accepted (Declutter). */
+  demolished: number;
+  /** Restrictions: the forbidden piece whose placement broke it. */
+  brokenBy?: number;
+  /** Once its phase's milestone resolves (accepted and acknowledged ones only). */
+  result?: ChangeOrderResult;
+  /** What it paid: a request met or a restriction kept. */
+  reward?: Reward;
 }
 
 export interface RunSetup {
@@ -912,9 +1066,16 @@ export interface RunState {
   /** Each milestone resolved so far, in order. */
   milestones: readonly MilestoneRecord[];
   lastTally: WeekSummary | null;
-  /** The shop opens after milestones 1–6 (D-051). */
-  screen: 'build' | 'shop' | 'won' | 'lost';
-  offers?: { shop?: ShopVisit; pick?: CratePick };
+  /**
+   * The shop opens after milestones 1–6 (D-051). After milestones 2, 4, and 6 a change order
+   * comes first (M4b): its screen waits for an answer, then the shop opens.
+   */
+  screen: 'build' | 'changeOrder' | 'shop' | 'won' | 'lost';
+  offers?: { shop?: ShopVisit; pick?: CratePick; changeOrder?: ChangeOrderOffer };
+  /** M4b: every change order answered this run, in order, with how it went. */
+  changeOrders: readonly ChangeOrderRecord[];
+  /** M4b: the household members who've arrived (D-099), in order. */
+  arrived: readonly ArrivalId[];
   /** Set by the ?debug panel's cheats: this phase's regular end counts as a miss. */
   forcedMiss?: number;
   /** Set once any debug action has changed the run. */
@@ -982,6 +1143,11 @@ export type UseToolAction = {
 };
 export type LeaveShopAction = { t: 'leaveShop' };
 /**
+ * M4b: the answer to the change order on the 'changeOrder' screen. Requests and restrictions
+ * can be declined (no penalty); a phase effect is only acknowledged (`accept` must be true).
+ */
+export type AnswerChangeOrderAction = { t: 'answerChangeOrder'; accept: boolean };
+/**
  * The ?debug panel's cheats. They are actions so that a run code still replays exactly, and
  * any of them marks the run as a debug run.
  */
@@ -994,7 +1160,15 @@ export type DebugAction =
   /** Opens the shop now, as if the milestone had just been met (the week's hand is set aside). */
   | { t: 'debug'; op: 'forceShop' }
   /** Puts a good where buying it would: a blueprint, a reserve piece, a supply, or a hand card. */
-  | { t: 'debug'; op: 'giveGood'; good: Good };
+  | { t: 'debug'; op: 'giveGood'; good: Good }
+  /**
+   * M4b: offers this change order now, from the build screen, as if a milestone had just been
+   * met: it runs through the current phase, and answering it goes back to the same week, hand
+   * and all. Any change order, even one already offered.
+   */
+  | { t: 'debug'; op: 'forceChangeOrder'; id: ChangeOrderId }
+  /** M4b: this household member arrives now: their cards go into the reserve's extra slots. */
+  | { t: 'debug'; op: 'forceArrival'; id: ArrivalId };
 
 /** A good the debug panel can give: where it goes is where buying it would put it. */
 export type Good =
@@ -1021,6 +1195,7 @@ export type Action =
   | LeaveShopAction
   | PickAction
   | UseToolAction
+  | AnswerChangeOrderAction
   | DebugAction;
 
 /**
@@ -1043,7 +1218,9 @@ export type ModSource =
   | { kind: 'blueprint'; id: BlueprintId }
   | { kind: 'fixture'; id: FixtureId; uid: number }
   | { kind: 'upgrade'; id: UpgradeId }
-  | { kind: 'tool'; id: ToolId };
+  | { kind: 'tool'; id: ToolId }
+  /** M4b: a phase effect (Heat wave) while it runs. */
+  | { kind: 'changeOrder'; id: ChangeOrderId };
 
 export interface BreakdownLine {
   /** Plain language: "Touching Trees or Quiet neighbors (2)". */
@@ -1271,7 +1448,36 @@ export type GameEvent =
       offers: readonly ShopOffer[];
       sale: number | null;
     }
-  | { t: 'shopClosed'; number: number; skipReward: number; budgetBefore: number; budget: number };
+  | { t: 'shopClosed'; number: number; skipReward: number; budgetBefore: number; budget: number }
+  /**
+   * M4b: a household member arrived (D-099), at the start of their phase's first week (after
+   * transforms, before the draw): their cards went into the reserve's extra slots.
+   */
+  | { t: 'arrived'; arrival: ArrivalId; phase: number; cards: readonly PieceId[]; forced?: true }
+  /** M4b: a change order is offered; the 'changeOrder' screen waits for the answer. */
+  | {
+      t: 'changeOrderOffered';
+      id: ChangeOrderId;
+      kind: ChangeOrderKind;
+      /** The phase it would run through. */
+      phase: number;
+      forced?: true;
+    }
+  /** `accepted` is true for a phase effect: it's acknowledged, and runs. */
+  | { t: 'changeOrderAnswered'; id: ChangeOrderId; kind: ChangeOrderKind; accepted: boolean }
+  /** A piece the restriction forbids was placed while it ran: it pays nothing now. */
+  | { t: 'changeOrderBroken'; id: ChangeOrderId; uid: number }
+  /**
+   * At its phase's milestone (when it's met): a request met or missed, a restriction kept or
+   * broken, or a phase effect over. `reward` is what it paid.
+   */
+  | {
+      t: 'changeOrderResolved';
+      id: ChangeOrderId;
+      kind: ChangeOrderKind;
+      result: ChangeOrderResult;
+      reward?: Reward;
+    };
 
 export interface PreviewLine {
   uid: number;
@@ -1315,6 +1521,11 @@ export interface Preview {
   xMults: readonly XMultTerm[];
   /** Finds the play would dig up (a Time Capsule), each with what it pays. */
   finds: readonly { x: number; y: number; feature: TerrainId; reward: Reward }[];
+  /**
+   * M4b: the running restriction this placement would break (Big deadline and a Loud piece),
+   * for a warning. The placement stays legal; the restriction just pays nothing.
+   */
+  breaks?: ChangeOrderId;
 }
 
 /** What demolishing at a spot would do, for the demolish tool's hover. */
@@ -1373,6 +1584,32 @@ export interface ChecklistLine {
   /** The whole rule as card text, every stage included (the progress shows the current one). */
   text: string;
   progress: readonly ProgressPart[];
+}
+
+/**
+ * A change order as the UI shows it (M4b): the offer on the 'changeOrder' screen, or one that's
+ * running (an accepted request or restriction, or a phase effect), with its progress.
+ */
+export interface ChangeOrderView {
+  id: ChangeOrderId;
+  name: string;
+  kind: ChangeOrderKind;
+  /** The order's own sentence: "Two new interior rooms." */
+  text: string;
+  /** The rules as generated from the data (text.ts' changeOrderText): "+100% for Pools", … */
+  terms: readonly string[];
+  /** What a request met or a restriction kept pays. */
+  reward?: Reward;
+  /** The phase it runs through (0-based): it resolves when that phase's milestone resolves. */
+  phase: number;
+  /** Requests and restrictions can be declined; a phase effect is only acknowledged. */
+  declinable: boolean;
+  /** Requests: whether it would count as met if the milestone resolved now. */
+  met?: boolean;
+  /** Requests: "1 new of 2", "0 of 1 demolished". */
+  progress?: readonly ProgressPart[];
+  /** Restrictions: the piece that broke it, once one did. */
+  brokenBy?: number;
 }
 
 /** A room type at its limit (from the checklist's ceilings): its cards can renovate instead. */
@@ -1454,6 +1691,7 @@ export { isSunny, terrainAt } from './lot.ts';
 export {
   blueprintText,
   cardText,
+  changeOrderText,
   conditionText,
   crateText,
   effectText,

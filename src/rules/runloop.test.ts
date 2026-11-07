@@ -429,6 +429,7 @@ describe('early completion', () => {
     const doubled: Content = {
       ...base,
       crews: {
+        ...base.crews,
         generalContractor: {
           ...base.crews.generalContractor,
           modifiers: [

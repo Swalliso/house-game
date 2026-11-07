@@ -85,8 +85,9 @@ const open = emptyRows(10, 10);
 
 describe('special pieces', () => {
   it('are the 9 weight-0 pieces: never in the weekly draw, all in the shop and the Catalog', () => {
+    // Member rooms (M4b) are weight 0 too, but arrive with the household (households.test.ts).
     const weightless = (Object.keys(CONTENT.pieces) as PieceId[]).filter(
-      (id) => CONTENT.pieces[id].drawWeight === 0,
+      (id) => CONTENT.pieces[id].drawWeight === 0 && !CONTENT.pieces[id].member,
     );
     expect(weightless.sort()).toEqual([...SPECIAL].sort());
     for (let phase = 0; phase < CONTENT.balance.phases.length; phase++) {

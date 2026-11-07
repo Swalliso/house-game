@@ -90,7 +90,7 @@ describe('content', () => {
       'Finishes',
       'Final Walkthrough',
     ]);
-    expect(Object.keys(CONTENT.crews)).toEqual(['generalContractor']);
+    expect(Object.keys(CONTENT.crews)).toEqual(['generalContractor', 'landscaper', 'architect']);
   });
 });
 
@@ -188,7 +188,12 @@ describe('the real rules', () => {
         mode: 'standard',
       });
       let weeks = 0;
-      while (s.screen === 'build' || s.screen === 'shop') {
+      while (s.screen === 'build' || s.screen === 'shop' || s.screen === 'changeOrder') {
+        if (s.screen === 'changeOrder') {
+          // M4b: take whatever's offered (a phase effect can only be acknowledged).
+          s = r.apply(s, { t: 'answerChangeOrder', accept: true }).state;
+          continue;
+        }
         if (s.screen === 'shop') {
           // The Housewarming crate first (keep its first option), then leave.
           s = r.apply(s, s.offers?.pick ? { t: 'pick', i: 0 } : { t: 'leaveShop' }).state;

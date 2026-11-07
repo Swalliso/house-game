@@ -10,6 +10,7 @@ import { houseStats } from './house.ts';
 import { POLICIES } from './policies/index.ts';
 import { BOT_BLIND } from './policies/shop.ts';
 import {
+  changeOrdersReport,
   criteria,
   criteriaReport,
   estimateSurvival,
@@ -116,6 +117,7 @@ function run(seed: string, cleared: number, over: Partial<RunRecord> = {}): RunR
       bigWeeks: 0,
       dead: null,
     },
+    changeOrders: [],
     ms: 1,
     ...over,
   };
@@ -405,5 +407,44 @@ describe('a real run’s record', () => {
     const pieceWow = Object.values(record.pieces).reduce((n, p) => n + p.wow, 0);
     expect(record.setWow).toBeGreaterThan(0);
     expect(pieceWow + record.setWow).toBeCloseTo(record.finalScore, 6);
+  });
+});
+
+describe('the change orders table (M4b)', () => {
+  it('shows, per client and order, how often it was offered, accepted, and met or kept', () => {
+    const records = [
+      run('co-a', 7, {
+        changeOrders: [
+          { id: 'goldenRetriever', phase: 2, answer: 'accepted', result: 'met' },
+          { id: 'heatWave', phase: 4, answer: 'acknowledged', result: 'ended' },
+        ],
+      }),
+      run('co-b', 7, {
+        changeOrders: [{ id: 'goldenRetriever', phase: 2, answer: 'accepted', result: 'missed' }],
+      }),
+      run('co-c', 7, { changeOrders: [{ id: 'goldenRetriever', phase: 2, answer: 'declined' }] }),
+      // Lost before its milestone: accepted, never resolved.
+      run('co-d', 2, { changeOrders: [{ id: 'goldenRetriever', phase: 2, answer: 'accepted' }] }),
+    ];
+    const lines = changeOrdersReport(CONTENT, records).split('\n');
+    expect(lines.some((l) => l.includes('The Hendersons (4 runs, 5 offers)'))).toBe(true);
+    const row = (name: string) =>
+      lines
+        .find((l) => l.includes(name))!
+        .split(/\s{2,}/)
+        .map((c) => c.trim())
+        .filter(Boolean);
+    // Offered 4; accepted 3 of 4; of those, 1 met, 1 missed, 1 still open.
+    expect(row('We got a golden retriever')).toEqual([
+      'We got a golden retriever (request)',
+      '4',
+      '75%',
+      '33%',
+      '33%',
+      '1',
+    ]);
+    expect(row('Heat wave')).toEqual(['Heat wave (phase)', '1', '100%', '–', '–', '0']);
+    // No change orders, no table.
+    expect(changeOrdersReport(CONTENT, [run('none', 7)])).toBe('');
   });
 });

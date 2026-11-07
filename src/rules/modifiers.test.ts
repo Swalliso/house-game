@@ -991,7 +991,7 @@ describe('drawWeight', () => {
     const gc = C.crews.generalContractor;
     const crewContent: Content = {
       ...C,
-      crews: { generalContractor: { ...gc, modifiers: [...gc.modifiers, noBed] } },
+      crews: { ...C.crews, generalContractor: { ...gc, modifiers: [...gc.modifiers, noBed] } },
     };
     const r = createRules(crewContent);
     expect(seeds.some((sd) => hasBed(rules.newRun(setup(sd)).hand))).toBe(true);

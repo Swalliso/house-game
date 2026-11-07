@@ -3,17 +3,20 @@
 // milestone. It proves the checklist can be met without a solver.
 //
 // Dale's checklist is the seven house rules in his numbers (house-rules.ts), then his two
-// wishes: two Home Offices, and nothing Loud touching one. His Bedrooms step up from 1–2 to
-// 1–3 at Framing and 2–4 at Drywall, so 2 is the one count inside every stage's range. The
-// Garage is the house's one Loud piece, so it sits at the front, away from both offices, and
-// no Hallway links it to one (a link counts as touching). The street is Loud too, but the
-// wish counts pieces only.
+// wishes: two Home Offices, and nothing Loud touching one. Room for everyone grows with the
+// household (M4b, D-099): 1–2 Bedrooms, then 2–3 and Ivy's room from Framing. Ivy's Room counts
+// as a Bedroom, so the house has 2 Bedrooms of its own and, for the 3 from Framing, 2
+// Bathrooms; her room is a reserve play. The Garage is the house's one Loud piece, so it sits
+// at the front, away from both offices, and no Hallway links it to one (a link counts as
+// touching). The street is Loud too, but the wish counts pieces only.
 //
 // The finished house (columns are x mod 10; the street runs below row 15):
 //
 //          3456789012
+//      5   .....II...   I  Ivy's Room, from Framing
+//      6   .....II...
 //      7   ..OOBBWBB.   O  Home Offices, in the back corner
-//      8   ..OOBBcBB.   B  Bedrooms, sharing the Bathroom (W) and a Closet (c)
+//      8   ..OOBBWBB.   B  Bedrooms, sharing the two Bathrooms (W)
 //      9   ppLLLDDKKh   L  Living Room, D  Dining Room, K  Kitchen
 //     10   ppLLLDDKKh   p  Patio, h  Herb Garden
 //     11   ..llllGG..   G  Garage (Loud), touching the Dining Room and the Kitchen
@@ -60,7 +63,7 @@ const PLACEMENTS: readonly Placement[] = [
   ['bedroom', 7, 7], // behind the Living and Dining Rooms
   ['bathroom', 9, 7], // between the two Bedrooms
   ['bedroom', 10, 7], // behind the Kitchen
-  ['closet', 9, 8], // under the Bathroom, closing the gap between the Bedrooms
+  ['bathroom', 9, 8], // under the Bathroom, closing the gap: Ivy makes 3 Bedrooms
   ['homeOffice', 5, 8], // behind the Living Room
   BACK_OFFICE, // behind the first office: the quietest corner
   ['driveway', 9, 13, 1], // up from the street
@@ -74,7 +77,20 @@ const PLACEMENTS: readonly Placement[] = [
   ['flowerBed', 8, 14],
 ];
 
-const HOUSE = houseFrom(CONTENT, LOT, PLACEMENTS);
+/** Ivy's room (D-099), from the reserve when she arrives: [the phase, placement]. */
+const MEMBERS: readonly [number, Placement][] = [
+  [2, ['ivysRoom', 8, 5]], // behind the first Bedroom and the Bathroom
+];
+
+/** The house at a milestone: these pieces, then the household's rooms from their arrivals on. */
+const houseAt = (phase: number, placements: readonly Placement[] = PLACEMENTS): HouseState =>
+  houseFrom(CONTENT, LOT, [
+    ...placements,
+    ...MEMBERS.filter(([from]) => from <= phase).map(([, p]) => p),
+  ]);
+
+/** The finished house, Ivy's room and all. */
+const HOUSE = houseAt(CONTENT.balance.phases.length - 1);
 
 const START = rules.newRun({
   seed: 'witness-dale',
@@ -90,12 +106,19 @@ const at = (house: HouseState, phase = 0): RunState => ({ ...START, house, phase
  * The rules' own check of placing the piece on the house from the hand. A Driveway is a pack
  * (D-102), so its play carries its tiles, turned, as the board sends them: at rot 0.
  */
-function checkPlace(house: HouseState, [id, x, y, rot = 0, shape]: Placement) {
-  const state: RunState = { ...at(house), hand: [{ kind: 'piece', id }] };
+function checkPlace(
+  house: HouseState,
+  [id, x, y, rot = 0, shape]: Placement,
+  from: 'hand' | 'reserve' = 'hand',
+) {
+  const state: RunState =
+    from === 'hand'
+      ? { ...at(house), hand: [{ kind: 'piece', id }] }
+      : { ...at(house), reserve: [{ id, arrival: 'ivy' }] };
   const def = CONTENT.pieces[id];
   const play: PlaceAction = def.pack
-    ? { t: 'place', from: 'hand', i: 0, x, y, rot: 0, shape: rotateShape(shape ?? def.shape, rot) }
-    : { t: 'place', from: 'hand', i: 0, x, y, rot };
+    ? { t: 'place', from, i: 0, x, y, rot: 0, shape: rotateShape(shape ?? def.shape, rot) }
+    : { t: 'place', from, i: 0, x, y, rot };
   return rules.checkPlay(state, play);
 }
 
@@ -113,6 +136,11 @@ describe("Dale's witness layout", () => {
       const check = checkPlace(houseFrom(CONTENT, LOT, PLACEMENTS.slice(0, k)), placement);
       expect(check.legal, `${k + 1}. ${placement.join(' ')}: ${check.reason}`).toBe(true);
     });
+    // Ivy's Room is a reserve play, once she arrives.
+    for (const [, placement] of MEMBERS) {
+      const check = checkPlace(houseFrom(CONTENT, LOT, PLACEMENTS), placement, 'reserve');
+      expect(check.legal, `${placement.join(' ')}: ${check.reason}`).toBe(true);
+    }
   });
 
   it('meets every line of the checklist at every milestone', () => {
@@ -120,7 +148,18 @@ describe("Dale's witness layout", () => {
     const ids = rules.checklist(at(HOUSE)).map((l) => l.id);
     expect(ids).toEqual(expect.arrayContaining(['offices', 'quietOffice']));
     CONTENT.balance.phases.forEach(({ name }, phase) => {
-      expect(unmet(rules.checklist(at(HOUSE, phase))), `at ${name}`).toEqual([]);
+      expect(unmet(rules.checklist(at(houseAt(phase), phase))), `at ${name}`).toEqual([]);
+    });
+  });
+
+  it('with Ivy’s Room left in the reserve, Room for everyone fails from Framing on', () => {
+    const base = houseFrom(CONTENT, LOT, PLACEMENTS);
+    CONTENT.balance.phases.forEach(({ name }, phase) => {
+      const broken = rules
+        .checklist(at(base, phase))
+        .filter((l) => !l.met)
+        .map((l) => l.id);
+      expect(broken, `at ${name}`).toEqual(phase >= 2 ? ['roomForEveryone'] : []);
     });
   });
 
@@ -150,9 +189,8 @@ describe('one piece more or less on the witness breaks one line', () => {
     if (add) expect(checkPlace(HOUSE, add).legal).toBe(true);
     if (drop) expect(rules.previewDemolish(at(HOUSE), drop[1], drop[2]).legal).toBe(true);
     const placements = add ? [...PLACEMENTS, add] : PLACEMENTS.filter((p) => p !== drop);
-    const house = houseFrom(CONTENT, LOT, placements);
     CONTENT.balance.phases.forEach(({ name }, phase) => {
-      const lines = rules.checklist(at(house, phase));
+      const lines = rules.checklist(at(houseAt(phase, placements), phase));
       const broken = lines.filter((l) => !l.met).map((l) => l.id);
       expect(broken, `at ${name}`).toEqual([breaks]);
     });

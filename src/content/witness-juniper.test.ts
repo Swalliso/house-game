@@ -4,10 +4,11 @@
 // numbers (house-rules.ts) and her one wish, Two rooms with a view.
 //
 // The numbers that shape it:
-// - Room for everyone steps up: 1–2 Bedrooms, then 1–3 from Framing and 2–4 from Drywall.
-//   2 is the only count inside all three, so the house has 2 Bedrooms and 1 Bathroom.
-// - Cozy wants 6+ rooms and her Under one roof at most 8, so 6–8 rooms. 2 Bedrooms, a
-//   Bathroom, a Kitchen, and a Living Room are 5, so the house has one room more: a Closet.
+// - Room for everyone grows with the household (M4b, D-099): 1–2 Bedrooms, then 2–3 and
+//   Rowan's room from Drywall. Rowan's Studio counts as a Bedroom, so the house has 2 Bedrooms
+//   of its own and, for the 3 from Drywall, 2 Bathrooms. The studio is a reserve play.
+// - Cozy wants 6+ rooms and her Under one roof at most 8, so 6–8 rooms: 2 Bedrooms, 2
+//   Bathrooms, a Kitchen, and a Living Room, then Rowan's Studio makes 7.
 // - A tidy yard: 6 yard pieces, no type more than twice.
 
 import { describe, expect, it } from 'vitest';
@@ -42,7 +43,7 @@ const PLACEMENTS: readonly Placement[] = [
   ['kitchen', 10, 8], // beside the Living Room
   ['bedroom', 7, 6], // behind the Living Room, by the lone Tree: a view
   ['bathroom', 9, 6], // between the Bedrooms, touching both
-  ['closet', 9, 7], // the sixth room, for Cozy
+  ['bathroom', 9, 7], // the sixth room, for Cozy, and the second Bathroom for Rowan's room
   ['bedroom', 10, 6], // behind the Kitchen, by the pond: a view
   ['herbGarden', 12, 8, 1], // upright, beside the Kitchen: a view
   ['flowerBed', 8, 10], // in front of the Living Room: a view
@@ -52,17 +53,29 @@ const PLACEMENTS: readonly Placement[] = [
   ['lawn', 7, 11], // and its right half, by the Flower Bed
 ];
 
-// The finished house (b Bedroom, w Bathroom, c Closet, l Living Room, k Kitchen; h Herb
-// Garden, f Flower Bed, p Patio, g Lawn; T Tree, P pond, B boulder):
+/** Rowan's room (D-099), from the reserve when Rowan arrives: [the phase, placement]. */
+const MEMBERS: readonly [number, Placement][] = [
+  [4, ['rowansStudio', 8, 5]], // behind the Bedroom and the Bathroom, by the lone Tree: a view
+];
+
+/** The house at a milestone: these pieces, then the household's rooms from their arrivals on. */
+const houseAt = (phase: number, placements: readonly Placement[] = PLACEMENTS): HouseState =>
+  houseFrom(CONTENT, LOT, [
+    ...placements,
+    ...MEMBERS.filter(([at]) => at <= phase).map(([, p]) => p),
+  ]);
+
+// The finished house (b Bedroom, w Bathroom, r Rowan's Studio from Drywall, l Living Room, k
+// Kitchen; h Herb Garden, f Flower Bed, p Patio, g Lawn; T Tree, P pond, B boulder):
 //
 //   TTT...............
 //   TT.......B........
 //   T.................
 //   ..................
 //   ..................
-//   .......T....PP....
+//   .......Trr..PP....
 //   .......bbwbbPP....
-//   .......bbcbb......
+//   .......bbwbb......
 //   .....pplllkkh.....
 //   .....pplllkkh.....
 //   ........f..f......
@@ -73,9 +86,10 @@ const PLACEMENTS: readonly Placement[] = [
 //   ..................
 //   ~~~~~ street ~~~~~
 //
-// 6 rooms filling a 5 × 4 box, each touching 2 or more rooms. 4 rooms have a view: the
-// Bedrooms look out on the Tree and the pond, the Kitchen on the Herb Garden, and the Living
-// Room on a Flower Bed. 6 yard pieces, 2 of a type at most.
+// 6 rooms filling a 5 × 4 box (7 in a 5 × 5 from Drywall), each touching 2 or more rooms. 4
+// rooms have a view: the Bedrooms look out on the Tree and the pond, the Kitchen on the Herb
+// Garden, and the Living Room on a Flower Bed (and from Drywall, Rowan's Studio on the Tree).
+// 6 yard pieces, 2 of a type at most.
 
 const run = rules.newRun({
   seed: 'witness-juniper',
@@ -86,13 +100,17 @@ const run = rules.newRun({
 const PHASES = CONTENT.balance.phases;
 
 /** "legal", or why a player couldn't place this piece from the hand on the house built so far. */
-function placing(built: readonly Placement[], [id, x, y, rot = 0]: Placement): string {
-  const state: RunState = {
-    ...run,
-    house: houseFrom(CONTENT, LOT, built),
-    hand: [{ kind: 'piece', id }],
-  };
-  const check = rules.checkPlay(state, { t: 'place', from: 'hand', i: 0, x, y, rot });
+function placing(
+  built: readonly Placement[],
+  [id, x, y, rot = 0]: Placement,
+  from: 'hand' | 'reserve' = 'hand',
+): string {
+  const house = houseFrom(CONTENT, LOT, built);
+  const state: RunState =
+    from === 'hand'
+      ? { ...run, house, hand: [{ kind: 'piece', id }] }
+      : { ...run, house, reserve: [{ id, arrival: 'rowan' }] };
+  const check = rules.checkPlay(state, { t: 'place', from, i: 0, x, y, rot });
   return check.legal ? 'legal' : (check.reason ?? 'illegal');
 }
 
@@ -112,12 +130,16 @@ describe('Juniper Vale’s witness house', () => {
       const where = `${k + 1}. ${CONTENT.pieces[id].name} at (${x}, ${y})`;
       expect(placing(PLACEMENTS.slice(0, k), placement), where).toBe('legal');
     });
+    // Rowan's Studio is a reserve play, once Rowan arrives.
+    for (const [, placement] of MEMBERS) {
+      expect(placing(PLACEMENTS, placement, 'reserve'), placement[0]).toBe('legal');
+    }
 
-    const house = houseFrom(CONTENT, LOT, PLACEMENTS);
     PHASES.forEach(({ name }, phase) => {
-      const lines = missed(house, phase).map(shown);
+      const lines = missed(houseAt(phase), phase).map(shown);
       expect(lines.length, `at ${name}, the house misses ${lines.join('; ')}`).toBe(0);
     });
+    const house = houseAt(PHASES.length - 1);
 
     // It reads as a house: no visible repeats, as the household rules demand too.
     const ofType = (type: PieceId) =>
@@ -131,15 +153,23 @@ describe('Juniper Vale’s witness house', () => {
     // One piece more: a second Kitchen (an L-Kitchen on the front walk, a legal play).
     const lKitchen: Placement = ['lKitchen', 9, 10, 1];
     expect(placing(PLACEMENTS, lKitchen)).toBe('legal');
-    const twoKitchens = houseFrom(CONTENT, LOT, [...PLACEMENTS, lKitchen]);
-    // One piece fewer: without the Closet, 5 rooms still suit Under one roof (4–8) but not
-    // Cozy (6+).
-    const withoutCloset = PLACEMENTS.filter(([id]) => id !== 'closet');
-    const noCloset = houseFrom(CONTENT, LOT, withoutCloset);
+    // One piece fewer: without the second Bathroom, 5 rooms still suit Under one roof (4–8)
+    // but not Cozy (6+). From Drywall, Rowan's Studio makes 6, every one touching two, but 3
+    // Bedrooms then need the second Bathroom.
+    const oneBathroom = PLACEMENTS.filter(
+      ([id, x, y]) => !(id === 'bathroom' && x === 9 && y === 7),
+    );
+    // Rowan's Studio left in the reserve: from Drywall, Room for everyone needs it.
+    const noRowan = houseFrom(CONTENT, LOT, PLACEMENTS);
     PHASES.forEach(({ name }, phase) => {
       const names = (house: HouseState) => missed(house, phase).map((line) => line.name);
-      expect(names(twoKitchens), `at ${name}`).toEqual(['One Kitchen']);
-      expect(names(noCloset), `at ${name}`).toEqual(['Cozy']);
+      expect(names(houseAt(phase, [...PLACEMENTS, lKitchen])), `at ${name}`).toEqual([
+        'One Kitchen',
+      ]);
+      expect(names(houseAt(phase, oneBathroom)), `at ${name}`).toEqual(
+        phase >= 4 ? ['A Bathroom for every two Bedrooms'] : ['Cozy'],
+      );
+      expect(names(noRowan), `at ${name}`).toEqual(phase >= 4 ? ['Room for everyone'] : []);
     });
   });
 });

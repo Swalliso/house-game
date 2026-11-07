@@ -186,4 +186,8 @@ export const BALANCE: Balance = {
     rarity: { common: 65, uncommon: 27, rare: 8 },
     firstClient: 'hendersons',
   },
+
+  // Change orders (M4b; jam-scope.md, implementation-plan.md §7): one is offered after each of
+  // these milestones (1-based), before the shop. The rewards are in change-orders.ts.
+  changeOrderAfter: [2, 4, 6],
 };

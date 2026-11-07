@@ -1,6 +1,7 @@
 // The base-pool pieces (Appendix B of implementation-plan.md): 9 indoor types, 7 yard types,
 // and 3 "-house" outbuildings, as 23 cards (shape variants are separate cards sharing a type),
-// then the 9 special pieces (weight 0): the shop's, the crates', and the Catalog's.
+// then the 9 special pieces (weight 0): the shop's, the crates', and the Catalog's, then (M4b)
+// the 7 member rooms (weight 0), which arrive with the household (D-099).
 // Shapes and tags Appendix B leaves open come from content-brainstorm.md §3, §4, and §6
 // (D-067). Complexity is Appendix A · M1's list (D-055). Every card is weight 10, so a type
 // with two cards comes up about twice as often. Numbers are placeholders for the sim and
@@ -506,5 +507,150 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     complexity: 1,
     fromPhase: 0,
     effects: [{ kind: 'neighbor', match: { feature: 'tree' }, amount: 1, max: 3 }],
+  },
+
+  // ---------------------------------------------------------------------------------------
+  // Member rooms (M4b, D-099): each arrives in the reserve with a member of a client's
+  // household (households.ts); weight 0, and never drawn, sold, copied, or in a crate. Each
+  // counts as a Bedroom (Room for everyone, the Bathroom rule, the Bedroom limit, and sets),
+  // and from its member's arrival on, Room for everyone needs it. The Hendersons' are the
+  // systems review's (§4); the rest are simple, in the same range, each fitting its client.
+  nursery: {
+    id: 'nursery',
+    name: 'Nursery',
+    tier: 'core',
+    category: 'indoor',
+    countsAs: 'bedroom',
+    member: true,
+    shape: ['##', '##'],
+    tags: ['Quiet', 'Kid'],
+    drawWeight: 0,
+    complexity: 2,
+    fromPhase: 0,
+    effects: [
+      { kind: 'steady', amount: 2 },
+      { kind: 'neighbor', match: { piece: 'bedroom' }, amount: 2, max: 2 },
+      // The twins grow up: 8 weeks after it's placed, at the start of a week. Its shape is the
+      // Kids' Room's, so it grows in place, keeping its level and fixture (D-098).
+      { kind: 'transform', into: { piece: 'kidsRoom' }, afterWeeks: 8 },
+    ],
+  },
+  kidsRoom: {
+    id: 'kidsRoom',
+    name: 'Kids’ Room',
+    tier: 'core',
+    category: 'indoor',
+    countsAs: 'bedroom',
+    member: true,
+    shape: ['##', '##'],
+    tags: ['Kid'],
+    drawWeight: 0,
+    complexity: 1,
+    fromPhase: 0,
+    effects: [
+      { kind: 'steady', amount: 4 },
+      {
+        kind: 'neighbor',
+        match: { any: [{ tag: 'Kid' }, { feature: 'tree' }] },
+        amount: 2,
+        max: 3,
+      },
+    ],
+  },
+  grandmasRoom: {
+    id: 'grandmasRoom',
+    name: 'Grandma’s Room',
+    tier: 'core',
+    category: 'indoor',
+    countsAs: 'bedroom',
+    member: true,
+    shape: ['##', '##'],
+    tags: ['Quiet'],
+    drawWeight: 0,
+    complexity: 1,
+    fromPhase: 0,
+    effects: [
+      { kind: 'steady', amount: 3 },
+      {
+        kind: 'neighbor',
+        match: { piece: ['bathroom', 'livingRoom', 'kitchen'] },
+        amount: 2,
+        max: 3,
+      },
+      { kind: 'neighbor', match: { piece: ['flowerBed', 'herbGarden'] }, amount: 1, max: 2 },
+    ],
+  },
+  // Count Vladislav's man, Renfield: a small room that wants to be in the middle of the house,
+  // where it's Dark (and the Count's Dark pieces earn double).
+  renfieldsRoom: {
+    id: 'renfieldsRoom',
+    name: 'Renfield’s Room',
+    tier: 'core',
+    category: 'indoor',
+    countsAs: 'bedroom',
+    member: true,
+    shape: ['##'],
+    tags: ['Quiet'],
+    drawWeight: 0,
+    complexity: 1,
+    fromPhase: 0,
+    effects: [
+      { kind: 'steady', amount: 2 },
+      { kind: 'neighbor', match: { property: 'room' }, amount: 1, max: 3 },
+    ],
+  },
+  // The Barkers' Nana likes the dogs close by: a Doghouse outside her window, or the Mudroom.
+  nanasRoom: {
+    id: 'nanasRoom',
+    name: 'Nana’s Room',
+    tier: 'core',
+    category: 'indoor',
+    countsAs: 'bedroom',
+    member: true,
+    shape: ['##', '##'],
+    tags: ['Quiet'],
+    drawWeight: 0,
+    complexity: 1,
+    fromPhase: 0,
+    effects: [
+      { kind: 'steady', amount: 3 },
+      { kind: 'neighbor', match: { tag: 'Pet' }, amount: 2, max: 2 },
+    ],
+  },
+  // Juniper's Rowan paints: a small studio that wants a view (and Juniper wants rooms with one).
+  rowansStudio: {
+    id: 'rowansStudio',
+    name: 'Rowan’s Studio',
+    tier: 'core',
+    category: 'indoor',
+    countsAs: 'bedroom',
+    member: true,
+    shape: ['##'],
+    tags: ['Quiet'],
+    drawWeight: 0,
+    complexity: 1,
+    fromPhase: 0,
+    effects: [
+      { kind: 'steady', amount: 2 },
+      { kind: 'neighbor', match: { property: 'viewSource' }, amount: 2, max: 2 },
+    ],
+  },
+  // Dale's daughter Ivy does her homework beside his office.
+  ivysRoom: {
+    id: 'ivysRoom',
+    name: 'Ivy’s Room',
+    tier: 'core',
+    category: 'indoor',
+    countsAs: 'bedroom',
+    member: true,
+    shape: ['##', '##'],
+    tags: ['Kid'],
+    drawWeight: 0,
+    complexity: 1,
+    fromPhase: 0,
+    effects: [
+      { kind: 'steady', amount: 3 },
+      { kind: 'neighbor', match: { piece: 'homeOffice' }, amount: 2, max: 1 },
+    ],
   },
 };

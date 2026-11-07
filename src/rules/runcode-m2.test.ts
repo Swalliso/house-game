@@ -330,7 +330,8 @@ describe('decoded codes from other builds replay without crashing', () => {
   // decodeRunCode accepts any crewId string; replay checks it against the content and fails
   // softly at step 0 (§4: replay "returns the step where it fails instead of throwing").
   it('a crew this build does not have makes replay fail softly, not throw', () => {
-    for (const crewId of ['landscaper', 'constructor']) {
+    // M4b added the Landscaper and the Architect, so these are crews no build has.
+    for (const crewId of ['handyman', 'constructor']) {
       const decoded = safeDecode(
         encodeRunCode({ ...BASE, setup: { ...SETUP, crewId: crewId as never } }),
       );

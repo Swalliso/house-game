@@ -47,6 +47,14 @@ export const PIECE_SPRITES: Record<PieceId, { floor: SpriteId; furniture: Sprite
   firePit: { floor: 'grass-0', furniture: 'firepit' },
   henhouse: { floor: 'grass-0', furniture: 'henhouse' },
   birdhouse: { floor: 'grass-0', furniture: 'birdhouse' },
+  // Members' rooms (M4b, D-099): placeholders from the rooms they're most like, until M5's art.
+  nursery: { floor: 'floor-carpet', furniture: 'toys' },
+  kidsRoom: { floor: 'floor-wood', furniture: 'toys' },
+  grandmasRoom: { floor: 'floor-carpet', furniture: 'bed' },
+  renfieldsRoom: { floor: 'floor-parquet', furniture: 'wardrobe' },
+  nanasRoom: { floor: 'floor-carpet', furniture: 'bed' },
+  rowansStudio: { floor: 'floor-sunroom', furniture: 'desk' },
+  ivysRoom: { floor: 'floor-wood', furniture: 'books' },
 };
 
 /** A text glyph per fixture for its badge on the board and its card (placeholders, D-057). */

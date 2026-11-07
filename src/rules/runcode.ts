@@ -5,8 +5,10 @@
 
 import type {
   Action,
+  ArrivalId,
   BlueprintId,
   CardType,
+  ChangeOrderId,
   Content,
   FixtureId,
   Good,
@@ -269,6 +271,8 @@ function cleanAction(v: unknown): Action | null {
     }
     case 'leaveShop':
       return { t: 'leaveShop' };
+    case 'answerChangeOrder':
+      return typeof v.accept === 'boolean' ? { t: 'answerChangeOrder', accept: v.accept } : null;
     case 'debug':
       switch (v.op) {
         case 'addScore':
@@ -286,6 +290,14 @@ function cleanAction(v: unknown): Action | null {
           const good = cleanGood(v.good);
           return good ? { t: 'debug', op: 'giveGood', good } : null;
         }
+        case 'forceChangeOrder':
+          return typeof v.id === 'string'
+            ? { t: 'debug', op: 'forceChangeOrder', id: v.id as ChangeOrderId }
+            : null;
+        case 'forceArrival':
+          return typeof v.id === 'string'
+            ? { t: 'debug', op: 'forceArrival', id: v.id as ArrivalId }
+            : null;
       }
       return null;
   }

@@ -29,6 +29,7 @@ import type {
 } from '../../src/rules/index.ts';
 import type { Policy } from './index.ts';
 import { fencePlans } from '../enclosure.ts';
+import { answerChangeOrder } from './orders.ts';
 import { shopAct, useTools, type StrikeMode } from './shop.ts';
 
 export const TOP_K = 12;
@@ -145,6 +146,8 @@ export function makeGreedy(opts: GreedyOptions = {}): Policy {
     name: 'greedy',
     label: labelOf(early, strikes),
     act(rules: Rules, state: RunState, rng: Rng): Action {
+      // M4b: accept requests, decline restrictions, acknowledge phase effects.
+      if (state.screen === 'changeOrder') return answerChangeOrder(rules, state);
       const salt = rng.u32();
       if (state.screen === 'shop') return shopAct(rules, state, rng, { salt, strikes, early });
       if (completesEarly(rules, state, early)) return { t: 'completeEarly' };

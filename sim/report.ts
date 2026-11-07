@@ -166,6 +166,7 @@ export function report(content: Content, records: readonly RunRecord[], title: s
   out.push(piecesReport(content, records));
   out.push(houseReport(content, records));
   out.push(clientsReport(content, records));
+  out.push(changeOrdersReport(content, records));
   out.push(crewsReport(content, records));
   out.push(layersReport(records));
   out.push(sitingReport(records));
@@ -414,6 +415,41 @@ export function clientsReport(content: Content, records: readonly RunRecord[]): 
     (r) => r.client,
     (k) => content.clients[k as keyof typeof content.clients]?.name ?? k,
   );
+}
+
+/**
+ * M4b: change orders by client. Per order: how often it was offered, the share accepted (a
+ * phase effect is always acknowledged), and of those accepted, the share met (a request) or kept
+ * (a restriction) at its milestone; "open" counts runs that ended before it resolved.
+ */
+export function changeOrdersReport(content: Content, records: readonly RunRecord[]): string {
+  const rows: (string | number)[][] = [
+    ['Change orders by client', 'Offered', 'Accepted', 'Met or kept', 'Missed or broken', 'Open'],
+  ];
+  for (const [client, rs] of groupBy(records, (r) => r.client)) {
+    const def = content.clients[client as keyof typeof content.clients];
+    const offers = rs.flatMap((r) => r.changeOrders ?? []);
+    if (!def || offers.length === 0) continue;
+    rows.push([`${def.name} (${rs.length} runs, ${offers.length} offers)`]);
+    const ids = [...new Set(offers.map((o) => o.id))];
+    for (const id of ids) {
+      const co = content.changeOrders[id];
+      const os = offers.filter((o) => o.id === id);
+      const taken = os.filter((o) => o.answer !== 'declined');
+      const good = taken.filter((o) => o.result === 'met' || o.result === 'kept').length;
+      const bad = taken.filter((o) => o.result === 'missed' || o.result === 'broken').length;
+      const phase = co.kind === 'phase';
+      rows.push([
+        `  ${co.name} (${co.kind})`,
+        os.length,
+        pct(taken.length, os.length),
+        phase ? '–' : pct(good, taken.length),
+        phase ? '–' : pct(bad, taken.length),
+        taken.filter((o) => o.result === undefined).length,
+      ]);
+    }
+  }
+  return rows.length > 1 ? '\n' + table(rows) : '';
 }
 
 export function crewsReport(content: Content, records: readonly RunRecord[]): string {

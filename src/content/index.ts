@@ -11,12 +11,13 @@ import type {
   Selector,
   Tag,
 } from '../rules/index.ts';
-import { isConnected, packShapeProblem, parseShape } from '../rules/grid.ts';
-import { cardText, modifierText, specText, toolText } from '../rules/text.ts';
+import { isConnected, packShapeProblem, parseShape, shapeCells } from '../rules/grid.ts';
+import { cardText, changeOrderText, modifierText, specText, toolText } from '../rules/text.ts';
 import { drawWeights } from '../rules/draw.ts';
 import { isType } from '../rules/selectors.ts';
 import { BALANCE } from './balance.ts';
 import { BLUEPRINTS } from './blueprints.ts';
+import { CHANGE_ORDERS } from './change-orders.ts';
 import { CLIENTS } from './clients.ts';
 import { CRATES } from './crates.ts';
 import { CREWS } from './crews.ts';
@@ -40,6 +41,7 @@ export const CONTENT: Content = {
   tools: TOOLS,
   upgrades: UPGRADES,
   crates: CRATES,
+  changeOrders: CHANGE_ORDERS,
   balance: BALANCE,
 };
 
@@ -298,6 +300,24 @@ export function validateContent(content: Content): string[] {
     if (def.effects.filter((e) => e.kind === 'transform').length > 1) {
       problems.push(`${where}: at most one transform`);
     }
+    // A piece grows into another in place (the Nursery into the Kids' Room): the same tiles.
+    for (const e of def.effects) {
+      if (e.kind !== 'transform' || !('piece' in e.into)) continue;
+      const into = content.pieces[e.into.piece];
+      const same = (a: readonly string[], b: readonly string[]) =>
+        JSON.stringify(shapeCells(a, 0)) === JSON.stringify(shapeCells(b, 0));
+      if (into && !same(def.shape, into.shape)) {
+        problems.push(`${where}: transforms into ${into.id}, which has another shape`);
+      }
+    }
+    // M4b: a member's room (D-099) counts as a Bedroom and is never in the draw.
+    if (def.member) {
+      if (def.drawWeight !== 0) problems.push(`${where}: a member's room has weight 0`);
+      if (def.countsAs !== 'bedroom' || def.category !== 'indoor' || def.connector) {
+        problems.push(`${where}: a member's room is an indoor room counting as a Bedroom`);
+      }
+      if (def.pack) problems.push(`${where}: a member's room isn't a pack`);
+    }
     if (def.pack) {
       // A pack (D-102): its picture and every suggested shape are tiles it can place.
       if (!Number.isInteger(def.pack.maxTiles) || def.pack.maxTiles < 1) {
@@ -344,6 +364,10 @@ export function validateContent(content: Content): string[] {
 
   for (const [key, crew] of Object.entries(content.crews)) {
     if (crew.id !== key) problems.push(`crew ${key}: id is "${crew.id}"`);
+    for (const id of crew.startReserve ?? []) {
+      known(id, `crew ${key} startReserve`);
+      if (content.pieces[id]?.member) problems.push(`crew ${key}: ${id} is a member's room`);
+    }
     crew.modifiers.forEach((m, k) =>
       problems.push(
         ...modifierProblems(content, m, `crew ${key} modifier ${k}`, {
@@ -354,9 +378,53 @@ export function validateContent(content: Content): string[] {
     );
   }
 
+  // M4b: arrival ids are unique across households, and each member room is one arrival's.
+  const arrivalIds = new Set<string>();
+  const memberOf = new Map<PieceId, string>();
   for (const [key, client] of Object.entries(content.clients)) {
     const where = `client ${key}`;
     if (client.id !== key) problems.push(`${where}: id is "${client.id}"`);
+    const own = new Set<string>();
+    for (const id of client.changeOrders) {
+      const co = content.changeOrders[id];
+      if (!co) problems.push(`${where}: unknown change order "${id}"`);
+      else if (co.scope !== client.id)
+        problems.push(`${where}: change order ${id} is ${co.scope}'s`);
+      if (own.has(id)) problems.push(`${where}: change order ${id} twice`);
+      own.add(id);
+    }
+    const [bmin, bmax] = client.household.bedrooms;
+    if (!Number.isInteger(bmin) || !Number.isInteger(bmax) || bmin < 0 || bmin > bmax) {
+      problems.push(`${where}: household bedrooms must be whole numbers, min ≤ max`);
+    }
+    const specNamed: PieceId[] = [];
+    for (const spec of client.specs) houseConditionPieceIds(spec.condition, specNamed);
+    for (const a of client.household.arrivals) {
+      const at = `${where} arrival ${a.id}`;
+      if (arrivalIds.has(a.id)) problems.push(`${at}: duplicate id`);
+      arrivalIds.add(a.id);
+      const phases = content.balance.phases.length;
+      if (!Number.isInteger(a.phase) || a.phase < 1 || a.phase >= phases) {
+        problems.push(`${at}: arrives at a phase from 1 to ${phases - 1}`);
+      }
+      if (!a.name || !a.text) problems.push(`${at}: needs a name and text`);
+      if (a.cards.length === 0) problems.push(`${at}: no cards`);
+      a.cards.forEach((id) => known(id, at));
+      if (a.room.length === 0) problems.push(`${at}: no room`);
+      for (const id of a.room) {
+        known(id, at);
+        if (content.pieces[id] && !content.pieces[id].member) {
+          problems.push(`${at}: ${id} isn't a member's room`);
+        }
+        if (memberOf.has(id)) problems.push(`${at}: ${id} is ${memberOf.get(id)}'s room too`);
+        memberOf.set(id, a.id);
+        // Room for everyone needs it from the arrival on (house-rules.ts builds that).
+        if (!specNamed.includes(id)) problems.push(`${at}: the checklist never names ${id}`);
+      }
+      if (!a.cards.some((id) => a.room.includes(id))) {
+        problems.push(`${at}: none of its cards is its room`);
+      }
+    }
     if (!Number.isInteger(client.targetPct) || client.targetPct < 1) {
       problems.push(`${where}: targetPct must be a whole number ≥ 1`);
     }
@@ -402,6 +470,55 @@ export function validateContent(content: Content): string[] {
         ...modifierProblems(content, m, `${where} pool ${k}`, { fixture: false, drawWeight: true }),
       );
     });
+  }
+  for (const def of Object.values(content.pieces)) {
+    if (def.member && !memberOf.has(def.id)) {
+      problems.push(`piece ${def.id}: a member's room no arrival brings`);
+    }
+  }
+
+  // M4b: change orders.
+  for (const [key, def] of Object.entries(content.changeOrders)) {
+    const where = `change order ${key}`;
+    if (def.id !== key) problems.push(`${where}: id is "${def.id}"`);
+    if (def.scope !== 'generic') {
+      const client = content.clients[def.scope];
+      if (!client) problems.push(`${where}: unknown client "${def.scope}"`);
+      else if (!client.changeOrders.includes(def.id)) {
+        problems.push(`${where}: ${def.scope} doesn't list it`);
+      }
+    }
+    if (!def.name || !def.text) problems.push(`${where}: needs a name and text`);
+    const ids: PieceId[] = [];
+    if (def.kind === 'request') {
+      houseConditionPieceIds(def.condition, ids);
+      problems.push(...houseConditionProblems(content, def.condition, where));
+      if ('stages' in def.condition) problems.push(`${where}: a request has no stages`);
+    } else if (def.kind === 'restriction') {
+      selectorPieceIds(def.forbid, ids);
+    } else {
+      if (def.modifiers.length === 0) problems.push(`${where}: no modifiers`);
+      def.modifiers.forEach((m, k) =>
+        problems.push(
+          ...modifierProblems(content, m, `${where} modifier ${k}`, {
+            fixture: false,
+            drawWeight: false,
+          }),
+        ),
+      );
+    }
+    ids.forEach((id) => known(id, where));
+    if (def.kind !== 'phase') {
+      const r = def.reward;
+      if (Object.values(r).every((v) => !v)) problems.push(`${where}: an empty reward`);
+      if (r.tool && r.tool !== 'random' && !content.tools[r.tool]) {
+        problems.push(`${where}: unknown reward tool "${r.tool}"`);
+      }
+    }
+    const text = changeOrderText(content, def);
+    if (text.length === 0 || text.some((t) => !t || t.includes('undefined'))) {
+      problems.push(`${where}: text didn't generate`);
+    }
   }
 
   for (const [key, def] of Object.entries(content.fixtures)) {
@@ -523,5 +640,12 @@ export function validateContent(content: Content): string[] {
   const v = b.verdicts;
   if (v.length === 0 || v[0]!.minPctOfTarget !== 0)
     problems.push('balance: the first verdict starts at 0%');
+  // M4b: change orders come after milestones the run goes on from, in order.
+  b.changeOrderAfter.forEach((m, i) => {
+    if (!Number.isInteger(m) || m < 1 || m >= b.phases.length) {
+      problems.push(`balance: changeOrderAfter ${m}: a milestone from 1 to ${b.phases.length - 1}`);
+    }
+    if (i > 0 && m <= b.changeOrderAfter[i - 1]!) problems.push('balance: changeOrderAfter rises');
+  });
   return problems;
 }

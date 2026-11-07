@@ -7,28 +7,27 @@
 // - The household (D-093's option 1): Room for everyone, a Bathroom for every two Bedrooms,
 //   One Kitchen, and a living room or two. Each has a floor, and all but the Bathroom rule a
 //   ceiling, so a second Kitchen loses a rule; a room type at its ceiling can renovate instead.
+//   Room for everyone is built from the client's household (M4b, D-099; households.ts): its
+//   Bedroom range rises by one at each end at each arrival's phase, and from each arrival on it
+//   also needs one of that member's rooms. A member's room counts as a Bedroom (countsAs).
 // - The shape: Under one roof (a filled box no longer than twice its width) and Cozy (every
 //   room touches two others).
 // - The yard: a tidy yard (6 or more yard pieces, no type 4 or more times; Fences, Driveways,
 //   and Saplings count toward the 6 but never break it, so a fenced yard or a long drive is
 //   always fine).
 
-import type { HouseCondition, Selector, SpecDef } from '../rules/index.ts';
+import type { ArrivalDef, HouseCondition, Household, Selector, SpecDef } from '../rules/index.ts';
 
-/** What Room for everyone and the Bathroom rule count as a Bedroom. */
+/**
+ * What Room for everyone and the Bathroom rule count as a Bedroom. Member rooms count as
+ * Bedrooms (`countsAs`), so they're in it.
+ */
 export const BEDROOMS: Selector = { piece: 'bedroom' };
-
-/** One stage of a household's Bedroom range, from a milestone (0-based) on. */
-export interface BedroomStage {
-  fromPhase: number;
-  min: number;
-  max: number;
-}
 
 /** A client's numbers for the house rules. */
 export interface HouseholdNumbers {
-  /** Room for everyone: the Bedroom range, rising as the household grows. */
-  bedrooms: readonly BedroomStage[];
+  /** Room for everyone: the household's starting Bedroom range and its arrivals (D-099). */
+  household: Household;
   /** Under one roof's rooms: at least `min`, and at most `max` if the client has a limit. */
   rooms?: { min: number; max?: number };
 }
@@ -46,29 +45,64 @@ const PHASE_NAMES = [
 
 const range = (min: number, max: number) => (min === max ? `${min}` : `${min}–${max}`);
 
-/** "Bedrooms for the household: 2–3, then 2–4 from Framing and 3–5 from Drywall." */
-function bedroomText(stages: readonly BedroomStage[]): string {
-  const [first, ...rest] = stages;
-  const head = `Bedrooms for the household: ${range(first!.min, first!.max)}`;
-  if (rest.length === 0) return `${head}.`;
-  const later = rest.map((s) => `${range(s.min, s.max)} from ${PHASE_NAMES[s.fromPhase]}`);
-  const tail =
-    later.length === 1 ? later[0] : `${later.slice(0, -1).join(', ')} and ${later.at(-1)}`;
-  return `${head}, then ${tail}.`;
+/** The phases arrivals come at, in order, each with everyone who's arrived by then. */
+function arrivalStages(h: Household): { phase: number; arrived: readonly ArrivalDef[] }[] {
+  const phases = [...new Set(h.arrivals.map((a) => a.phase))].sort((a, b) => a - b);
+  return phases.map((phase) => ({ phase, arrived: h.arrivals.filter((a) => a.phase <= phase) }));
+}
+
+/**
+ * Room for everyone's condition (D-099): the Bedroom range, one more at each end for each
+ * arrival from its phase on, and from then one of each arrived member's rooms.
+ */
+export function roomForEveryone(h: Household): HouseCondition {
+  const [min, max] = h.bedrooms;
+  const stages = arrivalStages(h);
+  if (stages.length === 0) return { count: BEDROOMS, min, max };
+  return {
+    stages: [
+      { fromPhase: 0, condition: { count: BEDROOMS, min, max } },
+      ...stages.map(({ phase, arrived }) => ({
+        fromPhase: phase,
+        condition: {
+          and: [
+            { count: BEDROOMS, min: min + arrived.length, max: max + arrived.length },
+            ...arrived.map((a): HouseCondition => ({ count: { piece: a.room }, min: 1 })),
+          ],
+        },
+      })),
+    ],
+  };
+}
+
+/** "the twins’ room", "Grandma’s room". */
+function memberRoom(a: ArrivalDef): string {
+  const name = a.name.startsWith('The ') ? `the ${a.name.slice(4)}` : a.name;
+  return `${name}${name.endsWith('s') ? '’' : '’s'} room`;
+}
+
+/**
+ * "Bedrooms for the household: 2–3 to start, then one more for each arrival, and each arrival
+ * has their own room: 3–4 and the twins’ room from Framing, 4–5 and Grandma’s room from Drywall."
+ */
+function bedroomText(h: Household): string {
+  const [min, max] = h.bedrooms;
+  const head = `Bedrooms for the household: ${range(min, max)}`;
+  const stages = arrivalStages(h);
+  if (stages.length === 0) return `${head}.`;
+  const later = stages.map(({ phase, arrived }) => {
+    const k = arrived.length;
+    const rooms = arrived.filter((a) => a.phase === phase).map(memberRoom);
+    return `${range(min + k, max + k)} and ${rooms.join(' and ')} from ${PHASE_NAMES[phase]}`;
+  });
+  const tail = later.length === 1 ? later[0] : `${later.slice(0, -1).join(', ')}, ${later.at(-1)}`;
+  return `${head} to start, then one more for each arrival, and each arrival has their own room: ${tail}.`;
 }
 
 /** The seven house rules, in checklist order. */
 export function houseRules(n: HouseholdNumbers): SpecDef[] {
   const rooms = n.rooms ?? { min: 4 };
-  const bedrooms: HouseCondition =
-    n.bedrooms.length === 1
-      ? { count: BEDROOMS, min: n.bedrooms[0]!.min, max: n.bedrooms[0]!.max }
-      : {
-          stages: n.bedrooms.map((s) => ({
-            fromPhase: s.fromPhase,
-            condition: { count: BEDROOMS, min: s.min, max: s.max },
-          })),
-        };
+  const bedrooms = roomForEveryone(n.household);
   const roomsText =
     rooms.max === undefined ? `${rooms.min}+ rooms` : `${rooms.min}–${rooms.max} rooms`;
   return [
@@ -77,7 +111,7 @@ export function houseRules(n: HouseholdNumbers): SpecDef[] {
       name: 'Room for everyone',
       group: 'household',
       condition: bedrooms,
-      text: bedroomText(n.bedrooms),
+      text: bedroomText(n.household),
     },
     {
       id: 'bathrooms',
@@ -144,18 +178,5 @@ export function houseRules(n: HouseholdNumbers): SpecDef[] {
       },
       text: '6 or more yard pieces, and no yard type stands 4 or more times. Fences, Driveways, and Saplings never break it.',
     },
-  ];
-}
-
-/**
- * Until M4b's arrivals, a household's Bedroom range steps up at Framing and Drywall as the
- * systems review's option A did (2–3, then 2–4, then 3–5 for the Hendersons): the ceiling
- * rises at Framing, and both ends at Drywall.
- */
-export function steppedBedrooms(min: number, max: number): BedroomStage[] {
-  return [
-    { fromPhase: 0, min, max },
-    { fromPhase: 2, min, max: max + 1 },
-    { fromPhase: 4, min: min + 1, max: max + 2 },
   ];
 }

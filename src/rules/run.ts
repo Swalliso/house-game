@@ -18,8 +18,17 @@
 // week's next play free too (D-075). Finds pay once: the Old Shed when demolished, a Time
 // Capsule when first built over.
 //
-// Start of week: transforms resolve (a Sapling old enough becomes a Tree), a hand is drawn,
-// and if none of it fits anywhere there's one free redraw.
+// Start of week: transforms resolve (a Sapling old enough becomes a Tree), the household's
+// arrivals move in at their phase's first week (M4b, D-099: their cards go into the reserve's
+// extra slots), a hand is drawn, and if none of it fits anywhere there's one free redraw.
+//
+// Change orders (M4b): when a milestone resolves, the phase effects that ran through it end
+// and its accepted requests and restrictions resolve (a request met and a restriction kept
+// pay their reward). After milestones 2, 4, and 6 (`changeOrderAfter`) one change order is
+// then drawn from `co/<milestone>` among the eligible ones (the client's and the generic ones,
+// never one offered before, minus Appendix A's skips), and the 'changeOrder' screen waits for
+// the answer before the shop opens. An accepted order runs through the next phase. Placing a
+// piece a running restriction forbids breaks it; the placement stays legal.
 //
 // Early completion (D-040): the bonus is computed at once from this phase's earnings and the
 // weeks saved; the remaining weeks then fast-forward (pieces earn and timers tick, but no
@@ -27,10 +36,17 @@
 
 import type {
   Action,
+  ArrivalDef,
   Availability,
   BuyAction,
   Card,
   Cell,
+  ChangeOrderDef,
+  ChangeOrderId,
+  ChangeOrderOffer,
+  ChangeOrderRecord,
+  ChangeOrderResult,
+  ChangeOrderView,
   ChecklistLine,
   ClientDef,
   Content,
@@ -56,6 +72,7 @@ import type {
   ReplayResult,
   Reward,
   RenovateAction,
+  ReservePiece,
   Rot,
   RuleKey,
   RunSetup,
@@ -71,14 +88,18 @@ import type {
   WeekScore,
 } from './index.ts';
 import {
+  demolitionsNeeded,
   limitReached,
   meetsHouse,
+  neededTypes,
+  newPiecesNeeded,
   progressOf,
   typeLimits,
   typesAtLimit,
+  type CondCtx,
   type NounFn,
 } from './conditions.ts';
-import { drawHand, slotKey } from './draw.ts';
+import { drawHand, drawWeights, slotKey } from './draw.ts';
 import { estimatePlay, type Estimate } from './estimate.ts';
 import { checkInstall, installHosts, withFixture } from './fixtures.ts';
 import {
@@ -122,7 +143,7 @@ import {
 import { stream } from './rng.ts';
 import { canUseTool, useTool, type ToolCtx } from './tools.ts';
 import { ageOf, onCadence, tallyHouse, unmetRequirement, type TallyContext } from './scoring.ts';
-import { isType, rootType } from './selectors.ts';
+import { isType, matchesPiece, rootType } from './selectors.ts';
 import { isRoom } from './layout.ts';
 import {
   canStrike,
@@ -142,7 +163,14 @@ import {
   supplyPrice,
   viewOffers,
 } from './shop.ts';
-import { article, conditionText, ordinal, selectorText, specText } from './text.ts';
+import {
+  article,
+  changeOrderText,
+  conditionText,
+  ordinal,
+  selectorText,
+  specText,
+} from './text.ts';
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -218,9 +246,11 @@ export interface Rules {
   installHosts(state: RunState, from: 'hand' | 'supplies', i: number): number[];
   /**
    * A cheap local estimate of a legal play's change to the week's total, for ranking
-   * candidates before scoring the best few exactly (§4, Performance). Its hints mark plays
-   * whose payoff it can't see: `setHint`, one that might complete a set; `yardHint`, a Fence
-   * that would close a new fenced yard; `linkHint`, a Hallway that would link rooms anew.
+   * candidates before scoring the best few exactly (§4, Performance), checklist lines that
+   * counts decide included (`specFlips`). Its hints mark plays whose payoff it can't see:
+   * `setHint`, one that might complete a set; `yardHint`, a Fence that would close a new
+   * fenced yard; `linkHint`, a Hallway that would link rooms anew; `specHint`, a piece that
+   * would join an unmet pair line's types.
    */
   estimatePlay(state: RunState, play: PlaceAction): Estimate;
   /** The tile counts of the house's fenced yards. */
@@ -243,6 +273,18 @@ export interface Rules {
    * tally before and after. Illegal uses come back with their reason.
    */
   previewTool(state: RunState, action: UseToolAction): ToolPreview;
+  /** M4b: the change order waiting on the 'changeOrder' screen, or null. */
+  changeOrderOffer(state: RunState): ChangeOrderView | null;
+  /**
+   * M4b: the change orders running now, in the order answered: accepted requests (with their
+   * progress) and restrictions (broken or not), and acknowledged phase effects.
+   */
+  activeChangeOrders(state: RunState): ChangeOrderView[];
+  /**
+   * M4b: the change orders that could be offered now (the client's own, then the generic ones,
+   * none offered before, minus the skipped), for tests and the ?debug panel.
+   */
+  eligibleChangeOrders(state: RunState): ChangeOrderId[];
   replay(setup: RunSetup, actions: readonly Action[]): ReplayResult;
 }
 
@@ -343,6 +385,13 @@ export function createRules(content: Content): Rules {
   /** A phase's last week or an overtime week, actually played: Last-Minute Push's ×2. */
   const isLastWeek = (state: RunState) => state.overtimeWeek > 0 || state.slot >= W;
 
+  /** Why the build screen's plays and queries aren't available on this screen. */
+  function offScreen(state: RunState): string {
+    if (state.screen === 'shop') return 'The shop is open.';
+    if (state.screen === 'changeOrder') return 'A change order is waiting for your answer.';
+    return 'The run is over.';
+  }
+
   function tallyCtx(state: RunState, fastForward: boolean): TallyContext {
     return {
       mods: modsOf(state).active,
@@ -390,12 +439,7 @@ export function createRules(content: Content): Rules {
     state: RunState,
     play: PlaceAction | InstallAction | RenovateAction,
   ): PlayCheck {
-    if (state.screen !== 'build') {
-      return {
-        ...NO_PLAY,
-        reason: state.screen === 'shop' ? 'The shop is open.' : 'The run is over.',
-      };
-    }
+    if (state.screen !== 'build') return { ...NO_PLAY, reason: offScreen(state) };
     if (play.t === 'renovate') return checkRenovate(state, play);
     if (play.t === 'install') {
       const fixture = installFixture(state, play);
@@ -455,6 +499,10 @@ export function createRules(content: Content): Rules {
     const def = placeDef(state, play);
     if (!def) return { ...NO_PLAY, reason: 'There is no card there.' };
     const card = capitalize(article(def.name));
+    // M4b: a member's room is placed, never spent on another room (a Bedroom card can renovate it).
+    if (def.member) {
+      return { ...NO_PLAY, reason: `${card} card can’t renovate: it’s a household member’s room.` };
+    }
     // A room card on a room (house-systems-review.md §4), whose type the checklist caps.
     const root = rootType(def);
     const capped = isRoom(def) && limitsOf(state).some((l) => l.types.includes(root));
@@ -739,13 +787,276 @@ export function createRules(content: Content): Rules {
     payFinds: (state, finds, events, lot) => payFinds(state, finds, events, lot),
   };
 
+  // -------------------------------------------------------------------------------------
+  // The household's arrivals (M4b, D-099).
+
+  /** A member moves in: their cards go into the reserve's extra slots. */
+  function land(s: RunState, a: ArrivalDef, events: GameEvent[], forced = false): RunState {
+    events.push({
+      t: 'arrived',
+      arrival: a.id,
+      phase: s.phase,
+      cards: [...a.cards],
+      ...(forced ? { forced: true as const } : {}),
+    });
+    return {
+      ...s,
+      reserve: [...s.reserve, ...a.cards.map((id): ReservePiece => ({ id, arrival: a.id }))],
+      arrived: [...s.arrived, a.id],
+    };
+  }
+
+  /** Start of week, step 2: in the first week of an arrival's phase, its member moves in. */
+  function arrive(state: RunState, events: GameEvent[]): RunState {
+    if (state.slot !== 1 || state.overtimeWeek !== 0) return state;
+    let s = state;
+    for (const a of clientOf(state).household.arrivals) {
+      if (a.phase === s.phase && !s.arrived.includes(a.id)) s = land(s, a, events);
+    }
+    return s;
+  }
+
+  // -------------------------------------------------------------------------------------
+  // Change orders (M4b).
+
+  const orderDef = (id: ChangeOrderId): ChangeOrderDef => content.changeOrders[id];
+
+  /** What a request is checked with: the phase, and what's new since it was accepted. */
+  const orderCtx = (state: RunState, r: { sinceUid: number; demolished: number }): CondCtx => ({
+    phase: state.phase,
+    order: { sinceUid: r.sinceUid, demolished: r.demolished },
+  });
+
+  /** Accepted requests and restrictions still running. */
+  const running = (state: RunState) =>
+    state.changeOrders.filter((r) => r.answer === 'accepted' && r.result === undefined);
+
+  /**
+   * Why a change order isn't offered now (Appendix A · M4b), or null: a request whose
+   * condition the house already meets, or that clearly can't be met (more new pieces than a
+   * phase has weeks, more demolitions than are left, or a piece type it needs that's neither in
+   * the draw for this phase nor in the reserve). Restrictions and phase effects are always
+   * offered.
+   */
+  function skipReason(state: RunState, def: ChangeOrderDef): string | null {
+    if (def.kind !== 'request') return null;
+    const cond = def.condition;
+    const fresh = orderCtx(state, { sinceUid: state.house.nextUid, demolished: 0 });
+    if (meetsHouse(content, layoutFor(state), cond, fresh)) return 'The house already meets it.';
+    if (newPiecesNeeded(cond) > W) return 'It needs more new pieces than a phase has weeks.';
+    if (demolitionsNeeded(cond) > state.demolitionsLeft) return 'No demolitions are left for it.';
+    const pool = drawWeights(content, state.phase, {
+      struck: state.struck,
+      mods: modsOf(state).active.map((a) => a.mod),
+    });
+    const available = (id: PieceId) =>
+      pool.some((w) => w.card.kind === 'piece' && isType(content.pieces[w.card.id], id)) ||
+      state.reserve.some((r) => isType(content.pieces[r.id], id));
+    for (const types of neededTypes(cond)) {
+      if (!types.some(available)) return 'A piece it needs isn’t in the draw or the reserve.';
+    }
+    return null;
+  }
+
+  /**
+   * The client's own change orders, then the generic ones: never one offered before, minus the
+   * skipped, and before the last phase only phase effects.
+   */
+  function eligibleOrders(state: RunState): ChangeOrderId[] {
+    const offered = new Set(state.changeOrders.map((r) => r.id));
+    const pending = state.offers?.changeOrder;
+    if (pending) offered.add(pending.id);
+    const generic = (Object.keys(content.changeOrders) as ChangeOrderId[]).filter(
+      (id) => orderDef(id).scope === 'generic',
+    );
+    const ids = [...new Set([...clientOf(state).changeOrders, ...generic])];
+    // Before the last phase, only phase effects: a request's or a restriction's reward would
+    // come at the run's end, where budget buys nothing.
+    const last = state.phase >= phaseCount(b) - 1;
+    return ids.filter(
+      (id) =>
+        !offered.has(id) &&
+        (!last || orderDef(id).kind === 'phase') &&
+        skipReason(state, orderDef(id)) === null,
+    );
+  }
+
+  /** The 'changeOrder' screen, with this offer: it runs through the state's phase. */
+  function offerOrder(
+    s: RunState,
+    id: ChangeOrderId,
+    forced: boolean,
+    events: GameEvent[],
+  ): RunState {
+    const flag = forced ? { forced: true as const } : {};
+    const offer: ChangeOrderOffer = { id, phase: s.phase, ...flag };
+    events.push({ t: 'changeOrderOffered', id, kind: orderDef(id).kind, phase: s.phase, ...flag });
+    return { ...s, screen: 'changeOrder', offers: { ...s.offers, changeOrder: offer } };
+  }
+
+  /**
+   * The answer: a request or restriction accepted or declined, a phase effect acknowledged (it
+   * then runs as a timed effect until its phase's milestone). Then the shop opens, or a forced
+   * offer goes back to its week.
+   */
+  function answerOrder(state: RunState, accept: unknown, events: GameEvent[]): RunState {
+    const offer = state.screen === 'changeOrder' ? state.offers?.changeOrder : undefined;
+    if (!offer) throw new IllegalAction('There’s no change order to answer.');
+    if (typeof accept !== 'boolean')
+      throw new IllegalAction('Accept the change order or decline it.');
+    const def = orderDef(offer.id);
+    if (def.kind === 'phase' && !accept) {
+      throw new IllegalAction(`${def.name} can’t be declined: it’s coming either way.`);
+    }
+    const record: ChangeOrderRecord = {
+      id: def.id,
+      phase: offer.phase,
+      answer: def.kind === 'phase' ? 'acknowledged' : accept ? 'accepted' : 'declined',
+      week: state.week,
+      sinceUid: state.house.nextUid,
+      demolished: 0,
+    };
+    events.push({
+      t: 'changeOrderAnswered',
+      id: def.id,
+      kind: def.kind,
+      accepted: record.answer !== 'declined',
+    });
+    const { offers: _offers, ...rest } = state;
+    const { changeOrder: _answered, ...others } = state.offers ?? {};
+    let s: RunState = {
+      ...rest,
+      ...(Object.keys(others).length > 0 ? { offers: others } : {}),
+      changeOrders: [...state.changeOrders, record],
+    };
+    if (def.kind === 'phase') {
+      s = {
+        ...s,
+        timedEffects: [
+          ...s.timedEffects,
+          { source: def.id, until: { phase: offer.phase }, modifiers: def.modifiers },
+        ],
+      };
+    }
+    if (offer.forced) return { ...s, screen: 'build' };
+    return openShop(s, s.phase, false, events);
+  }
+
+  /**
+   * At a phase's milestone (when it's met): the phase effects that ran through it end, and its
+   * accepted requests and restrictions resolve. A request met or a restriction kept pays.
+   */
+  function resolveOrders(s: RunState, events: GameEvent[]): RunState {
+    const ends = (r: ChangeOrderRecord) =>
+      r.result === undefined && r.answer !== 'declined' && r.phase <= s.phase;
+    const timedEffects = s.timedEffects.filter(
+      (e) => !('phase' in e.until) || e.until.phase > s.phase,
+    );
+    let next = timedEffects.length === s.timedEffects.length ? s : { ...s, timedEffects };
+    if (!s.changeOrders.some(ends)) return next;
+    const layout = layoutFor(s);
+    const rewards: { reward: NonNullable<ChangeOrderRecord['reward']>; key: string }[] = [];
+    const changeOrders = s.changeOrders.map((r) => {
+      if (!ends(r)) return r;
+      const def = orderDef(r.id);
+      let result: ChangeOrderResult;
+      let reward: ChangeOrderRecord['reward'];
+      if (def.kind === 'phase') result = 'ended';
+      else if (def.kind === 'request') {
+        result = meetsHouse(content, layout, def.condition, orderCtx(s, r)) ? 'met' : 'missed';
+        if (result === 'met') reward = def.reward;
+      } else {
+        result = r.brokenBy === undefined ? 'kept' : 'broken';
+        if (result === 'kept') reward = def.reward;
+      }
+      events.push({
+        t: 'changeOrderResolved',
+        id: def.id,
+        kind: def.kind,
+        result,
+        ...(reward ? { reward } : {}),
+      });
+      if (reward) rewards.push({ reward, key: `co/${r.phase}/${r.id}` });
+      return { ...r, result, ...(reward ? { reward } : {}) };
+    });
+    next = { ...next, changeOrders };
+    for (const { reward, key } of rewards) next = payReward(next, reward, key, events);
+    return next;
+  }
+
+  /** The running restrictions a new piece breaks: it matches what one forbids. */
+  function breaksOf(state: RunState, house: HouseState, uid: number): ChangeOrderId[] {
+    const out: ChangeOrderId[] = [];
+    for (const r of running(state)) {
+      const def = orderDef(r.id);
+      if (def.kind !== 'restriction' || r.brokenBy !== undefined) continue;
+      if (matchesPiece(content, layoutFor(state, house), def.forbid, uid)) out.push(def.id);
+    }
+    return out;
+  }
+
+  /** Marks the restrictions a placement broke: from now on they pay nothing. */
+  function markBroken(
+    state: RunState,
+    ids: readonly ChangeOrderId[],
+    uid: number,
+    events: GameEvent[],
+  ): RunState {
+    if (ids.length === 0) return state;
+    for (const id of ids) events.push({ t: 'changeOrderBroken', id, uid });
+    return {
+      ...state,
+      changeOrders: state.changeOrders.map((r) =>
+        ids.includes(r.id) &&
+        r.answer === 'accepted' &&
+        r.result === undefined &&
+        r.brokenBy === undefined
+          ? { ...r, brokenBy: uid }
+          : r,
+      ),
+    };
+  }
+
+  /** A change order as the UI shows it, with a request's progress. */
+  function orderView(
+    state: RunState,
+    id: ChangeOrderId,
+    phase: number,
+    record?: ChangeOrderRecord,
+  ): ChangeOrderView {
+    const def = orderDef(id);
+    const view: ChangeOrderView = {
+      id,
+      name: def.name,
+      kind: def.kind,
+      text: def.text,
+      terms: changeOrderText(content, def),
+      phase,
+      declinable: def.kind !== 'phase',
+    };
+    if (def.kind === 'phase') return view;
+    if (def.kind === 'restriction') {
+      const broken = record?.brokenBy;
+      return { ...view, reward: def.reward, ...(broken !== undefined ? { brokenBy: broken } : {}) };
+    }
+    const layout = layoutFor(state);
+    const ctx = orderCtx(state, record ?? { sinceUid: state.house.nextUid, demolished: 0 });
+    return {
+      ...view,
+      reward: def.reward,
+      met: meetsHouse(content, layout, def.condition, ctx),
+      progress: progressOf(content, layout, def.condition, ctx, noun),
+    };
+  }
+
   function startWeek(state: RunState, events: GameEvent[]): RunState {
-    let s = resolveTransforms(state, events);
+    // Step 1: transforms; step 2 (M4b): arrivals, in their phase's first week; step 3: the draw.
+    let s = arrive(resolveTransforms(state, events), events);
     const hand = drawFor(s, 0);
     const drawn = { phase: s.phase, slot: s.slot, overtimeWeek: s.overtimeWeek, reroll: false };
     events.push({ t: 'handDrawn', ...drawn, hand, free: false });
     s = { ...s, draws: 1, hand, freeRedrawUsed: false, freePlay: 'none' };
-    // Start of week, step 3: one free redraw if nothing in the first hand fits anywhere.
+    // Start of week, step 4: one free redraw if nothing in the first hand fits anywhere.
     if (hand.length > 0 && !hand.some((_, i) => cardFits(s, i))) {
       const redraw = drawFor(s, 1);
       events.push({ t: 'handDrawn', ...drawn, hand: redraw, free: true });
@@ -815,8 +1126,10 @@ export function createRules(content: Content): Rules {
       budget,
       budgetEarned: state.budgetEarned + tally.budget,
       hand: [],
-      // Tools' effects last for this week's tally only.
-      timedEffects: state.timedEffects.filter((e) => e.until.week > state.week),
+      // Tools' effects last for this week's tally only; a phase effect until its milestone.
+      timedEffects: state.timedEffects.filter(
+        (e) => !('week' in e.until) || e.until.week > state.week,
+      ),
       lastTally: {
         points: tally.points,
         mult: tally.mult,
@@ -904,15 +1217,17 @@ export function createRules(content: Content): Rules {
       milestones: [...s.milestones, record],
       milestonesEarly: s.milestonesEarly + (result === 'early' ? 1 : 0),
     };
+    // M4b: the phase's effects end, and its accepted change orders resolve (a met milestone only).
+    if (result !== 'failed') next = resolveOrders(next, events);
     const last = s.phase === phaseCount(b) - 1;
     if (result === 'failed' || last) {
       const won = result !== 'failed';
       events.push({
         t: 'runEnded',
         result: won ? 'won' : 'lost',
-        score,
+        score: next.score,
         phase: s.phase,
-        verdict: verdictFor(b, score, won, pctOf(s)),
+        verdict: verdictFor(b, next.score, won, pctOf(s)),
       });
       return { ...next, draws: 0, screen: won ? 'won' : 'lost' };
     }
@@ -923,9 +1238,19 @@ export function createRules(content: Content): Rules {
       overtimeWeek: 0,
       week: s.week + 1,
       draws: 0,
-      phaseStartScore: score,
+      phaseStartScore: next.score,
       rerollsLeft: rule(s, 'rerollsPerPhase'),
     };
+    // M4b: after milestones 2, 4, and 6, one change order first, from `co/<milestone>`; with
+    // none eligible, straight to the shop.
+    const milestone = s.phase + 1;
+    if (b.changeOrderAfter.includes(milestone)) {
+      const eligible = eligibleOrders(next);
+      if (eligible.length > 0) {
+        const id = stream(next.setup.seed, `co/${milestone}`).pick(eligible);
+        return offerOrder(next, id, false, events);
+      }
+    }
     // The shop opens after milestones 1–6 (D-051); shop k follows milestone k.
     return openShop(next, next.phase, false, events);
   }
@@ -980,7 +1305,7 @@ export function createRules(content: Content): Rules {
   }
 
   function canReroll(state: RunState): Availability {
-    if (state.screen !== 'build') return { ok: false, reason: 'The run is over.' };
+    if (state.screen !== 'build') return { ok: false, reason: offScreen(state) };
     if (state.rerollsLeft <= 0 && state.bonusRerolls <= 0) {
       return { ok: false, reason: 'No rerolls left this phase.' };
     }
@@ -997,7 +1322,7 @@ export function createRules(content: Content): Rules {
       rule(state, 'earlyRewardPct'),
     );
     const no = (reason: string): EarlyOffer => ({ ok: false, reason, weeksSaved, bonus });
-    if (state.screen !== 'build') return no('The run is over.');
+    if (state.screen !== 'build') return no(offScreen(state));
     if (state.overtimeWeek > 0) return no('An overtime week can’t be completed early.');
     if (state.score < targetOf(state)) return no('Reach the target first.');
     return { ok: true, weeksSaved, bonus };
@@ -1221,6 +1546,11 @@ export function createRules(content: Content): Rules {
       crewId: setup.crewId,
       mode: setup.mode,
     };
+    // M4b: a crew's starting cards wait in the reserve's extra slots.
+    const crewCards = (content.crews[clean.crewId].startReserve ?? []).map((id): ReservePiece => ({
+      id,
+      crew: true,
+    }));
     const state: RunState = {
       setup: clean,
       house: { lot, pieces: [], nextUid: 1 },
@@ -1234,7 +1564,7 @@ export function createRules(content: Content): Rules {
       budget: 0,
       budgetEarned: 0,
       hand: [],
-      reserve: [],
+      reserve: crewCards,
       supplies: [],
       blueprints: [],
       upgrades: [],
@@ -1253,6 +1583,8 @@ export function createRules(content: Content): Rules {
       milestones: [],
       lastTally: null,
       screen: 'build',
+      changeOrders: [],
+      arrived: [],
     };
     return startWeek(state, []);
   }
@@ -1325,6 +1657,22 @@ export function createRules(content: Content): Rules {
       }
       case 'giveGood':
         return giveGood(s, action.good);
+      case 'forceChangeOrder': {
+        // M4b: offered now, as if a milestone had just been met; it runs through this phase.
+        if (s.screen !== 'build')
+          throw new IllegalAction('A change order is forced from the build screen.');
+        if (typeof action.id !== 'string' || !Object.hasOwn(content.changeOrders, action.id)) {
+          throw new IllegalAction('Unknown change order.');
+        }
+        return offerOrder(s, action.id, true, events);
+      }
+      case 'forceArrival': {
+        // M4b: this household's member moves in now.
+        const a = clientOf(s).household.arrivals.find((x) => x.id === action.id);
+        if (!a) throw new IllegalAction('No one by that name is joining this household.');
+        if (s.arrived.includes(a.id)) throw new IllegalAction(`${a.name} already moved in.`);
+        return land(s, a, events, true);
+      }
       default:
         throw new IllegalAction('Unknown debug action.');
     }
@@ -1340,12 +1688,21 @@ export function createRules(content: Content): Rules {
     'setAutoComplete',
     'debug',
   ]);
+  /** M4b: the 'changeOrder' screen waits for its answer (the auto-complete toggle and cheats aside). */
+  const CHANGE_ORDER_ACTIONS = new Set<Action['t']>([
+    'answerChangeOrder',
+    'setAutoComplete',
+    'debug',
+  ]);
 
   function apply(state: RunState, action: Action): { state: RunState; events: GameEvent[] } {
     if (state.screen === 'won' || state.screen === 'lost')
       throw new IllegalAction('The run is over.');
     if (state.screen === 'shop' && !SHOP_ACTIONS.has(action.t)) {
       throw new IllegalAction('The shop is open. Leave it to start the next phase.');
+    }
+    if (state.screen === 'changeOrder' && !CHANGE_ORDER_ACTIONS.has(action.t)) {
+      throw new IllegalAction('A change order is waiting for your answer.');
     }
     const shopOnly =
       action.t === 'buy' ||
@@ -1388,6 +1745,11 @@ export function createRules(content: Content): Rules {
           s = fromReserve
             ? { ...s, reserve: s.reserve.filter((_, k) => k !== play.i) }
             : { ...s, hand: s.hand.filter((_, k) => k !== play.i) };
+          // M4b: a piece a running restriction forbids breaks it.
+          if (result.placed) {
+            const uid = result.placed.uid;
+            s = markBroken(s, breaksOf(state, result.house, uid), uid, events);
+          }
           return done(payFinds(s, check?.finds, events, state.house.lot));
         }
         const week = resolveWeek(state, play, true, check);
@@ -1397,6 +1759,11 @@ export function createRules(content: Content): Rules {
         let s = state;
         if (play && fromReserve) {
           s = { ...s, reserve: s.reserve.filter((_, k) => k !== play.i) };
+        }
+        // M4b: a piece a running restriction forbids breaks it, before the milestone can resolve.
+        if (week.placed) {
+          const uid = week.placed.uid;
+          s = markBroken(s, breaksOf(state, week.house, uid), uid, events);
         }
         // A Time Capsule built over pays before the tally.
         s = payFinds(s, check?.finds, events);
@@ -1445,6 +1812,17 @@ export function createRules(content: Content): Rules {
             : { t: 'demolished', feature: target.feature, cells: target.cells, demolitionsLeft },
         );
         let s: RunState = { ...state, house, demolitionsLeft };
+        // M4b: a running request counts the pieces demolished since it was accepted (Declutter).
+        if (target.kind === 'piece' && running(s).length > 0) {
+          s = {
+            ...s,
+            changeOrders: s.changeOrders.map((r) =>
+              r.answer === 'accepted' && r.result === undefined
+                ? { ...r, demolished: r.demolished + 1 }
+                : r,
+            ),
+          };
+        }
         // The Old Shed pays its find reward once, keyed by its top-left tile.
         const reward = target.kind === 'feature' ? content.features[target.feature].reward : null;
         if (target.kind === 'feature' && reward) {
@@ -1494,6 +1872,8 @@ export function createRules(content: Content): Rules {
       }
       case 'leaveShop':
         return done(leaveShop(state, events));
+      case 'answerChangeOrder':
+        return done(answerOrder(state, action.accept, events));
       case 'debug':
         return done(applyDebug(state, action, events));
       default:
@@ -1604,6 +1984,14 @@ export function createRules(content: Content): Rules {
   }
 
   function legalActions(state: RunState): Action[] {
+    if (state.screen === 'changeOrder') {
+      // M4b: accept or decline; a phase effect is only acknowledged.
+      const offer = state.offers?.changeOrder;
+      if (!offer) return [];
+      const yes: Action = { t: 'answerChangeOrder', accept: true };
+      if (orderDef(offer.id).kind === 'phase') return [yes];
+      return [yes, { t: 'answerChangeOrder', accept: false }];
+    }
     const open = state.screen === 'shop' ? state.offers?.pick : undefined;
     if (open) {
       // An open crate: keep an option there's room for, discard it, or sell to make room.
@@ -1752,14 +2140,15 @@ export function createRules(content: Content): Rules {
       xMults: beforeTally?.xMults ?? [],
       finds: [],
     });
-    if (!beforeTally)
-      return empty(state.screen === 'shop' ? 'The shop is open.' : 'The run is over.');
+    if (!beforeTally) return empty(offScreen(state));
     if (!play) {
       return { ...empty(undefined), legal: true };
     }
     const check = checkPlay(state, play);
     if (!check.legal) return empty(check.reason, check.cells);
     const week = resolveWeek(state, play, true, check);
+    // M4b: a running restriction this placement would break, for the warning.
+    const breaks = week.placed ? breaksOf(state, week.house, week.placed.uid)[0] : undefined;
     const focus = week.placed?.uid ?? week.installed?.uid ?? week.renovated!.uid;
     const beforeEarned = new Map<number, PieceScore>(beforeTally.pieces.map((p) => [p.uid, p]));
     const lines: PreviewLine[] = [];
@@ -1817,6 +2206,7 @@ export function createRules(content: Content): Rules {
       ...(week.renovated
         ? { renovates: { uid: week.renovated.uid, level: week.renovated.level } }
         : {}),
+      ...(breaks ? { breaks } : {}),
     };
   }
 
@@ -2031,6 +2421,15 @@ export function createRules(content: Content): Rules {
         ...specFlips(passTally(state), afterTally),
       };
     },
+    changeOrderOffer: (state) => {
+      const offer = state.screen === 'changeOrder' ? state.offers?.changeOrder : undefined;
+      return offer ? orderView(state, offer.id, offer.phase) : null;
+    },
+    activeChangeOrders: (state) =>
+      state.changeOrders
+        .filter((r) => r.result === undefined && r.answer !== 'declined')
+        .map((r) => orderView(state, r.id, r.phase, r)),
+    eligibleChangeOrders: eligibleOrders,
     replay,
   };
 }

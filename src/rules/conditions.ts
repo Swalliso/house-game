@@ -427,6 +427,46 @@ export function typeLimits(
   return out;
 }
 
+// ---------------------------------------------------------------------------------------
+// What a change order's request needs (M4b), for the offer's skip rules (Appendix A · M4b).
+
+/**
+ * The piece types a condition needs, each as the types that would do (`{ piece: [a, b] }`
+ * needs an a or a b): from counts with a minimum, countNew, groups, and adjacent pairs, through
+ * `and`. An `or` or a `not` needs nothing for sure, so it adds nothing.
+ */
+export function neededTypes(cond: HouseCondition): (readonly PieceId[])[] {
+  const out: (readonly PieceId[])[] = [];
+  const add = (sel: Selector) => {
+    const types = directTypes(sel);
+    if (types) out.push(types);
+  };
+  const walk = (c: HouseCondition) => {
+    if ('and' in c) c.and.forEach(walk);
+    else if ('count' in c) {
+      if ((c.min ?? 0) >= 1) add(c.count);
+    } else if ('countNew' in c) {
+      if (c.min >= 1) add(c.countNew);
+    } else if ('group' in c) {
+      if (c.minTiles >= 1) add(c.group);
+    } else if ('adjacentPair' in c) c.adjacentPair.forEach(add);
+  };
+  walk(cond);
+  return out;
+}
+
+/** New pieces a condition needs placed (countNew minimums, added up through `and`). */
+export function newPiecesNeeded(cond: HouseCondition): number {
+  if ('and' in cond) return cond.and.reduce((n, c) => n + newPiecesNeeded(c), 0);
+  return 'countNew' in cond ? cond.min : 0;
+}
+
+/** Demolitions a condition needs (demolishedSinceAccepted, the most through `and`). */
+export function demolitionsNeeded(cond: HouseCondition): number {
+  if ('and' in cond) return cond.and.reduce((n, c) => Math.max(n, demolitionsNeeded(c)), 0);
+  return 'demolishedSinceAccepted' in cond ? cond.demolishedSinceAccepted.min : 0;
+}
+
 /** The limit a card of this type is at, if any (the first that's reached). */
 export function limitReached(limits: readonly TypeLimit[], type: PieceId): TypeLimit | null {
   return limits.find((l) => l.count >= l.max && l.types.includes(type)) ?? null;

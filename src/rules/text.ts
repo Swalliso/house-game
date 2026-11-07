@@ -3,6 +3,7 @@
 
 import type {
   BlueprintDef,
+  ChangeOrderDef,
   Content,
   CrateDef,
   Effect,
@@ -128,6 +129,12 @@ export function selectorText(content: Content, sel: Selector, phrasing: Phrasing
     if (sel.all.some(isView) && sel.all.length > 1) {
       const others = sel.all.filter((s) => !isView(s));
       return `${selectorText(content, { all: others }, phrasing)} with a view`;
+    }
+    // "Doghouses in a fenced yard": so does being in a region (M4b's change orders).
+    const region = sel.all.find((s): s is { in: Region } => s !== 'all' && 'in' in s);
+    if (region && sel.all.length > 1) {
+      const others = sel.all.filter((s) => s !== region);
+      return `${selectorText(content, { all: others }, phrasing)} ${regionText(region.in)}`;
     }
     const tags = sel.all.filter((s): s is { tag: Tag } => s !== 'all' && 'tag' in s);
     // "Kid neighbor other than Treehouses": an excluded part reads as a clause at the end.
@@ -403,6 +410,30 @@ export interface CardText {
   notes: string[];
   /** A pack (D-102): how many tiles one card places. */
   pack?: string;
+  /**
+   * A member's room (M4b, D-099): whose it is, that it counts as a Bedroom, and from when Room
+   * for everyone needs it: "The twins’ room: it counts as a Bedroom, and from Framing, Room for
+   * everyone needs it."
+   */
+  member?: string;
+}
+
+/** The possessive of a member's name: "The twins’", "Grandma’s". */
+function possessive(name: string): string {
+  return name.endsWith('s') ? `${name}’` : `${name}’s`;
+}
+
+/** A member room's line (M4b): whose it is, and what Room for everyone asks of it. */
+export function memberText(content: Content, def: PieceDef): string {
+  const bedroom = article(content.pieces[def.countsAs ?? 'bedroom'].name);
+  for (const client of Object.values(content.clients)) {
+    for (const a of client.household.arrivals) {
+      if (!a.room.includes(def.id)) continue;
+      const phase = content.balance.phases[a.phase]?.name ?? `phase ${a.phase + 1}`;
+      return `${possessive(a.name)} room: it counts as ${bedroom}, and from ${phase}, Room for everyone needs it.`;
+    }
+  }
+  return `A household member’s room: it counts as ${bedroom}.`;
 }
 
 export function cardText(content: Content, def: PieceDef): CardText {
@@ -410,6 +441,7 @@ export function cardText(content: Content, def: PieceDef): CardText {
   const pack = def.pack
     ? `A pack: click out up to ${def.pack.maxTiles} tiles that touch, one piece in one week.`
     : undefined;
+  const member = def.member ? memberText(content, def) : undefined;
   const tags = new Set<Tag>();
   const props = new Set<Property>();
   for (const e of def.effects) effectTags(e, tags, props);
@@ -432,7 +464,7 @@ export function cardText(content: Content, def: PieceDef): CardText {
     ];
     notes.push(`Views: ${joinWords(sources, 'and')}.`);
   }
-  return pack ? { effects, notes, pack } : { effects, notes };
+  return { effects, notes, ...(pack ? { pack } : {}), ...(member ? { member } : {}) };
 }
 
 /** "The street is", "the Pond is", but "Trees are". */
@@ -874,4 +906,31 @@ export function crateText(content: Content, def: CrateDef): string[] {
             ? `${selectorText(content, def.filter, 'some')}`
             : 'pieces';
   return [`Open it and keep 1 of ${n} ${what}`];
+}
+
+// ---------------------------------------------------------------------------------------
+// Change orders (M4b).
+
+/**
+ * A change order's rules as sentences, from its data: what a request asks and pays, what a
+ * restriction forbids and pays, or what a phase effect does.
+ */
+export function changeOrderText(content: Content, def: ChangeOrderDef): string[] {
+  const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+  switch (def.kind) {
+    case 'request':
+      return [
+        `${cap(houseConditionText(content, def.condition))}, by the next milestone`,
+        `Met: ${rewardText(content, def.reward)}`,
+      ];
+    case 'restriction': {
+      const what = selectorText(content, def.forbid, 'some').replace(/\bneighbors?\b/, 'pieces');
+      return [
+        `Place no ${what} until the next milestone`,
+        `Kept: ${rewardText(content, def.reward)}`,
+      ];
+    }
+    case 'phase':
+      return [...def.modifiers.map((m) => modifierText(content, m)), 'For the next phase'];
+  }
 }

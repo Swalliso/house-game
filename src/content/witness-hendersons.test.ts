@@ -1,25 +1,26 @@
 // The Hendersons' witness layout (implementation-plan.md §5, §9): a house a player could build,
 // one legal placement at a time, that meets every line of their checklist at every milestone.
 // It proves their specs can be met without a solver. Their checklist is the seven house rules
-// in their numbers (Bedrooms 2–3, then 2–4 from Framing and 3–5 from Drywall), then Kitchen
-// beside the Dining Room. Three Bedrooms is the one count inside every stage. The house also
-// has a fenced yard of 12+ tiles, for the fenced-yard wish that's waiting on a decision.
+// in their numbers, then Kitchen beside the Dining Room and A fenced yard. Room for everyone
+// grows with the household (M4b, D-099): 2–3 Bedrooms, then 3–4 and the twins' room from
+// Framing, then 4–5 and Grandma's room from Drywall. Each member's room counts as a Bedroom,
+// so three Bedrooms of their own fit every stage.
 //
 //      0123456789012345
 //    0 ..T.........PP..   L Living Room   K Kitchen      D Dining Room
 //    1 ............PP..   1 2 3 Bedrooms  b Bathroom
-//    2 ...........T....   f Fence         h Treehouse    w Lawn
-//    3 ................   p Patio         g Herb Garden  * Flower Bed
-//    4 ................   T Tree          P pond         B boulder
-//    5 ....pp...ww.....
-//    6 ffffpp.ggww.....   The house fills a 7 × 4 box with 8 rooms. Both Bathrooms sit
-//    7 .T..LLLKKDD.....   between Bedrooms, so every room touches two others (Cozy).
-//    8 hh..LLLKKDD.....
-//    9 hhww11b2233.....   The play yard (columns 0–3, rows 7–10) is closed by two Fences,
-//   10 ..ww11b2233.....   the house, and the lot's edge: 16 tiles, clear of the street.
+//    2 ...........T....   N the twins' Nursery (Framing), a Kids' Room from Drywall
+//    3 ................   G Grandma's Room and her Bathroom g (Drywall)
+//    4 ................   f Fence         h Treehouse    w Lawn
+//    5 ....ppNNGG......   p Patio         e Herb Garden  * Flower Bed
+//    6 ffffppNNGGg.....   T Tree          P pond         B boulder
+//    7 .T..LLLKKDDee...
+//    8 hh..LLLKKDDww...   The house fills a 7 × 4 box with 8 rooms to Framing, then 7 × 6
+//    9 hhww11b2233ww...   with 9 and 11. Both of their own Bathrooms sit between Bedrooms,
+//   10 ..ww11b2233.....   so every room touches two others (Cozy).
 //   11 ffff.*..*.......
-//   12 ..............B.
-//   13 ................
+//   12 ..............B.   The play yard (columns 0–3, rows 7–10) is closed by two Fences,
+//   13 ................   the house, and the lot's edge: 16 tiles, clear of the street.
 //      ================   the street
 
 import { describe, expect, it } from 'vitest';
@@ -61,13 +62,43 @@ const PLACEMENTS: readonly Placement[] = [
   ['treehouse', 0, 8], // touching the Tree
   ['lawn', 2, 9], // in the play yard
   ['patio', 4, 5], // off the Living Room
-  ['herbGarden', 7, 6], // by the Kitchen
-  ['lawn', 9, 5], // the back lawn
+  ['herbGarden', 11, 7], // beside the Dining Room
+  ['lawn', 11, 8], // the side lawn
   ['flowerBed', 5, 11], // two Flower Beds out front
   ['flowerBed', 8, 11],
 ];
 
-const HOUSE = houseFrom(CONTENT, LOT, PLACEMENTS);
+/**
+ * The household's rooms (D-099), each from the reserve once its member arrives: [the phase it
+ * arrives at, placement]. Grandma brings her Bathroom too.
+ */
+const MEMBERS: readonly [number, Placement][] = [
+  [2, ['nursery', 6, 5]], // the twins, behind the Living Room and the Kitchen
+  [4, ['grandmasRoom', 8, 5]], // Grandma, behind the Kitchen and the Dining Room
+  [4, ['bathroom', 10, 6]], // her Bathroom, behind the Dining Room
+];
+
+/** The Nursery grows into the Kids' Room 8 weeks after it's placed: Drywall's first week. */
+const GROWN = 4;
+
+/**
+ * The house at a milestone: every piece, then the household's rooms from their arrivals on,
+ * and any `extra` pieces. `keep` can leave a member's room out.
+ */
+function houseAt(
+  phase: number,
+  extra: readonly Placement[] = [],
+  keep: (p: Placement) => boolean = () => true,
+): HouseState {
+  const members = MEMBERS.filter(([from]) => from <= phase)
+    .map(([, p]) => p)
+    .filter(keep)
+    .map(([id, ...rest]): Placement => [
+      id === 'nursery' && phase >= GROWN ? 'kidsRoom' : id,
+      ...rest,
+    ]);
+  return houseFrom(CONTENT, LOT, [...PLACEMENTS, ...members, ...extra]);
+}
 
 /** A Hendersons run. Each test swaps in its own house, lot and all. */
 const RUN: RunState = rules.newRun({
@@ -81,15 +112,23 @@ const RUN: RunState = rules.newRun({
 const PHASES = CONTENT.balance.phases.map((_, phase) => phase);
 
 /**
- * The rules' own check of a placement, with the piece's card in hand. A Fence is a pack
- * (D-102), so its play carries its tiles, turned, as the board sends them: at rot 0.
+ * The rules' own check of a placement, with the piece's card in hand, or (a member's room) in
+ * the reserve. A Fence is a pack (D-102), so its play carries its tiles, turned, as the board
+ * sends them: at rot 0.
  */
-function checkPlace(house: HouseState, [id, x, y, rot = 0, shape]: Placement) {
-  const state: RunState = { ...RUN, house, hand: [{ kind: 'piece', id }] };
+function checkPlace(
+  house: HouseState,
+  [id, x, y, rot = 0, shape]: Placement,
+  from: 'hand' | 'reserve' = 'hand',
+) {
+  const state: RunState =
+    from === 'hand'
+      ? { ...RUN, house, hand: [{ kind: 'piece', id }] }
+      : { ...RUN, house, reserve: [{ id, arrival: 'twins' }] };
   const def = CONTENT.pieces[id];
   const play: PlaceAction = def.pack
-    ? { t: 'place', from: 'hand', i: 0, x, y, rot: 0, shape: rotateShape(shape ?? def.shape, rot) }
-    : { t: 'place', from: 'hand', i: 0, x, y, rot };
+    ? { t: 'place', from, i: 0, x, y, rot: 0, shape: rotateShape(shape ?? def.shape, rot) }
+    : { t: 'place', from, i: 0, x, y, rot };
   return rules.checkPlay(state, play);
 }
 
@@ -109,11 +148,18 @@ describe("the Hendersons' witness layout", () => {
       const what = `${k + 1}. ${CONTENT.pieces[id].name} at (${x}, ${y})`;
       expect(check.legal, `${what}: ${check.reason}`).toBe(true);
     });
+    // The household's rooms are reserve plays, as their members arrive.
+    MEMBERS.forEach(([, placement], k) => {
+      const built = [...PLACEMENTS, ...MEMBERS.slice(0, k).map(([, p]) => p)];
+      const check = checkPlace(houseFrom(CONTENT, LOT, built), placement, 'reserve');
+      const [id, x, y] = placement;
+      expect(check.legal, `${CONTENT.pieces[id].name} at (${x}, ${y}): ${check.reason}`).toBe(true);
+    });
   });
 
   it('meets every line of the checklist at every milestone', () => {
     const misses = PHASES.flatMap((phase) => {
-      const lines = rules.checklist({ ...RUN, house: HOUSE, phase });
+      const lines = rules.checklist({ ...RUN, house: houseAt(phase), phase });
       expect(lines.length).toBeGreaterThan(0);
       // "Drywall: Cozy, 8 rooms (≥ 6), ✗ 7 of 8 rooms touch 2+ rooms"
       return lines
@@ -127,47 +173,65 @@ describe("the Hendersons' witness layout", () => {
   });
 
   it('reads as a house: no second Kitchen or Dining Room, and at most two Living Rooms', () => {
+    const house = houseAt(PHASES.at(-1)!);
     const count = (type: PieceId) =>
-      HOUSE.pieces.filter((p) => (CONTENT.pieces[p.defId].countsAs ?? p.defId) === type).length;
+      house.pieces.filter((p) => (CONTENT.pieces[p.defId].countsAs ?? p.defId) === type).length;
     expect(count('kitchen')).toBeLessThanOrEqual(1); // an L-Kitchen counts as a Kitchen
     expect(count('livingRoom')).toBeLessThanOrEqual(2);
     expect(count('diningRoom')).toBeLessThanOrEqual(1);
+    // Three Bedrooms, the Kids' Room, and Grandma's Room: 5, the top of 4–5.
+    expect(count('bedroom')).toBe(5);
   });
 
   it('has a fenced yard of 12 or more tiles', () => {
-    expect(Math.max(...rules.fencedYards({ ...RUN, house: HOUSE }))).toBeGreaterThanOrEqual(12);
+    const yards = rules.fencedYards({ ...RUN, house: houseAt(PHASES.at(-1)!) });
+    expect(Math.max(...yards)).toBeGreaterThanOrEqual(12);
   });
 });
 
 describe('one piece more or less breaks just the line it should', () => {
   it('a second Kitchen breaks One Kitchen (an L-Kitchen counts)', () => {
     const lKitchen: Placement = ['lKitchen', 6, 11, 2]; // in front of the Bathroom and Bedroom 2
-    expect(checkPlace(HOUSE, lKitchen).legal).toBe(true);
-    const house = houseFrom(CONTENT, LOT, [...PLACEMENTS, lKitchen]);
+    expect(checkPlace(houseAt(PHASES.at(-1)!), lKitchen).legal).toBe(true);
     for (const phase of PHASES) {
-      expect(failing(house, phase), rules.phaseName(phase)).toEqual(['oneKitchen']);
+      expect(failing(houseAt(phase, [lKitchen]), phase), rules.phaseName(phase)).toEqual([
+        'oneKitchen',
+      ]);
     }
   });
 
-  it('without the second Bathroom, three Bedrooms break the Bathroom rule', () => {
-    const house = houseFrom(
-      CONTENT,
-      LOT,
-      PLACEMENTS.filter(([id, x, y]) => !(id === 'bathroom' && x === 6 && y === 10)),
-    );
+  it('without the second Bathroom, the Bedrooms break the Bathroom rule', () => {
+    const house = (phase: number) =>
+      houseFrom(
+        CONTENT,
+        LOT,
+        houseAt(phase)
+          .pieces.filter((p) => !(p.defId === 'bathroom' && p.x === 6 && p.y === 10))
+          .map((p): Placement => [p.defId, p.x, p.y, p.rot, p.shape]),
+      );
     for (const phase of PHASES) {
-      expect(failing(house, phase), rules.phaseName(phase)).toEqual(['bathrooms']);
+      expect(failing(house(phase), phase), rules.phaseName(phase)).toEqual(['bathrooms']);
     }
   });
 
-  it('a fourth Bedroom is one too many until Framing raises the range', () => {
+  it('a fourth Bedroom of their own is one too many: the range rises only for the household', () => {
     const bedroom: Placement = ['bedroom', 6, 11]; // in front of the Bathroom and Bedroom 2
-    expect(checkPlace(HOUSE, bedroom).legal).toBe(true);
-    const house = houseFrom(CONTENT, LOT, [...PLACEMENTS, bedroom]);
+    expect(checkPlace(houseAt(PHASES.at(-1)!), bedroom).legal).toBe(true);
     for (const phase of PHASES) {
-      // 2–3 Bedrooms, then 2–4 from Framing and 3–5 from Drywall.
-      const expected = phase < 2 ? ['roomForEveryone'] : [];
-      expect(failing(house, phase), rules.phaseName(phase)).toEqual(expected);
+      // 4 Bedrooms against 2–3; with the Nursery, 5 against 3–4 (and 5 need a third Bathroom);
+      // with Grandma's Room too, 6 against 4–5.
+      const expected =
+        phase === 2 || phase === 3 ? ['roomForEveryone', 'bathrooms'] : ['roomForEveryone'];
+      expect(failing(houseAt(phase, [bedroom]), phase), rules.phaseName(phase)).toEqual(expected);
+    }
+  });
+
+  it('with the Nursery left in the reserve, Room for everyone fails from Framing on', () => {
+    for (const phase of PHASES) {
+      const house = houseAt(phase, [], ([id]) => id !== 'nursery');
+      expect(failing(house, phase), rules.phaseName(phase)).toEqual(
+        phase >= 2 ? ['roomForEveryone'] : [],
+      );
     }
   });
 });

@@ -5,7 +5,8 @@
 // Everyday clients are common and eccentrics rare (D-026).
 
 import type { ClientDef, ClientId } from '../rules/index.ts';
-import { houseRules, steppedBedrooms } from './house-rules.ts';
+import { HOUSEHOLDS } from './households.ts';
+import { houseRules } from './house-rules.ts';
 
 export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
   hendersons: {
@@ -14,9 +15,12 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
     rarity: 'common',
     tier: 'core',
     brief: 'A growing family: room for everyone, and a yard to play in.',
+    // M4b: the twins at Framing and Grandma at Drywall (households.ts), and their change orders.
+    household: HOUSEHOLDS.hendersons,
+    changeOrders: ['goldenRetriever', 'thanksgiving'],
     specs: [
       // Their 4+ Bedrooms and 2+ Bathrooms (Appendix B) are where this household ends up.
-      ...houseRules({ bedrooms: steppedBedrooms(2, 3) }),
+      ...houseRules({ household: HOUSEHOLDS.hendersons }),
       {
         id: 'kitchenDining',
         name: 'Kitchen beside the Dining Room',
@@ -42,7 +46,7 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
       },
     ],
     // Spec pieces +100% (Appendix B), but not the Kitchen: every house takes exactly one, and
-    // extra Kitchen cards were the review's most common dead card (D-104).
+    // extra Kitchen cards were the review's most common dead card.
     pool: [
       {
         kind: 'drawWeight',
@@ -58,8 +62,10 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
     rarity: 'rare',
     tier: 'core',
     brief: 'Somewhere quiet. Somewhere… dark.',
+    household: HOUSEHOLDS.vladislav,
+    changeOrders: ['covenVisiting', 'eternalNight'],
     specs: [
-      ...houseRules({ bedrooms: steppedBedrooms(1, 2) }),
+      ...houseRules({ household: HOUSEHOLDS.vladislav }),
       {
         id: 'darkRooms',
         name: 'Three Dark rooms',
@@ -89,8 +95,10 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
     rarity: 'common',
     tier: 'core',
     brief: 'Two dogs and counting, and a yard they can run in.',
+    household: HOUSEHOLDS.barkers,
+    changeOrders: ['anotherRescue', 'agilityCourse'],
     specs: [
-      ...houseRules({ bedrooms: steppedBedrooms(1, 2) }),
+      ...houseRules({ household: HOUSEHOLDS.barkers }),
       {
         id: 'bigYard',
         name: 'A big fenced yard',
@@ -127,9 +135,11 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
     rarity: 'uncommon',
     tier: 'core',
     brief: 'A small house, beautifully done. Nothing extra.',
+    household: HOUSEHOLDS.juniper,
+    changeOrders: ['declutter', 'teaGarden'],
     specs: [
       // Her "a house of 4–8 rooms" (Appendix A · M4a) is her Under one roof.
-      ...houseRules({ bedrooms: steppedBedrooms(1, 2), rooms: { min: 4, max: 8 } }),
+      ...houseRules({ household: HOUSEHOLDS.juniper, rooms: { min: 4, max: 8 } }),
       {
         id: 'viewRooms',
         name: 'Two rooms with a view',
@@ -152,8 +162,10 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
     rarity: 'common',
     tier: 'core',
     brief: 'Works from home. Needs quiet, and an office or two.',
+    household: HOUSEHOLDS.dale,
+    changeOrders: ['bigDeadline', 'startedAPodcast'],
     specs: [
-      ...houseRules({ bedrooms: steppedBedrooms(1, 2) }),
+      ...houseRules({ household: HOUSEHOLDS.dale }),
       {
         id: 'offices',
         name: 'Two Home Offices',

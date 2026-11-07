@@ -6,7 +6,9 @@
 //   Blueprint and fixture slots roll rarity with the shop's weights; a rarity with nothing
 //   left falls back to the likeliest one that has something.
 // - Where things go: blueprints into their slots; pieces into the reserve (placing one is the
-//   week's turn); fixtures into supplies (free to install).
+//   week's turn); fixtures into supplies (free to install). Only bought, picked, and copied
+//   pieces fill the reserve's slots: a crew's starting pieces and an arrival's cards (M4b) sit
+//   in extra slots. A member's room (M4b) is never on sale and never in a crate.
 // - Prices: the item's price × the `shopPricePct` rule, rounded half up, then the sale (one
 //   random good per visit, never a service). Services rise by a step per purchase for the rest
 //   of the run, up to a cap; the refresh rises within a visit and resets at the next. Neither
@@ -71,9 +73,12 @@ export function slotsFor(content: Content, state: RunState): Slots {
   };
 }
 
-/** Reserve pieces that count against its slots (a crew's starting pieces don't). */
-export function reserveUsed(state: RunState): number {
-  return state.reserve.filter((r) => !r.crew).length;
+/**
+ * Reserve pieces that count against its slots: bought, picked, and copied ones. A crew's
+ * starting pieces and an arrival's cards (M4b) sit in extra slots.
+ */
+export function reserveUsed(state: Pick<RunState, 'reserve'>): number {
+  return state.reserve.filter((r) => !r.crew && !r.arrival).length;
 }
 
 export function stockFor(content: Content, shop: number): ShopStock {
@@ -325,8 +330,9 @@ export function stockGoods(
     blueprints = blueprints.filter((x) => x !== id);
   }
 
+  // Special pieces; a member's room (M4b) arrives with its member and is never sold.
   let pieces = (Object.keys(content.pieces) as PieceId[]).filter(
-    (id) => content.pieces[id].drawWeight === 0,
+    (id) => content.pieces[id].drawWeight === 0 && !content.pieces[id].member,
   );
   let fixtures = Object.keys(content.fixtures) as FixtureId[];
   for (let k = 0; k < stock.cards; k++) {
@@ -424,6 +430,7 @@ export function crateOptions(
     const crate = content.crates[source as CrateId];
     let left = (Object.keys(content.pieces) as PieceId[]).filter((id) => {
       const def = content.pieces[id];
+      if (def.member) return false;
       if (crate.pool === 'special' && def.drawWeight !== 0) return false;
       return !crate.filter || matchesDef(crate.filter, def);
     });

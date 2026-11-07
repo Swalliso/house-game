@@ -5,8 +5,8 @@
 // content bug.
 //
 // The finished house. The street runs along the bottom edge, so row 13 is the street row.
-// Rooms: B Bedroom, b Bathroom, c Closet, M Mudroom, L Living Room, K Kitchen. Yard: F Fence,
-// g Lawn, d Doghouse. Lot: T Tree, P pond.
+// Rooms: B Bedroom, b Bathroom, M Mudroom, L Living Room, K Kitchen, N Nana's Room (from
+// Drywall, M4b). Yard: F Fence, g Lawn, d Doghouse. Lot: T Tree, P pond.
 //
 //    0123456789012345
 //  0 ................
@@ -16,16 +16,18 @@
 //  4 ....Fggggd.F....
 //  5 ....F......F....
 //  6 ....FBBMMBBF....  Bedroom, Mudroom (the back door, onto the dog yard), Bedroom
-//  7 .....BBbcBB.....  the Bathroom and a Closet between the Bedrooms
+//  7 .....BBbbBB.....  two Bathrooms between the Bedrooms
 //  8 .....LLLKK......  the Living Room and the Kitchen at the front
 //  9 .....LLLKK......
-// 10 ......T.........  a Tree outside the Living Room
-// 11 .............PP.  the pond
+// 10 ......TNN.......  a Tree outside the Living Room; Nana's Room, from Drywall
+// 11 .......NN....PP.  the pond
 // 12 .............PP.
 // 13 ................  the street row
 //
-// 7 rooms (22 tiles in a 6 × 4 box), 2 Bedrooms, 1 Bathroom, and 8 yard pieces: 4 Fences, 2
-// Lawns, 2 Doghouses.
+// 7 rooms (22 tiles in a 6 × 4 box), 2 Bedrooms, 2 Bathrooms, and 8 yard pieces: 4 Fences, 2
+// Lawns, 2 Doghouses. Room for everyone grows with the household (M4b, D-099): 1–2 Bedrooms,
+// then 2–3 and Nana's room from Drywall. Her room counts as a Bedroom (3, so 2 Bathrooms) and
+// is a reserve play; the house is then 8 rooms in a 6 × 6 box.
 
 import { describe, expect, it } from 'vitest';
 import type { HouseState, PieceId, PlaceAction, RunState } from '../rules/index.ts';
@@ -56,8 +58,8 @@ const PLACEMENTS: readonly Placement[] = [
   ['kitchen', 8, 8], // beside the Living Room
   ['bedroom', 5, 6], // behind the Living Room
   ['bathroom', 7, 7], // touching the Bedroom and the Living Room
-  ['closet', 8, 7], // above the Kitchen, so the finished house has no hole
-  // 2 Bedrooms sit inside every stage of Room for everyone: 1–2, then 1–3, then 2–4.
+  ['bathroom', 8, 7], // above the Kitchen, so the house has no hole: Nana makes 3 Bedrooms
+  // 2 Bedrooms of their own: 1–2 to start, then 2–3 with Nana's room.
   ['bedroom', 9, 6],
   ['mudroom', 7, 6], // the back door, between the Bedrooms
   ['fence', 4, 2], // the back Fence, left half
@@ -70,13 +72,26 @@ const PLACEMENTS: readonly Placement[] = [
   ['doghouse', 9, 4],
 ];
 
+/** Nana's room (D-099), from the reserve when she arrives: [the phase, placement]. */
+const MEMBERS: readonly [number, Placement][] = [
+  [4, ['nanasRoom', 7, 10]], // in front of the Living Room and the Kitchen
+];
+
+/** The house at a milestone: these pieces, then the household's rooms from their arrivals on. */
+const houseAt = (phase: number, placements: readonly Placement[] = PLACEMENTS): HouseState =>
+  houseFrom(CONTENT, LOT, [
+    ...placements,
+    ...MEMBERS.filter(([at]) => at <= phase).map(([, p]) => p),
+  ]);
+
 const RUN: RunState = rules.newRun({
   seed: 'witness-barkers',
   clientId: 'barkers',
   crewId: 'generalContractor',
   mode: 'standard',
 });
-const HOUSE = houseFrom(CONTENT, LOT, PLACEMENTS);
+/** The finished house, Nana's room and all. */
+const HOUSE = houseAt(CONTENT.balance.phases.length - 1);
 /** Every milestone, 0-based: Groundbreaking to the Final Walkthrough. */
 const PHASES = CONTENT.balance.phases.map((_, i) => i);
 
@@ -87,22 +102,33 @@ const withHouse = (house: HouseState): RunState => ({ ...RUN, house });
  * The rules' own check of building this piece next, from a hand holding its card. A Fence is a
  * pack (D-102), so its play carries its tiles, turned, as the board sends them: at rot 0.
  */
-function checkNext(house: HouseState, [id, x, y, rot = 0, shape]: Placement) {
-  const state: RunState = { ...withHouse(house), hand: [{ kind: 'piece', id }] };
+function checkNext(
+  house: HouseState,
+  [id, x, y, rot = 0, shape]: Placement,
+  from: 'hand' | 'reserve' = 'hand',
+) {
+  const state: RunState =
+    from === 'hand'
+      ? { ...withHouse(house), hand: [{ kind: 'piece', id }] }
+      : { ...withHouse(house), reserve: [{ id, arrival: 'nana' }] };
   const def = CONTENT.pieces[id];
   const play: PlaceAction = def.pack
-    ? { t: 'place', from: 'hand', i: 0, x, y, rot: 0, shape: rotateShape(shape ?? def.shape, rot) }
-    : { t: 'place', from: 'hand', i: 0, x, y, rot };
+    ? { t: 'place', from, i: 0, x, y, rot: 0, shape: rotateShape(shape ?? def.shape, rot) }
+    : { t: 'place', from, i: 0, x, y, rot };
   return rules.checkPlay(state, play);
 }
 
-/** Builds the placements one at a time, expecting each to be legal. */
+/** Builds the placements one at a time, then Nana's room from the reserve, each legal. */
 function expectBuildable(placements: readonly Placement[]): void {
   placements.forEach((placement, k) => {
     const check = checkNext(houseFrom(CONTENT, LOT, placements.slice(0, k)), placement);
     const [id, x, y] = placement;
     expect(check.legal, `#${k + 1}, ${id} at (${x}, ${y}): ${check.reason}`).toBe(true);
   });
+  for (const [, placement] of MEMBERS) {
+    const check = checkNext(houseFrom(CONTENT, LOT, placements), placement, 'reserve');
+    expect(check.legal, `${placement[0]}: ${check.reason}`).toBe(true);
+  }
 }
 
 /** The checklist lines that don't hold at a milestone. */
@@ -128,10 +154,18 @@ describe('the Barkers’ witness house', () => {
     const ids = rules.checklist(withHouse(HOUSE)).map((line) => line.id);
     expect(ids).toEqual(expect.arrayContaining(['doghouses', 'mudroom']));
     for (const phase of PHASES) {
-      const unmet = unmetLines(HOUSE, phase).map(
+      const unmet = unmetLines(houseAt(phase), phase).map(
         (line) => `${line.name}: ${line.progress.map((part) => part.text).join(' · ')}`,
       );
       expect(unmet, rules.phaseName(phase)).toEqual([]);
+    }
+  });
+
+  it('with Nana’s room left in the reserve, Room for everyone fails from Drywall on', () => {
+    const base = houseFrom(CONTENT, LOT, PLACEMENTS);
+    for (const phase of PHASES) {
+      const unmet = unmetLines(base, phase).map((line) => line.id);
+      expect(unmet, rules.phaseName(phase)).toEqual(phase >= 4 ? ['roomForEveryone'] : []);
     }
   });
 
@@ -170,9 +204,8 @@ describe('the Barkers’ witness house', () => {
     { change: 'one Doghouse fewer', placements: PLACEMENTS.slice(0, -1), lost: 'doghouses' },
   ])('$change loses exactly one line ($lost)', ({ placements, lost }) => {
     expectBuildable(placements);
-    const house = houseFrom(CONTENT, LOT, placements);
     for (const phase of PHASES) {
-      const unmet = unmetLines(house, phase).map((line) => line.id);
+      const unmet = unmetLines(houseAt(phase, placements), phase).map((line) => line.id);
       expect(unmet, rules.phaseName(phase)).toEqual([lost]);
     }
   });

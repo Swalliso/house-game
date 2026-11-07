@@ -5,7 +5,8 @@
 // at most two Living Rooms, …) draws at `drawAtLimitPct` of its weight (D-093's half-weight
 // draws, amending D-043): the draw reads the house only through that. Each hand has its own stream, `draw/<phase>/<slot>/<n>` (an
 // overtime week's slot is `ot<k>`), so a reroll, a redraw, or an extra week never shifts any
-// later hand: a strike changes the pool, never the stream.
+// later hand: a strike changes the pool, never the stream. A member's room (M4b, D-099) is
+// never drawn, not even by the Catalog: it arrives with its member.
 
 import type { Card, CardType, Content, Modifier, PieceDef, PieceId } from './index.ts';
 import { stream } from './rng.ts';
@@ -55,7 +56,7 @@ export function drawWeights(
   const mods = opts.mods ?? [];
   const out: { card: Card; weight: number }[] = [];
   for (const def of Object.values(content.pieces)) {
-    if (def.fromPhase > phase) continue;
+    if (def.fromPhase > phase || def.member) continue;
     const card: Card = { kind: 'piece', id: def.id };
     if (isStruck(content, struck, card)) continue;
     let weight: number;
@@ -125,7 +126,7 @@ export function drawableTypes(content: Content, struck: readonly CardType[] = []
   const out: CardType[] = [];
   const seen = new Set<string>();
   for (const def of Object.values(content.pieces)) {
-    if (def.drawWeight === 0) continue;
+    if (def.drawWeight === 0 || def.member) continue;
     const root = rootType(def);
     if (seen.has(root)) continue;
     seen.add(root);

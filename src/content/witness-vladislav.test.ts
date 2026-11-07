@@ -4,8 +4,9 @@
 // numbers (house-rules.ts) and his two wishes, Three Dark rooms and A Library.
 //
 // The numbers that shape it:
-// - Room for everyone steps up: 1–2 Bedrooms, then 1–3 from Framing and 2–4 from Drywall.
-//   2 is the only count inside all three, so the house has 2 Bedrooms and 1 Bathroom.
+// - Room for everyone grows with the household (M4b, D-099): 1–2 Bedrooms, then 2–3 and
+//   Renfield's room from Framing. His room counts as a Bedroom, so the house has 2 Bedrooms of
+//   its own and, for the 3 from Framing, 2 Bathrooms. Renfield's room is a reserve play.
 // - Three Dark rooms: a room is Dark when every tile beside it is indoor (no yard, no lot
 //   edge), so the house is three rooms deep and the middle row's rooms are walled in: by the
 //   back row (Living Room, Dining Room, Kitchen), the front row (the guest Bedroom, the Garage,
@@ -61,7 +62,7 @@ const PLACEMENTS: readonly Placement[] = [
   ['library', 6, 9], // behind the guest Bedroom
   ['homeOffice', 10, 9, 1], // upright: his study, behind the front hall
   ['bathroom', 11, 9], // beside the study
-  ['closet', 11, 10], // below the Bathroom, closing the study's east side
+  ['bathroom', 11, 10], // below it, closing the study's east side: Renfield makes 3 Bedrooms
   SIDE_HALL, // upright, beside the Library
   ['livingRoom', 5, 7, 1], // turned 3 wide, across the back: now the Library is Dark
   ['diningRoom', 8, 7], // behind the Count's Bedroom: now it's Dark
@@ -74,9 +75,19 @@ const PLACEMENTS: readonly Placement[] = [
   ['fence', 10, 15],
 ];
 
+/** Renfield's room (D-099), from the reserve when he arrives: [the phase, placement]. */
+const MEMBERS: readonly [number, Placement][] = [
+  [2, ['renfieldsRoom', 11, 11, 1]], // upright, by the Bathroom, linked through the front hall
+];
+
+/** The house at a milestone: every piece, then the household's rooms from their arrivals on. */
+const houseAt = (phase: number, pieces: readonly Placement[] = PLACEMENTS): HouseState =>
+  houseFrom(CONTENT, LOT, [...pieces, ...MEMBERS.filter(([at]) => at <= phase).map(([, p]) => p)]);
+
 // The finished house (L Living Room, D Dining Room, K Kitchen, Y Library, V the Count's
-// Bedroom, O Home Office, W Bathroom, C Closet, E guest Bedroom, G Garage, H Hallway; p Patio,
-// l Lawn, f Flower Bed, d Driveway, = Fence; T Tree, P pond, B boulder):
+// Bedroom, O Home Office, W Bathrooms, E guest Bedroom, G Garage, H Hallway, R Renfield's
+// room from Framing; p Patio, l Lawn, f Flower Bed, d Driveway, = Fence; T Tree, P pond, B
+// boulder):
 //
 //   TTT...............
 //   TT............PP..
@@ -88,17 +99,18 @@ const PLACEMENTS: readonly Placement[] = [
 //   .....LLLDDKK......
 //   ....TLLLDDKKT.....
 //   .....HYYVVOW......
-//   .....HYYVVOC......
-//   ......EEGGH.......
-//   .....TEEGGH.......
+//   .....HYYVVOW......
+//   ......EEGGHR......
+//   .....TEEGGHR......
 //   ..B...ff.d........
 //   .........d........
 //   .....====d====....
 //   ~~~~~ street ~~~~~
 //
 // Y, V, and O are the Dark rooms: every tile beside them is indoor. 10 rooms (and two
-// Hallways) fill 90% of a 7 × 6 box, each touching 2 or more rooms. 7 yard pieces, 2 of a
-// type at most; the Driveway and the Fences never break a tidy yard.
+// Hallways) fill 90% of a 7 × 6 box, each touching 2 or more rooms; Renfield's makes 11, and
+// touches the study and the Garage through the front hall. 7 yard pieces, 2 of a type at
+// most; the Driveway and the Fences never break a tidy yard.
 
 const run = rules.newRun({
   seed: 'witness-vladislav',
@@ -113,16 +125,20 @@ const PHASES = CONTENT.balance.phases;
  * a Driveway is a pack (D-102), so its play carries its tiles, turned, as the board sends them:
  * at rot 0.
  */
-function checkPlace(built: readonly Placement[], [id, x, y, rot = 0, shape]: Placement): Legality {
-  const state: RunState = {
-    ...run,
-    house: houseFrom(CONTENT, LOT, built),
-    hand: [{ kind: 'piece', id }],
-  };
+function checkPlace(
+  built: readonly Placement[],
+  [id, x, y, rot = 0, shape]: Placement,
+  from: 'hand' | 'reserve' = 'hand',
+): Legality {
+  const house = houseFrom(CONTENT, LOT, built);
+  const state: RunState =
+    from === 'hand'
+      ? { ...run, house, hand: [{ kind: 'piece', id }] }
+      : { ...run, house, reserve: [{ id, arrival: 'renfield' }] };
   const def = CONTENT.pieces[id];
   const play: PlaceAction = def.pack
-    ? { t: 'place', from: 'hand', i: 0, x, y, rot: 0, shape: rotateShape(shape ?? def.shape, rot) }
-    : { t: 'place', from: 'hand', i: 0, x, y, rot };
+    ? { t: 'place', from, i: 0, x, y, rot: 0, shape: rotateShape(shape ?? def.shape, rot) }
+    : { t: 'place', from, i: 0, x, y, rot };
   return rules.checkPlay(state, play);
 }
 
@@ -145,13 +161,21 @@ describe('Count Vladislav’s witness house', () => {
         `${k + 1}. ${CONTENT.pieces[id].name} at (${x}, ${y}): ${check.reason}`,
       ).toBe(true);
     });
-    // One piece a week: 19 pieces fit in a run's 28 weeks.
-    expect(PLACEMENTS.length).toBeLessThanOrEqual(CONTENT.balance.weeksPerPhase * PHASES.length);
-
-    const house = houseFrom(CONTENT, LOT, PLACEMENTS);
-    PHASES.forEach(({ name }, phase) => {
-      expect(missed(house, phase).map(shown), `missed at ${name}`).toEqual([]);
+    // Renfield's room is a reserve play, once he arrives.
+    MEMBERS.forEach(([, placement]) => {
+      const [id, x, y] = placement;
+      const check = checkPlace(PLACEMENTS, placement, 'reserve');
+      expect(check.legal, `${CONTENT.pieces[id].name} at (${x}, ${y}): ${check.reason}`).toBe(true);
     });
+    // One piece a week: 20 pieces fit in a run's 28 weeks.
+    expect(PLACEMENTS.length + MEMBERS.length).toBeLessThanOrEqual(
+      CONTENT.balance.weeksPerPhase * PHASES.length,
+    );
+
+    PHASES.forEach(({ name }, phase) => {
+      expect(missed(houseAt(phase), phase).map(shown), `missed at ${name}`).toEqual([]);
+    });
+    const house = houseAt(PHASES.length - 1);
 
     // The Dark rooms are the middle row's three: his Bedroom, the Library, and his study.
     const state: RunState = { ...run, house };
@@ -168,21 +192,19 @@ describe('Count Vladislav’s witness house', () => {
     expect(ofType('diningRoom')).toBeLessThanOrEqual(1);
   });
 
-  it('loses exactly one line when one piece is added or taken away', () => {
+  it('loses exactly one line when one piece is added or taken away, or Renfield’s room', () => {
     // One piece fewer: without the side Hallway, the Library touches the yard and isn't Dark.
-    const noSideHall = houseFrom(
-      CONTENT,
-      LOT,
-      PLACEMENTS.filter((p) => p !== SIDE_HALL),
-    );
+    const noSideHall = PLACEMENTS.filter((p) => p !== SIDE_HALL);
     // One piece more: a second Kitchen (an L-Kitchen past the Bathroom, a legal play).
     const lKitchen: Placement = ['lKitchen', 12, 9, 1];
     expect(checkPlace(PLACEMENTS, lKitchen).legal).toBe(true);
-    const twoKitchens = houseFrom(CONTENT, LOT, [...PLACEMENTS, lKitchen]);
+    // Renfield left in the reserve: from Framing, Room for everyone needs his room.
     PHASES.forEach(({ name }, phase) => {
       const ids = (house: HouseState) => missed(house, phase).map((line) => line.id);
-      expect(ids(noSideHall), `at ${name}`).toEqual(['darkRooms']);
-      expect(ids(twoKitchens), `at ${name}`).toEqual(['oneKitchen']);
+      expect(ids(houseAt(phase, noSideHall)), `at ${name}`).toEqual(['darkRooms']);
+      expect(ids(houseAt(phase, [...PLACEMENTS, lKitchen])), `at ${name}`).toEqual(['oneKitchen']);
+      const noRenfield = houseFrom(CONTENT, LOT, PLACEMENTS);
+      expect(ids(noRenfield), `at ${name}`).toEqual(phase >= 2 ? ['roomForEveryone'] : []);
     });
   });
 });

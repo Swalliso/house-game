@@ -24,6 +24,8 @@
 import { describe, expect, it } from 'vitest';
 import type {
   Action,
+  ClientId,
+  CrewId,
   DebugAction,
   Good,
   GameEvent,
@@ -52,9 +54,26 @@ import {
 import { findMove, makeChaos, offerKind } from './policies/chaos.ts';
 import { SimError, simulateRun } from './simulate.ts';
 
+interface Seed {
+  seed: string;
+  cheat: boolean;
+  gifts?: readonly Good[];
+  /** M4b: every crew and client gets runs (the default: the Hendersons, the General Contractor). */
+  clientId?: ClientId;
+  crewId?: CrewId;
+}
+
+const CLIENTS: readonly ClientId[] = ['hendersons', 'vladislav', 'barkers', 'juniper', 'dale'];
+const CREWS: readonly CrewId[] = ['generalContractor', 'landscaper', 'architect'];
+
 /** Runs with cheats (most reach the end), and one without (it plays on to a loss). */
-const SEEDS: readonly { seed: string; cheat: boolean; gifts?: readonly Good[] }[] = [
-  ...Array.from({ length: 8 }, (_, i) => ({ seed: `chaos-${i}`, cheat: true })),
+const SEEDS: readonly Seed[] = [
+  ...Array.from({ length: 8 }, (_, i) => ({
+    seed: `chaos-${i}`,
+    cheat: true,
+    clientId: CLIENTS[i % CLIENTS.length]!,
+    crewId: CREWS[i % CREWS.length]!,
+  })),
   { seed: 'chaos-honest', cheat: false },
   // ×Mult needs a condition random play seldom meets, so one run starts with its sources:
   // Last-Minute Push (each phase's last week), Model Home (pieces with fixtures), and a
@@ -73,12 +92,11 @@ const SEEDS: readonly { seed: string; cheat: boolean; gifts?: readonly Good[] }[
 /** Problems kept per run: past this the run is broken enough. */
 const MAX_PROBLEMS = 25;
 
-const setupOf = (seed: string): RunSetup => ({
-  seed,
-  clientId: 'hendersons',
-  crewId: 'generalContractor',
-  mode: 'standard',
-});
+const setupOf = (
+  seed: string,
+  clientId: ClientId = 'hendersons',
+  crewId: CrewId = 'generalContractor',
+): RunSetup => ({ seed, clientId, crewId, mode: 'standard' });
 const J = (x: unknown) => JSON.stringify(x);
 const isBuild = (s: RunState) => s.screen === 'build';
 
@@ -133,6 +151,7 @@ const ACTION_KINDS: Record<Action['t'], true> = {
   leaveShop: true,
   pick: true,
   useTool: true,
+  answerChangeOrder: true,
   debug: true,
 };
 const DEBUG_OPS: Record<DebugAction['op'], true> = {
@@ -142,6 +161,8 @@ const DEBUG_OPS: Record<DebugAction['op'], true> = {
   forceMiss: true,
   forceShop: true,
   giveGood: true,
+  forceChangeOrder: true,
+  forceArrival: true,
 };
 const TOOL_USES: Record<ToolUse['kind'], true> = {
   move: true,
@@ -204,6 +225,13 @@ class Checker {
   /** Checks the run's first state. */
   first(s: RunState) {
     this.where = 'the first state';
+    this.see(`crew:${s.setup.crewId}`);
+    this.see(`client:${s.setup.clientId}`);
+    // M4b: a crew's starting cards are in the reserve's extra slots from week 1.
+    const start = CONTENT.crews[s.setup.crewId].startReserve ?? [];
+    if (J(s.reserve.map((r) => [r.id, r.crew])) !== J(start.map((id) => [id, true]))) {
+      this.fail('the crew’s starting cards aren’t in the reserve', s.reserve);
+    }
     this.invariants(s, s, null, []);
   }
 
@@ -220,6 +248,7 @@ class Checker {
       this.checkDemolish(s, legal, rng);
       this.checkBuildQueries(s);
     } else this.checkShopQueries(s);
+    this.checkOrderQueries(s, legal);
     this.checkMalformed(s);
     this.checkListed(s, legal, rng);
     let out: { state: RunState; events: GameEvent[] };
@@ -305,12 +334,20 @@ class Checker {
     }
     if (rules.scoreOnly(s, play) !== p.after.total)
       this.fail('scoreOnly differs from preview', play);
+    // M4b: the preview warns of exactly the restriction the placement breaks.
+    const broke = events.find((e) => e.t === 'changeOrderBroken');
+    if ((broke?.t === 'changeOrderBroken' ? broke.id : undefined) !== p.breaks) {
+      this.fail('preview.breaks disagrees with apply', { play, breaks: p.breaks });
+    }
+    if (p.breaks) this.see('check:preview:breaks');
     // Breakdown lines: exactly the pieces whose earnings change, the new or host piece included.
     const was = new Map(pass.pieces.map((x) => [x.uid, x.earned]));
     const changed = new Set(
       real.pieces.filter((x) => was.get(x.uid) !== x.earned).map((x) => x.uid),
     );
-    if (play.t === 'install') changed.add(play.uid);
+    // The preview always lists its focus: the new piece, an install's host, or the renovated
+    // room (whose earnings may not change: a Sunny room earns Count Vladislav nothing).
+    if (play.t === 'install' || play.t === 'renovate') changed.add(play.uid);
     else if (real.pieces.some((x) => x.uid === s.house.nextUid)) changed.add(s.house.nextUid);
     const listed = p.lines.map((l) => l.uid).sort((x, y) => x - y);
     const want = [...changed].sort((x, y) => x - y);
@@ -438,6 +475,34 @@ class Checker {
     agree('canCompleteEarly', rules.canCompleteEarly(s).ok, { t: 'completeEarly' });
   }
 
+  /** M4b: the change-order queries agree with the screen, the state, and apply(). */
+  checkOrderQueries(s: RunState, legal: readonly Action[]) {
+    const offer = rules.changeOrderOffer(s);
+    if ((offer !== null) !== (s.screen === 'changeOrder')) {
+      this.fail('changeOrderOffer disagrees with the screen', { offer: offer?.id });
+    }
+    const running = s.changeOrders.filter((r) => r.result === undefined && r.answer !== 'declined');
+    const active = rules.activeChangeOrders(s);
+    if (J(active.map((v) => v.id)) !== J(running.map((r) => r.id))) {
+      this.fail(
+        'activeChangeOrders disagrees with the state',
+        active.map((v) => v.id),
+      );
+    }
+    if (active.length > 0) this.see('check:activeChangeOrders');
+    if (!offer) return;
+    this.see('check:changeOrderOffer');
+    const declines = legal.some((a) => a.t === 'answerChangeOrder' && !a.accept);
+    const declined = accepts(s, { t: 'answerChangeOrder', accept: false });
+    if (declines !== offer.declinable || declined !== offer.declinable) {
+      this.fail('the offer, legalActions, and apply disagree on declining', {
+        id: offer.id,
+        declines,
+        declined,
+      });
+    }
+  }
+
   checkShopQueries(s: RunState) {
     if (s.screen !== 'shop' || s.offers?.pick) return;
     this.see('check:shopQueries');
@@ -496,6 +561,13 @@ class Checker {
       { t: 'debug', op: 'addScore', amount: Number.NaN },
       { t: 'debug', op: 'teleport' },
       { t: 'nonsense' },
+      // M4b.
+      { t: 'answerChangeOrder', accept: 'yes' },
+      { t: 'debug', op: 'forceChangeOrder', id: 'nope' },
+      { t: 'debug', op: 'forceArrival', id: 'nobody' },
+      ...(s.screen === 'changeOrder'
+        ? [{ t: 'leaveShop' }, { t: 'buy', i: 0 }, { t: 'sell', from: 'supplies', i: 0 }]
+        : [{ t: 'answerChangeOrder', accept: true }]),
       ...(strikeAt >= 0 ? [{ t: 'buy', i: strikeAt, strike: { kind: 'piece', id: 'nope' } }] : []),
       // The wrong screen.
       ...(isBuild(s)
@@ -560,16 +632,41 @@ class Checker {
       this.fail('the score fell', { from: prev.score, to: s.score });
     if (s.week < prev.week) this.fail('the week went back', { from: prev.week, to: s.week });
     if (s.milestones.length < prev.milestones.length) this.fail('a milestone record vanished');
-    if (s.screen === 'build' || s.screen === 'shop') {
+    if (s.screen === 'build' || s.screen === 'shop' || s.screen === 'changeOrder') {
       const slots = rules.slots(s);
       if (s.supplies.length > slots.supplies)
         this.fail('supplies over their slots', [s.supplies.length, slots]);
-      if (s.reserve.filter((r) => !r.crew).length > slots.reserve)
+      // A crew's and an arrival's cards sit in extra slots (M4b).
+      if (s.reserve.filter((r) => !r.crew && !r.arrival).length > slots.reserve)
         this.fail('reserve over its slots');
       if (s.blueprints.length > slots.blueprints)
         this.fail('blueprints over their slots', [s.blueprints.length, slots]);
     }
     if (s.screen === 'shop' && !s.offers?.shop) this.fail('the shop screen has no visit');
+    if ((s.screen === 'changeOrder') !== !!s.offers?.changeOrder) {
+      this.fail('a change order offer off its screen, or the screen without one');
+    }
+    // M4b: each member arrives once, and nothing draws, sells, or copies a member's room.
+    if (new Set(s.arrived).size !== s.arrived.length) this.fail('a member arrived twice');
+    for (const e of events) {
+      if (e.t === 'handDrawn') {
+        for (const c of e.hand) {
+          if (c.kind === 'piece' && CONTENT.pieces[c.id].member) this.fail('a member’s room drawn');
+        }
+      }
+      if (e.t === 'shopOpened' || e.t === 'shopRefreshed') {
+        for (const o of e.offers) {
+          if (o.kind === 'piece' && CONTENT.pieces[o.id].member)
+            this.fail('a member’s room for sale');
+        }
+      }
+      if (e.t === 'crateOpened') {
+        for (const o of e.options) {
+          if (o.kind === 'piece' && CONTENT.pieces[o.id].member)
+            this.fail('a member’s room in a crate');
+        }
+      }
+    }
     if (new Set(s.blueprints.map((b) => b.id)).size !== s.blueprints.length)
       this.fail('a blueprint twice');
     if (new Set(s.upgrades).size !== s.upgrades.length) this.fail('an upgrade twice');
@@ -641,6 +738,12 @@ class Checker {
     if (a.t === 'debug') this.see(`debug:${a.op}`);
     if (a.t === 'place' || a.t === 'install' || a.t === 'sell') this.see(`${a.t}:${a.from}`);
     if ((a.t === 'place' || a.t === 'install') && s.freePlay === 'ready') this.see('play:free');
+    if (a.t === 'place' && a.from === 'reserve') {
+      // M4b: a member's room (D-099) or a crew's starting card, from the extra slots.
+      if (s.reserve[a.i]?.arrival) this.see('place:arrival');
+      if (s.reserve[a.i]?.crew) this.see('place:crew');
+    }
+    if (a.t === 'answerChangeOrder') this.see(`answer:${a.accept}`);
     if (a.t === 'useTool') {
       const sup = s.supplies[a.i];
       if (sup?.kind === 'tool') this.see(`toolUse:${CONTENT.tools[sup.id].use.kind}`);
@@ -657,14 +760,21 @@ class Checker {
       if (e.t === 'tally' && e.tally.xMults.length > 0) this.see('tally:xMult');
       if (e.t === 'crateOpened') this.see(`crate:${e.source}`);
       if (e.t === 'runEnded') this.see(`result:${e.result}`);
+      if (e.t === 'changeOrderOffered') this.see(`changeOrder:${e.kind}`);
+      if (e.t === 'changeOrderResolved') this.see(`changeOrder:${e.result}`);
+      if (e.t === 'arrived') this.see(e.forced ? 'arrived:forced' : 'arrived:due');
     }
   }
 }
 
-function play(seed: string, cheat: boolean, gifts?: readonly Good[]): Played {
+function play({ seed, cheat, gifts, clientId, crewId }: Seed): Played {
   let sim: ReturnType<typeof simulateRun>;
   try {
-    sim = simulateRun(rules, seed, makeChaos({ cheat, gifts }), { probePhase: null });
+    sim = simulateRun(rules, seed, makeChaos({ cheat, gifts }), {
+      probePhase: null,
+      ...(clientId ? { clientId } : {}),
+      ...(crewId ? { crewId } : {}),
+    });
   } catch (e) {
     if (e instanceof SimError)
       throw new Error(`${e.message}\nrun code: ${e.runCode}`, { cause: e });
@@ -672,7 +782,7 @@ function play(seed: string, cheat: boolean, gifts?: readonly Good[]): Played {
   }
   const { actions, state } = sim;
   const checker = new Checker(seed);
-  let s = rules.newRun(setupOf(seed));
+  let s = rules.newRun(setupOf(seed, clientId, crewId));
   checker.first(s);
   actions.forEach((a, n) => (s = checker.step(s, a, n)));
   if (J(s) !== J(state)) checker.fail('the walk ended somewhere other than the sim');
@@ -680,9 +790,9 @@ function play(seed: string, cheat: boolean, gifts?: readonly Good[]): Played {
 }
 
 const memo = new Map<string, Played>();
-const played = (seed: string, cheat: boolean, gifts?: readonly Good[]): Played => {
-  let p = memo.get(seed);
-  if (!p) memo.set(seed, (p = play(seed, cheat, gifts)));
+const played = (run: Seed): Played => {
+  let p = memo.get(run.seed);
+  if (!p) memo.set(run.seed, (p = play(run)));
   return p;
 };
 
@@ -704,6 +814,15 @@ const COVERAGE: readonly string[] = [
   ...prefixed('play', ['free']),
   ...prefixed('tally', ['fastForward', 'xMult']),
   ...prefixed('event', ['moved', 'demolished', 'transformed', 'findClaimed', 'overtimeUsed']),
+  // M4b: every crew and client, change orders of each kind answered both ways (a phase effect
+  // only one way), resolved, and the household's arrivals, due and forced, played.
+  ...prefixed('crew', keys(CONTENT.crews)),
+  ...prefixed('client', keys(CONTENT.clients)),
+  ...prefixed('changeOrder', ['request', 'restriction', 'phase', 'missed', 'ended']),
+  ...prefixed('answer', ['true', 'false']),
+  ...prefixed('event', ['changeOrderAnswered', 'changeOrderResolved']),
+  ...prefixed('arrived', ['due', 'forced']),
+  ...prefixed('place', ['arrival', 'crew']),
 ];
 
 /** The kinds of check that must each have run. */
@@ -721,6 +840,8 @@ const CHECKS: readonly string[] = [
   'check:malformed',
   ...keys(TOOL_USES).map((k) => `check:previewTool:${k}`),
   'check:toolRefused:move',
+  'check:changeOrderOffer',
+  'check:activeChangeOrders',
 ];
 
 /**
@@ -735,12 +856,17 @@ const MAX_EXTRA = 6;
 let coverage: { runs: Played[]; missing: string[] } | null = null;
 function covered(): { runs: Played[]; missing: string[] } {
   if (coverage) return coverage;
-  const runs = SEEDS.map(({ seed, cheat, gifts }) => played(seed, cheat, gifts));
+  const runs = SEEDS.map(played);
   const seen = new Set<string>();
   const missing = () => [...COVERAGE, ...CHECKS].filter((k) => !seen.has(k));
   for (const r of runs) for (const k of r.seen.keys()) seen.add(k);
   for (let k = 0; k < MAX_EXTRA && missing().length > 0; k++) {
-    const r = played(`chaos-extra-${k}`, true);
+    const r = played({
+      seed: `chaos-extra-${k}`,
+      cheat: true,
+      clientId: CLIENTS[(k + 3) % CLIENTS.length]!,
+      crewId: CREWS[(k + 1) % CREWS.length]!,
+    });
     runs.push(r);
     for (const key of r.seen.keys()) seen.add(key);
   }
@@ -750,9 +876,9 @@ function covered(): { runs: Played[]; missing: string[] } {
 describe('the chaos bot on the real content', () => {
   it.each(SEEDS)(
     '$seed: every step checks out, and the run replays',
-    ({ seed, cheat, gifts }) => {
-      const run = played(seed, cheat, gifts);
-      const setup = setupOf(seed);
+    (entry) => {
+      const run = played(entry);
+      const setup = setupOf(entry.seed, entry.clientId, entry.crewId);
       const code = encodeRunCode({
         build: 'test',
         contentHash: contentHash(CONTENT),
