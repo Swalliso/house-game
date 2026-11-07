@@ -86,10 +86,11 @@
   box-shadow: none;
 }
 /* A short window with a narrow column: both on one row as an icon and a count (their titles
-   and the controls strip name them), so the cards start higher. */
+   and the controls strip name them), so the cards start higher. Demolishing, Stop keeps its
+   word. */
 @media (max-height: 800px) {
   @container free-actions (max-width: 21em) {
-    .free-action-word {
+    .free-action:not(.active) .free-action-word {
       display: none;
     }
     .free-action.btn {
