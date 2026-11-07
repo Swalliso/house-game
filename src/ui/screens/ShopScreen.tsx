@@ -5,15 +5,15 @@
 //
 // M5a draws it as a wood sheet over the board: the budget as the header's hero counter, the
 // goods as paper cards of one size packed onto shelves (each with its art, its kind and
-// rarity, a coin price, and Buy), a plank tag per section, and a full section said once at
-// its tag instead of on every card. Hidden, the shop leaves a handle at the board's foot.
+// rarity, a coin price, and Buy), a plank tag per section, and full slots said once at each
+// shelf's tag instead of on every card (shelves.ts). Hidden, the shop leaves a handle at the
+// board's foot.
 
 import { useEffect } from 'preact/hooks';
 import { signal } from '@preact/signals';
 import {
   CONTENT,
   rules,
-  SHOP_REASONS,
   type CardType,
   type OfferView,
   type ServiceId,
@@ -47,7 +47,14 @@ import {
 } from '../kit/kit.tsx';
 import { buy, inspected, leaveShop, pickOption, refreshShop, run } from '../store.ts';
 import { Notes } from './Overlays.tsx';
-import { cardReason, fullReason, isSold, shelfReasons } from './shelves.ts';
+import {
+  cardReason,
+  fullReason,
+  isSold,
+  shelfReasons,
+  shortBy,
+  type ShelfNote,
+} from './shelves.ts';
 import './shop.css';
 
 /** The strike service's picker is open. */
@@ -128,11 +135,16 @@ function OfferChips({ good, kind = false }: { good: GoodRef; kind?: boolean }) {
   );
 }
 
+/** Buy's label: Buy, Full (its reason is at the shelf's tag), or what the budget is short by. */
+function buyLabel(o: OfferView, short: number): string {
+  if (fullReason(o) !== null) return 'Full';
+  return short > 0 ? `Need ${short}` : 'Buy';
+}
+
 function OfferCard({ o, mixed }: { o: OfferView; mixed: boolean }) {
   const good = offerGood(o.offer);
   const sold = isSold(o);
-  const blockedByFull = fullReason(o) !== null;
-  const short = !o.ok && o.reason === SHOP_REASONS.budget;
+  const short = shortBy(o, run.value.budget);
   const alert = cardReason(o) ?? undefined;
   const service = o.offer.kind === 'service' ? o.offer.service : null;
   return (
@@ -161,16 +173,22 @@ function OfferCard({ o, mixed }: { o: OfferView; mixed: boolean }) {
           <span class="sold-stamp">Sold</span>
         ) : (
           <>
-            <Price price={o.price} full={o.onSale ? o.fullPrice : undefined} short={short} />
+            <Price price={o.price} full={o.onSale ? o.fullPrice : undefined} short={short > 0} />
             <Button
               size="sm"
               class="buy"
               onMouseDown={noFocus}
               onClick={() => buyOffer(o)}
               disabled={!o.ok}
-              title={o.ok ? `Buy ${o.name}` : o.reason}
+              title={
+                o.ok
+                  ? `Buy ${o.name}`
+                  : short > 0
+                    ? `${o.reason} It needs ${short} more.`
+                    : o.reason
+              }
             >
-              {blockedByFull ? 'Full' : 'Buy'}
+              {buyLabel(o, short)}
             </Button>
           </>
         )}
@@ -188,7 +206,7 @@ interface Shelf {
 }
 
 /** A shelf of one kind of good, with what full slots keep you from buying said at its tag. */
-function Section({ title, offers, term, compact = false, full }: Shelf & { full: string[] }) {
+function Section({ title, offers, term, compact = false, full }: Shelf & { full: ShelfNote[] }) {
   if (offers.length === 0) return null;
   const mixed = new Set(offers.map((o) => o.offer.kind)).size > 1;
   return (
@@ -196,11 +214,11 @@ function Section({ title, offers, term, compact = false, full }: Shelf & { full:
       <header class="shelf-head">
         <h2 class="plank-tag">{term ? <Tip term={term}>{title}</Tip> : title}</h2>
       </header>
-      {full.map((reason) => (
-        <p key={reason} class="shelf-full" role="note">
+      {full.map((note) => (
+        <p key={note.reason} class="shelf-full" role="note">
           <Icon name="warn" />
           <span>
-            {reason} <span aria-hidden="true">→</span>
+            {note.text} <span aria-hidden="true">→</span>
           </span>
         </p>
       ))}
@@ -241,30 +259,33 @@ function StrikePicker() {
           </>
         }
       >
-        <p class="pick-note">
-          It’s never drawn again this run. Shape variants go with it (Fence takes the L-Fence).
-        </p>
-        <h3 class="plank-tag">Pieces</h3>
-        <div class="strike-options">
-          {pieces.map((t) => (
-            <Button key={t.id} size="sm" onClick={() => pick(t)}>
-              {name(t)}
-            </Button>
-          ))}
+        <div class="pick-scroll">
+          <p class="pick-note">
+            It’s never drawn again this run. Shape variants go with it (Fence takes the L-Fence).
+          </p>
+          <h3 class="plank-tag">Pieces</h3>
+          <div class="strike-options">
+            {pieces.map((t) => (
+              <Button key={t.id} size="sm" onClick={() => pick(t)}>
+                {name(t)}
+              </Button>
+            ))}
+          </div>
+          {fixtures.length > 0 && (
+            <>
+              <h3 class="plank-tag">Fixtures</h3>
+              <div class="strike-options">
+                {fixtures.map((t) => (
+                  <Button key={t.id} size="sm" onClick={() => pick(t)}>
+                    {name(t)}
+                  </Button>
+                ))}
+              </div>
+            </>
+          )}
+          {struck.length > 0 && <p class="pick-note">Already struck: {struck.join(', ')}.</p>}
         </div>
-        {fixtures.length > 0 && (
-          <>
-            <h3 class="plank-tag">Fixtures</h3>
-            <div class="strike-options">
-              {fixtures.map((t) => (
-                <Button key={t.id} size="sm" onClick={() => pick(t)}>
-                  {name(t)}
-                </Button>
-              ))}
-            </div>
-          </>
-        )}
-        {struck.length > 0 && <p class="pick-note">Already struck: {struck.join(', ')}.</p>}
+        {/* Out of the scrolling part, so Cancel shows on any window. */}
         <div class="pick-foot">
           <Button onClick={close}>Cancel</Button>
         </div>
@@ -343,12 +364,15 @@ function CratePickSheet() {
           </>
         }
       >
-        <p class="pick-note">{detail}</p>
-        <div class="crate-options">
-          {open.options.map((o, i) => (
-            <CrateOption key={`${i}-${o.id}`} good={o as GoodRef} i={i} ok={legal.has(i)} />
-          ))}
+        <div class="pick-scroll">
+          <p class="pick-note">{detail}</p>
+          <div class="crate-options">
+            {open.options.map((o, i) => (
+              <CrateOption key={`${i}-${o.id}`} good={o as GoodRef} i={i} ok={legal.has(i)} />
+            ))}
+          </div>
         </div>
+        {/* Out of the scrolling part, so Set it aside shows on any window. */}
         <div class="pick-foot">
           <Button onClick={() => pickOption(-1)}>Set it aside</Button>
         </div>
@@ -464,8 +488,8 @@ export function ShopScreen() {
           {leaveLabel}
           {!visit.boughtAny && skip > 0 && (
             <span class="skip-hint">
-              <Tip term="skipReward">+{skip}</Tip>
               <Icon name="coin" />
+              <Tip term="skipReward">+{skip}</Tip>
               <span class="skip-word">for saving</span>
             </span>
           )}

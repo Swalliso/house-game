@@ -2,7 +2,10 @@
 // demolish), and the action bar (rotate, cancel, End week). A card with nowhere legal to go is
 // hatched, with the reason. M5a draws it in the pixel style: each card shows its piece's
 // picture, its kind and tags as icon chips, and End week is the view's one primary button.
+// The picked card shows its shape as it's turned (R, or the Rotate button), and a card picked
+// below the fold scrolls into view.
 
+import { useEffect } from 'preact/hooks';
 import {
   cardText,
   CONTENT,
@@ -17,10 +20,12 @@ import {
   demolishArmed,
   inspected,
   reroll,
+  rotation,
   run,
   movingUid,
   selected,
   selection,
+  source,
   tentative,
   tool,
 } from '../store.ts';
@@ -104,7 +109,7 @@ function CardView({ card, i }: { card: CardData; i: number }) {
       blocked={!fits}
       lead={<Keycap>{i + 1}</Keycap>}
       title={def.name}
-      aside={<ShapeGlyph id={card.id} />}
+      aside={<ShapeGlyph id={card.id} rot={isSelected ? rotation.value : 0} square />}
       art={<PieceArt id={card.id} />}
       lines={text.effects}
       note={text.notes.length > 0 ? text.notes.join(' ') : undefined}
@@ -119,6 +124,7 @@ function CardView({ card, i }: { card: CardData; i: number }) {
       onClick={() => pickCard(i)}
       onMouseEnter={() => selected.value === null && (inspected.value = { kind: 'card', i })}
       aria-pressed={isSelected}
+      data-card={i}
       tooltip={fits ? undefined : 'There’s nowhere on the lot this fits right now'}
     />
   );
@@ -157,6 +163,7 @@ function FixtureCardView({
       onMouseDown={noFocus}
       onClick={() => pickCard(i)}
       aria-pressed={isSelected}
+      data-card={i}
       tooltip={fits ? undefined : 'Nothing on the lot can hold it yet'}
     />
   );
@@ -195,7 +202,7 @@ function FreeActions() {
             : (can.reason ?? 'You can’t reroll now.')
         }
       >
-        Reroll
+        <span class="free-action-word">Reroll</span>
         <span class="count" aria-label={`${rerolls} left`}>
           {rerolls}
         </span>
@@ -217,7 +224,7 @@ function FreeActions() {
               : 'No demolitions left this run'
         }
       >
-        {demolishing ? 'Stop' : 'Demolish'}
+        <span class="free-action-word">{demolishing ? 'Stop' : 'Demolish'}</span>
         <span class="count" aria-label={`${s.demolitionsLeft} left`}>
           {s.demolitionsLeft}
         </span>
@@ -226,8 +233,23 @@ function FreeActions() {
   );
 }
 
+/**
+ * The picked hand card scrolls fully into view (above the sticky action bar: .right's
+ * scroll-padding), so picking card 3 with its key on a short window shows it.
+ */
+function useCardInView(): void {
+  const picked = source.value === 'hand' ? selected.value : null;
+  useEffect(() => {
+    if (picked === null) return;
+    document
+      .querySelector(`.hand [data-card="${picked}"]`)
+      ?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [picked]);
+}
+
 export function Hand() {
   const s = run.value;
+  useCardInView();
   if (s.screen !== 'build') return null;
   const placing = selected.value !== null;
   const pending = tentative.value;

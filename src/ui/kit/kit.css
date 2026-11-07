@@ -115,6 +115,7 @@
   padding: var(--space-2) var(--space-3) var(--space-3);
   border: var(--px) solid transparent;
   border-image: var(--art-ring) 1 / var(--px);
+  border-radius: 0;
   background: var(--card-fill);
   background-clip: padding-box;
   box-shadow:
@@ -156,7 +157,8 @@
 .pcard.rarity-rare {
   --card-band: var(--rarity-rare);
 }
-/* A card you pick lifts a UI pixel on hover; picked, three, with an ink band. */
+/* A card you pick lifts a UI pixel on hover, and a press sets it back down; picked, it lifts
+   three, with an ink band. */
 .pcard-action {
   cursor: pointer;
   transition: transform var(--dur-hover) ease-out;
@@ -165,7 +167,7 @@
   transform: translateY(calc(var(--px) * -1));
 }
 .pcard-action:active {
-  transform: translateY(0);
+  transform: none;
   transition-duration: var(--dur-press);
 }
 .pcard.is-selected {
@@ -182,13 +184,10 @@
     var(--shadow-card),
     var(--ring-focus);
 }
-/* Blocked: hatched in the bad fill over its own tint, with the reason in its alert. */
-.pcard.is-blocked::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: repeating-linear-gradient(
+/* Blocked: hatched in the bad fill over its own tint, behind the text, with the reason on a
+   paper label of its own so it reads at full contrast over the stripes. */
+.pcard.is-blocked {
+  background-image: repeating-linear-gradient(
     -45deg,
     var(--hatch) 0 calc(var(--px) * 2),
     transparent calc(var(--px) * 2) calc(var(--px) * 6)
@@ -196,6 +195,12 @@
 }
 .pcard.is-blocked .pcard-art {
   opacity: 0.6;
+}
+.pcard.is-blocked .pcard-alert {
+  align-self: flex-start;
+  padding: 0 var(--space-1);
+  background: var(--card);
+  box-shadow: 0 0 0 var(--px) var(--card);
 }
 .reduce-motion .pcard-action {
   transition: none;
@@ -328,6 +333,20 @@
 .reduce-motion .btn:hover:not(:disabled),
 .reduce-motion .btn:active:not(:disabled) {
   transform: none;
+}
+/* A hover lifts a control a UI pixel and a press sets it down again (or sinks it one more), so
+   the box moves under a pointer resting near its top edge, and a release there would land on
+   whatever is behind it. While it's pressed, its hit area reaches back up over that travel
+   (two UI pixels above its top), so the press still lands on the control it started on. */
+.btn:active:not(:disabled)::before,
+.pcard-action:active::before,
+.seg:active:not(:disabled)::before {
+  content: '';
+  position: absolute;
+  left: calc(var(--px) * -1);
+  right: calc(var(--px) * -1);
+  bottom: 100%;
+  height: calc(var(--px) * 3);
 }
 .btn-primary {
   --btn-face: var(--action);
@@ -555,7 +574,8 @@
   line-height: var(--lh-body);
   font-weight: 700;
   color: var(--ink);
-  white-space: nowrap;
+  /* One line when it fits; a narrow column wraps it rather than let it spill into the frame. */
+  max-width: 100%;
 }
 
 /* --- Switch: a real checkbox, drawn as a pixel switch ------------------------------------- */
@@ -678,6 +698,7 @@
 }
 .slider input[type='range']:focus-visible {
   outline: none;
+  box-shadow: var(--ring-focus);
 }
 .slider input[type='range']:focus-visible::-webkit-slider-thumb {
   box-shadow:
@@ -706,6 +727,7 @@
   background-clip: padding-box;
 }
 .seg {
+  position: relative;
   min-height: calc(var(--px) * 15);
   margin: 0;
   padding: 0 var(--space-2) var(--px);
@@ -722,18 +744,20 @@
   color: var(--ink);
   cursor: pointer;
 }
-/* Pressed in: sunk a UI pixel, its face lit wood, its lip gone. */
-.seg.on,
-.seg.on:active:not(:disabled) {
+/* A press sinks a choice a UI pixel; chosen, it stays pressed in: its face lit wood, its lip
+   gone. */
+.seg:active:not(:disabled) {
   transform: translateY(var(--px));
-  border-bottom-width: 0;
+}
+.seg.on {
+  transform: translateY(var(--px));
   padding-bottom: 0;
   background: var(--wood-hi);
   box-shadow: inset 0 var(--px) 0 var(--wood);
   cursor: default;
 }
-.seg:active:not(:disabled) {
-  border-bottom-width: 0;
+.reduce-motion .seg:not(.on):active:not(:disabled) {
+  transform: none;
 }
 .seg:focus-visible {
   outline: none;
@@ -807,7 +831,7 @@
 }
 .sheet .panel-title {
   font-size: var(--fs-title);
-  line-height: var(--lh-body);
+  line-height: var(--lh-title);
 }
 .sheet-close.btn {
   --btn-h: calc(var(--px) * 15);

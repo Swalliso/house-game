@@ -24,9 +24,16 @@
 .hint-text {
   margin-left: var(--px);
 }
-/* A short window gives the board the room (D-047's 1280×720). */
+/* A short window (D-047's 1280×720): the strip sits under the board only, so the side columns
+   keep their full height for the hand, and it's tighter. */
 @media (max-height: 800px) {
   .hints {
+    grid-column: 2;
+    gap: 0 var(--space-3);
+    padding: var(--px) var(--space-2);
+  }
+  .hint-extra,
+  .hints:not(:has(> :not(.hint-extra))) {
     display: none;
   }
 }

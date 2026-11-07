@@ -23,6 +23,7 @@
   image-rendering: pixelated;
 }
 .center .camera-controls button {
+  position: relative;
   min-width: calc(var(--px) * 16);
   min-height: calc(var(--px) * 16);
   margin: 0;
@@ -49,6 +50,16 @@
 .center .camera-controls button:active:not(:disabled) {
   transform: translateY(var(--px));
   box-shadow: inset 0 var(--px) 0 var(--card-lo);
+}
+/* The hover lifted it a UI pixel and the press sank it one: while it's pressed, its hit area
+   reaches back up over that travel, as the kit's buttons do (kit.css). */
+.center .camera-controls button:active:not(:disabled)::before {
+  content: '';
+  position: absolute;
+  left: calc(var(--px) * -1);
+  right: calc(var(--px) * -1);
+  bottom: 100%;
+  height: calc(var(--px) * 3);
 }
 .center .camera-controls button:disabled {
   opacity: 1;

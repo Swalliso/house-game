@@ -8,7 +8,6 @@
 
 import './howto.css';
 import { Fragment, type ComponentChildren } from 'preact';
-import { useEffect, useRef } from 'preact/hooks';
 import { CONTENT, rules, SCORE_LABELS, type PieceId, type SetDef } from '../../rules/index.ts';
 import { howToPlayOpen } from '../hud/actions.ts';
 import { PieceArt } from '../hud/PieceArt.tsx';
@@ -22,43 +21,14 @@ export function HowToPlay() {
 
 const close = () => (howToPlayOpen.value = false);
 
-const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
-
+/** The sheet's text takes focus, so the arrow keys and Page Down scroll it (Sheet). */
 function HowToPlayDialog() {
-  const dialog = useRef<HTMLDivElement>(null);
-  const body = useRef<HTMLDivElement>(null);
-
-  // Focus the text, so the arrow keys and Page Down scroll it, and give focus back on close.
-  useEffect(() => {
-    const before = document.activeElement as HTMLElement | null;
-    body.current?.focus({ preventScroll: true });
-    return () => {
-      if (before?.isConnected) before.focus({ preventScroll: true });
-    };
-  }, []);
-
   const onKeyDown = (e: KeyboardEvent) => {
     // Keys typed in the sheet stay in the sheet: they never pick cards or end the week.
     e.stopPropagation();
     if (e.key === 'Escape') {
       e.preventDefault();
       close();
-    } else if (e.key === 'Tab') {
-      // Keep Tab inside the sheet.
-      const items = [...(dialog.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [])];
-      const first = items[0];
-      const last = items[items.length - 1];
-      if (!first || !last) return;
-      if (
-        e.shiftKey &&
-        (document.activeElement === first || !items.includes(document.activeElement as HTMLElement))
-      ) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
     }
   };
 
@@ -67,8 +37,6 @@ function HowToPlayDialog() {
       title="How to play"
       class="howto"
       onClose={close}
-      dialogRef={dialog}
-      bodyRef={body}
       onKeyDown={onKeyDown}
       footer={
         <Button variant="primary" onClick={close}>

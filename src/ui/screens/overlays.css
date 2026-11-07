@@ -54,7 +54,7 @@
     inset 0 calc(var(--px) * -2) 0 var(--ribbon-lo),
     var(--shadow-float);
   font-size: var(--fs-title);
-  line-height: var(--lh-body);
+  line-height: var(--lh-title);
   font-weight: 700;
   color: var(--ink);
   text-align: center;
@@ -146,9 +146,12 @@
   line-height: 1;
   color: var(--ink);
   white-space: nowrap;
-  animation-name: flash-stamp;
-  animation-timing-function: ease-out;
-  animation-fill-mode: forwards;
+  /* Two animations: the stamp's scale lands in --dur-stamp, and the fade at the end only
+     touches opacity. While a transform animates, the browser draws the text as a scaled image,
+     so a single animation over the whole --flash-ms would keep the pixel text blurred. */
+  animation:
+    flash-stamp var(--dur-stamp) ease-out backwards,
+    flash-out var(--dur-stamp) ease-in calc(var(--flash-ms) - var(--dur-stamp)) forwards;
 }
 /* A neutral note (a free redraw, the saving-up bonus): a paper slip, not the success's lime. */
 .target-flash.note {
@@ -159,7 +162,7 @@
     var(--shadow-float);
   font-family: var(--font-text);
   font-size: var(--fs-title);
-  line-height: var(--lh-body);
+  line-height: var(--lh-title);
   font-weight: 700;
 }
 @keyframes flash-stamp {
@@ -167,34 +170,23 @@
     opacity: 0;
     transform: scale(1.5);
   }
-  12% {
+  60% {
     opacity: 1;
     transform: scale(0.96);
   }
-  20% {
+  100% {
     transform: none;
   }
-  80% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-  }
 }
-@keyframes overlay-fade {
-  0% {
-    opacity: 0;
-  }
-  15%,
-  80% {
-    opacity: 1;
-  }
-  100% {
+@keyframes flash-out {
+  to {
     opacity: 0;
   }
 }
 .reduce-motion .target-flash {
-  animation-name: overlay-fade;
+  animation:
+    overlay-fade-in var(--dur-stamp) ease-out backwards,
+    flash-out var(--dur-stamp) ease-in calc(var(--flash-ms) - var(--dur-stamp)) forwards;
 }
 
 /* --- Notes and toasts: top center, under the top bar ---------------------------------------- */
@@ -216,11 +208,25 @@
 .title-screen ~ .notes {
   position: fixed;
 }
-/* In the shop's sheet, under its header: in the flow, so it covers none of the goods. */
+/* In the shop's sheet, under its header: in the flow, so it covers none of the goods, and
+   under a crate's or the strike's sheet (.shop-scrim) when one opens over the shelves. */
 .notes.docked {
   position: static;
+  z-index: auto;
   flex: none;
   padding: var(--space-2) var(--space-4) 0;
+}
+/* A toast raised while a sheet or the menu is open sits over its scrim, where notes show. */
+.toast-layer {
+  position: fixed;
+  top: calc(var(--px) * 38);
+  left: 0;
+  right: 0;
+  z-index: 70;
+  display: flex;
+  justify-content: center;
+  padding: 0 var(--space-4);
+  pointer-events: none;
 }
 .notice,
 .toast {
@@ -300,6 +306,7 @@
   margin: 0;
   font-family: var(--font-display);
   font-size: var(--fs-title);
+  line-height: var(--lh-title);
   font-weight: 400;
   color: var(--wood-deep);
 }

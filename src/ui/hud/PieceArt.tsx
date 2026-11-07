@@ -1,9 +1,10 @@
 // A piece's picture for the interface (M5a): its shape, each cell its floor, and its key
 // furniture, from PIECE_SPRITES, the way the board draws it. Hand cards show it, and the shop's
 // art slots can. It's drawn unrotated, so a card never changes size when the piece turns, at
-// about 1 CSS px per art px on whole device pixels (pictureScale).
+// about 1 CSS px per art px on whole device pixels (pictureScale). The picked card's turn shows
+// on its ShapeGlyph instead.
 
-import { CONTENT, parseShape, type PieceId } from '../../rules/index.ts';
+import { CONTENT, parseShape, shapeCells, type PieceId, type Rot } from '../../rules/index.ts';
 import { furnitureSpot, isIndoor } from '../board/geometry.ts';
 import { CELL, PIECE_SPRITES, spritePos, spriteStyle } from '../sprites.ts';
 import { devicePixelRatio, pictureScale } from '../theme/pixel.ts';
@@ -64,21 +65,45 @@ export function PieceArt({ id, class: cls }: { id: PieceId; class?: string }) {
 }
 
 /**
- * The piece's shape as little squares, for where its picture doesn't fit (a short window's
- * hand cards). One square per cell, three UI pixels across.
+ * The piece's shape as little squares, turned `rot` quarter turns: a short window's cards show
+ * it in place of the picture, and the picked hand card shows it turning as you rotate. A
+ * `square` glyph is centered in a box as long as the shape, so turning it never changes the
+ * card's size. Squares are three UI pixels across with a pixel between them, smaller for a
+ * long shape, so the box is never taller than a keycap (12 UI pixels).
  */
-export function ShapeGlyph({ id }: { id: PieceId }) {
-  const cells = parseShape(CONTENT.pieces[id].shape);
+export function ShapeGlyph({
+  id,
+  rot = 0,
+  square = false,
+}: {
+  id: PieceId;
+  rot?: Rot;
+  square?: boolean;
+}) {
+  const shape = CONTENT.pieces[id].shape;
+  const cells = shapeCells(shape, rot);
   const w = Math.max(...cells.map((c) => c.x)) + 1;
   const h = Math.max(...cells.map((c) => c.y)) + 1;
+  const long = Math.max(w, h);
+  const cols = square ? long : w;
+  const rows = square ? long : h;
+  const dx = Math.floor((cols - w) / 2);
+  const dy = Math.floor((rows - h) / 2);
+  const cell = long <= 3 ? 3 : 2;
+  const gap = long <= 4 ? 1 : 0;
   return (
     <span
       class="shape-glyph"
-      style={{ '--cols': String(w), '--rows': String(h) }}
+      style={{
+        '--cols': String(cols),
+        '--rows': String(rows),
+        '--cell': String(cell),
+        '--gap': String(gap),
+      }}
       aria-hidden="true"
     >
       {cells.map((c) => (
-        <span key={`${c.x},${c.y}`} style={{ gridColumn: c.x + 1, gridRow: c.y + 1 }} />
+        <span key={`${c.x},${c.y}`} style={{ gridColumn: c.x + dx + 1, gridRow: c.y + dy + 1 }} />
       ))}
     </span>
   );

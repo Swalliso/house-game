@@ -11,13 +11,11 @@ import { DebugPanel } from './debug/DebugPanel.tsx';
 import { ErrorBoundary } from './ErrorBoundary.tsx';
 import { busy, setHold, skip } from './fx/director.ts';
 import {
+  anyModalOpen,
   cancelPlacement,
-  copyFallback,
-  howToPlayOpen,
-  menuOpen,
+  closeTopModal,
   requestEndWeek,
   selectCard,
-  settingsOpen,
   toggleDemolish,
 } from './hud/actions.ts';
 import { Hints } from './hud/Hints.tsx';
@@ -34,6 +32,7 @@ import { HowToPlay } from './screens/HowToPlay.tsx';
 import {
   CopyFallback,
   MilestoneBanner,
+  ModalToast,
   Notes,
   SmallScreenNotice,
   TargetFlash,
@@ -44,26 +43,13 @@ import { ShopScreen } from './screens/ShopScreen.tsx';
 import { Title } from './screens/Title.tsx';
 import { appScreen, run, selected, tool } from './store.ts';
 
-function anyModalOpen(): boolean {
-  return settingsOpen.value || howToPlayOpen.value || menuOpen.value || !!copyFallback.value;
-}
-
-/** Esc closes the top sheet: Settings or How to play over the menu go first. */
-function closeModals(): void {
-  if (copyFallback.value) copyFallback.value = null;
-  else if (settingsOpen.value || howToPlayOpen.value) {
-    settingsOpen.value = false;
-    howToPlayOpen.value = false;
-  } else menuOpen.value = false;
-}
-
-/** Esc closes a sheet on any screen. */
+/** Esc closes the top sheet on any screen (modals.ts). */
 function useModalKeys(): void {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && anyModalOpen()) {
         e.preventDefault();
-        closeModals();
+        closeTopModal();
       }
     };
     window.addEventListener('keydown', onKey);
@@ -202,6 +188,7 @@ export function App() {
         <HowToPlay />
         <SettingsPanel />
         <CopyFallback />
+        <ModalToast />
         <TipLayer />
       </ErrorBoundary>
       <SmallScreenNotice />

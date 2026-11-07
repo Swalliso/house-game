@@ -1,30 +1,32 @@
 // The game menu (M5a): the top bar's Menu button opens it, and Esc or Resume closes it. It holds
 // what the top bar no longer shows: Copy run code and the run's seed, with How to play,
-// Settings, and Quit to title (the run is saved, so Continue picks it up again).
+// Settings, and Quit to title (the run is saved, so Continue picks it up again). While it's
+// open it holds the keyboard: Resume takes focus, Tab stays inside it, and focus goes back to
+// the Menu button when it closes.
 
-import { Button, Panel } from '../kit/kit.tsx';
+import { useRef } from 'preact/hooks';
+import { Button, Panel, useDialogFocus, useScrimClose } from '../kit/kit.tsx';
 import { goToTitle, inProgress, run } from '../store.ts';
 import { copyRunCode, howToPlayOpen, menuOpen, openSettings } from './actions.ts';
 import './menu.css';
 
 export function GameMenu() {
-  if (!menuOpen.value) return null;
+  return menuOpen.value ? <MenuSheet /> : null;
+}
+
+function MenuSheet() {
+  const sheet = useRef<HTMLDivElement>(null);
+  useDialogFocus(sheet);
   const close = () => (menuOpen.value = false);
   const quit = () => {
     close();
     goToTitle();
   };
   return (
-    <div class="menu-backdrop" onClick={close}>
-      <div
-        class="menu-sheet"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Menu"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div class="menu-backdrop" {...useScrimClose(close)}>
+      <div ref={sheet} class="menu-sheet" role="dialog" aria-modal="true" aria-label="Menu">
         <Panel title="Menu">
-          <Button variant="primary" size="lg" block onClick={close} autoFocus>
+          <Button variant="primary" size="lg" block onClick={close} data-autofocus>
             Resume
           </Button>
           <Button block icon="help" onClick={() => (howToPlayOpen.value = true)}>

@@ -24,7 +24,10 @@ body {
   height: 100%;
 }
 
-button,
+/* The plain button, for what the kit doesn't draw (the crash card, the debug panel, the board's
+   camera buttons). The kit's buttons, cards, slots and segments (kit.css) draw every state of
+   their own, so these rules leave them alone: :where() keeps each at the specificity it had. */
+button:where(:not(.btn, .pcard, .inv-slot, .seg)),
 .button {
   font: inherit;
   font-size: 14px;
@@ -39,31 +42,21 @@ button,
   display: inline-block;
 }
 /* The plain button's hover. :where() keeps it at the base rule's specificity, so a variant's
-   own fill (the shop's Leave, a card's tint or hatching) always wins: a hover never replaces
-   it. Variants that want a hover brighten or lift with rules of their own. */
-button:where(:hover:not(:disabled)),
+   own fill always wins: a hover never replaces it. */
+button:where(:not(.btn, .pcard, .inv-slot, .seg)):where(:hover:not(:disabled)),
 .button:where(:hover) {
   background: #fff3df;
 }
-button:active:not(:disabled) {
+button:where(:not(.btn, .pcard, .inv-slot, .seg)):active:not(:disabled) {
   transform: translateY(1px);
   border-bottom-width: 2px;
 }
-button:disabled {
+button:where(:not(.btn, .pcard, .inv-slot, .seg)):disabled {
   opacity: 0.45;
   cursor: default;
 }
-/* The one "do it" color (M5a): lime with ink text, never blue. */
-button.primary {
-  background: var(--action);
-  border-color: var(--action-shade);
-  color: var(--ink);
-}
-button.primary:hover {
-  background: var(--action-hi);
-}
 /* Focus is an ink ring with gold inside it, on paper and on wood alike. */
-button:focus-visible,
+button:where(:not(.btn, .pcard, .inv-slot, .seg)):focus-visible,
 .button:focus-visible {
   outline: var(--px) solid var(--focus-outer);
   outline-offset: 0;
@@ -129,6 +122,14 @@ button:focus-visible,
 .right {
   scrollbar-width: thin;
   scrollbar-color: var(--wood) var(--wood-night);
+}
+/* A short window: the controls strip sits under the board only (hud/hints.css), and the side
+   columns run down to the window's foot. */
+@media (max-height: 800px) {
+  .left,
+  .right {
+    grid-row: 2 / 4;
+  }
 }
 /* Anything in a side column that isn't a panel keeps its own height. */
 .right > :not(.panel) {

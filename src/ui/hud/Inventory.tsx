@@ -4,13 +4,16 @@
 // click picks a reserve piece or a supply to place or install.
 //
 // M5a: a wood panel with a row per kind of good. Empty slots are recessed wells, and a row
-// stays hidden until it matters: until the supply yard first opens, an empty row says nothing.
+// stays hidden until it matters: until the supply yard first opens, an empty row says nothing
+// (inventory-rows.ts). A name too long for its slot ends in an ellipsis, and shows whole on
+// hover and in the inspect panel.
 
 import { CONTENT, rules } from '../../rules/index.ts';
 import { Button, Panel, Well } from '../kit/kit.tsx';
 import { supplyGlyph } from '../sprites.ts';
 import { inspected, reserveFit, run, selected, sell, suppliesFit, tool } from '../store.ts';
 import { isSelected, selectCard } from './actions.ts';
+import { inventoryRows, showsInventory } from './inventory-rows.ts';
 import { Tip } from './Tip.tsx';
 import './inventory.css';
 
@@ -49,23 +52,16 @@ export function Inventory({ shop = false }: { shop?: boolean }) {
   const slots = rules.slots(s);
   const building = s.screen === 'build';
   const reserveUsed = s.reserve.filter((r) => !r.crew).length;
-  // Before the first shop there's nothing to keep, so an empty row stays out of the way.
-  const opened = shop || s.milestones.length > 0;
-  const showReserve = opened || s.reserve.length > 0;
-  const showSupplies = opened || s.supplies.length > 0;
-  const showBlueprints = opened || s.blueprints.length > 0;
-  const freePlay = s.freePlay === 'ready';
-  if (!showReserve && !showSupplies && !showBlueprints && s.upgrades.length === 0 && !freePlay) {
-    return null;
-  }
+  const rows = inventoryRows(s, shop);
+  if (!showsInventory(rows)) return null;
   return (
     <Panel
       class={`inventory ${shop ? 'in-shop' : ''}`}
       title="Your goods"
       label="Your company’s goods"
     >
-      {showReserve && (
-        <div class={`inv-row ${s.reserve.length === 0 ? 'is-empty' : ''}`}>
+      {rows.reserve && (
+        <div class={`inv-row reserve ${s.reserve.length === 0 ? 'is-empty' : ''}`}>
           <h3 class="inv-label">
             <Tip term="reserve">Reserve</Tip>
             <span class="inv-count">
@@ -93,8 +89,10 @@ export function Inventory({ shop = false }: { shop?: boolean }) {
                       : def.name
                   }
                 >
-                  {def.name}
-                  {r.crew && <span class="inv-note"> (crew)</span>}
+                  <span class="inv-name">
+                    {def.name}
+                    {r.crew && <span class="inv-note"> (crew)</span>}
+                  </span>
                 </button>
               );
             })}
@@ -102,8 +100,8 @@ export function Inventory({ shop = false }: { shop?: boolean }) {
           </div>
         </div>
       )}
-      {showSupplies && (
-        <div class={`inv-row ${s.supplies.length === 0 ? 'is-empty' : ''}`}>
+      {rows.supplies && (
+        <div class={`inv-row supplies ${s.supplies.length === 0 ? 'is-empty' : ''}`}>
           <h3 class="inv-label">
             <Tip term="supplies">Supplies</Tip>
             <span class="inv-count">
@@ -138,7 +136,7 @@ export function Inventory({ shop = false }: { shop?: boolean }) {
                     <span class="inv-glyph" aria-hidden="true">
                       {supplyGlyph(sup)}
                     </span>
-                    {def.name}
+                    <span class="inv-name">{def.name}</span>
                   </button>
                   {shop && (
                     <SellButton
@@ -154,8 +152,8 @@ export function Inventory({ shop = false }: { shop?: boolean }) {
           </div>
         </div>
       )}
-      {showBlueprints && (
-        <div class={`inv-row ${s.blueprints.length === 0 ? 'is-empty' : ''}`}>
+      {rows.blueprints && (
+        <div class={`inv-row blueprints ${s.blueprints.length === 0 ? 'is-empty' : ''}`}>
           <h3 class="inv-label">
             <Tip term="blueprints">Blueprints</Tip>
             <span class="inv-count">
@@ -175,7 +173,7 @@ export function Inventory({ shop = false }: { shop?: boolean }) {
                     onClick={() => hover('blueprint', i)}
                     title={`${def.name}: always on`}
                   >
-                    {def.name}
+                    <span class="inv-name">{def.name}</span>
                   </button>
                   {shop && (
                     <SellButton
@@ -191,7 +189,7 @@ export function Inventory({ shop = false }: { shop?: boolean }) {
           </div>
         </div>
       )}
-      {s.upgrades.length > 0 && (
+      {rows.upgrades && (
         <div class="inv-row">
           <h3 class="inv-label">Company</h3>
           <div class="inv-slots">
@@ -202,13 +200,13 @@ export function Inventory({ shop = false }: { shop?: boolean }) {
                 onMouseEnter={() => hover('upgrade', i)}
                 title={CONTENT.upgrades[id].name}
               >
-                {CONTENT.upgrades[id].name}
+                <span class="inv-name">{CONTENT.upgrades[id].name}</span>
               </span>
             ))}
           </div>
         </div>
       )}
-      {freePlay && (
+      {rows.freePlay && (
         <p class="free-play" role="status">
           Weekend Crew is here: your next build doesn’t end the week.
         </p>

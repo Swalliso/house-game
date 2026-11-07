@@ -1,10 +1,11 @@
 // The interface's primitives (M5a): Panel, Card, Button, Chip, Plaque (the Counter), Icon,
 // Keycap, Well, and for the sheets and Settings: Sheet, Switch, Slider, Segmented, and Price.
 // Their look is in kit.css; every screen builds from these, so the pixel style, the
-// readable-font switch, and the states stay the same everywhere.
+// readable-font switch, and the states stay the same everywhere. useDialogFocus keeps the
+// keyboard inside a sheet or the menu while it's open.
 
-import type { ComponentChildren, JSX, Ref } from 'preact';
-import { useRef } from 'preact/hooks';
+import type { ComponentChildren, JSX, RefObject } from 'preact';
+import { useEffect, useRef } from 'preact/hooks';
 import { ICON_SIZES, type IconName } from '../theme/art.ts';
 
 export type { IconName };
@@ -268,11 +269,95 @@ export function Well({ class: cls, label }: { class?: string; label?: string }) 
   return <span class={`well ${cls ?? ''}`} role={label ? 'img' : undefined} aria-label={label} />;
 }
 
+const FOCUSABLE =
+  'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])';
+
+/** The controls Tab reaches inside an element, in order (hidden ones left out). */
+function focusables(root: HTMLElement): HTMLElement[] {
+  return [...root.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(
+    (el) => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden',
+  );
+}
+
+/** The open dialogs, oldest first: only the newest keeps the keyboard. */
+const openDialogs: HTMLElement[] = [];
+
+/**
+ * Keeps the keyboard in a dialog (a sheet, the menu) while it's open: it takes focus when it
+ * opens (an element marked data-autofocus, or `first`, or its first control), Tab and Shift+Tab
+ * cycle inside it, and focus goes back where it was when it closes. Only the newest open dialog
+ * holds the keyboard, so Settings opened from the menu keeps it until it closes.
+ */
+export function useDialogFocus(
+  dialog: RefObject<HTMLElement>,
+  first?: () => HTMLElement | null | undefined,
+): void {
+  useEffect(() => {
+    const root = dialog.current;
+    if (!root) return;
+    const before = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    openDialogs.push(root);
+    const start =
+      root.querySelector<HTMLElement>('[data-autofocus]') ??
+      first?.() ??
+      focusables(root)[0] ??
+      root;
+    start.focus({ preventScroll: true });
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab' || openDialogs[openDialogs.length - 1] !== root) return;
+      const items = focusables(root);
+      const head = items[0];
+      const tail = items[items.length - 1];
+      const at = document.activeElement as HTMLElement | null;
+      const inside = !!at && root.contains(at);
+      if (!head || !tail) {
+        e.preventDefault();
+        return;
+      }
+      // Off the list (the sheet's text, or outside the dialog): Shift+Tab goes to the last
+      // control; Tab from outside goes to the first, and from the text to the next one in order.
+      if (e.shiftKey && (!inside || at === head || !items.includes(at))) {
+        e.preventDefault();
+        tail.focus();
+      } else if (!e.shiftKey && (!inside || at === tail)) {
+        e.preventDefault();
+        head.focus();
+      }
+    };
+    // Capture, so it runs before anything else, and wherever focus happens to be.
+    window.addEventListener('keydown', onKey, true);
+    return () => {
+      window.removeEventListener('keydown', onKey, true);
+      const k = openDialogs.indexOf(root);
+      if (k >= 0) openDialogs.splice(k, 1);
+      if (before?.isConnected) before.focus({ preventScroll: true });
+    };
+  }, []);
+}
+
+/**
+ * A scrim's click handlers: a press that starts on the scrim and ends there closes the dialog,
+ * so a drag that starts inside it (selecting text) and ends outside it doesn't.
+ */
+export function useScrimClose(onClose: () => void): {
+  onPointerDown: (e: PointerEvent) => void;
+  onClick: (e: MouseEvent) => void;
+} {
+  const downOnScrim = useRef(false);
+  return {
+    onPointerDown: (e) => (downOnScrim.current = e.target === e.currentTarget),
+    onClick: (e) => {
+      if (e.target === e.currentTarget && downOnScrim.current) onClose();
+    },
+  };
+}
+
 /**
  * A sheet over the page (Settings, How to play, a copy fallback): a wood panel on a scrim, with
  * a close button on its plank. A press that starts on the scrim and ends there closes it, so a
- * drag out of the sheet doesn't. The caller handles Esc and focus (App.tsx closes the top
- * sheet on Esc).
+ * drag out of the sheet doesn't. It holds the keyboard while it's open (useDialogFocus): its
+ * text takes focus, so the arrow keys scroll it, unless a control is marked data-autofocus.
+ * App.tsx closes the top sheet on Esc.
  */
 export function Sheet({
   title,
@@ -281,8 +366,6 @@ export function Sheet({
   label,
   head,
   footer,
-  bodyRef,
-  dialogRef,
   onKeyDown,
   children,
 }: {
@@ -295,22 +378,16 @@ export function Sheet({
   head?: ComponentChildren;
   /** A row under the body that never scrolls away: the sheet's buttons. */
   footer?: ComponentChildren;
-  bodyRef?: Ref<HTMLDivElement>;
-  dialogRef?: Ref<HTMLDivElement>;
   onKeyDown?: (e: KeyboardEvent) => void;
   children?: ComponentChildren;
 }) {
-  const downOnScrim = useRef(false);
+  const dialog = useRef<HTMLDivElement>(null);
+  const body = useRef<HTMLDivElement>(null);
+  useDialogFocus(dialog, () => body.current);
   return (
-    <div
-      class="sheet-scrim"
-      onPointerDown={(e) => (downOnScrim.current = e.target === e.currentTarget)}
-      onClick={(e) => {
-        if (e.target === e.currentTarget && downOnScrim.current) onClose();
-      }}
-    >
+    <div class="sheet-scrim" {...useScrimClose(onClose)}>
       <div
-        ref={dialogRef}
+        ref={dialog}
         class={`sheet ${cls ?? ''}`}
         role="dialog"
         aria-modal="true"
@@ -335,7 +412,7 @@ export function Sheet({
           }
           bodyClass="sheet-body"
         >
-          <div class="sheet-scroll" ref={bodyRef} tabIndex={-1}>
+          <div class="sheet-scroll" ref={body} tabIndex={-1}>
             {children}
           </div>
           {footer !== undefined && <div class="sheet-footer">{footer}</div>}

@@ -191,16 +191,19 @@
 }
 .title-name {
   margin: 0;
-  /* The wordmark is the logo: Public Pixel even with the readable font, at 48 px and up. */
+  /* The wordmark is the logo: Public Pixel even with the readable font, sized from the UI pixel
+     itself (not the type tokens, which the readable font redefines), so each of its font
+     pixels is four UI pixels and lands on whole device pixels: 64 px at 1080p. */
   font-family: 'OH Display', var(--font-system);
-  font-size: var(--fs-banner);
+  font-size: calc(var(--px) * 32);
   font-weight: 400;
   line-height: 1;
   text-transform: uppercase;
   color: var(--wood-deep);
-  /* One of the font's pixels (a quarter of its UI pixels) of honey under each letter. */
+  /* One of the font's pixels of honey under each letter. */
   text-shadow: 0 calc(var(--px) * 4) 0 var(--wood-light);
   white-space: nowrap;
+  -webkit-font-smoothing: none;
 }
 .title-pitch {
   margin: var(--space-4) auto 0;
@@ -280,7 +283,7 @@
    of the sign. */
 @media (max-width: 1500px) {
   .title-name {
-    font-size: var(--fs-hero);
+    font-size: calc(var(--px) * 24);
     text-shadow: 0 calc(var(--px) * 3) 0 var(--wood-light);
   }
   .title-pitch {

@@ -146,6 +146,12 @@ export const FEEL = {
     sheet: 260,
     /** A milestone's ribbon stamping in (it stays up for bannerMs). */
     banner: 380,
+    /**
+     * The target's stamp (and a neutral note) scaling in, and fading out at the end of its
+     * targetFlashMs. The scale is its own short animation, so the text is drawn crisp again
+     * once it lands.
+     */
+    stamp: 280,
   },
 
   /** The title screen's street (M5a): a car drives by now and then. */

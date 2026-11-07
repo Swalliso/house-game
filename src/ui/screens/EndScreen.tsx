@@ -52,7 +52,10 @@ function Milestones({ s }: { s: RunState }) {
   return (
     <section class="run-end-section">
       <h3 class="plank-tag" aria-label={`Milestones: ${met} of ${phases.length}`}>
-        Milestones · {met}/{phases.length}
+        Milestones
+        <span class="plank-count">
+          {met}/{phases.length}
+        </span>
       </h3>
       <ol class="run-end-milestones">
         {phases.map((p, i) => {
@@ -134,7 +137,7 @@ export function EndScreen() {
   return (
     <Panel
       class={`run-end ${won ? 'won' : 'lost'}`}
-      title={won ? 'The house is done' : 'Run over'}
+      title={won ? 'Job done!' : 'Run over'}
       label={title}
     >
       <header class="run-end-head">

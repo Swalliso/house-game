@@ -4,12 +4,13 @@
 // M5a draws them in the pixel style: the milestone's banner is a ribbon stamped in, gold for a
 // milestone met and orange for one missed or in overtime; notes and toasts sit at the top
 // center, under the top bar, or inside the shop's sheet under its header, so they never cover
-// the goods or the hand.
+// the goods or the hand. A toast raised while a sheet or the menu is open (Copy run code, from
+// the menu) shows over it instead.
 
 import { useEffect, useState } from 'preact/hooks';
 import { banner, busy, flash, played, skip } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
-import { copyFallback, copyText, shopShown, toast } from '../hud/actions.ts';
+import { anyModalOpen, copyFallback, copyText, shopShown, toast } from '../hud/actions.ts';
 import { Button, Icon, Sheet } from '../kit/kit.tsx';
 import { notice } from '../store.ts';
 import './overlays.css';
@@ -53,7 +54,7 @@ export function TargetFlash() {
         class={`target-flash ui ${f.tone}`}
         key={f.id}
         role="status"
-        style={{ animationDuration: `${FEEL.targetFlashMs}ms` }}
+        style={{ '--flash-ms': `${FEEL.targetFlashMs}ms` }}
       >
         {f.tone === 'good' && <Icon name="flag" />}
         {f.text}
@@ -64,11 +65,12 @@ export function TargetFlash() {
 
 /**
  * Notes and toasts, at the top center under the top bar. While the shop's sheet is open they
- * sit inside it instead (`docked`, rendered by the shop), under its header.
+ * sit inside it instead (`docked`, rendered by the shop), under its header. A toast waits in
+ * ModalToast while a sheet or the menu is open.
  */
 export function Notes({ docked = false }: { docked?: boolean }) {
   const n = notice.value;
-  const t = toast.value;
+  const t = anyModalOpen() ? null : toast.value;
   if (docked !== shopShown.value || (!n && !t)) return null;
   return (
     <div class={`notes ui ${docked ? 'docked' : ''}`}>
@@ -101,6 +103,19 @@ export function Notes({ docked = false }: { docked?: boolean }) {
           {t.text}
         </div>
       )}
+    </div>
+  );
+}
+
+/** A toast raised while a sheet or the menu is open, over its scrim at the top center. */
+export function ModalToast() {
+  const t = toast.value;
+  if (!t || !anyModalOpen()) return null;
+  return (
+    <div class="toast-layer ui">
+      <div class="toast" key={t.id} role="status">
+        {t.text}
+      </div>
     </div>
   );
 }
@@ -157,7 +172,7 @@ export function CopyFallback() {
         readOnly
         rows={5}
         value={c.text}
-        ref={(el) => el?.select()}
+        data-autofocus
         onFocus={(e) => (e.target as HTMLTextAreaElement).select()}
       />
     </Sheet>

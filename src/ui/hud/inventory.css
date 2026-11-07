@@ -40,15 +40,18 @@
 }
 .inv-slot {
   --slot-band: var(--paper-line);
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
+  min-width: 0;
   min-height: calc(var(--px) * 13);
   max-width: 100%;
   margin: 0;
   padding: 0 calc(var(--px) * 3) 0 var(--space-2);
   border: var(--px) solid transparent;
   border-image: var(--art-ring) 1 / var(--px);
+  border-radius: 0;
   background: var(--card);
   background-clip: padding-box;
   box-shadow:
@@ -58,13 +61,32 @@
   color: var(--ink);
   text-align: left;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   cursor: pointer;
   transition: transform var(--dur-hover) ease-out;
 }
+/* The name ends in an ellipsis when the slot is too narrow; the title shows it whole. */
+.inv-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* A hover lifts a slot, a press sets it back down. While it's pressed, its hit area reaches up
+   over that UI pixel, so a press at its top edge still lands (kit.css does the same for
+   buttons and cards). */
 .inv-slot:hover {
   transform: translateY(calc(var(--px) * -1));
+}
+button.inv-slot:not(.selected):active {
+  transform: none;
+  transition-duration: var(--dur-press);
+}
+button.inv-slot:active::before {
+  content: '';
+  position: absolute;
+  left: calc(var(--px) * -1);
+  right: calc(var(--px) * -1);
+  bottom: 100%;
+  height: calc(var(--px) * 3);
 }
 .inv-slot.rarity-common {
   --slot-band: var(--rarity-common);
@@ -115,10 +137,21 @@
   padding-inline: var(--space-1);
   font-weight: 400;
 }
-/* A short window (1280×720): an empty row is just its count, so the hand starts higher. */
+/* A short window (1280×720): an empty row is just its count in the shop, and while building
+   it's left out (there's nothing in it to use), so the hand starts higher. A panel with only
+   empty rows goes too. */
 @media (max-height: 800px) {
   .inv-row.is-empty .inv-slots {
     display: none;
+  }
+  .inventory:not(.in-shop) .inv-row.is-empty {
+    display: none;
+  }
+  .inventory:not(.in-shop):not(:has(.inv-row:not(.is-empty), .free-play)) {
+    display: none;
+  }
+  .inventory:not(.in-shop) .panel-body {
+    padding-block: var(--space-1) var(--space-2);
   }
 }
 .free-play {

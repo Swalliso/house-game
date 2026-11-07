@@ -41,7 +41,7 @@
     var(--shadow-card);
   font-family: var(--font-display);
   font-size: var(--fs-title);
-  line-height: var(--lh-body);
+  line-height: var(--lh-title);
   color: var(--ink);
 }
 .run-end.won .run-end-verdict {
@@ -116,7 +116,9 @@
 .run-end-milestones .name {
   grid-column: 2 / -1;
   grid-row: 1;
+  min-width: 0;
   font-weight: 700;
+  overflow-wrap: anywhere;
 }
 /* How it went, then its Wow against the target, which drops to a line of its own when the
    column is too narrow for both. */
@@ -189,10 +191,12 @@
   font-weight: 700;
   color: var(--ink);
 }
-/* New run, Copy, and Title stay in view at the column's foot, as End week does. */
+/* New run, Copy, and Title stay in view at the column's foot, as End week does: like the
+   hand's bar, it reaches past the column's padding to the window's foot, so the rows scrolling
+   under it never show below it. */
 .run-end-actions {
   position: sticky;
-  bottom: 0;
+  bottom: calc(var(--px) * -5);
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
@@ -210,13 +214,21 @@
 @media (max-width: 1500px) {
   .run-end-actions {
     margin: 0 calc(var(--space-2) * -1);
-    padding: var(--space-2);
+    padding: var(--space-2) var(--space-2) var(--space-3);
   }
   .run-end-actions .btn .icon {
     display: none;
   }
+  /* The narrow column's names: the regular weight, so the longest ("Groundbreaking") fits. */
+  .run-end-milestones .name {
+    font-weight: 400;
+  }
 }
 
+/* A plank tag's count, after its word: quieter than the word. */
+.plank-count {
+  font-weight: 400;
+}
 .run-end-sr {
   position: absolute;
   width: 1px;

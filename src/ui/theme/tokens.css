@@ -146,6 +146,7 @@
   --fs-banner: calc(var(--px) * 32); /* 64: banners, the wordmark */
   --lh-body: calc(var(--px) * 10); /* 20 */
   --lh-tight: calc(var(--px) * 9); /* 18 */
+  --lh-title: calc(var(--px) * 14); /* 28: --fs-title and --fs-num-md text that can wrap */
 
   /* --- Spacing: steps of 2 UI px ------------------------------------------------------- */
   --space-1: calc(var(--px) * 2); /* 4 */
@@ -176,4 +177,5 @@
   --fs-banner: 56px;
   --lh-body: 19px;
   --lh-tight: 17px;
+  --lh-title: 22px;
 }

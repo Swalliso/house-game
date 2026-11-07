@@ -200,16 +200,29 @@
   padding-top: var(--px);
   line-height: var(--lh-tight);
 }
+/* "Complete early" and "Press again" stacked in one cell, the idle one hidden: the button's
+   width never changes between the two presses. */
+.tb-early-label {
+  display: grid;
+  text-align: left;
+}
+.tb-early-label > * {
+  grid-area: 1 / 1;
+}
+.tb-early-label > .is-hidden {
+  visibility: hidden;
+}
 .tb-early-detail {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   font-weight: 400;
 }
+/* The budget bonus: the coin, then the amount, as a price reads. */
 .tb-early-budget {
   display: inline-flex;
   align-items: center;
-  gap: var(--px);
+  gap: var(--space-1);
 }
 .tb-early .tip {
   text-decoration: none;
@@ -233,7 +246,6 @@
   .tb-met-text,
   .tb-forecast-word,
   .switch-text-more,
-  .tb-early-word,
   .tb-run-week {
     display: none;
   }

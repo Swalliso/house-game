@@ -1,16 +1,27 @@
 // The controls strip along the bottom (M5a): the keys for what you're doing now, as keycaps,
-// instead of every shortcut at once. How to play lists them all. Hidden on a short window,
-// where the board needs the room.
+// instead of every shortcut at once. How to play lists them all. On a short window it sits
+// under the board only, so the side columns keep their height, and drops the hints marked
+// .hint-extra.
 
 import type { ComponentChildren } from 'preact';
 import { busy } from '../fx/director.ts';
 import { Keycap } from '../kit/kit.tsx';
 import { run, selected, tentative, tool } from '../store.ts';
+import { shopHidden } from './actions.ts';
 import './hints.css';
 
-function Hint({ keys, children }: { keys: readonly string[]; children: ComponentChildren }) {
+function Hint({
+  keys,
+  extra = false,
+  children,
+}: {
+  keys: readonly string[];
+  /** Left out on a short window, where the strip has less room. */
+  extra?: boolean;
+  children: ComponentChildren;
+}) {
   return (
-    <span class="hint">
+    <span class={`hint ${extra ? 'hint-extra' : ''}`}>
       {keys.map((k) => (
         <Keycap key={k}>{k}</Keycap>
       ))}
@@ -30,11 +41,14 @@ export function Hints() {
       </>
     );
   } else if (s.screen === 'shop') {
-    hints = (
+    // The sheet covers the lot, so F only means something once the shop is hidden.
+    hints = shopHidden.value ? (
+      <Hint keys={['F']}>fit the lot</Hint>
+    ) : (
+      // The sheet's own foot says where to sell, so a short window leaves these out.
       <>
-        <span class="hint-text">Hover anything to read it</span>
-        <span class="hint-text">Sell from your supplies and blueprints</span>
-        <Hint keys={['F']}>fit the lot</Hint>
+        <span class="hint-text hint-extra">Hover anything to read it</span>
+        <span class="hint-text hint-extra">Sell from your supplies and blueprints</span>
       </>
     );
   } else if (s.screen !== 'build') {
@@ -60,7 +74,9 @@ export function Hints() {
       <>
         <Hint keys={['1', '2', '3']}>pick a card</Hint>
         <Hint keys={['D']}>demolish</Hint>
-        <Hint keys={['Scroll']}>zoom</Hint>
+        <Hint keys={['Scroll']} extra>
+          zoom
+        </Hint>
         <Hint keys={['F']}>fit</Hint>
         <Hint keys={['Enter']}>pass</Hint>
       </>

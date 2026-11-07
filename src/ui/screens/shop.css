@@ -107,10 +107,11 @@
   margin: 0 auto 0 0;
   color: var(--ink-soft);
 }
+/* The saving bonus: the coin, then the amount, as a price reads. */
 .skip-hint {
   display: inline-flex;
   align-items: center;
-  gap: var(--px);
+  gap: var(--space-1);
   margin-left: var(--space-1);
   padding: 0 var(--space-1);
   background: var(--action-hi);
@@ -265,6 +266,10 @@
   flex: none;
   min-width: calc(var(--px) * 26);
 }
+/* A disabled Buy says why in a word (Full, Need 2), so it keeps a readable ink. */
+.offer .buy:disabled {
+  color: var(--ink-soft);
+}
 /* Rarity's fills: the band and the label say it; the tint helps the eye sort a shelf. */
 .offer.rarity-uncommon {
   --card-fill: var(--uncommon-tint);
@@ -399,11 +404,15 @@
 
 /* --- A crate's options and the strike picker: a sheet over the shelves --------------------- */
 
+/* The scrim's one row is the scrim's own height (a definite row, where an auto one would
+   grow with the sheet), so the sheet's max-height holds and its options scroll inside it on a
+   short window, with its buttons kept below them in view. */
 .shop-scrim {
   position: absolute;
   inset: 0;
   z-index: 5;
   display: grid;
+  grid-template-rows: minmax(0, 100%);
   place-items: center;
   padding: var(--space-4);
   background: var(--scrim);
@@ -411,14 +420,28 @@
 .shop-pick.panel {
   max-width: 100%;
   max-height: 100%;
+  min-height: 0;
   animation: sheet-in var(--dur-modal) ease-out;
 }
 .reduce-motion .shop-pick.panel {
   animation: none;
 }
 .shop-pick .panel-body {
-  overflow: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 0;
+  padding: 0;
+}
+.pick-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
   gap: var(--space-3);
+  padding: var(--space-3);
+  scrollbar-width: thin;
+  scrollbar-color: var(--wood) var(--paper-inset);
 }
 .shop-pick .panel-title {
   display: flex;
@@ -430,8 +453,11 @@
   color: var(--ink-soft);
 }
 .pick-foot {
+  flex: none;
   display: flex;
   justify-content: flex-end;
+  padding: var(--space-2) var(--space-3);
+  box-shadow: inset 0 var(--px) 0 var(--paper-line);
 }
 .strike-sheet {
   width: min(calc(var(--px) * 300), 100%);
@@ -447,6 +473,19 @@
   justify-content: center;
   gap: var(--space-4);
   padding: var(--space-2) var(--space-2) var(--space-1);
+}
+/* A narrow board: three options still fit on one row. */
+@media (max-width: 1500px) {
+  .shop-scrim {
+    padding: var(--space-2);
+  }
+  .pick-scroll {
+    padding: var(--space-2);
+  }
+  .crate-options {
+    gap: var(--space-3);
+    padding-inline: var(--space-1);
+  }
 }
 /* --beat is when an option turns over (ShopScreen.tsx, FEEL.shop.crateStaggerMs). */
 .crate-option.pcard {

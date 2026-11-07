@@ -11,6 +11,7 @@ import { Button, Icon, Switch } from '../kit/kit.tsx';
 import { completeEarly, earlyOffer, forecast, preview, run, setAutoComplete } from '../store.ts';
 import { howToPlayOpen, menuOpen, openSettings } from './actions.ts';
 import { BudgetCount } from './BudgetCount.tsx';
+import { weekTicks } from './meter.ts';
 import { Tip } from './Tip.tsx';
 import './topbar.css';
 
@@ -84,12 +85,6 @@ function PhaseBlock() {
   );
 }
 
-/** Where the meter's ticks go: the phase's start, then an even share of the target each week. */
-function weekTicks(start: number, target: number, weeks: number): number[] {
-  const from = Math.min(1, start / Math.max(1, target));
-  return Array.from({ length: weeks - 1 }, (_, k) => from + ((1 - from) * (k + 1)) / weeks);
-}
-
 function Progress() {
   const s = shownRun.value ?? run.value;
   const tallying = shownRun.value !== null;
@@ -107,7 +102,7 @@ function Progress() {
   const guide =
     `A rough guide, not a promise: this week's ${SCORE_LABELS.total} for each week left in ` +
     `${phase}.${placing ? ' It includes the piece you’re placing.' : ''}`;
-  const ticks = weekTicks(s.phaseStartScore, target, CONTENT.balance.weeksPerPhase);
+  const ticks = weekTicks(s.phaseStartScore, rules.pace(s), target, CONTENT.balance.weeksPerPhase);
   return (
     <div class="tb-progress" aria-label={`${SCORE_LABELS.total} ${score} of ${target}`}>
       <div class="tb-progress-line">
@@ -141,8 +136,8 @@ function Progress() {
             />
           )}
           <div class={`meter-fill tb-fill ${met ? 'met' : ''}`} style={{ width: `${pct}%` }} />
-          {ticks.map((t) => (
-            <div key={t} class="meter-tick" style={{ left: `${t * 100}%` }} />
+          {ticks.map((t, k) => (
+            <div key={k} class="meter-tick" style={{ left: `${t * 100}%` }} />
           ))}
           {showForecast && f > score && (
             <div
@@ -209,6 +204,8 @@ function CompleteEarly() {
   const bonus = `+${formatNumber(offer.bonus.score)} ${SCORE_LABELS.total} · +${offer.bonus.budget} budget`;
   const detail = `saves ${plural(offer.weeksSaved, 'week')} · ${bonus}`;
   const phase = rules.phaseName(run.value.phase);
+  // Both labels share one cell, the idle one hidden, so the button keeps its width when it's
+  // armed and a second press in the same spot lands (D-073).
   return (
     <Button
       variant={armed ? 'armed' : 'secondary'}
@@ -219,16 +216,19 @@ function CompleteEarly() {
       aria-label={armed ? 'Press again to complete early' : `Complete early: ${detail}`}
     >
       <span class="tb-early-label">
-        {armed ? 'Press again' : <Tip term="early">Complete early</Tip>}
+        <span class={armed ? 'is-hidden' : ''} aria-hidden={armed ? 'true' : undefined}>
+          <Tip term="early">Complete early</Tip>
+        </span>
+        <span class={armed ? '' : 'is-hidden'} aria-hidden={armed ? undefined : 'true'}>
+          Press again
+        </span>
       </span>
       <span class="tb-early-detail">
         <span>
-          +{formatNumber(offer.bonus.score)}
-          <span class="tb-early-word"> {SCORE_LABELS.total}</span>
+          +{formatNumber(offer.bonus.score)} {SCORE_LABELS.total}
         </span>
         <span class="tb-early-budget">
-          +{offer.bonus.budget}
-          <Icon name="coin" />
+          <Icon name="coin" />+{offer.bonus.budget}
         </span>
       </span>
     </Button>

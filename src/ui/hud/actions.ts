@@ -3,6 +3,7 @@
 import { computed, signal } from '@preact/signals';
 import { audio } from '../audio/audio.ts';
 import { busy, skip } from '../fx/director.ts';
+import { copyFallback, settingsOpen } from './modals.ts';
 import {
   appScreen,
   demolishArmed,
@@ -20,11 +21,14 @@ import {
   type Source,
 } from '../store.ts';
 
-export const settingsOpen = signal(false);
-/** The top bar's menu: Copy run code, the seed, How to play, Settings, and Quit to title. */
-export const menuOpen = signal(false);
-/** The How to play sheet, from the title screen or the top bar. */
-export const howToPlayOpen = signal(false);
+export {
+  anyModalOpen,
+  closeTopModal,
+  copyFallback,
+  howToPlayOpen,
+  menuOpen,
+  settingsOpen,
+} from './modals.ts';
 export const toast = signal<{ id: number; text: string } | null>(null);
 let toastId = 0;
 
@@ -47,9 +51,6 @@ export const shopShown = computed(
     !busy.value &&
     !shopHidden.value,
 );
-
-/** Text to copy by hand, when the browser won't let us write the clipboard (some iframes). */
-export const copyFallback = signal<{ title: string; text: string } | null>(null);
 
 export async function copyText(text: string, done = 'Copied'): Promise<void> {
   try {
