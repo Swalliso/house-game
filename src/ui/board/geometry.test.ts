@@ -1,8 +1,10 @@
 // The board's scales (§12, Art; D-097): CSS px per art px, with one cell CELL art px.
 
+import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { CELL, cellUnit } from '../sprites.ts';
 import {
+  defaultFloor,
   fitScale,
   MAX_ZOOM,
   maxZoom,
@@ -40,7 +42,7 @@ describe('the default zoom', () => {
     expect(CELL * s * 25).toBe(800);
   });
 
-  it('is never below 1×, so a small window pans', () => {
+  it('is never below 1× at a devicePixelRatio of 1 or 2, so a small window pans', () => {
     expect(fitScale(960, 600, 24, 24, 1)).toBe(1);
     expect(fitScale(960, 600, 24, 24, 2)).toBe(1);
   });
@@ -147,5 +149,48 @@ describe('Fit', () => {
     // On Retina, cells are a whole number of device pixels, which can be half a CSS px.
     expect(overviewScale(976, 610, 24, 24, 2) * CELL * 2).toBe(48);
     expect(overviewScale(976, 615, 24, 24, 2) * CELL * 2).toBe(49);
+  });
+});
+
+describe('the default zoom at 125% and 150% display scaling (D-097’s zoom note)', () => {
+  it('rounds the 1× floor down to whole device pixels per art pixel', () => {
+    expect(defaultFloor(1)).toBe(1);
+    expect(defaultFloor(2)).toBe(1);
+    expect(defaultFloor(3)).toBe(1);
+    expect(defaultFloor(1.25)).toBe(0.8);
+    expect(defaultFloor(1.5)).toBe(1 / 1.5);
+    expect(defaultFloor(1.75)).toBe(1 / 1.75);
+    expect(defaultFloor(2.5)).toBe(2 / 2.5);
+    // A browser zoomed out to 90% still gets one whole device pixel per art pixel.
+    expect(defaultFloor(0.9)).toBe(1 / 0.9);
+  });
+
+  it('is the default where two device pixels per art pixel don’t fit', () => {
+    // About the board's room in a 1536×864 window (a 1920×1080 screen at 125%) and in a
+    // 1280×720 one (the same screen at 150%); a tiny window pans at the floor.
+    expect(fitScale(1150, 700, 24, 24, 1.25)).toBe(0.8);
+    expect(fitScale(976, 610, 24, 24, 1.5)).toBe(1 / 1.5);
+    expect(fitScale(400, 300, 24, 24, 1.25)).toBe(0.8);
+    expect(fitScale(400, 300, 24, 24, 1.5)).toBe(1 / 1.5);
+    // A window that holds two device pixels per art pixel gets them: 1.6× and 1.33×.
+    expect(fitScale(2400, 1500, 24, 24, 1.25)).toBe(1.6);
+    expect(fitScale(2400, 1500, 24, 24, 1.5)).toBe(2 / 1.5);
+  });
+
+  it('is always one of the zoom steps, so zooming in and back out returns to it', () => {
+    fc.assert(
+      fc.property(
+        fc.constantFrom(0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 3),
+        fc.integer({ min: 100, max: 4000 }),
+        fc.integer({ min: 100, max: 3000 }),
+        (dpr, width, height) => {
+          const s = fitScale(width, height, 24, 24, dpr);
+          expect(stops(dpr)).toContain(s);
+          expect(s).toBeGreaterThanOrEqual(defaultFloor(dpr));
+          const up = zoomStep(s, 1, dpr);
+          if (up !== s) expect(zoomStep(up, -1, dpr)).toBe(s);
+        },
+      ),
+    );
   });
 });

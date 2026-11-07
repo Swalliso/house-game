@@ -535,7 +535,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - D-049 (Accepted): the camera, from a CSS transform to re-layout in whole steps, with 2× panning rather than fitting at 1280×720.
 - D-033 (Accepted): terrain in a canvas layer and pieces from a sprite atlas.
 
-**Amended by:** D-097 (Accepted 2026-11-06): a cell is 32 art px, a 2×2 block of LimeZu's 16 px tiles, and the default zoom is never below 1× (at 1080p, the same size on screen as 2× was). Rooms get several furniture sprites. The palette is LimeZu's, with the color limits only for the placeholders, and Serene Village isn't needed.
+**Amended by:** D-097 (Accepted 2026-11-06): a cell is 32 art px, a 2×2 block of LimeZu's 16 px tiles, and the default zoom is never below 1× (at 1080p, the same size on screen as 2× was; at 125% and 150% display scaling, 1× rounded down to whole device pixels). Rooms get several furniture sprites. The palette is LimeZu's, with the color limits only for the placeholders, and Serene Village isn't needed.
 **2026-11-06 (M5a review):** no link or quote is recorded for "LimeZu has said" in the Sources bullet, and the two packs' licenses differ on open source. The team chose to keep the Sources bullet's approach for both packs; see D-097's license note.
 
 ### D-058 · Sound: calm music, rewards that escalate
@@ -662,7 +662,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - **The default zoom** counts the street row, so the lot and the street fit together at the largest whole scale of at least 2×. A smaller window scrolls until M2's camera.
 
 **Why:** Choices the plan leaves to the build, picked so the slice can answer playtest 1's questions.
-**Amended by:** D-097 (Accepted 2026-11-06): with 32 art px per cell, the default zoom is at least 1×, the same 32 CSS px per cell as 2× was.
+**Amended by:** D-097 (Accepted 2026-11-06): with 32 art px per cell, the default zoom is at least 1×, the same 32 CSS px per cell as 2× was. At 125% and 150% display scaling the floor is 1× rounded down to whole device pixels (D-097's zoom note).
 
 ### D-069 · A fenced yard needs at least 10 tiles
 **Status:** Accepted · 2026-11-05 (chosen by the team in the M2 build, from the sim's enclosure probe)
@@ -712,7 +712,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - **The ?debug panel** is a small floating panel: jump to a milestone with a bot-built house, meet the target or force a miss, add budget, give a card, and instant tallies.
 
 **Why:** Choices §7 leaves to the build.
-**Amended by:** D-097 (Accepted 2026-11-06): with 32 art px per cell, the default is the largest scale that fits, never below 1×, and the wheel steps in whole device pixels per art pixel up to 3×: 1×, 2× and 3× at a devicePixelRatio of 1, and 0.5× steps on a Retina screen. Fit is still the one fractional scale.
+**Amended by:** D-097 (Accepted 2026-11-06): with 32 art px per cell, the default is the largest scale that fits, never below 1× (rounded down to whole device pixels at 125% and 150% display scaling), and the wheel steps in whole device pixels per art pixel up to 3×: 1×, 2× and 3× at a devicePixelRatio of 1, and 0.5× steps on a Retina screen. Fit is still the one fractional scale.
 
 ### D-083 · Weekend Crew: D-075's banked building, as a tool
 **Status:** Accepted · 2026-11-05 (the team chose it for M3, resolving D-075). The price is a placeholder.
@@ -750,7 +750,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **Decision:**
 - **One cell is 32 art px,** a 2×2 block of LimeZu's 16 px tiles. Sprites are drawn in art px, and the board's scale is CSS px per art px. The text-grid placeholders are doubled to 32×32 when the atlas is built, until LimeZu cuts replace them.
 - **The camera:**
-  - The default is the largest scale that fits, in whole device pixels per art pixel and never below 1×. At 1080p the whole lot fits at 1×: 32 CSS px per cell, the same size on screen as before. At 1280×720 it pans.
+  - The default is the largest scale that fits, in whole device pixels per art pixel and never below 1× rounded down to whole device pixels: 1× at a devicePixelRatio of 1 or 2, 0.8× at 125% display scaling and 0.67× at 150% (the zoom note). So it's always one of the wheel's steps. At 1080p the whole lot fits at 1×: 32 CSS px per cell, the same size on screen as before. At 1280×720 it pans.
   - The wheel steps in whole device pixels per art pixel, up to 3×: 1×, 2× and 3× at a devicePixelRatio of 1, and 0.5× steps on a Retina screen.
   - Fit stays the one fractional scale.
 - **Rooms are a walls-down cutaway built from the house,** all in the UI, from the placed pieces:
@@ -793,6 +793,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
   1. The smallest whole step from 1× up (1.6× or 1.33×). It's crisp and fits this decision's wording, but cells are 51 or 43 CSS px, so the board pans more: at 125%, a 1920×1080 window no longer fits the lot.
   2. The visual audit's rule: whole steps, and uneven pixels only where cells would drop below about 24 CSS px. That gives a crisp 0.8× at 125% (25.6 CSS px cells, the whole lot fits) and keeps the uneven 1× at 150%. It goes below this decision's 1× floor.
   3. Keep 1× (the board the same size on screen as before), list the uneven pixels as a cost here and in §12, and make 1× a wheel step at these ratios.
+- *Decided by the team, 2026-11-06:* round down, at every ratio. The default's floor is 1× rounded down to whole device pixels per art pixel (`defaultFloor` in `geometry.ts`): one device pixel per art pixel at 125% and 150%, so 0.8× and 0.67×, cells of 25.6 and 21.3 CSS px. It's option 2 without its 24 px exception. The default is always crisp and always one of the wheel's steps, so zooming back or leaving Fit returns to it, and Fit is the one fractional scale at every ratio. A window that holds two device pixels per art pixel gets 1.6× or 1.33×. The cost: where it doesn't, the board is 80% or 67% of 1×'s size on screen.
 
 ---
 
