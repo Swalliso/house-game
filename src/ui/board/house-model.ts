@@ -130,10 +130,22 @@ export interface Room {
   fixture?: FixtureId;
 }
 
+/**
+ * How a piece will look once it's placed, for its ghost: its color (an index into its type's
+ * palette, as the house will give it), which way its small choices go, and its fixture.
+ */
+export interface PieceLook {
+  color: number;
+  flip?: boolean;
+  fixture?: FixtureId;
+}
+
 export interface HouseModel {
   /** The lot, in cells. */
   width: number;
   height: number;
+  /** A piece alone (pieceModel): how it will look in the house. */
+  look?: PieceLook;
   /** The room (indoor piece) on each cell, by uid, or 0. */
   room: Int32Array;
   /** Edge kinds: h[y × width + x] is the top edge of cell (x, y), for y from 0 to height. */
@@ -317,11 +329,12 @@ export function hallLinks(state: RunState): HallLinks {
 const solo = new Map<string, HouseModel>();
 
 /**
- * One piece alone, for the ghost: its own outline walls, no doors or windows. In the piece's
- * own frame: its bounding box's top-left cell is (0, 0).
+ * One piece alone, for the ghost: its own outline walls, no doors or windows, looking as `look`
+ * says it will once placed (its fixture included). In the piece's own frame: its bounding box's
+ * top-left cell is (0, 0).
  */
-export function pieceModel(defId: PieceId, rot: PlacedPiece['rot']): HouseModel {
-  const key = `${defId}:${rot}`;
+export function pieceModel(defId: PieceId, rot: PlacedPiece['rot'], look?: PieceLook): HouseModel {
+  const key = `${defId}:${rot}:${look ? `${look.color}:${look.flip ?? ''}:${look.fixture ?? ''}` : ''}`;
   let m = solo.get(key);
   if (!m) {
     const shape = CONTENT.pieces[defId].shape;
@@ -336,10 +349,21 @@ export function pieceModel(defId: PieceId, rot: PlacedPiece['rot']): HouseModel 
         sunnyRows: 0,
         attempt: 0,
       },
-      pieces: [{ uid: 1, defId, x: 0, y: 0, rot, placedWeek: 0 }],
+      pieces: [
+        {
+          uid: 1,
+          defId,
+          x: 0,
+          y: 0,
+          rot,
+          placedWeek: 0,
+          ...(look?.fixture ? { fixture: { id: look.fixture, week: 0 } } : {}),
+        },
+      ],
       nextUid: 2,
     };
     m = buildModel(house, NO_LINKS, false);
+    if (look) m.look = look;
     solo.set(key, m);
   }
   return m;

@@ -65,6 +65,7 @@ import {
   zoomIn,
   zoomOut,
 } from './camera.ts';
+import { newRoomLook, roomLook } from '../art/rooms.ts';
 import { newPieceLook, pieceLook, yardModel } from '../art/yard.ts';
 import { center, isIndoor, labelSpot, occupancy, uidAt } from './geometry.ts';
 import { hallLinks, houseModel } from './house-model.ts';
@@ -666,7 +667,11 @@ function Ghost({
         rot={rot}
         cells={cells}
         scale={scale}
-        look={isIndoor(defId) ? undefined : newPieceLook(run.value.house, defId)}
+        look={
+          isIndoor(defId)
+            ? newRoomLook(run.value.house, defId)
+            : newPieceLook(run.value.house, defId)
+        }
         class={`ghost ${legal ? 'legal' : 'illegal'} ${pending ? 'pending' : ''}`}
       />
       {!legal && inside.length > 0 && (
@@ -837,7 +842,11 @@ function ToolTarget({ scale }: { scale: number }) {
         rot={t.rot ?? 0}
         cells={cells}
         scale={scale}
-        look={isIndoor(piece.defId) ? undefined : pieceLook(state.house, piece.uid)}
+        look={
+          isIndoor(piece.defId)
+            ? roomLook(state.house, piece.uid)
+            : pieceLook(state.house, piece.uid)
+        }
         class={`ghost ${ok ? 'legal' : 'illegal'} ${armed ? 'pending' : ''}`}
       />
       {label(

@@ -34,7 +34,7 @@
 // had bumped one). Small choices (which corner, which side) go by the hash too. Never by chance:
 // a house always looks the same.
 
-import type { FixtureId, PieceId } from '../../rules/index.ts';
+import type { FixtureId, HouseState, PieceId } from '../../rules/index.ts';
 import {
   EDGE,
   WALL,
@@ -45,6 +45,7 @@ import {
   overlaps,
   uidHash,
   type HouseModel,
+  type PieceLook,
   type Rect,
   type Room,
   type Side,
@@ -339,8 +340,8 @@ interface Want {
 interface Ctx {
   /** This room's color: an index into its type's palettes (variants), as `palette` picks it. */
   rank: number;
-  /** A stable per-room number for small choices (which corner, which side). */
-  hash: number;
+  /** Which way this room's small choices go (which corner, which side), from its uid's hash. */
+  flip: boolean;
   fixture: FixtureId | undefined;
 }
 
@@ -382,7 +383,7 @@ function fireplace(c: Ctx, ...slots: Slot[]): Want[] {
 
 /** Two corners in an order this room keeps. */
 function corners(c: Ctx, a: Slot, b: Slot): Slot[] {
-  return (c.hash >> 3) % 2 ? [a, b] : [b, a];
+  return c.flip ? [a, b] : [b, a];
 }
 
 export type RoomType = Extract<
@@ -1042,30 +1043,61 @@ const COLORS: Readonly<Partial<Record<PieceId, number>>> = {
  * older room's color never depends on a newer one.
  */
 function palette(m: HouseModel, room: Room): number {
-  const n = COLORS[room.defId] ?? 1;
+  const same = [...m.rooms.values()].filter((r) => r.defId === room.defId).map((r) => r.uid);
+  return paletteOf(room.defId, same, room.uid);
+}
+
+/** Room `uid`'s color among the rooms of its type, `uids` (its own included). */
+function paletteOf(defId: PieceId, uids: readonly number[], uid: number): number {
+  const n = COLORS[defId] ?? 1;
   const taken = new Set<number>();
-  const same = [...m.rooms.values()]
-    .filter((r) => r.defId === room.defId)
-    .sort((a, b) => a.uid - b.uid);
-  for (const r of same) {
-    const start = uidHash(r.uid, 11) % n;
+  for (const u of [...uids].sort((a, b) => a - b)) {
+    const start = uidHash(u, 11) % n;
     let c = start;
     for (let k = 0; k < n; k++) {
       c = (start + k) % n;
       if (!taken.has(c)) break;
     }
     if (taken.size >= n) c = start;
-    if (r.uid === room.uid) return c;
+    if (u === uid) return c;
     taken.add(c);
   }
   return 0;
+}
+
+/** Which way a room's small choices go: a bit of its uid's hash. */
+const flipOf = (uid: number) => ((uidHash(uid, 7) >>> 3) & 1) === 1;
+
+/** How placed room `uid` looks (its color, its choices, its fixture): its ghost's while the Moving Truck carries it. */
+export function roomLook(house: HouseState, uid: number): PieceLook {
+  const piece = house.pieces.find((p) => p.uid === uid);
+  if (!piece) return { color: 0 };
+  const same = house.pieces.filter((p) => p.defId === piece.defId).map((p) => p.uid);
+  return {
+    color: paletteOf(piece.defId, same, uid),
+    flip: flipOf(uid),
+    ...(piece.fixture ? { fixture: piece.fixture.id } : {}),
+  };
+}
+
+/** How a new room of type `defId` will look once it's placed (its uid is the house's next): its ghost's. */
+export function newRoomLook(house: HouseState, defId: PieceId): PieceLook {
+  const uid = house.nextUid;
+  const same = house.pieces.filter((p) => p.defId === defId).map((p) => p.uid);
+  return { color: paletteOf(defId, [...same, uid], uid), flip: flipOf(uid) };
 }
 
 function layOut(m: HouseModel, uid: number): RoomLayout {
   const room = m.rooms.get(uid);
   const spec = room && (SPECS as Partial<Record<PieceId, (c: Ctx) => Want[]>>)[room.defId];
   if (!room || !spec) return { items: [], fixtureShown: !room?.fixture };
-  const c: Ctx = { rank: palette(m, room), hash: uidHash(uid, 7), fixture: room.fixture };
+  // A piece alone (a ghost) looks as it will once placed; a placed room by the house.
+  const look = m.look;
+  const c: Ctx = {
+    rank: look ? look.color : palette(m, room),
+    flip: look?.flip ?? flipOf(uid),
+    fixture: room.fixture,
+  };
   const wants = spec(c);
   const L = new Layout(analyze(m, room));
   const done = new Set<Want>();

@@ -29,7 +29,7 @@ import {
 } from '../board/house-model.ts';
 import { CELL, spritePos } from '../sprites.ts';
 import { artSize } from './drawings.ts';
-import { itemRows, roomItems, roomLayout, type Item } from './rooms.ts';
+import { itemRows, newRoomLook, roomItems, roomLayout, roomLook, type Item } from './rooms.ts';
 
 const INDOOR = (Object.keys(CONTENT.pieces) as PieceId[]).filter(
   (id) => CONTENT.pieces[id].category === 'indoor',
@@ -282,6 +282,42 @@ describe('room layouts', () => {
       expect(roomLayout(a, uid)).toEqual(roomLayout(b, uid));
       expect(roomLayout(a, uid)).toBe(roomLayout(a, uid));
     }
+  });
+});
+
+describe('the ghost', () => {
+  const kept = (items: readonly Item[], re: RegExp) =>
+    items
+      .map((i) => i.sprite)
+      .filter((sp) => re.test(sp))
+      .sort();
+
+  it('has the colors a new room will get, bumped by the older rooms of its type', () => {
+    const two: Spec[] = [
+      ['bedroom', 1, 1],
+      ['bedroom', 3, 1],
+    ];
+    const look = newRoomLook(house(two), 'bedroom');
+    const ghost = roomItems(pieceModel('bedroom', 0, look), 1);
+    const built = roomItems(modelOf(house([...two, ['bedroom', 5, 1]])), 3);
+    // The same bed and rug (where they stand may differ: the house gives it doors).
+    expect(kept(ghost, /^(bed-|rug-)/)).toEqual(kept(built, /^(bed-|rug-)/));
+  });
+
+  it('carries a moved room’s colors and fixture', () => {
+    const h = house([
+      ['livingRoom', 1, 1, 0, 'fireplace'],
+      ['livingRoom', 4, 1],
+    ]);
+    for (const uid of [1, 2]) {
+      const look = roomLook(h, uid);
+      const ghost = roomItems(pieceModel('livingRoom', 0, look), 1);
+      const built = roomItems(modelOf(h), uid);
+      expect(kept(ghost, /^(sofa-|fireplace)/), `uid ${uid}`).toEqual(
+        kept(built, /^(sofa-|fireplace)/),
+      );
+    }
+    expect(roomLook(h, 1).fixture).toBe('fireplace');
   });
 });
 

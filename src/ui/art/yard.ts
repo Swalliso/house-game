@@ -35,7 +35,14 @@ import {
   type Rot,
 } from '../../rules/index.ts';
 import { isIndoor, occupancy } from '../board/geometry.ts';
-import { grow, overlaps, uidHash, type HouseModel, type Rect } from '../board/house-model.ts';
+import {
+  grow,
+  overlaps,
+  uidHash,
+  type HouseModel,
+  type PieceLook,
+  type Rect,
+} from '../board/house-model.ts';
 import { CELL, type SpriteId } from '../sprites.ts';
 import { artSize } from './drawings.ts';
 import type { Item } from './rooms.ts';
@@ -113,10 +120,7 @@ export function yardModel(house: HouseState, m: HouseModel): YardModel {
 const solo = new Map<string, YardLayout>();
 
 /** How a ghost should look: the color its piece has or will have, and the fixture it carries. */
-export interface Look {
-  color: number;
-  fixture?: FixtureId;
-}
+export type Look = PieceLook;
 
 /**
  * One yard piece alone, for the ghost: in its own frame (its bounding box's top-left cell is

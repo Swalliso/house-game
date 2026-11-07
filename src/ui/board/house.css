@@ -159,3 +159,7 @@
 .ghost-piece.pending.legal .ghost-tint .fill {
   fill: none;
 }
+/* Waiting for End week, it pulses (app.css's pending-pulse); not with Reduce motion on. */
+.reduce-motion .ghost.pending {
+  animation: none;
+}

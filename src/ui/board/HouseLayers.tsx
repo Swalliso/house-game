@@ -11,11 +11,12 @@
 // - labels: each piece's digit and its fixture and ⚠ badges, inside its walls
 //
 // The canvases redraw only when the house changes: never on hover, a tally step, or zoom
-// (zoom only changes their CSS size). The house model, the rooms' items and the yard are cached
-// per house.
+// (zoom only changes their CSS size), and before the browser paints, so a new room's floor and
+// walls show in the same frame as its furniture. The house model, the rooms' items and the yard
+// are cached per house.
 
 import type { JSX } from 'preact';
-import { useEffect, useMemo, useRef } from 'preact/hooks';
+import { useLayoutEffect, useMemo, useRef } from 'preact/hooks';
 import {
   CONTENT,
   type Cell,
@@ -43,17 +44,19 @@ import {
   type Pixels,
 } from '../art/house-paint.ts';
 import { itemRows, roomItems, roomLayout, type Item } from '../art/rooms.ts';
-import { yardPieceLayout, type Look, type YardModel } from '../art/yard.ts';
+import { yardPieceLayout, type YardModel } from '../art/yard.ts';
 import { highlighted, justPlaced, played, tallyView } from '../fx/director.ts';
 import { settings } from '../settings.ts';
 import { atlasImage, CELL, cellUnit, FIXTURE_GLYPHS, spriteStyle } from '../sprites.ts';
 import { currentTally, preview, tool } from '../store.ts';
 import { cellsOutline, digitCell, isIndoor, type Occupancy } from './geometry.ts';
-import { inset, pieceModel, type HouseModel, type Rect } from './house-model.ts';
+import { inset, pieceModel, type HouseModel, type PieceLook, type Rect } from './house-model.ts';
 import { register, settle as settleFx } from './piece-fx.ts';
 import './house.css';
 
 let atlasData: Promise<AtlasPixels> | null = null;
+/** The atlas's pixels once they're read: from then on the canvases paint before the browser does. */
+let atlasReady: AtlasPixels | null = null;
 
 /** The atlas's pixels, read once, for the painters. */
 export function atlasPixels(): Promise<AtlasPixels> {
@@ -64,9 +67,31 @@ export function atlasPixels(): Promise<AtlasPixels> {
     const ctx = c.getContext('2d', { willReadFrequently: true })!;
     ctx.drawImage(img, 0, 0);
     const d = ctx.getImageData(0, 0, c.width, c.height);
-    return { width: d.width, height: d.height, data: d.data };
+    atlasReady = { width: d.width, height: d.height, data: d.data };
+    return atlasReady;
   });
   return atlasData;
+}
+
+/**
+ * Paints with the atlas: at once when it's read, so a canvas changes in the same frame as the DOM
+ * around it (a placed room's floor and walls with its furniture, never a frame of bare grass);
+ * only the very first paint waits for it. Returns a canceller for a paint that's still waiting.
+ */
+function withAtlas(paint: (atlas: AtlasPixels) => void): () => void {
+  if (atlasReady) {
+    paint(atlasReady);
+    return () => {};
+  }
+  let cancelled = false;
+  atlasPixels()
+    .then((atlas) => {
+      if (!cancelled) paint(atlas);
+    })
+    .catch((e) => console.error(e));
+  return () => {
+    cancelled = true;
+  };
 }
 
 function put(ctx: CanvasRenderingContext2D, p: Pixels | null): void {
@@ -89,26 +114,20 @@ function HouseCanvas({
   layer: 'floor' | 'walls';
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
-  useEffect(() => {
+  // Before the browser paints: the canvas changes in the same frame as the house's DOM.
+  useLayoutEffect(() => {
     const canvas = ref.current;
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
-    let cancelled = false;
     if (layer === 'walls') {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       put(ctx, paintWalls(model));
-    } else {
-      atlasPixels()
-        .then((atlas) => {
-          if (cancelled) return;
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          put(ctx, paintFloors(model, atlas, { ...(yard ? { yard } : {}) }));
-        })
-        .catch((e) => console.error(e));
+      return;
     }
-    return () => {
-      cancelled = true;
-    };
+    return withAtlas((atlas) => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      put(ctx, paintFloors(model, atlas, { ...(yard ? { yard } : {}) }));
+    });
   }, [model, yard, layer]);
   return (
     <canvas
@@ -244,8 +263,10 @@ function PieceItems({
   settle?: number | undefined;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => (ref.current ? register(uid, 'items', ref.current) : undefined), [uid]);
-  useEffect(() => {
+  // Registered and settled before the browser paints, so the first frame a placed piece is seen
+  // in is the settle's first (the parts that mount in other layers join it: piece-fx.ts).
+  useLayoutEffect(() => (ref.current ? register(uid, 'items', ref.current) : undefined), [uid]);
+  useLayoutEffect(() => {
     if (!settle || settle <= played.settle || settings.value.reduceMotion) return;
     played.settle = settle;
     settleFx(uid);
@@ -354,7 +375,7 @@ function PieceOverhang({
   scale: number;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => (ref.current ? register(uid, 'overhang', ref.current) : undefined), [uid]);
+  useLayoutEffect(() => (ref.current ? register(uid, 'overhang', ref.current) : undefined), [uid]);
   return (
     <div
       ref={ref}
@@ -377,7 +398,7 @@ function PieceOverhang({
 /** A piece's flash: its cells in white, shown only while it wobbles or settles. */
 function Flash({ uid, d }: { uid: number; d: string }) {
   const ref = useRef<SVGPathElement>(null);
-  useEffect(() => (ref.current ? register(uid, 'flash', ref.current) : undefined), [uid]);
+  useLayoutEffect(() => (ref.current ? register(uid, 'flash', ref.current) : undefined), [uid]);
   return <path ref={ref} class="hl-flash" d={d} />;
 }
 
@@ -441,7 +462,7 @@ export function HighlightsLayer({
 /** A piece's weekly score, in its bottom-right cell inside its walls. */
 function Digit({ uid, value, style }: { uid: number; value: number; style: JSX.CSSProperties }) {
   const ref = useRef<HTMLSpanElement>(null);
-  useEffect(() => (ref.current ? register(uid, 'digit', ref.current) : undefined), [uid]);
+  useLayoutEffect(() => (ref.current ? register(uid, 'digit', ref.current) : undefined), [uid]);
   return (
     <div class={`digit ${value === 0 ? 'zero' : ''}`} style={style}>
       <span ref={ref} class="digit-n">
@@ -591,8 +612,11 @@ export function GhostPiece({
   rot: Rot;
   cells: readonly Cell[];
   scale: number;
-  /** A yard piece's color and fixture (yard.ts pieceLook, newPieceLook), as it will be placed. */
-  look?: Look | undefined;
+  /**
+   * How the piece will look once placed: a room's colors, choices and fixture (rooms.ts roomLook,
+   * newRoomLook), a yard piece's color and fixture (yard.ts pieceLook, newPieceLook).
+   */
+  look?: PieceLook | undefined;
   class: string;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -603,7 +627,7 @@ export function GhostPiece({
   // In the piece's own frame (its bounding box's top-left cell at (0, 0)): what the canvas covers.
   const art = useMemo(() => {
     if (indoor) {
-      const model = pieceModel(defId, rot);
+      const model = pieceModel(defId, rot, look);
       const frame = { x: 0, y: 0, w: model.width * CELL, h: model.height * CELL };
       return { frame, paint: (a: AtlasPixels) => paintPiece(model, a, roomItems(model, 1)) };
     }
@@ -621,7 +645,7 @@ export function GhostPiece({
     }
     const frame = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
     return { frame, paint: (a: AtlasPixels) => paintYardPiece(layout, a) };
-  }, [defId, rot, indoor, look?.color, look?.fixture]);
+  }, [defId, rot, indoor, look?.color, look?.flip, look?.fixture]);
   const { frame } = art;
   const bw = Math.max(...cells.map((c) => c.x)) - minX + 1;
   const bh = Math.max(...cells.map((c) => c.y)) - minY + 1;
@@ -634,21 +658,18 @@ export function GhostPiece({
       ),
     [cells, minX, minY, px],
   );
-  useEffect(() => {
-    let cancelled = false;
-    atlasPixels()
-      .then((atlas) => {
+  // Before the browser paints, so the canvas is never seen blank (a new size clears it).
+  useLayoutEffect(
+    () =>
+      withAtlas((atlas) => {
         const ctx = ref.current?.getContext('2d');
-        if (cancelled || !ctx) return;
+        if (!ctx) return;
         ctx.clearRect(0, 0, frame.w, frame.h);
         const p = art.paint(atlas);
         if (p) put(ctx, { ...p, x: p.x - frame.x, y: p.y - frame.y });
-      })
-      .catch((e) => console.error(e));
-    return () => {
-      cancelled = true;
-    };
-  }, [art]);
+      }),
+    [art],
+  );
   return (
     <div
       class={`piece ghost-piece ${cls}`}
