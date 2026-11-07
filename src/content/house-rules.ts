@@ -142,7 +142,7 @@ export function houseRules(n: HouseholdNumbers): SpecDef[] {
           exempt: { piece: ['fence', 'driveway', 'sapling'] },
         },
       },
-      text: '6 or more yard pieces, and no yard type stands 4 or more times.',
+      text: '6 or more yard pieces, and no yard type stands 4 or more times. Fences, Driveways, and Saplings never break it.',
     },
   ];
 }

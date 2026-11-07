@@ -1,8 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import type { PieceId, PlaceAction, RunState } from './index.ts';
+import type { PieceId, PlaceAction, RunState, SpecDef } from './index.ts';
+import { followedLines } from './estimate.ts';
+import { computeLayout } from './layout.ts';
 import { lotFromRows } from './lot.ts';
-import { createRules } from './run.ts';
-import { emptyRows, houseFrom, setup, TEST_CONTENT as C, type Placement } from './testing.ts';
+import { createRules, type Rules } from './run.ts';
+import {
+  emptyRows,
+  houseFrom,
+  setup,
+  TEST_CONTENT as C,
+  withClient,
+  type Placement,
+} from './testing.ts';
 
 const rules = createRules(C);
 
@@ -188,5 +197,235 @@ describe('the greedy bot’s cheap estimate', () => {
       const est = rules.estimatePlay(s, p);
       expect(est.yardHint || est.linkHint).toBe(false);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------------------
+// The checklist (M4a): each line met adds specBonus (25) to the week's Mult. TEST_CONTENT's
+// clients have empty checklists, so each test gives the Hendersons theirs with withClient().
+// A Bedroom earns 3, +1 per Quiet neighbor (a Bedroom is Quiet); a Closet earns 1; a Kitchen
+// earns nothing alone. Houses sit in rows 4–7 of a 10 × 10 lot, clear of the sunny rows and
+// the street.
+
+const spec = (id: string, condition: SpecDef['condition']): SpecDef => ({
+  id,
+  name: id,
+  group: 'wishes',
+  condition,
+});
+
+const UNDER_ONE_ROOF = spec('underOneRoof', {
+  outline: { minRooms: 2, minFillPct: 60, maxAspect: 2 },
+});
+const ONE_KITCHEN = spec('oneKitchen', { count: { piece: 'kitchen' }, min: 1, max: 1 });
+const KITCHEN_DINING = spec('kitchenDining', {
+  adjacentPair: [{ piece: 'kitchen' }, { piece: 'diningRoom' }],
+});
+
+/** A house with this checklist, its rules, and the same house with no checklist. */
+function withLines(
+  specs: readonly SpecDef[],
+  placements: Placement[],
+  ...ids: PieceId[]
+): { R: Rules; s: RunState; plain: RunState } {
+  const R = createRules(withClient({ specs }));
+  const house = houseFrom(C, emptyRows(10, 10), placements);
+  const hand = ids.map((id) => ({ kind: 'piece' as const, id }));
+  return {
+    R,
+    s: { ...R.newRun(setup('checklist')), house, hand },
+    plain: { ...rules.newRun(setup('checklist')), house, hand },
+  };
+}
+
+const exactIn = (R: Rules, s: RunState, p: PlaceAction) => R.scoreOnly(s, p) - R.scoreOnly(s, null);
+
+describe('the checklist in the estimate', () => {
+  it('ranks a play that keeps Under one roof above an otherwise-equal one that breaks it', () => {
+    // Two Bedrooms side by side: a 4 × 2 box, at 2:1. A Closet under the first makes it 4 × 3;
+    // one right of the second makes it 5 × 2, too long. Either way it touches one Bedroom.
+    const { R, s, plain } = withLines(
+      [UNDER_ONE_ROOF],
+      [
+        ['bedroom', 0, 4],
+        ['bedroom', 2, 4],
+      ],
+      'closet',
+    );
+    const keeps = place(0, 0, 6);
+    const breaks = place(0, 4, 4);
+    expect(rules.estimatePlay(plain, keeps)).toEqual(rules.estimatePlay(plain, breaks));
+    const k = R.estimatePlay(s, keeps);
+    const b = R.estimatePlay(s, breaks);
+    expect([k.specFlips, b.specFlips]).toEqual([0, -1]);
+    expect(k.delta).toBeGreaterThan(b.delta);
+    // 8 Points at ×1.25: the Closet's 1 keeps ×1.25 (11, +1) or drops to ×1 (9, −1).
+    expect(k.delta).toBe(exactIn(R, s, keeps));
+    expect(b.delta).toBe(exactIn(R, s, breaks));
+    expect(R.preview(s, breaks).specsLost).toEqual(['underOneRoof']);
+  });
+
+  it('lowers the estimate for a second Kitchen, an L-Kitchen included', () => {
+    // Two Bedrooms (8 Points) and a Kitchen: One Kitchen holds, so the week is 8 × 1.25 = 10.
+    const { R, s, plain } = withLines(
+      [ONE_KITCHEN],
+      [
+        ['bedroom', 0, 4],
+        ['bedroom', 2, 4],
+        ['kitchen', 4, 4],
+      ],
+      'kitchen',
+      'lKitchen',
+      'closet',
+    );
+    const kitchen = place(0, 4, 6);
+    const lKitchen = place(1, 4, 6);
+    const closet = place(2, 4, 6);
+    expect(rules.estimatePlay(plain, kitchen).delta).toBe(0);
+    for (const p of [kitchen, lKitchen]) {
+      const est = R.estimatePlay(s, p);
+      expect(est.specFlips).toBe(-1);
+      expect(est.delta).toBe(-2); // 8 × 1
+      expect(est.delta).toBe(exactIn(R, s, p));
+    }
+    expect(R.estimatePlay(s, closet).specFlips).toBe(0);
+    expect(R.estimatePlay(s, closet).delta).toBe(exactIn(R, s, closet));
+  });
+
+  it('turns on a line it completes, scaled by the ×Mult the week already has', () => {
+    // Two Bedrooms and no Kitchen: a Kitchen turns One Kitchen on, +0.25 on 8 Points.
+    const { R, s } = withLines(
+      [ONE_KITCHEN],
+      [
+        ['bedroom', 0, 4],
+        ['bedroom', 2, 4],
+      ],
+      'kitchen',
+    );
+    const kitchen = place(0, 4, 4);
+    expect(R.estimatePlay(s, kitchen)).toMatchObject({ specFlips: 1, delta: 2 });
+    expect(exactIn(R, s, kitchen)).toBe(2);
+    // Ahead of Schedule with five milestones early is ×2, after the checklist's +Mult, so the
+    // line is worth +0.5 (8 × 2 = 16, then 8 × 2.5 = 20).
+    const early: RunState = {
+      ...s,
+      blueprints: [{ id: 'aheadOfSchedule', boughtWeek: 1 }],
+      milestonesEarly: 5,
+    };
+    expect(R.scoreOnly(early, null)).toBe(16);
+    expect(R.estimatePlay(early, kitchen)).toMatchObject({ specFlips: 1, delta: 4 });
+    expect(exactIn(R, early, kitchen)).toBe(4);
+  });
+
+  // Lines the estimate follows (count, none, ratio, outline, variety; stages, and, or, not of
+  // them) and lines it leaves to the exact score (touching, adjacency, fenced yards, Dark).
+  const FOLLOWED: SpecDef[] = [
+    spec('roomForEveryone', {
+      stages: [
+        { fromPhase: 0, condition: { count: { piece: 'bedroom' }, min: 1, max: 2 } },
+        { fromPhase: 1, condition: { count: { piece: 'bedroom' }, min: 3, max: 4 } },
+      ],
+    }),
+    spec('bathrooms', {
+      ratio: { count: { piece: 'bathroom' }, per: { piece: 'bedroom' }, every: 2, min: 1 },
+    }),
+    ONE_KITCHEN,
+    spec('livingRooms', {
+      and: [
+        { count: { piece: 'livingRoom' }, min: 1, max: 2 },
+        { count: { piece: 'diningRoom' }, max: 1 },
+      ],
+    }),
+    spec('underOneRoof', { outline: { minRooms: 4, minFillPct: 60, maxAspect: 2 } }),
+    spec('tidyYard', {
+      variety: {
+        of: { any: [{ property: 'yard' }, { property: 'outbuilding' }] },
+        min: 2,
+        maxEach: 1,
+        exempt: { piece: ['fence', 'driveway', 'sapling'] },
+      },
+    }),
+    spec('noGarage', { none: { piece: 'garage' } }),
+    spec('fewClosets', { not: { count: { piece: 'closet' }, min: 2 } }),
+    spec('officeOrLibrary', {
+      or: [
+        { count: { piece: 'homeOffice' }, min: 1 },
+        { count: { piece: 'library' }, min: 1 },
+      ],
+    }),
+  ];
+  const LEFT_OUT: SpecDef[] = [
+    spec('cozy', {
+      none: { all: [{ property: 'room' }, { not: { touching: { property: 'room' }, min: 2 } }] },
+    }),
+    KITCHEN_DINING,
+    spec('fencedYard', { fencedYardTiles: { min: 4 } }),
+    spec('dark', { count: { all: [{ property: 'room' }, { tag: 'Dark' }] }, min: 1 }),
+  ];
+
+  it('follows count, ratio, outline, and variety lines exactly, stage by stage', () => {
+    // Two Bedrooms, a Bathroom, and a Kitchen in a 5 × 4 box (65% full), a Lawn and a Flower
+    // Bed in the yard, and a hand that can turn each line on or off.
+    const { R, s } = withLines(
+      [...FOLLOWED, ...LEFT_OUT],
+      [
+        ['bedroom', 0, 4],
+        ['bedroom', 2, 4],
+        ['bathroom', 4, 4],
+        ['kitchen', 0, 6],
+        ['lawn', 6, 0],
+        ['flowerBed', 8, 0],
+      ],
+      'bedroom',
+      'kitchen',
+      'livingRoom',
+      'diningRoom',
+      'closet',
+      'garage',
+      'homeOffice',
+      'lawn',
+      'sapling',
+      'doghouse',
+    );
+    const ids = FOLLOWED.map((sp) => sp.id);
+    const counts = { on: 0, off: 0 };
+    for (const phase of [0, 1]) {
+      const state = { ...s, phase };
+      const { specs } = R.content.clients.hendersons;
+      const layout = computeLayout(R.content, state.house);
+      expect(followedLines(R.content, layout, { specs, phase })).toEqual(ids);
+      const plays = R.legalPlacements(state);
+      expect(plays.length).toBeGreaterThan(100);
+      for (const p of plays) {
+        const { specsGained, specsLost } = R.preview(state, p);
+        const on = specsGained.filter((id) => ids.includes(id)).length;
+        const off = specsLost.filter((id) => ids.includes(id)).length;
+        expect(R.estimatePlay(state, p).specFlips).toBe(on - off);
+        counts.on += on;
+        counts.off += off;
+      }
+    }
+    // The hand really does flip lines both ways.
+    expect(counts.on).toBeGreaterThan(50);
+    expect(counts.off).toBeGreaterThan(50);
+  });
+
+  it('flags a piece that would join an unmet pair line’s two types', () => {
+    // A Kitchen and a Bedroom: a Dining Room touching the Kitchen joins the pair.
+    const house: Placement[] = [
+      ['kitchen', 0, 4],
+      ['bedroom', 2, 4],
+    ];
+    const { R, s } = withLines([KITCHEN_DINING], house, 'diningRoom', 'closet');
+    expect(R.estimatePlay(s, place(0, 0, 6)).specHint).toBe(true); // under the Kitchen
+    expect(R.estimatePlay(s, place(0, 0, 2)).specHint).toBe(true); // over it
+    expect(R.estimatePlay(s, place(0, 4, 4)).specHint).toBe(false); // the Bedroom only
+    expect(R.estimatePlay(s, place(1, 0, 6)).specHint).toBe(false); // not a pair type
+    // It's never in the delta: the exact score decides.
+    expect(R.estimatePlay(s, place(0, 0, 6)).specFlips).toBe(0);
+    // Once the pair holds, another Dining Room by the Kitchen joins nothing new.
+    const held = withLines([KITCHEN_DINING], [...house, ['diningRoom', 0, 6]], 'diningRoom');
+    expect(held.R.checklist(held.s).find((l) => l.id === 'kitchenDining')?.met).toBe(true);
+    expect(held.R.estimatePlay(held.s, place(0, 0, 2)).specHint).toBe(false);
   });
 });

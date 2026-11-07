@@ -23,6 +23,13 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
         group: 'wishes',
         condition: { adjacentPair: [{ piece: 'kitchen' }, { piece: 'diningRoom' }] },
       },
+      // Any fenced yard (Appendix B's 4 tiles is under D-069's 10-tile minimum).
+      {
+        id: 'fencedYard',
+        name: 'A fenced yard',
+        group: 'wishes',
+        condition: { fencedYardTiles: { min: 4 } },
+      },
     ],
     tastes: [
       { kind: 'earn', target: { tag: 'Kid' }, pct: 50 },
@@ -34,7 +41,15 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
         pct: -50,
       },
     ],
-    pool: [{ kind: 'drawWeight', target: { piece: ['bedroom', 'bathroom', 'fence'] }, pct: 100 }],
+    // Spec pieces +100% (Appendix B), but not the Kitchen: every house takes exactly one, and
+    // extra Kitchen cards were the review's most common dead card (D-104).
+    pool: [
+      {
+        kind: 'drawWeight',
+        target: { piece: ['bedroom', 'bathroom', 'diningRoom', 'fence'] },
+        pct: 100,
+      },
+    ],
     targetPct: 100,
   },
   vladislav: {
@@ -53,9 +68,9 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
       },
       {
         id: 'library',
-        name: 'A Library',
+        name: 'One Library',
         group: 'wishes',
-        condition: { count: { piece: 'library' }, min: 1 },
+        condition: { count: { piece: 'library' }, min: 1, max: 1 },
       },
     ],
     tastes: [
@@ -77,6 +92,12 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
     specs: [
       ...houseRules({ bedrooms: steppedBedrooms(1, 2) }),
       {
+        id: 'bigYard',
+        name: 'A big fenced yard',
+        group: 'wishes',
+        condition: { fencedYardTiles: { min: 12 } },
+      },
+      {
         id: 'doghouses',
         name: 'Two Doghouses',
         group: 'wishes',
@@ -84,9 +105,9 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
       },
       {
         id: 'mudroom',
-        name: 'A Mudroom',
+        name: 'One Mudroom',
         group: 'wishes',
-        condition: { count: { piece: 'mudroom' }, min: 1 },
+        condition: { count: { piece: 'mudroom' }, min: 1, max: 1 },
       },
     ],
     tastes: [
@@ -137,7 +158,7 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
         id: 'offices',
         name: 'Two Home Offices',
         group: 'wishes',
-        condition: { count: { piece: 'homeOffice' }, min: 2 },
+        condition: { count: { piece: 'homeOffice' }, min: 2, max: 2 },
       },
       {
         // The street doesn't count (Appendix A · M4a): `none` looks at pieces only.

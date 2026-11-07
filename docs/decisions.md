@@ -128,6 +128,7 @@ The board sits behind a small `BoardView` interface, so Phaser could replace jus
 - Today's game fails too, by 14.5 points at today's targets.
 - A skipped week costs more than the reward pays (+2 budget and 10% of the phase's earnings per week saved). At 20% or 30% per week saved, the gap is −10.0 or −9.5 points: a pass, but the interval crosses the line.
 - The reward is the sim's to tune, so this is tuning, not a change (`house-systems-review.md` §5.8).
+**2026-11-06 (M4a):** on M4a's content (1,000 held-out runs, greedy's targets re-fitted, no arrivals yet), always against never: −12.2 points at 10% of the phase's earnings per week saved, −11.2 at 20%, and −9.8 at 30% (a pass, unsure). The reward is now +2 budget and 30% per week saved (`balance.ts`). M4b's re-check with the arrivals decides whether it needs more.
 
 ### D-041 · Overtime weeks
 **Status:** Accepted · 2026-11-04 (confirmed by the team)
@@ -904,6 +905,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 **Why:** the review's §4. With the ceilings in, the yard became the new repeat engine: one yard type stood 4+ times in 70% of P5's wins.
 **Changes:** D-071 and D-079 (the Treehouse); D-074 (packs stay free under the tidy yard).
+**2026-11-06 (M4a sim):** counting only yard types for the tidy yard (outbuildings neither count toward the 6 nor break it) was tried: one yard type standing 4+ times rose from 5% to 11% of wins, and greedy won 2 points less. Outbuildings keep counting.
 
 ### D-102 · Packs: Fences and Driveways you shape
 **Status:** Accepted · 2026-11-06 (the team chose it for M4a, resolving D-074). The numbers are placeholders.
@@ -1029,13 +1031,10 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 **Changes:** D-072 (Accepted): how greedy ranks plays, and how the targets are checked; its targets stand. D-084 (Accepted): its Sim line, since the default bot no longer strikes. The team confirmed both on 2026-11-06. D-085 (Proposed): its numbers came from the old greedy. D-088 (Proposed): the shop bot's strike, reroll, and Catalog rules, and the reports.
 **2026-11-06 (systems review):** the review proposes adding its house report to §8's reports: room counts, repeats, Bedrooms per Bathroom, research.md's plausibility check, and the glance measures (`house-systems-review.md` §6 and Appendix).
-
----
-
-## Proposed
+**2026-11-07 (M4a):** the house report is in (`npm run sim`, after the piece table), with wins and all runs side by side, and per-client and per-crew tables with each checklist line's hold rates and the client spread criterion. Greedy's cheap estimate now sees the checklist lines that counts can decide (`count`, `ratio`, `outline`, `variety`, by the current stage): a play that turns one on or off moves its estimate by what the line's Charm would add. Pair lines (the Hendersons' Kitchen beside the Dining Room) get a hint for exact scoring. On 400 runs, the shortlist finds the week's exact best 87% of the time (82% before), and Under one roof holds at the end for more of every client's houses (Juniper 24% → 34%). A sim's speed is unchanged, and the benchmark passes at 610–680 ms.
 
 ### D-071 · M2 content defaults
-**Status:** Proposed · 2026-11-05, with the M2 pull request; to confirm at playtest 2.
+**Status:** Accepted · 2026-11-06 (proposed with the M2 pull request; the team settled the Treehouse in D-101 and asked for this to be Accepted unless the sim showed the Hendersons' Kid taste making Treehouse clusters dominant. It doesn't: see below).
 **Decision:**
 - **Shapes and tags** Appendix B leaves open come from `content-brainstorm.md` §3, §4, and §6, as D-067 did: Closet 1×1; Garage 2×2, Loud; Home Office 1×2, Quiet; Sapling 1×1, Green; Flower Bed 1×1, Green and Pretty; Herb Garden 1×2, Green; Patio 2×2, Outdoor and Social; Doghouse 1×1; Treehouse and Greenhouse 2×2.
 - **Card names** for the shape variants: Long Hallway (1×3), L-Fence (the 5-tile L), and Long Driveway (1×5), each sharing its type with the short card.
@@ -1045,6 +1044,25 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 **Why:** Defaults so every base-pool piece is playable in M2; each is a line of data.
 **Playtest 2:** the Treehouse's extra +2 plus its Kid bonus made clusters too strong (D-079). The other defaults held. It stays Proposed until D-079 is settled.
+**2026-11-06 (M4a):** the L-Fence and Long Driveway cards are gone: the Fence and the Driveway are packs (D-102). In M4a's sim (1,000 held-out greedy runs), the Hendersons place 1.2 Treehouses a run and they earn 1.9% of their Wow; 3+ Treehouses appear in 11–15% of wins across clients, against the review's 12–14%.
+
+---
+
+## Proposed
+
+### D-104 · Client numbers from M4a's sim: one signature room each, and the Hendersons' pool
+**Status:** Proposed · 2026-11-06, with the M4 pull request; numbers for the sim and playtest 4.
+**Decision:**
+- A client's wish for its signature room has a ceiling, like One Kitchen: Count Vladislav wants **One Library**, the Barkers **One Mudroom**, and Dale **exactly two Home Offices**. Extra cards of those types renovate instead (D-098), and draw at half weight while the type is at its limit (D-100).
+- The Hendersons' pool helps their Kitchen-beside-the-Dining-Room wish through the Dining Room (+100%, with Bedrooms, Bathrooms, and Fences), but not the Kitchen: every house takes exactly one, and spare Kitchen cards were the review's most common dead card.
+- The fenced-yard wishes waiting on D-102 are in: the Hendersons want any fenced yard, and the Barkers a big one, 12 tiles or more (Appendix B).
+
+**Why:** M4a's sim (1,000 held-out greedy runs, 200 per client). Without ceilings, Count Vladislav placed 4.2 Libraries a run and Dale 2.8 Home Offices, and one of each shared room (H3) held in 54% of wins, against the review's 77% for its A + Renovate. With them:
+- one of each shared room 81% of wins, the glance test 44% (from 29%), research.md's plausibility check 76% (from 51%), and a compact outline 67% (from 59%)
+- Count Vladislav places 1.2 Libraries a run, and his houses pass the glance test in 41% of runs (from 7%); Dale places 1.9 Home Offices (glance 52%, from 29%)
+- greedy's win rate is unchanged (40.3% against 39.9%)
+
+**Changes:** Appendix B's specs for Count Vladislav (library ≥ 1), the Barkers (mudroom ≥ 1), and Dale (homeOffice ≥ 2), and the Hendersons' pool (spec pieces + fence +100%).
 
 ### D-085 · M3 balance: the milestone budget and the targets
 **Status:** Proposed · 2026-11-05, with the M3 pull request; numbers for the sim and playtests to tune.
@@ -1060,6 +1078,10 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - From milestone 3 the targets stopped binding: 1,172 against 490, 2,515 against 1,050, 4,830 against 2,250, 8,954 against 4,600 (completed a week early), and 14,116 against 9,500.
 - Each of milestones 4, 5, and 6 was already met when its phase began, because the score carries over (D-028): 1,172 against 1,050, 2,515 against 2,250, and 4,830 against 4,600.
 - They completed early once and found it hard to judge whether it paid, since the targets weren't pressing.
+**2026-11-06 (M4a, preliminary):** re-fitted on M4a's content before M4b's arrivals (1,000 untargeted greedy runs to fit, 1,000 held out to check): 15, 310, 1,100, 3,150, 6,950, 12,800, 23,300 Wow, with each client's `targetPct` (the Hendersons 100, Count Vladislav 115, the Barkers 90, Juniper 85, Dale 105).
+- Milestone 1's α is now 0.2, a target of about 15, where the review kept it. At the fit's old 0.4 (a target of 30), the novice bot passed milestone 1 in only 85% of runs; at 15, in 98%.
+- Held out, greedy won 40.3%, about 6 points under the fit's estimate, so the final curve will be eased as the review's was. No client was more than 14 points from another (unsure).
+- These aren't in `balance.ts` yet: the M4 pull request writes the curve fitted with the arrivals in.
 - D-089's unapplied fit (530 to 12,800) would still have lost to this run from milestone 3 on. A player who builds an engine pulls away in the middle of the run, so the curve's middle is too low, not just its end.
 
 **2026-11-06 (systems review):** under the review's option B, greedy wins 94.5% of 200 held-out runs at these targets.
@@ -1117,10 +1139,12 @@ After winning, keep going with rising targets and more change orders. Nearly fre
 ### D-031 · Client rarity tiers
 **Status:** Proposed
 Common, Uncommon, and Rare clients. The proposed lineup is in `content-brainstorm.md`, section 10.
+**2026-11-06 (M4a):** built with five Core clients: the Hendersons, the Barkers, and Dale are Common, Juniper Uncommon, and Count Vladislav Rare.
 
 ### D-032 · Job board at run start
 **Status:** Proposed
 Choose from two or three contracts, each one a client plus a lot.
+**2026-11-06 (M4a):** built: three contracts drawn by rarity (Common 65, Uncommon 27, Rare 8; D-026), each with a thumbnail of its lot, its wishes, household, and tastes. On a first visit the Hendersons come first, marked Recommended. The board sits outside the run code.
 
 ---
 
@@ -1199,7 +1223,7 @@ New content is preferred over raising existing numbers.
 **2026-11-06 (systems review):** under the review's option B, Charm's share of greedy's Wow rises from 59% to 73%, which works against this entry. M4a's Suite and Full House, which ship anyway, are part of that rise. Of the new rooms, only the Kids' Room reads the terrain, through Trees (`house-systems-review.md` §8, §10).
 
 ### D-079 · Treehouses shouldn't reward clustering
-**Status:** Open · 2026-11-05, from playtest 2.
+**Status:** Decided · 2026-11-06: the team took the review's Kid half in D-101 (Treehouses don't count each other as Kid partners), to stand unless M4a's sim showed the Hendersons' Kid taste making clusters dominant. It doesn't (below). Was Open, from playtest 2.
 **Finding:** Three Treehouses touching each other earned 288 Wow, more than every Bedroom in the run. Each counts the others as Kid neighbors, on top of D-071's extra +2.
 **Idea (the team's):** Reward one Treehouse per forest. Pay per touching Tree, and don't let Treehouses count toward each other's Kid bonus, or penalize them for touching.
 **Would change:** D-071's Treehouse default.
@@ -1211,6 +1235,7 @@ New content is preferred over raising existing numbers.
 - The rule needs Renovate beside it: under option A, which has the rule but no Renovate, 25% of wins have 3+ Treehouses.
 - Paying per touching Tree made Treehouses more common and pushed them deeper into the woods.
 - The review recommends only the Kid half, keeping D-071's steady +2 (`house-systems-review.md` §4).
+**2026-11-06 (M4a sim):** with the Kid half in, 1,000 held-out greedy runs: the Hendersons place 1.2 Treehouses a run, earning 1.9% of their Wow (other clients 1.6–2.0%); 3+ Treehouses in 11–15% of wins.
 
 ### D-080 · The Driveway: legibility, and a purpose without a Garage
 **Status:** Open · 2026-11-05, from playtest 2.

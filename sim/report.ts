@@ -1355,8 +1355,12 @@ export function criteriaReport(content: Content, input: CriteriaInput): string {
 // Survival is estimated from untargeted runs' weekly scores with overtime modelled (a missed
 // milestone borrows up to two extra weeks, which shift later milestones by as much).
 
-/** α for the teaching milestone. */
-export const ALPHA_FIRST = 0.4;
+/**
+ * α for the teaching milestone. M4a's house rules raise greedy's first-milestone median to
+ * about 70, and at 0.4 (a target of 30) the novice bot passes only 85% (§8 wants 90%), so it's
+ * a fifth: about 15, where the systems review kept it.
+ */
+export const ALPHA_FIRST = 0.2;
 /** Greedy's goal survival through each milestone after the first. */
 export const SURVIVAL_GOALS: readonly number[] = [1, 0.98, 0.95, 0.85, 0.72, 0.58, 0.45];
 

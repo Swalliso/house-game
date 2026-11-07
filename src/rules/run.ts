@@ -1956,6 +1956,7 @@ export function createRules(content: Content): Rules {
         def,
         placedCells(play.shape ?? def.shape, play.x, play.y, play.rot),
         modsOf(state).active,
+        { specs: clientOf(state).specs, phase: state.phase },
       );
     },
     fencedYards: (state) => layoutFor(state).fencedSizes,

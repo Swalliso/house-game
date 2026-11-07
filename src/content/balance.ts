@@ -78,11 +78,12 @@ export const BALANCE: Balance = {
     interestMax: 0, // Savings Account: +3
   },
 
-  // D-040 placeholders, per week saved, by phase (the last entry repeats): +2 budget, and 10%
-  // of this phase's earnings as Wow.
+  // D-040, per week saved, by phase (the last entry repeats): +2 budget, and 30% of this phase's
+  // earnings as Wow. At 10% greedy that always completes early won 12 points less than one that
+  // never does; at 30%, 10 (M4a's sim, 1,000 held-out runs).
   early: {
     budgetPerWeek: [2],
-    scorePct: [10],
+    scorePct: [30],
   },
 
   // Appendix A · M3a's +3 budget per milestone, raised to 4 (D-085): with 3 the greedy bot earned

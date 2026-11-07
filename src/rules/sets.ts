@@ -11,9 +11,10 @@
 // then depends only on pieces placed before the one that completed it, so placing a new piece
 // can add a set but never reshuffle or break one the house already holds (D-065).
 //
-// Hallway links are timed the same way: at each step only the links made by connectors placed
-// by then count, so a Hallway placed later can complete a new instance (on its own step) but
-// never re-date one the house already holds, or swap which capped instance holds.
+// Links are timed the same way: at each step only the links made by then count (a Hallway's,
+// from the connectors placed by then; Open Concept's, from the groups its types formed by
+// then), so a Hallway or a bridging room placed later can complete a new instance (on its own
+// step) but never re-date one the house already holds, or swap which capped instance holds.
 
 import type { Content, PieceDef, PieceId, SetDef, SetId, SetScore } from './index.ts';
 import { isRoom, pieceDef, type Layout } from './layout.ts';
@@ -77,22 +78,112 @@ function hallwayLinkTimes(content: Content, layout: Layout): Map<string, number>
   return times;
 }
 
-/** Touching for sets as of step t: physically, through Open Concept, or a Hallway linked by then. */
+/**
+ * When each pair of pieces became linked through Open Concept (a `link` modifier): the step at
+ * which both stood in one physically connected group of its types, built from pieces placed by
+ * then. A later piece that bridges two groups links them from its own step, never earlier.
+ * Cached per layout.
+ */
+const conceptTimes = new WeakMap<Layout, Map<string, number>>();
+
+function openConceptLinkTimes(content: Content, layout: Layout): Map<string, number> {
+  let times = conceptTimes.get(layout);
+  if (times) return times;
+  times = new Map();
+  const pieces = layout.house.pieces;
+  const at = new Map(pieces.map((p, i) => [p.uid, i]));
+  for (const mod of layout.mods) {
+    if (mod.kind !== 'link') continue;
+    const among = mod.among;
+    const isOf = (uid: number) => {
+      const def = pieceDef(content, layout.byUid.get(uid)!);
+      const extra = layout.countsAs.get(uid);
+      return among.some((id) => def.id === id || def.countsAs === id || !!extra?.has(id));
+    };
+    for (let t = 0; t < pieces.length; t++) {
+      // Only a piece of these types can join or bridge groups at its step.
+      if (!isOf(pieces[t]!.uid)) continue;
+      const seen = new Set<number>();
+      for (let c = 0; c <= t; c++) {
+        const start = pieces[c]!.uid;
+        if (seen.has(start) || !isOf(start)) continue;
+        const group: number[] = [];
+        const stack = [start];
+        seen.add(start);
+        while (stack.length > 0) {
+          const u = stack.pop()!;
+          group.push(u);
+          for (const n of layout.touching.get(u)!) {
+            if (n.kind !== 'piece' || seen.has(n.uid) || at.get(n.uid)! > t || !isOf(n.uid)) {
+              continue;
+            }
+            seen.add(n.uid);
+            stack.push(n.uid);
+          }
+        }
+        for (const a of group) {
+          for (const b of group) {
+            const key = `${a},${b}`;
+            if (a !== b && !times.has(key)) times.set(key, t);
+          }
+        }
+      }
+    }
+  }
+  conceptTimes.set(layout, times);
+  return times;
+}
+
+/**
+ * Touching for sets as of step t: physically, or through a link (a Hallway's or Open
+ * Concept's) made by then. A link made later never counts at an earlier step, so a new piece
+ * can't re-date or swap an instance the house already holds (D-065).
+ */
 function touchesAt(content: Content, layout: Layout, t: number): Touches {
-  const times = hallwayLinkTimes(content, layout);
-  // Open Concept's links come from the pieces themselves, not a later connector, so they stand.
-  const openConcept = layout.mods.some((m) => m.kind === 'link');
+  const hallway = hallwayLinkTimes(content, layout);
+  const concept = layout.mods.some((m) => m.kind === 'link')
+    ? openConceptLinkTimes(content, layout)
+    : null;
   return (a, b) => {
     if (!layout.neighbors.get(a)!.some((n) => n.kind === 'piece' && n.uid === b)) return false;
-    const linked = times.get(`${a},${b}`);
-    if (linked === undefined || linked <= t) return true;
-    // Linked only later through a Hallway: they count as touching only if they also touch.
-    return openConcept || layout.touching.get(a)!.some((n) => n.kind === 'piece' && n.uid === b);
+    if (layout.touching.get(a)!.some((n) => n.kind === 'piece' && n.uid === b)) return true;
+    const key = `${a},${b}`;
+    const h = hallway.get(key);
+    const c = concept?.get(key);
+    if (h === undefined && c === undefined) return true; // no other source of links
+    return (h !== undefined && h <= t) || (c !== undefined && c <= t);
   };
 }
 
 export function instanceKey(set: SetDef, members: readonly number[]): string {
   return `${set.id}:${[...members].sort((a, b) => a - b).join(',')}`;
+}
+
+/** A held instance before levels: its set, its key, and its members in uid order. */
+interface Instance {
+  set: SetDef;
+  key: string;
+  members: readonly number[];
+}
+
+/**
+ * Every set's instances, per layout: the tally, `inSet` conditions, and `set` specs all ask,
+ * and levels only change what an instance pays, so one layout matches its sets once.
+ */
+const instanceCache = new WeakMap<Layout, { content: Content; instances: readonly Instance[] }>();
+
+function instancesOf(content: Content, layout: Layout): readonly Instance[] {
+  const hit = instanceCache.get(layout);
+  if (hit && hit.content === content) return hit.instances;
+  const instances: Instance[] = [];
+  for (const set of Object.values(content.sets)) {
+    for (const found of matchSet(content, layout, set)) {
+      const members = [...found].sort((a, b) => a - b);
+      instances.push({ set, key: instanceKey(set, members), members });
+    }
+  }
+  instanceCache.set(layout, { content, instances });
+  return instances;
 }
 
 /** Every held set instance, paying at its set type's level (Remodel Plans; 1 when absent). */
@@ -101,82 +192,97 @@ export function matchSets(
   layout: Layout,
   levels: Partial<Record<SetId, number>> = {},
 ): SetScore[] {
-  const out: SetScore[] = [];
-  for (const set of Object.values(content.sets)) {
+  return instancesOf(content, layout).map(({ set, key, members }) => {
     const level = levels[set.id] ?? 1;
-    for (const members of matchSet(content, layout, set)) {
-      out.push({
-        set: set.id,
-        key: instanceKey(set, members),
-        members: [...members].sort((a, b) => a - b),
-        points: set.points + (level - 1) * set.level.points,
-        mult: set.mult + (level - 1) * set.level.mult,
-      });
-    }
-  }
-  return out;
+    return {
+      set: set.id,
+      key,
+      members: [...members],
+      points: set.points + (level - 1) * set.level.points,
+      mult: set.mult + (level - 1) * set.level.mult,
+    };
+  });
 }
 
 function matchSet(content: Content, layout: Layout, set: SetDef): number[][] {
-  const candidates: Candidate[] = [];
+  const needs = Object.entries(set.members) as [PieceId, number][];
   const pieces = layout.house.pieces;
-  const isLink = (i: number) =>
-    pieceDef(content, pieces[i]!).effects.some((e) => e.kind === 'link');
   const steps: { candidate: Candidate | null; index: number }[] = [];
+  /** Unused candidates of each type, placed by now or later. */
+  const left = new Map<PieceId, number>();
   pieces.forEach((piece, index) => {
-    const type = memberType(set, pieceDef(content, piece));
+    const def = pieceDef(content, piece);
+    const type = memberType(set, def);
     if (type) {
-      const c = { uid: piece.uid, type };
-      candidates.push(c);
-      steps.push({ candidate: c, index });
-    } else if (isLink(index)) steps.push({ candidate: null, index });
+      steps.push({ candidate: { uid: piece.uid, type }, index });
+      left.set(type, (left.get(type) ?? 0) + 1);
+    } else if (def.effects.some((e) => e.kind === 'link')) steps.push({ candidate: null, index });
   });
-  const total = Object.values(set.members).reduce((a, b) => a + (b ?? 0), 0);
-  const used = new Set<number>();
+  // Too few of a type left for one more instance (Full House's nine types; a Suite with no
+  // Closet): no step can form one.
+  const short = (have: ReadonlyMap<PieceId, number>, plus: PieceId | null = null) =>
+    needs.some(([t, n]) => (have.get(t) ?? 0) + (t === plus ? 1 : 0) < n);
+  if (short(left)) return [];
+  const total = needs.reduce((a, [, n]) => a + (n ?? 0), 0);
   const instances: number[][] = [];
   // One Entertainer per house (D-093), one Full House: the first instance completed holds.
   const cap = set.maxInstances ?? Infinity;
-  const tryForm = (newest: Candidate, pool: readonly Candidate[], touches: Touches): boolean => {
-    const need = new Map(Object.entries(set.members) as [PieceId, number][]);
+  /** The unused candidates placed so far, in placement order, and their counts by type. */
+  let pool: Candidate[] = [];
+  const pooled = new Map<PieceId, number>();
+  const count = (m: Map<PieceId, number>, t: PieceId, by: number) => m.set(t, (m.get(t) ?? 0) + by);
+  /**
+   * The instance `newest` completes with pool members, if any. The pool may hold `newest`
+   * itself (a Hallway's step): every search skips the members it has chosen, so that's the
+   * same as leaving it out.
+   */
+  const search = (newest: Candidate, touches: Touches): number[] | null => {
+    const need = new Map(needs);
     need.set(newest.type, need.get(newest.type)! - 1);
-    const found = set.hub
+    return set.hub
       ? withHub(touches, set.hub, newest, pool, need)
       : set.connected
         ? searchConnected(touches, pool, [newest.uid], need, total)
         : searchAny(pool, [newest.uid], need, total);
-    if (!found) return false;
-    found.forEach((u) => used.add(u));
-    instances.push(found);
-    return true;
   };
-  let seenCandidates = 0;
+  const take = (found: readonly number[]) => {
+    instances.push([...found]);
+    const taken = new Set(found);
+    for (const c of pool) {
+      if (!taken.has(c.uid)) continue;
+      count(pooled, c.type, -1);
+      count(left, c.type, -1);
+    }
+    pool = pool.filter((c) => !taken.has(c.uid));
+  };
   for (const step of steps) {
-    if (instances.length >= cap) break;
-    const touches = touchesAt(content, layout, step.index);
-    if (step.candidate) {
+    if (instances.length >= cap || short(left)) break;
+    const newest = step.candidate;
+    if (newest) {
       // A member's step: an instance it completes with earlier, unused members.
-      const pool = candidates.slice(0, seenCandidates).filter((c) => !used.has(c.uid));
-      seenCandidates++;
-      tryForm(step.candidate, pool, touches);
+      const found = short(pooled, newest.type)
+        ? null
+        : search(newest, touchesAt(content, layout, step.index));
+      if (found) {
+        count(left, newest.type, -1);
+        take(found);
+      } else {
+        pool.push(newest);
+        count(pooled, newest.type, 1);
+      }
       continue;
     }
     // A Hallway's step: instances its links complete among the members placed so far.
-    let formed = true;
-    while (formed && instances.length < cap) {
-      formed = false;
-      const placed = candidates.slice(0, seenCandidates).filter((c) => !used.has(c.uid));
-      for (const c of placed) {
-        if (
-          tryForm(
-            c,
-            placed.filter((o) => o !== c),
-            touches,
-          )
-        ) {
-          formed = true;
-          break;
-        }
+    let touches: Touches | null = null;
+    while (instances.length < cap && !short(pooled)) {
+      touches ??= touchesAt(content, layout, step.index);
+      let found: number[] | null = null;
+      for (const c of pool) {
+        found = search(c, touches);
+        if (found) break;
       }
+      if (!found) break;
+      take(found);
     }
   }
   return instances;

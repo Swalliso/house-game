@@ -478,7 +478,11 @@ export function simulateRun(
     failed = false,
   ): SimError => {
     const pending =
-      failed && action && (action.t === 'place' || action.t === 'install') ? action : undefined;
+      failed &&
+      action &&
+      (action.t === 'place' || action.t === 'install' || action.t === 'renovate')
+        ? action
+        : undefined;
     const runCode = encodeRunCode({
       build: 'sim',
       contentHash: contentHash(content),
@@ -615,7 +619,10 @@ export function simulateRun(
         });
       }
       // Weekend Crew's gain is the free build it makes room for.
-      if (s.freePlay === 'ready' && (action.t === 'place' || action.t === 'install')) {
+      if (
+        s.freePlay === 'ready' &&
+        (action.t === 'place' || action.t === 'install' || action.t === 'renovate')
+      ) {
         const crew = economy.tools.findLast((t) => t.id === 'weekendCrew');
         if (crew) crew.gain = rules.preview(s, action).delta;
       }

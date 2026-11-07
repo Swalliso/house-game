@@ -642,7 +642,15 @@ export type Term =
   | 'strike'
   | 'tools'
   | 'crates'
-  | 'upgrades';
+  | 'upgrades'
+  | 'renovate'
+  | 'checklist'
+  | 'frontYard'
+  | 'backYard'
+  | 'fencedYard'
+  | 'requirement'
+  | 'link'
+  | 'timer';
 
 export function glossary(content: Content): Record<Term, { title: string; text: string }> {
   const b = content.balance;
@@ -654,6 +662,14 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
   const economy = Object.values(content.pieces)
     .filter((p) => p.drawWeight > 0 && !p.countsAs && p.effects.some((e) => e.kind === 'economy'))
     .map((p) => p.name);
+  // The base pool's requirements, as "a Garage touching the street or a Driveway".
+  const needs = Object.values(content.pieces)
+    .filter((p) => p.drawWeight > 0 && !p.countsAs)
+    .flatMap((p) =>
+      p.effects.flatMap((e) =>
+        e.kind === 'requires' ? [`${article(p.name)} ${conditionText(content, e.condition)}`] : [],
+      ),
+    );
   return {
     comfort: {
       title: L.points,
@@ -661,11 +677,11 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
     },
     charm: {
       title: L.mult,
-      text: `Multiplies ${L.points}. It starts at ×1 and goes up for each set you hold, and with a few blueprints.`,
+      text: `Multiplies ${L.points}. It starts at ×1 and goes up for each set you hold, each line of the client’s checklist that holds (+${multNumber(r.specBonus)}), and with a few blueprints.`,
     },
     sparkle: {
       title: L.xMult,
-      text: `Multiplies ${L.mult} itself. Rare: only a few Rare goods have it, and each needs a setup. Each source counts once a week.`,
+      text: `Multiplies ${L.mult} itself. Rare: the Full House set (×2) and a few Rare goods have it, and each needs a setup. Each source counts once a week.`,
     },
     wow: {
       title: L.total,
@@ -735,6 +751,56 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
     upgrades: {
       title: 'Company upgrades',
       text: 'Permanent for the run: more slots, a bigger hand, more rerolls, lower prices, or interest on your savings. One a visit.',
+    },
+    renovate: {
+      title: 'Renovate',
+      text:
+        `Once the house has all the rooms of a type its checklist wants (one Kitchen, its ` +
+        `Bedrooms, …), a card of that type can renovate one of them instead of being placed: ` +
+        `+${b.renovate.pointsPerLevel} ${L.points} a level, up to ${b.renovate.maxLevel}. ` +
+        `It’s the week’s build.`,
+    },
+    checklist: {
+      title: 'The checklist',
+      text:
+        `What the client wants: the house rules every client has, then their own wishes. Each ` +
+        `line adds +${multNumber(r.specBonus)} ${L.mult} in every week it holds, and a ` +
+        `demolition or a new piece can turn one off.`,
+    },
+    // The board's terms (D-077), for the inspect panel and the cards.
+    frontYard: {
+      title: 'Front yard',
+      text:
+        'The open ground between the house and the street: rows nearer the street than the ' +
+        'house’s front row. Before the first room goes in, the whole lot is front yard.',
+    },
+    backYard: {
+      title: 'Back yard',
+      text: 'The open ground level with the house or behind it, away from the street.',
+    },
+    fencedYard: {
+      title: 'Fenced yard',
+      text:
+        `Open ground closed in by the house, Fences, and the lot’s edge, with at least ` +
+        `${b.fencedYardMin} tiles. It must touch a Fence and the house, and not the street.`,
+    },
+    requirement: {
+      title: 'Requirements',
+      text:
+        `Some pieces need something to earn: ${joinWords(needs, 'and')}. If it isn’t met, ` +
+        `the piece earns nothing (⚠ on the board); a few can’t be placed without it.`,
+    },
+    link: {
+      title: 'Hallway links',
+      text:
+        'A Hallway earns nothing itself, but every room it touches counts as touching every ' +
+        'other room along it, for bonuses and sets.',
+    },
+    timer: {
+      title: 'Timers',
+      text:
+        'Some pieces change with time, counted in weeks from when they were placed: a Sapling ' +
+        'becomes a Tree. The inspect panel says when.',
     },
     strike: {
       title: 'Strike a card',
