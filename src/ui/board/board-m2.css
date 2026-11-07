@@ -21,12 +21,8 @@
 
 /* The zoom buttons are styled in hud/board-chrome.css. */
 
-/* Cells under 32 CSS px (below 1×, or Fit on a small screen): a smaller street label, so it
-   doesn't bury the cells (and smaller badges: board/labels.css). */
-.board.small .street-label {
-  font-size: 9px;
-  letter-spacing: 0.12em;
-}
+/* Cells under 32 CSS px (below 1×, or Fit on a small screen): smaller badges (board/labels.css).
+   The street's label keeps the pixel font's 8 UI px (terrain.css), which a 22 px row still fits. */
 
 /* --- Cell regions (SVG): the fenced yards and the demolish target ------------------- */
 

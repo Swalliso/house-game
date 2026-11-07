@@ -54,8 +54,17 @@
 }
 
 /* The street row is a light sidewalk: its label in LimeZu's ink, on the labels layer
-   (board/layers.ts), over a Driveway's curb cut. */
+   (board/layers.ts), over a Driveway's curb cut, in the interface's pixel font (or the readable
+   one) at 8 UI px, whatever the zoom. */
 .board .street-label {
   z-index: var(--z-labels);
   color: var(--street-label);
+  font-family: var(--font-text);
+  font-size: var(--fs-body);
+  font-weight: 400;
+  letter-spacing: var(--px);
+  -webkit-font-smoothing: none;
+}
+[data-font='readable'] .board .street-label {
+  -webkit-font-smoothing: auto;
 }

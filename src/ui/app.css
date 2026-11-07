@@ -204,12 +204,13 @@ h3 {
   font-weight: 800;
   line-height: 1;
   font-variant-numeric: tabular-nums;
+  /* Outlined in LimeZu's ink, like the art and the chrome around it. */
   text-shadow:
-    -1px -1px 0 #2a1d16,
-    1px -1px 0 #2a1d16,
-    -1px 1px 0 #2a1d16,
-    1px 1px 0 #2a1d16,
-    0 2px 0 #2a1d16;
+    -1px -1px 0 var(--ink),
+    1px -1px 0 var(--ink),
+    -1px 1px 0 var(--ink),
+    1px 1px 0 var(--ink),
+    0 2px 0 var(--ink);
 }
 .digit.zero {
   opacity: 0.55;
