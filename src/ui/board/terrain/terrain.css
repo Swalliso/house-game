@@ -53,7 +53,9 @@
   clip-path: inset(-4px -4px 0 -4px);
 }
 
-/* The street row is a light sidewalk: its label in LimeZu's ink. */
+/* The street row is a light sidewalk: its label in LimeZu's ink, on the labels layer
+   (board/layers.ts), over a Driveway's curb cut. */
 .board .street-label {
+  z-index: var(--z-labels);
   color: var(--street-label);
 }

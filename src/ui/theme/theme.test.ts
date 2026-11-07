@@ -119,6 +119,8 @@ describe('the tokens', () => {
       ['ink-soft', 'uncommon-tint'],
       ['on-wood', 'ink'],
       ['ink', 'action-hi'],
+      // The board's labels by the pointer (board/labels.css): the demolish label's red.
+      ['danger-shade', 'card'],
     ] as const;
     const low = pairs.flatMap(([text, bg]) => {
       const a = t.get(text);

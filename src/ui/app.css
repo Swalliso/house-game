@@ -233,36 +233,7 @@ h3 {
     filter: brightness(1.12);
   }
 }
-.ghost-reason,
-.ghost-delta {
-  position: absolute;
-  z-index: var(--z-ghost-text);
-  transform: translate(-50%, calc(-100% - 6px));
-  white-space: nowrap;
-  font-size: 13px;
-  font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 6px;
-  pointer-events: none;
-  background: #fffaf1;
-  border: 2px solid var(--muted);
-}
-.ghost-reason.below,
-.ghost-delta.below {
-  transform: translate(-50%, 6px);
-}
-.ghost-reason {
-  border-color: var(--bad);
-  color: #9a4a0a;
-}
-.ghost-delta.good {
-  border-color: var(--good);
-  color: var(--good);
-}
-.ghost-delta.bad {
-  border-color: var(--bad);
-  color: #9a4a0a;
-}
+/* The ghost's labels, and the install, tool and demolish labels: board/labels.css. */
 
 .badges,
 .popups {
@@ -273,57 +244,7 @@ h3 {
 .badges {
   z-index: var(--z-badges);
 }
-.badge {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  font-size: 12px;
-  font-weight: 800;
-  line-height: 1;
-  color: #fff;
-  font-variant-numeric: tabular-nums;
-}
-.badge.delta {
-  padding: 3px 5px;
-  border-radius: 6px;
-  border: 2px solid #fff;
-}
-/* White text, over the score panel's .delta.good and .delta.bad colors (same specificity, later). */
-.badge.delta.good {
-  background: var(--good);
-  color: #fff;
-}
-.badge.delta.bad {
-  background: var(--bad);
-  color: #fff;
-}
-/* Helpers are circles with +, hurters are diamonds with −. */
-.badge.source {
-  width: 16px;
-  height: 16px;
-  display: grid;
-  place-items: center;
-  border: 2px solid #fff;
-}
-.badge.source.good {
-  background: var(--good);
-  border-radius: 50%;
-}
-.badge.source.bad {
-  background: var(--bad);
-  transform: translate(-50%, -50%) rotate(45deg);
-}
-.badge.source.bad .glyph {
-  display: inline-block;
-  transform: rotate(-45deg);
-}
-.badge.cleared {
-  color: var(--bad);
-  font-size: 16px;
-  text-shadow:
-    0 0 2px #fff,
-    0 0 2px #fff,
-    0 0 3px #fff;
-}
+/* The preview's badges themselves: board/labels.css. */
 
 .popups {
   z-index: var(--z-popups);

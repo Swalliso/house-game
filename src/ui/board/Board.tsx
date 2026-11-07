@@ -92,6 +92,7 @@ import { layerVars } from './layers.ts';
 import { wobble } from './piece-fx.ts';
 import { Outline, TerrainLayer, YardTint } from './TerrainLayer.tsx';
 import './board-m2.css';
+import './labels.css';
 
 /** The layers' z-indexes as CSS variables, set once on the board element. */
 const LAYER_VARS = layerVars();

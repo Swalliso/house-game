@@ -21,22 +21,8 @@
 
 /* The zoom buttons are styled in hud/board-chrome.css. */
 
-/* Cells under 32 CSS px (below 1×, or Fit on a small screen): smaller badges and labels, so
-   they don't bury the cells. */
-.board.small .badge.source {
-  width: 12px;
-  height: 12px;
-  font-size: 9px;
-  border-width: 1px;
-}
-.board.small .badge.delta {
-  font-size: 10px;
-  padding: 2px 3px;
-  border-width: 1px;
-}
-.board.small .badge.cleared {
-  font-size: 12px;
-}
+/* Cells under 32 CSS px (below 1×, or Fit on a small screen): a smaller street label, so it
+   doesn't bury the cells (and smaller badges: board/labels.css). */
 .board.small .street-label {
   font-size: 9px;
   letter-spacing: 0.12em;
@@ -122,13 +108,6 @@
   stroke-dasharray: 5 4;
   stroke-linecap: butt;
   opacity: 0.8;
-}
-.board .ghost-delta.demolish-label {
-  border-color: var(--demolish);
-  color: #9b2a1c;
-}
-.board .ghost-delta.demolish-label.good {
-  color: var(--good);
 }
 
 /* --- Unmet requirements ------------------------------------------------------------- */
