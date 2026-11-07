@@ -13,7 +13,7 @@ import {
   type PlacedPiece,
   type Rot,
 } from '../../rules/index.ts';
-import { lotFromRows } from '../../rules/lot.ts';
+import { isBlocked, lotFromRows } from '../../rules/lot.ts';
 import { CELL } from '../sprites.ts';
 import {
   EDGE,
@@ -208,6 +208,78 @@ describe('the front door', () => {
     }
   });
 
+  it('goes through a garage, a bathroom or a closet only when no other room can have one', () => {
+    // The Bathroom and the Closet hold the house's street-facing south walls, but the Living
+    // Room has open side walls: the front door is the Living Room's.
+    const h = house([
+      ['livingRoom', 4, 7],
+      ['bathroom', 4, 10],
+      ['closet', 5, 10],
+    ]);
+    const front = modelOf(h).exits.find((e) => e.kind === 'front')!;
+    expect(front.uid).toBe(uidOf(h, 'livingRoom'));
+    // With the Living Room ringed by Trees, the Bathroom's wall onto the street beats a door
+    // into the woods.
+    const ringed = house(
+      [
+        ['livingRoom', 4, 4],
+        ['bathroom', 4, 7],
+      ],
+      [
+        '............',
+        '............',
+        '............',
+        '....TT......',
+        '...T..T.....',
+        '...T..T.....',
+        '...T..T.....',
+        '...T.T......',
+      ],
+    );
+    const door = modelOf(ringed).exits.find((e) => e.kind === 'front')!;
+    expect(door.uid).toBe(uidOf(ringed, 'bathroom'));
+    expect(door.side).toBe('S');
+  });
+
+  it('opens onto the woods or a low yard piece when nothing else around the house can', () => {
+    // A Kitchen and a Bedroom built into the woods, an Herb Garden to the west: every outside
+    // wall faces a Tree or the garden (the novice bot's rv-14 house).
+    const h = house(
+      [
+        ['kitchen', 3, 1],
+        ['herbGarden', 2, 1, 1],
+        ['bedroom', 5, 2],
+      ],
+      [
+        '...TT.......',
+        '.....TT.....',
+        '.......T....',
+        '...TT..T....',
+        '.....TT.....',
+        '............',
+      ],
+    );
+    const m = modelOf(h);
+    expect(m.exits.filter((e) => e.kind === 'front')).toHaveLength(1);
+    expect(reachable(m).size).toBe(m.rooms.size);
+    // Water, a boulder or the Old Shed never: the same house with the woods turned to rock.
+    const rock = house(
+      [
+        ['kitchen', 3, 1],
+        ['bedroom', 5, 2],
+      ],
+      [
+        'BBBBBBBBBBBB',
+        'BBB..BBBBBBB',
+        'BBB....BBBBB',
+        'BBBBB..BBBBB',
+        'BBBBBBBBBBBB',
+        'BBBBBBBBBBBB',
+      ],
+    );
+    expect(modelOf(rock).exits).toEqual([]);
+  });
+
   it('prefers paved ground: a Patio over grass', () => {
     const h = house([
       ['livingRoom', 2, 2],
@@ -391,6 +463,63 @@ function randomHouse(seed: number): HouseState {
   return { lot, pieces, nextUid: pieces.length + 1 };
 }
 
+/**
+ * A house on a lot the game made (woods, a creek, a pond, boulders), started in the woods: Trees
+ * under a piece are built over, as in the game, so the house stands in a clearing of its own.
+ */
+function woodsHouse(seed: number): HouseState {
+  const { lot } = rules.newRun({
+    seed: `woods-${seed}`,
+    crewId: 'generalContractor',
+    mode: 'standard',
+  }).house;
+  let s = seed >>> 0 || 1;
+  const rand = (n: number) => {
+    s = (Math.imul(s ^ (s >>> 15), 1 | s) + 0x6d2b79f5) >>> 0;
+    return s % n;
+  };
+  const { width: W, height: H } = lot;
+  const terrain = [...lot.terrain];
+  const taken = new Set<string>();
+  const indoor = new Set<string>();
+  const pieces: PlacedPiece[] = [];
+  const trees = terrain.flatMap((t, i) => (t === 'tree' ? [i] : []));
+  const blocked = (x: number, y: number) =>
+    x < 0 || y < 0 || x >= W || y >= H || taken.has(`${x},${y}`) || isBlocked(terrain[y * W + x]!);
+  const place = (defId: PieceId, at?: number) => {
+    for (let attempt = 0; attempt < 80; attempt++) {
+      const rot = rand(4) as Rot;
+      const x = at === undefined ? rand(W) : (at % W) - rand(2);
+      const y = at === undefined ? rand(H) : Math.floor(at / W) - rand(2);
+      const cells = placedCells(CONTENT.pieces[defId].shape, x, y, rot);
+      if (cells.some((c) => blocked(c.x, c.y))) continue;
+      const touches = cells.some((c) =>
+        [
+          [1, 0],
+          [-1, 0],
+          [0, 1],
+          [0, -1],
+        ].some(([dx, dy]) => indoor.has(`${c.x + dx!},${c.y + dy!}`)),
+      );
+      if (indoor.size > 0 && !touches) continue;
+      for (const c of cells) {
+        taken.add(`${c.x},${c.y}`);
+        if (CONTENT.pieces[defId].category === 'indoor') indoor.add(`${c.x},${c.y}`);
+        const i = c.y * W + c.x;
+        if (terrain[i] === 'tree' || terrain[i] === 'timeCapsule') terrain[i] = null;
+      }
+      pieces.push({ uid: pieces.length + 1, defId, x, y, rot, placedWeek: 0 });
+      return;
+    }
+  };
+  place(INDOOR[rand(INDOOR.length)]!, trees.length > 0 ? trees[rand(trees.length)] : undefined);
+  const rooms = 1 + rand(6);
+  for (let i = 0; i < rooms; i++) place(INDOOR[rand(INDOOR.length)]!);
+  for (let i = 0; i < 3; i++) place(LOW_YARD[rand(LOW_YARD.length)]!);
+  return { lot: { ...lot, terrain }, pieces, nextUid: pieces.length + 1 };
+}
+const LOW_YARD: readonly PieceId[] = ['herbGarden', 'flowerBed', 'sapling', 'patio', 'lawn'];
+
 describe('any house', () => {
   it('is reachable: every room through doorways from an outside door', () => {
     fc.assert(
@@ -402,6 +531,19 @@ describe('any house', () => {
         expect(reachable(m).size).toBe(m.rooms.size);
       }),
       { numRuns: 150 },
+    );
+  });
+
+  it('is reachable when it is built into the woods of a lot the game made', () => {
+    fc.assert(
+      fc.property(fc.integer({ min: 1, max: 2 ** 31 - 1 }), (seed) => {
+        const h = woodsHouse(seed);
+        const m = modelOf(h);
+        if (m.rooms.size === 0) return;
+        expect(m.exits.filter((e) => e.kind === 'front')).toHaveLength(1);
+        expect(reachable(m).size, `seed ${seed}`).toBe(m.rooms.size);
+      }),
+      { numRuns: 400 },
     );
   });
 

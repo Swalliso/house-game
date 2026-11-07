@@ -223,7 +223,36 @@ describe('fixtures painted with their room', () => {
     expect(pixel(padded, 2 * CELL + 20, base)).toEqual(pixel(plain, 2 * CELL + 20, base));
   });
 
-  it('Blackout Curtains hang on the north face and draw drapes over the windows', () => {
+  it('Soundproofing pads the room’s side of its wall bands, over the furniture', () => {
+    // A Closet's rail hides its north face, so the pads that show are the bands'.
+    const m = model([
+      ['bedroom', 2, 2],
+      ['closet', 4, 2, 0, 'soundproofing'],
+    ]);
+    const p = paintWalls(m)!;
+    const plain = paintWalls(
+      model([
+        ['bedroom', 2, 2],
+        ['closet', 4, 2],
+      ]),
+    )!;
+    const pad = (x: number, y: number) => differs(pixel(p, x, y), pixel(plain, x, y));
+    // The Closet's east band (outside, all its own) is padded inside its ink...
+    let padded = 0;
+    for (let y = 2 * CELL + WALL.out; y < 3 * CELL - WALL.out; y++)
+      if (pad(5 * CELL - WALL.out + 2, y)) padded++;
+    expect(padded).toBeGreaterThan(10);
+    expect(pixel(p, 5 * CELL - 1, 2 * CELL + 16)).toEqual([...INK, 255]);
+    // ...and the wall it shares with the Bedroom only on the Closet's side of the line.
+    const y = 2 * CELL + 3 * WALL.out;
+    const door = m.doors.some((d) => d.gap.y <= y && y < d.gap.y + d.gap.h);
+    if (!door) {
+      expect(pad(4 * CELL, y)).toBe(true);
+      expect(pad(4 * CELL - 1, y)).toBe(false);
+    }
+  });
+
+  it('Blackout Curtains draw drapes over the windows, and hang in view on a north face', () => {
     const plainM = model([['bedroom', 2, 2]]);
     const darkM = model([['bedroom', 2, 2, 0, 'blackoutCurtains']]);
     const w = darkM.windows.find((q) => q.side === 'E')!;
@@ -233,11 +262,18 @@ describe('fixtures painted with their room', () => {
     expect(differs(glass, cloth)).toBe(true);
     // Dark cloth: darker than the glass in every channel.
     expect(cloth[0] + cloth[1] + cloth[2]).toBeLessThan(glass[0] + glass[1] + glass[2]);
+    // A Dining Room's table stands in the middle of the floor (the front door is the Living
+    // Room's, below it): its north face is in view, and the drapes hang across the middle of it.
+    const dining = (f?: FixtureId) =>
+      model([
+        ['diningRoom', 2, 2, 0, f],
+        ['livingRoom', 2, 4, 1],
+      ]);
     const face = 2 * CELL + WALL.out + 3;
     expect(
       differs(
-        pixel(paintFloors(plainM, atlas, { shadow: false })!, 3 * CELL, face),
-        pixel(paintFloors(darkM, atlas, { shadow: false })!, 3 * CELL, face),
+        pixel(paintFloors(dining(), atlas, { shadow: false })!, 3 * CELL, face),
+        pixel(paintFloors(dining('blackoutCurtains'), atlas, { shadow: false })!, 3 * CELL, face),
       ),
     ).toBe(true);
   });

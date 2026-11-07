@@ -14,7 +14,7 @@ import {
   type Rot,
 } from '../../rules/index.ts';
 import { lotFromRows } from '../../rules/lot.ts';
-import { houseModel } from '../board/house-model.ts';
+import { houseModel, overlaps } from '../board/house-model.ts';
 import { CELL } from '../sprites.ts';
 import { artFrames, artSize, DRAWINGS, drawingPixels, inKey, type DrawingId } from './drawings.ts';
 import { itemRows, type Item } from './rooms.ts';
@@ -293,6 +293,47 @@ describe('the parked car', () => {
   });
 });
 
+describe('outside doors', () => {
+  const rect = (it: Item) => ({ x: it.x, y: it.y, ...artSize(it.sprite) });
+
+  it('keep the yard’s props off their mats and openings', () => {
+    // A Patio south of a Living Room: the front door opens onto it (paved ground).
+    const h = house([
+      ['livingRoom', 4, 2],
+      ['patio', 4, 5],
+    ]);
+    const m = houseModel(h);
+    const door = m.exits.find((e) => e.onto === 2)!;
+    expect(door).toBeDefined();
+    const items = yardModel(h, m).pieces.get(2)!.items;
+    for (const it of items) {
+      expect(overlaps(rect(it), door.mat), it.sprite).toBe(false);
+      expect(overlaps(rect(it), door.gap), it.sprite).toBe(false);
+    }
+    // Its table and seats still stand on it, clear of the door.
+    expect(items.some((i) => i.sprite === 'patio-table')).toBe(true);
+  });
+
+  it('park the car further along, or on the next Driveway, off a door’s mat', () => {
+    // A front door onto the middle of the oldest Driveway: no room for the car beside its mat,
+    // so it parks on the next one.
+    const h = house([
+      ['livingRoom', 2, 8, 1],
+      ['driveway', 2, 10, 0],
+      ['driveway', 7, 7, 1],
+    ]);
+    const m = houseModel(h);
+    const door = m.exits.find((e) => e.kind === 'front')!;
+    expect(door.onto).toBe(2);
+    const y = yardModel(h, m);
+    const cars = [...y.pieces.values()].flatMap((l) =>
+      l.items.filter((i) => i.sprite.startsWith('car-')).map((i) => ({ uid: l.uid, i })),
+    );
+    expect(cars.map((c) => c.uid)).toEqual([3]);
+    expect(overlaps(rect(cars[0]!.i), door.mat)).toBe(false);
+  });
+});
+
 describe('fences', () => {
   const sprites = (l: YardLayout) => l.items.map((i) => i.sprite);
 
@@ -349,18 +390,26 @@ describe('fences', () => {
     expect(down.some((i) => i.sprite === 'picket-strip' && i.y === 3 * CELL)).toBe(true);
   });
 
-  it('stay two where they lie side by side, joined only at their ends', () => {
+  it('stay two where they lie side by side: their ends never close them into a pen', () => {
+    const alone = (y: number) => yardOf(house([['fence', 0, y]])).pieces.get(1)!.items;
     const y = yardOf(
       house([
         ['fence', 0, 2],
         ['fence', 0, 3],
       ]),
     );
-    for (const uid of [1, 2]) {
-      // No strips across the middle cells: two fences, not a grid.
-      const strips = y.pieces.get(uid)!.items.filter((i) => i.sprite === 'picket-strip');
-      expect(strips.every((i) => i.x === 0 * CELL + 14 || i.x === 3 * CELL + 14)).toBe(true);
-    }
+    // Each draws as it would alone: no strips between them, its own end posts.
+    expect(y.pieces.get(1)!.items).toEqual(alone(2));
+    expect(y.pieces.get(2)!.items).toEqual(alone(3));
+    // An L-Fence beside a Fence, its foot alongside: the same.
+    const l = yardOf(
+      house([
+        ['lFence', 0, 0],
+        ['fence', 0, 3],
+      ]),
+    );
+    expect(l.pieces.get(2)!.items).toEqual(alone(3));
+    expect(l.pieces.get(2)!.items.some((i) => i.sprite === 'picket-strip')).toBe(false);
   });
 });
 

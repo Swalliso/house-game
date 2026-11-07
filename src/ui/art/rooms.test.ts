@@ -70,6 +70,8 @@ function modelOf(h: HouseState): HouseModel {
 const FLAT = /^(rug-|runner-|mat-|bath-mat)/;
 /** Pieces that may stand in a doorway's walkway (never its opening): a one-cell room's key piece, and the car. */
 const TIGHT = /^(toilet-|clothes-rail|car-)/;
+/** And a dining table, which keeps its chairs before a walkway (its chairs keep out of it). */
+const WALKWAY = /^(toilet-|clothes-rail|car-|dining-table)/;
 
 /** An item's footprint: its sprite below the line it rises over. */
 function foot(it: Item): Rect {
@@ -121,13 +123,13 @@ function problems(m: HouseModel, uid: number): string[] {
     // Never in an opening; out of the walkways in front of them unless it's a tight piece.
     for (const d of m.doors.filter((d) => d.a === uid || d.b === uid)) {
       if (overlaps(f, d.gap)) out.push(`${name(it)} is in a doorway`);
-      if (!FLAT.test(it.sprite) && !TIGHT.test(it.sprite) && overlaps(f, d.clear)) {
+      if (!FLAT.test(it.sprite) && !WALKWAY.test(it.sprite) && overlaps(f, d.clear)) {
         out.push(`${name(it)} blocks a doorway`);
       }
     }
     for (const e of m.exits.filter((e) => e.uid === uid)) {
       if (overlaps(f, e.gap)) out.push(`${name(it)} is in an outside door`);
-      if (!FLAT.test(it.sprite) && !TIGHT.test(it.sprite) && overlaps(f, e.clear)) {
+      if (!FLAT.test(it.sprite) && !WALKWAY.test(it.sprite) && overlaps(f, e.clear)) {
         out.push(`${name(it)} blocks an outside door`);
       }
     }
@@ -307,12 +309,25 @@ describe('fixtures', () => {
     const layout = roomLayout(m, 1);
     expect(layout.items.map((it) => it.sprite)).toContain('kitchen-island');
     expect(layout.fixtureShown).toBe(true);
-    // A Kitchen alone has the front door in its south wall, and the island would stand in its
-    // walkway: the badge shows instead.
+    // A Kitchen alone has the front door in its south wall, and the full island would stand in
+    // its walkway: a smaller one stands beside it.
     const alone = only('kitchen', 'kitchenIsland');
     expect(alone.m.exits.some((e) => e.uid === 1 && e.side === 'S')).toBe(true);
     expect(alone.layout.items.map((it) => it.sprite)).not.toContain('kitchen-island');
-    expect(alone.layout.fixtureShown).toBe(false);
+    expect(alone.layout.items.some((it) => it.sprite.startsWith('kitchen-island-'))).toBe(true);
+    expect(alone.layout.fixtureShown).toBe(true);
+  });
+
+  it('an L-Kitchen’s island stands in its arm, in every rotation', () => {
+    for (const rot of [0, 1, 2, 3] as Rot[]) {
+      const { m, layout } = only('lKitchen', 'kitchenIsland', rot);
+      expect(
+        layout.items.some((it) => it.sprite.startsWith('kitchen-island')),
+        `r${rot}`,
+      ).toBe(true);
+      expect(layout.fixtureShown, `r${rot}`).toBe(true);
+      expect(problems(m, 1), `r${rot}`).toEqual([]);
+    }
   });
 
   it('a Fireplace takes a Living Room’s north wall, and the sofa faces the room in front of it', () => {
@@ -336,6 +351,39 @@ describe('fixtures', () => {
     const layout = roomLayout(m, 1);
     if (!layout.fixtureShown)
       expect(layout.items.some((it) => it.sprite.startsWith('bed-double'))).toBe(true);
+  });
+
+  it('Blackout Curtains hang where the furniture leaves a north face in view, or keep their badge', () => {
+    // A Closet has no windows to darken, and its rail stands in front of its north face.
+    const closet = only('closet', 'blackoutCurtains').layout;
+    expect(closet.drape).toBeUndefined();
+    expect(closet.fixtureShown).toBe(false);
+    // A Dining Room's table stands in the middle of the floor (the front door is the Living
+    // Room's, below it): the drapes hang on its face.
+    const m = modelOf(
+      house([
+        ['diningRoom', 4, 4, 0, 'blackoutCurtains'],
+        ['livingRoom', 4, 6, 1],
+      ]),
+    );
+    const dining = { m, layout: roomLayout(m, 1) };
+    const d = dining.layout.drape!;
+    expect(d.w).toBeGreaterThanOrEqual(10);
+    expect(d.y).toBe(4 * CELL + WALL.out);
+    expect(dining.layout.fixtureShown).toBe(true);
+    // Never behind a piece of furniture.
+    for (const it of dining.layout.items.filter((i) => !FLAT.test(i.sprite))) {
+      const { w, h } = artSize(it.sprite);
+      expect(overlaps(d, { x: it.x, y: it.y, w, h }), it.sprite).toBe(false);
+    }
+  });
+
+  it('Soundproofing always shows: its pads line the room’s wall bands, over the furniture', () => {
+    for (const id of INDOOR) {
+      for (const rot of [0, 1] as Rot[]) {
+        expect(only(id, 'soundproofing', rot).layout.fixtureShown, `${id} r${rot}`).toBe(true);
+      }
+    }
   });
 
   it('painted fixtures show wherever their room has the wall for them', () => {

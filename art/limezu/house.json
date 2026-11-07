@@ -562,6 +562,76 @@
     ],
     "note": "Kitchen Island (fixture): a free-standing counter in the middle of the Kitchen, its top over a row of cabinet doors, with a bowl of fruit on it so it reads at a glance."
   },
+  "kitchen-island-24": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png",
+    "rect": [49, 112, 8, 11],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [24, 25],
+        "at": [0, 14],
+        "layers": [
+          {
+            "rect": [64, 112, 8, 11],
+            "at": [8, 14]
+          },
+          {
+            "rect": [103, 112, 8, 11],
+            "at": [16, 14]
+          },
+          {
+            "rect": [64, 22, 8, 10],
+            "at": [0, 4]
+          },
+          {
+            "rect": [72, 22, 8, 10],
+            "at": [8, 4]
+          },
+          {
+            "rect": [104, 22, 8, 10],
+            "at": [16, 4]
+          },
+          {
+            "rect": [17, 369, 13, 11],
+            "at": [5, 0]
+          }
+        ]
+      }
+    ],
+    "note": "Kitchen Island (fixture), 24 px: the island with one cabinet door, for a kitchen where the full one won't fit (an L-Kitchen's corner, beside a door's walkway). Its bowl of fruit still reads at a glance."
+  },
+  "kitchen-island-16": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png",
+    "rect": [49, 112, 8, 11],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [16, 25],
+        "at": [0, 14],
+        "layers": [
+          {
+            "rect": [103, 112, 8, 11],
+            "at": [8, 14]
+          },
+          {
+            "rect": [64, 22, 8, 10],
+            "at": [0, 4]
+          },
+          {
+            "rect": [104, 22, 8, 10],
+            "at": [8, 4]
+          },
+          {
+            "rect": [17, 369, 13, 11],
+            "at": [1, 0]
+          }
+        ]
+      }
+    ],
+    "note": "Kitchen Island (fixture), 16 px: a one-cabinet island with its bowl of fruit, for the narrow arm of an L-Kitchen."
+  },
   "dining-table-0": {
     "pack": "mi",
     "file": "1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png",
@@ -583,38 +653,38 @@
   "chair-east-0": {
     "pack": "mi",
     "file": "1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png",
-    "rect": [114, 177, 13, 21],
-    "note": "A dining chair in honey wood, facing east: it stands west of the table."
+    "rect": [98, 177, 13, 21],
+    "note": "A dining chair in pale wood, facing east: it stands west of the pale table (dining-table-0)."
   },
   "chair-west-0": {
     "pack": "mi",
     "file": "1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png",
-    "rect": [113, 209, 13, 21],
-    "note": "A dining chair in honey wood, facing west: it stands east of the table."
+    "rect": [81, 209, 13, 21],
+    "note": "A dining chair in pale wood, facing west: it stands east of the pale table (dining-table-0)."
   },
   "chair-east-1": {
     "pack": "mi",
     "file": "1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png",
     "rect": [66, 177, 13, 21],
-    "note": "A dining chair in cherry wood, facing east: it stands west of the table."
+    "note": "A dining chair in cherry wood, facing east: it stands west of the cherry table (dining-table-1)."
   },
   "chair-west-1": {
     "pack": "mi",
     "file": "1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png",
-    "rect": [65, 209, 13, 21],
-    "note": "A dining chair in cherry wood, facing west: it stands east of the table."
+    "rect": [113, 209, 13, 21],
+    "note": "A dining chair in cherry wood, facing west: it stands east of the cherry table (dining-table-1)."
   },
   "chair-east-2": {
     "pack": "mi",
     "file": "1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png",
-    "rect": [98, 177, 13, 21],
-    "note": "A dining chair in pale wood, facing east: it stands west of the table."
+    "rect": [114, 177, 13, 21],
+    "note": "A dining chair in honey wood, facing east: it stands west of the honey table (dining-table-2)."
   },
   "chair-west-2": {
     "pack": "mi",
     "file": "1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png",
-    "rect": [97, 209, 13, 21],
-    "note": "A dining chair in pale wood, facing west: it stands east of the table."
+    "rect": [65, 209, 13, 21],
+    "note": "A dining chair in honey wood, facing west: it stands east of the honey table (dining-table-2)."
   },
   "breakfast-table": {
     "pack": "mi",
@@ -626,7 +696,7 @@
         "size": [38, 21],
         "layers": [
           {
-            "rect": [113, 209, 13, 21],
+            "rect": [65, 209, 13, 21],
             "at": [25, 0]
           },
           {
@@ -636,7 +706,7 @@
         ]
       }
     ],
-    "note": "A kitchen's breakfast table: a small honey-wood table between two chairs, one cut so it's placed as one piece where the floor is free."
+    "note": "A kitchen's breakfast table: a small honey-wood table between two honey-wood chairs, one cut so it's placed as one piece where the floor is free."
   },
   "mat-square-0": {
     "pack": "mi",
@@ -659,26 +729,58 @@
   "sofa-0": {
     "pack": "mi",
     "file": "1_Interiors/16x16/Theme_Sorter/2_LivingRoom_16x16.png",
-    "rect": [16, 453, 48, 29],
-    "note": "A three-seat slate blue sofa, facing south: a Living Room's key item. Living Rooms take the colors in turn."
+    "rect": [16, 453, 48, 27],
+    "note": "A three-seat slate blue sofa, facing south: a Living Room's key item. Living Rooms take the colors in turn. Cut to its own 27 rows (the two below are the next sprite's outline)."
   },
   "sofa-1": {
     "pack": "mi",
     "file": "1_Interiors/16x16/Theme_Sorter/2_LivingRoom_16x16.png",
-    "rect": [64, 453, 48, 29],
-    "note": "A three-seat light grey sofa, facing south: a Living Room's key item. Living Rooms take the colors in turn."
+    "rect": [64, 453, 48, 27],
+    "note": "A three-seat light grey sofa, facing south: a Living Room's key item. Living Rooms take the colors in turn. Cut to its own 27 rows (the two below are the next sprite's outline)."
   },
   "sofa-2": {
     "pack": "mi",
     "file": "1_Interiors/16x16/Theme_Sorter/2_LivingRoom_16x16.png",
-    "rect": [112, 454, 48, 26],
-    "note": "A three-seat tan sofa, facing south: a Living Room's key item. Living Rooms take the colors in turn."
+    "rect": [112, 454, 16, 26],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [48, 26],
+        "layers": [
+          {
+            "rect": [144, 454, 16, 26],
+            "at": [16, 0]
+          },
+          {
+            "rect": [128, 454, 16, 26],
+            "at": [32, 0]
+          }
+        ]
+      }
+    ],
+    "note": "A three-seat tan sofa, facing south: LimeZu's modular tan sofa put together, its two-seat piece's left end, the loose middle seat, then the two-seat piece's right end, so it has both ends and its legs (the sheet's own row has no right end)."
   },
   "sofa-3": {
     "pack": "mi",
     "file": "1_Interiors/16x16/Theme_Sorter/2_LivingRoom_16x16.png",
-    "rect": [112, 487, 48, 25],
-    "note": "A three-seat lavender sofa, facing south: a Living Room's key item. Living Rooms take the colors in turn."
+    "rect": [112, 487, 16, 25],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [48, 25],
+        "layers": [
+          {
+            "rect": [144, 487, 16, 25],
+            "at": [16, 0]
+          },
+          {
+            "rect": [128, 487, 16, 25],
+            "at": [32, 0]
+          }
+        ]
+      }
+    ],
+    "note": "A three-seat lavender sofa, facing south: LimeZu's modular lavender sofa put together like the tan one, with both ends and its legs."
   },
   "plant-potted": {
     "pack": "mi",
@@ -701,13 +803,13 @@
   "rug-tall-0": {
     "pack": "mi",
     "file": "1_Interiors/16x16/Theme_Sorter/1_Generic_16x16.png",
-    "rect": [212, 84, 39, 58],
+    "rect": [212, 82, 40, 60],
     "note": "A tall blue and gold rug, for a portrait Living Room (sprites never turn, so the rug has its own upright cut)."
   },
   "rug-tall-1": {
     "pack": "mi",
     "file": "1_Interiors/16x16/Theme_Sorter/1_Generic_16x16.png",
-    "rect": [212, 148, 39, 58],
+    "rect": [212, 146, 40, 60],
     "note": "A tall red and gold rug."
   },
   "coffee-table": {
@@ -767,8 +869,20 @@
   "washer": {
     "pack": "mi",
     "file": "1_Interiors/16x16/Theme_Sorter/3_Bathroom_16x16.png",
-    "rect": [198, 12, 20, 29],
-    "note": "A washing machine: a Mudroom's key item."
+    "rect": [198, 12, 20, 4],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [20, 26],
+        "layers": [
+          {
+            "rect": [198, 19, 20, 22],
+            "at": [0, 4]
+          }
+        ]
+      }
+    ],
+    "note": "A washing machine: a Mudroom's key item. Three rows of its plain white top taken out (26 px, not 29), so it stands against the north wall of a one-cell-deep Mudroom too."
   },
   "runner-h-0": {
     "pack": "mi",
@@ -954,10 +1068,16 @@
     "rect": [121, 58, 28, 22],
     "note": "A low desk with an open book and a pencil cup, for a Home Office too shallow for the computer desk."
   },
+  "desk-small": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/5_Classroom_and_library_16x16.png",
+    "rect": [48, 19, 16, 21],
+    "note": "A small writing desk with papers and a book, for a Home Office too narrow for the other desks."
+  },
   "plant-small": {
     "pack": "mi",
     "file": "1_Interiors/16x16/Theme_Sorter/2_LivingRoom_16x16.png",
-    "rect": [2, 86, 12, 12],
+    "rect": [2, 86, 12, 14],
     "note": "A small potted plant, where a big one won't fit."
   },
   "pot-flowers-0": {
@@ -975,7 +1095,7 @@
   "pot-flowers-2": {
     "pack": "me",
     "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png",
-    "rect": [128, 952, 15, 24],
+    "rect": [128, 950, 15, 26],
     "note": "A clay pot of white flowers, in a Sunroom's corners."
   },
   "bookcase-0": {
@@ -995,6 +1115,12 @@
     "file": "1_Interiors/16x16/Theme_Sorter/5_Classroom_and_library_16x16.png",
     "rect": [128, 118, 32, 34],
     "note": "A pale bookcase full of books."
+  },
+  "bookcase-narrow": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/5_Classroom_and_library_16x16.png",
+    "rect": [49, 210, 14, 40],
+    "note": "A narrow bookcase full of books, for a Library whose Fireplace takes most of its north wall."
   },
   "globe": {
     "pack": "mi",
@@ -1047,7 +1173,7 @@
   "rug-check": {
     "pack": "mi",
     "file": "1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png",
-    "rect": [209, 1153, 30, 23],
+    "rect": [209, 1153, 30, 30],
     "note": "A pink checked play rug."
   },
   "toy-train": {

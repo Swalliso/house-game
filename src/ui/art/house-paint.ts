@@ -22,6 +22,8 @@ import {
   EDGE,
   WALL,
   edge,
+  faceRuns,
+  faceSpans,
   hasFace,
   inset,
   roomAt,
@@ -32,7 +34,7 @@ import {
 import { CELL, PIECE_SPRITES, spritePos, type SpriteId } from '../sprites.ts';
 import type { PieceId } from '../../rules/index.ts';
 import { artSize, drawingPixels, isDrawing, type ArtId } from './drawings.ts';
-import type { Item } from './rooms.ts';
+import { roomLayout, type Item } from './rooms.ts';
 import type { Ground, YardLayout, YardModel } from './yard.ts';
 
 /** RGBA pixels (not premultiplied, like ImageData) at (x, y) on the lot, in art px. */
@@ -288,36 +290,6 @@ export class Mask {
   }
 }
 
-/** The x ranges of a cell's north face that are door gaps: the floor runs through them. */
-function faceGaps(m: HouseModel, x: number, y: number): [number, number][] {
-  const X0 = x * CELL;
-  const Y0 = y * CELL;
-  const out: [number, number][] = [];
-  const cut = (g: Rect) => {
-    if (g.x < X0 + CELL && g.x + g.w > X0)
-      out.push([Math.max(X0, g.x), Math.min(X0 + CELL, g.x + g.w)]);
-  };
-  for (const d of m.doors) {
-    if (d.dir === 'h' && d.gap.y + d.gap.h / 2 === Y0) cut(d.gap);
-  }
-  for (const e of m.exits) {
-    if (e.side === 'N' && e.cell.x === x && e.cell.y === y) cut(e.gap);
-  }
-  return out;
-}
-
-/** [from, to) minus the gaps (inside it), as runs. */
-function without(from: number, to: number, gaps: readonly [number, number][]): [number, number][] {
-  const out: [number, number][] = [];
-  let x = from;
-  for (const [g0, g1] of [...gaps].sort((p, q) => p[0] - q[0])) {
-    if (g0 > x) out.push([x, g0]);
-    x = Math.max(x, g1);
-  }
-  if (x < to) out.push([x, to]);
-  return out;
-}
-
 /**
  * Paints ground (yard.ts): sprites, rects of color, and ovals of color in three steps. With
  * `cells`, only on those cells: a yard piece's ground (a lamp's light, a wet patch) stays its own.
@@ -437,7 +409,7 @@ export function paintFloors(
       cv.blit(atlas, floor, X0, Y0);
       let top = Y0 + inset(m, c.x, c.y, 'N');
       if (hasFace(m, c.x, c.y)) {
-        for (const [a, z] of without(X0, X0 + CELL, faceGaps(m, c.x, c.y))) {
+        for (const [a, z] of faceRuns(m, c.x, c.y)) {
           cv.blit(atlas, face, a, top, { x: a - X0, y: 0, w: z - a, h: WALL.face });
           shade.rect({ x: a, y: top + WALL.face, w: z - a, h: WALL.shadow }, true);
         }
@@ -462,7 +434,9 @@ export function paintFloors(
   shade.forEach((px, py) => cv.blend(px, py, FLOOR_SHADOW.rgb, FLOOR_SHADOW.alpha));
   for (const r of m.rooms.values()) {
     if (r.fixture === 'soundproofing') padFaces(cv, m, r);
-    else if (r.fixture === 'blackoutCurtains') drapeFace(cv, m, r);
+    if (r.fixture !== 'blackoutCurtains') continue;
+    const d = roomLayout(m, r.uid).drape;
+    if (d) drapeFace(cv, d);
   }
   return cv.pixels();
 }
@@ -499,22 +473,9 @@ function floorBox(m: HouseModel, r: Room): Rect {
   };
 }
 
-/** The x ranges of each of a room's north faces, with their tops: where the face sprite was drawn. */
-function faces(m: HouseModel, r: Room): { x0: number; x1: number; top: number }[] {
-  const out: { x0: number; x1: number; top: number }[] = [];
-  for (const c of r.cells) {
-    if (!hasFace(m, c.x, c.y)) continue;
-    const X0 = c.x * CELL;
-    const top = c.y * CELL + inset(m, c.x, c.y, 'N');
-    for (const [a, z] of without(X0, X0 + CELL, faceGaps(m, c.x, c.y)))
-      out.push({ x0: a, x1: z, top });
-  }
-  return out;
-}
-
 /** Soundproofing: the north faces padded, rows of pads offset like bricks, over the baseboard. */
 function padFaces(cv: Canvas, m: HouseModel, r: Room): void {
-  for (const f of faces(m, r)) {
+  for (const f of faceSpans(m, r)) {
     for (let fy = 0; fy < WALL.face - 2; fy++) {
       for (let x = f.x0; x < f.x1; x++) {
         const row = fy < 3 ? 0 : 1;
@@ -530,43 +491,43 @@ function padFaces(cv: Canvas, m: HouseModel, r: Room): void {
   }
 }
 
-/** Blackout Curtains: closed drapes on a rod across the middle of the room's widest north face. */
-function drapeFace(cv: Canvas, m: HouseModel, r: Room): void {
-  // The widest stretch of face, by row.
-  const spans = faces(m, r).sort((p, q) => p.top - q.top || p.x0 - q.x0);
-  const merged: { x0: number; x1: number; top: number }[] = [];
-  for (const f of spans) {
-    const last = merged[merged.length - 1];
-    if (last && last.top === f.top && last.x1 === f.x0) last.x1 = f.x1;
-    else merged.push({ ...f });
-  }
-  const best = merged.sort((p, q) => q.x1 - q.x0 - (p.x1 - p.x0) || p.top - q.top)[0];
-  if (!best) return;
-  const w = Math.min(best.x1 - best.x0 - 4, 30);
-  if (w < 8) return;
-  const x0 = Math.floor((best.x0 + best.x1 - w) / 2);
-  const mid = x0 + Math.floor(w / 2);
-  for (let fy = 0; fy < WALL.face; fy++) {
-    for (let x = x0; x < x0 + w; x++) {
-      const k = (x - x0) % 3;
+/**
+ * Soundproofing on a wall band (the walls canvas, over the furniture, so it shows whatever stands
+ * against the walls): the room's side of the band padded, a seam every few px along it.
+ */
+function padAt(m: HouseModel, px: number, py: number): Rgb {
+  const cx = Math.floor(px / CELL);
+  const cy = Math.floor(py / CELL);
+  const ly = py - cy * CELL;
+  const along = ly < inset(m, cx, cy, 'N') || ly >= CELL - inset(m, cx, cy, 'S') ? px : py;
+  const k = along % 6;
+  return k === 0 ? PAD.seam : k === 1 ? PAD.lit : PAD.pad;
+}
+
+/** Blackout Curtains on a north face: closed drapes on a rod, where the room's layout hangs them. */
+function drapeFace(cv: Canvas, d: Rect): void {
+  const mid = d.x + Math.floor(d.w / 2);
+  for (let fy = 0; fy < d.h; fy++) {
+    for (let x = d.x; x < d.x + d.w; x++) {
+      const k = (x - d.x) % 3;
       const color =
         fy === 0
           ? DRAPE.rod
           : x === mid || x === mid - 1
             ? DRAPE.dark
-            : fy === WALL.face - 1
+            : fy === d.h - 1
               ? DRAPE.dark
               : k === 0
                 ? DRAPE.dark
                 : k === 1
                   ? DRAPE.lit
                   : DRAPE.cloth;
-      cv.set(x, best.top + fy, color);
+      cv.set(x, d.y + fy, color);
     }
   }
   // The rod's ends.
-  cv.set(x0 - 1, best.top, INK);
-  cv.set(x0 + w, best.top, INK);
+  cv.set(d.x - 1, d.y, INK);
+  cv.set(d.x + d.w, d.y, INK);
 }
 
 /** A Skylight: a patch of sun in four panes, the frame's shadow between them, over the floor and whatever stands there. */
@@ -682,13 +643,19 @@ export function paintWalls(m: HouseModel): Pixels | null {
     b.h * CELL + 2 * MARGIN,
   );
   const mask = wallMask(m, cv);
+  const padded = new Set(
+    [...m.rooms.values()].filter((r) => r.fixture === 'soundproofing').map((r) => r.uid),
+  );
   mask.forEach((px, py) => {
     const edgePx =
       !mask.has(px - 1, py) ||
       !mask.has(px + 1, py) ||
       !mask.has(px, py - 1) ||
       !mask.has(px, py + 1);
-    cv.set(px, py, edgePx ? INK : BAND);
+    if (edgePx) cv.set(px, py, INK);
+    else if (padded.size > 0 && padded.has(roomAt(m, Math.floor(px / CELL), Math.floor(py / CELL))))
+      cv.set(px, py, padAt(m, px, py));
+    else cv.set(px, py, BAND);
   });
 
   // Windows: glass across the band, framed in ink, with a mullion and a few glints. A Bay

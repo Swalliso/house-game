@@ -149,7 +149,7 @@
   "pool-ladder": {
     "pack": "me",
     "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/14_Swimming_Pool_16x16.png",
-    "rect": [130, 256, 14, 28],
+    "rect": [130, 256, 15, 28],
     "note": "The Pool's ladder: its rails curving into the water."
   },
   "pool-float-0": {
@@ -199,8 +199,19 @@
   "stump-0": {
     "pack": "me",
     "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_16x16.png",
-    "rect": [311, 546, 9, 14],
-    "note": "A stump to sit on by the Fire Pit."
+    "rect": [311, 562, 17, 14],
+    "note": "A stump to sit on by the Fire Pit: the whole stump below the one with the axe in it."
+  },
+  "stump-1": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_16x16.png",
+    "rect": [311, 562, 17, 14],
+    "ops": [
+      {
+        "op": "flipX"
+      }
+    ],
+    "note": "The Fire Pit's other stump: the first one mirrored, so the two don't look stamped."
   },
   "planter-0": {
     "pack": "me",

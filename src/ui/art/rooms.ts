@@ -39,6 +39,7 @@ import {
   EDGE,
   WALL,
   edge,
+  faceSpans,
   hasFace,
   inset,
   overlaps,
@@ -69,6 +70,8 @@ export interface RoomLayout {
   items: readonly Item[];
   /** False when the room's fixture couldn't be drawn: its badge shows instead. */
   fixtureShown: boolean;
+  /** Where Blackout Curtains hang on a north face, in view in front of the furniture (house-paint.ts). */
+  drape?: Rect;
 }
 
 /**
@@ -124,7 +127,9 @@ const BACK: Readonly<Record<string, number>> = {
   globe: 12,
   'clothes-rail': 16,
   'coat-rack': 24,
-  washer: 15,
+  washer: 12,
+  'bookcase-narrow': 28,
+  'desk-small': 8,
   fireplace: 26,
   boxes: 12,
   'toy-box': 6,
@@ -311,14 +316,24 @@ interface Want {
   /** Sprite choices, the first preferred (variants are already picked by the room). */
   sprites: readonly SpriteId[];
   slots: readonly Slot[];
-  /** It is the room's fixture: the fixture shows only if its first sprite is placed (the others are stand-ins). */
+  /** It is the room's fixture: the fixture shows when one of its sprites is placed. */
   fixture?: boolean;
+  /**
+   * What stands in for the fixture where none of its sprites fits in any of its slots (the bed
+   * Bunk Beds replace): tried through every slot only after the fixture's own sprites.
+   */
+  standIn?: readonly SpriteId[];
   /** A hall's runner, built from its ends and repeated middles. */
   runner?: boolean;
   /** How far it may tuck under the C piece it stands beside (dining chairs under the table). */
   tuck?: number;
   /** How far past the band's top it may rise (the prototype's tight rule for one-cell rooms). */
   lift?: number;
+  /**
+   * Room to keep free on each side of a C piece, for what stands beside it (a dining table's
+   * chairs): where the floor's middle can't keep it, it stands against the north wall's face.
+   */
+  aisle?: number;
 }
 
 interface Ctx {
@@ -338,6 +353,7 @@ const BUNKS: readonly SpriteId[] = ['bunk-bed-0', 'bunk-bed-1', 'bunk-bed-2'];
 const NIGHTSTANDS: readonly SpriteId[] = ['nightstand-0', 'nightstand-1', 'nightstand-2'];
 const ROUND_RUGS: readonly SpriteId[] = ['rug-round-0', 'rug-round-1'];
 const TOILETS: readonly SpriteId[] = ['toilet-0', 'toilet-1', 'toilet-2'];
+// Slate, tan, grey, lavender: two greys never share a rug (rugOf), so no two rooms look alike.
 const SOFAS: readonly SpriteId[] = ['sofa-0', 'sofa-2', 'sofa-1', 'sofa-3'];
 const WIDE_RUGS: readonly SpriteId[] = ['rug-wide-0', 'rug-wide-1'];
 const TALL_RUGS: readonly SpriteId[] = ['rug-tall-1', 'rug-tall-0'];
@@ -350,6 +366,14 @@ const TEDDIES: readonly SpriteId[] = ['teddy-0', 'teddy-1'];
 const POTS: readonly SpriteId[] = ['pot-flowers-0', 'pot-flowers-1', 'pot-flowers-2'];
 
 const want = (sprite: SpriteId, ...slots: Slot[]): Want => ({ sprites: [sprite], slots });
+
+/**
+ * A two-color list's pick for a room of a four-color type: 0, 1, 1, 0 for ranks 0 to 3, so
+ * rooms whose main pieces are close in color (ranks 0 and 2) still differ in this one.
+ */
+function rugOf<T>(list: readonly T[], rank: number): T {
+  return pick(list, rank + (rank >> 1));
+}
 
 /** The Fireplace, when the room has one, in these slots. */
 function fireplace(c: Ctx, ...slots: Slot[]): Want[] {
@@ -380,15 +404,24 @@ export type RoomType = Extract<
   | 'sunroom'
 >;
 
-/** Each room type's furniture, most important first. */
+/**
+ * Each room type's furniture, most important first: an N piece's group keeps its earlier members
+ * before its later ones, and the room's fixture before them all.
+ */
 const SPECS: Readonly<Record<RoomType, (c: Ctx) => Want[]>> = {
   bedroom: (c) => {
     const ns = pick(NIGHTSTANDS, c.rank + 1);
     const [near, far] = corners(c, 'NL', 'NR');
     return [
-      // Bunk Beds replace the bed; where they don't fit, the bed stays and the badge shows.
+      // Bunk Beds replace the bed, against the north wall or in the middle of the floor; only
+      // where they fit nowhere does the bed stay (and the badge show).
       c.fixture === 'bunkBeds'
-        ? { sprites: [pick(BUNKS, c.rank), pick(BEDS, c.rank)], slots: ['N', 'C'], fixture: true }
+        ? {
+            sprites: [pick(BUNKS, c.rank)],
+            standIn: [pick(BEDS, c.rank)],
+            slots: ['N', 'C'],
+            fixture: true,
+          }
         : want(pick(BEDS, c.rank), 'N', 'C'),
       ...fireplace(c, far!),
       want(ns, near!),
@@ -412,7 +445,9 @@ const SPECS: Readonly<Record<RoomType, (c: Ctx) => Want[]>> = {
       tuck: 3,
     });
     return [
-      want(TABLES[t]!, 'C'),
+      // In the middle of the floor with room for a chair each side, or against the north wall
+      // where a door's walkway takes the middle.
+      { sprites: [TABLES[t]!], slots: ['C'], aisle: 13 - 3 },
       chair('CL'),
       chair('CR'),
       chair('CL'),
@@ -423,14 +458,19 @@ const SPECS: Readonly<Record<RoomType, (c: Ctx) => Want[]>> = {
   },
   livingRoom: (c) => {
     const sofa = pick(SOFAS, c.rank);
-    const rug: Want = { sprites: [pick(WIDE_RUGS, c.rank), pick(TALL_RUGS, c.rank)], slots: ['R'] };
+    const rug: Want = {
+      sprites: [rugOf(WIDE_RUGS, c.rank), rugOf(TALL_RUGS, c.rank)],
+      slots: ['R'],
+    };
     if (c.fixture === 'fireplace') {
-      // The fireplace takes the wall, and the sofa faces the room in front of it.
+      // The fireplace takes the wall, the sofa beside it where the wall is long enough (a
+      // landscape room), or facing the room in front of it.
+      const [near, far] = corners(c, 'NL', 'NR');
       return [
         { sprites: ['fireplace'], slots: ['N'], fixture: true },
-        want('plant-potted', 'NL'),
-        want('plant-potted', 'NR'),
-        want(sofa, 'C'),
+        want(sofa, near!, 'C'),
+        want('plant-potted', near!),
+        want('plant-potted', far!),
         rug,
         want('coffee-table', 'C'),
       ];
@@ -453,9 +493,10 @@ const SPECS: Readonly<Record<RoomType, (c: Ctx) => Want[]>> = {
   longHallway: (c) => hall(c),
   garage: (c) => [{ sprites: [], slots: ['G'] }, ...fireplace(c, 'N'), want('boxes', 'N')],
   homeOffice: (c) => [
-    // The computer desk, or a low desk where the room is too shallow for it; in the middle of
-    // the floor when its doors leave no wall free.
-    { sprites: ['desk-pc', 'desk-study', 'globe'], slots: ['N', 'C'] },
+    // The computer desk, or a lower or narrower desk where the room is too shallow or narrow
+    // for it; in the middle of the floor or against the south wall when its doors leave no
+    // north wall free.
+    { sprites: ['desk-pc', 'desk-study', 'desk-small', 'globe'], slots: ['N', 'C', 'S'] },
     ...fireplace(c, 'NR', 'NL'),
     want(pick(BOOKCASES, c.rank), 'NR', 'NL', 'N'),
     want('plant-potted', ...corners(c, 'SE', 'SW')),
@@ -472,9 +513,12 @@ const SPECS: Readonly<Record<RoomType, (c: Ctx) => Want[]>> = {
     const [near, far] = corners(c, 'NL', 'NR');
     return c.fixture === 'fireplace'
       ? [
-          { sprites: ['fireplace'], slots: ['N'], fixture: true },
-          want('globe', near!),
-          want(books, 'N'),
+          // A bookcase and the fireplace beside it (a narrow bookcase where a full one won't fit
+          // with it), so the room still reads as a library; where no bookcase fits beside the
+          // fireplace, the bookcase stays and the fireplace shows as its badge.
+          { sprites: [books, 'bookcase-narrow'], slots: ['N', 'C'] },
+          { sprites: ['fireplace'], slots: [near!], fixture: true },
+          want('globe', far!),
           want(pick(ARMCHAIRS, c.rank + 2), 'C'),
           want(pick(MATS, c.rank), 'R'),
         ]
@@ -492,36 +536,55 @@ const SPECS: Readonly<Record<RoomType, (c: Ctx) => Want[]>> = {
     want(pick(SHOES, c.rank), 'C', 'S'),
     want('bath-mat', 'R'),
   ],
-  sunroom: (c) => [
-    want('plant-tall', 'N', 'C'),
-    ...fireplace(c, 'NR', 'NL'),
-    want(pick(POTS, c.rank), 'NL'),
-    want(pick(POTS, c.rank + 1), 'NR'),
-    want(pick(ARMCHAIRS, c.rank), 'C'),
-    want(pick(POTS, c.rank + 2), ...corners(c, 'SW', 'SE')),
-  ],
+  sunroom: (c) =>
+    c.fixture === 'fireplace'
+      ? [
+          // The fireplace takes the north wall, pots of flowers beside it, the tall plant where
+          // it still fits.
+          { sprites: ['fireplace'], slots: ['N'], fixture: true },
+          want(pick(POTS, c.rank), 'NL'),
+          want(pick(POTS, c.rank + 1), 'NR'),
+          want('plant-tall', 'NL', 'NR', 'C', ...corners(c, 'SW', 'SE')),
+          want(pick(ARMCHAIRS, c.rank), 'C'),
+          want(pick(POTS, c.rank + 2), ...corners(c, 'SW', 'SE')),
+        ]
+      : [
+          want('plant-tall', 'N', 'C'),
+          want(pick(POTS, c.rank), 'NL'),
+          want(pick(POTS, c.rank + 1), 'NR'),
+          want(pick(ARMCHAIRS, c.rank), 'C'),
+          want(pick(POTS, c.rank + 2), ...corners(c, 'SW', 'SE')),
+        ],
 };
 
-/** A kitchen: the range, a counter (with the sink if it fits) and the fridge, along the north wall. */
+/**
+ * A kitchen: the range and a counter with the sink along the north wall (a plain counter where
+ * the sink won't fit), then the fridge where it still fits. Where its doors leave no north wall,
+ * the range and its counter stand in the middle of the floor. A Fireplace takes the counter's
+ * place beside the range; a Kitchen Island stands in the middle (a smaller one in an L-Kitchen's
+ * arm, or beside a door's walkway).
+ */
 function kitchen(c: Ctx): Want[] {
-  // With an island, the run keeps short: the island needs the floor the fridge would stand on.
-  if (c.fixture === 'kitchenIsland') {
-    return [
-      want('range', 'N'),
-      { sprites: ['counter-sink', 'counter'], slots: ['NL'] },
-      { sprites: ['kitchen-island'], slots: ['C'], fixture: true },
-      want('counter', 'N'),
-    ];
-  }
+  const island = c.fixture === 'kitchenIsland';
   return [
-    want('range', 'N'),
-    { sprites: ['counter-sink', 'counter'], slots: ['NL'] },
-    want('fridge', 'NL'),
-    ...fireplace(c, 'N'),
-    want('fridge', 'N'),
+    want('range', 'N', 'C'),
+    ...fireplace(c, 'NL', 'NR'),
+    { sprites: ['counter-sink', 'counter'], slots: ['NL', 'NR', 'CR', 'CL'] },
+    ...(island
+      ? [
+          {
+            sprites: ['kitchen-island', 'kitchen-island-24', 'kitchen-island-16'],
+            slots: ['C'],
+            fixture: true,
+          } satisfies Want,
+        ]
+      : []),
+    // Not one of the range's group (its counter with the sink comes first): on another north
+    // wall, or beside the range's run where it still fits.
+    want('fridge', 'N', 'NL', 'NR'),
     want('counter', 'N'),
     // A breakfast table, where the floor is free for it.
-    want('breakfast-table', 'C'),
+    ...(island ? [] : [want('breakfast-table', 'C')]),
   ];
 }
 
@@ -653,7 +716,9 @@ function spots(x0: number, x1: number, w: number): number[] {
 
 /**
  * The ways to take some of the members (each absent, or one of its sprites): the room's fixture
- * first, then the most members, then preferred sprites, then list order.
+ * first, then the members in the order the room lists them (an earlier one is worth more than
+ * any later ones: a Living Room's sofa beside its fireplace before two plants), then preferred
+ * sprites, then list order.
  */
 function choices(members: readonly Want[]): (SpriteId | null)[][] {
   let out: (SpriteId | null)[][] = [[]];
@@ -663,13 +728,14 @@ function choices(members: readonly Want[]): (SpriteId | null)[][] {
   const fixture = (c: (SpriteId | null)[]) => c.some((sp, i) => sp !== null && members[i]!.fixture);
   const score = (c: (SpriteId | null)[]) =>
     c.reduce((s, sp, i) => s + (sp === null ? 0 : members[i]!.sprites.indexOf(sp)), 0);
-  const count = (c: (SpriteId | null)[]) => c.filter((s) => s !== null).length;
+  /** Which members it takes, the first member the most significant. */
+  const taken = (c: (SpriteId | null)[]) => c.reduce((s, sp) => s * 2 + (sp === null ? 0 : 1), 0);
   return out
     .map((c, i) => ({ c, i }))
     .sort(
       (a, b) =>
         Number(fixture(b.c)) - Number(fixture(a.c)) ||
-        count(b.c) - count(a.c) ||
+        taken(b.c) - taken(a.c) ||
         score(a.c) - score(b.c) ||
         a.i - b.i,
     )
@@ -680,38 +746,44 @@ function choices(members: readonly Want[]): (SpriteId | null)[][] {
 function placeGroup(L: Layout, key: Want, members: readonly Want[]): Set<Want> {
   const done = new Set<Want>();
   const options = choices(members);
-  // The key's own sprite first, then the most members, and only then the windows and walkways.
-  for (const sprite of key.sprites) {
-    for (const option of options) {
-      for (const pass of passes(key)) {
-        const chosen = members.map((m, i) => [m, option[i]] as const).filter(([, s]) => s !== null);
-        const order = [
-          ...chosen.filter(([m]) => m.slots[0] === 'NL').reverse(),
-          [key, sprite] as const,
-          ...chosen.filter(([m]) => m.slots[0] === 'NR'),
-        ] as (readonly [Want, SpriteId])[];
-        const total = order.reduce((s, [, sp]) => s + spritePos(sp).w, 0);
-        for (const r of L.g.runs) {
-          if (L.taken.has(r)) continue;
-          for (const start of spots(r.x0, r.x1, total)) {
-            let x = start;
-            const trial: { want: Want; sprite: SpriteId; x: number; y: number }[] = [];
-            const feet: Rect[] = [];
-            for (const [w, sp] of order) {
-              const y = L.wallY(r, sp, w.lift);
-              if (y === null || !L.fitsWall(r, sp, x, y, pass, feet)) break;
-              const { w: sw, h } = spritePos(sp);
-              trial.push({ want: w, sprite: sp, x, y });
-              feet.push({ x, y: Math.max(y, r.yb), w: sw, h: y + h - Math.max(y, r.yb) });
-              x += sw;
-            }
-            if (trial.length < order.length) continue;
-            for (const t of trial) {
-              L.add(t.want, t.sprite, t.x, t.y, r);
-              done.add(t.want);
-            }
-            return done;
+  const fixture = (o: (SpriteId | null)[]) => o.some((sp, i) => sp !== null && members[i]!.fixture);
+  // The room's fixture first, whichever of the key's sprites it takes (a Library's narrow
+  // bookcase beside its Fireplace before its full one without); then the key's own sprite first,
+  // then the members in order, and only then the windows and walkways.
+  const tries = [true, false].flatMap((withFixture) =>
+    key.sprites.flatMap((sprite) =>
+      options.filter((o) => fixture(o) === withFixture).map((option) => ({ sprite, option })),
+    ),
+  );
+  for (const { sprite, option } of tries) {
+    for (const pass of passes(key)) {
+      const chosen = members.map((m, i) => [m, option[i]] as const).filter(([, s]) => s !== null);
+      const order = [
+        ...chosen.filter(([m]) => m.slots[0] === 'NL').reverse(),
+        [key, sprite] as const,
+        ...chosen.filter(([m]) => m.slots[0] === 'NR'),
+      ] as (readonly [Want, SpriteId])[];
+      const total = order.reduce((s, [, sp]) => s + spritePos(sp).w, 0);
+      for (const r of L.g.runs) {
+        if (L.taken.has(r)) continue;
+        for (const start of spots(r.x0, r.x1, total)) {
+          let x = start;
+          const trial: { want: Want; sprite: SpriteId; x: number; y: number }[] = [];
+          const feet: Rect[] = [];
+          for (const [w, sp] of order) {
+            const y = L.wallY(r, sp, w.lift);
+            if (y === null || !L.fitsWall(r, sp, x, y, pass, feet)) break;
+            const { w: sw, h } = spritePos(sp);
+            trial.push({ want: w, sprite: sp, x, y });
+            feet.push({ x, y: Math.max(y, r.yb), w: sw, h: y + h - Math.max(y, r.yb) });
+            x += sw;
           }
+          if (trial.length < order.length) continue;
+          for (const t of trial) {
+            L.add(t.want, t.sprite, t.x, t.y, r);
+            done.add(t.want);
+          }
+          return done;
         }
       }
     }
@@ -813,26 +885,51 @@ function placeSlot(L: Layout, w: Want, slot: Slot, c: Ctx): boolean {
   return false;
 }
 
-/** A C piece: just below what stands on the north wall over it, or in the middle of an empty floor. */
+/**
+ * A C piece: just below what stands on the north wall over it, or in the middle of an empty floor.
+ * One that keeps an aisle each side (a dining table, for its chairs) tries that first: in the
+ * middle, then against the north wall's face, then in the middle over a door's walkway (never in
+ * the opening: the walkway gives way to the table, and the chairs keep out of it); and only then
+ * anywhere.
+ */
 function placeC(L: Layout, w: Want, sprite: SpriteId): boolean {
   const g = L.g;
   const { w: sw, h } = spritePos(sprite);
-  for (const x of spots(g.ix0, g.ix1, sw)) {
-    const over = (p: Placed) => p.rect && p.item.x < x + sw + 2 && p.item.x + p.rect.w > x - 2;
-    const above = L.placed.filter((p) => over(p) && (p.run || p === L.lastC));
-    const below = Math.max(g.floorTop, ...above.map((p) => p.rect!.y + p.rect!.h));
-    const want = above.length > 0 ? below + 3 : Math.floor((below + g.iy1 - h) / 2);
-    // A few px up or down before sliding sideways: a table keeps its chairs.
-    for (const d of [0, -1, 1, -2, 2, 3, -3, 4, 5, 6, 8]) {
-      const y = want + d;
-      const r = { x, y, w: sw, h };
-      if (y > below && y + h <= g.iy1 && onFloor(g, r, false) && L.free(r)) {
-        L.lastC = L.add(w, sprite, x, y, null);
-        return true;
+  const aisled = (x: number) =>
+    !w.aisle || (x - w.aisle >= g.ix0 - 1 && x + sw + w.aisle <= g.ix1 + 1);
+  const put = (x: number, y: number) => {
+    L.lastC = L.add(w, sprite, x, y, null);
+    return true;
+  };
+  const middle = (aisle: boolean, walkways: boolean) => {
+    for (const x of spots(g.ix0, g.ix1, sw)) {
+      if (aisle && !aisled(x)) continue;
+      const over = (p: Placed) => p.rect && p.item.x < x + sw + 2 && p.item.x + p.rect.w > x - 2;
+      const above = L.placed.filter((p) => over(p) && (p.run || p === L.lastC));
+      const below = Math.max(g.floorTop, ...above.map((p) => p.rect!.y + p.rect!.h));
+      const want = above.length > 0 ? below + 3 : Math.floor((below + g.iy1 - h) / 2);
+      // A few px up or down before sliding sideways: a table keeps its chairs.
+      for (const d of [0, -1, 1, -2, 2, 3, -3, 4, 5, 6, 8]) {
+        const y = want + d;
+        const r = { x, y, w: sw, h };
+        if (y > below && y + h <= g.iy1 && onFloor(g, r, false) && L.free(r, 0, walkways)) {
+          return put(x, y);
+        }
       }
     }
+    return false;
+  };
+  if (w.aisle) {
+    if (middle(true, true)) return true;
+    // Against the north wall's face, its back on the face as a north wall piece stands.
+    const y = g.floorTop - WALL.face;
+    for (const x of spots(g.ix0, g.ix1, sw)) {
+      const r = { x, y, w: sw, h };
+      if (aisled(x) && y + h <= g.iy1 && onFloor(g, r, true) && L.free(r)) return put(x, y);
+    }
+    if (middle(true, false)) return true;
   }
-  return false;
+  return middle(false, true);
 }
 
 /** A hall's runner: its two ends and as many middles as it takes, along the room's long side. */
@@ -972,9 +1069,8 @@ function layOut(m: HouseModel, uid: number): RoomLayout {
   const wants = spec(c);
   const L = new Layout(analyze(m, room));
   const done = new Set<Want>();
-  for (let i = 0; i < wants.length; i++) {
-    const w = wants[i]!;
-    if (done.has(w)) continue;
+  /** Places want `w` (the i-th) through its slots: an N piece with its group first. */
+  const place = (w: Want, i: number): boolean => {
     if (w.slots[0] === 'N' && w.sprites.length > 0) {
       const members: Want[] = [];
       for (let j = i + 1; j < wants.length; j++) {
@@ -983,13 +1079,23 @@ function layOut(m: HouseModel, uid: number): RoomLayout {
         members.push(wants[j]!);
       }
       for (const got of placeGroup(L, w, members)) done.add(got);
-      if (done.has(w)) continue;
+      if (done.has(w)) return true;
     }
     for (const slot of w.slots[0] === 'N' && w.sprites.length > 0 ? w.slots.slice(1) : w.slots) {
       if (placeSlot(L, w, slot, c)) {
         done.add(w);
-        break;
+        return true;
       }
+    }
+    return false;
+  };
+  for (let i = 0; i < wants.length; i++) {
+    const w = wants[i]!;
+    if (done.has(w)) continue;
+    // A fixture's own sprites through all of its slots, and only then what stands in for it.
+    if (!place(w, i) && w.standIn) {
+      const { standIn, ...rest } = w;
+      place({ ...rest, sprites: standIn, fixture: false }, i);
     }
   }
   // Back to front: rugs and runners first, then by bottom edge, west to east.
@@ -1000,32 +1106,70 @@ function layOut(m: HouseModel, uid: number): RoomLayout {
     )
     .map(({ p }) => p.item);
   const f = room.fixture;
+  const drape = f === 'blackoutCurtains' ? drapeSpot(m, room, L.placed) : null;
   let fixtureShown = true;
   if (f) {
     const drawn = wants.filter((w) => w.fixture);
     fixtureShown =
-      drawn.length > 0
-        ? L.placed.some((p) => p.want.fixture && p.item.sprite === p.want.sprites[0])
-        : paintedShown(m, room, f);
+      drawn.length > 0 ? L.placed.some((p) => p.want.fixture) : paintedShown(m, room, f, drape);
   }
-  return { items, fixtureShown };
+  return { items, fixtureShown, ...(drape ? { drape } : {}) };
 }
 
-/** Whether the painters can draw a room's fixture: the Skylight and Chandelier always, the others where they have a wall. */
-function paintedShown(m: HouseModel, room: Room, f: FixtureId): boolean {
+/**
+ * Whether the painters' drawing of a room's fixture is in view: the Skylight, the Chandelier and
+ * Soundproofing (its pads on the room's wall bands, over the furniture) always; Blackout Curtains
+ * where they darken a window or hang in view on a north face; a Bay Window where it has a wall.
+ */
+function paintedShown(m: HouseModel, room: Room, f: FixtureId, drape: Rect | null): boolean {
   switch (f) {
     case 'skylight':
     case 'chandelier':
-      return true;
     case 'soundproofing':
-      return room.cells.some((c) => hasFace(m, c.x, c.y));
+      return true;
     case 'blackoutCurtains':
-      return (
-        room.cells.some((c) => hasFace(m, c.x, c.y)) || m.windows.some((w) => w.uid === room.uid)
-      );
+      return drape !== null || m.windows.some((w) => w.uid === room.uid);
     case 'bayWindow':
       return m.windows.some((w) => w.uid === room.uid && w.bay);
     default:
       return false;
   }
 }
+
+/**
+ * Where Blackout Curtains hang: across the middle of the widest stretch of north face the
+ * furniture leaves in view, or null when none is wide enough to read as drapes.
+ */
+function drapeSpot(m: HouseModel, room: Room, placed: readonly Placed[]): Rect | null {
+  let best: { x0: number; x1: number; top: number } | null = null;
+  for (const f of faceSpans(m, room)) {
+    // The x ranges of the pieces standing in front of this face (rugs lie below it).
+    const covers = placed
+      .filter((p) => p.rect)
+      .map((p) => ({ x: p.item.x, y: p.item.y, ...artSize(p.item.sprite) }))
+      .filter((r) => r.y < f.top + WALL.face && r.y + r.h > f.top)
+      .sort((p, q) => p.x - q.x);
+    let at = f.x0;
+    const free = (x0: number, x1: number) => {
+      const better =
+        !best ||
+        x1 - x0 > best.x1 - best.x0 ||
+        (x1 - x0 === best.x1 - best.x0 &&
+          (f.top < best.top || (f.top === best.top && x0 < best.x0)));
+      if (x1 > x0 && better) best = { x0, x1, top: f.top };
+    };
+    for (const r of covers) {
+      if (r.x > at) free(at, Math.min(r.x, f.x1));
+      at = Math.max(at, r.x + r.w);
+    }
+    if (at < f.x1) free(at, f.x1);
+  }
+  if (!best) return null;
+  const { x0, x1, top } = best;
+  const w = Math.min(x1 - x0 - 4, 30);
+  if (w < DRAPE_MIN) return null;
+  return { x: Math.floor((x0 + x1 - w) / 2), y: top, w, h: WALL.face };
+}
+
+/** The narrowest drapes that read as curtains, in px. */
+const DRAPE_MIN = 10;

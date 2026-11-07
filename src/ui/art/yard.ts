@@ -10,10 +10,13 @@
 //   Driveway): touching pieces read as one patch, and each stays countable (D-093's note).
 // - Items, the DOM sprites that wobble with their piece (like a room's furniture): a Patio's
 //   parasol, chairs and table (under the Pergola when it has one), the house's one parked car on
-//   its oldest Driveway, a Fence's pickets and posts, a Pool's ladder and float, the Hot Tub's
-//   bubbles, the Fire Pit's fire and stumps, planters, the Sapling, the outbuildings, the hens.
-//   Fixtures: the Sprinkler on its Lawn, the Pergola over its Patio, Garden Lights as two
-//   bollards with their glow. All three always fit, so their badges never show.
+//   its oldest Driveway with room for it, a Fence's pickets and posts, a Pool's ladder and float,
+//   the Hot Tub's bubbles, the Fire Pit's fire and stumps, planters, the Sapling, the outbuildings,
+//   the hens. Fixtures: the Sprinkler on its Lawn, the Pergola over its Patio, Garden Lights as
+//   two bollards with their glow; a fixture's badge shows only where a door keeps it off.
+// - Nothing stands on an outside door's mat or in front of its opening: a Patio's seats move
+//   clear of the door that opens onto it (its parasol stays folded away), and the car parks
+//   further along its Driveway, or on the next one.
 // - Parts of items above their piece's own cells (the Greenhouse's roof, the Treehouse, a
 //   Birdhouse's box, a car's roof) carry `over`, and go on the overhang layer above the walls.
 //
@@ -32,7 +35,7 @@ import {
   type Rot,
 } from '../../rules/index.ts';
 import { isIndoor, occupancy } from '../board/geometry.ts';
-import { overlaps, uidHash, type HouseModel, type Rect } from '../board/house-model.ts';
+import { grow, overlaps, uidHash, type HouseModel, type Rect } from '../board/house-model.ts';
 import { CELL, type SpriteId } from '../sprites.ts';
 import { artSize } from './drawings.ts';
 import type { Item } from './rooms.ts';
@@ -118,7 +121,7 @@ export interface Look {
 /**
  * One yard piece alone, for the ghost: in its own frame (its bounding box's top-left cell is
  * (0, 0)), in the color and with the fixture `look` gives it (pieceLook, newPieceLook), with no
- * curb cut and no parked car (a car only parks on the house's oldest Driveway).
+ * curb cut and no parked car (the house has one, on the oldest Driveway with room for it).
  */
 export function yardPieceLayout(defId: PieceId, rot: Rot, look: Look = { color: 0 }): YardLayout {
   const key = `${defId}:${rot}:${look.color}:${look.fixture ?? ''}`;
@@ -177,9 +180,11 @@ function build(
     const uid = occ.uids[y * W + x]!;
     return uid ? occ.byUid.get(uid) : undefined;
   };
-  // What yard items keep off: a Bay Window's bay, which juts out of the wall (the walls canvas).
+  // What yard items keep off: a Bay Window's bay, which juts out of the wall (the walls canvas),
+  // with their feet; and every outside door's opening and doormat, with all of them, so nothing
+  // stands on a mat or in front of a door (or rises over one, on the overhang layer).
   const keepOut = m ? m.windows.flatMap((w) => (w.bay ? [w.bay] : [])) : [];
-  const car = opts.car ? parkedCar(house) : 0;
+  const doors = m ? m.exits.flatMap((e) => [grow(e.mat, 2), grow(e.gap, 2)]) : [];
   const color = colors(house);
   // The Fences' cells, so a Fence's arms can join another's.
   const fenceCells = new Map<string, { uid: number; own: number }>();
@@ -208,8 +213,8 @@ function build(
     x1 = Math.max(x1, c.x + 1);
     y1 = Math.max(y1, c.y + 1);
   };
-  for (const p of house.pieces) {
-    if (isIndoor(p.defId)) continue;
+  /** One yard piece's layout, with the house's parked car on it or not. */
+  const layOut = (p: PlacedPiece, car: boolean): YardLayout => {
     const cells = occ.cells.get(p.uid)!;
     const own = new Set(cells.map((c) => `${c.x},${c.y}`));
     // Which end of a piece running across touches the house: east (true), west (false), or neither.
@@ -227,14 +232,26 @@ function build(
         return !!q && q.uid !== p.uid && kind(q.defId) === kind(p.defId);
       },
       keepOut,
-      car: p.uid === car,
+      doors,
+      car,
       color: opts.color ?? color.get(p.uid) ?? 0,
       ...(east !== west ? { toward: east } : {}),
       fence,
     });
     LAYOUTS[p.defId]?.(y);
     if (p.fixture?.id === 'gardenLights') y.lights();
-    pieces.set(p.uid, y.done());
+    return y.done();
+  };
+  // The house's one parked car: on its oldest Driveway that has room for it off the doors.
+  let parked = 0;
+  if (opts.car) {
+    const ways = house.pieces.filter((p) => isDriveway(p.defId)).sort((a, b) => a.uid - b.uid);
+    parked = ways.find((p) => layOut(p, true).items.some((it) => isCar(it.sprite)))?.uid ?? 0;
+  }
+  for (const p of house.pieces) {
+    if (isIndoor(p.defId)) continue;
+    const cells = occ.cells.get(p.uid)!;
+    pieces.set(p.uid, layOut(p, p.uid === parked));
     for (const c of cells) extend(c);
     // A curb cut: the Driveway's concrete through the sidewalk where it meets the street.
     if (opts.street && isDriveway(p.defId)) {
@@ -319,17 +336,16 @@ export function newPieceLook(house: HouseState, defId: PieceId): Look {
   return { color: colors(next).get(uid) ?? 0 };
 }
 
-/** The Driveway the house's one parked car stands on: the oldest (a car always fits one). */
-function parkedCar(house: HouseState): number {
-  const ways = house.pieces.filter((p) => isDriveway(p.defId)).sort((a, b) => a.uid - b.uid);
-  return ways[0]?.uid ?? 0;
-}
+const isCar = (sprite: Item['sprite']) => sprite.startsWith('car-');
 
 interface YardCtx {
   own: (x: number, y: number) => boolean;
   /** Another piece of the same kind on that cell. */
   kin: (x: number, y: number) => boolean;
+  /** What an item's feet keep off (a Bay Window's bay). */
   keepOut: readonly Rect[];
+  /** What no part of an item covers: each outside door's opening and doormat. */
+  doors: readonly Rect[];
   /** This Driveway gets the house's parked car. */
   car: boolean;
   /** Its color, an index into its type's palette (colors()). */
@@ -379,13 +395,30 @@ class Yard {
     return this.box.w >= this.box.h;
   }
 
-  /** Places a sprite with its top-left at (x, y), unless it would stand on a keep-out. */
-  put(sprite: Item['sprite'], x: number, y: number): boolean {
+  /** Whether a sprite with its top-left at (x, y) keeps off the keep-outs and the doors. */
+  fits(sprite: Item['sprite'], x: number, y: number): boolean {
     const { w, h } = artSize(sprite);
     const foot = { x, y: y + Math.max(0, h - 8), w, h: Math.min(h, 8) };
     if (this.ctx.keepOut.some((k) => overlaps(foot, k))) return false;
+    return !this.ctx.doors.some((d) => overlaps({ x, y, w, h }, d));
+  }
+
+  /** Places a sprite with its top-left at (x, y), unless it would stand on a keep-out or a door. */
+  put(sprite: Item['sprite'], x: number, y: number): boolean {
+    if (!this.fits(sprite, x, y)) return false;
     this.items.push({ sprite, x, y });
     return true;
+  }
+
+  /** Places a group of sprites at the first offset where all of them fit, or none of them. */
+  group(parts: readonly [Item['sprite'], number, number][], offsets: readonly [number, number][]) {
+    for (const [dx, dy] of offsets) {
+      if (parts.every(([sp, x, y]) => this.fits(sp, x + dx, y + dy))) {
+        for (const [sp, x, y] of parts) this.put(sp, x + dx, y + dy);
+        return true;
+      }
+    }
+    return false;
   }
 
   /** Each of its cells with a ground sprite. */
@@ -505,12 +538,17 @@ const BIRDHOUSES: readonly SpriteId[] = [
   'birdhouse-3',
 ];
 
-/** A seat on each side of a little table, facing it. */
-function seats(y: Yard, x: number, base: number): void {
+/** A seat on each side of a little table, facing it: where they keep off the doors, or none. */
+function seats(y: Yard, x: number, base: number, offsets: readonly [number, number][]): boolean {
   const color = (y.hash >>> 4) % 2;
-  y.put(color ? 'patio-chair-e-1' : 'patio-chair-e-0', x - 15, base - 19);
-  y.put(color ? 'patio-chair-w-1' : 'patio-chair-w-0', x + 14, base - 19);
-  y.put('patio-table', x, base - 16);
+  return y.group(
+    [
+      [color ? 'patio-chair-e-1' : 'patio-chair-e-0', x - 15, base - 19],
+      [color ? 'patio-chair-w-1' : 'patio-chair-w-0', x + 14, base - 19],
+      ['patio-table', x, base - 16],
+    ],
+    offsets,
+  );
 }
 
 const LAYOUTS: Partial<Record<PieceId, (y: Yard) => void>> = {
@@ -529,16 +567,28 @@ const LAYOUTS: Partial<Record<PieceId, (y: Yard) => void>> = {
     y.tiles('yard-pavers');
     y.edge(EDGE.pavers);
     const { x, y: top, w, h } = y.box;
-    // The table in the middle, near the front; its seats either side.
+    // The table in the middle, near the front; its seats either side. Where a door opens onto
+    // the patio, they move clear of its mat (to the back, or a side), and the parasol, whose
+    // canopy covers most of the patio, stays folded away.
     const tx = x + w / 2 - 6;
     const base = top + h - 3;
+    const room = (dy: number): [number, number][] => [
+      [0, dy],
+      [-(w / 2 - 22), dy],
+      [w / 2 - 22, dy],
+    ];
+    const moves = [...room(0), ...room(-(h - 26))];
     if (y.fixture === 'pergola') {
-      seats(y, tx, base - 6);
+      seats(y, tx, base - 6, moves);
       y.fixtureShown = y.put('pergola', x, top + h - 61);
     } else {
       // The parasol's stand behind the table, its canopy over the seats.
-      y.put(pick(PARASOLS, y.ctx.color), x + Math.floor((w - 47) / 2), base - 61 - 4);
-      seats(y, tx, base);
+      const parasol = y.put(
+        pick(PARASOLS, y.ctx.color),
+        x + Math.floor((w - 47) / 2),
+        base - 61 - 4,
+      );
+      seats(y, tx, base, parasol ? [[0, 0]] : moves);
     }
   },
 
@@ -566,8 +616,9 @@ const LAYOUTS: Partial<Record<PieceId, (y: Yard) => void>> = {
   firePit: (y) => {
     const { x, y: top } = y.box;
     y.oval(x + 16, top + 26, 13, 5, HEARTH, 0.45);
-    y.put('stump-0', x + 1, top + 15);
-    y.put('stump-0', x + 22, top + 15);
+    // A whole stump to sit on at each back corner (the second one mirrored), behind the fire.
+    y.put('stump-0', x, top + 9);
+    y.put('stump-1', x + CELL - artSize('stump-1').w, top + 9);
     y.put('fire-pit', x + 8, top - 2);
   },
 
@@ -644,13 +695,24 @@ function driveway(y: Yard): void {
   // Orange or grey: never the Garage's blue or red (rooms.ts), so it reads as a second car.
   const color = 2 + (y.hash % 2);
   if (!y.across) {
-    // Nose in, away from the street: its back to the viewer.
-    y.put(`car-rear-${color}` as SpriteId, x, top + 5);
+    // Nose in, away from the street: its back to the viewer; further down where its north end
+    // holds a door's mat.
+    const sprite = `car-rear-${color}` as SpriteId;
+    for (let dy = 5; dy <= h - artSize(sprite).h; dy += CELL / 2) {
+      if (y.put(sprite, x, top + dy)) return;
+    }
   } else {
-    // Side on, facing the house if one end of it touches the house, or by its hash.
+    // Side on, facing the house if one end of it touches the house, or by its hash; at its other
+    // end, then along it, where a door opens onto the first.
     const east = y.ctx.toward ?? (y.hash >>> 1) % 2 === 1;
     const sprite = `car-${east ? 'right' : 'left'}-${color}` as SpriteId;
-    y.put(sprite, east ? x + w - 61 - 3 : x + 3, top + h - 37 - 1);
+    const cy = top + h - 37 - 1;
+    const near = east ? x + w - 61 - 3 : x + 3;
+    const far = east ? x + 3 : x + w - 61 - 3;
+    const along = Array.from({ length: Math.max(0, (w - 64) / (CELL / 2)) }, (_, i) =>
+      east ? near - (i + 1) * (CELL / 2) : near + (i + 1) * (CELL / 2),
+    );
+    for (const cx of [near, ...along, far]) if (y.put(sprite, cx, cy)) return;
   }
 }
 
@@ -716,9 +778,13 @@ function ownMask(own: (x: number, y: number) => boolean, x: number, y: number): 
   );
 }
 
+/** The side opposite `bit`. */
+const opposite = (bit: number) => (bit === N ? S : bit === S ? N : bit === E ? W : E);
+
 /**
  * Every Fence cell's arms on a lot: toward its own piece's cells, and toward another Fence's cell
- * where one of the two is the end of its piece's arm.
+ * through an end of one of them: the side an end's line runs on into (opposite its own arm). So a
+ * corner, a T or two Fences end to end join, and two side by side never close into a pen.
  */
 function fenceMasks(cells: ReadonlyMap<string, { uid: number; own: number }>): Map<string, number> {
   const out = new Map<string, number>();
@@ -733,7 +799,9 @@ function fenceMasks(cells: ReadonlyMap<string, { uid: number; own: number }>): M
       [W, -1, 0],
     ] as const) {
       const q = cells.get(`${x + dx},${y + dy}`);
-      if (q && q.uid !== f.uid && (isEnd(f.own) || isEnd(q.own))) m |= bit;
+      if (!q || q.uid === f.uid) continue;
+      // This end runs on toward q, or q's end runs on toward this cell.
+      if ((isEnd(f.own) && bit === opposite(f.own)) || (isEnd(q.own) && q.own === bit)) m |= bit;
     }
     out.set(k, m);
   }

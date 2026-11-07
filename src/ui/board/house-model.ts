@@ -7,10 +7,11 @@
 //   outside wall (a room next to anything else, or the lot's edge), or a garage door.
 // - Doorways are decoration and change no score. Hallways open into every room the rules link
 //   through them (rules.describePiece's `linked`). A front door goes in a street-facing wall of
-//   the best entry room, a back door onto each touching Patio or Hot Tub, and a garage door
-//   faces a Driveway or the street. Then a spanning tree from the entry, public rooms first,
-//   adds as few doors as it takes to reach every room. Doors keep to side walls and the ends
-//   of north walls: a north wall's middle is for furniture.
+//   the best entry room (a garage, a bathroom or a closet only when no other room can have one;
+//   onto the woods only when nothing else can), a back door onto each touching Patio or Hot
+//   Tub, and a garage door faces a Driveway or the street. Then a spanning tree from the entry,
+//   public rooms first, adds as few doors as it takes to reach every room. Doors keep to side
+//   walls and the ends of north walls: a north wall's middle is for furniture.
 // - Windows go in outside walls, about one per two cells of straight wall, except in closets,
 //   garages and hallways. A Bay Window (fixture) turns one cell of outside wall into glass with a
 //   bay outside it, the street side first.
@@ -202,6 +203,55 @@ export function floorTop(m: HouseModel, x: number, y: number): number {
   return y * CELL + inset(m, x, y, 'N') + (hasFace(m, x, y) ? WALL.face : 0);
 }
 
+/** The x ranges of cell (x, y)'s north face that stand: its width but its doorways' gaps. */
+export function faceRuns(m: HouseModel, x: number, y: number): [number, number][] {
+  const X0 = x * CELL;
+  const Y0 = y * CELL;
+  const gaps: [number, number][] = [];
+  const cut = (g: Rect) => {
+    if (g.x < X0 + CELL && g.x + g.w > X0)
+      gaps.push([Math.max(X0, g.x), Math.min(X0 + CELL, g.x + g.w)]);
+  };
+  for (const d of m.doors) {
+    if (d.dir === 'h' && d.gap.y + d.gap.h / 2 === Y0) cut(d.gap);
+  }
+  for (const e of m.exits) {
+    if (e.side === 'N' && e.cell.x === x && e.cell.y === y) cut(e.gap);
+  }
+  const out: [number, number][] = [];
+  let at = X0;
+  for (const [g0, g1] of gaps.sort((p, q) => p[0] - q[0])) {
+    if (g0 > at) out.push([at, g0]);
+    at = Math.max(at, g1);
+  }
+  if (at < X0 + CELL) out.push([at, X0 + CELL]);
+  return out;
+}
+
+/**
+ * A room's north faces in view as straight stretches along each row (x from x0 to x1, under the
+ * band's bottom edge at `top`): inside its side walls, with its doorways' gaps cut out.
+ */
+export function faceSpans(m: HouseModel, r: Room): { x0: number; x1: number; top: number }[] {
+  const out: { x0: number; x1: number; top: number }[] = [];
+  const cells = [...r.cells].filter((c) => hasFace(m, c.x, c.y));
+  cells.sort((p, q) => p.y - q.y || p.x - q.x);
+  for (const c of cells) {
+    const top = c.y * CELL + inset(m, c.x, c.y, 'N');
+    const lo = c.x * CELL + inset(m, c.x, c.y, 'W');
+    const hi = (c.x + 1) * CELL - inset(m, c.x, c.y, 'E');
+    for (const [a0, z0] of faceRuns(m, c.x, c.y)) {
+      const a = Math.max(a0, lo);
+      const z = Math.min(z0, hi);
+      if (a >= z) continue;
+      const last = out[out.length - 1];
+      if (last && last.top === top && last.x1 === a) last.x1 = z;
+      else out.push({ x0: a, x1: z, top });
+    }
+  }
+  return out;
+}
+
 export function roomAt(m: HouseModel, x: number, y: number): number {
   if (x < 0 || y < 0 || x >= m.width || y >= m.height) return 0;
   return m.room[y * m.width + x]!;
@@ -211,7 +261,8 @@ export function overlaps(a: Rect, b: Rect): boolean {
   return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 }
 
-function grow(r: Rect, by: number): Rect {
+/** A rect grown by `by` px on every side. */
+export function grow(r: Rect, by: number): Rect {
   return { x: r.x - by, y: r.y - by, w: r.w + 2 * by, h: r.h + 2 * by };
 }
 
@@ -319,7 +370,7 @@ const hub = (id: PieceId) => HUB[id] ?? 0;
 
 /**
  * How good a front door each room makes: a mudroom or a hall first. A garage, a bathroom or a
- * closet only when nothing else can have one.
+ * closet only when no other room can have one (BACK_ROOMS: they're tried after every other room).
  */
 const ENTRY: Readonly<Partial<Record<PieceId, number>>> = {
   mudroom: 6,
@@ -351,9 +402,19 @@ function parentScore(child: PieceId, parent: PieceId): number {
 /** Rooms without windows. */
 const NO_WINDOWS: ReadonlySet<PieceId> = new Set(['closet', 'garage', 'hallway', 'longHallway']);
 
+/** Rooms a front door goes through only when no other room can have one. */
+const BACK_ROOMS: ReadonlySet<PieceId> = new Set(['garage', 'bathroom', 'closet']);
+
 /** What a front door may open onto (besides open ground and the street), and the paved ones. */
 const FRONT_ONTO: ReadonlySet<PieceId> = new Set(['patio', 'driveway', 'longDriveway', 'lawn']);
 const PAVED: ReadonlySet<PieceId> = new Set(['patio', 'driveway', 'longDriveway']);
+/**
+ * What an outside door opens onto only when nothing else around the house can have one (a house
+ * built into the woods): ground a piece could be built over (a Tree's tile, a Time Capsule's) and
+ * low yard pieces. Never water, a boulder, the Old Shed, a fence, an outbuilding or a Pool.
+ */
+const LAST_ONTO: ReadonlySet<PieceId> = new Set(['flowerBed', 'herbGarden', 'sapling']);
+const LAST_GROUND: ReadonlySet<string> = new Set(['tree', 'timeCapsule']);
 /** What gets a back door. */
 const BACK_ONTO: ReadonlySet<PieceId> = new Set(['patio', 'hotTub']);
 /** What a garage door faces. */
@@ -536,6 +597,11 @@ function addOpenings(m: HouseModel, house: HouseState, links: HallLinks): void {
     side: Side;
     onto: number;
     gap: Rect;
+    /**
+     * A front door's tier, best first: any room but a garage, a bathroom or a closet onto good
+     * ground; one of those onto good ground; then the same two onto the last resort's ground.
+     */
+    tier: number;
     score: number;
   }
   const exitGap = (c: Cell, s: Side): Rect | null => {
@@ -574,10 +640,22 @@ function addOpenings(m: HouseModel, house: HouseState, links: HallLinks): void {
           const off = nx < 0 || ny < 0 || nx >= W || ny >= H;
           if (off && !street) continue;
           const p = off ? undefined : yardAt(nx, ny);
+          // Good ground, the last resort's, or none (water, a boulder, the Old Shed; a fence,
+          // an outbuilding, a Pool).
+          let last = false;
           if (back) {
             if (!p || !BACK_ONTO.has(p.defId) || r.defId === 'closet') continue;
-          } else if (p ? !FRONT_ONTO.has(p.defId) : !street && terrainAt(house.lot, nx, ny)) {
-            continue; // a tree, water, a boulder, the Old Shed or a find; a fence or an outbuilding
+          } else if (p) {
+            if (!FRONT_ONTO.has(p.defId)) {
+              if (!LAST_ONTO.has(p.defId)) continue;
+              last = true;
+            }
+          } else if (!street) {
+            const t = terrainAt(house.lot, nx, ny);
+            if (t) {
+              if (!LAST_GROUND.has(t)) continue;
+              last = true;
+            }
           }
           const gap = exitGap(c, s);
           if (!gap) continue;
@@ -597,13 +675,15 @@ function addOpenings(m: HouseModel, house: HouseState, links: HallLinks): void {
               // The front of the house: each row nearer the street counts.
               c.y * 30 -
               centered * 0.05;
-          out.push({ uid: r.uid, cell: c, side: s, onto: p?.uid ?? 0, gap, score });
+          const tier = back ? 0 : (last ? 2 : 0) + (BACK_ROOMS.has(r.defId) ? 1 : 0);
+          out.push({ uid: r.uid, cell: c, side: s, onto: p?.uid ?? 0, gap, tier, score });
         }
       }
     }
     // Best first; ties in reading order, so it's deterministic.
     return out.sort(
       (p, q) =>
+        p.tier - q.tier ||
         q.score - p.score ||
         p.cell.y - q.cell.y ||
         p.cell.x - q.cell.x ||
@@ -636,7 +716,9 @@ function addOpenings(m: HouseModel, house: HouseState, links: HallLinks): void {
 
   // The front door: a south wall with nothing of the house between it and the street, near
   // the front of the house, in the best entry room; paved ground (a Patio or a Driveway) or
-  // the sidewalk over grass.
+  // the sidewalk over grass. Never through a garage, a bathroom or a closet while another room
+  // has an outside wall a door can open from, on any side; and onto the woods (a Tree's tile)
+  // or a low yard piece only when nothing else around the house can have one.
   const fronts = exitCands(false);
   const front = fronts.find((f) => free(f.gap));
   if (front) addExit(front, 'front');
