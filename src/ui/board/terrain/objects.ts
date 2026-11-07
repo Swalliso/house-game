@@ -49,13 +49,16 @@ const TREE_WEIGHT = TREES.reduce((n, t) => n + t.weight, 0);
 /** About one big tree in this many is an apple tree. */
 const BIG_APPLE_EVERY = 5;
 
+/** Every kind of tree that grows on a Tree cell. */
+export const TREE_KINDS: readonly SpriteId[] = TREES.map((t) => t.id);
+
 /** How far a tree may stray from its cell's middle, in art px: sideways, and up. */
 const TREE_JITTER_X = 2;
-const TREE_JITTER_UP = 2;
+export const TREE_JITTER_UP = 2;
 
-/** The tree that grows on a cell, by tile hash. */
-export function treeKind(x: number, y: number): SpriteId {
-  let r = (tileHash(x, y) >>> 8) % TREE_WEIGHT;
+/** The tree that grows on a cell, by tile hash (with the run's salt: hash.ts seedSalt). */
+export function treeKind(x: number, y: number, salt = 0): SpriteId {
+  let r = (tileHash(x, y, salt) >>> 8) % TREE_WEIGHT;
   for (const t of TREES) {
     if (r < t.weight) return t.id;
     r -= t.weight;
@@ -109,26 +112,27 @@ export function bigTreeBlocks(lot: Lot): { x: number; y: number }[] {
 }
 
 /** The trees: one per Tree cell, except where a big tree stands for a block's lower row. */
-export function trees(lot: Lot): Placed[] {
+export function trees(lot: Lot, salt = 0): Placed[] {
   const out: Placed[] = [];
   const under = new Set<number>();
   for (const b of bigTreeBlocks(lot)) {
     // The big tree stands on the block's lower row; the upper row's trees show behind it.
     under.add((b.y + 1) * lot.width + b.x);
     under.add((b.y + 1) * lot.width + b.x + 1);
-    const id = tileHash(b.y, b.x) % BIG_APPLE_EVERY === 0 ? 'tree-big-apple' : 'tree-big';
+    const id = tileHash(b.y, b.x, salt) % BIG_APPLE_EVERY === 0 ? 'tree-big-apple' : 'tree-big';
     out.push(standing(id, (b.x + 1) * CELL, (b.y + 2) * CELL, b.y * CELL));
   }
   for (let y = 0; y < lot.height; y++) {
     for (let x = 0; x < lot.width; x++) {
       if (terrainAt(lot, x, y) !== 'tree' || under.has(y * lot.width + x)) continue;
-      const h = tileHash(x, y);
+      const h = tileHash(x, y, salt);
       // Sideways within the cell (never past the lot's sides), and up a little, never down.
       const left = x === 0 ? 0 : -TREE_JITTER_X;
       const right = x === lot.width - 1 ? 0 : TREE_JITTER_X;
       const dx = left + ((h >>> 4) % (right - left + 1));
       const dy = -((h >>> 12) % (TREE_JITTER_UP + 1));
-      out.push(standing(treeKind(x, y), (x + 0.5) * CELL + dx, (y + 1) * CELL + dy, y * CELL));
+      const kind = treeKind(x, y, salt);
+      out.push(standing(kind, (x + 0.5) * CELL + dx, (y + 1) * CELL + dy, y * CELL));
     }
   }
   return out;
@@ -146,12 +150,12 @@ const ROCK_FOOT = [13, 15, 15, 12, 13, 13, 14, 16, 15] as const;
  * front of it, and most often a small one at their feet, mirrored on some cells. They fill the
  * cell without leaving it. The grass at their feet takes the colors of the ground they're on.
  */
-export function boulders(lot: Lot): Placed[] {
+export function boulders(lot: Lot, salt = 0): Placed[] {
   const out: Placed[] = [];
   for (let y = 0; y < lot.height; y++) {
     for (let x = 0; x < lot.width; x++) {
       if (terrainAt(lot, x, y) !== 'boulder') continue;
-      const h = tileHash(x, y);
+      const h = tileHash(x, y, salt);
       const id: SpriteId = isSunny(lot, x, y) ? 'rocks-sunny' : 'rocks';
       const mirror = ((h >>> 15) & 1) === 1;
       // A rock's tile with its left edge at rx and its foot on row `foot` of the cell.
@@ -197,9 +201,12 @@ export function finds(lot: Lot): Placed[] {
   return out;
 }
 
-/** Everything that stands on the lot, in drawing order: by bottom edge, then left to right. */
-export function lotObjects(lot: Lot): Placed[] {
-  return [...trees(lot), ...boulders(lot), ...finds(lot)].sort(
+/**
+ * Everything that stands on the lot, in drawing order: by bottom edge, then left to right.
+ * `salt` is the run's (hash.ts seedSalt): which tree grows where, and how the rocks lie.
+ */
+export function lotObjects(lot: Lot, salt = 0): Placed[] {
+  return [...trees(lot, salt), ...boulders(lot, salt), ...finds(lot)].sort(
     (a, b) => a.y + a.h - (b.y + b.h) || a.x - b.x,
   );
 }

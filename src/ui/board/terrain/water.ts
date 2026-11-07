@@ -2,11 +2,12 @@
 // autotiled per 16 px subtile from its 3 × 3 block and its inner corners (autotile.ts
 // quarterPiece), with lily pads on a pond's open water. A creek flows on off the lot from the
 // ends of its path, so they stay open (where it runs along the edge, it keeps a bank there), and
-// a pond ends. The water has its own small canvas over its bounding box, redrawn only to change
-// frames; its shore's grass is keyed out, so the terrain canvas's grass, sunny or not, shows
-// around it.
+// a pond ends; outside.ts draws the creek flowing on. The water has its own small canvas over its
+// bounding box, redrawn only to change frames; its shore's grass is keyed out, so the terrain
+// canvas's grass shows around it, and the blades at the water's edge take that grass's colors
+// (shore-sunny on the sunny side).
 
-import { terrainAt, type Lot } from '../../../rules/index.ts';
+import { isSunny, terrainAt, type Lot } from '../../../rules/index.ts';
 import { CELL, type SpriteId } from '../../sprites.ts';
 import {
   blobMask,
@@ -15,6 +16,7 @@ import {
   SUB,
   SUBTILE,
   withEdge,
+  type Inside,
   type QuarterPiece,
 } from '../autotile.ts';
 import { drawSprite, drawSubtile } from './atlas.ts';
@@ -35,6 +37,8 @@ export interface WaterTile {
   readonly sx: number;
   readonly sy: number;
   readonly piece: QuarterPiece;
+  /** On a sunny cell: its shore's blades in the sunny grass's colors. */
+  readonly sunny: boolean;
 }
 
 /** A box of cells. */
@@ -53,8 +57,12 @@ export interface WaterPlan {
   readonly lilies: readonly SubtileSprite[];
 }
 
-/** Where each subtile of water takes its piece of the shore, and where the lilies float. */
-export function waterPlan(lot: Lot): WaterPlan {
+/**
+ * The water, cell by cell, on the lot and off it: off the lot, a pond ends, and a creek flows
+ * on from the ends of its path (straight on, as far as you like); where it runs along the
+ * lot's edge it keeps a bank there.
+ */
+export function waterCells(lot: Lot): Inside {
   const { width: w, height: h } = lot;
   const isCreek = (x: number, y: number) => terrainAt(lot, x, y) === 'creek';
   const onLot = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h;
@@ -68,7 +76,17 @@ export function waterPlan(lot: Lot): WaterPlan {
   const ends = withEdge(isEnd, w, h, 'extend');
   const creek = (x: number, y: number) => (onLot(x, y) ? isCreek(x, y) : ends(x, y));
   const pond = withEdge((x, y) => terrainAt(lot, x, y) === 'pond', w, h, 'outside');
-  const water = bySubtile((x, y) => creek(x, y) || pond(x, y));
+  return (x, y) => creek(x, y) || pond(x, y);
+}
+
+/**
+ * Where each subtile of water takes its piece of the shore, and where the lilies float.
+ * `salt` is the run's (hash.ts seedSalt).
+ */
+export function waterPlan(lot: Lot, salt = 0): WaterPlan {
+  const { width: w, height: h } = lot;
+  const pond = (x: number, y: number) => terrainAt(lot, x, y) === 'pond';
+  const water = bySubtile(waterCells(lot));
   const tiles: WaterTile[] = [];
   const lilies: SubtileSprite[] = [];
   let x0 = w;
@@ -85,8 +103,9 @@ export function waterPlan(lot: Lot): WaterPlan {
       x1 = Math.max(x1, x);
       y1 = Math.max(y1, y);
       const mask = blobMask(water, sx, sy);
-      tiles.push({ sx, sy, piece: quarterPiece(mask, sx % SUB === SUB - 1, sy % SUB === SUB - 1) });
-      const hash = tileHash(sx, sy);
+      const piece = quarterPiece(mask, sx % SUB === SUB - 1, sy % SUB === SUB - 1);
+      tiles.push({ sx, sy, piece, sunny: isSunny(lot, x, y) });
+      const hash = tileHash(sx, sy, salt);
       if (mask === 255 && pond(x, y) && hash % LILY_EVERY === 0) {
         lilies.push({ sx, sy, id: LILIES[(hash >>> 3) % LILIES.length]! });
       }
@@ -111,9 +130,23 @@ export function paintWater(
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
   const ox = box.x * CELL;
   const oy = box.y * CELL;
-  for (const { sx, sy, piece } of plan.tiles) {
-    const id = piece.block === 'outer' ? 'shore' : 'shore-corners';
-    drawSubtile(ctx, img, id, piece.col, piece.row, sx * SUBTILE - ox, sy * SUBTILE - oy, frame);
+  for (const { sx, sy, piece, sunny } of plan.tiles) {
+    drawSubtile(
+      ctx,
+      img,
+      shoreSet(piece, sunny),
+      piece.col,
+      piece.row,
+      sx * SUBTILE - ox,
+      sy * SUBTILE - oy,
+      frame,
+    );
   }
   for (const l of plan.lilies) drawSprite(ctx, img, l.id, l.sx * SUBTILE - ox, l.sy * SUBTILE - oy);
+}
+
+/** The shore set a piece comes from: the 3 × 3 block or the inner corners, sunny or not. */
+export function shoreSet(piece: QuarterPiece, sunny: boolean): SpriteId {
+  if (piece.block === 'outer') return sunny ? 'shore-sunny' : 'shore';
+  return sunny ? 'shore-corners-sunny' : 'shore-corners';
 }

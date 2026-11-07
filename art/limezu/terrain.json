@@ -277,6 +277,58 @@
     ],
     "note": "The animated water's inner corners (a 2 \u00d7 2 block per frame, land in the middle), for bends in the creek and notches in a pond, edited like shore."
   },
+  "shore-sunny": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/Animated_16x16/Animated_Terrains_16x16/Water_Tileset_16x16.png",
+    "rect": [0, 0, 48, 48],
+    "frames": {
+      "count": 8,
+      "dx": 48,
+      "dy": 0,
+      "ms": 130
+    },
+    "ops": [
+      {
+        "op": "keyOut",
+        "colors": ["#479757"]
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#37854e": "#6e8a55",
+          "#53a65d": "#8fa868",
+          "#79a15c": "#a2b27a"
+        }
+      }
+    ],
+    "note": "The shore on the sunny side: the same water, its grass blades in grass-sunny's colors, so a pond or the creek in the band has a bank of sunny grass."
+  },
+  "shore-corners-sunny": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/Animated_16x16/Animated_Terrains_16x16/Water_Tileset_Outer_Corners_16x16.png",
+    "rect": [0, 0, 32, 32],
+    "frames": {
+      "count": 8,
+      "dx": 32,
+      "dy": 0,
+      "ms": 130
+    },
+    "ops": [
+      {
+        "op": "keyOut",
+        "colors": ["#479757"]
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#37854e": "#6e8a55",
+          "#53a65d": "#8fa868",
+          "#79a15c": "#a2b27a"
+        }
+      }
+    ],
+    "note": "The inner corners of shore-sunny, edited the same way."
+  },
   "lily-0": {
     "pack": "me",
     "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png",
@@ -716,39 +768,193 @@
     "ops": [
       {
         "op": "tile",
-        "size": [128, 128]
+        "size": [256, 256]
       },
       {
         "op": "compose",
-        "size": [128, 128],
+        "size": [256, 256],
         "layers": [
           {
-            "rect": [400, 32, 16, 16],
-            "at": [5, 8]
+            "rect": [416, 32, 16, 16],
+            "at": [235, 1]
           },
           {
             "rect": [416, 32, 16, 16],
-            "at": [71, 15]
-          },
-          {
-            "rect": [400, 32, 16, 16],
-            "at": [37, 41]
+            "at": [116, 8]
           },
           {
             "rect": [416, 32, 16, 16],
-            "at": [102, 57]
-          },
-          {
-            "rect": [416, 32, 16, 16],
-            "at": [13, 87]
+            "at": [166, 12],
+            "ops": [
+              {
+                "op": "flipX"
+              }
+            ]
           },
           {
             "rect": [400, 32, 16, 16],
-            "at": [62, 99]
+            "at": [43, 31]
           },
           {
             "rect": [416, 32, 16, 16],
-            "at": [109, 108]
+            "at": [204, 32],
+            "ops": [
+              {
+                "op": "flipX"
+              }
+            ]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [96, 41]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [167, 62],
+            "ops": [
+              {
+                "op": "flipX"
+              }
+            ]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [23, 64],
+            "ops": [
+              {
+                "op": "flipX"
+              }
+            ]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [237, 86],
+            "ops": [
+              {
+                "op": "flipX"
+              }
+            ]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [89, 89],
+            "ops": [
+              {
+                "op": "flipX"
+              }
+            ]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [138, 95],
+            "ops": [
+              {
+                "op": "flipX"
+              }
+            ]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [189, 97]
+          },
+          {
+            "rect": [400, 32, 16, 16],
+            "at": [21, 102],
+            "ops": [
+              {
+                "op": "flipX"
+              }
+            ]
+          },
+          {
+            "rect": [400, 32, 16, 16],
+            "at": [58, 136]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [4, 145],
+            "ops": [
+              {
+                "op": "flipX"
+              }
+            ]
+          },
+          {
+            "rect": [400, 32, 16, 16],
+            "at": [125, 148]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [163, 152],
+            "ops": [
+              {
+                "op": "flipX"
+              }
+            ]
+          },
+          {
+            "rect": [400, 32, 16, 16],
+            "at": [201, 159]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [102, 177],
+            "ops": [
+              {
+                "op": "flipX"
+              }
+            ]
+          },
+          {
+            "rect": [400, 32, 16, 16],
+            "at": [47, 181]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [5, 203]
+          },
+          {
+            "rect": [400, 32, 16, 16],
+            "at": [134, 204],
+            "ops": [
+              {
+                "op": "flipX"
+              }
+            ]
+          },
+          {
+            "rect": [400, 32, 16, 16],
+            "at": [216, 208]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [169, 212]
+          },
+          {
+            "rect": [400, 32, 16, 16],
+            "at": [95, 213]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [195, 235]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [145, 239],
+            "ops": [
+              {
+                "op": "flipX"
+              }
+            ]
+          },
+          {
+            "rect": [400, 32, 16, 16],
+            "at": [39, 240],
+            "ops": [
+              {
+                "op": "flipX"
+              }
+            ]
           }
         ]
       },
@@ -762,6 +968,6 @@
         }
       }
     ],
-    "note": "Around the lot: LimeZu's grass with seven light tufts scattered on a 128 \u00d7 128 tile (4 \u00d7 4 cells, so the repeat doesn't show), darker and grayer than the lot's grass, so the lot sits in a garden and its edge still shows. The board's scroll area uses it as a CSS background."
+    "note": "Around the lot: LimeZu's grass with 28 light tufts (some mirrored) scattered unevenly on a 256 \u00d7 256 tile (8 \u00d7 8 cells, with no lattice for the eye to find), darker and grayer than the lot's grass, so the lot sits in a garden and its edge still shows. The board's scroll area uses it as a CSS background."
   }
 }

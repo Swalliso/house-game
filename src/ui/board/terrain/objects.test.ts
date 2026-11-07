@@ -4,13 +4,17 @@ import { generateLot, isSunny, lotFromRows, terrainAt } from '../../../rules/lot
 import type { Lot } from '../../../rules/index.ts';
 import { CELL } from '../../sprites.ts';
 import { blobTile, E, N, NE, NW, S, SE, SUB, SW, W } from '../autotile.ts';
-import { boardRows, ROAD_ROWS } from '../geometry.ts';
+import { boardRows, CANOPY_ROOM, ROAD_ROWS } from '../geometry.ts';
+import { sheetRect } from './atlas.ts';
+import { seedSalt } from './hash.ts';
 import {
   bigTreeBlocks,
   boulders,
   canopyBox,
   finds,
   lotObjects,
+  TREE_JITTER_UP,
+  TREE_KINDS,
   treeKind,
   trees,
   type Placed,
@@ -139,15 +143,19 @@ describe('the woods’ floor', () => {
     ]);
   });
 
-  it('has a soft edge beside open ground, but none at the lot’s border', () => {
+  it('has a soft edge beside open ground, and along the street, but none at the other borders', () => {
     const at = new Map(floor.edge.map((t) => [`${t.sx},${t.sy}`, t]));
     // The grove's corner subtile is open only toward the grove.
     expect(at.get('2,2')).toMatchObject(blobTile('godot', E | SE | S));
     // The interior of the 2 × 2 grove: each subtile touches open ground on two sides.
     expect(floor.edge.filter((t) => t.sx < 6)).toHaveLength(12);
-    // The corner wood runs on past the lot's edge: its outer subtiles have no edge there.
-    expect(at.has('11,11')).toBe(false);
+    // The corner wood runs on past the lot's right edge: no edge there…
+    expect(at.has('11,10')).toBe(false);
     expect(at.get('8,8')).toMatchObject(blobTile('godot', E | SE | S));
+    // …but along the street it closes with a verge of grass, the grass the street's fringe
+    // hangs from.
+    expect(at.get('11,11')).toMatchObject(blobTile('godot', N | NE | E | W | NW));
+    expect(at.get('8,11')).toMatchObject(blobTile('godot', N | NE | E));
   });
 });
 
@@ -211,6 +219,18 @@ describe('the canopy', () => {
     expect(canopyBox(bare, lotObjects(bare))).toBeNull();
   });
 
+  it('never rises past the room the board keeps above the lot', () => {
+    // The tallest kind, at its most jittered, still fits (geometry.ts CANOPY_ROOM).
+    for (const kind of TREE_KINDS) {
+      expect(sheetRect(kind).h - CELL + TREE_JITTER_UP, kind).toBeLessThanOrEqual(CANOPY_ROOM);
+    }
+    const row = lotFromRows(['TTTTTTTTTTTT', '............']);
+    for (let s = 0; s < 60; s++) {
+      for (const p of trees(row, seedSalt(`s${s}`)))
+        expect(p.y, p.id).toBeGreaterThanOrEqual(-CANOPY_ROOM);
+    }
+  });
+
   it('is drawn in row order, south in front, like the terrain', () => {
     const placed = lotObjects(lots[0]!);
     for (let i = 1; i < placed.length; i++) {
@@ -222,7 +242,8 @@ describe('the canopy', () => {
 });
 
 describe('the street', () => {
-  const lot = lotFromRows(['....', '..C.', 'T.C.'], 'left');
+  // A left band (columns 0 to 3) over a creek, with a Tree in the band's bottom row.
+  const lot = lotFromRows(['......', '..C...', 'T.C...'], 'left');
   const tiles = streetTiles(lot);
   const top = lot.height * SUB;
 
@@ -252,16 +273,27 @@ describe('the street', () => {
 
   it('takes a fringe of the lot’s grass along its top, in the colors above, not under water', () => {
     const blades = tiles.filter((t) => t.id.endsWith('edge') && !t.cols);
-    expect(blades.map((t) => t.sx)).toEqual([0, 1, 2, 3, 6, 7]);
+    expect(blades.map((t) => t.sx)).toEqual([0, 1, 2, 3, 6, 7, 8, 9, 10, 11]);
     for (const b of blades) {
       expect(b.sy).toBe(top);
       const sunny = isSunny(lot, Math.floor(b.sx / SUB), lot.height - 1);
       expect(b.id).toBe(sunny ? 'sun-edge' : 'woods-edge');
     }
-    // The shaded Tree's fringe takes the sunny side's blades where they spill into its shade
-    // above it: the last 6 px of its east subtile, beside the sunny cell.
+    // Past the band, the sunny side's blades spill into the shade as they do above: the first
+    // 6 px of the first shaded subtile. The Tree inside the band stays shaded to its edge.
     expect(tiles.filter((t) => t.cols)).toEqual([
-      { id: 'sun-edge', ...blobTile('godot', E | SE | S | SW | W), sx: 1, sy: top, cols: [10, 16] },
+      { id: 'sun-edge', ...blobTile('godot', E | SE | S | SW | W), sx: 8, sy: top, cols: [0, 6] },
     ]);
+  });
+
+  it('leaves the fringe out where a piece meets the street, so a Driveway reaches the sidewalk', () => {
+    const front = [false, false, false, true, true, false];
+    const fringe = streetTiles(lot, front).filter((t) => t.sy === top && t.id.endsWith('edge'));
+    // Columns 3 and 4 (subtiles 6 to 9) are under the piece, the spill into column 4 too.
+    expect(fringe.map((t) => t.sx)).toEqual([0, 1, 2, 3, 10, 11]);
+    // The paving is all there.
+    expect(streetTiles(lot, front).filter((t) => !t.id.endsWith('edge'))).toEqual(
+      tiles.filter((t) => !t.id.endsWith('edge')),
+    );
   });
 });

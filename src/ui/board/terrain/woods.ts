@@ -1,9 +1,9 @@
 // The woods' floor (D-097): a step darker than the lot's grass under every Tree cell, so a
 // cluster of trees reads as one wood and the gaps between their crowns are shade. LimeZu's
 // grass edge (woods-edge, a 47-tile set) softens its border: the open grass's blades reach a
-// few px into the shade. Off the lot, the woods run on, so the floor has no edge at the lot's
-// border. A lone Tree stands in a round patch of its own shade. Drawn before the sunny side's
-// edge, which then brightens the border of a Tree's patch inside the band.
+// few px into the shade. Off the lot's sides and top edge, the woods run on, so the floor has no
+// edge there; along the street it closes with a verge of open grass, the grass whose blades hang
+// over the sidewalk (street.ts). A lone Tree stands in a round patch of its own shade.
 
 import { terrainAt, type Cell, type Lot } from '../../../rules/index.ts';
 import { CELL } from '../../sprites.ts';
@@ -20,7 +20,8 @@ export interface WoodsFloor {
 
 export function woodsFloor(lot: Lot): WoodsFloor {
   const tree = (x: number, y: number) => terrainAt(lot, x, y) === 'tree';
-  const woods = bySubtile(withEdge(tree, lot.width, lot.height, 'extend'));
+  const runOn = withEdge(tree, lot.width, lot.height, 'extend');
+  const woods = bySubtile((x, y) => y < lot.height && runOn(x, y));
   const cells: Cell[] = [];
   const edge: SetTile[] = [];
   for (let y = 0; y < lot.height; y++) {

@@ -7,8 +7,10 @@ import { generateLot, isSunny, lotFromRows, terrainAt } from '../../../rules/lot
 import type { Lot } from '../../../rules/index.ts';
 import { BLOB47_MASKS, blobTile, E, N, NE, NW, S, SE, SUB, SW, W } from '../autotile.ts';
 import { grassDecor, TUFT_EVERY, WILDFLOWERS_EVERY } from './grass.ts';
+import { seedSalt } from './hash.ts';
+import { treeKind } from './objects.ts';
 import { sunnyEdge } from './sunny.ts';
-import { waterPlan } from './water.ts';
+import { shoreSet, waterPlan } from './water.ts';
 
 const cell = (s: number) => Math.floor(s / SUB);
 
@@ -38,6 +40,22 @@ describe('the grass', () => {
     expect(flowers / n).toBeLessThan(1.25 / WILDFLOWERS_EVERY);
   });
 
+  it('strews each run’s lot its own way, and the same run the same way every time', () => {
+    const lot = open(24, 24);
+    const key = (salt: number) => new Set(grassDecor(lot, salt).map((d) => `${d.sx},${d.sy}`));
+    const a = key(seedSalt('jbf3zs'));
+    const b = key(seedSalt('abc123'));
+    expect(key(seedSalt('jbf3zs'))).toEqual(a);
+    // Two runs share no more of their decorated subtiles than chance would (about 1 in 7).
+    const shared = [...a].filter((k) => b.has(k)).length;
+    expect(shared / a.size).toBeLessThan(0.3);
+    // The trees too: the same cell grows different kinds from run to run.
+    const kinds = new Set(
+      ['s1', 's2', 's3', 's4', 's5', 's6'].map((s) => treeKind(10, 22, seedSalt(s))),
+    );
+    expect(kinds.size).toBeGreaterThan(1);
+  });
+
   it('gives tufts the colors of the grass they’re on', () => {
     const lot = open(24, 24);
     for (const d of grassDecor(lot)) {
@@ -64,13 +82,29 @@ describe('the sunny side’s edge', () => {
     }
   });
 
-  it('rings a Tree inside the band with sunny grass', () => {
-    // The Tree's four subtiles, each open only toward the Tree's own other subtiles.
-    const tile = (mask: number) => blobTile('godot', mask);
-    expect(at.get('4,2')).toMatchObject(tile(E | SE | S));
-    expect(at.get('5,2')).toMatchObject(tile(S | SW | W));
-    expect(at.get('4,3')).toMatchObject(tile(N | NE | E));
-    expect(at.get('5,3')).toMatchObject(tile(N | W | NW));
+  it('leaves a Tree inside the band in shade to its cell’s edge, as the rules shade it', () => {
+    for (const k of ['4,2', '5,2', '4,3', '5,3']) expect(at.has(k), k).toBe(false);
+  });
+
+  it('still reaches into a Tree beside the band, as into any shade beside it', () => {
+    // A Tree in the first shaded row, under the band: the band's edge runs over it too.
+    const beside = lotFromRows(['......', '......', '......', '......', '..T...', '......']);
+    const edge = new Map(sunnyEdge(beside).map((t) => [`${t.sx},${t.sy}`, t]));
+    const run = blobTile('godot', E | SE | S | SW | W);
+    expect(edge.get('4,8')).toMatchObject(run);
+    expect(edge.get('5,8')).toMatchObject(run);
+  });
+
+  it('never faces the street, even beside a Tree in the band’s bottom row', () => {
+    // A right band (columns 2 to 5) with a Tree at its bottom-left corner, as on seed s28.
+    const right = lotFromRows(['......', '......', '..T...'], 'right');
+    const edge = new Map(sunnyEdge(right).map((t) => [`${t.sx},${t.sy}`, t]));
+    // The shaded cell beside the Tree: the sun only at the corner above the Tree…
+    expect(edge.get('3,4')).toMatchObject(blobTile('godot', 255 & ~NE));
+    // …and none below it: the street under the band is no sunnier than the Tree.
+    expect(edge.has('3,5')).toBe(false);
+    for (let sx = 0; sx < 12; sx++) expect(edge.has(`${sx},5`), `${sx}`).toBe(false);
+    for (const k of ['4,4', '5,4', '4,5', '5,5']) expect(edge.has(k), k).toBe(false);
   });
 
   it('has no edge along the lot’s border: the band runs on past it', () => {
@@ -168,6 +202,26 @@ describe('the water', () => {
       }
     }
     expect(lilies).toBeGreaterThan(0);
+  });
+
+  it('gives the shore on the sunny side sunny blades', () => {
+    // The pond spans the band's edge (rows 0 to 3 sunny, 4 and 5 shaded).
+    const band = waterPlan(
+      lotFromRows(['......', '......', '......', '.PP...', '.PP...', '......']),
+    );
+    for (const t of band.tiles) {
+      const sunny = cell(t.sy) < 4;
+      expect(t.sunny, `${t.sx},${t.sy}`).toBe(sunny);
+      expect(shoreSet(t.piece, t.sunny)).toBe(
+        t.piece.block === 'outer'
+          ? sunny
+            ? 'shore-sunny'
+            : 'shore'
+          : sunny
+            ? 'shore-corners-sunny'
+            : 'shore-corners',
+      );
+    }
   });
 
   it('has no canvas without water', () => {

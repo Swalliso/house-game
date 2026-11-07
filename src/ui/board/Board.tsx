@@ -72,7 +72,16 @@ import {
   zoomIn,
   zoomOut,
 } from './camera.ts';
-import { boardRows, center, labelSpot, occupancy, uidAt } from './geometry.ts';
+import {
+  boardRows,
+  canopyRoom,
+  center,
+  labelSpot,
+  occupancy,
+  startScrollTop,
+  uidAt,
+  viewReach,
+} from './geometry.ts';
 import { layerVars } from './layers.ts';
 import { PieceShape, wobble } from './PieceView.tsx';
 import { Outline, TerrainLayer, YardTint } from './TerrainLayer.tsx';
@@ -258,6 +267,9 @@ export function Board() {
   const { lot } = state.house;
   const scale = cameraScale.value;
   const px = CELL * scale;
+  const dpr = viewSize.value?.dpr ?? (window.devicePixelRatio || 1);
+  // Room above the lot for its top row's tree tops, inside the scroll area (geometry.ts).
+  const room = canopyRoom(scale, dpr);
   const demolishing = tool.value === 'demolish';
   const occ = occupancy(state.house);
   const tally = currentTally.value;
@@ -392,7 +404,7 @@ export function Board() {
     if (needsCenter.current && viewSize.value && scale === cameraScale.value) {
       needsCenter.current = false;
       el.scrollLeft = (el.scrollWidth - el.clientWidth) / 2;
-      el.scrollTop = el.scrollHeight - el.clientHeight;
+      el.scrollTop = startScrollTop(el.scrollHeight, el.clientHeight, px);
     }
   });
 
@@ -555,8 +567,9 @@ export function Board() {
       <div
         class={`board-scroll ${panning ? 'panning' : ''}`}
         ref={scrollRef}
-        // A cell's size, for the lot's surroundings (terrain.css), which zoom with the board.
-        style={{ '--board-cell': `${px}px` }}
+        // A cell's size, for the lot's surroundings (terrain.css), which zoom with the board; and
+        // over the padding at the top, the canopy's room.
+        style={{ '--board-cell': `${px}px`, paddingTop: `${PAD + room}px` }}
         onPointerMove={onPointerMove}
         onPointerDown={onPointerDown}
         onPointerUp={onPointerUp}
@@ -580,7 +593,13 @@ export function Board() {
             height: `${boardRows(lot.height) * px}px`,
           }}
         >
-          <TerrainLayer lot={lot} scale={scale} />
+          <TerrainLayer
+            lot={lot}
+            scale={scale}
+            seed={state.setup.seed}
+            house={state.house}
+            around={viewReach(viewSize.value, lot.width, lot.height, scale, dpr, PAD)}
+          />
           <YardTint state={state} scale={scale} />
           <div class="street-label" style={{ top: `${lot.height * px}px`, height: `${px}px` }}>
             Street

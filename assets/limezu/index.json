@@ -65,9 +65,9 @@
     "spec": "97b6070fede635ae"
   },
   "grass-outside": {
-    "w": 128,
-    "h": 128,
-    "spec": "19708c3fb9110cad"
+    "w": 256,
+    "h": 256,
+    "spec": "20b95cd685aac9d4"
   },
   "grass-sunny": {
     "w": 32,
@@ -122,6 +122,20 @@
     "frames": 8,
     "ms": 130,
     "spec": "a7d394ef762dd640"
+  },
+  "shore-corners-sunny": {
+    "w": 32,
+    "h": 32,
+    "frames": 8,
+    "ms": 130,
+    "spec": "32103e7eed119585"
+  },
+  "shore-sunny": {
+    "w": 48,
+    "h": 48,
+    "frames": 8,
+    "ms": 130,
+    "spec": "c40cde0e1d81a770"
   },
   "street-asphalt": {
     "w": 16,

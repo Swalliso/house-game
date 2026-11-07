@@ -32,16 +32,17 @@ export interface SubtileSprite {
 
 /**
  * The tufts and flowers: on subtiles of open ground only, so water, trees, rocks, and finds
- * stand on plain grass. A tuft takes the colors of the grass it's on.
+ * stand on plain grass. A tuft takes the colors of the grass it's on. `salt` is the run's
+ * (hash.ts seedSalt), so each lot is strewn its own way.
  */
-export function grassDecor(lot: Lot): SubtileSprite[] {
+export function grassDecor(lot: Lot, salt = 0): SubtileSprite[] {
   const out: SubtileSprite[] = [];
   for (let sy = 0; sy < lot.height * SUB; sy++) {
     for (let sx = 0; sx < lot.width * SUB; sx++) {
       const x = Math.floor(sx / SUB);
       const y = Math.floor(sy / SUB);
       if (terrainAt(lot, x, y) !== null) continue;
-      const h = tileHash(sx, sy);
+      const h = tileHash(sx, sy, salt);
       if (h % TUFT_EVERY === 0) {
         out.push({ sx, sy, id: (isSunny(lot, x, y) ? SUNNY_TUFTS : TUFTS)[(h >>> 4) & 1]! });
       } else if (h % WILDFLOWERS_EVERY === 0) {
@@ -53,11 +54,16 @@ export function grassDecor(lot: Lot): SubtileSprite[] {
 }
 
 /** Grass on every cell of the lot, then the tufts and flowers. */
-export function paintGrass(ctx: CanvasRenderingContext2D, img: CanvasImageSource, lot: Lot): void {
+export function paintGrass(
+  ctx: CanvasRenderingContext2D,
+  img: CanvasImageSource,
+  lot: Lot,
+  salt = 0,
+): void {
   for (let y = 0; y < lot.height; y++) {
     for (let x = 0; x < lot.width; x++) {
       drawSprite(ctx, img, isSunny(lot, x, y) ? 'grass-sunny' : 'grass-0', x * CELL, y * CELL);
     }
   }
-  for (const d of grassDecor(lot)) drawSprite(ctx, img, d.id, d.sx * SUBTILE, d.sy * SUBTILE);
+  for (const d of grassDecor(lot, salt)) drawSprite(ctx, img, d.id, d.sx * SUBTILE, d.sy * SUBTILE);
 }
