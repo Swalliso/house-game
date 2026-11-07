@@ -11,7 +11,7 @@ Our game jam entry for the theme **"It's a house."** A one-week jam with friends
 | Parked | Good idea, deliberately deferred |
 | Open | Needs a decision |
 
-Related docs: `research.md` (sources and reference notes), `content-brainstorm.md` (draft pieces, clients, and crews), `jam-scope.md` (jam scope and starting numbers), `implementation-plan.md` (architecture and build order).
+Related docs: `research.md` (sources and reference notes), `content-brainstorm.md` (draft pieces, clients, and crews), `jam-scope.md` (jam scope and starting numbers), `implementation-plan.md` (architecture and build order), `house-systems-review.md` (how houses grow without sprawling: D-093's systems review).
 
 ## The game in one paragraph
 
@@ -123,6 +123,10 @@ The board sits behind a small `BoardView` interface, so Phaser could replace jus
 **Why:** D-006 doesn't say what happens to the skipped weeks. If they were simply lost, each would cost about 5% of the final score, and +1 budget could never pay for that; Combolands players mostly ignore its version. With fast-forward, you trade placements for budget. That favors building early and cashing out late, and it shortens sessions.
 **Considered:** Losing the weeks, with a much larger reward.
 **Changes:** D-006 (Accepted), by defining what it leaves open, and resolves its proposed auto-complete toggle.
+**2026-11-06 (systems review):** under the review's option B, completing early always wins 11–13.5 points less often than never, at every target curve where greedy wins about 45%. That's outside §8's 10 points, though each interval crosses the line (fail, unsure).
+- Today's game fails too, by 14.5 points at today's targets.
+- A skipped week costs more than the reward pays (+2 budget and 10% of the phase's earnings per week saved). At 20% or 30% per week saved, the gap is −10.0 or −9.5 points: a pass, but the interval crosses the line.
+- The reward is the sim's to tune, so this is tuning, not a change (`house-systems-review.md` §5.8).
 
 ### D-041 · Overtime weeks
 **Status:** Accepted · 2026-11-04 (confirmed by the team)
@@ -687,6 +691,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - **Bots:** `legalPlacements()`, a cheap `estimatePlay()` for ranking candidates, and `fencedYards()` serve the sim; `legalActions()` also lists the free actions.
 
 **Why:** Choices §4 and Appendix A leave open. Each keeps the preview equal to the tally and every run replayable.
+**2026-11-06 (systems review):** if the team chooses the review's Renovate, this entry needs to say whether a card that can only renovate counts as fitting for the free redraw. The sim said no (`house-systems-review.md` §8).
 
 ### D-072 · The M2 sim and the first real targets
 **Status:** Accepted · 2026-11-05 (proposed with the M2 pull request; held up in playtest 2, confirmed by the team).
@@ -726,6 +731,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **Why:** The team asked for a shop good that places an extra piece in a week (D-075). A tool keeps it a single, visible decision, and gives the reserve a use: a bought piece plus a Weekend Crew costs no week. Rare and pricier than other tools, since a piece placed early earns for the rest of the run.
 **Considered:** Prefab pieces that place from the reserve as free actions (two kinds of reserve piece to explain). Holding it until packs (D-074).
 **Changes:** D-004 (Accepted): a week can place more than one piece. D-051 (Accepted): it left out "a tool that plays a second piece in a week".
+**2026-11-06 (systems review):** if the team chooses the review's Renovate, this entry needs to say whether a Renovation can be Weekend Crew's next play. The sim allowed it (`house-systems-review.md` §8).
 
 ### D-084 · Striking card types: a shop service
 **Status:** Accepted · 2026-11-05 (the team chose it for M3, resolving D-076). Prices are placeholders.
@@ -845,6 +851,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - **Finds:** one Old Shed and one or two Time Capsules a lot.
 
 **Why:** Defaults so every M3 good does something in M3; each is a line of data.
+**2026-11-06 (systems review):** counting Bunk Beds once toward a household's Bedroom range was simulated with the review's house rules. It didn't help, and cost 4 points of the Bathroom ratio, so the review keeps them counting twice (`house-systems-review.md` §5.7).
 
 ### D-085 · M3 balance: the milestone budget and the targets
 **Status:** Proposed · 2026-11-05, with the M3 pull request; numbers for the sim and playtests to tune.
@@ -861,6 +868,12 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - Each of milestones 4, 5, and 6 was already met when its phase began, because the score carries over (D-028): 1,172 against 1,050, 2,515 against 2,250, and 4,830 against 4,600.
 - They completed early once and found it hard to judge whether it paid, since the targets weren't pressing.
 - D-089's unapplied fit (530 to 12,800) would still have lost to this run from milestone 3 on. A player who builds an engine pulls away in the middle of the run, so the curve's middle is too low, not just its end.
+
+**2026-11-06 (systems review):** under the review's option B, greedy wins 94.5% of 200 held-out runs at these targets.
+- The review's pick for option B is 15, 250, 870, 2,650, 5,800, 11,700, 20,900. On 200 held-out runs, greedy wins 46.5% and clears milestones 1–3 in 94%.
+- A player like playtest 3's would face margins of 1.7, 1.4–1.5, and 1.2–1.3× at milestones 4–6, against the 2.4, 2.15, and 1.95× they had.
+- Milestone 3 stays as loose as before, about 2.3–2.5× for such a player. It has to while greedy clears milestones 1–3 in 92% or more. Milestone 2 loosens, to about 1.7× against the 1.3× they had.
+- The projection maps one playtest run onto the sim. M4a re-fits on the content it ships, and M4b re-fits again once the arrivals are in (`house-systems-review.md` §5.8, §6).
 
 ### D-086 · Tooltips, first pass (with the shop)
 **Status:** Proposed · 2026-11-05, with the M3 pull request (the team chose the light pass of D-077 for M3).
@@ -931,6 +944,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - The lot test also checks the real lot balance over 1,000 seeds, before the finds go down: the finds are placed after the checks by design, and an Old Shed on the street's side can tip 3 lots in 1,000 a fraction under `minStreetSidePct`.
 
 **Changes:** D-072 (Accepted): how greedy ranks plays, and how the targets are checked; its targets stand. D-084 (Accepted): its Sim line, since the default bot no longer strikes. The team confirmed both on 2026-11-06. D-085 (Proposed): its numbers came from the old greedy. D-088 (Proposed): the shop bot's strike, reroll, and Catalog rules, and the reports.
+**2026-11-06 (systems review):** the review proposes adding its house report to §8's reports: room counts, repeats, Bedrooms per Bathroom, research.md's plausibility check, and the glance measures (`house-systems-review.md` §6 and Appendix).
 
 ### D-095 · A piece that becomes a lot feature can't hold a fixture
 **Status:** Proposed · 2026-11-06, with the fix/transform-fixtures pull request. It fills a gap in D-050, which says how a fixture leaves but not what happens when its host transforms.
@@ -1081,6 +1095,7 @@ D-074 to D-080 came out of playtest 2 (M2, 2026-11-05), D-090 to D-093 out of pl
 **Would change:** D-004 and D-036 (one placement a week), D-049 (the bigger yard shapes), D-071 (the variant cards), and D-072 (the enclosure probe should include draw odds).
 **2026-11-06 (playtest 3):** still no Fences in the player's run. M4a's Hendersons want a fenced yard, and the Barkers one of 12 tiles.
 **2026-11-06 (Combolands research):** Combolands' walls, palisades, plateaus, and rails are building cards that each place several pieces, and two demo patches raised how many (walls 5 → 6, rails 2 → 3 → 4). Its walls were still skipped: one forum thread's opening post says enclosing anything takes two 6-wall cards and turns off the adjacency bonuses that make most points *(guide)*. See research.md's 2026-11-06 systems update.
+**2026-11-06 (systems review):** under the review's tidy-yard rule, Fences and Driveways count toward the yard's 6 pieces but never break the rule, so packs of them stay free (`house-systems-review.md` §4).
 
 ### D-075 · Banked buildings: shop goods that place an extra piece in a week
 **Status:** Decided · 2026-11-05: the team chose a tool, Weekend Crew (D-083). Was Open, from playtest 2 (the team's idea, after Combolands' blueprints and potions).
@@ -1125,6 +1140,7 @@ D-074 to D-080 came out of playtest 2 (M2, 2026-11-05), D-090 to D-093 out of pl
 New content is preferred over raising existing numbers.
 **2026-11-06 (playtest 3):** the player sites the house in the middle of the lot, neither near the street nor far back, and didn't feel pulled either way. D-089's sim says otherwise for greedy: houses 0–3 rows from the street win 69%, and 10 or more rows back 48%.
 **2026-11-06 (Combolands research):** in Combolands, each kind of map feature has buildings that need it, make it, or clear it for a payout, and players read the island before picking guilds. Here only the Sapling makes terrain, Boulders give nothing, and clearing a Tree pays nothing. See research.md's 2026-11-06 systems update.
+**2026-11-06 (systems review):** under the review's option B, Charm's share of greedy's Wow rises from 59% to 73%, which works against this entry. M4a's Suite and Full House, which ship anyway, are part of that rise. Of the new rooms, only the Kids' Room reads the terrain, through Trees (`house-systems-review.md` §8, §10).
 
 ### D-079 · Treehouses shouldn't reward clustering
 **Status:** Open · 2026-11-05, from playtest 2.
@@ -1133,6 +1149,12 @@ New content is preferred over raising existing numbers.
 **Would change:** D-071's Treehouse default.
 **2026-11-06 (playtest 3):** Treehouses feel better: not overpowered, but still worth building. Their rules haven't changed since playtest 2; the shop's goods grew the rest of the house around them. The Hendersons like Kid pieces (+50%, M4a), which may make them strong again.
 **2026-11-06 (Combolands research):** the Treehouse both reads Kid and is the base pool's only Kid piece (the Playroom is a shop piece), so Treehouses earn most by touching each other. Another Kid piece in the base pool would give them something else to touch, and another piece that reads Kid would give Kid pieces somewhere else to pay. Combolands keeps two of the same building out of each other's range *(guide)*.
+**2026-11-06 (systems review):** both halves were simulated with the review's house rules.
+- In round 2, adding the Kid half to the package cut wins with 3+ Treehouses from 26% to 13%. That half means Treehouses don't count each other as Kid partners.
+- Under option B, 12% of wins have 3+ Treehouses, against 21% today.
+- The rule needs Renovate beside it: under option A, which has the rule but no Renovate, 25% of wins have 3+ Treehouses.
+- Paying per touching Tree made Treehouses more common and pushed them deeper into the woods.
+- The review recommends only the Kid half, keeping D-071's steady +2 (`house-systems-review.md` §4).
 
 ### D-080 · The Driveway: legibility, and a purpose without a Garage
 **Status:** Open · 2026-11-05, from playtest 2.
@@ -1252,6 +1274,30 @@ New content is preferred over raising existing numbers.
 - D-085's targets, and §8's reports.
 - Options 3–5 would also change D-037, D-035, or D-071 and D-082.
 
+**2026-11-06 (systems review):** `house-systems-review.md` is the deeper pass on this entry. It recommends option B, which keeps this entry's recommendation and adds to it:
+- **Seven house rules** start every client's checklist, at +0.25 each:
+  - four household rules, from this entry's option 1: Room for everyone, a Bathroom for every two Bedrooms, One Kitchen, and a living room or two
+  - the Bathroom rule needs the condition that compares counts, which this entry would add only if fixed counts didn't hold up. In the sim, "4–6 Bedrooms, 2–3 Bathrooms" left 27% of wins with no Bathroom, against the ratio's 23%
+  - two shape rules: Under one roof (4+ rooms filling 60% of a box no longer than 2:1), and Cozy (6+ rooms, each touching 2+)
+  - a tidy yard
+- **One Entertainer per house** (`maxInstances: 1`, option 2's cap), as this entry recommends.
+- **Renovate:** a room card whose type is at its limit can level up that room instead: +4 Comfort, up to 2 levels.
+- **The household's arrivals** on a schedule shown from week 1 (the twins at Framing, Grandma at Drywall), each bringing a room.
+- **Small rules:**
+  - the Patio rule, and Treehouses that don't count each other (D-079)
+  - half-weight draws while a type is at its limit, which isn't the whole-run halving this entry rejected
+- **In the sim, against today's rules:**
+  - Visible repeats fell from 92% to 7% of greedy's wins, and wins without a household from 27% to 4%.
+  - research.md's plausibility check passed in 75% of wins. This entry's three household specs reached 54% in research.md's experiment, on a different runner.
+  - A look-ahead bot's gain over greedy held about level: +22.8% against today's +22.4% at 4 weeks ahead, and +24.2% against +20.5% at 8. Both differences are noise. Under option A it was 9 points lower than under B (real).
+  - Charm's share of the Wow rose from 59% to 73%, M4a's Suite and Full House included.
+  - Two-thirds of wins still failed the review's glance test, about as often from yard pieces tucked into the house's notches as from the outline.
+- **Beyond this entry's Would change list:**
+  - every option changes D-043, since the draws would read the house
+  - Renovate (in A plus Renovate and in B) also changes D-004, D-036, and D-050, and needs D-070 and D-083 settled
+  - B's arrivals also add a start-of-week step (D-036)
+- **The choice is the team's:** A (the checklist only), A plus Renovate, B, or C (B plus merging rooms or construction stages).
+
 ### D-094 · Chain reactions
 **Status:** Open · 2026-11-06, the team's request after the Combolands systems research (research.md, "Update: how Combolands' systems fit together, and chain reactions"). The options and a recommendation are below, and the choice is the team's.
 **Finding:**
@@ -1310,6 +1356,8 @@ New content is preferred over raising existing numbers.
 - Check against D-093 (chain items shouldn't reward repeating a room type) and D-090 (under these rules, a fixture that pays budget each time its host fires would pay once a week).
 
 **2026-11-06 (D-097):** M5 is now split, and M5a, with the visual juice and its tally work, comes before M4. So the Recommendation's "M5" is M5a: option 1 would land in M5a's juice stage. Options 2 and 3 can no longer land in M4 and still have the juice built around them: they would either come before M5a's juice stage, or add their "Again!" steps and arcs to the tally when they land in M4.
+
+**2026-11-06 (systems review):** under the review's house rules, a house is paid to keep one Kitchen and at most two Living Rooms, and Renovate takes a repeated room card. So chain items needn't reward repeats, and a relay that reads Social would reward packing the shared rooms into a hub. Untested (`house-systems-review.md` §8).
 
 ### Earlier open questions
 
