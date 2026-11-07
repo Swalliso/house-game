@@ -610,6 +610,32 @@ describe('any house', () => {
     );
   });
 
+  it('hangs Blackout Curtains in view, or shows their badge where no window or face shows them', () => {
+    fc.assert(
+      fc.property(fc.integer({ min: 1, max: 2 ** 31 - 1 }), (seed) => {
+        const m = modelOf(randomHouse(seed));
+        for (const r of m.rooms.values()) {
+          if (r.fixture !== 'blackoutCurtains') continue;
+          const layout = roomLayout(m, r.uid);
+          const d = layout.drape;
+          if (d) {
+            // On a north face of its own, in front of nothing that stands there.
+            expect(d.w, `seed ${seed}`).toBeGreaterThanOrEqual(10);
+            for (const it of layout.items.filter((i) => !FLAT.test(i.sprite))) {
+              const { w, h } = artSize(it.sprite);
+              expect(overlaps(d, { x: it.x, y: it.y, w, h }), `seed ${seed} ${it.sprite}`).toBe(
+                false,
+              );
+            }
+          }
+          const windows = m.windows.some((w) => w.uid === r.uid);
+          expect(layout.fixtureShown, `seed ${seed}`).toBe(windows || !!d);
+        }
+      }),
+      { numRuns: 300 },
+    );
+  });
+
   it('furnishes nearly every room (a narrow one with a door in each wall may stay bare)', () => {
     let rooms = 0;
     let furnished = 0;
