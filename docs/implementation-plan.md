@@ -326,7 +326,8 @@ All state is plain, JSON-serializable data. D-025 keeps the house separate from 
 ```ts
 interface HouseState {                 // the lot and what's on it
   lot: Lot                             // width × height, street edge, sunny tiles, terrain (woods, creek, pond, boulders, finds)
-  pieces: PlacedPiece[]                // { uid, defId, x, y, rot, placedWeek, ageBonus, fixture?: { id, week } }
+  pieces: PlacedPiece[]                // { uid, defId, x, y, rot, placedWeek, ageBonus, fixture?: { id, week }, level?, shape? }
+                                       // level: Renovations (D-098); shape: a pack's own tiles (D-102)
   nextUid: number
 }
 
@@ -353,7 +354,7 @@ interface RunState {
   servicesBought: { reroll: number; demolition: number }              // their prices rise per purchase
   changeOrders: ActiveChangeOrder[]    // requests and restrictions being worked on
   timedEffects: { source: ChangeOrderId | ToolId; until: { phase: number } | { week: number }; modifiers: Modifier[] }[]
-  lastTally: { points: number; mult: number; total: number; specsMet: boolean[]; setInstances: string[] }
+  lastTally: { points: number; mult: number; total: number; specsMet: boolean[]; setInstances: string[] }   // specsMet in checklist order
   setsRewarded: SetId[]                // sets whose one-time reward has been paid
   setLevels: Partial<Record<SetId, number>>   // from Remodel Plans; 1 when absent
   milestonesEarly: number              // a RunStat for scaling ×Mult
@@ -373,8 +374,10 @@ The action log is kept alongside the state rather than inside it, for run codes.
 
 ```ts
 type Action =
-  | { t: 'place'; from: 'hand' | 'reserve'; i: number; x: number; y: number; rot: 0 | 1 | 2 | 3 }
+  | { t: 'place'; from: 'hand' | 'reserve'; i: number; x: number; y: number; rot: 0 | 1 | 2 | 3
+      shape?: string[] }                              // a pack card's tiles (D-102), as ASCII rows
   | { t: 'install'; from: 'hand' | 'supplies'; i: number; uid: number }  // a fixture into a placed piece
+  | { t: 'renovate'; from: 'hand' | 'reserve'; i: number; uid: number }  // a capped room card on its room (D-098)
   | { t: 'pass' }
   | { t: 'useTool'; i: number; target?: { uid: number; x?: number; y?: number; rot?: 0 | 1 | 2 | 3 } }
   | { t: 'reroll' }
@@ -392,7 +395,7 @@ type Action =
 `(x, y)` is the top-left cell of the rotated shape's bounding box, and each rotation's cells are normalized so their minimum x and y are 0. There's no mirroring: no Core shape needs it (the L-Kitchen's mirror image is one of its rotations, and so is the L-Fence's).
 
 **The week's card versus free actions (D-050, D-051):**
-- Placing a piece (from the hand or the reserve), installing a fixture **from the hand**, or passing is the week's turn, and it ends the week. In the rules, a week's play is `Play = { place } | { install } | null`. `resolveWeek` and `preview` take a `Play`, so a fixture preview goes through the same path as a piece preview.
+- Placing a piece (from the hand or the reserve), installing a fixture **from the hand**, renovating a room (D-098), or passing is the week's turn, and it ends the week. In the rules, a week's play is `Play = { place } | { install } | { renovate } | null`. `resolveWeek` and `preview` take a `Play`, so a fixture or Renovation preview goes through the same path as a piece preview.
 - Installing a fixture **from your supplies**, using a tool, rerolling, and demolishing are free actions during the week. A free install previews as the change to this week's projected total, `resolveWeek(after, null) − resolveWeek(before, null)`.
 - No action places a second piece in a week, so D-004 still holds: one piece per week at most.
 
@@ -402,7 +405,7 @@ type Action =
 - `placed`, `installed`, `demolished`, `transformed`, `moved`
 - `toolUsed`, `findClaimed` (a find's reward, for its own little moment)
 - `tally` (week, per-piece lines, set lines, points, mult, each ×Mult source, total, budget, `fastForward`)
-- `setCompleted`, `specMet`, `specLost` (distinct moments for juice)
+- `setCompleted`, `specMet`, `specLost` (distinct moments for juice), `renovated`
 - `targetReached` (fires when the score first crosses the target)
 - `overtimeUsed`
 - `milestone` (phase, result `'onTime' | 'early' | 'overtime' | 'failed'`, weeks saved, overtime used, reward)
@@ -429,7 +432,7 @@ The UI keeps an event queue and plays it through an animation director (place �
 
 | Screen | Legal actions | What happens |
 |---|---|---|
-| `build` | `place`, `install` from the hand, or `pass`: ends the week | → end of week (below) |
+| `build` | `place`, `install` from the hand, `renovate` (D-098), or `pass`: ends the week | → end of week (below) |
 | | `reroll` if `rerollsLeft > 0` | new hand; `draws + 1` |
 | | `demolish` if `demolitionsLeft > 0` and it wouldn't split the house | piece, boulder, or Old Shed removed, no refund; a find pays its reward |
 | | `install` from supplies, `useTool`, `sell` | free; the week goes on |
@@ -453,7 +456,7 @@ The UI keeps an event queue and plays it through an animation director (place �
 **Start of week:**
 
 1. Transforms resolve (a Sapling old enough becomes a Tree), so the board the player sees is the board that scores.
-2. A hand of `handSize` distinct cards (3 by default) is drawn: pieces, plus fixtures from phase 2.
+2. A hand of `handSize` distinct cards (3 by default) is drawn: pieces, plus fixtures from phase 2. A type at its limit in the checklist draws at half weight (D-100).
 3. If none of the week's **first** hand has a legal spot (or, for a fixture, a legal host), there's one free redraw. It never follows a manual reroll, and the reserve doesn't count.
 
 **Fast-forward (D-040):**
@@ -486,7 +489,7 @@ The research behind the split: Balatro puts ×Mult on 70% of its Rare jokers and
 
 Per piece, in placement order:
 
-1. `points` = base + all flat terms: neighbor bonuses and penalties, per-tile bonuses, growth, rhythm payouts, and flat bonuses or penalties from auras.
+1. `points` = base + all flat terms: neighbor bonuses and penalties, per-tile bonuses, growth, rhythm payouts, flat bonuses or penalties from auras, and a Renovated room's +4 a level (D-098).
 2. `pct` = the sum of all percentage terms: auras, tastes, blueprints, fixtures, crew, phase effects, and this week's tools. **Percentages add**, so two "earn double" effects make +200% (×3), not ×4.
 3. `earned = floor((max(0, points) × max(0, 100 + pct) + 50) / 100)`. Integer math, rounding half up. Penalties can never combine into a positive score. If any "earns nothing" term applies, `earned = 0`.
 4. `bestPiece` (Crown Jewel) then applies its percentage to the single highest `earned`, using the same formula. Ties go to the earliest-placed piece.
@@ -649,7 +652,15 @@ type HouseCondition =                             // about the house: specs, req
   | { group: Selector; minTiles: number }         // largest connected group of matching tiles
   | { set: SetId; min?: number }
   | { demolishedSinceAccepted: { min: number } }
+  // M4a, for the house rules (D-097):
+  | { ratio: { count: Selector; per: Selector; every: number; min?: number } }   // a Bathroom for every 2 Bedrooms
+  | { outline: { minRooms: number; maxRooms?: number; minFillPct: number; maxAspect: number } }  // Under one roof
+  | { variety: { of: Selector; min: number; maxEach: number; exempt?: Selector } }              // a tidy yard
+  | { stages: { fromPhase: number; condition: HouseCondition }[] }   // by milestone: a household that grows
   | { and: HouseCondition[] } | { or: HouseCondition[] } | { not: HouseCondition }
+// Counts over piece types count rooms by their own card, weighted by countsAs modifiers for
+// that type: Bunk Beds make a Bedroom count twice, and a Kitchen Island doesn't add a Dining
+// Room (D-097). A count with a `max` over piece types is that type's limit (D-098, D-100).
 ```
 
 ### Effect kinds
@@ -724,7 +735,8 @@ type RunStat = 'milestonesEarly'                    // counts for scaling ×Mult
 
 interface ClientDef {
   id; name; rarity: 'common' | 'uncommon' | 'rare'; tier; brief: string
-  specs: { label: string; condition: HouseCondition }[]
+  specs: { id: string; name: string; group: 'household' | 'shape' | 'yard' | 'wishes'
+           condition: HouseCondition; text?: string }[]   // the seven house rules first (D-097)
   tastes: Modifier[]
   pool: Modifier[]               // drawWeight only
   changeOrders: ChangeOrderId[]
@@ -1676,8 +1688,18 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
   - checked every week (a demolition can lose one), each adds +0.25 Mult (`specBonus` 25), added together
   - specs are positive achievements: "no Pool" and "no Garage" become tastes (a penalty on that piece) instead of free bonuses from week 1
   - Dale's "nothing Loud next to an office" counts only once he has an office; the street doesn't count
+- **The house rules** (D-093's option B, D-097): every checklist starts with seven, in the client's numbers, each +0.25 while it holds:
+  - the household: Room for everyone (the client's Bedroom range), a Bathroom for every two Bedrooms (at least one), One Kitchen (an L-Kitchen counts), and a living room or two (1–2 Living Rooms, at most one Dining Room)
+  - the shape: Under one roof (4+ rooms, filling 60% of their box, the box no longer than 2:1) and Cozy (6+ rooms, each touching 2+ rooms; a Hallway's link counts)
+  - the yard: a tidy yard ("6 or more yard pieces, and no yard type stands 4 or more times"; outbuildings count; Fences, Driveways, and Saplings count toward the 6 but never break it)
+  - a client wish that repeats a house rule becomes the client's numbers for it (the Hendersons' Bedrooms and Bathrooms; Juniper's 4–8 rooms is her Under one roof)
+  - until M4b's arrivals, Room for everyone steps up at Framing and Drywall: the ceiling +1 at Framing, both ends +1 more at Drywall (2–3, 2–4, 3–5 for the Hendersons)
+- **Renovate** (D-098): a room card whose type is at its limit can level a room of that type instead: +4 Comfort a level, up to 2. Levels stay through the Moving Truck and transforms. It can be Weekend Crew's next play, and a card that can only renovate doesn't count as fitting for the free redraw.
+- **Half-weight draws** (D-100): a type at its limit draws at half weight while it stays there.
+- **The yard rules** (D-101): the Patio, Hot Tub, and Fire Pit earn nothing unless they touch a room (not blocking; a Hallway alone doesn't count); Treehouses don't count each other as Kid partners.
+- **Packs** (D-102): one Fence card places 1–8 connected tiles, and one Driveway card 1–6, in one week, as one piece.
 - **Juniper:**
-  - her limit becomes the spec "a house of 4–8 rooms" (`and(count room ≥ 4, count room max 8)`), so it's an achievement rather than free from week 1, plus a −10% taste per room over 8
+  - her limit becomes the spec "a house of 4–8 rooms", so it's an achievement rather than free from week 1, plus a −10% taste per room over 8. Under D-097 it's her Under one roof: 4–8 rooms, filling 60% of their box
   - early-completion rewards doubled
   - if she still doesn't work in the sim, move her to Stretch
 - **Tastes:** a like is +50%, a dislike −50%, "earns double" +100%, all in the same bucket; "earns nothing" is ×0.
@@ -1702,7 +1724,7 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
   |---|---|---|---|---|
   | Jack-and-Jill | 10 | +0.5 | | +8 Points, +0.25 |
   | Suite | 15 | +0.5 | | +10 Points, +0.25 |
-  | Entertainer | 25 | +1 | | +15 Points, +0.5 |
+  | Entertainer (one per house, D-093) | 25 | +1 | | +15 Points, +0.5 |
   | Full House | 40 | +1 | ×2 | +20 Points, +0.5 |
 
   - checked every week; Points and Mult pay every week while the set holds; other reward types pay once, on first completion
@@ -1762,16 +1784,16 @@ Every Core item from `content-brainstorm.md`, written in the §5 format. Numbers
 | Sapling | `steady 1`; `transform into tree after 4` | M2 |
 | Flower Bed | `givesView`; `steady 1`; `conditional {in: frontYard} → steady 2`; `neighbor flowerBed +1` | M2 |
 | Herb Garden | `givesView`; `perTile sunny +1`; `aura kitchen +25% adjacent` | M2 |
-| Patio | `neighbor [livingRoom, kitchen] +2`; `neighbor {property viewSource} +1 max 3` | M2 |
-| Fence (1×4 and the 5-tile L `['#..', '#..', '###']`) | Two cards sharing a type; `wall`; `enclosure perTile 1 cap 6` | M2 |
-| Driveway (1×3 and 1×5) | Two cards sharing a type; `canCover: ['creek']`; `requires {touching: [street, driveway]}` (blocks); `conditional {in: frontYard} → steady 1` | M2 |
+| Patio | `requires {touching {property room}}` (doesn't block: the Patio rule, D-101); `neighbor [livingRoom, kitchen] +2`; `neighbor {property viewSource} +1 max 3` | M2 (M4a: the Patio rule) |
+| Fence | A pack of 1–8 connected tiles, one piece (D-102; was the 1×4 and 5-tile L cards); `wall`; `enclosure perTile 1 cap 6` | M2 (M4a: the pack) |
+| Driveway | A pack of 1–6 connected tiles, one piece (D-102; was the 1×3 and 1×5 cards); `canCover: ['creek']`; `requires {touching: [street, driveway]}` (blocks); `conditional {in: frontYard} → steady 1` | M2 (M4a: the pack) |
 
 ### "-house" pieces (base pool)
 
 | Item | Encoding | Built in |
 |---|---|---|
 | Doghouse | Outbuilding; tags Pet and House; `requires {in: fencedYard}` (doesn't block); `steady 1`; `neighbor lawn +1` | M2 |
-| Treehouse | Outbuilding; tags Kid and House; `requires {touching: tree}` (blocks); `neighbor {tag Kid} +2` | M2 |
+| Treehouse | Outbuilding; tags Kid and House; `requires {touching: tree}` (blocks); `steady 2` (D-071); `neighbor {tag Kid ∧ not treehouse} +2` (D-101) | M2 (M4a: not counting each other) |
 | Greenhouse | Outbuilding; tags Green and House; `givesView`; `aura {property viewSource ∧ yard} +50% adjacent` | M2 |
 
 ### Special pieces (shop, clients, crews; weight 0)
@@ -1785,8 +1807,8 @@ The last five were Stretch in `content-brainstorm.md`. They're promoted to Core 
 | Mudroom | Indoor; tag Pet; `conditional {borders: fencedYard} → aura {tag Pet} +50% region` | M3a |
 | Pool | Yard; tags Wet, Sunny, Loud; `rhythm every 3 +12`; `neighbor tree −2 max 3` | M3a |
 | **Sunroom** (2×2) | Indoor; tag Sunny; `perTile sunny +2` | M3a |
-| **Hot Tub** (1×1) | Yard; tags Wet and Social; `neighbor patio +3` | M3a |
-| **Fire Pit** (1×1) | Yard; tag Social; `aura patio +50% adjacent` | M3a |
+| **Hot Tub** (1×1) | Yard; tags Wet and Social; the Patio rule (D-101); `neighbor patio +3` | M3a |
+| **Fire Pit** (1×1) | Yard; tag Social; the Patio rule (D-101); `aura patio +50% adjacent` | M3a |
 | **Henhouse** (1×2) | Outbuilding; tag House; `economy 1 every 2`; `neighbor [herbGarden, flowerBed] +1` | M3a |
 | **Birdhouse** (1×1) | Outbuilding; tag House; `neighbor tree +1 max 3` | M3a |
 
@@ -1818,7 +1840,7 @@ Each set pays Points and +Mult every week it holds, like a poker hand (values in
 |---|---|---|
 | Suite | members bedroom, bathroom, closet; connected; Points 15, Mult +0.5 | M4a |
 | Jack-and-Jill | members 2 bedrooms + bathroom; hub bathroom; Points 10, Mult +0.5 | M4a |
-| Entertainer | members kitchen, diningRoom, livingRoom; connected; Points 25, Mult +1 | M4a |
+| Entertainer | members kitchen, diningRoom, livingRoom; connected; max 1 (D-093); Points 25, Mult +1 | M1 (M4a: max 1) |
 | Full House | one of each of the 9 Core indoor types; not connected; max 1; Points 40, Mult +1, **×2** | M4a |
 
 ### Blueprints (18)
@@ -1895,12 +1917,14 @@ Packs, as in Combolands and Balatro: open one and keep 1 of 3.
 
 ### Clients
 
+Every checklist starts with the seven house rules (D-097), in the client's numbers; the Specs column lists each client's own wishes and numbers. A wish that repeats a house rule became that rule's numbers.
+
 | Client | Specs | Tastes | Pool | Change orders | Built in |
 |---|---|---|---|---|---|
-| **Hendersons** | bedroom ≥ 4; bathroom ≥ 2; adjacentPair kitchen–diningRoom; fencedYardTiles ≥ 4 | `earn {tag Kid} +50`; `earn lawn +50`; `earn {tag Loud ∧ touching bedroom} −50` | spec pieces + fence +100% | *Twins:* request `countNew bedroom ≥ 2`. *Golden retriever:* request `count {doghouse ∧ in fencedYard} ≥ 1`. *Thanksgiving:* phase `setBonus entertainer +100` | M4a / M4b |
+| **Hendersons** | Bedrooms 2–3, rising with the household (their bedroom ≥ 4 and bathroom ≥ 2 are where it ends up); adjacentPair kitchen–diningRoom; fencedYardTiles ≥ 4 (any fenced yard, D-069) | `earn {tag Kid} +50`; `earn lawn +50`; `earn {tag Loud ∧ touching bedroom} −50` | spec pieces + fence +100% | *Twins:* request `countNew bedroom ≥ 2`. *Golden retriever:* request `count {doghouse ∧ in fencedYard} ≥ 1`. *Thanksgiving:* phase `setBonus entertainer +100` | M4a / M4b |
 | **Count Vladislav** | `count {room ∧ tag Dark} ≥ 3`; library ≥ 1 | `earn {tag Dark} +100`; `earnNothing {tag Sunny}`; `earn {touching tree} +50`; `earn herbGarden −100` | library add 20 | *The coven is visiting:* request `countNew {room ∧ interior} ≥ 2`. *Eternal night:* phase `grantTag {property room} Dark` | M4a / M4b |
 | **Barkers** | fencedYardTiles ≥ 12; doghouse ≥ 2; mudroom ≥ 1 | `earn {tag Pet} +50`; `earn lawn +50`; `earn flowerBed −50` | mudroom add 20; doghouse, fence +100% | *Another rescue:* request `countNew doghouse ≥ 1`. *Agility course:* request `group {lawn ∧ in fencedYard} minTiles 8` (two connected Lawns) | M4a / M4b |
-| **Juniper Vale** | `and(count {room} ≥ 4, count {room} max 8)`; `count {room ∧ view} ≥ 2` | `perCountOver {room} over 8 −10`; `earn garage −100`; `rule earlyRewardPct +100` | — | *Declutter:* request `demolishedSinceAccepted ≥ 1`. *Tea garden:* request `countNew {patio ∧ view} ≥ 1` | M4a / M4b |
+| **Juniper Vale** | her Under one roof: 4–8 rooms (was `and(count {room} ≥ 4, count {room} max 8)`); `count {room ∧ view} ≥ 2` | `perCountOver {room} over 8 −10`; `earn garage −100`; `rule earlyRewardPct +100` | — | *Declutter:* request `demolishedSinceAccepted ≥ 1`. *Tea garden:* request `countNew {patio ∧ view} ≥ 1` | M4a / M4b |
 | **Dale** | homeOffice ≥ 2; `and(homeOffice ≥ 1, none {tag Loud ∧ touching homeOffice})` | `budget all +100` | homeOffice +100% | *Big deadline:* restriction `forbid {tag Loud}`. *Started a podcast:* request `countNew {room ∧ interior} ≥ 1` | M4a / M4b |
 
 ### Crews
