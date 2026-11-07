@@ -121,10 +121,10 @@ button.inv-slot:active::before {
 .reduce-motion .inv-slot.selected {
   transform: none;
 }
-/* The placeholder glyphs (sprites.ts) are text until the art pass draws them. */
-.inv-glyph {
-  font-family: var(--font-system);
-  font-variant-emoji: text;
+/* A supply's icon (sprites.ts FIXTURE_ICONS and TOOL_ICONS), one UI pixel to its pixel, like the
+   tags' icons beside the text. */
+.inv-glyph.icon {
+  align-self: center;
 }
 .inv-note {
   color: var(--ink-soft);

@@ -257,10 +257,15 @@
 .offer .pcard-chips .tip {
   background: none;
 }
-/* A kind's icon in the art slot, two UI pixels to its pixel. */
+/* A kind's icon in the art slot, two UI pixels to its pixel; a tool's or a fixture's own icon,
+   two thirds its size, three, so both stand as tall. */
 .offer .art-icon.icon {
   width: calc(var(--w) * var(--px) * 2);
   height: calc(var(--h) * var(--px) * 2);
+}
+.offer .art-icon.own.icon {
+  width: calc(var(--w) * var(--px) * 3);
+  height: calc(var(--h) * var(--px) * 3);
 }
 .offer .buy {
   flex: none;

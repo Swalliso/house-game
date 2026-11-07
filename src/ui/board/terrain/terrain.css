@@ -13,10 +13,33 @@
 .ground > .terrain {
   z-index: var(--z-terrain);
 }
+/* The water: its frames side by side in one canvas, stepping left a frame at a time inside a box
+   one frame wide (TerrainLayer.tsx WaterCanvas). Transform only, so the compositor runs it.
+   Reduce motion holds the first frame; the shop's sheet over the board pauses it. */
 .ground > .water {
   position: absolute;
   z-index: var(--z-water);
+  overflow: hidden;
+}
+.water > canvas {
+  display: block;
   image-rendering: pixelated;
+}
+.water-frames {
+  animation-name: water-frames;
+  animation-iteration-count: infinite;
+}
+@keyframes water-frames {
+  to {
+    transform: translateX(var(--water-frames));
+  }
+}
+.reduce-motion .water-frames {
+  animation: none;
+}
+.board.covered .water-frames,
+.board.covered .item-frames {
+  animation-play-state: paused;
 }
 /* Before the terrain canvas in the group, so its first cell, tucked under the board's edge, is
    hidden by the board. */
@@ -53,16 +76,28 @@
   clip-path: inset(-4px -4px 0 -4px);
 }
 
-/* The street row is a light sidewalk: its label in LimeZu's ink, on the labels layer
-   (board/layers.ts), over a Driveway's curb cut, in the interface's pixel font (or the readable
-   one) at 8 UI px, whatever the zoom. */
-.board .street-label {
+/* The street row is a light sidewalk: its name painted on it in LimeZu's ink, on the labels layer
+   (board/layers.ts), in the interface's pixel font (or the readable one), at 8 UI px or smaller
+   in a short row (Board.tsx StreetLabel). It lies on a stretch of sidewalk with no curb cut, and
+   sticks inside the view's left edge, so it reads whole however the lot is panned. */
+.board .street-row {
+  position: absolute;
   z-index: var(--z-labels);
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+}
+.board .street-label {
+  position: sticky;
+  left: 8px;
+  margin-left: 8px;
   color: var(--street-label);
   font-family: var(--font-text);
-  font-size: var(--fs-body);
   font-weight: 400;
+  line-height: 1;
   letter-spacing: var(--px);
+  text-transform: uppercase;
+  white-space: nowrap;
   -webkit-font-smoothing: none;
 }
 [data-font='readable'] .board .street-label {

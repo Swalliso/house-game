@@ -5,23 +5,24 @@
 //   lot changes (building over a Tree replaces it, a Sapling grows into one) or a piece comes
 //   or goes on the street's edge: the grass, the woods' floor, the sunny side, then what stands
 //   on the lot (terrain/objects.ts) on its own cells, and the street (terrain/).
-// - The water canvas, above it at LAYER.water: only over the water's bounding box, redrawn
-//   when its animation changes frame, frozen under Reduce motion (and, since it runs on
-//   requestAnimationFrame, while the tab is hidden).
+// - The water canvas, above it at LAYER.water: only over the water's bounding box, its frames
+//   painted side by side once per lot and stepped through by CSS (transform only, like the
+//   Fireplace's flame), so the animation never wakes the main thread. Still under Reduce motion,
+//   and paused while the shop's sheet covers the board.
 // - Past the board's edges, in the garden around the lot: the road and each creek mouth running
 //   on (terrain/outside.ts), as slices painted once per lot and repeated by CSS.
 // The group is a stacking context below everything else on the board, so the water stays
 // under the pieces whatever their own z-index. Outside it, at LAYER.canopy, the canopy canvas
 // holds what rises above its own cells (tree tops), over the pieces, redrawn with the
 // terrain; the board's scroll area keeps room for it above the lot (geometry.ts CANOPY_ROOM).
-// No canvas takes the pointer.
+// Both redraw before the browser paints (once the atlas has loaded), so a tree cleared for a
+// piece goes in the same frame the piece appears. No canvas takes the pointer.
 // Over the group, under the pieces, a soft tint shows the house's fenced yards.
 
 import type { JSX } from 'preact';
-import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { rules, type Cell, type HouseState, type Lot, type RunState } from '../../rules/index.ts';
-import { settings } from '../settings.ts';
-import { atlasImage, CELL } from '../sprites.ts';
+import { atlasImage, CELL, withAtlasImage } from '../sprites.ts';
 import { boardRows, cellsOutline, occupancy, uidAt } from './geometry.ts';
 import { sheetRect } from './terrain/atlas.ts';
 import { paintGrass } from './terrain/grass.ts';
@@ -99,11 +100,10 @@ export function TerrainLayer({
   const front = useMemo(() => [...frontKey].map((c) => c === '1'), [frontKey]);
   const objects = useMemo(() => lotObjects(lot, salt), [lot, salt]);
   const canopy = useMemo(() => canopyBox(lot, objects), [lot, objects]);
-  useEffect(() => {
-    let cancelled = false;
-    atlasImage()
-      .then((img) => {
-        if (cancelled) return;
+  // Before the browser paints: the lot changes in the same frame as the pieces over it.
+  useLayoutEffect(
+    () =>
+      withAtlasImage((img) => {
         const ctx = ref.current?.getContext('2d');
         if (ctx) draw(ctx, img, lot, objects, salt, front);
         const top = canopyRef.current?.getContext('2d');
@@ -111,12 +111,9 @@ export function TerrainLayer({
           top.imageSmoothingEnabled = false;
           paintCanopy(top, img, objects, canopy);
         }
-      })
-      .catch((e) => console.error(e));
-    return () => {
-      cancelled = true;
-    };
-  }, [lot, objects, canopy, salt, front]);
+      }),
+    [lot, objects, canopy, salt, front],
+  );
   const water = useMemo(() => waterPlan(lot, salt), [lot, salt]);
   const slices = useMemo(() => outsideSlices(lot), [lot]);
   const rows = boardRows(lot.height);
@@ -259,56 +256,57 @@ function CanopyCanvas({
   );
 }
 
-/** The water's own canvas: one frame of the shore animation at a time. */
+/**
+ * The water's own canvas: every frame of the shore's animation side by side, painted once per
+ * lot, in a box the size of one frame. CSS steps the strip left a frame at a time (terrain.css),
+ * transform only, so the water animates without waking the main thread; Reduce motion holds it
+ * on the first frame.
+ */
 function WaterCanvas({ plan, scale }: { plan: WaterPlan; scale: number }) {
   const ref = useRef<HTMLCanvasElement>(null);
-  const still = settings.value.reduceMotion;
-  useEffect(() => {
-    let cancelled = false;
-    let raf = 0;
-    atlasImage()
-      .then((img) => {
-        const ctx = ref.current?.getContext('2d');
-        if (cancelled || !ctx) return;
-        ctx.imageSmoothingEnabled = false;
-        const { frames, ms } = sheetRect('shore');
-        let shown = -1;
-        const show = (frame: number) => {
-          if (frame === shown) return;
-          shown = frame;
-          paintWater(ctx, img, plan, frame);
-        };
-        if (still || frames < 2 || ms <= 0) {
-          show(0);
-          return;
-        }
-        const tick = (now: number) => {
-          show(Math.floor(now / ms) % frames);
-          raf = requestAnimationFrame(tick);
-        };
-        raf = requestAnimationFrame(tick);
-      })
-      .catch((e) => console.error(e));
-    return () => {
-      cancelled = true;
-      cancelAnimationFrame(raf);
-    };
-  }, [plan, still]);
+  const { frames, ms } = sheetRect('shore');
+  const n = frames >= 2 && ms > 0 ? frames : 1;
   const box = plan.box!;
+  const frameW = box.w * CELL;
+  useLayoutEffect(
+    () =>
+      withAtlasImage((img) => {
+        const ctx = ref.current?.getContext('2d');
+        if (!ctx) return;
+        ctx.imageSmoothingEnabled = false;
+        for (let k = 0; k < n; k++) {
+          ctx.setTransform(1, 0, 0, 1, k * frameW, 0);
+          paintWater(ctx, img, plan, k);
+        }
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+      }),
+    [plan, n, frameW],
+  );
   const px = CELL * scale;
   return (
-    <canvas
-      ref={ref}
+    <div
       class="water"
-      width={box.w * CELL}
-      height={box.h * CELL}
       style={{
         left: `${box.x * px}px`,
         top: `${box.y * px}px`,
         width: `${box.w * px}px`,
         height: `${box.h * px}px`,
       }}
-    />
+    >
+      <canvas
+        ref={ref}
+        class={n > 1 ? 'water-frames' : undefined}
+        width={frameW * n}
+        height={box.h * CELL}
+        style={{
+          width: `${box.w * px * n}px`,
+          height: `${box.h * px}px`,
+          animationDuration: `${ms * n}ms`,
+          animationTimingFunction: `steps(${n})`,
+          '--water-frames': `${-box.w * px * n}px`,
+        }}
+      />
+    </div>
   );
 }
 

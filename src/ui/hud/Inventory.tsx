@@ -9,8 +9,8 @@
 // hover and in the inspect panel.
 
 import { CONTENT, rules } from '../../rules/index.ts';
-import { Button, Panel, Well } from '../kit/kit.tsx';
-import { supplyGlyph } from '../sprites.ts';
+import { Button, Icon, Panel, Well } from '../kit/kit.tsx';
+import { supplyIcon } from '../sprites.ts';
 import { inspected, reserveFit, run, selected, sell, suppliesFit, tool } from '../store.ts';
 import { isSelected, selectCard } from './actions.ts';
 import { inventoryRows, showsInventory } from './inventory-rows.ts';
@@ -133,9 +133,7 @@ export function Inventory({ shop = false }: { shop?: boolean }) {
                         : def.name
                     }
                   >
-                    <span class="inv-glyph" aria-hidden="true">
-                      {supplyGlyph(sup)}
-                    </span>
+                    <Icon name={supplyIcon(sup)} class="inv-glyph" />
                     <span class="inv-name">{def.name}</span>
                   </button>
                   {shop && (

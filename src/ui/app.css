@@ -178,18 +178,6 @@ h3 {
   top: 0;
   image-rendering: pixelated;
 }
-.street-label {
-  position: absolute;
-  left: 8px;
-  display: flex;
-  align-items: center;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: #ffffffb0;
-  pointer-events: none;
-}
 .piece {
   position: absolute;
   pointer-events: none;
@@ -197,9 +185,10 @@ h3 {
 }
 /* The tally's active piece, a held set's members, and the preview's sets are outlines in the
    highlights layer (house.css): Charm's rose for sets, Sparkle's gold for ×Mult only (D-019). */
+/* A piece's digit, its box's bottom-right corner where label-layout.ts says. */
 .digit {
   position: absolute;
-  transform: translate(calc(-100% - 2px), calc(-100% - 1px));
+  transform: translate(-100%, -100%);
   color: #fff;
   font-weight: 800;
   line-height: 1;

@@ -36,6 +36,7 @@ import {
   type DrawingId,
 } from '../art/drawings.ts';
 import {
+  Canvas,
   paintFloors,
   paintPiece,
   paintWalls,
@@ -47,10 +48,12 @@ import { itemRows, roomItems, roomLayout, type Item } from '../art/rooms.ts';
 import { yardPieceLayout, type YardModel } from '../art/yard.ts';
 import { highlighted, justPlaced, played, tallyView } from '../fx/director.ts';
 import { settings } from '../settings.ts';
-import { atlasImage, CELL, cellUnit, FIXTURE_GLYPHS, spriteStyle } from '../sprites.ts';
+import { atlasImage, CELL, FIXTURE_ICONS, spriteStyle } from '../sprites.ts';
+import { ICON_SIZES, type IconName } from '../theme/art.ts';
 import { currentTally, preview, tool } from '../store.ts';
-import { cellsOutline, digitCell, isIndoor, type Occupancy } from './geometry.ts';
+import { cellsOutline, isIndoor, type Occupancy } from './geometry.ts';
 import { inset, pieceModel, type HouseModel, type PieceLook, type Rect } from './house-model.ts';
+import { pieceLabels, type BadgeSpot, type Side } from './label-layout.ts';
 import { register, settle as settleFx } from './piece-fx.ts';
 import './house.css';
 
@@ -472,41 +475,55 @@ function Digit({ uid, value, style }: { uid: number; value: number; style: JSX.C
   );
 }
 
-/** A fixture's badge in the piece's top-right cell, with its rarity's edge. */
-function FixtureBadge({
-  id,
-  left,
-  top,
-  size,
+/**
+ * A badge on a piece (label-layout.ts places it): a square in LimeZu's ink, one icon pixel wide,
+ * its icon on whole device pixels; just the ring and its fill where the cell has no room for the
+ * icon. Its title says what it is.
+ */
+function Badge({
+  spot,
+  icon,
+  class: cls,
+  label,
 }: {
-  id: FixtureId;
-  left: number;
-  top: number;
-  size: number;
+  spot: BadgeSpot;
+  icon: IconName;
+  class: string;
+  label: string;
 }) {
-  const def = CONTENT.fixtures[id];
+  const { w, h } = ICON_SIZES[icon];
   return (
     <div
-      class={`fixture-badge rarity-${def.rarity}`}
-      title={`${def.name} (fixture)`}
-      aria-label={`${def.name} installed`}
+      class={`board-badge ${cls}`}
+      title={label}
+      aria-label={label}
       style={{
-        left: `${left - size}px`,
-        top: `${top}px`,
-        width: `${size}px`,
-        height: `${size}px`,
-        fontSize: `${Math.round(size * 0.72)}px`,
+        left: `${spot.x}px`,
+        top: `${spot.y}px`,
+        width: `${spot.w}px`,
+        height: `${spot.h}px`,
+        borderWidth: `${spot.ring}px`,
       }}
     >
-      {FIXTURE_GLYPHS[id]}
+      {spot.icon > 0 && (
+        <span
+          class="board-badge-icon"
+          style={{
+            width: `${w * spot.icon}px`,
+            height: `${h * spot.icon}px`,
+            backgroundImage: `var(--art-icon-${icon})`,
+          }}
+        />
+      )}
     </div>
   );
 }
 
 /**
- * Each piece's labels: its weekly score in its bottom-right cell (or, while a tally plays,
- * what it earned in the week being tallied), its fixture's badge top right, and a ⚠ top left
- * when a requirement isn't met (it earns nothing then). Inside the room's walls.
+ * Each piece's labels: its weekly score in its bottom-right cell (or, while a tally plays, what
+ * it earned in the week being tallied), its fixture's badge top right, and a ⚠ top left when a
+ * requirement isn't met (it earns nothing then). Inside the room's walls, and never over the
+ * digit (label-layout.ts): a badge that shares the digit's cell moves up over the wall band.
  */
 export function LabelsLayer({
   house,
@@ -514,18 +531,19 @@ export function LabelsLayer({
   yard,
   occ,
   scale,
+  dpr,
 }: {
   house: HouseState;
   model: HouseModel;
   yard: YardModel;
   occ: Occupancy;
   scale: number;
+  dpr: number;
 }) {
   const view = tallyView.value;
   const tally = currentTally.value;
   const scoreBy = new Map((view?.pieces ?? tally.pieces).map((s) => [s.uid, s]));
   const px = CELL * scale;
-  const unit = cellUnit(px);
   return (
     <div class="labels">
       {house.pieces.map((piece) => {
@@ -533,8 +551,6 @@ export function LabelsLayer({
         if (!cells) return null;
         const score = scoreBy.get(piece.uid);
         const room = model.rooms.has(piece.uid);
-        const ins = (c: Cell, side: 'N' | 'E' | 'S' | 'W') =>
-          room ? inset(model, c.x, c.y, side) * scale : 0;
         const shown = score ? (score.unmet ? 0 : score.earned) : undefined;
         // A fixture shows as art where it fits (rooms.ts, house-paint.ts, yard.ts); its badge
         // stands in when it doesn't, so a purchase is always visible.
@@ -543,49 +559,44 @@ export function LabelsLayer({
           !(room
             ? roomLayout(model, piece.uid).fixtureShown
             : (yard.pieces.get(piece.uid)?.fixtureShown ?? false));
-        const d = digitCell(cells);
-        const topRow = Math.min(...cells.map((c) => c.y));
-        const tr = {
-          x: Math.max(...cells.filter((c) => c.y === topRow).map((c) => c.x)),
-          y: topRow,
-        };
-        const tl = [...cells].sort((a, b) => a.y - b.y || a.x - b.x)[0]!;
-        const gap = Math.max(1, unit);
-        const badge = Math.max(14, 6 * unit);
+        const l = pieceLabels({
+          cells,
+          inset: (c: Cell, side: Side) => (room ? inset(model, c.x, c.y, side) * scale : 0),
+          px,
+          dpr,
+          digit: shown === undefined ? null : String(shown).length,
+          fixture: badged,
+          unmet: !!score?.unmet,
+        });
+        const fixture = piece.fixture ? CONTENT.fixtures[piece.fixture.id] : null;
         return (
           <div key={piece.uid} class="piece-labels">
-            {shown !== undefined && (
+            {l.fixture && fixture && (
+              <Badge
+                spot={l.fixture}
+                icon={FIXTURE_ICONS[fixture.id]}
+                class={`fixture-badge rarity-${fixture.rarity}`}
+                label={`${fixture.name} installed`}
+              />
+            )}
+            {l.unmet && score?.unmet && (
+              <Badge
+                spot={l.unmet}
+                icon="warn"
+                class="unmet-badge"
+                label={`Earns nothing: it must be ${score.unmet}`}
+              />
+            )}
+            {shown !== undefined && l.digit && (
               <Digit
                 uid={piece.uid}
                 value={shown}
                 style={{
-                  left: `${(d.x + 1) * px - ins(d, 'E')}px`,
-                  top: `${(d.y + 1) * px - ins(d, 'S')}px`,
-                  fontSize: `${Math.max(11, 5 * unit)}px`,
+                  left: `${l.digit.right}px`,
+                  top: `${l.digit.bottom}px`,
+                  fontSize: `${l.digit.font}px`,
                 }}
               />
-            )}
-            {badged && piece.fixture && (
-              <FixtureBadge
-                id={piece.fixture.id}
-                left={(tr.x + 1) * px - ins(tr, 'E') - gap}
-                top={tr.y * px + ins(tr, 'N') + gap}
-                size={badge}
-              />
-            )}
-            {score?.unmet && (
-              <div
-                class="unmet-badge"
-                title={`Earns nothing: it must be ${score.unmet}`}
-                aria-label={`Earns nothing: it must be ${score.unmet}`}
-                style={{
-                  left: `${tl.x * px + ins(tl, 'W') + gap}px`,
-                  top: `${tl.y * px + ins(tl, 'N') + gap}px`,
-                  fontSize: `${Math.max(11, 4.5 * unit)}px`,
-                }}
-              >
-                {'⚠︎'}
-              </div>
             )}
           </div>
         );
@@ -625,6 +636,23 @@ export function pieceArtPlan(defId: PieceId, rot: Rot, look?: PieceLook): PieceA
   }
   const frame = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
   return { frame, paint: (a: AtlasPixels) => paintYardPiece(layout, a) };
+}
+
+/**
+ * Paints one piece of the board's art (an atlas sprite, or one of our drawings: its first frame)
+ * into a canvas its size: a fixture's picture in the shop (PieceArt.tsx FixtureArt). At once when
+ * the atlas is read. Returns a canceller for a paint still waiting for the atlas.
+ */
+export function paintArt(canvas: HTMLCanvasElement | null, id: ArtId): () => void {
+  return withAtlas((atlas) => {
+    const ctx = canvas?.getContext('2d');
+    if (!ctx) return;
+    const { w, h } = artSize(id);
+    const cv = new Canvas(0, 0, w, h);
+    cv.blit(atlas, id, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    put(ctx, cv.pixels());
+  });
 }
 
 /**

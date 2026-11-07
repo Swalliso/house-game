@@ -16,11 +16,11 @@ const UI = join(import.meta.dirname, '..');
 const TOKENS = readFileSync(join(import.meta.dirname, 'tokens.css'), 'utf8');
 
 /**
- * Stylesheets that still hold raw colors, until the board's own passes (the pieces, the ghost,
- * the popups, in app.css and board-m2.css) and a pass on the ?debug panel move them to tokens.
- * Each one that's migrated comes off this list, and the test keeps it off.
+ * Stylesheets that still hold raw colors, until a pass on app.css's last board rules (the pieces'
+ * digits, the popups) and on the ?debug panel moves them to tokens. Each one that's migrated comes
+ * off this list, and the test keeps it off.
  */
-const LEGACY = ['app.css', 'board/board-m2.css', 'debug/debug.css'];
+const LEGACY = ['app.css', 'debug/debug.css'];
 
 function stylesheets(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {

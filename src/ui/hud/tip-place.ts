@@ -1,6 +1,6 @@
-// Where the tooltip's note goes (M5a): centered over its term, or under it near the top of the
-// window, kept inside the window, with its tail pointing at the term. Every edge lands on a
-// whole device pixel, so the note's pixel text stays crisp.
+// Where the tooltip's note goes (M5a): over its term, or under it when there's no room above for
+// the note (measured, not guessed), kept inside the window, with its tail pointing at the term.
+// Every edge lands on a whole device pixel, so the note's pixel text stays crisp.
 
 /** The note's width, in UI pixels (tip.css sets the same). */
 export const NOTE_W = 160;
@@ -18,8 +18,6 @@ export interface TipTerm {
   x: number;
   top: number;
   bottom: number;
-  /** The note goes under the term (near the top of the window) rather than over it. */
-  below: boolean;
 }
 
 export interface TipPlace {
@@ -30,13 +28,20 @@ export interface TipPlace {
   bottom?: number;
   /** The tail's left edge, from the note's outer left edge. */
   tail: number;
+  /** The note sits under its term (its tail points up). */
+  below: boolean;
 }
 
+/**
+ * Where a note `noteH` CSS px tall goes for its term: over it if it fits there, else under it if
+ * it fits there, else on the roomier side, pushed back inside the window.
+ */
 export function placeTip(
   term: TipTerm,
   view: { w: number; h: number },
   px: number,
   dpr: number,
+  noteH: number,
 ): TipPlace {
   const snap = (v: number) => Math.round(v * dpr) / dpr;
   const w = NOTE_W * px;
@@ -46,7 +51,13 @@ export function placeTip(
   const tailMax = w - (TAIL_W + CORNER) * px;
   const tail = snap(Math.max(tailMin, Math.min(tailMax, term.x - left - (TAIL_W / 2) * px)));
   const gap = (GAP + TAIL_H) * px;
-  return term.below
-    ? { left, tail, top: snap(term.bottom + gap) }
-    : { left, tail, bottom: snap(view.h - term.top + gap) };
+  const roomAbove = term.top - gap - margin;
+  const roomBelow = view.h - margin - (term.bottom + gap);
+  const below = noteH > roomAbove && (noteH <= roomBelow || roomBelow > roomAbove);
+  if (below) {
+    const top = Math.max(margin, Math.min(term.bottom + gap, view.h - margin - noteH));
+    return { left, tail, top: snap(top), below };
+  }
+  const bottom = Math.max(margin, Math.min(view.h - term.top + gap, view.h - margin - noteH));
+  return { left, tail, bottom: snap(bottom), below };
 }

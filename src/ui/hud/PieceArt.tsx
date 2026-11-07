@@ -6,9 +6,12 @@
 // The picked card's turn shows on its ShapeGlyph instead.
 
 import { useLayoutEffect, useMemo, useRef } from 'preact/hooks';
-import { CONTENT, shapeCells, type PieceId, type Rot } from '../../rules/index.ts';
+import { CONTENT, shapeCells, type FixtureId, type PieceId, type Rot } from '../../rules/index.ts';
+import { artSize, type ArtId } from '../art/drawings.ts';
 import { isIndoor } from '../board/geometry.ts';
-import { paintPieceArt, pieceArtPlan } from '../board/HouseLayers.tsx';
+import { paintArt, paintPieceArt, pieceArtPlan } from '../board/HouseLayers.tsx';
+import { Icon } from '../kit/kit.tsx';
+import { FIXTURE_ICONS } from '../sprites.ts';
 import { devicePixelRatio, pictureScale } from '../theme/pixel.ts';
 
 export function PieceArt({ id, class: cls }: { id: PieceId; class?: string }) {
@@ -26,6 +29,45 @@ export function PieceArt({ id, class: cls }: { id: PieceId; class?: string }) {
       aria-hidden="true"
     >
       <canvas ref={ref} width={frame.w} height={frame.h} style={size} />
+    </span>
+  );
+}
+
+/**
+ * The art a fixture is drawn with on the board, where it has a sprite of its own (rooms.ts,
+ * yard.ts): the Fireplace's stove, the Bunk Beds, the Kitchen Island, the Sprinkler, the Pergola.
+ * The ones painted with their room (the Skylight's light, Blackout Curtains, Soundproofing, the
+ * Bay Window, the Chandelier) and Garden Lights' pair of bollards show their icon instead.
+ */
+export const FIXTURE_ART: Partial<Record<FixtureId, ArtId>> = {
+  fireplace: 'fireplace',
+  bunkBeds: 'bunk-bed-0',
+  kitchenIsland: 'kitchen-island',
+  sprinkler: 'own-sprinkler',
+  pergola: 'pergola',
+};
+
+/**
+ * A fixture's picture for the shop's art slots: its art as the board draws it, at the pieces'
+ * picture scale, or its icon drawn large.
+ */
+export function FixtureArt({ id }: { id: FixtureId }) {
+  const art = FIXTURE_ART[id];
+  if (!art) return <Icon name={FIXTURE_ICONS[id]} class="art-icon own" />;
+  return <ArtPicture id={art} />;
+}
+
+/** One piece of the board's art, on whole device pixels at the pieces' picture scale. */
+function ArtPicture({ id }: { id: ArtId }) {
+  const scale = pictureScale(devicePixelRatio.value);
+  const ref = useRef<HTMLCanvasElement>(null);
+  // Before the browser paints, so the picture is never seen blank.
+  useLayoutEffect(() => paintArt(ref.current, id), [id]);
+  const { w, h } = artSize(id);
+  const size = { width: `${w * scale}px`, height: `${h * scale}px` };
+  return (
+    <span class="piece-art fixture-art" style={size} aria-hidden="true">
+      <canvas ref={ref} width={w} height={h} style={size} />
     </span>
   );
 }

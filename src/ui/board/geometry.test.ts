@@ -17,6 +17,8 @@ import {
   ROAD_ROWS,
   snapZoom,
   startScrollTop,
+  streetLabelRun,
+  streetLabelSize,
   streetScale,
   viewReach,
   zoomStep,
@@ -88,6 +90,34 @@ describe('the board', () => {
     // A view that holds the board: no scrolling.
     expect(startScrollTop(900, 980, 32)).toBe(0);
     expect(startScrollTop(900, 870, 32)).toBe(0);
+  });
+});
+
+describe("the street's label", () => {
+  it('keeps the body size where the row has room, and halves it in a Retina 0.5× row', () => {
+    // 1×, 1080p: 16 px text in a 32 px row. Fit at 720p: 16 px in 22 still fits.
+    expect(streetLabelSize(32, 2, 1)).toBe(16);
+    expect(streetLabelSize(22, 2, 1)).toBe(16);
+    // 0.667× at 150% and 0.571× at 175%: the UI pixel's own size.
+    expect(streetLabelSize(64 / 3, 2, 1.5)).toBe(16);
+    expect(streetLabelSize(32 / 1.75, 3 / 1.75, 1.75)).toBeCloseTo(24 / 1.75);
+    // 0.5× on a Retina screen: a 16 px row takes 8 px text, two device pixels per font pixel.
+    expect(streetLabelSize(16, 2, 2)).toBe(8);
+    // Never under one device pixel per font pixel.
+    expect(streetLabelSize(8, 2, 1)).toBe(8);
+  });
+
+  it('lies on the longest stretch of sidewalk with no curb cut', () => {
+    const at = (s: string) => [...s].map((c) => c === 'x');
+    // A Driveway at x = 2: the label starts after it.
+    expect(streetLabelRun(at('..x.........'))).toEqual({ from: 3, to: 12 });
+    // No cut: the whole street.
+    expect(streetLabelRun(at('........'))).toEqual({ from: 0, to: 8 });
+    // The longest stretch, the leftmost of equals.
+    expect(streetLabelRun(at('...x..x......'))).toEqual({ from: 7, to: 13 });
+    expect(streetLabelRun(at('...x...x'))).toEqual({ from: 0, to: 3 });
+    // Every cell cut: the whole street.
+    expect(streetLabelRun(at('xxxx'))).toEqual({ from: 0, to: 4 });
   });
 });
 

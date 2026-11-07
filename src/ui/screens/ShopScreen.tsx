@@ -24,7 +24,8 @@ import { FEEL } from '../fx/feel.ts';
 import { shopHidden } from '../hud/actions.ts';
 import { BudgetCount } from '../hud/BudgetCount.tsx';
 import { TagChips } from '../hud/Hand.tsx';
-import { PieceArt, ShapeGlyph } from '../hud/PieceArt.tsx';
+import { FixtureArt, PieceArt, ShapeGlyph } from '../hud/PieceArt.tsx';
+import { TOOL_ICONS } from '../sprites.ts';
 import {
   goodKind,
   goodLines,
@@ -92,22 +93,30 @@ function buyOffer(o: OfferView): void {
   }
 }
 
-/** The kind's own icon, for the art slot, until each good has a sprite of its own. */
+/** The good's own icon (a tool's), or its kind's (blueprints, crates, the upgrade), for the art slot. */
 function kindIcon(o: OfferView['offer']): IconName {
   switch (o.kind) {
     case 'service':
       return SERVICE_ICON[o.service];
     case 'piece':
       return 'House';
+    case 'tool':
+      return TOOL_ICONS[o.id];
     default:
       return o.kind;
   }
 }
 
-/** A good's picture: a piece's own floor and furniture, or its kind's icon, drawn large. */
+/**
+ * A good's picture: a piece as the board builds it, a fixture as the board draws it (or its
+ * icon), or its own or its kind's icon, drawn large.
+ */
 function OfferArt({ offer }: { offer: OfferView['offer'] }) {
   if (offer.kind === 'piece') return <PieceArt id={offer.id} />;
-  return <Icon name={kindIcon(offer)} class="art-icon" />;
+  if (offer.kind === 'fixture') return <FixtureArt id={offer.id} />;
+  return (
+    <Icon name={kindIcon(offer)} class={offer.kind === 'tool' ? 'art-icon own' : 'art-icon'} />
+  );
 }
 
 /** A piece's kind, for its card's tint and band (and lawn behind a yard piece's picture). */

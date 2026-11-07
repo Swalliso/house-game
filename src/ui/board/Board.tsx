@@ -18,6 +18,7 @@ import {
   SCORE_LABELS,
   type Cell,
   type DemolishPreview,
+  type Lot,
   type PieceId,
   type Rot,
   type SourceRef,
@@ -28,6 +29,7 @@ import { busy, fxHooks, popups, setHold, skip } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
 import { shakeOffsets } from '../fx/juice.ts';
 import { formatNumber } from '../format.ts';
+import { shopShown } from '../hud/actions.ts';
 import {
   activePlay,
   demolishArmed,
@@ -52,6 +54,7 @@ import {
   type Inspected,
 } from '../store.ts';
 import { CELL } from '../sprites.ts';
+import { uiPixel } from '../theme/pixel.ts';
 import {
   applyZoomAnchor,
   cameraEls,
@@ -77,8 +80,11 @@ import {
   labelSpot,
   occupancy,
   startScrollTop,
+  streetLabelRun,
+  streetLabelSize,
   uidAt,
   viewReach,
+  type Occupancy,
 } from './geometry.ts';
 import { hallLinks, houseModel } from './house-model.ts';
 import {
@@ -312,8 +318,8 @@ export function Board() {
     [house, occ, lot, scale],
   );
   const labelsLayer = useMemo(
-    () => <LabelsLayer house={house} model={model} yard={yard} occ={occ} scale={scale} />,
-    [house, model, yard, occ, scale],
+    () => <LabelsLayer house={house} model={model} yard={yard} occ={occ} scale={scale} dpr={dpr} />,
+    [house, model, yard, occ, scale, dpr],
   );
 
   useEffect(() => {
@@ -611,6 +617,8 @@ export function Board() {
     // With a hair of slack: at a ratio like 125% × 80% browser zoom (1.0000000149), 1× comes out
     // a hair under 32 px and is still full size.
     px < SMALL_CELL_PX - 1e-6 ? 'small' : '',
+    // Under the shop's sheet: the water and the animated props hold still (terrain.css).
+    shopShown.value ? 'covered' : '',
   ].join(' ');
 
   return (
@@ -652,9 +660,7 @@ export function Board() {
             around={viewReach(viewSize.value, lot.width, lot.height, scale, dpr, PAD)}
           />
           <YardTint state={state} scale={scale} />
-          <div class="street-label" style={{ top: `${lot.height * px}px`, height: `${px}px` }}>
-            Street
-          </div>
+          <StreetLabel lot={lot} occ={occ} px={px} dpr={dpr} />
           {floorLayer}
           {itemsLayer}
           {wallsLayer}
@@ -678,6 +684,39 @@ export function Board() {
       </div>
       <CameraControls />
     </>
+  );
+}
+
+/** A Driveway or a Long Driveway: where one meets the street, its concrete crosses the sidewalk. */
+const isDriveway = (id: PieceId) => (CONTENT.pieces[id].countsAs ?? id) === 'driveway';
+
+/**
+ * The street row's name, painted on the sidewalk: on its longest stretch with no curb cut
+ * (geometry.ts streetLabelRun), sized to the row (streetLabelSize), and sticky (terrain.css), so
+ * it stays whole inside the view's left edge while that stretch is in view, however the lot is
+ * panned across.
+ */
+function StreetLabel({ lot, occ, px, dpr }: { lot: Lot; occ: Occupancy; px: number; dpr: number }) {
+  const size = streetLabelSize(px, uiPixel(dpr), dpr);
+  const cuts = Array.from({ length: lot.width }, (_, x) => {
+    const p = occ.byUid.get(uidAt(occ, x, lot.height - 1));
+    return !!p && isDriveway(p.defId);
+  });
+  const { from, to } = streetLabelRun(cuts);
+  return (
+    <div
+      class="street-row"
+      style={{
+        left: `${from * px}px`,
+        top: `${lot.height * px}px`,
+        width: `${(to - from) * px}px`,
+        height: `${px}px`,
+      }}
+    >
+      <span class="street-label" style={{ fontSize: `${size}px` }}>
+        Street
+      </span>
+    </div>
   );
 }
 

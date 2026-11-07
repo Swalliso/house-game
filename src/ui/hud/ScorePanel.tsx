@@ -62,16 +62,20 @@ function SetList({
             {CONTENT.sets[s.set].name}
             {(levels[s.set] ?? 1) > 1 && <span class="set-level"> Lv {levels[s.set]}</span>}
           </span>
-          <span class="set-comfort">+{s.points}</span>
-          <span class="set-charm">+{formatMult(s.mult)}</span>
+          <span class="set-values">
+            <span class="set-comfort">+{s.points}</span>
+            <span class="set-charm">+{formatMult(s.mult)}</span>
+          </span>
         </li>
       ))}
       {lost.map((s) => (
         <li key={s.key} class="lost">
           <Icon name="cross" label="Broken" />
           <span class="set-name">{CONTENT.sets[s.set].name}</span>
-          <span class="set-comfort">−{s.points}</span>
-          <span class="set-charm">−{formatMult(s.mult)}</span>
+          <span class="set-values">
+            <span class="set-comfort">−{s.points}</span>
+            <span class="set-charm">−{formatMult(s.mult)}</span>
+          </span>
         </li>
       ))}
     </ul>

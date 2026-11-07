@@ -64,16 +64,26 @@
   min-width: calc(var(--px) * 100);
   max-width: calc(var(--px) * 320);
 }
+/* One line: the score and its target always whole; the forecast after them only if it fits
+   whole. One that doesn't wraps to a second line, far below and clipped away, rather than show
+   a cut number (its fill and tick on the meter stay). */
 .tb-progress-line {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: var(--space-2);
+  gap: var(--lh-body) var(--space-2);
+  height: calc(var(--lh-body) + var(--px));
   white-space: nowrap;
   overflow: hidden;
 }
-.tb-score {
-  overflow: hidden;
-  text-overflow: ellipsis;
+.tb-score,
+.tb-met,
+.tb-forecast {
+  flex: none;
+}
+/* With the target met, the forecast keeps only its number. */
+.tb-met + .tb-forecast .tb-forecast-word {
+  display: none;
 }
 .tb-wow {
   font-size: var(--fs-num);

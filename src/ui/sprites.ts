@@ -10,6 +10,7 @@
 import atlasUrl from '../../assets/atlas.png';
 import atlas from '../../assets/atlas.json';
 import type { FixtureId, PieceId, Supply, ToolId } from '../rules/index.ts';
+import type { IconName } from './theme/art.ts';
 
 export type SpriteId = keyof typeof atlas.sprites;
 
@@ -71,38 +72,41 @@ export const PIECE_SPRITES: Record<PieceId, { floor: SpriteId; furniture: Sprite
   birdhouse: { floor: 'grass-0', furniture: 'birdhouse' },
 };
 
-/** A text glyph per fixture for its badge on the board and its card (placeholders, D-057). */
-export const FIXTURE_GLYPHS: Record<FixtureId, string> = {
-  fireplace: '\u2668\uFE0E', // ♨
-  skylight: '\u2600\uFE0E', // ☀
-  blackoutCurtains: '\u263E\uFE0E', // ☾
-  soundproofing: '\u266B\uFE0E', // ♫
-  kitchenIsland: '\u25AD', // ▭
-  bunkBeds: '\u2261', // ≡
-  bayWindow: '\u25EB', // ◫
-  sprinkler: '\u2749', // ❉
-  pergola: '\u2302', // ⌂
-  gardenLights: '\u2726', // ✦
-  chandelier: '\u2748', // ❈
+/**
+ * Each fixture's icon (theme/icons.ts): its badge on the board where it can't be drawn, its
+ * supply slot, and the shop's art slot where it has no art on the board (hud/PieceArt.tsx).
+ */
+export const FIXTURE_ICONS: Record<FixtureId, IconName> = {
+  fireplace: 'fireplace',
+  skylight: 'skylight',
+  blackoutCurtains: 'blackoutCurtains',
+  soundproofing: 'soundproofing',
+  kitchenIsland: 'kitchenIsland',
+  bunkBeds: 'bunkBeds',
+  bayWindow: 'bayWindow',
+  sprinkler: 'sprinkler',
+  pergola: 'pergola',
+  gardenLights: 'gardenLights',
+  chandelier: 'chandelier',
 };
 
-/** A text glyph per tool, for its supply slot and its shop card. */
-export const TOOL_GLYPHS: Record<ToolId, string> = {
-  movingTruck: '\u21C4', // ⇄
-  copyMachine: '\u2398', // ⎘
-  rushOrder: '\u23F1\uFE0E', // ⏱
-  openHouseParty: '\u266A\uFE0E', // ♪
-  catalog: '\u2630', // ☰
-  fertilizer: '\u2618\uFE0E', // ☘
-  inspectorsVisit: '\u2611\uFE0E', // ☑
-  dumpster: '\u2672', // ♲
-  remodelJackAndJill: '\u2191', // ↑
-  remodelEntertainer: '\u2191', // ↑
-  weekendCrew: '\u2692\uFE0E', // ⚒
+/** Each tool's icon (theme/icons.ts), for its supply slot and its art slot in the shop. */
+export const TOOL_ICONS: Record<ToolId, IconName> = {
+  movingTruck: 'movingTruck',
+  copyMachine: 'copyMachine',
+  rushOrder: 'rushOrder',
+  openHouseParty: 'openHouseParty',
+  catalog: 'catalog',
+  fertilizer: 'fertilizer',
+  inspectorsVisit: 'inspectorsVisit',
+  dumpster: 'dumpster',
+  remodelJackAndJill: 'remodel',
+  remodelEntertainer: 'remodel',
+  weekendCrew: 'weekendCrew',
 };
 
-export function supplyGlyph(s: Supply): string {
-  return s.kind === 'fixture' ? FIXTURE_GLYPHS[s.id] : TOOL_GLYPHS[s.id];
+export function supplyIcon(s: Supply): IconName {
+  return s.kind === 'fixture' ? FIXTURE_ICONS[s.id] : TOOL_ICONS[s.id];
 }
 
 /** A sprite's rect in the atlas (an animation's first frame). */
@@ -137,16 +141,42 @@ export function spriteStyle(id: SpriteId, scale: number): Record<string, string>
 }
 
 let image: Promise<HTMLImageElement> | null = null;
+/** The atlas once it has loaded: from then on the lot's canvases paint before the browser does. */
+let loaded: HTMLImageElement | null = null;
 
 /** The atlas as an image, for drawing terrain into a canvas. */
 export function atlasImage(): Promise<HTMLImageElement> {
   if (!image) {
     image = new Promise((resolve, reject) => {
       const img = new Image();
-      img.onload = () => resolve(img);
+      img.onload = () => {
+        loaded = img;
+        resolve(img);
+      };
       img.onerror = () => reject(new Error('The sprite atlas failed to load'));
       img.src = atlasUrl;
     });
   }
   return image;
+}
+
+/**
+ * Paints with the atlas image: at once when it has loaded, so a canvas changes in the same frame
+ * as the DOM around it (a cleared tree's crown goes with the piece built over it); only the very
+ * first paint waits for it. Returns a canceller for a paint that's still waiting.
+ */
+export function withAtlasImage(paint: (img: HTMLImageElement) => void): () => void {
+  if (loaded) {
+    paint(loaded);
+    return () => {};
+  }
+  let cancelled = false;
+  atlasImage()
+    .then((img) => {
+      if (!cancelled) paint(img);
+    })
+    .catch((e) => console.error(e));
+  return () => {
+    cancelled = true;
+  };
 }

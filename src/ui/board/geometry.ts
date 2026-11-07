@@ -218,6 +218,39 @@ export function startScrollTop(scrollHeight: number, clientHeight: number, cellP
 }
 
 /**
+ * The street label's font size in CSS px, in a row `px` CSS px tall: the interface's body size
+ * (8 UI pixels, `uiPx` CSS px each), unless that would fill more than three quarters of the row
+ * (0.5× on a Retina screen, Fit there); then the largest whole number of device pixels per font
+ * pixel (the pixel font is 8 px tall) that fills at most 60% of the row, and at least one.
+ */
+export function streetLabelSize(px: number, uiPx: number, dpr: number): number {
+  const body = 8 * uiPx;
+  if (body <= 0.75 * px + 1e-6) return body;
+  return (8 * Math.max(1, Math.floor((0.6 * px * dpr) / 8 + 1e-6))) / dpr;
+}
+
+/**
+ * Where the street's label may lie, in cells [from, to): the longest stretch of sidewalk with no
+ * curb cut in it (`cuts[x]`: a Driveway's concrete crosses the sidewalk at x), the leftmost of
+ * equals, so the label never lies across a driveway and has the most room to stay in the view
+ * (it sticks to the view's left edge inside its stretch). The whole street if every cell is cut.
+ */
+export function streetLabelRun(cuts: readonly boolean[]): { from: number; to: number } {
+  let best = { from: 0, to: 0 };
+  let x = 0;
+  while (x < cuts.length) {
+    if (cuts[x]) {
+      x++;
+      continue;
+    }
+    const from = x;
+    while (x < cuts.length && !cuts[x]) x++;
+    if (x - from > best.to - best.from) best = { from, to: x };
+  }
+  return best.to > best.from ? best : { from: 0, to: cuts.length };
+}
+
+/**
  * The title screen's street (§12, Art): tiles of 64, 48, or 32 CSS px by the window's height,
  * the sizes the 16 px art had, at the nearest whole device pixels per art pixel (down on a
  * tie), and never under 32 CSS px, so the footer stays on the far sidewalk. On a Retina screen

@@ -58,6 +58,43 @@
   color: var(--good);
 }
 
+/* The pieces' badges (HouseLayers.tsx Badge, placed by label-layout.ts): a fixture that can't be
+   drawn, top right, and an unmet requirement's ⚠, top left. A square of paper in LimeZu's ink
+   ring, one icon pixel wide, with the fixture's or the warning's pixel icon on whole device
+   pixels; where a cell is too small for the icon, just the ring and its fill. A fixture's paper
+   takes its rarity's tint (and its title says which), the ⚠'s is warning yellow. The digits draw
+   over the badges, though label-layout.ts keeps the two apart. */
+.labels .board-badge {
+  position: absolute;
+  z-index: 1;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  border-style: solid;
+  border-color: var(--ink);
+  background: var(--card);
+  pointer-events: auto;
+  cursor: help;
+}
+.labels .fixture-badge.rarity-uncommon {
+  background: var(--uncommon-tint);
+}
+.labels .fixture-badge.rarity-rare {
+  background: var(--rare-tint);
+}
+.labels .unmet-badge {
+  background: var(--bad-tint);
+}
+.board-badge-icon {
+  display: block;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  image-rendering: pixelated;
+}
+.labels .digit {
+  z-index: 2;
+}
+
 /* The placement preview's badges (Board.tsx Badges): the change on each piece whose week
    changes, and a mark on whatever helps the new piece (a circle with +) or hurts it (a diamond
    with −). Square-cornered in LimeZu's ink, like the chips, with a paper halo so they read over

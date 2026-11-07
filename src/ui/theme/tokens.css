@@ -136,6 +136,11 @@
   --lot-line-hi: rgb(255 249 226 / 0.3); /* the property line's two rings */
   --lot-line-lo: rgb(30 44 32 / 0.18);
   --street-label: rgb(58 58 80 / 0.55); /* --ink, faded, on the sidewalk */
+  --yard-tint-fill: rgb(246 196 98 / 0.17); /* a fenced yard: a warm wash, a dashed edge */
+  --yard-tint-edge: rgb(150 96 40 / 0.55);
+  --demolish-fill: rgb(200 64 46 / 0.26); /* the demolish tool's target, in --danger */
+  --demolish-armed-fill: rgb(200 64 46 / 0.42);
+  --demolish-hint-fill: rgb(200 64 46 / 0.1);
 
   /* --- Focus: a double ring that reads on paper and on wood --------------------------- */
   --focus-outer: var(--ink);

@@ -285,8 +285,13 @@
   flex: 1 0 auto;
   white-space: nowrap;
 }
-.set-comfort {
+/* A set's Comfort and Charm stay together at the row's right: in a narrow column they wrap to
+   the next line as a pair, never one under the name and one alone. */
+.set-values {
+  display: flex;
+  gap: var(--space-2);
   margin-left: auto;
+  white-space: nowrap;
 }
 .set-comfort {
   color: var(--comfort);
