@@ -5,6 +5,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { CONTENT, rules } from '../src/rules/index.ts';
+import { lotFromRows } from '../src/rules/lot.ts';
+import { houseStats } from './house.ts';
 import { POLICIES } from './policies/index.ts';
 import { BOT_BLIND } from './policies/shop.ts';
 import {
@@ -54,6 +56,8 @@ function run(seed: string, cleared: number, over: Partial<RunRecord> = {}): RunR
   }
   return {
     seed,
+    client: 'hendersons',
+    crew: 'generalContractor',
     policy: 'greedy',
     label: 'greedy',
     result: won ? 'won' : 'lost',
@@ -99,6 +103,19 @@ function run(seed: string, cleared: number, over: Partial<RunRecord> = {}): RunR
     struck: [],
     wallOffers: Array.from({ length: PHASES }, () => 0),
     finalScore: 1000,
+    house: houseStats(CONTENT, { lot: lotFromRows(['....', '....']), pieces: [], nextUid: 1 }),
+    build: {
+      roomsByPhase: Array.from({ length: PHASES }, () => 0),
+      late: { rooms: 0, arrivals: 0, renovations: 0, yard: 0, fixtures: 0, hallways: 0, passes: 0 },
+      renovations: 0,
+      tallies: 4,
+      specWeeks: {},
+      specFirst: {},
+      specEnd: {},
+      earlyPieceWow: 0,
+      bigWeeks: 0,
+      dead: null,
+    },
     ms: 1,
     ...over,
   };

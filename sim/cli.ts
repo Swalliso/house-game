@@ -24,7 +24,9 @@ import {
   CONTENT,
   createRules,
   type Action,
+  type ClientId,
   type Content,
+  type CrewId,
   type Good,
   type Rng,
   type Rules,
@@ -41,13 +43,14 @@ import {
 } from './policies/index.ts';
 import {
   criteriaReport,
+  estimateSurvival,
   fmtRate,
   percentile,
   report,
   suggestTargets,
   type TargetSuggestion,
 } from './report.ts';
-import { SimError, simulateRun, type RunRecord } from './simulate.ts';
+import { SimError, simulateRun, type RunRecord, type SimOptions } from './simulate.ts';
 
 const HELP = `npm run sim -- [options]
 
@@ -59,6 +62,12 @@ const HELP = `npm run sim -- [options]
                       last (only when that saves exactly one week)
   --strikes MODE      greedy buys the strike service: none (default) | fixed (Driveway,
                       Fence, Hallway, Doghouse, then Sapling, as the M3 bot did)
+  --client ID         whose house: a client id, or all (default): seed i gets the i-th Core
+                      client in turn, so every arm plays each seed with the same client
+  --crew ID           the crew: a crew id, or all (each client gets every crew in turn);
+                      default the General Contractor
+  --dead              also measure dead cards the review's way (each hand card's best play
+                      against a pass; slower)
 
 One of these modes, or none:
   --check             §8's starting criteria on held-out seeds: greedy, random, novice, and
@@ -86,6 +95,7 @@ run code is printed; open it with ?run=) or the benchmark gate failed. 2: bad op
 --check's verdicts are printed, and never change the exit code.`;
 
 const BALANCE_FILE = new URL('../src/content/balance.ts', import.meta.url);
+const CLIENTS_FILE = new URL('../src/content/clients.ts', import.meta.url);
 const GATE_MS = 1000;
 const EARLY_MODES: readonly EarlyMode[] = ['never', 'always', 'last'];
 const STRIKE_MODES: readonly StrikeMode[] = ['none', 'fixed'];
@@ -110,6 +120,16 @@ interface Failure {
 /** One run's result, for arms that look at more than the record. */
 type RunResult = ReturnType<typeof simulateRun>;
 
+/** Each seed's client and crew (by its index), and what else runs record; set by the flags. */
+let setupFor: (i: number) => SimOptions = () => ({});
+
+const CORE_CLIENTS = Object.values(CONTENT.clients)
+  .filter((c) => c.tier === 'core')
+  .map((c) => c.id);
+const CORE_CREWS = Object.values(CONTENT.crews)
+  .filter((c) => c.tier === 'core')
+  .map((c) => c.id);
+
 const seedsFor = (prefix: string, runs: number) =>
   Array.from({ length: runs }, (_, i) => `${prefix}-${i}`);
 const seedRange = (seeds: readonly string[]) =>
@@ -132,7 +152,7 @@ function runMany(
   seeds.forEach((seed, i) => {
     const policy = make();
     try {
-      const result = simulateRun(rules, seed, policy);
+      const result = simulateRun(rules, seed, policy, setupFor(i));
       out.push(result.record);
       onRun?.(result, policy);
     } catch (e) {
@@ -414,6 +434,72 @@ function benchmarkGate(rules: Rules): { ok: boolean; record: RunRecord | null } 
   }
 }
 
+/** Content with each client's targetPct set. */
+function withPcts(content: Content, pcts: Readonly<Partial<Record<ClientId, number>>>): Content {
+  const clients = { ...content.clients };
+  for (const [id, pct] of Object.entries(pcts) as [ClientId, number][]) {
+    clients[id] = { ...clients[id], targetPct: pct };
+  }
+  return { ...content, clients };
+}
+
+/** Writes each client's targetPct into src/content/clients.ts (the line after its id). */
+function writePcts(file: URL | string, pcts: Readonly<Partial<Record<ClientId, number>>>): void {
+  let text = readFileSync(file, 'utf8');
+  for (const [id, pct] of Object.entries(pcts)) {
+    const at = text.indexOf(`id: '${id}',`);
+    if (at < 0) throw new Error(`clients.ts has no client "${id}"`);
+    const next = text.indexOf('targetPct:', at);
+    const eol = text.indexOf('\n', next);
+    if (next < 0 || eol < 0) throw new Error(`clients.ts: no targetPct for "${id}"`);
+    text = `${text.slice(0, next)}targetPct: ${pct}, // set by npm run sim -- --suggest-targets${text.slice(eol)}`;
+  }
+  writeFileSync(file, text);
+}
+
+/**
+ * Each client's targetPct (M4a): the factor on the curve that gives its untargeted greedy
+ * runs the same estimated win rate as the curve's goal, to the nearest 5%. Then the curve is
+ * fitted again on scores divided by those factors, a few times over, so the two agree.
+ */
+function fitWithPcts(
+  content: Content,
+  untargeted: readonly RunRecord[],
+): { s: TargetSuggestion; pcts: Partial<Record<ClientId, number>> } {
+  const W = content.balance.weeksPerPhase;
+  const overtime = content.balance.rules.overtime;
+  const clients = [...new Set(untargeted.map((r) => r.client))];
+  const pcts: Partial<Record<ClientId, number>> = Object.fromEntries(clients.map((c) => [c, 100]));
+  const scaled = (r: RunRecord) => ({
+    ...r,
+    weekly: r.weekly.map((x) => (x * 100) / pcts[r.client]!),
+  });
+  let s = suggestTargets(content, untargeted.map(scaled));
+  if (clients.length < 2) return { s, pcts };
+  for (let round = 0; round < 4; round++) {
+    const goal = s.goals.at(-1)!;
+    for (const c of clients) {
+      const rs = untargeted.filter((r) => r.client === c);
+      const win = (pct: number) =>
+        estimateSurvival(
+          rs,
+          s.targets.map((t) => Math.round((t * pct) / 100)),
+          W,
+          overtime,
+        ).winRate;
+      // The highest factor (in steps of 5) whose estimated win rate still meets the goal.
+      let pct = 50;
+      while (pct < 300 && win(pct + 5) >= goal) pct += 5;
+      pcts[c] = pct;
+    }
+    // Keep the factors centred on 100, so the curve stays the typical client's.
+    const mean = clients.reduce((a, c) => a + pcts[c]!, 0) / clients.length;
+    for (const c of clients) pcts[c] = Math.max(5, Math.round((pcts[c]! * 100) / mean / 5) * 5);
+    s = suggestTargets(content, untargeted.map(scaled));
+  }
+  return { s, pcts };
+}
+
 function writeTargets(
   file: URL | string,
   s: TargetSuggestion,
@@ -526,7 +612,12 @@ function suggest(o: Options, dryRun: boolean): Rules {
   );
   const untargeted = runMany(free, fitSeeds, () => makeGreedy(o.greedy), 'fit', o.failures);
   o.json.untargeted = untargeted;
-  const s = suggestTargets(CONTENT, untargeted);
+  const { s, pcts } = fitWithPcts(CONTENT, untargeted);
+  console.log(
+    `  targetPct by client: ${Object.entries(pcts)
+      .map(([c, p]) => `${CONTENT.clients[c as ClientId].name} ${p}`)
+      .join(', ')}`,
+  );
   console.log(
     CONTENT.balance.phases
       .map(
@@ -537,12 +628,13 @@ function suggest(o: Options, dryRun: boolean): Rules {
       )
       .join('\n'),
   );
-  if (dryRun) console.log('--dry-run: src/content/balance.ts is unchanged.');
+  if (dryRun) console.log('--dry-run: src/content/balance.ts and clients.ts are unchanged.');
   else {
     writeTargets(BALANCE_FILE, s, o.runs, fitSeed);
-    console.log('Wrote the targets to src/content/balance.ts.');
+    if (Object.keys(pcts).length > 1) writePcts(CLIENTS_FILE, pcts);
+    console.log('Wrote the targets to src/content/balance.ts, and targetPct to clients.ts.');
   }
-  const tuned = createRules(withTargets(CONTENT, s.targets));
+  const tuned = createRules(withPcts(withTargets(CONTENT, s.targets), pcts));
   check(tuned, o, (greedy) => survivalAgainstFit(s, greedy, fitSeed));
   return tuned;
 }
@@ -567,6 +659,9 @@ function parse(args: readonly string[]) {
       'dry-run': { type: 'boolean', default: false },
       bench: { type: 'boolean', default: false },
       'no-gate': { type: 'boolean', default: false },
+      client: { type: 'string' },
+      crew: { type: 'string' },
+      dead: { type: 'boolean', default: false },
       json: { type: 'string' },
       help: { type: 'boolean', default: false },
     },
@@ -630,6 +725,23 @@ function run(values: Values): number {
       `--seed and --fit-seed are both "${prefix}": the check must run on seeds the fit didn't use.`,
     );
   }
+
+  const client = values.client ?? 'all';
+  if (client !== 'all' && !CORE_CLIENTS.includes(client as ClientId)) {
+    throw new UsageError(`--client takes all or ${CORE_CLIENTS.join(', ')} (got "${client}").`);
+  }
+  const crew = values.crew ?? 'generalContractor';
+  if (crew !== 'all' && !CORE_CREWS.includes(crew as CrewId)) {
+    throw new UsageError(`--crew takes all or ${CORE_CREWS.join(', ')} (got "${crew}").`);
+  }
+  const clients = client === 'all' ? CORE_CLIENTS : [client as ClientId];
+  const crews = crew === 'all' ? CORE_CREWS : [crew as CrewId];
+  const dead = values.dead;
+  setupFor = (i) => ({
+    clientId: clients[i % clients.length]!,
+    crewId: crews[Math.floor(i / clients.length) % crews.length]!,
+    ...(dead ? { deadCards: true } : {}),
+  });
 
   const rules = createRules(CONTENT);
   const o: Options = {

@@ -15,6 +15,8 @@ import type {
   Action,
   Card,
   Cell,
+  ClientId,
+  CrewId,
   GameEvent,
   HouseState,
   MilestoneResult,
@@ -27,10 +29,14 @@ import type {
 } from '../src/rules/index.ts';
 import { contentHash, encodeRunCode, placedCells, stream, weekTotal } from '../src/rules/index.ts';
 import { enclosureCost, type EnclosureCost } from './enclosure.ts';
+import { houseStats, type HouseStats } from './house.ts';
 import type { Policy } from './policies/index.ts';
 
 export interface RunRecord {
   seed: string;
+  /** The contract's client and the crew (M4). */
+  client: ClientId;
+  crew: CrewId;
   /** The policy's name (it keys the bot's random streams). */
   policy: string;
   /** The policy's label for reports ("greedy · early always"), or its name. */
@@ -78,7 +84,44 @@ export interface RunRecord {
   wallOffers: number[];
   /** The score when the run ended (early bonuses included). */
   finalScore: number;
+  /** The finished house, by the systems review's measures (house.ts). */
+  house: HouseStats;
+  /** How the house went up, week by week (the systems review's run measures). */
+  build: BuildStats;
   ms: number;
+}
+
+/** The run measures of house-systems-review.md's Appendix, gathered week by week. */
+export interface BuildStats {
+  /** Room pieces placed in each milestone, overtime included (Hallways left out). */
+  roomsByPhase: number[];
+  /** Week-ending plays in weeks 17–28 of the run (each week's play counts once). */
+  late: {
+    rooms: number;
+    arrivals: number;
+    renovations: number;
+    yard: number;
+    fixtures: number;
+    hallways: number;
+    passes: number;
+  };
+  renovations: number;
+  /** Tallied weeks (fast-forwarded ones included). */
+  tallies: number;
+  /** Weeks each checklist line held, by spec id; the week it first held (absent: never). */
+  specWeeks: Record<string, number>;
+  specFirst: Record<string, number>;
+  /** The lines held at the last tally. */
+  specEnd: Record<string, boolean>;
+  /** Wow from pieces placed in milestones 1–2, attributed as PieceStats.wow is. */
+  earlyPieceWow: number;
+  /** Weeks 5 on whose total is at least 15% above the week before. */
+  bigWeeks: number;
+  /**
+   * Dead cards (a playable hand card whose best play scores below a pass), by type: offered
+   * and dead, in each week's first hand. Only with SimOptions.deadCards.
+   */
+  dead: Record<string, { offered: number; dead: number }> | null;
 }
 
 /**
@@ -159,6 +202,11 @@ export function goodKey(o: ShopOffer | PickOption): string {
 }
 
 export interface SimOptions {
+  /** The contract's client (default the Hendersons) and the crew (the General Contractor). */
+  clientId?: ClientId;
+  crewId?: CrewId;
+  /** Measure dead cards the review's way: each hand card's best play against a pass (slower). */
+  deadCards?: boolean;
   /** Probe the enclosure cost at the start of this phase (0-based); null to skip. */
   probePhase?: number | null;
   /** Stop after this many weeks (for benchmarks and quick checks). */
@@ -241,7 +289,7 @@ function occupancy(rules: Rules, house: HouseState): Occupancy {
   const cells = new Map<number, readonly Cell[]>();
   const defOf = new Map<number, PieceId>();
   for (const p of house.pieces) {
-    const cs = placedCells(rules.content.pieces[p.defId].shape, p.x, p.y, p.rot);
+    const cs = placedCells(p.shape ?? rules.content.pieces[p.defId].shape, p.x, p.y, p.rot);
     for (const c of cs) uidAt[c.y * width + c.x] = p.uid;
     cells.set(p.uid, cs);
     defOf.set(p.uid, p.defId);
@@ -272,10 +320,27 @@ export function simulateRun(
   const label = policy.label ?? policy.name;
   let s = rules.newRun({
     seed,
-    clientId: 'hendersons',
-    crewId: 'generalContractor',
+    clientId: opts.clientId ?? 'hendersons',
+    crewId: opts.crewId ?? 'generalContractor',
     mode: 'standard',
   });
+  const specIds = content.clients[s.setup.clientId].specs.map((sp) => sp.id);
+  const build: BuildStats = {
+    roomsByPhase: Array.from({ length: phaseCount }, () => 0),
+    late: { rooms: 0, arrivals: 0, renovations: 0, yard: 0, fixtures: 0, hallways: 0, passes: 0 },
+    renovations: 0,
+    tallies: 0,
+    specWeeks: {},
+    specFirst: {},
+    specEnd: {},
+    earlyPieceWow: 0,
+    bigWeeks: 0,
+    dead: opts.deadCards ? {} : null,
+  };
+  /** The milestone each piece was placed in, by uid (transforms keep the uid). */
+  const placedPhase = new Map<number, number>();
+  let lastTotal: number | null = null;
+  let deadWeek = -1;
   const { width, height } = s.house.lot;
   const rowsFromStreet = (y: number) => height - 1 - y;
   const actions: Action[] = [];
@@ -387,7 +452,9 @@ export function simulateRun(
       const ps = statsOf(p.defId);
       ps.pieceWeeks++;
       ps.earned += p.earned;
-      ps.wow += (p.earned / Math.max(1, t.points)) * t.total;
+      const wow = (p.earned / Math.max(1, t.points)) * t.total;
+      ps.wow += wow;
+      if ((placedPhase.get(p.uid) ?? phaseCount) <= 1) build.earlyPieceWow += wow;
       if (p.earned <= 0) ps.zeroWeeks++;
       if (p.unmet !== undefined) ps.unmetWeeks++;
       if (touchesSameType(occ, p.uid, p.defId)) ps.clusteredWeeks++;
@@ -435,6 +502,64 @@ export function simulateRun(
     );
   };
 
+  /** The card a place or renovate action plays: from the hand or the reserve. */
+  const cardOf = (st: RunState, a: { from: 'hand' | 'reserve'; i: number }) => {
+    if (a.from === 'reserve') return st.reserve[a.i];
+    const c = st.hand[a.i];
+    return c?.kind === 'piece' ? c : undefined;
+  };
+  /** Counts the week's play for the build measures: rooms by milestone, and weeks 17–28. */
+  const classify = (st: RunState, a: Action) => {
+    const late = st.week >= 17 && st.week <= 28;
+    if (a.t === 'place') {
+      const card = cardOf(st, a);
+      if (!card) return;
+      const def = content.pieces[card.id];
+      if (def.category === 'indoor' && !def.connector) {
+        build.roomsByPhase[Math.min(st.phase, phaseCount - 1)]!++;
+        if (late) {
+          if (a.from === 'reserve' && 'arrival' in card) build.late.arrivals++;
+          else build.late.rooms++;
+        }
+      } else if (late) {
+        if (def.connector) build.late.hallways++;
+        else build.late.yard++;
+      }
+    } else if (a.t === 'renovate') {
+      build.renovations++;
+      if (late) build.late.renovations++;
+    } else if (late && a.t === 'install' && a.from === 'hand') build.late.fixtures++;
+    else if (late && a.t === 'pass') build.late.passes++;
+  };
+  /**
+   * Dead cards, the review's way: a card with a play whose best play (its top placements by
+   * the estimate, every Renovation, every install) scores below a pass this week.
+   */
+  const countDead = (st: RunState) => {
+    const plays = rules.legalPlays(st);
+    const pass = rules.scoreOnly(st, null);
+    st.hand.forEach((card, i) => {
+      const own = plays.filter((p) => p.from === 'hand' && p.i === i);
+      if (own.length === 0) return;
+      const places = own
+        .filter((p) => p.t === 'place')
+        .map((p) => ({
+          p,
+          est: rules.estimatePlay(st, p as Extract<Action, { t: 'place' }>).delta,
+        }))
+        .sort((a, b) => b.est - a.est)
+        .slice(0, 3)
+        .map((x) => x.p);
+      const others = own.filter((p) => p.t !== 'place');
+      let best = -Infinity;
+      for (const p of [...places, ...others]) best = Math.max(best, rules.scoreOnly(st, p));
+      const key = card.kind === 'piece' ? rootOf(card.id) : card.id;
+      const d = (build.dead![key] ??= { offered: 0, dead: 0 });
+      d.offered++;
+      if (best < pass) d.dead++;
+    });
+  };
+
   if (s.screen === 'build') countHand(s, s.hand, s.phase, false);
   while (
     (s.screen === 'build' || s.screen === 'shop') &&
@@ -461,6 +586,13 @@ export function simulateRun(
       action = policy.act(rules, s, rng);
     } catch (e) {
       throw fail(`the policy threw: ${reasonOf(e)}`, null, e);
+    }
+    if (s.screen === 'build') {
+      if (build.dead && s.week !== deadWeek) {
+        deadWeek = s.week;
+        countDead(s);
+      }
+      classify(s, action);
     }
     let applied: { state: RunState; events: GameEvent[] };
     try {
@@ -503,7 +635,18 @@ export function simulateRun(
         weekly[e.week - 1] = e.score;
         if (e.passed && !e.fastForward) passes++;
         addTally(e.tally, state.house);
+        build.tallies++;
+        for (const sp of e.tally.specs) {
+          if (!sp.met) continue;
+          build.specWeeks[sp.id] = (build.specWeeks[sp.id] ?? 0) + 1;
+          build.specFirst[sp.id] ??= e.week;
+        }
+        if (e.week >= 5 && lastTotal !== null && e.tally.total * 100 >= lastTotal * 115) {
+          build.bigWeeks++;
+        }
+        lastTotal = e.tally.total;
       } else if (e.t === 'placed') {
+        placedPhase.set(e.uid, s.phase);
         placements++;
         const def = content.pieces[e.defId];
         if (def.wall) fencePlacements++;
@@ -567,7 +710,7 @@ export function simulateRun(
   let touchesStreet = false;
   for (const p of s.house.pieces) {
     const def = content.pieces[p.defId];
-    const cells = placedCells(def.shape, p.x, p.y, p.rot);
+    const cells = placedCells(p.shape ?? def.shape, p.x, p.y, p.rot);
     covered += cells.length;
     for (const c of cells) {
       const row = rowsFromStreet(c.y);
@@ -576,9 +719,14 @@ export function simulateRun(
     }
   }
   const yards = rules.fencedYards(s);
+  (s.lastTally?.specsMet ?? []).forEach((met, k) => {
+    if (specIds[k]) build.specEnd[specIds[k]] = met;
+  });
   return {
     record: {
       seed,
+      client: s.setup.clientId,
+      crew: s.setup.crewId,
       policy: policy.name,
       label,
       result: s.screen === 'won' ? 'won' : 'lost',
@@ -611,6 +759,8 @@ export function simulateRun(
       struck,
       wallOffers,
       finalScore: s.score,
+      house: houseStats(content, s.house),
+      build,
       ms: performance.now() - start,
     },
     actions,
