@@ -265,7 +265,7 @@ Also: D-036 and D-043 (Accepted), where hand size becomes the `handSize` rule (3
 
 **Why:** The other jam members are building their own games, so there are no parallel tracks to coordinate. There's until next week to build and playtest before sharing with the larger group, and playtesting at every phase catches what isn't working while it's still cheap to change.
 **Changes:** Supersedes D-052. D-029 (Accepted): its suggested build order.
-**Amended by:** D-097 (Accepted 2026-11-06): M5 splits in two, each ending in a playtest. M5a (art, UI chrome, and the visual juice) comes before M4, and M5b (sound and music) after it.
+**Amended by:** D-097 (Accepted 2026-11-06): M5 splits in two, each ending in a playtest. M5a (art, UI chrome, and the visual juice) comes before M4, and M5b (sound and music) after it. Since 2026-11-07, M5a's visual juice is its own pull request after M4, with its own playtest (D-097's juice note).
 
 ### D-054 · Branches: develop and main
 **Status:** Accepted · 2026-11-05 (requested by the team)
@@ -773,7 +773,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
   - `npm run atlas` packs them with the placeholders at any size; a cut replaces the placeholder with the same id.
   - Every cut has its own entry in `assets/licenses.json`. `CREDITS.md` and the game credit LimeZu.
   - A test fails on a cut without a manifest entry or a license record.
-- **Order:** M5 splits. M5a (art, UI chrome, and the visual juice) comes now, before M4. M5b (sound and music) follows M4.
+- **Order:** M5 splits. M5a (art, UI chrome, and the visual juice) comes now, before M4. M5b (sound and music) follows M4. M5a's visual juice became its own pull request after M4 (the juice note).
 - Serene Village isn't needed: Modern Exteriors covers terrain and water in the same artist's palette.
 
 **Why:** The team's worry was whether LimeZu's pieces could make a house that looks like a house. They can, at LimeZu's own proportions. At a devicePixelRatio of 1 or 2 the board stays the same size on screen. The costs are finer pixels on a 1080p monitor (a Retina screen still shows each art pixel as 2×2 device pixels), a smaller board on a 1440p screen at a devicePixelRatio of 1 and where display scaling isn't a whole number (the zoom note), and more art work.
@@ -806,6 +806,11 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
   - The cost: where two device pixels per art pixel don't fit, the board is 80%, 67% or 57% of 1×'s size on screen (at 125%, 150% and 175%), and its labels and badges cover more of each cell.
 
 **2026-11-07 (M5a final review), the hash behind the house's choices:** the doorways, windows and front door (and the rooms' and yard pieces' colors) break their ties with a hash of the piece's uid, not a tile hash as this decision's text says; the stage-2 brief allowed either. It's as deterministic, but the same footprint built in another order, or rebuilt after a demolition, can get other doors and colors. D-100 (Proposed) records it under its Changes, for the team to accept with it.
+
+**2026-11-07 (M5a's pull request), the juice after M4:** M4 was built at the same time as M5a, on its own branch (`phase/m4-clients`, pull request #17). The two branches conflict in 19 files, and both number their new decisions from D-097.
+- *Decided by the team, 2026-11-07:* M5a's pull request holds the art, the lot, the house and the pixel UI (D-098 to D-100) and goes to playtest 5a now. The visual juice moves to its own pull request after M4 and before M5b, with its own playtest: §12's celebration ladder, §7's distinct moments, particles and the Flashing toggle, and the roof reveal at Roofing. It reworks the tally's director, `feel.ts` and the score panel, which M4 also changes, so building it between the two would add a third round of conflicts.
+- M5a merges first, as this decision's order says. M4 then merges `develop`, numbers its decisions from D-101 and restyles its new screens (the job board, the crew pick and the checklist) with M5a's interface (`src/ui/kit` and the theme's tokens). If M4 merges first, M5a renumbers instead.
+- D-094's option 1 (chains in the tally) is raised with the team before the juice pull request reworks the tally, as §7 says.
 
 ---
 
@@ -1358,6 +1363,8 @@ New content is preferred over raising existing numbers.
 **2026-11-06 (D-097):** M5 is now split, and M5a, with the visual juice and its tally work, comes before M4. So the Recommendation's "M5" is M5a: option 1 would land in M5a's juice stage. Options 2 and 3 can no longer land in M4 and still have the juice built around them: they would either come before M5a's juice stage, or add their "Again!" steps and arcs to the tally when they land in M4.
 
 **2026-11-06 (systems review):** under the review's house rules, a house is paid to keep one Kitchen and at most two Living Rooms, and Renovate takes a repeated room card. So chain items needn't reward repeats, and a relay that reads Social would reward packing the shared rooms into a hub. Untested (`house-systems-review.md` §8).
+
+**2026-11-07 (D-097):** M5a's visual juice is now its own pull request after M4 (D-097's juice note), and M4 was built without chain reactions. So option 1 would land in that pull request, and options 2 and 3, if chosen, come after M4: before the juice pull request, so its tally is built around them, or with it.
 
 ### Earlier open questions
 

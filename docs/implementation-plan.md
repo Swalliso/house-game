@@ -218,7 +218,7 @@ The repo has no code, tooling, or CLAUDE.md yet: just four markdown docs at the 
 | Build and dev | Vite 8 | `base: './'`, so one build works on GitHub Pages and itch.io |
 | UI | Preact **10** + `@preact/signals` | About 9 kB gzip. Preact 11 is out, but it's newer than Claude's training data and the game needs nothing from it. |
 | Board | HTML/CSS with pixel art (D-057): terrain drawn into one canvas layer, redrawn only when terrain changes; pieces as absolutely positioned elements using a sprite atlas; SVG for outlines and highlights. The pointer position maps to a cell by arithmetic, so there's no element per cell. The camera zooms in whole device pixels per art pixel by re-laying out the board (never `transform: scale()`, which blurs pixel art in Safari), with drag to pan and a Fit button. | Behind a small `BoardView` interface. At 1080p the 24×24 lot fits at 1× (32 art px per cell, D-097); at 1280×720 it pans at 1×, with a Fit overview (§12). |
-| Juice | Web Animations API + CSS; one canvas overlay for particles; a first pass in M1, the full ladder in M5a (§12, D-097) | |
+| Juice | Web Animations API + CSS; one canvas overlay for particles; a first pass in M1, the full ladder in M5a's juice, after M4 (§12, D-097) | |
 | Audio | Our own Web Audio wrapper, about 200–300 lines: buses, an audio-clock scheduler, the in-key pitch ladder, stem crossfades, ducking (§12). `zzfx` for placeholder sound effects. | Howler and Tone.js aren't needed. |
 | Tests | Vitest 5 + `fast-check` | |
 | Format | Prettier | Avoids formatting churn between sessions |
@@ -941,13 +941,14 @@ Shape variants (L-Kitchen, the long Hallway) are separate cards that share a typ
 | M1 · Vertical slice | 12 weeks, 6 pieces, the 24×24 lot, the preview, a first pass at juice | Is the loop fun? Is the lot the right size? Does a big week feel good? |
 | M2 · Full run | 7 milestones, all base pieces, early completion, overtime, the sim | Does a whole run hold up? Are the targets fair? Is early completion a real choice? |
 | M3 · Economy, shop, fixtures | M3a, then M3b | Is the shop exciting? Do fixtures feel like upgrades? Is anything a must-buy? |
-| M5a · Look and feel | LimeZu's art at 32 px cells, the house cutaway, UI chrome, and the full visual reward feedback | Does it look like a house? Can you read every piece at a glance? Do big moments land? |
+| M5a · Look and feel | LimeZu's art at 32 px cells, the lot, the house cutaway, and the pixel UI | Does it look like a house? Can you read every piece at a glance? |
 | M4 · Clients and variety | M4a (clients, sets), then M4b (change orders, crews, hints) | Do clients feel different? Are sets and multipliers worth planning for? |
+| M5a · Juice | The full visual reward feedback and the roof reveal, in its own pull request | Do big moments land? Is anything too slow or too flashy? |
 | M5b · Sound and music | Music and the reward sound set | Is the music calm? Do the sounds fit the moments? |
 | M6 · Balance and polish | Full sim, tuning, the end screen, a codex if time allows | Would you show this to the group? |
 | M7 · Release | Your PR from `develop` into `main`, which updates the root link; optional itch.io page | (shared with the group) |
 
-M5 is split (D-097): M5a, the look and feel, comes after M3 and before M4, and M5b, the sound, after M4. Each ends in a playtest.
+M5 is split (D-097): M5a, the look and feel, comes after M3 and before M4, and M5b, the sound, after M4. M5a's visual juice is its own pull request after M4 and before M5b (D-097's juice note). Each ends in a playtest.
 
 ### M0 · Setup
 
@@ -1096,27 +1097,20 @@ M5 is split (D-097): M5a, the look and feel, comes after M3 and before M4, and M
 - Is any blueprint a must-buy, or never worth it?
 - Are the tools fun to use?
 
-### M5a · Look and feel: art, UI chrome, and the visual juice
+### M5a · Look and feel: art and UI chrome
 
-After M3 and before M4 (D-097): the visual half of what makes these games feel good (D-057, D-059, and §12). The sound half is M5b, after M4.
+After M3 and before M4 (D-097): the visual half of what makes these games feel good (D-057, D-059, and §12). Its juice is its own pull request after M4 (below), and the sound half is M5b, after that.
 
 - **Art (§12, Art):**
   - LimeZu's art at 32 art px per cell, cut from the packs by `npm run art:cut`, with the camera's new scales
   - terrain and the yard: muted grass, the sunny side, water, trees, and the yard pieces
   - the house as a walls-down cutaway built from the placed pieces: a floor per room type, walls with doorways and windows, and several furniture sprites per room
   - fixtures as sprites where they fit, and as badges otherwise
-  - the roof reveal at the Roofing milestone
   - UI chrome (wood-panel frames and the pixel font), with the readable-font option
-- **Juice:**
-  - the tiered celebration ladder (§12)
-  - distinct moments for a set completing, a Rhythm payout, a find, opening a crate, and a Rare in the shop. A spec being met gets its moment in M4a, with the specs.
-  - screen shake and particles, with Reduce motion, the Screen shake slider, and the Flashing toggle
-  - D-094 (chain reactions, Open) would change the tally's order and add steps to it. Raise it with the team before the juice stage reworks the tally.
 - **Playtest 5a:**
   - Does the house look like a house?
   - Can you read every piece at a glance?
-  - Do big moments feel big, and small ones stay out of the way?
-  - Is anything too slow or too flashy?
+  - Is the pixel interface easy to read, and can you find everything?
 
 ### M4 · Clients, sets, change orders, and crews
 
@@ -1124,7 +1118,7 @@ After M3 and before M4 (D-097): the visual half of what makes these games feel g
 
 - Clients:
   - the spec checklist, live with progress ("Bedrooms 3/4")
-  - a moment for a spec being met, built from M5a's celebration pieces (§12)
+  - a moment for a spec being met; M5a's juice, after M4, gives it its full celebration (§12)
   - tastes and pool weights
   - `targetPct`
   - rarity
@@ -1159,6 +1153,19 @@ After M3 and before M4 (D-097): the visual half of what makes these games feel g
 - Are change orders fun or annoying?
 - Does the crew pick matter?
 - Would a newcomer get through a first run with the hints?
+
+### M5a's juice · its own pull request
+
+After M4 and before M5b (D-097's juice note): the reward feedback on M5a's art, for M4's game.
+
+- the tiered celebration ladder (§12)
+- distinct moments for a set completing, a Rhythm payout, a find, opening a crate, a Rare in the shop, and a spec being met
+- screen shake and particles, with Reduce motion, the Screen shake slider, and the Flashing toggle
+- the roof reveal at the Roofing milestone
+- D-094 (chain reactions, Open) would change the tally's order and add steps to it. Raise it with the team before this pull request reworks the tally.
+- **Its playtest:**
+  - Do big moments feel big, and small ones stay out of the way?
+  - Is anything too slow or too flashy?
 
 ### M5b · Sound and music
 
