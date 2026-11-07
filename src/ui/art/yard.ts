@@ -17,9 +17,10 @@
 // - Parts of items above their piece's own cells (the Greenhouse's roof, the Treehouse, a
 //   Birdhouse's box, a car's roof) carry `over`, and go on the overhang layer above the walls.
 //
-// A Fence is drawn from its own cells only: a picket line through the middle of its cells, out to
-// the edges at its ends, with a post at each end and turn. Two Fences that touch meet post to
-// post, so each stays countable, and a Fence's ghost looks just like the Fence it places.
+// A Fence is a picket line through the middle of its cells, out to the edges at its ends, with a
+// post at each end and turn. Where an end of one Fence meets another, their lines join (a corner,
+// a T); end to end, each keeps its end post, so each stays countable; side by side along their
+// lengths they stay two fences, not a grid. A Fence's ghost is the Fence alone.
 
 import {
   CONTENT,
@@ -180,6 +181,20 @@ function build(
   const keepOut = m ? m.windows.flatMap((w) => (w.bay ? [w.bay] : [])) : [];
   const car = opts.car ? parkedCar(house) : 0;
   const color = colors(house);
+  // The Fences' cells, so a Fence's arms can join another's.
+  const fenceCells = new Map<string, { uid: number; own: number }>();
+  for (const p of house.pieces) {
+    if (kind(p.defId) !== 'fence') continue;
+    const cells = occ.cells.get(p.uid)!;
+    const mine = new Set(cells.map((c) => `${c.x},${c.y}`));
+    for (const c of cells) {
+      fenceCells.set(`${c.x},${c.y}`, {
+        uid: p.uid,
+        own: ownMask((x, yy) => mine.has(`${x},${yy}`), c.x, c.y),
+      });
+    }
+  }
+  const fence = { masks: fenceMasks(fenceCells) };
 
   const pieces = new Map<number, YardLayout>();
   const curbs: Ground[] = [];
@@ -215,6 +230,7 @@ function build(
       car: p.uid === car,
       color: opts.color ?? color.get(p.uid) ?? 0,
       ...(east !== west ? { toward: east } : {}),
+      fence,
     });
     LAYOUTS[p.defId]?.(y);
     if (p.fixture?.id === 'gardenLights') y.lights();
@@ -320,6 +336,8 @@ interface YardCtx {
   color: number;
   /** For a piece running across: the house is at its east end (true) or its west end (false). */
   toward?: boolean;
+  /** Every Fence cell's arms on the lot, joined across pieces (fenceMasks). */
+  fence: { masks: ReadonlyMap<string, number> };
 }
 
 /** One yard piece being laid out. */
@@ -638,32 +656,42 @@ function driveway(y: Yard): void {
 
 /**
  * A Fence: pickets east and west of each cell's middle, the end-on strip north and south of it,
- * out to the cell's edge at the fence's ends, and a post at each end and turn.
+ * out to the cell's edge at the fence's ends, and a post at each end and turn. Its arms join
+ * another Fence's where an end of one meets the other (a corner, a T, or end to end), so fences
+ * that meet read as one line; side by side along their lengths they stay two. Where two meet
+ * end to end, each keeps its end post, so each stays countable.
  */
 function fence(y: Yard): void {
-  const { own } = y.ctx;
+  const { masks } = y.ctx.fence;
+  const mask = (x: number, yy: number) => masks.get(`${x},${yy}`) ?? 0;
   for (const c of y.cells) {
     const X = c.x * CELL;
     const Y = c.y * CELL;
-    const n = own(c.x, c.y - 1);
-    const s = own(c.x, c.y + 1);
-    const e = own(c.x + 1, c.y);
-    const w = own(c.x - 1, c.y);
+    const m = mask(c.x, c.y);
+    const n = (m & N) !== 0;
+    const e = (m & E) !== 0;
+    const s = (m & S) !== 0;
+    const w = (m & W) !== 0;
+    const own = ownMask(y.ctx.own, c.x, c.y);
+    // A post at this piece's own end, unless the line runs on into a turn of another Fence
+    // there (that turn's post marks the joint).
+    const endPost = (bit: number, nx: number, ny: number, axis: number) =>
+      !(own & bit) && (!(m & bit) || (mask(nx, ny) & ~axis) === 0);
     const across = (e || w) && !n && !s;
     const upright = (n || s) && !e && !w;
     // Across: pickets the cell's width, ends out to its edge with a post.
     if (across || w) y.put('picket-run', X, Y + 8);
     if (across || e) y.put('picket-run', X + 16, Y + 8);
-    if (across && !w) y.put('picket-post', X + 1, Y + 8);
-    if (across && !e) y.put('picket-post', X + 26, Y + 8);
+    if (across && endPost(W, c.x - 1, c.y, E | W)) y.put('picket-post', X + 1, Y + 8);
+    if (across && endPost(E, c.x + 1, c.y, E | W)) y.put('picket-post', X + 26, Y + 8);
     // Upright: the strip the cell's height, ends out to its edge with a post.
     const strip = (from: number, to: number) => {
       for (let sy = from; sy < to; sy += 8) y.put('picket-strip', X + 14, Y + sy);
     };
     if (upright) {
       strip(n ? 0 : 16, s ? 32 : 16);
-      if (!n) y.put('picket-post', X + 14, Y);
-      if (!s) y.put('picket-post', X + 14, Y + 16);
+      if (endPost(N, c.x, c.y - 1, N | S)) y.put('picket-post', X + 14, Y);
+      if (endPost(S, c.x, c.y + 1, N | S)) y.put('picket-post', X + 14, Y + 16);
     } else if (!across) {
       // A turn or a branch: its arms, and a post where they meet.
       if (n) strip(0, 8);
@@ -671,4 +699,43 @@ function fence(y: Yard): void {
       y.put('picket-post', X + 14, Y + 8);
     }
   }
+}
+
+const N = 1;
+const E = 2;
+const S = 4;
+const W = 8;
+
+/** Which of a cell's neighbors are its own piece's. */
+function ownMask(own: (x: number, y: number) => boolean, x: number, y: number): number {
+  return (
+    (own(x, y - 1) ? N : 0) |
+    (own(x + 1, y) ? E : 0) |
+    (own(x, y + 1) ? S : 0) |
+    (own(x - 1, y) ? W : 0)
+  );
+}
+
+/**
+ * Every Fence cell's arms on a lot: toward its own piece's cells, and toward another Fence's cell
+ * where one of the two is the end of its piece's arm.
+ */
+function fenceMasks(cells: ReadonlyMap<string, { uid: number; own: number }>): Map<string, number> {
+  const out = new Map<string, number>();
+  const isEnd = (own: number) => own === N || own === E || own === S || own === W;
+  for (const [k, f] of cells) {
+    const [x, y] = k.split(',').map(Number) as [number, number];
+    let m = f.own;
+    for (const [bit, dx, dy] of [
+      [N, 0, -1],
+      [E, 1, 0],
+      [S, 0, 1],
+      [W, -1, 0],
+    ] as const) {
+      const q = cells.get(`${x + dx},${y + dy}`);
+      if (q && q.uid !== f.uid && (isEnd(f.own) || isEnd(q.own))) m |= bit;
+    }
+    out.set(k, m);
+  }
+  return out;
 }

@@ -314,7 +314,7 @@ describe('fences', () => {
     expect(sprites(l).filter((s) => s === 'picket-strip').length).toBeGreaterThan(4);
   });
 
-  it('are drawn from their own cells, so touching Fences meet post to post', () => {
+  it('meet end to end post to post, so each stays countable', () => {
     const alone = yardOf(house([['fence', 0, 2]])).pieces.get(1)!;
     const touching = yardOf(
       house([
@@ -329,6 +329,38 @@ describe('fences', () => {
     // The first's east end post and the second's west end post, side by side at the seam.
     expect(posts).toContain(3 * CELL + 26);
     expect(posts).toContain(4 * CELL + 1);
+  });
+
+  it('turn a corner where one’s end meets another’s, with one post at the joint', () => {
+    const y = yardOf(
+      house([
+        ['fence', 0, 2],
+        ['fence', 3, 3, 1],
+      ]),
+    );
+    const across = y.pieces.get(1)!.items;
+    const down = y.pieces.get(2)!.items;
+    // The first ends at its last cell's middle, in a corner post, with its arm turning south.
+    expect(across.some((i) => i.sprite === 'picket-post' && i.x === 3 * CELL + 14)).toBe(true);
+    expect(across.some((i) => i.sprite === 'picket-post' && i.x === 3 * CELL + 26)).toBe(false);
+    expect(across.some((i) => i.sprite === 'picket-strip' && i.y === 2 * CELL + 24)).toBe(true);
+    // The second runs up into it, with no post of its own at the top.
+    expect(down.some((i) => i.sprite === 'picket-post' && i.y === 3 * CELL)).toBe(false);
+    expect(down.some((i) => i.sprite === 'picket-strip' && i.y === 3 * CELL)).toBe(true);
+  });
+
+  it('stay two where they lie side by side, joined only at their ends', () => {
+    const y = yardOf(
+      house([
+        ['fence', 0, 2],
+        ['fence', 0, 3],
+      ]),
+    );
+    for (const uid of [1, 2]) {
+      // No strips across the middle cells: two fences, not a grid.
+      const strips = y.pieces.get(uid)!.items.filter((i) => i.sprite === 'picket-strip');
+      expect(strips.every((i) => i.x === 0 * CELL + 14 || i.x === 3 * CELL + 14)).toBe(true);
+    }
   });
 });
 
