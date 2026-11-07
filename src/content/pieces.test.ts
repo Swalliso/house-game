@@ -544,8 +544,9 @@ describe('yard pieces', () => {
     ).toEqual([3, 2]);
   });
 
-  it('Patio: +2 per Living Room or Kitchen, +1 per view (up to 3)', () => {
+  it('Patio: earns only touching a room; +2 per Living Room or Kitchen, +1 per view (up to 3)', () => {
     expectCard('patio', [
+      'Earns nothing unless touching a room',
       '+2 per touching Living Room or Kitchen',
       '+1 per touching view (up to 3)',
     ]);
@@ -559,14 +560,36 @@ describe('yard pieces', () => {
         ['flowerBed', 2, 4],
       ]),
     ).toEqual([6, 0, 2, 3]);
-    // Eight Trees around it: three count.
-    expect(earned(['.TT.', 'T..T', 'T..T', '.TT.'], [['patio', 1, 1]])).toEqual([3]);
+    // Seven Trees and a Closet around it: three of the Trees count.
+    expect(
+      earned(
+        ['.TT.', '...T', 'T..T', '.TT.'],
+        [
+          ['patio', 1, 1],
+          ['closet', 0, 1],
+        ],
+      ),
+    ).toEqual([3, 1]);
     expect(
       earned(open, [
         ['patio', 2, 0],
         ['lKitchen', 0, 0],
       ]),
     ).toEqual([2, 0]);
+    // The Patio rule (D-101): by a Tree but touching no room, it earns nothing, though it's
+    // still legal. A Hallway isn't a room, and links only rooms, so one beside it doesn't help.
+    const tree = ['.T........', ...emptyRows(10, 9)];
+    expect(tally(tree, [['patio', 0, 1]]).pieces[0]).toMatchObject({
+      earned: 0,
+      unmet: 'touching a room',
+    });
+    expect(check(tree, [], 'patio', 0, 1).legal).toBe(true);
+    expect(
+      earned(tree, [
+        ['patio', 0, 1],
+        ['hallway', 2, 1, 1],
+      ]),
+    ).toEqual([0, 0]);
   });
 
   it('Fence: a 1×4 wall, +1 per tile of the fenced yards it borders, up to 6', () => {
@@ -764,16 +787,24 @@ describe('"-house" outbuildings', () => {
     expect(earned(emptyRows(6, 8), yard)).toEqual([4, 4, 6, 2, 1]);
   });
 
-  it('Treehouse: must touch a Tree; 2, +2 per Kid neighbor', () => {
+  it('Treehouse: must touch a Tree; 2, +2 per Kid neighbor other than Treehouses', () => {
     expectCard('treehouse', [
       'Must be built touching a Tree',
       '+2 every week',
-      '+2 per touching Kid neighbor',
+      '+2 per touching Kid neighbor other than Treehouses',
     ]);
     expect(CONTENT.pieces.treehouse.tags).toEqual(['Kid', 'House']);
     const rows = ['T.....', ...emptyRows(6, 5)];
     expect(earned(rows, [['treehouse', 1, 0]])).toEqual([2]);
-    // Two Treehouses, each by its own Tree, are each other's Kid neighbor.
+    // A Playroom is a Kid neighbor: 2 + 2.
+    expect(
+      earned(rows, [
+        ['treehouse', 1, 0],
+        ['playroom', 3, 0],
+      ]),
+    ).toEqual([4, 0]);
+    // Two Treehouses, each by its own Tree, are both Kid, but don't count each other (D-101),
+    // so a cluster isn't the best spot.
     expect(
       earned(
         ['T....T', ...emptyRows(6, 5)],
@@ -782,7 +813,7 @@ describe('"-house" outbuildings', () => {
           ['treehouse', 3, 0],
         ],
       ),
-    ).toEqual([4, 4]);
+    ).toEqual([2, 2]);
     expect(tally(rows, [['treehouse', 2, 2]]).pieces[0]).toMatchObject({
       earned: 0,
       unmet: 'touching a Tree',

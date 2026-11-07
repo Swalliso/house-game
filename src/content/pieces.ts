@@ -254,6 +254,9 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     complexity: 1,
     fromPhase: 0,
     effects: [
+      // The Patio rule (D-093): an outdoor room earns nothing unless it touches a room. It
+      // doesn't block placement, and touching only a Hallway doesn't count.
+      { kind: 'requires', condition: { touching: { property: 'room' } }, blocksPlacement: false },
       { kind: 'neighbor', match: { piece: ['livingRoom', 'kitchen'] }, amount: 2 },
       { kind: 'neighbor', match: { property: 'viewSource' }, amount: 1, max: 3 },
     ],
@@ -363,7 +366,12 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
       // Appendix B gives it only the Kid bonus, and the base pool has no other Kid piece until
       // the shop's Playroom (M3), so a small steady earning keeps it from being a dead card.
       { kind: 'steady', amount: 2 },
-      { kind: 'neighbor', match: { tag: 'Kid' }, amount: 2 },
+      // Treehouses don't count each other (D-079, D-093), so a cluster isn't the best spot.
+      {
+        kind: 'neighbor',
+        match: { all: [{ tag: 'Kid' }, { not: { piece: 'treehouse' } }] },
+        amount: 2,
+      },
     ],
   },
   greenhouse: {
@@ -477,7 +485,12 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     drawWeight: 0,
     complexity: 1,
     fromPhase: 0,
-    effects: [{ kind: 'neighbor', match: { piece: 'patio' }, amount: 3 }],
+    effects: [
+      // The Patio rule (D-093): an outdoor room earns nothing unless it touches a room. It
+      // doesn't block placement, and touching only a Hallway doesn't count.
+      { kind: 'requires', condition: { touching: { property: 'room' } }, blocksPlacement: false },
+      { kind: 'neighbor', match: { piece: 'patio' }, amount: 3 },
+    ],
   },
   firePit: {
     id: 'firePit',
@@ -489,7 +502,12 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     drawWeight: 0,
     complexity: 2,
     fromPhase: 0,
-    effects: [{ kind: 'aura', match: { piece: 'patio' }, scope: 'adjacent', pct: 50 }],
+    effects: [
+      // The Patio rule (D-093): an outdoor room earns nothing unless it touches a room. It
+      // doesn't block placement, and touching only a Hallway doesn't count.
+      { kind: 'requires', condition: { touching: { property: 'room' } }, blocksPlacement: false },
+      { kind: 'aura', match: { piece: 'patio' }, scope: 'adjacent', pct: 50 },
+    ],
   },
   henhouse: {
     id: 'henhouse',

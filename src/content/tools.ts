@@ -40,13 +40,10 @@ export const TOOLS: Readonly<Record<ToolId, ToolDef>> = {
   }),
   catalog: tool('catalog', 'Catalog', 'common', { kind: 'specialHand' }),
   fertilizer: tool('fertilizer', 'Fertilizer', 'uncommon', { kind: 'advanceTimers', weeks: 2 }),
-  inspectorsVisit: tool(
-    'inspectorsVisit',
-    'Inspector’s Visit',
-    'uncommon',
-    { kind: 'weekModifiers', modifiers: [{ kind: 'rule', key: 'specBonus', add: 25 }] },
-    { offered: false }, // Offered once M4a's clients bring specs.
-  ),
+  inspectorsVisit: tool('inspectorsVisit', 'Inspector’s Visit', 'uncommon', {
+    kind: 'weekModifiers',
+    modifiers: [{ kind: 'rule', key: 'specBonus', add: 25 }],
+  }),
   dumpster: tool('dumpster', 'Dumpster', 'common', { kind: 'reward', reward: { demolitions: 2 } }),
   remodelJackAndJill: tool('remodelJackAndJill', 'Remodel Plans: Jack-and-Jill', 'common', {
     kind: 'levelSet',
@@ -57,20 +54,14 @@ export const TOOLS: Readonly<Record<ToolId, ToolDef>> = {
     set: 'entertainer',
   }),
   // M4a's sets bring their Remodel Plans (Appendix B · Tools).
-  remodelSuite: tool(
-    'remodelSuite',
-    'Remodel Plans: Suite',
-    'common',
-    { kind: 'levelSet', set: 'suite' },
-    { offered: false }, // Offered with M4a's content.
-  ),
-  remodelFullHouse: tool(
-    'remodelFullHouse',
-    'Remodel Plans: Full House',
-    'uncommon',
-    { kind: 'levelSet', set: 'fullHouse' },
-    { offered: false }, // Offered with M4a's content.
-  ),
+  remodelSuite: tool('remodelSuite', 'Remodel Plans: Suite', 'common', {
+    kind: 'levelSet',
+    set: 'suite',
+  }),
+  remodelFullHouse: tool('remodelFullHouse', 'Remodel Plans: Full House', 'uncommon', {
+    kind: 'levelSet',
+    set: 'fullHouse',
+  }),
   // D-075, D-083: Rare and dearer, since a piece placed early earns for the rest of the run.
   weekendCrew: tool('weekendCrew', 'Weekend Crew', 'rare', { kind: 'extraPlay' }, { price: 5 }),
 };

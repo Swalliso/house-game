@@ -690,11 +690,7 @@ const prefixed = (prefix: string, names: readonly string[]) => names.map((n) => 
 
 /** What the runs must reach between them. */
 const COVERAGE: readonly string[] = [
-  // A Renovation needs a type at its limit, which the clients' house rules bring (M4a content).
-  ...prefixed(
-    'action',
-    keys(ACTION_KINDS).filter((k) => k !== 'renovate'),
-  ),
+  ...prefixed('action', keys(ACTION_KINDS)),
   ...prefixed('debug', keys(DEBUG_OPS)),
   ...prefixed('toolUse', keys(TOOL_USES)),
   ...prefixed('milestone', keys(RESULTS)),
@@ -716,6 +712,7 @@ const CHECKS: readonly string[] = [
   'check:preview:place:reserve',
   'check:preview:install:hand',
   'check:preview:install:supplies',
+  'check:preview:renovate:hand',
   'check:preview:free',
   'check:preview:xMult',
   'check:preview:timedEffect',

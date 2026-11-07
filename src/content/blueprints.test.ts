@@ -166,13 +166,13 @@ const talliesIn = (events: readonly GameEvent[]) =>
   events.filter((e): e is TallyEvent => e.t === 'tally');
 
 describe('blueprints', () => {
-  it('are the 18 of Appendix B, priced by rarity from balance.ts; ×Mult only on Rare', () => {
+  it('are the 18 of Appendix B, priced by rarity from balance.ts, all offered; ×Mult only on Rare', () => {
     expect(Object.keys(CONTENT.blueprints).sort()).toEqual(Object.keys(RARITY).sort());
     expect(PRICES.blueprint).toEqual({ common: 4, uncommon: 6, rare: 8 });
     for (const def of Object.values(CONTENT.blueprints)) {
       expect(def.rarity).toBe(RARITY[def.id]);
       expect(def.price).toBe(PRICES.blueprint[def.rarity]);
-      expect(def.offered).toBe(def.id !== 'dreamHome');
+      expect(def.offered, def.id).toBe(true);
       if (def.modifiers.some((m) => m.kind === 'xMult')) expect(def.rarity).toBe('rare');
     }
     const xMult = Object.values(CONTENT.blueprints).filter((d) =>
@@ -246,19 +246,22 @@ describe('Quiet Hours', () => {
 describe('Green Thumb', () => {
   it('Green pieces earn +50%', () => {
     expectText('greenThumb', ['Green pieces earn +50%']);
-    // With no rooms, all yard is front yard. Lawn 1 → 1.5 → 2; Flower Bed 3 → 4.5 → 5; sunny
-    // Herb Garden 2 → 3. The Patio and the Hot Tub (3) aren't Green.
+    // The house is a Closet at the top right, so its front row is row 1 and the Flower Bed is in
+    // the front yard. Lawn 1 → 1.5 → 2; Flower Bed 3 → 4.5 → 5; sunny Herb Garden 2 → 3. The
+    // Patio (1 for the Herb Garden's view), the Hot Tub by it (3), and the Closet (1) aren't
+    // Green. The Patio and the Hot Tub touch the Closet, a room, so they earn at all.
     expect(
       withAndWithout('greenThumb', open, [
         ['lawn', 0, 0],
         ['flowerBed', 5, 5],
         ['herbGarden', 5, 0],
-        ['patio', 7, 6],
-        ['hotTub', 9, 6],
+        ['patio', 7, 0],
+        ['hotTub', 9, 0],
+        ['closet', 9, 1],
       ]),
     ).toEqual([
-      [1, 3, 2, 0, 3],
-      [2, 5, 3, 0, 3],
+      [1, 3, 2, 1, 3, 1],
+      [2, 5, 3, 1, 3, 1],
     ]);
   });
 });
@@ -266,19 +269,20 @@ describe('Green Thumb', () => {
 describe('Party House', () => {
   it('Social pieces earn +50%', () => {
     expectText('partyHouse', ['Social pieces earn +50%']);
-    // Kitchen: +2 at the Dining Room's +50% and the blueprint's: 4. Hot Tub by a Patio: 3 →
-    // 4.5 → 5. The Bedroom isn't Social.
+    // Kitchen: +2 at the Dining Room's +50% and the blueprint's: 4. The Patio below it: +2 for
+    // the Kitchen, 2 → 3. The Hot Tub beside the Patio and below the Dining Room: 3 → 4.5 → 5.
+    // The Bedroom isn't Social.
     expect(
       withAndWithout('partyHouse', open, [
         ['kitchen', 0, 0],
         ['diningRoom', 2, 0],
-        ['patio', 0, 4],
-        ['hotTub', 2, 4],
+        ['patio', 0, 2],
+        ['hotTub', 2, 2],
         ['bedroom', 6, 0],
       ]),
     ).toEqual([
-      [3, 0, 0, 3, 3],
-      [4, 0, 0, 5, 3],
+      [3, 0, 2, 3, 3],
+      [4, 0, 3, 5, 3],
     ]);
   });
 });
@@ -535,8 +539,8 @@ describe('Dream Home', () => {
     expect(ruleValue(CONTENT, state(['dreamHome']), 'specBonus')).toBe(35);
   });
 
-  it('isn’t offered until M4a’s clients bring specs', () => {
-    expect(CONTENT.blueprints.dreamHome.offered).toBe(false);
+  it('is offered, now that M4a’s clients bring specs', () => {
+    expect(CONTENT.blueprints.dreamHome.offered).toBe(true);
     const s = createRules(CONTENT).newRun(setup('dream-shop'));
     const seen = new Set<BlueprintId>();
     for (let shop = 1; shop <= 6; shop++) {
@@ -545,11 +549,9 @@ describe('Dream Home', () => {
           if (o.kind === 'blueprint') seen.add(o.id);
       }
     }
-    expect(seen.has('dreamHome')).toBe(false);
-    // Every other blueprint does come up.
-    expect([...seen].sort()).toEqual(
-      (Object.keys(RARITY) as BlueprintId[]).filter((id) => id !== 'dreamHome').sort(),
-    );
+    expect(seen.has('dreamHome')).toBe(true);
+    // So does every other blueprint.
+    expect([...seen].sort()).toEqual((Object.keys(RARITY) as BlueprintId[]).sort());
   });
 });
 

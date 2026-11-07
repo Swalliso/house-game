@@ -419,9 +419,15 @@ describe('Pergola', () => {
       'Gives it a view, which counts as one more view',
       'Earns +50%',
     ]);
-    // Alone: 1 for its own view, at +50%: 1.5 → 2.
-    expect(earned(open, [['patio', 0, 0]])).toEqual([0]);
-    expect(earned(open, [['patio', 0, 0]], [[1, 'pergola']])).toEqual([2]);
+    // Beside a Closet, a room with no view: 1 for its own view, at +50%: 1.5 → 2.
+    const closet: Placement[] = [
+      ['patio', 0, 0],
+      ['closet', 2, 0],
+    ];
+    expect(earned(open, closet)).toEqual([0, 1]);
+    expect(earned(open, closet, [[1, 'pergola']])).toEqual([2, 1]);
+    // Alone it touches no room, so it earns nothing, Pergola or not (the Patio rule, D-101).
+    expect(earned(open, [['patio', 0, 0]], [[1, 'pergola']])).toEqual([0]);
     // Beside a Kitchen: (2 + 1) at +50% is 4.5 → 5.
     const kitchen: Placement[] = [
       ['patio', 2, 0],
@@ -429,10 +435,14 @@ describe('Pergola', () => {
     ];
     expect(earned(open, kitchen)).toEqual([2, 0]);
     expect(earned(open, kitchen, [[1, 'pergola']])).toEqual([5, 0]);
-    // Three Trees and the Pergola's view: four views, three count: 3 at +50%.
+    // Three Trees and the Pergola's view, beside a Closet: four views, three count: 3 at +50%.
     const trees = ['.TT.', 'T...', ...emptyRows(4, 2)];
-    expect(earned(trees, [['patio', 1, 1]])).toEqual([3]);
-    expect(earned(trees, [['patio', 1, 1]], [[1, 'pergola']])).toEqual([5]);
+    const wooded: Placement[] = [
+      ['patio', 1, 1],
+      ['closet', 3, 1],
+    ];
+    expect(earned(trees, wooded)).toEqual([3, 1]);
+    expect(earned(trees, wooded, [[1, 'pergola']])).toEqual([5, 1]);
     expect(fits(open, [['lawn', 0, 0]], 'pergola', 1)).toMatchObject({ legal: false });
   });
 });

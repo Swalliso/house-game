@@ -5,6 +5,7 @@
 // Everyday clients are common and eccentrics rare (D-026).
 
 import type { ClientDef, ClientId } from '../rules/index.ts';
+import { houseRules, steppedBedrooms } from './house-rules.ts';
 
 export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
   hendersons: {
@@ -13,7 +14,16 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
     rarity: 'common',
     tier: 'core',
     brief: 'A growing family: room for everyone, and a yard to play in.',
-    specs: [],
+    specs: [
+      // Their 4+ Bedrooms and 2+ Bathrooms (Appendix B) are where this household ends up.
+      ...houseRules({ bedrooms: steppedBedrooms(2, 3) }),
+      {
+        id: 'kitchenDining',
+        name: 'Kitchen beside the Dining Room',
+        group: 'wishes',
+        condition: { adjacentPair: [{ piece: 'kitchen' }, { piece: 'diningRoom' }] },
+      },
+    ],
     tastes: [
       { kind: 'earn', target: { tag: 'Kid' }, pct: 50 },
       { kind: 'earn', target: { piece: 'lawn' }, pct: 50 },
@@ -33,7 +43,21 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
     rarity: 'rare',
     tier: 'core',
     brief: 'Somewhere quiet. Somewhere… dark.',
-    specs: [],
+    specs: [
+      ...houseRules({ bedrooms: steppedBedrooms(1, 2) }),
+      {
+        id: 'darkRooms',
+        name: 'Three Dark rooms',
+        group: 'wishes',
+        condition: { count: { all: [{ property: 'room' }, { tag: 'Dark' }] }, min: 3 },
+      },
+      {
+        id: 'library',
+        name: 'A Library',
+        group: 'wishes',
+        condition: { count: { piece: 'library' }, min: 1 },
+      },
+    ],
     tastes: [
       { kind: 'earn', target: { tag: 'Dark' }, pct: 100 },
       // So a Pool earns nothing: "no Pool" is a taste, not a spec (Appendix A · M4a).
@@ -50,7 +74,21 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
     rarity: 'common',
     tier: 'core',
     brief: 'Two dogs and counting, and a yard they can run in.',
-    specs: [],
+    specs: [
+      ...houseRules({ bedrooms: steppedBedrooms(1, 2) }),
+      {
+        id: 'doghouses',
+        name: 'Two Doghouses',
+        group: 'wishes',
+        condition: { count: { piece: 'doghouse' }, min: 2 },
+      },
+      {
+        id: 'mudroom',
+        name: 'A Mudroom',
+        group: 'wishes',
+        condition: { count: { piece: 'mudroom' }, min: 1 },
+      },
+    ],
     tastes: [
       { kind: 'earn', target: { tag: 'Pet' }, pct: 50 },
       { kind: 'earn', target: { piece: 'lawn' }, pct: 50 },
@@ -68,7 +106,16 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
     rarity: 'uncommon',
     tier: 'core',
     brief: 'A small house, beautifully done. Nothing extra.',
-    specs: [],
+    specs: [
+      // Her "a house of 4–8 rooms" (Appendix A · M4a) is her Under one roof.
+      ...houseRules({ bedrooms: steppedBedrooms(1, 2), rooms: { min: 4, max: 8 } }),
+      {
+        id: 'viewRooms',
+        name: 'Two rooms with a view',
+        group: 'wishes',
+        condition: { count: { all: [{ property: 'room' }, { property: 'view' }] }, min: 2 },
+      },
+    ],
     tastes: [
       { kind: 'perCountOver', match: { property: 'room' }, over: 8, pct: -10 },
       { kind: 'earn', target: { piece: 'garage' }, pct: -100 },
@@ -84,7 +131,28 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
     rarity: 'common',
     tier: 'core',
     brief: 'Works from home. Needs quiet, and an office or two.',
-    specs: [],
+    specs: [
+      ...houseRules({ bedrooms: steppedBedrooms(1, 2) }),
+      {
+        id: 'offices',
+        name: 'Two Home Offices',
+        group: 'wishes',
+        condition: { count: { piece: 'homeOffice' }, min: 2 },
+      },
+      {
+        // The street doesn't count (Appendix A · M4a): `none` looks at pieces only.
+        id: 'quietOffice',
+        name: 'Nothing Loud next to an office',
+        group: 'wishes',
+        text: 'A Home Office, and nothing Loud touching one. The street doesn’t count.',
+        condition: {
+          and: [
+            { count: { piece: 'homeOffice' }, min: 1 },
+            { none: { all: [{ tag: 'Loud' }, { touching: { piece: 'homeOffice' } }] } },
+          ],
+        },
+      },
+    ],
     tastes: [{ kind: 'budget', target: 'all', pct: 100 }],
     pool: [{ kind: 'drawWeight', target: { piece: 'homeOffice' }, pct: 100 }],
     targetPct: 100,
