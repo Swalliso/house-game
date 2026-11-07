@@ -28,6 +28,7 @@ import {
   type PieceId,
   type PlacedPiece,
   type RunState,
+  type TerrainId,
 } from '../../rules/index.ts';
 import { CELL } from '../sprites.ts';
 import { isIndoor, occupancy } from './geometry.ts';
@@ -438,7 +439,7 @@ const PAVED: ReadonlySet<PieceId> = new Set(['patio', 'driveway', 'longDriveway'
  * low yard pieces. Never water, a boulder, the Old Shed, a fence, an outbuilding or a Pool.
  */
 const LAST_ONTO: ReadonlySet<PieceId> = new Set(['flowerBed', 'herbGarden', 'sapling']);
-const LAST_GROUND: ReadonlySet<string> = new Set(['tree', 'timeCapsule']);
+const LAST_GROUND: ReadonlySet<TerrainId> = new Set(['tree', 'timeCapsule']);
 /** What gets a back door. */
 const BACK_ONTO: ReadonlySet<PieceId> = new Set(['patio', 'hotTub']);
 /** What a garage door faces. */

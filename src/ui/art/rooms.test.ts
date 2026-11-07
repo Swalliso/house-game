@@ -425,7 +425,7 @@ describe('fixtures', () => {
     const fire = wide.find((i) => i.sprite === 'fireplace')!;
     const sofa = wide.find((i) => i.sprite.startsWith('sofa-'))!;
     expect(
-      Math.abs(sofa.y + spritePos(sofa.sprite).h - (fire.y + spritePos('fireplace').h)),
+      Math.abs(sofa.y + artSize(sofa.sprite).h - (fire.y + artSize('fireplace').h)),
     ).toBeLessThan(16);
   });
 
