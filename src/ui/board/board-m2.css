@@ -204,7 +204,7 @@
   stroke-dasharray: 4 3;
   stroke-linecap: butt;
 }
-/* A pack's next tile (D-102) reuses these: blue to add it, dashed orange if the rules say no,
+/* A pack's next tile (D-106) reuses these: blue to add it, dashed orange if the rules say no,
    and solid orange (its label says "−") to take a tile of the pack off. */
 .install-target.pack-next.remove .fill {
   fill: rgb(224 122 31 / 0.16);

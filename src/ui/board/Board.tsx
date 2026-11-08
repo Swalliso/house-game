@@ -95,7 +95,7 @@ export function rotate(): void {
   const sel = selection.value;
   // A fixture has no shape to turn; a tool only turns the piece the Moving Truck carries.
   if (sel?.kind === 'fixture') return;
-  // A pack (D-102) is the tiles clicked out, so it has nothing to turn.
+  // A pack (D-106) is the tiles clicked out, so it has nothing to turn.
   if (sel?.kind === 'piece' && CONTENT.pieces[sel.id].pack) return;
   if (sel?.kind === 'tool') {
     if (movingUid.value === null) return;
@@ -150,7 +150,7 @@ function placeTentatively(): void {
 }
 
 /**
- * A pack card (D-102): each click adds a tile to the pack waiting for End week, or takes one
+ * A pack card (D-106): each click adds a tile to the pack waiting for End week, or takes one
  * off. The pack stays legal: a click that would break it (water, a gap) is refused.
  */
 function packClick(cell: Cell): void {
@@ -582,7 +582,7 @@ export function Board() {
     };
   })();
   const installing = !demolishing && activePlay.value?.t === 'install';
-  // D-103: a fixture is selected, so every legal host shows its gain.
+  // D-107: a fixture is selected, so every legal host shows its gain.
   const choosingHost = !demolishing && selection.value?.kind === 'fixture';
   const renovating = !demolishing && activePlay.value?.t === 'renovate';
   const tooling = !demolishing && selection.value?.kind === 'tool';
@@ -678,7 +678,7 @@ function Ghost({
   const px = TILE * scale;
   const { lot } = run.value.house;
   const def = CONTENT.pieces[defId];
-  // A pack being clicked out (D-102): the ghost is the tiles End week builds, and the tile under
+  // A pack being clicked out (D-106): the ghost is the tiles End week builds, and the tile under
   // the pointer gets its own outline, saying what a click there would do.
   const next = def.pack ? packNext.value : null;
   // A pack: how many of its tiles are out, and what a click does next.
@@ -740,7 +740,7 @@ function Ghost({
 }
 
 /**
- * A pack's next tile (D-102): blue to add it, orange to take it off, or orange with the rules'
+ * A pack's next tile (D-106): blue to add it, orange to take it off, or orange with the rules'
  * reason when the pack that would leave isn't legal (a gap, too many tiles, water).
  */
 function PackNextLabel({ next }: { next: PackNext }) {
@@ -923,7 +923,7 @@ function InstallTarget({ scale }: { scale: number }) {
 const MARK_CLEARANCE = 20;
 
 /**
- * D-103: while a fixture is selected, every legal host wears what installing it there does to
+ * D-107: while a fixture is selected, every legal host wears what installing it there does to
  * this week's Wow, net of any fixture it would replace (the rules' installGains, computed once
  * per selection), and the best one, if it gains, is filled with a ★. The host being looked at
  * (under the pointer, armed, or waiting for End week) has InstallTarget's label instead; a host

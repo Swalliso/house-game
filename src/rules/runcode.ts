@@ -120,7 +120,7 @@ const isObject = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v);
 const isInt = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v);
 
-/** A pack's tiles (D-102): a few short rows of '#' and '.'; the rules check the rest. */
+/** A pack's tiles (D-106): a few short rows of '#' and '.'; the rules check the rest. */
 function isShape(v: unknown): v is string[] {
   return (
     Array.isArray(v) &&

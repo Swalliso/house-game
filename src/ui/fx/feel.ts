@@ -58,7 +58,7 @@ export const FEEL = {
 
   /** Squash-and-wobble on a triggering piece. */
   wobble: { ms: 260, scale: 1.12 },
-  /** A pack's tiles (D-102): each click's tick rises in pitch by `step`, from `rate`. */
+  /** A pack's tiles (D-106): each click's tick rises in pitch by `step`, from `rate`. */
   packTile: { rate: 0.85, step: 0.05 },
   /** A Renovation (M4a): the room's level badge pops in. */
   levelPop: { ms: 420, scale: 1.6 },
@@ -165,7 +165,7 @@ export const FEEL = {
   },
 
   /**
-   * A household member arriving (M4b, D-099): a banner and a doorbell (ding, then dong after
+   * A household member arriving (M4b, D-103): a banner and a doorbell (ding, then dong after
    * `dongMs`), and their cards pop into the reserve once it has rung, with a shimmer.
    */
   arrival: {

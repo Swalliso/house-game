@@ -403,7 +403,7 @@ export const TEST_PIECES: Record<PieceId, PieceDef> = {
     drawWeight: 0,
     effects: [{ kind: 'neighbor', match: { feature: 'tree' }, amount: 1, max: 3 }],
   }),
-  // Member rooms (M4b, D-099): weight 0, counting as Bedrooms, never drawn or sold. No test
+  // Member rooms (M4b, D-103): weight 0, counting as Bedrooms, never drawn or sold. No test
   // client's household brings them unless a test gives it one (withHousehold).
   nursery: piece({
     id: 'nursery',
@@ -1240,7 +1240,7 @@ export function withPieces(
   return { ...base, pieces };
 }
 
-/** A piece at (x, y), turned `rot`; a pack (D-102) can take its own tiles as ASCII rows. */
+/** A piece at (x, y), turned `rot`; a pack (D-106) can take its own tiles as ASCII rows. */
 export type Placement = [PieceId, number, number, Rot?, (readonly string[])?];
 
 /** A house on an ASCII lot (. ground, T tree, P pond, C creek, B boulder), pieces placed unchecked. */

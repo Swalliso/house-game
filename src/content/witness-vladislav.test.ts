@@ -4,7 +4,7 @@
 // numbers (house-rules.ts) and his two wishes, Three Dark rooms and A Library.
 //
 // The numbers that shape it:
-// - Room for everyone grows with the household (M4b, D-099): 1–2 Bedrooms, then 2–3 and
+// - Room for everyone grows with the household (M4b, D-103): 1–2 Bedrooms, then 2–3 and
 //   Renfield's room from Framing. His room counts as a Bedroom, so the house has 2 Bedrooms of
 //   its own and, for the 3 from Framing, 2 Bathrooms. Renfield's room is a reserve play.
 // - Three Dark rooms: a room is Dark when every tile beside it is indoor (no yard, no lot
@@ -75,7 +75,7 @@ const PLACEMENTS: readonly Placement[] = [
   ['fence', 10, 15],
 ];
 
-/** Renfield's room (D-099), from the reserve when he arrives: [the phase, placement]. */
+/** Renfield's room (D-103), from the reserve when he arrives: [the phase, placement]. */
 const MEMBERS: readonly [number, Placement][] = [
   [2, ['renfieldsRoom', 11, 11, 1]], // upright, by the Bathroom, linked through the front hall
 ];
@@ -122,7 +122,7 @@ const PHASES = CONTENT.balance.phases;
 
 /**
  * Could a player place this piece from the hand on the house these placements build? A Fence or
- * a Driveway is a pack (D-102), so its play carries its tiles, turned, as the board sends them:
+ * a Driveway is a pack (D-106), so its play carries its tiles, turned, as the board sends them:
  * at rot 0.
  */
 function checkPlace(

@@ -2,7 +2,7 @@
 // one legal placement at a time, that meets every line of their checklist at every milestone.
 // It proves their specs can be met without a solver. Their checklist is the seven house rules
 // in their numbers, then Kitchen beside the Dining Room and A fenced yard. Room for everyone
-// grows with the household (M4b, D-099): 2–3 Bedrooms, then 3–4 and the twins' room from
+// grows with the household (M4b, D-103): 2–3 Bedrooms, then 3–4 and the twins' room from
 // Framing, then 4–5 and Grandma's room from Drywall. Each member's room counts as a Bedroom,
 // so three Bedrooms of their own fit every stage.
 //
@@ -69,7 +69,7 @@ const PLACEMENTS: readonly Placement[] = [
 ];
 
 /**
- * The household's rooms (D-099), each from the reserve once its member arrives: [the phase it
+ * The household's rooms (D-103), each from the reserve once its member arrives: [the phase it
  * arrives at, placement]. Grandma brings her Bathroom too.
  */
 const MEMBERS: readonly [number, Placement][] = [
@@ -113,7 +113,7 @@ const PHASES = CONTENT.balance.phases.map((_, phase) => phase);
 
 /**
  * The rules' own check of a placement, with the piece's card in hand, or (a member's room) in
- * the reserve. A Fence is a pack (D-102), so its play carries its tiles, turned, as the board
+ * the reserve. A Fence is a pack (D-106), so its play carries its tiles, turned, as the board
  * sends them: at rot 0.
  */
 function checkPlace(

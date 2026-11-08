@@ -11,7 +11,7 @@
 // company upgrades, crates and the Housewarming crate, Savings Account interest, and the finds
 // (the Old Shed and Time Capsules). M4a adds clients, their checklists, sets, and Renovate. M4b
 // adds change orders (a 'changeOrder' screen after milestones 2, 4, and 6), the household's
-// arrivals (D-099: member rooms that land in the reserve), and the Landscaper and Architect.
+// arrivals (D-103: member rooms that land in the reserve), and the Landscaper and Architect.
 //
 // Pure means no DOM, no Preact, no Math.random, no Date, and imports only from src/rules
 // and src/content. tsconfig.rules.json and purity.test.ts enforce it.
@@ -42,7 +42,7 @@ export type PieceId =
   | 'flowerBed'
   | 'herbGarden'
   | 'patio'
-  // Packs (D-102): one card places several connected tiles as one piece.
+  // Packs (D-106): one card places several connected tiles as one piece.
   | 'fence'
   | 'driveway'
   // "-house" outbuildings (base pool).
@@ -59,7 +59,7 @@ export type PieceId =
   | 'firePit'
   | 'henhouse'
   | 'birdhouse'
-  // Member rooms (M4b, D-099): each arrives with a member of a client's household, into the
+  // Member rooms (M4b, D-103): each arrives with a member of a client's household, into the
   // reserve. Never drawn, sold, or in the shop, a crate, or the Catalog; they count as Bedrooms.
   | 'nursery'
   | 'kidsRoom'
@@ -154,7 +154,7 @@ export type CrewId = 'generalContractor' | 'landscaper' | 'architect';
 /** Clients (M4a): who the house is for. Each brings a checklist, tastes, and a pool. */
 export type ClientId = 'hendersons' | 'vladislav' | 'barkers' | 'juniper' | 'dale';
 
-/** The household's arrivals (M4b, D-099): who moves in, by client. */
+/** The household's arrivals (M4b, D-103): who moves in, by client. */
 export type ArrivalId = 'twins' | 'grandma' | 'renfield' | 'nana' | 'rowan' | 'ivy';
 
 /**
@@ -364,14 +364,14 @@ export interface PieceDef {
   fromPhase: number;
   effects: readonly Effect[];
   /**
-   * A pack (D-102): the card places 1–`maxTiles` connected tiles that the player clicks out,
+   * A pack (D-106): the card places 1–`maxTiles` connected tiles that the player clicks out,
    * as one piece with that shape. `shapes` are the ones it suggests, which the rules list (in
    * every rotation, with a single tile) for bots. `shape` above is the card's picture, and the
    * tiles of a pack piece built without its own (a test's house).
    */
   pack?: { maxTiles: number; shapes: readonly (readonly string[])[] };
   /**
-   * A household member's room (M4b, D-099). It arrives in the reserve with its member and is
+   * A household member's room (M4b, D-103). It arrives in the reserve with its member and is
    * never drawn, sold, copied, or in the shop, a crate, or the Catalog. It counts as a Bedroom
    * (`countsAs: 'bedroom'`) everywhere a Bedroom counts, sets included, and its card can't
    * renovate (a Bedroom card can renovate it).
@@ -543,7 +543,7 @@ export interface SpecDef {
 }
 
 /**
- * A member of the household who moves in mid-run (M4b, D-099). Arrivals are fixed for the
+ * A member of the household who moves in mid-run (M4b, D-103). Arrivals are fixed for the
  * client, shown from week 1 (the job board), and can't be declined. At the first week of their
  * phase (after transforms, before the draw) their cards go into the reserve's extra slots.
  * From then on Room for everyone counts one more Bedroom at each end of its range and needs
@@ -563,7 +563,7 @@ export interface ArrivalDef {
   text: string;
 }
 
-/** Who the house is for (M4b, D-099): the Bedrooms they need to start, and who's coming. */
+/** Who the house is for (M4b, D-103): the Bedrooms they need to start, and who's coming. */
 export interface Household {
   /** Room for everyone's Bedroom range before anyone arrives: [min, max]. */
   bedrooms: Range;
@@ -854,7 +854,7 @@ export interface PlacedPiece {
   fixture?: { id: FixtureId; week: number };
   /** Renovations (M4a): each level adds Comfort. Kept through a move and a transform. */
   level?: number;
-  /** A pack's own tiles (D-102), as ASCII rows; turned by `rot` like any shape. */
+  /** A pack's own tiles (D-106), as ASCII rows; turned by `rot` like any shape. */
   shape?: readonly string[];
 }
 
@@ -882,7 +882,7 @@ export interface ReservePiece {
   id: PieceId;
   /** A crew's starting piece, in an extra slot that doesn't count against the reserve (M4b). */
   crew?: true;
-  /** An arrival's card (D-099), in an extra slot that doesn't count against the reserve (M4b). */
+  /** An arrival's card (D-103), in an extra slot that doesn't count against the reserve (M4b). */
   arrival?: ArrivalId;
 }
 
@@ -1074,7 +1074,7 @@ export interface RunState {
   offers?: { shop?: ShopVisit; pick?: CratePick; changeOrder?: ChangeOrderOffer };
   /** M4b: every change order answered this run, in order, with how it went. */
   changeOrders: readonly ChangeOrderRecord[];
-  /** M4b: the household members who've arrived (D-099), in order. */
+  /** M4b: the household members who've arrived (D-103), in order. */
   arrived: readonly ArrivalId[];
   /** Set by the ?debug panel's cheats: this phase's regular end counts as a miss. */
   forcedMiss?: number;
@@ -1094,7 +1094,7 @@ export interface PlaceAction {
   y: number;
   rot: Rot;
   /**
-   * A pack card's tiles (D-102): ASCII rows, '#' filled, with a tile in the first row and the
+   * A pack card's tiles (D-106): ASCII rows, '#' filled, with a tile in the first row and the
    * first column; (x, y) is its top-left corner and `rot` is 0. Only pack cards take one.
    */
   shape?: readonly string[];
@@ -1450,7 +1450,7 @@ export type GameEvent =
     }
   | { t: 'shopClosed'; number: number; skipReward: number; budgetBefore: number; budget: number }
   /**
-   * M4b: a household member arrived (D-099), at the start of their phase's first week (after
+   * M4b: a household member arrived (D-103), at the start of their phase's first week (after
    * transforms, before the draw): their cards went into the reserve's extra slots.
    */
   | { t: 'arrived'; arrival: ArrivalId; phase: number; cards: readonly PieceId[]; forced?: true }
@@ -1550,7 +1550,7 @@ export interface DemolishPreview {
 }
 
 /**
- * D-103: one legal host for a fixture being installed, with what installing it there does to
+ * D-107: one legal host for a fixture being installed, with what installing it there does to
  * this week's total: its install preview's delta, net of the fixture it would replace.
  */
 export interface InstallGain {
@@ -1561,7 +1561,7 @@ export interface InstallGain {
 }
 
 /**
- * D-103: what a fixture not yet owned (a shop offer) would add: its best host in the house as it
+ * D-107: what a fixture not yet owned (a shop offer) would add: its best host in the house as it
  * stands, and what installing it there does to this week's total (in the shop, the next week's).
  */
 export interface FixtureValue {

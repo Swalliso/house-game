@@ -1180,7 +1180,7 @@ function sheetBeat(e: GameEvent, after: RunState): void {
 }
 
 /**
- * A household member arrives (D-099): a banner over the board, a doorbell, and their cards
+ * A household member arrives (D-103): a banner over the board, a doorbell, and their cards
  * popping into the reserve's extra slots (Inventory.tsx). It doesn't hold the week up: the
  * banner goes on its own (or with a click on it), and the first-time hints wait for it.
  */

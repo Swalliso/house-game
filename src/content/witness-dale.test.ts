@@ -4,7 +4,7 @@
 //
 // Dale's checklist is the seven house rules in his numbers (house-rules.ts), then his two
 // wishes: two Home Offices, and nothing Loud touching one. Room for everyone grows with the
-// household (M4b, D-099): 1–2 Bedrooms, then 2–3 and Ivy's room from Framing. Ivy's Room counts
+// household (M4b, D-103): 1–2 Bedrooms, then 2–3 and Ivy's room from Framing. Ivy's Room counts
 // as a Bedroom, so the house has 2 Bedrooms of its own and, for the 3 from Framing, 2
 // Bathrooms; her room is a reserve play. The Garage is the house's one Loud piece, so it sits
 // at the front, away from both offices, and no Hallway links it to one (a link counts as
@@ -77,7 +77,7 @@ const PLACEMENTS: readonly Placement[] = [
   ['flowerBed', 8, 14],
 ];
 
-/** Ivy's room (D-099), from the reserve when she arrives: [the phase, placement]. */
+/** Ivy's room (D-103), from the reserve when she arrives: [the phase, placement]. */
 const MEMBERS: readonly [number, Placement][] = [
   [2, ['ivysRoom', 8, 5]], // behind the first Bedroom and the Bathroom
 ];
@@ -104,7 +104,7 @@ const at = (house: HouseState, phase = 0): RunState => ({ ...START, house, phase
 
 /**
  * The rules' own check of placing the piece on the house from the hand. A Driveway is a pack
- * (D-102), so its play carries its tiles, turned, as the board sends them: at rot 0.
+ * (D-106), so its play carries its tiles, turned, as the board sends them: at rot 0.
  */
 function checkPlace(
   house: HouseState,

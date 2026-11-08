@@ -1,4 +1,4 @@
-/* D-103: while a fixture is selected, every legal host shows what installing it there does to
+/* D-107: while a fixture is selected, every legal host shows what installing it there does to
    the week's Wow (the rules' installGains): blue with ▲, orange with ▼, plain at ±0, never
    color alone. The best is filled blue with a ★. The host being looked at has InstallTarget's
    label instead, so its badge steps aside without popping in again. */

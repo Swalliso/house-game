@@ -92,7 +92,7 @@ function CardView({ card, i }: { card: CardData; i: number }) {
   const text = cardText(CONTENT, def);
   const fits = cardsFit.value[i] ?? true;
   const isSelected = isPicked('hand', i);
-  // A pack (D-102) doesn't turn, so it never shows a turn left from another card this week.
+  // A pack (D-106) doesn't turn, so it never shows a turn left from another card this week.
   const rot = isSelected && !def.pack ? rotation.value : 0;
   return (
     <button
@@ -234,7 +234,7 @@ export function Hand() {
   const armed = passArmed.value;
   const demolishing = tool.value === 'demolish';
   // Only pieces turn: a fixture or a tool doesn't, except the Moving Truck's carried piece, and
-  // nor does a pack (D-102), which is the tiles clicked out (rotate() does nothing for them).
+  // nor does a pack (D-106), which is the tiles clicked out (rotate() does nothing for them).
   const sel = selection.value;
   const canTurn =
     (sel?.kind === 'piece' && !CONTENT.pieces[sel.id].pack) ||
@@ -246,7 +246,7 @@ export function Hand() {
     : armed
       ? 'Pass? Press again'
       : 'Pass this week';
-  // A pack (D-102) being clicked out: Cancel takes all its tiles off.
+  // A pack (D-106) being clicked out: Cancel takes all its tiles off.
   const packing = pending?.t === 'place' && !!pending.shape;
   return (
     <section class="hand" aria-label="This week's cards">

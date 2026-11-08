@@ -63,7 +63,7 @@ export function canUseTool(ctx: ToolCtx, state: RunState, action: UseToolAction)
     case 'copy': {
       const piece = uid === undefined ? undefined : state.house.pieces.find((p) => p.uid === uid);
       if (!piece) return { ok: false, reason: 'Pick a piece to copy.' };
-      // M4b: a member's room is theirs alone (one per arrival, D-099).
+      // M4b: a member's room is theirs alone (one per arrival, D-103).
       if (ctx.content.pieces[piece.defId].member) {
         return { ok: false, reason: 'A household member’s room can’t be copied.' };
       }

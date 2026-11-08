@@ -1,4 +1,4 @@
-// Packs (D-102): the Fence and the Driveway place 1 to `maxTiles` connected tiles from one card,
+// Packs (D-106): the Fence and the Driveway place 1 to `maxTiles` connected tiles from one card,
 // as one piece with its own shape. A pack's play carries its tiles (PlaceAction.shape: (x, y) is
 // their top-left corner, at rot 0), and the placed piece keeps them (PlacedPiece.shape, turned by
 // rot like any shape). Here: a pack play's legality and its reasons; one piece in the house, the
@@ -55,7 +55,7 @@ const STREET = 'Driveway must be built touching the street or a Driveway.';
 
 const pc = (id: PieceId): Card => ({ kind: 'piece', id });
 
-/** A pack card's play (D-102): these tiles, their top-left corner at (x, y), at rot 0. */
+/** A pack card's play (D-106): these tiles, their top-left corner at (x, y), at rot 0. */
 const pack = (
   i: number,
   x: number,

@@ -426,7 +426,7 @@ describe('Pergola', () => {
     ];
     expect(earned(open, closet)).toEqual([0, 1]);
     expect(earned(open, closet, [[1, 'pergola']])).toEqual([2, 1]);
-    // Alone it touches no room, so it earns nothing, Pergola or not (the Patio rule, D-101).
+    // Alone it touches no room, so it earns nothing, Pergola or not (the Patio rule, D-105).
     expect(earned(open, [['patio', 0, 0]], [[1, 'pergola']])).toEqual([0]);
     // Beside a Kitchen: (2 + 1) at +50% is 4.5 → 5.
     const kitchen: Placement[] = [

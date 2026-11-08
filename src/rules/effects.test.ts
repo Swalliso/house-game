@@ -52,7 +52,7 @@ function earnedByWeek(
   return weeks.map((w) => scoreOf(tallyAt(content, rows, placements, w), uid).earned);
 }
 
-/** Can `id` be built at (x, y) on this house? A pack (D-102) can be given its own tiles. */
+/** Can `id` be built at (x, y) on this house? A pack (D-106) can be given its own tiles. */
 function check(
   content: Content,
   rows: readonly string[],
@@ -80,7 +80,7 @@ function check(
 
 const WEEKS = [1, 2, 3, 4, 5, 6, 7];
 
-/** The Fence pack's suggested L, and a Driveway pack of 5 in a row (D-102). */
+/** The Fence pack's suggested L, and a Driveway pack of 5 in a row (D-106). */
 const L = ['#..', '#..', '###'];
 const LONG = ['#####'];
 

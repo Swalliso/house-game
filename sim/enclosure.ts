@@ -1,9 +1,9 @@
-// The enclosure probe (§8, "Fences pay their way") and the fence planner for packs (D-102).
+// The enclosure probe (§8, "Fences pay their way") and the fence planner for packs (D-106).
 //
 // A fenced yard is an area that borders the house and a Fence, doesn't touch the street edge,
 // and has at least `fencedYardMin` tiles (§4). Both tools try every small rectangle (up to
 // 6×6) next to the house: its free tiles are the yard R, and every non-wall tile touching R
-// from outside must become Fence. Since D-102 one Fence card places up to `maxTiles` connected
+// from outside must become Fence. Since D-106 one Fence card places up to `maxTiles` connected
 // tiles as one piece, so that boundary is joined into one run (adding a corner tile where two
 // sides meet only diagonally) and, if it fits one pack, becomes one placement.
 //

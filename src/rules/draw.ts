@@ -5,7 +5,7 @@
 // at most two Living Rooms, …) draws at `drawAtLimitPct` of its weight (D-093's half-weight
 // draws, amending D-043): the draw reads the house only through that. Each hand has its own stream, `draw/<phase>/<slot>/<n>` (an
 // overtime week's slot is `ot<k>`), so a reroll, a redraw, or an extra week never shifts any
-// later hand: a strike changes the pool, never the stream. A member's room (M4b, D-099) is
+// later hand: a strike changes the pool, never the stream. A member's room (M4b, D-103) is
 // never drawn, not even by the Catalog: it arrives with its member.
 
 import type { Card, CardType, Content, Modifier, PieceDef, PieceId } from './index.ts';

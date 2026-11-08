@@ -2,7 +2,7 @@
 // Readability is in the slice (§2): the exact number on placement, and every piece it changes.
 // From M2 it also shows a piece's layout facts (tags, regions, view, links, fenced yards), its
 // timers, unmet requirements, budget, and what the demolish tool would remove. From M4a, the
-// checklist lines a play would turn on or off, and Renovations (D-098). From M4b, a running
+// checklist lines a play would turn on or off, and Renovations (D-102). From M4b, a running
 // restriction a placement would break, whose a member's room is, where a granted tag comes from
 // ("Dark · from Eternal night"), and the sets a demolition or a tool would break. The board's
 // terms (regions, requirements, links, timers, Renovate) explain themselves on hover (D-077).
@@ -321,7 +321,7 @@ function SpecChanges({ gained, lost }: { gained: readonly string[]; lost: readon
   );
 }
 
-/** A member's room (M4b, D-099): whose it is, that it counts as a Bedroom, and from when. */
+/** A member's room (M4b, D-103): whose it is, that it counts as a Bedroom, and from when. */
 function MemberNote({ id }: { id: PieceId }) {
   const member = cardText(CONTENT, CONTENT.pieces[id]).member;
   return member ? <p class="member-note">{member}</p> : null;
@@ -414,14 +414,14 @@ function ToolInfo({ id, i }: { id: ToolId; i: number }) {
 }
 
 /**
- * What a Renovation adds (D-098): flat Comfort a level, before the room's percentages. Not a
+ * What a Renovation adds (D-102): flat Comfort a level, before the room's percentages. Not a
  * weekly gain: the before → after beside it is the room's real change.
  */
 const RENOVATE_GAIN = `+${CONTENT.balance.renovate.pointsPerLevel} ${SCORE_LABELS.points} a level, before percentages`;
 
 /**
  * A room card whose type is at the checklist's limit can renovate a room of that type instead
- * (M4a, D-098): the board outlines those rooms while the card is picked. Not while a placement
+ * (M4a, D-102): the board outlines those rooms while the card is picked. Not while a placement
  * waits for End week: the outlines are hidden then, and pointing doesn't renovate.
  */
 function RenovateHint({ id }: { id: PieceId }) {
@@ -442,7 +442,7 @@ function PlacingInfo() {
   if (sel.kind === 'tool') return <ToolInfo id={sel.id} i={sel.i} />;
   const name = sel.kind === 'piece' ? CONTENT.pieces[sel.id].name : CONTENT.fixtures[sel.id].name;
   const install = sel.kind === 'fixture';
-  // A room card over a room its type is capped at: a Renovation (M4a, D-098).
+  // A room card over a room its type is capped at: a Renovation (M4a, D-102).
   const play = activePlay.value;
   const renovate = play?.t === 'renovate';
   const room = renovate ? run.value.house.pieces.find((q) => q.uid === play.uid) : undefined;

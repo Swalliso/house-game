@@ -1,7 +1,7 @@
 // The base-pool pieces (Appendix B of implementation-plan.md): 9 indoor types, 7 yard types,
 // and 3 "-house" outbuildings, as 23 cards (shape variants are separate cards sharing a type),
 // then the 9 special pieces (weight 0): the shop's, the crates', and the Catalog's, then (M4b)
-// the 7 member rooms (weight 0), which arrive with the household (D-099).
+// the 7 member rooms (weight 0), which arrive with the household (D-103).
 // Shapes and tags Appendix B leaves open come from content-brainstorm.md §3, §4, and §6
 // (D-067). Complexity is Appendix A · M1's list (D-055). Every card is weight 10, so a type
 // with two cards comes up about twice as often. Numbers are placeholders for the sim and
@@ -262,7 +262,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
       { kind: 'neighbor', match: { property: 'viewSource' }, amount: 1, max: 3 },
     ],
   },
-  // The Fence is a pack (D-102): one card places 1–8 connected tiles in a week, as one piece
+  // The Fence is a pack (D-106): one card places 1–8 connected tiles in a week, as one piece
   // (one enclosure payout). Fences are walls for the fenced-yard flood fill, and earn per tile
   // of the fenced yards they border, capped in total. It replaced the 1×4 and L-Fence cards,
   // at their combined weight; it suggests their shapes.
@@ -280,7 +280,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     fromPhase: 0,
     effects: [{ kind: 'enclosure', perTile: 1, cap: 6 }],
   },
-  // The Driveway is a pack (D-102): one card places 1–6 connected tiles that reach the street
+  // The Driveway is a pack (D-106): one card places 1–6 connected tiles that reach the street
   // or a Driveway, as one piece. The only piece that can be built over the creek (a culvert),
   // so a house on the far bank can still have a Garage. It replaced the 1×3 and 1×5 cards, at
   // their combined weight.
@@ -510,7 +510,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
   },
 
   // ---------------------------------------------------------------------------------------
-  // Member rooms (M4b, D-099): each arrives in the reserve with a member of a client's
+  // Member rooms (M4b, D-103): each arrives in the reserve with a member of a client's
   // household (households.ts); weight 0, and never drawn, sold, copied, or in a crate. Each
   // counts as a Bedroom (Room for everyone, the Bathroom rule, the Bedroom limit, and sets),
   // and from its member's arrival on, Room for everyone needs it. The Hendersons' are the
@@ -531,7 +531,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
       { kind: 'steady', amount: 2 },
       { kind: 'neighbor', match: { piece: 'bedroom' }, amount: 2, max: 2 },
       // The twins grow up: 8 weeks after it's placed, at the start of a week. Its shape is the
-      // Kids' Room's, so it grows in place, keeping its level and fixture (D-098).
+      // Kids' Room's, so it grows in place, keeping its level and fixture (D-102).
       { kind: 'transform', into: { piece: 'kidsRoom' }, afterWeeks: 8 },
     ],
   },

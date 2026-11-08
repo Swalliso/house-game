@@ -61,7 +61,7 @@ export function checkPlacement(
   rot: Rot,
   week: number,
   layoutOf: (house: HouseState) => Layout,
-  /** A pack's own tiles (D-102); otherwise the card's shape. */
+  /** A pack's own tiles (D-106); otherwise the card's shape. */
   shape: readonly string[] = def.shape,
 ): PlacementCheck {
   const { lot } = layout.house;
@@ -221,7 +221,7 @@ export function addPiece(
   rot: Rot,
   week: number,
   cleared: readonly Cell[],
-  /** A pack's own tiles (D-102). */
+  /** A pack's own tiles (D-106). */
   shape?: readonly string[],
 ): { house: HouseState; piece: PlacedPiece } {
   const piece: PlacedPiece = {

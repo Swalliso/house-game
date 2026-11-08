@@ -144,7 +144,7 @@ export function rotateShape(shape: readonly string[], rot: Rot): string[] {
 }
 
 /**
- * Why a pack's tiles (D-102) aren't a shape it can place, or null: ASCII rows of equal length,
+ * Why a pack's tiles (D-106) aren't a shape it can place, or null: ASCII rows of equal length,
  * '#' and '.' only, 1 to `maxTiles` tiles in one connected group, with a tile in the first row
  * and the first column (so the placement's corner is its box's).
  */

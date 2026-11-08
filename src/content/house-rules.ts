@@ -7,7 +7,7 @@
 // - The household (D-093's option 1): Room for everyone, a Bathroom for every two Bedrooms,
 //   One Kitchen, and a living room or two. Each has a floor, and all but the Bathroom rule a
 //   ceiling, so a second Kitchen loses a rule; a room type at its ceiling can renovate instead.
-//   Room for everyone is built from the client's household (M4b, D-099; households.ts): its
+//   Room for everyone is built from the client's household (M4b, D-103; households.ts): its
 //   Bedroom range rises by one at each end at each arrival's phase, and from each arrival on it
 //   also needs one of that member's rooms. A member's room counts as a Bedroom (countsAs).
 // - The shape: Under one roof (a filled box no longer than twice its width) and Cozy (every
@@ -26,7 +26,7 @@ export const BEDROOMS: Selector = { piece: 'bedroom' };
 
 /** A client's numbers for the house rules. */
 export interface HouseholdNumbers {
-  /** Room for everyone: the household's starting Bedroom range and its arrivals (D-099). */
+  /** Room for everyone: the household's starting Bedroom range and its arrivals (D-103). */
   household: Household;
   /** Under one roof's rooms: at least `min`, and at most `max` if the client has a limit. */
   rooms?: { min: number; max?: number };
@@ -52,7 +52,7 @@ function arrivalStages(h: Household): { phase: number; arrived: readonly Arrival
 }
 
 /**
- * Room for everyone's condition (D-099): the Bedroom range, one more at each end for each
+ * Room for everyone's condition (D-103): the Bedroom range, one more at each end for each
  * arrival from its phase on, and from then one of each arrived member's rooms.
  */
 export function roomForEveryone(h: Household): HouseCondition {

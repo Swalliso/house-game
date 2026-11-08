@@ -1,4 +1,4 @@
-// The household's arrivals as the UI words them (M4b, D-099): who's moving in, when, and what
+// The household's arrivals as the UI words them (M4b, D-103): who's moving in, when, and what
 // they bring. The rules hold the data (each client's `household`); this only phrases it, for the
 // job board, the checklist, the reserve, the inspect panel, and the arrival's banner.
 

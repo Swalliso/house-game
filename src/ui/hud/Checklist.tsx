@@ -1,4 +1,4 @@
-// The client's checklist (M4a, D-097): the client's tastes, then the house rules under "The
+// The client's checklist (M4a, D-101): the client's tastes, then the house rules under "The
 // household", "The shape", and "The yard", then the client's own wishes. Each line held adds
 // Charm. While a card is pointed at a spot, lines the play would turn on or off are marked;
 // while a tally plays, each line lights up as the tally reaches it (director.ts). The rules
@@ -366,7 +366,7 @@ interface Row {
 }
 
 /**
- * Who's still to move in (M4b, D-099), under the household's lines until they arrive: "Grandma
+ * Who's still to move in (M4b, D-103), under the household's lines until they arrive: "Grandma
  * arrives at Drywall, week 17". Room for everyone's line already shows what they'll need.
  */
 function ArrivalLines({ s }: { s: RunState }) {

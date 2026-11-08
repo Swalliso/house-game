@@ -37,7 +37,7 @@ function fencedSizes(rows: readonly string[], placements: readonly Placement[]):
   return [...computeLayout(CONTENT, houseFrom(CONTENT, rows, placements)).fencedSizes];
 }
 
-/** Can `id` be built at (x, y) on this house? A pack (D-102) can be given its own tiles. */
+/** Can `id` be built at (x, y) on this house? A pack (D-106) can be given its own tiles. */
 function check(
   rows: readonly string[],
   placements: readonly Placement[],
@@ -60,7 +60,7 @@ const START = R.newRun({
   mode: 'standard',
 });
 
-/** The rules' own check of a pack card's play (D-102): these tiles at (x, y), from the hand. */
+/** The rules' own check of a pack card's play (D-106): these tiles at (x, y), from the hand. */
 function checkPack(rows: readonly string[], id: PieceId, x: number, y: number, shape: string[]) {
   const s: RunState = {
     ...START,
@@ -146,7 +146,7 @@ describe('the base pool', () => {
     // The base pool is the drawable cards; special pieces (weight 0) come from the shop.
     const base = Object.values(CONTENT.pieces).filter((d) => d.drawWeight > 0);
     expect(base).toHaveLength(21);
-    // The two packs (D-102) took the weight of the two cards each one replaced.
+    // The two packs (D-106) took the weight of the two cards each one replaced.
     expect(base.filter((d) => d.pack).map((d) => d.id)).toEqual(['fence', 'driveway']);
     for (const def of base) expect(def.drawWeight, def.id).toBe(def.pack ? 20 : 10);
     for (const def of Object.values(CONTENT.pieces)) {
@@ -609,7 +609,7 @@ describe('yard pieces', () => {
         ['lKitchen', 0, 0],
       ]),
     ).toEqual([2, 0]);
-    // The Patio rule (D-101): by a Tree but touching no room, it earns nothing, though it's
+    // The Patio rule (D-105): by a Tree but touching no room, it earns nothing, though it's
     // still legal. A Hallway isn't a room, and links only rooms, so one beside it doesn't help.
     const tree = ['.T........', ...emptyRows(10, 9)];
     expect(tally(tree, [['patio', 0, 1]]).pieces[0]).toMatchObject({
@@ -628,7 +628,7 @@ describe('yard pieces', () => {
   it('Fence: a wall, +1 per tile of the fenced yards it borders, up to 6', () => {
     expectCard('fence', ['+1 per tile of the fenced yards it borders (up to +6)']);
     expect(CONTENT.pieces.fence.wall).toBe(true);
-    // A pack (D-102): 1–8 touching tiles from one card. It suggests the 1×4 and the L it
+    // A pack (D-106): 1–8 touching tiles from one card. It suggests the 1×4 and the L it
     // replaced; the 1×4 is the card's picture, and a test house's Fence without its own tiles.
     expect(CONTENT.pieces.fence.pack).toEqual({
       maxTiles: 8,
@@ -732,7 +732,7 @@ describe('yard pieces', () => {
       '+1 every week in the front yard',
     ]);
     expect(CONTENT.pieces.driveway.canCover).toEqual(['creek']);
-    // A pack (D-102): 1–6 touching tiles from one card. It suggests the 1×3 and the 1×5 it
+    // A pack (D-106): 1–6 touching tiles from one card. It suggests the 1×3 and the 1×5 it
     // replaced; the 1×3 is the card's picture, and a test house's Driveway without its own tiles.
     expect(CONTENT.pieces.driveway.pack).toEqual({ maxTiles: 6, shapes: [['###'], ['#####']] });
     expect(cardText(CONTENT, CONTENT.pieces.driveway).pack).toBe(
@@ -875,7 +875,7 @@ describe('"-house" outbuildings', () => {
         ['playroom', 3, 0],
       ]),
     ).toEqual([4, 0]);
-    // Two Treehouses, each by its own Tree, are both Kid, but don't count each other (D-101),
+    // Two Treehouses, each by its own Tree, are both Kid, but don't count each other (D-105),
     // so a cluster isn't the best spot.
     expect(
       earned(

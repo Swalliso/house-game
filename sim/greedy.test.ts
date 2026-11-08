@@ -191,7 +191,7 @@ describe('the greedy bot', () => {
 
   it('builds a Fence pack that closes a fenced yard, though the estimate can’t see it', () => {
     // Two Bedrooms on rows 3–4 of an empty lot; the yard behind them (columns 0–3, rows 0–2,
-    // 12 tiles) is open on its right. A Fence pack of 3 tiles up column 4 closes it (D-102).
+    // 12 tiles) is open on its right. A Fence pack of 3 tiles up column 4 closes it (D-106).
     const s: RunState = {
       ...newRun('fence'),
       house: houseFrom(CONTENT, emptyRows(24, 24), [

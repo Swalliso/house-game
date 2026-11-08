@@ -4,7 +4,7 @@
 // numbers (house-rules.ts) and her one wish, Two rooms with a view.
 //
 // The numbers that shape it:
-// - Room for everyone grows with the household (M4b, D-099): 1–2 Bedrooms, then 2–3 and
+// - Room for everyone grows with the household (M4b, D-103): 1–2 Bedrooms, then 2–3 and
 //   Rowan's room from Drywall. Rowan's Studio counts as a Bedroom, so the house has 2 Bedrooms
 //   of its own and, for the 3 from Drywall, 2 Bathrooms. The studio is a reserve play.
 // - Cozy wants 6+ rooms and her Under one roof at most 8, so 6–8 rooms: 2 Bedrooms, 2
@@ -53,7 +53,7 @@ const PLACEMENTS: readonly Placement[] = [
   ['lawn', 7, 11], // and its right half, by the Flower Bed
 ];
 
-/** Rowan's room (D-099), from the reserve when Rowan arrives: [the phase, placement]. */
+/** Rowan's room (D-103), from the reserve when Rowan arrives: [the phase, placement]. */
 const MEMBERS: readonly [number, Placement][] = [
   [4, ['rowansStudio', 8, 5]], // behind the Bedroom and the Bathroom, by the lone Tree: a view
 ];

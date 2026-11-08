@@ -1,7 +1,7 @@
 // Crews (Appendix B · Crews; D-012): picked at the start of a run. The General Contractor is
 // the default crew from M2; M4b adds the Landscaper and the Architect. A crew's starting cards
 // (`startReserve`) wait in the reserve's extra slots from week 1. The numbers are from M4b's
-// sim (D-105): at sets +50% and yard draws +50%, the Architect won 61% and the Landscaper 28%
+// sim (D-109): at sets +50% and yard draws +50%, the Architect won 61% and the Landscaper 28%
 // against the General Contractor's 38%; at these, 45.5%, 39.7%, and 41.5%.
 
 import type { CrewDef, CrewId } from '../rules/index.ts';

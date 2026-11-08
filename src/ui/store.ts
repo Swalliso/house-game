@@ -130,7 +130,7 @@ export const rotation = signal<Rot>(0);
 export const hoverCell = signal<Cell | null>(null);
 /**
  * A placement (or a hand install, or a Renovation) waiting for End week (D-036): a tap places
- * tentatively. A pack (D-102) grows here a tile per click.
+ * tentatively. A pack (D-106) grows here a tile per click.
  */
 export const tentative = signal<PlaceAction | InstallAction | RenovateAction | null>(null);
 /** A supply install's first click: a second click on the same piece installs it (D-073). */
@@ -194,7 +194,7 @@ export const renovateUids = computed<readonly number[]>(() => {
 });
 
 /**
- * D-103: while a fixture is selected (hand or supplies), every legal host with what installing
+ * D-107: while a fixture is selected (hand or supplies), every legal host with what installing
  * it there does to this week's Wow, from the rules' installGains: once per selection (and per
  * state), never per pointer move.
  */
@@ -207,7 +207,7 @@ export const installGains = computed<readonly InstallGain[]>(() => {
 /**
  * The types the checklist caps for the selected card (a Bedroom card: Bedrooms), or null. A
  * card over a room of these types renovates it, or says why it can't yet. Not a member's card
- * (M4b, D-099): it counts as a Bedroom but can't renovate, so it only ever places.
+ * (M4b, D-103): it counts as a Bedroom but can't renovate, so it only ever places.
  */
 const cappedTypes = computed<readonly PieceId[] | null>(() => {
   const sel = selection.value;
@@ -218,7 +218,7 @@ const cappedTypes = computed<readonly PieceId[] | null>(() => {
   return rules.limits(run.value).find((l) => l.types.includes(root))?.types ?? null;
 });
 
-/** A pack's tiles (D-102), as lot cells. */
+/** A pack's tiles (D-106), as lot cells. */
 export function packCells(play: PlaceAction): Cell[] {
   return play.shape ? placedCells(play.shape, play.x, play.y, 0) : [];
 }
@@ -281,7 +281,7 @@ export const activePlay = computed<Play>(() => {
 });
 
 /**
- * What a click on the tile under the pointer would do to a pack being clicked out (D-102), for
+ * What a click on the tile under the pointer would do to a pack being clicked out (D-106), for
  * the board only: take a tile of the pack off, or add one, if the rules allow the pack that
  * leaves (and if not, why). `tiles` is how many the pack would have after the click.
  */

@@ -1,6 +1,6 @@
 // Shop goods as the HUD and the shop describe them: names, rarity labels, and the text the
 // rules generate from their data (D-038). Rarity is a colored border plus a label, never
-// color alone (D-051). A fixture also says what it's worth in your house (D-103), from the
+// color alone (D-051). A fixture also says what it's worth in your house (D-107), from the
 // rules' fixtureValue: the UI only words the numbers.
 
 import {
@@ -144,7 +144,7 @@ export function GoodBody({ good, where = false }: { good: GoodRef; where?: boole
 }
 
 /**
- * D-103: a fixture's worth in your house, from the rules' fixtureValue: its best host, what it
+ * D-107: a fixture's worth in your house, from the rules' fixtureValue: its best host, what it
  * would add to the week's Wow there (in the shop, the next week's), and roughly what that comes
  * to over the rest of the run. Blue with ▲ for a gain, orange with ▼ for a loss; muted when
  * nothing takes it, or it adds nothing yet. The host is named as it's valued: in the shop, a

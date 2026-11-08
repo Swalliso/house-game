@@ -739,7 +739,7 @@ class Checker {
     if (a.t === 'place' || a.t === 'install' || a.t === 'sell') this.see(`${a.t}:${a.from}`);
     if ((a.t === 'place' || a.t === 'install') && s.freePlay === 'ready') this.see('play:free');
     if (a.t === 'place' && a.from === 'reserve') {
-      // M4b: a member's room (D-099) or a crew's starting card, from the extra slots.
+      // M4b: a member's room (D-103) or a crew's starting card, from the extra slots.
       if (s.reserve[a.i]?.arrival) this.see('place:arrival');
       if (s.reserve[a.i]?.crew) this.see('place:crew');
     }

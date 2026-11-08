@@ -25,7 +25,7 @@
 // 13 ................  the street row
 //
 // 7 rooms (22 tiles in a 6 × 4 box), 2 Bedrooms, 2 Bathrooms, and 8 yard pieces: 4 Fences, 2
-// Lawns, 2 Doghouses. Room for everyone grows with the household (M4b, D-099): 1–2 Bedrooms,
+// Lawns, 2 Doghouses. Room for everyone grows with the household (M4b, D-103): 1–2 Bedrooms,
 // then 2–3 and Nana's room from Drywall. Her room counts as a Bedroom (3, so 2 Bathrooms) and
 // is a reserve play; the house is then 8 rooms in a 6 × 6 box.
 
@@ -72,7 +72,7 @@ const PLACEMENTS: readonly Placement[] = [
   ['doghouse', 9, 4],
 ];
 
-/** Nana's room (D-099), from the reserve when she arrives: [the phase, placement]. */
+/** Nana's room (D-103), from the reserve when she arrives: [the phase, placement]. */
 const MEMBERS: readonly [number, Placement][] = [
   [4, ['nanasRoom', 7, 10]], // in front of the Living Room and the Kitchen
 ];
@@ -100,7 +100,7 @@ const withHouse = (house: HouseState): RunState => ({ ...RUN, house });
 
 /**
  * The rules' own check of building this piece next, from a hand holding its card. A Fence is a
- * pack (D-102), so its play carries its tiles, turned, as the board sends them: at rot 0.
+ * pack (D-106), so its play carries its tiles, turned, as the board sends them: at rot 0.
  */
 function checkNext(
   house: HouseState,

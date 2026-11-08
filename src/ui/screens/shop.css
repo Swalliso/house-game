@@ -161,7 +161,7 @@
   font-size: 12px;
   color: #9a4a0a;
 }
-/* D-103: a fixture's worth in your house (goods.tsx' FixtureWorth), just above its price: blue
+/* D-107: a fixture's worth in your house (goods.tsx' FixtureWorth), just above its price: blue
    with ▲ for a gain, orange with ▼ for a loss, muted when nothing takes it or it adds nothing.
    It's small text, so it's in the darker text cuts, at least 4.5:1 (WCAG AA) where it sits,
    near the foot of the card: over its tint, 4.6:1 on an Uncommon card's blue and 5:1 on a

@@ -76,7 +76,7 @@ describe('content', () => {
     const count = (cat: string) =>
       new Set(defs.filter((d) => d.category === cat).map((d) => d.countsAs ?? d.id)).size;
     expect([count('indoor'), count('yard'), count('outbuilding')]).toEqual([9, 7, 3]);
-    // Two shape variants share a type; the Fence and the Driveway are packs instead (D-102).
+    // Two shape variants share a type; the Fence and the Driveway are packs instead (D-106).
     expect(defs.filter((d) => d.countsAs).map((d) => d.id)).toEqual(['lKitchen', 'longHallway']);
     expect(defs.filter((d) => d.pack).map((d) => d.id)).toEqual(['fence', 'driveway']);
     expect(CONTENT.pieces.lKitchen.countsAs).toBe('kitchen');

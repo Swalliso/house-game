@@ -53,7 +53,7 @@
   color: var(--bad);
 }
 
-/* A Renovation's level (D-098): a star per level, as on the board, in Comfort's color. */
+/* A Renovation's level (D-102): a star per level, as on the board, in Comfort's color. */
 .inspect .renovate-note {
   color: var(--comfort-text);
   font-weight: 700;

@@ -302,7 +302,7 @@ describe('Hot Tub', () => {
       ['patio', 3, 0],
     ];
     expect(earned(open, [...patios, ['closet', 2, 1]])).toEqual([0, 6, 0, 1]);
-    // The Patio rule (D-101): with no room it earns nothing, and a Hallway isn't a room.
+    // The Patio rule (D-105): with no room it earns nothing, and a Hallway isn't a room.
     expect(tally(open, patios).pieces[1]).toMatchObject({ earned: 0, unmet: 'touching a room' });
     expect(earned(open, [...patios, ['hallway', 2, 1, 1]])).toEqual([0, 0, 0, 0]);
   });
@@ -319,7 +319,7 @@ describe('Fire Pit', () => {
     expect(earned(open, [['firePit', 0, 0]])).toEqual([0]);
     // The Patio: +2 for the Kitchen and +2 for the Living Room, at +50%: 6. The Hot Tub beside
     // the Fire Pit earns its plain 3. Each touches a room (the Fire Pit the Kitchen, the Hot
-    // Tub the Living Room), as the Patio rule (D-101) asks.
+    // Tub the Living Room), as the Patio rule (D-105) asks.
     const house: Placement[] = [
       ['patio', 2, 0],
       ['kitchen', 0, 1],

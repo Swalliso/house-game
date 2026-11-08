@@ -310,7 +310,7 @@ export function validateContent(content: Content): string[] {
         problems.push(`${where}: transforms into ${into.id}, which has another shape`);
       }
     }
-    // M4b: a member's room (D-099) counts as a Bedroom and is never in the draw.
+    // M4b: a member's room (D-103) counts as a Bedroom and is never in the draw.
     if (def.member) {
       if (def.drawWeight !== 0) problems.push(`${where}: a member's room has weight 0`);
       if (def.countsAs !== 'bedroom' || def.category !== 'indoor' || def.connector) {
@@ -319,7 +319,7 @@ export function validateContent(content: Content): string[] {
       if (def.pack) problems.push(`${where}: a member's room isn't a pack`);
     }
     if (def.pack) {
-      // A pack (D-102): its picture and every suggested shape are tiles it can place.
+      // A pack (D-106): its picture and every suggested shape are tiles it can place.
       if (!Number.isInteger(def.pack.maxTiles) || def.pack.maxTiles < 1) {
         problems.push(`${where}: a pack's maxTiles must be ≥ 1`);
       }

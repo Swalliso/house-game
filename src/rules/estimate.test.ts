@@ -33,7 +33,7 @@ const place = (i: number, x: number, y: number, rot: 0 | 1 | 2 | 3 = 0): PlaceAc
   rot,
 });
 
-/** A Fence pack's play (D-102): 4 tiles in a row, across or upright, at (x, y). */
+/** A Fence pack's play (D-106): 4 tiles in a row, across or upright, at (x, y). */
 const fence = (i: number, x: number, y: number, upright = false): PlaceAction => ({
   t: 'place',
   from: 'hand',

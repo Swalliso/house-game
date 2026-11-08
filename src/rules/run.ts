@@ -19,7 +19,7 @@
 // Capsule when first built over.
 //
 // Start of week: transforms resolve (a Sapling old enough becomes a Tree), the household's
-// arrivals move in at their phase's first week (M4b, D-099: their cards go into the reserve's
+// arrivals move in at their phase's first week (M4b, D-103: their cards go into the reserve's
 // extra slots), a hand is drawn, and if none of it fits anywhere there's one free redraw.
 //
 // Change orders (M4b): when a milestone resolves, the phase effects that ran through it end
@@ -252,13 +252,13 @@ export interface Rules {
   /** The pieces a hand or supplies fixture could go in now. */
   installHosts(state: RunState, from: 'hand' | 'supplies', i: number): number[];
   /**
-   * D-103: every legal host of a hand or supplies fixture, in placement order, each with its
+   * D-107: every legal host of a hand or supplies fixture, in placement order, each with its
    * install preview's delta (net of the fixture it would replace, which it names). Empty off
    * the build screen.
    */
   installGains(state: RunState, from: 'hand' | 'supplies', i: number): InstallGain[];
   /**
-   * D-103: what a fixture not yet owned would add, for the shop's line: the legal host in the
+   * D-107: what a fixture not yet owned would add, for the shop's line: the legal host in the
    * house as it stands whose install gains this week's total the most, by that install's
    * preview delta (as if bought into the supplies), with the weeks still to play in the run and
    * gain × those weeks. In the shop it scores the next week, the next phase's first, after the
@@ -489,7 +489,7 @@ export function createRules(content: Content): Rules {
     ) {
       return { ...NO_PLAY, reason: 'That is not a spot on the lot.' };
     }
-    // A pack (D-102) places the tiles the player clicked out; any other card, its own shape.
+    // A pack (D-106) places the tiles the player clicked out; any other card, its own shape.
     if (def.pack) {
       if (play.shape === undefined) {
         return {
@@ -818,7 +818,7 @@ export function createRules(content: Content): Rules {
   };
 
   // -------------------------------------------------------------------------------------
-  // The household's arrivals (M4b, D-099).
+  // The household's arrivals (M4b, D-103).
 
   /** A member moves in: their cards go into the reserve's extra slots. */
   function land(s: RunState, a: ArrivalDef, events: GameEvent[], forced = false): RunState {
@@ -1916,7 +1916,7 @@ export function createRules(content: Content): Rules {
 
   const shapesCache = new Map<PieceDef, PlacementShape[]>();
   /**
-   * The shapes a card is listed at: its distinct rotations, or for a pack (D-102) a single
+   * The shapes a card is listed at: its distinct rotations, or for a pack (D-106) a single
    * tile and each suggested shape in each rotation, as its own rows at rot 0.
    */
   function placementShapes(def: PieceDef): PlacementShape[] {
@@ -1973,7 +1973,7 @@ export function createRules(content: Content): Rules {
     return fixture ? installHosts(content, layoutFor(state), fixture) : [];
   }
 
-  /** D-103: each legal host with its install preview's delta, net of what it would replace. */
+  /** D-107: each legal host with its install preview's delta, net of what it would replace. */
   function installGains(state: RunState, from: InstallAction['from'], i: number): InstallGain[] {
     return hostsFor(state, from, i).map((uid) => {
       const p = preview(state, { t: 'install', from, i, uid });
@@ -1994,7 +1994,7 @@ export function createRules(content: Content): Rules {
   }
 
   /**
-   * The build screen's state for the week a fixture bought now would first earn in (D-103):
+   * The build screen's state for the week a fixture bought now would first earn in (D-107):
    * this one, or in the shop the next phase's first week, its transforms resolved as leaving
    * starts it (its arrivals only fill the reserve). A shop the ?debug panel opened mid-week
    * goes back to that week. Null on the other screens.

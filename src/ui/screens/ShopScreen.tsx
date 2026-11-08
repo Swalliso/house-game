@@ -2,7 +2,7 @@
 // good with rarity borders and labels, the sale, the rising refresh, the services (rerolls,
 // demolitions, and D-076's strike), and Leave, which starts the next milestone. Selling is in
 // the inventory beside it. The UI never prices anything: the rules' shopOffers() does. Each
-// fixture, on sale or in a crate, says what it's worth in your house (D-103): the rules'
+// fixture, on sale or in a crate, says what it's worth in your house (D-107): the rules'
 // fixtureValue() does that.
 
 import { computed, signal } from '@preact/signals';
@@ -41,7 +41,7 @@ const striking = signal<number | null>(null);
 const justBought = signal<number | null>(null);
 
 /**
- * D-103: what each fixture on offer (or in an open crate) is worth in your house, from the
+ * D-107: what each fixture on offer (or in an open crate) is worth in your house, from the
  * rules' fixtureValue(): once per state, not per render.
  */
 const fixtureValues = computed(() => {
@@ -54,7 +54,7 @@ const fixtureValues = computed(() => {
   return out;
 });
 
-/** A fixture's line: its best host in your house and what it would add (D-103). */
+/** A fixture's line: its best host in your house and what it would add (D-107). */
 function Worth({ id }: { id: FixtureId }) {
   return <FixtureWorth value={fixtureValues.value.get(id) ?? null} />;
 }

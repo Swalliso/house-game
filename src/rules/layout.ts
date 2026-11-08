@@ -218,7 +218,7 @@ export function computeLayout(
   let frontRow: number | null = null;
   for (const piece of house.pieces) {
     const def = pieceDef(content, piece);
-    // A pack (D-102) carries its own tiles.
+    // A pack (D-106) carries its own tiles.
     const pc = placedCells(piece.shape ?? def.shape, piece.x, piece.y, piece.rot);
     const indoor = def.category === 'indoor';
     for (const c of pc) {

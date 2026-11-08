@@ -295,7 +295,7 @@ function ContractCard(props: {
 }
 
 /**
- * Who moves in mid-run (M4b, D-099), and when: "Moving in: the twins at Framing (week 9),
+ * Who moves in mid-run (M4b, D-103), and when: "Moving in: the twins at Framing (week 9),
  * Grandma at Drywall (week 17)". Each name's tip says what they bring.
  */
 function MovingIn({ arrivals }: { arrivals: readonly ArrivalDef[] }) {

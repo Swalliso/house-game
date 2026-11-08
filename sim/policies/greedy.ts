@@ -60,7 +60,7 @@ export interface RankedPlay {
  */
 export function tieKey(salt: number, p: PlaceAction): number {
   let h = salt ^ Math.imul(p.x + 1, 0x9e3779b1);
-  // A pack's tiles (D-102) tell apart plays at the same spot.
+  // A pack's tiles (D-106) tell apart plays at the same spot.
   if (p.shape) {
     for (const row of p.shape) {
       for (let k = 0; k < row.length; k++) h = Math.imul(h ^ row.charCodeAt(k), 0x01000193);
@@ -155,7 +155,7 @@ export function makeGreedy(opts: GreedyOptions = {}): Policy {
       if (free) return free;
       const plays: PlaceAction[] = [];
       // Installs and Renovations are few, so each is scored exactly. So are Fence packs that
-      // close a yard (D-102): the rules list only a pack's suggested shapes, and the first
+      // close a yard (D-106): the rules list only a pack's suggested shapes, and the first
       // Fence earns nothing until its yard closes.
       const exact: (PlaceAction | InstallAction | RenovateAction)[] = [];
       for (const p of rules.legalPlays(state)) {

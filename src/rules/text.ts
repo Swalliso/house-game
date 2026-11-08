@@ -428,10 +428,10 @@ export interface CardText {
   effects: string[];
   /** Reminders about lot features the effects mention: "The street is Loud." */
   notes: string[];
-  /** A pack (D-102): how many tiles one card places. */
+  /** A pack (D-106): how many tiles one card places. */
   pack?: string;
   /**
-   * A member's room (M4b, D-099): whose it is, that it counts as a Bedroom, and from when Room
+   * A member's room (M4b, D-103): whose it is, that it counts as a Bedroom, and from when Room
    * for everyone needs it: "The twins’ room: it counts as a Bedroom, and from Framing, Room for
    * everyone needs it."
    */

@@ -1,4 +1,4 @@
-// What a fixture is worth (D-103, resolving D-092): the rules' numbers behind the shop's line
+// What a fixture is worth (D-107, resolving D-092): the rules' numbers behind the shop's line
 // under each fixture and the board's gain badge on every legal host while installing.
 //
 // - installGains: every legal host of a hand or supplies fixture, in placement order, with its
@@ -122,7 +122,7 @@ const HOUSE_ROWS = treesAt([8, 0], [8, 1]);
 
 // ---------------------------------------------------------------------------------------
 
-describe('installGains: every legal host’s gain while installing (D-103)', () => {
+describe('installGains: every legal host’s gain while installing (D-107)', () => {
   it('lists each legal host in placement order with its install preview’s delta', () => {
     // A Fireplace: +50%, and +50% more in a Living Room. Bedrooms 4 → 6; the Living Room 4 → 8.
     const s = build(HOUSE, { supplies: ['fireplace'], rows: HOUSE_ROWS });
@@ -193,7 +193,7 @@ describe('installGains: every legal host’s gain while installing (D-103)', () 
   });
 });
 
-describe('fixtureValue: a fixture’s best host, for the shop’s line (D-103)', () => {
+describe('fixtureValue: a fixture’s best host, for the shop’s line (D-107)', () => {
   it('on the build screen: the best host and its gain, as installing it once bought previews', () => {
     const s = build(HOUSE, { rows: HOUSE_ROWS });
     const v = R.fixtureValue(s, 'fireplace');

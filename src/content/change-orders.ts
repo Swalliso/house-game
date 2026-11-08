@@ -13,7 +13,7 @@
 // or a yard that needs a fenced yard first (a Doghouse in one, two Lawns side by side in one).
 //
 // Not here any more: the Hendersons' *Twins* and the generic *Grandma's moving in* became the
-// Hendersons' arrivals (D-099; households.ts).
+// Hendersons' arrivals (D-103; households.ts).
 
 import type { ChangeOrderDef, ChangeOrderId } from '../rules/index.ts';
 

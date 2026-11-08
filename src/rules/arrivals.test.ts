@@ -1,4 +1,4 @@
-// The household's arrivals (M4b, D-099): a member's cards land in the reserve's extra slots in
+// The household's arrivals (M4b, D-103): a member's cards land in the reserve's extra slots in
 // the first week of their phase, after transforms and before the draw; member rooms are never
 // drawn, sold, copied, or in the shop, a crate, or the Catalog; they count as Bedrooms (a
 // Bedroom card can renovate one, their own card can't); Room for everyone's range rises with

@@ -1,4 +1,4 @@
-// The households (M4b, D-099) on the real content: each client's arrivals, their member rooms
+// The households (M4b, D-103) on the real content: each client's arrivals, their member rooms
 // (what each earns on a small hand-built lot, its shape and tags, and its card text), Room for
 // everyone as each client's checklist writes it, the checks validateContent makes, and a real
 // Hendersons run in which the twins and Grandma arrive on schedule. Numbers follow pieces.ts
@@ -33,7 +33,7 @@ function earned(rows: readonly string[], placements: readonly Placement[]): numb
 const open = emptyRows(10, 10);
 
 describe('each client’s household', () => {
-  it('has the arrivals D-099 and the brief name, at Framing or Drywall', () => {
+  it('has the arrivals D-103 and the brief name, at Framing or Drywall', () => {
     const arrivals = (id: ClientId) =>
       CONTENT.clients[id].household.arrivals.map((a) => [
         a.id,

@@ -655,7 +655,7 @@ describe('variety', () => {
   // Yard pieces spread over the lot, none touching.
   const FENCE: Placement = ['fence', 0, 0]; // x 0–3, y 0
   const FENCE_2: Placement = ['fence', 0, 2]; // x 0–3, y 2
-  // A Fence pack in the L it suggests (D-102): (5,0) (5,1) (5,2) (6,2) (7,2).
+  // A Fence pack in the L it suggests (D-106): (5,0) (5,1) (5,2) (6,2) (7,2).
   const L_FENCE: Placement = ['fence', 5, 0, 0, ['#..', '#..', '###']];
   const FLOWERS: Placement = ['flowerBed', 9, 0];
   const LAWN_1: Placement = ['lawn', 0, 4];

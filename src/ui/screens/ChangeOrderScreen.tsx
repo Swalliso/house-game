@@ -1,4 +1,4 @@
-// A change order (M4b; implementation-plan.md §5, D-105): after milestones 2, 4, and 6 the
+// A change order (M4b; implementation-plan.md §5, D-109): after milestones 2, 4, and 6 the
 // client changes their mind, on a sheet over the board, before the shop. A request or a
 // restriction can be accepted or declined (declining costs nothing); a phase effect is only
 // acknowledged. The sheet arrives with a paper flourish, and the answer is stamped on it as it

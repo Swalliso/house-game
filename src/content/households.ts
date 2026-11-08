@@ -1,4 +1,4 @@
-// The households (M4b, D-099; house-systems-review.md §4, "Filling up: the household"): who
+// The households (M4b, D-103; house-systems-review.md §4, "Filling up: the household"): who
 // each house is for, and who moves in mid-run. Arrivals are fixed for the client, shown on the
 // job board from week 1, and can't be declined. In the first week of an arrival's phase (after
 // transforms, before the draw) the member's cards go into the reserve's extra slots. From then

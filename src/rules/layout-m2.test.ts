@@ -531,7 +531,7 @@ describe('fenced yards', () => {
   });
 
   it('is not fenced if it borders no indoor piece: a lone L-shaped Fence in a corner', () => {
-    // The L-shaped Fence pack (D-102) at (3,0) closes (4..5, 0..1) against the top and right
+    // The L-shaped Fence pack (D-106) at (3,0) closes (4..5, 0..1) against the top and right
     // edges.
     const lone: Placement[] = [['fence', 3, 0, 0, ['#..', '#..', '###']]];
     const layout = layoutOf(emptyRows(6, 6), lone);
