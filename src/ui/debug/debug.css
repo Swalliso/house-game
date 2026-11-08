@@ -32,7 +32,7 @@
   font-weight: 700;
   text-align: left;
   padding: 5px 10px;
-  color: var(--wood-dark);
+  color: var(--wood-deep);
 }
 .debug-panel .debug-head:hover {
   background: #fff3df;

@@ -1,0 +1,120 @@
+/* First-time hints (D-045, FirstHints.tsx): a paper note with a plank head, by the panel it
+   talks about, never over the lot or a sheet's controls (FirstHints.tsx measures where). It sits
+   above the game (the celebration and a change order's sheet are 30) and below notes (40) and
+   the sheets and the menu (50), and takes the pointer only over its own note. Drawn like the
+   tooltip's note (tip.css) in the pixel text, with the notes' drop-in (--dur-modal). */
+.first-hint {
+  position: fixed;
+  z-index: 38;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 var(--space-3) var(--space-3);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--card-hi);
+  background-clip: padding-box;
+  box-shadow:
+    inset 0 calc(var(--px) * -1) 0 var(--card-lo),
+    var(--shadow-float);
+  /* The pixel text, as .ui sets it (or the readable font, D-059). */
+  font-family: var(--font-text);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  font-weight: 400;
+  font-synthesis: none;
+  color: var(--ink);
+  -webkit-font-smoothing: none;
+  animation: hint-in var(--dur-modal) ease-out;
+}
+[data-font='readable'] .first-hint {
+  -webkit-font-smoothing: auto;
+}
+/* Its title is the plank, across the note's full width, and stays put while a long hint
+   scrolls under it. It never shrinks (flex: none): its min-height would let a note too short
+   for its text squeeze the plank to one line's height and cut a title that wraps. */
+.first-hint h2 {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 calc(var(--space-3) * -1);
+  padding: var(--px) var(--space-3) calc(var(--px) * 3);
+  min-height: calc(var(--px) * 13);
+  background: var(--art-plank) repeat left top / calc(var(--px) * 48) calc(var(--px) * 10);
+  background-color: var(--wood-hi);
+  box-shadow:
+    inset 0 var(--px) 0 var(--wood-shine),
+    inset 0 calc(var(--px) * -2) 0 var(--wood-light),
+    inset 0 calc(var(--px) * -3) 0 var(--wood-deep);
+  color: var(--ink);
+  font-size: var(--fs-body);
+  line-height: var(--lh-tight);
+  font-weight: 700;
+}
+/* The help icon (theme/icons.ts) leads the title, one art px to the UI pixel. */
+.first-hint h2::before {
+  content: '';
+  flex: none;
+  width: calc(var(--px) * 12);
+  height: calc(var(--px) * 12);
+  background: var(--art-icon-help) no-repeat 0 0 / 100% 100%;
+  image-rendering: pixelated;
+}
+.first-hint p {
+  margin: 0;
+}
+/* "Got it", in the kit's small paper button (kit.css .btn-sm): it never takes focus from a
+   click (FirstHints.tsx), so the game's keys keep working. */
+.first-hint button {
+  flex: none;
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  min-height: calc(var(--px) * 16);
+  margin: 0;
+  padding: 0 var(--space-2) var(--px);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  border-radius: 0;
+  background: var(--card);
+  background-clip: padding-box;
+  box-shadow:
+    inset 0 var(--px) 0 var(--card-hi),
+    inset 0 calc(var(--px) * -2) 0 var(--card-lo);
+  font: inherit;
+  font-weight: 700;
+  color: var(--ink);
+  cursor: pointer;
+}
+.first-hint button:hover {
+  background: var(--card-hi);
+}
+.first-hint button:active:not(:disabled) {
+  border-bottom-width: var(--px);
+  transform: translateY(var(--px));
+}
+.first-hint button:focus-visible {
+  outline: none;
+  box-shadow:
+    inset 0 var(--px) 0 var(--card-hi),
+    inset 0 calc(var(--px) * -2) 0 var(--card-lo),
+    var(--ring-focus);
+}
+.reduce-motion .first-hint button:active:not(:disabled) {
+  transform: none;
+}
+@keyframes hint-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--px) * -3));
+  }
+}
+.reduce-motion .first-hint {
+  animation: none;
+}

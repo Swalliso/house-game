@@ -1,0 +1,377 @@
+/* The score panel (M5a): Comfort and Charm plaques side by side, Wow below them at the hero
+   size, Sparkle as gold stamps, the sets, and the checklist's row (M4a). Built on kit.css. The
+   words come from SCORE_LABELS; each layer keeps its hue (D-019), always with its word or icon. */
+
+/* The glow (§12, the celebration ladder) lights the panel once the week passes pace. It's
+   juice, the one soft shadow here. */
+.score-panel {
+  --glow: 0;
+  position: relative;
+  flex: none;
+}
+.score-panel > .panel {
+  box-shadow:
+    var(--shadow-card),
+    0 0 calc(var(--glow) * 28px) rgb(var(--glow-rgb) / calc(var(--glow) * 0.85));
+  transition: box-shadow 0.3s;
+}
+.score-panel.big > .panel {
+  animation: big-pulse 0.6s ease-out 2;
+}
+@keyframes big-pulse {
+  50% {
+    background-color: var(--gold-hi);
+  }
+}
+
+/* --- The equation ------------------------------------------------------------------- */
+
+.score-panel .panel-body {
+  container: score / inline-size;
+}
+.op-inline {
+  display: none;
+}
+
+.equation {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-2);
+}
+.layer {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.layer-name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.layer.comfort .layer-name {
+  color: var(--comfort);
+}
+.layer.charm .layer-name {
+  color: var(--charm);
+}
+.layer-name .tip {
+  text-decoration-color: currentColor;
+}
+.layer-value {
+  font-size: var(--fs-num-md);
+  padding: var(--space-2) var(--space-2) calc(var(--space-2) - var(--px));
+}
+.layer-value.long {
+  font-size: var(--fs-num);
+}
+.layer-value.longer {
+  font-size: var(--fs-num);
+  letter-spacing: calc(var(--px) * -1);
+}
+.op {
+  font-family: var(--font-display);
+  font-size: var(--fs-num-md);
+  line-height: 1;
+  color: var(--ink-soft);
+}
+/* The × sits level with the plaques, under the labels' line. */
+.equation > .op {
+  margin-top: calc(var(--lh-body) + var(--space-1) + var(--space-2) + var(--px));
+}
+
+/* Wow: the result, on its own row at the hero size, in ink on a framed plaque. */
+.layer.wow {
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.layer.wow .op {
+  padding-bottom: 0;
+}
+.plaque-wow {
+  --plaque-fill: var(--card);
+  flex: 1;
+  justify-content: space-between;
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  box-shadow:
+    inset 0 0 0 calc(var(--px) * 2) var(--wood-hi),
+    inset 0 0 0 calc(var(--px) * 3) var(--wood),
+    inset 0 calc(var(--px) * -4) 0 calc(var(--px) * 1) var(--card-lo);
+}
+.plaque-wow .layer-name {
+  font-family: var(--font-text);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--ink-soft);
+}
+.wow-number {
+  font-size: var(--fs-num-lg);
+}
+.wow-number.long {
+  font-size: var(--fs-num-md);
+}
+.wow-number.longer {
+  font-size: var(--fs-num);
+}
+.layer.wow .delta {
+  flex-basis: 100%;
+  justify-content: flex-end;
+}
+
+/* The tally's pulses: a tick on each step, and the total landing. */
+.layer.ticking .layer-value {
+  animation: tick 0.2s ease-out;
+}
+.layer.landed .layer-value {
+  animation: land 0.45s ease-out;
+}
+@keyframes tick {
+  50% {
+    transform: scale(1.08);
+  }
+}
+@keyframes land {
+  0% {
+    transform: scale(0.6);
+  }
+  60% {
+    transform: scale(1.25);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.reduce-motion .layer .layer-value {
+  animation: none;
+}
+
+.delta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.delta.good {
+  color: var(--good);
+}
+.delta.bad {
+  color: var(--bad);
+}
+
+/* A narrow column: the layers stack like a receipt, label on the left and plaque on the
+   right, so the words never crowd. Charm's row takes the × the middle column had. */
+@container score (max-width: 299px) {
+  .equation {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-1);
+  }
+  .equation > .op {
+    display: none;
+  }
+  .op-inline {
+    display: inline;
+    font-family: var(--font-display);
+    color: var(--ink-soft);
+  }
+  .equation .layer {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(calc(var(--px) * 36), auto);
+    align-items: center;
+    column-gap: var(--space-2);
+  }
+  .equation .layer-name .icon {
+    display: none;
+  }
+  .equation .layer .delta {
+    grid-column: 2;
+    justify-content: flex-end;
+  }
+  .equation .layer-value {
+    padding: var(--space-1) var(--space-2);
+    font-size: var(--fs-num);
+  }
+  .layer.wow .op {
+    display: none;
+  }
+}
+
+/* --- Sparkle: gold stamps, one per ×Mult source (D-056) ------------------------------- */
+
+.sparkles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+}
+.sparkles-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-weight: 700;
+}
+.sparkle-stamps {
+  display: contents;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sparkle-stamp {
+  padding: 0 calc(var(--px) * 3);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--sparkle);
+  background-clip: padding-box;
+  box-shadow: inset 0 calc(var(--px) * -1) 0 var(--sparkle-deep);
+  animation: stamp-in 320ms ease-out;
+}
+@keyframes stamp-in {
+  from {
+    transform: scale(1.6) rotate(-8deg);
+    opacity: 0;
+  }
+}
+.reduce-motion .sparkle-stamp {
+  animation: none;
+}
+.big-week {
+  align-self: center;
+  padding: 0 var(--space-2);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--sparkle);
+  background-clip: padding-box;
+  font-family: var(--font-display);
+  font-size: var(--fs-num);
+  line-height: var(--lh-body);
+}
+
+/* --- Budget and sets ------------------------------------------------------------------- */
+
+.budget-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: 0;
+}
+.score-sets-title {
+  margin: var(--space-1) 0 0;
+  padding-top: var(--space-2);
+  border-top: var(--px) solid var(--paper-line);
+  font-size: var(--fs-body);
+  color: var(--ink-soft);
+}
+.sets {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* Every set the same two lines: its name, then its level and its Comfort and Charm, at the
+   right. In the pixel font a side column (280 to 404 px) leaves a row about 220 to 336 px,
+   and "Jack-and-Jill Lv 2 +18 +0.75" needs 366, so sharing a line would put the values beside
+   the name in some rows and under it in others. */
+.sets li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--space-2);
+  padding: var(--px) var(--space-1);
+}
+.sets .set-name {
+  flex: 1 0 100%;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  column-gap: var(--space-2);
+}
+/* A set the placement makes (★) or breaks (✕): the icon leads its name, centered on it without
+   making the line taller. */
+.sets .set-name .icon {
+  align-self: center;
+}
+/* A set's Comfort and Charm stay together, at the row's right. */
+.set-values {
+  display: flex;
+  gap: var(--space-2);
+  margin-left: auto;
+  white-space: nowrap;
+}
+/* The readable font is narrower: each set on one line, the values always ending it, and a long
+   name wrapping in its place. */
+[data-font='readable'] .sets li {
+  flex-wrap: nowrap;
+}
+[data-font='readable'] .sets .set-name {
+  flex: 0 1 auto;
+}
+[data-font='readable'] .set-level,
+[data-font='readable'] .set-values {
+  flex: none;
+}
+.set-comfort {
+  color: var(--comfort);
+  font-weight: 700;
+}
+.set-charm {
+  color: var(--charm);
+  font-weight: 700;
+}
+.sets li.gained {
+  background: var(--charm-tint);
+}
+.sets li.lost {
+  color: var(--bad);
+}
+.sets li.lost .set-name {
+  text-decoration: line-through;
+}
+.set-level {
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+.sets-empty {
+  margin: 0;
+  color: var(--ink-soft);
+}
+
+/* --- The checklist's part of the Charm (M4a) ------------------------------------------------ */
+
+/* The sets and the checklist's row, as one block: a short window lets it go while a play is
+   looked at (app.css). Inside, the panel's own spacing. */
+.score-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+/* "3 checklist lines", with what they add to Charm at the right: a set's row (.sets li), under
+   a hairline. Its count pulses as each line lands in the tally (FEEL.checklist.tickMs, inline). */
+.spec-rows {
+  padding-top: var(--px);
+  border-top: var(--px) solid var(--paper-line);
+}
+.spec-row .set-charm .icon {
+  margin-right: var(--px);
+}
+/* A tally that hasn't reached the checklist yet: it counts up from 0 when it does. */
+.spec-row.waiting {
+  opacity: 0.5;
+}
+.spec-count {
+  display: inline-block;
+}
+.spec-count.ticking {
+  animation-name: tick;
+  animation-timing-function: ease-out;
+}
+.reduce-motion .spec-count.ticking {
+  animation: none;
+}

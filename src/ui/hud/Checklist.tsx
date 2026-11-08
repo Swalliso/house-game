@@ -506,6 +506,8 @@ export function Checklist() {
   const base = judged.value;
   const all = lines.value;
   const client = CONTENT.clients[base.setup.clientId];
+  const crew = CONTENT.crews[base.setup.crewId];
+  const allRun = crew.modifiers.map((m) => modifierText(CONTENT, m)).join(' · ');
   // The week being tallied pays its own bonus (an Inspector's Visit raises it for that week).
   const bonus = view?.specBonus || currentTally.value.specBonus || rules.rule(base, 'specBonus');
   const p = tallying.value ? null : preview.value;
@@ -599,11 +601,21 @@ export function Checklist() {
   return (
     <section ref={box} class="checklist" aria-label="The client's checklist">
       <h2>
-        {client.name}
+        <Tip title={client.name} text={client.brief}>
+          {client.name}
+        </Tip>
         <span class="check-count">
           {held} of {all.length}
         </span>
       </h2>
+      {/* Who's building it, and what the crew does all run (M4's top bar line, which M5a's top
+          bar has no room for). */}
+      <p class="check-crew">
+        Your crew:{' '}
+        <Tip title={`${crew.name}: your crew`} text={`${crew.blurb} All run: ${allRun}.`}>
+          {crew.name}
+        </Tip>
+      </p>
       <Tastes tastes={client.tastes} />
       <h3>
         <Tip term="checklist">House rules</Tip>

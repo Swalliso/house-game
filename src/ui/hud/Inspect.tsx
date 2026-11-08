@@ -51,11 +51,12 @@ import {
   toolPreview,
   useToolNow,
 } from '../store.ts';
+import { Button, Icon } from '../kit/kit.tsx';
+import type { IconName } from '../theme/art.ts';
 import { GoodBody, goodName, offerGood, type GoodRef } from './goods.tsx';
 import { arrivalOf, midName } from './household.ts';
 import { Tip } from './Tip.tsx';
-import './hud-m2.css';
-import './hud-m4.css';
+import './inspect.css';
 
 const GLOSSARY = glossary(CONTENT);
 
@@ -144,8 +145,10 @@ function Unmet({ why }: { why: string | undefined }) {
   if (why === undefined) return null;
   return (
     <p class="warn" role="note">
-      <span aria-hidden="true">⚠ </span>
-      <Tip term="requirement">Earns nothing</Tip>: it must be {why}
+      <Icon name="warn" />
+      <span>
+        <Tip term="requirement">Earns nothing</Tip>: it must be {why}
+      </span>
     </p>
   );
 }
@@ -189,6 +192,7 @@ function TagChips({ info }: { info: PieceInfo }) {
             class={cls.filter(Boolean).join(' ')}
             title={why.length > 0 ? why.join(' · ') : undefined}
           >
+            <Icon name={t as IconName} />
             {t}
             {granted.length > 0 && (
               <span class="chip-from">
@@ -204,8 +208,8 @@ function TagChips({ info }: { info: PieceInfo }) {
 }
 
 /**
- * The sets a play, a demolition, or a tool would complete (★) or break (✕, orange), with what
- * each pays every week it holds.
+ * The sets a play, a demolition, or a tool would complete (a star) or break (a cross, in
+ * orange), with what each pays every week it holds.
  */
 function SetChanges({ gained, lost }: { gained: readonly SetScore[]; lost: readonly SetScore[] }) {
   const { points: COMFORT, mult: CHARM } = SCORE_LABELS;
@@ -213,17 +217,20 @@ function SetChanges({ gained, lost }: { gained: readonly SetScore[]; lost: reado
     <>
       {gained.map((set) => (
         <p key={set.key} class="set-note good">
-          ★ Completes {CONTENT.sets[set.set].name}: +{set.points} {COMFORT}, +{formatMult(set.mult)}{' '}
-          {CHARM}
+          <Icon name="star" />
+          <span>
+            Completes {CONTENT.sets[set.set].name}: +{set.points} {COMFORT}, +{formatMult(set.mult)}{' '}
+            {CHARM}
+          </span>
         </p>
       ))}
       {lost.map((set) => (
         <p key={set.key} class="set-note bad">
-          <span class="mark" aria-hidden="true">
-            ✕{' '}
+          <Icon name="cross" />
+          <span>
+            Breaks: {CONTENT.sets[set.set].name} (−{set.points} {COMFORT}, −{formatMult(set.mult)}{' '}
+            {CHARM})
           </span>
-          Breaks: {CONTENT.sets[set.set].name} (−{set.points} {COMFORT}, −{formatMult(set.mult)}{' '}
-          {CHARM})
         </p>
       ))}
     </>
@@ -303,18 +310,18 @@ function SpecChanges({ gained, lost }: { gained: readonly string[]; lost: readon
     <>
       {gained.length > 0 && (
         <p class="spec-note good">
-          <span class="mark" aria-hidden="true">
-            ▲{' '}
+          <Icon name="up" />
+          <span>
+            Turns on: {specNames(gained)} (+{each(gained.length)})
           </span>
-          Turns on: {specNames(gained)} (+{each(gained.length)})
         </p>
       )}
       {lost.length > 0 && (
         <p class="spec-note bad">
-          <span class="mark" aria-hidden="true">
-            ▼{' '}
+          <Icon name="down" />
+          <span>
+            Turns off: {specNames(lost)} (−{each(lost.length)})
           </span>
-          Turns off: {specNames(lost)} (−{each(lost.length)})
         </p>
       )}
     </>
@@ -348,9 +355,11 @@ function BreaksNote({ id }: { id: ChangeOrderId }) {
   const lost = def.kind === 'phase' ? '' : `: you’d lose its ${rewardText(CONTENT, def.reward)}`;
   return (
     <p class="warn" role="note">
-      <span aria-hidden="true">✕ </span>
-      Breaks {def.name}
-      {lost}
+      <Icon name="cross" />
+      <span>
+        Breaks {def.name}
+        {lost}
+      </span>
     </p>
   );
 }
@@ -387,8 +396,8 @@ function ToolInfo({ id, i }: { id: ToolId; i: number }) {
       {how && <p class="muted">{how}</p>}
       {p && !p.ok && (
         <p class="reason">
-          <span aria-hidden="true">✕ </span>
-          {p.reason}
+          <Icon name="cross" />
+          <span>{p.reason}</span>
         </p>
       )}
       {p?.ok && <SetChanges gained={p.setsGained} lost={p.setsLost} />}
@@ -400,14 +409,9 @@ function ToolInfo({ id, i }: { id: ToolId; i: number }) {
         </p>
       )}
       {!aimed && (
-        <button
-          type="button"
-          class="sell-button use-tool"
-          disabled={!p?.ok}
-          onClick={() => useToolNow({ t: 'useTool', i })}
-        >
+        <Button class="use-tool" disabled={!p?.ok} onClick={() => useToolNow({ t: 'useTool', i })}>
           Use {def.name}
-        </button>
+        </Button>
       )}
     </>
   );
@@ -418,6 +422,17 @@ function ToolInfo({ id, i }: { id: ToolId; i: number }) {
  * weekly gain: the before → after beside it is the room's real change.
  */
 const RENOVATE_GAIN = `+${CONTENT.balance.renovate.pointsPerLevel} ${SCORE_LABELS.points} a level, before percentages`;
+
+/** A Renovation's level (D-102): a star a level. The words beside them say the level too. */
+function RenovateStars({ level }: { level: number }) {
+  return (
+    <span class="renovate-stars" aria-hidden="true">
+      {Array.from({ length: level }, (_, k) => (
+        <Icon key={k} name="star" />
+      ))}
+    </span>
+  );
+}
 
 /**
  * A room card whose type is at the checklist's limit can renovate a room of that type instead
@@ -483,8 +498,8 @@ function PlacingInfo() {
       <>
         <h2>{renovate ? `Renovate ${definite(roomName)}?` : name}</h2>
         <p class="reason">
-          <span aria-hidden="true">✕ </span>
-          {p.reason}
+          <Icon name="cross" />
+          <span>{p.reason}</span>
         </p>
         {hint}
         {install && <GoodBody good={{ kind: 'fixture', id: sel.id }} />}
@@ -523,11 +538,11 @@ function PlacingInfo() {
       {p.breaks && <BreaksNote id={p.breaks} />}
       {p.renovates && (
         <p class="renovate-note">
-          <span class="mark" aria-hidden="true">
-            {'★'.repeat(p.renovates.level)}{' '}
+          <RenovateStars level={p.renovates.level} />
+          <span>
+            <Tip term="renovate">Renovate</Tip>: {definite(roomName, 'this')} goes to level{' '}
+            {p.renovates.level} ({RENOVATE_GAIN})
           </span>
-          <Tip term="renovate">Renovate</Tip>: {definite(roomName, 'this')} goes to level{' '}
-          {p.renovates.level} ({RENOVATE_GAIN})
         </p>
       )}
       {p.replaces && (
@@ -556,12 +571,18 @@ function PlacingInfo() {
       <SpecChanges gained={p.specsGained} lost={p.specsLost} />
       {p.xMults.map((x) => (
         <p key={`${x.source.kind}:${x.label}`} class="set-note sparkle">
-          ✦ {SCORE_LABELS.xMult}: {x.label} ×{formatMult(x.times)} {SCORE_LABELS.mult}
+          <Icon name="sparkle" />
+          <span>
+            {SCORE_LABELS.xMult}: {x.label} ×{formatMult(x.times)} {SCORE_LABELS.mult}
+          </span>
         </p>
       ))}
       {p.finds.map((f) => (
-        <p key={`${f.x},${f.y}`} class="set-note good">
-          ★ Digs up the {CONTENT.features[f.feature].name}: {rewardText(CONTENT, f.reward)}
+        <p key={`${f.x},${f.y}`} class="set-note find">
+          <Icon name="star" />
+          <span>
+            Digs up the {CONTENT.features[f.feature].name}: {rewardText(CONTENT, f.reward)}
+          </span>
         </p>
       ))}
       {p.clearedTrees.length > 0 && (
@@ -599,14 +620,14 @@ function ItemInfo({
         <p class="muted">Bought in week {s.blueprints[sellAs.i]?.boughtWeek}.</p>
       )}
       {canSell && (
-        <button
-          type="button"
+        <Button
           class="sell-button"
+          icon="coin"
           onClick={() => sell(sellAs.from, sellAs.i)}
           title="Selling pays half its price, rounded down"
         >
           Sell for {price} budget
-        </button>
+        </Button>
       )}
     </>
   );
@@ -636,8 +657,8 @@ function DemolishInfo() {
       <>
         <h2>{name ? `Demolish ${name}?` : 'Demolish'}</h2>
         <p class="reason">
-          <span aria-hidden="true">✕ </span>
-          {d.reason ?? 'That can’t be demolished.'}
+          <Icon name="cross" />
+          <span>{d.reason ?? 'That can’t be demolished.'}</span>
         </p>
       </>
     );
@@ -672,21 +693,27 @@ const FEATURE_TEXT: Record<string, string> = {
 export function Inspect() {
   if (tool.value === 'demolish') {
     return (
-      <section class="inspect">
+      <InspectPanel>
         <DemolishInfo />
-      </section>
+      </InspectPanel>
     );
   }
   if (selected.value !== null) {
     return (
-      <section class="inspect">
+      <InspectPanel>
         <PlacingInfo />
-      </section>
+      </InspectPanel>
     );
   }
   const what = inspected.value;
   const s = run.value;
-  let body = <p class="muted">Point at anything on the lot to see what it is and what it earns.</p>;
+  const idle = (
+    <>
+      <h2>Inspect</h2>
+      <p class="muted">Point at anything on the lot to see what it is and what it earns.</p>
+    </>
+  );
+  let body = idle;
   if (what?.kind === 'piece') {
     const piece = s.house.pieces.find((p) => p.uid === what.uid);
     const score = currentTally.value.pieces.find((p) => p.uid === what.uid);
@@ -702,10 +729,10 @@ export function Inspect() {
           </h2>
           {!!piece.level && (
             <p class="renovate-note">
-              <span class="mark" aria-hidden="true">
-                {'★'.repeat(piece.level)}{' '}
+              <RenovateStars level={piece.level} />
+              <span>
+                <Tip term="renovate">Renovated</Tip>: level {piece.level}
               </span>
-              <Tip term="renovate">Renovated</Tip>: level {piece.level}
             </p>
           )}
           {info ? <TagChips info={info} /> : <p class="muted">{def.tags.join(' · ')}</p>}
@@ -765,11 +792,14 @@ export function Inspect() {
   } else if (what?.kind === 'card') {
     const card = s.hand[what.i];
     if (card) {
+      // The card's whole text, too: on a short window the hand's cards are cut down.
+      const good: GoodRef =
+        card.kind === 'piece' ? { kind: 'piece', id: card.id } : { kind: 'fixture', id: card.id };
       body = (
         <>
-          <h2>
-            {card.kind === 'piece' ? CONTENT.pieces[card.id].name : CONTENT.fixtures[card.id].name}
-          </h2>
+          <h2>{goodName(good)}</h2>
+          <GoodBody good={good} />
+          {card.kind === 'piece' && <MemberNote id={card.id} />}
           <p class="muted">Click the card (or press {what.i + 1}), then point at the lot.</p>
         </>
       );
@@ -813,5 +843,17 @@ export function Inspect() {
     const g = o && offerGood(o);
     if (g) body = <ItemInfo good={g} />;
   }
-  return <section class="inspect">{body}</section>;
+  return <InspectPanel idle={body === idle}>{body}</InspectPanel>;
+}
+
+/**
+ * A wood panel whose first heading is its plank (inspect.css). With nothing to inspect it's
+ * `is-idle`, so the left column gives its room to the checklist (app.css).
+ */
+function InspectPanel({ idle = false, children }: { idle?: boolean; children: ComponentChildren }) {
+  return (
+    <section class={`inspect panel ui ${idle ? 'is-idle' : ''}`} aria-label="Inspect">
+      <div class="panel-body">{children}</div>
+    </section>
+  );
 }

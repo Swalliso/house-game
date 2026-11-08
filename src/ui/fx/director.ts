@@ -103,7 +103,11 @@ export interface Banner {
   id: number;
   title: string;
   detail: string;
-  tone: 'good' | 'bad';
+  /**
+   * A milestone met (gold), one missed or in overtime (orange), or news that's neither: a
+   * household member's arrival (a plank, Overlays.tsx), so it never reads as a milestone.
+   */
+  tone: 'good' | 'bad' | 'note';
 }
 
 export const busy = signal(false);
@@ -913,7 +917,8 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
           break;
         }
         case 'renovated': {
-          // The room's level badge pops in on its own (PieceView); this is the room's beat.
+          // The room's level badge pops in on its own (HouseLayers.tsx LevelStars); this is the
+          // room's beat.
           if (!skipping) {
             const c = pieceCenter([after, base], e.uid);
             if (e.free) popup(c.x, c.y - 0.7, 'Weekend Crew!', 'note', FEEL.renovateMs);
@@ -1197,7 +1202,7 @@ function arrivalBeat(e: Extract<GameEvent, { t: 'arrived' }>, after: RunState): 
   showBanner(
     `${a.name} ${have} arrived!`,
     `${cardsPhrase(e.cards)} ${are} waiting in your reserve.`,
-    'good',
+    'note',
   );
   // A doorbell's ding-dong (a major third down), then the cards land with a shimmer.
   const f = FEEL.arrival;

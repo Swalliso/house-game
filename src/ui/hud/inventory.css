@@ -1,0 +1,197 @@
+/* The company's goods (M5a): a row per kind, filled slots as paper tags with their rarity's
+   band, empty ones as recessed wells. Built on kit.css. */
+
+.inventory .panel-body {
+  gap: var(--space-2);
+}
+/* A row per kind: its label, then its slots on the same line, wrapping when they're many. */
+.inv-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+}
+.inv-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--fs-body);
+  font-weight: 700;
+}
+.inv-count {
+  font-weight: 400;
+  color: var(--ink-soft);
+}
+.inv-slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.inv-item {
+  display: inline-flex;
+  gap: var(--px);
+  max-width: 100%;
+}
+.inv-empty {
+  width: calc(var(--px) * 18);
+  height: calc(var(--px) * 13);
+}
+.inv-slot {
+  --slot-band: var(--paper-line);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  min-height: calc(var(--px) * 13);
+  max-width: 100%;
+  margin: 0;
+  padding: 0 calc(var(--px) * 3) 0 var(--space-2);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  border-radius: 0;
+  background: var(--card);
+  background-clip: padding-box;
+  box-shadow:
+    inset var(--px) 0 0 var(--px) var(--slot-band),
+    inset 0 calc(var(--px) * -1) 0 var(--card-lo);
+  font: inherit;
+  color: var(--ink);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform var(--dur-hover) ease-out;
+}
+/* The name ends in an ellipsis when the slot is too narrow; the title shows it whole. */
+.inv-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* A hover lifts a slot, a press sets it back down. While it's pressed, its hit area reaches up
+   over that UI pixel, so a press at its top edge still lands (kit.css does the same for
+   buttons and cards). */
+.inv-slot:hover {
+  transform: translateY(calc(var(--px) * -1));
+}
+button.inv-slot:not(.selected):active {
+  transform: none;
+  transition-duration: var(--dur-press);
+}
+button.inv-slot:active::before {
+  content: '';
+  position: absolute;
+  left: calc(var(--px) * -1);
+  right: calc(var(--px) * -1);
+  bottom: 100%;
+  height: calc(var(--px) * 3);
+}
+.inv-slot.rarity-common {
+  --slot-band: var(--rarity-common);
+}
+.inv-slot.rarity-uncommon {
+  --slot-band: var(--rarity-uncommon);
+}
+.inv-slot.rarity-rare {
+  --slot-band: var(--rarity-rare);
+  background: var(--gold-hi);
+}
+.inv-slot.slot-upgrade {
+  --slot-band: var(--wood);
+  background: var(--wood-hi);
+  cursor: help;
+}
+/* A crew's or a household member's card, in the reserve's extra slots (M4b). */
+.inv-slot.slot-extra {
+  --slot-band: var(--wood);
+}
+.inv-slot.selected {
+  --slot-band: var(--ink);
+  transform: translateY(calc(var(--px) * -2));
+}
+.inv-slot.no-fit {
+  opacity: 0.55;
+}
+.inv-slot:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+.reduce-motion .inv-slot {
+  transition: none;
+}
+.reduce-motion .inv-slot:hover,
+.reduce-motion .inv-slot.selected {
+  transform: none;
+}
+/* A supply's icon (sprites.ts FIXTURE_ICONS and TOOL_ICONS), one UI pixel to its pixel, like the
+   tags' icons beside the text. */
+.inv-glyph.icon {
+  align-self: center;
+}
+/* M4b: the reserve's extra slots, after its own: a crew's starting cards and a household
+   member's, banded in wood (.slot-extra, above) with a tag ("Crew", "Twins"), since they don't
+   count against the reserve. A member's pop in as they arrive, after the doorbell: the
+   duration, the delay and --pop-scale are FEEL.arrival's, inline (Inventory.tsx). The class
+   goes once the pop is done, so its fill never holds a picked slot down. */
+.inv-tag {
+  flex: none;
+  padding: 0 calc(var(--px) * 2);
+  background: var(--wood-hi);
+  box-shadow: inset 0 calc(var(--px) * -1) 0 var(--wood);
+  color: var(--ink);
+}
+.inv-slot.just-arrived {
+  animation-name: slot-arrive;
+  animation-timing-function: cubic-bezier(0.2, 1.4, 0.4, 1);
+  animation-fill-mode: both;
+}
+@keyframes slot-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--px) * -5)) scale(0.6);
+  }
+  45% {
+    opacity: 1;
+    transform: scale(var(--pop-scale, 1.25));
+  }
+  to {
+    transform: none;
+  }
+}
+.reduce-motion .inv-slot.just-arrived {
+  animation: none;
+}
+.inv-sell {
+  flex: none;
+}
+/* In the shop, Sell is compact, so the goods' names have room beside it. */
+.inv-sell.btn {
+  padding-inline: var(--space-1);
+  font-weight: 400;
+}
+/* A short window (1280×720): an empty row is just its count in the shop, and while building
+   it's left out (there's nothing in it to use), so the hand starts higher. A panel with only
+   empty rows goes too. */
+@media (max-height: 800px) {
+  .inv-row.is-empty .inv-slots {
+    display: none;
+  }
+  .inventory:not(.in-shop) .inv-row.is-empty {
+    display: none;
+  }
+  .inventory:not(.in-shop):not(:has(.inv-row:not(.is-empty), .free-play)) {
+    display: none;
+  }
+  .inventory:not(.in-shop) .panel-body {
+    padding-block: var(--space-1) var(--space-2);
+  }
+}
+.free-play {
+  margin: 0;
+  padding: var(--space-1) var(--space-2);
+  background: var(--comfort-tint);
+  color: var(--good);
+  font-weight: 700;
+}

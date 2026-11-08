@@ -1,0 +1,262 @@
+/* The top bar (M5a): a wood beam across the top, with the milestone's plaque, the milestone
+   meter, the budget, the overtime clocks, the auto-complete switch, Complete early, and the
+   run's buttons. Built on kit.css. */
+
+.topbar {
+  grid-column: 1 / -1;
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: calc(var(--px) * 32);
+  padding: var(--space-1) var(--space-3) calc(var(--space-1) + var(--px));
+  background: var(--art-plank) repeat 0 0 / calc(var(--px) * 48) calc(var(--px) * 10);
+  background-color: var(--wood-hi);
+  border-bottom: var(--px) solid var(--ink);
+  box-shadow:
+    inset 0 var(--px) 0 var(--wood-shine),
+    inset 0 calc(var(--px) * -2) 0 var(--wood),
+    0 var(--px) 0 var(--shade);
+}
+
+/* --- The milestone's plaque ------------------------------------------------------------ */
+
+.tb-phase {
+  flex: none;
+  padding: var(--space-1) var(--space-2);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--card);
+  background-clip: padding-box;
+  box-shadow:
+    inset 0 var(--px) 0 var(--card-hi),
+    inset 0 calc(var(--px) * -1) 0 var(--card-lo);
+  white-space: nowrap;
+}
+.tb-phase-line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.tb-phase-name {
+  font-weight: 700;
+}
+.tb-phase-count {
+  margin-left: auto;
+  color: var(--ink-soft);
+}
+.tb-week,
+.tb-run-week {
+  color: var(--ink-soft);
+}
+.overtime-week {
+  padding: 0 var(--px);
+  background: var(--bad-fill);
+  color: var(--ink);
+  font-weight: 700;
+}
+
+/* --- The milestone meter ------------------------------------------------------------- */
+
+.tb-progress {
+  flex: 1 1 calc(var(--px) * 120);
+  min-width: calc(var(--px) * 100);
+  max-width: calc(var(--px) * 320);
+}
+/* One line: the score and its target always whole; the forecast after them only if it fits
+   whole. One that doesn't wraps to a second line, far below and clipped away, rather than show
+   a cut number (its fill and tick on the meter stay). */
+.tb-progress-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--lh-body) var(--space-2);
+  height: calc(var(--lh-body) + var(--px));
+  white-space: nowrap;
+  overflow: hidden;
+}
+.tb-score,
+.tb-met,
+.tb-forecast {
+  flex: none;
+}
+/* With the target met, the forecast keeps only its number. */
+.tb-met + .tb-forecast .tb-forecast-word {
+  display: none;
+}
+.tb-wow {
+  font-size: var(--fs-num);
+}
+.tb-target {
+  color: var(--ink);
+}
+.tb-met {
+  flex: none;
+  padding: 0 var(--space-1);
+  background: var(--card);
+  box-shadow: inset 0 calc(var(--px) * -1) 0 var(--action-shade);
+  font-weight: 700;
+}
+.tb-forecast {
+  margin-left: auto;
+  color: var(--ink);
+  cursor: help;
+}
+.tb-forecast.placing::before {
+  content: '';
+  display: inline-block;
+  width: calc(var(--px) * 3);
+  height: calc(var(--px) * 3);
+  margin-right: var(--px);
+  vertical-align: calc(var(--px) * 1);
+  background: var(--comfort);
+}
+.tb-meter-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0;
+  margin-top: var(--px);
+}
+.tb-meter {
+  flex: 1;
+}
+.tb-fill {
+  transition: width var(--dur-meter) ease-out;
+}
+/* The forecast: a pale fill behind the score's, and a tick where it lands. */
+.tb-forecast-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: var(--forecast);
+  transition: width var(--dur-meter) ease-out;
+}
+.tb-forecast-fill.met {
+  background: var(--forecast-met);
+}
+.tb-forecast-fill.placing {
+  background: var(--forecast-placing);
+}
+.tb-forecast-tick {
+  position: absolute;
+  top: calc(var(--px) * -1);
+  bottom: calc(var(--px) * -1);
+  width: var(--px);
+  margin-left: calc(var(--px) * -1);
+  background: var(--card);
+  transition: left var(--dur-meter) ease-out;
+}
+.tb-forecast-tick.placing {
+  background: var(--comfort-tint);
+}
+.tb-meter .meter-tick {
+  --meter-tick: var(--wood-night);
+}
+.tb-flag {
+  align-self: center;
+  margin-left: var(--px);
+}
+.reduce-motion .tb-fill,
+.reduce-motion .tb-forecast-fill,
+.reduce-motion .tb-forecast-tick {
+  transition: none;
+}
+
+/* --- Budget and overtime ----------------------------------------------------------- */
+
+.tb-budget {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--card);
+  background-clip: padding-box;
+  box-shadow:
+    inset 0 var(--px) 0 var(--card-hi),
+    inset 0 calc(var(--px) * -1) 0 var(--card-lo);
+}
+.tb-budget .tip {
+  display: inline-flex;
+  text-decoration: none;
+}
+.tb-budget .budget-count {
+  min-width: calc(var(--px) * 16);
+  font-family: var(--font-display);
+  font-size: var(--fs-num);
+  font-weight: 400;
+  text-align: right;
+}
+.tb-overtime {
+  flex: none;
+  display: flex;
+  gap: var(--px);
+}
+.tb-overtime .icon.spent {
+  opacity: 0.35;
+}
+
+/* --- Complete early: offered once the target is met ---------------------------------- */
+
+.tb-early {
+  flex: none;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  padding-top: var(--px);
+  line-height: var(--lh-tight);
+}
+/* "Complete early" and "Press again" stacked in one cell, the idle one hidden: the button's
+   width never changes between the two presses. */
+.tb-early-label {
+  display: grid;
+  text-align: left;
+}
+.tb-early-label > * {
+  grid-area: 1 / 1;
+}
+.tb-early-label > .is-hidden {
+  visibility: hidden;
+}
+.tb-early-detail {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 400;
+}
+/* The budget bonus: the coin, then the amount, as a price reads. */
+.tb-early-budget {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.tb-early .tip {
+  text-decoration: none;
+}
+
+/* --- The run's buttons ------------------------------------------------------------------ */
+
+.tb-buttons {
+  flex: none;
+  display: flex;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+/* --- A narrower window: shorter words ------------------------------------------------- */
+
+@media (max-width: 1500px) {
+  .topbar {
+    gap: var(--space-3);
+  }
+  .tb-met-text,
+  .tb-forecast-word,
+  .switch-text-more,
+  .tb-run-week {
+    display: none;
+  }
+}

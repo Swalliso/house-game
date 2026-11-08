@@ -18,6 +18,7 @@ import { busy, orderStamp, type OrderStamp } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
 import { orderTerms, ProgressParts } from '../hud/Checklist.tsx';
 import { answerChangeOrder, run } from '../store.ts';
+import { Notes } from './Overlays.tsx';
 import './change-order.css';
 
 /**
@@ -113,6 +114,8 @@ export function ChangeOrderScreen() {
             {forced ? ' (debug)' : ''}
           </span>
         </header>
+        {/* Notes and toasts sit here while the sheet is up, not over it (Overlays.tsx). */}
+        <Notes docked />
         <div class="co-title">
           <h2 id="co-name">{view.name}</h2>
           <span class="co-kind">{KIND_LABEL[view.kind]}</span>

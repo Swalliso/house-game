@@ -1,5 +1,6 @@
-/* The M2 board: the camera, the fenced-yard tint, the demolish tool, and unmet badges.
-   Loaded before app.css, so overrides of its rules use a more specific selector. */
+/* The M2 board: the camera, the fenced-yard tint, the demolish tool, and the install target,
+   with M4's pack tiles and Renovate's rooms. Loaded before app.css, so overrides of its rules
+   use a more specific selector. */
 
 /* --- The camera ------------------------------------------------------------------- */
 
@@ -15,56 +16,11 @@
 }
 .board-scroll.panning,
 .board-scroll.panning .board,
-.board-scroll.panning .unmet-badge {
+.board-scroll.panning .board-badge {
   cursor: grabbing;
 }
 
-.camera-controls {
-  position: absolute;
-  right: 10px;
-  bottom: 10px;
-  z-index: 15;
-  display: flex;
-  gap: 4px;
-  padding: 4px;
-  border-radius: 10px;
-  background: rgb(251 245 234 / 0.9);
-  border: 1px solid var(--panel-edge);
-  box-shadow: 0 3px 10px rgb(60 40 20 / 0.18);
-}
-.camera-controls button {
-  min-width: 32px;
-  padding: 3px 8px;
-  font-size: 15px;
-  font-weight: 800;
-  line-height: 1.2;
-}
-.camera-controls button.on,
-.camera-controls button.on:hover:not(:disabled) {
-  background: var(--wood);
-  border-color: var(--wood-dark);
-  color: #fff8ee;
-}
-
-/* Zoomed out below 2×: smaller badges and labels, so they don't bury the cells. */
-.board.small .badge.source {
-  width: 12px;
-  height: 12px;
-  font-size: 9px;
-  border-width: 1px;
-}
-.board.small .badge.delta {
-  font-size: 10px;
-  padding: 2px 3px;
-  border-width: 1px;
-}
-.board.small .badge.cleared {
-  font-size: 12px;
-}
-.board.small .street-label {
-  font-size: 9px;
-  letter-spacing: 0.12em;
-}
+/* The zoom buttons are styled in hud/board-chrome.css. */
 
 /* --- Cell regions (SVG): the fenced yards and the demolish target ------------------- */
 
@@ -85,10 +41,10 @@
 
 /* Fenced yards: a warm wash with a dashed edge, under the pieces. */
 .yard-tint .fill {
-  fill: rgb(246 196 98 / 0.17);
+  fill: var(--yard-tint-fill);
 }
 .yard-tint .edge {
-  stroke: rgb(150 96 40 / 0.55);
+  stroke: var(--yard-tint-edge);
   stroke-width: 2;
   stroke-dasharray: 6 4;
   stroke-linecap: butt;
@@ -96,12 +52,9 @@
 
 /* --- The demolish tool -------------------------------------------------------------- */
 
-.board {
-  --demolish: #c8402e;
-}
 /* A hammer, so the cursor reads as a tool. */
 .board.demolishing,
-.board.demolishing .unmet-badge {
+.board.demolishing .board-badge {
   cursor:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cg transform='rotate(-45 12 12)' stroke='%232a1d16' stroke-width='1.5'%3E%3Crect x='10.5' y='7' width='3' height='15' rx='1' fill='%23b07a4f'/%3E%3Crect x='6' y='3' width='12' height='5' rx='1.5' fill='%23cfd4da'/%3E%3C/g%3E%3C/svg%3E")
       7 7,
@@ -109,18 +62,18 @@
 }
 .demolish-target,
 .demolish-hint {
-  z-index: 3;
+  z-index: var(--z-targets);
 }
 /* Legal: a red wash and a solid edge. Armed: deeper, and it pulses. Illegal: dashed, no wash. */
 .demolish-target.legal .fill {
-  fill: rgb(200 64 46 / 0.26);
+  fill: var(--demolish-fill);
 }
 .demolish-target.legal .edge {
   stroke: var(--demolish);
   stroke-width: 3;
 }
 .demolish-target.armed .fill {
-  fill: rgb(200 64 46 / 0.42);
+  fill: var(--demolish-armed-fill);
 }
 .demolish-target.armed {
   animation: pending-pulse 1.1s ease-in-out infinite;
@@ -129,7 +82,7 @@
   animation: none;
 }
 .demolish-target.illegal .fill {
-  fill: rgb(224 122 31 / 0.1);
+  fill: var(--target-illegal-fill);
 }
 .demolish-target.illegal .edge {
   stroke: var(--bad);
@@ -138,7 +91,7 @@
   stroke-linecap: butt;
 }
 .demolish-hint .fill {
-  fill: rgb(200 64 46 / 0.1);
+  fill: var(--demolish-hint-fill);
 }
 .demolish-hint .edge {
   stroke: var(--demolish);
@@ -147,47 +100,21 @@
   stroke-linecap: butt;
   opacity: 0.8;
 }
-.board .ghost-delta.demolish-label {
-  border-color: var(--demolish);
-  color: #9b2a1c;
-}
-.board .ghost-delta.demolish-label.good {
-  color: var(--good);
-}
-
-/* --- Unmet requirements ------------------------------------------------------------- */
-
-/* A ⚠ in the piece's top-left cell; its title says what it needs. */
-.piece .unmet-badge {
-  position: absolute;
-  z-index: 1;
-  pointer-events: auto;
-  cursor: help;
-  padding: 1px 3px;
-  border-radius: 4px;
-  border: 1px solid #6b3a00;
-  background: #ffd36b;
-  color: #6b3a00;
-  font-weight: 900;
-  line-height: 1;
-  font-variant-emoji: text;
-  box-shadow: 0 1px 0 rgb(42 29 22 / 0.35);
-}
 
 /* --- Fixtures (M3a) ---------------------------------------------------------------- */
 .install-target,
 .install-hint {
-  z-index: 3;
+  z-index: var(--z-targets);
 }
 .install-target.legal .fill {
-  fill: rgb(47 111 208 / 0.18);
+  fill: var(--ghost-legal-fill);
 }
 .install-target.legal .edge {
   stroke: var(--good);
   stroke-width: 3;
 }
 .install-target.armed .fill {
-  fill: rgb(47 111 208 / 0.34);
+  fill: var(--ghost-legal-armed);
 }
 .install-target.armed {
   animation: pending-pulse 1.1s ease-in-out infinite;
@@ -196,7 +123,7 @@
   animation: none;
 }
 .install-target.illegal .fill {
-  fill: rgb(224 122 31 / 0.1);
+  fill: var(--target-illegal-fill);
 }
 .install-target.illegal .edge {
   stroke: var(--bad);
@@ -207,45 +134,22 @@
 /* A pack's next tile (D-106) reuses these: blue to add it, dashed orange if the rules say no,
    and solid orange (its label says "−") to take a tile of the pack off. */
 .install-target.pack-next.remove .fill {
-  fill: rgb(224 122 31 / 0.16);
+  fill: var(--pack-remove-fill);
 }
 .install-target.pack-next.remove .edge {
   stroke: var(--bad);
   stroke-width: 3;
 }
-.piece .fixture-badge {
-  position: absolute;
-  z-index: 1;
-  display: grid;
-  place-items: center;
-  pointer-events: auto;
-  cursor: help;
-  border-radius: 50%;
-  background: #fffaf0;
-  color: var(--ink);
-  font-weight: 900;
-  line-height: 1;
-  font-variant-emoji: text;
-  border: 2px solid var(--rarity-common);
-  box-shadow: 0 1px 0 rgb(42 29 22 / 0.35);
-}
-.piece .fixture-badge.rarity-uncommon {
-  border-color: var(--rarity-uncommon);
-}
-.piece .fixture-badge.rarity-rare {
-  border-color: var(--rarity-rare);
-  box-shadow:
-    0 0 0 1px #fff3c4,
-    0 0 6px var(--rarity-rare);
-}
 
-/* Renovate (M4a): the rooms a card can renovate, dashed blue; the target reuses the install
-   outline. A Renovated room shows a star per level. */
+/* --- Renovate (D-102) ---------------------------------------------------------------- */
+
+/* The rooms a card can renovate, dashed blue in the targets' layer; the room under the pointer
+   reuses the install target's outline (Board.tsx RenovateTarget). */
 .renovate-hint {
-  z-index: 3;
+  z-index: var(--z-targets);
 }
 .renovate-hint .fill {
-  fill: rgb(47 111 208 / 0.08);
+  fill: var(--renovate-hint-fill);
 }
 .renovate-hint .edge {
   stroke: var(--good);
@@ -253,18 +157,4 @@
   stroke-dasharray: 5 4;
   stroke-linecap: butt;
   opacity: 0.85;
-}
-.piece .level-badge {
-  position: absolute;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  padding: 0 3px;
-  border-radius: 4px;
-  background: rgb(42 29 22 / 0.82);
-  color: #ffd75e;
-  line-height: 1;
-  letter-spacing: -1px;
-  pointer-events: none;
-  font-variant-emoji: text;
 }

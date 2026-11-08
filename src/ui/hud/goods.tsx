@@ -23,7 +23,9 @@ import {
   type UpgradeId,
 } from '../../rules/index.ts';
 import { signed } from '../format.ts';
+import { Icon } from '../kit/kit.tsx';
 import { Tip } from './Tip.tsx';
+import './goods.css';
 
 export const RARITY_LABEL: Record<Rarity, string> = {
   common: 'Common',
@@ -146,30 +148,42 @@ export function GoodBody({ good, where = false }: { good: GoodRef; where?: boole
 /**
  * D-107: a fixture's worth in your house, from the rules' fixtureValue: its best host, what it
  * would add to the week's Wow there (in the shop, the next week's), and roughly what that comes
- * to over the rest of the run. Blue with ▲ for a gain, orange with ▼ for a loss; muted when
- * nothing takes it, or it adds nothing yet. The host is named as it's valued: in the shop, a
- * Nursery that grows into a Kids' Room as the next phase starts is the Kids' Room.
+ * to over the rest of the run. A strip on the shop's cards (shop.css): the gain first, in blue
+ * with an up icon, or a loss in orange with a down icon; quiet when nothing takes it, or it adds
+ * nothing yet. The host is named as it's valued: in the shop, a Nursery that grows into a Kids'
+ * Room as the next phase starts is the Kids' Room.
  */
 export function FixtureWorth({ value }: { value: FixtureValue | null }) {
   const wow = SCORE_LABELS.total;
-  if (!value) return <p class="fixture-worth none">No piece here takes it yet</p>;
+  if (!value) return <div class="pcard-worth none">No piece here takes it yet</div>;
   if (value.gain === 0) {
-    return <p class="fixture-worth none">Fits, but adds no {wow} to your house yet</p>;
+    return <div class="pcard-worth none">Fits, but adds no {wow} to your house yet</div>;
   }
+  const good = value.gain > 0;
   const host = CONTENT.pieces[value.hostDefId].name;
   const old = value.replaces ? `, replacing its ${CONTENT.fixtures[value.replaces].name}` : '';
   const weeks = `${value.weeksLeft} ${value.weeksLeft === 1 ? 'week' : 'weeks'}`;
-  const gain = `${value.gain > 0 ? '▲' : '▼'} ${signed(value.gain)}`;
   return (
-    <p class={`fixture-worth ${value.gain > 0 ? 'good' : 'bad'}`}>
-      Best in your {host}
-      {old}: {gain} {wow} a week ·{' '}
-      <Tip
-        title="Over the run"
-        text={`${signed(value.gain)} ${wow} a week for the ${weeks} left in the run, if the house stays as it is. It won’t, so take it as a rough guide.`}
-      >
-        about {signed(value.overRun)} over the run
-      </Tip>
-    </p>
+    <div class={`pcard-worth ${good ? 'good' : 'bad'}`}>
+      <span class="worth-gain">
+        <span class="worth-num">
+          <Icon name={good ? 'up' : 'down'} />
+          {signed(value.gain)}
+        </span>{' '}
+        {wow} a week
+      </span>
+      <span class="worth-host">
+        in your {host}
+        {old}
+      </span>
+      <span class="worth-run">
+        <Tip
+          title="Over the run"
+          text={`${signed(value.gain)} ${wow} a week for the ${weeks} left in the run, if the house stays as it is. It won’t, so take it as a rough guide.`}
+        >
+          about {signed(value.overRun)} over the run
+        </Tip>
+      </span>
+    </div>
   );
 }

@@ -3,7 +3,7 @@
 // tastes, and a schematic of the lot. Taking one opens the crew pick; hiring a crew starts the
 // run. On a first visit, contract 0 is the Hendersons and the General Contractor is marked too,
 // both "Recommended for your first job". The contracts come from the rules' jobBoard(), so the
-// UI only renders them.
+// UI only renders them. The board stands on the title's scene (Title.tsx's TitleBackdrop).
 
 import './jobs.css';
 import type { Ref } from 'preact';
@@ -25,12 +25,13 @@ import {
   type Modifier,
 } from '../../rules/index.ts';
 import { audio } from '../audio/audio.ts';
-import { copyFallback, howToPlayOpen, settingsOpen } from '../hud/actions.ts';
-import { RarityTag } from '../hud/goods.tsx';
+import { anyModalOpen } from '../hud/actions.ts';
+import { RARITY_LABEL } from '../hud/goods.tsx';
 import { arrivalsOf, arrivalWeek, midName } from '../hud/household.ts';
 import { Tip } from '../hud/Tip.tsx';
+import { Icon } from '../kit/kit.tsx';
 import { appScreen, firstVisit, jobBoardSeed, takeContract } from '../store.ts';
-import { Street } from './Title.tsx';
+import { TitleBackdrop } from './Title.tsx';
 
 export function JobBoard() {
   const seed = jobBoardSeed.value;
@@ -59,10 +60,10 @@ export function JobBoard() {
   const crews = Object.values(CONTENT.crews).filter((c) => c.tier === 'core');
 
   // 1–3 take a contract (or hire a crew); Esc goes back a step (unless a sheet is open: Esc
-  // closes that first).
+  // closes that first, in App's useModalKeys, which marks the key as handled).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (settingsOpen.value || howToPlayOpen.value || copyFallback.value) return;
+      if (e.defaultPrevented || anyModalOpen()) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       // A held key acts once. Enter's repeats would press the button each step focuses: held
       // from the title's Start, it would take contract 1 and hire a crew before either is read.
@@ -87,8 +88,8 @@ export function JobBoard() {
 
   const client = taken ? CONTENT.clients[taken.clientId] : null;
   return (
-    <div class="title-screen jobs-screen">
-      <div class="title-sky">
+    <TitleBackdrop class="jobs-screen">
+      <div class="jobs-stage">
         <main class="jobs-board" aria-labelledby="jobs-title">
           {client ? (
             <>
@@ -138,8 +139,7 @@ export function JobBoard() {
           </footer>
         </main>
       </div>
-      <Street />
-    </div>
+    </TitleBackdrop>
   );
 }
 
@@ -158,7 +158,11 @@ function CrewCard(props: {
       class={`contract crew${props.recommended ? ' recommended' : ''}`}
       style={{ animationDelay: `${index * 70}ms` }}
     >
-      {props.recommended && <div class="contract-ribbon">Recommended for your first job</div>}
+      {props.recommended && (
+        <div class="contract-ribbon">
+          <Icon name="star" /> Recommended for your first job
+        </div>
+      )}
       <header class="contract-head">
         <h2>{crew.name}</h2>
       </header>
@@ -168,8 +172,8 @@ function CrewCard(props: {
         <ul class="contract-tastes">
           {crew.modifiers.map((m, i) => (
             <li key={i} class="good">
-              <span class="mark" aria-hidden="true">
-                ▲
+              <span class="mark">
+                <Icon name="up" />
               </span>
               {modifierText(CONTENT, m)}
             </li>
@@ -185,7 +189,7 @@ function CrewCard(props: {
       <footer class="contract-foot">
         <button
           type="button"
-          class="primary contract-take"
+          class="contract-take"
           ref={props.buttonRef}
           onClick={props.onHire}
           aria-label={`Hire this crew: ${crew.name}`}
@@ -226,10 +230,15 @@ function ContractCard(props: {
       class={`contract rarity-${client.rarity}${contract.recommended ? ' recommended' : ''}`}
       style={{ animationDelay: `${index * 70}ms` }}
     >
-      {contract.recommended && <div class="contract-ribbon">Recommended for your first job</div>}
+      {contract.recommended && (
+        <div class="contract-ribbon">
+          <Icon name="star" /> Recommended for your first job
+        </div>
+      )}
       <header class="contract-head">
         <h2>{client.name}</h2>
-        <RarityTag rarity={client.rarity} />
+        {/* The rarity as a plain tag: RarityTag's tip explains the shop's goods. */}
+        <span class={`rarity-tag rarity-${client.rarity}`}>{RARITY_LABEL[client.rarity]}</span>
       </header>
       <p class="contract-brief">{client.brief}</p>
       <div class="contract-top">
@@ -281,7 +290,7 @@ function ContractCard(props: {
       <footer class="contract-foot">
         <button
           type="button"
-          class="primary contract-take"
+          class="contract-take"
           ref={props.buttonRef}
           onClick={props.onTake}
           aria-label={`Take the job: ${client.name}`}
@@ -339,8 +348,8 @@ function Tastes({ client }: { client: ClientDef }) {
     <ul class="contract-tastes">
       {lines.map((l, i) => (
         <li key={i} class={l.pool ? 'pool' : l.good ? 'good' : 'bad'}>
-          <span class="mark" aria-hidden="true">
-            {l.pool ? '↻' : l.good ? '▲' : '▼'}
+          <span class="mark">
+            <Icon name={l.pool ? 'reroll' : l.good ? 'up' : 'down'} />
           </span>
           {l.text}
         </li>

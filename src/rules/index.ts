@@ -1766,6 +1766,7 @@ export { ruleValue, sourceName } from './modifiers.ts';
 export { meetsHouse, outlineOf, progressOf } from './conditions.ts';
 export { jobBoard, type Contract } from './jobs.ts';
 export { fitsText } from './fixtures.ts';
+export { SHOP_REASONS } from './shop.ts';
 
 export { CONTENT, SCORE_LABELS } from '../content/index.ts';
 

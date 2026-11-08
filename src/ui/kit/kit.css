@@ -1,0 +1,882 @@
+/* The interface's primitives (M5a): the pixel text, Panel, Card, Button, Chip, Plaque (the
+   Counter), Icon, Keycap, Well, Meter, the plank tag, Switch, Slider, Segmented, Price, and
+   Sheet. kit.tsx renders them; components adjust them with their own classes and the custom
+   properties below, never with raw colors (tokens.css).
+
+   Frames are 9-slice art (theme/frames.ts) applied with border-image at whole multiples of
+   --px; a frame's middle is the element's own background, clipped to the padding box, so the
+   notched corners stay transparent. Shadows are hard, never blurred. Hover lifts one UI pixel,
+   a press sinks one, focus draws an ink-and-gold ring, and no state replaces a variant's fill. */
+
+/* --- The pixel interface's text -------------------------------------------------------- */
+
+/* Anything drawn in the pixel style opts in with .ui: Pixel Operator 8 at 8 × --px (or the
+   readable font, D-059). */
+.ui {
+  font-family: var(--font-text);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  font-weight: 400;
+  font-synthesis: none;
+  color: var(--ink);
+  image-rendering: pixelated;
+  -webkit-font-smoothing: none;
+}
+.ui h2,
+.ui h3,
+.ui strong,
+.ui b {
+  font-weight: 700;
+}
+[data-font='readable'] .ui {
+  -webkit-font-smoothing: auto;
+}
+.ui .num,
+.num {
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Panel: a wood frame, a plank header, a paper body ---------------------------------- */
+
+.panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border: calc(var(--px) * 5) solid transparent;
+  border-image: var(--art-wood) 5 / calc(var(--px) * 5);
+  background: var(--paper);
+  background-clip: padding-box;
+  box-shadow: var(--shadow-card);
+}
+/* The plank: wood grain (theme/frames.ts), a lit top edge, and a dark line under it. */
+.panel-head,
+.plank {
+  background: var(--art-plank) repeat left top / calc(var(--px) * 48) calc(var(--px) * 10);
+  background-color: var(--wood-hi);
+  box-shadow:
+    inset 0 var(--px) 0 var(--wood-shine),
+    inset 0 calc(var(--px) * -2) 0 var(--wood-light),
+    inset 0 calc(var(--px) * -3) 0 var(--wood-deep);
+  color: var(--ink);
+}
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: none;
+  min-height: calc(var(--px) * 13);
+  padding: var(--px) var(--space-3) calc(var(--px) * 3);
+}
+.panel-title {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-body);
+  line-height: var(--lh-tight);
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  min-width: 0;
+}
+/* A narrow window: tighter panels and cards, so a line holds more words. */
+@media (max-width: 1500px) {
+  .panel-body {
+    padding: var(--space-2);
+  }
+  .panel-head {
+    padding-inline: var(--space-2);
+  }
+  .pcard {
+    padding-inline: var(--space-2);
+  }
+}
+
+/* --- Card: paper, an ink ring, and a band inside it (rarity, kind, or selection) ---------- */
+
+.pcard {
+  --card-fill: var(--card);
+  --card-band: transparent;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+  width: 100%;
+  margin: 0;
+  padding: var(--space-2) var(--space-3) var(--space-3);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  border-radius: 0;
+  background: var(--card-fill);
+  background-clip: padding-box;
+  box-shadow:
+    inset 0 0 0 var(--px) var(--card-band),
+    inset var(--px) var(--px) 0 var(--px) var(--card-hi),
+    var(--shadow-card);
+  font: inherit;
+  color: var(--ink);
+  text-align: left;
+}
+/* By kind, a tint and a band inside the ring, with the kind's word on its chip. */
+.pcard.tone-room {
+  --card-fill: var(--tint-room);
+  --card-band: var(--tint-room-band);
+}
+.pcard.tone-yard {
+  --card-fill: var(--tint-yard);
+  --card-band: var(--tint-yard-band);
+}
+.pcard.tone-hall {
+  --card-fill: var(--tint-hall);
+  --card-band: var(--tint-hall-band);
+}
+.pcard.tone-outbuilding {
+  --card-fill: var(--tint-outbuilding);
+  --card-band: var(--tint-outbuilding-band);
+}
+.pcard.tone-fixture {
+  --card-fill: var(--tint-fixture);
+  --card-band: var(--tint-fixture-band);
+}
+/* Rarity (D-087): the band, beside the rarity's chip. */
+.pcard.rarity-common {
+  --card-band: var(--rarity-common);
+}
+.pcard.rarity-uncommon {
+  --card-band: var(--rarity-uncommon);
+}
+.pcard.rarity-rare {
+  --card-band: var(--rarity-rare);
+}
+/* A card you pick lifts a UI pixel on hover, and a press sets it back down; picked, it lifts
+   three, with an ink band. */
+.pcard-action {
+  cursor: pointer;
+  transition: transform var(--dur-hover) ease-out;
+}
+.pcard-action:hover {
+  transform: translateY(calc(var(--px) * -1));
+}
+.pcard-action:active {
+  transform: none;
+  transition-duration: var(--dur-press);
+}
+.pcard.is-selected {
+  --card-band: var(--ink);
+  transform: translateY(calc(var(--px) * -3));
+  box-shadow:
+    inset 0 0 0 calc(var(--px) * 2) var(--card-band),
+    var(--shadow-float);
+}
+.pcard:focus-visible {
+  outline: none;
+  box-shadow:
+    inset 0 0 0 var(--px) var(--card-band),
+    var(--shadow-card),
+    var(--ring-focus);
+}
+/* Blocked: hatched in the bad fill over its own tint, behind the text, with the reason on a
+   paper label of its own so it reads at full contrast over the stripes. */
+.pcard.is-blocked {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--hatch) 0 calc(var(--px) * 2),
+    transparent calc(var(--px) * 2) calc(var(--px) * 6)
+  );
+}
+.pcard.is-blocked .pcard-art {
+  opacity: 0.6;
+}
+.pcard.is-blocked .pcard-alert {
+  align-self: flex-start;
+  padding: 0 var(--space-1);
+  background: var(--card);
+  box-shadow: 0 0 0 var(--px) var(--card);
+}
+.reduce-motion .pcard-action {
+  transition: none;
+}
+.reduce-motion .pcard-action:hover,
+.reduce-motion .pcard.is-selected {
+  transform: none;
+}
+.pcard-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.pcard-title {
+  flex: 1;
+  min-width: 0;
+  font-weight: 700;
+}
+/* The art slot: a recessed well, lawn behind the yard's pieces. */
+.pcard-art {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-1);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ringSoft) 1 / var(--px);
+  background: var(--art-bg, var(--paper-inset));
+  background-clip: padding-box;
+  box-shadow: inset 0 var(--px) 0 var(--shade);
+}
+.pcard.tone-yard .pcard-art,
+.pcard.tone-outbuilding .pcard-art {
+  --art-bg: var(--lawn);
+}
+.pcard-lines {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pcard-lines li {
+  position: relative;
+  padding-left: var(--space-3);
+}
+.pcard-lines li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: calc(var(--px) * 4);
+  width: calc(var(--px) * 2);
+  height: calc(var(--px) * 2);
+  background: var(--ink);
+}
+.pcard-note {
+  color: var(--ink-soft);
+}
+.pcard-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+.pcard-alert {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-weight: 700;
+  color: var(--bad);
+}
+
+/* --- Button ----------------------------------------------------------------------------- */
+
+.btn {
+  --btn-face: var(--card);
+  --btn-hi: var(--card-hi);
+  --btn-lip: var(--card-lo);
+  --btn-h: calc(var(--px) * 20);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--btn-h);
+  margin: 0;
+  padding: 0 var(--space-3) var(--px);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  border-radius: 0;
+  background: var(--btn-face);
+  background-clip: padding-box;
+  box-shadow:
+    inset 0 var(--px) 0 var(--btn-hi),
+    inset 0 calc(var(--px) * -2) 0 var(--btn-lip);
+  font-family: var(--font-text);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  font-weight: 700;
+  color: var(--ink);
+  text-align: center;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition: transform var(--dur-hover) ease-out;
+}
+.btn:hover:not(:disabled) {
+  transform: translateY(calc(var(--px) * -1));
+}
+.btn:active:not(:disabled) {
+  transform: translateY(var(--px));
+  box-shadow:
+    inset 0 var(--px) 0 var(--btn-lip),
+    inset 0 calc(var(--px) * -1) 0 var(--btn-lip);
+  transition-duration: var(--dur-press);
+}
+.btn:focus-visible {
+  outline: none;
+  box-shadow:
+    inset 0 var(--px) 0 var(--btn-hi),
+    inset 0 calc(var(--px) * -2) 0 var(--btn-lip),
+    var(--ring-focus);
+}
+.btn:disabled {
+  --btn-face: var(--paper-inset);
+  --btn-hi: var(--paper-inset);
+  --btn-lip: var(--paper-inset);
+  border-image-source: var(--art-ringSoft);
+  color: var(--ink-faint);
+  cursor: default;
+}
+.reduce-motion .btn {
+  transition: none;
+}
+.reduce-motion .btn:hover:not(:disabled),
+.reduce-motion .btn:active:not(:disabled) {
+  transform: none;
+}
+/* A hover lifts a control a UI pixel and a press sets it down again (or sinks it one more), so
+   the box moves under a pointer resting near its top edge, and a release there would land on
+   whatever is behind it. While it's pressed, its hit area reaches back up over that travel
+   (two UI pixels above its top), so the press still lands on the control it started on. */
+.btn:active:not(:disabled)::before,
+.pcard-action:active::before,
+.seg:active:not(:disabled)::before {
+  content: '';
+  position: absolute;
+  left: calc(var(--px) * -1);
+  right: calc(var(--px) * -1);
+  bottom: 100%;
+  height: calc(var(--px) * 3);
+}
+.btn-primary {
+  --btn-face: var(--action);
+  --btn-hi: var(--action-hi);
+  --btn-lip: var(--action-shade);
+}
+.btn-danger {
+  --btn-face: var(--danger);
+  --btn-hi: var(--danger-hi);
+  --btn-lip: var(--danger-shade);
+  color: var(--on-wood);
+}
+.btn-armed {
+  --btn-face: var(--armed);
+  --btn-hi: var(--armed-hi);
+  --btn-lip: var(--armed-shade);
+}
+.btn-wood {
+  --btn-face: var(--wood-hi);
+  --btn-hi: var(--wood-shine);
+  --btn-lip: var(--wood);
+}
+.btn-sm {
+  --btn-h: calc(var(--px) * 16);
+  padding: 0 var(--space-2) var(--px);
+  gap: var(--space-1);
+}
+.btn-lg {
+  --btn-h: calc(var(--px) * 28);
+  padding: 0 var(--space-4) var(--px);
+}
+.btn-icon {
+  width: var(--btn-h);
+  padding: 0 0 var(--px);
+}
+.btn-block {
+  display: flex;
+  width: 100%;
+}
+.btn .btn-sub {
+  font-weight: 400;
+}
+
+/* --- Chip: a small label with an icon ---------------------------------------------------- */
+
+.chip {
+  --chip-fill: var(--card);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  max-width: 100%;
+  min-height: calc(var(--px) * 12);
+  padding: 0 calc(var(--px) * 3);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--chip-fill);
+  background-clip: padding-box;
+  font-family: var(--font-text);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  font-weight: 400;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.chip-wood {
+  --chip-fill: var(--wood-hi);
+}
+.chip-inset {
+  --chip-fill: var(--paper-inset);
+}
+.chip-rare {
+  --chip-fill: var(--sparkle);
+}
+.chip-uncommon {
+  --chip-fill: var(--comfort-tint);
+  color: var(--rarity-uncommon-text);
+}
+.chip-common {
+  color: var(--rarity-common-text);
+}
+
+/* --- Plaque: a number on a tinted plate (the Counter) ------------------------------------ */
+
+.plaque {
+  --plaque-fill: var(--card);
+  --plaque-ink: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-1) var(--space-2);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--plaque-fill);
+  background-clip: padding-box;
+  box-shadow:
+    inset 0 var(--px) 0 var(--card-hi),
+    inset 0 calc(var(--px) * -1) 0 var(--plaque-shade, var(--card-lo));
+  font-family: var(--font-display);
+  font-size: var(--fs-num);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--plaque-ink);
+  white-space: nowrap;
+}
+.plaque-comfort {
+  --plaque-fill: var(--comfort-tint);
+  --plaque-ink: var(--comfort);
+  --plaque-shade: var(--comfort-shade);
+}
+.plaque-charm {
+  --plaque-fill: var(--charm-tint);
+  --plaque-ink: var(--charm-deep);
+  --plaque-shade: var(--charm-shade);
+}
+.plaque-sparkle {
+  --plaque-fill: var(--sparkle);
+  --plaque-shade: var(--sparkle-deep);
+}
+.plaque-wood {
+  --plaque-fill: var(--wood-hi);
+  --plaque-shade: var(--wood);
+}
+
+/* --- Icon: one art px per UI pixel ------------------------------------------------------- */
+
+.icon {
+  display: inline-block;
+  flex: none;
+  width: calc(var(--w) * var(--px));
+  height: calc(var(--h) * var(--px));
+  background: var(--icon) no-repeat 0 0 / 100% 100%;
+  image-rendering: pixelated;
+  vertical-align: calc(var(--px) * -1);
+}
+
+/* --- Keycap ------------------------------------------------------------------------------ */
+
+.keycap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  min-width: calc(var(--px) * 12);
+  height: calc(var(--px) * 12);
+  padding: 0 calc(var(--px) * 2) var(--px);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--card);
+  background-clip: padding-box;
+  box-shadow: inset 0 calc(var(--px) * -2) 0 var(--card-lo);
+  font-family: var(--font-text);
+  font-size: var(--fs-body);
+  line-height: 1;
+  font-weight: 400;
+  color: var(--ink);
+}
+
+/* --- Well: an empty, recessed slot -------------------------------------------------------- */
+
+.well {
+  display: inline-block;
+  border: var(--px) solid transparent;
+  border-image: var(--art-ringSoft) 1 / var(--px);
+  background: var(--paper-inset);
+  background-clip: padding-box;
+  box-shadow: inset 0 var(--px) 0 var(--card-lo);
+}
+
+/* --- Meter: a trough with a fill, ticks, and a flag ---------------------------------------- */
+
+.meter {
+  position: relative;
+  height: calc(var(--px) * 9);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--wood-deep);
+  background-clip: padding-box;
+  box-shadow: inset 0 var(--px) 0 var(--ink);
+}
+.meter-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: var(--sparkle);
+  box-shadow:
+    inset 0 var(--px) 0 var(--gold-hi),
+    inset 0 calc(var(--px) * -2) 0 var(--sparkle-deep);
+}
+.meter-fill.met {
+  background: var(--action);
+  box-shadow:
+    inset 0 var(--px) 0 var(--action-hi),
+    inset 0 calc(var(--px) * -2) 0 var(--action-shade);
+}
+.meter-tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: var(--px);
+  background: var(--meter-tick, var(--shade));
+}
+
+/* --- A plank tag: a small wood label over a group (Settings, How to play, the shop) -------- */
+
+.plank-tag {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0 var(--space-2) var(--px);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--art-plank) repeat left top / calc(var(--px) * 48) calc(var(--px) * 10);
+  background-color: var(--wood-hi);
+  background-clip: padding-box;
+  box-shadow:
+    inset 0 var(--px) 0 var(--wood-shine),
+    inset 0 calc(var(--px) * -1) 0 var(--wood-light);
+  font-family: var(--font-text);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  font-weight: 700;
+  color: var(--ink);
+  /* One line when it fits; a narrow column wraps it rather than let it spill into the frame. */
+  max-width: 100%;
+}
+
+/* --- Switch: a real checkbox, drawn as a pixel switch ------------------------------------- */
+
+.switch {
+  flex: none;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.switch input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+}
+.switch-track {
+  position: relative;
+  flex: none;
+  width: calc(var(--px) * 16);
+  height: calc(var(--px) * 10);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--wood-deep);
+  background-clip: padding-box;
+  box-shadow: inset 0 var(--px) 0 var(--ink);
+}
+.switch-knob {
+  position: absolute;
+  top: var(--px);
+  left: var(--px);
+  width: calc(var(--px) * 6);
+  height: calc(var(--px) * 6);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--card);
+  background-clip: padding-box;
+  box-shadow: inset 0 calc(var(--px) * -1) 0 var(--card-lo);
+  transition: transform var(--dur-hover) ease-out;
+}
+.switch input:checked + .switch-track {
+  background: var(--action);
+  box-shadow: inset 0 var(--px) 0 var(--action-shade);
+}
+.switch input:checked + .switch-track .switch-knob {
+  transform: translateX(calc(var(--px) * 6));
+}
+.switch input:focus-visible + .switch-track {
+  box-shadow: var(--ring-focus);
+}
+.switch.disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.reduce-motion .switch-knob {
+  transition: none;
+}
+
+/* --- Slider: a dark trough, filled with wood up to a paper knob ---------------------------- */
+
+.slider {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(calc(var(--px) * 60), calc(var(--px) * 90)) calc(
+      var(--px) * 16
+    );
+  align-items: center;
+  gap: var(--space-3);
+}
+.slider input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: calc(var(--px) * 12);
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.slider input[type='range']::-webkit-slider-runnable-track {
+  height: calc(var(--px) * 6);
+  background: linear-gradient(to right, var(--wood-hi) 0 var(--fill), var(--wood-deep) var(--fill));
+  box-shadow:
+    0 0 0 var(--px) var(--ink),
+    inset 0 var(--px) 0 var(--shade);
+}
+.slider input[type='range']::-moz-range-track {
+  height: calc(var(--px) * 6);
+  background: linear-gradient(to right, var(--wood-hi) 0 var(--fill), var(--wood-deep) var(--fill));
+  box-shadow:
+    0 0 0 var(--px) var(--ink),
+    inset 0 var(--px) 0 var(--shade);
+}
+.slider input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: calc(var(--px) * 6);
+  height: calc(var(--px) * 10);
+  margin-top: calc(var(--px) * -2);
+  border: none;
+  border-radius: 0;
+  background: var(--card);
+  box-shadow:
+    0 0 0 var(--px) var(--ink),
+    inset 0 calc(var(--px) * -2) 0 var(--card-lo),
+    inset 0 var(--px) 0 var(--card-hi);
+}
+.slider input[type='range']::-moz-range-thumb {
+  width: calc(var(--px) * 6);
+  height: calc(var(--px) * 10);
+  border: none;
+  border-radius: 0;
+  background: var(--card);
+  box-shadow:
+    0 0 0 var(--px) var(--ink),
+    inset 0 calc(var(--px) * -2) 0 var(--card-lo),
+    inset 0 var(--px) 0 var(--card-hi);
+}
+.slider input[type='range']:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+.slider input[type='range']:focus-visible::-webkit-slider-thumb {
+  box-shadow:
+    0 0 0 var(--px) var(--focus-inner),
+    0 0 0 calc(var(--px) * 2) var(--focus-outer);
+}
+.slider input[type='range']:focus-visible::-moz-range-thumb {
+  box-shadow:
+    0 0 0 var(--px) var(--focus-inner),
+    0 0 0 calc(var(--px) * 2) var(--focus-outer);
+}
+.slider-value {
+  text-align: right;
+}
+
+/* --- Segmented: a row of choices in a trough, the chosen one pressed in --------------------- */
+
+.segmented {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--px);
+  padding: var(--px);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--wood-deep);
+  background-clip: padding-box;
+}
+.seg {
+  position: relative;
+  min-height: calc(var(--px) * 15);
+  margin: 0;
+  padding: 0 var(--space-2) var(--px);
+  border: 0;
+  border-radius: 0;
+  background: var(--card);
+  box-shadow:
+    inset 0 var(--px) 0 var(--card-hi),
+    inset 0 calc(var(--px) * -2) 0 var(--card-lo);
+  font-family: var(--font-text);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  font-weight: 700;
+  color: var(--ink);
+  cursor: pointer;
+}
+/* A press sinks a choice a UI pixel; chosen, it stays pressed in: its face lit wood, its lip
+   gone. */
+.seg:active:not(:disabled) {
+  transform: translateY(var(--px));
+}
+.seg.on {
+  transform: translateY(var(--px));
+  padding-bottom: 0;
+  background: var(--wood-hi);
+  box-shadow: inset 0 var(--px) 0 var(--wood);
+  cursor: default;
+}
+.reduce-motion .seg:not(.on):active:not(:disabled) {
+  transform: none;
+}
+.seg:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus-inset);
+}
+
+/* --- Price: the coin and the number ------------------------------------------------------- */
+
+.price {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-family: var(--font-display);
+  font-size: var(--fs-num);
+  line-height: 1;
+  white-space: nowrap;
+}
+/* The price before a sale: struck through with a line of its own, in pixels. */
+.price-full {
+  position: relative;
+  margin-right: var(--px);
+  color: var(--ink-soft);
+  text-decoration: none;
+}
+.price-full::after {
+  content: '';
+  position: absolute;
+  left: calc(var(--px) * -1);
+  right: calc(var(--px) * -1);
+  top: calc(50% - var(--px));
+  height: calc(var(--px) * 2);
+  background: var(--bad);
+}
+.price.short .price-now {
+  color: var(--bad);
+}
+
+/* --- Sheet: a wood panel over a scrim (Settings, How to play) ------------------------------ */
+
+.sheet-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: var(--scrim);
+}
+.sheet {
+  display: flex;
+  flex-direction: column;
+  width: min(calc(var(--px) * 230), 94vw);
+  max-height: min(90vh, calc(var(--px) * 460));
+  animation: sheet-in var(--dur-modal) ease-out;
+}
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--px) * 4));
+  }
+}
+.reduce-motion .sheet {
+  animation: none;
+}
+.sheet > .panel {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.sheet .panel-head {
+  min-height: calc(var(--px) * 18);
+}
+.sheet .panel-title {
+  font-size: var(--fs-title);
+  line-height: var(--lh-title);
+}
+.sheet-close.btn {
+  --btn-h: calc(var(--px) * 15);
+  margin-right: calc(var(--px) * -2);
+}
+.panel-body.sheet-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0;
+  gap: 0;
+}
+.sheet-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  scrollbar-width: thin;
+  scrollbar-color: var(--wood) var(--paper-inset);
+}
+.sheet-scroll:focus {
+  outline: none;
+}
+/* A short window: tighter sheets, so more of each shows without scrolling. */
+@media (max-height: 800px) {
+  .sheet-scroll {
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+  }
+}
+.sheet-footer {
+  flex: none;
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-top: var(--px) solid var(--paper-line);
+}
+
+/* --- Focus, for anything else the keyboard reaches ---------------------------------------- */
+
+/* :where() keeps this at no specificity, so a primitive's own focus ring always wins. */
+:where(.ui :focus-visible) {
+  outline: var(--px) solid var(--focus-outer);
+  outline-offset: 0;
+  box-shadow: 0 0 0 calc(var(--px) * 2) var(--focus-inner);
+}

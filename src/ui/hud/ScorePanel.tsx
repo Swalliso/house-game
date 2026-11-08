@@ -1,6 +1,7 @@
 // The week's score: Comfort × Charm = Wow (D-019, D-056). It shows the house as it stands,
-// the preview's change while placing, and the tally's counters while they tick. Under the
-// sets, the checklist's part of the Charm (M4a).
+// the preview's change while placing, and the tally's counters while they tick. M5a draws the
+// layers as plaques: Comfort and Charm side by side, Wow below them at the hero size, and each
+// ×Mult source as a gold Sparkle stamp. Under the sets, the checklist's part of the Charm (M4a).
 
 import {
   CONTENT,
@@ -12,19 +13,26 @@ import {
 import { tallyView } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
 import { formatMult, formatNumber, signed } from '../format.ts';
+import { Icon, Panel } from '../kit/kit.tsx';
 import { currentTally, pace as paceSignal, preview, run } from '../store.ts';
 import { Celebration } from './Celebration.tsx';
 import { Tip } from './Tip.tsx';
-import './hud-m2.css';
-import './hud-m4.css';
+import './score.css';
 
 function Delta({ n, mult = false }: { n: number; mult?: boolean }) {
   if (n === 0) return null;
   return (
     <span class={`delta ${n > 0 ? 'good' : 'bad'}`}>
-      {n > 0 ? '▲' : '▼'} {signed(n, mult ? formatMult : formatNumber)}
+      <Icon name={n > 0 ? 'up' : 'down'} />
+      {signed(n, mult ? formatMult : formatNumber)}
     </span>
   );
+}
+
+/** A plaque's size steps down at six digits or more, so big numbers still fit (§12, Numbers). */
+function sizeClass(text: string): string {
+  const digits = text.replace(/\D/g, '').length;
+  return digits >= 7 ? 'longer' : digits >= 5 ? 'long' : '';
 }
 
 function SetList({
@@ -40,29 +48,41 @@ function SetList({
   if (sets.length === 0 && lost.length === 0) {
     return (
       <p class="sets-empty">
-        No sets yet. Try a Bathroom between two Bedrooms (Jack-and-Jill) or a Kitchen, Dining Room,
+        No sets yet. Try a Bathroom between two Bedrooms (Jack-and-Jill), or a Kitchen, Dining Room,
         and Living Room together (Entertainer).
       </p>
     );
   }
+  // Each set: its name, then its level (from Remodel Plans) and its Comfort and Charm. The icon
+  // for a set the placement makes or breaks leads the name, so the name keeps its line.
   return (
     <ul class="sets">
-      {sets.map((s) => (
-        <li key={s.key} class={gained.has(s.key) ? 'gained' : ''}>
-          <span class="set-name">
-            {gained.has(s.key) ? '★ ' : ''}
-            {CONTENT.sets[s.set].name}
-            {(levels[s.set] ?? 1) > 1 && <span class="set-level"> Lv {levels[s.set]}</span>}
-          </span>
-          <span class="comfort">+{s.points}</span>
-          <span class="charm">+{formatMult(s.mult)}</span>
-        </li>
-      ))}
+      {sets.map((s) => {
+        const level = levels[s.set] ?? 1;
+        return (
+          <li key={s.key} class={gained.has(s.key) ? 'gained' : ''}>
+            <span class="set-name">
+              {gained.has(s.key) && <Icon name="star" label="New" />}
+              {CONTENT.sets[s.set].name}
+            </span>
+            {level > 1 && <span class="set-level">Lv {level}</span>}
+            <span class="set-values">
+              <span class="set-comfort">+{s.points}</span>
+              <span class="set-charm">+{formatMult(s.mult)}</span>
+            </span>
+          </li>
+        );
+      })}
       {lost.map((s) => (
         <li key={s.key} class="lost">
-          <span class="set-name">✕ {CONTENT.sets[s.set].name}</span>
-          <span class="comfort">−{s.points}</span>
-          <span class="charm">−{formatMult(s.mult)}</span>
+          <span class="set-name">
+            <Icon name="cross" label="Broken" />
+            {CONTENT.sets[s.set].name}
+          </span>
+          <span class="set-values">
+            <span class="set-comfort">−{s.points}</span>
+            <span class="set-charm">−{formatMult(s.mult)}</span>
+          </span>
         </li>
       ))}
     </ul>
@@ -72,7 +92,8 @@ function SetList({
 /**
  * The checklist's part of the Charm (M4a): the lines held and what they add, each line adding
  * the tally's `specBonus`. While a play is looked at, its change; while a tally plays, the
- * lines it has counted so far, pulsing as each lands.
+ * lines it has counted so far, pulsing as each lands. It's drawn as a set's row (score.css), so
+ * it takes the sets' two lines in the pixel font and one in the readable font.
  */
 function SpecCharm({
   count,
@@ -90,22 +111,30 @@ function SpecCharm({
   waiting: boolean;
 }) {
   return (
-    <p class={`spec-charm ${waiting ? 'waiting' : ''}`}>
-      {/* Keyed by the count while it ticks, so the pulse restarts on every line. */}
-      <span
-        key={ticking ? count : 'count'}
-        class={`spec-count ${ticking ? 'ticking' : ''}`}
-        style={ticking ? { animationDuration: `${FEEL.checklist.tickMs}ms` } : undefined}
-      >
-        {count}
-      </span>{' '}
-      <Tip term="checklist">checklist</Tip> {count === 1 ? 'line' : 'lines'}
-      {' · '}
-      <span class="charm">
-        +{formatMult(count * bonus)} {SCORE_LABELS.mult}
-      </span>
-      {before !== null && <Delta n={(count - before) * bonus} mult />}
-    </p>
+    <ul class="sets spec-rows">
+      <li class={`spec-row ${waiting ? 'waiting' : ''}`}>
+        <span class="set-name">
+          <Icon name="check" />
+          <span>
+            {/* Keyed by the count while it ticks, so the pulse restarts on every line. */}
+            <span
+              key={ticking ? count : 'count'}
+              class={`spec-count ${ticking ? 'ticking' : ''}`}
+              style={ticking ? { animationDuration: `${FEEL.checklist.tickMs}ms` } : undefined}
+            >
+              {count}
+            </span>{' '}
+            <Tip term="checklist">checklist</Tip> {count === 1 ? 'line' : 'lines'}
+          </span>
+        </span>
+        <span class="set-values">
+          <span class="set-charm">
+            <Icon name="charm" label={SCORE_LABELS.mult} />+{formatMult(count * bonus)}
+          </span>
+        </span>
+        {before !== null && <Delta n={(count - before) * bonus} mult />}
+      </li>
+    </ul>
   );
 }
 
@@ -113,19 +142,23 @@ function SpecCharm({
 function Sparkles({ list }: { list: readonly XMultTerm[] }) {
   if (list.length === 0) return null;
   return (
-    <ul class="sparkles" aria-label={SCORE_LABELS.xMult}>
-      <li class="sparkles-label">
+    <div class="sparkles" aria-label={SCORE_LABELS.xMult}>
+      <span class="sparkles-label">
+        <Icon name="sparkle" />
         <Tip term="sparkle">{SCORE_LABELS.xMult}</Tip>
-      </li>
-      {list.map((x) => (
-        <li
-          key={`${x.source.kind}:${x.label}`}
-          title={`${SCORE_LABELS.xMult}: ×${formatMult(x.times)} ${SCORE_LABELS.mult}`}
-        >
-          ✦ {x.label} ×{formatMult(x.times)}
-        </li>
-      ))}
-    </ul>
+      </span>
+      <ul class="sparkle-stamps">
+        {list.map((x) => (
+          <li
+            key={`${x.source.kind}:${x.label}`}
+            class="sparkle-stamp"
+            title={`${SCORE_LABELS.xMult}: ×${formatMult(x.times)} ${SCORE_LABELS.mult}`}
+          >
+            {x.label} <span class="num">×{formatMult(x.times)}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -136,14 +169,14 @@ export function ScorePanel() {
   const pace = paceSignal.value;
   let shown: { points: number; mult: number; total: number | null } = tally;
   let before: WeekScore | null = null;
-  let label = 'Each week, as built';
+  let label = 'Each week';
   if (view) {
     shown = { points: view.points, mult: view.mult, total: view.total };
     label = view.fastForward ? 'Fast-forward' : 'This week';
   } else if (p?.legal) {
     shown = p.after;
     before = p.before;
-    label = 'With this placement';
+    label = 'With this piece';
   }
   // A tally's glow comes from its event's total, so it stays lit through the count rather
   // than going dark until the total lands.
@@ -168,75 +201,84 @@ export function ScorePanel() {
       ? held + p.specsGained.length - p.specsLost.length
       : held;
   const hasChecklist = (view ? view.specs : tally.specs).length > 0;
+  const points = formatNumber(shown.points);
+  const mult = formatMult(shown.mult);
+  const total = shown.total === null ? '…' : formatNumber(shown.total);
 
   return (
-    <section
-      class={`score-panel ${view?.big ? 'big' : ''}`}
-      style={{ '--glow': String(glow) }}
-      aria-live="polite"
-    >
-      <Celebration />
-      <h2>{label}</h2>
-      <div class="equation">
-        {/* The values are keyed by what they show, so the tick pulse restarts on every step. */}
-        <div class={`layer comfort ${view?.stage === 'pieces' ? 'ticking' : ''}`}>
-          <div class="layer-name">
-            <Tip term="comfort">{SCORE_LABELS.points}</Tip>
+    <div class={`score-panel ${view?.big ? 'big' : ''}`} style={{ '--glow': String(glow) }}>
+      <Panel title={label} label={`${SCORE_LABELS.total} this week`}>
+        <Celebration />
+        <div class="equation" aria-live="polite">
+          {/* The values are keyed by what they show, so the tick pulse restarts on every step. */}
+          <div class={`layer comfort ${view?.stage === 'pieces' ? 'ticking' : ''}`}>
+            <span class="layer-name">
+              <Icon name="comfort" />
+              <Tip term="comfort">{SCORE_LABELS.points}</Tip>
+            </span>
+            <span class={`plaque plaque-comfort layer-value ${sizeClass(points)}`} key={points}>
+              {points}
+            </span>
+            {before && <Delta n={shown.points - before.points} />}
           </div>
-          <div class="layer-value" key={shown.points}>
-            {formatNumber(shown.points)}
+          <span class="op" aria-hidden="true">
+            ×
+          </span>
+          {/* Charm ticks on each set, and on each checklist line (M4a). */}
+          <div
+            class={`layer charm ${view?.stage === 'sets' || view?.stage === 'specs' ? 'ticking' : ''}`}
+          >
+            <span class="layer-name">
+              <span class="op-inline" aria-hidden="true">
+                ×
+              </span>
+              <Icon name="charm" />
+              <Tip term="charm">{SCORE_LABELS.mult}</Tip>
+            </span>
+            <span class={`plaque plaque-charm layer-value ${sizeClass(mult)}`} key={mult}>
+              {mult}
+            </span>
+            {before && <Delta n={shown.mult - before.mult} mult />}
           </div>
-          {before && <Delta n={shown.points - before.points} />}
         </div>
-        <div class="op">×</div>
-        <div
-          class={`layer charm ${view?.stage === 'sets' || view?.stage === 'specs' ? 'ticking' : ''}`}
-        >
-          <div class="layer-name">
-            <Tip term="charm">{SCORE_LABELS.mult}</Tip>
-          </div>
-          <div class="layer-value" key={shown.mult}>
-            {formatMult(shown.mult)}
-          </div>
-          {before && <Delta n={shown.mult - before.mult} mult />}
-        </div>
-        <div class="op">=</div>
         <div class={`layer wow ${view?.stage === 'total' ? 'landed' : ''}`}>
-          <div class="layer-name">
-            <Tip term="wow">{SCORE_LABELS.total}</Tip>
-          </div>
-          <div class="layer-value">{shown.total === null ? '…' : formatNumber(shown.total)}</div>
+          <span class="op" aria-hidden="true">
+            =
+          </span>
+          <span class="plaque plaque-wow layer-value">
+            <span class="layer-name">
+              <Tip term="wow">{SCORE_LABELS.total}</Tip>
+            </span>
+            <span class={`wow-number ${sizeClass(total)}`}>{total}</span>
+          </span>
           {before && shown.total !== null && <Delta n={shown.total - before.total} />}
         </div>
-      </div>
-      <Sparkles list={view ? view.sparkles : p?.legal ? p.xMults : tally.xMults} />
-      {view?.big && <div class="big-week">Big week!</div>}
-      {budget !== null && (budget > 0 || (budgetBefore ?? 0) > 0) && (
-        <p class="budget-line">
-          +{formatNumber(budget)} budget this week
-          {budgetBefore !== null && budget !== budgetBefore && (
-            <span class={`budget-delta ${budget > budgetBefore ? 'good' : 'bad'}`}>
-              {' '}
-              {budget > budgetBefore ? '▲' : '▼'} {signed(budget - budgetBefore)}
-            </span>
-          )}
-        </p>
-      )}
-      {/* On a short screen it gives way while a play is looked at (app.css): Inspect's notes
-          say which sets and checklist lines the play would change. */}
-      <div class="score-detail">
-        <h3>Sets</h3>
-        <SetList sets={sets} gained={gained} lost={p?.legal && !view ? p.setsLost : []} />
-        {hasChecklist && (
-          <SpecCharm
-            count={specCount}
-            bonus={view ? view.specBonus : tally.specBonus}
-            before={!view && p?.legal ? held : null}
-            ticking={view?.stage === 'specs'}
-            waiting={!!view && view.specAt < 0}
-          />
+        <Sparkles list={view ? view.sparkles : p?.legal ? p.xMults : tally.xMults} />
+        {view?.big && <div class="big-week">Big week!</div>}
+        {budget !== null && (budget > 0 || (budgetBefore ?? 0) > 0) && (
+          <p class="budget-line">
+            <Icon name="coin" />+{formatNumber(budget)} budget this week
+            {budgetBefore !== null && budget !== budgetBefore && (
+              <Delta n={budget - budgetBefore} />
+            )}
+          </p>
         )}
-      </div>
-    </section>
+        {/* On a short window it gives way while a play is looked at (app.css): Inspect's notes
+            say which sets and checklist lines the play would change. */}
+        <div class="score-detail">
+          <h3 class="score-sets-title">Sets</h3>
+          <SetList sets={sets} gained={gained} lost={p?.legal && !view ? p.setsLost : []} />
+          {hasChecklist && (
+            <SpecCharm
+              count={specCount}
+              bonus={view ? view.specBonus : tally.specBonus}
+              before={!view && p?.legal ? held : null}
+              ticking={view?.stage === 'specs'}
+              waiting={!!view && view.specAt < 0}
+            />
+          )}
+        </div>
+      </Panel>
+    </div>
   );
 }

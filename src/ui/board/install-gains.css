@@ -1,42 +1,46 @@
 /* D-107: while a fixture is selected, every legal host shows what installing it there does to
-   the week's Wow (the rules' installGains): blue with ▲, orange with ▼, plain at ±0, never
-   color alone. The best is filled blue with a ★. The host being looked at has InstallTarget's
-   label instead, so its badge steps aside without popping in again. */
+   the week's Wow (the rules' installGains, Board.tsx HostBadges): blue with ▲, orange with ▼,
+   paper at ±0, never color alone. The best gain also wears a ★ in a gold ring. Like the
+   preview's badges (labels.css), they're square-cornered in LimeZu's ink with a paper halo, and
+   their text is the system font: the pixel font has nothing under 16 px, and a badge sits on a
+   cell. They're in the badges' layer, over the walls and the targets. The host being looked at
+   has InstallTarget's label instead, so its badge steps aside without popping in again. */
 
 .host-badges {
   position: absolute;
   inset: 0;
-  z-index: 4;
+  z-index: var(--z-badges);
   pointer-events: none;
 }
 .host-badge {
   position: absolute;
   transform: translate(-50%, -50%);
   white-space: nowrap;
-  padding: 2px 6px;
-  border-radius: 6px;
-  border: 2px solid var(--muted);
-  background: #fffaf1;
-  color: var(--muted);
+  padding: 2px 4px;
+  border: 2px solid var(--ink);
+  background: var(--card);
+  box-shadow: 0 0 0 1px var(--card);
+  color: var(--ink);
+  font-family: var(--font-system);
   font-size: 12px;
   font-weight: 800;
   line-height: 1;
   font-variant-numeric: tabular-nums;
-  box-shadow: 0 1px 0 rgb(42 29 22 / 0.35);
-  animation: host-badge-in 180ms ease-out both;
+  animation: host-badge-in var(--dur-modal) ease-out both;
 }
 .host-badge.good {
-  border-color: var(--good);
-  color: var(--good);
+  background: var(--good);
+  color: var(--card);
 }
 .host-badge.bad {
-  border-color: var(--bad);
-  color: #9a4a0a;
+  background: var(--bad);
+  color: var(--card);
 }
+/* The best gain: a gold ring outside the ink one, ringed in ink again. */
 .host-badge.best {
-  background: var(--good);
-  border-color: #fff;
-  color: #fff;
+  box-shadow:
+    0 0 0 2px var(--sparkle),
+    0 0 0 3px var(--ink);
 }
 .host-badge.current {
   visibility: hidden;
@@ -44,15 +48,16 @@
 @keyframes host-badge-in {
   from {
     opacity: 0;
-    scale: 0.6;
+    transform: translate(-50%, -50%) scale(0.6);
   }
 }
 .reduce-motion .host-badge {
   animation: none;
 }
-/* Zoomed out below 2×, like the preview's badges. */
+/* Cells under 32 CSS px (below 1×, or Fit on a small screen): smaller, like the preview's
+   badges. */
 .board.small .host-badge {
   font-size: 10px;
-  padding: 1px 4px;
+  padding: 1px 3px;
   border-width: 1px;
 }

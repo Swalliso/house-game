@@ -1,46 +1,70 @@
-/* First-time hints (D-045): a small card by the panel it talks about, never over the lot or a
-   sheet's controls (Hints.tsx measures where), above the game (its celebration is 30) and
-   below notes (40) and modals (50). It takes the pointer only over its own card. */
-.first-hint {
-  position: fixed;
-  z-index: 38;
-  overflow-y: auto;
-  padding: 12px 14px 10px;
-  border: 2px solid var(--good);
-  border-radius: 10px;
-  background: var(--panel);
-  color: var(--ink);
-  box-shadow: 0 8px 24px rgb(60 40 20 / 0.25);
-  animation: hint-in 0.3s cubic-bezier(0.2, 1.3, 0.4, 1) both;
+/* The controls strip (M5a): the keys for what you're doing now, as keycaps. */
+
+.hints {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-5);
+  min-height: calc(var(--px) * 16);
+  padding: var(--space-1) var(--space-6);
+  background: var(--wood-deep);
+  border-top: var(--px) solid var(--ink);
+  color: var(--on-wood);
 }
-.first-hint h2 {
-  margin: 0 0 4px;
-  font-size: 15px;
+.hint {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
 }
-.first-hint h2::before {
-  content: '💡 ';
-  font-variant-emoji: text;
+.hint .keycap {
+  padding-top: 0;
 }
-.first-hint p {
-  margin: 0 0 8px;
-  font-size: 13px;
-  line-height: 1.4;
+.hint-text {
+  margin-left: var(--px);
 }
-/* In a side column, narrower: a touch smaller, so it stays short. */
-.first-hint:not(.at-besideChecklist) p {
-  font-size: 12.5px;
-  line-height: 1.35;
-}
-.first-hint button {
-  font-weight: 800;
-  padding: 4px 12px;
-}
-@keyframes hint-in {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
+/* A short window (D-047's 1280×720): the strip sits under the board only, so the side columns
+   keep their full height for the hand, and it's tighter. */
+@media (max-height: 800px) {
+  .hints {
+    grid-column: 2;
+    gap: 0 var(--space-3);
+    padding: var(--px) var(--space-2);
+  }
+  .hint-extra,
+  .hints:not(:has(> :not(.hint-extra))) {
+    display: none;
   }
 }
-.reduce-motion .first-hint {
-  animation: none;
+/* The build screen's F hint with Fit on: "zoom back", or "fit" where that would wrap the strip
+   (Hints.tsx FitHint), which would move the board on every card picked. The strip is a
+   container measured in its own em: its text and keycaps scale with the UI pixel, so the
+   room "zoom back" needs is the same number of em at every devicePixelRatio (at 1280×720 and
+   1×, 44 em of 44). A short window leaves the Scroll hint out, so it needs less. */
+.hints {
+  container: hints / inline-size;
+}
+.fit-short {
+  display: none;
+}
+@media (max-height: 800px) {
+  @container hints (max-width: 43.99em) {
+    .fit-long {
+      display: none;
+    }
+    .fit-short {
+      display: inline;
+    }
+  }
+}
+@media not all and (max-height: 800px) {
+  @container hints (max-width: 57.49em) {
+    .fit-long {
+      display: none;
+    }
+    .fit-short {
+      display: inline;
+    }
+  }
 }

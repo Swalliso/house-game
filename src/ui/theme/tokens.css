@@ -1,0 +1,207 @@
+/* Open House's design tokens (M5a, the UI audit's design system). Colors come from LimeZu's
+   palettes (Modern Interiors' and Modern Exteriors' palette sheets, and the woods of Modern
+   Exteriors' camping signboard), so the chrome and the sprites share one ink and one wood.
+
+   This is the one stylesheet with raw colors: theme.test.ts keeps hex and rgb() out of every
+   other migrated stylesheet. The pixel art in theme/art.ts samples the same palette.
+
+   Contrast (WCAG, checked against the backgrounds named): body text is 4.5:1 or better.
+
+   The UI pixel: chrome is drawn in --px, 2 CSS px at the 1080p design target, rounded to whole
+   device pixels (theme/pixel.ts sets it from devicePixelRatio). Every outline, frame, shadow
+   offset, spacing step and pixel-font size is a whole number of --px. Board art keeps the
+   camera's own scale. */
+
+:root {
+  color-scheme: light;
+  /* Overwritten at startup by theme/pixel.ts: round(2 × dpr) / dpr, down on a tie. */
+  --px: 2px;
+
+  /* --- Neutrals ------------------------------------------------------------------- */
+  --ink: #3a3a50; /* LimeZu's outline color: 9.6:1 on --paper */
+  --ink-soft: #565972; /* secondary text: 5.9:1 on --paper, 6.6:1 on --card */
+  --ink-faint: #6c6e85; /* hints and disabled labels, 16 px and up: 4.3:1 on --paper */
+  --paper: #f4efdf; /* panel bodies */
+  --card: #fbf8ef; /* cards, slots, inputs */
+  --card-hi: #fefcfe; /* a card's lit inner edge */
+  --card-lo: #e0d0b2; /* a card's shaded inner edge */
+  --paper-inset: #eee1b7; /* wells: empty slots, a meter's trough */
+  --paper-line: #d0be9c; /* hairline rules inside paper */
+  --scrim: rgb(58 58 80 / 0.55); /* behind modals */
+  --shade: rgb(58 58 80 / 0.28); /* hard drop shadows */
+
+  /* --- Wood (Modern Exteriors' signboard and wood board) ------------------------------ */
+  --wood-shine: #f1ce8e; /* a plank's lit edge */
+  --wood-hi: #e0b870; /* plank face: ink text on it 5.9:1 */
+  --wood-light: #daa463; /* the darker face: ink text 5.0:1 */
+  --wood: #c78c59;
+  --wood-mid: #b5754d; /* seams */
+  --wood-dark: #a85f46; /* shade */
+  --wood-deep: #6b5052; /* a dark beam: --on-wood text on it 6.6:1 */
+  --wood-night: #5e5051; /* the desk behind the panels */
+  --on-wood: #fff4dc; /* text on --wood-deep */
+
+  /* --- The score (D-019): a word and a hue per layer, never the hue alone ------------- */
+  --comfort: #3d56d2; /* text 5.3:1 on --paper, 4.6:1 on --comfort-tint */
+  --comfort-tint: #cce6ec;
+  --comfort-shade: #a4bbd5;
+  --charm: #a82b52; /* text 5.8:1 on --paper */
+  --charm-deep: #9e2b4f; /* Charm's number on its tint: 4.8:1 */
+  --charm-tint: #f8c7cf;
+  --charm-shade: #eea5b8;
+  --sparkle: #f8d239; /* a fill only: stamps and plaques, ink text on it 7.5:1 */
+  --sparkle-deep: #f2b22b; /* a stamp's shade: ink text 5.9:1 */
+  --sparkle-text: #8a5a00; /* only where gold must be text on paper: 5.2:1 */
+  --gold-hi: #fff59a;
+  --glow-rgb: 242 178 43; /* the score panel's glow: --sparkle-deep, for rgb() with alpha */
+  --wow: var(--ink); /* the total sits on a framed plaque, not a hue */
+  /* The milestone meter's forecast: a pale fill behind the score's */
+  --forecast: rgb(248 210 57 / 0.35);
+  --forecast-met: rgb(155 194 70 / 0.45);
+  --forecast-placing: rgb(196 215 227 / 0.55);
+
+  /* --- Feedback: blue and orange, always with a glyph (D-047) ------------------------- */
+  --good: #1652b9; /* text 6.7:1 on --card */
+  --good-fill: #4280dd;
+  --bad: #a8480c; /* text 5.5:1 on --card */
+  --bad-fill: #ed931e; /* hatching, the illegal ghost: ink on it 4.6:1 */
+  --bad-tint: #ffe57b;
+  --bad-deep: #ae5539; /* the orange ribbon's shade and its tails' fold (art.ts N) */
+  --danger: #c8402e; /* demolish: --on-wood text 4.6:1 */
+  --danger-hi: #e07070;
+  --danger-shade: #9e2b2d;
+  /* An armed control, waiting for its second press (Pass, Complete early) */
+  --armed: #ed931e; /* ink text 4.6:1 */
+  --armed-hi: #f2bd7a;
+  --armed-shade: #a9764f;
+
+  /* --- Action: the one "do it" color, used by nothing else ----------------------------- */
+  --action: #9bc246; /* LimeZu lime: ink text 5.4:1 */
+  --action-hi: #b8d040;
+  --action-shade: #568d61;
+
+  /* --- Rarity (D-087): an ink outline, a colored band inside it, and a label ----------- */
+  --rarity-common: #787b69;
+  --rarity-common-text: #616355; /* 5.8:1 on --card */
+  --rarity-uncommon: #4280dd;
+  --rarity-uncommon-text: #1652b9;
+  --rarity-rare: #f2b22b; /* the band; its label sits on a --sparkle chip */
+  --rarity-rare-text: var(--ink);
+
+  /* --- Tints for the hand's cards, by kind of piece (with the kind's word) -------------- */
+  --tint-room: #fbf8ef;
+  --tint-yard: #f1ffe6;
+  --tint-yard-band: #9bc246;
+  --tint-outbuilding: #f8ece4;
+  --tint-outbuilding-band: #c78c59;
+  --tint-hall: #f0efde;
+  --tint-hall-band: #b2977e;
+  --tint-fixture: #ebe4f2;
+  --tint-fixture-band: #968bab;
+  --tint-room-band: #d0be9c;
+  --lawn: #63a650; /* behind a yard piece's picture */
+  --dark-fill: #d8d0e0; /* a Dark tag's chip */
+  --hatch: rgb(237 147 30 / 0.3); /* bad-fill, over a card that fits nowhere */
+
+  /* --- A shop card's fill by rarity (its band and label carry the rarity, D-087) -------- */
+  --uncommon-tint: #edf3fa;
+  --rare-tint: #fcf1c6;
+
+  /* --- Juice on the chrome: a Rare's shimmer, and the stepped glows of a crate's options -- */
+  --shine: rgb(255 255 255 / 0.7);
+  --glow-rare: rgb(242 178 43 / 0.55);
+  --glow-rare-soft: rgb(242 178 43 / 0.25);
+  --glow-uncommon: rgb(66 128 221 / 0.45);
+  --glow-uncommon-soft: rgb(66 128 221 / 0.2);
+
+  /* --- The title screen's sky: flat bands, palest at the horizon (no text on them) ------- */
+  --sky-1: #86c4e6;
+  --sky-2: #9dd0ec;
+  --sky-3: #b4dcf0;
+  --sky-4: #cbe7f2;
+
+  /* --- The board's overlays (board/house.css, board/terrain/terrain.css) ----------------
+     Highlights, the ghost's tint and the lot's edge, over the art at the camera's scale. */
+  --hl-flash: #fffbe6; /* a piece's floor as it wobbles or settles */
+  --hl-active-fill: rgb(255 248 208 / 0.2); /* the tally's scoring piece */
+  --hl-active-edge: #fff3b8;
+  /* A set's members, in --charm-shade under a --charm edge: the preview's new sets, then
+     a held set's beat in the tally. */
+  --hl-set-fill: rgb(238 165 184 / 0.16);
+  --hl-lit-fill: rgb(238 165 184 / 0.3);
+  --ghost-legal-fill: rgb(66 128 221 / 0.18); /* the legal ghost, an install target: --good-fill */
+  --ghost-legal-armed: rgb(66 128 221 / 0.34);
+  --ghost-hatch-on: rgb(237 147 30 / 0.75); /* the illegal ghost's stripes, in --bad-fill */
+  --target-illegal-fill: rgb(237 147 30 / 0.1); /* where a tool can't go, in --bad-fill */
+  --ghost-hatch-off: rgb(255 255 255 / 0.15);
+  --lot-line-hi: rgb(255 249 226 / 0.3); /* the property line's two rings */
+  --lot-line-lo: rgb(30 44 32 / 0.18);
+  --street-label: rgb(58 58 80 / 0.55); /* --ink, faded, on the sidewalk */
+  --yard-tint-fill: rgb(246 196 98 / 0.17); /* a fenced yard: a warm wash, a dashed edge */
+  --yard-tint-edge: rgb(150 96 40 / 0.55);
+  --demolish-fill: rgb(200 64 46 / 0.26); /* the demolish tool's target, in --danger */
+  --demolish-armed-fill: rgb(200 64 46 / 0.42);
+  --demolish-hint-fill: rgb(200 64 46 / 0.1);
+  --pack-remove-fill: rgb(237 147 30 / 0.16); /* a pack's tile to take off (D-106), in --bad-fill */
+  --renovate-hint-fill: rgb(66 128 221 / 0.08); /* a room to renovate (D-102), in --good-fill */
+
+  /* --- Focus: a double ring that reads on paper and on wood --------------------------- */
+  --focus-outer: var(--ink);
+  --focus-inner: var(--sparkle);
+
+  /* --- Legacy names, for the stylesheets still on theme.test.ts's legacy list ---------- */
+  --muted: var(--ink-soft);
+  --panel: var(--card);
+  --panel-edge: var(--paper-line);
+  --demolish: var(--danger);
+
+  /* --- Type ---------------------------------------------------------------------------
+     Pixel fonts render only at whole multiples of their pixel: Pixel Operator 8 and Public
+     Pixel are drawn on an 8 px grid, so 8 × --px puts one font pixel on one UI pixel. Nothing
+     is below 16 px (8 × --px) in pixel mode. The readable option (D-059, §12) swaps the
+     families and sizes under [data-font='readable']. */
+  --font-system: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-text: 'OH Text', var(--font-system); /* body, buttons, labels */
+  --font-display: 'OH Display', var(--font-system); /* numbers and display titles */
+  --fs-body: calc(var(--px) * 8); /* 16 */
+  --fs-title: calc(var(--px) * 12); /* 24: panel titles */
+  --fs-num: calc(var(--px) * 8); /* 16: small counters (Public Pixel is wide) */
+  --fs-num-md: calc(var(--px) * 12); /* 24: Comfort and Charm */
+  --fs-num-lg: calc(var(--px) * 16); /* 32: the week's Wow */
+  --fs-hero: calc(var(--px) * 24); /* 48: the shop's budget, the verdict */
+  --fs-banner: calc(var(--px) * 32); /* 64: banners, the wordmark */
+  --lh-body: calc(var(--px) * 10); /* 20 */
+  --lh-tight: calc(var(--px) * 9); /* 18 */
+  --lh-title: calc(var(--px) * 14); /* 28: --fs-title and --fs-num-md text that can wrap */
+
+  /* --- Spacing: steps of 2 UI px ------------------------------------------------------- */
+  --space-1: calc(var(--px) * 2); /* 4 */
+  --space-2: calc(var(--px) * 4); /* 8 */
+  --space-3: calc(var(--px) * 6); /* 12 */
+  --space-4: calc(var(--px) * 8); /* 16 */
+  --space-5: calc(var(--px) * 12); /* 24 */
+  --space-6: calc(var(--px) * 16); /* 32 */
+
+  /* --- Shadows: hard and offset, never blurred (glows are juice, not chrome) ----------- */
+  --shadow-press: 0 var(--px) 0 var(--ink);
+  --shadow-card: 0 calc(var(--px) * 2) 0 var(--shade);
+  --shadow-float: calc(var(--px) * 2) calc(var(--px) * 3) 0 var(--shade);
+  --ring-focus: 0 0 0 var(--px) var(--focus-inner), 0 0 0 calc(var(--px) * 2) var(--focus-outer);
+  --ring-focus-inset:
+    inset 0 0 0 var(--px) var(--focus-outer), inset 0 0 0 calc(var(--px) * 2) var(--focus-inner);
+}
+
+[data-font='readable'] {
+  --font-text: var(--font-system);
+  --font-display: var(--font-system);
+  --fs-body: 14px;
+  --fs-title: 18px;
+  --fs-num: 15px;
+  --fs-num-md: 22px;
+  --fs-num-lg: 28px;
+  --fs-hero: 40px;
+  --fs-banner: 56px;
+  --lh-body: 19px;
+  --lh-tight: 17px;
+  --lh-title: 22px;
+}

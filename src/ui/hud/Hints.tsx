@@ -1,265 +1,149 @@
-// First-time hints (D-045, M4b): a short card the first time each idea comes up, dismissed
-// with "Got it" and remembered in this browser (UI only, never game state). One shows at a
-// time, never during a tally or under a banner (an arrival's). The numbers come from the
-// rules' glossary, so they follow the content.
+// The controls strip along the bottom (M5a): the keys for what you're doing now, as keycaps,
+// instead of every shortcut at once. How to play lists them all. On a short window it sits
+// under the board only, so the side columns keep their height, and drops the hints marked
+// .hint-extra. M4's keys are here too: a change order's sheet (Enter accepts, Esc or D
+// declines one that can be declined), a pack's tiles (D-106), and a Renovation (D-102).
 //
-// Each card has a spot where it covers neither what it talks about nor the controls it needs:
-// never the lot, which a hint over the board would hide pieces of and block pointing at, nor
-// the shop's or a change order's sheet. The checklist's own hint sits beside the checklist,
-// over the lot's edge, and takes the pointer only over its own card.
+// No hooks, here or in what it renders: hints.test.tsx calls Hints() in place.
 
-import { signal } from '@preact/signals';
-import { useLayoutEffect, useState } from 'preact/hooks';
-import { CONTENT, glossary, SCORE_LABELS } from '../../rules/index.ts';
-import { BUILD_CHANNEL } from '../build-info.ts';
-import { banner, busy } from '../fx/director.ts';
-import { appScreen, earlyOffer, run } from '../store.ts';
+import type { ComponentChildren } from 'preact';
+import { CONTENT, rules } from '../../rules/index.ts';
+import { isFit } from '../board/camera.ts';
+import { busy } from '../fx/director.ts';
+import { Keycap } from '../kit/kit.tsx';
+import { movingUid, renovateUids, run, selected, selection, tentative, tool } from '../store.ts';
+import { shopHidden } from './actions.ts';
 import './hints.css';
 
-export type HintId =
-  'firstWeek' | 'checklist' | 'early' | 'shop' | 'fixture' | 'changeOrder' | 'arrival';
-
-const KEY = `openhouse:${BUILD_CHANNEL}:hints`;
-
-function load(): ReadonlySet<string> {
-  try {
-    const raw = localStorage.getItem(KEY);
-    const list: unknown = raw ? JSON.parse(raw) : [];
-    return new Set(Array.isArray(list) ? list.filter((x) => typeof x === 'string') : []);
-  } catch {
-    return new Set();
-  }
+function Hint({
+  keys,
+  extra = false,
+  children,
+}: {
+  keys: readonly string[];
+  /** Left out on a short window, where the strip has less room. */
+  extra?: boolean;
+  children: ComponentChildren;
+}) {
+  return (
+    <span class={`hint ${extra ? 'hint-extra' : ''}`}>
+      {keys.map((k) => (
+        <Keycap key={k}>{k}</Keycap>
+      ))}
+      <span class="hint-text">{children}</span>
+    </span>
+  );
 }
-
-/** The hints already dismissed in this browser. */
-export const seenHints = signal<ReadonlySet<string>>(load());
-
-export function dismissHint(id: HintId): void {
-  const next = new Set(seenHints.value);
-  next.add(id);
-  seenHints.value = next;
-  try {
-    localStorage.setItem(KEY, JSON.stringify([...next]));
-  } catch {
-    // A private window: the hint comes back next visit, which is harmless.
-  }
-}
-
-/** Shows every hint again (Settings). */
-export function resetHints(): void {
-  seenHints.value = new Set();
-  try {
-    localStorage.removeItem(KEY);
-  } catch {
-    // Nothing to clear.
-  }
-}
-
-const G = glossary(CONTENT);
-const L = SCORE_LABELS;
 
 /**
- * Where a card sits (measured from the panels, so it follows the layout at any size):
- * - besideChecklist: right of the left column, level with the checklist.
- * - overChecklist: over the checklist, in the left column (in week 1, before the checklist's
- *   own hint, so the score panel the first week's hint names stays in view).
- * - overScore: over the score panel, at the top of the left column.
- * - underGoods: in the right column, under the company's goods: the shop leaves that empty,
- *   and a change order's sheet sets the hand there aside.
+ * F toggles Fit (camera.ts): it shows the whole lot, and pressed again goes back to the zoom
+ * from before, in the Fit button's words. `short` is for the build screen's full strip, which
+ * has to stay one line: "zoom back" just fits it at 1280×720, so on a smaller window
+ * (hints.css) it says "fit" with Fit on too, as it did before, and never wraps the strip
+ * (which would move the board on every card picked).
  */
-type Spot = 'besideChecklist' | 'overChecklist' | 'overScore' | 'underGoods';
-
-interface Hint {
-  title: string;
-  text: string;
-  spot: Spot;
-}
-
-const HINTS: Record<HintId, Hint> = {
-  firstWeek: {
-    title: 'Your first week',
-    text:
-      `Pick a card (1–3), click the lot to place it, then End week. Each piece earns ` +
-      `${L.points} from what it touches, and ${L.mult} multiplies it into ${L.total}. ` +
-      `Reach each milestone’s target before its weeks run out. Hover anything to read it.`,
-    spot: 'overChecklist',
-  },
-  checklist: { title: G.checklist.title, text: G.checklist.text, spot: 'besideChecklist' },
-  early: { title: G.early.title, text: G.early.text, spot: 'overScore' },
-  shop: {
-    title: 'The shop',
-    text:
-      `Spend your budget on goods for the house: blueprints bend the rules all run, pieces ` +
-      `wait in your reserve, fixtures upgrade a piece you’ve built, and tools are one-offs. ` +
-      `${G.budget.text}`,
-    spot: 'underGoods',
-  },
-  fixture: { title: G.fixture.title, text: G.fixture.text, spot: 'overScore' },
-  // M4b: the screen and the arrival's cards say what they are; these say why they matter.
-  changeOrder: {
-    title: 'Change orders',
-    text:
-      'The client has changed their mind. A request or a restriction is yours to accept or ' +
-      'decline, and pays if you see it through the next milestone; declining costs nothing. ' +
-      'A change to the weather or the season just happens, and lasts this phase only.',
-    spot: 'underGoods',
-  },
-  arrival: {
-    title: 'Someone’s moving in',
-    text:
-      'The household grows on the schedule shown on the job board. Their room is waiting in ' +
-      'your reserve, and Room for everyone needs it from now on: build it when you can.',
-    spot: 'overScore',
-  },
-};
-
-/** Which hint (if any) the run calls for now, first unseen in this order. */
-function current(seen: ReadonlySet<string>): HintId | null {
-  if (appScreen.value !== 'game' || busy.value || banner.value) return null;
-  const s = run.value;
-  const building = s.screen === 'build';
-  const fixtureInSight =
-    s.hand.some((c) => c.kind === 'fixture') || s.supplies.some((x) => x.kind === 'fixture');
-  const due: [HintId, boolean][] = [
-    ['shop', s.screen === 'shop'],
-    ['firstWeek', building && s.week === 1],
-    ['checklist', building && s.week >= 2],
-    ['early', building && earlyOffer.value.ok],
-    ['fixture', building && fixtureInSight],
-    // M4b: the sheet is up (it waits for the milestone's beats), and a member's cards are in
-    // the reserve.
-    ['changeOrder', s.screen === 'changeOrder'],
-    ['arrival', building && s.reserve.some((r) => r.arrival !== undefined)],
-  ];
-  for (const [id, now] of due) if (now && !seen.has(id)) return id;
-  return null;
-}
-
-/** A card's box, in viewport px. */
-interface Place {
-  spot: Spot;
-  left: number;
-  top: number;
-  width: number;
-  maxHeight: number;
-}
-
-/** The gap between a card and the panel it sits by, and the most a card beside one is wide. */
-const GAP = 8;
-const BESIDE_WIDTH = 300;
-
-/** The panels a card can sit over or by; any of them changing size moves it. */
-const ANCHORS = [
-  '.game > .left',
-  '.game > .right',
-  '.left > .score-panel',
-  '.left > .checklist',
-  '.right > .inventory',
-];
-
-function measure(spot: Spot): Place | null {
-  const rect = (sel: string) => document.querySelector(sel)?.getBoundingClientRect();
-  const left = rect('.game > .left');
-  const right = rect('.game > .right');
-  if (!left || !right) return null;
-  // Above the controls strip, and never off the bottom of the window.
-  const floor = (rect('.game > .hints')?.top ?? window.innerHeight) - GAP;
-  const box = (top: number, x: number, width: number): Place => ({
-    spot,
-    left: Math.round(x),
-    top: Math.round(top),
-    width: Math.round(width),
-    maxHeight: Math.round(Math.max(120, floor - top)),
-  });
-  switch (spot) {
-    case 'besideChecklist': {
-      const c = rect('.left > .checklist') ?? left;
-      return box(
-        c.top,
-        left.right + GAP,
-        Math.min(BESIDE_WIDTH, window.innerWidth - left.right - 2 * GAP),
-      );
-    }
-    case 'overChecklist': {
-      const c = rect('.left > .checklist') ?? left;
-      return box(c.top, c.left, c.width);
-    }
-    case 'overScore': {
-      const p = rect('.left > .score-panel') ?? left;
-      return box(p.top, p.left, p.width);
-    }
-    case 'underGoods': {
-      const inv = rect('.right > .inventory');
-      const x = inv?.left ?? right.left + GAP;
-      return box((inv?.bottom ?? right.top) + GAP, x, inv?.width ?? right.width - 2 * GAP);
-    }
+function FitHint({ short = false }: { short?: boolean }) {
+  const fit = isFit.value;
+  if (short) {
+    return (
+      <Hint keys={['F']}>
+        {fit ? (
+          <>
+            <span class="fit-long">zoom back</span>
+            <span class="fit-short">fit</span>
+          </>
+        ) : (
+          'fit'
+        )}
+      </Hint>
+    );
   }
-}
-
-const samePlace = (a: Place | null, b: Place | null) =>
-  a === b ||
-  (!!a &&
-    !!b &&
-    a.spot === b.spot &&
-    a.left === b.left &&
-    a.top === b.top &&
-    a.width === b.width &&
-    a.maxHeight === b.maxHeight);
-
-/** Where the card for `spot` goes, kept up to date as the panels it sits by change size. */
-function usePlace(spot: Spot | null): Place | null {
-  const [place, setPlace] = useState<Place | null>(null);
-  const screen = run.value.screen;
-  useLayoutEffect(() => {
-    if (!spot) return;
-    const update = () => {
-      const next = measure(spot);
-      setPlace((old) => (samePlace(old, next) ? old : next));
-    };
-    update();
-    const ro = new ResizeObserver(update);
-    for (const sel of ANCHORS) {
-      const el = document.querySelector(sel);
-      if (el) ro.observe(el);
-    }
-    window.addEventListener('resize', update);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener('resize', update);
-    };
-    // The right column's panels change with the screen (the shop's goods, the hand).
-  }, [spot, screen]);
-  return place && place.spot === spot ? place : null;
+  return <Hint keys={['F']}>{fit ? 'back to your zoom' : 'fit the lot'}</Hint>;
 }
 
 export function Hints() {
-  const id = current(seenHints.value);
-  const hint = id ? HINTS[id] : null;
-  const place = usePlace(hint?.spot ?? null);
-  if (!id || !hint) return null;
-  return (
-    <aside
-      class={`first-hint at-${hint.spot}`}
-      role="note"
-      aria-label={`Hint: ${hint.title}`}
-      // Until it's measured it waits out of sight, so it never shows over the wrong panel.
-      style={
-        place
-          ? {
-              left: `${place.left}px`,
-              top: `${place.top}px`,
-              width: `${place.width}px`,
-              maxHeight: `${place.maxHeight}px`,
-            }
-          : { visibility: 'hidden' }
-      }
-    >
-      <h2>{hint.title}</h2>
-      <p>{hint.text}</p>
-      {/* It never takes focus, so the game's keys keep working while it's up. */}
-      <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => dismissHint(id)}>
-        Got it
-      </button>
-    </aside>
-  );
+  const s = run.value;
+  let hints: ComponentChildren;
+  if (busy.value) {
+    hints = (
+      <>
+        <Hint keys={['Space']}>hold to speed up</Hint>
+        <Hint keys={['Click']}>skip to the result</Hint>
+      </>
+    );
+  } else if (s.screen === 'changeOrder') {
+    // A change order's sheet (M4b) takes only its own keys: F does nothing there. A phase
+    // effect can't be declined, so Esc and D do nothing on one either.
+    hints =
+      (rules.changeOrderOffer(s)?.declinable ?? true) ? (
+        <>
+          <Hint keys={['Enter']}>accept</Hint>
+          <Hint keys={['Esc', 'D']}>decline: it costs nothing</Hint>
+        </>
+      ) : (
+        <Hint keys={['Enter']}>got it</Hint>
+      );
+  } else if (s.screen === 'shop') {
+    // The sheet covers the lot, so F only means something once the shop is hidden.
+    hints = shopHidden.value ? (
+      <FitHint />
+    ) : (
+      // The sheet's own foot says where to sell, so a short window leaves these out.
+      <>
+        <span class="hint-text hint-extra">Hover anything to read it</span>
+        <span class="hint-text hint-extra">Sell from your supplies and blueprints</span>
+      </>
+    );
+  } else if (s.screen !== 'build') {
+    hints = <FitHint />;
+  } else if (tool.value === 'demolish') {
+    hints = (
+      <>
+        <Hint keys={['Click']}>a piece twice to demolish it</Hint>
+        <Hint keys={['D', 'Esc']}>stop</Hint>
+      </>
+    );
+  } else if (selected.value !== null) {
+    const sel = selection.value;
+    const pending = tentative.value;
+    // A pack (D-106) is clicked out a tile at a time, so it never turns; the Moving Truck turns
+    // the piece it carries (as the Rotate button does: Hand.tsx).
+    const pack = sel?.kind === 'piece' && !!CONTENT.pieces[sel.id].pack;
+    const turns =
+      (sel?.kind === 'piece' && !pack) || (sel?.kind === 'tool' && movingUid.value !== null);
+    const click = pack
+      ? pending
+        ? 'add or take off a tile'
+        : 'the first tile'
+      : pending
+        ? 'move it'
+        : renovateUids.value.length > 0
+          ? 'place, or renovate an outlined room'
+          : 'place';
+    hints = (
+      <>
+        {turns && <Hint keys={['R']}>rotate</Hint>}
+        <Hint keys={['Click']} extra>
+          {click}
+        </Hint>
+        <Hint keys={['Enter']}>{pending?.t === 'renovate' ? 'renovate it' : 'end the week'}</Hint>
+        <Hint keys={['Esc']}>
+          {pack && pending ? 'clear the tiles' : pending ? 'pick it up' : 'put it back'}
+        </Hint>
+      </>
+    );
+  } else {
+    hints = (
+      <>
+        <Hint keys={['1', '2', '3']}>pick a card</Hint>
+        <Hint keys={['D']}>demolish</Hint>
+        <Hint keys={['Scroll']} extra>
+          zoom
+        </Hint>
+        <FitHint short />
+        <Hint keys={['Enter']}>pass</Hint>
+      </>
+    );
+  }
+  return <footer class="hints ui">{hints}</footer>;
 }
