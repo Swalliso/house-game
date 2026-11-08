@@ -1,7 +1,7 @@
 // The interface's icons (M5a), drawn for Open House in LimeZu's palette (art.ts has the key):
 // an ink outline, light from the top left. One art px is one UI pixel (--px), so an 8×8 icon
 // stands as tall as Pixel Operator 8's capitals plus one, and sits in a line of body text.
-// Button icons are 12×12. Icons stand in for the symbols the pixel fonts lack (▲ ▼ ✕ ★ ✦ ⚠)
+// Button icons are 12×12. Icons stand in for the symbols the pixel fonts lack (▲ ▼ ▸ ▾ ✕ ★ ✦ ⚠)
 // and for the old text glyphs.
 
 export const ICONS = {
@@ -67,6 +67,32 @@ export const ICONS = {
     .knnnk.
     ..knk..
     ...k...
+  `,
+  /**
+   * ▸: a fold to open (a checklist group folded away, a contract's house rules). A small wood
+   * triangle, smaller than ▲ ▼ so it doesn't read as a mark. It shares caretDown's 8×8 box, so a
+   * row keeps its place when it opens, and caretDown is this one turned a quarter.
+   */
+  caretRight: `
+    ..k.....
+    ..kk....
+    ..kHk...
+    ..klmk..
+    ..kmk...
+    ..kk....
+    ..k.....
+    ........
+  `,
+  /** ▾: an open fold, to close again. */
+  caretDown: `
+    ........
+    ........
+    kkkkkkk.
+    .kHlmk..
+    ..kmk...
+    ...k....
+    ........
+    ........
   `,
   /** ✕: can't, or lost. */
   cross: `
@@ -497,6 +523,30 @@ export const ICONS = {
     kYYYYYYk
     .kkkkkk.
     ........
+  `,
+  // --- Crews (8×8): a crew's chip, and its card's picture on the crew pick at 4 UI px per art
+  // px (sprites.ts CREW_ICONS; the General Contractor wears the Weekend Crew's hard hat) -----
+  /** The Landscaper: a garden spade, its grip up. */
+  landscaper: `
+    ....kkkk
+    ....kHok
+    .....kkk
+    ....kok.
+    .kkkok..
+    kwGkk...
+    kGGgk...
+    .kkk....
+  `,
+  /** The Architect: a blueprint (the goods' one, drawn at 8×8), its corner turned down. */
+  architect: `
+    kkkkkk..
+    kjjjjjk.
+    kjjwjjBk
+    kjwjwjkk
+    kwwwwwjk
+    kjwjwjjk
+    kjwwwjjk
+    kkkkkkkk
   `,
   // --- Kinds of goods (12×12): the shop's art slots, until each good has its own sprite -------
   /** A blueprint: a house drawn on blue paper. */
