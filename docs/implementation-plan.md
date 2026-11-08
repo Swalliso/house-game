@@ -278,14 +278,16 @@ house-game/
 │   │   ├── fixtures.ts       # installing fixtures, host checks
 │   │   ├── shop.ts           # offers, prices, selling, the sale item
 │   │   ├── tools.ts          # one-shot tools from the shop, one function per tool kind
-│   │   ├── clients.ts        # spec checklist, change orders
-│   │   ├── run.ts            # RunState, apply(), legalActions(), the transition table
+│   │   ├── conditions.ts     # house conditions: client specs, the house rules, change-order requests (D-101)
+│   │   ├── jobs.ts           # the job board's contracts, outside the run code (D-032)
+│   │   ├── run.ts            # RunState, apply(), legalActions(), the transition table, change orders, arrivals
 │   │   ├── runcode.ts        # encode and decode run codes; replay()
 │   │   └── text.ts           # rules text generated from content data
 │   ├── content/              # DATA ONLY
 │   │   ├── tags.ts  features.ts  pieces.ts  fixtures.ts  sets.ts
 │   │   ├── blueprints.ts  tools.ts  upgrades.ts  crates.ts
 │   │   ├── clients.ts  crews.ts  change-orders.ts
+│   │   ├── house-rules.ts  households.ts   # the seven house rules (D-101) and each client's arrivals (D-103)
 │   │   ├── balance.ts        # lot size, weeks, targets, prices, rewards (one owner)
 │   │   └── index.ts          # registry + validateContent()
 │   ├── ui/                   # Preact: renders state, calls rules, never computes scores
@@ -294,8 +296,10 @@ house-game/
 │   │   ├── art/              # the house's and the yard's painters and layouts: rooms, yard, our own drawings
 │   │   ├── kit/              # the pixel UI's primitives: Panel, Card, Button, Chip, Icon, Sheet…
 │   │   ├── theme/            # tokens, the UI pixel, fonts, and our own frames, icons and sky as text grids
-│   │   ├── hud/              # TopBar, ProgressBar, Hand, Card, Reserve, Supplies, BlueprintBar, ClientPanel, Inspect, Hints
-│   │   ├── screens/          # Title, RunSetup, ChangeOrder, Shop, End, Settings
+│   │   ├── hud/              # TopBar, ScorePanel, Hand, Inventory (reserve, supplies, blueprints), Inspect, Menu, Tip,
+│   │   │                     # Checklist (the client's), Hints (the controls strip), FirstHints (first-time hints), household.ts
+│   │   ├── screens/          # Title, JobBoard (the contracts, then the crew), ChangeOrderScreen, ShopScreen, EndScreen,
+│   │   │                     # HowToPlay, Settings, Overlays (banners, notes, toasts)
 │   │   ├── fx/               # tally director, celebration ladder, floating numbers, particles; feel.ts holds the timing numbers
 │   │   ├── debug/            # ?debug panel
 │   │   └── audio/            # Web Audio wrapper: buses, scheduler, pitch ladder, music stems
@@ -303,7 +307,8 @@ house-game/
 └── sim/
     ├── cli.ts                # node sim/cli.ts --runs 200 --policy greedy ...; --check, --ban, --gift
     ├── simulate.ts           # one run through apply(): the run record, step caps, SimError
-    ├── policies/             # random, novice, greedy and its variants; chaos (for tests); planner (M6)
+    ├── policies/             # random, novice, greedy and its variants; chaos (for tests); change-order answers; planner (M6)
+    ├── enclosure.ts  house.ts   # the enclosure probe and fence planner; the house report's measures (D-093)
     └── report.ts             # the report, §8's criteria, suggested targets
 ```
 
@@ -1126,6 +1131,8 @@ After M3 and before M4 (D-097): the visual half of what makes these games feel g
 
 ### M4 · Clients, sets, change orders, and crews
 
+Built alongside M5a, on its own branch (`phase/m4-clients`, pull request #17), and merged after it (D-097's juice note). *2026-11-08:* M4 renumbered its decisions to D-101–D-109, merged `develop`, and put its new screens in M5a's pixel UI and its new pieces in LimeZu's art (D-110, D-111), for playtest 4.
+
 **M4a, first:**
 
 - Clients:
@@ -1155,6 +1162,7 @@ After M3 and before M4 (D-097): the visual half of what makes these games feel g
   - the first shop
   - the first fixture
   - the first change order
+  - the first arrival (D-103)
 
   Each is dismissible and remembered in `localStorage` (UI only, not game state).
 - **Sim reports** per client and per crew (§8).
@@ -1172,6 +1180,7 @@ After M4 and before M5b (D-097's juice note): the reward feedback on M5a's art, 
 
 - the tiered celebration ladder (§12)
 - distinct moments for a set completing, a Rhythm payout, a find, opening a crate, a Rare in the shop, and a spec being met
+- M4's moments, beyond the simple pops M4 gives them (`house-systems-review.md` §6): a Renovation's level-up (M4 pops the room's stars, D-111), an arrival and the arrivals' markers on the progress bar, a change order's stamp, a house rule met or lost, and "Topped out!" the first week Under one roof holds
 - screen shake and particles, with Reduce motion, the Screen shake slider, and the Flashing toggle
 - the roof reveal at the Roofing milestone
 - D-094 (chain reactions, Open) would change the tally's order and add steps to it. Raise it with the team before this pull request reworks the tally.
@@ -1258,9 +1267,10 @@ npm run sim -- --ban blueprint:fengShui
 ### Added in M3 and M4
 
 - **Policies:** the M3b shop bot (value per budget) and tool rules, and a default change-order policy: accept requests, decline restrictions. Since D-089: `novice` (a random card that fits, at its best spot), greedy's `--early` and `--strikes` variants, and a chaos bot for tests.
-- **Reports** (all but the per-client one exist since D-089):
+- **Reports** (all exist: most since D-089, and the per-client, per-crew and house reports since M4a, D-089's M4a note):
   - per-piece pick rate, score share, and dead-card rate
-  - per-client piece mixes and win rates (M4)
+  - per-client and per-crew piece mixes and win rates, and change orders by client (M4)
+  - the house report: room counts, repeats, Bedrooms per Bathroom, research.md's plausibility check, the glance measures, and each checklist line's hold rate by client (D-093; `house-systems-review.md` Appendix)
   - early-completion choices and their payoff, per phase
   - shop: how often each good is offered, bought, and in winning runs; budget left unspent
   - fixtures and tools: how often each is used, and the weekly gain it brought
@@ -1273,7 +1283,7 @@ npm run sim -- --ban blueprint:fengShui
 - **More bots:**
   - `planner`: greedy plus weights for missing spec items, unfinished sets, and early long-term earners
   - `early:smart`: early-completion choices by expected payoff. `early:always` and `early:never` exist since D-089, as `--early always` and `--early never`.
-- **Reports:** per-crew win rates, overtime use, free redraws and passes, and what top-scoring houses contain.
+- **Reports:** overtime use, free redraws and passes, and what top-scoring houses contain. (Per-crew win rates exist since M4.)
 - **Worker threads**, if a full sweep is slow.
 
 ### Starting criteria to playtest against
@@ -1292,7 +1302,7 @@ npm run sim -- --ban blueprint:fengShui
 - `greedy` clears milestones 1–3 in 92–98% of runs, and wins 40–50%.
 - Early completion: `--early always` and `--early never` win within 10 points of each other, paired by seed, and the report prints the median ratio of their final scores. `early:smart`'s 25% waits for M6.
 - Fences: the enclosure probe's median is 2–3 Fence cards, and at least 50% of greedy runs are offered that many Fence cards by milestone 4.
-- `planner`, no must-buy, and the client and crew spread print as NOT MEASURED until M4 and M6. Until then, `--ban` on paired seeds stands in for no must-buy.
+- `planner` and no must-buy print as NOT MEASURED until M6. Until then, `--ban` on paired seeds stands in for no must-buy. Since M4 the client and crew spread is measured on runs that cover more than one client or crew (`--client all`, the default, and `--crew all`).
 
 ### Determinism
 
@@ -1547,6 +1557,7 @@ Intensity is measured against **pace**: `max(1, (this phase's target − the sco
   - several LimeZu furniture sprites per room, laid out by rules per room type and footprint, never rotated (they're drawn in 3/4 view), varying by piece (`src/ui/art/rooms.ts`):
     - Each room type lists its pieces, most important first, with slots ported from the audit prototype: against a north wall (the widest run, centered, then sliding), beside what stands there, in the middle of the free floor, a rug or runner centered under everything, against the south wall or in its corners, and the Garage's car nose-in through its door. A piece and the ones beside it (a bed between its nightstands) are planned together: the room's fixture first, then the pieces in the order the room lists them (an earlier one outranks any number of later ones), dropping the least important until they fit. A key piece falls back to the middle of the floor when its doors leave no wall free (a kitchen's range and its counter stand there as one block). A fixture's own sprite goes through all its slots before anything stands in for it.
     - A Kitchen's run is the range and the counter with the sink (a plain counter where the sink won't fit), then the fridge where it still fits (on an L-Kitchen's other arm, or beside the run). A Dining Room's table keeps room for a chair each side: in the middle of the floor, else against the north wall's face, else over a door's walkway (never its opening), and the chairs keep out of the walkway. A Home Office too narrow or shallow for its desks gets a small writing desk.
+    - The members' rooms (D-103) have their own floors, wallpapers and furniture (D-111, `art/limezu/members.json`): cribs in the twins' Nursery; single beds and toys in the Kids' Room; a bed, a curio cabinet and a vanity in Grandma's Room; a cot, candles and cobwebs in Renfield's Room; a bed and a dog bed (our own drawing) in Nana's Room; an easel, a stool and paint pots in Rowan's Studio; a single bed and a school desk in Ivy's Room. Bunk Beds stand in a member's bed's place, and when the Nursery grows into the Kids' Room its art changes with it.
     - A piece against a north wall stands with its back on the floor's top edge, under the wall's face. A tall one (a fridge, a bookcase, a plant) rises over the wall band, never past its top edge nor off its own room's cells: all of an outside band, only its room's half of a band between two rooms, so a wall between rooms always shows. Its rows above the band are drawn on the overhang layer, over the walls.
     - Nothing stands in a doorway or its walkway, on another piece (rugs and runners lie under everything), in the walls (a pixel's tuck at most), or over a north window if it can help it. Only a one-cell room's key piece (the toilet, the rail), the car and a dining table may stand in a walkway, never in the opening. What doesn't fit is left out.
     - Some cuts are spliced or composed to fit 32 px rooms (`compose` in the manifest): a 26 px toilet, a 26 px washer (three rows of its plain top out, so it stands in a one-cell-deep Mudroom), 12 px hall runners in any length, counters with the sink, the island in 40, 24 and 16 px, a breakfast table, and the tan and lavender sofas put together from LimeZu's modular pieces.
@@ -1556,11 +1567,12 @@ Intensity is measured against **pace**: `max(1, (this phase's target − the sco
     - painted with the room, our own drawings in LimeZu's palette: Soundproofing pads the room's side of its wall bands (on the walls canvas, over the furniture, so it always shows) and its north faces; Blackout Curtains draw drapes over the room's windows and hang across the widest stretch of north face the furniture leaves in view (a room with neither, like a Closet, keeps the badge); a Skylight lays a four-pane patch of sun over the floor and furniture; the Chandelier hangs over the room in its own light; and a Bay Window turns one cell of outside wall to glass, with its bay outside, the street side first
     - the yard's fixtures show unless a door keeps them off (then their badge does): the Sprinkler on its Lawn with a wet patch round it, the Pergola over its Patio (in place of the parasol; where a door opens onto the Patio, a shallower or narrower cut of it on the far side, its badge only where doors open onto two sides), and Garden Lights as a bollard at each front corner of the piece, each with its light on the ground
 - **The yard pieces** are laid out by rules from the placed pieces too, never by chance (`src/ui/art/yard.ts`):
-  - Their ground goes on the floor canvas, under the house's shadow: a Lawn's mown stripes, a Patio's herringbone pavers, a Driveway's concrete with a curb cut through the sidewalk where it meets the street, and a Pool's and a Hot Tub's water inside LimeZu's white coping (a 3 × 3 sheet of its tiles, laid over any rectangle). A flat piece has a darker 1 px edge, softer where it meets another piece of its kind (two Lawns, a Driveway and a Long Driveway), so touching pieces read as one patch and each stays countable (D-093). A piece's ground stays on its own cells.
-  - Their props stand on their cells as items, so they wobble and settle with their piece: a parasol over a table and two chairs on a Patio; the house's one parked car on its oldest Driveway with room for it (nose in, or side on facing the house), orange or grey so it never matches the Garage's; a Pool's ladder and float; the Hot Tub's foam; the Fire Pit's animated fire in front of two stumps; a planter on a Flower Bed, and one per cell of a Herb Garden with greens instead of flowers; the Sapling on its soil; LimeZu's Greenhouse and modular Treehouse; a shed's front as the Henhouse's coop, with two hens on straw behind a picket front in its other cell; a Birdhouse on its pole.
+  - Their ground goes on the floor canvas, under the house's shadow: a Lawn's mown stripes, a Patio's herringbone pavers, a Driveway's concrete with a curb cut through the sidewalk where it meets the street, and a Pool's and a Hot Tub's water inside LimeZu's white coping (a 3 × 3 sheet of its tiles, laid over any rectangle). A flat piece has a darker 1 px edge, softer where it meets another piece of its kind (two Lawns, or two Driveways), so touching pieces read as one patch and each stays countable (D-093). A piece's ground stays on its own cells.
+  - Their props stand on their cells as items, so they wobble and settle with their piece: a parasol over a table and two chairs on a Patio; the house's one parked car on its oldest Driveway with room for it (nose in, or side on facing the house), its wheels on that Driveway's own tiles (a lone tile or a T-shaped pack has no room for it, D-111), orange or grey so it never matches the Garage's; a Pool's ladder and float; the Hot Tub's foam; the Fire Pit's animated fire in front of two stumps; a planter on a Flower Bed, and one per cell of a Herb Garden with greens instead of flowers; the Sapling on its soil; LimeZu's Greenhouse and modular Treehouse; a shed's front as the Henhouse's coop, with two hens on straw behind a picket front in its other cell; a Birdhouse on its pole.
   - Where LimeZu has none, our own drawings in its palette and ink: the Doghouse, the hens and the Sprinkler (`src/ui/art/drawings.ts`).
   - No prop stands on an outside door's mat or in front of its opening (nor rises over one on the overhang layer): a Patio's table and seats move clear of the door that opens onto it, under a small parasol in place of the full one (the audit prototype's), a Pergola gives way to a shallower or narrower cut on the Patio's far side, and the car parks further along its Driveway, or on the next one. Every prop keeps its whole sprite off mats and openings, and a test checks every prop's pixels against every door. An outbuilding's own building always stands: no door opens onto one, so only its roof, rising over the row behind it, can hide part of a mat.
-  - A Fence is a white picket line through the middle of its cells, out to their edges at its ends, with a post at each end and turn (LimeZu's pickets, posts and end-on strip, after the exteriors audit's line autotile). Two Fences join only through an end's open side (the way its line runs on): in a corner or a T; end to end, each keeps its end post, so each stays countable; side by side, their ends never close them into a pen. A Fence's ghost is the Fence alone.
+  - Fences and Driveways are packs (D-106): a Fence is 1–8 connected tiles and a Driveway 1–6, in any shape (`packShapeProblem` in `src/rules/grid.ts`), clicked out one by one, so each is drawn from its own tiles (`PlacedPiece.shape`), never its card's shape: the ghost as the tiles go down, the built pack, and the Moving Truck's carried pack (D-111).
+  - A Fence is a white picket line through the middle of its cells, out to their edges at its ends, with a post at each end and turn (LimeZu's pickets, posts and end-on strip, after the exteriors audit's line autotile). A lone tile is a short run across its cell, with a post at each end. Two Fences join only through an end's open side (the way its line runs on): in a corner or a T; end to end, each keeps its end post, so each stays countable; side by side, their ends never close them into a pen. A Fence's ghost is the Fence alone.
   - What rises above a piece's own cells (the Greenhouse's roof, the Treehouse, a Birdhouse's box, a side-on car's roof) goes on the overhang layer, over the walls. The Greenhouse and the Treehouse are cut down to rise less than a cell, so a piece behind them still shows.
   - Pieces of a type differ in color (parasols, planters, coops, birdhouses) the way rooms do, and a ghost takes the color its piece will have (or has, when the Moving Truck carries it, with its fixture).
 - **Readability:**
@@ -1583,7 +1595,7 @@ Intensity is measured against **pace**: `max(1, (this phase's target − the sco
   - an animated sprite (the Fireplace, the Fire Pit, the Hot Tub's foam, the Sprinkler) is its frames side by side, stepped behind the piece's box with a transform; reduced motion stops it
   - furniture and yard props are absolutely positioned elements using a CSS-background atlas, placed at any art pixel × scale (a whole number of device pixels per art pixel at the camera's scales)
   - atlas sprites start at even positions and are extruded by 1px, so fractional screen scales show no seams
-  - the pieces' score digits are sized in sixteenths of a cell (never under 11 CSS px), so 1× shows them as 2× did with 16 px art, and they grow with the zoom, in the piece's bottom-right cell inside its walls. A piece's badges (a fixture that can't be drawn, top right; an unmet requirement's ⚠, top left) are square paper in LimeZu's ink with their pixel icon, 14 CSS px at 1×, growing with the zoom and shrinking below 1× (never under 9 CSS px, nor under their icon at a device pixel a pixel), on whole device pixels. A badge never covers the digit (`src/ui/board/label-layout.ts`, tested at every zoom): one that shares the digit's row and would touch it rises to its cell's top edge, over the wall band, then the digit drops toward the cell's bottom edge, then the badge shrinks. Labels keep off what isn't their piece's: another piece's prop rising into their cells, a tree's crown (`canopyParts` in `terrain/objects.ts`), and doors' mats. The digit rises above it (into its own cells above, if it must) or moves left onto its own cells, whichever is shorter, keeping a badge in its column room for its icon
+  - the pieces' score digits are sized in sixteenths of a cell (never under 11 CSS px), so 1× shows them as 2× did with 16 px art, and they grow with the zoom, in the piece's bottom-right cell inside its walls. A piece's badges (a fixture that can't be drawn, top right; an unmet requirement's ⚠, top left) are square paper in LimeZu's ink with their pixel icon, 14 CSS px at 1×, growing with the zoom and shrinking below 1× (never under 9 CSS px, nor under their icon at a device pixel a pixel), on whole device pixels. A badge never covers the digit (`src/ui/board/label-layout.ts`, tested at every zoom): one that shares the digit's row and would touch it rises to its cell's top edge, over the wall band, then the digit drops toward the cell's bottom edge, then the badge shrinks. Labels keep off what isn't their piece's: another piece's prop rising into their cells, a tree's crown (`canopyParts` in `terrain/objects.ts`), and doors' mats. The digit rises above it (into its own cells above, if it must) or moves left onto its own cells, whichever is shorter, keeping a badge in its column room for its icon. A renovated room's level (D-102) is one more badge, a star per level, in the room's top row: right of the ⚠, else under it, else a column in a room one cell wide, by the same rules. It pops on a Renovation, and where it can't fit it's left out, since the inspect panel states the level (D-111)
   - the street's label lies on the longest stretch of sidewalk with no curb cut, sticks inside the view's left edge so it reads whole however the lot is panned, and takes a smaller size in a short row (0.5× on a Retina screen)
   - the title screen's street is one canvas, like the terrain, so its tiles show no seams at 125% or 150% display scaling. Its lawn and street are drawn by the lot's own painters (the grass with its tufts and flowers, and the board's sidewalk, curb, road and dashed line), with one more row of far sidewalk for the credit. It keeps its old tile sizes (64, 48, or 32 CSS px by the window's height), rounded to whole device pixels per art pixel (down on a tie) and never under 32 CSS px, so the footer stays on the far sidewalk. On a Retina screen it's as it was. At a devicePixelRatio of 1 the 48 px size comes out at 32; at 1.25 every size comes out at 51.2; at 1.5 the 48 and 32 px sizes come out at 42.7.
   - **zoom changes the scale and re-lays out the board in whole steps, never with `transform: scale()`**: Safari blurs canvases under a scaling transform (a WebKit bug open since 2018). Transforms are only for short juice tweens. This changes D-049's camera.

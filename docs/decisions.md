@@ -823,6 +823,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - *Decided by the team, 2026-11-07:* M5a's pull request holds the art, the lot, the house and the pixel UI (D-098 to D-100) and goes to playtest 5a now. The visual juice moves to its own pull request after M4 and before M5b, with its own playtest: §12's celebration ladder, §7's distinct moments, particles and the Flashing toggle, and the roof reveal at Roofing. It reworks the tally's director, `feel.ts` and the score panel, which M4 also changes, so building it before M4 merges would add more conflicts with M4.
 - M5a merges first, as this decision's order says. M4 then merges `develop`, numbers its decisions from D-101 and restyles its new screens (the job board and its crew pick, the checklist, the change-order sheet and the first-time hints) with M5a's interface (`src/ui/kit` and the theme's tokens). If M4 merges first, M5a renumbers instead.
 - D-094 (chain reactions, Open) is raised with the team before the juice pull request reworks the tally, as §7 says: option 1 would land in it, and options 2 and 3, if chosen, before it or with it (D-094's note of this date).
+- *Done, 2026-11-08:* M5a merged first (pull request #18). M4 then renumbered its decisions in a commit of its own (84a1601), before merging `develop`, in one pass so no number moved twice: D-097 → D-101 (the house rules), D-098 → D-102 (Renovate), D-099 → D-103 (the household's arrivals), D-100 → D-104 (half-weight draws), D-101 → D-105 (the yard rules), D-102 → D-106 (packs), D-103 → D-107 (a fixture's worth), D-104 → D-108 (client numbers) and D-105 → D-109 (M4b's rules structure). M4's commit messages from before it use the old numbers. The merge (6874cd0) kept M5a's structure and ported M4's features onto it; M4 then restyled its new screens with M5a's interface and drew its new pieces in LimeZu's art (D-110, D-111). The juice pull request still comes after M4, as decided above.
 
 ### D-098 · M5a interface defaults: the pixel UI
 **Status:** Accepted · 2026-11-07 (proposed 2026-11-06 with M5a's UI track, stage 2: part 1, the foundations, the build screen, the score panel and the top bar; part 2, the other screens. Held up in playtest 5a, confirmed by the team). Implementation details within D-057, D-059, D-097 and §12. It kept its number when the stage's tracks merged; the lot's and the house's defaults are D-099 and D-100.
@@ -851,7 +852,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 **Why:** The UI and juice audit (2026-11-06) found an interface that read as a web app beside the pixel-art board, with text at 9–13 px, hairline edges and blue for six meanings. D-057 asks for wood-panel frames and a chunky pixel font with a readable option. The audit's design system turned that into tokens, one pixel unit and a few primitives, so every screen shifts together.
 **Costs:** the pixel font is wide, so the side columns are wider: at 1280×720 their 280 px leave the board 720 px, and at 1× the lot is a little wider than its view, so it pans across as well as down (a new run shows 24 px less of each edge column; before M5a it fit across). The street's label sticks inside the view, so it still reads whole. Narrower columns would wrap the cards' text further and push the hand down; that trade is the team's to revisit. In the pixel font, rows that share one shape cost height on the end screen: with the team's playtest-5a run, the right column hides 302 px at 1724×962 (242 before the review's fixes) and 638 px at 1280×720, but only 16 px at 1920×1080; a run with a multi-week early bonus gets taller rows throughout at 1280×720.
-**Changes:** None to settled decisions. D-073 (Accepted): the top bar keeps everything it lists. D-087 (Proposed): the inventory still sits above the hand, and the shop keeps its sections and the leave button's saving bonus, the button moving to the sheet's foot. D-086 (Proposed): unchanged, the underline only redrawn.
+**Changes:** None to settled decisions. D-073 (Accepted): the top bar keeps everything it lists. D-087 (Accepted 2026-11-06): the inventory still sits above the hand, and the shop keeps its sections and the leave button's saving bonus, the button moving to the sheet's foot. D-086 (Accepted 2026-11-06): unchanged, the underline only redrawn.
 
 **2026-11-07 (playtest 5a), the review's fixes:** made with the team's OK before merging, and described in the bullets above.
 - Notes and toasts no longer cover the "It's a house." sign or a milestone's banner.
@@ -897,7 +898,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 **Why:** The audit's prototype (house-B, test-abc123-B) showed that LimeZu's pieces at 32 px cells read as a real house when rules choose the doors, windows and furniture well.
 *Open for the team:* room colors. No rule that uses only the current house is both always distinct and always stable. Hash-then-next-free keeps older rooms fixed and same-type rooms distinct up to the palette's size, but demolishing a room can recolor a newer one it had bumped. A plain per-piece hash is always stable but lets two Bedrooms share a duvet. *Decided by the team, 2026-11-07 (playtest 5a):* hash-then-next-free, as built.
-**Changes:** D-097 (Accepted): its doorways, windows and front door are chosen "by fixed rules and a tile hash"; here no tile hash is used: ties go by position, and between rooms by the rooms' uids and a hash of one (the colors come from a hash of the uid), which the stage-2 brief allowed. As deterministic, but the same footprint built in another order, or rebuilt after a demolition, can get other doorways between its rooms and other colors. D-093 (Open) is followed: a wall between every two pieces, every room type its own floor, no zone tints, doorways decoration only.
+**Changes:** D-097 (Accepted): its doorways, windows and front door are chosen "by fixed rules and a tile hash"; here no tile hash is used: ties go by position, and between rooms by the rooms' uids and a hash of one (the colors come from a hash of the uid), which the stage-2 brief allowed. As deterministic, but the same footprint built in another order, or rebuilt after a demolition, can get other doorways between its rooms and other colors. D-093 (Accepted 2026-11-06, option B) is followed: a wall between every two pieces, every room type its own floor, no zone tints, doorways decoration only.
 *Accepted with this decision, 2026-11-07 (playtest 5a):* the change to D-097, whose doorway bullet and hash note say so now.
 
 **2026-11-07 (playtest 5a):** the team loved how the rooms change as fixtures go into them, and how they connect to the rooms and the yard around them. In their run that happened at almost every step: the Dining Room took a doorway and a window from the Living Room, Bunk Beds replaced a bed and its nightstand, a Pergola replaced a Patio's parasol, a back door opened onto each Patio, and a Bay Window widened a Living Room's wall.
@@ -1019,6 +1020,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
   - B's arrivals also add a start-of-week step (D-036)
 - **The choice is the team's:** A (the checklist only), A plus Renovate, B, or C (B plus merging rooms or construction stages).
 
+**2026-11-08 (M4 merged with `develop`):** on M4's branch these parts were D-097 to D-101 until M5a, merged first, took D-097 to D-100. M4 renumbered them before its merge (D-097's juice note has the map), so its older commit messages use the old numbers: "D-093 Accepted with option B; D-097 to D-103" means D-101 to D-107.
+
 ### D-101 · The house rules: seven lines every checklist starts with
 **Status:** Accepted · 2026-11-06 (D-093's option B, chosen by the team). The numbers are placeholders for the sim.
 **Decision:**
@@ -1048,6 +1051,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 **Why:** a duplicate card gets somewhere better to go than a second copy across the lot (the review's force 3). Without it the ceilings make dead cards: under option A, 38% of Kitchen cards were dead, against 6% with Renovate.
 **Changes:** D-004, D-036, and D-050 (Accepted): a week's turn can be a Renovation.
+**2026-11-08 (M4 merged with `develop`):** "Levels show on the board" is now a pixel badge with a star per level in the room's top row. It's placed with M5a's labels, so it never covers the digit or another badge, and it pops on a Renovation. Where it can't fit it's left out, and the inspect panel states the level (D-111).
 
 ### D-103 · The household's arrivals
 **Status:** Accepted · 2026-11-06 (D-093's option B; the team chose fixed arrivals, not declinable). Built in M4b.
@@ -1089,6 +1093,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 **Why:** D-074. Closing a yard took 2–3 Fence cards in the right shapes, the player never built one, and the Hendersons and the Barkers want fenced yards.
 **Changes:** D-004 and D-036 (Accepted): a week's play can place a pack. D-049 (Accepted): the yard shapes. D-071: the variant cards. D-072: the enclosure probe.
+**2026-11-08 (M4 merged with `develop`):** M5a's painters draw a pack from its own tiles, never the card's shape: its ghost as the tiles are clicked out, the built pack, and the Moving Truck's carried pack. A Fence's picket line runs through any connected shape, and a lone tile is a short run with a post at each end. The house's car parks only where its wheels stand on its Driveway's own tiles (D-111).
 
 ### D-107 · Showing what a fixture is worth
 **Status:** Accepted · 2026-11-06 (the team chose it, resolving D-092). Built with M4b's UI.
@@ -1225,6 +1230,60 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 ## Proposed
 
+### D-111 · Art for M4's content: the members' rooms, packs, and Renovate's level
+**Status:** Proposed · 2026-11-08, with the M4 pull request, after it merged `develop` (M5a). Implementation details within D-097, D-100, and §12 Art; for playtest 4.
+**Decision:**
+- **The members' rooms** (D-103): the Nursery, the Kids' Room, Grandma's Room, Renfield's Room, Nana's Room, Rowan's Studio, and Ivy's Room.
+  - Each has its own floor and wallpaper, as every room type does (D-097), cut from LimeZu's Room_Builder sheets into a manifest of their own (`art/limezu/members.json`). Each wallpaper stands ΔE 20 or more from its floor, like every room's (D-100's test).
+  - Their furniture is laid out by `rooms.ts`'s slot rules (D-100), from new LimeZu cuts that say whose room it is: cribs in the twins' Nursery; single beds and toys in the Kids' Room; a bed, a curio cabinet and a vanity in Grandma's Room; a cot, candles and cobwebs in Renfield's; Nana's bed beside a dog bed; an easel, a stool and paint pots in Rowan's Studio; a single bed and a school desk in Ivy's Room.
+  - The dog bed in Nana's Room is our own drawing, in LimeZu's palette and ink, like the Doghouse (`drawings.ts`).
+  - Bunk Beds stand in place of a member's bed, as in a Bedroom. Doors treat a member's room as the Bedroom it counts as (D-103).
+  - When the Nursery grows into the Kids' Room, its art changes with its type; its level and fixture stay (D-109).
+- **Packs** (D-106) are drawn from their own tiles, never the card's shape: the ghost as the tiles are clicked out, the built pack, and the Moving Truck's carried pack (D-100's ghost rule).
+  - A Fence's picket line runs through any connected shape, joining other Fences as D-100's do. A lone tile is a short run across its cell, with a post at each end.
+  - The house's car parks only where its wheels stand on its Driveway's own tiles: further along it, else on the next Driveway, else nowhere. A lone tile or a T parks none.
+- **Renovate's level** (D-102): a pixel badge with a star per level, as tall as the piece's other badges, in the room's top row: right of the ⚠, else under it, else as a column in a room one cell wide. `label-layout.ts` places it with the digit and the other badges, so it never covers them, stays on the room's own cells inside its walls, and keeps off what the labels keep off (D-100). It pops on a Renovation (`FEEL.levelPop`; not under Reduce motion). Where it can't fit it's left out, and the inspect panel states the level.
+- **The crews' icons:** our own 8×8 drawings in LimeZu's palette, like D-098's icons, for a crew's chip and, at 4 UI px per art px, its card. The General Contractor's is the Weekend Crew's hard hat (the hammer already means Demolish), the Landscaper's a garden spade (its bonus is for yard pieces, and most of them aren't Green), and the Architect's the goods' blueprint, redrawn at 8×8. No crew's icon is a tag's.
+- **Two carets** open and close folds and the contract's house rules (▸ closed, ▾ open): small wood triangles in the ink outline, smaller than the ▲ ▼ marks, so an open fold doesn't read as a dislike. The open one is the closed one turned a quarter in the same 8×8 box, so a row keeps its place when it toggles.
+
+**Why:** M4's new pieces had no art in M5a's look. M5a drew a yard piece from its card's shape, which a pack doesn't keep, and the merge gave the members' rooms the Bedroom's floor and wallpaper for the time being. D-097 gives every room type its own floor and furniture, and D-100 draws every piece from its own cells. A Renovation needs a mark on the board, and M5a's labels already decide where a badge can go.
+**Costs:** new LimeZu cuts, each with its record in `assets/licenses.json` (`CREDITS.md` credits LimeZu already), and one more drawing of ours. The level badge is left out where a room has no space for it at the zoom: at 1×, a one-row room that also shows a fixture's badge and the ⚠, or a one-column room with a fixture's badge; below 1×, most one-row and one-column rooms. A Driveway too small or too ragged for the car parks none.
+**Changes:** None to settled decisions. It extends D-100 (Accepted): its Furniture bullet gains the members' rooms, its Yard pieces bullet the packs' own shapes, the lone Fence tile and where the car parks, and its Labels bullet the level badge. D-098 (Accepted): the crews' icons and the carets join its icons.
+
+### D-110 · M4's screens in the pixel UI
+**Status:** Proposed · 2026-11-08, with the M4 pull request, after it merged `develop` (M5a). Implementation details within D-098 and D-109; for playtest 4.
+**Decision:**
+- **One interface:** M4's screens are built from M5a's kit (`src/ui/kit`: panels, sheets, paper cards, chips, keycaps, and icons) on the theme's tokens, in the pixel font with the readable option, like every other screen (D-098). Every color is a token, so M4's stylesheets come off `theme.test.ts`'s legacy list, and its 4.5:1 check covers their text. Glyphs the pixel fonts lack are icons.
+- **The job board and the crew pick:** one wood panel over the title's street, "The job board" or "Pick your crew" on its plank, with "Step 1 of 2" or "Step 2 of 2" as a chip. Contracts and crews are paper cards, three in a row, each with a keycap (1–3), a rarity band and chip, a middle that scrolls, and a foot that doesn't, holding its button. 1–3 take a card, and Esc or Back goes back a step. Focus moves to the first card's button at each step.
+  - "Recommended for your first job" is a gold tab with a star on the card's top edge. On a first visit only that card's button is lime (the Hendersons' Take the job, then the General Contractor's Hire this crew), so the view has one lime button, as the build screen has End week (D-098).
+  - A contract shows its lot as a small map of the lot and its street row in LimeZu's colors, at 3 UI px a cell (2 on a window up to 1500 px wide or under 800 px tall), in the ink ring; its tastes as rows with up and down icons; and its house rules folded behind a caret.
+  - A crew card shows the crew's icon at 4 UI px per art px (D-111), its blurb, its "All run" lines, and the pieces it starts with as pictures (their shape glyphs under 800 px tall).
+- **The change order** is a sheet over the board, with the mail icon and "Change order" on its plank and the client's name beside them.
+  - It holds the keyboard on its text, never on a button, so a held Enter can't skip `FEEL.changeOrder`'s pause (D-109). Tab stays inside it, and focus goes back where it was when it closes. It isn't one of the modals (`anyModalOpen()`), so the game's keys answer it: Enter accepts (or says Got it to a phase effect), and Esc or D declines a request or a restriction.
+  - Its middle scrolls: the order's name with a chip for its kind (a request's mail, a restriction's cross, a phase effect's clock), the client's words, the terms, "So far", how long it runs, and what it pays, the coin first (D-098). Its foot doesn't: Decline, for a request or a restriction, is plain, and Accept or Got it is lime, each with its keycap.
+  - The answer is a pixel stamp, a check or a cross and the word, that comes to rest unrotated before the shop opens.
+  - Notes dock inside it, under its plank: D-098's Overlays bullet now covers any sheet over the board, not only the shop.
+  - Under it, the board's water and animated props pause, as they do under the shop (D-099).
+- **The client's checklist** is a panel in the left column. The client's name is on its plank, with their brief as its tip. The crew is a wood chip with its icon, whose tip is the crew's blurb and its "All run" lines.
+  - Marks are icons: a check for a line that holds, a pending mark for one that doesn't, a star or a cross for a line turned on or off this week, a clock for a phase effect, and a caret on a fold row.
+  - On a window wider than 1500 px a held line shows its "+0.25", and the plank counts the lines held. On a narrower one (280 px columns), a held line shows a Charm icon, with the value in its tip.
+  - On a window under 800 px tall the tastes fold into one row, "Likes and dislikes". House-rule groups fold as D-109 says.
+- **The left column:** the score panel keeps its height, and the checklist and the inspect panel share the rest, each scrolling inside its own body, with the inspect panel's plank always in view. While a play is being looked at, the inspect panel comes first (D-109). On a window under 800 px tall, the score panel's sets and budget line hide while a play is looked at: the 820 px rule M4 built for D-109's left column is D-098's 800 px breakpoint now. The aim at 1280×720 while placing: the score panel, at least two checklist rows, and the inspect panel's preview in view, in both fonts.
+- **First-time hints** (D-045, D-077's note) are paper notes with a wood plank and the help icon, by the panel each explains, on whole device pixels and inside the window: the first week, the checklist, Complete early, the shop, a fixture, a change order, and an arrival. They never take focus. Got it dismisses one for good, and Settings shows them again. They're `FirstHints.tsx`; `Hints.tsx` stays D-098's controls strip.
+- **The controls strip** (D-098) adds a change order's keys (Enter accepts, Esc or D declines), a pack's clicks (click a tile to add it, and again to take it off), and a pending Renovation ("renovate it" on Enter).
+- **The board's labels** (D-098): a pack's ghost label is two short lines, its change to the week's Wow with how many tiles are out ("3 of 8 tiles"), then "Click to start" or "End week to build"; the next tile's own chip says what a click there would do. Renovating, the room's label names the level it would reach and the change to the week. These labels keep the ▲, ▼ and ✕ that M5a's labels use, which the pixel fonts lack (a known gap in both).
+- **A fixture's worth** (D-107) is a strip on the shop's fixture cards and on a crate's fixture options: the best host, this week's gain with an up or down icon, and the gain over the weeks left. While installing, each host's gain is one of D-098's preview badges, above the walls, the best ringed in gold.
+- **The inventory** (D-098) adds the extra slots for the crew's and the household's cards after the reserve's own, each tagged ("Crew", "Twins"). An arrival's cards pop in.
+- **The client and the crew** are named on the checklist and in the Menu, beside the seed. The top bar keeps D-098's layout, its week line reading "Change order" while one is open.
+- **End week** keeps D-098's measured labels. A pending Renovation says so in its title, in the strip ("renovate it"), and in the inspect panel.
+- **An arrival's banner** is a wood plank with the House icon, not the gold milestone ribbon, so an arrival doesn't read as a milestone met. It doesn't hold up the week (D-109).
+- **How to play** gains short sections on M4's systems, with numbers from the rules and the glossary as the rest of the sheet has them: the client's checklist and its seven house rules (+0.25 Charm a held line), Renovate, packs, change orders, the household's arrivals, and the crews. Its controls add a change order's keys (Enter; Esc or D) and a pack's click (a tile again takes it off). Full House's picture wraps to fit the sheet.
+- *Open for the team:* client portraits. LimeZu's premade Modern Interiors characters (a pack already cleared) could put a face on the job board and the change-order sheet. The default is none for playtest 4: the screens work with names, the lot map and text, and portraits could come with the juice pull request or M5b.
+
+**Why:** M4 was built alongside M5a, in the old look, and merged after it (D-097's juice note). Playtest 4 should try M4's game in the interface the team approved in playtest 5a, not in two looks side by side. Each default follows D-098's rules: one lime button per view, icons for the glyphs the fonts lack, sheets that hold the keyboard, and whole device pixels.
+**Costs:** the pixel font is wide (D-098's Costs). A 280 px column holds about 19 characters a line, and at 1280×720 the Hendersons' checklist needs about 2.5 times the space the column has, so it leans on folding and scrolling. The Hendersons' contract card needs about 660 px in the pixel font, more than a 1280×720 window gives it, so its middle scrolls.
+**Changes:** None to settled decisions. It extends D-098 (Accepted): notes dock in any sheet over the board, and its 800 px breakpoint replaces the 820 px M4 used for the left column. D-109 (Proposed): its UI bullet points here.
+
 ### D-109 · M4b rules structure: change orders, arrivals, and crews
 **Status:** Proposed · 2026-11-07, with the M4 pull request. Details within D-103, D-012, and Appendix A · M4b; numbers for the sim and playtest 4.
 **Decision:**
@@ -1245,6 +1304,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - **Debug ops:** force a change order (offered now, running through the current phase) or a client's arrival (its cards now, once).
 
 - **The UI** (2026-11-07): the left column fits 1280×720 and up: house-rule groups whose lines all hold fold into one row (they open while a line in them flips), and while a play is being looked at, Inspect comes first. A source with several earn lines names what each is for ("Count Vladislav (Dark pieces)"). A demolition's preview names the sets it would break; a set that re-forms from other pieces isn't counted. The change-order sheet takes its keys only after a short pause (so an Enter meant for End week can't answer it), and stamps the answer before the shop opens. Orders a milestone resolved stay in the checklist panel with their result until the next phase's first tally, so skipping the tally never hides them. An arrival's banner doesn't hold up the week.
+  - *2026-11-08 (M4 merged with `develop`):* these screens are in M5a's pixel UI now, with these rules kept (D-110). The left column's short-window rule moved from 820 px to D-098's 800 px. Its aim at 1280×720 while placing: the score panel, at least two checklist rows and the inspect panel's preview in view, in both fonts.
 
 **Why:** the plan's M4b, D-103, and the sim's needs. The last-phase rule is new: without it, the offer after milestone 6 paid budget at the end of the run.
 **Changes:** jam-scope.md's change orders (the Twins and Grandma's moving in are arrivals now, D-103). Appendix A · M4b's skip rules (free space isn't checked).
@@ -1364,7 +1424,7 @@ Choose from two or three contracts, each one a client plus a lot.
 - **Upstairs floor:** revisit after the basement.
 - **Tour-order scoring:** the walkthrough as a scoring chain, where some rooms boost every room visited after them. Interesting, but hard for players to predict.
 - **Company HQ screen:** a visual home for meta-progression.
-- **Merged rooms** (the team's idea from playtest 5a, 2026-11-07): two Living Rooms that become one big living room, or two Bedrooms that become a primary bedroom, with a limit so rooms can't merge endlessly. It's D-093's option 4 in another form. Of the three ways sketched in `content-brainstorm.md` §15, the team picked *Extend a room* as the closest: a spare room card grows a room of its type into one bigger room, on the model of M4's Renovate. Revisit after playtest 4 has tried Renovate.
+- **Merged rooms** (the team's idea from playtest 5a, 2026-11-07): two Living Rooms that become one big living room, or two Bedrooms that become a primary bedroom, with a limit so rooms can't merge endlessly. It's D-093's option 4 in another form. Of the three ways sketched in `content-brainstorm.md` §15, the team picked *Extend a room* as the closest: a spare room card grows a room of its type into one bigger room, on the model of M4's Renovate (D-102). Revisit after playtest 4 has tried Renovate.
 
 ## Open questions
 
