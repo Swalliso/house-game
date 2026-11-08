@@ -11,14 +11,16 @@ import { DebugPanel } from './debug/DebugPanel.tsx';
 import { ErrorBoundary } from './ErrorBoundary.tsx';
 import { busy, setHold, skip } from './fx/director.ts';
 import {
+  anyModalOpen,
   cancelPlacement,
-  copyFallback,
-  howToPlayOpen,
+  closeTopModal,
   requestEndWeek,
   selectCard,
-  settingsOpen,
   toggleDemolish,
 } from './hud/actions.ts';
+import { Hints } from './hud/Hints.tsx';
+import './hud/board-chrome.css';
+import { GameMenu } from './hud/Menu.tsx';
 import { Hand } from './hud/Hand.tsx';
 import { Inspect } from './hud/Inspect.tsx';
 import { Inventory } from './hud/Inventory.tsx';
@@ -30,10 +32,10 @@ import { HowToPlay } from './screens/HowToPlay.tsx';
 import {
   CopyFallback,
   MilestoneBanner,
-  Notice,
+  ModalToast,
+  Notes,
   SmallScreenNotice,
   TargetFlash,
-  Toast,
   useSkipOnClick,
 } from './screens/Overlays.tsx';
 import { SettingsPanel } from './screens/Settings.tsx';
@@ -41,23 +43,13 @@ import { ShopScreen } from './screens/ShopScreen.tsx';
 import { Title } from './screens/Title.tsx';
 import { appScreen, run, selected, tool } from './store.ts';
 
-function anyModalOpen(): boolean {
-  return settingsOpen.value || howToPlayOpen.value || !!copyFallback.value;
-}
-
-function closeModals(): void {
-  settingsOpen.value = false;
-  howToPlayOpen.value = false;
-  copyFallback.value = null;
-}
-
-/** Esc closes a sheet on any screen. */
+/** Esc closes the top sheet on any screen (modals.ts). */
 function useModalKeys(): void {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && anyModalOpen()) {
         e.preventDefault();
-        closeModals();
+        closeTopModal();
       }
     };
     window.addEventListener('keydown', onKey);
@@ -162,17 +154,14 @@ function Game() {
       </aside>
       <main class="center">
         <Board />
+        <Notes />
         <MilestoneBanner />
         <TargetFlash />
         <EndCaption />
         <ShopScreen />
       </main>
       <aside class="right">{right}</aside>
-      <footer class="hints">
-        {screen === 'shop'
-          ? 'Buy goods for the house · hover anything to read it · sell from your supplies and blueprints · Start the next milestone when you’re done'
-          : 'Pick a card (1–3) · R or right-click to rotate · click to place · Enter to end the week · D to demolish · scroll to zoom, drag to pan, F to fit · hold Space to speed up the tally, click to skip it'}
-      </footer>
+      <Hints />
     </div>
   );
 }
@@ -187,12 +176,19 @@ export function App() {
   return (
     <>
       <ErrorBoundary>
-        {appScreen.value === 'title' ? <Title /> : <Game />}
-        <Notice />
-        <Toast />
+        {appScreen.value === 'title' ? (
+          <>
+            <Title />
+            <Notes />
+          </>
+        ) : (
+          <Game />
+        )}
+        <GameMenu />
         <HowToPlay />
         <SettingsPanel />
         <CopyFallback />
+        <ModalToast />
         <TipLayer />
       </ErrorBoundary>
       <SmallScreenNotice />

@@ -39,9 +39,10 @@ build one house for one client, placing one piece per week.
 - Score layers: code says points / mult / xMult / total; the UI says
   Comfort / Charm / Sparkle / Wow (D-019). Labels live in one constants file.
 - Juice is core (D-059): timing numbers live in src/ui/fx/feel.ts. Pixel art
-  renders at whole-number scales; the Fit overview is the one exception. The
-  camera zooms by re-laying out the board, never with transform: scale().
-  Short juice tweens (pops, wobble, celebration zooms) may use transforms.
+  renders at whole device pixels per art pixel (D-097); the Fit overview is the
+  one exception. The camera zooms by re-laying out the board, never with
+  transform: scale(). Short juice tweens (pops, wobble, celebration zooms) may
+  use transforms.
 - Assets: record every file in assets/licenses.json and CREDITS.md. Paid packs
   stay in the gitignored art-source/ folder; commit only the sprites we use.
   Never add NC, SA, or GPL assets, or anything taken from another game.

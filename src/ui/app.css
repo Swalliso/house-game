@@ -1,31 +1,10 @@
-/* Open House · M1 slice. Placeholder chrome: warm paper panels around a pixel-art board. */
+/* Open House: the layout, and the board's pieces and overlays (the pieces and juice passes
+   restyle those). The tokens and primitives are in theme/ and kit/, each screen's styles
+   beside it. */
 
 :root {
-  color-scheme: light;
-  --ink: #3b2f2a;
-  --muted: #7d6b5f;
-  --paper: #f4ead8;
-  --panel: #fbf5ea;
-  --panel-edge: #d9c7a8;
-  --wood: #8a5a3b;
-  --wood-dark: #5e3b26;
-  /* The score's layers (D-019): each its own word and color. */
-  --comfort: #3f78c0;
-  --charm: #cc4f72;
-  --sparkle: #d79a25;
-  /* Rarity (D-051): a colored border plus a label, never color alone. */
-  --rarity-common: #8a9a7b;
-  --rarity-uncommon: #3f78c0;
-  --rarity-rare: #c98a12;
-  --wow: #3b2f2a;
-  /* Good and bad: blue and orange, never color alone (D-047, §2). */
-  --good: #2f6fd0;
-  --bad: #e07a1f;
-  font-family:
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    sans-serif;
+  /* The tokens (colors, type, spacing) are in theme/tokens.css. */
+  font-family: var(--font-system);
   color: var(--ink);
   background: var(--paper);
 }
@@ -45,7 +24,10 @@ body {
   height: 100%;
 }
 
-button,
+/* The plain button, for what the kit doesn't draw (the crash card, the debug panel, the board's
+   camera buttons). The kit's buttons, cards, slots and segments (kit.css) draw every state of
+   their own, so these rules leave them alone: :where() keeps each at the specificity it had. */
+button:where(:not(.btn, .pcard, .inv-slot, .seg)),
 .button {
   font: inherit;
   font-size: 14px;
@@ -60,32 +42,25 @@ button,
   display: inline-block;
 }
 /* The plain button's hover. :where() keeps it at the base rule's specificity, so a variant's
-   own fill (the shop's Leave, a card's tint or hatching) always wins: a hover never replaces
-   it. Variants that want a hover brighten or lift with rules of their own. */
-button:where(:hover:not(:disabled)),
+   own fill always wins: a hover never replaces it. */
+button:where(:not(.btn, .pcard, .inv-slot, .seg)):where(:hover:not(:disabled)),
 .button:where(:hover) {
   background: #fff3df;
 }
-button:active:not(:disabled) {
+button:where(:not(.btn, .pcard, .inv-slot, .seg)):active:not(:disabled) {
   transform: translateY(1px);
   border-bottom-width: 2px;
 }
-button:disabled {
+button:where(:not(.btn, .pcard, .inv-slot, .seg)):disabled {
   opacity: 0.45;
   cursor: default;
 }
-button.primary {
-  background: var(--wood);
-  border-color: var(--wood-dark);
-  color: #fff8ee;
-}
-button.primary:hover {
-  background: #9a6847;
-}
-button:focus-visible,
+/* Focus is an ink ring with gold inside it, on paper and on wood alike. */
+button:where(:not(.btn, .pcard, .inv-slot, .seg)):focus-visible,
 .button:focus-visible {
-  outline: 3px solid var(--good);
-  outline-offset: 2px;
+  outline: var(--px) solid var(--focus-outer);
+  outline-offset: 0;
+  box-shadow: 0 0 0 calc(var(--px) * 2) var(--focus-inner);
 }
 
 .muted {
@@ -94,44 +69,35 @@ button:focus-visible,
 
 /* --- Layout ------------------------------------------------------------------------- */
 
+/* The side columns widen with the window, so the pixel text has room, and the board keeps
+   the lot's full width at 1× from about 1300 px (D-097). */
 .game {
+  --side: clamp(300px, 21vw, 404px);
   display: grid;
-  grid-template-columns: minmax(250px, 310px) minmax(0, 1fr) minmax(250px, 300px);
+  grid-template-columns: var(--side) minmax(0, 1fr) var(--side);
   grid-template-rows: auto minmax(0, 1fr) auto;
   height: 100%;
+  background: var(--wood-night);
 }
-/* Narrower panels on smaller screens, so the lot's full width fits at 2× from 1280px. */
+/* A narrower window keeps the columns wide enough for the pixel text, and the board pans a
+   little more (it pans at 1280×720 anyway, D-097). */
 @media (max-width: 1500px) {
   .game {
-    grid-template-columns: 238px minmax(0, 1fr) 238px;
+    --side: 280px;
   }
   .left,
   .right {
-    padding: 8px 6px;
+    padding: var(--space-1);
   }
-  .layer-value {
-    font-size: 21px;
-  }
-  .layer-name {
-    font-size: 10px;
-    letter-spacing: 0;
-  }
-  .op {
-    font-size: 16px;
-    padding-top: 14px;
-  }
-}
-.topbar {
-  grid-column: 1 / -1;
 }
 .left {
   grid-column: 1;
   grid-row: 2;
   overflow: auto;
-  padding: 10px;
+  padding: var(--space-2);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-2);
 }
 .center {
   grid-column: 2;
@@ -145,22 +111,32 @@ button:focus-visible,
   grid-column: 3;
   grid-row: 2;
   overflow: auto;
-  padding: 10px;
-  /* A focused card scrolls clear of the sticky End week (.hand-actions, about 70px tall). */
+  padding: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  /* A focused card scrolls clear of the sticky action bar (.hand-actions, about 70px tall). */
   scroll-padding-bottom: 76px;
 }
-.hints {
-  grid-column: 1 / -1;
-  font-size: 13px;
-  color: var(--muted);
-  text-align: center;
-  padding: 6px 12px;
-  border-top: 1px solid var(--panel-edge);
-  background: var(--panel);
+.left,
+.right {
+  scrollbar-width: thin;
+  scrollbar-color: var(--wood) var(--wood-night);
+}
+/* A short window: the controls strip sits under the board only (hud/hints.css), and the side
+   columns run down to the window's foot. */
+@media (max-height: 800px) {
+  .left,
+  .right {
+    grid-row: 2 / 4;
+  }
+}
+/* Anything in a side column that isn't a panel keeps its own height. */
+.right > :not(.panel) {
+  flex: none;
 }
 
-.left > section,
-.hand {
+.left > section:not(.panel) {
   background: var(--panel);
   border: 1px solid var(--panel-edge);
   border-radius: 12px;
@@ -175,89 +151,7 @@ h3 {
   font-size: 13px;
   margin: 12px 0 6px;
 }
-/* Section headings read in small caps; card titles (a shop offer, a crate option) don't.
-   :where() keeps the bare h3's specificity, so each panel's own h3 rules still win. */
-:where(.score-panel, .inspect, .inventory, .run-end, .strike-sheet, .howto-section) h3 {
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-/* --- Top bar ------------------------------------------------------------------------ */
-
-.topbar {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  padding: 8px 14px;
-  background: var(--wood);
-  color: #fff8ee;
-  border-bottom: 3px solid var(--wood-dark);
-}
-.topbar .muted {
-  color: #e6cfb5;
-}
-.brand {
-  font-weight: 800;
-  font-size: 20px;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-}
-.seed {
-  font-weight: 500;
-  font-size: 12px;
-  opacity: 0.75;
-  font-family: ui-monospace, Menlo, monospace;
-}
-.phase {
-  line-height: 1.25;
-  white-space: nowrap;
-}
-.phase-name {
-  font-weight: 700;
-}
-.week {
-  font-size: 13px;
-}
-.progress {
-  flex: 1;
-  min-width: 180px;
-  max-width: 520px;
-}
-.progress-numbers {
-  font-variant-numeric: tabular-nums;
-  margin-bottom: 4px;
-}
-.progress .wow {
-  font-size: 20px;
-  font-weight: 800;
-}
-.reached {
-  color: #bfe3a6;
-  font-weight: 700;
-}
-.bar {
-  height: 10px;
-  border-radius: 6px;
-  background: #5e3b26;
-  overflow: hidden;
-}
-.bar .fill {
-  height: 100%;
-  background: linear-gradient(90deg, #f1c46b, #f6dd9d);
-  transition: width 0.25s ease-out;
-}
-.reduce-motion .bar .fill {
-  transition: none;
-}
-.bar .fill.met {
-  background: linear-gradient(90deg, #9fd27f, #cdebb3);
-}
-.buttons {
-  display: flex;
-  gap: 6px;
-  margin-left: auto;
-}
+/* The top bar is in hud/topbar.css. */
 
 /* --- The board ---------------------------------------------------------------------- */
 
@@ -270,6 +164,8 @@ h3 {
 }
 .board {
   position: relative;
+  /* Its layers (board/layers.ts) stack among themselves, never with the page. */
+  isolation: isolate;
   margin: auto;
   flex: none;
   touch-action: none;
@@ -282,127 +178,52 @@ h3 {
   top: 0;
   image-rendering: pixelated;
 }
-.street-label {
-  position: absolute;
-  left: 8px;
-  display: flex;
-  align-items: center;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: #ffffffb0;
-  pointer-events: none;
-}
 .piece {
   position: absolute;
   pointer-events: none;
   transform-origin: 50% 60%;
 }
-.piece .cell,
-.piece .furniture {
-  position: absolute;
-  image-rendering: pixelated;
-}
-.piece.active {
-  filter: brightness(1.18) drop-shadow(0 0 4px #fff8d0);
-  z-index: 2;
-}
-/* A held set's pieces during its beat in the tally: Charm's rose, like the placement preview's
-   sets and the set's name. Sparkle's gold is for ×Mult only (D-019). */
-.piece.lit {
-  filter: drop-shadow(0 0 3px var(--charm)) drop-shadow(0 0 6px #f2a9bd);
-  z-index: 2;
-}
-.piece.set-preview {
-  filter: drop-shadow(0 0 2px var(--charm)) drop-shadow(0 0 5px #f2a9bd);
-}
+/* The tally's active piece, a held set's members, and the preview's sets are outlines in the
+   highlights layer (house.css): Charm's rose for sets, Sparkle's gold for ×Mult only (D-019). */
+/* A piece's digit, its box's bottom-right corner where label-layout.ts says. */
 .digit {
   position: absolute;
-  transform: translate(calc(-100% - 2px), calc(-100% - 1px));
+  transform: translate(-100%, -100%);
   color: #fff;
   font-weight: 800;
   line-height: 1;
   font-variant-numeric: tabular-nums;
+  /* Outlined in LimeZu's ink, like the art and the chrome around it. */
   text-shadow:
-    -1px -1px 0 #2a1d16,
-    1px -1px 0 #2a1d16,
-    -1px 1px 0 #2a1d16,
-    1px 1px 0 #2a1d16,
-    0 2px 0 #2a1d16;
+    -1px -1px 0 var(--ink),
+    1px -1px 0 var(--ink),
+    -1px 1px 0 var(--ink),
+    1px 1px 0 var(--ink),
+    0 2px 0 var(--ink);
 }
 .digit.zero {
   opacity: 0.55;
 }
 
-/* The ghost: blue and outlined when legal; orange and hatched when not (never color alone). */
+/* The ghost (HouseLayers.tsx's GhostPiece): its tint is in house.css, blue and outlined when
+   legal, orange and hatched when not (never color alone). */
 .ghost {
-  z-index: 3;
+  z-index: var(--z-ghost);
   opacity: 0.85;
-}
-.ghost .cell::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-}
-.ghost.legal .cell::after {
-  background: rgb(47 111 208 / 0.18);
-  box-shadow: inset 0 0 0 2px var(--good);
 }
 .ghost.illegal {
   opacity: 0.7;
 }
-.ghost.illegal .cell::after {
-  background: repeating-linear-gradient(
-    45deg,
-    rgb(224 122 31 / 0.75) 0 4px,
-    rgb(255 255 255 / 0.15) 4px 9px
-  );
-  box-shadow: inset 0 0 0 2px var(--bad);
-}
 .ghost.pending {
   opacity: 1;
   animation: pending-pulse 1.4s ease-in-out infinite;
-}
-.ghost.pending.legal .cell::after {
-  background: none;
-  box-shadow: inset 0 0 0 2px var(--good);
 }
 @keyframes pending-pulse {
   50% {
     filter: brightness(1.12);
   }
 }
-.ghost-reason,
-.ghost-delta {
-  position: absolute;
-  z-index: 6;
-  transform: translate(-50%, calc(-100% - 6px));
-  white-space: nowrap;
-  font-size: 13px;
-  font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 6px;
-  pointer-events: none;
-  background: #fffaf1;
-  border: 2px solid var(--muted);
-}
-.ghost-reason.below,
-.ghost-delta.below {
-  transform: translate(-50%, 6px);
-}
-.ghost-reason {
-  border-color: var(--bad);
-  color: #9a4a0a;
-}
-.ghost-delta.good {
-  border-color: var(--good);
-  color: var(--good);
-}
-.ghost-delta.bad {
-  border-color: var(--bad);
-  color: #9a4a0a;
-}
+/* The ghost's labels, and the install, tool and demolish labels: board/labels.css. */
 
 .badges,
 .popups {
@@ -411,59 +232,12 @@ h3 {
   pointer-events: none;
 }
 .badges {
-  z-index: 4;
+  z-index: var(--z-badges);
 }
-.badge {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  font-size: 12px;
-  font-weight: 800;
-  line-height: 1;
-  color: #fff;
-  font-variant-numeric: tabular-nums;
-}
-.badge.delta {
-  padding: 3px 5px;
-  border-radius: 6px;
-  border: 2px solid #fff;
-}
-.badge.delta.good {
-  background: var(--good);
-}
-.badge.delta.bad {
-  background: var(--bad);
-}
-/* Helpers are circles with +, hurters are diamonds with −. */
-.badge.source {
-  width: 16px;
-  height: 16px;
-  display: grid;
-  place-items: center;
-  border: 2px solid #fff;
-}
-.badge.source.good {
-  background: var(--good);
-  border-radius: 50%;
-}
-.badge.source.bad {
-  background: var(--bad);
-  transform: translate(-50%, -50%) rotate(45deg);
-}
-.badge.source.bad .glyph {
-  display: inline-block;
-  transform: rotate(-45deg);
-}
-.badge.cleared {
-  color: var(--bad);
-  font-size: 16px;
-  text-shadow:
-    0 0 2px #fff,
-    0 0 2px #fff,
-    0 0 3px #fff;
-}
+/* The preview's badges themselves: board/labels.css. */
 
 .popups {
-  z-index: 7;
+  z-index: var(--z-popups);
 }
 .popup {
   position: absolute;
@@ -492,6 +266,16 @@ h3 {
 .popup.set {
   color: var(--charm);
   font-size: 24px;
+}
+/* ×Mult (D-056): a gold Sparkle stamp. */
+.popup.sparkle {
+  color: var(--ink);
+  font-size: 22px;
+  padding: 1px 8px;
+  background: var(--sparkle);
+  border: 2px solid var(--ink);
+  text-shadow: none;
+  box-shadow: 0 2px 0 var(--sparkle-deep);
 }
 @keyframes popup-rise {
   0% {
@@ -529,141 +313,7 @@ h3 {
   animation-name: popup-fade;
 }
 
-/* --- Score panel -------------------------------------------------------------------- */
-
-.score-panel {
-  position: relative;
-  --glow: 0;
-  box-shadow: 0 0 calc(var(--glow) * 28px) rgb(240 175 60 / calc(var(--glow) * 0.85));
-  transition: box-shadow 0.3s;
-}
-.equation {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 4px;
-}
-.layer {
-  flex: 1;
-  text-align: center;
-  min-width: 0;
-}
-.layer-name {
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-.layer-value {
-  font-size: 28px;
-  font-weight: 900;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.1;
-}
-.layer.comfort {
-  color: var(--comfort);
-}
-.layer.charm {
-  color: var(--charm);
-}
-.layer.wow {
-  color: var(--wow);
-}
-.layer.ticking .layer-value {
-  animation: tick 0.2s ease-out;
-}
-.layer.landed .layer-value {
-  animation: land 0.45s ease-out;
-}
-@keyframes tick {
-  50% {
-    transform: scale(1.08);
-  }
-}
-@keyframes land {
-  0% {
-    transform: scale(0.6);
-  }
-  60% {
-    transform: scale(1.25);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-.reduce-motion .layer .layer-value {
-  animation: none;
-}
-.op {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--muted);
-  padding-top: 18px;
-}
-.delta {
-  display: block;
-  font-size: 12px;
-  font-weight: 800;
-}
-.delta.good {
-  color: var(--good);
-}
-.delta.bad {
-  color: #b85c0c;
-}
-.big-week {
-  margin-top: 6px;
-  text-align: center;
-  font-weight: 900;
-  font-size: 18px;
-  color: var(--sparkle);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-.score-panel.big {
-  animation: big-pulse 0.6s ease-out 2;
-}
-@keyframes big-pulse {
-  50% {
-    background: #fff4d8;
-  }
-}
-.sets {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  font-size: 13px;
-}
-.sets li {
-  display: flex;
-  gap: 8px;
-  padding: 3px 0;
-}
-.sets .set-name {
-  flex: 1;
-  font-weight: 600;
-}
-.sets .comfort {
-  color: var(--comfort);
-  font-weight: 700;
-}
-.sets .charm {
-  color: var(--charm);
-  font-weight: 700;
-}
-.sets li.gained {
-  background: #fdeef2;
-  border-radius: 4px;
-}
-.sets li.lost {
-  text-decoration: line-through;
-  color: #9a4a0a;
-}
-.sets-empty {
-  font-size: 13px;
-  color: var(--muted);
-  margin: 0;
-}
+/* --- The big week's burst (the score panel itself is in hud/score.css) -------------- */
 
 /* The burst is fixed to the viewport, so the narrow, scrolling left column can't clip it. */
 .celebration-anchor {
@@ -710,458 +360,33 @@ h3 {
   }
 }
 
-/* --- Inspect -------------------------------------------------------------------------- */
+/* The inspect panel is in hud/inspect.css. A good's effects, wherever they're listed: */
 
-.inspect {
-  font-size: 14px;
-  min-height: 160px;
-}
-.inspect p {
-  margin: 4px 0;
-}
-.earns {
-  font-weight: 600;
-  color: var(--comfort);
-}
-.lines {
-  list-style: none;
-  margin: 4px 0;
-  padding: 0;
-}
-.lines li {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 2px 0;
-  border-bottom: 1px dotted var(--panel-edge);
-}
-.lines li .value {
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-}
-.lines li.good .value::before {
-  content: '▲ ';
-  font-size: 0.75em;
-  color: var(--good);
-}
-.lines li.bad .value::before {
-  content: '▼ ';
-  font-size: 0.75em;
-  color: var(--bad);
-}
-.reason {
-  color: #9a4a0a;
-  font-weight: 700;
-}
-.set-note.good {
-  color: var(--charm);
-  font-weight: 700;
-}
-.set-note.bad {
-  color: #9a4a0a;
-  font-weight: 700;
-}
-.total-line {
-  margin-top: 8px !important;
-}
 .effects {
   margin: 0;
   padding-left: 18px;
 }
 
-/* --- Hand --------------------------------------------------------------------------- */
+/* The hand is in hud/hand.css. */
 
-.hand {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.hand h2 {
-  margin: 0;
-}
-.card {
-  position: relative;
-  text-align: left;
-  width: 100%;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 2px solid var(--panel-edge);
-  border-bottom-width: 4px;
-  background: #fffdf8;
-  font-size: 13px;
-}
-.card.indoor {
-  background: linear-gradient(#fffaf0, #fbf0dc);
-}
-.card.yard {
-  background: linear-gradient(#f7fbef, #e9f3dc);
-}
-.card.selected {
-  border-color: var(--good);
-  box-shadow: 0 0 0 3px rgb(47 111 208 / 0.25);
-  transform: translateY(-2px);
-}
-.card.no-fit {
-  opacity: 0.55;
-  background: repeating-linear-gradient(45deg, #f1e9da 0 6px, #e8dcc5 6px 12px);
-}
-/* On hover a card keeps its tint (or its hatching), a little brighter. */
-.card:hover:not(:disabled) {
-  filter: brightness(1.04);
-}
-.no-fit-reason {
-  font-weight: 700;
-  color: #9a4a0a;
-  margin-top: 4px;
-}
-.card-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-.card-name {
-  font-weight: 800;
-  font-size: 15px;
-  flex: 1;
-}
-.card-kind {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--muted);
-}
-.key {
-  display: inline-grid;
-  place-items: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 5px;
-  border: 1px solid var(--panel-edge);
-  font-size: 12px;
-  font-weight: 700;
-  background: #fff;
-}
-.card-body {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-}
-.card-body .effects {
-  padding-left: 16px;
-  flex: 1;
-}
-.card-foot {
-  margin-top: 6px;
-  font-size: 12px;
-  color: var(--muted);
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.shape-mini {
-  display: grid;
-  gap: 1px;
-  flex: none;
-  padding-top: 2px;
-}
-.mini-cell {
-  border-radius: 2px;
-  box-shadow: inset 0 -2px 0 rgb(0 0 0 / 0.2);
-}
-.mini-cell.bedroom {
-  background: #c99a6b;
-}
-.mini-cell.bathroom {
-  background: #9cc6dc;
-}
-.mini-cell.kitchen,
-.mini-cell.lKitchen {
-  background: #d6d0bf;
-}
-.mini-cell.diningRoom {
-  background: #b07a4d;
-}
-.mini-cell.livingRoom {
-  background: #c7869a;
-}
-.mini-cell.lawn {
-  background: #6fb35a;
-}
-/* End week: on a short window (1280×720, D-047) the column scrolls, so End week sticks to its
-   bottom and stays in view, like the end screen's buttons (end.css). Only End week, so it
-   covers as little of the cards as it can; .right's scroll-padding-bottom keeps a focused
-   card clear of it. */
-.hand-actions {
-  display: flex;
-  flex-direction: column;
-  position: sticky;
-  bottom: -12px;
-  margin: 0 -14px -12px;
-  padding: 10px 14px 12px;
-  background: var(--panel);
-  border-top: 1px solid var(--panel-edge);
-  border-radius: 0 0 11px 11px;
-}
-.hand-buttons {
-  display: flex;
-  gap: 6px;
-}
-.hand-buttons .rotate {
-  flex: 1;
-}
-.end-week {
-  position: relative;
-  padding: 12px;
-  font-size: 16px;
-  font-weight: 800;
-}
-.end-week.ready {
-  background: var(--good);
-  border-color: #1f4f99;
-  color: #fff;
-}
-.end-week.ready:hover {
-  background: #3b7de0;
-}
-.end-week.confirm {
-  background: #fff1e0;
-  border-color: var(--bad);
-}
-.key-hint {
-  margin-left: 8px;
-  font-size: 11px;
-  font-weight: 600;
-  opacity: 0.6;
-  white-space: nowrap;
-}
-
-/* --- Overlays ----------------------------------------------------------------------- */
-
-.banner {
-  position: absolute;
-  top: 18px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 20;
-  min-width: 320px;
-  text-align: center;
-  padding: 14px 24px;
-  border-radius: 14px;
-  border: 3px solid var(--wood-dark);
-  background: #fff8e8;
-  box-shadow: 0 10px 30px rgb(60 40 20 / 0.35);
-  animation: banner-in 0.35s cubic-bezier(0.2, 1.4, 0.4, 1);
-  cursor: pointer;
-}
-.banner.good {
-  border-color: var(--sparkle);
-}
-.banner.bad {
-  border-color: var(--bad);
-}
-.banner-title {
-  font-size: 26px;
-  font-weight: 900;
-}
-.banner-detail {
-  color: var(--muted);
-  margin-top: 4px;
-}
-@keyframes banner-in {
-  from {
-    transform: translate(-50%, -40px) scale(0.9);
-    opacity: 0;
-  }
-}
-.reduce-motion .banner {
-  animation: none;
-}
-.target-flash {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 19;
-  font-size: 34px;
-  font-weight: 900;
-  color: #4b8a2c;
-  text-shadow:
-    0 3px 0 #fff,
-    0 -2px 0 #fff,
-    3px 0 0 #fff,
-    -3px 0 0 #fff;
-  pointer-events: none;
-  animation: popup-fade 1.4s forwards;
-}
-/* A neutral note (a free redraw, the saving-up bonus): a paper slip like .notice, not the
-   green of a success. */
-.target-flash.note {
-  font-size: 18px;
-  font-weight: 800;
-  color: var(--ink);
-  white-space: nowrap;
-  padding: 8px 16px;
-  border-radius: 10px;
-  border: 2px solid var(--panel-edge);
-  background: #fffaf1;
-  box-shadow: 0 6px 18px rgb(60 40 20 / 0.2);
-  text-shadow: none;
-}
-.notice,
-.toast {
-  position: fixed;
-  top: 64px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 40;
-  background: #fffaf1;
-  border: 2px solid var(--panel-edge);
-  border-radius: 10px;
-  padding: 8px 12px;
-  box-shadow: 0 6px 18px rgb(60 40 20 / 0.2);
-  font-size: 14px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  max-width: min(720px, 90vw);
-}
-.notice {
-  top: auto;
-  bottom: 84px;
-}
-.toast {
-  top: auto;
-  bottom: 44px;
-  background: var(--ink);
-  color: #fff;
-  border-color: var(--ink);
-}
-.notice .close {
-  padding: 2px 8px;
-}
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  background: rgb(40 28 20 / 0.45);
-  display: grid;
-  place-items: center;
-}
-.modal {
-  width: min(440px, 92vw);
-  background: var(--panel);
-  border: 3px solid var(--wood-dark);
-  border-radius: 14px;
-  padding: 18px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.modal fieldset {
-  border: none;
-  padding: 0;
-  margin: 0;
-}
-.modal legend {
-  font-weight: 700;
-  margin-bottom: 6px;
-}
-.segmented {
-  display: flex;
-  gap: 4px;
-}
-.segmented button.on {
-  background: var(--good);
-  border-color: #1f4f99;
-  color: #fff;
-}
-.slider {
-  display: grid;
-  grid-template-columns: 120px 1fr 36px;
-  align-items: center;
-  gap: 8px;
-}
-.slider .value {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-.toggle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.copy-text {
-  width: 100%;
-  font:
-    12px ui-monospace,
-    Menlo,
-    monospace;
-  word-break: break-all;
-}
-.modal-buttons {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.small-screen {
-  display: none;
-}
-@media (max-width: 899px) {
-  .small-screen {
-    display: grid;
-    position: fixed;
-    inset: 0;
-    z-index: 90;
-    place-items: center;
-    background: var(--paper);
-    text-align: center;
-    padding: 24px;
-  }
-}
-
-.crash {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  display: grid;
-  place-items: center;
-  background: var(--paper);
-  padding: 24px;
-}
-.crash-card {
-  max-width: 560px;
-  background: var(--panel);
-  border: 3px solid var(--bad);
-  border-radius: 14px;
-  padding: 20px 24px;
-}
-.crash-card textarea {
-  width: 100%;
-  font:
-    12px ui-monospace,
-    Menlo,
-    monospace;
-}
-.crash-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 10px 0;
-}
+/* The overlays (banners, notes, sheets) are in screens/overlays.css and kit/kit.css. */
 
 /* The build stamp: channel · git short SHA (implementation-plan.md §6). */
+/* Bottom left, clear of the hand's End week at 1280×720, on its own paper so it reads on any
+   screen. */
 .build-label {
   position: fixed;
-  right: 0.5rem;
+  left: 0.4rem;
   bottom: 0.4rem;
   z-index: 60;
+  padding: 0 4px;
+  background: var(--card);
   font:
-    12px/1.2 ui-monospace,
+    12px/1.3 ui-monospace,
     'SF Mono',
     Menlo,
     Consolas,
     monospace;
-  opacity: 0.6;
+  opacity: 0.75;
   user-select: all;
 }

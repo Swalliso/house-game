@@ -15,6 +15,11 @@ export interface Settings {
   /** 0–100. */
   masterVolume: number;
   sfxVolume: number;
+  /**
+   * The readable-font option (§12, Settings; D-059): every UI text in the system font instead
+   * of the pixel fonts, at its own sizes.
+   */
+  readableFont: boolean;
 }
 
 const KEY = 'openhouse:settings';
@@ -34,6 +39,7 @@ export function defaultSettings(): Settings {
     shake: 50,
     masterVolume: 70,
     sfxVolume: 80,
+    readableFont: false,
   };
 }
 
@@ -42,24 +48,36 @@ const clamp100 = (v: unknown, fallback: number) =>
     ? Math.max(0, Math.min(100, Math.round(v)))
     : fallback;
 
-/** Only the settings the player has changed are stored; the rest follow the defaults. */
-function loadStored(): Partial<Settings> {
-  const d = defaultSettings();
+/**
+ * The stored settings that are valid, from what was saved (parsed JSON, or anything else): a
+ * value of the wrong kind is left out, so its setting follows the default; a volume out of
+ * range is clamped.
+ */
+export function parseStored(raw: unknown, d: Settings = defaultSettings()): Partial<Settings> {
   const out: Partial<Settings> = {};
-  try {
-    const raw = JSON.parse(localStorage.getItem(KEY) ?? 'null') as Record<string, unknown> | null;
-    if (!raw || typeof raw !== 'object') return out;
-    if ((FEEL.speeds as readonly unknown[]).includes(raw.tallySpeed)) {
-      out.tallySpeed = raw.tallySpeed as TallySpeed;
-    }
-    if (typeof raw.reduceMotion === 'boolean') out.reduceMotion = raw.reduceMotion;
-    for (const k of ['shake', 'masterVolume', 'sfxVolume'] as const) {
-      if (k in raw) out[k] = clamp100(raw[k], d[k]);
-    }
-  } catch {
-    // Unreadable or blocked storage: defaults for this visit.
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+  const r = raw as Record<string, unknown>;
+  if ((FEEL.speeds as readonly unknown[]).includes(r.tallySpeed)) {
+    out.tallySpeed = r.tallySpeed as TallySpeed;
+  }
+  if (typeof r.reduceMotion === 'boolean') out.reduceMotion = r.reduceMotion;
+  if (typeof r.readableFont === 'boolean') out.readableFont = r.readableFont;
+  for (const k of ['shake', 'masterVolume', 'sfxVolume'] as const) {
+    if (k in r) out[k] = clamp100(r[k], d[k]);
   }
   return out;
+}
+
+/** Only the settings the player has changed are stored; the rest follow the defaults. */
+function loadStored(): Partial<Settings> {
+  // Outside a browser (a test) there's nothing stored.
+  if (typeof window === 'undefined') return {};
+  try {
+    return parseStored(JSON.parse(localStorage.getItem(KEY) ?? 'null'));
+  } catch {
+    // Unreadable or blocked storage: defaults for this visit.
+    return {};
+  }
 }
 
 let stored = loadStored();
@@ -76,8 +94,12 @@ export function updateSettings(patch: Partial<Settings>): void {
   }
 }
 
-effect(() => {
-  const s = settings.value;
-  audio.setVolumes({ master: s.masterVolume / 100, sfx: s.sfxVolume / 100 });
-  document.documentElement.classList.toggle('reduce-motion', s.reduceMotion);
-});
+// The page follows the settings (a test imports this module without one).
+if (typeof document !== 'undefined') {
+  effect(() => {
+    const s = settings.value;
+    audio.setVolumes({ master: s.masterVolume / 100, sfx: s.sfxVolume / 100 });
+    document.documentElement.classList.toggle('reduce-motion', s.reduceMotion);
+    document.documentElement.dataset.font = s.readableFont ? 'readable' : 'pixel';
+  });
+}

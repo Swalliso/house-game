@@ -1,0 +1,49 @@
+/* The game menu (M5a): a wood panel over a scrim. Built on kit.css. */
+
+.menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  background: var(--scrim);
+}
+.menu-sheet {
+  width: calc(var(--px) * 150);
+  max-width: 92vw;
+  animation: menu-in var(--dur-modal) ease-out;
+}
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--px) * 4));
+  }
+}
+.reduce-motion .menu-sheet {
+  animation: none;
+}
+.menu-sheet .panel-body {
+  gap: var(--space-2);
+  padding: var(--space-4);
+}
+.menu-sheet .btn-block {
+  justify-content: flex-start;
+}
+.menu-sheet .btn-primary {
+  justify-content: center;
+}
+.menu-seed,
+.menu-note {
+  margin: 0;
+  color: var(--ink-soft);
+}
+.menu-seed {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 var(--space-1);
+}
+.menu-seed-value {
+  font-family: var(--font-display);
+  color: var(--ink);
+  user-select: all;
+}

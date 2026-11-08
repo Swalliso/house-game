@@ -1,219 +1,258 @@
-/* The win and lose screens and the board's "It's a house." caption (EndScreen.tsx).
-   Tokens come from app.css. A win gets a gold accent and a soft glow; a loss stays plain. */
+/* The win and lose screens and the board's "It's a house." sign (EndScreen.tsx, M5a): a wood
+   panel in place of the hand. A win gets a trophy and a gold verdict stamp; a loss stays plain.
+   Built on kit.css. */
 
-/* --- The panel, in place of the hand ------------------------------------------------ */
+.run-end.panel {
+  flex: none;
+  animation: run-end-in var(--dur-banner) cubic-bezier(0.2, 1.2, 0.4, 1) both;
+}
+.run-end .panel-body {
+  gap: var(--space-3);
+  padding-bottom: 0;
+}
 
-.run-end {
-  --run-end-gold: #a86f0e; /* --sparkle, darkened for text on cream */
-  position: relative;
-  background: var(--panel);
-  border: 2px solid var(--panel-edge);
-  border-radius: 12px;
-  padding: 14px 14px 12px;
-  animation: run-end-in 0.45s cubic-bezier(0.2, 1.2, 0.4, 1) both;
-}
-.run-end.won {
-  border-color: var(--sparkle);
-  background: linear-gradient(#fff3d4, var(--panel) 150px);
-  box-shadow:
-    0 0 0 3px rgb(215 154 37 / 0.16),
-    0 8px 24px rgb(60 40 20 / 0.16);
-}
-/* Two small sparkles in the top corners of a win. */
-.run-end.won::before,
-.run-end.won::after {
-  content: '✦';
-  position: absolute;
-  top: 10px;
-  font-size: 15px;
-  line-height: 1;
-  color: var(--sparkle);
-  animation: run-end-twinkle 2.4s ease-in-out 3;
-}
-.run-end.won::before {
-  left: 12px;
-}
-.run-end.won::after {
-  right: 12px;
-  animation-delay: 1.2s;
-}
+/* --- The verdict and the final Wow -------------------------------------------------------- */
 
 .run-end-head {
-  text-align: center;
-  padding: 0 14px;
-}
-.run-end-title {
-  font-size: 14px;
-  margin: 0;
-  color: var(--wood-dark);
-}
-.run-end.lost .run-end-title {
-  color: var(--ink);
-}
-.run-end-verdict {
-  margin: 4px 0 2px;
-  font-size: 26px;
-  font-weight: 900;
-  line-height: 1.1;
-  color: var(--run-end-gold);
-  text-shadow: 0 2px 0 #f6dd9d;
-}
-.run-end.lost .run-end-verdict {
-  font-size: 20px;
-  font-weight: 800;
-  color: var(--muted);
-  text-shadow: none;
-}
-.run-end-score {
-  margin: 2px 0 0;
-  display: flex;
-  justify-content: center;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 0 6px;
-  font-variant-numeric: tabular-nums;
-}
-.run-end-score .value {
-  font-size: 24px;
-  font-weight: 900;
-  color: var(--wow);
-}
-.run-end-score .unit {
-  font-weight: 700;
-  color: var(--muted);
-}
-.run-end h3 {
-  margin: 14px 0 6px;
-  font-size: 12px;
-}
-
-/* --- Milestones: ✓ met, ✕ missed, ○ not reached (never color alone) --------------------- */
-
-.run-end-milestones {
-  list-style: none;
-  margin: 0;
-  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 5px;
-}
-.run-end-milestones li {
-  display: grid;
-  grid-template-columns: 14px minmax(0, 1fr) auto;
-  column-gap: 6px;
-  align-items: baseline;
-  font-size: 13px;
-  line-height: 1.3;
-}
-.run-end-milestones .mark {
-  grid-column: 1;
-  grid-row: 1;
-  font-weight: 900;
+  align-items: center;
+  gap: var(--space-2);
   text-align: center;
 }
-.run-end-milestones .met .mark {
-  color: var(--good);
+.run-end-trophy.icon {
+  width: calc(var(--w) * var(--px) * 2);
+  height: calc(var(--h) * var(--px) * 2);
 }
-.run-end-milestones .failed .mark {
-  color: var(--bad);
-}
-.run-end-milestones .name {
-  grid-column: 2;
-  grid-row: 1;
+.run-end-title {
+  margin: 0;
   font-weight: 700;
 }
-.run-end-milestones .score {
-  grid-column: 3;
-  grid-row: 1;
-  font-weight: 800;
+/* The verdict, stamped: gold for a win, a plain ink outline for a loss. */
+.run-end-verdict {
+  margin: 0;
+  padding: var(--space-1) var(--space-3) calc(var(--space-1) + var(--px));
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--card);
+  background-clip: padding-box;
+  box-shadow:
+    inset 0 calc(var(--px) * -2) 0 var(--card-lo),
+    var(--shadow-card);
+  font-family: var(--font-display);
+  font-size: var(--fs-title);
+  line-height: var(--lh-title);
+  color: var(--ink);
+}
+.run-end.won .run-end-verdict {
+  background: var(--sparkle);
+  box-shadow:
+    inset 0 var(--px) 0 var(--gold-hi),
+    inset 0 calc(var(--px) * -2) 0 var(--sparkle-deep),
+    var(--shadow-card);
+  animation: verdict-stamp var(--dur-banner) cubic-bezier(0.2, 1.4, 0.4, 1)
+    calc(var(--dur-banner) / 2) both;
+}
+@keyframes verdict-stamp {
+  from {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+}
+/* The final Wow, on the score panel's framed plaque. */
+.run-end-score {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0 var(--space-2);
+  align-self: stretch;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--card);
+  background-clip: padding-box;
+  box-shadow:
+    inset 0 0 0 calc(var(--px) * 2) var(--wood-hi),
+    inset 0 0 0 calc(var(--px) * 3) var(--wood),
+    inset 0 calc(var(--px) * -4) 0 calc(var(--px) * 1) var(--card-lo);
+}
+.run-end-score .value {
+  font-size: var(--fs-num-lg);
+  line-height: 1;
+}
+.run-end-score .unit {
+  color: var(--ink-soft);
+}
+
+/* --- Milestones: ✓ met, ✕ missed, ○ not reached (an icon and a word, never color alone) ---- */
+
+.run-end-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+/* Every row as tall as the tallest, so the list keeps one shape even where a row's line has to
+   wrap (a long result in the narrowest column). */
+.run-end-milestones {
+  display: grid;
+  grid-auto-rows: 1fr;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* Its name on a line of its own, the whole row wide (so "Final Walkthrough" fits a 280 px
+   column), then its mark and how it went, an early one's bonus, and its Wow against the target,
+   laid out in the list's shape (EndScreen.tsx milestoneShape): all on one line (`compact`), the
+   figures on a line of their own (`narrow`), or the bonus starting that line (`split`). */
+.run-end-milestones li {
+  display: flex;
+  flex-direction: column;
+}
+.run-end-milestones .name {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.run-end-milestones .line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--space-1);
+  color: var(--ink-soft);
+}
+.run-end-milestones .mark {
+  flex: none;
+  align-self: center;
+  margin-right: var(--px);
+}
+.run-end-milestones .break {
+  display: none;
+}
+.run-end-milestones .figures {
+  margin-left: auto;
   text-align: right;
-  font-variant-numeric: tabular-nums;
 }
-.run-end-milestones .tag {
-  grid-column: 2;
-  grid-row: 2;
-  font-size: 12px;
-  color: var(--muted);
+.run-end-milestones.narrow .figures {
+  flex-basis: 100%;
 }
-.run-end-milestones .early .tag {
-  color: var(--run-end-gold);
+.run-end-milestones.split .break {
+  display: block;
+  flex-basis: 100%;
+}
+/* The score and "of" its target each stay whole: figures too long for the line (six digits in
+   the narrowest column) break between them, never off the panel. */
+.run-end-milestones .score,
+.run-end-milestones .target {
+  white-space: nowrap;
+}
+.run-end-milestones .score {
+  color: var(--ink);
+}
+.run-end-milestones .early .tag,
+.run-end-milestones .bonus {
+  color: var(--sparkle-text);
   font-weight: 700;
 }
 .run-end-milestones .failed .tag {
-  color: #9a4a0a;
+  color: var(--bad);
   font-weight: 700;
 }
-.run-end-milestones .of {
-  grid-column: 3;
-  grid-row: 2;
-  font-size: 12px;
-  color: var(--muted);
-  text-align: right;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-/* Not reached: greyed, on one line. */
+/* Not reached: greyed, with its target. */
 .run-end-milestones .todo {
-  color: var(--muted);
+  color: var(--ink-soft);
 }
 .run-end-milestones .todo .name {
-  font-weight: 500;
-}
-.run-end-milestones .todo .of {
-  grid-row: 1;
+  font-weight: 400;
 }
 
-/* --- Stats, the debug note, and the buttons ------------------------------------------ */
+/* --- Stats, the debug note, and the buttons ---------------------------------------------- */
 
+/* Each stat on one line, its value at the right; or, where any label wouldn't fit beside its
+   value (a 280 px column), every value on a line of its own under its label (EndScreen.tsx
+   statsShape), so the rows keep one shape. */
 .run-end-stats {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 3px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
   margin: 0;
-  font-size: 13px;
+}
+/* A value level with its label, which the dt centers on its icon (the flag is taller). */
+.run-end-stats .stat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  column-gap: var(--space-3);
+}
+.run-end-stats.stacked .stat {
+  flex-direction: column;
+  align-items: stretch;
 }
 .run-end-stats dt {
-  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+/* Each icon in a slot as wide as the widest (EndScreen.tsx iconSlots), centered on whole UI
+   pixels, so every label starts at the same place. */
+.run-end-stats dt .icon {
+  margin-left: calc(var(--icon-lead) * var(--px));
+  margin-right: calc(var(--icon-trail) * var(--px));
 }
 .run-end-stats dd {
   margin: 0;
-  font-weight: 800;
   text-align: right;
-  font-variant-numeric: tabular-nums;
 }
 .run-end-debug {
-  margin: 10px 0 0;
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-size: 12px;
+  margin: 0;
+  padding: var(--space-1) var(--space-2);
+  background: repeating-linear-gradient(
+    45deg,
+    var(--paper-inset) 0 calc(var(--px) * 3),
+    var(--card-lo) 0 calc(var(--px) * 6)
+  );
   font-weight: 700;
-  color: var(--wood-dark);
-  background: repeating-linear-gradient(45deg, #f1e9da 0 6px, #e8dcc5 6px 12px);
+  color: var(--ink);
 }
+/* New run, Copy, and Title stay in view at the column's foot, as End week does: like the
+   hand's bar, it reaches past the column's padding to the window's foot, so the rows scrolling
+   under it never show below it. */
 .run-end-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-  margin-top: 14px;
-  /* On a short window the column scrolls: keep New run, Copy, and Title in view. */
   position: sticky;
-  bottom: -12px;
-  margin-inline: -14px;
-  margin-bottom: -12px;
-  padding: 10px 14px 12px;
-  background: var(--panel);
-  border-top: 1px solid var(--panel-edge);
-  border-radius: 0 0 10px 10px;
+  bottom: calc(var(--px) * -5);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0 calc(var(--space-3) * -1);
+  padding: var(--space-3);
+  background: var(--paper);
+  box-shadow: inset 0 var(--px) 0 var(--paper-line);
 }
-.run-end-actions button {
-  padding: 6px 8px;
+.run-end-actions .btn {
+  flex: 1 1 auto;
 }
-.run-end-actions .primary {
-  grid-column: 1 / -1;
-  padding: 8px 12px;
-  font-weight: 700;
+.run-end-actions .btn-primary {
+  flex-basis: 100%;
+}
+@media (max-width: 1500px) {
+  .run-end-actions {
+    margin: 0 calc(var(--space-2) * -1);
+    padding: var(--space-2) var(--space-2) var(--space-3);
+  }
+  .run-end-actions .btn .icon {
+    display: none;
+  }
+  /* The narrow column's names: the regular weight, so the longest ("Groundbreaking") fits. */
+  .run-end-milestones .name {
+    font-weight: 400;
+  }
 }
 
+/* A plank tag's count, after its word: quieter than the word. */
+.plank-count {
+  font-weight: 400;
+}
 .run-end-sr {
   position: absolute;
   width: 1px;
@@ -223,67 +262,56 @@
   white-space: nowrap;
 }
 
-/* --- The caption over the board ----------------------------------------------------- */
+/* --- "It's a house." over the board: a little wood sign ---------------------------------- */
 
-.run-end-caption {
+/* A column at the board's top center: the sign, then any notes and toasts just under it
+   (.notes.under-sign, overlays.css), so the sign never sits under them. */
+.run-end-caption-place {
   position: absolute;
-  top: 16px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: var(--space-4);
+  left: 0;
+  right: 0;
   z-index: 15;
-  margin: 0;
-  padding: 6px 22px 8px;
-  border-radius: 10px;
-  border: 2px solid var(--panel-edge);
-  background: rgb(255 248 232 / 0.94);
-  box-shadow: 0 6px 18px rgb(60 40 20 / 0.22);
-  font-size: 24px;
-  font-style: italic;
-  font-weight: 700;
-  white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
   pointer-events: none;
-  animation: run-end-caption-in 0.6s ease-out both;
 }
-.run-end-caption.won {
-  border-color: var(--sparkle);
-}
-
-@media (max-width: 1500px) {
-  .run-end {
-    padding: 12px 10px 10px;
-  }
-  .run-end-verdict {
-    font-size: 23px;
-  }
-  .run-end.lost .run-end-verdict {
-    font-size: 18px;
-  }
-  .run-end-score .value {
-    font-size: 21px;
-  }
+.run-end-caption {
+  margin: 0;
+  padding: var(--space-2) var(--space-4) calc(var(--space-2) + var(--px));
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--art-plank) repeat left top / calc(var(--px) * 48) calc(var(--px) * 10);
+  background-color: var(--wood-hi);
+  background-clip: padding-box;
+  box-shadow:
+    inset 0 var(--px) 0 var(--wood-shine),
+    inset 0 calc(var(--px) * -2) 0 var(--wood-light),
+    var(--shadow-float);
+  font-family: var(--font-display);
+  font-size: var(--fs-title);
+  line-height: var(--lh-body);
+  color: var(--ink);
+  white-space: nowrap;
+  animation: run-end-caption-in var(--dur-banner) ease-out both;
 }
 
 @keyframes run-end-in {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(calc(var(--px) * 6));
   }
 }
 @keyframes run-end-caption-in {
   from {
     opacity: 0;
-    transform: translate(-50%, -10px);
+    transform: translateY(calc(var(--px) * -5));
   }
 }
-@keyframes run-end-twinkle {
-  50% {
-    opacity: 0.35;
-    transform: scale(0.8);
-  }
-}
-.reduce-motion .run-end,
+.reduce-motion .run-end.panel,
 .reduce-motion .run-end-caption,
-.reduce-motion .run-end.won::before,
-.reduce-motion .run-end.won::after {
+.reduce-motion .run-end.won .run-end-verdict {
   animation: none;
 }

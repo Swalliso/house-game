@@ -1,0 +1,61 @@
+/* Tooltips (D-077, D-086): a dotted underline marks a term; one fixed note explains it. M5a
+   draws the note in paper with an ink ring, a hard shadow and a pixel tail (theme/frames.ts),
+   and the underline as pixel dots. */
+
+.tip {
+  --tip-line: currentColor;
+  background: linear-gradient(to right, var(--tip-line) 50%, transparent 50%) repeat-x left bottom /
+    calc(var(--px) * 2) var(--px);
+  padding-bottom: var(--px);
+  cursor: help;
+}
+/* A term on a chip or an icon is marked by its chip, not by dots under it. */
+.tip:has(> .chip),
+.tip:has(> .icon) {
+  background: none;
+  padding-bottom: 0;
+}
+.tip:focus-visible {
+  outline: var(--px) solid var(--focus-outer);
+  outline-offset: var(--px);
+  box-shadow: 0 0 0 calc(var(--px) * 2) var(--focus-inner);
+}
+.tip-bubble {
+  position: fixed;
+  z-index: 100;
+  width: calc(var(--px) * 160);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3) calc(var(--space-2) + var(--px));
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  /* White paper, as its tail is drawn (theme/frames.ts tipTail, in LimeZu's white). */
+  background: var(--card-hi);
+  background-clip: padding-box;
+  box-shadow:
+    inset 0 calc(var(--px) * -1) 0 var(--card-lo),
+    var(--shadow-float);
+  color: var(--ink);
+  pointer-events: none;
+}
+.tip-title {
+  font-weight: 700;
+}
+/* The tail, pointing at the term: under the note, or over it when the note sits below. */
+.tip-bubble::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  /* --tail-x is from the note's outer edge; this box starts inside its ring. */
+  left: calc(var(--tail-x) - var(--px));
+  width: calc(var(--px) * 9);
+  height: calc(var(--px) * 5);
+  background: var(--art-tipTail) no-repeat 0 0 / 100% 100%;
+  image-rendering: pixelated;
+}
+.tip-bubble.below::after {
+  top: auto;
+  bottom: 100%;
+  transform: scaleY(-1);
+}
