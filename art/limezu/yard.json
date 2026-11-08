@@ -140,6 +140,42 @@
     "rect": [0, 608, 64, 61],
     "note": "The Pergola (fixture): LimeZu's wooden pergola, exactly a Patio's 2 \u00d7 2 cells wide."
   },
+  "pergola-narrow": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png",
+    "rect": [0, 608, 26, 61],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [50, 61],
+        "layers": [
+          {
+            "rect": [40, 608, 24, 61],
+            "at": [26, 0]
+          }
+        ]
+      }
+    ],
+    "note": "The Pergola two slats narrower (50 px): the pergola with its columns 26-39 taken out, where its slats repeat exactly, so the join doesn't show. It stands clear of a door on its Patio's east or west edge, whose mat the full one would cover."
+  },
+  "pergola-short": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png",
+    "rect": [0, 608, 64, 15],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [64, 51],
+        "layers": [
+          {
+            "rect": [0, 633, 64, 36],
+            "at": [0, 15]
+          }
+        ]
+      }
+    ],
+    "note": "The Pergola 10 px shallower (51 px): the pergola with its rows 15-24 taken out, from the middle of its slats between the beams. It stands clear of a door on its Patio's north or south edge, whose mat the full one would cover."
+  },
   "picket-run": {
     "pack": "me",
     "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png",

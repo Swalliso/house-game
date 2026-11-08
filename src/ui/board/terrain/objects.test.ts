@@ -11,6 +11,7 @@ import {
   bigTreeBlocks,
   boulders,
   canopyBox,
+  canopyParts,
   finds,
   lotObjects,
   TREE_JITTER_UP,
@@ -229,6 +230,20 @@ describe('the canopy', () => {
       for (const p of trees(row, seedSalt(`s${s}`)))
         expect(p.y, p.id).toBeGreaterThanOrEqual(-CANOPY_ROOM);
     }
+  });
+
+  it('says what rises above its own cells, for the pieces’ labels to keep off', () => {
+    // Trees under open cells: a crown rises into the cell above, the part the canopy draws.
+    const lot = lotFromRows(['........', '.T.T.T.T', '........']);
+    const placed = lotObjects(lot);
+    const rising = placed.filter((p) => p.y < p.top);
+    expect(rising.length).toBeGreaterThan(0);
+    expect(canopyParts(placed)).toEqual(
+      rising.map((p) => ({ x: p.x, y: p.y, w: p.w, h: CELL - p.y })),
+    );
+    for (const p of rising) expect(p.top).toBe(CELL);
+    // Rocks and finds stay on their cells.
+    expect(canopyParts(lotObjects(lotFromRows(['.B..', '..K.'])))).toEqual([]);
   });
 
   it('is drawn in row order, south in front, like the terrain', () => {

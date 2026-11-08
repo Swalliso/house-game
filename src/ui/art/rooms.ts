@@ -15,15 +15,18 @@
 // - G: the Garage's car, nose-in through its garage door.
 //
 // A piece against a north wall stands with its back on the floor's top edge, under the wall's
-// face (BACK says how many of its rows rise above that edge). A tall piece rises over the wall
-// band, but never past the band's top edge, and its rows above the band go on the overhang layer
-// (Item.over). Pieces keep out of doorways and the walkways in front of them, off each other,
-// inside the walls (tucking a pixel under a side wall at most), and, where they can, off north
-// windows. A one-cell room's only piece (the toilet, the rail) may stand in a walkway and rise 8 px
-// further (the prototype's tight rule), and so may the Garage's car stand in one, and a dining
-// table that would otherwise lose its chairs; never in an opening. Anything that doesn't fit is
-// skipped, and a room's key piece falls back to the middle of the floor when its doors leave no
-// wall free.
+// face (BACK says how many of its rows rise above that edge). A tall piece rises over its north
+// wall's band, its rows above the face on the overhang layer (Item.over), but never past its
+// room's own cells: over all of an outside band (it's inside the room), and over only the room's
+// half of a band between two rooms, so the other half (the band's far edge and a row of its
+// fill) always shows and the wall between them reads, however much of it the furniture stands
+// against (D-097: rooms never merge). Pieces keep out of doorways and the walkways in front of
+// them, off each other, inside the walls (tucking a pixel under a side wall at most), and, where
+// they can, off north windows. A one-cell room's only piece (the toilet, the rail) may stand in a
+// walkway and rise 8 px further over an outside wall (the prototype's tight rule), and so may the
+// Garage's car stand in one, and a dining table that would otherwise lose its chairs; never in an
+// opening. Anything that doesn't fit is skipped, and a room's key piece falls back to the middle
+// of the floor when its doors leave no wall free.
 //
 // Fixtures: the Fireplace, Bunk Beds and the Kitchen Island (in three sizes) are furniture here,
 // tried through all their slots before a stand-in (the bed Bunk Beds replace). The Skylight,
@@ -162,8 +165,13 @@ interface Run {
   x1: number;
   /** The wall band's bottom edge over it: its face starts here. */
   yb: number;
-  /** How high a piece may rise: the band's top edge. */
+  /**
+   * How high a piece may rise: the row's top line, so all of an outside band (inside the room)
+   * and the room's own half of a band between two rooms.
+   */
   top: number;
+  /** Some of its band is a wall between two rooms: nothing rises past `top`, not even a tight piece. */
+  shared: boolean;
   /** The floor's bottom edge below the whole run. */
   rb: number;
   row: number;
@@ -194,11 +202,6 @@ function inRoom(g: Geo, cx: number, cy: number): boolean {
   return (
     cx >= 0 && cy >= 0 && cx < m.width && cy < m.height && m.room[cy * m.width + cx] === g.room.uid
   );
-}
-
-/** How high a piece may rise over cell (x, y)'s north wall: an outside band is all the room's; a band between rooms is half the neighbor's. */
-function bandTop(m: HouseModel, x: number, y: number): number {
-  return y * CELL - (edge(m, x, y, 'N') === EDGE.inner ? WALL.in / 2 : 0);
 }
 
 function analyze(m: HouseModel, room: Room): Geo {
@@ -262,7 +265,8 @@ function analyze(m: HouseModel, room: Room): Geo {
         x0: first * CELL + inset(m, first, y, 'W'),
         x1: (last + 1) * CELL - inset(m, last, y, 'E'),
         yb: Math.max(...cols.map((x) => y * CELL + inset(m, x, y, 'N'))),
-        top: Math.max(...cols.map((x) => bandTop(m, x, y))),
+        top: y * CELL,
+        shared: cols.some((x) => edge(m, x, y, 'N') === EDGE.inner),
         rb: (bottom + 1) * CELL - Math.max(...cols.map((x) => inset(m, x, bottom, 'S'))),
         row: y,
       });
@@ -671,12 +675,15 @@ class Layout {
     return p;
   }
 
-  /** The top of `sprite` standing against run `r`, or null if it can't stand there. */
+  /**
+   * The top of `sprite` standing against run `r`, or null if it can't stand there. A tight
+   * piece's `lift` lets it rise past the band over an outside wall, never into another room.
+   */
   wallY(r: Run, sprite: SpriteId, lift = 0): number | null {
     const { h } = spritePos(sprite);
     let y = Math.max(r.yb + WALL.face - backOf(sprite), r.top);
     if (y + h > r.rb) y = r.rb - h;
-    return y < r.top - lift ? null : y;
+    return y < r.top - (r.shared ? 0 : lift) ? null : y;
   }
 
   /** Whether `sprite` fits at (x, y) against run `r`: on the floor, clear, and off its windows if the pass says so. */
@@ -914,11 +921,14 @@ function placeC(L: Layout, w: Want, sprite: SpriteId): boolean {
       const above = L.placed.filter((p) => over(p) && (p.run || p === L.lastC));
       const below = Math.max(g.floorTop, ...above.map((p) => p.rect!.y + p.rect!.h));
       const want = above.length > 0 ? below + 3 : Math.floor((below + g.iy1 - h) / 2);
+      // Clear of the floor's top edge; a few px below what stands above it, or right up against
+      // it where the floor is too short for a gap (a Library's armchair before its bookcase).
+      const top = above.length > 0 ? below : below + 1;
       // A few px up or down before sliding sideways: a table keeps its chairs.
       for (const d of [0, -1, 1, -2, 2, 3, -3, 4, 5, 6, 8]) {
         const y = want + d;
         const r = { x, y, w: sw, h };
-        if (y > below && y + h <= g.iy1 && onFloor(g, r, false) && L.free(r, 0, walkways)) {
+        if (y >= top && y + h <= g.iy1 && onFloor(g, r, false) && L.free(r, 0, walkways)) {
           return put(x, y);
         }
       }

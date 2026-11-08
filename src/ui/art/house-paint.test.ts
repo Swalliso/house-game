@@ -194,6 +194,70 @@ describe('the floor canvas', () => {
   });
 });
 
+describe('a wall between two rooms', () => {
+  /** A sprite region's average color, and the CIE76 distance between two colors (CIELAB, D65). */
+  function average(id: SpriteId, w: number, h: number): [number, number, number] {
+    const sum = [0, 0, 0];
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const c = sprite(id, x, y);
+        for (let k = 0; k < 3; k++) sum[k]! += c[k]!;
+      }
+    }
+    return sum.map((v) => v / (w * h)) as [number, number, number];
+  }
+  function lab(rgb: readonly number[]): [number, number, number] {
+    const [r, g, b] = rgb.map((v) => {
+      const c = v / 255;
+      return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+    }) as [number, number, number];
+    const f = (t: number) => (t > 216 / 24389 ? Math.cbrt(t) : ((24389 / 27) * t + 16) / 116);
+    const X = f((r * 0.4124 + g * 0.3576 + b * 0.1805) / 0.95047);
+    const Y = f(r * 0.2126 + g * 0.7152 + b * 0.0722);
+    const Z = f((r * 0.0193 + g * 0.1192 + b * 0.9505) / 1.08883);
+    return [116 * Y - 16, 500 * (X - Y), 200 * (Y - Z)];
+  }
+  const deltaE = (a: readonly number[], b: readonly number[]) => {
+    const [p, q] = [lab(a), lab(b)];
+    return Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
+  };
+
+  it('shows its far half over tall furniture, so the rooms never read as one', () => {
+    // Playtest 5a: a Home Office over a Library, the doorway at one end of the wall between them
+    // and the Library's bookcase beside it. The office's half of the band (its ink edge and a
+    // row of its fill) runs the wall's whole length but for the doorway, over the bookcase too.
+    const m = model([
+      ['homeOffice', 2, 1],
+      ['library', 2, 2],
+    ]);
+    const tall = roomItems(m, 2).filter((it) => itemRows(it).top);
+    const p = paintPiece(m, atlas, [...roomItems(m, 1), ...roomItems(m, 2)])!;
+    const line = 2 * CELL;
+    const doors = m.doors.filter((d) => d.dir === 'h' && d.gap.y + d.gap.h / 2 === line);
+    const inDoor = (x: number) => doors.some((d) => x >= d.gap.x - 1 && x <= d.gap.x + d.gap.w);
+    let underTall = 0;
+    for (let x = 2 * CELL + WALL.out + 1; x < 4 * CELL - WALL.out - 1; x++) {
+      if (inDoor(x)) continue;
+      expect(pixel(p, x, line - 2), `x ${x}`).toEqual([...INK, 255]);
+      expect(pixel(p, x, line - 1), `x ${x}`).toEqual([...BAND, 255]);
+      if (tall.some((it) => x >= it.x && x < it.x + artSize(it.sprite).w)) underTall++;
+    }
+    // The bookcase stands against the wall, rising over the Library's half of the band.
+    expect(underTall).toBeGreaterThan(20);
+  });
+
+  it('has a face in each room type’s wallpaper that stands apart from the room’s floor', () => {
+    // Playtest 5a: the Library's red-brown panelling was its floor's color, so the wall read as
+    // floor. Each face's wallpaper (its rows above the baseboard) averages at least ΔE 20 from
+    // its floor: a light wall over a darker floor, or a color of its own over a light one.
+    for (const id of Object.keys(FACE) as (keyof typeof FACE)[]) {
+      const face = average(FACE[id], CELL, WALL.face - 2);
+      const floor = average(FLOOR[id], CELL, CELL);
+      expect(deltaE(face, floor), `${id}: ${FACE[id]} on ${FLOOR[id]}`).toBeGreaterThanOrEqual(20);
+    }
+  });
+});
+
 describe('the ghost', () => {
   it('is one piece’s floor, items and walls in a box its size', () => {
     const m = pieceModel('bedroom', 0);

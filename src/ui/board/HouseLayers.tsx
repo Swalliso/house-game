@@ -45,7 +45,7 @@ import {
   type Pixels,
 } from '../art/house-paint.ts';
 import { itemRows, roomItems, roomLayout, type Item } from '../art/rooms.ts';
-import { yardPieceLayout, type YardModel } from '../art/yard.ts';
+import { risingParts, yardPieceLayout, type YardModel } from '../art/yard.ts';
 import { highlighted, justPlaced, played, tallyView } from '../fx/director.ts';
 import { settings } from '../settings.ts';
 import { atlasImage, CELL, FIXTURE_ICONS, spriteStyle } from '../sprites.ts';
@@ -55,6 +55,8 @@ import { cellsOutline, isIndoor, type Occupancy } from './geometry.ts';
 import { inset, pieceModel, type HouseModel, type PieceLook, type Rect } from './house-model.ts';
 import { pieceLabels, type BadgeSpot, type Side } from './label-layout.ts';
 import { register, settle as settleFx } from './piece-fx.ts';
+import { seedSalt } from './terrain/hash.ts';
+import { canopyParts, lotObjects } from './terrain/objects.ts';
 import './house.css';
 
 let atlasData: Promise<AtlasPixels> | null = null;
@@ -523,7 +525,10 @@ function Badge({
  * Each piece's labels: its weekly score in its bottom-right cell (or, while a tally plays, what
  * it earned in the week being tallied), its fixture's badge top right, and a ⚠ top left when a
  * requirement isn't met (it earns nothing then). Inside the room's walls, and never over the
- * digit (label-layout.ts): a badge that shares the digit's cell moves up over the wall band.
+ * digit (label-layout.ts): a badge that shares the digit's cell moves up over the wall band. They
+ * keep off another piece's prop that rises into the piece's cells (a Greenhouse's roof), a tree's
+ * crown that does, and the doors' mats where they can. `seed` is the run's: which tree grows where
+ * (TerrainLayer's).
  */
 export function LabelsLayer({
   house,
@@ -532,6 +537,7 @@ export function LabelsLayer({
   occ,
   scale,
   dpr,
+  seed = '',
 }: {
   house: HouseState;
   model: HouseModel;
@@ -539,11 +545,25 @@ export function LabelsLayer({
   occ: Occupancy;
   scale: number;
   dpr: number;
+  seed?: string;
 }) {
   const view = tallyView.value;
   const tally = currentTally.value;
   const scoreBy = new Map((view?.pieces ?? tally.pieces).map((s) => [s.uid, s]));
   const px = CELL * scale;
+  // What the labels keep off (label-layout.ts), in CSS px: the yard's props that rise above
+  // their own cells (another piece's digit there would read as theirs), the trees' crowns that
+  // rise above theirs (the canopy, D-099, drawn under the labels), and the doors' mats.
+  const salt = useMemo(() => seedSalt(seed), [seed]);
+  const crowns = useMemo(() => canopyParts(lotObjects(house.lot, salt)), [house.lot, salt]);
+  const keepOff = useMemo(() => {
+    const css = (r: Rect) => ({ x: r.x * scale, y: r.y * scale, w: r.w * scale, h: r.h * scale });
+    const rises = [...yard.pieces.values()].flatMap((l) =>
+      risingParts(l).map((r) => ({ uid: l.uid, box: css(r) })),
+    );
+    const fixed = [...crowns, ...model.exits.map((e) => e.mat)].map(css);
+    return (uid: number) => [...rises.filter((r) => r.uid !== uid).map((r) => r.box), ...fixed];
+  }, [model, yard, crowns, scale]);
   return (
     <div class="labels">
       {house.pieces.map((piece) => {
@@ -567,6 +587,7 @@ export function LabelsLayer({
           digit: shown === undefined ? null : String(shown).length,
           fixture: badged,
           unmet: !!score?.unmet,
+          keepOff: keepOff(piece.uid),
         });
         const fixture = piece.fixture ? CONTENT.fixtures[piece.fixture.id] : null;
         return (

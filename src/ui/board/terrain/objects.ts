@@ -220,6 +220,17 @@ export interface ArtBox {
 }
 
 /**
+ * The parts above their own cells (the tree tops the canopy canvas draws), as boxes in art px:
+ * the pieces' digits and badges, drawn over the canopy, keep off them where they can
+ * (label-layout.ts).
+ */
+export function canopyParts(placed: readonly Placed[]): ArtBox[] {
+  return placed.flatMap((p) =>
+    p.y < p.top ? [{ x: p.x, y: p.y, w: p.w, h: Math.min(p.top, p.y + p.h) - p.y }] : [],
+  );
+}
+
+/**
  * The canopy canvas's box, or null when nothing rises above its own cells: the whole lot and
  * the row above it (a tree in the top row rises past the lot's edge; the tallest rises 21 px).
  * It keeps its size while trees come and go, so redrawing it never blanks it first, and it's

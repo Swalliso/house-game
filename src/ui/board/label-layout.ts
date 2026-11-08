@@ -11,6 +11,17 @@
 // toward the cell's bottom edge, over the wall bands, as far as it takes to keep them apart; in
 // a cell too small even for that, the badge shrinks. So a badge never covers the digit, at any
 // zoom.
+//
+// The labels also keep off what isn't their piece's (`keepOff`): another piece's prop that rises
+// into its cells (a Greenhouse's roof 14 art px, the Treehouse 25, a Birdhouse, a car's roof), a
+// tree's crown that does, and a door's mat. A digit there would read as that prop's, and a badge
+// would hide the mat. The digit rises above it, up into its own cells above if it must, or moves
+// left past it, whichever is the shorter move that keeps it on its piece, and stays as far from
+// it as a badge from its corner; where neither move does (a one-row piece in front of a
+// Treehouse), it rises as high as its piece allows. It never takes a badge's room for its icon
+// (minBadge) to get clear, and drops back onto what it keeps off rather than squeeze a badge out
+// of its icon: a purchase is always visible (D-100). A badge moves down or inward past it the
+// same way, never onto the digit or the other badge, or stays put.
 
 import type { Cell } from '../../rules/index.ts';
 import { cellUnit } from '../sprites.ts';
@@ -60,6 +71,12 @@ export interface LabelInput {
   readonly digit: number | null;
   readonly fixture: boolean;
   readonly unmet: boolean;
+  /**
+   * What the labels keep off where they can, in CSS px: other pieces' props that rise into this
+   * piece's cells (yard.ts risingParts), the trees' crowns that do (terrain/objects.ts
+   * canopyParts) and the doors' mats. Boxes clear of its labels change nothing.
+   */
+  readonly keepOff?: readonly Box[];
 }
 
 /** The icons' sizes in icon pixels (theme/icons.ts): a fixture's, and the ⚠'s. */
@@ -67,6 +84,14 @@ export const BADGE_ICON = { fixture: 8, unmet: 9 } as const;
 
 /** The digit's box sits this far in from its corner, in CSS px. */
 const DIGIT_IN = { right: 2, bottom: 1 } as const;
+
+/** A step toward each side, in cells. */
+const STEP: Readonly<Record<Side, readonly [number, number]>> = {
+  N: [0, -1],
+  E: [1, 0],
+  S: [0, 1],
+  W: [-1, 0],
+};
 
 /** The digit's size: it grows with the zoom, never under 11 CSS px. */
 export function digitFont(px: number): number {
@@ -105,6 +130,14 @@ export function fitBadge(
   return { size: dev / dpr, ring: 1 / dpr, icon: 0 };
 }
 
+/**
+ * The smallest badge that still shows its icon, in CSS px: the icon at a device pixel per icon
+ * pixel in its ring, never under 9 CSS px (badgeSize's floor), on whole device pixels.
+ */
+export function minBadge(iconW: number, dpr: number): number {
+  return fitBadge(Math.max(9, (iconW + 2) / dpr), iconW, dpr).size;
+}
+
 const snap = (v: number, dpr: number) => Math.round(v * dpr) / dpr;
 
 /** Where the piece's digit and badges go. */
@@ -131,6 +164,87 @@ export function pieceLabels(o: LabelInput): PieceLabels {
         }
       : undefined;
 
+  // What isn't the piece's: another piece's prop rising into its cells, a door's mat.
+  const keep = o.keepOff ?? [];
+  const own = new Set(cells.map((c) => `${c.x},${c.y}`));
+  /** The far edge, inside the walls, of the piece's own cells in a line from `c` toward `side`. */
+  const reach = (c: Cell, side: Side): number => {
+    const [dx, dy] = STEP[side];
+    let at = c;
+    while (own.has(`${at.x + dx},${at.y + dy}`)) at = { x: at.x + dx, y: at.y + dy };
+    if (side === 'N') return at.y * px + inset(at, 'N');
+    if (side === 'S') return (at.y + 1) * px - inset(at, 'S');
+    if (side === 'W') return at.x * px + inset(at, 'W');
+    return (at.x + 1) * px - inset(at, 'E');
+  };
+  /**
+   * How far box `b` slides along (dx, dy) to clear every box of `off` it meets, by `margin`, in
+   * whole device pixels; null if that's more than `limit`.
+   */
+  const slide = (
+    b: Box,
+    dx: number,
+    dy: number,
+    margin: number,
+    limit: number,
+    off: readonly Box[],
+  ): number | null => {
+    let t = 0;
+    for (let i = 0; i <= off.length + 1; i++) {
+      const at = { ...b, x: b.x + dx * t, y: b.y + dy * t };
+      const hit = off.filter((k) => overlaps(at, k));
+      if (hit.length === 0) return t;
+      const past = (k: Box) =>
+        dx < 0
+          ? b.x + b.w - k.x
+          : dx > 0
+            ? k.x + k.w - b.x
+            : dy < 0
+              ? b.y + b.h - k.y
+              : k.y + k.h - b.y;
+      t = Math.ceil((Math.max(...hit.map(past)) + margin) * dpr - 1e-6) / dpr;
+      if (t > limit + 1e-6) return null;
+    }
+    return null;
+  };
+
+  // The digit keeps off them, `gap` away: it rises above, or moves left past them, whichever is
+  // shorter and keeps it on its own cells; else it rises as high as they allow. A badge whose
+  // cell it would rise into keeps the room for its icon above it (minBadge: D-100's "a purchase
+  // is always visible"), from its cell's top edge, where the badge can rise to. `floor` is the
+  // lowest its bottom may drop to below (for a badge in its cell), staying clear; one that
+  // couldn't get clear may still drop to its cell's bottom edge, so a badge keeps its icon.
+  let floor = (d.y + 1) * px;
+  if (digit && keep.length > 0) {
+    const box = digitBox(digit, chars);
+    if (keep.some((k) => overlaps(box, k))) {
+      const room = (cell: Cell, iconW: number) =>
+        box.x < (cell.x + 1) * px && cell.x * px < box.x + box.w ? minBadge(iconW, dpr) : 0;
+      const reserve = Math.max(
+        o.fixture ? room(tr, BADGE_ICON.fixture) : 0,
+        o.unmet ? room(tl, BADGE_ICON.unmet) : 0,
+      );
+      const ceiling = Math.max(reach(d, 'N'), reserve > 0 ? top * px + reserve : -Infinity);
+      const upRoom = Math.max(0, box.y - ceiling);
+      const up = slide(box, 0, -1, gap, upRoom, keep);
+      const left = slide(box, -1, 0, gap, Math.max(0, box.x - reach(d, 'W')), keep);
+      if (left !== null && (up === null || left < up)) {
+        digit = { ...digit, right: digit.right - left };
+      } else {
+        const lift = up ?? Math.floor(upRoom * dpr + 1e-6) / dpr;
+        digit = { ...digit, bottom: digit.bottom - lift };
+      }
+    }
+    const b = digitBox(digit, chars);
+    if (!keep.some((k) => overlaps(b, k))) {
+      const below = keep.filter(
+        (k) => k.x < b.x + b.w - 1e-6 && b.x < k.x + k.w - 1e-6 && k.y + k.h > b.y,
+      );
+      const tops = below.map((k) => Math.floor((k.y - gap) * dpr + 1e-6) / dpr);
+      floor = Math.max(digit.bottom, Math.min(floor, ...tops));
+    }
+  }
+
   type Spot = { x: number; y: number; size: number; ring: number; icon: number };
   const spot = (
     cell: Cell,
@@ -142,41 +256,15 @@ export function pieceLabels(o: LabelInput): PieceLabels {
     const x = right
       ? (cell.x + 1) * px - inset(cell, 'E') - gap - b.size
       : cell.x * px + inset(cell, 'W') + gap;
-    return { x, y: cell.y * px + inset(cell, 'N') + gap, ...b };
+    // Its top on a whole device pixel already (place() floors it), so a slide is exact.
+    const y = Math.floor((cell.y * px + inset(cell, 'N') + gap) * dpr + 1e-6) / dpr;
+    return { x, y, ...b };
   };
   let fixture = o.fixture ? spot(tr, BADGE_ICON.fixture, true) : undefined;
   let unmet = o.unmet ? spot(tl, BADGE_ICON.unmet, false) : undefined;
+  const boxOf = (b: Spot): Box => ({ x: b.x, y: b.y, w: b.size, h: b.size });
 
-  // A badge in the digit's row that would touch it keeps above it instead: it rises to its cell's
-  // top edge, then the digit drops to its cell's bottom edge, then the badge shrinks to the room
-  // that's left. (A digit grows left from its corner, so a long one can reach a cell to its left.)
-  const clear = (
-    b: Spot | undefined,
-    cell: Cell,
-    iconW: number,
-    right: boolean,
-  ): Spot | undefined => {
-    if (!b || !digit || cell.y !== d.y) return b;
-    if (!overlaps({ x: b.x, y: b.y, w: b.size, h: b.size }, digitBox(digit, chars))) return b;
-    const cellTop = cell.y * px;
-    const cellBottom = (cell.y + 1) * px;
-    const digitTop = () => digit!.bottom - digit!.font;
-    if (b.y + b.size > digitTop()) b = { ...b, y: Math.max(cellTop, digitTop() - b.size) };
-    if (b.y + b.size > digitTop()) {
-      const bottom = Math.min(cellBottom, Math.ceil((b.y + b.size + font) * dpr - 1e-6) / dpr);
-      digit = { ...digit!, bottom: Math.max(digit!.bottom, bottom) };
-    }
-    if (b.y + b.size > digitTop()) {
-      const room = Math.max(1 / dpr, digitTop() - cellTop);
-      const fitted = spot(cell, iconW, right, room);
-      b = { ...fitted, y: cellTop, size: Math.min(fitted.size, room) };
-    }
-    return b;
-  };
-  fixture = clear(fixture, tr, BADGE_ICON.fixture, true);
-  unmet = clear(unmet, tl, BADGE_ICON.unmet, false);
-
-  // Two badges in one cell (a piece one cell wide at the top) keep apart too: out to the cell's
+  // Two badges in one cell (a piece one cell wide at the top) keep apart: out to the cell's
   // sides, then smaller.
   if (fixture && unmet && same(tl, tr) && unmet.x + unmet.size > fixture.x) {
     const left = tl.x * px;
@@ -191,6 +279,74 @@ export function pieceLabels(o: LabelInput): PieceLabels {
       fixture = { ...fixture, ...b, x: right - b.size };
     }
   }
+
+  // A badge keeps off what isn't its piece's too: it moves down, or inward (the fixture's left,
+  // the ⚠ right), past it, whichever is shorter and keeps it on its own cells and off the digit
+  // and the other badge; else it stays put.
+  const avoid = (
+    b: Spot | undefined,
+    cell: Cell,
+    right: boolean,
+    other: Spot | undefined,
+  ): Spot | undefined => {
+    if (!b || keep.length === 0) return b;
+    const box = boxOf(b);
+    if (!keep.some((k) => overlaps(box, k))) return b;
+    const off = [
+      ...keep,
+      ...(digit ? [digitBox(digit, chars)] : []),
+      ...(other ? [boxOf(other)] : []),
+    ];
+    const down = slide(box, 0, 1, gap, reach(cell, 'S') - (box.y + box.h), off);
+    const across = right
+      ? slide(box, -1, 0, gap, box.x - reach(cell, 'W'), off)
+      : slide(box, 1, 0, gap, reach(cell, 'E') - (box.x + box.w), off);
+    if (across !== null && (down === null || across < down)) {
+      return { ...b, x: b.x + (right ? -across : across) };
+    }
+    return down !== null ? { ...b, y: b.y + down } : b;
+  };
+  fixture = avoid(fixture, tr, true, unmet);
+  unmet = avoid(unmet, tl, false, fixture);
+
+  // A badge that would touch the digit (in its row, or above it where the digit rose) keeps above
+  // it instead: it rises to its cell's top edge, then the digit drops toward its cell's bottom
+  // edge (no further than `floor`, unless the badge would lose its icon), then the badge shrinks
+  // to the room that's left, keeping its outer edge where it was (so one moved off a mat stays
+  // off it). (A digit grows left from its corner, so a long one can reach a cell to its left.)
+  const clear = (
+    b: Spot | undefined,
+    cell: Cell,
+    iconW: number,
+    right: boolean,
+  ): Spot | undefined => {
+    if (!b || !digit) return b;
+    if (!overlaps(boxOf(b), digitBox(digit, chars))) return b;
+    const cellTop = cell.y * px;
+    const digitTop = () => digit!.bottom - digit!.font;
+    if (b.y + b.size > digitTop()) b = { ...b, y: Math.max(cellTop, digitTop() - b.size) };
+    if (b.y + b.size > digitTop()) {
+      const bottom = Math.min(floor, Math.ceil((b.y + b.size + font) * dpr - 1e-6) / dpr);
+      digit = { ...digit!, bottom: Math.max(digit!.bottom, bottom) };
+    }
+    // Still no room for its icon: the digit drops on toward its cell's bottom edge, onto what it
+    // keeps off if it must (a purchase is always visible, D-100).
+    const icon = minBadge(iconW, dpr);
+    if (digitTop() - cellTop < icon - 1e-6) {
+      const lowest = (d.y + 1) * px;
+      const bottom = Math.min(lowest, Math.ceil((cellTop + icon + font) * dpr - 1e-6) / dpr);
+      digit = { ...digit!, bottom: Math.max(digit!.bottom, bottom) };
+    }
+    if (b.y + b.size > digitTop()) {
+      const room = Math.max(1 / dpr, digitTop() - cellTop);
+      const fitted = spot(cell, iconW, right, room);
+      const size = Math.min(fitted.size, room);
+      b = { ...fitted, x: right ? b.x + b.size - size : b.x, y: cellTop, size };
+    }
+    return b;
+  };
+  fixture = clear(fixture, tr, BADGE_ICON.fixture, true);
+  unmet = clear(unmet, tl, BADGE_ICON.unmet, false);
 
   // On whole device pixels: across to the nearest, and up, never down toward the digit.
   const place = (b: Spot | undefined): BadgeSpot | undefined =>

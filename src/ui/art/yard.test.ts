@@ -3,7 +3,9 @@
 // against their own kind; the house's one parked car; curb cuts; Fences from their own cells; the
 // yard's fixtures always drawn; colors that differ; the same every time; the ghost's layout.
 
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { decodePng } from '../../../scripts/png.ts';
 import {
   CONTENT,
   placedCells,
@@ -14,14 +16,15 @@ import {
   type Rot,
 } from '../../rules/index.ts';
 import { lotFromRows } from '../../rules/lot.ts';
-import { houseModel, overlaps } from '../board/house-model.ts';
-import { CELL } from '../sprites.ts';
+import { grow, houseModel, overlaps, type Rect } from '../board/house-model.ts';
+import { CELL, spritePos } from '../sprites.ts';
 import {
   artFrames,
   artSize,
   DRAWINGS,
   drawingPixels,
   inKey,
+  isDrawing,
   KEY,
   type DrawingId,
 } from './drawings.ts';
@@ -32,6 +35,7 @@ import {
   MATERIALS,
   newPieceLook,
   pieceLook,
+  risingParts,
   yardModel,
   yardPieceLayout,
   type Ground,
@@ -61,6 +65,43 @@ function house(specs: readonly Spec[], size = 12): HouseState {
 function yardOf(h: HouseState) {
   return yardModel(h, houseModel(h));
 }
+
+/** Whether a yard piece of type `id` takes fixture `f`. */
+function takes(f: FixtureId, id: PieceId): boolean {
+  const fits = CONTENT.fixtures[f].fits;
+  return typeof fits === 'object' && 'piece' in fits
+    ? ([] as string[]).concat(fits.piece).includes(id)
+    : CONTENT.pieces[id].category === 'yard' && id !== 'sapling';
+}
+
+const atlas = decodePng(
+  readFileSync(new URL('../../../assets/atlas.png', import.meta.url)),
+  'atlas',
+);
+
+/** The first pixel ("x,y") an item draws inside `r`, in any frame, from its row `from` on, or null. */
+function pixelOn(it: Item, r: Rect, from = 0): string | null {
+  const { w, h } = artSize(it.sprite);
+  const frames = artFrames(it.sprite) ?? { frames: 1, stride: 0 };
+  const alpha = (sx: number, sy: number, k: number): number => {
+    if (isDrawing(it.sprite)) {
+      const d = drawingPixels(it.sprite);
+      return d.data[(sy * d.w * d.frames + k * d.w + sx) * 4 + 3]!;
+    }
+    const s = spritePos(it.sprite);
+    return atlas.rgba[((s.y + sy) * atlas.width + s.x + k * frames.stride + sx) * 4 + 3]!;
+  };
+  for (let y = Math.max(r.y, it.y + from); y < Math.min(r.y + r.h, it.y + h); y++) {
+    for (let x = Math.max(r.x, it.x); x < Math.min(r.x + r.w, it.x + w); x++) {
+      for (let k = 0; k < frames.frames; k++)
+        if (alpha(x - it.x, y - it.y, k) > 0) return `${x},${y}`;
+    }
+  }
+  return null;
+}
+
+/** An outbuilding's own building: the Treehouse, the Greenhouse, the Doghouse, a coop, a Birdhouse. */
+const BUILDINGS = /^(treehouse|greenhouse|own-doghouse|coop-\d|birdhouse-\d)$/;
 
 /** The cells a ground op covers, as "x,y" keys (art px to cells). */
 function groundCells(g: Ground): string[] {
@@ -173,6 +214,18 @@ describe('yard layouts', () => {
       // Less than a whole cell, so a piece behind it still shows.
       expect(3 * CELL - tall.y, id).toBeLessThan(CELL);
     }
+  });
+
+  it('say what rises above their own cells, for other pieces’ labels to keep off', () => {
+    const rise = (id: PieceId, rot: Rot = 0) =>
+      risingParts(yardOf(house([[id, 3, 3, rot]])).pieces.get(1)!);
+    expect(rise('greenhouse')).toEqual([{ x: 3 * CELL + 4, y: 3 * CELL - 14, w: 56, h: 14 }]);
+    expect(rise('treehouse').map((r) => r.h)).toEqual([25]);
+    expect(rise('birdhouse').map((r) => r.h)).toEqual([9]);
+    // A side-on car's roof, over the row behind its Driveway.
+    expect(rise('driveway').map((r) => [r.y, r.h])).toEqual([[3 * CELL - 6, 6]]);
+    for (const flat of ['lawn', 'pool', 'herbGarden'] as const)
+      expect(rise(flat), flat).toEqual([]);
   });
 
   it('are the same every time, and cached per house model', () => {
@@ -328,26 +381,164 @@ describe('outside doors', () => {
     expect(items.some((i) => /^parasol-\d/.test(i.sprite))).toBe(false);
   });
 
-  it('let a Pergola’s slats cover a door’s mat, but never its posts', () => {
-    // South of the house, the door's mat is under its slats, clear of its posts: it shows.
-    const south = house([
-      ['livingRoom', 4, 2],
-      ['patio', 4, 5, 0, 'pergola'],
+  it('stand a Pergola clear of a door’s mat on any edge of its Patio: shallower or narrower', () => {
+    // A room on each side of the Patio, so a door opens onto each of its edges in turn; the
+    // playtest's was a Living Room's back door onto its east edge. The whole Pergola's beams,
+    // rafters and posts reach every edge, so it would cover the mat: a shallower cut stands clear
+    // of a north or south door's, a narrower one of an east or west door's, on the far side.
+    const sides: readonly [string, Spec, string, string][] = [
+      ['north edge', ['livingRoom', 4, 1], 'S', 'pergola-short'],
+      ['south edge', ['kitchen', 4, 6], 'N', 'pergola-short'],
+      ['east edge', ['livingRoom', 6, 3], 'W', 'pergola-narrow'],
+      ['west edge', ['livingRoom', 2, 3], 'E', 'pergola-narrow'],
+    ];
+    const pergolas = (l: YardLayout) =>
+      l.items.map((i) => i.sprite).filter((sp) => sp.startsWith('pergola'));
+    for (const [edge, room, wall, cut] of sides) {
+      for (const rot of [0, 1, 2, 3] as const) {
+        const h = house([room, ['patio', 4, 4, rot, 'pergola']]);
+        const m = houseModel(h);
+        const name = `door on its ${edge}, r${rot}`;
+        const door = m.exits.find((e) => e.onto === 2)!;
+        expect(door, name).toBeDefined();
+        expect(door.side, name).toBe(wall);
+        const l = yardModel(h, m).pieces.get(2)!;
+        expect(l.fixtureShown, name).toBe(true);
+        expect(pergolas(l), name).toEqual([cut]);
+        // In place of the parasol, over the table and its seats; all of them clear of the door.
+        expect(
+          l.items.some((i) => i.sprite.startsWith('parasol-')),
+          name,
+        ).toBe(false);
+        expect(l.items.filter((i) => /^patio-(table|chair)/.test(i.sprite)).length, name).toBe(3);
+        for (const it of l.items) {
+          expect(overlaps(rect(it), door.mat), `${name}: ${it.sprite}`).toBe(false);
+          expect(overlaps(rect(it), door.gap), `${name}: ${it.sprite}`).toBe(false);
+        }
+      }
+    }
+    // Where no door opens onto it, the whole Pergola roofs the Patio.
+    const apart = yardOf(
+      house([
+        ['livingRoom', 0, 0],
+        ['patio', 4, 4, 0, 'pergola'],
+      ]),
+    ).pieces.get(2)!;
+    expect(apart.fixtureShown).toBe(true);
+    expect(pergolas(apart)).toEqual(['pergola']);
+    expect(apart.items.some((i) => i.sprite.startsWith('parasol-'))).toBe(false);
+    // With doors on two sides (a Bedroom's onto its north edge, a Living Room's onto its west
+    // edge) no cut stands clear of both: its badge shows, and the Patio keeps a parasol.
+    const h = house([
+      ['bedroom', 3, 2],
+      ['livingRoom', 1, 5, 1],
+      ['patio', 4, 4, 0, 'pergola'],
     ]);
-    const sm = houseModel(south);
-    const l = yardModel(south, sm).pieces.get(2)!;
-    expect(l.items.some((i) => i.sprite === 'pergola')).toBe(true);
-    expect(l.fixtureShown).toBe(true);
-    // North of it, the door's mat is where a post would stand: the badge shows instead.
-    const north = house([
-      ['kitchen', 4, 4],
-      ['patio', 4, 2, 0, 'pergola'],
-    ]);
-    const nm = houseModel(north);
-    expect(nm.exits.some((e) => e.onto === 2 && e.side === 'N')).toBe(true);
-    const n = yardModel(north, nm).pieces.get(2)!;
-    expect(n.items.some((i) => i.sprite === 'pergola')).toBe(false);
-    expect(n.fixtureShown).toBe(false);
+    const m = houseModel(h);
+    expect(new Set(m.exits.filter((e) => e.onto === 3).map((e) => e.side))).toEqual(
+      new Set(['S', 'E']),
+    );
+    const both = yardModel(h, m).pieces.get(3)!;
+    expect(both.fixtureShown).toBe(false);
+    expect(pergolas(both)).toEqual([]);
+    expect(both.items.some((i) => i.sprite.startsWith('parasol-'))).toBe(true);
+  });
+
+  it('stand an outbuilding beside a door: it’s the piece itself', () => {
+    // The playtest review's cases: a Treehouse or a Greenhouse whose roof rises over a door's mat
+    // or opening in the row behind it, which used to leave only its shadow and its digit.
+    const cases: readonly (readonly Spec[])[] = [
+      [
+        ['hallway', 6, 3],
+        ['treehouse', 6, 4],
+      ],
+      [
+        ['livingRoom', 6, 4],
+        ['patio', 4, 3],
+        ['treehouse', 4, 5],
+      ],
+      [
+        ['livingRoom', 6, 4],
+        ['patio', 4, 3],
+        ['greenhouse', 4, 5],
+      ],
+      [
+        ['bedroom', 6, 6],
+        ['treehouse', 6, 8],
+      ],
+    ];
+    for (const specs of cases) {
+      const h = house(specs);
+      const m = houseModel(h);
+      const uid = specs.length;
+      const id = specs[uid - 1]![0];
+      const l = yardModel(h, m).pieces.get(uid)!;
+      const name = specs.map((sp) => sp[0]).join(' + ');
+      expect(
+        l.items.map((i) => i.sprite),
+        name,
+      ).toContain(id);
+      // Doors did open nearby: its roof meets one's mat or opening (grown by the props' margin).
+      const building = l.items.find((i) => i.sprite === id)!;
+      expect(
+        m.exits.some((e) =>
+          [grow(e.mat, 2), grow(e.gap, 2)].some((r) => overlaps(rect(building), r)),
+        ),
+        name,
+      ).toBe(true);
+    }
+  });
+
+  it('never cover a door’s mat or opening with a pixel, any prop on any side, in any rotation', () => {
+    // Every yard piece with each fixture it takes, against a room on each of its sides, along
+    // it: whatever doors the house gets, no opaque pixel of a prop lies on a mat or an opening.
+    const fixtures: readonly (FixtureId | undefined)[] = [
+      undefined,
+      'sprinkler',
+      'pergola',
+      'gardenLights',
+    ];
+    let doors = 0;
+    for (const id of YARD) {
+      for (const f of fixtures) {
+        if (f && !takes(f, id)) continue;
+        for (const rot of [0, 1, 2, 3] as const) {
+          const shape = CONTENT.pieces[id].shape;
+          const w = rot % 2 === 0 ? shape[0]!.length : shape.length;
+          const ht = rot % 2 === 0 ? shape.length : shape[0]!.length;
+          // A 2×2 Bedroom at (6, 6); the piece against its north, south, west and east sides.
+          const spots: [number, number][] = [];
+          for (let dx = -w + 1; dx <= 1; dx++) spots.push([6 + dx, 6 - ht], [6 + dx, 8]);
+          for (let dy = -ht + 1; dy <= 1; dy++) spots.push([6 - w, 6 + dy], [8, 6 + dy]);
+          for (const [x, y] of spots) {
+            const h = house(
+              [
+                ['bedroom', 6, 6],
+                [id, x, y, rot, f],
+              ],
+              16,
+            );
+            const m = houseModel(h);
+            const items = yardModel(h, m).pieces.get(2)!.items;
+            for (const e of m.exits) {
+              if (e.onto === 2) doors++;
+              for (const it of items) {
+                // An outbuilding's own building always stands (no door opens onto one): only its
+                // rows on its own cells are held to the doors; its roof may rise over one behind it.
+                const from = BUILDINGS.test(it.sprite) ? (itemRows(it).bottom?.[0] ?? Infinity) : 0;
+                const at = pixelOn(it, e.mat, from) ?? pixelOn(it, e.gap, from);
+                expect(
+                  at,
+                  `${id}${f ? ` + ${f}` : ''} r${rot} at ${x},${y}: ${it.sprite} on ${e.kind} door ${e.side}`,
+                ).toBeNull();
+              }
+            }
+          }
+        }
+      }
+    }
+    // Doors did open onto the pieces they can (Patios, Driveways, Lawns, the Hot Tub).
+    expect(doors).toBeGreaterThan(50);
   });
 
   it('park the car further along, or on the next Driveway, off a door’s mat', () => {

@@ -317,9 +317,20 @@ export function Board() {
     () => <HighlightsLayer house={house} occ={occ} lot={lot} scale={scale} />,
     [house, occ, lot, scale],
   );
+  const seed = state.setup.seed;
   const labelsLayer = useMemo(
-    () => <LabelsLayer house={house} model={model} yard={yard} occ={occ} scale={scale} dpr={dpr} />,
-    [house, model, yard, occ, scale, dpr],
+    () => (
+      <LabelsLayer
+        house={house}
+        model={model}
+        yard={yard}
+        occ={occ}
+        scale={scale}
+        dpr={dpr}
+        seed={seed}
+      />
+    ),
+    [house, model, yard, occ, scale, dpr, seed],
   );
 
   useEffect(() => {

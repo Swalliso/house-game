@@ -117,9 +117,19 @@ function problems(m: HouseModel, uid: number): string[] {
         if (y1 > Y0 + CELL - wall(cx, cy, 'S')) out.push(`${name(it)} is in a south wall`);
       }
     }
-    // It rises over the north wall's band, but not past it (the tight pieces a little more).
-    const limit = room.box.y - WALL.in / 2 - (TIGHT.test(it.sprite) ? 8 : 0);
-    if (it.y < limit) out.push(`${name(it)} rises ${limit - it.y} px too far`);
+    // It rises over its north wall's band, but never off its own cells: over a wall between two
+    // rooms, over its own half of the band at most, so the other half shows (D-097: rooms never
+    // merge). Only a tight piece may rise further, 8 px at most, and only over an outside wall.
+    for (let cy = Math.floor(it.y / CELL); cy < Math.floor(f.y / CELL); cy++) {
+      for (let cx = Math.floor(f.x / CELL); cx <= Math.floor((f.x + f.w - 1) / CELL); cx++) {
+        if (own(cx, cy)) continue;
+        const other = cx >= 0 && cy >= 0 && cx < m.width ? (m.room[cy * m.width + cx] ?? 0) : 0;
+        if (other) out.push(`${name(it)} rises into room ${other} at cell ${cx},${cy}`);
+        else if (!TIGHT.test(it.sprite) || it.y < (cy + 1) * CELL - 8) {
+          out.push(`${name(it)} rises out of the house at cell ${cx},${cy}`);
+        }
+      }
+    }
     // Never in an opening; out of the walkways in front of them unless it's a tight piece.
     for (const d of m.doors.filter((d) => d.a === uid || d.b === uid)) {
       if (overlaps(f, d.gap)) out.push(`${name(it)} is in a doorway`);
@@ -254,6 +264,30 @@ describe('room layouts', () => {
     const toilet = roomItems(m, 1).find((it) => it.sprite.startsWith('toilet'))!;
     expect(toilet.over).toBeGreaterThan(toilet.y);
     expect(itemRows(toilet).top).not.toBeNull();
+  });
+
+  it('raise tall pieces over their own half of a wall between rooms, never the next room’s', () => {
+    // Playtest 5a: a Home Office over a Library. The bookcase stands against the wall between
+    // them with its top on the line between the rooms, so the office's half of the band (its
+    // edge and a row of its fill) shows above it and the two never read as one room.
+    const m = modelOf(
+      house([
+        ['homeOffice', 2, 1],
+        ['library', 2, 2],
+      ]),
+    );
+    const shared = roomItems(m, 2).find((it) => it.sprite.startsWith('bookcase'))!;
+    expect(shared.y).toBe(2 * CELL);
+    expect(itemRows(shared).top).toEqual([0, WALL.in / 2]);
+    expect(problems(m, 2)).toEqual([]);
+    // The floor in front of it is short for a gap now: the armchair stands right against it.
+    const chair = roomItems(m, 2).find((it) => it.sprite.startsWith('armchair'))!;
+    expect(chair.y).toBe(shared.y + artSize(shared.sprite).h);
+    // Over an outside wall the whole band is the room's own: alone, the bookcase rises over it.
+    const alone = modelOf(house([['library', 2, 2]]));
+    const own = roomItems(alone, 1).find((it) => it.sprite.startsWith('bookcase'))!;
+    expect(own.y).toBe(2 * CELL);
+    expect(itemRows(own).top).toEqual([0, WALL.out]);
   });
 
   it('vary rooms of a type: three Bedrooms, three beds', () => {

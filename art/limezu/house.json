@@ -60,14 +60,14 @@
   "face-bathroom": {
     "pack": "mi",
     "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png",
-    "rect": [368, 230, 16, 6],
+    "rect": [368, 454, 16, 6],
     "ops": [
       {
         "op": "compose",
         "size": [16, 8],
         "layers": [
           {
-            "rect": [368, 254, 16, 2],
+            "rect": [368, 478, 16, 2],
             "at": [0, 6]
           }
         ]
@@ -77,7 +77,7 @@
         "size": [32, 8]
       }
     ],
-    "note": "The north wall face of a bathroom (white tiles with blue grout): the wall block at [352, 224]'s middle tile column, its top 6 rows of wallpaper under the band, then its last 2 rows (the baseboard and the outline along the floor), repeated to one 32 px cell. The house draws it under each north wall (the audit prototype's 8 px stub); the band itself is drawn from the wall mask."
+    "note": "The north wall face of a bathroom (mint green with a white stripe): the wall block at [352, 448]'s middle tile column, its top 6 rows of wallpaper under the band, then its last 2 rows (the baseboard and the outline along the floor), repeated to one 32 px cell. The house draws it under each north wall (the audit prototype's 8 px stub); the band itself is drawn from the wall mask. Its green sets it off from the Bathroom's pale blue tiles, which the white tiles it replaces matched (playtest 5a's face audit)."
   },
   "face-kitchen": {
     "pack": "mi",
@@ -148,14 +148,14 @@
   "face-closet": {
     "pack": "mi",
     "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png",
-    "rect": [16, 134, 16, 6],
+    "rect": [16, 38, 16, 6],
     "ops": [
       {
         "op": "compose",
         "size": [16, 8],
         "layers": [
           {
-            "rect": [16, 158, 16, 2],
+            "rect": [16, 62, 16, 2],
             "at": [0, 6]
           }
         ]
@@ -165,7 +165,7 @@
         "size": [32, 8]
       }
     ],
-    "note": "The north wall face of a closet (grey beige): the wall block at [0, 128]'s middle tile column, its top 6 rows of wallpaper under the band, then its last 2 rows (the baseboard and the outline along the floor), repeated to one 32 px cell. The house draws it under each north wall (the audit prototype's 8 px stub); the band itself is drawn from the wall mask."
+    "note": "The north wall face of a closet (white panels): the wall block at [0, 32]'s middle tile column, its top 6 rows of wallpaper under the band, then its last 2 rows (the baseboard and the outline along the floor), repeated to one 32 px cell. The house draws it under each north wall (the audit prototype's 8 px stub); the band itself is drawn from the wall mask. Whiter than the Closet's pale maple floor, which the grey beige it replaces nearly matched (playtest 5a's face audit)."
   },
   "face-hallway": {
     "pack": "mi",
@@ -192,14 +192,14 @@
   "face-garage": {
     "pack": "mi",
     "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png",
-    "rect": [16, 486, 16, 6],
+    "rect": [192, 486, 16, 6],
     "ops": [
       {
         "op": "compose",
         "size": [16, 8],
         "layers": [
           {
-            "rect": [16, 510, 16, 2],
+            "rect": [192, 510, 16, 2],
             "at": [0, 6]
           }
         ]
@@ -209,7 +209,7 @@
         "size": [32, 8]
       }
     ],
-    "note": "The north wall face of a garage (grey concrete): the wall block at [0, 480]'s middle tile column, its top 6 rows of wallpaper under the band, then its last 2 rows (the baseboard and the outline along the floor), repeated to one 32 px cell. The house draws it under each north wall (the audit prototype's 8 px stub); the band itself is drawn from the wall mask."
+    "note": "The north wall face of a garage (light grey paint): the wall block at [176, 480]'s middle tile column, its top 6 rows of wallpaper under the band, then its last 2 rows (the baseboard and the outline along the floor), repeated to one 32 px cell. The house draws it under each north wall (the audit prototype's 8 px stub); the band itself is drawn from the wall mask. Lighter than the Garage's concrete floor, which the grey concrete it replaces matched (playtest 5a's face audit)."
   },
   "face-home-office": {
     "pack": "mi",
@@ -258,14 +258,14 @@
   "face-library": {
     "pack": "mi",
     "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png",
-    "rect": [192, 358, 16, 6],
+    "rect": [16, 198, 16, 6],
     "ops": [
       {
         "op": "compose",
         "size": [16, 8],
         "layers": [
           {
-            "rect": [192, 382, 16, 2],
+            "rect": [16, 222, 16, 2],
             "at": [0, 6]
           }
         ]
@@ -275,7 +275,7 @@
         "size": [32, 8]
       }
     ],
-    "note": "The north wall face of a library (red-brown wood panelling): the wall block at [176, 352]'s middle tile column, its top 6 rows of wallpaper under the band, then its last 2 rows (the baseboard and the outline along the floor), repeated to one 32 px cell. The house draws it under each north wall (the audit prototype's 8 px stub); the band itself is drawn from the wall mask."
+    "note": "The north wall face of a library (pale olive): the wall block at [0, 192]'s middle tile column, its top 6 rows of wallpaper under the band, then its last 2 rows (the baseboard and the outline along the floor), repeated to one 32 px cell. The house draws it under each north wall (the audit prototype's 8 px stub); the band itself is drawn from the wall mask. Light, so the wall reads against the Library's red-brown floor and against a dark floor beyond the band; the red-brown panelling it replaces was the floor's own color (playtest 5a)."
   },
   "face-mudroom": {
     "pack": "mi",

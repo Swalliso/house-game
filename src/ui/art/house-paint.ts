@@ -178,7 +178,12 @@ export const FLOOR: Readonly<Record<RoomId, SpriteId>> = {
   sunroom: 'floor-sunroom',
 };
 
-/** Each room type's north wall face, in its own wallpaper (the two kitchens and the two halls share one). */
+/**
+ * Each room type's north wall face, in its own wallpaper (the two kitchens and the two halls
+ * share one). Each stands apart from its room's floor, a light wall over a darker floor or a
+ * color of its own over a light one, so the wall reads as a wall and two rooms never read as one
+ * (a test holds each wallpaper's average at ΔE 20 or more from its floor's).
+ */
 export const FACE: Readonly<Record<RoomId, SpriteId>> = {
   bedroom: 'face-bedroom',
   bathroom: 'face-bathroom',

@@ -292,7 +292,7 @@
   "face-bathroom": {
     "w": 32,
     "h": 8,
-    "spec": "cdfd88d7a6cc8d46"
+    "spec": "925abc3cab094da3"
   },
   "face-bedroom": {
     "w": 32,
@@ -302,7 +302,7 @@
   "face-closet": {
     "w": 32,
     "h": 8,
-    "spec": "04dedb29bc2ffb8b"
+    "spec": "d7c2d14f7ddd7d8b"
   },
   "face-dining-room": {
     "w": 32,
@@ -312,7 +312,7 @@
   "face-garage": {
     "w": 32,
     "h": 8,
-    "spec": "fcc6cca80444850d"
+    "spec": "cfccbeb571b3ac04"
   },
   "face-hallway": {
     "w": 32,
@@ -332,7 +332,7 @@
   "face-library": {
     "w": 32,
     "h": 8,
-    "spec": "6446779d60b1793a"
+    "spec": "51981be58c983d88"
   },
   "face-living-room": {
     "w": 32,
@@ -599,6 +599,16 @@
     "w": 64,
     "h": 61,
     "spec": "d8f0a876160b86f5"
+  },
+  "pergola-narrow": {
+    "w": 50,
+    "h": 61,
+    "spec": "85d16ea94f08fbaa"
+  },
+  "pergola-short": {
+    "w": 64,
+    "h": 51,
+    "spec": "968b6b41dd21696a"
   },
   "picket-post": {
     "w": 5,
