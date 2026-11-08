@@ -13,7 +13,8 @@
   pointer-events: none;
 }
 /* Centered on its spot on whole device pixels by Board.tsx (useCrispBadges), which sets its
-   left, top, width and height: so no transform at rest, and its text centered in its box. */
+   left, top, width and height, and moves it off another badge or a piece's digit: so no
+   transform at rest (its pop-in fills backwards only), and its text centered in its box. */
 .host-badge {
   position: absolute;
   box-sizing: border-box;
@@ -29,7 +30,7 @@
   font-weight: 800;
   line-height: 1;
   font-variant-numeric: tabular-nums;
-  animation: host-badge-in var(--dur-modal) ease-out both;
+  animation: host-badge-in var(--dur-modal) ease-out backwards;
 }
 .host-badge.good {
   background: var(--good);

@@ -490,3 +490,74 @@ export function overlaps(a: Box, b: Box): boolean {
   const e = 1e-6;
   return a.x < b.x + b.w - e && b.x < a.x + a.w - e && a.y < b.y + b.h - e && b.y < a.y + a.h - e;
 }
+
+const movesCache = new Map<string, readonly (readonly [number, number])[]>();
+
+/**
+ * The moves spreadBadges tries, nearest first (up or down before sideways, up before down): 2 CSS
+ * px steps in whole device pixels, out to `reach` each way. Kept, since the board asks on every
+ * pointer move while a fixture is picked.
+ */
+function badgeMoves(reach: number, dpr: number): readonly (readonly [number, number])[] {
+  const step = Math.max(1, Math.round(2 * dpr)) / dpr;
+  const n = Math.floor(reach / step + 1e-6);
+  const key = `${n}:${step}`;
+  let moves = movesCache.get(key);
+  if (!moves) {
+    const list: [number, number][] = [];
+    for (let i = -n; i <= n; i++) for (let j = -n; j <= n; j++) list.push([i * step, j * step]);
+    list.sort(
+      ([ax, ay], [bx, by]) =>
+        Math.hypot(ax, ay) - Math.hypot(bx, by) ||
+        Math.abs(ax) - Math.abs(bx) ||
+        ay - by ||
+        ax - bx,
+    );
+    moves = list;
+    movesCache.set(key, moves);
+  }
+  return moves;
+}
+
+/** How much of two boxes overlaps, in CSS px². */
+function overlapArea(a: Box, b: Box): number {
+  const w = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+  const h = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+  return w > 1e-6 && h > 1e-6 ? w * h : 0;
+}
+
+/**
+ * Where the fixture hosts' gain badges go while a fixture is picked (D-107): each at its spot,
+ * or, where that would cover a badge placed before it or something on the board (`keepOff`: the
+ * pieces' digits and badges), at the nearest spot within `reach` CSS px that covers neither,
+ * stepping 2 CSS px at a time on whole device pixels: up or down before sideways. Where none is
+ * clear, the one that covers least, another gain badge counting most. `spots` are the badges'
+ * boxes at their spots, in the order they're placed; a one-cell room's badge is wider than its
+ * room at 1×, so two side by side would cover each other.
+ */
+export function spreadBadges(
+  spots: readonly Box[],
+  keepOff: readonly Box[],
+  reach: number,
+  dpr: number,
+): Box[] {
+  const moves = badgeMoves(reach, dpr);
+  const placed: Box[] = [];
+  for (const s of spots) {
+    let best = s;
+    let least = Infinity;
+    for (const [dx, dy] of moves) {
+      const b = { x: snap(s.x + dx, dpr), y: snap(s.y + dy, dpr), w: s.w, h: s.h };
+      let cost = 0;
+      for (const p of placed) cost += 4 * overlapArea(b, p);
+      for (const k of keepOff) cost += overlapArea(b, k);
+      if (cost < least - 1e-6) {
+        best = b;
+        least = cost;
+        if (cost === 0) break;
+      }
+    }
+    placed.push(best);
+  }
+  return placed;
+}

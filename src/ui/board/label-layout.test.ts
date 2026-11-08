@@ -13,7 +13,9 @@ import {
   minBadge,
   overlaps,
   pieceLabels,
+  spreadBadges,
   type BadgeSpot,
+  type Box,
   type Side,
 } from './label-layout.ts';
 
@@ -870,5 +872,76 @@ describe("a Renovated room's stars (D-102)", () => {
     expect(l.level).toBeUndefined();
     const { level: _, ...withoutStars } = front;
     expect(l.digit).toEqual(pieceLabels(withoutStars).digit);
+  });
+});
+
+describe("the fixture hosts' gain badges (D-107)", () => {
+  /** A badge `w` × 20 CSS px on a cell's middle at 1×, on whole pixels, as HostBadges has it. */
+  const at = (cx: number, cy: number, w: number): Box => ({
+    x: Math.round((cx + 0.5) * 32 - w / 2),
+    y: (cy + 0.5) * 32 - 10,
+    w,
+    h: 20,
+  });
+  /** A one-character digit in a cell's bottom-right corner at 1× (digitFont, DIGIT_IN). */
+  const digit = (cx: number, cy: number): Box => ({
+    x: cx * 32 + 22,
+    y: cy * 32 + 20,
+    w: 8,
+    h: 11,
+  });
+  const clear = (boxes: readonly Box[], keepOff: readonly Box[]) =>
+    boxes.every((b, i) => boxes.every((o, j) => i === j || !overlaps(b, o))) &&
+    boxes.every((b) => keepOff.every((k) => !overlaps(b, k)));
+
+  it('stay on their spots when nothing is in the way', () => {
+    const spots = [at(2, 2, 29), at(6, 2, 57)];
+    expect(spreadBadges(spots, [], 32, 1)).toEqual(spots);
+  });
+
+  it('keep two one-cell rooms side by side apart, and off both digits', () => {
+    // A Bathroom's "★ ▲ +2" (57 px, placed first as the best) and a Closet's "±0" beside it.
+    const spots = [at(4, 5, 57), at(3, 5, 29)];
+    const digits = [digit(3, 5), digit(4, 5)];
+    expect(overlaps(spots[0]!, spots[1]!)).toBe(true);
+    const boxes = spreadBadges(spots, digits, 32, 1);
+    expect(clear(boxes, digits)).toBe(true);
+    // Each stays within a cell of its spot.
+    boxes.forEach((b, i) => {
+      expect(Math.abs(b.x - spots[i]!.x)).toBeLessThanOrEqual(32);
+      expect(Math.abs(b.y - spots[i]!.y)).toBeLessThanOrEqual(32);
+    });
+  });
+
+  it('move the least they can, up or down before sideways', () => {
+    // A digit just under a badge's middle: one step up clears it.
+    const spot = at(2, 2, 29);
+    const under = { x: spot.x + 10, y: spot.y + 18, w: 8, h: 11 };
+    const [b] = spreadBadges([spot], [under], 32, 1);
+    expect(b).toEqual({ ...spot, y: spot.y - 2 });
+  });
+
+  it('land on whole device pixels', () => {
+    const spots = [
+      { x: 10.3, y: 7.7, w: 29.5, h: 20 },
+      { x: 20.1, y: 7.7, w: 57, h: 20 },
+    ];
+    for (const dpr of [1, 1.25, 2]) {
+      for (const b of spreadBadges(spots, [], 32, dpr)) {
+        expect(Math.abs(b.x * dpr - Math.round(b.x * dpr))).toBeLessThan(1e-6);
+        expect(Math.abs(b.y * dpr - Math.round(b.y * dpr))).toBeLessThan(1e-6);
+      }
+    }
+  });
+
+  it('cover another badge least where nothing nearby is clear', () => {
+    // Over something wider than they can move past, the second badge still keeps off the first.
+    const spots = [at(5, 5, 57), at(5, 5, 57)];
+    const walls = [{ x: 0, y: 0, w: 32 * 12, h: 32 * 12 }];
+    const boxes = spreadBadges(spots, walls, 24, 1);
+    expect(boxes[0]).toEqual(spots[0]);
+    expect(overlaps(boxes[0]!, boxes[1]!)).toBe(false);
+    // The nearest such spot: just above the first.
+    expect(boxes[1]).toEqual({ ...spots[1]!, y: spots[1]!.y - 20 });
   });
 });

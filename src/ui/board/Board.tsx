@@ -98,6 +98,7 @@ import {
   type Occupancy,
 } from './geometry.ts';
 import { hallLinks, houseModel } from './house-model.ts';
+import { spreadBadges } from './label-layout.ts';
 import {
   FloorLayer,
   GhostPiece,
@@ -127,8 +128,10 @@ export function rotate(): void {
   const sel = selection.value;
   // A fixture has no shape to turn; a tool only turns the piece the Moving Truck carries.
   if (sel?.kind === 'fixture') return;
-  // A pack (D-106) is the tiles clicked out, so it has nothing to turn.
+  // A pack (D-106) is the tiles clicked out, so it has nothing to turn, and a Renovation
+  // waiting for End week (D-102) is the room as it stands.
   if (sel?.kind === 'piece' && CONTENT.pieces[sel.id].pack) return;
+  if (tentative.value?.t === 'renovate') return;
   if (sel?.kind === 'tool') {
     if (movingUid.value === null) return;
     rotation.value = ((rotation.value + 1) % 4) as 0 | 1 | 2 | 3;
@@ -1109,34 +1112,64 @@ function InstallTarget({ scale }: { scale: number }) {
 
 /** How far a host's gain badge sits below a preview mark on the same piece, in CSS px. */
 const MARK_CLEARANCE = 20;
+/** The farthest a host's gain badge moves off its spot to clear another, in CSS px (or a cell). */
+const BADGE_REACH = 48;
 
 /**
  * Puts each `[data-x]` badge in `ref`'s element on whole device pixels, centered on its spot
  * (data-x, data-y, in CSS px): as wide and tall as its text needs, rounded up to whole device
  * pixels, its corner on one. A badge as wide as its text, centered by a transform, would land
- * half a device pixel off and blur its ink ring. Measured after each render, before the
- * browser paints, like BoardLabel's nudge.
+ * half a device pixel off and blur its ink ring. Where its spot would cover another badge or a
+ * piece's digit or badge, it moves to the nearest clear one within `reach` CSS px (label-layout.ts
+ * spreadBadges), the best gain's first, so that one keeps its spot. Measured after each render,
+ * before the browser paints, like BoardLabel's nudge.
  */
-function useCrispBadges(ref: { readonly current: HTMLElement | null }, dpr: number): void {
+function useCrispBadges(
+  ref: { readonly current: HTMLElement | null },
+  dpr: number,
+  reach: number,
+): void {
   useLayoutEffect(() => {
-    const els = [...(ref.current?.querySelectorAll<HTMLElement>('[data-x]') ?? [])];
+    const layer = ref.current;
+    if (!layer) return;
+    const els = [...layer.querySelectorAll<HTMLElement>('[data-x]')];
     for (const el of els) {
       el.style.width = '';
       el.style.height = '';
     }
+    // In the window's CSS px, so they land on its device pixels wherever the board sits (at 2×
+    // a board wider than its view starts at the side column's edge, which can be fractional).
+    const origin = layer.getBoundingClientRect();
     // The border box's size (box-sizing: border-box), whatever transform its pop-in is at.
-    const sizes = els.map((el) => {
+    const spots = els.map((el) => {
       const cs = getComputedStyle(el);
-      return [parseFloat(cs.width), parseFloat(cs.height)] as const;
+      const w = Math.ceil(parseFloat(cs.width) * dpr - 1e-6) / dpr;
+      const h = Math.ceil(parseFloat(cs.height) * dpr - 1e-6) / dpr;
+      const x = origin.left + Number(el.dataset.x) - w / 2;
+      return { x, y: origin.top + Number(el.dataset.y) - h / 2, w, h };
     });
-    els.forEach((el, i) => {
-      const [w, h] = sizes[i]!;
-      const W = Math.ceil(w * dpr - 1e-6) / dpr;
-      const H = Math.ceil(h * dpr - 1e-6) / dpr;
-      el.style.width = `${W}px`;
-      el.style.height = `${H}px`;
-      el.style.left = `${Math.round((Number(el.dataset.x) - W / 2) * dpr) / dpr}px`;
-      el.style.top = `${Math.round((Number(el.dataset.y) - H / 2) * dpr) / dpr}px`;
+    // The pieces' digits and badges.
+    const keepOff = [...(layer.parentElement?.querySelectorAll('.digit, .board-badge') ?? [])].map(
+      (e) => {
+        const r = e.getBoundingClientRect();
+        return { x: r.left, y: r.top, w: r.width, h: r.height };
+      },
+    );
+    const order = els.map((_, i) => i);
+    order.sort((a, b) => +els[b]!.classList.contains('best') - +els[a]!.classList.contains('best'));
+    const boxes = spreadBadges(
+      order.map((i) => spots[i]!),
+      keepOff,
+      reach,
+      dpr,
+    );
+    order.forEach((i, k) => {
+      const el = els[i]!;
+      const b = boxes[k]!;
+      el.style.width = `${b.w}px`;
+      el.style.height = `${b.h}px`;
+      el.style.left = `${b.x - origin.left}px`;
+      el.style.top = `${b.y - origin.top}px`;
     });
   });
 }
@@ -1148,11 +1181,15 @@ function useCrispBadges(ref: { readonly current: HTMLElement | null }, dpr: numb
  * The host being looked at (under the pointer, armed, or waiting for End week) has
  * InstallTarget's label instead; a host the preview marks as helping or hurting it keeps its
  * badge below that mark. Inside the board, so its layer (--z-badges) applies; on whole device
- * pixels (useCrispBadges).
+ * pixels, off each other and the pieces' digits, within a cell of its spot (useCrispBadges).
  */
 function HostBadges({ scale }: { scale: number }) {
   const ref = useRef<HTMLDivElement>(null);
-  useCrispBadges(ref, viewSize.value?.dpr ?? (window.devicePixelRatio || 1));
+  useCrispBadges(
+    ref,
+    viewSize.value?.dpr ?? (window.devicePixelRatio || 1),
+    Math.min(CELL * scale, BADGE_REACH),
+  );
   const gains = installGains.value;
   const sel = selection.value;
   if (gains.length === 0 || sel?.kind !== 'fixture') return null;
@@ -1449,14 +1486,39 @@ function Badges({ scale }: { scale: number }) {
   );
 }
 
+/** How much wider a popup grows at its pop's peak, each side, as a share of its width (app.css). */
+const POPUP_GROW = 0.1;
+
+/**
+ * The tally's and the week's popups (director.ts), each centered on its spot unless that would
+ * cut it off at the side of the board's view, which can be narrower than the lot (1280×720):
+ * then it's nudged inside, as BoardLabel is (a room's "Renovated · level 1" at the lot's edge),
+ * with room for its pop's 1.2×. Measured after each render, by its layout width.
+ */
 function PopupLayer({ scale }: { scale: number }) {
   const px = CELL * scale;
+  const ref = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const layer = ref.current;
+    const view = layer?.closest('.board-scroll');
+    if (!layer || !view) return;
+    const v = view.getBoundingClientRect();
+    const origin = layer.getBoundingClientRect().left;
+    for (const el of layer.querySelectorAll<HTMLElement>('.popup')) {
+      const x = Number(el.dataset.x);
+      const w = el.offsetWidth;
+      const left = origin + x - w / 2 - w * POPUP_GROW;
+      const right = origin + x + w / 2 + w * POPUP_GROW;
+      el.style.left = `${x + keepInView(left, right, v.left, v.right)}px`;
+    }
+  });
   return (
-    <div class="popups" aria-hidden="true">
+    <div ref={ref} class="popups" aria-hidden="true">
       {popups.value.map((pop) => (
         <div
           key={pop.id}
           class={`popup ${pop.kind}`}
+          data-x={pop.x * px}
           style={{
             left: `${pop.x * px}px`,
             top: `${pop.y * px}px`,
