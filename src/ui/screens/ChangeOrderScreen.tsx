@@ -121,6 +121,16 @@ export function ChangeOrderScreen() {
   );
 }
 
+/**
+ * The terms the sheet lists. A request's or a restriction's last term says what it pays ("Met:
+ * +3 budget", text.ts changeOrderText), which the sheet's Pays line shows, coin first, so the
+ * list leaves it out rather than say it twice. A phase effect's terms are its modifiers.
+ */
+export function sheetTerms(view: ChangeOrderView): readonly string[] {
+  const terms = orderTerms(view.id, view.terms);
+  return view.kind !== 'phase' && view.reward ? terms.slice(0, -1) : terms;
+}
+
 /** What it pays: the coin before the amount (D-098) for budget, else the reward in words. */
 function Pays({ reward }: { reward: Reward }) {
   const budgetOnly = Object.entries(reward).every(([k, v]) => k === 'budget' || !v);
@@ -226,7 +236,7 @@ function ChangeOrderSheet({
             </blockquote>
             <ul class="pcard-lines co-terms">
               {/* A phase effect's say what it changes; "Until" below says when (this phase). */}
-              {orderTerms(view.id, view.terms).map((t) => (
+              {sheetTerms(view).map((t) => (
                 <li key={t}>{t}</li>
               ))}
             </ul>

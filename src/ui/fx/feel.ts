@@ -91,7 +91,7 @@ export const FEEL = {
     /** A line turned on pops its row to this scale, and its Charm to `charmScale`. */
     popScale: 1.05,
     charmScale: 1.4,
-    /** A line turned off shakes its row this many px (whole px). */
+    /** A line turned off shakes its row this many UI px (whole UI px: 6 CSS px at 1080p). */
     shakePx: 3,
     /** The share of a row's flash its pop or shake takes; the tint fades over all of it. */
     moveShare: 0.6,

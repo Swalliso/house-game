@@ -21,14 +21,7 @@ const TOKENS = readFileSync(join(import.meta.dirname, 'tokens.css'), 'utf8');
  * digits, the popups) and on the ?debug panel moves them to tokens. Each one that's migrated comes
  * off this list, and the test keeps it off.
  */
-const LEGACY = [
-  'app.css',
-  'debug/debug.css',
-  // M4's stylesheets until the restyle (D-110): steps 11 and 12 take them off.
-  'hud/checklist.css',
-  'screens/change-order.css',
-  'screens/jobs.css',
-];
+const LEGACY = ['app.css', 'debug/debug.css'];
 
 function stylesheets(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
@@ -130,6 +123,26 @@ describe('the tokens', () => {
       ['ink', 'action-hi'],
       // The board's labels by the pointer (board/labels.css): the demolish label's red.
       ['danger-shade', 'card'],
+      // M4 in the pixel UI (D-110). The job board: a Rare contract's quiet text, and the
+      // Recommended tab's descenders on its gold lip (screens/jobs.css).
+      ['ink-soft', 'rare-tint'],
+      ['ink', 'sparkle-deep'],
+      // The checklist (hud/checklist.css): a line turning on, on Charm's tint; one turning off,
+      // an order a placement would break, and the tally's "lost" flash, on the warning's tint;
+      // a folded group's count and Charm, and an order's Met or Kept, on paper and on a hovered
+      // fold row.
+      ['ink', 'charm-tint'],
+      ['ink-soft', 'charm-tint'],
+      ['ink', 'bad-tint'],
+      ['ink-soft', 'bad-tint'],
+      ['charm', 'bad-tint'],
+      ['good', 'paper'],
+      ['good', 'paper-inset'],
+      ['charm', 'paper-inset'],
+      // A fixture's host badges while installing (D-107, board/install-gains.css), and the
+      // preview's badges (board/labels.css): paper-colored text on the good and bad fills.
+      ['card', 'good'],
+      ['card', 'bad'],
     ] as const;
     const low = pairs.flatMap(([text, bg]) => {
       const a = t.get(text);
