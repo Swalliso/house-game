@@ -11,12 +11,52 @@ import { signal } from '@preact/signals';
 import type { ComponentChildren } from 'preact';
 import { useEffect, useLayoutEffect, useRef } from 'preact/hooks';
 import { CONTENT, glossary, type Term } from '../../rules/index.ts';
+import { Icon } from '../kit/kit.tsx';
 import { appScreen } from '../store.ts';
 import { devicePixelRatio, uiPixel } from '../theme/pixel.ts';
 import { placeTip } from './tip-place.ts';
 import './tip.css';
 
 const GLOSSARY = glossary(CONTENT);
+
+/**
+ * The warning sign (U+26A0), the one symbol in the rules' words that the pixel fonts lack: the
+ * glossary's Requirements tip says a piece that earns nothing shows one on the board (text.ts).
+ * By its code point, since glyphs.test.ts looks for the symbol itself in the HUD's code. Its
+ * emoji form (U+FE0F after it) goes with it.
+ */
+const WARNING_SIGN = new RegExp(
+  `${String.fromCodePoint(0x26a0)}${String.fromCodePoint(0xfe0f)}?`,
+  'u',
+);
+
+/**
+ * A tip's words with the warning icon for each warning sign in them, in both fonts, so the
+ * bubble never falls back to the system font for it (D-098, D-110). Each icon keeps to one line
+ * with the characters it touches, as the sign did (tip.css), so a line never ends on the "(" of
+ * "(sign on the board)" with the icon on the next. Screen readers read the icon as the sign.
+ */
+export function tipWords(words: string): ComponentChildren {
+  const parts = words.split(WARNING_SIGN);
+  if (parts.length === 1) return words;
+  const out: ComponentChildren[] = [];
+  let rest = parts[0]!;
+  parts.slice(1).forEach((next, k) => {
+    const before = /\S*$/.exec(rest)![0];
+    const after = /^\S*/.exec(next)![0];
+    out.push(
+      rest.slice(0, rest.length - before.length),
+      <span key={k} class="tip-sign">
+        {before}
+        <Icon name="warn" label="warning sign" />
+        {after}
+      </span>,
+    );
+    rest = next.slice(after.length);
+  });
+  out.push(rest);
+  return out;
+}
 
 interface Shown {
   /** The Tip that showed it: only that one hides it again. */
@@ -98,8 +138,8 @@ export function TipLayer() {
   if (!t) return null;
   return (
     <div ref={ref} id="tip-bubble" role="tooltip" class="tip-bubble ui">
-      <strong class="tip-title">{t.title}</strong>
-      <span>{t.text}</span>
+      <strong class="tip-title">{tipWords(t.title)}</strong>
+      <span>{tipWords(t.text)}</span>
     </div>
   );
 }

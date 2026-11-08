@@ -14,6 +14,7 @@
 // change order), or with its Dismiss.
 
 import { effect } from '@preact/signals';
+import type { RefObject } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { banner, busy, flash, played, skip } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
@@ -123,13 +124,19 @@ export function notesUnder(): 'sign' | 'banner' | null {
  * once the run is over, under it or the board's "It's a house." sign (`under`, rendered by the
  * banner and the sign), so neither covers them. A toast waits in ModalToast while a sheet or
  * the menu is open.
+ *
+ * A sheet that holds the keyboard on its text (the change order's) passes that text as
+ * `refocus`: a note's Dismiss puts focus back there, by mouse or keyboard, rather than let it
+ * fall to the page with the button it removes.
  */
 export function Notes({
   docked = false,
   under = null,
+  refocus,
 }: {
   docked?: boolean;
   under?: 'sign' | 'banner' | null;
+  refocus?: RefObject<HTMLElement>;
 }) {
   const n = notice.value;
   const t = anyModalOpen() ? null : toast.value;
@@ -154,7 +161,10 @@ export function Notes({
             iconOnly
             icon="close"
             class="notice-close"
-            onClick={() => (notice.value = null)}
+            onClick={() => {
+              notice.value = null;
+              refocus?.current?.focus({ preventScroll: true });
+            }}
             aria-label="Dismiss"
             title="Dismiss"
           />

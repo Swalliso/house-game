@@ -217,8 +217,8 @@ button:where(:not(.btn, .pcard, .inv-slot, .seg, .check-fold)):focus-visible,
   }
   /* The pixel font's rows are taller (a 280 px column wraps a line's name to two or three
      lines), so while a play is looked at the checklist keeps its plank and two of them, as the
-     readable font's 56 UI px do: the play's flipped row with the one above it, or the house
-     rules' first two (Checklist.tsx, which leaves out the rows' progress then). */
+     readable font's 56 UI px do: the play's flipped row with the one beside it (Checklist.tsx,
+     which leaves out the rows' progress then). */
   [data-font='pixel'] .left.looking > .checklist {
     min-height: calc(var(--px) * 84);
   }

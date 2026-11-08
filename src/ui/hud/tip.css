@@ -42,6 +42,11 @@
 .tip-title {
   font-weight: 700;
 }
+/* A symbol the pixel fonts lack, drawn as its icon in a tip's words (Tip.tsx tipWords), keeps to
+   one line with the characters it touches, as the glyph did. */
+.tip-sign {
+  white-space: nowrap;
+}
 /* The tail, pointing at the term: under the note, or over it when the note sits below. */
 .tip-bubble::after {
   content: '';

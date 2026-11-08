@@ -223,8 +223,9 @@ function ChangeOrderSheet({
           }
           bodyClass="co-body"
         >
-          {/* Notes and toasts sit here while the sheet is up, not over it (Overlays.tsx). */}
-          <Notes docked />
+          {/* Notes and toasts sit here while the sheet is up, not over it (Overlays.tsx). A
+              note's Dismiss puts focus back on the text, which holds the keyboard. */}
+          <Notes docked refocus={text} />
           <div class="co-scroll" ref={text} tabIndex={-1}>
             <div class="co-title">
               <h2 id="co-name">{view.name}</h2>

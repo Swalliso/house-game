@@ -482,27 +482,11 @@ function CrewChip({ id, crew }: { id: CrewId; crew: CrewDef }) {
   );
 }
 
-interface Row {
+export interface Row {
   line: ChecklistLine;
   change: 'gained' | 'lost' | null;
   flash: CheckFlash | undefined;
   pending: boolean;
-}
-
-/**
- * The house rules' first two rows as the checklist shows them, as selectors: a folded group is
- * its one row, an open one each of its lines.
- */
-function houseRuleRows(rows: readonly Row[], isFolded: (g: RuleGroup) => boolean): string[] {
-  const out: string[] = [];
-  for (const g of ['household', 'shape', 'yard'] as const) {
-    const lines = rows.filter((r) => r.line.group === g);
-    if (lines.length === 0) continue;
-    if (isFolded(g)) out.push(`[data-fold="${g}"]`);
-    else out.push(...lines.map((r) => `[data-row="${r.line.id}"]`));
-    if (out.length >= 2) break;
-  }
-  return out.slice(0, 2);
 }
 
 /** The line above `row` in its group, or else the one below it (a flipped row's neighbor). */
@@ -510,6 +494,23 @@ function besideRow(rows: readonly Row[], row: Row): Row | undefined {
   const group = rows.filter((r) => r.line.group === row.line.group);
   const k = group.indexOf(row);
   return group[k - 1] ?? group[k + 1];
+}
+
+/**
+ * What a legal play being looked at brings into view, as selectors, the one that must show
+ * first: the first row it flips, with a line beside it where both fit, else the change order it
+ * would break (D-110). Null for a play that flips nothing and breaks nothing: it leaves the
+ * checklist where it is, so the client's tastes stay in view where they were ("Lawns earn +50%"
+ * while placing a Lawn).
+ */
+export function playTarget(rows: readonly Row[], breaks: string | undefined): string[] | null {
+  const flipped = rows.find((r) => r.change !== null);
+  if (flipped) {
+    return [flipped, besideRow(rows, flipped)].flatMap((r) =>
+      r ? [`[data-row="${r.line.id}"]`] : [],
+    );
+  }
+  return breaks ? [`[data-order="${breaks}"]`] : null;
 }
 
 /**
@@ -714,10 +715,8 @@ export function Checklist() {
   const breaks = p?.legal ? p.breaks : undefined;
 
   // What to bring into view when the checklist scrolls: the row the tally just lit (or its
-  // folded group's row), else the first row the play being looked at flips, with a line beside
-  // it where both fit, else the order it would break, else the house rules' first two rows, past
-  // the crew's chip and the tastes when the box is short: two rows while a play is looked at
-  // (D-110). Selectors, the one that must show first.
+  // folded group's row), else what the play being looked at flips or breaks (playTarget; a play
+  // that does neither leaves it where it is). Selectors, the one that must show first.
   const newest = flashes.reduce<CheckFlash | undefined>(
     (a, f) => (!a || f.id > a.id ? f : a),
     undefined,
@@ -730,13 +729,8 @@ export function Checklist() {
     target = [g !== 'wishes' && isFolded(g) ? `[data-fold="${g}"]` : `[data-row="${lit.line.id}"]`];
     targetKey = `flash-${newest.id}`;
   } else if (p?.legal) {
-    const flipped = rows.find((r) => r.change !== null);
-    target = flipped
-      ? [flipped, besideRow(rows, flipped)].flatMap((r) => (r ? [`[data-row="${r.line.id}"]`] : []))
-      : breaks
-        ? [`[data-order="${breaks}"]`]
-        : houseRuleRows(rows, isFolded);
-    targetKey = target.join(' ');
+    target = playTarget(rows, breaks);
+    targetKey = target && target.join(' ');
   }
   const targetRef = useRef(target);
   targetRef.current = target;
