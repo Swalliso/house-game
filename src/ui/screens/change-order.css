@@ -95,9 +95,19 @@
   padding: 0;
   gap: 0;
 }
-/* Notes and toasts while the sheet is up (Overlays.tsx Notes, docked): under the plank. */
+/* Notes and toasts while the sheet is up (Overlays.tsx Notes, docked): under the plank. The
+   sheet is narrow, so a note's words keep 140 UI px at least, and its buttons (an old run's
+   Copy, and Dismiss) wrap under them, at the right, rather than squeeze them to a word a line.
+   A note with only Dismiss keeps it beside its words. */
 .co-body > .notes.docked {
   padding: var(--space-2) var(--space-3) 0;
+}
+.co-body > .notes.docked .notice {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.co-body > .notes.docked .notice-text {
+  min-width: calc(var(--px) * 140);
 }
 .co-scroll {
   flex: 1 1 auto;

@@ -13,6 +13,25 @@ import { Button, Segmented, Sheet, Slider, Switch } from '../kit/kit.tsx';
 import { settings, updateSettings } from '../settings.ts';
 import './settings.css';
 
+/**
+ * Shows the first-time hints again. Its button goes disabled with nothing left to show, which
+ * would drop the keyboard's place to the page, so focus moves on to the sheet's next control.
+ */
+function showHintsAgain(e: MouseEvent): void {
+  const button = e.currentTarget as HTMLElement;
+  if (document.activeElement === button) {
+    const controls = [
+      ...(button
+        .closest('.sheet')
+        ?.querySelectorAll<HTMLElement>(
+          'button:not(:disabled), input:not(:disabled), select:not(:disabled), [tabindex="0"]',
+        ) ?? []),
+    ];
+    controls[controls.indexOf(button) + 1]?.focus();
+  }
+  resetHints();
+}
+
 function Group({ title, children }: { title: string; children: ComponentChildren }) {
   return (
     <section class="set-group">
@@ -55,7 +74,7 @@ export function SettingsPanel() {
           <Button
             size="sm"
             disabled={seenHints.value.size === 0}
-            onClick={resetHints}
+            onClick={showHintsAgain}
             title="Each first-time hint shows again when its moment comes"
           >
             Show them again
