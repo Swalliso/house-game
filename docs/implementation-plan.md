@@ -1425,7 +1425,7 @@ The team treats reward feel as core: big combos should feel like Balatro and Com
    - the next note of the pitch ladder
    - a squash-and-wobble on the piece
    - a tiny screen-shake impulse
-2. **Sets held light up next,** each adding its Points (Points color) and its +Mult (Mult color, with a warmer chime). Then each spec met adds +Mult.
+2. **Sets held light up next,** each adding its Points (Points color) and its +Mult (Mult color, with a warmer chime). Then each spec met adds +Mult. The score panel lists the sets; on a window under 1000 px tall it folds them into one row while nothing is looked at, how many with their Points and Mult added up and the list in its tip, and that row lights with each set the tally counts, its numbers popping (D-098's 2026-11-08 change, D-110).
 3. **Each ×Mult source then lands on its own:** a gold "×2" stamp, a heavier, lower sound, and a bigger wobble. It's the heaviest-sounding moment in a normal week.
 4. **The multiply moment:**
    - a 0.4 s pause
@@ -1470,6 +1470,7 @@ Intensity is measured against **pace**: `max(1, (this phase's target − the sco
 
 - Points are whole numbers. Mult shows at most two decimals (×1.5, ×2.25).
 - Commas, then K/M suffixes above a million on popups. Scientific notation only above 10^12.
+- The score panel's week total sizes itself to its plaque: from the hero size down, in whole steps of the pixel font's grid, as its digits grow, so a Wow of up to seven digits stays inside the frame in the narrowest column (D-110).
 - Bigger numbers quiver slightly more with each extra digit, as in Balatro.
 - Each tile's weekly score is a small white digit with a dark outline in the tile's bottom-right corner, as in Combolands (lifted above another piece's roof that rises into it).
 
