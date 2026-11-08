@@ -223,14 +223,15 @@ describe('room layouts', () => {
       library: /^bookcase/,
       mudroom: /^(washer|bench)/,
       sunroom: /^plant-tall/,
-      // The members' rooms (D-103), from the cuts the other rooms use until they get their own.
-      nursery: /^bed-double/,
-      kidsRoom: /^bed-double/,
+      // The members' rooms (D-103), each its own (D-111). Renfield's cot and Rowan's easel stand
+      // in their one-cell-deep rooms too, in a second shape.
+      nursery: /^crib-twin/,
+      kidsRoom: /^bed-single/,
       grandmasRoom: /^bed-double/,
-      renfieldsRoom: /^(desk-small|coat-rack|plant-small)/,
+      renfieldsRoom: /^cot/,
       nanasRoom: /^bed-double/,
-      rowansStudio: /^(plant-tall|desk-small|plant-small)/,
-      ivysRoom: /^bed-double/,
+      rowansStudio: /^easel/,
+      ivysRoom: /^bed-single/,
     };
     for (const id of INDOOR) {
       for (const rot of [0, 1, 2, 3] as Rot[]) {
@@ -449,6 +450,30 @@ describe('fixtures', () => {
     expect(layout.fixtureShown).toBe(true);
   });
 
+  it('Bunk Beds take the bed’s place in a member’s room, which counts as a Bedroom (D-111)', () => {
+    // The 2×2 rooms: the twins' crib, the Kids' Room's two beds, Grandma's, Nana's and Ivy's.
+    for (const id of ['nursery', 'kidsRoom', 'grandmasRoom', 'nanasRoom', 'ivysRoom'] as const) {
+      const { layout } = only(id, 'bunkBeds');
+      const sprites = layout.items.map((it) => it.sprite);
+      expect(
+        sprites.some((sp) => sp.startsWith('bunk-bed')),
+        id,
+      ).toBe(true);
+      expect(
+        sprites.filter((sp) => /^(crib-|bed-)/.test(sp)),
+        id,
+      ).toEqual([]);
+      expect(layout.fixtureShown, id).toBe(true);
+    }
+    // The one-cell-across rooms have no floor for them: their badge shows. Renfield's cot stays.
+    for (const rot of [0, 1] as Rot[]) {
+      expect(only('renfieldsRoom', 'bunkBeds', rot).layout.fixtureShown, `r${rot}`).toBe(false);
+      expect(only('rowansStudio', 'bunkBeds', rot).layout.fixtureShown, `r${rot}`).toBe(false);
+    }
+    const upright = only('renfieldsRoom', 'bunkBeds', 1).layout.items.map((it) => it.sprite);
+    expect(upright).toContain('cot');
+  });
+
   it('a Kitchen Island stands in the middle of the kitchen, or keeps its badge', () => {
     // With the Living Room south of it, the front door is the Living Room's.
     const m = modelOf(
@@ -605,6 +630,63 @@ describe('fixtures', () => {
     const m = modelOf(boxedIn('bathroom', 0, 'NESW', 'bayWindow'));
     expect(m.windows.some((w) => w.bay)).toBe(false);
     expect(roomLayout(m, 1).fixtureShown).toBe(false);
+  });
+});
+
+describe('the members’ rooms (D-111)', () => {
+  const sprites = (m: HouseModel, uid = 1) => roomItems(m, uid).map((it) => it.sprite);
+
+  it('grow with the twins: the Nursery’s crib, then two beds once it is a Kids’ Room', () => {
+    const nursery = sprites(modelOf(house([['nursery', 4, 4]])));
+    expect(nursery.filter((sp) => sp.startsWith('crib-twin'))).toHaveLength(1);
+    expect(nursery.some((sp) => sp.startsWith('bed-'))).toBe(false);
+    // The same piece once it has grown (its type changes, so its art does).
+    const kids = sprites(modelOf(house([['kidsRoom', 4, 4]])));
+    expect(kids.filter((sp) => sp.startsWith('bed-single'))).toHaveLength(2);
+    expect(kids.some((sp) => sp.startsWith('crib-'))).toBe(false);
+  });
+
+  it('keep Nana’s dogs close: their bed beside hers', () => {
+    for (const rot of [0, 1, 2, 3] as Rot[]) {
+      const items = roomItems(pieceModel('nanasRoom', rot), 1);
+      const bed = items.find((it) => it.sprite.startsWith('bed-double'))!;
+      const dogs = items.find((it) => it.sprite === 'own-dog-bed')!;
+      expect(dogs, `r${rot}`).toBeDefined();
+      // Against the same north wall, side by side.
+      const beside =
+        dogs.x + artSize(dogs.sprite).w === bed.x || bed.x + artSize(bed.sprite).w === dogs.x;
+      expect(beside, `r${rot}`).toBe(true);
+    }
+  });
+
+  it('fit their one-cell-across rooms: Renfield’s cot and Rowan’s easel in both orientations', () => {
+    // One cell wide (r1): the upright cot, the full easel. One cell deep (r0): the side-on cot and
+    // the easel without its finial, 26 px, under the north wall's band and face.
+    expect(sprites(pieceModel('renfieldsRoom', 1))).toContain('cot');
+    expect(sprites(pieceModel('renfieldsRoom', 0))).toContain('cot-side');
+    expect(sprites(pieceModel('rowansStudio', 1)).some((sp) => /^easel-\d/.test(sp))).toBe(true);
+    expect(sprites(pieceModel('rowansStudio', 0)).some((sp) => sp.startsWith('easel-low'))).toBe(
+      true,
+    );
+    for (const id of ['renfieldsRoom', 'rowansStudio'] as const) {
+      for (const rot of [0, 1] as Rot[]) {
+        expect(problems(pieceModel(id, rot), 1), `${id} r${rot}`).toEqual([]);
+      }
+    }
+  });
+
+  it('are never bare in any house', () => {
+    const members = new Set<PieceId>(INDOOR.filter((id) => CONTENT.pieces[id].member));
+    let seen = 0;
+    for (let seed = 1; seed <= 300; seed++) {
+      const m = modelOf(randomHouse(seed * 7919));
+      for (const r of m.rooms.values()) {
+        if (!members.has(r.defId)) continue;
+        seen++;
+        expect(roomItems(m, r.uid).length, `seed ${seed} ${r.defId}`).toBeGreaterThan(0);
+      }
+    }
+    expect(seen).toBeGreaterThan(200);
   });
 });
 

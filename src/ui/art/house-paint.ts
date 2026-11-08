@@ -154,13 +154,21 @@ type RoomId = Extract<
   | 'library'
   | 'mudroom'
   | 'sunroom'
+  | 'nursery'
+  | 'kidsRoom'
+  | 'grandmasRoom'
+  | 'renfieldsRoom'
+  | 'nanasRoom'
+  | 'rowansStudio'
+  | 'ivysRoom'
 >;
 
 /**
  * Each room type's floor (D-093: every room type its own; the two kitchens share one, as do the
- * two halls). The hand's cards and the shop picture rooms with these too, through paintPiece. A
- * type without its own floor and face (for now, the members' rooms, D-103) has its countsAs
- * root's: floorOf and faceOf.
+ * two halls). The members' rooms have their own too (D-111), so each reads as its own room and
+ * the Nursery changes floor as it grows into the Kids' Room. The hand's cards and the shop
+ * picture rooms with these too, through paintPiece. A type without its own floor and face has its
+ * countsAs root's: floorOf and faceOf.
  */
 export const FLOOR: Readonly<Record<RoomId, SpriteId>> = {
   bedroom: 'floor-wood',
@@ -178,6 +186,13 @@ export const FLOOR: Readonly<Record<RoomId, SpriteId>> = {
   library: 'floor-library',
   mudroom: 'floor-mudroom',
   sunroom: 'floor-sunroom',
+  nursery: 'floor-nursery',
+  kidsRoom: 'floor-kids-room',
+  grandmasRoom: 'floor-grandmas-room',
+  renfieldsRoom: 'floor-renfields-room',
+  nanasRoom: 'floor-nanas-room',
+  rowansStudio: 'floor-rowans-studio',
+  ivysRoom: 'floor-ivys-room',
 };
 
 /**
@@ -202,6 +217,13 @@ export const FACE: Readonly<Record<RoomId, SpriteId>> = {
   library: 'face-library',
   mudroom: 'face-mudroom',
   sunroom: 'face-sunroom',
+  nursery: 'face-nursery',
+  kidsRoom: 'face-kids-room',
+  grandmasRoom: 'face-grandmas-room',
+  renfieldsRoom: 'face-renfields-room',
+  nanasRoom: 'face-nanas-room',
+  rowansStudio: 'face-rowans-studio',
+  ivysRoom: 'face-ivys-room',
 };
 
 /** A room type's wallpaper: its own, its countsAs root's (byType), or the hall's. */

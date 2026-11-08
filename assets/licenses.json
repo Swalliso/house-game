@@ -15,7 +15,7 @@
     "license": "MIT"
   },
   "src/ui/art/drawings.ts": {
-    "source": "Our own pixel drawings in LimeZu's palette, as text grids: the Doghouse, the hens and the Sprinkler",
+    "source": "Our own pixel drawings in LimeZu's palette, as text grids: the Doghouse, the hens, the Sprinkler, and the dogs' bed in Nana's Room",
     "author": "Open House team (drawn by Claude Code)",
     "license": "Own work"
   },
@@ -124,6 +124,36 @@
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Interiors"
   },
+  "limezu/bed-single-0.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png [118, 81, 20, 40]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/bed-single-1.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png [119, 33, 20, 40]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/bed-single-2.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png [167, 385, 20, 40]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/bed-single-3.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png [135, 385, 20, 40]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/bed-single-4.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png [199, 385, 20, 40]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/bed-single-5.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png [231, 386, 20, 40]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
   "limezu/bench.png": {
     "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/21_Clothing_Store.png [64, 887, 32, 25]",
     "author": "LimeZu",
@@ -196,6 +226,11 @@
   },
   "limezu/bunk-bed-2.png": {
     "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png [100, 1383, 40, 41]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/candles.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 3_Animated_objects/16x16/spritesheets/animated_candle.png [2, 8, 13, 14], 3 frames [16, 0] apart",
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Interiors"
   },
@@ -329,6 +364,16 @@
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Exteriors"
   },
+  "limezu/cot.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/19_Hospital_16x16.png [144, 551, 16, 37]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/cot-side.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png [49, 720, 36, 22]; 1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png [49, 717, 12, 3]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
   "limezu/counter.png": {
     "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png [49, 112, 8, 11]; 1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png [103, 112, 8, 11]; 1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png [64, 22, 8, 10]; 1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png [104, 22, 8, 10]",
     "author": "LimeZu",
@@ -339,8 +384,38 @@
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Interiors"
   },
+  "limezu/crib-twin-0.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png [67, 1317, 27, 26]; 1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png [96, 1317, 14, 26]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/crib-twin-1.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png [67, 1349, 27, 26]; 1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png [96, 1349, 14, 26]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/curio-0.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/2_LivingRoom_16x16.png [224, 243, 16, 37]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/curio-1.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/2_LivingRoom_16x16.png [241, 249, 15, 31]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
   "limezu/desk-pc.png": {
     "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/5_Classroom_and_library_16x16.png [117, 170, 22, 38]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/desk-school-0.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/5_Classroom_and_library_16x16.png [83, 49, 22, 22]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/desk-school-1.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/5_Classroom_and_library_16x16.png [39, 81, 22, 22]",
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Interiors"
   },
@@ -369,6 +444,46 @@
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Interiors"
   },
+  "limezu/dresser-0.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png [1, 568, 29, 24]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/dresser-1.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png [1, 504, 29, 24]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/easel-0.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/7_Art_16x16.png [192, 32, 16, 29]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/easel-1.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/7_Art_16x16.png [240, 32, 16, 29]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/easel-2.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/7_Art_16x16.png [208, 32, 16, 29]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/easel-low-0.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/7_Art_16x16.png [192, 35, 16, 26]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/easel-low-1.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/7_Art_16x16.png [240, 35, 16, 26]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/easel-low-2.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/7_Art_16x16.png [208, 35, 16, 26]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
   "limezu/face-bathroom.png": {
     "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png [368, 454, 16, 6]; 1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png [368, 478, 16, 2]",
     "author": "LimeZu",
@@ -394,6 +509,11 @@
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Interiors"
   },
+  "limezu/face-grandmas-room.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png [192, 454, 16, 6]; 1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png [192, 478, 16, 2]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
   "limezu/face-hallway.png": {
     "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png [16, 102, 16, 6]; 1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png [16, 126, 16, 2]",
     "author": "LimeZu",
@@ -401,6 +521,16 @@
   },
   "limezu/face-home-office.png": {
     "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png [368, 326, 16, 6]; 1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png [368, 350, 16, 2]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/face-ivys-room.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png [368, 198, 16, 6]; 1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png [368, 222, 16, 2]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/face-kids-room.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png [368, 70, 16, 6]; 1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png [368, 94, 16, 2]",
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Interiors"
   },
@@ -424,8 +554,28 @@
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Interiors"
   },
+  "limezu/face-nanas-room.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png [192, 550, 16, 6]; 1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png [192, 574, 16, 2]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/face-nursery.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png [368, 486, 16, 6]; 1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png [368, 510, 16, 2]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
   "limezu/face-playroom.png": {
     "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png [368, 134, 16, 6]; 1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png [368, 158, 16, 2]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/face-renfields-room.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png [192, 390, 16, 6]; 1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png [192, 414, 16, 2]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/face-rowans-studio.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png [16, 70, 16, 6]; 1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png [16, 94, 16, 2]",
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Interiors"
   },
@@ -459,8 +609,23 @@
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Interiors"
   },
+  "limezu/floor-grandmas-room.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floors_16x16.png [16, 336, 16, 16]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
   "limezu/floor-hall.png": {
     "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floors_16x16.png [16, 496, 16, 16]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/floor-ivys-room.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floors_16x16.png [16, 176, 16, 16]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/floor-kids-room.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floors_16x16.png [16, 144, 16, 16]",
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Interiors"
   },
@@ -479,6 +644,16 @@
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Interiors"
   },
+  "limezu/floor-nanas-room.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floors_16x16.png [80, 400, 16, 16]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/floor-nursery.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floors_16x16.png [144, 48, 16, 16]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
   "limezu/floor-office.png": {
     "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floors_16x16.png [208, 432, 16, 16]",
     "author": "LimeZu",
@@ -491,6 +666,16 @@
   },
   "limezu/floor-playroom.png": {
     "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floors_16x16.png [144, 304, 16, 16]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/floor-renfields-room.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floors_16x16.png [144, 336, 16, 16]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/floor-rowans-studio.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floors_16x16.png [80, 368, 16, 16]",
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Interiors"
   },
@@ -569,6 +754,11 @@
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Interiors"
   },
+  "limezu/lamp-floor.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/2_LivingRoom_16x16.png [193, 200, 13, 33]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
   "limezu/lily-0.png": {
     "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png [400, 112, 16, 16]",
     "author": "LimeZu",
@@ -618,6 +808,36 @@
     "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png [368, 608, 48, 64]",
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/paint-pot-0.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/7_Art_16x16.png [97, 10, 13, 13]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/paint-pot-1.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/7_Art_16x16.png [113, 10, 13, 13]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/paint-pot-2.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/7_Art_16x16.png [113, 42, 13, 13]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/painting-0.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/7_Art_16x16.png [194, 74, 13, 15]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/painting-1.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/7_Art_16x16.png [242, 74, 13, 15]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/painting-2.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/7_Art_16x16.png [210, 74, 13, 15]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
   },
   "limezu/parasol-0.png": {
     "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/14_Swimming_Pool_16x16.png [240, 3, 47, 61]",
@@ -904,6 +1124,26 @@
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Interiors"
   },
+  "limezu/spider.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 3_Animated_objects/16x16/spritesheets/animated_spider.png [4, 6, 7, 19], 8 frames [16, 0] apart",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/stool-0.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/7_Art_16x16.png [97, 76, 13, 13]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/stool-1.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/7_Art_16x16.png [113, 76, 13, 13]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/stool-2.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/7_Art_16x16.png [129, 76, 13, 13]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
   "limezu/street-asphalt.png": {
     "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/2_City_Terrains_16x16.png [16, 64, 16, 16]",
     "author": "LimeZu",
@@ -1083,6 +1323,16 @@
     "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png [416, 32, 16, 16]",
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/vanity-0.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/2_LivingRoom_16x16.png [66, 76, 28, 30]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/vanity-1.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/2_LivingRoom_16x16.png [34, 76, 28, 30]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
   },
   "limezu/washer.png": {
     "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/3_Bathroom_16x16.png [198, 12, 20, 4]; 1_Interiors/16x16/Theme_Sorter/3_Bathroom_16x16.png [198, 19, 20, 22]",

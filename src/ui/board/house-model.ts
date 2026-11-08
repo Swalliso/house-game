@@ -430,10 +430,25 @@ const ENTRY: Readonly<Partial<Record<PieceId, number>>> = {
 };
 
 /**
+ * Where the door tree opens a member's room (D-103) from when it can, as its story has it
+ * (D-111): the twins' Nursery, and the Kids' Room it grows into, off their parents' Bedroom; Ivy's
+ * Room off Dale's Home Office, where she does her homework; Nana's Room off the Mudroom, where the
+ * dogs come in. (A Hallway the rules link it through still opens into it as well.)
+ */
+const MEMBER_PARENT: Readonly<Partial<Record<PieceId, PieceId>>> = {
+  nursery: 'bedroom',
+  kidsRoom: 'bedroom',
+  ivysRoom: 'homeOffice',
+  nanasRoom: 'mudroom',
+};
+
+/**
  * Which room a room's one door should open from: a closet off a bedroom (a member's room
- * included), a garage into the mudroom. By type, so an L-Kitchen is a kitchen.
+ * included), a garage into the mudroom, a member's room off the room its story puts it by
+ * (MEMBER_PARENT, before a Hallway or a Living Room). By type, so an L-Kitchen is a kitchen.
  */
 function parentScore(child: PieceId, parent: PieceId): number {
+  if (MEMBER_PARENT[child] === parent) return 5.5;
   const c = typeOf(child);
   const p = typeOf(parent);
   if (c === 'closet' && p === 'bedroom') return 6;

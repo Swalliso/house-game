@@ -21,10 +21,10 @@ Open House is a game jam entry for the theme "It's a house," built with Claude C
   covered by a cut of the same id, so `assets/atlas.png` holds none of them.
 - **The house's and the yard's own drawings** (`src/ui/art/drawings.ts`,
   `src/ui/art/house-paint.ts`, `src/ui/art/yard.ts`): the Doghouse, the hens, the Sprinkler,
-  the walls and windows, the painted fixtures (the Chandelier, Blackout Curtains, Soundproofing,
-  the Skylight's light, the Bay Window), and the yard's own touches (the Henhouse's straw, the
-  Sprinkler's wet patch, Garden Lights' light), drawn for Open House by Claude Code in LimeZu's
-  palette. Our own work.
+  the dogs' bed in Nana's Room, the walls and windows, the painted fixtures (the Chandelier,
+  Blackout Curtains, Soundproofing, the Skylight's light, the Bay Window), and the yard's own
+  touches (the Henhouse's straw, the Sprinkler's wet patch, Garden Lights' light), drawn for Open
+  House by Claude Code in LimeZu's palette. Our own work.
 - **The interface's frames, icons and the title's sky** (`src/ui/theme/frames.ts`,
   `src/ui/theme/icons.ts`, `src/ui/theme/scenery.ts`): drawn for Open House by Claude Code as
   text grids in LimeZu's palette, and turned into images in the browser at startup. Our own

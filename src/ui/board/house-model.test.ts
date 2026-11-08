@@ -370,6 +370,30 @@ describe('the door tree', () => {
     expect(doorBetween(m, uidOf(h, 'closet'), uidOf(h, 'livingRoom'))).toBeUndefined();
   });
 
+  it('opens a member’s room off the room its story puts it by (D-111)', () => {
+    // Each touches the Living Room too, which the Bedroom, the Home Office or the Mudroom beside
+    // it would otherwise lose to: the twins off their parents' Bedroom (the Nursery and the Kids'
+    // Room it grows into), Ivy off Dale's Home Office, Nana off the Mudroom.
+    for (const [member, parent, py] of [
+      ['nursery', 'bedroom', 2],
+      ['kidsRoom', 'bedroom', 2],
+      ['ivysRoom', 'homeOffice', 3],
+      ['nanasRoom', 'mudroom', 3],
+    ] as const) {
+      // The Living Room's 2×3 at columns 2–3, the parent east of it down to row 3 (a Bedroom is
+      // 2×2, the Home Office and the Mudroom 2×1), the member's 2×2 under both.
+      const h = house([
+        ['livingRoom', 2, 1],
+        [parent, 4, py],
+        [member, 3, 4],
+      ]);
+      const m = modelOf(h);
+      expect(reachable(m).size, member).toBe(m.rooms.size);
+      expect(doorBetween(m, uidOf(h, member), uidOf(h, parent)), member).toBeDefined();
+      expect(doorBetween(m, uidOf(h, member), uidOf(h, 'livingRoom')), member).toBeUndefined();
+    }
+  });
+
   it('keeps doors out of the middle of north walls', () => {
     const h = house([
       ['livingRoom', 2, 1],
