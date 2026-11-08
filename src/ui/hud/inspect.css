@@ -9,8 +9,14 @@
   gap: var(--space-1);
   padding-top: 0;
 }
-/* The first heading is the panel's plank: what's being inspected, and what it earns. */
+/* The first heading is the panel's plank: what's being inspected, and what it earns. It sticks
+   to the top while a long preview scrolls under it (the body is the scroller in the left column,
+   app.css), and spans the body's padding exactly, so the body never scrolls sideways. */
 .inspect .panel-body > h2:first-child {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  flex: none;
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
@@ -26,6 +32,13 @@
     inset 0 calc(var(--px) * -3) 0 var(--wood-deep);
   font-size: var(--fs-body);
   line-height: var(--lh-tight);
+}
+/* A narrow window's panels are tighter (kit.css), and so is the plank. */
+@media (max-width: 1500px) {
+  .inspect .panel-body > h2:first-child {
+    margin-inline: calc(var(--space-2) * -1);
+    padding-inline: var(--space-2);
+  }
 }
 .inspect h3 {
   margin: var(--space-2) 0 0;
@@ -46,7 +59,9 @@
   color: var(--ink);
 }
 
-/* Why it earns what it does: a line per reason, its number on the right with ▲ or ▼. */
+/* Why it earns what it does: a line per reason, its number on the right with ▲ or ▼. A reason
+   whose longest word leaves no room for the number beside it (in a narrow column, the pixel
+   font) puts the number on the next line, at the right, rather than run past the panel. */
 .lines {
   list-style: none;
   margin: 0;
@@ -54,12 +69,17 @@
 }
 .lines li {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
-  gap: var(--space-2);
+  gap: 0 var(--space-2);
   padding: var(--px) 0;
   border-bottom: var(--px) solid var(--paper-line);
 }
+.lines li > span:first-child {
+  flex: 1 1 0;
+}
 .lines li .value {
+  margin-left: auto;
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);

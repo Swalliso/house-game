@@ -1,239 +1,287 @@
-/* The client's checklist (M4a): the client's tastes, the house rules, then the client's
-   wishes. Met lines are compact; a line that doesn't hold, or that the play being looked at
-   would flip, shows its progress. Good and bad are blue and orange with a mark, never color
-   alone. A row's flash in the tally is animated from Checklist.tsx, with FEEL's numbers. When
-   the left column is short the checklist scrolls on its own (app.css), under its name. */
+/* The client's checklist (M4a, D-101) in the pixel UI (D-110): a wood panel (kit.css) with the
+   client's name on its plank and the lines held in a chip beside it, then a body that scrolls
+   on its own (.check-scroll; the left column's sharing rules are in app.css). In it: the crew's
+   chip, the client's tastes, the house rules in their groups, the client's wishes and the
+   change orders, under plank tags. Every row is a mark (an icon, Checklist.tsx), its words, and
+   what it adds at the right; a line that doesn't hold, or that the play being looked at would
+   flip, shows its progress under its name. All text is --fs-body. Good and bad are blue and
+   orange beside a mark, never color alone. A row's flash in the tally is animated from
+   Checklist.tsx, with FEEL's numbers and the tokens' tints. */
 
-.checklist h2 {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  /* Stays at the top while the lines scroll under it, over the section's padding (a sticky
-     offset counts from inside the scroller's padding, hence −12px). */
-  position: sticky;
-  top: -12px;
-  z-index: 2;
-  margin: -12px -14px 2px;
-  padding: 12px 14px 6px;
-  /* Its last few pixels fade, so a row scrolling under it slips away rather than being cut. */
-  background: linear-gradient(var(--card) calc(100% - 6px), rgb(251 245 234 / 0));
-}
+/* --- The plank ---------------------------------------------------------------------------- */
+
 .checklist .check-count {
-  margin-left: auto;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--ink-soft);
+  flex: none;
+}
+/* A narrower column leaves the plank no room for it beside the client's name, which matters
+   more (the longest, Count Vladislav's, needs a window about 1730 px wide for both). The score
+   panel's checklist row counts the lines too. */
+@media (max-width: 1760px) {
+  .checklist .check-count {
+    display: none;
+  }
 }
 
-/* The crew, under the client's name: its tip says what it does all run (M4's top bar line). */
-.checklist .check-crew {
-  margin: -4px 0 4px;
-  font-size: 12px;
-  line-height: 1.35;
-  color: var(--ink-soft);
-}
+/* --- The body: it scrolls under the plank, never the column (app.css) ---------------------- */
 
-/* The client's tastes, under the name, run on as one paragraph to keep the panel short: ▲ a
-   like or a bonus, ▼ a dislike. */
-.checklist .tastes {
-  margin: -4px 0 4px;
-  font-size: 12px;
-  line-height: 1.35;
+.check-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3) var(--space-3);
+  scrollbar-width: thin;
+  scrollbar-color: var(--wood) var(--paper-inset);
 }
-.checklist .check-crew + .tastes {
-  margin-top: 0;
+@media (max-width: 1500px) {
+  .check-scroll {
+    padding: var(--space-2);
+  }
 }
-.checklist .taste {
-  display: inline;
-  margin-right: 10px;
-}
-.checklist .taste:last-child {
-  margin-right: 0;
-}
-.checklist .taste-lead {
-  white-space: nowrap;
-}
-.checklist .taste-mark {
-  display: inline-block;
-  width: 12px;
-  margin-right: 3px;
-  text-align: center;
-  font-size: 10px;
-}
-.checklist .taste.like .taste-mark {
-  color: var(--good);
-}
-.checklist .taste.dislike .taste-mark {
-  color: var(--bad);
-}
-.checklist .taste.plain .taste-mark {
-  color: var(--ink-soft);
-}
-.checklist h3 {
-  color: var(--ink-soft);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin: 8px 0 2px;
-}
-.checklist h4 {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--ink-soft);
-  margin: 6px 0 1px;
-}
-/* A house-rules group whose lines all hold, as one row: ▸ its name, ✓ n of n, its Charm. It
-   opens on a click (▾ folds it again). Its mark sits in the lines' mark column. */
-.checklist .check-fold {
-  display: grid;
-  grid-template-columns: 14px auto 1fr auto;
-  column-gap: 6px;
-  align-items: baseline;
-  width: calc(100% + 8px);
-  margin: 4px -4px 0;
-  padding: 2px 4px;
-  border: none;
-  border-radius: 4px;
-  background: none;
-  font-size: 11px;
-  text-align: left;
-  color: var(--ink-soft);
-}
-.checklist .check-fold:hover {
-  background: #f3e9d6;
-}
-.checklist .check-fold:active {
-  transform: none;
-}
-.checklist .check-fold .fold-mark {
-  text-align: center;
-  font-size: 12px;
-}
-.checklist .check-fold .fold-name {
-  font-weight: 600;
-}
-.checklist .check-fold .fold-count {
-  font-weight: 700;
-  color: var(--good);
-}
-.checklist .check-fold .charm {
-  justify-self: end;
-  color: var(--charm);
-  font-weight: 700;
-  font-size: 12px;
-}
-.checklist .check-fold .charm.pending {
-  opacity: 0.35;
-}
-.checklist .check-group.folded + .check-group .check-fold,
-.checklist .check-group.folded + .check-group h4 {
-  margin-top: 1px;
+/* A short window: its rows start and end closer to the plank and the frame. */
+@media (max-height: 800px) {
+  .check-scroll {
+    padding-block: var(--space-1);
+  }
 }
 .checklist ul {
-  list-style: none;
   margin: 0;
   padding: 0;
+  list-style: none;
 }
-.check-line {
-  display: grid;
-  grid-template-columns: 14px 1fr auto;
-  column-gap: 6px;
-  align-items: baseline;
-  font-size: 13px;
-  padding: 2px 4px;
-  margin: 0 -4px;
-  border-radius: 4px;
+.checklist p {
+  margin: 0;
 }
-.check-line .check-mark {
-  text-align: center;
+
+/* The crew's chip comes first. Its name wraps inside it where the column is too narrow for it
+   (the General Contractor at 1280 px wide), its icon level with the first line. */
+.check-crew {
+  display: flex;
+}
+.check-crew .chip {
+  align-items: flex-start;
+  white-space: normal;
+}
+.check-crew .chip .icon {
+  margin-top: var(--px);
+}
+
+/* The sections: the house rules, the client's wishes and the change orders, each under a plank
+   tag (kit.css); the house rules' groups under their names. */
+.check-scroll > .plank-tag {
+  margin-top: var(--space-2);
+}
+.checklist .check-group-name {
+  margin: var(--space-1) 0 0;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
   font-weight: 700;
-}
-.check-line.met .check-mark {
-  color: var(--good);
-}
-.check-line.unmet .check-mark {
   color: var(--ink-soft);
+}
+
+/* --- A row: its mark, its words, and what it adds ------------------------------------------ */
+
+/* A row's first line, in whole UI pixels: the pixel font's line, and a pixel taller than the
+   readable font's 19 px, so an icon centered on it lands on whole device pixels in both. */
+.checklist {
+  --check-line: calc(var(--px) * 10);
+}
+
+.check-line,
+.check-arrival,
+.taste,
+.check-fold {
+  display: grid;
+  grid-template-columns: calc(var(--px) * 9) minmax(0, 1fr) auto;
+  column-gap: var(--space-1);
+  align-items: start;
+  margin: 0 calc(var(--space-1) * -1);
+  padding: var(--px) var(--space-1);
+}
+/* The mark sits in its own column, centered on the row's first line. */
+.checklist .check-mark {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--check-line);
+}
+/* A taste that's neither a like nor a dislike: a dot, as the cards' lines have (kit.css). */
+.checklist .check-dot {
+  width: calc(var(--px) * 2);
+  height: calc(var(--px) * 2);
+  background: var(--ink-soft);
+}
+.checklist .check-name {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  overflow-wrap: break-word;
 }
 .check-line.unmet .check-name {
   color: var(--ink-soft);
 }
-.check-line .check-name {
-  font-weight: 600;
-  min-width: 0;
-}
-.check-line .charm {
-  color: var(--charm);
+
+/* What a line held adds to Charm: its number in a wide column, Charm's icon in a narrow one
+   (the number on hover, Checklist.tsx CharmAdds). */
+.checklist .charm {
+  grid-column: 3;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  height: var(--check-line);
   font-weight: 700;
-  font-size: 12px;
+  color: var(--charm);
+  white-space: nowrap;
+}
+.checklist .charm-icon {
+  display: none;
+}
+@media (max-width: 1500px) {
+  .checklist .charm-value {
+    display: none;
+  }
+  .checklist .charm-icon {
+    display: inline-block;
+  }
 }
 /* In the tally, a line held whose Charm hasn't landed yet this week. */
-.check-line .charm.pending {
+.checklist .charm.pending {
   opacity: 0.35;
 }
+/* A row the tally lights with Charm's tint (Checklist.tsx playFlash) takes the deeper rose for
+   its number while the tint lasts, as a line turning on does. */
+.flash-held .charm,
+.flash-met .charm {
+  color: var(--charm-deep);
+}
+
+/* Under its name: what the play being looked at does to it, then its progress. */
 .check-progress,
 .check-change {
   grid-column: 2 / 4;
-  font-size: 11px;
   color: var(--ink-soft);
 }
-/* A part that doesn't hold yet: a ✕ before it (Checklist.tsx), and orange. */
+/* A part that doesn't hold yet: a cross before it (Checklist.tsx ProgressParts), and orange.
+   The change order's sheet shows the same parts. */
 .check-progress .miss {
-  color: #9a4a0a;
+  color: var(--bad);
 }
+.miss-mark.icon {
+  margin-right: var(--space-1);
+}
+
+/* The play being looked at turns a line on (Charm's tint, a star) or off (the warning's tint, a
+   cross, its name struck through), or would break a restriction running. Charm's own rose is
+   too light on its tint, so the words on it take the deeper one. */
 .check-line.gained {
-  background: #fdeef2;
+  background: var(--charm-tint);
 }
-.check-line.gained .check-mark {
-  color: var(--charm);
-}
-.check-line.gained .check-change {
+.check-line.gained .check-change,
+.check-line.gained .charm {
   color: var(--charm-deep);
 }
-.check-line.lost {
-  background: #fdf1e4;
+.check-line.gained .check-progress .miss {
+  color: var(--ink);
 }
-.check-line.lost .check-mark,
+.check-line.lost:not(.order),
+.check-line.order.breaking {
+  background: var(--bad-tint);
+}
 .check-line.lost .check-change {
-  color: #9a4a0a;
+  color: var(--bad);
 }
 .check-line.lost .check-name {
   text-decoration: line-through;
 }
-
-/* The tally lighting a line: ★ for one the week turned on, ✕ for one it turned off. */
-.check-line.flash-met .check-mark {
-  color: var(--charm);
+/* On a small window (1280×720), where the checklist keeps a few rows beside a long preview, a
+   line turning on says so and leaves out its progress, which the play has just met (Inspect
+   names it too): the row before it stays in view. A line turning off keeps its progress, which
+   says what breaks. */
+@media (max-width: 1500px) and (max-height: 800px) {
+  .check-line.gained .check-progress {
+    display: none;
+  }
 }
-.check-line.flash-lost .check-mark {
-  color: #9a4a0a;
+
+/* --- A row that folds: a house-rules group whose lines all hold, or the tastes -------------- */
+
+/* A button reset to a row (app.css leaves .check-fold out of its plain button): a caret in the
+   marks column, the group's name, its count with a check, and its Charm. */
+.check-fold {
+  grid-template-columns: calc(var(--px) * 9) minmax(0, 1fr) auto auto;
+  width: calc(100% + var(--space-2));
+  border: 0;
+  border-radius: 0;
+  background: none;
+  font: inherit;
+  color: var(--ink-soft);
+  text-align: left;
+  cursor: pointer;
+}
+.check-fold:hover {
+  background: var(--paper-inset);
+}
+.check-fold:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus-inset);
+}
+.check-fold .fold-name {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  font-weight: 700;
+}
+.check-fold .fold-count {
+  grid-column: 3;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: var(--check-line);
+  font-weight: 700;
+  color: var(--good);
+}
+.check-fold .charm {
+  grid-column: 4;
 }
 
-/* M4b: who's still to move in, under the household's lines, until they arrive. */
+/* The tastes, a row each: up for a like, down for a dislike. On a short window they fold into
+   one row, which a click opens. */
+.taste-fold {
+  display: none;
+}
+@media (max-height: 800px) {
+  .check-fold.taste-fold {
+    display: grid;
+  }
+  .check-tastes:not(.open) .tastes {
+    display: none;
+  }
+}
+
+/* --- M4b: who's still to move in, under the household's lines, until they arrive ---------- */
+
 .check-arrival {
-  display: grid;
-  grid-template-columns: 14px 1fr;
-  column-gap: 6px;
-  align-items: baseline;
-  padding: 2px 4px;
-  margin: 0 -4px;
-  font-size: 12px;
   color: var(--ink-soft);
 }
-.check-arrival .check-mark {
-  text-align: center;
-}
 
-/* M4b: the change orders running. What one pays sits where a line's Charm does; a phase
-   effect's mark is plain, since it's neither met nor missed. */
+/* --- M4b: the change orders --------------------------------------------------------------- */
+
+/* What one pays sits where a line's Charm does, coin first (kit.css .price), struck through
+   once it's lost; a phase effect's mark is a clock, since it's neither met nor missed. A broken
+   or missed order keeps the paper (only a placement that would break one takes the warning's
+   tint, above): its cross, its struck name and its result word say so. */
 .check-line.order .order-pays {
-  font-size: 12px;
-  font-weight: 700;
+  grid-column: 3;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  height: var(--check-line);
   white-space: nowrap;
 }
-.check-line.order.phase .check-mark {
-  color: var(--ink-soft);
-}
 /* A change order its milestone resolved, until the next phase's first week is played: the
-   result word in blue (met, kept) or orange (missed, broken), beside its ✓ or ✕. */
+   result word in blue (met, kept) or orange (missed, broken), beside its check or cross. */
 .check-line.order.resolved.met .order-result {
   color: var(--good);
 }

@@ -7,15 +7,23 @@
 // Each card has a spot where it covers neither what it talks about nor the controls it needs:
 // never the lot, which a hint over the board would hide pieces of and block pointing at, nor
 // the shop's or a change order's sheet. The checklist's own hint sits beside the checklist,
-// over the lot's edge, and takes the pointer only over its own card.
+// over the lot's edge, and takes the pointer only over its own card. first-hint-place.ts works
+// out the box from the panels measured here.
+//
+// In the pixel UI (D-110) a card is a paper note: a plank with the help icon and the title, the
+// text in a body that scrolls if the card is short, and a small "Got it" that never takes focus,
+// so the game's keys keep working while it's up.
 
 import { signal } from '@preact/signals';
-import { useLayoutEffect, useState } from 'preact/hooks';
+import type { RefObject } from 'preact';
+import { useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { CONTENT, glossary, SCORE_LABELS } from '../../rules/index.ts';
 import { BUILD_CHANNEL } from '../build-info.ts';
 import { banner, busy } from '../fx/director.ts';
+import { Button, Icon } from '../kit/kit.tsx';
 import { appScreen, earlyOffer, run } from '../store.ts';
-import { devicePixelRatio } from '../theme/pixel.ts';
+import { devicePixelRatio, uiPixel } from '../theme/pixel.ts';
+import { placeFirstHint, type HintPlace, type HintSpot } from './first-hint-place.ts';
 import './first-hints.css';
 
 export type HintId =
@@ -60,16 +68,8 @@ export function resetHints(): void {
 const G = glossary(CONTENT);
 const L = SCORE_LABELS;
 
-/**
- * Where a card sits (measured from the panels, so it follows the layout at any size):
- * - besideChecklist: right of the left column, level with the checklist.
- * - overChecklist: over the checklist, in the left column (in week 1, before the checklist's
- *   own hint, so the score panel the first week's hint names stays in view).
- * - overScore: over the score panel, at the top of the left column.
- * - underGoods: in the right column, under the company's goods: the shop leaves that empty,
- *   and a change order's sheet sets the hand there aside.
- */
-type Spot = 'besideChecklist' | 'overChecklist' | 'overScore' | 'underGoods';
+/** Where a card sits: first-hint-place.ts says where each spot is. */
+type Spot = HintSpot;
 
 interface Hint {
   title: string;
@@ -137,19 +137,6 @@ function current(seen: ReadonlySet<string>): HintId | null {
   return null;
 }
 
-/** A card's box, in viewport px. */
-interface Place {
-  spot: Spot;
-  left: number;
-  top: number;
-  width: number;
-  maxHeight: number;
-}
-
-/** The gap between a card and the panel it sits by, and the most a card beside one is wide. */
-const GAP = 8;
-const BESIDE_WIDTH = 300;
-
 /** The panels a card can sit over or by; any of them changing size moves it. */
 const ANCHORS = [
   '.game > .left',
@@ -159,57 +146,50 @@ const ANCHORS = [
   '.right > .inventory',
 ];
 
-function measure(spot: Spot, dpr: number): Place | null {
+/**
+ * A card's own height at the width it has now: its plank, all its text (unscrolled) and its
+ * foot, inside its ring.
+ */
+function cardHeight(card: HTMLElement): number | undefined {
+  const head = card.querySelector<HTMLElement>('.first-hint-head');
+  const body = card.querySelector<HTMLElement>('.first-hint-body');
+  const foot = card.querySelector<HTMLElement>('.first-hint-foot');
+  if (!head || !body || !foot) return undefined;
+  const ring = card.offsetHeight - card.clientHeight;
+  return head.offsetHeight + body.scrollHeight + foot.offsetHeight + ring;
+}
+
+/**
+ * The panels' boxes as laid out now, and where the card for `spot` goes by them. With the card
+ * itself, it's measured at the width it'll have, so a card too tall for its room can rise.
+ */
+function measure(spot: Spot, dpr: number, card: HTMLElement | null): HintPlace | null {
   // A panel that isn't laid out (display: none, as the strip is on a short window with nothing
   // to show) counts as missing, not as a box at the window's top left.
   const rect = (sel: string) => {
     const r = document.querySelector(sel)?.getBoundingClientRect();
-    return r && (r.width > 0 || r.height > 0) ? r : undefined;
+    return r && r.width > 0 && r.height > 0 ? r : undefined;
   };
   const left = rect('.game > .left');
   const right = rect('.game > .right');
   if (!left || !right) return null;
-  // Never off the bottom of the window: a card in a side column stops at the column's foot
-  // (above the controls strip, or the window's foot on a short window, where the strip sits
-  // under the board only: D-098), and one beside it, over the board, stops above the strip.
-  const strip = rect('.game > .hints')?.top ?? window.innerHeight;
-  const column = spot === 'underGoods' ? right : left;
-  const floor = (spot === 'besideChecklist' ? strip : column.bottom) - GAP;
-  // On whole device pixels, so the note's pixel text stays crisp at 125% and 150%.
-  const snap = (v: number) => Math.round(v * dpr) / dpr;
-  const box = (top: number, x: number, width: number): Place => ({
-    spot,
-    left: snap(x),
-    top: snap(top),
-    width: snap(width),
-    maxHeight: snap(Math.max(120, floor - top)),
-  });
-  switch (spot) {
-    case 'besideChecklist': {
-      const c = rect('.left > .checklist') ?? left;
-      return box(
-        c.top,
-        left.right + GAP,
-        Math.min(BESIDE_WIDTH, window.innerWidth - left.right - 2 * GAP),
-      );
-    }
-    case 'overChecklist': {
-      const c = rect('.left > .checklist') ?? left;
-      return box(c.top, c.left, c.width);
-    }
-    case 'overScore': {
-      const p = rect('.left > .score-panel') ?? left;
-      return box(p.top, p.left, p.width);
-    }
-    case 'underGoods': {
-      const inv = rect('.right > .inventory');
-      const x = inv?.left ?? right.left + GAP;
-      return box((inv?.bottom ?? right.top) + GAP, x, inv?.width ?? right.width - 2 * GAP);
-    }
-  }
+  const anchors = {
+    left,
+    right,
+    score: rect('.left > .score-panel'),
+    checklist: rect('.left > .checklist'),
+    inventory: rect('.right > .inventory'),
+    strip: rect('.game > .hints'),
+  };
+  const view = { w: window.innerWidth, h: window.innerHeight };
+  const px = uiPixel(dpr);
+  const first = placeFirstHint(spot, anchors, view, px, dpr);
+  if (!card) return first;
+  card.style.width = `${first.width}px`;
+  return placeFirstHint(spot, anchors, view, px, dpr, cardHeight(card));
 }
 
-const samePlace = (a: Place | null, b: Place | null) =>
+const samePlace = (a: HintPlace | null, b: HintPlace | null) =>
   a === b ||
   (!!a &&
     !!b &&
@@ -219,19 +199,28 @@ const samePlace = (a: Place | null, b: Place | null) =>
     a.width === b.width &&
     a.maxHeight === b.maxHeight);
 
-/** Where the card for `spot` goes, kept up to date as the panels it sits by change size. */
-function usePlace(spot: Spot | null): Place | null {
-  const [place, setPlace] = useState<Place | null>(null);
+/**
+ * Where the card for hint `id` goes, at its `spot`, kept up to date as the panels it sits by
+ * change size.
+ */
+function usePlace(
+  id: HintId | null,
+  spot: Spot | null,
+  card: RefObject<HTMLElement>,
+): HintPlace | null {
+  const [place, setPlace] = useState<HintPlace | null>(null);
   const screen = run.value.screen;
   const dpr = devicePixelRatio.value;
   useLayoutEffect(() => {
     if (!spot) return;
     const update = () => {
-      const next = measure(spot, dpr);
+      const next = measure(spot, dpr, card.current);
       setPlace((old) => (samePlace(old, next) ? old : next));
     };
     update();
     const ro = new ResizeObserver(update);
+    // Not the card itself: measuring sets its width, which would loop the observer. Its text
+    // changes with the hint, and its size with the panels' (the font, the window).
     for (const sel of ANCHORS) {
       const el = document.querySelector(sel);
       if (el) ro.observe(el);
@@ -241,20 +230,25 @@ function usePlace(spot: Spot | null): Place | null {
       ro.disconnect();
       window.removeEventListener('resize', update);
     };
-    // The right column's panels change with the screen (the shop's goods, the hand), and the
-    // device pixel with the screen the window is on.
-  }, [spot, screen, dpr]);
+    // The right column's panels change with the screen (the shop's goods, the hand), the card
+    // with the hint, and the device pixel with the screen the window is on.
+  }, [id, spot, screen, dpr]);
   return place && place.spot === spot ? place : null;
 }
+
+/** A click on "Got it" doesn't take focus from the game, so its keys keep working. */
+const noFocus = (e: MouseEvent) => e.preventDefault();
 
 export function FirstHints() {
   const id = current(seenHints.value);
   const hint = id ? HINTS[id] : null;
-  const place = usePlace(hint?.spot ?? null);
+  const card = useRef<HTMLElement>(null);
+  const place = usePlace(id, hint?.spot ?? null, card);
   if (!id || !hint) return null;
   return (
     <aside
-      class={`first-hint at-${hint.spot}`}
+      ref={card}
+      class={`first-hint ui at-${hint.spot}`}
       role="note"
       aria-label={`Hint: ${hint.title}`}
       // Until it's measured it waits out of sight, so it never shows over the wrong panel.
@@ -269,12 +263,18 @@ export function FirstHints() {
           : { visibility: 'hidden' }
       }
     >
-      <h2>{hint.title}</h2>
-      <p>{hint.text}</p>
-      {/* It never takes focus, so the game's keys keep working while it's up. */}
-      <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => dismissHint(id)}>
-        Got it
-      </button>
+      <header class="first-hint-head">
+        <Icon name="help" />
+        <h2>{hint.title}</h2>
+      </header>
+      <div class="first-hint-body">
+        <p>{hint.text}</p>
+      </div>
+      <div class="first-hint-foot">
+        <Button size="sm" onMouseDown={noFocus} onClick={() => dismissHint(id)}>
+          Got it
+        </Button>
+      </div>
     </aside>
   );
 }
