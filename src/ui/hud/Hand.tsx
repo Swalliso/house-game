@@ -261,10 +261,11 @@ export function Hand() {
   const armed = passArmed.value;
   const demolishing = tool.value === 'demolish';
   // Only pieces turn: a fixture or a tool doesn't, except the Moving Truck's carried piece, and
-  // nor does a pack (D-106), which is the tiles clicked out (rotate() does nothing for them).
+  // nor does a pack (D-106), which is the tiles clicked out, or a card waiting to renovate a
+  // room (D-102) (rotate() does nothing for them).
   const sel = selection.value;
   const canTurn =
-    (sel?.kind === 'piece' && !CONTENT.pieces[sel.id].pack) ||
+    (sel?.kind === 'piece' && !CONTENT.pieces[sel.id].pack && pending?.t !== 'renovate') ||
     (sel?.kind === 'tool' && movingUid.value !== null);
   // The long label, and a short one for a narrow column (hand.css, whose container queries are
   // measured on these words). What End week will do, build or renovate, is in its title.

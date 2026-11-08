@@ -35,6 +35,11 @@ function sizeClass(text: string): string {
   return digits >= 7 ? 'longer' : digits >= 5 ? 'long' : '';
 }
 
+/** A first set to try, while there are none. */
+const FIRST_SET =
+  'Try a Bathroom between two Bedrooms (Jack-and-Jill), or a Kitchen, Dining Room, and Living ' +
+  'Room together (Entertainer).';
+
 function SetList({
   sets,
   gained,
@@ -46,10 +51,17 @@ function SetList({
 }) {
   const levels = run.value.setLevels;
   if (sets.length === 0 && lost.length === 0) {
+    // On a short window in the pixel font the suggestion would take eight of the left column's
+    // lines, which the checklist and Inspect need (M4), so it's the short line's tip there
+    // (score.css shows one or the other).
     return (
       <p class="sets-empty">
-        No sets yet. Try a Bathroom between two Bedrooms (Jack-and-Jill), or a Kitchen, Dining Room,
-        and Living Room together (Entertainer).
+        <span class="sets-empty-long">No sets yet. {FIRST_SET}</span>
+        <span class="sets-empty-short">
+          <Tip title="No sets yet" text={FIRST_SET}>
+            No sets yet.
+          </Tip>
+        </span>
       </p>
     );
   }

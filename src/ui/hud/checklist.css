@@ -13,6 +13,13 @@
 .checklist .check-count {
   flex: none;
 }
+/* The client's name is a term (its tip is their brief): its dotted line sits a UI pixel under
+   the plank title's line box, which clips at its edge for the ellipsis, so the clip reaches
+   that far out (the readable font's line is shorter than the term's box). */
+.checklist .panel-title {
+  overflow: clip;
+  overflow-clip-margin: var(--px);
+}
 /* A narrower column leaves the plank no room for it beside the client's name, which matters
    more (the longest, Count Vladislav's, needs a window about 1730 px wide for both). The score
    panel's checklist row counts the lines too. */
@@ -124,6 +131,8 @@
 
 /* What a line held adds to Charm: its number in a wide column, Charm's icon in a narrow one
    (the number on hover, Checklist.tsx CharmAdds). */
+/* Its pop in the tally (Checklist.tsx playFlash) grows from its right end, so it never grows
+   past the scrolling body's edge, which would cut it. */
 .checklist .charm {
   grid-column: 3;
   grid-row: 1;
@@ -133,6 +142,7 @@
   font-weight: 700;
   color: var(--charm);
   white-space: nowrap;
+  transform-origin: right center;
 }
 .checklist .charm-icon {
   display: none;
@@ -197,9 +207,11 @@
 /* On a small window (1280×720), where the checklist keeps a few rows beside a long preview, a
    line turning on says so and leaves out its progress, which the play has just met (Inspect
    names it too): the row before it stays in view. A line turning off keeps its progress, which
-   says what breaks. */
+   says what breaks. While a play is looked at, a line it leaves as it was leaves its progress
+   out too, so the box holds two rows (D-110); a change order keeps its status. */
 @media (max-width: 1500px) and (max-height: 800px) {
-  .check-line.gained .check-progress {
+  .check-line.gained .check-progress,
+  .left.looking .check-line:not(.gained, .lost, .order) .check-progress {
     display: none;
   }
 }

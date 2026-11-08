@@ -103,9 +103,12 @@ button.inv-slot:active::before {
   background: var(--wood-hi);
   cursor: help;
 }
-/* A crew's or a household member's card, in the reserve's extra slots (M4b). */
+/* A crew's or a household member's card, in the reserve's extra slots (M4b). Where its name and
+   its tag don't fit side by side (Grandma's Room, Grandma, in a 280 px column in the pixel
+   font), the tag goes under the name, which stays whole. */
 .inv-slot.slot-extra {
   --slot-band: var(--wood);
+  flex-wrap: wrap;
 }
 .inv-slot.selected {
   --slot-band: var(--ink);

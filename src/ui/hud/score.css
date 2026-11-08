@@ -341,6 +341,19 @@
   margin: 0;
   color: var(--ink-soft);
 }
+/* The suggestion for a first set, or (on a short window in the pixel font, where it would be
+   eight lines of the left column: app.css) just "No sets yet." with it as the tip. */
+.sets-empty-short {
+  display: none;
+}
+@media (max-height: 800px) {
+  [data-font='pixel'] .sets-empty-long {
+    display: none;
+  }
+  [data-font='pixel'] .sets-empty-short {
+    display: inline;
+  }
+}
 
 /* --- The checklist's part of the Charm (M4a) ------------------------------------------------ */
 

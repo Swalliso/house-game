@@ -179,13 +179,12 @@ describe("the strip's keys for M4's plays", () => {
     ]);
   });
 
-  it('turns a room, and says when End week renovates one', () => {
+  it('turns a room, and says when End week renovates one, which has nothing to turn', () => {
     run.value = { ...start, screen: 'build', hand: [{ kind: 'piece', id: 'bedroom' }] };
     selected.value = 0;
     expect(strip().map((h) => h.keys[0])).toEqual(['R', 'Click', 'Enter', 'Esc']);
     tentative.value = { t: 'renovate', from: 'hand', i: 0, uid: 1 };
     expect(strip()).toEqual([
-      { keys: ['R'], words: 'rotate' },
       { keys: ['Click'], words: 'move it' },
       { keys: ['Enter'], words: 'renovate it' },
       { keys: ['Esc'], words: 'pick it up' },

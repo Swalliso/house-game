@@ -191,16 +191,22 @@ function playFlash(f: CheckFlash, row: HTMLElement | null, charm: HTMLElement | 
 }
 
 /**
- * Scrolls the checklist's body (only it, never the column or the page) so `el` is in view.
- * The plank isn't in the scroller, so nothing covers its top. Nothing moves if it's in view.
+ * Scrolls the checklist's body (only it, never the column or the page) so `els` are in view:
+ * all of them where they fit, else the first. The plank isn't in the scroller, so nothing
+ * covers its top. Nothing moves if they're in view.
  */
-function reveal(box: HTMLElement, el: Element): boolean {
-  if (box.scrollHeight <= box.clientHeight) return false;
+function reveal(box: HTMLElement, els: readonly Element[]): boolean {
+  if (els.length === 0 || box.scrollHeight <= box.clientHeight) return false;
   const b = box.getBoundingClientRect();
-  const r = el.getBoundingClientRect();
   const margin = 2 * uiPixel(devicePixelRatio.value);
   const top = b.top + margin;
   const bottom = b.bottom - margin;
+  const rs = els.map((e) => e.getBoundingClientRect());
+  const all = {
+    top: Math.min(...rs.map((q) => q.top)),
+    bottom: Math.max(...rs.map((q) => q.bottom)),
+  };
+  const r = all.bottom - all.top <= bottom - top ? all : rs[0]!;
   const dy =
     r.top < top ? r.top - top : r.bottom > bottom ? Math.min(r.bottom - bottom, r.top - top) : 0;
   if (dy === 0) return false;
@@ -484,6 +490,29 @@ interface Row {
 }
 
 /**
+ * The house rules' first two rows as the checklist shows them, as selectors: a folded group is
+ * its one row, an open one each of its lines.
+ */
+function houseRuleRows(rows: readonly Row[], isFolded: (g: RuleGroup) => boolean): string[] {
+  const out: string[] = [];
+  for (const g of ['household', 'shape', 'yard'] as const) {
+    const lines = rows.filter((r) => r.line.group === g);
+    if (lines.length === 0) continue;
+    if (isFolded(g)) out.push(`[data-fold="${g}"]`);
+    else out.push(...lines.map((r) => `[data-row="${r.line.id}"]`));
+    if (out.length >= 2) break;
+  }
+  return out.slice(0, 2);
+}
+
+/** The line above `row` in its group, or else the one below it (a flipped row's neighbor). */
+function besideRow(rows: readonly Row[], row: Row): Row | undefined {
+  const group = rows.filter((r) => r.line.group === row.line.group);
+  const k = group.indexOf(row);
+  return group[k - 1] ?? group[k + 1];
+}
+
+/**
  * Who's still to move in (M4b, D-103), under the household's lines until they arrive: "Grandma
  * arrives at Drywall, week 17". Room for everyone's line already shows what they'll need.
  */
@@ -685,27 +714,29 @@ export function Checklist() {
   const breaks = p?.legal ? p.breaks : undefined;
 
   // What to bring into view when the checklist scrolls: the row the tally just lit (or its
-  // folded group's row), else the first row the play being looked at flips, else the order it
-  // would break.
+  // folded group's row), else the first row the play being looked at flips, with a line beside
+  // it where both fit, else the order it would break, else the house rules' first two rows, past
+  // the crew's chip and the tastes when the box is short: two rows while a play is looked at
+  // (D-110). Selectors, the one that must show first.
   const newest = flashes.reduce<CheckFlash | undefined>(
     (a, f) => (!a || f.id > a.id ? f : a),
     undefined,
   );
-  let target: string | null = null;
+  let target: string[] | null = null;
   let targetKey: string | null = null;
   const lit = newest && rows[newest.index];
   if (lit) {
     const g = lit.line.group;
-    target = g !== 'wishes' && isFolded(g) ? `[data-fold="${g}"]` : `[data-row="${lit.line.id}"]`;
+    target = [g !== 'wishes' && isFolded(g) ? `[data-fold="${g}"]` : `[data-row="${lit.line.id}"]`];
     targetKey = `flash-${newest.id}`;
   } else if (p?.legal) {
     const flipped = rows.find((r) => r.change !== null);
     target = flipped
-      ? `[data-row="${flipped.line.id}"]`
+      ? [flipped, besideRow(rows, flipped)].flatMap((r) => (r ? [`[data-row="${r.line.id}"]`] : []))
       : breaks
-        ? `[data-order="${breaks}"]`
-        : null;
-    targetKey = target;
+        ? [`[data-order="${breaks}"]`]
+        : houseRuleRows(rows, isFolded);
+    targetKey = target.join(' ');
   }
   const targetRef = useRef(target);
   targetRef.current = target;
@@ -713,10 +744,12 @@ export function Checklist() {
   // is looked at or a tally plays: it goes back there once that's over.
   const before = useRef<number | null>(null);
   const show = () => {
-    const el = targetRef.current && box.current?.querySelector(targetRef.current);
-    if (!el || !box.current) return;
-    const top = box.current.scrollTop;
-    if (reveal(box.current, el) && before.current === null) before.current = top;
+    const sels = targetRef.current;
+    const scroller = box.current;
+    if (!sels || !scroller) return;
+    const els = sels.flatMap((s) => scroller.querySelector(s) ?? []);
+    const top = scroller.scrollTop;
+    if (reveal(scroller, els) && before.current === null) before.current = top;
   };
   // After the frame's other panels have rendered: Inspect growing for the same play shrinks
   // the checklist. And again whenever the checklist's box changes size while there's a target.

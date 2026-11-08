@@ -106,11 +106,13 @@ export function Hints() {
   } else if (selected.value !== null) {
     const sel = selection.value;
     const pending = tentative.value;
-    // A pack (D-106) is clicked out a tile at a time, so it never turns; the Moving Truck turns
-    // the piece it carries (as the Rotate button does: Hand.tsx).
+    // A pack (D-106) is clicked out a tile at a time, so it never turns, and nor does a room
+    // waiting to be renovated (D-102); the Moving Truck turns the piece it carries (as the
+    // Rotate button does: Hand.tsx).
     const pack = sel?.kind === 'piece' && !!CONTENT.pieces[sel.id].pack;
     const turns =
-      (sel?.kind === 'piece' && !pack) || (sel?.kind === 'tool' && movingUid.value !== null);
+      (sel?.kind === 'piece' && !pack && pending?.t !== 'renovate') ||
+      (sel?.kind === 'tool' && movingUid.value !== null);
     const click = pack
       ? pending
         ? 'add or take off a tile'
