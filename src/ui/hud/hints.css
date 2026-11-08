@@ -37,3 +37,34 @@
     display: none;
   }
 }
+/* The build screen's F hint with Fit on: "zoom back", or "fit" where that would wrap the strip
+   (Hints.tsx FitHint), which would move the board on every card picked. The strip is a
+   container measured in its own em: its text and keycaps scale with the UI pixel, so the
+   room "zoom back" needs is the same number of em at every devicePixelRatio (at 1280×720 and
+   1×, 44 em of 44). A short window leaves the Scroll hint out, so it needs less. */
+.hints {
+  container: hints / inline-size;
+}
+.fit-short {
+  display: none;
+}
+@media (max-height: 800px) {
+  @container hints (max-width: 43.99em) {
+    .fit-long {
+      display: none;
+    }
+    .fit-short {
+      display: inline;
+    }
+  }
+}
+@media not all and (max-height: 800px) {
+  @container hints (max-width: 57.49em) {
+    .fit-long {
+      display: none;
+    }
+    .fit-short {
+      display: inline;
+    }
+  }
+}

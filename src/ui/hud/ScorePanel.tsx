@@ -53,25 +53,32 @@ function SetList({
       </p>
     );
   }
+  // Each set: its name, then its level (from Remodel Plans) and its Comfort and Charm. The icon
+  // for a set the placement makes or breaks leads the name, so the name keeps its line.
   return (
     <ul class="sets">
-      {sets.map((s) => (
-        <li key={s.key} class={gained.has(s.key) ? 'gained' : ''}>
-          {gained.has(s.key) && <Icon name="star" label="New" />}
-          <span class="set-name">
-            {CONTENT.sets[s.set].name}
-            {(levels[s.set] ?? 1) > 1 && <span class="set-level"> Lv {levels[s.set]}</span>}
-          </span>
-          <span class="set-values">
-            <span class="set-comfort">+{s.points}</span>
-            <span class="set-charm">+{formatMult(s.mult)}</span>
-          </span>
-        </li>
-      ))}
+      {sets.map((s) => {
+        const level = levels[s.set] ?? 1;
+        return (
+          <li key={s.key} class={gained.has(s.key) ? 'gained' : ''}>
+            <span class="set-name">
+              {gained.has(s.key) && <Icon name="star" label="New" />}
+              {CONTENT.sets[s.set].name}
+            </span>
+            {level > 1 && <span class="set-level">Lv {level}</span>}
+            <span class="set-values">
+              <span class="set-comfort">+{s.points}</span>
+              <span class="set-charm">+{formatMult(s.mult)}</span>
+            </span>
+          </li>
+        );
+      })}
       {lost.map((s) => (
         <li key={s.key} class="lost">
-          <Icon name="cross" label="Broken" />
-          <span class="set-name">{CONTENT.sets[s.set].name}</span>
+          <span class="set-name">
+            <Icon name="cross" label="Broken" />
+            {CONTENT.sets[s.set].name}
+          </span>
           <span class="set-values">
             <span class="set-comfort">−{s.points}</span>
             <span class="set-charm">−{formatMult(s.mult)}</span>

@@ -274,24 +274,47 @@
   padding: 0;
   list-style: none;
 }
+/* Every set the same two lines: its name, then its level and its Comfort and Charm, at the
+   right. In the pixel font a side column (280 to 404 px) leaves a row about 220 to 336 px,
+   and "Jack-and-Jill Lv 2 +18 +0.75" needs 366, so sharing a line would put the values beside
+   the name in some rows and under it in others. */
 .sets li {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: baseline;
   column-gap: var(--space-2);
   padding: var(--px) var(--space-1);
 }
 .sets .set-name {
-  flex: 1 0 auto;
-  white-space: nowrap;
+  flex: 1 0 100%;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  column-gap: var(--space-2);
 }
-/* A set's Comfort and Charm stay together at the row's right: in a narrow column they wrap to
-   the next line as a pair, never one under the name and one alone. */
+/* A set the placement makes (★) or breaks (✕): the icon leads its name, centered on it without
+   making the line taller. */
+.sets .set-name .icon {
+  align-self: center;
+}
+/* A set's Comfort and Charm stay together, at the row's right. */
 .set-values {
   display: flex;
   gap: var(--space-2);
   margin-left: auto;
   white-space: nowrap;
+}
+/* The readable font is narrower: each set on one line, the values always ending it, and a long
+   name wrapping in its place. */
+[data-font='readable'] .sets li {
+  flex-wrap: nowrap;
+}
+[data-font='readable'] .sets .set-name {
+  flex: 0 1 auto;
+}
+[data-font='readable'] .set-level,
+[data-font='readable'] .set-values {
+  flex: none;
 }
 .set-comfort {
   color: var(--comfort);
@@ -312,6 +335,7 @@
 }
 .set-level {
   color: var(--ink-soft);
+  white-space: nowrap;
 }
 .sets-empty {
   margin: 0;

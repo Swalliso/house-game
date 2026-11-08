@@ -7,6 +7,8 @@
 
 /* --- The milestone's ribbon ---------------------------------------------------------- */
 
+/* A column at the board's top center: the ribbon, then any notes and toasts just under it
+   (.notes.under-banner), so it never sits under them. */
 .banner-place {
   position: absolute;
   top: var(--space-5);
@@ -14,7 +16,9 @@
   right: 0;
   z-index: 20;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
   padding: 0 var(--space-6);
   pointer-events: none;
 }
@@ -216,6 +220,14 @@
   flex: none;
   padding: var(--space-2) var(--space-4) 0;
 }
+/* While the milestone's banner is up, or once the run is over, in its column or the "It's a
+   house." sign's (end.css), just under it, so both read. */
+.notes.under-banner,
+.notes.under-sign {
+  position: static;
+  z-index: auto;
+  align-self: stretch;
+}
 /* A toast raised while a sheet or the menu is open sits over its scrim, where notes show. */
 .toast-layer {
   position: fixed;
@@ -227,6 +239,12 @@
   justify-content: center;
   padding: 0 var(--space-4);
   pointer-events: none;
+}
+/* Once the run is over, under the "It's a house." sign, as the notes are (the sign's column in
+   end.css): the top bar (32 UI px), the sign's place (--space-4), the sign itself (its line,
+   padding and frame: .run-end-caption), and the gap under it (--space-2). */
+.toast-layer.under-sign {
+  top: calc(var(--px) * 35 + var(--space-4) + var(--lh-body) + var(--space-2) * 3);
 }
 .notice,
 .toast {

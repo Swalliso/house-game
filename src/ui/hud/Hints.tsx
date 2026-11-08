@@ -4,6 +4,7 @@
 // .hint-extra.
 
 import type { ComponentChildren } from 'preact';
+import { isFit } from '../board/camera.ts';
 import { busy } from '../fx/director.ts';
 import { Keycap } from '../kit/kit.tsx';
 import { run, selected, tentative, tool } from '../store.ts';
@@ -30,6 +31,32 @@ function Hint({
   );
 }
 
+/**
+ * F toggles Fit (camera.ts): it shows the whole lot, and pressed again goes back to the zoom
+ * from before, in the Fit button's words. `short` is for the build screen's full strip, which
+ * has to stay one line: "zoom back" just fits it at 1280×720, so on a smaller window
+ * (hints.css) it says "fit" with Fit on too, as it did before, and never wraps the strip
+ * (which would move the board on every card picked).
+ */
+function FitHint({ short = false }: { short?: boolean }) {
+  const fit = isFit.value;
+  if (short) {
+    return (
+      <Hint keys={['F']}>
+        {fit ? (
+          <>
+            <span class="fit-long">zoom back</span>
+            <span class="fit-short">fit</span>
+          </>
+        ) : (
+          'fit'
+        )}
+      </Hint>
+    );
+  }
+  return <Hint keys={['F']}>{fit ? 'back to your zoom' : 'fit the lot'}</Hint>;
+}
+
 export function Hints() {
   const s = run.value;
   let hints: ComponentChildren;
@@ -43,7 +70,7 @@ export function Hints() {
   } else if (s.screen === 'shop') {
     // The sheet covers the lot, so F only means something once the shop is hidden.
     hints = shopHidden.value ? (
-      <Hint keys={['F']}>fit the lot</Hint>
+      <FitHint />
     ) : (
       // The sheet's own foot says where to sell, so a short window leaves these out.
       <>
@@ -52,7 +79,7 @@ export function Hints() {
       </>
     );
   } else if (s.screen !== 'build') {
-    hints = <Hint keys={['F']}>fit the lot</Hint>;
+    hints = <FitHint />;
   } else if (tool.value === 'demolish') {
     hints = (
       <>
@@ -79,7 +106,7 @@ export function Hints() {
         <Hint keys={['Scroll']} extra>
           zoom
         </Hint>
-        <Hint keys={['F']}>fit</Hint>
+        <FitHint short />
         <Hint keys={['Enter']}>pass</Hint>
       </>
     );

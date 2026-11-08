@@ -93,56 +93,65 @@
   flex-direction: column;
   gap: var(--space-2);
 }
+/* Every row as tall as the tallest, so the list keeps one shape even where a row's line has to
+   wrap (a long result in the narrowest column). */
 .run-end-milestones {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-auto-rows: 1fr;
   gap: var(--space-1);
   margin: 0;
   padding: 0;
   list-style: none;
 }
+/* Its name on a line of its own, the whole row wide (so "Final Walkthrough" fits a 280 px
+   column), then its mark and how it went, an early one's bonus, and its Wow against the target,
+   laid out in the list's shape (EndScreen.tsx milestoneShape): all on one line (`compact`), the
+   figures on a line of their own (`narrow`), or the bonus starting that line (`split`). */
 .run-end-milestones li {
-  display: grid;
-  grid-template-columns: calc(var(--px) * 8) minmax(0, 1fr) auto;
-  column-gap: var(--space-2);
-  align-items: baseline;
-}
-/* Its name on the first line; how it went and its Wow against the target on the second. */
-.run-end-milestones .mark {
-  grid-column: 1;
-  grid-row: 1;
-  align-self: center;
+  display: flex;
+  flex-direction: column;
 }
 .run-end-milestones .name {
-  grid-column: 2 / -1;
-  grid-row: 1;
-  min-width: 0;
   font-weight: 700;
   overflow-wrap: anywhere;
 }
-/* How it went, then its Wow against the target, which drops to a line of its own when the
-   column is too narrow for both. */
-.run-end-milestones .detail {
-  grid-column: 2 / -1;
-  grid-row: 2;
+.run-end-milestones .line {
   display: flex;
   flex-wrap: wrap;
-  justify-content: space-between;
-  column-gap: var(--space-2);
-}
-.run-end-milestones .tag {
+  align-items: baseline;
+  column-gap: var(--space-1);
   color: var(--ink-soft);
+}
+.run-end-milestones .mark {
+  flex: none;
+  align-self: center;
+  margin-right: var(--px);
+}
+.run-end-milestones .break {
+  display: none;
 }
 .run-end-milestones .figures {
   margin-left: auto;
-  color: var(--ink-soft);
   text-align: right;
+}
+.run-end-milestones.narrow .figures {
+  flex-basis: 100%;
+}
+.run-end-milestones.split .break {
+  display: block;
+  flex-basis: 100%;
+}
+/* The score and "of" its target each stay whole: figures too long for the line (six digits in
+   the narrowest column) break between them, never off the panel. */
+.run-end-milestones .score,
+.run-end-milestones .target {
   white-space: nowrap;
 }
 .run-end-milestones .score {
   color: var(--ink);
 }
-.run-end-milestones .early .tag {
+.run-end-milestones .early .tag,
+.run-end-milestones .bonus {
   color: var(--sparkle-text);
   font-weight: 700;
 }
@@ -150,31 +159,46 @@
   color: var(--bad);
   font-weight: 700;
 }
-/* Not reached: greyed, on one line. */
+/* Not reached: greyed, with its target. */
 .run-end-milestones .todo {
   color: var(--ink-soft);
 }
 .run-end-milestones .todo .name {
-  grid-column: 2;
   font-weight: 400;
-}
-.run-end-milestones .todo .figures {
-  grid-column: 3;
-  grid-row: 1;
 }
 
 /* --- Stats, the debug note, and the buttons ---------------------------------------------- */
 
+/* Each stat on one line, its value at the right; or, where any label wouldn't fit beside its
+   value (a 280 px column), every value on a line of its own under its label (EndScreen.tsx
+   statsShape), so the rows keep one shape. */
 .run-end-stats {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: var(--space-1) var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
   margin: 0;
+}
+/* A value level with its label, which the dt centers on its icon (the flag is taller). */
+.run-end-stats .stat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  column-gap: var(--space-3);
+}
+.run-end-stats.stacked .stat {
+  flex-direction: column;
+  align-items: stretch;
 }
 .run-end-stats dt {
   display: flex;
   align-items: center;
   gap: var(--space-2);
+}
+/* Each icon in a slot as wide as the widest (EndScreen.tsx iconSlots), centered on whole UI
+   pixels, so every label starts at the same place. */
+.run-end-stats dt .icon {
+  margin-left: calc(var(--icon-lead) * var(--px));
+  margin-right: calc(var(--icon-trail) * var(--px));
 }
 .run-end-stats dd {
   margin: 0;
@@ -240,6 +264,8 @@
 
 /* --- "It's a house." over the board: a little wood sign ---------------------------------- */
 
+/* A column at the board's top center: the sign, then any notes and toasts just under it
+   (.notes.under-sign, overlays.css), so the sign never sits under them. */
 .run-end-caption-place {
   position: absolute;
   top: var(--space-4);
@@ -247,7 +273,9 @@
   right: 0;
   z-index: 15;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
   pointer-events: none;
 }
 .run-end-caption {
