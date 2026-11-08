@@ -189,13 +189,24 @@ button:where(:not(.btn, .pcard, .inv-slot, .seg, .check-fold)):focus-visible,
   flex-shrink: 0;
   min-height: 0;
 }
+/* Under 1000 px tall (D-098, amended 2026-11-08), with nothing looked at, the score panel's sets
+   fold into one row (ScorePanel.tsx SetsFold), the whole list in its tip, so late in a run the
+   checklist keeps its room: the list took up to 612 px of a 1280×720 column's 656. While a play
+   is looked at, the list shows the sets it would make and break (over 800 px tall; under, as
+   below, the panel keeps to its equation). */
+@media (height < 1000px) {
+  .left:not(.looking) .score-panel .sets-full {
+    display: none;
+  }
+  .left:not(.looking) .score-panel .sets-fold {
+    display: block;
+  }
+}
 /* On a short window (under 800 px tall, D-098's breakpoint) that still isn't room for a long
    preview, so while a play is looked at the score panel keeps to its equation (Inspect's notes
    say which sets, lines and budget the play would change, and the checklist marks the lines),
    and the checklist keeps its two rows. With nothing looked at, the idle Inspect gives way
-   first, down to its plank (its body scrolls), and the checklist keeps a little less, so the
-   column still fits in week 1, when the score panel's suggestion for a first set is at its
-   tallest. */
+   first, down to its plank (its body scrolls), and the checklist keeps a little less. */
 @media (max-height: 800px) {
   .left.looking .score-detail,
   .left.looking .score-panel .budget-line {

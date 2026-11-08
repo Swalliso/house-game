@@ -106,10 +106,25 @@
     inset 0 calc(var(--px) * -4) 0 calc(var(--px) * 1) var(--card-lo);
 }
 .plaque-wow .layer-name {
+  flex: none;
   font-family: var(--font-text);
   font-size: var(--fs-body);
   line-height: var(--lh-body);
   color: var(--ink-soft);
+}
+/* The number takes the room beside "Wow", at its right, and sizes itself to it (D-110's note:
+   a weekly Wow of 1,000 ran onto the frame in a 280 px column). Public Pixel is monospaced, a
+   glyph an em wide, so the size is the room over the number's glyphs (--wow-cells, from
+   ScorePanel.tsx), rounded down to the font's grid, 4 UI px (whole device pixels per font pixel
+   at every ratio), between the hero size and 8 UI px: six digits fit every column. The readable
+   font's digits are about 0.62 em, and it has no grid. Without round(), wowSizeClass's steps,
+   which fit the narrowest column. */
+.wow-fit {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  justify-content: flex-end;
+  container-type: inline-size;
 }
 .wow-number {
   font-size: var(--fs-num-lg);
@@ -119,6 +134,22 @@
 }
 .wow-number.longer {
   font-size: var(--fs-num);
+}
+@supports (width: round(down, 10px, 1px)) {
+  .wow-number,
+  .wow-number.long,
+  .wow-number.longer {
+    font-size: clamp(
+      var(--fs-num),
+      round(down, calc(100cqi / var(--wow-cells)), calc(var(--px) * 4)),
+      var(--fs-num-lg)
+    );
+  }
+  [data-font='readable'] .wow-number,
+  [data-font='readable'] .wow-number.long,
+  [data-font='readable'] .wow-number.longer {
+    font-size: clamp(var(--fs-num), calc(100cqi / (var(--wow-cells) * 0.62)), var(--fs-num-lg));
+  }
 }
 .layer.wow .delta {
   flex-basis: 100%;
@@ -255,12 +286,20 @@
 
 /* --- Budget and sets ------------------------------------------------------------------- */
 
+/* The coin leads the words' first line, as an icon leads Inspect's notes: a narrow column wraps
+   the words beside it, rather than leave the coin a line of its own (a line of the left column
+   at 1280×720, late in a run). */
 .budget-line {
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
+  align-items: flex-start;
   gap: var(--space-1);
   margin: 0;
+}
+.budget-line > .icon {
+  margin-top: var(--px);
+}
+.budget-words {
+  min-width: 0;
 }
 .score-sets-title {
   margin: var(--space-1) 0 0;
@@ -341,18 +380,38 @@
   margin: 0;
   color: var(--ink-soft);
 }
-/* The suggestion for a first set, or (on a short window in the pixel font, where it would be
-   eight lines of the left column: app.css) just "No sets yet." with it as the tip. */
-.sets-empty-short {
-  display: none;
+
+/* --- The sets folded into one row (D-098, amended 2026-11-08) ------------------------------- */
+
+/* The heading and the list, or the one row in their place: app.css picks, on a window under
+   1000 px tall with nothing looked at. The row has a set's shape, so two lines in the pixel font
+   and one in the readable font, under a hairline in the heading's place, as the checklist's
+   row below it has; "No sets yet." keeps the suggestion as its tip. */
+.sets-full {
+  display: contents;
 }
-@media (max-height: 800px) {
-  [data-font='pixel'] .sets-empty-long {
-    display: none;
-  }
-  [data-font='pixel'] .sets-empty-short {
-    display: inline;
-  }
+.sets-fold {
+  display: none;
+  padding-top: var(--px);
+  border-top: var(--px) solid var(--paper-line);
+}
+p.sets-fold {
+  padding-top: var(--space-1);
+}
+/* Lit as the tally counts a set, or as the sets change outside one (ScorePanel.tsx SetsFold):
+   the board's highlight of a set, its rose wash under a Charm edge, and its numbers pop from
+   the right, so they stay inside the row. Every text color here reads at 4.5:1 on the wash. */
+.sets-fold li.lit {
+  background: var(--hl-lit-fill);
+  box-shadow: inset 0 0 0 var(--px) var(--charm);
+}
+.sets-fold .set-values.popping {
+  animation-name: tick;
+  animation-timing-function: ease-out;
+  transform-origin: right center;
+}
+.reduce-motion .sets-fold .set-values.popping {
+  animation: none;
 }
 
 /* --- The checklist's part of the Charm (M4a) ------------------------------------------------ */

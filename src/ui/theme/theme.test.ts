@@ -56,6 +56,21 @@ function contrast(a: string, b: string): number {
   return (hi! + 0.05) / (lo! + 0.05);
 }
 
+/**
+ * A wash (a token in `rgb(r g b / a)`) laid over an opaque color, blended to whole 8-bit values
+ * as the browser draws it, so text on it can be checked. Undefined for anything else.
+ */
+function over(wash: string | undefined, base: string | undefined): string | undefined {
+  const m = /^rgb\((\d+) (\d+) (\d+) \/ ([\d.]+)\)$/.exec(wash ?? '');
+  if (!m || !base?.startsWith('#')) return undefined;
+  const alpha = Number(m[4]);
+  const n = parseInt(base.slice(1, 7), 16);
+  const rgb = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v, k) =>
+    Math.round(alpha * Number(m[k + 1]) + (1 - alpha) * v),
+  );
+  return `#${rgb.map((v) => v.toString(16).padStart(2, '0')).join('')}`;
+}
+
 describe('the tokens', () => {
   it('are the only stylesheet with raw colors, apart from the legacy ones', () => {
     const sheets = stylesheets(UI);
@@ -74,8 +89,9 @@ describe('the tokens', () => {
 
   it('read at 4.5:1 or better, for each text color on the backgrounds it sits on', () => {
     const t = tokens();
-    // [text, background]: every pairing the interface uses for text.
-    const pairs = [
+    // [text, background]: every pairing the interface uses for text. A translucent background
+    // (a wash) names the one it lies on third.
+    const pairs: (readonly [text: string, bg: string, under?: string])[] = [
       ['ink', 'paper'],
       ['ink', 'card'],
       ['ink', 'card-hi'],
@@ -143,13 +159,20 @@ describe('the tokens', () => {
       // preview's badges (board/labels.css): paper-colored text on the good and bad fills.
       ['card', 'good'],
       ['card', 'bad'],
-    ] as const;
-    const low = pairs.flatMap(([text, bg]) => {
+      // The score panel's sets folded into one row (D-098's 2026-11-08 change, hud/score.css),
+      // lit as the tally counts a set: its name, Comfort and Charm on the board's set
+      // highlight, a wash over the panel's paper.
+      ['ink', 'hl-lit-fill', 'paper'],
+      ['comfort', 'hl-lit-fill', 'paper'],
+      ['charm', 'hl-lit-fill', 'paper'],
+    ];
+    const low = pairs.flatMap(([text, bg, under]) => {
+      const name = under ? `${text} on ${bg} over ${under}` : `${text} on ${bg}`;
       const a = t.get(text);
-      const b = t.get(bg);
-      if (!a || !b) return [`${text} on ${bg}: missing`];
+      const b = under ? over(t.get(bg), t.get(under)) : t.get(bg);
+      if (!a || !b) return [`${name}: missing`];
       const r = contrast(a, b);
-      return r >= 4.5 ? [] : [`${text} on ${bg}: ${r.toFixed(2)}:1`];
+      return r >= 4.5 ? [] : [`${name}: ${r.toFixed(2)}:1`];
     });
     expect(low).toEqual([]);
   });

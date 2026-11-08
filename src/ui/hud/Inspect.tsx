@@ -402,12 +402,6 @@ function ToolInfo({ id, i }: { id: ToolId; i: number }) {
       )}
       {p?.ok && <SetChanges gained={p.setsGained} lost={p.setsLost} />}
       {p?.ok && <SpecChanges gained={p.specsGained} lost={p.specsLost} />}
-      {p?.ok && (
-        <p class="total-line">
-          This week: {formatNumber(p.before.total)} → <strong>{formatNumber(p.after.total)}</strong>{' '}
-          {SCORE_LABELS.total}
-        </p>
-      )}
       {!aimed && (
         <Button class="use-tool" disabled={!p?.ok} onClick={() => useToolNow({ t: 'useTool', i })}>
           Use {def.name}
@@ -592,10 +586,6 @@ function PlacingInfo() {
       )}
       <Timers lines={p.upcoming} />
       <BudgetChange before={p.budgetBefore} after={p.budgetAfter} />
-      <p class="total-line">
-        This week: {formatNumber(p.before.total)} → <strong>{formatNumber(p.after.total)}</strong>{' '}
-        {SCORE_LABELS.total}
-      </p>
       {hint}
     </>
   );
@@ -669,10 +659,6 @@ function DemolishInfo() {
       <p class="muted">No refund. Points already earned stay. {left}</p>
       <SetChanges gained={d.setsGained} lost={d.setsLost} />
       <SpecChanges gained={d.specsGained} lost={d.specsLost} />
-      <p class="total-line">
-        This week: {formatNumber(d.before.total)} → <strong>{formatNumber(d.after.total)}</strong>{' '}
-        {SCORE_LABELS.total}
-      </p>
       {demolishArmed.value && <p class="demolish-confirm">Click it again to demolish it.</p>}
     </>
   );
@@ -690,17 +676,46 @@ const FEATURE_TEXT: Record<string, string> = {
     'Something buried here. It doesn’t block building: the first piece built over it digs it up for +3 budget.',
 };
 
+/**
+ * The week's Wow before and after the play being looked at, for Inspect's foot: a legal
+ * placement, install or Renovation, a tool that can be used, or a legal demolition. Else null.
+ */
+export function playTotals(): { before: number; after: number } | null {
+  if (tool.value === 'demolish') {
+    const d = demolishPreview.value;
+    return d?.legal ? { before: d.before.total, after: d.after.total } : null;
+  }
+  const sel = selection.value;
+  if (selected.value === null || !sel) return null;
+  if (sel.kind === 'tool') {
+    const p = toolPreview.value;
+    return p?.ok ? { before: p.before.total, after: p.after.total } : null;
+  }
+  const p = preview.value;
+  return p?.legal ? { before: p.before.total, after: p.after.total } : null;
+}
+
+/** "This week: 120 → 145 Wow": Inspect's foot, under its scrolling body, so always in view. */
+export function TotalLine({ before, after }: { before: number; after: number }) {
+  return (
+    <p class="total-line">
+      This week: {formatNumber(before)} → <strong>{formatNumber(after)}</strong>{' '}
+      {SCORE_LABELS.total}
+    </p>
+  );
+}
+
 export function Inspect() {
   if (tool.value === 'demolish') {
     return (
-      <InspectPanel>
+      <InspectPanel foot={playTotals()}>
         <DemolishInfo />
       </InspectPanel>
     );
   }
   if (selected.value !== null) {
     return (
-      <InspectPanel>
+      <InspectPanel foot={playTotals()}>
         <PlacingInfo />
       </InspectPanel>
     );
@@ -848,12 +863,22 @@ export function Inspect() {
 
 /**
  * A wood panel whose first heading is its plank (inspect.css). With nothing to inspect it's
- * `is-idle`, so the left column gives its room to the checklist (app.css).
+ * `is-idle`, so the left column gives its room to the checklist (app.css). A play's week total
+ * is its foot, outside the body that scrolls (D-110's note: a short window cut it off).
  */
-function InspectPanel({ idle = false, children }: { idle?: boolean; children: ComponentChildren }) {
+function InspectPanel({
+  idle = false,
+  foot = null,
+  children,
+}: {
+  idle?: boolean;
+  foot?: { before: number; after: number } | null;
+  children: ComponentChildren;
+}) {
   return (
     <section class={`inspect panel ui ${idle ? 'is-idle' : ''}`} aria-label="Inspect">
       <div class="panel-body">{children}</div>
+      {foot && <TotalLine before={foot.before} after={foot.after} />}
     </section>
   );
 }

@@ -12,7 +12,10 @@ export const FEEL = {
     popupTailMs: 450,
     /** And no popup is shorter than this. */
     popupMinMs: 350,
-    /** Each set held lights up, adding Comfort, then Charm. */
+    /**
+     * Each set held lights up, adding Comfort, then Charm. Also how long the score panel's
+     * folded sets row stays lit when the sets change outside a tally (D-098's 2026-11-08 change).
+     */
     setStepMs: 700,
     /** The pause before Comfort × Charm collapse into the week's total. */
     multiplyPauseMs: 400,
@@ -95,7 +98,10 @@ export const FEEL = {
     shakePx: 3,
     /** The share of a row's flash its pop or shake takes; the tint fades over all of it. */
     moveShare: 0.6,
-    /** The score panel's "N checklist lines" pulses as each line lands. */
+    /**
+     * The score panel's "N checklist lines" pulses as each line lands, and its folded sets row's
+     * numbers as each set is counted.
+     */
     tickMs: 200,
   },
 

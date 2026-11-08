@@ -170,10 +170,21 @@
   background: var(--paper-inset);
   color: var(--ink-soft);
 }
-.total-line {
-  margin-top: var(--space-2) !important;
-  padding-top: var(--space-1);
+/* The week's total, "This week: X → Y Wow", is the panel's foot (Inspect.tsx InspectPanel),
+   under the body: in the left column the body scrolls a long preview (app.css) while the total
+   stays in view, as the plank does at the top (D-110's note: a short window cut it off). Its
+   hairline spans the body's text, and it keeps the body's padding below it. */
+.inspect > .total-line {
+  flex: none;
+  margin: 0 var(--space-3);
+  padding: var(--space-1) 0 var(--space-3);
   border-top: var(--px) solid var(--paper-line);
+}
+@media (max-width: 1500px) {
+  .inspect > .total-line {
+    margin-inline: var(--space-2);
+    padding-bottom: var(--space-2);
+  }
 }
 .inspect .effects {
   margin: 0;
