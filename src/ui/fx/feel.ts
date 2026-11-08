@@ -241,6 +241,15 @@ export const FEEL = {
     carPauseMs: 5000,
   },
 
+  /**
+   * The job board and the crew pick (M4, D-110): the cards are pinned up one after another,
+   * `staggerMs` apart, each landing in `inMs` (jobs.css reads them as --beat and --jobs-in).
+   */
+  jobs: {
+    staggerMs: 70,
+    inMs: 350,
+  },
+
   /** The camera (§12, Art; D-057): wheel zoom in whole steps, drag to pan. */
   camera: {
     /** A left-button drag pans once it has moved this many px; a shorter one is a click. */

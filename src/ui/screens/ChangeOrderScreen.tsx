@@ -4,19 +4,28 @@
 // acknowledged. The sheet arrives with a paper flourish, and the answer is stamped on it as it
 // goes (director.ts plays both beats). What it asks and pays comes from the rules'
 // changeOrderOffer(): the UI only lays it out.
+//
+// In the pixel UI (D-110): a kit Panel on a scrim over the board, as the shop's sheet is. It
+// holds the keyboard on its text, never on a button, so a held Enter can't answer it before
+// FEEL.changeOrder.keyDelayMs: App.tsx's keys (Enter accepts, Esc or D declines) answer it, and
+// it stays out of anyModalOpen() so they still reach it. Tab cycles inside it, and focus goes
+// back where it was when it closes. The answer is a pixel stamp that rests unrotated.
 
-import { useLayoutEffect } from 'preact/hooks';
+import type { RefObject } from 'preact';
+import { useLayoutEffect, useRef } from 'preact/hooks';
 import {
   CONTENT,
   rewardText,
   rules,
   type ChangeOrderKind,
   type ChangeOrderView,
+  type Reward,
 } from '../../rules/index.ts';
 import { audio } from '../audio/audio.ts';
 import { busy, orderStamp, type OrderStamp } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
 import { orderTerms, ProgressParts } from '../hud/Checklist.tsx';
+import { Button, Chip, Icon, Keycap, Panel, useDialogFocus, type IconName } from '../kit/kit.tsx';
 import { answerChangeOrder, run } from '../store.ts';
 import { Notes } from './Overlays.tsx';
 import './change-order.css';
@@ -31,10 +40,18 @@ export const KIND_LABEL: Readonly<Record<ChangeOrderKind, string>> = {
   phase: 'This phase',
 };
 
-const STAMP_TEXT: Readonly<Record<OrderStamp['answer'], string>> = {
-  accepted: '✓ Accepted',
-  declined: '✕ Declined',
-  noted: '✓ Noted',
+/** Each kind's mark on its tag: a letter asking, a cross forbidding, a clock for a phase. */
+const KIND_ICON: Readonly<Record<ChangeOrderKind, IconName>> = {
+  request: 'mail',
+  restriction: 'cross',
+  phase: 'clock',
+};
+
+/** The stamp's word and mark. */
+const STAMP: Readonly<Record<OrderStamp['answer'], { text: string; icon: IconName }>> = {
+  accepted: { text: 'Accepted', icon: 'check' },
+  declined: { text: 'Declined', icon: 'cross' },
+  noted: { text: 'Noted', icon: 'check' },
 };
 
 /** When the sheet last arrived: its keys wait out its flourish (FEEL.changeOrder.keyDelayMs). */
@@ -72,6 +89,7 @@ export function changeOrderKey(key: string): boolean {
   return false;
 }
 
+/** A press on a button leaves focus on the sheet's text, where the keys wait out their delay. */
 const noFocus = (e: MouseEvent) => e.preventDefault();
 
 /** "the Hendersons", "Count Vladislav": the client mid-sentence. */
@@ -91,97 +109,189 @@ export function ChangeOrderScreen() {
   if (!view) return null;
   const client = CONTENT.clients[stamp?.clientId ?? s.setup.clientId];
   const forced = stamp ? stamp.forced : !!s.offers?.changeOrder?.forced;
-  const due = `the ${rules.phaseName(view.phase)} milestone`;
+  // One sheet from the live offer through its stamp: it never remounts, so its arrival plays
+  // once and its hold on the keyboard lasts until it goes.
+  return (
+    <ChangeOrderSheet
+      view={view}
+      stamp={stamp}
+      from={fromName(client.name)}
+      backTo={forced ? s.slot : null}
+    />
+  );
+}
+
+/** What it pays: the coin before the amount (D-098) for budget, else the reward in words. */
+function Pays({ reward }: { reward: Reward }) {
+  const budgetOnly = Object.entries(reward).every(([k, v]) => k === 'budget' || !v);
+  if (budgetOnly && reward.budget) {
+    return (
+      <>
+        <Icon name="coin" label="Budget" />
+        <span class="co-amount">+{reward.budget}</span>
+      </>
+    );
+  }
+  return <>{rewardText(CONTENT, reward)}</>;
+}
+
+/**
+ * Keeps a centered box on whole device pixels: an odd height (the readable font's line heights
+ * are odd) would center it, its frame, its icons and its text on half a pixel. It nudges the box
+ * by the fraction (a relative offset, which moves nothing else) as it and its container resize.
+ */
+function useWholePixelTop(ref: RefObject<HTMLElement>): void {
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const snap = () => {
+      el.style.top = '';
+      const dpr = window.devicePixelRatio || 1;
+      const top = el.getBoundingClientRect().top * dpr;
+      const nudge = Math.round(top) - top;
+      if (Math.abs(nudge) > 0.01) el.style.top = `${nudge / dpr}px`;
+    };
+    snap();
+    const watch = new ResizeObserver(snap);
+    watch.observe(el);
+    if (el.parentElement) watch.observe(el.parentElement);
+    return () => watch.disconnect();
+  }, []);
+}
+
+function ChangeOrderSheet({
+  view,
+  stamp,
+  from,
+  backTo,
+}: {
+  view: ChangeOrderView;
+  stamp: OrderStamp | null;
+  /** The client mid-sentence. */
+  from: string;
+  /** The week a ?debug order goes back to, or null. */
+  backTo: number | null;
+}) {
+  const dialog = useRef<HTMLDivElement>(null);
+  const text = useRef<HTMLDivElement>(null);
+  // Focus on the text, never a button: a focused button would let a held Enter press it,
+  // skipping the key delay.
+  useDialogFocus(dialog, () => text.current);
+  useWholePixelTop(dialog);
   const f = FEEL.changeOrder;
   const style = {
     '--co-in': `${f.inMs}ms`,
     '--co-tilt': `${f.tiltDeg}deg`,
     '--co-stamp': `${f.stampInMs}ms`,
   };
+  const due = `the ${rules.phaseName(view.phase)} milestone`;
+  const forced = backTo !== null;
+  const mark = stamp ? STAMP[stamp.answer] : null;
   return (
-    <div
-      class={`change-order ${stamp ? 'answered' : ''}`}
-      style={style}
-      role="dialog"
-      aria-labelledby="co-name"
-      aria-describedby="co-text"
-    >
-      <article class={`co-sheet kind-${view.kind}`}>
-        <header class="co-head">
-          <span class="co-form">Change order</span>
-          <span class="co-from">
-            from {fromName(client.name)}
-            {forced ? ' (debug)' : ''}
-          </span>
-        </header>
-        {/* Notes and toasts sit here while the sheet is up, not over it (Overlays.tsx). */}
-        <Notes docked />
-        <div class="co-title">
-          <h2 id="co-name">{view.name}</h2>
-          <span class="co-kind">{KIND_LABEL[view.kind]}</span>
-        </div>
-        <p id="co-text" class="co-text">
-          “{view.text}”
-        </p>
-        <ul class="co-terms">
-          {/* A phase effect's say what it changes; "Until" below says when (this phase). */}
-          {orderTerms(view.id, view.terms).map((t) => (
-            <li key={t}>{t}</li>
-          ))}
-        </ul>
-        {view.progress && view.progress.length > 0 && (
-          <p class="co-progress">
-            So far: <ProgressParts parts={view.progress} />
-          </p>
-        )}
-        <dl class="co-facts">
-          <div>
-            <dt>Until</dt>
-            <dd>{due}</dd>
-          </div>
-          {view.reward && (
-            <div>
-              <dt>Pays</dt>
-              <dd class="co-reward">{rewardText(CONTENT, view.reward)}</dd>
+    <div class={`change-order ui ${stamp ? 'answered' : ''}`} style={style}>
+      <div
+        ref={dialog}
+        class="co-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="co-name"
+        aria-describedby="co-text"
+      >
+        <Panel
+          class={`co-sheet kind-${view.kind}`}
+          title={
+            <>
+              <Icon name="mail" />
+              Change order
+            </>
+          }
+          head={
+            <span class="co-from">
+              from {from}
+              {forced ? ' (debug)' : ''}
+            </span>
+          }
+          bodyClass="co-body"
+        >
+          {/* Notes and toasts sit here while the sheet is up, not over it (Overlays.tsx). */}
+          <Notes docked />
+          <div class="co-scroll" ref={text} tabIndex={-1}>
+            <div class="co-title">
+              <h2 id="co-name">{view.name}</h2>
+              <Chip icon={KIND_ICON[view.kind]}>{KIND_LABEL[view.kind]}</Chip>
             </div>
-          )}
-        </dl>
-        <p class="co-note">
-          {view.declinable
-            ? 'Declining costs nothing.'
-            : 'It’s coming either way: it can’t be declined.'}
-          {forced ? ` Answering goes back to week ${s.slot}.` : ''}
-        </p>
-        <footer class="co-buttons">
-          {view.declinable && (
-            <button
-              type="button"
-              class="co-decline"
+            {/* The client's own words: the pixel font has no italics, so the quotes carry them. */}
+            <blockquote id="co-text" class="co-text">
+              “{view.text}”
+            </blockquote>
+            <ul class="pcard-lines co-terms">
+              {/* A phase effect's say what it changes; "Until" below says when (this phase). */}
+              {orderTerms(view.id, view.terms).map((t) => (
+                <li key={t}>{t}</li>
+              ))}
+            </ul>
+            {view.progress && view.progress.length > 0 && (
+              <p class="co-progress">
+                So far: <ProgressParts parts={view.progress} />
+              </p>
+            )}
+            <dl class="co-facts">
+              <div>
+                <dt>Until</dt>
+                <dd>
+                  <Icon name="clock" />
+                  {due}
+                </dd>
+              </div>
+              {view.reward && (
+                <div>
+                  <dt>Pays</dt>
+                  <dd class="co-reward">
+                    <Pays reward={view.reward} />
+                  </dd>
+                </div>
+              )}
+            </dl>
+            <p class="co-note">
+              {view.declinable
+                ? 'Declining costs nothing.'
+                : 'It’s coming either way: it can’t be declined.'}
+              {forced ? ` Answering goes back to week ${backTo}.` : ''}
+            </p>
+          </div>
+          <div class="co-foot">
+            {view.declinable && (
+              <Button
+                disabled={!!stamp}
+                onMouseDown={noFocus}
+                onClick={() => answer(false)}
+                title="Decline it: it costs nothing (Esc or D)"
+              >
+                Decline
+                <Keycap>Esc</Keycap>
+              </Button>
+            )}
+            <Button
+              variant="primary"
               disabled={!!stamp}
               onMouseDown={noFocus}
-              onClick={() => answer(false)}
-              title="Decline it: it costs nothing (Esc or D)"
+              onClick={() => answer(true)}
+              title={view.declinable ? 'Accept it (Enter)' : 'Got it (Enter)'}
             >
-              Decline <kbd>Esc</kbd>
-            </button>
-          )}
-          <button
-            type="button"
-            class="co-accept"
-            disabled={!!stamp}
-            onMouseDown={noFocus}
-            onClick={() => answer(true)}
-            title={view.declinable ? 'Accept it (Enter)' : 'Got it (Enter)'}
-          >
-            {view.declinable ? 'Accept' : 'Got it'} <kbd>Enter</kbd>
-          </button>
-        </footer>
-        {stamp && (
-          <div class={`co-stamp ${stamp.answer}`} role="status">
-            {STAMP_TEXT[stamp.answer]}
+              {view.declinable ? 'Accept' : 'Got it'}
+              <Keycap>Enter</Keycap>
+            </Button>
           </div>
-        )}
-      </article>
+          {stamp && mark && (
+            <div class="co-stamp-place">
+              <div class={`co-stamp ${stamp.answer}`} role="status">
+                <Icon name={mark.icon} />
+                {mark.text}
+              </div>
+            </div>
+          )}
+        </Panel>
+      </div>
     </div>
   );
 }

@@ -1,56 +1,64 @@
-/* A change order (M4b): a paper sheet over the board, before the shop. It arrives with a paper
-   flourish (it slides up from a slight tilt and settles), and the answer is stamped on it as it
-   goes. The timing numbers come from feel.ts, as custom properties on the backdrop (--co-in,
-   --co-tilt, --co-stamp). Good and bad are blue and orange with a mark, never color alone
-   (D-047). */
+/* A change order (M4b; D-110): a kit Panel on a scrim over the board, before the shop. It
+   arrives with a paper flourish (it slides up from a slight tilt and settles), and the answer
+   is stamped on it as it goes. The timing numbers come from feel.ts, as custom properties on
+   the scrim (--co-in, --co-tilt, --co-stamp). Good and bad are blue and orange with a mark,
+   never color alone (D-047).
 
+   Centered by grid and flex, never by translate(-50%): at rest the sheet and its stamp have no
+   transform, and both land on whole device pixels (ChangeOrderScreen.tsx nudges the sheet when
+   an odd height would center it on half of one). Built on kit.css. */
+
+/* The scrim over the board (.center), under the menu and the sheets (50), as the shop is. */
 .change-order {
   position: absolute;
   inset: 0;
   z-index: 30;
   display: grid;
-  padding: 16px;
-  overflow: auto;
-  background: rgb(42 29 22 / 0.35);
-  animation: co-dim var(--co-in, 420ms) ease-out both;
+  grid-template-rows: minmax(0, 100%);
+  place-items: center;
+  padding: var(--space-4);
+  background: var(--scrim);
+  animation: co-dim var(--co-in) ease-out backwards;
 }
 @keyframes co-dim {
   from {
-    background-color: rgb(42 29 22 / 0);
+    background-color: transparent;
   }
 }
-.co-sheet {
+/* The sheet's box: 270 UI px wide (so the plank holds "Change order" and "from Count
+   Vladislav" on one line), at most the board's height, the sheet stretched to it (so a long
+   order scrolls inside it rather than past the board). */
+.co-dialog {
   position: relative;
-  /* Centered, and on a short board it scrolls from its top (place-items would cut that off). */
-  margin: auto;
-  width: min(500px, 100%);
-  padding: 0 22px 16px;
-  border-radius: 6px;
-  border: 2px solid var(--wood);
-  background: #fffdf6;
-  box-shadow:
-    0 14px 34px rgb(42 29 22 / 0.35),
-    0 2px 0 var(--wood-dark);
-  color: var(--ink);
+  display: flex;
+  width: min(calc(var(--px) * 270), 100%);
+  max-height: 100%;
+  min-height: 0;
+}
+.co-sheet.panel {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  box-shadow: var(--shadow-float);
   transform-origin: 50% 80%;
-  animation: co-in var(--co-in, 420ms) cubic-bezier(0.2, 1.2, 0.4, 1) both;
+  animation: co-in var(--co-in) cubic-bezier(0.2, 1.2, 0.4, 1) backwards;
 }
 @keyframes co-in {
   from {
     opacity: 0;
-    transform: translateY(36px) rotate(var(--co-tilt, -3deg)) scale(0.96);
+    transform: translateY(calc(var(--px) * 18)) rotate(var(--co-tilt)) scale(0.96);
   }
   60% {
     opacity: 1;
-    transform: translateY(-4px) rotate(calc(var(--co-tilt, -3deg) * -0.25)) scale(1.01);
+    transform: translateY(calc(var(--px) * -2)) rotate(calc(var(--co-tilt) * -0.25)) scale(1.01);
   }
   to {
     transform: none;
   }
 }
 /* The stamp's thump: the paper gives a little under it as it lands. */
-.change-order.answered .co-sheet {
-  animation: co-thump var(--co-stamp, 160ms) ease-out var(--co-stamp, 160ms);
+.change-order.answered .co-sheet.panel {
+  animation: co-thump var(--co-stamp) ease-out var(--co-stamp);
 }
 @keyframes co-thump {
   40% {
@@ -58,170 +66,186 @@
   }
 }
 .reduce-motion .change-order,
-.reduce-motion .co-sheet,
-.reduce-motion .change-order.answered .co-sheet {
+.reduce-motion .co-sheet.panel,
+.reduce-motion .change-order.answered .co-sheet.panel {
   animation: none;
 }
 
-/* The form's header: "CHANGE ORDER · from the Hendersons". Light text on M5a's dark beam
-   (--on-wood on --wood-deep, 6.6:1): M5a's --wood is too light for it (2.8:1). */
-.co-head {
+/* --- The plank: the form's name, and who it's from ------------------------------------------ */
+
+.co-sheet .panel-title {
+  flex: none;
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-  margin: 0 -22px 12px;
-  padding: 8px 22px;
-  border-radius: 4px 4px 0 0;
-  border-bottom: 3px solid var(--ink);
-  background: var(--wood-deep);
-  color: var(--on-wood);
+  align-items: center;
+  gap: var(--space-2);
 }
-.co-form {
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
+/* Ink on the plank (5.9:1); it wraps under a long name rather than cut the form's. */
 .co-from {
-  font-size: 13px;
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--ink);
+  text-align: right;
 }
-/* Notes and toasts while the sheet is up (Overlays.tsx Notes, docked): under its header. */
-.co-sheet > .notes.docked {
-  padding: 0 0 10px;
+
+/* --- The body: the notes, the order (which scrolls on a short board), and the buttons ------- */
+
+.co-sheet .panel-body.co-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0;
+  gap: 0;
+}
+/* Notes and toasts while the sheet is up (Overlays.tsx Notes, docked): under the plank. */
+.co-body > .notes.docked {
+  padding: var(--space-2) var(--space-3) 0;
+}
+.co-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  scrollbar-width: thin;
+  scrollbar-color: var(--wood) var(--paper-inset);
+}
+/* It holds focus so the keys wait out their delay; it's not a control, so no ring. */
+.co-scroll:focus {
+  outline: none;
+  box-shadow: none;
 }
 .co-title {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   flex-wrap: wrap;
-  gap: 4px 10px;
+  gap: var(--space-1) var(--space-2);
 }
 .co-title h2 {
   margin: 0;
-  font-size: 22px;
+  font-size: var(--fs-title);
+  line-height: var(--lh-title);
 }
-.co-kind {
-  padding: 1px 8px;
-  border: 1px solid var(--paper-line);
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--ink-soft);
-}
-/* The client's own words. */
+/* The client's own words, on a slip of white paper. */
 .co-text {
-  margin: 6px 0 8px;
-  font-size: 15px;
-  font-style: italic;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--card-hi);
+  background-clip: padding-box;
+  box-shadow: inset 0 calc(var(--px) * -1) 0 var(--card-lo);
 }
-.co-terms {
-  margin: 0 0 8px;
-  padding-left: 18px;
-  font-size: 14px;
-  line-height: 1.45;
+.co-terms,
+.co-progress,
+.co-note {
+  margin: 0;
 }
-.co-progress {
-  margin: 0 0 8px;
-  font-size: 13px;
+.co-progress,
+.co-note,
+.co-facts dt {
   color: var(--ink-soft);
 }
-/* A part that doesn't hold yet: a ✕ before it, and orange. */
+/* A part that doesn't hold yet: a cross before it, and orange. */
 .co-progress .miss {
   color: var(--bad);
 }
+.co-progress .miss .icon {
+  margin-right: var(--space-1);
+}
+/* Until and Pays, between two rules. */
 .co-facts {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 24px;
-  margin: 0 0 6px;
-  padding: 6px 0;
-  border-top: 1px dashed var(--paper-line);
-  border-bottom: 1px dashed var(--paper-line);
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  padding: var(--space-1) 0 calc(var(--space-1) + var(--px));
+  box-shadow:
+    inset 0 var(--px) 0 var(--paper-line),
+    inset 0 calc(var(--px) * -1) 0 var(--paper-line);
 }
 .co-facts div {
   display: flex;
-  align-items: baseline;
-  gap: 6px;
-}
-.co-facts dt {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
+  align-items: center;
+  gap: var(--space-2);
 }
 .co-facts dd {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
   margin: 0;
-  font-size: 14px;
   font-weight: 700;
 }
-.co-note {
-  margin: 0 0 12px;
-  font-size: 12px;
-  color: var(--ink-soft);
+.co-amount {
+  font-family: var(--font-display);
 }
-.co-buttons {
+/* The buttons, which never scroll away. */
+.co-foot {
+  flex: none;
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
-}
-.co-buttons button {
-  font-weight: 800;
-  padding: 7px 14px;
-}
-.co-buttons kbd {
-  margin-left: 4px;
-  font: inherit;
-  font-size: 11px;
-  font-weight: 700;
-  opacity: 0.75;
-}
-.co-buttons .co-accept {
-  background: #2f6fd0;
-  border-color: #1f4f9a;
-  color: #fff;
-}
-/* Small text on the blue: its key at full white, 4.88:1 (WCAG AA; at 0.75 it was 3.48:1). */
-.co-buttons .co-accept kbd {
-  opacity: 1;
-}
-/* A hover darkens the blue, so the white stays readable (5.65:1), and never takes the plain
-   buttons' cream (app.css). */
-.co-buttons .co-accept:hover:not(:disabled) {
-  background: #2a64c4;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  box-shadow: inset 0 var(--px) 0 var(--paper-line);
 }
 
-/* The answer's stamp, slammed onto the sheet (director.ts holds it for FEEL.changeOrder). */
-.co-stamp {
+/* --- The answer's stamp (director.ts holds it for FEEL.changeOrder.stampMs) ------------------- */
+
+/* Over the sheet, across the order's words, about its middle. It's as wide for every answer and
+   a set way down from the sheet's top (centering it on an odd height would put it on half a
+   pixel), so it rests on whole device pixels in either font. */
+.co-stamp-place {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  padding: 4px 18px;
-  border: 4px solid currentColor;
-  border-radius: 8px;
-  background: rgb(255 253 246 / 0.88);
-  font-size: 34px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: calc(var(--px) * 80);
+  pointer-events: none;
+}
+.co-stamp {
+  --stamp-lip: var(--card-lo);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  width: calc(var(--px) * 136);
+  padding: var(--space-2) var(--space-4) calc(var(--space-2) + var(--px));
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--card);
+  background-clip: padding-box;
+  box-shadow:
+    inset 0 calc(var(--px) * -2) 0 var(--stamp-lip),
+    var(--shadow-float);
+  font-family: var(--font-display);
+  font-size: var(--fs-title);
+  line-height: var(--lh-title);
   text-transform: uppercase;
   white-space: nowrap;
-  pointer-events: none;
-  transform: translate(-50%, -50%) rotate(-10deg);
-  animation: co-stamp var(--co-stamp, 160ms) cubic-bezier(0.3, 1.5, 0.5, 1) both;
+  color: var(--ink);
+  /* It scales in, and rests unrotated with no transform. */
+  animation: co-stamp var(--co-stamp) cubic-bezier(0.3, 1.5, 0.5, 1) backwards;
 }
+.co-stamp .icon {
+  width: calc(var(--w) * var(--px) * 2);
+  height: calc(var(--h) * var(--px) * 2);
+}
+/* Accepted in the good blue on Comfort's tint (5.5:1); declined quiet on the inset paper (5.2:1);
+   noted in ink on the card. */
 .co-stamp.accepted {
+  --stamp-lip: var(--comfort-shade);
+  background-color: var(--comfort-tint);
   color: var(--good);
 }
 .co-stamp.declined {
+  background-color: var(--paper-inset);
   color: var(--ink-soft);
-}
-.co-stamp.noted {
-  color: var(--ink);
 }
 @keyframes co-stamp {
   from {
     opacity: 0;
-    transform: translate(-50%, -50%) rotate(-10deg) scale(1.8);
+    transform: scale(1.8);
   }
 }
 .reduce-motion .co-stamp {

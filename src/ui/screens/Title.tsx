@@ -7,12 +7,13 @@
 // and the menu as an "Open House" real-estate sign on a post, its buttons hanging below it
 // like the sign's riders. Everything in the scene is drawn at the street's whole-pixel scale.
 //
-// M4: Start opens the job board (D-032, D-045), which stands on the same scene (TitleBackdrop).
+// M4: Start opens the job board (D-032, D-045), which stands on the same scene (TitleBackdrop),
+// and Continue says whose house the saved run is (D-110).
 
 import './title.css';
 import type { ComponentChildren } from 'preact';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
-import { rules, SCORE_LABELS } from '../../rules/index.ts';
+import { CONTENT, rules, SCORE_LABELS } from '../../rules/index.ts';
 import { audio } from '../audio/audio.ts';
 import { blobTile, E, S, SE, SUB, SUBTILE, SW, W } from '../board/autotile.ts';
 import { streetScale } from '../board/geometry.ts';
@@ -38,6 +39,12 @@ import { canContinue, continueRun, openJobBoard, run } from '../store.ts';
 function savedRunLine(): string {
   const s = run.value;
   return `${rules.phaseName(s.phase)}, week ${s.week} · ${formatNumber(s.score)} ${SCORE_LABELS.total}`;
+}
+
+/** Whose house the save is (M4): "For the Hendersons", "For Count Vladislav". */
+function savedClientLine(): string | null {
+  const name = CONTENT.clients[run.value.setup.clientId]?.name;
+  return name ? `For ${name.replace(/^The\s/, 'the ')}` : null;
 }
 
 export function Title() {
@@ -75,6 +82,7 @@ export function Title() {
                 <Button variant="primary" size="lg" class="title-main" onClick={onContinue}>
                   <span class="title-main-text">
                     Continue
+                    <span class="title-detail">{savedClientLine()}</span>
                     <span class="title-detail">{savedRunLine()}</span>
                   </span>
                 </Button>

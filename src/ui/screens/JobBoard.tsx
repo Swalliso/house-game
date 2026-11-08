@@ -1,21 +1,24 @@
 // The job board (implementation-plan.md §7 M4a and M4b; D-032, D-045): Start opens three
-// contracts, each a client and a lot. A card shows who the client is, what they wish for, their
-// tastes, and a schematic of the lot. Taking one opens the crew pick; hiring a crew starts the
-// run. On a first visit, contract 0 is the Hendersons and the General Contractor is marked too,
-// both "Recommended for your first job". The contracts come from the rules' jobBoard(), so the
-// UI only renders them. The board stands on the title's scene (Title.tsx's TitleBackdrop).
+// contracts, each a client and a lot. A card shows who the client is, what they wish for, who
+// moves in and when, their tastes, and a map of the lot. Taking one opens the crew pick; hiring
+// a crew starts the run. On a first visit, contract 0 is the Hendersons and the General
+// Contractor is marked too, both "Recommended for your first job". The contracts come from the
+// rules' jobBoard(), so the UI only renders them.
+//
+// In the pixel UI (D-110): a wood panel standing on the title's street (Title.tsx's
+// TitleBackdrop), its cards the kit's paper Cards, rarity a band and a chip as in the shop. A
+// card's middle scrolls and its button stays in view, so the board fits 1280×720 in the pixel
+// font without the page scrolling. One lime button at most: the Recommended card's, on a first
+// visit.
 
 import './jobs.css';
-import type { Ref } from 'preact';
-import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import {
   CONTENT,
-  isSunny,
   jobBoard,
   modifierText,
   rules,
   specText,
-  terrainAt,
   type ArrivalDef,
   type ClientDef,
   type Contract,
@@ -25,13 +28,20 @@ import {
   type Modifier,
 } from '../../rules/index.ts';
 import { audio } from '../audio/audio.ts';
+import { FEEL } from '../fx/feel.ts';
 import { anyModalOpen } from '../hud/actions.ts';
 import { RARITY_LABEL } from '../hud/goods.tsx';
 import { arrivalsOf, arrivalWeek, midName } from '../hud/household.ts';
+import { PieceArt } from '../hud/PieceArt.tsx';
 import { Tip } from '../hud/Tip.tsx';
-import { Icon } from '../kit/kit.tsx';
+import { Button, Card, Chip, Icon, Keycap, Panel, type IconName } from '../kit/kit.tsx';
+import { CREW_ICONS } from '../sprites.ts';
 import { appScreen, firstVisit, jobBoardSeed, takeContract } from '../store.ts';
+import { LOT_COLORS, lotMapKind, lotMapSize, lotSummary } from './lot-map.ts';
 import { TitleBackdrop } from './Title.tsx';
+
+/** "the Hendersons", "Count Vladislav": the client mid-sentence. */
+const fromName = (name: string) => name.replace(/^The\s/, 'the ');
 
 export function JobBoard() {
   const seed = jobBoardSeed.value;
@@ -39,10 +49,15 @@ export function JobBoard() {
   const contracts = useMemo(() => jobBoard(CONTENT, seed, { firstVisit: visit }), [seed, visit]);
   // Step 2 (D-045): the crew for the contract taken.
   const [taken, setTaken] = useState<Contract | null>(null);
-  const first = useRef<HTMLButtonElement>(null);
+  const list = useRef<HTMLOListElement>(null);
 
+  // The first card's button takes focus as the board arrives and at each step, so Enter takes
+  // it (the Recommended one, on a first visit). It's a screen, like the title, not a sheet: Tab
+  // isn't held in it.
   useEffect(() => {
-    first.current?.focus({ preventScroll: true });
+    list.current
+      ?.querySelector<HTMLButtonElement>('.contract-take')
+      ?.focus({ preventScroll: true });
   }, [seed, taken]);
   useEffect(() => setTaken(null), [seed]);
 
@@ -87,127 +102,146 @@ export function JobBoard() {
   }, [contracts, taken]);
 
   const client = taken ? CONTENT.clients[taken.clientId] : null;
+  const count = client ? crews.length : contracts.length;
   return (
     <TitleBackdrop class="jobs-screen">
-      <div class="jobs-stage">
-        <main class="jobs-board" aria-labelledby="jobs-title">
-          {client ? (
-            <>
-              <header class="jobs-header">
-                <h1 id="jobs-title">Pick your crew</h1>
-                <p>For {client.name}. A crew changes what you draw and what pays, all run.</p>
-              </header>
-              <ol class="jobs-list crews">
-                {crews.map((crew, i) => (
+      <main
+        class="jobs-stage"
+        aria-labelledby="jobs-title"
+        style={{ '--jobs-in': `${FEEL.jobs.inMs}ms` }}
+      >
+        <Panel
+          class="jobs-panel"
+          title={<span id="jobs-title">{client ? 'Pick your crew' : 'The job board'}</span>}
+          head={<Chip tone="inset">{`Step ${client ? 2 : 1} of 2`}</Chip>}
+          bodyClass="jobs-body"
+        >
+          <p class="jobs-lede">
+            {client
+              ? `For ${fromName(client.name)}. A crew changes what you draw and what pays, all run.`
+              : 'Pick a client. Each job is one house, on one lot, for them.'}
+          </p>
+          <ol class="jobs-list" ref={list}>
+            {client
+              ? crews.map((crew, i) => (
                   <CrewCard
                     key={crew.id}
                     crew={crew}
                     index={i}
                     recommended={visit && crew.id === 'generalContractor'}
-                    buttonRef={i === 0 ? first : undefined}
                     onHire={() => hire(crew.id)}
                   />
+                ))
+              : contracts.map((c, i) => (
+                  <ContractCard key={c.seed} contract={c} index={i} onTake={() => take(c)} />
                 ))}
-              </ol>
-            </>
-          ) : (
-            <>
-              <header class="jobs-header">
-                <h1 id="jobs-title">The job board</h1>
-                <p>Pick a client. Each job is one house, on one lot, for them.</p>
-              </header>
-              <ol class="jobs-list">
-                {contracts.map((c, i) => (
-                  <ContractCard
-                    key={c.seed}
-                    contract={c}
-                    index={i}
-                    buttonRef={i === 0 ? first : undefined}
-                    onTake={() => take(c)}
-                  />
-                ))}
-              </ol>
-            </>
-          )}
-          <footer class="jobs-footer">
-            <button type="button" onClick={back}>
+          </ol>
+          <footer class="jobs-foot">
+            <Button
+              onClick={back}
+              title={client ? 'Back to the job board (Esc)' : 'Back to the title (Esc)'}
+            >
               Back
-            </button>
-            <span class="jobs-keys">
-              {taken ? '1–3 to hire a crew' : '1–3 to take a job'} · Esc to go back
-            </span>
+            </Button>
+            <p class="jobs-keys">
+              <span class="jobs-key">
+                {Array.from({ length: count }, (_, i) => (
+                  <Keycap key={i}>{i + 1}</Keycap>
+                ))}
+                <span>{client ? 'hire a crew' : 'take a job'}</span>
+              </span>
+              <span class="jobs-key">
+                <Keycap>Esc</Keycap>
+                <span>go back</span>
+              </span>
+            </p>
           </footer>
-        </main>
-      </div>
+        </Panel>
+      </main>
     </TitleBackdrop>
   );
 }
 
-/** A crew (D-012): its name, what it does, and the cards it starts with. */
+/** The gold tab on a card's top edge: the first visit's pick. */
+function RecommendedTag() {
+  return (
+    <span class="contract-tag" title="Recommended for your first job">
+      <Icon name="star" />
+      Recommended
+    </span>
+  );
+}
+
+/** The card's stagger, as it's pinned up (FEEL.jobs). */
+const beat = (index: number) => ({ '--beat': `${index * FEEL.jobs.staggerMs}ms` });
+
+/** A crew (D-012, D-109): its icon, what it does all run, and the cards it starts with. */
 function CrewCard(props: {
   crew: CrewDef;
   index: number;
   recommended: boolean;
-  buttonRef?: Ref<HTMLButtonElement>;
   onHire: () => void;
 }) {
   const { crew, index } = props;
-  const starts = (crew.startReserve ?? []).map((id) => CONTENT.pieces[id].name);
+  const starts = crew.startReserve ?? [];
   return (
-    <li
-      class={`contract crew${props.recommended ? ' recommended' : ''}`}
-      style={{ animationDelay: `${index * 70}ms` }}
-    >
-      {props.recommended && (
-        <div class="contract-ribbon">
-          <Icon name="star" /> Recommended for your first job
+    <li class="jobs-item">
+      <Card
+        as="article"
+        class="contract crew"
+        lead={<Keycap>{index + 1}</Keycap>}
+        title={crew.name}
+        art={<Icon name={CREW_ICONS[crew.id]} class="crew-icon" />}
+        note={crew.blurb}
+        style={beat(index)}
+        aria-label={crew.name}
+      >
+        {props.recommended && <RecommendedTag />}
+        <div class="contract-scroll">
+          <section class="contract-section">
+            <h3>All run</h3>
+            <ul class="contract-tastes">
+              {crew.modifiers.map((m, i) => (
+                <TasteLine key={i} icon="up" label="Helps" text={modifierText(CONTENT, m)} />
+              ))}
+            </ul>
+          </section>
+          {starts.length > 0 && (
+            <section class="contract-section">
+              <h3>Starts with</h3>
+              <ul class="crew-starts">
+                {starts.map((id) => (
+                  <li key={id}>
+                    <span
+                      class={`pcard-art ${CONTENT.pieces[id].category === 'indoor' ? '' : 'yard'}`}
+                    >
+                      <PieceArt id={id} />
+                    </span>
+                    <span>{CONTENT.pieces[id].name}</span>
+                  </li>
+                ))}
+              </ul>
+              <p class="contract-quiet">In your reserve from week 1.</p>
+            </section>
+          )}
         </div>
-      )}
-      <header class="contract-head">
-        <h2>{crew.name}</h2>
-      </header>
-      <p class="contract-brief">{crew.blurb}</p>
-      <section class="contract-section">
-        <h3>All run</h3>
-        <ul class="contract-tastes">
-          {crew.modifiers.map((m, i) => (
-            <li key={i} class="good">
-              <span class="mark">
-                <Icon name="up" />
-              </span>
-              {modifierText(CONTENT, m)}
-            </li>
-          ))}
-        </ul>
-      </section>
-      {starts.length > 0 && (
-        <section class="contract-section">
-          <h3>Starts with</h3>
-          <p>{starts.join(' and ')}, waiting in your reserve.</p>
-        </section>
-      )}
-      <footer class="contract-foot">
-        <button
-          type="button"
-          class="contract-take"
-          ref={props.buttonRef}
-          onClick={props.onHire}
-          aria-label={`Hire this crew: ${crew.name}`}
-        >
-          Hire this crew
-        </button>
-        <kbd aria-hidden="true">{index + 1}</kbd>
-      </footer>
+        <div class="contract-foot">
+          <Button
+            block
+            variant={props.recommended ? 'primary' : 'secondary'}
+            class="contract-take"
+            onClick={props.onHire}
+            aria-label={`Hire this crew: ${crew.name}`}
+          >
+            Hire this crew
+          </Button>
+        </div>
+      </Card>
     </li>
   );
 }
 
-function ContractCard(props: {
-  contract: Contract;
-  index: number;
-  buttonRef?: Ref<HTMLButtonElement>;
-  onTake: () => void;
-}) {
+function ContractCard(props: { contract: Contract; index: number; onTake: () => void }) {
   const { contract, index } = props;
   const client = CONTENT.clients[contract.clientId];
   // The lot this contract's seed makes: the run's own lot, drawn small.
@@ -226,79 +260,86 @@ function ContractCard(props: {
   const wishes = client.specs.filter((s) => s.group === 'wishes');
   const houseRules = client.specs.filter((s) => s.group !== 'wishes');
   return (
-    <li
-      class={`contract rarity-${client.rarity}${contract.recommended ? ' recommended' : ''}`}
-      style={{ animationDelay: `${index * 70}ms` }}
-    >
-      {contract.recommended && (
-        <div class="contract-ribbon">
-          <Icon name="star" /> Recommended for your first job
-        </div>
-      )}
-      <header class="contract-head">
-        <h2>{client.name}</h2>
-        {/* The rarity as a plain tag: RarityTag's tip explains the shop's goods. */}
-        <span class={`rarity-tag rarity-${client.rarity}`}>{RARITY_LABEL[client.rarity]}</span>
-      </header>
-      <p class="contract-brief">{client.brief}</p>
-      <div class="contract-top">
-        <LotThumb lot={lot} />
-        <div class="contract-top-text">
+    <li class="jobs-item">
+      <Card
+        as="article"
+        class="contract"
+        rarity={client.rarity}
+        lead={<Keycap>{index + 1}</Keycap>}
+        title={client.name}
+        // The rarity as a plain chip: RarityTag's tip explains the shop's goods.
+        aside={<Chip tone={client.rarity}>{RARITY_LABEL[client.rarity]}</Chip>}
+        style={beat(index)}
+        aria-label={client.name}
+      >
+        {contract.recommended && <RecommendedTag />}
+        <div class="contract-scroll">
+          <p class="contract-brief">{client.brief}</p>
+          <div class="contract-top">
+            <LotMap lot={lot} />
+            <div class="contract-top-text">
+              <section class="contract-section">
+                <h3>Wishes</h3>
+                <ul class="pcard-lines">
+                  {wishes.map((w) => (
+                    <li key={w.id}>
+                      <Tip title={w.name} text={specText(CONTENT, w)}>
+                        {w.name}
+                      </Tip>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+              {(household || arrivals.length > 0) && (
+                <section class="contract-section">
+                  <h3>Household</h3>
+                  {household && (
+                    <p>
+                      <Tip title={household.name} text={specText(CONTENT, household)}>
+                        {bedroomsText(client)}
+                      </Tip>
+                    </p>
+                  )}
+                  {arrivals.length > 0 && <MovingIn arrivals={arrivals} />}
+                </section>
+              )}
+            </div>
+          </div>
+          {/* The map in words; its title and label say it too, so a short window drops it. */}
+          <p class="contract-lot-note">{lotSummary(lot)}</p>
           <section class="contract-section">
-            <h3>Wishes</h3>
-            <ul>
-              {wishes.map((w) => (
-                <li key={w.id}>
-                  <Tip title={w.name} text={specText(CONTENT, w)}>
-                    {w.name}
+            <h3>Tastes</h3>
+            <Tastes client={client} />
+          </section>
+          <details class="contract-rules">
+            <summary>
+              <Icon name="caretRight" class="caret-closed" />
+              <Icon name="caretDown" class="caret-open" />
+              House rules ({houseRules.length})
+            </summary>
+            <ul class="pcard-lines">
+              {houseRules.map((s) => (
+                <li key={s.id}>
+                  <Tip title={s.name} text={specText(CONTENT, s)}>
+                    {s.name}
                   </Tip>
                 </li>
               ))}
             </ul>
-          </section>
-          {(household || arrivals.length > 0) && (
-            <section class="contract-section">
-              <h3>Household</h3>
-              {household && (
-                <p>
-                  <Tip title={household.name} text={specText(CONTENT, household)}>
-                    {bedroomsText(client)}
-                  </Tip>
-                </p>
-              )}
-              {arrivals.length > 0 && <MovingIn arrivals={arrivals} />}
-            </section>
-          )}
+          </details>
         </div>
-      </div>
-      <section class="contract-section">
-        <h3>Tastes</h3>
-        <Tastes client={client} />
-      </section>
-      <details class="contract-rules">
-        <summary>And the house rules ({houseRules.length})</summary>
-        <ul>
-          {houseRules.map((s) => (
-            <li key={s.id}>
-              <Tip title={s.name} text={specText(CONTENT, s)}>
-                {s.name}
-              </Tip>
-            </li>
-          ))}
-        </ul>
-      </details>
-      <footer class="contract-foot">
-        <button
-          type="button"
-          class="contract-take"
-          ref={props.buttonRef}
-          onClick={props.onTake}
-          aria-label={`Take the job: ${client.name}`}
-        >
-          Take the job
-        </button>
-        <kbd aria-hidden="true">{index + 1}</kbd>
-      </footer>
+        <div class="contract-foot">
+          <Button
+            block
+            variant={contract.recommended ? 'primary' : 'secondary'}
+            class="contract-take"
+            onClick={props.onTake}
+            aria-label={`Take the job: ${client.name}`}
+          >
+            Take the job
+          </Button>
+        </div>
+      </Card>
     </li>
   );
 }
@@ -339,90 +380,85 @@ function helps(mod: Modifier): boolean {
   return true;
 }
 
+/** A line with its mark: up for a like, down for a dislike, the die for what's drawn more. */
+function TasteLine({
+  icon,
+  label,
+  text,
+  quiet = false,
+}: {
+  icon: IconName;
+  label: string;
+  text: string;
+  quiet?: boolean;
+}) {
+  return (
+    <li class={quiet ? 'quiet' : undefined}>
+      <span class="taste-mark">
+        <Icon name={icon} label={label} />
+      </span>
+      <span>{text}</span>
+    </li>
+  );
+}
+
 function Tastes({ client }: { client: ClientDef }) {
-  const lines = [
-    ...client.tastes.map((m) => ({ text: modifierText(CONTENT, m), good: helps(m), pool: false })),
-    ...client.pool.map((m) => ({ text: modifierText(CONTENT, m), good: true, pool: true })),
-  ];
   return (
     <ul class="contract-tastes">
-      {lines.map((l, i) => (
-        <li key={i} class={l.pool ? 'pool' : l.good ? 'good' : 'bad'}>
-          <span class="mark">
-            <Icon name={l.pool ? 'reroll' : l.good ? 'up' : 'down'} />
-          </span>
-          {l.text}
-        </li>
+      {client.tastes.map((m, i) => {
+        const good = helps(m);
+        return (
+          <TasteLine
+            key={`t${i}`}
+            icon={good ? 'up' : 'down'}
+            label={good ? 'Likes' : 'Dislikes'}
+            text={modifierText(CONTENT, m)}
+          />
+        );
+      })}
+      {/* The client's pool: what comes up more often in the draws. */}
+      {client.pool.map((m, i) => (
+        <TasteLine
+          key={`p${i}`}
+          icon="reroll"
+          label="Draws"
+          text={modifierText(CONTENT, m)}
+          quiet
+        />
       ))}
     </ul>
   );
 }
 
-// ---------------------------------------------------------------------------------------
-// The lot, one canvas pixel per tile (the street a row below it), shown at a whole-number
-// scale with crisp pixels.
-
-const LOT_COLORS: Record<string, string> = {
-  ground: '#9fc56e',
-  sunny: '#c4d870',
-  tree: '#4c7a38',
-  pond: '#5f9fd6',
-  creek: '#76b3e0',
-  boulder: '#958f86',
-  oldShed: '#8a5a3b',
-  timeCapsule: '#c9a35f',
-  street: '#6f6c72',
-};
-
-function LotThumb({ lot }: { lot: Lot }) {
+/**
+ * The lot, one canvas pixel per tile with the street a row below it (lot-map.ts), drawn at
+ * --map-px per tile in an ink ring. Its summary in words is its title and its label.
+ */
+function LotMap({ lot }: { lot: Lot }) {
   const ref = useRef<HTMLCanvasElement>(null);
-  useEffect(() => {
+  const { w, h } = lotMapSize(lot);
+  // Before the browser paints, so the map is never seen blank.
+  useLayoutEffect(() => {
     const ctx = ref.current?.getContext('2d');
     if (!ctx) return;
-    for (let y = 0; y < lot.height; y++) {
-      for (let x = 0; x < lot.width; x++) {
-        const t = terrainAt(lot, x, y);
-        ctx.fillStyle = LOT_COLORS[t ?? (isSunny(lot, x, y) ? 'sunny' : 'ground')]!;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        ctx.fillStyle = LOT_COLORS[lotMapKind(lot, x, y)];
         ctx.fillRect(x, y, 1, 1);
       }
     }
-    ctx.fillStyle = LOT_COLORS.street!;
-    ctx.fillRect(0, lot.height, lot.width, 1);
   }, [lot]);
-  const scale = Math.max(2, Math.floor(100 / lot.width));
+  const summary = lotSummary(lot);
   return (
-    <figure class="contract-lot">
+    <span class="contract-map" title={summary}>
       <canvas
         ref={ref}
-        width={lot.width}
-        height={lot.height + 1}
-        style={{ width: `${lot.width * scale}px`, height: `${(lot.height + 1) * scale}px` }}
+        width={w}
+        height={h}
+        style={{ '--lot-w': String(w), '--lot-h': String(h) }}
         role="img"
-        aria-label={lotSummary(lot)}
+        aria-label={`The lot: ${summary}`}
       />
-      <figcaption>{lotSummary(lot)}</figcaption>
-    </figure>
+    </span>
   );
-}
-
-/** "A pond, a creek, woods, and 2 boulders · sunny on the right". */
-function lotSummary(lot: Lot): string {
-  const count = (id: string) => lot.terrain.filter((t) => t === id).length;
-  const parts: string[] = [];
-  if (count('pond') > 0) parts.push('a pond');
-  if (count('creek') > 0) parts.push('a creek');
-  const trees = count('tree');
-  if (trees >= 12) parts.push('woods');
-  else if (trees > 0) parts.push(trees === 1 ? 'a tree' : `${trees} trees`);
-  const boulders = count('boulder');
-  if (boulders > 0) parts.push(boulders === 1 ? 'a boulder' : `${boulders} boulders`);
-  if (count('oldShed') > 0) parts.push('an old shed');
-  const list =
-    parts.length === 0
-      ? 'Open ground'
-      : parts.length === 1
-        ? parts[0]!
-        : `${parts.slice(0, -1).join(', ')}, and ${parts.at(-1)}`;
-  const side = lot.sunnySide === 'top' ? 'at the back' : `on the ${lot.sunnySide}`;
-  return `${list[0]!.toUpperCase()}${list.slice(1)} · sunny ${side}`;
 }
