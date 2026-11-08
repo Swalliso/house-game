@@ -12,6 +12,8 @@ import {
   fitScale,
   furnitureSpot,
   keepInView,
+  labelLines,
+  labelRows,
   labelSpot,
   MAX_ZOOM,
   maxZoom,
@@ -332,6 +334,46 @@ describe('a label by the pointer', () => {
     expect(labelSpot(cells, 12, 3)).toEqual({ x: 5, y: 3, below: true });
     // Kept away from the lot's side edges.
     expect(labelSpot(placedCells(['#'], 0, 5, 0), 12).x).toBe(3);
+  });
+
+  it('takes as many rows above its cells as its stack is tall, more where cells are small', () => {
+    // At 1× (32 CSS px a cell, 2 CSS px a UI pixel): a one-line label in a row, a pack's ghost
+    // (its change and count, what's next, and the next tile's label: three lines in two labels)
+    // in three, as the ghost's stack once counted a row a line.
+    expect(labelRows([1], 32, 2)).toBe(1);
+    expect(labelRows([2, 1], 32, 2)).toBe(3);
+    expect(labelRows([2, 1, 1], 32, 2)).toBe(4);
+    // At 0.5× on a Retina screen the text keeps its size and the cells halve: twice the rows.
+    expect(labelRows([1], 16, 2)).toBe(2);
+    expect(labelRows([2, 1], 16, 2)).toBe(5);
+    // At 2× it needs fewer; Fit at 720p, 22 CSS px a cell, more.
+    expect(labelRows([2, 1], 64, 2)).toBe(2);
+    expect(labelRows([2, 1], 22, 2)).toBe(4);
+    // At 125% display scaling the UI pixel is 1.6 CSS px, and the readable font's 19 px line
+    // is the taller.
+    expect(labelRows([1], 25.6, 1.6)).toBe(1);
+    // Never under a row, and never short of the stack's height.
+    fc.assert(
+      fc.property(
+        fc.array(fc.integer({ min: 1, max: 4 }), { minLength: 1, maxLength: 4 }),
+        fc.constantFrom(16, 22, 25.6, 32, 48, 64, 96),
+        fc.constantFrom(1.6, 2, 3, 4),
+        (lines, px, ui) => {
+          const rows = labelRows(lines, px, ui);
+          const tall = lines.reduce((h, n) => h + n * Math.max(10 * ui, 19) + 4 * ui, 0);
+          expect(rows).toBeGreaterThanOrEqual(1);
+          expect(rows * px).toBeGreaterThanOrEqual(tall - 1e-6);
+          expect((rows - 1) * px).toBeLessThan(Math.max(tall, px));
+        },
+      ),
+    );
+  });
+
+  it('counts a long label as the lines it wraps to', () => {
+    expect(labelLines('▲ +12 Wow · End week to build')).toBe(1);
+    const renovate = 'Renovate the Bedroom to level 2: ▲ +17 Wow · End week to renovate';
+    expect(labelLines(renovate)).toBe(2);
+    expect(labelLines('')).toBe(1);
   });
 
   it('stays where it is when it fits in the view', () => {

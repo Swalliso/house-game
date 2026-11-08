@@ -2,14 +2,19 @@
 // ground on its own cells and its props standing on them; flat pieces edge themselves, softer
 // against their own kind; the house's one parked car; curb cuts; Fences from their own cells; the
 // yard's fixtures always drawn; colors that differ; the same every time; the ghost's layout, a
-// pack's in its own tiles (D-106).
+// pack's in its own tiles (D-106); any pack a player can click out.
 
+import fc from 'fast-check';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { decodePng } from '../../../scripts/png.ts';
 import {
   CONTENT,
+  cellsToShape,
+  packShapeProblem,
+  parseShape,
   placedCells,
+  type Cell,
   type FixtureId,
   type HouseState,
   type PieceId,
@@ -359,41 +364,72 @@ describe('the parked car', () => {
     }
   });
 
-  it('parks with its wheels on its Driveway’s own tiles, or on the next Driveway', () => {
-    // A pack too small or too ragged for it (D-106): one tile, or a T whose stem is one tile
-    // wide. The house's car parks on its next Driveway instead.
-    for (const shape of [['#'], ['###', '.#.']]) {
-      const y = yardOf(
-        house([
-          ['driveway', 4, 9, 0, undefined, shape],
-          ['driveway', 9, 6, 1],
-        ]),
-      );
-      expect(
-        cars(y).map((c) => c.uid),
-        shape.join('/'),
-      ).toEqual([2]);
+  it('parks only on its Driveway’s own tiles: one tile sends it to the next Driveway', () => {
+    // A pack too small for it (D-106): the house's car parks on its next Driveway instead.
+    const y = yardOf(
+      house([
+        ['driveway', 4, 9, 0, undefined, ['#']],
+        ['driveway', 9, 6, 1],
+      ]),
+    );
+    expect(cars(y).map((c) => c.uid)).toEqual([2]);
+    // Two tiles are room enough, side by side or one behind the other.
+    for (const shape of [['##'], ['#', '#']]) {
+      const l = yardOf(house([['driveway', 4, 9, 0, undefined, shape]])).pieces.get(1)!;
+      const car = l.items.filter((i) => i.sprite.startsWith('car-'));
+      expect(car.length, shape.join('/')).toBe(1);
+      expect(offTiles(l, car[0]!), shape.join('/')).toEqual([]);
     }
-    // An L and a 2×2 have the room: every pixel of its feet (its bottom 8 rows) on their tiles.
-    for (const shape of [
-      ['#.', '##'],
-      ['##', '##'],
-    ]) {
-      const h = house([['driveway', 4, 9, 0, undefined, shape]]);
-      const c = cars(yardOf(h));
-      expect(c.length, shape.join('/')).toBe(1);
-      const own = new Set(placedCells(shape, 4, 9, 0).map((q) => `${q.x},${q.y}`));
-      const { x, y } = c[0]!.i;
-      const { w, h: ch } = artSize(c[0]!.i.sprite);
-      for (let py = y + ch - 8; py < y + ch; py++) {
-        for (let px = x; px < x + w; px++) {
-          const at = `${Math.floor(px / CELL)},${Math.floor(py / CELL)}`;
-          expect(own.has(at), `${shape.join('/')}: ${at}`).toBe(true);
-        }
-      }
+  });
+
+  it('parks a ragged pack’s car in another row or column of its tiles, never off them', () => {
+    // [the pack's tiles, the car it parks]: where its front row or its west column can't hold
+    // the car, a row behind or a column east of it does, side on or nose in.
+    const cases: readonly (readonly [readonly string[], RegExp])[] = [
+      // A T, and an L with its foot behind: side on, along the row behind (its front row is a
+      // single tile).
+      [['###', '.#.'], /^car-(left|right)-/],
+      [['##', '#.'], /^car-(left|right)-/],
+      // A T upside down, and an L with its arm up: nose in, up the stem or the arm. Side on
+      // along the front row, its roof would rise onto grass inside the pack's outline, under
+      // whatever stands there, with no over line to lift it.
+      [['.#.', '###'], /^car-rear-/],
+      [['#.', '##'], /^car-rear-/],
+      // Up and down, its west column a single tile: nose in, up the east column.
+      [['.#', '.#', '##'], /^car-rear-/],
+      // A long L and a block: side on along the front row, as ever.
+      [['#..', '###'], /^car-(left|right)-/],
+      [['##', '##'], /^car-(left|right)-/],
+    ];
+    for (const [shape, sprite] of cases) {
+      const l = yardOf(house([['driveway', 4, 8, 0, undefined, shape]])).pieces.get(1)!;
+      const car = l.items.filter((i) => i.sprite.startsWith('car-'));
+      expect(car.length, shape.join('/')).toBe(1);
+      expect(car[0]!.sprite, shape.join('/')).toMatch(sprite);
+      expect(offTiles(l, car[0]!), shape.join('/')).toEqual([]);
+      expect(problems(l), shape.join('/')).toEqual([]);
     }
   });
 });
+
+/**
+ * The cells an item covers that aren't its piece's, below its over line (what rises above that
+ * line goes on the overhang, over the row behind), its feet always: none for an item that
+ * stands on its piece.
+ */
+function offTiles(l: YardLayout, it: Item): string[] {
+  const own = new Set(l.cells.map((q) => `${q.x},${q.y}`));
+  const { w, h } = artSize(it.sprite);
+  const from = Math.min(it.y + Math.max(0, h - 8), Math.max(it.y, it.over ?? it.y));
+  const off = new Set<string>();
+  for (let py = from; py < it.y + h; py++) {
+    for (let px = it.x; px < it.x + w; px++) {
+      const at = `${Math.floor(px / CELL)},${Math.floor(py / CELL)}`;
+      if (!own.has(at)) off.add(at);
+    }
+  }
+  return [...off];
+}
 
 describe('outside doors', () => {
   const rect = (it: Item) => ({ x: it.x, y: it.y, ...artSize(it.sprite) });
@@ -839,5 +875,148 @@ describe('any yard', () => {
       expect(l.cells).toEqual(cells);
       expect(problems(l)).toEqual([]);
     }
+  });
+});
+
+describe('packs (D-106): any tiles a player can click out', () => {
+  /** A step from a tile to the one beside it: east, west, south, north. */
+  const STEPS = [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+  ] as const;
+  /**
+   * A pack's tiles: grown from one tile, each next one beside a tile already out (as clicking
+   * them out goes), up to `max` of them; written as its rows (cellsToShape), as the store does.
+   */
+  const tiles = (max: number) =>
+    fc
+      .array(fc.tuple(fc.nat(), fc.integer({ min: 0, max: 3 })), { maxLength: max - 1 })
+      .map((steps) => {
+        const cells: Cell[] = [{ x: 0, y: 0 }];
+        for (const [k, d] of steps) {
+          const from = cells[k % cells.length]!;
+          const [dx, dy] = STEPS[d]!;
+          const c = { x: from.x + dx, y: from.y + dy };
+          if (!cells.some((q) => q.x === c.x && q.y === c.y)) cells.push(c);
+        }
+        return cellsToShape(cells).shape;
+      });
+
+  interface Pack {
+    readonly pack: { readonly id: PieceId; readonly shape: readonly string[] };
+    readonly rot: Rot;
+    /** Along a Bedroom's south side, this many tiles east of its west edge, or alone. */
+    readonly room: number | undefined;
+  }
+  /** A Fence (up to 8 tiles) or a Driveway (up to 6), in any turn (the Moving Truck turns one). */
+  const packs: fc.Arbitrary<Pack> = fc.record({
+    pack: fc.oneof(
+      fc.record({ id: fc.constant<PieceId>('fence'), shape: tiles(8) }),
+      fc.record({ id: fc.constant<PieceId>('driveway'), shape: tiles(6) }),
+    ),
+    rot: fc.integer({ min: 0, max: 3 }).map((r) => r as Rot),
+    // Alone, or along a Bedroom's south side, where its doors may open onto it.
+    room: fc.option(fc.integer({ min: -6, max: 1 }), { nil: undefined }),
+  });
+
+  /** The pack's layout (uid 2 beside the Bedroom, else uid 1), and the house's model. */
+  function layOut({ pack, rot, room }: Pack) {
+    const specs: Spec[] =
+      room === undefined
+        ? [[pack.id, 4, 4, rot, undefined, pack.shape]]
+        : [
+            ['bedroom', 6, 4],
+            [pack.id, 6 + room, 6, rot, undefined, pack.shape],
+          ];
+    const h = house(specs, 16);
+    const m = houseModel(h);
+    return { m, l: yardModel(h, m).pieces.get(specs.length)! };
+  }
+
+  it('lay out on their own tiles: the yard’s rules hold, and no prop stands off them', () => {
+    fc.assert(
+      fc.property(packs, (p) => {
+        const { pack } = p;
+        expect(packShapeProblem(pack.shape, CONTENT.pieces[pack.id].pack!.maxTiles)).toBeNull();
+        const { m, l } = layOut(p);
+        const where = p.room === undefined ? '' : ` by a room at ${p.room}`;
+        const name = `${pack.id} ${pack.shape.join('/')} r${p.rot}${where}`;
+        expect(l.cells.length, name).toBe(parseShape(pack.shape).length);
+        expect(problems(l), name).toEqual([]);
+        // Every prop stands on the pack's tiles below its over line, feet and all (a car's
+        // wheels, its body), and none covers a door's mat or opening.
+        for (const it of l.items) {
+          expect(offTiles(l, it), `${name}: ${it.sprite}`).toEqual([]);
+          const box = { x: it.x, y: it.y, ...artSize(it.sprite) };
+          for (const e of m.exits) {
+            expect(overlaps(box, e.mat) || overlaps(box, e.gap), `${name}: ${it.sprite}`).toBe(
+              false,
+            );
+          }
+        }
+        // Every tile of a Fence draws its pickets: a lone tile its short run, the rest their arms.
+        if (pack.id === 'fence') {
+          for (const c of l.cells) {
+            const inCell = l.items.filter(
+              (i) => Math.floor(i.x / CELL) === c.x && Math.floor(i.y / CELL) === c.y,
+            );
+            expect(
+              inCell.some((i) => i.sprite.startsWith('picket-')),
+              `${name}: ${c.x},${c.y}`,
+            ).toBe(true);
+          }
+        }
+      }),
+      { numRuns: 500 },
+    );
+  });
+
+  it('park the car on every Driveway of two tiles or more, in any turn, on its tiles', () => {
+    // Every pack of 2 to 6 tiles (each set of tiles up to where it lies), alone on the lot.
+    let shapes = [['#']];
+    for (let n = 2; n <= CONTENT.pieces.driveway.pack!.maxTiles; n++) {
+      const next = new Map<string, string[]>();
+      for (const shape of shapes) {
+        const cells = parseShape(shape);
+        for (const c of cells) {
+          for (const [dx, dy] of STEPS) {
+            const q = { x: c.x + dx, y: c.y + dy };
+            if (cells.some((r) => r.x === q.x && r.y === q.y)) continue;
+            const grown = cellsToShape([...cells, q]).shape;
+            next.set(grown.join('/'), grown);
+          }
+        }
+      }
+      shapes = [...next.values()];
+      for (const shape of shapes) {
+        for (const rot of [0, 1, 2, 3] as const) {
+          const l = yardOf(house([['driveway', 4, 4, rot, undefined, shape]], 16)).pieces.get(1)!;
+          const name = `${shape.join('/')} r${rot}`;
+          const cars = l.items.filter((i) => i.sprite.startsWith('car-'));
+          expect(cars.length, name).toBe(1);
+          expect(offTiles(l, cars[0]!), name).toEqual([]);
+          expect(problems(l), name).toEqual([]);
+        }
+      }
+    }
+    // The last round was every pack of six tiles: 216 of them.
+    expect(shapes.length).toBe(216);
+  });
+
+  it('look the same as their ghost, but for the parked car', () => {
+    fc.assert(
+      fc.property(packs, ({ pack, rot }) => {
+        const ghost = yardPieceLayout(pack.id, rot, undefined, pack.shape);
+        const placed = yardOf(house([[pack.id, 0, 0, rot, undefined, pack.shape]])).pieces.get(1)!;
+        const name = `${pack.id} ${pack.shape.join('/')} r${rot}`;
+        expect(ghost.cells, name).toEqual(placed.cells);
+        expect(ghost.box, name).toEqual(placed.box);
+        expect(ghost.ground, name).toEqual(placed.ground);
+        expect(ghost.items, name).toEqual(placed.items.filter((i) => !i.sprite.startsWith('car-')));
+      }),
+      { numRuns: 300 },
+    );
   });
 });

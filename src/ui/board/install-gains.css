@@ -12,10 +12,13 @@
   z-index: var(--z-badges);
   pointer-events: none;
 }
+/* Centered on its spot on whole device pixels by Board.tsx (useCrispBadges), which sets its
+   left, top, width and height: so no transform at rest, and its text centered in its box. */
 .host-badge {
   position: absolute;
-  transform: translate(-50%, -50%);
+  box-sizing: border-box;
   white-space: nowrap;
+  text-align: center;
   padding: 2px 4px;
   border: 2px solid var(--ink);
   background: var(--card);
@@ -48,7 +51,7 @@
 @keyframes host-badge-in {
   from {
     opacity: 0;
-    transform: translate(-50%, -50%) scale(0.6);
+    transform: scale(0.6);
   }
 }
 .reduce-motion .host-badge {

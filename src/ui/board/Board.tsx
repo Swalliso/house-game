@@ -31,7 +31,7 @@ import { busy, fxHooks, popups, setHold, skip } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
 import { shakeOffsets } from '../fx/juice.ts';
 import { formatNumber, signed } from '../format.ts';
-import { shopShown } from '../hud/actions.ts';
+import { changeOrderShown, shopShown } from '../hud/actions.ts';
 import {
   activePlay,
   demolishArmed,
@@ -86,6 +86,8 @@ import {
   furnitureSpot,
   isIndoor,
   keepInView,
+  labelLines,
+  labelRows,
   labelSpot,
   occupancy,
   startScrollTop,
@@ -679,8 +681,9 @@ export function Board() {
     // With a hair of slack: at a ratio like 125% × 80% browser zoom (1.0000000149), 1× comes out
     // a hair under 32 px and is still full size.
     px < SMALL_CELL_PX - 1e-6 ? 'small' : '',
-    // Under the shop's sheet: the water and the animated props hold still (terrain.css).
-    shopShown.value ? 'covered' : '',
+    // Under the shop's sheet or a change order's (M4b): the water and the animated props hold
+    // still (terrain.css).
+    shopShown.value || changeOrderShown.value ? 'covered' : '',
   ].join(' ');
 
   return (
@@ -822,6 +825,16 @@ function BoardLabel({
   );
 }
 
+/** The UI pixel on this screen, in CSS px (theme/pixel.ts): the labels' text is sized in it. */
+function boardUiPixel(): number {
+  return uiPixel(viewSize.value?.dpr ?? (window.devicePixelRatio || 1));
+}
+
+/** Where a one-label stack of `text` goes over `cells` (geometry.ts labelSpot, labelRows). */
+function oneLabelSpot(cells: readonly Cell[], lotW: number, px: number, text: string) {
+  return labelSpot(cells, lotW, labelRows([labelLines(text)], px, boardUiPixel()));
+}
+
 function Ghost({
   defId,
   rot,
@@ -853,10 +866,21 @@ function Ghost({
   const inside = cells.filter((cell) => cell.x >= 0 && cell.y >= 0);
   // M4b: a running restriction this placement would break. It stays legal; it just pays nothing.
   const breaks = legal && p?.breaks ? CONTENT.changeOrders[p.breaks].name : null;
+  const reason = p?.reason ?? 'Can’t build there';
+  const arrow = p && p.delta > 0 ? '▲ +' : p && p.delta < 0 ? '▼ −' : '';
+  const change = p ? `${arrow}${formatNumber(Math.abs(p.delta))} ${SCORE_LABELS.total}` : '';
+  const after = pack ? ` · ${pack}` : pending ? ' · End week to build' : '';
   // Keep the labels on the board: away from the side edges, and below the ghost at the top. A
-  // pack's next tile counts too, so its label and the ghost's stack clear of both (each label
-  // needs a row above them).
-  const rows = 1 + (legal && pack ? 1 : 0) + (next ? 1 : 0) + (breaks ? 1 : 0);
+  // pack's next tile counts too, so its label and the ghost's stack clear of both. The stack
+  // needs as many rows above them as it's tall, line by line (geometry.ts labelRows): more
+  // where cells are small, as at 0.5×, since the labels keep their size.
+  const lines = [
+    ...(!legal && inside.length > 0 ? [labelLines(`✕ ${reason}`)] : []),
+    ...(legal && p ? [pack ? 2 : labelLines(change + after)] : []),
+    ...(breaks ? [labelLines(`✕ Breaks ${breaks}`)] : []),
+    ...(next ? [labelLines(packNextText(next).join(''))] : []),
+  ];
+  const rows = labelRows(lines, px, boardUiPixel());
   const spot = labelSpot(next ? [...cells, next.cell] : cells, lot.width, rows);
   const label = { left: `${spot.x * px}px`, top: `${spot.y * px}px` };
   return (
@@ -887,14 +911,13 @@ function Ghost({
         {!legal && inside.length > 0 && (
           <div class="ghost-reason">
             <span aria-hidden="true">✕ </span>
-            {p?.reason ?? 'Can’t build there'}
+            {reason}
           </div>
         )}
         {legal && p && (
           <div class={`ghost-delta ${p.delta > 0 ? 'good' : p.delta < 0 ? 'bad' : ''}`}>
-            {p.delta > 0 ? '▲ +' : p.delta < 0 ? '▼ −' : ''}
-            {formatNumber(Math.abs(p.delta))} {SCORE_LABELS.total}
-            {pack ? ` · ${pack}` : pending ? ' · End week to build' : ''}
+            {change}
+            {after}
             {pack && <span class="ghost-then">{then}</span>}
           </div>
         )}
@@ -915,29 +938,28 @@ function Ghost({
  * reason when the pack that would leave isn't legal (a gap, too many tiles, water).
  */
 function PackNextLabel({ next }: { next: PackNext }) {
-  if (!next.legal) {
-    return (
-      <div class="ghost-reason">
-        <span aria-hidden="true">✕ </span>
-        {next.kind === 'remove' ? 'Can’t take it off: ' : ''}
-        {next.reason ?? 'It can’t go there.'}
-      </div>
-    );
-  }
-  if (next.kind === 'remove') {
-    return (
-      <div class="ghost-delta bad">
-        <span aria-hidden="true">− </span>
-        Click to take off
-      </div>
-    );
-  }
+  const [mark, text] = packNextText(next);
+  const tone = !next.legal
+    ? 'ghost-reason'
+    : next.kind === 'remove'
+      ? 'ghost-delta bad'
+      : 'ghost-delta good';
   return (
-    <div class="ghost-delta good">
-      <span aria-hidden="true">+ </span>
-      Click to add · {next.tiles} of {next.maxTiles} tiles
+    <div class={tone}>
+      <span aria-hidden="true">{mark}</span>
+      {text}
     </div>
   );
+}
+
+/** A pack's next tile's label (PackNextLabel): its mark, and its words. */
+function packNextText(next: PackNext): [mark: string, text: string] {
+  if (!next.legal) {
+    const off = next.kind === 'remove' ? 'Can’t take it off: ' : '';
+    return ['✕ ', `${off}${next.reason ?? 'It can’t go there.'}`];
+  }
+  if (next.kind === 'remove') return ['− ', 'Click to take off'];
+  return ['+ ', `Click to add · ${next.tiles} of ${next.maxTiles} tiles`];
 }
 
 /** The rooms the selected card can renovate (D-102), outlined faintly so they're easy to find. */
@@ -976,38 +998,37 @@ function RenovateTarget({ scale }: { scale: number }) {
   const cells = occ.cells.get(play.uid) ?? [];
   if (cells.length === 0) return null;
   const px = CELL * scale;
-  const spot = labelSpot(cells, lot.width);
-  const style = { left: `${spot.x * px}px`, top: `${spot.y * px}px` };
-  const below = spot.below ? 'below' : '';
   const room = occ.byUid.get(play.uid);
   const name = room ? CONTENT.pieces[room.defId].name : 'room';
   const pending = tentative.value?.t === 'renovate';
-  let label;
-  if (p.legal && p.renovates) {
-    const wow = SCORE_LABELS.total;
-    const change =
-      p.delta > 0
-        ? `▲ +${formatNumber(p.delta)} ${wow}`
-        : p.delta < 0
-          ? `▼ −${formatNumber(-p.delta)} ${wow}`
-          : `±0 ${wow}`;
-    label = (
-      <BoardLabel
-        class={`ghost-delta install-label ${p.delta > 0 ? 'good' : p.delta < 0 ? 'bad' : ''} ${below}`}
-        style={style}
-      >
-        Renovate {definite(name)} to level {p.renovates.level}: {change}
-        {pending ? ' · End week to renovate' : ''}
-      </BoardLabel>
-    );
-  } else {
-    label = (
-      <BoardLabel class={`ghost-reason ${below}`} style={style}>
-        <span aria-hidden="true">✕ </span>
-        {p.reason ?? 'It can’t be renovated.'}
-      </BoardLabel>
-    );
-  }
+  const wow = SCORE_LABELS.total;
+  const change =
+    p.delta > 0
+      ? `▲ +${formatNumber(p.delta)} ${wow}`
+      : p.delta < 0
+        ? `▼ −${formatNumber(-p.delta)} ${wow}`
+        : `±0 ${wow}`;
+  const legal = p.legal && !!p.renovates;
+  const then = pending ? ' · End week to renovate' : '';
+  const text = legal
+    ? `Renovate ${definite(name)} to level ${p.renovates!.level}: ${change}${then}`
+    : (p.reason ?? 'It can’t be renovated.');
+  const spot = oneLabelSpot(cells, lot.width, px, legal ? text : `✕ ${text}`);
+  const style = { left: `${spot.x * px}px`, top: `${spot.y * px}px` };
+  const below = spot.below ? 'below' : '';
+  const label = legal ? (
+    <BoardLabel
+      class={`ghost-delta install-label ${p.delta > 0 ? 'good' : p.delta < 0 ? 'bad' : ''} ${below}`}
+      style={style}
+    >
+      {text}
+    </BoardLabel>
+  ) : (
+    <BoardLabel class={`ghost-reason ${below}`} style={style}>
+      <span aria-hidden="true">✕ </span>
+      {text}
+    </BoardLabel>
+  );
   return (
     <>
       <Outline
@@ -1035,48 +1056,44 @@ function InstallTarget({ scale }: { scale: number }) {
   const hover = hoverCell.value;
   const cells: readonly Cell[] = p.cells.length > 0 ? p.cells : hover ? [hover] : [];
   if (cells.length === 0) return null;
-  const spot = labelSpot(cells, lot.width);
-  const style = { left: `${spot.x * px}px`, top: `${spot.y * px}px` };
-  const below = spot.below ? 'below' : '';
   const sel = selection.value;
   const name = sel?.kind === 'fixture' ? CONTENT.fixtures[sel.id].name : 'fixture';
   const pending = tentative.value?.t === 'install';
   const armed = installArmed.value === play.uid && play.from === 'supplies';
-  let label;
-  if (p.legal) {
-    const wow = SCORE_LABELS.total;
-    const change =
-      p.delta > 0
-        ? `▲ +${formatNumber(p.delta)} ${wow}`
-        : p.delta < 0
-          ? `▼ −${formatNumber(-p.delta)} ${wow}`
-          : `±0 ${wow}`;
-    const replaces = p.replaces ? ` · replaces its ${CONTENT.fixtures[p.replaces].name}` : '';
-    const then = pending
-      ? ' · End week to install'
-      : play.from === 'supplies'
-        ? armed
-          ? ' · click again to install'
-          : ' · free: click twice'
-        : '';
-    label = (
-      <BoardLabel
-        class={`ghost-delta install-label ${p.delta > 0 ? 'good' : p.delta < 0 ? 'bad' : ''} ${below}`}
-        style={style}
-      >
-        {name}: {change}
-        {replaces}
-        {then}
-      </BoardLabel>
-    );
-  } else {
-    label = (
-      <BoardLabel class={`ghost-reason ${below}`} style={style}>
-        <span aria-hidden="true">✕ </span>
-        {p.reason ?? 'It doesn’t go there.'}
-      </BoardLabel>
-    );
-  }
+  const wow = SCORE_LABELS.total;
+  const change =
+    p.delta > 0
+      ? `▲ +${formatNumber(p.delta)} ${wow}`
+      : p.delta < 0
+        ? `▼ −${formatNumber(-p.delta)} ${wow}`
+        : `±0 ${wow}`;
+  const replaces = p.replaces ? ` · replaces its ${CONTENT.fixtures[p.replaces].name}` : '';
+  const then = pending
+    ? ' · End week to install'
+    : play.from === 'supplies'
+      ? armed
+        ? ' · click again to install'
+        : ' · free: click twice'
+      : '';
+  const text = p.legal
+    ? `${name}: ${change}${replaces}${then}`
+    : (p.reason ?? 'It doesn’t go there.');
+  const spot = oneLabelSpot(cells, lot.width, px, p.legal ? text : `✕ ${text}`);
+  const style = { left: `${spot.x * px}px`, top: `${spot.y * px}px` };
+  const below = spot.below ? 'below' : '';
+  const label = p.legal ? (
+    <BoardLabel
+      class={`ghost-delta install-label ${p.delta > 0 ? 'good' : p.delta < 0 ? 'bad' : ''} ${below}`}
+      style={style}
+    >
+      {text}
+    </BoardLabel>
+  ) : (
+    <BoardLabel class={`ghost-reason ${below}`} style={style}>
+      <span aria-hidden="true">✕ </span>
+      {text}
+    </BoardLabel>
+  );
   return (
     <>
       <Outline
@@ -1094,14 +1111,48 @@ function InstallTarget({ scale }: { scale: number }) {
 const MARK_CLEARANCE = 20;
 
 /**
+ * Puts each `[data-x]` badge in `ref`'s element on whole device pixels, centered on its spot
+ * (data-x, data-y, in CSS px): as wide and tall as its text needs, rounded up to whole device
+ * pixels, its corner on one. A badge as wide as its text, centered by a transform, would land
+ * half a device pixel off and blur its ink ring. Measured after each render, before the
+ * browser paints, like BoardLabel's nudge.
+ */
+function useCrispBadges(ref: { readonly current: HTMLElement | null }, dpr: number): void {
+  useLayoutEffect(() => {
+    const els = [...(ref.current?.querySelectorAll<HTMLElement>('[data-x]') ?? [])];
+    for (const el of els) {
+      el.style.width = '';
+      el.style.height = '';
+    }
+    // The border box's size (box-sizing: border-box), whatever transform its pop-in is at.
+    const sizes = els.map((el) => {
+      const cs = getComputedStyle(el);
+      return [parseFloat(cs.width), parseFloat(cs.height)] as const;
+    });
+    els.forEach((el, i) => {
+      const [w, h] = sizes[i]!;
+      const W = Math.ceil(w * dpr - 1e-6) / dpr;
+      const H = Math.ceil(h * dpr - 1e-6) / dpr;
+      el.style.width = `${W}px`;
+      el.style.height = `${H}px`;
+      el.style.left = `${Math.round((Number(el.dataset.x) - W / 2) * dpr) / dpr}px`;
+      el.style.top = `${Math.round((Number(el.dataset.y) - H / 2) * dpr) / dpr}px`;
+    });
+  });
+}
+
+/**
  * D-107: while a fixture is selected, every legal host wears what installing it there does to
  * this week's Wow, net of any fixture it would replace (the rules' installGains, computed once
  * per selection), and the best one, if it gains, gets a ★ and a gold ring (install-gains.css).
  * The host being looked at (under the pointer, armed, or waiting for End week) has
  * InstallTarget's label instead; a host the preview marks as helping or hurting it keeps its
- * badge below that mark. Inside the board, so its layer (--z-badges) applies.
+ * badge below that mark. Inside the board, so its layer (--z-badges) applies; on whole device
+ * pixels (useCrispBadges).
  */
 function HostBadges({ scale }: { scale: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useCrispBadges(ref, viewSize.value?.dpr ?? (window.devicePixelRatio || 1));
   const gains = installGains.value;
   const sel = selection.value;
   if (gains.length === 0 || sel?.kind !== 'fixture') return null;
@@ -1120,7 +1171,7 @@ function HostBadges({ scale }: { scale: number }) {
   const best = Math.max(...gains.map((g) => g.gain));
   // A new selection mounts them afresh, so they pop in again.
   return (
-    <div key={`${sel.from}-${sel.i}-${sel.id}`} class="host-badges" aria-hidden="true">
+    <div ref={ref} key={`${sel.from}-${sel.i}-${sel.id}`} class="host-badges" aria-hidden="true">
       {gains.map((g) => {
         const cells = occ.cells.get(g.uid);
         if (!cells) return null;
@@ -1132,7 +1183,8 @@ function HostBadges({ scale }: { scale: number }) {
           <div
             key={g.uid}
             class={`host-badge ${tone} ${star ? 'best' : ''} ${g.uid === looking ? 'current' : ''}`}
-            style={{ left: `${(spot.x + 0.5) * px}px`, top: `${top}px` }}
+            data-x={(spot.x + 0.5) * px}
+            data-y={top}
           >
             {star ? '★ ' : ''}
             {g.gain > 0 ? '▲ ' : g.gain < 0 ? '▼ ' : ''}
@@ -1162,7 +1214,7 @@ function ToolTarget({ scale }: { scale: number }) {
   const action = toolAction.value;
   const armed = !!toolArmed.value;
   const label = (cells: readonly Cell[], text: string, tone: string) => {
-    const spot = labelSpot(cells, lot.width);
+    const spot = oneLabelSpot(cells, lot.width, px, text);
     return (
       <BoardLabel
         class={`ghost-delta install-label ${tone} ${spot.below ? 'below' : ''}`}
@@ -1285,36 +1337,32 @@ function DemolishTarget({ scale }: { scale: number }) {
   );
   if (cells.length === 0) return hint || null;
 
-  const spot = labelSpot(cells, lot.width);
+  const wow = SCORE_LABELS.total;
+  const change =
+    d.delta < 0
+      ? ` · ▼ −${formatNumber(-d.delta)} ${wow}/week`
+      : d.delta > 0
+        ? ` · ▲ +${formatNumber(d.delta)} ${wow}/week`
+        : '';
+  const name = targetName(d.target);
+  const verb = armed ? `Click again to demolish ${definite(name)}` : `Demolish ${name}`;
+  const text = d.legal
+    ? `${verb}${change}${breaksText(d.setsLost)}`
+    : (d.reason ?? 'That can’t be demolished.');
+  const spot = oneLabelSpot(cells, lot.width, px, d.legal ? text : `✕ ${text}`);
   const style = { left: `${spot.x * px}px`, top: `${spot.y * px}px` };
   const below = spot.below ? 'below' : '';
-  let label;
-  if (d.legal) {
-    const wow = SCORE_LABELS.total;
-    const change =
-      d.delta < 0
-        ? ` · ▼ −${formatNumber(-d.delta)} ${wow}/week`
-        : d.delta > 0
-          ? ` · ▲ +${formatNumber(d.delta)} ${wow}/week`
-          : '';
-    const name = targetName(d.target);
-    const text = armed ? `Click again to demolish ${definite(name)}` : `Demolish ${name}`;
-    const tone = d.delta < 0 ? 'bad' : d.delta > 0 ? 'good' : '';
-    label = (
-      <BoardLabel class={`ghost-delta demolish-label ${tone} ${below}`} style={style}>
-        {text}
-        {change}
-        {breaksText(d.setsLost)}
-      </BoardLabel>
-    );
-  } else {
-    label = (
-      <BoardLabel class={`ghost-reason ${below}`} style={style}>
-        <span aria-hidden="true">✕ </span>
-        {d.reason ?? 'That can’t be demolished.'}
-      </BoardLabel>
-    );
-  }
+  const tone = d.delta < 0 ? 'bad' : d.delta > 0 ? 'good' : '';
+  const label = d.legal ? (
+    <BoardLabel class={`ghost-delta demolish-label ${tone} ${below}`} style={style}>
+      {text}
+    </BoardLabel>
+  ) : (
+    <BoardLabel class={`ghost-reason ${below}`} style={style}>
+      <span aria-hidden="true">✕ </span>
+      {text}
+    </BoardLabel>
+  );
   return (
     <>
       {hint}

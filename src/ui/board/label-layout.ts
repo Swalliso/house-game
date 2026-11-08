@@ -24,9 +24,12 @@
 // same way, never onto the digit or the other badge, or stays put.
 //
 // A Renovated room's level (D-102) is one more badge, a star per level side by side, after the
-// ⚠ in the top row (or under it, or a column of stars in a room one cell wide): only where it
-// fits on the room's own cells, inside its walls and clear of everything above. Elsewhere it's
-// left out, since the Inspect panel states the level in words.
+// ⚠ in the top row (or under it, or a column of stars in a room one cell wide; or under the
+// fixture's badge, or in another top corner, an L's other arm): only where it fits on the
+// room's own cells, inside its walls and clear of everything above, what the labels keep off
+// included. It's placed last and moves nothing. Where only a smaller one fits it shrinks, as the
+// other badges do, never below minBadge; where none fits it's left out, since the Inspect panel
+// states the level in words.
 
 import type { Cell } from '../../rules/index.ts';
 import { cellUnit } from '../sprites.ts';
@@ -373,20 +376,36 @@ export function pieceLabels(o: LabelInput): PieceLabels {
 
   // A Renovated room's stars (D-102): one badge as tall as the others, a star per level side by
   // side with an icon pixel of paper between them, right of the ⚠ in the top row, else under
-  // it, else a column of stars (a room one cell wide). Placed last, where it fits on the room's
-  // own cells inside their walls, clear of the digit, the other badges and what the labels keep
-  // off; nowhere else, since Inspect says the level in words.
+  // it, else a column of stars (a room one cell wide); without a ⚠, in its place. Where those are
+  // taken, under the fixture's badge, or under the top's badges at the room's left, or in the top
+  // left corner of another cell along the room's top (an L's other arm). Placed last, so they
+  // move nothing, where they fit on the room's own cells inside their walls, clear of the digit,
+  // the other badges and what the labels keep off (another piece's roof, a tree's crown, a mat).
+  // Where only a smaller badge fits, a smaller one, as the other badges shrink in a tight cell,
+  // but never too small for its stars at a device pixel per icon pixel (minBadge); nowhere else,
+  // since Inspect says the level in words.
   let level: (BadgeSpot & { column: boolean }) | undefined;
   const stars = o.level ?? 0;
   if (stars > 0) {
     const one = spot(tl, BADGE_ICON.level, false);
-    // The rest of the stars, each an icon wide and an icon pixel apart (none without an icon).
-    const more = one.icon > 0 ? (stars - 1) * (BADGE_ICON.level + 1) * one.icon : 0;
-    const taken = [
-      ...keep,
-      ...(digit ? [digitBox(digit, chars)] : []),
-      ...[fixture, unmet].flatMap((b) => (b ? [place(b)!] : [])),
-    ];
+    // Its sizes, largest first: the other badges' (k device pixels per icon pixel, p of paper
+    // each side of its stars), then the same stars with less paper, then smaller stars with the
+    // same paper and less, never under minBadge. A smaller badge keeps the others' margins, so
+    // its stars fill it as theirs do.
+    const k0 = Math.round(one.icon * dpr);
+    const p0 = Math.round((one.size * dpr - (BADGE_ICON.level + 2) * k0) / 2);
+    const least = minBadge(BADGE_ICON.level, dpr);
+    const sizes: { size: number; ring: number; icon: number }[] = [];
+    for (let k = k0; k >= 1; k--) {
+      for (let p = p0; p >= 0; p--) {
+        const size = ((BADGE_ICON.level + 2) * k + 2 * p) / dpr;
+        if (size >= least - 1e-6) sizes.push({ size, ring: k / dpr, icon: k / dpr });
+      }
+    }
+    const warn = unmet && place(unmet)!;
+    const fix = fixture && place(fixture)!;
+    const placed = [fix, warn].filter((b): b is BadgeSpot => !!b);
+    const taken = [...keep, ...(digit ? [digitBox(digit, chars)] : []), ...placed];
     const e = 1e-6;
     /** Whether box `b` is on the piece's own cells, inside the walls at its edges. */
     const inside = (b: Box): boolean => {
@@ -406,28 +425,48 @@ export function pieceLabels(o: LabelInput): PieceLabels {
       }
       return true;
     };
-    const after = unmet && place(unmet)!;
-    const tries = after
-      ? [
-          { x: after.x + after.w + gap, y: after.y, column: false },
-          { x: after.x, y: after.y + after.h + gap, column: false },
-          { x: after.x, y: after.y + after.h + gap, column: true },
-        ]
-      : [
-          { x: one.x, y: one.y, column: false },
-          { x: one.x, y: one.y, column: true },
-        ];
-    for (const t of tries) {
-      // On whole device pixels before it's checked, so where it's drawn is where it fits.
-      const box = {
-        x: snap(t.x, dpr),
-        y: Math.floor(t.y * dpr + e) / dpr,
-        w: one.size + (t.column ? 0 : more),
-        h: one.size + (t.column ? more : 0),
-      };
-      if (inside(box) && !taken.some((k) => overlaps(box, k))) {
-        level = { ...box, ring: one.ring, icon: one.icon, column: t.column };
-        break;
+    /** A spot to try: its top-left corner, or its top-right with `right`. */
+    type Try = { x: number; y: number; column: boolean; right?: boolean };
+    const both = (t: Omit<Try, 'column'>): Try[] => [
+      { ...t, column: false },
+      { ...t, column: true },
+    ];
+    // The top-left corners of the room's other cells with a wall above them, top to bottom and
+    // west to east: along its top row, and an L's other arm.
+    const corners = cells
+      .filter((c) => !own.has(`${c.x},${c.y - 1}`) && !same(c, tl))
+      .sort((a, b) => a.y - b.y || a.x - b.x)
+      .map((c) => ({ x: c.x * px + inset(c, 'W') + gap, y: c.y * px + inset(c, 'N') + gap }));
+    find: for (const s of sizes) {
+      // The rest of the stars, each an icon wide and an icon pixel apart.
+      const more = (stars - 1) * (BADGE_ICON.level + 1) * s.icon;
+      const tries: Try[] = [
+        ...(warn
+          ? [
+              // Beside the ⚠, centered on it when it's the smaller.
+              { x: warn.x + warn.w + gap, y: warn.y + (warn.h - s.size) / 2, column: false },
+              ...both({ x: warn.x, y: warn.y + warn.h + gap }),
+            ]
+          : both({ x: one.x, y: one.y })),
+        ...(fix ? both({ x: fix.x + fix.w, y: fix.y + fix.h + gap, right: true }) : []),
+        ...(placed.length > 0
+          ? both({ x: one.x, y: Math.max(...placed.map((b) => b.y + b.h)) + gap })
+          : []),
+        ...corners.flatMap(both),
+      ];
+      for (const t of tries) {
+        const w = s.size + (t.column ? 0 : more);
+        // On whole device pixels before it's checked, so where it's drawn is where it fits.
+        const box = {
+          x: snap(t.right ? t.x - w : t.x, dpr),
+          y: Math.floor(t.y * dpr + e) / dpr,
+          w,
+          h: s.size + (t.column ? more : 0),
+        };
+        if (inside(box) && !taken.some((k) => overlaps(box, k))) {
+          level = { ...box, ring: s.ring, icon: s.icon, column: t.column };
+          break find;
+        }
       }
     }
   }
