@@ -93,6 +93,30 @@ describe('the greedy bot’s cheap estimate', () => {
     expect(rules.estimatePlay(s, place(0, 2, 2)).delta).toBe(exact(s, place(0, 2, 2)));
   });
 
+  it('sees a Hallway’s pay for the rooms it touches, under its cap (D-114)', () => {
+    const pay = { kind: 'neighbor', match: { property: 'room' }, amount: 2, max: 2 } as const;
+    const hallway = { ...C.pieces.hallway, effects: [...C.pieces.hallway.effects, pay] };
+    const paid = createRules({ ...C, pieces: { ...C.pieces, hallway } });
+    const est = (r: Rules, s: RunState, p: PlaceAction) => r.estimatePlay(s, p).delta;
+    const exactPaid = (s: RunState, p: PlaceAction) =>
+      paid.scoreOnly(s, p) - paid.scoreOnly(s, null);
+    // A Closet beside it: its own 1, and the Hallway's +2 for a room, which it doesn't count back.
+    const one = built([['hallway', 2, 2]], 'closet');
+    expect(est(paid, one, place(0, 2, 1))).toBe(exactPaid(one, place(0, 2, 1)));
+    expect(est(paid, one, place(0, 2, 1))).toBeGreaterThan(est(rules, one, place(0, 2, 1)));
+    // With two rooms on it already the pay is capped, so a third Closet pays only its own.
+    const two = built(
+      [
+        ['hallway', 2, 2],
+        ['closet', 2, 1],
+        ['closet', 3, 1],
+      ],
+      'closet',
+    );
+    expect(est(paid, two, place(0, 2, 3))).toBe(exactPaid(two, place(0, 2, 3)));
+    expect(est(paid, two, place(0, 2, 3))).toBe(est(rules, two, place(0, 2, 3)));
+  });
+
   it('sees rooms linked through a Hallway', () => {
     let s = onLot(emptyRows(10, 10), 'bedroom', 'longHallway', 'bathroom');
     s = playThen(s, place(0, 0, 0), 'longHallway');

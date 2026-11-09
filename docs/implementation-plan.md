@@ -1856,7 +1856,7 @@ Every Core item from `content-brainstorm.md`, written in the §5 format. Numbers
 | Dining Room | `aura [kitchen, livingRoom] +50% adjacent` | M1 |
 | Living Room | `neighbor {property viewSource} +2 max 3` | M1 |
 | Closet | `steady 1`; Suite member | M2 |
-| Hallway (1×2, 1×3) | Two cards, `connector`, `link` | M2 |
+| Hallway (1×2, 1×3) | Two cards, `connector`, `link`; `neighbor {property room} +2 max 4` (D-114) | M2 |
 | Garage | `requires {touching: [street, driveway]}` (blocks); `steady 1`; `economy 1 every 3` | M2 |
 | Home Office | `steady 2`; `neighbor {tag Loud} −2`; `economy 1 every 2` | M2 |
 

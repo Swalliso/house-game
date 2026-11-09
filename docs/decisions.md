@@ -501,7 +501,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - **Jack-and-Jill:** stays a set, and the Bathroom's own Bedroom bonus is capped at one Bedroom.
 - **Change orders:** one after each of milestones 2, 4, and 6, as `jam-scope.md` says. Requests and restrictions can be declined. Phase effects are announced and apply.
 - **Fence:** earns per tile of the fenced yards it borders (capped in total). A fenced yard needs a Fence, at least 4 tiles, no contact with the street edge, and contact with the house (D-049). *Amended by D-069 (Accepted 2026-11-05): at least 10 tiles.*
-- **Hallway:** links every room touching it, not just the rooms at its two ends.
+- **Hallway:** links every room touching it, not just the rooms at its two ends. *Extended by D-114 (Proposed 2026-11-09): it also earns +2 for each room it touches, up to 4.*
 
 **Why:** Each one fixes a contradiction or a degenerate case the design review found (see `implementation-plan.md` §2).
 **Changes:** D-013 (Accepted), by adding budget sources; D-029 (Accepted), its early-completion numbers.
@@ -1231,6 +1231,26 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 ---
 
 ## Proposed
+
+### D-114 · The Hallway experiment, step 1: Hallways pay for the rooms they touch
+**Status:** Proposed · 2026-11-09, after playtest 4 (`docs/playtests/playtest-4-findings.md` §7) and the layout session's proposal (§1, on its own branch). Built for playtest 5; the user asked for it once that session reported.
+**Decision:**
+- Both Hallway cards (the Hallway and the Long Hallway) earn **+2 Comfort for each room they touch, up to 4** (+8). It's the existing `neighbor` effect on rooms, and the link (D-046) is unchanged.
+  - Each hall counts the rooms it touches itself, each once however many tiles they share.
+  - Another Hallway isn't a room, so a run of halls doesn't pay for the rooms at the far end.
+  - The card adds "+2 per touching room (up to 4)" under the link's line.
+- No Hallway pack for now, and no new condition. If a pack comes back: complexity 3 (not 2), with this pay, and an outline rule tested on held-out seeds first.
+- If the playtest shows halls bolted along the outside, the fix is ready: the pay counts only while every tile of the hall has rooms on two or more of its sides ("between rooms").
+
+**Why:** playtest 4: Hallways felt like a punishment.
+- A link pays only when the rooms along it read their neighbors, and few do. A Hallway earned 44 Wow a copy (111 for the Long Hallway), and greedy built one in a quarter of runs.
+- With the pay, on 200 held-out seeds: 1.67 a run, in 84% of runs, about 610 Wow a copy. Wow ×1.07\*, Cozy +6\*, wins +1.5 points (within noise). The outline pays a little (H1g −7\*). (\* = the 95% interval excludes no change.)
+- The pack alone lost 9.5 points of wins\* at complexity 2; with the pay it sprawled (glance test −17.5\*); and paying only between rooms made it a dead card (−10\*).
+
+**Changes:**
+- The content (`pieces.ts`). D-046's "a Hallway isn't a neighbor for bonuses" stands.
+- The sim's cheap estimate (`estimate.ts`) now counts a Hallway's +2 when a room is placed beside it: the Hallway isn't the room's neighbor, but the room is the Hallway's. Without it, greedy missed the week's best play when that play fed a Hallway.
+- The targets aren't re-fit for this. A re-fit waits for bigger rooms (fusion), which moves the curve more.
 
 ### D-113 · Inspect holds a clicked piece, and the house rules fold into one row
 **Status:** Proposed · 2026-11-09, with the small UI pull request after playtest 4. The user picked this over collapsing the whole client panel.

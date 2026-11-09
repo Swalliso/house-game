@@ -329,7 +329,10 @@ describe('indoor rooms', () => {
   });
 
   it('Hallway: a 1×2 connector that links every room touching it, and is no neighbor', () => {
-    expectCard('hallway', ['Links the rooms it touches: they count as touching each other']);
+    expectCard('hallway', [
+      'Links the rooms it touches: they count as touching each other',
+      '+2 per touching room (up to 4)',
+    ]);
     expect(shapeOf('hallway')).toEqual({ cells: ['0,0', '1,0'], w: 2, h: 1, rotations: 2 });
     expect(CONTENT.pieces.hallway.connector).toBe(true);
     // The Bathroom touches the Hallway's side, not its end, and is still linked to the Bedroom.
@@ -339,7 +342,7 @@ describe('indoor rooms', () => {
       ['bathroom', 3, 1],
     ]);
     const layout = computeLayout(CONTENT, house);
-    expect(tallyHouse(CONTENT, layout, 1, false).pieces.map((p) => p.earned)).toEqual([3, 0, 3]);
+    expect(tallyHouse(CONTENT, layout, 1, false).pieces.map((p) => p.earned)).toEqual([3, 4, 3]);
     expect(layout.touching.get(1)!.map((n) => n.kind === 'piece' && n.uid)).toEqual([2]);
     expect(layout.neighbors.get(1)).toEqual([{ kind: 'piece', uid: 3 }]);
     // Upright works too.
@@ -349,7 +352,7 @@ describe('indoor rooms', () => {
         ['hallway', 0, 2, 1],
         ['bathroom', 0, 4],
       ]),
-    ).toEqual([3, 0, 3]);
+    ).toEqual([3, 4, 3]);
     // It's indoor, so it must join the house.
     expect(check(open, [['bedroom', 0, 0]], 'hallway', 6, 6)).toMatchObject({
       legal: false,
@@ -359,7 +362,10 @@ describe('indoor rooms', () => {
   });
 
   it('Long Hallway: a 1×3 Hallway; a connected group of Hallways links as one', () => {
-    expectCard('longHallway', ['Links the rooms it touches: they count as touching each other']);
+    expectCard('longHallway', [
+      'Links the rooms it touches: they count as touching each other',
+      '+2 per touching room (up to 4)',
+    ]);
     const def = CONTENT.pieces.longHallway;
     expect(def.countsAs).toBe('hallway');
     expect(def.connector).toBe(true);
@@ -375,8 +381,9 @@ describe('indoor rooms', () => {
         ['longHallway', 2, 0],
         ['diningRoom', 5, 0],
       ]),
-    ).toEqual([3, 0, 0]);
-    // The Kitchen touches only the Long Hallway and the Dining Room only the short one.
+    ).toEqual([3, 4, 0]);
+    // The Kitchen touches only the Long Hallway and the Dining Room only the short one. Each
+    // hall pays for the rooms it touches itself; the other hall isn't a room.
     expect(
       earned(open, [
         ['kitchen', 0, 0],
@@ -384,7 +391,19 @@ describe('indoor rooms', () => {
         ['hallway', 4, 1, 1],
         ['diningRoom', 5, 1],
       ]),
-    ).toEqual([3, 0, 0, 0]);
+    ).toEqual([3, 2, 2, 0]);
+  });
+
+  it('Hallways pay +2 for each room they touch, up to 4 (D-114)', () => {
+    const hall: Placement = ['longHallway', 1, 1];
+    const closets = (...cells: [number, number][]) =>
+      cells.map(([x, y]): Placement => ['closet', x, y]);
+    // Three Closets along it: +6. Five: capped at four rooms, +8.
+    expect(earned(open, [hall, ...closets([1, 0], [2, 0], [3, 0])])[0]).toBe(6);
+    expect(earned(open, [hall, ...closets([1, 0], [2, 0], [3, 0], [1, 2], [2, 2])])[0]).toBe(8);
+    // A room counts once however many tiles it touches, and a Hallway on its end isn't a room.
+    const e = earned(open, [hall, ['bedroom', 1, 2], ['hallway', 4, 1]]);
+    expect([e[0], e[2]]).toEqual([2, 0]);
   });
 
   it('Garage: needs the house, and the street or a Driveway; 1, and +1 budget every 3rd week', () => {

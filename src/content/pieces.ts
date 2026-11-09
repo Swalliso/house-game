@@ -126,7 +126,12 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     drawWeight: 10,
     complexity: 3,
     fromPhase: 0,
-    effects: [{ kind: 'link' }],
+    // D-114 (playtest 4): a link alone paid almost nothing, so the hall pays for the rooms it
+    // touches too. Connectors still aren't neighbors to other pieces (D-046).
+    effects: [
+      { kind: 'link' },
+      { kind: 'neighbor', match: { property: 'room' }, amount: 2, max: 4 },
+    ],
   },
   longHallway: {
     id: 'longHallway',
@@ -140,7 +145,12 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     drawWeight: 10,
     complexity: 3,
     fromPhase: 0,
-    effects: [{ kind: 'link' }],
+    // D-114 (playtest 4): a link alone paid almost nothing, so the hall pays for the rooms it
+    // touches too. Connectors still aren't neighbors to other pieces (D-046).
+    effects: [
+      { kind: 'link' },
+      { kind: 'neighbor', match: { property: 'room' }, amount: 2, max: 4 },
+    ],
   },
   garage: {
     id: 'garage',
