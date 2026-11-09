@@ -1,5 +1,6 @@
 // A cheap local estimate of a placement's change to the week's total (implementation-plan.md
-// §4, Performance): the new piece's own earnings plus its neighbors' changes, from the house's
+// §4, Performance): the new piece's own earnings plus its neighbors' changes (and the changes of
+// the Hallways it touches: they aren't its neighbors, but it's theirs), from the house's
 // layout as it stands, with no new layout built, and the checklist lines the piece would turn
 // on or off. The greedy bot ranks every candidate by it and runs the exact scoreOnly() on the
 // top few only. It's a ranking, not a score: it ignores sets, links, views, Dark, and fenced
@@ -66,13 +67,16 @@ export interface ChecklistCtx {
   phase: number;
 }
 
-/** The new piece's distinct physical neighbors, from the current layout (Trees under it are gone). */
+/**
+ * The new piece's distinct neighbors for scoring, from the current layout (Trees under it are
+ * gone), and the connectors it touches, which aren't its neighbors though it is theirs.
+ */
 function neighborsOf(
   content: Content,
   layout: Layout,
   def: PieceDef,
   cells: readonly Cell[],
-): Neighbor[] {
+): { neighbors: Neighbor[]; connectors: number[] } {
   const { lot } = layout.house;
   const { width: w, height: h } = lot;
   const own = new Set(cells.map((c) => cellIndex(w, c.x, c.y)));
@@ -106,10 +110,12 @@ function neighborsOf(
   const linked = new Set<number>();
   const seen = new Set<number>();
   const stack: number[] = [];
+  const connectors: number[] = [];
   for (const uid of uids) {
     const d = pieceDef(content, layout.byUid.get(uid)!);
     if (!d.connector) continue;
     uids.delete(uid);
+    connectors.push(uid);
     if (isRoom(def) && d.effects.some((e) => e.kind === 'link') && !seen.has(uid)) {
       seen.add(uid);
       stack.push(uid);
@@ -134,7 +140,7 @@ function neighborsOf(
     .map((uid): Neighbor => ({ kind: 'piece', uid }));
   if (street) out.push(street);
   out.push(...tiles.values());
-  return out;
+  return { neighbors: out, connectors };
 }
 
 /** Does a selector match the piece being placed? Layout-dependent terms are approximated. */
@@ -202,11 +208,19 @@ export function estimatePlay(
   mods: readonly ActiveMod[] = [],
   checklist?: ChecklistCtx,
 ): Estimate {
-  const neighbors = neighborsOf(content, layout, def, cells);
+  const { neighbors, connectors } = neighborsOf(content, layout, def, cells);
   const sunny = countIn(layout, cells, REGION_BIT.sunny) > 0;
   const scoreOf = new Map(tally.pieces.map((p) => [p.uid, p]));
   const matchN = (sel: Selector) =>
     neighbors.filter((n) => matchesNeighbor(content, layout, sel, n)).length;
+  /** What a placed piece's effect gains from the new piece as a neighbor, under its cap. */
+  const gain = (uid: number, e: PieceDef['effects'][number]): number => {
+    if (e.kind !== 'neighbor' || !matchesNew(content, layout, e.match, def, cells, sunny)) return 0;
+    const already = (layout.neighbors.get(uid) ?? []).filter((m) =>
+      matchesNeighbor(content, layout, e.match, m),
+    ).length;
+    return e.max === undefined || already < e.max ? e.amount : 0;
+  };
 
   // The new piece's own points.
   let points = 0;
@@ -284,12 +298,7 @@ export function estimatePlay(
       ) {
         pct += e.pct ?? 0;
         points += e.amount ?? 0;
-      } else if (e.kind === 'neighbor' && matchesNew(content, layout, e.match, def, cells, sunny)) {
-        const already = (layout.neighbors.get(n.uid) ?? []).filter((m) =>
-          matchesNeighbor(content, layout, e.match, m),
-        ).length;
-        if (e.max === undefined || already < e.max) dPoints += e.amount;
-      }
+      } else dPoints += gain(n.uid, e);
     }
     if (!blocked) {
       for (const e of def.effects) {
@@ -306,6 +315,15 @@ export function estimatePlay(
     if (dPoints !== 0 || dPct !== 0) {
       delta += earnedFor(score.points + dPoints, score.pct + dPct) - score.earned;
     }
+  }
+  // The Hallways it touches count it, though it doesn't count them: their pay for the rooms
+  // they touch (D-114).
+  for (const uid of connectors) {
+    const score = scoreOf.get(uid);
+    if (!score || score.unmet) continue;
+    let dPoints = 0;
+    for (const e of pieceDef(content, layout.byUid.get(uid)!).effects) dPoints += gain(uid, e);
+    if (dPoints !== 0) delta += earnedFor(score.points + dPoints, score.pct) - score.earned;
   }
   if (!blocked) delta += earnedFor(points, pct);
 

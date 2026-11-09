@@ -118,8 +118,21 @@ describe('the greedy bot', () => {
     // An 8 × 4 house at 2:1 (two Living Rooms, the Kitchen, the Dining Room, and Hallways)
     // with Trees down both sides. A Bedroom earns most beside the Trees, but there the box
     // grows to 10 × 4, and Under one roof's +0.25 Mult is worth more than the Trees. A
-    // corner, or a row above or below, keeps it.
-    const rows = emptyRows(16, 12).map((r, y) => (y >= 4 && y <= 7 ? `.T${'.'.repeat(12)}T.` : r));
+    // corner, or a row above or below, keeps it. The Hallways only link here, as before D-114,
+    // so nothing but the Trees pulls; with their pay, see the end.
+    const linkOnly = (id: 'hallway' | 'longHallway') => ({
+      ...CONTENT.pieces[id],
+      effects: [{ kind: 'link' as const }],
+    });
+    const pieces = {
+      ...CONTENT.pieces,
+      hallway: linkOnly('hallway'),
+      longHallway: linkOnly('longHallway'),
+    };
+    const r = createRules({ ...CONTENT, pieces });
+    const rows = emptyRows(16, 12).map((row, y) =>
+      y >= 4 && y <= 7 ? `.T${'.'.repeat(12)}T.` : row,
+    );
     const s: RunState = {
       ...newRun('roof'),
       house: houseFrom(CONTENT, rows, [
@@ -135,24 +148,31 @@ describe('the greedy bot', () => {
       ]),
       hand: (['bedroom', 'bedroom', 'bedroom'] as const).map((id) => ({ kind: 'piece', id })),
     };
-    expect(rules.checklist(s).find((l) => l.id === 'underOneRoof')?.met).toBe(true);
-    const keeps = (p: PlaceAction) => !rules.preview(s, p).specsLost.includes('underOneRoof');
-    const plays = rules.legalPlacements(s);
+    expect(r.checklist(s).find((l) => l.id === 'underOneRoof')?.met).toBe(true);
+    const keeps = (p: PlaceAction) => !r.preview(s, p).specsLost.includes('underOneRoof');
+    const plays = r.legalPlacements(s);
     let best = -Infinity;
-    for (const p of plays) best = Math.max(best, rules.scoreOnly(s, p));
+    for (const p of plays) best = Math.max(best, r.scoreOnly(s, p));
     // Ranked as if there were no checklist, the shortlist is all Bedrooms by the Trees.
     const hendersons = { ...CONTENT.clients.hendersons, specs: [] };
-    const blind = createRules({ ...CONTENT, clients: { ...CONTENT.clients, hendersons } });
+    const blind = createRules({ ...CONTENT, pieces, clients: { ...CONTENT.clients, hendersons } });
     const salt = stream('roof', 'shortlist').u32();
     const blindList = shortlist(blind, s, plays, salt);
     expect(blindList.some(keeps)).toBe(false);
-    expect(Math.max(...blindList.map((p) => rules.scoreOnly(s, p)))).toBeLessThan(best);
+    expect(Math.max(...blindList.map((p) => r.scoreOnly(s, p)))).toBeLessThan(best);
     // Seeing the line, the estimate ranks a keeper first, and greedy builds the week's best.
-    expect(keeps(rankPlays(rules, s, plays, salt)[0]!.play)).toBe(true);
-    const act = greedy.act(rules, s, stream('roof', 'act'));
+    expect(keeps(rankPlays(r, s, plays, salt)[0]!.play)).toBe(true);
+    const act = greedy.act(r, s, stream('roof', 'act'));
     expect(act).toMatchObject({ t: 'place', from: 'hand' });
     expect(keeps(act as PlaceAction)).toBe(true);
-    expect(rules.scoreOnly(s, act as PlaceAction)).toBe(best);
+    expect(r.scoreOnly(s, act as PlaceAction)).toBe(best);
+    // With the pay, a Bedroom under the hall row keeps the line and pays the Hallway it
+    // touches. The estimate sees the Hallway's +2, so greedy builds that, the week's best.
+    const paid = greedy.act(rules, s, stream('roof', 'act')) as PlaceAction;
+    const paidBest = Math.max(...plays.map((p) => rules.scoreOnly(s, p)));
+    expect(keeps(paid)).toBe(true);
+    expect(paid.y).toBe(8);
+    expect(rules.scoreOnly(s, paid)).toBe(paidBest);
   });
 
   it('sees the real checklists’ count, ratio, outline, and variety lines flip exactly', () => {

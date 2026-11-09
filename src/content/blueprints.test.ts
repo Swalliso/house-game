@@ -430,11 +430,12 @@ describe('Country Living', () => {
 describe('Mood Lighting', () => {
   it('Dark rooms earn +100%: interior ones, or any with Blackout Curtains', () => {
     expectText('moodLighting', ['Dark rooms earn +100%']);
-    // The interior Bedroom doubles; an exterior one at the top doesn't. Hallways aren't rooms.
+    // The interior Bedroom doubles; an exterior one at the top doesn't. Hallways aren't rooms,
+    // so their own +2 for the Bedroom (D-114) doesn't double.
     const placements: Placement[] = [...INTERIOR, ['bedroom', 6, 0]];
     expect(withAndWithout('moodLighting', open, placements)).toEqual([
-      [3, 0, 0, 0, 0, 3],
-      [6, 0, 0, 0, 0, 3],
+      [3, 2, 2, 2, 2, 3],
+      [6, 2, 2, 2, 2, 3],
     ]);
     // Blackout Curtains make the exterior one Dark: 3 at +125% is 6.75 → 7.
     const curtains = build(open, placements, { installs: [[6, 'blackoutCurtains']] });
