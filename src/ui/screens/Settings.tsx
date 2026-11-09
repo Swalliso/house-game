@@ -1,5 +1,6 @@
 // Settings (§12, Settings and accessibility, from M1): tally speed, Reduce motion, screen
-// shake, volume, and (M5a) the readable font. Flashing and the music slider come with M5.
+// shake, volume, (M4) showing the first-time hints again (D-045), and (M5a) the readable font.
+// Flashing and the music slider come with M5.
 //
 // M5a draws it as a wood sheet with the kit's pixel controls, grouped as the UI audit asked:
 // the game, motion, sound, and the display.
@@ -7,9 +8,29 @@
 import type { ComponentChildren } from 'preact';
 import { FEEL } from '../fx/feel.ts';
 import { settingsOpen } from '../hud/actions.ts';
+import { resetHints, seenHints } from '../hud/FirstHints.tsx';
 import { Button, Segmented, Sheet, Slider, Switch } from '../kit/kit.tsx';
 import { settings, updateSettings } from '../settings.ts';
 import './settings.css';
+
+/**
+ * Shows the first-time hints again. Its button goes disabled with nothing left to show, which
+ * would drop the keyboard's place to the page, so focus moves on to the sheet's next control.
+ */
+function showHintsAgain(e: MouseEvent): void {
+  const button = e.currentTarget as HTMLElement;
+  if (document.activeElement === button) {
+    const controls = [
+      ...(button
+        .closest('.sheet')
+        ?.querySelectorAll<HTMLElement>(
+          'button:not(:disabled), input:not(:disabled), select:not(:disabled), [tabindex="0"]',
+        ) ?? []),
+    ];
+    controls[controls.indexOf(button) + 1]?.focus();
+  }
+  resetHints();
+}
 
 function Group({ title, children }: { title: string; children: ComponentChildren }) {
   return (
@@ -48,6 +69,17 @@ export function SettingsPanel() {
         <p class="set-note">
           Hold Space or the right mouse button to speed up a tally; click to skip it.
         </p>
+        <div class="set-row">
+          <span class="set-label">First-time hints</span>
+          <Button
+            size="sm"
+            disabled={seenHints.value.size === 0}
+            onClick={showHintsAgain}
+            title="Each first-time hint shows again when its moment comes"
+          >
+            Show them again
+          </Button>
+        </div>
       </Group>
       <Group title="Motion">
         <Switch

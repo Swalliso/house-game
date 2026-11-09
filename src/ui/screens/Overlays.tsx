@@ -2,17 +2,23 @@
 // (D-047). The run-end screen is in EndScreen.tsx.
 //
 // M5a draws them in the pixel style: the milestone's banner is a ribbon stamped in, gold for a
-// milestone met and orange for one missed or in overtime; notes and toasts sit at the top
-// center, under the top bar, or inside the shop's sheet under its header, so they never cover
-// the goods or the hand. While a banner is up, and once the run is over, they sit just under it
-// or the board's "It's a house." sign (both in that spot) instead, so both read. A toast raised
-// while a sheet or the menu is open (Copy run code, from the menu) shows over it instead, under
-// where the sign is when it's there.
+// milestone met and orange for one missed or in overtime (M4's arrivals get a plank with the
+// House icon instead, so they never read as a milestone); notes and toasts sit at the top
+// center, under the top bar, or inside the shop's sheet under its header (or a change order's,
+// M4), so they never cover the goods, the hand or the sheet. While a banner is up, and once the
+// run is over, they sit just under it or the board's "It's a house." sign (both in that spot)
+// instead, so both read. A toast raised while a sheet or the menu is open (Copy run code, from
+// the menu) shows over it instead, under where the sign is when it's there.
+//
+// M4: a note goes once the run moves on from where it came up (a week played, the shop, a
+// change order), or with its Dismiss.
 
+import { effect } from '@preact/signals';
+import type { RefObject } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { banner, busy, flash, played, skip } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
-import { anyModalOpen, copyFallback, copyText, shopShown, toast } from '../hud/actions.ts';
+import { anyModalOpen, copyFallback, copyText, notesDocked, toast } from '../hud/actions.ts';
 import { Button, Icon, Sheet } from '../kit/kit.tsx';
 import { appScreen, notice, run } from '../store.ts';
 import './overlays.css';
@@ -30,7 +36,7 @@ export function MilestoneBanner() {
         onClick={() => (banner.value = null)}
       >
         <div class="banner-ribbon">
-          <Icon name={b.tone === 'good' ? 'star' : 'warn'} />
+          <Icon name={b.tone === 'good' ? 'star' : b.tone === 'note' ? 'House' : 'warn'} />
           <span class="banner-title">{b.title}</span>
         </div>
         {b.detail && <p class="banner-detail">{b.detail}</p>}
@@ -67,6 +73,23 @@ export function TargetFlash() {
   );
 }
 
+/** Where the run stood when the note on screen came up (M4). */
+let noteAt: { note: object; week: number; screen: string } | null = null;
+
+// A note ("Replayed 58 actions.") goes once the run moves on from where it came up: a week
+// played, the shop, a change order (M4). A module-level effect, not a hook in Notes: Notes
+// renders in more than one place (at the top, docked in the shop, under the banner or the
+// sign), and tests call it and EndCaption in place, outside a render, so both stay hook-free.
+// It runs as the signals change, so a note about a run being loaded must come once that run is
+// in place: raised before, the load's new week or screen would take it away.
+effect(() => {
+  const n = notice.value;
+  const { week, screen } = run.value;
+  if (!n) return;
+  if (noteAt?.note !== n) noteAt = { note: n, week, screen };
+  else if (noteAt.week !== week || noteAt.screen !== screen) notice.value = null;
+});
+
 /**
  * The run is over and the board shows its "It's a house." sign (EndCaption, EndScreen.tsx):
  * once the last tally and the run-end banner have played, since the banner sits in the same
@@ -85,31 +108,39 @@ export function endSignShown(): boolean {
 /**
  * Where notes and toasts sit when it isn't the top center of the board: just under the board's
  * "It's a house." sign once the run is over, or the milestone's banner while it's up, since both
- * sit in that spot (null while the shop's sheet docks them, and on the title).
+ * sit in that spot (null while the shop's or a change order's sheet docks them, and on the
+ * title).
  */
 export function notesUnder(): 'sign' | 'banner' | null {
-  if (appScreen.value !== 'game' || shopShown.value) return null;
+  if (appScreen.value !== 'game' || notesDocked.value) return null;
   if (endSignShown()) return 'sign';
   return banner.value ? 'banner' : null;
 }
 
 /**
  * Notes and toasts, at the top center under the top bar. While the shop's sheet is open they
- * sit inside it instead (`docked`, rendered by the shop), under its header, and while the
- * milestone's banner is up or once the run is over, under it or the board's "It's a house."
- * sign (`under`, rendered by the banner and the sign), so neither covers them. A toast waits in
- * ModalToast while a sheet or the menu is open.
+ * sit inside it instead (`docked`, rendered by the shop), under its header, as they do in a
+ * change order's sheet (M4, ChangeOrderScreen.tsx); and while the milestone's banner is up or
+ * once the run is over, under it or the board's "It's a house." sign (`under`, rendered by the
+ * banner and the sign), so neither covers them. A toast waits in ModalToast while a sheet or
+ * the menu is open.
+ *
+ * A sheet that holds the keyboard on its text (the change order's) passes that text as
+ * `refocus`: a note's Dismiss puts focus back there, by mouse or keyboard, rather than let it
+ * fall to the page with the button it removes.
  */
 export function Notes({
   docked = false,
   under = null,
+  refocus,
 }: {
   docked?: boolean;
   under?: 'sign' | 'banner' | null;
+  refocus?: RefObject<HTMLElement>;
 }) {
   const n = notice.value;
   const t = anyModalOpen() ? null : toast.value;
-  if (docked !== shopShown.value || under !== notesUnder() || (!n && !t)) return null;
+  if (docked !== notesDocked.value || under !== notesUnder() || (!n && !t)) return null;
   return (
     <div class={`notes ui ${docked ? 'docked' : ''} ${under ? `under-${under}` : ''}`}>
       {n && (
@@ -130,7 +161,10 @@ export function Notes({
             iconOnly
             icon="close"
             class="notice-close"
-            onClick={() => (notice.value = null)}
+            onClick={() => {
+              notice.value = null;
+              refocus?.current?.focus({ preventScroll: true });
+            }}
             aria-label="Dismiss"
             title="Dismiss"
           />

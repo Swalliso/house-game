@@ -1,8 +1,9 @@
 // The run-end sign, the milestone's banner and the notes (playtest 5a): once the run is over,
 // the replay's note and "Run code copied" sit just under the board's "It's a house." sign, in
 // its column, instead of over it, and while a banner is up they sit just under it. Otherwise,
-// and on the title, notes stay where they were (D-098). Also the stats' icon slots, which line
-// their labels up.
+// and on the title, notes stay where they were (D-098). A note goes once the run moves on from
+// the week and screen it came up in (M4). Also the stats' icon slots, which line their labels
+// up.
 
 import type { ComponentChildren, VNode } from 'preact';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -145,6 +146,31 @@ describe('notes and the run-end sign', () => {
     notice.value = { text: 'That run couldn’t start.' };
     expect(endSignShown()).toBe(false);
     expect(Notes({})).not.toBeNull();
+  });
+});
+
+describe('a note, as the run moves on (M4)', () => {
+  it('stays through its week and goes once the week is played', () => {
+    over('build');
+    notice.value = { text: 'Replayed 4 actions.' };
+    // The run changing within its week and screen (a cheat's budget) leaves it.
+    run.value = { ...run.value, budget: run.value.budget + 1 };
+    expect(notice.value?.text).toBe('Replayed 4 actions.');
+    run.value = { ...run.value, week: run.value.week + 1 };
+    expect(notice.value).toBeNull();
+    expect(Notes({})).toBeNull();
+  });
+
+  it('goes once the screen moves on, and a note raised there stays until it moves again', () => {
+    over('build');
+    notice.value = { text: 'That piece can’t go there.' };
+    run.value = { ...run.value, screen: 'changeOrder' };
+    expect(notice.value).toBeNull();
+    notice.value = { text: 'A note about the order' };
+    run.value = { ...run.value, budget: run.value.budget + 1 };
+    expect(notice.value?.text).toBe('A note about the order');
+    run.value = { ...run.value, screen: 'shop' };
+    expect(notice.value).toBeNull();
   });
 });
 

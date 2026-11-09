@@ -441,10 +441,10 @@ describe('a real M3a run replays exactly from its run code', () => {
         replaced: supplyId,
       },
     ]);
-    // The strike held: no Fence or L-Fence in any hand drawn after it.
+    // The strike held: no Fence in any hand drawn after it.
     const later = p.events.slice(p.at.strike + 1).flat();
     for (const e of eventsOf(later, 'handDrawn')) {
-      expect(e.hand.filter((c) => c.id === 'fence' || c.id === 'lFence')).toEqual([]);
+      expect(e.hand.filter((c) => c.id === 'fence')).toEqual([]);
     }
     expect(p.final).toMatchObject({ screen: 'build', phase: 1, slot: 2, debug: true });
     expect(rules.checkPlay(p.final, p.pending).legal).toBe(true);

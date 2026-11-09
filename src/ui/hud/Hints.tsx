@@ -1,13 +1,17 @@
 // The controls strip along the bottom (M5a): the keys for what you're doing now, as keycaps,
 // instead of every shortcut at once. How to play lists them all. On a short window it sits
 // under the board only, so the side columns keep their height, and drops the hints marked
-// .hint-extra.
+// .hint-extra. M4's keys are here too: a change order's sheet (Enter accepts, Esc or D
+// declines one that can be declined), a pack's tiles (D-106), and a Renovation (D-102).
+//
+// No hooks, here or in what it renders: hints.test.tsx calls Hints() in place.
 
 import type { ComponentChildren } from 'preact';
+import { CONTENT, rules } from '../../rules/index.ts';
 import { isFit } from '../board/camera.ts';
 import { busy } from '../fx/director.ts';
 import { Keycap } from '../kit/kit.tsx';
-import { run, selected, tentative, tool } from '../store.ts';
+import { movingUid, renovateUids, run, selected, selection, tentative, tool } from '../store.ts';
 import { shopHidden } from './actions.ts';
 import './hints.css';
 
@@ -67,6 +71,18 @@ export function Hints() {
         <Hint keys={['Click']}>skip to the result</Hint>
       </>
     );
+  } else if (s.screen === 'changeOrder') {
+    // A change order's sheet (M4b) takes only its own keys: F does nothing there. A phase
+    // effect can't be declined, so Esc and D do nothing on one either.
+    hints =
+      (rules.changeOrderOffer(s)?.declinable ?? true) ? (
+        <>
+          <Hint keys={['Enter']}>accept</Hint>
+          <Hint keys={['Esc', 'D']}>decline: it costs nothing</Hint>
+        </>
+      ) : (
+        <Hint keys={['Enter']}>got it</Hint>
+      );
   } else if (s.screen === 'shop') {
     // The sheet covers the lot, so F only means something once the shop is hidden.
     hints = shopHidden.value ? (
@@ -88,14 +104,34 @@ export function Hints() {
       </>
     );
   } else if (selected.value !== null) {
+    const sel = selection.value;
+    const pending = tentative.value;
+    // A pack (D-106) is clicked out a tile at a time, so it never turns, and nor does a room
+    // waiting to be renovated (D-102); the Moving Truck turns the piece it carries (as the
+    // Rotate button does: Hand.tsx).
+    const pack = sel?.kind === 'piece' && !!CONTENT.pieces[sel.id].pack;
+    const turns =
+      (sel?.kind === 'piece' && !pack && pending?.t !== 'renovate') ||
+      (sel?.kind === 'tool' && movingUid.value !== null);
+    const click = pack
+      ? pending
+        ? 'add or take off a tile'
+        : 'the first tile'
+      : pending
+        ? 'move it'
+        : renovateUids.value.length > 0
+          ? 'place, or renovate an outlined room'
+          : 'place';
     hints = (
       <>
-        <Hint keys={['R']}>rotate</Hint>
+        {turns && <Hint keys={['R']}>rotate</Hint>}
         <Hint keys={['Click']} extra>
-          {tentative.value ? 'move it' : 'place'}
+          {click}
         </Hint>
-        <Hint keys={['Enter']}>end the week</Hint>
-        <Hint keys={['Esc']}>{tentative.value ? 'pick it up' : 'put it back'}</Hint>
+        <Hint keys={['Enter']}>{pending?.t === 'renovate' ? 'renovate it' : 'end the week'}</Hint>
+        <Hint keys={['Esc']}>
+          {pack && pending ? 'clear the tiles' : pending ? 'pick it up' : 'put it back'}
+        </Hint>
       </>
     );
   } else {

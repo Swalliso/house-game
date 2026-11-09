@@ -8,7 +8,7 @@
 //   piece's own cells (outbuildings' roofs, the Treehouse, a Birdhouse's box)
 // - highlights: the tally's active piece, a set's members, the placement's new sets, and each
 //   piece's flash, as outlines (never CSS filters on whole pieces)
-// - labels: each piece's digit and its fixture and ⚠ badges, inside its walls
+// - labels: each piece's digit and its fixture, ⚠ and Renovate level badges, inside its walls
 //
 // The canvases redraw only when the house changes: never on hover, a tally step, or zoom
 // (zoom only changes their CSS size), and before the browser paints, so a new room's floor and
@@ -46,7 +46,8 @@ import {
 } from '../art/house-paint.ts';
 import { itemRows, roomItems, roomLayout, type Item } from '../art/rooms.ts';
 import { risingParts, yardPieceLayout, type YardModel } from '../art/yard.ts';
-import { highlighted, justPlaced, played, tallyView } from '../fx/director.ts';
+import { highlighted, justPlaced, justRenovated, played, tallyView } from '../fx/director.ts';
+import { FEEL } from '../fx/feel.ts';
 import { settings } from '../settings.ts';
 import { atlasImage, CELL, FIXTURE_ICONS, spriteStyle } from '../sprites.ts';
 import { ICON_SIZES, type IconName } from '../theme/art.ts';
@@ -522,13 +523,76 @@ function Badge({
 }
 
 /**
+ * A Renovated room's stars (D-102): one badge, a star per level (label-layout.ts places it),
+ * which pops when the director plays the Renovation (justRenovated), once per id, so remounting
+ * the game screen doesn't replay it.
+ */
+function LevelStars({
+  uid,
+  level,
+  spot,
+}: {
+  uid: number;
+  level: number;
+  spot: BadgeSpot & { readonly column: boolean };
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const pop = justRenovated.value?.uid === uid ? justRenovated.value.id : 0;
+  useLayoutEffect(() => {
+    if (!pop || pop <= played.levelPop || !ref.current || settings.value.reduceMotion) return;
+    played.levelPop = pop;
+    ref.current.animate(
+      [
+        { transform: `scale(${FEEL.levelPop.scale})` },
+        { transform: 'scale(0.9)' },
+        { transform: 'scale(1)' },
+      ],
+      { duration: FEEL.levelPop.ms, easing: 'ease-out' },
+    );
+  }, [pop]);
+  const { w, h } = ICON_SIZES.star;
+  const label = `Renovated: level ${level}`;
+  return (
+    <div
+      ref={ref}
+      class="board-badge level-badge"
+      title={label}
+      aria-label={label}
+      style={{
+        left: `${spot.x}px`,
+        top: `${spot.y}px`,
+        width: `${spot.w}px`,
+        height: `${spot.h}px`,
+        borderWidth: `${spot.ring}px`,
+        gap: `${spot.icon}px`,
+        flexDirection: spot.column ? 'column' : 'row',
+      }}
+    >
+      {spot.icon > 0 &&
+        Array.from({ length: level }, (_, k) => (
+          <span
+            key={k}
+            class="board-badge-icon"
+            style={{
+              width: `${w * spot.icon}px`,
+              height: `${h * spot.icon}px`,
+              backgroundImage: 'var(--art-icon-star)',
+            }}
+          />
+        ))}
+    </div>
+  );
+}
+
+/**
  * Each piece's labels: its weekly score in its bottom-right cell (or, while a tally plays, what
- * it earned in the week being tallied), its fixture's badge top right, and a ⚠ top left when a
- * requirement isn't met (it earns nothing then). Inside the room's walls, and never over the
- * digit (label-layout.ts): a badge that shares the digit's cell moves up over the wall band. They
- * keep off another piece's prop that rises into the piece's cells (a Greenhouse's roof), a tree's
- * crown that does, and the doors' mats where they can. `seed` is the run's: which tree grows where
- * (TerrainLayer's).
+ * it earned in the week being tallied), its fixture's badge top right, a ⚠ top left when a
+ * requirement isn't met (it earns nothing then), and a Renovated room's stars after the ⚠ where
+ * they fit (Inspect states the level where they don't). Inside the room's walls, and never over
+ * the digit (label-layout.ts): a badge that shares the digit's cell moves up over the wall band.
+ * They keep off another piece's prop that rises into the piece's cells (a Greenhouse's roof), a
+ * tree's crown that does, and the doors' mats where they can. `seed` is the run's: which tree
+ * grows where (TerrainLayer's).
  */
 export function LabelsLayer({
   house,
@@ -587,6 +651,7 @@ export function LabelsLayer({
           digit: shown === undefined ? null : String(shown).length,
           fixture: badged,
           unmet: !!score?.unmet,
+          level: piece.level ?? 0,
           keepOff: keepOff(piece.uid),
         });
         const fixture = piece.fixture ? CONTENT.fixtures[piece.fixture.id] : null;
@@ -607,6 +672,9 @@ export function LabelsLayer({
                 class="unmet-badge"
                 label={`Earns nothing: it must be ${score.unmet}`}
               />
+            )}
+            {l.level && !!piece.level && (
+              <LevelStars uid={piece.uid} level={piece.level} spot={l.level} />
             )}
             {shown !== undefined && l.digit && (
               <Digit
@@ -637,13 +705,19 @@ export interface PieceArtPlan {
   readonly paint: (atlas: AtlasPixels) => Pixels | null;
 }
 
-export function pieceArtPlan(defId: PieceId, rot: Rot, look?: PieceLook): PieceArtPlan {
+export function pieceArtPlan(
+  defId: PieceId,
+  rot: Rot,
+  look?: PieceLook,
+  /** A pack's own tiles (D-106), when they aren't the card's shape. */
+  shape?: readonly string[],
+): PieceArtPlan {
   if (isIndoor(defId)) {
-    const model = pieceModel(defId, rot, look);
+    const model = pieceModel(defId, rot, look, shape);
     const frame = { x: 0, y: 0, w: model.width * CELL, h: model.height * CELL };
     return { frame, paint: (a: AtlasPixels) => paintPiece(model, a, roomItems(model, 1)) };
   }
-  const layout = yardPieceLayout(defId, rot, look);
+  const layout = yardPieceLayout(defId, rot, look, shape);
   let x0 = layout.box.x;
   let y0 = layout.box.y;
   let x1 = layout.box.x + layout.box.w;
@@ -695,11 +769,13 @@ export function paintPieceArt(canvas: HTMLCanvasElement | null, plan: PieceArtPl
  * The piece being placed (or carried by the Moving Truck), drawn by the same painters as the
  * house for that piece alone: a room with its own outline walls and no doors, a yard piece with
  * its ground and props (and whatever rises above its cells), and the placement's tint over its
- * cells. Redrawn only when the piece or its rotation changes; moving it is CSS.
+ * cells. Redrawn only when the piece, its rotation or a pack's tiles (D-106) change; moving it is
+ * CSS.
  */
 export function GhostPiece({
   defId,
   rot,
+  shape,
   cells,
   scale,
   look,
@@ -707,6 +783,8 @@ export function GhostPiece({
 }: {
   defId: PieceId;
   rot: Rot;
+  /** A pack's tiles (D-106): the play's or the carried piece's shape, not the card's. */
+  shape?: readonly string[] | undefined;
   cells: readonly Cell[];
   scale: number;
   /**
@@ -720,9 +798,11 @@ export function GhostPiece({
   const px = CELL * scale;
   const minX = Math.min(...cells.map((c) => c.x));
   const minY = Math.min(...cells.map((c) => c.y));
+  // A pack's tiles change with every click while its card stays the same: they're in the key.
+  const shapeKey = shape?.join('/');
   const art = useMemo(
-    () => pieceArtPlan(defId, rot, look),
-    [defId, rot, look?.color, look?.flip, look?.fixture],
+    () => pieceArtPlan(defId, rot, look, shape),
+    [defId, rot, shapeKey, look?.color, look?.flip, look?.fixture],
   );
   const { frame } = art;
   const bw = Math.max(...cells.map((c) => c.x)) - minX + 1;

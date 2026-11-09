@@ -6,10 +6,14 @@
 // (Modern Exteriors cuts, art/limezu/ui.json); a car driving by (parked with Reduce motion);
 // and the menu as an "Open House" real-estate sign on a post, its buttons hanging below it
 // like the sign's riders. Everything in the scene is drawn at the street's whole-pixel scale.
+//
+// M4: Start opens the job board (D-032, D-045), which stands on the same scene (TitleBackdrop),
+// and Continue says whose house the saved run is (D-110).
 
 import './title.css';
+import type { ComponentChildren } from 'preact';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
-import { rules, SCORE_LABELS } from '../../rules/index.ts';
+import { CONTENT, rules, SCORE_LABELS } from '../../rules/index.ts';
 import { audio } from '../audio/audio.ts';
 import { blobTile, E, S, SE, SUB, SUBTILE, SW, W } from '../board/autotile.ts';
 import { streetScale } from '../board/geometry.ts';
@@ -29,7 +33,7 @@ import { Button } from '../kit/kit.tsx';
 import { settings } from '../settings.ts';
 import { atlasImage, CELL, spritePos, spriteStyle, type SpriteId } from '../sprites.ts';
 import { SCENERY_SIZES, type SceneryName } from '../theme/art.ts';
-import { canContinue, continueRun, newRun, run } from '../store.ts';
+import { canContinue, continueRun, openJobBoard, run } from '../store.ts';
 
 /** What the save holds, for the Continue button: "Framing, week 10 · 1,240 Wow". */
 function savedRunLine(): string {
@@ -37,11 +41,15 @@ function savedRunLine(): string {
   return `${rules.phaseName(s.phase)}, week ${s.week} · ${formatNumber(s.score)} ${SCORE_LABELS.total}`;
 }
 
+/** Whose house the save is (M4): "For the Hendersons", "For Count Vladislav". */
+function savedClientLine(): string | null {
+  const name = CONTENT.clients[run.value.setup.clientId]?.name;
+  return name ? `For ${name.replace(/^The\s/, 'the ')}` : null;
+}
+
 export function Title() {
   const saved = canContinue.value;
   const menu = useRef<HTMLElement>(null);
-  const { w, h, dpr } = useViewport();
-  const scale = streetScale(h, dpr);
 
   // The primary button (the first rider) takes focus, so Enter starts (or continues) right away.
   useEffect(() => {
@@ -55,20 +63,11 @@ export function Title() {
   const onStart = () => {
     audio.unlock();
     if (saved && !window.confirm('Start a new run? The run in progress will be lost.')) return;
-    newRun();
+    openJobBoard();
   };
 
   return (
-    <div
-      class="title-screen ui"
-      style={{
-        '--scene': `${scale}px`,
-        '--horizon': `${(STREET_H + LAWN_ROWS * CELL) * scale}px`,
-        '--plant': `${(STREET_H + PLANT) * scale}px`,
-      }}
-    >
-      <Sky />
-      <Scene w={w} scale={scale} />
+    <TitleBackdrop>
       <main class="title-stage">
         <div class="sign">
           <span class="sign-post" aria-hidden="true" />
@@ -83,6 +82,7 @@ export function Title() {
                 <Button variant="primary" size="lg" class="title-main" onClick={onContinue}>
                   <span class="title-main-text">
                     Continue
+                    <span class="title-detail">{savedClientLine()}</span>
                     <span class="title-detail">{savedRunLine()}</span>
                   </span>
                 </Button>
@@ -117,6 +117,36 @@ export function Title() {
           </a>
         </span>
       </footer>
+    </TitleBackdrop>
+  );
+}
+
+/**
+ * The title's scene, with what stands on it: the sky, the lawn and its houses, and the street
+ * with its car, at the street's whole-pixel scale (--scene, --horizon and --plant). The job
+ * board stands on it too (M4, JobBoard.tsx), so Start leads to the same street.
+ */
+export function TitleBackdrop({
+  class: cls,
+  children,
+}: {
+  class?: string;
+  children?: ComponentChildren;
+}) {
+  const { w, h, dpr } = useViewport();
+  const scale = streetScale(h, dpr);
+  return (
+    <div
+      class={`title-screen ui ${cls ?? ''}`}
+      style={{
+        '--scene': `${scale}px`,
+        '--horizon': `${(STREET_H + LAWN_ROWS * CELL) * scale}px`,
+        '--plant': `${(STREET_H + PLANT) * scale}px`,
+      }}
+    >
+      <Sky />
+      <Scene w={w} scale={scale} />
+      {children}
     </div>
   );
 }

@@ -6,8 +6,8 @@
 //   mown stripes, a Patio's pavers, a Driveway's concrete and its curb cut through the sidewalk
 //   where it meets the street, a Pool's and a Hot Tub's water inside their coping, and the soil,
 //   straw or hearth under a Sapling, a Henhouse's run or a Fire Pit. A flat piece has a darker 1 px
-//   edge, softer where it meets another piece of its kind (two Lawns, a Driveway and a Long
-//   Driveway): touching pieces read as one patch, and each stays countable (D-093's note).
+//   edge, softer where it meets another piece of its kind (two Lawns, two Driveways): touching
+//   pieces read as one patch, and each stays countable (D-093's note).
 // - Items, the DOM sprites that wobble with their piece (like a room's furniture): a Patio's
 //   parasol, chairs and table (under the Pergola when it has one), the house's one parked car on
 //   its oldest Driveway with room for it, a Fence's pickets and posts, a Pool's ladder and float,
@@ -28,6 +28,11 @@
 // post at each end and turn. Where an end of one Fence meets another, their lines join (a corner,
 // a T); end to end, each keeps its end post, so each stays countable; side by side along their
 // lengths they stay two fences, not a grid. A Fence's ghost is the Fence alone.
+//
+// Fences and Driveways are packs (D-106): each is the tiles its player clicked out
+// (PlacedPiece.shape), so they're laid out from their own cells, never the card's shape. A lone
+// Fence tile is a short run with a post at each end; the car stands only on its Driveway's own
+// tiles, in whichever row or column of a ragged pack holds it (D-111).
 
 import {
   CONTENT,
@@ -132,14 +137,21 @@ export type Look = PieceLook;
 
 /**
  * One yard piece alone, for the ghost: in its own frame (its bounding box's top-left cell is
- * (0, 0)), in the color and with the fixture `look` gives it (pieceLook, newPieceLook), with no
- * curb cut and no parked car (the house has one, on the oldest Driveway with room for it).
+ * (0, 0)), in the color and with the fixture `look` gives it (pieceLook, newPieceLook), in a
+ * pack's own tiles (D-106) when `own` gives them, with no curb cut and no parked car (the house
+ * has one, on the oldest Driveway with room for it).
  */
-export function yardPieceLayout(defId: PieceId, rot: Rot, look: Look = { color: 0 }): YardLayout {
-  const key = `${defId}:${rot}:${look.color}:${look.fixture ?? ''}`;
+export function yardPieceLayout(
+  defId: PieceId,
+  rot: Rot,
+  look: Look = { color: 0 },
+  /** A pack's own tiles (PlacedPiece.shape), when they aren't the card's shape. */
+  own?: readonly string[],
+): YardLayout {
+  const key = `${defId}:${rot}:${own?.join('/') ?? ''}:${look.color}:${look.fixture ?? ''}`;
   let l = solo.get(key);
   if (!l) {
-    const shape = CONTENT.pieces[defId].shape;
+    const shape = own ?? CONTENT.pieces[defId].shape;
     const w = rot % 2 === 0 ? shape[0]!.length : shape.length;
     const h = rot % 2 === 0 ? shape.length : shape[0]!.length;
     const house: HouseState = {
@@ -159,6 +171,7 @@ export function yardPieceLayout(defId: PieceId, rot: Rot, look: Look = { color: 
           y: 0,
           rot,
           placedWeek: 0,
+          ...(own ? { shape: own } : {}),
           ...(look.fixture ? { fixture: { id: look.fixture, week: 0 } } : {}),
         },
       ],
@@ -173,7 +186,11 @@ export function yardPieceLayout(defId: PieceId, rot: Rot, look: Look = { color: 
 // ---------------------------------------------------------------------------------------
 // Building.
 
-/** A piece's family for seams: a Driveway and a Long Driveway are one kind, as are the Fences. */
+/**
+ * A piece's family for seams and joins: the type it counts as. No yard piece counts as another
+ * now (D-106's packs took the place of the Long Driveway and the L-Fence), so it's the piece's
+ * own type: two Driveways' concrete meets in a seam, and two Fences join.
+ */
 function kind(id: PieceId): PieceId {
   return CONTENT.pieces[id].countsAs ?? id;
 }
@@ -393,6 +410,8 @@ class Yard {
   readonly ground: Ground[] = [];
   readonly items: Item[] = [];
   fixtureShown: boolean;
+  /** Each of its columns' top edge (its first own cell's), in lot art px. */
+  private readonly tops = new Map<number, number>();
 
   constructor(p: PlacedPiece, cells: readonly Cell[], ctx: YardCtx) {
     this.p = p;
@@ -409,8 +428,21 @@ class Yard {
       w: (Math.max(...xs) + 1 - bx) * CELL,
       h: (Math.max(...ys) + 1 - by) * CELL,
     };
+    for (const c of cells) this.tops.set(c.x, Math.min(this.tops.get(c.x) ?? Infinity, c.y * CELL));
     // Garden Lights fit any yard piece (lights()); the others are drawn by their piece's layout.
     this.fixtureShown = !p.fixture || p.fixture.id === 'gardenLights';
+  }
+
+  /**
+   * The line an item `w` art px wide at x rises over (done()): its columns' highest top edge, or
+   * the piece's own top where none of its columns is the piece's. Above it, the overhang layer.
+   */
+  overLine(x: number, w: number): number {
+    let over = Infinity;
+    for (let cx = Math.floor(x / CELL); cx <= Math.floor((x + w - 1) / CELL); cx++) {
+      over = Math.min(over, this.tops.get(cx) ?? Infinity);
+    }
+    return over === Infinity ? this.box.y : over;
   }
 
   get fixture(): FixtureId | undefined {
@@ -432,6 +464,29 @@ class Yard {
     const foot = { x, y: y + Math.max(0, h - 8), w, h: Math.min(h, 8) };
     if (this.ctx.keepOut.some((k) => overlaps(foot, k))) return false;
     return !this.ctx.doors.some((d) => overlaps({ x, y, w, h }, d));
+  }
+
+  /**
+   * Whether a sprite with its top-left at (x, y) stands on this piece's own cells: all of it
+   * below its over line (overLine), which stays under the walls, feet and all; above that line it
+   * rises over the row behind by `rise` art px at most (a side-on car's roof). A pack's free-form
+   * tiles (D-106) can leave a spot that fits its box with its wheels on the grass beside it, or
+   * its roof over a tile of grass inside the pack's outline (a T's corners).
+   */
+  standsOnOwn(sprite: Item['sprite'], x: number, y: number, rise = 0): boolean {
+    const { w, h } = artSize(sprite);
+    const over = this.overLine(x, w);
+    if (over - y > rise) return false;
+    for (
+      let cy = Math.floor(Math.max(y, over) / CELL);
+      cy <= Math.floor((y + h - 1) / CELL);
+      cy++
+    ) {
+      for (let cx = Math.floor(x / CELL); cx <= Math.floor((x + w - 1) / CELL); cx++) {
+        if (!this.ctx.own(cx, cy)) return false;
+      }
+    }
+    return true;
   }
 
   /** Places a sprite with its top-left at (x, y), unless it would stand on a keep-out or a door. */
@@ -518,16 +573,9 @@ class Yard {
   }
 
   done(): YardLayout {
-    const top = new Map<number, number>();
-    for (const c of this.cells) top.set(c.x, Math.min(top.get(c.x) ?? Infinity, c.y * CELL));
     const items = this.items.map((it) => {
       // The rows above its piece's own cells in its columns rise over them (the overhang layer).
-      const { w } = artSize(it.sprite);
-      let over = Infinity;
-      for (let cx = Math.floor(it.x / CELL); cx <= Math.floor((it.x + w - 1) / CELL); cx++) {
-        over = Math.min(over, top.get(cx) ?? Infinity);
-      }
-      if (over === Infinity) over = this.box.y;
+      const over = this.overLine(it.x, artSize(it.sprite).w);
       return it.y < over ? { ...it, over } : it;
     });
     // Back to front: by bottom edge, then west to east.
@@ -672,10 +720,8 @@ const LAYOUTS: Partial<Record<PieceId, (y: Yard) => void>> = {
   },
 
   driveway: (y) => driveway(y),
-  longDriveway: (y) => driveway(y),
 
   fence: (y) => fence(y),
-  lFence: (y) => fence(y),
 
   pool: (y) => {
     poolTiles(y);
@@ -765,7 +811,15 @@ const LAYOUTS: Partial<Record<PieceId, (y: Yard) => void>> = {
   },
 };
 
-/** A Driveway: concrete, and the house's parked car if it's this one. */
+/**
+ * A Driveway: concrete, and the house's parked car if it's this one. The car parks only on the
+ * Driveway's own concrete (Yard.standsOnOwn): a pack clicked out ragged (D-106) parks it in
+ * another row or column of its tiles where the first spots don't hold it, nose in where it
+ * runs across but only its stem is long enough (a T's), or side on where it runs up and down but
+ * only a row is wide enough. A single tile is too small for it and parks none, and the house's
+ * car goes to its next Driveway with room (build()); any two tiles or more hold it, a door's mat
+ * allowing. A straight one parks as it always has.
+ */
 function driveway(y: Yard): void {
   y.tiles('yard-concrete');
   y.edge(EDGE.concrete);
@@ -773,26 +827,44 @@ function driveway(y: Yard): void {
   const { x, y: top, w, h } = y.box;
   // Orange or grey: never the Garage's blue or red (rooms.ts), so it reads as a second car.
   const color = 2 + (y.hash % 2);
-  if (!y.across) {
-    // Nose in, away from the street: its back to the viewer; further down where its north end
-    // holds a door's mat.
+  /**
+   * Parks the car there if it stands on the Driveway's tiles (its roof `rise` px over the row
+   * behind) and off the doors.
+   */
+  const park = (sprite: SpriteId, cx: number, cy: number, rise = 0) =>
+    y.standsOnOwn(sprite, cx, cy, rise) && y.put(sprite, cx, cy);
+  // Nose in, away from the street: its back to the viewer; further down where its north end
+  // holds a door's mat. Down its west column first, then each column east of it; all of it on
+  // the concrete.
+  const noseIn = (): boolean => {
     const sprite = `car-rear-${color}` as SpriteId;
-    for (let dy = 5; dy <= h - artSize(sprite).h; dy += CELL / 2) {
-      if (y.put(sprite, x, top + dy)) return;
+    for (let cx = x; cx < x + w; cx += CELL) {
+      for (let dy = 5; dy <= h - artSize(sprite).h; dy += CELL / 2) {
+        if (park(sprite, cx, top + dy)) return true;
+      }
     }
-  } else {
-    // Side on, facing the house if one end of it touches the house, or by its hash; at its other
-    // end, then along it, where a door opens onto the first.
+    return false;
+  };
+  // Side on, facing the house if one end of it touches the house, or by its hash; at its other
+  // end, then along it, where a door opens onto the first. Along its front row first, then each
+  // row behind it, its roof over the row behind (a car is 37 px tall).
+  const sideOn = (): boolean => {
     const east = y.ctx.toward ?? (y.hash >>> 1) % 2 === 1;
     const sprite = `car-${east ? 'right' : 'left'}-${color}` as SpriteId;
-    const cy = top + h - 37 - 1;
+    const roof = artSize(sprite).h + 1 - CELL;
     const near = east ? x + w - 61 - 3 : x + 3;
     const far = east ? x + 3 : x + w - 61 - 3;
     const along = Array.from({ length: Math.max(0, (w - 64) / (CELL / 2)) }, (_, i) =>
       east ? near - (i + 1) * (CELL / 2) : near + (i + 1) * (CELL / 2),
     );
-    for (const cx of [near, ...along, far]) if (y.put(sprite, cx, cy)) return;
-  }
+    for (let row = top + h - CELL; row >= top; row -= CELL) {
+      for (const cx of [near, ...along, far]) if (park(sprite, cx, row - roof, roof)) return true;
+    }
+    return false;
+  };
+  if (y.across) {
+    if (!sideOn()) noseIn();
+  } else if (!noseIn()) sideOn();
 }
 
 /**
@@ -800,7 +872,8 @@ function driveway(y: Yard): void {
  * out to the cell's edge at the fence's ends, and a post at each end and turn. Its arms join
  * another Fence's where an end of one meets the other (a corner, a T, or end to end), so fences
  * that meet read as one line; side by side along their lengths they stay two. Where two meet
- * end to end, each keeps its end post, so each stays countable.
+ * end to end, each keeps its end post, so each stays countable. A cell with no arms at all (a
+ * one-tile pack, D-106) is a short run across, with a post at each end.
  */
 function fence(y: Yard): void {
   const { masks } = y.ctx.fence;
@@ -818,7 +891,7 @@ function fence(y: Yard): void {
     // there (that turn's post marks the joint).
     const endPost = (bit: number, nx: number, ny: number, axis: number) =>
       !(own & bit) && (!(m & bit) || (mask(nx, ny) & ~axis) === 0);
-    const across = (e || w) && !n && !s;
+    const across = ((e || w) && !n && !s) || m === 0;
     const upright = (n || s) && !e && !w;
     // Across: pickets the cell's width, ends out to its edge with a post.
     if (across || w) y.put('picket-run', X, Y + 8);

@@ -5,14 +5,29 @@
 // M5a draws it as a wood sheet: each section under a plank tag, the formula as the score
 // panel's own plaques, each set as a picture of its pieces, the free actions with their
 // icons, and the keys as keycaps.
+//
+// M4 (D-110): the client and their checklist (the house rules, the tastes, the household's
+// arrivals), the crews, packs, Renovate, and change orders, with their numbers from the
+// content and the glossary, and their keys under Controls.
 
 import './howto.css';
 import { Fragment, type ComponentChildren } from 'preact';
-import { CONTENT, rules, SCORE_LABELS, type PieceId, type SetDef } from '../../rules/index.ts';
+import {
+  CONTENT,
+  glossary,
+  multNumber,
+  rules,
+  SCORE_LABELS,
+  type PieceId,
+  type SetDef,
+} from '../../rules/index.ts';
 import { howToPlayOpen } from '../hud/actions.ts';
 import { PieceArt } from '../hud/PieceArt.tsx';
 import { Button, Icon, Keycap, Plaque, Sheet, type IconName } from '../kit/kit.tsx';
+import { CREW_ICONS } from '../sprites.ts';
 import { run } from '../store.ts';
+
+const GLOSSARY = glossary(CONTENT);
 
 /** Rendered always; it shows itself while howToPlayOpen is set. */
 export function HowToPlay() {
@@ -99,10 +114,18 @@ function either(names: readonly string[]): string {
   return `${the.slice(0, -1).join(', ')} or ${the[the.length - 1]}`;
 }
 
+/** "A, B, and C" from a list of names, as the rules' text lists them. */
+function all(names: readonly string[]): string {
+  if (names.length <= 2) return names.join(' and ');
+  return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
+}
+
 const CONTROLS: readonly (readonly [keys: string, does: string])[] = [
   ['1–3', 'Pick a card'],
   ['R or right-click', 'Rotate'],
   ['Click', 'Place'],
+  // M4: a pack's tiles (D-106).
+  ['Click a tile again', 'Take it off a Fence or Driveway'],
   ['Enter', 'End week'],
   ['D', 'Demolish'],
   ['Mouse wheel', 'Zoom'],
@@ -111,6 +134,9 @@ const CONTROLS: readonly (readonly [keys: string, does: string])[] = [
   ['Hold Space', 'Speed up the tally'],
   ['Click', 'Skip the tally'],
   ['Esc', 'Cancel'],
+  // M4: a change order's sheet (D-109).
+  ['Enter', 'Accept a change order'],
+  ['Esc or D', 'Decline a change order'],
 ];
 
 function HowToPlayText() {
@@ -125,6 +151,21 @@ function HowToPlayText() {
   const sets = either(Object.values(CONTENT.sets).map((set) => set.name));
   const L = SCORE_LABELS;
   const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+  // M4: the client's checklist, packs, change orders, and the crews.
+  const houseRules = CONTENT.clients[s.setup.clientId].specs.filter(
+    (spec) => spec.group !== 'wishes',
+  ).length;
+  const perLine = multNumber(rules.rule(s, 'specBonus'));
+  const fenceTiles = CONTENT.pieces.fence.pack?.maxTiles;
+  const drivewayTiles = CONTENT.pieces.driveway.pack?.maxTiles;
+  const orderMilestones = all(
+    b.changeOrderAfter.flatMap((k) => (phases[k - 1] ? [phases[k - 1]!.name] : [])),
+  );
+  const pays = Object.values(CONTENT.changeOrders).flatMap((o) =>
+    o.kind !== 'phase' && o.reward.budget ? [o.reward.budget] : [],
+  );
+  const [payLow, payHigh] = [Math.min(...pays), Math.max(...pays)];
+  const crews = Object.values(CONTENT.crews).filter((c) => c.tier === 'core');
 
   return (
     <>
@@ -159,6 +200,13 @@ function HowToPlayText() {
           <li>
             Pick 1 of {hand} cards, place it on the lot, then press <b>End week</b>.
           </li>
+          {fenceTiles && drivewayTiles && (
+            <li>
+              <b>A Fence or a Driveway</b> is a pack: click out its tiles one by one, up to{' '}
+              {fenceTiles} Fence tiles, or {drivewayTiles} Driveway tiles that reach the street or a
+              Driveway. Click a tile again to take it off. It builds as one piece.
+            </li>
+          )}
           <li>Every piece you've built earns again every week, so early pieces keep paying.</li>
           <li>
             Nothing helps? <b>Pass</b>: press End week twice to place nothing.
@@ -199,6 +247,57 @@ function HowToPlayText() {
             <SetPicture key={set.id} set={set} />
           ))}
         </div>
+      </Section>
+
+      <Section title="Your client" icon="check">
+        <ul>
+          <li>
+            Start opens the job board: pick 1 of {b.jobBoard.contracts} clients, each with a lot of
+            their own, then your crew.
+          </li>
+          <li>
+            <b>Their checklist</b> starts with {houseRules} house rules (the household, the shape,
+            the yard), then their own wishes. Each line adds +{perLine} {L.mult} in every week it
+            holds. Hover a line to see what it needs.
+          </li>
+          <li>
+            <b>Their tastes:</b> <Icon name="up" label="Likes" /> pieces they like earn more,{' '}
+            <Icon name="down" label="Dislikes" /> ones they dislike earn less, and{' '}
+            <Icon name="reroll" label="Draws" /> some come up more often.
+          </li>
+          <li>
+            <b>Their household grows:</b> the job board says who moves in, and when. At the start of
+            that phase, their cards wait in your reserve. Their room counts as a Bedroom, and Room
+            for everyone needs it from then on.
+          </li>
+        </ul>
+      </Section>
+
+      <Section title="Your crew" icon="weekendCrew">
+        <p class="howto-note">
+          Picked after the client. It changes what you draw and what pays, all run.
+        </p>
+        <dl class="howto-actions">
+          {crews.map((c) => (
+            <Fragment key={c.id}>
+              <dt>
+                <Icon name={CREW_ICONS[c.id]} />
+                {c.name}
+              </dt>
+              <dd>{c.blurb}</dd>
+            </Fragment>
+          ))}
+        </dl>
+      </Section>
+
+      <Section title="Renovate" icon="star">
+        <ul>
+          <li>{GLOSSARY.renovate.text}</li>
+          <li>
+            While you hold such a card, the rooms it can renovate are outlined: click one, then End
+            week. Inspect shows each room's level.
+          </li>
+        </ul>
       </Section>
 
       <Section title="The lot" icon="Outdoor">
@@ -286,6 +385,26 @@ function HowToPlayText() {
           </li>
         </ul>
       </Section>
+
+      {orderMilestones && pays.length > 0 && (
+        <Section title="Change orders" icon="mail">
+          <ul>
+            <li>
+              After the {orderMilestones} milestones, before the shop, the client changes their
+              mind.
+            </li>
+            <li>
+              <b>A request or a restriction</b> runs through the next phase: see it through for +
+              {payLow === payHigh ? payLow : `${payLow}–${payHigh}`} budget. Declining costs
+              nothing.
+            </li>
+            <li>
+              <b>A phase effect</b> can't be declined: it changes what earns until the next
+              milestone.
+            </li>
+          </ul>
+        </Section>
+      )}
 
       <Section title="Overtime" icon="warn">
         <p>

@@ -22,6 +22,14 @@
 // (minBadge) to get clear, and drops back onto what it keeps off rather than squeeze a badge out
 // of its icon: a purchase is always visible (D-100). A badge moves down or inward past it the
 // same way, never onto the digit or the other badge, or stays put.
+//
+// A Renovated room's level (D-102) is one more badge, a star per level side by side, after the
+// ⚠ in the top row (or under it, or a column of stars in a room one cell wide; or under the
+// fixture's badge, or in another top corner, an L's other arm): only where it fits on the
+// room's own cells, inside its walls and clear of everything above, what the labels keep off
+// included. It's placed last and moves nothing. Where only a smaller one fits it shrinks, as the
+// other badges do, never below minBadge; where none fits it's left out, since the Inspect panel
+// states the level in words.
 
 import type { Cell } from '../../rules/index.ts';
 import { cellUnit } from '../sprites.ts';
@@ -57,6 +65,11 @@ export interface PieceLabels {
   readonly digit?: DigitSpot;
   readonly fixture?: BadgeSpot;
   readonly unmet?: BadgeSpot;
+  /**
+   * A Renovated room's level (D-102): one badge as tall as the others, its stars side by side
+   * (or one above another, `column`), each `icon` px per icon pixel with an icon pixel between.
+   */
+  readonly level?: BadgeSpot & { readonly column: boolean };
 }
 
 export interface LabelInput {
@@ -71,6 +84,8 @@ export interface LabelInput {
   readonly digit: number | null;
   readonly fixture: boolean;
   readonly unmet: boolean;
+  /** A Renovated room's level (PlacedPiece.level), or 0. */
+  readonly level?: number;
   /**
    * What the labels keep off where they can, in CSS px: other pieces' props that rise into this
    * piece's cells (yard.ts risingParts), the trees' crowns that do (terrain/objects.ts
@@ -79,8 +94,8 @@ export interface LabelInput {
   readonly keepOff?: readonly Box[];
 }
 
-/** The icons' sizes in icon pixels (theme/icons.ts): a fixture's, and the ⚠'s. */
-export const BADGE_ICON = { fixture: 8, unmet: 9 } as const;
+/** The icons' sizes in icon pixels (theme/icons.ts): a fixture's, the ⚠'s, and a level's star. */
+export const BADGE_ICON = { fixture: 8, unmet: 9, level: 9 } as const;
 
 /** The digit's box sits this far in from its corner, in CSS px. */
 const DIGIT_IN = { right: 2, bottom: 1 } as const;
@@ -358,10 +373,108 @@ export function pieceLabels(o: LabelInput): PieceLabels {
       ring: b.ring,
       icon: b.icon,
     };
+
+  // A Renovated room's stars (D-102): one badge as tall as the others, a star per level side by
+  // side with an icon pixel of paper between them, right of the ⚠ in the top row, else under
+  // it, else a column of stars (a room one cell wide); without a ⚠, in its place. Where those are
+  // taken, under the fixture's badge, or under the top's badges at the room's left, or in the top
+  // left corner of another cell along the room's top (an L's other arm). Placed last, so they
+  // move nothing, where they fit on the room's own cells inside their walls, clear of the digit,
+  // the other badges and what the labels keep off (another piece's roof, a tree's crown, a mat).
+  // Where only a smaller badge fits, a smaller one, as the other badges shrink in a tight cell,
+  // but never too small for its stars at a device pixel per icon pixel (minBadge); nowhere else,
+  // since Inspect says the level in words.
+  let level: (BadgeSpot & { column: boolean }) | undefined;
+  const stars = o.level ?? 0;
+  if (stars > 0) {
+    const one = spot(tl, BADGE_ICON.level, false);
+    // Its sizes, largest first: the other badges' (k device pixels per icon pixel, p of paper
+    // each side of its stars), then the same stars with less paper, then smaller stars with the
+    // same paper and less, never under minBadge. A smaller badge keeps the others' margins, so
+    // its stars fill it as theirs do.
+    const k0 = Math.round(one.icon * dpr);
+    const p0 = Math.round((one.size * dpr - (BADGE_ICON.level + 2) * k0) / 2);
+    const least = minBadge(BADGE_ICON.level, dpr);
+    const sizes: { size: number; ring: number; icon: number }[] = [];
+    for (let k = k0; k >= 1; k--) {
+      for (let p = p0; p >= 0; p--) {
+        const size = ((BADGE_ICON.level + 2) * k + 2 * p) / dpr;
+        if (size >= least - 1e-6) sizes.push({ size, ring: k / dpr, icon: k / dpr });
+      }
+    }
+    const warn = unmet && place(unmet)!;
+    const fix = fixture && place(fixture)!;
+    const placed = [fix, warn].filter((b): b is BadgeSpot => !!b);
+    const taken = [...keep, ...(digit ? [digitBox(digit, chars)] : []), ...placed];
+    const e = 1e-6;
+    /** Whether box `b` is on the piece's own cells, inside the walls at its edges. */
+    const inside = (b: Box): boolean => {
+      const x0 = Math.floor(b.x / px + e);
+      const x1 = Math.floor((b.x + b.w) / px - e);
+      const y0 = Math.floor(b.y / px + e);
+      const y1 = Math.floor((b.y + b.h) / px - e);
+      for (let cy = y0; cy <= y1; cy++) {
+        for (let cx = x0; cx <= x1; cx++) {
+          const c = { x: cx, y: cy };
+          if (!own.has(`${cx},${cy}`)) return false;
+          if (cx === x0 && b.x < cx * px + inset(c, 'W') - e) return false;
+          if (cx === x1 && b.x + b.w > (cx + 1) * px - inset(c, 'E') + e) return false;
+          if (cy === y0 && b.y < cy * px + inset(c, 'N') - e) return false;
+          if (cy === y1 && b.y + b.h > (cy + 1) * px - inset(c, 'S') + e) return false;
+        }
+      }
+      return true;
+    };
+    /** A spot to try: its top-left corner, or its top-right with `right`. */
+    type Try = { x: number; y: number; column: boolean; right?: boolean };
+    const both = (t: Omit<Try, 'column'>): Try[] => [
+      { ...t, column: false },
+      { ...t, column: true },
+    ];
+    // The top-left corners of the room's other cells with a wall above them, top to bottom and
+    // west to east: along its top row, and an L's other arm.
+    const corners = cells
+      .filter((c) => !own.has(`${c.x},${c.y - 1}`) && !same(c, tl))
+      .sort((a, b) => a.y - b.y || a.x - b.x)
+      .map((c) => ({ x: c.x * px + inset(c, 'W') + gap, y: c.y * px + inset(c, 'N') + gap }));
+    find: for (const s of sizes) {
+      // The rest of the stars, each an icon wide and an icon pixel apart.
+      const more = (stars - 1) * (BADGE_ICON.level + 1) * s.icon;
+      const tries: Try[] = [
+        ...(warn
+          ? [
+              // Beside the ⚠, centered on it when it's the smaller.
+              { x: warn.x + warn.w + gap, y: warn.y + (warn.h - s.size) / 2, column: false },
+              ...both({ x: warn.x, y: warn.y + warn.h + gap }),
+            ]
+          : both({ x: one.x, y: one.y })),
+        ...(fix ? both({ x: fix.x + fix.w, y: fix.y + fix.h + gap, right: true }) : []),
+        ...(placed.length > 0
+          ? both({ x: one.x, y: Math.max(...placed.map((b) => b.y + b.h)) + gap })
+          : []),
+        ...corners.flatMap(both),
+      ];
+      for (const t of tries) {
+        const w = s.size + (t.column ? 0 : more);
+        // On whole device pixels before it's checked, so where it's drawn is where it fits.
+        const box = {
+          x: snap(t.right ? t.x - w : t.x, dpr),
+          y: Math.floor(t.y * dpr + e) / dpr,
+          w,
+          h: s.size + (t.column ? more : 0),
+        };
+        if (inside(box) && !taken.some((k) => overlaps(box, k))) {
+          level = { ...box, ring: s.ring, icon: s.icon, column: t.column };
+          break find;
+        }
+      }
+    }
+  }
   return {
     ...(digit ? { digit } : {}),
     ...(fixture ? { fixture: place(fixture)! } : {}),
     ...(unmet ? { unmet: place(unmet)! } : {}),
+    ...(level ? { level } : {}),
   };
 }
 
@@ -376,4 +489,75 @@ export function digitBox(d: DigitSpot, chars: number): Box {
 export function overlaps(a: Box, b: Box): boolean {
   const e = 1e-6;
   return a.x < b.x + b.w - e && b.x < a.x + a.w - e && a.y < b.y + b.h - e && b.y < a.y + a.h - e;
+}
+
+const movesCache = new Map<string, readonly (readonly [number, number])[]>();
+
+/**
+ * The moves spreadBadges tries, nearest first (up or down before sideways, up before down): 2 CSS
+ * px steps in whole device pixels, out to `reach` each way. Kept, since the board asks on every
+ * pointer move while a fixture is picked.
+ */
+function badgeMoves(reach: number, dpr: number): readonly (readonly [number, number])[] {
+  const step = Math.max(1, Math.round(2 * dpr)) / dpr;
+  const n = Math.floor(reach / step + 1e-6);
+  const key = `${n}:${step}`;
+  let moves = movesCache.get(key);
+  if (!moves) {
+    const list: [number, number][] = [];
+    for (let i = -n; i <= n; i++) for (let j = -n; j <= n; j++) list.push([i * step, j * step]);
+    list.sort(
+      ([ax, ay], [bx, by]) =>
+        Math.hypot(ax, ay) - Math.hypot(bx, by) ||
+        Math.abs(ax) - Math.abs(bx) ||
+        ay - by ||
+        ax - bx,
+    );
+    moves = list;
+    movesCache.set(key, moves);
+  }
+  return moves;
+}
+
+/** How much of two boxes overlaps, in CSS px². */
+function overlapArea(a: Box, b: Box): number {
+  const w = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+  const h = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+  return w > 1e-6 && h > 1e-6 ? w * h : 0;
+}
+
+/**
+ * Where the fixture hosts' gain badges go while a fixture is picked (D-107): each at its spot,
+ * or, where that would cover a badge placed before it or something on the board (`keepOff`: the
+ * pieces' digits and badges), at the nearest spot within `reach` CSS px that covers neither,
+ * stepping 2 CSS px at a time on whole device pixels: up or down before sideways. Where none is
+ * clear, the one that covers least, another gain badge counting most. `spots` are the badges'
+ * boxes at their spots, in the order they're placed; a one-cell room's badge is wider than its
+ * room at 1×, so two side by side would cover each other.
+ */
+export function spreadBadges(
+  spots: readonly Box[],
+  keepOff: readonly Box[],
+  reach: number,
+  dpr: number,
+): Box[] {
+  const moves = badgeMoves(reach, dpr);
+  const placed: Box[] = [];
+  for (const s of spots) {
+    let best = s;
+    let least = Infinity;
+    for (const [dx, dy] of moves) {
+      const b = { x: snap(s.x + dx, dpr), y: snap(s.y + dy, dpr), w: s.w, h: s.h };
+      let cost = 0;
+      for (const p of placed) cost += 4 * overlapArea(b, p);
+      for (const k of keepOff) cost += overlapArea(b, k);
+      if (cost < least - 1e-6) {
+        best = b;
+        least = cost;
+        if (cost === 0) break;
+      }
+    }
+    placed.push(best);
+  }
+  return placed;
 }

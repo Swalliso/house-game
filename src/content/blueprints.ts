@@ -82,13 +82,9 @@ export const BLUEPRINTS: Readonly<Record<BlueprintId, BlueprintDef>> = {
 
   // Rare: the rule-benders, and the only ×Mult blueprints (D-056).
   crownJewel: blueprint('crownJewel', 'Crown Jewel', 'rare', [{ kind: 'bestPiece', pct: 100 }]),
-  dreamHome: blueprint(
-    'dreamHome',
-    'Dream Home',
-    'rare',
-    [{ kind: 'rule', key: 'specBonus', add: 10 }],
-    false, // Offered once M4a's clients bring specs.
-  ),
+  dreamHome: blueprint('dreamHome', 'Dream Home', 'rare', [
+    { kind: 'rule', key: 'specBonus', add: 10 },
+  ]),
   // Pulls against completing early: a fast-forwarded last week doesn't count.
   lastMinutePush: blueprint('lastMinutePush', 'Last-Minute Push', 'rare', [
     { kind: 'xMult', times: 200, when: 'lastWeekOfPhase' },

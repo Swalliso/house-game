@@ -1,6 +1,7 @@
-// The app: the title screen, then the game screen (the top bar, the score and inspect panels,
-// the board, the hand or the end screen, and the controls strip), with overlays for banners,
-// notes, settings, How to play, and the ?debug panel.
+// The app: the title screen, the job board, then the game screen (the top bar, the score panel,
+// the checklist and inspect panels, the board, the hand or the end screen, and the controls
+// strip), with overlays for banners, notes, first-time hints, the menu, settings, How to play,
+// and the ?debug panel. The shop and (M4b) a change order are sheets over the board.
 
 import { useEffect } from 'preact/hooks';
 import { audio } from './audio/audio.ts';
@@ -18,6 +19,8 @@ import {
   selectCard,
   toggleDemolish,
 } from './hud/actions.ts';
+import { Checklist } from './hud/Checklist.tsx';
+import { FirstHints } from './hud/FirstHints.tsx';
 import { Hints } from './hud/Hints.tsx';
 import './hud/board-chrome.css';
 import { GameMenu } from './hud/Menu.tsx';
@@ -39,6 +42,8 @@ import {
   useSkipOnClick,
 } from './screens/Overlays.tsx';
 import { SettingsPanel } from './screens/Settings.tsx';
+import { ChangeOrderScreen, changeOrderKey } from './screens/ChangeOrderScreen.tsx';
+import { JobBoard } from './screens/JobBoard.tsx';
 import { ShopScreen } from './screens/ShopScreen.tsx';
 import { Title } from './screens/Title.tsx';
 import { appScreen, run, selected, tool } from './store.ts';
@@ -88,6 +93,21 @@ function useKeyboard(): void {
         if (busy.value) setHold(true);
         return;
       }
+      if (run.value.screen === 'changeOrder') {
+        // M4b: a change order waits for its answer. Only the sheet's keys work (Enter accepts,
+        // Esc or D declines one that can be declined); nothing reaches the week's controls
+        // behind it. Before the sheet is up, the milestone's beats play over the board: Esc
+        // skips them, and the camera's keys still work. Enter is always claimed, as below.
+        if (e.key === 'Enter') e.preventDefault();
+        if (e.repeat) return;
+        if (!busy.value) {
+          if (changeOrderKey(e.key)) e.preventDefault();
+        } else if (e.key === 'Escape') skip();
+        else if (e.key === '+' || e.key === '=') zoomIn();
+        else if (e.key === '-' || e.key === '_') zoomOut();
+        else if (e.key === 'f' || e.key === 'F') toggleFit();
+        return;
+      }
       if (e.key === 'Enter') {
         // Always claim Enter, repeats included, so holding it can't click a focused button
         // over and over and pass week after week.
@@ -135,6 +155,9 @@ function Game() {
   useSkipOnClick();
   const screen = run.value.screen;
   const over = (screen === 'won' || screen === 'lost') && !busy.value;
+  // A play being looked at (placing, installing, a tool, demolishing): Inspect gets the left
+  // column's room first, so its preview, warnings, and Use button are in view (app.css).
+  const looking = selected.value !== null || tool.value === 'demolish';
   const right = over ? (
     <EndScreen />
   ) : screen === 'shop' ? (
@@ -148,9 +171,13 @@ function Game() {
   return (
     <div class="game">
       <TopBar />
-      <aside class="left">
+      <aside class={looking ? 'left looking' : 'left'}>
         <ScorePanel />
-        <Inspect />
+        {/* What the score panel leaves, which the checklist and Inspect share (app.css). */}
+        <div class="left-rest">
+          <Checklist />
+          <Inspect />
+        </div>
       </aside>
       <main class="center">
         <Board />
@@ -159,6 +186,7 @@ function Game() {
         <TargetFlash />
         <EndCaption />
         <ShopScreen />
+        <ChangeOrderScreen />
       </main>
       <aside class="right">{right}</aside>
       <Hints />
@@ -173,17 +201,21 @@ export function App() {
     window.addEventListener('pointerdown', unlock);
     return () => window.removeEventListener('pointerdown', unlock);
   }, []);
+  // The game screen shows its notes over the board (.center); the title and the job board show
+  // theirs at the top of the window (overlays.css's .title-screen ~ .notes).
+  const screen = appScreen.value;
   return (
     <>
       <ErrorBoundary>
-        {appScreen.value === 'title' ? (
+        {screen === 'game' ? (
+          <Game />
+        ) : (
           <>
-            <Title />
+            {screen === 'jobs' ? <JobBoard /> : <Title />}
             <Notes />
           </>
-        ) : (
-          <Game />
         )}
+        {screen === 'game' && <FirstHints />}
         <GameMenu />
         <HowToPlay />
         <SettingsPanel />

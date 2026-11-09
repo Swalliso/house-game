@@ -1,14 +1,34 @@
-// Rule benders (implementation-plan.md §5). A run's modifiers come from its crew, its
-// blueprints, and (from M3b) its company upgrades and this week's tools; fixtures carry their
-// own, on their host, and are gathered from the house when it's tallied (scoring.ts). Clients
-// and change orders add theirs in M4.
+// Rule benders (implementation-plan.md §5). A run's modifiers come from its crew, its client's
+// tastes and pool (M4a), its blueprints, its company upgrades, this week's tools, and (M4b) a
+// change order's phase effect while its phase runs; fixtures carry their own, on their host,
+// and are gathered from the house when it's tallied (scoring.ts).
 //
 // `rule` modifiers change run-level numbers: (base + Σ add) × (100 + Σ pct) / 100, rounded half
 // up, never below 0. The layout kinds (grantTag, removeTag, grantView, countsAs, link) change
 // the layout (layout.ts); every other kind changes the tally (scoring.ts).
 
-import type { Content, CrewId, ModSource, Modifier, RuleKey, RunState } from './index.ts';
+import type {
+  ChangeOrderId,
+  Content,
+  ModSource,
+  Modifier,
+  RuleKey,
+  RunSetup,
+  RunState,
+  TimedEffect,
+  ToolId,
+} from './index.ts';
 import { roundHalfUp } from './scoring.ts';
+
+/**
+ * Where a timed effect came from: a tool's lasts until a week (this week's tally), a change
+ * order's phase effect until a phase (M4b).
+ */
+export function timedSource(effect: TimedEffect): ModSource {
+  return 'week' in effect.until
+    ? { kind: 'tool', id: effect.source as ToolId }
+    : { kind: 'changeOrder', id: effect.source as ChangeOrderId };
+}
 
 /** A modifier in play, with where it came from. */
 export interface ActiveMod {
@@ -25,8 +45,9 @@ export type ModState = Pick<RunState, 'setup' | 'blueprints'> &
   Partial<Pick<RunState, 'upgrades' | 'timedEffects'>>;
 
 /**
- * Every run-level modifier: the crew's, each blueprint's in the order bought, each company
- * upgrade's, then this week's tools'.
+ * Every run-level modifier: the crew's, the client's tastes and pool (M4a), each blueprint's in
+ * the order bought, each company upgrade's, then the timed effects': this week's tools', and a
+ * running phase effect's (M4b).
  */
 export function runModifiers(content: Content, state: ModState): ActiveMod[] {
   const crew = content.crews[state.setup.crewId];
@@ -36,6 +57,11 @@ export function runModifiers(content: Content, state: ModState): ActiveMod[] {
     source: { kind: 'crew', id: crew.id },
     since: 0,
   }));
+  const client = content.clients[state.setup.clientId];
+  if (!client) throw new Error(`Unknown client "${state.setup.clientId}"`);
+  for (const mod of [...client.tastes, ...client.pool]) {
+    out.push({ mod, source: { kind: 'client', id: client.id }, since: 0 });
+  }
   for (const owned of state.blueprints) {
     const def = content.blueprints[owned.id];
     if (!def) throw new Error(`Unknown blueprint "${owned.id}"`);
@@ -49,9 +75,10 @@ export function runModifiers(content: Content, state: ModState): ActiveMod[] {
     for (const mod of def.modifiers) out.push({ mod, source: { kind: 'upgrade', id }, since: 0 });
   }
   for (const effect of state.timedEffects ?? []) {
-    for (const mod of effect.modifiers) {
-      out.push({ mod, source: { kind: 'tool', id: effect.source }, since: effect.until.week });
-    }
+    const source = timedSource(effect);
+    // A tool's granted timers count from its week; a phase effect's from placement.
+    const since = 'week' in effect.until ? effect.until.week : 0;
+    for (const mod of effect.modifiers) out.push({ mod, source, since });
   }
   return out;
 }
@@ -74,9 +101,17 @@ export function ruleValue(content: Content, state: ModState, key: RuleKey): numb
   return ruleFrom(content, runModifiers(content, state), key);
 }
 
-/** A rule's value for a crew alone, as a new run starts. */
-export function crewRule(content: Content, crewId: CrewId, key: RuleKey): number {
-  return ruleValue(content, { setup: { seed: '', crewId, mode: 'standard' }, blueprints: [] }, key);
+/** A rule's value for a run's crew and client alone, as a new run starts. */
+export function setupRule(
+  content: Content,
+  setup: Pick<RunSetup, 'crewId' | 'clientId'>,
+  key: RuleKey,
+): number {
+  return ruleValue(
+    content,
+    { setup: { seed: '', mode: 'standard', ...setup }, blueprints: [] },
+    key,
+  );
 }
 
 /** The name of a modifier's source, for breakdown lines: "Feng Shui", "Fireplace". */
@@ -84,6 +119,8 @@ export function sourceName(content: Content, source: ModSource): string {
   switch (source.kind) {
     case 'crew':
       return content.crews[source.id].name;
+    case 'client':
+      return content.clients[source.id].name;
     case 'blueprint':
       return content.blueprints[source.id].name;
     case 'fixture':
@@ -92,5 +129,7 @@ export function sourceName(content: Content, source: ModSource): string {
       return content.upgrades[source.id].name;
     case 'tool':
       return content.tools[source.id].name;
+    case 'changeOrder':
+      return content.changeOrders[source.id].name;
   }
 }

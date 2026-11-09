@@ -10,6 +10,8 @@ import {
   SCORE_LABELS,
   stream,
   type Action,
+  type ArrivalId,
+  type ChangeOrderId,
   type Good,
   type PieceId,
   type RunSetup,
@@ -18,7 +20,17 @@ import {
 import { BUILD_CHANNEL } from '../build-info.ts';
 import { instantTally } from '../fx/director.ts';
 import { copyRunCode, showToast } from '../hud/actions.ts';
-import { appScreen, debugAction, debugEnabled, notice, run, startRun } from '../store.ts';
+import { upcomingArrivals } from '../hud/household.ts';
+import { KIND_LABEL } from '../screens/ChangeOrderScreen.tsx';
+import {
+  appScreen,
+  debugAction,
+  debugEnabled,
+  inProgress,
+  notice,
+  run,
+  startRun,
+} from '../store.ts';
 import './debug.css';
 
 const PHASES = CONTENT.balance.phases;
@@ -104,6 +116,22 @@ function goodOf(value: string): Good {
   return { kind, id } as Good;
 }
 
+/** M4b: every change order, generic ones first, then each client's, for "Force". */
+const ORDERS = Object.values(CONTENT.changeOrders);
+const ORDER_GROUPS: { label: string; ids: ChangeOrderId[] }[] = [
+  {
+    label: 'Generic',
+    ids: ORDERS.filter((o) => o.scope === 'generic').map((o) => o.id),
+  },
+  ...Object.values(CONTENT.clients).map((c) => ({
+    label: c.name,
+    ids: ORDERS.filter((o) => o.scope === c.id).map((o) => o.id),
+  })),
+].filter((g) => g.ids.length > 0);
+const orderId = signal<ChangeOrderId>(ORDERS[0]!.id);
+/** The household member to force in; the first still to come when it's not one of them. */
+const arrivalId = signal<ArrivalId | null>(null);
+
 /** Set while the bot builds a house: what to show on the Go button. */
 const building = signal<string | null>(null);
 
@@ -128,12 +156,17 @@ async function botRunTo(
   };
   let step = 0;
   let lastWeek = s.week;
-  // It stops at the start of milestone n: in the shop before it, if there is one.
+  // It stops at the start of milestone n: in the shop before it, if there is one. A change
+  // order on the way (M4b) is answered as the sim's greedy answers it (sim/policies/orders.ts:
+  // it declines restrictions), and the bot goes on to the shop after it.
   const arrived = (q: RunState) =>
-    q.phase === goal && (q.screen === 'shop' || (q.slot === 1 && q.overtimeWeek === 0));
-  while ((s.screen === 'build' || s.screen === 'shop') && !arrived(s)) {
+    q.phase === goal &&
+    q.screen !== 'changeOrder' &&
+    (q.screen === 'shop' || (q.slot === 1 && q.overtimeWeek === 0));
+  while (inProgress(s) && !arrived(s)) {
     if (actions.length > MAX_BOT_ACTIONS) throw new Error('The bot got stuck.');
-    // Keyed like sim/simulate.ts, so this plays the same house as the sim on this seed.
+    // Keyed like sim/simulate.ts, a change order's answer included, so this plays the same
+    // house as the sim on this seed.
     const rng = stream(setup.seed, `bot/${greedy.name}/${s.week}/${s.draws}/${step++}`);
     const action = greedy.act(rules, s, rng);
     const endsPhase =
@@ -176,7 +209,7 @@ async function jump(n: number): Promise<void> {
       notice.value = {
         text: `The bot’s run stopped replaying at action ${failedAt + 1}: ${error}`,
       };
-    } else if (state.screen !== 'build' && state.screen !== 'shop') {
+    } else if (!inProgress(state)) {
       notice.value = { text: `The bot’s run ended before milestone ${n}.` };
     } else {
       showToast(`Milestone ${n}: ${PHASES[n - 1]?.name ?? ''}`);
@@ -241,6 +274,10 @@ export function DebugPanel() {
   const shortfall = rules.target(s) - s.score;
   const missForced = s.forcedMiss === s.phase;
   const busyBuilding = building.value !== null;
+  // M4b: the change orders that could come up now, and who's still to move in.
+  const eligible = new Set(live ? rules.eligibleChangeOrders(s) : []);
+  const coming = upcomingArrivals(s);
+  const arrival = coming.find((a) => a.id === arrivalId.value) ?? coming[0];
 
   return (
     <aside
@@ -359,6 +396,75 @@ export function DebugPanel() {
             >
               Force the shop
             </button>
+          </div>
+
+          <div class="debug-row">
+            <label class="debug-label" for="debug-order">
+              Change order
+            </label>
+            <select
+              id="debug-order"
+              value={orderId.value}
+              title="Every change order; ✓ marks the ones that could be offered now"
+              onChange={(e) =>
+                (orderId.value = (e.target as HTMLSelectElement).value as ChangeOrderId)
+              }
+            >
+              {ORDER_GROUPS.map((g) => (
+                <optgroup key={g.label} label={g.label}>
+                  {g.ids.map((id) => (
+                    <option key={id} value={id}>
+                      {CONTENT.changeOrders[id].name} ·{' '}
+                      {KIND_LABEL[CONTENT.changeOrders[id].kind].toLowerCase()}
+                      {eligible.has(id) ? ' ✓' : ''}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+            <button
+              type="button"
+              disabled={!live}
+              onClick={() => debugAction({ t: 'debug', op: 'forceChangeOrder', id: orderId.value })}
+              title="Offer it now, as if a milestone had just been met: it runs through this phase, and answering comes back to this week"
+            >
+              Force
+            </button>
+          </div>
+
+          <div class="debug-row">
+            <label class="debug-label" for="debug-arrival">
+              Arrival
+            </label>
+            {coming.length > 0 ? (
+              <>
+                <select
+                  id="debug-arrival"
+                  value={arrival?.id}
+                  onChange={(e) =>
+                    (arrivalId.value = (e.target as HTMLSelectElement).value as ArrivalId)
+                  }
+                >
+                  {coming.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name} (at {rules.phaseName(a.phase)})
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  disabled={!live || !arrival}
+                  onClick={() =>
+                    arrival && debugAction({ t: 'debug', op: 'forceArrival', id: arrival.id })
+                  }
+                  title="They move in now: their cards go into the reserve’s extra slots"
+                >
+                  Force
+                </button>
+              </>
+            ) : (
+              <span class="muted">Everyone’s moved in.</span>
+            )}
           </div>
 
           <div class="debug-row">

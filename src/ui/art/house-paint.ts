@@ -35,7 +35,7 @@ import {
 import { CELL, spritePos, type SpriteId } from '../sprites.ts';
 import type { PieceId } from '../../rules/index.ts';
 import { artSize, drawingPixels, isDrawing, type ArtId } from './drawings.ts';
-import { itemRows, roomLayout, type Item } from './rooms.ts';
+import { byType, itemRows, roomLayout, type Item } from './rooms.ts';
 import type { Ground, YardLayout, YardModel } from './yard.ts';
 
 /** RGBA pixels (not premultiplied, like ImageData) at (x, y) on the lot, in art px. */
@@ -154,11 +154,21 @@ type RoomId = Extract<
   | 'library'
   | 'mudroom'
   | 'sunroom'
+  | 'nursery'
+  | 'kidsRoom'
+  | 'grandmasRoom'
+  | 'renfieldsRoom'
+  | 'nanasRoom'
+  | 'rowansStudio'
+  | 'ivysRoom'
 >;
 
 /**
  * Each room type's floor (D-093: every room type its own; the two kitchens share one, as do the
- * two halls). The hand's cards and the shop picture rooms with these too, through paintPiece.
+ * two halls). The members' rooms have their own too (D-111), so each reads as its own room and
+ * the Nursery changes floor as it grows into the Kids' Room. The hand's cards and the shop
+ * picture rooms with these too, through paintPiece. A type without its own floor and face has its
+ * countsAs root's: floorOf and faceOf.
  */
 export const FLOOR: Readonly<Record<RoomId, SpriteId>> = {
   bedroom: 'floor-wood',
@@ -176,6 +186,13 @@ export const FLOOR: Readonly<Record<RoomId, SpriteId>> = {
   library: 'floor-library',
   mudroom: 'floor-mudroom',
   sunroom: 'floor-sunroom',
+  nursery: 'floor-nursery',
+  kidsRoom: 'floor-kids-room',
+  grandmasRoom: 'floor-grandmas-room',
+  renfieldsRoom: 'floor-renfields-room',
+  nanasRoom: 'floor-nanas-room',
+  rowansStudio: 'floor-rowans-studio',
+  ivysRoom: 'floor-ivys-room',
 };
 
 /**
@@ -200,14 +217,23 @@ export const FACE: Readonly<Record<RoomId, SpriteId>> = {
   library: 'face-library',
   mudroom: 'face-mudroom',
   sunroom: 'face-sunroom',
+  nursery: 'face-nursery',
+  kidsRoom: 'face-kids-room',
+  grandmasRoom: 'face-grandmas-room',
+  renfieldsRoom: 'face-renfields-room',
+  nanasRoom: 'face-nanas-room',
+  rowansStudio: 'face-rowans-studio',
+  ivysRoom: 'face-ivys-room',
 };
 
+/** A room type's wallpaper: its own, its countsAs root's (byType), or the hall's. */
 function faceOf(id: PieceId): SpriteId {
-  return (FACE as Partial<Record<PieceId, SpriteId>>)[id] ?? 'face-hallway';
+  return byType(FACE, id) ?? 'face-hallway';
 }
 
+/** A room type's floor: its own, its countsAs root's (byType), or the hall's. */
 function floorOf(id: PieceId): SpriteId {
-  return (FLOOR as Partial<Record<PieceId, SpriteId>>)[id] ?? 'floor-hall';
+  return byType(FLOOR, id) ?? 'floor-hall';
 }
 
 /** A box of lot pixels being painted. */

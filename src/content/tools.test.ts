@@ -71,6 +71,8 @@ const RARITY: Record<ToolId, Rarity> = {
   dumpster: 'common',
   remodelJackAndJill: 'common',
   remodelEntertainer: 'common',
+  remodelSuite: 'common',
+  remodelFullHouse: 'uncommon',
   weekendCrew: 'rare',
 };
 
@@ -91,7 +93,7 @@ const ENTERTAINER: Placement[] = [
 ];
 
 describe('tools', () => {
-  it('are Appendix B’s, less 2 Remodel Plans waiting for M4a’s sets, plus the Weekend Crew', () => {
+  it('are Appendix B’s 12, plus the Weekend Crew', () => {
     expect(Object.keys(CONTENT.tools).sort()).toEqual(Object.keys(RARITY).sort());
     for (const def of Object.values(CONTENT.tools)) {
       expect(def.rarity, def.id).toBe(RARITY[def.id]);
@@ -101,9 +103,9 @@ describe('tools', () => {
     expect(PRICES.tool).toEqual({ common: 2, uncommon: 3, rare: 4 });
   });
 
-  it('the shop offers every one but Inspector’s Visit, which waits for M4a’s specs', () => {
+  it('the shop offers every one, now that M4a brings specs and the Suite and Full House sets', () => {
     const held = Object.values(CONTENT.tools).filter((d) => !d.offered);
-    expect(held.map((d) => d.id)).toEqual(['inspectorsVisit']);
+    expect(held.map((d) => d.id)).toEqual([]);
   });
 });
 

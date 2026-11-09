@@ -142,6 +142,8 @@
   --demolish-fill: rgb(200 64 46 / 0.26); /* the demolish tool's target, in --danger */
   --demolish-armed-fill: rgb(200 64 46 / 0.42);
   --demolish-hint-fill: rgb(200 64 46 / 0.1);
+  --pack-remove-fill: rgb(237 147 30 / 0.16); /* a pack's tile to take off (D-106), in --bad-fill */
+  --renovate-hint-fill: rgb(66 128 221 / 0.08); /* a room to renovate (D-102), in --good-fill */
 
   /* --- Focus: a double ring that reads on paper and on wood --------------------------- */
   --focus-outer: var(--ink);

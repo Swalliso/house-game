@@ -2,7 +2,8 @@
 // the supplies, used only on the build screen. One small function per kind:
 // - move (Moving Truck): a placed piece, fixture and all, to another legal spot; it can't
 //   split the house, and keeps its uid, timers, and place in the placement order
-// - copy (Copy Machine): a placed piece's card into the reserve (needs a free slot)
+// - copy (Copy Machine): a placed piece's card into the reserve (needs a free slot); never a
+//   member's room (M4b)
 // - weekModifiers (Rush Order, Open House Party): modifiers for this week's tally only
 // - specialHand (Catalog): this hand redrawn from special pieces and fixtures, as a draw
 //   (n + 1) that doesn't use a reroll
@@ -60,8 +61,11 @@ export function canUseTool(ctx: ToolCtx, state: RunState, action: UseToolAction)
       return check.legal ? { ok: true } : { ok: false, reason: check.reason };
     }
     case 'copy': {
-      if (uid === undefined || !state.house.pieces.some((p) => p.uid === uid)) {
-        return { ok: false, reason: 'Pick a piece to copy.' };
+      const piece = uid === undefined ? undefined : state.house.pieces.find((p) => p.uid === uid);
+      if (!piece) return { ok: false, reason: 'Pick a piece to copy.' };
+      // M4b: a member's room is theirs alone (one per arrival, D-103).
+      if (ctx.content.pieces[piece.defId].member) {
+        return { ok: false, reason: 'A household member’s room can’t be copied.' };
       }
       if (reserveUsed(state) >= slotsFor(ctx.content, state).reserve) {
         return { ok: false, reason: SHOP_REASONS.reserveFull };

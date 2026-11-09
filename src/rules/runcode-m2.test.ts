@@ -17,7 +17,12 @@ import { CONTENT, createRules, rules } from './index.ts';
 import { stream, type Rng } from './rng.ts';
 import { base64urlEncode, contentHash, decodeRunCode, encodeRunCode } from './runcode.ts';
 
-const SETUP: RunSetup = { seed: 'runcode-m2', crewId: 'generalContractor', mode: 'standard' };
+const SETUP: RunSetup = {
+  seed: 'runcode-m2',
+  clientId: 'hendersons',
+  crewId: 'generalContractor',
+  mode: 'standard',
+};
 
 const BASE: RunCodeData = {
   build: 'm2test',
@@ -85,12 +90,13 @@ describe('run codes round-trip every M2 action kind', () => {
     expect(decoded.ok && encodeRunCode(decoded.data)).toBe(code);
   });
 
-  it("keeps the setup's crew, seed, and mode", () => {
+  it("keeps the setup's client, crew, seed, and mode", () => {
     const decoded = decodeRunCode(encodeRunCode(BASE));
     expect(decoded).toMatchObject({ ok: true });
     if (!decoded.ok) return;
     expect(decoded.data.setup).toStrictEqual({
       seed: 'runcode-m2',
+      clientId: 'hendersons',
       crewId: 'generalContractor',
       mode: 'standard',
     });
@@ -324,7 +330,8 @@ describe('decoded codes from other builds replay without crashing', () => {
   // decodeRunCode accepts any crewId string; replay checks it against the content and fails
   // softly at step 0 (§4: replay "returns the step where it fails instead of throwing").
   it('a crew this build does not have makes replay fail softly, not throw', () => {
-    for (const crewId of ['landscaper', 'constructor']) {
+    // M4b added the Landscaper and the Architect, so these are crews no build has.
+    for (const crewId of ['handyman', 'constructor']) {
       const decoded = safeDecode(
         encodeRunCode({ ...BASE, setup: { ...SETUP, crewId: crewId as never } }),
       );
@@ -425,7 +432,12 @@ interface Played {
 }
 
 function playRun(seed: string, steps: number): Played {
-  const setup: RunSetup = { seed, crewId: 'generalContractor', mode: 'standard' };
+  const setup: RunSetup = {
+    seed,
+    clientId: 'hendersons',
+    crewId: 'generalContractor',
+    mode: 'standard',
+  };
   const rng = stream(seed, 'test/runcode-m2');
   let state = rules.newRun(setup);
   const log: Action[] = [];
@@ -445,7 +457,9 @@ function playRun(seed: string, steps: number): Played {
 }
 
 describe('a real run replays exactly from its run code', () => {
-  const SEEDS = ['determinism-a', 'determinism-f', 'determinism-c'];
+  // Seeds whose random stream reaches every kind of action; a content change can move a seed
+  // off one (M4b's targets moved determinism-a), so pick another that covers them all.
+  const SEEDS = ['determinism-i', 'determinism-f', 'determinism-c'];
 
   it.each(SEEDS)('seed %s', (seed) => {
     // M3b's Housewarming pick takes a step, so the run is a little longer than M2's 24.

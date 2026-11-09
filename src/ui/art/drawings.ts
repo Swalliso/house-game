@@ -1,6 +1,7 @@
-// Our own pixel drawings, for what LimeZu doesn't draw (D-097): the Doghouse, the Henhouse's hens
-// and the Sprinkler. They're in LimeZu's style: its palette, its ink (#3a3a50) for outlines, light
-// from the top left, and its shadow (the ink at 100/255) under things that stand on the ground.
+// Our own pixel drawings, for what LimeZu doesn't draw (D-097): the Doghouse, the Henhouse's hens,
+// the Sprinkler, and the dogs' bed in Nana's Room (D-111). They're in LimeZu's style: its palette,
+// its ink (#3a3a50) for outlines, light from the top left, and its shadow (the ink at 100/255)
+// under things that stand on the ground.
 // Pure: each is rows of characters, one per art px, each a color from KEY ('.' is clear). The
 // painters read their pixels; the board shows them as images (HouseLayers.tsx).
 //
@@ -142,6 +143,28 @@ const SPRINKLER = [
   ],
 ] as const;
 
+/**
+ * The dogs' bed in Nana's Room (the Barkers' Nana wants the dogs close; LimeZu's Interiors has a
+ * cat but no dog): a round red cushion in the Doghouse's roof colors, its cream lining, and a brown
+ * dog asleep on it, its white muzzle and floppy ear to the west.
+ */
+const DOG_BED = [
+  '......kkkkkkkkkk......',
+  '....kkkkRRRRRRRRkk....',
+  '..kkvvUUkkkkkkkkrrkk..',
+  '.kkvUkUUBkWWkkkkkkrdk.',
+  '.kkUUUUUBBkkvvvvUkkddk',
+  'kRkkhUUUBBvUUUUUUukkdk',
+  'kRkhhhkkBBUUUUUUuukkdk',
+  'krrkkkwkkUUUUUuuukkkdk',
+  'krrrrkkkkkkkkkkkkkdddk',
+  'kdrrrrrrrrrrrrrrrrdddk',
+  '.kddddddddddddddddDDk.',
+  '..kkDDDDDDDDDDDDDDkk..',
+  '....kkkkkkkkkkkkkk....',
+  '......ssssssssssss....',
+] as const;
+
 /** Rows mirrored left to right. */
 function mirror(rows: readonly string[]): string[] {
   return rows.map((r) => [...r].reverse().join(''));
@@ -161,6 +184,7 @@ export const DRAWINGS = {
   'own-hen-brown-w': { frames: [BROWN_HEN] },
   'own-hen-brown-e': { frames: [mirror(BROWN_HEN)] },
   'own-sprinkler': { frames: SPRINKLER, ms: 180 },
+  'own-dog-bed': { frames: [DOG_BED] },
 } as const satisfies Record<string, Drawing>;
 
 export type DrawingId = keyof typeof DRAWINGS;

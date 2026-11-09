@@ -278,14 +278,16 @@ house-game/
 │   │   ├── fixtures.ts       # installing fixtures, host checks
 │   │   ├── shop.ts           # offers, prices, selling, the sale item
 │   │   ├── tools.ts          # one-shot tools from the shop, one function per tool kind
-│   │   ├── clients.ts        # spec checklist, change orders
-│   │   ├── run.ts            # RunState, apply(), legalActions(), the transition table
+│   │   ├── conditions.ts     # house conditions: client specs, the house rules, change-order requests (D-101)
+│   │   ├── jobs.ts           # the job board's contracts, outside the run code (D-032)
+│   │   ├── run.ts            # RunState, apply(), legalActions(), the transition table, change orders, arrivals
 │   │   ├── runcode.ts        # encode and decode run codes; replay()
 │   │   └── text.ts           # rules text generated from content data
 │   ├── content/              # DATA ONLY
 │   │   ├── tags.ts  features.ts  pieces.ts  fixtures.ts  sets.ts
 │   │   ├── blueprints.ts  tools.ts  upgrades.ts  crates.ts
 │   │   ├── clients.ts  crews.ts  change-orders.ts
+│   │   ├── house-rules.ts  households.ts   # the seven house rules (D-101) and each client's arrivals (D-103)
 │   │   ├── balance.ts        # lot size, weeks, targets, prices, rewards (one owner)
 │   │   └── index.ts          # registry + validateContent()
 │   ├── ui/                   # Preact: renders state, calls rules, never computes scores
@@ -294,8 +296,10 @@ house-game/
 │   │   ├── art/              # the house's and the yard's painters and layouts: rooms, yard, our own drawings
 │   │   ├── kit/              # the pixel UI's primitives: Panel, Card, Button, Chip, Icon, Sheet…
 │   │   ├── theme/            # tokens, the UI pixel, fonts, and our own frames, icons and sky as text grids
-│   │   ├── hud/              # TopBar, ProgressBar, Hand, Card, Reserve, Supplies, BlueprintBar, ClientPanel, Inspect, Hints
-│   │   ├── screens/          # Title, RunSetup, ChangeOrder, Shop, End, Settings
+│   │   ├── hud/              # TopBar, ScorePanel, Hand, Inventory (reserve, supplies, blueprints), Inspect, Menu, Tip,
+│   │   │                     # Checklist (the client's), Hints (the controls strip), FirstHints (first-time hints), household.ts
+│   │   ├── screens/          # Title, JobBoard (the contracts, then the crew), ChangeOrderScreen, ShopScreen, EndScreen,
+│   │   │                     # HowToPlay, Settings, Overlays (banners, notes, toasts)
 │   │   ├── fx/               # tally director, celebration ladder, floating numbers, particles; feel.ts holds the timing numbers
 │   │   ├── debug/            # ?debug panel
 │   │   └── audio/            # Web Audio wrapper: buses, scheduler, pitch ladder, music stems
@@ -303,7 +307,8 @@ house-game/
 └── sim/
     ├── cli.ts                # node sim/cli.ts --runs 200 --policy greedy ...; --check, --ban, --gift
     ├── simulate.ts           # one run through apply(): the run record, step caps, SimError
-    ├── policies/             # random, novice, greedy and its variants; chaos (for tests); planner (M6)
+    ├── policies/             # random, novice, greedy and its variants; chaos (for tests); change-order answers; planner (M6)
+    ├── enclosure.ts  house.ts   # the enclosure probe and fence planner; the house report's measures (D-093)
     └── report.ts             # the report, §8's criteria, suggested targets
 ```
 
@@ -332,7 +337,8 @@ All state is plain, JSON-serializable data. D-025 keeps the house separate from 
 ```ts
 interface HouseState {                 // the lot and what's on it
   lot: Lot                             // width × height, street edge, sunny tiles, terrain (woods, creek, pond, boulders, finds)
-  pieces: PlacedPiece[]                // { uid, defId, x, y, rot, placedWeek, ageBonus, fixture?: { id, week } }
+  pieces: PlacedPiece[]                // { uid, defId, x, y, rot, placedWeek, ageBonus, fixture?: { id, week }, level?, shape? }
+                                       // level: Renovations (D-102); shape: a pack's own tiles (D-106)
   nextUid: number
 }
 
@@ -359,7 +365,7 @@ interface RunState {
   servicesBought: { reroll: number; demolition: number }              // their prices rise per purchase
   changeOrders: ActiveChangeOrder[]    // requests and restrictions being worked on
   timedEffects: { source: ChangeOrderId | ToolId; until: { phase: number } | { week: number }; modifiers: Modifier[] }[]
-  lastTally: { points: number; mult: number; total: number; specsMet: boolean[]; setInstances: string[] }
+  lastTally: { points: number; mult: number; total: number; specsMet: boolean[]; setInstances: string[] }   // specsMet in checklist order
   setsRewarded: SetId[]                // sets whose one-time reward has been paid
   setLevels: Partial<Record<SetId, number>>   // from Remodel Plans; 1 when absent
   milestonesEarly: number              // a RunStat for scaling ×Mult
@@ -379,8 +385,10 @@ The action log is kept alongside the state rather than inside it, for run codes.
 
 ```ts
 type Action =
-  | { t: 'place'; from: 'hand' | 'reserve'; i: number; x: number; y: number; rot: 0 | 1 | 2 | 3 }
+  | { t: 'place'; from: 'hand' | 'reserve'; i: number; x: number; y: number; rot: 0 | 1 | 2 | 3
+      shape?: string[] }                              // a pack card's tiles (D-106), as ASCII rows
   | { t: 'install'; from: 'hand' | 'supplies'; i: number; uid: number }  // a fixture into a placed piece
+  | { t: 'renovate'; from: 'hand' | 'reserve'; i: number; uid: number }  // a capped room card on its room (D-102)
   | { t: 'pass' }
   | { t: 'useTool'; i: number; target?: { uid: number; x?: number; y?: number; rot?: 0 | 1 | 2 | 3 } }
   | { t: 'reroll' }
@@ -398,7 +406,7 @@ type Action =
 `(x, y)` is the top-left cell of the rotated shape's bounding box, and each rotation's cells are normalized so their minimum x and y are 0. There's no mirroring: no Core shape needs it (the L-Kitchen's mirror image is one of its rotations, and so is the L-Fence's).
 
 **The week's card versus free actions (D-050, D-051):**
-- Placing a piece (from the hand or the reserve), installing a fixture **from the hand**, or passing is the week's turn, and it ends the week. In the rules, a week's play is `Play = { place } | { install } | null`. `resolveWeek` and `preview` take a `Play`, so a fixture preview goes through the same path as a piece preview.
+- Placing a piece (from the hand or the reserve), installing a fixture **from the hand**, renovating a room (D-102), or passing is the week's turn, and it ends the week. In the rules, a week's play is `Play = { place } | { install } | { renovate } | null`. `resolveWeek` and `preview` take a `Play`, so a fixture or Renovation preview goes through the same path as a piece preview.
 - Installing a fixture **from your supplies**, using a tool, rerolling, and demolishing are free actions during the week. A free install previews as the change to this week's projected total, `resolveWeek(after, null) − resolveWeek(before, null)`.
 - No action places a second piece in a week, so D-004 still holds: one piece per week at most.
 
@@ -408,7 +416,7 @@ type Action =
 - `placed`, `installed`, `demolished`, `transformed`, `moved`
 - `toolUsed`, `findClaimed` (a find's reward, for its own little moment)
 - `tally` (week, per-piece lines, set lines, points, mult, each ×Mult source, total, budget, `fastForward`)
-- `setCompleted`, `specMet`, `specLost` (distinct moments for juice)
+- `setCompleted`, `specMet`, `specLost` (distinct moments for juice), `renovated`
 - `targetReached` (fires when the score first crosses the target)
 - `overtimeUsed`
 - `milestone` (phase, result `'onTime' | 'early' | 'overtime' | 'failed'`, weeks saved, overtime used, reward)
@@ -435,7 +443,7 @@ The UI keeps an event queue and plays it through an animation director (place �
 
 | Screen | Legal actions | What happens |
 |---|---|---|
-| `build` | `place`, `install` from the hand, or `pass`: ends the week | → end of week (below) |
+| `build` | `place`, `install` from the hand, `renovate` (D-102), or `pass`: ends the week | → end of week (below) |
 | | `reroll` if `rerollsLeft > 0` | new hand; `draws + 1` |
 | | `demolish` if `demolitionsLeft > 0` and it wouldn't split the house | piece, boulder, or Old Shed removed, no refund; a find pays its reward |
 | | `install` from supplies, `useTool`, `sell` | free; the week goes on |
@@ -459,7 +467,7 @@ The UI keeps an event queue and plays it through an animation director (place �
 **Start of week:**
 
 1. Transforms resolve (a Sapling old enough becomes a Tree), so the board the player sees is the board that scores.
-2. A hand of `handSize` distinct cards (3 by default) is drawn: pieces, plus fixtures from phase 2.
+2. A hand of `handSize` distinct cards (3 by default) is drawn: pieces, plus fixtures from phase 2. A type at its limit in the checklist draws at half weight (D-104).
 3. If none of the week's **first** hand has a legal spot (or, for a fixture, a legal host), there's one free redraw. It never follows a manual reroll, and the reserve doesn't count.
 
 **Fast-forward (D-040):**
@@ -492,7 +500,7 @@ The research behind the split: Balatro puts ×Mult on 70% of its Rare jokers and
 
 Per piece, in placement order:
 
-1. `points` = base + all flat terms: neighbor bonuses and penalties, per-tile bonuses, growth, rhythm payouts, and flat bonuses or penalties from auras.
+1. `points` = base + all flat terms: neighbor bonuses and penalties, per-tile bonuses, growth, rhythm payouts, flat bonuses or penalties from auras, and a Renovated room's +4 a level (D-102).
 2. `pct` = the sum of all percentage terms: auras, tastes, blueprints, fixtures, crew, phase effects, and this week's tools. **Percentages add**, so two "earn double" effects make +200% (×3), not ×4.
 3. `earned = floor((max(0, points) × max(0, 100 + pct) + 50) / 100)`. Integer math, rounding half up. Penalties can never combine into a positive score. If any "earns nothing" term applies, `earned = 0`.
 4. `bestPiece` (Crown Jewel) then applies its percentage to the single highest `earned`, using the same formula. Ties go to the earliest-placed piece.
@@ -655,7 +663,15 @@ type HouseCondition =                             // about the house: specs, req
   | { group: Selector; minTiles: number }         // largest connected group of matching tiles
   | { set: SetId; min?: number }
   | { demolishedSinceAccepted: { min: number } }
+  // M4a, for the house rules (D-101):
+  | { ratio: { count: Selector; per: Selector; every: number; min?: number } }   // a Bathroom for every 2 Bedrooms
+  | { outline: { minRooms: number; maxRooms?: number; minFillPct: number; maxAspect: number } }  // Under one roof
+  | { variety: { of: Selector; min: number; maxEach: number; exempt?: Selector } }              // a tidy yard
+  | { stages: { fromPhase: number; condition: HouseCondition }[] }   // by milestone: a household that grows
   | { and: HouseCondition[] } | { or: HouseCondition[] } | { not: HouseCondition }
+// Counts over piece types count rooms by their own card, weighted by countsAs modifiers for
+// that type: Bunk Beds make a Bedroom count twice, and a Kitchen Island doesn't add a Dining
+// Room (D-101). A count with a `max` over piece types is that type's limit (D-102, D-104).
 ```
 
 ### Effect kinds
@@ -730,7 +746,8 @@ type RunStat = 'milestonesEarly'                    // counts for scaling ×Mult
 
 interface ClientDef {
   id; name; rarity: 'common' | 'uncommon' | 'rare'; tier; brief: string
-  specs: { label: string; condition: HouseCondition }[]
+  specs: { id: string; name: string; group: 'household' | 'shape' | 'yard' | 'wishes'
+           condition: HouseCondition; text?: string }[]   // the seven house rules first (D-101)
   tastes: Modifier[]
   pool: Modifier[]               // drawWeight only
   changeOrders: ChangeOrderId[]
@@ -1114,6 +1131,8 @@ After M3 and before M4 (D-097): the visual half of what makes these games feel g
 
 ### M4 · Clients, sets, change orders, and crews
 
+Built alongside M5a, on its own branch (`phase/m4-clients`, pull request #17), and merged after it (D-097's juice note). *2026-11-08:* M4 renumbered its decisions to D-101–D-109, merged `develop`, and put its new screens in M5a's pixel UI and its new pieces in LimeZu's art (D-110, D-111), for playtest 4.
+
 **M4a, first:**
 
 - Clients:
@@ -1143,6 +1162,7 @@ After M3 and before M4 (D-097): the visual half of what makes these games feel g
   - the first shop
   - the first fixture
   - the first change order
+  - the first arrival (D-103)
 
   Each is dismissible and remembered in `localStorage` (UI only, not game state).
 - **Sim reports** per client and per crew (§8).
@@ -1160,6 +1180,7 @@ After M4 and before M5b (D-097's juice note): the reward feedback on M5a's art, 
 
 - the tiered celebration ladder (§12)
 - distinct moments for a set completing, a Rhythm payout, a find, opening a crate, a Rare in the shop, and a spec being met
+- M4's moments, beyond the simple pops M4 gives them (`house-systems-review.md` §6): a Renovation's level-up (M4 pops the room's stars, D-111), an arrival and the arrivals' markers on the progress bar, a change order's stamp, a house rule met or lost, and "Topped out!" the first week Under one roof holds
 - screen shake and particles, with Reduce motion, the Screen shake slider, and the Flashing toggle
 - the roof reveal at the Roofing milestone
 - D-094 (chain reactions, Open) would change the tally's order and add steps to it. Raise it with the team before this pull request reworks the tally.
@@ -1246,9 +1267,10 @@ npm run sim -- --ban blueprint:fengShui
 ### Added in M3 and M4
 
 - **Policies:** the M3b shop bot (value per budget) and tool rules, and a default change-order policy: accept requests, decline restrictions. Since D-089: `novice` (a random card that fits, at its best spot), greedy's `--early` and `--strikes` variants, and a chaos bot for tests.
-- **Reports** (all but the per-client one exist since D-089):
+- **Reports** (all exist: most since D-089, and the per-client, per-crew and house reports since M4a, D-089's M4a note):
   - per-piece pick rate, score share, and dead-card rate
-  - per-client piece mixes and win rates (M4)
+  - per-client and per-crew piece mixes and win rates, and change orders by client (M4)
+  - the house report: room counts, repeats, Bedrooms per Bathroom, research.md's plausibility check, the glance measures, and each checklist line's hold rate by client (D-093; `house-systems-review.md` Appendix)
   - early-completion choices and their payoff, per phase
   - shop: how often each good is offered, bought, and in winning runs; budget left unspent
   - fixtures and tools: how often each is used, and the weekly gain it brought
@@ -1261,7 +1283,7 @@ npm run sim -- --ban blueprint:fengShui
 - **More bots:**
   - `planner`: greedy plus weights for missing spec items, unfinished sets, and early long-term earners
   - `early:smart`: early-completion choices by expected payoff. `early:always` and `early:never` exist since D-089, as `--early always` and `--early never`.
-- **Reports:** per-crew win rates, overtime use, free redraws and passes, and what top-scoring houses contain.
+- **Reports:** overtime use, free redraws and passes, and what top-scoring houses contain. (Per-crew win rates exist since M4.)
 - **Worker threads**, if a full sweep is slow.
 
 ### Starting criteria to playtest against
@@ -1280,7 +1302,7 @@ npm run sim -- --ban blueprint:fengShui
 - `greedy` clears milestones 1–3 in 92–98% of runs, and wins 40–50%.
 - Early completion: `--early always` and `--early never` win within 10 points of each other, paired by seed, and the report prints the median ratio of their final scores. `early:smart`'s 25% waits for M6.
 - Fences: the enclosure probe's median is 2–3 Fence cards, and at least 50% of greedy runs are offered that many Fence cards by milestone 4.
-- `planner`, no must-buy, and the client and crew spread print as NOT MEASURED until M4 and M6. Until then, `--ban` on paired seeds stands in for no must-buy.
+- `planner` and no must-buy print as NOT MEASURED until M6. Until then, `--ban` on paired seeds stands in for no must-buy. Since M4 the client and crew spread is measured on runs that cover more than one client or crew (`--client all`, the default, and `--crew all`).
 
 ### Determinism
 
@@ -1403,7 +1425,7 @@ The team treats reward feel as core: big combos should feel like Balatro and Com
    - the next note of the pitch ladder
    - a squash-and-wobble on the piece
    - a tiny screen-shake impulse
-2. **Sets held light up next,** each adding its Points (Points color) and its +Mult (Mult color, with a warmer chime). Then each spec met adds +Mult.
+2. **Sets held light up next,** each adding its Points (Points color) and its +Mult (Mult color, with a warmer chime). Then each spec met adds +Mult. The score panel lists the sets; on a window under 1000 px tall it folds them into one row (and keeps to its equation while a play is looked at), how many with their Points and Mult added up and the list in its tip, a set a line. In the tally that row counts up from "0 sets" with the sets counted so far, lighting with each one, its numbers popping (D-098's 2026-11-08 change, D-110).
 3. **Each ×Mult source then lands on its own:** a gold "×2" stamp, a heavier, lower sound, and a bigger wobble. It's the heaviest-sounding moment in a normal week.
 4. **The multiply moment:**
    - a 0.4 s pause
@@ -1448,6 +1470,7 @@ Intensity is measured against **pace**: `max(1, (this phase's target − the sco
 
 - Points are whole numbers. Mult shows at most two decimals (×1.5, ×2.25).
 - Commas, then K/M suffixes above a million on popups. Scientific notation only above 10^12.
+- The score panel's week total sizes itself to its plaque: from the hero size down, in whole steps of the pixel font's grid, as its digits grow, so a Wow of up to seven digits stays inside the frame in the narrowest column, and one of up to six keeps a clear gap after its word (D-110).
 - Bigger numbers quiver slightly more with each extra digit, as in Balatro.
 - Each tile's weekly score is a small white digit with a dark outline in the tile's bottom-right corner, as in Combolands (lifted above another piece's roof that rises into it).
 
@@ -1535,6 +1558,7 @@ Intensity is measured against **pace**: `max(1, (this phase's target − the sco
   - several LimeZu furniture sprites per room, laid out by rules per room type and footprint, never rotated (they're drawn in 3/4 view), varying by piece (`src/ui/art/rooms.ts`):
     - Each room type lists its pieces, most important first, with slots ported from the audit prototype: against a north wall (the widest run, centered, then sliding), beside what stands there, in the middle of the free floor, a rug or runner centered under everything, against the south wall or in its corners, and the Garage's car nose-in through its door. A piece and the ones beside it (a bed between its nightstands) are planned together: the room's fixture first, then the pieces in the order the room lists them (an earlier one outranks any number of later ones), dropping the least important until they fit. A key piece falls back to the middle of the floor when its doors leave no wall free (a kitchen's range and its counter stand there as one block). A fixture's own sprite goes through all its slots before anything stands in for it.
     - A Kitchen's run is the range and the counter with the sink (a plain counter where the sink won't fit), then the fridge where it still fits (on an L-Kitchen's other arm, or beside the run). A Dining Room's table keeps room for a chair each side: in the middle of the floor, else against the north wall's face, else over a door's walkway (never its opening), and the chairs keep out of the walkway. A Home Office too narrow or shallow for its desks gets a small writing desk.
+    - The members' rooms (D-103) have their own floors, wallpapers and furniture (D-111, `art/limezu/members.json`): the twins' crib, a low dresser and a teddy in the Nursery; two children's beds, a toy box and a toy train in the Kids' Room; a bed with a vanity, or a curio cabinet where the vanity won't fit, and a standard lamp in Grandma's Room; a cot, two flickering candles and a spider on its thread in Renfield's Room; a bed beside the dogs' bed (our own drawing) in Nana's Room; an easel, a stool, a pot of paint and a painting in Rowan's Studio; a child's bed, a school desk and a globe in Ivy's Room. Renfield's Room and Rowan's Studio are one cell across, so their pieces are at most 22 × 26 px or come in a second shape (an upright or side-on cot, an easel without its finial). Bunk Beds stand in the crib's or the bed's place in a member's 2×2 room (a badge in the two narrow ones), and when the Nursery grows into the Kids' Room its art changes with it.
     - A piece against a north wall stands with its back on the floor's top edge, under the wall's face. A tall one (a fridge, a bookcase, a plant) rises over the wall band, never past its top edge nor off its own room's cells: all of an outside band, only its room's half of a band between two rooms, so a wall between rooms always shows. Its rows above the band are drawn on the overhang layer, over the walls.
     - Nothing stands in a doorway or its walkway, on another piece (rugs and runners lie under everything), in the walls (a pixel's tuck at most), or over a north window if it can help it. Only a one-cell room's key piece (the toilet, the rail), the car and a dining table may stand in a walkway, never in the opening. What doesn't fit is left out.
     - Some cuts are spliced or composed to fit 32 px rooms (`compose` in the manifest): a 26 px toilet, a 26 px washer (three rows of its plain top out, so it stands in a one-cell-deep Mudroom), 12 px hall runners in any length, counters with the sink, the island in 40, 24 and 16 px, a breakfast table, and the tan and lavender sofas put together from LimeZu's modular pieces.
@@ -1544,11 +1568,12 @@ Intensity is measured against **pace**: `max(1, (this phase's target − the sco
     - painted with the room, our own drawings in LimeZu's palette: Soundproofing pads the room's side of its wall bands (on the walls canvas, over the furniture, so it always shows) and its north faces; Blackout Curtains draw drapes over the room's windows and hang across the widest stretch of north face the furniture leaves in view (a room with neither, like a Closet, keeps the badge); a Skylight lays a four-pane patch of sun over the floor and furniture; the Chandelier hangs over the room in its own light; and a Bay Window turns one cell of outside wall to glass, with its bay outside, the street side first
     - the yard's fixtures show unless a door keeps them off (then their badge does): the Sprinkler on its Lawn with a wet patch round it, the Pergola over its Patio (in place of the parasol; where a door opens onto the Patio, a shallower or narrower cut of it on the far side, its badge only where doors open onto two sides), and Garden Lights as a bollard at each front corner of the piece, each with its light on the ground
 - **The yard pieces** are laid out by rules from the placed pieces too, never by chance (`src/ui/art/yard.ts`):
-  - Their ground goes on the floor canvas, under the house's shadow: a Lawn's mown stripes, a Patio's herringbone pavers, a Driveway's concrete with a curb cut through the sidewalk where it meets the street, and a Pool's and a Hot Tub's water inside LimeZu's white coping (a 3 × 3 sheet of its tiles, laid over any rectangle). A flat piece has a darker 1 px edge, softer where it meets another piece of its kind (two Lawns, a Driveway and a Long Driveway), so touching pieces read as one patch and each stays countable (D-093). A piece's ground stays on its own cells.
-  - Their props stand on their cells as items, so they wobble and settle with their piece: a parasol over a table and two chairs on a Patio; the house's one parked car on its oldest Driveway with room for it (nose in, or side on facing the house), orange or grey so it never matches the Garage's; a Pool's ladder and float; the Hot Tub's foam; the Fire Pit's animated fire in front of two stumps; a planter on a Flower Bed, and one per cell of a Herb Garden with greens instead of flowers; the Sapling on its soil; LimeZu's Greenhouse and modular Treehouse; a shed's front as the Henhouse's coop, with two hens on straw behind a picket front in its other cell; a Birdhouse on its pole.
+  - Their ground goes on the floor canvas, under the house's shadow: a Lawn's mown stripes, a Patio's herringbone pavers, a Driveway's concrete with a curb cut through the sidewalk where it meets the street, and a Pool's and a Hot Tub's water inside LimeZu's white coping (a 3 × 3 sheet of its tiles, laid over any rectangle). A flat piece has a darker 1 px edge, softer where it meets another piece of its kind (two Lawns, or two Driveways), so touching pieces read as one patch and each stays countable (D-093). A piece's ground stays on its own cells.
+  - Their props stand on their cells as items, so they wobble and settle with their piece: a parasol over a table and two chairs on a Patio; the house's one parked car on its oldest Driveway with room for it (nose in, or side on facing the house), standing only on that Driveway's own tiles, in another row or column of a ragged pack if it must (a lone tile has no room for it, D-111), orange or grey so it never matches the Garage's; a Pool's ladder and float; the Hot Tub's foam; the Fire Pit's animated fire in front of two stumps; a planter on a Flower Bed, and one per cell of a Herb Garden with greens instead of flowers; the Sapling on its soil; LimeZu's Greenhouse and modular Treehouse; a shed's front as the Henhouse's coop, with two hens on straw behind a picket front in its other cell; a Birdhouse on its pole.
   - Where LimeZu has none, our own drawings in its palette and ink: the Doghouse, the hens and the Sprinkler (`src/ui/art/drawings.ts`).
   - No prop stands on an outside door's mat or in front of its opening (nor rises over one on the overhang layer): a Patio's table and seats move clear of the door that opens onto it, under a small parasol in place of the full one (the audit prototype's), a Pergola gives way to a shallower or narrower cut on the Patio's far side, and the car parks further along its Driveway, or on the next one. Every prop keeps its whole sprite off mats and openings, and a test checks every prop's pixels against every door. An outbuilding's own building always stands: no door opens onto one, so only its roof, rising over the row behind it, can hide part of a mat.
-  - A Fence is a white picket line through the middle of its cells, out to their edges at its ends, with a post at each end and turn (LimeZu's pickets, posts and end-on strip, after the exteriors audit's line autotile). Two Fences join only through an end's open side (the way its line runs on): in a corner or a T; end to end, each keeps its end post, so each stays countable; side by side, their ends never close them into a pen. A Fence's ghost is the Fence alone.
+  - Fences and Driveways are packs (D-106): a Fence is 1–8 connected tiles and a Driveway 1–6, in any shape (`packShapeProblem` in `src/rules/grid.ts`), clicked out one by one, so each is drawn from its own tiles (`PlacedPiece.shape`), never its card's shape: the ghost as the tiles go down, the built pack, and the Moving Truck's carried pack (D-111).
+  - A Fence is a white picket line through the middle of its cells, out to their edges at its ends, with a post at each end and turn (LimeZu's pickets, posts and end-on strip, after the exteriors audit's line autotile). A lone tile is a short run across its cell, with a post at each end. Two Fences join only through an end's open side (the way its line runs on): in a corner or a T; end to end, each keeps its end post, so each stays countable; side by side, their ends never close them into a pen. A Fence's ghost is the Fence alone.
   - What rises above a piece's own cells (the Greenhouse's roof, the Treehouse, a Birdhouse's box, a side-on car's roof) goes on the overhang layer, over the walls. The Greenhouse and the Treehouse are cut down to rise less than a cell, so a piece behind them still shows.
   - Pieces of a type differ in color (parasols, planters, coops, birdhouses) the way rooms do, and a ghost takes the color its piece will have (or has, when the Moving Truck carries it, with its fixture).
 - **Readability:**
@@ -1571,7 +1596,7 @@ Intensity is measured against **pace**: `max(1, (this phase's target − the sco
   - an animated sprite (the Fireplace, the Fire Pit, the Hot Tub's foam, the Sprinkler) is its frames side by side, stepped behind the piece's box with a transform; reduced motion stops it
   - furniture and yard props are absolutely positioned elements using a CSS-background atlas, placed at any art pixel × scale (a whole number of device pixels per art pixel at the camera's scales)
   - atlas sprites start at even positions and are extruded by 1px, so fractional screen scales show no seams
-  - the pieces' score digits are sized in sixteenths of a cell (never under 11 CSS px), so 1× shows them as 2× did with 16 px art, and they grow with the zoom, in the piece's bottom-right cell inside its walls. A piece's badges (a fixture that can't be drawn, top right; an unmet requirement's ⚠, top left) are square paper in LimeZu's ink with their pixel icon, 14 CSS px at 1×, growing with the zoom and shrinking below 1× (never under 9 CSS px, nor under their icon at a device pixel a pixel), on whole device pixels. A badge never covers the digit (`src/ui/board/label-layout.ts`, tested at every zoom): one that shares the digit's row and would touch it rises to its cell's top edge, over the wall band, then the digit drops toward the cell's bottom edge, then the badge shrinks. Labels keep off what isn't their piece's: another piece's prop rising into their cells, a tree's crown (`canopyParts` in `terrain/objects.ts`), and doors' mats. The digit rises above it (into its own cells above, if it must) or moves left onto its own cells, whichever is shorter, keeping a badge in its column room for its icon
+  - the pieces' score digits are sized in sixteenths of a cell (never under 11 CSS px), so 1× shows them as 2× did with 16 px art, and they grow with the zoom, in the piece's bottom-right cell inside its walls. A piece's badges (a fixture that can't be drawn, top right; an unmet requirement's ⚠, top left) are square paper in LimeZu's ink with their pixel icon, 14 CSS px at 1×, growing with the zoom and shrinking below 1× (never under 9 CSS px, nor under their icon at a device pixel a pixel), on whole device pixels. A badge never covers the digit (`src/ui/board/label-layout.ts`, tested at every zoom): one that shares the digit's row and would touch it rises to its cell's top edge, over the wall band, then the digit drops toward the cell's bottom edge, then the badge shrinks. Labels keep off what isn't their piece's: another piece's prop rising into their cells, a tree's crown (`canopyParts` in `terrain/objects.ts`), and doors' mats. The digit rises above it (into its own cells above, if it must) or moves left onto its own cells, whichever is shorter, keeping a badge in its column room for its icon. A renovated room's level (D-102) is one more badge, a star per level, placed last so it moves nothing: beside the ⚠, else under it, else in its place, else under the fixture's badge or the top badges, else in another top cell, by the same rules, shrinking as the other badges do. It pops on a Renovation, and where it can't fit it's left out, since the inspect panel states the level (D-111)
   - the street's label lies on the longest stretch of sidewalk with no curb cut, sticks inside the view's left edge so it reads whole however the lot is panned, and takes a smaller size in a short row (0.5× on a Retina screen)
   - the title screen's street is one canvas, like the terrain, so its tiles show no seams at 125% or 150% display scaling. Its lawn and street are drawn by the lot's own painters (the grass with its tufts and flowers, and the board's sidewalk, curb, road and dashed line), with one more row of far sidewalk for the credit. It keeps its old tile sizes (64, 48, or 32 CSS px by the window's height), rounded to whole device pixels per art pixel (down on a tie) and never under 32 CSS px, so the footer stays on the far sidewalk. On a Retina screen it's as it was. At a devicePixelRatio of 1 the 48 px size comes out at 32; at 1.25 every size comes out at 51.2; at 1.5 the 48 and 32 px sizes come out at 42.7.
   - **zoom changes the scale and re-lays out the board in whole steps, never with `transform: scale()`**: Safari blurs canvases under a scaling transform (a WebKit bug open since 2018). Transforms are only for short juice tweens. This changes D-049's camera.
@@ -1747,8 +1772,18 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
   - checked every week (a demolition can lose one), each adds +0.25 Mult (`specBonus` 25), added together
   - specs are positive achievements: "no Pool" and "no Garage" become tastes (a penalty on that piece) instead of free bonuses from week 1
   - Dale's "nothing Loud next to an office" counts only once he has an office; the street doesn't count
+- **The house rules** (D-093's option B, D-101): every checklist starts with seven, in the client's numbers, each +0.25 while it holds:
+  - the household: Room for everyone (the client's Bedroom range), a Bathroom for every two Bedrooms (at least one), One Kitchen (an L-Kitchen counts), and a living room or two (1–2 Living Rooms, at most one Dining Room)
+  - the shape: Under one roof (4+ rooms, filling 60% of their box, the box no longer than 2:1) and Cozy (6+ rooms, each touching 2+ rooms; a Hallway's link counts)
+  - the yard: a tidy yard ("6 or more yard pieces, and no yard type stands 4 or more times"; outbuildings count; Fences, Driveways, and Saplings count toward the 6 but never break it)
+  - a client wish that repeats a house rule becomes the client's numbers for it (the Hendersons' Bedrooms and Bathrooms; Juniper's 4–8 rooms is her Under one roof)
+  - Room for everyone rises with the household's arrivals (M4b, D-103, D-109): both ends +1 at each arrival, and from that arrival on it needs the member's room. The Hendersons go 2–3, then 3–4 from Framing (the twins) and 4–5 from Drywall (Grandma); the other clients 1–2, then 2–3 from their member's arrival. (In M4a, before arrivals, it stepped up at Framing and Drywall.)
+- **Renovate** (D-102): a room card whose type is at its limit can level a room of that type instead: +4 Comfort a level, up to 2. Levels stay through the Moving Truck and transforms. It can be Weekend Crew's next play, and a card that can only renovate doesn't count as fitting for the free redraw.
+- **Half-weight draws** (D-104): a type at its limit draws at half weight while it stays there.
+- **The yard rules** (D-105): the Patio, Hot Tub, and Fire Pit earn nothing unless they touch a room (not blocking; a Hallway alone doesn't count); Treehouses don't count each other as Kid partners.
+- **Packs** (D-106): one Fence card places 1–8 connected tiles, and one Driveway card 1–6, in one week, as one piece.
 - **Juniper:**
-  - her limit becomes the spec "a house of 4–8 rooms" (`and(count room ≥ 4, count room max 8)`), so it's an achievement rather than free from week 1, plus a −10% taste per room over 8
+  - her limit becomes the spec "a house of 4–8 rooms", so it's an achievement rather than free from week 1, plus a −10% taste per room over 8. Under D-101 it's her Under one roof: 4–8 rooms, filling 60% of their box
   - early-completion rewards doubled
   - if she still doesn't work in the sim, move her to Stretch
 - **Tastes:** a like is +50%, a dislike −50%, "earns double" +100%, all in the same bucket; "earns nothing" is ×0.
@@ -1761,8 +1796,8 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
 - **Pool:**
   - the base pool is 9 indoor + 7 yard + 3 "-house" pieces
   - each client's spec pieces get +100% weight, and their signature special pieces are added at weight 20
-  - Landscaper: yard pieces +50% weight and +25% earnings
-  - Architect: special rooms at weight 5, and sets +50%
+  - Landscaper: yard pieces +50% earnings (D-109; the plan's +50% weight and +25% earnings made it the weakest crew)
+  - Architect: special rooms at weight 5, and sets +10% (D-109; +50% made it the strongest by 23 points)
 - **Job board:**
   - 3 contracts with rarity weights Common 65, Uncommon 27, Rare 8
   - no guaranteed Rare (D-026)
@@ -1773,7 +1808,7 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
   |---|---|---|---|---|
   | Jack-and-Jill | 10 | +0.5 | | +8 Points, +0.25 |
   | Suite | 15 | +0.5 | | +10 Points, +0.25 |
-  | Entertainer | 25 | +1 | | +15 Points, +0.5 |
+  | Entertainer (one per house, D-093) | 25 | +1 | | +15 Points, +0.5 |
   | Full House | 40 | +1 | ×2 | +20 Points, +0.5 |
 
   - checked every week; Points and Mult pay every week while the set holds; other reward types pay once, on first completion
@@ -1833,16 +1868,16 @@ Every Core item from `content-brainstorm.md`, written in the §5 format. Numbers
 | Sapling | `steady 1`; `transform into tree after 4` | M2 |
 | Flower Bed | `givesView`; `steady 1`; `conditional {in: frontYard} → steady 2`; `neighbor flowerBed +1` | M2 |
 | Herb Garden | `givesView`; `perTile sunny +1`; `aura kitchen +25% adjacent` | M2 |
-| Patio | `neighbor [livingRoom, kitchen] +2`; `neighbor {property viewSource} +1 max 3` | M2 |
-| Fence (1×4 and the 5-tile L `['#..', '#..', '###']`) | Two cards sharing a type; `wall`; `enclosure perTile 1 cap 6` | M2 |
-| Driveway (1×3 and 1×5) | Two cards sharing a type; `canCover: ['creek']`; `requires {touching: [street, driveway]}` (blocks); `conditional {in: frontYard} → steady 1` | M2 |
+| Patio | `requires {touching {property room}}` (doesn't block: the Patio rule, D-105); `neighbor [livingRoom, kitchen] +2`; `neighbor {property viewSource} +1 max 3` | M2 (M4a: the Patio rule) |
+| Fence | A pack of 1–8 connected tiles, one piece (D-106; was the 1×4 and 5-tile L cards); `wall`; `enclosure perTile 1 cap 6` | M2 (M4a: the pack) |
+| Driveway | A pack of 1–6 connected tiles, one piece (D-106; was the 1×3 and 1×5 cards); `canCover: ['creek']`; `requires {touching: [street, driveway]}` (blocks); `conditional {in: frontYard} → steady 1` | M2 (M4a: the pack) |
 
 ### "-house" pieces (base pool)
 
 | Item | Encoding | Built in |
 |---|---|---|
 | Doghouse | Outbuilding; tags Pet and House; `requires {in: fencedYard}` (doesn't block); `steady 1`; `neighbor lawn +1` | M2 |
-| Treehouse | Outbuilding; tags Kid and House; `requires {touching: tree}` (blocks); `neighbor {tag Kid} +2` | M2 |
+| Treehouse | Outbuilding; tags Kid and House; `requires {touching: tree}` (blocks); `steady 2` (D-071); `neighbor {tag Kid ∧ not treehouse} +2` (D-105) | M2 (M4a: not counting each other) |
 | Greenhouse | Outbuilding; tags Green and House; `givesView`; `aura {property viewSource ∧ yard} +50% adjacent` | M2 |
 
 ### Special pieces (shop, clients, crews; weight 0)
@@ -1856,8 +1891,8 @@ The last five were Stretch in `content-brainstorm.md`. They're promoted to Core 
 | Mudroom | Indoor; tag Pet; `conditional {borders: fencedYard} → aura {tag Pet} +50% region` | M3a |
 | Pool | Yard; tags Wet, Sunny, Loud; `rhythm every 3 +12`; `neighbor tree −2 max 3` | M3a |
 | **Sunroom** (2×2) | Indoor; tag Sunny; `perTile sunny +2` | M3a |
-| **Hot Tub** (1×1) | Yard; tags Wet and Social; `neighbor patio +3` | M3a |
-| **Fire Pit** (1×1) | Yard; tag Social; `aura patio +50% adjacent` | M3a |
+| **Hot Tub** (1×1) | Yard; tags Wet and Social; the Patio rule (D-105); `neighbor patio +3` | M3a |
+| **Fire Pit** (1×1) | Yard; tag Social; the Patio rule (D-105); `aura patio +50% adjacent` | M3a |
 | **Henhouse** (1×2) | Outbuilding; tag House; `economy 1 every 2`; `neighbor [herbGarden, flowerBed] +1` | M3a |
 | **Birdhouse** (1×1) | Outbuilding; tag House; `neighbor tree +1 max 3` | M3a |
 
@@ -1889,7 +1924,7 @@ Each set pays Points and +Mult every week it holds, like a poker hand (values in
 |---|---|---|
 | Suite | members bedroom, bathroom, closet; connected; Points 15, Mult +0.5 | M4a |
 | Jack-and-Jill | members 2 bedrooms + bathroom; hub bathroom; Points 10, Mult +0.5 | M4a |
-| Entertainer | members kitchen, diningRoom, livingRoom; connected; Points 25, Mult +1 | M4a |
+| Entertainer | members kitchen, diningRoom, livingRoom; connected; max 1 (D-093); Points 25, Mult +1 | M1 (M4a: max 1) |
 | Full House | one of each of the 9 Core indoor types; not connected; max 1; Points 40, Mult +1, **×2** | M4a |
 
 ### Blueprints (18)
@@ -1966,26 +2001,28 @@ Packs, as in Combolands and Balatro: open one and keep 1 of 3.
 
 ### Clients
 
+Every checklist starts with the seven house rules (D-101), in the client's numbers; the Specs column lists each client's own wishes and numbers. A wish that repeats a house rule became that rule's numbers.
+
 | Client | Specs | Tastes | Pool | Change orders | Built in |
 |---|---|---|---|---|---|
-| **Hendersons** | bedroom ≥ 4; bathroom ≥ 2; adjacentPair kitchen–diningRoom; fencedYardTiles ≥ 4 | `earn {tag Kid} +50`; `earn lawn +50`; `earn {tag Loud ∧ touching bedroom} −50` | spec pieces + fence +100% | *Twins:* request `countNew bedroom ≥ 2`. *Golden retriever:* request `count {doghouse ∧ in fencedYard} ≥ 1`. *Thanksgiving:* phase `setBonus entertainer +100` | M4a / M4b |
-| **Count Vladislav** | `count {room ∧ tag Dark} ≥ 3`; library ≥ 1 | `earn {tag Dark} +100`; `earnNothing {tag Sunny}`; `earn {touching tree} +50`; `earn herbGarden −100` | library add 20 | *The coven is visiting:* request `countNew {room ∧ interior} ≥ 2`. *Eternal night:* phase `grantTag {property room} Dark` | M4a / M4b |
-| **Barkers** | fencedYardTiles ≥ 12; doghouse ≥ 2; mudroom ≥ 1 | `earn {tag Pet} +50`; `earn lawn +50`; `earn flowerBed −50` | mudroom add 20; doghouse, fence +100% | *Another rescue:* request `countNew doghouse ≥ 1`. *Agility course:* request `group {lawn ∧ in fencedYard} minTiles 8` (two connected Lawns) | M4a / M4b |
-| **Juniper Vale** | `and(count {room} ≥ 4, count {room} max 8)`; `count {room ∧ view} ≥ 2` | `perCountOver {room} over 8 −10`; `earn garage −100`; `rule earlyRewardPct +100` | — | *Declutter:* request `demolishedSinceAccepted ≥ 1`. *Tea garden:* request `countNew {patio ∧ view} ≥ 1` | M4a / M4b |
-| **Dale** | homeOffice ≥ 2; `and(homeOffice ≥ 1, none {tag Loud ∧ touching homeOffice})` | `budget all +100` | homeOffice +100% | *Big deadline:* restriction `forbid {tag Loud}`. *Started a podcast:* request `countNew {room ∧ interior} ≥ 1` | M4a / M4b |
+| **Hendersons** | Bedrooms 2–3, rising with the household (their bedroom ≥ 4 and bathroom ≥ 2 are where it ends up); adjacentPair kitchen–diningRoom; fencedYardTiles ≥ 4 (any fenced yard, D-069) | `earn {tag Kid} +50`; `earn lawn +50`; `earn {tag Loud ∧ touching bedroom} −50` | bedroom, bathroom, diningRoom, fence +100% (not the Kitchen, D-108) | *Golden retriever:* request `count {doghouse ∧ in fencedYard} ≥ 1`. *Thanksgiving:* phase `setBonus entertainer +100`. (*Twins* is now their arrival at Framing, D-103.) | M4a / M4b |
+| **Count Vladislav** | `count {room ∧ tag Dark} ≥ 3`; library = 1 (D-108) | `earn {tag Dark} +100`; `earnNothing {tag Sunny}`; `earn {touching tree} +50`; `earn herbGarden −100` | library add 20 | *The coven is visiting:* request `countNew {room ∧ interior} ≥ 2`. *Eternal night:* phase `grantTag {property room} Dark` | M4a / M4b |
+| **Barkers** | fencedYardTiles ≥ 12; doghouse ≥ 2; mudroom = 1 (D-108) | `earn {tag Pet} +50`; `earn lawn +50`; `earn flowerBed −50` | mudroom add 20; doghouse, fence +100% | *Another rescue:* request `countNew doghouse ≥ 1`. *Agility course:* request `group {lawn ∧ in fencedYard} minTiles 8` (two connected Lawns) | M4a / M4b |
+| **Juniper Vale** | her Under one roof: 4–8 rooms (was `and(count {room} ≥ 4, count {room} max 8)`); `count {room ∧ view} ≥ 2` | `perCountOver {room} over 8 −10`; `earn garage −100`; `rule earlyRewardPct +100` | — | *Declutter:* request `demolishedSinceAccepted ≥ 1`. *Tea garden:* request `countNew {patio ∧ view} ≥ 1` | M4a / M4b |
+| **Dale** | homeOffice = 2 (D-108); `and(homeOffice ≥ 1, none {tag Loud ∧ touching homeOffice})` | `budget all +100` | homeOffice +100% | *Big deadline:* restriction `forbid {tag Loud}`. *Started a podcast:* request `countNew {room ∧ interior} ≥ 1` | M4a / M4b |
 
 ### Crews
 
 | Crew | Encoding | Built in |
 |---|---|---|
 | General Contractor | `rule rerollsPerPhase +1` | M4b (default crew from M2) |
-| Landscaper | `drawWeight {yard} +50%`; `earn {yard} +25`; `startReserve [sapling, fence]` | M4b |
-| Architect | `drawWeight [playroom, library, mudroom, pool] add 5`; `setBonus +50` | M4b |
+| Landscaper | `earn {yard} +50` (was `drawWeight {yard} +50%`; `earn {yard} +25`, D-109); `startReserve [sapling, fence]` | M4b |
+| Architect | `drawWeight [playroom, library, mudroom, pool] add 5`; `setBonus +10` (was +50, D-109) | M4b |
 
 ### Generic change orders
 
 | Item | Encoding | Built in |
 |---|---|---|
 | Working from home | request `countNew homeOffice ≥ 1` | M4b |
-| Grandma's moving in | request `countNew {bedroom ∧ touching bathroom} ≥ 1` | M4b |
+| ~~Grandma's moving in~~ | now the Hendersons' arrival at Drywall (D-103) | M4b |
 | Heat wave | phase: pool +100; `{touching tree}` +100; `{room ∧ Sunny}` −50 | M4b |

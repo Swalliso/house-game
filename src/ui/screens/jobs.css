@@ -1,0 +1,304 @@
+/* The job board and the crew pick (M4, D-110): one wood panel standing on the title's street
+   (Title.tsx's TitleBackdrop), three paper cards in it. Rarity is a band inside a card's ring and
+   its chip, with the shop's tints (D-087); the first visit's pick wears a gold tab. Each card's
+   middle scrolls and its button stays in view, so 1280×720 needs no page scroll, in either font.
+   Built on kit.css; the timings come from feel.ts (FEEL.jobs) as --jobs-in and --beat.
+
+   Text sits on paper, the card tints and the plank, never on --wood (on-wood is 2.6:1 there). */
+
+/* The map's pixel: three UI pixels a tile, two on a smaller window (lot-map.ts). */
+.jobs-screen {
+  --map-px: calc(var(--px) * 3);
+}
+
+/* A column over the scene, the panel at its top: the street and its car show below it on a tall
+   window, and on a short one the panel stops above the build label in the corner. Every inset
+   is a whole number of UI pixels, so the panel and its text land on whole device pixels. */
+.jobs-stage {
+  position: absolute;
+  inset: var(--space-6) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+}
+.jobs-panel.panel {
+  flex: 0 1 auto;
+  min-height: 0;
+  width: min(calc(var(--px) * 720), 100%);
+  box-shadow: var(--shadow-float);
+  pointer-events: auto;
+  /* It arrives as the title's sign does (title.css). */
+  animation: sign-in var(--dur-banner) cubic-bezier(0.2, 1.3, 0.4, 1) backwards;
+}
+.jobs-panel .panel-head {
+  min-height: calc(var(--px) * 18);
+}
+.jobs-panel .panel-title {
+  font-size: var(--fs-title);
+  line-height: var(--lh-title);
+}
+.jobs-panel .panel-body.jobs-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0;
+  gap: 0;
+}
+.jobs-lede {
+  flex: none;
+  margin: 0;
+  padding: var(--space-2) var(--space-3) 0;
+  color: var(--ink-soft);
+}
+
+/* --- The cards --------------------------------------------------------------------------- */
+
+/* Three columns; the row takes what the panel has left, so each card's middle scrolls. Room
+   above them for the Recommended tab. Each column is a whole number of UI pixels wide (a third
+   of the row, rounded down), so every card and its pixel text start on a whole device pixel. */
+.jobs-list {
+  --jobs-gap: var(--space-3);
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(3, round(down, calc((100% - 2 * var(--jobs-gap)) / 3), var(--px)));
+  grid-template-rows: minmax(0, 1fr);
+  gap: var(--jobs-gap);
+  margin: 0;
+  padding: calc(var(--space-5) + var(--space-1)) var(--space-3) var(--space-3);
+  list-style: none;
+}
+.jobs-item {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+/* Pinned up one after another (FEEL.jobs), then at rest with no transform, so its pixel text
+   is crisp. */
+.contract.pcard {
+  flex: 1 1 auto;
+  min-height: 0;
+  animation: contract-in var(--jobs-in) cubic-bezier(0.2, 1.3, 0.4, 1) var(--beat, 0ms) backwards;
+}
+@keyframes contract-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--px) * -5)) rotate(-1.5deg);
+  }
+}
+.reduce-motion .jobs-panel.panel,
+.reduce-motion .contract.pcard {
+  animation: none;
+}
+/* Rarity's fills, as the shop's goods have them: the band and the chip say it. */
+.contract.rarity-uncommon {
+  --card-fill: var(--uncommon-tint);
+}
+.contract.rarity-rare {
+  --card-fill: var(--rare-tint);
+}
+
+/* The first visit's pick: a gold tab standing on the card's top edge. */
+.contract-tag {
+  position: absolute;
+  /* Its bottom ring on the card's top ring: one ink line. */
+  bottom: 100%;
+  left: var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-1) var(--px);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--sparkle);
+  background-clip: padding-box;
+  box-shadow: inset 0 calc(var(--px) * -2) 0 var(--sparkle-deep);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+  white-space: nowrap;
+}
+
+/* The middle, which scrolls on a short window; the foot under it never does. */
+.contract-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  scrollbar-width: thin;
+  scrollbar-color: var(--wood) var(--paper-inset);
+}
+.contract-foot {
+  flex: none;
+  display: flex;
+  padding-top: var(--space-2);
+  box-shadow: inset 0 var(--px) 0 var(--paper-line);
+}
+.contract-brief,
+.contract-lot-note,
+.contract-quiet {
+  margin: 0;
+  color: var(--ink-soft);
+}
+.contract-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--px);
+}
+.contract-section h3 {
+  margin: 0;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--ink-soft);
+}
+.contract-section p,
+.contract-section ul {
+  margin: 0;
+}
+
+/* The lot's map beside the wishes and the household. */
+.contract-top {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+.contract-top-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+/* An ink ring around the map, whose tiles are whole UI pixels. */
+.contract-map {
+  flex: none;
+  display: block;
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+}
+.contract-map canvas {
+  display: block;
+  width: calc(var(--lot-w) * var(--map-px));
+  height: calc(var(--lot-h) * var(--map-px));
+  image-rendering: pixelated;
+}
+
+/* Tastes and a crew's effects: a mark for each, in a slot of its own, so the words line up. */
+.contract-tastes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--px);
+  padding: 0;
+  list-style: none;
+}
+.contract-tastes li {
+  display: flex;
+  gap: var(--space-1);
+}
+.contract-tastes .quiet {
+  color: var(--ink-soft);
+}
+.taste-mark {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--px) * 9);
+  height: var(--lh-body);
+}
+
+/* The house rules, folded: a caret that turns as it opens. */
+.contract-rules summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  list-style: none;
+  font-weight: 700;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.contract-rules summary::-webkit-details-marker {
+  display: none;
+}
+.contract-rules:not([open]) .caret-open,
+.contract-rules[open] .caret-closed {
+  display: none;
+}
+.contract-rules > ul {
+  margin: var(--space-1) 0 0;
+}
+
+/* A crew's picture: its icon at four UI pixels to its pixel, in the card's well. */
+.crew .crew-icon.icon {
+  width: calc(var(--w) * var(--px) * 4);
+  height: calc(var(--h) * var(--px) * 4);
+}
+/* What a crew starts with: each card's picture, as the hand draws it, and its name. A short
+   window keeps the pictures (the hand swaps in shapes): the crew cards have the room. */
+.crew-starts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-1) 0 0;
+  list-style: none;
+}
+.crew-starts li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+}
+/* Each picture in a well, as on a hand card: lawn behind a yard piece. */
+.crew-starts .pcard-art.yard {
+  --art-bg: var(--lawn);
+}
+
+/* --- The foot: Back, and the keys ------------------------------------------------------- */
+
+.jobs-foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  box-shadow: inset 0 var(--px) 0 var(--paper-line);
+}
+.jobs-keys {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  color: var(--ink-soft);
+}
+.jobs-key {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* --- A narrower or shorter window (D-098's 800 px) ---------------------------------------- */
+
+@media (max-width: 1500px), (max-height: 800px) {
+  .jobs-screen {
+    --map-px: calc(var(--px) * 2);
+  }
+}
+@media (max-height: 800px) {
+  .jobs-stage {
+    top: var(--space-4);
+  }
+  .jobs-list {
+    --jobs-gap: var(--space-2);
+    padding-inline: var(--space-2);
+  }
+  /* The map's title and label still say it. */
+  .contract-lot-note {
+    display: none;
+  }
+}

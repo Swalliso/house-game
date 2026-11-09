@@ -100,6 +100,11 @@ function CardView({ card, i }: { card: CardData; i: number }) {
   const fits = cardsFit.value[i] ?? true;
   const isSelected = isPicked('hand', i);
   const kind = kindOf(def);
+  // A pack (D-106) doesn't turn, so it never shows a turn left from another card this week.
+  const rot = isSelected && !def.pack ? rotation.value : 0;
+  // A member's room (M4b, D-103): whose it is, before the card's notes. Only the ?debug panel
+  // deals one to the hand; Inspect says it too, where a short window hides the note.
+  const notes = text.member ? [text.member, ...text.notes] : text.notes;
   return (
     <Card
       as="button"
@@ -109,10 +114,10 @@ function CardView({ card, i }: { card: CardData; i: number }) {
       blocked={!fits}
       lead={<Keycap>{i + 1}</Keycap>}
       title={def.name}
-      aside={<ShapeGlyph id={card.id} rot={isSelected ? rotation.value : 0} square />}
+      aside={<ShapeGlyph id={card.id} rot={rot} square />}
       art={<PieceArt id={card.id} />}
       lines={text.effects}
-      note={text.notes.length > 0 ? text.notes.join(' ') : undefined}
+      note={notes.length > 0 ? notes.join(' ') : undefined}
       chips={
         <>
           <Chip tone="wood">{KIND_LABEL[kind]}</Chip>
@@ -255,15 +260,28 @@ export function Hand() {
   const pending = tentative.value;
   const armed = passArmed.value;
   const demolishing = tool.value === 'demolish';
-  // Only pieces turn: a fixture or a tool doesn't, except the Moving Truck's carried piece.
+  // Only pieces turn: a fixture or a tool doesn't, except the Moving Truck's carried piece, and
+  // nor does a pack (D-106), which is the tiles clicked out, or a card waiting to renovate a
+  // room (D-102) (rotate() does nothing for them).
   const sel = selection.value;
-  const canTurn = sel?.kind === 'piece' || (sel?.kind === 'tool' && movingUid.value !== null);
-  // The long label, and a short one for a narrow column (hand.css).
+  const canTurn =
+    (sel?.kind === 'piece' && !CONTENT.pieces[sel.id].pack && pending?.t !== 'renovate') ||
+    (sel?.kind === 'tool' && movingUid.value !== null);
+  // The long label, and a short one for a narrow column (hand.css, whose container queries are
+  // measured on these words). What End week will do, build or renovate, is in its title.
   const [endLabel, endShort] = pending
     ? ['End week', 'End week']
     : armed
       ? ['Pass? Press again', 'Again?']
       : ['Pass this week', 'Pass'];
+  const endTitle =
+    pending?.t === 'renovate'
+      ? 'End the week and renovate the room (Enter)'
+      : pending
+        ? 'End the week and build it (Enter)'
+        : undefined;
+  // A pack (D-106) being clicked out: Cancel takes all its tiles off.
+  const packing = pending?.t === 'place' && !!pending.shape;
   return (
     <Panel
       class="hand"
@@ -314,8 +332,10 @@ export function Hand() {
             class="cancel"
             onMouseDown={noFocus}
             onClick={cancelPlacement}
-            title={pending ? 'Move it (Esc)' : 'Put it back (Esc)'}
-            aria-label={pending ? 'Move it' : 'Put it back'}
+            title={
+              packing ? 'Clear the tiles (Esc)' : pending ? 'Move it (Esc)' : 'Put it back (Esc)'
+            }
+            aria-label={packing ? 'Clear the tiles' : pending ? 'Move it' : 'Put it back'}
           />
         )}
         <Button
@@ -324,6 +344,7 @@ export function Hand() {
           class={`end-week ${pending ? 'ready' : ''} ${armed ? 'confirm' : ''}`}
           onMouseDown={noFocus}
           onClick={requestEndWeek}
+          title={endTitle}
         >
           <span class="end-week-label">{endLabel}</span>
           <span class="end-week-short" aria-hidden="true">

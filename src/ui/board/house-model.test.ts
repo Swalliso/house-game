@@ -47,7 +47,12 @@ function house(specs: readonly Spec[], rows: readonly string[] = EMPTY): HouseSt
 /** The model with the rules' Hallway links, as the board builds it. */
 function modelOf(h: HouseState): HouseModel {
   const state = {
-    ...rules.newRun({ seed: 'house', crewId: 'generalContractor', mode: 'standard' }),
+    ...rules.newRun({
+      seed: 'house',
+      clientId: 'hendersons',
+      crewId: 'generalContractor',
+      mode: 'standard',
+    }),
     house: h,
   };
   return houseModel(h, hallLinks(state));
@@ -133,7 +138,12 @@ describe('Hallways', () => {
 
   it('open into every room the rules link through them', () => {
     const state = {
-      ...rules.newRun({ seed: 'h', crewId: 'generalContractor', mode: 'standard' }),
+      ...rules.newRun({
+        seed: 'h',
+        clientId: 'hendersons',
+        crewId: 'generalContractor',
+        mode: 'standard',
+      }),
       house: h,
     };
     const linked = new Set<number>();
@@ -346,6 +356,44 @@ describe('the door tree', () => {
     expect(doorBetween(m, uidOf(h, 'closet'), uidOf(h, 'bedroom'))).toBeDefined();
   });
 
+  it('opens a closet off a member’s room, which counts as a Bedroom (D-103)', () => {
+    const h = house([
+      ['livingRoom', 2, 2],
+      ['kitchen', 4, 2],
+      ['grandmasRoom', 4, 4],
+      ['closet', 3, 5],
+    ]);
+    const m = modelOf(h);
+    expect(reachable(m).size).toBe(m.rooms.size);
+    // Off Grandma's Room, not the Living Room it also touches.
+    expect(doorBetween(m, uidOf(h, 'closet'), uidOf(h, 'grandmasRoom'))).toBeDefined();
+    expect(doorBetween(m, uidOf(h, 'closet'), uidOf(h, 'livingRoom'))).toBeUndefined();
+  });
+
+  it('opens a member’s room off the room its story puts it by (D-111)', () => {
+    // Each touches the Living Room too, which the Bedroom, the Home Office or the Mudroom beside
+    // it would otherwise lose to: the twins off their parents' Bedroom (the Nursery and the Kids'
+    // Room it grows into), Ivy off Dale's Home Office, Nana off the Mudroom.
+    for (const [member, parent, py] of [
+      ['nursery', 'bedroom', 2],
+      ['kidsRoom', 'bedroom', 2],
+      ['ivysRoom', 'homeOffice', 3],
+      ['nanasRoom', 'mudroom', 3],
+    ] as const) {
+      // The Living Room's 2×3 at columns 2–3, the parent east of it down to row 3 (a Bedroom is
+      // 2×2, the Home Office and the Mudroom 2×1), the member's 2×2 under both.
+      const h = house([
+        ['livingRoom', 2, 1],
+        [parent, 4, py],
+        [member, 3, 4],
+      ]);
+      const m = modelOf(h);
+      expect(reachable(m).size, member).toBe(m.rooms.size);
+      expect(doorBetween(m, uidOf(h, member), uidOf(h, parent)), member).toBeDefined();
+      expect(doorBetween(m, uidOf(h, member), uidOf(h, 'livingRoom')), member).toBeUndefined();
+    }
+  });
+
   it('keeps doors out of the middle of north walls', () => {
     const h = house([
       ['livingRoom', 2, 1],
@@ -404,6 +452,25 @@ describe('the ghost’s model', () => {
       }
     }
     expect(pieceModel('lKitchen', 1)).toBe(m);
+  });
+
+  it('takes a pack’s own tiles (D-106) in place of its card’s shape, cached apart', () => {
+    const own = ['#..', '###'];
+    const m = pieceModel('kitchen', 1, undefined, own);
+    // Turned once: 2 wide and 3 tall, on exactly the tiles the shape gives.
+    expect([m.width, m.height]).toEqual([2, 3]);
+    expect(m.bounds).toEqual({ x: 0, y: 0, w: 2, h: 3 });
+    const cells = placedCells(own, 0, 0, 1);
+    const room = [...m.rooms.values()][0]!;
+    expect(room.cells).toEqual(cells);
+    for (const c of cells) {
+      for (const s of ['N', 'E', 'S', 'W'] as const) {
+        expect([EDGE.none, EDGE.outer]).toContain(edge(m, c.x, c.y, s));
+      }
+    }
+    expect(pieceModel('kitchen', 1, undefined, own)).toBe(m);
+    // The card's own shape is another model: a 2 × 2 Kitchen.
+    expect(pieceModel('kitchen', 1).bounds).toEqual({ x: 0, y: 0, w: 2, h: 2 });
   });
 });
 
@@ -470,6 +537,7 @@ function randomHouse(seed: number): HouseState {
 function woodsHouse(seed: number): HouseState {
   const { lot } = rules.newRun({
     seed: `woods-${seed}`,
+    clientId: 'hendersons',
     crewId: 'generalContractor',
     mode: 'standard',
   }).house;
@@ -600,7 +668,12 @@ describe('any house', () => {
   it('is cached per house', () => {
     const h = randomHouse(7);
     const state = {
-      ...rules.newRun({ seed: 'c', crewId: 'generalContractor', mode: 'standard' }),
+      ...rules.newRun({
+        seed: 'c',
+        clientId: 'hendersons',
+        crewId: 'generalContractor',
+        mode: 'standard',
+      }),
       house: h,
     };
     expect(houseModel(h, hallLinks(state))).toBe(houseModel(h, hallLinks(state)));

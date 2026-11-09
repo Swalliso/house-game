@@ -1,16 +1,17 @@
 // Small UI actions shared by the HUD's buttons and the keyboard.
 
 import { computed, signal } from '@preact/signals';
+import { rules } from '../../rules/index.ts';
 import { audio } from '../audio/audio.ts';
-import { busy, skip } from '../fx/director.ts';
+import { busy, orderStamp, skip } from '../fx/director.ts';
 import { copyFallback, settingsOpen } from './modals.ts';
 import {
   appScreen,
   demolishArmed,
   endWeek,
-  newRun,
+  inProgress,
+  openJobBoard,
   notice,
-  preview,
   run,
   runCode,
   selected,
@@ -51,6 +52,17 @@ export const shopShown = computed(
     !busy.value &&
     !shopHidden.value,
 );
+/**
+ * A change order's sheet is on screen (M4b): waiting for an answer once the milestone's beats
+ * are done, or carrying its stamp. Notes then sit inside it too (ChangeOrderScreen.tsx).
+ */
+export const changeOrderShown = computed(
+  () =>
+    appScreen.value === 'game' &&
+    (orderStamp.value !== null || (run.value.screen === 'changeOrder' && !busy.value)),
+);
+/** Notes and toasts sit inside a sheet, not over the board: the shop's or a change order's. */
+export const notesDocked = computed(() => shopShown.value || changeOrderShown.value);
 
 export async function copyText(text: string, done = 'Copied'): Promise<void> {
   try {
@@ -71,10 +83,10 @@ export function openSettings(): void {
 
 export function startNewRun(): void {
   const s = run.value;
-  const midRun = (s.screen === 'build' || s.screen === 'shop') && s.house.pieces.length > 0;
+  const midRun = inProgress(s) && s.house.pieces.length > 0;
   if (midRun && !window.confirm('Start a new run? This one will be lost.')) return;
   notice.value = null;
-  newRun();
+  openJobBoard();
 }
 
 export function selectCard(i: number, from: Source = 'hand'): void {
@@ -139,7 +151,8 @@ export function requestEndWeek(): void {
     return;
   }
   passArmed.value = false;
-  if (tentative.value && !preview.value?.legal) {
+  // The play waiting for End week, not the pointer's (a pack's next tile can be illegal).
+  if (tentative.value && !rules.checkPlay(run.value, tentative.value).legal) {
     audio.play('illegal');
     return;
   }

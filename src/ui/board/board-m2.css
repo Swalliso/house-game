@@ -1,5 +1,6 @@
-/* The M2 board: the camera, the fenced-yard tint, the demolish tool, and the install target.
-   Loaded before app.css, so overrides of its rules use a more specific selector. */
+/* The M2 board: the camera, the fenced-yard tint, the demolish tool, and the install target,
+   with M4's pack tiles and Renovate's rooms. Loaded before app.css, so overrides of its rules
+   use a more specific selector. */
 
 /* --- The camera ------------------------------------------------------------------- */
 
@@ -129,4 +130,35 @@
   stroke-width: 2;
   stroke-dasharray: 4 3;
   stroke-linecap: butt;
+}
+/* A pack's next tile (D-106) reuses these: blue to add it, dashed orange if the rules say no,
+   and solid orange (its label says "−") to take a tile of the pack off. */
+.install-target.pack-next.remove .fill {
+  fill: var(--pack-remove-fill);
+}
+.install-target.pack-next.remove .edge {
+  stroke: var(--bad);
+  stroke-width: 3;
+}
+
+/* --- Renovate (D-102) ---------------------------------------------------------------- */
+
+/* The rooms a card can renovate, dashed blue in the targets' layer; the room under the pointer
+   reuses the install target's outline (Board.tsx RenovateTarget). The dashes are in art pixels
+   (a cell is 32 of them, --board-cell CSS px), so they grow with the zoom as the walls they run
+   along do, and stay findable at 2× and 3×: 2 CSS px at 1×, on whole device pixels at every zoom
+   but Fit (D-097). */
+.renovate-hint {
+  z-index: var(--z-targets);
+}
+.renovate-hint .fill {
+  fill: var(--renovate-hint-fill);
+}
+.renovate-hint .edge {
+  --art-pixel: calc(var(--board-cell, 32px) / 32);
+  stroke: var(--good);
+  stroke-width: calc(var(--art-pixel) * 2);
+  stroke-dasharray: calc(var(--art-pixel) * 5) calc(var(--art-pixel) * 4);
+  stroke-linecap: butt;
+  opacity: 0.85;
 }

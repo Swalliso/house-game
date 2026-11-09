@@ -118,3 +118,60 @@ export function cellIndex(width: number, x: number, y: number): number {
 export function inBounds(width: number, height: number, x: number, y: number): boolean {
   return x >= 0 && y >= 0 && x < width && y < height;
 }
+
+/** Cells as a placement: the top-left corner of their box and the shape's ASCII rows. */
+export function cellsToShape(cells: readonly Cell[]): { x: number; y: number; shape: string[] } {
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let x1 = -Infinity;
+  let y1 = -Infinity;
+  for (const c of cells) {
+    x0 = Math.min(x0, c.x);
+    y0 = Math.min(y0, c.y);
+    x1 = Math.max(x1, c.x);
+    y1 = Math.max(y1, c.y);
+  }
+  const rows: string[][] = Array.from({ length: y1 - y0 + 1 }, () =>
+    Array.from({ length: x1 - x0 + 1 }, () => '.'),
+  );
+  for (const c of cells) rows[c.y - y0]![c.x - x0] = '#';
+  return { x: x0, y: y0, shape: rows.map((r) => r.join('')) };
+}
+
+/** A shape's rows turned `rot` quarter turns clockwise, as ASCII. */
+export function rotateShape(shape: readonly string[], rot: Rot): string[] {
+  return cellsToShape(shapeCells(shape, rot)).shape;
+}
+
+/**
+ * Why a pack's tiles (D-106) aren't a shape it can place, or null: ASCII rows of equal length,
+ * '#' and '.' only, 1 to `maxTiles` tiles in one connected group, with a tile in the first row
+ * and the first column (so the placement's corner is its box's).
+ */
+export function packShapeProblem(shape: readonly string[], maxTiles: number): string | null {
+  if (!Array.isArray(shape) || shape.length === 0 || shape.length > maxTiles) {
+    return `Up to ${maxTiles} tiles, all touching.`;
+  }
+  const width = shape[0]?.length ?? 0;
+  if (
+    width === 0 ||
+    width > maxTiles ||
+    shape.some((r) => typeof r !== 'string' || r.length !== width || /[^#.]/.test(r))
+  ) {
+    return `Up to ${maxTiles} tiles, all touching.`;
+  }
+  const cells = parseShape(shape);
+  if (cells.length === 0 || cells.length > maxTiles)
+    return `Up to ${maxTiles} tiles, all touching.`;
+  // Trimmed, as cellsToShape writes it: one way to write each set of tiles.
+  if (
+    !cells.some((c) => c.y === 0) ||
+    !cells.some((c) => c.x === 0) ||
+    !cells.some((c) => c.y === shape.length - 1) ||
+    !cells.some((c) => c.x === width - 1)
+  ) {
+    return 'That shape has an empty edge.';
+  }
+  if (!isConnected(cells)) return 'A pack’s tiles must all touch.';
+  return null;
+}

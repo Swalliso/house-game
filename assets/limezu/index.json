@@ -44,6 +44,36 @@
     "h": 40,
     "spec": "5a904589741a93a2"
   },
+  "bed-single-0": {
+    "w": 20,
+    "h": 40,
+    "spec": "8211e5baebf5ccab"
+  },
+  "bed-single-1": {
+    "w": 20,
+    "h": 40,
+    "spec": "18fc2fb37b214bee"
+  },
+  "bed-single-2": {
+    "w": 20,
+    "h": 40,
+    "spec": "54c6e4f0582777c0"
+  },
+  "bed-single-3": {
+    "w": 20,
+    "h": 40,
+    "spec": "ac3a2a8a792803ff"
+  },
+  "bed-single-4": {
+    "w": 20,
+    "h": 40,
+    "spec": "324fdc26f7659038"
+  },
+  "bed-single-5": {
+    "w": 20,
+    "h": 40,
+    "spec": "d034ffd0faccecbe"
+  },
   "bench": {
     "w": 32,
     "h": 25,
@@ -118,6 +148,13 @@
     "w": 40,
     "h": 41,
     "spec": "24153a418bea6e94"
+  },
+  "candles": {
+    "w": 13,
+    "h": 14,
+    "frames": 3,
+    "ms": 160,
+    "spec": "3ade3c1c5f74cc4b"
   },
   "car-front-0": {
     "w": 32,
@@ -249,6 +286,16 @@
     "h": 32,
     "spec": "e35f173aafc9aeb4"
   },
+  "cot": {
+    "w": 16,
+    "h": 37,
+    "spec": "94ad9beb8f9ddf01"
+  },
+  "cot-side": {
+    "w": 36,
+    "h": 25,
+    "spec": "b06bcddd179c947e"
+  },
   "counter": {
     "w": 16,
     "h": 24,
@@ -259,10 +306,40 @@
     "h": 24,
     "spec": "f904eafcd376d12b"
   },
+  "crib-twin-0": {
+    "w": 41,
+    "h": 26,
+    "spec": "32f587021a0569f4"
+  },
+  "crib-twin-1": {
+    "w": 41,
+    "h": 26,
+    "spec": "e0c9fdecd129fb70"
+  },
+  "curio-0": {
+    "w": 16,
+    "h": 37,
+    "spec": "3b1695507857b150"
+  },
+  "curio-1": {
+    "w": 15,
+    "h": 31,
+    "spec": "1f097e4cbb0bc32c"
+  },
   "desk-pc": {
     "w": 22,
     "h": 38,
     "spec": "49149575daf90b0c"
+  },
+  "desk-school-0": {
+    "w": 22,
+    "h": 22,
+    "spec": "f27c52659b64666f"
+  },
+  "desk-school-1": {
+    "w": 22,
+    "h": 22,
+    "spec": "59104250db774147"
   },
   "desk-small": {
     "w": 16,
@@ -289,6 +366,46 @@
     "h": 42,
     "spec": "101176d64f208178"
   },
+  "dresser-0": {
+    "w": 29,
+    "h": 24,
+    "spec": "d1c9df1780d3725b"
+  },
+  "dresser-1": {
+    "w": 29,
+    "h": 24,
+    "spec": "fb9959ea1bb3eb39"
+  },
+  "easel-0": {
+    "w": 16,
+    "h": 29,
+    "spec": "e04ea929b27af53c"
+  },
+  "easel-1": {
+    "w": 16,
+    "h": 29,
+    "spec": "b4d5e13c972fe65b"
+  },
+  "easel-2": {
+    "w": 16,
+    "h": 29,
+    "spec": "f5c4e75bf5c7bfc6"
+  },
+  "easel-low-0": {
+    "w": 16,
+    "h": 26,
+    "spec": "bd9c9ad114899f01"
+  },
+  "easel-low-1": {
+    "w": 16,
+    "h": 26,
+    "spec": "bcf0170f10125f4c"
+  },
+  "easel-low-2": {
+    "w": 16,
+    "h": 26,
+    "spec": "499df46a403db344"
+  },
   "face-bathroom": {
     "w": 32,
     "h": 8,
@@ -314,6 +431,11 @@
     "h": 8,
     "spec": "cfccbeb571b3ac04"
   },
+  "face-grandmas-room": {
+    "w": 32,
+    "h": 8,
+    "spec": "33a3e6c3eed7f007"
+  },
   "face-hallway": {
     "w": 32,
     "h": 8,
@@ -323,6 +445,16 @@
     "w": 32,
     "h": 8,
     "spec": "a1ad60e2fa00d9a5"
+  },
+  "face-ivys-room": {
+    "w": 32,
+    "h": 8,
+    "spec": "27512678e609ef6a"
+  },
+  "face-kids-room": {
+    "w": 32,
+    "h": 8,
+    "spec": "406d8af69d89668c"
   },
   "face-kitchen": {
     "w": 32,
@@ -344,10 +476,30 @@
     "h": 8,
     "spec": "1681cb069192b397"
   },
+  "face-nanas-room": {
+    "w": 32,
+    "h": 8,
+    "spec": "63a1a49b2e1c9fa5"
+  },
+  "face-nursery": {
+    "w": 32,
+    "h": 8,
+    "spec": "5789d0aa90bad978"
+  },
   "face-playroom": {
     "w": 32,
     "h": 8,
     "spec": "336edf02fd3c8982"
+  },
+  "face-renfields-room": {
+    "w": 32,
+    "h": 8,
+    "spec": "a2576e1417d8cd55"
+  },
+  "face-rowans-studio": {
+    "w": 32,
+    "h": 8,
+    "spec": "91bb5db64dca3bf2"
   },
   "face-sunroom": {
     "w": 32,
@@ -383,10 +535,25 @@
     "h": 32,
     "spec": "278c5e711287532b"
   },
+  "floor-grandmas-room": {
+    "w": 32,
+    "h": 32,
+    "spec": "a5f89b20b30b728d"
+  },
   "floor-hall": {
     "w": 32,
     "h": 32,
     "spec": "f5c2323c9090bdfe"
+  },
+  "floor-ivys-room": {
+    "w": 32,
+    "h": 32,
+    "spec": "242e335a36b903b5"
+  },
+  "floor-kids-room": {
+    "w": 32,
+    "h": 32,
+    "spec": "7c4d1fadcdb63dd1"
   },
   "floor-kitchen": {
     "w": 32,
@@ -403,6 +570,16 @@
     "h": 32,
     "spec": "197365b262e4a691"
   },
+  "floor-nanas-room": {
+    "w": 32,
+    "h": 32,
+    "spec": "64981c82007b0cf8"
+  },
+  "floor-nursery": {
+    "w": 32,
+    "h": 32,
+    "spec": "01f39112e10c2c2c"
+  },
   "floor-office": {
     "w": 32,
     "h": 32,
@@ -417,6 +594,16 @@
     "w": 32,
     "h": 32,
     "spec": "7016875d88a8bccf"
+  },
+  "floor-renfields-room": {
+    "w": 32,
+    "h": 32,
+    "spec": "27ed5c956fb72c66"
+  },
+  "floor-rowans-studio": {
+    "w": 32,
+    "h": 32,
+    "spec": "ebfd4e932f798c9d"
   },
   "floor-sunroom": {
     "w": 32,
@@ -495,6 +682,11 @@
     "h": 25,
     "spec": "7e88e420045b0b86"
   },
+  "lamp-floor": {
+    "w": 13,
+    "h": 33,
+    "spec": "480eec27073a13bb"
+  },
   "lily-0": {
     "w": 16,
     "h": 16,
@@ -544,6 +736,36 @@
     "w": 48,
     "h": 64,
     "spec": "fa226425fcc6e3c0"
+  },
+  "paint-pot-0": {
+    "w": 13,
+    "h": 13,
+    "spec": "8a60a148e15d6ec5"
+  },
+  "paint-pot-1": {
+    "w": 13,
+    "h": 13,
+    "spec": "bfa9e7fdfdb93fea"
+  },
+  "paint-pot-2": {
+    "w": 13,
+    "h": 13,
+    "spec": "74f4d1db0dbd9ec6"
+  },
+  "painting-0": {
+    "w": 13,
+    "h": 15,
+    "spec": "67ef429608c8d1ef"
+  },
+  "painting-1": {
+    "w": 13,
+    "h": 15,
+    "spec": "31469fb585ca51a2"
+  },
+  "painting-2": {
+    "w": 13,
+    "h": 15,
+    "spec": "90f65df0639219af"
   },
   "parasol-0": {
     "w": 47,
@@ -838,6 +1060,28 @@
     "h": 25,
     "spec": "b0c3129825b4e773"
   },
+  "spider": {
+    "w": 7,
+    "h": 19,
+    "frames": 8,
+    "ms": 180,
+    "spec": "66d3d08c742d875b"
+  },
+  "stool-0": {
+    "w": 13,
+    "h": 13,
+    "spec": "2a0cc2b0cc6fcbe8"
+  },
+  "stool-1": {
+    "w": 13,
+    "h": 13,
+    "spec": "e65abc7ca76b4be2"
+  },
+  "stool-2": {
+    "w": 13,
+    "h": 13,
+    "spec": "6c94b2e911a8139f"
+  },
   "street-asphalt": {
     "w": 16,
     "h": 16,
@@ -1017,6 +1261,16 @@
     "w": 16,
     "h": 16,
     "spec": "f04575ffed294387"
+  },
+  "vanity-0": {
+    "w": 28,
+    "h": 30,
+    "spec": "d3322f5e1edef6bd"
+  },
+  "vanity-1": {
+    "w": 28,
+    "h": 30,
+    "spec": "e3602e2c6cb3b362"
   },
   "washer": {
     "w": 20,

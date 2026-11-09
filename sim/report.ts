@@ -125,9 +125,11 @@ export function report(content: Content, records: readonly RunRecord[], title: s
     const scores = at.map((m) => m.score);
     const met = at.filter((m) => m.result !== 'failed').length;
     const w = wilson(met, n);
+    // Targets differ by client (targetPct): show the median of the runs' own.
+    const targets = at.map((m) => m.target);
     rows.push([
       `${k + 1}. ${p.name}`,
-      fmt(p.target),
+      fmt(targets.length > 0 ? percentile(targets, 50) : p.target),
       at.length,
       pct1(met, n),
       n === 0 ? '–' : `${pc1(w.lo)}–${pc1(w.hi)}`,
@@ -162,12 +164,302 @@ export function report(content: Content, records: readonly RunRecord[], title: s
     ].join('\n'),
   );
   out.push(piecesReport(content, records));
+  out.push(houseReport(content, records));
+  out.push(clientsReport(content, records));
+  out.push(changeOrdersReport(content, records));
+  out.push(crewsReport(content, records));
   out.push(layersReport(records));
   out.push(sitingReport(records));
   out.push(earlyReport(content, records));
   out.push(fenceReport(records));
   out.push(economyReport(content, records));
   return out.join('\n');
+}
+
+// ---------------------------------------------------------------------------------------
+// The house report (house-systems-review.md, Appendix; D-093): what the finished houses look
+// like, for wins and for all runs, beside the review's option B column. Then the checklist's
+// lines: how often each held, and when it first did.
+
+const share = (rs: readonly RunRecord[], f: (r: RunRecord) => boolean) =>
+  rs.length === 0 ? '–' : `${Math.round((rs.filter(f).length * 100) / rs.length)}%`;
+const median = (rs: readonly RunRecord[], f: (r: RunRecord) => number, digits = 0) =>
+  rs.length === 0 ? '–' : fix(percentile(rs.map(f), 50), digits);
+const mean = (rs: readonly RunRecord[], f: (r: RunRecord) => number, digits = 1) =>
+  rs.length === 0 ? '–' : fix(avgOf(rs.map(f)), digits);
+
+export function houseReport(content: Content, records: readonly RunRecord[]): string {
+  const wins = records.filter((r) => r.result === 'won');
+  const cols = (f: (rs: readonly RunRecord[]) => string) => [f(wins), f(records)];
+  const H = (r: RunRecord) => r.house;
+  const phases = content.balance.phases.length;
+  const rows: (string | number)[][] = [
+    ['The house (systems review)', `Wins (${wins.length})`, `All (${records.length})`],
+    ['The look'],
+    ['  Glance test passed (H1g, H2, H3)', ...cols((rs) => share(rs, (r) => H(r).glance))],
+    ['  A compact outline (H1g)', ...cols((rs) => share(rs, (r) => H(r).h1g))],
+    ['  No yard inside the house (H2)', ...cols((rs) => share(rs, (r) => H(r).h2))],
+    ['  One of each shared room (H3)', ...cols((rs) => share(rs, (r) => H(r).h3))],
+    ['  Visible repeats', ...cols((rs) => share(rs, (r) => H(r).visibleRepeats))],
+    ["  research.md's plausibility check", ...cols((rs) => share(rs, (r) => H(r).plausible))],
+    ['  Corners, median', ...cols((rs) => median(rs, (r) => H(r).corners))],
+    ['  Fill, median', ...cols((rs) => median(rs, (r) => H(r).fill, 2))],
+    ['  Yard pieces wedged in the box, mean', ...cols((rs) => mean(rs, (r) => H(r).wedged))],
+    ['The household'],
+    ['  No household', ...cols((rs) => share(rs, (r) => H(r).noHousehold))],
+    ['  Bathroom ratio held', ...cols((rs) => share(rs, (r) => H(r).bathroomRatio))],
+    ['  Bedrooms per run', ...cols((rs) => mean(rs, (r) => H(r).bedrooms))],
+    ['  Rooms, median', ...cols((rs) => median(rs, (r) => H(r).rooms))],
+    ['  Tiny houses (8 or fewer rooms)', ...cols((rs) => share(rs, (r) => H(r).tiny))],
+    [
+      '  Kitchens / Living / Dining, mean',
+      ...cols((rs) =>
+        rs.length === 0
+          ? '–'
+          : `${fix(avgOf(rs.map((r) => H(r).kitchens)), 1)} / ${fix(avgOf(rs.map((r) => H(r).livingRooms)), 1)} / ${fix(avgOf(rs.map((r) => H(r).diningRooms)), 1)}`,
+      ),
+    ],
+    ['The yard'],
+    ['  Outdoor rooms beside the house (Y1)', ...cols((rs) => share(rs, (r) => H(r).y1))],
+    ['  One yard type 4+ times', ...cols((rs) => share(rs, (r) => H(r).yardRepeat >= 4))],
+    ['  3+ Treehouses', ...cols((rs) => share(rs, (r) => H(r).treehouses >= 3))],
+    ['  3+ outbuildings', ...cols((rs) => share(rs, (r) => H(r).outbuildings >= 3))],
+    ['  A fenced yard at the end', ...cols((rs) => share(rs, (r) => r.fencedYard > 0))],
+    ['The feel'],
+    [
+      '  Room pieces by milestone, mean',
+      ...cols((rs) =>
+        rs.length === 0
+          ? '–'
+          : Array.from({ length: phases }, (_, k) =>
+              fix(avgOf(rs.map((r) => r.build.roomsByPhase[k] ?? 0)), 1),
+            ).join(' '),
+      ),
+    ],
+    [
+      '  House-building plays, weeks 17–28',
+      ...cols((rs) =>
+        mean(rs, (r) => r.build.late.rooms + r.build.late.arrivals + r.build.late.renovations),
+      ),
+    ],
+    ['    rooms from the hand', ...cols((rs) => mean(rs, (r) => r.build.late.rooms))],
+    ["    the arrivals' rooms", ...cols((rs) => mean(rs, (r) => r.build.late.arrivals))],
+    ['    Renovations', ...cols((rs) => mean(rs, (r) => r.build.late.renovations))],
+    [
+      '    yard, fixtures, Hallways, passes',
+      ...cols((rs) =>
+        rs.length === 0
+          ? '–'
+          : ['yard', 'fixtures', 'hallways', 'passes']
+              .map((k) =>
+                fix(avgOf(rs.map((r) => r.build.late[k as keyof RunRecord['build']['late']])), 1),
+              )
+              .join(' / '),
+      ),
+    ],
+    ['  Renovations per run', ...cols((rs) => mean(rs, (r) => r.build.renovations))],
+    ['  Big weeks, median', ...cols((rs) => median(rs, (r) => r.build.bigWeeks))],
+    [
+      '  Wow from pieces placed in milestones 1–2',
+      ...cols((rs) => {
+        const total = sumOf(rs.map((r) => r.layers.comfort + r.layers.charm + r.layers.sparkle));
+        return total === 0
+          ? '–'
+          : `${Math.round((sumOf(rs.map((r) => r.build.earlyPieceWow)) * 100) / total)}%`;
+      }),
+    ],
+    [
+      `  ${SCORE_LABELS.mult}'s share of the Wow, median`,
+      ...cols((rs) =>
+        median(rs, (r) => {
+          const t = r.layers.comfort + r.layers.charm + r.layers.sparkle;
+          return t === 0 ? 0 : (r.layers.charm * 100) / t;
+        }),
+      ).map((v) => (v === '–' ? v : `${v}%`)),
+    ],
+  ];
+  const dead = records.filter((r) => r.build.dead);
+  if (dead.length > 0) {
+    const deadCount = (rs: readonly RunRecord[]) =>
+      mean(
+        rs.filter((r) => r.build.dead),
+        (r) => sumOf(Object.values(r.build.dead!).map((d) => d.dead)),
+      );
+    const deadShare = (rs: readonly RunRecord[], type: string) => {
+      const ds = rs.flatMap((r) => (r.build.dead?.[type] ? [r.build.dead[type]] : []));
+      const o = sumOf(ds.map((d) => d.offered));
+      return o === 0 ? '–' : `${Math.round((sumOf(ds.map((d) => d.dead)) * 100) / o)}%`;
+    };
+    rows.push(
+      ['The cost'],
+      ['  Dead cards per run (best play < a pass)', ...cols(deadCount)],
+      ['  Dead Kitchen cards', ...cols((rs) => deadShare(rs, 'kitchen'))],
+    );
+  }
+  const out = ['\n' + table(rows)];
+  // The checklist's lines, by client (each client's lines differ in their numbers).
+  const byClient = groupBy(records, (r) => r.client);
+  const lines: (string | number)[][] = [
+    [
+      'Checklist line',
+      'Held at the end (wins)',
+      'Held at the end (all)',
+      'Weeks held',
+      'First held, p50',
+    ],
+  ];
+  for (const [client, rs] of byClient) {
+    const def = content.clients[client as keyof typeof content.clients];
+    if (!def) continue;
+    const w = rs.filter((r) => r.result === 'won');
+    lines.push([`${def.name} (${rs.length} runs)`]);
+    for (const spec of def.specs) {
+      const tallies = sumOf(rs.map((r) => r.build.tallies));
+      const held = sumOf(rs.map((r) => r.build.specWeeks[spec.id] ?? 0));
+      const first = rs.flatMap((r) =>
+        r.build.specFirst[spec.id] ? [r.build.specFirst[spec.id]!] : [],
+      );
+      lines.push([
+        `  ${spec.name}`,
+        share(w, (r) => r.build.specEnd[spec.id] === true),
+        share(rs, (r) => r.build.specEnd[spec.id] === true),
+        tallies === 0 ? '–' : `${Math.round((held * 100) / tallies)}%`,
+        first.length === 0 ? 'never' : `week ${fix(percentile(first, 50), 0)}`,
+      ]);
+    }
+  }
+  if (lines.length > 1) out.push(table(lines));
+  return out.join('\n\n');
+}
+
+function groupBy<K>(records: readonly RunRecord[], key: (r: RunRecord) => K): Map<K, RunRecord[]> {
+  const out = new Map<K, RunRecord[]>();
+  for (const r of records) {
+    const k = key(r);
+    let list = out.get(k);
+    if (!list) out.set(k, (list = []));
+    list.push(r);
+  }
+  return out;
+}
+
+/** One row per client or crew: how its runs went (§8: per-client piece mixes and win rates). */
+function groupReport(
+  content: Content,
+  records: readonly RunRecord[],
+  title: string,
+  key: (r: RunRecord) => string,
+  name: (k: string) => string,
+): string {
+  const groups = groupBy(records, key);
+  if (groups.size < 2) return '';
+  const rows: (string | number)[][] = [
+    [
+      title,
+      'Runs',
+      'Win rate [95%]',
+      'Wow p50',
+      'Budget p50',
+      'Renov.',
+      'Glance',
+      'Plaus.',
+      'Treeh.',
+      'Treeh. Wow',
+    ],
+  ];
+  const mixes: string[] = [];
+  for (const [k, rs] of groups) {
+    const won = rs.filter((r) => r.result === 'won').length;
+    const w = wilson(won, rs.length);
+    const pieces = summarizePieces(content, rs);
+    const tree = pieces.find((p) => p.id === 'treehouse');
+    rows.push([
+      name(k),
+      rs.length,
+      `${pc1(w.p)}% [${pc1(w.lo)}–${pc1(w.hi)}]`,
+      fmt(
+        percentile(
+          rs.map((r) => r.finalScore),
+          50,
+        ),
+      ),
+      fmt(
+        percentile(
+          rs.map((r) => r.economy.budgetEarned),
+          50,
+        ),
+      ),
+      fix(avgOf(rs.map((r) => r.build.renovations)), 1),
+      share(rs, (r) => r.house.glance),
+      share(rs, (r) => r.house.plausible),
+      fix(avgOf(rs.map((r) => r.house.treehouses)), 1),
+      tree ? `${(tree.wowShare * 100).toFixed(1)}%` : '–',
+    ]);
+    const top = [...pieces]
+      .sort((a, b) => b.placed - a.placed)
+      .slice(0, 8)
+      .map((p) => `${p.name} ${fix(p.placed, 1)}`)
+      .join(', ');
+    mixes.push(`  ${name(k)}: ${top}`);
+  }
+  return ['\n' + table(rows), `${title} piece mix (placed per run, most first):`, ...mixes].join(
+    '\n',
+  );
+}
+
+export function clientsReport(content: Content, records: readonly RunRecord[]): string {
+  return groupReport(
+    content,
+    records,
+    'By client',
+    (r) => r.client,
+    (k) => content.clients[k as keyof typeof content.clients]?.name ?? k,
+  );
+}
+
+/**
+ * M4b: change orders by client. Per order: how often it was offered, the share accepted (a
+ * phase effect is always acknowledged), and of those accepted, the share met (a request) or kept
+ * (a restriction) at its milestone; "open" counts runs that ended before it resolved.
+ */
+export function changeOrdersReport(content: Content, records: readonly RunRecord[]): string {
+  const rows: (string | number)[][] = [
+    ['Change orders by client', 'Offered', 'Accepted', 'Met or kept', 'Missed or broken', 'Open'],
+  ];
+  for (const [client, rs] of groupBy(records, (r) => r.client)) {
+    const def = content.clients[client as keyof typeof content.clients];
+    const offers = rs.flatMap((r) => r.changeOrders ?? []);
+    if (!def || offers.length === 0) continue;
+    rows.push([`${def.name} (${rs.length} runs, ${offers.length} offers)`]);
+    const ids = [...new Set(offers.map((o) => o.id))];
+    for (const id of ids) {
+      const co = content.changeOrders[id];
+      const os = offers.filter((o) => o.id === id);
+      const taken = os.filter((o) => o.answer !== 'declined');
+      const good = taken.filter((o) => o.result === 'met' || o.result === 'kept').length;
+      const bad = taken.filter((o) => o.result === 'missed' || o.result === 'broken').length;
+      const phase = co.kind === 'phase';
+      rows.push([
+        `  ${co.name} (${co.kind})`,
+        os.length,
+        pct(taken.length, os.length),
+        phase ? '–' : pct(good, taken.length),
+        phase ? '–' : pct(bad, taken.length),
+        taken.filter((o) => o.result === undefined).length,
+      ]);
+    }
+  }
+  return rows.length > 1 ? '\n' + table(rows) : '';
+}
+
+export function crewsReport(content: Content, records: readonly RunRecord[]): string {
+  return groupReport(
+    content,
+    records,
+    'By crew',
+    (r) => r.crew,
+    (k) => content.crews[k as keyof typeof content.crews]?.name ?? k,
+  );
 }
 
 // ---------------------------------------------------------------------------------------
@@ -1021,13 +1313,56 @@ export function criteria(content: Content, input: CriteriaInput): Criterion[] {
       'no must-buy: no blueprint, upgrade, or tool in more than about 60% of planner wins',
       'needs the planner; until then, compare --ban kind:id on paired seeds',
     ),
-    notMeasured(
-      'client-crew-spread',
-      'no Core client or crew is more than about 15 points of win rate from the others',
-      'one crew and no clients yet (M4)',
-    ),
   );
+  out.push(spreadCriterion(content, greedy));
   return out;
+}
+
+/** §8: no Core client or crew more than about 15 points of greedy's win rate from the others. */
+function spreadCriterion(content: Content, greedy: readonly RunRecord[] | undefined): Criterion {
+  const text = 'no Core client or crew is more than about 15 points of win rate from the others';
+  const id = 'client-crew-spread';
+  if (!greedy || greedy.length === 0) {
+    return { id, text, measured: 'no greedy runs', verdict: 'NOT MEASURED', sure: false };
+  }
+  const parts: string[] = [];
+  let worst = 0;
+  let sure = true;
+  let groupsSeen = 0;
+  for (const [label, key, names] of [
+    ['clients', (r: RunRecord) => r.client, content.clients],
+    ['crews', (r: RunRecord) => r.crew, content.crews],
+  ] as const) {
+    const groups = groupBy(greedy, key as (r: RunRecord) => string);
+    if (groups.size < 2) continue;
+    groupsSeen++;
+    const rates = [...groups].map(([k, rs]) => {
+      const w = wilson(rs.filter((r) => r.result === 'won').length, rs.length);
+      const name = (names as Record<string, { name: string }>)[k]?.name ?? k;
+      return { name, ...w, n: rs.length };
+    });
+    const hi = rates.reduce((a, b) => (b.p > a.p ? b : a));
+    const lo = rates.reduce((a, b) => (b.p < a.p ? b : a));
+    const spread = hi.p - lo.p;
+    worst = Math.max(worst, spread);
+    // Sure when even the intervals' near ends are within 15 points (or past it, for a fail).
+    if (spread <= 0.15) sure &&= hi.hi - lo.lo <= 0.15;
+    else sure &&= hi.lo - lo.hi > 0.15;
+    parts.push(
+      `${label}: ${rates.map((r) => `${r.name} ${pc1(r.p)}% (n=${r.n})`).join(', ')}; spread ` +
+        `${(spread * 100).toFixed(1)} points`,
+    );
+  }
+  if (groupsSeen === 0) {
+    return {
+      id,
+      text,
+      measured: 'one client and one crew in these runs (use --client all, --crew all)',
+      verdict: 'NOT MEASURED',
+      sure: false,
+    };
+  }
+  return { id, text, measured: parts.join('\n'), verdict: worst <= 0.15 ? 'PASS' : 'FAIL', sure };
 }
 
 export function criteriaReport(content: Content, input: CriteriaInput): string {
@@ -1056,8 +1391,12 @@ export function criteriaReport(content: Content, input: CriteriaInput): string {
 // Survival is estimated from untargeted runs' weekly scores with overtime modelled (a missed
 // milestone borrows up to two extra weeks, which shift later milestones by as much).
 
-/** α for the teaching milestone. */
-export const ALPHA_FIRST = 0.4;
+/**
+ * α for the teaching milestone. M4a's house rules raise greedy's first-milestone median to
+ * about 70, and at 0.4 (a target of 30) the novice bot passes only 85% (§8 wants 90%), so it's
+ * a fifth: about 15, where the systems review kept it.
+ */
+export const ALPHA_FIRST = 0.2;
 /** Greedy's goal survival through each milestone after the first. */
 export const SURVIVAL_GOALS: readonly number[] = [1, 0.98, 0.95, 0.85, 0.72, 0.58, 0.45];
 

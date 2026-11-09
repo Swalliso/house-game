@@ -6,6 +6,10 @@ import type {
   Balance,
   BlueprintDef,
   BlueprintId,
+  ChangeOrderDef,
+  ChangeOrderId,
+  ClientDef,
+  ClientId,
   Content,
   CrateDef,
   CrateId,
@@ -235,19 +239,10 @@ export const TEST_PIECES: Record<PieceId, PieceDef> = {
     category: 'yard',
     wall: true,
     shape: ['####'],
+    pack: { maxTiles: 8, shapes: [['####'], ['#..', '#..', '###']] },
     tags: [],
     complexity: 3,
-    effects: [{ kind: 'enclosure', perTile: 1, cap: 6 }],
-  }),
-  lFence: piece({
-    id: 'lFence',
-    name: 'L-Fence',
-    category: 'yard',
-    wall: true,
-    countsAs: 'fence',
-    shape: ['#..', '#..', '###'],
-    tags: [],
-    complexity: 3,
+    drawWeight: 20,
     effects: [{ kind: 'enclosure', perTile: 1, cap: 6 }],
   }),
   driveway: piece({
@@ -256,26 +251,10 @@ export const TEST_PIECES: Record<PieceId, PieceDef> = {
     category: 'yard',
     canCover: ['creek'],
     shape: ['###'],
+    pack: { maxTiles: 6, shapes: [['###'], ['#####']] },
     tags: [],
     complexity: 2,
-    effects: [
-      {
-        kind: 'requires',
-        condition: { touching: { any: [{ feature: 'street' }, { piece: 'driveway' }] } },
-        blocksPlacement: true,
-      },
-      { kind: 'conditional', when: { in: 'frontYard' }, effect: { kind: 'steady', amount: 1 } },
-    ],
-  }),
-  longDriveway: piece({
-    id: 'longDriveway',
-    name: 'Long Driveway',
-    category: 'yard',
-    canCover: ['creek'],
-    countsAs: 'driveway',
-    shape: ['#####'],
-    tags: [],
-    complexity: 2,
+    drawWeight: 20,
     effects: [
       {
         kind: 'requires',
@@ -423,6 +402,106 @@ export const TEST_PIECES: Record<PieceId, PieceDef> = {
     tags: ['House'],
     drawWeight: 0,
     effects: [{ kind: 'neighbor', match: { feature: 'tree' }, amount: 1, max: 3 }],
+  }),
+  // Member rooms (M4b, D-103): weight 0, counting as Bedrooms, never drawn or sold. No test
+  // client's household brings them unless a test gives it one (withHousehold).
+  nursery: piece({
+    id: 'nursery',
+    name: 'Nursery',
+    category: 'indoor',
+    countsAs: 'bedroom',
+    member: true,
+    shape: ['##', '##'],
+    tags: ['Quiet', 'Kid'],
+    drawWeight: 0,
+    complexity: 2,
+    effects: [
+      { kind: 'steady', amount: 2 },
+      { kind: 'neighbor', match: { piece: 'bedroom' }, amount: 2, max: 2 },
+      { kind: 'transform', into: { piece: 'kidsRoom' }, afterWeeks: 8 },
+    ],
+  }),
+  kidsRoom: piece({
+    id: 'kidsRoom',
+    name: 'Kids’ Room',
+    category: 'indoor',
+    countsAs: 'bedroom',
+    member: true,
+    shape: ['##', '##'],
+    tags: ['Kid'],
+    drawWeight: 0,
+    effects: [
+      { kind: 'steady', amount: 4 },
+      {
+        kind: 'neighbor',
+        match: { any: [{ tag: 'Kid' }, { feature: 'tree' }] },
+        amount: 2,
+        max: 3,
+      },
+    ],
+  }),
+  grandmasRoom: piece({
+    id: 'grandmasRoom',
+    name: 'Grandma’s Room',
+    category: 'indoor',
+    countsAs: 'bedroom',
+    member: true,
+    shape: ['##', '##'],
+    tags: ['Quiet'],
+    drawWeight: 0,
+    effects: [
+      { kind: 'steady', amount: 3 },
+      {
+        kind: 'neighbor',
+        match: { piece: ['bathroom', 'livingRoom', 'kitchen'] },
+        amount: 2,
+        max: 3,
+      },
+    ],
+  }),
+  renfieldsRoom: piece({
+    id: 'renfieldsRoom',
+    name: 'Renfield’s Room',
+    category: 'indoor',
+    countsAs: 'bedroom',
+    member: true,
+    shape: ['##'],
+    tags: ['Quiet'],
+    drawWeight: 0,
+    effects: [{ kind: 'steady', amount: 2 }],
+  }),
+  nanasRoom: piece({
+    id: 'nanasRoom',
+    name: 'Nana’s Room',
+    category: 'indoor',
+    countsAs: 'bedroom',
+    member: true,
+    shape: ['##', '##'],
+    tags: ['Quiet'],
+    drawWeight: 0,
+    effects: [{ kind: 'steady', amount: 3 }],
+  }),
+  rowansStudio: piece({
+    id: 'rowansStudio',
+    name: 'Rowan’s Studio',
+    category: 'indoor',
+    countsAs: 'bedroom',
+    member: true,
+    shape: ['##'],
+    tags: ['Quiet'],
+    drawWeight: 0,
+    effects: [{ kind: 'steady', amount: 2 }],
+  }),
+  ivysRoom: piece({
+    id: 'ivysRoom',
+    name: 'Ivy’s Room',
+    category: 'indoor',
+    countsAs: 'bedroom',
+    member: true,
+    shape: ['##', '##'],
+    tags: ['Kid'],
+    drawWeight: 0,
+    effects: [{ kind: 'steady', amount: 3 }],
   }),
 };
 
@@ -595,6 +674,28 @@ export const TEST_CREWS: Record<CrewId, CrewDef> = {
     blurb: 'Reliable. One extra reroll each phase.',
     modifiers: [{ kind: 'rule', key: 'rerollsPerPhase', add: 1 }],
   },
+  // M4b, as Appendix B encodes them.
+  landscaper: {
+    id: 'landscaper',
+    name: 'Landscaper',
+    tier: 'core',
+    blurb: 'Yard pieces show up more and earn more.',
+    modifiers: [
+      { kind: 'drawWeight', target: { property: 'yard' }, pct: 50 },
+      { kind: 'earn', target: { property: 'yard' }, pct: 25 },
+    ],
+    startReserve: ['sapling', 'fence'],
+  },
+  architect: {
+    id: 'architect',
+    name: 'Architect',
+    tier: 'core',
+    blurb: 'Special rooms in the draw; sets pay more.',
+    modifiers: [
+      { kind: 'drawWeight', target: { piece: ['playroom', 'library', 'mudroom', 'pool'] }, add: 5 },
+      { kind: 'setBonus', pct: 50 },
+    ],
+  },
 };
 
 export const TEST_FEATURES: Record<FeatureId, FeatureDef> = {
@@ -680,6 +781,65 @@ export const TEST_SETS: Record<SetId, SetDef> = {
     mult: 100,
     level: { points: 15, mult: 50 },
   },
+  suite: {
+    id: 'suite',
+    name: 'Suite',
+    tier: 'core',
+    members: { bedroom: 1, bathroom: 1, closet: 1 },
+    connected: true,
+    points: 15,
+    mult: 50,
+    level: { points: 10, mult: 25 },
+  },
+  fullHouse: {
+    id: 'fullHouse',
+    name: 'Full House',
+    tier: 'core',
+    members: {
+      bedroom: 1,
+      bathroom: 1,
+      kitchen: 1,
+      diningRoom: 1,
+      livingRoom: 1,
+      closet: 1,
+      hallway: 1,
+      garage: 1,
+      homeOffice: 1,
+    },
+    connected: false,
+    maxInstances: 1,
+    points: 40,
+    mult: 100,
+    times: 200,
+    level: { points: 20, mult: 50 },
+  },
+};
+
+const testClient = (id: ClientId, name: string): ClientDef => ({
+  id,
+  name,
+  rarity: 'common',
+  tier: 'core',
+  brief: `${name}'s house.`,
+  specs: [],
+  tastes: [],
+  pool: [],
+  targetPct: 100,
+  household: { bedrooms: [1, 2], arrivals: [] },
+  changeOrders: [],
+});
+
+/**
+ * Test clients have empty checklists, tastes, pools, households, and change orders, so rules
+ * tests that don't care about clients score as before; client tests add their own with
+ * withClient(). (TEST_BALANCE offers no change orders either: change-order tests turn them on.)
+ */
+export const TEST_CLIENTS: Record<ClientId, ClientDef> = {
+  hendersons: testClient('hendersons', 'The Hendersons'),
+  vladislav: { ...testClient('vladislav', 'Count Vladislav'), rarity: 'rare' },
+  barkers: testClient('barkers', 'The Barkers'),
+  juniper: { ...testClient('juniper', 'Juniper Vale'), rarity: 'uncommon' },
+  dale: testClient('dale', 'Dale'),
 };
 
 export const TEST_LOT_BALANCE: LotBalance = {
@@ -771,6 +931,15 @@ export const TEST_BALANCE: Balance = {
     { name: 'Starter Home', minPctOfTarget: 100 },
     { name: 'Dream Home', minPctOfTarget: 200 },
   ],
+  renovate: { pointsPerLevel: 4, maxLevel: 2 },
+  drawAtLimitPct: 50,
+  jobBoard: {
+    contracts: 3,
+    rarity: { common: 65, uncommon: 27, rare: 8 },
+    firstClient: 'hendersons',
+  },
+  // No change orders unless a test turns them on (two phases: after milestone 1 is the one).
+  changeOrderAfter: [],
 };
 
 const testTool = (
@@ -815,6 +984,14 @@ export const TEST_TOOLS: Record<ToolId, ToolDef> = {
   remodelEntertainer: testTool('remodelEntertainer', 'Remodel Plans: Entertainer', 'common', {
     kind: 'levelSet',
     set: 'entertainer',
+  }),
+  remodelSuite: testTool('remodelSuite', 'Remodel Plans: Suite', 'common', {
+    kind: 'levelSet',
+    set: 'suite',
+  }),
+  remodelFullHouse: testTool('remodelFullHouse', 'Remodel Plans: Full House', 'uncommon', {
+    kind: 'levelSet',
+    set: 'fullHouse',
   }),
   weekendCrew: testTool('weekendCrew', 'Weekend Crew', 'rare', { kind: 'extraPlay' }),
 };
@@ -890,25 +1067,167 @@ export const TEST_CRATES: Record<CrateId, CrateDef> = {
   },
 };
 
+const ROOMS = { property: 'room' } as const;
+
+/**
+ * The change orders (M4b), as Appendix B encodes them, with fixed rewards (3, 4, 5). No test
+ * client lists its own and TEST_BALANCE offers none, so they only come up where a test asks.
+ */
+export const TEST_CHANGE_ORDERS: Record<ChangeOrderId, ChangeOrderDef> = {
+  workingFromHome: {
+    id: 'workingFromHome',
+    name: 'Working from home',
+    scope: 'generic',
+    tier: 'core',
+    kind: 'request',
+    text: 'A new Home Office.',
+    condition: { countNew: { piece: 'homeOffice' }, min: 1 },
+    reward: { budget: 3 },
+  },
+  heatWave: {
+    id: 'heatWave',
+    name: 'Heat wave',
+    scope: 'generic',
+    tier: 'core',
+    kind: 'phase',
+    text: 'Pools and shady spots earn double; Sunny rooms earn half.',
+    modifiers: [
+      { kind: 'earn', target: { piece: 'pool' }, pct: 100 },
+      { kind: 'earn', target: { touching: { feature: 'tree' } }, pct: 100 },
+      { kind: 'earn', target: { all: [ROOMS, { tag: 'Sunny' }] }, pct: -50 },
+    ],
+  },
+  goldenRetriever: {
+    id: 'goldenRetriever',
+    name: 'Golden retriever',
+    scope: 'hendersons',
+    tier: 'core',
+    kind: 'request',
+    text: 'A Doghouse in a fenced yard.',
+    condition: { count: { all: [{ piece: 'doghouse' }, { in: 'fencedYard' }] }, min: 1 },
+    reward: { budget: 5 },
+  },
+  thanksgiving: {
+    id: 'thanksgiving',
+    name: 'Thanksgiving',
+    scope: 'hendersons',
+    tier: 'core',
+    kind: 'phase',
+    text: 'The Entertainer pays double.',
+    modifiers: [{ kind: 'setBonus', set: 'entertainer', pct: 100 }],
+  },
+  covenVisiting: {
+    id: 'covenVisiting',
+    name: 'The coven is visiting',
+    scope: 'vladislav',
+    tier: 'core',
+    kind: 'request',
+    text: 'Two new interior rooms.',
+    condition: { countNew: { all: [ROOMS, { property: 'interior' }] }, min: 2 },
+    reward: { budget: 5 },
+  },
+  eternalNight: {
+    id: 'eternalNight',
+    name: 'Eternal night',
+    scope: 'vladislav',
+    tier: 'core',
+    kind: 'phase',
+    text: 'Every room counts as Dark.',
+    modifiers: [{ kind: 'grantTag', target: ROOMS, tag: 'Dark' }],
+  },
+  anotherRescue: {
+    id: 'anotherRescue',
+    name: 'Another rescue',
+    scope: 'barkers',
+    tier: 'core',
+    kind: 'request',
+    text: 'A new Doghouse.',
+    condition: { countNew: { piece: 'doghouse' }, min: 1 },
+    reward: { budget: 3 },
+  },
+  agilityCourse: {
+    id: 'agilityCourse',
+    name: 'Agility course',
+    scope: 'barkers',
+    tier: 'core',
+    kind: 'request',
+    text: 'Two Lawns side by side in a fenced yard.',
+    condition: { group: { all: [{ piece: 'lawn' }, { in: 'fencedYard' }] }, minTiles: 8 },
+    reward: { budget: 5 },
+  },
+  declutter: {
+    id: 'declutter',
+    name: 'Declutter',
+    scope: 'juniper',
+    tier: 'core',
+    kind: 'request',
+    text: 'Demolish a piece.',
+    condition: { demolishedSinceAccepted: { min: 1 } },
+    reward: { budget: 4 },
+  },
+  teaGarden: {
+    id: 'teaGarden',
+    name: 'Tea garden',
+    scope: 'juniper',
+    tier: 'core',
+    kind: 'request',
+    text: 'A new Patio with a view.',
+    condition: { countNew: { all: [{ piece: 'patio' }, { property: 'view' }] }, min: 1 },
+    reward: { budget: 4 },
+  },
+  bigDeadline: {
+    id: 'bigDeadline',
+    name: 'Big deadline',
+    scope: 'dale',
+    tier: 'core',
+    kind: 'restriction',
+    text: 'Place nothing Loud next phase.',
+    forbid: { tag: 'Loud' },
+    reward: { budget: 4 },
+  },
+  startedAPodcast: {
+    id: 'startedAPodcast',
+    name: 'Started a podcast',
+    scope: 'dale',
+    tier: 'core',
+    kind: 'request',
+    text: 'A new interior room.',
+    condition: { countNew: { all: [ROOMS, { property: 'interior' }] }, min: 1 },
+    reward: { budget: 4 },
+  },
+};
+
 export const TEST_CONTENT: Content = {
   pieces: TEST_PIECES,
   features: TEST_FEATURES,
   sets: TEST_SETS,
   crews: TEST_CREWS,
+  clients: TEST_CLIENTS,
   fixtures: TEST_FIXTURES,
   blueprints: TEST_BLUEPRINTS,
   tools: TEST_TOOLS,
   upgrades: TEST_UPGRADES,
   crates: TEST_CRATES,
+  changeOrders: TEST_CHANGE_ORDERS,
   balance: TEST_BALANCE,
 };
 
 /** The default setup for tests. */
-export const setup = (seed: string): RunSetup => ({
+export const setup = (seed: string, clientId: ClientId = 'hendersons'): RunSetup => ({
   seed,
+  clientId,
   crewId: 'generalContractor',
   mode: 'standard',
 });
+
+/** Content whose client (the Hendersons by default) has these fields. */
+export function withClient(
+  overrides: Partial<ClientDef>,
+  base: Content = TEST_CONTENT,
+  id: ClientId = 'hendersons',
+): Content {
+  return { ...base, clients: { ...base.clients, [id]: { ...base.clients[id], ...overrides } } };
+}
 
 export function withPieces(
   overrides: Partial<Record<PieceId, Partial<PieceDef>>>,
@@ -921,7 +1240,8 @@ export function withPieces(
   return { ...base, pieces };
 }
 
-export type Placement = [PieceId, number, number, Rot?];
+/** A piece at (x, y), turned `rot`; a pack (D-106) can take its own tiles as ASCII rows. */
+export type Placement = [PieceId, number, number, Rot?, (readonly string[])?];
 
 /** A house on an ASCII lot (. ground, T tree, P pond, C creek, B boulder), pieces placed unchecked. */
 export function houseFrom(
@@ -930,12 +1250,12 @@ export function houseFrom(
   placements: readonly Placement[] = [],
 ): HouseState {
   let house: HouseState = { lot: lotFromRows(rows), pieces: [], nextUid: 1 };
-  for (const [id, x, y, rot = 0] of placements) {
+  for (const [id, x, y, rot = 0, shape] of placements) {
     // Building over Trees removes them, as a real placement would.
-    const cleared = placedCells(content.pieces[id].shape, x, y, rot).filter(
+    const cleared = placedCells(shape ?? content.pieces[id].shape, x, y, rot).filter(
       (c) => terrainAt(house.lot, c.x, c.y) === 'tree',
     );
-    house = addPiece(house, id, x, y, rot, 1, cleared).house;
+    house = addPiece(house, id, x, y, rot, 1, cleared, shape).house;
   }
   return house;
 }

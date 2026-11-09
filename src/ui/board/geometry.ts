@@ -29,7 +29,7 @@ export function occupancy(house: HouseState): Occupancy {
   const byUid = new Map<number, PlacedPiece>();
   const cells = new Map<number, Cell[]>();
   for (const p of house.pieces) {
-    const pc = placedCells(CONTENT.pieces[p.defId].shape, p.x, p.y, p.rot);
+    const pc = placedCells(p.shape ?? CONTENT.pieces[p.defId].shape, p.x, p.y, p.rot);
     for (const c of pc) uids[c.y * width + c.x] = p.uid;
     byUid.set(p.uid, p);
     cells.set(p.uid, pc);
@@ -46,6 +46,32 @@ export function uidAt(occ: Occupancy, x: number, y: number): number {
 
 export function isIndoor(id: PieceId): boolean {
   return CONTENT.pieces[id].category === 'indoor';
+}
+
+/**
+ * A piece's heart, where its fixture-host badge sits (D-107): the cell (its top-left corner, in
+ * cells; add a half for its middle) in the middle of a rectangle, or, in any other shape, the
+ * first cell with the most neighbors of its own: an L's corner, a T's joint.
+ */
+export function furnitureSpot(cells: readonly Cell[]): { x: number; y: number } {
+  const minX = Math.min(...cells.map((c) => c.x));
+  const minY = Math.min(...cells.map((c) => c.y));
+  const w = Math.max(...cells.map((c) => c.x)) - minX + 1;
+  const h = Math.max(...cells.map((c) => c.y)) - minY + 1;
+  if (cells.length === w * h) return { x: minX + (w - 1) / 2, y: minY + (h - 1) / 2 };
+  const key = new Set(cells.map((c) => `${c.x},${c.y}`));
+  let best = cells[0]!;
+  let bestN = -1;
+  for (const c of cells) {
+    const n = [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+    ].filter(([dx, dy]) => key.has(`${c.x + dx!},${c.y + dy!}`)).length;
+    if (n > bestN) [best, bestN] = [c, n];
+  }
+  return { x: best.x, y: best.y };
 }
 
 /** The bottom-right cell, where the piece's weekly score digit sits (§12, Numbers). */
@@ -265,20 +291,44 @@ export function streetScale(windowHeight: number, dpr: number): number {
 
 /**
  * Where a label over some cells goes, in tiles: centered above them, or below them at the
- * top edge, and kept away from the lot's side edges.
+ * top edge, and kept away from the lot's side edges. `rows` is how many rows a label (or a
+ * stack of them) needs above the cells.
  */
 export function labelSpot(
   cells: readonly Cell[],
   lotW: number,
+  rows = 1,
 ): { x: number; y: number; below: boolean } {
   const c = center(cells);
   const top = Math.min(...cells.map((q) => q.y));
-  const below = top < 1;
+  const below = top < rows;
   return {
     x: Math.min(Math.max(c.x, 3), lotW - 3),
     y: below ? Math.max(...cells.map((q) => q.y)) + 1 : top,
     below,
   };
+}
+
+/**
+ * About how many lines a board label's text wraps to: a label is at most 240 UI pixels wide
+ * (labels.css), about 37 of the pixel font's characters (the readable font fits more).
+ */
+export function labelLines(text: string): number {
+  return Math.max(1, Math.ceil(text.length / 37));
+}
+
+/**
+ * How many rows of cells a stack of labels needs above its cells (labelSpot's `rows`), at `px`
+ * CSS px a cell: each label's lines (labelLines), a line the interface's body line in either
+ * font (the pixel font's 10 UI pixels of `uiPx` CSS px, the readable font's 19 CSS px, whichever
+ * is taller), each label in a ring a UI pixel deep above and below, and --space-1 (2 UI pixels)
+ * between the labels and above the cells (labels.css). A one-line label takes a row at 1×, and
+ * two at 0.5×, where a cell is 16 CSS px but the interface's text keeps its size.
+ */
+export function labelRows(lines: readonly number[], px: number, uiPx: number): number {
+  const line = Math.max(10 * uiPx, 19);
+  const h = lines.reduce((sum, n) => sum + n * line + 2 * uiPx + 2 * uiPx, 0);
+  return Math.max(1, Math.ceil(h / px - 1e-6));
 }
 
 /**

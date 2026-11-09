@@ -103,6 +103,13 @@ button.inv-slot:active::before {
   background: var(--wood-hi);
   cursor: help;
 }
+/* A crew's or a household member's card, in the reserve's extra slots (M4b). Where its name and
+   its tag don't fit side by side (Grandma's Room, Grandma, in a 280 px column in the pixel
+   font), the tag goes under the name, which stays whole. */
+.inv-slot.slot-extra {
+  --slot-band: var(--wood);
+  flex-wrap: wrap;
+}
 .inv-slot.selected {
   --slot-band: var(--ink);
   transform: translateY(calc(var(--px) * -2));
@@ -126,8 +133,38 @@ button.inv-slot:active::before {
 .inv-glyph.icon {
   align-self: center;
 }
-.inv-note {
-  color: var(--ink-soft);
+/* M4b: the reserve's extra slots, after its own: a crew's starting cards and a household
+   member's, banded in wood (.slot-extra, above) with a tag ("Crew", "Twins"), since they don't
+   count against the reserve. A member's pop in as they arrive, after the doorbell: the
+   duration, the delay and --pop-scale are FEEL.arrival's, inline (Inventory.tsx). The class
+   goes once the pop is done, so its fill never holds a picked slot down. */
+.inv-tag {
+  flex: none;
+  padding: 0 calc(var(--px) * 2);
+  background: var(--wood-hi);
+  box-shadow: inset 0 calc(var(--px) * -1) 0 var(--wood);
+  color: var(--ink);
+}
+.inv-slot.just-arrived {
+  animation-name: slot-arrive;
+  animation-timing-function: cubic-bezier(0.2, 1.4, 0.4, 1);
+  animation-fill-mode: both;
+}
+@keyframes slot-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--px) * -5)) scale(0.6);
+  }
+  45% {
+    opacity: 1;
+    transform: scale(var(--pop-scale, 1.25));
+  }
+  to {
+    transform: none;
+  }
+}
+.reduce-motion .inv-slot.just-arrived {
+  animation: none;
 }
 .inv-sell {
   flex: none;

@@ -119,8 +119,12 @@
   background: var(--paper-inset);
   background-clip: padding-box;
 }
+/* Its members side by side, wrapping where a set has more than the sheet is wide for (M4's
+   Full House: nine rooms). */
 .howto-set-pieces {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   align-items: flex-end;
 }
 .howto-set figcaption {

@@ -530,9 +530,10 @@ describe('fenced yards', () => {
     ]);
   });
 
-  it('is not fenced if it borders no indoor piece: a lone L-Fence in a corner', () => {
-    // The L at (3,0) closes (4..5, 0..1) against the top and right edges.
-    const lone: Placement[] = [['lFence', 3, 0]];
+  it('is not fenced if it borders no indoor piece: a lone L-shaped Fence in a corner', () => {
+    // The L-shaped Fence pack (D-106) at (3,0) closes (4..5, 0..1) against the top and right
+    // edges.
+    const lone: Placement[] = [['fence', 3, 0, 0, ['#..', '#..', '###']]];
     const layout = layoutOf(emptyRows(6, 6), lone);
     expect(layout.cells.get(1)).toEqual([
       { x: 3, y: 0 },

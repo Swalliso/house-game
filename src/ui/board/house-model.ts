@@ -331,14 +331,21 @@ const solo = new Map<string, HouseModel>();
 
 /**
  * One piece alone, for the ghost: its own outline walls, no doors or windows, looking as `look`
- * says it will once placed (its fixture included). In the piece's own frame: its bounding box's
- * top-left cell is (0, 0).
+ * says it will once placed (its fixture included), in a pack's own tiles (D-106) when `own` gives
+ * them. In the piece's own frame: its bounding box's top-left cell is (0, 0).
  */
-export function pieceModel(defId: PieceId, rot: PlacedPiece['rot'], look?: PieceLook): HouseModel {
-  const key = `${defId}:${rot}:${look ? `${look.color}:${look.flip ?? ''}:${look.fixture ?? ''}` : ''}`;
+export function pieceModel(
+  defId: PieceId,
+  rot: PlacedPiece['rot'],
+  look?: PieceLook,
+  /** A pack's own tiles (PlacedPiece.shape), when they aren't the card's shape. */
+  own?: readonly string[],
+): HouseModel {
+  const looks = look ? `${look.color}:${look.flip ?? ''}:${look.fixture ?? ''}` : '';
+  const key = `${defId}:${rot}:${own?.join('/') ?? ''}:${looks}`;
   let m = solo.get(key);
   if (!m) {
-    const shape = CONTENT.pieces[defId].shape;
+    const shape = own ?? CONTENT.pieces[defId].shape;
     const w = rot % 2 === 0 ? shape[0]!.length : shape.length;
     const h = rot % 2 === 0 ? shape.length : shape[0]!.length;
     const house: HouseState = {
@@ -358,6 +365,7 @@ export function pieceModel(defId: PieceId, rot: PlacedPiece['rot'], look?: Piece
           y: 0,
           rot,
           placedWeek: 0,
+          ...(own ? { shape: own } : {}),
           ...(look?.fixture ? { fixture: { id: look.fixture, week: 0 } } : {}),
         },
       ],
@@ -372,6 +380,12 @@ export function pieceModel(defId: PieceId, rot: PlacedPiece['rot'], look?: Piece
 
 // ---------------------------------------------------------------------------------------
 // Building a model.
+
+/** The type a room counts as: a member's room is a Bedroom (D-103), an L-Kitchen a Kitchen. */
+const typeOf = (id: PieceId): PieceId => CONTENT.pieces[id].countsAs ?? id;
+/** A room's number in HUB or ENTRY: its own, or else its type's. */
+const rank = (table: Readonly<Partial<Record<PieceId, number>>>, id: PieceId): number =>
+  table[id] ?? table[typeOf(id)] ?? 0;
 
 /** How public a room is: entries and hubs first, private rooms and dead ends last. */
 const HUB: Readonly<Partial<Record<PieceId, number>>> = {
@@ -391,7 +405,7 @@ const HUB: Readonly<Partial<Record<PieceId, number>>> = {
   bathroom: -1,
   closet: -2,
 };
-const hub = (id: PieceId) => HUB[id] ?? 0;
+const hub = (id: PieceId) => rank(HUB, id);
 
 /**
  * How good a front door each room makes: a mudroom or a hall first. A garage, a bathroom or a
@@ -415,12 +429,31 @@ const ENTRY: Readonly<Partial<Record<PieceId, number>>> = {
   closet: -25,
 };
 
-/** Which room a room's one door should open from: a closet off a bedroom, a garage into the mudroom. */
+/**
+ * Where the door tree opens a member's room (D-103) from when it can, as its story has it
+ * (D-111): the twins' Nursery, and the Kids' Room it grows into, off their parents' Bedroom; Ivy's
+ * Room off Dale's Home Office, where she does her homework; Nana's Room off the Mudroom, where the
+ * dogs come in. (A Hallway the rules link it through still opens into it as well.)
+ */
+const MEMBER_PARENT: Readonly<Partial<Record<PieceId, PieceId>>> = {
+  nursery: 'bedroom',
+  kidsRoom: 'bedroom',
+  ivysRoom: 'homeOffice',
+  nanasRoom: 'mudroom',
+};
+
+/**
+ * Which room a room's one door should open from: a closet off a bedroom (a member's room
+ * included), a garage into the mudroom, a member's room off the room its story puts it by
+ * (MEMBER_PARENT, before a Hallway or a Living Room). By type, so an L-Kitchen is a kitchen.
+ */
 function parentScore(child: PieceId, parent: PieceId): number {
-  if (child === 'closet' && parent === 'bedroom') return 6;
-  if (child === 'bathroom' && parent === 'bedroom') return 4.5;
-  if (child === 'garage' && (parent === 'mudroom' || parent === 'kitchen' || parent === 'lKitchen'))
-    return 5.5;
+  if (MEMBER_PARENT[child] === parent) return 5.5;
+  const c = typeOf(child);
+  const p = typeOf(parent);
+  if (c === 'closet' && p === 'bedroom') return 6;
+  if (c === 'bathroom' && p === 'bedroom') return 4.5;
+  if (c === 'garage' && (p === 'mudroom' || p === 'kitchen')) return 5.5;
   return hub(parent);
 }
 
@@ -431,8 +464,8 @@ const NO_WINDOWS: ReadonlySet<PieceId> = new Set(['closet', 'garage', 'hallway',
 const BACK_ROOMS: ReadonlySet<PieceId> = new Set(['garage', 'bathroom', 'closet']);
 
 /** What a front door may open onto (besides open ground and the street), and the paved ones. */
-const FRONT_ONTO: ReadonlySet<PieceId> = new Set(['patio', 'driveway', 'longDriveway', 'lawn']);
-const PAVED: ReadonlySet<PieceId> = new Set(['patio', 'driveway', 'longDriveway']);
+const FRONT_ONTO: ReadonlySet<PieceId> = new Set(['patio', 'driveway', 'lawn']);
+const PAVED: ReadonlySet<PieceId> = new Set(['patio', 'driveway']);
 /**
  * What an outside door opens onto only when nothing else around the house can have one (a house
  * built into the woods): ground a piece could be built over (a Tree's tile, a Time Capsule's) and
@@ -443,7 +476,7 @@ const LAST_GROUND: ReadonlySet<TerrainId> = new Set(['tree', 'timeCapsule']);
 /** What gets a back door. */
 const BACK_ONTO: ReadonlySet<PieceId> = new Set(['patio', 'hotTub']);
 /** What a garage door faces. */
-const DRIVEWAYS: ReadonlySet<PieceId> = new Set(['driveway', 'longDriveway']);
+const DRIVEWAYS: ReadonlySet<PieceId> = new Set(['driveway']);
 
 const isConnector = (id: PieceId) => !!CONTENT.pieces[id].connector;
 
@@ -684,7 +717,7 @@ function addOpenings(m: HouseModel, house: HouseState, links: HallLinks): void {
           }
           const gap = exitGap(c, s);
           if (!gap) continue;
-          const entry = ENTRY[r.defId] ?? 0;
+          const entry = rank(ENTRY, r.defId);
           const box = r.box;
           const centered =
             s === 'N' || s === 'S'

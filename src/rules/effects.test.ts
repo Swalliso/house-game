@@ -52,6 +52,7 @@ function earnedByWeek(
   return weeks.map((w) => scoreOf(tallyAt(content, rows, placements, w), uid).earned);
 }
 
+/** Can `id` be built at (x, y) on this house? A pack (D-106) can be given its own tiles. */
 function check(
   content: Content,
   rows: readonly string[],
@@ -60,21 +61,28 @@ function check(
   x: number,
   y: number,
   rot: Rot = 0,
+  shape?: readonly string[],
 ) {
   const house = houseFrom(content, rows, placements);
+  const def = content.pieces[id];
   return checkPlacement(
     content,
     computeLayout(content, house),
-    content.pieces[id],
+    def,
     x,
     y,
     rot,
     1,
     (h) => computeLayout(content, h),
+    shape ?? def.shape,
   );
 }
 
 const WEEKS = [1, 2, 3, 4, 5, 6, 7];
+
+/** The Fence pack's suggested L, and a Driveway pack of 5 in a row (D-106). */
+const L = ['#..', '#..', '###'];
+const LONG = ['#####'];
 
 // ---------------------------------------------------------------------------------------
 // Effect kinds.
@@ -184,8 +192,8 @@ describe('enclosure (the Fence)', () => {
     const alone = scoreOf(tallyAt(C, emptyRows(8, 8), [['fence', 0, 2]]), 1);
     expect(alone.earned).toBe(0);
     expect(alone.lines).toEqual([]);
-    // A lone L-Fence closing a corner: no house, so no fenced yard (§4's house rule).
-    const corner = layoutFor(C, emptyRows(8, 8), [['lFence', 0, 0, 3]]);
+    // A lone L-shaped Fence closing a corner: no house, so no fenced yard (§4's house rule).
+    const corner = layoutFor(C, emptyRows(8, 8), [['fence', 0, 0, 3, L]]);
     expect(corner.fencedSizes).toEqual([]);
     expect(scoreOf(tallyHouse(C, corner, 1, true), 1).earned).toBe(0);
     // A yard that reaches the street edge isn't fenced.
@@ -203,12 +211,12 @@ describe('enclosure (the Fence)', () => {
     expect(scoreOf(tallyHouse(C, small, 1, true), 2).earned).toBe(0);
   });
 
-  it('counts the L-Fence the same way', () => {
+  it('counts an L-shaped Fence pack the same way', () => {
     // The Bedroom covers x 0–1, rows 0–1; the L at (2,0), rot 3 ('..#', '..#', '###'), covers
     // (4,0), (4,1), (2,2), (3,2), and (4,2). Between them is a 4-tile yard: x 2–3, rows 0–1.
     const layout = layoutFor(C, emptyRows(8, 8), [
       ['bedroom', 0, 0],
-      ['lFence', 2, 0, 3],
+      ['fence', 2, 0, 3, L],
     ]);
     expect(layout.fencedSizes).toEqual([4]);
     expect(scoreOf(tallyHouse(C, layout, 1, true), 2).earned).toBe(4);
@@ -553,11 +561,11 @@ describe('conditional', () => {
   });
 
   it('Driveway: +1 in the front yard', () => {
-    // The Bedroom's front row is row 1. A Long Driveway up the side (rows 3–7) is all front
+    // The Bedroom's front row is row 1. A 5-tile Driveway up the side (rows 3–7) is all front
     // yard; a Driveway above it (rows 0–2) touches it but isn't wholly in the front yard.
     const t = tallyAt(C, emptyRows(6, 8), [
       ['bedroom', 0, 0],
-      ['longDriveway', 5, 3, 1],
+      ['driveway', 5, 3, 1, LONG],
       ['driveway', 5, 0, 1],
     ]);
     expect(scoreOf(t, 2)).toMatchObject({ earned: 1 });
@@ -623,12 +631,12 @@ describe('placement: building over the creek', () => {
     expect(r.legal).toBe(true);
     expect(r.reason).toBeUndefined();
     expect(r.clearedTrees).toEqual([]); // the creek isn't cleared: it gets a culvert
-    expect(check(C, rows, [], 'longDriveway', 2, 2, 1).legal).toBe(true);
+    expect(check(C, rows, [], 'driveway', 2, 2, 1, LONG).legal).toBe(true);
   });
 
   it('lets nothing else onto the creek', () => {
     const covers = Object.values(C.pieces).filter((d) => d.canCover?.includes('creek'));
-    expect(covers.map((d) => d.id).sort()).toEqual(['driveway', 'longDriveway']);
+    expect(covers.map((d) => d.id).sort()).toEqual(['driveway']);
     const others = Object.values(C.pieces).filter((d) => !d.canCover);
     expect(others.length).toBeGreaterThan(10);
     for (const def of others) {
@@ -665,8 +673,14 @@ describe('placement: the Garage', () => {
     expect(check(C, rows, [['driveway', 2, 3, 1]], 'garage', 0, 2).legal).toBe(true);
   });
 
-  it('counts a Long Driveway as a Driveway', () => {
-    expect(check(C, rows, [['longDriveway', 2, 1, 1]], 'garage', 0, 0).legal).toBe(true);
+  it('touches a Driveway pack of any shape, along any of its tiles', () => {
+    // A 5-tile pack up from the street; the Garage touches only its top tile.
+    expect(check(C, rows, [['driveway', 2, 1, 1, LONG]], 'garage', 0, 0).legal).toBe(true);
+    // An L of 6 along the street and up the side: (2..5, 5) and (5, 3..4). The Garage at
+    // (4..5, 1..2) touches only its top tile.
+    const bend: Placement = ['driveway', 2, 3, 0, ['...#', '...#', '####']];
+    expect(check(C, rows, [bend], 'garage', 4, 1).legal).toBe(true);
+    expect(check(C, rows, [bend], 'garage', 0, 0).reason).toBe(reason);
   });
 
   it('must also touch the house', () => {
@@ -691,15 +705,19 @@ describe('placement: the Driveway', () => {
     expect(check(C, rows, [['garage', 0, 0]], 'driveway', 2, 0).legal).toBe(false);
   });
 
-  it('counts a Long Driveway, both ways (countsAs)', () => {
-    // A Driveway off a Long Driveway.
-    expect(check(C, rows, [['longDriveway', 7, 1, 1]], 'driveway', 4, 1).legal).toBe(true);
-    // A Long Driveway off a Driveway, and alone.
-    expect(check(C, rows, [['driveway', 7, 3, 1]], 'longDriveway', 2, 3).legal).toBe(true);
-    expect(check(C, rows, [], 'longDriveway', 0, 0)).toMatchObject({
+  it('chains packs of any shape, both ways', () => {
+    // A Driveway off a 5-tile one.
+    expect(check(C, rows, [['driveway', 7, 1, 1, LONG]], 'driveway', 4, 1).legal).toBe(true);
+    // A 5-tile one off a Driveway, and alone.
+    expect(check(C, rows, [['driveway', 7, 3, 1]], 'driveway', 2, 3, 0, LONG).legal).toBe(true);
+    expect(check(C, rows, [], 'driveway', 0, 0, 0, LONG)).toMatchObject({
       legal: false,
-      reason: 'Long Driveway must be built touching the street or a Driveway.',
+      reason: 'Driveway must be built touching the street or a Driveway.',
     });
+    // An L off a Driveway, touching it with one tile: (7, 2) sits on the Driveway's top.
+    const bend = ['...#', '####'];
+    expect(check(C, rows, [['driveway', 7, 3, 1]], 'driveway', 4, 1, 0, bend).legal).toBe(true);
+    expect(check(C, rows, [['driveway', 7, 3, 1]], 'driveway', 3, 0, 0, bend).legal).toBe(false);
   });
 });
 

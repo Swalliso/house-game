@@ -1,31 +1,55 @@
 // The tally director (implementation-plan.md §12, The weekly tally; D-059). The rules have
 // already moved on when an action returns, so this only plays the events back, in order: the
-// placed piece settles, pieces pop one at a time in placement order with a rising pitch
-// ladder, sets add their Comfort and then their Charm, Comfort × Charm collapse into the
-// week's Wow, and the week drains into the run total. Fast-forwarded weeks (early completion)
-// count quickly; demolitions, transforms, overtime, and each milestone result get their own
-// beat. Animation speed never affects the game.
+// placed piece settles (or the renovated room levels up), pieces pop one at a time in
+// placement order with a rising pitch ladder, sets add their Comfort and then their Charm,
+// each checklist line held adds its Charm (M4a), Comfort × Charm collapse into the week's Wow,
+// and the week drains into the run total. Fast-forwarded weeks (early completion) count
+// quickly; demolitions, transforms, overtime, and each milestone result get their own beat.
+// M4b's change orders get theirs: a restriction broken (✕ on the piece), each order resolving
+// at its milestone (its reward counting into the budget), the sheet's arrival, and the answer's
+// stamp; and a household member's arrival (a banner, and their cards popping into the reserve).
+// A transform in a phase's first week comes with leaving the shop, not a tally, and gets its beat
+// there too. Animation speed never affects the game.
 //
 // Speed: the chosen tally speed, plus Balatro-style auto-acceleration during the steps, plus
 // fast-forward while Space or the right mouse button is held. A click skips to the result.
 
 import { batch, signal } from '@preact/signals';
 import {
+  article,
   CONTENT,
+  definite,
+  rewardText,
+  rules,
   SCORE_LABELS,
+  type ArrivalId,
+  type ChangeOrderId,
+  type ChangeOrderResult,
+  type ChangeOrderView,
+  type ClientId,
   type GameEvent,
   type PieceScore,
   type RunState,
+  type SetScore,
+  type SpecScore,
+  type Tally,
   type XMultTerm,
 } from '../../rules/index.ts';
 import { audio } from '../audio/audio.ts';
+import { arrivalOf, cardsPhrase, isPlural } from '../hud/household.ts';
 import { settings } from '../settings.ts';
 import { onEvents, onRunReset } from '../store.ts';
 import { formatNumber } from '../format.ts';
 import { FEEL } from './feel.ts';
 import { tallySpeed } from './juice.ts';
 
-export type PopupKind = 'points' | 'mult' | 'set' | 'total' | 'note' | 'sparkle';
+/**
+ * `spec` names a checklist line the week turned on, in Charm's color; `lost` one it turned off,
+ * orange with a ✕ (both in checklist.css). `order` is a change order paying (blue, ✓), and
+ * `quiet` one that didn't, or a phase effect ending (change-order.css).
+ */
+export type PopupKind =
+  'points' | 'mult' | 'set' | 'spec' | 'lost' | 'total' | 'note' | 'sparkle' | 'order' | 'quiet';
 
 export interface Popup {
   id: number;
@@ -39,7 +63,7 @@ export interface Popup {
 }
 
 export interface TallyView {
-  stage: 'pieces' | 'sets' | 'sparkle' | 'multiply' | 'total';
+  stage: 'pieces' | 'sets' | 'specs' | 'sparkle' | 'multiply' | 'total';
   /** The ×Mult sources that have landed so far this tally (gold Sparkle stamps). */
   sparkles: readonly XMultTerm[];
   points: number;
@@ -54,13 +78,41 @@ export interface TallyView {
   weekTotal: number;
   /** What each piece earned in the week being tallied, for the board's digits. */
   pieces: readonly PieceScore[];
+  /** The week's sets, in the tally's order (the score panel's folded row counts them). */
+  sets: readonly SetScore[];
+  /** How many of `sets` the tally has counted: 0 before its first set's beat. */
+  setAt: number;
+  /**
+   * The client's checklist as the tally shows it (M4a), in checklist order. It starts as last
+   * week's: a line the week turned on or off flips when its beat lands.
+   */
+  specs: readonly SpecScore[];
+  /** The checklist line the tally has reached: −1 before the checklist's turn, its length after. */
+  specAt: number;
+  /** What each line held adds to the Mult this week, in hundredths (the tally's `specBonus`). */
+  specBonus: number;
+}
+
+/** A checklist line lighting up as the tally reaches it (M4a). */
+export interface CheckFlash {
+  id: number;
+  /** The line's place in the checklist, as in its specMet or specLost event. */
+  index: number;
+  /** A line held, one the week turned on (★, a pop), or one it turned off (✕, a shake). */
+  kind: 'held' | 'met' | 'lost';
+  /** Real-time lifetime in ms, as long as a popup for its beat. */
+  ms: number;
 }
 
 export interface Banner {
   id: number;
   title: string;
   detail: string;
-  tone: 'good' | 'bad';
+  /**
+   * A milestone met (gold), one missed or in overtime (orange), or news that's neither: a
+   * household member's arrival (a plank, Overlays.tsx), so it never reads as a milestone.
+   */
+  tone: 'good' | 'bad' | 'note';
 }
 
 export const busy = signal(false);
@@ -71,6 +123,11 @@ export const tallyView = signal<TallyView | null>(null);
 export const shownScore = signal<number | null>(null);
 export const popups = signal<readonly Popup[]>([]);
 export const highlighted = signal<readonly number[]>([]);
+/**
+ * Checklist rows flashing in the tally (M4a), each for its `ms`: the Checklist glows a line
+ * held, pops a line turned on, and shakes a line turned off. They overlap at high speeds.
+ */
+export const checkFlashes = signal<readonly CheckFlash[]>([]);
 export const banner = signal<Banner | null>(null);
 /** Bumped for each big week, so the celebration can restart. */
 export const celebration = signal<{ id: number; total: number; pace: number } | null>(null);
@@ -85,9 +142,27 @@ export const shownRun = signal<RunState | null>(null);
  * One-shot effects (celebration, flash, justPlaced) carry an id: a consumer plays each id
  * once, so remounting the game screen (Menu, then Continue) doesn't replay them.
  */
-export const played = { celebration: 0, flash: 0, settle: 0 };
+export const played = { celebration: 0, flash: 0, settle: 0, levelPop: 0 };
 /** The piece that was just placed, for its settle animation. */
 export const justPlaced = signal<{ uid: number; id: number } | null>(null);
+/** The room that was just renovated, for its level badge's pop. */
+export const justRenovated = signal<{ uid: number; id: number } | null>(null);
+
+/**
+ * A change order's answer, stamped on its sheet as the sheet goes (M4b): the sheet as it was
+ * answered, since the rules have already moved on to the shop (or back to the week).
+ */
+export interface OrderStamp {
+  id: number;
+  view: ChangeOrderView;
+  clientId: ClientId;
+  /** Offered by the ?debug panel mid-week: answering it goes back to that week. */
+  forced: boolean;
+  answer: 'accepted' | 'declined' | 'noted';
+}
+export const orderStamp = signal<OrderStamp | null>(null);
+/** A household member's cards, just in the reserve (M4b): the reserve pops them in. */
+export const justArrived = signal<{ arrival: ArrivalId; id: number } | null>(null);
 
 /** The board registers these, so the director can wobble pieces and shake the screen. */
 export const fxHooks: {
@@ -170,16 +245,31 @@ function wait(
   });
 }
 
+/** A popup's real-time lifetime for a beat of `stepMs` (a checklist row's flash's too). */
+function popupMs(stepMs: number): number {
+  const t = FEEL.tally;
+  return Math.max(t.popupMinMs, (stepMs - t.popupShortenMs) / effectiveSpeed() + t.popupTailMs);
+}
+
 function popup(x: number, y: number, text: string, kind: PopupKind, stepMs: number): void {
   if (skipping) return;
-  const t = FEEL.tally;
-  const ms = Math.max(t.popupMinMs, (stepMs - t.popupShortenMs) / effectiveSpeed() + t.popupTailMs);
+  const ms = popupMs(stepMs);
   // Keep popups on the board: the top row's would rise off its edge.
   const p: Popup = { id: nextId++, x, y, text, kind, ms };
   popups.value = [...popups.value, p];
   setTimeout(() => {
     popups.value = popups.value.filter((q) => q.id !== p.id);
   }, ms);
+}
+
+/** Lights a checklist row as its beat lands (M4a). A newer flash on the row replaces its last. */
+function flashLine(index: number, kind: CheckFlash['kind'], stepMs: number): void {
+  if (skipping) return;
+  const f: CheckFlash = { id: nextId++, index, kind, ms: popupMs(stepMs) };
+  checkFlashes.value = [...checkFlashes.value.filter((q) => q.index !== index), f];
+  setTimeout(() => {
+    checkFlashes.value = checkFlashes.value.filter((q) => q.id !== f.id);
+  }, f.ms);
 }
 
 function shake(px: number): void {
@@ -200,9 +290,9 @@ function pieceCenter(states: readonly RunState[], uid: number): { x: number; y: 
     if (piece) break;
   }
   if (!piece) return { x: 0, y: 2 };
-  const def = CONTENT.pieces[piece.defId];
-  const rows = piece.rot % 2 === 0 ? def.shape.length : def.shape[0]!.length;
-  const cols = piece.rot % 2 === 0 ? def.shape[0]!.length : def.shape.length;
+  const shape = piece.shape ?? CONTENT.pieces[piece.defId].shape;
+  const rows = piece.rot % 2 === 0 ? shape.length : shape[0]!.length;
+  const cols = piece.rot % 2 === 0 ? shape[0]!.length : shape.length;
   return { x: piece.x + cols / 2, y: Math.max(2, piece.y + rows / 2) };
 }
 
@@ -212,6 +302,57 @@ function centroid(states: readonly RunState[], uids: readonly number[]): { x: nu
     x: cs.reduce((a, c) => a + c.x, 0) / Math.max(1, cs.length),
     y: cs.reduce((a, c) => a + c.y, 0) / Math.max(1, cs.length),
   };
+}
+
+/**
+ * The middle of the house (its indoor pieces) in lot coordinates, for the checklist's popups:
+ * the checklist judges the house, and the camera is usually on it. It's kept off the lot's
+ * side edges, since a line's name is wide; the lot's middle stands in until there's a room.
+ */
+function houseCenter(state: RunState): { x: number; y: number } {
+  const lot = state.house.lot;
+  const rooms = state.house.pieces.filter((p) => CONTENT.pieces[p.defId].category === 'indoor');
+  if (rooms.length === 0) return { x: lot.width / 2, y: Math.max(2, lot.height / 3) };
+  const c = centroid(
+    [state],
+    rooms.map((p) => p.uid),
+  );
+  return { x: Math.min(lot.width * 0.75, Math.max(lot.width * 0.25, c.x)), y: c.y };
+}
+
+/** A checklist line's name, by its id in the client's checklist. */
+function specName(clientId: ClientId, id: string): string {
+  return CONTENT.clients[clientId].specs.find((s) => s.id === id)?.name ?? id;
+}
+
+/** The checklist lines a tally turned on and off (M4a), by index. */
+interface SpecFlips {
+  met: ReadonlySet<number>;
+  lost: ReadonlySet<number>;
+}
+
+/**
+ * A tally's specMet and specLost events: the rules send them right after it (with its
+ * setCompleted ones), before the next tally if the week was completed early.
+ */
+function specFlips(events: readonly GameEvent[], at: number): SpecFlips {
+  const met = new Set<number>();
+  const lost = new Set<number>();
+  if (at < 0) return { met, lost };
+  for (let k = at + 1; k < events.length; k++) {
+    const e = events[k]!;
+    if (e.t === 'tally') break;
+    if (e.t === 'specMet') met.add(e.index);
+    else if (e.t === 'specLost') lost.add(e.index);
+  }
+  return { met, lost };
+}
+
+/** The checklist as it stood before a tally: the lines it turned on or off, flipped back. */
+function specsBefore(specs: readonly SpecScore[], flips: SpecFlips): readonly SpecScore[] {
+  return specs.map((sp, k) =>
+    flips.met.has(k) || flips.lost.has(k) ? { id: sp.id, met: !sp.met } : sp,
+  );
 }
 
 const formatCharm = (hundredths: number) => (hundredths / 100).toFixed(2).replace(/\.?0+$/, '');
@@ -242,7 +383,10 @@ function setShownScore(score: number | null): void {
   if (waiting === 0) shownScore.value = score;
 }
 
-/** Whether an action's events have beats to play. Free actions with little to animate don't. */
+/**
+ * Whether an action's events have beats to play. Free actions with little to animate don't. A
+ * change order's answer does (M4b): its stamp holds the shop back until it lands.
+ */
 function animates(events: readonly GameEvent[]): boolean {
   return events.some(
     (e) =>
@@ -250,14 +394,40 @@ function animates(events: readonly GameEvent[]): boolean {
       e.t === 'placed' ||
       e.t === 'demolished' ||
       e.t === 'installed' ||
+      e.t === 'renovated' ||
       e.t === 'moved' ||
       e.t === 'findClaimed' ||
-      e.t === 'toolUsed',
+      e.t === 'toolUsed' ||
+      e.t === 'changeOrderAnswered',
   );
 }
 
-/** A played week's tally view before its first step. */
-function tallyStart(e: Extract<GameEvent, { t: 'tally' }>): TallyView {
+/**
+ * The run as the top bar and the checklist show it, with a restriction broken (M4b): the
+ * checklist's row flips as the ✕ lands on the piece, not when the whole week has played.
+ */
+function withBroken(s: RunState, id: ChangeOrderId, uid: number): RunState {
+  return {
+    ...s,
+    changeOrders: s.changeOrders.map((r) =>
+      r.id === id && r.answer === 'accepted' && r.result === undefined && r.brokenBy === undefined
+        ? { ...r, brokenBy: uid }
+        : r,
+    ),
+  };
+}
+
+/** How a change order ended, after its name on the board: "Working from home: missed". */
+const RESULT_WORD: Readonly<Record<ChangeOrderResult, string>> = {
+  met: 'met',
+  missed: 'missed',
+  kept: 'kept',
+  broken: 'broken',
+  ended: 'over',
+};
+
+/** A played week's tally view before its first step: the checklist as it was last week. */
+function tallyStart(e: Extract<GameEvent, { t: 'tally' }>, flips: SpecFlips): TallyView {
   return {
     stage: 'pieces',
     sparkles: [],
@@ -270,6 +440,11 @@ function tallyStart(e: Extract<GameEvent, { t: 'tally' }>): TallyView {
     fastForward: false,
     weekTotal: e.tally.total,
     pieces: e.tally.pieces,
+    sets: e.tally.sets,
+    setAt: 0,
+    specs: specsBefore(e.tally.specs, flips),
+    specAt: -1,
+    specBonus: e.tally.specBonus,
   };
 }
 
@@ -279,13 +454,38 @@ function tallyStart(e: Extract<GameEvent, { t: 'tally' }>): TallyView {
  * have already moved on a week).
  */
 function showStart(events: readonly GameEvent[], before: RunState): void {
-  const week = events.find((e) => e.t === 'tally');
+  const at = events.findIndex((e) => e.t === 'tally');
+  const week = events[at];
+  const answered = events.find((e) => e.t === 'changeOrderAnswered');
   batch(() => {
     busy.value = true;
     shownScore.value = before.score;
     shownRun.value = before;
-    if (week?.t === 'tally' && !week.fastForward) tallyView.value = tallyStart(week);
+    if (week?.t === 'tally' && !week.fastForward) {
+      tallyView.value = tallyStart(week, specFlips(events, at));
+    }
+    // M4b: a change order's sheet stays up, answered, for its stamp. Set at once, so the sheet
+    // never unmounts between the answer and the stamp (and plays its arrival again).
+    if (answered?.t === 'changeOrderAnswered' && !orderStamp.value) {
+      orderStamp.value = stampOf(answered, before);
+    }
   });
+}
+
+/** The sheet as it was answered, and the answer, for its stamp (M4b). */
+function stampOf(
+  e: Extract<GameEvent, { t: 'changeOrderAnswered' }>,
+  before: RunState,
+): OrderStamp | null {
+  const view = rules.changeOrderOffer(before);
+  if (!view) return null;
+  return {
+    id: nextId++,
+    view,
+    clientId: before.setup.clientId,
+    forced: !!before.offers?.changeOrder?.forced,
+    answer: e.kind === 'phase' ? 'noted' : e.accepted ? 'accepted' : 'declined',
+  };
 }
 
 /** A fast-forwarded week (D-040): no placement, just a quick count and the drain. */
@@ -308,6 +508,11 @@ async function playFastForward(
     fastForward: true,
     weekTotal: t.total,
     pieces: t.pieces,
+    sets: t.sets,
+    setAt: t.sets.length,
+    specs: t.specs,
+    specAt: t.specs.length,
+    specBonus: t.specBonus,
   };
   if (!skipping) {
     const lot = base.house.lot;
@@ -329,17 +534,94 @@ async function playFastForward(
   setShownScore(to);
 }
 
-/** A played week's tally: pieces, sets, the multiply moment, and the drain. */
+/**
+ * The held lines' chimes, in semitones above the chime's G: C major pentatonic from G (G A C D
+ * E G), to match the ladder (audio.ts). From the top step on, they hold.
+ */
+const CHIME_STEPS = [0, 2, 5, 7, 9, 12] as const;
+
+/**
+ * The checklist's beats in a played week (M4a), after the sets: each line held adds its Charm,
+ * in checklist order, as its row lights up with a chime that climbs. A line the week turned on
+ * pops with a ★ and its name on the board; one it turned off shakes with a ✕ and adds nothing.
+ */
+async function playChecklist(
+  t: Tally,
+  view: TallyView,
+  flips: SpecFlips,
+  after: RunState,
+  clientId: ClientId,
+): Promise<void> {
+  const c = FEEL.checklist;
+  const home = houseCenter(after);
+  // Each line turned on or off gets its own row on the board, in the tally's order, so two in a
+  // week don't print over each other: a later one lands below, as the earlier one rises. The
+  // rows are centred on the house and kept on the board (the street row is its last).
+  const span = Math.max(0, flips.met.size + flips.lost.size - 1) * c.flipRows;
+  const firstRow = Math.max(2, Math.min(home.y - span / 2, after.house.lot.height - span));
+  let flipped = 0;
+  let chimes = 0;
+  for (const [k, sp] of t.specs.entries()) {
+    const kind: CheckFlash['kind'] | null = flips.met.has(k)
+      ? 'met'
+      : flips.lost.has(k)
+        ? 'lost'
+        : sp.met
+          ? 'held'
+          : null;
+    view.specAt = k;
+    if (!kind) continue;
+    view.stage = 'specs';
+    // A line turned on or off flips now; one held stays as it was.
+    view.specs = view.specs.map((s, j) => (j === k ? sp : s));
+    if (sp.met) view.mult += t.specBonus;
+    tallyView.value = { ...view };
+    const stepMs = kind === 'held' ? c.stepMs : c.flipMs;
+    const y = kind === 'held' ? home.y : firstRow + flipped++ * c.flipRows;
+    if (!skipping) {
+      flashLine(k, kind, stepMs);
+      if (sp.met) {
+        const semitones = CHIME_STEPS[Math.min(chimes++, CHIME_STEPS.length - 1)]!;
+        audio.play('chime', {
+          rate: 2 ** (semitones / 12),
+          gain: kind === 'met' ? 1 : c.chimeGain,
+        });
+      }
+      const name = specName(clientId, sp.id);
+      if (kind === 'met') {
+        popup(home.x, y - 0.6, `★ ${name}!`, 'spec', stepMs);
+        popup(
+          home.x,
+          y + 0.2,
+          `+${formatCharm(t.specBonus)} ${SCORE_LABELS.mult}`,
+          'mult',
+          stepMs / 2,
+        );
+        audio.play('sparkle', { delay: 0.06, gain: 0.5 });
+        shake(FEEL.shake.triggerPx);
+      } else if (kind === 'lost') {
+        // Its row shakes in the checklist; the board stays still.
+        popup(home.x, y, `✕ ${name}`, 'lost', stepMs);
+        audio.play('fail', { rate: 1.45, gain: 0.5 });
+      }
+    }
+    await wait(stepMs);
+  }
+  view.specAt = t.specs.length;
+}
+
+/** A played week's tally: pieces, sets, the checklist, the multiply moment, and the drain. */
 async function playTally(
   e: Extract<GameEvent, { t: 'tally' }>,
   base: RunState,
   after: RunState,
   newSets: ReadonlySet<string>,
+  flips: SpecFlips,
 ): Promise<void> {
   setShownRun(weekShown(base, e));
   closing = false;
   const t = e.tally;
-  const view = tallyStart(e);
+  const view = tallyStart(e, flips);
   tallyView.value = { ...view };
   let step = 0;
   for (const piece of t.pieces) {
@@ -368,6 +650,7 @@ async function playTally(
     highlighted.value = set.members;
     const c = centroid([after, base], set.members);
     view.points += set.points;
+    view.setAt++;
     tallyView.value = { ...view };
     if (!skipping) {
       popup(c.x, c.y - 0.6, newSets.has(set.key) ? `${name}!` : name, 'set', FEEL.tally.setStepMs);
@@ -393,6 +676,8 @@ async function playTally(
     await wait(FEEL.tally.setStepMs / 2);
   }
   highlighted.value = [];
+
+  await playChecklist(t, view, flips, after, base.setup.clientId);
 
   // +Mult from blueprints (It's a House) and this week's tools.
   const lot = after.house.lot;
@@ -541,19 +826,33 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
   try {
     const newSets = new Set(events.flatMap((e) => (e.t === 'setCompleted' ? [e.key] : [])));
     const ended = events.some((e) => e.t === 'runEnded');
-    const toShop = events.some((e) => e.t === 'shopOpened');
+    // The shop or a change order (M4b) opens a sheet over the board as this finishes.
+    const toSheet = events.some((e) => e.t === 'shopOpened' || e.t === 'changeOrderOffered');
     // Free actions with little to animate (the shop's, the auto-complete toggle) finish at
     // once, with their shop beats: sounds and a note; the shop screen and the budget count do
-    // the rest.
+    // the rest. So does a household member's arrival: its banner doesn't hold the week up.
     if (!animated) {
-      for (const e of events) shopBeat(e);
+      for (const e of events) {
+        shopBeat(e);
+        sheetBeat(e, after);
+      }
       for (const e of events) {
         if (e.t === 'handDrawn' && e.reroll && !skipping) audio.play('rotate', { rate: 0.7 });
       }
+      growBeats(events, after, gen);
       return;
     }
     if (waiting === 0) showStart(events, before);
     let base = before;
+    // M4b: the run as the milestone leaves it, before the change orders resolving after it
+    // pay: each one's reward counts into the budget, and its checklist row turns to how it
+    // went, on its own beat. `pending` holds their places in changeOrders, in their beats' order.
+    let afterMilestone: RunState | null = null;
+    let pending: number[] = [];
+    let paid = 0;
+    let resolved = 0;
+    /** The milestone's banner, when a sheet opens after it: the sheet takes over from it. */
+    let sheetBanner: number | undefined;
     for (const [i, e] of events.entries()) {
       if (gen !== generation) return;
       switch (e.t) {
@@ -627,6 +926,24 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
           await wait(FEEL.installMs * 0.6);
           break;
         }
+        case 'renovated': {
+          // The room's level badge pops in on its own (HouseLayers.tsx LevelStars); this is the
+          // room's beat.
+          if (!skipping) {
+            const c = pieceCenter([after, base], e.uid);
+            if (e.free) popup(c.x, c.y - 0.7, 'Weekend Crew!', 'note', FEEL.renovateMs);
+            popup(c.x, c.y, `Renovated · level ${e.level}`, 'points', FEEL.renovateMs);
+            // A knock-knock of building work, then Comfort's plink a fifth up.
+            audio.play('place-room', { rate: 1.1 });
+            audio.play('place-room', { rate: 1.3, delay: 0.1 });
+            audio.play('plink', { rate: 1.5, delay: 0.2 });
+            if (motion()) fxHooks.wobble(e.uid);
+            shake(FEEL.shake.triggerPx);
+            justRenovated.value = { uid: e.uid, id: nextId++ };
+          }
+          await wait(FEEL.renovateMs);
+          break;
+        }
         case 'demolished': {
           const c = e.cells;
           const x = c.reduce((a, q) => a + q.x + 0.5, 0) / Math.max(1, c.length);
@@ -639,24 +956,13 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
           await wait(FEEL.demolishMs * 0.5);
           break;
         }
-        case 'transformed': {
-          const c = e.cells[0];
-          if (c && !skipping) {
-            const into = 'feature' in e.into ? 'a Tree' : `a ${CONTENT.pieces[e.into.piece].name}`;
-            popup(
-              c.x + 0.5,
-              Math.max(1.5, c.y),
-              `Grew into ${into}!`,
-              'note',
-              FEEL.tally.setStepMs,
-            );
-            audio.play('chime', { rate: 1.2 });
-          }
+        case 'transformed':
+          // After the tally, as the next week starts.
+          transformBeat(e, after);
           break;
-        }
         case 'tally':
           if (e.fastForward) await playFastForward(e, base);
-          else await playTally(e, base, after, newSets);
+          else await playTally(e, base, after, newSets, specFlips(events, i));
           base = { ...base, score: e.score, budget: e.budget };
           tallyView.value = null;
           break;
@@ -684,15 +990,104 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
         case 'milestone': {
           tallyView.value = null;
           setShownScore(null);
-          setShownRun(null);
+          // The top bar moves on to the next phase. The change orders resolving next (M4b) pay
+          // on beats of their own, so their budget isn't in it yet, and the checklist shows
+          // them as they were until then.
+          const owed = events
+            .slice(i + 1)
+            .reduce((n, x) => n + (x.t === 'changeOrderResolved' ? (x.reward?.budget ?? 0) : 0), 0);
+          pending = after.changeOrders.flatMap((r, k) => {
+            const was = base.changeOrders[k];
+            return was && was.result === undefined && r.result !== undefined ? [k] : [];
+          });
+          afterMilestone =
+            pending.length > 0
+              ? {
+                  ...after,
+                  budget: after.budget - owed,
+                  changeOrders: after.changeOrders.map((r, k) =>
+                    pending.includes(k) ? base.changeOrders[k]! : r,
+                  ),
+                }
+              : null;
+          setShownRun(afterMilestone);
           const shown = milestoneBanner(e, ended);
           const id = banner.value?.id;
+          if (toSheet) sheetBanner = id;
           const gone = () => banner.value?.id !== id;
           closing = true;
-          // The shop opens over the board, banner and all, so it waits the banner out in real
-          // time, as the banner stays up, at any tally speed: holding hurries it, a click skips.
-          if (toShop) await wait(shown, undefined, gone, realSpeed);
+          // The shop (or a change order) opens over the board, banner and all, so it waits the
+          // banner out in real time, as the banner stays up, at any tally speed: holding hurries
+          // it, a click skips.
+          if (toSheet) await wait(shown, undefined, gone, realSpeed);
           else await wait(FEEL.milestoneHoldMs, undefined, gone);
+          break;
+        }
+        case 'changeOrderBroken': {
+          // M4b: the restriction pays nothing now. A ✕ on the piece that broke it, and the
+          // checklist's row flips with it.
+          base = withBroken(base, e.id, e.uid);
+          setShownRun(base);
+          if (!skipping) {
+            const c = pieceCenter([after, base], e.uid);
+            const name = CONTENT.changeOrders[e.id].name;
+            popup(c.x, c.y - 0.7, `✕ ${name}`, 'lost', FEEL.changeOrder.brokenMs);
+            audio.play('fail', { rate: 1.45, gain: 0.5 });
+            if (motion()) fxHooks.wobble(e.uid);
+          }
+          await wait(FEEL.changeOrder.brokenMs);
+          break;
+        }
+        case 'changeOrderResolved': {
+          // M4b, after the milestone: a request met or a restriction kept pays, and its reward
+          // counts into the budget; one missed or broken, or a phase effect ending, is a quiet
+          // line. Two at once stack, as the checklist's flips do. Its checklist row turns to
+          // how it went with it, and stays so even when this beat is skipped (Checklist.tsx).
+          const name = CONTENT.changeOrders[e.id].name;
+          const good = e.result === 'met' || e.result === 'kept';
+          if (afterMilestone) {
+            paid += e.reward?.budget ?? 0;
+            const k = pending.shift();
+            const shown: RunState = afterMilestone;
+            if (k !== undefined) {
+              afterMilestone = {
+                ...shown,
+                changeOrders: shown.changeOrders.map((r, j) =>
+                  j === k ? after.changeOrders[k]! : r,
+                ),
+              };
+            }
+            setShownRun({ ...afterMilestone, budget: afterMilestone.budget + paid });
+          }
+          if (!skipping) {
+            const home = houseCenter(after);
+            const y = home.y + resolved++ * FEEL.checklist.flipRows;
+            const text = good
+              ? `✓ ${name}: ${e.reward ? rewardText(CONTENT, e.reward) : RESULT_WORD[e.result]}`
+              : e.result === 'ended'
+                ? `${name} is ${RESULT_WORD.ended}`
+                : `✕ ${name}: ${RESULT_WORD[e.result]}`;
+            popup(home.x, y, text, good ? 'order' : 'quiet', FEEL.changeOrder.resolvedMs);
+            if (good) audio.play('chime', { rate: 1.25 });
+            else if (e.result !== 'ended') audio.play('rotate', { rate: 0.6, gain: 0.6 });
+          }
+          await wait(good ? FEEL.changeOrder.resolvedMs : FEEL.changeOrder.resolvedMs / 2);
+          break;
+        }
+        case 'changeOrderAnswered': {
+          // M4b: the answer is stamped on the sheet as it goes (ChangeOrderScreen.tsx; the stamp
+          // went on show with the action, in showStart), in real time: holding hurries it, a
+          // click skips it. The shop waits for it.
+          const stamp = orderStamp.value;
+          if (stamp && !skipping) {
+            // The stamp's thump, then a bright plink for a yes, or the paper swished aside.
+            audio.play('place-room', { rate: 1.35 });
+            if (stamp.answer === 'declined') audio.play('rotate', { rate: 0.7, delay: 0.08 });
+            else
+              audio.play('plink', { rate: stamp.answer === 'accepted' ? 1.5 : 1.2, delay: 0.07 });
+            await wait(FEEL.changeOrder.stampMs, undefined, undefined, realSpeed);
+          }
+          orderStamp.value = null;
           break;
         }
         case 'handDrawn':
@@ -705,12 +1100,23 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
       }
     }
     // The shop appears as this finishes, so its beats (its chime, a Rare's sparkle) play now,
-    // not at the click, before the tally and the milestone could give a Rare away.
-    if (gen === generation) for (const e of events) shopBeat(e);
+    // not at the click, before the tally and the milestone could give a Rare away. So does a
+    // change order's sheet, with its own.
+    if (gen === generation) {
+      // The sheet takes over from the milestone's banner. A hold or a skip cut its wait short,
+      // so it goes now (if it's still that one) rather than show through a change order's
+      // backdrop, and hold the first-time hints back, until its own time is up.
+      if (sheetBanner !== undefined && banner.value?.id === sheetBanner) banner.value = null;
+      for (const e of events) {
+        shopBeat(e);
+        sheetBeat(e, after);
+      }
+    }
   } finally {
     batch(() => {
       tallyView.value = null;
       highlighted.value = [];
+      orderStamp.value = null;
       // A newer action waiting behind this one keeps its starting state on show.
       if (waiting === 0) {
         shownScore.value = null;
@@ -767,6 +1173,107 @@ function shopBeat(e: GameEvent): void {
   }
 }
 
+/**
+ * M4b's beats as a screen changes: a change order's sheet arriving (its paper flourish is the
+ * sheet's own animation; this is its sound), and a household member moving in. They play as
+ * the sheet or the week appears, like the shop's.
+ */
+function sheetBeat(e: GameEvent, after: RunState): void {
+  switch (e.t) {
+    case 'changeOrderOffered':
+      // A swish as the paper slides in, and a tap as it lands.
+      audio.play('rotate', { rate: 0.55 });
+      audio.play('rotate', { rate: 0.8, delay: 0.09 });
+      audio.play('select', { rate: 0.7, delay: (FEEL.changeOrder.inMs * 0.7) / 1000 });
+      break;
+    case 'arrived':
+      arrivalBeat(e, after);
+      break;
+    default:
+      break;
+  }
+}
+
+/**
+ * A household member arrives (D-103): a banner over the board, a doorbell, and their cards
+ * popping into the reserve's extra slots (Inventory.tsx). It doesn't hold the week up: the
+ * banner goes on its own (or with a click on it), and the first-time hints wait for it.
+ */
+function arrivalBeat(e: Extract<GameEvent, { t: 'arrived' }>, after: RunState): void {
+  const a = arrivalOf(after.setup.clientId, e.arrival);
+  if (!a) return;
+  const pop = { arrival: e.arrival, id: nextId++ };
+  justArrived.value = pop;
+  setTimeout(() => {
+    if (justArrived.value?.id === pop.id) justArrived.value = null;
+  }, FEEL.arrival.landDelayMs + FEEL.arrival.popMs);
+  const have = isPlural(a) ? 'have' : 'has';
+  const are = e.cards.length === 1 ? 'is' : 'are';
+  showBanner(
+    `${a.name} ${have} arrived!`,
+    `${cardsPhrase(e.cards)} ${are} waiting in your reserve.`,
+    'note',
+  );
+  // A doorbell's ding-dong (a major third down), then the cards land with a shimmer.
+  const f = FEEL.arrival;
+  audio.play('chime', { rate: 1.12 });
+  audio.play('chime', { rate: 0.89, delay: f.dongMs / 1000 });
+  audio.play('sparkle', { delay: f.landDelayMs / 1000, gain: 0.6 });
+}
+
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/**
+ * A piece grows into another at a week's start (the Nursery into a Kids' Room, a Sapling into a
+ * Tree): it wobbles, says so on the board, and chimes. The score it changes has no other beat.
+ */
+function transformBeat(e: Extract<GameEvent, { t: 'transformed' }>, after: RunState): void {
+  const cells = e.cells;
+  if (skipping || cells.length === 0) return;
+  // Over the piece, but kept off the lot's side edges, as the checklist's popups are: the
+  // sentence is wide.
+  const w = after.house.lot.width;
+  const x = cells.reduce((a, c) => a + c.x + 0.5, 0) / cells.length;
+  const y = cells.reduce((a, c) => a + c.y + 0.5, 0) / cells.length;
+  const from = capitalize(definite(CONTENT.pieces[e.defId].name));
+  const into =
+    'feature' in e.into ? CONTENT.features[e.into.feature].name : CONTENT.pieces[e.into.piece].name;
+  popup(
+    Math.min(w * 0.75, Math.max(w * 0.25, x)),
+    Math.max(1.5, y),
+    `${from} grew into ${article(into)}!`,
+    'note',
+    FEEL.transform.stepMs,
+  );
+  audio.play('chime', { rate: 1.2 });
+  // A piece that grows into another keeps its place on the board (and its uid); a Sapling's
+  // Tree is the lot's.
+  if ('piece' in e.into && motion()) fxHooks.wobble(e.uid);
+}
+
+/**
+ * The transforms an action with no tally brings: leaving the shop starts a phase's first week,
+ * and a piece old enough grows then (the Nursery placed the week the twins arrive grows into a
+ * Kids' Room as Drywall starts). They play as the board appears, or, when a household member
+ * arrives that week too, once their banner's doorbell has rung and their cards have landed, so
+ * the two beats don't ring at once.
+ */
+function growBeats(events: readonly GameEvent[], after: RunState, gen: number): void {
+  const grown = events.filter(
+    (e): e is Extract<GameEvent, { t: 'transformed' }> => e.t === 'transformed',
+  );
+  if (grown.length === 0) return;
+  if (!events.some((e) => e.t === 'arrived')) {
+    for (const e of grown) transformBeat(e, after);
+    return;
+  }
+  setTimeout(() => {
+    // Not for a run that's gone, or over a tally that has started since.
+    if (gen !== generation || busy.value) return;
+    for (const e of grown) transformBeat(e, after);
+  }, FEEL.transform.afterArrivalMs);
+}
+
 onEvents((events, before, after) => {
   // A new action while a tally plays finishes that one at once, then plays its own.
   if (busy.value) skipping = true;
@@ -785,9 +1292,13 @@ onRunReset(() => {
   skipping = true;
   batch(() => {
     popups.value = [];
+    checkFlashes.value = [];
     banner.value = null;
     celebration.value = null;
     flash.value = null;
     justPlaced.value = null;
+    justRenovated.value = null;
+    orderStamp.value = null;
+    justArrived.value = null;
   });
 });

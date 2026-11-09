@@ -6,7 +6,12 @@ import { rules, type MilestoneRecord, type RunState } from '../../rules/index.ts
 import { inventoryRows, showsInventory } from './inventory-rows.ts';
 
 const fresh = (): RunState =>
-  rules.newRun({ seed: 'goods', crewId: 'generalContractor', mode: 'standard' });
+  rules.newRun({
+    seed: 'goods',
+    clientId: 'hendersons',
+    crewId: 'generalContractor',
+    mode: 'standard',
+  });
 
 const MET: MilestoneRecord = {
   phase: 0,
@@ -40,6 +45,21 @@ describe("the goods panel's rows", () => {
     const rows = inventoryRows(s, false);
     expect(rows.supplies).toBe(true);
     expect(rows.reserve).toBe(false);
+    expect(rows.blueprints).toBe(false);
+    expect(showsInventory(rows)).toBe(true);
+  });
+
+  it("show the reserve from week 1 when the crew's starting cards are in it (M4b)", () => {
+    const s = rules.newRun({
+      seed: 'goods',
+      clientId: 'hendersons',
+      crewId: 'landscaper',
+      mode: 'standard',
+    });
+    expect(s.reserve.length).toBeGreaterThan(0);
+    expect(s.reserve.every((r) => r.crew)).toBe(true);
+    const rows = inventoryRows(s, false);
+    expect(rows.reserve).toBe(true);
     expect(rows.blueprints).toBe(false);
     expect(showsInventory(rows)).toBe(true);
   });

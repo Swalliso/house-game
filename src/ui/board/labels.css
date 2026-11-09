@@ -1,7 +1,7 @@
 /* The board's labels by the pointer (Board.tsx): the ghost's change to the week's Wow or why it
-   can't go there, and the install, tool and demolish labels. They're the interface's chips
-   (kit.css) on the board, so the board and the chrome around it read as one game: the pixel
-   font (or the readable one, D-059), paper in LimeZu's ink ring, a band inside it in the
+   can't go there, and the install, Renovate, tool and demolish labels. They're the interface's
+   chips (kit.css) on the board, so the board and the chrome around it read as one game: the
+   pixel font (or the readable one, D-059), paper in LimeZu's ink ring, a band inside it in the
    label's tone, and a hard shadow. Never color alone: each tone has its ▲, ▼ or ✕. */
 
 .board .ghost-reason,
@@ -58,6 +58,35 @@
   color: var(--good);
 }
 
+/* The ghost's labels as one stack (Board.tsx Ghost): its change or why not, a restriction it
+   would break, and a pack's next tile (D-106) nearest its cells, so they never overlap. The stack
+   is the one label measured and nudged into the view (--label-dx); its labels sit in it. */
+.board .ghost-labels {
+  position: absolute;
+  z-index: var(--z-ghost-text);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  width: max-content;
+  transform: translate(calc(-50% + var(--label-dx, 0px)), calc(-100% - var(--space-1)));
+  pointer-events: none;
+}
+.board .ghost-labels.below {
+  flex-direction: column-reverse;
+  transform: translate(calc(-50% + var(--label-dx, 0px)), var(--space-1));
+}
+.board .ghost-labels > .ghost-reason,
+.board .ghost-labels > .ghost-delta {
+  position: static;
+  transform: none;
+}
+/* A pack's next step (D-106), on its own line under its change and its count of tiles, so the
+   label is two short lines rather than one that wraps. */
+.board .ghost-delta .ghost-then {
+  display: block;
+}
+
 /* The pieces' badges (HouseLayers.tsx Badge, placed by label-layout.ts): a fixture that can't be
    drawn, top right, and an unmet requirement's ⚠, top left. A square of paper in LimeZu's ink
    ring, one icon pixel wide, with the fixture's or the warning's pixel icon on whole device
@@ -90,6 +119,13 @@
   background-repeat: no-repeat;
   background-size: 100% 100%;
   image-rendering: pixelated;
+}
+/* A Renovated room's stars (D-102, HouseLayers.tsx LevelStars): one badge, a star per level side
+   by side (or in a column), an icon pixel apart. */
+.labels .level-badge {
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 .labels .digit {
   z-index: 2;

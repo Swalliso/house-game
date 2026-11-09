@@ -13,7 +13,9 @@ import {
   minBadge,
   overlaps,
   pieceLabels,
+  spreadBadges,
   type BadgeSpot,
+  type Box,
   type Side,
 } from './label-layout.ts';
 
@@ -602,5 +604,344 @@ describe('what the labels keep off', () => {
       keepOff: [{ x: 3 * 32 - 30, y: 6 * 32 - 14, w: 62, h: 14 }],
     });
     expect(closet.fixture).toMatchObject({ w: 14, icon: 1 });
+  });
+});
+
+describe("a Renovated room's stars (D-102)", () => {
+  /** Walls 6 art px deep on a room's outer edges only, none between its own cells. */
+  const roomWalls = (cells: readonly Cell[], px: number) => {
+    const own = new Set(cells.map((c) => `${c.x},${c.y}`));
+    const step: Record<Side, readonly [number, number]> = {
+      N: [0, -1],
+      E: [1, 0],
+      S: [0, 1],
+      W: [-1, 0],
+    };
+    return (c: Cell, side: Side) =>
+      own.has(`${c.x + step[side][0]},${c.y + step[side][1]}`) ? 0 : (OUTER * px) / 32;
+  };
+  /** A shape's cells, as rows of '#' and '.', with its top-left cell at (3, 5). */
+  const cellsOfRows = (rows: readonly string[]): Cell[] =>
+    rows.flatMap((r, y) => [...r].flatMap((ch, x) => (ch === '#' ? [{ x: 3 + x, y: 5 + y }] : [])));
+  // Every room a card can renovate: a Bedroom, Kitchen or Dining Room, a Living Room either way,
+  // Renfield's Room or Rowan's Studio either way, the L-Kitchen in each turn; and a one-cell room.
+  const ROOMS: readonly (readonly [string, readonly string[]])[] = [
+    ['2×2', ['##', '##']],
+    ['3×2', ['###', '###']],
+    ['2×3', ['##', '##', '##']],
+    ['2×1', ['##']],
+    ['1×2', ['#', '#']],
+    ['L', ['#.', '##']],
+    ['L turned once', ['##', '#.']],
+    ['L turned twice', ['##', '.#']],
+    ['L turned thrice', ['.#', '##']],
+    ['one cell', ['#']],
+  ];
+  const combos = [
+    [false, false],
+    [true, false],
+    [false, true],
+    [true, true],
+  ] as const;
+  /**
+   * What a label keeps off that can reach a room's cells: another piece's prop or a tree's
+   * crown, rising into its bottom row from the row below (art px high, from and to in art px
+   * across the digit's cell).
+   */
+  const RISES: readonly (readonly [string, number, number, number])[] = [
+    ['nothing', 0, 0, 0],
+    ['a Greenhouse’s roof', 14, -28, 28],
+    ['the Treehouse', 25, -30, 32],
+    ['a Birdhouse', 9, 10, 21],
+    ['a car’s roof', 6, -20, 32],
+    ['a tree’s crown', 21, -12, 40],
+  ];
+
+  for (const [zoom, px, dpr] of ZOOMS) {
+    it(`stay in their room, off the digit, the badges and what labels keep off, at ${zoom}`, () => {
+      const k = px / 32;
+      for (const [shape, rows] of ROOMS) {
+        const cells = cellsOfRows(rows);
+        const bottom = Math.max(...cells.map((c) => c.y));
+        const right = Math.max(...cells.filter((c) => c.y === bottom).map((c) => c.x));
+        for (const [what, rise, x0, x1] of RISES) {
+          // Rising into the bottom row, under its bottom-right cell (the digit's).
+          const keepOff = rise
+            ? [
+                {
+                  x: right * px + x0 * k,
+                  y: (bottom + 1) * px - rise * k,
+                  w: (x1 - x0) * k,
+                  h: rise * k,
+                },
+              ]
+            : [];
+          for (const level of [1, 2]) {
+            for (const [fixture, unmet] of combos) {
+              const chars = unmet ? 1 : 2;
+              const input = {
+                cells,
+                inset: roomWalls(cells, px),
+                px,
+                dpr,
+                digit: chars,
+                fixture,
+                unmet,
+                keepOff,
+              };
+              const l = pieceLabels({ ...input, level });
+              const badges = `${fixture ? ', fixture' : ''}${unmet ? ', unmet' : ''}`;
+              const name = `${shape} over ${what}, level ${level}${badges}`;
+              // The stars come last: they move nothing.
+              const { level: stars, ...rest } = l;
+              expect(rest, name).toEqual(pieceLabels(input));
+              if (!stars) continue;
+              const box = badgeBox(stars);
+              expect(overlaps(box, digitBox(l.digit!, chars)), name).toBe(false);
+              for (const b of [l.fixture, l.unmet]) {
+                if (b) expect(overlaps(box, badgeBox(b)), name).toBe(false);
+              }
+              for (const kb of keepOff) expect(overlaps(box, kb), name).toBe(false);
+              // On the room's own cells, inside its outer walls.
+              const wall = (OUTER * px) / 32;
+              const e = 1e-6;
+              for (
+                let cy = Math.floor(box.y / px + e);
+                cy <= Math.floor((box.y + box.h) / px - e);
+                cy++
+              ) {
+                for (
+                  let cx = Math.floor(box.x / px + e);
+                  cx <= Math.floor((box.x + box.w) / px - e);
+                  cx++
+                ) {
+                  expect(
+                    cells.some((c) => c.x === cx && c.y === cy),
+                    `${name}: ${cx},${cy}`,
+                  ).toBe(true);
+                }
+              }
+              const top = Math.min(
+                ...cells.filter((c) => c.x === Math.floor(box.x / px + e)).map((c) => c.y),
+              );
+              expect(box.y, name).toBeGreaterThanOrEqual(top * px + wall - e);
+              // Crisp, never smaller than a badge with its icon (minBadge), with room for every
+              // star and its ring: a star is 9 icon pixels, an icon pixel apart.
+              for (const v of [box.x, box.y, box.w, box.h, stars.ring, stars.icon])
+                expect(whole(v, dpr), `${name}: ${v}`).toBe(true);
+              expect(stars.icon, name).toBeGreaterThan(0);
+              expect(Math.min(box.w, box.h), name).toBeGreaterThanOrEqual(
+                minBadge(BADGE_ICON.level, dpr) - e,
+              );
+              const run = stars.icon * (BADGE_ICON.level * level + (level - 1)) + 2 * stars.ring;
+              expect(stars.column ? box.h : box.w, name).toBeGreaterThanOrEqual(run - e);
+              expect(stars.column ? box.w : box.h, name).toBeGreaterThanOrEqual(
+                stars.icon * BADGE_ICON.level + 2 * stars.ring - e,
+              );
+            }
+          }
+        }
+      }
+    });
+  }
+
+  /** A room's stars at a zoom, with or without the other badges, at level 2. */
+  const at = (
+    rows: readonly string[],
+    px: number,
+    dpr: number,
+    fixture: boolean,
+    unmet: boolean,
+  ) => {
+    const cells = cellsOfRows(rows);
+    const l = pieceLabels({
+      cells,
+      inset: roomWalls(cells, px),
+      px,
+      dpr,
+      digit: unmet ? 1 : 2,
+      fixture,
+      unmet,
+      level: 2,
+    });
+    return { ...l, stars: l.level };
+  };
+
+  it('show both stars where a room has the room: after the ⚠, under it, or in a column', () => {
+    for (const [px, dpr] of [
+      [32, 1],
+      [64, 1],
+      [32, 2],
+      [48, 2],
+    ] as const) {
+      const zoom = `${px / 32}× at ${dpr}`;
+      for (const [fixture, unmet] of combos) {
+        // A Bedroom, a Living Room, an L-Kitchen in any turn: always. In a rectangle, as tall as
+        // the ⚠ (both icons are 9 icon pixels; a fixture's is 8); in an L with both other badges
+        // in its top row, perhaps smaller, under the fixture's.
+        const full = fitBadge(badgeSize(px, BADGE_ICON.level, dpr), BADGE_ICON.level, dpr).size;
+        for (const [shape, rows] of ROOMS.filter(([, r]) => r.length > 1 && r[0]!.length > 1)) {
+          const l = at(rows, px, dpr, fixture, unmet);
+          const name = `${shape} at ${zoom}${fixture ? ', fixture' : ''}${unmet ? ', unmet' : ''}`;
+          expect(l.stars, name).toBeTruthy();
+          const tall = l.stars!.column ? l.stars!.w : l.stars!.h;
+          if (shape.startsWith('L') && fixture && unmet) {
+            expect(tall, name).toBeGreaterThanOrEqual(minBadge(BADGE_ICON.level, dpr));
+          } else {
+            expect(tall, name).toBe(full);
+          }
+          if (l.unmet) expect(l.unmet.h, name).toBe(full);
+        }
+        // A room one cell wide (Renfield's, Rowan's): a column, under the top's badges.
+        const narrow = at(['#', '#'], px, dpr, fixture, unmet);
+        expect(narrow.stars, `1×2 at ${zoom}`).toMatchObject({ column: true });
+        for (const b of [narrow.fixture, narrow.unmet]) {
+          if (b) expect(narrow.stars!.y, `1×2 at ${zoom}`).toBeGreaterThan(b.y + b.h);
+        }
+      }
+      // One cell wide and one row: beside the ⚠ in the row, unless both badges crowd it at 1×.
+      expect(at(['##'], px, dpr, false, true).stars, zoom).toMatchObject({ column: false });
+      expect(at(['##'], px, dpr, true, false).stars, zoom).toMatchObject({ column: false });
+    }
+    // On a Retina screen at 1×, the ⚠ and a fixture's badge in a one-row room leave room for a
+    // smaller badge of stars (a device pixel per icon pixel), centered on the ⚠ beside it; at 1×
+    // on a screen of 1, none.
+    const retina = at(['##'], 32, 2, true, true);
+    expect(retina.stars).toMatchObject({ icon: 0.5, ring: 0.5, column: false });
+    expect(retina.stars!.y + retina.stars!.h / 2).toBeCloseTo(
+      retina.unmet!.y + retina.unmet!.h / 2,
+      0,
+    );
+    expect(at(['##'], 32, 1, true, true).stars).toBeUndefined();
+    // At 1×, right after the ⚠ by a badge's gap, as tall as it, a star and a gap wider.
+    const l = at(['##', '##'], 32, 1, false, true);
+    expect(l.stars).toEqual({
+      x: l.unmet!.x + l.unmet!.w + 2,
+      y: l.unmet!.y,
+      w: l.unmet!.w + 10,
+      h: l.unmet!.h,
+      ring: 1,
+      icon: 1,
+      column: false,
+    });
+    // A Bedroom with no other badges: in the ⚠'s place, top left inside the walls.
+    expect(at(['##', '##'], 32, 1, false, false).stars).toMatchObject({
+      x: 3 * 32 + 8,
+      y: 5 * 32 + 8,
+    });
+    // A one-cell room at 1× hasn't the room beside its digit: Inspect states the level. (No card
+    // renovates one, but the rule holds for any room; zoomed in, a smaller badge fits.)
+    for (const dpr of [1, 2]) {
+      expect(at(['#'], 32, dpr, false, false).stars, `1× at ${dpr}`).toBeUndefined();
+    }
+  });
+
+  it('keep off what the labels keep off, or stay out', () => {
+    const cells = cellsOf(2, 2);
+    const input = {
+      cells,
+      inset: roomWalls(cells, 32),
+      px: 32,
+      dpr: 1,
+      digit: 2,
+      fixture: false,
+      unmet: false,
+      level: 2,
+    };
+    const free = pieceLabels(input).level!;
+    expect(free).toMatchObject({ column: false });
+    // Something in the second star's way: the stars stand in a column instead.
+    const side = { x: free.x + free.h + 2, y: free.y, w: 6, h: 6 };
+    const column = pieceLabels({ ...input, keepOff: [side] }).level!;
+    expect(column).toMatchObject({ x: free.x, y: free.y, column: true });
+    expect(overlaps(badgeBox(column), side)).toBe(false);
+    // Something over their corner: they move along the top row past it, to the next cell's
+    // corner, and never onto it; with the top row taken, they're left out.
+    const mat = { x: free.x, y: free.y, w: 18, h: 6 };
+    const moved = pieceLabels({ ...input, keepOff: [mat] }).level!;
+    expect(moved).toMatchObject({ x: 4 * 32 + 2, y: free.y, column: false });
+    expect(overlaps(badgeBox(moved), mat)).toBe(false);
+    const band = { x: 3 * 32, y: 5 * 32, w: 64, h: 24 };
+    expect(pieceLabels({ ...input, keepOff: [band] }).level).toBeUndefined();
+    // Renfield's Room across, in front of the Treehouse: its roof takes the row's height, so the
+    // stars stay out; the digit moved past it keeps its place.
+    const row = cellsOf(2, 1);
+    const tree = { x: 3 * 32 + 2, y: 6 * 32 - 25, w: 62, h: 25 };
+    const front = { ...input, cells: row, inset: roomWalls(row, 32), keepOff: [tree] };
+    const l = pieceLabels(front);
+    expect(l.level).toBeUndefined();
+    const { level: _, ...withoutStars } = front;
+    expect(l.digit).toEqual(pieceLabels(withoutStars).digit);
+  });
+});
+
+describe("the fixture hosts' gain badges (D-107)", () => {
+  /** A badge `w` × 20 CSS px on a cell's middle at 1×, on whole pixels, as HostBadges has it. */
+  const at = (cx: number, cy: number, w: number): Box => ({
+    x: Math.round((cx + 0.5) * 32 - w / 2),
+    y: (cy + 0.5) * 32 - 10,
+    w,
+    h: 20,
+  });
+  /** A one-character digit in a cell's bottom-right corner at 1× (digitFont, DIGIT_IN). */
+  const digit = (cx: number, cy: number): Box => ({
+    x: cx * 32 + 22,
+    y: cy * 32 + 20,
+    w: 8,
+    h: 11,
+  });
+  const clear = (boxes: readonly Box[], keepOff: readonly Box[]) =>
+    boxes.every((b, i) => boxes.every((o, j) => i === j || !overlaps(b, o))) &&
+    boxes.every((b) => keepOff.every((k) => !overlaps(b, k)));
+
+  it('stay on their spots when nothing is in the way', () => {
+    const spots = [at(2, 2, 29), at(6, 2, 57)];
+    expect(spreadBadges(spots, [], 32, 1)).toEqual(spots);
+  });
+
+  it('keep two one-cell rooms side by side apart, and off both digits', () => {
+    // A Bathroom's "★ ▲ +2" (57 px, placed first as the best) and a Closet's "±0" beside it.
+    const spots = [at(4, 5, 57), at(3, 5, 29)];
+    const digits = [digit(3, 5), digit(4, 5)];
+    expect(overlaps(spots[0]!, spots[1]!)).toBe(true);
+    const boxes = spreadBadges(spots, digits, 32, 1);
+    expect(clear(boxes, digits)).toBe(true);
+    // Each stays within a cell of its spot.
+    boxes.forEach((b, i) => {
+      expect(Math.abs(b.x - spots[i]!.x)).toBeLessThanOrEqual(32);
+      expect(Math.abs(b.y - spots[i]!.y)).toBeLessThanOrEqual(32);
+    });
+  });
+
+  it('move the least they can, up or down before sideways', () => {
+    // A digit just under a badge's middle: one step up clears it.
+    const spot = at(2, 2, 29);
+    const under = { x: spot.x + 10, y: spot.y + 18, w: 8, h: 11 };
+    const [b] = spreadBadges([spot], [under], 32, 1);
+    expect(b).toEqual({ ...spot, y: spot.y - 2 });
+  });
+
+  it('land on whole device pixels', () => {
+    const spots = [
+      { x: 10.3, y: 7.7, w: 29.5, h: 20 },
+      { x: 20.1, y: 7.7, w: 57, h: 20 },
+    ];
+    for (const dpr of [1, 1.25, 2]) {
+      for (const b of spreadBadges(spots, [], 32, dpr)) {
+        expect(Math.abs(b.x * dpr - Math.round(b.x * dpr))).toBeLessThan(1e-6);
+        expect(Math.abs(b.y * dpr - Math.round(b.y * dpr))).toBeLessThan(1e-6);
+      }
+    }
+  });
+
+  it('cover another badge least where nothing nearby is clear', () => {
+    // Over something wider than they can move past, the second badge still keeps off the first.
+    const spots = [at(5, 5, 57), at(5, 5, 57)];
+    const walls = [{ x: 0, y: 0, w: 32 * 12, h: 32 * 12 }];
+    const boxes = spreadBadges(spots, walls, 24, 1);
+    expect(boxes[0]).toEqual(spots[0]);
+    expect(overlaps(boxes[0]!, boxes[1]!)).toBe(false);
+    // The nearest such spot: just above the first.
+    expect(boxes[1]).toEqual({ ...spots[1]!, y: spots[1]!.y - 20 });
   });
 });

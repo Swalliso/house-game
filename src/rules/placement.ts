@@ -61,9 +61,12 @@ export function checkPlacement(
   rot: Rot,
   week: number,
   layoutOf: (house: HouseState) => Layout,
+  /** A pack's own tiles (D-106); otherwise the card's shape. */
+  shape: readonly string[] = def.shape,
 ): PlacementCheck {
   const { lot } = layout.house;
-  const cells = placedCells(def.shape, x, y, rot);
+  const own = shape === def.shape ? undefined : shape;
+  const cells = placedCells(shape, x, y, rot);
   const fail = (reason: string): PlacementCheck => ({
     legal: false,
     reason,
@@ -106,7 +109,7 @@ export function checkPlacement(
   }
   if (quick) return { legal: true, cells, clearedTrees, ...found };
   // Otherwise requirements are checked on the house as it would be, with Trees under it gone.
-  const added = addPiece(layout.house, def.id, x, y, rot, week, [...clearedTrees, ...finds]);
+  const added = addPiece(layout.house, def.id, x, y, rot, week, [...clearedTrees, ...finds], own);
   const after = layoutOf(added.house);
   for (const e of blocking) {
     if (!meetsCondition(content, after, e.condition, added.piece.uid)) {
@@ -218,8 +221,19 @@ export function addPiece(
   rot: Rot,
   week: number,
   cleared: readonly Cell[],
+  /** A pack's own tiles (D-106). */
+  shape?: readonly string[],
 ): { house: HouseState; piece: PlacedPiece } {
-  const piece: PlacedPiece = { uid: house.nextUid, defId, x, y, rot, placedWeek: week };
+  const piece: PlacedPiece = {
+    uid: house.nextUid,
+    defId,
+    x,
+    y,
+    rot,
+    placedWeek: week,
+    // A copy, so the action's rows never change the state.
+    ...(shape ? { shape: [...shape] } : {}),
+  };
   return {
     house: {
       lot: clearTiles(house.lot, cleared),
@@ -267,7 +281,17 @@ export function checkMove(
     ...layout.house,
     pieces: layout.house.pieces.filter((p) => p.uid !== uid),
   };
-  const check = checkPlacement(content, layoutOf(without), def, x, y, rot, week, layoutOf);
+  const check = checkPlacement(
+    content,
+    layoutOf(without),
+    def,
+    x,
+    y,
+    rot,
+    week,
+    layoutOf,
+    piece.shape ?? def.shape,
+  );
   if (!check.legal) return check;
   const moved: PlacedPiece = { ...piece, x, y, rot };
   const house: HouseState = {

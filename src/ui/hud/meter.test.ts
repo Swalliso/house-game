@@ -12,7 +12,12 @@ describe("the milestone meter's week ticks", () => {
   });
 
   it("follow the rules' own pace on a real run", () => {
-    const s = rules.newRun({ seed: 'meter', crewId: 'generalContractor', mode: 'standard' });
+    const s = rules.newRun({
+      seed: 'meter',
+      clientId: 'hendersons',
+      crewId: 'generalContractor',
+      mode: 'standard',
+    });
     const target = rules.target(s);
     const weeks = CONTENT.balance.weeksPerPhase;
     const ticks = weekTicks(s.phaseStartScore, rules.pace(s), target, weeks);

@@ -1,7 +1,8 @@
-// The top bar: the milestone and week on a plaque, Wow against the target on the milestone
-// meter (week ticks, the forecast, the target's flag), the run's resources (budget, overtime),
-// the auto-complete switch, Complete early, and the run's buttons: How to play, Settings, and
-// the Menu, which holds Copy run code and the seed (M5a).
+// The top bar: the milestone and week on a plaque (or "Change order", while a change order's
+// sheet is up), Wow against the target on the milestone meter (week ticks, the forecast, the
+// target's flag), the run's resources (budget, overtime), the auto-complete switch, Complete
+// early, and the run's buttons: How to play, Settings, and the Menu, which holds Copy run code
+// and the seed (M5a).
 
 import { signal } from '@preact/signals';
 import { CONTENT, rules, SCORE_LABELS } from '../../rules/index.ts';
@@ -66,6 +67,8 @@ function PhaseBlock() {
           'Run over'
         ) : shopping ? (
           'Shopping'
+        ) : s.screen === 'changeOrder' ? (
+          'Change order'
         ) : s.overtimeWeek > 0 ? (
           <span
             class="overtime-week"

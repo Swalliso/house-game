@@ -227,7 +227,7 @@ The Core items above add up to roughly 9 indoor rooms, 7 yard pieces, 4 special 
 
 ## 15. Merged rooms (from playtest 5a)
 
-**Tier:** Later. It's on the decision log's Parked list; revisit after playtest 4 has tried M4's Renovate.
+**Tier:** Later. It's on the decision log's Parked list; revisit after playtest 4 has tried M4's Renovate (D-102).
 
 The team's idea: build a Living Room against another Living Room and the two become one bigger living room. Two Bedrooms could become a primary bedroom the same way. A limit keeps rooms from merging endlessly. A house that reshapes itself as it grows would feel more alive.
 
@@ -237,13 +237,13 @@ The team's idea: build a Living Room against another Living Room and the two bec
 
 | Shape | How it works | Rules | Art | Effort | The catch |
 |---|---|---|---|---|---|
-| **Extend a room** (the team's pick) | A spare room card grows a room of its type. Its cells join that room, which stays one piece with a bigger outline and a level. Rooms already placed never merge. A big Bedroom can be the primary bedroom. | A new play beside M4's Renovate, with a position and a rotation. The room takes the combined shape (M4's per-piece shapes) and a level. No count changes, so sets and M4's house rules stay as they are. | One piece, so the walls, doors, color and number already work. Big footprints need more furniture: one bed on a big floor looks sparse. | Medium | Two uses for one spare card (renovate or extend). A bigger outline touches more neighbors, so its value needs tuning. Needs M4 first. |
+| **Extend a room** (the team's pick) | A spare room card grows a room of its type. Its cells join that room, which stays one piece with a bigger outline and a level. Rooms already placed never merge. A big Bedroom can be the primary bedroom. | A new play beside M4's Renovate (D-102), with a position and a rotation. The room takes the combined shape (a piece's own shape, which M4's packs added: D-106) and a level. No count changes, so sets and M4's house rules (D-101) stay as they are. | One piece, so the walls, doors, color and number already work. Big footprints need more furniture: one bed on a big floor looks sparse. | Medium | Two uses for one spare card (renovate or extend). A bigger outline touches more neighbors, so its value needs tuning. Needs M4 first. |
 | Bigger room types | Two touching rooms of a type merge into a Great Room or a Primary Bedroom, with their own card text, scoring and size cap. | A merged room counts once everywhere: neighbors, effects, sets, specs, house rules, demolition and Renovate. The systems review's trial rewrote the per-piece model (232 lines in 8 rules files). | New room types need floors, furniture, icons and pictures. | Large | The biggest rules change. It breaks Jack-and-Jill pairs, and a size bonus that pulls rooms together becomes a clump engine (D-079). |
 | Open plan, look only | The walls come down between touching rooms of one type, which share one color. The rules still count each piece. | None. | Walls, doors and colors per group; leftover wall stubs; the ghost can't show a wall coming down. | Small | The board shows one room where the rules count two, and two Bedrooms read as a dorm, not a primary bedroom. |
 
 **Limits** (any one, or a mix):
 - A size cap per room, for example 2 pieces. Dream Home prints 1 to 3 per room (`research.md`).
-- One per house, as M4 caps the Entertainer and Full House.
+- One per house, as M4 caps the Entertainer (D-093) and Full House.
 - Only once the type is at its limit, Renovate's trigger. M4's limits are soft (a third Living Room can still be built), so the cap needs its own rule.
 - A cost: the week's turn, a shop tool (a knock-through beside the Remodel Plans), or budget.
 - Only some types: Living Rooms and Bedrooms, never Kitchens, Bathrooms, Closets or Garages.

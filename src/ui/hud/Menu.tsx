@@ -2,10 +2,13 @@
 // what the top bar no longer shows: Copy run code and the run's seed, with How to play,
 // Settings, and Quit to title (the run is saved, so Continue picks it up again). While it's
 // open it holds the keyboard: Resume takes focus, Tab stays inside it, and focus goes back to
-// the Menu button when it closes.
+// the Menu button when it closes. M4's client and crew are beside the seed (D-110), as the
+// checklist's plank and chip show them during the run.
 
 import { useRef } from 'preact/hooks';
-import { Button, Panel, useDialogFocus, useScrimClose } from '../kit/kit.tsx';
+import { CONTENT } from '../../rules/index.ts';
+import { Button, Chip, Panel, useDialogFocus, useScrimClose } from '../kit/kit.tsx';
+import { CREW_ICONS } from '../sprites.ts';
 import { goToTitle, inProgress, run } from '../store.ts';
 import { copyRunCode, howToPlayOpen, menuOpen, openSettings } from './actions.ts';
 import './menu.css';
@@ -18,6 +21,7 @@ function MenuSheet() {
   const sheet = useRef<HTMLDivElement>(null);
   useDialogFocus(sheet);
   const close = () => (menuOpen.value = false);
+  const setup = run.value.setup;
   const quit = () => {
     close();
     goToTitle();
@@ -43,9 +47,24 @@ function MenuSheet() {
           >
             Copy run code
           </Button>
-          <p class="menu-seed">
-            Seed <span class="menu-seed-value">{run.value.setup.seed}</span>
-          </p>
+          <dl class="menu-run">
+            <div class="menu-run-row">
+              <dt>Client</dt>
+              <dd>{CONTENT.clients[setup.clientId].name}</dd>
+            </div>
+            <div class="menu-run-row">
+              <dt>Crew</dt>
+              <dd>
+                <Chip tone="wood" icon={CREW_ICONS[setup.crewId]}>
+                  {CONTENT.crews[setup.crewId].name}
+                </Chip>
+              </dd>
+            </div>
+            <div class="menu-run-row menu-seed">
+              <dt>Seed</dt>
+              <dd class="menu-seed-value">{setup.seed}</dd>
+            </div>
+          </dl>
           <Button block icon="exit" onClick={quit} title="Back to the title screen">
             Quit to title
           </Button>

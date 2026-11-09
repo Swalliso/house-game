@@ -5,7 +5,14 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { decodePng } from '../../../scripts/png.ts';
-import type { FixtureId, HouseState, PieceId, PlacedPiece, Rot } from '../../rules/index.ts';
+import {
+  CONTENT,
+  type FixtureId,
+  type HouseState,
+  type PieceId,
+  type PlacedPiece,
+  type Rot,
+} from '../../rules/index.ts';
 import { lotFromRows } from '../../rules/lot.ts';
 import { houseModel, roomAt, WALL, type HouseModel } from '../board/house-model.ts';
 import { CELL, spritePos, type SpriteId } from '../sprites.ts';
@@ -156,6 +163,28 @@ describe('the floor canvas', () => {
     const p = paintFloors(m, atlas, { shadow: false })!;
     expect(pixel(p, 2 * CELL + 20, 3 * CELL + 20)).toEqual(sprite(FLOOR.library, 20, 20));
     expect(pixel(p, 2 * CELL + 10, 2 * CELL + WALL.out + 3)).toEqual(sprite(FACE.library, 10, 3));
+  });
+
+  it('gives every room type a floor and a wallpaper of its own, the members’ rooms too (D-111)', () => {
+    // D-097: every room type has its own floor, so none falls back to another's. Only the two
+    // kitchens share theirs, and the two halls.
+    const indoor = (Object.keys(CONTENT.pieces) as PieceId[]).filter(
+      (id) => CONTENT.pieces[id].category === 'indoor',
+    );
+    expect(Object.keys(FLOOR).sort()).toEqual([...indoor].sort());
+    expect(Object.keys(FACE).sort()).toEqual([...indoor].sort());
+    const pair = (a: string, b: string) => [a, b].sort().join(' ');
+    const sharing = new Set(['kitchen lKitchen', 'hallway longHallway']);
+    for (const table of [FLOOR, FACE]) {
+      const ids = Object.keys(table) as (keyof typeof table)[];
+      for (const a of ids) {
+        for (const b of ids) {
+          if (a < b && table[a] === table[b]) {
+            expect(sharing.has(pair(a, b)), `${a} and ${b} share ${table[a]}`).toBe(true);
+          }
+        }
+      }
+    }
   });
 
   it('casts the house’s shadow down and to the right, on the lot only', () => {

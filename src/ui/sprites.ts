@@ -10,7 +10,7 @@
 
 import atlasUrl from '../../assets/atlas.png';
 import atlas from '../../assets/atlas.json';
-import type { FixtureId, Supply, ToolId } from '../rules/index.ts';
+import type { CrewId, FixtureId, Supply, ToolId } from '../rules/index.ts';
 import type { IconName } from './theme/art.ts';
 
 export type SpriteId = keyof typeof atlas.sprites;
@@ -59,12 +59,27 @@ export const TOOL_ICONS: Record<ToolId, IconName> = {
   dumpster: 'dumpster',
   remodelJackAndJill: 'remodel',
   remodelEntertainer: 'remodel',
+  remodelSuite: 'remodel',
+  remodelFullHouse: 'remodel',
   weekendCrew: 'weekendCrew',
 };
 
 export function supplyIcon(s: Supply): IconName {
   return s.kind === 'fixture' ? FIXTURE_ICONS[s.id] : TOOL_ICONS[s.id];
 }
+
+/**
+ * Each crew's icon (theme/icons.ts, D-111), 8×8: its chip with the client's checklist and in the
+ * menu, and its card's picture on the crew pick, at 4 UI px per art px. The General Contractor
+ * wears the crew's hard hat, as the Weekend Crew and the company upgrades do; the hammer is
+ * Demolish's. The Landscaper's spade stands for every yard piece; the leaf is the Green tag's,
+ * which most yard pieces don't carry, and the sack is the Fertilizer's.
+ */
+export const CREW_ICONS: Record<CrewId, IconName> = {
+  generalContractor: 'weekendCrew',
+  landscaper: 'landscaper',
+  architect: 'architect',
+};
 
 /** A sprite's rect in the atlas (an animation's first frame). */
 export function spritePos(id: SpriteId): { x: number; y: number; w: number; h: number } {

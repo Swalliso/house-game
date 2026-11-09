@@ -53,12 +53,17 @@ turned into a test. To open one, add it to the address: `…/house-game/dev/?run
 game crashes, its "Something broke" screen has the run code and a link that opens a GitHub
 issue with it filled in.
 
-To play a particular lot, add `?seed=` and any word: `…/house-game/dev/?seed=maple`. Your run
-in progress is saved, and the title screen offers Continue.
+To play a particular lot, add `?seed=` and any word: `…/house-game/dev/?seed=maple`. A link
+like that skips the job board and starts a run for the Hendersons with the General Contractor.
+Add `client=` (`hendersons`, `vladislav`, `barkers`, `juniper` or `dale`) or `crew=`
+(`generalContractor`, `landscaper` or `architect`) to start with that client or crew, with or
+without a seed: `…/house-game/dev/?seed=maple&client=juniper&crew=architect`. Your run in
+progress is saved, and the title screen offers Continue.
 
 Add `?debug` to open the debug panel: jump to a milestone with a bot-built house, meet or miss
-a target, add budget, give a card, or skip the tally animations. Its cheats are recorded in the
-run code, so a debug run still replays.
+a target, add budget, give a card or a shop good, force the shop, a change order or an arrival,
+or skip the tally animations. Its cheats are recorded in the run code, so a debug run still
+replays.
 
 ## Docs
 

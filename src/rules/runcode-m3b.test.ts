@@ -697,7 +697,7 @@ describe('a TEST_CONTENT run with tools replays exactly', () => {
     act({ t: 'useTool', i: 1 });
     act({ t: 'useTool', i: 0 });
     expect(state.supplies).toEqual([]);
-    expect(state.timedEffects.map((e) => [e.source, e.until.week])).toEqual([
+    expect(state.timedEffects.map((e) => [e.source, 'week' in e.until && e.until.week])).toEqual([
       ['openHouseParty', 1],
       ['rushOrder', 1],
     ]);

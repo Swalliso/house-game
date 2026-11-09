@@ -6,7 +6,8 @@
 //   Plans), extraPlay (Weekend Crew)
 // - each is a free action: the week, slot, draws, and hand stay (the Catalog's draws + 1)
 // - rules.canUseTool says why a use isn't allowed; rules.previewTool shows the house's pass
-//   tally before and after
+//   tally before and after, and the checklist lines the use would turn on and off (none
+//   here: TEST_CONTENT's clients have empty checklists)
 //
 // Rules tests use TEST_CONTENT (src/rules/testing.ts). Most houses are built on an empty 12×12
 // lot with houseFrom, so uids follow the placement order (1, 2, …) and every piece has
@@ -370,11 +371,34 @@ describe('Moving Truck (move)', () => {
       after: { points: 6, mult: 100, total: 6 },
       delta: 3,
       cells: [{ x: 2, y: 2 }],
+      specsGained: [],
+      specsLost: [],
+      setsGained: [],
+      setsLost: [],
     });
     // And the move does what it previewed.
     const { state } = R.apply(s, moveTo(0, 2, 2, 2));
     expect(R.currentTally(state).total).toBe(6);
     expect(earnedOf(R, state, 2)).toBe(3);
+  });
+
+  it('previewTool names a set the move would break, or complete', () => {
+    // An end Bedroom (uid 3) moved below the other: the Bathroom hub no longer touches both, so
+    // the Jack-and-Jill goes. The house stays in one piece.
+    const s = build(JACK_AND_JILL, { tools: ['movingTruck'] });
+    const set = R.currentTally(s).sets[0]!;
+    expect(set).toMatchObject({ set: 'jackAndJill', points: 10, mult: 50 });
+    const away = moveTo(0, 3, 0, 2);
+    expect(R.previewTool(s, away)).toMatchObject({ ok: true, setsGained: [], setsLost: [set] });
+    const { state } = R.apply(s, away);
+    expect(R.currentTally(state).sets).toEqual([]);
+    // Moving it back beside the Bathroom completes it again.
+    const back = { ...state, supplies: [tool('movingTruck')] };
+    expect(R.previewTool(back, moveTo(0, 3, 3, 0))).toMatchObject({
+      ok: true,
+      setsGained: [set],
+      setsLost: [],
+    });
   });
 
   it('previewTool of an illegal move gives its reason and no change', () => {
@@ -388,6 +412,10 @@ describe('Moving Truck (move)', () => {
       after: now,
       delta: 0,
       cells: [],
+      specsGained: [],
+      specsLost: [],
+      setsGained: [],
+      setsLost: [],
     });
   });
 });
@@ -457,6 +485,10 @@ describe('Rush Order and Open House Party (weekModifiers)', () => {
       after: { points: 19, mult: 200, total: 38 },
       delta: 9,
       cells: [],
+      specsGained: [],
+      specsLost: [],
+      setsGained: [],
+      setsLost: [],
     });
   });
 
@@ -479,12 +511,13 @@ describe('Rush Order and Open House Party (weekModifiers)', () => {
   });
 
   it('also counts in a placement’s tally that same week', () => {
-    // The week's turn: a Closet (steady 1) beside the Bedroom at (3, 0), which ignores it.
-    // Points 19 + 1 = 20, × 2.0 → 40.
+    // The week's turn: a Closet (steady 1) beside the Bedroom at (3, 0), which ignores it, but
+    // which completes a Suite with that Bedroom and the Bathroom (15 Points, +0.5).
+    // Points 19 + 1 + 15 = 35, × 2.5 → 88 (87.5 rounds up).
     const s = build(JACK_AND_JILL, { tools: ['rushOrder'], hand: [pc('closet')] });
     const used = R.apply(s, use(0)).state;
     const { events } = R.apply(used, place(0, 5, 0));
-    expect(eventsOf(events, 'tally')[0]!.tally.total).toBe(40);
+    expect(eventsOf(events, 'tally')[0]!.tally.total).toBe(88);
   });
 
   it('applies to a manual complete-early’s fast-forwarded current week only', () => {
@@ -656,6 +689,10 @@ describe('Fertilizer (advanceTimers)', () => {
       after: { points: 15, mult: 100, total: 15 },
       delta: 12,
       cells: [],
+      specsGained: [],
+      specsLost: [],
+      setsGained: [],
+      setsLost: [],
     });
     const used = R.apply(s, use(0)).state;
     expect(R.pieceTimers(used, 2)).toEqual(['Pays +12 this week']);
@@ -694,6 +731,62 @@ describe('Fertilizer (advanceTimers)', () => {
     const plain = applyAll(R, s, [PASS, PASS]);
     expect(eventsOf(plain.events, 'transformed')).toEqual([]);
     expect(plain.state.house.pieces).toHaveLength(1);
+  });
+
+  it('a Sapling made old enough mid-week says it changes next week, when it does', () => {
+    // Placed in week 1; by week 3 it's age 2, and Fertilizer's +2 makes it 4, old enough. A
+    // transform happens at a week's start, so this one comes at the start of week 4.
+    const s = build([['sapling', 5, 5]], { tools: ['fertilizer'] });
+    const week3 = applyAll(R, s, [PASS, PASS]).state;
+    expect(week3.week).toBe(3);
+    const used = R.apply(week3, use(0)).state;
+    expect(R.pieceTimers(used, 1)).toEqual(['Becomes a Tree at the start of week 4']);
+    const week4 = R.apply(used, PASS);
+    expect(eventsOf(week4.events, 'transformed')).toHaveLength(1);
+    expect(week4.state.week).toBe(4);
+  });
+
+  it('…and still next week in a shop or change order the debug panel opens mid-week', () => {
+    // Both go back to week 3, whose start has run: the Sapling becomes a Tree as week 4 starts.
+    const s = build([['sapling', 5, 5]], { tools: ['fertilizer'] });
+    const used = R.apply(applyAll(R, s, [PASS, PASS]).state, use(0)).state;
+    const shop = R.apply(used, { t: 'debug', op: 'forceShop' }).state;
+    const order = R.apply(used, { t: 'debug', op: 'forceChangeOrder', id: 'heatWave' }).state;
+    expect([shop.screen, order.screen]).toEqual(['shop', 'changeOrder']);
+    for (const q of [shop, order]) {
+      expect(R.pieceTimers(q, 1)).toEqual(['Becomes a Tree at the start of week 4']);
+    }
+    const back = R.apply(shop, { t: 'leaveShop' });
+    expect(eventsOf(back.events, 'transformed')).toEqual([]);
+    expect(back.state.week).toBe(3);
+    expect(eventsOf(R.apply(back.state, PASS).events, 'transformed')).toHaveLength(1);
+  });
+
+  it('between phases, a Sapling old enough says the next phase’s first week, when it changes', () => {
+    // Placed in week 1, it's 4 weeks old in week 5, the next phase's first. Milestone 1's shop
+    // (and a change order before it) come before week 5 starts: leaving the shop starts it,
+    // and the Sapling becomes a Tree then.
+    const timers = ['Becomes a Tree at the start of week 5'];
+    for (const after of [[], [1]]) {
+      const r = createRules(content([0, 0], 4, { changeOrderAfter: after }));
+      let s = applyAll(r, build([['sapling', 5, 5]], { rules: r }), [PASS, PASS, PASS]).state;
+      expect(r.pieceTimers(s, 1)).toEqual(timers);
+      s = r.apply(s, PASS).state;
+      if (after.length > 0) {
+        expect([s.screen, s.week]).toEqual(['changeOrder', 5]);
+        expect(r.pieceTimers(s, 1)).toEqual(timers);
+        // Only phase effects come before the last phase: acknowledged, then the shop.
+        s = r.apply(s, { t: 'answerChangeOrder', accept: true }).state;
+      }
+      expect([s.screen, s.week]).toEqual(['shop', 5]);
+      expect(s.house.pieces.map((p) => p.defId)).toEqual(['sapling']);
+      expect(r.pieceTimers(s, 1)).toEqual(timers);
+      const week5 = r.apply(s, { t: 'leaveShop' });
+      expect(eventsOf(week5.events, 'transformed')).toHaveLength(1);
+      expect(week5.state.week).toBe(5);
+      expect(week5.state.house.pieces).toEqual([]);
+      expect(terrainAt(week5.state, 5, 5)).toBe('tree');
+    }
   });
 
   it('counts for economy cadence and Growth', () => {
@@ -736,6 +829,11 @@ describe('Dumpster (reward) and Remodel Plans (levelSet)', () => {
       after: { points: 27, mult: 175, total: 47 },
       delta: 18,
       cells: [],
+      specsGained: [],
+      specsLost: [],
+      // The same instance at a higher level: neither a new set nor a lost one.
+      setsGained: [],
+      setsLost: [],
     });
     const l2 = R.apply(s, use(0));
     expect(l2.events).toEqual([{ t: 'toolUsed', tool: 'remodelJackAndJill' }]);

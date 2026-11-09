@@ -1,36 +1,52 @@
 // The inspect panel: why a placement scores what it does, or what a piece or tile is.
 // Readability is in the slice (§2): the exact number on placement, and every piece it changes.
 // From M2 it also shows a piece's layout facts (tags, regions, view, links, fenced yards), its
-// timers, unmet requirements, budget, and what the demolish tool would remove.
+// timers, unmet requirements, budget, and what the demolish tool would remove. From M4a, the
+// checklist lines a play would turn on or off, and Renovations (D-102). From M4b, a running
+// restriction a placement would break, whose a member's room is, where a granted tag comes from
+// ("Dark · from Eternal night"), and the sets a demolition or a tool would break. The board's
+// terms (regions, requirements, links, timers, Renovate) explain themselves on hover (D-077).
 
 import type { ComponentChildren } from 'preact';
 import {
   cardText,
   CONTENT,
+  definite,
   fixtureText,
+  glossary,
   rewardText,
   regionText,
   rules,
   SCORE_LABELS,
+  sourceName,
   terrainAt,
   type BreakdownLine,
+  type ChangeOrderId,
+  type ModSource,
+  type PieceId,
   type PieceInfo,
   type Region,
-  type Tag,
+  type ReservePiece,
+  type SetScore,
+  type TagSource,
+  type Term,
   type ToolId,
 } from '../../rules/index.ts';
 import { formatMult, formatNumber, signed } from '../format.ts';
 import {
+  activePlay,
   currentTally,
   demolishArmed,
   demolishPreview,
   inspected,
   preview,
+  renovateUids,
   run,
   selected,
   movingUid,
   selection,
   sell,
+  tentative,
   tool,
   toolPreview,
   useToolNow,
@@ -38,7 +54,11 @@ import {
 import { Button, Icon } from '../kit/kit.tsx';
 import type { IconName } from '../theme/art.ts';
 import { GoodBody, goodName, offerGood, type GoodRef } from './goods.tsx';
+import { arrivalOf, midName } from './household.ts';
+import { Tip } from './Tip.tsx';
 import './inspect.css';
+
+const GLOSSARY = glossary(CONTENT);
 
 const REGION_CHIP: Record<Region, string> = {
   sunny: 'Sunny side',
@@ -47,11 +67,47 @@ const REGION_CHIP: Record<Region, string> = {
   fencedYard: 'Fenced yard',
 };
 
-/** Tags the layout gives, rather than the card: worth pointing out. */
-const LAYOUT_TAG_TITLE: Partial<Record<Tag, string>> = {
-  Dark: 'Interior rooms are Dark',
-  Sunny: 'On the sunny side',
+/** The regions with a glossary term (D-077); the sunny side has none. */
+const REGION_TERM: Partial<Record<Region, Term>> = {
+  frontYard: 'frontYard',
+  backYard: 'backYard',
+  fencedYard: 'fencedYard',
 };
+
+/**
+ * `text` with its term's name (the glossary title, in any case) as a Tip: "In the [front
+ * yard]". The whole text is the Tip if the name isn't in it.
+ */
+function withTerm(text: string, term: Term): ComponentChildren {
+  const words = GLOSSARY[term].title.toLowerCase();
+  const at = text.toLowerCase().indexOf(words);
+  if (at < 0) return <Tip term={term}>{text}</Tip>;
+  return (
+    <>
+      {text.slice(0, at)}
+      <Tip term={term}>{text.slice(at, at + words.length)}</Tip>
+      {text.slice(at + words.length)}
+    </>
+  );
+}
+
+/** A region's words, as a Tip where the glossary has the region. */
+function regionWords(text: string, region: Region): ComponentChildren {
+  const term = REGION_TERM[region];
+  return term ? withTerm(text, term) : text;
+}
+
+/** A tag granted by a modifier (M4b): its fixture, a blueprint, or a change order's phase effect. */
+const isGrant = (s: TagSource): s is ModSource =>
+  s.kind !== 'card' && s.kind !== 'interior' && s.kind !== 'sunny';
+
+/** Why a piece has a tag its card doesn't give it, for the chip's tip. */
+function tagReason(s: TagSource): string | null {
+  if (s.kind === 'card') return null;
+  if (s.kind === 'interior') return 'Interior rooms are Dark';
+  if (s.kind === 'sunny') return 'On the sunny side';
+  return `From ${sourceName(CONTENT, s)}`;
+}
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -90,7 +146,9 @@ function Unmet({ why }: { why: string | undefined }) {
   return (
     <p class="warn" role="note">
       <Icon name="warn" />
-      <span>Earns nothing: it must be {why}</span>
+      <span>
+        <Tip term="requirement">Earns nothing</Tip>: it must be {why}
+      </span>
     </p>
   );
 }
@@ -99,7 +157,9 @@ function Timers({ lines }: { lines: readonly string[] }) {
   if (lines.length === 0) return null;
   return (
     <>
-      <h3>Timers</h3>
+      <h3>
+        <Tip term="timer">Timers</Tip>
+      </h3>
       <ul class="timers">
         {lines.map((t) => (
           <li key={t}>{t}</li>
@@ -109,25 +169,71 @@ function Timers({ lines }: { lines: readonly string[] }) {
   );
 }
 
-function TagChips({ tags, own }: { tags: readonly Tag[]; own: readonly Tag[] }) {
-  if (tags.length === 0) return null;
+/**
+ * A placed piece's tags, from the rules' sources for each. One its card gives is plain. One the
+ * layout gives (an interior room's Dark, a sunny tile's Sunny) is bold, with why on hover. One
+ * a modifier grants says where it's from in its own words: "Dark · from Eternal night", "Sunny ·
+ * from Skylight" (M4b).
+ */
+function TagChips({ info }: { info: PieceInfo }) {
+  if (info.tags.length === 0) return null;
   return (
     <p class="chips" aria-label="Tags">
-      {tags.map((t) => {
-        const fromLayout = !own.includes(t);
+      {info.tags.map((t) => {
+        const sources = info.tagSources[t] ?? [];
+        const own = sources.some((s) => s.kind === 'card');
+        const granted = own ? [] : sources.filter(isGrant);
+        const why = own ? [] : sources.flatMap((s) => tagReason(s) ?? []);
         const special = t === 'Dark' || t === 'Sunny';
+        const cls = ['chip', special ? `chip-${t.toLowerCase()}` : '', own ? '' : 'from-layout'];
         return (
           <span
             key={t}
-            class={`chip ${special ? `chip-${t.toLowerCase()}` : ''} ${fromLayout ? 'from-layout' : ''}`}
-            title={fromLayout ? LAYOUT_TAG_TITLE[t] : undefined}
+            class={cls.filter(Boolean).join(' ')}
+            title={why.length > 0 ? why.join(' · ') : undefined}
           >
             <Icon name={t as IconName} />
             {t}
+            {granted.length > 0 && (
+              <span class="chip-from">
+                {' '}
+                · from {granted.map((s) => sourceName(CONTENT, s)).join(', ')}
+              </span>
+            )}
           </span>
         );
       })}
     </p>
+  );
+}
+
+/**
+ * The sets a play, a demolition, or a tool would complete (a star) or break (a cross, in
+ * orange), with what each pays every week it holds.
+ */
+function SetChanges({ gained, lost }: { gained: readonly SetScore[]; lost: readonly SetScore[] }) {
+  const { points: COMFORT, mult: CHARM } = SCORE_LABELS;
+  return (
+    <>
+      {gained.map((set) => (
+        <p key={set.key} class="set-note good">
+          <Icon name="star" />
+          <span>
+            Completes {CONTENT.sets[set.set].name}: +{set.points} {COMFORT}, +{formatMult(set.mult)}{' '}
+            {CHARM}
+          </span>
+        </p>
+      ))}
+      {lost.map((set) => (
+        <p key={set.key} class="set-note bad">
+          <Icon name="cross" />
+          <span>
+            Breaks: {CONTENT.sets[set.set].name} (−{set.points} {COMFORT}, −{formatMult(set.mult)}{' '}
+            {CHARM})
+          </span>
+        </p>
+      ))}
+    </>
   );
 }
 
@@ -137,7 +243,7 @@ function RegionChips({ regions, fenced }: { regions: readonly Region[]; fenced: 
     <p class="chips" aria-label="Where it is">
       {regions.map((r) => (
         <span key={r} class={`chip region ${r}`}>
-          {REGION_CHIP[r]}
+          {regionWords(REGION_CHIP[r], r)}
           {r === 'fencedYard' && fenced > 0 ? ` · ${fenced} tiles` : ''}
         </span>
       ))}
@@ -148,20 +254,30 @@ function RegionChips({ regions, fenced }: { regions: readonly Region[]; fenced: 
 /** A placed piece's place in the layout, as short plain lines. */
 function LayoutFacts({ info }: { info: PieceInfo }) {
   const s = run.value;
-  const facts: string[] = [];
-  if (info.side === 'exterior') facts.push('Exterior room: it touches the outside');
-  if (info.side === 'interior') facts.push('Interior room: no outside wall, so it’s Dark');
-  for (const r of info.regions) facts.push(capitalize(regionText(r)));
-  if (info.view) facts.push('Has a view');
+  const facts: { key: string; body: ComponentChildren }[] = [];
+  const fact = (key: string, body: ComponentChildren = key) => facts.push({ key, body });
+  if (info.side === 'exterior') fact('Exterior room: it touches the outside');
+  if (info.side === 'interior') fact('Interior room: no outside wall, so it’s Dark');
+  for (const r of info.regions) {
+    const text = capitalize(regionText(r));
+    fact(text, regionWords(text, r));
+  }
+  if (info.view) fact('Has a view');
   if (info.linked.length > 0) {
     const names = info.linked.map((uid) => {
       const p = s.house.pieces.find((q) => q.uid === uid);
       return p ? CONTENT.pieces[p.defId].name : 'a room';
     });
-    facts.push(`Linked by Hallway to ${names.join(', ')}`);
+    fact(
+      `Linked by Hallway to ${names.join(', ')}`,
+      <>
+        <Tip term="link">Linked by Hallway</Tip> to {names.join(', ')}
+      </>,
+    );
   }
   if (info.fencedYardTiles > 0) {
-    facts.push(`Fenced yard: ${info.fencedYardTiles} tiles`);
+    const text = `Fenced yard: ${info.fencedYardTiles} tiles`;
+    fact(text, withTerm(text, 'fencedYard'));
   }
   if (facts.length === 0) return null;
   return (
@@ -169,10 +285,82 @@ function LayoutFacts({ info }: { info: PieceInfo }) {
       <h3>Layout</h3>
       <ul class="facts">
         {facts.map((f) => (
-          <li key={f}>{f}</li>
+          <li key={f.key}>{f.body}</li>
         ))}
       </ul>
     </>
+  );
+}
+
+/** Checklist lines' names (M4a), by their ids in the run's client's checklist. */
+function specNames(ids: readonly string[]): string {
+  const specs = CONTENT.clients[run.value.setup.clientId].specs;
+  return ids.map((id) => specs.find((s) => s.id === id)?.name ?? id).join(', ');
+}
+
+/**
+ * The checklist lines a play, a demolition, or a tool would turn on and off (M4a), with the
+ * Charm each line held adds every week.
+ */
+function SpecChanges({ gained, lost }: { gained: readonly string[]; lost: readonly string[] }) {
+  if (gained.length === 0 && lost.length === 0) return null;
+  const bonus = formatMult(currentTally.value.specBonus);
+  const each = (n: number) => `${bonus} ${SCORE_LABELS.mult}${n > 1 ? ' each' : ''}`;
+  return (
+    <>
+      {gained.length > 0 && (
+        <p class="spec-note good">
+          <Icon name="up" />
+          <span>
+            Turns on: {specNames(gained)} (+{each(gained.length)})
+          </span>
+        </p>
+      )}
+      {lost.length > 0 && (
+        <p class="spec-note bad">
+          <Icon name="down" />
+          <span>
+            Turns off: {specNames(lost)} (−{each(lost.length)})
+          </span>
+        </p>
+      )}
+    </>
+  );
+}
+
+/** A member's room (M4b, D-103): whose it is, that it counts as a Bedroom, and from when. */
+function MemberNote({ id }: { id: PieceId }) {
+  const member = cardText(CONTENT, CONTENT.pieces[id]).member;
+  return member ? <p class="member-note">{member}</p> : null;
+}
+
+/** A card in the reserve's extra slots (M4b): a household member's or the crew's. */
+function ExtraSlotNote({ r }: { r: ReservePiece }) {
+  const member = r.arrival !== undefined ? arrivalOf(run.value.setup.clientId, r.arrival) : null;
+  if (!member && !r.crew) return null;
+  return (
+    <p class="muted">
+      {member ? `Came with ${midName(member)}` : 'Your crew’s, from the start'}: in an extra slot,
+      so it doesn’t take one of your reserve’s.
+    </p>
+  );
+}
+
+/**
+ * A running restriction the placement would break (M4b): the placement stays legal, but the
+ * order pays nothing at its milestone.
+ */
+function BreaksNote({ id }: { id: ChangeOrderId }) {
+  const def = CONTENT.changeOrders[id];
+  const lost = def.kind === 'phase' ? '' : `: you’d lose its ${rewardText(CONTENT, def.reward)}`;
+  return (
+    <p class="warn" role="note">
+      <Icon name="cross" />
+      <span>
+        Breaks {def.name}
+        {lost}
+      </span>
+    </p>
   );
 }
 
@@ -212,18 +400,47 @@ function ToolInfo({ id, i }: { id: ToolId; i: number }) {
           <span>{p.reason}</span>
         </p>
       )}
-      {p?.ok && (
-        <p class="total-line">
-          This week: {formatNumber(p.before.total)} → <strong>{formatNumber(p.after.total)}</strong>{' '}
-          {SCORE_LABELS.total}
-        </p>
-      )}
+      {p?.ok && <SetChanges gained={p.setsGained} lost={p.setsLost} />}
+      {p?.ok && <SpecChanges gained={p.specsGained} lost={p.specsLost} />}
       {!aimed && (
         <Button class="use-tool" disabled={!p?.ok} onClick={() => useToolNow({ t: 'useTool', i })}>
           Use {def.name}
         </Button>
       )}
     </>
+  );
+}
+
+/**
+ * What a Renovation adds (D-102): flat Comfort a level, before the room's percentages. Not a
+ * weekly gain: the before → after beside it is the room's real change.
+ */
+const RENOVATE_GAIN = `+${CONTENT.balance.renovate.pointsPerLevel} ${SCORE_LABELS.points} a level, before percentages`;
+
+/** A Renovation's level (D-102): a star a level. The words beside them say the level too. */
+function RenovateStars({ level }: { level: number }) {
+  return (
+    <span class="renovate-stars" aria-hidden="true">
+      {Array.from({ length: level }, (_, k) => (
+        <Icon key={k} name="star" />
+      ))}
+    </span>
+  );
+}
+
+/**
+ * A room card whose type is at the checklist's limit can renovate a room of that type instead
+ * (M4a, D-102): the board outlines those rooms while the card is picked. Not while a placement
+ * waits for End week: the outlines are hidden then, and pointing doesn't renovate.
+ */
+function RenovateHint({ id }: { id: PieceId }) {
+  if (renovateUids.value.length === 0 || tentative.value) return null;
+  const def = CONTENT.pieces[id];
+  const type = CONTENT.pieces[def.countsAs ?? def.id].name;
+  return (
+    <p class="muted">
+      Or <Tip term="renovate">renovate</Tip>: point at an outlined {type} ({RENOVATE_GAIN}).
+    </p>
   );
 }
 
@@ -234,36 +451,51 @@ function PlacingInfo() {
   if (sel.kind === 'tool') return <ToolInfo id={sel.id} i={sel.i} />;
   const name = sel.kind === 'piece' ? CONTENT.pieces[sel.id].name : CONTENT.fixtures[sel.id].name;
   const install = sel.kind === 'fixture';
-  const fromLine =
-    sel.from === 'reserve'
+  // A room card over a room its type is capped at: a Renovation (M4a, D-102).
+  const play = activePlay.value;
+  const renovate = play?.t === 'renovate';
+  const room = renovate ? run.value.house.pieces.find((q) => q.uid === play.uid) : undefined;
+  const roomName = room ? CONTENT.pieces[room.defId].name : 'room';
+  const hint = sel.kind === 'piece' && !renovate ? <RenovateHint id={sel.id} /> : null;
+  const fromLine = renovate
+    ? sel.from === 'reserve'
+      ? 'From your reserve: renovating is this week’s build.'
+      : 'Renovating is this week’s build, instead of placing the card.'
+    : sel.from === 'reserve'
       ? 'From your reserve: placing it is this week’s build.'
       : sel.from === 'supplies'
         ? 'From your supplies: installing it is free, so the week goes on.'
         : install
           ? 'From your hand: installing it is this week’s build.'
           : null;
+  // A member's room (M4b): whose it is.
+  const member = sel.kind === 'piece' && !renovate ? <MemberNote id={sel.id} /> : null;
   if (!p) {
     return (
       <>
         <h2>{name}</h2>
         {fromLine && <p class="muted">{fromLine}</p>}
+        {member}
         <p class="muted">
           {install
             ? 'Point at a piece on the lot to see what it would do there.'
             : 'Point at the lot to see what it would earn.'}
         </p>
+        {hint}
         {install && <GoodBody good={{ kind: 'fixture', id: sel.id }} />}
       </>
     );
   }
   if (!p.legal) {
+    // The rules say why: not at the limit yet, the wrong room, or fully renovated.
     return (
       <>
-        <h2>{name}</h2>
+        <h2>{renovate ? `Renovate ${definite(roomName)}?` : name}</h2>
         <p class="reason">
           <Icon name="cross" />
           <span>{p.reason}</span>
         </p>
+        {hint}
         {install && <GoodBody good={{ kind: 'fixture', id: sel.id }} />}
       </>
     );
@@ -274,17 +506,21 @@ function PlacingInfo() {
     install && p.host !== undefined
       ? run.value.house.pieces.find((q) => q.uid === p.host)
       : undefined;
-  const hostLine = install ? p.lines.find((l) => l.isNew) : undefined;
+  // An install's host, or the room a Renovation levels: what it earns, before and after.
+  const hostLine = install || renovate ? p.lines.find((l) => l.isNew) : undefined;
+  const earns = hostLine
+    ? `${hostLine.before} → ${hostLine.after}`
+    : `earns ${p.newPiece?.earned ?? 0}`;
   return (
     <>
       {install ? (
         <h2>
           {name} → {host ? CONTENT.pieces[host.defId].name : 'piece'}{' '}
-          <span class="earns">
-            {hostLine
-              ? `${hostLine.before} → ${hostLine.after}`
-              : `earns ${p.newPiece?.earned ?? 0}`}
-          </span>
+          <span class="earns">{earns}</span>
+        </h2>
+      ) : renovate ? (
+        <h2>
+          Renovate {definite(roomName)} <span class="earns">{earns}</span>
         </h2>
       ) : (
         <h2>
@@ -292,6 +528,17 @@ function PlacingInfo() {
         </h2>
       )}
       {fromLine && <p class="muted">{fromLine}</p>}
+      {member}
+      {p.breaks && <BreaksNote id={p.breaks} />}
+      {p.renovates && (
+        <p class="renovate-note">
+          <RenovateStars level={p.renovates.level} />
+          <span>
+            <Tip term="renovate">Renovate</Tip>: {definite(roomName, 'this')} goes to level{' '}
+            {p.renovates.level} ({RENOVATE_GAIN})
+          </span>
+        </p>
+      )}
       {p.replaces && (
         <p class="warn" role="note">
           Replaces its {CONTENT.fixtures[p.replaces].name}, which is lost.
@@ -314,21 +561,8 @@ function PlacingInfo() {
           </ul>
         </>
       )}
-      {p.setsGained.map((set) => (
-        <p key={set.key} class="set-note good">
-          <Icon name="star" />
-          <span>
-            Completes {CONTENT.sets[set.set].name}: +{set.points} {SCORE_LABELS.points}, +
-            {formatMult(set.mult)} {SCORE_LABELS.mult}
-          </span>
-        </p>
-      ))}
-      {p.setsLost.map((set) => (
-        <p key={set.key} class="set-note bad">
-          <Icon name="cross" />
-          <span>Breaks {CONTENT.sets[set.set].name}</span>
-        </p>
-      ))}
+      <SetChanges gained={p.setsGained} lost={p.setsLost} />
+      <SpecChanges gained={p.specsGained} lost={p.specsLost} />
       {p.xMults.map((x) => (
         <p key={`${x.source.kind}:${x.label}`} class="set-note sparkle">
           <Icon name="sparkle" />
@@ -352,10 +586,7 @@ function PlacingInfo() {
       )}
       <Timers lines={p.upcoming} />
       <BudgetChange before={p.budgetBefore} after={p.budgetAfter} />
-      <p class="total-line">
-        This week: {formatNumber(p.before.total)} → <strong>{formatNumber(p.after.total)}</strong>{' '}
-        {SCORE_LABELS.total}
-      </p>
+      {hint}
     </>
   );
 }
@@ -426,10 +657,8 @@ function DemolishInfo() {
     <>
       <h2>Demolish {name ?? 'this'}?</h2>
       <p class="muted">No refund. Points already earned stay. {left}</p>
-      <p class="total-line">
-        This week: {formatNumber(d.before.total)} → <strong>{formatNumber(d.after.total)}</strong>{' '}
-        {SCORE_LABELS.total}
-      </p>
+      <SetChanges gained={d.setsGained} lost={d.setsLost} />
+      <SpecChanges gained={d.specsGained} lost={d.specsLost} />
       {demolishArmed.value && <p class="demolish-confirm">Click it again to demolish it.</p>}
     </>
   );
@@ -447,29 +676,59 @@ const FEATURE_TEXT: Record<string, string> = {
     'Something buried here. It doesn’t block building: the first piece built over it digs it up for +3 budget.',
 };
 
+/**
+ * The week's Wow before and after the play being looked at, for Inspect's foot: a legal
+ * placement, install or Renovation, a tool that can be used, or a legal demolition. Else null.
+ */
+export function playTotals(): { before: number; after: number } | null {
+  if (tool.value === 'demolish') {
+    const d = demolishPreview.value;
+    return d?.legal ? { before: d.before.total, after: d.after.total } : null;
+  }
+  const sel = selection.value;
+  if (selected.value === null || !sel) return null;
+  if (sel.kind === 'tool') {
+    const p = toolPreview.value;
+    return p?.ok ? { before: p.before.total, after: p.after.total } : null;
+  }
+  const p = preview.value;
+  return p?.legal ? { before: p.before.total, after: p.after.total } : null;
+}
+
+/** "This week: 120 → 145 Wow": Inspect's foot, under its scrolling body, so always in view. */
+export function TotalLine({ before, after }: { before: number; after: number }) {
+  return (
+    <p class="total-line">
+      This week: {formatNumber(before)} → <strong>{formatNumber(after)}</strong>{' '}
+      {SCORE_LABELS.total}
+    </p>
+  );
+}
+
 export function Inspect() {
   if (tool.value === 'demolish') {
     return (
-      <InspectPanel>
+      <InspectPanel foot={playTotals()}>
         <DemolishInfo />
       </InspectPanel>
     );
   }
   if (selected.value !== null) {
     return (
-      <InspectPanel>
+      <InspectPanel foot={playTotals()}>
         <PlacingInfo />
       </InspectPanel>
     );
   }
   const what = inspected.value;
   const s = run.value;
-  let body = (
+  const idle = (
     <>
       <h2>Inspect</h2>
       <p class="muted">Point at anything on the lot to see what it is and what it earns.</p>
     </>
   );
+  let body = idle;
   if (what?.kind === 'piece') {
     const piece = s.house.pieces.find((p) => p.uid === what.uid);
     const score = currentTally.value.pieces.find((p) => p.uid === what.uid);
@@ -483,11 +742,15 @@ export function Inspect() {
           <h2>
             {def.name} <span class="earns">earns {score.earned} a week</span>
           </h2>
-          {info ? (
-            <TagChips tags={info.tags} own={def.tags} />
-          ) : (
-            <p class="muted">{def.tags.join(' · ')}</p>
+          {!!piece.level && (
+            <p class="renovate-note">
+              <RenovateStars level={piece.level} />
+              <span>
+                <Tip term="renovate">Renovated</Tip>: level {piece.level}
+              </span>
+            </p>
           )}
+          {info ? <TagChips info={info} /> : <p class="muted">{def.tags.join(' · ')}</p>}
           <Unmet why={score.unmet} />
           <Lines lines={score.lines} voided={score.unmet !== undefined} />
           {score.pct !== 0 && score.points > 0 && score.unmet === undefined && (
@@ -503,6 +766,7 @@ export function Inspect() {
               <li key={t}>{t}</li>
             ))}
           </ul>
+          {text.member && <p class="member-note">{text.member}</p>}
           {piece.fixture && (
             <>
               <h3>Fixture: {CONTENT.fixtures[piece.fixture.id].name}</h3>
@@ -550,13 +814,22 @@ export function Inspect() {
         <>
           <h2>{goodName(good)}</h2>
           <GoodBody good={good} />
+          {card.kind === 'piece' && <MemberNote id={card.id} />}
           <p class="muted">Click the card (or press {what.i + 1}), then point at the lot.</p>
         </>
       );
     }
   } else if (what?.kind === 'reserve') {
     const r = s.reserve[what.i];
-    if (r) body = <ItemInfo good={{ kind: 'piece', id: r.id }} />;
+    if (r) {
+      body = (
+        <>
+          <ItemInfo good={{ kind: 'piece', id: r.id }} />
+          <MemberNote id={r.id} />
+          <ExtraSlotNote r={r} />
+        </>
+      );
+    }
   } else if (what?.kind === 'supply') {
     const sup = s.supplies[what.i];
     if (sup)
@@ -585,14 +858,27 @@ export function Inspect() {
     const g = o && offerGood(o);
     if (g) body = <ItemInfo good={g} />;
   }
-  return <InspectPanel>{body}</InspectPanel>;
+  return <InspectPanel idle={body === idle}>{body}</InspectPanel>;
 }
 
-/** A wood panel whose first heading is its plank (inspect.css). */
-function InspectPanel({ children }: { children: ComponentChildren }) {
+/**
+ * A wood panel whose first heading is its plank (inspect.css). With nothing to inspect it's
+ * `is-idle`, so the left column gives its room to the checklist (app.css). A play's week total
+ * is its foot, outside the body that scrolls (D-110's note: a short window cut it off).
+ */
+function InspectPanel({
+  idle = false,
+  foot = null,
+  children,
+}: {
+  idle?: boolean;
+  foot?: { before: number; after: number } | null;
+  children: ComponentChildren;
+}) {
   return (
-    <section class="inspect panel ui" aria-label="Inspect">
+    <section class={`inspect panel ui ${idle ? 'is-idle' : ''}`} aria-label="Inspect">
       <div class="panel-body">{children}</div>
+      {foot && <TotalLine before={foot.before} after={foot.after} />}
     </section>
   );
 }

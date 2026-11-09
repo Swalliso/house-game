@@ -73,6 +73,15 @@ export function isLayoutModifier(m: Modifier): m is LayoutModifier {
 /** No run-level layout modifiers (one shared array, so the layout cache keys on it). */
 export const NO_LAYOUT_MODS: readonly LayoutModifier[] = Object.freeze([]);
 
+/**
+ * A tag a layout modifier granted a piece, and where it came from, for the inspect panel: a
+ * run-level modifier (its index in the layout's `mods`), or the fixture installed in a piece (by
+ * that piece's uid).
+ */
+export type TagGrant = { tag: Tag; mod: number } | { tag: Tag; host: number };
+
+const NO_GRANTS: ReadonlyMap<number, readonly TagGrant[]> = new Map();
+
 /** Region bits per tile. */
 export const REGION_BIT: Readonly<Record<Region, number>> = {
   sunny: 1,
@@ -100,8 +109,13 @@ export interface Layout {
   exterior: ReadonlySet<number>;
   /** Rooms that aren't exterior. */
   interior: ReadonlySet<number>;
-  /** Effective tags per piece: its own, plus Dark if interior and Sunny if on a sunny tile. */
+  /**
+   * Effective tags per piece: its own, plus Dark if interior and Sunny if on a sunny tile, then
+   * those layout modifiers grant, less those they remove.
+   */
   tags: ReadonlyMap<number, ReadonlySet<Tag>>;
+  /** The tags layout modifiers granted each piece, with where each came from (removed or not). */
+  grants: ReadonlyMap<number, readonly TagGrant[]>;
   /** The house's front row: the row of its indoor tile nearest the street; null before the first. */
   frontRow: number | null;
   /** REGION_BIT flags per tile. */
@@ -204,7 +218,8 @@ export function computeLayout(
   let frontRow: number | null = null;
   for (const piece of house.pieces) {
     const def = pieceDef(content, piece);
-    const pc = placedCells(def.shape, piece.x, piece.y, piece.rot);
+    // A pack (D-106) carries its own tiles.
+    const pc = placedCells(piece.shape ?? def.shape, piece.x, piece.y, piece.rot);
     const indoor = def.category === 'indoor';
     for (const c of pc) {
       const i = cellIndex(w, c.x, c.y);
@@ -429,6 +444,7 @@ export function computeLayout(
     exterior,
     interior,
     tags,
+    grants: NO_GRANTS,
     frontRow,
     regionBits,
     fencedId,
@@ -476,17 +492,24 @@ function applyLayoutModifiers(content: Content, base: Layout, all: readonly Host
   const match = (sel: Selector, uid: number, host?: number) =>
     matchesPiece(content, base, sel, uid, host);
 
-  // Step 3: grantTag, then removeTag.
-  const grants = new Map<number, Set<Tag>>();
+  // Step 3: grantTag, then removeTag. Each grant keeps where it came from, for the inspect
+  // panel: the run's modifiers come first in `all`, so a run modifier's index there is its
+  // index in `base.mods`.
+  const grants = new Map<number, TagGrant[]>();
   const removes = new Map<number, Set<Tag>>();
-  for (const { mod, host } of all) {
+  for (const [k, { mod, host }] of all.entries()) {
     if (mod.kind !== 'grantTag' && mod.kind !== 'removeTag') continue;
-    const into = mod.kind === 'grantTag' ? grants : removes;
     for (const piece of house.pieces) {
       if (!match(mod.target, piece.uid, host)) continue;
-      let set = into.get(piece.uid);
-      if (!set) into.set(piece.uid, (set = new Set()));
-      set.add(mod.tag);
+      if (mod.kind === 'grantTag') {
+        let list = grants.get(piece.uid);
+        if (!list) grants.set(piece.uid, (list = []));
+        list.push(host === undefined ? { tag: mod.tag, mod: k } : { tag: mod.tag, host });
+      } else {
+        let set = removes.get(piece.uid);
+        if (!set) removes.set(piece.uid, (set = new Set()));
+        set.add(mod.tag);
+      }
     }
   }
   let tags = base.tags;
@@ -497,7 +520,7 @@ function applyLayoutModifiers(content: Content, base: Layout, all: readonly Host
       const r = removes.get(piece.uid);
       if (!g && !r) continue;
       const set = new Set(base.tags.get(piece.uid));
-      g?.forEach((t) => set.add(t));
+      g?.forEach((x) => set.add(x.tag));
       r?.forEach((t) => set.delete(t));
       next.set(piece.uid, set);
     }
@@ -597,7 +620,16 @@ function applyLayoutModifiers(content: Content, base: Layout, all: readonly Host
     neighbors = next;
   }
 
-  return { ...base, tags, countsAs, grantedView, hasView, links, neighbors };
+  return {
+    ...base,
+    tags,
+    grants: grants.size > 0 ? grants : base.grants,
+    countsAs,
+    grantedView,
+    hasView,
+    links,
+    neighbors,
+  };
 }
 
 /** How many of a piece's tiles are in the region. */

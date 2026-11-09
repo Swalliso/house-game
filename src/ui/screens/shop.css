@@ -238,6 +238,37 @@
   order: 4;
   color: var(--ink);
 }
+/* D-107: a fixture's worth in your house (goods.tsx FixtureWorth), under what it does. A strip
+   with its own fill, so it reads the same on every rarity's card: a gain in the good blue on
+   Comfort's tint with an up icon, a loss in the bad orange on its tint with a down icon (never
+   color alone, D-047), and quiet on paper when nothing takes it or it adds nothing yet. */
+.offer .pcard-worth {
+  order: 4;
+  display: flex;
+  flex-direction: column;
+  padding: var(--px) var(--space-1) calc(var(--px) * 2);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ringSoft) 1 / var(--px);
+  background: var(--card);
+  background-clip: padding-box;
+  color: var(--ink-soft);
+}
+.offer .pcard-worth.good {
+  background-color: var(--comfort-tint);
+  color: var(--good);
+}
+.offer .pcard-worth.bad {
+  background-color: var(--bad-tint);
+  color: var(--bad);
+}
+/* The icon and the number stay together, on the text's line; the words after them wrap. */
+.offer .worth-num {
+  font-weight: 700;
+  white-space: nowrap;
+}
+.offer .worth-num .icon {
+  margin-right: var(--space-1);
+}
 .offer .pcard-alert {
   order: 5;
   align-items: flex-start;

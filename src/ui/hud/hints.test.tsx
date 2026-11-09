@@ -1,12 +1,13 @@
 // The controls strip's F hint (playtest 5a): it says what F does now. With Fit on, F goes back
 // to the zoom from before (camera.ts toggleFit), so the strip says so, during the run and after
-// it, instead of offering to fit the lot again.
+// it, instead of offering to fit the lot again. And M4's keys: a change order's sheet takes
+// only Enter, Esc and D, and a pack (D-106) never turns.
 
 import type { ComponentChildren, VNode } from 'preact';
 import { afterEach, describe, expect, it } from 'vitest';
 import { zoom } from '../board/camera.ts';
 import { busy } from '../fx/director.ts';
-import { run, selected, tool } from '../store.ts';
+import { movingUid, run, selected, source, tentative, tool } from '../store.ts';
 import { shopHidden } from './actions.ts';
 import { Hints } from './Hints.tsx';
 
@@ -56,6 +57,21 @@ function fHint(): string | null {
   return null;
 }
 
+/** Each hint on the strip: its keys, and the words beside them. */
+function strip(): { keys: string[]; words: string }[] {
+  const out: { keys: string[]; words: string }[] = [];
+  for (const v of walk(Hints())) {
+    if (!hasClass(v, 'hint')) continue;
+    const inside = [...walk(v.props.children as ComponentChildren)];
+    const words = inside.find((k) => hasClass(k, 'hint-text'));
+    out.push({
+      keys: inside.filter((k) => k.type === 'kbd').map((k) => text(k)),
+      words: words ? text(words) : '',
+    });
+  }
+  return out;
+}
+
 const start = run.value;
 function on(screen: typeof start.screen): void {
   run.value = { ...start, screen };
@@ -67,6 +83,9 @@ afterEach(() => {
   busy.value = false;
   shopHidden.value = false;
   selected.value = null;
+  source.value = 'hand';
+  tentative.value = null;
+  movingUid.value = null;
   tool.value = 'build';
 });
 
@@ -117,5 +136,67 @@ describe('the F hint', () => {
     on('build');
     selected.value = 0;
     expect(fHint()).toBeNull();
+  });
+});
+
+describe("the strip's keys for M4's plays", () => {
+  it("offers a change order's keys, and no F, which does nothing on its sheet", () => {
+    run.value = {
+      ...start,
+      screen: 'changeOrder',
+      offers: { changeOrder: { id: 'workingFromHome', phase: 0 } },
+    };
+    expect(strip()).toEqual([
+      { keys: ['Enter'], words: 'accept' },
+      { keys: ['Esc', 'D'], words: 'decline: it costs nothing' },
+    ]);
+    expect(fHint()).toBeNull();
+  });
+
+  it('only offers Enter on a phase effect, which can’t be declined', () => {
+    run.value = {
+      ...start,
+      screen: 'changeOrder',
+      offers: { changeOrder: { id: 'heatWave', phase: 0 } },
+    };
+    expect(strip()).toEqual([{ keys: ['Enter'], words: 'got it' }]);
+  });
+
+  it('leaves R out for a pack, which is clicked out a tile at a time', () => {
+    run.value = { ...start, screen: 'build', hand: [{ kind: 'piece', id: 'fence' }] };
+    selected.value = 0;
+    expect(strip()).toEqual([
+      { keys: ['Click'], words: 'the first tile' },
+      { keys: ['Enter'], words: 'end the week' },
+      { keys: ['Esc'], words: 'put it back' },
+    ]);
+    // With tiles clicked out, a click adds or takes one off, and Esc clears them all.
+    tentative.value = { t: 'place', from: 'hand', i: 0, x: 4, y: 4, rot: 0, shape: ['##'] };
+    expect(strip()).toEqual([
+      { keys: ['Click'], words: 'add or take off a tile' },
+      { keys: ['Enter'], words: 'end the week' },
+      { keys: ['Esc'], words: 'clear the tiles' },
+    ]);
+  });
+
+  it('turns a room, and says when End week renovates one, which has nothing to turn', () => {
+    run.value = { ...start, screen: 'build', hand: [{ kind: 'piece', id: 'bedroom' }] };
+    selected.value = 0;
+    expect(strip().map((h) => h.keys[0])).toEqual(['R', 'Click', 'Enter', 'Esc']);
+    tentative.value = { t: 'renovate', from: 'hand', i: 0, uid: 1 };
+    expect(strip()).toEqual([
+      { keys: ['Click'], words: 'move it' },
+      { keys: ['Enter'], words: 'renovate it' },
+      { keys: ['Esc'], words: 'pick it up' },
+    ]);
+  });
+
+  it('offers R for the Moving Truck only once it carries a piece', () => {
+    run.value = { ...start, screen: 'build', supplies: [{ kind: 'tool', id: 'movingTruck' }] };
+    source.value = 'supplies';
+    selected.value = 0;
+    expect(strip().some((h) => h.keys.includes('R'))).toBe(false);
+    movingUid.value = 1;
+    expect(strip().some((h) => h.keys.includes('R'))).toBe(true);
   });
 });

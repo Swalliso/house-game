@@ -34,6 +34,7 @@ import {
   setup,
   TEST_BALANCE,
   TEST_CONTENT as C,
+  withClient,
   withPieces,
   type Placement,
 } from './testing.ts';
@@ -111,6 +112,8 @@ function tally(content: Content, house: HouseState, o: TallyOpts = {}): Tally {
     setLevels: {},
     lastWeek: o.lastWeek ?? false,
     stats: { milestonesEarly: o.milestonesEarly ?? 0 },
+    specs: [],
+    phase: 0,
   });
 }
 
@@ -200,15 +203,62 @@ describe('earn', () => {
     );
     const t = tally(C, house, { blueprints: ['quietHours'] });
     // Living Room: 2 (one Tree, a view source); the Fireplace's +50 twice (host, and host in a
-    // Living Room or Library): 2 × 2 = 4.
+    // Living Room or Library): 2 × 2 = 4. Its second line says what it's for, so the two can be
+    // told apart.
     expect(scoreOf(t, 1)).toMatchObject({ points: 2, pct: 100, earned: 4 });
     expect(
       scoreOf(t, 1)
-        .lines.filter((l) => l.label === 'Fireplace')
-        .map((l) => l.value),
-    ).toEqual([50, 50]);
-    // Bedroom: 3 × (100 + 50 + 50)% = 6, not 3 × 1.5 × 1.5.
+        .lines.filter((l) => l.label.startsWith('Fireplace'))
+        .map((l) => [l.label, l.value]),
+    ).toEqual([
+      ['Fireplace', 50],
+      ['Fireplace (in a Living Room or Library)', 50],
+    ]);
+    // Bedroom: 3 × (100 + 50 + 50)% = 6, not 3 × 1.5 × 1.5. One Fireplace line: its plain name.
     expect(scoreOf(t, 2)).toMatchObject({ points: 3, pct: 100, earned: 6 });
+    expect(scoreOf(t, 2).lines.filter((l) => l.label.startsWith('Fireplace'))).toEqual([
+      { label: 'Fireplace', op: 'pct', value: 50, from: [] },
+    ]);
+  });
+
+  it('a source with several earn modifiers says which each line is: "Count Vladislav (Dark pieces)"', () => {
+    // Count Vladislav's two tastes, on the test client: Dark pieces +100%, and pieces touching a
+    // Tree +50% (shade). Below the sunny side, Bedroom 2 touches the Tree at (4, 5).
+    const client = withClient({
+      tastes: [
+        { kind: 'earn', target: { tag: 'Dark' }, pct: 100 },
+        { kind: 'earn', target: { touching: { feature: 'tree' } }, pct: 50 },
+      ],
+    });
+    const house = houseFrom(client, withTrees([4, 5]), [
+      ['bedroom', 0, 5],
+      ['bedroom', 2, 5],
+    ]);
+    const pctLines = (t: Tally, uid: number) =>
+      scoreOf(t, uid)
+        .lines.filter((l) => l.op === 'pct')
+        .map((l) => [l.label, l.value]);
+    // Both are exterior, so not Dark: the shade line alone, still saying which taste it is.
+    expect(pctLines(tally(client, house), 2)).toEqual([['The Hendersons (touching a Tree)', 50]]);
+    expect(pctLines(tally(client, house), 1)).toEqual([]);
+    // Every room Dark (Eternal night's grant, on a blueprint here): two lines from one source,
+    // which can be told apart. The blueprint's one modifier isn't an earn, and a source with one
+    // earn modifier keeps its plain name (Quiet Hours).
+    const night = withBlueprint(
+      [{ kind: 'grantTag', target: { property: 'room' }, tag: 'Dark' }],
+      'Night',
+      client,
+    );
+    const dark = tally(night, house, { blueprints: [TEST_PLAN, 'quietHours'] });
+    expect(pctLines(dark, 2)).toEqual([
+      ['The Hendersons (Dark pieces)', 100],
+      ['The Hendersons (touching a Tree)', 50],
+      ['Quiet Hours', 50],
+    ]);
+    expect(pctLines(dark, 1)).toEqual([
+      ['The Hendersons (Dark pieces)', 100],
+      ['Quiet Hours', 50],
+    ]);
   });
 
   it("a fixture's earn applies to its host only", () => {
@@ -696,8 +746,9 @@ describe('countsAs', () => {
     expect(computeLayout(c, house).countsAs.get(1)?.get('bedroom')).toBe(2);
     const t = tally(c, house);
     expect(earned(t, 2)).toBe(1);
-    // Jack-and-Jill needs two Bedrooms: one with Bunk Beds is still one.
-    expect(t.sets).toEqual([]);
+    // Jack-and-Jill needs two Bedrooms: one with Bunk Beds is still one. (The Bedroom, Closet,
+    // and Bathroom do make a Suite.)
+    expect(t.sets.map((s) => s.set)).toEqual(['suite']);
   });
 });
 
@@ -988,7 +1039,7 @@ describe('drawWeight', () => {
     const gc = C.crews.generalContractor;
     const crewContent: Content = {
       ...C,
-      crews: { generalContractor: { ...gc, modifiers: [...gc.modifiers, noBed] } },
+      crews: { ...C.crews, generalContractor: { ...gc, modifiers: [...gc.modifiers, noBed] } },
     };
     const r = createRules(crewContent);
     expect(seeds.some((sd) => hasBed(rules.newRun(setup(sd)).hand))).toBe(true);

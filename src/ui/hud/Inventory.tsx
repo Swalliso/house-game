@@ -1,18 +1,23 @@
 // The company's goods (M3a HUD): the reserve (bought pieces, placed as a week's build), the
 // supplies (fixtures, installed for free), and the blueprint slots (always on). Hover shows an
 // item in the inspect panel, with Sell for blueprints and supplies; on the build screen a
-// click picks a reserve piece or a supply to place or install.
+// click picks a reserve piece or a supply to place or install. A crew's starting cards and a
+// household member's (M4b) sit in extra slots after the reserve's own, tagged, and don't count
+// against it; a member's pop in as they arrive.
 //
 // M5a: a wood panel with a row per kind of good. Empty slots are recessed wells, and a row
 // stays hidden until it matters: until the supply yard first opens, an empty row says nothing
 // (inventory-rows.ts). A name too long for its slot ends in an ellipsis, and shows whole on
 // hover and in the inspect panel.
 
-import { CONTENT, rules } from '../../rules/index.ts';
+import { CONTENT, rules, type ReservePiece } from '../../rules/index.ts';
+import { justArrived } from '../fx/director.ts';
+import { FEEL } from '../fx/feel.ts';
 import { Button, Icon, Panel, Well } from '../kit/kit.tsx';
 import { supplyIcon } from '../sprites.ts';
 import { inspected, reserveFit, run, selected, sell, suppliesFit, tool } from '../store.ts';
 import { isSelected, selectCard } from './actions.ts';
+import { arrivalOf, arrivalTag, midName } from './household.ts';
 import { inventoryRows, showsInventory } from './inventory-rows.ts';
 import { Tip } from './Tip.tsx';
 import './inventory.css';
@@ -33,6 +38,63 @@ function hover(kind: 'reserve' | 'supply' | 'blueprint' | 'upgrade', i: number):
   if (selected.value === null && tool.value !== 'demolish') inspected.value = { kind, i };
 }
 
+/** A card in an extra slot (M4b): the crew's, or a household member's. */
+const isExtra = (r: ReservePiece) => !!r.crew || r.arrival !== undefined;
+
+/**
+ * A reserve card's slot: its name, and an extra slot's tag ("Crew", "Twins") with whose it is in
+ * its title. A member's cards pop in as they arrive, after the doorbell (FEEL.arrival).
+ */
+function ReserveSlot({ r, i, building }: { r: ReservePiece; i: number; building: boolean }) {
+  const s = run.value;
+  const def = CONTENT.pieces[r.id];
+  const fits = reserveFit.value[i] ?? true;
+  const member = r.arrival !== undefined ? arrivalOf(s.setup.clientId, r.arrival) : undefined;
+  const tag = r.crew ? 'Crew' : member ? arrivalTag(member) : null;
+  const pop = justArrived.value;
+  const popping = !!pop && r.arrival === pop.arrival;
+  const f = FEEL.arrival;
+  const whose = member ? ` (with ${midName(member)})` : r.crew ? ' (your crew’s)' : '';
+  const classes = [
+    'inv-slot',
+    'slot-piece',
+    def.category,
+    isExtra(r) ? 'slot-extra' : '',
+    popping ? 'just-arrived' : '',
+    isSelected('reserve', i) ? 'selected' : '',
+    building && !fits ? 'no-fit' : '',
+  ];
+  return (
+    <button
+      type="button"
+      class={classes.filter(Boolean).join(' ')}
+      style={
+        popping
+          ? {
+              animationDuration: `${f.popMs}ms`,
+              animationDelay: `${f.landDelayMs}ms`,
+              '--pop-scale': `${f.popScale}`,
+            }
+          : undefined
+      }
+      onMouseDown={noFocus}
+      onMouseEnter={() => hover('reserve', i)}
+      onClick={() => (building ? selectCard(i, 'reserve') : hover('reserve', i))}
+      aria-pressed={isSelected('reserve', i)}
+      title={
+        building
+          ? fits
+            ? `${def.name}${whose}: place it as this week’s build`
+            : `${def.name}${whose}: nowhere on the lot fits it right now`
+          : `${def.name}${whose}`
+      }
+    >
+      <span class="inv-name">{def.name}</span>
+      {tag && <span class="inv-tag">{tag}</span>}
+    </button>
+  );
+}
+
 function SellButton({ price, name, onSell }: { price: number; name: string; onSell: () => void }) {
   return (
     <Button
@@ -51,7 +113,10 @@ export function Inventory({ shop = false }: { shop?: boolean }) {
   const s = run.value;
   const slots = rules.slots(s);
   const building = s.screen === 'build';
-  const reserveUsed = s.reserve.filter((r) => !r.crew).length;
+  // The reserve's own slots first, then the extra ones, which don't count against it (M4b).
+  const indexed = s.reserve.map((r, i) => ({ r, i }));
+  const own = indexed.filter(({ r }) => !isExtra(r));
+  const extra = indexed.filter(({ r }) => isExtra(r));
   const rows = inventoryRows(s, shop);
   if (!showsInventory(rows)) return null;
   return (
@@ -65,38 +130,17 @@ export function Inventory({ shop = false }: { shop?: boolean }) {
           <h3 class="inv-label">
             <Tip term="reserve">Reserve</Tip>
             <span class="inv-count">
-              {reserveUsed}/{slots.reserve}
+              {own.length}/{slots.reserve}
             </span>
           </h3>
           <div class="inv-slots">
-            {s.reserve.map((r, i) => {
-              const def = CONTENT.pieces[r.id];
-              const fits = reserveFit.value[i] ?? true;
-              return (
-                <button
-                  key={`r-${i}-${r.id}`}
-                  type="button"
-                  class={`inv-slot slot-piece ${def.category} ${isSelected('reserve', i) ? 'selected' : ''} ${building && !fits ? 'no-fit' : ''}`}
-                  onMouseDown={noFocus}
-                  onMouseEnter={() => hover('reserve', i)}
-                  onClick={() => (building ? selectCard(i, 'reserve') : hover('reserve', i))}
-                  aria-pressed={isSelected('reserve', i)}
-                  title={
-                    building
-                      ? fits
-                        ? `${def.name}: place it as this week’s build`
-                        : `${def.name}: nowhere on the lot fits it right now`
-                      : def.name
-                  }
-                >
-                  <span class="inv-name">
-                    {def.name}
-                    {r.crew && <span class="inv-note"> (crew)</span>}
-                  </span>
-                </button>
-              );
-            })}
-            <Empty n={slots.reserve - reserveUsed} />
+            {own.map(({ r, i }) => (
+              <ReserveSlot key={`r-${i}-${r.id}`} r={r} i={i} building={building} />
+            ))}
+            <Empty n={slots.reserve - own.length} />
+            {extra.map(({ r, i }) => (
+              <ReserveSlot key={`r-${i}-${r.id}`} r={r} i={i} building={building} />
+            ))}
           </div>
         </div>
       )}

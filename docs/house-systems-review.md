@@ -1,5 +1,7 @@
 # Building up without sprawling: a systems review (2026-11-06)
 
+**Status:** on 2026-11-06 the team chose option B with every recommended default (`decisions.md` D-093). M4 built it as D-101 to D-105, with the client numbers from its sim in D-108 and the arrivals' rules in D-109, for playtest 4 (pull request #17). §6's "M5: showing it" moved to M5a's juice pull request, after M4 (D-097's juice note): the arrivals as markers on the progress bar, "Topped out!", and D-094's option 1. M4 already pops a room's level badge on a Renovation (D-111). *Updated 2026-11-08.*
+
 A systems review for D-093, after the team's note of 2026-11-06. Houses needn't "look exactly like a normal house", but they should "look vaguely house like instead of sprawling about and having multiples of rooms every which way". And the game should achieve "that combolands feeling of progressively building something out and planning ahead" while working within the constraints of the theme.
 
 ## The short version
