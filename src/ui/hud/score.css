@@ -112,6 +112,11 @@
   line-height: var(--lh-body);
   color: var(--ink-soft);
 }
+/* The number fills its room (below), so the word keeps a clear gap after it, wider than a
+   space: "Wow 56,789", never "Wow56,789". */
+.plaque-wow {
+  column-gap: var(--space-3);
+}
 /* The number takes the room beside "Wow", at its right, and sizes itself to it (D-110's note:
    a weekly Wow of 1,000 ran onto the frame in a 280 px column). Public Pixel is monospaced, a
    glyph an em wide, so the size is the room over the number's glyphs (--wow-cells, from
@@ -405,6 +410,11 @@ p.sets-fold {
   background: var(--hl-lit-fill);
   box-shadow: inset 0 0 0 var(--px) var(--charm);
 }
+/* A tally that hasn't reached the sets yet: "0 sets", counting up from there, as the
+   checklist's row below it does. */
+.sets-fold li.waiting {
+  opacity: 0.5;
+}
 .sets-fold .set-values.popping {
   animation-name: tick;
   animation-timing-function: ease-out;
@@ -432,6 +442,14 @@ p.sets-fold {
 }
 .spec-row .set-charm .icon {
   margin-right: var(--px);
+}
+/* In a 280 px column the pixel font's words take the row's first line alone, as the equation's
+   labels do there without their icons: with the check, "7 checklist lines" wrapped to a second
+   line, so the row took three. */
+@container score (max-width: 250px) {
+  [data-font='pixel'] .spec-row .set-name > .icon {
+    display: none;
+  }
 }
 /* A tally that hasn't reached the checklist yet: it counts up from 0 when it does. */
 .spec-row.waiting {

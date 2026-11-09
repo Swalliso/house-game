@@ -139,7 +139,7 @@ export function TipLayer() {
   return (
     <div ref={ref} id="tip-bubble" role="tooltip" class="tip-bubble ui">
       <strong class="tip-title">{tipWords(t.title)}</strong>
-      <span>{tipWords(t.text)}</span>
+      <span class="tip-text">{tipWords(t.text)}</span>
     </div>
   );
 }

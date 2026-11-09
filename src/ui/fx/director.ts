@@ -30,6 +30,7 @@ import {
   type GameEvent,
   type PieceScore,
   type RunState,
+  type SetScore,
   type SpecScore,
   type Tally,
   type XMultTerm,
@@ -77,6 +78,10 @@ export interface TallyView {
   weekTotal: number;
   /** What each piece earned in the week being tallied, for the board's digits. */
   pieces: readonly PieceScore[];
+  /** The week's sets, in the tally's order (the score panel's folded row counts them). */
+  sets: readonly SetScore[];
+  /** How many of `sets` the tally has counted: 0 before its first set's beat. */
+  setAt: number;
   /**
    * The client's checklist as the tally shows it (M4a), in checklist order. It starts as last
    * week's: a line the week turned on or off flips when its beat lands.
@@ -435,6 +440,8 @@ function tallyStart(e: Extract<GameEvent, { t: 'tally' }>, flips: SpecFlips): Ta
     fastForward: false,
     weekTotal: e.tally.total,
     pieces: e.tally.pieces,
+    sets: e.tally.sets,
+    setAt: 0,
     specs: specsBefore(e.tally.specs, flips),
     specAt: -1,
     specBonus: e.tally.specBonus,
@@ -501,6 +508,8 @@ async function playFastForward(
     fastForward: true,
     weekTotal: t.total,
     pieces: t.pieces,
+    sets: t.sets,
+    setAt: t.sets.length,
     specs: t.specs,
     specAt: t.specs.length,
     specBonus: t.specBonus,
@@ -641,6 +650,7 @@ async function playTally(
     highlighted.value = set.members;
     const c = centroid([after, base], set.members);
     view.points += set.points;
+    view.setAt++;
     tallyView.value = { ...view };
     if (!skipping) {
       popup(c.x, c.y - 0.6, newSets.has(set.key) ? `${name}!` : name, 'set', FEEL.tally.setStepMs);

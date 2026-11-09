@@ -173,8 +173,11 @@ function Game() {
       <TopBar />
       <aside class={looking ? 'left looking' : 'left'}>
         <ScorePanel />
-        <Checklist />
-        <Inspect />
+        {/* What the score panel leaves, which the checklist and Inspect share (app.css). */}
+        <div class="left-rest">
+          <Checklist />
+          <Inspect />
+        </div>
       </aside>
       <main class="center">
         <Board />

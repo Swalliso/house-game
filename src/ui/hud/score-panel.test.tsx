@@ -1,8 +1,9 @@
 // The score panel's folded sets (D-098, amended 2026-11-08), the Wow number's fallback steps,
 // and Inspect's foot (D-110's note). The folded row says how many sets, with their Comfort and
-// Charm summed, lists every set with its level in its tip, lights and pops for a beat, and keeps
-// "No sets yet." with the first-set suggestion as its tip. FoldRow and TotalLine are hook-free,
-// so they're called in place; a Tip has hooks, so it's read from its props, never called.
+// Charm summed, lists every set with its level in its tip, a line each, lights and pops for a
+// beat, counts up from 0 in a tally, and keeps "No sets yet." with the first-set suggestion as
+// its tip. FoldRow and TotalLine are hook-free, so they're called in place; a Tip has hooks, so
+// it's read from its props, never called.
 
 import type { ComponentChildren, VNode } from 'preact';
 import { describe, expect, it } from 'vitest';
@@ -74,13 +75,13 @@ describe("the score panel's folded sets", () => {
     expect(text(byClass(row, 'set-comfort')[0]!)).toBe('+1,234');
   });
 
-  it('list every set in the tip, with its level, Comfort and Charm in words', () => {
+  it('list every set in the tip, a line each, with its level, Comfort and Charm in words', () => {
     const tip = [...walk(FoldRow({ sets: SETS, level, lit: null }))].find((v) => v.type === Tip)!;
     expect(tip.props.title).toBe('Sets');
     const { points: COMFORT, mult: CHARM } = SCORE_LABELS;
     expect(tip.props.text).toBe(
-      `Jack-and-Jill: +11 ${COMFORT}, +0.55 ${CHARM}. ` +
-        `Entertainer Lv 2: +44 ${COMFORT}, +1.65 ${CHARM}. ` +
+      `Jack-and-Jill: +11 ${COMFORT}, +0.55 ${CHARM}.\n` +
+        `Entertainer Lv 2: +44 ${COMFORT}, +1.65 ${CHARM}.\n` +
         `Suite Lv 2: +28 ${COMFORT}, +0.83 ${CHARM}.`,
     );
     expect(setsTip(SETS, level)).toBe(tip.props.text);
@@ -97,6 +98,19 @@ describe("the score panel's folded sets", () => {
     const rest = FoldRow({ sets: SETS, level, lit: null });
     expect(classOf([...walk(rest)].find((v) => v.type === 'li')!)).toBe('');
     expect(classOf(byClass(rest, 'set-values')[0]!)).not.toContain('popping');
+  });
+
+  it('count up from 0 in a tally, dimmed until its first set', () => {
+    const waiting = FoldRow({ sets: [], level, lit: null, waiting: true });
+    const li = [...walk(waiting)].find((v) => v.type === 'li')!;
+    expect(classOf(li)).toBe('waiting');
+    expect(text(byClass(waiting, 'set-name')[0]!)).toBe('0 sets');
+    expect(text(byClass(waiting, 'set-comfort')[0]!)).toBe('+0');
+    expect([...walk(waiting)].some((v) => v.type === Tip)).toBe(false);
+    // The first set's beat: its numbers, lit.
+    const first = FoldRow({ sets: SETS.slice(0, 1), level, lit: '1,2', waiting: false });
+    expect(classOf([...walk(first)].find((v) => v.type === 'li')!)).toBe('lit');
+    expect(text(byClass(first, 'set-name')[0]!)).toBe('1 set');
   });
 
   it('keep "No sets yet." with the first-set suggestion as its tip', () => {

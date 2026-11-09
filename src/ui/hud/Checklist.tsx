@@ -11,12 +11,13 @@
 // short: a house-rules group whose lines all hold folds into one row ("The household 4/4"),
 // which a click opens. It opens by itself while a line in it flips, under a preview or on a
 // tally's beat, and its held lines' beats light the folded row. The wishes, the change orders,
-// and any line that doesn't hold always show; on a short window the client's tastes fold into
-// one row too. Its body scrolls on its own (app.css), and the row a beat or a preview is about
-// is scrolled into view.
+// and any line that doesn't hold always show; on a window under 1000 px tall the client's tastes
+// fold into one row too, and the house rules start right under it. Its body scrolls on its own
+// (app.css), and the row a beat or a preview is about is scrolled into view.
 //
 // In the pixel UI (D-110) it's a wood panel: the client's name on the plank, their brief on
-// hover, and the lines held in a chip beside it; the crew's chip first in the body. Its marks
+// hover, and the lines held in a chip beside it; the crew's chip first in the body, or on a
+// window under 1000 px tall its icon on the plank or the tastes' row. Its marks
 // are icons, since the pixel fonts lack ★ ✕ ▲ ▼ ▸ ▾: a check for a line that holds, an empty
 // ring for one that doesn't yet, a star for one turned on, a cross for one turned off (or an
 // order broken or missed), a clock for a phase effect, the house for who's moving in, and
@@ -433,21 +434,26 @@ const TASTE_ICON = { like: 'up', dislike: 'down', plain: null } as const;
 const TASTE_WORD = { like: 'Likes', dislike: 'Dislikes', plain: 'Taste' } as const;
 
 /**
- * The client's likes and dislikes: what they change, every week, a row each. On a short window
- * they fold into one row, "Likes and dislikes (3)", which a click opens (checklist.css).
+ * The client's likes and dislikes: what they change, every week, a row each. On a window under
+ * 1000 px tall they fold into one row, "Tastes (3)" as the job board names them, one line in
+ * every column, which a click opens (checklist.css); in the pixel font in a 280 px column the
+ * crew's icon ends that row (`crew`).
  */
-function Tastes({ tastes }: { tastes: readonly Modifier[] }) {
+function Tastes({ tastes, crew }: { tastes: readonly Modifier[]; crew: ComponentChildren }) {
   if (tastes.length === 0) return null;
   const open = opened.value.has('tastes');
   return (
     <div class={`check-group check-tastes ${open ? 'open' : ''}`}>
-      <FoldButton
-        fold="tastes"
-        folded={!open}
-        title={open ? 'Click to fold them away' : 'What the client likes and dislikes'}
-      >
-        <span class="fold-name">Likes and dislikes ({tastes.length})</span>
-      </FoldButton>
+      <div class="taste-head">
+        <FoldButton
+          fold="tastes"
+          folded={!open}
+          title={open ? 'Click to fold them away' : 'What the client likes and dislikes'}
+        >
+          <span class="fold-name">Tastes ({tastes.length})</span>
+        </FoldButton>
+        {crew}
+      </div>
       <ul class="tastes" aria-label="What the client likes and dislikes">
         {tastes.map((m, k) => {
           const tone = tasteTone(m);
@@ -465,20 +471,50 @@ function Tastes({ tastes }: { tastes: readonly Modifier[] }) {
   );
 }
 
-/**
- * The crew building the house (M4's top bar line, which M5a's top bar has no room for): its
- * icon and name on a wood chip, and what it does all run on hover.
- */
-function CrewChip({ id, crew }: { id: CrewId; crew: CrewDef }) {
+/** The crew's tip: its blurb and what it does all run. */
+function CrewTip({ crew, children }: { crew: CrewDef; children: ComponentChildren }) {
   const allRun = crew.modifiers.map((m) => modifierText(CONTENT, m)).join(' · ');
   return (
-    <p class="check-crew">
-      <Tip title={`${crew.name}: your crew`} text={`${crew.blurb} All run: ${allRun}.`}>
+    <Tip title={`${crew.name}: your crew`} text={`${crew.blurb} All run: ${allRun}.`}>
+      {children}
+    </Tip>
+  );
+}
+
+/**
+ * The crew building the house (M4's top bar line, which M5a's top bar has no room for): its
+ * icon and name on a wood chip, first in the list, and what it does all run on hover. On a
+ * window under 1000 px tall it's CrewIcon instead (checklist.css), unless the client has no
+ * tastes for its icon to end the row of, where the plank has no room for it.
+ */
+function CrewChip({ id, crew, tastes }: { id: CrewId; crew: CrewDef; tastes: boolean }) {
+  return (
+    <p class={`check-crew ${tastes ? '' : 'no-tastes'}`}>
+      <CrewTip crew={crew}>
         <Chip tone="wood" icon={CREW_ICONS[id]}>
           {crew.name}
         </Chip>
-      </Tip>
+      </CrewTip>
     </p>
+  );
+}
+
+/**
+ * The crew's chip as its icon alone, with the same tip, its name for screen readers: on a window
+ * under 1000 px tall it rides on the plank beside the client's name (`place` "plank"), or in the
+ * pixel font in a 280 px column, where the plank has no room beside the longest names, at the
+ * end of the tastes' row ("tastes"), so the first house rule starts under that row
+ * (checklist.css).
+ */
+function CrewIcon({ id, crew, place }: { id: CrewId; crew: CrewDef; place: 'plank' | 'tastes' }) {
+  return (
+    <span class={`check-crew-icon in-${place}`}>
+      <CrewTip crew={crew}>
+        <Chip tone="wood" icon={CREW_ICONS[id]}>
+          <span class="check-sr">{crew.name}</span>
+        </Chip>
+      </CrewTip>
+    </span>
   );
 }
 
@@ -497,21 +533,46 @@ function besideRow(rows: readonly Row[], row: Row): Row | undefined {
 }
 
 /**
+ * The house rules' first two rows as the checklist shows them, as selectors: a folded group is
+ * its one row, an open one each of its lines.
+ */
+export function houseRuleRows(rows: readonly Row[], isFolded: (g: RuleGroup) => boolean): string[] {
+  const out: string[] = [];
+  for (const g of ['household', 'shape', 'yard'] as const) {
+    const lines = rows.filter((r) => r.line.group === g);
+    if (lines.length === 0) continue;
+    if (isFolded(g)) out.push(`[data-fold="${g}"]`);
+    else out.push(...lines.map((r) => `[data-row="${r.line.id}"]`));
+    if (out.length >= 2) break;
+  }
+  return out.slice(0, 2);
+}
+
+/**
  * What a legal play being looked at brings into view, as selectors, the one that must show
  * first: the first row it flips, with a line beside it where both fit, else the change order it
- * would break (D-110). Null for a play that flips nothing and breaks nothing: it leaves the
- * checklist where it is, so the client's tastes stay in view where they were ("Lawns earn +50%"
- * while placing a Lawn).
+ * would break (D-110), else `rest`: for a play that does neither, the house rules' first two
+ * rows, which the checklist brings into view only while the client's tastes are folded into
+ * their row (Checklist's `show`), so the tastes in view stay in view ("Lawns earn +50%" while
+ * placing a Lawn). Null for nothing to bring into view.
  */
-export function playTarget(rows: readonly Row[], breaks: string | undefined): string[] | null {
+export function playTarget(
+  rows: readonly Row[],
+  breaks: string | undefined,
+  rest: string[] | null = null,
+): string[] | null {
   const flipped = rows.find((r) => r.change !== null);
   if (flipped) {
     return [flipped, besideRow(rows, flipped)].flatMap((r) =>
       r ? [`[data-row="${r.line.id}"]`] : [],
     );
   }
-  return breaks ? [`[data-order="${breaks}"]`] : null;
+  return breaks ? [`[data-order="${breaks}"]`] : rest;
 }
+
+/** Whether the client's tastes show as rows in the checklist's box, not folded into their row. */
+const tastesShown = (box: HTMLElement) =>
+  (box.querySelector('.check-tastes .tastes')?.getClientRects().length ?? 0) > 0;
 
 /**
  * Who's still to move in (M4b, D-103), under the household's lines until they arrive: "Grandma
@@ -715,32 +776,37 @@ export function Checklist() {
   const breaks = p?.legal ? p.breaks : undefined;
 
   // What to bring into view when the checklist scrolls: the row the tally just lit (or its
-  // folded group's row), else what the play being looked at flips or breaks (playTarget; a play
-  // that does neither leaves it where it is). Selectors, the one that must show first.
+  // folded group's row), else what the play being looked at flips or breaks, else, while the
+  // tastes are folded, the house rules' first two rows (playTarget). Selectors, the one that
+  // must show first.
   const newest = flashes.reduce<CheckFlash | undefined>(
     (a, f) => (!a || f.id > a.id ? f : a),
     undefined,
   );
   let target: string[] | null = null;
   let targetKey: string | null = null;
+  /** A play that flips and breaks nothing: its target waits on the tastes being folded. */
+  let quiet = false;
   const lit = newest && rows[newest.index];
   if (lit) {
     const g = lit.line.group;
     target = [g !== 'wishes' && isFolded(g) ? `[data-fold="${g}"]` : `[data-row="${lit.line.id}"]`];
     targetKey = `flash-${newest.id}`;
   } else if (p?.legal) {
-    target = playTarget(rows, breaks);
+    const rest = houseRuleRows(rows, isFolded);
+    target = playTarget(rows, breaks, rest);
+    quiet = target === rest;
     targetKey = target && target.join(' ');
   }
-  const targetRef = useRef(target);
-  targetRef.current = target;
+  const targetRef = useRef({ sels: target, quiet });
+  targetRef.current = { sels: target, quiet };
   // Where the player had it scrolled before the checklist first scrolled itself, while a play
   // is looked at or a tally plays: it goes back there once that's over.
   const before = useRef<number | null>(null);
   const show = () => {
-    const sels = targetRef.current;
+    const { sels, quiet } = targetRef.current;
     const scroller = box.current;
-    if (!sels || !scroller) return;
+    if (!sels || !scroller || (quiet && tastesShown(scroller))) return;
     const els = sels.flatMap((s) => scroller.querySelector(s) ?? []);
     const top = scroller.scrollTop;
     if (reveal(scroller, els) && before.current === null) before.current = top;
@@ -766,6 +832,8 @@ export function Checklist() {
   const lineList = (rs: readonly Row[]) =>
     rs.map((r) => <Line key={r.line.id} {...r} bonus={bonus} />);
   const wishes = groupRows('wishes');
+  const crew = CONTENT.crews[crewId];
+  const tastes = client.tastes.length > 0;
   return (
     <Panel
       class="checklist"
@@ -776,21 +844,26 @@ export function Checklist() {
         </Tip>
       }
       head={
-        <Chip
-          tone="inset"
-          icon="check"
-          class="check-count"
-          title={`${held} of ${all.length} lines hold`}
-        >
-          {held}/{all.length}
-        </Chip>
+        <>
+          <CrewIcon id={crewId} crew={crew} place="plank" />
+          <Chip
+            tone="inset"
+            icon="check"
+            class="check-count"
+            title={`${held} of ${all.length} lines hold`}
+          >
+            {held}/{all.length}
+          </Chip>
+        </>
       }
       bodyClass="check-body"
     >
       <div ref={box} class="check-scroll">
-        <CrewChip id={crewId} crew={CONTENT.crews[crewId]} />
-        <Tastes tastes={client.tastes} />
-        <h3 class="plank-tag">
+        <CrewChip id={crewId} crew={crew} tastes={tastes} />
+        <Tastes tastes={client.tastes} crew={<CrewIcon id={crewId} crew={crew} place="tastes" />} />
+        {/* On a window under 1000 px tall the first house rule starts under the tastes' row
+            (checklist.css): the score panel's checklist row names the checklist there. */}
+        <h3 class="plank-tag rules-tag">
           <Tip term="checklist">House rules</Tip>
         </h3>
         {(['household', 'shape', 'yard'] as const).map((g) => {

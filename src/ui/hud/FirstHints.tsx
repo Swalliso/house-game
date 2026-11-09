@@ -142,7 +142,7 @@ const ANCHORS = [
   '.game > .left',
   '.game > .right',
   '.left > .score-panel',
-  '.left > .checklist',
+  '.left .checklist',
   '.right > .inventory',
 ];
 
@@ -177,7 +177,7 @@ function measure(spot: Spot, dpr: number, card: HTMLElement | null): HintPlace |
     left,
     right,
     score: rect('.left > .score-panel'),
-    checklist: rect('.left > .checklist'),
+    checklist: rect('.left .checklist'),
     inventory: rect('.right > .inventory'),
     strip: rect('.game > .hints'),
   };

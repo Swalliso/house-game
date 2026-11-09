@@ -42,6 +42,11 @@
 .tip-title {
   font-weight: 700;
 }
+/* A tip's text keeps its line breaks: the score panel's folded sets list a set a line
+   (ScorePanel.tsx setsTip). Other tips have none, so they wrap as before. */
+.tip-text {
+  white-space: pre-line;
+}
 /* A symbol the pixel fonts lack, drawn as its icon in a tip's words (Tip.tsx tipWords), keeps to
    one line with the characters it touches, as the glyph did. */
 .tip-sign {

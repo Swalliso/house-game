@@ -2,7 +2,8 @@
 // part that doesn't hold with a cross icon (the pixel fonts have no ✕), and a change order's
 // terms say what a phase effect changes. Both are hook-free, so they're called in place; the
 // change order's sheet uses them too. And what a play being looked at scrolls into view: the
-// rows it flips, or the order it breaks, and nothing for a play that does neither.
+// rows it flips, or the order it breaks, or for a play that does neither, the house rules' first
+// two rows, which the checklist brings into view only while the tastes are folded (D-110).
 
 import type { ComponentChildren, VNode } from 'preact';
 import { describe, expect, it } from 'vitest';
@@ -13,7 +14,7 @@ import {
   type ChecklistLine,
   type SpecGroup,
 } from '../../rules/index.ts';
-import { orderTerms, playTarget, ProgressParts, type Row } from './Checklist.tsx';
+import { houseRuleRows, orderTerms, playTarget, ProgressParts, type Row } from './Checklist.tsx';
 
 /** The host elements a tree renders, function components called in place (none use hooks). */
 function* walk(node: ComponentChildren): Generator<VNode<Record<string, unknown>>> {
@@ -104,9 +105,33 @@ describe('what a play being looked at scrolls into view', () => {
       ] as const
     ).map(([id, g]) => row(id, g, flip[id] ?? null));
 
-  it('leaves the checklist where it is for a play that flips nothing and breaks nothing', () => {
-    // A Lawn, a Closet or a Renovation: the tastes in view stay in view (D-110).
+  it('takes the rest it is given for a play that flips nothing and breaks nothing', () => {
+    // A Lawn, a Closet or a Renovation: the house rules' first two rows, which the checklist
+    // brings into view only while the tastes are folded, so tastes in view stay in view (D-110).
     expect(playTarget(rows(), undefined)).toBeNull();
+    const rest = houseRuleRows(rows(), () => false);
+    expect(playTarget(rows(), undefined, rest)).toBe(rest);
+    // A flip or a break comes first.
+    expect(playTarget(rows({ cozy: 'gained' }), undefined, rest)?.[0]).toBe('[data-row="cozy"]');
+    expect(playTarget(rows(), 'bigDeadline', rest)).toEqual(['[data-order="bigDeadline"]']);
+  });
+
+  it("finds the house rules' first two rows as they show: a folded group is its one row", () => {
+    expect(houseRuleRows(rows(), () => false)).toEqual([
+      '[data-row="roomForEveryone"]',
+      '[data-row="bathrooms"]',
+    ]);
+    expect(houseRuleRows(rows(), (g) => g === 'household')).toEqual([
+      '[data-fold="household"]',
+      '[data-row="underOneRoof"]',
+    ]);
+    expect(houseRuleRows(rows(), (g) => g !== 'yard')).toEqual([
+      '[data-fold="household"]',
+      '[data-fold="shape"]',
+    ]);
+    // Never a wish.
+    const yardOnly = rows().filter((r) => r.line.group === 'yard' || r.line.group === 'wishes');
+    expect(houseRuleRows(yardOnly, () => false)).toEqual(['[data-row="tidyYard"]']);
   });
 
   it('brings in the first row the play flips, with the line above it in its group', () => {

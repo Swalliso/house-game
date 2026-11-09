@@ -136,9 +136,10 @@ button:where(:not(.btn, .pcard, .inv-slot, .seg, .check-fold)):focus-visible,
 .right > :not(.panel) {
   flex: none;
 }
-/* The left column (M4, D-110) never scrolls as a whole: the score panel keeps its height, and
-   the checklist and Inspect share the rest, each scrolling its own paper body under its plank
-   (the checklist's .check-scroll, Inspect's .panel-body, whose plank sticks to its top:
+/* The left column (M4, D-110) is never taller than the window, and never scrolls as a whole: the
+   score panel keeps its height, and the checklist and Inspect share the rest (.left-rest,
+   App.tsx), each scrolling its own paper body under its plank (the checklist's .check-scroll,
+   Inspect's .panel-body, whose plank sticks to its top, and whose foot holds a play's total:
    hud/inspect.css). The checklist gets the room first, with Inspect kept to a few lines; while
    a play is looked at (placing, installing, a tool, demolishing: .looking, App.tsx) Inspect
    gets it first, and the checklist keeps a few rows and scrolls the ones that flip into view
@@ -146,29 +147,42 @@ button:where(:not(.btn, .pcard, .inv-slot, .seg, .check-fold)):focus-visible,
 .left > .score-panel {
   flex: none;
 }
-/* The checklist keeps its plank and two rows at least (its frame and plank are 23 UI px, a row
-   12 or more). */
-.left > .checklist {
-  flex: 0 1 auto;
-  min-height: calc(var(--px) * 56);
+/* What the score panel leaves: a box of its own, so its two panels' minimums can be shares of
+   that room (a percentage of it), never more than the window has. */
+.left > .left-rest {
+  /* The checklist's minimum: its plank and two rows (its frame and plank are 23 UI px, a row 12
+     or more). */
+  --check-min: calc(var(--px) * 56);
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
-.left > .checklist > .panel-body.check-body {
+.left-rest > .checklist {
+  flex: 0 1 auto;
+  min-height: var(--check-min);
+}
+.left-rest > .checklist > .panel-body.check-body {
   flex: 1 1 auto;
   min-height: 0;
   padding: 0;
   gap: 0;
 }
-.left > .checklist .check-scroll {
+.left-rest > .checklist .check-scroll {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
 }
-.left > .inspect {
+/* Inspect keeps a few lines (80 UI px) when it shows something, or on a short window late in a
+   run whatever the checklist's minimum leaves it (the score panel can take 446 px of a 1280×720
+   column's 656): its plank and its foot stay in view, and its body scrolls. */
+.left-rest > .inspect {
   flex: 0 1000 auto;
-  min-height: calc(var(--px) * 80);
+  min-height: min(calc(var(--px) * 80), calc(100% - var(--check-min) - var(--space-2)));
 }
-.left > .inspect > .panel-body {
+.left-rest > .inspect > .panel-body {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
@@ -176,55 +190,54 @@ button:where(:not(.btn, .pcard, .inv-slot, .seg, .check-fold)):focus-visible,
   scrollbar-width: thin;
   scrollbar-color: var(--wood) var(--paper-inset);
 }
-.left.looking > .checklist {
+.left.looking .left-rest > .checklist {
   flex-shrink: 1000;
 }
-.left.looking > .inspect {
+.left.looking .left-rest > .inspect {
   flex-shrink: 1;
   min-height: 0;
 }
 /* Only "Point at anything…" (InspectPanel's .is-idle): just that, with no room kept for more,
    while a play is looked at too. */
-.left > .inspect.is-idle {
+.left-rest > .inspect.is-idle {
   flex-shrink: 0;
   min-height: 0;
 }
-/* Under 1000 px tall (D-098, amended 2026-11-08), with nothing looked at, the score panel's sets
-   fold into one row (ScorePanel.tsx SetsFold), the whole list in its tip, so late in a run the
-   checklist keeps its room: the list took up to 612 px of a 1280×720 column's 656. While a play
-   is looked at, the list shows the sets it would make and break (over 800 px tall; under, as
-   below, the panel keeps to its equation). */
+/* Under 1000 px tall (D-098, amended 2026-11-08), the score panel's sets fold into one row
+   (ScorePanel.tsx SetsFold), the whole list in its tip, so late in a run the checklist keeps its
+   room: the list took up to 612 px of a 1280×720 column's 656. While a play is looked at, the
+   panel keeps to its equation (2026-11-09: the list came back between 800 and 1000 px, and late
+   in a run pushed Inspect's total below a 1536×864 window): Inspect's notes say which sets,
+   checklist lines and budget the play would change, and the checklist marks the lines. With
+   nothing looked at, the idle Inspect gives way first, down to its plank (its body scrolls). */
 @media (height < 1000px) {
-  .left:not(.looking) .score-panel .sets-full {
+  .score-panel .sets-full {
     display: none;
   }
-  .left:not(.looking) .score-panel .sets-fold {
+  .score-panel .sets-fold {
     display: block;
   }
-}
-/* On a short window (under 800 px tall, D-098's breakpoint) that still isn't room for a long
-   preview, so while a play is looked at the score panel keeps to its equation (Inspect's notes
-   say which sets, lines and budget the play would change, and the checklist marks the lines),
-   and the checklist keeps its two rows. With nothing looked at, the idle Inspect gives way
-   first, down to its plank (its body scrolls), and the checklist keeps a little less. */
-@media (max-height: 800px) {
   .left.looking .score-detail,
   .left.looking .score-panel .budget-line {
     display: none;
   }
-  .left:not(.looking) > .checklist {
-    min-height: calc(var(--px) * 44);
-  }
-  /* The pixel font's rows are taller (a 280 px column wraps a line's name to two or three
-     lines), so while a play is looked at the checklist keeps its plank and two of them, as the
-     readable font's 56 UI px do: the play's flipped row with the one beside it (Checklist.tsx,
-     which leaves out the rows' progress then). */
-  [data-font='pixel'] .left.looking > .checklist {
-    min-height: calc(var(--px) * 84);
-  }
-  .left > .inspect.is-idle {
+  .left-rest > .inspect.is-idle {
     flex-shrink: 1000;
     min-height: calc(var(--px) * 24);
+  }
+  /* The pixel font's rows are taller (a 280 to 362 px column wraps a line's name to two or
+     three lines), so while a play is looked at the checklist keeps its plank and two of them, as
+     the readable font's 56 UI px do: the play's flipped row with the one beside it, or the house
+     rules' first two (Checklist.tsx; without their progress, checklist.css). */
+  [data-font='pixel'] .left.looking .left-rest {
+    --check-min: calc(var(--px) * 84);
+  }
+}
+/* On a short window (under 800 px tall, D-098's breakpoint), with nothing looked at, the
+   checklist keeps a little less. */
+@media (max-height: 800px) {
+  .left:not(.looking) .left-rest {
+    --check-min: calc(var(--px) * 44);
   }
 }
 

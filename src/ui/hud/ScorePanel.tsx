@@ -2,7 +2,8 @@
 // the preview's change while placing, and the tally's counters while they tick. M5a draws the
 // layers as plaques: Comfort and Charm side by side, Wow below them at the hero size, and each
 // ×Mult source as a gold Sparkle stamp. Under the sets, the checklist's part of the Charm (M4a).
-// On a window under 1000 px tall the sets fold into one row while nothing is looked at.
+// On a window under 1000 px tall the sets fold into one row, and while a play is looked at the
+// panel keeps to its equation.
 
 import { useEffect, useRef, useState } from 'preact/hooks';
 import {
@@ -56,8 +57,9 @@ const FIRST_SET =
 const levelOf = (set: SetId) => run.value.setLevels[set] ?? 1;
 
 /**
- * The folded row's tip: every set with its level and what it adds, as the list says it.
- * "Jack-and-Jill: +11 Comfort, +0.55 Charm. Suite Lv 2: +28 Comfort, +0.83 Charm."
+ * The folded row's tip: every set with its level and what it adds, as the list says it, on a
+ * line of its own (the bubble keeps line breaks, tip.css): "Jack-and-Jill: +11 Comfort, +0.55
+ * Charm.", then "Suite Lv 2: +28 Comfort, +0.83 Charm."
  */
 export function setsTip(sets: readonly SetScore[], level: (set: SetId) => number): string {
   const { points: COMFORT, mult: CHARM } = SCORE_LABELS;
@@ -66,7 +68,7 @@ export function setsTip(sets: readonly SetScore[], level: (set: SetId) => number
       const lv = level(s.set) > 1 ? ` Lv ${level(s.set)}` : '';
       return `${CONTENT.sets[s.set].name}${lv}: +${s.points} ${COMFORT}, +${formatMult(s.mult)} ${CHARM}.`;
     })
-    .join(' ');
+    .join('\n');
 }
 
 function SetList({
@@ -78,8 +80,8 @@ function SetList({
   gained: Set<string>;
   lost: readonly SetScore[];
 }) {
-  // On a window under 1000 px tall the list shows only while a play is looked at, and under
-  // 800 px not even then (app.css), so the suggestion's short form is the folded row's.
+  // The list shows only on a window 1000 px tall or more (app.css), so the suggestion's short
+  // form is the folded row's.
   if (sets.length === 0 && lost.length === 0) {
     return <p class="sets-empty">No sets yet. {FIRST_SET}</p>;
   }
@@ -149,22 +151,25 @@ const sumOf = (sets: readonly SetScore[]) => ({
 
 /**
  * The sets as one row (D-098, amended 2026-11-08): on a window under 1000 px tall the panel
- * shows it in place of the list while nothing is looked at (app.css), so the checklist keeps
- * the column's room late in a run. It has a set's shape, how many with what they add to Comfort
- * and Charm at the right, and the whole list is its tip. `lit` (a key, new for each beat) lights
- * it in the board's set highlight, Charm's rose, and pops its numbers. Hook-free, so tests call
- * it in place; SetsFold keeps its light.
+ * shows it in place of the list (app.css), so the checklist keeps the column's room late in a
+ * run. It has a set's shape, how many with what they add to Comfort and Charm at the right, and
+ * the whole list is its tip. `lit` (a key, new for each beat) lights it in the board's set
+ * highlight, Charm's rose, and pops its numbers. In a tally it shows the sets counted so far,
+ * `waiting` (dimmed, from 0) until the first. Hook-free, so tests call it in place; SetsFold
+ * keeps its light.
  */
 export function FoldRow({
   sets,
   level,
   lit,
+  waiting = false,
 }: {
   sets: readonly SetScore[];
   level: (set: SetId) => number;
   lit: string | null;
+  waiting?: boolean;
 }) {
-  if (sets.length === 0) {
+  if (sets.length === 0 && !waiting) {
     return (
       <p class="sets-empty sets-fold">
         <Tip title="No sets yet" text={FIRST_SET}>
@@ -174,13 +179,18 @@ export function FoldRow({
     );
   }
   const { points, mult } = sumOf(sets);
+  const count = `${sets.length} ${sets.length === 1 ? 'set' : 'sets'}`;
   return (
     <ul class="sets sets-fold">
-      <li class={lit ? 'lit' : ''}>
+      <li class={lit ? 'lit' : waiting ? 'waiting' : ''}>
         <span class="set-name">
-          <Tip title="Sets" text={setsTip(sets, level)}>
-            {sets.length} {sets.length === 1 ? 'set' : 'sets'}
-          </Tip>
+          {sets.length > 0 ? (
+            <Tip title="Sets" text={setsTip(sets, level)}>
+              {count}
+            </Tip>
+          ) : (
+            count
+          )}
         </span>
         {/* Keyed by the beat, so its pop restarts on every set the tally counts. */}
         <span
@@ -201,10 +211,25 @@ export function FoldRow({
  * the board's set highlight), and when the sets change outside a tally (a Remodel Plans' level,
  * a demolition), so a change never goes by unseen.
  */
-function SetsFold({ sets, beat }: { sets: readonly SetScore[]; beat: string | null }) {
+function SetsFold({
+  sets,
+  beat,
+  waiting,
+}: {
+  sets: readonly SetScore[];
+  beat: string | null;
+  waiting: boolean;
+}) {
   const { points, mult } = sumOf(sets);
   const flash = useChangeFlash(`${sets.length}/${points}/${mult}`);
-  return <FoldRow sets={sets} level={levelOf} lit={beat ?? (flash ? `flash-${flash}` : null)} />;
+  return (
+    <FoldRow
+      sets={sets}
+      level={levelOf}
+      lit={beat ?? (flash ? `flash-${flash}` : null)}
+      waiting={waiting}
+    />
+  );
 }
 
 /**
@@ -393,15 +418,20 @@ export function ScorePanel() {
             )}
           </p>
         )}
-        {/* On a short window it gives way while a play is looked at (app.css): Inspect's notes
-            say which sets and checklist lines the play would change. Under 1000 px tall, with
-            nothing looked at, the sets fold into one row (app.css shows the list or the row). */}
+        {/* Under 1000 px tall the sets fold into one row, and while a play is looked at the
+            panel keeps to its equation (app.css): Inspect's notes say which sets and checklist
+            lines the play would change. */}
         <div class="score-detail">
           <div class="sets-full">
             <h3 class="score-sets-title">Sets</h3>
             <SetList sets={sets} gained={gained} lost={p?.legal && !view ? p.setsLost : []} />
           </div>
-          <SetsFold sets={tally.sets} beat={beat} />
+          {/* In a tally, the sets it has counted so far: it counts up with Comfort and Charm. */}
+          <SetsFold
+            sets={view ? view.sets.slice(0, view.setAt) : tally.sets}
+            beat={beat}
+            waiting={!!view && view.setAt === 0 && view.sets.length > 0}
+          />
           {hasChecklist && (
             <SpecCharm
               count={specCount}
