@@ -102,6 +102,17 @@
   stroke-dasharray: 6 4;
   stroke-linecap: butt;
 }
+/* The piece held in Inspect (a click on it, store.ts heldPiece): the active rim's colors,
+   dotted, so it reads as picked out and never as the tally's scoring piece. */
+.hl-held .fill {
+  fill: var(--hl-active-fill);
+}
+.hl-held .edge {
+  stroke: var(--hl-active-edge);
+  stroke-width: 3;
+  stroke-dasharray: 3 3;
+  stroke-linecap: butt;
+}
 .hl-lit .fill {
   fill: var(--hl-lit-fill);
 }

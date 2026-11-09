@@ -134,6 +134,8 @@ const CONTROLS: readonly (readonly [keys: string, does: string])[] = [
   ['Hold Space', 'Speed up the tally'],
   ['Click', 'Skip the tally'],
   ['Esc', 'Cancel'],
+  // Playtest 4: Inspect holds a clicked piece (D-113).
+  ['Click a piece', 'Hold it in Inspect (click again to let go)'],
   // M4: a change order's sheet (D-109).
   ['Enter', 'Accept a change order'],
   ['Esc or D', 'Decline a change order'],
@@ -240,7 +242,10 @@ function HowToPlayText() {
               Sets, like {sets}, add {L.points} and {L.mult}.
             </li>
           )}
-          <li>Hover a piece or a tile to see what it earns, and why.</li>
+          <li>
+            Hover a piece or a tile to see what it earns, and why. Click a piece to hold it there
+            while you read.
+          </li>
         </ul>
         <div class="howto-sets">
           {Object.values(CONTENT.sets).map((set) => (
@@ -257,8 +262,8 @@ function HowToPlayText() {
           </li>
           <li>
             <b>Their checklist</b> starts with {houseRules} house rules (the household, the shape,
-            the yard), then their own wishes. Each line adds +{perLine} {L.mult} in every week it
-            holds. Hover a line to see what it needs.
+            the yard), folded into one row that opens with a click, then their own wishes. Each line
+            adds +{perLine} {L.mult} in every week it holds. Hover a line to see what it needs.
           </li>
           <li>
             <b>Their tastes:</b> <Icon name="up" label="Likes" /> pieces they like earn more,{' '}

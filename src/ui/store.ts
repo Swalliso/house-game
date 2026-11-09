@@ -2,7 +2,7 @@
 // everything; the store only keeps their state, asks them for previews, sends them actions,
 // and hands the events to the tally director. Saves and run codes live here too.
 
-import { batch, computed, signal } from '@preact/signals';
+import { batch, computed, effect, signal } from '@preact/signals';
 import {
   CONTENT,
   contentHash,
@@ -141,6 +141,24 @@ export const movingUid = signal<number | null>(null);
 export const toolArmed = signal<UseToolAction | null>(null);
 /** What the inspect panel shows when nothing is being placed. */
 export const inspected = signal<Inspected | null>(null);
+
+/**
+ * A placed piece held in Inspect (playtest 4: Inspect followed the pointer, so a long note
+ * couldn't be scrolled). With nothing picked, a click on a piece holds Inspect on it while the
+ * pointer goes elsewhere. A second click on it, a click on open ground or the street, Esc, the
+ * panel's ✕, picking something, demolishing, a new week, another screen, or the piece going
+ * lets go. UI only.
+ */
+export const heldPiece = signal<number | null>(null);
+effect(() => {
+  const uid = heldPiece.value;
+  if (uid === null) return;
+  const s = run.value;
+  const gone = !s.house.pieces.some((p) => p.uid === uid);
+  if (gone || s.screen !== 'build' || selected.value !== null || tool.value === 'demolish') {
+    heldPiece.value = null;
+  }
+});
 
 export type Inspected =
   | { kind: 'piece'; uid: number }
@@ -493,6 +511,7 @@ export function randomSeed(): string {
 }
 
 function resetWeek(): void {
+  heldPiece.value = null;
   selected.value = null;
   source.value = 'hand';
   tentative.value = null;

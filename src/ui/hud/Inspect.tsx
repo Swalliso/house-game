@@ -38,6 +38,7 @@ import {
   currentTally,
   demolishArmed,
   demolishPreview,
+  heldPiece,
   inspected,
   preview,
   renovateUids,
@@ -50,6 +51,7 @@ import {
   tool,
   toolPreview,
   useToolNow,
+  type Inspected,
 } from '../store.ts';
 import { Button, Icon } from '../kit/kit.tsx';
 import type { IconName } from '../theme/art.ts';
@@ -714,6 +716,22 @@ export function TotalLine({ before, after }: { before: number; after: number }) 
   );
 }
 
+/** A held piece's ✕ (store.ts heldPiece). Esc, a second click on it, or open ground do too. */
+function LetGo() {
+  return (
+    <Button
+      iconOnly
+      size="sm"
+      icon="close"
+      class="let-go"
+      onMouseDown={(e: MouseEvent) => e.preventDefault()}
+      onClick={() => (heldPiece.value = null)}
+      title="Let go (Esc, or click the piece again)"
+      aria-label="Let go of this piece"
+    />
+  );
+}
+
 export function Inspect() {
   if (tool.value === 'demolish') {
     return (
@@ -729,12 +747,18 @@ export function Inspect() {
       </InspectPanel>
     );
   }
-  const what = inspected.value;
+  // A piece clicked with nothing picked stays here while the pointer goes elsewhere (playtest
+  // 4: a long note couldn't be scrolled), until it's let go (store.ts heldPiece).
+  const held = heldPiece.value;
+  const what: Inspected | null = held !== null ? { kind: 'piece', uid: held } : inspected.value;
   const s = run.value;
   const idle = (
     <>
       <h2>Inspect</h2>
-      <p class="muted">Point at anything on the lot to see what it is and what it earns.</p>
+      <p class="muted">
+        Point at anything on the lot to see what it is and what it earns. Click a piece to hold it
+        here.
+      </p>
     </>
   );
   let body = idle;
@@ -750,6 +774,7 @@ export function Inspect() {
         <>
           <h2>
             {def.name} <span class="earns">earns {score.earned} a week</span>
+            {held !== null && <LetGo />}
           </h2>
           {!!piece.level && (
             <p class="renovate-note">
@@ -867,7 +892,11 @@ export function Inspect() {
     const g = o && offerGood(o);
     if (g) body = <ItemInfo good={g} />;
   }
-  return <InspectPanel idle={body === idle}>{body}</InspectPanel>;
+  return (
+    <InspectPanel idle={body === idle} held={held !== null && body !== idle}>
+      {body}
+    </InspectPanel>
+  );
 }
 
 /**
@@ -877,15 +906,19 @@ export function Inspect() {
  */
 function InspectPanel({
   idle = false,
+  held = false,
   foot = null,
   children,
 }: {
   idle?: boolean;
+  /** A piece held there by a click (store.ts heldPiece). */
+  held?: boolean;
   foot?: { before: number; after: number } | null;
   children: ComponentChildren;
 }) {
+  const cls = ['inspect panel ui', idle && 'is-idle', held && 'is-held'];
   return (
-    <section class={`inspect panel ui ${idle ? 'is-idle' : ''}`} aria-label="Inspect">
+    <section class={cls.filter(Boolean).join(' ')} aria-label="Inspect">
       <div class="panel-body">{children}</div>
       {foot && <TotalLine before={foot.before} after={foot.after} />}
     </section>

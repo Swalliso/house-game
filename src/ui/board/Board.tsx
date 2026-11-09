@@ -37,6 +37,7 @@ import {
   demolishArmed,
   demolishAt,
   demolishPreview,
+  heldPiece,
   hoverCell,
   inspected,
   installArmed,
@@ -649,7 +650,12 @@ export function Board() {
         if (installArmed.value !== null && installArmed.value !== uid) installArmed.value = null;
       }
       placeTentatively();
+      return;
     }
+    // Nothing picked: a click on a placed piece holds Inspect on it (a second click lets go),
+    // and a click anywhere else lets go (store.ts heldPiece).
+    const uid = c && c !== 'street' ? uidAt(occ, c.x, c.y) : 0;
+    heldPiece.value = uid && heldPiece.value !== uid ? uid : null;
   };
 
   const onPointerCancel = (e: PointerEvent) => {
