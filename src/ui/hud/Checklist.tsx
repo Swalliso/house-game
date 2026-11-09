@@ -54,14 +54,18 @@ import { Chip, Icon, Panel, type IconName } from '../kit/kit.tsx';
 import { settings } from '../settings.ts';
 import { CREW_ICONS } from '../sprites.ts';
 import { activePlay, currentTally, preview, run, selected, tool } from '../store.ts';
+import { seenHints } from './FirstHints.tsx';
 import { devicePixelRatio, uiPixel } from '../theme/pixel.ts';
 import { arrivalWeek, isPlural, overtimeUsed, upcomingArrivals } from './household.ts';
 import { Tip } from './Tip.tsx';
 import './checklist.css';
 
 type RuleGroup = Exclude<SpecGroup, 'wishes'>;
-/** A row that folds: a house-rules group, or the client's tastes on a short window. */
-type Fold = RuleGroup | 'tastes';
+/**
+ * A row that folds: the house rules as a whole, a house-rules group, or the client's tastes on a
+ * short window.
+ */
+type Fold = 'rules' | RuleGroup | 'tastes';
 
 const GROUP_NAMES: Readonly<Record<RuleGroup, string>> = {
   household: 'The household',
@@ -116,6 +120,30 @@ function toggleFold(f: Fold): void {
   const next = new Set(opened.value);
   if (!next.delete(f)) next.add(f);
   opened.value = next;
+}
+
+/**
+ * The house rules as one row, "House rules 5/7" (playtest 4: every client has the same seven,
+ * and they took the room Inspect needed). The player's pick, open or folded (UI only); null
+ * keeps the default, rulesOpen's.
+ */
+const rulesPick = signal<boolean | null>(null);
+
+/**
+ * Whether the house rules show their groups and lines, not just their row: while a line in them
+ * flips (the play being looked at turns it on or off, or this tally did), else the player's
+ * pick, else open only on a first visit (until the checklist's first hint is dismissed).
+ */
+export function rulesOpen(
+  rows: readonly Row[],
+  pick: boolean | null,
+  firstVisit: boolean,
+  tallyFlipped: boolean,
+): boolean {
+  const rules = rows.filter((r) => r.line.group !== 'wishes');
+  if (rules.length === 0) return true;
+  const flips = rules.some((r) => r.change !== null || (r.flash && r.flash.kind !== 'held'));
+  return flips || tallyFlipped || (pick ?? firstVisit);
 }
 
 /**
@@ -318,6 +346,7 @@ function FoldButton({
   title,
   buttonRef,
   flash,
+  onToggle,
   children,
 }: {
   fold: Fold;
@@ -326,6 +355,8 @@ function FoldButton({
   buttonRef?: RefObject<HTMLButtonElement>;
   /** The beat lighting it in a tally, if one is. */
   flash?: CheckFlash['kind'];
+  /** What a click does, if not toggling `opened` (the house rules' row keeps a pick). */
+  onToggle?: () => void;
   children: ComponentChildren;
 }) {
   const cls = [
@@ -342,7 +373,7 @@ function FoldButton({
       data-fold={fold}
       aria-expanded={!folded}
       onMouseDown={noFocus}
-      onClick={() => toggleFold(fold)}
+      onClick={onToggle ?? (() => toggleFold(fold))}
       title={title}
     >
       <Mark icon={folded ? 'caretRight' : 'caretDown'} />
@@ -399,6 +430,64 @@ function FoldRow({
       </span>
       <CharmAdds
         value={folded ? n * bonus : null}
+        pending={pending}
+        spanRef={charm}
+        lasts="while they hold"
+      />
+    </FoldButton>
+  );
+}
+
+/**
+ * The house rules' row (playtest 4): "House rules 5/7" with a check, and while it's folded the
+ * Charm they add. A click opens or folds them. While folded, a tally's beat on a line that holds
+ * lights this row, as a folded group's row does (lines that flip open the rules instead).
+ */
+function RulesRow({
+  rows,
+  folded,
+  bonus,
+  pending,
+}: {
+  rows: readonly Row[];
+  folded: boolean;
+  bonus: number;
+  /** In a tally, a line the tally hasn't reached yet: its Charm hasn't landed. */
+  pending: boolean;
+}) {
+  const row = useRef<HTMLButtonElement>(null);
+  const charm = useRef<HTMLSpanElement>(null);
+  const flash = folded
+    ? rows.reduce<CheckFlash | undefined>(
+        (a, r) => (r.flash && (!a || r.flash.id > a.id) ? r.flash : a),
+        undefined,
+      )
+    : undefined;
+  useEffect(() => {
+    if (flash) playFlash(flash, row.current, charm.current);
+  }, [flash?.id]);
+  const n = rows.length;
+  const held = rows.filter((r) => r.line.met).length;
+  return (
+    <FoldButton
+      fold="rules"
+      folded={folded}
+      buttonRef={row}
+      flash={flash?.kind}
+      onToggle={() => (rulesPick.value = folded)}
+      title={
+        folded
+          ? `${held} of the ${n} house rules hold. Click to show them.`
+          : 'Click to fold the house rules into this row'
+      }
+    >
+      <span class="fold-name">House rules</span>
+      <span class={`fold-count ${held < n ? 'partial' : ''}`}>
+        {held}/{n}
+        <Icon name="check" />
+      </span>
+      <CharmAdds
+        value={folded && held > 0 ? held * bonus : null}
         pending={pending}
         spanRef={charm}
         lasts="while they hold"
@@ -762,6 +851,13 @@ export function Checklist() {
     if (f.kind !== 'held' && g && g !== 'wishes') tallyOpen.current.add(g);
   }
   const groupRows = (g: SpecGroup) => rows.filter((r) => r.line.group === g);
+  const ruleRows = rows.filter((r) => r.line.group !== 'wishes');
+  const rulesFolded = !rulesOpen(
+    rows,
+    rulesPick.value,
+    !seenHints.value.has('checklist'),
+    tallyOpen.current.size > 0,
+  );
   /** A group folds when all its lines hold, unless the player opened it or a line in it flips. */
   const isFolded = (g: RuleGroup): boolean => {
     const rs = groupRows(g);
@@ -790,10 +886,18 @@ export function Checklist() {
   const lit = newest && rows[newest.index];
   if (lit) {
     const g = lit.line.group;
-    target = [g !== 'wishes' && isFolded(g) ? `[data-fold="${g}"]` : `[data-row="${lit.line.id}"]`];
+    target = [
+      g === 'wishes'
+        ? `[data-row="${lit.line.id}"]`
+        : rulesFolded
+          ? '[data-fold="rules"]'
+          : isFolded(g)
+            ? `[data-fold="${g}"]`
+            : `[data-row="${lit.line.id}"]`,
+    ];
     targetKey = `flash-${newest.id}`;
   } else if (p?.legal) {
-    const rest = houseRuleRows(rows, isFolded);
+    const rest = rulesFolded ? ['[data-fold="rules"]'] : houseRuleRows(rows, isFolded);
     target = playTarget(rows, breaks, rest);
     quiet = target === rest;
     targetKey = target && target.join(' ');
@@ -861,36 +965,47 @@ export function Checklist() {
       <div ref={box} class="check-scroll">
         <CrewChip id={crewId} crew={crew} tastes={tastes} />
         <Tastes tastes={client.tastes} crew={<CrewIcon id={crewId} crew={crew} place="tastes" />} />
-        {/* On a window under 1000 px tall the first house rule starts under the tastes' row
-            (checklist.css): the score panel's checklist row names the checklist there. */}
-        <h3 class="plank-tag rules-tag">
-          <Tip term="checklist">House rules</Tip>
-        </h3>
-        {(['household', 'shape', 'yard'] as const).map((g) => {
-          const rs = groupRows(g);
-          if (rs.length === 0) return null;
-          const allHeld = rs.every((r) => r.line.met);
-          const folded = isFolded(g);
-          return (
-            <div key={g} class={`check-group ${folded ? 'folded' : ''}`}>
-              {allHeld ? (
-                <FoldRow
-                  group={g}
-                  rows={rs}
-                  folded={folded}
-                  bonus={bonus}
-                  pending={rs.some((r) => r.pending)}
-                />
-              ) : (
-                <h4 class="check-group-name">{GROUP_NAMES[g]}</h4>
-              )}
-              <ul>
-                {!folded && lineList(rs)}
-                {g === 'household' && <ArrivalLines s={base} />}
-              </ul>
-            </div>
-          );
-        })}
+        {/* The house rules: one row that folds them (playtest 4), then, while they're open, their
+            groups. Who's still to move in shows either way. */}
+        {ruleRows.length > 0 && (
+          <RulesRow
+            rows={ruleRows}
+            folded={rulesFolded}
+            bonus={bonus}
+            pending={ruleRows.some((r) => r.pending)}
+          />
+        )}
+        {rulesFolded && (
+          <ul class="check-group rules-arrivals">
+            <ArrivalLines s={base} />
+          </ul>
+        )}
+        {!rulesFolded &&
+          (['household', 'shape', 'yard'] as const).map((g) => {
+            const rs = groupRows(g);
+            if (rs.length === 0) return null;
+            const allHeld = rs.every((r) => r.line.met);
+            const folded = isFolded(g);
+            return (
+              <div key={g} class={`check-group ${folded ? 'folded' : ''}`}>
+                {allHeld ? (
+                  <FoldRow
+                    group={g}
+                    rows={rs}
+                    folded={folded}
+                    bonus={bonus}
+                    pending={rs.some((r) => r.pending)}
+                  />
+                ) : (
+                  <h4 class="check-group-name">{GROUP_NAMES[g]}</h4>
+                )}
+                <ul>
+                  {!folded && lineList(rs)}
+                  {g === 'household' && <ArrivalLines s={base} />}
+                </ul>
+              </div>
+            );
+          })}
         {wishes.length > 0 && (
           <>
             <h3 class="plank-tag">{wishesTitle(client.name)}</h3>

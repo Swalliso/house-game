@@ -1232,6 +1232,31 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 ## Proposed
 
+### D-113 · Inspect holds a clicked piece, and the house rules fold into one row
+**Status:** Proposed · 2026-11-09, with the small UI pull request after playtest 4. The user picked this over collapsing the whole client panel.
+**Decision:**
+- **Click to hold:** with nothing picked, a click on a placed piece holds Inspect on it, so the pointer can go to the panel and scroll its notes.
+  - The board marks the held piece with a dotted pale rim in the tally's active colors.
+  - Inspect's plank gets a ✕.
+  - While a piece is held, Inspect gets the left column's room first, as it does while a play is looked at.
+  - It lets go on a second click on the piece, a click on open ground or the street, Esc, the ✕, picking something, demolishing, a new week, another screen, or the piece going.
+  - It's UI only (`store.ts` heldPiece).
+- **The house rules fold into one row:** "House rules 5/7", with their Charm while folded. A click opens or folds them.
+  - Folded by default, but open on a first visit (until the checklist's first hint is dismissed).
+  - They open by themselves while a play being looked at turns one on or off, or a tally flips one, until the tally ends.
+  - A tally's beat on a line that holds lights the folded row, as a folded group's row does.
+  - The row replaces the "House rules" plank tag, and the groups' own folds work as before.
+  - Who's still to move in shows either way, and the client's wishes and change orders never fold.
+- How to play and the controls list say so.
+
+**Why:** playtest 4.
+- Inspect followed the pointer, so reaching its scrollbar crossed other tiles, and a long note couldn't be read.
+- A click on a placed piece did nothing with nothing picked, so it was free for this.
+- The client panel's plank had no room for a collapse caret at 280 px.
+- Every client has the same seven house rules, which took the room Inspect needed.
+
+**Changes:** D-109's UI note: the house-rule groups now fold inside one row for the whole rules. D-110's left column: a held piece counts as looked at.
+
 ### D-112 · Playtest 4's quick fixes
 **Status:** Proposed · 2026-11-09, with the fix pull request after playtest 4 (`docs/playtests/playtest-4-findings.md` has the findings).
 **Decision:**

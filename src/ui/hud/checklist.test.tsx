@@ -14,7 +14,14 @@ import {
   type ChecklistLine,
   type SpecGroup,
 } from '../../rules/index.ts';
-import { houseRuleRows, orderTerms, playTarget, ProgressParts, type Row } from './Checklist.tsx';
+import {
+  houseRuleRows,
+  orderTerms,
+  playTarget,
+  ProgressParts,
+  type Row,
+  rulesOpen,
+} from './Checklist.tsx';
 
 /** The host elements a tree renders, function components called in place (none use hooks). */
 function* walk(node: ComponentChildren): Generator<VNode<Record<string, unknown>>> {
@@ -147,6 +154,29 @@ describe('what a play being looked at scrolls into view', () => {
       '[data-row="cozy"]',
     ]);
     expect(playTarget(rows({ tidyYard: 'gained' }), undefined)).toEqual(['[data-row="tidyYard"]']);
+  });
+
+  it('folds the house rules into their row unless a line flips, the player opens them, or it’s a first visit', () => {
+    // Playtest 4: folded by default, so Inspect gets the room.
+    expect(rulesOpen(rows(), null, false, false)).toBe(false);
+    // Open on a first visit (the checklist's first hint not yet dismissed), and as picked.
+    expect(rulesOpen(rows(), null, true, false)).toBe(true);
+    expect(rulesOpen(rows(), true, false, false)).toBe(true);
+    expect(rulesOpen(rows(), false, true, false)).toBe(false);
+    // A play that turns a rule on or off opens them, even folded by hand; a wish doesn't.
+    expect(rulesOpen(rows({ cozy: 'lost' }), false, false, false)).toBe(true);
+    expect(rulesOpen(rows({ fencedYard: 'gained' }), false, false, false)).toBe(false);
+    // So does a tally that flipped one, until it ends.
+    expect(rulesOpen(rows(), false, false, true)).toBe(true);
+    // With no house rules there's nothing to fold.
+    expect(
+      rulesOpen(
+        rows().filter((r) => r.line.group === 'wishes'),
+        false,
+        false,
+        false,
+      ),
+    ).toBe(true);
   });
 
   it('brings in the change order a play would break when it flips no line', () => {

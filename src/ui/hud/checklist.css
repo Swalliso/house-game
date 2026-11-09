@@ -120,17 +120,12 @@
   }
 }
 
-/* The sections: the house rules, the client's wishes and the change orders, each under a plank
-   tag (kit.css); the house rules' groups under their names. */
-.check-scroll > .plank-tag {
+/* The sections: the house rules under their row, which folds them (playtest 4), and the
+   client's wishes and the change orders, each under a plank tag (kit.css); the house rules'
+   groups under their names. */
+.check-scroll > .plank-tag,
+.check-scroll > .check-fold[data-fold='rules'] {
   margin-top: var(--space-2);
-}
-/* On a window under 1000 px tall the first house rule starts right under the tastes' row: the
-   score panel's checklist row names the checklist (its tip is the House rules tag's). */
-@media (height < 1000px) {
-  .check-scroll > .rules-tag {
-    display: none;
-  }
 }
 .checklist .check-group-name {
   margin: var(--space-1) 0 0;
@@ -313,6 +308,10 @@
 }
 .check-fold .charm {
   grid-column: 4;
+}
+/* The house rules' row while some don't hold: its count in ink, not the green of all held. */
+.check-fold .fold-count.partial {
+  color: var(--ink-soft);
 }
 
 /* The tastes, a row each: up for a like, down for a dislike. On a window under 1000 px tall they

@@ -46,7 +46,7 @@ import { ChangeOrderScreen, changeOrderKey } from './screens/ChangeOrderScreen.t
 import { JobBoard } from './screens/JobBoard.tsx';
 import { ShopScreen } from './screens/ShopScreen.tsx';
 import { Title } from './screens/Title.tsx';
-import { appScreen, run, selected, tool } from './store.ts';
+import { appScreen, heldPiece, run, selected, tool } from './store.ts';
 
 /** Esc closes the top sheet on any screen (modals.ts). */
 function useModalKeys(): void {
@@ -155,9 +155,10 @@ function Game() {
   useSkipOnClick();
   const screen = run.value.screen;
   const over = (screen === 'won' || screen === 'lost') && !busy.value;
-  // A play being looked at (placing, installing, a tool, demolishing): Inspect gets the left
-  // column's room first, so its preview, warnings, and Use button are in view (app.css).
-  const looking = selected.value !== null || tool.value === 'demolish';
+  // A play being looked at (placing, installing, a tool, demolishing), or a piece held in
+  // Inspect by a click: Inspect gets the left column's room first, so its preview, warnings,
+  // Use button, or the held piece's notes are in view (app.css).
+  const looking = selected.value !== null || tool.value === 'demolish' || heldPiece.value !== null;
   const right = over ? (
     <EndScreen />
   ) : screen === 'shop' ? (

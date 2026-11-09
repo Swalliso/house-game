@@ -51,7 +51,7 @@ import { FEEL } from '../fx/feel.ts';
 import { settings } from '../settings.ts';
 import { atlasImage, CELL, FIXTURE_ICONS, spriteStyle } from '../sprites.ts';
 import { ICON_SIZES, type IconName } from '../theme/art.ts';
-import { currentTally, preview, tool } from '../store.ts';
+import { currentTally, heldPiece, preview, tool } from '../store.ts';
 import { cellsOutline, isIndoor, type Occupancy } from './geometry.ts';
 import { inset, pieceModel, type HouseModel, type PieceLook, type Rect } from './house-model.ts';
 import { pieceLabels, type BadgeSpot, type Side } from './label-layout.ts';
@@ -411,7 +411,8 @@ function Flash({ uid, d }: { uid: number; d: string }) {
 /**
  * Highlights as outlines over the house: the tally's active piece (a warm rim), a held set's
  * members during its beat and the sets a placement would complete (Charm's rose, with a
- * dashed edge so it's never color alone), and each piece's flash.
+ * dashed edge so it's never color alone), the piece held in Inspect (a dotted pale rim), and
+ * each piece's flash.
  */
 export function HighlightsLayer({
   house,
@@ -426,6 +427,7 @@ export function HighlightsLayer({
 }) {
   const px = CELL * scale;
   const active = tallyView.value?.activeUid ?? null;
+  const held = heldPiece.value;
   const lit = highlighted.value;
   const p = tool.value === 'demolish' ? null : preview.value;
   const gained = p?.setsGained.flatMap((s) => s.members) ?? [];
@@ -460,6 +462,7 @@ export function HighlightsLayer({
       ))}
       {[...new Set(gained)].map((uid) => outline(uid, 'hl-set'))}
       {lit.map((uid) => outline(uid, 'hl-lit'))}
+      {held !== null && outline(held, 'hl-held')}
       {active !== null && outline(active, 'hl-active')}
     </svg>
   );

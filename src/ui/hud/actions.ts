@@ -9,6 +9,7 @@ import {
   appScreen,
   demolishArmed,
   endWeek,
+  heldPiece,
   inProgress,
   openJobBoard,
   notice,
@@ -130,7 +131,9 @@ export function cancelPlacement(): void {
     return;
   }
   if (tentative.value) tentative.value = null;
-  else selected.value = null;
+  else if (selected.value !== null) selected.value = null;
+  // Nothing picked: Esc lets go of a piece held in Inspect (store.ts heldPiece).
+  else heldPiece.value = null;
 }
 
 /** Is this item the one being placed or installed? */

@@ -40,6 +40,16 @@
     padding-inline: var(--space-2);
   }
 }
+/* A held piece's ✕ (Inspect.tsx LetGo), at the plank's top right, beside its first line rather
+   than on a line of its own: the name and what it earns wrap in the room left. */
+.inspect.is-held .panel-body > h2:first-child {
+  padding-right: calc(var(--px) * 20);
+}
+.inspect .let-go {
+  position: absolute;
+  top: var(--px);
+  right: calc(var(--px) * 2);
+}
 .inspect h3 {
   margin: var(--space-2) 0 0;
   font-size: var(--fs-body);
