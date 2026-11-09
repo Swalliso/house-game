@@ -1,18 +1,19 @@
 # Layout: Hallways, bigger rooms, the Garage, paths, reach, and a Porch
 
-**Date:** 2026-11-09, after playtest 4. Updated the same day with your answers on fusion, detached Garages and paths, and the Hallway experiment. **Status:** a proposal for you to choose from. Nothing under `src/` or in the decision log changed. The D-### entries in §9 are drafts (D-114 to D-118; D-112 and D-113 went to playtest 4's fixes). The PR that builds what you pick adds them to `decisions.md`.
+**Date:** 2026-11-09, after playtest 4. Updated the same day with your answers on fusion, detached Garages and paths, and the Hallway experiment. **Status:** a proposal for you to choose from. Nothing under `src/` or in the decision log changed on this branch. Step 1 of the Hallway experiment is built: D-114, merged into develop in Swalliso/house-game#21. The other entries in §9 are drafts (D-115 to D-118; the lot, draw and legibility sessions hold D-119 to D-122). The PR that builds what you pick adds them to `decisions.md`.
 
-**Read with:** `docs/playtests/playtest-4-findings.md` (§2, §7, §9, §10, §12, §14, §16), D-046, D-074, D-080, D-093, D-101, D-102, D-106, D-112, the Parked "Merged rooms" entry, `content-brainstorm.md` §15, and `house-systems-review.md` §5.2 and §5.10.
+**Read with:** `docs/playtests/playtest-4-findings.md` (§2, §7, §9, §10, §12, §14, §16), D-046, D-074, D-080, D-093, D-101, D-102, D-106, D-112, D-114, the Parked "Merged rooms" entry, `content-brainstorm.md` §15, and `house-systems-review.md` §5.2 and §5.10.
 
 ## In short
 
-- **The Hallway experiment: run it, as step 1 only.** Both Hallway cards pay +2 Comfort for each room they touch, up to 4. In 200 held-out runs halls become a real play (0.27 → 1.67 a run; 84% of runs build one): Wow +7%\*, Cozy +6\*, wins level. It loosens the outline a little (H1g −7\*). Hold the pack: alone at complexity 2 it lost 9.5 points of wins\*, and with the pay it sprawled (glance test −17.5\*). If the playtest shows halls bolted along the outside, pay only for halls that run between rooms.
+- **The Hallway experiment: run it, as step 1 only.** Both Hallway cards pay +2 Comfort for each room they touch, up to 4. In 200 held-out runs halls become a real play (0.27 → 1.67 a run; 84% of runs build one): Wow +7%\*, Cozy +6\*, wins level. It loosens the outline a little (H1g −7\*). It's in develop now (D-114, Swalliso/house-game#21), and that PR's own check agrees (Wow ×1.08\*). Hold the pack: alone at complexity 2 it cost Wow (×0.81\*), and with the pay it sprawled (glance test −17.5\*). If the playtest shows halls bolted along the outside, pay only for halls that run between rooms.
 - **Bigger rooms: fusion, 2 a run.** Your idea plays as well as Extend. A fusion joins a card to a room of its type as you place it, or knocks two built rooms of one type together, at ★★. Wow +14%\*, wins +2 (within noise), and 89% of runs use one. Almost all of its value is in joining as you place (1.4 a run); knocking built rooms together rarely pays. As a shop item (a Sledgehammer) it's bought about once every two runs and changes nothing. Joining by default would usually be right, but it would silently merge the Bedrooms you put side by side on purpose.
-- **Detached Garages: yes, as you said.** It stands by the street or a Driveway and earns +2 when a Driveway touches it. It's built 0.50 times a run (0.03 today), 97% of the time detached, with wins and Wow level to slightly up. **Stone paths: as art first.** The board draws stepping stones from a detached Garage or other outbuilding to the nearest door. As a card, a Stone Path cost 7.5 points of wins\*, like every new card that came early in the draw.
+- **Detached Garages: yes, as you said.** It stands by the street or a Driveway and earns +2 when a Driveway touches it. It's built 0.50 times a run (0.03 today), 97% of the time detached, with wins and Wow level to slightly up. **Stone paths: as art first.** The board draws stepping stones from a detached Garage or other outbuilding to the nearest door. As a card, a Stone Path didn't help (Wow ×0.97, within noise).
 - **Noise:** Soundproofing also makes its room Quiet, which gives it a job (installed 0.41 times a run, 0.10 today). A Loud Nursery didn't, and Cozy skipping Garages changed nothing. **Country Living** counts the woods once (+2 for touching a Tree): a quarter fewer poke-outs.
-- **Not now:** reach (−3, within noise: sets still count only touching rooms) and a Porch (−12.5\*: it takes the walls the house would grow into).
-- **Together** (the Hallway pay, 2 fusions, the Garage by its drive, the Quiet Soundproofing, Country Living's fix): wins +8.5\*, Wow +28%\*, Cozy +9\*, the glance test −4 (within noise). The game gets easier, mostly late (×1.06 by week 15, ×1.19 by week 25), so the targets need a new fit when fusion lands.
-- **Order:** one data PR before playtest 5 (the Hallway pay, the Garage, Soundproofing, Country Living, and stepping stones); then fusion as its own phase. The Hallway pack, a Stone Path card, reach and the Porch stay parked. Your questions are in §11.
+- **Not now:** reach (Wow ×0.95, within noise: sets still count only touching rooms) and a Porch (Wow ×0.81\*, wins −12.5\*: it takes the walls the house would grow into).
+- **Together** (the Hallway pay, 2 fusions, the Garage by its drive, the Quiet Soundproofing, Country Living's fix): Wow +28%\*, Cozy +9\*, wins +8.5 (about the size of the bot's own noise), the glance test −4 (within noise). The game gets easier, mostly late (×1.06 by week 15, ×1.19 by week 25), so the targets need a new fit when fusion lands.
+- **A caution on wins:** shifting the bot's random streams alone moved wins by 4–9 points on these seeds, while Wow moved 1–3% and Cozy, Under one roof and the glance test 4 points at most. So the Wow ratios carry the findings here, and a win difference under about 9 points isn't evidence on its own (How this was tested).
+- **Order:** the Hallway pay is in develop (D-114). One more data PR before playtest 5 (the Garage, Soundproofing, Country Living, and stepping stones); then fusion as its own phase. The Hallway pack, a Stone Path card, reach and the Porch stay parked. Your questions are in §11.
 
 ---
 
@@ -23,15 +24,16 @@
 - **Paired.** Every arm plays the same seeds with the same clients, so differences are per seed. Wins: the difference in points, with a 95% interval from the seeds that only one arm won (as `--ban` and `--gift` report it). Wow: the geometric mean of the per-seed ratio. **\*** marks an interval that excludes no change.
 - **Two rounds.** Round 1 tested the brief. Round 2 tested your answers (fusion, paths) and topped every arm up to all 200 seeds. That mattered: an arm that adds a card to the draw changes every later draw, so its runs barely pair with today's, and on the first 100 seeds today's game happens to win 63% (44% on the rest). Run only there, such an arm looked worse than it is: the Porch was −23 points on the first 100 seeds and is −12.5 on all 200. Every number here is on all 200 seeds, and nothing was tuned between rounds.
 - **Measures:** win rate; plays a run of the piece in question; mean final Wow; Under one roof and Cozy held at the last tally (in brackets, the change in points); the glance test (G = H1g a compact outline, H2 no yard inside the house, and H3 one of each shared room; `house-systems-review.md`'s Appendix); and research.md's plausibility check.
+- **The bot's own noise, and why "today" wins 54% here.** Every A/B run gives the bot a do-nothing action at the first shop, as `--gift`'s placebo does, so all arms take the same steps. That shifts the bot's step-keyed random streams. Without it, the scratch copy matches a plain `npm run sim -- --seed check` on all 200 seeds (44.5% wins, as D-114's own check measured on develop). With it, today's game wins 54%, and 49.5% with the placebo at the second shop instead. The game is the same in all three; only the bot's coin flips moved. Yet wins moved 4–9 points, and two of the three comparisons would have passed the win test above (+9.0 [+2.6, +15.4]\* and +5.0 [+0.1, +9.9]\*). Wow moved 1–3%, within its intervals, and Cozy, Under one roof and the glance test 4 points at most, none starred. **So a win difference under about 9 points isn't evidence on its own; the Wow ratio is the steadier measure.** Today's row and every arm share the placebo, so the comparisons stay paired. The Hallway pay held up on develop in the plain sim, without the placebo: wins 44.5% → 48.0% (+3.5, within noise), Wow ×1.077\*.
 - **What greedy can't tell us.** It never plans: it won't leave a gap for a corridor, or keep a spot open for a later room. Where a rule rewards planning, the sim's numbers are a floor, and the playtest decides.
 
-**Today, on these seeds:** 54% of runs win, mean Wow 21,326 (median 21,531). At the last tally Under one roof holds in 77% of runs and Cozy in 68% (69% and 46% of all tallies). 50% of houses pass the glance test (H1g 70%, H2 79%, H3 83%), with 10.9 rooms, fill 0.65 and 20 corners at the median. A run builds 0.27 Hallways (25% of runs build one), renovates 2.77 times, builds 0.03 Garages, and installs Soundproofing 0.10 times.
+**Today, on these seeds** (with the placebo; see above): 54% of runs win, mean Wow 21,326 (median 21,531). At the last tally Under one roof holds in 77% of runs and Cozy in 68% (69% and 46% of all tallies). 50% of houses pass the glance test (H1g 70%, H2 79%, H3 83%), with 10.9 rooms, fill 0.65 and 20 corners at the median. A run builds 0.27 Hallways (25% of runs build one), renovates 2.77 times, builds 0.03 Garages, and installs Soundproofing 0.10 times.
 
 ---
 
 ## 1. Hallways
 
-**The experiment: run it.** You asked to wait for this report. It says: run step 1 in the next build. Both Hallway cards get "+2 Comfort for each room it touches, up to 4", and nothing else changes: no pack, no new rule. Halls become a real play (84% of runs build one), Wow +7%\*, Cozy +6\*, and wins are level. The outline loosens a little (H1g −7\*). In the playtest, watch for halls bolted along the outside. If you see them, the fix is to pay only for halls between rooms (below).
+**The experiment: run it.** You asked to wait for this report. It said: run step 1 in the next build, and that's done: D-114, merged into develop in Swalliso/house-game#21. Both Hallway cards earn +2 Comfort for each room they touch, up to 4 (the card reads "+2 per touching room (up to 4)"), and nothing else changes: no pack, no new rule. Halls become a real play (84% of runs build one), Wow +7%\*, Cozy +6\*, and wins are level. The outline loosens a little (H1g −7\*). In the playtest, watch for halls bolted along the outside. If you see them, the fix is to pay only for halls between rooms (below).
 
 ### Why a link pays so little
 
@@ -73,12 +75,12 @@ The outline:
 | Pack (straight and L) + pay | 87% | 3.2 | 3.7 | 24 | 0.98 | 54% (−16\*) | 72% (−7) |
 | Pack + pay, between rooms | 36% | 3.4 | 3.9 | 20 | 0.93 | 76% (+6) | 76% (−3) |
 
-- **The pay works, modestly.** A run builds 1.67 halls (0.27 today), each touching about 3 rooms, and a Hallway earns about 610 Wow a copy (44 for the Hallway and 111 for the Long Hallway today). Wins +1.5 (within noise), Wow ×1.07\*, Cozy +6\*. That's smaller than the experiment on the fit seeds (findings §7: +5 points of wins, +11.6% Wow).
+- **The pay works, modestly.** A run builds 1.67 halls (0.27 today), each touching about 3 rooms, and a Hallway earns about 610 Wow a copy (44 for the Hallway and 111 for the Long Hallway today). Wins +1.5 (within noise), Wow ×1.07\*, Cozy +6\*. That's smaller than the experiment on the fit seeds (findings §7: +5 points of wins, +11.6% Wow). D-114's own check on develop, without the placebo, agrees: Wow ×1.077\*, wins +3.5 (within noise), 1.65 halls a run.
 - **The outline pays a little:** H1g −7\* as median corners go from 20 to 22, and the glance test −3.5 (within noise). Some halls go along an outside wall.
 - **Half the pay isn't enough:** 0.93 halls a run, and wins and Wow level.
-- **The pack alone loses, mostly through its complexity.** −9.5\* at complexity 2; at complexity 3 it's within noise (−2.5). Complexity 2 puts it in the first phase's draws 6 times as often (30% of its weight against 5%), where a card that scores nothing takes a room's place.
+- **The pack alone loses, mostly through its complexity.** At complexity 2, Wow ×0.81\* and wins −9.5\*; at complexity 3 both are level (×1.01, −2.5). Complexity 2 puts it in the first phase's draws 6 times as often (30% of its weight against 5%), where a card that scores nothing takes a room's place.
 - **The pack with the pay sprawls.** Wins level and Cozy +14\*, but the glance test −17.5\* (H1g −18\*, H2 −11\*), and median corners 24. Straight and L shapes up to 4 tiles sprawl about as much (−13.5\*).
-- **"Between rooms" keeps the outline, and empties the halls.** With the pay it holds H1g and the glance test, but greedy builds 0.25 halls a run, as today: it never leaves a corridor-shaped gap. With packs it's a dead card again (−10\*).
+- **"Between rooms" keeps the outline, and empties the halls.** With the pay it holds H1g and the glance test, but greedy builds 0.25 halls a run, as today: it never leaves a corridor-shaped gap. With packs it's a dead card again (Wow ×0.81\*).
 
 ### Where greedy puts a pack
 
@@ -107,7 +109,7 @@ The pay counts rooms touching the hall, so a long pack earns most **outside**: a
 
 ### Recommendation
 
-- **Now: the pay on both cards** (D-114). Pure data, and the halls start to pay.
+- **Done: the pay on both cards** (D-114, in develop). Pure data, and the halls start to pay.
 - **Hold the pack.** The corridor art (D-111's runner) and the door marks work with the two cards as they are, so the look doesn't wait for it. If a pack comes back, it stays at complexity 3.
 - **Keep "between rooms" ready.** If the playtest shows halls bolted along the outside, it's the one rule that turns their pay off and leaves real corridors paid. The cost: a hall pays only once rooms line it, so it's a plan, not a filler.
 
@@ -164,8 +166,8 @@ For each card that could extend (60 runs each), the best extension against the s
 | Home Office, at its limit | 100% | 14% | 100% | 40% |
 
 - **At one level, extending is a weaker Renovate.** Both add +4, and the bigger outline usually costs more than it brings: a Tree cleared (a view, for this room or a neighbor), or Under one roof's box pushed out. At the limit it beats Renovate only 4–14% of the time.
-- **At one level it's also a trap, spare card or not.** Both one-level arms lose about 4 points of wins. Of the 14 seeds the any-card arm lost, 12 had a Bathroom extended; of the 11 the spare arm lost, 10 did. "Spare" for a Bathroom means the Bathroom rule holds *now*; a later Bedroom breaks it, and a second Bathroom would also have made a later Jack-and-Jill or Suite (sets pay per instance, which no week's preview shows). A player would fall into it the same way.
-- **Two levels make it a real choice.** At the limit an extension beats Renovate about half the time (40–80%), so the decision turns on the room's surroundings: open ground or a Tree beside it, the box, the views. One card for two levels is worth the floor the room takes. At two levels the Bathroom extension turns from a trap into a good play: runs with one score ×1.20 against today.
+- **At one level it may also be a trap.** Both one-level arms lose about 4 points of wins, within the bot's own noise (How this was tested), with Wow level. The seeds they lost mostly had a Bathroom extended (12 of 14, and 10 of 11), against 6 of the 8 seeds they gained, so it's a weak sign. The way it would happen is plain, though: "spare" for a Bathroom means the Bathroom rule holds *now*; a later Bedroom breaks it, and a second Bathroom would also have made a later Jack-and-Jill or Suite (sets pay per instance, which no week's preview shows). A player could fall into it the same way.
+- **Two levels make it a real choice.** At the limit an extension beats Renovate about half the time (40–80%), so the decision turns on the room's surroundings: open ground or a Tree beside it, the box, the views. One card for two levels is worth the floor the room takes. At two levels the Bathroom extension looks like a good play: runs with one score ×1.20 against today on the same seeds.
 - **Spare cards keep the house's rooms** (10.7 against 10.4 with any card): below the limit a card would often join a room instead of becoming one.
 
 ### What carries over to fusion
@@ -301,7 +303,7 @@ The test piece was the Bathroom, the room reach suits best: "+2 per Bedroom with
 - **Cozy skipping Garages does nothing,** because the Garage is almost never built as a room. With the outbuilding the question goes away.
 - **A Loud Nursery doesn't give Soundproofing a job.** The Nursery is built 0.18 times a run, so Soundproofing goes from 0.10 to 0.12 installs. Keep the Nursery Quiet.
 - **A Quiet Soundproofing does:** 0.41 installs a run, with wins and Wow level.
-- **A Stone Path card costs wins.** It's offered 2.2 times a run and built 0.51 times, at about 300 Wow a copy, and the runs lose 7.5 points of wins\*. It's another new card early in the draw, the same pattern as the Hallway pack at complexity 2 and the Porch (§6, §8).
+- **A Stone Path card doesn't help.** It's offered 2.2 times a run and built 0.51 times, at about 300 Wow a copy, and Wow is level (×0.97, within noise). Wins drop 7.5 points\*, but a drop that size is within the bot's own noise (How this was tested), so it's a weak sign, not a finding.
 
 ### Stone paths
 
@@ -357,7 +359,7 @@ The Hallway pay, 2 fusions a run, the Garage as an outbuilding with its Driveway
 | Round 1's package | 59% | +5.5 [−0.1, +11.1] | 27,685 | ×1.242 [1.137–1.357]\* | 75% (−2.0) | 79% (+11.0\*) | 47% (−3.0) | 1.36 / 1.15 / 2.13 / 0.50 |
 | **The recommended package** | 62% | +8.5 [+2.0, +15.0]\* | 28,166 | ×1.280 [1.145–1.432]\* | 77% (0) | 77% (+9.0\*) | 46% (−4.0) | 1.40 / 1.39 / 2.16 / 0.47 |
 
-- **The game gets easier: wins +8.5\*, Wow +28%\*, Cozy +9\*.** 124 of 200 runs clear all seven targets, against 107 today.
+- **The game gets easier: Wow +28%\*, Cozy +9\*.** 124 of 200 runs clear all seven targets, against 107 today (+8.5 points\*). A win difference that size is within the bot's own noise, but with scores 28% higher the runs surely win more; how much more is for the re-fit's own check.
 - **Mostly late, but not only.** Against today on the same seeds the score is ×1.03 at week 5, ×1.05 at week 10, ×1.06 at week 15, ×1.11 at week 20 and ×1.19 at week 25. Playtest 3 found the middle of the run too easy, and this adds a little there. Re-fit the targets with the sim when fusion lands (D-089's check on held-out seeds); the data PR alone moves less (each of its pieces was within noise on its own).
 - **The outline holds:** median corners 20, the glance test −4 (within noise). The halls' looser outline is mostly made up by the detached Garage.
 - **Room cards go further:** about 3.5 a run improve a room (1.4 joins, 2.2 Renovations), against 2.8 today. Soundproofing is installed 0.37 times a run.
@@ -371,7 +373,7 @@ The Hallway pay, 2 fusions a run, the Garage as an outbuilding with its Driveway
 - **The Garage stands detached**, as an outbuilding by the street or a Driveway: a Layout card.
 - **No Porch, Deck or Stone Path card.** Paths are art.
 - **Bigger rooms come from fusions** (2 a run), not from spare cards. A late room card is a room or a Renovation, as today; fusions add about 1.4 joins a run, so the Rooms row stays useful late about as it does now.
-- **One finding for the draw itself:** every new card that came early in the draw cost wins. The Hallway pack at complexity 2 lost 9.5 points\* (2.5 at complexity 3, within noise), the Porch 12.5\*, and the Stone Path 7.5\* from the second phase. A Layout row open from week 1 should be checked for the same thing.
+- **One finding for the draw itself:** a new card that comes early in the draw can cost the run. The Hallway pack at complexity 2 did (Wow ×0.81\*; level at complexity 3), and so did the Porch (×0.81\*); the Stone Path, from the second phase, didn't clearly (×0.97, within noise). A Layout row open from week 1 should be checked for the same thing, on Wow rather than wins.
 
 **The legibility deep-dive** asked what a fusion chip needs to show:
 - On a room card: **Joins** when a room of its type has a spot that makes a rectangle and a fusion is left, with the count ("Joins · 2"), beside Renovate (D-112). Renovate first, then Joins, then sets, as that proposal orders the chip row.
@@ -383,15 +385,7 @@ The Hallway pay, 2 fusions a run, the Garage as an outbuilding with its Driveway
 ## 9. Draft decisions
 
 ### D-114 · The Hallway experiment, step 1: Hallways pay for the rooms they touch
-**Status:** Proposed (draft) · 2026-11-09, from playtest 4 (findings §7) and `docs/layout-proposal.md` §1.
-**Decision:**
-- Both Hallway cards (the Hallway and the Long Hallway) earn **+2 Comfort for each room they touch, up to 4** (+8). It's the existing `neighbor` effect on rooms; the link (D-046) is unchanged.
-- Card text: "Links the rooms it touches. +2 for each room it touches (up to 4)."
-- No Hallway pack for now, and no new condition. If a pack comes back: complexity 3 (not 2), with this pay, and an outline rule tested on held-out seeds first; the sim's greedy then gives Hallway-pack plays their own shortlist cap (8) apart from `HINT_CAP` (`sim/policies/greedy.ts`), since their many link-hinted shapes push other cards' plays off the shortlist.
-- If the playtest shows halls bolted along the outside, the fix is ready: the pay counts only while every tile of the hall has rooms on two or more of its sides ("between rooms", a piece condition of about 15 lines).
-
-**Why:** a link pays only when the rooms along it read their neighbors, and few do, so today a Hallway earns 44 Wow a copy (111 for the Long Hallway) and greedy builds one in a quarter of runs. With the pay: 1.67 a run, 84% of runs, about 610 Wow a copy; Wow ×1.07\*, Cozy +6\*, wins +1.5 (within noise), on 200 held-out seeds. The outline pays a little (H1g −7\*). The pack alone lost 9.5 points of wins\* at complexity 2 (2.5 at complexity 3, within noise); with the pay it sprawled (glance test −17.5\*); and paying only between rooms made it a dead card (−10\*).
-**Changes:** content only (`pieces.ts`). D-046's "connectors aren't neighbors" stands.
+**Built:** merged into develop in Swalliso/house-game#21, and its entry is in `decisions.md` there (Proposed): the pay, no pack for now, a pack's terms if one comes back, and the "between rooms" fix, as drafted here, with that PR's own check (Wow ×1.077\*, wins +3.5, within noise). One note it leaves out, for if a pack comes back: the sim's greedy then needs a separate shortlist cap for Hallway-pack plays (8, apart from `HINT_CAP` in `sim/policies/greedy.ts`), since their many link-hinted shapes push other cards' plays off the shortlist.
 
 ### D-115 · Bigger rooms: fusion, 2 a run
 **Status:** Proposed (draft) · 2026-11-09, from playtest 4 (findings §9), the Parked "Merged rooms" entry, your fusion idea, and `docs/layout-proposal.md` §2–3.
@@ -403,7 +397,7 @@ The Hallway pay, 2 fusions a run, the Garage as an outbuilding with its Driveway
 - A room card's chip shows **Joins** (with the count) beside Renovate; the HUD shows fusions left beside demolitions.
 - Renovate stays as D-102 has it.
 
-**Why:** your idea, and it plays as well as the brief's Extend. With 2 a run: Wow ×1.14\*, wins +2 (within noise), Cozy +4, and 89% of runs use one, nearly all as a card is placed (1.4 joins a run). A one-level extension (the brief's +4) lost about 4 points of wins; a two-level extension from a spare card was level (Wow ×1.12\*), but "spare" needs extra rules for Bathrooms and Home Offices. A Sledgehammer in the shop was bought 0.48 times a run and moved nothing. Joining by default is right 96% of the time but silently merges Bedrooms placed side by side on purpose.
+**Why:** your idea, and it plays as well as the brief's Extend. With 2 a run: Wow ×1.14\*, wins +2 (within noise), Cozy +4, and 89% of runs use one, nearly all as a card is placed (1.4 joins a run). A one-level extension (the brief's +4) added nothing (Wow ×1.00: it's a weaker Renovate); a two-level extension from a spare card did about as well as fusion (Wow ×1.12\*), but "spare" needs extra rules for Bathrooms and Home Offices. A Sledgehammer in the shop was bought 0.48 times a run and moved nothing. Joining by default is right 96% of the time but silently merges Bedrooms placed side by side on purpose.
 **Changes:** D-102 (Accepted): a room can grow as well as level up. The Parked "Merged rooms" entry becomes this. D-097's "rooms never merge" stands: a fused room is one room with one wall around it. Art: a few furniture pieces for the four bigger rooms, and a knock-through effect (D-059).
 
 ### D-116 · Detached Garages by the drive, stepping stones, and a Quiet Soundproofing
@@ -431,23 +425,23 @@ The Hallway pay, 2 fusions a run, the Garage as an outbuilding with its Driveway
 - **No Porch or Deck card.** If one comes, try it as a fixture of a front-row room, drawn outside its wall, taking no tile.
 - **No Stone Path card.** Paths are art (D-116). If one comes, as the yard's link, late in the draw.
 
-**Why:** a Bathroom paying "+2 per Bedroom within 2 steps" lost 3 points of wins and 5% of Wow (within noise), because sets still count only touching rooms. A Porch against the walls lost 12.5 points of wins\* (9.5\* roofed); a Stone Path card lost 7.5\*.
+**Why:** a Bathroom paying "+2 per Bedroom within 2 steps" lost 5% of Wow (within noise), because sets still count only touching rooms. A Porch against the walls cost about a fifth of the score (Wow ×0.81\*, ×0.83\* roofed; wins −12.5\* and −9.5\*). A Stone Path card didn't help (Wow ×0.97, within noise).
 **Changes:** none.
 
 ---
 
 ## 10. Recommended order
 
-1. **Before playtest 5, one data PR:** D-114 (the Hallway pay), D-116 (the Garage as an outbuilding with its Driveway pay, the Quiet Soundproofing, the Garage's yard sprite and the stepping stones), and D-117 (Country Living). All content, card text and art; no new rules. Run `npm run sim -- --check` once.
+1. **Before playtest 5, one data PR:** D-116 (the Garage as an outbuilding with its Driveway pay, the Quiet Soundproofing, the Garage's yard sprite and the stepping stones) and D-117 (Country Living). The Hallway pay (D-114) is already in develop. All content, card text and art; no new rules. Run `npm run sim -- --check` once.
 2. **Playtest 5 watches for:** halls bolted along the outside (then "between rooms"), whether a detached Garage and its stones read as a garage and a walk, and whether Soundproofing gets bought.
-3. **Next phase, D-115 (fusion), with its own playtest:** the fusion count; joining as you place (the ghost's Join option and its key); the Fuse action on built rooms (target a wall, preview, the knock-through); the names, the four rooms' furniture, the chip and the HUD count. Then re-fit the targets, since the full package wins 8.5 points more.
+3. **Next phase, D-115 (fusion), with its own playtest:** the fusion count; joining as you place (the ghost's Join option and its key); the Fuse action on built rooms (target a wall, preview, the knock-through); the names, the four rooms' furniture, the chip and the HUD count. Then re-fit the targets, since the full package scores 28% more.
 4. **Parked:** the Hallway pack, reach, the Porch, and a Stone Path card (D-118).
 
 ---
 
 ## 11. Questions for you
 
-1. **The Hallway experiment:** run step 1 in the next build (the pay on both cards, no pack)? And if halls bolt on along the outside, switch the pay to "between rooms"?
+1. **The Hallway experiment:** step 1 is in develop (D-114). If playtest 5 shows halls bolted along the outside, switch the pay to "between rooms"?
 2. **Bigger rooms:** fusion, 2 a run, instead of Extend with spare cards?
 3. **Fusion's two forms:** both (as you place, and on built rooms), or joining as you place first?
 4. **Fusions from the shop:** none for now, or a service later (1, 2, 3, 4 budget, as demolitions)?
@@ -465,7 +459,8 @@ Every arm ran on all 200 held-out seeds unless noted.
 
 | Arm | What changes (in memory) |
 |---|---|
-| `base` | Nothing: today's content on the patched copy |
+| `base` | Nothing: today's content on the patched copy, with the placebo at the first shop, as every arm has |
+| `base-noplacebo`, `base-placebo2` | The null checks: `base` without the placebo (the same as `npm run sim -- --seed check`, seed for seed), and with it at the second shop |
 | `hpay` | Hallway and Long Hallway: +2 per room touching it, up to 4 |
 | `hpay1` | The same at +1 a room |
 | `hflank` | `hpay`, and the pay needs every tile flanked by rooms on 2+ sides (`flanked: 2`) |
@@ -495,4 +490,4 @@ Every arm ran on all 200 held-out seeds unless noted.
 | `hpay+ext2lim+gpay+clfixed` | Round 1's package (Country Living's fix without the gift) |
 | `hpay+fuse2+gpay+sq+clfixed` | The recommended package |
 
-The scripts and every run's record are in the shared notes folder, `layout-sims/` (outside the repo, with a README). `patch.mjs` to `patch6.mjs` patch a copy of `src/rules`, `src/content` and `sim` at 0b9e9db: the extension play, reach, roofed tiles, the spare check, `flanked`, the bot's pack cap, a speed-up that keeps the same plays, and fusion (the count, the Fuse action, the bot's use of it, and the shop bot's value for a fusion tool). `variants.ts` holds the content changes; `ab.ts` runs an arm; `agg.ts`, `agg2.ts` and `final-tables.sh` make these tables; `draw.ts` draws a house; `extcheck.ts` made the extension-against-alternatives table.
+The scripts and every run's record are in the shared notes folder, `layout-sims/` (outside the repo, with a README). `patch.mjs` to `patch6.mjs` patch a copy of `src/rules`, `src/content` and `sim` at 0b9e9db: the extension play, reach, roofed tiles, the spare check, `flanked`, the bot's pack cap, a speed-up that keeps the same plays, and fusion (the count, the Fuse action, the bot's use of it, and the shop bot's value for a fusion tool). `variants.ts` holds the content changes; `ab.ts` runs an arm (`NOPLACEBO=1` drops the placebo, `PLACEBO_SHOP=2` moves it, `OUTNAME` names the output); `agg.ts`, `agg2.ts` and `final-tables.sh` make these tables; `draw.ts` draws a house; `extcheck.ts` made the extension-against-alternatives table.
