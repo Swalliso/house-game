@@ -54,6 +54,26 @@ const STAMP: Readonly<Record<OrderStamp['answer'], { text: string; icon: IconNam
   noted: { text: 'Noted', icon: 'check' },
 };
 
+/**
+ * A phase effect can't be declined, which the missing Decline button already says. About one
+ * in four says it in a line of its own instead (playtest 4 liked "It's coming either way"), picked
+ * from the run's seed and the order, so a replay shows the same line. UI only.
+ */
+export const ORDER_FLAVOR = [
+  'It’s coming either way.',
+  'No takebacks: the paperwork is already stapled.',
+  'The clipboard has spoken.',
+  'Signed in pencil, but the pencil is very firm.',
+  'The foreman read it and went to lunch.',
+] as const;
+
+/** The flavor line a phase effect shows, or null for most (FNV-1a over seed, order and phase). */
+export function orderFlavor(seed: string, id: string, phase: number): string | null {
+  let h = 0x811c9dc5;
+  for (const ch of `${seed}/${id}/${phase}`) h = Math.imul(h ^ ch.charCodeAt(0), 0x01000193) >>> 0;
+  return h % 4 === 0 ? ORDER_FLAVOR[Math.floor(h / 4) % ORDER_FLAVOR.length]! : null;
+}
+
 /** When the sheet last arrived: its keys wait out its flourish (FEEL.changeOrder.keyDelayMs). */
 let shownAt = 0;
 
@@ -196,6 +216,9 @@ function ChangeOrderSheet({
   };
   const due = `the ${rules.phaseName(view.phase)} milestone`;
   const forced = backTo !== null;
+  const note = view.declinable
+    ? 'Declining costs nothing.'
+    : orderFlavor(run.value.setup.seed, view.id, view.phase);
   const mark = stamp ? STAMP[stamp.answer] : null;
   return (
     <div class={`change-order ui ${stamp ? 'answered' : ''}`} style={style}>
@@ -263,12 +286,12 @@ function ChangeOrderSheet({
                 </div>
               )}
             </dl>
-            <p class="co-note">
-              {view.declinable
-                ? 'Declining costs nothing.'
-                : 'It’s coming either way: it can’t be declined.'}
-              {forced ? ` Answering goes back to week ${backTo}.` : ''}
-            </p>
+            {(note || forced) && (
+              <p class="co-note">
+                {note}
+                {forced ? `${note ? ' ' : ''}Answering goes back to week ${backTo}.` : ''}
+              </p>
+            )}
           </div>
           <div class="co-foot">
             {view.declinable && (

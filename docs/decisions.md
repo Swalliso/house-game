@@ -842,7 +842,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - **The inventory** stays hidden until the supply yard first opens, unless something's in it; empty slots are wells. On a window under 800 px tall the build screen leaves its empty rows out (the shop shows them). A name too long for its slot ends in an ellipsis.
 - **The build stamp** moves to the bottom-left corner, clear of End week at 1280×720.
 - **The shop** (D-087's sheet over the board) is a wood sheet. The budget is its header's hero counter, beside Refresh and Look at the lot. The goods are paper cards of one size packed onto shelves, as many sections side by side as the width holds, each card with an art slot (a piece's picture; a fixture's art as the board draws it, the Fireplace's stove or the Bunk Beds, or its icon for the ones painted with their room; a tool's own icon; else its kind's icon), its rarity as a band and a chip, a coin price, and Buy. Each section with goods that full slots block says so at its plank tag, in the rules' words (the advice after the first sentence only the first time the shop says it), and those goods' Buy buttons read Full. A good the budget can't reach shows its price in orange and a Buy that reads "Need 2", never the color alone. Leave is the sheet's one lime button, in a foot like End week's, with its saving bonus. Rare goods glint as they arrive, and the sale is a wood price tag. Hidden, the shop leaves a handle at the board's foot. A crate's options and the strike picker are sheets of the same cards over the shelves, sized to the board with their options scrolling inside and Set it aside or Cancel always in view; crate options glow by rarity in hard pixel steps. Below 800 px of height the cards drop their art.
-- **The title screen** is a street at the street's whole-pixel scale: a banded sky with our own sun and clouds, and Modern Exteriors villas, trees, shrubs and planters on a lawn behind the street (`art/limezu/ui.json`), with a car that drives by (parked with Reduce motion). The lawn and the street are the lot's own (D-099): its grass with tufts and flowers, and the board's sidewalk, curb, road and dashed line. The menu is an "Open House" real-estate sign hanging from a post, its buttons hanging below it as riders. LimeZu is credited, with a link, on the far sidewalk. The wordmark stays in Public Pixel with the readable font, at 32 UI pixels (24 on a narrow window), so it's 48 px and up and on its font's grid in both modes.
+- **The title screen** is a street at the street's whole-pixel scale: a banded sky with our own sun and clouds, and Modern Exteriors villas, trees, shrubs and planters on a lawn behind the street (`art/limezu/ui.json`), with a car that drives by (parked with Reduce motion). The lawn and the street are the lot's own (D-099): its grass with tufts and flowers, and the board's sidewalk, curb, road and dashed line. The menu is an "Open House" real-estate sign hanging from a post, its buttons hanging below it as riders. LimeZu is credited, with a link, on the far sidewalk. *(2026-11-09, D-112: the title keeps just the jam note; LimeZu's credit is in How to play's Credits and CREDITS.md.)* The wordmark stays in Public Pixel with the readable font, at 32 UI pixels (24 on a narrow window), so it's 48 px and up and on its font's grid in both modes.
 - **Overlays:** the milestone banner is a ribbon stamped in, gold for a milestone met and orange for a miss or overtime, with its detail on a paper slip. "Target reached!" is a lime stamp; neutral notes are paper slips. Notes and toasts sit at the top center of the board, under the top bar; while the shop is open they sit inside it, under its header (and under a crate's sheet), so they never cover the goods or the hand. While a milestone's banner is up they sit just under it, and once the run is over just under the "It's a house." sign, so neither is covered. A toast raised while a sheet or the menu is open shows over it, except on the end screen, where it lands under the sign.
 - **The board's labels** by the pointer (the ghost's change to the week's Wow or why it can't go there, and the install, tool and demolish labels) are the interface's chips: the pixel font, paper in the ink ring, a band in the label's tone, and a hard shadow. The preview's badges keep their small system-font numbers (a badge sits on one cell, and the pixel font has nothing under 16 px), square-cornered in the ink outline with a paper halo. The pieces' digits stay outlined system-font numbers that grow with the zoom. Their badges (a fixture that can't be drawn, an unmet requirement's ⚠) are square paper in LimeZu's ink, one icon pixel wide, around their pixel icon, a fixture's paper tinted by its rarity and the ⚠'s warning yellow, on whole device pixels.
 - **Tooltips** (D-086) are paper notes with a pixel tail pointing at the term, placed on whole pixels: over the term, or under it when the note, measured, doesn't fit above it, and always inside the window. Terms keep D-086's dotted underline, drawn as pixel dots. The audit's idea of dropping the underline outside prose would amend D-086, so it's left to the team. *Decided by the team, 2026-11-07 (playtest 5a):* keep the underline everywhere, as built.
@@ -1232,6 +1232,40 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 ## Proposed
 
+### D-112 · Playtest 4's quick fixes
+**Status:** Proposed · 2026-11-09, with the fix pull request after playtest 4 (`docs/playtests/playtest-4-findings.md` has the findings).
+**Decision:**
+- **The title screen:**
+  - The car is mirrored at the cut (`art/limezu/ui.json`), so it faces the way it drives.
+  - How to play and Settings hang their chains a quarter in from each end, under Start.
+  - The villas' little gable over the front door is painted out with their own siding, trim and deck planks (a compose), so the porch roof reads as a flat deck under the balcony. That was the user's pick of three looks.
+  - The footer keeps just the jam note. LimeZu's credit stays in How to play's Credits and in CREDITS.md: both packs' licenses ask for credit and say nothing about where.
+- **Inspect's buttons** may wrap, so they never run past the panel. They say "Use it now" (the tool's name is the heading) and "Sell for N" (the coin says budget).
+- **Change orders:**
+  - The sheet's "It's coming either way: it can't be declined" goes, since the missing Decline button says it.
+  - About one phase effect in four shows a flavor line instead. A UI-only hash of the seed, the order and its phase picks it, so a replay shows the same one.
+  - Set bonuses read "The Entertainer pays double" and "Every set pays 10% more", not "+100% more".
+- **The Garage:** its card says "Must touch the house, and the street or a Driveway". A spot off the house says "The Garage is a room: it must connect to the house."
+- **Soundproofing** names what's Loud: "Loud neighbors (the street, Garages, Playrooms, and Pools) can't take points off it".
+- **Renovate:**
+  - A card that can renovate shows a ★ Renovate chip.
+  - A first-time hint explains it the first time a card can.
+  - The glossary says it's done in place, with nothing torn down.
+- **The glossary's Hallway links** no longer say a Hallway earns nothing itself, since a blueprint like Country Living pays it.
+
+**Why:** playtest 4's notes:
+- the car drove backwards, the chains ended in the air, and the gable looked unrealistic;
+- long tool names ran the Use button off the panel;
+- the footnote was funny once;
+- the Garage card read as if the street alone would do;
+- Soundproofing was worth nothing in every week of the run;
+- the player never knew Renovate existed. It came up 4 times, once worth more than the play made.
+
+**Changes:**
+- D-098's title note: the credit moves off the title.
+- D-109's change-order bullet: the pick is even among the client's own orders and the generic ones; the old wording said "then".
+- D-102 (Renovate) gains the chip. D-045 (first-time hints) gains the Renovate hint.
+
 ### D-111 · Art for M4's content: the members' rooms, packs, and Renovate's level
 **Status:** Proposed · 2026-11-08, with the M4 pull request, after it merged `develop` (M5a). Implementation details within D-097, D-100, and §12 Art; for playtest 4.
 **Decision:**
@@ -1340,7 +1374,7 @@ What's still short:
 **Status:** Proposed · 2026-11-07, with the M4 pull request. Details within D-103, D-012, and Appendix A · M4b; numbers for the sim and playtest 4.
 **Decision:**
 - **Change orders:**
-  - one after each of milestones 2, 4, and 6 (`changeOrderAfter`), on its own screen before the shop, drawn from the `co/<milestone>` stream among the client's own orders, then the generic ones (Working from home, Heat wave), never one offered before in the run
+  - one after each of milestones 2, 4, and 6 (`changeOrderAfter`), on its own screen before the shop, drawn from the `co/<milestone>` stream, evenly among the client's own orders and the generic ones (Working from home, Heat wave), never one offered before in the run. *(2026-11-09, D-112: this said "the client's own orders, then the generic ones", which read as own first; the pick has always been even.)*
   - skipped: one already met, one needing more new pieces than a phase has weeks, a demolition request with no demolitions left, and one whose piece is neither in this phase's draw nor in the reserve. The plan's "less free space than it needs" isn't checked.
   - **before the last phase, only phase effects:** a request's or a restriction's reward would come at the run's end, where budget buys nothing
   - requests and restrictions can be declined at no cost; accepted, they run through the next phase and pay when its milestone is met (nothing if the run is lost). Rewards are budget, 3–5, in each order's definition.

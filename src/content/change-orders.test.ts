@@ -87,7 +87,7 @@ describe('the change orders', () => {
       'Sunny rooms earn −50%',
       'For the next phase',
     ]);
-    expect(terms('thanksgiving')).toEqual(['Entertainer pays +100% more', 'For the next phase']);
+    expect(terms('thanksgiving')).toEqual(['The Entertainer pays double', 'For the next phase']);
     expect(terms('eternalNight')).toEqual(['Rooms are Dark', 'For the next phase']);
     for (const o of Object.values(ORDERS)) {
       expect(o.text, o.id).toMatch(/^[A-Z].*\.$/);

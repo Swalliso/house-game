@@ -387,9 +387,9 @@ describe('indoor rooms', () => {
     ).toEqual([3, 0, 0, 0]);
   });
 
-  it('Garage: needs the street or a Driveway; 1, and +1 budget every 3rd week', () => {
+  it('Garage: needs the house, and the street or a Driveway; 1, and +1 budget every 3rd week', () => {
     expectCard('garage', [
-      'Must be built touching the street or a Driveway',
+      'Must touch the house, and the street or a Driveway',
       '+1 every week',
       '+1 budget every 3rd week',
     ]);
@@ -433,9 +433,10 @@ describe('indoor rooms', () => {
     expect(check(rows, [], 'garage', 0, 4).legal).toBe(true);
     const small = emptyRows(6, 4);
     expect(check(small, [['bedroom', 0, 0]], 'garage', 0, 2).legal).toBe(true);
+    // A room, so it must join the house too, and it says so (playtest 4).
     expect(check(small, [['bedroom', 0, 0]], 'garage', 4, 2)).toMatchObject({
       legal: false,
-      reason: 'Rooms must connect to the house.',
+      reason: 'The Garage is a room: it must connect to the house.',
     });
     expect(CONTENT.pieces.garage.tags).toContain('Loud');
   });

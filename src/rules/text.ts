@@ -72,6 +72,17 @@ function featureNoun(content: Content, id: FeatureId, many: boolean): string {
   return many ? plural(def.name) : def.name;
 }
 
+/** What carries a tag: the lot's features first ("the street"), then pieces ("Garages"). */
+function tagged(content: Content, tag: Tag): string[] {
+  const features = Object.values(content.features)
+    .filter((f) => f.tags.includes(tag) && !f.inert)
+    .map((f) => featureNoun(content, f.id, true));
+  const pieces = Object.values(content.pieces)
+    .filter((p) => p.tags.includes(tag) && !p.countsAs)
+    .map((p) => plural(p.name));
+  return [...features, ...pieces];
+}
+
 function joinWords(words: readonly string[], conj: 'or' | 'and'): string {
   if (words.length <= 1) return words[0] ?? '';
   if (words.length === 2) return `${words[0]} ${conj} ${words[1]}`;
@@ -457,7 +468,18 @@ export function memberText(content: Content, def: PieceDef): string {
 }
 
 export function cardText(content: Content, def: PieceDef): CardText {
-  const effects = def.effects.map((e) => effectText(content, e));
+  const effects = def.effects.map((e) => {
+    const text = effectText(content, e);
+    // A room must join the house too, which "Must be built touching the street or a Driveway"
+    // left out (playtest 4: a Garage by the street read as if the street alone would do).
+    const touching = 'Must be built touching ';
+    return def.category === 'indoor' &&
+      e.kind === 'requires' &&
+      e.blocksPlacement &&
+      text.startsWith(touching)
+      ? `Must touch the house, and ${text.slice(touching.length)}`
+      : text;
+  });
   const pack = def.pack
     ? `A pack: click out up to ${def.pack.maxTiles} tiles that touch, one piece in one week.`
     : undefined;
@@ -629,11 +651,12 @@ export function modifierText(content: Content, mod: Modifier): string {
         : `${subjectText(content, mod.target)} have a view`;
     case 'blockPenalties': {
       const from = selectorText(content, mod.from, 'some');
-      const street = content.features.street.tags.some(
-        (t) => mod.from !== 'all' && 'tag' in mod.from && mod.from.tag === t,
-      );
+      // What has the tag, by name, when few things do (playtest 4: Soundproofing went unused, as
+      // nothing said only the street, Garages, Playrooms, and Pools are Loud).
+      const which = mod.from !== 'all' && 'tag' in mod.from ? tagged(content, mod.from.tag) : [];
+      const named = which.length > 0 && which.length <= 5 ? ` (${joinWords(which, 'and')})` : '';
       const who = isHost(mod.target) ? 'it' : selectorText(content, mod.target, 'some');
-      return `${from.charAt(0).toUpperCase() + from.slice(1)}${street ? ' (the street too)' : ''} can’t take points off ${who}`;
+      return `${from.charAt(0).toUpperCase() + from.slice(1)}${named} can’t take points off ${who}`;
     }
     case 'countsAs': {
       const name = content.pieces[mod.as].name;
@@ -654,8 +677,11 @@ export function modifierText(content: Content, mod: Modifier): string {
       const what = selectorText(content, mod.match, 'some');
       return `${what.charAt(0).toUpperCase() + what.slice(1)} earn ${signed(mod.pct)}% for each one over ${mod.over}`;
     }
-    case 'setBonus':
-      return `${mod.set ? content.sets[mod.set].name : 'Every set'} pays ${signed(mod.pct)}% more`;
+    case 'setBonus': {
+      const who = mod.set ? `The ${content.sets[mod.set].name}` : 'Every set';
+      if (mod.pct === 100) return `${who} pays double`;
+      return `${who} pays ${Math.abs(mod.pct)}% ${mod.pct < 0 ? 'less' : 'more'}`;
+    }
     case 'budget':
       return `${mod.target === 'all' ? 'Every piece' : subjectText(content, mod.target)} pays ${signed(mod.pct)}% budget`;
     case 'drawWeight': {
@@ -839,9 +865,9 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
       title: 'Renovate',
       text:
         `Once the house has all the rooms of a type its checklist wants (one Kitchen, its ` +
-        `Bedrooms, …), a card of that type can renovate one of them instead of being placed: ` +
-        `+${b.renovate.pointsPerLevel} ${L.points} a level, up to ${b.renovate.maxLevel}. ` +
-        `It’s the week’s build.`,
+        `Bedrooms, …), a card of that type can renovate one of them in place instead of being ` +
+        `placed, with nothing torn down: +${b.renovate.pointsPerLevel} ${L.points} a level, up ` +
+        `to ${b.renovate.maxLevel}. It’s the week’s build. A card that can shows Renovate.`,
     },
     checklist: {
       title: 'The checklist',
@@ -876,8 +902,8 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
     link: {
       title: 'Hallway links',
       text:
-        'A Hallway earns nothing itself, but every room it touches counts as touching every ' +
-        'other room along it, for bonuses and sets.',
+        'Every room a Hallway touches counts as touching every other room along it, for ' +
+        'bonuses and sets.',
     },
     timer: {
       title: 'Timers',

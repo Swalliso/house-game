@@ -303,8 +303,8 @@ export interface Rules {
    */
   activeChangeOrders(state: RunState): ChangeOrderView[];
   /**
-   * M4b: the change orders that could be offered now (the client's own, then the generic ones,
-   * none offered before, minus the skipped), for tests and the ?debug panel.
+   * M4b: the change orders that could be offered now (the client's own and the generic ones,
+   * listed in that order, none offered before, minus the skipped), for tests and the ?debug panel.
    */
   eligibleChangeOrders(state: RunState): ChangeOrderId[];
   replay(setup: RunSetup, actions: readonly Action[]): ReplayResult;
@@ -889,8 +889,9 @@ export function createRules(content: Content): Rules {
   }
 
   /**
-   * The client's own change orders, then the generic ones: never one offered before, minus the
-   * skipped, and before the last phase only phase effects.
+   * The client's own change orders and the generic ones, listed in that order (the pick among
+   * them is even, not own first): never one offered before, minus the skipped, and before the
+   * last phase only phase effects.
    */
   function eligibleOrders(state: RunState): ChangeOrderId[] {
     const offered = new Set(state.changeOrders.map((r) => r.id));

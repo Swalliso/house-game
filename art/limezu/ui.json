@@ -3,13 +3,41 @@
     "pack": "me",
     "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/7_Villas_16x16.png",
     "rect": [0, 0, 144, 208],
-    "note": "The title screen's street (UI track): a two-storey villa with an orange roof and a porch, its cast shadow included, standing on the lawn left of the Open House sign. Modern Exteriors, the pack whose license allows open-source projects."
+    "ops": [
+      {
+        "op": "compose",
+        "size": [144, 208],
+        "layers": [
+          { "rect": [80, 112, 8, 4], "at": [33, 112] },
+          { "rect": [80, 112, 8, 4], "at": [41, 112] },
+          { "rect": [60, 116, 20, 5], "at": [30, 116] },
+          { "rect": [66, 121, 22, 27], "at": [16, 121] },
+          { "rect": [66, 121, 22, 27], "at": [38, 121], "ops": [{ "op": "flipX" }] },
+          { "rect": [76, 121, 6, 27], "at": [60, 121] }
+        ]
+      }
+    ],
+    "note": "The title screen's street (UI track): a two-storey villa with an orange roof and a porch, its cast shadow included, standing on the lawn left of the Open House sign. Modern Exteriors, the pack whose license allows open-source projects. Playtest 4: the little gable over the front door looked unrealistic, so the compose paints it out with the villa's own siding, trim and deck planks (one copy mirrored, so the planks don't repeat), and the porch roof reads as a flat deck under the balcony."
   },
   "title-villa-blue": {
     "pack": "me",
     "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/7_Villas_16x16.png",
     "rect": [160, 224, 144, 208],
-    "note": "The same villa with a blue roof, the title street's neighbor on the right of the sign."
+    "ops": [
+      {
+        "op": "compose",
+        "size": [144, 208],
+        "layers": [
+          { "rect": [240, 336, 8, 4], "at": [33, 112] },
+          { "rect": [240, 336, 8, 4], "at": [41, 112] },
+          { "rect": [220, 340, 20, 5], "at": [30, 116] },
+          { "rect": [226, 345, 22, 27], "at": [16, 121] },
+          { "rect": [226, 345, 22, 27], "at": [38, 121], "ops": [{ "op": "flipX" }] },
+          { "rect": [236, 345, 6, 27], "at": [60, 121] }
+        ]
+      }
+    ],
+    "note": "The same villa with a blue roof, the title street's neighbor on the right of the sign, its door's little gable painted out the same way (title-villa)."
   },
   "title-tree": {
     "pack": "me",
@@ -27,7 +55,8 @@
     "pack": "me",
     "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/10_Vehicles_16x16.png",
     "rect": [96, 26, 61, 37],
-    "note": "A blue hatchback seen from the side, facing right: it drives along the title street (parked when Reduce motion is on)."
+    "ops": [{ "op": "flipX" }],
+    "note": "A blue hatchback seen from the side. The sheet draws it facing left, so it's mirrored to face right, the way it drives along the title street (playtest 4: it drove backwards). Parked when Reduce motion is on."
   },
   "title-shrub": {
     "pack": "me",

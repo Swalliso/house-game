@@ -233,6 +233,14 @@
 .rider::after {
   right: calc(var(--px) * 12);
 }
+/* How to play and Settings hang side by side, wider than Start above them: their chains hang
+   a quarter in from each end, so they meet Start instead of the air beside it (playtest 4). */
+.rider-pair::before {
+  left: 25%;
+}
+.rider-pair::after {
+  right: 25%;
+}
 .title-main.btn,
 .title-new.btn {
   min-width: calc(var(--px) * 150);
@@ -254,7 +262,7 @@
   min-width: calc(var(--px) * 72);
 }
 
-/* --- The credit, on the far sidewalk ---------------------------------------------------- */
+/* --- The jam note, on the far sidewalk -------------------------------------------------- */
 
 .title-footer {
   position: absolute;
@@ -274,11 +282,6 @@
   box-shadow: var(--shadow-card);
   pointer-events: auto;
 }
-.title-footer a {
-  color: var(--wood-deep);
-  font-weight: 700;
-}
-
 /* A narrower window: a smaller wordmark, and the pitch on two lines, so the houses stay clear
    of the sign. */
 @media (max-width: 1500px) {

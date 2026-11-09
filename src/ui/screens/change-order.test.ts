@@ -11,7 +11,7 @@ import {
   type ChangeOrderId,
   type ChangeOrderView,
 } from '../../rules/index.ts';
-import { sheetTerms } from './ChangeOrderScreen.tsx';
+import { ORDER_FLAVOR, orderFlavor, sheetTerms } from './ChangeOrderScreen.tsx';
 
 /** The sheet's view of an order as the rules build it (run.ts orderView), without progress. */
 function viewOf(id: ChangeOrderId): ChangeOrderView {
@@ -53,5 +53,18 @@ describe("a change order's sheet", () => {
         def.modifiers.map((m) => modifierText(CONTENT, m)),
       );
     }
+  });
+});
+
+describe("a phase effect's flavor line (playtest 4)", () => {
+  it('shows on about one phase effect in four, the same line every time for the same run', () => {
+    const lines = Array.from({ length: 2000 }, (_, k) => orderFlavor(`seed${k}`, 'heatWave', 5));
+    const shown = lines.filter((l) => l !== null);
+    expect(shown.length / lines.length).toBeGreaterThan(0.2);
+    expect(shown.length / lines.length).toBeLessThan(0.3);
+    for (const l of shown) expect(ORDER_FLAVOR).toContain(l);
+    // Every line turns up, and a replay of the same run shows the same one.
+    expect(new Set(shown).size).toBe(ORDER_FLAVOR.length);
+    expect(orderFlavor('zcndxm', 'heatWave', 5)).toBe(orderFlavor('zcndxm', 'heatWave', 5));
   });
 });

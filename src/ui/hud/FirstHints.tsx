@@ -21,13 +21,13 @@ import { CONTENT, glossary, SCORE_LABELS } from '../../rules/index.ts';
 import { BUILD_CHANNEL } from '../build-info.ts';
 import { banner, busy } from '../fx/director.ts';
 import { Button, Icon } from '../kit/kit.tsx';
-import { appScreen, earlyOffer, run } from '../store.ts';
+import { appScreen, cardsRenovate, earlyOffer, run } from '../store.ts';
 import { devicePixelRatio, uiPixel } from '../theme/pixel.ts';
 import { placeFirstHint, type HintPlace, type HintSpot } from './first-hint-place.ts';
 import './first-hints.css';
 
 export type HintId =
-  'firstWeek' | 'checklist' | 'early' | 'shop' | 'fixture' | 'changeOrder' | 'arrival';
+  'firstWeek' | 'checklist' | 'early' | 'shop' | 'fixture' | 'changeOrder' | 'arrival' | 'renovate';
 
 const KEY = `openhouse:${BUILD_CHANNEL}:hints`;
 
@@ -106,6 +106,8 @@ const HINTS: Record<HintId, Hint> = {
       'A change to the weather or the season just happens, and lasts this phase only.',
     spot: 'underGoods',
   },
+  // Playtest 4: nothing said a spare card of a room type could renovate, so it went unused.
+  renovate: { title: G.renovate.title, text: G.renovate.text, spot: 'overScore' },
   arrival: {
     title: 'Someone’s moving in',
     text:
@@ -132,6 +134,7 @@ function current(seen: ReadonlySet<string>): HintId | null {
     // the reserve.
     ['changeOrder', s.screen === 'changeOrder'],
     ['arrival', building && s.reserve.some((r) => r.arrival !== undefined)],
+    ['renovate', building && cardsRenovate.value.some(Boolean)],
   ];
   for (const [id, now] of due) if (now && !seen.has(id)) return id;
   return null;

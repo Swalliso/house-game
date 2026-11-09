@@ -227,9 +227,9 @@ describe('Blackout Curtains', () => {
 });
 
 describe('Soundproofing', () => {
-  it('Loud neighbors, the street included, can’t take points off its room', () => {
+  it('Loud neighbors, named (the street included), can’t take points off its room', () => {
     expectText('soundproofing', 'Fits any room', [
-      'Loud neighbors (the street too) can’t take points off it',
+      'Loud neighbors (the street, Garages, Playrooms, and Pools) can’t take points off it',
     ]);
     // On the street beside a Garage: 3 − 2 − 2 is −1 without it, a clean 3 with it.
     const rows = emptyRows(6, 6);

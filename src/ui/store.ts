@@ -389,14 +389,19 @@ export const toolPreview = computed<ToolPreview | null>(() => {
 });
 
 /**
+ * Which hand cards can renovate a room now (D-102): they show a Renovate chip (playtest 4:
+ * nothing on a card said it could, so the option went unseen).
+ */
+export const cardsRenovate = computed(() =>
+  run.value.hand.map((_, i) => rules.renovateTargets(run.value, 'hand', i).length > 0),
+);
+
+/**
  * Which cards have somewhere to go, for greying out the rest: a spot, or a room to renovate
  * (a renovate-only card still doesn't count for the free redraw, D-070).
  */
 export const cardsFit = computed(() =>
-  run.value.hand.map(
-    (_, i) =>
-      rules.cardFits(run.value, i) || rules.renovateTargets(run.value, 'hand', i).length > 0,
-  ),
+  run.value.hand.map((_, i) => rules.cardFits(run.value, i) || !!cardsRenovate.value[i]),
 );
 /** The same for reserve pieces and supplies. */
 export const reserveFit = computed(() =>
