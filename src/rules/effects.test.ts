@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import type { Content, PieceId, PieceScore, Rot, Tally } from './index.ts';
 import { placedCells } from './grid.ts';
 import { computeLayout } from './layout.ts';
-import { checkPlacement, REASONS } from './placement.ts';
+import { checkPlacement, REASONS, roomToo } from './placement.ts';
 import { tallyHouse } from './scoring.ts';
 import { emptyRows, houseFrom, TEST_CONTENT as C, withPieces, type Placement } from './testing.ts';
 
@@ -686,7 +686,7 @@ describe('placement: the Garage', () => {
   it('must also touch the house', () => {
     const house: Placement[] = [['bedroom', 4, 2]];
     expect(check(C, rows, house, 'garage', 4, 4).legal).toBe(true); // the house and the street
-    expect(check(C, rows, house, 'garage', 0, 4).reason).toBe(REASONS.disconnected);
+    expect(check(C, rows, house, 'garage', 0, 4).reason).toBe(roomToo('Garage'));
     expect(check(C, rows, house, 'garage', 6, 2).reason).toBe(reason); // the house only
   });
 });

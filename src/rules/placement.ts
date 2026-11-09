@@ -28,7 +28,7 @@ import { cellIndex, inBounds, ORTHOGONAL, placedCells } from './grid.ts';
 import { terrainAt } from './lot.ts';
 import { isRoom, pieceDef, type Layout } from './layout.ts';
 import { isType, meetsCondition } from './selectors.ts';
-import { conditionText } from './text.ts';
+import { conditionText, definite } from './text.ts';
 
 export const REASONS = {
   offLot: "That's off the lot.",
@@ -44,6 +44,12 @@ export const REASONS = {
   split: 'This would split the house.',
   noDemolitions: 'No demolitions left.',
 } as const;
+
+/** "The Garage is a room: it must connect to the house." */
+export function roomToo(name: string): string {
+  const the = definite(name);
+  return `${the.charAt(0).toUpperCase()}${the.slice(1)} is a room: it must connect to the house.`;
+}
 
 /** The house as it would be with the piece added (or null if it can't even be laid down). */
 export interface PlacementCheck extends Legality {
@@ -91,7 +97,10 @@ export function checkPlacement(
   }
   const found = finds.length > 0 ? { finds } : {};
   if (def.category === 'indoor' && layout.hasIndoor && !touchesIndoor(content, layout, cells)) {
-    return fail(REASONS.disconnected);
+    // A room built to a requirement (the Garage, by the street or a Driveway) says it's a room:
+    // playtest 4 read the card as if the street alone would do.
+    const requires = def.effects.some((e) => e.kind === 'requires' && e.blocksPlacement);
+    return fail(requires ? roomToo(def.name) : REASONS.disconnected);
   }
   const blocking = def.effects.filter(
     (e): e is Extract<typeof e, { kind: 'requires' }> => e.kind === 'requires' && e.blocksPlacement,

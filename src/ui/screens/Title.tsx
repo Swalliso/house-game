@@ -109,13 +109,10 @@ export function Title() {
           </nav>
         </div>
       </main>
+      {/* LimeZu's credit is in How to play's Credits and CREDITS.md, which their licenses allow
+          (playtest 4: the title keeps just the jam note). */}
       <footer class="title-footer">
-        <span class="title-credit">
-          A game jam entry · theme: It's a house · art by{' '}
-          <a href="https://limezu.itch.io/" target="_blank" rel="noreferrer">
-            LimeZu
-          </a>
-        </span>
+        <span class="title-credit">A game jam entry · theme: It's a house</span>
       </footer>
     </TitleBackdrop>
   );

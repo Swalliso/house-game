@@ -142,7 +142,7 @@ describe('the offer', () => {
     expect(offered(plain.events).map((e) => e.phase)).toEqual([2, 4]);
   });
 
-  it('is drawn from co/<milestone> among the client’s own, then the generic ones', () => {
+  it('is drawn evenly from co/<milestone> among the client’s own and the generic ones', () => {
     const content = seven(withClient({ changeOrders: ['thanksgiving', 'goldenRetriever'] }));
     const r = createRules(content);
     const ids: ChangeOrderId[] = ['thanksgiving', 'goldenRetriever', 'workingFromHome', 'heatWave'];

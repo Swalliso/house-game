@@ -272,8 +272,11 @@
 .inspect .budget-change.bad {
   color: var(--bad);
 }
+/* The kit's buttons keep to one line; these may wrap, so they never run past the panel. */
 .inspect .sell-button,
 .inspect .use-tool {
   align-self: flex-start;
+  max-width: 100%;
   margin-top: var(--space-2);
+  white-space: normal;
 }

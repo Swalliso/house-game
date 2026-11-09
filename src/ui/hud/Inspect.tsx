@@ -402,9 +402,16 @@ function ToolInfo({ id, i }: { id: ToolId; i: number }) {
       )}
       {p?.ok && <SetChanges gained={p.setsGained} lost={p.setsLost} />}
       {p?.ok && <SpecChanges gained={p.specsGained} lost={p.specsLost} />}
+      {/* The name is the heading already, so a long one never runs the button off the panel
+          (playtest 4: "Use Remodel Plans: Full House"). */}
       {!aimed && (
-        <Button class="use-tool" disabled={!p?.ok} onClick={() => useToolNow({ t: 'useTool', i })}>
-          Use {def.name}
+        <Button
+          class="use-tool"
+          disabled={!p?.ok}
+          onClick={() => useToolNow({ t: 'useTool', i })}
+          aria-label={`Use ${def.name} now`}
+        >
+          Use it now
         </Button>
       )}
     </>
@@ -439,7 +446,8 @@ function RenovateHint({ id }: { id: PieceId }) {
   const type = CONTENT.pieces[def.countsAs ?? def.id].name;
   return (
     <p class="muted">
-      Or <Tip term="renovate">renovate</Tip>: point at an outlined {type} ({RENOVATE_GAIN}).
+      Or <Tip term="renovate">renovate</Tip> one in place, with nothing torn down: point at an
+      outlined {type} ({RENOVATE_GAIN}).
     </p>
   );
 }
@@ -615,8 +623,9 @@ function ItemInfo({
           icon="coin"
           onClick={() => sell(sellAs.from, sellAs.i)}
           title="Selling pays half its price, rounded down"
+          aria-label={`Sell for ${price} budget`}
         >
-          Sell for {price} budget
+          Sell for {price}
         </Button>
       )}
     </>

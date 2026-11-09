@@ -17,6 +17,7 @@ import {
 } from '../../rules/index.ts';
 import {
   cardsFit,
+  cardsRenovate,
   demolishArmed,
   inspected,
   reroll,
@@ -98,8 +99,10 @@ function CardView({ card, i }: { card: CardData; i: number }) {
   const def = CONTENT.pieces[card.id];
   const text = cardText(CONTENT, def);
   const fits = cardsFit.value[i] ?? true;
+  const renovates = cardsRenovate.value[i] ?? false;
   const isSelected = isPicked('hand', i);
   const kind = kindOf(def);
+  const type = CONTENT.pieces[def.countsAs ?? def.id].name;
   // A pack (D-106) doesn't turn, so it never shows a turn left from another card this week.
   const rot = isSelected && !def.pack ? rotation.value : 0;
   // A member's room (M4b, D-103): whose it is, before the card's notes. Only the ?debug panel
@@ -120,6 +123,16 @@ function CardView({ card, i }: { card: CardData; i: number }) {
       note={notes.length > 0 ? notes.join(' ') : undefined}
       chips={
         <>
+          {renovates && (
+            <Chip
+              tone="uncommon"
+              icon="star"
+              class="renovate-chip"
+              title={`It can renovate a ${type} you have, in place: pick it, then point at an outlined room`}
+            >
+              Renovate
+            </Chip>
+          )}
           <Chip tone="wood">{KIND_LABEL[kind]}</Chip>
           <TagChips tags={def.tags} />
         </>
