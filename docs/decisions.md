@@ -1246,6 +1246,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - A link pays only when the rooms along it read their neighbors, and few do. A Hallway earned 44 Wow a copy (111 for the Long Hallway), and greedy built one in a quarter of runs.
 - With the pay, on 200 held-out seeds: 1.67 a run, in 84% of runs, about 610 Wow a copy. Wow ×1.07\*, Cozy +6\*, wins +1.5 points (within noise). The outline pays a little (H1g −7\*). (\* = the 95% interval excludes no change.)
 - The pack alone lost 9.5 points of wins\* at complexity 2; with the pay it sprawled (glance test −17.5\*); and paying only between rooms made it a dead card (−10\*).
+- This PR's own check, greedy on 200 held-out seeds (`--seed check`), paired against develop: wins 44.5% → 48.0% (+3.5 points [−0.7, +7.7], within noise), Wow ×1.077 [1.012–1.147]\*, Hallways 0.24 → 1.65 a run. §8's criteria all pass. The estimate fix below changes nothing on its own (wins +0.0, Wow ×1.008).
 
 **Changes:**
 - The content (`pieces.ts`). D-046's "a Hallway isn't a neighbor for bonuses" stands.
