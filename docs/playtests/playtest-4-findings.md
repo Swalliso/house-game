@@ -2,7 +2,7 @@
 
 **Date:** 2026-11-09. **Build:** /dev/ at 0b9e9db (PR #17 merged into develop). **Run:** seed `zcndxm`, the Hendersons, the General Contractor. Won 32,057 Wow against 30,625.
 
-**Status:** research notes only. Nothing in the code or the decision log changed. This file is uncommitted: commit it with the first fix PR, or delete it.
+**Status:** research notes, committed with the quick-fix PR (D-112). Your answers so far are in §17.
 
 **How this was made:** the run code replays exactly in a harness (every number below about the run comes from `preview()` on the replayed state). Ten read-only investigators took one area each, using the harness, the sim, the code, research.md and the web. A reviewer then re-ran the claims that matter most. Where a number wasn't re-checked, it says so.
 
@@ -360,6 +360,16 @@ About your run:
 16. Weekend Crew: bought at shop 4 and never used. Saving it, or unclear when to use it?
 17. Working from home: accepted, then missed (the Home Office came in week 23). Did you notice the miss?
 18. When you sold the Full House plans, did you know Full House needs a Garage and a Hallway?
+
+## 17. Your answers (2026-11-09)
+
+- **Subtitle:** leave it as it is for now.
+- **Porch:** Look 1, the safe one: the gable is painted out, and the porch roof is a flat deck under the balcony. It's in the quick-fix PR.
+- **Inspect:** click to hold, plus the house rules folded into one row. That's the small UI PR.
+- **Bigger rooms:** maybe a "fusion" ability, like demolish, reroll or ban, or a shop item. It needs a deep dive of its own, so it went to the layout session.
+- **The Garage:** detached Garages, maybe with sidewalk or stone-path tiles beside the Driveway's. Not certain; also with the layout session.
+- **Legibility:** no highlights on combo partners, but less guesswork: "+1 every week" says little when other systems make it +150. It has its own deep-dive session.
+- **The Hallway experiment:** waits for the layout session's report.
 
 ---
 
