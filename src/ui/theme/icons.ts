@@ -524,6 +524,207 @@ export const ICONS = {
     .kkkkkk.
     ........
   `,
+  // --- Blueprints (8×8; Dream Home 9×9, D-141): a blueprint's art slot in the shop and in a crate, and its slot
+  // in your goods (sprites.ts BLUEPRINT_ICONS). Each draws its name, not its numbers ------------
+  /** Feng Shui: a yin-yang. */
+  fengShui: `
+    ..kkkk..
+    .kwwwsk.
+    kwwswwsk
+    kwwwwssk
+    kwwssssk
+    kwsswssk
+    .kwsssk.
+    ..kkkk..
+  `,
+  /** Curb Appeal: a mailbox at the curb, its flag up. */
+  curbAppeal: `
+    .kkkkk..
+    kCBBBBkx
+    kBBBBBkx
+    kBBBBBkk
+    kkkkkkk.
+    ..kok...
+    ..kok...
+    vvkokvvv
+  `,
+  /** Quiet Hours: a crescent moon and a z. */
+  quietHours: `
+    ..kk.kkk
+    .kuyk.k.
+    kuyk.k..
+    kyyk.kkk
+    kyyYk...
+    kyyYYkkk
+    .kyYYYk.
+    ..kkkk..
+  `,
+  /** Green Thumb: a sprout in a clay pot. */
+  greenThumb: `
+    .kk..kk.
+    kAvkkvVk
+    kvvvvvVk
+    .kkvVkk.
+    ..kvVk..
+    kkkkkkkk
+    .knnnNk.
+    ..kkkk..
+  `,
+  /** Party House: a party hat with a pom-pom. */
+  partyHouse: `
+    ...kk...
+    ..kyyk..
+    ..kqrk..
+    .kqqrrk.
+    .kyyyyk.
+    kqqqrrrk
+    kyqqrryk
+    kkkkkkkk
+  `,
+  /** Waterfront: a sailboat on the water. */
+  waterfront: `
+    ...k....
+    ..kwk...
+    ..kwwk..
+    .kwwwwk.
+    kkkkkkkk
+    kdoooodk
+    CkkkkkkC
+    BCBBCBBC
+  `,
+  /** Open Concept: a floor plan, the wall between its table and its sofa opened. */
+  openConcept: `
+    kkkkkkkk
+    kiiikiik
+    kiiikiik
+    kooiiBBk
+    kooiiBBk
+    kiiiiiik
+    kiiikiik
+    kkkkkkkk
+  `,
+  /** Good Bones: a house's timber frame. */
+  goodBones: `
+    ...kk...
+    ..khhk..
+    .khkkhk.
+    khk..khk
+    khhhhhhk
+    khkkkkhk
+    khk..khk
+    kkk..kkk
+  `,
+  /** It's a House: a house, with a chimney. */
+  itsAHouse: `
+    ...kk.kk
+    ..knnkmk
+    .knnnnkk
+    knnnnnnk
+    kkkkkkkk
+    kiCiiddk
+    kiiiiddk
+    kkkkkkkk
+  `,
+  /** Country Living: a red barn. */
+  countryLiving: `
+    ...kk...
+    ..kxxk..
+    .kxxxxk.
+    kxxwwxxk
+    kxxxxxxk
+    kxwkkwxk
+    kxwkkwxk
+    kkkkkkkk
+  `,
+  /** Mood Lighting: a candle, lit. */
+  moodLighting: `
+    ...kk...
+    ..knyk..
+    ..kyuk..
+    ..kkkk..
+    ..kwGk..
+    ..kwGk..
+    kkkwGkkk
+    .kkkkkk.
+  `,
+  /** Show Home: a sign on the lawn. */
+  showHome: `
+    kkkkkkkk
+    kwwwwwwk
+    kwxxxxwk
+    kwwwwwwk
+    kkkkkkkk
+    ...kk...
+    ...kk...
+    .vvkkvv.
+  `,
+  /** Solar Panels: the sun over a panel. */
+  solarPanels: `
+    ..kyyk..
+    .kyuyyk.
+    ..kyyk..
+    kkkkkkkk
+    kbCbbCbk
+    kCCCCCCk
+    kbCbbCbk
+    kkkkkkkk
+  `,
+  /** Crown Jewel: a gold crown, a ruby set in it. */
+  crownJewel: `
+    .k.kk.k.
+    kykyykyk
+    kyyyyyyk
+    kyyxxyyk
+    kYYxXYYk
+    kkkkkkkk
+    kYYYYYYk
+    kkkkkkkk
+  `,
+  /** Dream Home: a house with a heart in it. */
+  dreamHome: `
+    ...kkk...
+    ..kqqqk..
+    .kqqqqqk.
+    kkkkkkkkk
+    kWxxWxxWk
+    kWxxxxxWk
+    kWWxxxWWk
+    kWWWxWWWk
+    kkkkkkkkk
+  `,
+  /** Last-Minute Push: an hourglass, nearly run out. */
+  lastMinutePush: `
+    kkkkkkkk
+    .kwwwwk.
+    ..kwwk..
+    ...kk...
+    ..kwyk..
+    .kwyywk.
+    .kyyyyk.
+    kkkkkkkk
+  `,
+  /** Model Home: a little house under glass, on a stand. */
+  modelHome: `
+    ..kkkk..
+    .kcWcck.
+    kccxxcck
+    kcxxxxck
+    kcwkkwck
+    kkkkkkkk
+    kooooomk
+    kkkkkkkk
+  `,
+  /** Ahead of Schedule: a calendar page, ticked. */
+  aheadOfSchedule: `
+    .k....k.
+    kkkkkkkk
+    kxxxxxxk
+    kkkkkkkk
+    kwwwwvwk
+    kwvwvwwk
+    kwwvwwwk
+    kkkkkkkk
+  `,
   // --- Crews (8×8): a crew's chip, and its card's picture on the crew pick at 4 UI px per art
   // px (sprites.ts CREW_ICONS; the General Contractor wears the Weekend Crew's hard hat) -----
   /** The Landscaper: a garden spade, its grip up. */

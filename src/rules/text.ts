@@ -488,8 +488,9 @@ export function memberText(content: Content, def: PieceDef): string {
 export function cardText(content: Content, def: PieceDef): CardText {
   const effects = def.effects.map((e) => {
     const text = effectText(content, e);
-    // A room must join the house too, which "Must be built touching the street or a Driveway"
-    // left out (playtest 4: a Garage by the street read as if the street alone would do).
+    // A room must join the house too, which "Must be built touching …" leaves out (playtest 4:
+    // a Garage by the street read as if the street alone would do; since D-140 the Garage is
+    // built like any room, and its line reads "Earns nothing unless …").
     const touching = 'Must be built touching ';
     return def.category === 'indoor' &&
       e.kind === 'requires' &&
@@ -558,9 +559,10 @@ function pays(e: Effect): boolean {
 /**
  * A compact hand card's lines (D-121); Inspect has the whole text. A piece shows its first line
  * that pays, so a Hallway shows "+2 per touching room (up to 4)" rather than its link, and the
- * Garage "+1 every week" rather than where it must go (the lot shows that). A requirement that
+ * Driveway what it pays rather than where it must start (the lot shows that). A requirement that
  * isn't about placement follows the pay, since without it the piece earns nothing: the
- * Doghouse's "+1 every week in a fenced yard". A piece with no line that pays shows its first.
+ * Doghouse's "+1 every week in a fenced yard", and the Garage's "+5 by the street or a
+ * Driveway" (D-140). A piece with no line that pays shows its first.
  * A fixture shows where it goes and its first effect, which is what it does to its room (Makes
  * it Sunny, Counts as 2 Bedrooms); its "Earns +25%" is in Inspect.
  */
@@ -576,7 +578,16 @@ export function handCardLines(content: Content, card: Card): string[] {
   const unless = def.effects.find(
     (e): e is Extract<Effect, { kind: 'requires' }> => e.kind === 'requires' && !e.blocksPlacement,
   );
-  return [unless ? `${lines[i]} ${conditionPhrase(content, unless.condition)}` : lines[i]!];
+  if (!unless) return [lines[i]!];
+  // A steady earner that waits on touching something says both in a few words (D-140): the
+  // Garage's "+5 by the street or a Driveway" fits the card's two lines at every window size,
+  // where "+5 every week if touching the street or a Driveway" lost its last words.
+  const pay = def.effects[i]!;
+  if (pay.kind === 'steady' && 'touching' in unless.condition) {
+    const what = conditionText(content, unless.condition).replace(/^touching /, '');
+    return [`${signed(pay.amount)} by ${what}`];
+  }
+  return [`${lines[i]} ${conditionPhrase(content, unless.condition)}`];
 }
 
 /** "The street is", "the Pond is", but "Trees are". */
@@ -897,6 +908,13 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
         e.kind === 'requires' ? [`${article(p.name)} ${conditionText(content, e.condition)}`] : [],
       ),
     );
+  // The sets with a ×Mult, at the content's own number: "the Full House set (×1.5)" (D-140).
+  const sparkleSets = joinWords(
+    Object.values(content.sets)
+      .filter((set) => set.times !== undefined)
+      .map((set) => `the ${set.name} set (×${multNumber(set.times!)})`),
+    'and',
+  );
   return {
     comfort: {
       title: L.points,
@@ -908,7 +926,7 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
     },
     sparkle: {
       title: L.xMult,
-      text: `Multiplies ${L.mult} itself. Rare: the Full House set (×2) and a few Rare goods have it, and each needs a setup. Each source counts once a week.`,
+      text: `Multiplies ${L.mult} itself. Rare: ${sparkleSets ? `${sparkleSets} and ` : ''}a few Rare goods have it, and each needs a setup. Each source counts once a week.`,
     },
     wow: {
       title: L.total,
@@ -1040,6 +1058,61 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
       title: 'Strike a card',
       text: `Pick a card type: it’s never drawn again this run. ${svc.strike.base} budget, ${svc.strike.step} more each strike (up to ${svc.strike.max}).`,
     },
+  };
+}
+
+// ---------------------------------------------------------------------------------------
+// First contact (D-142): the short forms a new player meets first. The job board names the
+// house rules once, for every card on it, and each first-time hint keeps to one budget of
+// words. The glossary above keeps the full texts, for the tips.
+
+/**
+ * The house rules every client has, for the job board: their names, a line each, in the
+ * checklist's order, then what a held one adds. A client's own numbers are on its checklist.
+ */
+export function houseRulesText(content: Content): string {
+  const names: string[] = [];
+  for (const client of Object.values(content.clients)) {
+    for (const spec of client.specs) {
+      if (spec.group !== 'wishes' && !names.includes(spec.name)) names.push(spec.name);
+    }
+  }
+  const adds = `+${multNumber(content.balance.rules.specBonus)} ${SCORE_LABELS.mult}`;
+  return [...names, `Each adds ${adds} in every week it holds.`].join('\n');
+}
+
+/** How many words a first-time hint may run to (D-142). */
+export const HINT_WORDS = 25;
+
+/** The first-time hints (D-045) that state a rule or a number. */
+export type HintTerm = 'score' | 'checklist' | 'early' | 'shop' | 'fixture' | 'renovate';
+
+/** Each within HINT_WORDS, with its numbers from the content. */
+export function hintText(content: Content): Record<HintTerm, string> {
+  const b = content.balance;
+  const L = SCORE_LABELS;
+  const earlyBudget = b.early.budgetPerWeek[0] ?? 0;
+  const earlyPct = b.early.scorePct[0] ?? 0;
+  return {
+    score:
+      `Pieces earn ${L.points} from what they touch, so build them side by side. ` +
+      `${L.mult} multiplies ${L.points} into ${L.total}.`,
+    checklist:
+      `Each line that holds adds +${multNumber(b.rules.specBonus)} ${L.mult} every week. ` +
+      `The house rules fold into one row after this: click it to open them.`,
+    early:
+      `Target met? Complete early: the weeks left play out fast, and each week saved pays ` +
+      `${earlyBudget} budget and ${earlyPct}% of this milestone’s ${L.total}.`,
+    shop:
+      `Spend your budget on goods for the house; hover one to read it. Each milestone met ` +
+      `pays ${b.milestoneBudget} more.`,
+    fixture:
+      'Fixtures upgrade a piece you’ve built, one each. Installing from your hand is the ' +
+      'week’s build; from your supplies it’s free.',
+    renovate:
+      `Once the house has every room of a type its checklist wants, a spare card renovates ` +
+      `one instead: +${b.renovate.pointsPerLevel} ${L.points} a level, up to ` +
+      `${b.renovate.maxLevel}.`,
   };
 }
 

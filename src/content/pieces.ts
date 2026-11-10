@@ -171,6 +171,10 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
       { kind: 'neighbor', match: { property: 'room' }, amount: 2, max: 4 },
     ],
   },
+  // The Garage is built like any room (D-140): it earns only while the street or a Driveway
+  // touches it, as a Patio earns only beside a room (D-105). Until D-140 it couldn't be built
+  // anywhere else, and with houses a median 10 rows back from the street the card had no legal
+  // spot in 82% of the weeks it was offered. Unreached, it still counts for Full House.
   garage: {
     id: 'garage',
     name: 'Garage',
@@ -187,10 +191,10 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
       {
         kind: 'requires',
         condition: { touching: { any: [{ feature: 'street' }, { piece: 'driveway' }] } },
-        blocksPlacement: true,
+        blocksPlacement: false,
       },
-      { kind: 'steady', amount: 1 },
-      { kind: 'economy', budget: 1, every: 3 }, // garage sales
+      { kind: 'steady', amount: 5 },
+      { kind: 'economy', budget: 1, every: 2 }, // garage sales
     ],
   },
   homeOffice: {
@@ -312,10 +316,12 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     fromPhase: 0,
     effects: [{ kind: 'enclosure', perTile: 1, cap: 6 }],
   },
-  // The Driveway is a pack (D-106): one card places 1–6 connected tiles that reach the street
-  // or a Driveway, as one piece. The only piece that can be built over the creek (a culvert),
-  // so a house on the far bank can still have a Garage. It replaced the 1×3 and 1×5 cards, at
-  // their combined weight.
+  // The Driveway is a pack (D-106): one card places 1–8 connected tiles that reach the street
+  // or a Driveway, as one piece. Its job is the Garage (D-140): it pays for touching one, and
+  // the Garage earns only once the drive (or the street) reaches it. 8 tiles, as the Fence: a
+  // Garage on the street side of a median house is 8 rows back. The only piece that can be
+  // built over the creek (a culvert), so a house on the far bank can still have a Garage. It
+  // replaced the 1×3 and 1×5 cards, at their combined weight.
   driveway: {
     id: 'driveway',
     name: 'Driveway',
@@ -323,7 +329,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     category: 'yard',
     canCover: ['creek'],
     shape: ['###'],
-    pack: { maxTiles: 6, shapes: [['###'], ['#####']] },
+    pack: { maxTiles: 8, shapes: [['###'], ['#####']] },
     tags: [],
     drawWeight: 10, // as the Fence (D-121)
     complexity: 2,
@@ -334,7 +340,9 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
         condition: { touching: { any: [{ feature: 'street' }, { piece: 'driveway' }] } },
         blocksPlacement: true,
       },
-      { kind: 'conditional', when: { in: 'frontYard' }, effect: { kind: 'steady', amount: 1 } },
+      { kind: 'neighbor', match: { piece: 'garage' }, amount: 3, max: 1 },
+      // +1 anywhere (D-140, settling D-080): "in the front yard" read as "square to the street".
+      { kind: 'steady', amount: 1 },
     ],
   },
   // The "-house" family: small outbuildings that all carry the House tag.

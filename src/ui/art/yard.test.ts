@@ -974,7 +974,7 @@ describe('packs (D-106): any tiles a player can click out', () => {
   });
 
   it('park the car on every Driveway of two tiles or more, in any turn, on its tiles', () => {
-    // Every pack of 2 to 6 tiles (each set of tiles up to where it lies), alone on the lot.
+    // Every pack of 2 to 8 tiles (each set of tiles up to where it lies), alone on the lot.
     let shapes = [['#']];
     for (let n = 2; n <= CONTENT.pieces.driveway.pack!.maxTiles; n++) {
       const next = new Map<string, string[]>();
@@ -1001,9 +1001,10 @@ describe('packs (D-106): any tiles a player can click out', () => {
         }
       }
     }
-    // The last round was every pack of six tiles: 216 of them.
-    expect(shapes.length).toBe(216);
-  });
+    // The last round was every pack of eight tiles (D-140; six before): 2,725 of them. That's
+    // about 15,000 yards in all, 3 seconds alone and more beside the other files' tests.
+    expect(shapes.length).toBe(2725);
+  }, 60_000);
 
   it('look the same as their ghost, but for the parked car', () => {
     fc.assert(

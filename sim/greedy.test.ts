@@ -4,7 +4,8 @@
 // nearly always (recall against scoring every legal play); it must keep a checklist line its
 // best-looking spots would break, when keeping it is worth more (its estimate counts the lines
 // counts decide, exactly); it must see a Fence that closes a yard, which the cheap estimate
-// can't value; and its variants must complete early when told to, and play the same seed alike
+// can't value, and a Driveway that reaches a Garage, which the rules' suggested shapes don't
+// list (D-140); and its variants must complete early when told to, and play the same seed alike
 // until they do.
 
 import { describe, expect, it } from 'vitest';
@@ -20,7 +21,8 @@ import {
 } from '../src/rules/index.ts';
 import { followedLines } from '../src/rules/estimate.ts';
 import { computeLayout } from '../src/rules/layout.ts';
-import { emptyRows, houseFrom } from '../src/rules/testing.ts';
+import { emptyRows, houseFrom, type Placement } from '../src/rules/testing.ts';
+import { drivePlans, unreached } from './drive.ts';
 import { fencePlans } from './enclosure.ts';
 import { rankPlays, shortlist, TOP_K } from './policies/greedy.ts';
 import { greedy, makeGreedy, POLICIES, type Policy } from './policies/index.ts';
@@ -253,6 +255,98 @@ describe('the greedy bot', () => {
     const act = greedy.act(rules, s, stream('fence', 'act'));
     expect(act).toMatchObject({ t: 'place', from: 'hand', i: 0 });
     expect(rules.fencedYards(rules.apply(s, act).state)).toHaveLength(1);
+  });
+
+  it('lays a Driveway pack to a Garage nothing reaches, though no suggested shape does (D-140)', () => {
+    // A Bedroom on rows 12–13 of an empty 24 × 24 lot and a Garage under it, on rows 14–15: the
+    // street is 8 rows below. The rules list the pack as a straight 3 or 5, which can't reach.
+    const lot = emptyRows(24, 24);
+    const hand = (['driveway', 'flowerBed', 'lawn'] as const).map((id) => ({
+      kind: 'piece' as const,
+      id,
+    }));
+    const s: RunState = {
+      ...newRun('drive'),
+      house: houseFrom(CONTENT, lot, [
+        ['bedroom', 4, 12],
+        ['garage', 4, 14],
+      ]),
+      hand,
+    };
+    expect(unreached(rules, s, CONTENT.pieces.driveway).map((p) => p.defId)).toEqual(['garage']);
+    const garage = () => rules.currentTally(s).pieces.find((p) => p.defId === 'garage')!;
+    expect(garage().unmet).toBe('touching the street or a Driveway');
+    const listed = rules.legalPlacements(s).filter((p) => p.i === 0);
+    expect(listed.length).toBeGreaterThan(0);
+    expect(listed.every((p) => rules.scoreOnly(s, p) === rules.scoreOnly(s, listed[0]!))).toBe(
+      true,
+    );
+    // The planner's run: 8 tiles straight up from the street, under one of the Garage's columns.
+    const plans = drivePlans(rules, s, 'hand', 0);
+    expect(plans).toHaveLength(1);
+    expect(plans[0]).toMatchObject({ reaches: true, run: 8, target: 2 });
+    expect(plans[0]!.play).toMatchObject({
+      y: 16,
+      shape: ['#', '#', '#', '#', '#', '#', '#', '#'],
+    });
+    expect([4, 5]).toContain(plans[0]!.play.x);
+    // It's the week's best play (the Garage's 5 and the Driveway's 1 + 3), so greedy lays it.
+    const act = greedy.act(rules, s, stream('drive', 'act'));
+    expect(act).toEqual(plans[0]!.play);
+    const after = rules.apply(s, act).state;
+    expect(unreached(rules, after, CONTENT.pieces.driveway)).toEqual([]);
+    // Nothing to plan without a Garage that waits, or for another pack.
+    expect(drivePlans(rules, after, 'hand', 0)).toEqual([]);
+    const fence: RunState = { ...s, hand: [{ kind: 'piece', id: 'fence' }] };
+    expect(drivePlans(rules, fence, 'hand', 0)).toEqual([]);
+    expect(drivePlans(rules, s, 'hand', 1)).toEqual([]);
+  });
+
+  it('plans a longer drive in legs, around Trees and over the creek (D-140)', () => {
+    // The Garage two rows further back (rows 12–13): 10 tiles to the street, more than a pack.
+    const far: Placement[] = [
+      ['bedroom', 4, 10],
+      ['garage', 4, 12],
+    ];
+    const hand = [{ kind: 'piece' as const, id: 'driveway' as const }];
+    const s: RunState = {
+      ...newRun('drive'),
+      house: houseFrom(CONTENT, emptyRows(24, 24), far),
+      hand,
+    };
+    const [first] = drivePlans(rules, s, 'hand', 0);
+    // The first leg: a full pack from the street end, which doesn't reach yet.
+    expect(first).toMatchObject({ reaches: false, run: 10 });
+    expect(first!.play).toMatchObject({ y: 16, shape: ['#', '#', '#', '#', '#', '#', '#', '#'] });
+    expect(rules.checkPlay(s, first!.play).legal).toBe(true);
+    // With that leg down, the next pack finishes the run from the Driveway's end.
+    const leg: Placement = ['driveway', first!.play.x, 16, 0, first!.play.shape];
+    const s2: RunState = { ...s, house: houseFrom(CONTENT, emptyRows(24, 24), [...far, leg]) };
+    const [second] = drivePlans(rules, s2, 'hand', 0);
+    expect(second).toMatchObject({ reaches: true, run: 2 });
+    expect(second!.play).toMatchObject({ x: first!.play.x, y: 14, shape: ['#', '#'] });
+    expect(unreached(rules, rules.apply(s2, second!.play).state, CONTENT.pieces.driveway)).toEqual(
+      [],
+    );
+
+    // Trees under the Garage's two columns (row 19), with the Garage on rows 15–16: straight
+    // through is 7 tiles and a Tree, around is 8 tiles of open ground. It goes around.
+    const woods = emptyRows(24, 24).map((r, y) => (y === 19 ? `....TT${r.slice(6)}` : r));
+    const near: Placement[] = [
+      ['bedroom', 4, 13],
+      ['garage', 4, 15],
+    ];
+    const s3: RunState = { ...s, house: houseFrom(CONTENT, woods, near) };
+    const [around] = drivePlans(rules, s3, 'hand', 0);
+    expect(around).toMatchObject({ reaches: true, run: 8 });
+    expect(rules.checkPlay(s3, around!.play).clearedTrees).toEqual([]);
+    // A creek across the lot is no bar to a Driveway (its culvert); a pond across it is.
+    const creek = emptyRows(24, 24).map((r, y) => (y === 20 ? 'C'.repeat(24) : r));
+    const s4: RunState = { ...s, house: houseFrom(CONTENT, creek, near) };
+    expect(drivePlans(rules, s4, 'hand', 0)[0]).toMatchObject({ reaches: true, run: 7 });
+    const pond = emptyRows(24, 24).map((r, y) => (y === 20 ? 'P'.repeat(24) : r));
+    const s5: RunState = { ...s, house: houseFrom(CONTENT, pond, near) };
+    expect(drivePlans(rules, s5, 'hand', 0)).toEqual([]);
   });
 
   it('completes milestones early only when its early mode says so', () => {

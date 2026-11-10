@@ -1,7 +1,8 @@
 // Shop goods as the HUD and the shop describe them: names, rarity labels, and the text the
 // rules generate from their data (D-038). Rarity is a colored border plus a label, never
 // color alone (D-051). A fixture also says what it's worth in your house (D-107), from the
-// rules' fixtureValue: the UI only words the numbers.
+// rules' fixtureValue, and a blueprint from the rules' blueprintValue (D-141): the UI only words
+// the numbers.
 
 import {
   blueprintText,
@@ -13,12 +14,14 @@ import {
   toolText,
   upgradeText,
   type BlueprintId,
+  type BlueprintValue,
   type CrateId,
   type FixtureId,
   type FixtureValue,
   type PieceDef,
   type PieceId,
   type Rarity,
+  type RunStat,
   type ShopOffer,
   type ToolId,
   type UpgradeId,
@@ -199,6 +202,101 @@ export function FixtureWorth({ value }: { value: FixtureValue | null }) {
           about {signed(value.overRun)} over the run
         </Tip>
       </span>
+    </div>
+  );
+}
+
+/** One more of a run stat, as the line under a scaling ×Mult says it (Ahead of Schedule). */
+const STAT_EACH: Record<RunStat, string> = {
+  milestonesEarly: 'milestone completed early',
+};
+
+/**
+ * D-141: a blueprint's worth in your house, from the rules' blueprintValue: what it would add to
+ * a week's Wow (in the shop, the next week's), and roughly what that comes to over the rest of
+ * the run, each week left added up. The strip is the fixture's (shop.css), with the cases a
+ * week's snapshot gets wrong said in words: one that grows says how far, one that acts only in a
+ * phase's last week says so, budget is its own line with the coin, and a ×Mult that scales with
+ * early milestones says what each would add. A blueprint with nothing to add yet says what it's
+ * waiting for ("No Dark rooms yet"), quietly. `where` is the strip on a card, or a plain block in
+ * the inspect panel for a blueprint you hold.
+ */
+export function BlueprintWorth({
+  value,
+  where = 'card',
+}: {
+  value: BlueprintValue | null;
+  where?: 'card' | 'panel';
+}) {
+  if (!value) return null;
+  const wow = SCORE_LABELS.total;
+  const cls = where === 'card' ? 'pcard-worth' : 'good-worth';
+  const each = value.perStat && value.perStat.gain !== 0 && (
+    <span class="worth-host">
+      {signed(value.perStat.gain)} {wow} a week for each {STAT_EACH[value.perStat.stat]}
+    </span>
+  );
+  if (value.needs !== undefined) {
+    return (
+      <div class={`${cls} none`}>
+        <span class="worth-needs">{value.needs}</span>
+        {each}
+      </div>
+    );
+  }
+  // Wow leads; a blueprint that only pays budget is judged by that.
+  const sum = value.overRun || value.gain || value.budget;
+  const good = sum > 0;
+  const weeks = `${value.weeksLeft} ${value.weeksLeft === 1 ? 'week' : 'weeks'}`;
+  const mark = <Icon name={good ? 'up' : 'down'} />;
+  const when =
+    value.when === 'lastWeek'
+      ? 'in a phase’s last week'
+      : value.growsTo !== undefined
+        ? `a week, growing to ${signed(value.growsTo)}`
+        : 'a week';
+  const run = (
+    <Tip
+      title="Over the run"
+      text={`What it adds in each of the ${weeks} left in the run, added up, if the house stays as it is. It won’t, so take it as a rough guide.`}
+    >
+      about {signed(value.overRun)} over the run
+    </Tip>
+  );
+  return (
+    <div class={`${cls} ${good ? 'good' : 'bad'}`}>
+      {value.gain !== 0 && (
+        <span class="worth-gain">
+          <span class="worth-num">
+            {mark}
+            {signed(value.gain)}
+          </span>{' '}
+          {wow} {when}
+        </span>
+      )}
+      {value.gain !== 0 && each}
+      {value.overRun !== 0 && (
+        <span class="worth-run">
+          {/* Nothing in the first week (a Sapling that isn't a Tree yet): the run's sum leads. */}
+          {value.gain === 0 && <span class="worth-num">{mark}</span>}
+          {value.gain === 0 ? <>{wow}: </> : null}
+          {run}
+        </span>
+      )}
+      {value.budget !== 0 && (
+        <span class="worth-budget">
+          <span class="worth-num">
+            <Icon name="coin" />
+            {signed(value.budget)}
+          </span>{' '}
+          <Tip
+            title="Over the run"
+            text={`What it pays over the ${weeks} left in the run, if the house stays as it is. It won’t, so take it as a rough guide.`}
+          >
+            budget over the run
+          </Tip>
+        </span>
+      )}
     </div>
   );
 }

@@ -10,7 +10,7 @@
 
 import atlasUrl from '../../assets/atlas.png';
 import atlas from '../../assets/atlas.json';
-import type { CrewId, FixtureId, LotTraitId, Supply, ToolId } from '../rules/index.ts';
+import type { BlueprintId, CrewId, FixtureId, LotTraitId, Supply, ToolId } from '../rules/index.ts';
 import type { IconName } from './theme/art.ts';
 
 export type SpriteId = keyof typeof atlas.sprites;
@@ -62,6 +62,32 @@ export const TOOL_ICONS: Record<ToolId, IconName> = {
   remodelSuite: 'remodel',
   remodelFullHouse: 'remodel',
   weekendCrew: 'weekendCrew',
+};
+
+/**
+ * Each blueprint's icon (theme/icons.ts, D-141): its art slot in the shop and in a crate, its
+ * slot in your goods, and its heading in the inspect panel. One each, so a shelf of blueprints
+ * can be told apart at a glance; a blueprint without one fails typecheck.
+ */
+export const BLUEPRINT_ICONS: Record<BlueprintId, IconName> = {
+  fengShui: 'fengShui',
+  curbAppeal: 'curbAppeal',
+  quietHours: 'quietHours',
+  greenThumb: 'greenThumb',
+  partyHouse: 'partyHouse',
+  waterfront: 'waterfront',
+  openConcept: 'openConcept',
+  goodBones: 'goodBones',
+  itsAHouse: 'itsAHouse',
+  countryLiving: 'countryLiving',
+  moodLighting: 'moodLighting',
+  showHome: 'showHome',
+  solarPanels: 'solarPanels',
+  crownJewel: 'crownJewel',
+  dreamHome: 'dreamHome',
+  lastMinutePush: 'lastMinutePush',
+  modelHome: 'modelHome',
+  aheadOfSchedule: 'aheadOfSchedule',
 };
 
 export function supplyIcon(s: Supply): IconName {

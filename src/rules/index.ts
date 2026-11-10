@@ -1690,6 +1690,48 @@ export interface FixtureValue {
   overRun: number;
 }
 
+/**
+ * D-141: what a blueprint would add to the house as it stands, for the shop's line: the week's
+ * total with it in play, less without. In the shop the first week valued is the next phase's
+ * first, after its start-of-week transforms, as for a fixture (D-107).
+ */
+export interface BlueprintValue {
+  /** The Wow it adds in the week `when` names. */
+  gain: number;
+  /**
+   * The week `gain` is for: the first one valued, or, for a blueprint that acts only in a
+   * phase's last week (Last-Minute Push), the next of those.
+   */
+  when: 'week' | 'lastWeek';
+  /**
+   * For a granted growth timer (Good Bones): the most it adds in any one of the weeks left.
+   * Unset when it never passes `gain`.
+   */
+  growsTo?: number;
+  /** Weeks still to play in the run, the first one valued included; never overtime. */
+  weeksLeft: number;
+  /**
+   * Each of those weeks' gain, added up, with nothing more built: the house's timers run on,
+   * and each phase's last week counts as one. Roughly what it adds over the rest of the run.
+   */
+  overRun: number;
+  /** The budget it would pay over those weeks (Solar Panels). */
+  budget: number;
+  /**
+   * For a ×Mult that scales with a run stat (Ahead of Schedule's early milestones): what one
+   * more of it would add to `gain`. It depends on what the player does next, so it's shown
+   * beside the gain, never folded into it.
+   */
+  perStat?: { stat: RunStat; gain: number };
+  /**
+   * When it would add nothing in the weeks left: what it's waiting for, in a few words ("No
+   * Dark rooms yet").
+   */
+  needs?: string;
+  /** It's one of the run's blueprints already: this is what it's adding. */
+  held: boolean;
+}
+
 export interface Legality {
   legal: boolean;
   reason?: string;
@@ -1875,7 +1917,10 @@ export {
   fixtureText,
   glossary,
   handCardLines,
+  HINT_WORDS,
+  hintText,
   houseConditionText,
+  houseRulesText,
   lotTraitText,
   modifierText,
   multNumber,
@@ -1889,7 +1934,7 @@ export {
   toolText,
   upgradeText,
 } from './text.ts';
-export type { Term } from './text.ts';
+export type { HintTerm, Term } from './text.ts';
 export { earnedFor, roundHalfUp, weekTotal } from './scoring.ts';
 export { ruleValue, sourceName } from './modifiers.ts';
 export { meetsHouse, outlineOf, progressOf } from './conditions.ts';

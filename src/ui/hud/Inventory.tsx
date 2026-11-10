@@ -21,7 +21,7 @@ import { justArrived } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
 import { Button, Icon, Panel, Well } from '../kit/kit.tsx';
 import type { IconName } from '../theme/art.ts';
-import { supplyIcon } from '../sprites.ts';
+import { BLUEPRINT_ICONS, supplyIcon } from '../sprites.ts';
 import { inspected, reserveFit, run, selected, sell, suppliesFit, tool } from '../store.ts';
 import { isSelected, selectCard } from './actions.ts';
 import { arrivalOf, arrivalTag, midName } from './household.ts';
@@ -293,6 +293,7 @@ export function Inventory({ shop = false }: { shop?: boolean }) {
                     onClick={() => hover('blueprint', i)}
                     title={`${def.name}: always on`}
                   >
+                    <Icon name={BLUEPRINT_ICONS[b.id]} class="inv-glyph" />
                     <span class="inv-name">{def.name}</span>
                   </button>
                   {shop && (

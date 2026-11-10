@@ -349,7 +349,7 @@ Also: D-036 and D-043 (Accepted), where hand size becomes the `handSize` rule (3
 - Per-piece percentage bonuses still add, as in D-037.
 - The order is fixed (+Mult, then ×Mult), and each layer gets its own color and sound.
 
-**Amended by:** D-093 (Accepted 2026-11-06): one Entertainer per house (`maxInstances: 1`), beside M4a's Suite and Full House.
+**Amended by:** D-093 (Accepted 2026-11-06): one Entertainer per house (`maxInstances: 1`), beside M4a's Suite and Full House. D-140 (Proposed 2026-11-10): the Full House set is ×1.5, now that a Garage can be built like any room.
 **Why:** In Balatro and Combolands, big moments come from multipliers. Making them powerful but rare and conditional means you plan for them rather than stumble into them. Balatro puts ×Mult on 70% of its Rare jokers and 3% of its Common ones, and its players confuse +Mult with ×Mult when they look alike. Keeping multiplication in one weekly step avoids D-037's ×15–×36 per-piece blowups. Targets come from the sim's median curve, which ×Mult may steepen.
 **Changes:**
 - D-037 (Accepted): the week's formula.
@@ -500,6 +500,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 **Why:** A first run otherwise meets about 75 concepts. With no meta-progression in the jam, the run itself has to do the teaching.
 **Considered:** A fixed first contract. Rejected because it changes D-012 and needs a saved run count.
+*Extended by D-142 (Proposed 2026-11-10):* every first-time hint keeps to 25 words, how a week scores is a hint of its own in week 2, and the checklist's hint moves to week 3.
 
 ### D-046 · Defaults for the rules the docs leave open
 **Status:** Accepted · 2026-11-05 (with the plan's approval); proposed 2026-11-04
@@ -1059,6 +1060,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 **Why:** `house-systems-review.md` §4. In the sim, separate lines beat compound ones on the Kitchen and the Bathroom ratio, and the shape rules make a filled outline pay where today raggedness costs nothing.
 **Changes:** D-021 (Accepted): every checklist starts with the house rules, and specs can have a ceiling. D-085: the targets need a re-fit.
+*Proposed change by D-142 (2026-11-10, awaiting the user's OK):* a line that doesn't hold shows only the parts of its progress still missing ("0 Living Rooms (1–2)" without "1 Dining Room (≤ 1)"). A line the play being looked at flips shows every part, and the line's tip has the whole rule.
 
 ### D-102 · Renovate
 **Status:** Accepted · 2026-11-06 (D-093's option B; the team chose +4 a level, up to 2, and the name Renovate).
@@ -1085,6 +1087,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **Why:** the review's §4. A household line alone didn't make the bot build a household; rooms that arrive as cards did.
 **Changes:** D-036 (Accepted): a start-of-week step. M4b's change orders: the Twins and Grandma's moving in become arrivals.
 **2026-11-07 (M4b):** built (D-109). The other clients' members: Count Vladislav's Renfield (Framing, a 1×2 room: +2, +1 per touching room up to 3), the Barkers' Nana (Drywall, 2×2: +3, +2 per Pet piece up to 2), Juniper's Rowan (Drywall, a 1×2 studio: +2, +2 per view up to 2), and Dale's daughter Ivy (Framing, 2×2, Kid: +3, +2 if touching a Home Office). Their Bedroom ranges go 1–2, then 2–3 from the arrival.
+*D-142 (Proposed 2026-11-10):* the job board's card names who moves in on one line ("The twins and Grandma move in later"); when, and what they bring, is in the line's tip. The checklist's line is the name and the milestone ("Grandma at Drywall"), with the week in the name's tip.
 
 ### D-104 · Half-weight draws for a type at its limit
 **Status:** Accepted · 2026-11-06 (D-093's option B).
@@ -1116,6 +1119,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **Changes:** D-004 and D-036 (Accepted): a week's play can place a pack. D-049 (Accepted): the yard shapes. D-071: the variant cards. D-072: the enclosure probe.
 **2026-11-08 (M4 merged with `develop`):** M5a's painters draw a pack from its own tiles, never the card's shape: its ghost as the tiles are clicked out, the built pack, and the Moving Truck's carried pack. A Fence's picket line runs through any connected shape, and a lone tile is a short run with a post at each end. The house's car stands only on its Driveway's own tiles, and a Driveway of two tiles or more, of any shape, parks it (D-111).
 *Changed by D-121 (Proposed 2026-11-09):* the Fence and Driveway packs draw at 10, not 20, in the Layout row.
+*Changed by D-140 (Proposed 2026-11-10):* a Driveway pack is 1–8 tiles, as the Fence, and the Garage it runs to no longer has to be built beside it.
 
 ### D-107 · Showing what a fixture is worth
 **Status:** Accepted · 2026-11-06 (the team chose it, resolving D-092). Built with M4b's UI.
@@ -1130,6 +1134,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - In the shop, the value is for the next phase's first week, after its start-of-week transforms. Weeks left counts the rest of this phase and the later phases, not overtime.
 - A tie goes to the first host placed. ★ marks every host tied for best, and only when the gain is above 0. A loss is shown in orange (late Bunk Beds can lose Wow once the house has all its Bedrooms).
 - While installing, the host under the pointer drops its badge so its own label stands alone. A crate's fixture options get the shop's line too.
+**2026-11-10 (D-141, Proposed):** a blueprint gets the same kind of line, from `blueprintValue(state, id)`. Its run figure adds up each week left instead of multiplying one week, so it can differ from a fixture's for the same weekly gain. A fixture's line is unchanged.
 
 ### D-081 · M3 rules structure
 **Status:** Accepted · 2026-11-06 (proposed with the M3 pull request; held up in playtest 3, confirmed by the team). Implementation details within D-050, D-051, D-056, and Appendix A · M3a and M3b.
@@ -1867,6 +1872,47 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 **Changes:** D-097 (Accepted): the photos are a second downscale exception (its dated note). implementation-plan.md §7 M6's end screen.
 
+### D-142 · First contact: slimmer job cards, hints held to 25 words, and a tighter checklist
+**Status:** Proposed · 2026-11-10, with its phase pull request (`phase/first-contact`), from the friction review the user asked for the same day (its point 7: the reading a new player meets in the first minutes). For the user's playtest before it merges. No rules or balance change.
+**Decision:**
+- **A contract's card leads with what differs between the clients on offer:** who they are (the name, the rarity, the brief), their wishes, and the lot (its map, its sun and its traits, D-119).
+  - **The household is one line:** "The twins and Grandma move in later". Its tip has Room for everyone in that client's numbers, then each arrival: when, and what they bring.
+  - **The tastes are one line:** "Tastes", with how many the client likes and dislikes beside an up and a down arrow. Its tip lists every taste, and what the draws have more of, a line each in the rules' words.
+  - **The house rules are named once for the board,** in its lede: "Every house also keeps the same 7 house rules". That's a term, and its tip names the seven and what a held one adds (`houseRulesText` in `src/rules/text.ts`).
+  - **A house rule a client has in numbers of their own sits with their wishes:** today that's Juniper's Under one roof, for 4–8 rooms. The card finds them by comparing each rule's text across the clients (`ownHouseRules`), so nothing is listed by hand.
+  - The lot in words under the map goes; the map's title and label still say it.
+  - The card's short lines are chosen and counted in `src/ui/screens/job-card.ts`; every sentence is the rules' or the content's.
+  - **Words on a card** (all its text, the button and the keycap included): the Hendersons 42–44 (from 80–95), Count Vladislav 28–29 (from 63–77), the Barkers 38–39 (from 87–90), Juniper Vale 34 (from 55–69) and Dale 36–37 (from 72–75); a range is the lot's chips and, before, its line in words. The first-visit board in the screenshots is 145 words (from 270 at 1440×900). At 1280×720 in the pixel font all three cards scrolled (179, 129 and 37 px out of view); now none scrolls at 1280×720, 1440×900 or 1920×1080, in either font.
+- **Every first-time hint keeps to 25 words** (`HINT_WORDS`): one idea for the moment it applies, and the tips carry the rest.
+  - **The shop's** is "Spend your budget on goods for the house; hover one to read it. Each milestone met pays 4 more." (19 words, from 65). The shelves' tags already say what each kind of good is, and the fixture's hint comes with the first fixture.
+  - **The first week's** is 24 words (from 44): pick, place, End week, the target, and "Hover anything to read it". How a week scores moves to a new hint in week 2, "Comfort and Charm" (18 words), once a week has been tallied.
+  - **The checklist's** moves to week 3, so the first three weeks bring one hint each. It says what a line adds and that the house rules fold into one row once it's dismissed (D-113).
+  - The others: Complete early 23 (from 31), the roof 24 (from 37), Fixtures 21 (from 36), change orders 24 (from 45), Renovate 25 (from 55), an arrival 21 (from 32).
+  - The hints that state a rule or a number are `hintText` in `src/rules/text.ts`, with their numbers from the balance; the glossary keeps the full texts for the tips. Tests hold every hint to the budget.
+- **The checklist's rows keep short:**
+  - **A line that doesn't hold shows only what's still missing.** Its parts that hold are done: "A living room or two" says "0 Living Rooms (1–2)" without "1 Dining Room (≤ 1)". A line the play being looked at flips still shows every part, and the line's tip has the whole rule.
+  - **Who's still to move in** is a name and a milestone, "Grandma at Drywall": two lines in a 280 px pixel-font column, where "Grandma arrives at Drywall, week 17" took four. The week is in the name's tip.
+  - **The wishes' tag is "Wishes",** one line in every column ("The Hendersons' wishes" took three in a 280 px column). The plank above it names the client.
+  - **The tastes' row is "Tastes"** in a 280 px pixel-font column under 1000 px tall, where "Tastes (3)" took two lines beside the crew's and the sun's icons. Wider columns and the readable font keep the count.
+  - **Measured at 1440×900 in the pixel font** (the checklist's box is 404 px), on a Hendersons run: with the house rules folded, week 3's rows take 330 px (from 450), so nothing scrolls; mid-run, with a change order, 414 px in a 380 px box (from 514). On a first visit, with the house rules open (D-113), 938 px (from 1,118): it still scrolls. At 1280×720 the folded week-3 rows take 330 px in a 258 px box (from 450).
+
+**Why:** the review read the first screens as a first-time player would. Each contract's card carried the wishes, the household, the arrivals with their weeks, the tastes, the draws and the house rules; at 1280×720 in the pixel font all three scrolled, and the Hendersons' tastes were below the fold. The shop's first hint was a 65-word paragraph. On a first visit at 1440×900 the checklist held 1,118 px of rows in a 404 px box. The group gets the game on 2026-11-11, and these are the screens they meet first. Run-based games show the choice of a run as a name, a picture and two or three lines (a character or a deck select), with the rest on demand.
+**Considered:**
+- **A flip side or a "Details" fold on each card:** tips are already the game's way ("Hover anything to read it"), need no new control, and open from the keyboard with Tab.
+- **The house rules folded on a first visit too:** it's the one change that would make a first visit's checklist fit at 900 px. D-113 (Accepted the same day) opens them until the checklist's hint is dismissed, so it's left for the user: one line in `rulesOpen`.
+- **The client's wishes above the house rules:** it would change D-101's order, and D-110's rules for what a play scrolls into view were tuned to it.
+- **"House rules 1/7" on one line in a 280 px pixel-font column:** the words and the count alone are wider than the column.
+- **Held lines folding away inside an open group:** early in a run almost none hold, so it saves nothing in the first minutes.
+- **The change order's hint in two versions by the order's kind:** another session is changing how change orders are offered.
+
+**Changes:**
+- D-110 (Proposed): its job board bullet (a card no longer lists the tastes as rows, the house rules behind a caret, or the lot in words), its checklist bullets (the wishes' tag, "Tastes" in a narrow column) and its list of first-time hints. Dated notes there.
+- D-101 (Accepted), for the user's OK: a line that doesn't hold shows only the parts of its progress still missing. A dated note there.
+- D-103 (Accepted): the job board still shows who moves in from week 1; when is in the line's tip, and the checklist's line names the milestone without the week. A dated note there.
+- D-045 (Accepted) and D-077's 2026-11-07 note: a week-2 hint is added, the checklist's moves to week 3, and every hint keeps to 25 words. Dated notes there.
+- D-113 (Accepted): unchanged. The house rules still open on a first visit until the checklist's hint is dismissed; that hint now first shows in week 3.
+- `src/rules/text.ts` gains `houseRulesText`, `hintText` and `HINT_WORDS` (new functions after the glossary; nothing existing changes).
+
 ### D-137 · More change orders: three generic ones, and a phase effect for every client
 **Status:** Proposed · 2026-11-10, from playtest 4 (`docs/playtests/playtest-4-findings.md` §5), with its fix pull request. Extends D-011 and D-109. For the next playtest on /dev/.
 **Decision:**
@@ -1893,6 +1939,41 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - More requests: most of playtest 4's ideas (Room for the in-laws, Curb appeal) fight the house rules' Bedroom ranges or need new selectors.
 
 **Changes:** D-011 and D-109 (dated notes). `implementation-plan.md` Appendix B: the clients table and Generic change orders. New content changes the content hash, so run codes from earlier builds won't replay.
+
+### D-141 · Showing what a blueprint is worth, and an icon for each
+**Status:** Proposed · 2026-11-10, with its phase pull request (`phase/blueprint-worth`), from the friction review the user asked for the same day (point 3). Extends D-107. For the user's playtest before it merges. It changes no balance and no rule.
+**Decision:**
+- **Every blueprint on offer says what it would add to your house,** under its rules text: on the shop's cards, on a crate's blueprint options, and on the free Housewarming pick. A blueprint you hold says what it's adding, in the inspect panel.
+- **The numbers come from the rules** (`blueprintValue(state, id)`, beside `fixtureValue`): a week's total with the blueprint in play, less without. The UI only words them.
+  - The first week valued is D-107's: this week on the build screen; in the shop, the next phase's first week, after its start-of-week transforms.
+  - **The run figure adds up each week left,** with nothing more built, instead of multiplying one week by the weeks left. The house's timers run on, Saplings become Trees, a phase effect ends with its phase, a staged checklist line changes with its milestone, and each phase's last week counts as one. Overtime is left out, as in D-107.
+  - A blueprint you hold is valued against the run without it.
+- **Where one week's snapshot would be wrong or empty, the line says so.** The rules read the blueprint's modifier kinds, never its id, so a retuned or new blueprint is valued without a change here.
+  - **Growth** (Good Bones): "+41 Wow a week, growing to +325", and the run figure counts the growth.
+  - **A phase's last week only** (Last-Minute Push): "+621 Wow in a phase's last week", counted once a phase.
+  - **Budget** (Solar Panels): its own line with the coin, "+12 budget over the run". Budget is never turned into Wow.
+  - **Future choices** (Ahead of Schedule): what it adds with the milestones completed early so far, and "+124 Wow a week for each milestone completed early" beside it, never folded in.
+  - **Spec bonuses and links** (Dream Home, Open Concept) need no special case: the tally already reads them.
+- **A blueprint that would add nothing in the weeks left says what it's waiting for,** in a few words from its first modifier with nothing to act on: "No Dark rooms yet", "No pieces with a fixture yet", "No milestone completed early yet", "None of its pieces touch yet" (a link with no group), "Nothing is earning yet". If its pieces are there but a percentage rounds away, it says "Green pieces here earn too little yet". Otherwise "Adds nothing to your house yet".
+- **A blueprint that changes only a run rule the tally doesn't read gets no line.** None of the 18 does today.
+- **Each blueprint has its own icon** (`src/ui/theme/icons.ts`, mapped by `BLUEPRINT_ICONS` in `src/ui/sprites.ts`, so a blueprint without one fails typecheck). They're our own drawings in LimeZu's palette (D-098), 8×8 like a tool's or a fixture's (Dream Home is 9×9), and each draws its name: a yin-yang, a mailbox, a moon, a sprout, a party hat, a sailboat, a floor plan, a timber frame, a house, a barn, a candle, a lawn sign, the sun over a panel, a crown, a house with a heart, an hourglass, a house under glass, a ticked calendar.
+  - They show in the shop's art slot, on crate options, in your goods' blueprint slots, and in the inspect panel's heading.
+  - On a short window (1280×720) the shop's cards have no pictures (`shop.css`), so a blueprint's icon sits beside its title there.
+
+**Why:** the review found a fixture's card said what it was worth and a blueprint's showed only its rules text, under one icon shared by all 18. A blueprint is the bigger purchase, and the free first pick is a new player's first shop decision.
+**Considered:**
+- **One week × weeks left, as D-107 does.** It's simpler to explain, but it reads Good Bones at a tenth of its worth, Last-Minute Push at nothing, and anything on a Sapling or under a phase effect wrong. A fixture's line keeps D-107's sum; changing it is a separate call.
+- **Folding budget into Wow,** or Ahead of Schedule's future milestones into its gain: both would be guesses.
+- **Wording the "needs" line by blueprint id:** the next balance pass would have to keep a table in step.
+- **Blue-paper icons, white on blue, like the old shared one:** 18 line drawings at 8×8 are hard to tell apart. Color does that job.
+- **12×12 icons:** more room, but they'd stand taller than a tool's in your goods.
+
+**Changes:** D-107 (Accepted): a dated note. D-087: the shop's blueprint cards. The rules gain `blueprintValue()` (`src/rules/run.ts`, with `src/rules/blueprint-value.ts`).
+**Known gaps:**
+- "If the house stays as it is" is a floor for most blueprints: a house keeps growing. The tip says so.
+- Waterfront says "No pieces touching the Pond or the Creek yet" even on a lot with neither.
+- A blueprint whose value is 0 in the first week but not later (Country Living beside a Sapling) leads with the run figure alone.
+- Valuing a blueprint tallies every week left twice. Three on a shelf took about 3 ms per state in a dev build (18 took 18 ms), and the rules keep each state's values.
 
 ### D-139 · The company's record: bests, the next verdict, and a portfolio
 **Status:** Proposed · 2026-11-10, with its phase pull request (`phase/company-record`), from the friction and replayability review the user asked for the same day. The user picked it as the first step ("Yes, build it"). For the user's playtest before it merges. A first, power-free step toward D-015 and D-016, which stay Proposed.
@@ -1923,6 +2004,76 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 **Changes:** D-015 and D-016 (Proposed): this is a first step that adds no unlocks and no currency. `jam-scope.md`: its "Not in the jam build" line on meta-progression. The rules gain `nextVerdict()` (`milestones.ts`), so the UI still computes no score.
 **Known gaps:** no way to clear the record yet. A portfolio house can't be opened larger or replayed from its seed. A run finished on another device or in a private window isn't in the record.
+
+### D-140 · The Garage is built like any room, and earns once the street or a Driveway reaches it
+**Status:** Proposed · 2026-11-10, with its phase pull request (`phase/garage-driveway`), from the friction review the user asked for the same day (its first point). The direction is the user's: the Garage is placed like any other room, and earns only while the street or a Driveway reaches it. Settles D-080. For the user's playtest before it merges. The numbers are placeholders.
+**Decision:**
+- **The Garage goes anywhere a room can go.** Its requirement (touching the street or a Driveway) no longer blocks placement. Until it's met the Garage earns nothing and pays no budget, with the ⚠ on the board and "Earns nothing: it must be touching the street or a Driveway" in Inspect and in the placing preview. This is the Patio rule's kind of requirement (D-105).
+- **A Garage nothing reaches still counts for Full House,** as any piece that earns nothing does (D-070). It's still a room for the checklist and still Loud.
+- **Reached, it earns +5 a week** (was +1) **and +1 budget every 2nd week** (was every 3rd).
+- **The Driveway's job is the Garage:** +3 if it touches one, and +1 a week anywhere. The "+1 in the front yard" is gone: playtest 2 read it as "square to the street" (D-080).
+  - It still must be built touching the street or a Driveway, so a drive always grows from the street.
+  - The pack that touches the Garage is the one paid for it.
+- **A Driveway pack is up to 8 tiles** (was 6), as the Fence.
+- **Full House's Sparkle is ×1.5** (was ×2). Its +40 Comfort and +1 Charm stay.
+- **Wording:**
+  - The Garage's card: "Earns nothing unless touching the street or a Driveway", "+5 every week", "+1 budget every 2nd week".
+  - Its compact hand card: "+5 by the street or a Driveway". The generated line, "+5 every week if touching the street or a Driveway", lost its last words in the card's two lines at every window size.
+  - The Driveway's card: "Must be built touching the street or a Driveway", "+3 if touching a Garage", "+1 every week". Its hand card shows the Garage line.
+  - The glossary's Sparkle entry takes Full House's number from the content.
+- **Art:** nothing new. A Garage nothing reaches draws as a closed room with its boxes, no door and no car. When a Driveway or the street touches it, its door opens on that side and its car parks inside, as D-100 and D-111 already draw.
+- **The greedy bot gets a drive planner** (`sim/drive.ts`), as it got a fence planner (D-106). For each Garage that waits, it finds the cheapest run of free tiles from the street or a Driveway to a tile beside it, around Trees where it can and over the creek. A run one pack covers is offered whole. A longer one is offered as its first pack's worth from the street end. The bot scores them exactly, like any play.
+
+**Sim** (200 held-out greedy runs, `check-0` to `check-199`, every Core client in turn with each crew; develop at 67aa75e against this change; targets not re-fitted):
+
+| | develop | this change |
+|---|---|---|
+| Garage cards offered a run | 4.18 | 4.36 |
+| Garage offers with no legal spot | 82.4% | 1.8% |
+| Garages placed a run | 0.02 | 0.26 |
+| Runs that end with a Garage | 2.0% | 25.5% |
+| Runs that end with a Garage the street or a Driveway reaches | 2.0% | 9.5% |
+| Driveways placed a run | 0.27 | 0.34 |
+| Full House held at the end, all runs | 1.5% | 19.5% |
+| Full House held at the end, wins | 3.5% | 37.5% |
+| Full House first held, median week | 21 | 23 |
+| Sparkle's share of the Wow | 9.9% | 17.5% |
+| Greedy wins (all three crews) | 43.0% | 52.0% |
+| Greedy wins, `npm run sim -- --check` (General Contractor) | 46.0% [39.2–52.9] | 54.0% [47.1–60.8] |
+
+- The 1.8% left is the house hemmed in, as for any 2×2 room (a Living Room is 2%).
+- **Full House.** The 39 runs that held it at the end, against the same seeds on develop, where 25 of them won:
+
+  | Sparkle | Final Wow, after ÷ before (p50) | They won | Greedy wins | Sparkle's share |
+  |---|---|---|---|---|
+  | ×2 | 1.95 | 39 of 39 | 52.0% | 23.3% |
+  | ×1.5 | 1.57 | 39 of 39 | 52.0% | 17.5% |
+  | ×1.25 | 1.33 | 38 of 39 | 51.5% | 14.1% |
+
+  - The win rate doesn't depend on the Sparkle: greedy completes the set late, in houses that are already strong, and the set's Comfort and Charm are enough to finish them. The size of the win does.
+  - At ×2, a set held for a median 7 weeks nearly doubled the final Wow. The other always-on Sparkle is the Chandelier's ×1.25.
+- **What greedy does with the Garage.** It has no foresight, so it mostly builds the Garage as Full House's ninth type, late and wherever that week scores best: a median 14 tiles from the street. A Garage stood unreached for 1.1 weeks a run. With a Driveway card in hand that week (38 weeks in the 200 runs), one pack would reach in 8, and the bot laid it in 6. So 37% of its houses with a Garage end with it reached.
+  - The pay barely moves this: with the Garage at +4 to +6, the Driveway at +3 or +4 and budget every week or every 2nd, 8.5–10% of runs ended with a reached Garage.
+  - Where a player would put it: a Garage on the street side of greedy's houses is within 8 rows of the street in 55% of them (within 6 in 45%), and within 16 in 96%. So one pack of 8 reaches about half, and two reach nearly all.
+- **`--check`:** "greedy wins 40–50% of runs" now fails (54.0%, unsure), which the re-fit after this batch of changes is for. Early completion is still a live choice, but closer to its line: always 45.0% against never 54.0%, −9.0 points (the line is 10; −1.0 on develop). Completing early skips late weeks, and that's when greedy completes Full House. The client spread is 35.0 points at 40 runs a client (30.0 on develop). The other criteria are unchanged.
+
+**Why:** the Garage card had no legal spot in 82% of the weeks it was offered: greedy's houses end a median 10 rows back from the street, and one Driveway pack was 6 tiles. Full House, the only set with Sparkle, needs a Garage, so it almost never completed. D-080 (Open since playtest 2) said the Driveway had no purpose without a Garage and that its front-yard pay was hard to read. D-056 keeps ×Mult rare and planned: once any run can complete Full House, ×2 for the rest of the run is out of line with the other sources.
+**Considered:**
+- **An unreached Garage not counting for Full House,** so the drive is part of the set's setup. It would change D-070 (Accepted), and a set would then complete on a Driveway's step, against D-065's rule that a later piece never re-dates a set. If Full House still feels automatic in the playtest, this is the next thing to try.
+- **Keeping ×2.** The win rate is the same, so it's a question of how big the moment should be. ×1.25 is in the table too.
+- **A Driveway that links the yard pieces along it** (D-080's Combolands note). A connector isn't a neighbor (D-046), so the Garage couldn't read "touching a Driveway" without a new rule, and yard links need new card text and a new estimate the day before sharing. Parked.
+- **A Driveway that may start from the Garage.** "A Driveway touches it" would then hold for a drive that goes nowhere, so it needs a new condition (a Driveway that reaches the street).
+- **Keeping the pack at 6:** two packs cover 12 rows against 16, and one covers 45% of houses against 55%.
+- **A lookahead for greedy** (credit for a Garage one pack could reach). Left out: it changes what "greedy" means in every report, for a piece that's under 1% of its Wow.
+
+**Changes:** D-080 (Decided by this). D-106 (Accepted): a Driveway pack is 1–8 tiles. D-056 (Accepted; its numbers are placeholders for the sim): Full House is ×1.5. D-070 is unchanged and relied on. `implementation-plan.md`: §4's Garage and Driveway line, the `requires` row, the Garage's example, the packs' lines, and Appendix B's Garage, Driveway and Full House rows. The content changes the content hash, so run codes from earlier builds won't replay.
+**Known gaps:**
+- The targets aren't re-fitted, so until the batch's re-fit the game is easier than intended wherever Full House completes.
+- What a player who plans for the Garage or for Full House from the start does with them isn't measured: there's no planner bot (D-089). The playtest is the check.
+- The rules' cheap estimate doesn't see that a Driveway turns a waiting Garage on. The bot's planner covers it, and the game's own preview is exact.
+- A Driveway cut off from the street by a demolition earns nothing itself but still counts as a Driveway for the Garage beside it.
+- "By" on the compact card means touching. Inspect has the exact words.
+- `yard.test.ts` parks the car on every pack of up to 8 tiles (2,725 shapes of 8, from 216 of 6): about 3 seconds alone and 6 to 7 in the full suite, so that test has a longer timeout.
 
 ### D-133 · The roof view: the reveal's roof stays on, a Roof button brings it back, and the end screen opens with it
 **Status:** Proposed · 2026-11-10, after playtest 5 (`docs/playtests/playtest-5-findings.md`), with its fix pull request. Extends D-127. For the next playtest on /dev/.
@@ -2090,6 +2241,11 @@ What's still short:
 - **Host badges while installing:** at 0.5× a badge moved off another can end up over the next room (the Closet's ±0 over a Bedroom), or, in a block of one-cell rooms, touch a digit. Hovering a host whose preview marks a neighboring host moves the other badges, and can put one on the preview's + mark. The install label covers the badges of the hosts above it, and stays there while an install is pending.
 - **Smaller:** demolishing doesn't mark or bring into view the checklist lines it would flip, nor the score panel the sets it would break; the inspect panel lists both. A weekly Wow of seven digits in a 280 px column sits 2 UI px from its word, at the pixel font's 16 px floor.
 - **From before M4, left as they are:** the build stamp covers the left column's foot at 1280×720 (D-098's corner, chosen to stay clear of End week), now the inspect panel's frame under its plank or its total; on the score panel's list, a set the play would make is tinted with Charm's tint, on which its Comfort reads at 4.1:1 and its Charm at 4.49:1 (M5a's colors, not yet among `theme.test.ts`'s pairs); and a click on a cell that can't take a pending play drops the play, a pending Renovation included.
+
+*Changed by D-142 (Proposed 2026-11-10):*
+- **The job board:** a contract's card leads with the client's brief, their wishes and the lot's map and chips. The household and the tastes are a line each, with the detail in the line's tip. The house rules are a term in the board's lede, not a fold on every card, and the lot in words under the map goes.
+- **The checklist:** the wishes' tag is "Wishes"; a line that doesn't hold shows only the parts still missing; who's still to move in is a name and a milestone; and in a 280 px pixel-font column under 1000 px tall the tastes' row is "Tastes", one line again (the sun's icon, D-120, had made "Tastes (3)" two).
+- **First-time hints:** how a week scores is added (week 2), and every hint keeps to 25 words.
 
 ### D-109 · M4b rules structure: change orders, arrivals, and crews
 **Status:** Proposed · 2026-11-07, with the M4 pull request. Details within D-103, D-012, and Appendix A · M4b; numbers for the sim and playtest 4.
@@ -2287,6 +2443,7 @@ D-074 to D-080 came out of playtest 2 (M2, 2026-11-05), D-090 to D-093 out of pl
 **To decide:** When (with M3's shop, or with D-045's first-time hints in M4b), and how. The text should be generated from the rules data, as card text is (D-038).
 **2026-11-06 (Combolands research):** Combolands' most requested feature after launch was a compendium of the run's buildings, heirlooms, and councillors (v1.0.5), and v1.0.7 took a confusing "counts as fish" line off a card. See research.md's 2026-11-06 systems update.
 **2026-11-07 (M4):** the board's terms are in the rules' glossary, written from the content: the front and back yards, fenced yards (with the 10-tile minimum), requirements (each base-pool piece's), Hallway links, timers, Renovate, and the checklist. Inspect puts them on its region names, requirement lines, link mentions, and timers, and a granted tag names where it came from ("Dark · from Eternal night"). First-time hints (D-045) cover the first week, the checklist, Complete early, the shop, a fixture, a change order, and an arrival.
+**2026-11-10 (D-142, Proposed):** the hints add how a week scores (week 2), the checklist's moves to week 3, and each keeps to 25 words. The ones that state a rule or a number are the rules' `hintText`; the glossary keeps the full texts for the tips.
 
 ### D-078 · Terrain and the house's position should matter more
 **Status:** Open · 2026-11-05, from playtest 2.
@@ -2316,7 +2473,7 @@ New content is preferred over raising existing numbers.
 **2026-11-06 (M4a sim):** with the Kid half in, 1,000 held-out greedy runs: the Hendersons place 1.2 Treehouses a run, earning 1.9% of their Wow (other clients 1.6–2.0%); 3+ Treehouses in 11–15% of wins.
 
 ### D-080 · The Driveway: legibility, and a purpose without a Garage
-**Status:** Open · 2026-11-05, from playtest 2.
+**Status:** Decided · 2026-11-10 by D-140 (Proposed, for the user's playtest): the user's direction. Was Open, from playtest 2 (2026-11-05).
 **Finding:**
 - The player read the Driveway as paying only when perpendicular to the street. In fact a 1×3 earns +1 either way. A Long Driveway standing up earns 0 when it reaches above the house's front row, because only the front yard pays.
 - With no Garage drawn, the Driveway has no purpose.
@@ -2327,6 +2484,9 @@ New content is preferred over raising existing numbers.
 - Make a Garage likelier once a Driveway is down.
 **2026-11-06 (playtest 3):** the player built more Driveways this time (two Long Driveways in their run).
 **2026-11-06 (Combolands research):** a Combolands railroad makes everything beside it count as beside everything else along it *(guide)*. A Driveway could link the yard pieces along it the way a Hallway links rooms, which would give it a job without a Garage.
+**2026-11-10 (D-140):** the friction review found the cause behind the second finding: the Garage card had no legal spot in 82% of the weeks it was offered, so a Driveway almost never had a Garage to serve. D-140 lets the Garage be built like any room and makes the Driveway's job reaching it: the Garage earns only once the street or a Driveway touches it, and the Driveway is paid for touching one.
+- Of the options above: it's a pack (D-106), now of 8 tiles, and it has a bonus of its own (+3 at a Garage). Its front-yard pay, which the first finding is about, is gone: it earns +1 anywhere. Showing the front yard on the board is still open for the pieces that read it (D-099's note). A Garage isn't likelier after a Driveway, since it no longer needs one to be built.
+- The Combolands link isn't built (D-140's Considered).
 
 ### D-090 · Budget from how you build
 **Status:** Open · 2026-11-06, from playtest 3.

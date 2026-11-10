@@ -42,6 +42,8 @@ import type {
   Action,
   ArrivalDef,
   Availability,
+  BlueprintId,
+  BlueprintValue,
   BuyAction,
   Card,
   DrawRow,
@@ -111,6 +113,7 @@ import {
   type CondCtx,
   type NounFn,
 } from './conditions.ts';
+import { blueprintNeeds, grows, lastWeekOnly, scalingStat, scoresWeek } from './blueprint-value.ts';
 import { DRAW_ROWS, drawHand, drawWeights, rowOf, slotKey, swapCandidates } from './draw.ts';
 import { estimatePlay, type Estimate } from './estimate.ts';
 import { checkInstall, installHosts, withFixture } from './fixtures.ts';
@@ -279,6 +282,18 @@ export interface Rules {
    * no piece can take it, or off the build and shop screens.
    */
   fixtureValue(state: RunState, fixture: FixtureId): FixtureValue | null;
+  /**
+   * D-141: what a blueprint would add to the house as it stands, for the shop's line: the
+   * week's total with it in play, less without, and each week left in the run added up with
+   * nothing more built (the house's timers run on, each phase's last week counts as one, and
+   * overtime is left out). It's valued as if bought now, or, if it's held already, against the
+   * run without it. In the shop the first week is the next phase's first, after the transforms
+   * that start it, as for a fixture. A blueprint that acts only in a phase's last week gives
+   * that week's gain (`when`); one that grows says how far (`growsTo`); budget is counted
+   * apart; and one that would add nothing says what it's waiting for (`needs`). Null off the
+   * build and shop screens, or for a blueprint that changes no tally.
+   */
+  blueprintValue(state: RunState, id: BlueprintId): BlueprintValue | null;
   /**
    * A cheap local estimate of a legal play's change to the week's total, for ranking
    * candidates before scoring the best few exactly (§4, Performance), checklist lines that
@@ -2143,10 +2158,10 @@ export function createRules(content: Content): Rules {
   }
 
   /**
-   * The build screen's state for the week a fixture bought now would first earn in (D-107):
-   * this one, or in the shop the next phase's first week, its transforms resolved as leaving
-   * starts it (its arrivals only fill the reserve). A shop the ?debug panel opened mid-week
-   * goes back to that week. Null on the other screens.
+   * The build screen's state for the week a fixture or a blueprint bought now would first earn
+   * in (D-107, D-141): this one, or in the shop the next phase's first week, its transforms
+   * resolved as leaving starts it (its arrivals only fill the reserve). A shop the ?debug panel
+   * opened mid-week goes back to that week. Null on the other screens.
    */
   function installWeek(state: RunState): RunState | null {
     if (state.screen === 'build') return state;
@@ -2180,6 +2195,97 @@ export function createRules(content: Content): Rules {
       weeksLeft: weeks,
       overRun: best.gain * weeks,
     };
+  }
+
+  /**
+   * The week after this one in a run where nothing more is built (D-141's projection): the next
+   * slot, or the next phase's first week after a phase's last (or an overtime week), with the
+   * transforms that start it. Timed effects end as they would: a tool's with its week's tally,
+   * a phase effect with its phase.
+   */
+  function idleNextWeek(s: RunState): RunState {
+    const last = s.overtimeWeek > 0 || s.slot >= W;
+    const timedEffects = s.timedEffects.filter((e) =>
+      'week' in e.until ? e.until.week > s.week : !last || e.until.phase > s.phase,
+    );
+    const next: RunState = last
+      ? { ...s, phase: s.phase + 1, slot: 1, overtimeWeek: 0, week: s.week + 1, timedEffects }
+      : { ...s, slot: s.slot + 1, week: s.week + 1, timedEffects };
+    return resolveTransforms(next, []);
+  }
+
+  const blueprintValues = new WeakMap<RunState, Map<BlueprintId, BlueprintValue | null>>();
+
+  function blueprintValue(state: RunState, id: BlueprintId): BlueprintValue | null {
+    let known = blueprintValues.get(state);
+    if (!known) blueprintValues.set(state, (known = new Map()));
+    let value = known.get(id);
+    if (value === undefined) known.set(id, (value = valueBlueprint(state, id)));
+    return value;
+  }
+
+  function valueBlueprint(state: RunState, id: BlueprintId): BlueprintValue | null {
+    if (!Object.hasOwn(content.blueprints, id)) return null;
+    const def = content.blueprints[id];
+    const scoring = def.modifiers.filter(scoresWeek);
+    const first = installWeek(state);
+    if (scoring.length === 0 || !first) return null;
+    // As if bought now (its granted timers count from here), or as it is if it's held already.
+    const held = first.blueprints.some((o) => o.id === id);
+    const boughtWeek = first.week;
+    const withIt = (s: RunState): RunState =>
+      held ? s : { ...s, blueprints: [...s.blueprints, { id, boughtWeek }] };
+    const without = (s: RunState): RunState =>
+      held ? { ...s, blueprints: s.blueprints.filter((o) => o.id !== id) } : s;
+    const gainIn = (s: RunState) => {
+      const a = tallyOf(withIt(s), s.house, false);
+      const z = tallyOf(without(s), s.house, false);
+      return { wow: a.total - z.total, budget: a.budget - z.budget };
+    };
+
+    // This phase's weeks left, then every later phase's (overtime can't be foreseen): each one
+    // tallied with and without it, with nothing more built.
+    const weeks = weeksLeft(first) + Math.max(0, phaseCount(b) - 1 - first.phase) * W;
+    const lastOnly = lastWeekOnly(scoring);
+    let cur = first;
+    let shown: RunState | null = null;
+    let overRun = 0;
+    let budget = 0;
+    let top = 0;
+    let any = false;
+    for (let k = 0; k < weeks; k++) {
+      // The week the line's gain is for: the first, or the first that's a phase's last.
+      if (!shown && (!lastOnly || isLastWeek(cur))) shown = cur;
+      const g = gainIn(cur);
+      overRun += g.wow;
+      budget += g.budget;
+      top = Math.max(top, g.wow);
+      any ||= g.wow !== 0 || g.budget !== 0;
+      if (k < weeks - 1) cur = idleNextWeek(cur);
+    }
+    shown ??= first;
+    const gain = gainIn(shown).wow;
+    const value: BlueprintValue = {
+      gain,
+      when: lastOnly ? 'lastWeek' : 'week',
+      weeksLeft: weeks,
+      overRun,
+      budget,
+      held,
+    };
+    if (grows(scoring) && top > gain) value.growsTo = top;
+    const stat = scalingStat(scoring);
+    if (stat) {
+      const more: RunState = { ...shown, [stat]: shown[stat] + 1 };
+      value.perStat = { stat, gain: gainIn(more).wow - gain };
+    }
+    if (!any) {
+      const s = withIt(shown);
+      value.needs = blueprintNeeds(content, def, layoutFor(s), tallyOf(s, s.house, false), {
+        milestonesEarly: s.milestonesEarly,
+      });
+    }
+    return value;
   }
 
   function legalPlacements(state: RunState): PlaceAction[] {
@@ -2656,6 +2762,7 @@ export function createRules(content: Content): Rules {
     installHosts: hostsFor,
     installGains,
     fixtureValue,
+    blueprintValue,
     estimatePlay: (state, play) => {
       const def = placeDef(state, play);
       if (!def) throw new IllegalAction('There is no card there.');

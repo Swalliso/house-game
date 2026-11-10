@@ -253,7 +253,7 @@ describe('Soundproofing', () => {
     const t = tallyOf(build(rows, street, [[1, 'soundproofing']]));
     expect(t.pieces[0]).toMatchObject({ points: 3, earned: 3 });
     expect(t.pieces[0]!.lines.every((l) => l.value >= 0)).toBe(true);
-    expect(t.pieces[1]!.earned).toBe(1);
+    expect(t.pieces[1]!.earned).toBe(5);
     // A Home Office on the street: 2 − 2 without it, 2 with it.
     expect(earned(rows, [['homeOffice', 0, 5]], [[1, 'soundproofing']])).toEqual([2]);
   });

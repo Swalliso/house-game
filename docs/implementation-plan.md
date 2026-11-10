@@ -534,7 +534,7 @@ Derived from `HouseState`, cached by house object identity:
   - If any indoor piece exists, a new indoor piece must touch one.
   - Demolishing an indoor piece that would split the house is illegal ("This would split the house").
   - If the last indoor piece is demolished, the next can go anywhere.
-- **Garage and Driveway:** the Garage (indoor) must touch the house and also touch the street or a Driveway. A Driveway must touch the street or another Driveway, so driveways always connect to the street.
+- **Garage and Driveway:** the Garage (indoor) is built like any room, touching the house, and earns only while it touches the street or a Driveway (D-140; until then it couldn't be built anywhere else). A Driveway must touch the street or another Driveway, so driveways always connect to the street.
 - **Effective tags**, resolved in a fixed order:
   1. layout facts
   2. own tags, plus **Dark** if interior and **Sunny** if a building (a room, a Hallway or an outbuilding) with a tile in the sun (D-120)
@@ -690,7 +690,7 @@ The ten types from `content-brainstorm.md` become eight kinds here: the neighbor
 | `economy` | `budget`, `every?` | Garage, Home Office |
 | **`perTile`** *(new)* | `region`, `amount` | Herb Garden on tiles in the sun |
 | **`link`** *(new)* | — | Hallway |
-| **`requires`** *(new)* | `condition: PieceCondition`, `blocksPlacement` | Garage must touch the street or a Driveway (blocks placement); Doghouse earns only in a fenced yard (doesn't block) |
+| **`requires`** *(new)* | `condition: PieceCondition`, `blocksPlacement` | Driveway must touch the street or a Driveway (blocks placement); Doghouse earns only in a fenced yard, and the Garage only touching the street or a Driveway (don't block; D-140) |
 | **`conditional`** *(new)* | `when: PieceCondition`, `effect` | Flower Bed bonus in the front yard |
 | `custom` | `id` | Escape hatch |
 
@@ -828,10 +828,10 @@ A request whose condition is already true when it would be offered is skipped fo
 { id: 'garage', name: 'Garage', category: 'indoor', tier: 'core', drawWeight: 10, complexity: 2, fromPhase: 0,
   shape: ['##', '##'], tags: ['Loud'],
   effects: [
-    { kind: 'requires', blocksPlacement: true,
+    { kind: 'requires', blocksPlacement: false,   // D-140: built like any room
       condition: { touching: { any: [{ feature: 'street' }, { piece: 'driveway' }] } } },
-    { kind: 'steady', amount: 1 },
-    { kind: 'economy', budget: 1, every: 3 },
+    { kind: 'steady', amount: 5 },
+    { kind: 'economy', budget: 1, every: 2 },
   ] },
 { id: 'sapling', name: 'Sapling', category: 'yard', tier: 'core', drawWeight: 10, complexity: 2, fromPhase: 0,
   shape: ['#'], tags: ['Green'],
@@ -1577,7 +1577,7 @@ Intensity is measured against **pace**: `max(1, (this phase's target − the sco
   - Their props stand on their cells as items, so they wobble and settle with their piece: a parasol over a table and two chairs on a Patio; the house's one parked car on its oldest Driveway with room for it (nose in, or side on facing the house), standing only on that Driveway's own tiles, in another row or column of a ragged pack if it must (a lone tile has no room for it, D-111), orange or grey so it never matches the Garage's; a Pool's ladder and float; the Hot Tub's foam; the Fire Pit's animated fire in front of two stumps; a planter on a Flower Bed, and one per cell of a Herb Garden with greens instead of flowers; the Sapling on its soil; LimeZu's Greenhouse and modular Treehouse; a shed's front as the Henhouse's coop, with two hens on straw behind a picket front in its other cell; a Birdhouse on its pole.
   - Where LimeZu has none, our own drawings in its palette and ink: the Doghouse, the hens and the Sprinkler (`src/ui/art/drawings.ts`).
   - No prop stands on an outside door's mat or in front of its opening (nor rises over one on the overhang layer): a Patio's table and seats move clear of the door that opens onto it, under a small parasol in place of the full one (the audit prototype's), a Pergola gives way to a shallower or narrower cut on the Patio's far side, and the car parks further along its Driveway, or on the next one. Every prop keeps its whole sprite off mats and openings, and a test checks every prop's pixels against every door. An outbuilding's own building always stands: no door opens onto one, so only its roof, rising over the row behind it, can hide part of a mat.
-  - Fences and Driveways are packs (D-106): a Fence is 1–8 connected tiles and a Driveway 1–6, in any shape (`packShapeProblem` in `src/rules/grid.ts`), clicked out one by one, so each is drawn from its own tiles (`PlacedPiece.shape`), never its card's shape: the ghost as the tiles go down, the built pack, and the Moving Truck's carried pack (D-111).
+  - Fences and Driveways are packs (D-106): a Fence is 1–8 connected tiles and so is a Driveway (D-140; 1–6 before), in any shape (`packShapeProblem` in `src/rules/grid.ts`), clicked out one by one, so each is drawn from its own tiles (`PlacedPiece.shape`), never its card's shape: the ghost as the tiles go down, the built pack, and the Moving Truck's carried pack (D-111).
   - A Fence is a white picket line through the middle of its cells, out to their edges at its ends, with a post at each end and turn (LimeZu's pickets, posts and end-on strip, after the exteriors audit's line autotile). A lone tile is a short run across its cell, with a post at each end. Two Fences join only through an end's open side (the way its line runs on): in a corner or a T; end to end, each keeps its end post, so each stays countable; side by side, their ends never close them into a pen. A Fence's ghost is the Fence alone.
   - What rises above a piece's own cells (the Greenhouse's roof, the Treehouse, a Birdhouse's box, a side-on car's roof) goes on the overhang layer, over the walls. The Greenhouse and the Treehouse are cut down to rise less than a cell, so a piece behind them still shows.
   - Pieces of a type differ in color (parasols, planters, coops, birdhouses) the way rooms do, and a ghost takes the color its piece will have (or has, when the Moving Truck carries it, with its fixture).
@@ -1738,7 +1738,7 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
     - shop 1: Common only
     - shops 2–3: 70 / 25 / 5 (Common / Uncommon / Rare)
     - shops 4–6: 55 / 33 / 12
-  - **×Mult goods stay rare** (D-056): they're the three Rare ×Mult blueprints and the Rare Chandelier, so none can appear in shop 1. With these weights, a ×Mult blueprint is offered in roughly half of runs by the last shop (rough arithmetic for the sim to check). Any run can also plan for the Full House set's ×2.
+  - **×Mult goods stay rare** (D-056): they're the three Rare ×Mult blueprints and the Rare Chandelier, so none can appear in shop 1. With these weights, a ×Mult blueprint is offered in roughly half of runs by the last shop (rough arithmetic for the sim to check). Any run can also plan for the Full House set's ×1.5 (D-140; ×2 before).
   - **Placeholder prices:**
     - blueprints: Common 4, Uncommon 6, Rare 8
     - special pieces: 3
@@ -1786,7 +1786,7 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
 - **Renovate** (D-102): a room card whose type is at its limit can level a room of that type instead: +4 Comfort a level, up to 2. Levels stay through the Moving Truck and transforms. It can be Weekend Crew's next play, and a card that can only renovate doesn't count as fitting for the free redraw.
 - **Half-weight draws** (D-104): a type at its limit draws at half weight while it stays there.
 - **The yard rules** (D-105): the Patio, Hot Tub, and Fire Pit earn nothing unless they touch a room (not blocking; a Hallway alone doesn't count); Treehouses don't count each other as Kid partners.
-- **Packs** (D-106): one Fence card places 1–8 connected tiles, and one Driveway card 1–6, in one week, as one piece.
+- **Packs** (D-106): one Fence card places 1–8 connected tiles, and one Driveway card 1–8 (D-140; 1–6 before), in one week, as one piece.
 - **Juniper:**
   - her limit becomes the spec "a house of 4–8 rooms", so it's an achievement rather than free from week 1, plus a −10% taste per room over 8. Under D-101 it's her Under one roof: 4–8 rooms, filling 60% of their box
   - early-completion rewards doubled
@@ -1814,7 +1814,7 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
   | Jack-and-Jill | 10 | +0.5 | | +8 Points, +0.25 |
   | Suite | 15 | +0.5 | | +10 Points, +0.25 |
   | Entertainer (one per house, D-093) | 25 | +1 | | +15 Points, +0.5 |
-  | Full House | 40 | +1 | ×2 | +20 Points, +0.5 |
+  | Full House | 40 | +1 | ×1.5 (D-140; was ×2) | +20 Points, +0.5 |
 
   - checked every week; Points and Mult pay every week while the set holds; other reward types pay once, on first completion
   - levels come from the Remodel Plans tools and last for the run
@@ -1862,7 +1862,7 @@ Every Core item from `content-brainstorm.md`, written in the §5 format. Numbers
 | Living Room | `neighbor {property viewSource} +2 max 3`; `conditional {is Sunny} → steady 2` (D-120) | M1 |
 | Closet | `steady 1`; Suite member | M2 |
 | Hallway (1×2, 1×3) | Two cards, `connector`, `link`; `neighbor {property room} +2 max 4` (D-114) | M2 |
-| Garage | `requires {touching: [street, driveway]}` (blocks); `steady 1`; `economy 1 every 3` | M2 |
+| Garage | `requires {touching: [street, driveway]}` (doesn't block: built like any room, D-140); `steady 5`; `economy 1 every 2` | M2 (D-140: was a blocking requirement, `steady 1`, `economy 1 every 3`) |
 | Home Office | `steady 2`; `neighbor {tag Loud} −2`; `economy 1 every 2` | M2 |
 | **Sunroom** (2×2) | Weight 5 from Foundation (D-120; it was a special piece, Sunny by its tag, `perTile sunny +2`); `conditional {is Sunny} → steady 6` | M3a (D-120: the draw) |
 
@@ -1876,7 +1876,7 @@ Every Core item from `content-brainstorm.md`, written in the §5 format. Numbers
 | Herb Garden | `givesView`; `perTile sunny +1` (its tiles in the sun, D-120); `aura kitchen +25% adjacent` | M2 |
 | Patio | `requires {touching {property room}}` (doesn't block: the Patio rule, D-105); `neighbor [livingRoom, kitchen] +2`; `neighbor {property viewSource} +1 max 3` | M2 (M4a: the Patio rule) |
 | Fence | A pack of 1–8 connected tiles, one piece (D-106; was the 1×4 and 5-tile L cards); `wall`; `enclosure perTile 1 cap 6` | M2 (M4a: the pack) |
-| Driveway | A pack of 1–6 connected tiles, one piece (D-106; was the 1×3 and 1×5 cards); `canCover: ['creek']`; `requires {touching: [street, driveway]}` (blocks); `conditional {in: frontYard} → steady 1` | M2 (M4a: the pack) |
+| Driveway | A pack of 1–8 connected tiles, one piece (D-106; was the 1×3 and 1×5 cards; 1–6 tiles until D-140); `canCover: ['creek']`; `requires {touching: [street, driveway]}` (blocks); `neighbor garage +3, max 1`; `steady 1` (D-140: was `conditional {in: frontYard} → steady 1`) | M2 (M4a: the pack; D-140) |
 
 ### "-house" pieces (base pool)
 
@@ -1930,7 +1930,7 @@ Each set pays Points and +Mult every week it holds, like a poker hand (values in
 | Suite | members bedroom, bathroom, closet; connected; Points 15, Mult +0.5 | M4a |
 | Jack-and-Jill | members 2 bedrooms + bathroom; hub bathroom; Points 10, Mult +0.5 | M4a |
 | Entertainer | members kitchen, diningRoom, livingRoom; connected; max 1 (D-093); Points 25, Mult +1 | M1 (M4a: max 1) |
-| Full House | one of each of the 9 Core indoor types; not connected; max 1; Points 40, Mult +1, **×2** | M4a |
+| Full House | one of each of the 9 Core indoor types (a Garage nothing reaches counts, D-070); not connected; max 1; Points 40, Mult +1, **×1.5** (D-140; was ×2) | M4a |
 
 ### Blueprints (18)
 
