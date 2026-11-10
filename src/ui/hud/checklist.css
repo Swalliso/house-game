@@ -114,6 +114,11 @@
   }
 }
 @media (height < 1000px) and (max-width: 1500px) {
+  /* The tastes' row keeps to one line there (D-142): "Tastes" without its count, which made it
+     two beside the crew's and the sun's icons. Opening the row shows them. */
+  [data-font='pixel'] .taste-head .fold-n {
+    display: none;
+  }
   [data-font='pixel'] .check-crew-icon.in-plank {
     display: none;
   }

@@ -1,10 +1,14 @@
 // The job board (implementation-plan.md §7 M4a and M4b; D-032, D-045): Start opens three
-// contracts, each a client and a lot. A card shows who the client is, what they wish for, who
-// moves in and when, their tastes, and a map of the lot with its traits (D-119: Creekside pays,
-// so the lot can be a reason to take the job). Taking one opens the crew pick; hiring
-// a crew starts the run. On a first visit, contract 0 is the Hendersons and the General
-// Contractor is marked too, both "Recommended for your first job". The contracts come from the
-// rules' jobBoard(), so the UI only renders them.
+// contracts, each a client and a lot. Taking one opens the crew pick; hiring a crew starts the
+// run. On a first visit, contract 0 is the Hendersons and the General Contractor is marked too,
+// both "Recommended for your first job". The contracts come from the rules' jobBoard(), so the
+// UI only renders them.
+//
+// A card leads with what differs between the clients on offer (D-142): who they are, their
+// wishes, and a map of the lot with its sun and traits (D-119: Creekside pays, so the lot can be
+// a reason to take the job). The household and the tastes are a line each, the whole of each in
+// its tip (job-card.ts). The seven house rules are the same on every card, so the board names
+// them once, in its lede; a rule a client has in numbers of their own sits with their wishes.
 //
 // In the pixel UI (D-110): a wood panel standing on the title's street (Title.tsx's
 // TitleBackdrop), its cards the kit's paper Cards, rarity a band and a chip as in the shop. A
@@ -16,31 +20,30 @@ import './jobs.css';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import {
   CONTENT,
+  houseRulesText,
   jobBoard,
   lotTraits,
   lotTraitText,
   modifierText,
   rules,
   specText,
-  type ArrivalDef,
   type ClientDef,
   type Contract,
   type CrewDef,
   type CrewId,
   type Lot,
-  type Modifier,
 } from '../../rules/index.ts';
 import { audio } from '../audio/audio.ts';
 import { FEEL } from '../fx/feel.ts';
 import { anyModalOpen } from '../hud/actions.ts';
 import { RARITY_LABEL } from '../hud/goods.tsx';
-import { arrivalsOf, arrivalWeek, midName } from '../hud/household.ts';
 import { PieceArt } from '../hud/PieceArt.tsx';
 import { Tip } from '../hud/Tip.tsx';
 import { SunChip } from '../hud/sun.tsx';
 import { Button, Card, Chip, Icon, Keycap, Panel, type IconName } from '../kit/kit.tsx';
 import { CREW_ICONS, LOT_TRAIT_ICONS } from '../sprites.ts';
 import { appScreen, firstVisit, jobBoardSeed, takeContract } from '../store.ts';
+import { householdLine, householdTip, ownHouseRules, tasteCounts, tastesTip } from './job-card.ts';
 import { LOT_COLORS, lotMapKind, lotMapSize, lotSummary } from './lot-map.ts';
 import { TitleBackdrop } from './Title.tsx';
 
@@ -121,9 +124,14 @@ export function JobBoard() {
           bodyClass="jobs-body"
         >
           <p class="jobs-lede">
-            {client
-              ? `For ${fromName(client.name)}. A crew changes what you draw and what pays, all run.`
-              : 'Pick a client. Each job is one house, on one lot, for them.'}
+            {client ? (
+              `For ${fromName(client.name)}. A crew changes what you draw and what pays, all run.`
+            ) : (
+              <>
+                Pick a client. Each job is one house, on one lot, for them. Every house also keeps{' '}
+                <HouseRulesTip />.
+              </>
+            )}
           </p>
           <ol class="jobs-list" ref={list}>
             {client
@@ -259,10 +267,9 @@ function ContractCard(props: { contract: Contract; index: number; onTake: () => 
       }).house.lot,
     [contract.seed, contract.clientId],
   );
-  const household = client.specs.find((s) => s.id === 'roomForEveryone');
-  const arrivals = arrivalsOf(contract.clientId);
   const wishes = client.specs.filter((s) => s.group === 'wishes');
-  const houseRules = client.specs.filter((s) => s.group !== 'wishes');
+  // A house rule in this client's own numbers reads as one of their wishes (D-101).
+  const asked = [...wishes, ...ownHouseRules(client)];
   return (
     <li class="jobs-item">
       <Card
@@ -281,57 +288,21 @@ function ContractCard(props: { contract: Contract; index: number; onTake: () => 
           <p class="contract-brief">{client.brief}</p>
           <div class="contract-top">
             <LotMap lot={lot} />
-            <div class="contract-top-text">
-              <section class="contract-section">
-                <h3>Wishes</h3>
-                <ul class="pcard-lines">
-                  {wishes.map((w) => (
-                    <li key={w.id}>
-                      <Tip title={w.name} text={specText(CONTENT, w)}>
-                        {w.name}
-                      </Tip>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-              {(household || arrivals.length > 0) && (
-                <section class="contract-section">
-                  <h3>Household</h3>
-                  {household && (
-                    <p>
-                      <Tip title={household.name} text={specText(CONTENT, household)}>
-                        {bedroomsText(client)}
-                      </Tip>
-                    </p>
-                  )}
-                  {arrivals.length > 0 && <MovingIn arrivals={arrivals} />}
-                </section>
-              )}
-            </div>
+            <section class="contract-section contract-top-text">
+              <h3>Wishes</h3>
+              <ul class="pcard-lines">
+                {asked.map((w) => (
+                  <li key={w.id}>
+                    <Tip title={w.name} text={specText(CONTENT, w)}>
+                      {w.name}
+                    </Tip>
+                  </li>
+                ))}
+              </ul>
+            </section>
           </div>
           <LotTraits lot={lot} client={client} />
-          {/* The map in words; its title and label say it too, so a short window drops it. */}
-          <p class="contract-lot-note">{lotSummary(lot)}</p>
-          <section class="contract-section">
-            <h3>Tastes</h3>
-            <Tastes client={client} />
-          </section>
-          <details class="contract-rules">
-            <summary>
-              <Icon name="caretRight" class="caret-closed" />
-              <Icon name="caretDown" class="caret-open" />
-              House rules ({houseRules.length})
-            </summary>
-            <ul class="pcard-lines">
-              {houseRules.map((s) => (
-                <li key={s.id}>
-                  <Tip title={s.name} text={specText(CONTENT, s)}>
-                    {s.name}
-                  </Tip>
-                </li>
-              ))}
-            </ul>
-          </details>
+          <FinePrint client={client} />
         </div>
         <div class="contract-foot">
           <Button
@@ -350,24 +321,68 @@ function ContractCard(props: { contract: Contract; index: number; onTake: () => 
 }
 
 /**
- * Who moves in mid-run (M4b, D-103), and when: "Moving in: the twins at Framing (week 9),
- * Grandma at Drywall (week 17)". Each name's tip says what they bring.
+ * The house rules, named once for the whole board (D-142): every client has the same seven
+ * (D-101), so they're a term in the lede, not a list on each card. Its tip names them, in the
+ * rules' words.
  */
-function MovingIn({ arrivals }: { arrivals: readonly ArrivalDef[] }) {
+function HouseRulesTip() {
+  const text = houseRulesText(CONTENT);
+  const count = text.split('\n').length - 1;
   return (
-    <p class="contract-arrivals">
-      <strong>Moving in:</strong>{' '}
-      {arrivals.map((a, k) => (
-        <span key={a.id}>
-          {k > 0 ? ', ' : ''}
-          <Tip title={a.name} text={a.text}>
-            {midName(a)}
-          </Tip>{' '}
-          at {rules.phaseName(a.phase)} (week {arrivalWeek(a)})
+    <Tip title="The house rules" text={text}>
+      the same {count} house rules
+    </Tip>
+  );
+}
+
+/**
+ * A card's last lines (D-142): the household and the tastes, a line each, with the whole of each
+ * in its tip (job-card.ts). Who moves in, and when, and what they bring; what the client likes
+ * and dislikes, counted, and what their jobs draw more of.
+ */
+function FinePrint({ client }: { client: ClientDef }) {
+  const { likes, dislikes, draws } = tasteCounts(client);
+  const tastes = likes + dislikes + draws > 0;
+  return (
+    <ul class="contract-fine">
+      <li>
+        <span class="taste-mark">
+          <Icon name="House" />
         </span>
-      ))}
-      .
-    </p>
+        {/* The tip stays inline in its own box, so its dots run under each line it wraps to. */}
+        <span>
+          <Tip title="The household" text={householdTip(client)}>
+            {householdLine(client)}
+          </Tip>
+        </span>
+      </li>
+      {tastes && (
+        <li>
+          <span class="taste-mark">
+            <span class="taste-dot" />
+          </span>
+          <span>
+            <Tip title={`${client.name}: tastes`} text={tastesTip(client)}>
+              <span class="taste-sum">
+                Tastes
+                {likes > 0 && (
+                  <span class="taste-n">
+                    <Icon name="up" label="Likes" />
+                    {likes}
+                  </span>
+                )}
+                {dislikes > 0 && (
+                  <span class="taste-n">
+                    <Icon name="down" label="Dislikes" />
+                    {dislikes}
+                  </span>
+                )}
+              </span>
+            </Tip>
+          </span>
+        </li>
+      )}
+    </ul>
   );
 }
 
@@ -403,20 +418,6 @@ function LotTraits({ lot, client }: { lot: Lot; client: ClientDef }) {
   );
 }
 
-/** "2–3 Bedrooms to start": the household's opening range (the full rule is in its tip). */
-function bedroomsText(client: ClientDef): string {
-  const [min, max] = client.household.bedrooms;
-  return `${min === max ? min : `${min}–${max}`} Bedrooms to start`;
-}
-
-/** Whether a taste helps (a like, a bonus) or hurts (a dislike). */
-function helps(mod: Modifier): boolean {
-  if (mod.kind === 'earnNothing' || mod.kind === 'removeTag') return false;
-  if ('pct' in mod && typeof mod.pct === 'number') return mod.pct >= 0;
-  if ('add' in mod && typeof mod.add === 'number') return mod.add >= 0;
-  return true;
-}
-
 /** A line with its mark: up for a like, down for a dislike, the die for what's drawn more. */
 function TasteLine({
   icon,
@@ -436,34 +437,6 @@ function TasteLine({
       </span>
       <span>{text}</span>
     </li>
-  );
-}
-
-function Tastes({ client }: { client: ClientDef }) {
-  return (
-    <ul class="contract-tastes">
-      {client.tastes.map((m, i) => {
-        const good = helps(m);
-        return (
-          <TasteLine
-            key={`t${i}`}
-            icon={good ? 'up' : 'down'}
-            label={good ? 'Likes' : 'Dislikes'}
-            text={modifierText(CONTENT, m)}
-          />
-        );
-      })}
-      {/* The client's pool: what comes up more often in the draws. */}
-      {client.pool.map((m, i) => (
-        <TasteLine
-          key={`p${i}`}
-          icon="reroll"
-          label="Draws"
-          text={modifierText(CONTENT, m)}
-          quiet
-        />
-      ))}
-    </ul>
   );
 }
 

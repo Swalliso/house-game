@@ -41,6 +41,10 @@ export const SETS: Readonly<Record<SetId, SetDef>> = {
     level: { points: 10, mult: 25 },
   },
   // One of each of the 9 Core indoor types; they needn't touch. The game's one set Sparkle.
+  // ×1.5 since D-140 (was ×2): while the Garage could only be built by the street or a Driveway,
+  // greedy held this set in 1.5% of runs. Built like any room, it's held in about 20%, from a
+  // median week 23, and at ×2 those runs' final Wow nearly doubled (×1.95 against the same seeds
+  // before); at ×1.5 it's about ×1.5. A Garage nothing reaches still counts (D-070).
   fullHouse: {
     id: 'fullHouse',
     name: 'Full House',
@@ -60,7 +64,7 @@ export const SETS: Readonly<Record<SetId, SetDef>> = {
     maxInstances: 1,
     points: 40,
     mult: 100,
-    times: 200,
+    times: 150,
     level: { points: 20, mult: 50 },
   },
 };

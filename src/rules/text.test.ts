@@ -161,8 +161,9 @@ describe('a compact hand card (D-121)', () => {
       // Playtest 4's fix (D-114), behind "Links the rooms it touches…" before this.
       hallway: ['+2 per touching room (up to 4)'],
       longHallway: ['+2 per touching room (up to 4)'],
-      // Not "Must touch the house, and the street or a Driveway": the lot shows where it goes.
-      garage: ['+1 every week'],
+      // Built like any room (D-140), so its requirement is about pay: both in one short line,
+      // which fits the card's two lines ("…if touching the street or a Driveway" didn't).
+      garage: ['+5 by the street or a Driveway'],
       homeOffice: ['+2 every week'],
       lawn: ['+1 every week'],
       sapling: ['+1 every week'],
@@ -171,7 +172,8 @@ describe('a compact hand card (D-121)', () => {
       // A requirement that isn't about placement follows the pay: without it, nothing.
       patio: ['+2 per touching Living Room or Kitchen if touching a room'],
       fence: ['+1 per tile of the fenced yards it borders (up to +6)'],
-      driveway: ['+1 every week in the front yard'],
+      // Its job (D-140), not "Must be built touching the street or a Driveway" or its +1.
+      driveway: ['+3 if touching a Garage'],
       doghouse: ['+1 every week in a fenced yard'],
       treehouse: ['+2 every week'],
       greenhouse: ['Touching yard pieces that give a view earn +50%'],
@@ -190,10 +192,8 @@ describe('a compact hand card (D-121)', () => {
     for (const p of pieces) {
       const [line] = handCardLines(CONTENT, { kind: 'piece', id: p.id });
       const own = cardText(CONTENT, p).effects;
-      expect(
-        own.some((l) => line!.startsWith(l)),
-        p.id,
-      ).toBe(true);
+      // The Garage's is its "+5 every week" and its requirement, said shorter (D-140).
+      expect(p.id === 'garage' || own.some((l) => line!.startsWith(l)), p.id).toBe(true);
       expect(line, p.id).toMatch(/[+−]\d/);
       expect(line, p.id).not.toMatch(/^(Links|Must|Earns nothing|Becomes)/);
     }
@@ -254,7 +254,27 @@ describe('set chips (D-122)', () => {
       '2 Bedrooms and a Bathroom, each touching the Bathroom',
     );
     expect(setText(CONTENT, 'fullHouse')).toContain(
-      'anywhere in the house. +40 Comfort, +1 Charm, and ×2 Sparkle every week. One per house.',
+      'anywhere in the house. +40 Comfort, +1 Charm, and ×1.5 Sparkle every week. One per house.',
     );
+  });
+
+  it('the glossary names the Sparkle set at the content’s number, and the Garage’s requirement (D-140)', () => {
+    const g = glossary(CONTENT);
+    // Generated from the set, so a tuned number can't leave "×2" behind.
+    expect(g.sparkle.text).toBe(
+      'Multiplies Charm itself. Rare: the Full House set (×1.5) and a few Rare goods have it, and each needs a setup. Each source counts once a week.',
+    );
+    expect(g.requirement.text).toContain('a Garage touching the street or a Driveway');
+    // The Garage's card says it plainly: built like any room, paid once it's reached.
+    expect(cardText(CONTENT, CONTENT.pieces.garage).effects).toEqual([
+      'Earns nothing unless touching the street or a Driveway',
+      '+5 every week',
+      '+1 budget every 2nd week',
+    ]);
+    expect(cardText(CONTENT, CONTENT.pieces.driveway).effects).toEqual([
+      'Must be built touching the street or a Driveway',
+      '+3 if touching a Garage',
+      '+1 every week',
+    ]);
   });
 });

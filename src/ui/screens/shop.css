@@ -288,6 +288,10 @@
 .offer .pcard-chips .tip {
   background: none;
 }
+/* A blueprint's icon beside its title: only on a short window, where the art slot goes. */
+.offer .title-icon.icon {
+  display: none;
+}
 /* A kind's icon in the art slot, two UI pixels to its pixel; a tool's or a fixture's own icon,
    two thirds its size, three, so both stand as tall. */
 .offer .art-icon.icon {
@@ -568,6 +572,10 @@
   }
   .offer .pcard-art {
     display: none;
+  }
+  /* A blueprint keeps its icon, beside its title (D-141). */
+  .offer .title-icon.icon {
+    display: inline-block;
   }
 }
 

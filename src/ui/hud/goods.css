@@ -33,3 +33,29 @@
 .good-where {
   color: var(--ink-soft);
 }
+/* D-141: a held blueprint in the inspect panel: its icon beside its name, and what it's adding
+   (goods.tsx BlueprintWorth), in the shop strip's words and colors: a gain in the good blue with
+   an up icon, a loss in the bad orange with a down icon, quiet when it's waiting for something. */
+.good-glyph.icon {
+  margin-right: var(--space-1);
+  vertical-align: baseline;
+}
+.good-worth {
+  display: flex;
+  flex-direction: column;
+  margin: var(--space-1) 0;
+  color: var(--ink-soft);
+}
+.good-worth.good {
+  color: var(--good);
+}
+.good-worth.bad {
+  color: var(--bad);
+}
+.good-worth .worth-num {
+  font-weight: 700;
+  white-space: nowrap;
+}
+.good-worth .worth-num .icon {
+  margin-right: var(--space-1);
+}

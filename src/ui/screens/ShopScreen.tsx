@@ -3,7 +3,8 @@
 // demolitions, and D-076's strike), and Leave, which starts the next milestone. Selling is in
 // the inventory beside it. The UI never prices anything: the rules' shopOffers() does. Each
 // fixture, on sale or in a crate, says what it's worth in your house (D-107): the rules'
-// fixtureValue() does that.
+// fixtureValue() does that. So does each blueprint, the free Housewarming pick included (D-141):
+// the rules' blueprintValue() does that, and each has its own icon (sprites.ts BLUEPRINT_ICONS).
 //
 // M5a draws it as a wood sheet over the board: the budget as the header's hero counter, the
 // goods as paper cards of one size packed onto shelves (each with its art, its kind and
@@ -16,6 +17,7 @@ import { computed, signal } from '@preact/signals';
 import {
   CONTENT,
   rules,
+  type BlueprintId,
   type CardType,
   type FixtureId,
   type FixtureValue,
@@ -31,8 +33,9 @@ import { shopHidden } from '../hud/actions.ts';
 import { BudgetCount } from '../hud/BudgetCount.tsx';
 import { TagChips } from '../hud/Hand.tsx';
 import { FixtureArt, PieceArt, ShapeGlyph } from '../hud/PieceArt.tsx';
-import { TOOL_ICONS } from '../sprites.ts';
+import { BLUEPRINT_ICONS, TOOL_ICONS } from '../sprites.ts';
 import {
+  BlueprintWorth,
   FixtureWorth,
   goodKind,
   goodLines,
@@ -89,6 +92,14 @@ function Worth({ id }: { id: FixtureId }) {
   return <FixtureWorth value={fixtureValues.value.get(id) ?? null} />;
 }
 
+/**
+ * A blueprint's line: what it would add to your house, or what it's waiting for (D-141). The
+ * rules keep each state's values, so this asks them as it renders.
+ */
+function Plan({ id }: { id: BlueprintId }) {
+  return <BlueprintWorth value={rules.blueprintValue(run.value, id)} />;
+}
+
 const noFocus = (e: MouseEvent) => e.preventDefault();
 
 const SERVICE_TEXT: Record<ServiceId, string> = {
@@ -119,7 +130,7 @@ function buyOffer(o: OfferView): void {
   }
 }
 
-/** The good's own icon (a tool's), or its kind's (blueprints, crates, the upgrade), for the art slot. */
+/** The good's own icon (a tool's, a blueprint's), or its kind's (crates, the upgrade), for the art slot. */
 function kindIcon(o: OfferView['offer']): IconName {
   switch (o.kind) {
     case 'service':
@@ -128,6 +139,8 @@ function kindIcon(o: OfferView['offer']): IconName {
       return 'House';
     case 'tool':
       return TOOL_ICONS[o.id];
+    case 'blueprint':
+      return BLUEPRINT_ICONS[o.id];
     default:
       return o.kind;
   }
@@ -140,9 +153,17 @@ function kindIcon(o: OfferView['offer']): IconName {
 function OfferArt({ offer }: { offer: OfferView['offer'] }) {
   if (offer.kind === 'piece') return <PieceArt id={offer.id} />;
   if (offer.kind === 'fixture') return <FixtureArt id={offer.id} />;
-  return (
-    <Icon name={kindIcon(offer)} class={offer.kind === 'tool' ? 'art-icon own' : 'art-icon'} />
-  );
+  const own = offer.kind === 'tool' || offer.kind === 'blueprint';
+  return <Icon name={kindIcon(offer)} class={own ? 'art-icon own' : 'art-icon'} />;
+}
+
+/**
+ * A blueprint's icon beside its title, for a short window, where the cards have no pictures
+ * (shop.css shows it only there): a shelf of blueprints still tells them apart (D-141).
+ */
+function titleIcon(good: GoodRef | null) {
+  if (good?.kind !== 'blueprint') return undefined;
+  return <Icon name={BLUEPRINT_ICONS[good.id]} class="title-icon" />;
 }
 
 /** A piece's kind, for its card's tint and band (and lawn behind a yard piece's picture). */
@@ -207,7 +228,7 @@ function OfferCard({ o, mixed }: { o: OfferView; mixed: boolean }) {
       tone={pieceTone(good)}
       rarity={o.rarity}
       title={o.name}
-      lead={service ? <Icon name={SERVICE_ICON[service]} /> : undefined}
+      lead={service ? <Icon name={SERVICE_ICON[service]} /> : titleIcon(good)}
       aside={o.offer.kind === 'piece' ? <ShapeGlyph id={o.offer.id} /> : undefined}
       art={service ? undefined : <OfferArt offer={o.offer} />}
       chips={good ? <OfferChips good={good} kind={mixed} /> : undefined}
@@ -223,6 +244,7 @@ function OfferCard({ o, mixed }: { o: OfferView; mixed: boolean }) {
         </span>
       )}
       {o.offer.kind === 'fixture' && !sold && <Worth id={o.offer.id} />}
+      {o.offer.kind === 'blueprint' && !sold && <Plan id={o.offer.id} />}
       <footer class="offer-foot">
         {sold ? (
           <span class="sold-stamp">Sold</span>
@@ -382,6 +404,7 @@ function CrateOption({
       tone={pieceTone(good)}
       rarity={rarity}
       title={goodName(good)}
+      lead={titleIcon(good)}
       art={<OfferArt offer={offer} />}
       chips={<OfferChips good={good} />}
       lines={goodLines(good)}
@@ -390,6 +413,7 @@ function CrateOption({
     >
       {rarity === 'rare' && <span class="offer-shine" aria-hidden="true" />}
       {good.kind === 'fixture' && <Worth id={good.id} />}
+      {good.kind === 'blueprint' && <Plan id={good.id} />}
       <footer class="offer-foot">
         <Button
           size="sm"
