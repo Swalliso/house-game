@@ -1444,6 +1444,36 @@
     "author": "Versilian Studios (Sam Gossner) and the VCSL contributors",
     "license": "CC0-1.0"
   },
+  "audio/sfx/book-1.ogg": {
+    "source": "https://opengameart.org/content/50-rpg-sound-effects (kenney/RPGsounds_Kenney.zip): OGG/bookPlace1.ogg",
+    "author": "Kenney (kenney.nl)",
+    "license": "CC0-1.0"
+  },
+  "audio/sfx/book-1.m4a": {
+    "source": "https://opengameart.org/content/50-rpg-sound-effects (kenney/RPGsounds_Kenney.zip): OGG/bookPlace1.ogg",
+    "author": "Kenney (kenney.nl)",
+    "license": "CC0-1.0"
+  },
+  "audio/sfx/book-2.ogg": {
+    "source": "https://opengameart.org/content/50-rpg-sound-effects (kenney/RPGsounds_Kenney.zip): OGG/bookPlace2.ogg",
+    "author": "Kenney (kenney.nl)",
+    "license": "CC0-1.0"
+  },
+  "audio/sfx/book-2.m4a": {
+    "source": "https://opengameart.org/content/50-rpg-sound-effects (kenney/RPGsounds_Kenney.zip): OGG/bookPlace2.ogg",
+    "author": "Kenney (kenney.nl)",
+    "license": "CC0-1.0"
+  },
+  "audio/sfx/book-3.ogg": {
+    "source": "https://opengameart.org/content/50-rpg-sound-effects (kenney/RPGsounds_Kenney.zip): OGG/bookPlace3.ogg",
+    "author": "Kenney (kenney.nl)",
+    "license": "CC0-1.0"
+  },
+  "audio/sfx/book-3.m4a": {
+    "source": "https://opengameart.org/content/50-rpg-sound-effects (kenney/RPGsounds_Kenney.zip): OGG/bookPlace3.ogg",
+    "author": "Kenney (kenney.nl)",
+    "license": "CC0-1.0"
+  },
   "audio/sfx/chime-c5.ogg": {
     "source": "https://github.com/sgossner/VCSL (vcsl): Idiophones/Struck Idiophones/Hand Chimes/sus_C4_r01_main.wav",
     "author": "Versilian Studios (Sam Gossner) and the VCSL contributors",
@@ -1571,6 +1601,16 @@
   },
   "audio/sfx/coins.m4a": {
     "source": "https://opengameart.org/content/50-rpg-sound-effects (kenney/RPGsounds_Kenney.zip): OGG/handleCoins2.ogg",
+    "author": "Kenney (kenney.nl)",
+    "license": "CC0-1.0"
+  },
+  "audio/sfx/creak.ogg": {
+    "source": "https://opengameart.org/content/50-rpg-sound-effects (kenney/RPGsounds_Kenney.zip): OGG/creak3.ogg",
+    "author": "Kenney (kenney.nl)",
+    "license": "CC0-1.0"
+  },
+  "audio/sfx/creak.m4a": {
+    "source": "https://opengameart.org/content/50-rpg-sound-effects (kenney/RPGsounds_Kenney.zip): OGG/creak3.ogg",
     "author": "Kenney (kenney.nl)",
     "license": "CC0-1.0"
   },
@@ -1741,6 +1781,16 @@
   },
   "audio/sfx/nope.m4a": {
     "source": "https://opengameart.org/content/interface-sounds (kenney/kenney_interfaceSounds.zip): Audio/error_004.ogg",
+    "author": "Kenney (kenney.nl)",
+    "license": "CC0-1.0"
+  },
+  "audio/sfx/pop.ogg": {
+    "source": "https://opengameart.org/content/interface-sounds (kenney/kenney_interfaceSounds.zip): Audio/drop_002.ogg",
+    "author": "Kenney (kenney.nl)",
+    "license": "CC0-1.0"
+  },
+  "audio/sfx/pop.m4a": {
+    "source": "https://opengameart.org/content/interface-sounds (kenney/kenney_interfaceSounds.zip): Audio/drop_002.ogg",
     "author": "Kenney (kenney.nl)",
     "license": "CC0-1.0"
   },

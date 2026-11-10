@@ -54,7 +54,7 @@ Open House is a game jam entry for the theme "It's a house," built with Claude C
   [RPG Audio](https://opengameart.org/content/50-rpg-sound-effects),
   [Casino Audio](https://opengameart.org/content/54-casino-sound-effects-cards-dice-chips) and
   [Interface Sounds](https://opengameart.org/content/interface-sounds) packs: cloth, coins,
-  clay chips, clicks. CC0 asks for no credit; we give it anyway. Each sound is cut from its
+  clay chips, clicks, a creak, a pop and a book's thump. CC0 asks for no credit; we give it anyway. Each sound is cut from its
   source by `npm run audio:cut` (`art/audio.json`, D-130) into `assets/audio/sfx/`, as Ogg Vorbis
   and AAC, and recorded in `assets/licenses.json`. The sources stay in the gitignored
   `art-source/audio/`.

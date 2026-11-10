@@ -369,6 +369,37 @@
       "lowpass": 3000,
       "note": "a placement that isn't allowed: a soft, low bonk"
     },
+    "sfx/creak": {
+      "from": "kenney-rpg",
+      "file": "OGG/creak3.ogg",
+      "fade": 0.1,
+      "lowpass": 6000,
+      "note": "a crate opening: the lid's wooden creak (D-129, the juice PR's moments)"
+    },
+    "sfx/pop": {
+      "from": "kenney-interface",
+      "file": "Audio/drop_002.ogg",
+      "peak": -3,
+      "note": "a crate opening: the lid popping off"
+    },
+    "sfx/book-1": {
+      "from": "kenney-rpg",
+      "file": "OGG/bookPlace1.ogg",
+      "fade": 0.08,
+      "note": "a change order's stamp: a papery thump"
+    },
+    "sfx/book-2": {
+      "from": "kenney-rpg",
+      "file": "OGG/bookPlace2.ogg",
+      "fade": 0.08,
+      "note": "a change order's stamp"
+    },
+    "sfx/book-3": {
+      "from": "kenney-rpg",
+      "file": "OGG/bookPlace3.ogg",
+      "fade": 0.08,
+      "note": "a change order's stamp"
+    },
     "music/morning/full": {
       "from": "kevin-macleod-morning",
       "file": "Morning.mp3",

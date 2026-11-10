@@ -35,7 +35,17 @@ const PENTATONICS = {
 
 export type Instrument = 'marimba' | 'chime' | 'vibes' | 'glock' | 'bell';
 export type SampleSet =
-  'thock' | 'fwp' | 'chip' | 'coins' | 'click' | 'nope' | 'gong' | 'wind-chimes';
+  | 'thock'
+  | 'fwp'
+  | 'chip'
+  | 'coins'
+  | 'click'
+  | 'nope'
+  | 'gong'
+  | 'wind-chimes'
+  | 'creak'
+  | 'pop'
+  | 'book';
 
 export interface Sample {
   /** The cut's id: a path under assets/audio/ without its extension. */
@@ -123,6 +133,10 @@ export const SETS: Readonly<Record<SampleSet, readonly string[]>> = {
   nope: ['sfx/nope'],
   gong: ['sfx/gong'],
   'wind-chimes': ['sfx/wind-chimes'],
+  // The juice PR's moments: a crate's lid and a change order's stamp.
+  creak: ['sfx/creak'],
+  pop: ['sfx/pop'],
+  book: ['sfx/book-1', 'sfx/book-2', 'sfx/book-3'],
 };
 
 /** A note: `step` of the key's scale (0 the tonic, 7 the octave above) on an instrument. */
@@ -229,6 +243,141 @@ export const RECIPES: Partial<Record<SoundId, Recipe>> = {
     ],
   },
   sparkle: { layers: [{ set: 'wind-chimes', db: -7 }] },
+
+  // ---- The juice PR's moments (D-124 to D-126), after its placeholders' shapes ----
+  // A Good week: a short chime, the tonic up to the fifth, with a soft glockenspiel octave.
+  // (The hand chimes stop at G♯6, so their notes stay at or under the fifth; the glockenspiel
+  // takes the octave.)
+  'tier-good': {
+    duck: true,
+    layers: [
+      { inst: 'chime', step: 0, db: -11 },
+      { at: 0.09, inst: 'chime', step: 4, db: -10 },
+      { at: 0.09, inst: 'glock', step: 7, db: -18 },
+    ],
+  },
+  // A Huge week: the full fanfare, up the tonic chord into a held chord with a shimmer.
+  'tier-huge': {
+    duck: true,
+    layers: [
+      { at: 0, inst: 'marimba', step: 0, db: -8 },
+      { at: 0.1, inst: 'marimba', step: 2, db: -8 },
+      { at: 0.2, inst: 'marimba', step: 4, db: -8 },
+      { at: 0.3, inst: 'marimba', step: 7, db: -7 },
+      { at: 0.45, inst: 'vibes', step: 0, db: -11 },
+      { at: 0.45, inst: 'vibes', step: 2, db: -12 },
+      { at: 0.45, inst: 'vibes', step: 4, db: -12 },
+      { at: 0.45, inst: 'glock', step: 7, db: -15 },
+      { at: 0.5, set: 'wind-chimes', db: -12 },
+    ],
+  },
+  // A set completing: a bright chord, the tonic and the fifth, the third on top a beat later.
+  'set-complete': {
+    layers: [
+      { inst: 'chime', step: 0, db: -12 },
+      { inst: 'chime', step: 4, db: -11 },
+      { at: 0.07, inst: 'glock', step: 2, db: -14 },
+    ],
+  },
+  // A Rhythm payout: ba-dum, two soft wooden knocks.
+  rhythm: {
+    layers: [
+      { set: 'thock', db: -3, rate: 0.9 },
+      { at: 0.13, set: 'thock', db: -1, rate: 1.2 },
+    ],
+  },
+  // A find: a scoop of dirt, then a ta-da.
+  find: {
+    layers: [
+      { set: 'fwp', db: -5, rate: 0.8 },
+      { at: 0.12, inst: 'marimba', step: 4, db: -7 },
+      { at: 0.22, inst: 'marimba', step: 7, db: -6 },
+    ],
+  },
+  // A crate opening: the lid's creak, a pop, and a note.
+  'crate-open': {
+    layers: [
+      { set: 'creak', db: -6 },
+      { at: 0.14, set: 'pop', db: -8 },
+      { at: 0.16, inst: 'glock', step: 7, db: -12 },
+    ],
+  },
+  // A Rare on the shelf: a shimmer, and a high glockenspiel ring on the third over a chime.
+  rare: {
+    layers: [
+      { set: 'wind-chimes', db: -9 },
+      { at: 0.05, inst: 'glock', step: 2, db: -11 },
+      { at: 0.1, inst: 'chime', step: 4, db: -15 },
+    ],
+  },
+  // A client's wish met: a warm chime rising up the tonic chord.
+  'wish-met': {
+    layers: [
+      { inst: 'chime', step: 0, db: -12 },
+      { at: 0.08, inst: 'chime', step: 2, db: -11 },
+      { at: 0.16, inst: 'chime', step: 4, db: -10 },
+    ],
+  },
+  // A house rule met: a crisp check, the tonic up to the fifth.
+  'rule-met': {
+    layers: [
+      { inst: 'glock', step: 0, db: -10 },
+      { at: 0.07, inst: 'glock', step: 4, db: -9 },
+    ],
+  },
+  // A house rule lost: a soft low knock and a falling third.
+  'rule-lost': {
+    layers: [
+      { set: 'thock', db: -9, rate: 0.8 },
+      { inst: 'vibes', step: 2, db: -13 },
+      { at: 0.12, inst: 'vibes', step: 0, db: -12 },
+    ],
+  },
+  // A Renovation's level-up: three notes up, the tonic, the fifth, the octave, with a glint.
+  'level-up': {
+    layers: [
+      { inst: 'marimba', step: 0, db: -8 },
+      { at: 0.07, inst: 'marimba', step: 4, db: -8 },
+      { at: 0.14, inst: 'marimba', step: 7, db: -7 },
+      { at: 0.14, inst: 'glock', step: 7, db: -16 },
+    ],
+  },
+  // An arrival: ding-dong, the third down to the tonic, on the long-ringing hand chimes.
+  doorbell: {
+    layers: [
+      { inst: 'chime', step: 2, db: -8 },
+      { at: 0.32, inst: 'chime', step: 0, db: -8 },
+    ],
+  },
+  // A change order's stamp: a papery thump with some wood in it.
+  'order-stamp': {
+    layers: [
+      { set: 'book', db: -4 },
+      { set: 'thock', db: -14 },
+    ],
+  },
+  // Topped out: a quick rising cheer and a ring on top.
+  'topped-out': {
+    duck: true,
+    layers: [
+      { at: 0, inst: 'marimba', step: 0, db: -8 },
+      { at: 0.06, inst: 'marimba', step: 2, db: -8 },
+      { at: 0.12, inst: 'marimba', step: 4, db: -8 },
+      { at: 0.18, inst: 'marimba', step: 7, db: -8 },
+      { at: 0.26, inst: 'chime', step: 4, db: -10 },
+      { at: 0.26, inst: 'glock', step: 7, db: -14 },
+    ],
+  },
+  // The roof going on: a wooden thump, and a chime as it settles.
+  'roof-on': {
+    duck: true,
+    layers: [
+      { set: 'thock', db: -2, rate: 0.75 },
+      { at: 0.1, inst: 'chime', step: 4, db: -9 },
+      { at: 0.1, inst: 'vibes', step: 0, db: -14 },
+    ],
+  },
+  // The milestone's drumroll keeps its ZzFX placeholder: no recording here rolls.
 };
 
 // ---- Pitch ----
