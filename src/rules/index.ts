@@ -59,6 +59,8 @@ export type PieceId =
   | 'firePit'
   | 'henhouse'
   | 'birdhouse'
+  // D-145: a late piece in the weekly draw from Drywall; every room it touches earns more.
+  | 'porch'
   // Member rooms (M4b, D-103): each arrives with a member of a client's household, into the
   // reserve. Never drawn, sold, or in the shop, a crate, or the Catalog; they count as Bedrooms.
   | 'nursery'
@@ -408,7 +410,7 @@ export interface FeatureDef {
   viewSource?: true;
   /** Orthogonally connected tiles of this feature count as one neighbor (the pond, the creek). */
   body?: true;
-  /** Lot features that give nothing as neighbors (boulders, finds). */
+  /** Lot features that give nothing as neighbors (a Time Capsule). */
   inert?: true;
   /** A multi-tile object (the Old Shed's [2, 2]): demolishing any tile removes all of it. */
   size?: readonly [number, number];
@@ -780,6 +782,11 @@ export interface Balance {
   };
   /** Budget paid at each milestone met. */
   milestoneBudget: number;
+  /**
+   * D-145: Wow for each budget held when the last milestone is met, its own payout included
+   * (no shop follows it, so nothing else can be done with it). 0 turns it off.
+   */
+  leftoverBudgetWow: number;
   shop: ShopBalance;
   /** The fewest tiles a fenced yard needs (§4). */
   fencedYardMin: number;
@@ -1066,6 +1073,12 @@ export interface MilestoneReward {
   score: number;
   /** Savings Account interest, included in `budget`. */
   interest: number;
+  /**
+   * The last milestone only, when it's met (D-145): the budget held after its payout, and the
+   * Wow that paid, at `leftoverBudgetWow` each. It's in the milestone's score, not in `score`
+   * above (the early bonus).
+   */
+  leftover?: { budget: number; score: number };
 }
 
 export interface MilestoneRecord {
@@ -1922,6 +1935,7 @@ export {
   houseConditionText,
   houseRulesText,
   lotTraitText,
+  featureWantedText,
   modifierText,
   multNumber,
   regionText,

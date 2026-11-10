@@ -965,6 +965,7 @@ export function economyReport(content: Content, records: readonly RunRecord[]): 
   const earned = records.map((r) => r.economy.budgetEarned);
   const spendable = records.map((r) => r.economy.budgetEarned - r.economy.finalReward);
   const atLeave = records.flatMap((r) => r.economy.budgetAtLeave);
+  const leftWow = records.filter((r) => r.result === 'won').map((r) => r.economy.leftoverWow);
   out.push(
     [
       `Budget earned per run: p50 ${fmt(percentile(earned, 50))} (p10 ${fmt(percentile(earned, 10))},` +
@@ -976,6 +977,10 @@ export function economyReport(content: Content, records: readonly RunRecord[]): 
         ` p90 ${fmt(percentile(atLeave, 90))} (${atLeave.length} visits)`,
       `Budget left unspent at the end: p50 ${fmt(percentile(left, 50))},` +
         ` p90 ${fmt(percentile(left, 90))}, mean ${fix(avgOf(left), 1)}`,
+      // D-145: a win's leftover budget pays Wow at the last milestone.
+      `Leftover budget’s Wow in a win (${content.balance.leftoverBudgetWow} each): p50` +
+        ` ${fmt(percentile(leftWow, 50))}, p90 ${fmt(percentile(leftWow, 90))}` +
+        ` (${leftWow.length} wins)`,
       `Shop visits left without buying (skip reward): ${pct(
         sum((r) => r.economy.skips),
         sum((r) => r.economy.visits),

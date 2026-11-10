@@ -189,7 +189,9 @@ function Milestones({ s }: { s: RunState }) {
             );
           }
           const failed = m.result === 'failed';
-          const bonus = m.result === 'early' ? m.reward.score : 0;
+          // The early bonus, and the last milestone's leftover budget (D-145): both Wow it paid.
+          const bonus =
+            (m.result === 'early' ? m.reward.score : 0) + (m.reward.leftover?.score ?? 0);
           return (
             <li key={i} class={`${failed ? 'failed' : 'met'} ${m.result}`}>
               <span class="name">{p.name}</span>
@@ -265,11 +267,24 @@ function statsShape(dl: HTMLElement): 'line' | 'stacked' {
 
 function Stats({ s }: { s: RunState }) {
   const overtime = s.milestones.reduce((sum, m) => sum + m.overtimeUsed, 0);
+  const left = s.milestones.at(-1)?.reward.leftover;
   const rows: StatRow[] = [
     // Every placement takes the next uid, so this counts demolished and grown pieces too.
     { icon: 'House', label: 'Pieces built', value: s.house.nextUid - 1 },
     { icon: 'clock', label: 'Weeks played', value: s.week },
     { icon: 'coin', label: 'Budget earned', value: formatNumber(s.budgetEarned) },
+    // What was still held at the last milestone, and the Wow it paid (D-145). Kept short: with
+    // the unit on it, this row alone put every stat on two lines at 1920×1080. The Final
+    // Walkthrough's row above says "+1,700 Wow".
+    ...(left
+      ? [
+          {
+            icon: 'coin' as const,
+            label: `${formatNumber(left.budget)} budget left`,
+            value: `+${formatNumber(left.score)}`,
+          },
+        ]
+      : []),
     { icon: 'flag', label: 'Finished early', value: s.milestonesEarly },
     { icon: 'warn', label: 'Overtime weeks', value: overtime },
   ];

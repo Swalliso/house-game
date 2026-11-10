@@ -189,6 +189,8 @@ export interface Economy {
   budgetLeft: number;
   /** The last milestone's budget: no shop follows it, so it can't be spent. */
   finalReward: number;
+  /** The Wow the budget held at the last milestone paid (D-145); 0 for a lost run. */
+  leftoverWow: number;
   /** Budget held as each shop closed. */
   budgetAtLeave: number[];
   /** Tool ids still in the supplies at the end. */
@@ -383,6 +385,7 @@ export function simulateRun(
     budgetEarned: 0,
     budgetLeft: 0,
     finalReward: 0,
+    leftoverWow: 0,
     budgetAtLeave: [],
     heldAtEnd: [],
     bonusRerollsBought: 0,
@@ -699,7 +702,10 @@ export function simulateRun(
             budget: e.reward.budget - b.milestoneBudget - e.reward.interest,
           });
         }
-        if (e.phase === phaseCount - 1) economy.finalReward = e.reward.budget;
+        if (e.phase === phaseCount - 1) {
+          economy.finalReward = e.reward.budget;
+          economy.leftoverWow = e.reward.leftover?.score ?? 0;
+        }
       } else if (e.t === 'shopOpened' || e.t === 'shopRefreshed') {
         if (e.t === 'shopOpened') economy.visits++;
         else economy.refreshes++;

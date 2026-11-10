@@ -385,6 +385,12 @@ function HowToPlayText() {
             You earn budget at each milestone ({b.milestoneBudget}), for each week saved by
             completing early, from economy pieces, and by selling goods back for half.
           </li>
+          {b.leftoverBudgetWow > 0 && (
+            <li>
+              No shop follows the last milestone: the budget you still hold when it’s met pays{' '}
+              {b.leftoverBudgetWow} {SCORE_LABELS.total} each.
+            </li>
+          )}
           <li>
             After every milestone but the last, the shop opens. <b>Blueprints</b> bend the rules for
             the whole run. <b>Pieces</b> wait in your reserve; placing one is a week's build.{' '}

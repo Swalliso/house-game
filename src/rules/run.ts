@@ -68,6 +68,7 @@ import type {
   InstallGain,
   Legality,
   MilestoneRecord,
+  MilestoneReward,
   MilestoneResult,
   OfferView,
   PieceDef,
@@ -1374,7 +1375,7 @@ export function createRules(content: Content): Rules {
       result === 'failed'
         ? 0
         : Math.min(Math.floor(s.budget / b.shop.interestPer), rule(s, 'interestMax'));
-    const reward =
+    const paid =
       result === 'failed'
         ? { budget: 0, score: 0, interest: 0 }
         : {
@@ -1382,7 +1383,16 @@ export function createRules(content: Content): Rules {
             score: bonus?.score ?? 0,
             interest,
           };
-    const score = s.score + reward.score;
+    const last = s.phase === phaseCount(b) - 1;
+    // D-145: no shop follows the last milestone, so the budget held when it's met, this payout
+    // included, pays Wow. It comes after the target is met, so it never turns a loss into a win.
+    const held = s.budget + paid.budget;
+    const leftover =
+      last && result !== 'failed' && held > 0 && b.leftoverBudgetWow > 0
+        ? { budget: held, score: held * b.leftoverBudgetWow }
+        : null;
+    const reward: MilestoneReward = leftover ? { ...paid, leftover } : paid;
+    const score = s.score + reward.score + (leftover?.score ?? 0);
     const record: MilestoneRecord = {
       phase: s.phase,
       result,
@@ -1404,7 +1414,6 @@ export function createRules(content: Content): Rules {
     };
     // M4b: the phase's effects end, and its accepted change orders resolve (a met milestone only).
     if (result !== 'failed') next = resolveOrders(next, events);
-    const last = s.phase === phaseCount(b) - 1;
     if (result === 'failed' || last) {
       const won = result !== 'failed';
       events.push({

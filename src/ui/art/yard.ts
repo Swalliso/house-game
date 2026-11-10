@@ -5,7 +5,8 @@
 // - Ground, painted on the floor canvas under everything that stands (house-paint.ts): a Lawn's
 //   mown stripes, a Patio's pavers, a Driveway's concrete and its curb cut through the sidewalk
 //   where it meets the street, a Pool's and a Hot Tub's water inside their coping, and the soil,
-//   straw or hearth under a Sapling, a Henhouse's run or a Fire Pit. A flat piece has a darker 1 px
+//   straw or hearth under a Sapling, a Henhouse's run or a Fire Pit, and a Porch's boards (the
+//   wood floor's cut, D-145). A flat piece has a darker 1 px
 //   edge, softer where it meets another piece of its kind (two Lawns, two Driveways): touching
 //   pieces read as one patch, and each stays countable (D-093's note).
 // - Items, the DOM sprites that wobble with their piece (like a room's furniture): a Patio's
@@ -13,7 +14,7 @@
 //   the Driveway nearest the front door or a Garage with room for it (D-126; it slides there as
 //   the drive grows, HouseLayers.tsx), a Fence's pickets and posts, a Pool's ladder and float,
 //   the Hot Tub's bubbles, the Fire Pit's fire and stumps, planters, the Sapling, the outbuildings,
-//   the hens. Fixtures: the Sprinkler on its Lawn, the Pergola over its Patio, Garden Lights as
+//   the hens, a Porch's bench and pot of flowers. Fixtures: the Sprinkler on its Lawn, the Pergola over its Patio, Garden Lights as
 //   two bollards with their glow; a fixture's badge shows only where a door keeps it off.
 // - Nothing stands on an outside door's mat or in front of its opening: a Patio's seats move
 //   clear of the door that opens onto it (under a small parasol in place of the full one), the
@@ -99,6 +100,7 @@ const EDGE = {
   lawn: { rgb: [0x24, 0x34, 0x24] as Rgb, alpha: 0.43, seam: 0.16 },
   pavers: { rgb: [0x28, 0x24, 0x28] as Rgb, alpha: 0.55, seam: 0.22 },
   concrete: { rgb: [0x28, 0x24, 0x28] as Rgb, alpha: 0.45, seam: 0.28 },
+  boards: { rgb: [0x3a, 0x2a, 0x1c] as Rgb, alpha: 0.5, seam: 0.2 },
 } as const;
 /** Bare soil (a Sapling's ring, a Fire Pit's hearth), and the straw of a Henhouse's run. */
 const SOIL: Rgb = [0x7b, 0x5b, 0x3a];
@@ -690,6 +692,7 @@ function pergolas(box: Rect): [SpriteId, number, number][] {
   ];
 }
 const PLANTERS: readonly SpriteId[] = ['planter-0', 'planter-1', 'planter-2', 'planter-3'];
+const POTS: readonly SpriteId[] = ['pot-flowers-0', 'pot-flowers-1', 'pot-flowers-2'];
 const COOPS: readonly SpriteId[] = ['coop-0', 'coop-1', 'coop-2'];
 const BIRDHOUSES: readonly SpriteId[] = [
   'birdhouse-0',
@@ -857,6 +860,20 @@ const LAYOUTS: Partial<Record<PieceId, (y: Yard) => void>> = {
 
   birdhouse: (y) => {
     y.stand(pick(BIRDHOUSES, y.ctx.color), y.box.x + 10, y.box.y + 32 - 41);
+  },
+
+  // The Porch (D-145): boards against the house, with a bench in one cell and a pot of flowers in
+  // the other (which is which by its hash), from cuts the rooms already use. Each gives way to a
+  // door's mat, so a door that opens onto the porch stays clear.
+  porch: (y) => {
+    y.tiles('floor-wood');
+    y.edge(EDGE.boards);
+    const [a, b] = [...y.cells].sort((p, q) => p.y - q.y || p.x - q.x) as [Cell, Cell];
+    const flip = y.hash % 2 === 1;
+    const seat = flip ? b : a;
+    const pot = flip ? a : b;
+    y.put('bench', seat.x * CELL, seat.y * CELL + 5);
+    y.put(pick(POTS, y.hash >>> 3), pot.x * CELL + 9, pot.y * CELL + 4);
   },
 };
 

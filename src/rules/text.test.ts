@@ -186,6 +186,7 @@ describe('a compact hand card (D-121)', () => {
       firePit: ['Touching Patios earn +50% if touching a room'],
       henhouse: ['+1 budget every 2nd week'],
       birdhouse: ['+1 per touching Tree (up to 3)'],
+      porch: ['Touching rooms earn +25%'],
     });
     // Each is one of the card's own lines (or one with its requirement after it), with a number.
     for (const p of pieces) {
@@ -269,6 +270,7 @@ describe('set chips (D-122)', () => {
       'Earns nothing unless touching the street or a Driveway',
       '+5 every week',
       '+1 budget every 2nd week',
+      '+3 if touching the Old Shed', // D-145
     ]);
     expect(cardText(CONTENT, CONTENT.pieces.driveway).effects).toEqual([
       'Must be built touching the street or a Driveway',

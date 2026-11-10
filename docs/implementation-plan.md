@@ -526,8 +526,8 @@ Derived from `HouseState`, cached by house object identity:
   - Each Tree tile is a neighbor tagged Quiet and Green, and a view source. A piece at the edge of the woods can touch several, so every effect that counts Trees or views has a `max`.
   - **Water bodies** (the Pond and the Creek) count once each, however many of their tiles a piece touches. They have no tags and are view sources.
   - The **Street** runs along the bottom edge, outside the grid: one neighbor tagged Loud for any piece touching that edge.
-  - Boulders give nothing.
-  - **Finds** (M3b) give nothing as neighbors; they pay a one-time reward (below).
+  - Each **Boulder** is its own neighbor, with no tags and no view (D-145; it gave nothing before): only the pieces that name it count it (a Lawn, a Flower Bed, the Fire Pit).
+  - The **Old Shed** counts once while it stands, like a water body, with no tags and no view (D-145): the pieces that would use a shed name it (the Garage, a Herb Garden, the Greenhouse, the Henhouse). The **Time Capsule** gives nothing as a neighbor. Both finds pay a one-time reward (below).
 - **Placement:** inside the lot, not overlapping pieces, water, Boulders, or the Old Shed. Building over a Tree removes it, and the preview shows what's lost. Only a Driveway can be built over the Creek (it gets a culvert), so a house on the far bank can still have a Garage. Nothing else can, so the house sits on one bank; yard pieces can go on either.
 - **Finds:** the **Old Shed** (2×2) blocks building until it's demolished, which pays its reward. The **Time Capsule** (1×1) doesn't block: the first piece built over it pays. Rewards are data (`Reward`), and the inspect panel shows them before you commit. A multi-tile feature is one object: demolishing any of its tiles removes all of it, its reward pays once, and its `find/<x>,<y>` key uses its top-left tile.
 - **One house:**
@@ -1719,6 +1719,7 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
   - economy pieces pay every 2–3 weeks, and change-order rewards (and any set with a one-time `reward`) can pay budget (amends D-013)
   - finds pay too (Time Capsule +3), and selling pays half the price paid
   - target: 1 budget is worth about 3–5% of the final score, and a run earns roughly 30–40
+  - no shop follows the last milestone, so the budget held when it's met (its own payout and any early bonus included) pays 100 Wow each (`leftoverBudgetWow`, D-145): a tenth or less of what a budget buys when it's spent well, so spending stays right and nothing is stranded. It's paid after the target is met, so it moves the verdict and the company's best, never a loss into a win
 - **Shop (D-051):** opens after milestones 1–6, from the very first run. Combolands players say its locked early shop made first runs drag.
   - **Shop 1:**
     - 2 blueprints and 2 cards
@@ -1847,9 +1848,9 @@ Every Core item from `content-brainstorm.md`, written in the §5 format. Numbers
 | Pond | `blocks`, `body`, view source | M1 |
 | **Creek** *(new)* | `blocks`, `body`, view source; 1 tile wide, never touches the street edge | M1 |
 | The sun (D-120; was the sunny side) | `Lot.sun`, one edge; the `sunny` region: tiles no Tree, Old Shed or building stands in front of, toward the sun; a building with a tile in it gains the Sunny tag | M1 (the band), D-120 (the sun) |
-| Boulder | `blocks`, `clear: demolish` | M1 (M2 demolish) |
-| **Old Shed** *(new find)* | 2×2; `blocks`, `clear: demolish`; reward: a random tool | M3b |
-| **Time Capsule** *(new find)* | 1×1; doesn't block; reward when first built over: +3 budget | M3b |
+| Boulder | `blocks`, `clear: demolish`; each tile its own neighbor, no tags (D-145: was `inert`) | M1 (M2 demolish; D-145: a neighbor) |
+| **Old Shed** *(new find)* | 2×2; `blocks`, `clear: demolish`; `body`: one neighbor while it stands, no tags (D-145: was `inert`); reward: a random tool | M3b (D-145: a neighbor) |
+| **Time Capsule** *(new find)* | 1×1; doesn't block; `inert`; reward when first built over: +3 budget | M3b |
 
 ### Indoor rooms (base pool)
 
@@ -1862,7 +1863,7 @@ Every Core item from `content-brainstorm.md`, written in the §5 format. Numbers
 | Living Room | `neighbor {property viewSource} +2 max 3`; `conditional {is Sunny} → steady 2` (D-120) | M1 |
 | Closet | `steady 1`; Suite member | M2 |
 | Hallway (1×2, 1×3) | Two cards, `connector`, `link`; `neighbor {property room} +2 max 4` (D-114) | M2 |
-| Garage | `requires {touching: [street, driveway]}` (doesn't block: built like any room, D-140); `steady 5`; `economy 1 every 2` | M2 (D-140: was a blocking requirement, `steady 1`, `economy 1 every 3`) |
+| Garage | `requires {touching: [street, driveway]}` (doesn't block: built like any room, D-140); `steady 5`; `economy 1 every 2`; `neighbor oldShed +3, max 1` (D-145) | M2 (D-140: was a blocking requirement, `steady 1`, `economy 1 every 3`) |
 | Home Office | `steady 2`; `neighbor {tag Loud} −2`; `economy 1 every 2` | M2 |
 | **Sunroom** (2×2) | Weight 5 from Foundation (D-120; it was a special piece, Sunny by its tag, `perTile sunny +2`); `conditional {is Sunny} → steady 6` | M3a (D-120: the draw) |
 
@@ -1870,10 +1871,10 @@ Every Core item from `content-brainstorm.md`, written in the §5 format. Numbers
 
 | Item | Encoding | Built in |
 |---|---|---|
-| Lawn (2×2) | `steady 1`; `neighbor lawn +1 max 4`; tags Outdoor and Green | M1 |
+| Lawn (2×2) | `steady 1`; `neighbor [lawn, boulder] +1 max 4` (D-145: Boulders count); tags Outdoor and Green | M1 |
 | Sapling | `steady 1`; `transform into tree after 4` | M2 |
-| Flower Bed | `givesView`; `steady 1`; `conditional {in: frontYard} → steady 2`; `neighbor flowerBed +1` | M2 |
-| Herb Garden | `givesView`; `perTile sunny +1` (its tiles in the sun, D-120); `aura kitchen +25% adjacent` | M2 |
+| Flower Bed | `givesView`; `steady 1`; `conditional {in: frontYard} → steady 2`; `neighbor [flowerBed, boulder] +1` (D-145: Boulders count) | M2 |
+| Herb Garden | `givesView`; `perTile sunny +1` (its tiles in the sun, D-120); `aura kitchen +25% adjacent`; `neighbor oldShed +2, max 1` (D-145) | M2 |
 | Patio | `requires {touching {property room}}` (doesn't block: the Patio rule, D-105); `neighbor [livingRoom, kitchen] +2`; `neighbor {property viewSource} +1 max 3` | M2 (M4a: the Patio rule) |
 | Fence | A pack of 1–8 connected tiles, one piece (D-106; was the 1×4 and 5-tile L cards); `wall`; `enclosure perTile 1 cap 6` | M2 (M4a: the pack) |
 | Driveway | A pack of 1–8 connected tiles, one piece (D-106; was the 1×3 and 1×5 cards; 1–6 tiles until D-140); `canCover: ['creek']`; `requires {touching: [street, driveway]}` (blocks); `neighbor garage +3, max 1`; `steady 1` (D-140: was `conditional {in: frontYard} → steady 1`) | M2 (M4a: the pack; D-140) |
@@ -1884,11 +1885,11 @@ Every Core item from `content-brainstorm.md`, written in the §5 format. Numbers
 |---|---|---|
 | Doghouse | Outbuilding; tags Pet and House; `requires {in: fencedYard}` (doesn't block); `steady 1`; `neighbor lawn +1` | M2 |
 | Treehouse | Outbuilding; tags Kid and House; `requires {touching: tree}` (blocks); `steady 2` (D-071); `neighbor {tag Kid ∧ not treehouse} +2` (D-105) | M2 (M4a: not counting each other) |
-| Greenhouse | Outbuilding; tags Green and House; `givesView`; `aura {property viewSource ∧ yard} +50% adjacent` | M2 |
+| Greenhouse | Outbuilding; tags Green and House; `givesView`; `aura {property viewSource ∧ yard} +50% adjacent`; `neighbor oldShed +4, max 1` (D-145) | M2 |
 
 ### Special pieces (shop, clients, crews; weight 0)
 
-The last four were Stretch in `content-brainstorm.md`, with the Sunroom. They're promoted to Core as shop pieces, so the shop has buildings worth buying (D-051). Every one uses existing effect kinds. The Sunroom has been a room of the weekly draw since D-120 (the rooms table above).
+The last four were Stretch in `content-brainstorm.md`, with the Sunroom. They're promoted to Core as shop pieces, so the shop has buildings worth buying (D-051). Every one uses existing effect kinds. The Sunroom has been a room of the weekly draw since D-120 (the rooms table above). The Birdhouse and the Fire Pit left the shop for the weekly draw's Layout row in D-145, arriving late (from Roofing and from Drywall) at half a card's weight, with the Porch, which was never a special piece; the shop, the Showroom and the Catalog hold the other six.
 
 | Item | Encoding | Built in |
 |---|---|---|
@@ -1897,9 +1898,10 @@ The last four were Stretch in `content-brainstorm.md`, with the Sunroom. They're
 | Mudroom | Indoor; tag Pet; `conditional {borders: fencedYard} → aura {tag Pet} +50% region` | M3a |
 | Pool | Yard; tags Wet, Sunny, Loud; `rhythm every 3 +12`; `neighbor tree −2 max 3` | M3a |
 | **Hot Tub** (1×1) | Yard; tags Wet and Social; the Patio rule (D-105); `neighbor patio +3` | M3a |
-| **Fire Pit** (1×1) | Yard; tag Social; the Patio rule (D-105); `aura patio +50% adjacent` | M3a |
-| **Henhouse** (1×2) | Outbuilding; tag House; `economy 1 every 2`; `neighbor [herbGarden, flowerBed] +1` | M3a |
-| **Birdhouse** (1×1) | Outbuilding; tag House; `neighbor tree +1 max 3` | M3a |
+| **Fire Pit** (1×1) | Weight 5 in the Layout row from Drywall (D-145; it was a special piece). Yard; tag Social; the Patio rule (D-105); `aura patio +50% adjacent`; `neighbor boulder +2 max 2` (D-145) | M3a (D-145: the draw) |
+| **Henhouse** (1×2) | Outbuilding; tag House; `economy 1 every 2`; `neighbor [herbGarden, flowerBed] +1`; `neighbor oldShed +2, max 1` (D-145) | M3a |
+| **Birdhouse** (1×1) | Weight 5 in the Layout row from Roofing (D-145; it was a special piece). Outbuilding; tag House; `neighbor tree +1 max 3` | M3a (D-145: the draw) |
+| **Porch** (1×2) *(new, D-145)* | Weight 5 in the Layout row from Drywall, never a special piece. Yard; tag Outdoor; `aura {property room} +25% adjacent`; `neighbor {property room} +1 max 4`. Drawn from cuts already in the atlas: the wood floor, a bench and a pot of flowers | D-145 |
 
 ### Fixtures (D-050; drawn from phase 2 and sold in the shop)
 

@@ -507,8 +507,8 @@ const NO_WINDOWS: ReadonlySet<PieceId> = new Set(['closet', 'garage', 'hallway',
 const BACK_ROOMS: ReadonlySet<PieceId> = new Set(['garage', 'bathroom', 'closet']);
 
 /** What a front door may open onto (besides open ground and the street), and the paved ones. */
-const FRONT_ONTO: ReadonlySet<PieceId> = new Set(['patio', 'driveway', 'lawn']);
-const PAVED: ReadonlySet<PieceId> = new Set(['patio', 'driveway']);
+const FRONT_ONTO: ReadonlySet<PieceId> = new Set(['patio', 'driveway', 'lawn', 'porch']);
+const PAVED: ReadonlySet<PieceId> = new Set(['patio', 'driveway', 'porch']);
 /**
  * What an outside door opens onto only when nothing else around the house can have one (a house
  * built into the woods): ground a piece could be built over (a Tree's tile, a Time Capsule's) and
@@ -517,7 +517,7 @@ const PAVED: ReadonlySet<PieceId> = new Set(['patio', 'driveway']);
 const LAST_ONTO: ReadonlySet<PieceId> = new Set(['flowerBed', 'herbGarden', 'sapling']);
 const LAST_GROUND: ReadonlySet<TerrainId> = new Set(['tree', 'timeCapsule']);
 /** What gets a back door. */
-const BACK_ONTO: ReadonlySet<PieceId> = new Set(['patio', 'hotTub']);
+const BACK_ONTO: ReadonlySet<PieceId> = new Set(['patio', 'hotTub', 'porch']);
 /** What a garage door faces. */
 const DRIVEWAYS: ReadonlySet<PieceId> = new Set(['driveway']);
 
