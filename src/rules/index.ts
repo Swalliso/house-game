@@ -161,13 +161,17 @@ export type LotTraitId = 'creekside' | 'wooded';
 export type ArrivalId = 'twins' | 'grandma' | 'renfield' | 'nana' | 'rowan' | 'ivy';
 
 /**
- * Change orders (M4b, D-011): one offered after each of milestones 2, 4, and 6. Two generic
- * ones apply to every client; each client has two of its own (Appendix B).
+ * Change orders (M4b, D-011): one offered after each of milestones 2, 4, and 6. Five generic
+ * ones apply to every client; each client has two or three of its own, at least one a phase
+ * effect, so the offer after milestone 6 always has one (Appendix B, D-137).
  */
 export type ChangeOrderId =
   // Generic.
   | 'workingFromHome'
   | 'heatWave'
+  | 'coldSnap'
+  | 'rainySeason'
+  | 'hoaLetter'
   // The Hendersons.
   | 'goldenRetriever'
   | 'thanksgiving'
@@ -177,12 +181,15 @@ export type ChangeOrderId =
   // The Barkers.
   | 'anotherRescue'
   | 'agilityCourse'
+  | 'puppies'
   // Juniper Vale.
   | 'declutter'
   | 'teaGarden'
+  | 'magazineShoot'
   // Dale.
   | 'bigDeadline'
-  | 'startedAPodcast';
+  | 'startedAPodcast'
+  | 'outOfOffice';
 
 /**
  * The checklist's headings: the house rules every client starts with (the household, the

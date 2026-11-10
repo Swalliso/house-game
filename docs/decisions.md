@@ -79,6 +79,7 @@ You run a home-building company. Each run is one contract: one client, one plot 
 ### D-011 · Change orders
 **Status:** Accepted · 2026-11-04
 **Decision:** Mid-run, the client makes new requests that push the player to adapt.
+*2026-11-10 (D-137):* more of them, for variety (playtest 4 asked for "more variety and randomness"): 18 in all, five generic, and every client has a phase effect of its own, so the offer after milestone 6 always comes.
 
 ### D-012 · Crews
 **Status:** Accepted · 2026-11-04
@@ -1733,6 +1734,32 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 *Reserved numbers (2026-11-10): D-115 to D-118 are the layout session's drafts and D-122 the legibility session's; they aren't in this file yet. D-132 to D-134 are playtest 5's fixes, each logged by its own pull request: D-132 one reroll for both rows of the draw, D-133 the roof view, D-134 three more tracks. New entries start at D-135.*
 
+### D-137 · More change orders: three generic ones, and a phase effect for every client
+**Status:** Proposed · 2026-11-10, from playtest 4 (`docs/playtests/playtest-4-findings.md` §5), with its fix pull request. Extends D-011 and D-109. For the next playtest on /dev/.
+**Decision:**
+- **Six new change orders, as data** with existing modifier kinds (`earn`, `earnNothing`, a `forbid` selector), so 18 in all. Each client draws from 7 or 8, about the 8 playtest 4's findings proposed.
+  - Generic: *Cold snap* (phase: rooms with a Fireplace earn double, Bathrooms half: the pipes froze), *Rainy season* (phase: Green pieces earn double, Patios nothing), and *A letter from the HOA* (restriction: nothing new in the front yard; kept, +4 budget, as Big deadline).
+  - The Barkers' *A litter of puppies* (phase: Pet pieces and Lawns earn double, Flower Beds nothing), Juniper's *A magazine shoot* (phase: rooms with a view earn double, Closets and Hallways nothing, Long Hallways included), and Dale's *Out of office* (phase: Outdoor pieces earn double, Home Offices nothing, though they still pay their budget).
+- **Every client has four phase effects** (the three generic ones and one of its own), so the offer after milestone 6, which offers only phase effects (D-109), always comes: milestones 2 and 4 use up at most two.
+- **Each phase effect pays something and costs something,** as Heat wave does, so it asks the player to build differently for a phase rather than just adding Wow. This matters more now that the third offer always comes, in the run's biggest phase. Cold snap's upside needs a Fireplace, which the shop right after the offer may sell.
+- The pick stays even among the client's own orders and the generic ones (D-112), so a client's own orders come up less often: 2 of 7 for the Hendersons and Count Vladislav (from 2 of 4), 3 of 8 for the others.
+
+**Sim** (`npm run sim -- --check`, 200 held-out runs per bot on the same seeds; develop at 0b4e27c against this change; targets not re-fitted):
+- Runs that cleared milestone 6 and got an offer after it, by client (greedy): the Hendersons 78% → 100%, Count Vladislav 86% → 100%, the Barkers 48% → 100%, Juniper 54% → 100%, Dale 54% → 100%.
+- Greedy wins 47.5% [40.7–54.4] → 46.0% [39.2–52.9]. Paired by seed, its final Wow after ÷ before is p50 0.999 (p25 0.934, p75 1.029); per client p50 1.000, 0.982, 1.000, 1.004, 0.986. Its final Wow p50 over all runs is 29,619 → 29,175, and at the Final Walkthrough, for runs that reached it, 36,333 → 35,065.
+- Every §8 criterion that passed still passes. The client spread is 30.0 points (from 25.0) at 40 runs a client, which is noise: the re-fit's 2,000-run check gave 6.7 (D-123).
+- Greedy declines every restriction (`sim/policies/orders.ts`), so A letter from the HOA doesn't show in its numbers.
+
+**Why:** in playtest 4 the team found change orders fun but wanted more variety and randomness; D-112 changed only their wording. A client drew from 4 orders, and the Barkers, Juniper and Dale, with only Heat wave as a phase effect, often got no third order at all.
+**Considered:**
+- One or two more generic phase effects alone: that guarantees the third offer too, but leaves three clients with nothing of their own at the end of the run.
+- Effects that only pay (a ×Mult, double everything): with the third offer now always coming, they'd raise greedy's win rate. Playtest 4's rare tier with a big phase effect can come later.
+- Weighting the client's own orders ×2 (playtest 4's proposal): a rules change, not data. Left for a playtest to ask for.
+- Playtest 4's Power outage became Dale's Out of office, where a Home Office matters most. "Open house weekend" was left out: its name is too close to the Open House Party tool.
+- More requests: most of playtest 4's ideas (Room for the in-laws, Curb appeal) fight the house rules' Bedroom ranges or need new selectors.
+
+**Changes:** D-011 and D-109 (dated notes). `implementation-plan.md` Appendix B: the clients table and Generic change orders. New content changes the content hash, so run codes from earlier builds won't replay.
+
 ### D-133 · The roof view: the reveal's roof stays on, a Roof button brings it back, and the end screen opens with it
 **Status:** Proposed · 2026-11-10, after playtest 5 (`docs/playtests/playtest-5-findings.md`), with its fix pull request. Extends D-127. For the next playtest on /dev/.
 **Decision:**
@@ -1903,9 +1930,10 @@ What's still short:
 **Status:** Proposed · 2026-11-07, with the M4 pull request. Details within D-103, D-012, and Appendix A · M4b; numbers for the sim and playtest 4.
 **Decision:**
 - **Change orders:**
-  - one after each of milestones 2, 4, and 6 (`changeOrderAfter`), on its own screen before the shop, drawn from the `co/<milestone>` stream, evenly among the client's own orders and the generic ones (Working from home, Heat wave), never one offered before in the run. *(2026-11-09, D-112: this said "the client's own orders, then the generic ones", which read as own first; the pick has always been even.)*
+  - one after each of milestones 2, 4, and 6 (`changeOrderAfter`), on its own screen before the shop, drawn from the `co/<milestone>` stream, evenly among the client's own orders and the generic ones (Working from home, Heat wave), never one offered before in the run. *(2026-11-09, D-112: this said "the client's own orders, then the generic ones", which read as own first; the pick has always been even.)* *(2026-11-10, D-137: five generic ones now, with Cold snap, Rainy season, and A letter from the HOA; and the Barkers, Juniper, and Dale each have a phase effect of their own.)*
   - skipped: one already met, one needing more new pieces than a phase has weeks, a demolition request with no demolitions left, and one whose piece is neither in this phase's draw nor in the reserve. The plan's "less free space than it needs" isn't checked.
   - **before the last phase, only phase effects:** a request's or a restriction's reward would come at the run's end, where budget buys nothing
+    - *2026-11-10 (D-137):* with Heat wave the only generic phase effect, the Barkers, Juniper, and Dale got no offer here in about half their runs (greedy, 200 held-out runs: 48–54% of their runs that cleared milestone 6 got one, against 78–86% for the other two). Every client now has four phase effects, so it always comes.
   - requests and restrictions can be declined at no cost; accepted, they run through the next phase and pay when its milestone is met (nothing if the run is lost). Rewards are budget, 3–5, in each order's definition.
   - a phase effect is announced (it can't be declined) and runs as a timed effect until the next phase's milestone
   - only a placement breaks a restriction (not a move or a transform); it stays legal, and the preview names the order it would break
