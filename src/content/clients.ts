@@ -54,7 +54,7 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
         pct: 100,
       },
     ],
-    targetPct: 115, // fitted by npm run sim -- --suggest-targets, then checked held out (D-123)
+    targetPct: 110, // fitted by npm run sim -- --suggest-targets, then checked held out (D-146)
   },
   vladislav: {
     id: 'vladislav',
@@ -87,7 +87,7 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
       { kind: 'earn', target: { piece: 'herbGarden' }, pct: -100 }, // garlic
     ],
     pool: [{ kind: 'drawWeight', target: { piece: 'library' }, add: 20 }],
-    targetPct: 90, // fitted by npm run sim -- --suggest-targets, then checked held out (D-123)
+    targetPct: 95, // fitted by npm run sim -- --suggest-targets, then checked held out (D-146)
   },
   barkers: {
     id: 'barkers',
@@ -127,7 +127,7 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
       { kind: 'drawWeight', target: { piece: 'mudroom' }, add: 20 },
       { kind: 'drawWeight', target: { piece: ['doghouse', 'fence'] }, pct: 100 },
     ],
-    targetPct: 90, // fitted by npm run sim -- --suggest-targets, then checked held out (D-123)
+    targetPct: 90, // fitted by npm run sim -- --suggest-targets, then checked held out (D-146)
   },
   juniper: {
     id: 'juniper',
@@ -154,7 +154,7 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
       { kind: 'rule', key: 'earlyRewardPct', add: 100 },
     ],
     pool: [],
-    targetPct: 85, // fitted by npm run sim -- --suggest-targets, then checked held out (D-123)
+    targetPct: 95, // fitted by npm run sim -- --suggest-targets, then checked held out (D-146)
   },
   dale: {
     id: 'dale',
@@ -188,6 +188,6 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
     ],
     tastes: [{ kind: 'budget', target: 'all', pct: 100 }],
     pool: [{ kind: 'drawWeight', target: { piece: 'homeOffice' }, pct: 100 }],
-    targetPct: 115, // fitted by npm run sim -- --suggest-targets, then checked held out (D-123)
+    targetPct: 115, // fitted by npm run sim -- --suggest-targets, then checked held out (D-146)
   },
 };

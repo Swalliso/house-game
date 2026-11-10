@@ -1558,6 +1558,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 ### D-123 · Playtest 5's re-fit: the targets and each client's factor
 **Status:** Accepted · 2026-11-10, held up in playtest 5 (`docs/playtests/playtest-5-findings.md`): harder than playtest 4, but "while challenging it still felt possible to complete". Milestone 2 keeps 560 (the user's run made it with 665 of 644), so the 450 step-down isn't needed. Proposed 2026-11-09, before playtest 5. It's the one re-fit that D-114, D-119, D-120 and D-121 left until all of playtest 4's content changes were in (playtest 4's findings §12).
+*2026-11-10 (D-146, Proposed):* the friction batch (D-140 to D-145) outgrew these numbers, and D-146 re-fits them. The method stands, with one step added: the targets are set where greedy's played survival meets the goals, because the fit's estimate overstates what overtime rescues.
 **Decision:**
 - **What it covers:** develop at 19e0def: the Hallway pay (D-114), creek lots and Creekside (D-119), the weekly draw in two rows with the Landscaper's third Layout card (D-121), and the sun (D-120). Nothing else that changes play merged after D-120 and D-121 (D-112 and D-113 are text and UI). The layout session's data PR (D-116, D-117), fusion (D-115) and the hand's card-lines fix aren't in; each runs its own `--check` against these targets.
 - **Targets:** 20, 560, 1,750, 4,850, 10,200, 18,800, 32,600 Wow (they were 15, 300, 1,100, 3,050, 6,850, 13,150, 24,500). D-085's method: `--suggest-targets` on 2,000 untargeted greedy runs (seeds `sim-*`, the five clients and three crews in turn), checked on 2,000 held-out runs (`check-*`). Held out, greedy won 44.0% against the fit's 46.6%, inside §8's band, so the curve is used as fitted. (M4b's was eased by 4%, when held out came 5 points under.)
@@ -1740,7 +1741,60 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 ## Proposed
 
-*Reserved numbers (2026-11-10): D-115 to D-118 are the layout session's drafts, not in this file yet; D-122 (legibility) is logged below. D-132 to D-134 are playtest 5's fixes, each logged by its own pull request: D-132 one reroll for both rows of the draw, D-133 the roof view, D-134 three more tracks. D-135 and D-136 are M6's end screen (D-135 the result line and link preview, D-136 the milestone photos); D-137 and D-138 belong to the release-day sessions. D-139 is the company's record. New entries start at D-140.*
+*Reserved numbers (2026-11-10): D-115 to D-118 are the layout session's drafts, not in this file yet; D-122 (legibility) is logged below. D-132 to D-134 are playtest 5's fixes, each logged by its own pull request: D-132 one reroll for both rows of the draw, D-133 the roof view, D-134 three more tracks. D-135 and D-136 are M6's end screen (D-135 the result line and link preview, D-136 the milestone photos); D-137 and D-138 belong to the release-day sessions. D-139 is the company's record. D-140 to D-146 are the friction batch, from the 2026-11-10 review's seven points: D-140 the Garage and the Driveway, D-141 what a blueprint is worth and its icon, D-142 first contact, D-143 the blueprint shelf, D-144 change orders two at a time, D-145 the lot and the last stretch, and D-146 the batch's one re-fit. New entries start at D-147.*
+
+### D-146 · The friction batch's re-fit: the targets set against played runs
+**Status:** Proposed · 2026-11-10, at the user's "Merge and re-fit", once D-140 to D-145 were all in develop. A fix pull request (`fix/refit-targets`) that merges on green, so /dev/ plays at the intended difficulty; the batch's playtest decides whether it holds. It's the one re-fit D-140, D-143, D-144 and D-145 each left for the end.
+**Decision:**
+- **What it covers:** develop at 4f75b34, with D-140 to D-145.
+- **Targets:** 20, 560, 1,900, 5,200, 11,300, 20,500, 35,700 Wow (they were 20, 560, 1,750, 4,850, 10,200, 18,800, 32,600). Milestones 3–7 rise 7–11%, about what greedy's median score rose at each (5, 6, 10, 13 and 14%).
+- **Each client's `targetPct`:** the Hendersons 110 (it was 115), Count Vladislav 95 (90), the Barkers 90 (90), Juniper 95 (85), Dale 115 (115). These are the fit's factors, used as fitted.
+- **The fit as written came out too hard.** D-085's method (`--suggest-targets` on 2,000 untargeted greedy runs, seeds `sim-*`, the five clients and three crews in turn) gave 20, 640, 2,050, 5,500, 11,500, 21,500, 37,700. On 2,000 held-out runs (`check-*`) greedy won 37.5% [35.4–39.6] against the fit's estimate of 45.1%: 7.6 points under, and below §8's band. D-123's fit came 2.6 under, and M4b's 5.
+- **Why the estimate runs high:** it reads an overtime week off the untargeted run's next week. In that run the milestone's shop has already opened and its budget is paid; in play, an overtime week comes before both.
+  - The seeds aren't the cause: the same check seeds played untargeted give the same estimate (45.0%).
+  - A run that takes no overtime plays week for week as its untargeted twin.
+  - The fit as written leaned on overtime: 36% of runs needed it at milestone 2 (61% met it on time), and a run used 1.61 overtime weeks.
+- **So the targets are set where played survival meets the goals.** The gap between estimate and play at each milestone (1.9, 1.8, 3.7, 2.6, 6.2 and 7.5 points) is added to that milestone's goal, and the same `sim-*` runs are fitted again: 20, 580, 1,900, 5,200, 11,300, 20,400, 35,700.
+- **Milestone 2 keeps 560** (not 580), and the rest are fitted on from there. Greedy's median at week 8 is 720, where D-123 had 728, so nothing in the batch made the first two phases stronger. It's the milestone playtest 5's run made with 665 of 644.
+- **Played, greedy's survival follows the goals** (100, 98, 95, 85, 72, 58, 45%):
+  - On `check-*` (2,000 runs): 100.0, 98.6, 96.0, 86.7, 74.1, 58.4 and 45.6%.
+  - On `hold-*` (2,000 runs that no fit or goal had seen): 100.0, 98.5, 96.3, 86.9, 73.2, 58.0 and **45.7%**.
+- **The crews' numbers stay.** On `check-*` the General Contractor won 41.9%, the Landscaper 50.5% and the Architect 44.2%; on `hold-*` 46.1%, 47.1% and 43.9%. The Landscaper's gap in D-123 (36.7%) has closed: D-145 gave the yard more that counts.
+
+**Why:** on D-123's targets, greedy won 65.5% of `--check`'s runs once the whole batch was in, against §8's 40–50%. It had won 46.0% before the batch and 54.0% with D-140 to D-142; D-143, D-144 and D-145 each took it to 54.5–56.5% alone, and to 65.5% together. Playtest 3 found a run with that much slack too easy.
+
+§8's criteria, before (4f75b34) and after. The first three columns are `npm run sim -- --check` (200 runs, the General Contractor) and `--check --crew all` (200 runs, each client with every crew in turn). The last is `--check --crew all` on 2,000 runs of `check-*`.
+
+| Criterion | `--check` before | `--check` after | `--crew all` after | 2,000 runs, after |
+|---|---|---|---|---|
+| random loses by milestone 3 (≥ 95%) | 100.0% PASS | 100.0% PASS | 100.0% PASS | 100.0% PASS |
+| novice passes milestone 1 (≥ 90%) | 99.5% PASS | 99.0% PASS | 96.5% PASS | 97.5% PASS |
+| greedy clears milestones 1–3 (92–98%) | 98.5% FAIL, unsure | 97.0% PASS, unsure | 97.5% PASS, unsure | 96.0% PASS |
+| greedy wins (40–50%) | 65.5% FAIL | 47.0% PASS, unsure | 49.0% PASS, unsure | 45.6% [43.4–47.7] PASS |
+| early completion: always vs never, within 10 points | −11.0 FAIL, unsure | −5.0 PASS, unsure | −9.5 PASS, unsure | −5.1 [−7.8, −2.4] PASS |
+| fences pay: probe p50 2–3, ≥ 50% offered that many | 2, 68.4% PASS | 2, 67.9% PASS | 2, 70.0% PASS | 2, 70.7% PASS |
+| clients, crews within about 15 points | 25.0 FAIL, unsure | 22.5 FAIL, unsure | 20.0, 3.6 FAIL, unsure | 5.0, 8.6 PASS, unsure |
+| planner wins about 75%; no must-buy | not measured | not measured | not measured | not measured |
+
+- **The clients are level.** On `check-*`: the Hendersons 47.8%, Count Vladislav 47.3%, the Barkers 42.8%, Juniper 42.8%, Dale 47.3%. On `hold-*`: 48.8, 44.3, 46.8, 42.5 and 46.3%. The spread at 200 runs is noise, as in D-123 (40 runs a client).
+- **Milestone 2 is met on time as often as before:** 80.0% of `--check`'s runs (80.5% before). A run uses 1.47 overtime weeks (1.15 before, on targets the batch had outgrown; 1.34 after D-123).
+- **The run's shape** on `--check`, as the median score of the runs that reached each milestone over its target: ×5.3, ×1.51, ×1.54, ×1.25, ×1.16, ×1.15 and ×1.22, against ×5.6, ×1.61, ×1.77, ×1.40, ×1.30, ×1.26 and ×1.27 before.
+- **For a player:** the Hendersons' second milestone is 616 Wow (it was 644), and their last is 39,270 (37,490). The last is 33,915 for Count Vladislav and for Juniper, 32,130 for the Barkers and 41,055 for Dale.
+- The fit and the 2,000-run checks ran in parallel shards that play each seed exactly as `npm run sim -- --crew all` does. On `check-0` to `check-199` they matched the CLI's `--check --crew all` run for run.
+
+**Considered:**
+- **The fit as written:** 37.5% held out, and milestone 2 at 640 with no change in the first two phases.
+- **Easing milestones 4–7 by a flat percent,** as M4b did: it would take about 6%, and leaves milestones 2 and 3 where two runs in five need overtime by Foundation.
+- **Milestone 2 at 580,** the second fit's own number: 3.6% over the one the user played and accepted, for a first phase that hasn't changed.
+- **Fixing the estimate** so an overtime week is read from a run that hasn't had its shop: the right repair, but it needs a model of that week, which is more than the day before the release should carry. Until then a re-fit needs this entry's second step.
+
+**Changes:** D-085 and D-123: the targets and the factors, noted there. `src/content/balance.ts` and `clients.ts`. D-140, D-143, D-144 and D-145: each notes that its re-fit is done.
+
+**Known gaps:**
+- The check seeds set six goals, so `hold-*`'s 45.7% is the clean held-out figure. `--check` runs on `check-*` and reads 47.0%.
+- `estimateSurvival` still overstates what overtime rescues, so `--suggest-targets` alone would write targets about 8 points too hard.
+- Every figure is the greedy bot's. It doesn't plan a Driveway, a "-house" build or the order it picks, so a person who does has more room than these numbers say.
+- Not playtested: the user's playtest of D-140 to D-145 is on these targets.
 
 ### D-122 · Score legibility, the jam slice: the play's label names its cause, and room cards name their sets
 **Status:** Proposed · 2026-11-10, at the user's "Yes, build the slice", from the legibility deep-dive (2026-11-09, options A to C; its full text is backed up in the playtest-5 session's shared notes). It builds the deep-dive's cheapest cut: part of option A (the label names its cause) and part of option B (a static set chip). For the next playtest.
@@ -1795,6 +1849,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - 36 of the 134 offers after milestone 6 (27%) were the worst case: phase effects picked after milestones 2 and 4, so the last two were the whole pool. 129 of 511 offers (25%) showed an order passed over earlier in the run.
 - Greedy wins 54.0% [47.1–60.8] → 56.5% [49.6–63.2]; both are over §8's 40–50% line, which D-140 had already crossed. Paired by seed, 12 runs won only with the pick and 7 only without, and final Wow after ÷ before is p50 1.001 (p25 1.000, p75 1.058); per client p50 1.000, 1.007, 1.000, 1.000, 1.004. The batch's re-fit sets the targets once every friction fix is in.
 - **Early completion crosses its line:** always against never is 45.0% vs 54.0% (−9.0 points) → 45.5% vs 56.5% (−11.0; §8 asks for within 10). The pick helps the bot that plays every week more than the one that completes early. For the re-fit to check again.
+- *2026-11-10 (D-146):* the re-fit is done. Greedy wins 47.0% on `--check`, and early completion is back inside its line (−5.0 points; −5.1 on 2,000 runs).
 - By client (40 runs each): the Hendersons 42.5% → 55.0%, Count Vladislav 77.5% → 77.5%, the Barkers 42.5% → 37.5%, Juniper 47.5% → 50.0%, Dale 60.0% → 62.5%. The spread is 35.0 → 40.0 points, at 40 runs a client.
 - The other §8 criteria read the same before and after: random fails by milestone 3 in 100% of runs, novice passes milestone 1 in 97.0%, greedy clears milestones 1–3 in 97.0%, and fences pay their way.
 - Greedy keeps a restriction it doesn't plan for 50–100% of the time and meets a request 0–20% of the time, so for it a request is mostly a way to keep a costly phase effect out. A player who builds for the request gets its budget too.
@@ -1942,6 +1997,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - **Every figure is greedy's,** a bot that builds one week at a time. A build a person plans (three views, an enclosed room) is worth more to them than this says, and a blueprint's worth depends on the shop it's given at (all of these: the first).
 - **The Each week panel has no standing line for a blueprint's Charm:** It's a House shows in the tally's pop and in the Charm total, not as its own row.
 - **Greedy wins 56.0%** against 54.0%, inside the interval, and both above §8's 40–50%: D-146's re-fit takes it from here.
+  - *2026-11-10 (D-146):* the re-fit is done: 47.0% on `--check`, and 45.7% on 2,000 runs no fit had seen.
 - **Ahead of Schedule** reads ×1.02 because greedy never completes early (D-040), and wasn't touched.
 
 ### D-136 · The end screen's photos: a polaroid of the house at each milestone
@@ -2181,6 +2237,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **Changes:** D-080 (Decided by this). D-106 (Accepted): a Driveway pack is 1–8 tiles. D-056 (Accepted; its numbers are placeholders for the sim): Full House is ×1.5. D-070 is unchanged and relied on. `implementation-plan.md`: §4's Garage and Driveway line, the `requires` row, the Garage's example, the packs' lines, and Appendix B's Garage, Driveway and Full House rows. The content changes the content hash, so run codes from earlier builds won't replay.
 **Known gaps:**
 - The targets aren't re-fitted, so until the batch's re-fit the game is easier than intended wherever Full House completes.
+  - *2026-11-10 (D-146):* the re-fit is done: greedy wins 47.0% on `--check`.
 - What a player who plans for the Garage or for Full House from the start does with them isn't measured: there's no planner bot (D-089). The playtest is the check.
 - The rules' cheap estimate doesn't see that a Driveway turns a waiting Garage on. The bot's planner covers it, and the game's own preview is exact.
 - A Driveway cut off from the street by a demolition earns nothing itself but still counts as a Driveway for the Garage beside it.
@@ -2304,6 +2361,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - D-049 (Accepted): Boulders and the Old Shed are neighbors. D-082 (Accepted): the Old Shed's row; the Birdhouse and the Fire Pit leave the special pieces. D-140 (Proposed): the Garage's card gains the shed's line. D-013 and D-085: budget left at the end pays Wow.
 - `implementation-plan.md`: §4's terrain as neighbors, Appendix A's budget list, Appendix B's rows for both features and eight pieces, and the Porch's row.
 - The targets aren't re-fitted here: the friction batch has one re-fit at its end.
+  - *2026-11-10 (D-146):* the re-fit is done: greedy wins 47.0% on `--check`, and the Landscaper is level with the other crews (47.1% on 2,000 fresh runs; 36.7% in D-123).
 
 **Known gaps:**
 - The greedy bot never demolishes, so the sim can't say whether a player keeps the shed. The playtest has to.
@@ -2542,6 +2600,8 @@ What's still short:
 - For playtest 4: M4's refit targets are about 3× steeper in the middle phases. Do they take away this kind of early slack without making the last two phases too tight for a player whose Charm comes late?
 
 **2026-11-09 (D-123):** re-fitted for playtest 5 the same way, 2,000 untargeted runs to fit and 2,000 held out: 20, 560, 1,750, 4,850, 10,200, 18,800, 32,600 Wow, with factors the Hendersons 115, Count Vladislav 90, the Barkers 90, Juniper 85 and Dale 115, all used as fitted. Held out, greedy wins 44.0%.
+
+**2026-11-10 (D-146, Proposed):** re-fitted after the friction batch (D-140 to D-145): 20, 560, 1,900, 5,200, 11,300, 20,500, 35,700 Wow, with factors the Hendersons 110, Count Vladislav 95, the Barkers 90, Juniper 95 and Dale 115. The fit as written came 7.6 points under held out, so the targets are set where greedy's played survival meets the goals. On 2,000 runs no fit had seen, greedy wins 45.7%.
 
 ### D-095 · A piece that becomes a lot feature can't hold a fixture
 **Status:** Proposed · 2026-11-06, with the fix/transform-fixtures pull request. It fills a gap in D-050, which says how a fixture leaves but not what happens when its host transforms.
