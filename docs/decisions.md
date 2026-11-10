@@ -499,6 +499,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 **Why:** A first run otherwise meets about 75 concepts. With no meta-progression in the jam, the run itself has to do the teaching.
 **Considered:** A fixed first contract. Rejected because it changes D-012 and needs a saved run count.
+*Extended by D-142 (Proposed 2026-11-10):* every first-time hint keeps to 25 words, how a week scores is a hint of its own in week 2, and the checklist's hint moves to week 3.
 
 ### D-046 · Defaults for the rules the docs leave open
 **Status:** Accepted · 2026-11-05 (with the plan's approval); proposed 2026-11-04
@@ -1058,6 +1059,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 **Why:** `house-systems-review.md` §4. In the sim, separate lines beat compound ones on the Kitchen and the Bathroom ratio, and the shape rules make a filled outline pay where today raggedness costs nothing.
 **Changes:** D-021 (Accepted): every checklist starts with the house rules, and specs can have a ceiling. D-085: the targets need a re-fit.
+*Proposed change by D-142 (2026-11-10, awaiting the user's OK):* a line that doesn't hold shows only the parts of its progress still missing ("0 Living Rooms (1–2)" without "1 Dining Room (≤ 1)"). A line the play being looked at flips shows every part, and the line's tip has the whole rule.
 
 ### D-102 · Renovate
 **Status:** Accepted · 2026-11-06 (D-093's option B; the team chose +4 a level, up to 2, and the name Renovate).
@@ -1084,6 +1086,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **Why:** the review's §4. A household line alone didn't make the bot build a household; rooms that arrive as cards did.
 **Changes:** D-036 (Accepted): a start-of-week step. M4b's change orders: the Twins and Grandma's moving in become arrivals.
 **2026-11-07 (M4b):** built (D-109). The other clients' members: Count Vladislav's Renfield (Framing, a 1×2 room: +2, +1 per touching room up to 3), the Barkers' Nana (Drywall, 2×2: +3, +2 per Pet piece up to 2), Juniper's Rowan (Drywall, a 1×2 studio: +2, +2 per view up to 2), and Dale's daughter Ivy (Framing, 2×2, Kid: +3, +2 if touching a Home Office). Their Bedroom ranges go 1–2, then 2–3 from the arrival.
+*D-142 (Proposed 2026-11-10):* the job board's card names who moves in on one line ("The twins and Grandma move in later"); when, and what they bring, is in the line's tip. The checklist's line is the name and the milestone ("Grandma at Drywall"), with the week in the name's tip.
 
 ### D-104 · Half-weight draws for a type at its limit
 **Status:** Accepted · 2026-11-06 (D-093's option B).
@@ -1828,6 +1831,47 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 **Changes:** D-097 (Accepted): the photos are a second downscale exception (its dated note). implementation-plan.md §7 M6's end screen.
 
+### D-142 · First contact: slimmer job cards, hints held to 25 words, and a tighter checklist
+**Status:** Proposed · 2026-11-10, with its phase pull request (`phase/first-contact`), from the friction review the user asked for the same day (its point 7: the reading a new player meets in the first minutes). For the user's playtest before it merges. No rules or balance change.
+**Decision:**
+- **A contract's card leads with what differs between the clients on offer:** who they are (the name, the rarity, the brief), their wishes, and the lot (its map, its sun and its traits, D-119).
+  - **The household is one line:** "The twins and Grandma move in later". Its tip has Room for everyone in that client's numbers, then each arrival: when, and what they bring.
+  - **The tastes are one line:** "Tastes", with how many the client likes and dislikes beside an up and a down arrow. Its tip lists every taste, and what the draws have more of, a line each in the rules' words.
+  - **The house rules are named once for the board,** in its lede: "Every house also keeps the same 7 house rules". That's a term, and its tip names the seven and what a held one adds (`houseRulesText` in `src/rules/text.ts`).
+  - **A house rule a client has in numbers of their own sits with their wishes:** today that's Juniper's Under one roof, for 4–8 rooms. The card finds them by comparing each rule's text across the clients (`ownHouseRules`), so nothing is listed by hand.
+  - The lot in words under the map goes; the map's title and label still say it.
+  - The card's short lines are chosen and counted in `src/ui/screens/job-card.ts`; every sentence is the rules' or the content's.
+  - **Words on a card** (all its text, the button and the keycap included): the Hendersons 42–44 (from 80–95), Count Vladislav 28–29 (from 63–77), the Barkers 38–39 (from 87–90), Juniper Vale 34 (from 55–69) and Dale 36–37 (from 72–75); a range is the lot's chips and, before, its line in words. The first-visit board in the screenshots is 145 words (from 270 at 1440×900). At 1280×720 in the pixel font all three cards scrolled (179, 129 and 37 px out of view); now none scrolls at 1280×720, 1440×900 or 1920×1080, in either font.
+- **Every first-time hint keeps to 25 words** (`HINT_WORDS`): one idea for the moment it applies, and the tips carry the rest.
+  - **The shop's** is "Spend your budget on goods for the house; hover one to read it. Each milestone met pays 4 more." (19 words, from 65). The shelves' tags already say what each kind of good is, and the fixture's hint comes with the first fixture.
+  - **The first week's** is 24 words (from 44): pick, place, End week, the target, and "Hover anything to read it". How a week scores moves to a new hint in week 2, "Comfort and Charm" (18 words), once a week has been tallied.
+  - **The checklist's** moves to week 3, so the first three weeks bring one hint each. It says what a line adds and that the house rules fold into one row once it's dismissed (D-113).
+  - The others: Complete early 23 (from 31), the roof 24 (from 37), Fixtures 21 (from 36), change orders 24 (from 45), Renovate 25 (from 55), an arrival 21 (from 32).
+  - The hints that state a rule or a number are `hintText` in `src/rules/text.ts`, with their numbers from the balance; the glossary keeps the full texts for the tips. Tests hold every hint to the budget.
+- **The checklist's rows keep short:**
+  - **A line that doesn't hold shows only what's still missing.** Its parts that hold are done: "A living room or two" says "0 Living Rooms (1–2)" without "1 Dining Room (≤ 1)". A line the play being looked at flips still shows every part, and the line's tip has the whole rule.
+  - **Who's still to move in** is a name and a milestone, "Grandma at Drywall": two lines in a 280 px pixel-font column, where "Grandma arrives at Drywall, week 17" took four. The week is in the name's tip.
+  - **The wishes' tag is "Wishes",** one line in every column ("The Hendersons' wishes" took three in a 280 px column). The plank above it names the client.
+  - **The tastes' row is "Tastes"** in a 280 px pixel-font column under 1000 px tall, where "Tastes (3)" took two lines beside the crew's and the sun's icons. Wider columns and the readable font keep the count.
+  - **Measured at 1440×900 in the pixel font** (the checklist's box is 404 px), on a Hendersons run: with the house rules folded, week 3's rows take 330 px (from 450), so nothing scrolls; mid-run, with a change order, 414 px in a 380 px box (from 514). On a first visit, with the house rules open (D-113), 938 px (from 1,118): it still scrolls. At 1280×720 the folded week-3 rows take 330 px in a 258 px box (from 450).
+
+**Why:** the review read the first screens as a first-time player would. Each contract's card carried the wishes, the household, the arrivals with their weeks, the tastes, the draws and the house rules; at 1280×720 in the pixel font all three scrolled, and the Hendersons' tastes were below the fold. The shop's first hint was a 65-word paragraph. On a first visit at 1440×900 the checklist held 1,118 px of rows in a 404 px box. The group gets the game on 2026-11-11, and these are the screens they meet first. Run-based games show the choice of a run as a name, a picture and two or three lines (a character or a deck select), with the rest on demand.
+**Considered:**
+- **A flip side or a "Details" fold on each card:** tips are already the game's way ("Hover anything to read it"), need no new control, and open from the keyboard with Tab.
+- **The house rules folded on a first visit too:** it's the one change that would make a first visit's checklist fit at 900 px. D-113 (Accepted the same day) opens them until the checklist's hint is dismissed, so it's left for the user: one line in `rulesOpen`.
+- **The client's wishes above the house rules:** it would change D-101's order, and D-110's rules for what a play scrolls into view were tuned to it.
+- **"House rules 1/7" on one line in a 280 px pixel-font column:** the words and the count alone are wider than the column.
+- **Held lines folding away inside an open group:** early in a run almost none hold, so it saves nothing in the first minutes.
+- **The change order's hint in two versions by the order's kind:** another session is changing how change orders are offered.
+
+**Changes:**
+- D-110 (Proposed): its job board bullet (a card no longer lists the tastes as rows, the house rules behind a caret, or the lot in words), its checklist bullets (the wishes' tag, "Tastes" in a narrow column) and its list of first-time hints. Dated notes there.
+- D-101 (Accepted), for the user's OK: a line that doesn't hold shows only the parts of its progress still missing. A dated note there.
+- D-103 (Accepted): the job board still shows who moves in from week 1; when is in the line's tip, and the checklist's line names the milestone without the week. A dated note there.
+- D-045 (Accepted) and D-077's 2026-11-07 note: a week-2 hint is added, the checklist's moves to week 3, and every hint keeps to 25 words. Dated notes there.
+- D-113 (Accepted): unchanged. The house rules still open on a first visit until the checklist's hint is dismissed; that hint now first shows in week 3.
+- `src/rules/text.ts` gains `houseRulesText`, `hintText` and `HINT_WORDS` (new functions after the glossary; nothing existing changes).
+
 ### D-137 · More change orders: three generic ones, and a phase effect for every client
 **Status:** Proposed · 2026-11-10, from playtest 4 (`docs/playtests/playtest-4-findings.md` §5), with its fix pull request. Extends D-011 and D-109. For the next playtest on /dev/.
 **Decision:**
@@ -2050,6 +2094,11 @@ What's still short:
 - **Smaller:** demolishing doesn't mark or bring into view the checklist lines it would flip, nor the score panel the sets it would break; the inspect panel lists both. A weekly Wow of seven digits in a 280 px column sits 2 UI px from its word, at the pixel font's 16 px floor.
 - **From before M4, left as they are:** the build stamp covers the left column's foot at 1280×720 (D-098's corner, chosen to stay clear of End week), now the inspect panel's frame under its plank or its total; on the score panel's list, a set the play would make is tinted with Charm's tint, on which its Comfort reads at 4.1:1 and its Charm at 4.49:1 (M5a's colors, not yet among `theme.test.ts`'s pairs); and a click on a cell that can't take a pending play drops the play, a pending Renovation included.
 
+*Changed by D-142 (Proposed 2026-11-10):*
+- **The job board:** a contract's card leads with the client's brief, their wishes and the lot's map and chips. The household and the tastes are a line each, with the detail in the line's tip. The house rules are a term in the board's lede, not a fold on every card, and the lot in words under the map goes.
+- **The checklist:** the wishes' tag is "Wishes"; a line that doesn't hold shows only the parts still missing; who's still to move in is a name and a milestone; and in a 280 px pixel-font column under 1000 px tall the tastes' row is "Tastes", one line again (the sun's icon, D-120, had made "Tastes (3)" two).
+- **First-time hints:** how a week scores is added (week 2), and every hint keeps to 25 words.
+
 ### D-109 · M4b rules structure: change orders, arrivals, and crews
 **Status:** Proposed · 2026-11-07, with the M4 pull request. Details within D-103, D-012, and Appendix A · M4b; numbers for the sim and playtest 4.
 **Decision:**
@@ -2245,6 +2294,7 @@ D-074 to D-080 came out of playtest 2 (M2, 2026-11-05), D-090 to D-093 out of pl
 **To decide:** When (with M3's shop, or with D-045's first-time hints in M4b), and how. The text should be generated from the rules data, as card text is (D-038).
 **2026-11-06 (Combolands research):** Combolands' most requested feature after launch was a compendium of the run's buildings, heirlooms, and councillors (v1.0.5), and v1.0.7 took a confusing "counts as fish" line off a card. See research.md's 2026-11-06 systems update.
 **2026-11-07 (M4):** the board's terms are in the rules' glossary, written from the content: the front and back yards, fenced yards (with the 10-tile minimum), requirements (each base-pool piece's), Hallway links, timers, Renovate, and the checklist. Inspect puts them on its region names, requirement lines, link mentions, and timers, and a granted tag names where it came from ("Dark · from Eternal night"). First-time hints (D-045) cover the first week, the checklist, Complete early, the shop, a fixture, a change order, and an arrival.
+**2026-11-10 (D-142, Proposed):** the hints add how a week scores (week 2), the checklist's moves to week 3, and each keeps to 25 words. The ones that state a rule or a number are the rules' `hintText`; the glossary keeps the full texts for the tips.
 
 ### D-078 · Terrain and the house's position should matter more
 **Status:** Open · 2026-11-05, from playtest 2.
