@@ -185,7 +185,7 @@ describe('indoor rooms', () => {
       ['garage', 2, 4],
     ]);
     expect(t.pieces[0]).toMatchObject({ points: -1, earned: 0 });
-    expect(t.pieces[1]!.earned).toBe(1);
+    expect(t.pieces[1]!.earned).toBe(5);
   });
 
   it('Bathroom: +3 next to a Bedroom (once), −2 per Kitchen, L-Kitchens included', () => {
@@ -421,19 +421,19 @@ describe('indoor rooms', () => {
     expect([e[0], e[2]]).toEqual([2, 0]);
   });
 
-  it('Garage: needs the house, and the street or a Driveway; 1, and +1 budget every 3rd week', () => {
+  it('Garage: built like any room; 5 and +1 budget every 2nd week once the street or a Driveway reaches it (D-140)', () => {
     expectCard('garage', [
-      'Must touch the house, and the street or a Driveway',
-      '+1 every week',
-      '+1 budget every 3rd week',
+      'Earns nothing unless touching the street or a Driveway',
+      '+5 every week',
+      '+1 budget every 2nd week',
     ]);
     const rows = emptyRows(6, 6);
-    // On the street: the build week counts as the first, so it pays in weeks 3 and 6.
-    expect(earned(rows, [['garage', 0, 4]])).toEqual([1]);
-    expect(budgets(rows, [['garage', 0, 4]], 6)).toEqual([0, 0, 1, 0, 0, 1]);
-    expect(tally(rows, [['garage', 0, 4]], 3).budget).toBe(1);
+    // On the street: the build week counts as the first, so it pays in weeks 2, 4 and 6.
+    expect(earned(rows, [['garage', 0, 4]])).toEqual([5]);
+    expect(budgets(rows, [['garage', 0, 4]], 6)).toEqual([0, 1, 0, 1, 0, 1]);
+    expect(tally(rows, [['garage', 0, 4]], 2).budget).toBe(1);
     // Touching a Driveway pack, of 3 tiles or 5, also meets it (each one runs down to the
-    // street, so the Garage itself doesn't touch it).
+    // street, so the Garage itself doesn't touch it). The Driveway pays for the Garage too.
     const drives: [string[], number][] = [
       [['###'], 6],
       [['#####'], 8],
@@ -445,34 +445,132 @@ describe('indoor rooms', () => {
           ['garage', 0, 3],
           ['driveway', 2, 3, 1, shape],
         ],
-        3,
+        2,
       );
-      expect(t.pieces[0]).toMatchObject({ earned: 1, budget: 1 });
+      expect(t.pieces[0]).toMatchObject({ earned: 5, budget: 1 });
       expect(t.pieces[0]!.unmet).toBeUndefined();
+      expect(t.pieces[1]!.earned).toBe(1 + 3);
     }
-    // Away from both it earns nothing and pays nothing.
-    const t = tally(rows, [['garage', 0, 0]], 3);
+    // Away from both it earns nothing and pays nothing, and says why.
+    const t = tally(rows, [['garage', 0, 0]], 2);
     expect(t.pieces[0]).toMatchObject({
       earned: 0,
       budget: 0,
       unmet: 'touching the street or a Driveway',
     });
-    expect(t.pieces[0]!.lines[0]!.op).toBe('none');
+    expect(t.pieces[0]!.lines).toEqual([
+      {
+        label: 'Earns nothing: it must be touching the street or a Driveway',
+        op: 'none',
+        value: 0,
+        from: [],
+      },
+    ]);
     expect(t.budget).toBe(0);
-    // Placement: it must touch the street (or a Driveway) and the house.
-    expect(check(rows, [], 'garage', 0, 0)).toMatchObject({
-      legal: false,
-      reason: 'Garage must be built touching the street or a Driveway.',
-    });
+    // Placement (D-140): anywhere a room can go. Until D-140 this spot was refused with
+    // "Garage must be built touching the street or a Driveway."
+    expect(check(rows, [], 'garage', 0, 0)).toMatchObject({ legal: true });
     expect(check(rows, [], 'garage', 0, 4).legal).toBe(true);
     const small = emptyRows(6, 4);
     expect(check(small, [['bedroom', 0, 0]], 'garage', 0, 2).legal).toBe(true);
-    // A room, so it must join the house too, and it says so (playtest 4).
+    // Beside the house and nowhere near the street: legal, as for a Bedroom.
+    const deep = emptyRows(8, 12);
+    expect(check(deep, [['bedroom', 0, 0]], 'garage', 2, 0).legal).toBe(true);
+    // A room, so it must join the house, with every room's reason.
     expect(check(small, [['bedroom', 0, 0]], 'garage', 4, 2)).toMatchObject({
       legal: false,
-      reason: 'The Garage is a room: it must connect to the house.',
+      reason: 'Rooms must connect to the house.',
     });
     expect(CONTENT.pieces.garage.tags).toContain('Loud');
+  });
+
+  it('Garage: a Driveway laid later turns it on, and it’s Loud either way (D-140)', () => {
+    // A house 9 rows back on a 6 × 12 lot: a Bedroom, and a Garage in front of it (rows 2–3).
+    const rows = emptyRows(6, 12);
+    const house: Placement[] = [
+      ['bedroom', 0, 0],
+      ['garage', 0, 2],
+    ];
+    const before = tally(rows, house, 2);
+    expect(before.pieces[1]).toMatchObject({ earned: 0, budget: 0 });
+    expect(before.pieces[1]!.unmet).toBe('touching the street or a Driveway');
+    // Unreached, it's still a Loud room beside the Bedroom: 3 − 2.
+    expect(before.pieces[0]!.earned).toBe(1);
+    // One pack of 8 from the street (rows 4–11) reaches it: both pay from that week.
+    const drive: Placement = ['driveway', 0, 4, 0, ['#', '#', '#', '#', '#', '#', '#', '#']];
+    expect(check(rows, house, 'driveway', 0, 4, 0, drive[4]).legal).toBe(true);
+    const after = tally(rows, [...house, drive], 2);
+    expect(after.pieces[1]).toMatchObject({ earned: 5, budget: 1 });
+    expect(after.pieces[1]!.unmet).toBeUndefined();
+    expect(after.pieces[2]!.earned).toBe(1 + 3);
+    // A drive that stops a tile short earns its +1 and leaves the Garage waiting.
+    const short: Placement = ['driveway', 0, 5, 0, ['#', '#', '#', '#', '#', '#', '#']];
+    const stub = tally(rows, [...house, short], 2);
+    expect(stub.pieces[1]!.unmet).toBe('touching the street or a Driveway');
+    expect(stub.pieces[2]!.earned).toBe(1);
+    // A second pack off the first finishes it.
+    const rest: Placement = ['driveway', 0, 4, 0, ['#']];
+    expect(check(rows, [...house, short], 'driveway', 0, 4, 0, rest[4]).legal).toBe(true);
+    const joined = tally(rows, [...house, short, rest], 2);
+    expect(joined.pieces[1]!.earned).toBe(5);
+    // The pack that touches the Garage is the one that's paid for it.
+    expect(joined.pieces.slice(2).map((p) => p.earned)).toEqual([1, 1 + 3]);
+  });
+
+  it('Garage: in a run, it goes down off the street and completes Full House at ×1.5; then a Driveway turns it on (D-140)', () => {
+    // The other eight Core room types on rows 0–2 of a 12 × 12 lot, nine rows from the street.
+    const eight: Placement[] = [
+      ['bedroom', 0, 0],
+      ['bathroom', 2, 0],
+      ['kitchen', 3, 0],
+      ['diningRoom', 5, 0],
+      ['livingRoom', 7, 0],
+      ['closet', 2, 1],
+      ['hallway', 0, 2],
+      ['homeOffice', 2, 2],
+    ];
+    const s: RunState = {
+      ...START,
+      house: houseFrom(CONTENT, emptyRows(12, 12), eight),
+      hand: [{ kind: 'piece', id: 'garage' }],
+    };
+    expect(R.currentTally(s).sets.map((x) => x.set)).not.toContain('fullHouse');
+    // Under the Kitchen, at rows 2–3: nothing reaches it. The card has a play (no dead card),
+    // and the preview says what the Garage is waiting for.
+    const garage = { t: 'place', from: 'hand', i: 0, x: 4, y: 2, rot: 0 } as const;
+    expect(R.cardFits(s, 0)).toBe(true);
+    expect(R.checkPlay(s, garage).legal).toBe(true);
+    expect(R.preview(s, garage).newPiece).toMatchObject({
+      earned: 0,
+      unmet: 'touching the street or a Driveway',
+    });
+    const built = R.apply(s, garage);
+    const t1 = built.events.find((e) => e.t === 'tally')!.tally;
+    expect(t1.pieces.at(-1)).toMatchObject({ defId: 'garage', earned: 0, budget: 0 });
+    // It still counts for the set (D-070), which pays its Sparkle: ×1.5 since D-140.
+    expect(t1.sets.map((x) => x.set)).toContain('fullHouse');
+    expect(t1.xMults).toHaveLength(1);
+    expect(t1.xMults[0]).toMatchObject({ source: { kind: 'set', id: 'fullHouse' }, times: 150 });
+    expect(t1.xMults[0]!.after).toBe(Math.floor((t1.xMults[0]!.before * 150 + 50) / 100));
+    // A Driveway pack of 8, from the street (row 11) up to the Garage's south wall (row 4).
+    const s2: RunState = { ...built.state, hand: [{ kind: 'piece', id: 'driveway' }] };
+    const drive = {
+      t: 'place',
+      from: 'hand',
+      i: 0,
+      x: 4,
+      y: 4,
+      rot: 0,
+      shape: ['#', '#', '#', '#', '#', '#', '#', '#'],
+    } as const;
+    expect(R.checkPlay(s2, drive).legal).toBe(true);
+    const t2 = R.apply(s2, drive).events.find((e) => e.t === 'tally')!.tally;
+    const [g, d] = t2.pieces.slice(-2);
+    expect(g).toMatchObject({ defId: 'garage', points: 5 });
+    expect(g!.unmet).toBeUndefined();
+    expect(g!.earned).toBeGreaterThan(0);
+    expect(d).toMatchObject({ defId: 'driveway', points: 1 + 3 });
+    expect(t2.total).toBeGreaterThan(t1.total);
   });
 
   it('Home Office: 2, −2 per Loud neighbor, +1 budget every 2nd week', () => {
@@ -772,17 +870,20 @@ describe('yard pieces', () => {
     expect(earned(emptyRows(5, 8), alone)).toEqual([4, 4, 6]);
   });
 
-  it('Driveway: a pack from the street or another Driveway; +1 in the front yard; crosses the creek', () => {
+  it('Driveway: a pack from the street or another Driveway; +3 at a Garage, +1 anywhere; crosses the creek', () => {
     expectCard('driveway', [
       'Must be built touching the street or a Driveway',
-      '+1 every week in the front yard',
+      '+3 if touching a Garage',
+      '+1 every week',
     ]);
     expect(CONTENT.pieces.driveway.canCover).toEqual(['creek']);
-    // A pack (D-106): 1–6 touching tiles from one card. It suggests the 1×3 and the 1×5 it
-    // replaced; the 1×3 is the card's picture, and a test house's Driveway without its own tiles.
-    expect(CONTENT.pieces.driveway.pack).toEqual({ maxTiles: 6, shapes: [['###'], ['#####']] });
+    // A pack (D-106): 1–8 touching tiles from one card (D-140; 6 before), as the Fence. It
+    // suggests the 1×3 and the 1×5 it replaced; the 1×3 is the card's picture, and a test
+    // house's Driveway without its own tiles.
+    expect(CONTENT.pieces.driveway.pack).toEqual({ maxTiles: 8, shapes: [['###'], ['#####']] });
+    expect(CONTENT.pieces.driveway.pack!.maxTiles).toBe(CONTENT.pieces.fence.pack!.maxTiles);
     expect(cardText(CONTENT, CONTENT.pieces.driveway).pack).toBe(
-      'A pack: click out up to 6 tiles that touch, one piece in one week.',
+      'A pack: click out up to 8 tiles that touch, one piece in one week.',
     );
     expect(shapeOf('driveway')).toEqual({
       cells: ['0,0', '1,0', '2,0'],
@@ -804,19 +905,30 @@ describe('yard pieces', () => {
       earned: 0,
       unmet: 'touching the street or a Driveway',
     });
-    // Beside a house that comes down to the street it's in the back yard: met, but no bonus.
+    // Its +1 no longer reads the yard it's in (D-140, settling D-080): beside a house that
+    // comes down to the street it's in the back yard, and paid 0 until now.
     const back = tally(rows, [
       ['driveway', 0, 5],
       ['bedroom', 3, 4],
     ]);
-    expect(back.pieces[0]!.earned).toBe(0);
+    expect(back.pieces[0]!.earned).toBe(1);
     expect(back.pieces[0]!.unmet).toBeUndefined();
+    // Touching a Garage pays once, however many Garages: +3.
+    expect(
+      earned(emptyRows(8, 6), [
+        ['driveway', 2, 3, 1],
+        ['garage', 0, 3],
+        ['garage', 3, 3],
+      ])[0],
+    ).toBe(1 + 3);
     // Placement.
     expect(check(rows, [], 'driveway', 0, 0)).toMatchObject({
       legal: false,
       reason: 'Driveway must be built touching the street or a Driveway.',
     });
     expect(check(rows, [], 'driveway', 0, 5).legal).toBe(true);
+    // A Garage isn't the street: a Driveway can't start from one.
+    expect(check(rows, [['garage', 0, 0]], 'driveway', 2, 0).legal).toBe(false);
     // Over the creek, chained from the street; nothing else can go there, and not on the pond.
     const creek = ['......', '......', 'PP....', '......', 'CCCCCC', '......', '......', '......'];
     const first: Placement[] = [['driveway', 2, 5, 1]];
@@ -832,29 +944,31 @@ describe('yard pieces', () => {
     });
   });
 
-  it('Driveway pack: one card, 1–6 touching tiles; a long one takes a Garage across the creek', () => {
+  it('Driveway pack: one card, 1–8 touching tiles; a long one takes a Garage across the creek', () => {
     // One card: no shape variant shares its type any more.
     expect(CONTENT.pieces.driveway.countsAs).toBeUndefined();
     expect(Object.values(CONTENT.pieces).filter((d) => d.countsAs === 'driveway')).toEqual([]);
     const LONG = ['#####'];
     expect(earned(emptyRows(8, 8), [['driveway', 0, 7, 0, LONG]])).toEqual([1]);
-    // The suggested shapes, and any other of up to 6 touching tiles, when one of them reaches
-    // the street (each shape here ends on the street row); not 7.
-    const street = emptyRows(8, 8);
+    // The suggested shapes, and any other of up to 8 touching tiles, when one of them reaches
+    // the street (each shape here ends on the street row); not 9.
+    const street = emptyRows(10, 8);
     for (const shape of [
       ['#'],
       ['###'],
       LONG,
       ['######'],
+      ['########'],
       ['#.', '#.', '##'],
       ['##', '##', '##'],
+      ['#.', '#.', '#.', '#.', '#.', '#.', '##'],
     ]) {
       const legal = checkPack(street, 'driveway', 0, 8 - shape.length, shape).legal;
       expect(legal, shape.join('/')).toBe(true);
     }
-    expect(checkPack(street, 'driveway', 0, 7, ['#######'])).toMatchObject({
+    expect(checkPack(street, 'driveway', 0, 7, ['#########'])).toMatchObject({
       legal: false,
-      reason: 'Up to 6 tiles, all touching.',
+      reason: 'Up to 8 tiles, all touching.',
     });
     expect(checkPack(street, 'driveway', 0, 0, LONG)).toMatchObject({
       legal: false,
@@ -865,12 +979,18 @@ describe('yard pieces', () => {
     const drive: Placement[] = [['driveway', 3, 3, 1, LONG]];
     expect(check(rows, [], 'driveway', 3, 3, 1, LONG).legal).toBe(true);
     expect(check(rows, drive, 'garage', 4, 2).legal).toBe(true);
-    expect(check(rows, drive, 'garage', 6, 0).legal).toBe(false);
+    // Off the drive it can be built too (D-140), and earns nothing there.
+    expect(check(rows, drive, 'garage', 6, 0).legal).toBe(true);
+    expect(tally(rows, [...drive, ['garage', 6, 0]], 2).pieces[1]).toMatchObject({
+      earned: 0,
+      budget: 0,
+    });
     // A short Driveway can chain off it.
     expect(check(rows, drive, 'driveway', 0, 3).legal).toBe(true);
-    const t = tally(rows, [...drive, ['garage', 4, 2]], 3);
-    expect(t.pieces[1]).toMatchObject({ defId: 'garage', earned: 1, budget: 1 });
+    const t = tally(rows, [...drive, ['garage', 4, 2]], 2);
+    expect(t.pieces[1]).toMatchObject({ defId: 'garage', earned: 5, budget: 1 });
     expect(t.pieces[1]!.unmet).toBeUndefined();
+    expect(t.pieces[0]).toMatchObject({ defId: 'driveway', earned: 1 + 3 });
   });
 });
 

@@ -348,7 +348,7 @@ Also: D-036 and D-043 (Accepted), where hand size becomes the `handSize` rule (3
 - Per-piece percentage bonuses still add, as in D-037.
 - The order is fixed (+Mult, then ×Mult), and each layer gets its own color and sound.
 
-**Amended by:** D-093 (Accepted 2026-11-06): one Entertainer per house (`maxInstances: 1`), beside M4a's Suite and Full House.
+**Amended by:** D-093 (Accepted 2026-11-06): one Entertainer per house (`maxInstances: 1`), beside M4a's Suite and Full House. D-140 (Proposed 2026-11-10): the Full House set is ×1.5, now that a Garage can be built like any room.
 **Why:** In Balatro and Combolands, big moments come from multipliers. Making them powerful but rare and conditional means you plan for them rather than stumble into them. Balatro puts ×Mult on 70% of its Rare jokers and 3% of its Common ones, and its players confuse +Mult with ×Mult when they look alike. Keeping multiplication in one weekly step avoids D-037's ×15–×36 per-piece blowups. Targets come from the sim's median curve, which ×Mult may steepen.
 **Changes:**
 - D-037 (Accepted): the week's formula.
@@ -1115,6 +1115,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **Changes:** D-004 and D-036 (Accepted): a week's play can place a pack. D-049 (Accepted): the yard shapes. D-071: the variant cards. D-072: the enclosure probe.
 **2026-11-08 (M4 merged with `develop`):** M5a's painters draw a pack from its own tiles, never the card's shape: its ghost as the tiles are clicked out, the built pack, and the Moving Truck's carried pack. A Fence's picket line runs through any connected shape, and a lone tile is a short run with a post at each end. The house's car stands only on its Driveway's own tiles, and a Driveway of two tiles or more, of any shape, parks it (D-111).
 *Changed by D-121 (Proposed 2026-11-09):* the Fence and Driveway packs draw at 10, not 20, in the Layout row.
+*Changed by D-140 (Proposed 2026-11-10):* a Driveway pack is 1–8 tiles, as the Fence, and the Garage it runs to no longer has to be built beside it.
 
 ### D-107 · Showing what a fixture is worth
 **Status:** Accepted · 2026-11-06 (the team chose it, resolving D-092). Built with M4b's UI.
@@ -1884,6 +1885,76 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **Changes:** D-015 and D-016 (Proposed): this is a first step that adds no unlocks and no currency. `jam-scope.md`: its "Not in the jam build" line on meta-progression. The rules gain `nextVerdict()` (`milestones.ts`), so the UI still computes no score.
 **Known gaps:** no way to clear the record yet. A portfolio house can't be opened larger or replayed from its seed. A run finished on another device or in a private window isn't in the record.
 
+### D-140 · The Garage is built like any room, and earns once the street or a Driveway reaches it
+**Status:** Proposed · 2026-11-10, with its phase pull request (`phase/garage-driveway`), from the friction review the user asked for the same day (its first point). The direction is the user's: the Garage is placed like any other room, and earns only while the street or a Driveway reaches it. Settles D-080. For the user's playtest before it merges. The numbers are placeholders.
+**Decision:**
+- **The Garage goes anywhere a room can go.** Its requirement (touching the street or a Driveway) no longer blocks placement. Until it's met the Garage earns nothing and pays no budget, with the ⚠ on the board and "Earns nothing: it must be touching the street or a Driveway" in Inspect and in the placing preview. This is the Patio rule's kind of requirement (D-105).
+- **A Garage nothing reaches still counts for Full House,** as any piece that earns nothing does (D-070). It's still a room for the checklist and still Loud.
+- **Reached, it earns +5 a week** (was +1) **and +1 budget every 2nd week** (was every 3rd).
+- **The Driveway's job is the Garage:** +3 if it touches one, and +1 a week anywhere. The "+1 in the front yard" is gone: playtest 2 read it as "square to the street" (D-080).
+  - It still must be built touching the street or a Driveway, so a drive always grows from the street.
+  - The pack that touches the Garage is the one paid for it.
+- **A Driveway pack is up to 8 tiles** (was 6), as the Fence.
+- **Full House's Sparkle is ×1.5** (was ×2). Its +40 Comfort and +1 Charm stay.
+- **Wording:**
+  - The Garage's card: "Earns nothing unless touching the street or a Driveway", "+5 every week", "+1 budget every 2nd week".
+  - Its compact hand card: "+5 by the street or a Driveway". The generated line, "+5 every week if touching the street or a Driveway", lost its last words in the card's two lines at every window size.
+  - The Driveway's card: "Must be built touching the street or a Driveway", "+3 if touching a Garage", "+1 every week". Its hand card shows the Garage line.
+  - The glossary's Sparkle entry takes Full House's number from the content.
+- **Art:** nothing new. A Garage nothing reaches draws as a closed room with its boxes, no door and no car. When a Driveway or the street touches it, its door opens on that side and its car parks inside, as D-100 and D-111 already draw.
+- **The greedy bot gets a drive planner** (`sim/drive.ts`), as it got a fence planner (D-106). For each Garage that waits, it finds the cheapest run of free tiles from the street or a Driveway to a tile beside it, around Trees where it can and over the creek. A run one pack covers is offered whole. A longer one is offered as its first pack's worth from the street end. The bot scores them exactly, like any play.
+
+**Sim** (200 held-out greedy runs, `check-0` to `check-199`, every Core client in turn with each crew; develop at 67aa75e against this change; targets not re-fitted):
+
+| | develop | this change |
+|---|---|---|
+| Garage cards offered a run | 4.18 | 4.36 |
+| Garage offers with no legal spot | 82.4% | 1.8% |
+| Garages placed a run | 0.02 | 0.26 |
+| Runs that end with a Garage | 2.0% | 25.5% |
+| Runs that end with a Garage the street or a Driveway reaches | 2.0% | 9.5% |
+| Driveways placed a run | 0.27 | 0.34 |
+| Full House held at the end, all runs | 1.5% | 19.5% |
+| Full House held at the end, wins | 3.5% | 37.5% |
+| Full House first held, median week | 21 | 23 |
+| Sparkle's share of the Wow | 9.9% | 17.5% |
+| Greedy wins (all three crews) | 43.0% | 52.0% |
+| Greedy wins, `npm run sim -- --check` (General Contractor) | 46.0% [39.2–52.9] | 54.0% [47.1–60.8] |
+
+- The 1.8% left is the house hemmed in, as for any 2×2 room (a Living Room is 2%).
+- **Full House.** The 39 runs that held it at the end, against the same seeds on develop, where 25 of them won:
+
+  | Sparkle | Final Wow, after ÷ before (p50) | They won | Greedy wins | Sparkle's share |
+  |---|---|---|---|---|
+  | ×2 | 1.95 | 39 of 39 | 52.0% | 23.3% |
+  | ×1.5 | 1.57 | 39 of 39 | 52.0% | 17.5% |
+  | ×1.25 | 1.33 | 38 of 39 | 51.5% | 14.1% |
+
+  - The win rate doesn't depend on the Sparkle: greedy completes the set late, in houses that are already strong, and the set's Comfort and Charm are enough to finish them. The size of the win does.
+  - At ×2, a set held for a median 7 weeks nearly doubled the final Wow. The other always-on Sparkle is the Chandelier's ×1.25.
+- **What greedy does with the Garage.** It has no foresight, so it mostly builds the Garage as Full House's ninth type, late and wherever that week scores best: a median 14 tiles from the street. A Garage stood unreached for 1.1 weeks a run. With a Driveway card in hand that week (38 weeks in the 200 runs), one pack would reach in 8, and the bot laid it in 6. So 37% of its houses with a Garage end with it reached.
+  - The pay barely moves this: with the Garage at +4 to +6, the Driveway at +3 or +4 and budget every week or every 2nd, 8.5–10% of runs ended with a reached Garage.
+  - Where a player would put it: a Garage on the street side of greedy's houses is within 8 rows of the street in 55% of them (within 6 in 45%), and within 16 in 96%. So one pack of 8 reaches about half, and two reach nearly all.
+- **`--check`:** "greedy wins 40–50% of runs" now fails (54.0%, unsure), which the re-fit after this batch of changes is for. Early completion is still a live choice, but closer to its line: always 45.0% against never 54.0%, −9.0 points (the line is 10; −1.0 on develop). Completing early skips late weeks, and that's when greedy completes Full House. The client spread is 35.0 points at 40 runs a client (30.0 on develop). The other criteria are unchanged.
+
+**Why:** the Garage card had no legal spot in 82% of the weeks it was offered: greedy's houses end a median 10 rows back from the street, and one Driveway pack was 6 tiles. Full House, the only set with Sparkle, needs a Garage, so it almost never completed. D-080 (Open since playtest 2) said the Driveway had no purpose without a Garage and that its front-yard pay was hard to read. D-056 keeps ×Mult rare and planned: once any run can complete Full House, ×2 for the rest of the run is out of line with the other sources.
+**Considered:**
+- **An unreached Garage not counting for Full House,** so the drive is part of the set's setup. It would change D-070 (Accepted), and a set would then complete on a Driveway's step, against D-065's rule that a later piece never re-dates a set. If Full House still feels automatic in the playtest, this is the next thing to try.
+- **Keeping ×2.** The win rate is the same, so it's a question of how big the moment should be. ×1.25 is in the table too.
+- **A Driveway that links the yard pieces along it** (D-080's Combolands note). A connector isn't a neighbor (D-046), so the Garage couldn't read "touching a Driveway" without a new rule, and yard links need new card text and a new estimate the day before sharing. Parked.
+- **A Driveway that may start from the Garage.** "A Driveway touches it" would then hold for a drive that goes nowhere, so it needs a new condition (a Driveway that reaches the street).
+- **Keeping the pack at 6:** two packs cover 12 rows against 16, and one covers 45% of houses against 55%.
+- **A lookahead for greedy** (credit for a Garage one pack could reach). Left out: it changes what "greedy" means in every report, for a piece that's under 1% of its Wow.
+
+**Changes:** D-080 (Decided by this). D-106 (Accepted): a Driveway pack is 1–8 tiles. D-056 (Accepted; its numbers are placeholders for the sim): Full House is ×1.5. D-070 is unchanged and relied on. `implementation-plan.md`: §4's Garage and Driveway line, the `requires` row, the Garage's example, the packs' lines, and Appendix B's Garage, Driveway and Full House rows. The content changes the content hash, so run codes from earlier builds won't replay.
+**Known gaps:**
+- The targets aren't re-fitted, so until the batch's re-fit the game is easier than intended wherever Full House completes.
+- What a player who plans for the Garage or for Full House from the start does with them isn't measured: there's no planner bot (D-089). The playtest is the check.
+- The rules' cheap estimate doesn't see that a Driveway turns a waiting Garage on. The bot's planner covers it, and the game's own preview is exact.
+- A Driveway cut off from the street by a demolition earns nothing itself but still counts as a Driveway for the Garage beside it.
+- "By" on the compact card means touching. Inspect has the exact words.
+- `yard.test.ts` parks the car on every pack of up to 8 tiles (2,725 shapes of 8, from 216 of 6): about 3 seconds alone and 6 to 7 in the full suite, so that test has a longer timeout.
+
 ### D-133 · The roof view: the reveal's roof stays on, a Roof button brings it back, and the end screen opens with it
 **Status:** Proposed · 2026-11-10, after playtest 5 (`docs/playtests/playtest-5-findings.md`), with its fix pull request. Extends D-127. For the next playtest on /dev/.
 **Decision:**
@@ -2274,7 +2345,7 @@ New content is preferred over raising existing numbers.
 **2026-11-06 (M4a sim):** with the Kid half in, 1,000 held-out greedy runs: the Hendersons place 1.2 Treehouses a run, earning 1.9% of their Wow (other clients 1.6–2.0%); 3+ Treehouses in 11–15% of wins.
 
 ### D-080 · The Driveway: legibility, and a purpose without a Garage
-**Status:** Open · 2026-11-05, from playtest 2.
+**Status:** Decided · 2026-11-10 by D-140 (Proposed, for the user's playtest): the user's direction. Was Open, from playtest 2 (2026-11-05).
 **Finding:**
 - The player read the Driveway as paying only when perpendicular to the street. In fact a 1×3 earns +1 either way. A Long Driveway standing up earns 0 when it reaches above the house's front row, because only the front yard pays.
 - With no Garage drawn, the Driveway has no purpose.
@@ -2285,6 +2356,9 @@ New content is preferred over raising existing numbers.
 - Make a Garage likelier once a Driveway is down.
 **2026-11-06 (playtest 3):** the player built more Driveways this time (two Long Driveways in their run).
 **2026-11-06 (Combolands research):** a Combolands railroad makes everything beside it count as beside everything else along it *(guide)*. A Driveway could link the yard pieces along it the way a Hallway links rooms, which would give it a job without a Garage.
+**2026-11-10 (D-140):** the friction review found the cause behind the second finding: the Garage card had no legal spot in 82% of the weeks it was offered, so a Driveway almost never had a Garage to serve. D-140 lets the Garage be built like any room and makes the Driveway's job reaching it: the Garage earns only once the street or a Driveway touches it, and the Driveway is paid for touching one.
+- Of the options above: it's a pack (D-106), now of 8 tiles, and it has a bonus of its own (+3 at a Garage). Its front-yard pay, which the first finding is about, is gone: it earns +1 anywhere. Showing the front yard on the board is still open for the pieces that read it (D-099's note). A Garage isn't likelier after a Driveway, since it no longer needs one to be built.
+- The Combolands link isn't built (D-140's Considered).
 
 ### D-090 · Budget from how you build
 **Status:** Open · 2026-11-06, from playtest 3.
