@@ -1718,7 +1718,7 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
   - economy pieces pay every 2–3 weeks, and change-order rewards (and any set with a one-time `reward`) can pay budget (amends D-013)
   - finds pay too (Time Capsule +3), and selling pays half the price paid
   - target: 1 budget is worth about 3–5% of the final score, and a run earns roughly 30–40
-  - no shop follows the last milestone, so the budget held when it's met (its own payout and any early bonus included) pays 100 Wow each (`leftoverBudgetWow`, D-145): about a tenth of what a budget buys when it's spent well, so spending stays right and nothing is stranded. It's paid after the target is met, so it moves the verdict and the company's best, never a loss into a win
+  - no shop follows the last milestone, so the budget held when it's met (its own payout and any early bonus included) pays 100 Wow each (`leftoverBudgetWow`, D-145): a tenth or less of what a budget buys when it's spent well, so spending stays right and nothing is stranded. It's paid after the target is met, so it moves the verdict and the company's best, never a loss into a win
 - **Shop (D-051):** opens after milestones 1–6, from the very first run. Combolands players say its locked early shop made first runs drag.
   - **Shop 1:**
     - 2 blueprints and 2 cards

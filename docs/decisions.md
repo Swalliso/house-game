@@ -2057,6 +2057,109 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 **Changes:** D-127 (Accepted): the reveal's roof holds until the player's next move instead of 1.8 s (its dated note). `implementation-plan.md` §7 M5a's juice and §12's roof reveal.
 
+### D-145 · The lot and the last stretch: Boulders and the Old Shed count, late arrivals, the Porch, and leftover budget
+**Status:** Proposed · 2026-11-10, with its phase pull request (`phase/lot-late-game`), from the friction review the user asked for the same day (points 5 and 6). The user chose "research, then build". Settles D-091; adds to D-078 and D-090, which stay Open. For the user's playtest before it merges. The numbers are placeholders.
+**Decision:**
+- **Every lot feature now has pieces that want it.** Trees and water already had theirs.
+  - **A Boulder is a neighbor,** each one its own, like a Tree. It has no tags and gives no view, so only the cards that name it count it:
+    - Lawn: "+1 per touching Lawn or Boulder (up to 4)" (was Lawns only)
+    - Flower Bed: "+1 per touching Flower Bed or Boulder" (a rock garden)
+    - Fire Pit: "+2 per touching Boulder (up to 2)" (new line)
+  - **The Old Shed is a neighbor while it stands,** counted once, like the pond. The pieces that would use a shed earn more beside it: the Greenhouse +4, the Garage +3, a Herb Garden +2, the Henhouse +2 ("+4 if touching the Old Shed").
+  - Both still block building, and a demolition still clears them. Demolishing the shed still pays a random tool, so keeping it now competes with clearing it, and the demolition's preview shows the week's Wow going down when a garden stands beside it.
+- **Three pieces arrive late,** in the weekly draw's Layout row at half a card's weight (5), so the last milestones have more to place than fixtures and Renovations:
+  - the **Birdhouse** from Roofing (+1 per touching Tree, up to 3) and the **Fire Pit** from Drywall. Both were shop pieces; they leave the shop, the Showroom and the Catalog, which keep six special pieces.
+  - the **Porch,** a new 1×2 yard piece, from Drywall: "Touching rooms earn +25%" and "+1 per touching room (up to 4)". It reads the finished house: its best spot is a notch between the rooms that earn most, and a Renovation or a fixture there pays again.
+- **Leftover budget pays Wow** (the one new rule). No shop follows the last milestone, so when it's met, every budget still held pays 100 Wow (`leftoverBudgetWow`), the milestone's own payout and any early bonus included. It's paid after the target is met, so it moves the verdict and the company's best and never turns a loss into a win.
+- **Where it shows:**
+  - The cards' lines are generated from the data, as always.
+  - A Boulder's or the Old Shed's tile in Inspect says first who wants it, from the cards (`featureWantedText`): "Lawns, Flower Beds, and Fire Pits earn more beside one."
+  - The last milestone's banner says "17 budget left: +1,700 Wow". The end screen adds it to the Final Walkthrough's row and to The run ("17 budget left +1,700"). The Budget glossary entry and How to play each have a line.
+- **Art:** no new cuts, so nothing new in `assets/licenses.json` or `CREDITS.md`. The Porch is the wood floor's cut laid as boards, with a bench and a pot of flowers the rooms already use. A front or back door may open onto a Porch, and its bench or pot gives way to the door's mat.
+- **No new effect kind.** In the rules: one piece id, one balance number, an optional `leftover` on a milestone's reward, and `inert` taken off two features (the Old Shed gains `body`). The Time Capsule stays inert.
+
+**Research** (what the references do, what this takes, what waits):
+- **Combolands** (`research.md`): each kind of map feature has buildings that need it, make it, or clear it for a payout, and a Vault scores from the gold you hold. *Taken:* a piece that wants each feature (the Sapling already makes Trees, and the Treehouse needs one). *Left:* clearing for a payout, which needs a piece that fires when something is removed (D-094).
+- **Islanders:** every building has a short list of what it likes and dislikes nearby, terrain included (a Lumberjack earns per Tree), and the buildings in hand decide where on the island you go next *(player guides)*. *Taken:* likes as one line on cards the player already holds, not a new system.
+- **Cascadia and Suburbia:** what's left at the end converts to points at a poor rate (a leftover Nature Token is 1 point; Suburbia's money is 1 population per $5, after the goals) *(reviews and rules summaries)*. *Taken:* exactly that. Appendix A values a budget at 3–5% of the final score when it's spent; 100 Wow is a tenth of that or less, so spending stays right and nothing is stranded.
+- **Balatro:** Bull and Bootstraps score from money held all run *(wiki)*. *Left:* it would make hoarding a build and the last shops worth less.
+- **Dorfromantik:** quests keep the late turns alive, and later ones ask for more *(guides)*. *Left:* late goals belong to change orders, which D-144 is changing now.
+- **Also left for after the jam:**
+  - a Rocky lot trait: lots hold 6–10 Boulders, too alike for a chip to mean much without changing the generator
+  - a wish that reads the lot: each wish is +0.25 Charm, and Charm is already most of the Wow (D-078's 2026-11-06 note)
+  - a choice for Time Capsules (D-091's third option)
+  - budget from placement (D-090): nothing here pays budget
+
+**Sim** (200 held-out greedy runs, `check-0` to `check-199`, every Core client in turn with each crew; develop at 15e9dc2, with D-140 to D-142, against this change; targets not re-fitted):
+
+| | develop | this change |
+|---|---|---|
+| Greedy wins | 52.0% | 52.0% |
+| Final Wow in a win, median | 39,073 | 40,273 |
+| **The lot** | | |
+| Lot features' share of flat Comfort | 12.8% | 16.0% |
+| Comfort's share of the Wow | 16.3% | 16.6% |
+| Wow from touching lot features | 15.4% | 18.6% |
+| … from Trees | 14.6% | 14.7% |
+| … from Boulders | 0% | 1.5% |
+| … from the Old Shed | 0% | 1.8% |
+| … from the pond and the creek | 0.7% | 0.7% |
+| Wow from the sun, and from Creekside | 6.6%, 1.2% | 6.8%, 1.1% |
+| The lot in all | 23.1% | 26.6% |
+| Boulders a piece touches at the end, of 8.0 a lot | 1.0 | 2.5 |
+| Piece-weeks beside the Old Shed, a run | 3.8 | 20.5 |
+| The Old Shed still standing at the end | 100% | 100% |
+| The house's front row, rows from the street (median) | 9 | 10 |
+| **The back half** | | |
+| Pieces placed in milestones 1 to 7, runs that reach the last | 3.9, 3.6, 3.3, 3.3, 3.1, 2.7, 2.6 | 4.0, 3.7, 3.4, 3.3, 3.2, 2.8, 2.9 |
+| … rooms | 3.5, 2.5, 2.1, 1.5, 1.6, 1.0, 0.8 | 3.3, 2.5, 2.1, 1.4, 1.4, 0.9, 0.8 |
+| Yard pieces and outbuildings placed in milestones 1 to 7, all runs | 0.6, 1.1, 1.2, 1.5, 1.4, 1.2, 0.9 | 0.9, 1.2, 1.3, 1.8, 1.7, 1.4, 1.2 |
+| Renovations a run | 3.4 | 2.9 |
+| Wins' Wow from pieces placed in milestones 1–2 | 64.2% | 62.4% |
+| Greenhouses placed a run, and Wow a copy | 0.36, 25 | 0.91, 387 |
+| Lawns placed a run, and Wow a copy | 0.45, 387 | 1.25, 599 |
+| Birdhouse: offered, placed a run | shop only, 0.15 | 1.00, 0.32 |
+| Fire Pit: offered, placed a run | shop only, 0.00 | 0.71, 0.04 |
+| Porch: offered, placed a run | – | 0.79, 0.32 |
+| **Budget** | | |
+| Budget unspent at the end, median: all runs, wins | 8, 10.5 | 7, 11 |
+| Wow it pays in a win, median | 0 | 1,100 |
+
+- **`--check`** (General Contractor, 200 runs): greedy wins 54.5% [47.6–61.3], against 54.0% [47.1–60.8] on develop, so "greedy wins 40–50%" fails, unsure, as it does there since D-140. Early completion is on its line: always 44.5% against never 54.5%, −10.0 points [−17.6, −2.4] (−9.0 on develop). The clients' spread is 35.0 points on both (the Hendersons 50.0%, Count Vladislav 75.0%, the Barkers 40.0%, Juniper Vale 52.5%, Dale 55.0%). The novice passes milestone 1 in 99.5% of runs (97.0%). The rest are unchanged. The benchmark gate's time meant nothing that day: other sessions' sims had the machine at a load of 50, and run back to back there, develop took 2.2–2.3 s and this change 2.2–2.4 s. CI's sim job has the clean figure.
+- **The lot is a bigger part of the score than the review's "2–3%".** That figure multiplied two shares (lot features are 13% of flat Comfort, and Comfort is 18% of the Wow). Charm multiplies every point of Comfort alike, so a point from a Tree is worth what any other is: by the Wow each line earned, lot features were 15.4% of it on develop, nearly all Trees (14.6 points), and 23.1% with the sun and Creekside. What gave nothing was everything but Trees.
+- **Boulders and the shed now pay** (1.5% and 1.8% of the Wow, from zero), and greedy builds toward them: five times the piece-weeks beside the shed, and Greenhouses and Lawns placed two to three times as often. The win rate didn't move.
+- **The back half moved a little.** Runs that reach the last milestone place 2.9 pieces in it (2.6), and wins' Wow from pieces placed in milestones 1–2 goes from 64.2% to 62.4%. A piece placed in week 23 has few weeks left to earn, whatever it is.
+  - A Porch, in greedy's hands: placed in week 23 (median), touching 2.3 rooms, worth 497 Wow a copy over the 6.7 weeks it stood (222 its own, 274 the rooms' boost, which the table counts on the rooms). A Renovation level in the same runs earned 817, bought earlier.
+  - Greedy places 4% of the Fire Pits it's offered: +50% on one Patio seldom wins a week.
+- **By client** (40 runs each): the Hendersons 40.0% → 35.0%, Count Vladislav 70.0% → 70.0%, the Barkers 37.5% → 42.5%, Juniper Vale 60.0% → 57.5%, Dale 52.5% → 55.0%.
+- **What the sim can't see:** greedy never demolishes, so the shed stands in every run before and after; and it places for this week's Wow, so a garden corner or a notch kept for a Porch is under-measured.
+
+**Why:**
+- Playtests 2 and 3: neither the terrain nor where the house sits seemed to matter, and the Old Shed was cleared in week 1 every time. The sun (D-120) and creek lots (D-119) answered part of it. Boulders and the shed still gave nothing.
+- The friction review: placements thin out late (rooms fall from 3.4 in milestone 1 to 0.8 in milestone 7), and a median 7 budget ends the run unspent, 4 of it paid after the last shop.
+- D-078 prefers new content to bigger numbers. Every change here is a line on a card or a late card, and existing terrain terms are as they were.
+
+**Considered:**
+- The shed's effect on the shed's side (a lot trait granting the line): one place to read it, but a chip on every contract, since every lot has a shed, and D-142 has just slimmed those cards.
+- A shed whose tool gets better the longer it stands: a timing choice, but nothing the board shows, and the bot can't measure it.
+- A Boulder that pays when it's cleared (budget, or a reroll): free value for a spare demolition, as the shed was.
+- The Porch as an aura alone: in the browser pass its own panel read "earns 0 … Nothing yet" beside the rooms it was boosting, so it has a small earning of its own.
+- A new effect kind that counts pieces across the house, for late pieces: the Porch's aura reads the finished house with the kinds there are.
+- Leftover budget counted toward the last target: it could decide a win, but the HUD's target bar would need to show it, and saving would beat the last shop's goods.
+- More than 100 Wow a budget: at 1,000 or more (what a budget is worth spent, per Appendix A) nobody would shop at the end.
+
+**Changes:**
+- D-049 (Accepted): Boulders and the Old Shed are neighbors. D-082 (Accepted): the Old Shed's row; the Birdhouse and the Fire Pit leave the special pieces. D-140 (Proposed): the Garage's card gains the shed's line. D-013 and D-085: budget left at the end pays Wow.
+- `implementation-plan.md`: §4's terrain as neighbors, Appendix A's budget list, Appendix B's rows for both features and eight pieces, and the Porch's row.
+- The targets aren't re-fitted here: the friction batch has one re-fit at its end.
+
+**Known gaps:**
+- The greedy bot never demolishes, so the sim can't say whether a player keeps the shed. The playtest has to.
+- The bot places for this week's Wow. A garden corner by the shed or a notch saved for a Porch takes planning, so both are under-measured.
+- The Porch's boards are the bedrooms' floor cut. It has no walls and a darker edge, but it could read as a room at a glance.
+- Nothing at the last shop says that budget kept pays 100 Wow each. The Budget tip and How to play do.
+- One browser pass, in headless Chrome at 1280×720 and 1920×1080. Not checked: the pane itself, touch, devicePixelRatio 2, Firefox, Safari.
+
 ### D-134 · Three more tracks, from the same shortlist
 **Status:** Proposed · 2026-11-10, after playtest 5 (`docs/playtests/playtest-5-findings.md`), with its fix pull request. Extends D-128. For the user's ears on /dev/.
 **Decision:**
@@ -2414,6 +2517,7 @@ New content is preferred over raising existing numbers.
 **2026-11-06 (playtest 3):** the player sites the house in the middle of the lot, neither near the street nor far back, and didn't feel pulled either way. D-089's sim says otherwise for greedy: houses 0–3 rows from the street win 69%, and 10 or more rows back 48%.
 **2026-11-06 (Combolands research):** in Combolands, each kind of map feature has buildings that need it, make it, or clear it for a payout, and players read the island before picking guilds. Here only the Sapling makes terrain, Boulders give nothing, and clearing a Tree pays nothing. See research.md's 2026-11-06 systems update.
 **2026-11-06 (systems review):** under the review's option B, Charm's share of greedy's Wow rises from 59% to 73%, which works against this entry. M4a's Suite and Full House, which ship anyway, are part of that rise. Of the new rooms, only the Kids' Room reads the terrain, through Trees (`house-systems-review.md` §8, §10).
+**2026-11-10 (D-145, Proposed):** Boulders and the Old Shed are neighbors now, each with pieces that want it, and the Birdhouse joins the draw. Measured on 200 held-out greedy runs by the Wow each line earned, the lot was already 23.1% of the Wow on develop (Trees 14.6 points, the sun 6.6, Creekside 1.2), and is 26.6% with D-145 (Boulders 1.5, the shed 1.8); the friction review's "2–3%" multiplied two shares that Charm scales alike. Still open: where the house sits against the street (greedy's front row is a median 9–10 rows back, before and after), a wish that reads the lot, and lots that differ more in Boulders, so a Rocky chip would mean something.
 
 ### D-079 · Treehouses shouldn't reward clustering
 **Status:** Decided · 2026-11-06: the team took the review's Kid half in D-105 (Treehouses don't count each other as Kid partners), to stand unless M4a's sim showed the Hendersons' Kid taste making clusters dominant. It doesn't (below). Was Open, from playtest 2.
@@ -2458,9 +2562,10 @@ New content is preferred over raising existing numbers.
 **To decide:** which sources, and how big. A run's total should stay near D-085's band, so milestones may pay less. How the shop bot values them.
 **Would change:** D-013 and D-085.
 **2026-11-06 (Combolands research):** research.md now lists what pays gold ("Combolands: what pays gold", in the houses update). The systems update adds three patterns: a paint that pays a coin each time its building fires, for 8 weeks *(guide)*; a Vault that scores from the gold you hold *(guide)*; and removals that pay, such as manure (demo v9). Here they'd be a fixture, a piece, and a demolition reward.
+**2026-11-10 (D-145, Proposed):** no new source. D-145 gives budget a floor instead: what's held when the last milestone is met pays 100 Wow each, so the last payout and the last phase's economy pieces aren't stranded. A new source can now come with that as its sink of last resort. Greedy ends a win holding a median 11 (10.5 before), 4 of it the last milestone's own.
 
 ### D-091 · Finds worth building around
-**Status:** Open · 2026-11-06, from playtest 3.
+**Status:** Decided · 2026-11-10 by D-145 (Proposed, for the user's playtest): the pieces that would use a shed earn more beside it. Was Open, from playtest 3 (2026-11-06).
 **Finding:** The player noticed both finds, and demolished the Old Shed in the first week. Clearing it is a no-brainer: one demolition buys a random tool (a Rush Order, in their run) and frees a 2×2 that blocks building.
 **Idea (the team's):** the Old Shed boosts buildings where that makes sense, so keeping it competes with clearing it.
 **Options:**
@@ -2470,6 +2575,7 @@ New content is preferred over raising existing numbers.
 **To decide:** which pieces, and how much; whether demolishing it still pays a tool; how the bots choose.
 **Would change:** D-082's finds, and Appendix B's Old Shed and Time Capsule rows.
 **2026-11-06 (Combolands research):** Combolands' rocks are an obstacle for some buildings and a resource for others: Barracks score for each rock nearby, and other buildings clear rock for value. An Old Shed that some pieces count, and that a salvage piece clears for more, would make keeping it a choice.
+**2026-11-10 (D-145):** its first option. While the shed stands, the Greenhouse (+4), the Garage (+3), a Herb Garden (+2) and the Henhouse (+2) earn more beside it; demolishing it still pays a random tool. In the sim, piece-weeks beside the shed go from 3.8 to 20.5 a run, but greedy never demolishes, so whether a player keeps it is for the playtest. A choice for Time Capsules is left for after the jam.
 
 ### D-092 · Telling whether a fixture is worth it
 **Status:** Decided · 2026-11-06: the team chose a best-host line in the shop and a gain on every host while installing (D-107), built with M4b's UI. Was Open, from playtest 3.
