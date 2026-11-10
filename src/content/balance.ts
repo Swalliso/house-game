@@ -49,19 +49,21 @@ export const BALANCE: Balance = {
   // D-018's seven milestones. The targets are written by `npm run sim -- --suggest-targets`
   // (D-044): α × the greedy bot's median cumulative Wow at each milestone. Keep the markers.
   // sim:targets:start
-  // From `npm run sim -- --suggest-targets --runs 2000 --crew all` (D-072, D-089, D-123): α × the
-  // greedy bot's median cumulative Wow at each milestone on seeds sim-*, with α set so greedy's
-  // estimated survival follows 100%, 98%, 95%, 85%, 72%, 58%, 45%. Held out (2,000 runs on
-  // check-*), greedy won 44.0% against the fit's 46.6%, so the fit is used as it is. Each
-  // client's targetPct scales these.
+  // From `npm run sim -- --suggest-targets --runs 2000 --crew all` (D-072, D-089), then set
+  // against played runs (D-146): α × the greedy bot's median cumulative Wow at each milestone on
+  // seeds sim-*. The fit's estimate overstates what an overtime week rescues (in play the next
+  // shop hasn't opened yet), so α sits where greedy's played survival follows 100%, 98%, 95%,
+  // 85%, 72%, 58%, 45%: on 2,000 runs of check-* it was 100, 98.6, 96.0, 86.7, 74.1, 58.4 and
+  // 45.6%, and 45.7% won on 2,000 runs no fit had seen (hold-*). Milestone 2 keeps 560: the
+  // median at week 8 hasn't moved. Each client's targetPct scales these.
   phases: [
-    { name: 'Groundbreaking', target: 20 }, // median 95, α 0.21
-    { name: 'Foundation', target: 560 }, // median 728, α 0.77
-    { name: 'Framing', target: 1750 }, // median 2395, α 0.73
-    { name: 'Roofing', target: 4850 }, // median 5127, α 0.95
-    { name: 'Drywall', target: 10200 }, // median 9604, α 1.06
-    { name: 'Finishes', target: 18800 }, // median 15782, α 1.19
-    { name: 'Final Walkthrough', target: 32600 }, // median 26151, α 1.25
+    { name: 'Groundbreaking', target: 20 }, // median 93, α 0.21
+    { name: 'Foundation', target: 560 }, // median 720, α 0.78
+    { name: 'Framing', target: 1900 }, // median 2520, α 0.75
+    { name: 'Roofing', target: 5200 }, // median 5447, α 0.95
+    { name: 'Drywall', target: 11300 }, // median 10577, α 1.07
+    { name: 'Finishes', target: 20500 }, // median 17763, α 1.15
+    { name: 'Final Walkthrough', target: 35700 }, // median 29891, α 1.19
   ],
   // sim:targets:end
 
