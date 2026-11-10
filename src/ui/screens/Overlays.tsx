@@ -2,8 +2,9 @@
 // (D-047). The run-end screen is in EndScreen.tsx.
 //
 // M5a draws them in the pixel style: the milestone's banner is a ribbon stamped in, gold for a
-// milestone met and orange for one missed or in overtime (M4's arrivals get a plank with the
-// House icon instead, so they never read as a milestone); notes and toasts sit at the top
+// milestone met and orange for one missed or in overtime (M4's arrivals get a card of their own
+// at the board's right edge, ArrivalCard.tsx, so they never read as a milestone); notes and
+// toasts sit at the top
 // center, under the top bar, or inside the shop's sheet under its header (or a change order's,
 // M4), so they never cover the goods, the hand or the sheet. While a banner is up, and once the
 // run is over, they sit just under it or the board's "It's a house." sign (both in that spot)
@@ -36,7 +37,7 @@ export function MilestoneBanner() {
         onClick={() => (banner.value = null)}
       >
         <div class="banner-ribbon">
-          <Icon name={b.tone === 'good' ? 'star' : b.tone === 'note' ? 'House' : 'warn'} />
+          <Icon name={b.tone === 'good' ? 'star' : 'warn'} />
           <span class="banner-title">{b.title}</span>
         </div>
         {b.detail && <p class="banner-detail">{b.detail}</p>}

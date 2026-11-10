@@ -35,6 +35,13 @@ describe('stored settings', () => {
     expect(parseStored({ musicVolume: 'off' }, d)).toEqual({ musicVolume: d.musicVolume });
   });
 
+  it('keep Flashing, on by default (D-125)', () => {
+    const d = defaultSettings();
+    expect(d.flashing).toBe(true);
+    expect(parseStored({ flashing: false }, d)).toEqual({ flashing: false });
+    expect(parseStored({ flashing: 'no' }, d)).toEqual({});
+  });
+
   it('ignore anything that is not a settings object', () => {
     for (const raw of [null, undefined, 3, 'text', [true]]) expect(parseStored(raw)).toEqual({});
   });

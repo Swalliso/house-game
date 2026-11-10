@@ -45,7 +45,7 @@ import {
   type Pixels,
 } from '../art/house-paint.ts';
 import { itemRows, roomItems, roomLayout, type Item } from '../art/rooms.ts';
-import { risingParts, yardPieceLayout, type YardModel } from '../art/yard.ts';
+import { carSpot, isCar, risingParts, yardPieceLayout, type YardModel } from '../art/yard.ts';
 import { highlighted, justPlaced, justRenovated, played, tallyView } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
 import { settings } from '../settings.ts';
@@ -228,9 +228,11 @@ function ItemPart({
     height: `${(to - from) * scale}px`,
   };
   const anim = part === 'bottom' ? artFrames(item.sprite) : null;
+  // The parked car's parts, so they can slide together when it moves (useCarSlide).
+  const car = isCar(item.sprite) ? '' : undefined;
   if (anim) {
     return (
-      <div class="item" style={{ ...place, overflow: 'hidden' }}>
+      <div class="item" data-car={car} style={{ ...place, overflow: 'hidden' }}>
         <div
           class="item-frames"
           style={{
@@ -249,9 +251,46 @@ function ItemPart({
   return (
     <div
       class="item"
+      data-car={car}
       style={{ ...style, ...place, backgroundPosition: `${bx}px ${by - from * scale}px` }}
     />
   );
+}
+
+/**
+ * Where the car last stood, in lot art px, and on which lot, for its slide: none before the
+ * board's first draw. Another lot (a new run, a run loaded) never slides.
+ */
+let lastCar: { x: number; y: number; lot: Lot } | null = null;
+
+/**
+ * The parked car drives to its new spot when the drive grows (D-126; playtest 4's ask): when a
+ * play moves it, both its parts (its body here, its roof on the overhang) slide from where it
+ * stood, with the CSS `translate` property, so a piece's wobble on its container doesn't fight
+ * it. A zoom keeps it in place; Reduce motion moves it at once.
+ */
+function useCarSlide(
+  yard: YardModel,
+  lot: Lot,
+  scale: number,
+  root: { current: HTMLElement | null },
+): void {
+  const spot = carSpot(yard);
+  useLayoutEffect(() => {
+    const prev = lastCar;
+    lastCar = spot && { ...spot, lot };
+    if (!prev || !spot || prev.lot !== lot || (prev.x === spot.x && prev.y === spot.y)) return;
+    if (settings.value.reduceMotion) return;
+    const board = root.current?.closest('.board');
+    const dx = (prev.x - spot.x) * scale;
+    const dy = (prev.y - spot.y) * scale;
+    for (const el of board?.querySelectorAll('[data-car]') ?? []) {
+      el.animate([{ translate: `${dx}px ${dy}px` }, { translate: '0 0' }], {
+        duration: FEEL.car.slideMs,
+        easing: 'ease-in-out',
+      });
+    }
+  }, [spot?.x, spot?.y, lot]);
 }
 
 /** A piece's items under the walls: a room's furniture, or a yard piece's props. */
@@ -312,8 +351,10 @@ export function ItemsLayer({
   scale: number;
 }) {
   const placed = justPlaced.value;
+  const ref = useRef<HTMLDivElement>(null);
+  useCarSlide(yard, house.lot, scale, ref);
   return (
-    <div class="items">
+    <div class="items" ref={ref}>
       {house.pieces.map((p) => {
         const settle = placed?.uid === p.uid ? placed.id : undefined;
         const room = model.rooms.get(p.uid);

@@ -1,6 +1,6 @@
 // Settings (§12, Settings and accessibility, from M1): tally speed, Reduce motion, screen
 // shake, volume, (M4) showing the first-time hints again (D-045), (M5a) the readable font, and
-// (M5b) the music's own volume. Flashing comes with M5a's juice.
+// (the juice PR, D-125) Flashing, and (M5b) the music's own volume.
 //
 // M5a draws it as a wood sheet with the kit's pixel controls, grouped as the UI audit asked:
 // the game, motion, sound, and the display.
@@ -89,12 +89,20 @@ export function SettingsPanel() {
         >
           Reduce motion
         </Switch>
-        <p class="set-note">No wobble, shake, or confetti.</p>
+        <p class="set-note">No wobble, shake, zoom, or confetti.</p>
         <Slider
           label="Screen shake"
           value={s.shake}
           onInput={(shake) => updateSettings({ shake })}
         />
+        <Switch
+          class="set-switch"
+          checked={s.flashing}
+          onChange={(flashing) => updateSettings({ flashing })}
+        >
+          Flashing
+        </Switch>
+        <p class="set-note">Off: big weeks fade in a warm tint instead of flashing.</p>
       </Group>
       <Group title="Sound">
         <Slider

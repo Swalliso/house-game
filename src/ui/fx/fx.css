@@ -1,0 +1,389 @@
+/* The juice pull request's pieces (D-124 to D-127): the particles' canvas, the celebration
+   ladder's pile and wash, the roof reveal, "Topped out!", the arrival's card, and the popups
+   for a house rule and the doorbell. Colors are tokens (theme/tokens.css). Transforms are only
+   for the short tweens: the pile's flight, the card's slide, the plaque's pop. */
+
+/* --- Particles (Particles.tsx): over the page, under the first-time hints and the modals ---- */
+
+.particles {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 36;
+}
+
+/* --- The pile (Celebration.tsx), beside the score panel's Wow -------------------------- */
+
+.celebration-anchor {
+  position: absolute;
+  right: calc(var(--space-2) * -1);
+  top: 62%;
+  width: 0;
+  height: 0;
+}
+.pile {
+  position: fixed;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 36;
+  animation: pile-fade var(--pile-fade) ease-in var(--pile-fade-at) forwards;
+}
+.pile-block {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: var(--px) solid var(--ink);
+  background: var(--card);
+  box-shadow: 0 var(--px) 0 var(--shade);
+  transform: translate(var(--to-x), var(--to-y)) rotate(var(--tilt));
+  animation-name: pile-fly;
+  animation-timing-function: cubic-bezier(0.3, 0.7, 0.4, 1);
+  animation-fill-mode: backwards;
+}
+.pile-block .pile-art,
+.pile-block .pile-art canvas {
+  width: 26px !important;
+  height: 26px !important;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+@keyframes pile-fly {
+  0% {
+    opacity: 0;
+    transform: translate(var(--from-x), var(--from-y)) scale(0.6);
+  }
+  15% {
+    opacity: 1;
+  }
+  80% {
+    transform: translate(var(--to-x), calc(var(--to-y) + 4px)) rotate(var(--tilt)) scale(1.05);
+  }
+  100% {
+    transform: translate(var(--to-x), var(--to-y)) rotate(var(--tilt));
+  }
+}
+@keyframes pile-fade {
+  to {
+    opacity: 0;
+  }
+}
+.reduce-motion .pile-block {
+  animation-name: overlay-fade-in;
+}
+
+/* --- The wash: a Great or Huge week warms the screen; a Huge week opens with a flash ----- */
+
+.tier-wash {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 19;
+  background: radial-gradient(
+    ellipse at 25% 40%,
+    rgb(var(--glow-rgb) / 0.32),
+    rgb(var(--glow-rgb) / 0.12) 55%,
+    transparent 85%
+  );
+  animation: wash var(--wash-ms) ease-in-out forwards;
+}
+.tier-wash.tier-huge::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--card-hi);
+  opacity: 0;
+  animation: wash-flash var(--flash-ms) ease-out;
+}
+.no-flashing .tier-wash.tier-huge::after {
+  content: none;
+}
+@keyframes wash {
+  0% {
+    opacity: 0;
+  }
+  25%,
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes wash-flash {
+  0% {
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.45;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* --- The tally's chain arcs (D-094's option 1; MomentLayers.tsx): with the highlights ---- */
+
+.chain-arc {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: var(--z-highlights);
+  overflow: visible;
+  pointer-events: none;
+  animation: chain-fade var(--arc-ms) ease-in forwards;
+}
+.chain-arc path {
+  fill: none;
+  stroke-linecap: round;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: chain-trace var(--trace-ms) ease-out forwards;
+}
+/* A dark edge under the pale line, so it reads on floors, grass and water alike. */
+.chain-arc .arc-under {
+  stroke: var(--ink);
+  stroke-opacity: 0.55;
+  stroke-width: 6;
+}
+.chain-arc .arc-line {
+  stroke: var(--hl-active-edge);
+  stroke-width: 3;
+}
+.chain-arc .arc-end {
+  fill: var(--hl-active-edge);
+  stroke: var(--ink);
+  stroke-width: 2;
+  opacity: 0;
+  animation: chain-end var(--trace-ms) step-end forwards;
+}
+@keyframes chain-trace {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes chain-end {
+  to {
+    opacity: 1;
+  }
+}
+@keyframes chain-fade {
+  0%,
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.reduce-motion .chain-arc path {
+  animation: none;
+  stroke-dashoffset: 0;
+}
+.reduce-motion .chain-arc .arc-end {
+  animation: none;
+  opacity: 1;
+}
+
+/* --- The roof reveal (MomentLayers.tsx): over the house, under the canopy and the labels -- */
+
+.house-roof {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: var(--z-roof);
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+
+/* --- "Topped out!" over the top of the house -------------------------------------------- */
+
+.topped-out {
+  position: absolute;
+  z-index: var(--z-popups);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--art-plank) repeat left top / calc(var(--px) * 48) calc(var(--px) * 10);
+  background-color: var(--wood-hi);
+  background-clip: padding-box;
+  box-shadow:
+    inset 0 var(--px) 0 var(--wood-shine),
+    inset 0 calc(var(--px) * -2) 0 var(--wood-light),
+    var(--shadow-float);
+  color: var(--ink);
+  font-size: var(--fs-title);
+  line-height: var(--lh-title);
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+  translate: -50% -110%;
+  animation: topped-out var(--topped-ms) ease-out forwards;
+}
+@keyframes topped-out {
+  0% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+  12% {
+    opacity: 1;
+    transform: scale(0.95);
+  }
+  20% {
+    transform: none;
+  }
+  80% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(calc(var(--px) * -8));
+  }
+}
+.reduce-motion .topped-out {
+  animation-name: popup-fade;
+}
+
+/* --- Popups: a house rule met (blue, ✓), and the doorbell at the front door ------------- */
+
+.popup.rule {
+  color: var(--good);
+  font-size: 20px;
+}
+.popup.door {
+  color: var(--ink);
+  font-size: 18px;
+  padding: 1px 8px;
+  background: var(--wood-hi);
+  border: 2px solid var(--ink);
+  text-shadow: none;
+  box-shadow: 0 2px 0 var(--wood-light);
+}
+
+/* --- The arrival's card (ArrivalCard.tsx): it slides in at the board's right edge, by the
+   reserve its cards land in, so it never reads as a milestone's ribbon ------------------- */
+
+.arrival-place {
+  position: absolute;
+  top: var(--space-5);
+  right: var(--space-4);
+  z-index: 21;
+  display: flex;
+  justify-content: flex-end;
+  max-width: calc(100% - var(--space-4) * 2);
+  pointer-events: none;
+}
+.arrival-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-1) var(--space-3);
+  align-items: center;
+  max-width: calc(var(--px) * 230);
+  padding: var(--space-2) var(--space-3) var(--space-3);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--card);
+  background-clip: padding-box;
+  box-shadow:
+    inset 0 calc(var(--px) * -2) 0 var(--card-lo),
+    var(--shadow-float);
+  color: var(--ink);
+  pointer-events: auto;
+  cursor: pointer;
+  animation: arrival-card var(--card-ms) ease-out forwards;
+}
+.arrival-bell {
+  grid-column: 1 / -1;
+  justify-self: start;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-2);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--art-plank) repeat left top / calc(var(--px) * 48) calc(var(--px) * 10);
+  background-color: var(--wood-hi);
+  background-clip: padding-box;
+  font-size: var(--fs-body);
+  font-weight: 700;
+  animation: arrival-ring 0.3s ease-in-out 2 var(--card-in);
+}
+.arrival-art {
+  display: grid;
+  place-items: center;
+  padding: var(--space-1);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--lawn);
+  background-clip: padding-box;
+}
+.arrival-title {
+  margin: 0;
+  font-size: var(--fs-title);
+  line-height: var(--lh-title);
+  font-weight: 700;
+}
+.arrival-detail {
+  margin: 0;
+  color: var(--ink-soft);
+}
+@keyframes arrival-card {
+  0% {
+    opacity: 0;
+    transform: translateX(calc(var(--px) * 60));
+  }
+  11% {
+    opacity: 1;
+    transform: translateX(calc(var(--px) * -3));
+  }
+  15% {
+    transform: none;
+  }
+  90% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(calc(var(--px) * 40));
+  }
+}
+@keyframes arrival-ring {
+  25% {
+    transform: rotate(-6deg);
+  }
+  75% {
+    transform: rotate(6deg);
+  }
+}
+.reduce-motion .arrival-card {
+  animation-name: popup-fade;
+}
+.reduce-motion .arrival-bell {
+  animation: none;
+}
+
+/* --- The arrivals' markers on the top bar's milestones (TopBar.tsx) ------------------- */
+
+.tb-flag.hit {
+  animation: flag-hit 0.5s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+@keyframes flag-hit {
+  40% {
+    transform: scale(1.6) rotate(-10deg);
+  }
+}
+.reduce-motion .tb-flag.hit {
+  animation: none;
+}

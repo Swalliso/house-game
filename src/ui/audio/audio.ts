@@ -42,7 +42,24 @@ export type SoundId =
   | 'rotate'
   | 'illegal'
   | 'target'
-  | 'sparkle';
+  | 'sparkle'
+  // The juice PR's moments (D-124, D-125, D-126): ZzFX placeholders for M5b's sound pass.
+  | 'tier-good'
+  | 'tier-huge'
+  | 'set-complete'
+  | 'rhythm'
+  | 'find'
+  | 'crate-open'
+  | 'rare'
+  | 'wish-met'
+  | 'rule-met'
+  | 'rule-lost'
+  | 'level-up'
+  | 'doorbell'
+  | 'order-stamp'
+  | 'topped-out'
+  | 'roof-on'
+  | 'drumroll';
 
 export interface PlayOptions {
   /** Exact playback rate. Giving one also turns off the random rate and gain spread. */
@@ -211,6 +228,99 @@ const SOUNDS: Record<SoundId, readonly Layer[]> = {
     { at: 0.045, params: [0.14, 0, E7, 0.005, 0, 0.2, 0, 1, , , , , 0.035, , , , , 1, , 0.5] },
     { at: 0.09, params: [0.12, 0, G7, 0.005, 0, 0.25, 0, 1, , , , , 0.035, , , , , 1, , 0.5] },
   ],
+
+  // ---- The juice PR's moments (D-124 to D-126): placeholders for M5b to replace ----
+  // A Good week: a short chime, G up to C.
+  'tier-good': [note(0, G5, 0.3, 0.25), note(0.09, C6, 0.34, 0.55)],
+  // A Huge week: the full fanfare, C E G C rising into a held C major chord with a shimmer.
+  'tier-huge': [
+    note(0, C5, 0.34, 0.2),
+    note(0.1, E5, 0.34, 0.2),
+    note(0.2, G5, 0.34, 0.2),
+    note(0.3, C6, 0.36, 0.3),
+    note(0.45, G5, 0.26, 1.1),
+    note(0.45, C6, 0.28, 1.1),
+    note(0.45, E6, 0.3, 1.1),
+    { at: 0.5, params: [0.1, 0, C7, 0.005, 0.1, 0.5, 0, 1, , , , , 0.035, , , , , 1, , 0.5] },
+  ],
+  // A set completing: a bright chord, G and C, with E on top a beat later.
+  'set-complete': [note(0, G5, 0.28, 0.45), note(0, C6, 0.26, 0.5), note(0.07, E6, 0.28, 0.6)],
+  // A Rhythm payout: ba-dum, a soft low double knock.
+  rhythm: [
+    {
+      at: 0,
+      params: [0.5, 0, 140, 0.002, 0.01, 0.1, 1, 1, -0.5, , , , , , , , , 0.6, 0.02, , -800],
+    },
+    {
+      at: 0.13,
+      params: [0.55, 0, 190, 0.002, 0.01, 0.15, 1, 1, -0.5, , , , , , , , , 0.6, , , -800],
+    },
+  ],
+  // A find: a scoop of dirt, then a ta-da up to C.
+  find: [
+    { at: 0, params: [0.3, 0, 300, 0.01, 0.02, 0.12, 4, 1, , , , , , , , , , 1, , , -900] },
+    note(0.12, G5, 0.3, 0.2),
+    note(0.22, C6, 0.34, 0.55),
+  ],
+  // A crate opening: a creak of wood, a pop, and a note.
+  'crate-open': [
+    {
+      at: 0,
+      params: [0.22, 0, 220, 0.03, 0.08, 0.1, 2, 1, 0.8, , , , , 0.3, , , , 0.6, , , -1200],
+    },
+    { at: 0.14, params: [0.38, 0, 400, 0.001, 0.01, 0.06, 4, 1, , , , , , , , , , 1, , , -1500] },
+    note(0.16, C6, 0.28, 0.4),
+  ],
+  // A Rare on the shelf: a shimmering bell, E high up.
+  rare: [
+    { at: 0, params: [0.24, 0, E6, 0.004, 0, 0.9, 0, 1, , , , , 0.06, , , , , 0.6, 0.05, 0.2] },
+    { at: 0.05, params: [0.1, 0, E6 * 2, 0.003, 0, 0.5, 0, 1, , , , , 0.04, , , , , 1, , 0.5] },
+    { at: 0.1, params: [0.08, 0, G7, 0.005, 0, 0.3, 0, 1, , , , , 0.035, , , , , 1, , 0.5] },
+  ],
+  // A client's wish met: a warm rising chime, E G C.
+  'wish-met': [note(0, E5, 0.28, 0.3), note(0.08, G5, 0.3, 0.3), note(0.16, C6, 0.32, 0.6)],
+  // A house rule met: a crisp check, C up to G.
+  'rule-met': [note(0, C6, 0.28, 0.15), note(0.07, G6, 0.28, 0.35)],
+  // A house rule lost: a soft low bonk that sags.
+  'rule-lost': one([0.45, 0, 196, 0.004, 0.03, 0.2, 1, 1, -0.8, , , , , , , , , 0.6, 0.03, , -700]),
+  // A Renovation's level-up: three notes up, C G C, with a glint.
+  'level-up': [
+    note(0, C5, 0.3, 0.15),
+    note(0.07, G5, 0.3, 0.15),
+    note(0.14, C6, 0.34, 0.45),
+    { at: 0.14, params: [0.08, 0, C7, 0.003, 0, 0.2, 0, 1, , , , , 0.035, , , , , 1, , 0.5] },
+  ],
+  // The doorbell: ding-dong, E then C, a bell's long ring.
+  doorbell: [
+    { at: 0, params: [0.36, 0, E6, 0.002, 0, 0.9, 0, 1, , , , , 0.09, , , , , 0.6, 0.06, 0.08] },
+    { at: 0, params: [0.08, 0, E6 * 2.4, 0.001, 0, 0.3] },
+    { at: 0.32, params: [0.38, 0, C6, 0.002, 0, 1.1, 0, 1, , , , , 0.09, , , , , 0.6, 0.06, 0.08] },
+    { at: 0.32, params: [0.08, 0, C6 * 2.4, 0.001, 0, 0.35] },
+  ],
+  // A change order's rubber stamp: a dull thunk on paper.
+  'order-stamp': [
+    { at: 0, params: [0.6, 0, 90, 0.001, 0.01, 0.12, 1, 1, -1, , , , , , , , , 0.5, 0.02, , -600] },
+    { at: 0, params: [0.2, 0, 500, 0.001, 0, 0.05, 4, 1, , , , , , , , , , 1, , , -1200] },
+  ],
+  // Topped out: a quick rising cheer and a ring on top.
+  'topped-out': [
+    note(0, G4, 0.3, 0.12),
+    note(0.06, C5, 0.3, 0.12),
+    note(0.12, E5, 0.3, 0.12),
+    note(0.18, G5, 0.32, 0.2),
+    note(0.26, C6, 0.34, 0.7),
+    { at: 0.26, params: [0.1, 0, C7, 0.004, 0, 0.6, 0, 1, , , , , 0.035, , , , , 1, , 0.5] },
+  ],
+  // The roof going on: a wooden thump, and a bell as it settles.
+  'roof-on': [
+    {
+      at: 0,
+      params: [0.55, 0, 110, 0.002, 0.02, 0.18, 1, 1, -0.6, , , , , , , , , 0.6, 0.03, , -700],
+    },
+    note(0.1, G5, 0.24, 0.5),
+  ],
+  // The milestone moment's drumroll: a soft rolled snare under the count.
+  drumroll: one([0.22, 0, 320, 0.05, 1.1, 0.15, 4, 1, , , , , 0.035, , , , , 0.7, , 0.9, -1600]),
 };
 
 export const SOUND_IDS = Object.keys(SOUNDS) as readonly SoundId[];
