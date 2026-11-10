@@ -208,7 +208,7 @@ export function Button({
   );
 }
 
-export type ChipTone = 'plain' | 'wood' | 'inset' | 'common' | 'uncommon' | 'rare';
+export type ChipTone = 'plain' | 'wood' | 'inset' | 'common' | 'uncommon' | 'rare' | 'charm';
 
 /** A small label: a tag, a kind, a rarity, a count. */
 export function Chip({

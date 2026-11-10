@@ -32,6 +32,7 @@ import { busy, fxHooks, popups, setHold, skip } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
 import { shakeOffsets } from '../fx/juice.ts';
 import { formatNumber, signed } from '../format.ts';
+import { causeSuffix, hiddenPart, mainCause, partLine } from './causes.ts';
 import { canRoof, changeOrderShown, shopShown, toggleRoof } from '../hud/actions.ts';
 import { roofed } from '../fx/moments.ts';
 import { Icon } from '../kit/kit.tsx';
@@ -948,7 +949,13 @@ function Ghost({
   const breaks = legal && p?.breaks ? CONTENT.changeOrders[p.breaks].name : null;
   const reason = p?.reason ?? 'Can’t build there';
   const arrow = p && p.delta > 0 ? '▲ +' : p && p.delta < 0 ? '▼ −' : '';
-  const change = p ? `${arrow}${formatNumber(Math.abs(p.delta))} ${SCORE_LABELS.total}` : '';
+  // D-122: the change names its biggest cause besides the card's own ("▲ +139 Wow · Suite"),
+  // and a big part pulling the other way, which the net would hide, gets a line of its own.
+  const cause = legal && p ? (mainCause(p)?.label ?? null) : null;
+  const hidden = legal && p ? hiddenPart(p) : null;
+  const change = p
+    ? `${arrow}${formatNumber(Math.abs(p.delta))} ${SCORE_LABELS.total}${cause ? ` · ${cause}` : ''}`
+    : '';
   const after = pack ? ` · ${pack}` : pending ? ' · End week to build' : '';
   // A building that would be Sunny there (D-120) says so, with the sun's icon: its ☀ stands in
   // for the icon when the label is measured.
@@ -961,12 +968,18 @@ function Ghost({
   const lines = [
     ...(!legal && inside.length > 0 ? [labelLines(`✕ ${reason}`)] : []),
     ...(legal && p ? [labelLines(first) + (pack ? 1 : 0)] : []),
+    ...(hidden ? [labelLines(partLine(hidden))] : []),
     ...(breaks ? [labelLines(`✕ Breaks ${breaks}`)] : []),
     ...(next ? [labelLines(packNextText(next).join(''))] : []),
   ];
   const rows = labelRows(lines, px, boardUiPixel());
   const spot = labelSpot(next ? [...cells, next.cell] : cells, lot.width, rows);
   const label = { left: `${spot.x * px}px`, top: `${spot.y * px}px` };
+  const hiddenLine = hidden && (
+    <div class={`ghost-delta ghost-part ${hidden.wow > 0 ? 'good' : 'bad'}`}>
+      {partLine(hidden)}
+    </div>
+  );
   return (
     <>
       <GhostPiece
@@ -992,6 +1005,9 @@ function Ghost({
       )}
       {/* One stack, measured and nudged into the view as one (labels.css .ghost-labels). */}
       <BoardLabel class={`ghost-labels ${spot.below ? 'below' : ''}`} style={label}>
+        {/* Below the cells the stack runs bottom up (labels.css): the hidden part goes first
+            there, so it still reads under the change it's part of. */}
+        {spot.below && hiddenLine}
         {!legal && inside.length > 0 && (
           <div class="ghost-reason">
             <span aria-hidden="true">✕ </span>
@@ -1011,6 +1027,7 @@ function Ghost({
             {pack && <span class="ghost-then">{then}</span>}
           </div>
         )}
+        {!spot.below && hiddenLine}
         {breaks && (
           <div class="ghost-reason">
             <span aria-hidden="true">✕ </span>
@@ -1101,7 +1118,7 @@ function RenovateTarget({ scale }: { scale: number }) {
   const legal = p.legal && !!p.renovates;
   const then = pending ? ' · End week to renovate' : '';
   const text = legal
-    ? `Renovate ${definite(name)} to level ${p.renovates!.level}: ${change}${then}`
+    ? `Renovate ${definite(name)} to level ${p.renovates!.level}: ${change}${causeSuffix(p)}${then}`
     : (p.reason ?? 'It can’t be renovated.');
   const spot = oneLabelSpot(cells, lot.width, px, legal ? text : `✕ ${text}`);
   const style = { left: `${spot.x * px}px`, top: `${spot.y * px}px` };
@@ -1166,7 +1183,7 @@ function InstallTarget({ scale }: { scale: number }) {
         : ' · free: click twice'
       : '';
   const text = p.legal
-    ? `${name}: ${change}${replaces}${then}`
+    ? `${name}: ${change}${causeSuffix(p)}${replaces}${then}`
     : (p.reason ?? 'It doesn’t go there.');
   const spot = oneLabelSpot(cells, lot.width, px, p.legal ? text : `✕ ${text}`);
   const style = { left: `${spot.x * px}px`, top: `${spot.y * px}px` };

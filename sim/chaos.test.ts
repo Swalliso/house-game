@@ -331,6 +331,19 @@ class Checker {
     }
     if (p.delta !== real.total - pass.total)
       this.fail('preview.delta is off', { play, delta: p.delta });
+    // D-122: the board names a cause from the parts, so they add up to the delta exactly,
+    // biggest first, with no empty parts.
+    const sum = p.parts.reduce((n, x) => n + x.wow, 0);
+    const sorted = p.parts.every(
+      (x, k) => k === 0 || Math.abs(p.parts[k - 1]!.wow) >= Math.abs(x.wow),
+    );
+    if (
+      sum !== p.delta ||
+      !sorted ||
+      p.parts.some((x) => x.wow === 0 || !Number.isInteger(x.wow))
+    ) {
+      this.fail('preview.parts disagree with the delta', { play, delta: p.delta, parts: p.parts });
+    }
     if (p.budgetAfter !== real.budget) {
       this.fail('preview.budgetAfter differs from the tally', {
         play,

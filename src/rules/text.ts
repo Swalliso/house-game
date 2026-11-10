@@ -15,11 +15,13 @@ import type {
   Modifier,
   PieceCondition,
   PieceDef,
+  PieceId,
   Property,
   Region,
   Reward,
   RuleKey,
   Selector,
+  SetId,
   SpecDef,
   SunSide,
   Tag,
@@ -595,6 +597,43 @@ export function countedNames(names: readonly string[]): string {
 
 export function neighborName(content: Content, feature: FeatureId): string {
   return featureNoun(content, feature, false);
+}
+
+// ---------------------------------------------------------------------------------------
+// D-122: what a room card plugs into.
+
+/**
+ * The sets a piece counts toward (an L-Kitchen's are a Kitchen's), the ones whose members touch
+ * first, in content order, then the ones anywhere in the house (Full House).
+ */
+export function setsOfPiece(content: Content, id: PieceId): SetId[] {
+  const def = content.pieces[id];
+  const type = def.countsAs ?? def.id;
+  const sets = Object.values(content.sets).filter((s) => (s.members[type] ?? 0) > 0);
+  return [...sets.filter((s) => s.connected), ...sets.filter((s) => !s.connected)].map((s) => s.id);
+}
+
+/**
+ * A set in a few sentences, for a card's set chip: "Suite: a Bedroom, a Bathroom, and a Closet,
+ * touching. +15 Comfort and +0.5 Charm every week. A house can have more than one."
+ */
+export function setText(content: Content, id: SetId): string {
+  const set = content.sets[id];
+  const names = Object.entries(set.members).flatMap(([piece, n]) =>
+    Array<string>(n ?? 0).fill(content.pieces[piece as PieceId].name),
+  );
+  const how = set.hub
+    ? `, each touching the ${content.pieces[set.hub].name}`
+    : set.connected
+      ? ', touching'
+      : ', anywhere in the house';
+  const { points, mult, xMult } = SCORE_LABELS;
+  const pays =
+    set.times !== undefined
+      ? `+${set.points} ${points}, +${multNumber(set.mult)} ${mult}, and ×${multNumber(set.times)} ${xMult}`
+      : `+${set.points} ${points} and +${multNumber(set.mult)} ${mult}`;
+  const repeats = set.maxInstances === 1 ? 'One per house.' : 'A house can have more than one.';
+  return `${set.name}: ${countedNames(names)}${how}. ${pays} every week. ${repeats}`;
 }
 
 // ---------------------------------------------------------------------------------------

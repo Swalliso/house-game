@@ -426,6 +426,11 @@
 .chip-common {
   color: var(--rarity-common-text);
 }
+/* A set a card counts toward (D-122): Charm's tint, as the score panel's sets. */
+.chip-charm {
+  --chip-fill: var(--charm-tint);
+  color: var(--charm-deep);
+}
 
 /* --- Plaque: a number on a tinted plate (the Counter) ------------------------------------ */
 

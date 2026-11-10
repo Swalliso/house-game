@@ -1552,6 +1552,27 @@ export interface PreviewLine {
   reasons: readonly BreakdownLine[];
 }
 
+/** D-122: what kind of cause a part of a play's change to the week's Wow is. */
+export type WowPartKind = 'piece' | 'neighbor' | 'set' | 'spec' | 'charm' | 'sparkle' | 'other';
+
+/**
+ * D-122: one cause of a play's change to the week's Wow (attribution.ts). The rules attribute it;
+ * the board names it. A play's parts add up to its `delta` exactly.
+ */
+export interface WowPart {
+  kind: WowPartKind;
+  /**
+   * Short, for the board's label: the piece's name ("Closet"), "Living Room earns less", a set
+   * ("Suite", "Breaks Suite"), a checklist line ("Room for everyone", "Cozy off"), a +Mult
+   * modifier's label, a ×Mult source or "Sparkle", or "Other changes".
+   */
+  label: string;
+  /** Its share of the change to the week's Wow. */
+  wow: number;
+  /** The piece, for a piece's own part and a neighbor's. */
+  uid?: number;
+}
+
 export interface Preview {
   legal: boolean;
   reason?: string;
@@ -1591,6 +1612,8 @@ export interface Preview {
    * for a warning. The placement stays legal; the restriction just pays nothing.
    */
   breaks?: ChangeOrderId;
+  /** D-122: where `delta` comes from, biggest first; empty when the play isn't legal. */
+  parts: readonly WowPart[];
 }
 
 /** What demolishing at a spot would do, for the demolish tool's hover. */
@@ -1826,6 +1849,8 @@ export {
   regionText,
   rewardText,
   selectorText,
+  setsOfPiece,
+  setText,
   specText,
   sunSideText,
   toolText,
