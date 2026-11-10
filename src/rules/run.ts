@@ -111,7 +111,16 @@ import {
   type CondCtx,
   type NounFn,
 } from './conditions.ts';
-import { blueprintNeeds, grows, lastWeekOnly, scalingStat, scoresWeek } from './blueprint-value.ts';
+import {
+  blueprintNeeds,
+  countedNoun,
+  countingMod,
+  grows,
+  lastWeekOnly,
+  scalingStat,
+  scoresWeek,
+  totalWithOneMore,
+} from './blueprint-value.ts';
 import { DRAW_ROWS, drawHand, drawWeights, rowOf, slotKey, swapCandidates } from './draw.ts';
 import { estimatePlay, type Estimate } from './estimate.ts';
 import { checkInstall, installHosts, withFixture } from './fixtures.ts';
@@ -2212,6 +2221,13 @@ export function createRules(content: Content): Rules {
     if (stat) {
       const more: RunState = { ...shown, [stat]: shown[stat] + 1 };
       value.perStat = { stat, gain: gainIn(more).wow - gain };
+    }
+    const counting = countingMod(scoring);
+    if (counting) {
+      const s = withIt(shown);
+      const tally = tallyOf(s, s.house, false);
+      const more = totalWithOneMore(tally, id, counting) - tally.total;
+      if (more !== 0) value.perPiece = { what: countedNoun(content, counting), gain: more };
     }
     if (!any) {
       const s = withIt(shown);

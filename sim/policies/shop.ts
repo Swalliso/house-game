@@ -14,20 +14,36 @@
 // (or in the run's last week), and a Catalog it was given on a hand with nothing worth
 // building. Supply fixtures go in their best host. It never uses the Moving Truck.
 //
+// A blueprint is valued on the house as it stands, plus a little planning (D-143): one whose
+// Mult counts pieces (It's a House, Model Home) is also worth the pieces it expects to add, at
+// the rate the draw shows them, and a bonus to a set (Open Concept) is worth something once the
+// set is half there, so a build-around isn't worth nothing before the build starts.
+//
 // Values are rough Wow-over-the-run estimates; the sim reports show what it buys. BOT_BLIND
 // lists the goods it values at 0 by construction, so their buy rate isn't read as weakness.
 // Options come in through ShopBot, never module state: policies are pure.
 
-import type {
-  Action,
-  InstallAction,
-  OfferView,
-  PickOption,
-  Rng,
-  Rules,
-  RunState,
-  ShopOffer,
-  UseToolAction,
+import {
+  countedSelector,
+  countingMod,
+  DRAW_ROWS,
+  matchesDef,
+  rowOf,
+  ruleValue,
+  totalWithOneMore,
+  weekTotal,
+  type Action,
+  type BlueprintId,
+  type InstallAction,
+  type OfferView,
+  type PickOption,
+  type PieceId,
+  type Rng,
+  type Rules,
+  type RunState,
+  type Selector,
+  type ShopOffer,
+  type UseToolAction,
 } from '../../src/rules/index.ts';
 import { rankPlays, type EarlyMode } from './greedy.ts';
 
@@ -66,6 +82,13 @@ const BAR_WEEKS_PER_BUDGET = 0.12;
 const FUTURE_PIECES = 1.25;
 /** A reserve piece takes a week's build, so it's worth a share of what it adds. */
 const RESERVE_SHARE = 0.5;
+/** The share of the cards a counting blueprint counts that the bot expects to build (D-143). */
+const TAKE_RATE = 0.5;
+/**
+ * Pieces a week it expects to add when the draw can't say (Model Home's pieces with a fixture,
+ * Mood Lighting's Dark rooms): greedy installs about 3.8 fixtures in a 28-week run.
+ */
+const UNSEEN_RATE = 0.12;
 /** D-076's strike order for strikes 'fixed': the types M2's greedy found least worth building. */
 export const STRIKE_ORDER = ['driveway', 'fence', 'hallway', 'doghouse', 'sapling'] as const;
 
@@ -109,6 +132,69 @@ function bestInstall(rules: Rules, s: RunState): number {
   return best;
 }
 
+/**
+ * Cards matching a selector in a week's first hand, on average: each row's share of matching
+ * weight times its cards. Rough: the base weights, whatever the phase or the client's pool.
+ * It's 0 for pieces a card alone can't tell (a Dark room, a piece with a fixture).
+ */
+function offeredPerWeek(rules: Rules, s: RunState, sel: Selector): number {
+  const c = rules.content;
+  let n = 0;
+  for (const row of DRAW_ROWS) {
+    let all = 0;
+    let hit = 0;
+    for (const def of Object.values(c.pieces)) {
+      if (def.drawWeight <= 0 || rowOf(c, { kind: 'piece', id: def.id }) !== row) continue;
+      all += def.drawWeight;
+      if (matchesDef(sel, def)) hit += def.drawWeight;
+    }
+    for (const def of Object.values(c.fixtures)) {
+      if (rowOf(c, { kind: 'fixture', id: def.id }) === row) all += def.drawWeight;
+    }
+    if (all > 0) n += (hit / all) * ruleValue(c, s, row === 'rooms' ? 'roomsRow' : 'layoutRow');
+  }
+  return n;
+}
+
+/**
+ * The planning part of a blueprint's value (D-143), with `held` the state with it in play.
+ * - A Mult counted per piece: what the pieces it expects to add over the weeks left would pay.
+ *   Each adds what one more adds today (its own Comfort aside), they come at an even pace, and
+ *   each pays from its week on, so about half the weeks left.
+ * - A bonus to a set the house doesn't hold yet (Open Concept's Entertainer): once the house
+ *   has at least half the set's member types, it expects the set for half the weeks left, the
+ *   surer the more of them it has.
+ */
+function plannedValue(rules: Rules, held: RunState, id: BlueprintId, left: number): number {
+  const c = rules.content;
+  const mods = c.blueprints[id].modifiers;
+  const tally = rules.currentTally(held);
+  let value = 0;
+  const counting = countingMod(mods);
+  if (counting) {
+    const each = totalWithOneMore(tally, id, counting) - tally.total;
+    const offered = offeredPerWeek(rules, held, countedSelector(counting));
+    const perWeek = offered > 0 ? offered * TAKE_RATE : UNSEEN_RATE;
+    if (each > 0) value += (each * perWeek * left * left) / 2;
+  }
+  for (const m of mods) {
+    if (m.kind !== 'setBonus' || !m.set || tally.sets.some((x) => x.set === m.set)) continue;
+    const set = c.sets[m.set];
+    const types = Object.keys(set.members);
+    const built = new Set(held.house.pieces.map((p) => c.pieces[p.defId].countsAs ?? p.defId));
+    const have = types.filter((t) => built.has(t as PieceId)).length;
+    if (have * 2 < types.length) continue;
+    const level = held.setLevels[m.set] ?? 1;
+    const points = set.points + (level - 1) * set.level.points;
+    const mult = set.mult + (level - 1) * set.level.mult;
+    const more = (n: number) => Math.floor((n * (100 + m.pct)) / 100);
+    const plain = weekTotal(tally.points + points, tally.mult + mult);
+    const boosted = weekTotal(tally.points + more(points), tally.mult + more(mult));
+    value += (((boosted - plain) * left) / 2) * (have / types.length);
+  }
+  return value;
+}
+
 type Good = Exclude<ShopOffer, { kind: 'service' }> | PickOption;
 
 /** A good's value in Wow over the rest of the run (rough). */
@@ -131,12 +217,17 @@ export function goodValue(rules: Rules, s: RunState, good: Good, rng: Rng, bot: 
       // Last-Minute Push and other last-week effects pay one week in W.
       const last = total(rules, { ...withIt, slot: W }) - total(rules, { ...base, slot: W });
       let perWeek = ((W - 1) * normal + last) / W;
-      // Good Bones keeps growing: on average it pays about half the weeks left more.
+      // A granted growth timer (Good Bones, Green Thumb) keeps growing, up to its cap: on
+      // average it pays what it will halfway through the weeks left, so that week is tallied.
       const grows = c.blueprints[good.id].modifiers.some(
         (m) => m.kind === 'grantEffect' && m.effect.kind === 'growth',
       );
-      if (grows) perWeek *= Math.min(10, Math.max(1, left / 2));
-      return Math.max(0, perWeek) * left * FUTURE_PIECES;
+      if (grows) {
+        const later = (st: RunState): RunState => ({ ...st, week: st.week + Math.floor(left / 2) });
+        perWeek = Math.max(perWeek, total(rules, later(withIt)) - total(rules, later(base)));
+      }
+      const now = Math.max(0, perWeek) * left * FUTURE_PIECES;
+      return now + plannedValue(rules, withIt, good.id, left);
     }
     case 'piece': {
       const b = asBuild(s, { hand: [{ kind: 'piece', id: good.id }], reserve: [] });
@@ -288,9 +379,12 @@ export function shopAct(rules: Rules, s: RunState, rng: Rng, bot: ShopBot): Acti
   // Blueprint slots full: sell the weakest for a much better one it can then afford.
   const full = s.blueprints.length >= rules.slots(s).blueprints;
   if (full && s.blueprints.length > 0) {
+    const left = weeksLeftInRun(rules, s);
     const owned = s.blueprints.map((b, i) => {
       const without = { ...s, blueprints: s.blueprints.filter((_, k) => k !== i) };
-      return { i, value: (total(rules, s) - total(rules, without)) * weeksLeftInRun(rules, s) };
+      const now = (total(rules, s) - total(rules, without)) * left;
+      // What it's still building toward counts too, or a build-around is sold half built.
+      return { i, value: now + plannedValue(rules, s, b.id, left) };
     });
     const weakest = owned.reduce((a, b) => (b.value < a.value ? b : a));
     const refund = rules.sellPrice(s, 'blueprints', weakest.i);

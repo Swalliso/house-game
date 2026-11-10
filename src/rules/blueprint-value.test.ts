@@ -10,7 +10,7 @@
 //   says what one more would add; and one that would add nothing says what it's waiting for.
 // - It reads the blueprint's modifiers by kind, never its id, and never changes the state.
 //
-// Rules tests use TEST_CONTENT (testing.ts), whose blueprints are Appendix B's encodings.
+// Rules tests use TEST_CONTENT (testing.ts), whose blueprints are Appendix B's first encodings.
 // Houses are built on a 12×12 lot with houseFrom, so uids follow the placement order and every
 // piece has placedWeek 1; the street runs along the bottom edge (y = 11), so pieces near the
 // top never touch it. Here 4 phases of 3 weeks, with targets out of reach.
@@ -26,6 +26,7 @@ import type {
   RunState,
   ShopOffer,
 } from './index.ts';
+import { withFixture } from './fixtures.ts';
 import { createRules, type Rules } from './run.ts';
 import {
   emptyRows,
@@ -344,6 +345,50 @@ describe('blueprintValue: where one week’s snapshot would be wrong or empty', 
       perStat: { stat: 'milestonesEarly', gain: 2 },
     });
     expect(v!.needs).toBeUndefined();
+  });
+
+  it('a Mult counted per piece (It’s a House, Model Home): what one more would add (D-143)', () => {
+    // It's a House: +0.15 Charm per House piece. With none it adds nothing, and the first
+    // would make 12 × 1.15 = 13.8 → 14.
+    const s = build(HOUSE, { rows: HOUSE_ROWS });
+    expect(R.blueprintValue(s, 'itsAHouse')).toEqual({
+      gain: 0,
+      when: 'week',
+      weeksLeft: ALL_WEEKS,
+      overRun: 0,
+      budget: 0,
+      perPiece: { what: 'House piece', gain: 2 },
+      needs: 'No House pieces yet',
+      held: false,
+    });
+    // A Birdhouse away from any Tree earns nothing itself. One: +2; a second makes 12 × 1.3 =
+    // 15.6 → 16, +2 more, which is what building it tallies.
+    const one = build([...HOUSE, ['birdhouse', 0, 6]], { rows: HOUSE_ROWS });
+    const v = R.blueprintValue(one, 'itsAHouse');
+    expect(v).toMatchObject({ gain: 2, perPiece: { what: 'House piece', gain: 2 } });
+    expect(v!.needs).toBeUndefined();
+    const two = build([...HOUSE, ['birdhouse', 0, 6], ['birdhouse', 2, 6]], {
+      rows: HOUSE_ROWS,
+      held: ['itsAHouse'],
+    });
+    expect(R.currentTally(two).total).toBe(12 + v!.gain + v!.perPiece!.gain);
+
+    // Model Home: ×(1 + 0.1 per piece with a fixture). No term yet, so the first starts one:
+    // 12 × 1.1 = 13.2 → 13. With one installed (a Fireplace: its Living Room earns 8, so 16
+    // Comfort × 1.1 = 17.6 → 18), a second makes ×1.2: 19.2 → 19.
+    expect(R.blueprintValue(s, 'modelHome')).toMatchObject({
+      gain: 0,
+      perPiece: { what: 'piece with a fixture', gain: 1 },
+      needs: 'No pieces with a fixture yet',
+    });
+    const lit = { ...s, house: withFixture(s.house, 3, 'fireplace', 1) };
+    expect(R.currentTally(lit).total).toBe(16);
+    expect(R.blueprintValue(lit, 'modelHome')).toMatchObject({
+      gain: 2,
+      perPiece: { what: 'piece with a fixture', gain: 1 },
+    });
+    // A blueprint that counts nothing has no such figure.
+    expect(R.blueprintValue(s, 'quietHours')!.perPiece).toBeUndefined();
   });
 
   it('spec bonuses (Dream Home): each checklist line met adds more Charm', () => {

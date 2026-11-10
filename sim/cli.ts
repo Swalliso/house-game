@@ -8,7 +8,8 @@
 // - --ban and --gift: a paired A/B on the same seeds, for questions like "is this good a
 //   must-buy?". A ban takes the good off the shelves; a gift hands it over at a shop, against a
 //   placebo (a debug action that changes nothing) at the same moment, so both arms take the
-//   same number of actions and the bot's streams stay in step;
+//   same number of actions and the bot's streams stay in step. With --off-shelf the gift is
+//   never on offer in either arm: what holding it is worth, where the bot would buy it anyway;
 // - --suggest-targets: sets the milestone targets in src/content/balance.ts from untargeted
 //   greedy runs (D-044, D-072), then runs --check's bots against them on held-out seeds, next
 //   to what the fit estimated;
@@ -78,6 +79,9 @@ One of these modes, or none:
   --gift KIND:ID      paired A/B: the good given free at a shop, against a placebo at the
                       same moment. KIND: blueprint, piece, fixture, tool, or upgrade
   --gift-shop K       the shop --gift gives it at, 1–6 (default 1)
+  --off-shelf         with --gift (a blueprint, tool, or upgrade): the good is never on offer
+                      in either arm, so the placebo can't buy it. What holding it is worth,
+                      where plain --gift shows what getting it free is worth to this bot
   --suggest-targets   set the 7 milestone targets in src/content/balance.ts from untargeted
                       greedy runs on --fit-seed, then run --check's bots against them on
                       --seed, next to what the fit estimated
@@ -654,6 +658,7 @@ function parse(args: readonly string[]) {
       ban: { type: 'string', multiple: true },
       gift: { type: 'string' },
       'gift-shop': { type: 'string' },
+      'off-shelf': { type: 'boolean', default: false },
       'suggest-targets': { type: 'boolean', default: false },
       'fit-seed': { type: 'string' },
       'dry-run': { type: 'boolean', default: false },
@@ -715,6 +720,9 @@ function run(values: Values): number {
   if (values['gift-shop'] !== undefined && mode !== '--gift') {
     throw new UsageError('--gift-shop goes with --gift.');
   }
+  if (values['off-shelf'] && mode !== '--gift') {
+    throw new UsageError('--off-shelf goes with --gift.');
+  }
   if ((values['fit-seed'] !== undefined || values['dry-run']) && mode !== '--suggest-targets') {
     throw new UsageError('--fit-seed and --dry-run go with --suggest-targets.');
   }
@@ -769,7 +777,7 @@ function run(values: Values): number {
   } else if (mode === '--ban' || mode === '--gift') {
     const base = policyName === 'greedy' ? makeGreedy(greedyOpts) : POLICIES[policyName]!;
     if (mode === '--ban') banAB(rules, base, values.ban ?? [], o);
-    else giftAB(rules, base, values.gift!, values['gift-shop'], o);
+    else giftAB(rules, base, values.gift!, values['gift-shop'], values['off-shelf'], o);
     if (policyName === 'greedy') gateRules = rules;
   } else {
     const policy = policyName === 'greedy' ? makeGreedy(greedyOpts) : POLICIES[policyName]!;
@@ -817,15 +825,27 @@ function banAB(rules: Rules, base: Policy, texts: readonly string[], o: Options)
   console.log(report(banned.content, ban, `${label}, ban ${what}`));
 }
 
-/** --gift: the same seeds with the good given at a shop, against the placebo. */
+/**
+ * --gift: the same seeds with the good given at a shop, against the placebo. With --off-shelf
+ * the good is banned from the shelves in both arms: a bot that buys a good whenever it sees it
+ * (Feng Shui) makes plain --gift read near zero, because the placebo arm holds it too.
+ */
 function giftAB(
-  rules: Rules,
+  shelves: Rules,
   base: Policy,
   text: string,
   shopText: string | undefined,
+  offShelf: boolean,
   o: Options,
 ): void {
   const { kind, id } = parseGood('--gift', text, GIFT_KINDS, CONTENT, 'giveGood gives these.');
+  let rules = shelves;
+  if (offShelf) {
+    if (!(BAN_KINDS as readonly string[]).includes(kind)) {
+      throw new UsageError(`--off-shelf takes a blueprint, tool, or upgrade (got "${kind}").`);
+    }
+    rules = createRules(withBans(CONTENT, [{ kind: kind as BanKind, id }]));
+  }
   const shops = CONTENT.balance.phases.length - 1;
   const shop = shopText === undefined ? 1 : Number(shopText);
   if (!Number.isInteger(shop) || shop < 1 || shop > shops) {
@@ -833,7 +853,7 @@ function giftAB(
   }
   const label = base.label ?? base.name;
   const good = { kind, id } as Good;
-  const what = `${kind}:${id} at shop ${shop}`;
+  const what = `${kind}:${id} at shop ${shop}${offShelf ? ', never on offer' : ''}`;
   let given = 0;
   let kept = 0;
   const count = (result: RunResult, policy: Policy) => {
@@ -859,7 +879,7 @@ function giftAB(
       [note],
     ),
   );
-  console.log(report(CONTENT, gift, `${label}, gift ${what}`));
+  console.log(report(rules.content, gift, `${label}, gift ${what}`));
 }
 
 /** --json: the one bot's records as an array, or every arm's as an object of arrays. */

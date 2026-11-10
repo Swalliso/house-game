@@ -205,9 +205,11 @@ describe('Skylight', () => {
     const bedroom = (h: HouseState) => tallyOf(h, 4, ['solarPanels']).pieces[0]!.budget;
     expect(bedroom(build(open, INTERIOR))).toBe(0);
     expect(bedroom(house)).toBe(1);
-    // Mood Lighting's +100% for Dark rooms: 6 without the Skylight, its own 4 with it.
-    expect(earned(open, INTERIOR, [], ['moodLighting'])[0]).toBe(6);
-    expect(earned(open, INTERIOR, [[1, 'skylight']], ['moodLighting'])[0]).toBe(4);
+    // Mood Lighting's +0.4 Charm for a Dark room (D-143): there without the Skylight, gone
+    // with it.
+    const charm = (h: HouseState) => tallyOf(h, 1, ['moodLighting']).mult;
+    expect(charm(build(open, INTERIOR))).toBe(140);
+    expect(charm(house)).toBe(100);
   });
 });
 
@@ -230,11 +232,11 @@ describe('Blackout Curtains', () => {
     expect(layout.tags.get(1)!.has('Dark')).toBe(true);
     expect(layout.tags.get(1)!.has('Sunny')).toBe(false);
     expect(earned(open, [['bedroom', 0, 0]], [[1, 'blackoutCurtains']])).toEqual([4]);
-    // With Mood Lighting it's a Dark room: 3 at +125% is 6.75: 7.
-    expect(earned(open, [['bedroom', 0, 0]], [[1, 'blackoutCurtains']], ['moodLighting'])).toEqual([
-      7,
-    ]);
-    expect(earned(open, [['bedroom', 0, 0]], [], ['moodLighting'])).toEqual([3]);
+    // With Mood Lighting it's a Dark room: +0.4 Charm (D-143).
+    const charm = (installs: readonly Install[]) =>
+      tallyOf(build(open, [['bedroom', 0, 0]], installs), 1, ['moodLighting']).mult;
+    expect(charm([[1, 'blackoutCurtains']])).toBe(140);
+    expect(charm([])).toBe(100);
   });
 });
 

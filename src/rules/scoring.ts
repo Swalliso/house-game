@@ -30,6 +30,7 @@ import type {
   ModSource,
   MultTerm,
   PieceDef,
+  PieceId,
   PieceScore,
   PlacedPiece,
   RunStat,
@@ -50,7 +51,7 @@ import {
   type Neighbor,
 } from './layout.ts';
 import { ruleFrom, sourceName, type ActiveMod } from './modifiers.ts';
-import { matchesNeighbor, matchesPiece, meetsCondition } from './selectors.ts';
+import { matchesNeighbor, matchesPiece, meetsCondition, rootType } from './selectors.ts';
 import { matchSets } from './sets.ts';
 import {
   conditionText,
@@ -425,6 +426,30 @@ function countPieces(content: Content, layout: Layout, sel: Selector, host?: num
 }
 
 /**
+ * How many placed pieces match a selector when at most `maxEach` of one type count (It's a
+ * House, D-143). Types are root types, as the tidy yard counts them: an L-Kitchen is a Kitchen.
+ */
+export function countPiecesByType(
+  content: Content,
+  layout: Layout,
+  sel: Selector,
+  maxEach: number,
+  host?: number,
+): number {
+  const byType = new Map<PieceId, number>();
+  let n = 0;
+  for (const p of layout.house.pieces) {
+    if (!matchesPiece(content, layout, sel, p.uid, host)) continue;
+    const type = rootType(pieceDef(content, p));
+    const k = byType.get(type) ?? 0;
+    if (k >= maxEach) continue;
+    byType.set(type, k + 1);
+    n++;
+  }
+  return n;
+}
+
+/**
  * Tallies the house as it stands in `week` (timers count from each piece's placement week),
  * with the run's modifiers. Without lines it's the cheap path for scoreOnly() and bots.
  */
@@ -636,7 +661,12 @@ export function tallyHouse(
   const multTerms: MultTerm[] = [];
   for (const m of mods) {
     if (m.mod.kind !== 'mult') continue;
-    const n = m.mod.per ? countPieces(content, layout, m.mod.per, m.host) : 1;
+    const { per, maxEach } = m.mod;
+    const n = !per
+      ? 1
+      : maxEach === undefined
+        ? countPieces(content, layout, per, m.host)
+        : countPiecesByType(content, layout, per, maxEach, m.host);
     const add = m.mod.add * n;
     if (add === 0) continue;
     mult += add;

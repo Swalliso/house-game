@@ -478,8 +478,11 @@ export type Modifier =
   | { kind: 'earn'; target: Selector; pct: number; when?: 'lastWeekOfPhase' }
   /** Crown Jewel: the week's top earner gets `pct` more, after every other term. */
   | { kind: 'bestPiece'; pct: number }
-  /** +Mult, optionally per matching piece (It's a House). */
-  | { kind: 'mult'; add: number; per?: Selector }
+  /**
+   * +Mult, optionally per matching piece (It's a House). With `maxEach`, at most that many
+   * pieces of one type count (D-143), as a tidy yard counts its types.
+   */
+  | { kind: 'mult'; add: number; per?: Selector; maxEach?: number }
   /**
    * ×Mult: `times + add × count`. Each distinct source multiplies the week's Mult once,
    * however many pieces trigger it (D-056).
@@ -1704,6 +1707,12 @@ export interface BlueprintValue {
    */
   perStat?: { stat: RunStat; gain: number };
   /**
+   * For a Mult counted per piece (It's a House's House pieces, Model Home's pieces with a
+   * fixture; D-143): what one more of them would add to a week, its own Comfort aside, and
+   * what one is called ("House piece"). It names the build, so it's shown even when `needs` is.
+   */
+  perPiece?: { what: string; gain: number };
+  /**
    * When it would add nothing in the weeks left: what it's waiting for, in a few words ("No
    * Dark rooms yet").
    */
@@ -1908,6 +1917,8 @@ export { meetsHouse, outlineOf, progressOf } from './conditions.ts';
 export { jobBoard, type Contract } from './jobs.ts';
 export { fitsText } from './fixtures.ts';
 export { SHOP_REASONS } from './shop.ts';
+export { countedSelector, countingMod, totalWithOneMore } from './blueprint-value.ts';
+export { matchesDef } from './selectors.ts';
 
 export { CONTENT, SCORE_LABELS } from '../content/index.ts';
 

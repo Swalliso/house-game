@@ -6,12 +6,24 @@
 //   (one that only changes a run rule the tally doesn't read) isn't valued.
 // - lastWeekOnly, grows: how the weekly gain moves, for the line's wording.
 // - scalingStat: a ×Mult that scales with a run stat (Ahead of Schedule's early milestones).
+// - countingMod, totalWithOneMore: a Mult that's counted per piece (It's a House, Model Home),
+//   and the week's total with one more counted (D-143), so the line can say what each adds.
 // - blueprintNeeds: when a blueprint would add nothing in the weeks left, what it's waiting
 //   for, in a few words ("No Dark rooms yet", "Green pieces here earn too little yet"), so its
 //   line points at a build.
 
-import type { BlueprintDef, Content, Effect, Modifier, RunStat, Selector, Tally } from './index.ts';
+import type {
+  BlueprintDef,
+  BlueprintId,
+  Content,
+  Effect,
+  Modifier,
+  RunStat,
+  Selector,
+  Tally,
+} from './index.ts';
 import { pieceDef, type Layout } from './layout.ts';
+import { weekTotal } from './scoring.ts';
 import { isPieceType, matchesPiece } from './selectors.ts';
 import { article, selectorText } from './text.ts';
 
@@ -49,6 +61,52 @@ export function scalingStat(mods: readonly Modifier[]): RunStat | null {
     if (typeof per === 'string' && per !== 'all') return per;
   }
   return null;
+}
+
+/** A Mult counted per piece: +Mult per piece (It's a House), or a ×Mult's (Model Home). */
+export type CountingMod =
+  | (Extract<Modifier, { kind: 'mult' }> & { per: Selector })
+  | (Extract<Modifier, { kind: 'xMult' }> & { plusPer: { per: Selector; add: number } });
+
+/** The pieces a counting modifier counts. */
+export function countedSelector(mod: CountingMod): Selector {
+  return mod.kind === 'mult' ? mod.per : mod.plusPer.per;
+}
+
+/** The first of these modifiers that counts pieces all week long, if any. */
+export function countingMod(mods: readonly Modifier[]): CountingMod | null {
+  for (const m of mods) {
+    if (m.kind === 'mult' && m.per) return m as CountingMod;
+    if (m.kind !== 'xMult' || !m.plusPer || m.when) continue;
+    const per = m.plusPer.per;
+    if (typeof per !== 'string' || per === 'all') return m as CountingMod;
+  }
+  return null;
+}
+
+/**
+ * A week's total if a blueprint's counting modifier counted one more piece, the piece's own
+ * Comfort aside: the +Mult goes in before the ×Mult sources, and a ×Mult's own term grows.
+ * `tally` is the week's with the blueprint in play.
+ */
+export function totalWithOneMore(tally: Tally, id: BlueprintId, mod: CountingMod): number {
+  const round = (mult: number, times: number) => Math.floor((Math.max(0, mult) * times + 50) / 100);
+  let mult = tally.xMults.length > 0 ? tally.xMults[0]!.before : tally.mult;
+  if (mod.kind === 'mult') mult += mod.add;
+  let own = false;
+  for (const x of tally.xMults) {
+    const mine = mod.kind === 'xMult' && x.source.kind === 'blueprint' && x.source.id === id;
+    own ||= mine;
+    mult = round(mult, mine ? x.times + mod.plusPer.add : x.times);
+  }
+  // A ×Mult still at ×1 has no term yet: its first piece starts one.
+  if (mod.kind === 'xMult' && !own) mult = round(mult, mod.times + mod.plusPer.add);
+  return weekTotal(tally.points, mult);
+}
+
+/** "House piece", "piece with a fixture": one of a counting modifier's pieces. */
+export function countedNoun(content: Content, mod: CountingMod): string {
+  return selectorText(content, countedSelector(mod), 'one').replace(/\bneighbor\b/, 'piece');
 }
 
 const STAT_NEEDS: Record<RunStat, string> = {

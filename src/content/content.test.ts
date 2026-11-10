@@ -32,6 +32,14 @@ describe('content', () => {
         fence: { ...CONTENT.pieces.fence, pack: { maxTiles: 3, shapes: [['##', '##']] } },
         driveway: { ...CONTENT.pieces.driveway, countsAs: 'patio' },
       },
+      // A per-type cap with nothing to count (D-143).
+      blueprints: {
+        ...CONTENT.blueprints,
+        fengShui: {
+          ...CONTENT.blueprints.fengShui,
+          modifiers: [{ kind: 'mult', add: 5, maxEach: 3 }],
+        },
+      },
       balance: {
         ...CONTENT.balance,
         phases: [
@@ -41,6 +49,7 @@ describe('content', () => {
       },
     };
     const problems = validateContent(broken).join('\n');
+    expect(problems).toMatch(/blueprint fengShui.*: mult maxEach needs per/);
     expect(problems).toMatch(/piece lawn: id is "bedroom"/);
     expect(problems).toMatch(/connected polyomino/);
     expect(problems).toMatch(/piece fence: pack shape ####: Up to 3 tiles/);

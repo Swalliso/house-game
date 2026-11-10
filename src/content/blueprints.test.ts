@@ -187,27 +187,32 @@ describe('blueprints', () => {
 });
 
 describe('Feng Shui', () => {
-  it('pieces with a view earn +50%, a Bay Window’s included', () => {
-    expectText('fengShui', ['Pieces with a view earn +50%']);
-    // A Bedroom by a Tree (3 + 1, at +50%: 6) and one with no view (3).
-    const rows = ['T.........', ...emptyRows(10, 9)];
+  it('pieces touching 3+ views earn +50%; two aren’t enough, and a Bay Window’s counts (D-143)', () => {
+    expectText('fengShui', ['Pieces touching 3+ views earn +50%']);
+    // Each Tree tile is its own view. A Bedroom by three Trees (3 + 3, at +50%: 9), one by two
+    // (3 + 2), and one with no view (3).
+    const rows = ['T....T....', 'T....T....', '.T........', ...emptyRows(10, 7)];
     const placements: Placement[] = [
       ['bedroom', 1, 0],
-      ['bedroom', 5, 0],
+      ['bedroom', 6, 0],
+      ['bedroom', 4, 5],
     ];
     expect(withAndWithout('fengShui', rows, placements)).toEqual([
-      [4, 3],
-      [6, 3],
+      [6, 5, 3],
+      [9, 5, 3],
     ]);
-    // A Bay Window gives the second one a view: 3 at +50% is 4.5 → 5.
+    // A Bay Window is one more view for the second: 5 at +50% is 7.5 → 8.
     const house = build(rows, placements, { installs: [[2, 'bayWindow']] });
-    expect(tallyOf(house, ['fengShui']).pieces.map((p) => p.earned)).toEqual([6, 5]);
+    expect(tallyOf(house, ['fengShui']).pieces.map((p) => p.earned)).toEqual([9, 8, 3]);
   });
 });
 
 describe('Curb Appeal', () => {
   it('pieces in the front yard earn +100%; a piece only partly in it doesn’t', () => {
-    expectText('curbAppeal', ['Pieces in the front yard earn +100%']);
+    expectText('curbAppeal', [
+      'Pieces in the front yard earn +100%',
+      'Pieces touching a piece in the front yard earn +100%',
+    ]);
     // The Bedroom's front row is row 1. A front-yard Flower Bed (1 + 2) doubles; a back-yard one
     // (1) doesn't, nor a Lawn across rows 1 and 2. The Bedroom is indoor, so in no yard.
     expect(
@@ -222,13 +227,29 @@ describe('Curb Appeal', () => {
       [3, 6, 1, 1],
     ]);
   });
+
+  it('pieces touching one in the front yard earn +100% too: the rooms behind the garden (D-143)', () => {
+    // Two Flower Beds side by side under the Bedroom, in the front yard (1 + 2 there + 1 for
+    // each other: 4). The Bedroom touches them: 3 → 6. Each Flower Bed is in the front yard and
+    // touches the other, +200%: 12.
+    expect(
+      withAndWithout('curbAppeal', open, [
+        ['bedroom', 0, 0],
+        ['flowerBed', 0, 2],
+        ['flowerBed', 1, 2],
+      ]),
+    ).toEqual([
+      [3, 4, 4],
+      [6, 12, 12],
+    ]);
+  });
 });
 
 describe('Quiet Hours', () => {
-  it('Quiet pieces earn +50%', () => {
-    expectText('quietHours', ['Quiet pieces earn +50%']);
-    // Bedroom 3 + 1 for the Library: 6. Library 2: 3. A Kitchen (Social; +2 in the sun, D-120)
-    // and a Closet (no tags) aren't boosted.
+  it('Quiet pieces earn +75% (D-143)', () => {
+    expectText('quietHours', ['Quiet pieces earn +75%']);
+    // Bedroom 3 + 1 for the Library: 7. Library 2: 3.5 → 4. A Kitchen (Social; +2 in the sun,
+    // D-120) and a Closet (no tags) aren't boosted.
     expect(
       withAndWithout('quietHours', open, [
         ['bedroom', 0, 0],
@@ -238,31 +259,50 @@ describe('Quiet Hours', () => {
       ]),
     ).toEqual([
       [4, 2, 2, 1],
-      [6, 3, 2, 1],
+      [7, 4, 2, 1],
     ]);
   });
 });
 
 describe('Green Thumb', () => {
-  it('Green pieces earn +50%', () => {
-    expectText('greenThumb', ['Green pieces earn +50%']);
-    // The house is a Closet at the top right, so its front row is row 1 and the Flower Bed is in
-    // the front yard. Lawn 1 → 1.5 → 2; Flower Bed 3 → 4.5 → 5; Herb Garden in the sun 2 → 3. The
-    // Patio (1 for the Herb Garden's view), the Hot Tub by it (3), and the Closet (1) aren't
-    // Green. The Patio and the Hot Tub touch the Closet, a room, so they earn at all.
-    expect(
-      withAndWithout('greenThumb', open, [
-        ['lawn', 0, 0],
-        ['flowerBed', 5, 5],
-        ['herbGarden', 5, 0],
-        ['patio', 7, 0],
-        ['hotTub', 9, 0],
-        ['closet', 9, 1],
-      ]),
-    ).toEqual([
-      [1, 3, 2, 1, 3, 1],
-      [2, 5, 3, 1, 3, 1],
+  const garden: Placement[] = [
+    ['lawn', 0, 0],
+    ['flowerBed', 5, 5],
+    ['herbGarden', 5, 0],
+    ['patio', 7, 0],
+    ['hotTub', 9, 0],
+    ['closet', 9, 1],
+  ];
+
+  it('Green pieces earn +50%, and grow +1 a week, up to +3 (D-143)', () => {
+    expectText('greenThumb', [
+      'Green pieces earn +50%',
+      'Green pieces: +1 more each week it stands (up to +3)',
     ]);
+    // The house is a Closet at the top right, so its front row is row 1 and the Flower Bed is in
+    // the front yard. In week 1 each Green piece has grown +1: Lawn 1 + 1 at +50% is 3; Flower
+    // Bed 3 + 1 is 6; Herb Garden in the sun 2 + 1 is 4.5 → 5. The Patio (1 for the Herb
+    // Garden's view), the Hot Tub by it (3), and the Closet (1) aren't Green. The Patio and the
+    // Hot Tub touch the Closet, a room, so they earn at all.
+    expect(withAndWithout('greenThumb', open, garden)).toEqual([
+      [1, 3, 2, 1, 3, 1],
+      [3, 6, 5, 1, 3, 1],
+    ]);
+  });
+
+  it('the growth stops at +3, and counts from the later of placement and purchase', () => {
+    const lawn = (bought: number, week: number) =>
+      tallyOf(build(open, garden), [['greenThumb', bought]], week).pieces[0]!.earned;
+    // Bought in week 1: 1 + 2 in week 2 (4.5 → 5), 1 + 3 from week 3 (6).
+    expect([1, 2, 3, 9].map((w) => lawn(1, w))).toEqual([3, 5, 6, 6]);
+    // Bought in week 5 for a Lawn from week 1: +1 again in week 5.
+    expect(lawn(5, 5)).toBe(3);
+    expect(tallyOf(build(open, garden), ['greenThumb'], 3).pieces[0]!.lines).toContainEqual({
+      label: 'Grown for 3 weeks (Green Thumb)',
+      op: 'add',
+      value: 3,
+      from: [],
+    });
   });
 });
 
@@ -289,9 +329,9 @@ describe('Party House', () => {
 });
 
 describe('Waterfront', () => {
-  it('pieces touching the pond or the creek earn +50%', () => {
-    expectText('waterfront', ['Pieces touching the Pond or the Creek earn +50%']);
-    // Bedrooms by the pond and by the creek: 3 → 4.5 → 5. One between them touches neither.
+  it('pieces touching the pond or the creek earn +100% (D-143)', () => {
+    expectText('waterfront', ['Pieces touching the Pond or the Creek earn +100%']);
+    // Bedrooms by the pond and by the creek: 3 → 6. One between them touches neither.
     const rows = ['PP........', ...emptyRows(10, 6), 'CCCCCCCCCC', ...emptyRows(10, 2)];
     expect(
       withAndWithout('waterfront', rows, [
@@ -301,43 +341,45 @@ describe('Waterfront', () => {
       ]),
     ).toEqual([
       [3, 3, 3],
-      [5, 3, 5],
+      [6, 3, 6],
     ]);
   });
 });
 
 describe('Open Concept', () => {
-  it('links each touching group of Kitchens, Dining Rooms, and Living Rooms', () => {
-    expectText('openConcept', [
-      'Touching Kitchens, Dining Rooms, and Living Rooms are linked: each counts as touching the whole group',
-    ]);
-    // Kitchen | Living Room | Dining Room, each +2 in the sun (D-120). Linked, the Kitchen gets
-    // its +2 for the Dining Room across the Living Room, at the Dining Room's +50%: 6. A Kitchen
-    // off on its own isn't.
-    const placements: Placement[] = [
+  it('the Entertainer pays 50% more, at any level, and no other set does (D-143)', () => {
+    expectText('openConcept', ['The Entertainer pays 50% more']);
+    // Kitchen | Dining Room | Living Room hold the Entertainer (+25 Comfort, +1 Charm), and two
+    // Bedrooms around a Bathroom hold a Jack-and-Jill (+10, +0.5).
+    const house = build(open, [
       ['kitchen', 0, 0],
-      ['livingRoom', 2, 0],
-      ['diningRoom', 4, 0],
-      ['kitchen', 0, 6],
-    ];
-    expect(withAndWithout('openConcept', open, placements)).toEqual([
-      [2, 3, 2, 2],
-      [6, 3, 2, 2],
+      ['diningRoom', 2, 0],
+      ['livingRoom', 4, 0],
+      ['bedroom', 0, 5],
+      ['bathroom', 2, 5],
+      ['bedroom', 3, 5],
     ]);
-    const layout = layoutWith(build(open, placements), ['openConcept']);
-    expect([...layout.links.get(1)!].sort()).toEqual([2, 3]);
-    expect(layout.links.get(4)).toBeUndefined();
-    // A Bedroom in the middle breaks the group.
-    const broken: Placement[] = [
-      ['kitchen', 0, 0],
-      ['bedroom', 2, 0],
-      ['diningRoom', 4, 0],
-    ];
-    expect(withAndWithout('openConcept', open, broken)).toEqual([
-      [2, 3, 2],
-      [2, 3, 2],
+    const sets = (t: Tally) => t.sets.map((x) => [x.set, x.points, x.mult]);
+    const plain = tallyOf(house, []);
+    expect(sets(plain)).toEqual([
+      ['jackAndJill', 10, 50],
+      ['entertainer', 25, 100],
     ]);
-    expect(layoutWith(build(open, broken), ['openConcept']).links.get(1)).toBeUndefined();
+    // 25 at +50% is 37.5 → 38, and +1.5 Charm. The pieces earn what they did.
+    const t = tallyOf(house, ['openConcept']);
+    expect(sets(t)).toEqual([
+      ['jackAndJill', 10, 50],
+      ['entertainer', 38, 150],
+    ]);
+    expect(t.pieces.map((x) => x.earned)).toEqual(plain.pieces.map((x) => x.earned));
+    expect([t.points - plain.points, t.mult - plain.mult]).toEqual([13, 50]);
+    // Remodel Plans: Entertainer raise what it's half again of: level 2 is 40 and +1.5.
+    const level2 = { setLevels: { entertainer: 2 } };
+    expect(sets(tallyOf(house, [], 1, level2))[1]).toEqual(['entertainer', 40, 150]);
+    expect(sets(tallyOf(house, ['openConcept'], 1, level2))[1]).toEqual(['entertainer', 60, 225]);
+    // With no Entertainer it adds nothing.
+    const bedrooms = build(open, [['bedroom', 0, 0]]);
+    expect(tallyOf(bedrooms, ['openConcept']).total).toBe(tallyOf(bedrooms, []).total);
   });
 });
 
@@ -346,24 +388,24 @@ describe('Good Bones', () => {
   const over = (house: HouseState, bought: number, weeks: readonly number[]) =>
     weeks.map((w) => tallyOf(house, [['goodBones', bought]], w).pieces[0]!.earned);
 
-  it('rooms grow +1 a week, up to +10', () => {
-    expectText('goodBones', ['Rooms: +1 more each week it stands (up to +10)']);
-    // Built and bought in week 1: +1 in week 1, +5 in week 5, +10 from week 10.
-    expect(over(bedroomIn(1), 1, [1, 5, 10, 12])).toEqual([4, 8, 13, 13]);
-    const t = tallyOf(bedroomIn(1), ['goodBones'], 5);
+  it('rooms grow +1 a week, up to +3 (D-143)', () => {
+    expectText('goodBones', ['Rooms: +1 more each week it stands (up to +3)']);
+    // Built and bought in week 1: +1 in week 1, +2 in week 2, +3 from week 3.
+    expect(over(bedroomIn(1), 1, [1, 2, 3, 12])).toEqual([4, 5, 6, 6]);
+    const t = tallyOf(bedroomIn(1), ['goodBones'], 2);
     expect(t.pieces[0]!.lines).toContainEqual({
-      label: 'Grown for 5 weeks (Good Bones)',
+      label: 'Grown for 2 weeks (Good Bones)',
       op: 'add',
-      value: 5,
+      value: 2,
       from: [],
     });
   });
 
   it('counts from the later of placement and purchase', () => {
-    // Bought in week 5 for a Bedroom from week 1: +1 in week 5, +3 in week 7.
-    expect(over(bedroomIn(1), 5, [5, 7])).toEqual([4, 6]);
-    // Built in week 6 after buying it in week 2: +1 in week 6, +3 in week 8.
-    expect(over(bedroomIn(6), 2, [6, 8])).toEqual([4, 6]);
+    // Bought in week 5 for a Bedroom from week 1: +1 in week 5, +2 in week 6.
+    expect(over(bedroomIn(1), 5, [5, 6])).toEqual([4, 5]);
+    // Built in week 6 after buying it in week 2: +1 in week 6, +2 in week 7.
+    expect(over(bedroomIn(6), 2, [6, 7])).toEqual([4, 5]);
   });
 
   it('rooms only: not a Lawn or a Hallway', () => {
@@ -372,36 +414,55 @@ describe('Good Bones', () => {
       ['lawn', 0, 4],
       ['hallway', 5, 0],
     ]);
-    expect(tallyOf(house, ['goodBones'], 5).pieces.map((p) => p.earned)).toEqual([8, 1, 0]);
+    expect(tallyOf(house, ['goodBones'], 5).pieces.map((p) => p.earned)).toEqual([6, 1, 0]);
   });
 });
 
 describe('It’s a House', () => {
-  it('+0.15 Mult per House-tagged piece, one that earns nothing included', () => {
-    expectText('itsAHouse', ['+0.15 Charm per House piece']);
+  const BEDROOMS: Placement[] = [
+    ['bedroom', 0, 4],
+    ['bedroom', 2, 4],
+  ];
+
+  it('+0.5 Charm per House-tagged piece, one that earns nothing included (D-143)', () => {
+    expectText('itsAHouse', ['+0.5 Charm per House piece, up to 3 of a type']);
     // A Greenhouse, a Henhouse, a Birdhouse, and a Doghouse outside any fenced yard (it earns
-    // nothing, but still counts), with two Bedrooms (4 each). Points 8, Mult 1 + 4 × 0.15:
-    // 8 × 1.6 = 12.8 → 13.
+    // nothing, but still counts), with two Bedrooms (4 each). Points 8, Mult 1 + 4 × 0.5:
+    // 8 × 3 = 24.
     const house = build(open, [
       ['greenhouse', 0, 0],
       ['henhouse', 4, 0],
       ['birdhouse', 8, 0],
       ['doghouse', 8, 8],
-      ['bedroom', 0, 4],
-      ['bedroom', 2, 4],
+      ...BEDROOMS,
     ]);
     expect(tallyOf(house, [])).toMatchObject({ points: 8, mult: 100, total: 8 });
     const t = tallyOf(house, ['itsAHouse']);
     expect(t.pieces[3]).toMatchObject({ earned: 0, unmet: 'in a fenced yard' });
-    expect(t).toMatchObject({ points: 8, mult: 160, total: 13 });
+    expect(t).toMatchObject({ points: 8, mult: 300, total: 24 });
     expect(t.multTerms).toEqual([
-      { source: { kind: 'blueprint', id: 'itsAHouse' }, label: 'It’s a House (4)', add: 60 },
+      { source: { kind: 'blueprint', id: 'itsAHouse' }, label: 'It’s a House (4)', add: 200 },
     ]);
     // With no House piece it adds nothing.
     expect(tallyOf(build(open, [['bedroom', 0, 0]]), ['itsAHouse'])).toMatchObject({
       mult: 100,
       multTerms: [],
     });
+  });
+
+  it('counts 3 of a type and no more, which is as many as a tidy yard holds (D-105)', () => {
+    const birdhouses: Placement[] = [0, 2, 4, 6].map((x) => ['birdhouse', x, 0]);
+    const charm = (placements: readonly Placement[]) =>
+      tallyOf(build(open, [...BEDROOMS, ...placements]), ['itsAHouse']).mult - 100;
+    expect(charm(birdhouses.slice(0, 3))).toBe(150);
+    // The 4th Birdhouse adds nothing; a Henhouse is another type.
+    expect(charm(birdhouses)).toBe(150);
+    expect(charm([...birdhouses, ['henhouse', 0, 8]])).toBe(200);
+    // The two rules use one number, so the build never pays for an untidy yard.
+    const mod = CONTENT.blueprints.itsAHouse.modifiers[0]!;
+    const tidy = CONTENT.clients.hendersons.specs.find((x) => x.id === 'tidyYard')!.condition;
+    expect(mod.kind === 'mult' && mod.maxEach).toBe(3);
+    expect('variety' in tidy && tidy.variety.maxEach).toBe(3);
   });
 });
 
@@ -430,25 +491,34 @@ describe('Country Living', () => {
 });
 
 describe('Mood Lighting', () => {
-  it('Dark rooms earn +100%: interior ones, or any with Blackout Curtains', () => {
-    expectText('moodLighting', ['Dark rooms earn +100%']);
-    // The interior Bedroom doubles; an exterior one at the top doesn't. Hallways aren't rooms,
-    // so their own +2 for the Bedroom (D-114) doesn't double.
+  it('+0.4 Charm per Dark room: interior ones, or any with Blackout Curtains (D-143)', () => {
+    expectText('moodLighting', ['+0.4 Charm per Dark room']);
+    // The interior Bedroom is Dark; an exterior one at the top isn't. The pieces earn what
+    // they did (Hallways +2 each for the Bedroom, D-114), and the week's Charm is +0.4.
     const placements: Placement[] = [...INTERIOR, ['bedroom', 6, 0]];
-    expect(withAndWithout('moodLighting', open, placements)).toEqual([
-      [3, 2, 2, 2, 2, 3],
-      [6, 2, 2, 2, 2, 3],
+    const house = build(open, placements);
+    const plain = tallyOf(house, []);
+    const t = tallyOf(house, ['moodLighting']);
+    expect(plain.pieces.map((p) => p.earned)).toEqual([3, 2, 2, 2, 2, 3]);
+    expect(t.pieces.map((p) => p.earned)).toEqual([3, 2, 2, 2, 2, 3]);
+    expect([plain.mult, t.mult]).toEqual([100, 140]);
+    expect(t.multTerms).toEqual([
+      { source: { kind: 'blueprint', id: 'moodLighting' }, label: 'Mood Lighting (1)', add: 40 },
     ]);
-    // Blackout Curtains make the exterior one Dark: 3 at +125% is 6.75 → 7.
+    // Blackout Curtains make the exterior one Dark too: +0.8.
     const curtains = build(open, placements, { installs: [[6, 'blackoutCurtains']] });
-    expect(tallyOf(curtains, ['moodLighting']).pieces[5]!.earned).toBe(7);
+    expect(tallyOf(curtains, ['moodLighting']).multTerms).toMatchObject([
+      { label: 'Mood Lighting (2)', add: 80 },
+    ]);
+    // With no Dark room it adds nothing.
+    expect(tallyOf(build(open, [['bedroom', 0, 0]]), ['moodLighting']).multTerms).toEqual([]);
   });
 });
 
 describe('Show Home', () => {
-  it('pieces with a fixture earn +50%', () => {
-    expectText('showHome', ['Pieces with a fixture earn +50%']);
-    // A Bedroom with a Fireplace: 3 at +100%. A Lawn with a Sprinkler: 1 at +150% → 2.5 → 3.
+  it('pieces with a fixture earn +100% (D-143)', () => {
+    expectText('showHome', ['Pieces with a fixture earn +100%']);
+    // A Bedroom with a Fireplace: 3 at +150% → 7.5 → 8. A Lawn with a Sprinkler: 1 at +200%.
     const house = build(
       open,
       [
@@ -464,7 +534,7 @@ describe('Show Home', () => {
       },
     );
     expect(tallyOf(house, []).pieces.map((p) => p.earned)).toEqual([5, 3, 2]);
-    expect(tallyOf(house, ['showHome']).pieces.map((p) => p.earned)).toEqual([6, 3, 3]);
+    expect(tallyOf(house, ['showHome']).pieces.map((p) => p.earned)).toEqual([8, 3, 3]);
   });
 });
 

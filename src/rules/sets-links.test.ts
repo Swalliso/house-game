@@ -7,11 +7,15 @@
 
 import { describe, expect, it } from 'vitest';
 import { CONTENT } from '../content/index.ts';
+import type { Modifier } from './index.ts';
 import { computeLayout, isLayoutModifier } from './layout.ts';
 import { matchSets } from './sets.ts';
 import { emptyRows, houseFrom, type Placement } from './testing.ts';
 
-const OPEN_CONCEPT = CONTENT.blueprints.openConcept.modifiers.filter(isLayoutModifier);
+// A link among the Entertainer's rooms. Open Concept carried it until D-143; the rules still
+// know the modifier, and a set must never be re-dated or swapped by one.
+const LINK: Modifier = { kind: 'link', among: ['kitchen', 'diningRoom', 'livingRoom'] };
+const OPEN_CONCEPT = [LINK].filter(isLayoutModifier);
 
 function keys(placements: readonly Placement[], openConcept: boolean): string[] {
   const house = houseFrom(CONTENT, emptyRows(12, 10), placements);
