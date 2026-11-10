@@ -368,15 +368,6 @@ export const RECIPES: Partial<Record<SoundId, Recipe>> = {
       { at: 0.26, inst: 'glock', step: 7, db: -14 },
     ],
   },
-  // The roof going on: a wooden thump, and a chime as it settles.
-  'roof-on': {
-    duck: true,
-    layers: [
-      { set: 'thock', db: -2, rate: 0.75 },
-      { at: 0.1, inst: 'chime', step: 4, db: -9 },
-      { at: 0.1, inst: 'vibes', step: 0, db: -14 },
-    ],
-  },
   // The milestone's drumroll keeps its ZzFX placeholder: no recording here rolls.
 };
 

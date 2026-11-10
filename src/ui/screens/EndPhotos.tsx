@@ -1,4 +1,4 @@
-// The end screen's photos (M6, D-136): under the roofed house, a strip of polaroids, one for each
+// The end screen's photos (M6, D-136): under the house, a strip of polaroids, one for each
 // milestone that resolved, of the house as it stood then: on time, early, in overtime, or the
 // one the client walked at. They share one frame (photos.ts photoFrame), so the house grows in
 // place from one to the next. Each says its milestone, its mark, and its Wow against the target;
@@ -44,7 +44,7 @@ let framedFor: readonly Action[] | null = null;
 
 /**
  * Pans the board so the house is in the middle of the view the strip leaves (in a window too
- * small for the whole lot; at 1080p it's all in view and nothing moves): the roofed house is the
+ * small for the whole lot; at 1080p it's all in view and nothing moves): the house is the
  * end screen's hero. Once per run, so a pan the player makes afterwards stays.
  */
 function showHouse(frame: PhotoFrame, still: boolean): void {

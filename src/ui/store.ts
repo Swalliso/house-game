@@ -40,8 +40,7 @@ import {
   type CrewId,
 } from '../rules/index.ts';
 import { BUILD_CHANNEL, BUILD_SHA } from './build-info.ts';
-import { isIndoor, occupancy, uidAt } from './board/geometry.ts';
-import { roofed } from './fx/moments.ts';
+import { occupancy, uidAt } from './board/geometry.ts';
 
 export const CONTENT_HASH = contentHash(CONTENT);
 const SAVE_KEY = `openhouse:${BUILD_CHANNEL}:run`;
@@ -160,29 +159,6 @@ effect(() => {
     heldPiece.value = null;
   }
 });
-
-/**
- * The roof view (D-133): the house from outside, under the roof the Roofing milestone put on
- * (D-127). The reveal at Roofing puts it on, and so does the end screen; the camera's Roof
- * button and T turn it on and off (actions.ts toggleRoof). Building takes it off, so it never
- * covers a play: picking anything, demolishing, holding a room in Inspect, or ending the week.
- * The sheets after a milestone (a change order, the shop) leave it on, so it's still there when
- * the lot comes back. UI only.
- */
-export const roofOn = signal(false);
-effect(() => {
-  if (!roofOn.value) return;
-  if (selected.value !== null || tool.value === 'demolish' || heldRoom()) roofOn.value = false;
-});
-
-/** Whether a room (under the roof) is held in Inspect. */
-export function heldRoom(): boolean {
-  const uid = heldPiece.value;
-  const s = run.value;
-  if (uid === null || s.screen !== 'build') return false;
-  const piece = s.house.pieces.find((p) => p.uid === uid);
-  return !!piece && isIndoor(piece.defId);
-}
 
 export type Inspected =
   | { kind: 'piece'; uid: number }
@@ -595,9 +571,6 @@ export function startRun(
     log.value = result.failedAt === undefined ? actions : actions.slice(0, result.failedAt);
     resetWeek();
     inspected.value = null;
-    // A finished run loads on its end screen, which opens with the roof on (D-133).
-    const over = result.state.screen === 'won' || result.state.screen === 'lost';
-    roofOn.value = over && roofed(result.state);
   });
   resetListeners.forEach((l) => l());
   save();
@@ -700,8 +673,6 @@ export function demolishAt(x: number, y: number): boolean {
 
 /** Completes the milestone now; the rest of the phase fast-forwards (D-040). */
 export function completeEarly(): boolean {
-  // The weeks it fast-forwards tally on the lot: the roof comes off for them (D-133).
-  roofOn.value = false;
   return dispatch({ t: 'completeEarly' });
 }
 
@@ -760,11 +731,7 @@ export function debugAction(action: DebugAction): boolean {
 
 /** End week: commit the tentative placement, or pass. */
 export function endWeek(): void {
-  const play = tentative.value;
-  // The week's tally plays on the lot: the roof comes off for it, before the events play, so a
-  // Roofing milestone's reveal puts it back on (D-133).
-  roofOn.value = false;
-  dispatch(play ?? { t: 'pass' });
+  dispatch(tentative.value ?? { t: 'pass' });
 }
 
 /**

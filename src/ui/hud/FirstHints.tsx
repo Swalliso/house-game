@@ -21,7 +21,6 @@ import { useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { CONTENT, hintText, SCORE_LABELS } from '../../rules/index.ts';
 import { BUILD_CHANNEL } from '../build-info.ts';
 import { arrivalCard, banner, busy } from '../fx/director.ts';
-import { roofed } from '../fx/moments.ts';
 import { Button, Icon } from '../kit/kit.tsx';
 import { appScreen, cardsRenovate, earlyOffer, run } from '../store.ts';
 import { devicePixelRatio, uiPixel } from '../theme/pixel.ts';
@@ -34,7 +33,6 @@ export type HintId =
   | 'checklist'
   | 'early'
   | 'shop'
-  | 'roof'
   | 'fixture'
   | 'changeOrder'
   | 'arrival'
@@ -104,15 +102,6 @@ export const HINTS: Readonly<Record<HintId, Hint>> = {
   // The shelves' own tags say what each kind of good is, and the fixture's hint comes with the
   // first fixture.
   shop: { title: 'The shop', text: T.shop, spot: 'underGoods' },
-  // D-133: the reveal's roof stays on until you build, so the first look at the lot after
-  // Roofing has it on, and this says how to get it back.
-  roof: {
-    title: 'The roof’s on',
-    text:
-      'Roofing put the roof on. Picking a card lifts it so you can build; the Roof button by ' +
-      'the zoom (or T) toggles it.',
-    spot: 'overScore',
-  },
   fixture: { title: 'Fixtures', text: T.fixture, spot: 'overScore' },
   // M4b: the screen and the arrival's cards say what they are; these say why they matter.
   // "This phase" is the sheet's chip for a phase effect (ChangeOrderScreen.tsx KIND_LABEL).
@@ -143,8 +132,6 @@ function current(seen: ReadonlySet<string>): HintId | null {
     s.hand.some((c) => c.kind === 'fixture') || s.supplies.some((x) => x.kind === 'fixture');
   const due: [HintId, boolean][] = [
     ['shop', s.screen === 'shop'],
-    // D-133: first, so it comes while the reveal's roof is still on.
-    ['roof', building && roofed(s)],
     ['firstWeek', building && s.week === 1],
     // A hint a week (D-142): how a week scores once one has been tallied, then the checklist.
     ['score', building && s.week === 2],

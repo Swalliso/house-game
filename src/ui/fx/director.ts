@@ -39,7 +39,7 @@ import {
 import { audio } from '../audio/audio.ts';
 import { arrivalOf, cardsPhrase, isPlural } from '../hud/household.ts';
 import { settings } from '../settings.ts';
-import { onEvents, onRunReset, roofOn } from '../store.ts';
+import { onEvents, onRunReset } from '../store.ts';
 import { formatNumber } from '../format.ts';
 import { chainOrder } from './chain.ts';
 import { FEEL } from './feel.ts';
@@ -59,8 +59,6 @@ import {
   isHouseRule,
   markToppedOut,
   rhythmPaid,
-  roofed,
-  ROOFING_PHASE,
   targetCrossed,
   TOPPED_OUT_RULE,
   toppedOutBefore,
@@ -795,7 +793,7 @@ function topOut(): void {
     if (toppedOut.value?.id === id) toppedOut.value = null;
   }, FEEL.moments.toppedOutMs);
   audio.play('topped-out', { delay: 0.15 });
-  // Up from the plaque over the roof, clear of the line's own popup over the house.
+  // Up from the plaque over the top of the house, clear of the line's own popup over it.
   afterPaint(() => burstAt('stars', document.querySelector('.topped-out'), { fy: 0, scale: 1.4 }));
 }
 
@@ -1124,12 +1122,6 @@ function milestoneBanner(e: Extract<GameEvent, { t: 'milestone' }>, ended: boole
   shake(FEEL.shake.milestonePx);
   if (e.result !== 'failed') {
     afterPaint(() => burstAt('sparkles', document.querySelector('.banner .banner-ribbon')));
-    // The roof reveal (§12, D-127): at the Roofing milestone the house gets its roof, under the
-    // banner, and keeps it until the player's next move on the lot (D-133: store.ts roofOn).
-    if (e.phase === ROOFING_PHASE) {
-      roofOn.value = true;
-      audio.play('roof-on', { delay: FEEL.roof.thumpMs / 1000 });
-    }
   }
   return ms;
 }
@@ -1462,12 +1454,6 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
       for (const e of events) {
         shopBeat(e);
         sheetBeat(e, after);
-      }
-      // The end screen opens with the roof on, the finale's picture, if Roofing put one on
-      // (D-133). Its Roof button looks inside.
-      if (ended && roofed(after) && !roofOn.value) {
-        roofOn.value = true;
-        audio.play('place-room', { rate: 0.75, gain: 0.7, delay: FEEL.roof.thumpMs / 1000 });
       }
     }
   } finally {

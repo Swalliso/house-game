@@ -534,6 +534,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 ### D-057 · Art: cozy top-down pixel art
 **Status:** Accepted · 2026-11-05: the direction at the team's request, and the details below with the plan's approval.
+**Amended by:** D-147 (Accepted 2026-11-10): no roof is drawn, at the Roofing milestone or on the end screen.
 **Confirmed 2026-11-05:** design for 1080p and up, since the team expects most players to have at least a 1080p screen. The whole lot fits at a crisp 2× there; smaller windows pan at 2×, with the Fit overview.
 **Decision:**
 - Cozy pixel art like Combolands: detailed enough to read what you're building, not so detailed that it distracts.
@@ -1664,7 +1665,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **Changes:** D-103 (Accepted): its banner. `implementation-plan.md` §12 has no rule on either.
 
 ### D-127 · The roof reveal at Roofing, and "Topped out!"
-**Status:** Accepted · 2026-11-10, held up in playtest 5 (`docs/playtests/playtest-5-findings.md`), but the reveal is brief and lands at the end of a week, so it's easy to miss. The user asked for a way to bring the roof back after Roofing, which D-133 (Proposed) adds: since 2026-11-10 the reveal's roof stays on until the player's next move instead of lifting after 1.8 s, a Roof button (T) puts it back on, and the end screen opens with it on. Proposed 2026-11-09, with the juice pull request. §12's roof reveal, and the review's "Topped out!" (`house-systems-review.md` §6).
+**Status:** Accepted · 2026-11-10, held up in playtest 5 (`docs/playtests/playtest-5-findings.md`), but the reveal is brief and lands at the end of a week, so it's easy to miss. The user asked for a way to bring the roof back after Roofing, which D-133 (since Superseded by D-147) added: since 2026-11-10 the reveal's roof stays on until the player's next move instead of lifting after 1.8 s, a Roof button (T) puts it back on, and the end screen opens with it on. Proposed 2026-11-09, with the juice pull request. §12's roof reveal, and the review's "Topped out!" (`house-systems-review.md` §6).
+**Amended by:** D-147 (Accepted 2026-11-10, the user's call): the roof and its reveal at Roofing are out of the game. "Topped out!" stands.
 **Decision:**
 - **The roof** is painted from the house model in LimeZu's palette, by fixed rules: a terracotta gable over each column of rooms (the south slope lit, the north in shade, a ridge cap between them), shingles offset like bricks, a fascia along the south eaves, eaves 3 art px past the walls, an ink outline, and a brick chimney on the first room. An L or a T gets a ridge per wing. It's a canvas in the board's `roof` layer, which D-097 reserved.
 - **At the Roofing milestone,** when it's met (on time, early or in overtime), the roof drops onto the house in 0.42 s, holds 1.8 s under the milestone's banner, and lifts off in 0.56 s, with a thump and a bell (`roof-on`). The tiles' digits and badges fade out while it's on. Reduce motion fades it in and out. A missed milestone gets no roof.
@@ -1737,11 +1739,29 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **Considered:** `<audio>` elements for the music (they stream with less memory, but can't keep stems in sync or glide the speed smoothly); loops trimmed past the encoders' padding (a playlist of whole tracks needs none); fading the music out when the tab is hidden (players often keep calm music on in the background).
 **Changes:** none to settled decisions. `implementation-plan.md` §12 Music: the screen-mix fallback for tracks without stems, and the playlist instead of loop points.
 
+### D-147 · The roof comes off: no reveal at Roofing, no Roof button, and the end screen shows the rooms
+**Status:** Accepted · 2026-11-10, the user's call during the polish review before the first showing ("remove the whole visible roof thing"; "Yes, remove it all"), with its fix pull request (`fix/remove-roof-view`). Supersedes D-133 and changes D-127 (Accepted).
+**Decision:**
+- **Nothing draws a roof over the house.** The Roofing milestone no longer drops one on. The camera's Roof button and the T key are gone, and so is the first-time hint "The roof's on". The build strip keeps "Scroll zoom" after Roofing, where the window is tall enough to show it.
+- **The end screen shows the house as built,** its rooms and furniture in view under "It's a house." D-136's polaroids are unchanged.
+- **Roofing is a milestone like the others:** its banner and the milestone's sound, with no reveal. The `roof-on` sound goes with the roof.
+- **"Topped out!" stays** (D-127): the plaque, the stars and the cheer, the first week Under one roof holds. It never used the roof's art.
+- **The board's roof layer stays reserved** (D-097, `layers.ts`), with nothing drawn on it. The painter (`src/ui/art/roof.ts`) is deleted; it's in the history at 6e41d87.
+
+**Why:**
+- Seen from above, the roof of a one-storey house can only be its footprint filled with shingles. It read as a flat red slab, and the user didn't think it looked good.
+- It covered the furnished rooms, the art playtest 5a liked best, on the end screen: the moment a player looks at the finished house.
+- It took a button, a key, a hint and a set of rules for what lifts it, all of it for a first-time player to read.
+
+**Considered:** keeping only D-127's short drop at Roofing (the same slab, for under 3 s); keeping the button and opening the end screen with the roof off.
+**Later:** a roof worth showing needs height, such as a second storey. That's Parked for the next jam session.
+**Changes:** D-133 (Superseded). D-127 (Accepted): its roof and reveal are removed, and "Topped out!" stands. D-057 (Accepted): no roofs at Roofing or on the end screen. D-135: the link preview's picture is captured again, with the rooms in view. D-136: the house above the polaroids has no roof, and nothing waits for one to land (the deal's 650 ms delay is unchanged). D-142: its list of first-time hints loses the roof's. `implementation-plan.md` §7 (M5a's juice, M6's end screen) and §12 (the roof reveal). How to play's key list loses T.
+
 ---
 
 ## Proposed
 
-*Reserved numbers (2026-11-10): D-115 to D-118 are the layout session's drafts, not in this file yet; D-122 (legibility) is logged below. D-132 to D-134 are playtest 5's fixes, each logged by its own pull request: D-132 one reroll for both rows of the draw, D-133 the roof view, D-134 three more tracks. D-135 and D-136 are M6's end screen (D-135 the result line and link preview, D-136 the milestone photos); D-137 and D-138 belong to the release-day sessions. D-139 is the company's record. D-140 to D-146 are the friction batch, from the 2026-11-10 review's seven points: D-140 the Garage and the Driveway, D-141 what a blueprint is worth and its icon, D-142 first contact, D-143 the blueprint shelf, D-144 change orders two at a time, D-145 the lot and the last stretch, and D-146 the batch's one re-fit. New entries start at D-147.*
+*Reserved numbers (2026-11-10): D-115 to D-118 are the layout session's drafts, not in this file yet; D-122 (legibility) is logged below. D-132 to D-134 are playtest 5's fixes, each logged by its own pull request: D-132 one reroll for both rows of the draw, D-133 the roof view, D-134 three more tracks. D-135 and D-136 are M6's end screen (D-135 the result line and link preview, D-136 the milestone photos); D-137 and D-138 belong to the release-day sessions. D-139 is the company's record. D-140 to D-146 are the friction batch, from the 2026-11-10 review's seven points: D-140 the Garage and the Driveway, D-141 what a blueprint is worth and its icon, D-142 first contact, D-143 the blueprint shelf, D-144 change orders two at a time, D-145 the lot and the last stretch, and D-146 the batch's one re-fit. D-147 takes the roof out again (the user's call, logged under Accepted). New entries start at D-148.*
 
 ### D-146 · The friction batch's re-fit: the targets set against played runs
 **Status:** Proposed · 2026-11-10, at the user's "Merge and re-fit", once D-140 to D-145 were all in develop. A fix pull request (`fix/refit-targets`) that merges on green, so /dev/ plays at the intended difficulty; the batch's playtest decides whether it holds. It's the one re-fit D-140, D-143, D-144 and D-145 each left for the end.
@@ -1878,7 +1898,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
   - **A friend's run in progress is put aside, not lost** (the link's old behavior, unchanged): the link's run takes the save, the old run's code stays in the browser (`openhouse:<channel>:previous`), and the note says "Your run in progress was put aside." with "Copy the old run code". A save with no weeks played is replaced without a note. Saves are per channel, so a release link never touches a develop run.
 - **The Auto switch hides on the end screen** (won or lost), where it was greyed out: there's no milestone left to complete.
 - **The link preview,** for the group chat: `og:title`, `og:description` (the title screen's pitch), `og:image` with its size and alt text, and `twitter:card` (`summary_large_image`) in `index.html`.
-  - **`public/og.png`** (1200×630): a finished run's house with its roof on, on its lot by the street, at two screen pixels per art pixel, under a wood sign in the game's style: "Open House" and "It's a house." It's captured from the game (seed og4, the greedy bot's win for Count Vladislav).
+  - **`public/og.png`** (1200×630): a finished run's house with its roof on, on its lot by the street, at two screen pixels per art pixel, under a wood sign in the game's style: "Open House" and "It's a house." It's captured from the game (seed og4, the greedy bot's win for Count Vladislav). *2026-11-10 (D-147): captured again without the roof, the rooms in view, from the same seed and client on that build (the debug panel's bot-built house, won), in the same frame and under the same sign.*
   - **Scrapers need absolute URLs,** so `vite.config.ts` fills in `%SHARE_BASE%`: develop's build points at `/dev/og.png`, which exists as soon as develop deploys; a release and a local build point at the root.
   - **`public/favicon.png`:** a 16×16 house in LimeZu's palette at 2×, for the tab. Both are recorded in `assets/licenses.json` and `CREDITS.md`, and the licenses test now checks `public/` too.
 
@@ -2002,6 +2022,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 ### D-136 · The end screen's photos: a polaroid of the house at each milestone
 **Status:** Proposed · 2026-11-10, with M6's phase pull request (`phase/m6-end-photos`), the second half of M6's end screen (implementation-plan.md §7 M6). For the user's playtest before it merges. An exception to D-097 (its dated note).
+**Amended by:** D-147 (Accepted 2026-11-10): the house above the strip has no roof, so the hero and the photos both look inside, and the deal doesn't wait for a roof to land.
 **Decision:**
 - **A strip of polaroids along the foot of the board** on the end screen, under the roofed house, which stays the hero. There's one polaroid for each milestone that resolved: early, on time, in overtime, or the one the client walked at. A won run has seven; a lost one has one for each milestone up to and including the missed one.
   - Each polaroid shows its photo, the milestone's name, its mark (✓ or ✗, with early's flag or overtime's clock) and its Wow against the target.
@@ -2053,7 +2074,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
   - **The shop's** is "Spend your budget on goods for the house; hover one to read it. Each milestone met pays 4 more." (19 words, from 65). The shelves' tags already say what each kind of good is, and the fixture's hint comes with the first fixture.
   - **The first week's** is 24 words (from 44): pick, place, End week, the target, and "Hover anything to read it". How a week scores moves to a new hint in week 2, "Comfort and Charm" (18 words), once a week has been tallied.
   - **The checklist's** moves to week 3, so the first three weeks bring one hint each. It says what a line adds and that the house rules fold into one row once it's dismissed (D-113).
-  - The others: Complete early 23 (from 31), the roof 24 (from 37), Fixtures 21 (from 36), change orders 24 (from 45), Renovate 25 (from 55), an arrival 21 (from 32).
+  - The others: Complete early 23 (from 31), the roof 24 (from 37; the roof's hint went with D-147), Fixtures 21 (from 36), change orders 24 (from 45), Renovate 25 (from 55), an arrival 21 (from 32).
   - The hints that state a rule or a number are `hintText` in `src/rules/text.ts`, with their numbers from the balance; the glossary keeps the full texts for the tips. Tests hold every hint to the budget.
 - **The checklist's rows keep short:**
   - **A line that doesn't hold shows only what's still missing.** Its parts that hold are done: "A living room or two" says "0 Living Rooms (1–2)" without "1 Dining Room (≤ 1)". A line the play being looked at flips still shows every part, and the line's tip has the whole rule.
@@ -2245,7 +2266,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - `yard.test.ts` parks the car on every pack of up to 8 tiles (2,725 shapes of 8, from 216 of 6): about 3 seconds alone and 6 to 7 in the full suite, so that test has a longer timeout.
 
 ### D-133 · The roof view: the reveal's roof stays on, a Roof button brings it back, and the end screen opens with it
-**Status:** Proposed · 2026-11-10, after playtest 5 (`docs/playtests/playtest-5-findings.md`), with its fix pull request. Extends D-127. For the next playtest on /dev/.
+**Status:** Superseded by D-147 · 2026-11-10: the user took the roof out before the first showing. Was Proposed · 2026-11-10, after playtest 5 (`docs/playtests/playtest-5-findings.md`), with its fix pull request, extending D-127.
 **Decision:**
 - **The reveal's roof stays on.** At the Roofing milestone the roof drops on as before (0.42 s, with `roof-on`), and stays on until the player's next move on the lot, instead of lifting after 1.8 s. The change order and the shop that follow the milestone cover the lot but leave the roof on, so the lot comes back with it on.
 - **The Roof button,** after the camera's: − Fit + Roof, once the Roofing milestone is met (a missed one leaves no roof). It's lit while the roof is on. Its key is T, which was free (R rotates, D demolishes, F fits).
@@ -2659,6 +2680,7 @@ Choose from two or three contracts, each one a client plus a lot.
 
 - **Renovation mode:** the client lives in the house while you do renovations and additions. Revisit once the core is fun.
 - **Upstairs floor:** revisit after the basement.
+- **A roof for the house, with a second storey** (the user's idea, 2026-11-10): D-147 took the top-down roof out because a one-storey roof is a flat slab over the rooms. A second storey would give it height and something to cover. For the next jam session; it's a large rework (rooms on two floors, stairs, the board's layers), and goes with the upstairs floor above.
 - **Tour-order scoring:** the walkthrough as a scoring chain, where some rooms boost every room visited after them. Interesting, but hard for players to predict.
 - **Company HQ screen:** a visual home for meta-progression.
 - **Merged rooms** (the team's idea from playtest 5a, 2026-11-07): two Living Rooms that become one big living room, or two Bedrooms that become a primary bedroom, with a limit so rooms can't merge endlessly. It's D-093's option 4 in another form. Of the three ways sketched in `content-brainstorm.md` §15, the team picked *Extend a room* as the closest: a spare room card grows a room of its type into one bigger room, on the model of M4's Renovate (D-102). Revisit after playtest 4 has tried Renovate.

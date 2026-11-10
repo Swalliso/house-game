@@ -6,7 +6,7 @@
 // - every piece's items under the walls, south in front, as the items layer orders them,
 // - the walls, then the tall items' tops over them (the overhang layer),
 // - the trees' crowns (the canopy).
-// No roof (the photos look inside, under the hero's roof), no digits or badges, and no tint.
+// No digits or badges, and no tint.
 //
 // It paints from the state it's given, never through the board's components, so it can't touch
 // the live board's caches or its car's slide (HouseLayers' lastCar).

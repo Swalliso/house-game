@@ -132,8 +132,6 @@ const CONTROLS: readonly (readonly [keys: string, does: string])[] = [
   ['Mouse wheel', 'Zoom'],
   ['Drag', 'Pan'],
   ['F', 'Fit the lot'],
-  // D-133: the Roof button's key, once the Roofing milestone has put the roof on.
-  ['T', 'Roof on or off, after Roofing'],
   ['Hold Space', 'Speed up the tally'],
   ['Click', 'Skip the tally'],
   ['Esc', 'Cancel'],

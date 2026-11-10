@@ -1935,7 +1935,7 @@
     "license": "CC0-1.0"
   },
   "public/og.png": {
-    "source": "The link preview's picture (D-135): a screenshot of a finished run's house with its roof on, at two screen pixels per art pixel, with a title sign in the game's own style, captured from the game in a headless browser",
+    "source": "The link preview's picture (D-135): a screenshot of a finished run's house, its rooms in view, at two screen pixels per art pixel, with a title sign in the game's own style, captured from the game in a headless browser",
     "author": "Open House team (captured by Claude Code); the sprites in it are LimeZu's cuts (atlas.png), our own drawings and the game's pixel fonts, each under its own record",
     "license": "Own work; the LimeZu sprites in it keep their license (a picture of the game, not the asset)"
   },
