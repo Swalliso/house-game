@@ -39,7 +39,7 @@ import {
 import { audio } from '../audio/audio.ts';
 import { arrivalOf, cardsPhrase, isPlural } from '../hud/household.ts';
 import { settings } from '../settings.ts';
-import { onEvents, onRunReset } from '../store.ts';
+import { onEvents, onRunReset, roofOn } from '../store.ts';
 import { formatNumber } from '../format.ts';
 import { chainOrder } from './chain.ts';
 import { FEEL } from './feel.ts';
@@ -59,6 +59,7 @@ import {
   isHouseRule,
   markToppedOut,
   rhythmPaid,
+  roofed,
   ROOFING_PHASE,
   targetCrossed,
   TOPPED_OUT_RULE,
@@ -187,8 +188,6 @@ export const celebration = signal<{
 export const wash = signal<{ id: number; tier: Tier } | null>(null);
 /** The milestone moment's crossing: the top bar's flag pops (D-124). */
 export const targetHit = signal<{ id: number } | null>(null);
-/** The roof reveal at the Roofing milestone (D-127): the board's roof layer plays it. */
-export const roofReveal = signal<{ id: number } | null>(null);
 /** "Topped out!" over the house, the first week Under one roof holds (D-127). */
 export const toppedOut = signal<{ id: number } | null>(null);
 /**
@@ -230,7 +229,6 @@ export const played = {
   flash: 0,
   settle: 0,
   levelPop: 0,
-  roof: 0,
   wash: 0,
   arrival: 0,
 };
@@ -1125,11 +1123,11 @@ function milestoneBanner(e: Extract<GameEvent, { t: 'milestone' }>, ended: boole
   shake(FEEL.shake.milestonePx);
   if (e.result !== 'failed') {
     afterPaint(() => burstAt('sparkles', document.querySelector('.banner .banner-ribbon')));
-    // The roof reveal (§12, D-127): at the Roofing milestone the house gets its roof for a
-    // moment, under the banner.
+    // The roof reveal (§12, D-127): at the Roofing milestone the house gets its roof, under the
+    // banner, and keeps it until the player's next move on the lot (D-133: store.ts roofOn).
     if (e.phase === ROOFING_PHASE) {
-      roofReveal.value = { id: nextId++ };
-      audio.play('roof-on', { delay: 0.25 });
+      roofOn.value = true;
+      audio.play('roof-on', { delay: FEEL.roof.thumpMs / 1000 });
     }
   }
   return ms;
@@ -1465,6 +1463,12 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
         shopBeat(e);
         sheetBeat(e, after);
       }
+      // The end screen opens with the roof on, the finale's picture, if Roofing put one on
+      // (D-133). Its Roof button looks inside.
+      if (ended && roofed(after) && !roofOn.value) {
+        roofOn.value = true;
+        audio.play('place-room', { rate: 0.75, gain: 0.7, delay: FEEL.roof.thumpMs / 1000 });
+      }
     }
   } finally {
     batch(() => {
@@ -1689,7 +1693,6 @@ onRunReset(() => {
     justArrived.value = null;
     wash.value = null;
     targetHit.value = null;
-    roofReveal.value = null;
     toppedOut.value = null;
     arrivalCard.value = null;
     chainArc.value = null;

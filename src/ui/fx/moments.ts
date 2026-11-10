@@ -43,6 +43,14 @@ export const TOPPED_OUT_RULE = 'underOneRoof';
 export const ROOFING_PHASE = CONTENT.balance.phases.findIndex((p) => p.name === 'Roofing');
 
 /**
+ * Whether the house has its roof: the Roofing milestone has been met (a missed one ends the run
+ * without it). From then on the camera's Roof button can put it on (D-133).
+ */
+export function roofed(s: Pick<RunState, 'milestones'>): boolean {
+  return s.milestones.some((m) => m.phase === ROOFING_PHASE && m.result !== 'failed');
+}
+
+/**
  * The target a tally crosses, if it does: a targetReached right after it, before the next
  * tally (the rules send it once the run total passes the phase's target).
  */

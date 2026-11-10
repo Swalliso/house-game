@@ -19,6 +19,7 @@ import {
   requestEndWeek,
   selectCard,
   toggleDemolish,
+  toggleRoof,
 } from './hud/actions.ts';
 import { Checklist } from './hud/Checklist.tsx';
 import { FirstHints } from './hud/FirstHints.tsx';
@@ -110,6 +111,7 @@ function useKeyboard(): void {
         else if (e.key === '+' || e.key === '=') zoomIn();
         else if (e.key === '-' || e.key === '_') zoomOut();
         else if (e.key === 'f' || e.key === 'F') toggleFit();
+        else if (e.key === 't' || e.key === 'T') toggleRoof();
         return;
       }
       if (e.key === 'Enter') {
@@ -131,6 +133,8 @@ function useKeyboard(): void {
       } else if (e.key === '+' || e.key === '=') zoomIn();
       else if (e.key === '-' || e.key === '_') zoomOut();
       else if (e.key === 'f' || e.key === 'F') toggleFit();
+      // The roof, once Roofing is met (D-133).
+      else if (e.key === 't' || e.key === 'T') toggleRoof();
       else if (e.key === 'Escape') {
         if (busy.value) skip();
         else cancelPlacement();

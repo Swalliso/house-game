@@ -1,18 +1,22 @@
 // Small UI actions shared by the HUD's buttons and the keyboard.
 
-import { computed, signal } from '@preact/signals';
+import { batch, computed, signal } from '@preact/signals';
 import { rules } from '../../rules/index.ts';
 import { audio } from '../audio/audio.ts';
 import { busy, orderStamp, skip } from '../fx/director.ts';
+import { FEEL } from '../fx/feel.ts';
+import { roofed } from '../fx/moments.ts';
 import { copyFallback, settingsOpen } from './modals.ts';
 import {
   appScreen,
   demolishArmed,
   endWeek,
   heldPiece,
+  heldRoom,
   inProgress,
   openJobBoard,
   notice,
+  roofOn,
   run,
   runCode,
   selected,
@@ -64,6 +68,40 @@ export const changeOrderShown = computed(
 );
 /** Notes and toasts sit inside a sheet, not over the board: the shop's or a change order's. */
 export const notesDocked = computed(() => shopShown.value || changeOrderShown.value);
+
+/**
+ * Whether the camera's Roof button can put the roof on now (D-133): once the Roofing milestone
+ * is met, with the lot in view (no sheet over it), no tally playing, and nothing being built.
+ */
+export const canRoof = computed(
+  () =>
+    roofed(run.value) &&
+    !busy.value &&
+    !notesDocked.value &&
+    selected.value === null &&
+    tool.value !== 'demolish',
+);
+
+/**
+ * The camera's Roof button and T (D-133): the roof on, or off to look inside. It comes off
+ * whenever the lot is in view, and goes on when canRoof says so, letting go of a room held in
+ * Inspect, which it would cover.
+ */
+export function toggleRoof(): void {
+  if (notesDocked.value) return;
+  if (roofOn.value) {
+    roofOn.value = false;
+    audio.play('place-yard', { rate: 1.2, gain: 0.5 });
+    return;
+  }
+  if (!canRoof.value) return;
+  batch(() => {
+    if (heldRoom()) heldPiece.value = null;
+    roofOn.value = true;
+  });
+  // The roof's thump as it lands, without the reveal's chime and the music's duck.
+  audio.play('place-room', { rate: 0.75, gain: 0.7, delay: FEEL.roof.thumpMs / 1000 });
+}
 
 export async function copyText(text: string, done = 'Copied'): Promise<void> {
   try {
