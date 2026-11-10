@@ -1648,7 +1648,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **Changes:** D-103 (Accepted): its banner. `implementation-plan.md` §12 has no rule on either.
 
 ### D-127 · The roof reveal at Roofing, and "Topped out!"
-**Status:** Accepted · 2026-11-10, held up in playtest 5 (`docs/playtests/playtest-5-findings.md`), but the reveal is brief and lands at the end of a week, so it's easy to miss. The user asked for a way to bring the roof back after Roofing, which D-133 (reserved) adds. Proposed 2026-11-09, with the juice pull request. §12's roof reveal, and the review's "Topped out!" (`house-systems-review.md` §6).
+**Status:** Accepted · 2026-11-10, held up in playtest 5 (`docs/playtests/playtest-5-findings.md`), but the reveal is brief and lands at the end of a week, so it's easy to miss. The user asked for a way to bring the roof back after Roofing, which D-133 (Proposed) adds: since 2026-11-10 the reveal's roof stays on until the player's next move instead of lifting after 1.8 s, a Roof button (T) puts it back on, and the end screen opens with it on. Proposed 2026-11-09, with the juice pull request. §12's roof reveal, and the review's "Topped out!" (`house-systems-review.md` §6).
 **Decision:**
 - **The roof** is painted from the house model in LimeZu's palette, by fixed rules: a terracotta gable over each column of rooms (the south slope lit, the north in shade, a ridge cap between them), shingles offset like bricks, a fascia along the south eaves, eaves 3 art px past the walls, an ink outline, and a brick chimney on the first room. An L or a T gets a ridge per wing. It's a canvas in the board's `roof` layer, which D-097 reserved.
 - **At the Roofing milestone,** when it's met (on time, early or in overtime), the roof drops onto the house in 0.42 s, holds 1.8 s under the milestone's banner, and lifts off in 0.56 s, with a thump and a bell (`roof-on`). The tiles' digits and badges fade out while it's on. Reduce motion fades it in and out. A missed milestone gets no roof.
@@ -1726,6 +1726,28 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 ## Proposed
 
 *Reserved numbers (2026-11-10): D-115 to D-118 are the layout session's drafts and D-122 the legibility session's; they aren't in this file yet. D-132 to D-134 are playtest 5's fixes, each logged by its own pull request: D-132 one reroll for both rows of the draw, D-133 the roof view, D-134 three more tracks. New entries start at D-135.*
+
+### D-133 · The roof view: the reveal's roof stays on, a Roof button brings it back, and the end screen opens with it
+**Status:** Proposed · 2026-11-10, after playtest 5 (`docs/playtests/playtest-5-findings.md`), with its fix pull request. Extends D-127. For the next playtest on /dev/.
+**Decision:**
+- **The reveal's roof stays on.** At the Roofing milestone the roof drops on as before (0.42 s, with `roof-on`), and stays on until the player's next move on the lot, instead of lifting after 1.8 s. The change order and the shop that follow the milestone cover the lot but leave the roof on, so the lot comes back with it on.
+- **The Roof button,** after the camera's: − Fit + Roof, once the Roofing milestone is met (a missed one leaves no roof). It's lit while the roof is on. Its key is T, which was free (R rotates, D demolishes, F fits).
+  - It puts the roof on only while nothing is being built or tallied and no sheet covers the lot, and is greyed out otherwise. It takes the roof off whenever the lot is in view. Putting it on lets go of a room held in Inspect, which it would cover.
+- **What takes it off,** so it never covers a play: picking any card or supply (placing, a Renovation, installing, a tool), demolishing, holding a room in Inspect, and ending the week (a pass, or completing a milestone early). Holding a yard piece leaves it on. It's off while you build: putting a card back doesn't bring it back.
+- **While it's on,** the roof covers the house as in the reveal, and the rooms' digits and badges fade out with it; the yard's stay. It drops in 0.42 s and lifts in 0.56 s (`FEEL.roof`). The button's drop thumps like the reveal, without its bell or the music's duck. Reduce motion fades it in and out where it stands.
+- **The end screen opens with the roof on** if Roofing put one on: every won run, and a run lost after Roofing. It drops on as the end screen comes up, and Roof or T looks inside. A finished run loaded from the save opens the same way. M6's photo of each milestone stays M6's.
+- **The keys:** once Roofing is met, the build strip's "Scroll zoom" gives its place to "T roof", which is narrower, so the strip still fits its one line at 1280×720. The end screen's strip, and a hidden shop's, say "T look inside" or "T put the roof on". How to play lists T.
+- **A one-time hint** (D-045's first-time hints): "The roof's on" comes the first time the lot is in view after Roofing, while the reveal's roof is still on, and says that picking a card takes it off and that Roof or T puts it back.
+
+**Why:** in playtest 5 the reveal held up, but it "was only briefly visible and kind of happened at the end of a week and was easy to miss", and the end screen showed the house without its roof. They asked for "some sort of button after the roofing phase", and left the design open.
+**Considered:**
+- V for the key, also free. T sits by R and F, the keys for placing and the camera.
+- Hiding the yard's digits too: the roof covers only the rooms, and the yard's labels stay readable beside it.
+- Bringing the roof back when a card is put back: the lot would change under the player's hand. Building turns it off until it's asked for.
+- Taking it off for the shop's buys and the change order's answer: they don't touch the lot, and the roof would lift under the sheet, unseen.
+- Showing the hint when the roof first lifts: it would come mid-play. It comes while the roof is still on.
+
+**Changes:** D-127 (Accepted): the reveal's roof holds until the player's next move instead of 1.8 s (its dated note). `implementation-plan.md` §7 M5a's juice and §12's roof reveal.
 
 ### D-134 · Three more tracks, from the same shortlist
 **Status:** Proposed · 2026-11-10, after playtest 5 (`docs/playtests/playtest-5-findings.md`), with its fix pull request. Extends D-128. For the user's ears on /dev/.
