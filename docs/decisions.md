@@ -1129,6 +1129,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - In the shop, the value is for the next phase's first week, after its start-of-week transforms. Weeks left counts the rest of this phase and the later phases, not overtime.
 - A tie goes to the first host placed. ★ marks every host tied for best, and only when the gain is above 0. A loss is shown in orange (late Bunk Beds can lose Wow once the house has all its Bedrooms).
 - While installing, the host under the pointer drops its badge so its own label stands alone. A crate's fixture options get the shop's line too.
+**2026-11-10 (D-141, Proposed):** a blueprint gets the same kind of line, from `blueprintValue(state, id)`. Its run figure adds up each week left instead of multiplying one week, so it can differ from a fixture's for the same weekly gain. A fixture's line is unchanged.
 
 ### D-081 · M3 rules structure
 **Status:** Accepted · 2026-11-06 (proposed with the M3 pull request; held up in playtest 3, confirmed by the team). Implementation details within D-050, D-051, D-056, and Appendix A · M3a and M3b.
@@ -1853,6 +1854,41 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - More requests: most of playtest 4's ideas (Room for the in-laws, Curb appeal) fight the house rules' Bedroom ranges or need new selectors.
 
 **Changes:** D-011 and D-109 (dated notes). `implementation-plan.md` Appendix B: the clients table and Generic change orders. New content changes the content hash, so run codes from earlier builds won't replay.
+
+### D-141 · Showing what a blueprint is worth, and an icon for each
+**Status:** Proposed · 2026-11-10, with its phase pull request (`phase/blueprint-worth`), from the friction review the user asked for the same day (point 3). Extends D-107. For the user's playtest before it merges. It changes no balance and no rule.
+**Decision:**
+- **Every blueprint on offer says what it would add to your house,** under its rules text: on the shop's cards, on a crate's blueprint options, and on the free Housewarming pick. A blueprint you hold says what it's adding, in the inspect panel.
+- **The numbers come from the rules** (`blueprintValue(state, id)`, beside `fixtureValue`): a week's total with the blueprint in play, less without. The UI only words them.
+  - The first week valued is D-107's: this week on the build screen; in the shop, the next phase's first week, after its start-of-week transforms.
+  - **The run figure adds up each week left,** with nothing more built, instead of multiplying one week by the weeks left. The house's timers run on, Saplings become Trees, a phase effect ends with its phase, a staged checklist line changes with its milestone, and each phase's last week counts as one. Overtime is left out, as in D-107.
+  - A blueprint you hold is valued against the run without it.
+- **Where one week's snapshot would be wrong or empty, the line says so.** The rules read the blueprint's modifier kinds, never its id, so a retuned or new blueprint is valued without a change here.
+  - **Growth** (Good Bones): "+41 Wow a week, growing to +325", and the run figure counts the growth.
+  - **A phase's last week only** (Last-Minute Push): "+621 Wow in a phase's last week", counted once a phase.
+  - **Budget** (Solar Panels): its own line with the coin, "+12 budget over the run". Budget is never turned into Wow.
+  - **Future choices** (Ahead of Schedule): what it adds with the milestones completed early so far, and "+124 Wow a week for each milestone completed early" beside it, never folded in.
+  - **Spec bonuses and links** (Dream Home, Open Concept) need no special case: the tally already reads them.
+- **A blueprint that would add nothing in the weeks left says what it's waiting for,** in a few words from its first modifier with nothing to act on: "No Dark rooms yet", "No pieces with a fixture yet", "No milestone completed early yet", "None of its pieces touch yet" (a link with no group), "Nothing is earning yet". If its pieces are there but a percentage rounds away, it says "Green pieces here earn too little yet". Otherwise "Adds nothing to your house yet".
+- **A blueprint that changes only a run rule the tally doesn't read gets no line.** None of the 18 does today.
+- **Each blueprint has its own icon** (`src/ui/theme/icons.ts`, mapped by `BLUEPRINT_ICONS` in `src/ui/sprites.ts`, so a blueprint without one fails typecheck). They're our own drawings in LimeZu's palette (D-098), 8×8 like a tool's or a fixture's (Dream Home is 9×9), and each draws its name: a yin-yang, a mailbox, a moon, a sprout, a party hat, a sailboat, a floor plan, a timber frame, a house, a barn, a candle, a lawn sign, the sun over a panel, a crown, a house with a heart, an hourglass, a house under glass, a ticked calendar.
+  - They show in the shop's art slot, on crate options, in your goods' blueprint slots, and in the inspect panel's heading.
+  - On a short window (1280×720) the shop's cards have no pictures (`shop.css`), so a blueprint's icon sits beside its title there.
+
+**Why:** the review found a fixture's card said what it was worth and a blueprint's showed only its rules text, under one icon shared by all 18. A blueprint is the bigger purchase, and the free first pick is a new player's first shop decision.
+**Considered:**
+- **One week × weeks left, as D-107 does.** It's simpler to explain, but it reads Good Bones at a tenth of its worth, Last-Minute Push at nothing, and anything on a Sapling or under a phase effect wrong. A fixture's line keeps D-107's sum; changing it is a separate call.
+- **Folding budget into Wow,** or Ahead of Schedule's future milestones into its gain: both would be guesses.
+- **Wording the "needs" line by blueprint id:** the next balance pass would have to keep a table in step.
+- **Blue-paper icons, white on blue, like the old shared one:** 18 line drawings at 8×8 are hard to tell apart. Color does that job.
+- **12×12 icons:** more room, but they'd stand taller than a tool's in your goods.
+
+**Changes:** D-107 (Accepted): a dated note. D-087: the shop's blueprint cards. The rules gain `blueprintValue()` (`src/rules/run.ts`, with `src/rules/blueprint-value.ts`).
+**Known gaps:**
+- "If the house stays as it is" is a floor for most blueprints: a house keeps growing. The tip says so.
+- Waterfront says "No pieces touching the Pond or the Creek yet" even on a lot with neither.
+- A blueprint whose value is 0 in the first week but not later (Country Living beside a Sapling) leads with the run figure alone.
+- Valuing a blueprint tallies every week left twice. Three on a shelf took about 3 ms per state in a dev build (18 took 18 ms), and the rules keep each state's values.
 
 ### D-139 · The company's record: bests, the next verdict, and a portfolio
 **Status:** Proposed · 2026-11-10, with its phase pull request (`phase/company-record`), from the friction and replayability review the user asked for the same day. The user picked it as the first step ("Yes, build it"). For the user's playtest before it merges. A first, power-free step toward D-015 and D-016, which stay Proposed.
