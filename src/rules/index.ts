@@ -154,6 +154,9 @@ export type CrewId = 'generalContractor' | 'landscaper' | 'architect';
 /** Clients (M4a): who the house is for. Each brings a checklist, tastes, and a pool. */
 export type ClientId = 'hendersons' | 'vladislav' | 'barkers' | 'juniper' | 'dale';
 
+/** Lot traits (D-119): what a lot has that changes how you'd build there. */
+export type LotTraitId = 'creekside' | 'wooded';
+
 /** The household's arrivals (M4b, D-103): who moves in, by client. */
 export type ArrivalId = 'twins' | 'grandma' | 'renfield' | 'nana' | 'rowan' | 'ivy';
 
@@ -513,6 +516,23 @@ export interface CrewDef {
   startReserve?: readonly PieceId[];
 }
 
+/**
+ * A lot trait (D-119): a chip on the contract's card. The lot has it while it holds at least
+ * `min` tiles of `terrain`. Its modifiers join the run's, like a crew's, and a trait that has
+ * some stays on the checklist all run.
+ */
+export interface LotTraitDef {
+  id: LotTraitId;
+  /** The chip: "Creekside". */
+  name: string;
+  /** The tip's last line, after what the modifiers say: "Only a Driveway crosses it." */
+  blurb: string;
+  when: { terrain: TerrainId; min: number };
+  modifiers: readonly Modifier[];
+  /** Clients it suits: their contract marks the chip with the up icon. */
+  suits?: readonly ClientId[];
+}
+
 export interface SetDef {
   id: SetId;
   name: string;
@@ -704,6 +724,8 @@ export interface LotBalance {
   loneTrees: Range;
   /** Percent of lots with a creek. */
   creekPct: number;
+  /** Percent of creek lots that keep their pond (D-119); a lot without a creek always has one. */
+  pondPctCreek: number;
   /** The creek stays at least this many rows clear of the street edge. */
   creekStreetGap: number;
   pondSize: Range;
@@ -833,6 +855,7 @@ export interface Content {
   upgrades: Readonly<Record<UpgradeId, UpgradeDef>>;
   crates: Readonly<Record<CrateId, CrateDef>>;
   changeOrders: Readonly<Record<ChangeOrderId, ChangeOrderDef>>;
+  lotTraits: Readonly<Record<LotTraitId, LotTraitDef>>;
   balance: Balance;
 }
 
@@ -1243,7 +1266,9 @@ export type ModSource =
   | { kind: 'upgrade'; id: UpgradeId }
   | { kind: 'tool'; id: ToolId }
   /** M4b: a phase effect (Heat wave) while it runs. */
-  | { kind: 'changeOrder'; id: ChangeOrderId };
+  | { kind: 'changeOrder'; id: ChangeOrderId }
+  /** D-119: a trait of the lot (Creekside), all run. */
+  | { kind: 'lot'; id: LotTraitId };
 
 export interface BreakdownLine {
   /** Plain language: "Touching Trees or Quiet neighbors (2)". */
@@ -1765,7 +1790,7 @@ export {
   shapeCells,
   uniqueRotations,
 } from './grid.ts';
-export { isSunny, terrainAt } from './lot.ts';
+export { isSunny, lotTraits, terrainAt } from './lot.ts';
 export { DRAW_ROWS, rowOf } from './draw.ts';
 export {
   article,
@@ -1779,6 +1804,7 @@ export {
   fixtureText,
   glossary,
   houseConditionText,
+  lotTraitText,
   modifierText,
   multNumber,
   regionText,

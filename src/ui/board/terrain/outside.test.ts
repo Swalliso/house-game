@@ -9,6 +9,9 @@ import { dim, outsideSlices, roadSlices, sliceSize, waterSlices, type Slice } fr
 import { streetRows, streetTiles } from './street.ts';
 import { waterPlan } from './water.ts';
 
+/** The real lot balance with a creek on every lot (D-119 put one on about a quarter). */
+const CREEK_LOTS = { ...BALANCE.lot, creekPct: 100 };
+
 const pieces = (s: Slice) => s.tiles.map((t) => `${t.sx},${t.sy}:${t.id}@${t.col},${t.row}`);
 
 describe('the road', () => {
@@ -74,7 +77,7 @@ describe('the creek’s mouths', () => {
 
   it('match every seed’s shore, wherever its creek leaves', () => {
     for (const seed of ['jbf3zs', 'abc123', 'house7', 's7', 's28']) {
-      const lot = generateLot(seed, BALANCE.lot);
+      const lot = generateLot(seed, CREEK_LOTS);
       const plan = waterPlan(lot);
       const piece = new Map(plan.tiles.map((t) => [`${t.sx},${t.sy}`, t.piece]));
       for (const s of waterSlices(lot)) {
@@ -103,7 +106,7 @@ describe('the creek’s mouths', () => {
   });
 
   it('come with the road on every lot', () => {
-    const lot = generateLot('house7', BALANCE.lot);
+    const lot = generateLot('house7', CREEK_LOTS);
     const all = outsideSlices(lot);
     expect(all.filter((s) => s.kind === 'road')).toHaveLength(2);
     expect(all.filter((s) => s.kind === 'water').length).toBeGreaterThan(0);

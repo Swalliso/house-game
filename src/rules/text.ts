@@ -10,6 +10,7 @@ import type {
   FeatureId,
   FixtureDef,
   HouseCondition,
+  LotTraitDef,
   Modifier,
   PieceCondition,
   PieceDef,
@@ -727,6 +728,15 @@ export function fixtureText(content: Content, def: FixtureDef): FixtureText {
 
 export function blueprintText(content: Content, def: BlueprintDef): string[] {
   return def.modifiers.map((m) => modifierText(content, m));
+}
+
+/**
+ * A lot trait's tip (D-119): what its modifiers do, all run, then its blurb. "Pieces touching
+ * the Creek earn +50%, all run. Only a Driveway crosses it."
+ */
+export function lotTraitText(content: Content, def: LotTraitDef): string {
+  const pays = def.modifiers.map((m) => `${modifierText(content, m)}, all run.`);
+  return [...pays, def.blurb].join(' ');
 }
 
 // ---------------------------------------------------------------------------------------

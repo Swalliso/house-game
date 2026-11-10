@@ -15,6 +15,7 @@ import { Fragment, type ComponentChildren } from 'preact';
 import {
   CONTENT,
   glossary,
+  lotTraitText,
   multNumber,
   rules,
   SCORE_LABELS,
@@ -318,6 +319,10 @@ function HowToPlayText() {
           </li>
           <li>
             <b>The pond and the creek</b> give views.
+          </li>
+          <li>
+            <b>A creek lot</b> is marked {CONTENT.lotTraits.creekside.name} on the job board.{' '}
+            {lotTraitText(CONTENT, CONTENT.lotTraits.creekside)}
           </li>
           <li>
             <b>The street</b> is Loud.

@@ -23,6 +23,7 @@ import { CRATES } from './crates.ts';
 import { CREWS } from './crews.ts';
 import { FEATURES } from './features.ts';
 import { FIXTURES } from './fixtures.ts';
+import { LOT_TRAITS } from './lot-traits.ts';
 import { PIECES } from './pieces.ts';
 import { SETS } from './sets.ts';
 import { TOOLS } from './tools.ts';
@@ -42,6 +43,7 @@ export const CONTENT: Content = {
   upgrades: UPGRADES,
   crates: CRATES,
   changeOrders: CHANGE_ORDERS,
+  lotTraits: LOT_TRAITS,
   balance: BALANCE,
 };
 
@@ -373,6 +375,30 @@ export function validateContent(content: Content): string[] {
         ...modifierProblems(content, m, `crew ${key} modifier ${k}`, {
           fixture: false,
           drawWeight: true,
+        }),
+      ),
+    );
+  }
+
+  // D-119: a lot trait reads a terrain that sits on the lot, and pays like a crew.
+  for (const [key, trait] of Object.entries(content.lotTraits)) {
+    const where = `lot trait ${key}`;
+    if (trait.id !== key) problems.push(`${where}: id is "${trait.id}"`);
+    const t = trait.when.terrain as string;
+    if (t === 'street' || !content.features[trait.when.terrain]) {
+      problems.push(`${where}: "${t}" isn't a terrain on the lot`);
+    }
+    if (!Number.isInteger(trait.when.min) || trait.when.min < 1) {
+      problems.push(`${where}: min must be a whole number ≥ 1`);
+    }
+    for (const id of trait.suits ?? []) {
+      if (!content.clients[id]) problems.push(`${where}: unknown client "${id}"`);
+    }
+    trait.modifiers.forEach((m, k) =>
+      problems.push(
+        ...modifierProblems(content, m, `${where} modifier ${k}`, {
+          fixture: false,
+          drawWeight: false,
         }),
       ),
     );

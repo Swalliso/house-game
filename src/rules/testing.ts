@@ -24,6 +24,8 @@ import type {
   FixtureId,
   HouseState,
   LotBalance,
+  LotTraitDef,
+  LotTraitId,
   Modifier,
   PieceDef,
   PieceId,
@@ -864,6 +866,8 @@ export const TEST_LOT_BALANCE: LotBalance = {
   woodsClusterSize: [15, 30],
   loneTrees: [6, 10],
   creekPct: 70,
+  // Every test lot keeps its pond, as before D-119.
+  pondPctCreek: 100,
   creekStreetGap: 6,
   pondSize: [2, 3],
   boulders: [6, 10],
@@ -1214,6 +1218,28 @@ export const TEST_CHANGE_ORDERS: Record<ChangeOrderId, ChangeOrderDef> = {
   },
 };
 
+/**
+ * The lot traits (D-119), without modifiers: generated test lots have creeks on 70% of seeds,
+ * and Creekside would change their scores. Tests of Creekside give it its pay (modifiers.test.ts).
+ */
+export const TEST_LOT_TRAITS: Record<LotTraitId, LotTraitDef> = {
+  creekside: {
+    id: 'creekside',
+    name: 'Creekside',
+    blurb: 'Only a Driveway crosses it.',
+    when: { terrain: 'creek', min: 1 },
+    modifiers: [],
+  },
+  wooded: {
+    id: 'wooded',
+    name: 'Wooded',
+    blurb: 'Lots of Trees.',
+    when: { terrain: 'tree', min: 100 },
+    modifiers: [],
+    suits: ['vladislav'],
+  },
+};
+
 export const TEST_CONTENT: Content = {
   pieces: TEST_PIECES,
   features: TEST_FEATURES,
@@ -1226,6 +1252,7 @@ export const TEST_CONTENT: Content = {
   upgrades: TEST_UPGRADES,
   crates: TEST_CRATES,
   changeOrders: TEST_CHANGE_ORDERS,
+  lotTraits: TEST_LOT_TRAITS,
   balance: TEST_BALANCE,
 };
 

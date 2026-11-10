@@ -374,6 +374,7 @@ const XMULT_ORDER: Record<XMultTerm['source']['kind'], number> = {
   crew: 4,
   client: 4,
   changeOrder: 4,
+  lot: 4,
 };
 
 /** A source as a key, so one source multiplies the week once (two Chandeliers are one source). */

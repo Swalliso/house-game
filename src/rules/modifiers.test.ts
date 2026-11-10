@@ -24,10 +24,11 @@ import { CONTENT } from '../content/index.ts';
 import { drawHand, drawWeights } from './draw.ts';
 import { withFixture } from './fixtures.ts';
 import { computeLayout, isLayoutModifier, type Layout } from './layout.ts';
-import { ruleFrom, runModifiers, type ActiveMod } from './modifiers.ts';
+import { lotFromRows } from './lot.ts';
+import { ruleFrom, runModifiers, sourceName, type ActiveMod } from './modifiers.ts';
 import { createRules, type Rules } from './run.ts';
 import { roundHalfUp, tallyHouse } from './scoring.ts';
-import { blueprintText, modifierText } from './text.ts';
+import { blueprintText, lotTraitText, modifierText } from './text.ts';
 import {
   emptyRows,
   houseFrom,
@@ -1312,6 +1313,71 @@ describe('the last week and early milestones in a real run', () => {
       ['Ahead of Schedule', 120, 100, 120],
     ]);
     expect(t.total).toBe(10);
+  });
+});
+
+// ---------------------------------------------------------------------------------------
+// Lot traits (D-119): the lot as a source of run modifiers.
+
+/** Test content where Creekside pays as the real one does (the test traits pay nothing). */
+const CREEKSIDE: Content = {
+  ...C,
+  lotTraits: {
+    ...C.lotTraits,
+    creekside: {
+      ...C.lotTraits.creekside,
+      modifiers: [{ kind: 'earn', target: { touching: { feature: 'creek' } }, pct: 50 }],
+    },
+  },
+};
+
+/** The 10 × 10 lot with a creek down column 5. */
+const CREEK_LOT = L.map((r) => `${r.slice(0, 5)}C${r.slice(6)}`);
+
+describe('lot traits (D-119)', () => {
+  const lotMods = (rows: readonly string[]) =>
+    runModifiers(CREEKSIDE, {
+      setup: setup('mods'),
+      blueprints: [],
+      house: { lot: lotFromRows(rows) },
+    }).filter((m) => m.source.kind === 'lot');
+
+  it("join the run's modifiers when the lot has the trait, named after it", () => {
+    expect(lotMods(CREEK_LOT).map((m) => [m.source, m.mod.kind])).toEqual([
+      [{ kind: 'lot', id: 'creekside' }, 'earn'],
+    ]);
+    expect(lotMods(L)).toEqual([]);
+    // A new run's setup rules have no house, so no lot.
+    const noHouse = runModifiers(CREEKSIDE, { setup: setup('mods'), blueprints: [] });
+    expect(noHouse.some((m) => m.source.kind === 'lot')).toBe(false);
+    expect(sourceName(CREEKSIDE, { kind: 'lot', id: 'creekside' })).toBe('Creekside');
+  });
+
+  it('Creekside: a piece touching the creek earns +50%, on a Creekside line', () => {
+    const r = createRules(CREEKSIDE);
+    // The right Bedroom (x 3–4) touches the creek; the left one (x 1–2) touches only it.
+    const s = {
+      ...r.newRun(setup('creek')),
+      house: houseFrom(CREEKSIDE, CREEK_LOT, [
+        ['bedroom', 3, 0],
+        ['bedroom', 1, 0],
+      ]),
+    };
+    const t = r.currentTally(s);
+    // Each 3 + 1 (a Quiet neighbor) = 4; by the creek × 1.5 = 6.
+    expect(scoreOf(t, 1)).toMatchObject({ points: 4, pct: 50, earned: 6 });
+    expect(scoreOf(t, 1).lines.filter((l) => l.op === 'pct')).toEqual([
+      { label: 'Creekside', op: 'pct', value: 50, from: [] },
+    ]);
+    expect(scoreOf(t, 2)).toMatchObject({ points: 4, pct: 0, earned: 4 });
+  });
+
+  it('read as a tip: what they pay, all run, then the blurb', () => {
+    const creekside = CONTENT.lotTraits.creekside;
+    expect(lotTraitText(CONTENT, creekside)).toBe(
+      'Pieces touching the Creek earn +50%, all run. Only a Driveway crosses it.',
+    );
+    expect(lotTraitText(CONTENT, CONTENT.lotTraits.wooded)).toBe(CONTENT.lotTraits.wooded.blurb);
   });
 });
 
