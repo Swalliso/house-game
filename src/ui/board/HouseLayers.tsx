@@ -700,8 +700,7 @@ export function LabelsLayer({
         });
         const fixture = piece.fixture ? CONTENT.fixtures[piece.fixture.id] : null;
         return (
-          // A room's labels fade under the roof while it's on (D-133, fx.css); the yard's stay.
-          <div key={piece.uid} class={room ? 'piece-labels in-house' : 'piece-labels'}>
+          <div key={piece.uid} class="piece-labels">
             {l.fixture && fixture && (
               <Badge
                 spot={l.fixture}

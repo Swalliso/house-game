@@ -10,18 +10,8 @@ import type { ComponentChildren } from 'preact';
 import { CONTENT, rules } from '../../rules/index.ts';
 import { isFit } from '../board/camera.ts';
 import { busy } from '../fx/director.ts';
-import { roofed } from '../fx/moments.ts';
 import { Keycap } from '../kit/kit.tsx';
-import {
-  movingUid,
-  renovateUids,
-  roofOn,
-  run,
-  selected,
-  selection,
-  tentative,
-  tool,
-} from '../store.ts';
+import { movingUid, renovateUids, run, selected, selection, tentative, tool } from '../store.ts';
 import { pickKeys, shopHidden } from './actions.ts';
 import './hints.css';
 
@@ -71,22 +61,6 @@ function FitHint({ short = false }: { short?: boolean }) {
   return <Hint keys={['F']}>{fit ? 'back to your zoom' : 'fit the lot'}</Hint>;
 }
 
-/**
- * T puts the roof on and takes it off once the Roofing milestone is met (D-133). On the build
- * screen's full strip it takes Scroll's place, in a word no wider ("roof"), so the strip never
- * outgrows its one line; elsewhere it says what it does now.
- */
-function RoofHint({ short = false }: { short?: boolean }) {
-  if (short) {
-    return (
-      <Hint keys={['T']} extra>
-        roof
-      </Hint>
-    );
-  }
-  return <Hint keys={['T']}>{roofOn.value ? 'look inside' : 'put the roof on'}</Hint>;
-}
-
 export function Hints() {
   const s = run.value;
   let hints: ComponentChildren;
@@ -108,12 +82,9 @@ export function Hints() {
         <Hint keys={[...keys]}>accept</Hint>
       );
   } else if (s.screen === 'shop') {
-    // The sheet covers the lot, so F and T only mean something once the shop is hidden.
+    // The sheet covers the lot, so F only means something once the shop is hidden.
     hints = shopHidden.value ? (
-      <>
-        <FitHint />
-        {roofed(s) && <RoofHint />}
-      </>
+      <FitHint />
     ) : (
       // The sheet's own foot says where to sell, so a short window leaves these out.
       <>
@@ -122,13 +93,8 @@ export function Hints() {
       </>
     );
   } else if (s.screen !== 'build') {
-    // The end screen: it opens with the roof on, and T looks inside (D-133).
-    hints = (
-      <>
-        <FitHint />
-        {roofed(s) && <RoofHint />}
-      </>
-    );
+    // The end screen.
+    hints = <FitHint />;
   } else if (tool.value === 'demolish') {
     hints = (
       <>
@@ -175,13 +141,9 @@ export function Hints() {
       <>
         {cards > 0 && <Hint keys={[cards > 1 ? `1–${cards}` : '1']}>pick a card</Hint>}
         <Hint keys={['D']}>demolish</Hint>
-        {roofed(s) ? (
-          <RoofHint short />
-        ) : (
-          <Hint keys={['Scroll']} extra>
-            zoom
-          </Hint>
-        )}
+        <Hint keys={['Scroll']} extra>
+          zoom
+        </Hint>
         <FitHint short />
         <Hint keys={['Enter']}>pass</Hint>
       </>

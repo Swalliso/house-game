@@ -5,11 +5,9 @@
 
 import type { ComponentChildren, VNode } from 'preact';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { RunState } from '../../rules/index.ts';
 import { zoom } from '../board/camera.ts';
 import { busy } from '../fx/director.ts';
-import { ROOFING_PHASE } from '../fx/moments.ts';
-import { movingUid, roofOn, run, selected, source, tentative, tool } from '../store.ts';
+import { movingUid, run, selected, source, tentative, tool } from '../store.ts';
 import { shopHidden } from './actions.ts';
 import { Hints } from './Hints.tsx';
 
@@ -89,7 +87,6 @@ afterEach(() => {
   tentative.value = null;
   movingUid.value = null;
   tool.value = 'build';
-  roofOn.value = false;
 });
 
 describe('the F hint', () => {
@@ -201,10 +198,9 @@ describe("the strip's keys for M4's plays", () => {
   });
 });
 
-describe("the roof's key (D-133)", () => {
-  /** Every milestone up to Roofing, met. */
-  const toRoofing = (): RunState['milestones'] =>
-    Array.from({ length: ROOFING_PHASE + 1 }, (_, phase) => ({
+describe('the camera keys after Roofing (D-147)', () => {
+  it('keeps Scroll on the build strip, and has no key for a roof', () => {
+    const met = Array.from({ length: 4 }, (_, phase) => ({
       phase,
       result: 'onTime' as const,
       target: 0,
@@ -213,24 +209,10 @@ describe("the roof's key (D-133)", () => {
       overtimeUsed: 0,
       reward: { score: 0, budget: 0, interest: 0 },
     }));
-
-  it("takes Scroll's place on the build strip once Roofing is met, in a word no wider", () => {
-    run.value = { ...start, screen: 'build' };
-    expect(strip().some((h) => h.keys.includes('T'))).toBe(false);
+    run.value = { ...start, screen: 'build', milestones: met };
     expect(strip()).toContainEqual({ keys: ['Scroll'], words: 'zoom' });
-    run.value = { ...start, screen: 'build', milestones: toRoofing() };
-    expect(strip().some((h) => h.keys.includes('Scroll'))).toBe(false);
-    expect(strip()).toContainEqual({ keys: ['T'], words: 'roof' });
-  });
-
-  it('says what T does on the end screen, which opens with the roof on', () => {
-    run.value = { ...start, screen: 'won', milestones: toRoofing() };
-    roofOn.value = true;
-    expect(strip()).toContainEqual({ keys: ['T'], words: 'look inside' });
-    roofOn.value = false;
-    expect(strip()).toContainEqual({ keys: ['T'], words: 'put the roof on' });
-    // A run lost before Roofing has no roof to put on.
-    run.value = { ...start, screen: 'lost' };
+    expect(strip().some((h) => h.keys.includes('T'))).toBe(false);
+    run.value = { ...start, screen: 'won', milestones: met };
     expect(strip().some((h) => h.keys.includes('T'))).toBe(false);
   });
 });

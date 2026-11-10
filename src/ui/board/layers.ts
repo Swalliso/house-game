@@ -31,7 +31,7 @@ export const LAYER = {
   walls: 5,
   /** Tall items above their own footprint: furniture over the north wall, outbuilding roofs. */
   overhang: 6,
-  /** The roof, when the house is shown from outside (on demand). */
+  /** Kept for a roof over the house (D-097). Nothing draws here since D-147 took the roof out. */
   roof: 7,
   /** Tree tops above their own cells, over the lot and the row above it (canvas). */
   canopy: 8,

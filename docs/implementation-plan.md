@@ -1184,13 +1184,13 @@ After M4 and before M5b (D-097's juice note): the reward feedback on M5a's art, 
 - distinct moments for a set completing, a Rhythm payout, a find, opening a crate, a Rare in the shop, and a spec being met
 - M4's moments, beyond the simple pops M4 gives them (`house-systems-review.md` §6): a Renovation's level-up (M4 pops the room's stars, D-111), an arrival and the arrivals' markers on the progress bar, a change order's stamp, a house rule met or lost, and "Topped out!" the first week Under one roof holds
 - screen shake and particles, with Reduce motion, the Screen shake slider, and the Flashing toggle
-- the roof reveal at the Roofing milestone. After playtest 5, D-133 keeps the reveal's roof on until the player's next move, adds a Roof button (T) to put it back on, and opens the end screen with it on.
+- the roof reveal at the Roofing milestone. After playtest 5, D-133 keeps the reveal's roof on until the player's next move, adds a Roof button (T) to put it back on, and opens the end screen with it on. *D-147 (2026-11-10) took the roof out: the reveal, the button and the end screen's roof.*
 - D-094's option 1, chosen 2026-11-10: the tally plays pieces depth first along what boosts what, with an arc from each booster, and the placement preview draws the same arcs. Options 2–4 wait until after the jam.
 - **Its playtest:**
   - Do big moments feel big, and small ones stay out of the way?
   - Is anything too slow or too flashy?
   - Does Huge come too often (D-124's best-week clause)?
-- **Played in playtest 5 (2026-11-10, with M5b; `docs/playtests/playtest-5-findings.md`):** the Good, Great and Huge weeks all land, and the user liked the tally, the doorbell and the arrivals. The roof reveal is easy to miss, so D-133 adds a roof view to bring it back.
+- **Played in playtest 5 (2026-11-10, with M5b; `docs/playtests/playtest-5-findings.md`):** the Good, Great and Huge weeks all land, and the user liked the tally, the doorbell and the arrivals. The roof reveal is easy to miss, so D-133 adds a roof view to bring it back. *The user took the roof out before the first showing (D-147).*
 
 ### M5b · Sound and music
 
@@ -1209,7 +1209,7 @@ After M4 (D-097). The sound half of the feel pass (D-058 and §12).
 
 - **The full sim (§8):** the planner bot, early-completion variants, and per-client and per-crew sweeps.
 - Tune targets, prices, rewards, rarity weights, Mult values, and each client's `targetPct`.
-- **The end screen:** the finished house captioned "It's a house.", a photo of the house at each milestone, the score with its verdict (Fixer-Upper to Dream Home), and a copyable result line (with a fallback for itch.io's iframe). The result line, its link to the same lot and the link preview are D-135. The photos are D-136: a strip of polaroids under the roofed house, one per resolved milestone, all through one frame so the house grows in place, dealt in with a soft flick and shown larger on a click.
+- **The end screen:** the finished house captioned "It's a house.", a photo of the house at each milestone, the score with its verdict (Fixer-Upper to Dream Home), and a copyable result line (with a fallback for itch.io's iframe). The result line, its link to the same lot and the link preview are D-135. The photos are D-136: a strip of polaroids under the finished house (it had its roof on until D-147), one per resolved milestone, all through one frame so the house grows in place, dealt in with a soft flick and shown larger on a click.
 - A codex, if time allows.
 - Bug fixes from every earlier playtest's list.
 - **Playtest 6:** play three full runs with different clients and crews. Would you show this to the group?
@@ -1464,7 +1464,7 @@ Intensity is measured against **pace**: `max(1, (this phase's target − the sco
   - when the week's count-up is about to cross a milestone target, its last stretch slows to 0.5×, and the top bar's flag pops with stars as it crosses. The run total only moves in the count-up, so no piece crosses the line, and the flag takes the zoom's place (D-124).
   - a drumroll, then a sting
   - under 2.5 s, and a click skips it
-- **The roof reveal:** at the Roofing milestone (D-018) the house gets its roof, which stays on until the player's next move on the lot. From then on the camera's Roof button (T) puts it back on, and the end screen opens with it on (D-133). The end screen shows a photo of the house at each milestone, as Combolands does.
+- **The roof reveal:** removed by D-147 (2026-11-10). A one-storey roof seen from above is a flat slab over the rooms, so nothing draws one: Roofing is a milestone like the others, and the end screen shows the rooms. (It was: at the Roofing milestone the house gets its roof, which stays on until the player's next move; a Roof button (T) puts it back on, and the end screen opens with it on, D-133.) The end screen shows a photo of the house at each milestone, as Combolands does.
 - **Shop and crates:**
   - crates glow by rarity before they open, as Hearthstone packs do
   - Rare goods arrive with a shimmer and a sound

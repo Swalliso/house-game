@@ -1,5 +1,5 @@
 /* The juice pull request's pieces (D-124 to D-127): the particles' canvas, the celebration
-   ladder's pile and wash, the roof reveal, "Topped out!", the arrival's card, and the popups
+   ladder's pile and wash, "Topped out!", the arrival's card, and the popups
    for a house rule and the doorbell. Colors are tokens (theme/tokens.css). Transforms are only
    for the short tweens: the pile's flight, the card's slide, the plaque's pop. */
 
@@ -208,27 +208,6 @@
 .reduce-motion .chain-arc .arc-end {
   animation: none;
   opacity: 1;
-}
-
-/* --- The roof (MomentLayers.tsx): over the house, under the canopy and the labels --------- */
-
-.house-roof {
-  position: absolute;
-  left: 0;
-  top: 0;
-  z-index: var(--z-roof);
-  image-rendering: pixelated;
-  pointer-events: none;
-}
-
-/* While it's on (D-133), the house's digits and badges fade out as it drops and back as it
-   lifts: it's the house from outside. The yard's stay. The times are FEEL.roof's (Board.tsx). */
-.board .piece-labels.in-house {
-  transition: opacity var(--roof-lift-ms) ease-in;
-}
-.board.roof-on .piece-labels.in-house {
-  opacity: 0;
-  transition-duration: var(--roof-drop-ms);
 }
 
 /* --- "Topped out!" over the top of the house -------------------------------------------- */

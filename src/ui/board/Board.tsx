@@ -33,8 +33,7 @@ import { FEEL } from '../fx/feel.ts';
 import { shakeOffsets } from '../fx/juice.ts';
 import { formatNumber, signed } from '../format.ts';
 import { causeSuffix, hiddenPart, mainCause, partLine } from './causes.ts';
-import { canRoof, changeOrderShown, shopShown, toggleRoof } from '../hud/actions.ts';
-import { roofed } from '../fx/moments.ts';
+import { changeOrderShown, shopShown } from '../hud/actions.ts';
 import { Icon } from '../kit/kit.tsx';
 import {
   activePlay,
@@ -53,7 +52,6 @@ import {
   packPlay,
   preview,
   renovateUids,
-  roofOn,
   rotation,
   run,
   selected,
@@ -115,7 +113,7 @@ import {
   WallsLayer,
 } from './HouseLayers.tsx';
 import { layerVars } from './layers.ts';
-import { ChainArc, PreviewArcs, RoofLayer, ToppedOut } from './MomentLayers.tsx';
+import { ChainArc, PreviewArcs, ToppedOut } from './MomentLayers.tsx';
 import { wobble } from './piece-fx.ts';
 import { Outline, TerrainLayer, YardTint } from './TerrainLayer.tsx';
 import './board-m2.css';
@@ -124,11 +122,6 @@ import './install-gains.css';
 
 /** The layers' z-indexes as CSS variables, set once on the board element. */
 const LAYER_VARS = layerVars();
-/** The roof's times, for the labels that fade under it (fx.css). */
-const ROOF_VARS = {
-  '--roof-drop-ms': `${FEEL.roof.dropMs}ms`,
-  '--roof-lift-ms': `${FEEL.roof.liftMs}ms`,
-};
 
 /** The scroll container's padding (app.css), kept clear around the board. */
 const PAD = 6;
@@ -742,8 +735,6 @@ export function Board() {
     // Under the shop's sheet or a change order's (M4b): the water and the animated props hold
     // still (terrain.css).
     shopShown.value || changeOrderShown.value ? 'covered' : '',
-    // The roof's on (D-133): the house's digits and badges fade under it (fx.css).
-    roofOn.value ? 'roof-on' : '',
   ].join(' ');
 
   return (
@@ -773,7 +764,6 @@ export function Board() {
           class={boardClass}
           style={{
             ...LAYER_VARS,
-            ...ROOF_VARS,
             width: `${lot.width * px}px`,
             height: `${boardRows(lot.height) * px}px`,
           }}
@@ -793,7 +783,6 @@ export function Board() {
           {overhangLayer}
           {highlightsLayer}
           <ChainArc lot={lot} scale={scale} />
-          <RoofLayer lot={lot} scale={scale} model={model} />
           {labelsLayer}
           <ToppedOut scale={scale} model={model} />
           {demolishing && <DemolishTarget scale={scale} />}
@@ -1636,15 +1625,11 @@ function PopupLayer({ scale }: { scale: number }) {
   );
 }
 
-/**
- * The zoom buttons in the board's corner, and Roof once the Roofing milestone is met (D-133).
- * Keys: + and − zoom, F toggles Fit, T the roof (App.tsx).
- */
+/** The zoom buttons in the board's corner. Keys: + and − zoom, F toggles Fit (App.tsx). */
 function CameraControls() {
   const fit = isFit.value;
-  const on = roofOn.value;
   return (
-    <div class="camera-controls" role="group" aria-label="View">
+    <div class="camera-controls" role="group" aria-label="Zoom">
       <button
         type="button"
         title="Zoom out (−)"
@@ -1672,18 +1657,6 @@ function CameraControls() {
       >
         +
       </button>
-      {roofed(run.value) && (
-        <button
-          type="button"
-          class={on ? 'on' : ''}
-          aria-pressed={on}
-          title={on ? 'Take the roof off to look inside (T)' : 'Put the roof on (T)'}
-          disabled={!on && !canRoof.value}
-          onClick={() => toggleRoof()}
-        >
-          Roof
-        </button>
-      )}
     </div>
   );
 }

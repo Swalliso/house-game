@@ -106,13 +106,6 @@ export const FEEL = {
     rareDelayMs: 280,
   },
 
-  /**
-   * The roof (§12, D-127, D-133): it drops onto the house from `dropPx` art px up, and lifts off
-   * the same way, in real time; the tiles' digits and badges under it fade as it moves. Its
-   * thump sounds `thumpMs` into the drop, as it lands. It stays on until something takes it off.
-   */
-  roof: { dropMs: 420, liftMs: 560, dropPx: 18, thumpMs: 250 },
-
   /** The parked car slides along the drive to its new spot when the drive grows (D-126). */
   car: { slideMs: 900 },
 
@@ -455,9 +448,8 @@ export const FEEL = {
 
   /**
    * The end screen's photos (M6, D-136): a polaroid for each milestone, dealt onto the table one
-   * after another once the end screen is up and the roof has landed (roof.dropMs), each with a
-   * soft flick as it lands, its picture developing from a warm blank. Reduce motion puts them
-   * all down at once, developed.
+   * after another once the end screen is up, each with a soft flick as it lands, its picture
+   * developing from a warm blank. Reduce motion puts them all down at once, developed.
    */
   photos: {
     delayMs: 650,
