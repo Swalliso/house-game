@@ -107,10 +107,11 @@ export const FEEL = {
   },
 
   /**
-   * The roof reveal at the Roofing milestone (§12, D-127): the roof drops onto the house, holds
-   * with the milestone's banner, and lifts off again, in real time.
+   * The roof (§12, D-127, D-133): it drops onto the house from `dropPx` art px up, and lifts off
+   * the same way, in real time; the tiles' digits and badges under it fade as it moves. Its
+   * thump sounds `thumpMs` into the drop, as it lands. It stays on until something takes it off.
    */
-  roof: { dropMs: 420, holdMs: 1800, liftMs: 560, dropPx: 18 },
+  roof: { dropMs: 420, liftMs: 560, dropPx: 18, thumpMs: 250 },
 
   /** The parked car slides along the drive to its new spot when the drive grows (D-126). */
   car: { slideMs: 900 },

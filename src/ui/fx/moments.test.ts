@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CONTENT, type GameEvent, type PieceScore, type RunSetup } from '../../rules/index.ts';
+import {
+  CONTENT,
+  type GameEvent,
+  type MilestoneRecord,
+  type PieceScore,
+  type RunSetup,
+} from '../../rules/index.ts';
 import { computeLayout } from '../../rules/layout.ts';
 import { tallyHouse } from '../../rules/scoring.ts';
 import { emptyRows, houseFrom, withPieces } from '../../rules/testing.ts';
@@ -7,6 +13,7 @@ import {
   isHouseRule,
   markToppedOut,
   rhythmPaid,
+  roofed,
   ROOFING_PHASE,
   targetCrossed,
   toppedOutBefore,
@@ -56,6 +63,24 @@ describe('isHouseRule', () => {
 describe('the milestones', () => {
   it('puts the roof on at Roofing', () => {
     expect(CONTENT.balance.phases[ROOFING_PHASE]?.name).toBe('Roofing');
+  });
+
+  it('has a roof once Roofing is met, early or in overtime, and not when it was missed', () => {
+    const record = (phase: number, result: MilestoneRecord['result']): MilestoneRecord => ({
+      phase,
+      result,
+      target: 0,
+      score: 0,
+      weeksSaved: 0,
+      overtimeUsed: 0,
+      reward: { score: 0, budget: 0, interest: 0 },
+    });
+    const before = [0, 1, 2].map((p) => record(p, 'onTime'));
+    expect(roofed({ milestones: before })).toBe(false);
+    for (const result of ['onTime', 'early', 'overtime'] as const) {
+      expect(roofed({ milestones: [...before, record(ROOFING_PHASE, result)] })).toBe(true);
+    }
+    expect(roofed({ milestones: [...before, record(ROOFING_PHASE, 'failed')] })).toBe(false);
   });
 
   it("finds the target a tally crosses, and not the next tally's", () => {

@@ -210,7 +210,7 @@
   opacity: 1;
 }
 
-/* --- The roof reveal (MomentLayers.tsx): over the house, under the canopy and the labels -- */
+/* --- The roof (MomentLayers.tsx): over the house, under the canopy and the labels --------- */
 
 .house-roof {
   position: absolute;
@@ -219,6 +219,16 @@
   z-index: var(--z-roof);
   image-rendering: pixelated;
   pointer-events: none;
+}
+
+/* While it's on (D-133), the house's digits and badges fade out as it drops and back as it
+   lifts: it's the house from outside. The yard's stay. The times are FEEL.roof's (Board.tsx). */
+.board .piece-labels.in-house {
+  transition: opacity var(--roof-lift-ms) ease-in;
+}
+.board.roof-on .piece-labels.in-house {
+  opacity: 0;
+  transition-duration: var(--roof-drop-ms);
 }
 
 /* --- "Topped out!" over the top of the house -------------------------------------------- */

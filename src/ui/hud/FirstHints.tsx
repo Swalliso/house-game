@@ -20,6 +20,7 @@ import { useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { CONTENT, glossary, SCORE_LABELS } from '../../rules/index.ts';
 import { BUILD_CHANNEL } from '../build-info.ts';
 import { arrivalCard, banner, busy } from '../fx/director.ts';
+import { roofed } from '../fx/moments.ts';
 import { Button, Icon } from '../kit/kit.tsx';
 import { appScreen, cardsRenovate, earlyOffer, run } from '../store.ts';
 import { devicePixelRatio, uiPixel } from '../theme/pixel.ts';
@@ -27,7 +28,15 @@ import { placeFirstHint, type HintPlace, type HintSpot } from './first-hint-plac
 import './first-hints.css';
 
 export type HintId =
-  'firstWeek' | 'checklist' | 'early' | 'shop' | 'fixture' | 'changeOrder' | 'arrival' | 'renovate';
+  | 'firstWeek'
+  | 'checklist'
+  | 'early'
+  | 'shop'
+  | 'roof'
+  | 'fixture'
+  | 'changeOrder'
+  | 'arrival'
+  | 'renovate';
 
 const KEY = `openhouse:${BUILD_CHANNEL}:hints`;
 
@@ -96,6 +105,15 @@ const HINTS: Record<HintId, Hint> = {
       `${G.budget.text}`,
     spot: 'underGoods',
   },
+  // D-133: the reveal's roof stays on until you build, so the first look at the lot after
+  // Roofing has it on, and this says how to get it back.
+  roof: {
+    title: 'The roof’s on',
+    text:
+      'Roofing put a roof on the house. Picking a card takes it off so you can build, and ' +
+      'the Roof button by the zoom (or T) puts it back on, or takes it off to look inside.',
+    spot: 'overScore',
+  },
   fixture: { title: G.fixture.title, text: G.fixture.text, spot: 'overScore' },
   // M4b: the screen and the arrival's cards say what they are; these say why they matter.
   changeOrder: {
@@ -126,6 +144,8 @@ function current(seen: ReadonlySet<string>): HintId | null {
     s.hand.some((c) => c.kind === 'fixture') || s.supplies.some((x) => x.kind === 'fixture');
   const due: [HintId, boolean][] = [
     ['shop', s.screen === 'shop'],
+    // D-133: first, so it comes while the reveal's roof is still on.
+    ['roof', building && roofed(s)],
     ['firstWeek', building && s.week === 1],
     ['checklist', building && s.week >= 2],
     ['early', building && earlyOffer.value.ok],
