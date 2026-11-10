@@ -127,6 +127,39 @@ describe('the edits', () => {
     expect(20 * Math.log10(peakOf(loud))).toBeLessThanOrEqual(-1 + 1e-6);
   });
 
+  it('with `limit`, reaches the loudness and holds the peaks under −1 dBFS (D-134)', () => {
+    // A quiet tone with a sharp pluck every second: its peaks would stop the cut short.
+    const rate = 22050;
+    const pcm = tone(rate, 6, 220, 0.05);
+    for (const c of pcm.channels) {
+      for (let s = 0.5; s < 6; s += 1) {
+        const at = Math.round(s * rate);
+        for (let i = 0; i < 40; i++) c[at + i]! += 0.6 * Math.sin(i / 2) * (1 - i / 40);
+      }
+    }
+    const capped = editCut(pcm, { from: 'x', file: 'x.wav', stereo: true, loudness: -16 });
+    expect(loudnessOf(capped)).toBeLessThan(-18);
+    const limited = editCut(pcm, {
+      from: 'x',
+      file: 'x.wav',
+      stereo: true,
+      loudness: -16,
+      limit: true,
+    });
+    expect(loudnessOf(limited)).toBeCloseTo(-16, 0);
+    expect(20 * Math.log10(peakOf(limited))).toBeLessThanOrEqual(-1 + 1e-3);
+    // Between the plucks the gain holds steady (limiting touches only the peaks), and the
+    // tone plays louder than the capped cut's.
+    const toneAt = (p: Pcm, seconds: number) => {
+      const at = Math.round(seconds * rate);
+      let m = 0;
+      for (let i = at; i < at + 200; i++) m = Math.max(m, Math.abs(p.channels[0]![i]!));
+      return m;
+    };
+    expect(toneAt(limited, 1)).toBeCloseTo(toneAt(limited, 4), 3);
+    expect(toneAt(limited, 1)).toBeGreaterThan(toneAt(capped, 1) * 1.5);
+  });
+
   it('writes and reads 16-bit WAV', () => {
     const pcm = tone(22050, 0.1, 300, 0.5);
     const back = readWav(writeWav(pcm, () => 0.5));

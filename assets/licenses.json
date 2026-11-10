@@ -1364,6 +1364,26 @@
     "author": "Kevin MacLeod (incompetech.com)",
     "license": "CC-BY-4.0"
   },
+  "audio/music/comfort-games-5/full.ogg": {
+    "source": "https://freemusicarchive.org/music/holiznacc0/retro-gamer-soundtrack/comfort-games-5/ (holiznacc0): Comfort Games 5.mp3",
+    "author": "HoliznaCC0",
+    "license": "CC0-1.0"
+  },
+  "audio/music/comfort-games-5/full.m4a": {
+    "source": "https://freemusicarchive.org/music/holiznacc0/retro-gamer-soundtrack/comfort-games-5/ (holiznacc0): Comfort Games 5.mp3",
+    "author": "HoliznaCC0",
+    "license": "CC0-1.0"
+  },
+  "audio/music/folded/full.ogg": {
+    "source": "https://freemusicarchive.org/music/Ketsa/lofi-downtempo/folded/ (ketsa): Folded.mp3",
+    "author": "Ketsa",
+    "license": "CC-BY-4.0"
+  },
+  "audio/music/folded/full.m4a": {
+    "source": "https://freemusicarchive.org/music/Ketsa/lofi-downtempo/folded/ (ketsa): Folded.mp3",
+    "author": "Ketsa",
+    "license": "CC-BY-4.0"
+  },
   "audio/music/morning/full.ogg": {
     "source": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN2300003 (kevin-macleod): Morning.mp3",
     "author": "Kevin MacLeod (incompetech.com)",
@@ -1373,6 +1393,16 @@
     "source": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN2300003 (kevin-macleod): Morning.mp3",
     "author": "Kevin MacLeod (incompetech.com)",
     "license": "CC-BY-4.0"
+  },
+  "audio/music/on-the-road/full.ogg": {
+    "source": "https://freemusicarchive.org/music/Monplaisir/Relaxing_Ukulele/Monplaisir_-_Relaxing_Ukulele_-_06_On_the_road_looking_at_your_feet/ (monplaisir): Monplaisir_-_06_-_On_the_road_looking_at_your_feet.mp3",
+    "author": "Monplaisir",
+    "license": "CC0-1.0"
+  },
+  "audio/music/on-the-road/full.m4a": {
+    "source": "https://freemusicarchive.org/music/Monplaisir/Relaxing_Ukulele/Monplaisir_-_Relaxing_Ukulele_-_06_On_the_road_looking_at_your_feet/ (monplaisir): Monplaisir_-_06_-_On_the_road_looking_at_your_feet.mp3",
+    "author": "Monplaisir",
+    "license": "CC0-1.0"
   },
   "audio/music/sleepy-little-mouse/drums.ogg": {
     "source": "https://opengameart.org/content/sleepy-little-mouse (tsorthan-grove): sleepy_little_mouse_alternate.flac",

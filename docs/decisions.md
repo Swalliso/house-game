@@ -1664,7 +1664,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **Changes:** none to settled decisions.
 
 ### D-128 · The music: three calm tracks, picked by ear
-**Status:** Accepted · 2026-11-10, held up in playtest 5 (`docs/playtests/playtest-5-findings.md`): the music "is good", but three tracks "start to loop pretty noticeably" over a run, so D-134 (reserved) adds about three more. Proposed 2026-11-10, with M5b (D-058; `implementation-plan.md` §12, Music). The user picked the three by ear from a shortlist of six; playtest 5b hears them over a whole run.
+**Status:** Accepted · 2026-11-10, held up in playtest 5 (`docs/playtests/playtest-5-findings.md`): the music "is good", but three tracks "start to loop pretty noticeably" over a run, so D-134 (Proposed) adds about three more. Proposed 2026-11-10, with M5b (D-058; `implementation-plan.md` §12, Music). The user picked the three by ear from a shortlist of six; playtest 5b hears them over a whole run.
 **Decision:**
 - **Three tracks, shuffled (D-131), about eight minutes before one repeats:**
   - "Morning" by Kevin MacLeod (incompetech, 2023, CC BY 4.0): nylon guitar, harp and flute, no drums; 60 BPM, 2:28, E major.
@@ -1682,6 +1682,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - Ninja Adventure (CC0): chiptune leads and short loops.
 
 **Changes:** D-131: the one pick with stems mixes them by screen.
+**2026-11-10 (D-134, Proposed):** after playtest 5, the shortlist's other three join these: "Folded", "On the road, looking at your feet" and "Comfort Games 5". Six tracks play about 16 minutes before one repeats.
 
 ### D-129 · The recorded sound set, in the music's key
 **Status:** Accepted · 2026-11-10, played in playtest 5 with no issues raised (`docs/playtests/playtest-5-findings.md`). Proposed 2026-11-09, with M5b (D-058's reward sounds; `implementation-plan.md` §12, Sound). For playtest 5b's ears.
@@ -1730,6 +1731,25 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 ## Proposed
 
 *Reserved numbers (2026-11-10): D-115 to D-118 are the layout session's drafts and D-122 the legibility session's; they aren't in this file yet. D-132 to D-134 are playtest 5's fixes, each logged by its own pull request: D-132 one reroll for both rows of the draw, D-133 the roof view, D-134 three more tracks. New entries start at D-135.*
+
+### D-134 · Three more tracks, from the same shortlist
+**Status:** Proposed · 2026-11-10, after playtest 5 (`docs/playtests/playtest-5-findings.md`), with its fix pull request. Extends D-128. For the user's ears on /dev/.
+**Decision:**
+- **The shortlist's other three join D-128's,** so a run shuffles six tracks (D-131) and plays about 16 minutes before one repeats, where three played about eight. The user heard all six on M5b's listening page and turned none down, so these come in without another listening round:
+  - "Folded" by Ketsa (Free Music Archive, CC BY 4.0): busier lo-fi downtempo; 78 BPM, 3:12, A major.
+  - "On the road, looking at your feet" by Monplaisir (Free Music Archive, CC0): solo ukulele; 68 BPM, 1:58, G major.
+  - "Comfort Games 5" by HoliznaCC0 (Free Music Archive, CC0): a music box; 70 BPM, 2:21, C major.
+- **Cut and keyed like D-128's three:** Ogg and M4A at −16 LUFS (D-130), each key estimated from the recording the same way, so the rewards play in it (D-129). Each comes as one mix, so the bus's filter and level change it by screen (D-131). `music.test.ts` shuffles the six for 200 rounds: every track once a round, never the last one first.
+- **Licenses were read again on each track's page.** The credits, with our changes, are in `CREDITS.md`, `assets/licenses.json` and How to play's Credits. CC0 asks for no credit; we give it anyway.
+- **A limiter for loud plucks:** On the road's ukulele plucks peak far over the rest of it, so the −1 dBFS peak cap held it at −20 LUFS. A cut in `art/audio.json` can now take `limit`: it reaches its loudness through a look-ahead limiter (2 ms ahead, 80 ms release) that holds the peaks under −1 dBFS and leaves the rest alone (`cut-audio.test.ts`). On the road lands at −16 LUFS.
+- **Size:** the three add 13.3 MB to the Pages build (6.1 MB of Ogg and 7.1 MB of M4A), so music is 33.5 MB of its 34 MB. A player still loads one format, about 2 MB a track, one track ahead (D-130).
+
+**Why:** in playtest 5 the music "is good", but three tracks "start to loop pretty noticeably" over a run. The user had picked D-128's three from this shortlist by ear, and asked for "maybe an additional 3".
+**Considered:**
+- A new search for tracks: these three were already found, checked and heard.
+- `limit` for Clear Air (−17.7 LUFS) and Sleepy Little Mouse's mix with drums (−16.8 LUFS), whose peaks also hold them under −16: the user called the music good as it is, so their levels wait for the user's ears.
+
+**Changes:** D-128 (Accepted): six tracks, not three (its dated note). D-130 (Accepted): a cut can take `limit`. `implementation-plan.md` §7 M5b and §12 Music: six tracks, about 16 minutes.
 
 ### D-132 · One reroll redraws both rows of the draw
 **Status:** Proposed · 2026-11-10, after playtest 5, at the user's ask (`docs/playtests/playtest-5-findings.md`). Changes D-121. The targets aren't re-fit here: the balance pass's one re-fit comes after it, on the last day.

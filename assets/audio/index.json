@@ -4,9 +4,24 @@
     "seconds": 183.722,
     "channels": 2
   },
+  "music/comfort-games-5/full": {
+    "hash": "2499e14738888c54",
+    "seconds": 141.241,
+    "channels": 2
+  },
+  "music/folded/full": {
+    "hash": "58b70cb58049629e",
+    "seconds": 192.363,
+    "channels": 2
+  },
   "music/morning/full": {
     "hash": "e7ec00c07707a6c6",
     "seconds": 147.7,
+    "channels": 2
+  },
+  "music/on-the-road/full": {
+    "hash": "1512dd1247dfed3c",
+    "seconds": 118.016,
     "channels": 2
   },
   "music/sleepy-little-mouse/drums": {

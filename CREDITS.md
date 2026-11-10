@@ -32,19 +32,28 @@ Open House is a game jam entry for the theme "It's a house," built with Claude C
   supply slots and their pictures in the shop). The title screen's houses, trees, shrub,
   planters and car are Modern Exteriors cuts (`art/limezu/ui.json`, and the Flower Bed's
   planters from `art/limezu/yard.json`), on the lot's own lawn and street (`art/limezu/terrain.json`).
-- **Music (M5b, D-128):** three tracks under
-  [Creative Commons Attribution 4.0 (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/):
+- **Music (M5b, D-128 and D-134):** six tracks.
   - "[Morning](https://incompetech.com/music/royalty-free/index.html?isrc=USUAN2300003)" and
     "[Clear Air](https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100626)" by
     Kevin MacLeod ([incompetech.com](https://incompetech.com)), Licensed under Creative
-    Commons: By Attribution 4.0 License.
+    Commons: By Attribution 4.0 License
+    ([CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)).
   - "[Sleepy Little Mouse](https://opengameart.org/content/sleepy-little-mouse)" by Tsorthan
-    Grove: its alternate mix and the same mix without drums, which play as two stems.
+    Grove (CC BY 4.0): its alternate mix and the same mix without drums, which play as two
+    stems.
+  - "[Folded](https://freemusicarchive.org/music/Ketsa/lofi-downtempo/folded/)" by Ketsa
+    (CC BY 4.0), from the Free Music Archive.
+  - "[On the road, looking at your feet](https://freemusicarchive.org/music/Monplaisir/Relaxing_Ukulele/Monplaisir_-_Relaxing_Ukulele_-_06_On_the_road_looking_at_your_feet/)"
+    by Monplaisir and
+    "[Comfort Games 5](https://freemusicarchive.org/music/holiznacc0/retro-gamer-soundtrack/comfort-games-5/)"
+    by HoliznaCC0, both CC0, from the Free Music Archive. CC0 asks for no credit; we give it
+    anyway.
 
-  Our changes: each is trimmed (the silence at its end), levelled to −16 LUFS, and
-  re-encoded as Ogg Vorbis and AAC by `npm run audio:cut` (`art/audio.json`, D-130) into
-  `assets/audio/music/`, and recorded in `assets/licenses.json`. The sources stay in the
-  gitignored `art-source/audio/`. The game's How to play credits them too.
+  Our changes: each is trimmed (the silence at its end), levelled to −16 LUFS (On the road
+  through a limiter, so its plucks don't hold it back), and re-encoded as Ogg Vorbis and AAC
+  by `npm run audio:cut` (`art/audio.json`, D-130) into `assets/audio/music/`, and recorded in
+  `assets/licenses.json`. The sources stay in the gitignored `art-source/audio/`. The game's
+  How to play credits them too.
 
 - **Sound effects (M5b, D-129):** recorded instruments from the
   [Versilian Community Sample Library (VCSL)](https://github.com/sgossner/VCSL) by Versilian

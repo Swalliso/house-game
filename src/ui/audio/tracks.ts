@@ -98,4 +98,29 @@ export const TRACKS: readonly Track[] = [
     bpm: 68,
     stems: ['music/clear-air/full'],
   },
+  // Three more from the same shortlist, so a run's music repeats less (D-134).
+  {
+    id: 'folded',
+    title: 'Folded',
+    author: 'Ketsa',
+    key: { root: 9, mode: 'major' },
+    bpm: 78,
+    stems: ['music/folded/full'],
+  },
+  {
+    id: 'on-the-road',
+    title: 'On the road, looking at your feet',
+    author: 'Monplaisir',
+    key: { root: 7, mode: 'major' },
+    bpm: 68,
+    stems: ['music/on-the-road/full'],
+  },
+  {
+    id: 'comfort-games-5',
+    title: 'Comfort Games 5',
+    author: 'HoliznaCC0',
+    key: { root: 0, mode: 'major' },
+    bpm: 70,
+    stems: ['music/comfort-games-5/full'],
+  },
 ];
