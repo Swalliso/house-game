@@ -15,6 +15,13 @@ function resolveChannel(value: string | undefined): Channel {
   return channel as Channel;
 }
 
+/**
+ * Where Pages serves the release (D-063; develop's builds are at dev/ under it). The link
+ * preview's tags in index.html need absolute URLs, so they're filled in here (D-135); the
+ * result line's links use the same address (src/ui/screens/result-line.ts PAGES_URL).
+ */
+const PAGES_URL = 'https://swalliso.github.io/house-game/';
+
 function gitShortSha(): string {
   try {
     return execFileSync('git', ['rev-parse', '--short=7', 'HEAD'], { encoding: 'utf8' }).trim();
@@ -36,6 +43,13 @@ export default defineConfig(({ mode }) => {
       __BUILD_SHA__: JSON.stringify(sha),
       __BUILD_CHANNEL__: JSON.stringify(channel),
     },
+    plugins: [
+      {
+        name: 'share-base',
+        transformIndexHtml: (html: string) =>
+          html.replaceAll('%SHARE_BASE%', channel === 'dev' ? `${PAGES_URL}dev/` : PAGES_URL),
+      },
+    ],
     // Vite 8 compiles TS and JSX with Oxc (it replaced esbuild). Preact's automatic runtime:
     oxc: {
       jsx: { runtime: 'automatic', importSource: 'preact' },

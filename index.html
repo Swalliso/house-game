@@ -5,6 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Open House: a roguelite house builder. It's a house." />
     <title>Open House</title>
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <!-- The link preview in a group chat (D-135). Scrapers need absolute URLs: vite.config.ts's
+         share-base plugin fills in the release's address, or develop's on /dev/. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Open House" />
+    <meta property="og:title" content="Open House" />
+    <meta
+      property="og:description"
+      content="Build one house for one client, one piece a week. A roguelite house builder for the “It’s a house” game jam."
+    />
+    <meta property="og:image" content="%SHARE_BASE%og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="A finished house with its red roof on, on a grassy lot by the street, under a wood sign: Open House. It’s a house."
+    />
+    <meta name="twitter:card" content="summary_large_image" />
   </head>
   <body>
     <div id="app"></div>

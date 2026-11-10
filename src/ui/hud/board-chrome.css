@@ -108,11 +108,18 @@
   right: 0;
   height: calc(var(--sun-step) * 3);
 }
+/* A side's class is also the page columns' (app.css .left and .right: a scrolling flex column
+   with padding and a gap), and those rules reach this marker too. Undone here: as a scrolling
+   column the 24px strip clipped its plaque to "Su", at its top. */
 .center .sun-marker.left,
 .center .sun-marker.right {
   top: 0;
   bottom: 0;
   width: calc(var(--sun-step) * 3);
+  flex-direction: row;
+  gap: 0;
+  padding: 0;
+  overflow: visible;
 }
 .center .sun-marker.top {
   top: 0;
