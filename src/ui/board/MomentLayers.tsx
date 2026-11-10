@@ -4,13 +4,15 @@
 // zoomed, and they're drawn at the camera's scale.
 
 import { useLayoutEffect, useRef, useState } from 'preact/hooks';
-import type { Lot } from '../../rules/index.ts';
+import type { Lot, Preview } from '../../rules/index.ts';
 import { paintRoof } from '../art/roof.ts';
+import { previewArcs } from '../fx/chain.ts';
 import { chainArc, played, roofReveal, toppedOut } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
 import { Icon } from '../kit/kit.tsx';
 import { settings } from '../settings.ts';
 import { CELL } from '../sprites.ts';
+import type { Occupancy } from './geometry.ts';
 import type { HouseModel } from './house-model.ts';
 
 /**
@@ -131,6 +133,19 @@ export function ToppedOut({ scale, model }: { scale: number; model: HouseModel }
   );
 }
 
+type Point = { x: number; y: number };
+
+/** A curve from a to b, bowing out to one side of the way it runs (up, running left to right). */
+function arcPath(a: Point, b: Point): string {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const bow = FEEL.chain.bend * len;
+  const mx = (a.x + b.x) / 2 + (dy / len) * bow;
+  const my = (a.y + b.y) / 2 - (dx / len) * bow;
+  return `M${a.x} ${a.y} Q${mx} ${my} ${b.x} ${b.y}`;
+}
+
 /**
  * D-094's option 1: while the tally plays a chain, an arc runs from the piece that boosts to the
  * one it sets going, tracing toward it and fading by the end of that piece's step. With Reduce
@@ -140,16 +155,8 @@ export function ChainArc({ lot, scale }: { lot: Lot; scale: number }) {
   const arc = chainArc.value;
   if (!arc) return null;
   const px = CELL * scale;
-  const a = { x: arc.from.x * px, y: arc.from.y * px };
   const b = { x: arc.to.x * px, y: arc.to.y * px };
-  // It bows out to one side of the way it runs (up, for an arc running left to right).
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  const len = Math.hypot(dx, dy) || 1;
-  const bow = FEEL.chain.bend * len;
-  const mx = (a.x + b.x) / 2 + (dy / len) * bow;
-  const my = (a.y + b.y) / 2 - (dx / len) * bow;
-  const d = `M${a.x} ${a.y} Q${mx} ${my} ${b.x} ${b.y}`;
+  const d = arcPath({ x: arc.from.x * px, y: arc.from.y * px }, b);
   return (
     <svg
       key={arc.id}
@@ -165,6 +172,59 @@ export function ChainArc({ lot, scale }: { lot: Lot; scale: number }) {
       <path class="arc-under" d={d} pathLength={100} />
       <path class="arc-line" d={d} pathLength={100} />
       <circle class="arc-end" cx={b.x} cy={b.y} r={Math.max(3, px * 0.12)} />
+    </svg>
+  );
+}
+
+/**
+ * D-094's option 1 in the placement preview: while a play is looked at, dashed arcs run from the
+ * pieces that would boost its piece, and from it to the pieces it would boost.
+ */
+export function PreviewArcs({
+  preview,
+  occ,
+  lot,
+  scale,
+}: {
+  preview: Preview;
+  occ: Occupancy;
+  lot: Lot;
+  scale: number;
+}) {
+  const arcs = previewArcs(preview);
+  if (arcs.length === 0) return null;
+  const px = CELL * scale;
+  const focus = preview.newPiece?.uid;
+  // A piece's middle; the piece being placed isn't on the lot yet, so its cells are the play's.
+  const mid = (uid: number): Point | null => {
+    const cells = occ.cells.get(uid) ?? (uid === focus ? preview.cells : undefined);
+    if (!cells?.length) return null;
+    const n = cells.length;
+    return {
+      x: (cells.reduce((sum, c) => sum + c.x, 0) / n + 0.5) * px,
+      y: (cells.reduce((sum, c) => sum + c.y, 0) / n + 0.5) * px,
+    };
+  };
+  return (
+    <svg
+      class="chain-arc preview"
+      width={lot.width * px}
+      height={(lot.height + 1) * px}
+      aria-hidden="true"
+    >
+      {arcs.map(({ from, to }) => {
+        const a = mid(from);
+        const b = mid(to);
+        if (!a || !b) return null;
+        const d = arcPath(a, b);
+        return (
+          <g key={`${from}>${to}`}>
+            <path class="arc-under" d={d} />
+            <path class="arc-line" d={d} />
+            <circle class="arc-end" cx={b.x} cy={b.y} r={Math.max(3, px * 0.1)} />
+          </g>
+        );
+      })}
     </svg>
   );
 }

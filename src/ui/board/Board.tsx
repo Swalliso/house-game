@@ -112,7 +112,7 @@ import {
   WallsLayer,
 } from './HouseLayers.tsx';
 import { layerVars } from './layers.ts';
-import { ChainArc, RoofLayer, ToppedOut } from './MomentLayers.tsx';
+import { ChainArc, PreviewArcs, RoofLayer, ToppedOut } from './MomentLayers.tsx';
 import { wobble } from './piece-fx.ts';
 import { Outline, TerrainLayer, YardTint } from './TerrainLayer.tsx';
 import './board-m2.css';
@@ -796,6 +796,7 @@ export function Board() {
           {!demolishing && <RenovateHints scale={scale} />}
           {renovating && <RenovateTarget scale={scale} />}
           {tooling && <ToolTarget scale={scale} />}
+          {p?.legal && <PreviewArcs preview={p} occ={occ} lot={lot} scale={scale} />}
           {p?.legal && <Badges scale={scale} />}
           <PopupLayer scale={scale} />
         </div>
