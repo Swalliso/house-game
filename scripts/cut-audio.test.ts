@@ -5,6 +5,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
+  audibleSpan,
   audioLicense,
   AUDIO_PREFIX,
   editCut,
@@ -97,6 +98,20 @@ describe('the edits', () => {
     const first = out.channels[0]!.findIndex((v) => Math.abs(v) > 0.01);
     expect(first).toBeLessThan(44100 * 0.006);
     expect(out.channels[0]![out.channels[0]!.length - 1]).toBeCloseTo(0, 4);
+  });
+
+  it('keeps a track’s quiet intro, trimming only near-silence', () => {
+    const rate = 22050;
+    const x = new Float32Array(rate * 3);
+    // 0.5 s of silence, a quiet intro at −40 dBFS, a loud part, then 0.5 s of silence.
+    for (let i = rate * 0.5; i < rate * 1.5; i++) x[i] = 0.01 * Math.sin(i / 3);
+    for (let i = rate * 1.5; i < rate * 2.5; i++) x[i] = 0.8 * Math.sin(i / 3);
+    const pcm: Pcm = { rate, channels: [x, x.slice()] };
+    const [first, frames] = audibleSpan(pcm);
+    expect(first / rate).toBeCloseTo(0.5, 2);
+    expect(frames / rate).toBeCloseTo(2, 2);
+    const out = editCut(pcm, { from: 'x', file: 'x.wav', stereo: true, loudness: -16 });
+    expect(out.channels[0]!.length / rate).toBeCloseTo(2, 2);
   });
 
   it('sets a loudness, but never a peak over −1 dBFS', () => {
