@@ -186,6 +186,16 @@
   image-rendering: pixelated;
 }
 
+/* The lot's traits (D-119): wood chips in a row under the map, as the checklist shows them. */
+.contract-traits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
 /* Tastes and a crew's effects: a mark for each, in a slot of its own, so the words line up. */
 .contract-tastes {
   display: flex;

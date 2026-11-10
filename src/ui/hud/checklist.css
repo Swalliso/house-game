@@ -65,10 +65,14 @@
   margin: 0;
 }
 
-/* The crew's chip comes first. Its name wraps inside it where the column is too narrow for it
-   (the General Contractor at 1280 px wide), its icon level with the first line. */
+/* The crew's chip comes first, then the lot's traits that pay (D-119: Creekside). Its name wraps
+   inside it where the column is too narrow for it (the General Contractor at 1280 px wide), its
+   icon level with the first line. */
 .check-crew {
   display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-1);
 }
 .check-crew .chip {
   align-items: flex-start;
@@ -84,6 +88,7 @@
 .check-crew-icon {
   display: none;
   flex: none;
+  gap: var(--space-1);
 }
 .check-crew-icon > .tip {
   display: flex;

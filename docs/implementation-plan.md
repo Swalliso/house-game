@@ -118,7 +118,7 @@ The Status column is as of planning. With the plan's approval, everything still 
 | D-046 | Defaults for the rules the docs leave open (Appendix A), including D-013 | M1–M4b | Economy budget and the fenced-yard rule confirmed; rest Proposed |
 | D-047 | Desktop first: 1280×720 minimum, mouse and keyboard plus tap support, no phone layout | M1 | **Accepted** |
 | D-048 | Lot size: 24×24 (amends D-029) | M1 | **Accepted** (the team's request) |
-| D-049 | Terrain and big-lot rules: woods, creek, finds, a camera, bigger yard pieces | M1 / M3b | **Accepted** |
+| D-049 | Terrain and big-lot rules: woods, creek, finds, a camera, bigger yard pieces | M1 / M3b | **Accepted** (the creek's rate and the pond changed by D-119) |
 | D-050 | Fixtures are in the jam build: drawn (installing one is the week's turn) or bought (installing one is free) | M3a | **Accepted** (the team's request) |
 | D-051 | The shop: five kinds of goods plus crates and services, rarity, selling, a sale item, rising refresh prices | M3a / M3b | **Accepted** |
 | D-052 | Schedule: feature freeze at the end of day 4, then two days of playtesting and refinement | M0 | *Superseded by D-053* |
@@ -1654,8 +1654,8 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
 - **Lot generation (D-049),** on 24×24 (width and height are separate numbers in `balance.ts`):
   - the street on the bottom edge
   - **woods:** 3–4 clusters of 15–30 Tree tiles, grown as blobs, plus 6–10 lone Trees
-  - **creek** on about 70% of lots: a 1-tile-wide meandering line from the back edge to a side edge, or side to side, stepping orthogonally (no diagonal steps, no U-turns), never touching the street edge or the pond
-  - one pond, 2×2 to 3×3
+  - **creek** on about a quarter of lots (`creekPct` 25, D-119; it was 70%): a 1-tile-wide meandering line from the back edge to a side edge, or side to side, stepping orthogonally (no diagonal steps, no U-turns), never touching the street edge or the pond. A creek lot is Creekside: pieces touching the creek earn +50%, all run (a lot trait, D-119)
+  - one pond, 2×2 to 3×3: on every lot without a creek, and on half the creek lots (`pondPctCreek`, from its own `lot/<attempt>/pond` stream, D-119)
   - 6–10 single-tile boulders
   - the sunny side: 4 rows along a random non-street edge; Tree tiles aren't sunny
   - **finds** (from M3b): one Old Shed and one or two Time Capsules, placed away from the street half

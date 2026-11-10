@@ -165,6 +165,7 @@ The board sits behind a small `BoardView` interface, so Phaser could replace jus
   - from M3b, two kinds of **finds**: the Old Shed (demolish it for a random tool) and Time Capsules (the first piece built over one pays budget)
 
   Terrain covers about a fifth of the lot. Each kind is a `FeatureDef` in `src/content`.
+  *Changed by D-119 (Proposed 2026-11-09):* a creek on about a quarter of lots, not most, and a creek lot is Creekside (pieces touching the creek earn +50%, all run). The pond stays on every lot without a creek and on half the creek lots.
 - Water bodies count once as a neighbor. Each Tree tile counts separately, so effects that count Trees or views have a cap.
 - Only a Driveway can be built over the creek (a culvert), so the house sits on one bank but can still have a Garage.
 - The lot edge bounds a fenced yard like a wall, so a house near an edge makes a cheap fenced yard. A fenced yard must also border the house, so a lone Fence in a corner doesn't count.
@@ -1231,6 +1232,35 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 ---
 
 ## Proposed
+
+### D-119 · Creek lots: Creekside, the pond, and the lot's traits on the job board
+**Status:** Proposed · 2026-11-09, after playtest 4 (`docs/playtests/playtest-4-findings.md` §11) and the lot session's proposal (`docs/proposals/lot-creeks-and-sun.md`). The user picked the proposal's package (§7); this is its first part. The sun (a sun direction per lot and Sunny payoffs) comes next, as its own entry. Built for playtest 5.
+**Decision:**
+- **Creeks on about a quarter of lots:** `creekPct` 25 (it was 70): 24.6% of 2,000 held-out lots have one, and a creek lot is on 52% of job boards. A lot that keeps its creek keeps its terrain; the others are drawn again without one.
+- **Creekside:** a creek lot pays. Pieces touching the creek earn +50%, all run: Waterfront's effect, for the creek alone, from the lot. The lot's traits are a new source of run modifiers beside the crew and the client, and the breakdown line says "Creekside".
+- **The pond:** every lot without a creek keeps it, so every lot has water, and half the creek lots do (`pondPctCreek` 50), so a creek lot looks different. The pick comes from its own `lot/<attempt>/pond` stream, so the rest of the lot stays as drawn, and a pond that goes leaves open ground. The regeneration checks run after it: more ground behind the creek can leave too little on the street's side.
+- **Lot traits** are data (`src/content/lot-traits.ts`): a terrain and how many tiles of it, modifiers, a blurb, and the clients a trait suits. There are two:
+  - **Creekside:** any creek.
+  - **Wooded:** 100 or more Tree tiles (22% of lots; the median lot has 86). It pays nothing; it's a hint, and it suits Count Vladislav, who likes pieces touching Trees.
+- **Where they show:**
+  - A contract's card shows the lot's traits as wood chips under its map, each with a tip: what it pays, all run, then its blurb. A trait that suits the client wears the up icon, as a taste they like does.
+  - A trait that pays stays on the checklist beside the crew's chip, as an icon beside the crew's on a window under 1000 px tall.
+  - How to play says what a creek lot is.
+
+**Why:** playtest 4: creeks felt too common.
+- Before this, creeks were on 67% of lots and changed nothing. On 600 held-out seeds, creek lots won and scored like the rest, and 41% of the houses on them never touched the creek: scenery that blocked a few spots.
+- At a quarter of lots, a creek shows up on about one job board in two, and Creekside makes it a reason to take that contract. 41% of lots now show a chip of some kind, and 78% of boards. In the proposal's prototype, Creekside pulled houses to the water: pieces touching the creek went from 2.0 to 4.7 a house on the same lots.
+- **This PR's own check**, greedy on 200 held-out seeds (`--check`), paired against develop: wins 48.0% → 57.5%, +9.5 points [+4.0, +15.0]\*; final Wow ×1.050 [0.945–1.167]. That fails §8's "greedy wins 40–50%". The proposal expected about +5 and no re-fit, and it was wrong. Split by what happened to each seed's lot:
+  - 86 seeds lost their creek and drew a new lot: wins 50% → 60% (+15/−6). On these seeds the creek lots were the harder ones, so fewer creeks alone makes runs easier.
+  - 46 kept their creek, with Creekside: 37% → 57% (+10/−1), level with the lots without one (58%).
+  - 68 seeds without a creek before or after: 53% → 54% (+1/−0).
+- The other criteria: early completion's gap widens to −11.5 points (FAIL, unsure), and the clients' spread is 15.0 points (FAIL, unsure). The rest pass. (\* = the 95% interval excludes no change.)
+
+**Considered:** creeks at 40% with no payoff (less samey, still scenery); a pond on 60% of all lots (one lot in eight with no water, and no change in play); Creekside at +25%, the step down if it's too strong.
+
+**Changes:**
+- D-049 (Accepted): its creek and pond lines, marked there. Appendix A's lot bullets in `implementation-plan.md`.
+- The targets aren't re-fit here. The playtest-4 plan has one re-fit for all its content changes together, the creek rate among them (findings §12). If playtest 5 comes before that re-fit, Creekside at +25% is the step down. It can only take back part of Creekside's half of the rise; the rarer creek makes the other half.
 
 ### D-114 · The Hallway experiment, step 1: Hallways pay for the rooms they touch
 **Status:** Proposed · 2026-11-09, after playtest 4 (`docs/playtests/playtest-4-findings.md` §7) and the layout session's proposal (§1, on its own branch). Built for playtest 5; the user asked for it once that session reported.
