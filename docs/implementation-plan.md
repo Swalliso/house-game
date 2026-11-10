@@ -29,7 +29,7 @@
 - **The idea holds up.** Every pillar we borrow comes from a hit (Combolands, Islanders, Luck be a Landlord, Balatro). The risks are in execution: readability, run length, luck, and a few mechanics that don't work as written. §2 lists them and the fixes.
 - **Stack:** TypeScript 6 + Vite 8 + Vitest 5, npm, Node 26. Preact 10 renders everything, including the board (HTML/CSS with a canvas terrain layer, atlas sprites, and SVG outlines). No Phaser. GitHub Pages serves releases from `main` at the root and the work-in-progress `develop` build at `/dev/` (D-060).
 - **Shape:** `src/rules` is a pure rules module (no DOM, no `Math.random`, no clock). It's a reducer: `apply(state, action) → { state, events }`. The UI renders state, asks the rules for placement previews, and animates the events. The headless sim drives the same reducer with bots.
-- **The lot is 24×24 with real terrain:** woods, a creek, a pond, boulders, a sunny side, and a couple of finds worth building toward. Where you put the house is the first big decision of a run (D-048, D-049).
+- **The lot is 24×24 with real terrain:** woods, a creek, a pond, boulders, the sun on one side, and a couple of finds worth building toward. Where you put the house is the first big decision of a run (D-048, D-049).
 - **Fixtures and a real shop:** fixtures are upgrades installed in a piece you've already placed (a room or a yard piece). You draw them (installing one is your week) or buy them (installing one is free). The shop sells five kinds of goods plus crates and services, with rarity, a sale, and selling for half (D-050, D-051).
 - **Content is data:** pieces, fixtures, terrain, sets, blueprints, tools, company upgrades, clients, crews, change orders, and balance numbers are typed object literals in `src/content`. Card text is generated from them. Appendix B shows every Core item written in the format.
 - **Randomness:** one run seed, split into keyed substreams. A run is fully described by `build + seed + setup + action log`, which becomes a copyable **run code** that replays any bug. The same scheme makes the Daily Lot fair.
@@ -265,8 +265,8 @@ house-game/
 │   │   ├── index.ts          # the public API and all shared types; ui/ and sim/ import only from here
 │   │   ├── rng.ts            # sfc32 + keyed substreams
 │   │   ├── grid.ts           # coordinates, shapes, rotation
-│   │   ├── lot.ts            # lot generation from a seed: woods, creek, pond, boulders, sunny side, finds
-│   │   ├── layout.ts         # neighbors, connectivity, exterior/interior, sunny, view, yards, fenced yards
+│   │   ├── lot.ts            # lot generation from a seed: woods, creek, pond, boulders, the sun's side, finds
+│   │   ├── layout.ts         # neighbors, connectivity, exterior/interior, the sun, view, yards, fenced yards
 │   │   ├── selectors.ts      # selectors and conditions, and the tag-resolution order
 │   │   ├── placement.ts      # legality checks that return a reason
 │   │   ├── effects/          # one file per effect kind, plus a registry
@@ -336,7 +336,7 @@ All state is plain, JSON-serializable data. D-025 keeps the house separate from 
 
 ```ts
 interface HouseState {                 // the lot and what's on it
-  lot: Lot                             // width × height, street edge, sunny tiles, terrain (woods, creek, pond, boulders, finds)
+  lot: Lot                             // width × height, street edge, the sun's side (D-120), terrain (woods, creek, pond, boulders, finds)
   pieces: PlacedPiece[]                // { uid, defId, x, y, rot, placedWeek, ageBonus, fixture?: { id, week }, level?, shape? }
                                        // level: Renovations (D-102); shape: a pack's own tiles (D-106)
   nextUid: number
@@ -537,7 +537,7 @@ Derived from `HouseState`, cached by house object identity:
 - **Garage and Driveway:** the Garage (indoor) must touch the house and also touch the street or a Driveway. A Driveway must touch the street or another Driveway, so driveways always connect to the street.
 - **Effective tags**, resolved in a fixed order:
   1. layout facts
-  2. own tags, plus **Dark** if interior and **Sunny** if covering a sunny tile
+  2. own tags, plus **Dark** if interior and **Sunny** if a building (a room, a Hallway or an outbuilding) with a tile in the sun (D-120)
   3. `grantTag`, then `removeTag` modifiers (from blueprints, change orders, crews, and fixtures), matched against step 2's tags only; a modifier can't grant the tag it selects on
   4. type identity: `{ piece: X }` matches id X, `countsAs: X`, or a `countsAs` modifier
   5. conditions, specs, and sets
@@ -688,7 +688,7 @@ The ten types from `content-brainstorm.md` become eight kinds here: the neighbor
 | `enclosure` | `perTile`, `cap?` | Fence: per tile of the fenced yards it borders, with the cap on the total |
 | `transform` | `into: { piece } \| { feature: 'tree' }`, `afterWeeks` | Sapling → Tree (becomes a lot feature) |
 | `economy` | `budget`, `every?` | Garage, Home Office |
-| **`perTile`** *(new)* | `region`, `amount` | Herb Garden on Sunny tiles |
+| **`perTile`** *(new)* | `region`, `amount` | Herb Garden on tiles in the sun |
 | **`link`** *(new)* | — | Hallway |
 | **`requires`** *(new)* | `condition: PieceCondition`, `blocksPlacement` | Garage must touch the street or a Driveway (blocks placement); Doghouse earns only in a fenced yard (doesn't block) |
 | **`conditional`** *(new)* | `when: PieceCondition`, `effect` | Flower Bed bonus in the front yard |
@@ -1566,7 +1566,7 @@ Intensity is measured against **pace**: `max(1, (this phase's target − the sco
     - Rooms of a type differ in color (duvets, nightstand woods, sofas, rugs, tables and chairs, bookcases, armchairs, cars): each takes the color its piece's hash picks, or the next one an older room of its type hasn't taken. So up to the palette's size no two look alike, a new room never changes an older one, and a demolition changes a room only if the demolished one had taken its pick. Small choices (which corner, which side) go by the hash too. Never by chance. A Living Room's rug follows a different stride from its sofa, so its two grey sofas (slate and light grey) never share a rug. A room's ghost looks as the room will once placed: its colors as the house will give them, its choices, and (carried by the Moving Truck) its fixture.
   - an installed fixture shows where it fits, and as its badge otherwise, so a purchase is always visible:
     - furniture: the Fireplace (LimeZu's animated stove and flue, 32 px wide, so a one-cell or one-cell-deep room, or a Bedroom or Dining Room whose bed or table takes the room, keeps its badge). It takes a Living Room's north wall, with the sofa beside it where the wall is long enough (a landscape room) or in front of it; a Library's beside a bookcase (a narrow one where a full one won't fit beside it; where neither fits, the bookcase stays and the Fireplace shows as its badge); a Kitchen's beside the range, in the counter's place; a Sunroom's with pots of flowers; elsewhere beside the key piece. Bunk Beds stand in place of the bed, against the north wall or in the middle of the floor. The Kitchen Island is a counter with a bowl of fruit in the middle of the kitchen, 24 or 16 px wide where the full one won't fit (an L-Kitchen's arm, beside a door's walkway).
-    - painted with the room, our own drawings in LimeZu's palette: Soundproofing pads the room's side of its wall bands (on the walls canvas, over the furniture, so it always shows) and its north faces; Blackout Curtains draw drapes over the room's windows and hang across the widest stretch of north face the furniture leaves in view (a room with neither, like a Closet, keeps the badge); a Skylight lays a four-pane patch of sun over the floor and furniture; the Chandelier hangs over the room in its own light; and a Bay Window turns one cell of outside wall to glass, with its bay outside, the street side first
+    - painted with the room, our own drawings in LimeZu's palette: Soundproofing pads the room's side of its wall bands (on the walls canvas, over the furniture, so it always shows) and its north faces; Blackout Curtains draw drapes over the room's windows and hang across the widest stretch of north face the furniture leaves in view (a room with neither, like a Closet, keeps the badge); a Skylight lays a four-pane patch of sun over the floor and furniture (and a Sunny room has the sun along its sunny wall, deeper under its windows, D-120); the Chandelier hangs over the room in its own light; and a Bay Window turns one cell of outside wall to glass, with its bay outside, the street side first
     - the yard's fixtures show unless a door keeps them off (then their badge does): the Sprinkler on its Lawn with a wet patch round it, the Pergola over its Patio (in place of the parasol; where a door opens onto the Patio, a shallower or narrower cut of it on the far side, its badge only where doors open onto two sides), and Garden Lights as a bollard at each front corner of the piece, each with its light on the ground
 - **The yard pieces** are laid out by rules from the placed pieces too, never by chance (`src/ui/art/yard.ts`):
   - Their ground goes on the floor canvas, under the house's shadow: a Lawn's mown stripes, a Patio's herringbone pavers, a Driveway's concrete with a curb cut through the sidewalk where it meets the street, and a Pool's and a Hot Tub's water inside LimeZu's white coping (a 3 × 3 sheet of its tiles, laid over any rectangle). A flat piece has a darker 1 px edge, softer where it meets another piece of its kind (two Lawns, or two Driveways), so touching pieces read as one patch and each stays countable (D-093). A piece's ground stays on its own cells.
@@ -1587,10 +1587,10 @@ Intensity is measured against **pace**: `max(1, (this phase's target − the sco
 - **Rendering:**
   - terrain is drawn into a canvas of (lot width × 32) × ((lot height + 3) × 32) art px, 768×864 for 24×24 with the street row and the two rows of road, with smoothing off, shown at that size × scale with `image-rendering: pixelated`, and redrawn only when terrain changes
   - what stands on the lot is placed by rule and tile hash (`src/ui/board/terrain/objects.ts`), the hash salted with the run's seed, so every run's lot has its own tufts, flowers, and trees and the same run always looks the same: one LimeZu tree per Tree cell, so the trees beside a piece can be counted, and a big tree only on a 2×2 block of Trees that no piece can touch; a darker woods floor with soft edges under the Tree cells, closing with a verge of grass along the street; two or three rocks per Boulder; the Old Shed at LimeZu's size on its footprint; the Time Capsule's dug soil and shovel. Each sprite's part on its own cells goes on the terrain canvas, and what rises above them (tree tops) on a canopy canvas at `LAYER.canopy`, over the pieces and under their digits and badges (`LAYER.labels`). Neither takes the pointer. The board's scroll area keeps room above the lot (`CANOPY_ROOM`), so the top row's tree tops are never cut off.
-  - the sunny side follows `isSunny` exactly: a Tree inside the band stays in shade to its cell's edge, and no sunny edge faces the street
+  - the sun (D-120): the grass is the same everywhere; a soft shade in two steps lies on the tile behind each Tree and the Old Shed, away from the sun, the tiles the rules leave out of it (`src/ui/board/terrain/shade.ts`). The house's own shade isn't drawn: a Sunny room's light on its floor shows where the sun reaches (the walls canvas), and the view's edge toward the sun carries the sun's plaque
   - the street row is a sidewalk with its curb (the rules' street: clicks and the inspect panel find it there), the lot's grass hanging over its edge except where water or a piece meets it; the road below it, with a dashed line and the far curb, is decoration only
   - around the board, the scroll area shows dimmed LimeZu grass (an 8×8-cell tile with unevenly scattered tufts) that zooms and pans with the board, so the lot sits in a garden; a faint property line marks the lot's other three edges. The road and each creek mouth run on into it, dimmed like it, to the edges of the view (`src/ui/board/terrain/outside.ts`: one slice a cell deep, painted once per lot and repeated by CSS)
-  - the lot's water (the pond and the creek) has its own canvas over the water's bounding box, just above the terrain and below everything else: LimeZu's animated water, picked per 16 px subtile by `src/ui/board/autotile.ts`, its bank's grass blades in the sunny or shaded colors of the grass around it. Its 8 frames are painted side by side once per lot, and CSS steps through them (transform only, 130 ms a frame), so the water never wakes the main thread; it's still under Reduce motion and paused while the shop's sheet covers the board
+  - the lot's water (the pond and the creek) has its own canvas over the water's bounding box, just above the terrain and below everything else: LimeZu's animated water, picked per 16 px subtile by `src/ui/board/autotile.ts`, its bank's grass blades in the grass's colors. Its 8 frames are painted side by side once per lot, and CSS steps through them (transform only, 130 ms a frame), so the water never wakes the main thread; it's still under Reduce motion and paused while the shop's sheet covers the board
   - the terrain and canopy canvases redraw before the browser paints too (once the atlas has loaded), so a tree cleared for a piece goes in the same frame the piece appears
   - the house and the yard are drawn in the board's layers (`src/ui/board/layers.ts`): a floor canvas (the yard's ground and curb cuts, the house's shadow, doormats, floors, north wall faces, floor shadows) under one element per piece for its furniture or props, then a walls canvas (bands, doorways, windows, and the painted fixtures' light and glass), the overhang, outline highlights, and the labels. The fenced yards' tint sits between the floor canvas and the props. The canvases redraw only when the house changes, never on hover, a tally step, or zoom, and before the browser paints (with the atlas's pixels kept once read), so a new room's floor and walls show in the same frame as its furniture
   - a piece's parts in each layer (its items, their tops on the overhang, its flash, its digit) move as one: each animation is remembered while it plays, and a part that mounts mid-flight joins it where it has got to (`src/ui/board/piece-fx.ts`)
@@ -1658,9 +1658,9 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
   - **creek** on about a quarter of lots (`creekPct` 25, D-119; it was 70%): a 1-tile-wide meandering line from the back edge to a side edge, or side to side, stepping orthogonally (no diagonal steps, no U-turns), never touching the street edge or the pond. A creek lot is Creekside: pieces touching the creek earn +50%, all run (a lot trait, D-119)
   - one pond, 2×2 to 3×3: on every lot without a creek, and on half the creek lots (`pondPctCreek`, from its own `lot/<attempt>/pond` stream, D-119)
   - 6–10 single-tile boulders
-  - the sunny side: 4 rows along a random non-street edge; Tree tiles aren't sunny
+  - the sun's side (D-120; it was a sunny band of 4 rows): the back, the left, the right or the street side, a quarter each, from its own `lot/<attempt>/sun` stream. A tile is in the sun unless it's a Tree, or a Tree, the Old Shed or a building (a room, a Hallway or an outbuilding) stands one step toward the sun; off the lot is open
   - **finds** (from M3b): one Old Shed and one or two Time Capsules, placed away from the street half
-  - terrain covers about a fifth of the lot (about 110–130 tiles), not counting the sunny side, which is ordinary ground
+  - terrain covers about a fifth of the lot (about 110–130 tiles)
   - regenerate (with the next `lot/<attempt>` key) if fewer than 85% of tiles are free of water, Boulders, and the Old Shed, if fewer than 10 street-edge tiles are free, or if the creek leaves less than 60% of the buildable tiles on the street's side
 - **First earning:** a piece earns in the week it's placed. Transforms happen at the start of the week, so the preview equals what the week adds.
 - **Pass:** always allowed, no reward.
@@ -1842,7 +1842,7 @@ Every Core item from `content-brainstorm.md`, written in the §5 format. Numbers
 | Mature tree (woods and lone trees) | Feature per tile, tags Quiet and Green, view source; `clear: buildOver` | M1 |
 | Pond | `blocks`, `body`, view source | M1 |
 | **Creek** *(new)* | `blocks`, `body`, view source; 1 tile wide, never touches the street edge | M1 |
-| Sunny side | 4 rows of `sunny` tiles; covering pieces gain the Sunny tag | M1 (tiles), M2 (used) |
+| The sun (D-120; was the sunny side) | `Lot.sun`, one edge; the `sunny` region: tiles no Tree, Old Shed or building stands in front of, toward the sun; a building with a tile in it gains the Sunny tag | M1 (the band), D-120 (the sun) |
 | Boulder | `blocks`, `clear: demolish` | M1 (M2 demolish) |
 | **Old Shed** *(new find)* | 2×2; `blocks`, `clear: demolish`; reward: a random tool | M3b |
 | **Time Capsule** *(new find)* | 1×1; doesn't block; reward when first built over: +3 budget | M3b |
@@ -1853,13 +1853,14 @@ Every Core item from `content-brainstorm.md`, written in the §5 format. Numbers
 |---|---|---|
 | Bedroom | `steady 3`; `neighbor {any: [tree, tag Quiet]} +1 max 3`; `neighbor {tag Loud} −2` | M1 |
 | Bathroom | `neighbor bedroom +3 max 1`; `neighbor kitchen −2` | M1 |
-| Kitchen (2×2) and L-Kitchen | Two cards. The L is the 3-tile `['#.', '##']` with `countsAs: 'kitchen'`. Both: `neighbor [diningRoom, herbGarden] +2` | M1 |
-| Dining Room | `aura [kitchen, livingRoom] +50% adjacent` | M1 |
-| Living Room | `neighbor {property viewSource} +2 max 3` | M1 |
+| Kitchen (2×2) and L-Kitchen | Two cards. The L is the 3-tile `['#.', '##']` with `countsAs: 'kitchen'`. Both: `neighbor [diningRoom, herbGarden] +2`; `conditional {is Sunny} → steady 2` (D-120) | M1 |
+| Dining Room | `aura [kitchen, livingRoom] +50% adjacent`; `conditional {is Sunny} → steady 2` (D-120) | M1 |
+| Living Room | `neighbor {property viewSource} +2 max 3`; `conditional {is Sunny} → steady 2` (D-120) | M1 |
 | Closet | `steady 1`; Suite member | M2 |
 | Hallway (1×2, 1×3) | Two cards, `connector`, `link`; `neighbor {property room} +2 max 4` (D-114) | M2 |
 | Garage | `requires {touching: [street, driveway]}` (blocks); `steady 1`; `economy 1 every 3` | M2 |
 | Home Office | `steady 2`; `neighbor {tag Loud} −2`; `economy 1 every 2` | M2 |
+| **Sunroom** (2×2) | Weight 5 from Foundation (D-120; it was a special piece, Sunny by its tag, `perTile sunny +2`); `conditional {is Sunny} → steady 6` | M3a (D-120: the draw) |
 
 ### Yard pieces (base pool)
 
@@ -1868,7 +1869,7 @@ Every Core item from `content-brainstorm.md`, written in the §5 format. Numbers
 | Lawn (2×2) | `steady 1`; `neighbor lawn +1 max 4`; tags Outdoor and Green | M1 |
 | Sapling | `steady 1`; `transform into tree after 4` | M2 |
 | Flower Bed | `givesView`; `steady 1`; `conditional {in: frontYard} → steady 2`; `neighbor flowerBed +1` | M2 |
-| Herb Garden | `givesView`; `perTile sunny +1`; `aura kitchen +25% adjacent` | M2 |
+| Herb Garden | `givesView`; `perTile sunny +1` (its tiles in the sun, D-120); `aura kitchen +25% adjacent` | M2 |
 | Patio | `requires {touching {property room}}` (doesn't block: the Patio rule, D-105); `neighbor [livingRoom, kitchen] +2`; `neighbor {property viewSource} +1 max 3` | M2 (M4a: the Patio rule) |
 | Fence | A pack of 1–8 connected tiles, one piece (D-106; was the 1×4 and 5-tile L cards); `wall`; `enclosure perTile 1 cap 6` | M2 (M4a: the pack) |
 | Driveway | A pack of 1–6 connected tiles, one piece (D-106; was the 1×3 and 1×5 cards); `canCover: ['creek']`; `requires {touching: [street, driveway]}` (blocks); `conditional {in: frontYard} → steady 1` | M2 (M4a: the pack) |
@@ -1883,7 +1884,7 @@ Every Core item from `content-brainstorm.md`, written in the §5 format. Numbers
 
 ### Special pieces (shop, clients, crews; weight 0)
 
-The last five were Stretch in `content-brainstorm.md`. They're promoted to Core as shop pieces, so the shop has buildings worth buying (D-051). Every one uses existing effect kinds.
+The last four were Stretch in `content-brainstorm.md`, with the Sunroom. They're promoted to Core as shop pieces, so the shop has buildings worth buying (D-051). Every one uses existing effect kinds. The Sunroom has been a room of the weekly draw since D-120 (the rooms table above).
 
 | Item | Encoding | Built in |
 |---|---|---|
@@ -1891,7 +1892,6 @@ The last five were Stretch in `content-brainstorm.md`. They're promoted to Core 
 | Library | Indoor; tag Quiet; `neighbor {tag Quiet} +2 max 3` | M3a |
 | Mudroom | Indoor; tag Pet; `conditional {borders: fencedYard} → aura {tag Pet} +50% region` | M3a |
 | Pool | Yard; tags Wet, Sunny, Loud; `rhythm every 3 +12`; `neighbor tree −2 max 3` | M3a |
-| **Sunroom** (2×2) | Indoor; tag Sunny; `perTile sunny +2` | M3a |
 | **Hot Tub** (1×1) | Yard; tags Wet and Social; the Patio rule (D-105); `neighbor patio +3` | M3a |
 | **Fire Pit** (1×1) | Yard; tag Social; the Patio rule (D-105); `aura patio +50% adjacent` | M3a |
 | **Henhouse** (1×2) | Outbuilding; tag House; `economy 1 every 2`; `neighbor [herbGarden, flowerBed] +1` | M3a |
@@ -1905,7 +1905,7 @@ Every fixture's modifiers target `{ host: true }`, written as "host" here. Draw 
 |---|---|---|---|---|
 | Fireplace | any room | `earn host +50`; `earn {host ∧ piece [livingRoom, library]} +50` (so +100 there) | Common | M3a |
 | Skylight | any room | `grantTag host Sunny`; `removeTag host Dark` | Common | M3a |
-| Blackout Curtains | any room | `grantTag host Dark` | Common | M3a |
+| Blackout Curtains | any room | `grantTag host Dark`; `removeTag host Sunny` (D-120) | Common | M3a |
 | Soundproofing | any room | `blockPenalties host from {tag Loud}` (the street included) | Common | M3a |
 | Kitchen Island | kitchen | `countsAs host diningRoom`; `earn host +25` | Uncommon | M3a |
 | Bunk Beds | bedroom | `countsAs host bedroom times 2` (counts twice in `count` conditions, such as the Hendersons' 4 Bedrooms; once in sets) | Uncommon | M3a |

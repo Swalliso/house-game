@@ -178,7 +178,7 @@ function Timers({ lines }: { lines: readonly string[] }) {
 
 /**
  * A placed piece's tags, from the rules' sources for each. One its card gives is plain. One the
- * layout gives (an interior room's Dark, a sunny tile's Sunny) is bold, with why on hover. One
+ * layout gives (an interior room's Dark, a sunlit building's Sunny) is bold, with why on hover. One
  * a modifier grants says where it's from in its own words: "Dark · from Eternal night", "Sunny ·
  * from Skylight" (M4b).
  */

@@ -41,7 +41,7 @@ Clients, change orders, HOA rules, and shop upgrades all target tags and propert
 | Street edge | The front of the lot. Pieces touching it count as next to something Loud. Defines the front yard. | Core |
 | Mature tree | Quiet and Green for its neighbors. Building over it removes it. | Core |
 | Pond | Gives a View to adjacent pieces. Can't be built on. | Core |
-| Sunny side | Tiles along one edge of the lot count as Sunny. | Core |
+| The sun | Shines from one edge of the lot. A room, Hallway or outbuilding with a wall facing it and no Tree or other building in front is Sunny (D-120; it was a sunny band along one edge). | Core |
 | Boulder | Blocks a tile until demolished. | Core |
 | Special feature | One per lot: an ancient oak, an old well, the neighbor's cemetery, power lines. | Stretch |
 

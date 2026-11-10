@@ -166,6 +166,7 @@ The board sits behind a small `BoardView` interface, so Phaser could replace jus
 
   Terrain covers about a fifth of the lot. Each kind is a `FeatureDef` in `src/content`.
   *Changed by D-119 (Proposed 2026-11-09):* a creek on about a quarter of lots, not most, and a creek lot is Creekside (pieces touching the creek earn +50%, all run). The pond stays on every lot without a creek and on half the creek lots.
+  *Changed by D-120 (Proposed 2026-11-09):* the sunny side becomes the sun's side, one edge of the lot. A tile is in the sun unless it's a Tree, or a Tree, the Old Shed or a building stands one step toward the sun, and a building with a tile in the sun is Sunny.
 - Water bodies count once as a neighbor. Each Tree tile counts separately, so effects that count Trees or views have a cap.
 - Only a Driveway can be built over the creek (a culvert), so the house sits on one bank but can still have a Garage.
 - The lot edge bounds a fenced yard like a wall, so a house near an edge makes a cheap fenced yard. A fenced yard must also border the house, so a lone Fence in a corner doesn't count.
@@ -219,6 +220,7 @@ With these rules, where to put the house becomes the run's first big decision.
   - a small reward for leaving without buying
 - **Rarity:** weights shift toward Rare in later shops, and rarity is shown on every blueprint, fixture, and tool.
 - **Core catalog:** 16 blueprints, 10 fixtures, 9 special pieces, 8 tools, 7 upgrades, and 4 crates (Appendix B of `implementation-plan.md`). Five of the special pieces (Sunroom, Hot Tub, Fire Pit, Henhouse, Birdhouse) were Stretch in `content-brainstorm.md`.
+  *Changed by D-120 (Proposed 2026-11-09):* the Sunroom leaves the special pieces for the weekly draw, so the shop sells 8.
 - The shop is open in every run, including the first.
 **Amended by:** D-056 (Accepted 2026-11-05): 18 blueprints, 11 fixtures, and 12 tools from 7 kinds (the Remodel Plans level sets); It's a House and Rush Order become +Mult, and Last-Minute Push becomes ×Mult.
 
@@ -875,6 +877,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **Decision:**
 - **Grass:** LimeZu's muted grass on every cell, with a tuft on about 1 subtile of open ground in 11 and tiny flowers on 1 in 23, by tile hash salted with the run's seed. The same run always looks the same, and no two runs share their decoration.
 - **The sunny side** follows `isSunny` exactly. LimeZu's grass edge, recolored, reaches 6 px into the shade beside it. A Tree inside the band stays in shade to its cell's edge, and no sunny edge faces the street.
+  *Changed by D-120 (Proposed 2026-11-09):* the band goes, and its warmer grass, edge, shore, rocks and Time Capsule with it. The grass is the same everywhere, with a soft shade on the tile behind each Tree and the Old Shed, away from the sun.
 - **Water:** LimeZu's animated water (8 frames, 130 ms each) on its own canvas over the water's bounding box, autotiled per 16 px subtile, its bank's blades in the colors of the grass around it. The frames are painted side by side once per lot and CSS steps through them (transform only), so the water costs the main thread nothing between placements; it's still under Reduce motion and paused under the shop's sheet. A creek shows about 12 px of open water per cell (the static set's was about 22). Lily pads float on a pond's open water only.
 - **The woods:** one LimeZu tree per Tree cell (eight kinds by hash, nudged up to 2 px), greens at 92% saturation, on a step-darker woods floor with soft edges and a verge of grass where it meets the street. A big 64×52 tree stands only on a 2×2 block of Trees that no piece can touch, so every Tree a piece touches is a tree of its own and can be counted.
 - **The canopy:** what rises above its own cells (tree tops) is on a canopy canvas at `LAYER.canopy`, over the pieces and under their digits and badges, covering the lot and the row above it; it never takes the pointer. The terrain and water canvases share one `.ground` group at `LAYER.terrain`. The board keeps 24 art px clear above the lot (`CANOPY_ROOM`), so the top row's tree tops are never cut flat; the default zoom and Fit count it.
@@ -1291,6 +1294,53 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - D-109 (Accepted): the Landscaper's third Layout card.
 - Each is marked in place. `implementation-plan.md`: the state, the week's start, the stream keys, the rule keys, and Appendix A's rerolls and Bigger Truck.
 - The targets wait for the playtest-4 re-fit. If playtest 5 comes first, the game is easier: on the current targets greedy wins 69.5% with this and Creekside, against 48.0% before both (D-119's check).
+
+### D-120 · The sun: a sunny face on every lot, and rooms that want it
+**Status:** Proposed · 2026-11-09, after playtest 4 (`docs/playtests/playtest-4-findings.md` §11) and the lot session's proposal (`docs/proposals/lot-creeks-and-sun.md` §4–§7). The user picked the proposal's package; this is its second part, after D-119. Built for playtest 5.
+**Decision:**
+- **Sun A, the sunny face.** Each lot's sun shines from one edge: the back, the left, the right or the street side, a quarter each, from its own `lot/<attempt>/sun` stream, so the terrain stays as drawn. `Lot.sun` replaces `sunnySide` and `sunnyRows`, and the sunny band goes.
+  - A tile is **in the sun** unless it's a Tree, or a Tree, the Old Shed or a building stands one step toward the sun. Off the lot is open.
+  - **Buildings** are the rooms, the Hallways and the outbuildings. They cast that one-tile shade, and a building with a tile in the sun is **Sunny**: in practice, one with a wall facing the sun and nothing in front of it.
+  - Yard pieces cast no shade and aren't made Sunny by the sun (the Pool keeps its own tag). A garden still counts its tiles in the sun (the Herb Garden).
+  - Building changes the sun only next door: a building put in front of a Sunny room's sunny wall takes its sun there, and clearing a Tree gives it back.
+- **Payoffs, for rooms:**
+  - The Living Room, the Kitchen, the L-Kitchen and the Dining Room earn **+2 every week while Sunny**.
+  - The **Sunroom** leaves the special pieces (so the Showroom no longer sells it) for the weekly draw's Rooms row (D-121): weight 5, half a card's, from Foundation. It earns **+6 every week while Sunny** and has no Sunny tag of its own, so it has to be built in the sun. (It was Sunny by its card, +2 a tile on the sunny side.)
+- **The other Sunny readers stay:** Count Vladislav's "Sunny pieces earn nothing", Heat wave's "Sunny rooms earn half", Solar Panels, and the Skylight (it grants Sunny). **Blackout Curtains** now also take Sunny off their room: the Count's way to keep a sunny Living Room.
+- **Text:** a card's `{is: {tag}}` condition reads "while Sunny" ("+2 every week while Sunny"), and the `sunny` region reads "in the sun" ("+1 per tile in the sun"). A Sunny entry in the glossary gives the rule. Heat wave reads "Sunny rooms earn half".
+- **The board:**
+  - The sun's side is marked on the edge of the board's view that faces it, a ☀ Sun plaque on a strip of warm light, so it stays in sight however the lot is panned.
+  - A sun chip ("Sun at the back") is on the contract's card and beside the crew on the checklist, and the job board's map says it in words ("sun from the left").
+  - A soft shade, in two steps, lies on the tile behind each Tree and the Old Shed. The house's own shade isn't drawn.
+  - A Sunny room has the sun on its floor along its sunny wall, deeper under its windows. A room with Blackout Curtains isn't Sunny, so it has none.
+  - While placing, the ghost says "☀ Sunny" beside its change when the piece would be Sunny there (`Preview.sunny`).
+  - Inspect: a Sunny piece's tag says why ("Its back wall faces the sun, with nothing in front"), and a tile says In the sun or In the shade.
+  - The band's eight sprites (its grass, tufts, edge, shore, rocks and Time Capsule) leave the atlas: only the sprites we use are committed.
+- **The sim:** the cheap estimate reads the sun: a building's own back tiles and the tile behind each one, the Trees a piece clears, and `{is: …}` conditions. A play that moves another piece's sun is flagged (`sunHint`) for exact scoring when a run modifier reads Sunny (the Count, Heat wave, Solar Panels), up to `SUN_HINT_CAP` 8 a week, apart from the other hints.
+
+**Why:** playtest 4: "I rarely use the sunny side, it's usually far from where I build."
+- The band paid almost nothing (0.4% of the Wow) and sat far from most houses. Under A every house has a sunny face.
+- In the proposal's prototype with these payoffs (200 held-out seeds), the sun was 4.2% of the Wow (5.8% without the Count) and changed the value of 55% of greedy's plays. Greedy built the house as people do: 86% of Living Rooms and 83% of Kitchens Sunny, and Bedrooms where they fell (38%, as with no payoff).
+- **This PR's own check,** greedy on 200 held-out seeds (`--check`), paired against develop with D-119 and D-121:
+  - Wins 69.5% → 81.5%, +12.0 points [+4.3, +19.7]\* (44 seeds won only with the sun, 20 only without). The proposal expected about +10.
+  - Wow ×1.19 [1.15–1.26]\* at milestone 3 and ×1.11 [1.07–1.17]\* at milestone 5, but ×1.03 [0.98–1.08] at the end on the 119 seeds both won: the sun pays most early, where the targets are loosest.
+  - By client (40 runs each): the Hendersons 50% → 80%, the Barkers 72.5% → 85%, Dale 75% → 90%, Juniper 70% → 75%, and Count Vladislav 80% → 77.5% (+6/−7). In the proposal's prototype the Count dropped 12 points; this build adds Blackout Curtains taking Sunny away and the estimate's sun hint, which the prototype didn't have.
+  - The Sunroom: 0.40 a run (0.04 from the Showroom), 713 Wow a copy. A Living Room earns 3,001 Wow a copy (2,505).
+- §8's criteria: greedy's 40–50% wins fails further (81.5%), and greedy clears milestones 1–3 in 100% of runs (FAIL; it was 97.5%). Early completion passes, unsure (always −9.5 points against never). The clients' spread fails, unsure, at 15 points (30 before). The rest pass, and the benchmark gate passes (524 ms).
+- (\* = the 95% interval excludes no change.)
+
+**Considered:**
+- B, a three-tile shade: about A's numbers for twice the work and the busiest board.
+- C, two sunny clearings: the cheap fallback, but the sun did nothing in a quarter of runs.
+- +1 while Sunny: the sun at 1.6% of the Wow, too little to steer a house.
+- A Breakfast Nook set (a Kitchen and a Dining Room, both Sunny): the sun at 11% of the Wow, swamping everything, and a later room could take a member's sun and break the set, against D-065.
+- "Sunny pieces earn half" for the Count: once rooms pay for the sun, it turns the sun into a gain for him.
+
+**Changes:**
+- D-049 (Accepted): the sunny side becomes the sun's side. D-099 (Accepted): the band's grass and its edge go. D-051 (Accepted): the Sunroom leaves the special pieces for the draw. Each is marked in place.
+- `implementation-plan.md`: §4's Sunny tag, the state, Appendix A's lot and terrain rows, the room rows, the Herb Garden and the Blackout Curtains rows, and §12's terrain and fixture bullets. `content-brainstorm.md`: the sun's row.
+- The targets aren't re-fit here: the playtest-4 plan has one re-fit for all its content changes together, as D-119 and D-121 do. The Count's `targetPct` goes into it. If playtest 5 comes first, the game is much easier: on the current targets greedy wins 81.5% with D-119, D-121 and this, against 48.0% before them.
+- Solar Panels get stronger with about four Sunny buildings a house, which the sim can't see (its shop bot doesn't value budget). It's a balance-pass item: rooms only, or every 6 weeks.
 
 ### D-119 · Creek lots: Creekside, the pond, and the lot's traits on the job board
 **Status:** Proposed · 2026-11-09, after playtest 4 (`docs/playtests/playtest-4-findings.md` §11) and the lot session's proposal (`docs/proposals/lot-creeks-and-sun.md`). The user picked the proposal's package (§7); this is its first part. The sun (a sun direction per lot and Sunny payoffs) comes next, as its own entry. Built for playtest 5.
