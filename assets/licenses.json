@@ -1354,6 +1354,46 @@
     "author": "Open House team",
     "license": "Own work"
   },
+  "audio/music/clear-air/full.ogg": {
+    "source": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100626 (kevin-macleod): Clear Air.mp3",
+    "author": "Kevin MacLeod (incompetech.com)",
+    "license": "CC-BY-4.0"
+  },
+  "audio/music/clear-air/full.m4a": {
+    "source": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100626 (kevin-macleod): Clear Air.mp3",
+    "author": "Kevin MacLeod (incompetech.com)",
+    "license": "CC-BY-4.0"
+  },
+  "audio/music/morning/full.ogg": {
+    "source": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN2300003 (kevin-macleod): Morning.mp3",
+    "author": "Kevin MacLeod (incompetech.com)",
+    "license": "CC-BY-4.0"
+  },
+  "audio/music/morning/full.m4a": {
+    "source": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN2300003 (kevin-macleod): Morning.mp3",
+    "author": "Kevin MacLeod (incompetech.com)",
+    "license": "CC-BY-4.0"
+  },
+  "audio/music/sleepy-little-mouse/drums.ogg": {
+    "source": "https://opengameart.org/content/sleepy-little-mouse (tsorthan-grove): sleepy_little_mouse_alternate.flac",
+    "author": "Tsorthan Grove",
+    "license": "CC-BY-4.0"
+  },
+  "audio/music/sleepy-little-mouse/drums.m4a": {
+    "source": "https://opengameart.org/content/sleepy-little-mouse (tsorthan-grove): sleepy_little_mouse_alternate.flac",
+    "author": "Tsorthan Grove",
+    "license": "CC-BY-4.0"
+  },
+  "audio/music/sleepy-little-mouse/keys.ogg": {
+    "source": "https://opengameart.org/content/sleepy-little-mouse (tsorthan-grove): sleepy_little_mouse_alternate_no_drums.flac",
+    "author": "Tsorthan Grove",
+    "license": "CC-BY-4.0"
+  },
+  "audio/music/sleepy-little-mouse/keys.m4a": {
+    "source": "https://opengameart.org/content/sleepy-little-mouse (tsorthan-grove): sleepy_little_mouse_alternate_no_drums.flac",
+    "author": "Tsorthan Grove",
+    "license": "CC-BY-4.0"
+  },
   "audio/sfx/bell-c5.ogg": {
     "source": "https://github.com/sgossner/VCSL (vcsl): Idiophones/Struck Idiophones/Tubular Bells 2/TB_hit_C4_v2_1.wav",
     "author": "Versilian Studios (Sam Gossner) and the VCSL contributors",

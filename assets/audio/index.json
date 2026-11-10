@@ -1,4 +1,24 @@
 {
+  "music/clear-air/full": {
+    "hash": "570bc6ec7fa778e3",
+    "seconds": 183.722,
+    "channels": 2
+  },
+  "music/morning/full": {
+    "hash": "e7ec00c07707a6c6",
+    "seconds": 147.7,
+    "channels": 2
+  },
+  "music/sleepy-little-mouse/drums": {
+    "hash": "99dad42d67f00afd",
+    "seconds": 174,
+    "channels": 2
+  },
+  "music/sleepy-little-mouse/keys": {
+    "hash": "22ba38217b8ad522",
+    "seconds": 174,
+    "channels": 2
+  },
   "sfx/bell-c5": {
     "hash": "af3370ad950b7b21",
     "seconds": 2.8,

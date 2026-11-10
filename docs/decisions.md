@@ -1246,6 +1246,26 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 *Reserved numbers (2026-11-09): D-115 to D-118 are the layout session's drafts and D-122 the legibility session's; they aren't in this file yet. New entries start at D-124.*
 
+### D-128 · The music: three calm tracks, picked by ear
+**Status:** Proposed · 2026-11-10, with M5b (D-058; `implementation-plan.md` §12, Music). The user picked the three by ear from a shortlist of six; playtest 5b hears them over a whole run.
+**Decision:**
+- **Three tracks, shuffled (D-131), about eight minutes before one repeats:**
+  - "Morning" by Kevin MacLeod (incompetech, 2023, CC BY 4.0): nylon guitar, harp and flute, no drums; 60 BPM, 2:28, E major.
+  - "Sleepy Little Mouse" by Tsorthan Grove (OpenGameArt, CC BY 4.0): lo-fi electric piano and pad over a soft backbeat; 70 BPM, 2:54, C major. It comes as a mix with drums and the same mix without them, in time with each other, so it plays as two stems: the drums play while you build, at a milestone, and on a win; the title, the job board, the shop, a crate, and a loss drop them.
+  - "Clear Air" by Kevin MacLeod (incompetech, CC BY 4.0): steel and nylon guitars, with a soft low piano in its second half; 68 BPM, 3:04. It leans G minor, so its key is B♭ major, which shares its notes.
+- **A track's key is where its rewards play** (D-129). Each key was estimated from the recording (a pitch-class profile with the overtones removed, then Krumhansl–Schmuckler and a check of the thirds). A track that leans minor gets its relative major, so the jingles stay bright and every note of the ladder is still in the track.
+- **Licenses were read on each track's own page.** CC BY's credit, with our changes (trimmed, levelled, re-encoded), is in `CREDITS.md` and How to play's Credits.
+- **The shortlist** came from two research passes, one over game-asset sources (Tallbeard/Abstraction, Ninja Adventure, YannZ, Kenney, OpenGameArt, itch.io) and one over music libraries (Free Music Archive, incompetech, Freesound, ccMixter). The listening page also had "Folded" by Ketsa (CC BY 4.0; busier lo-fi), "On the road, looking at your feet" by Monplaisir (CC0; solo ukulele) and "Comfort Games 5" by HoliznaCC0 (CC0; a music box).
+
+**Why:** §12 asks for 2–3 calm tracks of 2–3 minutes, around 70–90 BPM, sparse and plucked; a single short loop is Combolands' most common audio complaint. Guitar, harp and electric piano leave the mallets' register to the reward sounds.
+**Considered:**
+- Abstraction's "Interior Birdecorator" (CC0, four arrangements in sync) and the KitFit soundtrack (CC BY 4.0): each was written for another game, so we stayed clear of §12's "anything taken from another game", though their composers released them.
+- Kevin MacLeod's "Cherry Blossom": marimba at 100 BPM, on top of the Comfort plink.
+- YannZ's Contemplative Fantasy (loops in layers): its pages disagree about the license.
+- Ninja Adventure (CC0): chiptune leads and short loops.
+
+**Changes:** D-131: the one pick with stems mixes them by screen.
+
 ### D-129 · The recorded sound set, in the music's key
 **Status:** Proposed · 2026-11-09, with M5b (D-058's reward sounds; `implementation-plan.md` §12, Sound). For playtest 5b's ears.
 **Decision:**
@@ -1278,7 +1298,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **Status:** Proposed · 2026-11-09, with M5b (`implementation-plan.md` §12, Music, Ducking and Losing).
 **Decision:**
 - **A shuffled playlist:** every track once before any repeats, never the last one first, with a 2.5 s rest between tracks and a 2.5 s fade in for the first. Tracks play through rather than loop, so there are no loop points to trim (§12, Files).
-- **Each screen has its mix** (`tracks.ts`), crossfaded with a 0.3 s time constant, so a screen change never restarts the music: the title, the job board, the build screen, the shop, an open crate, a milestone's review, and a run won or lost. A track with stems mixes them per screen; one without (all of D-128's picks) changes through the bus's low-pass and level instead: plain while you build, a room away in the shop (3 kHz, −1.4 dB), hushed while a crate opens (1.3 kHz, −3.7 dB). The screen follows what the player sees: the rules are already in the shop while a milestone's tally and beats play, and that's "review" (`scene.ts`).
+- **Each screen has its mix** (`tracks.ts`), crossfaded with a 0.3 s time constant, so a screen change never restarts the music: the title, the job board, the build screen, the shop, an open crate, a milestone's review, and a run won or lost. A track with stems also mixes them per screen (D-128's Sleepy Little Mouse drops its drums off the build screen, a milestone and a win), and every track changes through the bus's low-pass and level: plain while you build, a room away in the shop (3 kHz, −1.4 dB), hushed while a crate opens (1.3 kHz, −3.7 dB). The screen follows what the player sees: the rules are already in the shop while a milestone's tally and beats play, and that's "review" (`scene.ts`).
 - **Ducking:** a jingle (a recipe marked `duck`, D-129) takes the music down 10 dB over 50 ms, holds it while the jingle rings, and lets it back up over 1 s. `audio.duck(seconds)` does the same for a moment without a recipe.
 - **Losing:** when the run is lost and its end screen shows, the music glides down to 0.6× speed over a second (tape-slow, its pitch with it), and stays there. A new run glides it back over 1.5 s.
 - **Volumes:** master, music and sound effects, saved with the other settings (default 70, 70 and 80). The music bus sits 6 dB under the sound effects' (`MUSIC_TRIM`), so −16 LUFS tracks play 8–10 dB under the sounds' peaks (§12, Mix). A music volume of 0 fades the track out and stops loading music.

@@ -52,5 +52,50 @@ export const SCENE_MIX: Readonly<
   lost: { level: 0.85, cutoff: 5000 },
 };
 
-/** The tracks, in no particular order: the player shuffles them. Chosen by ear (D-128). */
-export const TRACKS: readonly Track[] = [];
+/** Sleepy Little Mouse's two stems: its mix with drums, and the same mix without them. */
+const DRUMS: readonly number[] = [1, 0];
+const NO_DRUMS: readonly number[] = [0, 1];
+
+/**
+ * The tracks, in no particular order: the player shuffles them. Picked by ear (D-128). A key
+ * is where the ladder and the jingles play: a track that leans minor gets its relative major,
+ * which shares its notes, so the rewards stay bright.
+ */
+export const TRACKS: readonly Track[] = [
+  {
+    id: 'morning',
+    title: 'Morning',
+    author: 'Kevin MacLeod',
+    key: { root: 4, mode: 'major' },
+    bpm: 60,
+    stems: ['music/morning/full'],
+  },
+  {
+    id: 'sleepy-little-mouse',
+    title: 'Sleepy Little Mouse',
+    author: 'Tsorthan Grove',
+    key: { root: 0, mode: 'major' },
+    bpm: 70,
+    stems: ['music/sleepy-little-mouse/drums', 'music/sleepy-little-mouse/keys'],
+    // The drums play while you build and at a milestone; the menus, the shop and a crate drop them.
+    mix: {
+      title: NO_DRUMS,
+      menu: NO_DRUMS,
+      build: DRUMS,
+      shop: NO_DRUMS,
+      crate: NO_DRUMS,
+      review: DRUMS,
+      won: DRUMS,
+      lost: NO_DRUMS,
+    },
+  },
+  {
+    id: 'clear-air',
+    title: 'Clear Air',
+    author: 'Kevin MacLeod',
+    // It leans G minor; B♭ major shares its notes.
+    key: { root: 10, mode: 'major' },
+    bpm: 68,
+    stems: ['music/clear-air/full'],
+  },
+];

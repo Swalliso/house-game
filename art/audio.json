@@ -23,6 +23,24 @@
       "page": "https://opengameart.org/content/interface-sounds",
       "author": "Kenney (kenney.nl)",
       "license": "CC0-1.0"
+    },
+    "kevin-macleod-morning": {
+      "path": "kevin-macleod",
+      "page": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN2300003",
+      "author": "Kevin MacLeod (incompetech.com)",
+      "license": "CC-BY-4.0"
+    },
+    "kevin-macleod-clear-air": {
+      "path": "kevin-macleod",
+      "page": "https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100626",
+      "author": "Kevin MacLeod (incompetech.com)",
+      "license": "CC-BY-4.0"
+    },
+    "tsorthan-grove": {
+      "path": "tsorthan-grove",
+      "page": "https://opengameart.org/content/sleepy-little-mouse",
+      "author": "Tsorthan Grove",
+      "license": "CC-BY-4.0"
     }
   },
   "cuts": {
@@ -350,6 +368,44 @@
       "peak": -3,
       "lowpass": 3000,
       "note": "a placement that isn't allowed: a soft, low bonk"
+    },
+    "music/morning/full": {
+      "from": "kevin-macleod-morning",
+      "file": "Morning.mp3",
+      "stereo": true,
+      "loudness": -16,
+      "quality": 4,
+      "note": "D-128: nylon guitar, harp and flute"
+    },
+    "music/sleepy-little-mouse/drums": {
+      "from": "tsorthan-grove",
+      "file": "sleepy_little_mouse_alternate.flac",
+      "start": 0,
+      "length": 174,
+      "fade": 2,
+      "stereo": true,
+      "loudness": -16,
+      "quality": 4,
+      "note": "D-128: the alternate mix, cut to the no-drums mix's length (the rest is silence)"
+    },
+    "music/sleepy-little-mouse/keys": {
+      "from": "tsorthan-grove",
+      "file": "sleepy_little_mouse_alternate_no_drums.flac",
+      "start": 0,
+      "length": 174,
+      "fade": 2,
+      "stereo": true,
+      "loudness": -16,
+      "quality": 4,
+      "note": "D-128: the same mix without drums, in time with the drums stem"
+    },
+    "music/clear-air/full": {
+      "from": "kevin-macleod-clear-air",
+      "file": "Clear Air.mp3",
+      "stereo": true,
+      "loudness": -16,
+      "quality": 4,
+      "note": "D-128: guitars and soft piano"
     }
   }
 }

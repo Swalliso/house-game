@@ -39,6 +39,11 @@ describe('the tracks', () => {
       for (const [scene, levels] of Object.entries(t.mix ?? {})) {
         expect(levels!.length, `${t.id}'s ${scene} mix`).toBe(t.stems.length);
       }
+      // A screen without a mix plays every stem at once, which doubles alternate mixes (D-128's
+      // Sleepy Little Mouse), so a track with stems names every screen's mix.
+      if (t.stems.length > 1) {
+        for (const scene of SCENES) expect(t.mix?.[scene], `${t.id} on ${scene}`).toBeDefined();
+      }
     }
   });
 
