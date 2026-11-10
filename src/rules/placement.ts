@@ -3,8 +3,9 @@
 // - inside the lot; not on another piece, water, or a boulder (a piece's `canCover` lets it
 //   cross a blocking feature: the Driveway's culvert over the creek)
 // - one connected house: a new indoor piece must touch an indoor piece once any exists
-// - a `requires` effect with `blocksPlacement` must hold where it's built (Garage, Driveway,
-//   Treehouse), checked on the house as it would be
+// - a `requires` effect with `blocksPlacement` must hold where it's built (Driveway,
+//   Treehouse), checked on the house as it would be. One without it never blocks: the piece
+//   just earns nothing until it holds (the Patio, the Doghouse, and since D-140 the Garage)
 // Building over Trees is allowed and free, and removes them.
 //
 // Demolition (Appendix A · M2) removes a whole piece, or a feature with `clear: 'demolish'`
@@ -45,7 +46,7 @@ export const REASONS = {
   noDemolitions: 'No demolitions left.',
 } as const;
 
-/** "The Garage is a room: it must connect to the house." */
+/** "The Garage is a room: it must connect to the house.", for a room with a blocking requirement. */
 export function roomToo(name: string): string {
   const the = definite(name);
   return `${the.charAt(0).toUpperCase()}${the.slice(1)} is a room: it must connect to the house.`;
@@ -97,8 +98,9 @@ export function checkPlacement(
   }
   const found = finds.length > 0 ? { finds } : {};
   if (def.category === 'indoor' && layout.hasIndoor && !touchesIndoor(content, layout, cells)) {
-    // A room built to a requirement (the Garage, by the street or a Driveway) says it's a room:
-    // playtest 4 read the card as if the street alone would do.
+    // A room that must be built to a requirement says it's a room: playtest 4 read the Garage's
+    // card as if the street alone would do. (The Garage's no longer blocks, D-140, so the base
+    // pool has no such room now; the rule stays for one that does.)
     const requires = def.effects.some((e) => e.kind === 'requires' && e.blocksPlacement);
     return fail(requires ? roomToo(def.name) : REASONS.disconnected);
   }
