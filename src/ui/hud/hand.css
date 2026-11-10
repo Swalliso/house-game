@@ -69,16 +69,15 @@
     display: none;
   }
 }
-.swap-chip .icon {
-  flex: none;
-}
 
 /* --- A card: the Card primitive (kit.css), with the hand's own sizes ----------------------- */
 
-/* Compact (D-121): the head and the first effect line beside a thumbnail of the piece in its
-   well, then the chips and any alert across the card. A card without a picture (a fixture, or
-   any card on a short window) gives the text the whole width. The empty row under the line
-   takes the rest of a tall picture's height, so the name and the line stay together. */
+/* Compact (D-121): the head and the line that says what it pays beside a thumbnail of the piece
+   in its well, then the chips and any alert across the card. A card without a picture (a
+   fixture, or any card on a short window) gives the text the whole width. The empty row under
+   the line takes the rest of a tall picture's height, so the name and the line stay together.
+   Each part's top margin spaces it, not the grid's gap, so a row with nothing in it (that empty
+   row, or no alert) adds no space: four cards fit at 1600×900. */
 .hand-card {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -90,37 +89,7 @@
     'chips chips'
     'alert alert';
   align-content: start;
-  gap: var(--space-1) 0;
-}
-/* The first effect line, in two lines at most: Inspect has the rest. */
-.hand-card .pcard-lines li {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
-}
-/* A narrow card (the design target's column, 1600×900, and narrower): the name runs across,
-   the line and the chips sit beside a thumbnail of the picture (half size where the screen
-   has the pixels: thumbScale), and in the wide pixel font the kind's chip goes (the card's
-   tint says it, and Inspect) and the tags show just their icons, named in their titles. */
-@container hand-row (max-width: 308px) {
-  .hand-card {
-    grid-template-rows: auto auto auto 1fr auto;
-    grid-template-areas:
-      'head head'
-      'lines art'
-      'chips art'
-      '. art'
-      'alert alert';
-  }
-  .hand-card .piece-art {
-    width: var(--thumb-w) !important;
-    height: var(--thumb-h) !important;
-  }
-  [data-font='pixel'] .hand-card .kind-chip,
-  [data-font='pixel'] .hand-card .tag-chip .chip-word {
-    display: none;
-  }
+  gap: 0;
 }
 .hand-card .pcard-head {
   grid-area: head;
@@ -138,6 +107,80 @@
   grid-area: art;
   align-self: start;
   margin-left: var(--space-2);
+}
+.hand-card .pcard-lines,
+.hand-card .pcard-chips,
+.hand-card .pcard-alert {
+  margin-top: var(--space-1);
+}
+/* A card swapped in (D-121): the reroll die as a badge on its top corner, over the ring, so it
+   takes no room from the name or the chips. Small enough to clear the shape glyph under it and
+   the Reroll button over a row's first card. Its words are in its title, and read out. */
+.hand-card .swap-mark {
+  position: absolute;
+  top: calc(var(--px) * -2);
+  right: calc(var(--px) * -2);
+  display: flex;
+  filter: drop-shadow(0 var(--px) 0 var(--shade));
+}
+/* The line, in two lines at most: Inspect has the rest. */
+.hand-card .pcard-lines li {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+/* A narrow card (the design target's column, 1600×900, and narrower): the name runs across,
+   the line and the chips sit beside a thumbnail of the picture (half size where the screen
+   has the pixels: thumbScale), and in the wide pixel font the kind's chip goes (the card's
+   tint says it, and Inspect) and the tags show just their icons, named in their titles. */
+@container hand-row (max-width: 308px) {
+  /* The chips' row takes the rest of a tall picture's height, the chips at its top. */
+  .hand-card {
+    grid-template-rows: auto auto 1fr auto;
+    grid-template-areas:
+      'head head'
+      'lines art'
+      'chips art'
+      'alert alert';
+  }
+  .hand-card .pcard-chips {
+    align-self: start;
+  }
+  .hand-card .pcard-art {
+    margin-top: var(--space-1);
+    margin-left: var(--space-1);
+  }
+  /* Narrower padding and bullet, as a window under 1500 px wide has, so a line's first words
+     fit beside a room's thumbnail at 1600×900 ("+2 per touching / room (up to 4)", not
+     "+2 per / touching roo…"), and Renovate and a tag share a line at 1440×900. */
+  .hand-card {
+    padding-inline: var(--space-2);
+  }
+  .hand-card .pcard-lines li {
+    padding-left: var(--space-2);
+  }
+  .hand-card .piece-art {
+    width: var(--thumb-w) !important;
+    height: var(--thumb-h) !important;
+  }
+  [data-font='pixel'] .hand-card .kind-chip,
+  [data-font='pixel'] .hand-card .tag-chip .chip-word {
+    display: none;
+  }
+}
+/* The narrowest column (under 1500 px wide, 1440×900): beside the thumbnail, Renovate and a tag
+   no longer share a line, so the chips run across the card under it. */
+@container hand-row (max-width: 240px) {
+  .hand-card {
+    grid-template-rows: auto auto 1fr auto auto;
+    grid-template-areas:
+      'head head'
+      'lines art'
+      '. art'
+      'chips chips'
+      'alert alert';
+  }
 }
 
 /* A short window (1280×720) fits more of the hand: the cards drop their pictures for their
@@ -160,17 +203,34 @@
 .hand-card.is-selected .shape-glyph > span {
   background: var(--ink);
 }
-@media (max-height: 800px) {
+/* A window under 1100 px tall, where Your goods folds (Inventory.tsx), spaces the cards closer,
+   so a fifth card fits at 1920×1080. */
+@media (max-height: 1099px) {
   .hand .panel-body,
   .hand-row {
     gap: var(--space-2);
   }
+}
+@media (max-height: 800px) {
   .hand-card .pcard-art,
   .hand-card .pcard-note {
     display: none;
   }
   .shape-glyph {
     display: grid;
+  }
+}
+/* A narrow card's thumbnail is half the picture only where the screen has the pixels for it
+   (thumbScale); at 1× it's the whole picture, and four cards beside it were too tall for a
+   900 px window. There, as on a short window, the card shows its shape's glyph instead. */
+@media (max-height: 900px) and (max-resolution: 1dppx) {
+  @container hand-row (max-width: 308px) {
+    .hand-card .pcard-art {
+      display: none;
+    }
+    .shape-glyph {
+      display: grid;
+    }
   }
 }
 
@@ -252,6 +312,18 @@
     margin: 0 calc(var(--space-2) * -1) calc(var(--space-2) * -1);
     padding: var(--space-2);
   }
+}
+/* Cards under the bar (Hand.tsx useCardsUnderBar): a hard shadow over them, and a tab on the
+   bar's edge, "1 more card", that scrolls the column to its end. */
+.hand-actions.has-more {
+  box-shadow:
+    0 calc(var(--px) * -1) 0 var(--paper-line),
+    0 calc(var(--px) * -3) 0 var(--shade);
+}
+.hand-actions .more-cards {
+  position: absolute;
+  right: var(--space-3);
+  bottom: calc(100% + var(--px) * 2);
 }
 .hand-actions .end-week {
   flex: 1;

@@ -1813,6 +1813,7 @@ export {
   effectText,
   fixtureText,
   glossary,
+  handCardLines,
   houseConditionText,
   lotTraitText,
   modifierText,

@@ -7,6 +7,7 @@ import {
   earnTargetText,
   effectText,
   glossary,
+  handCardLines,
   modifierText,
   selectorText,
   sunSideText,
@@ -134,5 +135,102 @@ describe('card text', () => {
     );
     expect(countedNames(['Living Room'])).toBe('a Living Room');
     expect(countedNames(['Old Shed'])).toBe('an Old Shed');
+  });
+});
+
+describe('a compact hand card (D-121)', () => {
+  // Every card the hand can hold, the Catalog's special pieces too, and each drawable fixture:
+  // what its compact card shows. A new card shows up here as a line to check.
+  const pieces = Object.values(CONTENT.pieces).filter((p) => !p.member);
+  const fixtures = Object.values(CONTENT.fixtures).filter((f) => f.drawWeight > 0);
+
+  it('shows what a piece pays, not its link or where it must go', () => {
+    const shown = Object.fromEntries(
+      pieces.map((p) => [p.id, handCardLines(CONTENT, { kind: 'piece', id: p.id })]),
+    );
+    expect(shown).toEqual({
+      bedroom: ['+3 every week'],
+      bathroom: ['+3 if touching a Bedroom'],
+      kitchen: ['+2 per touching Dining Room or Herb Garden'],
+      lKitchen: ['+2 per touching Dining Room or Herb Garden'],
+      diningRoom: ['Touching Kitchens and Living Rooms earn +50%'],
+      livingRoom: ['+2 per touching view (up to 3)'],
+      closet: ['+1 every week'],
+      // Playtest 4's fix (D-114), behind "Links the rooms it touches…" before this.
+      hallway: ['+2 per touching room (up to 4)'],
+      longHallway: ['+2 per touching room (up to 4)'],
+      // Not "Must touch the house, and the street or a Driveway": the lot shows where it goes.
+      garage: ['+1 every week'],
+      homeOffice: ['+2 every week'],
+      lawn: ['+1 every week'],
+      sapling: ['+1 every week'],
+      flowerBed: ['+1 every week'],
+      herbGarden: ['+1 per tile in the sun'],
+      // A requirement that isn't about placement follows the pay: without it, nothing.
+      patio: ['+2 per touching Living Room or Kitchen if touching a room'],
+      fence: ['+1 per tile of the fenced yards it borders (up to +6)'],
+      driveway: ['+1 every week in the front yard'],
+      doghouse: ['+1 every week in a fenced yard'],
+      treehouse: ['+2 every week'],
+      greenhouse: ['Touching yard pieces that give a view earn +50%'],
+      playroom: ['+2 per touching Bedroom'],
+      library: ['+2 per touching Quiet neighbor (up to 3)'],
+      mudroom: ['Pet pieces in the fenced yard it borders earn +50%'],
+      pool: ['+12 every 3rd week'],
+      sunroom: ['+6 every week while Sunny'],
+      hotTub: ['+3 per touching Patio if touching a room'],
+      firePit: ['Touching Patios earn +50% if touching a room'],
+      henhouse: ['+1 budget every 2nd week'],
+      birdhouse: ['+1 per touching Tree (up to 3)'],
+    });
+    // Each is one of the card's own lines (or one with its requirement after it), with a number.
+    for (const p of pieces) {
+      const [line] = handCardLines(CONTENT, { kind: 'piece', id: p.id });
+      const own = cardText(CONTENT, p).effects;
+      expect(
+        own.some((l) => line!.startsWith(l)),
+        p.id,
+      ).toBe(true);
+      expect(line, p.id).toMatch(/[+−]\d/);
+      expect(line, p.id).not.toMatch(/^(Links|Must|Earns nothing|Becomes)/);
+    }
+  });
+
+  it('shows where a fixture goes and what it does to its room', () => {
+    const shown = Object.fromEntries(
+      fixtures.map((f) => [f.id, handCardLines(CONTENT, { kind: 'fixture', id: f.id })]),
+    );
+    expect(shown).toEqual({
+      fireplace: ['Fits any room', 'Earns +50%'],
+      skylight: ['Fits any room', 'Makes it Sunny'],
+      blackoutCurtains: ['Fits any room', 'Makes it Dark'],
+      soundproofing: [
+        'Fits any room',
+        'Loud neighbors (the street, Garages, Playrooms, and Pools) can’t take points off it',
+      ],
+      kitchenIsland: ['Fits a Kitchen', 'Counts as a Dining Room too'],
+      bunkBeds: ['Fits a Bedroom', 'Counts as 2 Bedrooms for the client'],
+      bayWindow: ['Fits an exterior room', 'Gives it a view, which counts as one more view'],
+      sprinkler: ['Fits a Lawn', 'Earns +100%'],
+      pergola: ['Fits a Patio', 'Gives it a view, which counts as one more view'],
+      gardenLights: ['Fits any yard piece', 'Makes it Pretty'],
+    });
+  });
+
+  it('falls back to the first line when nothing pays', () => {
+    const linkOnly = { ...CONTENT.pieces.hallway, effects: [{ kind: 'link' as const }] };
+    const content = { ...CONTENT, pieces: { ...CONTENT.pieces, hallway: linkOnly } };
+    expect(handCardLines(content, { kind: 'piece', id: 'hallway' })).toEqual([
+      'Links the rooms it touches: they count as touching each other',
+    ]);
+    // A penalty isn't pay: a Bedroom with only its Loud penalty shows that.
+    const grumpy = {
+      ...CONTENT.pieces.bedroom,
+      effects: CONTENT.pieces.bedroom.effects.filter((e) => e.kind === 'neighbor' && e.amount < 0),
+    };
+    const content2 = { ...CONTENT, pieces: { ...CONTENT.pieces, bedroom: grumpy } };
+    expect(handCardLines(content2, { kind: 'piece', id: 'bedroom' })).toEqual([
+      '−2 per touching Loud neighbor',
+    ]);
   });
 });

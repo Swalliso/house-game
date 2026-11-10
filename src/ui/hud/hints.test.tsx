@@ -200,3 +200,14 @@ describe("the strip's keys for M4's plays", () => {
     expect(strip().some((h) => h.keys.includes('R'))).toBe(true);
   });
 });
+
+describe("the build strip's card keys", () => {
+  it('numbers the whole hand, two rows of it, as keys 1–9 pick its cards (D-121)', () => {
+    const card = { kind: 'piece', id: 'bedroom' } as const;
+    run.value = { ...start, screen: 'build', hand: [card, card, card, card] };
+    expect(strip()[0]).toEqual({ keys: ['1–4'], words: 'pick a card' });
+    // The Bigger Truck or the Landscaper adds a fifth.
+    run.value = { ...start, screen: 'build', hand: [card, card, card, card, card] };
+    expect(strip()[0]).toEqual({ keys: ['1–5'], words: 'pick a card' });
+  });
+});
