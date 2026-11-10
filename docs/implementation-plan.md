@@ -1189,6 +1189,7 @@ After M4 and before M5b (D-097's juice note): the reward feedback on M5a's art, 
   - Do big moments feel big, and small ones stay out of the way?
   - Is anything too slow or too flashy?
   - Does Huge come too often (D-124's best-week clause)?
+- **Played in playtest 5 (2026-11-10, with M5b; `docs/playtests/playtest-5-findings.md`):** the Good, Great and Huge weeks all land, and the user liked the tally, the doorbell and the arrivals. The roof reveal is easy to miss, so D-133 adds a roof view to bring it back.
 
 ### M5b · Sound and music
 
@@ -1201,6 +1202,7 @@ After M4 (D-097). The sound half of the feel pass (D-058 and §12).
 - **Playtest 5b:**
   - Is the music relaxing after 20 minutes?
   - Do the reward sounds fit their moments, and does anything get too loud?
+- **Played in playtest 5 (2026-11-10, with the juice; `docs/playtests/playtest-5-findings.md`):** the music is good, but three tracks loop noticeably over a run, so D-134 adds about three more from the shortlist.
 
 ### M6 · Balance and polish
 
