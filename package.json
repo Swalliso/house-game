@@ -9,6 +9,8 @@
   },
   "scripts": {
     "dev": "vite",
+    "art:cut": "node scripts/cut-art.ts",
+    "audio:cut": "node scripts/cut-audio.ts",
     "atlas": "node scripts/build-atlas.ts",
     "build": "npm run atlas && npm run typecheck && vite build",
     "preview": "vite preview",
@@ -16,7 +18,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.rules.json",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "sim": "node sim/cli.ts"
   },
   "dependencies": {
     "@preact/signals": "^2.11.4",

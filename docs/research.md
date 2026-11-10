@@ -6,7 +6,7 @@ Reference notes on the games we're borrowing from. Facts are paraphrased from th
 
 ## Combolands: Roguelike Citybuilder (Crux Games, 2026)
 
-> **Update 2026-11-04:** several notes below are corrected by the "Update: reception, comparables, corrections" section at the end of this file. **2026-11-05:** the "Update: shop, items, and map" section adds detail on the shop, heirlooms, upgrades, potions, and the map, and the "Update: juice, sound, scoring, and art" section covers reward feedback, music, multipliers, and pixel art.
+> **Update 2026-11-04:** several notes below are corrected by the "Update: reception, comparables, corrections" section at the end of this file. **2026-11-05:** the "Update: shop, items, and map" section adds detail on the shop, heirlooms, upgrades, potions, and the map, and the "Update: juice, sound, scoring, and art" section covers reward feedback, music, multipliers, and pixel art. **2026-11-06:** "Update: houses that look like houses" is the research for D-093, and "Update: how Combolands' systems fit together, and chain reactions" covers how its buildings, items, and chains interact, for D-094.
 
 **Basics:** A pixel-art roguelike city builder from Crux Games, a two-person studio (makers of Terra Nil). Released August 24, 2026 on PC via Steam. It grew out of a free itch.io prototype called *Tiny Towns*. Very well received on Steam.
 
@@ -346,6 +346,8 @@ This pass researched what makes combo games feel rewarding, for D-055 to D-059 a
 - **Asset licenses**, checked on each asset page:
   - **Kenney** (Tiny Town, Roguelike Indoors, RPG Urban): CC0.
   - **LimeZu Modern Interiors and Modern Exteriors:** paid, commercial use allowed, no redistribution, credit required. LimeZu said open-source projects may include the parts they use.
+    - *Checked 2026-11-06 against the licenses in the zips:* Modern Exteriors' (`Modern_Exteriors_License.pdf`) adds "Use the asset in open source projects (ex GitHub)". Modern Interiors' (`LICENSE.txt`) and both itch.io pages don't mention open source; both forbid reselling or distributing "the asset". We have no link or quote for LimeZu's statement above (D-097).
+    - *Decided 2026-11-06:* the team kept D-057's approach for both packs: commit only the cut sprites we use, each recorded and credited to LimeZu (D-097's license note).
   - **LimeZu Serene Village Revamped:** CC BY 4.0.
   - **Ninja Adventure:** CC0, and includes music and sound effects.
   - **Free tiers of Sprout Lands, Cozy Farm, Modern Interiors, and Cute Fantasy:** non-commercial or private only.
@@ -410,3 +412,343 @@ This pass researched what makes combo games feel rewarding, for D-055 to D-059 a
   - [MDN crisp pixel art](https://developer.mozilla.org/en-US/docs/Games/Techniques/Crisp_pixel_art_look)
   - [WebKit bug 185683](https://www2.webkit.org/show_bug.cgi?id=185683)
   - [Asset Forge](https://matthewdeaves.github.io/assetforge)
+
+---
+
+## Update: houses that look like houses (2026-11-06)
+
+This pass researched how other games reward plausible buildings without killing combos, for D-093. In playtest 3 the house had 4 Living Rooms, 2 Kitchens, 2 Home Offices, and 3 Bedrooms sharing 1 Bathroom. It starts from our own sim, then the comparables. Key claims were spot-checked against their sources. Items marked *(guide)* come from fan guides, wikis, transcriptions, or forum posts.
+
+### The sim baseline *(our measurements)*
+
+From 200 greedy runs (seeds `sim-0` to `sim-199`, default options, develop at `49dce94`), reading each run's house at the end. A script outside the repo did the reading and reproduces `npm run sim -- --runs 200 --policy greedy` run for run. The 124 wins are full 28-week houses, and the numbers are for them.
+
+- **Repeats are the norm:**
+  - Living Rooms average 3.4 per house: 90% of houses have two or more, 67% three or more, and one had 8.
+  - Kitchens average 2.7: 72% have two or more, 50% three or more.
+  - Dining Rooms average 2.1: 68% have two or more.
+  - 88% of houses have some room other than a Bedroom, Bathroom, or Closet three or more times.
+- **Bathrooms are scarce:** 1.6 per house against 3.5 Bedrooms. 23% of houses have none, and 40% have more than two Bedrooms per Bathroom.
+- **Only 2% pass a simple plausibility check.** The check: at least one Bedroom, Kitchen, and Bathroom; a Bathroom for every three Bedrooms; and at most one Kitchen, one Dining Room, two Living Rooms, one Garage, two Home Offices, and one of each special room. The playtest house fails it too.
+- **Repeats sit apart:**
+  - In houses with two or more of a type, the copies never touch in 37% of houses for Living Rooms, 44% for Kitchens, and 65% for Dining Rooms. They form one group in only 10–15%. Each copy wants its own view sources or its own Dining Rooms.
+  - Bedrooms cluster more, forming one group in 37% of houses, because each earns +1 per Quiet neighbor. Lawns and Treehouses almost always clump, by design.
+  - No Bedroom touches a Loud piece. That part of the zoning already works.
+- **Why repeats win:**
+  - **Nothing counts copies.** Each Living Room earns its own +2 per view, so four Living Rooms earn four sets of views.
+    - In the last week, a Living Room earns about 25 per copy, a Kitchen 22, a Bedroom 17, a Bathroom 9, and a Dining Room 5.
+    - Living Rooms make 22% of the run's Wow, and Kitchens 14%.
+  - **Sets pay per instance.** At the end, 47% of houses hold two or more Entertainers, and each pays 25 Points and +1 Charm a week. The sets' Points are 21% of the Wow, before their Charm.
+  - **The Kitchen has two cards** (Kitchen and L-Kitchen) at normal weight, so it's offered twice as often as any other room: about 7 times a run against 3.4 for the Living Room.
+  - **The Bathroom pays little.** It pays only for its first Bedroom (+3, capped because Jack-and-Jill pays for two), and loses 2 for each Kitchen it touches.
+
+### What changes the houses *(in-memory experiments)*
+
+These are the same 200 seeds with the rules changed in memory, in a scratch copy, at today's targets. The repo isn't changed.
+- "One Entertainer per house" uses the plan's `maxInstances` field, which M4a builds for Full House.
+- Specs are emulated as +0.25 Charm while their condition holds, the way M4a's will pay.
+- The room columns count won houses. The Wins column counts all 200 runs.
+
+| Change | Wins | 2+ Kitchens | 3+ Living Rooms | 2+ Dining Rooms | >2 Bedrooms per Bathroom | Plausible |
+|---|---|---|---|---|---|---|
+| Today | 62% | 72% | 67% | 68% | 40% | 2% |
+| Every copy of a room type earns −25% per copy past the first (all but Bedrooms, Bathrooms, and Closets) | 61% | 69% | 46% | 64% | 38% | 2% |
+| One Entertainer per house | 60% | 68% | 66% | 65% | 39% | 2% |
+| Both, at −50% a copy | 54% | 66% | 8% | 62% | 39% | 6% |
+| Kitchen cards at half weight | 50% | 58% | 69% | 56% | 37% | 3% |
+| A Bedroom with no Bathroom touching it (or linked by a Hallway) earns −50% | 56% | 85% | 66% | 71% | 21% | 1% |
+| A spec: one Kitchen | 78% | 31% | 61% | 64% | 38% | 11% |
+| Three household specs at +0.1 each | 75% | 45% | 45% | 41% | 22% | 19% |
+| Three household specs at +0.25 each | 86% | 10% | 11% | 10% | 13% | 54% |
+| The specs, one Entertainer, half-weight Kitchens, and −25% | 74% | 2% | 1% | 2% | 17% | 69% |
+
+The three household specs are:
+- exactly one Kitchen
+- a Bathroom for every two Bedrooms, with at least two Bedrooms
+- one or two Living Rooms, and at most one Dining Room
+
+What the experiments show:
+- **Percentages add (D-037), so a per-copy penalty is weak.** A Kitchen that touches three Dining Rooms already has +150%, and −25% barely dents it. The penalty trims Living Rooms but not Kitchens.
+- **Capping the Entertainer** removes repeated sets: houses holding two or more fall from 47% to 0%. It costs about 12% of the median Wow but barely changes the room counts. Kitchens pay on their own: +2 per Dining Room, the Dining Rooms' +50%, and the Patios' +2 per Kitchen.
+- **Penalties backfire, because the bot routes around them.** Docking Bedrooms that lack a Bathroom made it build fewer Bedrooms (3.5 down to 2.7) and more Kitchens. Houses with no Bathroom rose from 23% to 31%.
+- **Specs with a ceiling work.**
+  - Building a second Kitchen loses the "one Kitchen" spec, and that loss shows in the placement's preview. So the bot sees the cost at the moment it matters, and a player would too.
+  - The push scales with the spec's value: at +0.1 the specs moved much less.
+  - The specs also add Charm, so the win rate rose 24 points at today's targets. They'd need a re-fit, and D-085 already finds the middle of the run too easy.
+- **Side effects:**
+  - Yard repeats rise as rooms are capped: houses with three or more Patios go from 40% to 51%.
+  - Houses get smaller (a median of 11 rooms, down from 15), and the yard gets fuller.
+  - Most of the remaining no-Bathroom houses (19%) have 0–2 Bedrooms, so the Bathroom spec never applies to them. A client's own Bedroom count would close that gap.
+
+### Comparables
+
+- **Dream Home** (Rebel, 2016):
+  - **Merging:** touching cards of one room type on a floor merge into one room, up to the 1, 2, or 3 cards printed on the card. Bigger rooms score steeply: a Living Room is 1, 4, or 9 points at 1, 2, or 3 cards.
+  - **Finishing:** a room is finished at full size or once it holds a décor token, and you can't build the same type next to a finished room. Each décor token goes in one room of its type.
+  - **Functionality bonuses:** 3 points for a Bathroom on each upper floor, and 3 for a house with a Bathroom, a Kitchen, and a Bedroom (4 each with the Architect helper). Small cards add adjacency: a Pantry is 3 points next to a Kitchen, and a Sauna 3 next to a Bathroom.
+  - No rule we found caps how many rooms of one type you build. The printed cards weren't checked.
+- **Floor Plan** (Deep Water Games, 2020):
+  - **Rooms:** rectangles sized by two dice and labeled by one die: Closet, Washroom, Bedroom, Kitchen, Dining Room, or Living Room. Nothing requires a Kitchen, a Washroom, doors, or connected rooms.
+  - **Clients:** three client cards per game set the demands, such as a Bedroom with a window that looks out on a tree. A demand can be scored again with different rooms.
+  - **Reviewers agree the best houses are absurd:**
+    - BoardGameQuest: five dining rooms side by side, with no doors.
+    - AV Club: six bedrooms and one closet.
+    - What's Eric Playing: a win with no outside doors. The reviewer wished every house had to meet some basic requirements.
+- **Castles of Mad King Ludwig** (2014):
+  - **Completion rewards:** completing a room (every doorway joined) pays by its type:
+    - Food: another turn
+    - Living: re-score the room
+    - Activity: 5 points
+    - Sleeping: take up to 2 tiles from a stack and put them on top of the deck
+    - Utility: draw 2 bonus cards and keep 1
+    - Outdoor: 10,000 coins
+    - Corridor: a free Hallway or Stairs
+    - Downstairs: every second one takes another type's reward
+  - **Adjacency** counts each joined room once, however many doorways join them. Activity rooms' penalties need only touching.
+  - **End-game bonus cards** reward both specializing and variety. One counts the rooms of a chosen type, and another pays 7 points for having all 8 types. The King's Favors rank players on the count or footage of one type.
+- **Between Two Castles of Mad King Ludwig** (Stonemaier, 2018) *(guide: a rules transcription)*:
+  - Your 3rd room of a type earns that type's bonus (a Fountain, a Tower, a bonus card, and so on), and your 5th earns any specialty room. There's nothing at 2, 4, or 6+.
+  - A Sleeping room scores 4 if the castle has all 6 other regular types, and 1 otherwise.
+- **Islanders: New Shores** (2025):
+  - The Guild Hall scores for each different building in range and loses as much for each duplicate: +12 and −12 *(guide)*.
+  - A boon, Neighbourly, stops buildings from losing points for touching.
+  - Penalties work by range, so spreading duplicates out dodges them.
+- **Dorfromantik** *(guide)*: number quests need an exact count in an area, "+" quests at least that many, and flag quests only a closed area. Missing one costs nothing, and finishing one pays extra tiles.
+- **Kingdomino and Cascadia** *(rules summaries)*:
+  - Kingdomino scores each connected region of one terrain as its squares × its crowns.
+  - Cascadia scores only the largest connected corridor of each habitat, at 1 point a tile, plus a bonus for the biggest.
+  - In both, same-type tiles are worth more together, and a stray copy adds nothing.
+- **The Sims:**
+  - Players don't type rooms, and nothing scores the floor plan. In the original game, rooms feed a need of their own (Room), from size, light and windows, and décor, less dirt.
+  - The Sims 4 counts a lot's beds and bathrooms itself, and lists them in the lot's details *(forum)*.
+  - Community venues like restaurants and bars need a list of required objects to work, and residential lots need none *(forum, mod page)*.
+  - Dream Home Decorator's clients judge a renovation by their likes and dislikes, not a list of required objects. A reviewer found the feedback thin.
+- **RimWorld** *(wiki)*:
+  - A room's role comes from its furniture: one bed makes a bedroom, and several make a barracks.
+  - Sharing a bedroom costs mood, and eating at a table in a dining room lifts it.
+- **House Flipper 2** *(guides)*:
+  - Buyers ask for a household's worth of rooms. One Sakura buyer would like four bedrooms, two bathrooms, affordable furniture, and a small garden, and has hidden preferences besides.
+  - A room counts as a bedroom with a bed, and as a bathroom with a toilet, a sink, and a bath or shower.
+  - A base-game guide found no price gain past 3 bedrooms or 3 bathrooms. The total room count mattered more.
+- **Real houses** (NAHB, from Census data):
+  - New single-family homes started in 2025: 46.5% had 3 bedrooms, 31.7% had 4, 10.3% had 5 or more, and 11.5% had 2 or fewer.
+  - In 2024: 65% had 2 full bathrooms, 23% had 3, 7% had 4 or more, and 4.5% had 1 or fewer. 46% also had at least one half bath.
+  - So a typical new house has 3–4 bedrooms and 2 full baths: about 1.5–2 bedrooms per bathroom. Greedy's houses have 3.5 Bedrooms and 1.6 Bathrooms.
+
+### Takeaways for Open House
+
+- **What works elsewhere:**
+  - a household's needs (The Sims, RimWorld, House Flipper's buyers)
+  - small "is it a home?" bonuses (Dream Home)
+  - goals with exact or capped counts (Dorfromantik, and our own Juniper's 4–8 rooms)
+  - variety bonuses that compete with specializing (Castles, the Guild Hall)
+- **Floor Plan is the warning:** it has none of these, and its best houses are absurd.
+- **Merging** (Dream Home) makes repeats read as one bigger room, and pays for it with steep size scoring. Our repeats sit apart, though, so merging would need a second rule to pull them together.
+- **In our sim, specs with a ceiling beat penalties.** A spec you'd lose shows in the placement's preview, while a penalty just gets routed around.
+
+### Corrections to the notes above
+
+The 2026-11-04 comparables say Floor Plan and Dream Home can both reward absurd houses (five adjacent dining rooms; no kitchen). Both examples come from Floor Plan's reviews (BoardGameQuest and AV Club). Dream Home's merging and functionality bonuses are its pushback.
+
+### Combolands: what pays gold (for D-090)
+
+There's no official list. These notes come from player comments and the unofficial combolands.site compendium, so all of them are *(guide)*:
+
+- **Industrial** is called the best money guild, with Maritime and Commercial close behind:
+  - One building pays +1 gold whenever a nature tile or resource is removed.
+  - Workshops: one player earned about 100 gold in two weeks from enough Industrial workshops.
+  - Ore loops: the Gold Nugget heirloom makes Gold Ore, and a Depot pays +1 gold when ore moves into it and +1 when it's removed.
+- **Commercial:** the Gold Pan and the Vineyard are named as the early gold earners. One player's loop of a Gold Pan and two Marketplaces re-triggering each other paid about 20 gold a week.
+- **Herbs:** a Jewelry between two Apothecaries turns their herbs into gold.
+- **Agricultural** (demo v9): Manure paid +1 gold when it was removed.
+- **Sources that aren't placement:**
+  - heirlooms: the Ingot, Shears, and an unnamed relic that multiplies gold gain. Heirlooms also sell back for value.
+  - council requests, which pay out on completion
+  - early completion, at about 1 gold per week saved (our screenshots)
+- **For D-090:** the placement sources are a producer next to a trigger, removing nature, and turning a resource into gold. No source gives totals, so the share of a run's gold that comes from placement is unknown.
+
+### Sources
+
+- Dream Home:
+  - [Rules summary](https://lehi-innovation.github.io/boardgame-rules/rules/dream-home/)
+  - [Rulebook (RulesPal)](https://rulespal.com/dream-home/rulebook)
+  - [Opinionated Gamers review](https://opinionatedgamers.com/2016/11/29/dale-yu-review-of-dream-home/)
+- Floor Plan:
+  - [Rulebook (RulesPal)](https://rulespal.com/floor-plan/rulebook)
+  - [AV Club review](https://www.avclub.com/floor-plan-board-game-review)
+  - [BoardGameQuest review](https://boardgamequest.com/floor-plan-review)
+  - [What's Eric Playing](https://whatsericplaying.com/2020/08/31/floor-plan)
+- Castles of Mad King Ludwig:
+  - [Rules (BGA)](https://en.doc.boardgamearena.com/Gamehelpcastleofmadkingludwig)
+  - [Rulebook (RulesPal)](https://rulespal.com/castles-of-mad-king-ludwig/rulebook)
+- Between Two Castles: [Rulebook (RulesPal)](https://rulespal.com/between-two-castles-of-mad-king-ludwig/rulebook)
+- Islanders: New Shores:
+  - [CubeD3 review](https://www.cubed3.com/games/reviews/nintendo-switch/islanders-new-shores)
+  - [Trophy guide (Guild Hall values)](https://knoef.info/?p=87009)
+  - [Checkpoint Gaming review](https://checkpointgaming.net/reviews/2025/07/islanders-new-shores-review-a-whole-new-world/)
+- Dorfromantik: [Quests guide](https://gamepretty.com/dorfromantik-beginners-guide-quests-rewards-tile-placement/)
+- Kingdomino: [Rules (BGA)](https://en.doc.boardgamearena.com/Gamehelpkingdomino)
+- Cascadia:
+  - [Rules summary](https://lehi-innovation.github.io/boardgame-rules/rules/cascadia/)
+  - [How to play (Happy Piranha)](https://happypiranha.com/blogs/board-game-rules/how-to-play-cascadia-board-game-rules-instructions)
+- The Sims:
+  - [Room motive (Forbus, "The Sims Under the Hood")](https://users.cs.northwestern.edu/~forbus/c95-gd/lectures/The_Sims_Under_the_Hood_files/v3_slide0106.htm)
+  - [Windows and room score](https://www.thesimswiki.com/wiki/Window)
+  - [Bed and bath counts (forum)](https://forums.ea.com/discussions/the-sims-4-bug-reports-archive-en/fr-count-of-bedsbaths-for-rental-apartments-is-not-updated-after-editing/11635341/replies/11635346)
+  - [Venue requirements (forum)](https://forums.ea.com/discussions/the-sims-4-general-discussion-en/venue-requirements---why-none-for-residential/2114286)
+  - [No Venue Requirements mod](https://modthesims.info/d/543444)
+  - [Dream Home Decorator: listen to your clients](https://simscommunity.info/2021/06/01/the-sims-4-dream-home-decorator-listen-to-your-clients)
+  - [GamingTrend review](https://gamingtrend.com/reviews/shes-a-bit-of-a-fixer-upper-the-sims-4-dream-home-decorator-review/)
+- RimWorld:
+  - [Room roles](https://rimworldwiki.com/wiki/Room_roles)
+  - [Rooms](https://rimworldwiki.com/wiki/Rooms)
+- House Flipper 2:
+  - [Sakura DLC guide](https://www.treyexgaming.com/house-flipper-2-sakura-dlc-achievements-guide/)
+  - [Profit guide](https://gamesfuze.com/guides/house-flipper-2-how-to-make-profit-in-house-flipping-guide/)
+- Real houses (NAHB):
+  - [Bedrooms in 2025](https://eyeonhousing.org/2026/09/bedrooms-in-new-single-family-homes-in-2025/)
+  - [Bathrooms in 2024](https://eyeonhousing.org/2025/12/number-of-bathrooms-in-new-single-family-homes-in-2024/)
+- Combolands gold:
+  - [Forum: powerful combinations](https://steamcommunity.com/app/4075620/discussions/0/582807198746355731/)
+  - [Forum: earning lots of gold](https://steamcommunity.com/app/4075620/discussions/0/582807145029856051/)
+  - [Late-game guide](https://gameplay.tips/guides/combolands-roguelike-citybuilder-late-game-fishing-and-commercial-strategy.html)
+  - [combolands.site: gold](https://combolands.site/gold/)
+  - [combolands.site: buildings](https://combolands.site/buildings/)
+  - [combolands.site: heirlooms](https://combolands.site/heirlooms/)
+
+---
+
+## Update: how Combolands' systems fit together, and chain reactions (2026-11-06)
+
+This pass looked at how Combolands' buildings, items, and events work together, rather than at one system, because the team's sense is that the way everything interacts is what makes it feel good. It also covers how its chains and Balatro's retriggers work, for D-094. It adds to the notes above rather than repeating them. Its claims were checked against their sources twice, independently: the developer's 16 Steam news posts (April to October 2026; the feed's other 3 items are GamingOnLinux articles), three reviews and an impressions piece, two Steam community guides, forum threads, the Balatro wiki, and our own code. Items marked *(guide)* come from guides, forum posts, or the unofficial combolands.site compendium.
+
+### Every building is one sentence
+
+A building reads as **when** it fires, **what** it looks at, and **what** it does. A small vocabulary for each lets 120+ buildings share one grammar, though readability is still mixed ("Combolands reception" above):
+
+| Part | Kinds | Examples |
+|---|---|---|
+| **When** | when placed; every few weeks; when another building triggers it; when a building in range is removed, or when it is itself; when a building in range gains a token; when nature appears next to it; growth, then a transform | A Guard Tower fires when a building in its range is removed *(guide)*. Frontier's Shaman fires when a building in its range gains a reroll *(guide)*. |
+| **What** | adjacent; in range (each building has its own radius); connected; enclosed; on top or below; a category; a map feature | Barracks score for each rock nearby. A Monument scores for each Residence connected to the Town Hall. |
+| **Does** | points, flat or per match; mult; trigger others; create; remove; transform; give a token (reroll, remove, gold, an upgrade); change a rule | A Forester makes forest, and a Woodcutter clears it for points *(guide)*. A Plaza lets the buildings beside it ignore the rule that keeps identical buildings apart *(guide)*. |
+
+- **Categories, not names.** Most effects read a category (Farm, Crop, Husbandry, Training, Nature, Sacred, Stall) or a map feature *(guide)*, so new buildings and items plug into old ones without anyone writing the pairs. Two of the same building can't sit in each other's range, so builds spread out *(guide)*.
+- **Neutral "glue" buildings change their neighbors' rules** instead of scoring *(guide)*:
+  - a Lamppost shortens its neighbors' timers by a week, and a Town Bell adds 1 to their range
+  - Scaffolding gives +1 mult to whatever is built on top of it
+  - a Conduit triggers up to two buildings in range, and a Post Office passes a trigger from the building below it to the one above
+  - a building beside a railroad counts as beside everything along it
+
+  Any guild can use them, so they're where guild pairs meet.
+- **The map takes part.** Rock, forest, flowers, bushes, and fish count as buildings *(guide)*. Some buildings need them, some make them, and some clear them for a payout; harvested bushes regrow after 4 weeks *(guide)*. A rework in the June 2026 demo (v9) shows the loop: manure pays a coin when it's removed, and a Composter removes the manure next to it and fires whenever something in its range is removed, giving each farm in range +0.1 mult.
+
+### Chain reactions
+
+Each of the three reviews describes a chain: one placement sets off a building, which sets off its neighbors.
+
+- **Buildings that start chains:**
+  - a Conduit triggers up to two buildings in range *(guide)*
+  - a Ballista turns to a random side every few weeks and triggers what's there, so a cluster of them sets each other off (Geekly Grind)
+  - a Trawler triggers a random ship, and with fish traps the chain reaches every ship in range (GameCritics)
+  - a Marketplace scores nothing itself but re-fires the stalls around it. Two Marketplaces re-fire each other once paint (Ghost or Rainbow) makes each count as what the other fires, and a Plaza or railroad puts them side by side *(guide)*.
+  - a Sparring Dummy fires every Training building in range and gives you a remove *(guide)*
+- **Tokens and removals carry chains.** A paint that gives a reroll whenever its building fires, on a building in a Shaman's range, chains through the reroll *(guide)*. Martial builds around removals: a Guard Tower fires when a building in its range is removed, and a Banner when it's removed itself *(guide)*, so one removal can set off every Guard Tower in range.
+- **Chains cross guilds.** One player's chain runs from a Lumber Mill through Engineering to Ballistas and a training dummy *(guide)*. In the same thread, one player says most guilds have at least one or two buildings that make a combo only their pairing can, and others name paint or overlapping tags as the bridge *(guide)*.
+- **Bounds:** most buildings fire at most 10 times a week *(guide)*. Loops still got through: a torch with several effigy pyres (fixed in demo v8; the notes don't say how it looped), and, in endless, a Chalice of Revision with a Flanged Mace, where each crop the Chalice creates starts with a fresh count *(guide)*. Players say re-creating a building is the only way past the cap *(guide)*. D-036 avoids loops like these.
+- **How it's shown:** points tally with a plink each (Aftermath); pop-ups such as +20 and ×1.5 sit over the buildings (Life Meets Pixel); a "magic" trail follows a combo across the screen once it gets big (demo v8); and a big score crashes building sprites together in a corner, stacking them into a tower on the biggest (Aftermath).
+- **Balatro works differently** (Balatro wiki):
+  - Scoring cards score left to right. After a card's own chips and modifiers, the jokers that react to it fire, left to right.
+  - A **retrigger** replays a card's sequence, from its chips through the jokers that react to it, but not the retrigger step: neither a Red Seal nor a retriggering joker fires again because of a retrigger. Each source gives a fixed count. A Red Seal retriggers its card once; Hack (each played 2 to 5), Sock and Buskin (face cards), Dusk (every card in a round's last hand), and Seltzer (every card for 10 hands) once each; Hanging Chad the first scoring card twice; Mime the abilities of cards held in hand. Retriggers stack by adding.
+  - Copy jokers add one more copy of another joker's ability: Blueprint the one to its right, Brainstorm the leftmost. About 29 jokers with passive effects can't be copied.
+  - Retriggers never set off retriggers, and a copy joker that would copy itself does nothing, so a hand's scoring is finite, though it can run to hundreds of triggers.
+- **So a chain takes three things:** something that fires something else, a bound, and a tally that shows each step as caused by the one before it. Balatro bounds its retriggers with a fixed count per source; Combolands bounds its chains with a cap per building.
+
+### Items work at different scopes
+
+The notes above list the shop's goods. Side by side, each kind acts at a different scope and for a different length of time, which is why one visit offers several kinds of choice:
+
+| Combolands | Acts on | Lasts | Open House |
+|---|---|---|---|
+| Building | a tile and its range | the run | pieces |
+| Neutral glue building | its neighbors' rules | the run | the Hallway's link (auras change only what neighbors earn) |
+| Paint or building supplies | one building | 2–10 weeks, or the run | fixtures, none of them timed |
+| Potion | the map | now, or the next action | tools |
+| Their blueprint | one placement, without spending a week | now | Weekend Crew (D-083) |
+| Token | one action | now | rerolls, demolitions |
+| Heirloom | the run | passive, in slots | blueprints |
+| Council vote | a category, or the run | a ladder that stacks | change orders, which don't stack |
+
+- **Timed paints pay as their building fires** *(guide)*: +100 points each time it fires (for 10 weeks), a remove (5), a reroll (6), a gold (8), a dismiss (3), or +0.1 enchant (2). The permanent ones rewrite: Ghost paint changes which category a building reads, and Rainbow paint makes it count as every category.
+- **Some heirlooms have a catch.** Coin Stack doubles gold *(guide)* but can lock you out of the shop; v1.0.7 added an indicator for that.
+- **Gold can score.** A Vault scores from the gold you hold *(guide)*, so gold is a score source as well as the shop's currency.
+- **Council ladders:** each finished request pays a vote for one councillor, and that councillor's votes climb a ladder. The Druid's ladder adds +0.25 mult for Nature and Sacred buildings on three of its five votes (Life Meets Pixel, read from a trailer frame), and the Artist gives paints and extra consumable slots on alternate votes *(guide)*. Some rungs rewrite rules: the Druid's fourth vote makes every Nature building count as Sacred (Life Meets Pixel), and the Ranger's second counts all trees as Frontier (GameCritics). Those rewrites are where long-term plans form.
+- **Collections make long arcs** *(guide)*: a Jewellery Box fills with 8 gems and sells for a crown, which sells for the vote that unlocks the Arcane guild, one of two secret guilds that can't be picked at the start but add a few buildings to later runs. A Civic temple built from corner pieces gives a legendary heirloom.
+
+### Guilds are verbs
+
+A guild is defined less by its theme than by what it feeds on *(our reading of the reviews and guides)*: Martial on removal, Frontier on the island's nature and on rerolls, Agricultural on growth (fields transform, then fire), Civic on plots that grow into houses, Commercial on gold and re-firing, Industrial on raw-to-product chains, and Maritime on water, where ships fire ships. Those are the seven pickable guilds; the two secret ones, Rogues and Arcane, come from council votes, and Rogues' buildings trigger other buildings and collect money *(guide)*. A pair is two verbs, and players read the island before picking. The risk is the pair collapsing: one forum thread's opening post says runs go all-in on one guild and use the other for scraps, though the replies disagree *(guide)*.
+
+### What changed from the first demo to v1.0.7
+
+The developer's posts show the direction they took:
+- generated islands (semi-procedural from the June 2026 demo) instead of the first demo's one map
+- unlocks that arrive gradually rather than all at once (the June 2026 demo), then sped up twice before launch (demo v9, and an August patch that lowered later guilds' thresholds)
+- council quests, which they describe as alternative mini-goals
+- multi-piece cards that place more pieces, raised in two demo patches with no reason given: walls 5 → 6, palisades 7 → 9, plateaus 3 → 4 → 5, rails 2 → 3 → 4
+- after launch, a compendium as the most requested feature (v1.0.5)
+- after launch, a confusing "counts as fish" line taken off fish traps (v1.0.7)
+
+### Open House through the same lens *(our reading of develop at `0541967`)*
+
+- **The vocabulary is mostly there.** Tags, relational selectors, regions, links, timers, transforms, `countsAs`, and `grantTag` cover most of Combolands' "what it looks at" and much of its "does". The gap is "when": every piece earns once a week from its own effects, and under D-036 no effect triggers another. Apart from the finds' one-time rewards (a Time Capsule when it's built over, the Old Shed when it's demolished), nothing pays on placement or demolition, and no piece fires because of another.
+- **Most tags have no piece that reads them.** Counting the 32 piece cards and the M3 content:
+  - pieces read only **Quiet**, **Loud**, **Kid** (the Treehouse), and **Pet** (the Mudroom)
+  - **Social** is on 7 piece cards, but only Party House and the Open House Party tool read it. Patio, Hot Tub, and Fire Pit name pieces instead.
+  - **Green**, **Pretty**, **Dark**, **Sunny**, and **House** are read only by a blueprint or a tool (and, from M4a, a client)
+  - nothing reads **Wet** or **Outdoor**
+
+  Treehouses pay for clustering (D-079) because the Treehouse both reads Kid and is the base pool's only Kid piece (the Playroom is a shop piece). Kid having one reader also leaves a `grantTag` fixture or blueprint little to work with.
+- **Rewrites stop at fixtures.** Skylight, Blackout Curtains, Kitchen Island, Bunk Beds, and Garden Lights each rewrite one host. No blueprint rewrites a tag for the whole house (the "tag conversion" heirlooms in the archetype list above); the only planned one is a change order, Eternal night (M4b).
+- **No glue pieces.** Auras change what neighbors earn and the Hallway links rooms, but no piece changes its neighbors' tags, caps, or timers. (The Flower Bed, Herb Garden, and Greenhouse give their neighbors a view, as a Tree does.)
+- **The lot is mostly fixed.** Only the Sapling makes terrain. Building over a Tree removes it for nothing, Boulders give nothing, and only the finds pay when cleared, so the Old Shed is cleared on sight (D-091).
+- **Change orders** (M4b) are planned as one offer after milestones 2, 4, and 6: requests and restrictions pay once, and phase effects change the next phase. Nothing builds up across a run.
+- **The tally shows each piece, not why.** Pieces pop in placement order. Neighbor and aura lines already record the pieces and lot features they count (`BreakdownLine.from`; modifier lines name their source only in the label), so the tally could show causes without the UI computing anything.
+
+### Takeaways for Open House
+
+- **Chains need a "when", a bound, and a tally that shows cause.** D-094 has the options. Earning once and then repeating it keeps the preview equal to the tally.
+- **Give tags readers before adding rewrites.** At least two pieces in different piece categories (indoor, yard, outbuilding) should read each tag. Then `grantTag` fixtures and blueprints, and relays that pass activations to a tag's pieces (D-094's option 3), become the big moments.
+- **Glue pieces** that change their neighbors' rules would be neutral ground any crew or client can build on, the way Combolands' neutral buildings are where its two guilds meet.
+- **Every lot feature wants a piece that needs it, one that makes it, and one that clears it for a payout** (D-078, D-090, D-091).
+- **Packs need to be generous** (D-074): Combolands raised its multi-piece cards' counts twice during the demo, and its walls were still skipped. One forum thread's opening post says enclosing anything takes two 6-wall cards and turns off the adjacency bonuses that make most points *(guide)*.
+- **Show what an item is worth where you buy it** (D-092): Combolands previews a building's score before you place it, yet a reviewer still wanted to try placements before committing (Geekly Grind), and players asked for a compendium.
+- **Change orders could offer a choice and build toward something:** two or three at once with their rewards shown, and rewards that climb toward a rule change instead of only paying budget. After the jam, unless M4b has room.
+- **Crews read better as verbs** (M4b): something the crew feeds on (growth, demolition, sets, chains). Appendix B's crews are mostly a draw weight plus a bonus; the Architect's +50% to sets comes closest.
+
+### Sources
+
+- Combolands:
+  - [Steam store page (120+ buildings)](https://store.steampowered.com/app/4075620/Combolands/)
+  - [Steam news and patch notes](https://api.steampowered.com/ISteamNews/GetNewsForApp/v2/?appid=4075620&count=40&maxlength=0)
+  - [GameCritics review](https://gamecritics.com/rorenado/combolands-review/)
+  - [The Geekly Grind review](https://www.thegeeklygrind.com/all-posts/combolands-review)
+  - [Life Meets Pixel review](https://lifemeetspixel.com/reviews/combolands-review)
+  - [Aftermath impressions](https://aftermath.site/combolands-roguelike-citybuilder-balatro/)
+  - [Steam guide: All about Paints](https://steamcommunity.com/sharedfiles/filedetails/?id=3802719979)
+  - [Steam guide: Quick Overview](https://steamcommunity.com/sharedfiles/filedetails/?id=3796876704)
+  - [Forum: optimal scaling for endless](https://steamcommunity.com/app/4075620/discussions/0/582806854239885649/)
+  - [Forum: infinite loop prevention](https://steamcommunity.com/app/4075620/discussions/0/582806854240007516/)
+  - [Forum: guilds don't seem very interactive](https://steamcommunity.com/app/4075620/discussions/0/574930637988024911/)
+  - [Forum: Marketplace and Scaffolding](https://steamcommunity.com/app/4075620/discussions/0/564797873721686838/)
+  - [Forum: the Wizard vote](https://steamcommunity.com/app/4075620/discussions/0/582807198746425458/)
+  - [Forum: the Civic temple](https://steamcommunity.com/app/4075620/discussions/0/564798191048999918/)
+  - [Forum: walls](https://steamcommunity.com/app/4075620/discussions/0/564797873721682770/)
+  - [Treyex beginner guide](https://www.treyexgaming.com/combolands-roguelike-citybuilder-beginner-guide-map/)
+  - [combolands.site: guilds](https://combolands.site/guilds/)
+- Balatro:
+  - [Jokers (retriggers)](https://balatrowiki.org/w/Jokers)
+  - [Activation sequence](https://balatrowiki.org/w/Guide:_Activation_Sequence)
+  - [Activation types](https://balatrowiki.org/w/Activation_Type)
+  - [Red Seal](https://balatrowiki.org/w/Red_Seal)
+  - [Blueprint](https://balatrowiki.org/w/Blueprint)
+  - [Brainstorm](https://balatrowiki.org/w/Brainstorm)

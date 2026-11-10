@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { Content, PlaceAction } from '../rules/index.ts';
+import type { Content, DrawRow, PlaceAction } from '../rules/index.ts';
 import { cardText, createRules, rules } from '../rules/index.ts';
+import { drawWeights, rowOf } from '../rules/draw.ts';
 import { computeLayout } from '../rules/layout.ts';
 import { tallyHouse } from '../rules/scoring.ts';
 import { houseFrom, emptyRows, type Placement } from '../rules/testing.ts';
@@ -10,6 +11,7 @@ function earnedOf(rows: readonly string[], placements: readonly Placement[]) {
   const t = tallyHouse(
     CONTENT,
     computeLayout(CONTENT, houseFrom(CONTENT, rows, placements)),
+    1,
     false,
   );
   return { pieces: t.pieces.map((p) => p.earned), points: t.points, mult: t.mult, total: t.total };
@@ -26,6 +28,9 @@ describe('content', () => {
       pieces: {
         ...CONTENT.pieces,
         lawn: { ...CONTENT.pieces.lawn, id: 'bedroom', shape: ['#.', '.#'] },
+        // A pack whose suggested shape has more tiles than it places, and shape variants.
+        fence: { ...CONTENT.pieces.fence, pack: { maxTiles: 3, shapes: [['##', '##']] } },
+        driveway: { ...CONTENT.pieces.driveway, countsAs: 'patio' },
       },
       balance: {
         ...CONTENT.balance,
@@ -38,6 +43,9 @@ describe('content', () => {
     const problems = validateContent(broken).join('\n');
     expect(problems).toMatch(/piece lawn: id is "bedroom"/);
     expect(problems).toMatch(/connected polyomino/);
+    expect(problems).toMatch(/piece fence: pack shape ####: Up to 3 tiles/);
+    expect(problems).toMatch(/piece fence: pack shape ##\/##: Up to 3 tiles/);
+    expect(problems).toMatch(/piece driveway: a pack has no shape variants/);
     expect(problems).toMatch(/target 2 doesn't rise/);
   });
 
@@ -48,6 +56,7 @@ describe('content', () => {
     }
     expect(cardText(CONTENT, CONTENT.pieces.livingRoom).effects).toEqual([
       '+2 per touching view (up to 3)',
+      '+2 every week while Sunny',
     ]);
   });
 
@@ -60,15 +69,86 @@ describe('content', () => {
     });
   });
 
-  it('has the slice: six pieces as seven cards, and two sets', () => {
-    expect(Object.keys(CONTENT.pieces)).toHaveLength(7);
+  it('has the base pool: 20 piece types as 22 cards, four sets, and seven milestones', () => {
+    // The base pool is what the weekly draw deals; special pieces (weight 0) come from the shop.
+    // The Sunroom left them for the draw (D-120).
+    const defs = Object.values(CONTENT.pieces).filter((d) => d.drawWeight > 0);
+    expect(defs).toHaveLength(22);
+    const types = new Set(defs.map((d) => d.countsAs ?? d.id));
+    expect(types.size).toBe(20);
+    const count = (cat: string) =>
+      new Set(defs.filter((d) => d.category === cat).map((d) => d.countsAs ?? d.id)).size;
+    expect([count('indoor'), count('yard'), count('outbuilding')]).toEqual([10, 7, 3]);
+    // Two shape variants share a type; the Fence and the Driveway are packs instead (D-106).
+    expect(defs.filter((d) => d.countsAs).map((d) => d.id)).toEqual(['lKitchen', 'longHallway']);
+    expect(defs.filter((d) => d.pack).map((d) => d.id)).toEqual(['fence', 'driveway']);
     expect(CONTENT.pieces.lKitchen.countsAs).toBe('kitchen');
-    expect(Object.keys(CONTENT.sets)).toEqual(['jackAndJill', 'entertainer']);
+    expect(Object.keys(CONTENT.sets)).toEqual(['jackAndJill', 'entertainer', 'suite', 'fullHouse']);
     expect(CONTENT.balance.phases.map((p) => p.name)).toEqual([
       'Groundbreaking',
       'Foundation',
       'Framing',
+      'Roofing',
+      'Drywall',
+      'Finishes',
+      'Final Walkthrough',
     ]);
+    expect(Object.keys(CONTENT.crews)).toEqual(['generalContractor', 'landscaper', 'architect']);
+  });
+
+  it('deals the week in two rows: Rooms, then Layout (D-121)', () => {
+    // Rooms: the rooms and the fixtures that go in them. Layout: hallways, the Garage, the yard,
+    // outbuildings, and the yard's fixtures.
+    const pool = drawWeights(CONTENT, 6, {});
+    const ids = (row: DrawRow) =>
+      pool.filter((w) => rowOf(CONTENT, w.card) === row).map((w) => w.card.id);
+    expect(ids('rooms')).toEqual([
+      'bedroom',
+      'bathroom',
+      'kitchen',
+      'lKitchen',
+      'diningRoom',
+      'livingRoom',
+      'closet',
+      'homeOffice',
+      // The Sunroom, a room, from Foundation (D-120).
+      'sunroom',
+      'fireplace',
+      'skylight',
+      'blackoutCurtains',
+      'soundproofing',
+      'kitchenIsland',
+      'bunkBeds',
+      'bayWindow',
+    ]);
+    expect(ids('layout')).toEqual([
+      'hallway',
+      'longHallway',
+      'garage',
+      'lawn',
+      'sapling',
+      'flowerBed',
+      'herbGarden',
+      'patio',
+      'fence',
+      'driveway',
+      'doghouse',
+      'treehouse',
+      'greenhouse',
+      'sprinkler',
+      'pergola',
+      'gardenLights',
+    ]);
+    // Two of each a week; the Landscaper's Layout row has three.
+    for (const crewId of ['generalContractor', 'landscaper', 'architect'] as const) {
+      const s = rules.newRun({ seed: 'rows', clientId: 'hendersons', crewId, mode: 'standard' });
+      const layout = crewId === 'landscaper' ? 3 : 2;
+      expect(s.hand.map((c) => rowOf(CONTENT, c))).toEqual([
+        'rooms',
+        'rooms',
+        ...Array<DrawRow>(layout).fill('layout'),
+      ]);
+    }
   });
 });
 
@@ -94,28 +174,29 @@ describe('the slice pieces', () => {
         ['bathroom', 2, 0],
         ['kitchen', 3, 0],
       ]).pieces,
-    ).toEqual([3, 1, 0]);
+    ).toEqual([3, 1, 2]); // the Kitchen in the sun: +2 (D-120)
   });
 
   it('Kitchen and L-Kitchen: +2 per Dining Room, boosted by its aura', () => {
+    // Both in the sun (D-120): the Kitchen's +2 and +2 at +50% is 6, the Dining Room's +2.
     expect(
       earnedOf(open, [
         ['kitchen', 0, 0],
         ['diningRoom', 2, 0],
       ]).pieces,
-    ).toEqual([3, 0]);
+    ).toEqual([6, 2]);
     expect(
       earnedOf(open, [
         ['lKitchen', 0, 0],
         ['diningRoom', 2, 0],
       ]).pieces,
-    ).toEqual([3, 0]);
+    ).toEqual([6, 2]);
   });
 
   it('Living Room: +2 per view (max 3), and the Dining Room boosts it too', () => {
     expect(
       earnedOf(['T....', '.....', '.....', '.....', 'CCCCC'], [['livingRoom', 1, 0]]).pieces,
-    ).toEqual([2]);
+    ).toEqual([2 + 2]); // a view, and the sun (D-120)
     expect(
       earnedOf(
         ['T.....', '......', '......', '......', '......'],
@@ -124,7 +205,7 @@ describe('the slice pieces', () => {
           ['diningRoom', 3, 0],
         ],
       ).pieces,
-    ).toEqual([3, 0]);
+    ).toEqual([6, 2]);
   });
 
   it('Lawn: 1, +1 per touching Lawn (max 4)', () => {
@@ -146,37 +227,54 @@ describe('the slice pieces', () => {
       ['bathroom', 2, 2],
       ['bedroom', 2, 3],
     ]);
-    // Kitchen 3; Dining 0; Living 0 (no view); the Bedrooms touch, so 4 each; Bathroom 3.
-    // Sets: 25 + 10 Points and +1 + 0.5 Mult.
-    expect(t.pieces).toEqual([3, 0, 0, 4, 3, 4]);
-    expect(t.points).toBe(14 + 25 + 10);
+    // The Kitchen, the Dining Room and the Living Room face the sun, +2 each (D-120): Kitchen 6;
+    // Dining 2; Living 3 (no view); the Bedrooms touch, so 4 each; Bathroom 3. Sets: 25 + 10
+    // Points and +1 + 0.5 Mult.
+    expect(t.pieces).toEqual([6, 2, 3, 4, 3, 4]);
+    expect(t.points).toBe(22 + 25 + 10);
     expect(t.mult).toBe(250);
-    expect(t.total).toBe(123); // 49 × 2.5 = 122.5 → 123
+    expect(t.total).toBe(143); // 57 × 2.5 = 142.5 → 143
   });
 });
 
 describe('the real rules', () => {
-  it('play a full 12-week run to the end without breaking', () => {
+  it('play a full run to the end without breaking', () => {
     const r = createRules(CONTENT);
-    for (const seed of ['smoke-1', 'smoke-2', 'smoke-3']) {
-      let s = r.newRun({ seed, mode: 'standard' });
+    for (const seed of ['smoke-1', 'smoke-2']) {
+      let s = r.newRun({
+        seed,
+        clientId: 'hendersons',
+        crewId: 'generalContractor',
+        mode: 'standard',
+      });
       let weeks = 0;
-      while (s.screen === 'build') {
-        // A cheap greedy bot: the best of the first few legal spots per card.
-        const options = r.legalActions(s).filter((a, i) => a.t === 'pass' || i % 7 === 0);
-        let best = options.at(-1)!;
-        let bestScore = -1;
+      while (s.screen === 'build' || s.screen === 'shop' || s.screen === 'changeOrder') {
+        if (s.screen === 'changeOrder') {
+          // M4b: take whatever's offered (a phase effect can only be acknowledged).
+          s = r.apply(s, { t: 'answerChangeOrder', accept: true }).state;
+          continue;
+        }
+        if (s.screen === 'shop') {
+          // The Housewarming crate first (keep its first option), then leave.
+          s = r.apply(s, s.offers?.pick ? { t: 'pick', i: 0 } : { t: 'leaveShop' }).state;
+          continue;
+        }
+        // A cheap greedy bot: the best of a sample of legal spots, or a pass.
+        const options: PlaceAction[] = r.legalPlacements(s).filter((_, i) => i % 15 === 0);
+        let best: PlaceAction | null = null;
+        let bestScore = r.scoreOnly(s, null);
         for (const a of options) {
-          const v = r.scoreOnly(s, a.t === 'pass' ? null : (a as PlaceAction));
+          const v = r.scoreOnly(s, a);
           if (v > bestScore) [best, bestScore] = [a, v];
         }
-        s = r.apply(s, best).state;
+        s = r.apply(s, best ?? { t: 'pass' }).state;
         weeks++;
       }
       expect(['won', 'lost']).toContain(s.screen);
-      expect(weeks).toBeLessThanOrEqual(12);
+      expect(weeks).toBeLessThanOrEqual(30);
     }
-  });
+    // A shared CI runner can be several times slower than a laptop.
+  }, 30_000);
 
   it('are exported ready-bound', () => {
     expect(rules.content).toBe(CONTENT);

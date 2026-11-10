@@ -41,7 +41,7 @@ Clients, change orders, HOA rules, and shop upgrades all target tags and propert
 | Street edge | The front of the lot. Pieces touching it count as next to something Loud. Defines the front yard. | Core |
 | Mature tree | Quiet and Green for its neighbors. Building over it removes it. | Core |
 | Pond | Gives a View to adjacent pieces. Can't be built on. | Core |
-| Sunny side | Tiles along one edge of the lot count as Sunny. | Core |
+| The sun | Shines from one edge of the lot. A room, Hallway or outbuilding with a wall facing it and no Tree or other building in front is Sunny (D-120; it was a sunny band along one edge). | Core |
 | Boulder | Blocks a tile until demolished. | Core |
 | Special feature | One per lot: an ancient oak, an old well, the neighbor's cemetery, power lines. | Stretch |
 
@@ -224,3 +224,30 @@ Most are optional opportunities: meet the request by the next milestone for a bo
 ## 14. Suggested jam starter set (for discussion)
 
 The Core items above add up to roughly 9 indoor rooms, 7 yard pieces, 4 special pieces, 3 "-house" pieces, 4 sets, 5 blueprints, 5 clients (four everyday clients plus the rare vampire), 3 crews, and 3 generic change orders (plus each client's own). Because everything is built from the shared effect types, most of the work is the engine; the content itself is data.
+
+## 15. Merged rooms (from playtest 5a)
+
+**Tier:** Later. It's on the decision log's Parked list; revisit after playtest 4 has tried M4's Renovate (D-102).
+
+The team's idea: build a Living Room against another Living Room and the two become one bigger living room. Two Bedrooms could become a primary bedroom the same way. A limit keeps rooms from merging endlessly. A house that reshapes itself as it grows would feel more alive.
+
+**Today:** the rules score every piece on its own. Two touching Bedrooms are two neighbors (each gives the other +1), and each fills its own slot in a set. On the board a wall stands between every two pieces, same type included (D-097, D-100). The one grouping rule is the Open Concept blueprint, which links touching Kitchens, Dining Rooms and Living Rooms without changing counts or walls. Bunk Beds make a Bedroom count twice in count conditions, never in sets.
+
+**Three ways to build it**
+
+| Shape | How it works | Rules | Art | Effort | The catch |
+|---|---|---|---|---|---|
+| **Extend a room** (the team's pick) | A spare room card grows a room of its type. Its cells join that room, which stays one piece with a bigger outline and a level. Rooms already placed never merge. A big Bedroom can be the primary bedroom. | A new play beside M4's Renovate (D-102), with a position and a rotation. The room takes the combined shape (a piece's own shape, which M4's packs added: D-106) and a level. No count changes, so sets and M4's house rules (D-101) stay as they are. | One piece, so the walls, doors, color and number already work. Big footprints need more furniture: one bed on a big floor looks sparse. | Medium | Two uses for one spare card (renovate or extend). A bigger outline touches more neighbors, so its value needs tuning. Needs M4 first. |
+| Bigger room types | Two touching rooms of a type merge into a Great Room or a Primary Bedroom, with their own card text, scoring and size cap. | A merged room counts once everywhere: neighbors, effects, sets, specs, house rules, demolition and Renovate. The systems review's trial rewrote the per-piece model (232 lines in 8 rules files). | New room types need floors, furniture, icons and pictures. | Large | The biggest rules change. It breaks Jack-and-Jill pairs, and a size bonus that pulls rooms together becomes a clump engine (D-079). |
+| Open plan, look only | The walls come down between touching rooms of one type, which share one color. The rules still count each piece. | None. | Walls, doors and colors per group; leftover wall stubs; the ghost can't show a wall coming down. | Small | The board shows one room where the rules count two, and two Bedrooms read as a dorm, not a primary bedroom. |
+
+**Limits** (any one, or a mix):
+- A size cap per room, for example 2 pieces. Dream Home prints 1 to 3 per room (`research.md`).
+- One per house, as M4 caps the Entertainer (D-093) and Full House.
+- Only once the type is at its limit, Renovate's trigger. M4's limits are soft (a third Living Room can still be built), so the cap needs its own rule.
+- A cost: the week's turn, a shop tool (a knock-through beside the Remodel Plans), or budget.
+- Only some types: Living Rooms and Bedrooms, never Kitchens, Bathrooms, Closets or Garages.
+- No growing a room with a fixture in it (Dream Home's décor rule), which ties merging to fixtures.
+- A size bonus that shrinks with each piece, applied after percentages.
+
+**From the sim** (greedy's wins): today a third of Bedroom pairs touch, and in a quarter of the houses with two or more Bedrooms, four or more sit in one touching group (one house had 9). Under M4, 30–43% of Bedroom pairs touch, and 38–79% of those are one Jack-and-Jill's two Bedrooms.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Action, Content, GameEvent, PlaceAction, RunState } from './index.ts';
+import type { Action, Content, GameEvent, PieceId, PlaceAction, RunState } from './index.ts';
 import { createRules, IllegalAction } from './run.ts';
 import { lotFromRows } from './lot.ts';
 import { emptyRows, TEST_CONTENT as C } from './testing.ts';
@@ -18,7 +18,12 @@ function withTargets(targets: number[]): Content {
 
 /** A run on an empty lot, so placements are easy to reason about. */
 function onEmptyLot(r = rules, seed = 'empty'): RunState {
-  const s = r.newRun({ seed, mode: 'standard' });
+  const s = r.newRun({
+    seed,
+    clientId: 'hendersons',
+    crewId: 'generalContractor',
+    mode: 'standard',
+  });
   return { ...s, house: { ...s.house, lot: lotFromRows(emptyRows(12, 12)) } };
 }
 
@@ -32,20 +37,41 @@ function deepFreeze<T>(value: T): T {
 
 const types = (events: GameEvent[]) => events.map((e) => e.t);
 const PASS: Action = { t: 'pass' };
+const LEAVE: Action = { t: 'leaveShop' };
 
 /** Puts a chosen card in the hand, for tests that need a particular piece. */
-function withHand(s: RunState, ...ids: RunState['hand'][number]['id'][]): RunState {
+function withHand(s: RunState, ...ids: PieceId[]): RunState {
   return { ...s, hand: ids.map((id) => ({ kind: 'piece', id })) };
 }
 
 describe('a new run', () => {
   it('starts at week 1 with a hand, from the seed', () => {
-    const s = rules.newRun({ seed: 'start', mode: 'standard' });
+    const s = rules.newRun({
+      seed: 'start',
+      clientId: 'hendersons',
+      crewId: 'generalContractor',
+      mode: 'standard',
+    });
     expect(s).toMatchObject({ phase: 0, slot: 1, week: 1, draws: 1, score: 0, screen: 'build' });
-    expect(s.hand).toHaveLength(3);
+    // Two rows of 2 (D-121): Rooms first, then Layout.
+    expect(s.hand).toHaveLength(4);
     expect(s.house.pieces).toEqual([]);
-    expect(rules.newRun({ seed: 'start', mode: 'standard' })).toEqual(s);
-    expect(rules.newRun({ seed: 'other', mode: 'standard' }).house.lot).not.toEqual(s.house.lot);
+    expect(
+      rules.newRun({
+        seed: 'start',
+        clientId: 'hendersons',
+        crewId: 'generalContractor',
+        mode: 'standard',
+      }),
+    ).toEqual(s);
+    expect(
+      rules.newRun({
+        seed: 'other',
+        clientId: 'hendersons',
+        crewId: 'generalContractor',
+        mode: 'standard',
+      }).house.lot,
+    ).not.toEqual(s.house.lot);
   });
 });
 
@@ -64,7 +90,7 @@ describe('a week', () => {
       score: 0,
     });
     expect(state).toMatchObject({ slot: 2, week: 2, score: 0, draws: 1 });
-    expect(state.hand).toHaveLength(3);
+    expect(state.hand).toHaveLength(4);
   });
 
   it('place: the piece earns that same week', () => {
@@ -91,7 +117,13 @@ describe('a week', () => {
       { uid: 1, defId: 'bedroom', x: 2, y: 2, rot: 0, placedWeek: 1 },
     ]);
     expect(state.score).toBe(3);
-    expect(state.lastTally).toEqual({ points: 3, mult: 100, total: 3, setInstances: [] });
+    expect(state.lastTally).toEqual({
+      points: 3,
+      mult: 100,
+      total: 3,
+      setInstances: [],
+      specsMet: [],
+    });
   });
 
   it('building over Trees removes them', () => {
@@ -144,7 +176,9 @@ describe('a week', () => {
     s = rules.apply(s, { t: 'place', from: 'hand', i: 0, x: 0, y: 0, rot: 0 }).state;
     s = withHand(s, 'bathroom', 'bedroom', 'kitchen');
     s = rules.apply(s, { t: 'place', from: 'hand', i: 0, x: 2, y: 0, rot: 0 }).state;
-    s = withHand(s, 'bedroom', 'bathroom', 'kitchen');
+    // That week met the first target: leave the shop, and build on in the next phase.
+    expect(s.screen).toBe('shop');
+    s = withHand(rules.apply(s, LEAVE).state, 'bedroom', 'bathroom', 'kitchen');
     const third = rules.apply(s, { t: 'place', from: 'hand', i: 0, x: 3, y: 0, rot: 0 });
     expect(third.events.filter((e) => e.t === 'setCompleted')).toEqual([
       { t: 'setCompleted', set: 'jackAndJill', key: 'jackAndJill:1,2,3', members: [1, 2, 3] },
@@ -155,8 +189,8 @@ describe('a week', () => {
 });
 
 describe('milestones', () => {
-  it('a missed target at the phase end loses the run (no overtime until M2)', () => {
-    let s = onEmptyLot();
+  it('a missed target at the phase end loses the run once overtime is spent', () => {
+    let s = { ...onEmptyLot(), overtimeLeft: 0 };
     s = rules.apply(s, PASS).state;
     const { state, events } = rules.apply(s, PASS);
     expect(types(events)).toEqual(['tally', 'milestone', 'runEnded']);
@@ -167,6 +201,9 @@ describe('milestones', () => {
       result: 'failed',
       target: 5,
       score: 0,
+      weeksSaved: 0,
+      overtimeUsed: 0,
+      reward: { budget: 0, score: 0, interest: 0 },
     });
     expect(events[2]).toEqual({
       t: 'runEnded',
@@ -186,16 +223,20 @@ describe('milestones', () => {
     let s = onEmptyLot(r);
     s = r.apply(s, PASS).state;
     const end1 = r.apply(s, PASS);
-    expect(types(end1.events)).toEqual(['tally', 'milestone', 'handDrawn']);
+    expect(types(end1.events)).toEqual(['tally', 'milestone', 'shopOpened']);
     expect(end1.events[1]).toMatchObject({ result: 'onTime', phase: 0 });
     expect(end1.state).toMatchObject({
       phase: 1,
       slot: 1,
       week: 3,
       phaseStartScore: 0,
-      screen: 'build',
+      screen: 'shop',
     });
-    s = r.apply(end1.state, PASS).state;
+    // Leaving the shop starts the phase. A target of 0 is met as it starts, so it says so at once.
+    const start2 = r.apply(end1.state, LEAVE);
+    expect(types(start2.events)).toEqual(['shopClosed', 'targetReached', 'handDrawn']);
+    expect(start2.state).toMatchObject({ phase: 1, slot: 1, week: 3, screen: 'build' });
+    s = r.apply(start2.state, PASS).state;
     const end2 = r.apply(s, PASS);
     expect(types(end2.events)).toEqual(['tally', 'milestone', 'runEnded']);
     expect(end2.events[2]).toMatchObject({ result: 'won', verdict: 'Dream Home' });
@@ -233,10 +274,13 @@ describe('milestones', () => {
 });
 
 describe('legal actions', () => {
-  it('lists every distinct legal placement, then pass', () => {
+  it('lists every distinct legal placement, then pass and the free actions', () => {
     const s = withHand(onEmptyLot(), 'bedroom', 'bathroom', 'lKitchen');
     const actions = rules.legalActions(s);
-    expect(actions.at(-1)).toEqual(PASS);
+    const free = actions.filter((a) => a.t !== 'place');
+    // A new run: two rerolls (the General Contractor's extra), each for both rows (D-132),
+    // nothing to demolish yet, and the target isn't met, so no early completion.
+    expect(free).toEqual([PASS, { t: 'reroll' }]);
     const per = (i: number) =>
       actions.filter((a): a is PlaceAction => a.t === 'place' && a.i === i).length;
     expect(per(0)).toBe(11 * 11); // a 2×2 has one rotation

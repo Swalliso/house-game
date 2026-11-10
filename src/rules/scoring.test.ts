@@ -6,7 +6,7 @@ import { matchSets } from './sets.ts';
 import { emptyRows, houseFrom, TEST_CONTENT as C, withPieces, type Placement } from './testing.ts';
 
 function tally(content: Content, rows: readonly string[], placements: readonly Placement[]) {
-  return tallyHouse(content, computeLayout(content, houseFrom(content, rows, placements)), true);
+  return tallyHouse(content, computeLayout(content, houseFrom(content, rows, placements)), 1, true);
 }
 
 function earned(

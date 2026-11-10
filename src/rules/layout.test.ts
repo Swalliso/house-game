@@ -119,7 +119,9 @@ describe('placement', () => {
     rot: 0 | 1 | 2 | 3 = 0,
   ) {
     const house = houseFrom(C, rows, placements);
-    return checkPlacement(C, computeLayout(C, house), C.pieces[id], x, y, rot);
+    return checkPlacement(C, computeLayout(C, house), C.pieces[id], x, y, rot, 1, (h) =>
+      computeLayout(C, h),
+    );
   }
 
   it('keeps pieces on the lot', () => {

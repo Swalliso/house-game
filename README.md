@@ -27,14 +27,16 @@ Then open the address it prints (usually http://localhost:5173/).
 
 Other commands:
 
-| Command             | Does                                                          |
-| ------------------- | ------------------------------------------------------------- |
-| `npm test`          | runs the tests                                                |
-| `npm run typecheck` | type-checks everything, and `src/rules` again without the DOM |
-| `npm run atlas`     | rebuilds the sprite atlas in `assets/` from `art/`            |
-| `npm run build`     | rebuilds the atlas, type-checks, and builds into `dist/`      |
-| `npm run preview`   | serves the `dist/` build                                      |
-| `npm run format`    | formats the code with Prettier                                |
+| Command             | Does                                                                                         |
+| ------------------- | -------------------------------------------------------------------------------------------- |
+| `npm test`          | runs the tests                                                                               |
+| `npm run typecheck` | type-checks everything, and `src/rules` again without the DOM                                |
+| `npm run atlas`     | rebuilds the sprite atlas in `assets/` from `art/` and the LimeZu cuts in `assets/limezu/`   |
+| `npm run art:cut`   | cuts the LimeZu sprites listed in `art/limezu/` from the packs (only where `art-source/` is) |
+| `npm run build`     | rebuilds the atlas, type-checks, and builds into `dist/`                                     |
+| `npm run preview`   | serves the `dist/` build                                                                     |
+| `npm run format`    | formats the code with Prettier                                                               |
+| `npm run sim`       | the headless sim: bots play runs and report (`-- --help`)                                    |
 
 ## Report a bug
 
@@ -51,8 +53,17 @@ turned into a test. To open one, add it to the address: `…/house-game/dev/?run
 game crashes, its "Something broke" screen has the run code and a link that opens a GitHub
 issue with it filled in.
 
-To play a particular lot, add `?seed=` and any word: `…/house-game/dev/?seed=maple`. A reload
-resumes your run in progress.
+To play a particular lot, add `?seed=` and any word: `…/house-game/dev/?seed=maple`. A link
+like that skips the job board and starts a run for the Hendersons with the General Contractor.
+Add `client=` (`hendersons`, `vladislav`, `barkers`, `juniper` or `dale`) or `crew=`
+(`generalContractor`, `landscaper` or `architect`) to start with that client or crew, with or
+without a seed: `…/house-game/dev/?seed=maple&client=juniper&crew=architect`. Your run in
+progress is saved, and the title screen offers Continue.
+
+Add `?debug` to open the debug panel: jump to a milestone with a bot-built house, meet or miss
+a target, add budget, give a card or a shop good, force the shop, a change order or an arrival,
+or skip the tally animations. Its cheats are recorded in the run code, so a debug run still
+replays.
 
 ## Docs
 

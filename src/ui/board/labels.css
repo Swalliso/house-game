@@ -1,0 +1,211 @@
+/* The board's labels by the pointer (Board.tsx): the ghost's change to the week's Wow or why it
+   can't go there, and the install, Renovate, tool and demolish labels. They're the interface's
+   chips (kit.css) on the board, so the board and the chrome around it read as one game: the
+   pixel font (or the readable one, D-059), paper in LimeZu's ink ring, a band inside it in the
+   label's tone, and a hard shadow. Never color alone: each tone has its ▲, ▼ or ✕. */
+
+.board .ghost-reason,
+.board .ghost-delta {
+  --label-band: var(--paper-line);
+  position: absolute;
+  z-index: var(--z-ghost-text);
+  /* Centered over its spot, nudged to stay in the board's view (Board.tsx BoardLabel). */
+  transform: translate(calc(-50% + var(--label-dx, 0px)), calc(-100% - var(--space-1)));
+  width: max-content;
+  /* A long one wraps rather than running past a narrow view. */
+  max-width: calc(var(--px) * 240);
+  padding: 0 calc(var(--px) * 3);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--card);
+  background-clip: padding-box;
+  box-shadow:
+    inset 0 0 0 var(--px) var(--label-band),
+    var(--shadow-card);
+  font-family: var(--font-text);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  font-weight: 400;
+  font-synthesis: none;
+  color: var(--ink);
+  text-align: center;
+  pointer-events: none;
+  -webkit-font-smoothing: none;
+}
+[data-font='readable'] .board .ghost-reason,
+[data-font='readable'] .board .ghost-delta {
+  -webkit-font-smoothing: auto;
+}
+.board .ghost-reason.below,
+.board .ghost-delta.below {
+  transform: translate(calc(-50% + var(--label-dx, 0px)), var(--space-1));
+}
+.board .ghost-reason,
+.board .ghost-delta.bad {
+  --label-band: var(--bad-fill);
+  color: var(--bad);
+}
+.board .ghost-delta.good {
+  --label-band: var(--good-fill);
+  color: var(--good);
+}
+/* Demolishing: the tool's red, whatever it does to the week; a gain still reads blue. */
+.board .ghost-delta.demolish-label {
+  --label-band: var(--danger);
+  color: var(--danger-shade);
+}
+.board .ghost-delta.demolish-label.good {
+  color: var(--good);
+}
+
+/* The ghost's labels as one stack (Board.tsx Ghost): its change or why not, a restriction it
+   would break, and a pack's next tile (D-106) nearest its cells, so they never overlap. The stack
+   is the one label measured and nudged into the view (--label-dx); its labels sit in it. */
+.board .ghost-labels {
+  position: absolute;
+  z-index: var(--z-ghost-text);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  width: max-content;
+  transform: translate(calc(-50% + var(--label-dx, 0px)), calc(-100% - var(--space-1)));
+  pointer-events: none;
+}
+.board .ghost-labels.below {
+  flex-direction: column-reverse;
+  transform: translate(calc(-50% + var(--label-dx, 0px)), var(--space-1));
+}
+.board .ghost-labels > .ghost-reason,
+.board .ghost-labels > .ghost-delta {
+  position: static;
+  transform: none;
+}
+/* A pack's next step (D-106), on its own line under its change and its count of tiles, so the
+   label is two short lines rather than one that wraps. */
+.board .ghost-delta .ghost-then {
+  display: block;
+}
+
+/* The pieces' badges (HouseLayers.tsx Badge, placed by label-layout.ts): a fixture that can't be
+   drawn, top right, and an unmet requirement's ⚠, top left. A square of paper in LimeZu's ink
+   ring, one icon pixel wide, with the fixture's or the warning's pixel icon on whole device
+   pixels; where a cell is too small for the icon, just the ring and its fill. A fixture's paper
+   takes its rarity's tint (and its title says which), the ⚠'s is warning yellow. The digits draw
+   over the badges, though label-layout.ts keeps the two apart. */
+.labels .board-badge {
+  position: absolute;
+  z-index: 1;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  border-style: solid;
+  border-color: var(--ink);
+  background: var(--card);
+  pointer-events: auto;
+  cursor: help;
+}
+.labels .fixture-badge.rarity-uncommon {
+  background: var(--uncommon-tint);
+}
+.labels .fixture-badge.rarity-rare {
+  background: var(--rare-tint);
+}
+.labels .unmet-badge {
+  background: var(--bad-tint);
+}
+.board-badge-icon {
+  display: block;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  image-rendering: pixelated;
+}
+/* A Renovated room's stars (D-102, HouseLayers.tsx LevelStars): one badge, a star per level side
+   by side (or in a column), an icon pixel apart. */
+.labels .level-badge {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.labels .digit {
+  z-index: 2;
+}
+
+/* The placement preview's badges (Board.tsx Badges): the change on each piece whose week
+   changes, and a mark on whatever helps the new piece (a circle with +) or hurts it (a diamond
+   with −). Square-cornered in LimeZu's ink, like the chips, with a paper halo so they read over
+   any art. Their text stays the system font: the pixel font has nothing smaller than 16 px, and
+   a badge sits on one cell. */
+.board .badge {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-system);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--card);
+  font-variant-numeric: tabular-nums;
+}
+.board .badge.delta,
+.board .badge.source {
+  border: 2px solid var(--ink);
+  box-shadow: 0 0 0 1px var(--card);
+}
+.board .badge.delta {
+  padding: 2px 4px;
+}
+.board .badge.delta.good,
+.board .badge.source.good {
+  background: var(--good);
+  color: var(--card);
+}
+.board .badge.delta.bad,
+.board .badge.source.bad {
+  background: var(--bad);
+  color: var(--card);
+}
+.board .badge.source {
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+}
+.board .badge.source.good {
+  border-radius: 50%;
+}
+.board .badge.source.bad {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+.board .badge.source.bad .glyph {
+  display: inline-block;
+  transform: rotate(-45deg);
+}
+.board .badge.cleared {
+  color: var(--bad);
+  font-size: 16px;
+  text-shadow:
+    0 0 2px var(--card),
+    0 0 2px var(--card),
+    0 0 3px var(--card);
+}
+/* Cells under 32 CSS px (below 1×, or Fit on a small screen): smaller badges, so they don't
+   bury the cells. */
+.board.small .badge.source {
+  width: 12px;
+  height: 12px;
+  font-size: 9px;
+  border-width: 1px;
+}
+.board.small .badge.delta {
+  font-size: 10px;
+  padding: 1px 3px;
+  border-width: 1px;
+}
+.board.small .badge.cleared {
+  font-size: 12px;
+}
+
+/* The sun's mark on a ghost that would be Sunny (D-120): its icon and its word kept together. */
+.board .ghost-delta .ghost-sun {
+  white-space: nowrap;
+}

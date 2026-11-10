@@ -1,0 +1,313 @@
+// The greedy bot on the real content (§8), with fixed seeds: what its numbers rest on. Its
+// shortlist must not lean on list order (legalPlacements runs from the back row, and ranking by
+// position built every house against the back of the lot); it must find the week's best play
+// nearly always (recall against scoring every legal play); it must keep a checklist line its
+// best-looking spots would break, when keeping it is worth more (its estimate counts the lines
+// counts decide, exactly); it must see a Fence that closes a yard, which the cheap estimate
+// can't value; and its variants must complete early when told to, and play the same seed alike
+// until they do.
+
+import { describe, expect, it } from 'vitest';
+import {
+  CONTENT,
+  createRules,
+  rules,
+  stream,
+  type Action,
+  type ClientId,
+  type PlaceAction,
+  type RunState,
+} from '../src/rules/index.ts';
+import { followedLines } from '../src/rules/estimate.ts';
+import { computeLayout } from '../src/rules/layout.ts';
+import { emptyRows, houseFrom } from '../src/rules/testing.ts';
+import { fencePlans } from './enclosure.ts';
+import { rankPlays, shortlist, TOP_K } from './policies/greedy.ts';
+import { greedy, makeGreedy, POLICIES, type Policy } from './policies/index.ts';
+import { simulateRun } from './simulate.ts';
+
+const newRun = (seed: string, clientId: ClientId = 'hendersons') =>
+  rules.newRun({ seed, clientId, crewId: 'generalContractor', mode: 'standard' });
+const sameSpot = (a: PlaceAction) => (b: PlaceAction) =>
+  a.from === b.from &&
+  a.i === b.i &&
+  a.x === b.x &&
+  a.y === b.y &&
+  a.rot === b.rot &&
+  (a.shape ?? []).join('/') === (b.shape ?? []).join('/');
+const median = (xs: readonly number[]) => [...xs].sort((a, b) => a - b)[xs.length >> 1]!;
+
+/** The states a policy's run passes through at the start of these weeks' builds. */
+function statesAt(
+  seed: string,
+  policy: Policy,
+  weeks: readonly number[],
+  clientId: ClientId = 'hendersons',
+): RunState[] {
+  const { actions } = simulateRun(rules, seed, policy, {
+    probePhase: null,
+    maxWeeks: Math.max(...weeks),
+    clientId,
+  });
+  const out: RunState[] = [];
+  let s = newRun(seed, clientId);
+  for (const a of actions) {
+    if (s.screen === 'build' && weeks.includes(s.week) && !out.some((o) => o.week === s.week)) {
+      out.push(s);
+    }
+    s = rules.apply(s, a).state;
+  }
+  return out;
+}
+
+describe('the greedy bot', () => {
+  it('breaks estimate ties by a seeded key, not by list order', () => {
+    const h = CONTENT.balance.lot.height;
+    const rows: number[] = [];
+    for (let k = 0; k < 4; k++) {
+      const seed = `tiebreak-${k}`;
+      const s = newRun(seed);
+      const plays = rules.legalPlacements(s);
+      const salt = stream(seed, 'tiebreak').u32();
+      const list = shortlist(rules, s, plays, salt);
+      // The same plays in any order give the same shortlist.
+      const reversed = shortlist(rules, s, [...plays].reverse(), salt);
+      expect(reversed).toEqual(list);
+      rows.push(...list.map((p) => p.y));
+    }
+    // Ranked by position, week 1's shortlist sat in the back rows (median row 0).
+    expect(Math.max(...rows) - Math.min(...rows)).toBeGreaterThanOrEqual(h / 2);
+    expect(median(rows)).toBeGreaterThanOrEqual(h / 4);
+    expect(median(rows)).toBeLessThanOrEqual((3 * h) / 4);
+  });
+
+  it('finds the week’s best play nearly always', () => {
+    // 5 seeds × weeks 4, 10, 16, 22 (20 states, ~12,800 legal plays) when this was written: the
+    // shortlist's best exact total matched the best over every legal play in 20 of 20, losing
+    // 0 Wow of 3,725. (Before the yard and link hints and an uncapped set hint, a 54-state
+    // sample matched in 93% and lost 2.7%.)
+    let states = 0;
+    let hits = 0;
+    let lost = 0;
+    let bestSum = 0;
+    for (let k = 0; k < 5; k++) {
+      const seed = `recall-${k}`;
+      for (const s of statesAt(seed, greedy, [4, 10, 16, 22])) {
+        const plays = rules.legalPlacements(s);
+        if (plays.length === 0) continue;
+        let best = -Infinity;
+        for (const p of plays) best = Math.max(best, rules.scoreOnly(s, p));
+        let found = -Infinity;
+        const salt = stream(seed, `recall/${s.week}`).u32();
+        for (const p of shortlist(rules, s, plays, salt)) {
+          found = Math.max(found, rules.scoreOnly(s, p));
+        }
+        states++;
+        if (found === best) hits++;
+        lost += best - found;
+        bestSum += best;
+      }
+    }
+    // Runs that end early leave fewer states; 12 of the 20 is still a fair sample.
+    expect(states).toBeGreaterThanOrEqual(12);
+    expect(hits / states).toBeGreaterThanOrEqual(0.85);
+    expect(lost).toBeLessThanOrEqual(0.02 * bestSum);
+  }, 60_000); // ~12,800 plays scored exactly: 25 s on a slow CI runner
+
+  it('keeps Under one roof when the spots a card likes best would break it', () => {
+    // An 8 × 4 house at 2:1 (two Living Rooms, the Kitchen, the Dining Room, and Hallways)
+    // with Trees down both sides. A Bedroom earns most beside the Trees, but there the box
+    // grows to 10 × 4, and Under one roof's +0.25 Mult is worth more than the Trees. A
+    // corner, or a row above or below, keeps it. The Hallways only link here, as before D-114,
+    // so nothing but the Trees pulls; with their pay, see the end.
+    const linkOnly = (id: 'hallway' | 'longHallway') => ({
+      ...CONTENT.pieces[id],
+      effects: [{ kind: 'link' as const }],
+    });
+    const pieces = {
+      ...CONTENT.pieces,
+      hallway: linkOnly('hallway'),
+      longHallway: linkOnly('longHallway'),
+    };
+    const r = createRules({ ...CONTENT, pieces });
+    const rows = emptyRows(16, 12).map((row, y) =>
+      y >= 4 && y <= 7 ? `.T${'.'.repeat(12)}T.` : row,
+    );
+    const s: RunState = {
+      ...newRun('roof'),
+      house: houseFrom(CONTENT, rows, [
+        ['livingRoom', 4, 4],
+        ['kitchen', 6, 4],
+        ['diningRoom', 8, 4],
+        ['livingRoom', 10, 4],
+        ['hallway', 6, 6],
+        ['hallway', 8, 6],
+        ['longHallway', 4, 7],
+        ['longHallway', 7, 7],
+        ['hallway', 10, 7],
+      ]),
+      hand: (['bedroom', 'bedroom', 'bedroom'] as const).map((id) => ({ kind: 'piece', id })),
+    };
+    expect(r.checklist(s).find((l) => l.id === 'underOneRoof')?.met).toBe(true);
+    const keeps = (p: PlaceAction) => !r.preview(s, p).specsLost.includes('underOneRoof');
+    const plays = r.legalPlacements(s);
+    let best = -Infinity;
+    for (const p of plays) best = Math.max(best, r.scoreOnly(s, p));
+    // Ranked as if there were no checklist, the shortlist is all Bedrooms by the Trees.
+    const hendersons = { ...CONTENT.clients.hendersons, specs: [] };
+    const blind = createRules({ ...CONTENT, pieces, clients: { ...CONTENT.clients, hendersons } });
+    const salt = stream('roof', 'shortlist').u32();
+    const blindList = shortlist(blind, s, plays, salt);
+    expect(blindList.some(keeps)).toBe(false);
+    expect(Math.max(...blindList.map((p) => r.scoreOnly(s, p)))).toBeLessThan(best);
+    // Seeing the line, the estimate ranks a keeper first, and greedy builds the week's best.
+    expect(keeps(rankPlays(r, s, plays, salt)[0]!.play)).toBe(true);
+    const act = greedy.act(r, s, stream('roof', 'act'));
+    expect(act).toMatchObject({ t: 'place', from: 'hand' });
+    expect(keeps(act as PlaceAction)).toBe(true);
+    expect(r.scoreOnly(s, act as PlaceAction)).toBe(best);
+    // With the pay, a Bedroom under the hall row keeps the line and pays the Hallway it
+    // touches. The estimate sees the Hallway's +2, so greedy builds that, the week's best.
+    const paid = greedy.act(rules, s, stream('roof', 'act')) as PlaceAction;
+    const paidBest = Math.max(...plays.map((p) => rules.scoreOnly(s, p)));
+    expect(keeps(paid)).toBe(true);
+    expect(paid.y).toBe(8);
+    expect(rules.scoreOnly(s, paid)).toBe(paidBest);
+  });
+
+  it('sees the real checklists’ count, ratio, outline, and variety lines flip exactly', () => {
+    // Every client, three weeks of a greedy run: the lines a placement turns on and off, as
+    // the estimate counts them, are the exact tally's, on the lines it follows. Every client
+    // has the house rules counts decide; Cozy (every room touching two) is left out.
+    const RULES = ['roomForEveryone', 'bathrooms', 'oneKitchen', 'livingRooms', 'underOneRoof'];
+    let checked = 0;
+    let on = 0;
+    let off = 0;
+    for (const clientId of Object.keys(CONTENT.clients) as ClientId[]) {
+      const { specs } = CONTENT.clients[clientId];
+      for (const s of statesAt(`flips-${clientId}`, greedy, [3, 9, 15], clientId)) {
+        const ctx = { specs, phase: s.phase };
+        const ids = followedLines(CONTENT, computeLayout(CONTENT, s.house), ctx);
+        expect(ids).toEqual(expect.arrayContaining([...RULES, 'tidyYard']));
+        expect(ids).not.toContain('cozy');
+        // Every fifth placement (about 3,700 in all when this was written, 40 flipping a line).
+        const plays = rules.legalPlacements(s);
+        for (let k = 0; k < plays.length; k += 5) {
+          const p = plays[k]!;
+          const { specsGained, specsLost } = rules.preview(s, p);
+          const gained = specsGained.filter((id) => ids.includes(id)).length;
+          const lost = specsLost.filter((id) => ids.includes(id)).length;
+          expect(rules.estimatePlay(s, p).specFlips).toBe(gained - lost);
+          checked++;
+          on += gained;
+          off += lost;
+        }
+      }
+    }
+    expect(checked).toBeGreaterThan(2000);
+    expect(on).toBeGreaterThan(5);
+    expect(off).toBeGreaterThan(5);
+  }, 30_000);
+
+  it('builds a Fence pack that closes a fenced yard, though the estimate can’t see it', () => {
+    // Two Bedrooms on rows 3–4 of an empty lot; the yard behind them (columns 0–3, rows 0–2,
+    // 12 tiles) is open on its right. A Fence pack of 3 tiles up column 4 closes it (D-106).
+    const s: RunState = {
+      ...newRun('fence'),
+      house: houseFrom(CONTENT, emptyRows(24, 24), [
+        ['bedroom', 0, 3],
+        ['bedroom', 2, 3],
+      ]),
+      hand: (['fence', 'flowerBed', 'lawn'] as const).map((id) => ({ kind: 'piece', id })),
+    };
+    // The rules list the pack's suggested shapes: the upright 1×4 in column 4 closes the yard,
+    // and the estimate flags it; ranked near the bottom, it's on the shortlist for its hint.
+    const upright: PlaceAction = {
+      t: 'place',
+      from: 'hand',
+      i: 0,
+      x: 4,
+      y: 0,
+      rot: 0,
+      shape: ['#', '#', '#', '#'],
+    };
+    const plays = rules.legalPlacements(s);
+    expect(plays.some(sameSpot(upright))).toBe(true);
+    expect(rules.estimatePlay(s, upright).yardHint).toBe(true);
+    const salt = stream('fence', 'shortlist').u32();
+    const rank = rankPlays(rules, s, plays, salt).findIndex((r) => sameSpot(upright)(r.play));
+    expect(rank).toBeGreaterThan(TOP_K);
+    expect(shortlist(rules, s, plays, salt).some(sameSpot(upright))).toBe(true);
+    // The fence planner finds the shortest run that closes it: 3 tiles up column 4.
+    expect(fencePlans(rules, s, 'hand', 0)[0]).toEqual({
+      t: 'place',
+      from: 'hand',
+      i: 0,
+      x: 4,
+      y: 0,
+      rot: 0,
+      shape: ['#', '#', '#'],
+    });
+    // And a closing pack is the week's best play (the Fence's enclosure bonus), so greedy
+    // builds one: the week after, the house has a fenced yard.
+    const act = greedy.act(rules, s, stream('fence', 'act'));
+    expect(act).toMatchObject({ t: 'place', from: 'hand', i: 0 });
+    expect(rules.fencedYards(rules.apply(s, act).state)).toHaveLength(1);
+  });
+
+  it('completes milestones early only when its early mode says so', () => {
+    const W = CONTENT.balance.weeksPerPhase;
+    const early = (policy: Policy, seed: string) => {
+      const run = simulateRun(rules, seed, policy, { probePhase: null, maxWeeks: 10 });
+      return { ...run, early: run.record.milestones.filter((m) => m.result === 'early').length };
+    };
+    let always = 0;
+    let last = 0;
+    for (let k = 0; k < 3; k++) {
+      const seed = `early-${k}`;
+      const never = early(greedy, seed);
+      expect(never.early).toBe(0);
+      expect(never.actions.some((a) => a.t === 'completeEarly')).toBe(false);
+      const a = early(makeGreedy({ early: 'always' }), seed);
+      always += a.early;
+      // Same name, same streams: it plays like plain greedy until it first completes early.
+      const first = a.actions.findIndex((x) => x.t === 'completeEarly');
+      if (first >= 0) expect(a.actions.slice(0, first)).toEqual(never.actions.slice(0, first));
+      // 'last' completes early only in a phase's last week, saving exactly that week.
+      const l = early(makeGreedy({ early: 'last' }), seed);
+      last += l.early;
+      let s = newRun(seed);
+      for (const x of l.actions) {
+        if (x.t === 'completeEarly') {
+          expect(s.slot).toBe(W);
+          expect(rules.canCompleteEarly(s).weeksSaved).toBe(1);
+        }
+        s = rules.apply(s, x).state;
+      }
+    }
+    expect(always).toBeGreaterThanOrEqual(1);
+    expect(last).toBeGreaterThanOrEqual(1);
+  }, 20_000);
+
+  it('buys the strike service only with strikes fixed', () => {
+    const strikes = (policy: Policy, seed: string): Action[] =>
+      simulateRun(rules, seed, policy, { probePhase: null, maxWeeks: 13 }).actions.filter(
+        (a) => a.t === 'buy' && a.strike !== undefined,
+      );
+    let fixed = 0;
+    for (let k = 0; k < 2; k++) {
+      expect(strikes(greedy, `strike-${k}`)).toEqual([]);
+      fixed += strikes(makeGreedy({ strikes: 'fixed' }), `strike-${k}`).length;
+    }
+    expect(fixed).toBeGreaterThanOrEqual(1);
+  }, 20_000);
+
+  it('labels its variants for reports and keeps one name for their streams', () => {
+    expect(POLICIES.greedy).toBe(greedy);
+    expect(greedy.label).toBe('greedy');
+    const v = makeGreedy({ early: 'always', strikes: 'fixed' });
+    expect(v.name).toBe('greedy');
+    expect(v.label).toBe('greedy · early always · strikes fixed');
+    expect(Object.keys(POLICIES).sort()).toEqual(['greedy', 'novice', 'random']);
+  });
+});

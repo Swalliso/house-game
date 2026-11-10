@@ -1,21 +1,48 @@
 // Overlays: the milestone banner, the target flash, notes and toasts, the small-screen notice
-// (D-047), and the run-end screen.
+// (D-047). The run-end screen is in EndScreen.tsx.
+//
+// M5a draws them in the pixel style: the milestone's banner is a ribbon stamped in, gold for a
+// milestone met and orange for one missed or in overtime (M4's arrivals get a card of their own
+// at the board's right edge, ArrivalCard.tsx, so they never read as a milestone); notes and
+// toasts sit at the top
+// center, under the top bar, or inside the shop's sheet under its header (or a change order's,
+// M4), so they never cover the goods, the hand or the sheet. While a banner is up, and once the
+// run is over, they sit just under it or the board's "It's a house." sign (both in that spot)
+// instead, so both read. A toast raised while a sheet or the menu is open (Copy run code, from
+// the menu) shows over it instead, under where the sign is when it's there.
+//
+// M4: a note goes once the run moves on from where it came up (a week played, the shop, a
+// change order), or with its Dismiss.
 
+import { effect } from '@preact/signals';
+import type { RefObject } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
-import { CONTENT, rules, SCORE_LABELS } from '../../rules/index.ts';
-import { banner, busy, flash, skip } from '../fx/director.ts';
+import { banner, busy, flash, played, skip } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
-import { formatNumber } from '../format.ts';
-import { copyFallback, copyRunCode, copyText, startNewRun, toast } from '../hud/actions.ts';
-import { log, notice, run } from '../store.ts';
+import { anyModalOpen, copyFallback, copyText, notesDocked, toast } from '../hud/actions.ts';
+import { Button, Icon, Sheet } from '../kit/kit.tsx';
+import { appScreen, notice, run } from '../store.ts';
+import './overlays.css';
 
+/** The milestone's banner, at the board's top center, and any notes and toasts just under it. */
 export function MilestoneBanner() {
   const b = banner.value;
   if (!b) return null;
   return (
-    <div class={`banner ${b.tone}`} key={b.id} role="status" onClick={() => (banner.value = null)}>
-      <div class="banner-title">{b.title}</div>
-      <div class="banner-detail">{b.detail}</div>
+    <div class="banner-place">
+      <div
+        class={`banner ui ${b.tone}`}
+        key={b.id}
+        role="status"
+        onClick={() => (banner.value = null)}
+      >
+        <div class="banner-ribbon">
+          <Icon name={b.tone === 'good' ? 'star' : 'warn'} />
+          <span class="banner-title">{b.title}</span>
+        </div>
+        {b.detail && <p class="banner-detail">{b.detail}</p>}
+      </div>
+      <Notes under="banner" />
     </div>
   );
 }
@@ -24,111 +51,164 @@ export function TargetFlash() {
   const f = flash.value;
   const [shown, setShown] = useState<number | null>(null);
   useEffect(() => {
-    if (!f) return;
+    if (!f || f.id <= played.flash) return;
+    played.flash = f.id;
     setShown(f.id);
     const t = setTimeout(() => setShown(null), FEEL.targetFlashMs);
     return () => clearTimeout(t);
   }, [f?.id]);
   if (!f || shown !== f.id) return null;
+  // 'note' is a neutral notice (a free redraw, the saving-up bonus), not the success's stamp.
   return (
-    <div class="target-flash" key={f.id} role="status">
-      {f.text}
-    </div>
-  );
-}
-
-export function Notice() {
-  const n = notice.value;
-  if (!n) return null;
-  return (
-    <div class="notice" role="status">
-      <span>{n.text}</span>
-      {n.oldCode && (
-        <button type="button" onClick={() => void copyText(n.oldCode!, 'Old run code copied')}>
-          Copy the old run code
-        </button>
-      )}
-      <button
-        type="button"
-        class="close"
-        onClick={() => (notice.value = null)}
-        aria-label="Dismiss"
+    <div class="flash-place">
+      <div
+        class={`target-flash ui ${f.tone}`}
+        key={f.id}
+        role="status"
+        style={{ '--flash-ms': `${FEEL.targetFlashMs}ms` }}
       >
-        ✕
-      </button>
+        {f.tone === 'good' && <Icon name="flag" />}
+        {f.text}
+      </div>
     </div>
   );
 }
 
-export function Toast() {
-  const t = toast.value;
-  return t ? (
-    <div class="toast" key={t.id} role="status">
-      {t.text}
+/** Where the run stood when the note on screen came up (M4). */
+let noteAt: { note: object; week: number; screen: string } | null = null;
+
+// A note ("Replayed 58 actions.") goes once the run moves on from where it came up: a week
+// played, the shop, a change order (M4). A module-level effect, not a hook in Notes: Notes
+// renders in more than one place (at the top, docked in the shop, under the banner or the
+// sign), and tests call it and EndCaption in place, outside a render, so both stay hook-free.
+// It runs as the signals change, so a note about a run being loaded must come once that run is
+// in place: raised before, the load's new week or screen would take it away.
+effect(() => {
+  const n = notice.value;
+  const { week, screen } = run.value;
+  if (!n) return;
+  if (noteAt?.note !== n) noteAt = { note: n, week, screen };
+  else if (noteAt.week !== week || noteAt.screen !== screen) notice.value = null;
+});
+
+/**
+ * The run is over and the board shows its "It's a house." sign (EndCaption, EndScreen.tsx):
+ * once the last tally and the run-end banner have played, since the banner sits in the same
+ * spot. Notes and toasts then sit just under the sign.
+ */
+export function endSignShown(): boolean {
+  const screen = run.value.screen;
+  return (
+    appScreen.value === 'game' &&
+    (screen === 'won' || screen === 'lost') &&
+    !busy.value &&
+    !banner.value
+  );
+}
+
+/**
+ * Where notes and toasts sit when it isn't the top center of the board: just under the board's
+ * "It's a house." sign once the run is over, or the milestone's banner while it's up, since both
+ * sit in that spot (null while the shop's or a change order's sheet docks them, and on the
+ * title).
+ */
+export function notesUnder(): 'sign' | 'banner' | null {
+  if (appScreen.value !== 'game' || notesDocked.value) return null;
+  if (endSignShown()) return 'sign';
+  return banner.value ? 'banner' : null;
+}
+
+/**
+ * Notes and toasts, at the top center under the top bar. While the shop's sheet is open they
+ * sit inside it instead (`docked`, rendered by the shop), under its header, as they do in a
+ * change order's sheet (M4, ChangeOrderScreen.tsx); and while the milestone's banner is up or
+ * once the run is over, under it or the board's "It's a house." sign (`under`, rendered by the
+ * banner and the sign), so neither covers them. A toast waits in ModalToast while a sheet or
+ * the menu is open.
+ *
+ * A sheet that holds the keyboard on its text (the change order's) passes that text as
+ * `refocus`: a note's Dismiss puts focus back there, by mouse or keyboard, rather than let it
+ * fall to the page with the button it removes.
+ */
+export function Notes({
+  docked = false,
+  under = null,
+  refocus,
+}: {
+  docked?: boolean;
+  under?: 'sign' | 'banner' | null;
+  refocus?: RefObject<HTMLElement>;
+}) {
+  const n = notice.value;
+  const t = anyModalOpen() ? null : toast.value;
+  if (docked !== notesDocked.value || under !== notesUnder() || (!n && !t)) return null;
+  return (
+    <div class={`notes ui ${docked ? 'docked' : ''} ${under ? `under-${under}` : ''}`}>
+      {n && (
+        <div class="notice" role="status">
+          <Icon name="mail" />
+          <span class="notice-text">{n.text}</span>
+          {n.oldCode && (
+            <Button
+              size="sm"
+              icon="copy"
+              onClick={() => void copyText(n.oldCode!, 'Old run code copied')}
+            >
+              Copy the old run code
+            </Button>
+          )}
+          <Button
+            size="sm"
+            iconOnly
+            icon="close"
+            class="notice-close"
+            onClick={() => {
+              notice.value = null;
+              refocus?.current?.focus({ preventScroll: true });
+            }}
+            aria-label="Dismiss"
+            title="Dismiss"
+          />
+        </div>
+      )}
+      {t && (
+        <div class="toast" key={t.id} role="status">
+          {t.text}
+        </div>
+      )}
     </div>
-  ) : null;
+  );
+}
+
+/**
+ * A toast raised while a sheet or the menu is open, over its scrim at the top center: where notes
+ * show, so under the "It's a house." sign once the run is over (Copy run code, from the menu).
+ */
+export function ModalToast() {
+  const t = toast.value;
+  if (!t || !anyModalOpen()) return null;
+  return (
+    <div class={`toast-layer ui ${endSignShown() ? 'under-sign' : ''}`}>
+      <div class="toast" key={t.id} role="status">
+        {t.text}
+      </div>
+    </div>
+  );
 }
 
 export function SmallScreenNotice() {
   const [dismissed, setDismissed] = useState(false);
   if (dismissed) return null;
   return (
-    <div class="small-screen">
-      <div>
+    <div class="small-screen ui">
+      <div class="small-screen-card">
         <h2>Open House</h2>
         <p>It's best played on a computer, with a mouse and a bigger screen.</p>
-        <button type="button" onClick={() => setDismissed(true)}>
+        <Button variant="primary" onClick={() => setDismissed(true)}>
           Play anyway
-        </button>
+        </Button>
       </div>
     </div>
-  );
-}
-
-/** The run-end screen: the house stays visible beside it, captioned "It's a house." */
-export function EndScreen() {
-  const s = run.value;
-  // Let the last tally and banner play before the end screen covers them.
-  if (s.screen === 'build' || busy.value) return null;
-  const won = s.screen === 'won';
-  const phases = CONTENT.balance.phases;
-  const reached = won ? phases.length : s.phase;
-  const verdict = rules.verdict(s);
-  return (
-    <section class={`end-screen ${won ? 'won' : 'lost'}`} aria-label="The run is over">
-      <p class="caption">It's a house.</p>
-      <h2>
-        {won
-          ? `${phases[phases.length - 1]!.name} complete`
-          : `The client walked at ${phases[s.phase]!.name}`}
-      </h2>
-      <p class="verdict">{verdict}</p>
-      <dl>
-        <dt>{SCORE_LABELS.total}</dt>
-        <dd>{formatNumber(s.score)}</dd>
-        <dt>Milestones</dt>
-        <dd>
-          {reached} of {phases.length}
-        </dd>
-        <dt>Pieces built</dt>
-        <dd>{s.house.pieces.length}</dd>
-        <dt>Weeks</dt>
-        <dd>{log.value.length}</dd>
-      </dl>
-      <p class="muted">
-        {won
-          ? 'That’s the whole slice: 3 milestones, 12 weeks.'
-          : `It needed ${formatNumber(rules.target(s))} ${SCORE_LABELS.total}.`}
-      </p>
-      <div class="end-buttons">
-        <button type="button" class="primary" onClick={startNewRun}>
-          New run
-        </button>
-        <button type="button" onClick={() => void copyRunCode()}>
-          Copy run code
-        </button>
-      </div>
-    </section>
   );
 }
 
@@ -138,7 +218,7 @@ export function useSkipOnClick(): void {
     const onDown = (e: PointerEvent) => {
       if (!busy.value || e.button !== 0) return;
       const target = e.target as HTMLElement | null;
-      if (target?.closest('button, input, .board')) return;
+      if (target?.closest('button, input, select, .board-scroll, .debug-panel')) return;
       skip();
     };
     window.addEventListener('pointerdown', onDown);
@@ -152,30 +232,25 @@ export function CopyFallback() {
   if (!c) return null;
   const close = () => (copyFallback.value = null);
   return (
-    <div class="modal-backdrop" onClick={close}>
-      <div
-        class="modal"
-        role="dialog"
-        aria-modal="true"
-        aria-label={c.title}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2>{c.title}</h2>
-        <p class="muted">This browser won't let the game copy it, so copy it from here.</p>
-        <textarea
-          class="copy-text"
-          readOnly
-          rows={5}
-          value={c.text}
-          ref={(el) => el?.select()}
-          onFocus={(e) => (e.target as HTMLTextAreaElement).select()}
-        />
-        <div class="modal-buttons">
-          <button type="button" class="primary" onClick={close}>
-            Done
-          </button>
-        </div>
-      </div>
-    </div>
+    <Sheet
+      title={c.title}
+      class="copy-sheet"
+      onClose={close}
+      footer={
+        <Button variant="primary" onClick={close}>
+          Done
+        </Button>
+      }
+    >
+      <p class="copy-note">This browser won't let the game copy it, so copy it from here.</p>
+      <textarea
+        class="copy-text"
+        readOnly
+        rows={5}
+        value={c.text}
+        data-autofocus
+        onFocus={(e) => (e.target as HTMLTextAreaElement).select()}
+      />
+    </Sheet>
   );
 }

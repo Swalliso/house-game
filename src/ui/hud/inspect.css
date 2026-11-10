@@ -1,0 +1,292 @@
+/* The inspect panel (M5a): a wood panel whose first heading is its plank, then the why-lines
+   with ▲ ▼ icons, tag chips with their icons, and the facts. Built on kit.css. */
+
+.inspect {
+  flex: none;
+  min-height: calc(var(--px) * 60);
+}
+.inspect .panel-body {
+  gap: var(--space-1);
+  padding-top: 0;
+}
+/* The first heading is the panel's plank: what's being inspected, and what it earns. It sticks
+   to the top while a long preview scrolls under it (the body is the scroller in the left column,
+   app.css), and spans the body's padding exactly, so the body never scrolls sideways. */
+.inspect .panel-body > h2:first-child {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--space-2);
+  margin: 0 calc(var(--space-3) * -1) var(--space-1);
+  padding: var(--px) var(--space-3) calc(var(--px) * 3);
+  min-height: calc(var(--px) * 13);
+  background: var(--art-plank) repeat left top / calc(var(--px) * 48) calc(var(--px) * 10);
+  background-color: var(--wood-hi);
+  box-shadow:
+    inset 0 var(--px) 0 var(--wood-shine),
+    inset 0 calc(var(--px) * -2) 0 var(--wood-light),
+    inset 0 calc(var(--px) * -3) 0 var(--wood-deep);
+  font-size: var(--fs-body);
+  line-height: var(--lh-tight);
+}
+/* A narrow window's panels are tighter (kit.css), and so is the plank. */
+@media (max-width: 1500px) {
+  .inspect .panel-body > h2:first-child {
+    margin-inline: calc(var(--space-2) * -1);
+    padding-inline: var(--space-2);
+  }
+}
+/* A held piece's ✕ (Inspect.tsx LetGo), at the plank's top right, beside its first line rather
+   than on a line of its own: the name and what it earns wrap in the room left. */
+.inspect.is-held .panel-body > h2:first-child {
+  padding-right: calc(var(--px) * 20);
+}
+.inspect .let-go {
+  position: absolute;
+  top: var(--px);
+  right: calc(var(--px) * 2);
+}
+.inspect h3 {
+  margin: var(--space-2) 0 0;
+  font-size: var(--fs-body);
+  color: var(--ink-soft);
+}
+.inspect p {
+  margin: 0;
+}
+.inspect .muted {
+  color: var(--ink-soft);
+}
+.earns {
+  font-weight: 400;
+  color: var(--comfort);
+}
+.inspect .panel-body > h2:first-child .earns {
+  color: var(--ink);
+}
+
+/* Why it earns what it does: a line per reason, its number on the right with ▲ or ▼. A reason
+   whose longest word leaves no room for the number beside it (in a narrow column, the pixel
+   font) puts the number on the next line, at the right, rather than run past the panel. */
+.lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.lines li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0 var(--space-2);
+  padding: var(--px) 0;
+  border-bottom: var(--px) solid var(--paper-line);
+}
+.lines li > span:first-child {
+  flex: 1 1 0;
+}
+.lines li .value {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.lines li .value::before {
+  content: '';
+  width: calc(var(--px) * 7);
+  height: calc(var(--px) * 5);
+  background: no-repeat 0 0 / 100% 100%;
+  image-rendering: pixelated;
+}
+.lines li.good .value::before {
+  background-image: var(--art-icon-up);
+}
+.lines li.bad .value::before {
+  background-image: var(--art-icon-down);
+}
+.lines.voided {
+  opacity: 0.6;
+}
+.lines.voided li > span:first-child {
+  text-decoration: line-through;
+}
+
+/* Notes with an icon: a warning, a reason it can't, a set, a find, a checklist line (M4a), a
+   Renovation's stars (D-102). */
+.inspect .warn,
+.reason,
+.set-note,
+.inspect .spec-note,
+.inspect .renovate-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-weight: 700;
+}
+.inspect .warn .icon,
+.reason .icon,
+.set-note .icon,
+.inspect .spec-note .icon,
+.inspect .renovate-stars {
+  margin-top: var(--px);
+}
+.inspect .warn {
+  padding: var(--space-1) var(--space-2);
+  background: var(--bad-tint);
+  box-shadow: inset var(--px) 0 0 var(--px) var(--bad-fill);
+}
+.reason,
+.inspect .demolish-confirm {
+  color: var(--bad);
+  font-weight: 700;
+}
+.set-note.good {
+  color: var(--charm);
+}
+.set-note.bad {
+  color: var(--bad);
+}
+.set-note.sparkle {
+  color: var(--ink);
+}
+.set-note.find {
+  color: var(--ink);
+}
+/* The checklist lines a play would turn on (up, blue) or off (down, orange), M4a. */
+.inspect .spec-note.good {
+  color: var(--good);
+}
+.inspect .spec-note.bad {
+  color: var(--bad);
+}
+/* A Renovation's level (D-102): a star a level, in Comfort's color, with its words. */
+.inspect .renovate-note {
+  color: var(--comfort);
+}
+.inspect .renovate-stars {
+  display: inline-flex;
+  flex: none;
+  gap: var(--px);
+}
+/* A member's room (M4b, D-103): whose it is, and what Room for everyone asks of it, as a note
+   set into the paper (the pixel fonts have no italics). */
+.inspect .member-note {
+  padding: var(--space-1) var(--space-2);
+  background: var(--paper-inset);
+  color: var(--ink-soft);
+}
+/* The week's total, "This week: X → Y Wow", is the panel's foot (Inspect.tsx InspectPanel),
+   under the body: in the left column the body scrolls a long preview (app.css) while the total
+   stays in view, as the plank does at the top (D-110's note: a short window cut it off). Its
+   hairline spans the body's text, and it keeps the body's padding below it. */
+.inspect > .total-line {
+  flex: none;
+  margin: 0 var(--space-3);
+  padding: var(--space-1) 0 var(--space-3);
+  border-top: var(--px) solid var(--paper-line);
+}
+@media (max-width: 1500px) {
+  .inspect > .total-line {
+    margin-inline: var(--space-2);
+    padding-bottom: var(--space-2);
+  }
+}
+.inspect .effects {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.inspect .effects li {
+  position: relative;
+  padding-left: var(--space-3);
+}
+.inspect .effects li::before,
+.inspect .facts li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: calc(var(--px) * 4);
+  width: calc(var(--px) * 2);
+  height: calc(var(--px) * 2);
+  background: var(--ink-soft);
+}
+
+/* Tags and where it is, as chips. */
+.inspect .chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: 0;
+}
+.inspect .chip.from-layout {
+  font-weight: 700;
+}
+/* A tag a modifier grants says where it's from, in its chip (M4b): "Dark · from Eternal night".
+   The source is in the regular weight, so it reads lighter than the bold tag beside it, and a
+   long one wraps inside the chip rather than running out of the column. */
+.inspect .chip:has(.chip-from) {
+  white-space: normal;
+}
+.inspect .chip-from {
+  font-weight: 400;
+}
+.inspect .chip.chip-dark {
+  --chip-fill: var(--dark-fill);
+}
+.inspect .chip.chip-sunny,
+.inspect .chip.region.sunny {
+  --chip-fill: var(--gold-hi);
+}
+.inspect .chip.region {
+  --chip-fill: var(--tint-yard);
+}
+.inspect .chip.region.fencedYard {
+  --chip-fill: var(--wood-hi);
+}
+
+.inspect .facts,
+.inspect .timers {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.inspect .facts li,
+.inspect .timers li {
+  position: relative;
+  padding-left: var(--space-3);
+}
+.inspect .timers li {
+  padding-left: calc(var(--px) * 11);
+}
+.inspect .timers li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: var(--px);
+  width: calc(var(--px) * 8);
+  height: calc(var(--px) * 8);
+  background: var(--art-icon-clock) no-repeat 0 0 / 100% 100%;
+  image-rendering: pixelated;
+}
+.inspect .budget-change {
+  font-weight: 700;
+}
+.inspect .budget-change.good {
+  color: var(--good);
+}
+.inspect .budget-change.bad {
+  color: var(--bad);
+}
+/* The kit's buttons keep to one line; these may wrap, so they never run past the panel. */
+.inspect .sell-button,
+.inspect .use-tool {
+  align-self: flex-start;
+  max-width: 100%;
+  margin-top: var(--space-2);
+  white-space: normal;
+}

@@ -1,0 +1,90 @@
+/* The ?debug panel: a small floating sheet, bottom-left, clear of the hints strip and the
+   build stamp. Above the game (notices are 40) and below modals (50). */
+
+.debug-panel {
+  position: fixed;
+  left: 0.5rem;
+  bottom: 2.6rem;
+  z-index: 45;
+  max-height: calc(100vh - 6rem);
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border: 2px dashed var(--wood);
+  border-radius: 10px;
+  box-shadow: 0 6px 18px rgb(60 40 20 / 0.2);
+  font-size: 12px;
+}
+.debug-panel.open {
+  width: 280px;
+}
+
+.debug-panel button {
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border-bottom-width: 2px;
+}
+
+.debug-panel .debug-head {
+  border: none;
+  background: transparent;
+  font-weight: 700;
+  text-align: left;
+  padding: 5px 10px;
+  color: var(--wood-deep);
+}
+.debug-panel .debug-head:hover {
+  background: #fff3df;
+}
+
+.debug-body {
+  overflow: auto;
+  padding: 0 10px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.debug-info {
+  margin: 0 0 2px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  font:
+    11px/1.4 ui-monospace,
+    Menlo,
+    monospace;
+  font-variant-numeric: tabular-nums;
+}
+.debug-info b {
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.debug-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.debug-label {
+  color: var(--muted);
+  white-space: nowrap;
+}
+.debug-row select {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  color: var(--ink);
+  background: #fffaf1;
+  border: 1px solid var(--panel-edge);
+  border-radius: 6px;
+  padding: 3px 4px;
+}
+.debug-check {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}

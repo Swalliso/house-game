@@ -1,4 +1,6 @@
 import { render } from 'preact';
+// The look first: tokens, fonts, and the primitives, before any component's styles.
+import './ui/theme/theme.ts';
 import { App } from './ui/App.tsx';
 import './ui/fx/director.ts';
 import { crash, loadInitialRun } from './ui/store.ts';

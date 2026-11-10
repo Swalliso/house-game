@@ -7,17 +7,17 @@
 ## In the jam build
 
 - **The lot:** a 24×24 grid with a street edge, woods and lone Trees, a creek, a pond, boulders, and a sunny side, generated from a seed. From M3b, two kinds of finds: the Old Shed and Time Capsules (D-048, D-049).
-- **Weekly turns:** draw 3 cards, then place 1 (with rotation), install a drawn fixture, or Pass; plus a few rerolls and demolitions (D-036, D-050).
+- **Weekly turns:** draw 3 cards, then place 1 (with rotation), install a drawn fixture, renovate a room whose type is at its limit (D-102), or Pass; plus a few rerolls and demolitions (D-036, D-050). A Fence or Driveway card is a pack: it places up to 8 or 6 connected tiles as one piece (D-106).
 - **Scoring:** tags and shared effect types (`content-brainstorm.md`, section 1). Each week scores Points × Mult, shown as **Comfort × Charm**, with rare **Sparkle** (×Mult) and the total in **Wow** (D-056, D-019). A live preview while placing shows the net change to the week and which neighbors contribute.
 - **Milestones:** construction phases with rising targets. Missing one ends the run once the run's 2 overtime weeks are used up (D-041).
 - **Early completion:** finish a phase early for budget and a score bonus while the skipped weeks fast-forward, or keep building; plus an auto-complete toggle, off by default (D-040).
 - **Fixtures:** upgrades installed in a room or yard piece you've already placed, drawn from phase 2 or bought in the shop (D-050).
 - **Shop between phases:** five kinds of goods (blueprints, special pieces, fixtures, tools, and company upgrades), plus crates and services (D-051).
-- **Clients:** spec checklist, tastes, and change orders, with Common/Uncommon/Rare rarity.
+- **Clients:** a spec checklist that starts with seven house rules (D-101), tastes, a household that grows on a schedule (D-103), and change orders, with Common/Uncommon/Rare rarity.
 - **Crews:** General Contractor, Landscaper, Architect.
 - **Content:** the Core-tier items in `content-brainstorm.md`, as written in Appendix B of `implementation-plan.md`. Five pieces that were Stretch there (Sunroom, Hot Tub, Fire Pit, Henhouse, Birdhouse) are Core shop pieces now (D-051).
 - **End screen:** the finished house captioned "It's a house.", the score, and a copyable result line.
-- **Art and sound:** cozy 16px pixel art, with Claude-drawn placeholder sprites from M1 and LimeZu's packs for the final art (D-057). A first pass at juice from M1 (D-059). Calm music with reward sounds that escalate with the size of the moment (D-058). The full art and sound pass is M5.
+- **Art and sound:** cozy pixel art from LimeZu's 16px packs, at 32 art px per cell (2×2 tiles, D-097), with Claude-drawn placeholder sprites from M1 (D-057). A first pass at juice from M1 (D-059). Calm music with reward sounds that escalate with the size of the moment (D-058). The full art pass is M5a, before M4, and the sound pass M5b, after it (D-097). M5a's visual juice is its own pull request between them.
 
 ## Stretch (only if time allows)
 
@@ -55,7 +55,7 @@ TypeScript + Vite with a pure rules module, Preact and the DOM for rendering, se
 
 ## Build order
 
-Eight phases, M0 to M7 (D-053): M1 to M6 each end in a playtest, M0 is setup, and M7 is the release. See §7 of `implementation-plan.md`.
+Eight phases, M0 to M7 (D-053): M1 to M6 each end in a playtest, M0 is setup, and M7 is the release. M5 is split in two, each with its own playtest: M5a (art and UI chrome) comes before M4, its visual juice after M4 in a pull request of its own, and M5b (sound and music) after that (D-097). See §7 of `implementation-plan.md`.
 
 ## Definition of done
 

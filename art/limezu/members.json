@@ -1,0 +1,361 @@
+{
+  "floor-nursery": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floors_16x16.png",
+    "rect": [144, 48, 16, 16],
+    "ops": [{ "op": "tile", "size": [32, 32] }],
+    "note": "The Nursery's floor: a soft pink checker (block 2, 0), its plain seamless tile repeated to one 32 px cell. Each member's room has a floor and a wallpaper of its own (D-097, D-111)."
+  },
+  "floor-kids-room": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floors_16x16.png",
+    "rect": [16, 144, 16, 16],
+    "ops": [{ "op": "tile", "size": [32, 32] }],
+    "note": "The Kids' Room's floor: pale yellow squares like a play mat (block 0, 3), its plain seamless tile repeated to one 32 px cell."
+  },
+  "floor-grandmas-room": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floors_16x16.png",
+    "rect": [16, 336, 16, 16],
+    "ops": [{ "op": "tile", "size": [32, 32] }],
+    "note": "Grandma's Room's floor: a beige basket-weave parquet (block 0, 9), its plain seamless tile repeated to one 32 px cell."
+  },
+  "floor-renfields-room": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floors_16x16.png",
+    "rect": [144, 336, 16, 16],
+    "ops": [{ "op": "tile", "size": [32, 32] }],
+    "note": "Renfield's Room's floor: an ornate navy carpet (block 2, 9), its plain seamless tile repeated to one 32 px cell. Dark, for the room in the dark middle of the Count's house."
+  },
+  "floor-nanas-room": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floors_16x16.png",
+    "rect": [80, 400, 16, 16],
+    "ops": [{ "op": "tile", "size": [32, 32] }],
+    "note": "Nana's Room's floor: an old rose carpet with star medallions (block 1, 11), its plain seamless tile repeated to one 32 px cell. Not the plan's beige inlays (block 0, 12), whose average is the Closet's floor's (ΔE 1.7), so Nana's Room could read as a Closet."
+  },
+  "floor-rowans-studio": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floors_16x16.png",
+    "rect": [80, 368, 16, 16],
+    "ops": [{ "op": "tile", "size": [32, 32] }],
+    "note": "Rowan's Studio's floor: rough nailed planks, a working floor (block 1, 10), its plain seamless tile repeated to one 32 px cell."
+  },
+  "floor-ivys-room": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Floors_16x16.png",
+    "rect": [16, 176, 16, 16],
+    "ops": [{ "op": "tile", "size": [32, 32] }],
+    "note": "Ivy's Room's floor: cream boards with yellow inlays (block 0, 4), its plain seamless tile repeated to one 32 px cell."
+  },
+  "face-nursery": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png",
+    "rect": [368, 486, 16, 6],
+    "ops": [
+      { "op": "compose", "size": [16, 8], "layers": [{ "rect": [368, 510, 16, 2], "at": [0, 6] }] },
+      { "op": "tile", "size": [32, 8] }
+    ],
+    "note": "The Nursery's north wall face, baby blue with white dots: the wall block at [352, 480]'s middle tile column, its top 6 rows of wallpaper under the band, then its last 2 rows (the baseboard and the outline along the floor), repeated to one 32 px cell. ΔE 42 from its floor (house-paint.test.ts holds every face at 20 or more)."
+  },
+  "face-kids-room": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png",
+    "rect": [368, 70, 16, 6],
+    "ops": [
+      { "op": "compose", "size": [16, 8], "layers": [{ "rect": [368, 94, 16, 2], "at": [0, 6] }] },
+      { "op": "tile", "size": [32, 8] }
+    ],
+    "note": "The Kids' Room's north wall face, lavender stripes: the wall block at [352, 64]'s middle tile column, its top 6 rows of wallpaper and its last 2 rows, repeated to one 32 px cell. ΔE 75 from its floor."
+  },
+  "face-grandmas-room": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png",
+    "rect": [192, 454, 16, 6],
+    "ops": [
+      { "op": "compose", "size": [16, 8], "layers": [{ "rect": [192, 478, 16, 2], "at": [0, 6] }] },
+      { "op": "tile", "size": [32, 8] }
+    ],
+    "note": "Grandma's Room's north wall face, salmon pink with a rose stripe: the wall block at [176, 448]'s middle tile column, its top 6 rows of wallpaper and its last 2 rows, repeated to one 32 px cell. ΔE 32 from its floor; the plan's dusty rose stripes (block [176, 192]) passed at only 23."
+  },
+  "face-renfields-room": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png",
+    "rect": [192, 390, 16, 6],
+    "ops": [
+      { "op": "compose", "size": [16, 8], "layers": [{ "rect": [192, 414, 16, 2], "at": [0, 6] }] },
+      { "op": "tile", "size": [32, 8] }
+    ],
+    "note": "Renfield's Room's north wall face, crimson panelling with dark stripes: the wall block at [176, 384]'s middle tile column, its top 6 rows of wallpaper and its last 2 rows, repeated to one 32 px cell. ΔE 51 from its navy floor; the plan's purple (block [176, 576]) was only 12."
+  },
+  "face-nanas-room": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png",
+    "rect": [192, 550, 16, 6],
+    "ops": [
+      { "op": "compose", "size": [16, 8], "layers": [{ "rect": [192, 574, 16, 2], "at": [0, 6] }] },
+      { "op": "tile", "size": [32, 8] }
+    ],
+    "note": "Nana's Room's north wall face, cornflower blue: the wall block at [176, 544]'s middle tile column, its top 6 rows of wallpaper and its last 2 rows, repeated to one 32 px cell. ΔE 51 from its rose carpet; the plan's pink stripes (block [176, 416]) were only 9 from its planned floor."
+  },
+  "face-rowans-studio": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png",
+    "rect": [16, 70, 16, 6],
+    "ops": [
+      { "op": "compose", "size": [16, 8], "layers": [{ "rect": [16, 94, 16, 2], "at": [0, 6] }] },
+      { "op": "tile", "size": [32, 8] }
+    ],
+    "note": "Rowan's Studio's north wall face, plain studio grey: the wall block at [0, 64]'s middle tile column, its top 6 rows of wallpaper and its last 2 rows, repeated to one 32 px cell. ΔE 30 from its floor."
+  },
+  "face-ivys-room": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Room_Builder_subfiles/Room_Builder_Walls_16x16.png",
+    "rect": [368, 198, 16, 6],
+    "ops": [
+      { "op": "compose", "size": [16, 8], "layers": [{ "rect": [368, 222, 16, 2], "at": [0, 6] }] },
+      { "op": "tile", "size": [32, 8] }
+    ],
+    "note": "Ivy's Room's north wall face, teal: the wall block at [352, 192]'s middle tile column, its top 6 rows of wallpaper and its last 2 rows, repeated to one 32 px cell. ΔE 40 from its floor."
+  },
+  "crib-twin-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png",
+    "rect": [67, 1317, 27, 26],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [41, 26],
+        "layers": [{ "rect": [96, 1317, 14, 26], "at": [27, 0] }]
+      }
+    ],
+    "note": "The Nursery's crib for the twins, in grey wood: LimeZu's crib with a blue blanket and the small one with a pink blanket, side by side. Against the north wall, or in the middle of the floor."
+  },
+  "crib-twin-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png",
+    "rect": [67, 1349, 27, 26],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [41, 26],
+        "layers": [{ "rect": [96, 1349, 14, 26], "at": [27, 0] }]
+      }
+    ],
+    "note": "The twins' crib in honey wood, for a second Nursery."
+  },
+  "dresser-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png",
+    "rect": [1, 568, 29, 24],
+    "note": "A low two-drawer dresser in pale wood: the Nursery's changing table, beside the grey crib."
+  },
+  "dresser-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png",
+    "rect": [1, 504, 29, 24],
+    "note": "The Nursery's changing table in honey wood, beside the honey crib."
+  },
+  "bed-single-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png",
+    "rect": [118, 81, 20, 40],
+    "note": "A child's single bed with a blue blanket, headboard against the north wall: the Kids' Room has two (the twins'), and Ivy's Room one."
+  },
+  "bed-single-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png",
+    "rect": [119, 33, 20, 40],
+    "note": "A child's single bed with a red blanket: the twin of bed-single-0 in a Kids' Room."
+  },
+  "bed-single-2": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png",
+    "rect": [167, 385, 20, 40],
+    "note": "A child's single bed with a blue and yellow striped blanket."
+  },
+  "bed-single-3": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png",
+    "rect": [135, 385, 20, 40],
+    "note": "A child's single bed with a green and yellow striped blanket."
+  },
+  "bed-single-4": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png",
+    "rect": [199, 385, 20, 40],
+    "note": "A child's single bed with a pale blue striped blanket."
+  },
+  "bed-single-5": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png",
+    "rect": [231, 386, 20, 40],
+    "note": "A child's single bed with a green striped blanket."
+  },
+  "cot": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/19_Hospital_16x16.png",
+    "rect": [144, 551, 16, 37],
+    "note": "Renfield's narrow cot, a canvas bed on legs: it fits his room when it stands one cell wide."
+  },
+  "cot-side": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png",
+    "rect": [49, 720, 36, 22],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [36, 25],
+        "at": [0, 3],
+        "layers": [{ "rect": [49, 717, 12, 3], "at": [0, 0] }]
+      }
+    ],
+    "note": "A plain single bed seen from its side, headboard to the west: Renfield's cot when his room lies one cell deep, where an upright bed won't fit under the north wall. Its top 3 rows are cut apart, from its headboard's posts only, to leave out the pillow above it on the sheet."
+  },
+  "candles": {
+    "pack": "mi",
+    "file": "3_Animated_objects/16x16/spritesheets/animated_candle.png",
+    "rect": [2, 8, 13, 14],
+    "frames": { "count": 3, "dx": 16, "dy": 0, "ms": 160 },
+    "note": "Two white candles in their pool of wax, their flames flickering over three frames: Renfield's light."
+  },
+  "spider": {
+    "pack": "mi",
+    "file": "3_Animated_objects/16x16/spritesheets/animated_spider.png",
+    "rect": [4, 6, 7, 19],
+    "frames": { "count": 8, "dx": 16, "dy": 0, "ms": 180 },
+    "note": "A spider bobbing on its thread over eight frames, hung in a corner of Renfield's Room."
+  },
+  "easel-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/7_Art_16x16.png",
+    "rect": [192, 32, 16, 29],
+    "note": "Rowan's easel with an abstract painting on it."
+  },
+  "easel-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/7_Art_16x16.png",
+    "rect": [240, 32, 16, 29],
+    "note": "Rowan's easel with a landscape on it."
+  },
+  "easel-2": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/7_Art_16x16.png",
+    "rect": [208, 32, 16, 29],
+    "note": "Rowan's easel with flowers on it."
+  },
+  "easel-low-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/7_Art_16x16.png",
+    "rect": [192, 35, 16, 26],
+    "note": "easel-0 without its finial's top 3 rows: 26 rows, the most a piece against the north wall of a one-cell-deep room can rise (its band, face and floor)."
+  },
+  "easel-low-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/7_Art_16x16.png",
+    "rect": [240, 35, 16, 26],
+    "note": "easel-1 without its finial's top 3 rows, for a one-cell-deep studio."
+  },
+  "easel-low-2": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/7_Art_16x16.png",
+    "rect": [208, 35, 16, 26],
+    "note": "easel-2 without its finial's top 3 rows, for a one-cell-deep studio."
+  },
+  "painting-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/7_Art_16x16.png",
+    "rect": [194, 74, 13, 15],
+    "note": "One of Rowan's finished paintings, abstract, in its frame: hung on the studio's north wall where there's room, or in the easel's place where a door leaves too little floor for it."
+  },
+  "painting-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/7_Art_16x16.png",
+    "rect": [242, 74, 13, 15],
+    "note": "One of Rowan's finished paintings, a landscape."
+  },
+  "painting-2": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/7_Art_16x16.png",
+    "rect": [210, 74, 13, 15],
+    "note": "One of Rowan's finished paintings, flowers."
+  },
+  "stool-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/7_Art_16x16.png",
+    "rect": [97, 76, 13, 13],
+    "note": "A round wooden stool in honey wood, by the easel."
+  },
+  "stool-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/7_Art_16x16.png",
+    "rect": [113, 76, 13, 13],
+    "note": "A round wooden stool in red-brown wood."
+  },
+  "stool-2": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/7_Art_16x16.png",
+    "rect": [129, 76, 13, 13],
+    "note": "A round wooden stool in pale wood."
+  },
+  "paint-pot-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/7_Art_16x16.png",
+    "rect": [97, 10, 13, 13],
+    "note": "A pot of blue paint."
+  },
+  "paint-pot-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/7_Art_16x16.png",
+    "rect": [113, 10, 13, 13],
+    "note": "A pot of red paint."
+  },
+  "paint-pot-2": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/7_Art_16x16.png",
+    "rect": [113, 42, 13, 13],
+    "note": "A pot of orange paint."
+  },
+  "vanity-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/2_LivingRoom_16x16.png",
+    "rect": [66, 76, 28, 30],
+    "note": "Grandma's vanity in honey wood: a dressing table under its mirror, against the north wall."
+  },
+  "vanity-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/2_LivingRoom_16x16.png",
+    "rect": [34, 76, 28, 30],
+    "note": "Grandma's vanity in pale wood."
+  },
+  "curio-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/2_LivingRoom_16x16.png",
+    "rect": [224, 243, 16, 37],
+    "note": "A tall curio cabinet in red-brown wood, its glass doors full of keepsakes: Grandma's."
+  },
+  "curio-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/2_LivingRoom_16x16.png",
+    "rect": [241, 249, 15, 31],
+    "note": "A smaller curio cabinet in pale wood, a glass door over a drawer."
+  },
+  "lamp-floor": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/2_LivingRoom_16x16.png",
+    "rect": [193, 200, 13, 33],
+    "note": "A standard lamp with a cream shade on a wooden pole, in a corner of Grandma's Room."
+  },
+  "desk-school-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/5_Classroom_and_library_16x16.png",
+    "rect": [83, 49, 22, 22],
+    "note": "A school desk with its chair, where Ivy does her homework."
+  },
+  "desk-school-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/5_Classroom_and_library_16x16.png",
+    "rect": [39, 81, 22, 22],
+    "note": "The school desk with its chair on the other side."
+  }
+}

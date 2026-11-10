@@ -13,7 +13,12 @@ import { TEST_CONTENT as C, withPieces } from './testing.ts';
 const data: RunCodeData = {
   build: 'abc1234',
   contentHash: contentHash(C),
-  setup: { seed: 'Ünïcode 🏠 seed', mode: 'standard' },
+  setup: {
+    seed: 'Ünïcode 🏠 seed',
+    clientId: 'hendersons',
+    crewId: 'generalContractor',
+    mode: 'standard',
+  },
   actions: [{ t: 'place', from: 'hand', i: 2, x: 11, y: 20, rot: 3 }, { t: 'pass' }],
 };
 

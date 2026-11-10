@@ -1,0 +1,620 @@
+/* The shop (D-051, M5a): a wood sheet over the board between milestones. The budget is the
+   header's hero counter; the goods are paper cards of one size packed onto shelves, a plank tag
+   per section. Rarity is a band inside a card's ring plus its label (D-087), and Rare goods
+   glint as they arrive (§12, Shop and crates). Built on kit.css. */
+
+.shop {
+  --offer-w: calc(var(--px) * 98);
+  position: absolute;
+  inset: var(--space-2);
+  z-index: 30;
+  box-shadow: var(--shadow-float);
+  animation: shop-in var(--dur-sheet) ease-out;
+}
+@keyframes shop-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--px) * 6));
+  }
+}
+.reduce-motion .shop {
+  animation: none;
+}
+
+/* --- The header: the name, the budget, and the buttons, on the plank ------------------------- */
+
+.shop-head.panel-head {
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-1) var(--space-3) calc(var(--space-1) + var(--px) * 3);
+}
+.shop-name {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.shop-title {
+  margin: 0;
+  font-size: var(--fs-title);
+  line-height: calc(var(--px) * 14);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.shop-sub {
+  margin: 0;
+  line-height: var(--lh-tight);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* The hero counter: a coin and the budget on a paper plaque. */
+.shop-budget {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-2);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--card);
+  background-clip: padding-box;
+  box-shadow:
+    inset 0 var(--px) 0 var(--card-hi),
+    inset 0 calc(var(--px) * -2) 0 var(--card-lo);
+}
+.shop-budget .tip {
+  display: inline-flex;
+}
+.shop-coin.icon {
+  width: calc(var(--w) * var(--px) * 2);
+  height: calc(var(--h) * var(--px) * 2);
+}
+.shop-budget .budget-count {
+  min-width: calc(var(--px) * 16);
+  font-family: var(--font-display);
+  font-size: var(--fs-num-lg);
+  font-weight: 400;
+  line-height: 1;
+  text-align: right;
+}
+/* The tools sit just right of the budget, so a jump's "+N" rises above the number instead. */
+.shop-budget .budget-jump {
+  left: auto;
+  right: 0;
+  bottom: 100%;
+  margin-left: 0;
+}
+.shop-tools {
+  flex: none;
+  display: flex;
+  gap: var(--space-2);
+}
+.shop-tools .price {
+  font-size: var(--fs-body);
+}
+
+/* --- The foot: a hint, and Leave, the sheet's one primary button ------------------------ */
+
+.shop-foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  box-shadow: inset 0 var(--px) 0 var(--paper-line);
+}
+.shop-foot-hint {
+  margin: 0 auto 0 0;
+  color: var(--ink-soft);
+}
+/* The saving bonus: the coin, then the amount, as a price reads. */
+.skip-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: var(--space-1);
+  padding: 0 var(--space-1);
+  background: var(--action-hi);
+  font-weight: 400;
+}
+.skip-word {
+  margin-left: var(--space-1);
+}
+.hint-short {
+  display: none;
+}
+/* A narrower window: the shortest words. */
+@media (max-width: 1500px) {
+  .shop-look-text,
+  .skip-word,
+  .shop-sub,
+  .hint-long {
+    display: none;
+  }
+  .hint-short {
+    display: inline;
+  }
+  .shop-title {
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+  }
+  .shop-look.btn {
+    width: var(--btn-h);
+    padding: 0 0 var(--px);
+  }
+}
+
+/* --- The shelves ----------------------------------------------------------------------- */
+
+.panel-body.shop-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  scrollbar-width: thin;
+  scrollbar-color: var(--wood) var(--paper-inset);
+}
+/* Sections flow onto shelves: as many side by side as the width holds. */
+.shelves {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+.shelf {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  max-width: 100%;
+}
+.shelf-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  max-width: calc(var(--offer-w) * 3 + var(--space-3) * 2);
+}
+.shelf-head h2 {
+  font-size: var(--fs-body);
+}
+/* A full section, said once: the reason, pointing at the goods on the right. It wraps to its
+   shelf's cards (width 0, min-width 100%), so it never widens the shelf off its row. */
+.shelf-full {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+  width: 0;
+  min-width: 100%;
+  margin: 0;
+  color: var(--bad);
+  font-weight: 700;
+}
+.shelf-full .icon {
+  flex: none;
+  margin-top: calc(var(--px) * 1);
+}
+.offers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+/* --- An offer: the Card primitive, one size, with the price and Buy at its foot ----------- */
+
+.offer.pcard {
+  flex: none;
+  width: var(--offer-w);
+  gap: var(--space-1);
+  padding-bottom: var(--space-2);
+  transition: transform var(--dur-hover) ease-out;
+}
+.offer.pcard:hover {
+  transform: translateY(calc(var(--px) * -1));
+}
+.reduce-motion .offer.pcard {
+  transition: none;
+}
+.reduce-motion .offer.pcard:hover {
+  transform: none;
+}
+/* The card's parts, in reading order: name, art, kind and rarity, what it does, the price. */
+.offer .pcard-head {
+  order: 0;
+}
+.offer .pcard-art {
+  order: 1;
+  height: calc(var(--px) * 38);
+  align-items: center;
+  margin-bottom: var(--px);
+}
+.offer .pcard-chips {
+  order: 2;
+}
+.offer .pcard-lines {
+  order: 3;
+}
+.offer .pcard-note {
+  order: 4;
+  color: var(--ink);
+}
+/* D-107: a fixture's worth in your house (goods.tsx FixtureWorth), under what it does. A strip
+   with its own fill, so it reads the same on every rarity's card: a gain in the good blue on
+   Comfort's tint with an up icon, a loss in the bad orange on its tint with a down icon (never
+   color alone, D-047), and quiet on paper when nothing takes it or it adds nothing yet. */
+.offer .pcard-worth {
+  order: 4;
+  display: flex;
+  flex-direction: column;
+  padding: var(--px) var(--space-1) calc(var(--px) * 2);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ringSoft) 1 / var(--px);
+  background: var(--card);
+  background-clip: padding-box;
+  color: var(--ink-soft);
+}
+.offer .pcard-worth.good {
+  background-color: var(--comfort-tint);
+  color: var(--good);
+}
+.offer .pcard-worth.bad {
+  background-color: var(--bad-tint);
+  color: var(--bad);
+}
+/* The icon and the number stay together, on the text's line; the words after them wrap. */
+.offer .worth-num {
+  font-weight: 700;
+  white-space: nowrap;
+}
+.offer .worth-num .icon {
+  margin-right: var(--space-1);
+}
+.offer .pcard-alert {
+  order: 5;
+  align-items: flex-start;
+}
+.offer .pcard-alert .icon {
+  margin-top: calc(var(--px) * 2);
+}
+.offer-foot {
+  order: 6;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-top: auto;
+  padding-top: var(--space-1);
+}
+.offer .pcard-chips .tip {
+  background: none;
+}
+/* A kind's icon in the art slot, two UI pixels to its pixel; a tool's or a fixture's own icon,
+   two thirds its size, three, so both stand as tall. */
+.offer .art-icon.icon {
+  width: calc(var(--w) * var(--px) * 2);
+  height: calc(var(--h) * var(--px) * 2);
+}
+.offer .art-icon.own.icon {
+  width: calc(var(--w) * var(--px) * 3);
+  height: calc(var(--h) * var(--px) * 3);
+}
+.offer .buy {
+  flex: none;
+  min-width: calc(var(--px) * 26);
+}
+/* A disabled Buy says why in a word (Full, Need 2), so it keeps a readable ink. */
+.offer .buy:disabled {
+  color: var(--ink-soft);
+}
+/* Rarity's fills: the band and the label say it; the tint helps the eye sort a shelf. */
+.offer.rarity-uncommon {
+  --card-fill: var(--uncommon-tint);
+}
+.offer.rarity-rare {
+  --card-fill: var(--rare-tint);
+}
+/* The services: text only, so their cards drop the art slot. */
+.shelf.compact .pcard-art {
+  display: none;
+}
+
+/* A Rare's glint: two bright stripes cross it once, on its arrival. */
+.offer-shine {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.offer-shine::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 70%;
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    var(--shine) 30% 46%,
+    transparent 46% 54%,
+    var(--shine) 54% 60%,
+    transparent 60%
+  );
+  transform: translateX(-110%);
+  animation: offer-glint var(--dur-shop-shimmer) ease-out var(--beat, 0ms) 1 both;
+}
+@keyframes offer-glint {
+  to {
+    transform: translateX(160%);
+  }
+}
+.reduce-motion .offer-shine {
+  display: none;
+}
+
+/* The sale: a dark wood price tag hung on the card's top edge. */
+.offer.on-sale {
+  --card-band: var(--wood-deep);
+}
+/* The name keeps clear of the tag. */
+.offer.on-sale .pcard-head {
+  padding-right: calc(var(--px) * 28);
+}
+.sale-tag {
+  position: absolute;
+  top: calc(var(--px) * -6);
+  right: var(--space-2);
+  padding: 0 var(--space-1) var(--px) calc(var(--space-1) + var(--px) * 3);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--wood-deep);
+  background-clip: padding-box;
+  box-shadow: var(--shadow-card);
+  color: var(--on-wood);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+}
+/* The tag's hole. */
+.sale-tag::before {
+  content: '';
+  position: absolute;
+  left: var(--px);
+  top: calc(50% - var(--px));
+  width: calc(var(--px) * 2);
+  height: calc(var(--px) * 2);
+  background: var(--card);
+}
+.sale-tag .tip {
+  --tip-line: var(--on-wood);
+}
+.offer.sold {
+  opacity: 0.7;
+}
+.sold-stamp {
+  margin: 0 auto;
+  padding: 0 var(--space-2);
+  border: calc(var(--px) * 2) solid var(--bad);
+  color: var(--bad);
+  font-family: var(--font-display);
+  font-size: var(--fs-num);
+  line-height: calc(var(--px) * 12);
+  text-transform: uppercase;
+}
+/* A bought good's pop. FEEL.shop.boughtMs keeps the class on a little longer than this. */
+.offer.just-bought {
+  animation: offer-bought var(--dur-shop-pop) ease-out;
+}
+@keyframes offer-bought {
+  30% {
+    transform: scale(1.06);
+  }
+  100% {
+    transform: none;
+  }
+}
+.reduce-motion .offer.just-bought {
+  animation: none;
+}
+
+/* --- The hidden shop's handle, at the board's foot ------------------------------------------ */
+
+.shop-handle-place {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: var(--space-2);
+  z-index: 30;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+.shop-handle.btn {
+  --btn-h: calc(var(--px) * 22);
+  pointer-events: auto;
+  padding-inline: var(--space-5);
+  box-shadow:
+    inset 0 var(--px) 0 var(--btn-hi),
+    inset 0 calc(var(--px) * -2) 0 var(--btn-lip),
+    var(--shadow-float);
+}
+
+/* --- A crate's options and the strike picker: a sheet over the shelves --------------------- */
+
+/* The scrim's one row is the scrim's own height (a definite row, where an auto one would
+   grow with the sheet), so the sheet's max-height holds and its options scroll inside it on a
+   short window, with its buttons kept below them in view. */
+.shop-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  grid-template-rows: minmax(0, 100%);
+  place-items: center;
+  padding: var(--space-4);
+  background: var(--scrim);
+}
+.shop-pick.panel {
+  max-width: 100%;
+  max-height: 100%;
+  min-height: 0;
+  animation: sheet-in var(--dur-modal) ease-out;
+}
+.reduce-motion .shop-pick.panel {
+  animation: none;
+}
+.shop-pick .panel-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 0;
+  padding: 0;
+}
+.pick-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  scrollbar-width: thin;
+  scrollbar-color: var(--wood) var(--paper-inset);
+}
+.shop-pick .panel-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.pick-note {
+  margin: 0;
+  color: var(--ink-soft);
+}
+.pick-foot {
+  flex: none;
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--space-2) var(--space-3);
+  box-shadow: inset 0 var(--px) 0 var(--paper-line);
+}
+.strike-sheet {
+  width: min(calc(var(--px) * 300), 100%);
+}
+.strike-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+.crate-options {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-2) var(--space-1);
+}
+/* A narrow board: three options still fit on one row. */
+@media (max-width: 1500px) {
+  .shop-scrim {
+    padding: var(--space-2);
+  }
+  .pick-scroll {
+    padding: var(--space-2);
+  }
+  .crate-options {
+    gap: var(--space-3);
+    padding-inline: var(--space-1);
+  }
+}
+/* --beat is when an option turns over (ShopScreen.tsx, FEEL.shop.crateStaggerMs). */
+.crate-option.pcard {
+  animation: crate-turn var(--dur-shop-turn) ease-out var(--beat, 0ms) both;
+}
+/* The glow by rarity, in hard pixel steps. */
+.crate-option.rarity-uncommon {
+  box-shadow:
+    inset 0 0 0 var(--px) var(--card-band),
+    inset var(--px) var(--px) 0 var(--px) var(--card-hi),
+    0 0 0 calc(var(--px) * 2) var(--glow-uncommon),
+    0 0 0 calc(var(--px) * 4) var(--glow-uncommon-soft);
+}
+.crate-option.rarity-rare {
+  box-shadow:
+    inset 0 0 0 var(--px) var(--card-band),
+    inset var(--px) var(--px) 0 var(--px) var(--card-hi),
+    0 0 0 calc(var(--px) * 2) var(--glow-rare),
+    0 0 0 calc(var(--px) * 4) var(--glow-rare-soft),
+    0 0 0 calc(var(--px) * 6) var(--glow-rare-soft);
+}
+@keyframes crate-turn {
+  from {
+    opacity: 0;
+    transform: rotateY(80deg) scale(0.9);
+  }
+  60% {
+    opacity: 1;
+    transform: rotateY(-8deg) scale(1.03);
+  }
+  to {
+    transform: none;
+  }
+}
+.reduce-motion .crate-option.pcard {
+  animation: none;
+}
+
+/* --- A short window (1280×720): no pictures, so a second shelf shows ---------------------- */
+
+@media (max-height: 800px) {
+  .shelves {
+    gap: var(--space-3) var(--space-4);
+  }
+  .offer .pcard-art {
+    display: none;
+  }
+}
+
+/* --- A crate opening (D-125): the crate glows in its best option's rarity and shakes, then
+   bursts open (ShopScreen.tsx CrateLid) as the options turn over behind it. --------------- */
+.crate-options {
+  position: relative;
+}
+.crate-lid {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+.crate-lid .icon {
+  transform: scale(4);
+  border-radius: 0;
+  box-shadow: 0 0 0 calc(var(--px) * 2) var(--lid-glow, transparent);
+  animation: lid-glow var(--lid-ms) ease-in both;
+}
+.crate-lid.rarity-uncommon {
+  --lid-glow: var(--glow-uncommon);
+}
+.crate-lid.rarity-rare {
+  --lid-glow: var(--glow-rare);
+}
+.crate-lid.shaking .icon {
+  animation:
+    lid-glow var(--lid-ms) ease-in both,
+    lid-shake 0.13s ease-in-out infinite;
+}
+@keyframes lid-glow {
+  from {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+@keyframes lid-shake {
+  0%,
+  100% {
+    transform: scale(4) rotate(0);
+  }
+  25% {
+    transform: scale(4) rotate(-4deg);
+  }
+  75% {
+    transform: scale(4) rotate(4deg);
+  }
+}

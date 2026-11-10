@@ -1,0 +1,461 @@
+/* The hand (M5a): paper cards with the piece's picture, the free actions, and the sticky action
+   bar with End week as the one primary button. Built on kit.css. D-121: the cards in two rows,
+   Rooms and Layout, each under its label. D-132: one Reroll for both rows, on the plank with
+   Demolish. */
+
+.hand .panel-body,
+.hand-row {
+  gap: var(--space-3);
+}
+
+/* --- The rows (D-121) ------------------------------------------------------------------ */
+
+.hand-row {
+  display: flex;
+  flex-direction: column;
+  container: hand-row / inline-size;
+}
+/* The row's label and a rule: "ROOMS ─────────". */
+.hand-row-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.hand-row-label {
+  display: flex;
+  flex: 1 0 auto;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  font-size: var(--fs-body);
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.hand-row-label::after {
+  content: '';
+  flex: 1;
+  height: var(--px);
+  background: var(--paper-line);
+}
+.hand .panel-head .free-action {
+  flex: none;
+}
+.hand .panel-head {
+  container: hand-plank / inline-size;
+}
+.hand-title-short {
+  display: none;
+}
+/* The plank holds the title, Reroll, and Demolish (D-132). Where their words don't all fit,
+   the buttons show their icon and count (their titles name them); demolishing, Stop keeps its
+   word. On a narrower plank still, the title is "Cards". In the pixel font a letter is 1rem;
+   the readable font's are narrower. */
+@container hand-plank (max-width: 35rem) {
+  [data-font='pixel'] .free-action:not(.active) .free-action-word {
+    display: none;
+  }
+}
+@container hand-plank (max-width: 19rem) {
+  [data-font='pixel'] .hand-title-long {
+    display: none;
+  }
+  [data-font='pixel'] .hand-title-short {
+    display: inline;
+  }
+}
+@container hand-plank (max-width: 330px) {
+  [data-font='readable'] .free-action:not(.active) .free-action-word {
+    display: none;
+  }
+}
+@container hand-plank (max-width: 200px) {
+  [data-font='readable'] .hand-title-long {
+    display: none;
+  }
+  [data-font='readable'] .hand-title-short {
+    display: inline;
+  }
+}
+
+/* --- A card: the Card primitive (kit.css), with the hand's own sizes ----------------------- */
+
+/* Compact (D-121): the head and the line that says what it pays beside a thumbnail of the piece
+   in its well, then the chips and any alert across the card. A card without a picture (a
+   fixture, or any card on a short window) gives the text the whole width. The empty row under
+   the line takes the rest of a tall picture's height, so the name and the line stay together.
+   Each part's top margin spaces it, not the grid's gap, so a row with nothing in it (that empty
+   row, or no alert) adds no space: four cards fit at 1600×900. */
+.hand-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto 1fr auto auto;
+  grid-template-areas:
+    'head art'
+    'lines art'
+    '. art'
+    'chips chips'
+    'alert alert';
+  align-content: start;
+  gap: 0;
+}
+.hand-card .pcard-head {
+  grid-area: head;
+}
+.hand-card .pcard-lines {
+  grid-area: lines;
+}
+.hand-card .pcard-chips {
+  grid-area: chips;
+}
+.hand-card .pcard-alert {
+  grid-area: alert;
+}
+.hand-card .pcard-art {
+  grid-area: art;
+  align-self: start;
+  margin-left: var(--space-2);
+}
+.hand-card .pcard-lines,
+.hand-card .pcard-chips,
+.hand-card .pcard-alert {
+  margin-top: var(--space-1);
+}
+/* A card swapped in (D-121): the reroll die as a badge on its top corner, over the ring, so it
+   takes no room from the name or the chips. Small enough to clear the shape glyph under it and
+   the row's label over a row's first card. Its words are in its title, and read out. */
+.hand-card .swap-mark {
+  position: absolute;
+  top: calc(var(--px) * -2);
+  right: calc(var(--px) * -2);
+  display: flex;
+  filter: drop-shadow(0 var(--px) 0 var(--shade));
+}
+/* The line, in two lines at most: Inspect has the rest. */
+.hand-card .pcard-lines li {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+/* A narrow card (the design target's column, 1600×900, and narrower): the name runs across,
+   the line and the chips sit beside a thumbnail of the picture (half size where the screen
+   has the pixels: thumbScale), and in the wide pixel font the kind's chip goes (the card's
+   tint says it, and Inspect) and the tags show just their icons, named in their titles. */
+@container hand-row (max-width: 308px) {
+  /* The chips' row takes the rest of a tall picture's height, the chips at its top. */
+  .hand-card {
+    grid-template-rows: auto auto 1fr auto;
+    grid-template-areas:
+      'head head'
+      'lines art'
+      'chips art'
+      'alert alert';
+  }
+  .hand-card .pcard-chips {
+    align-self: start;
+  }
+  .hand-card .pcard-art {
+    margin-top: var(--space-1);
+    margin-left: var(--space-1);
+  }
+  /* Narrower padding and bullet, as a window under 1500 px wide has, so a line's first words
+     fit beside a room's thumbnail at 1600×900: "+2 per touching / room (up to 4)", not
+     "+2 per / touching roo…". */
+  .hand-card {
+    padding-inline: var(--space-2);
+  }
+  .hand-card .pcard-lines li {
+    padding-left: var(--space-2);
+  }
+  .hand-card .piece-art {
+    width: var(--thumb-w) !important;
+    height: var(--thumb-h) !important;
+  }
+  [data-font='pixel'] .hand-card .kind-chip,
+  [data-font='pixel'] .hand-card .tag-chip .chip-word {
+    display: none;
+  }
+}
+/* The narrowest column (under 1500 px wide, 1440×900): beside the thumbnail, Renovate and a tag
+   no longer share a line, so the chips run across the card under it. */
+@container hand-row (max-width: 240px) {
+  .hand-card {
+    grid-template-rows: auto auto 1fr auto auto;
+    grid-template-areas:
+      'head head'
+      'lines art'
+      '. art'
+      'chips chips'
+      'alert alert';
+  }
+}
+
+/* A short window (1280×720) fits more of the hand: the cards drop their pictures for their
+   shape's glyph (PieceArt.tsx), and the ghost on the lot shows the rest. The picked card shows
+   its glyph on any window, turned as the piece is turned, so R shows its effect even with the
+   pointer off the lot. */
+.shape-glyph {
+  display: none;
+  grid-template-columns: repeat(var(--cols), calc(var(--px) * var(--cell)));
+  grid-template-rows: repeat(var(--rows), calc(var(--px) * var(--cell)));
+  gap: calc(var(--px) * var(--gap));
+  flex: none;
+}
+.shape-glyph > span {
+  background: var(--ink-soft);
+}
+.hand-card.is-selected .shape-glyph {
+  display: grid;
+}
+.hand-card.is-selected .shape-glyph > span {
+  background: var(--ink);
+}
+/* A window under 1100 px tall, where Your goods folds (Inventory.tsx), spaces the cards closer,
+   so a fifth card fits at 1920×1080. */
+@media (max-height: 1099px) {
+  .hand .panel-body,
+  .hand-row {
+    gap: var(--space-2);
+  }
+}
+@media (max-height: 800px) {
+  .hand-card .pcard-art,
+  .hand-card .pcard-note {
+    display: none;
+  }
+  .shape-glyph {
+    display: grid;
+  }
+}
+/* A narrow card's thumbnail is half the picture only where the screen has the pixels for it
+   (thumbScale); at 1× it's the whole picture, and four cards beside it were too tall for a
+   900 px window. There, as on a short window, the card shows its shape's glyph instead. */
+@media (max-height: 900px) and (max-resolution: 1dppx) {
+  @container hand-row (max-width: 308px) {
+    .hand-card .pcard-art {
+      display: none;
+    }
+    .shape-glyph {
+      display: grid;
+    }
+  }
+}
+
+/* --- The piece's picture ------------------------------------------------------------- */
+
+.piece-art {
+  position: relative;
+  display: block;
+  flex: none;
+  image-rendering: pixelated;
+}
+.piece-art canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
+/* --- Free actions: Reroll and Demolish, on the plank ----------------------------------- */
+
+.free-action {
+  flex: 1 1 auto;
+  justify-content: flex-start;
+  gap: var(--px);
+  padding-inline: calc(var(--px) * 3);
+}
+/* The count of what's left, as a little plaque at the button's end. */
+.free-action .count {
+  margin-left: auto;
+  padding: 0 var(--px);
+  background: var(--paper-inset);
+  box-shadow: inset 0 var(--px) 0 var(--card-lo);
+  font-family: var(--font-display);
+  font-weight: 400;
+  line-height: var(--lh-tight);
+}
+.free-action.btn-danger .count {
+  background: var(--danger-shade);
+  box-shadow: none;
+}
+
+/* Scoped to the hand: the board's Outline uses .demolish-hint too (the Moving Truck's old spot,
+   another demolish target), and an unscoped rule filled that board-sized SVG with this paper. */
+.hand .demolish-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-1) var(--space-2);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--armed-hi);
+  background-clip: padding-box;
+  font-weight: 700;
+}
+.hand .demolish-hint .icon {
+  margin-top: var(--px);
+}
+
+/* --- The action bar: sticky at the column's bottom ------------------------------------ */
+
+/* On a short window (1280×720, D-047) the column scrolls, so the bar sticks to its bottom and
+   stays in view, like the end screen's buttons; .right's scroll-padding-bottom keeps a focused
+   card clear of it. */
+.hand-actions {
+  position: sticky;
+  bottom: calc(var(--px) * -5);
+  z-index: 1;
+  display: flex;
+  gap: var(--space-2);
+  margin: 0 calc(var(--space-3) * -1) calc(var(--space-3) * -1);
+  padding: var(--space-2) var(--space-3) var(--space-3);
+  background: var(--paper);
+  box-shadow: 0 calc(var(--px) * -1) 0 var(--paper-line);
+}
+@media (max-width: 1500px) {
+  .hand-actions {
+    gap: var(--space-1);
+    margin: 0 calc(var(--space-2) * -1) calc(var(--space-2) * -1);
+    padding: var(--space-2);
+  }
+}
+/* Cards under the bar (Hand.tsx useCardsUnderBar): a hard shadow over them, and a tab on the
+   bar's edge, "1 more card", that scrolls the column to its end. */
+.hand-actions.has-more {
+  box-shadow:
+    0 calc(var(--px) * -1) 0 var(--paper-line),
+    0 calc(var(--px) * -3) 0 var(--shade);
+}
+.hand-actions .more-cards {
+  position: absolute;
+  right: var(--space-3);
+  bottom: calc(100% + var(--px) * 2);
+}
+.hand-actions .end-week {
+  flex: 1;
+  min-width: 0;
+  justify-content: space-between;
+}
+.end-week-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hand-actions .end-week .keycap {
+  font-weight: 400;
+}
+/* End week sizes its words on its own width, which Rotate and Cancel beside it take from: it
+   drops the keycap first (the controls strip shows Enter too), then takes the short label. The
+   widths each label needs were measured with its ring and padding (2.25rem): in the pixel font
+   at 2 CSS px a UI pixel, "Pass this week" is 12.75rem, "Pass? Press again" 15.75rem and "End
+   week" 7.6rem, and the keycap with its gap 5.5rem (rem, not em: Chrome reads a container
+   query's em as the root's). A smaller UI pixel (125%) only switches sooner than it must. The
+   readable font is the system's at fixed sizes, so its widths are in px, with room for wider
+   system fonts. */
+.hand-actions {
+  container: actions / inline-size;
+}
+.hand-actions .end-week {
+  container: end-week / inline-size;
+}
+.end-week-short {
+  display: none;
+}
+/* Below these widths the keycap goes, and the label centers: */
+@container end-week (max-width: 20.6rem) {
+  [data-font='pixel'] .end-week:not(.ready, .confirm) .keycap {
+    display: none;
+  }
+  [data-font='pixel'] .end-week:not(.ready, .confirm) .end-week-label {
+    margin-inline: auto;
+  }
+}
+@container end-week (max-width: 23.6rem) {
+  [data-font='pixel'] .end-week.confirm .keycap {
+    display: none;
+  }
+  [data-font='pixel'] .end-week.confirm .end-week-label {
+    margin-inline: auto;
+  }
+}
+@container end-week (max-width: 15.5rem) {
+  [data-font='pixel'] .end-week.ready .keycap {
+    display: none;
+  }
+  [data-font='pixel'] .end-week.ready .end-week-label {
+    margin-inline: auto;
+  }
+}
+@container end-week (max-width: 210px) {
+  [data-font='readable'] .end-week:not(.ready, .confirm) .keycap {
+    display: none;
+  }
+  [data-font='readable'] .end-week:not(.ready, .confirm) .end-week-label {
+    margin-inline: auto;
+  }
+}
+@container end-week (max-width: 236px) {
+  [data-font='readable'] .end-week.confirm .keycap {
+    display: none;
+  }
+  [data-font='readable'] .end-week.confirm .end-week-label {
+    margin-inline: auto;
+  }
+}
+@container end-week (max-width: 172px) {
+  [data-font='readable'] .end-week.ready .keycap {
+    display: none;
+  }
+  [data-font='readable'] .end-week.ready .end-week-label {
+    margin-inline: auto;
+  }
+}
+/* Below these, the short label takes over ("End week" is already short): */
+@container end-week (max-width: 15.1rem) {
+  [data-font='pixel'] .end-week:not(.ready, .confirm) .end-week-label {
+    display: none;
+  }
+  [data-font='pixel'] .end-week:not(.ready, .confirm) .end-week-short {
+    display: inline;
+    margin-inline: auto;
+  }
+}
+@container end-week (max-width: 18.1rem) {
+  [data-font='pixel'] .end-week.confirm .end-week-label {
+    display: none;
+  }
+  [data-font='pixel'] .end-week.confirm .end-week-short {
+    display: inline;
+    margin-inline: auto;
+  }
+}
+@container end-week (max-width: 152px) {
+  [data-font='readable'] .end-week:not(.ready, .confirm) .end-week-label {
+    display: none;
+  }
+  [data-font='readable'] .end-week:not(.ready, .confirm) .end-week-short {
+    display: inline;
+    margin-inline: auto;
+  }
+}
+@container end-week (max-width: 176px) {
+  [data-font='readable'] .end-week.confirm .end-week-label {
+    display: none;
+  }
+  [data-font='readable'] .end-week.confirm .end-week-short {
+    display: inline;
+    margin-inline: auto;
+  }
+}
+/* A narrow bar: smaller square buttons and padding, so End week keeps its words. */
+@container actions (max-width: 299px) {
+  .hand-actions .btn-icon {
+    --btn-h: calc(var(--px) * 20);
+    align-self: center;
+  }
+  .hand-actions .end-week {
+    padding-inline: var(--space-1);
+  }
+}

@@ -1,71 +1,111 @@
-// M1's one celebration tier (§12, The celebration ladder): a big week, at 2× pace or more,
-// bursts confetti and coins from the score panel. Reduce motion swaps the burst for a glow.
+// The celebration ladder's pieces on the score panel and the screen (§12, D-124). The director
+// plays each tier's sounds and bursts (particles.ts); this draws what stays a moment:
+// - The pile, from Combolands: from a Good week up, the week's best pieces fly off the board into
+//   a stack beside the score panel, more for a bigger tier, a little tower for a Huge week. Each
+//   is the piece's own picture (PieceArt). It fades once it has stood a moment.
+// - The wash: a Great or Huge week warms the whole screen for a moment, and a Huge week opens
+//   with one soft white flash (none with Flashing off, D-125).
+// Reduce motion keeps the wash's tint and drops the pile's flight.
 
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { celebration } from '../fx/director.ts';
+import { celebration, played, wash, type PileBlock } from '../fx/director.ts';
+import { FEEL } from '../fx/feel.ts';
+import type { Tier } from '../fx/ladder.ts';
 import { settings } from '../settings.ts';
+import { PieceArt } from './PieceArt.tsx';
 
-const COLORS = ['#e8b04a', '#e06c8c', '#5b8fd6', '#7fbf6a', '#f2e3b3'];
+/** A block's size in the stack, and how much each one overlaps the one under it. */
+const BLOCK = 30;
+const RISE = 22;
 
-interface Bit {
+interface Shown {
   id: number;
-  dx: number;
-  dy: number;
-  spin: number;
-  delay: number;
-  color: string;
-  coin: boolean;
+  tier: Tier;
+  /** Where the stack stands, in viewport px: its bottom middle. */
+  base: { x: number; y: number };
+  blocks: readonly PileBlock[];
 }
 
+/** The pile, anchored beside the score panel's Wow. */
 export function Celebration() {
   const c = celebration.value;
   const anchor = useRef<HTMLDivElement>(null);
-  const [at, setAt] = useState({ x: 0, y: 0 });
-  const [bits, setBits] = useState<Bit[]>([]);
+  const [shown, setShown] = useState<Shown | null>(null);
   useEffect(() => {
-    if (!c || settings.value.reduceMotion) {
-      setBits([]);
-      return;
-    }
+    if (!c || c.id <= played.celebration || c.pile.length === 0) return;
+    played.celebration = c.id;
     const r = anchor.current?.getBoundingClientRect();
-    if (r) setAt({ x: r.left, y: r.top });
-    const n = 46;
-    const next: Bit[] = Array.from({ length: n }, (_, i) => {
-      const angle = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 1.3;
-      const dist = 90 + Math.random() * 150;
-      return {
-        id: c.id * 100 + i,
-        dx: Math.cos(angle) * dist,
-        dy: Math.sin(angle) * dist,
-        spin: (Math.random() - 0.5) * 720,
-        delay: Math.random() * 120,
-        color: COLORS[i % COLORS.length]!,
-        coin: i % 5 === 0,
-      };
-    });
-    setBits(next);
-    const t = setTimeout(() => setBits([]), 1800);
+    if (!r) return;
+    setShown({ id: c.id, tier: c.tier, base: { x: r.left, y: r.top }, blocks: c.pile });
+    const p = FEEL.pile;
+    const ms = p.flyMs + p.staggerMs * c.pile.length + p.holdMs + p.fadeMs;
+    const t = setTimeout(() => setShown((s) => (s?.id === c.id ? null : s)), ms);
     return () => clearTimeout(t);
   }, [c?.id]);
+  const still = settings.value.reduceMotion;
+  const p = FEEL.pile;
   return (
     <div class="celebration-anchor" ref={anchor} aria-hidden="true">
-      {bits.length > 0 && (
-        <div class="celebration" style={{ left: `${at.x}px`, top: `${at.y}px` }}>
-          {bits.map((b) => (
-            <span
-              key={b.id}
-              class={b.coin ? 'coin' : 'confetti'}
-              style={{
-                '--dx': `${b.dx}px`,
-                '--dy': `${b.dy}px`,
-                '--spin': `${b.spin}deg`,
-                animationDelay: `${b.delay}ms`,
-                background: b.coin ? undefined : b.color,
-              }}
-            />
-          ))}
+      {shown && (
+        <div
+          class={`pile tier-${shown.tier}`}
+          key={shown.id}
+          style={{
+            left: `${shown.base.x}px`,
+            top: `${shown.base.y}px`,
+            '--pile-fade-at': `${p.flyMs + p.staggerMs * shown.blocks.length + p.holdMs}ms`,
+            '--pile-fade': `${p.fadeMs}ms`,
+          }}
+        >
+          {shown.blocks.map((b, k) => {
+            // Stacked from the bottom, each a little off the one under it, as a pile is.
+            const to = { x: (k % 2 ? 1 : -1) * ((k * 3) % 7), y: -k * RISE };
+            const from = b.at
+              ? { x: b.at.x - shown.base.x, y: b.at.y - shown.base.y }
+              : { x: -160, y: 40 };
+            return (
+              <span
+                key={b.uid}
+                class="pile-block"
+                style={{
+                  '--to-x': `${to.x - BLOCK / 2}px`,
+                  '--to-y': `${to.y - BLOCK}px`,
+                  '--from-x': `${(still ? to.x : from.x) - BLOCK / 2}px`,
+                  '--from-y': `${(still ? to.y : from.y) - BLOCK}px`,
+                  '--tilt': `${(k % 3) - 1}deg`,
+                  animationDelay: `${k * p.staggerMs}ms`,
+                  animationDuration: `${p.flyMs}ms`,
+                  zIndex: k,
+                }}
+              >
+                <PieceArt id={b.defId} class="pile-art" />
+              </span>
+            );
+          })}
         </div>
       )}
     </div>
+  );
+}
+
+/** A Great or Huge week's wash over the screen (and a Huge week's flash), played once. */
+export function TierWash() {
+  const w = wash.value;
+  const [shown, setShown] = useState<{ id: number; tier: Tier } | null>(null);
+  useEffect(() => {
+    if (!w || w.id <= played.wash) return;
+    played.wash = w.id;
+    setShown(w);
+    const t = setTimeout(() => setShown((s) => (s?.id === w.id ? null : s)), FEEL.ladder.warmMs);
+    return () => clearTimeout(t);
+  }, [w?.id]);
+  if (!shown) return null;
+  return (
+    <div
+      class={`tier-wash tier-${shown.tier}`}
+      key={shown.id}
+      style={{ '--wash-ms': `${FEEL.ladder.warmMs}ms`, '--flash-ms': `${FEEL.ladder.flashMs}ms` }}
+      aria-hidden="true"
+    />
   );
 }

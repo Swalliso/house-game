@@ -1,0 +1,317 @@
+/* The win and lose screens and the board's "It's a house." sign (EndScreen.tsx, M5a): a wood
+   panel in place of the hand. A win gets a trophy and a gold verdict stamp; a loss stays plain.
+   Built on kit.css. */
+
+.run-end.panel {
+  flex: none;
+  animation: run-end-in var(--dur-banner) cubic-bezier(0.2, 1.2, 0.4, 1) both;
+}
+.run-end .panel-body {
+  gap: var(--space-3);
+  padding-bottom: 0;
+}
+
+/* --- The verdict and the final Wow -------------------------------------------------------- */
+
+.run-end-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  text-align: center;
+}
+.run-end-trophy.icon {
+  width: calc(var(--w) * var(--px) * 2);
+  height: calc(var(--h) * var(--px) * 2);
+}
+.run-end-title {
+  margin: 0;
+  font-weight: 700;
+}
+/* The verdict, stamped: gold for a win, a plain ink outline for a loss. */
+.run-end-verdict {
+  margin: 0;
+  padding: var(--space-1) var(--space-3) calc(var(--space-1) + var(--px));
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--card);
+  background-clip: padding-box;
+  box-shadow:
+    inset 0 calc(var(--px) * -2) 0 var(--card-lo),
+    var(--shadow-card);
+  font-family: var(--font-display);
+  font-size: var(--fs-title);
+  line-height: var(--lh-title);
+  color: var(--ink);
+}
+.run-end.won .run-end-verdict {
+  background: var(--sparkle);
+  box-shadow:
+    inset 0 var(--px) 0 var(--gold-hi),
+    inset 0 calc(var(--px) * -2) 0 var(--sparkle-deep),
+    var(--shadow-card);
+  animation: verdict-stamp var(--dur-banner) cubic-bezier(0.2, 1.4, 0.4, 1)
+    calc(var(--dur-banner) / 2) both;
+}
+@keyframes verdict-stamp {
+  from {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+}
+/* The final Wow, on the score panel's framed plaque. */
+.run-end-score {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0 var(--space-2);
+  align-self: stretch;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--card);
+  background-clip: padding-box;
+  box-shadow:
+    inset 0 0 0 calc(var(--px) * 2) var(--wood-hi),
+    inset 0 0 0 calc(var(--px) * 3) var(--wood),
+    inset 0 calc(var(--px) * -4) 0 calc(var(--px) * 1) var(--card-lo);
+}
+.run-end-score .value {
+  font-size: var(--fs-num-lg);
+  line-height: 1;
+}
+.run-end-score .unit {
+  color: var(--ink-soft);
+}
+
+/* --- Milestones: ✓ met, ✕ missed, ○ not reached (an icon and a word, never color alone) ---- */
+
+.run-end-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+/* Every row as tall as the tallest, so the list keeps one shape even where a row's line has to
+   wrap (a long result in the narrowest column). */
+.run-end-milestones {
+  display: grid;
+  grid-auto-rows: 1fr;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* Its name on a line of its own, the whole row wide (so "Final Walkthrough" fits a 280 px
+   column), then its mark and how it went, an early one's bonus, and its Wow against the target,
+   laid out in the list's shape (EndScreen.tsx milestoneShape): all on one line (`compact`), the
+   figures on a line of their own (`narrow`), or the bonus starting that line (`split`). */
+.run-end-milestones li {
+  display: flex;
+  flex-direction: column;
+}
+.run-end-milestones .name {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.run-end-milestones .line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--space-1);
+  color: var(--ink-soft);
+}
+.run-end-milestones .mark {
+  flex: none;
+  align-self: center;
+  margin-right: var(--px);
+}
+.run-end-milestones .break {
+  display: none;
+}
+.run-end-milestones .figures {
+  margin-left: auto;
+  text-align: right;
+}
+.run-end-milestones.narrow .figures {
+  flex-basis: 100%;
+}
+.run-end-milestones.split .break {
+  display: block;
+  flex-basis: 100%;
+}
+/* The score and "of" its target each stay whole: figures too long for the line (six digits in
+   the narrowest column) break between them, never off the panel. */
+.run-end-milestones .score,
+.run-end-milestones .target {
+  white-space: nowrap;
+}
+.run-end-milestones .score {
+  color: var(--ink);
+}
+.run-end-milestones .early .tag,
+.run-end-milestones .bonus {
+  color: var(--sparkle-text);
+  font-weight: 700;
+}
+.run-end-milestones .failed .tag {
+  color: var(--bad);
+  font-weight: 700;
+}
+/* Not reached: greyed, with its target. */
+.run-end-milestones .todo {
+  color: var(--ink-soft);
+}
+.run-end-milestones .todo .name {
+  font-weight: 400;
+}
+
+/* --- Stats, the debug note, and the buttons ---------------------------------------------- */
+
+/* Each stat on one line, its value at the right; or, where any label wouldn't fit beside its
+   value (a 280 px column), every value on a line of its own under its label (EndScreen.tsx
+   statsShape), so the rows keep one shape. */
+.run-end-stats {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+}
+/* A value level with its label, which the dt centers on its icon (the flag is taller). */
+.run-end-stats .stat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  column-gap: var(--space-3);
+}
+.run-end-stats.stacked .stat {
+  flex-direction: column;
+  align-items: stretch;
+}
+.run-end-stats dt {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+/* Each icon in a slot as wide as the widest (EndScreen.tsx iconSlots), centered on whole UI
+   pixels, so every label starts at the same place. */
+.run-end-stats dt .icon {
+  margin-left: calc(var(--icon-lead) * var(--px));
+  margin-right: calc(var(--icon-trail) * var(--px));
+}
+.run-end-stats dd {
+  margin: 0;
+  text-align: right;
+}
+.run-end-debug {
+  margin: 0;
+  padding: var(--space-1) var(--space-2);
+  background: repeating-linear-gradient(
+    45deg,
+    var(--paper-inset) 0 calc(var(--px) * 3),
+    var(--card-lo) 0 calc(var(--px) * 6)
+  );
+  font-weight: 700;
+  color: var(--ink);
+}
+/* New run, Copy, and Title stay in view at the column's foot, as End week does: like the
+   hand's bar, it reaches past the column's padding to the window's foot, so the rows scrolling
+   under it never show below it. */
+.run-end-actions {
+  position: sticky;
+  bottom: calc(var(--px) * -5);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0 calc(var(--space-3) * -1);
+  padding: var(--space-3);
+  background: var(--paper);
+  box-shadow: inset 0 var(--px) 0 var(--paper-line);
+}
+.run-end-actions .btn {
+  flex: 1 1 auto;
+}
+.run-end-actions .btn-primary {
+  flex-basis: 100%;
+}
+@media (max-width: 1500px) {
+  .run-end-actions {
+    margin: 0 calc(var(--space-2) * -1);
+    padding: var(--space-2) var(--space-2) var(--space-3);
+  }
+  .run-end-actions .btn .icon {
+    display: none;
+  }
+  /* The narrow column's names: the regular weight, so the longest ("Groundbreaking") fits. */
+  .run-end-milestones .name {
+    font-weight: 400;
+  }
+}
+
+/* A plank tag's count, after its word: quieter than the word. */
+.plank-count {
+  font-weight: 400;
+}
+.run-end-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* --- "It's a house." over the board: a little wood sign ---------------------------------- */
+
+/* A column at the board's top center: the sign, then any notes and toasts just under it
+   (.notes.under-sign, overlays.css), so the sign never sits under them. */
+.run-end-caption-place {
+  position: absolute;
+  top: var(--space-4);
+  left: 0;
+  right: 0;
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  pointer-events: none;
+}
+.run-end-caption {
+  margin: 0;
+  padding: var(--space-2) var(--space-4) calc(var(--space-2) + var(--px));
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--art-plank) repeat left top / calc(var(--px) * 48) calc(var(--px) * 10);
+  background-color: var(--wood-hi);
+  background-clip: padding-box;
+  box-shadow:
+    inset 0 var(--px) 0 var(--wood-shine),
+    inset 0 calc(var(--px) * -2) 0 var(--wood-light),
+    var(--shadow-float);
+  font-family: var(--font-display);
+  font-size: var(--fs-title);
+  line-height: var(--lh-body);
+  color: var(--ink);
+  white-space: nowrap;
+  animation: run-end-caption-in var(--dur-banner) ease-out both;
+}
+
+@keyframes run-end-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--px) * 6));
+  }
+}
+@keyframes run-end-caption-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--px) * -5));
+  }
+}
+.reduce-motion .run-end.panel,
+.reduce-motion .run-end-caption,
+.reduce-motion .run-end.won .run-end-verdict {
+  animation: none;
+}

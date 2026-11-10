@@ -1,0 +1,79 @@
+/* First-time hints (D-045, FirstHints.tsx) in the pixel UI (D-110): a paper note with a plank
+   head, by the panel it talks about, never over the lot or a sheet's controls
+   (first-hint-place.ts works out where, on whole device pixels). It sits above the game (the
+   celebration and a change order's sheet are 30) and below notes (40) and the sheets and the
+   menu (50), and takes the pointer only over its own note. Drawn like the tooltip's note
+   (tip.css), with the pixel text (.ui) and the notes' drop-in (--dur-modal). Its text scrolls
+   under the plank when the note is short; "Got it" stays in view below it. */
+
+.first-hint {
+  position: fixed;
+  z-index: 38;
+  display: flex;
+  flex-direction: column;
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--card-hi);
+  background-clip: padding-box;
+  box-shadow:
+    inset 0 calc(var(--px) * -1) 0 var(--card-lo),
+    var(--shadow-float);
+  animation: hint-in var(--dur-modal) ease-out;
+}
+@keyframes hint-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--px) * -3));
+  }
+}
+.reduce-motion .first-hint {
+  animation: none;
+}
+
+/* The plank: the help icon and the title, across the note's full width. It never shrinks, so a
+   short note scrolls its text rather than cut a title that wraps. */
+.first-hint-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: calc(var(--px) * 15);
+  padding: var(--px) var(--space-3) calc(var(--px) * 3);
+  background: var(--art-plank) repeat left top / calc(var(--px) * 48) calc(var(--px) * 10);
+  background-color: var(--wood-hi);
+  box-shadow:
+    inset 0 var(--px) 0 var(--wood-shine),
+    inset 0 calc(var(--px) * -2) 0 var(--wood-light),
+    inset 0 calc(var(--px) * -3) 0 var(--wood-deep);
+  color: var(--ink);
+}
+.first-hint-head h2 {
+  margin: 0;
+  min-width: 0;
+  font-size: var(--fs-body);
+  line-height: var(--lh-tight);
+}
+.first-hint-body {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-2) var(--space-3) 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--wood) var(--paper-inset);
+}
+.first-hint-body p {
+  margin: 0;
+}
+.first-hint-foot {
+  flex: none;
+  display: flex;
+  padding: var(--space-2) var(--space-3) var(--space-3);
+}
+@media (max-width: 1500px) {
+  .first-hint-head,
+  .first-hint-body,
+  .first-hint-foot {
+    padding-inline: var(--space-2);
+  }
+}

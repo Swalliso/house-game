@@ -1,0 +1,35 @@
+/* A good's description (goods.tsx), in the inspect panel and the shop: its kind, its rarity's
+   label (D-087: a colored band plus the word, never color alone), and where it goes. */
+
+.rarity-tag {
+  display: inline-block;
+  margin-left: var(--space-1);
+  padding: 0 var(--space-1);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--card);
+  background-clip: padding-box;
+  font-weight: 700;
+  line-height: var(--lh-tight);
+}
+.rarity-tag.rarity-common {
+  color: var(--rarity-common-text);
+  box-shadow: inset 0 calc(var(--px) * -2) 0 var(--rarity-common);
+}
+.rarity-tag.rarity-uncommon {
+  color: var(--rarity-uncommon-text);
+  box-shadow: inset 0 calc(var(--px) * -2) 0 var(--rarity-uncommon);
+}
+.rarity-tag.rarity-rare {
+  color: var(--rarity-rare-text);
+  background: var(--sparkle);
+  box-shadow: inset 0 calc(var(--px) * -2) 0 var(--sparkle-deep);
+}
+.good-kind {
+  margin: 0;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+.good-where {
+  color: var(--ink-soft);
+}

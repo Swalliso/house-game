@@ -1,0 +1,69 @@
+/* The game menu (M5a): a wood panel over a scrim. Built on kit.css. Wider than M5a's 150 UI
+   px (D-110), so the run's client and crew sit beside their labels in the pixel font, the
+   General Contractor's chip too; still narrower than a sheet. */
+
+.menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  background: var(--scrim);
+}
+.menu-sheet {
+  width: calc(var(--px) * 200);
+  max-width: 92vw;
+  animation: menu-in var(--dur-modal) ease-out;
+}
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--px) * 4));
+  }
+}
+.reduce-motion .menu-sheet {
+  animation: none;
+}
+.menu-sheet .panel-body {
+  gap: var(--space-2);
+  padding: var(--space-4);
+}
+.menu-sheet .btn-block {
+  justify-content: flex-start;
+}
+.menu-sheet .btn-primary {
+  justify-content: center;
+}
+.menu-note {
+  margin: 0;
+  color: var(--ink-soft);
+}
+/* The run: its client, its crew (on the crew's wood chip, as the checklist shows it) and its
+   seed, each a label and its value at the right. A value too long to sit beside its label
+   (the General Contractor's chip in the pixel font) takes the next line, still at the right. */
+.menu-run {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+}
+.menu-run-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  column-gap: var(--space-2);
+}
+.menu-run dt {
+  color: var(--ink-soft);
+}
+.menu-run dd {
+  margin: 0 0 0 auto;
+  min-width: 0;
+  text-align: right;
+  color: var(--ink);
+}
+.menu-seed-value {
+  font-family: var(--font-display);
+  user-select: all;
+}
