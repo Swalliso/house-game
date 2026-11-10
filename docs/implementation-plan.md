@@ -1208,7 +1208,7 @@ After M4 (D-097). The sound half of the feel pass (D-058 and §12).
 
 - **The full sim (§8):** the planner bot, early-completion variants, and per-client and per-crew sweeps.
 - Tune targets, prices, rewards, rarity weights, Mult values, and each client's `targetPct`.
-- **The end screen:** the finished house captioned "It's a house.", a photo of the house at each milestone, the score with its verdict (Fixer-Upper to Dream Home), and a copyable result line (with a fallback for itch.io's iframe).
+- **The end screen:** the finished house captioned "It's a house.", a photo of the house at each milestone, the score with its verdict (Fixer-Upper to Dream Home), and a copyable result line (with a fallback for itch.io's iframe). The result line, its link to the same lot and the link preview are D-135; the photos are D-136.
 - A codex, if time allows.
 - Bug fixes from every earlier playtest's list.
 - **Playtest 6:** play three full runs with different clients and crews. Would you show this to the group?

@@ -232,7 +232,8 @@
 .run-end-actions .btn {
   flex: 1 1 auto;
 }
-.run-end-actions .btn-primary {
+.run-end-actions .btn-primary,
+.run-end-actions .run-end-share {
   flex-basis: 100%;
 }
 @media (max-width: 1500px) {

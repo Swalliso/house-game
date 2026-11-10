@@ -1732,7 +1732,32 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 ## Proposed
 
-*Reserved numbers (2026-11-10): D-115 to D-118 are the layout session's drafts and D-122 the legibility session's; they aren't in this file yet. D-132 to D-134 are playtest 5's fixes, each logged by its own pull request: D-132 one reroll for both rows of the draw, D-133 the roof view, D-134 three more tracks. New entries start at D-135.*
+*Reserved numbers (2026-11-10): D-115 to D-118 are the layout session's drafts and D-122 the legibility session's; they aren't in this file yet. D-132 to D-134 are playtest 5's fixes, each logged by its own pull request: D-132 one reroll for both rows of the draw, D-133 the roof view, D-134 three more tracks. D-135 and D-136 are M6's end screen (D-135 the result line and link preview, D-136 the milestone photos); D-137 and D-138 belong to the release-day sessions. New entries start at D-139.*
+
+### D-135 · Sharing a run: the result line, its link, and the link preview
+**Status:** Proposed · 2026-11-10, with its fix pull request (`fix/share-result`), the first half of M6's end screen (implementation-plan.md §7 M6). For the group on release day.
+**Decision:**
+- **Copy result,** on the end screen above Copy run code, copies one line for the group chat: `Open House · The Hendersons · General Contractor — Charmer: 50,129 Wow, 7/7 milestones (1 early). Play this lot: https://swalliso.github.io/house-game/?seed=drf4yj&client=hendersons&crew=generalContractor`.
+  - Its parts: the client and crew by their names, the verdict, the final Wow, the milestones met (overtime counts as met) and how many were early (left out when none were). A lost run adds "the client walked at Roofing"; a debug run adds "cheats used".
+  - It's `resultLine(state)` in `src/ui/screens/result-line.ts`, pure apart from reading the channel: the rules say every number, it only words them (`result-line.test.ts`).
+  - It goes through `copyText` like the run code: a toast says "Result copied", and where the clipboard is refused (itch.io's iframe) the copy fallback shows the line to copy by hand.
+- **The link starts the same lot:** the run's seed, client and crew, through `loadInitialRun`'s `?seed=&client=&crew=`. That's the run's whole setup, so the lot, the draws and the shop are the same as long as the plays are; the friend plays their own run on it. The test opens the link through `loadInitialRun` itself and gets `rules.newRun(setup)` exactly.
+  - **It points at Pages by the build's channel,** never at the page it was copied from: a release links to `https://swalliso.github.io/house-game/`, develop to `/dev/`, a local build to its own address. A run played in itch.io's iframe still links to Pages.
+  - **A friend's run in progress is put aside, not lost** (the link's old behavior, unchanged): the link's run takes the save, the old run's code stays in the browser (`openhouse:<channel>:previous`), and the note says "Your run in progress was put aside." with "Copy the old run code". A save with no weeks played is replaced without a note. Saves are per channel, so a release link never touches a develop run.
+- **The Auto switch hides on the end screen** (won or lost), where it was greyed out: there's no milestone left to complete.
+- **The link preview,** for the group chat: `og:title`, `og:description` (the title screen's pitch), `og:image` with its size and alt text, and `twitter:card` (`summary_large_image`) in `index.html`.
+  - **`public/og.png`** (1200×630): a finished run's house with its roof on, on its lot by the street, at two screen pixels per art pixel, under a wood sign in the game's style: "Open House" and "It's a house." It's captured from the game (seed og4, the greedy bot's win for Count Vladislav).
+  - **Scrapers need absolute URLs,** so `vite.config.ts` fills in `%SHARE_BASE%`: develop's build points at `/dev/og.png`, which exists as soon as develop deploys; a release and a local build point at the root.
+  - **`public/favicon.png`:** a 16×16 house in LimeZu's palette at 2×, for the tab. Both are recorded in `assets/licenses.json` and `CREDITS.md`, and the licenses test now checks `public/` too.
+
+**Why:** M6's plan asks for "a copyable result line (with a fallback for itch.io's iframe)", and the game goes to the group on 2026-11-11. A line with a link to the same lot lets a friend try to beat a score on equal terms, and the preview makes the link worth clicking.
+**Considered:**
+- Linking the run code (`?run=`): it replays the sharer's whole house and lands on their end screen, which spoils the lot. The setup is enough to play it.
+- The page's own address for every build: an itch.io iframe's address isn't a page a friend can open.
+- `og:image` pointing at the release for every build: a develop link would show no picture until the next release.
+- `navigator.share`: on desktop it opens the OS share sheet in only some browsers; the clipboard works everywhere the game runs.
+
+**Changes:** implementation-plan.md §7 M6's end screen: the result line is done (D-135); the photos are D-136's.
 
 ### D-137 · More change orders: three generic ones, and a phase effect for every client
 **Status:** Proposed · 2026-11-10, from playtest 4 (`docs/playtests/playtest-4-findings.md` §5), with its fix pull request. Extends D-011 and D-109. For the next playtest on /dev/.
