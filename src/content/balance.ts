@@ -49,19 +49,19 @@ export const BALANCE: Balance = {
   // D-018's seven milestones. The targets are written by `npm run sim -- --suggest-targets`
   // (D-044): α × the greedy bot's median cumulative Wow at each milestone. Keep the markers.
   // sim:targets:start
-  // From `npm run sim -- --suggest-targets --runs 2000 --crew all` (D-072, D-089, M4b): α × the
+  // From `npm run sim -- --suggest-targets --runs 2000 --crew all` (D-072, D-089, D-123): α × the
   // greedy bot's median cumulative Wow at each milestone on seeds sim-*, with α set so greedy's
-  // estimated survival follows 100%, 98%, 95%, 85%, 72%, 58%, 45%. Held out, greedy won 41.2%
-  // against the fit's 46%, so milestones 4–7 are eased by 4%, as the systems review eased its
-  // curve (fitted 3,200, 7,150, 13,700, 25,500). Each client's targetPct scales these.
+  // estimated survival follows 100%, 98%, 95%, 85%, 72%, 58%, 45%. Held out (2,000 runs on
+  // check-*), greedy won 44.0% against the fit's 46.6%, so the fit is used as it is. Each
+  // client's targetPct scales these.
   phases: [
-    { name: 'Groundbreaking', target: 15 }, // median 71, α 0.21
-    { name: 'Foundation', target: 300 }, // median 506, α 0.59
-    { name: 'Framing', target: 1100 }, // median 1691, α 0.65
-    { name: 'Roofing', target: 3050 }, // median 3693, α 0.83
-    { name: 'Drywall', target: 6850 }, // median 7105, α 0.96
-    { name: 'Finishes', target: 13150 }, // median 11710, α 1.12
-    { name: 'Final Walkthrough', target: 24500 }, // median 19963, α 1.23
+    { name: 'Groundbreaking', target: 20 }, // median 95, α 0.21
+    { name: 'Foundation', target: 560 }, // median 728, α 0.77
+    { name: 'Framing', target: 1750 }, // median 2395, α 0.73
+    { name: 'Roofing', target: 4850 }, // median 5127, α 0.95
+    { name: 'Drywall', target: 10200 }, // median 9604, α 1.06
+    { name: 'Finishes', target: 18800 }, // median 15782, α 1.19
+    { name: 'Final Walkthrough', target: 32600 }, // median 26151, α 1.25
   ],
   // sim:targets:end
 
