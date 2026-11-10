@@ -410,6 +410,17 @@ export const TEST_PIECES: Record<PieceId, PieceDef> = {
     drawWeight: 0,
     effects: [{ kind: 'neighbor', match: { feature: 'tree' }, amount: 1, max: 3 }],
   }),
+  // D-145's late piece. Weight 0 here, so the test content's draws stay as they were.
+  porch: piece({
+    id: 'porch',
+    name: 'Porch',
+    category: 'yard',
+    shape: ['##'],
+    tags: ['Outdoor'],
+    drawWeight: 0,
+    complexity: 2,
+    effects: [{ kind: 'aura', match: { property: 'room' }, scope: 'adjacent', pct: 25 }],
+  }),
   // Member rooms (M4b, D-103): weight 0, counting as Bedrooms, never drawn or sold. No test
   // client's household brings them unless a test gives it one (withHousehold).
   nursery: piece({
@@ -904,6 +915,9 @@ export const TEST_BALANCE: Balance = {
   },
   early: { budgetPerWeek: [2], scorePct: [10] },
   milestoneBudget: 3,
+  // Off here, so the test content's runs end on the scores they always did; runloop.test.ts
+  // turns it on for D-145's own tests.
+  leftoverBudgetWow: 0,
   shop: {
     stock: [
       {

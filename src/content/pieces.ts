@@ -1,8 +1,9 @@
 // The base-pool pieces (Appendix B of implementation-plan.md): 9 indoor types, 7 yard types,
 // and 3 "-house" outbuildings, as 23 cards (shape variants are separate cards sharing a type),
 // then the 9 special pieces: the shop's, the crates', and the Catalog's (weight 0, but for the
-// Sunroom, drawn from Foundation since D-120), then (M4b) the 7 member rooms (weight 0), which
-// arrive with the household (D-103).
+// Sunroom, drawn from Foundation since D-120, and the Birdhouse and the Fire Pit, drawn from
+// Roofing and Drywall since D-145), the Porch (D-145, drawn from Drywall), then (M4b) the 7
+// member rooms (weight 0), which arrive with the household (D-103).
 // Shapes and tags Appendix B leaves open come from content-brainstorm.md §3, §4, and §6
 // (D-067). Complexity is Appendix A · M1's list (D-055). Every card is weight 10, so a type
 // with two cards comes up about twice as often. Numbers are placeholders for the sim and
@@ -17,6 +18,13 @@ const WHILE_SUNNY = (amount: number) =>
     when: { is: { tag: 'Sunny' } },
     effect: { kind: 'steady', amount },
   }) as const;
+
+/**
+ * The Old Shed's payoff (D-145, D-091): the pieces that would use a shed earn more beside it,
+ * so keeping it competes with clearing it for its tool. The shed counts once.
+ */
+const SHED = (amount: number) =>
+  ({ kind: 'neighbor', match: { feature: 'oldShed' }, amount, max: 1 }) as const;
 
 export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
   bedroom: {
@@ -221,7 +229,13 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     fromPhase: 0,
     effects: [
       { kind: 'steady', amount: 1 },
-      { kind: 'neighbor', match: { piece: 'lawn' }, amount: 1, max: 4 },
+      // A Boulder on the grass is something to climb (D-145).
+      {
+        kind: 'neighbor',
+        match: { any: [{ piece: 'lawn' }, { feature: 'boulder' }] },
+        amount: 1,
+        max: 4,
+      },
     ],
   },
   sapling: {
@@ -256,7 +270,12 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
       { kind: 'steady', amount: 1 },
       // Curb appeal.
       { kind: 'conditional', when: { in: 'frontYard' }, effect: { kind: 'steady', amount: 2 } },
-      { kind: 'neighbor', match: { piece: 'flowerBed' }, amount: 1 },
+      // A rock garden (D-145): a Boulder counts as another bed would.
+      {
+        kind: 'neighbor',
+        match: { any: [{ piece: 'flowerBed' }, { feature: 'boulder' }] },
+        amount: 1,
+      },
     ],
   },
   herbGarden: {
@@ -273,6 +292,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     effects: [
       { kind: 'perTile', region: 'sunny', amount: 1 },
       { kind: 'aura', match: { piece: 'kitchen' }, scope: 'adjacent', pct: 25 },
+      SHED(2),
     ],
   },
   patio: {
@@ -390,6 +410,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     complexity: 3,
     fromPhase: 0,
     // Boosts the gardens around it (yard pieces that give a view: Flower Beds, Herb Gardens).
+    // It earned nothing of its own until D-145: beside the Old Shed it has a potting shed.
     effects: [
       {
         kind: 'aura',
@@ -397,6 +418,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
         scope: 'adjacent',
         pct: 50,
       },
+      SHED(4),
     ],
   },
 
@@ -499,6 +521,9 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
       { kind: 'neighbor', match: { piece: 'patio' }, amount: 3 },
     ],
   },
+  // In the weekly draw from Drywall (D-145), at half a card's weight: something to place late
+  // that reads the finished house (its Patio) and the lot (Boulders to sit on). It was a special
+  // piece, sold in the shop.
   firePit: {
     id: 'firePit',
     name: 'Fire Pit',
@@ -506,14 +531,15 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     category: 'yard',
     shape: ['#'],
     tags: ['Social'],
-    drawWeight: 0,
+    drawWeight: 5,
     complexity: 2,
-    fromPhase: 0,
+    fromPhase: 4,
     effects: [
       // The Patio rule (D-093): an outdoor room earns nothing unless it touches a room. It
       // doesn't block placement, and touching only a Hallway doesn't count.
       { kind: 'requires', condition: { touching: { property: 'room' } }, blocksPlacement: false },
       { kind: 'aura', match: { piece: 'patio' }, scope: 'adjacent', pct: 50 },
+      { kind: 'neighbor', match: { feature: 'boulder' }, amount: 2, max: 2 },
     ],
   },
   henhouse: {
@@ -529,8 +555,11 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     effects: [
       { kind: 'economy', budget: 1, every: 2 }, // eggs
       { kind: 'neighbor', match: { piece: ['herbGarden', 'flowerBed'] }, amount: 1 },
+      SHED(2), // the feed's in the shed
     ],
   },
+  // In the weekly draw from Roofing (D-145), at half a card's weight: a small late piece that
+  // reads the lot's Trees. It was a special piece, sold in the shop.
   birdhouse: {
     id: 'birdhouse',
     name: 'Birdhouse',
@@ -538,10 +567,25 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     category: 'outbuilding',
     shape: ['#'],
     tags: ['House'],
-    drawWeight: 0,
+    drawWeight: 5,
     complexity: 1,
-    fromPhase: 0,
+    fromPhase: 3,
     effects: [{ kind: 'neighbor', match: { feature: 'tree' }, amount: 1, max: 3 }],
+  },
+  // D-145: the late game's own piece, in the weekly draw from Drywall at half a card's weight.
+  // It reads the finished house: every room it touches earns more, so the best spot is a notch
+  // between the rooms that earn most, and a Renovation or a fixture there pays again.
+  porch: {
+    id: 'porch',
+    name: 'Porch',
+    tier: 'core',
+    category: 'yard',
+    shape: ['##'],
+    tags: ['Outdoor'],
+    drawWeight: 5,
+    complexity: 2,
+    fromPhase: 4,
+    effects: [{ kind: 'aura', match: { property: 'room' }, scope: 'adjacent', pct: 25 }],
   },
 
   // ---------------------------------------------------------------------------------------

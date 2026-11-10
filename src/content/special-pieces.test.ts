@@ -1,7 +1,9 @@
 // One test per special piece (Appendix B · Special pieces; D-051, D-082), against the real
 // content: what each one earns on a small hand-built lot, its budget, its shape and tags, its
-// generated card text, and that it's shop only (weight 0, at the shop's piece price). Numbers
-// here follow pieces.ts; when tuning changes a number, change the test with it.
+// generated card text, and that it's shop only (weight 0, at the shop's piece price). Three have
+// left the shop for the weekly draw at half a card's weight, and keep their tests here: the
+// Sunroom (D-120), and the Birdhouse and the Fire Pit, which arrive late (D-145). Numbers here
+// follow pieces.ts; when tuning changes a number, change the test with it.
 
 import { describe, expect, it } from 'vitest';
 import type { Category, HouseState, PieceId, Tag, Tally } from '../rules/index.ts';
@@ -20,10 +22,11 @@ const SPECIAL = [
   'mudroom',
   'pool',
   'hotTub',
-  'firePit',
   'henhouse',
-  'birdhouse',
 ] as const satisfies readonly PieceId[];
+
+/** The special pieces that left the shop for the weekly draw (D-145): from this milestone on. */
+const LATE = { birdhouse: 3, firePit: 4 } as const satisfies Partial<Record<PieceId, number>>;
 
 /** The tally of a house in `week`. */
 function tallyOf(house: HouseState, week = 1): Tally {
@@ -60,7 +63,10 @@ function shapeOf(id: PieceId) {
   };
 }
 
-/** Appendix B's category and tags for the piece, and its card text reads cleanly. */
+/**
+ * Appendix B's category and tags for the piece, and its card text reads cleanly. It's shop only
+ * (weight 0), or one of the late arrivals (D-145): half a card's weight, from its milestone.
+ */
 function expectCard(
   id: PieceId,
   category: Category,
@@ -70,7 +76,9 @@ function expectCard(
   const def = CONTENT.pieces[id];
   expect(def.category).toBe(category);
   expect([...def.tags].sort()).toEqual([...tags].sort());
-  expect(def.drawWeight).toBe(0);
+  const from = (LATE as Partial<Record<PieceId, number>>)[id];
+  expect(def.drawWeight).toBe(from === undefined ? 0 : 5);
+  expect(def.fromPhase).toBe(from ?? 0);
   const text = cardText(CONTENT, def);
   expect(text.effects).toHaveLength(def.effects.length);
   for (const line of [...text.effects, ...text.notes]) {
@@ -83,9 +91,10 @@ function expectCard(
 const open = emptyRows(10, 10);
 
 describe('special pieces', () => {
-  it('are the 8 weight-0 pieces: never in the weekly draw, all in the shop and the Catalog', () => {
+  it('are the 6 weight-0 pieces: never in the weekly draw, all in the shop and the Catalog', () => {
     // Member rooms (M4b) are weight 0 too, but arrive with the household (households.test.ts).
-    // The Sunroom left them for the weekly draw (D-120).
+    // The Sunroom left them for the weekly draw (D-120), then the Birdhouse and the Fire Pit
+    // (D-145).
     const weightless = (Object.keys(CONTENT.pieces) as PieceId[]).filter(
       (id) => CONTENT.pieces[id].drawWeight === 0 && !CONTENT.pieces[id].member,
     );
@@ -99,6 +108,22 @@ describe('special pieces', () => {
       );
       expect(catalog.map((w) => w.card.id).sort()).toEqual([...SPECIAL].sort());
     }
+  });
+
+  it('the Birdhouse and the Fire Pit arrive late, in the Layout row (D-145)', () => {
+    for (const [id, from] of Object.entries(LATE) as [PieceId, number][]) {
+      for (let phase = 0; phase < CONTENT.balance.phases.length; phase++) {
+        const layout = drawWeights(CONTENT, phase, { row: 'layout' }).map((w) => w.card.id);
+        const rooms = drawWeights(CONTENT, phase, { row: 'rooms' }).map((w) => w.card.id);
+        expect(layout.includes(id), `${id} in milestone ${phase + 1}`).toBe(phase >= from);
+        expect(rooms).not.toContain(id);
+      }
+      // No longer a special piece: the shop and the Catalog don't hold it.
+      expect(drawWeights(CONTENT, 6, { special: true }).map((w) => w.card.id)).not.toContain(id);
+    }
+    // Roofing is the 4th milestone, Drywall the 5th.
+    expect(CONTENT.balance.phases[LATE.birdhouse]!.name).toBe('Roofing');
+    expect(CONTENT.balance.phases[LATE.firePit]!.name).toBe('Drywall');
   });
 
   it('cost the shop’s piece price, 3 (Appendix A · M3a)', () => {
@@ -321,7 +346,11 @@ describe('Fire Pit', () => {
       'firePit',
       'yard',
       ['Social'],
-      ['Earns nothing unless touching a room', 'Touching Patios earn +50%'],
+      [
+        'Earns nothing unless touching a room',
+        'Touching Patios earn +50%',
+        '+2 per touching Boulder (up to 2)',
+      ],
     );
     expect(earned(open, [['firePit', 0, 0]])).toEqual([0]);
     // The Patio: +2 for the Kitchen and +2 for the Living Room, at +50%: 6. The Hot Tub beside
@@ -367,13 +396,43 @@ describe('Fire Pit', () => {
   });
 });
 
+describe('Fire Pit and the lot (D-145)', () => {
+  it('+2 per touching Boulder, up to 2, while it touches a room', () => {
+    // Boulders west, north and east of it, and a Closet south: two of the three count.
+    const rows = ['.B....', 'B.B...', '......', '......'];
+    const t = tally(rows, [
+      ['firePit', 1, 1],
+      ['closet', 1, 2],
+    ]);
+    expect(t.pieces.map((p) => p.earned)).toEqual([4, 1]);
+    expect(t.pieces[0]!.lines).toContainEqual({
+      label: 'Touching 3 Boulders (2 count)',
+      op: 'add',
+      value: 4,
+      from: [
+        { kind: 'terrain', feature: 'boulder', x: 1, y: 0 },
+        { kind: 'terrain', feature: 'boulder', x: 0, y: 1 },
+      ],
+    });
+    // The Patio rule still comes first: with no room beside it, the Boulders pay nothing.
+    expect(tally(rows, [['firePit', 1, 1]]).pieces[0]).toMatchObject({
+      earned: 0,
+      unmet: 'touching a room',
+    });
+  });
+});
+
 describe('Henhouse', () => {
   it('1 budget every 2nd week, and +1 per touching Herb Garden or Flower Bed', () => {
     expectCard(
       'henhouse',
       'outbuilding',
       ['House'],
-      ['+1 budget every 2nd week', '+1 per touching Herb Garden or Flower Bed'],
+      [
+        '+1 budget every 2nd week',
+        '+1 per touching Herb Garden or Flower Bed',
+        '+2 if touching the Old Shed',
+      ],
     );
     const alone = houseFrom(CONTENT, open, [['henhouse', 0, 0]]);
     expect([1, 2, 3, 4].map((w) => tallyOf(alone, w).pieces[0]!.budget)).toEqual([0, 1, 0, 1]);
@@ -387,6 +446,10 @@ describe('Henhouse', () => {
         ['herbGarden', 2, 1],
       ]),
     ).toEqual([2, 3, 0]);
+    // Beside the Old Shed (D-145): +2, once, however many of the shed's tiles it touches.
+    const shed = ['SS....', 'SS....', '......', '......'];
+    expect(earned(shed, [['henhouse', 0, 2]])).toEqual([2]);
+    expect(earned(shed, [['henhouse', 3, 0]])).toEqual([0]);
   });
 });
 

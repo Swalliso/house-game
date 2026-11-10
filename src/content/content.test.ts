@@ -69,16 +69,25 @@ describe('content', () => {
     });
   });
 
-  it('has the base pool: 20 piece types as 22 cards, four sets, and seven milestones', () => {
+  it('has the base pool: 23 piece types as 25 cards, four sets, and seven milestones', () => {
     // The base pool is what the weekly draw deals; special pieces (weight 0) come from the shop.
-    // The Sunroom left them for the draw (D-120).
+    // The Sunroom left them for the draw (D-120), then the Birdhouse and the Fire Pit, which
+    // arrive late with the Porch (D-145).
     const defs = Object.values(CONTENT.pieces).filter((d) => d.drawWeight > 0);
-    expect(defs).toHaveLength(22);
+    expect(defs).toHaveLength(25);
     const types = new Set(defs.map((d) => d.countsAs ?? d.id));
-    expect(types.size).toBe(20);
+    expect(types.size).toBe(23);
     const count = (cat: string) =>
       new Set(defs.filter((d) => d.category === cat).map((d) => d.countsAs ?? d.id)).size;
-    expect([count('indoor'), count('yard'), count('outbuilding')]).toEqual([10, 7, 3]);
+    expect([count('indoor'), count('yard'), count('outbuilding')]).toEqual([10, 9, 4]);
+    // The late arrivals (D-145), by the milestone they join the draw at (0-based).
+    expect(
+      defs.filter((d) => d.fromPhase >= 3).map((d) => [d.id, d.fromPhase, d.drawWeight]),
+    ).toEqual([
+      ['firePit', 4, 5],
+      ['birdhouse', 3, 5],
+      ['porch', 4, 5],
+    ]);
     // Two shape variants share a type; the Fence and the Driveway are packs instead (D-106).
     expect(defs.filter((d) => d.countsAs).map((d) => d.id)).toEqual(['lKitchen', 'longHallway']);
     expect(defs.filter((d) => d.pack).map((d) => d.id)).toEqual(['fence', 'driveway']);
@@ -135,6 +144,10 @@ describe('content', () => {
       'doghouse',
       'treehouse',
       'greenhouse',
+      // The late arrivals (D-145).
+      'firePit',
+      'birdhouse',
+      'porch',
       'sprinkler',
       'pergola',
       'gardenLights',

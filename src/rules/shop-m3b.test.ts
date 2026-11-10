@@ -687,8 +687,8 @@ describe('crates', () => {
     const garden = defs.filter((d) => d.category !== 'indoor').map((d) => d.id);
     // Member rooms (M4b) are weight 0 too, but never in a crate.
     const special = defs.filter((d) => d.drawWeight === 0 && !d.member).map((d) => d.id);
-    expect(garden).toHaveLength(15); // 10 yard pieces (2 of them packs) and 5 outbuildings
-    expect(special).toHaveLength(9);
+    expect(garden).toHaveLength(16); // 11 yard pieces (2 of them packs) and 5 outbuildings
+    expect(special).toHaveLength(10); // the test content's Porch is weight 0 (D-145)
     const cases: [CrateId, PieceId[]][] = [
       ['gardenCenter', garden],
       ['showroom', special],

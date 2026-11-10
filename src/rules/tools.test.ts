@@ -614,7 +614,8 @@ describe('Catalog (specialHand)', () => {
     expect(new Set(pool.map((p) => p.weight))).toEqual(new Set([100]));
     expect(pool.some((p) => p.card.kind === 'fixture' && p.card.id === 'chandelier')).toBe(false);
     expect(pool.filter((p) => p.card.kind === 'fixture')).toHaveLength(10);
-    expect(pool.filter((p) => p.card.kind === 'piece')).toHaveLength(9);
+    // The test content's 9 special pieces and its Porch (D-145), which is weight 0 there.
+    expect(pool.filter((p) => p.card.kind === 'piece')).toHaveLength(10);
 
     // In phase 1 (after shop 1 in TEST_CONTENT), fixtures come up too; the Chandelier never.
     const r = createRules(C);

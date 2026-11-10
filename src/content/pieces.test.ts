@@ -113,6 +113,8 @@ const COMPLEXITY: Record<PieceId, 1 | 2 | 3> = {
   firePit: 2,
   henhouse: 2,
   birdhouse: 1,
+  // D-145's late piece: an aura to place well.
+  porch: 2,
   // Member rooms (M4b): never drawn, so only Appendix A's labels: the Nursery's timer is a 2.
   // Their tests are in households.test.ts.
   nursery: 2,
@@ -144,14 +146,16 @@ describe('the base pool', () => {
   it('has a test below for every card, each with its Appendix A complexity', () => {
     expect(Object.keys(COMPLEXITY).sort()).toEqual(Object.keys(CONTENT.pieces).sort());
     // The base pool is the drawable cards; special pieces (weight 0) come from the shop. The
-    // Sunroom left them for the draw at half weight (D-120).
+    // Sunroom left them for the draw at half weight (D-120), and the Birdhouse, the Fire Pit and
+    // the Porch arrive late at half weight (D-145).
     const base = Object.values(CONTENT.pieces).filter((d) => d.drawWeight > 0);
-    expect(base).toHaveLength(22);
+    expect(base).toHaveLength(25);
     // The two packs (D-106) took the weight of the two cards each one replaced, 20, until the
     // draw's two rows (D-121): in a two-card Layout row they draw at 10, like every card. The
     // Sunroom, in the Rooms row, draws at half that (D-120).
     expect(base.filter((d) => d.pack).map((d) => d.id)).toEqual(['fence', 'driveway']);
-    for (const def of base) expect(def.drawWeight, def.id).toBe(def.id === 'sunroom' ? 5 : 10);
+    const half = ['sunroom', 'birdhouse', 'firePit', 'porch'];
+    for (const def of base) expect(def.drawWeight, def.id).toBe(half.includes(def.id) ? 5 : 10);
     for (const def of Object.values(CONTENT.pieces)) {
       expect(def.complexity).toBe(COMPLEXITY[def.id]);
     }
@@ -502,8 +506,8 @@ describe('indoor rooms', () => {
 });
 
 describe('yard pieces', () => {
-  it('Lawn: a 2×2, 1 and +1 per touching Lawn (up to 4)', () => {
-    expectCard('lawn', ['+1 every week', '+1 per touching Lawn (up to 4)']);
+  it('Lawn: a 2×2, 1 and +1 per touching Lawn or Boulder (up to 4)', () => {
+    expectCard('lawn', ['+1 every week', '+1 per touching Lawn or Boulder (up to 4)']);
     expect(shapeOf('lawn')).toMatchObject({ w: 2, h: 2, rotations: 1 });
     expect(earned(open, [['lawn', 0, 0]])).toEqual([1]);
     // The first Lawn touches the five others; four count.
@@ -517,6 +521,23 @@ describe('yard pieces', () => {
         ['lawn', 2, 4],
       ]),
     ).toEqual([5, 4, 4, 3, 2, 3]);
+    // A Boulder counts as another Lawn would (D-145): each is its own neighbor, like a Tree.
+    const rocks = ['..B...', '.B....', '......', '......'];
+    const t = tally(rocks, [
+      ['lawn', 2, 1],
+      ['lawn', 4, 1],
+    ]);
+    expect(t.pieces.map((p) => p.earned)).toEqual([4, 2]);
+    expect(t.pieces[0]!.lines[1]).toEqual({
+      label: 'Touching a Lawn and 2 Boulders',
+      op: 'add',
+      value: 3,
+      from: [
+        { kind: 'piece', uid: 2 },
+        { kind: 'terrain', feature: 'boulder', x: 2, y: 0 },
+        { kind: 'terrain', feature: 'boulder', x: 1, y: 1 },
+      ],
+    });
   });
 
   it('Sapling: 1, and a Tree (a lot feature) at the start of its 5th week', () => {
@@ -563,11 +584,11 @@ describe('yard pieces', () => {
     });
   });
 
-  it('Flower Bed: a view; 1, +2 in the front yard, +1 per touching Flower Bed', () => {
+  it('Flower Bed: a view; 1, +2 in the front yard, +1 per touching Flower Bed or Boulder', () => {
     expectCard('flowerBed', [
       '+1 every week',
       '+2 every week in the front yard',
-      '+1 per touching Flower Bed',
+      '+1 per touching Flower Bed or Boulder',
     ]);
     expect(CONTENT.pieces.flowerBed.givesView).toBe(true);
     // Before the first room, all yard is front yard.
@@ -584,10 +605,23 @@ describe('yard pieces', () => {
       { label: 'Every week', op: 'add', value: 1, from: [] },
       { label: 'Every week (in the front yard)', op: 'add', value: 2, from: [] },
     ]);
+    // A rock garden (D-145): a bed between two Boulders, behind the Bedroom: 1 + 2. A Boulder
+    // gives nothing to a piece that doesn't name it: the Bedroom beside one earns its plain 3.
+    const rocks = ['....B.B...', 'B.........', ...emptyRows(10, 8)];
+    expect(
+      earned(rocks, [
+        ['bedroom', 0, 2],
+        ['flowerBed', 5, 0],
+      ]),
+    ).toEqual([3, 3]);
   });
 
   it('Herb Garden: a view; +1 per tile in the sun, and Kitchens next to it earn +25%', () => {
-    expectCard('herbGarden', ['+1 per tile in the sun', 'Touching Kitchens earn +25%']);
+    expectCard('herbGarden', [
+      '+1 per tile in the sun',
+      'Touching Kitchens earn +25%',
+      '+2 if touching the Old Shed',
+    ]);
     expect(CONTENT.pieces.herbGarden.givesView).toBe(true);
     expect(shapeOf('herbGarden')).toMatchObject({ w: 2, h: 1, rotations: 2 });
     // The sun shines from the back here; a building shades the tile behind it (D-120).
@@ -954,7 +988,10 @@ describe('"-house" outbuildings', () => {
   });
 
   it('Greenhouse: a view; the gardens next to it (yard pieces with a view) earn +50%', () => {
-    expectCard('greenhouse');
+    expectCard('greenhouse', [
+      'Touching yard pieces that give a view earn +50%',
+      '+4 if touching the Old Shed',
+    ]);
     const def = CONTENT.pieces.greenhouse;
     expect(def.givesView).toBe(true);
     expect(def.tags).toEqual(['Green', 'House']);
@@ -982,5 +1019,129 @@ describe('"-house" outbuildings', () => {
   it('Greenhouse: its card text names only the gardens it boosts', () => {
     const text = cardText(CONTENT, CONTENT.pieces.greenhouse).effects[0]!;
     expect(text).not.toMatch(/views? and yard pieces?|yard pieces? and views?/);
+  });
+});
+
+// D-145: the lot's Boulders and its Old Shed are neighbors to the pieces that name them, and the
+// Porch arrives late. The Lawn's, the Flower Bed's and the Fire Pit's Boulders are in their own
+// tests.
+describe('the Old Shed as a neighbor (D-145)', () => {
+  // The shed at the top left; open ground around it.
+  const shed = ['SS......', 'SS......', ...emptyRows(8, 6)];
+
+  it('counts once, however many of its tiles a piece touches', () => {
+    // A Greenhouse along the shed's east side touches two of its tiles: +4, once.
+    const t = tally(shed, [['greenhouse', 2, 0]]);
+    expect(t.pieces[0]!.earned).toBe(4);
+    expect(t.pieces[0]!.lines).toEqual([
+      {
+        label: 'Touching the Old Shed',
+        op: 'add',
+        value: 4,
+        from: [{ kind: 'terrain', feature: 'oldShed', x: 1, y: 0 }],
+      },
+    ]);
+    // Away from it, a Greenhouse still earns nothing of its own.
+    expect(earned(shed, [['greenhouse', 5, 4]])).toEqual([0]);
+  });
+
+  it('a garden corner: the Greenhouse, a Herb Garden, and the gardens it boosts', () => {
+    // The Herb Garden under the shed: 2 tiles in the sun? No: the shed shades them (D-120), so
+    // it earns its +2 for the shed alone, and the Greenhouse beside it makes that 3.
+    expect(earned(shed, [['herbGarden', 0, 2]])).toEqual([2]);
+    expect(
+      earned(shed, [
+        ['greenhouse', 2, 0],
+        ['herbGarden', 0, 2],
+        ['herbGarden', 2, 2],
+      ]),
+      // The second Herb Garden touches the Greenhouse (boosted), not the shed (its corner only):
+      // (2,2) is in the Greenhouse's shade and (3,2) too, so it earns nothing to boost.
+    ).toEqual([4, 2, 0]);
+    // A Herb Garden east of the Greenhouse, in the sun: 2 tiles, at +50%.
+    expect(
+      earned(shed, [
+        ['greenhouse', 2, 0],
+        ['herbGarden', 4, 0, 1],
+      ]),
+    ).toEqual([4, 3]);
+  });
+
+  it('gives nothing to a piece that doesn’t name it, and is no view', () => {
+    const house = houseFrom(CONTENT, shed, [
+      ['livingRoom', 2, 0],
+      ['bedroom', 0, 2],
+      ['patio', 4, 0],
+    ]);
+    const layout = computeLayout(CONTENT, house);
+    expect(layout.hasView.size).toBe(0);
+    // The Living Room (Sunny, +2) and the Bedroom earn as they would beside open ground.
+    expect(tallyHouse(CONTENT, layout, 1, true).pieces.map((p) => p.earned)).toEqual([2, 3, 2]);
+  });
+
+  it('still blocks building, and a demolition still clears it', () => {
+    expect(check(shed, [], 'herbGarden', 0, 0).legal).toBe(false);
+    expect(CONTENT.features.oldShed).toMatchObject({
+      blocks: true,
+      clear: 'demolish',
+      reward: { tool: 'random' },
+    });
+    expect(CONTENT.features.boulder).toMatchObject({ blocks: true, clear: 'demolish' });
+    // A Time Capsule is still nothing to its neighbors.
+    expect(CONTENT.features.timeCapsule.inert).toBe(true);
+  });
+});
+
+describe('the Porch (D-145)', () => {
+  it('a 1×2 yard piece from Drywall, at half a card’s weight: touching rooms earn +25%', () => {
+    expectCard('porch', ['Touching rooms earn +25%']);
+    const def = CONTENT.pieces.porch;
+    expect(def).toMatchObject({ category: 'yard', drawWeight: 5, fromPhase: 4, tags: ['Outdoor'] });
+    expect(CONTENT.balance.phases[def.fromPhase]!.name).toBe('Drywall');
+    expect(shapeOf('porch')).toMatchObject({ w: 2, h: 1, rotations: 2 });
+  });
+
+  it('boosts every room it touches, and nothing else', () => {
+    // Two Bedrooms side by side (4 each, Quiet neighbors), a Porch under both, a Flower Bed at
+    // the Porch's end: the Bedrooms earn 5, the Porch 0, and the bed its plain front-yard 3.
+    const t = tally(open, [
+      ['bedroom', 0, 0],
+      ['bedroom', 2, 0],
+      ['porch', 1, 2],
+      ['flowerBed', 3, 2],
+    ]);
+    expect(t.pieces.map((p) => p.earned)).toEqual([5, 5, 0, 3]);
+    expect(t.pieces[0]!.lines).toContainEqual({
+      label: 'Porch next door',
+      op: 'pct',
+      value: 25,
+      from: [{ kind: 'piece', uid: 3 }],
+    });
+    // It isn't a room or a building: it casts no shade, and a Hallway beside it isn't boosted.
+    expect(
+      earned(open, [
+        ['hallway', 0, 0],
+        ['porch', 0, 1],
+      ]),
+    ).toEqual([0, 0]);
+  });
+
+  it('pays more as its rooms do: a Renovation beside it is boosted too', () => {
+    const house = houseFrom(CONTENT, open, [
+      ['bedroom', 0, 0],
+      ['porch', 0, 2],
+    ]);
+    const at = (level: number) =>
+      tallyHouse(
+        CONTENT,
+        computeLayout(CONTENT, {
+          ...house,
+          pieces: house.pieces.map((p) => (p.uid === 1 ? { ...p, level } : p)),
+        }),
+        1,
+        false,
+      ).pieces[0]!.earned;
+    // 3 at +25% rounds to 4; with two levels (+8), 11 at +25% is 14.
+    expect([at(0), at(2)]).toEqual([4, 14]);
   });
 });

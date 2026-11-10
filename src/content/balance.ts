@@ -97,6 +97,12 @@ export const BALANCE: Balance = {
   // a median 25 a run against the plan's 30–40, so the shop was too tight to plan around.
   milestoneBudget: 4,
 
+  // D-145: no shop follows the last milestone, so the budget held when it's met (its own payout
+  // and any early bonus included) pays Wow: 100 each. It's paid after the target is met, so it
+  // moves the verdict and the company's best, never a loss into a win. Greedy holds a median 10
+  // at the end of a win, about +1,000 on a final score near 37,000.
+  leftoverBudgetWow: 100,
+
   // The shop (D-051, Appendix A · M3a). Shop k opens after milestone k, for k = 1–6.
   shop: {
     stock: [
