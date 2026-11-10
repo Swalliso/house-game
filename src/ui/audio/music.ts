@@ -277,6 +277,15 @@ function status(): MusicStatus {
   return { track: current?.track.id ?? null, scene, rate, enabled };
 }
 
+/** Skips to the next track (the ?debug panel), after a short fade. */
+function next(): void {
+  if (!started || !enabled) return;
+  generation++;
+  clearGap();
+  stopCurrent();
+  scheduleNext(FADE_OUT_TAU_S * 2, true);
+}
+
 /** Plays these tracks from now on (the ?debug panel's audition, and tests). */
 function useTracks(list: readonly Track[]): void {
   tracks = list;
@@ -296,5 +305,6 @@ export const music = {
   duck,
   key,
   status,
+  next,
   useTracks,
 };

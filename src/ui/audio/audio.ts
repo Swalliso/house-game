@@ -91,6 +91,12 @@ const MAX_VOICES = 48;
  * the sound effects' peaks (§12, Mix).
  */
 const MUSIC_TRIM = 0.5;
+/**
+ * A small room for the recorded instruments: a 1.3 s tail, sent at −16 dB, so the dry, close-
+ * miked mallets sit in the same space as the music. Foley and clicks stay dry.
+ */
+const ROOM_SECONDS = 1.3;
+const ROOM_SEND_DB = -16;
 
 /** The placeholder ladder's step 0 is an octave below the plink's own pitch (C6): C5 to C7. */
 const LADDER_ROOT_SEMITONES = -12;
@@ -238,6 +244,7 @@ let ctx: AudioContext | null = null;
 let masterBus: GainNode | null = null;
 let sfxBus: GainNode | null = null;
 let musicBus: GainNode | null = null;
+let roomSend: GainNode | null = null;
 let resuming = false;
 let voices = 0;
 let volumes: Volumes = { master: 0.7, music: 0.7, sfx: 0.8 };
@@ -277,11 +284,40 @@ function createGraph(c: AudioContext): void {
   const musicGain = c.createGain();
   musicGain.gain.value = taper(volumes.music) * MUSIC_TRIM;
   musicGain.connect(master);
+  try {
+    const room = c.createConvolver();
+    room.buffer = roomImpulse(c, ROOM_SECONDS);
+    room.connect(sfx);
+    const send = c.createGain();
+    send.gain.value = dbToGain(ROOM_SEND_DB);
+    send.connect(room);
+    roomSend = send;
+  } catch {
+    // No room: the sounds play dry.
+  }
   masterBus = master;
   sfxBus = sfx;
   musicBus = musicGain;
   music.attach(c, musicGain);
   music.setEnabled(volumes.music > 0);
+}
+
+/** A soft room's impulse: decaying, darkening noise after a 10 ms pre-delay. */
+function roomImpulse(c: BaseAudioContext, seconds: number): AudioBuffer {
+  const n = Math.round(c.sampleRate * seconds);
+  const pre = Math.round(c.sampleRate * 0.01);
+  const buffer = c.createBuffer(2, n, c.sampleRate);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = buffer.getChannelData(ch);
+    let low = 0;
+    for (let i = pre; i < n; i++) {
+      const t = (i - pre) / (n - pre);
+      // The tail darkens as it decays: a one-pole low-pass that closes as it goes.
+      low += (0.6 - 0.45 * t) * (Math.random() * 2 - 1 - low);
+      d[i] = low * (1 - t) ** 3;
+    }
+  }
+  return buffer;
 }
 
 /** Fetches the sound set's files; they're decoded when audio unlocks. */
@@ -362,13 +398,17 @@ const finite = (v: number | undefined, fallback: number) =>
   v !== undefined && Number.isFinite(v) ? v : fallback;
 const dbToGain = (db: number) => 10 ** (db / 20);
 
-/** Starts one buffer `at` seconds from now; returns when it ends, or −1 if it didn't start. */
+/**
+ * Starts one buffer `at` seconds from now, in the room if `room`; returns when it ends, or −1
+ * if it didn't start.
+ */
 function voice(
   c: AudioContext,
   buffer: AudioBuffer,
   rate: number,
   gain: number,
   at: number,
+  room = false,
 ): number {
   const bus = sfxBus;
   if (!bus || voices >= MAX_VOICES) return -1;
@@ -379,6 +419,7 @@ function voice(
   v.gain.value = gain;
   source.connect(v);
   v.connect(bus);
+  if (room && roomSend) v.connect(roomSend);
   source.onended = () => {
     voices--;
     source.disconnect();
@@ -422,7 +463,14 @@ function playRecipe(c: AudioContext, recipe: Recipe, opts: PlayOptions): void {
     if (!buffer) continue;
     end = Math.max(
       end,
-      voice(c, buffer, rate, gain * dbToGain(layer.db ?? 0), delay + (layer.at ?? 0)),
+      voice(
+        c,
+        buffer,
+        rate,
+        gain * dbToGain(layer.db ?? 0),
+        delay + (layer.at ?? 0),
+        isNote(layer) || layer.set === 'wind-chimes',
+      ),
     );
   }
   // A jingle ducks the music when it's the moment itself: played as written. The director also
@@ -470,7 +518,7 @@ function ladder(step: number, opts: { delay?: number } = {}): void {
         homeTonic(key, 'marimba') + ladderSemitones(step, key),
       );
       const buffer = samples.get(file);
-      if (buffer) voice(c, buffer, rate, dbToGain(LADDER_DB), delay);
+      if (buffer) voice(c, buffer, rate, dbToGain(LADDER_DB), delay, true);
     } else {
       const semitones = key.root + ladderSemitones(step, key) + LADDER_ROOT_SEMITONES;
       voice(c, bufferFor(c, 'plink'), 2 ** (semitones / 12), 1, delay);
