@@ -183,6 +183,24 @@
     opacity: 0;
   }
 }
+/* The preview's arcs (PreviewArcs): drawn whole and dashed, for as long as the play is looked at. */
+.chain-arc.preview,
+.chain-arc.preview path,
+.chain-arc.preview .arc-end {
+  animation: none;
+}
+.chain-arc.preview path {
+  stroke-dashoffset: 0;
+}
+.chain-arc.preview .arc-under {
+  stroke-dasharray: none;
+}
+.chain-arc.preview .arc-line {
+  stroke-dasharray: 6 4;
+}
+.chain-arc.preview .arc-end {
+  opacity: 1;
+}
 .reduce-motion .chain-arc path {
   animation: none;
   stroke-dashoffset: 0;

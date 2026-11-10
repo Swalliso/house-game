@@ -1184,7 +1184,7 @@ After M4 and before M5b (D-097's juice note): the reward feedback on M5a's art, 
 - M4's moments, beyond the simple pops M4 gives them (`house-systems-review.md` §6): a Renovation's level-up (M4 pops the room's stars, D-111), an arrival and the arrivals' markers on the progress bar, a change order's stamp, a house rule met or lost, and "Topped out!" the first week Under one roof holds
 - screen shake and particles, with Reduce motion, the Screen shake slider, and the Flashing toggle
 - the roof reveal at the Roofing milestone
-- D-094's option 1, chosen 2026-11-10: the tally plays pieces depth first along what boosts what, with an arc from each booster. Options 2–4 wait until after the jam.
+- D-094's option 1, chosen 2026-11-10: the tally plays pieces depth first along what boosts what, with an arc from each booster, and the placement preview draws the same arcs. Options 2–4 wait until after the jam.
 - **Its playtest:**
   - Do big moments feel big, and small ones stay out of the way?
   - Is anything too slow or too flashy?

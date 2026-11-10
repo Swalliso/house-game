@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { CONTENT, type BreakdownLine, type PieceScore } from '../../rules/index.ts';
+import {
+  CONTENT,
+  type BreakdownLine,
+  type PieceScore,
+  type PreviewLine,
+} from '../../rules/index.ts';
 import { computeLayout } from '../../rules/layout.ts';
 import { tallyHouse } from '../../rules/scoring.ts';
 import { emptyRows, houseFrom } from '../../rules/testing.ts';
-import { chainOrder } from './chain.ts';
+import { chainOrder, previewArcs } from './chain.ts';
 
 /** A line that adds `value`, counting the pieces given. */
 const line = (value: number, ...uids: number[]): BreakdownLine => ({
@@ -90,5 +95,35 @@ describe("chainOrder (D-094's option 1)", () => {
     expect(order[1]!.by).toBe(order[0]!.piece.uid);
     // Every piece plays exactly once.
     expect(new Set(order.map((s) => s.piece.uid)).size).toBe(t.pieces.length);
+  });
+});
+
+describe("previewArcs (D-094's option 1, the preview's arcs)", () => {
+  const changed = (uid: number, ...reasons: BreakdownLine[]): PreviewLine => ({
+    uid,
+    defId: 'closet',
+    isNew: false,
+    before: 0,
+    after: 1,
+    reasons,
+  });
+
+  it('runs from each piece that would boost the new piece, and from it to each it would boost', () => {
+    // 1 would boost the new piece (9) and 2 would hurt it; 9 would boost 4 and hurt 5.
+    const newPiece = piece(9, line(3, 1), line(-2, 2));
+    const lines = [
+      { ...changed(9, ...newPiece.lines), isNew: true },
+      changed(4, line(2, 9)),
+      changed(5, line(-1, 9)),
+      changed(6, line(2, 1)),
+    ];
+    expect(previewArcs({ newPiece, lines })).toEqual([
+      { from: 1, to: 9 },
+      { from: 9, to: 4 },
+    ]);
+  });
+
+  it('draws nothing without a piece in focus', () => {
+    expect(previewArcs({ newPiece: null, lines: [] })).toEqual([]);
   });
 });

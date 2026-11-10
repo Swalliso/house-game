@@ -1245,7 +1245,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **Decision:** option 1, in `src/ui/fx/chain.ts`, with no rule change:
 - The tally plays a week's pieces depth first along what boosts what. A piece boosts another when the other's breakdown has a line that adds to it and names it in `from`: a neighbor it counts, or an aura from next door. Penalties and modifiers don't count.
 - An arc runs from the booster to each piece it sets going, for that piece's step (`FEEL.chain`).
-- Every piece plays once and earns what it does today. The preview's arcs aren't built yet.
+- The placement preview draws the same arcs, dashed: from the pieces that would boost the play's piece, and from it to the pieces it would boost.
+- Every piece plays once and earns what it does today.
 **Finding:**
 - Since D-036, a week is one scoring pass and no effect triggers another. That keeps the preview equal to the tally and rules out loops, but it leaves out what reviewers single out in Combolands and what Balatro's retriggers do: one piece setting off another.
 - Every interaction today is one hop. Auras change what a neighbor earns, links count as adjacency, and sets pay as a group. The tally pops pieces in placement order, so a big week reads as a list rather than a chain.
