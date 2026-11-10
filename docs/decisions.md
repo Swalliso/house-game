@@ -431,6 +431,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **Changes:** D-004 (Accepted). Each week is still one turn, but Pass places nothing.
 **Amended by:** D-102 and D-103 (Accepted 2026-11-06, with D-093's option B): a week's turn can be a Renovation, and the household's arrivals add a start-of-week step, after transforms and before the draw.
 *Changed by D-121 (Proposed 2026-11-09):* the hand is two rows, Rooms 2 and Layout 2 (the `roomsRow` and `layoutRow` rules replace `handSize`). A card with no play is swapped for another from its row instead of the free redraw, and a reroll redraws one row.
+*Changed by D-132 (Proposed 2026-11-10):* a reroll redraws both rows.
 
 ### D-037 · Scoring math and the live preview
 **Status:** Accepted · 2026-11-05 (with the plan's approval); proposed 2026-11-04
@@ -462,6 +463,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 **Why:** Keyed streams stop rerolls, overtime, or early completion from shifting later hands or the shop. That keeps bug reports reproducible and makes the Daily Lot (D-022) fair. The build stamp copes with deploys on every push.
 *Changed by D-121 (Proposed 2026-11-09):* each row of the hand has its own stream, `draw/<phase>/<slot>/<n>/<row>`, and a swap draws from `draw/<phase>/<slot>/<n>/<row>/swap<k>`. A run code's reroll carries its row.
+*Changed by D-132 (Proposed 2026-11-10):* a reroll redraws both rows, each on its stream, and a run code's reroll names no row.
 
 ### D-043 · Draws: distinct, weighted, phase-gated
 **Status:** Accepted · 2026-11-05 (with the plan's approval); proposed 2026-11-04
@@ -871,6 +873,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 *Changed with the team's OK, 2026-11-08:* on windows under 1000 px tall, the score panel's idle set list folds into one row, with the full list in its tip, so M4's checklist has room; taller windows keep the full list. While a play is looked at, the panel is as it was: the list, with the sets the play would make and break, or under 800 px tall only the equation (D-110). D-110 has the row's details and the numbers. *2026-11-09, before playtest 4, for the team to confirm:* the equation-only rule while a play is looked at now starts under 1000 px tall, as the fold does, so the list never comes back on a short window: between 800 and 1000 px tall it came back while placing and, late in a run, pushed the inspect panel's total below a 1536×864 window. The inspect panel's notes name the sets a play would make and break; windows 1000 px tall and up keep the list, with them.
 *Changed by D-121 (Proposed 2026-11-09):* the hand's two rows under ROOMS and LAYOUT labels, each with its Reroll; Demolish on the hand's plank; compact cards with a thumbnail; and Your goods folding to its plank on windows under 1100 px tall.
+*Changed by D-132 (Proposed 2026-11-10):* one Reroll for both rows, on the hand's plank before Demolish; the rows keep their labels.
 
 ### D-099 · M5a lot defaults: the terrain in Modern Exteriors
 **Status:** Accepted · 2026-11-07 (proposed 2026-11-06 with M5a's lot track, stage 2, and its merge into the phase branch; held up in playtest 5a, confirmed by the team). Implementation details within D-049 and D-097; §12 Art's Rendering bullets describe them.
@@ -1477,7 +1480,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **2026-11-09 (D-123):** the re-fit is done. Count Vladislav's `targetPct` is 90 (it was 110), and held out he wins 47.3%, level with the other clients. Solar Panels stay as they are: given free at the first shop, they're worth +16.0 points of wins and +13.6 budget a run, against +46.0 points for Good Bones, also Uncommon. Every 6th week would halve that; rooms only would change nothing, since nearly every Sunny piece is a room.
 
 ### D-121 · The weekly draw in two rows: Rooms and Layout
-**Status:** Accepted · 2026-11-10, held up in playtest 5 (`docs/playtests/playtest-5-findings.md`): the two rows "feel okay". The user asked for one reroll to redraw both rows, which D-132 (reserved) changes. Proposed 2026-11-09, after playtest 4 and the draw brainstorm (`docs/proposals/weekly-draw.md`). The user picked Rooms 2 + Layout 2, the proposal's recommendation, with its defaults (§9). Built for playtest 5.
+**Status:** Accepted · 2026-11-10, held up in playtest 5 (`docs/playtests/playtest-5-findings.md`): the two rows "feel okay". The user asked for one reroll to redraw both rows, which D-132 (Proposed 2026-11-10) changes. Proposed 2026-11-09, after playtest 4 and the draw brainstorm (`docs/proposals/weekly-draw.md`). The user picked Rooms 2 + Layout 2, the proposal's recommendation, with its defaults (§9). Built for playtest 5.
 **Decision:**
 - **Two rows.** Each week draws a **Rooms** row of 2 distinct cards and a **Layout** row of 2, shown in that order and numbered across both (keys 1–9). You play one card from either row, a reserve piece, or a Renovation, or pass, as before (D-036). The rules `roomsRow` and `layoutRow` replace `handSize`.
 - **A card's row is where it's built.**
@@ -1540,6 +1543,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - **Overflow shows:** when the bar hides part of any card's text (1280×720, five cards with chips, or the readable font, whose chips keep their words, at 1600×900 and 2×), the bar gets a shade and an "N more cards" tab that scrolls the column to its end.
 - The controls strip says "1–4 pick a card" (the hand's size; keys 1–9 pick), not "1 2 3", and Inspect calls a Hallway a Hallway, as its card does.
 - No play changes: the rules' `apply()` and the sim are untouched, and `--check` on D-123's targets gives its numbers (greedy wins 48.0%, clears milestones 1–3 in 97.5%).
+
+**2026-11-10 (D-132, Proposed):** one reroll redraws both rows, with one Reroll on the hand's plank before Demolish; the ROOMS and LAYOUT labels stay, without buttons. A run code's reroll names no row (a code from these builds that names one replays differently from that reroll on), and greedy rerolls the whole hand. Greedy wins 47.5% on `--check`, against 48.0%.
 
 ### D-123 · Playtest 5's re-fit: the targets and each client's factor
 **Status:** Accepted · 2026-11-10, held up in playtest 5 (`docs/playtests/playtest-5-findings.md`): harder than playtest 4, but "while challenging it still felt possible to complete". Milestone 2 keeps 560 (the user's run made it with 665 of 644), so the 450 step-down isn't needed. Proposed 2026-11-09, before playtest 5. It's the one re-fit that D-114, D-119, D-120 and D-121 left until all of playtest 4's content changes were in (playtest 4's findings §12).
@@ -1725,6 +1730,27 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 ## Proposed
 
 *Reserved numbers (2026-11-10): D-115 to D-118 are the layout session's drafts and D-122 the legibility session's; they aren't in this file yet. D-132 to D-134 are playtest 5's fixes, each logged by its own pull request: D-132 one reroll for both rows of the draw, D-133 the roof view, D-134 three more tracks. New entries start at D-135.*
+
+### D-132 · One reroll redraws both rows of the draw
+**Status:** Proposed · 2026-11-10, after playtest 5, at the user's ask (`docs/playtests/playtest-5-findings.md`). Changes D-121. The targets aren't re-fit here: the balance pass's one re-fit comes after it, on the last day.
+**Decision:**
+- **A reroll redraws both rows,** Rooms and Layout, for one reroll: the milestone's own first, then a kept one, as before. Each row draws on its own stream, `draw/<phase>/<slot>/<n>/<row>`, as a week's first draw does, then each card with no play is swapped as D-121 says. A card picked from the old hand goes with it, and the week goes on.
+- **One Reroll,** on the hand's plank before Demolish, with the milestone's count. Its title says "New cards for both rows" and that it doesn't end the week, and it's read out as "Reroll: new cards for both rows, N left". The ROOMS and LAYOUT labels stay, without buttons.
+- **The plank** holds the title, Reroll and Demolish. As in D-121's narrow column, the buttons show their icon and count where their words don't fit (their titles name them), and while demolishing, Stop keeps its word. On a narrow plank (in the pixel font, at 1600×900 and smaller windows) the title is "Cards", not "Pick a card", so both buttons fit beside it.
+- **How to play** says "New cards for both rows" for Reroll, with the milestone's count. R rotates, as before, so the controls strip doesn't change: there's no reroll key.
+- **Run codes:** a reroll names no row. A code from D-121's builds whose reroll names one still parses, but the row is dropped, so from that reroll on the code replays differently than it played. Its build stamp names the commit that replays it.
+- **The sim:** greedy rerolls when no play would raise the week's total, as before, and no longer picks a row.
+
+**Why:** in playtest 5 the user said "two rows of the draw feel okay, but I think a reroll should reroll both sections of the draw instead of just one." In their run (seed drf4yj, the Hendersons with the General Contractor, won with 50,129 against 37,490) they rerolled 10 times, 8 Rooms and 2 Layout, and twice spent two rerolls in a row, Rooms then Layout, to redraw the whole hand.
+- **This PR's check,** greedy on 200 held-out seeds (`--check`), paired against develop (56e1e02):
+  - Wins 48.0% → 47.5%, −0.5 points [−1.5, +0.5] (1 seed won only before, none only with this). Greedy early always wins 47.0% both ways.
+  - Wow ×0.999 at milestone 3 and ×1.000 at milestone 5; at the end, ×0.999 on the 95 seeds both won (×0.988 over all 200, nearly all of it the one lost run). The median final Wow is 29,648 → 29,619.
+  - Greedy rerolls only when no play would raise the week's total, 0.13 times a run before and 0.09 now, and 192 of the 200 runs end on the same Wow. So the sim says little about players, who reroll far more (the user, 10 times in a run).
+  - §8's criteria keep their verdicts: greedy's wins pass, unsure, at 47.5% [40.7–54.4], it clears milestones 1–3 in 97.5%, and the clients' spread fails, unsure, at 25.0 points (27.5 before).
+
+**Considered:** a third button for both rows beside each row's own (three buttons for one count); a count for each row (twice the rerolls, and a re-fit).
+**Costs:** a good row can't be kept while the other redraws. Codes from D-121's builds with a row's reroll replay differently from it on.
+**Changes:** D-121 (Accepted): its reroll, the run code's row, the Reroll buttons and the sim's reroll, with a dated note there. Its notes on D-036, D-039 and D-098 are marked too. `implementation-plan.md`: the `handDrawn` event, the week's start, and Appendix A's rerolls.
 
 ### D-111 · Art for M4's content: the members' rooms, packs, and Renovate's level
 **Status:** Proposed · 2026-11-08, with the M4 pull request, after it merged `develop` (M5a). Implementation details within D-097, D-100, and §12 Art; for playtest 4.
