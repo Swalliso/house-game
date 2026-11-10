@@ -2017,7 +2017,7 @@ Every checklist starts with the seven house rules (D-101), in the client's numbe
 | Crew | Encoding | Built in |
 |---|---|---|
 | General Contractor | `rule rerollsPerPhase +1` | M4b (default crew from M2) |
-| Landscaper | `earn {yard} +50` (was `drawWeight {yard} +50%`; `earn {yard} +25`, D-109); `startReserve [sapling, fence]` | M4b |
+| Landscaper | `earn {yard} +50` (was `drawWeight {yard} +50%`; `earn {yard} +25`, D-109); `rule layoutRow +1`, a third Layout card (D-121); `startReserve [sapling, fence]` | M4b |
 | Architect | `drawWeight [playroom, library, mudroom, pool] add 5`; `setBonus +10` (was +50, D-109) | M4b |
 
 ### Generic change orders
