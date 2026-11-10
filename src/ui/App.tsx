@@ -47,6 +47,9 @@ import { JobBoard } from './screens/JobBoard.tsx';
 import { ShopScreen } from './screens/ShopScreen.tsx';
 import { Title } from './screens/Title.tsx';
 import { appScreen, heldPiece, run, selected, tool } from './store.ts';
+import { Particles } from './fx/Particles.tsx';
+import { ArrivalCard } from './hud/ArrivalCard.tsx';
+import { TierWash } from './hud/Celebration.tsx';
 
 /** Esc closes the top sheet on any screen (modals.ts). */
 function useModalKeys(): void {
@@ -185,6 +188,7 @@ function Game() {
         <Board />
         <Notes />
         <MilestoneBanner />
+        <ArrivalCard />
         <TargetFlash />
         <EndCaption />
         <ShopScreen />
@@ -192,6 +196,7 @@ function Game() {
       </main>
       <aside class="right">{right}</aside>
       <Hints />
+      <TierWash />
     </div>
   );
 }
@@ -225,6 +230,7 @@ export function App() {
         <ModalToast />
         <TipLayer />
       </ErrorBoundary>
+      <Particles />
       <SmallScreenNotice />
       <DebugPanel />
       <BuildLabel />

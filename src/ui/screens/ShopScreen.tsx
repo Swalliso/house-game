@@ -11,7 +11,7 @@
 // shelf's tag instead of on every card (shelves.ts). Hidden, the shop leaves a handle at the
 // board's foot.
 
-import { useEffect } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { computed, signal } from '@preact/signals';
 import {
   CONTENT,
@@ -25,6 +25,8 @@ import {
 import { audio } from '../audio/audio.ts';
 import { busy } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
+import { burstAt } from '../fx/particles.ts';
+import { settings } from '../settings.ts';
 import { shopHidden } from '../hud/actions.ts';
 import { BudgetCount } from '../hud/BudgetCount.tsx';
 import { TagChips } from '../hud/Hand.tsx';
@@ -174,9 +176,28 @@ function buyLabel(o: OfferView, short: number): string {
   return short > 0 ? `Need ${short}` : 'Buy';
 }
 
+/**
+ * A Rare arriving on the shelf (D-125): once the sheet has landed, glints burst from it as its
+ * shimmer crosses it (the director plays its bell with the shop's beats).
+ */
+function useRareArrival(rare: boolean): { current: HTMLSpanElement | null } {
+  const ref = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!rare) return;
+    const t = setTimeout(
+      // From the card's top, which shows even when the shelf cuts the card off.
+      () => burstAt('glints', ref.current, { fy: 0.1, area: { w: 60, h: 16 } }),
+      FEEL.moments.rareDelayMs,
+    );
+    return () => clearTimeout(t);
+  }, []);
+  return ref;
+}
+
 function OfferCard({ o, mixed }: { o: OfferView; mixed: boolean }) {
   const good = offerGood(o.offer);
   const sold = isSold(o);
+  const rareRef = useRareArrival(o.rarity === 'rare' && !sold);
   const short = shortBy(o, run.value.budget);
   const alert = cardReason(o) ?? undefined;
   const service = o.offer.kind === 'service' ? o.offer.service : null;
@@ -195,7 +216,7 @@ function OfferCard({ o, mixed }: { o: OfferView; mixed: boolean }) {
       alert={alert}
       onMouseEnter={() => good && (inspected.value = { kind: 'offer', i: o.i })}
     >
-      {o.rarity === 'rare' && <span class="offer-shine" aria-hidden="true" />}
+      {o.rarity === 'rare' && <span class="offer-shine" aria-hidden="true" ref={rareRef} />}
       {o.onSale && !sold && (
         <span class="sale-tag">
           <Tip term="sale">Sale</Tip>
@@ -335,9 +356,20 @@ function StrikePicker() {
  * appears: once, with or without Reduce motion (which turns the animation off), and not twice
  * for a Rare (its shimmer is an animation of its own).
  */
-function CrateOption({ good, i, ok }: { good: GoodRef; i: number; ok: boolean }) {
+function CrateOption({
+  good,
+  i,
+  ok,
+  afterMs,
+}: {
+  good: GoodRef;
+  i: number;
+  ok: boolean;
+  /** The crate's shake before it opens: the options turn over after it. */
+  afterMs: number;
+}) {
   const rarity = goodRarity(good);
-  const beatMs = i * FEEL.shop.crateStaggerMs;
+  const beatMs = afterMs + i * FEEL.shop.crateStaggerMs;
   useEffect(() => {
     const delay = beatMs / 1000;
     if (rarity === 'rare') audio.play('sparkle', { delay });
@@ -373,6 +405,44 @@ function CrateOption({ good, i, ok }: { good: GoodRef; i: number; ok: boolean })
   );
 }
 
+/** The glints' colors by rarity, from tokens.css. */
+const GLINTS: Readonly<Record<'common' | 'uncommon' | 'rare', readonly string[]>> = {
+  common: ['--card-hi', '--paper-line'],
+  uncommon: ['--good-fill', '--comfort-tint', '--card-hi'],
+  rare: ['--gold-hi', '--sparkle', '--card-hi'],
+};
+
+/**
+ * A crate opening (D-125): the crate itself, glowing in its best option's rarity, shakes for a
+ * moment, then bursts open with glints in that color and a creak and a pop, and the options turn
+ * over behind it. With Reduce motion it glows and opens without the shake or the glints.
+ */
+function CrateLid({ best }: { best: 'common' | 'uncommon' | 'rare' }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const ms = FEEL.moments.crateShakeMs;
+    audio.play('rotate', { rate: 0.6 });
+    audio.play('crate-open', { delay: ms / 1000 });
+    const t = setTimeout(() => {
+      burstAt('glints', ref.current, { colors: GLINTS[best], scale: best === 'rare' ? 1.5 : 1 });
+      setOpen(true);
+    }, ms);
+    return () => clearTimeout(t);
+  }, []);
+  if (open) return null;
+  return (
+    <div
+      ref={ref}
+      class={`crate-lid rarity-${best} ${settings.value.reduceMotion ? '' : 'shaking'}`}
+      style={{ '--lid-ms': `${FEEL.moments.crateShakeMs}ms` }}
+      aria-hidden="true"
+    >
+      <Icon name="crate" />
+    </div>
+  );
+}
+
 /**
  * An opened crate (or the Housewarming gift): its options turn over one at a time, each with
  * a glow by rarity (§12, Shop and crates), and one can be kept. Sell first to make room.
@@ -386,6 +456,15 @@ function CratePickSheet() {
   );
   const title =
     open.source === 'housewarming' ? 'A housewarming gift' : CONTENT.crates[open.source].name;
+  // Its best option's rarity glows through the lid before it opens (§12, Hearthstone's packs).
+  const rarities = open.options.map((o) => goodRarity(o as GoodRef));
+  const best = rarities.includes('rare')
+    ? 'rare'
+    : rarities.includes('uncommon')
+      ? 'uncommon'
+      : 'common';
+  const lidMs = FEEL.moments.crateShakeMs;
+  const lidKey = open.options.map((o) => o.id).join(',');
   const detail =
     open.source === 'housewarming'
       ? 'Free: keep one Common blueprint, to start your rule book.'
@@ -403,8 +482,15 @@ function CratePickSheet() {
         <div class="pick-scroll">
           <p class="pick-note">{detail}</p>
           <div class="crate-options">
+            <CrateLid best={best} key={lidKey} />
             {open.options.map((o, i) => (
-              <CrateOption key={`${i}-${o.id}`} good={o as GoodRef} i={i} ok={legal.has(i)} />
+              <CrateOption
+                key={`${i}-${o.id}`}
+                good={o as GoodRef}
+                i={i}
+                ok={legal.has(i)}
+                afterMs={lidMs}
+              />
             ))}
           </div>
         </div>

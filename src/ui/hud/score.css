@@ -15,12 +15,33 @@
     0 0 calc(var(--glow) * 28px) rgb(var(--glow-rgb) / calc(var(--glow) * 0.85));
   transition: box-shadow 0.3s;
 }
-.score-panel.big > .panel {
+/* The celebration ladder (D-124): a Good week's panel lifts once, a Great or Huge week's pulses
+   gold, twice and three times (at most 3 flashes a second, §12). With Flashing off it lifts
+   without the gold (D-125). */
+.score-panel.tier-good > .panel {
+  animation: tier-lift 0.5s ease-out;
+}
+.score-panel.tier-great > .panel {
   animation: big-pulse 0.6s ease-out 2;
+}
+.score-panel.tier-huge > .panel {
+  animation: big-pulse 0.6s ease-out 3;
+}
+.no-flashing .score-panel.tier-great > .panel,
+.no-flashing .score-panel.tier-huge > .panel {
+  animation: tier-lift 0.5s ease-out;
+}
+.reduce-motion .score-panel > .panel {
+  animation: none;
 }
 @keyframes big-pulse {
   50% {
     background-color: var(--gold-hi);
+  }
+}
+@keyframes tier-lift {
+  40% {
+    transform: translateY(calc(var(--px) * -2));
   }
 }
 
@@ -279,6 +300,7 @@
 }
 .big-week {
   align-self: center;
+  animation: stamp-in 0.28s cubic-bezier(0.3, 1.5, 0.5, 1) backwards;
   padding: 0 var(--space-2);
   border: var(--px) solid transparent;
   border-image: var(--art-ring) 1 / var(--px);
@@ -463,5 +485,12 @@ p.sets-fold {
   animation-timing-function: ease-out;
 }
 .reduce-motion .spec-count.ticking {
+  animation: none;
+}
+/* The tiers' words (D-124): a Good week's on paper, a Great or Huge week's on gold. */
+.big-week.tier-good {
+  background: var(--card);
+}
+.reduce-motion .big-week {
   animation: none;
 }

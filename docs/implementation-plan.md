@@ -1177,7 +1177,7 @@ Built alongside M5a, on its own branch (`phase/m4-clients`, pull request #17), a
 
 ### M5a's juice · its own pull request
 
-After M4 and before M5b (D-097's juice note): the reward feedback on M5a's art, for M4's game.
+After M4 and before M5b (D-097's juice note): the reward feedback on M5a's art, for M4's game. Built in D-124 to D-127 (`phase/juice`).
 
 - the tiered celebration ladder (§12)
 - distinct moments for a set completing, a Rhythm payout, a find, opening a crate, a Rare in the shop, and a spec being met
@@ -1188,6 +1188,7 @@ After M4 and before M5b (D-097's juice note): the reward feedback on M5a's art, 
 - **Its playtest:**
   - Do big moments feel big, and small ones stay out of the way?
   - Is anything too slow or too flashy?
+  - Does Huge come too often (D-124's best-week clause)?
 
 ### M5b · Sound and music
 
@@ -1457,7 +1458,7 @@ Intensity is measured against **pace**: `max(1, (this phase's target − the sco
 - **The glow,** our version of Balatro's flames: the score panel glows once the week's total passes pace, more strongly as `I` grows. It glows during the placement preview too, so a great placement lights up before you commit. LocalThunk calls the flames the feature he's proudest of.
 - **The pile,** from Combolands: sprites of the week's scoring rooms fly into a stack by the score box. Bigger weeks stack higher, and a Huge week builds a little tower.
 - **The milestone moment,** from Peggle:
-  - when the tally is about to cross a milestone target, it slows to 0.5× and zooms gently on the piece that crosses the line
+  - when the week's count-up is about to cross a milestone target, its last stretch slows to 0.5×, and the top bar's flag pops with stars as it crosses. The run total only moves in the count-up, so no piece crosses the line, and the flag takes the zoom's place (D-124).
   - a drumroll, then a sting
   - under 2.5 s, and a click skips it
 - **The roof reveal:** at the Roofing milestone (D-018) the house gets its roof for a moment. The end screen shows a photo of the house at each milestone, as Combolands does.
@@ -1477,9 +1478,9 @@ Intensity is measured against **pace**: `max(1, (this phase's target − the sco
 
 ### Settings and accessibility (from M1, completed in M5)
 
-- **Reduce motion:** on by default when the browser reports `prefers-reduced-motion`. It turns off wobble, zoom, parallax, and shake.
+- **Reduce motion:** on by default when the browser reports `prefers-reduced-motion`. It turns off wobble, zoom, parallax, and shake, and the juice's particles, the pile's flight, and the crate's shake (D-125).
 - **Screen shake:** a slider from 0 to 100, default 50.
-- **Flashing:** a toggle. Never more than 3 flashes per second over a quarter of the screen, and no red strobes.
+- **Flashing:** a toggle, on by default. Off, the score panel's gold pulses become a lift and a Huge week's white flash is dropped; the warm wash stays, as a tint that fades (D-125). On, never more than 3 flashes per second over a quarter of the screen, and no red strobes.
 - **Volume:** separate sliders for master, music, and sound effects, saved in the browser.
 - **Font:** a readable-font option alongside the pixel font. Combolands added one after launch.
 

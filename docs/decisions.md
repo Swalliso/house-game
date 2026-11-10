@@ -1244,7 +1244,72 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 ## Proposed
 
-*Reserved numbers (2026-11-09): D-115 to D-118 are the layout session's drafts and D-122 the legibility session's; they aren't in this file yet. New entries start at D-124.*
+*Reserved numbers (2026-11-09): D-115 to D-118 are the layout session's drafts and D-122 the legibility session's; they aren't in this file yet. D-124 to D-127 are the juice pull request's, and D-128 to D-131 the sound pass's (M5b). New entries start at D-132.*
+
+### D-124 · The celebration ladder: four tiers, the pile, and the milestone moment
+**Status:** Proposed · 2026-11-09, with the juice pull request (`phase/juice`). It builds §12's celebration ladder, which D-059 approved with the plan; the numbers and the choices below are this pull request's, for the feel playtest.
+**Decision:**
+- **The tiers,** by the week's total against its pace (the `tally` event's `pace`), sorted by the UI (`fx/ladder.ts`): Normal under 2× pace, Good from 2×, Great from 5×, Huge from 25×, or a Great week that beats the best week this browser has seen.
+  - **Good:** the score panel lifts once, sparkles burst round Wow, "Good week!" on paper, a short chime (`tier-good`), and a pile of 3.
+  - **Great:** the panel pulses gold twice, "Great week!" on gold, a fountain of confetti and coins from Wow, a warm wash over the screen, `big-week`'s arpeggio as its sting, a 7 px shake, and a pile of 6.
+  - **Huge:** three gold pulses, a bigger fountain, the board leaning in to 1.04× and back over 1.6 s (a celebration tween, which CLAUDE.md allows), one soft white flash with Flashing on, the fanfare (`tier-huge`), the week's last trigger in slow motion (2.5× its step), and the pile built into a tower of 12.
+  - The week's total holds 250, 700 or 1,500 ms longer for Good, Great and Huge: a closing beat, at the chosen speed (D-096), that a click skips.
+- **A tier's first appearance plays in full** (§12): 0.9, 1.8 or 2.8 s of real time that a click doesn't cut short. After that a click skips it like any beat. The browser keeps which tiers it has seen and its best week, per channel, like the saves; they're UI records, not game state.
+- **The glow** starts at 1× pace at 0.3 and grows with I = log5(total ÷ pace), fully lit at I = 2 (25× pace). It lights the preview too.
+- **The pile:** the week's best earners (ties to the earliest placed) fly from the board into a stack beside the score panel, each as its own picture (PieceArt) in a small framed block, and fade after 1.5 s.
+- **The milestone moment:** when a week's count-up crosses the phase's target, its last 30% before the target slows to 0.5× with a drumroll (`drumroll`), and the target's sting and "Target reached!" land as it crosses, not after. The top bar's flag pops and stars burst from it. It stays under 2.4 s, and a click skips it.
+  - §12 zooms on "the piece that crosses the line". In our tally the run total only moves in the count-up, after the multiply moment, so no piece crosses it; the flag takes the zoom's place.
+- **For M5b:** the music swell, ducking under the jingles, and the soft pad are the sound pass's. The `celebration` signal carries the tier for them.
+
+**Why:** §12 and D-059: big moments should escalate the way Vampire Survivors' chests do, and everything else should stay calm. The thresholds are §12's.
+**Considered:**
+- **Huge's best-week clause** makes most Great weeks in a browser's first run Huge: totals grow through a run, so a Great week late in a run is nearly always the best yet. It's §12's rule as written. If the playtest finds Huge too common, drop the clause, or count the best only from earlier runs.
+- **A pile every week, Normal included** (§12 says bigger weeks stack higher): it would put 20 flying sprites in every week, so it starts at Good.
+
+**Changes:** `implementation-plan.md` §12, The celebration ladder (the milestone moment's flag). In `feel.ts`, M1's `bigWeekPace`, `glowPace`, `celebration` and `tally.bigHoldScale` are gone; `ladder`, `glow`, `pile` and `milestoneMoment` replace them. D-059 (Accepted) still holds.
+
+### D-125 · The reward moments, particles, and Flashing
+**Status:** Proposed · 2026-11-09, with the juice pull request. §7's distinct moments and M4's (`house-systems-review.md` §6), within D-059.
+**Decision:**
+- **Particles:** one canvas over the page, under the first-time hints and the modals, drawing bursts in whole UI pixels. The presets are in `feel.ts` (`particles.bursts`); their colors are tokens, and the coins, stars and hearts are the interface's own icons. None play with Reduce motion. At most 700 are in flight, and no burst outlives about 2.5 s.
+- **The moments,** each with a sound id of its own (a ZzFX placeholder for M5b to replace):
+  - **A set completing** for the first time: "*Set* complete!", a 1.5× beat, a chord (`set-complete`), a ring of Charm-colored bits, and a bigger shake.
+  - **A Rhythm payout** (the Pool's every third week): "Every 3rd week!" over the piece, a 1.6× step, a double knock (`rhythm`), and two rings spreading from it. The UI reads it from the piece's breakdown line, which a test pins.
+  - **A find:** dirt flies from its cell, then coins (budget) or glints (a tool), with a scoop and a ta-da (`find`).
+  - **Opening a crate:** the crate glows in its best option's rarity and shakes for 0.52 s, then bursts open with glints in that color, a creak and a pop (`crate-open`), and the options turn over after it.
+  - **A Rare in the shop:** its own bell (`rare`, where the sparkle played) and glints from its card as the sheet lands.
+  - **A client's wish met:** "★ *name*!", Charm's hearts rising from its checklist row, and a warm chime (`wish-met`).
+  - **A house rule met:** "✓ *name*" in blue (a new popup kind), sparkles from its row, and a crisp check (`rule-met`). One lost: its ✕, dust from its row, and a bonk (`rule-lost`). A wish lost keeps M4's.
+  - **A Renovation's level-up:** stars from the room as its badge pops, three notes up (`level-up`), and a bigger shake.
+  - **A change order's stamp:** a rubber-stamp thunk (`order-stamp`) and ink spattering where it lands.
+- **Flashing** (Settings, under Motion): on by default and saved. Off, the score panel's gold pulses become a lift and a Huge week's white flash is dropped; the warm wash stays, as a tint that fades. With it on, nothing flashes more than 3 times a second.
+- **Reduce motion** also stops the pile's flight, the Huge week's lean-in, the crate's shake and every particle. Its note in Settings says so.
+
+**Why:** §7 asks for each of these moments to read as its own, and playtest 4 found M4's moments forgettable (its §4). Restraint (Kao, 2020): the per-trigger beats keep their 2 px shake, and the bursts go to moments that happen a few times a run.
+**Changes:** `implementation-plan.md` §12, Settings and accessibility (what Flashing turns off).
+
+### D-126 · An arrival as a doorbell, the arrivals' marker, and the car that drives up
+**Status:** Proposed · 2026-11-09, with the juice pull request: playtest 4's asks (its §4 and §15 item 5).
+**Decision:**
+- **The doorbell:** a household member's arrival rings the front door: "Ding-dong!" on a plank at the house's front doormat (the house's south edge before there's a front door), two rings spreading from it, and a two-tone bell of its own (`doorbell`).
+- **Their card** slides in at the board's right edge, by the reserve their cards go to: the "Ding-dong!" plank rocking as the bell rings, their room's picture (the first card they bring), who's arrived, and what's waiting. It stays 3.4 s, and a click dismisses it. The first-time hints wait for it.
+  - It replaces the arrival's banner, which was the milestone's banner in a tan plank, so nothing about an arrival reads as a milestone. The banner's `note` tone is gone.
+- **The arrivals' marker on the progress bar:** the House after the meter's flag when someone moves in as this milestone is met; its tooltip says who, and the week. The meter is the phase's, so the whole schedule stays in the checklist's lines.
+- **The car** parks on the Driveway nearest the front door or a Garage that has room for it (by the distance from its tiles), so a drive extended toward the house gets it. Ties, and a house with neither, go to the oldest Driveway, as before. When a play moves it, its body and roof slide there together in 0.9 s; a new run or a load never slides.
+
+**Why:** the user asked for the doorbell and an arrival that doesn't read as a milestone. On the car the user said either way was fine; driving up makes a longer drive visible.
+**Changes:** D-103 (Accepted): its banner. `implementation-plan.md` §12 has no rule on either.
+
+### D-127 · The roof reveal at Roofing, and "Topped out!"
+**Status:** Proposed · 2026-11-09, with the juice pull request. §12's roof reveal, and the review's "Topped out!" (`house-systems-review.md` §6).
+**Decision:**
+- **The roof** is painted from the house model in LimeZu's palette, by fixed rules: a terracotta gable over each column of rooms (the south slope lit, the north in shade, a ridge cap between them), shingles offset like bricks, a fascia along the south eaves, eaves 3 art px past the walls, an ink outline, and a brick chimney on the first room. An L or a T gets a ridge per wing. It's a canvas in the board's `roof` layer, which D-097 reserved.
+- **At the Roofing milestone,** when it's met (on time, early or in overtime), the roof drops onto the house in 0.42 s, holds 1.8 s under the milestone's banner, and lifts off in 0.56 s, with a thump and a bell (`roof-on`). The tiles' digits and badges fade out while it's on. Reduce motion fades it in and out. A missed milestone gets no roof.
+- **"Topped out!":** the first week Under one roof holds in a run, a wood plaque with the flag rises over the top of the house for 1.7 s, with stars and a cheer (`topped-out`). The rules keep no history of the checklist, so the browser remembers the runs that have topped out (by seed, client and crew, the last 30), and a replay of the same run doesn't show it again.
+- The end screen's photo of the house at each milestone stays M6's.
+
+**Why:** §12's roof reveal, and the review's idea from its parked construction stages: a stamp when the roof goes on.
+**Changes:** none to settled decisions.
 
 ### D-123 · Playtest 5's re-fit: the targets and each client's factor
 **Status:** Proposed · 2026-11-09, before playtest 5. It's the one re-fit that D-114, D-119, D-120 and D-121 left until all of playtest 4's content changes were in (playtest 4's findings §12).

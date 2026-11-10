@@ -28,6 +28,7 @@ import {
   type ChangeOrderView,
   type ClientId,
   type GameEvent,
+  type PieceId,
   type PieceScore,
   type RunState,
   type SetScore,
@@ -42,14 +43,47 @@ import { onEvents, onRunReset } from '../store.ts';
 import { formatNumber } from '../format.ts';
 import { FEEL } from './feel.ts';
 import { tallySpeed } from './juice.ts';
+import {
+  bestWeek,
+  markTierSeen,
+  pileCount,
+  pilePieces,
+  recordWeek,
+  tierOf,
+  tierSeen,
+  type Tier,
+} from './ladder.ts';
+import {
+  frontDoor,
+  isHouseRule,
+  markToppedOut,
+  rhythmPaid,
+  ROOFING_PHASE,
+  targetCrossed,
+  TOPPED_OUT_RULE,
+  toppedOutBefore,
+} from './moments.ts';
+import { burst, burstAt, clearParticles, type BurstName, type BurstOptions } from './particles.ts';
 
 /**
- * `spec` names a checklist line the week turned on, in Charm's color; `lost` one it turned off,
- * orange with a ✕ (both in checklist.css). `order` is a change order paying (blue, ✓), and
- * `quiet` one that didn't, or a phase effect ending (change-order.css).
+ * `spec` names a client's wish the week turned on, in Charm's color, and `rule` a house rule
+ * (blue, ✓, D-125); `lost` one it turned off, orange with a ✕ (all in checklist.css). `order` is
+ * a change order paying (blue, ✓), and `quiet` one that didn't, or a phase effect ending
+ * (change-order.css). `door` is the doorbell at the front door (fx.css, D-126).
  */
 export type PopupKind =
-  'points' | 'mult' | 'set' | 'spec' | 'lost' | 'total' | 'note' | 'sparkle' | 'order' | 'quiet';
+  | 'points'
+  | 'mult'
+  | 'set'
+  | 'spec'
+  | 'rule'
+  | 'lost'
+  | 'total'
+  | 'note'
+  | 'sparkle'
+  | 'order'
+  | 'quiet'
+  | 'door';
 
 export interface Popup {
   id: number;
@@ -71,7 +105,8 @@ export interface TallyView {
   total: number | null;
   activeUid: number | null;
   pace: number;
-  big: boolean;
+  /** The week's tier on the celebration ladder (D-124), once its total lands; null before. */
+  tier: Tier | null;
   /** A week skipped by early completion. */
   fastForward: boolean;
   /** The week's total from the event, so the glow stays lit through the count before `total`. */
@@ -109,10 +144,10 @@ export interface Banner {
   title: string;
   detail: string;
   /**
-   * A milestone met (gold), one missed or in overtime (orange), or news that's neither: a
-   * household member's arrival (a plank, Overlays.tsx), so it never reads as a milestone.
+   * A milestone met (gold), or one missed or in overtime (orange). A household member's arrival
+   * has its own card (ArrivalCard.tsx, D-126), so it never reads as a milestone.
    */
-  tone: 'good' | 'bad' | 'note';
+  tone: 'good' | 'bad';
 }
 
 export const busy = signal(false);
@@ -129,8 +164,45 @@ export const highlighted = signal<readonly number[]>([]);
  */
 export const checkFlashes = signal<readonly CheckFlash[]>([]);
 export const banner = signal<Banner | null>(null);
-/** Bumped for each big week, so the celebration can restart. */
-export const celebration = signal<{ id: number; total: number; pace: number } | null>(null);
+/** A piece flying to the pile: where it starts, in viewport px (null when it's off the board). */
+export interface PileBlock {
+  uid: number;
+  defId: PieceId;
+  at: { x: number; y: number } | null;
+}
+
+/**
+ * Bumped for each week from Good up (D-124), so the celebration can restart: the score panel's
+ * pile reads it, and M5b's music swell and ducking can follow its tier.
+ */
+export const celebration = signal<{
+  id: number;
+  tier: Tier;
+  total: number;
+  pace: number;
+  pile: readonly PileBlock[];
+} | null>(null);
+/** A Great or Huge week's wash over the screen (a warm tint; Huge adds a white flash). */
+export const wash = signal<{ id: number; tier: Tier } | null>(null);
+/** The milestone moment's crossing: the top bar's flag pops (D-124). */
+export const targetHit = signal<{ id: number } | null>(null);
+/** The roof reveal at the Roofing milestone (D-127): the board's roof layer plays it. */
+export const roofReveal = signal<{ id: number } | null>(null);
+/** "Topped out!" over the house, the first week Under one roof holds (D-127). */
+export const toppedOut = signal<{ id: number } | null>(null);
+/**
+ * A household member's arrival (D-126): their card slides in over the board, in place of a
+ * banner, so it never reads as a milestone.
+ */
+export interface ArrivalCard {
+  id: number;
+  arrival: ArrivalId;
+  clientId: ClientId;
+  title: string;
+  detail: string;
+  cards: readonly PieceId[];
+}
+export const arrivalCard = signal<ArrivalCard | null>(null);
 /** A flash over the board: 'good' is the green 'Target reached!', 'note' a neutral notice. */
 export const flash = signal<{ id: number; text: string; tone: 'good' | 'note' } | null>(null);
 /**
@@ -142,7 +214,15 @@ export const shownRun = signal<RunState | null>(null);
  * One-shot effects (celebration, flash, justPlaced) carry an id: a consumer plays each id
  * once, so remounting the game screen (Menu, then Continue) doesn't replay them.
  */
-export const played = { celebration: 0, flash: 0, settle: 0, levelPop: 0 };
+export const played = {
+  celebration: 0,
+  flash: 0,
+  settle: 0,
+  levelPop: 0,
+  roof: 0,
+  wash: 0,
+  arrival: 0,
+};
 /** The piece that was just placed, for its settle animation. */
 export const justPlaced = signal<{ uid: number; id: number } | null>(null);
 /** The room that was just renovated, for its level badge's pop. */
@@ -164,11 +244,16 @@ export const orderStamp = signal<OrderStamp | null>(null);
 /** A household member's cards, just in the reserve (M4b): the reserve pops them in. */
 export const justArrived = signal<{ arrival: ArrivalId; id: number } | null>(null);
 
-/** The board registers these, so the director can wobble pieces and shake the screen. */
+/**
+ * The board registers these, so the director can wobble pieces, shake the screen, lean the
+ * board in for a Huge week, and place bursts at lot cells (in viewport px; null off the board).
+ */
 export const fxHooks: {
   wobble: (uid: number) => void;
   shake: (px: number) => void;
-} = { wobble: () => {}, shake: () => {} };
+  zoom: () => void;
+  toScreen: (x: number, y: number) => { x: number; y: number } | null;
+} = { wobble: () => {}, shake: () => {}, zoom: () => {}, toScreen: () => null };
 
 let nextId = 1;
 let skipping = false;
@@ -275,6 +360,41 @@ function flashLine(index: number, kind: CheckFlash['kind'], stepMs: number): voi
 function shake(px: number): void {
   if (skipping || !motion()) return;
   fxHooks.shake((px * settings.value.shake) / 50);
+}
+
+/** A burst at a spot on the lot (cells), where the board shows it. */
+function boardBurst(name: BurstName, at: { x: number; y: number }, opts?: BurstOptions): void {
+  if (skipping) return;
+  const p = fxHooks.toScreen(at.x, at.y);
+  if (p) burst(name, p, opts);
+}
+
+/** Runs `fn` once the next frame has painted (a banner, a stamp, a row just rendered). */
+function afterPaint(fn: () => void, delayMs = 0): void {
+  const gen = generation;
+  setTimeout(
+    () =>
+      requestAnimationFrame(() => {
+        if (gen === generation) fn();
+      }),
+    delayMs,
+  );
+}
+
+/**
+ * Waits `ms` of real time whatever the speed, and a click doesn't cut it short: a tier's first
+ * appearance (§12). A new run, or the ?debug panel's instant tally, still ends it.
+ */
+function waitFirst(ms: number): Promise<void> {
+  const gen = generation;
+  return new Promise((resolve) => {
+    const start = performance.now();
+    const tick = (now: number) => {
+      if (now - start >= ms || gen !== generation || instantTally.value) resolve();
+      else requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
 }
 
 /**
@@ -436,7 +556,7 @@ function tallyStart(e: Extract<GameEvent, { t: 'tally' }>, flips: SpecFlips): Ta
     total: null,
     activeUid: null,
     pace: e.pace,
-    big: false,
+    tier: null,
     fastForward: false,
     weekTotal: e.tally.total,
     pieces: e.tally.pieces,
@@ -504,7 +624,7 @@ async function playFastForward(
     total: t.total,
     activeUid: null,
     pace: e.pace,
-    big: false,
+    tier: null,
     fastForward: true,
     weekTotal: t.total,
     pieces: t.pieces,
@@ -588,8 +708,11 @@ async function playChecklist(
         });
       }
       const name = specName(clientId, sp.id);
+      // A house rule (D-101) and a client's wish read differently (D-125): a rule met is a
+      // check and a crisp two notes, a wish met a ★, Charm's hearts and a warm chime.
+      const rule = isHouseRule(clientId, k);
       if (kind === 'met') {
-        popup(home.x, y - 0.6, `★ ${name}!`, 'spec', stepMs);
+        popup(home.x, y - 0.6, rule ? `✓ ${name}` : `★ ${name}!`, rule ? 'rule' : 'spec', stepMs);
         popup(
           home.x,
           y + 0.2,
@@ -597,17 +720,61 @@ async function playChecklist(
           'mult',
           stepMs / 2,
         );
-        audio.play('sparkle', { delay: 0.06, gain: 0.5 });
+        audio.play(rule ? 'rule-met' : 'wish-met', { delay: 0.06 });
+        checkBurst(sp.id, rule ? 'sparkles' : 'hearts');
         shake(FEEL.shake.triggerPx);
+        if (sp.id === TOPPED_OUT_RULE && !toppedOutBefore(after.setup)) {
+          markToppedOut(after.setup);
+          topOut();
+        }
       } else if (kind === 'lost') {
-        // Its row shakes in the checklist; the board stays still.
+        // Its row shakes in the checklist; the board stays still. A house rule lost knocks
+        // some dust off its row.
         popup(home.x, y, `✕ ${name}`, 'lost', stepMs);
-        audio.play('fail', { rate: 1.45, gain: 0.5 });
+        if (rule) {
+          audio.play('rule-lost', { gain: 0.8 });
+          checkBurst(sp.id, 'dust');
+        } else audio.play('fail', { rate: 1.45, gain: 0.5 });
       }
     }
     await wait(stepMs);
   }
   view.specAt = t.specs.length;
+}
+
+/**
+ * A burst from a checklist line's row once the checklist has scrolled to it (or from the
+ * folded row that holds it): the row a line lights is where the eye goes.
+ */
+function checkBurst(id: string, name: BurstName): void {
+  afterPaint(() => {
+    const list = document.querySelector('.checklist');
+    const row =
+      list?.querySelector(`[data-row="${id}"]`) ??
+      list?.querySelector('[data-fold="rules"]') ??
+      null;
+    const r = row?.getBoundingClientRect();
+    const box = list?.getBoundingClientRect();
+    // Not while the row is scrolled out of the checklist's view.
+    if (!r || !box || r.bottom < box.top || r.top > box.bottom) return;
+    burstAt(name, row, { fx: 0.15, area: { w: 30, h: 6 } });
+  }, 60);
+}
+
+/**
+ * "Topped out!" (D-127): the first week Under one roof holds, the house is topped out as a
+ * builder's would be. A plaque over the house with a sprig on top, stars, and a cheer, in real
+ * time; the tally goes on under it.
+ */
+function topOut(): void {
+  toppedOut.value = { id: nextId++ };
+  const id = toppedOut.value.id;
+  setTimeout(() => {
+    if (toppedOut.value?.id === id) toppedOut.value = null;
+  }, FEEL.moments.toppedOutMs);
+  audio.play('topped-out', { delay: 0.15 });
+  // Up from the plaque over the roof, clear of the line's own popup over the house.
+  afterPaint(() => burstAt('stars', document.querySelector('.topped-out'), { fy: 0, scale: 1.4 }));
 }
 
 /** A played week's tally: pieces, sets, the checklist, the multiply moment, and the drain. */
@@ -617,63 +784,77 @@ async function playTally(
   after: RunState,
   newSets: ReadonlySet<string>,
   flips: SpecFlips,
+  crossing: number | null,
 ): Promise<void> {
   setShownRun(weekShown(base, e));
   closing = false;
   const t = e.tally;
+  // The week's tier (§12, D-124), against the best week before this one; then the week joins
+  // the browser's record.
+  const tier = tierOf(t.total, e.pace, bestWeek());
+  recordWeek(t.total);
   const view = tallyStart(e, flips);
   tallyView.value = { ...view };
+  const last = t.pieces.reduce((k, p, i) => (p.earned > 0 ? i : k), -1);
   let step = 0;
-  for (const piece of t.pieces) {
+  for (const [i, piece] of t.pieces.entries()) {
     if (piece.earned <= 0) continue;
     view.points += piece.earned;
     view.activeUid = piece.uid;
     tallyView.value = { ...view };
+    // A Huge week's last trigger plays in slow motion; a Rhythm payout gets a longer beat.
+    const rhythm = rhythmPaid(piece);
+    const slow = tier === 'huge' && i === last;
+    const stepMs =
+      FEEL.tally.stepMs * (slow ? FEEL.ladder.slowMo : rhythm > 0 ? FEEL.moments.rhythm : 1);
     if (!skipping) {
       const c = pieceCenter([after, base], piece.uid);
-      popup(c.x, c.y, `+${num(piece.earned)}`, 'points', FEEL.tally.stepMs);
+      popup(c.x, c.y, `+${num(piece.earned)}`, 'points', stepMs);
       // Crown Jewel's top earner: a Comfort bonus, so it reads in Comfort's color (D-019).
-      if (t.best?.uid === piece.uid)
-        popup(c.x, c.y - 0.7, '★ Top earner', 'points', FEEL.tally.stepMs);
+      const top = t.best?.uid === piece.uid;
+      if (top) popup(c.x, c.y - 0.7, '★ Top earner', 'points', stepMs);
+      if (rhythm > 0) rhythmBeat(piece, c, stepMs, top ? 1.4 : 0.7);
       audio.ladder(step);
       if (motion()) fxHooks.wobble(piece.uid);
-      shake(FEEL.shake.triggerPx);
+      shake(slow ? FEEL.shake.setPx : FEEL.shake.triggerPx);
     }
     step++;
-    await wait(FEEL.tally.stepMs);
+    await wait(stepMs);
   }
   view.activeUid = null;
 
   for (const set of t.sets) {
     view.stage = 'sets';
     const name = CONTENT.sets[set.set].name;
+    // A set completing for the first time is its own moment (D-125): a longer beat, its chord,
+    // and a ring of Charm-colored bits.
+    const fresh = newSets.has(set.key);
+    const setMs = FEEL.tally.setStepMs * (fresh ? FEEL.moments.setComplete : 1);
     highlighted.value = set.members;
     const c = centroid([after, base], set.members);
     view.points += set.points;
     view.setAt++;
     tallyView.value = { ...view };
     if (!skipping) {
-      popup(c.x, c.y - 0.6, newSets.has(set.key) ? `${name}!` : name, 'set', FEEL.tally.setStepMs);
-      popup(c.x, c.y + 0.2, `+${num(set.points)}`, 'points', FEEL.tally.setStepMs / 2);
+      popup(c.x, c.y - 0.6, fresh ? `${name} complete!` : name, 'set', setMs);
+      popup(c.x, c.y + 0.2, `+${num(set.points)}`, 'points', setMs / 2);
       audio.ladder(step);
+      if (fresh) {
+        audio.play('set-complete', { delay: 0.05 });
+        boardBurst('set', c);
+      }
       set.members.forEach((u) => motion() && fxHooks.wobble(u));
-      shake(FEEL.shake.setPx);
+      shake(fresh ? FEEL.shake.milestonePx : FEEL.shake.setPx);
     }
     step++;
-    await wait(FEEL.tally.setStepMs / 2);
+    await wait(setMs / 2);
     view.mult += set.mult;
     tallyView.value = { ...view };
     if (!skipping) {
-      popup(
-        c.x,
-        c.y + 0.6,
-        `+${formatCharm(set.mult)} ${SCORE_LABELS.mult}`,
-        'mult',
-        FEEL.tally.setStepMs / 2,
-      );
+      popup(c.x, c.y + 0.6, `+${formatCharm(set.mult)} ${SCORE_LABELS.mult}`, 'mult', setMs / 2);
       audio.play('chime');
     }
-    await wait(FEEL.tally.setStepMs / 2);
+    await wait(setMs / 2);
   }
   highlighted.value = [];
 
@@ -726,16 +907,16 @@ async function playTally(
   await wait(FEEL.tally.multiplyPauseMs);
   view.stage = 'total';
   view.total = t.total;
-  view.big = t.total > 0 && t.total >= FEEL.bigWeekPace * e.pace;
+  view.tier = tier;
   tallyView.value = { ...view };
-  if (!skipping) {
+  // A tier's first appearance in this browser plays in full, skipped or not (§12); after that a
+  // click skips it like any beat.
+  const first = tier !== 'normal' && !tierSeen(tier) && !instantTally.value;
+  if (first) markTierSeen(tier);
+  if (!skipping || first) {
     audio.play('total');
-    if (view.big) {
-      celebration.value = { id: nextId++, total: t.total, pace: e.pace };
-      audio.play('big-week', { delay: 0.12 });
-      shake(FEEL.shake.bigWeekPx);
-    }
-    if (t.budget > 0) {
+    celebrate(tier, t, e.pace, [after, base]);
+    if (t.budget > 0 && !skipping) {
       const lot = after.house.lot;
       popup(
         lot.width / 2,
@@ -746,19 +927,116 @@ async function playTally(
       );
     }
   }
-  await wait(FEEL.tally.totalHoldMs * (view.big ? FEEL.tally.bigHoldScale : 1));
+  if (first) await waitFirst(FEEL.ladder.firstMs[tier]);
+  else await wait(FEEL.tally.totalHoldMs + FEEL.ladder.holdMs[tier]);
 
-  // Drain into the run total, coin by coin.
-  const from = e.scoreBefore;
-  const to = e.score;
+  await drain(e.scoreBefore, e.score, crossing);
+}
+
+/**
+ * The count-up into the run total, coin by coin. When it crosses the phase's target, it's the
+ * milestone moment (§12, from Peggle): the count slows for the last stretch before the target
+ * with a drumroll, and the target's sting and flash land as it crosses, not after.
+ */
+async function drain(from: number, to: number, crossing: number | null): Promise<void> {
   const most = FEEL.tally.drainCoins;
   let coins = 0;
-  await wait(FEEL.tally.drainMs, (f) => {
-    setShownScore(Math.round(from + (to - from) * f));
-    const due = Math.min(most, Math.ceil(f * Math.min(most, to - from)));
-    while (!skipping && coins < due) audio.play('coin', { rate: 1 + coins++ * 0.06 });
-  });
+  const count = (a: number, b: number, ms: number, ticks: boolean) =>
+    wait(ms, (f) => {
+      setShownScore(Math.round(a + (b - a) * f));
+      if (!ticks) return;
+      const due = Math.min(most, Math.ceil(f * Math.min(most, b - a)));
+      while (!skipping && coins < due) audio.play('coin', { rate: 1 + coins++ * 0.06 });
+    });
+  const m = FEEL.milestoneMoment;
+  if (crossing === null || crossing <= from || crossing > to || skipping) {
+    await count(from, to, FEEL.tally.drainMs, true);
+    setShownScore(to);
+    return;
+  }
+  // The share of the count before the target, then its last stretch, slowed.
+  const span = Math.max(1, to - from);
+  const lead = crossing - (crossing - from) * m.leadShare;
+  const plain = FEEL.tally.drainMs * ((lead - from) / span);
+  const slowed = Math.min(
+    m.maxMs - FEEL.tally.drainMs,
+    (FEEL.tally.drainMs * ((crossing - lead) / span)) / m.slow + 600,
+  );
+  await count(from, lead, plain, true);
+  if (!skipping) audio.play('drumroll');
+  await count(lead, crossing, slowed, false);
+  targetMoment();
+  await count(crossing, to, FEEL.tally.drainMs * ((to - crossing) / span), false);
   setShownScore(to);
+}
+
+/** The target's sting as the count crosses it: the flash, a burst from the meter's flag. */
+let targetPlayed = false;
+function targetMoment(): void {
+  if (skipping) return;
+  targetPlayed = true;
+  flash.value = { id: nextId++, text: 'Target reached!', tone: 'good' };
+  audio.play('target');
+  shake(FEEL.shake.milestonePx);
+  const hit = { id: nextId++ };
+  targetHit.value = hit;
+  setTimeout(() => {
+    if (targetHit.value === hit) targetHit.value = null;
+  }, 600);
+  burstAt('stars', document.querySelector('.tb-flag'), { angle: 90, spread: 70 });
+}
+
+/**
+ * A Rhythm payout (D-125): the line's own words over the piece ("Every 3rd week!"), a ring
+ * spreading from it, and a knock of its own under the ladder's note.
+ */
+function rhythmBeat(
+  piece: PieceScore,
+  c: { x: number; y: number },
+  stepMs: number,
+  above: number,
+): void {
+  const line = piece.lines.find((l) => l.op === 'add' && /^Every \d/.test(l.label));
+  popup(c.x, c.y - above, `${line?.label.replace(/ \(.*$/, '') ?? 'Payday'}!`, 'set', stepMs);
+  audio.play('rhythm');
+  boardBurst('ring', c);
+  boardBurst('ring', c, { delayMs: 140 });
+}
+
+/**
+ * A week's tier (§12, The celebration ladder; D-124), as its total lands:
+ * - Good: sparkles round the score panel and a short chime.
+ * - Great: its own sting, a fountain of confetti and coins, and a warm wash over the screen.
+ * - Huge: the full fanfare, the fountain, the board leaning in, a soft white flash (with
+ *   Flashing on), and the pile built into a tower.
+ * From Good up, the week's best pieces fly into the pile by the score panel. M5b's music swell
+ * and ducking can follow the `celebration` signal's tier.
+ */
+function celebrate(tier: Tier, t: Tally, pace: number, states: readonly RunState[]): void {
+  if (tier === 'normal') return;
+  const pile = pilePieces(t.pieces, pileCount(tier)).map((p) => {
+    const c = pieceCenter(states, p.uid);
+    return { uid: p.uid, defId: p.defId, at: fxHooks.toScreen(c.x, c.y) };
+  });
+  celebration.value = { id: nextId++, tier, total: t.total, pace, pile };
+  const panel = document.querySelector('.score-panel .plaque-wow');
+  if (tier === 'good') {
+    audio.play('tier-good', { delay: 0.1 });
+    burstAt('sparkles', panel, { area: { w: 120, h: 30 } });
+    shake(FEEL.shake.setPx);
+    return;
+  }
+  wash.value = { id: nextId++, tier };
+  burstAt('confetti', panel, { scale: tier === 'huge' ? 1.6 : 1 });
+  burstAt('coins', panel, { scale: tier === 'huge' ? 1.8 : 1 });
+  if (tier === 'great') {
+    audio.play('big-week', { delay: 0.12 });
+    shake(FEEL.shake.bigWeekPx);
+    return;
+  }
+  audio.play('tier-huge', { delay: 0.12 });
+  shake(FEEL.shake.bigWeekPx * 1.5);
+  if (motion()) fxHooks.zoom();
 }
 
 /** Shows a banner for `ms` of real time, and returns that time. */
@@ -810,6 +1088,15 @@ function milestoneBanner(e: Extract<GameEvent, { t: 'milestone' }>, ended: boole
   }
   audio.play(e.result === 'failed' ? 'fail' : 'milestone');
   shake(FEEL.shake.milestonePx);
+  if (e.result !== 'failed') {
+    afterPaint(() => burstAt('sparkles', document.querySelector('.banner .banner-ribbon')));
+    // The roof reveal (§12, D-127): at the Roofing milestone the house gets its roof for a
+    // moment, under the banner.
+    if (e.phase === ROOFING_PHASE) {
+      roofReveal.value = { id: nextId++ };
+      audio.play('roof-on', { delay: 0.25 });
+    }
+  }
   return ms;
 }
 
@@ -822,6 +1109,7 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
   skipping = animated && waiting > 0;
   closing = false;
   accelerator = 0;
+  targetPlayed = false;
   busy.value = true;
   try {
     const newSets = new Set(events.flatMap((e) => (e.t === 'setCompleted' ? [e.key] : [])));
@@ -908,8 +1196,17 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
                 : '';
             // Not a score layer, so it reads neutral: Sparkle's gold is for ×Mult (D-019).
             popup(e.x + 0.5, Math.max(1.5, e.y), `${name}: ${got}!`, 'note', FEEL.sparkleStepMs);
-            audio.play('sparkle');
-            audio.play('coin', { delay: 0.1 });
+            // Dug up (D-125): the dirt flies, then what it held pops out, coins or a tool's glint.
+            const at = { x: e.x + 0.5, y: e.y + 0.5 };
+            audio.play('find');
+            boardBurst('dust', at);
+            boardBurst(e.reward.tool ? 'glints' : 'coins', at, {
+              delayMs: FEEL.moments.findRewardMs,
+              scale: e.reward.tool ? 0.8 : 0.6,
+            });
+            if (e.reward.budget || e.soldTool !== undefined)
+              audio.play('coin', { delay: FEEL.moments.findRewardMs / 1000 + 0.1 });
+            shake(FEEL.shake.triggerPx);
           }
           await wait(FEEL.sparkleStepMs * 0.6);
           break;
@@ -934,12 +1231,19 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
             const c = pieceCenter([after, base], e.uid);
             if (e.free) popup(c.x, c.y - 0.7, 'Weekend Crew!', 'note', FEEL.renovateMs);
             popup(c.x, c.y, `Renovated · level ${e.level}`, 'points', FEEL.renovateMs);
-            // A knock-knock of building work, then Comfort's plink a fifth up.
+            // A knock-knock of building work, then the level-up's three notes (D-125), and
+            // stars from the room as its level badge pops.
             audio.play('place-room', { rate: 1.1 });
             audio.play('place-room', { rate: 1.3, delay: 0.1 });
-            audio.play('plink', { rate: 1.5, delay: 0.2 });
+            audio.play('level-up', { delay: 0.2 });
+            // Out to the sides and down from under the popup, so they don't cover its words.
+            boardBurst(
+              'stars',
+              { x: c.x, y: c.y + 0.45 },
+              { delayMs: 180, count: 5 + e.level * 2, angle: 90, spread: 100 },
+            );
             if (motion()) fxHooks.wobble(e.uid);
-            shake(FEEL.shake.triggerPx);
+            shake(FEEL.shake.setPx);
             justRenovated.value = { uid: e.uid, id: nextId++ };
           }
           await wait(FEEL.renovateMs);
@@ -963,14 +1267,25 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
           break;
         case 'tally':
           if (e.fastForward) await playFastForward(e, base);
-          else await playTally(e, base, after, newSets, specFlips(events, i));
+          else
+            await playTally(
+              e,
+              base,
+              after,
+              newSets,
+              specFlips(events, i),
+              targetCrossed(events, i),
+            );
           base = { ...base, score: e.score, budget: e.budget };
           tallyView.value = null;
           break;
         case 'targetReached':
           if (!skipping && gen === generation) {
-            flash.value = { id: nextId++, text: 'Target reached!', tone: 'good' };
-            audio.play('target');
+            // The count-up's milestone moment has played it already, as it crossed (D-124).
+            if (!targetPlayed) {
+              flash.value = { id: nextId++, text: 'Target reached!', tone: 'good' };
+              audio.play('target');
+            }
             // Crossed in the phase's last week: the ding lands before the milestone's chord.
             if (events[i + 1]?.t === 'milestone') {
               closing = true;
@@ -1081,8 +1396,13 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
           // click skips it. The shop waits for it.
           const stamp = orderStamp.value;
           if (stamp && !skipping) {
-            // The stamp's thump, then a bright plink for a yes, or the paper swished aside.
-            audio.play('place-room', { rate: 1.35 });
+            // The stamp's thunk (D-125), ink spattering where it lands, then a bright plink for
+            // a yes, or the paper swished aside.
+            audio.play('order-stamp');
+            afterPaint(
+              () => burstAt('ink', document.querySelector('.co-stamp')),
+              FEEL.changeOrder.stampInMs,
+            );
             if (stamp.answer === 'declined') audio.play('rotate', { rate: 0.7, delay: 0.08 });
             else
               audio.play('plink', { rate: stamp.answer === 'accepted' ? 1.5 : 1.2, delay: 0.07 });
@@ -1161,7 +1481,8 @@ function shopBeat(e: GameEvent): void {
           (o.kind === 'fixture' && CONTENT.fixtures[o.id].rarity === 'rare'),
       );
       audio.play('chime', { rate: e.t === 'shopOpened' ? 0.9 : 1.1 });
-      if (rare) audio.play('sparkle', { delay: 0.25 });
+      // A Rare's own bell (D-125); its card bursts with glints as the sheet lands.
+      if (rare) audio.play('rare', { delay: 0.25 });
       break;
     }
     case 'bought':
@@ -1210,9 +1531,11 @@ function sheetBeat(e: GameEvent, after: RunState): void {
 }
 
 /**
- * A household member arrives (D-103): a banner over the board, a doorbell, and their cards
- * popping into the reserve's extra slots (Inventory.tsx). It doesn't hold the week up: the
- * banner goes on its own (or with a click on it), and the first-time hints wait for it.
+ * A household member arrives (D-103, D-126): the doorbell rings at the front door ("Ding-dong!"
+ * and a ring spreading from the doormat), their card slides in over the board with their room's
+ * picture (ArrivalCard.tsx), and their cards pop into the reserve's extra slots (Inventory.tsx).
+ * It doesn't hold the week up: the card goes on its own (or with a click on it), and the
+ * first-time hints wait for it.
  */
 function arrivalBeat(e: Extract<GameEvent, { t: 'arrived' }>, after: RunState): void {
   const a = arrivalOf(after.setup.clientId, e.arrival);
@@ -1224,16 +1547,30 @@ function arrivalBeat(e: Extract<GameEvent, { t: 'arrived' }>, after: RunState): 
   }, FEEL.arrival.landDelayMs + FEEL.arrival.popMs);
   const have = isPlural(a) ? 'have' : 'has';
   const are = e.cards.length === 1 ? 'is' : 'are';
-  showBanner(
-    `${a.name} ${have} arrived!`,
-    `${cardsPhrase(e.cards)} ${are} waiting in your reserve.`,
-    'note',
-  );
-  // A doorbell's ding-dong (a major third down), then the cards land with a shimmer.
+  const card: ArrivalCard = {
+    id: nextId++,
+    arrival: e.arrival,
+    clientId: after.setup.clientId,
+    title: `${a.name} ${have} arrived!`,
+    detail: `${cardsPhrase(e.cards)} ${are} waiting in your reserve.`,
+    cards: e.cards,
+  };
+  arrivalCard.value = card;
+  setTimeout(() => {
+    if (arrivalCard.value?.id === card.id) arrivalCard.value = null;
+  }, FEEL.arrival.cardMs);
+  // The doorbell's ding-dong, at the front door, then the cards land with a shimmer.
   const f = FEEL.arrival;
-  audio.play('chime', { rate: 1.12 });
-  audio.play('chime', { rate: 0.89, delay: f.dongMs / 1000 });
+  audio.play('doorbell');
   audio.play('sparkle', { delay: f.landDelayMs / 1000, gain: 0.6 });
+  const door = frontDoor(after);
+  if (door && !skipping) {
+    popup(door.x, Math.max(1.5, door.y - 0.6), 'Ding-dong!', 'door', f.cardInMs + f.dongMs * 3);
+    afterPaint(() => {
+      boardBurst('ring', door);
+      boardBurst('ring', door, { delayMs: f.dongMs });
+    });
+  }
 }
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -1315,5 +1652,11 @@ onRunReset(() => {
     justRenovated.value = null;
     orderStamp.value = null;
     justArrived.value = null;
+    wash.value = null;
+    targetHit.value = null;
+    roofReveal.value = null;
+    toppedOut.value = null;
+    arrivalCard.value = null;
   });
+  clearParticles();
 });

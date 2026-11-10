@@ -41,22 +41,6 @@
   --ribbon-lo: var(--bad-deep);
   --ribbon-tail: var(--art-ribbonOrange);
 }
-/* News that's no milestone (a household member's arrival, M4): the panels' wood plank
-   (kit.css .plank) with the House icon and no tails, so it never reads as the gold ribbon. */
-.banner.note {
-  --ribbon: var(--wood-hi);
-  --ribbon-hi: var(--wood-shine);
-  --ribbon-lo: var(--wood-light);
-}
-.banner.note .banner-ribbon {
-  background: var(--art-plank) repeat left top / calc(var(--px) * 48) calc(var(--px) * 10);
-  background-color: var(--ribbon);
-  background-clip: padding-box;
-}
-.banner.note .banner-ribbon::before,
-.banner.note .banner-ribbon::after {
-  content: none;
-}
 /* The ribbon: a plate with notched tails folded behind its ends. */
 .banner-ribbon {
   position: relative;

@@ -19,7 +19,7 @@ import type { RefObject } from 'preact';
 import { useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { CONTENT, glossary, SCORE_LABELS } from '../../rules/index.ts';
 import { BUILD_CHANNEL } from '../build-info.ts';
-import { banner, busy } from '../fx/director.ts';
+import { arrivalCard, banner, busy } from '../fx/director.ts';
 import { Button, Icon } from '../kit/kit.tsx';
 import { appScreen, cardsRenovate, earlyOffer, run } from '../store.ts';
 import { devicePixelRatio, uiPixel } from '../theme/pixel.ts';
@@ -119,7 +119,7 @@ const HINTS: Record<HintId, Hint> = {
 
 /** Which hint (if any) the run calls for now, first unseen in this order. */
 function current(seen: ReadonlySet<string>): HintId | null {
-  if (appScreen.value !== 'game' || busy.value || banner.value) return null;
+  if (appScreen.value !== 'game' || busy.value || banner.value || arrivalCard.value) return null;
   const s = run.value;
   const building = s.screen === 'build';
   const fixtureInSight =

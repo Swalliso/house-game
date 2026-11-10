@@ -12,6 +12,11 @@ export interface Settings {
   reduceMotion: boolean;
   /** 0–100. */
   shake: number;
+  /**
+   * Flashing (§12, Settings; D-125): the screen-wide washes and flashes of the big moments (a
+   * Huge week's white flash, the score panel's pulse). Off, they're still tints that fade.
+   */
+  flashing: boolean;
   /** 0–100. */
   masterVolume: number;
   sfxVolume: number;
@@ -37,6 +42,7 @@ export function defaultSettings(): Settings {
     tallySpeed: 1,
     reduceMotion: prefersReducedMotion(),
     shake: 50,
+    flashing: true,
     masterVolume: 70,
     sfxVolume: 80,
     readableFont: false,
@@ -62,6 +68,7 @@ export function parseStored(raw: unknown, d: Settings = defaultSettings()): Part
   }
   if (typeof r.reduceMotion === 'boolean') out.reduceMotion = r.reduceMotion;
   if (typeof r.readableFont === 'boolean') out.readableFont = r.readableFont;
+  if (typeof r.flashing === 'boolean') out.flashing = r.flashing;
   for (const k of ['shake', 'masterVolume', 'sfxVolume'] as const) {
     if (k in r) out[k] = clamp100(r[k], d[k]);
   }
@@ -100,6 +107,7 @@ if (typeof document !== 'undefined') {
     const s = settings.value;
     audio.setVolumes({ master: s.masterVolume / 100, sfx: s.sfxVolume / 100 });
     document.documentElement.classList.toggle('reduce-motion', s.reduceMotion);
+    document.documentElement.classList.toggle('no-flashing', !s.flashing);
     document.documentElement.dataset.font = s.readableFont ? 'readable' : 'pixel';
   });
 }

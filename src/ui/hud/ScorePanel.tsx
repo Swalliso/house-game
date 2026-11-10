@@ -16,6 +16,7 @@ import {
 } from '../../rules/index.ts';
 import { highlighted, tallyView } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
+import { glowOf, type Tier } from '../fx/ladder.ts';
 import { formatMult, formatNumber, signed } from '../format.ts';
 import { Icon, Panel } from '../kit/kit.tsx';
 import { currentTally, pace as paceSignal, preview, run } from '../store.ts';
@@ -305,6 +306,13 @@ function Sparkles({ list }: { list: readonly XMultTerm[] }) {
   );
 }
 
+/** The tier's word on the panel as the total lands (§12, D-124); a Normal week has none. */
+const TIER_WORDS: Readonly<Record<Exclude<Tier, 'normal'>, string>> = {
+  good: 'Good week!',
+  great: 'Great week!',
+  huge: 'Huge week!',
+};
+
 export function ScorePanel() {
   const view = tallyView.value;
   const p = preview.value;
@@ -322,11 +330,10 @@ export function ScorePanel() {
     label = 'With this piece';
   }
   // A tally's glow comes from its event's total, so it stays lit through the count rather
-  // than going dark until the total lands.
+  // than going dark until the total lands. It grows with I = log5(total ÷ pace) (§12, D-124).
   const glowTotal = view ? view.weekTotal : shown.total;
-  const ratio = glowTotal === null ? 0 : glowTotal / Math.max(1, view ? view.pace : pace);
-  const glow =
-    ratio >= FEEL.glowPace ? Math.min(1, Math.log(ratio + 1) / Math.log(FEEL.bigWeekPace * 3)) : 0;
+  const glow = glowOf(glowTotal, view ? view.pace : pace);
+  const tier = view?.tier && view.tier !== 'normal' ? view.tier : null;
   // This week's budget from economy pieces: the house as built, or with the placement. The
   // tally's own count shows it as a popup, so it's left out while one plays.
   const budget = view ? null : p?.legal ? p.budgetAfter : tally.budget;
@@ -352,7 +359,7 @@ export function ScorePanel() {
   const total = shown.total === null ? '…' : formatNumber(shown.total);
 
   return (
-    <div class={`score-panel ${view?.big ? 'big' : ''}`} style={{ '--glow': String(glow) }}>
+    <div class={`score-panel ${tier ? `tier-${tier}` : ''}`} style={{ '--glow': String(glow) }}>
       <Panel title={label} label={`${SCORE_LABELS.total} this week`}>
         <Celebration />
         <div class="equation" aria-live="polite">
@@ -408,7 +415,11 @@ export function ScorePanel() {
           {before && shown.total !== null && <Delta n={shown.total - before.total} />}
         </div>
         <Sparkles list={view ? view.sparkles : p?.legal ? p.xMults : tally.xMults} />
-        {view?.big && <div class="big-week">Big week!</div>}
+        {tier && (
+          <div class={`big-week tier-${tier}`} key={tier}>
+            {TIER_WORDS[tier]}
+          </div>
+        )}
         {budget !== null && (budget > 0 || (budgetBefore ?? 0) > 0) && (
           <p class="budget-line">
             <Icon name="coin" />

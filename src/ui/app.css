@@ -432,52 +432,7 @@ h3 {
   animation-name: popup-fade;
 }
 
-/* --- The big week's burst (the score panel itself is in hud/score.css) -------------- */
-
-/* The burst is fixed to the viewport, so the narrow, scrolling left column can't clip it. */
-.celebration-anchor {
-  position: absolute;
-  left: 50%;
-  top: 40%;
-  width: 0;
-  height: 0;
-}
-.celebration {
-  position: fixed;
-  width: 0;
-  height: 0;
-  pointer-events: none;
-  z-index: 30;
-}
-.celebration .confetti,
-.celebration .coin {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 7px;
-  height: 11px;
-  border-radius: 2px;
-  animation: burst 1.5s cubic-bezier(0.15, 0.8, 0.3, 1) forwards;
-}
-.celebration .coin {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, #fff3c4, #e0a83a 60%, #a8721a);
-}
-@keyframes burst {
-  0% {
-    transform: translate(0, 0) rotate(0);
-    opacity: 1;
-  }
-  70% {
-    opacity: 1;
-  }
-  100% {
-    transform: translate(var(--dx), calc(var(--dy) + 120px)) rotate(var(--spin));
-    opacity: 0;
-  }
-}
+/* The celebration ladder's pile and wash, and the particles, are in fx/fx.css. */
 
 /* The inspect panel is in hud/inspect.css. A good's effects, wherever they're listed: */
 
