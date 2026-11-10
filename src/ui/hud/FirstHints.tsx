@@ -81,7 +81,7 @@ const HINTS: Record<HintId, Hint> = {
   firstWeek: {
     title: 'Your first week',
     text:
-      `Pick a card (1–3), click the lot to place it, then End week. Each piece earns ` +
+      `Pick a card (1–4), click the lot to place it, then End week. Each piece earns ` +
       `${L.points} from what it touches, and ${L.mult} multiplies it into ${L.total}. ` +
       `Reach each milestone’s target before its weeks run out. Hover anything to read it.`,
     spot: 'overChecklist',

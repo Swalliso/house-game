@@ -11,7 +11,8 @@
 // Exact ties go to a random one of the best, from the same stream, so houses vary between runs.
 //
 // When even the best placement wouldn't raise this week's total, it rerolls if it can, and
-// passes rather than lose score. It never demolishes. Its options (makeGreedy) set when it
+// passes rather than lose score. A reroll redraws one row (D-121): the one whose cards did
+// worse this week, the Rooms row on a tie. It never demolishes. Its options (makeGreedy) set when it
 // completes a milestone early ('never' by default; 'always' as soon as it can; 'last' only in
 // the phase's last week) and whether it buys the strike service. It shops with the shop bot,
 // uses tools and supplies first (shop.ts), places reserve pieces, and scores hand fixtures'
@@ -28,6 +29,7 @@ import type {
   RunState,
 } from '../../src/rules/index.ts';
 import type { Policy } from './index.ts';
+import { DRAW_ROWS, rowOf } from '../../src/rules/draw.ts';
 import { fencePlans } from '../enclosure.ts';
 import { answerChangeOrder } from './orders.ts';
 import { shopAct, useTools, type StrikeMode } from './shop.ts';
@@ -179,15 +181,25 @@ export function makeGreedy(opts: GreedyOptions = {}): Policy {
       const passTotal = rules.scoreOnly(state, null);
       let best: (PlaceAction | InstallAction | RenovateAction)[] = [];
       let bestTotal = -Infinity;
+      // Each row's best total this week (D-121), for which row to reroll.
+      const rowBest = { rooms: -Infinity, layout: -Infinity };
       for (const play of [...shortlist(rules, state, plays, salt), ...exact]) {
         const total = rules.scoreOnly(state, play);
         if (total > bestTotal) {
           bestTotal = total;
           best = [play];
         } else if (total === bestTotal) best.push(play);
+        const card = play.from === 'hand' ? state.hand[play.i] : undefined;
+        if (card) {
+          const row = rowOf(rules.content, card);
+          rowBest[row] = Math.max(rowBest[row], total);
+        }
       }
       if (best.length === 0 || bestTotal <= passTotal) {
-        if (rules.canReroll(state).ok) return { t: 'reroll' };
+        if (rules.canReroll(state).ok) {
+          const row = DRAW_ROWS.reduce((a, b) => (rowBest[b] < rowBest[a] ? b : a));
+          return { t: 'reroll', row };
+        }
         if (best.length === 0 || bestTotal < passTotal) return { t: 'pass' };
       }
       return rng.pick(best);

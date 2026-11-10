@@ -1,16 +1,33 @@
-// Weighted hands (D-043, D-055): `handSize` distinct cards, each piece's draw weight scaled by
+// Weighted hands (D-043, D-055): distinct cards, each piece's draw weight scaled by
 // its complexity's percentage for the phase, so simple pieces show up more early in a run.
 // Fixtures join from their `fromPhase` at their own weight (D-050), and struck card types
 // (D-076) never come up again. A type at its limit in the client's checklist (one Kitchen,
 // at most two Living Rooms, …) draws at `drawAtLimitPct` of its weight (D-093's half-weight
-// draws, amending D-043): the draw reads the house only through that. Each hand has its own stream, `draw/<phase>/<slot>/<n>` (an
-// overtime week's slot is `ot<k>`), so a reroll, a redraw, or an extra week never shifts any
-// later hand: a strike changes the pool, never the stream. A member's room (M4b, D-103) is
-// never drawn, not even by the Catalog: it arrives with its member.
+// draws, amending D-043): the draw reads the house only through that. A hand is two rows
+// (D-121), Rooms and Layout, each drawn from its own cards on its own stream,
+// `draw/<phase>/<slot>/<n>/<row>` (an overtime week's slot is `ot<k>`), so a reroll, a swap,
+// or an extra week never shifts any later hand, and drawing one row never shifts the other: a
+// strike changes the pool, never the stream. A member's room (M4b, D-103) is never drawn, not
+// even by the Catalog: it arrives with its member.
 
-import type { Card, CardType, Content, Modifier, PieceDef, PieceId } from './index.ts';
-import { stream } from './rng.ts';
+import type { Card, CardType, Content, DrawRow, Modifier, PieceDef, PieceId } from './index.ts';
+import { stream, type Rng } from './rng.ts';
 import { matchesDef, rootType } from './selectors.ts';
+
+/** Rooms first: the hand's order, and the right column's. */
+export const DRAW_ROWS: readonly DrawRow[] = ['rooms', 'layout'];
+
+/**
+ * A card's row (D-121): where it's built. Rooms: indoor pieces that aren't connectors, and the
+ * fixtures that go in them. Layout: the yard, outbuildings, Hallways, and what a def names
+ * Layout itself (the Garage, the yard's fixtures).
+ */
+export function rowOf(content: Content, card: Card): DrawRow {
+  if (card.kind === 'fixture') return content.fixtures[card.id]?.row ?? 'rooms';
+  const def = content.pieces[card.id];
+  if (!def) return 'rooms';
+  return def.row ?? (def.category === 'indoor' && !def.connector ? 'rooms' : 'layout');
+}
 
 /** Is this card of a struck type? Shape variants share their type (the L-Kitchen is a Kitchen). */
 export function isStruck(content: Content, struck: readonly CardType[], card: Card): boolean {
@@ -43,6 +60,8 @@ export interface DrawOptions {
   special?: boolean;
   /** Root types at their limit in the checklist: they draw at `drawAtLimitPct` of their weight. */
   atLimit?: ReadonlySet<PieceId>;
+  /** Only this row's cards (D-121); unset, every card. */
+  row?: DrawRow;
 }
 
 export function drawWeights(
@@ -58,6 +77,7 @@ export function drawWeights(
   for (const def of Object.values(content.pieces)) {
     if (def.fromPhase > phase || def.member) continue;
     const card: Card = { kind: 'piece', id: def.id };
+    if (opts.row && rowOf(content, card) !== opts.row) continue;
     if (isStruck(content, struck, card)) continue;
     let weight: number;
     if (opts.special) {
@@ -75,6 +95,7 @@ export function drawWeights(
   for (const def of Object.values(content.fixtures)) {
     if (def.fromPhase > phase || def.drawWeight === 0) continue;
     const card: Card = { kind: 'fixture', id: def.id };
+    if (opts.row && rowOf(content, card) !== opts.row) continue;
     if (isStruck(content, struck, card)) continue;
     out.push({ card, weight: opts.special ? 100 : def.drawWeight * 100 });
   }
@@ -86,24 +107,20 @@ export function slotKey(slot: number, overtimeWeek: number): string {
   return overtimeWeek > 0 ? `ot${overtimeWeek}` : String(slot);
 }
 
-export function drawKey(phase: number, slot: string, n: number): string {
-  return `draw/${phase}/${slot}/${n}`;
+/** A draw's stream key; a row's draw adds the row (D-121). */
+export function drawKey(phase: number, slot: string, n: number, row?: DrawRow): string {
+  return row ? `draw/${phase}/${slot}/${n}/${row}` : `draw/${phase}/${slot}/${n}`;
 }
 
-/** A hand of distinct cards, weighted, without replacement. Shorter if the pool is smaller. */
-export function drawHand(
-  content: Content,
-  seed: string,
-  phase: number,
-  slot: string,
-  n: number,
-  handSize: number,
-  opts: DrawOptions = {},
-): Card[] {
-  const rng = stream(seed, drawKey(phase, slot, n));
-  const pool = drawWeights(content, phase, opts);
-  const hand: Card[] = [];
-  while (hand.length < handSize && pool.length > 0) {
+/** The stream for the swaps into a row's k-th card (D-121): its draw's key, then `swap<k>`. */
+export function swapKey(phase: number, slot: string, n: number, row: DrawRow, k: number): string {
+  return `${drawKey(phase, slot, n, row)}/swap${k}`;
+}
+
+/** Up to `count` distinct cards from a weighted pool, without replacement. */
+function pickDistinct(rng: Rng, pool: { card: Card; weight: number }[], count: number): Card[] {
+  const out: Card[] = [];
+  while (out.length < count && pool.length > 0) {
     let total = 0;
     for (const p of pool) total += p.weight;
     let r = rng.int(total);
@@ -112,17 +129,63 @@ export function drawHand(
       r -= pool[i]!.weight;
       i++;
     }
-    hand.push(pool[i]!.card);
+    out.push(pool[i]!.card);
     pool.splice(i, 1);
   }
-  return hand;
+  return out;
+}
+
+/**
+ * A hand of distinct cards, weighted, without replacement. Shorter if the pool is smaller.
+ * With `opts.row`, one row of the hand, on that row's stream (D-121).
+ */
+export function drawHand(
+  content: Content,
+  seed: string,
+  phase: number,
+  slot: string,
+  n: number,
+  size: number,
+  opts: DrawOptions = {},
+): Card[] {
+  const rng = stream(seed, drawKey(phase, slot, n, opts.row));
+  return pickDistinct(rng, drawWeights(content, phase, opts), size);
+}
+
+const sameCard = (a: Card, b: Card) => a.kind === b.kind && a.id === b.id;
+
+/**
+ * The cards that can be swapped into a row's k-th card, in the order they're tried (D-121):
+ * up to `tries` distinct cards from the row's pool, leaving out every card in `exclude` (the
+ * row as it stands, the card being replaced among them).
+ */
+export function swapCandidates(
+  content: Content,
+  seed: string,
+  phase: number,
+  slot: string,
+  n: number,
+  k: number,
+  tries: number,
+  exclude: readonly Card[],
+  opts: DrawOptions & { row: DrawRow },
+): Card[] {
+  const rng = stream(seed, swapKey(phase, slot, n, opts.row, k));
+  const pool = drawWeights(content, phase, opts).filter(
+    (p) => !exclude.some((c) => sameCard(c, p.card)),
+  );
+  return pickDistinct(rng, pool, tries);
 }
 
 /**
  * Every card type that can come up in the weekly draw at some point in the run, by its root
- * type: what D-076's strike can name, and what its floor counts.
+ * type: what D-076's strike can name, and what its floor counts. With `row`, only that row's.
  */
-export function drawableTypes(content: Content, struck: readonly CardType[] = []): CardType[] {
+export function drawableTypes(
+  content: Content,
+  struck: readonly CardType[] = [],
+  row?: DrawRow,
+): CardType[] {
   const out: CardType[] = [];
   const seen = new Set<string>();
   for (const def of Object.values(content.pieces)) {
@@ -131,11 +194,13 @@ export function drawableTypes(content: Content, struck: readonly CardType[] = []
     if (seen.has(root)) continue;
     seen.add(root);
     const t: CardType = { kind: 'piece', id: root };
+    if (row && rowOf(content, t) !== row) continue;
     if (!isStruck(content, struck, t)) out.push(t);
   }
   for (const def of Object.values(content.fixtures)) {
     if (def.drawWeight === 0) continue;
     const t: CardType = { kind: 'fixture', id: def.id };
+    if (row && rowOf(content, t) !== row) continue;
     if (!isStruck(content, struck, t)) out.push(t);
   }
   return out;

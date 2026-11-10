@@ -5,8 +5,8 @@
 // - copy (Copy Machine): a placed piece's card into the reserve (needs a free slot); never a
 //   member's room (M4b)
 // - weekModifiers (Rush Order, Open House Party): modifiers for this week's tally only
-// - specialHand (Catalog): this hand redrawn from special pieces and fixtures, as a draw
-//   (n + 1) that doesn't use a reroll
+// - specialHand (Catalog): this hand redrawn from special pieces and fixtures, both rows, as a
+//   draw (n + 1) that doesn't use a reroll; it has no swaps (D-121)
 // - advanceTimers (Fertilizer): every piece's ageBonus goes up
 // - reward (Dumpster), levelSet (Remodel Plans: +1 level for a set type, for the run)
 // - extraPlay (Weekend Crew, D-075/D-083): this week's next play doesn't end the week; one a week
@@ -145,7 +145,8 @@ export function useTool(
         reroll: false,
         special: true,
       });
-      return { ...s, hand, draws: s.draws + 1 };
+      // The old hand's swap notes go with it.
+      return { ...s, hand, draws: s.draws + 1, swapped: [] };
     }
     case 'advanceTimers': {
       events.push(used);

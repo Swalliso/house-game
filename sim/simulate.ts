@@ -28,6 +28,7 @@ import type {
   Rules,
   RunState,
   ShopOffer,
+  SwappedCard,
   Tally,
 } from '../src/rules/index.ts';
 import { contentHash, encodeRunCode, placedCells, stream, weekTotal } from '../src/rules/index.ts';
@@ -138,8 +139,9 @@ export interface BuildStats {
 }
 
 /**
- * One piece type over a run. "Offered" counts each week's first hand (and the free redraw, if
- * nothing in it fit), never rerolls or the Catalog's special hand.
+ * One piece type over a run. "Offered" counts each week's first draw, never rerolls or the
+ * Catalog's special hand. A card the draw swapped out (D-121) counts as offered and dead, and
+ * the card it brought as offered too.
  */
 export interface PieceStats {
   offered: number;
@@ -418,15 +420,25 @@ export function simulateRun(
   const weeksLeftInRun = (st: RunState) =>
     (phaseCount - 1 - st.phase) * b.weeksPerPhase + rules.weeksLeft(st);
 
-  /** A week's first hand: offers and dead cards per piece type, and Fence-type cards. */
-  const countHand = (st: RunState, hand: readonly Card[], phase: number, allDead: boolean) => {
-    hand.forEach((card, i) => {
+  /**
+   * A week's first draw: offers and dead cards per piece type, and Fence-type cards. The cards
+   * its swaps replaced (D-121) had no play, so they count as dead offers.
+   */
+  const countHand = (
+    st: RunState,
+    hand: readonly Card[],
+    phase: number,
+    swapped: readonly SwappedCard[] = [],
+  ) => {
+    const offer = (card: Card, dead: boolean) => {
       if (card.kind !== 'piece') return;
       const ps = statsOf(card.id);
       ps.offered++;
-      if (allDead || !rules.cardFits(st, i)) ps.dead++;
+      if (dead) ps.dead++;
       if (content.pieces[card.id].wall && phase < phaseCount) wallOffers[phase]!++;
-    });
+    };
+    for (const w of swapped) offer(w.was, true);
+    hand.forEach((card, i) => offer(card, !rules.cardFits(st, i)));
   };
 
   const touchesSameType = (o: Occupancy, uid: number, defId: PieceId): boolean => {
@@ -577,7 +589,7 @@ export function simulateRun(
     });
   };
 
-  if (s.screen === 'build') countHand(s, s.hand, s.phase, false);
+  if (s.screen === 'build') countHand(s, s.hand, s.phase, s.swapped);
   while (
     (s.screen === 'build' || s.screen === 'shop' || s.screen === 'changeOrder') &&
     (opts.maxWeeks === undefined || s.week <= opts.maxWeeks)
@@ -710,17 +722,13 @@ export function simulateRun(
       }
     }
     if (drawn) {
-      // The week's first hand, and the free redraw when nothing in it fit (so all of it was
-      // dead). Rerolls and the Catalog's special hand don't count as offers.
-      const hands = events.filter(
-        (e): e is Extract<GameEvent, { t: 'handDrawn' }> =>
-          e.t === 'handDrawn' && !e.reroll && !e.special,
-      );
-      hands.forEach((e, k) => {
-        const redrawn = !e.free && hands[k + 1]?.free === true;
-        const at = redrawn || state.hand === e.hand ? state : { ...state, hand: e.hand };
-        countHand(at, e.hand, e.phase, redrawn);
-      });
+      // The week's first draw, with its swaps. Rerolls and the Catalog's special hand don't
+      // count as offers.
+      for (const e of events) {
+        if (e.t !== 'handDrawn' || e.reroll || e.special) continue;
+        const at = state.hand === e.hand ? state : { ...state, hand: e.hand };
+        countHand(at, e.hand, e.phase, e.swapped);
+      }
     }
     s = state;
   }

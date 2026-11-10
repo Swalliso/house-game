@@ -352,14 +352,14 @@ interface RunState {
   score: number                        // D-028: one running total
   phaseStartScore: number
   budget: number
-  hand: Card[]                         // this week's cards (handSize, 3 by default); a Card is a piece or a fixture
+  hand: Card[]                         // this week's cards, the Rooms row then the Layout row (D-121: roomsRow 2, layoutRow 2); a Card is a piece or a fixture
   reserve: { id: PieceId; crew?: true }[]   // bought pieces (2 slots) + crew starting pieces (extra slots, marked crew)
   supplies: (FixtureId | ToolId)[]     // bought fixtures and tools (3 slots), used as free actions
   rerollsLeft: number                  // reset to rerollsPerPhase at each phase start
   bonusRerolls: number                 // bought from the shop; spent after rerollsLeft and never expire
   demolitionsLeft: number
   overtimeLeft: number
-  freeRedrawUsed: boolean
+  swapped: { i: number; was: Card }[]  // D-121: the hand's cards that replaced a card with no play, and what each replaced
   blueprints: { id: BlueprintId; boughtWeek: number }[]   // 4 slots; sells for half its list price
   upgrades: UpgradeId[]                // company upgrades, permanent for the run
   servicesBought: { reroll: number; demolition: number }              // their prices rise per purchase
@@ -412,7 +412,7 @@ type Action =
 
 `GameEvent` covers:
 
-- `handDrawn` (with `free` for the free redraw)
+- `handDrawn` (the final hand; with `row` for a one-row reroll, and `free` and `swapped` when swaps replaced cards with no play, D-121)
 - `placed`, `installed`, `demolished`, `transformed`, `moved`
 - `toolUsed`, `findClaimed` (a find's reward, for its own little moment)
 - `tally` (week, per-piece lines, set lines, points, mult, each ×Mult source, total, budget, `fastForward`)
@@ -467,8 +467,8 @@ The UI keeps an event queue and plays it through an animation director (place �
 **Start of week:**
 
 1. Transforms resolve (a Sapling old enough becomes a Tree), so the board the player sees is the board that scores.
-2. A hand of `handSize` distinct cards (3 by default) is drawn: pieces, plus fixtures from phase 2. A type at its limit in the checklist draws at half weight (D-104).
-3. If none of the week's **first** hand has a legal spot (or, for a fixture, a legal host), there's one free redraw. It never follows a manual reroll, and the reserve doesn't count.
+2. The hand is drawn in two rows (D-121): `roomsRow` distinct Rooms cards (2) and `layoutRow` distinct Layout cards (2), each from its own pool: pieces, plus fixtures from phase 2. A type at its limit in the checklist draws at half weight (D-104).
+3. Each card with no play (no legal spot, no legal host, and no Renovation) is swapped for another card from its row, up to `swapTries` (3) tries: the first with a play, else the last tried. A reroll redraws one row (or both) and swaps the same way; the reserve doesn't count.
 
 **Fast-forward (D-040):**
 
@@ -740,7 +740,7 @@ type Modifier =
 
 type RuleKey = 'rerollsPerPhase' | 'demolitions' | 'overtime' | 'reserveSlots'
              | 'shopPricePct' | 'earlyRewardPct'
-             | 'blueprintSlots' | 'supplySlots' | 'handSize' | 'specBonus' | 'interestMax'   // shop goods
+             | 'blueprintSlots' | 'supplySlots' | 'roomsRow' | 'layoutRow' | 'specBonus' | 'interestMax'   // shop goods (D-121: the rows replace handSize)
 type RunStat = 'milestonesEarly'                    // counts for scaling ×Mult (Ahead of Schedule)
 // Values combine as (base + Σ add) × (100 + Σ pct) / 100, integer, rounded half up.
 
@@ -898,7 +898,8 @@ Shape variants (L-Kitchen, the long Hallway) are separate cards that share a typ
   |---|---|
   | `lot/<attempt>` | Lot features (the attempt number goes up if a lot is regenerated) |
   | `jobs/<i>` | Contract *i*'s seed on the job board. The chosen contract's seed becomes the run seed. The board itself sits outside `apply` and the run code. |
-  | `draw/<phase>/<slot>/<n>` | Each hand. `slot` is the week in the phase, or `ot1`/`ot2` for overtime. `n` counts this week's draws: 0 for the first, then +1 for the free redraw, each reroll, and the Catalog tool. |
+  | `draw/<phase>/<slot>/<n>/<row>` | Each row of a hand (D-121: `rooms`, `layout`). `slot` is the week in the phase, or `ot1`/`ot2` for overtime. `n` counts this week's draws: 0 for the first, then +1 for each reroll and the Catalog tool. |
+  | `draw/<phase>/<slot>/<n>/<row>/swap<k>` | The swaps for the row's k-th card, when it has no play (D-121). They don't count as draws. |
   | `shop/<phase>/<refresh>` | Shop offers |
   | `co/<phase>` | The change order offered |
   | `crate/<phase>/<refresh>/<slot>` | The 3 options inside a crate (and the first shop's free Housewarming crate) |
@@ -1693,8 +1694,8 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
   - offered in every phase, including the last, where it ends the run with the bonus
   - auto-complete off by default
 - **Overtime:** 2 per run, spent automatically one week at a time (§4), shown as a clock counter.
-- **Rerolls:** 1 per phase (General Contractor: 2), not carried over (bought rerolls are, in `bonusRerolls`); a free action that redraws the whole hand.
-- **Free redraw:** once per week, when none of the 3 cards fits.
+- **Rerolls:** 1 per phase (General Contractor: 2), not carried over (bought rerolls are, in `bonusRerolls`); a free action that redraws one row of the hand, the player's pick (D-121).
+- **Swaps** (D-121, replacing the free redraw): a card with no play is swapped for another from its row, up to 3 tries.
 - **Demolition:**
   - 2 per run; a free action
   - removes a whole piece, a Boulder, or the Old Shed (never water), with no refund; the Old Shed pays its find reward
@@ -1982,7 +1983,7 @@ The model is Balatro's vouchers: one per visit, pricier, and permanent for the r
 | Storage Unit | `rule reserveSlots +1` |
 | Tool Belt | `rule supplySlots +1` |
 | Drafting Table | `rule blueprintSlots +1` |
-| Bigger Truck | `rule handSize +1`: 4 cards a week |
+| Bigger Truck | `rule roomsRow +1`: 3 Rooms cards and 2 Layout cards a week (D-121) |
 | Foreman | `rule rerollsPerPhase +1` |
 | Supplier Discount | `rule shopPricePct −25` (not services or the refresh) |
 | Savings Account | `rule interestMax +3`: +1 budget per 5 held at each milestone, up to 3 |

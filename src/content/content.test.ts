@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { Content, PlaceAction } from '../rules/index.ts';
+import type { Content, DrawRow, PlaceAction } from '../rules/index.ts';
 import { cardText, createRules, rules } from '../rules/index.ts';
+import { drawWeights, rowOf } from '../rules/draw.ts';
 import { computeLayout } from '../rules/layout.ts';
 import { tallyHouse } from '../rules/scoring.ts';
 import { houseFrom, emptyRows, type Placement } from '../rules/testing.ts';
@@ -93,6 +94,61 @@ describe('content', () => {
       'Final Walkthrough',
     ]);
     expect(Object.keys(CONTENT.crews)).toEqual(['generalContractor', 'landscaper', 'architect']);
+  });
+
+  it('deals the week in two rows: Rooms, then Layout (D-121)', () => {
+    // Rooms: the rooms and the fixtures that go in them. Layout: hallways, the Garage, the yard,
+    // outbuildings, and the yard's fixtures.
+    const pool = drawWeights(CONTENT, 6, {});
+    const ids = (row: DrawRow) =>
+      pool.filter((w) => rowOf(CONTENT, w.card) === row).map((w) => w.card.id);
+    expect(ids('rooms')).toEqual([
+      'bedroom',
+      'bathroom',
+      'kitchen',
+      'lKitchen',
+      'diningRoom',
+      'livingRoom',
+      'closet',
+      'homeOffice',
+      // The Sunroom, a room, from Foundation (D-120).
+      'sunroom',
+      'fireplace',
+      'skylight',
+      'blackoutCurtains',
+      'soundproofing',
+      'kitchenIsland',
+      'bunkBeds',
+      'bayWindow',
+    ]);
+    expect(ids('layout')).toEqual([
+      'hallway',
+      'longHallway',
+      'garage',
+      'lawn',
+      'sapling',
+      'flowerBed',
+      'herbGarden',
+      'patio',
+      'fence',
+      'driveway',
+      'doghouse',
+      'treehouse',
+      'greenhouse',
+      'sprinkler',
+      'pergola',
+      'gardenLights',
+    ]);
+    // Two of each a week; the Landscaper's Layout row has three.
+    for (const crewId of ['generalContractor', 'landscaper', 'architect'] as const) {
+      const s = rules.newRun({ seed: 'rows', clientId: 'hendersons', crewId, mode: 'standard' });
+      const layout = crewId === 'landscaper' ? 3 : 2;
+      expect(s.hand.map((c) => rowOf(CONTENT, c))).toEqual([
+        'rooms',
+        'rooms',
+        ...Array<DrawRow>(layout).fill('layout'),
+      ]);
+    }
   });
 });
 

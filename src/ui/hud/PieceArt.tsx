@@ -3,7 +3,8 @@
 // furniture and outline walls, or a yard piece's ground and props. Hand cards show it, and so do
 // the shop's art slots and How to play's sets. It's drawn unrotated, so a card never changes
 // size when the piece turns, at about 1 CSS px per art px on whole device pixels (pictureScale).
-// The picked card's turn shows on its ShapeGlyph instead.
+// The picked card's turn shows on its ShapeGlyph instead. A narrow hand card shows it as a
+// thumbnail (D-121, hand.css), at the --thumb size it carries (thumbScale).
 
 import { useLayoutEffect, useMemo, useRef } from 'preact/hooks';
 import { CONTENT, shapeCells, type FixtureId, type PieceId, type Rot } from '../../rules/index.ts';
@@ -12,23 +13,30 @@ import { isIndoor } from '../board/geometry.ts';
 import { paintArt, paintPieceArt, pieceArtPlan } from '../board/HouseLayers.tsx';
 import { Icon } from '../kit/kit.tsx';
 import { FIXTURE_ICONS } from '../sprites.ts';
-import { devicePixelRatio, pictureScale } from '../theme/pixel.ts';
+import { devicePixelRatio, pictureScale, thumbScale } from '../theme/pixel.ts';
 
 export function PieceArt({ id, class: cls }: { id: PieceId; class?: string }) {
-  const scale = pictureScale(devicePixelRatio.value);
+  const dpr = devicePixelRatio.value;
+  const scale = pictureScale(dpr);
+  const thumb = thumbScale(dpr);
   const plan = useMemo(() => pieceArtPlan(id, 0), [id]);
   const ref = useRef<HTMLCanvasElement>(null);
   // Before the browser paints, so the picture is never seen blank.
   useLayoutEffect(() => paintPieceArt(ref.current, plan), [plan]);
   const { frame } = plan;
-  const size = { width: `${frame.w * scale}px`, height: `${frame.h * scale}px` };
+  const size = {
+    width: `${frame.w * scale}px`,
+    height: `${frame.h * scale}px`,
+    '--thumb-w': `${frame.w * thumb}px`,
+    '--thumb-h': `${frame.h * thumb}px`,
+  };
   return (
     <span
       class={`piece-art ${isIndoor(id) ? 'indoor' : 'yard'} ${cls ?? ''}`}
       style={size}
       aria-hidden="true"
     >
-      <canvas ref={ref} width={frame.w} height={frame.h} style={size} />
+      <canvas ref={ref} width={frame.w} height={frame.h} />
     </span>
   );
 }

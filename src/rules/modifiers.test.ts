@@ -1057,7 +1057,8 @@ const RULE_KEYS: Record<RuleKey, true> = {
   rerollsPerPhase: true,
   demolitions: true,
   overtime: true,
-  handSize: true,
+  roomsRow: true,
+  layoutRow: true,
   earlyRewardPct: true,
   reserveSlots: true,
   supplySlots: true,
@@ -1070,26 +1071,32 @@ const RULE_KEYS: Record<RuleKey, true> = {
 describe('rule', () => {
   const active = (...mods: Modifier[]): ActiveMod[] =>
     mods.map((mod) => ({ mod, source: { kind: 'crew', id: 'generalContractor' }, since: 0 }));
-  const hand = (...mods: Modifier[]) => ruleFrom(C, active(...mods), 'handSize');
+  const slots = (...mods: Modifier[]) => ruleFrom(C, active(...mods), 'supplySlots');
 
   it('ruleFrom: (base + Σ add) × (100 + Σ pct) / 100, rounded half up, never below 0', () => {
-    // handSize's base is 3.
-    expect(hand()).toBe(3);
+    // supplySlots' base is 3.
+    expect(slots()).toBe(3);
     expect(
-      hand({ kind: 'rule', key: 'handSize', add: 1 }, { kind: 'rule', key: 'handSize', add: 1 }),
+      slots(
+        { kind: 'rule', key: 'supplySlots', add: 1 },
+        { kind: 'rule', key: 'supplySlots', add: 1 },
+      ),
     ).toBe(5);
     // (3 + 2) × 1.5 = 7.5 → 8.
-    expect(hand({ kind: 'rule', key: 'handSize', add: 2, pct: 50 })).toBe(8);
+    expect(slots({ kind: 'rule', key: 'supplySlots', add: 2, pct: 50 })).toBe(8);
     // Percentages add: 3 × (100 + 25 + 25)% = 4.5 → 5.
     expect(
-      hand({ kind: 'rule', key: 'handSize', pct: 25 }, { kind: 'rule', key: 'handSize', pct: 25 }),
+      slots(
+        { kind: 'rule', key: 'supplySlots', pct: 25 },
+        { kind: 'rule', key: 'supplySlots', pct: 25 },
+      ),
     ).toBe(5);
     // 3 × 0.5 = 1.5 → 2.
-    expect(hand({ kind: 'rule', key: 'handSize', pct: -50 })).toBe(2);
-    expect(hand({ kind: 'rule', key: 'handSize', add: -5 })).toBe(0);
-    expect(hand({ kind: 'rule', key: 'handSize', pct: -200 })).toBe(0);
+    expect(slots({ kind: 'rule', key: 'supplySlots', pct: -50 })).toBe(2);
+    expect(slots({ kind: 'rule', key: 'supplySlots', add: -5 })).toBe(0);
+    expect(slots({ kind: 'rule', key: 'supplySlots', pct: -200 })).toBe(0);
     // Other keys and other kinds don't count.
-    expect(hand({ kind: 'rule', key: 'demolitions', add: 4 }, { kind: 'mult', add: 50 })).toBe(3);
+    expect(slots({ kind: 'rule', key: 'demolitions', add: 4 }, { kind: 'mult', add: 50 })).toBe(3);
   });
 
   it('every rule key has a base in balance, and rules.rule reads the crew and the blueprints', () => {
@@ -1120,17 +1127,18 @@ describe('rule', () => {
     expect(rules.rule(dream, 'specBonus')).toBe(35);
   });
 
-  it("a blueprint's rules change the run: slots, hand size, and the next phase's rerolls", () => {
+  it("a blueprint's rules change the run: slots, a row of the hand, and the next phase's rerolls", () => {
     const c = withBlueprint([
       { kind: 'rule', key: 'reserveSlots', add: 1 },
       { kind: 'rule', key: 'supplySlots', add: 2 },
       { kind: 'rule', key: 'blueprintSlots', add: 1 },
-      { kind: 'rule', key: 'handSize', add: 1 },
+      { kind: 'rule', key: 'roomsRow', add: 1 },
       { kind: 'rule', key: 'rerollsPerPhase', add: 1 },
     ]);
     const r = createRules(c);
     let s = runOn(r, [['bedroom', 0, 0]]);
-    expect(s.hand).toHaveLength(3);
+    // Two rows of 2 (D-121).
+    expect(s.hand).toHaveLength(4);
     expect(r.slots(s)).toEqual({ reserve: 2, supplies: 3, blueprints: 4 });
     s = r.apply(s, {
       t: 'debug',
@@ -1138,9 +1146,9 @@ describe('rule', () => {
       good: { kind: 'blueprint', id: TEST_PLAN },
     }).state;
     expect(r.slots(s)).toEqual({ reserve: 3, supplies: 5, blueprints: 5 });
-    // The next hand drawn has 4 cards.
+    // The next hand drawn has a third Rooms card: 5 cards.
     s = r.apply(s, { t: 'reroll' }).state;
-    expect(s.hand).toHaveLength(4);
+    expect(s.hand).toHaveLength(5);
     // This phase's rerolls are already set; the next phase starts with 1 + 1 (crew) + 1.
     expect(s.rerollsLeft).toBe(1);
     s = applyAll(r, s, [PASS, PASS]).state;

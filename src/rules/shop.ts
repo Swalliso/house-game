@@ -16,7 +16,7 @@
 // - Selling pays half the item's price at the current discount, rounded down, whatever was
 //   paid, so buying on sale and selling back is never a profit.
 // - The strike service (D-076) names a card type, which never comes up in the draws again.
-//   At least `strikeMinTypes` drawable types always remain.
+//   At least `strikeMinTypes` drawable types always remain in each row of the draw (D-121).
 // - M3b: tools (rarity-weighted, into supplies), a crate (pick 1 of its options from the
 //   `crate/<shop>/<refresh>/<slot>` stream), and one company upgrade per visit from shop 2,
 //   from `shop/<shop>/upgrade` so a refresh keeps it. Shop 1 opens with the free Housewarming
@@ -44,7 +44,7 @@ import type {
   ToolId,
   UpgradeId,
 } from './index.ts';
-import { drawableTypes, isStruck } from './draw.ts';
+import { DRAW_ROWS, drawableTypes, isStruck } from './draw.ts';
 import { ruleValue } from './modifiers.ts';
 import { stream, type Rng } from './rng.ts';
 import { roundHalfUp } from './scoring.ts';
@@ -61,6 +61,7 @@ export const SHOP_REASONS = {
   reserveFull: 'Your reserve is full. Place a piece from it first.',
   suppliesFull: 'Your supplies are full. Use or sell one first.',
   noStrike: 'There’s nothing left to strike.',
+  rowFloor: 'Striking it would leave too few cards in its row of the draw.',
   notOpen: 'The shop isn’t open.',
   picking: 'Pick from your crate first.',
 } as const;
@@ -185,10 +186,12 @@ export function sellPrice(content: Content, state: RunState, list: number): numb
   return Math.floor((discounted(content, state, list) * content.balance.shop.sellPct) / 100);
 }
 
-/** Card types the strike service could name now. */
+/** Card types the strike service could name now: any whose row keeps its floor (D-121). */
 export function strikeOptions(content: Content, state: RunState): CardType[] {
-  const left = drawableTypes(content, state.struck);
-  return left.length - 1 >= content.balance.shop.strikeMinTypes ? left : [];
+  return DRAW_ROWS.flatMap((row) => {
+    const left = drawableTypes(content, state.struck, row);
+    return left.length - 1 >= content.balance.shop.strikeMinTypes[row] ? left : [];
+  });
 }
 
 export function canStrike(content: Content, state: RunState, type: CardType): Availability {
@@ -206,7 +209,11 @@ export function canStrike(content: Content, state: RunState, type: CardType): Av
     return { ok: false, reason: 'That card is already struck.' };
   }
   if (!options.some((o) => o.kind === type.kind && o.id === type.id)) {
-    return { ok: false, reason: 'That card isn’t in the draws.' };
+    // A type still drawn whose row is at its floor (D-121), or one never drawn at all.
+    const drawn = drawableTypes(content, state.struck).some(
+      (o) => o.kind === type.kind && o.id === type.id,
+    );
+    return { ok: false, reason: drawn ? SHOP_REASONS.rowFloor : 'That card isn’t in the draws.' };
   }
   return { ok: true };
 }

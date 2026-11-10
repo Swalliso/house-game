@@ -4,6 +4,9 @@
 
 import type {
   Balance,
+  Card,
+  GameEvent,
+  SwappedCard,
   BlueprintDef,
   BlueprintId,
   ChangeOrderDef,
@@ -36,6 +39,7 @@ import type {
   UpgradeDef,
   UpgradeId,
 } from './index.ts';
+import { DRAW_ROWS, drawHand, type DrawOptions } from './draw.ts';
 import { placedCells } from './grid.ts';
 import { lotFromRows, terrainAt } from './lot.ts';
 import { addPiece } from './placement.ts';
@@ -147,6 +151,7 @@ export const TEST_PIECES: Record<PieceId, PieceDef> = {
     id: 'garage',
     name: 'Garage',
     category: 'indoor',
+    row: 'layout',
     shape: ['##', '##'],
     tags: ['Loud'],
     complexity: 2,
@@ -560,17 +565,27 @@ export const TEST_FIXTURES: Record<FixtureId, FixtureDef> = {
     { all: [ROOM, { property: 'exterior' }] },
     [{ kind: 'grantView', target: HOST }],
   ),
-  sprinkler: fixture('sprinkler', 'Sprinkler', 'common', { piece: 'lawn' }, [
-    { kind: 'earn', target: HOST, pct: 100 },
-  ]),
-  pergola: fixture('pergola', 'Pergola', 'uncommon', { piece: 'patio' }, [
-    { kind: 'grantView', target: HOST },
-    { kind: 'earn', target: HOST, pct: 50 },
-  ]),
-  gardenLights: fixture('gardenLights', 'Garden Lights', 'common', { property: 'yard' }, [
-    { kind: 'grantTag', target: HOST, tag: 'Pretty' },
-    { kind: 'earn', target: { all: [HOST, { in: 'frontYard' }] }, pct: 50 },
-  ]),
+  // The yard's fixtures draw in the Layout row (D-121).
+  sprinkler: {
+    ...fixture('sprinkler', 'Sprinkler', 'common', { piece: 'lawn' }, [
+      { kind: 'earn', target: HOST, pct: 100 },
+    ]),
+    row: 'layout',
+  },
+  pergola: {
+    ...fixture('pergola', 'Pergola', 'uncommon', { piece: 'patio' }, [
+      { kind: 'grantView', target: HOST },
+      { kind: 'earn', target: HOST, pct: 50 },
+    ]),
+    row: 'layout',
+  },
+  gardenLights: {
+    ...fixture('gardenLights', 'Garden Lights', 'common', { property: 'yard' }, [
+      { kind: 'grantTag', target: HOST, tag: 'Pretty' },
+      { kind: 'earn', target: { all: [HOST, { in: 'frontYard' }] }, pct: 50 },
+    ]),
+    row: 'layout',
+  },
   chandelier: fixture(
     'chandelier',
     'Chandelier',
@@ -877,7 +892,8 @@ export const TEST_BALANCE: Balance = {
     rerollsPerPhase: 1,
     demolitions: 2,
     overtime: 2,
-    handSize: 3,
+    roomsRow: 2,
+    layoutRow: 2,
     earlyRewardPct: 100,
     reserveSlots: 2,
     supplySlots: 3,
@@ -920,7 +936,7 @@ export const TEST_BALANCE: Balance = {
       strike: { base: 2, step: 1, max: 5 },
     },
     skipReward: 1,
-    strikeMinTypes: 8,
+    strikeMinTypes: { rooms: 5, layout: 4 },
     crateOptions: 3,
     interestPer: 5,
   },
@@ -936,6 +952,7 @@ export const TEST_BALANCE: Balance = {
   ],
   renovate: { pointsPerLevel: 4, maxLevel: 2 },
   drawAtLimitPct: 50,
+  swapTries: 3,
   jobBoard: {
     contracts: 3,
     rarity: { common: 65, uncommon: 27, rare: 8 },
@@ -1020,7 +1037,7 @@ export const TEST_UPGRADES: Record<UpgradeId, UpgradeDef> = {
   }),
   biggerTruck: testUpgrade('biggerTruck', 'Bigger Truck', 8, {
     kind: 'rule',
-    key: 'handSize',
+    key: 'roomsRow',
     add: 1,
   }),
   foreman: testUpgrade('foreman', 'Foreman', 7, { kind: 'rule', key: 'rerollsPerPhase', add: 1 }),
@@ -1289,4 +1306,37 @@ export function houseFrom(
 /** An empty lot of the given size. */
 export function emptyRows(width: number, height: number): string[] {
   return Array.from({ length: height }, () => '.'.repeat(width));
+}
+
+/**
+ * A hand as the rules draw it (D-121), before any swaps: the Rooms row, then the Layout row,
+ * each on its own stream. Row sizes default to the content's rules.
+ */
+export function drawRows(
+  content: Content,
+  seed: string,
+  phase: number,
+  slot: string,
+  n: number,
+  opts: DrawOptions = {},
+  sizes: { rooms?: number; layout?: number } = {},
+): Card[] {
+  const size = {
+    rooms: sizes.rooms ?? content.balance.rules.roomsRow,
+    layout: sizes.layout ?? content.balance.rules.layoutRow,
+  };
+  return DRAW_ROWS.flatMap((row) =>
+    drawHand(content, seed, phase, slot, n, size[row], { ...opts, row }),
+  );
+}
+
+/** A hand before its swaps (D-121): each swapped card back to the one it replaced. */
+export function beforeSwaps(hand: readonly Card[], swapped: readonly SwappedCard[] = []): Card[] {
+  return hand.map((c, i) => swapped.find((w) => w.i === i)?.was ?? c);
+}
+
+/** A `handDrawn` event's hand as it was drawn, before its swaps. */
+export function drawnBefore(e: GameEvent | undefined): Card[] {
+  if (e?.t !== 'handDrawn') throw new Error(`not a handDrawn event: ${e?.t}`);
+  return beforeSwaps(e.hand, e.swapped);
 }

@@ -1,15 +1,144 @@
 /* The hand (M5a): paper cards with the piece's picture, the free actions, and the sticky action
-   bar with End week as the one primary button. Built on kit.css. */
+   bar with End week as the one primary button. Built on kit.css. D-121: the cards in two rows,
+   Rooms and Layout, each under a label with its own Reroll; Demolish on the plank. */
 
-.hand .panel-body {
+.hand .panel-body,
+.hand-row {
   gap: var(--space-3);
 }
-.free-redraw {
-  flex: none;
+
+/* --- The rows (D-121) ------------------------------------------------------------------ */
+
+.hand-row {
+  display: flex;
+  flex-direction: column;
+  container: hand-row / inline-size;
+}
+/* The row's label, a rule, and its Reroll: "ROOMS ───── [⟳ Reroll 2]". */
+.hand-row-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  container: hand-row-head / inline-size;
+}
+.hand-row-label {
+  display: flex;
+  flex: 1 0 auto;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  font-size: var(--fs-body);
+  font-weight: 700;
+  text-transform: uppercase;
   color: var(--ink-soft);
+}
+.hand-row-label::after {
+  content: '';
+  flex: 1;
+  height: var(--px);
+  background: var(--paper-line);
+}
+.hand-row-head .free-action,
+.hand .panel-head .free-action {
+  flex: none;
+}
+.hand .panel-head {
+  container: hand-plank / inline-size;
+}
+/* A narrow column: Reroll and Demolish show their icon and count (their titles name them),
+   so the row's label and the plank's title keep their words. Demolishing, Stop keeps its
+   word. In the pixel font a letter is 1rem; the readable font's are narrower. */
+@container hand-row-head (max-width: 17rem) {
+  [data-font='pixel'] .free-action-word {
+    display: none;
+  }
+}
+@container hand-plank (max-width: 24rem) {
+  [data-font='pixel'] .free-action:not(.active) .free-action-word {
+    display: none;
+  }
+}
+@container hand-row-head (max-width: 200px) {
+  [data-font='readable'] .free-action-word {
+    display: none;
+  }
+}
+@container hand-plank (max-width: 250px) {
+  [data-font='readable'] .free-action:not(.active) .free-action-word {
+    display: none;
+  }
+}
+.swap-chip .icon {
+  flex: none;
 }
 
 /* --- A card: the Card primitive (kit.css), with the hand's own sizes ----------------------- */
+
+/* Compact (D-121): the head and the first effect line beside a thumbnail of the piece in its
+   well, then the chips and any alert across the card. A card without a picture (a fixture, or
+   any card on a short window) gives the text the whole width. The empty row under the line
+   takes the rest of a tall picture's height, so the name and the line stay together. */
+.hand-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto 1fr auto auto;
+  grid-template-areas:
+    'head art'
+    'lines art'
+    '. art'
+    'chips chips'
+    'alert alert';
+  align-content: start;
+  gap: var(--space-1) 0;
+}
+/* The first effect line, in two lines at most: Inspect has the rest. */
+.hand-card .pcard-lines li {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+/* A narrow card (the design target's column, 1600×900, and narrower): the name runs across,
+   the line and the chips sit beside a thumbnail of the picture (half size where the screen
+   has the pixels: thumbScale), and in the wide pixel font the kind's chip goes (the card's
+   tint says it, and Inspect) and the tags show just their icons, named in their titles. */
+@container hand-row (max-width: 308px) {
+  .hand-card {
+    grid-template-rows: auto auto auto 1fr auto;
+    grid-template-areas:
+      'head head'
+      'lines art'
+      'chips art'
+      '. art'
+      'alert alert';
+  }
+  .hand-card .piece-art {
+    width: var(--thumb-w) !important;
+    height: var(--thumb-h) !important;
+  }
+  [data-font='pixel'] .hand-card .kind-chip,
+  [data-font='pixel'] .hand-card .tag-chip .chip-word {
+    display: none;
+  }
+}
+.hand-card .pcard-head {
+  grid-area: head;
+}
+.hand-card .pcard-lines {
+  grid-area: lines;
+}
+.hand-card .pcard-chips {
+  grid-area: chips;
+}
+.hand-card .pcard-alert {
+  grid-area: alert;
+}
+.hand-card .pcard-art {
+  grid-area: art;
+  align-self: start;
+  margin-left: var(--space-2);
+}
 
 /* A short window (1280×720) fits more of the hand: the cards drop their pictures for their
    shape's glyph (PieceArt.tsx), and the ghost on the lot shows the rest. The picked card shows
@@ -32,7 +161,8 @@
   background: var(--ink);
 }
 @media (max-height: 800px) {
-  .hand .panel-body {
+  .hand .panel-body,
+  .hand-row {
     gap: var(--space-2);
   }
   .hand-card .pcard-art,
@@ -54,17 +184,13 @@
 }
 .piece-art canvas {
   display: block;
+  width: 100%;
+  height: 100%;
   image-rendering: pixelated;
 }
 
-/* --- Free actions -------------------------------------------------------------------- */
+/* --- Free actions: each row's Reroll, and Demolish ------------------------------------- */
 
-.free-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  container: free-actions / inline-size;
-}
 .free-action {
   flex: 1 1 auto;
   justify-content: flex-start;
@@ -84,20 +210,6 @@
 .free-action.btn-danger .count {
   background: var(--danger-shade);
   box-shadow: none;
-}
-/* A short window with a narrow column: both on one row as an icon and a count (their titles
-   and the controls strip name them), so the cards start higher. Demolishing, Stop keeps its
-   word. */
-@media (max-height: 800px) {
-  @container free-actions (max-width: 21em) {
-    .free-action:not(.active) .free-action-word {
-      display: none;
-    }
-    .free-action.btn {
-      flex: 0 1 auto;
-      gap: var(--space-2);
-    }
-  }
 }
 
 /* Scoped to the hand: the board's Outline uses .demolish-hint too (the Moving Truck's old spot,

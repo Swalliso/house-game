@@ -120,6 +120,7 @@ export const FIXTURES: Readonly<Record<FixtureId, FixtureDef>> = {
     tier: 'core',
     rarity: 'common',
     fits: { piece: 'lawn' },
+    row: 'layout', // a yard fixture: the Layout row (D-121)
     drawWeight: 5,
     fromPhase: 1,
     price: PRICES.fixture.common,
@@ -131,6 +132,7 @@ export const FIXTURES: Readonly<Record<FixtureId, FixtureDef>> = {
     tier: 'core',
     rarity: 'uncommon',
     fits: { piece: 'patio' },
+    row: 'layout', // a yard fixture: the Layout row (D-121)
     drawWeight: 5,
     fromPhase: 1,
     price: PRICES.fixture.uncommon,
@@ -145,6 +147,7 @@ export const FIXTURES: Readonly<Record<FixtureId, FixtureDef>> = {
     tier: 'core',
     rarity: 'common',
     fits: { property: 'yard' },
+    row: 'layout', // a yard fixture: the Layout row (D-121)
     drawWeight: 5,
     fromPhase: 1,
     price: PRICES.fixture.common,

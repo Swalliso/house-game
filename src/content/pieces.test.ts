@@ -147,11 +147,11 @@ describe('the base pool', () => {
     // Sunroom left them for the draw at half weight (D-120).
     const base = Object.values(CONTENT.pieces).filter((d) => d.drawWeight > 0);
     expect(base).toHaveLength(22);
-    // The two packs (D-106) took the weight of the two cards each one replaced.
+    // The two packs (D-106) took the weight of the two cards each one replaced, 20, until the
+    // draw's two rows (D-121): in a two-card Layout row they draw at 10, like every card. The
+    // Sunroom, in the Rooms row, draws at half that (D-120).
     expect(base.filter((d) => d.pack).map((d) => d.id)).toEqual(['fence', 'driveway']);
-    for (const def of base) {
-      expect(def.drawWeight, def.id).toBe(def.pack ? 20 : def.id === 'sunroom' ? 5 : 10);
-    }
+    for (const def of base) expect(def.drawWeight, def.id).toBe(def.id === 'sunroom' ? 5 : 10);
     for (const def of Object.values(CONTENT.pieces)) {
       expect(def.complexity).toBe(COMPLEXITY[def.id]);
     }
