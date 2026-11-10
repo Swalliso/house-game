@@ -1,7 +1,7 @@
 // Selectors and piece conditions: which pieces or lot features an effect looks at
 // (implementation-plan.md §5), and the tag-resolution order (§4):
 //   1. layout facts
-//   2. own tags, plus Dark if interior and Sunny if on a sunny tile (layout.tags)
+//   2. own tags, plus Dark if interior and Sunny if a building in the sun (layout.tags)
 //   3. grantTag and removeTag modifiers (layout.ts)
 //   4. type identity: `{ piece: X }` matches id X, `countsAs: X`, or a countsAs modifier
 //   5. conditions, specs, and sets

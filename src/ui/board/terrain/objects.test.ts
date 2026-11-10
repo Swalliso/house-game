@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BALANCE } from '../../../content/balance.ts';
-import { generateLot, isSunny, lotFromRows, terrainAt } from '../../../rules/lot.ts';
+import { generateLot, lotFromRows, terrainAt } from '../../../rules/lot.ts';
 import type { Lot } from '../../../rules/index.ts';
 import { CELL } from '../../sprites.ts';
 import { blobTile, E, N, NE, NW, S, SE, SUB, SW, W } from '../autotile.ts';
@@ -161,7 +161,7 @@ describe('the woods’ floor', () => {
 });
 
 describe('the boulders', () => {
-  it('pile two or three rocks inside each Boulder cell, in the sunny side’s colors there', () => {
+  it('pile two or three rocks inside each Boulder cell', () => {
     for (const lot of lots) {
       const rocks = boulders(lot);
       const per = new Map<string, number>();
@@ -171,7 +171,7 @@ describe('the boulders', () => {
         expect(terrainAt(lot, x, y)).toBe('boulder');
         expect(r.x + r.w).toBeLessThanOrEqual((x + 1) * CELL);
         expect(r.y + r.h).toBeLessThanOrEqual((y + 1) * CELL + 2);
-        expect(r.id).toBe(isSunny(lot, x, y) ? 'rocks-sunny' : 'rocks');
+        expect(r.id).toBe('rocks');
         per.set(`${x},${y}`, (per.get(`${x},${y}`) ?? 0) + 1);
       }
       expect(per.size).toBe(count(lot, 'boulder'));
@@ -196,9 +196,7 @@ describe('the finds', () => {
   it('dig the Time Capsule’s soil on its own cell', () => {
     const capsule = placed.find((p) => p.id.startsWith('time-capsule'))!;
     expect(capsule).toMatchObject({ x: 4 * CELL, y: 2 * CELL, w: CELL, h: CELL });
-    // On the sunny side (the left band here), its grass takes the sunny colors.
-    const sunny = finds(lotFromRows(['K...', '....'], 'left'));
-    expect(sunny[0]!.id).toBe('time-capsule-sunny');
+    expect(capsule.id).toBe('time-capsule');
   });
 });
 
@@ -257,7 +255,7 @@ describe('the canopy', () => {
 });
 
 describe('the street', () => {
-  // A left band (columns 0 to 3) over a creek, with a Tree in the band's bottom row.
+  // A creek running into the bottom row, and a Tree in it.
   const lot = lotFromRows(['......', '..C...', 'T.C...'], 'left');
   const tiles = streetTiles(lot);
   const top = lot.height * SUB;
@@ -286,25 +284,19 @@ describe('the street', () => {
     expect(at(0, 5)[0]).toMatchObject(blobTile('godot', E | SE | S | SW | W));
   });
 
-  it('takes a fringe of the lot’s grass along its top, in the colors above, not under water', () => {
-    const blades = tiles.filter((t) => t.id.endsWith('edge') && !t.cols);
+  it('takes a fringe of the lot’s grass along its top, not under water', () => {
+    const blades = tiles.filter((t) => t.id.endsWith('edge'));
     expect(blades.map((t) => t.sx)).toEqual([0, 1, 2, 3, 6, 7, 8, 9, 10, 11]);
     for (const b of blades) {
       expect(b.sy).toBe(top);
-      const sunny = isSunny(lot, Math.floor(b.sx / SUB), lot.height - 1);
-      expect(b.id).toBe(sunny ? 'sun-edge' : 'woods-edge');
+      expect(b.id).toBe('woods-edge');
     }
-    // Past the band, the sunny side's blades spill into the shade as they do above: the first
-    // 6 px of the first shaded subtile. The Tree inside the band stays shaded to its edge.
-    expect(tiles.filter((t) => t.cols)).toEqual([
-      { id: 'sun-edge', ...blobTile('godot', E | SE | S | SW | W), sx: 8, sy: top, cols: [0, 6] },
-    ]);
   });
 
   it('leaves the fringe out where a piece meets the street, so a Driveway reaches the sidewalk', () => {
     const front = [false, false, false, true, true, false];
     const fringe = streetTiles(lot, front).filter((t) => t.sy === top && t.id.endsWith('edge'));
-    // Columns 3 and 4 (subtiles 6 to 9) are under the piece, the spill into column 4 too.
+    // Columns 3 and 4 (subtiles 6 to 9) are under the piece.
     expect(fringe.map((t) => t.sx)).toEqual([0, 1, 2, 3, 10, 11]);
     // The paving is all there.
     expect(streetTiles(lot, front).filter((t) => !t.id.endsWith('edge'))).toEqual(

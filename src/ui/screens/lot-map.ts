@@ -3,10 +3,10 @@
 // tile (jobs.css's --map-px), so every tile lands on whole device pixels. Kept apart from
 // JobBoard.tsx so lot-map.test.ts can hold its colors to the palette.
 
-import { isSunny, terrainAt, type Lot, type TerrainId } from '../../rules/index.ts';
+import { sunSideText, terrainAt, type Lot, type TerrainId } from '../../rules/index.ts';
 
-/** What a tile of the map shows: its terrain, else the sunny side or open ground; or the street. */
-export type LotMapKind = TerrainId | 'ground' | 'sunny' | 'street';
+/** What a tile of the map shows: its terrain, else open ground; or the street. */
+export type LotMapKind = TerrainId | 'ground' | 'street';
 
 /**
  * Each kind's color on the map: LimeZu's own (art/palette.ts), as the lot's art draws them.
@@ -15,8 +15,6 @@ export type LotMapKind = TerrainId | 'ground' | 'sunny' | 'street';
 export const LOT_COLORS: Readonly<Record<LotMapKind, string>> = {
   /** The lawn, as the board's grass and --lawn. */
   ground: '#63a650',
-  /** The sunny side: the lime of the brighter strip. */
-  sunny: '#9bc246',
   tree: '#32675a',
   pond: '#4995e3',
   creek: '#50a7e8',
@@ -35,10 +33,10 @@ export function lotMapSize(lot: Lot): { w: number; h: number } {
 /** What tile (x, y) of the map shows: the lot's own rows, then the street's row under them. */
 export function lotMapKind(lot: Lot, x: number, y: number): LotMapKind {
   if (y >= lot.height) return 'street';
-  return terrainAt(lot, x, y) ?? (isSunny(lot, x, y) ? 'sunny' : 'ground');
+  return terrainAt(lot, x, y) ?? 'ground';
 }
 
-/** "A pond, a creek, woods, and 2 boulders · sunny on the right". */
+/** "A pond, a creek, woods, and 2 boulders · sun from the right" (D-120). */
 export function lotSummary(lot: Lot): string {
   const count = (id: TerrainId) => lot.terrain.filter((t) => t === id).length;
   const parts: string[] = [];
@@ -56,6 +54,5 @@ export function lotSummary(lot: Lot): string {
       : parts.length <= 2
         ? parts.join(' and ')
         : `${parts.slice(0, -1).join(', ')}, and ${parts.at(-1)}`;
-  const side = lot.sunnySide === 'top' ? 'at the back' : `on the ${lot.sunnySide}`;
-  return `${list[0]!.toUpperCase()}${list.slice(1)} · sunny ${side}`;
+  return `${list[0]!.toUpperCase()}${list.slice(1)} · sun from the ${sunSideText(lot.sun)}`;
 }

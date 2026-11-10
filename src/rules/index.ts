@@ -213,7 +213,8 @@ export type Property =
 
 /**
  * Regions (§4). A multi-tile piece is in a region only if all its tiles are.
- * - sunny: the sunny side's tiles (not under a Tree)
+ * - sunny: tiles in the sun (D-120): not a Tree, with no Tree or building on the next tile
+ *   toward the sun
  * - frontYard: non-indoor tiles in rows nearer the street than the house's front row
  * - backYard: every other non-indoor tile, side yards included
  * - fencedYard: an enclosed area that borders a Fence and the house and not the street
@@ -236,7 +237,7 @@ export interface Cell {
 export type Selector =
   | { piece: PieceId | readonly PieceId[] } // matches the id or `countsAs`
   | { feature: FeatureId | readonly FeatureId[] }
-  | { tag: Tag } // effective tags: own tags, plus Dark if interior and Sunny if on a sunny tile
+  | { tag: Tag } // effective tags: own tags, plus Dark if interior and Sunny if a building in the sun
   | { property: Property }
   /** Inside a fixture's modifiers: the piece it's installed in. */
   | { host: true }
@@ -330,7 +331,7 @@ export type Effect =
   | { kind: 'transform'; into: { piece: PieceId } | { feature: 'tree' }; afterWeeks: number }
   /** Pays `budget` every week, or every `every`-th week of its life (the Garage, the Home Office). */
   | { kind: 'economy'; budget: number; every?: number }
-  /** `amount` per tile of the piece in the region (the Herb Garden on sunny tiles). */
+  /** `amount` per tile of the piece in the region (the Herb Garden's tiles in the sun). */
   | { kind: 'perTile'; region: Region; amount: number }
   /** A connector (the Hallway): every room touching it, or a group of them, counts as touching every other. */
   | { kind: 'link' }
@@ -730,7 +731,6 @@ export interface LotBalance {
   creekStreetGap: number;
   pondSize: Range;
   boulders: Range;
-  sunnyRows: number;
   /** Regeneration checks. */
   minFreePct: number;
   minFreeStreetTiles: number;
@@ -862,14 +862,20 @@ export interface Content {
 // ---------------------------------------------------------------------------------------
 // State. Plain, JSON-serializable data. D-025 keeps the house separate from the run.
 
+/** The edges the sun can shine from (D-120): `top` is the back of the lot, `bottom` the street. */
+export type SunSide = 'top' | 'left' | 'right' | 'bottom';
+
 export interface Lot {
   width: number;
   height: number;
   /** Row-major, width × height: what sits on each tile. The street is outside the grid. */
   terrain: readonly (TerrainId | null)[];
-  /** The sunny side: `sunnyRows` rows along this edge, except Tree tiles (used from M2). */
-  sunnySide: 'top' | 'left' | 'right';
-  sunnyRows: number;
+  /**
+   * The edge the sun shines from (D-120): `top` is the back of the lot, `bottom` the street's
+   * side. A tile is in the sun unless it's a Tree or a Tree or a building stands on the next tile
+   * toward the sun, and a building with a tile in the sun is Sunny.
+   */
+  sun: SunSide;
   /** Which `lot/<attempt>` stream made it. */
   attempt: number;
 }
@@ -1555,6 +1561,8 @@ export interface Preview {
   lines: readonly PreviewLine[];
   /** The new piece's own breakdown, with the neighbors that help or hurt it. */
   newPiece: PieceScore | null;
+  /** A placed piece that would be Sunny (D-120), for the ghost's sun. Absent when it wouldn't. */
+  sunny?: true;
   setsGained: readonly SetScore[];
   setsLost: readonly SetScore[];
   cells: readonly Cell[];
@@ -1713,7 +1721,7 @@ export interface TypeLimit {
 
 /**
  * Where a piece's effective tag comes from: its card, the layout (an interior room is Dark, a
- * piece on a sunny tile is Sunny), or a modifier that grants it (its fixture, a blueprint, or a
+ * building in the sun is Sunny), or a modifier that grants it (its fixture, a blueprint, or a
  * change order's phase effect, M4b), so the inspect panel can say: "Dark · from Eternal night".
  */
 export type TagSource = { kind: 'card' } | { kind: 'interior' } | { kind: 'sunny' } | ModSource;
@@ -1721,7 +1729,7 @@ export type TagSource = { kind: 'card' } | { kind: 'interior' } | { kind: 'sunny
 /** What the inspect panel says about a placed piece's place in the layout. */
 export interface PieceInfo {
   /**
-   * Effective tags: its own, plus Dark (interior) and Sunny (on a sunny tile), then those
+   * Effective tags: its own, plus Dark (interior) and Sunny (a building in the sun), then those
    * modifiers grant, less those they remove.
    */
   tags: readonly Tag[];
@@ -1731,6 +1739,8 @@ export interface PieceInfo {
   side: 'exterior' | 'interior' | null;
   /** Regions every tile of it is in. */
   regions: readonly Region[];
+  /** Its tiles in the sun (D-120), in reading order: where the board draws its light. */
+  sunlit: readonly Cell[];
   view: boolean;
   /** Rooms it's linked to through Hallways. */
   linked: readonly number[];
@@ -1790,7 +1800,7 @@ export {
   shapeCells,
   uniqueRotations,
 } from './grid.ts';
-export { isSunny, lotTraits, terrainAt } from './lot.ts';
+export { lotTraits, SUN_SIDES, SUN_STEP, terrainAt } from './lot.ts';
 export { DRAW_ROWS, rowOf } from './draw.ts';
 export {
   article,
@@ -1811,6 +1821,7 @@ export {
   rewardText,
   selectorText,
   specText,
+  sunSideText,
   toolText,
   upgradeText,
 } from './text.ts';

@@ -3,8 +3,9 @@
 //   lot): the lot, the street row, and the road below it (geometry.ts ROAD_ROWS). Smoothing
 //   off, shown at that size × scale with image-rendering: pixelated. It redraws only when the
 //   lot changes (building over a Tree replaces it, a Sapling grows into one) or a piece comes
-//   or goes on the street's edge: the grass, the woods' floor, the sunny side, then what stands
-//   on the lot (terrain/objects.ts) on its own cells, and the street (terrain/).
+//   or goes on the street's edge: the grass, the woods' floor, the shade the Trees cast away from
+//   the sun (D-120), then what stands on the lot (terrain/objects.ts) on its own cells, and the
+//   street (terrain/).
 // - The water canvas, above it at LAYER.water: only over the water's bounding box, its frames
 //   painted side by side once per lot and stepped through by CSS (transform only, like the
 //   Fireplace's flame), so the animation never wakes the main thread. Still under Reduce motion,
@@ -37,7 +38,7 @@ import {
 } from './terrain/objects.ts';
 import { outsideSlices, paintSlice, sliceSize, type Slice } from './terrain/outside.ts';
 import { paintStreet, streetTiles } from './terrain/street.ts';
-import { paintSunnyEdge, sunnyEdge } from './terrain/sunny.ts';
+import { lotShade, paintShade } from './terrain/shade.ts';
 import { paintWater, waterPlan, type WaterPlan } from './terrain/water.ts';
 import { paintWoodsFloor, woodsFloor } from './terrain/woods.ts';
 import './terrain/terrain.css';
@@ -62,7 +63,7 @@ function draw(
   ctx.imageSmoothingEnabled = false;
   paintGrass(ctx, img, lot, salt);
   paintWoodsFloor(ctx, img, woodsFloor(lot));
-  paintSunnyEdge(ctx, img, sunnyEdge(lot));
+  paintShade(ctx, lot, lotShade(lot));
   paintObjects(ctx, img, objects);
   paintStreet(ctx, img, streetTiles(lot, front));
 }

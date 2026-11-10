@@ -45,7 +45,6 @@ function isOpaque(id: string): boolean {
  */
 const REQUIRED = [
   'grass-0',
-  'grass-sunny',
   'floor-wood',
   'floor-tile',
   'floor-kitchen',

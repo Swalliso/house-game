@@ -56,6 +56,7 @@ describe('content', () => {
     }
     expect(cardText(CONTENT, CONTENT.pieces.livingRoom).effects).toEqual([
       '+2 per touching view (up to 3)',
+      '+2 every week while Sunny',
     ]);
   });
 
@@ -68,15 +69,16 @@ describe('content', () => {
     });
   });
 
-  it('has the base pool: 19 piece types as 21 cards, four sets, and seven milestones', () => {
+  it('has the base pool: 20 piece types as 22 cards, four sets, and seven milestones', () => {
     // The base pool is what the weekly draw deals; special pieces (weight 0) come from the shop.
+    // The Sunroom left them for the draw (D-120).
     const defs = Object.values(CONTENT.pieces).filter((d) => d.drawWeight > 0);
-    expect(defs).toHaveLength(21);
+    expect(defs).toHaveLength(22);
     const types = new Set(defs.map((d) => d.countsAs ?? d.id));
-    expect(types.size).toBe(19);
+    expect(types.size).toBe(20);
     const count = (cat: string) =>
       new Set(defs.filter((d) => d.category === cat).map((d) => d.countsAs ?? d.id)).size;
-    expect([count('indoor'), count('yard'), count('outbuilding')]).toEqual([9, 7, 3]);
+    expect([count('indoor'), count('yard'), count('outbuilding')]).toEqual([10, 7, 3]);
     // Two shape variants share a type; the Fence and the Driveway are packs instead (D-106).
     expect(defs.filter((d) => d.countsAs).map((d) => d.id)).toEqual(['lKitchen', 'longHallway']);
     expect(defs.filter((d) => d.pack).map((d) => d.id)).toEqual(['fence', 'driveway']);
@@ -109,6 +111,8 @@ describe('content', () => {
       'livingRoom',
       'closet',
       'homeOffice',
+      // The Sunroom, a room, from Foundation (D-120).
+      'sunroom',
       'fireplace',
       'skylight',
       'blackoutCurtains',
@@ -170,28 +174,29 @@ describe('the slice pieces', () => {
         ['bathroom', 2, 0],
         ['kitchen', 3, 0],
       ]).pieces,
-    ).toEqual([3, 1, 0]);
+    ).toEqual([3, 1, 2]); // the Kitchen in the sun: +2 (D-120)
   });
 
   it('Kitchen and L-Kitchen: +2 per Dining Room, boosted by its aura', () => {
+    // Both in the sun (D-120): the Kitchen's +2 and +2 at +50% is 6, the Dining Room's +2.
     expect(
       earnedOf(open, [
         ['kitchen', 0, 0],
         ['diningRoom', 2, 0],
       ]).pieces,
-    ).toEqual([3, 0]);
+    ).toEqual([6, 2]);
     expect(
       earnedOf(open, [
         ['lKitchen', 0, 0],
         ['diningRoom', 2, 0],
       ]).pieces,
-    ).toEqual([3, 0]);
+    ).toEqual([6, 2]);
   });
 
   it('Living Room: +2 per view (max 3), and the Dining Room boosts it too', () => {
     expect(
       earnedOf(['T....', '.....', '.....', '.....', 'CCCCC'], [['livingRoom', 1, 0]]).pieces,
-    ).toEqual([2]);
+    ).toEqual([2 + 2]); // a view, and the sun (D-120)
     expect(
       earnedOf(
         ['T.....', '......', '......', '......', '......'],
@@ -200,7 +205,7 @@ describe('the slice pieces', () => {
           ['diningRoom', 3, 0],
         ],
       ).pieces,
-    ).toEqual([3, 0]);
+    ).toEqual([6, 2]);
   });
 
   it('Lawn: 1, +1 per touching Lawn (max 4)', () => {
@@ -222,12 +227,13 @@ describe('the slice pieces', () => {
       ['bathroom', 2, 2],
       ['bedroom', 2, 3],
     ]);
-    // Kitchen 3; Dining 0; Living 0 (no view); the Bedrooms touch, so 4 each; Bathroom 3.
-    // Sets: 25 + 10 Points and +1 + 0.5 Mult.
-    expect(t.pieces).toEqual([3, 0, 0, 4, 3, 4]);
-    expect(t.points).toBe(14 + 25 + 10);
+    // The Kitchen, the Dining Room and the Living Room face the sun, +2 each (D-120): Kitchen 6;
+    // Dining 2; Living 3 (no view); the Bedrooms touch, so 4 each; Bathroom 3. Sets: 25 + 10
+    // Points and +1 + 0.5 Mult.
+    expect(t.pieces).toEqual([6, 2, 3, 4, 3, 4]);
+    expect(t.points).toBe(22 + 25 + 10);
     expect(t.mult).toBe(250);
-    expect(t.total).toBe(123); // 49 × 2.5 = 122.5 → 123
+    expect(t.total).toBe(143); // 57 × 2.5 = 142.5 → 143
   });
 });
 

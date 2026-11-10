@@ -1,10 +1,10 @@
 // M2 layout properties (implementation-plan.md §4 Layout rules, §5 selectors and conditions,
-// Appendix A · M2): exterior and interior rooms and the Dark tag, the sunny side and the Sunny
-// tag, front and back yard, fenced yards, Hallway links, and the selectors and conditions that
+// Appendix A · M2): exterior and interior rooms and the Dark tag, the sun and the Sunny tag
+// (D-120), front and back yard, fenced yards, Hallway links, and the selectors and conditions that
 // read them. Every lot here is hand-built with TEST_CONTENT.
 
 import { describe, expect, it } from 'vitest';
-import type { Content, HouseState, Lot, PieceCondition, Region, Selector } from './index.ts';
+import type { Content, HouseState, PieceCondition, Region, Selector, SunSide } from './index.ts';
 import {
   computeLayout,
   fencedYardsBordered,
@@ -16,6 +16,7 @@ import {
 } from './layout.ts';
 import { lotFromRows } from './lot.ts';
 import { checkDemolish, REASONS } from './placement.ts';
+import { createRules } from './run.ts';
 import {
   countTouching,
   matchesNeighbor,
@@ -24,7 +25,7 @@ import {
   pieceTags,
 } from './selectors.ts';
 import { matchSets } from './sets.ts';
-import { emptyRows, houseFrom, TEST_CONTENT as C, type Placement } from './testing.ts';
+import { emptyRows, houseFrom, setup, TEST_CONTENT as C, type Placement } from './testing.ts';
 
 function layoutOf(
   rows: readonly string[],
@@ -34,9 +35,9 @@ function layoutOf(
   return computeLayout(content, houseFrom(content, rows, placements));
 }
 
-/** The same house on a lot whose sunny side is somewhere else. */
-function withSunnySide(house: HouseState, side: Lot['sunnySide']): HouseState {
-  return { ...house, lot: { ...house.lot, sunnySide: side } };
+/** The same house on a lot whose sun shines from another edge. */
+function withSun(house: HouseState, sun: SunSide): HouseState {
+  return { ...house, lot: { ...house.lot, sun } };
 }
 
 /** '#' on each tile in the region, '.' elsewhere. */
@@ -80,8 +81,7 @@ const withFencedMin = (min: number): Content => ({
 // ---------------------------------------------------------------------------------------
 
 describe('exterior and interior rooms', () => {
-  // A Closet at (3,5) with a Hallway above, Bathrooms left and right, and a Long Hallway below,
-  // all below the sunny rows (0–3).
+  // A Closet at (3,5) with a Hallway above, Bathrooms left and right, and a Long Hallway below.
   //   y4  ..HH....
   //   y5  ..bCb...
   //   y6  ..LLL...
@@ -210,12 +210,13 @@ describe('exterior and interior rooms', () => {
     expect(pieceTags(closed, 1).has('Quiet')).toBe(true); // its own tags stay
   });
 
-  it('gives an interior room on the sunny side both Dark and Sunny', () => {
-    // The enclosed layout moved up three rows, so the Closet sits on row 2.
-    const moved = enclosed.map(([id, x, y, rot]): Placement => [id, x, y - 3, rot]);
-    const layout = layoutOf(emptyRows(8, 10), moved);
-    expect(layout.interior.has(1)).toBe(true);
-    expect(tags(layout, 1)).toEqual(['Dark', 'Sunny']);
+  it('never puts an interior room in the sun: a building stands on every side of it', () => {
+    for (const sun of ['top', 'left', 'right', 'bottom'] as const) {
+      const layout = computeLayout(C, withSun(houseFrom(C, emptyRows(8, 10), enclosed), sun));
+      expect(layout.interior.has(1)).toBe(true);
+      expect(tags(layout, 1)).toEqual(['Dark']);
+      expect(tilesIn(layout, 1, 'sunny')).toBe(0);
+    }
   });
 
   it('ignores links: a linked room is still exterior or interior by its own tiles', () => {
@@ -229,87 +230,122 @@ describe('exterior and interior rooms', () => {
 
 // ---------------------------------------------------------------------------------------
 
-describe('the sunny side', () => {
-  it('is the top four rows of a lotFromRows lot, except Tree tiles', () => {
+describe('the sun (D-120)', () => {
+  it('lights every tile but Trees and the tiles a Tree shades, behind it from the sun', () => {
+    // The sun from the back (top): each Tree shades the tile below it.
     const layout = layoutOf(['......', '.T....', '......', '...T..', '......', '......'], []);
     expect(regionRows(layout, 'sunny')).toEqual([
       '######',
       '#.####',
-      '######',
+      '#.####',
       '###.##',
-      '......',
-      '......',
+      '###.##',
+      '######',
     ]);
   });
 
-  it('makes a piece covering any sunny tile Sunny', () => {
-    const layout = layoutOf(emptyRows(8, 8), [
-      ['bedroom', 0, 3], // 1: rows 3–4, half sunny
-      ['bedroom', 2, 4], // 2: rows 4–5, none
-      ['lawn', 4, 0], // 3: rows 0–1, all sunny
-      ['flowerBed', 7, 3], // 4: row 3
-    ]);
+  it('lets a building shade its own back tiles and the tile behind it', () => {
+    //   y0  ..BB..   the Bedroom's top row is in the sun, its bottom row in its own shade,
+    //   y1  ..BB..   and the tiles below it are in its shade
+    const layout = layoutOf(emptyRows(6, 4), [['bedroom', 2, 0]]);
+    expect(regionRows(layout, 'sunny')).toEqual(['######', '##..##', '##..##', '######']);
+    expect(tilesIn(layout, 1, 'sunny')).toBe(2);
     expect(tags(layout, 1)).toEqual(['Quiet', 'Sunny']);
-    expect(tags(layout, 2)).toEqual(['Quiet']);
-    expect(tags(layout, 3)).toEqual(['Green', 'Outdoor', 'Sunny']);
-    expect(pieceTags(layout, 4).has('Sunny')).toBe(true);
-
-    expect(matchesPiece(C, layout, { tag: 'Sunny' }, 1)).toBe(true);
-    expect(matchesPiece(C, layout, { tag: 'Sunny' }, 2)).toBe(false);
     // In the region only if every tile is.
-    expect(tilesIn(layout, 1, 'sunny')).toBe(2);
     expect(pieceIn(layout, 1, 'sunny')).toBe(false);
+    expect(matchesPiece(C, layout, { tag: 'Sunny' }, 1)).toBe(true);
     expect(matchesPiece(C, layout, { in: 'sunny' }, 1)).toBe(false);
-    expect(tilesIn(layout, 3, 'sunny')).toBe(4);
-    expect(pieceIn(layout, 3, 'sunny')).toBe(true);
-    expect(matchesPiece(C, layout, { in: 'sunny' }, 3)).toBe(true);
-    expect(tilesIn(layout, 2, 'sunny')).toBe(0);
   });
 
-  it('counts only the tiles that are sunny for a piece beside Trees', () => {
-    // An Herb Garden (1×2) at (1..2, 0) with Trees left and right: both its tiles are sunny.
-    const layout = layoutOf(
-      ['T..T..', '......', '......', '......', '......'],
-      [['herbGarden', 1, 0]],
-    );
-    expect(tilesIn(layout, 1, 'sunny')).toBe(2);
-    expect(regionRows(layout, 'sunny')[0]).toBe('.##.##');
-  });
-
-  it('makes a tile sunny once a piece is built over its Tree (the Tree is gone)', () => {
-    const layout = layoutOf(
-      ['......', '.T....', '......', '......', '......'],
-      [['sapling', 1, 1]],
-    );
-    expect(layout.house.lot.terrain[1 * 6 + 1]).toBeNull();
-    expect(pieceTags(layout, 1).has('Sunny')).toBe(true);
-  });
-
-  it('follows the lot’s sunny side: left and right', () => {
-    const house = houseFrom(C, emptyRows(10, 6), [
-      ['bedroom', 2, 2], // 1: x 2–3, sunny on the left
-      ['bedroom', 3, 4], // 2: x 3–4, straddles x = 4 on the left
-      ['bedroom', 6, 2], // 3: x 6–7, sunny on the right
+  it('makes a building Sunny while one wall faces the sun with nothing in front of it', () => {
+    const layout = layoutOf(emptyRows(8, 8), [
+      ['bedroom', 0, 2], // 1: open above: Sunny
+      ['bedroom', 0, 4], // 2: Bedroom 1 stands in front of its whole sunny wall
+      ['bedroom', 4, 4], // 3: open above
+      ['closet', 4, 3], // 4: in front of half of Bedroom 3's wall; the Closet itself is Sunny
+      ['doghouse', 7, 7], // 5: an outbuilding in the sun
     ]);
-    const left = computeLayout(C, withSunnySide(house, 'left'));
-    expect(regionRows(left, 'sunny')).toEqual(Array(6).fill('####......'));
-    expect(pieceIn(left, 1, 'sunny')).toBe(true);
-    expect(tilesIn(left, 2, 'sunny')).toBe(2);
-    expect(pieceTags(left, 2).has('Sunny')).toBe(true);
-    expect(pieceTags(left, 3).has('Sunny')).toBe(false);
-
-    const right = computeLayout(C, withSunnySide(house, 'right'));
-    expect(regionRows(right, 'sunny')).toEqual(Array(6).fill('......####'));
-    expect(pieceTags(right, 1).has('Sunny')).toBe(false);
-    expect(tilesIn(right, 2, 'sunny')).toBe(0);
-    expect(pieceIn(right, 3, 'sunny')).toBe(true);
-    expect(pieceTags(right, 3).has('Sunny')).toBe(true);
+    expect(pieceTags(layout, 1).has('Sunny')).toBe(true);
+    expect(pieceTags(layout, 2).has('Sunny')).toBe(false);
+    expect(tilesIn(layout, 3, 'sunny')).toBe(1);
+    expect(pieceTags(layout, 3).has('Sunny')).toBe(true);
+    expect(pieceTags(layout, 4).has('Sunny')).toBe(true);
+    expect(pieceTags(layout, 5).has('Sunny')).toBe(true);
+    // A Tree in front of a wall shades it too.
+    const shaded = layoutOf(['..TT....', ...emptyRows(8, 5)], [['bedroom', 2, 1]]);
+    expect(pieceTags(shaded, 1).has('Sunny')).toBe(false);
   });
 
-  it('is built by lotFromRows on the given side', () => {
-    const lot = lotFromRows(emptyRows(6, 6), 'right');
-    const layout = computeLayout(C, { lot, pieces: [], nextUid: 1 });
-    expect(regionRows(layout, 'sunny')).toEqual(Array(6).fill('..####'));
+  it('never makes a yard piece Sunny, though it counts its tiles in the sun', () => {
+    const layout = layoutOf(emptyRows(8, 8), [
+      ['lawn', 4, 0], // 1: all four tiles in the sun
+      ['flowerBed', 0, 0], // 2
+    ]);
+    expect(tags(layout, 1)).toEqual(['Green', 'Outdoor']);
+    expect(pieceTags(layout, 2).has('Sunny')).toBe(false);
+    expect(tilesIn(layout, 1, 'sunny')).toBe(4);
+    expect(pieceIn(layout, 1, 'sunny')).toBe(true);
+    expect(matchesPiece(C, layout, { in: 'sunny' }, 1)).toBe(true);
+    // A yard piece casts no shade: the Bedroom behind the Lawn keeps its sun.
+    const behind = layoutOf(emptyRows(8, 8), [
+      ['lawn', 0, 0],
+      ['bedroom', 0, 2],
+    ]);
+    expect(pieceTags(behind, 2).has('Sunny')).toBe(true);
+  });
+
+  it('gives the sun back once a piece is built over the Tree in front (the Tree is gone)', () => {
+    const rows = ['..T...', '......', '......', '......'];
+    const before = layoutOf(rows, [['bedroom', 2, 1]]);
+    expect(tilesIn(before, 1, 'sunny')).toBe(1);
+    const after = layoutOf(rows, [
+      ['bedroom', 2, 1],
+      ['sapling', 2, 0],
+    ]);
+    expect(after.house.lot.terrain[2]).toBeNull();
+    expect(tilesIn(after, 1, 'sunny')).toBe(2);
+  });
+
+  it('lets the Old Shed shade its own back tiles and the tile behind it, as a building does', () => {
+    const layout = layoutOf(['..SS..', '..SS..', '......'], []);
+    expect(regionRows(layout, 'sunny')).toEqual(['######', '##..##', '##..##']);
+  });
+
+  it('follows the lot’s sun: left, right, and the street’s side', () => {
+    // A Bedroom at (3..4, 2..3): its sunny wall and its shade turn with the sun.
+    const house = houseFrom(C, emptyRows(8, 6), [['bedroom', 3, 2]]);
+    const lit = (sun: SunSide) => regionRows(computeLayout(C, withSun(house, sun)), 'sunny');
+    const open = '########';
+    expect(lit('left')).toEqual([open, open, '####..##', '####..##', open, open]);
+    expect(lit('right')).toEqual([open, open, '##..####', '##..####', open, open]);
+    expect(lit('bottom')).toEqual([open, '###..###', '###..###', open, open, open]);
+    expect(lotFromRows(emptyRows(4, 4), 'bottom').sun).toBe('bottom');
+    expect(lotFromRows(emptyRows(4, 4)).sun).toBe('top');
+  });
+
+  it('tells the board which tiles are lit and whether a ghost would be Sunny', () => {
+    const R = createRules(C);
+    const run = (rows: readonly string[], placements: Placement[]) => ({
+      ...R.newRun(setup('sun')),
+      house: houseFrom(C, rows, placements),
+      hand: [{ kind: 'piece' as const, id: 'bedroom' as const }],
+    });
+    const s = run(emptyRows(8, 6), [['bedroom', 2, 0]]);
+    expect(R.describePiece(s, 1)!.sunlit).toEqual([
+      { x: 2, y: 0 },
+      { x: 3, y: 0 },
+    ]);
+    const play = (x: number, y: number) =>
+      ({ t: 'place', from: 'hand', i: 0, x, y, rot: 0 }) as const;
+    // Beside it, in the open: Sunny. Right behind it, in its shade: not.
+    expect(R.preview(s, play(4, 0))).toMatchObject({ legal: true, sunny: true });
+    const behind = R.preview(s, play(2, 2));
+    expect(behind.legal).toBe(true);
+    expect(behind).not.toHaveProperty('sunny');
+    // Behind a row of Trees, too.
+    const trees = run(['..TT....', ...emptyRows(8, 5)], []);
+    expect(R.preview(trees, play(2, 1))).not.toHaveProperty('sunny');
+    expect(R.preview(trees, play(5, 1))).toMatchObject({ legal: true, sunny: true });
   });
 });
 

@@ -33,7 +33,6 @@ export const BALANCE: Balance = {
     creekStreetGap: 6,
     pondSize: [2, 3],
     boulders: [6, 10],
-    sunnyRows: 4,
     minFreePct: 85,
     minFreeStreetTiles: 10,
     minStreetSidePct: 60,

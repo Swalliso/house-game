@@ -1,6 +1,6 @@
 # The lot: creeks and the sun (brainstorm)
 
-**Date:** 2026-11-09. **Status:** the user picked the recommended package (§7) on 2026-11-09. Its first part, the creek lots, Creekside, the pond and the lot traits, is D-119 in the decision log; the sun (Sun A and its payoffs) comes next, as its own entry. §8 below is the draft as it stood before that split. **Correction:** §2 says the creek changes need no target re-fit. Built on develop, they raised greedy's wins by 9.5 points on 200 held-out seeds, half from the rarer creek and half from Creekside (D-119 has the split), so they belong in the planned re-fit. **From:** playtest 4 ("creeks feel too common"; "I rarely use the sunny side, it's usually far from where I build"), §11 of the playtest-4 findings.
+**Date:** 2026-11-09. **Status:** the user picked the recommended package (§7) on 2026-11-09. Its first part, the creek lots, Creekside, the pond and the lot traits, is D-119 in the decision log; the second, the sun (Sun A and the rooms +2 payoffs), is D-120. §8 below is the draft as it stood before that split. **Correction:** §2 says the creek changes need no target re-fit. Built on develop, they raised greedy's wins by 9.5 points on 200 held-out seeds, half from the rarer creek and half from Creekside (D-119 has the split), so they belong in the planned re-fit. **From:** playtest 4 ("creeks feel too common"; "I rarely use the sunny side, it's usually far from where I build"), §11 of the playtest-4 findings.
 
 ## The short version
 

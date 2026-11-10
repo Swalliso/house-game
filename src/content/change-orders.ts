@@ -38,7 +38,7 @@ export const CHANGE_ORDERS: Readonly<Record<ChangeOrderId, ChangeOrderDef>> = {
     scope: 'generic',
     tier: 'core',
     kind: 'phase',
-    text: 'This phase, Pools and pieces in the shade earn double, and Sunny rooms earn half.',
+    text: 'This phase, Pools and pieces beside Trees earn double, and Sunny rooms earn half.',
     modifiers: [
       { kind: 'earn', target: { piece: 'pool' }, pct: 100 },
       // Trees don't earn; the pieces beside them do (Appendix A's content wording).

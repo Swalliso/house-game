@@ -19,6 +19,7 @@ import {
   rules,
   SCORE_LABELS,
   sourceName,
+  sunSideText,
   terrainAt,
   type BreakdownLine,
   type ChangeOrderId,
@@ -28,6 +29,7 @@ import {
   type Region,
   type ReservePiece,
   type SetScore,
+  type SunSide,
   type TagSource,
   type Term,
   type ToolId,
@@ -63,14 +65,15 @@ import './inspect.css';
 const GLOSSARY = glossary(CONTENT);
 
 const REGION_CHIP: Record<Region, string> = {
-  sunny: 'Sunny side',
+  sunny: 'In the sun',
   frontYard: 'Front yard',
   backYard: 'Back yard',
   fencedYard: 'Fenced yard',
 };
 
-/** The regions with a glossary term (D-077); the sunny side has none. */
+/** The regions with a glossary term (D-077). */
 const REGION_TERM: Partial<Record<Region, Term>> = {
+  sunny: 'sunny',
   frontYard: 'frontYard',
   backYard: 'backYard',
   fencedYard: 'fencedYard',
@@ -104,10 +107,12 @@ const isGrant = (s: TagSource): s is ModSource =>
   s.kind !== 'card' && s.kind !== 'interior' && s.kind !== 'sunny';
 
 /** Why a piece has a tag its card doesn't give it, for the chip's tip. */
-function tagReason(s: TagSource): string | null {
+function tagReason(s: TagSource, sun: SunSide): string | null {
   if (s.kind === 'card') return null;
   if (s.kind === 'interior') return 'Interior rooms are Dark';
-  if (s.kind === 'sunny') return 'On the sunny side';
+  // D-120: a lit tile's open side is always the sun's.
+  if (s.kind === 'sunny')
+    return `Its ${sunSideText(sun)} wall faces the sun, with nothing in front`;
   return `From ${sourceName(CONTENT, s)}`;
 }
 
@@ -173,7 +178,7 @@ function Timers({ lines }: { lines: readonly string[] }) {
 
 /**
  * A placed piece's tags, from the rules' sources for each. One its card gives is plain. One the
- * layout gives (an interior room's Dark, a sunny tile's Sunny) is bold, with why on hover. One
+ * layout gives (an interior room's Dark, a sunlit building's Sunny) is bold, with why on hover. One
  * a modifier grants says where it's from in its own words: "Dark · from Eternal night", "Sunny ·
  * from Skylight" (M4b).
  */
@@ -185,7 +190,7 @@ function TagChips({ info }: { info: PieceInfo }) {
         const sources = info.tagSources[t] ?? [];
         const own = sources.some((s) => s.kind === 'card');
         const granted = own ? [] : sources.filter(isGrant);
-        const why = own ? [] : sources.flatMap((s) => tagReason(s) ?? []);
+        const why = own ? [] : sources.flatMap((s) => tagReason(s, run.value.house.lot.sun) ?? []);
         const special = t === 'Dark' || t === 'Sunny';
         const cls = ['chip', special ? `chip-${t.toLowerCase()}` : '', own ? '' : 'from-layout'];
         return (
@@ -239,11 +244,31 @@ function SetChanges({ gained, lost }: { gained: readonly SetScore[]; lost: reado
   );
 }
 
-function RegionChips({ regions, fenced }: { regions: readonly Region[]; fenced: number }) {
-  if (regions.length === 0) return null;
+/**
+ * The regions a piece or a tile is in. A piece's sun is its Sunny tag (D-120), so only a tile of
+ * open ground (`tile`) says whether it's in the sun or a Tree's or a building's shade.
+ */
+function RegionChips({
+  regions,
+  fenced,
+  tile = false,
+}: {
+  regions: readonly Region[];
+  fenced: number;
+  tile?: boolean;
+}) {
+  const shown = regions.filter((r) => tile || r !== 'sunny');
+  const shade = tile && !regions.includes('sunny');
+  if (shown.length === 0 && !shade) return null;
   return (
     <p class="chips" aria-label="Where it is">
-      {regions.map((r) => (
+      {/* In the shade where "In the sun" would be: first. */}
+      {shade && (
+        <span class="chip region shade">
+          <Tip term="sunny">In the shade</Tip>
+        </span>
+      )}
+      {shown.map((r) => (
         <span key={r} class={`chip region ${r}`}>
           {regionWords(REGION_CHIP[r], r)}
           {r === 'fencedYard' && fenced > 0 ? ` · ${fenced} tiles` : ''}
@@ -261,6 +286,7 @@ function LayoutFacts({ info }: { info: PieceInfo }) {
   if (info.side === 'exterior') fact('Exterior room: it touches the outside');
   if (info.side === 'interior') fact('Interior room: no outside wall, so it’s Dark');
   for (const r of info.regions) {
+    if (r === 'sunny') continue; // its Sunny tag says it (D-120)
     const text = capitalize(regionText(r));
     fact(text, regionWords(text, r));
   }
@@ -817,7 +843,7 @@ export function Inspect() {
   } else if (what?.kind === 'tile') {
     const t = terrainAt(s.house.lot, what.x, what.y);
     const info = rules.describeTile(s, what.x, what.y);
-    const where = info && <RegionChips regions={info.regions} fenced={info.fencedYardTiles} />;
+    const where = info && <RegionChips regions={info.regions} fenced={info.fencedYardTiles} tile />;
     body = t ? (
       <>
         <h2>{CONTENT.features[t].name}</h2>

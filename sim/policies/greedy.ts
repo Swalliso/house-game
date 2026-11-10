@@ -38,6 +38,11 @@ export const TOP_K = 12;
 const PER_CARD = 2;
 /** At most this many hinted plays (set, yard, link, pair) are scored exactly, best first. */
 export const HINT_CAP = 24;
+/**
+ * And this many plays that change another piece's sun under a Sunny reader (D-120), on their
+ * own count: one Sunny wall can be shaded from dozens of spots, and they'd crowd out the rest.
+ */
+export const SUN_HINT_CAP = 8;
 
 /** When greedy completes a milestone early: 'last' only when it saves exactly one week. */
 export type EarlyMode = 'never' | 'always' | 'last';
@@ -106,6 +111,7 @@ export function shortlist(
   const chosen = new Uint8Array(ranked.length);
   const perCard = new Map<number, number>();
   let hints = 0;
+  let sunHints = 0;
   ranked.forEach((r, n) => {
     if (n < TOP_K) chosen[n] = 1;
     const card = r.play.i * 2 + (r.play.from === 'reserve' ? 1 : 0);
@@ -116,6 +122,9 @@ export function shortlist(
     }
     if (hints < HINT_CAP && hinted(r.est)) {
       hints++;
+      chosen[n] = 1;
+    } else if (sunHints < SUN_HINT_CAP && r.est.sunHint) {
+      sunHints++;
       chosen[n] = 1;
     }
   });

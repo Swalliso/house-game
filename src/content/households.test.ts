@@ -170,9 +170,9 @@ describe('member rooms', () => {
         ['kitchen', 4, 2],
         ['flowerBed', 2, 4],
       ]),
-      // Her room counts as a Bedroom, so the Bathroom earns its +3 too; the Flower Bed is in
-      // the front yard (1 + 2).
-    ).toEqual([3 + 2 + 2 + 1, 3, 0, 3]);
+      // Her room counts as a Bedroom, so the Bathroom earns its +3 too; the Kitchen faces the
+      // sun (+2, D-120); the Flower Bed is in the front yard (1 + 2).
+    ).toEqual([3 + 2 + 2 + 1, 3, 2, 3]);
   });
 
   it('Renfield’s Room: 2, +1 per touching room (up to 3)', () => {

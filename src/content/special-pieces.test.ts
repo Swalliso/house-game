@@ -19,7 +19,6 @@ const SPECIAL = [
   'library',
   'mudroom',
   'pool',
-  'sunroom',
   'hotTub',
   'firePit',
   'henhouse',
@@ -84,8 +83,9 @@ function expectCard(
 const open = emptyRows(10, 10);
 
 describe('special pieces', () => {
-  it('are the 9 weight-0 pieces: never in the weekly draw, all in the shop and the Catalog', () => {
+  it('are the 8 weight-0 pieces: never in the weekly draw, all in the shop and the Catalog', () => {
     // Member rooms (M4b) are weight 0 too, but arrive with the household (households.test.ts).
+    // The Sunroom left them for the weekly draw (D-120).
     const weightless = (Object.keys(CONTENT.pieces) as PieceId[]).filter(
       (id) => CONTENT.pieces[id].drawWeight === 0 && !CONTENT.pieces[id].member,
     );
@@ -274,14 +274,21 @@ describe('Pool', () => {
 });
 
 describe('Sunroom', () => {
-  it('+2 per tile on the sunny side (the top 4 rows here), and Sunny wherever it is', () => {
-    expectCard('sunroom', 'indoor', ['Sunny'], ['+2 per tile on the sunny side']);
-    expect(earned(open, [['sunroom', 0, 0]])).toEqual([8]);
-    // Rows 3 and 4: two sunny tiles.
-    expect(earned(open, [['sunroom', 0, 3]])).toEqual([4]);
-    const shade = houseFrom(CONTENT, open, [['sunroom', 0, 6]]);
-    expect(tallyOf(shade).pieces[0]!.earned).toBe(0);
-    expect(computeLayout(CONTENT, shade).tags.get(1)!.has('Sunny')).toBe(true);
+  it('+6 while Sunny, in the weekly draw from Foundation (D-120)', () => {
+    const def = CONTENT.pieces.sunroom;
+    expect(def).toMatchObject({ category: 'indoor', tags: [], drawWeight: 5, fromPhase: 1 });
+    expect(cardText(CONTENT, def).effects).toEqual(['+6 every week while Sunny']);
+    expect(drawWeights(CONTENT, 0).some((w) => w.card.id === 'sunroom')).toBe(false);
+    expect(drawWeights(CONTENT, 1).some((w) => w.card.id === 'sunroom')).toBe(true);
+    // A wall to the sun: +6.
+    expect(earned(open, [['sunroom', 0, 0]])).toEqual([6]);
+    // Right behind a Bedroom, away from the sun: in its shade, so not Sunny, and 0.
+    const shade = houseFrom(CONTENT, open, [
+      ['bedroom', 0, 0],
+      ['sunroom', 0, 2],
+    ]);
+    expect(tallyOf(shade).pieces[1]!.earned).toBe(0);
+    expect(computeLayout(CONTENT, shade).tags.get(2)!.has('Sunny')).toBe(false);
   });
 });
 
@@ -327,7 +334,7 @@ describe('Fire Pit', () => {
       ['firePit', 2, 2],
       ['hotTub', 3, 2],
     ];
-    expect(earned(open, house)).toEqual([6, 0, 0, 0, 3]);
+    expect(earned(open, house)).toEqual([6, 2, 2, 0, 3]); // the Kitchen and the Living Room in the sun
     // With the Kitchen a row up, the Fire Pit touches no room, so its aura doesn't apply and
     // the Patio earns its plain 4.
     const away = tally(open, [
@@ -337,7 +344,7 @@ describe('Fire Pit', () => {
       ['firePit', 2, 2],
       ['hotTub', 3, 2],
     ]);
-    expect(away.pieces.map((p) => p.earned)).toEqual([4, 0, 0, 0, 3]);
+    expect(away.pieces.map((p) => p.earned)).toEqual([4, 2, 2, 0, 3]);
     expect(away.pieces[3]!.unmet).toBe('touching a room');
     // Two Fire Pits, each touching the Kitchen too, add up: +2 at +100% is 4, shown as one
     // aura line.
@@ -371,14 +378,15 @@ describe('Henhouse', () => {
     const alone = houseFrom(CONTENT, open, [['henhouse', 0, 0]]);
     expect([1, 2, 3, 4].map((w) => tallyOf(alone, w).pieces[0]!.budget)).toEqual([0, 1, 0, 1]);
     expect(tallyOf(alone, 2)).toMatchObject({ budget: 1, total: 0 });
-    // A Flower Bed (1, +2 in the front yard) and a sunny Herb Garden (2) beside it: 1 + 1.
+    // A Flower Bed (1, +2 in the front yard) and an Herb Garden beside it: 1 + 1. The Herb
+    // Garden is in the Henhouse's shade (D-120), so it earns nothing itself.
     expect(
       earned(open, [
         ['henhouse', 2, 0],
         ['flowerBed', 1, 0],
         ['herbGarden', 2, 1],
       ]),
-    ).toEqual([2, 3, 2]);
+    ).toEqual([2, 3, 0]);
   });
 });
 

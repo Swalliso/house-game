@@ -11,8 +11,13 @@
 //   count as adjacency for scoring, sets, and conditions, not for connectivity,
 //   exterior/interior, views, or enclosure, and a Hallway isn't a neighbor for bonuses.
 // - Exterior and interior: a room is exterior if any tile touches a non-indoor tile or the lot
-//   edge. Interior rooms are Dark; a piece on a sunny tile is Sunny.
-// - Regions: the sunny side; the front yard (non-indoor tiles in rows nearer the street than
+//   edge. Interior rooms are Dark.
+// - The sun (D-120): a tile is in the sun unless it's a Tree, or a Tree, the Old Shed or a
+//   building (an indoor piece or an outbuilding) stands on the next tile toward the lot's sun;
+//   off the lot is open, the street included. A building with a tile in the sun is Sunny: in
+//   practice, a wall that faces the sun with open ground or the yard in front of it. Yard
+//   pieces aren't made Sunny (the Pool's card says it is).
+// - Regions: in the sun; the front yard (non-indoor tiles in rows nearer the street than
 //   the house's front row, or all yard before the first indoor piece); the back yard (the
 //   rest); fenced yards (flood fill over non-wall tiles, bounded by indoor tiles, Fences, and
 //   the lot edge; fenced if it doesn't touch the street edge, has `fencedYardMin` tiles, and
@@ -41,7 +46,7 @@ import type {
   TerrainId,
 } from './index.ts';
 import { cellIndex, inBounds, ORTHOGONAL, placedCells } from './grid.ts';
-import { isSunny } from './lot.ts';
+import { SUN_STEP } from './lot.ts';
 import { matchesPiece } from './selectors.ts';
 
 export type Neighbor =
@@ -105,12 +110,14 @@ export interface Layout {
   hasIndoor: boolean;
   /** 1 on tiles covered by an indoor piece. */
   indoorTile: Uint8Array;
+  /** 1 on tiles covered by a building (an indoor piece or an outbuilding): they cast shade. */
+  buildingTile: Uint8Array;
   /** Rooms with a tile touching a non-indoor tile or the lot edge. */
   exterior: ReadonlySet<number>;
   /** Rooms that aren't exterior. */
   interior: ReadonlySet<number>;
   /**
-   * Effective tags per piece: its own, plus Dark if interior and Sunny if on a sunny tile, then
+   * Effective tags per piece: its own, plus Dark if interior and Sunny if a building in the sun, then
    * those layout modifiers grant, less those they remove.
    */
   tags: ReadonlyMap<number, ReadonlySet<Tag>>;
@@ -199,6 +206,14 @@ export function isRoom(def: PieceDef): boolean {
   return def.category === 'indoor' && !def.connector;
 }
 
+/**
+ * A building (D-120): an indoor piece (a room or a Hallway) or an outbuilding. Buildings cast
+ * shade on the tile behind them, away from the sun, and one in the sun is Sunny.
+ */
+export function isBuilding(def: PieceDef): boolean {
+  return def.category !== 'yard';
+}
+
 export function computeLayout(
   content: Content,
   house: HouseState,
@@ -211,6 +226,7 @@ export function computeLayout(
   const indoorTile = new Uint8Array(size);
   const wallTile = new Uint8Array(size);
   const fenceTile = new Uint8Array(size);
+  const buildingTile = new Uint8Array(size);
   const byUid = new Map<number, PlacedPiece>();
   const defs = new Map<number, PieceDef>();
   const cells = new Map<number, readonly Cell[]>();
@@ -221,9 +237,11 @@ export function computeLayout(
     // A pack (D-106) carries its own tiles.
     const pc = placedCells(piece.shape ?? def.shape, piece.x, piece.y, piece.rot);
     const indoor = def.category === 'indoor';
+    const building = isBuilding(def);
     for (const c of pc) {
       const i = cellIndex(w, c.x, c.y);
       occupant[i] = piece.uid;
+      if (building) buildingTile[i] = 1;
       if (indoor) {
         indoorTile[i] = 1;
         wallTile[i] = 1;
@@ -404,13 +422,20 @@ export function computeLayout(
     compId++;
   }
 
-  // Region bits.
+  // Region bits. The sun: what stands one step toward it shades a tile.
+  const [sx, sy] = SUN_STEP[lot.sun];
+  const shades = (x: number, y: number): boolean => {
+    if (!inBounds(w, h, x, y)) return false;
+    const i = cellIndex(w, x, y);
+    const t = terrain[i];
+    return buildingTile[i] === 1 || t === 'tree' || t === 'oldShed';
+  };
   const regionBits = new Uint8Array(size);
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const i = cellIndex(w, x, y);
       let bits = 0;
-      if (isSunny(lot, x, y)) bits |= REGION_BIT.sunny;
+      if (terrain[i] !== 'tree' && !shades(x + sx, y + sy)) bits |= REGION_BIT.sunny;
       if (!indoorTile[i]) {
         bits |= frontRow === null || y > frontRow ? REGION_BIT.frontYard : REGION_BIT.backYard;
       }
@@ -419,13 +444,17 @@ export function computeLayout(
     }
   }
 
-  // Effective tags (§4 steps 1–2): own tags, plus Dark if interior and Sunny on a sunny tile.
+  // Effective tags (§4 steps 1–2): own tags, plus Dark if interior and Sunny if a building in
+  // the sun.
   const tags = new Map<number, ReadonlySet<Tag>>();
   for (const piece of house.pieces) {
     const def = defs.get(piece.uid)!;
     const set = new Set<Tag>(def.tags);
     if (interior.has(piece.uid)) set.add('Dark');
-    if (cells.get(piece.uid)!.some((c) => regionBits[cellIndex(w, c.x, c.y)]! & REGION_BIT.sunny)) {
+    if (
+      isBuilding(def) &&
+      cells.get(piece.uid)!.some((c) => regionBits[cellIndex(w, c.x, c.y)]! & REGION_BIT.sunny)
+    ) {
       set.add('Sunny');
     }
     tags.set(piece.uid, set);
@@ -441,6 +470,7 @@ export function computeLayout(
     hasView,
     hasIndoor,
     indoorTile,
+    buildingTile,
     exterior,
     interior,
     tags,

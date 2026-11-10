@@ -159,8 +159,7 @@ export function yardPieceLayout(
         width: w,
         height: h,
         terrain: new Array(w * h).fill(null),
-        sunnySide: 'top',
-        sunnyRows: 0,
+        sun: 'top',
         attempt: 0,
       },
       pieces: [

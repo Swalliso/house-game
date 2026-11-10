@@ -4,10 +4,9 @@
 // ends of its path, so they stay open (where it runs along the edge, it keeps a bank there), and
 // a pond ends; outside.ts draws the creek flowing on. The water has its own small canvas over its
 // bounding box, redrawn only to change frames; its shore's grass is keyed out, so the terrain
-// canvas's grass shows around it, and the blades at the water's edge take that grass's colors
-// (shore-sunny on the sunny side).
+// canvas's grass shows around it, and the blades at the water's edge take that grass's colors.
 
-import { isSunny, terrainAt, type Lot } from '../../../rules/index.ts';
+import { terrainAt, type Lot } from '../../../rules/index.ts';
 import { CELL, type SpriteId } from '../../sprites.ts';
 import {
   blobMask,
@@ -37,8 +36,6 @@ export interface WaterTile {
   readonly sx: number;
   readonly sy: number;
   readonly piece: QuarterPiece;
-  /** On a sunny cell: its shore's blades in the sunny grass's colors. */
-  readonly sunny: boolean;
 }
 
 /** A box of cells. */
@@ -104,7 +101,7 @@ export function waterPlan(lot: Lot, salt = 0): WaterPlan {
       y1 = Math.max(y1, y);
       const mask = blobMask(water, sx, sy);
       const piece = quarterPiece(mask, sx % SUB === SUB - 1, sy % SUB === SUB - 1);
-      tiles.push({ sx, sy, piece, sunny: isSunny(lot, x, y) });
+      tiles.push({ sx, sy, piece });
       const hash = tileHash(sx, sy, salt);
       if (mask === 255 && pond(x, y) && hash % LILY_EVERY === 0) {
         lilies.push({ sx, sy, id: LILIES[(hash >>> 3) % LILIES.length]! });
@@ -130,11 +127,11 @@ export function paintWater(
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
   const ox = box.x * CELL;
   const oy = box.y * CELL;
-  for (const { sx, sy, piece, sunny } of plan.tiles) {
+  for (const { sx, sy, piece } of plan.tiles) {
     drawSubtile(
       ctx,
       img,
-      shoreSet(piece, sunny),
+      shoreSet(piece),
       piece.col,
       piece.row,
       sx * SUBTILE - ox,
@@ -145,8 +142,7 @@ export function paintWater(
   for (const l of plan.lilies) drawSprite(ctx, img, l.id, l.sx * SUBTILE - ox, l.sy * SUBTILE - oy);
 }
 
-/** The shore set a piece comes from: the 3 × 3 block or the inner corners, sunny or not. */
-export function shoreSet(piece: QuarterPiece, sunny: boolean): SpriteId {
-  if (piece.block === 'outer') return sunny ? 'shore-sunny' : 'shore';
-  return sunny ? 'shore-corners-sunny' : 'shore-corners';
+/** The shore set a piece comes from: the 3 × 3 block or the inner corners. */
+export function shoreSet(piece: QuarterPiece): SpriteId {
+  return piece.block === 'outer' ? 'shore' : 'shore-corners';
 }

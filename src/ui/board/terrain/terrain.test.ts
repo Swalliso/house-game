@@ -3,18 +3,18 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { decodePng, type RgbaImage } from '../../../../scripts/png.ts';
 import { BALANCE } from '../../../content/balance.ts';
-import { generateLot, isSunny, lotFromRows, terrainAt } from '../../../rules/lot.ts';
-import type { Lot } from '../../../rules/index.ts';
+import { generateLot, lotFromRows, terrainAt } from '../../../rules/lot.ts';
+import { rules, type Lot } from '../../../rules/index.ts';
 import { BLOB47_MASKS, blobTile, E, N, NE, NW, S, SE, SUB, SW, W } from '../autotile.ts';
 import { grassDecor, TUFT_EVERY, WILDFLOWERS_EVERY } from './grass.ts';
 import { seedSalt } from './hash.ts';
 import { treeKind } from './objects.ts';
-import { sunnyEdge } from './sunny.ts';
+import { lotShade } from './shade.ts';
 import { shoreSet, waterPlan } from './water.ts';
 
 const cell = (s: number) => Math.floor(s / SUB);
 
-/** A width × height lot of open ground with its sunny side along the top. */
+/** A width × height lot of open ground, the sun at the back. */
 function open(width: number, height: number): Lot {
   return lotFromRows(Array.from({ length: height }, () => '.'.repeat(width)));
 }
@@ -56,68 +56,65 @@ describe('the grass', () => {
     expect(kinds.size).toBeGreaterThan(1);
   });
 
-  it('gives tufts the colors of the grass they’re on', () => {
-    const lot = open(24, 24);
-    for (const d of grassDecor(lot)) {
-      if (!d.id.startsWith('tuft-')) continue;
-      expect(d.id.startsWith('tuft-sunny-'), `${d.sx},${d.sy}`).toBe(
-        isSunny(lot, cell(d.sx), cell(d.sy)),
-      );
+  it('gives every tuft the lawn’s own colors: the sun has no band (D-120)', () => {
+    for (const d of grassDecor(open(24, 24))) {
+      if (d.id.startsWith('tuft-')) expect(['tuft-0', 'tuft-1']).toContain(d.id);
     }
   });
 });
 
-describe('the sunny side’s edge', () => {
-  // The band is the top 4 rows; a Tree at (2, 1) inside it stays shaded.
-  const lot = lotFromRows(['......', '..T...', '......', '......', '......', '......']);
-  const edge = sunnyEdge(lot);
-  const at = new Map(edge.map((t) => [`${t.sx},${t.sy}`, t]));
+describe('the lot’s shade (D-120)', () => {
+  // A Tree at (2, 1), the Old Shed on (4, 3) to (5, 4).
+  const rows = ['......', '..T...', '......', '....SS', '....SS', '......'];
 
-  it('lies on shaded subtiles next to sunny ground, nowhere else', () => {
-    for (const t of edge) expect(isSunny(lot, cell(t.sx), cell(t.sy))).toBe(false);
-    // The band's inner edge: every subtile of the first shaded row, none of the second.
-    for (let sx = 0; sx < 12; sx++) {
-      expect(at.has(`${sx},8`)).toBe(true);
-      expect(at.has(`${sx},9`)).toBe(false);
+  it('falls on the tile behind each Tree and the Old Shed, away from the sun', () => {
+    expect(lotShade(lotFromRows(rows, 'top'))).toEqual([
+      { x: 2, y: 2 },
+      { x: 4, y: 5 },
+      { x: 5, y: 5 },
+    ]);
+    expect(lotShade(lotFromRows(rows, 'bottom'))).toEqual([
+      { x: 2, y: 0 },
+      { x: 4, y: 2 },
+      { x: 5, y: 2 },
+    ]);
+    expect(lotShade(lotFromRows(rows, 'left'))).toEqual([{ x: 3, y: 1 }]);
+    expect(lotShade(lotFromRows(rows, 'right'))).toEqual([
+      { x: 1, y: 1 },
+      { x: 3, y: 3 },
+      { x: 3, y: 4 },
+    ]);
+  });
+
+  it('shades no Tree, and nothing on a lot without Trees', () => {
+    const woods = lotFromRows(['TTT', 'TTT', '...'], 'top');
+    expect(lotShade(woods)).toEqual([
+      { x: 0, y: 2 },
+      { x: 1, y: 2 },
+      { x: 2, y: 2 },
+    ]);
+    expect(lotShade(open(6, 6))).toEqual([]);
+  });
+
+  it('is where the rules leave open ground out of the sun', () => {
+    const state = rules.newRun({
+      seed: 'shade-check',
+      clientId: 'hendersons',
+      crewId: 'generalContractor',
+      mode: 'standard',
+    });
+    expect(state.house.pieces).toHaveLength(0);
+    const { lot } = state.house;
+    const shaded = new Set(lotShade(lot).map((t) => `${t.x},${t.y}`));
+    expect(shaded.size).toBeGreaterThan(0);
+    for (let y = 0; y < lot.height; y++) {
+      for (let x = 0; x < lot.width; x++) {
+        const own = terrainAt(lot, x, y);
+        if (own === 'tree' || own === 'oldShed') continue;
+        const lit = rules.describeTile(state, x, y)!.regions.includes('sunny');
+        expect(lit, `${x},${y}`).toBe(!shaded.has(`${x},${y}`));
+      }
     }
-  });
-
-  it('leaves a Tree inside the band in shade to its cell’s edge, as the rules shade it', () => {
-    for (const k of ['4,2', '5,2', '4,3', '5,3']) expect(at.has(k), k).toBe(false);
-  });
-
-  it('still reaches into a Tree beside the band, as into any shade beside it', () => {
-    // A Tree in the first shaded row, under the band: the band's edge runs over it too.
-    const beside = lotFromRows(['......', '......', '......', '......', '..T...', '......']);
-    const edge = new Map(sunnyEdge(beside).map((t) => [`${t.sx},${t.sy}`, t]));
-    const run = blobTile('godot', E | SE | S | SW | W);
-    expect(edge.get('4,8')).toMatchObject(run);
-    expect(edge.get('5,8')).toMatchObject(run);
-  });
-
-  it('never faces the street, even beside a Tree in the band’s bottom row', () => {
-    // A right band (columns 2 to 5) with a Tree at its bottom-left corner, as on seed s28.
-    const right = lotFromRows(['......', '......', '..T...'], 'right');
-    const edge = new Map(sunnyEdge(right).map((t) => [`${t.sx},${t.sy}`, t]));
-    // The shaded cell beside the Tree: the sun only at the corner above the Tree…
-    expect(edge.get('3,4')).toMatchObject(blobTile('godot', 255 & ~NE));
-    // …and none below it: the street under the band is no sunnier than the Tree.
-    expect(edge.has('3,5')).toBe(false);
-    for (let sx = 0; sx < 12; sx++) expect(edge.has(`${sx},5`), `${sx}`).toBe(false);
-    for (const k of ['4,4', '5,4', '4,5', '5,5']) expect(edge.has(k), k).toBe(false);
-  });
-
-  it('has no edge along the lot’s border: the band runs on past it', () => {
-    // The band's inner edge reaches the side borders as a straight run (open east and west).
-    expect(at.get('0,8')).toMatchObject(blobTile('godot', E | SE | S | SW | W));
-    expect(at.get('11,8')).toMatchObject(blobTile('godot', E | SE | S | SW | W));
-  });
-
-  it('follows a side band too', () => {
-    const left = lotFromRows(['......', '......'], 'left');
-    const tiles = sunnyEdge(left);
-    expect(new Set(tiles.map((t) => t.sx))).toEqual(new Set([8]));
-    expect(tiles).toHaveLength(4);
   });
 });
 
@@ -204,23 +201,13 @@ describe('the water', () => {
     expect(lilies).toBeGreaterThan(0);
   });
 
-  it('gives the shore on the sunny side sunny blades', () => {
-    // The pond spans the band's edge (rows 0 to 3 sunny, 4 and 5 shaded).
-    const band = waterPlan(
-      lotFromRows(['......', '......', '......', '.PP...', '.PP...', '......']),
+  it('gives every shore the lawn’s own blades: the sun has no band (D-120)', () => {
+    const plan = waterPlan(
+      lotFromRows(['......', '......', '......', '.PP...', '.PP...', '......'], 'left'),
     );
-    for (const t of band.tiles) {
-      const sunny = cell(t.sy) < 4;
-      expect(t.sunny, `${t.sx},${t.sy}`).toBe(sunny);
-      expect(shoreSet(t.piece, t.sunny)).toBe(
-        t.piece.block === 'outer'
-          ? sunny
-            ? 'shore-sunny'
-            : 'shore'
-          : sunny
-            ? 'shore-corners-sunny'
-            : 'shore-corners',
-      );
+    expect(plan.tiles.length).toBeGreaterThan(0);
+    for (const t of plan.tiles) {
+      expect(shoreSet(t.piece)).toBe(t.piece.block === 'outer' ? 'shore' : 'shore-corners');
     }
   });
 
@@ -236,29 +223,6 @@ const png = (id: string): RgbaImage =>
 const alpha = (img: RgbaImage, x: number, y: number) => img.rgba[(y * img.width + x) * 4 + 3]!;
 
 describe('the committed terrain cuts', () => {
-  it('sun-edge: each Godot tile is clear exactly toward its mask’s neighbors', () => {
-    const img = png('sun-edge');
-    // The middle of each side and each corner, on the tile's rim: clear where the clear inside
-    // (the shade) runs on into the neighbor, grass where it doesn't.
-    const probes: [number, number, number][] = [
-      [N, 8, 0],
-      [NE, 15, 0],
-      [E, 15, 8],
-      [SE, 15, 15],
-      [S, 8, 15],
-      [SW, 0, 15],
-      [W, 0, 8],
-      [NW, 0, 0],
-    ];
-    for (const mask of BLOB47_MASKS) {
-      const { col, row } = blobTile('godot', mask);
-      for (const [bit, px, py] of probes) {
-        const clear = alpha(img, col * 16 + px, row * 16 + py) < 255;
-        expect(clear, `mask ${mask}, bit ${bit}`).toBe((mask & bit) !== 0);
-      }
-    }
-  });
-
   it('shore: open water in the middle, land outside, in every frame', () => {
     const img = png('shore');
     for (let frame = 0; frame < 8; frame++) {

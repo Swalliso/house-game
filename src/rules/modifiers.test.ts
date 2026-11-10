@@ -528,8 +528,8 @@ describe('earnNothing', () => {
 // grantTag and removeTag
 
 /**
- * Below the sunny rows: a Living Room (uid 1), a Kitchen (uid 2), and three Closets in the gap
- * between them (uids 3–5). The middle Closet (uid 4, at 2,5) is walled in: interior, so Dark.
+ * A Living Room (uid 1), a Kitchen (uid 2), and three Closets in the gap between them (uids
+ * 3–5). The middle Closet (uid 4, at 2,5) is walled in: interior, so Dark, and out of the sun.
  */
 const INTERIOR: Placement[] = [
   ['livingRoom', 0, 4],
@@ -543,10 +543,11 @@ describe('grantTag and removeTag', () => {
   it('a Skylight makes its room Sunny and never Dark; Blackout Curtains make a room Dark', () => {
     const base = houseFrom(C, L, INTERIOR);
     expect(sorted(computeLayout(C, base).tags.get(4))).toEqual(['Dark']);
-    expect(sorted(computeLayout(C, base).tags.get(2))).toEqual(['Social']);
+    // The Kitchen's wall faces the sun (D-120).
+    expect(sorted(computeLayout(C, base).tags.get(2))).toEqual(['Social', 'Sunny']);
     const layout = computeLayout(C, installed(base, [4, 'skylight'], [2, 'blackoutCurtains']));
     expect(sorted(layout.tags.get(4))).toEqual(['Sunny']);
-    expect(sorted(layout.tags.get(2))).toEqual(['Dark', 'Social']);
+    expect(sorted(layout.tags.get(2))).toEqual(['Dark', 'Social', 'Sunny']);
     // It changes tags only: the Closet is still interior.
     expect(layout.interior.has(4)).toBe(true);
   });
@@ -562,14 +563,14 @@ describe('grantTag and removeTag', () => {
     );
     const layout = layoutOf(c, house, modsFor(c, [TEST_PLAN]));
     expect(sorted(layout.tags.get(1))).toEqual(['Quiet', 'Sunny']);
-    expect(sorted(layout.tags.get(2))).toEqual(['Dark', 'Quiet']);
+    expect(sorted(layout.tags.get(2))).toEqual(['Dark', 'Quiet', 'Sunny']);
   });
 
   it("targets see the tags from before any modifier, so grants don't chain", () => {
     const c = withBlueprint([{ kind: 'grantTag', target: { tag: 'Sunny' }, tag: 'Pretty' }]);
-    // uid 1 sits on sunny tiles; uid 2 is below them and gets Sunny from a Skylight.
+    // uid 1 is in the sun; uid 2 is in two Trees' shade and gets Sunny from a Skylight.
     const house = installed(
-      houseFrom(c, L, [
+      houseFrom(c, withTrees([0, 5], [1, 5]), [
         ['bedroom', 0, 0],
         ['bedroom', 0, 6],
       ]),
@@ -855,8 +856,8 @@ describe('grantEffect', () => {
   });
 
   it('Solar Panels: Sunny pieces pay 1 budget every 4th week, counted from purchase', () => {
-    // uid 1 on the sunny rows, uid 2 below them.
-    const house = houseFrom(C, L, [
+    // uid 1 in the sun, uid 2 in two Trees' shade.
+    const house = houseFrom(C, withTrees([0, 5], [1, 5]), [
       ['bedroom', 0, 0],
       ['bedroom', 0, 6],
     ]);

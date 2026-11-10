@@ -1,9 +1,10 @@
 // Lot generation from a seed (Appendix A · M1, D-048, D-049): the street on the bottom edge,
 // woods and lone Trees, a creek on about a quarter of lots (D-119), a pond, boulders, and the
-// sunny side. A lot that fails the regeneration checks is made again from the next
-// `lot/<attempt>` stream. Its traits (D-119), read from its terrain, are chips on the contract.
+// edge the sun shines from (D-120). A lot that fails the regeneration checks is made again from
+// the next `lot/<attempt>` stream. Its traits (D-119), read from its terrain, are chips on the
+// contract.
 
-import type { Cell, Content, Lot, LotBalance, LotTraitDef, TerrainId } from './index.ts';
+import type { Cell, Content, Lot, LotBalance, LotTraitDef, SunSide, TerrainId } from './index.ts';
 import { cellIndex, inBounds, ORTHOGONAL } from './grid.ts';
 import { stream, type Rng } from './rng.ts';
 
@@ -17,18 +18,19 @@ const isWater = (t: TerrainId | null) => t === 'pond' || t === 'creek';
 /** Tiles nothing can be built on in M1 (only a Driveway crosses the creek, from M2). */
 export const isBlocked = (t: TerrainId | null) => isWater(t) || t === 'boulder' || t === 'oldShed';
 
-/** The sunny side: `sunnyRows` rows along one edge, except Tree tiles. */
-export function isSunny(lot: Lot, x: number, y: number): boolean {
-  if (terrainAt(lot, x, y) === 'tree') return false;
-  switch (lot.sunnySide) {
-    case 'top':
-      return y < lot.sunnyRows;
-    case 'left':
-      return x < lot.sunnyRows;
-    case 'right':
-      return x >= lot.width - lot.sunnyRows;
-  }
-}
+/** The sun's edges (D-120), in the order a lot draws from: a quarter each. */
+export const SUN_SIDES: readonly SunSide[] = ['top', 'left', 'right', 'bottom'];
+
+/**
+ * One step toward the sun (D-120). A tile is in the sun unless it's a Tree, or a Tree or a
+ * building (layout.ts) stands on the tile one step from it this way; off the lot is open.
+ */
+export const SUN_STEP: Readonly<Record<SunSide, readonly [dx: number, dy: number]>> = {
+  top: [0, -1],
+  left: [-1, 0],
+  right: [1, 0],
+  bottom: [0, 1],
+};
 
 /**
  * The lot's traits (D-119), in content order: each one whose terrain the lot holds at least
@@ -44,9 +46,9 @@ export function lotTraits(content: Content, lot: Lot): LotTraitDef[] {
 
 /**
  * Builds a lot from ASCII rows, for tests and debugging: . ground, T tree, P pond, C creek,
- * B boulder, S Old Shed, K Time Capsule.
+ * B boulder, S Old Shed, K Time Capsule. The sun shines from the back unless `sun` says.
  */
-export function lotFromRows(rows: readonly string[], sunnySide: Lot['sunnySide'] = 'top'): Lot {
+export function lotFromRows(rows: readonly string[], sun: SunSide = 'top'): Lot {
   const codes: Record<string, TerrainId | null> = {
     '.': null,
     T: 'tree',
@@ -66,7 +68,7 @@ export function lotFromRows(rows: readonly string[], sunnySide: Lot['sunnySide']
       terrain.push(codes[ch]!);
     }
   }
-  return { width, height, terrain, sunnySide, sunnyRows: 4, attempt: 0 };
+  return { width, height, terrain, sun, attempt: 0 };
 }
 
 export function lotToRows(lot: Lot): string[] {
@@ -155,11 +157,25 @@ export function lotProblems(lot: Lot, b: LotBalance): string[] {
 
 export function generateLot(seed: string, b: LotBalance): Lot {
   for (let attempt = 0; attempt < b.maxAttempts; attempt++) {
-    const lot = pondRule(tryLot(stream(seed, `lot/${attempt}`), b, attempt, true), seed, b);
+    const bare = tryLot(stream(seed, `lot/${attempt}`), b, attempt, true, sunFor(seed, attempt));
+    const lot = pondRule(bare, seed, b);
     if (lotProblems(lot, b).length === 0) return placeFinds(lot, seed, b);
   }
   // Practically unreachable (the tests check 1,000 seeds), but a creekless lot always passes.
-  return placeFinds(tryLot(stream(seed, `lot/${b.maxAttempts}`), b, b.maxAttempts, false), seed, b);
+  const last = b.maxAttempts;
+  return placeFinds(
+    tryLot(stream(seed, `lot/${last}`), b, last, false, sunFor(seed, last)),
+    seed,
+    b,
+  );
+}
+
+/**
+ * The sun's edge (D-120), a quarter each, from its own `lot/<attempt>/sun` stream, so no lot's
+ * terrain changed when the sun came in.
+ */
+function sunFor(seed: string, attempt: number): SunSide {
+  return stream(seed, `lot/${attempt}/sun`).pick(SUN_SIDES);
 }
 
 /**
@@ -222,7 +238,7 @@ function placeFinds(lot: Lot, seed: string, b: LotBalance): Lot {
   return { ...lot, terrain };
 }
 
-function tryLot(rng: Rng, b: LotBalance, attempt: number, allowCreek: boolean): Lot {
+function tryLot(rng: Rng, b: LotBalance, attempt: number, allowCreek: boolean, sun: SunSide): Lot {
   const { width: w, height: h } = b;
   const terrain: (TerrainId | null)[] = new Array<TerrainId | null>(w * h).fill(null);
   const at = (x: number, y: number) => terrain[cellIndex(w, x, y)] ?? null;
@@ -301,15 +317,7 @@ function tryLot(rng: Rng, b: LotBalance, attempt: number, allowCreek: boolean): 
     if (c) set(c.x, c.y, 'boulder');
   }
 
-  const sides = ['top', 'left', 'right'] as const;
-  return {
-    width: w,
-    height: h,
-    terrain,
-    sunnySide: rng.pick(sides),
-    sunnyRows: b.sunnyRows,
-    attempt,
-  };
+  return { width: w, height: h, terrain, sun, attempt };
 }
 
 function randomEmpty(

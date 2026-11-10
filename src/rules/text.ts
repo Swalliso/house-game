@@ -20,6 +20,7 @@ import type {
   RuleKey,
   Selector,
   SpecDef,
+  SunSide,
   Tag,
   ToolDef,
   UpgradeDef,
@@ -38,15 +39,23 @@ const PROPERTY_NOUNS: Record<Property, [one: string, many: string]> = {
 };
 
 const REGION_TEXT: Record<Region, string> = {
-  sunny: 'on the sunny side',
+  sunny: 'in the sun',
   frontYard: 'in the front yard',
   backYard: 'in the back yard',
   fencedYard: 'in a fenced yard',
 };
 
-/** "in the front yard", "on the sunny side". */
+/** "in the front yard", "in the sun". */
 export function regionText(region: Region): string {
   return REGION_TEXT[region];
+}
+
+/**
+ * The side of the lot the sun shines from, and so the wall of a building that faces it (D-120):
+ * "back", "front" (the street's side), "left", or "right".
+ */
+export function sunSideText(side: SunSide): string {
+  return side === 'top' ? 'back' : side === 'bottom' ? 'front' : side;
 }
 
 /** 2 → "2nd", 3 → "3rd". */
@@ -236,7 +245,11 @@ export function conditionText(content: Content, cond: PieceCondition): string {
   }
   if ('in' in cond) return regionText(cond.in);
   if ('borders' in cond) return 'bordering a fenced yard';
-  if ('is' in cond) return article(selectorText(content, cond.is, 'one'));
+  if ('is' in cond) {
+    // A tag the piece has reads as the tag itself: "Sunny".
+    if (cond.is !== 'all' && 'tag' in cond.is) return cond.is.tag;
+    return article(selectorText(content, cond.is, 'one'));
+  }
   return `part of ${article(content.sets[cond.inSet].name)}`;
 }
 
@@ -403,9 +416,10 @@ export function effectText(content: Content, effect: Effect): string {
   }
 }
 
-/** A condition as a trailing phrase: "in the front yard", "if touching a Tree". */
+/** A condition as a trailing phrase: "in the front yard", "if touching a Tree", "while Sunny". */
 function conditionPhrase(content: Content, cond: PieceCondition): string {
   if ('in' in cond) return regionText(cond.in);
+  if ('is' in cond) return `while ${conditionText(content, cond)}`;
   return `if ${conditionText(content, cond)}`;
 }
 
@@ -768,6 +782,7 @@ export type Term =
   | 'frontYard'
   | 'backYard'
   | 'fencedYard'
+  | 'sunny'
   | 'requirement'
   | 'link'
   | 'timer';
@@ -903,6 +918,13 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
       text:
         `Open ground closed in by the house, Fences, and the lot’s edge, with at least ` +
         `${b.fencedYardMin} tiles. It must touch a Fence and the house, and not the street.`,
+    },
+    sunny: {
+      title: 'Sunny',
+      text:
+        'The sun shines from one edge of the lot, marked on the board. A room, a Hallway or an ' +
+        'outbuilding is Sunny when one of its walls faces the sun with nothing in front of it: ' +
+        'no Tree and no other building. Yard pieces aren’t.',
     },
     requirement: {
       title: 'Requirements',

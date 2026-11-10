@@ -12,8 +12,15 @@
 //   the house, with fencedYardMin tiles);
 // - linkHint: a linking connector (a Hallway) that would link two rooms not linked now;
 // - specHint: a piece that would join an unmet adjacentPair line's two types (Kitchen beside
-//   the Dining Room), touching one of the other type.
+//   the Dining Room), touching one of the other type;
+// - sunHint (D-120): a play that would make another piece Sunny or take its sun, when the run
+//   has a modifier that reads Sunny (the Count's taste, Heat wave, Solar Panels).
 // Only wall pieces pay for the yard check and only connectors for the link check.
+//
+// The sun (D-120) is exact for the new piece (a building shades its own back tiles, and a Tree
+// under it is cleared) and for its neighbors' own effects: a building shades the tile behind it,
+// away from the sun, so the piece there can lose its "while Sunny" pay; a Tree it clears gives
+// that tile the sun back.
 //
 // The checklist (M4a): each line that holds adds specBonus to the week's Mult, so a play that
 // turns one on or off moves the week by about specBonus × its Points. The estimate follows the
@@ -31,17 +38,29 @@
 import type {
   Cell,
   Content,
+  Effect,
   HouseCondition,
+  Modifier,
   PieceDef,
   PieceId,
+  PlacedPiece,
+  Region,
   Selector,
   SpecDef,
   Tally,
 } from './index.ts';
 import { countMatching, currentStage, outlineOf, type Outline } from './conditions.ts';
 import { cellIndex, inBounds, ORTHOGONAL } from './grid.ts';
-import { terrainAt } from './lot.ts';
-import { isRoom, pieceDef, REGION_BIT, type Layout, type Neighbor } from './layout.ts';
+import { SUN_STEP, terrainAt } from './lot.ts';
+import {
+  isBuilding,
+  isRoom,
+  pieceDef,
+  REGION_BIT,
+  tilesIn,
+  type Layout,
+  type Neighbor,
+} from './layout.ts';
 import type { ActiveMod } from './modifiers.ts';
 import { isType, matchesDef, matchesNeighbor, matchesPiece, rootType } from './selectors.ts';
 import { earnedFor, specsMet } from './scoring.ts';
@@ -59,6 +78,8 @@ export interface Estimate {
   linkHint: boolean;
   /** It would join an unmet adjacentPair line's two types (Kitchen beside the Dining Room). */
   specHint: boolean;
+  /** It would make another piece Sunny or take its sun, and the run has a Sunny reader. */
+  sunHint: boolean;
 }
 
 /** The client's checklist and the current milestone, as the week's tally reads them. */
@@ -150,20 +171,20 @@ function matchesNew(
   sel: Selector,
   def: PieceDef,
   cells: readonly Cell[],
-  sunny: boolean,
+  sun: PlaySun,
 ): boolean {
   if (sel === 'all') return true;
-  if ('any' in sel) return sel.any.some((s) => matchesNew(content, layout, s, def, cells, sunny));
-  if ('all' in sel) return sel.all.every((s) => matchesNew(content, layout, s, def, cells, sunny));
-  if ('not' in sel) return !matchesNew(content, layout, sel.not, def, cells, sunny);
+  if ('any' in sel) return sel.any.some((s) => matchesNew(content, layout, s, def, cells, sun));
+  if ('all' in sel) return sel.all.every((s) => matchesNew(content, layout, s, def, cells, sun));
+  if ('not' in sel) return !matchesNew(content, layout, sel.not, def, cells, sun);
   if ('piece' in sel) {
     return typeof sel.piece === 'string'
       ? isType(def, sel.piece)
       : sel.piece.some((id) => isType(def, id));
   }
   if ('feature' in sel || 'host' in sel || 'hasFixture' in sel) return false;
-  if ('tag' in sel) return def.tags.includes(sel.tag) || (sel.tag === 'Sunny' && sunny);
-  if ('in' in sel) return allIn(layout, cells, REGION_BIT[sel.in]);
+  if ('tag' in sel) return def.tags.includes(sel.tag) || (sel.tag === 'Sunny' && sun.sunny);
+  if ('in' in sel) return allInRegion(layout, cells, sel.in, sun);
   if ('touching' in sel) return false;
   switch (sel.property) {
     case 'indoor':
@@ -182,16 +203,111 @@ function matchesNew(
   }
 }
 
-function allIn(layout: Layout, cells: readonly Cell[], bit: number): boolean {
-  const w = layout.house.lot.width;
-  return cells.every((c) => (layout.regionBits[cellIndex(w, c.x, c.y)]! & bit) !== 0);
-}
-
 function countIn(layout: Layout, cells: readonly Cell[], bit: number): number {
   const w = layout.house.lot.width;
   let n = 0;
   for (const c of cells) if (layout.regionBits[cellIndex(w, c.x, c.y)]! & bit) n++;
   return n;
+}
+
+/** The new piece's tiles in a region, the sun's as the play leaves it. */
+function countInRegion(
+  layout: Layout,
+  cells: readonly Cell[],
+  region: Region,
+  sun: PlaySun,
+): number {
+  return region === 'sunny' ? sun.lit : countIn(layout, cells, REGION_BIT[region]);
+}
+
+function allInRegion(
+  layout: Layout,
+  cells: readonly Cell[],
+  region: Region,
+  sun: PlaySun,
+): boolean {
+  return countInRegion(layout, cells, region, sun) === cells.length;
+}
+
+// ---------------------------------------------------------------------------------------
+// The sun (D-120).
+
+/** The sun as the play leaves it: the new piece's, and the tiles it changes under others. */
+interface PlaySun {
+  /** The new piece's tiles in the sun. */
+  lit: number;
+  /** The sun makes the new piece Sunny: a building with a tile in the sun. */
+  sunny: boolean;
+  /** Pieces whose tiles in the sun the play changes, by how many (negative: shaded). */
+  others: ReadonlyMap<number, number>;
+}
+
+/**
+ * The play's sun. A tile is in the sun unless it's a Tree, or a Tree, the Old Shed or a
+ * building stands one step toward the sun (layout.ts). The play changes that only on its own
+ * tiles: as a building it shades its own back tiles and the tile behind each one, away from the
+ * sun; any piece clears the Trees under it.
+ */
+function playSun(layout: Layout, def: PieceDef, cells: readonly Cell[]): PlaySun {
+  const { lot } = layout.house;
+  const { width: w, height: h } = lot;
+  const [sx, sy] = SUN_STEP[lot.sun];
+  const building = isBuilding(def);
+  const own = new Set(cells.map((c) => cellIndex(w, c.x, c.y)));
+  const shades = (x: number, y: number): boolean => {
+    if (!inBounds(w, h, x, y)) return false;
+    const i = cellIndex(w, x, y);
+    if (own.has(i)) return building;
+    const t = lot.terrain[i];
+    return layout.buildingTile[i] === 1 || t === 'tree' || t === 'oldShed';
+  };
+  let lit = 0;
+  const others = new Map<number, number>();
+  for (const c of cells) {
+    if (!shades(c.x + sx, c.y + sy)) lit++;
+    // The tile behind it: this tile, as the play leaves it, decides that one's sun.
+    const bx = c.x - sx;
+    const by = c.y - sy;
+    if (!inBounds(w, h, bx, by)) continue;
+    const b = cellIndex(w, bx, by);
+    const uid = layout.occupant[b]!;
+    if (uid < 0 || own.has(b)) continue;
+    const before = (layout.regionBits[b]! & REGION_BIT.sunny) !== 0;
+    if (before !== !building) others.set(uid, (others.get(uid) ?? 0) + (building ? -1 : 1));
+  }
+  return { lit, sunny: building && lit > 0, others };
+}
+
+/** "+2 while Sunny" (a steady effect on `{ is: { tag: 'Sunny' } }`): its amount, else 0. */
+function whileSunny(e: Effect): number {
+  if (e.kind !== 'conditional' || !('is' in e.when)) return 0;
+  const is = e.when.is;
+  if (is === 'all' || !('tag' in is) || is.tag !== 'Sunny') return 0;
+  return e.effect.kind === 'steady' ? e.effect.amount : 0;
+}
+
+/** Whether the sun alone makes this building Sunny: not its card, a grant, or its fixture. */
+function sunDecides(content: Content, layout: Layout, piece: PlacedPiece, def: PieceDef): boolean {
+  if (def.tags.includes('Sunny')) return false;
+  if ((layout.grants.get(piece.uid) ?? []).some((g) => g.tag === 'Sunny')) return false;
+  const fixture = piece.fixture && content.fixtures[piece.fixture.id];
+  return !fixture?.modifiers.some((m) => m.kind === 'removeTag' && m.tag === 'Sunny');
+}
+
+function mentionsSunny(sel: Selector | 'all'): boolean {
+  if (sel === 'all') return false;
+  if ('tag' in sel) return sel.tag === 'Sunny';
+  if ('in' in sel) return sel.in === 'sunny';
+  if ('any' in sel) return sel.any.some(mentionsSunny);
+  if ('all' in sel) return sel.all.some(mentionsSunny);
+  if ('not' in sel) return mentionsSunny(sel.not);
+  if ('touching' in sel) return mentionsSunny(sel.touching);
+  return false;
+}
+
+/** A run modifier that reads Sunny: the Count's taste, Heat wave, Solar Panels. */
+function readsSunny(mod: Modifier): boolean {
+  return 'target' in mod && mentionsSunny(mod.target);
 }
 
 /**
@@ -209,13 +325,13 @@ export function estimatePlay(
   checklist?: ChecklistCtx,
 ): Estimate {
   const { neighbors, connectors } = neighborsOf(content, layout, def, cells);
-  const sunny = countIn(layout, cells, REGION_BIT.sunny) > 0;
+  const sun = playSun(layout, def, cells);
   const scoreOf = new Map(tally.pieces.map((p) => [p.uid, p]));
   const matchN = (sel: Selector) =>
     neighbors.filter((n) => matchesNeighbor(content, layout, sel, n)).length;
   /** What a placed piece's effect gains from the new piece as a neighbor, under its cap. */
   const gain = (uid: number, e: PieceDef['effects'][number]): number => {
-    if (e.kind !== 'neighbor' || !matchesNew(content, layout, e.match, def, cells, sunny)) return 0;
+    if (e.kind !== 'neighbor' || !matchesNew(content, layout, e.match, def, cells, sun)) return 0;
     const already = (layout.neighbors.get(uid) ?? []).filter((m) =>
       matchesNeighbor(content, layout, e.match, m),
     ).length;
@@ -236,7 +352,7 @@ export function estimatePlay(
         break;
       }
       case 'perTile':
-        points += e.amount * countIn(layout, cells, REGION_BIT[e.region]);
+        points += e.amount * countInRegion(layout, cells, e.region, sun);
         break;
       case 'rhythm':
         if (e.every <= 1) points += e.amount;
@@ -248,10 +364,12 @@ export function estimatePlay(
         const w = e.when;
         const holds =
           'in' in w
-            ? allIn(layout, cells, REGION_BIT[w.in])
+            ? allInRegion(layout, cells, w.in, sun)
             : 'touching' in w
               ? matchN(w.touching) >= (w.min ?? 1)
-              : true;
+              : 'is' in w
+                ? matchesNew(content, layout, w.is, def, cells, sun)
+                : true;
         if (holds) addOwn(e.effect);
         break;
       }
@@ -263,7 +381,7 @@ export function estimatePlay(
   for (const e of def.effects) {
     if (e.kind === 'requires') {
       const c = e.condition;
-      if ('in' in c && !allIn(layout, cells, REGION_BIT[c.in])) blocked = true;
+      if ('in' in c && !allInRegion(layout, cells, c.in, sun)) blocked = true;
       if ('touching' in c && matchN(c.touching) < (c.min ?? 1)) blocked = true;
     } else addOwn(e);
   }
@@ -273,10 +391,33 @@ export function estimatePlay(
     if (
       mod.kind === 'earn' &&
       !mod.when &&
-      matchesNew(content, layout, mod.target, def, cells, sunny)
+      matchesNew(content, layout, mod.target, def, cells, sun)
     ) {
       pct += mod.pct;
     }
+  }
+
+  // The sun the play gives or takes from the pieces behind it (D-120): their own "while Sunny"
+  // and "per tile in the sun" pay. Modifiers that read Sunny are the hint's.
+  const sunPoints = new Map<number, number>();
+  let sunChanges = false;
+  for (const [uid, dLit] of sun.others) {
+    const piece = layout.byUid.get(uid)!;
+    const odef = pieceDef(content, piece);
+    const before = tilesIn(layout, uid, 'sunny');
+    let d = 0;
+    for (const e of odef.effects)
+      if (e.kind === 'perTile' && e.region === 'sunny') d += e.amount * dLit;
+    if (
+      isBuilding(odef) &&
+      before > 0 !== before + dLit > 0 &&
+      sunDecides(content, layout, piece, odef)
+    ) {
+      sunChanges = true;
+      const sign = before + dLit > 0 ? 1 : -1;
+      for (const e of odef.effects) d += sign * whileSunny(e);
+    }
+    if (d !== 0) sunPoints.set(uid, d);
   }
 
   // Neighbors' auras on the new piece, and the new piece's effect on each neighbor.
@@ -288,13 +429,13 @@ export function estimatePlay(
     if (odef.connector) continue;
     const score = scoreOf.get(n.uid);
     if (!score || score.unmet) continue;
-    let dPoints = 0;
+    let dPoints = sunPoints.get(n.uid) ?? 0;
     let dPct = 0;
     for (const e of odef.effects) {
       if (
         e.kind === 'aura' &&
         e.scope === 'adjacent' &&
-        matchesNew(content, layout, e.match, def, cells, sunny)
+        matchesNew(content, layout, e.match, def, cells, sun)
       ) {
         pct += e.pct ?? 0;
         points += e.amount ?? 0;
@@ -372,6 +513,7 @@ export function estimatePlay(
     yardHint: !!def.wall && closesYard(content, layout, cells),
     linkHint: !!def.connector && linksRooms(content, layout, def, cells),
     specHint,
+    sunHint: sunChanges && mods.some(({ mod }) => readsSunny(mod)),
   };
 }
 

@@ -15,6 +15,8 @@
 // - Windows go in outside walls, about one per two cells of straight wall, except in closets,
 //   garages and hallways. A Bay Window (fixture) turns one cell of outside wall into glass with a
 //   bay outside it, the street side first.
+// - The sun (D-120): each Sunny room's tiles in the sun (rules.describePiece's `sunlit`), where
+//   the walls canvas draws the light by the wall that faces it (house-paint.ts sunlight).
 //
 // Geometry is in art px on the lot (CELL per cell, x right, y down); WALL has the sizes.
 
@@ -28,6 +30,7 @@ import {
   type PieceId,
   type PlacedPiece,
   type RunState,
+  type SunSide,
   type TerrainId,
 } from '../../rules/index.ts';
 import { CELL } from '../sprites.ts';
@@ -161,6 +164,15 @@ export interface HouseModel {
   windows: readonly WindowPane[];
   /** The rooms' bounding box in cells, or null before the first room. */
   bounds: Rect | null;
+  /** Where the sun falls (sunLight): on the board's house, not on a piece alone. */
+  sun?: SunLight;
+}
+
+/** Where the sun falls in the house (D-120): the walls that face it, and the Sunny rooms' tiles in it. */
+export interface SunLight {
+  side: Side;
+  /** Each Sunny room's tiles in the sun, by uid. A room with Blackout Curtains isn't Sunny. */
+  rooms: ReadonlyMap<number, readonly Cell[]>;
 }
 
 /** The rooms each room is linked to through Hallways: rules.describePiece's `linked`, by uid. */
@@ -289,7 +301,10 @@ export function uidHash(n: number, salt = 0): number {
 // ---------------------------------------------------------------------------------------
 // The cache.
 
-const cache = new WeakMap<HouseState, { links: HallLinks; key: string; model: HouseModel }>();
+const cache = new WeakMap<
+  HouseState,
+  { links: HallLinks; sun: SunLight | null; key: string; model: HouseModel }
+>();
 
 function linksKey(links: HallLinks): string {
   return [...links]
@@ -299,20 +314,35 @@ function linksKey(links: HallLinks): string {
     .join(';');
 }
 
+function sunKey(sun: SunLight | null): string {
+  if (!sun) return '';
+  return `${sun.side}:${[...sun.rooms]
+    .sort(([a], [b]) => a - b)
+    .map(([uid, cells]) => `${uid}=${cells.map((c) => `${c.x},${c.y}`).join(' ')}`)
+    .join(';')}`;
+}
+
 /**
- * The house's model, with Hallway doors from `links` (hallLinks). Cached per house object, and
- * a house never changes once made, so it's computed once per placement, not per render.
+ * The house's model, with Hallway doors from `links` (hallLinks) and the sun's light from `sun`
+ * (sunLight). Cached per house object, and a house never changes once made, so it's computed
+ * once per placement, not per render.
  */
-export function houseModel(house: HouseState, links: HallLinks = NO_LINKS): HouseModel {
+export function houseModel(
+  house: HouseState,
+  links: HallLinks = NO_LINKS,
+  sun: SunLight | null = null,
+): HouseModel {
   const hit = cache.get(house);
-  if (hit && hit.links === links) return hit.model;
-  const key = linksKey(links);
+  if (hit && hit.links === links && hit.sun === sun) return hit.model;
+  const key = `${linksKey(links)}|${sunKey(sun)}`;
   if (hit && hit.key === key) {
     hit.links = links;
+    hit.sun = sun;
     return hit.model;
   }
   const model = buildModel(house, links, true);
-  cache.set(house, { links, key, model });
+  if (sun && sun.rooms.size > 0) model.sun = sun;
+  cache.set(house, { links, sun, key, model });
   return model;
 }
 
@@ -325,6 +355,20 @@ export function hallLinks(state: RunState): HallLinks {
     if (linked.length > 0) out.set(p.uid, linked);
   }
   return out;
+}
+
+/** The wall that faces the sun, by the side of the lot it shines from. */
+const SUN_WALL: Readonly<Record<SunSide, Side>> = { top: 'N', bottom: 'S', left: 'W', right: 'E' };
+
+/** Where the sun falls in the house (D-120): each Sunny room's tiles in the sun, from the rules. */
+export function sunLight(state: RunState): SunLight {
+  const rooms = new Map<number, readonly Cell[]>();
+  for (const p of state.house.pieces) {
+    if (!isIndoor(p.defId)) continue;
+    const info = rules.describePiece(state, p.uid);
+    if (info?.tags.includes('Sunny') && info.sunlit.length > 0) rooms.set(p.uid, info.sunlit);
+  }
+  return { side: SUN_WALL[state.house.lot.sun], rooms };
 }
 
 const solo = new Map<string, HouseModel>();
@@ -353,8 +397,7 @@ export function pieceModel(
         width: w,
         height: h,
         terrain: new Array(w * h).fill(null),
-        sunnySide: 'top',
-        sunnyRows: 0,
+        sun: 'top',
         attempt: 0,
       },
       pieces: [

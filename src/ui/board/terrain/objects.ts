@@ -12,7 +12,7 @@
 // - Boulders: two or three rocks per cell.
 // - Finds: the Old Shed on its 2 × 2 footprint, and the Time Capsule's dug soil and shovel.
 
-import { isSunny, terrainAt, type Lot } from '../../../rules/index.ts';
+import { terrainAt, type Lot } from '../../../rules/index.ts';
 import { CELL, type SpriteId } from '../../sprites.ts';
 import { SUBTILE } from '../autotile.ts';
 import { sheetRect } from './atlas.ts';
@@ -156,7 +156,7 @@ export function boulders(lot: Lot, salt = 0): Placed[] {
     for (let x = 0; x < lot.width; x++) {
       if (terrainAt(lot, x, y) !== 'boulder') continue;
       const h = tileHash(x, y, salt);
-      const id: SpriteId = isSunny(lot, x, y) ? 'rocks-sunny' : 'rocks';
+      const id: SpriteId = 'rocks';
       const mirror = ((h >>> 15) & 1) === 1;
       // A rock's tile with its left edge at rx and its foot on row `foot` of the cell.
       const rock = (k: number, rx: number, foot: number): Placed => ({
@@ -193,8 +193,7 @@ export function finds(lot: Lot): Placed[] {
         }
         out.push(standing('old-shed', (x + 1) * CELL, (y + 2) * CELL, y * CELL));
       } else if (t === 'timeCapsule') {
-        const id: SpriteId = isSunny(lot, x, y) ? 'time-capsule-sunny' : 'time-capsule';
-        out.push(standing(id, (x + 0.5) * CELL, (y + 1) * CELL, y * CELL));
+        out.push(standing('time-capsule', (x + 0.5) * CELL, (y + 1) * CELL, y * CELL));
       }
     }
   }

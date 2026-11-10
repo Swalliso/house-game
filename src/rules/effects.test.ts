@@ -296,35 +296,39 @@ describe('economy', () => {
 });
 
 describe('perTile (the Herb Garden)', () => {
-  // The sunny side is the top 4 rows.
-  const rows = emptyRows(6, 8);
+  // The sun from the back (the top): a Tree or a building shades the tile below it (D-120).
+  const rows = ['......', '......', '.....T', '......', '......', '......', '......', '......'];
   const t = tallyAt(C, rows, [
-    ['herbGarden', 0, 0], // both tiles sunny
-    ['herbGarden', 5, 3, 1], // (5,3) sunny, (5,4) not
-    ['herbGarden', 2, 6], // off the sunny side
+    ['herbGarden', 0, 0], // 1: both tiles in the sun
+    ['herbGarden', 5, 3, 1], // 2: (5,3) in the Tree's shade, (5,4) in the sun
+    ['bedroom', 2, 4], // 3: shades the two tiles below it
+    ['herbGarden', 2, 6], // 4: in the Bedroom's shade
   ]);
 
-  it('earns +1 per sunny tile', () => {
+  it('earns +1 per tile in the sun', () => {
     expect(scoreOf(t, 1).earned).toBe(2);
     expect(scoreOf(t, 1).lines).toEqual([
-      { label: '2 tiles on the sunny side', op: 'add', value: 2, from: [] },
+      { label: '2 tiles in the sun', op: 'add', value: 2, from: [] },
     ]);
     expect(scoreOf(t, 2).earned).toBe(1);
     expect(scoreOf(t, 2).lines).toEqual([
-      { label: '1 tile on the sunny side', op: 'add', value: 1, from: [] },
+      { label: '1 tile in the sun', op: 'add', value: 1, from: [] },
     ]);
   });
 
-  it('earns nothing off the sunny side', () => {
-    expect(scoreOf(t, 3).earned).toBe(0);
-    expect(scoreOf(t, 3).lines).toEqual([]);
+  it('earns nothing in the shade', () => {
+    expect(scoreOf(t, 4).earned).toBe(0);
+    expect(scoreOf(t, 4).lines).toEqual([]);
   });
 
-  it('follows the lot’s sunny side', () => {
-    const house = houseFrom(C, rows, [['herbGarden', 0, 6, 1]]);
-    const left = { ...house, lot: { ...house.lot, sunnySide: 'left' as const } };
-    expect(scoreOf(tallyHouse(C, computeLayout(C, left), 1, true), 1).earned).toBe(2);
-    expect(scoreOf(tallyHouse(C, computeLayout(C, house), 1, true), 1).earned).toBe(0);
+  it('follows the lot’s sun', () => {
+    const house = houseFrom(C, emptyRows(6, 8), [
+      ['bedroom', 0, 4],
+      ['herbGarden', 0, 6], // right under the Bedroom: shaded from the back, lit from the left
+    ]);
+    const left = { ...house, lot: { ...house.lot, sun: 'left' as const } };
+    expect(scoreOf(tallyHouse(C, computeLayout(C, left), 1, true), 2).earned).toBe(2);
+    expect(scoreOf(tallyHouse(C, computeLayout(C, house), 1, true), 2).earned).toBe(0);
   });
 });
 
