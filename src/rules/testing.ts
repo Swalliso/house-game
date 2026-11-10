@@ -1117,6 +1117,40 @@ export const TEST_CHANGE_ORDERS: Record<ChangeOrderId, ChangeOrderDef> = {
       { kind: 'earn', target: { all: [ROOMS, { tag: 'Sunny' }] }, pct: -50 },
     ],
   },
+  coldSnap: {
+    id: 'coldSnap',
+    name: 'Cold snap',
+    scope: 'generic',
+    tier: 'core',
+    kind: 'phase',
+    text: 'Rooms with a Fireplace earn double; Bathrooms earn half.',
+    modifiers: [
+      { kind: 'earn', target: { hasFixture: 'fireplace' }, pct: 100 },
+      { kind: 'earn', target: { piece: 'bathroom' }, pct: -50 },
+    ],
+  },
+  rainySeason: {
+    id: 'rainySeason',
+    name: 'Rainy season',
+    scope: 'generic',
+    tier: 'core',
+    kind: 'phase',
+    text: 'Green pieces earn double; Patios earn nothing.',
+    modifiers: [
+      { kind: 'earn', target: { tag: 'Green' }, pct: 100 },
+      { kind: 'earnNothing', target: { piece: 'patio' } },
+    ],
+  },
+  hoaLetter: {
+    id: 'hoaLetter',
+    name: 'A letter from the HOA',
+    scope: 'generic',
+    tier: 'core',
+    kind: 'restriction',
+    text: 'Nothing new in the front yard.',
+    forbid: { in: 'frontYard' },
+    reward: { budget: 4 },
+  },
   goldenRetriever: {
     id: 'goldenRetriever',
     name: 'Golden retriever',
@@ -1175,6 +1209,19 @@ export const TEST_CHANGE_ORDERS: Record<ChangeOrderId, ChangeOrderDef> = {
     condition: { group: { all: [{ piece: 'lawn' }, { in: 'fencedYard' }] }, minTiles: 8 },
     reward: { budget: 5 },
   },
+  puppies: {
+    id: 'puppies',
+    name: 'A litter of puppies',
+    scope: 'barkers',
+    tier: 'core',
+    kind: 'phase',
+    text: 'Pet pieces and Lawns earn double; Flower Beds earn nothing.',
+    modifiers: [
+      { kind: 'earn', target: { tag: 'Pet' }, pct: 100 },
+      { kind: 'earn', target: { piece: 'lawn' }, pct: 100 },
+      { kind: 'earnNothing', target: { piece: 'flowerBed' } },
+    ],
+  },
   declutter: {
     id: 'declutter',
     name: 'Declutter',
@@ -1195,6 +1242,19 @@ export const TEST_CHANGE_ORDERS: Record<ChangeOrderId, ChangeOrderDef> = {
     condition: { countNew: { all: [{ piece: 'patio' }, { property: 'view' }] }, min: 1 },
     reward: { budget: 4 },
   },
+  magazineShoot: {
+    id: 'magazineShoot',
+    name: 'A magazine shoot',
+    scope: 'juniper',
+    tier: 'core',
+    kind: 'phase',
+    text: 'Rooms with a view earn double; Closets and Hallways earn nothing.',
+    modifiers: [
+      { kind: 'earn', target: { all: [ROOMS, { property: 'view' }] }, pct: 100 },
+      { kind: 'earnNothing', target: { piece: 'closet' } },
+      { kind: 'earnNothing', target: { piece: 'hallway' } },
+    ],
+  },
   bigDeadline: {
     id: 'bigDeadline',
     name: 'Big deadline',
@@ -1214,6 +1274,18 @@ export const TEST_CHANGE_ORDERS: Record<ChangeOrderId, ChangeOrderDef> = {
     text: 'A new interior room.',
     condition: { countNew: { all: [ROOMS, { property: 'interior' }] }, min: 1 },
     reward: { budget: 4 },
+  },
+  outOfOffice: {
+    id: 'outOfOffice',
+    name: 'Out of office',
+    scope: 'dale',
+    tier: 'core',
+    kind: 'phase',
+    text: 'Outdoor pieces earn double; Home Offices earn nothing.',
+    modifiers: [
+      { kind: 'earn', target: { tag: 'Outdoor' }, pct: 100 },
+      { kind: 'earnNothing', target: { piece: 'homeOffice' } },
+    ],
   },
 };
 

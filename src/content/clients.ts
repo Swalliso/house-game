@@ -96,7 +96,7 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
     tier: 'core',
     brief: 'Two dogs and counting, and a yard they can run in.',
     household: HOUSEHOLDS.barkers,
-    changeOrders: ['anotherRescue', 'agilityCourse'],
+    changeOrders: ['anotherRescue', 'agilityCourse', 'puppies'],
     specs: [
       ...houseRules({ household: HOUSEHOLDS.barkers }),
       {
@@ -136,7 +136,7 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
     tier: 'core',
     brief: 'A small house, beautifully done. Nothing extra.',
     household: HOUSEHOLDS.juniper,
-    changeOrders: ['declutter', 'teaGarden'],
+    changeOrders: ['declutter', 'teaGarden', 'magazineShoot'],
     specs: [
       // Her "a house of 4–8 rooms" (Appendix A · M4a) is her Under one roof.
       ...houseRules({ household: HOUSEHOLDS.juniper, rooms: { min: 4, max: 8 } }),
@@ -163,7 +163,7 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
     tier: 'core',
     brief: 'Works from home. Needs quiet, and an office or two.',
     household: HOUSEHOLDS.dale,
-    changeOrders: ['bigDeadline', 'startedAPodcast'],
+    changeOrders: ['bigDeadline', 'startedAPodcast', 'outOfOffice'],
     specs: [
       ...houseRules({ household: HOUSEHOLDS.dale }),
       {
