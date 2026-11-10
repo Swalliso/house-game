@@ -205,9 +205,9 @@ function HowToPlayText() {
             Pick 1 of {rooms + layout} cards, place it on the lot, then press <b>End week</b>.
           </li>
           <li>
-            Your cards come in two rows: <b>Rooms</b> ({rooms}), and <b>Layout</b> ({layout}): the
-            hallways, the yard, and outbuildings. A card with nowhere to go is swapped for another
-            from its row, free.
+            Your cards come in two rows: {rooms} <b>Rooms</b> cards, and {layout} <b>Layout</b>{' '}
+            cards (hallways, the Garage, the yard, and outbuildings). A card with nowhere to go is
+            swapped for another from its row, free.
           </li>
           {fenceTiles && drivewayTiles && (
             <li>
@@ -350,8 +350,8 @@ function HowToPlayText() {
             Reroll
           </dt>
           <dd>
-            New cards for one row, Rooms or Layout. {rerolls} per milestone
-            {crew ? ` with the ${crew}` : ''}, for both rows.
+            New cards for one row, Rooms or Layout: {rerolls} per milestone
+            {crew ? ` with the ${crew}` : ''}, shared by both rows.
           </dd>
           <dt>
             <Icon name="hammer" />

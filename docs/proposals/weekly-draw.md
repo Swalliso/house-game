@@ -1,6 +1,6 @@
 # The weekly draw: a brainstorm and a proposal
 
-**Date:** 2026-11-09. **Status:** a proposal only. Nothing in `src/` or `decisions.md` changed, and there's no PR. The draft decision is **D-121** (§10), numbered after the layout session's D-112–D-118 and the lot session's D-119–D-120; whoever merges renumbers.
+**Date:** 2026-11-09. **Status:** the user picked **Rooms 2 + Layout 2** (the recommendation, with §9's defaults). It's built as **D-121** on `phase/draw-rows`; `decisions.md` has the entry as built. Where it differs from §10's draft: the swapped-in card says so on a chip (what it replaced is in the chip's title and a note over the board), the ★ for a needed room isn't built yet, Your goods folds under 1100 px tall with counts on its plank, greedy rerolls the row whose best play scored lower, and the targets wait for the playtest-4 plan's one re-fit.
 
 **What you asked (playtest 4):** should the weekly draw split into two groups, the core rooms and the layout pieces that make the house look like a house? And how should the draw cope once there are many more buildings: weights, rerolls, or something else?
 
