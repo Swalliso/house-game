@@ -1314,193 +1314,170 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **Why:** The accelerator kept growing through those beats, so the longest weeks, usually the biggest, got the shortest payoff. A 25-trigger week at 1× is at about 2× by the multiply moment, so its 0.4 s pause took about 0.2 s. The steps are where a long week drags; the payoff is short at any length.
 **Changes:** `implementation-plan.md` §12, Timing. D-059 (Accepted) still holds: the tally speeds itself up.
 
----
-
-## Proposed
-
-*Reserved numbers (2026-11-09): D-115 to D-118 are the layout session's drafts and D-122 the legibility session's; they aren't in this file yet. D-124 to D-127 are the juice pull request's, and D-128 to D-131 the sound pass's (M5b). New entries start at D-132.*
-
-### D-124 · The celebration ladder: four tiers, the pile, and the milestone moment
-**Status:** Proposed · 2026-11-09, with the juice pull request (`phase/juice`). It builds §12's celebration ladder, which D-059 approved with the plan; the numbers and the choices below are this pull request's, for the feel playtest.
+### D-112 · Playtest 4's quick fixes
+**Status:** Accepted · 2026-11-10, played in playtest 5 with no issues raised (`docs/playtests/playtest-5-findings.md`). Proposed 2026-11-09, with the fix pull request after playtest 4 (`docs/playtests/playtest-4-findings.md` has the findings).
 **Decision:**
-- **The tiers,** by the week's total against its pace (the `tally` event's `pace`), sorted by the UI (`fx/ladder.ts`): Normal under 2× pace, Good from 2×, Great from 5×, Huge from 25×, or a Great week that beats the best week this browser has seen.
-  - **Good:** the score panel lifts once, sparkles burst round Wow, "Good week!" on paper, a short chime (`tier-good`), and a pile of 3.
-  - **Great:** the panel pulses gold twice, "Great week!" on gold, a fountain of confetti and coins from Wow, a warm wash over the screen, `big-week`'s arpeggio as its sting, a 7 px shake, and a pile of 6.
-  - **Huge:** three gold pulses, a bigger fountain, the board leaning in to 1.04× and back over 1.6 s (a celebration tween, which CLAUDE.md allows), one soft white flash with Flashing on, the fanfare (`tier-huge`), the week's last trigger in slow motion (2.5× its step), and the pile built into a tower of 12.
-  - The week's total holds 250, 700 or 1,500 ms longer for Good, Great and Huge: a closing beat, at the chosen speed (D-096), that a click skips.
-- **A tier's first appearance plays in full** (§12): 0.9, 1.8 or 2.8 s of real time that a click doesn't cut short. After that a click skips it like any beat. The browser keeps which tiers it has seen and its best week, per channel, like the saves; they're UI records, not game state.
-- **The glow** starts at 1× pace at 0.3 and grows with I = log5(total ÷ pace), fully lit at I = 2 (25× pace). It lights the preview too.
-- **The pile:** the week's best earners (ties to the earliest placed) fly from the board into a stack beside the score panel, each as its own picture (PieceArt) in a small framed block, and fade after 1.5 s.
-- **The milestone moment:** when a week's count-up crosses the phase's target, its last 30% before the target slows to 0.5× with a drumroll (`drumroll`), and the target's sting and "Target reached!" land as it crosses, not after. The top bar's flag pops and stars burst from it. It stays under 2.4 s, and a click skips it.
-  - §12 zooms on "the piece that crosses the line". In our tally the run total only moves in the count-up, after the multiply moment, so no piece crosses it; the flag takes the zoom's place.
-- **For M5b:** the music swell, ducking under the jingles, and the soft pad are the sound pass's. The `celebration` signal carries the tier for them.
+- **The title screen:**
+  - The car is mirrored at the cut (`art/limezu/ui.json`), so it faces the way it drives.
+  - How to play and Settings hang their chains a quarter in from each end, under Start.
+  - The villas' little gable over the front door is painted out with their own siding, trim and deck planks (a compose), so the porch roof reads as a flat deck under the balcony. That was the user's pick of three looks.
+  - The footer keeps just the jam note. LimeZu's credit stays in How to play's Credits and in CREDITS.md: both packs' licenses ask for credit and say nothing about where.
+- **Inspect's buttons** may wrap, so they never run past the panel. They say "Use it now" (the tool's name is the heading) and "Sell for N" (the coin says budget).
+- **Change orders:**
+  - The sheet's "It's coming either way: it can't be declined" goes, since the missing Decline button says it.
+  - About one phase effect in four shows a flavor line instead. A UI-only hash of the seed, the order and its phase picks it, so a replay shows the same one.
+  - Set bonuses read "The Entertainer pays double" and "Every set pays 10% more", not "+100% more".
+- **The Garage:** its card says "Must touch the house, and the street or a Driveway". A spot off the house says "The Garage is a room: it must connect to the house."
+- **Soundproofing** names what's Loud: "Loud neighbors (the street, Garages, Playrooms, and Pools) can't take points off it".
+- **Renovate:**
+  - A card that can renovate shows a ★ Renovate chip.
+  - A first-time hint explains it the first time a card can.
+  - The glossary says it's done in place, with nothing torn down.
+- **The glossary's Hallway links** no longer say a Hallway earns nothing itself, since a blueprint like Country Living pays it.
 
-**Why:** §12 and D-059: big moments should escalate the way Vampire Survivors' chests do, and everything else should stay calm. The thresholds are §12's.
-**Considered:**
-- **Huge's best-week clause** makes most Great weeks in a browser's first run Huge: totals grow through a run, so a Great week late in a run is nearly always the best yet. It's §12's rule as written. If the playtest finds Huge too common, drop the clause, or count the best only from earlier runs.
-- **A pile every week, Normal included** (§12 says bigger weeks stack higher): it would put 20 flying sprites in every week, so it starts at Good.
-
-**Changes:** `implementation-plan.md` §12, The celebration ladder (the milestone moment's flag). In `feel.ts`, M1's `bigWeekPace`, `glowPace`, `celebration` and `tally.bigHoldScale` are gone; `ladder`, `glow`, `pile` and `milestoneMoment` replace them. D-059 (Accepted) still holds.
-
-### D-125 · The reward moments, particles, and Flashing
-**Status:** Proposed · 2026-11-09, with the juice pull request. §7's distinct moments and M4's (`house-systems-review.md` §6), within D-059.
-**Decision:**
-- **Particles:** one canvas over the page, under the first-time hints and the modals, drawing bursts in whole UI pixels. The presets are in `feel.ts` (`particles.bursts`); their colors are tokens, and the coins, stars and hearts are the interface's own icons. None play with Reduce motion. At most 700 are in flight, and no burst outlives about 2.5 s.
-- **The moments,** each with a sound id of its own (a ZzFX placeholder for M5b to replace):
-  - **A set completing** for the first time: "*Set* complete!", a 1.5× beat, a chord (`set-complete`), a ring of Charm-colored bits, and a bigger shake.
-  - **A Rhythm payout** (the Pool's every third week): "Every 3rd week!" over the piece, a 1.6× step, a double knock (`rhythm`), and two rings spreading from it. The UI reads it from the piece's breakdown line, which a test pins.
-  - **A find:** dirt flies from its cell, then coins (budget) or glints (a tool), with a scoop and a ta-da (`find`).
-  - **Opening a crate:** the crate glows in its best option's rarity and shakes for 0.52 s, then bursts open with glints in that color, a creak and a pop (`crate-open`), and the options turn over after it.
-  - **A Rare in the shop:** its own bell (`rare`, where the sparkle played) and glints from its card as the sheet lands.
-  - **A client's wish met:** "★ *name*!", Charm's hearts rising from its checklist row, and a warm chime (`wish-met`).
-  - **A house rule met:** "✓ *name*" in blue (a new popup kind), sparkles from its row, and a crisp check (`rule-met`). One lost: its ✕, dust from its row, and a bonk (`rule-lost`). A wish lost keeps M4's.
-  - **A Renovation's level-up:** stars from the room as its badge pops, three notes up (`level-up`), and a bigger shake.
-  - **A change order's stamp:** a rubber-stamp thunk (`order-stamp`) and ink spattering where it lands.
-- **Flashing** (Settings, under Motion): on by default and saved. Off, the score panel's gold pulses become a lift and a Huge week's white flash is dropped; the warm wash stays, as a tint that fades. With it on, nothing flashes more than 3 times a second.
-- **Reduce motion** also stops the pile's flight, the Huge week's lean-in, the crate's shake and every particle. Its note in Settings says so.
-
-**Why:** §7 asks for each of these moments to read as its own, and playtest 4 found M4's moments forgettable (its §4). Restraint (Kao, 2020): the per-trigger beats keep their 2 px shake, and the bursts go to moments that happen a few times a run.
-**Changes:** `implementation-plan.md` §12, Settings and accessibility (what Flashing turns off).
-
-### D-126 · An arrival as a doorbell, the arrivals' marker, and the car that drives up
-**Status:** Proposed · 2026-11-09, with the juice pull request: playtest 4's asks (its §4 and §15 item 5).
-**Decision:**
-- **The doorbell:** a household member's arrival rings the front door: "Ding-dong!" on a plank at the house's front doormat (the house's south edge before there's a front door), two rings spreading from it, and a two-tone bell of its own (`doorbell`).
-- **Their card** slides in at the board's right edge, by the reserve their cards go to: the "Ding-dong!" plank rocking as the bell rings, their room's picture (the first card they bring), who's arrived, and what's waiting. It stays 3.4 s, and a click dismisses it. The first-time hints wait for it.
-  - It replaces the arrival's banner, which was the milestone's banner in a tan plank, so nothing about an arrival reads as a milestone. The banner's `note` tone is gone.
-- **The arrivals' marker on the progress bar:** the House after the meter's flag when someone moves in as this milestone is met; its tooltip says who, and the week. The meter is the phase's, so the whole schedule stays in the checklist's lines.
-- **The car** parks on the Driveway nearest the front door or a Garage that has room for it (by the distance from its tiles), so a drive extended toward the house gets it. Ties, and a house with neither, go to the oldest Driveway, as before. When a play moves it, its body and roof slide there together in 0.9 s; a new run or a load never slides.
-
-**Why:** the user asked for the doorbell and an arrival that doesn't read as a milestone. On the car the user said either way was fine; driving up makes a longer drive visible.
-**Changes:** D-103 (Accepted): its banner. `implementation-plan.md` §12 has no rule on either.
-
-### D-127 · The roof reveal at Roofing, and "Topped out!"
-**Status:** Proposed · 2026-11-09, with the juice pull request. §12's roof reveal, and the review's "Topped out!" (`house-systems-review.md` §6).
-**Decision:**
-- **The roof** is painted from the house model in LimeZu's palette, by fixed rules: a terracotta gable over each column of rooms (the south slope lit, the north in shade, a ridge cap between them), shingles offset like bricks, a fascia along the south eaves, eaves 3 art px past the walls, an ink outline, and a brick chimney on the first room. An L or a T gets a ridge per wing. It's a canvas in the board's `roof` layer, which D-097 reserved.
-- **At the Roofing milestone,** when it's met (on time, early or in overtime), the roof drops onto the house in 0.42 s, holds 1.8 s under the milestone's banner, and lifts off in 0.56 s, with a thump and a bell (`roof-on`). The tiles' digits and badges fade out while it's on. Reduce motion fades it in and out. A missed milestone gets no roof.
-- **"Topped out!":** the first week Under one roof holds in a run, a wood plaque with the flag rises over the top of the house for 1.7 s, with stars and a cheer (`topped-out`). The rules keep no history of the checklist, so the browser remembers the runs that have topped out (by seed, client and crew, the last 30), and a replay of the same run doesn't show it again.
-- The end screen's photo of the house at each milestone stays M6's.
-
-**Why:** §12's roof reveal, and the review's idea from its parked construction stages: a stamp when the roof goes on.
-**Changes:** none to settled decisions.
-
-### D-128 · The music: three calm tracks, picked by ear
-**Status:** Proposed · 2026-11-10, with M5b (D-058; `implementation-plan.md` §12, Music). The user picked the three by ear from a shortlist of six; playtest 5b hears them over a whole run.
-**Decision:**
-- **Three tracks, shuffled (D-131), about eight minutes before one repeats:**
-  - "Morning" by Kevin MacLeod (incompetech, 2023, CC BY 4.0): nylon guitar, harp and flute, no drums; 60 BPM, 2:28, E major.
-  - "Sleepy Little Mouse" by Tsorthan Grove (OpenGameArt, CC BY 4.0): lo-fi electric piano and pad over a soft backbeat; 70 BPM, 2:54, C major. It comes as a mix with drums and the same mix without them, in time with each other, so it plays as two stems: the drums play while you build, at a milestone, and on a win; the title, the job board, the shop, a crate, and a loss drop them.
-  - "Clear Air" by Kevin MacLeod (incompetech, CC BY 4.0): steel and nylon guitars, with a soft low piano in its second half; 68 BPM, 3:04. It leans G minor, so its key is B♭ major, which shares its notes.
-- **A track's key is where its rewards play** (D-129). Each key was estimated from the recording (a pitch-class profile with the overtones removed, then Krumhansl–Schmuckler and a check of the thirds). A track that leans minor gets its relative major, so the jingles stay bright and every note of the ladder is still in the track.
-- **Licenses were read on each track's own page.** CC BY's credit, with our changes (trimmed, levelled, re-encoded), is in `CREDITS.md` and How to play's Credits.
-- **The shortlist** came from two research passes, one over game-asset sources (Tallbeard/Abstraction, Ninja Adventure, YannZ, Kenney, OpenGameArt, itch.io) and one over music libraries (Free Music Archive, incompetech, Freesound, ccMixter). The listening page also had "Folded" by Ketsa (CC BY 4.0; busier lo-fi), "On the road, looking at your feet" by Monplaisir (CC0; solo ukulele) and "Comfort Games 5" by HoliznaCC0 (CC0; a music box).
-
-**Why:** §12 asks for 2–3 calm tracks of 2–3 minutes, around 70–90 BPM, sparse and plucked; a single short loop is Combolands' most common audio complaint. Guitar, harp and electric piano leave the mallets' register to the reward sounds.
-**Considered:**
-- Abstraction's "Interior Birdecorator" (CC0, four arrangements in sync) and the KitFit soundtrack (CC BY 4.0): each was written for another game, so we stayed clear of §12's "anything taken from another game", though their composers released them.
-- Kevin MacLeod's "Cherry Blossom": marimba at 100 BPM, on top of the Comfort plink.
-- YannZ's Contemplative Fantasy (loops in layers): its pages disagree about the license.
-- Ninja Adventure (CC0): chiptune leads and short loops.
-
-**Changes:** D-131: the one pick with stems mixes them by screen.
-
-### D-129 · The recorded sound set, in the music's key
-**Status:** Proposed · 2026-11-09, with M5b (D-058's reward sounds; `implementation-plan.md` §12, Sound). For playtest 5b's ears.
-**Decision:**
-- **Real instruments replace the ZzFX blips** where a recording fits (`src/ui/audio/kit.ts`), all CC0:
-  - Comfort (Points): a marimba's soft wooden plink. Charm (+Mult): a warm hand chime on the key's fifth. Sparkle (×Mult): a tubular bell on the tonic over a low gong, about 3 dB under the chime. The bell and the gong play for ×Mult and nothing else (`kit.test.ts`).
-  - Placing a room: a slit drum's thock, from 4 takes. A yard piece: a cloth's fwp, from 4 takes.
-  - The jingles (a big week, a milestone met or missed, the target reached), the multiply moment, and a purchase: short phrases on marimba, vibraphone, glockenspiel and the chimes. The coin count: clay chips. Clicks and the "can't place" bonk: Kenney's Interface Sounds. The sparkle: a mark tree's run.
-  - Sources: the VCSL sample library (Versilian Studios) and Kenney's RPG Audio, Casino Audio and Interface Sounds, through their OpenGameArt pages (kenney.nl turns scripts away). 46 short files, 1.2 MB in both formats.
-- **Everything pitched is in the playing track's key.** A note is a step of the key's scale on an instrument's own register; the ladder climbs the key's pentatonic scale from its tonic each week (two octaves, then it holds and adds the sparkle). A caller's `rate` on a pitched sound moves each note to the nearest note of that pentatonic scale, so the director's pitch nudges (a chime at 1.1×, a shop row's rising plinks) stay in key. Unpitched sounds keep the random ±0.05 rate; every sound keeps ±1.5 dB (§12, Variation). Each instrument has 4–7 samples, so no note is shifted more than half an octave in any key (`kit.test.ts`).
-- **Round-robin:** a set plays its takes in a shuffled order, never the same take twice in a row.
-- **A small room:** the instruments and the mark tree (not the foley or the clicks) also go through a 1.3 s synthetic room at −16 dB, so the close-miked samples sit in the same space as the music.
-- **Placeholders stay:** a sound with no recipe (Rotate's swish), or whose files haven't decoded yet, plays its ZzFX placeholder. A new moment can start with a placeholder and get a recipe later.
-- **Levels** match the placeholders' within about 3 dB (peak and early RMS), so playtests 1–5's balance carries over: the user's ears tune them from there.
-
-**Why:** D-058 asked for a timbre per score layer, a ladder in the music's key, and round-robin variants; recorded mallets also sit with calm acoustic music where synth blips don't.
-**Considered:** Kenney's jingles (fixed keys, so they'd clash with the music); Freesound (originals need a login, and its licenses vary file by file); a sprite sheet of all the sounds in one file (AAC's priming offsets would shift every cut in Chrome).
-**Changes:** none to settled decisions. `implementation-plan.md` §12 Sound: the ×Mult bell's register.
-**2026-11-10 (the juice PR's moments, D-124 to D-126):** at the user's ask, this branch merged #27 before it merged, so one playtest hears both. Its 16 new moments get recipes after its placeholders' shapes: the Good and Huge weeks' jingles on chimes, marimba and vibraphone (ducking the music like Great's `big-week`), a set completing, the Rhythm payout's two knocks, a find, a crate opening (Kenney's wooden creak and a pop), a Rare on the shelf, a wish or a house rule met (chimes, a glockenspiel check) or a rule lost (a low knock and a falling third), a Renovation's level-up, the doorbell (a hand chime's falling third), a change order's stamp (Kenney's book thump), "Topped out!" and the roof going on. The drumroll keeps its ZzFX roll; no recording here rolls. The hand chimes' samples stop at G♯6, so a chime plays no higher than the key's fifth and the glockenspiel takes the octave. 51 files now.
-
-### D-130 · Audio files: the cut, the formats, and loading after the title
-**Status:** Proposed · 2026-11-09, with M5b (`implementation-plan.md` §12, Files and Audio sources and licenses).
-**Decision:**
-- **`npm run audio:cut`** (`scripts/cut-audio.ts`) works like `art:cut` (D-097): `art/audio.json` names each source (a folder or zip in the gitignored `art-source/audio/`, with its page, author and license) and each cut (a file in it, where to start, how long, the fade, a low-pass, mono or stereo, and a peak or, for music, a loudness). It writes `assets/audio/<cut>.ogg` and `.m4a`, `assets/audio/index.json` (each cut's length and hash), and the `audio/` records in `assets/licenses.json`. Unchanged cuts aren't encoded again; cuts no longer listed are removed. It runs locally on macOS (Homebrew's `vorbis-tools` and the system's `afconvert`); CI checks the committed files against the manifest (`cut-audio.test.ts`).
-- **Formats:** Ogg Vorbis (quality 3 for sounds, 4 for music) where `canPlayType` says the browser plays it, AAC in M4A otherwise (Safari before 18.4). An Ogg file that won't decode is fetched again as M4A, and the rest follow it. Sounds are mono, music stereo. Music is cut to −16 LUFS (BS.1770) with peaks under −1 dBFS; sounds to a −1 dBFS peak.
-- **Loading:** the files load 0.6 s after the first screen is up (the title, usually), and decode on the first click, when the AudioContext starts. Music loads one track at a time: the next track's bytes while one plays, decoded when it's due, so at most two tracks are in memory. With the music volume at 0, no music loads.
-
-**Why:** the art pipeline's approach keeps paid or bulky sources out of the repo and every committed file traceable to its source and license. Loading after the title keeps the first screen quick.
-**Changes:** none to settled decisions.
-
-### D-131 · The music bus: screen mixes, ducking, the losing glide, and the volumes
-**Status:** Proposed · 2026-11-09, with M5b (`implementation-plan.md` §12, Music, Ducking and Losing).
-**Decision:**
-- **A shuffled playlist:** every track once before any repeats, never the last one first, with a 2.5 s rest between tracks and a 2.5 s fade in for the first. Tracks play through rather than loop, so there are no loop points to trim (§12, Files).
-- **Each screen has its mix** (`tracks.ts`), crossfaded with a 0.3 s time constant, so a screen change never restarts the music: the title, the job board, the build screen, the shop, an open crate, a milestone's review, and a run won or lost. A track with stems also mixes them per screen (D-128's Sleepy Little Mouse drops its drums off the build screen, a milestone and a win), and every track changes through the bus's low-pass and level: plain while you build, a room away in the shop (3 kHz, −1.4 dB), hushed while a crate opens (1.3 kHz, −3.7 dB). The screen follows what the player sees: the rules are already in the shop while a milestone's tally and beats play, and that's "review" (`scene.ts`).
-- **Ducking:** a jingle (a recipe marked `duck`, D-129) takes the music down 10 dB over 50 ms, holds it while the jingle rings, and lets it back up over 1 s. `audio.duck(seconds)` does the same for a moment without a recipe.
-- **Losing:** when the run is lost and its end screen shows, the music glides down to 0.6× speed over a second (tape-slow, its pitch with it), and stays there. A new run glides it back over 1.5 s.
-- **Volumes:** master, music and sound effects, saved with the other settings (default 70, 70 and 80). The music bus sits 6 dB under the sound effects' (`MUSIC_TRIM`), so −16 LUFS tracks play 8–10 dB under the sounds' peaks (§12, Mix). A music volume of 0 fades the track out and stops loading music.
-
-**Why:** §12 and D-058: calm music that never restarts between screens, rewards given room by ducking, and a loss that sags instead of cutting out (Balatro).
-**Considered:** `<audio>` elements for the music (they stream with less memory, but can't keep stems in sync or glide the speed smoothly); loops trimmed past the encoders' padding (a playlist of whole tracks needs none); fading the music out when the tab is hidden (players often keep calm music on in the background).
-**Changes:** none to settled decisions. `implementation-plan.md` §12 Music: the screen-mix fallback for tracks without stems, and the playlist instead of loop points.
-
-### D-123 · Playtest 5's re-fit: the targets and each client's factor
-**Status:** Proposed · 2026-11-09, before playtest 5. It's the one re-fit that D-114, D-119, D-120 and D-121 left until all of playtest 4's content changes were in (playtest 4's findings §12).
-**Decision:**
-- **What it covers:** develop at 19e0def: the Hallway pay (D-114), creek lots and Creekside (D-119), the weekly draw in two rows with the Landscaper's third Layout card (D-121), and the sun (D-120). Nothing else that changes play merged after D-120 and D-121 (D-112 and D-113 are text and UI). The layout session's data PR (D-116, D-117), fusion (D-115) and the hand's card-lines fix aren't in; each runs its own `--check` against these targets.
-- **Targets:** 20, 560, 1,750, 4,850, 10,200, 18,800, 32,600 Wow (they were 15, 300, 1,100, 3,050, 6,850, 13,150, 24,500). D-085's method: `--suggest-targets` on 2,000 untargeted greedy runs (seeds `sim-*`, the five clients and three crews in turn), checked on 2,000 held-out runs (`check-*`). Held out, greedy won 44.0% against the fit's 46.6%, inside §8's band, so the curve is used as fitted. (M4b's was eased by 4%, when held out came 5 points under.)
-- **Each client's `targetPct`:** the Hendersons 115 (it was 125), Count Vladislav 90 (110), the Barkers 90 (80), Juniper 85 (85), Dale 115 (110). These are the fit's factors, used as fitted: held out, the clients are within 6.7 points of each other.
-  - The Count's drop is the sun's (D-120). Every house now has rooms that face the sun, where the old sunny band rarely reached a room. His "Sunny pieces earn nothing" takes those rooms' points, while the other clients' sunny Living Rooms and Kitchens earn +2 a week more.
-- **The crews' numbers stay.** Held out, the General Contractor won 48.5%, the Architect 46.6% and the Landscaper 36.7% (about 667 runs each). That's 11.8 points: inside §8's 15, but more than noise.
-  - On the Landscaper's 665 held-out seeds, yard earnings at +75% won 38.8%, and at +100% 35.5%: greedy builds more yard, and yard pieces don't compound. Without the third Layout card it won 38.8%.
-  - No number closes the gap, so it goes to the balance pass with the yard itself: yard pieces that grow with the house (`docs/proposals/weekly-draw.md` §6).
-- **Solar Panels stay as they are** (D-120's flag). Given free at the first shop (400 paired held-out seeds, the General Contractor), they're worth +13.6 budget a run and +16.0 points of wins [+11.7, +20.3], Wow ×1.20, even though the shop bot sells them once it wants the slot.
-  - Good Bones, also Uncommon, is worth +46.0 points [+41.0, +51.0] and Wow ×2.13 the same way, so Solar Panels aren't out of line.
-  - At every 6th week they'd be worth +8.7 budget and +8.3 points. Rooms only changes nothing (+16.0): nearly every Sunny piece is a room. The balance pass can pick either.
-- **Milestone 2 binds now.** At 560 (times the client's factor), greedy meets it on time in 80% of runs on `--check`, against 99% on the old targets. The rest take overtime there, and overtime weeks per run go from 0.66 to 1.34.
-  - The fit puts it there because the score doubles from week 8 to week 10 (median 728 to 1,451), so 98% of runs reach 560 with both overtime weeks.
-  - If playtest 5 finds milestone 2 harsh, 450 is the step down. In the fit's runs it puts greedy on time at milestone 2 in 84% of runs (70% at 560), and the estimated win rate stays at 46.6%.
-
-**Why:** on the old targets, greedy won 81.5% of `--check`'s runs and cleared milestones 1–3 in all of them, against §8's 40–50% and 92–98%. It had won 44.5% before D-114; then 48.0% with D-114, 57.5% with D-119, 69.5% with D-121, and 81.5% with D-120. Playtest 3 found a run with that much slack too easy.
-
-§8's criteria, before (19e0def) and after. The first four columns are `npm run sim -- --check` (200 runs, the General Contractor) and `--check --crew all` (200 runs, each client with every crew in turn). The last column is `--check --crew all` on 2,000 held-out runs.
-
-| Criterion | `--check` before | `--check` after | `--crew all` before | `--crew all` after | 2,000 runs, after |
-|---|---|---|---|---|---|
-| random loses by milestone 3 (≥ 95%) | 100.0% PASS | 100.0% PASS | 100.0% PASS | 100.0% PASS | 100.0% PASS |
-| novice passes milestone 1 (≥ 90%) | 99.0% PASS | 95.5% PASS | 96.5% PASS | 94.0% PASS, unsure | 95.0% PASS |
-| greedy clears milestones 1–3 (92–98%) | 100.0% FAIL | 97.5% PASS, unsure | 99.5% FAIL, unsure | 95.0% PASS, unsure | 93.7% PASS |
-| greedy wins (40–50%) | 81.5% FAIL | 48.0% PASS, unsure | 79.0% FAIL | 48.5% PASS, unsure | 44.0% [41.8–46.1] PASS |
-| early completion: always vs never, within 10 points | −9.5 PASS, unsure | −1.0 PASS | −11.0 FAIL, unsure | −7.0 PASS, unsure | −3.4 [−5.9, −0.9] PASS |
-| fences pay: probe p50 2–3, ≥ 50% offered that many | 2, 73.1% PASS, unsure | 2, 72.9% PASS, unsure | 2, 76.6% PASS | 2, 77.2% PASS | 2, 74.7% PASS |
-| clients, crews within about 15 points | 15.0 FAIL, unsure | 27.5 FAIL, unsure | 20.0, 20.9 FAIL, unsure | 30.0, 13.8 FAIL, unsure | 6.7, 11.8 PASS, unsure |
-| planner wins about 75%; no must-buy | not measured | not measured | not measured | not measured | not measured |
-
-- **The spread at 200 runs is noise.** It has 40 runs a client. Five clients with the same win rate near 45% would read more than 15 points apart 68% of the time at 40 runs each (18 points on average), and about 6 apart at 400 each. The 2,000 runs read 6.7.
-  - By client on the 2,000 runs: the Hendersons 40.5%, Count Vladislav 47.3%, the Barkers 42.5%, Juniper 47.3%, Dale 42.3%.
-  - On `--check`'s 40 runs each: 50.0%, 62.5%, 35.0%, 37.5% and 55.0%.
-- **The run's shape** on `--check`, as the median score of the runs that reached each milestone over its target: ×5.8, ×1.66, ×1.70, ×1.33, ×1.26, ×1.22 and ×1.24, against ×6.2, ×2.49, ×2.17, ×1.62, ×1.35, ×1.19 and ×1.13 before.
-  - The slack in the middle of the run is gone. Playtest 4's run led by 2.5× at milestones 2 and 3, and 1.9× at 4.
-  - Greedy's runs are lost from milestone 3 on (5, 10, 23, 34 and 32 runs at milestones 3–7), where before most were lost at 6 and 7.
-- The benchmark gate passes (606 ms).
-- The fit and the 2,000-run checks ran in parallel shards that play each seed exactly as `npm run sim` does. On the same seeds they matched the CLI's 200-run fit and its `--check --crew all` run for run. `npm run sim -- --suggest-targets --runs 2000 --crew all --dry-run` gives these numbers in about an hour.
-
-**Considered:**
-- **Easing milestones 4–7 by 4%,** as M4b did: held out came 2.6 points under the fit, not 5, and the General Contractor already sits in the band's upper half (48.0% on `--check`, 47.7% on 1,070 held-out runs).
-- **Tightening the curve by 2%** to centre the General Contractor on 45%: about 2 points off every crew, the Landscaper to about 34%. That's not worth chasing at the bot's noise: the layout session found that shifting its random streams alone moves wins 4–9 points.
-- **The 200-run fit** (`--suggest-targets --dry-run`, the General Contractor only): 20, 640, 2,000, 5,450, 10,800, 19,800, 34,400, with factors 110, 100, 90, 85 and 120. Held out, greedy won 37.5% on it: 200 runs are too few for the factors and the late targets.
-- **Nudging the factors toward the middle,** as M4b did: a step of 5 moves a client 3–10 points, more than any client's gap from the mean (3.5 at most). Fitting them to `--check`'s 40 runs a client would undo the balance on 400.
+**Why:** playtest 4's notes:
+- the car drove backwards, the chains ended in the air, and the gable looked unrealistic;
+- long tool names ran the Use button off the panel;
+- the footnote was funny once;
+- the Garage card read as if the street alone would do;
+- Soundproofing was worth nothing in every week of the run;
+- the player never knew Renovate existed. It came up 4 times, once worth more than the play made.
 
 **Changes:**
-- D-085 (Proposed): its targets and factors, noted there. `balance.ts` and `clients.ts`.
-- D-114, D-119, D-120 and D-121: each notes that its re-fit is done.
-- `implementation-plan.md`: Appendix B's Landscaper row gains D-121's third Layout card, which the table had missed.
+- D-098's title note: the credit moves off the title.
+- D-109's change-order bullet: the pick is even among the client's own orders and the generic ones; the old wording said "then".
+- D-102 (Renovate) gains the chip. D-045 (first-time hints) gains the Renovate hint.
+
+### D-113 · Inspect holds a clicked piece, and the house rules fold into one row
+**Status:** Accepted · 2026-11-10, played in playtest 5 with no issues raised (`docs/playtests/playtest-5-findings.md`). Proposed 2026-11-09, with the small UI pull request after playtest 4. The user picked this over collapsing the whole client panel.
+**Decision:**
+- **Click to hold:** with nothing picked, a click on a placed piece holds Inspect on it, so the pointer can go to the panel and scroll its notes.
+  - The board marks the held piece with a dotted pale rim in the tally's active colors.
+  - Inspect's plank gets a ✕.
+  - While a piece is held, Inspect gets the left column's room first, as it does while a play is looked at.
+  - It lets go on a second click on the piece, a click on open ground or the street, Esc, the ✕, picking something, demolishing, a new week, another screen, or the piece going.
+  - It's UI only (`store.ts` heldPiece).
+- **The house rules fold into one row:** "House rules 5/7", with their Charm while folded. A click opens or folds them.
+  - Folded by default, but open on a first visit (until the checklist's first hint is dismissed).
+  - They open by themselves while a play being looked at turns one on or off, or a tally flips one, until the tally ends.
+  - A tally's beat on a line that holds lights the folded row, as a folded group's row does.
+  - The row replaces the "House rules" plank tag, and the groups' own folds work as before.
+  - Who's still to move in shows either way, and the client's wishes and change orders never fold.
+- How to play and the controls list say so.
+
+**Why:** playtest 4.
+- Inspect followed the pointer, so reaching its scrollbar crossed other tiles, and a long note couldn't be read.
+- A click on a placed piece did nothing with nothing picked, so it was free for this.
+- The client panel's plank had no room for a collapse caret at 280 px.
+- Every client has the same seven house rules, which took the room Inspect needed.
+
+**Changes:** D-109's UI note: the house-rule groups now fold inside one row for the whole rules. D-110's left column: a held piece counts as looked at.
+
+### D-114 · The Hallway experiment, step 1: Hallways pay for the rooms they touch
+**Status:** Accepted · 2026-11-10, held up in playtest 5 (`docs/playtests/playtest-5-findings.md`): the Hallways "felt good", and the user didn't bolt them to the outside just for their +2, so step 1's "between rooms" fallback isn't needed. Proposed 2026-11-09, after playtest 4 (`docs/playtests/playtest-4-findings.md` §7) and the layout session's proposal (§1, on its own branch). Built for playtest 5; the user asked for it once that session reported.
+**Decision:**
+- Both Hallway cards (the Hallway and the Long Hallway) earn **+2 Comfort for each room they touch, up to 4** (+8). It's the existing `neighbor` effect on rooms, and the link (D-046) is unchanged.
+  - Each hall counts the rooms it touches itself, each once however many tiles they share.
+  - Another Hallway isn't a room, so a run of halls doesn't pay for the rooms at the far end.
+  - The card adds "+2 per touching room (up to 4)" under the link's line.
+- No Hallway pack for now, and no new condition. If a pack comes back: complexity 3 (not 2), with this pay, and an outline rule tested on held-out seeds first.
+- If the playtest shows halls bolted along the outside, the fix is ready: the pay counts only while every tile of the hall has rooms on two or more of its sides ("between rooms").
+
+**Why:** playtest 4: Hallways felt like a punishment.
+- A link pays only when the rooms along it read their neighbors, and few do. A Hallway earned 44 Wow a copy (111 for the Long Hallway), and greedy built one in a quarter of runs.
+- With the pay, on 200 held-out seeds: 1.67 a run, in 84% of runs, about 610 Wow a copy. Wow ×1.07\*, Cozy +6\*, wins +1.5 points (within noise). The outline pays a little (H1g −7\*). (\* = the 95% interval excludes no change.)
+- The pack alone lost 9.5 points of wins\* at complexity 2; with the pay it sprawled (glance test −17.5\*); and paying only between rooms made it a dead card (−10\*).
+- This PR's own check, greedy on 200 held-out seeds (`--seed check`), paired against develop: wins 44.5% → 48.0% (+3.5 points [−0.7, +7.7], within noise), Wow ×1.077 [1.012–1.147]\*, Hallways 0.24 → 1.65 a run. §8's criteria all pass. The estimate fix below changes nothing on its own (wins +0.0, Wow ×1.008).
+
+**Changes:**
+- The content (`pieces.ts`). D-046's "a Hallway isn't a neighbor for bonuses" stands.
+- The sim's cheap estimate (`estimate.ts`) now counts a Hallway's +2 when a room is placed beside it: the Hallway isn't the room's neighbor, but the room is the Hallway's. Without it, greedy missed the week's best play when that play fed a Hallway.
+- The targets aren't re-fit for this. A re-fit waits for bigger rooms (fusion), which moves the curve more.
+
+**2026-11-09 (D-123):** re-fitted before fusion after all, with D-119, D-120 and D-121, which together took greedy to 81.5%. Fusion (D-115) will need a re-fit of its own.
+
+### D-119 · Creek lots: Creekside, the pond, and the lot's traits on the job board
+**Status:** Accepted · 2026-11-10, held up in playtest 5 (`docs/playtests/playtest-5-findings.md`): with creeks on a quarter of lots, "the lack of creeks is okay", after seeing them on nearly every map before. Proposed 2026-11-09, after playtest 4 (`docs/playtests/playtest-4-findings.md` §11) and the lot session's proposal (`docs/proposals/lot-creeks-and-sun.md`). The user picked the proposal's package (§7); this is its first part. The sun (a sun direction per lot and Sunny payoffs) comes next, as its own entry. Built for playtest 5.
+**Decision:**
+- **Creeks on about a quarter of lots:** `creekPct` 25 (it was 70): 24.6% of 2,000 held-out lots have one, and a creek lot is on 52% of job boards. A lot that keeps its creek keeps its terrain; the others are drawn again without one.
+- **Creekside:** a creek lot pays. Pieces touching the creek earn +50%, all run: Waterfront's effect, for the creek alone, from the lot. The lot's traits are a new source of run modifiers beside the crew and the client, and the breakdown line says "Creekside".
+- **The pond:** every lot without a creek keeps it, so every lot has water, and half the creek lots do (`pondPctCreek` 50), so a creek lot looks different. The pick comes from its own `lot/<attempt>/pond` stream, so the rest of the lot stays as drawn, and a pond that goes leaves open ground. The regeneration checks run after it: more ground behind the creek can leave too little on the street's side.
+- **Lot traits** are data (`src/content/lot-traits.ts`): a terrain and how many tiles of it, modifiers, a blurb, and the clients a trait suits. There are two:
+  - **Creekside:** any creek.
+  - **Wooded:** 100 or more Tree tiles (22% of lots; the median lot has 86). It pays nothing; it's a hint, and it suits Count Vladislav, who likes pieces touching Trees.
+- **Where they show:**
+  - A contract's card shows the lot's traits as wood chips under its map, each with a tip: what it pays, all run, then its blurb. A trait that suits the client wears the up icon, as a taste they like does.
+  - A trait that pays stays on the checklist beside the crew's chip, as an icon beside the crew's on a window under 1000 px tall.
+  - How to play says what a creek lot is.
+
+**Why:** playtest 4: creeks felt too common.
+- Before this, creeks were on 67% of lots and changed nothing. On 600 held-out seeds, creek lots won and scored like the rest, and 41% of the houses on them never touched the creek: scenery that blocked a few spots.
+- At a quarter of lots, a creek shows up on about one job board in two, and Creekside makes it a reason to take that contract. 41% of lots now show a chip of some kind, and 78% of boards. In the proposal's prototype, Creekside pulled houses to the water: pieces touching the creek went from 2.0 to 4.7 a house on the same lots.
+- **This PR's own check**, greedy on 200 held-out seeds (`--check`), paired against develop: wins 48.0% → 57.5%, +9.5 points [+4.0, +15.0]\*; final Wow ×1.050 [0.945–1.167]. That fails §8's "greedy wins 40–50%". The proposal expected about +5 and no re-fit, and it was wrong. Split by what happened to each seed's lot:
+  - 86 seeds lost their creek and drew a new lot: wins 50% → 60% (+15/−6). On these seeds the creek lots were the harder ones, so fewer creeks alone makes runs easier.
+  - 46 kept their creek, with Creekside: 37% → 57% (+10/−1), level with the lots without one (58%).
+  - 68 seeds without a creek before or after: 53% → 54% (+1/−0).
+- The other criteria: early completion's gap widens to −11.5 points (FAIL, unsure), and the clients' spread is 15.0 points (FAIL, unsure). The rest pass. (\* = the 95% interval excludes no change.)
+
+**Considered:** creeks at 40% with no payoff (less samey, still scenery); a pond on 60% of all lots (one lot in eight with no water, and no change in play); Creekside at +25%, the step down if it's too strong.
+
+**Changes:**
+- D-049 (Accepted): its creek and pond lines, marked there. Appendix A's lot bullets in `implementation-plan.md`.
+- The targets aren't re-fit here. The playtest-4 plan has one re-fit for all its content changes together, the creek rate among them (findings §12). If playtest 5 comes before that re-fit, Creekside at +25% is the step down. It can only take back part of Creekside's half of the rise; the rarer creek makes the other half.
+
+**2026-11-09 (D-123):** the re-fit is done, with Creekside at +50% and creeks on a quarter of lots: greedy wins 48.0% on `--check`, so Creekside keeps its +50%.
+
+### D-120 · The sun: a sunny face on every lot, and rooms that want it
+**Status:** Accepted · 2026-11-10, held up in playtest 5 (`docs/playtests/playtest-5-findings.md`): the sunny side "feels much better than the previous system". Proposed 2026-11-09, after playtest 4 (`docs/playtests/playtest-4-findings.md` §11) and the lot session's proposal (`docs/proposals/lot-creeks-and-sun.md` §4–§7). The user picked the proposal's package; this is its second part, after D-119. Built for playtest 5.
+**Decision:**
+- **Sun A, the sunny face.** Each lot's sun shines from one edge: the back, the left, the right or the street side, a quarter each, from its own `lot/<attempt>/sun` stream, so the terrain stays as drawn. `Lot.sun` replaces `sunnySide` and `sunnyRows`, and the sunny band goes.
+  - A tile is **in the sun** unless it's a Tree, or a Tree, the Old Shed or a building stands one step toward the sun. Off the lot is open.
+  - **Buildings** are the rooms, the Hallways and the outbuildings. They cast that one-tile shade, and a building with a tile in the sun is **Sunny**: in practice, one with a wall facing the sun and nothing in front of it.
+  - Yard pieces cast no shade and aren't made Sunny by the sun (the Pool keeps its own tag). A garden still counts its tiles in the sun (the Herb Garden).
+  - Building changes the sun only next door: a building put in front of a Sunny room's sunny wall takes its sun there, and clearing a Tree gives it back.
+- **Payoffs, for rooms:**
+  - The Living Room, the Kitchen, the L-Kitchen and the Dining Room earn **+2 every week while Sunny**.
+  - The **Sunroom** leaves the special pieces (so the Showroom no longer sells it) for the weekly draw's Rooms row (D-121): weight 5, half a card's, from Foundation. It earns **+6 every week while Sunny** and has no Sunny tag of its own, so it has to be built in the sun. (It was Sunny by its card, +2 a tile on the sunny side.)
+- **The other Sunny readers stay:** Count Vladislav's "Sunny pieces earn nothing", Heat wave's "Sunny rooms earn half", Solar Panels, and the Skylight (it grants Sunny). **Blackout Curtains** now also take Sunny off their room: the Count's way to keep a sunny Living Room.
+- **Text:** a card's `{is: {tag}}` condition reads "while Sunny" ("+2 every week while Sunny"), and the `sunny` region reads "in the sun" ("+1 per tile in the sun"). A Sunny entry in the glossary gives the rule. Heat wave reads "Sunny rooms earn half".
+- **The board:**
+  - The sun's side is marked on the edge of the board's view that faces it, a ☀ Sun plaque on a strip of warm light, so it stays in sight however the lot is panned.
+  - A sun chip ("Sun at the back") is on the contract's card and beside the crew on the checklist, and the job board's map says it in words ("sun from the left").
+  - A soft shade, in two steps, lies on the tile behind each Tree and the Old Shed. The house's own shade isn't drawn.
+  - A Sunny room has the sun on its floor along its sunny wall, deeper under its windows. A room with Blackout Curtains isn't Sunny, so it has none.
+  - While placing, the ghost says "☀ Sunny" beside its change when the piece would be Sunny there (`Preview.sunny`).
+  - Inspect: a Sunny piece's tag says why ("Its back wall faces the sun, with nothing in front"), and a tile says In the sun or In the shade.
+  - The band's eight sprites (its grass, tufts, edge, shore, rocks and Time Capsule) leave the atlas: only the sprites we use are committed.
+- **The sim:** the cheap estimate reads the sun: a building's own back tiles and the tile behind each one, the Trees a piece clears, and `{is: …}` conditions. A play that moves another piece's sun is flagged (`sunHint`) for exact scoring when a run modifier reads Sunny (the Count, Heat wave, Solar Panels), up to `SUN_HINT_CAP` 8 a week, apart from the other hints.
+
+**Why:** playtest 4: "I rarely use the sunny side, it's usually far from where I build."
+- The band paid almost nothing (0.4% of the Wow) and sat far from most houses. Under A every house has a sunny face.
+- In the proposal's prototype with these payoffs (200 held-out seeds), the sun was 4.2% of the Wow (5.8% without the Count) and changed the value of 55% of greedy's plays. Greedy built the house as people do: 86% of Living Rooms and 83% of Kitchens Sunny, and Bedrooms where they fell (38%, as with no payoff).
+- **This PR's own check,** greedy on 200 held-out seeds (`--check`), paired against develop with D-119 and D-121:
+  - Wins 69.5% → 81.5%, +12.0 points [+4.3, +19.7]\* (44 seeds won only with the sun, 20 only without). The proposal expected about +10.
+  - Wow ×1.19 [1.15–1.26]\* at milestone 3 and ×1.11 [1.07–1.17]\* at milestone 5, but ×1.03 [0.98–1.08] at the end on the 119 seeds both won: the sun pays most early, where the targets are loosest.
+  - By client (40 runs each): the Hendersons 50% → 80%, the Barkers 72.5% → 85%, Dale 75% → 90%, Juniper 70% → 75%, and Count Vladislav 80% → 77.5% (+6/−7). In the proposal's prototype the Count dropped 12 points; this build adds Blackout Curtains taking Sunny away and the estimate's sun hint, which the prototype didn't have.
+  - The Sunroom: 0.40 a run (0.04 from the Showroom), 713 Wow a copy. A Living Room earns 3,001 Wow a copy (2,505).
+- §8's criteria: greedy's 40–50% wins fails further (81.5%), and greedy clears milestones 1–3 in 100% of runs (FAIL; it was 97.5%). Early completion passes, unsure (always −9.5 points against never). The clients' spread fails, unsure, at 15 points (30 before). The rest pass, and the benchmark gate passes (524 ms).
+- (\* = the 95% interval excludes no change.)
+
+**Considered:**
+- B, a three-tile shade: about A's numbers for twice the work and the busiest board.
+- C, two sunny clearings: the cheap fallback, but the sun did nothing in a quarter of runs.
+- +1 while Sunny: the sun at 1.6% of the Wow, too little to steer a house.
+- A Breakfast Nook set (a Kitchen and a Dining Room, both Sunny): the sun at 11% of the Wow, swamping everything, and a later room could take a member's sun and break the set, against D-065.
+- "Sunny pieces earn half" for the Count: once rooms pay for the sun, it turns the sun into a gain for him.
+
+**Changes:**
+- D-049 (Accepted): the sunny side becomes the sun's side. D-099 (Accepted): the band's grass and its edge go. D-051 (Accepted): the Sunroom leaves the special pieces for the draw. Each is marked in place.
+- `implementation-plan.md`: §4's Sunny tag, the state, Appendix A's lot and terrain rows, the room rows, the Herb Garden and the Blackout Curtains rows, and §12's terrain and fixture bullets. `content-brainstorm.md`: the sun's row.
+- The targets aren't re-fit here: the playtest-4 plan has one re-fit for all its content changes together, as D-119 and D-121 do. The Count's `targetPct` goes into it. If playtest 5 comes first, the game is much easier: on the current targets greedy wins 81.5% with D-119, D-121 and this, against 48.0% before them.
+- Solar Panels get stronger with about four Sunny buildings a house, which the sim can't see (its shop bot doesn't value budget). It's a balance-pass item: rooms only, or every 6 weeks.
+
+**2026-11-09 (D-123):** the re-fit is done. Count Vladislav's `targetPct` is 90 (it was 110), and held out he wins 47.3%, level with the other clients. Solar Panels stay as they are: given free at the first shop, they're worth +16.0 points of wins and +13.6 budget a run, against +46.0 points for Good Bones, also Uncommon. Every 6th week would halve that; rooms only would change nothing, since nearly every Sunny piece is a room.
 
 ### D-121 · The weekly draw in two rows: Rooms and Layout
-**Status:** Proposed · 2026-11-09, after playtest 4 and the draw brainstorm (`docs/proposals/weekly-draw.md`). The user picked Rooms 2 + Layout 2, the proposal's recommendation, with its defaults (§9). Built for playtest 5.
+**Status:** Accepted · 2026-11-10, held up in playtest 5 (`docs/playtests/playtest-5-findings.md`): the two rows "feel okay". The user asked for one reroll to redraw both rows, which D-132 (reserved) changes. Proposed 2026-11-09, after playtest 4 and the draw brainstorm (`docs/proposals/weekly-draw.md`). The user picked Rooms 2 + Layout 2, the proposal's recommendation, with its defaults (§9). Built for playtest 5.
 **Decision:**
 - **Two rows.** Each week draws a **Rooms** row of 2 distinct cards and a **Layout** row of 2, shown in that order and numbered across both (keys 1–9). You play one card from either row, a reserve piece, or a Renovation, or pass, as before (D-036). The rules `roomsRow` and `layoutRow` replace `handSize`.
 - **A card's row is where it's built.**
@@ -1564,167 +1541,190 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - The controls strip says "1–4 pick a card" (the hand's size; keys 1–9 pick), not "1 2 3", and Inspect calls a Hallway a Hallway, as its card does.
 - No play changes: the rules' `apply()` and the sim are untouched, and `--check` on D-123's targets gives its numbers (greedy wins 48.0%, clears milestones 1–3 in 97.5%).
 
-### D-120 · The sun: a sunny face on every lot, and rooms that want it
-**Status:** Proposed · 2026-11-09, after playtest 4 (`docs/playtests/playtest-4-findings.md` §11) and the lot session's proposal (`docs/proposals/lot-creeks-and-sun.md` §4–§7). The user picked the proposal's package; this is its second part, after D-119. Built for playtest 5.
+### D-123 · Playtest 5's re-fit: the targets and each client's factor
+**Status:** Accepted · 2026-11-10, held up in playtest 5 (`docs/playtests/playtest-5-findings.md`): harder than playtest 4, but "while challenging it still felt possible to complete". Milestone 2 keeps 560 (the user's run made it with 665 of 644), so the 450 step-down isn't needed. Proposed 2026-11-09, before playtest 5. It's the one re-fit that D-114, D-119, D-120 and D-121 left until all of playtest 4's content changes were in (playtest 4's findings §12).
 **Decision:**
-- **Sun A, the sunny face.** Each lot's sun shines from one edge: the back, the left, the right or the street side, a quarter each, from its own `lot/<attempt>/sun` stream, so the terrain stays as drawn. `Lot.sun` replaces `sunnySide` and `sunnyRows`, and the sunny band goes.
-  - A tile is **in the sun** unless it's a Tree, or a Tree, the Old Shed or a building stands one step toward the sun. Off the lot is open.
-  - **Buildings** are the rooms, the Hallways and the outbuildings. They cast that one-tile shade, and a building with a tile in the sun is **Sunny**: in practice, one with a wall facing the sun and nothing in front of it.
-  - Yard pieces cast no shade and aren't made Sunny by the sun (the Pool keeps its own tag). A garden still counts its tiles in the sun (the Herb Garden).
-  - Building changes the sun only next door: a building put in front of a Sunny room's sunny wall takes its sun there, and clearing a Tree gives it back.
-- **Payoffs, for rooms:**
-  - The Living Room, the Kitchen, the L-Kitchen and the Dining Room earn **+2 every week while Sunny**.
-  - The **Sunroom** leaves the special pieces (so the Showroom no longer sells it) for the weekly draw's Rooms row (D-121): weight 5, half a card's, from Foundation. It earns **+6 every week while Sunny** and has no Sunny tag of its own, so it has to be built in the sun. (It was Sunny by its card, +2 a tile on the sunny side.)
-- **The other Sunny readers stay:** Count Vladislav's "Sunny pieces earn nothing", Heat wave's "Sunny rooms earn half", Solar Panels, and the Skylight (it grants Sunny). **Blackout Curtains** now also take Sunny off their room: the Count's way to keep a sunny Living Room.
-- **Text:** a card's `{is: {tag}}` condition reads "while Sunny" ("+2 every week while Sunny"), and the `sunny` region reads "in the sun" ("+1 per tile in the sun"). A Sunny entry in the glossary gives the rule. Heat wave reads "Sunny rooms earn half".
-- **The board:**
-  - The sun's side is marked on the edge of the board's view that faces it, a ☀ Sun plaque on a strip of warm light, so it stays in sight however the lot is panned.
-  - A sun chip ("Sun at the back") is on the contract's card and beside the crew on the checklist, and the job board's map says it in words ("sun from the left").
-  - A soft shade, in two steps, lies on the tile behind each Tree and the Old Shed. The house's own shade isn't drawn.
-  - A Sunny room has the sun on its floor along its sunny wall, deeper under its windows. A room with Blackout Curtains isn't Sunny, so it has none.
-  - While placing, the ghost says "☀ Sunny" beside its change when the piece would be Sunny there (`Preview.sunny`).
-  - Inspect: a Sunny piece's tag says why ("Its back wall faces the sun, with nothing in front"), and a tile says In the sun or In the shade.
-  - The band's eight sprites (its grass, tufts, edge, shore, rocks and Time Capsule) leave the atlas: only the sprites we use are committed.
-- **The sim:** the cheap estimate reads the sun: a building's own back tiles and the tile behind each one, the Trees a piece clears, and `{is: …}` conditions. A play that moves another piece's sun is flagged (`sunHint`) for exact scoring when a run modifier reads Sunny (the Count, Heat wave, Solar Panels), up to `SUN_HINT_CAP` 8 a week, apart from the other hints.
+- **What it covers:** develop at 19e0def: the Hallway pay (D-114), creek lots and Creekside (D-119), the weekly draw in two rows with the Landscaper's third Layout card (D-121), and the sun (D-120). Nothing else that changes play merged after D-120 and D-121 (D-112 and D-113 are text and UI). The layout session's data PR (D-116, D-117), fusion (D-115) and the hand's card-lines fix aren't in; each runs its own `--check` against these targets.
+- **Targets:** 20, 560, 1,750, 4,850, 10,200, 18,800, 32,600 Wow (they were 15, 300, 1,100, 3,050, 6,850, 13,150, 24,500). D-085's method: `--suggest-targets` on 2,000 untargeted greedy runs (seeds `sim-*`, the five clients and three crews in turn), checked on 2,000 held-out runs (`check-*`). Held out, greedy won 44.0% against the fit's 46.6%, inside §8's band, so the curve is used as fitted. (M4b's was eased by 4%, when held out came 5 points under.)
+- **Each client's `targetPct`:** the Hendersons 115 (it was 125), Count Vladislav 90 (110), the Barkers 90 (80), Juniper 85 (85), Dale 115 (110). These are the fit's factors, used as fitted: held out, the clients are within 6.7 points of each other.
+  - The Count's drop is the sun's (D-120). Every house now has rooms that face the sun, where the old sunny band rarely reached a room. His "Sunny pieces earn nothing" takes those rooms' points, while the other clients' sunny Living Rooms and Kitchens earn +2 a week more.
+- **The crews' numbers stay.** Held out, the General Contractor won 48.5%, the Architect 46.6% and the Landscaper 36.7% (about 667 runs each). That's 11.8 points: inside §8's 15, but more than noise.
+  - On the Landscaper's 665 held-out seeds, yard earnings at +75% won 38.8%, and at +100% 35.5%: greedy builds more yard, and yard pieces don't compound. Without the third Layout card it won 38.8%.
+  - No number closes the gap, so it goes to the balance pass with the yard itself: yard pieces that grow with the house (`docs/proposals/weekly-draw.md` §6).
+- **Solar Panels stay as they are** (D-120's flag). Given free at the first shop (400 paired held-out seeds, the General Contractor), they're worth +13.6 budget a run and +16.0 points of wins [+11.7, +20.3], Wow ×1.20, even though the shop bot sells them once it wants the slot.
+  - Good Bones, also Uncommon, is worth +46.0 points [+41.0, +51.0] and Wow ×2.13 the same way, so Solar Panels aren't out of line.
+  - At every 6th week they'd be worth +8.7 budget and +8.3 points. Rooms only changes nothing (+16.0): nearly every Sunny piece is a room. The balance pass can pick either.
+- **Milestone 2 binds now.** At 560 (times the client's factor), greedy meets it on time in 80% of runs on `--check`, against 99% on the old targets. The rest take overtime there, and overtime weeks per run go from 0.66 to 1.34.
+  - The fit puts it there because the score doubles from week 8 to week 10 (median 728 to 1,451), so 98% of runs reach 560 with both overtime weeks.
+  - If playtest 5 finds milestone 2 harsh, 450 is the step down. In the fit's runs it puts greedy on time at milestone 2 in 84% of runs (70% at 560), and the estimated win rate stays at 46.6%.
 
-**Why:** playtest 4: "I rarely use the sunny side, it's usually far from where I build."
-- The band paid almost nothing (0.4% of the Wow) and sat far from most houses. Under A every house has a sunny face.
-- In the proposal's prototype with these payoffs (200 held-out seeds), the sun was 4.2% of the Wow (5.8% without the Count) and changed the value of 55% of greedy's plays. Greedy built the house as people do: 86% of Living Rooms and 83% of Kitchens Sunny, and Bedrooms where they fell (38%, as with no payoff).
-- **This PR's own check,** greedy on 200 held-out seeds (`--check`), paired against develop with D-119 and D-121:
-  - Wins 69.5% → 81.5%, +12.0 points [+4.3, +19.7]\* (44 seeds won only with the sun, 20 only without). The proposal expected about +10.
-  - Wow ×1.19 [1.15–1.26]\* at milestone 3 and ×1.11 [1.07–1.17]\* at milestone 5, but ×1.03 [0.98–1.08] at the end on the 119 seeds both won: the sun pays most early, where the targets are loosest.
-  - By client (40 runs each): the Hendersons 50% → 80%, the Barkers 72.5% → 85%, Dale 75% → 90%, Juniper 70% → 75%, and Count Vladislav 80% → 77.5% (+6/−7). In the proposal's prototype the Count dropped 12 points; this build adds Blackout Curtains taking Sunny away and the estimate's sun hint, which the prototype didn't have.
-  - The Sunroom: 0.40 a run (0.04 from the Showroom), 713 Wow a copy. A Living Room earns 3,001 Wow a copy (2,505).
-- §8's criteria: greedy's 40–50% wins fails further (81.5%), and greedy clears milestones 1–3 in 100% of runs (FAIL; it was 97.5%). Early completion passes, unsure (always −9.5 points against never). The clients' spread fails, unsure, at 15 points (30 before). The rest pass, and the benchmark gate passes (524 ms).
-- (\* = the 95% interval excludes no change.)
+**Why:** on the old targets, greedy won 81.5% of `--check`'s runs and cleared milestones 1–3 in all of them, against §8's 40–50% and 92–98%. It had won 44.5% before D-114; then 48.0% with D-114, 57.5% with D-119, 69.5% with D-121, and 81.5% with D-120. Playtest 3 found a run with that much slack too easy.
+
+§8's criteria, before (19e0def) and after. The first four columns are `npm run sim -- --check` (200 runs, the General Contractor) and `--check --crew all` (200 runs, each client with every crew in turn). The last column is `--check --crew all` on 2,000 held-out runs.
+
+| Criterion | `--check` before | `--check` after | `--crew all` before | `--crew all` after | 2,000 runs, after |
+|---|---|---|---|---|---|
+| random loses by milestone 3 (≥ 95%) | 100.0% PASS | 100.0% PASS | 100.0% PASS | 100.0% PASS | 100.0% PASS |
+| novice passes milestone 1 (≥ 90%) | 99.0% PASS | 95.5% PASS | 96.5% PASS | 94.0% PASS, unsure | 95.0% PASS |
+| greedy clears milestones 1–3 (92–98%) | 100.0% FAIL | 97.5% PASS, unsure | 99.5% FAIL, unsure | 95.0% PASS, unsure | 93.7% PASS |
+| greedy wins (40–50%) | 81.5% FAIL | 48.0% PASS, unsure | 79.0% FAIL | 48.5% PASS, unsure | 44.0% [41.8–46.1] PASS |
+| early completion: always vs never, within 10 points | −9.5 PASS, unsure | −1.0 PASS | −11.0 FAIL, unsure | −7.0 PASS, unsure | −3.4 [−5.9, −0.9] PASS |
+| fences pay: probe p50 2–3, ≥ 50% offered that many | 2, 73.1% PASS, unsure | 2, 72.9% PASS, unsure | 2, 76.6% PASS | 2, 77.2% PASS | 2, 74.7% PASS |
+| clients, crews within about 15 points | 15.0 FAIL, unsure | 27.5 FAIL, unsure | 20.0, 20.9 FAIL, unsure | 30.0, 13.8 FAIL, unsure | 6.7, 11.8 PASS, unsure |
+| planner wins about 75%; no must-buy | not measured | not measured | not measured | not measured | not measured |
+
+- **The spread at 200 runs is noise.** It has 40 runs a client. Five clients with the same win rate near 45% would read more than 15 points apart 68% of the time at 40 runs each (18 points on average), and about 6 apart at 400 each. The 2,000 runs read 6.7.
+  - By client on the 2,000 runs: the Hendersons 40.5%, Count Vladislav 47.3%, the Barkers 42.5%, Juniper 47.3%, Dale 42.3%.
+  - On `--check`'s 40 runs each: 50.0%, 62.5%, 35.0%, 37.5% and 55.0%.
+- **The run's shape** on `--check`, as the median score of the runs that reached each milestone over its target: ×5.8, ×1.66, ×1.70, ×1.33, ×1.26, ×1.22 and ×1.24, against ×6.2, ×2.49, ×2.17, ×1.62, ×1.35, ×1.19 and ×1.13 before.
+  - The slack in the middle of the run is gone. Playtest 4's run led by 2.5× at milestones 2 and 3, and 1.9× at 4.
+  - Greedy's runs are lost from milestone 3 on (5, 10, 23, 34 and 32 runs at milestones 3–7), where before most were lost at 6 and 7.
+- The benchmark gate passes (606 ms).
+- The fit and the 2,000-run checks ran in parallel shards that play each seed exactly as `npm run sim` does. On the same seeds they matched the CLI's 200-run fit and its `--check --crew all` run for run. `npm run sim -- --suggest-targets --runs 2000 --crew all --dry-run` gives these numbers in about an hour.
 
 **Considered:**
-- B, a three-tile shade: about A's numbers for twice the work and the busiest board.
-- C, two sunny clearings: the cheap fallback, but the sun did nothing in a quarter of runs.
-- +1 while Sunny: the sun at 1.6% of the Wow, too little to steer a house.
-- A Breakfast Nook set (a Kitchen and a Dining Room, both Sunny): the sun at 11% of the Wow, swamping everything, and a later room could take a member's sun and break the set, against D-065.
-- "Sunny pieces earn half" for the Count: once rooms pay for the sun, it turns the sun into a gain for him.
+- **Easing milestones 4–7 by 4%,** as M4b did: held out came 2.6 points under the fit, not 5, and the General Contractor already sits in the band's upper half (48.0% on `--check`, 47.7% on 1,070 held-out runs).
+- **Tightening the curve by 2%** to centre the General Contractor on 45%: about 2 points off every crew, the Landscaper to about 34%. That's not worth chasing at the bot's noise: the layout session found that shifting its random streams alone moves wins 4–9 points.
+- **The 200-run fit** (`--suggest-targets --dry-run`, the General Contractor only): 20, 640, 2,000, 5,450, 10,800, 19,800, 34,400, with factors 110, 100, 90, 85 and 120. Held out, greedy won 37.5% on it: 200 runs are too few for the factors and the late targets.
+- **Nudging the factors toward the middle,** as M4b did: a step of 5 moves a client 3–10 points, more than any client's gap from the mean (3.5 at most). Fitting them to `--check`'s 40 runs a client would undo the balance on 400.
 
 **Changes:**
-- D-049 (Accepted): the sunny side becomes the sun's side. D-099 (Accepted): the band's grass and its edge go. D-051 (Accepted): the Sunroom leaves the special pieces for the draw. Each is marked in place.
-- `implementation-plan.md`: §4's Sunny tag, the state, Appendix A's lot and terrain rows, the room rows, the Herb Garden and the Blackout Curtains rows, and §12's terrain and fixture bullets. `content-brainstorm.md`: the sun's row.
-- The targets aren't re-fit here: the playtest-4 plan has one re-fit for all its content changes together, as D-119 and D-121 do. The Count's `targetPct` goes into it. If playtest 5 comes first, the game is much easier: on the current targets greedy wins 81.5% with D-119, D-121 and this, against 48.0% before them.
-- Solar Panels get stronger with about four Sunny buildings a house, which the sim can't see (its shop bot doesn't value budget). It's a balance-pass item: rooms only, or every 6 weeks.
+- D-085 (Proposed): its targets and factors, noted there. `balance.ts` and `clients.ts`.
+- D-114, D-119, D-120 and D-121: each notes that its re-fit is done.
+- `implementation-plan.md`: Appendix B's Landscaper row gains D-121's third Layout card, which the table had missed.
 
-**2026-11-09 (D-123):** the re-fit is done. Count Vladislav's `targetPct` is 90 (it was 110), and held out he wins 47.3%, level with the other clients. Solar Panels stay as they are: given free at the first shop, they're worth +16.0 points of wins and +13.6 budget a run, against +46.0 points for Good Bones, also Uncommon. Every 6th week would halve that; rooms only would change nothing, since nearly every Sunny piece is a room.
-
-### D-119 · Creek lots: Creekside, the pond, and the lot's traits on the job board
-**Status:** Proposed · 2026-11-09, after playtest 4 (`docs/playtests/playtest-4-findings.md` §11) and the lot session's proposal (`docs/proposals/lot-creeks-and-sun.md`). The user picked the proposal's package (§7); this is its first part. The sun (a sun direction per lot and Sunny payoffs) comes next, as its own entry. Built for playtest 5.
+### D-124 · The celebration ladder: four tiers, the pile, and the milestone moment
+**Status:** Accepted · 2026-11-10, held up in playtest 5 (`docs/playtests/playtest-5-findings.md`): the Good, Great and Huge weeks "all seem good". Proposed 2026-11-09, with the juice pull request (`phase/juice`). It builds §12's celebration ladder, which D-059 approved with the plan; the numbers and the choices below are this pull request's, for the feel playtest.
 **Decision:**
-- **Creeks on about a quarter of lots:** `creekPct` 25 (it was 70): 24.6% of 2,000 held-out lots have one, and a creek lot is on 52% of job boards. A lot that keeps its creek keeps its terrain; the others are drawn again without one.
-- **Creekside:** a creek lot pays. Pieces touching the creek earn +50%, all run: Waterfront's effect, for the creek alone, from the lot. The lot's traits are a new source of run modifiers beside the crew and the client, and the breakdown line says "Creekside".
-- **The pond:** every lot without a creek keeps it, so every lot has water, and half the creek lots do (`pondPctCreek` 50), so a creek lot looks different. The pick comes from its own `lot/<attempt>/pond` stream, so the rest of the lot stays as drawn, and a pond that goes leaves open ground. The regeneration checks run after it: more ground behind the creek can leave too little on the street's side.
-- **Lot traits** are data (`src/content/lot-traits.ts`): a terrain and how many tiles of it, modifiers, a blurb, and the clients a trait suits. There are two:
-  - **Creekside:** any creek.
-  - **Wooded:** 100 or more Tree tiles (22% of lots; the median lot has 86). It pays nothing; it's a hint, and it suits Count Vladislav, who likes pieces touching Trees.
-- **Where they show:**
-  - A contract's card shows the lot's traits as wood chips under its map, each with a tip: what it pays, all run, then its blurb. A trait that suits the client wears the up icon, as a taste they like does.
-  - A trait that pays stays on the checklist beside the crew's chip, as an icon beside the crew's on a window under 1000 px tall.
-  - How to play says what a creek lot is.
+- **The tiers,** by the week's total against its pace (the `tally` event's `pace`), sorted by the UI (`fx/ladder.ts`): Normal under 2× pace, Good from 2×, Great from 5×, Huge from 25×, or a Great week that beats the best week this browser has seen.
+  - **Good:** the score panel lifts once, sparkles burst round Wow, "Good week!" on paper, a short chime (`tier-good`), and a pile of 3.
+  - **Great:** the panel pulses gold twice, "Great week!" on gold, a fountain of confetti and coins from Wow, a warm wash over the screen, `big-week`'s arpeggio as its sting, a 7 px shake, and a pile of 6.
+  - **Huge:** three gold pulses, a bigger fountain, the board leaning in to 1.04× and back over 1.6 s (a celebration tween, which CLAUDE.md allows), one soft white flash with Flashing on, the fanfare (`tier-huge`), the week's last trigger in slow motion (2.5× its step), and the pile built into a tower of 12.
+  - The week's total holds 250, 700 or 1,500 ms longer for Good, Great and Huge: a closing beat, at the chosen speed (D-096), that a click skips.
+- **A tier's first appearance plays in full** (§12): 0.9, 1.8 or 2.8 s of real time that a click doesn't cut short. After that a click skips it like any beat. The browser keeps which tiers it has seen and its best week, per channel, like the saves; they're UI records, not game state.
+- **The glow** starts at 1× pace at 0.3 and grows with I = log5(total ÷ pace), fully lit at I = 2 (25× pace). It lights the preview too.
+- **The pile:** the week's best earners (ties to the earliest placed) fly from the board into a stack beside the score panel, each as its own picture (PieceArt) in a small framed block, and fade after 1.5 s.
+- **The milestone moment:** when a week's count-up crosses the phase's target, its last 30% before the target slows to 0.5× with a drumroll (`drumroll`), and the target's sting and "Target reached!" land as it crosses, not after. The top bar's flag pops and stars burst from it. It stays under 2.4 s, and a click skips it.
+  - §12 zooms on "the piece that crosses the line". In our tally the run total only moves in the count-up, after the multiply moment, so no piece crosses it; the flag takes the zoom's place.
+- **For M5b:** the music swell, ducking under the jingles, and the soft pad are the sound pass's. The `celebration` signal carries the tier for them.
 
-**Why:** playtest 4: creeks felt too common.
-- Before this, creeks were on 67% of lots and changed nothing. On 600 held-out seeds, creek lots won and scored like the rest, and 41% of the houses on them never touched the creek: scenery that blocked a few spots.
-- At a quarter of lots, a creek shows up on about one job board in two, and Creekside makes it a reason to take that contract. 41% of lots now show a chip of some kind, and 78% of boards. In the proposal's prototype, Creekside pulled houses to the water: pieces touching the creek went from 2.0 to 4.7 a house on the same lots.
-- **This PR's own check**, greedy on 200 held-out seeds (`--check`), paired against develop: wins 48.0% → 57.5%, +9.5 points [+4.0, +15.0]\*; final Wow ×1.050 [0.945–1.167]. That fails §8's "greedy wins 40–50%". The proposal expected about +5 and no re-fit, and it was wrong. Split by what happened to each seed's lot:
-  - 86 seeds lost their creek and drew a new lot: wins 50% → 60% (+15/−6). On these seeds the creek lots were the harder ones, so fewer creeks alone makes runs easier.
-  - 46 kept their creek, with Creekside: 37% → 57% (+10/−1), level with the lots without one (58%).
-  - 68 seeds without a creek before or after: 53% → 54% (+1/−0).
-- The other criteria: early completion's gap widens to −11.5 points (FAIL, unsure), and the clients' spread is 15.0 points (FAIL, unsure). The rest pass. (\* = the 95% interval excludes no change.)
+**Why:** §12 and D-059: big moments should escalate the way Vampire Survivors' chests do, and everything else should stay calm. The thresholds are §12's.
+**Considered:**
+- **Huge's best-week clause** makes most Great weeks in a browser's first run Huge: totals grow through a run, so a Great week late in a run is nearly always the best yet. It's §12's rule as written. If the playtest finds Huge too common, drop the clause, or count the best only from earlier runs.
+- **A pile every week, Normal included** (§12 says bigger weeks stack higher): it would put 20 flying sprites in every week, so it starts at Good.
 
-**Considered:** creeks at 40% with no payoff (less samey, still scenery); a pond on 60% of all lots (one lot in eight with no water, and no change in play); Creekside at +25%, the step down if it's too strong.
+**Changes:** `implementation-plan.md` §12, The celebration ladder (the milestone moment's flag). In `feel.ts`, M1's `bigWeekPace`, `glowPace`, `celebration` and `tally.bigHoldScale` are gone; `ladder`, `glow`, `pile` and `milestoneMoment` replace them. D-059 (Accepted) still holds.
 
-**Changes:**
-- D-049 (Accepted): its creek and pond lines, marked there. Appendix A's lot bullets in `implementation-plan.md`.
-- The targets aren't re-fit here. The playtest-4 plan has one re-fit for all its content changes together, the creek rate among them (findings §12). If playtest 5 comes before that re-fit, Creekside at +25% is the step down. It can only take back part of Creekside's half of the rise; the rarer creek makes the other half.
-
-**2026-11-09 (D-123):** the re-fit is done, with Creekside at +50% and creeks on a quarter of lots: greedy wins 48.0% on `--check`, so Creekside keeps its +50%.
-
-### D-114 · The Hallway experiment, step 1: Hallways pay for the rooms they touch
-**Status:** Proposed · 2026-11-09, after playtest 4 (`docs/playtests/playtest-4-findings.md` §7) and the layout session's proposal (§1, on its own branch). Built for playtest 5; the user asked for it once that session reported.
+### D-125 · The reward moments, particles, and Flashing
+**Status:** Accepted · 2026-11-10, played in playtest 5 with no issues raised (`docs/playtests/playtest-5-findings.md`); the user liked the tally. Proposed 2026-11-09, with the juice pull request. §7's distinct moments and M4's (`house-systems-review.md` §6), within D-059.
 **Decision:**
-- Both Hallway cards (the Hallway and the Long Hallway) earn **+2 Comfort for each room they touch, up to 4** (+8). It's the existing `neighbor` effect on rooms, and the link (D-046) is unchanged.
-  - Each hall counts the rooms it touches itself, each once however many tiles they share.
-  - Another Hallway isn't a room, so a run of halls doesn't pay for the rooms at the far end.
-  - The card adds "+2 per touching room (up to 4)" under the link's line.
-- No Hallway pack for now, and no new condition. If a pack comes back: complexity 3 (not 2), with this pay, and an outline rule tested on held-out seeds first.
-- If the playtest shows halls bolted along the outside, the fix is ready: the pay counts only while every tile of the hall has rooms on two or more of its sides ("between rooms").
+- **Particles:** one canvas over the page, under the first-time hints and the modals, drawing bursts in whole UI pixels. The presets are in `feel.ts` (`particles.bursts`); their colors are tokens, and the coins, stars and hearts are the interface's own icons. None play with Reduce motion. At most 700 are in flight, and no burst outlives about 2.5 s.
+- **The moments,** each with a sound id of its own (a ZzFX placeholder for M5b to replace):
+  - **A set completing** for the first time: "*Set* complete!", a 1.5× beat, a chord (`set-complete`), a ring of Charm-colored bits, and a bigger shake.
+  - **A Rhythm payout** (the Pool's every third week): "Every 3rd week!" over the piece, a 1.6× step, a double knock (`rhythm`), and two rings spreading from it. The UI reads it from the piece's breakdown line, which a test pins.
+  - **A find:** dirt flies from its cell, then coins (budget) or glints (a tool), with a scoop and a ta-da (`find`).
+  - **Opening a crate:** the crate glows in its best option's rarity and shakes for 0.52 s, then bursts open with glints in that color, a creak and a pop (`crate-open`), and the options turn over after it.
+  - **A Rare in the shop:** its own bell (`rare`, where the sparkle played) and glints from its card as the sheet lands.
+  - **A client's wish met:** "★ *name*!", Charm's hearts rising from its checklist row, and a warm chime (`wish-met`).
+  - **A house rule met:** "✓ *name*" in blue (a new popup kind), sparkles from its row, and a crisp check (`rule-met`). One lost: its ✕, dust from its row, and a bonk (`rule-lost`). A wish lost keeps M4's.
+  - **A Renovation's level-up:** stars from the room as its badge pops, three notes up (`level-up`), and a bigger shake.
+  - **A change order's stamp:** a rubber-stamp thunk (`order-stamp`) and ink spattering where it lands.
+- **Flashing** (Settings, under Motion): on by default and saved. Off, the score panel's gold pulses become a lift and a Huge week's white flash is dropped; the warm wash stays, as a tint that fades. With it on, nothing flashes more than 3 times a second.
+- **Reduce motion** also stops the pile's flight, the Huge week's lean-in, the crate's shake and every particle. Its note in Settings says so.
 
-**Why:** playtest 4: Hallways felt like a punishment.
-- A link pays only when the rooms along it read their neighbors, and few do. A Hallway earned 44 Wow a copy (111 for the Long Hallway), and greedy built one in a quarter of runs.
-- With the pay, on 200 held-out seeds: 1.67 a run, in 84% of runs, about 610 Wow a copy. Wow ×1.07\*, Cozy +6\*, wins +1.5 points (within noise). The outline pays a little (H1g −7\*). (\* = the 95% interval excludes no change.)
-- The pack alone lost 9.5 points of wins\* at complexity 2; with the pay it sprawled (glance test −17.5\*); and paying only between rooms made it a dead card (−10\*).
-- This PR's own check, greedy on 200 held-out seeds (`--seed check`), paired against develop: wins 44.5% → 48.0% (+3.5 points [−0.7, +7.7], within noise), Wow ×1.077 [1.012–1.147]\*, Hallways 0.24 → 1.65 a run. §8's criteria all pass. The estimate fix below changes nothing on its own (wins +0.0, Wow ×1.008).
+**Why:** §7 asks for each of these moments to read as its own, and playtest 4 found M4's moments forgettable (its §4). Restraint (Kao, 2020): the per-trigger beats keep their 2 px shake, and the bursts go to moments that happen a few times a run.
+**Changes:** `implementation-plan.md` §12, Settings and accessibility (what Flashing turns off).
 
-**Changes:**
-- The content (`pieces.ts`). D-046's "a Hallway isn't a neighbor for bonuses" stands.
-- The sim's cheap estimate (`estimate.ts`) now counts a Hallway's +2 when a room is placed beside it: the Hallway isn't the room's neighbor, but the room is the Hallway's. Without it, greedy missed the week's best play when that play fed a Hallway.
-- The targets aren't re-fit for this. A re-fit waits for bigger rooms (fusion), which moves the curve more.
-
-**2026-11-09 (D-123):** re-fitted before fusion after all, with D-119, D-120 and D-121, which together took greedy to 81.5%. Fusion (D-115) will need a re-fit of its own.
-
-### D-113 · Inspect holds a clicked piece, and the house rules fold into one row
-**Status:** Proposed · 2026-11-09, with the small UI pull request after playtest 4. The user picked this over collapsing the whole client panel.
+### D-126 · An arrival as a doorbell, the arrivals' marker, and the car that drives up
+**Status:** Accepted · 2026-11-10, held up in playtest 5 (`docs/playtests/playtest-5-findings.md`): the doorbell and the arrivals are "nice". Proposed 2026-11-09, with the juice pull request: playtest 4's asks (its §4 and §15 item 5).
 **Decision:**
-- **Click to hold:** with nothing picked, a click on a placed piece holds Inspect on it, so the pointer can go to the panel and scroll its notes.
-  - The board marks the held piece with a dotted pale rim in the tally's active colors.
-  - Inspect's plank gets a ✕.
-  - While a piece is held, Inspect gets the left column's room first, as it does while a play is looked at.
-  - It lets go on a second click on the piece, a click on open ground or the street, Esc, the ✕, picking something, demolishing, a new week, another screen, or the piece going.
-  - It's UI only (`store.ts` heldPiece).
-- **The house rules fold into one row:** "House rules 5/7", with their Charm while folded. A click opens or folds them.
-  - Folded by default, but open on a first visit (until the checklist's first hint is dismissed).
-  - They open by themselves while a play being looked at turns one on or off, or a tally flips one, until the tally ends.
-  - A tally's beat on a line that holds lights the folded row, as a folded group's row does.
-  - The row replaces the "House rules" plank tag, and the groups' own folds work as before.
-  - Who's still to move in shows either way, and the client's wishes and change orders never fold.
-- How to play and the controls list say so.
+- **The doorbell:** a household member's arrival rings the front door: "Ding-dong!" on a plank at the house's front doormat (the house's south edge before there's a front door), two rings spreading from it, and a two-tone bell of its own (`doorbell`).
+- **Their card** slides in at the board's right edge, by the reserve their cards go to: the "Ding-dong!" plank rocking as the bell rings, their room's picture (the first card they bring), who's arrived, and what's waiting. It stays 3.4 s, and a click dismisses it. The first-time hints wait for it.
+  - It replaces the arrival's banner, which was the milestone's banner in a tan plank, so nothing about an arrival reads as a milestone. The banner's `note` tone is gone.
+- **The arrivals' marker on the progress bar:** the House after the meter's flag when someone moves in as this milestone is met; its tooltip says who, and the week. The meter is the phase's, so the whole schedule stays in the checklist's lines.
+- **The car** parks on the Driveway nearest the front door or a Garage that has room for it (by the distance from its tiles), so a drive extended toward the house gets it. Ties, and a house with neither, go to the oldest Driveway, as before. When a play moves it, its body and roof slide there together in 0.9 s; a new run or a load never slides.
 
-**Why:** playtest 4.
-- Inspect followed the pointer, so reaching its scrollbar crossed other tiles, and a long note couldn't be read.
-- A click on a placed piece did nothing with nothing picked, so it was free for this.
-- The client panel's plank had no room for a collapse caret at 280 px.
-- Every client has the same seven house rules, which took the room Inspect needed.
+**Why:** the user asked for the doorbell and an arrival that doesn't read as a milestone. On the car the user said either way was fine; driving up makes a longer drive visible.
+**Changes:** D-103 (Accepted): its banner. `implementation-plan.md` §12 has no rule on either.
 
-**Changes:** D-109's UI note: the house-rule groups now fold inside one row for the whole rules. D-110's left column: a held piece counts as looked at.
-
-### D-112 · Playtest 4's quick fixes
-**Status:** Proposed · 2026-11-09, with the fix pull request after playtest 4 (`docs/playtests/playtest-4-findings.md` has the findings).
+### D-127 · The roof reveal at Roofing, and "Topped out!"
+**Status:** Accepted · 2026-11-10, held up in playtest 5 (`docs/playtests/playtest-5-findings.md`), but the reveal is brief and lands at the end of a week, so it's easy to miss. The user asked for a way to bring the roof back after Roofing, which D-133 (reserved) adds. Proposed 2026-11-09, with the juice pull request. §12's roof reveal, and the review's "Topped out!" (`house-systems-review.md` §6).
 **Decision:**
-- **The title screen:**
-  - The car is mirrored at the cut (`art/limezu/ui.json`), so it faces the way it drives.
-  - How to play and Settings hang their chains a quarter in from each end, under Start.
-  - The villas' little gable over the front door is painted out with their own siding, trim and deck planks (a compose), so the porch roof reads as a flat deck under the balcony. That was the user's pick of three looks.
-  - The footer keeps just the jam note. LimeZu's credit stays in How to play's Credits and in CREDITS.md: both packs' licenses ask for credit and say nothing about where.
-- **Inspect's buttons** may wrap, so they never run past the panel. They say "Use it now" (the tool's name is the heading) and "Sell for N" (the coin says budget).
-- **Change orders:**
-  - The sheet's "It's coming either way: it can't be declined" goes, since the missing Decline button says it.
-  - About one phase effect in four shows a flavor line instead. A UI-only hash of the seed, the order and its phase picks it, so a replay shows the same one.
-  - Set bonuses read "The Entertainer pays double" and "Every set pays 10% more", not "+100% more".
-- **The Garage:** its card says "Must touch the house, and the street or a Driveway". A spot off the house says "The Garage is a room: it must connect to the house."
-- **Soundproofing** names what's Loud: "Loud neighbors (the street, Garages, Playrooms, and Pools) can't take points off it".
-- **Renovate:**
-  - A card that can renovate shows a ★ Renovate chip.
-  - A first-time hint explains it the first time a card can.
-  - The glossary says it's done in place, with nothing torn down.
-- **The glossary's Hallway links** no longer say a Hallway earns nothing itself, since a blueprint like Country Living pays it.
+- **The roof** is painted from the house model in LimeZu's palette, by fixed rules: a terracotta gable over each column of rooms (the south slope lit, the north in shade, a ridge cap between them), shingles offset like bricks, a fascia along the south eaves, eaves 3 art px past the walls, an ink outline, and a brick chimney on the first room. An L or a T gets a ridge per wing. It's a canvas in the board's `roof` layer, which D-097 reserved.
+- **At the Roofing milestone,** when it's met (on time, early or in overtime), the roof drops onto the house in 0.42 s, holds 1.8 s under the milestone's banner, and lifts off in 0.56 s, with a thump and a bell (`roof-on`). The tiles' digits and badges fade out while it's on. Reduce motion fades it in and out. A missed milestone gets no roof.
+- **"Topped out!":** the first week Under one roof holds in a run, a wood plaque with the flag rises over the top of the house for 1.7 s, with stars and a cheer (`topped-out`). The rules keep no history of the checklist, so the browser remembers the runs that have topped out (by seed, client and crew, the last 30), and a replay of the same run doesn't show it again.
+- The end screen's photo of the house at each milestone stays M6's.
 
-**Why:** playtest 4's notes:
-- the car drove backwards, the chains ended in the air, and the gable looked unrealistic;
-- long tool names ran the Use button off the panel;
-- the footnote was funny once;
-- the Garage card read as if the street alone would do;
-- Soundproofing was worth nothing in every week of the run;
-- the player never knew Renovate existed. It came up 4 times, once worth more than the play made.
+**Why:** §12's roof reveal, and the review's idea from its parked construction stages: a stamp when the roof goes on.
+**Changes:** none to settled decisions.
 
-**Changes:**
-- D-098's title note: the credit moves off the title.
-- D-109's change-order bullet: the pick is even among the client's own orders and the generic ones; the old wording said "then".
-- D-102 (Renovate) gains the chip. D-045 (first-time hints) gains the Renovate hint.
+### D-128 · The music: three calm tracks, picked by ear
+**Status:** Accepted · 2026-11-10, held up in playtest 5 (`docs/playtests/playtest-5-findings.md`): the music "is good", but three tracks "start to loop pretty noticeably" over a run, so D-134 (reserved) adds about three more. Proposed 2026-11-10, with M5b (D-058; `implementation-plan.md` §12, Music). The user picked the three by ear from a shortlist of six; playtest 5b hears them over a whole run.
+**Decision:**
+- **Three tracks, shuffled (D-131), about eight minutes before one repeats:**
+  - "Morning" by Kevin MacLeod (incompetech, 2023, CC BY 4.0): nylon guitar, harp and flute, no drums; 60 BPM, 2:28, E major.
+  - "Sleepy Little Mouse" by Tsorthan Grove (OpenGameArt, CC BY 4.0): lo-fi electric piano and pad over a soft backbeat; 70 BPM, 2:54, C major. It comes as a mix with drums and the same mix without them, in time with each other, so it plays as two stems: the drums play while you build, at a milestone, and on a win; the title, the job board, the shop, a crate, and a loss drop them.
+  - "Clear Air" by Kevin MacLeod (incompetech, CC BY 4.0): steel and nylon guitars, with a soft low piano in its second half; 68 BPM, 3:04. It leans G minor, so its key is B♭ major, which shares its notes.
+- **A track's key is where its rewards play** (D-129). Each key was estimated from the recording (a pitch-class profile with the overtones removed, then Krumhansl–Schmuckler and a check of the thirds). A track that leans minor gets its relative major, so the jingles stay bright and every note of the ladder is still in the track.
+- **Licenses were read on each track's own page.** CC BY's credit, with our changes (trimmed, levelled, re-encoded), is in `CREDITS.md` and How to play's Credits.
+- **The shortlist** came from two research passes, one over game-asset sources (Tallbeard/Abstraction, Ninja Adventure, YannZ, Kenney, OpenGameArt, itch.io) and one over music libraries (Free Music Archive, incompetech, Freesound, ccMixter). The listening page also had "Folded" by Ketsa (CC BY 4.0; busier lo-fi), "On the road, looking at your feet" by Monplaisir (CC0; solo ukulele) and "Comfort Games 5" by HoliznaCC0 (CC0; a music box).
+
+**Why:** §12 asks for 2–3 calm tracks of 2–3 minutes, around 70–90 BPM, sparse and plucked; a single short loop is Combolands' most common audio complaint. Guitar, harp and electric piano leave the mallets' register to the reward sounds.
+**Considered:**
+- Abstraction's "Interior Birdecorator" (CC0, four arrangements in sync) and the KitFit soundtrack (CC BY 4.0): each was written for another game, so we stayed clear of §12's "anything taken from another game", though their composers released them.
+- Kevin MacLeod's "Cherry Blossom": marimba at 100 BPM, on top of the Comfort plink.
+- YannZ's Contemplative Fantasy (loops in layers): its pages disagree about the license.
+- Ninja Adventure (CC0): chiptune leads and short loops.
+
+**Changes:** D-131: the one pick with stems mixes them by screen.
+
+### D-129 · The recorded sound set, in the music's key
+**Status:** Accepted · 2026-11-10, played in playtest 5 with no issues raised (`docs/playtests/playtest-5-findings.md`). Proposed 2026-11-09, with M5b (D-058's reward sounds; `implementation-plan.md` §12, Sound). For playtest 5b's ears.
+**Decision:**
+- **Real instruments replace the ZzFX blips** where a recording fits (`src/ui/audio/kit.ts`), all CC0:
+  - Comfort (Points): a marimba's soft wooden plink. Charm (+Mult): a warm hand chime on the key's fifth. Sparkle (×Mult): a tubular bell on the tonic over a low gong, about 3 dB under the chime. The bell and the gong play for ×Mult and nothing else (`kit.test.ts`).
+  - Placing a room: a slit drum's thock, from 4 takes. A yard piece: a cloth's fwp, from 4 takes.
+  - The jingles (a big week, a milestone met or missed, the target reached), the multiply moment, and a purchase: short phrases on marimba, vibraphone, glockenspiel and the chimes. The coin count: clay chips. Clicks and the "can't place" bonk: Kenney's Interface Sounds. The sparkle: a mark tree's run.
+  - Sources: the VCSL sample library (Versilian Studios) and Kenney's RPG Audio, Casino Audio and Interface Sounds, through their OpenGameArt pages (kenney.nl turns scripts away). 46 short files, 1.2 MB in both formats.
+- **Everything pitched is in the playing track's key.** A note is a step of the key's scale on an instrument's own register; the ladder climbs the key's pentatonic scale from its tonic each week (two octaves, then it holds and adds the sparkle). A caller's `rate` on a pitched sound moves each note to the nearest note of that pentatonic scale, so the director's pitch nudges (a chime at 1.1×, a shop row's rising plinks) stay in key. Unpitched sounds keep the random ±0.05 rate; every sound keeps ±1.5 dB (§12, Variation). Each instrument has 4–7 samples, so no note is shifted more than half an octave in any key (`kit.test.ts`).
+- **Round-robin:** a set plays its takes in a shuffled order, never the same take twice in a row.
+- **A small room:** the instruments and the mark tree (not the foley or the clicks) also go through a 1.3 s synthetic room at −16 dB, so the close-miked samples sit in the same space as the music.
+- **Placeholders stay:** a sound with no recipe (Rotate's swish), or whose files haven't decoded yet, plays its ZzFX placeholder. A new moment can start with a placeholder and get a recipe later.
+- **Levels** match the placeholders' within about 3 dB (peak and early RMS), so playtests 1–5's balance carries over: the user's ears tune them from there.
+
+**Why:** D-058 asked for a timbre per score layer, a ladder in the music's key, and round-robin variants; recorded mallets also sit with calm acoustic music where synth blips don't.
+**Considered:** Kenney's jingles (fixed keys, so they'd clash with the music); Freesound (originals need a login, and its licenses vary file by file); a sprite sheet of all the sounds in one file (AAC's priming offsets would shift every cut in Chrome).
+**Changes:** none to settled decisions. `implementation-plan.md` §12 Sound: the ×Mult bell's register.
+**2026-11-10 (the juice PR's moments, D-124 to D-126):** at the user's ask, this branch merged #27 before it merged, so one playtest hears both. Its 16 new moments get recipes after its placeholders' shapes: the Good and Huge weeks' jingles on chimes, marimba and vibraphone (ducking the music like Great's `big-week`), a set completing, the Rhythm payout's two knocks, a find, a crate opening (Kenney's wooden creak and a pop), a Rare on the shelf, a wish or a house rule met (chimes, a glockenspiel check) or a rule lost (a low knock and a falling third), a Renovation's level-up, the doorbell (a hand chime's falling third), a change order's stamp (Kenney's book thump), "Topped out!" and the roof going on. The drumroll keeps its ZzFX roll; no recording here rolls. The hand chimes' samples stop at G♯6, so a chime plays no higher than the key's fifth and the glockenspiel takes the octave. 51 files now.
+
+### D-130 · Audio files: the cut, the formats, and loading after the title
+**Status:** Accepted · 2026-11-10, played on /dev/ in playtest 5 with no issues raised (`docs/playtests/playtest-5-findings.md`). Right after the deploy, Pages answered one file (chip-3) with a 503; the loader fetched it again on the first click, and it decoded. Proposed 2026-11-09, with M5b (`implementation-plan.md` §12, Files and Audio sources and licenses).
+**Decision:**
+- **`npm run audio:cut`** (`scripts/cut-audio.ts`) works like `art:cut` (D-097): `art/audio.json` names each source (a folder or zip in the gitignored `art-source/audio/`, with its page, author and license) and each cut (a file in it, where to start, how long, the fade, a low-pass, mono or stereo, and a peak or, for music, a loudness). It writes `assets/audio/<cut>.ogg` and `.m4a`, `assets/audio/index.json` (each cut's length and hash), and the `audio/` records in `assets/licenses.json`. Unchanged cuts aren't encoded again; cuts no longer listed are removed. It runs locally on macOS (Homebrew's `vorbis-tools` and the system's `afconvert`); CI checks the committed files against the manifest (`cut-audio.test.ts`).
+- **Formats:** Ogg Vorbis (quality 3 for sounds, 4 for music) where `canPlayType` says the browser plays it, AAC in M4A otherwise (Safari before 18.4). An Ogg file that won't decode is fetched again as M4A, and the rest follow it. Sounds are mono, music stereo. Music is cut to −16 LUFS (BS.1770) with peaks under −1 dBFS; sounds to a −1 dBFS peak.
+- **Loading:** the files load 0.6 s after the first screen is up (the title, usually), and decode on the first click, when the AudioContext starts. Music loads one track at a time: the next track's bytes while one plays, decoded when it's due, so at most two tracks are in memory. With the music volume at 0, no music loads.
+
+**Why:** the art pipeline's approach keeps paid or bulky sources out of the repo and every committed file traceable to its source and license. Loading after the title keeps the first screen quick.
+**Changes:** none to settled decisions.
+
+### D-131 · The music bus: screen mixes, ducking, the losing glide, and the volumes
+**Status:** Accepted · 2026-11-10, played in playtest 5 with no issues raised (`docs/playtests/playtest-5-findings.md`). Proposed 2026-11-09, with M5b (`implementation-plan.md` §12, Music, Ducking and Losing).
+**Decision:**
+- **A shuffled playlist:** every track once before any repeats, never the last one first, with a 2.5 s rest between tracks and a 2.5 s fade in for the first. Tracks play through rather than loop, so there are no loop points to trim (§12, Files).
+- **Each screen has its mix** (`tracks.ts`), crossfaded with a 0.3 s time constant, so a screen change never restarts the music: the title, the job board, the build screen, the shop, an open crate, a milestone's review, and a run won or lost. A track with stems also mixes them per screen (D-128's Sleepy Little Mouse drops its drums off the build screen, a milestone and a win), and every track changes through the bus's low-pass and level: plain while you build, a room away in the shop (3 kHz, −1.4 dB), hushed while a crate opens (1.3 kHz, −3.7 dB). The screen follows what the player sees: the rules are already in the shop while a milestone's tally and beats play, and that's "review" (`scene.ts`).
+- **Ducking:** a jingle (a recipe marked `duck`, D-129) takes the music down 10 dB over 50 ms, holds it while the jingle rings, and lets it back up over 1 s. `audio.duck(seconds)` does the same for a moment without a recipe.
+- **Losing:** when the run is lost and its end screen shows, the music glides down to 0.6× speed over a second (tape-slow, its pitch with it), and stays there. A new run glides it back over 1.5 s.
+- **Volumes:** master, music and sound effects, saved with the other settings (default 70, 70 and 80). The music bus sits 6 dB under the sound effects' (`MUSIC_TRIM`), so −16 LUFS tracks play 8–10 dB under the sounds' peaks (§12, Mix). A music volume of 0 fades the track out and stops loading music.
+
+**Why:** §12 and D-058: calm music that never restarts between screens, rewards given room by ducking, and a loss that sags instead of cutting out (Balatro).
+**Considered:** `<audio>` elements for the music (they stream with less memory, but can't keep stems in sync or glide the speed smoothly); loops trimmed past the encoders' padding (a playlist of whole tracks needs none); fading the music out when the tab is hidden (players often keep calm music on in the background).
+**Changes:** none to settled decisions. `implementation-plan.md` §12 Music: the screen-mix fallback for tracks without stems, and the playlist instead of loop points.
+
+---
+
+## Proposed
+
+*Reserved numbers (2026-11-10): D-115 to D-118 are the layout session's drafts and D-122 the legibility session's; they aren't in this file yet. D-132 to D-134 are playtest 5's fixes, each logged by its own pull request: D-132 one reroll for both rows of the draw, D-133 the roof view, D-134 three more tracks. New entries start at D-135.*
 
 ### D-111 · Art for M4's content: the members' rooms, packs, and Renovate's level
 **Status:** Proposed · 2026-11-08, with the M4 pull request, after it merged `develop` (M5a). Implementation details within D-097, D-100, and §12 Art; for playtest 4.
