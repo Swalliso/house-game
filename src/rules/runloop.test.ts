@@ -8,19 +8,25 @@ import { describe, expect, it } from 'vitest';
 import type {
   Action,
   Balance,
+  Card,
   Cell,
   Content,
+  DrawRow,
   GameEvent,
   PieceId,
   PlaceAction,
   Rot,
   RunState,
+  SwappedCard,
 } from './index.ts';
 import { createRules, IllegalAction, type Rules } from './run.ts';
-import { drawHand } from './draw.ts';
+import { DRAW_ROWS, drawHand, rowOf, swapCandidates } from './draw.ts';
 import { lotFromRows } from './lot.ts';
 import { roundHalfUp } from './scoring.ts';
 import {
+  beforeSwaps,
+  drawnBefore,
+  drawRows,
   emptyRows,
   houseFrom,
   setup,
@@ -134,16 +140,9 @@ describe('overtime', () => {
       target: 5,
       score: 0,
     });
-    const hand = drawHand(C, seed, 0, 'ot1', 0, 3);
-    expect(events[2]).toEqual({
-      t: 'handDrawn',
-      phase: 0,
-      slot: 3,
-      overtimeWeek: 1,
-      hand,
-      free: false,
-      reroll: false,
-    });
+    // The overtime week's own key, ot1: both rows, before any swaps (D-121).
+    expect(events[2]).toMatchObject({ t: 'handDrawn', phase: 0, slot: 3, overtimeWeek: 1 });
+    expect(drawnBefore(events[2])).toEqual(drawRows(C, seed, 0, 'ot1', 0));
     expect(state).toMatchObject({
       phase: 0,
       slot: 3,
@@ -155,7 +154,7 @@ describe('overtime', () => {
       screen: 'build',
       milestones: [],
     });
-    expect(state.hand).toEqual(hand);
+    expect(state.hand).toEqual((events[2] as { hand: unknown }).hand);
     expect(rules.weeksLeft(state)).toBe(1);
   });
 
@@ -205,15 +204,8 @@ describe('overtime', () => {
     const { state, events } = r.apply(met.state, LEAVE);
     expect(types(events)).toEqual(['shopClosed', 'handDrawn']);
     expect(events[0]).toMatchObject({ skipReward: 1, budgetBefore: 3, budget: 4 });
-    expect(events[1]).toEqual({
-      t: 'handDrawn',
-      phase: 1,
-      slot: 1,
-      overtimeWeek: 0,
-      hand: drawHand(r.content, 'empty', 1, '1', 0, 3),
-      free: false,
-      reroll: false,
-    });
+    expect(events[1]).toMatchObject({ t: 'handDrawn', phase: 1, slot: 1, overtimeWeek: 0 });
+    expect(drawnBefore(events[1])).toEqual(drawRows(r.content, 'empty', 1, '1', 0));
     expect(state).toMatchObject({
       phase: 1,
       slot: 1,
@@ -235,11 +227,8 @@ describe('overtime', () => {
     expect(week1.state).toMatchObject({ phase: 1, slot: 2, week: 5, score: 6 });
     const week2 = r.apply(week1.state, PASS);
     expect(types(week2.events)).toEqual(['tally', 'overtimeUsed', 'handDrawn']);
-    expect(week2.events[2]).toMatchObject({
-      phase: 1,
-      overtimeWeek: 1,
-      hand: drawHand(r.content, 'empty', 1, 'ot1', 0, 3),
-    });
+    expect(week2.events[2]).toMatchObject({ phase: 1, overtimeWeek: 1 });
+    expect(drawnBefore(week2.events[2])).toEqual(drawRows(r.content, 'empty', 1, 'ot1', 0));
     expect(week2.state).toMatchObject({ overtimeWeek: 1, overtimeLeft: 0, slot: 3, week: 6 });
     const lost = r.apply(week2.state, PASS);
     expect(types(lost.events)).toEqual(['tally', 'milestone', 'runEnded']);
@@ -253,11 +242,8 @@ describe('overtime', () => {
     const ot2 = rules.apply(s, PASS);
     expect(types(ot2.events)).toEqual(['tally', 'overtimeUsed', 'handDrawn']);
     expect(ot2.events[1]).toMatchObject({ overtimeLeft: 0 });
-    expect(ot2.events[2]).toMatchObject({
-      slot: 4,
-      overtimeWeek: 2,
-      hand: drawHand(C, 'ot-loss', 0, 'ot2', 0, 3),
-    });
+    expect(ot2.events[2]).toMatchObject({ slot: 4, overtimeWeek: 2 });
+    expect(drawnBefore(ot2.events[2])).toEqual(drawRows(C, 'ot-loss', 0, 'ot2', 0));
     expect(ot2.state).toMatchObject({ overtimeWeek: 2, overtimeLeft: 0, slot: 4, week: 4 });
 
     const { state, events } = rules.apply(ot2.state, PASS);
@@ -289,17 +275,9 @@ describe('overtime', () => {
     s = applyAll(rules, s, [REROLL, PASS, PASS]).state;
     expect(s).toMatchObject({ overtimeWeek: 1, rerollsLeft: 1, draws: 1 });
     const { state, events } = rules.apply(s, REROLL);
-    expect(events).toEqual([
-      {
-        t: 'handDrawn',
-        phase: 0,
-        slot: 3,
-        overtimeWeek: 1,
-        hand: drawHand(C, 'ot-reroll', 0, 'ot1', 1, 3),
-        free: false,
-        reroll: true,
-      },
-    ]);
+    expect(types(events)).toEqual(['handDrawn']);
+    expect(events[0]).toMatchObject({ phase: 0, slot: 3, overtimeWeek: 1, reroll: true });
+    expect(drawnBefore(events[0])).toEqual(drawRows(C, 'ot-reroll', 0, 'ot1', 1));
     expect(state).toMatchObject({ rerollsLeft: 0, draws: 2 });
   });
 });
@@ -360,7 +338,6 @@ describe('early completion', () => {
       phase: 1,
       slot: 1,
       overtimeWeek: 0,
-      free: false,
       reroll: false,
     });
     expect(state).toMatchObject({
@@ -655,28 +632,21 @@ describe('rerolls', () => {
     const s = onEmptyLot(rules, seed);
     expect(rules.rule(s, 'rerollsPerPhase')).toBe(2);
     expect(s).toMatchObject({ rerollsLeft: 2, draws: 1 });
-    expect(s.hand).toEqual(drawHand(C, seed, 0, '1', 0, 3));
+    expect(beforeSwaps(s.hand, s.swapped)).toEqual(drawRows(C, seed, 0, '1', 0));
     expect(rules.canReroll(s)).toEqual({ ok: true });
-    expect(rules.legalActions(s)).toContainEqual(REROLL);
+    // A reroll names its row (D-121).
+    expect(rules.legalActions(s)).toContainEqual({ t: 'reroll', row: 'rooms' });
+    expect(rules.legalActions(s)).toContainEqual({ t: 'reroll', row: 'layout' });
 
     const one = rules.apply(s, REROLL);
-    const hand1 = drawHand(C, seed, 0, '1', 1, 3);
-    expect(one.events).toEqual([
-      {
-        t: 'handDrawn',
-        phase: 0,
-        slot: 1,
-        overtimeWeek: 0,
-        hand: hand1,
-        free: false,
-        reroll: true,
-      },
-    ]);
+    expect(types(one.events)).toEqual(['handDrawn']);
+    expect(one.events[0]).toMatchObject({ phase: 0, slot: 1, overtimeWeek: 0, reroll: true });
+    expect(drawnBefore(one.events[0])).toEqual(drawRows(C, seed, 0, '1', 1));
     expect(one.state).toMatchObject({ rerollsLeft: 1, draws: 2, slot: 1, week: 1, score: 0 });
-    expect(one.state.hand).toEqual(hand1);
+    expect(beforeSwaps(one.state.hand, one.state.swapped)).toEqual(drawRows(C, seed, 0, '1', 1));
 
     const two = rules.apply(one.state, REROLL);
-    expect(two.state.hand).toEqual(drawHand(C, seed, 0, '1', 2, 3));
+    expect(beforeSwaps(two.state.hand, two.state.swapped)).toEqual(drawRows(C, seed, 0, '1', 2));
     expect(two.state).toMatchObject({ rerollsLeft: 0, draws: 3 });
 
     expect(rules.canReroll(two.state)).toEqual({
@@ -685,7 +655,7 @@ describe('rerolls', () => {
     });
     expect(() => rules.apply(two.state, REROLL)).toThrow(IllegalAction);
     expect(() => rules.apply(two.state, REROLL)).toThrow('No rerolls left this phase.');
-    expect(rules.legalActions(two.state)).not.toContainEqual(REROLL);
+    expect(rules.legalActions(two.state).some((a) => a.t === 'reroll')).toBe(false);
   });
 
   it('last the whole phase, reset at the next, and don’t carry over', () => {
@@ -704,15 +674,12 @@ describe('rerolls', () => {
 
 // ---------------------------------------------------------------------------------------
 
-describe('the free redraw', () => {
+describe('swaps (D-121)', () => {
   // Boulders everywhere except nine lone tiles: only 1×1 pieces fit.
   const ISLANDS = ['.B.B.', 'BBBBB', '.B.B.', 'BBBBB', '.B.B.'];
-  const ONE_TILE = new Set<PieceId>(['bathroom', 'closet', 'sapling', 'flowerBed', 'doghouse']);
-  const fitsIslands = (n: number, seed: string) =>
-    drawHand(C, seed, 0, '2', n, 3).some((c) => c.kind === 'piece' && ONE_TILE.has(c.id));
 
   function findSeed(ok: (seed: string) => boolean): string {
-    for (let i = 0; i < 2000; i++) if (ok(`redraw-${i}`)) return `redraw-${i}`;
+    for (let i = 0; i < 2000; i++) if (ok(`swap-${i}`)) return `swap-${i}`;
     throw new Error('no seed found');
   }
 
@@ -722,63 +689,122 @@ describe('the free redraw', () => {
     return { ...s, house: { ...s.house, lot: lotFromRows(rows) } };
   }
 
-  it('when nothing in the week’s first hand fits anywhere, there’s one free redraw', () => {
-    const seed = findSeed((sd) => !fitsIslands(0, sd));
+  /** Whether a card would have a play at the start of week 2 on the islands. */
+  const hasPlay = (seed: string, card: Card) => {
+    const s = { ...onIslands(seed), hand: [card] };
+    return rules.cardFits(s, 0) || rules.renovateTargets(s, 'hand', 0).length > 0;
+  };
+
+  /** Week 2's hand after swaps, worked out from the streams as D-121 says. */
+  function afterSwaps(seed: string, n: number, hand: readonly Card[], only?: DrawRow) {
+    const out = [...hand];
+    const swapped: SwappedCard[] = [];
+    for (const row of only ? [only] : DRAW_ROWS) {
+      const at = out.flatMap((c, i) => (rowOf(C, c) === row ? [i] : []));
+      at.forEach((i, k) => {
+        if (hasPlay(seed, out[i]!)) return;
+        const inRow = at.map((j) => out[j]!);
+        const tries = swapCandidates(C, seed, 0, '2', n, k, 3, inRow, { row });
+        if (tries.length === 0) return;
+        swapped.push({ i, was: out[i]! });
+        out[i] = tries.find((c) => hasPlay(seed, c)) ?? tries.at(-1)!;
+      });
+    }
+    return { hand: out, swapped };
+  }
+
+  it('swaps each card with no play for the first of up to 3 from its row that has one', () => {
+    const seed = findSeed((sd) => {
+      const first = drawRows(C, sd, 0, '2', 0);
+      return first.some((c) => hasPlay(sd, c)) && first.some((c) => !hasPlay(sd, c));
+    });
     const { state, events } = rules.apply(onIslands(seed), PASS);
-    const first = drawHand(C, seed, 0, '2', 0, 3);
-    const redraw = drawHand(C, seed, 0, '2', 1, 3);
-    const drawn = { t: 'handDrawn', phase: 0, slot: 2, overtimeWeek: 0, reroll: false };
+    const first = drawRows(C, seed, 0, '2', 0);
+    const { hand, swapped } = afterSwaps(seed, 0, first);
+    expect(swapped.length).toBeGreaterThan(0);
+    // One event for the draw: the hand after its swaps, and what each swapped card replaced.
     expect(events.slice(1)).toEqual([
-      { ...drawn, hand: first, free: false },
-      { ...drawn, hand: redraw, free: true },
+      {
+        t: 'handDrawn',
+        phase: 0,
+        slot: 2,
+        overtimeWeek: 0,
+        reroll: false,
+        hand,
+        free: true,
+        swapped,
+      },
     ]);
-    // It doesn't cost a reroll.
-    expect(state).toMatchObject({ draws: 2, freeRedrawUsed: true, rerollsLeft: 2 });
-    expect(state.hand).toEqual(redraw);
-    // A manual reroll afterwards draws the week's next key.
-    const reroll = rules.apply(state, REROLL);
-    expect(reroll.state.hand).toEqual(drawHand(C, seed, 0, '2', 2, 3));
-    expect(reroll.state).toMatchObject({ draws: 3, rerollsLeft: 1 });
+    // Swaps cost nothing and draw no new key: the next reroll is n = 1.
+    expect(state).toMatchObject({ draws: 1, rerollsLeft: 2, swapped });
+    expect(state.hand).toEqual(hand);
+    // A card swapped in stays in its row, and the cards that had a play stay where they were.
+    hand.forEach((c, i) => {
+      const was = swapped.find((w) => w.i === i)?.was;
+      if (was) expect(rowOf(C, c)).toBe(rowOf(C, was));
+      else expect(c).toEqual(first[i]);
+    });
   });
 
-  it('no redraw when any card in the first hand fits', () => {
-    const seed = findSeed((sd) => fitsIslands(0, sd));
-    const { state, events } = rules.apply(onIslands(seed), PASS);
+  it('no swaps when every card has a play', () => {
+    const { state, events } = rules.apply(onEmptyLot(), PASS);
     expect(types(events)).toEqual(['tally', 'handDrawn']);
-    expect(state).toMatchObject({ draws: 1, freeRedrawUsed: false });
+    expect(state).toMatchObject({ draws: 1, swapped: [] });
   });
 
-  it('is at most one a week, and comes again the next week', () => {
-    // Nothing fits on an all-boulder lot, so neither hand fits.
+  it('swaps come every week; with nothing that fits, the last card tried stays', () => {
+    // Nothing fits on an all-boulder lot, so every card is swapped, and every try fails.
     const r = createRules(content([1000, 1000], 4));
     let s = r.newRun(setup('boulders'));
     s = { ...s, house: { ...s.house, lot: lotFromRows(['BBB', 'BBB', 'BBB']) } };
     const week2 = r.apply(s, PASS);
-    expect(eventsOf(week2.events, 'handDrawn').map((e) => e.free)).toEqual([false, true]);
-    expect(week2.state).toMatchObject({ slot: 2, draws: 2, freeRedrawUsed: true });
+    expect(eventsOf(week2.events, 'handDrawn').map((e) => e.free)).toEqual([true]);
+    expect(week2.state).toMatchObject({ slot: 2, draws: 1 });
+    expect(week2.state.swapped.map((w) => w.i)).toEqual([0, 1, 2, 3]);
     const week3 = r.apply(week2.state, PASS);
-    expect(eventsOf(week3.events, 'handDrawn').map((e) => e.free)).toEqual([false, true]);
-    expect(week3.state).toMatchObject({ slot: 3, draws: 2, freeRedrawUsed: true });
+    expect(eventsOf(week3.events, 'handDrawn').map((e) => e.free)).toEqual([true]);
+    expect(week3.state.swapped.map((w) => w.i)).toEqual([0, 1, 2, 3]);
   });
 
-  it('never follows a manual reroll, even when nothing in the new hand fits', () => {
-    const seed = findSeed((sd) => fitsIslands(0, sd) && !fitsIslands(1, sd));
+  it('a reroll redraws one row on its own stream, then swaps in that row only', () => {
+    const seed = findSeed((sd) => {
+      const rooms = drawRows(C, sd, 0, '2', 1).filter((c) => rowOf(C, c) === 'rooms');
+      return rooms.some((c) => !hasPlay(sd, c));
+    });
     const s = rules.apply(onIslands(seed), PASS).state;
-    expect(s).toMatchObject({ slot: 2, draws: 1, freeRedrawUsed: false });
-    const { state, events } = rules.apply(s, REROLL);
+    const layout = s.hand.filter((c) => rowOf(C, c) === 'layout');
+    const { state, events } = rules.apply(s, { t: 'reroll', row: 'rooms' });
+    const rooms = drawHand(C, seed, 0, '2', 1, 2, { row: 'rooms' });
+    const rerolled = [...rooms, ...layout];
+    const { hand, swapped } = afterSwaps(seed, 1, rerolled, 'rooms');
+    expect(swapped.length).toBeGreaterThan(0);
     expect(events).toEqual([
       {
         t: 'handDrawn',
         phase: 0,
         slot: 2,
         overtimeWeek: 0,
-        hand: drawHand(C, seed, 0, '2', 1, 3),
-        free: false,
+        hand,
+        free: true,
         reroll: true,
+        row: 'rooms',
+        swapped,
       },
     ]);
-    expect(state.hand.some((_, i) => rules.cardFits(state, i))).toBe(false);
-    expect(state).toMatchObject({ draws: 2, freeRedrawUsed: false, rerollsLeft: 1 });
+    // The Layout row is untouched, and its own swap notes moved with it.
+    expect(state.hand.slice(2)).toEqual(layout);
+    const keptNotes = s.swapped
+      .filter((w) => rowOf(C, s.hand[w.i]!) === 'layout')
+      .map((w) => ({ i: state.hand.indexOf(s.hand[w.i]!), was: w.was }));
+    expect(state.swapped).toEqual([...keptNotes, ...swapped]);
+    expect(state).toMatchObject({ draws: 2, rerollsLeft: 1 });
+  });
+
+  it('a reroll without a row redraws both, on the draw key n', () => {
+    const s = rules.apply(onEmptyLot(), PASS).state;
+    const { state } = rules.apply(s, REROLL);
+    expect(state.hand).toEqual(drawRows(C, 'empty', 0, '2', 1));
+    expect(state).toMatchObject({ draws: 2, rerollsLeft: 1, swapped: [] });
   });
 });
 
@@ -1157,7 +1183,7 @@ describe('debug actions', () => {
     expect(events).toEqual([]);
     expect(state.hand).toEqual([...s.hand, { kind: 'piece', id: 'garage' }]);
     expect(state.debug).toBe(true);
-    const played = rules.apply(state, place(3, 0, 10));
+    const played = rules.apply(state, place(s.hand.length, 0, 10));
     expect(played.events[0]).toMatchObject({ t: 'placed', defId: 'garage', x: 0, y: 10 });
     expect(() => rules.apply(s, { t: 'debug', op: 'giveCard', id: 'mansion' as PieceId })).toThrow(
       'Unknown piece.',

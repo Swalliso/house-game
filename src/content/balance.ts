@@ -72,7 +72,9 @@ export const BALANCE: Balance = {
     rerollsPerPhase: 1,
     demolitions: 2,
     overtime: 2,
-    handSize: 3, // D-036
+    // The weekly draw's two rows (D-121): 2 Rooms cards and 2 Layout cards a week.
+    roomsRow: 2,
+    layoutRow: 2,
     earlyRewardPct: 100,
     // Slots (Appendix A · M3a); company upgrades add one of each in M3b.
     reserveSlots: 2,
@@ -152,7 +154,7 @@ export const BALANCE: Balance = {
       strike: { base: 2, step: 1, max: 5 }, // D-076, D-084
     },
     skipReward: 1, // leaving without buying anything
-    strikeMinTypes: 8,
+    strikeMinTypes: { rooms: 5, layout: 4 }, // in each row (D-121)
     crateOptions: 3, // open a crate, keep 1 of 3
     interestPer: 5, // Savings Account: +1 per 5 held, up to the interestMax rule
   },
@@ -184,6 +186,8 @@ export const BALANCE: Balance = {
   renovate: { pointsPerLevel: 4, maxLevel: 2 },
   // A type at its limit draws at half weight while it stays there (D-043, amended by D-093).
   drawAtLimitPct: 50,
+  // A card with no play is swapped for one from its row, trying up to 3 cards (D-121).
+  swapTries: 3,
 
   // The job board (Appendix A · M4a; D-026, D-045): 3 contracts, clients by rarity (no Rare is
   // guaranteed), and the Hendersons as contract 0 on a first visit.

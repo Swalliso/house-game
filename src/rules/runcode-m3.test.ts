@@ -30,7 +30,7 @@ import { drawHand, slotKey } from './draw.ts';
 import { createRules, IllegalAction, type Rules } from './run.ts';
 import { base64urlEncode, contentHash, decodeRunCode, encodeRunCode } from './runcode.ts';
 import { SHOP_REASONS } from './shop.ts';
-import { setup, TEST_CONTENT as C } from './testing.ts';
+import { beforeSwaps, drawnBefore, drawRows, setup, TEST_CONTENT as C } from './testing.ts';
 
 const rules = createRules(C);
 
@@ -581,16 +581,11 @@ const FORCE: Action = { t: 'debug', op: 'forceShop' };
 const LEAVE: Action = { t: 'leaveShop' };
 
 /** The hand the run's own draw would give for this week at draw count n. */
+/** The hand drawn at key n, before its swaps (D-121): both rows. */
 const handAt = (s: RunState, n: number, content: Content = C) =>
-  drawHand(
-    content,
-    s.setup.seed,
-    s.phase,
-    slotKey(s.slot, s.overtimeWeek),
-    n,
-    content.balance.rules.handSize,
-    { struck: s.struck },
-  );
+  drawRows(content, s.setup.seed, s.phase, slotKey(s.slot, s.overtimeWeek), n, {
+    struck: s.struck,
+  });
 
 describe('debug forceShop', () => {
   it('opens the shop mid-week: shopOpened, a forced visit, the hand set aside, the week unchanged', () => {
@@ -650,19 +645,19 @@ describe('debug forceShop', () => {
     const s = rules.newRun(setup('force-shop'));
     const inShop = rules.apply(s, FORCE).state;
     const { state, events } = rules.apply(inShop, LEAVE);
-    const hand = handAt(s, s.draws);
+    const { hand } = state;
     // Nothing was bought or refreshed, so the skip reward (1) is paid.
-    expect(events).toStrictEqual([
+    expect(events).toMatchObject([
       { t: 'shopClosed', number: 1, skipReward: 1, budgetBefore: s.budget, budget: s.budget + 1 },
-      { t: 'handDrawn', phase: 0, slot: s.slot, overtimeWeek: 0, hand, free: false, reroll: false },
+      { t: 'handDrawn', phase: 0, slot: s.slot, overtimeWeek: 0, hand, reroll: false },
     ]);
+    expect(drawnBefore(events[1])).toStrictEqual(handAt(s, s.draws));
     expect(state).toMatchObject({
       screen: 'build',
       phase: s.phase,
       slot: s.slot,
       week: s.week,
       overtimeWeek: 0,
-      hand,
       draws: s.draws + 1,
       rerollsLeft: s.rerollsLeft,
       budget: s.budget + 1,
@@ -683,12 +678,16 @@ describe('debug forceShop', () => {
     const hands = [];
     for (let k = 0; k < 2; k++) {
       s = rules.apply(rules.apply(s, FORCE).state, LEAVE).state;
-      hands.push(s.hand);
+      hands.push({ hand: s.hand, swapped: s.swapped });
     }
     expect(s.draws).toBe(n0 + 2);
-    expect(hands).toStrictEqual([handAt(s, n0), handAt(s, n0 + 1)]);
+    expect(hands.map((h) => beforeSwaps(h.hand, h.swapped))).toStrictEqual([
+      handAt(s, n0),
+      handAt(s, n0 + 1),
+    ]);
     // A reroll after them draws at n0 + 2.
-    expect(rules.apply(s, { t: 'reroll' }).state.hand).toStrictEqual(handAt(s, n0 + 2));
+    const rerolled = rules.apply(s, { t: 'reroll' }).state;
+    expect(beforeSwaps(rerolled.hand, rerolled.swapped)).toStrictEqual(handAt(s, n0 + 2));
   });
 
   it('in an overtime week, leaving draws from that week’s own key (ot1)', () => {
@@ -696,7 +695,9 @@ describe('debug forceShop', () => {
     const s: RunState = { ...base, slot: 3, week: 3, overtimeWeek: 1, overtimeLeft: 1, draws: 1 };
     const back = rules.apply(rules.apply(s, FORCE).state, LEAVE).state;
     expect(back).toMatchObject({ slot: 3, week: 3, overtimeWeek: 1, overtimeLeft: 1, draws: 2 });
-    expect(back.hand).toStrictEqual(drawHand(C, 'force-overtime', 0, 'ot1', 1, 3, { struck: [] }));
+    expect(beforeSwaps(back.hand, back.swapped)).toStrictEqual(
+      drawRows(C, 'force-overtime', 0, 'ot1', 1, { struck: [] }),
+    );
   });
 
   it('a refresh or a purchase keeps the visit forced, and leaving still returns to the week', () => {

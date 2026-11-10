@@ -229,6 +229,7 @@ With these rules, where to put the house becomes the run's first big decision.
 - D-013 (Accepted): selling, the skip reward, and Savings Account interest are budget sources.
 
 Also: D-036 and D-043 (Accepted), where hand size becomes the `handSize` rule (3 by default, 4 with Bigger Truck). D-046 (Accepted), where this replaces its shop defaults in Appendix A (one paid refresh per visit, no selling).
+*Changed by D-121 (Proposed 2026-11-09):* hand size is two rules, `roomsRow` (2) and `layoutRow` (2); the Bigger Truck adds a Rooms card.
 
 ### D-052 · Schedule: feature freeze at the end of day 4
 **Status:** Superseded by D-053 · 2026-11-05 (the team is two people with no day timeboxes)
@@ -427,6 +428,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **Why:** Pass is needed for full lots and dead hands; Luck be a Landlord and Combolands both have one. Resolving transforms first means the preview always matches the tally. A single pass avoids Combolands' infinite-loop bug and its hidden trigger cap.
 **Changes:** D-004 (Accepted). Each week is still one turn, but Pass places nothing.
 **Amended by:** D-102 and D-103 (Accepted 2026-11-06, with D-093's option B): a week's turn can be a Renovation, and the household's arrivals add a start-of-week step, after transforms and before the draw.
+*Changed by D-121 (Proposed 2026-11-09):* the hand is two rows, Rooms 2 and Layout 2 (the `roomsRow` and `layoutRow` rules replace `handSize`). A card with no play is swapped for another from its row instead of the free redraw, and a reroll redraws one row.
 
 ### D-037 · Scoring math and the live preview
 **Status:** Accepted · 2026-11-05 (with the plan's approval); proposed 2026-11-04
@@ -457,6 +459,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - Replays return the failing step instead of throwing, and a stale save starts a fresh run with a note.
 
 **Why:** Keyed streams stop rerolls, overtime, or early completion from shifting later hands or the shop. That keeps bug reports reproducible and makes the Daily Lot (D-022) fair. The build stamp copes with deploys on every push.
+*Changed by D-121 (Proposed 2026-11-09):* each row of the hand has its own stream, `draw/<phase>/<slot>/<n>/<row>`, and a swap draws from `draw/<phase>/<slot>/<n>/<row>/swap<k>`. A run code's reroll carries its row.
 
 ### D-043 · Draws: distinct, weighted, phase-gated
 **Status:** Accepted · 2026-11-05 (with the plan's approval); proposed 2026-11-04
@@ -469,6 +472,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 **Why:** With uniform draws, the Hendersons' checklist takes a median of 23–24 weeks to complete, and about 6% of runs never finish it (estimate from a planning model). With weighting, the median is 14–16. The phase gate keeps the first run learnable.
 **Amended by:** D-104 (Accepted 2026-11-06, with D-093's option B): while a room type is at its limit in the client's checklist, its cards draw at half weight. Otherwise weights stay fixed for the run.
+*Changed by D-121 (Proposed 2026-11-09):* each row holds its own distinct cards, Rooms 2 and Layout 2, with the weights as here.
 
 ### D-044 · The sim sets milestone targets
 **Status:** Accepted · 2026-11-05 (with the plan's approval); proposed 2026-11-04
@@ -701,6 +705,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **Why:** Choices §4 and Appendix A leave open. Each keeps the preview equal to the tally and every run replayable.
 **2026-11-06 (systems review):** if the team chooses the review's Renovate, this entry needs to say whether a card that can only renovate counts as fitting for the free redraw. The sim said no (`house-systems-review.md` §8).
 **2026-11-06 (D-102, settled by the team):** a card that can only renovate doesn't count as fitting for the free redraw, as the sim had it. `cardFits()` still asks only whether a card has a legal spot or host.
+*Changed by D-121 (Proposed 2026-11-09):* swaps replace the free redraw: each card with no play (no spot, no host, no Renovation) is swapped for another from its row, up to 3 tries, whenever a row is drawn.
 
 ### D-072 · The M2 sim and the first real targets
 **Status:** Accepted · 2026-11-05 (proposed with the M2 pull request; held up in playtest 2, confirmed by the team).
@@ -756,6 +761,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **Considered:** A company upgrade with 3 strikes. A few strikes per run.
 **Changes:** D-043 (Accepted): draw weights stay fixed for the run except for struck types. D-051 (Accepted): a third service.
 **2026-11-06 (D-089, confirmed by the team):** the Sim line's order came from M2's greedy, which couldn't see yards or links and built at the back of the lot, so it struck the very cards D-074 and D-080 ask about. The default bot now strikes nothing; `--strikes fixed` keeps this order for comparisons. The service itself is unchanged.
+*Changed by D-121 (Proposed 2026-11-09):* the floor holds per row: at least 5 Rooms types and 4 Layout types stay drawable.
 
 ### D-097 · Art at 32 px cells, and the look-and-feel pass before M4
 **Status:** Accepted · 2026-11-06. The team chose 32 px cells after a visual audit that rendered the playtest-3 house (seed jbf3zs, week 21) both ways with LimeZu's art.
@@ -862,6 +868,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - Left as they were: the end panel scrolls at most window sizes (M6 builds the full-width finale), and the disabled Auto-complete switch stays in the top bar after the run.
 
 *Changed with the team's OK, 2026-11-08:* on windows under 1000 px tall, the score panel's idle set list folds into one row, with the full list in its tip, so M4's checklist has room; taller windows keep the full list. While a play is looked at, the panel is as it was: the list, with the sets the play would make and break, or under 800 px tall only the equation (D-110). D-110 has the row's details and the numbers. *2026-11-09, before playtest 4, for the team to confirm:* the equation-only rule while a play is looked at now starts under 1000 px tall, as the fold does, so the list never comes back on a short window: between 800 and 1000 px tall it came back while placing and, late in a run, pushed the inspect panel's total below a 1536×864 window. The inspect panel's notes name the sets a play would make and break; windows 1000 px tall and up keep the list, with them.
+*Changed by D-121 (Proposed 2026-11-09):* the hand's two rows under ROOMS and LAYOUT labels, each with its Reroll; Demolish on the hand's plank; compact cards with a thumbnail; and Your goods folding to its plank on windows under 1100 px tall.
 
 ### D-099 · M5a lot defaults: the terrain in Modern Exteriors
 **Status:** Accepted · 2026-11-07 (proposed 2026-11-06 with M5a's lot track, stage 2, and its merge into the phase branch; held up in playtest 5a, confirmed by the team). Implementation details within D-049 and D-097; §12 Art's Rendering bullets describe them.
@@ -1097,6 +1104,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **Why:** D-074. Closing a yard took 2–3 Fence cards in the right shapes, the player never built one, and the Hendersons and the Barkers want fenced yards.
 **Changes:** D-004 and D-036 (Accepted): a week's play can place a pack. D-049 (Accepted): the yard shapes. D-071: the variant cards. D-072: the enclosure probe.
 **2026-11-08 (M4 merged with `develop`):** M5a's painters draw a pack from its own tiles, never the card's shape: its ghost as the tiles are clicked out, the built pack, and the Moving Truck's carried pack. A Fence's picket line runs through any connected shape, and a lone tile is a short run with a post at each end. The house's car stands only on its Driveway's own tiles, and a Driveway of two tiles or more, of any shape, parks it (D-111).
+*Changed by D-121 (Proposed 2026-11-09):* the Fence and Driveway packs draw at 10, not 20, in the Layout row.
 
 ### D-107 · Showing what a fixture is worth
 **Status:** Accepted · 2026-11-06 (the team chose it, resolving D-092). Built with M4b's UI.
@@ -1232,6 +1240,57 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 ---
 
 ## Proposed
+
+### D-121 · The weekly draw in two rows: Rooms and Layout
+**Status:** Proposed · 2026-11-09, after playtest 4 and the draw brainstorm (`docs/proposals/weekly-draw.md`). The user picked Rooms 2 + Layout 2, the proposal's recommendation, with its defaults (§9). Built for playtest 5.
+**Decision:**
+- **Two rows.** Each week draws a **Rooms** row of 2 distinct cards and a **Layout** row of 2, shown in that order and numbered across both (keys 1–9). You play one card from either row, a reserve piece, or a Renovation, or pass, as before (D-036). The rules `roomsRow` and `layoutRow` replace `handSize`.
+- **A card's row is where it's built.**
+  - Rooms: the rooms, the special rooms (Playroom, Library, Mudroom, Sunroom) and members' rooms, and the room fixtures.
+  - Layout: both Hallways, the Garage, the yard (with the Pool, Hot Tub, and Fire Pit), the outbuildings (with the Henhouse and Birdhouse), and the yard's fixtures (Sprinkler, Pergola, Garden Lights).
+  - A piece's or fixture's `row` names it where its category doesn't: the Garage and the three yard fixtures.
+- **Weights inside a row are as before:** the card's weight × D-055's ramp × the client's and crew's modifiers, at half weight while a type is at its limit (D-104). The Fence and Driveway packs draw at 10, not 20 (D-106): in a row of their own at 20, each would show in about 23% of weeks.
+- **Swaps replace the free redraw.** Whenever a row is drawn (the week's first draw, or a reroll), each card with no play (no legal spot, no host, and no Renovation) is swapped for another card from its row that isn't in the row: the first of up to 3 tries (`swapTries`) that has a play, else the last one tried. The card wears a "Swapped in" chip, with what it replaced in the chip's title, and a note over the board names the cards swapped out.
+- **A reroll redraws one row,** the player's pick: each row's label has its own Reroll button, and both show the milestone's one count. The other row stays, and so does a card picked from it. A run code's reroll carries its row; a reroll without one (older codes) redraws both.
+- **Goods:**
+  - The Bigger Truck adds a Rooms card (Rooms 3 + Layout 2).
+  - The Catalog redraws both rows from the special pools, with no swaps.
+  - Weekend Crew's next play comes from either row (D-083).
+  - The strike floor holds per row: at least 5 Rooms types and 4 Layout types stay drawable (`strikeMinTypes`, D-084).
+- **The Landscaper draws a third Layout card** (Rooms 2 + Layout 3) besides its +50% yard earnings. D-109's yard draws crowded out rooms in one pool; in a row of their own they can't.
+- **Replays:** each row has its own stream, `draw/<phase>/<slot>/<n>/rooms` and `draw/<phase>/<slot>/<n>/layout`, and a swap draws from `draw/<phase>/<slot>/<n>/<row>/swap<k>` (k: the card's place in its row). Swaps don't count as draws, so drawing one row never shifts the other or a later hand (D-039).
+- **The right column** (the proposal's §5):
+  - The rows sit under ROOMS and LAYOUT labels. Demolish moves to the hand's plank. In a narrow column, Reroll and Demolish show their icon and count.
+  - **Compact cards:** the name, the first effect line (two lines at most), and the chips, beside a thumbnail of the piece. Inspect shows the whole card on hover. A fixture card shows where it goes and its first effect.
+  - In a narrow column (1600×900 and below), the thumbnail is half size where the screen has the pixels for it (2×; D-097's whole device pixels), the kind's chip goes (the card's tint says it), and the tags show as icons named in their titles. Under 800 px tall the cards show the shape glyph instead, as before.
+  - **Your goods folds** to its plank, with a count of what's in the reserve and the supplies, on a window under 1100 px tall (a 1080p screen's included). Its caret folds or opens it on any window. Weekend Crew's note stays in view, and in the shop it's always open.
+- **The sim:** greedy plays from both rows as one hand and rerolls the row whose best play scored lower this week (Rooms on a tie). The offer stats count the cards swapped out as dead offers.
+- **The targets aren't re-fit here.** The playtest-4 plan has one re-fit for all its content changes together (findings §12), as D-119 does.
+
+**Why:** playtest 4: hands lacked the rooms the checklist needed, and weak layout cards crowded them out.
+- In the proposal's A/B (400 greedy runs on held-out seeds, before D-114 and D-119), when the checklist needed a room the hand held one 52% of the time (27% from phase 3). With two rows of 2: 66% (39%), and the most yard of any split (8.4 layout plays a run, against 10.7 today; Rooms 3 + Layout 2 kept 6.4).
+- Rows keep new content on one side from diluting the other. Swaps take the cards with no play from 4.2 a run to 0.3.
+- **This PR's own check,** greedy on 200 held-out seeds (`--check`), paired against develop with D-114 and D-119:
+  - Wins 57.5% → 69.5%, +12.0 points [+3.6, +20.4]\* (50 seeds won only with the rows, 26 only without).
+  - Wow ×1.10 at milestone 3 and ×1.08 at milestone 5; ×1.09 [1.02–1.17]\* at the end on the 89 seeds both won.
+  - Rerolls 0.37 → 0.09 a run. Fences placed 1.43 → 0.97 a run, and a fenced yard at the end in 46% of runs (53%).
+- §8's criteria: greedy's 40–50% wins fails further (it failed at 57.5% before). Early completion passes, unsure (always −7.5 points against never; it was −11.5). The clients' spread fails, unsure, at 30 points (15 before): the Hendersons 50% (55%), against 70–80% for the rest (40 runs each).
+- (\* = the 95% interval excludes no change.)
+
+**Not built from the draft:** the ★ on a room card the checklist needs (it needs a rules helper; a follow-up), and greedy's reroll aimed by the checklist (the simple rule above).
+
+**Considered:** Rooms 3 + Layout 2 (more needed rooms, 72% / 47%, but five cards, a smaller yard at 6.4 layout plays, and a bigger re-fit); Rooms 2 + Layout 1 (today's three cards, with one mostly weak Layout card and the smallest yard); a standing Layout card (it keeps the card no one plays); packs picked after each milestone (parked, as a way to grow each row later); targeted rerolls and swaps on one pool (they fix the dead cards, not the missing rooms); stronger yard numbers (they turn yard picks into traps, the proposal's §6).
+
+**Changes:**
+- D-036, D-043, and D-051 (Accepted): the hand is two rows of distinct cards; hand size is two rules.
+- D-039 (Accepted): the stream keys.
+- D-070 (Accepted): swaps replace the free redraw.
+- D-084 (Accepted): the strike floor per row.
+- D-106 (Accepted): Fence and Driveway at 10.
+- D-098 (Accepted): the hand's layout and Your goods' fold.
+- D-109 (Accepted): the Landscaper's third Layout card.
+- Each is marked in place. `implementation-plan.md`: the state, the week's start, the stream keys, the rule keys, and Appendix A's rerolls and Bigger Truck.
+- The targets wait for the playtest-4 re-fit. If playtest 5 comes first, the game is easier: on the current targets greedy wins 69.5% with this and Creekside, against 48.0% before both (D-119's check).
 
 ### D-119 · Creek lots: Creekside, the pond, and the lot's traits on the job board
 **Status:** Proposed · 2026-11-09, after playtest 4 (`docs/playtests/playtest-4-findings.md` §11) and the lot session's proposal (`docs/proposals/lot-creeks-and-sun.md`). The user picked the proposal's package (§7); this is its first part. The sun (a sun direction per lot and Sunny payoffs) comes next, as its own entry. Built for playtest 5.
@@ -1470,6 +1529,7 @@ What's still short:
 
 **Why:** the plan's M4b, D-103, and the sim's needs. The last-phase rule is new: without it, the offer after milestone 6 paid budget at the end of the run.
 **Changes:** jam-scope.md's change orders (the Twins and Grandma's moving in are arrivals now, D-103). Appendix A · M4b's skip rules (free space isn't checked).
+*Changed by D-121 (Proposed 2026-11-09):* the Landscaper also draws a third Layout card every week.
 
 ### D-108 · Client numbers from M4a's sim: one signature room each, and the Hendersons' pool
 **Status:** Proposed · 2026-11-06, with the M4 pull request; numbers for the sim and playtest 4.

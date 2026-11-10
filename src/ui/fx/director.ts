@@ -838,6 +838,7 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
       }
       for (const e of events) {
         if (e.t === 'handDrawn' && e.reroll && !skipping) audio.play('rotate', { rate: 0.7 });
+        swapBeat(e);
       }
       growBeats(events, after, gen);
       return;
@@ -1091,9 +1092,7 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
           break;
         }
         case 'handDrawn':
-          if (e.free && !skipping) {
-            flash.value = { id: nextId++, text: 'Nothing fit: free redraw', tone: 'note' };
-          }
+          swapBeat(e);
           break;
         default:
           break;
@@ -1130,6 +1129,22 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
     // leave every later tally on fast-forward.
     holding = false;
   }
+}
+
+/**
+ * A draw's swaps (D-121): the cards with no play it swapped out, named in a note over the
+ * board. The cards swapped in say so on their chips.
+ */
+function swapBeat(e: GameEvent): void {
+  if (e.t !== 'handDrawn' || !e.swapped?.length || skipping) return;
+  const names = e.swapped.map(({ was }) =>
+    definite(was.kind === 'fixture' ? CONTENT.fixtures[was.id].name : CONTENT.pieces[was.id].name),
+  );
+  const list =
+    names.length <= 2
+      ? names.join(' and ')
+      : `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
+  flash.value = { id: nextId++, text: `Swapped out ${list}: nowhere to go`, tone: 'note' };
 }
 
 /**

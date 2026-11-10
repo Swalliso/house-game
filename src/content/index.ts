@@ -13,7 +13,7 @@ import type {
 } from '../rules/index.ts';
 import { isConnected, packShapeProblem, parseShape, shapeCells } from '../rules/grid.ts';
 import { cardText, changeOrderText, modifierText, specText, toolText } from '../rules/text.ts';
-import { drawWeights } from '../rules/draw.ts';
+import { DRAW_ROWS, drawableTypes, drawWeights, rowOf } from '../rules/draw.ts';
 import { isType } from '../rules/selectors.ts';
 import { BALANCE } from './balance.ts';
 import { BLUEPRINTS } from './blueprints.ts';
@@ -646,13 +646,21 @@ export function validateContent(content: Content): string[] {
   if (b.complexityPct.length === 0 || b.complexityPct.some((row) => row.length !== 3)) {
     problems.push('balance: complexityPct needs rows of three');
   }
-  const drawable = Object.values(content.pieces).filter(
-    (p) => p.drawWeight > 0 && p.fromPhase === 0,
-  );
-  if (drawable.length < b.rules.handSize)
-    problems.push('balance: fewer drawable cards than a hand');
-  if (b.weeksPerPhase < 1 || b.rules.handSize < 1)
-    problems.push('balance: weeks and hand size must be ≥ 1');
+  for (const row of DRAW_ROWS) {
+    const size = row === 'rooms' ? b.rules.roomsRow : b.rules.layoutRow;
+    const drawable = Object.values(content.pieces).filter(
+      (p) =>
+        p.drawWeight > 0 &&
+        p.fromPhase === 0 &&
+        rowOf(content, { kind: 'piece', id: p.id }) === row,
+    );
+    if (drawable.length < size) problems.push(`balance: fewer drawable ${row} cards than its row`);
+    if (drawableTypes(content, [], row).length <= b.shop.strikeMinTypes[row]) {
+      problems.push(`balance: the ${row} row's strike floor leaves nothing to strike`);
+    }
+  }
+  if (b.weeksPerPhase < 1 || b.rules.roomsRow < 1 || b.rules.layoutRow < 1)
+    problems.push('balance: weeks and each row of the hand must be ≥ 1');
   const shop = b.shop;
   if (shop.stock.length === 0) problems.push('balance: the shop needs at least one stock row');
   for (const [k, row] of shop.stock.entries()) {

@@ -1,6 +1,55 @@
 /* The company's goods (M5a): a row per kind, filled slots as paper tags with their rarity's
    band, empty ones as recessed wells. Built on kit.css. */
 
+/* --- The fold (D-121): the plank's title is a button with a caret; folded, the plank shows
+   what each row holds, and the body goes. --------------------------------------------- */
+.inv-fold {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.inv-fold:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+.inventory.is-folded .panel-body:empty {
+  display: none;
+}
+/* A narrow plank says "Goods", so the counts fit beside it. */
+.inventory .panel-head {
+  container: inv-plank / inline-size;
+}
+.inv-fold-short {
+  display: none;
+}
+@container inv-plank (max-width: 17rem) {
+  [data-font='pixel'] .inv-fold-long {
+    display: none;
+  }
+  [data-font='pixel'] .inv-fold-short {
+    display: inline;
+  }
+}
+.inv-fold-counts {
+  display: flex;
+  flex: none;
+  gap: var(--space-2);
+}
+.inv-fold-count {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--px);
+  font-family: var(--font-display);
+}
+
 .inventory .panel-body {
   gap: var(--space-2);
 }
@@ -184,7 +233,8 @@ button.inv-slot:active::before {
   .inventory:not(.in-shop) .inv-row.is-empty {
     display: none;
   }
-  .inventory:not(.in-shop):not(:has(.inv-row:not(.is-empty), .free-play)) {
+  .inventory:not(.in-shop, .is-folded):not(:has(.inv-row:not(.is-empty), .free-play)),
+  .inventory.is-folded.is-empty {
     display: none;
   }
   .inventory:not(.in-shop) .panel-body {

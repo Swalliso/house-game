@@ -100,6 +100,8 @@ describe.each(CLIENTS)('the smoke sim for %s', (client) => {
 
   it('greedy plays 5 runs to the end, most of them into the economy, and each one replays', () => {
     let economy = 0;
+    let probed = 0;
+    let measured = 0;
     for (const seed of SEEDS) {
       const run = play('greedy', seed, client);
       const { record, state } = run;
@@ -107,11 +109,16 @@ describe.each(CLIENTS)('the smoke sim for %s', (client) => {
       // Shop 3 stocks tools, crates, and an upgrade; greedy uses a tool or installs a supply.
       const supplied = record.economy.installs.filter((x) => x.from === 'supplies').length;
       if (record.economy.visits >= 3 && record.economy.tools.length + supplied > 0) economy++;
-      // The fence probe ran on the house after milestone 3.
-      if (record.cleared >= 3) expect(record.enclosure, seed).not.toBeNull();
+      // The fence probe runs on the house after milestone 3; it's null for a house with no
+      // yard a few Fence packs could close.
+      if (record.cleared >= 3) {
+        probed++;
+        if (record.enclosure) measured++;
+      }
       expectReplays(run);
     }
     expect(economy).toBeGreaterThanOrEqual(3);
+    if (probed > 0) expect(measured).toBeGreaterThan(0);
   }, 30_000);
 
   it('greedy sets a floor over 5 seeds: it beats random, meets milestone 1, mostly 3', () => {

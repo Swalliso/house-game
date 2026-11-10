@@ -157,6 +157,8 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     name: 'Garage',
     tier: 'core',
     category: 'indoor',
+    // It belongs to the drive and the street, and no checklist line asks for it (D-121).
+    row: 'layout',
     shape: ['##', '##'],
     tags: ['Loud'],
     drawWeight: 10,
@@ -285,7 +287,8 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     shape: ['####'],
     pack: { maxTiles: 8, shapes: [['####'], ['#..', '#..', '###']] },
     tags: [],
-    drawWeight: 20,
+    // 10 in the two-card Layout row (D-121), where 20 would show it more often than one pool did.
+    drawWeight: 10,
     complexity: 3,
     fromPhase: 0,
     effects: [{ kind: 'enclosure', perTile: 1, cap: 6 }],
@@ -303,7 +306,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     shape: ['###'],
     pack: { maxTiles: 6, shapes: [['###'], ['#####']] },
     tags: [],
-    drawWeight: 20,
+    drawWeight: 10, // as the Fence (D-121)
     complexity: 2,
     fromPhase: 0,
     effects: [

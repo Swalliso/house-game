@@ -1,17 +1,27 @@
-// The week's hand: three cards with generated text (D-038), the free actions (reroll,
-// demolish), and the action bar (rotate, cancel, End week). A card with nowhere legal to go is
-// hatched, with the reason. M5a draws it in the pixel style: each card shows its piece's
-// picture, its kind and tags as icon chips, and End week is the view's one primary button.
-// The picked card shows its shape as it's turned (R, or the Rotate button), and a card picked
-// below the fold scrolls into view.
+// The week's hand: cards with generated text (D-038), the free actions (reroll, demolish), and
+// the action bar (rotate, cancel, End week). A card with nowhere legal to go is hatched, with
+// the reason. M5a draws it in the pixel style: each card shows its piece's picture, its kind
+// and tags as icon chips, and End week is the view's one primary button. The picked card shows
+// its shape as it's turned (R, or the Rotate button), and a card picked below the fold scrolls
+// into view.
+//
+// D-121: the hand is two rows, Rooms then Layout, each under its label with its own Reroll
+// button (one count for both). A card the draw swapped in, because the one it replaced had no
+// play, says so on a chip. Demolish sits on the plank. The cards are compact, so four or five
+// fit beside Your goods: the name, the first effect line, and the chips beside a thumbnail of
+// the piece (a fixture: where it goes, and its first effect). Inspect shows the whole text on
+// hover.
 
 import { useEffect } from 'preact/hooks';
 import {
   cardText,
   CONTENT,
+  DRAW_ROWS,
   rules,
   fixtureText,
+  rowOf,
   type Card as CardData,
+  type DrawRow,
   type PieceDef,
   type Tag,
 } from '../../rules/index.ts';
@@ -66,16 +76,40 @@ const KIND_LABEL: Record<Kind, string> = {
   outbuilding: 'Outbuilding',
 };
 
-/** A card's tags as chips, each with its icon (the icon set is named after the tags). */
+/**
+ * A card's tags as chips, each with its icon (the icon set is named after the tags). A narrow
+ * hand card shows just the icons (hand.css), so each chip names its tag in its title too.
+ */
 export function TagChips({ tags }: { tags: readonly Tag[] }) {
   return (
     <>
       {tags.map((t) => (
-        <Chip key={t} icon={t as IconName}>
-          {t}
+        <Chip key={t} icon={t as IconName} class="tag-chip" title={t}>
+          <span class="chip-word">{t}</span>
         </Chip>
       ))}
     </>
+  );
+}
+
+const ROW_LABEL: Record<DrawRow, string> = { rooms: 'Rooms', layout: 'Layout' };
+
+const cardName = (card: CardData): string =>
+  card.kind === 'fixture' ? CONTENT.fixtures[card.id].name : CONTENT.pieces[card.id].name;
+
+/** A card the week's draw swapped in (D-121): what it replaced, which had no play. */
+function SwapChip({ i }: { i: number }) {
+  const was = run.value.swapped.find((w) => w.i === i)?.was;
+  if (!was) return null;
+  return (
+    <Chip
+      tone="inset"
+      icon="reroll"
+      class="swap-chip"
+      title={`The ${cardName(was)} had nowhere to go, so this card took its place, free.`}
+    >
+      Swapped in
+    </Chip>
   );
 }
 
@@ -105,9 +139,8 @@ function CardView({ card, i }: { card: CardData; i: number }) {
   const type = CONTENT.pieces[def.countsAs ?? def.id].name;
   // A pack (D-106) doesn't turn, so it never shows a turn left from another card this week.
   const rot = isSelected && !def.pack ? rotation.value : 0;
-  // A member's room (M4b, D-103): whose it is, before the card's notes. Only the ?debug panel
-  // deals one to the hand; Inspect says it too, where a short window hides the note.
-  const notes = text.member ? [text.member, ...text.notes] : text.notes;
+  // A compact card (D-121): the first effect line. The rest, the notes, and a member's room
+  // (M4b, D-103: whose it is) are in Inspect.
   return (
     <Card
       as="button"
@@ -119,8 +152,7 @@ function CardView({ card, i }: { card: CardData; i: number }) {
       title={def.name}
       aside={<ShapeGlyph id={card.id} rot={rot} square />}
       art={<PieceArt id={card.id} />}
-      lines={text.effects}
-      note={notes.length > 0 ? notes.join(' ') : undefined}
+      lines={text.effects.slice(0, 1)}
       chips={
         <>
           {renovates && (
@@ -133,8 +165,11 @@ function CardView({ card, i }: { card: CardData; i: number }) {
               Renovate
             </Chip>
           )}
-          <Chip tone="wood">{KIND_LABEL[kind]}</Chip>
+          <Chip tone="wood" class="kind-chip">
+            {KIND_LABEL[kind]}
+          </Chip>
           <TagChips tags={def.tags} />
+          <SwapChip i={i} />
         </>
       }
       alert={fits ? undefined : 'Nowhere fits'}
@@ -170,16 +205,18 @@ function FixtureCardView({
       blocked={!fits}
       lead={<Keycap>{i + 1}</Keycap>}
       title={def.name}
-      lines={[text.fits, ...text.effects]}
+      lines={[text.fits, ...text.effects.slice(0, 1)]}
       chips={
         <>
           <Chip tone="wood">Fixture</Chip>
           <Chip tone={def.rarity}>{RARITY_LABEL[def.rarity]}</Chip>
+          <SwapChip i={i} />
         </>
       }
       alert={fits ? undefined : 'Nothing to put it in'}
       onMouseDown={noFocus}
       onClick={() => pickCard(i)}
+      onMouseEnter={() => selected.value === null && (inspected.value = { kind: 'card', i })}
       aria-pressed={isSelected}
       data-card={i}
       tooltip={fits ? undefined : 'Nothing on the lot can hold it yet'}
@@ -187,10 +224,41 @@ function FixtureCardView({
   );
 }
 
-/** Rerolls and demolitions: free actions, so the week goes on. */
-function FreeActions() {
+/**
+ * A row's reroll (D-121): new cards for that row only. A free action, so the week goes on.
+ * Both rows draw on the milestone's one count, so each button shows all of it.
+ */
+function RerollButton({ row }: { row: DrawRow }) {
   const s = run.value;
   const can = rules.canReroll(s);
+  const rerolls = s.rerollsLeft + s.bonusRerolls;
+  const label = ROW_LABEL[row];
+  return (
+    <Button
+      size="sm"
+      icon="reroll"
+      class="free-action reroll"
+      onMouseDown={noFocus}
+      onClick={() => void reroll(row)}
+      disabled={!can.ok}
+      aria-label={`Reroll the ${label} cards: ${rerolls} left`}
+      title={
+        can.ok
+          ? `New ${label} cards; the other row stays. It doesn’t end the week. Both rows share ${s.rerollsLeft} left this milestone${s.bonusRerolls > 0 ? `, and ${s.bonusRerolls} kept` : ''}.`
+          : (can.reason ?? 'You can’t reroll now.')
+      }
+    >
+      <span class="free-action-word">Reroll</span>
+      <span class="count" aria-hidden="true">
+        {rerolls}
+      </span>
+    </Button>
+  );
+}
+
+/** Demolitions: a free action, so the week goes on. It sits on the hand's plank. */
+function DemolishButton() {
+  const s = run.value;
   const demolishing = tool.value === 'demolish';
   const canDemolish = s.demolitionsLeft > 0;
   const toggleDemolish = () => {
@@ -204,50 +272,46 @@ function FreeActions() {
     if (!tentative.value) selected.value = null;
     tool.value = 'demolish';
   };
-  const rerolls = s.rerollsLeft + s.bonusRerolls;
   return (
-    <div class="free-actions" role="group" aria-label="Free actions: they don’t end the week">
-      <Button
-        size="sm"
-        icon="reroll"
-        class="free-action reroll"
-        onMouseDown={noFocus}
-        onClick={() => void reroll()}
-        disabled={!can.ok}
-        title={
-          can.ok
-            ? `Swap this hand for three new cards. It doesn’t end the week. ${s.rerollsLeft} left this milestone${s.bonusRerolls > 0 ? `, and ${s.bonusRerolls} kept` : ''}.`
-            : (can.reason ?? 'You can’t reroll now.')
-        }
-      >
-        <span class="free-action-word">Reroll</span>
-        <span class="count" aria-label={`${rerolls} left`}>
-          {rerolls}
-        </span>
-      </Button>
-      <Button
-        size="sm"
-        icon="hammer"
-        variant={demolishing ? 'danger' : 'secondary'}
-        class={`free-action demolish ${demolishing ? 'active' : ''}`}
-        onMouseDown={noFocus}
-        onClick={toggleDemolish}
-        disabled={!canDemolish && !demolishing}
-        aria-pressed={demolishing}
-        title={
-          demolishing
-            ? 'Back to building (Esc)'
-            : canDemolish
-              ? `Remove a piece or a boulder. No refund, and points already earned stay. ${s.demolitionsLeft} left this run.`
-              : 'No demolitions left this run'
-        }
-      >
-        <span class="free-action-word">{demolishing ? 'Stop' : 'Demolish'}</span>
-        <span class="count" aria-label={`${s.demolitionsLeft} left`}>
-          {s.demolitionsLeft}
-        </span>
-      </Button>
-    </div>
+    <Button
+      size="sm"
+      icon="hammer"
+      variant={demolishing ? 'danger' : 'secondary'}
+      class={`free-action demolish ${demolishing ? 'active' : ''}`}
+      onMouseDown={noFocus}
+      onClick={toggleDemolish}
+      disabled={!canDemolish && !demolishing}
+      aria-pressed={demolishing}
+      title={
+        demolishing
+          ? 'Back to building (Esc)'
+          : canDemolish
+            ? `Remove a piece or a boulder. No refund, and points already earned stay. ${s.demolitionsLeft} left this run.`
+            : 'No demolitions left this run'
+      }
+    >
+      <span class="free-action-word">{demolishing ? 'Stop' : 'Demolish'}</span>
+      <span class="count" aria-label={`${s.demolitionsLeft} left`}>
+        {s.demolitionsLeft}
+      </span>
+    </Button>
+  );
+}
+
+/** One row of the hand (D-121): its label and reroll, then its cards, numbered across rows. */
+function HandRow({ row }: { row: DrawRow }) {
+  const s = run.value;
+  const cards = s.hand.flatMap((card, i) => (rowOf(CONTENT, card) === row ? [{ card, i }] : []));
+  return (
+    <section class={`hand-row hand-row-${row}`} aria-label={`${ROW_LABEL[row]} cards`}>
+      <div class="hand-row-head">
+        <h3 class="hand-row-label">{ROW_LABEL[row]}</h3>
+        <RerollButton row={row} />
+      </div>
+      {cards.map(({ card, i }) => (
+        <CardView key={`${s.week}-${s.draws}-${i}`} card={card} i={i} />
+      ))}
+    </section>
   );
 }
 
@@ -296,32 +360,18 @@ export function Hand() {
   // A pack (D-106) being clicked out: Cancel takes all its tiles off.
   const packing = pending?.t === 'place' && !!pending.shape;
   return (
-    <Panel
-      class="hand"
-      title="Pick a card"
-      label="This week's cards"
-      head={
-        s.freeRedrawUsed && (
-          <span
-            class="free-redraw"
-            title="None of the first three cards fit anywhere, so this hand was drawn again for free."
-          >
-            Free redraw
-          </span>
-        )
-      }
-    >
-      {/* The free actions sit above the cards, so they're in view whatever the hand's height;
-          demolishing, the hint sits right under Stop. */}
-      <FreeActions />
+    <Panel class="hand" title="Pick a card" label="This week's cards" head={<DemolishButton />}>
+      {/* The free actions sit above their cards, so they're in view whatever the hand's
+          height: Demolish on the plank (demolishing, the hint sits right under it), each row's
+          Reroll on its label. */}
       {demolishing && (
         <p class="demolish-hint" role="status">
           <Icon name="hammer" />
           <span>Click a piece or boulder twice to demolish it · Esc to stop</span>
         </p>
       )}
-      {s.hand.map((card, i) => (
-        <CardView key={`${s.week}-${s.draws}-${i}`} card={card} i={i} />
+      {DRAW_ROWS.map((row) => (
+        <HandRow key={row} row={row} />
       ))}
       {/* The action bar sticks to the column's bottom, so End week stays in view on a short
           window. One row: Rotate and Cancel are square buttons beside it. */}

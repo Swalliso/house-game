@@ -242,7 +242,10 @@ function cleanAction(v: unknown): Action | null {
     case 'pass':
       return { t: 'pass' };
     case 'reroll':
-      return { t: 'reroll' };
+      // One row (D-121), or both rows when it names none.
+      return v.row === 'rooms' || v.row === 'layout'
+        ? { t: 'reroll', row: v.row }
+        : { t: 'reroll' };
     case 'completeEarly':
       return { t: 'completeEarly' };
     case 'demolish':

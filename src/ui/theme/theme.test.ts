@@ -11,7 +11,7 @@ import { gridProblems, gridRows, gridSize, ICON_SIZES, UI_PALETTE } from './art.
 import { FRAMES, PARTS, PATTERNS } from './frames.ts';
 import { ICONS } from './icons.ts';
 import { SCENERY } from './scenery.ts';
-import { pictureScale, uiPixel, uiPixelDevice } from './pixel.ts';
+import { pictureScale, thumbScale, uiPixel, uiPixelDevice } from './pixel.ts';
 
 const UI = join(import.meta.dirname, '..');
 const TOKENS = readFileSync(join(import.meta.dirname, 'tokens.css'), 'utf8');
@@ -253,5 +253,16 @@ describe('the UI pixel', () => {
     }
     expect(pictureScale(1)).toBe(1);
     expect(pictureScale(2)).toBe(1);
+  });
+
+  it('halves a narrow card’s thumbnail only where the device pixels allow it (D-121)', () => {
+    for (const dpr of [1, 1.25, 1.5, 1.75, 2, 2.5, 3]) {
+      const devicePx = thumbScale(dpr) * dpr;
+      expect(devicePx).toBeCloseTo(Math.round(devicePx));
+      expect(devicePx).toBeGreaterThanOrEqual(1);
+      expect(thumbScale(dpr)).toBeLessThanOrEqual(pictureScale(dpr));
+    }
+    expect(thumbScale(1)).toBe(1);
+    expect(thumbScale(2)).toBe(0.5);
   });
 });

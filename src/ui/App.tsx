@@ -116,7 +116,8 @@ function useKeyboard(): void {
         return;
       }
       if (e.repeat) return;
-      if (e.key === '1' || e.key === '2' || e.key === '3' || e.key === '4') {
+      if (/^[1-9]$/.test(e.key)) {
+        // The hand is 4 cards, or more with a crew or a blueprint (D-121).
         selectCard(Number(e.key) - 1);
       } else if (e.key === 'r' || e.key === 'R') {
         // In demolish mode a pending placement is hidden, so R leaves it alone.
