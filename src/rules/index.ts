@@ -1172,8 +1172,8 @@ export interface RenovateAction {
 }
 export type PassAction = { t: 'pass' };
 /** Free actions: they don't end the week. */
-/** Redraws one row of the hand (D-121); without a row, both. */
-export type RerollAction = { t: 'reroll'; row?: DrawRow };
+/** Redraws the whole hand, both rows (D-132; D-121 had a reroll per row). */
+export type RerollAction = { t: 'reroll' };
 export type DemolishAction = { t: 'demolish'; x: number; y: number };
 export type CompleteEarlyAction = { t: 'completeEarly' };
 export type SetAutoCompleteAction = { t: 'setAutoComplete'; on: boolean };
@@ -1360,10 +1360,8 @@ export type GameEvent =
       hand: readonly Card[];
       /** Cards were swapped (D-121): `hand` is after the swaps, and `swapped` says what went. */
       free: boolean;
-      /** A manual reroll. */
+      /** A manual reroll: both rows (D-132). */
       reroll: boolean;
-      /** The row a reroll redrew; unset when both rows were drawn. */
-      row?: DrawRow;
       /** With `free`, the cards swapped in and what each replaced, which had no play. */
       swapped?: readonly SwappedCard[];
       /** The Catalog's redraw from special pieces and fixtures. */

@@ -242,10 +242,9 @@ function cleanAction(v: unknown): Action | null {
     case 'pass':
       return { t: 'pass' };
     case 'reroll':
-      // One row (D-121), or both rows when it names none.
-      return v.row === 'rooms' || v.row === 'layout'
-        ? { t: 'reroll', row: v.row }
-        : { t: 'reroll' };
+      // Both rows (D-132). A code from D-121's builds may name a row: it's dropped, so from
+      // that reroll on the code replays differently than it played (replay it on its build).
+      return { t: 'reroll' };
     case 'completeEarly':
       return { t: 'completeEarly' };
     case 'demolish':

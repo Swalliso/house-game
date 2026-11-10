@@ -11,7 +11,6 @@ import {
   cellsToShape,
   IllegalAction,
   placedCells,
-  rowOf,
   rules,
   shapeCells,
   type Action,
@@ -19,7 +18,6 @@ import {
   type Cell,
   type DebugAction,
   type DemolishPreview,
-  type DrawRow,
   type EarlyOffer,
   type GameEvent,
   type InstallAction,
@@ -610,17 +608,6 @@ export function inProgress(state: RunState = run.value): boolean {
   return state.screen === 'build' || state.screen === 'shop' || state.screen === 'changeOrder';
 }
 
-/** Whether a reroll leaves the picked hand card as it was: it's in the other row, unchanged. */
-function keepsPick(before: RunState, after: RunState, row: DrawRow | undefined): boolean {
-  const i = selected.value;
-  if (row === undefined || i === null || source.value !== 'hand') return false;
-  const was = before.hand[i];
-  const now = after.hand[i];
-  return (
-    !!was && !!now && was.id === now.id && was.kind === now.kind && rowOf(CONTENT, was) !== row
-  );
-}
-
 /** Sends an action to the rules. Illegal actions are a bug in the UI, not a crash. */
 export function dispatch(action: Action, opts: { keepWeek?: boolean } = {}): boolean {
   const before = run.value;
@@ -643,10 +630,10 @@ export function dispatch(action: Action, opts: { keepWeek?: boolean } = {}): boo
     run.value = result.state;
     log.value = [...log.value, action];
     if (opts.keepWeek) {
-      // A free action keeps the card being placed, unless the list it came from changed. A
-      // reroll of the other row (D-121) leaves it where it was.
+      // A free action keeps the card being placed, unless the list it came from changed: a
+      // reroll redraws the whole hand (D-132).
       const changed =
-        (action.t === 'reroll' && !keepsPick(before, result.state, action.row)) ||
+        action.t === 'reroll' ||
         action.t === 'debug' ||
         action.t === 'sell' ||
         action.t === 'useTool' ||
@@ -673,9 +660,9 @@ export function dispatch(action: Action, opts: { keepWeek?: boolean } = {}): boo
 
 // Free actions: they don't end the week.
 
-/** Redraws one row of the hand (D-121); without a row, both. */
-export function reroll(row?: DrawRow): boolean {
-  return dispatch(row ? { t: 'reroll', row } : { t: 'reroll' }, { keepWeek: true });
+/** Redraws the whole hand, both rows (D-132). */
+export function reroll(): boolean {
+  return dispatch({ t: 'reroll' }, { keepWeek: true });
 }
 
 export function demolishAt(x: number, y: number): boolean {

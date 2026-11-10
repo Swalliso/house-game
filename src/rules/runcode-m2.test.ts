@@ -37,8 +37,6 @@ const EVERY_ACTION: readonly Action[] = [
   { t: 'place', from: 'hand', i: 0, x: 0, y: 0, rot: 0 },
   { t: 'pass' },
   { t: 'reroll' },
-  { t: 'reroll', row: 'rooms' },
-  { t: 'reroll', row: 'layout' },
   { t: 'demolish', x: 21, y: 4 },
   { t: 'completeEarly' },
   { t: 'setAutoComplete', on: true },
@@ -125,10 +123,6 @@ describe('run codes round-trip every M2 action kind', () => {
       }),
       fc.constant({ t: 'pass' as const }),
       fc.constant({ t: 'reroll' as const }),
-      fc.record({
-        t: fc.constant('reroll' as const),
-        row: fc.constantFrom('rooms' as const, 'layout' as const),
-      }),
       fc.record({ t: fc.constant('demolish' as const), x: int, y: int }),
       fc.constant({ t: 'completeEarly' as const }),
       fc.record({ t: fc.constant('setAutoComplete' as const), on: fc.boolean() }),
@@ -169,8 +163,8 @@ describe('decoding keeps only known fields', () => {
     const dirty = [
       { t: 'pass', x: 1, y: 2, on: true },
       { t: 'reroll', i: 0 },
-      // A row the draw doesn't have (D-121) is dropped: both rows, as before rows.
-      { t: 'reroll', row: 'garden' },
+      // D-121's codes named a row; a reroll is both rows now (D-132), so any row is dropped.
+      { t: 'reroll', row: 'rooms' },
       { t: 'reroll', row: 'layout', i: 1 },
       { t: 'demolish', x: 3, y: 4, rot: 1, uid: 7 },
       { t: 'completeEarly', on: false },
@@ -188,7 +182,7 @@ describe('decoding keeps only known fields', () => {
           { t: 'pass' },
           { t: 'reroll' },
           { t: 'reroll' },
-          { t: 'reroll', row: 'layout' },
+          { t: 'reroll' },
           { t: 'demolish', x: 3, y: 4 },
           { t: 'completeEarly' },
           { t: 'setAutoComplete', on: true },

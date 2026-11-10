@@ -1,6 +1,7 @@
 /* The hand (M5a): paper cards with the piece's picture, the free actions, and the sticky action
    bar with End week as the one primary button. Built on kit.css. D-121: the cards in two rows,
-   Rooms and Layout, each under a label with its own Reroll; Demolish on the plank. */
+   Rooms and Layout, each under its label. D-132: one Reroll for both rows, on the plank with
+   Demolish. */
 
 .hand .panel-body,
 .hand-row {
@@ -14,12 +15,11 @@
   flex-direction: column;
   container: hand-row / inline-size;
 }
-/* The row's label, a rule, and its Reroll: "ROOMS ───── [⟳ Reroll 2]". */
+/* The row's label and a rule: "ROOMS ─────────". */
 .hand-row-head {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  container: hand-row-head / inline-size;
 }
 .hand-row-label {
   display: flex;
@@ -39,34 +39,43 @@
   height: var(--px);
   background: var(--paper-line);
 }
-.hand-row-head .free-action,
 .hand .panel-head .free-action {
   flex: none;
 }
 .hand .panel-head {
   container: hand-plank / inline-size;
 }
-/* A narrow column: Reroll and Demolish show their icon and count (their titles name them),
-   so the row's label and the plank's title keep their words. Demolishing, Stop keeps its
-   word. In the pixel font a letter is 1rem; the readable font's are narrower. */
-@container hand-row-head (max-width: 17rem) {
-  [data-font='pixel'] .free-action-word {
-    display: none;
-  }
+.hand-title-short {
+  display: none;
 }
-@container hand-plank (max-width: 24rem) {
+/* The plank holds the title, Reroll, and Demolish (D-132). Where their words don't all fit,
+   the buttons show their icon and count (their titles name them); demolishing, Stop keeps its
+   word. On a narrower plank still, the title is "Cards". In the pixel font a letter is 1rem;
+   the readable font's are narrower. */
+@container hand-plank (max-width: 35rem) {
   [data-font='pixel'] .free-action:not(.active) .free-action-word {
     display: none;
   }
 }
-@container hand-row-head (max-width: 200px) {
-  [data-font='readable'] .free-action-word {
+@container hand-plank (max-width: 19rem) {
+  [data-font='pixel'] .hand-title-long {
+    display: none;
+  }
+  [data-font='pixel'] .hand-title-short {
+    display: inline;
+  }
+}
+@container hand-plank (max-width: 330px) {
+  [data-font='readable'] .free-action:not(.active) .free-action-word {
     display: none;
   }
 }
-@container hand-plank (max-width: 250px) {
-  [data-font='readable'] .free-action:not(.active) .free-action-word {
+@container hand-plank (max-width: 200px) {
+  [data-font='readable'] .hand-title-long {
     display: none;
+  }
+  [data-font='readable'] .hand-title-short {
+    display: inline;
   }
 }
 
@@ -115,7 +124,7 @@
 }
 /* A card swapped in (D-121): the reroll die as a badge on its top corner, over the ring, so it
    takes no room from the name or the chips. Small enough to clear the shape glyph under it and
-   the Reroll button over a row's first card. Its words are in its title, and read out. */
+   the row's label over a row's first card. Its words are in its title, and read out. */
 .hand-card .swap-mark {
   position: absolute;
   top: calc(var(--px) * -2);
@@ -249,7 +258,7 @@
   image-rendering: pixelated;
 }
 
-/* --- Free actions: each row's Reroll, and Demolish ------------------------------------- */
+/* --- Free actions: Reroll and Demolish, on the plank ----------------------------------- */
 
 .free-action {
   flex: 1 1 auto;
