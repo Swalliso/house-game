@@ -340,8 +340,13 @@ h3 {
 .popup {
   position: absolute;
   transform: translate(-50%, -50%);
-  font-weight: 900;
-  font-size: 22px;
+  /* The game's display font, at a whole multiple of its pixel (tokens.css), like the score
+     panel's numbers; the readable option swaps it with the rest. */
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-synthesis: none;
+  font-size: var(--fs-num-md);
+  -webkit-font-smoothing: none;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
   animation-name: popup-rise;
@@ -358,17 +363,15 @@ h3 {
 }
 .popup.mult {
   color: var(--charm);
-  font-size: 18px;
+  font-size: var(--fs-num);
 }
 /* A set's name, in Charm's color: Sparkle's gold is for ×Mult only (D-019). */
 .popup.set {
   color: var(--charm);
-  font-size: 24px;
 }
 /* ×Mult (D-056): a gold Sparkle stamp. */
 .popup.sparkle {
   color: var(--ink);
-  font-size: 22px;
   padding: 1px 8px;
   background: var(--sparkle);
   border: 2px solid var(--ink);
@@ -381,18 +384,39 @@ h3 {
    quieter. A restriction broken takes the line's orange ✕. */
 .popup.spec {
   color: var(--charm);
-  font-size: 20px;
+  font-size: var(--fs-body);
 }
 .popup.lost {
   color: var(--bad);
-  font-size: 18px;
+  font-size: var(--fs-body);
 }
 .popup.order {
   color: var(--good);
-  font-size: 20px;
+  font-size: var(--fs-body);
 }
 .popup.quiet {
   color: var(--ink-soft);
+  font-size: var(--fs-body);
+}
+/* The readable option keeps the system font's popups as they were before the pixel font. */
+[data-font='readable'] .popup {
+  font-weight: 900;
+  font-size: 22px;
+}
+[data-font='readable'] .popup.mult,
+[data-font='readable'] .popup.lost,
+[data-font='readable'] .popup.door {
+  font-size: 18px;
+}
+[data-font='readable'] .popup.set {
+  font-size: 24px;
+}
+[data-font='readable'] .popup.spec,
+[data-font='readable'] .popup.order,
+[data-font='readable'] .popup.rule {
+  font-size: 20px;
+}
+[data-font='readable'] .popup.quiet {
   font-size: 16px;
   font-weight: 800;
 }
@@ -463,4 +487,14 @@ h3 {
     monospace;
   opacity: 0.75;
   user-select: all;
+}
+/* In a run it sits in the board's top-left corner, over the lot, under the banners and the
+   sheets (overlays.css 19+, the shop and change orders 30): at 800 px tall or less the side
+   columns run to the window's foot, where the corner stamp covered Inspect's last line. */
+.build-label.in-board {
+  position: absolute;
+  left: var(--space-1);
+  top: var(--space-1);
+  bottom: auto;
+  z-index: 18;
 }

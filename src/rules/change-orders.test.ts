@@ -49,10 +49,22 @@ function withOrders(over: Partial<Record<ChangeOrderId, Partial<ChangeOrderDef>>
   return { ...base, changeOrders };
 }
 
-/** Only Working from home is generic (Heat wave goes to Dale): the one order on offer. */
-const ONLY_WFH = withOrders({ heatWave: { scope: 'dale' } });
+/** The generic orders, as Appendix B lists them: M4b's two, then D-137's three. */
+const GENERIC = (Object.keys(C.changeOrders) as ChangeOrderId[]).filter(
+  (id) => C.changeOrders[id].scope === 'generic',
+);
 
-const R7 = createRules(seven());
+/**
+ * Content where only `keep` of the generic orders stay generic. The rest go to Dale, whom no test
+ * client is, so they're never on offer, and a test's seed can't pick them.
+ */
+function onlyGeneric(keep: readonly ChangeOrderId[], base = C): Content {
+  const moved = GENERIC.filter((id) => !keep.includes(id)).map((id) => [id, { scope: 'dale' }]);
+  return withOrders(Object.fromEntries(moved), base);
+}
+
+/** Only Working from home is generic: the one order on offer. */
+const ONLY_WFH = onlyGeneric(['workingFromHome']);
 
 const HEAT_WAVE = C.changeOrders.heatWave as Extract<ChangeOrderDef, { kind: 'phase' }>;
 
@@ -137,15 +149,23 @@ describe('the offer', () => {
     const run = playUntil(lost, lost.newRun(setup('lost')), (s) => s.screen === 'lost');
     expect(run.state.screen).toBe('lost');
     expect(offered(run.events)).toEqual([]);
-    // Two generic orders, three offers: the third milestone goes straight to the shop.
-    const plain = playUntil(R7, R7.newRun(setup('few')), (s) => s.screen === 'won');
+    // Two generic orders (M4b's), three offers: the third milestone goes straight to the shop.
+    const two = createRules(seven(onlyGeneric(['workingFromHome', 'heatWave'])));
+    const plain = playUntil(two, two.newRun(setup('few')), (s) => s.screen === 'won');
     expect(offered(plain.events).map((e) => e.phase)).toEqual([2, 4]);
   });
 
   it('is drawn evenly from co/<milestone> among the client’s own and the generic ones', () => {
     const content = seven(withClient({ changeOrders: ['thanksgiving', 'goldenRetriever'] }));
     const r = createRules(content);
-    const ids: ChangeOrderId[] = ['thanksgiving', 'goldenRetriever', 'workingFromHome', 'heatWave'];
+    const ids: ChangeOrderId[] = ['thanksgiving', 'goldenRetriever', ...GENERIC];
+    expect(GENERIC).toEqual([
+      'workingFromHome',
+      'heatWave',
+      'coldSnap',
+      'rainySeason',
+      'hoaLetter',
+    ]);
     const seen = new Set<ChangeOrderId>();
     for (let k = 0; k < 12; k++) {
       const seed = `draw-${k}`;
@@ -245,8 +265,7 @@ describe('the skip rules (Appendix A · M4b)', () => {
     const dale = createRules(seven(withClient({ changeOrders: ['bigDeadline'] })));
     expect(dale.eligibleChangeOrders(dale.newRun(setup('skips')))).toEqual([
       'bigDeadline',
-      'workingFromHome',
-      'heatWave',
+      ...GENERIC,
     ]);
   });
 
@@ -256,10 +275,13 @@ describe('the skip rules (Appendix A · M4b)', () => {
     const last = 6; // seven() has seven phases
     expect(dale.eligibleChangeOrders({ ...s, phase: last - 1 })).toEqual([
       'bigDeadline',
-      'workingFromHome',
-      'heatWave',
+      ...GENERIC,
     ]);
-    expect(dale.eligibleChangeOrders({ ...s, phase: last })).toEqual(['heatWave']);
+    expect(dale.eligibleChangeOrders({ ...s, phase: last })).toEqual([
+      'heatWave',
+      'coldSnap',
+      'rainySeason',
+    ]);
   });
 });
 
@@ -303,7 +325,7 @@ describe('answers', () => {
   });
 
   it('a phase effect can only be acknowledged', () => {
-    const heat = createRules(seven(withOrders({ workingFromHome: { scope: 'dale' } })));
+    const heat = createRules(seven(onlyGeneric(['heatWave'])));
     const s = offeredAfter2(heat);
     expect(s.offers?.changeOrder?.id).toBe('heatWave');
     expect(heat.changeOrderOffer(s)).toMatchObject({ kind: 'phase', declinable: false });
@@ -396,14 +418,7 @@ describe('requests', () => {
   });
 
   it('Declutter counts the pieces demolished since it was accepted', () => {
-    const jun = createRules(
-      seven(
-        withOrders(
-          { workingFromHome: { scope: 'dale' }, heatWave: { scope: 'dale' } },
-          withClient({ changeOrders: ['declutter'] }),
-        ),
-      ),
-    );
+    const jun = createRules(seven(onlyGeneric([], withClient({ changeOrders: ['declutter'] }))));
     const s = offeredAfter2(jun);
     expect(s.offers?.changeOrder?.id).toBe('declutter');
     const house = houseFrom(
@@ -431,14 +446,7 @@ describe('requests', () => {
 });
 
 describe('restrictions', () => {
-  const r = createRules(
-    seven(
-      withOrders(
-        { workingFromHome: { scope: 'dale' }, heatWave: { scope: 'dale' } },
-        withClient({ changeOrders: ['bigDeadline'] }),
-      ),
-    ),
-  );
+  const r = createRules(seven(onlyGeneric([], withClient({ changeOrders: ['bigDeadline'] }))));
   const open = emptyRows(10, 10);
 
   function accepted(): RunState {
@@ -505,7 +513,7 @@ describe('restrictions', () => {
 describe('phase effects', () => {
   it('apply in the next phase only, through its milestone, then end', () => {
     // Heat wave: pieces touching a Tree earn +100% (TEST_BALANCE's two weeks a phase).
-    const r = createRules(seven(withOrders({ workingFromHome: { scope: 'dale' } })));
+    const r = createRules(seven(onlyGeneric(['heatWave'])));
     const s = offeredAfter2(r);
     // Trees above it keep it out of the sun (D-120), so Heat wave's Sunny rooms −50% stays out
     // of it.
@@ -540,14 +548,7 @@ describe('phase effects', () => {
   });
 
   it('a layout modifier (Eternal night) changes the layout while it runs', () => {
-    const r = createRules(
-      seven(
-        withOrders(
-          { workingFromHome: { scope: 'dale' }, heatWave: { scope: 'dale' } },
-          withClient({ changeOrders: ['eternalNight'] }),
-        ),
-      ),
-    );
+    const r = createRules(seven(onlyGeneric([], withClient({ changeOrders: ['eternalNight'] }))));
     const s = offeredAfter2(r);
     const house = houseFrom(C, emptyRows(10, 10), [['bedroom', 4, 4]]);
     const shop = r.apply({ ...s, house }, { t: 'answerChangeOrder', accept: true });
@@ -558,14 +559,7 @@ describe('phase effects', () => {
   });
 
   it('describePiece says where each tag comes from: the card, the layout, Eternal night, a fixture', () => {
-    const r = createRules(
-      seven(
-        withOrders(
-          { workingFromHome: { scope: 'dale' }, heatWave: { scope: 'dale' } },
-          withClient({ changeOrders: ['eternalNight'] }),
-        ),
-      ),
-    );
+    const r = createRules(seven(onlyGeneric([], withClient({ changeOrders: ['eternalNight'] }))));
     const s = offeredAfter2(r);
     // Nine Bathrooms in a 3 × 3 block (uids 1–9; the middle one, uid 5, is interior), an
     // exterior Bedroom (uid 10), and a Bedroom with Blackout Curtains (uid 11), both in the sun
@@ -612,7 +606,7 @@ describe('phase effects', () => {
   });
 
   it('a tool’s timed effect still ends with its week beside a phase effect', () => {
-    const r = createRules(seven(withOrders({ workingFromHome: { scope: 'dale' } })));
+    const r = createRules(seven(onlyGeneric(['heatWave'])));
     const shop = r.apply(offeredAfter2(r), { t: 'answerChangeOrder', accept: true });
     let t = r.apply(shop.state, { t: 'leaveShop' }).state;
     t = r.apply(t, { t: 'debug', op: 'giveGood', good: { kind: 'tool', id: 'rushOrder' } }).state;

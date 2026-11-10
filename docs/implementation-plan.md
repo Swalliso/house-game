@@ -2011,9 +2011,9 @@ Every checklist starts with the seven house rules (D-101), in the client's numbe
 |---|---|---|---|---|---|
 | **Hendersons** | Bedrooms 2–3, rising with the household (their bedroom ≥ 4 and bathroom ≥ 2 are where it ends up); adjacentPair kitchen–diningRoom; fencedYardTiles ≥ 4 (any fenced yard, D-069) | `earn {tag Kid} +50`; `earn lawn +50`; `earn {tag Loud ∧ touching bedroom} −50` | bedroom, bathroom, diningRoom, fence +100% (not the Kitchen, D-108) | *Golden retriever:* request `count {doghouse ∧ in fencedYard} ≥ 1`. *Thanksgiving:* phase `setBonus entertainer +100`. (*Twins* is now their arrival at Framing, D-103.) | M4a / M4b |
 | **Count Vladislav** | `count {room ∧ tag Dark} ≥ 3`; library = 1 (D-108) | `earn {tag Dark} +100`; `earnNothing {tag Sunny}`; `earn {touching tree} +50`; `earn herbGarden −100` | library add 20 | *The coven is visiting:* request `countNew {room ∧ interior} ≥ 2`. *Eternal night:* phase `grantTag {property room} Dark` | M4a / M4b |
-| **Barkers** | fencedYardTiles ≥ 12; doghouse ≥ 2; mudroom = 1 (D-108) | `earn {tag Pet} +50`; `earn lawn +50`; `earn flowerBed −50` | mudroom add 20; doghouse, fence +100% | *Another rescue:* request `countNew doghouse ≥ 1`. *Agility course:* request `group {lawn ∧ in fencedYard} minTiles 8` (two connected Lawns) | M4a / M4b |
-| **Juniper Vale** | her Under one roof: 4–8 rooms (was `and(count {room} ≥ 4, count {room} max 8)`); `count {room ∧ view} ≥ 2` | `perCountOver {room} over 8 −10`; `earn garage −100`; `rule earlyRewardPct +100` | — | *Declutter:* request `demolishedSinceAccepted ≥ 1`. *Tea garden:* request `countNew {patio ∧ view} ≥ 1` | M4a / M4b |
-| **Dale** | homeOffice = 2 (D-108); `and(homeOffice ≥ 1, none {tag Loud ∧ touching homeOffice})` | `budget all +100` | homeOffice +100% | *Big deadline:* restriction `forbid {tag Loud}`. *Started a podcast:* request `countNew {room ∧ interior} ≥ 1` | M4a / M4b |
+| **Barkers** | fencedYardTiles ≥ 12; doghouse ≥ 2; mudroom = 1 (D-108) | `earn {tag Pet} +50`; `earn lawn +50`; `earn flowerBed −50` | mudroom add 20; doghouse, fence +100% | *Another rescue:* request `countNew doghouse ≥ 1`. *Agility course:* request `group {lawn ∧ in fencedYard} minTiles 8` (two connected Lawns). *A litter of puppies:* phase `earn {tag Pet} +100`; `earn lawn +100`; `earnNothing flowerBed` (D-137) | M4a / M4b |
+| **Juniper Vale** | her Under one roof: 4–8 rooms (was `and(count {room} ≥ 4, count {room} max 8)`); `count {room ∧ view} ≥ 2` | `perCountOver {room} over 8 −10`; `earn garage −100`; `rule earlyRewardPct +100` | — | *Declutter:* request `demolishedSinceAccepted ≥ 1`. *Tea garden:* request `countNew {patio ∧ view} ≥ 1`. *A magazine shoot:* phase `earn {room ∧ view} +100`; `earnNothing closet`; `earnNothing hallway` (Long Hallways count) (D-137) | M4a / M4b |
+| **Dale** | homeOffice = 2 (D-108); `and(homeOffice ≥ 1, none {tag Loud ∧ touching homeOffice})` | `budget all +100` | homeOffice +100% | *Big deadline:* restriction `forbid {tag Loud}`. *Started a podcast:* request `countNew {room ∧ interior} ≥ 1`. *Out of office:* phase `earn {tag Outdoor} +100`; `earnNothing homeOffice` (points only: they still pay budget) (D-137) | M4a / M4b |
 
 ### Crews
 
@@ -2030,3 +2030,8 @@ Every checklist starts with the seven house rules (D-101), in the client's numbe
 | Working from home | request `countNew homeOffice ≥ 1` | M4b |
 | ~~Grandma's moving in~~ | now the Hendersons' arrival at Drywall (D-103) | M4b |
 | Heat wave | phase: pool +100; `{touching tree}` +100; `{room ∧ Sunny}` −50 | M4b |
+| Cold snap | phase: `{hasFixture fireplace}` +100; bathroom −50 | D-137 |
+| Rainy season | phase: `{tag Green}` +100; `earnNothing patio` | D-137 |
+| A letter from the HOA | restriction `forbid {in frontYard}`; kept: +4 budget | D-137 |
+
+Every client has four phase effects: Heat wave, Cold snap, Rainy season, and one of its own. The offer after milestone 6 offers only phase effects, and milestones 2 and 4 use up at most two, so it always comes (D-137).

@@ -1027,7 +1027,7 @@ export function toolText(content: Content, def: ToolDef): string[] {
       const set = content.sets[u.set];
       const lv = set.level;
       return [
-        `${set.name} goes up a level for the rest of the run: +${lv.points} ${SCORE_LABELS.points} and +${multNumber(lv.mult)} ${SCORE_LABELS.mult} each`,
+        `${set.name} goes up a level for the rest of the run, even before you have one: +${lv.points} ${SCORE_LABELS.points} and +${multNumber(lv.mult)} ${SCORE_LABELS.mult} each`,
       ];
     }
     case 'extraPlay':

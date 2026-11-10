@@ -200,6 +200,7 @@ function Game() {
         <EndPhotos />
         <ShopScreen />
         <ChangeOrderScreen />
+        <BuildLabel inBoard />
       </main>
       <aside class="right">{right}</aside>
       <Hints />
@@ -246,14 +247,18 @@ export function App() {
       <Particles />
       <SmallScreenNotice />
       <DebugPanel />
-      <BuildLabel />
+      {/* In a run, the board's corner holds it (Game), clear of the side columns' feet. */}
+      {screen !== 'game' && <BuildLabel />}
     </>
   );
 }
 
-function BuildLabel() {
+function BuildLabel({ inBoard = false }: { inBoard?: boolean }) {
   return (
-    <div class="build-label" title="Build: channel · git commit">
+    <div
+      class={inBoard ? 'build-label in-board' : 'build-label'}
+      title="Build: channel · git commit"
+    >
       {BUILD_LABEL}
     </div>
   );

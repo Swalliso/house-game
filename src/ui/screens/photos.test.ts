@@ -17,11 +17,27 @@ import { boardRows, isIndoor } from '../board/geometry.ts';
 import { CELL } from '../sprites.ts';
 import { milestoneShots, photoFrame } from './photos.ts';
 
-// The greedy bot completing every milestone early that it can: on these seeds it wins with
-// early, on-time and overtime milestones, and loses with a missed one.
+// The greedy bot completing every milestone early that it can, on the first seeds where it wins
+// with early and overtime milestones, and loses with a missed one. Found by search, so tuning
+// the content never leaves these tests without the runs they need.
 const early = makeGreedy({ early: 'always' });
-const won = simulateRun(rules, 'photo3', early);
-const lost = simulateRun(rules, 'photo1', early);
+const runs = new Map<string, ReturnType<typeof simulateRun>>();
+function firstRun(want: (r: ReturnType<typeof simulateRun>) => boolean) {
+  for (let i = 0; i < 24; i++) {
+    const seed = `photo${i}`;
+    let r = runs.get(seed);
+    if (!r) runs.set(seed, (r = simulateRun(rules, seed, early)));
+    if (want(r)) return r;
+  }
+  throw new Error('no seed gives the run this test needs');
+}
+const results = (r: ReturnType<typeof simulateRun>) =>
+  new Set(r.state.milestones.map((m) => m.result));
+const won = firstRun((r) => {
+  const res = results(r);
+  return r.state.screen === 'won' && res.has('early') && res.has('overtime') && res.has('onTime');
+});
+const lost = firstRun((r) => r.state.screen === 'lost' && r.state.milestones.length > 1);
 
 describe('the milestones’ photos', () => {
   it('has a photo for every milestone of a won run, in order', () => {

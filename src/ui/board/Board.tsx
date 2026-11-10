@@ -170,29 +170,31 @@ export function rotate(): void {
 /**
  * A tap places tentatively; End week commits it (D-036, D-047). A hand fixture goes in
  * tentatively the same way. A supply is a free action, so it takes two clicks on the same
- * piece, like a demolition (D-073): the first arms it, the second installs it.
+ * piece, like a demolition (D-073): the first arms it, the second installs it. False when the
+ * spot is refused, so the caller can keep the play that was waiting.
  */
-function placeTentatively(): void {
+function placeTentatively(): boolean {
   const play = activePlay.value;
   const p = preview.value;
-  if (!play) return;
+  if (!play) return true;
   if (!p?.legal) {
     installArmed.value = null;
     audio.play('illegal');
-    return;
+    return false;
   }
   if (play.t === 'install' && play.from === 'supplies') {
     if (installArmed.value === play.uid) {
       if (installSupply(play.i, play.uid)) audio.play('place-room', { rate: 1.3 });
       else audio.play('illegal');
-      return;
+      return true;
     }
     installArmed.value = play.uid;
     audio.play('select', { rate: 0.8 });
-    return;
+    return true;
   }
   tentative.value = { ...play };
   audio.play('select', { rate: 0.8 });
+  return true;
 }
 
 /**
@@ -687,13 +689,15 @@ export function Board() {
         if (c && c !== 'street') packClick(c);
         return;
       }
+      // The play waiting for End week (a Renovation too) stays if the new spot is refused.
+      const kept = tentative.value;
       tentative.value = null;
       // A click on another piece re-arms a supply install there.
       if (sel?.kind === 'fixture' && sel.from === 'supplies' && c && c !== 'street') {
         const uid = uidAt(occ, c.x, c.y);
         if (installArmed.value !== null && installArmed.value !== uid) installArmed.value = null;
       }
-      placeTentatively();
+      if (!placeTentatively()) tentative.value = kept;
       return;
     }
     // Nothing picked: a click on a placed piece holds Inspect on it (a second click lets go),

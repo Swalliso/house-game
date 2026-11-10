@@ -251,12 +251,16 @@ function applyEffect(
       let matched = neighbors.filter((n) => matchesNeighbor(content, layout, effect.match, n));
       // Soundproofing: a penalty from a blocked neighbor doesn't apply.
       if (effect.amount < 0) matched = matched.filter((n) => !blocked(ctx, piece.uid, n));
-      const counted = effect.max === undefined ? matched : matched.slice(0, effect.max);
+      // A cap credits the pieces that really touch it before the rooms linked across a hall.
+      const counted =
+        effect.max === undefined
+          ? matched
+          : touchingFirst(layout, piece.uid, matched).slice(0, effect.max);
       if (counted.length === 0) break;
       const capped = counted.length < matched.length ? ` (${effect.max} count)` : '';
       add(
         effect.amount * counted.length,
-        withLines ? neighborLabel(content, layout, matched) + capped : '',
+        withLines ? neighborLabel(content, layout, piece, matched) + capped : '',
         withLines ? counted.map(neighborRef) : [],
       );
       break;
@@ -351,12 +355,28 @@ function regionTargets(layout: Layout, uid: number): number[] {
   return out;
 }
 
-function neighborLabel(content: Content, layout: Layout, matched: readonly Neighbor[]): string {
+/** The neighbors in `matched` that physically touch the piece first, the linked ones after. */
+function touchingFirst(layout: Layout, uid: number, matched: readonly Neighbor[]): Neighbor[] {
+  const touching = layout.touching.get(uid)!;
+  const touches = (n: Neighbor) =>
+    n.kind !== 'piece' || touching.some((t) => t.kind === 'piece' && t.uid === n.uid);
+  return [...matched.filter(touches), ...matched.filter((n) => !touches(n))];
+}
+
+function neighborLabel(
+  content: Content,
+  layout: Layout,
+  piece: PlacedPiece,
+  matched: readonly Neighbor[],
+): string {
+  // A room sees out of its window; a yard piece (a Pergola's Patio) just has the view.
+  const view =
+    pieceDef(content, piece).category === 'indoor' ? 'the view from its window' : 'the view';
   const names = matched.map((n) =>
     n.kind === 'piece'
       ? pieceDef(content, layout.byUid.get(n.uid)!).name
       : n.kind === 'view'
-        ? 'the view from its window'
+        ? view
         : n.kind === 'street'
           ? neighborName(content, 'street')
           : neighborName(content, n.feature),

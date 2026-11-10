@@ -287,11 +287,11 @@
 
 .popup.rule {
   color: var(--good);
-  font-size: 20px;
+  font-size: var(--fs-body);
 }
 .popup.door {
   color: var(--ink);
-  font-size: 18px;
+  font-size: var(--fs-body);
   padding: 1px 8px;
   background: var(--wood-hi);
   border: 2px solid var(--ink);
