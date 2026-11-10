@@ -467,7 +467,7 @@ function HowToPlayText() {
             <a href="https://incompetech.com/" target="_blank" rel="noreferrer">
               incompetech.com
             </a>
-            ) and “
+            ), “
             <a
               href="https://opengameart.org/content/sleepy-little-mouse"
               target="_blank"
@@ -475,11 +475,20 @@ function HowToPlayText() {
             >
               Sleepy Little Mouse
             </a>
-            ” by Tsorthan Grove, licensed under{' '}
+            ” by Tsorthan Grove and “
+            <a
+              href="https://freemusicarchive.org/music/Ketsa/lofi-downtempo/folded/"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Folded
+            </a>
+            ” by Ketsa, licensed under{' '}
             <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">
               CC BY 4.0
             </a>
-            ; trimmed, levelled and re-encoded.
+            ; “On the road, looking at your feet” by Monplaisir and “Comfort Games 5” by HoliznaCC0,
+            both CC0. All trimmed, levelled and re-encoded.
           </li>
           <li>
             Sound effects: instruments from the{' '}

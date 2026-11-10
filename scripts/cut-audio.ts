@@ -17,8 +17,10 @@
 // ends where it last does), length (seconds, default: to the end), a 3 ms fade
 // in and `fade` seconds faded out at the end, `lowpass` (Hz), mono unless `stereo`, and then
 // the level: `loudness` (an integrated loudness in LUFS, for music) or `peak` (dBFS, default
-// −1), never over −1 dBFS. Each cut is encoded twice: Ogg Vorbis (`quality`, default 3) and
-// AAC in an M4A (`kbps`, default 64 mono or 128 stereo), the fallback for Safari (§12 Music).
+// −1), never over −1 dBFS. A music cut whose peaks would stop it short of its loudness can
+// set `limit`: it then reaches the loudness, and a limiter holds its peaks under −1 dBFS.
+// Each cut is encoded twice: Ogg Vorbis (`quality`, default 3) and AAC in an M4A (`kbps`,
+// default 64 mono or 128 stereo), the fallback for Safari (§12 Music).
 //
 // `npm run audio:cut` runs locally only, on macOS: it needs oggenc and oggdec (Homebrew's
 // vorbis-tools) and afconvert (part of macOS). It reads art-source/audio/ in the main checkout
@@ -70,6 +72,8 @@ export interface AudioCut {
   readonly lowpass?: number;
   readonly stereo?: boolean;
   readonly loudness?: number;
+  /** With `loudness`: reach it, and hold the peaks under −1 dBFS with a limiter. */
+  readonly limit?: boolean;
   readonly peak?: number;
   readonly quality?: number;
   readonly kbps?: number;
@@ -98,6 +102,7 @@ const CUT_KEYS = new Set([
   'lowpass',
   'stereo',
   'loudness',
+  'limit',
   'peak',
   'quality',
   'kbps',
@@ -136,6 +141,9 @@ export function parseAudioManifest(json: string, where = 'art/audio.json'): Audi
         fail(`cut "${id}": "${k}" must be a number`);
       }
     }
+    if ('limit' in c && typeof c.limit !== 'boolean')
+      fail(`cut "${id}": "limit" must be true or false`);
+    if (c.limit === true && !('loudness' in c)) fail(`cut "${id}": "limit" needs a "loudness"`);
     cuts[id] = c as unknown as AudioCut;
   }
   return { sources, cuts };
@@ -431,9 +439,68 @@ export function editCut(source: Pcm, cut: AudioCut): Pcm {
   } else {
     gain = dbToGain(cut.peak ?? -1) / peak;
   }
+  if (cut.limit && cut.loudness !== undefined) {
+    // Limiting takes a little loudness back, so aim again until the cut lands on it.
+    let out = pcm;
+    for (let round = 0; round < 4; round++) {
+      out = scaled(pcm, gain);
+      limitPeaks(out, dbToGain(-1));
+      const miss = cut.loudness - loudnessOf(out);
+      if (Math.abs(miss) < 0.05) break;
+      gain *= dbToGain(miss);
+    }
+    return out;
+  }
   gain = Math.min(gain, dbToGain(-1) / peak);
   for (const c of pcm.channels) for (let i = 0; i < c.length; i++) c[i]! *= gain;
   return pcm;
+}
+
+function scaled(pcm: Pcm, gain: number): Pcm {
+  return { rate: pcm.rate, channels: pcm.channels.map((c) => c.map((v) => v * gain)) };
+}
+
+/** Look-ahead and release for limitPeaks: short enough for a pluck, slow enough not to buzz. */
+const LIMIT_AHEAD_S = 0.002;
+const LIMIT_RELEASE_S = 0.08;
+
+/**
+ * Holds every frame under `ceiling`, in place. The gain ramps down over the 2 ms before a peak
+ * (a sliding minimum of each frame's most allowed gain, averaged over the look-ahead, so the
+ * ramp never lets a frame over) and recovers over about 80 ms. Frames far from a peak keep
+ * their level.
+ */
+export function limitPeaks(pcm: Pcm, ceiling: number): void {
+  const n = pcm.channels[0]?.length ?? 0;
+  const ahead = Math.max(1, Math.round(pcm.rate * LIMIT_AHEAD_S));
+  const release = 1 - Math.exp(-1 / (pcm.rate * LIMIT_RELEASE_S));
+  const allowed = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    let p = 0;
+    for (const c of pcm.channels) p = Math.max(p, Math.abs(c[i]!));
+    allowed[i] = p > ceiling ? ceiling / p : 1;
+  }
+  // low[i]: the least allowed gain over frames i to i + ahead, by a monotonic queue (backwards).
+  const low = new Float32Array(n);
+  const queue = new Int32Array(n);
+  let head = 0;
+  let tail = 0;
+  for (let i = n - 1; i >= 0; i--) {
+    while (tail > head && allowed[queue[tail - 1]!]! >= allowed[i]!) tail--;
+    queue[tail++] = i;
+    while (queue[head]! > i + ahead) head++;
+    low[i] = allowed[queue[head]!]!;
+  }
+  // Each frame's low[j] for the `ahead` frames up to it all cover it, so their average does too.
+  let sum = 0;
+  let gain = 1;
+  for (let i = 0; i < n; i++) {
+    sum += low[i]!;
+    if (i >= ahead) sum -= low[i - ahead]!;
+    const ramp = sum / Math.min(i + 1, ahead);
+    gain = ramp < gain ? ramp : gain + (ramp - gain) * release;
+    for (const c of pcm.channels) c[i]! *= gain;
+  }
 }
 
 // ---------------------------------------------------------------------------------------
