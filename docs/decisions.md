@@ -836,6 +836,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - D-094 (chain reactions, Open) is raised with the team before the juice pull request reworks the tally, as §7 says: option 1 would land in it, and options 2 and 3, if chosen, before it or with it (D-094's note of this date).
 - *Done, 2026-11-08:* M5a merged first (pull request #18). M4 then renumbered its decisions in a commit of its own (84a1601), before merging `develop`, in one pass so no number moved twice: D-097 → D-101 (the house rules), D-098 → D-102 (Renovate), D-099 → D-103 (the household's arrivals), D-100 → D-104 (half-weight draws), D-101 → D-105 (the yard rules), D-102 → D-106 (packs), D-103 → D-107 (a fixture's worth), D-104 → D-108 (client numbers) and D-105 → D-109 (M4b's rules structure). M4's commit messages from before it use the old numbers. The merge (6874cd0) kept M5a's structure and ported M4's features onto it; M4 then restyled its new screens with M5a's interface and drew its new pieces in LimeZu's art (D-110, D-111). The juice pull request still comes after M4, as decided above.
 
+**2026-11-10 (D-136), a second downscale exception:** the end screen's photos of the house at each milestone are drawn smaller than one device pixel per art pixel, smoothly, as Fit's overview is. Their larger view keeps whole device pixels per art pixel wherever the window holds one.
+
 ### D-098 · M5a interface defaults: the pixel UI
 **Status:** Accepted · 2026-11-07 (proposed 2026-11-06 with M5a's UI track, stage 2: part 1, the foundations, the build screen, the score panel and the top bar; part 2, the other screens. Held up in playtest 5a, confirmed by the team). Implementation details within D-057, D-059, D-097 and §12. It kept its number when the stage's tracks merged; the lot's and the house's defaults are D-099 and D-100.
 **Decision:**
@@ -1756,6 +1758,44 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - `navigator.share`: on desktop it opens the OS share sheet in only some browsers; the clipboard works everywhere the game runs.
 
 **Changes:** implementation-plan.md §7 M6's end screen: the result line is done (D-135); the photos are D-136's.
+
+### D-136 · The end screen's photos: a polaroid of the house at each milestone
+**Status:** Proposed · 2026-11-10, with M6's phase pull request (`phase/m6-end-photos`), the second half of M6's end screen (implementation-plan.md §7 M6). For the user's playtest before it merges. An exception to D-097 (its dated note).
+**Decision:**
+- **A strip of polaroids along the foot of the board** on the end screen, under the roofed house, which stays the hero. There's one polaroid for each milestone that resolved: early, on time, in overtime, or the one the client walked at. A won run has seven; a lost one has one for each milestone up to and including the missed one.
+  - Each polaroid shows its photo, the milestone's name, its mark (✓ or ✗, with early's flag or overtime's clock) and its Wow against the target.
+  - The board gives up the strip's height, so the camera fits the house above it. The camera's buttons move up with it.
+- **The photos come from the run itself.** `milestoneShots` (`src/ui/screens/photos.ts`, tested in Node) replays the setup and actions with `newRun` and `apply`, as a run code does. It keeps the state each time `state.milestones` grows. It's memoized per run, about 26 ms in the browser, and it stops quietly at an action that no longer applies.
+- **One frame for every photo** (`photoFrame`): the finished house's rooms (or every piece, for a yard with no rooms), a cell around them, grown to 4:3 about their middle and kept on the board. The house grows in place from one photo to the next, like a time-lapse.
+  - A house whose rooms run down 18 rows or more is taller than a 4:3 frame the board's width can hold, so it loses its top and bottom edges.
+- **Painted with the board's own painters,** in the board's order (`photo-paint.ts`): the terrain (`TerrainLayer`'s `draw`, now exported), the water's first frame, the floors and the yard's ground, each piece's items with south in front, the walls, the tall items' tops, and the trees' crowns.
+  - The photos look inside, without the roof, since the hero above has it on. They have no digits, badges or tint.
+  - It never mounts the board's components, so the live board's caches and its car's slide (`HouseLayers`' module-level `lastCar`) are untouched.
+  - The photos are painted one per frame once the end screen is up (about 0.1 s for seven) and shown as images.
+- **The deal** (`FEEL.photos`):
+  - The polaroids come up onto the table 650 ms after the end screen, once the roof has landed, 140 ms apart. Each flies 48 px up in 420 ms, turning from 9°, and lands square with a soft flick (`place-yard`, a little higher each time).
+  - Each picture develops from a warm blank over 1.1 s once it's painted.
+  - A run's strip is dealt once: back from the title, it's simply there. Reduce motion puts them down at once, developed, without the flicks.
+  - At rest they lie square: tilted, the pixel captions would blur.
+- **Sizes:** the photos share the board's width, seven side by side, from 140 px wide (the narrowest that holds "Final Walk-" on a line) to 176 px. The long names break at soft hyphens.
+  - At 1920×1080 all seven fit side by side.
+  - In a narrower window they overlap like a hand of cards, the last one whole. The one pointed at or focused comes to the front and rises 6 px.
+- **The photos are a downscale exception to D-097,** like the Fit overview: the strip shows them smaller than one device pixel per art pixel, smoothly.
+- **Click one** (or Tab to it and press Enter) to see it larger. A sheet shows the photo, with its mark, how it went, its Wow against the target and its week.
+  - The photo is drawn at whole device pixels per art pixel where the window holds one (1× for a typical house at 1920×1080), else smoothly smaller.
+  - ← and → (or Previous and Next) step through the strip, and Esc closes it (`modals.ts` `photoShown`).
+
+**Why:** M6's plan asks for "a photo of the house at each milestone" on the end screen. The rooms that change as they're built and furnished were what playtest 5a liked best, and the roof hides them at the end. A strip of the house growing tells the run's story at a glance, under the finished house.
+**Considered:**
+- The roof on from Roofing: half the photos would be the same red roof.
+- Framing each photo on its own house: the house would jump around instead of growing.
+- Tilted polaroids at rest: the pixel captions blur.
+- A strip that scrolls sideways: at 1280×720 it would hide the last milestones.
+- A grid in the right-hand column: too narrow for seven.
+- Captions under the type scale's 16 px floor.
+- Rendering a second set of the board's components: twice the DOM, and the car's slide is shared state.
+
+**Changes:** D-097 (Accepted): the photos are a second downscale exception (its dated note). implementation-plan.md §7 M6's end screen.
 
 ### D-133 · The roof view: the reveal's roof stays on, a Roof button brings it back, and the end screen opens with it
 **Status:** Proposed · 2026-11-10, after playtest 5 (`docs/playtests/playtest-5-findings.md`), with its fix pull request. Extends D-127. For the next playtest on /dev/.

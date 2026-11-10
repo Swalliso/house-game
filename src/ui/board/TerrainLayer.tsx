@@ -52,7 +52,12 @@ export interface Around {
   readonly top: number;
 }
 
-function draw(
+/**
+ * The terrain canvas's paint: the grass, the woods' floor, the Trees' shade, what stands on the
+ * lot, and the street. It never clears, so it can paint into part of a bigger picture (the end
+ * screen's photos, D-136, translate the context to their frame).
+ */
+export function draw(
   ctx: CanvasRenderingContext2D,
   img: HTMLImageElement,
   lot: Lot,
@@ -69,7 +74,7 @@ function draw(
 }
 
 /** Which columns of the lot's bottom row a piece stands on: the street's grass stops there. */
-function streetFront(house: HouseState | undefined): boolean[] {
+export function streetFront(house: HouseState | undefined): boolean[] {
   if (!house) return [];
   const occ = occupancy(house);
   return Array.from({ length: occ.width }, (_, x) => uidAt(occ, x, occ.height - 1) !== 0);

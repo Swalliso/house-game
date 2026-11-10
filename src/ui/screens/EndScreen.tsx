@@ -8,7 +8,8 @@
 // the one primary button, kept in view at the column's foot. Each list takes one shape for all
 // its rows, the most compact that every row fits on its lines (useShape): the column is 280 to
 // 404 px wide, and the pixel font is wide, so a row that wrapped on its own would leave the list
-// ragged (playtest 5a). The full-width finale with a photo per milestone is M6's.
+// ragged (playtest 5a). M6's photo of the house at each milestone is a strip under the board
+// (EndPhotos.tsx, D-136).
 //
 // M6 (D-135): Copy result, above Copy run code, copies the run as one line for the group chat,
 // with a link that starts the same lot (result-line.ts).
@@ -40,7 +41,7 @@ function weeks(n: number): string {
 }
 
 /** A milestone's result as a short tag (an early one's bonus is its own part: Milestones). */
-function resultTag(m: MilestoneRecord): string {
+export function resultTag(m: MilestoneRecord): string {
   switch (m.result) {
     case 'onTime':
       return 'On time';
