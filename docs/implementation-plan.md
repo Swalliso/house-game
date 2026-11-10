@@ -548,7 +548,7 @@ Derived from `HouseState`, cached by house object identity:
   - **Front yard:** every non-indoor tile in a row nearer the street than the house's front row (the row of its indoor tile closest to the street). Before the first room, all yard is front yard. Back yard is every other non-indoor tile, including the side yards. Counting by rows keeps "front yard" a real position on a wide lot, where a narrow house would otherwise make whole columns beside it front yard.
   - **Fenced yard:** flood-fill all non-wall tiles (walls are indoor tiles and Fence tiles; water, boulders, trees, finds, yard pieces, and outbuildings are all part of regions). The lot edge bounds the fill like a wall (it's the property line). A region is fenced if it doesn't touch the street edge, has at least 10 tiles (4 until D-069), borders at least one Fence, and borders the house (at least one indoor piece). The house rule stops a lone L-Fence in a corner from counting as a yard. "Fenced yard of 12 tiles" means the largest single one.
   - On a big lot this makes siting matter: a house built near a side or back edge closes a yard with one or two Fences, while a house in the middle needs more.
-- **Links:** a Hallway (or a connected group of Hallways) links every room touching it. Open Concept links Kitchens, Dining Rooms, and Living Rooms in one connected group. Links count as adjacency for scoring, sets, and specs. They don't count for connectivity, exterior/interior, or enclosure, and a Hallway isn't itself a neighbor for bonuses.
+- **Links:** a Hallway (or a connected group of Hallways) links every room touching it. A `link` modifier links touching pieces of its types in one connected group (Open Concept's, until D-143 gave it the Entertainer's bonus instead; no blueprint carries one now). Links count as adjacency for scoring, sets, and specs. They don't count for connectivity, exterior/interior, or enclosure, and a Hallway isn't itself a neighbor for bonuses.
 - **Fixtures (D-050):**
   - A fixture is installed in a placed piece that matches its `fits` selector (a Fireplace fits any room; a Sprinkler fits a Lawn).
   - Each piece holds one fixture. Installing a second replaces the first, and the preview shows what's lost.
@@ -720,7 +720,7 @@ interface Reward { score?: number /* a one-time Wow payout */; budget?: number; 
 type Modifier =
   | { kind: 'earn'; target: Selector; pct: number; when?: 'lastWeekOfPhase' }  // "Dark pieces earn double" → +100
   | { kind: 'bestPiece'; pct: number }                               // Crown Jewel: the week's top earner, after other terms
-  | { kind: 'mult'; add: number; per?: Selector }                    // +Mult in hundredths, optionally per matching piece (It's a House)
+  | { kind: 'mult'; add: number; per?: Selector; maxEach?: number } // +Mult in hundredths, optionally per matching piece, at most maxEach of one type (It's a House, D-143)
   | { kind: 'xMult'; times: number; plusPer?: { per: Selector | RunStat; add: number }
       when?: 'lastWeekOfPhase' | { house: HouseCondition } | { host: PieceCondition } }
       // ×Mult in hundredths: times + add × count. Model Home: times 100, plusPer {hasFixture any, 10} → ×(1 + 0.1 per fixture)
@@ -730,7 +730,7 @@ type Modifier =
   | { kind: 'grantView'; target: Selector }                         // Bay Window
   | { kind: 'blockPenalties'; target: Selector; from: Selector }     // Soundproofing: Loud neighbors' penalties don't apply
   | { kind: 'countsAs'; target: Selector; as: PieceId; times?: number }
-  | { kind: 'link'; among: PieceId[] }                             // Open Concept
+  | { kind: 'link'; among: PieceId[] }                             // touching pieces of these types link (no content since D-143)
   | { kind: 'grantEffect'; target: Selector; effect: Effect }        // Good Bones; counts from the grant week
   | { kind: 'perCountOver'; match: Selector; over: number; pct: number }  // Juniper's room limit
   | { kind: 'setBonus'; set?: SetId; pct: number }                   // +N% to a set's Points and +Mult (Thanksgiving, Architect)
@@ -1936,22 +1936,22 @@ Each set pays Points and +Mult every week it holds, like a poker hand (values in
 
 ### Blueprints (18)
 
-The first five come from `content-brainstorm.md`; the other thirteen are new (D-051, D-056). Their archetypes come from Combolands' heirlooms: tag boosts, terrain, structure, economy, and a few rare rule-benders. **×Mult lives only on Rare blueprints** (Last-Minute Push, Model Home, Ahead of Schedule), and each needs a setup. All are M3a, as data.
+The first five come from `content-brainstorm.md`; the other thirteen are new (D-051, D-056). Their archetypes come from Combolands' heirlooms: tag boosts, terrain, structure, economy, and a few rare rule-benders. **×Mult lives only on Rare blueprints** (Last-Minute Push, Model Home, Ahead of Schedule), and each needs a setup. All are M3a, as data. D-143 re-weighed the shelf by what holding each is worth: the rows marked D-143 changed.
 
 | Blueprint | Rarity | Encoding |
 |---|---|---|
-| Feng Shui | Common | `earn {property view} +50` |
-| Curb Appeal | Common | `earn {in frontYard} +100` |
-| **Quiet Hours** | Common | `earn {tag Quiet} +50` |
-| **Green Thumb** | Common | `earn {tag Green} +50` |
+| Feng Shui | Common | `earn {touching {property viewSource} min 3} +50`: pieces touching 3+ views (D-143; was every piece with a view) |
+| Curb Appeal | Common | `earn {in frontYard} +100`, and `earn {touching {in frontYard}} +100`: the front yard, and the pieces touching it (D-143) |
+| **Quiet Hours** | Common | `earn {tag Quiet} +75` (D-143; was +50) |
+| **Green Thumb** | Common | `earn {tag Green} +50`, and `grantEffect {tag Green} growth 1/week, max 3` (D-143) |
 | **Party House** | Common | `earn {tag Social} +50` |
-| **Waterfront** | Common | `earn {touching {feature [pond, creek]}} +50` |
-| Open Concept | Uncommon | `link among [kitchen, diningRoom, livingRoom]` |
-| Good Bones | Uncommon | `grantEffect {property room} growth 1/week, max 10` (counts from the later of placement and purchase) |
-| It's a House | Uncommon | `mult +15 per {tag House}`: +0.15 Mult for every "-house" piece on the lot |
+| **Waterfront** | Common | `earn {touching {feature [pond, creek]}} +100` (D-143; was +50) |
+| Open Concept | Uncommon | `setBonus entertainer +50`: the Entertainer pays 50% more (D-143; was `link among [kitchen, diningRoom, livingRoom]`) |
+| Good Bones | Uncommon | `grantEffect {property room} growth 1/week, max 3` (counts from the later of placement and purchase; D-143, was max 10) |
+| It's a House | Uncommon | `mult +50 per {tag House}, maxEach 3`: +0.5 Mult for every "-house" piece on the lot, up to 3 of a type (D-143; was +0.15, uncapped) |
 | **Country Living** | Uncommon | `grantEffect all neighbor {feature tree} +1 max 3` |
-| **Mood Lighting** | Uncommon | `earn {property room ∧ tag Dark} +100` |
-| **Show Home** | Uncommon | `earn {hasFixture any} +50` |
+| **Mood Lighting** | Uncommon | `mult +40 per {property room ∧ tag Dark}`: +0.4 Mult per Dark room (D-143; was `earn +100`) |
+| **Show Home** | Uncommon | `earn {hasFixture any} +100` (D-143; was +50) |
 | **Solar Panels** | Uncommon | `grantEffect {tag Sunny} economy 1 every 4` |
 | **Crown Jewel** | Rare | `bestPiece +100`: the week's top earner earns double |
 | **Dream Home** | Rare | `rule specBonus +10`: each spec met adds +0.35 Mult instead of +0.25 |

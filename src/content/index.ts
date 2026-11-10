@@ -232,6 +232,9 @@ function modifierProblems(
       break;
     case 'mult':
       if (m.per) sels.push(m.per);
+      if (m.maxEach !== undefined && (!m.per || !Number.isInteger(m.maxEach) || m.maxEach < 1)) {
+        problems.push(`${where}: mult maxEach needs per, and a whole number ≥ 1`);
+      }
       break;
     case 'xMult':
       if (m.plusPer && m.plusPer.per !== 'milestonesEarly') sels.push(m.plusPer.per);

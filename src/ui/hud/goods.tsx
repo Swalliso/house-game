@@ -236,11 +236,19 @@ export function BlueprintWorth({
       {signed(value.perStat.gain)} {wow} a week for each {STAT_EACH[value.perStat.stat]}
     </span>
   );
+  // A Mult counted per piece (It's a House, Model Home): what each one adds, so the card names
+  // its build even while the house has none (D-143).
+  const piece = value.perPiece && value.perPiece.gain !== 0 && (
+    <span class="worth-host">
+      {signed(value.perPiece.gain)} {wow} a week for each {value.perPiece.what}
+    </span>
+  );
   if (value.needs !== undefined) {
     return (
       <div class={`${cls} none`}>
         <span class="worth-needs">{value.needs}</span>
         {each}
+        {piece}
       </div>
     );
   }
@@ -275,6 +283,7 @@ export function BlueprintWorth({
         </span>
       )}
       {value.gain !== 0 && each}
+      {piece}
       {value.overRun !== 0 && (
         <span class="worth-run">
           {/* Nothing in the first week (a Sapling that isn't a Tree yet): the run's sum leads. */}

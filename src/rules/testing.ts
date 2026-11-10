@@ -626,6 +626,8 @@ const bp = (
   offered,
 });
 
+// The blueprints as Appendix B first encoded them. The game's own were re-weighed in D-143;
+// these keep the plain encodings, so the rules tests see one modifier of each kind.
 export const TEST_BLUEPRINTS: Record<BlueprintId, BlueprintDef> = {
   fengShui: bp('fengShui', 'Feng Shui', 'common', [
     { kind: 'earn', target: { property: 'view' }, pct: 50 },

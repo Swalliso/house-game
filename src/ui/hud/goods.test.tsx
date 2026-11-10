@@ -110,6 +110,19 @@ describe("a blueprint's line (D-141)", () => {
     ]);
   });
 
+  it('says what each counted piece would add, with or without a gain today (D-143)', () => {
+    const perPiece = { what: 'House piece', gain: 85 };
+    expect(lines(value({ gain: 170, overRun: 2040, perPiece }))).toEqual([
+      '[up]+170 Wow a week',
+      '+85 Wow a week for each House piece',
+      'about +2,040 over the run',
+    ]);
+    expect(lines(value({ perPiece, needs: 'No House pieces yet' }))).toEqual([
+      'No House pieces yet',
+      '+85 Wow a week for each House piece',
+    ]);
+  });
+
   it('says what it needs, quietly, and nothing at all for a blueprint the rules don’t value', () => {
     const strip = BlueprintWorth({ value: value({ needs: 'No Dark rooms yet' }) }) as VNode<{
       class: string;

@@ -349,7 +349,7 @@ Also: D-036 and D-043 (Accepted), where hand size becomes the `handSize` rule (3
 - Per-piece percentage bonuses still add, as in D-037.
 - The order is fixed (+Mult, then ×Mult), and each layer gets its own color and sound.
 
-**Amended by:** D-093 (Accepted 2026-11-06): one Entertainer per house (`maxInstances: 1`), beside M4a's Suite and Full House. D-140 (Proposed 2026-11-10): the Full House set is ×1.5, now that a Garage can be built like any room.
+**Amended by:** D-093 (Accepted 2026-11-06): one Entertainer per house (`maxInstances: 1`), beside M4a's Suite and Full House. D-140 (Proposed 2026-11-10): the Full House set is ×1.5, now that a Garage can be built like any room. D-143 (Proposed 2026-11-10): It's a House is +0.5 Charm per "-house" piece, up to 3 of a type, and Mood Lighting is +0.4 Charm per Dark room; the ×Mult sources are unchanged.
 **Why:** In Balatro and Combolands, big moments come from multipliers. Making them powerful but rare and conditional means you plan for them rather than stumble into them. Balatro puts ×Mult on 70% of its Rare jokers and 3% of its Common ones, and its players confuse +Mult with ×Mult when they look alike. Keeping multiplication in one weekly step avoids D-037's ×15–×36 per-piece blowups. Targets come from the sim's median curve, which ×Mult may steepen.
 **Changes:**
 - D-037 (Accepted): the week's formula.
@@ -1836,6 +1836,114 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 **Changes:** implementation-plan.md §7 M6's end screen: the result line is done (D-135); the photos are D-136's.
 
+### D-143 · The blueprint shelf: no dead cards, no runaway, and It's a House as a build
+**Status:** Proposed · 2026-11-10, with its phase pull request (`phase/blueprint-balance`), from the friction review the user asked for the same day (point 2). For the user's playtest before it merges. Every number is a placeholder for the playtest and D-146's re-fit; the milestone targets and the per-client factors are untouched.
+**Finding:**
+- **The review read the shelf from what the shop bot buys:** Feng Shui held in 99% of wins, and Green Thumb, Open Concept, Mood Lighting and It's a House bought 2–5% of the times offered. A buy rate mixes a blueprint's strength with what the bot can see, so each of the 18 was measured by what holding it is worth.
+- **The measure:** the blueprint given free at the first shop, against the same seeds where it's never on offer: `npm run sim -- --gift blueprint:ID --off-shelf` (300 held-out seeds, `check-0` to `check-299`, greedy with the General Contractor, every Core client in turn). "Worth" is the final Wow, given ÷ never offered (the geometric mean over the seeds), with the change in win rate in points. Its 95% interval is about ±0.08 on the ratio and ±5 points.
+  - Plain `--gift` reads a blueprint the bot buys anyway at about nothing (Feng Shui: ×1.04), because the placebo arm holds it too. `--off-shelf` is new, for that.
+- **What it showed** (develop at 15e9dc2):
+  - **The must-buy was Good Bones, not Feng Shui:** ×2.54 and +49 points of win rate, and still ×2.16 and +42 points given at the second shop, the first that sells an Uncommon. Its hold rate hid it: an Uncommon is on a shelf in about half of runs.
+  - **Feng Shui was the best Common by far:** ×1.43, with the next at ×1.10.
+  - **Six were worth nothing:** Curb Appeal, Green Thumb, Quiet Hours, It's a House, Show Home and Waterfront, at ×0.96 to ×1.03. Holding It's a House, the bot built 3.3 "-house" pieces in place of 1.2 and gained nothing.
+  - **Open Concept (×1.09) and Mood Lighting (×1.08) weren't weak, only invisible to the bot,** which values a blueprint on the house as it stands. They sat at the median (×1.10) and were bought 4% and 3% of the times offered.
+
+**Decision:**
+- **It's a House** (Uncommon) is a build: **"+0.5 Charm per House piece, up to 3 of a type"** (was +0.15, any number).
+  - The House pieces are the Doghouse, the Treehouse and the Greenhouse from the weekly draw, and the Henhouse and the Birdhouse from the shop. One that earns nothing (a Doghouse outside a fenced yard) still counts.
+  - **3 of a type is the tidy yard's own number** (D-105), so the build never pays for a fourth Doghouse. The Treehouse's rules (D-079, D-105) are unchanged: it needs a Tree, and Treehouses still don't count each other as Kid partners.
+  - **In a house built for it** (given at the first shop, on the new shelf): the bot ends with 7.1 "-house" pieces of 3.4 types (1.4 pieces without it), wins 72% of runs against 55%, and its final Wow is ×1.36. The tidy yard holds at the end in 83% of those runs, against 52% without it, and one "-house" type stands 4 or more times in 5% of them.
+  - **The payoff shows as it grows:** the weekly tally pops "It's a House (4): +2 Charm" as before, and the shop's line now says what each piece adds (below).
+  - It stays Uncommon and +Charm. ×Mult stays on the three Rare blueprints (D-056).
+- **Good Bones** (Uncommon): rooms grow +1 a week **up to +3** (was +10). From the first shop it's now ×1.51 and +18 points: still the best Uncommon to hold, and no longer the whole run.
+- **Feng Shui** (Common): **"Pieces touching 3+ views earn +50%"** (was every piece with a view). One Flower Bed no longer lights up every room around it: a room wants the woods, the water, or a small garden of its own. A Bay Window's view counts as one. Now ×1.05, and held in 71% of the bot's wins (was 96%).
+- **The Commons that were worth nothing:**
+  - **Quiet Hours:** Quiet pieces earn +75% (was +50%).
+  - **Green Thumb:** Green pieces earn +50%, and grow +1 a week, up to +3. A garden's pieces earn 1 or 2, so half again of that was nothing.
+  - **Curb Appeal:** pieces in the front yard earn +100%, and so do the pieces touching one: the rooms behind a front garden.
+  - **Waterfront:** pieces touching the Pond or the Creek earn +100% (was +50%).
+- **Open Concept** (Uncommon): **"The Entertainer pays 50% more"**, its Comfort and its Charm, at any level. It replaces the link among Kitchens, Dining Rooms and Living Rooms, which added a few Comfort to a Kitchen and nothing a player would see. The rules still know a `link` modifier; no blueprint carries one.
+- **Mood Lighting** (Uncommon): **"+0.4 Charm per Dark room"** (was Dark rooms earn +100%). A room is Dark when it's interior or has Blackout Curtains, as before. A house has few Dark rooms (1.6 by the last shop), so doubling them was worth little at any percentage; Charm for each one shows the moment a room goes Dark.
+- **Show Home** (Uncommon): pieces with a fixture earn +100% (was +50%).
+- **Unchanged:** Party House, Country Living, Solar Panels, and the five Rares.
+- **Rules:**
+  - A `mult … per` modifier takes `maxEach`: no more than that many pieces of one type count, by root type, as the tidy yard counts them.
+  - A selector's "touching 3" reads "touching 3+", as the checklist's "touch 2+ rooms".
+- **The shop's value line** (D-141) says what each counted piece adds: "+47 Wow a week for each House piece", "for each Dark room", "for each piece with a fixture" (Model Home). It stands beside the week's gain, and beside "No House pieces yet" when the house has none, so the card names its build. The rules give it by modifier kind (`blueprintValue().perPiece`), the piece's own Comfort aside.
+- **The shop bot plans a little** (`sim/policies/shop.ts`), so a build-around isn't worth nothing before its build starts:
+  - A blueprint whose Mult counts pieces is also worth the pieces the bot expects to add: what one more adds today, at the rate the draw shows such cards (half of them taken), each paying from its week on. For pieces a card can't tell (a Dark room, a piece with a fixture) it expects 0.12 a week.
+  - A bonus to a set the house doesn't hold yet counts for half the weeks left, once half the set's room types are built.
+  - A granted growth is valued at the week halfway through the weeks left (it was the first week's gain times up to 10, Good Bones' old cap).
+  - When it sells a blueprint to make room, what a held one is still building toward counts.
+
+**Sim** (200 held-out runs for `--check`, 300 for worth; develop at 15e9dc2 against this change; targets not re-fitted):
+
+| `--check` | develop | this change |
+|---|---|---|
+| greedy wins | 54.0% [47.1–60.8] | 56.0% [49.1–62.7] |
+| greedy clears milestones 1–3 | 97.0% | 96.5% |
+| completing early, always against never | 45.0% vs 54.0% (−9.0) | 48.5% vs 56.0% (−7.5) |
+| client spread | 35.0 points | 35.0 points |
+| the blueprint held in the most wins | Feng Shui, 96% | Quiet Hours, 74% |
+| one yard type standing 4+ times, in wins | 6% | 12% |
+
+| Blueprint | Rarity | Worth before | Worth after | Bought before | after | Held in runs / wins before | after |
+|---|---|---|---|---|---|---|---|
+| Feng Shui | Common | ×1.43 (+9) | ×1.05 (+4) | 73% | 30% | 93% / 96% | 70% / 71% |
+| Curb Appeal | Common | ×0.96 (−7) | ×1.13 (+8) | 4% | 9% | 18% / 14% | 29% / 33% |
+| Quiet Hours | Common | ×0.98 (−1) | ×1.09 (+1) | 25% | 29% | 58% / 61% | 67% / 74% |
+| Green Thumb | Common | ×0.97 (−3) | ×1.17 (+3) | 1% | 15% | 11% / 7% | 44% / 43% |
+| Party House | Common | ×1.10 (0) | ×1.03 (−3) | 42% | 29% | 78% / 77% | 70% / 66% |
+| Waterfront | Common | ×1.03 (+1) | ×1.03 (0) | 7% | 7% | 23% / 21% | 24% / 19% |
+| Open Concept | Uncommon | ×1.09 (+3) | ×1.13 (+8) | 4% | 33% | 4% / 4% | 21% / 29% |
+| Good Bones | Uncommon | ×2.54 (+49) | ×1.51 (+18) | 55% | 32% | 33% / 52% | 28% / 35% |
+| It's a House | Uncommon | ×0.98 (−1) | ×1.36 (+17) | 2% | 21% | 4% / 2% | 19% / 18% |
+| Country Living | Uncommon | ×1.33 (+17) | ×1.31 (+12) | 25% | 20% | 18% / 23% | 17% / 21% |
+| Mood Lighting | Uncommon | ×1.08 (+7) | ×1.32 (+13) | 3% | 22% | 3% / 4% | 15% / 22% |
+| Show Home | Uncommon | ×1.01 (+2) | ×1.16 (+4) | 8% | 11% | 10% / 11% | 10% / 11% |
+| Solar Panels | Uncommon | ×1.20 (+14) | ×1.19 (+10) | 0% | 0% | 1% / 1% | 2% / 2% |
+| Crown Jewel | Rare | ×1.48 (+19) | ×1.33 (+13) | 28% | 18% | 11% / 14% | 7% / 4% |
+| Dream Home | Rare | ×1.26 (+12) | ×1.18 (+6) | 22% | 17% | 6% / 7% | 6% / 7% |
+| Last-Minute Push | Rare | ×1.40 (+14) | ×1.27 (+4) | 44% | 38% | 11% / 16% | 10% / 11% |
+| Model Home | Rare | ×1.73 (+32) | ×1.61 (+28) | 44% | 35% | 13% / 21% | 10% / 14% |
+| Ahead of Schedule | Rare | ×1.03 (+3) | ×1.02 (0) | 0% | 0% | 1% / 1% | 1% / 0% |
+
+- The median worth went from ×1.10 to ×1.18. The best to hold was ×2.54 and is ×1.61, a Rare. Six stood at ×1.03 or less, beside Ahead of Schedule, which the bot can't use; now two do, Party House and Waterfront.
+- Each "after" is measured on the new shelf, where the arm without the blueprint has better things to buy, so an unchanged blueprint reads a little lower.
+- "Bought" is of the times it was on a shelf. Solar Panels and Ahead of Schedule are the bot's blind spots (budget, and completing early).
+
+**Why:**
+- **Lifts before cuts,** as the review asked: eight of the ten changes are lifts or new jobs. The two cuts are the two that a run was decided by.
+- **Good Bones' flat Comfort on every room** is multiplied by each room's percentages and then by Charm, so +10 a room was most of a late week. At +3 it's worth what a Rare is.
+- **Feng Shui paid for a view, and one Flower Bed gave every room around it one.** Three views asks for a spot: the woods, the water, or a garden, which makes the lot matter (playtest 2: terrain barely did).
+- **It's a House is the theme's card,** so it's the shelf's clearest build: every little house on the lot adds half a Charm, in the tally, every week. An Uncommon is seen in about half of runs, early enough to build for.
+- **A blueprint the bot can't see isn't weak.** Mood Lighting and Open Concept needed a visible payoff more than a bigger one, and the bot needed to plan one step.
+
+**Considered:**
+- **It's a House as a Rare with ×Mult** (×1 plus 0.2 per "-house" piece): Sparkle is the bigger moment, but a Rare is on a shelf in about a quarter of runs, mostly from the fourth shop, too late to build for.
+- **Paying per kind of "-house":** the draw holds three kinds, so the chase would stall at three until the shop sold a Henhouse or a Birdhouse.
+- **No cap:** a fourth Doghouse (one tile, built anywhere) would pay +0.5 Charm for breaking the tidy yard's +0.25.
+- **+0.25 and +0.35 a piece:** ×1.09 and ×1.25 on the old shelf, with 5.2 and 6.2 pieces built, against ×1.49 and 7.0 at +0.5 (the tuning seeds, `bp-0` to `bp-299`, as every figure in this list).
+- **Good Bones at +5 or +4:** ×1.75 and ×1.63 from the second shop, against ×1.52 at +3 and ×2.16 at +10.
+- **Feng Shui at 2+ views:** ×1.16 on the new shelf, but held in 84% of wins, and greedy's win rate goes to 59.5%. It's the one to switch to if 3 views plays as too stingy. One view at +25%: ×1.28 on the old shelf, where one view at +50% was ×1.48.
+- **Quiet Hours at +100%:** ×1.31 against ×1.25 at +75%, and held in 81% of wins.
+- **Green Thumb growing to +6:** ×1.35, more than a Common should be. Growth alone, to +4: ×1.14.
+- **Mood Lighting at +150%:** ×1.09, no better than +100%. Charm per Dark room at +0.25, +0.35 and +0.5: ×1.15, ×1.26 and ×1.48.
+- **Open Concept keeping its link beside the Entertainer's bonus:** ×1.33, but the two lines made its card too tall for a 1280×720 window (Buy fell below the fold). The bonus alone: ×1.25 at 50%, ×1.45 at "pays double".
+- **Curb Appeal:** the touching line at +25% and +50%: ×1.04 and ×1.07. +3 Comfort for each front-yard piece in place of the percentage: ×1.00.
+- **Trimming Country Living or Model Home:** left. One needs woods and the other fixtures, and neither is held in more than 21% of wins.
+- **Teaching the bot to plan an enclosed room or a front garden:** it builds one week at a time, so those stay a person's builds. Their figures here are floors.
+
+**Changes:** D-051 and implementation-plan.md Appendix B: ten blueprints' encodings. D-056: It's a House's +Mult is +0.5 a piece with a cap; the ×Mult list is unchanged. D-105: its "3 of a type" is also this build's cap. D-141: the value line gains "for each" (`perPiece`), and "None of its pieces touch yet" no longer shows (no blueprint links). The sim (§8, D-089): `--off-shelf`, and the shop bot's planning.
+**Known gaps:**
+- **Waterfront is still worth nothing to the bot** (×1.03) at any number: it doesn't site by water, and not every lot has any. It's a card for a lot, and D-145 is reworking the lot.
+- **The three Commons that boost rooms** (Feng Shui, Quiet Hours, Party House) are each held in 66–74% of wins, a little over the review's two-thirds, and each is worth little at the margin (×1.03 to ×1.09). They stand in for each other: they're what a first shop sells for 4 that works on rooms already built.
+- **One yard type stands 4+ times in 12% of wins** (was 6%). Not traced to one blueprint; Green Thumb and Curb Appeal are the likely ones, since a fourth Flower Bed can now earn more than the tidy yard's +0.25 Charm.
+- **Every figure is greedy's,** a bot that builds one week at a time. A build a person plans (three views, an enclosed room) is worth more to them than this says, and a blueprint's worth depends on the shop it's given at (all of these: the first).
+- **The Each week panel has no standing line for a blueprint's Charm:** It's a House shows in the tally's pop and in the Charm total, not as its own row.
+- **Greedy wins 56.0%** against 54.0%, inside the interval, and both above §8's 40–50%: D-146's re-fit takes it from here.
+- **Ahead of Schedule** reads ×1.02 because greedy never completes early (D-040), and wasn't touched.
+
 ### D-136 · The end screen's photos: a polaroid of the house at each milestone
 **Status:** Proposed · 2026-11-10, with M6's phase pull request (`phase/m6-end-photos`), the second half of M6's end screen (implementation-plan.md §7 M6). For the user's playtest before it merges. An exception to D-097 (its dated note).
 **Decision:**
@@ -1976,6 +2084,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - Waterfront says "No pieces touching the Pond or the Creek yet" even on a lot with neither.
 - A blueprint whose value is 0 in the first week but not later (Country Living beside a Sapling) leads with the run figure alone.
 - Valuing a blueprint tallies every week left twice. Three on a shelf took about 3 ms per state in a dev build (18 took 18 ms), and the rules keep each state's values.
+
+*Changed by D-143 (Proposed 2026-11-10):* a blueprint whose Mult counts pieces (It's a House, Mood Lighting, Model Home) also says what each one adds, "+47 Wow a week for each House piece", beside its gain or its "needs" line. No blueprint links any more, so "None of its pieces touch yet" no longer shows.
 
 ### D-139 · The company's record: bests, the next verdict, and a portfolio
 **Status:** Proposed · 2026-11-10, with its phase pull request (`phase/company-record`), from the friction and replayability review the user asked for the same day. The user picked it as the first step ("Yes, build it"). For the user's playtest before it merges. A first, power-free step toward D-015 and D-016, which stay Proposed.

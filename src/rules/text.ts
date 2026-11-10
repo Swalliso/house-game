@@ -132,7 +132,8 @@ export function selectorText(content: Content, sel: Selector, phrasing: Phrasing
   if ('touching' in sel) {
     const min = sel.min ?? 1;
     const what = selectorText(content, sel.touching, min === 1 ? 'one' : 'some');
-    return `${many ? 'pieces' : 'piece'} touching ${min === 1 ? article(what) : `${min} ${what}`}`;
+    // "Touching 3+ views": at least that many, worded as the checklist's "touch 2+ rooms".
+    return `${many ? 'pieces' : 'piece'} touching ${min === 1 ? article(what) : `${min}+ ${what}`}`;
   }
   if ('any' in sel)
     return joinWords(
@@ -762,7 +763,9 @@ export function modifierText(content: Content, mod: Modifier): string {
       const per = mod.per
         ? ` per ${selectorText(content, mod.per, 'one').replace(/\bneighbor\b/, 'piece')}`
         : '';
-      return `${mod.add < 0 ? '−' : '+'}${multNumber(Math.abs(mod.add))} ${CHARM}${per}`;
+      // "Of a type" is the tidy yard's wording for the same count.
+      const cap = mod.per && mod.maxEach !== undefined ? `, up to ${mod.maxEach} of a type` : '';
+      return `${mod.add < 0 ? '−' : '+'}${multNumber(Math.abs(mod.add))} ${CHARM}${per}${cap}`;
     }
     case 'xMult': {
       let amount = `×${multNumber(mod.times)} ${CHARM}`;
