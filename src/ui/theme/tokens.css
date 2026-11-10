@@ -44,6 +44,7 @@
   /* --- The score (D-019): a word and a hue per layer, never the hue alone ------------- */
   --comfort: #3d56d2; /* text 5.3:1 on --paper, 4.6:1 on --comfort-tint */
   --comfort-tint: #cce6ec;
+  --comfort-deep: #364cbb; /* Comfort's number on Charm's tint (a set it makes): 4.8:1 */
   --comfort-shade: #a4bbd5;
   --charm: #a82b52; /* text 5.8:1 on --paper */
   --charm-deep: #9e2b4f; /* Charm's number on its tint: 4.8:1 */
