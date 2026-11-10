@@ -1,0 +1,145 @@
+/* The company's portfolio (D-139; Portfolio.tsx): a wood sheet from the title screen, with the
+   best work as a grid and the houses as polaroids. Built on kit.css. */
+
+.sheet.portfolio {
+  width: min(calc(var(--px) * 380), 94vw);
+}
+.portfolio .sheet-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.portfolio-summary,
+.portfolio-note {
+  margin: 0;
+}
+.portfolio-note {
+  color: var(--ink-soft);
+}
+.portfolio-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* --- Best work: a client a row, a crew a column ------------------------------------------- */
+
+.portfolio-bests {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: var(--space-1);
+  table-layout: fixed;
+}
+.portfolio-bests th {
+  font-weight: 700;
+  line-height: var(--lh-tight);
+  text-align: left;
+  vertical-align: middle;
+}
+.portfolio-bests thead th {
+  padding: 0 var(--space-1);
+  color: var(--ink-soft);
+  text-align: center;
+  vertical-align: bottom;
+}
+.portfolio-bests tbody td {
+  height: calc(var(--lh-tight) * 2 + var(--space-2));
+  padding: var(--space-1);
+  background: var(--card);
+  box-shadow: inset 0 0 0 var(--px) var(--card-lo);
+  line-height: var(--lh-tight);
+  text-align: center;
+  vertical-align: middle;
+}
+.portfolio-bests td > span {
+  display: block;
+}
+/* A win is stamped gold, as the end screen's verdict is; a loss stays paper, with its word. */
+.portfolio-bests td.won {
+  background: var(--sparkle);
+  box-shadow:
+    inset 0 0 0 var(--px) var(--sparkle-deep),
+    inset 0 var(--px) 0 var(--px) var(--gold-hi);
+}
+.portfolio-bests td.won .verdict {
+  font-weight: 700;
+}
+.portfolio-bests td.lost,
+.portfolio-bests td.none {
+  color: var(--ink-soft);
+}
+.portfolio-bests td.none {
+  background: var(--paper-inset);
+}
+.portfolio-bests td.none .icon {
+  display: block;
+  margin: 0 auto;
+  opacity: 0.6;
+}
+
+/* --- The houses: polaroids, newest first -------------------------------------------------- */
+
+.portfolio-houses {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(calc(var(--px) * 80), 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0 0 var(--space-1);
+  list-style: none;
+}
+.portfolio-house {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-1);
+  background: var(--card-hi);
+  box-shadow:
+    inset 0 0 0 var(--px) var(--card-lo),
+    var(--shadow-card);
+}
+/* The photo, 4:3 as it was taken, downscaled smoothly (D-136's exception to D-097); a house
+   filed without one shows the house icon on the warm blank. */
+.portfolio-photo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: var(--paper-inset);
+  box-shadow: inset 0 0 0 var(--px) var(--card-lo);
+}
+.portfolio-photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.portfolio-photo .icon {
+  opacity: 0.5;
+}
+.portfolio-caption {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: var(--lh-tight);
+}
+.portfolio-caption .client {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.portfolio-caption .result {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.portfolio-caption .crew,
+.portfolio-house.lost .result {
+  color: var(--ink-soft);
+}
+
+/* --- The title's rider --------------------------------------------------------------------- */
+
+.title-screen .title-portfolio .plank-count {
+  margin-left: var(--space-1);
+}

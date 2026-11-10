@@ -48,6 +48,27 @@ export function verdictFor(b: Balance, score: number, won: boolean, targetPct = 
   return name;
 }
 
+/**
+ * The verdict above the one a won run's score has, and the score it starts at (D-139): the end
+ * screen's "next" line. Null at the top verdict, and for a run that wasn't won (a lost run is
+ * always the lowest).
+ */
+export function nextVerdictFor(
+  b: Balance,
+  score: number,
+  won: boolean,
+  targetPct = 100,
+): { name: string; score: number } | null {
+  if (!won) return null;
+  const last = phaseTarget(b, b.phases.length - 1, targetPct);
+  for (const v of b.verdicts) {
+    if (score * 100 < last * v.minPctOfTarget) {
+      return { name: v.name, score: Math.ceil((last * v.minPctOfTarget) / 100) };
+    }
+  }
+  return null;
+}
+
 /** A per-phase number from a list whose last entry repeats. */
 function perPhase(list: readonly number[], phase: number): number {
   return list[Math.min(phase, list.length - 1)] ?? 0;
