@@ -1240,11 +1240,150 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **Playtest 2:** the Treehouse's extra +2 plus its Kid bonus made clusters too strong (D-079). The other defaults held. It stays Proposed until D-079 is settled.
 **2026-11-06 (M4a):** the L-Fence and Long Driveway cards are gone: the Fence and the Driveway are packs (D-106). In M4a's sim (1,000 held-out greedy runs), the Hendersons place 1.2 Treehouses a run and they earn 1.9% of their Wow; 3+ Treehouses appear in 11–15% of wins across clients, against the review's 12–14%.
 
+### D-094 · Chain reactions
+**Status:** Accepted · 2026-11-10: option 1, for the jam. The user chose it when the juice pull request (`phase/juice`) asked, and that pull request builds it. Options 2 to 4 are Parked until after the jam, and the points under *To decide* stay open for them. The team asked for chain reactions on 2026-11-06, after the Combolands systems research (research.md, "Update: how Combolands' systems fit together, and chain reactions").
+**Decision:** option 1, in `src/ui/fx/chain.ts`, with no rule change:
+- The tally plays a week's pieces depth first along what boosts what. A piece boosts another when the other's breakdown has a line that adds to it and names it in `from`: a neighbor it counts, or an aura from next door. Penalties and modifiers don't count.
+- An arc runs from the booster to each piece it sets going, for that piece's step (`FEEL.chain`).
+- The placement preview draws the same arcs, dashed: from the pieces that would boost the play's piece, and from it to the pieces it would boost.
+- Every piece plays once and earns what it does today.
+**Finding:**
+- Since D-036, a week is one scoring pass and no effect triggers another. That keeps the preview equal to the tally and rules out loops, but it leaves out what reviewers single out in Combolands and what Balatro's retriggers do: one piece setting off another.
+- Every interaction today is one hop. Auras change what a neighbor earns, links count as adjacency, and sets pay as a group. The tally pops pieces in placement order, so a big week reads as a list rather than a chain.
+- Neighbor and aura lines already record the pieces and lot features they count (`BreakdownLine.from`); modifier lines name their source only in the label.
+
+**Idea (the team's):** chain reactions like Combolands' and Balatro's.
+**Options:**
+1. **Show the chains we already have.** No rule change. The tally plays pieces depth first along what boosts what: from each piece not yet played, in placement order, it plays the piece, then each piece that piece boosts that hasn't played yet. Each piece plays once, and options 2 and 3's extra activations play inside the same walk, right after their causes. The preview draws the same arcs.
+   - *Cost:* UI only, part of M5's tally work.
+   - *Limit:* it's feel and legibility; no piece earns more than it does today.
+2. **Extra activations ("Again!").** A piece can activate more than once a week, and each extra activation adds its earnings again. Earnings are still worked out once, in today's pass, so percentages and fixtures keep their shape.
+   - *Data:* one modifier kind, `retrigger { target, times }`: the target activates `times` more a week, and an extra activation doesn't retrigger again. It goes on fixtures (target `{ host: true }`), blueprints, crews, tools (`weekModifiers`), and, from M4, tastes and phase change orders. A set that sets off its members would need a `SetDef` field or an `inSet` selector. For example, a Doorbell fixture (its host activates again), a Bedtime Stories blueprint (Bedrooms that touch a Kid piece activate again), or a Block Party tool (every piece activates once more this week).
+   - *Bound:* at most 3 activations per piece per week, its own included (`maxActivations` in `balance.ts`). Every activation counts, a relay's that earns nothing included, and one past the cap is dropped, not deferred. Counts are per placed piece, and no piece is added or removed during a tally. The resolution throws past 3 × pieces activations, so a bug fails fast instead of hanging.
+   - *Cost:* small: the kind, its card text, the tally's "Again!" step, and tests.
+3. **Relays: activations that spread.** A relay passes activations on, as in "when this activates, each touching Social piece activates again." Each activation of a relay sets off each piece it reaches once, never itself, so a chain can run from A to B to C.
+   - *Order:* activations resolve depth first. Pieces take their turns in the tally's order (option 1); a turn is one activation, then the piece's retriggers. Each activation, as it plays, sets off the pieces its relays reach, in placement order, and each of those plays at once, with everything it sets off, before the next. A piece's own turn always comes, so its extra activations stop at 2.
+   - *Bound:* option 2's cap. Every activation uses one of a piece's 3, so the resolution always ends, and two relays that reach each other both stop at the cap.
+   - *Data:* an effect kind shaped like `aura`: `relay { match: Selector; scope: 'adjacent' | 'region'; every?: number }`, on pieces. A fixture carries one through `grantEffect { target: { host: true }, effect: relay }`, as Good Bones grants growth. A relay may earn nothing itself and only pass activations on. As with auras, `adjacent` means scoring neighbors, so a relay reaches rooms linked by a Hallway.
+   - *Examples:*
+     - a Butler's Pantry: when it activates, each touching Kitchen and Dining Room activates again
+     - Wind Chimes for a Patio: touching Social pieces activate again
+     - an Intercom fixture: touching rooms activate again
+     - an Irrigation line that sets off the touching Green pieces every 2 weeks
+     - a Rare blueprint with a setup, in D-056's style: ×(1 + 0.05 per extra activation that earns Points this week), up to ×2. `plusPer` would gain a week stat (`extraActivations`) and a `max`.
+   - *Cost:* the resolution, the kind, text, termination and preview tests, and the tally playing the chain. More than option 2, but the same activation machinery.
+4. **One-time ripples.** Events that spread once and can't repeat. A Sapling that grows into a Tree also grows each touching Sapling a week, so an orchard grows in a wave; a piece with a Salvage fixture pays budget when it's demolished.
+   - *Rules:* a ripple is a one-time event, not an activation, so it may move a timer or pay once. Ripples resolve at the start of the week, after every transform: a Sapling that a ripple pushes past its timer becomes a Tree the next week, so the wave moves one ring a week, and `pieceTimers()` counts the ripple.
+   - *Cost:* content, plus a small hook per event.
+
+**Shared rules for options 2 and 3:**
+- An extra activation repeats only the piece's own earnings, with every term in them: percentages, fixtures, rhythm and growth payouts (0 in a Pool's off week), and capped terms, so a `max` or `cap` holds per activation. Its auras on its neighbors apply once. Sets (at their Remodel Plans level), specs, +Mult, and ×Mult pay once a week, however often their pieces activate. Extra activations never pay budget and never move timers. A piece with an unmet `requires` doesn't activate or relay; one under `earnNothing` still activates and relays, and adds 0.
+- `PieceScore` keeps `earned` (one activation) and gains `activations` and `weekly` (earned × activations), so the UI never multiplies. Its lines gain one per extra activation, naming the cause. The preview lists a piece when its `weekly` changes, and the property test checks that. The tally, the tile's digit, and Crown Jewel use `weekly`: the top earner is the piece with the highest `weekly`, ties going to the earliest placed, and its +100% applies to that.
+- Each piece's activations, and so the week's total, come out the same in any order; the order only decides how the tally plays them, and the rules produce it. `preview()` runs the same resolution. A §9 property test checks the counts against a plain fixpoint, and that no piece passes the cap.
+- The `tally` event lists every activation in play order with its cause (a piece, or a modifier's source), so the UI only plays it. An extra activation takes a shorter step than a turn (`againStepMs`, about 0.2 s, in `feel.ts`), a piece's retriggers play as one step ("Again ×2"), a relay pulses even when it earns nothing, and the pitch ladder climbs along a chain. At the cap, a 40-piece week would then take about 18 s at 1×, against about 12 s now. Card text and the inspect panel show the cap, since D-036 rejected a hidden one.
+- Chain pieces in the base pool are complexity 3 (D-055). Fixtures have no complexity, and shop goods ignore it, so chain fixtures, blueprints, and tools are Uncommon or Rare (shop 1 offers Commons only), and drawn chain fixtures join a phase after the other fixtures (`fromPhase` 2).
+- *Sim:* report activations per week, chain length, the share of Points from extra activations, how often a piece hits the cap, and the largest per-piece multiplier. `estimatePlay` counts activations, which are local: the candidate's own, from the relays it would touch and the retriggers that match it; its neighbors', from the pass tally; and one more for each neighbor a new relay would reach, under the cap. A play whose value it still can't see (a relay through a Hallway link, or a second hop) gets a `chainHint` and is scored exactly with the other hints (D-089).
+
+**Recommendation:**
+- **Option 1 in M5, whatever else is chosen.** It's the cheapest way to make today's interactions read as chains.
+- **Options 2 and 3 together, as a small phase between M4a and M4b, or inside M4b,** so M4b's crews and change orders can use them and M5's juice is built around them. Start with 4–6 chain items, and ask in its playtest whether a chain felt like the player's own doing.
+- **Option 4** where it fits the theme, starting with the Sapling wave.
+- **If time runs short:** option 2 alone gives the "Again!" moment with the least rule work, and relays wait until after the jam.
+- Re-fit the targets afterward (D-044), since extra activations raise Points.
+
+**To decide:** which options, and where they land (inside M4b, a phase between M4a and M4b, or after the jam); the cap; whether budget ever chains; whether a relay passes on the activations it receives (this entry assumes it does).
+
+**Would change:**
+- D-036: a week can include extra activations, within a cap that card text and the inspect panel show.
+- D-037: a piece contributes its earnings times its activations: ×3 at most, on top of percentages that add, so a +300% piece at the cap with Crown Jewel would earn ×24 its points, the range D-037 was written to avoid. Crown Jewel picks by that weekly amount.
+- D-056: Points include extra activations; +Mult and ×Mult apply once a week; option 3's Rare blueprint would be a fourth ×Mult blueprint.
+- D-050's and D-051's item counts, and D-089's hints.
+- §4's scoring pipeline, API (`PieceScore`, `Preview.lines`, the `tally` event, Crown Jewel's step) and Performance; §5's effect and modifier kinds; §8's reports; §9's property tests; §12's tally; Appendix A (`maxActivations`, the ×Mult goods); and Appendix B (the new items).
+- D-053, §7, and jam-scope.md's build order, if chains get a phase of their own.
+- Check against D-093 (chain items shouldn't reward repeating a room type) and D-090 (under these rules, a fixture that pays budget each time its host fires would pay once a week).
+
+**2026-11-06 (D-097):** M5 is now split, and M5a, with the visual juice and its tally work, comes before M4. So the Recommendation's "M5" is M5a: option 1 would land in M5a's juice stage. Options 2 and 3 can no longer land in M4 and still have the juice built around them: they would either come before M5a's juice stage, or add their "Again!" steps and arcs to the tally when they land in M4.
+
+**2026-11-06 (systems review):** under the review's house rules, a house is paid to keep one Kitchen and at most two Living Rooms, and Renovate takes a repeated room card. So chain items needn't reward repeats, and a relay that reads Social would reward packing the shared rooms into a hub. Untested (`house-systems-review.md` §8).
+
+**2026-11-07 (D-097):** M5a's visual juice is now its own pull request after M4 (D-097's juice note), and M4 was built without chain reactions. So option 1 would land in that pull request, and options 2 and 3, if chosen, come after M4: before the juice pull request, so its tally is built around them, or with it.
+
+### D-096 · The tally's closing beats aren't auto-accelerated
+**Status:** Accepted · 2026-11-10, the user's yes, asked with the juice pull request (`phase/juice`). Proposed 2026-11-06 with the fix/ui-audit-bugs pull request (the UI and juice audit, item 9), as a change to a detail of §12's Timing, which D-059 approved with the plan.
+**Decision:** Auto-acceleration speeds up a tally's steps only: the triggers, the sets, and the ×Mult stamps. From the multiply moment on, the beats play at the chosen speed: the pause, the total's hold, the count-up, the target's ding, and the milestone's hold. Holding Space or the right button still fast-forwards them, and a click still skips.
+**Why:** The accelerator kept growing through those beats, so the longest weeks, usually the biggest, got the shortest payoff. A 25-trigger week at 1× is at about 2× by the multiply moment, so its 0.4 s pause took about 0.2 s. The steps are where a long week drags; the payoff is short at any length.
+**Changes:** `implementation-plan.md` §12, Timing. D-059 (Accepted) still holds: the tally speeds itself up.
+
 ---
 
 ## Proposed
 
-*Reserved numbers (2026-11-09): D-115 to D-118 are the layout session's drafts and D-122 the legibility session's; they aren't in this file yet. New entries start at D-124.*
+*Reserved numbers (2026-11-09): D-115 to D-118 are the layout session's drafts and D-122 the legibility session's; they aren't in this file yet. D-124 to D-127 are the juice pull request's, and D-128 to D-131 the sound pass's (M5b). New entries start at D-132.*
+
+### D-124 · The celebration ladder: four tiers, the pile, and the milestone moment
+**Status:** Proposed · 2026-11-09, with the juice pull request (`phase/juice`). It builds §12's celebration ladder, which D-059 approved with the plan; the numbers and the choices below are this pull request's, for the feel playtest.
+**Decision:**
+- **The tiers,** by the week's total against its pace (the `tally` event's `pace`), sorted by the UI (`fx/ladder.ts`): Normal under 2× pace, Good from 2×, Great from 5×, Huge from 25×, or a Great week that beats the best week this browser has seen.
+  - **Good:** the score panel lifts once, sparkles burst round Wow, "Good week!" on paper, a short chime (`tier-good`), and a pile of 3.
+  - **Great:** the panel pulses gold twice, "Great week!" on gold, a fountain of confetti and coins from Wow, a warm wash over the screen, `big-week`'s arpeggio as its sting, a 7 px shake, and a pile of 6.
+  - **Huge:** three gold pulses, a bigger fountain, the board leaning in to 1.04× and back over 1.6 s (a celebration tween, which CLAUDE.md allows), one soft white flash with Flashing on, the fanfare (`tier-huge`), the week's last trigger in slow motion (2.5× its step), and the pile built into a tower of 12.
+  - The week's total holds 250, 700 or 1,500 ms longer for Good, Great and Huge: a closing beat, at the chosen speed (D-096), that a click skips.
+- **A tier's first appearance plays in full** (§12): 0.9, 1.8 or 2.8 s of real time that a click doesn't cut short. After that a click skips it like any beat. The browser keeps which tiers it has seen and its best week, per channel, like the saves; they're UI records, not game state.
+- **The glow** starts at 1× pace at 0.3 and grows with I = log5(total ÷ pace), fully lit at I = 2 (25× pace). It lights the preview too.
+- **The pile:** the week's best earners (ties to the earliest placed) fly from the board into a stack beside the score panel, each as its own picture (PieceArt) in a small framed block, and fade after 1.5 s.
+- **The milestone moment:** when a week's count-up crosses the phase's target, its last 30% before the target slows to 0.5× with a drumroll (`drumroll`), and the target's sting and "Target reached!" land as it crosses, not after. The top bar's flag pops and stars burst from it. It stays under 2.4 s, and a click skips it.
+  - §12 zooms on "the piece that crosses the line". In our tally the run total only moves in the count-up, after the multiply moment, so no piece crosses it; the flag takes the zoom's place.
+- **For M5b:** the music swell, ducking under the jingles, and the soft pad are the sound pass's. The `celebration` signal carries the tier for them.
+
+**Why:** §12 and D-059: big moments should escalate the way Vampire Survivors' chests do, and everything else should stay calm. The thresholds are §12's.
+**Considered:**
+- **Huge's best-week clause** makes most Great weeks in a browser's first run Huge: totals grow through a run, so a Great week late in a run is nearly always the best yet. It's §12's rule as written. If the playtest finds Huge too common, drop the clause, or count the best only from earlier runs.
+- **A pile every week, Normal included** (§12 says bigger weeks stack higher): it would put 20 flying sprites in every week, so it starts at Good.
+
+**Changes:** `implementation-plan.md` §12, The celebration ladder (the milestone moment's flag). In `feel.ts`, M1's `bigWeekPace`, `glowPace`, `celebration` and `tally.bigHoldScale` are gone; `ladder`, `glow`, `pile` and `milestoneMoment` replace them. D-059 (Accepted) still holds.
+
+### D-125 · The reward moments, particles, and Flashing
+**Status:** Proposed · 2026-11-09, with the juice pull request. §7's distinct moments and M4's (`house-systems-review.md` §6), within D-059.
+**Decision:**
+- **Particles:** one canvas over the page, under the first-time hints and the modals, drawing bursts in whole UI pixels. The presets are in `feel.ts` (`particles.bursts`); their colors are tokens, and the coins, stars and hearts are the interface's own icons. None play with Reduce motion. At most 700 are in flight, and no burst outlives about 2.5 s.
+- **The moments,** each with a sound id of its own (a ZzFX placeholder for M5b to replace):
+  - **A set completing** for the first time: "*Set* complete!", a 1.5× beat, a chord (`set-complete`), a ring of Charm-colored bits, and a bigger shake.
+  - **A Rhythm payout** (the Pool's every third week): "Every 3rd week!" over the piece, a 1.6× step, a double knock (`rhythm`), and two rings spreading from it. The UI reads it from the piece's breakdown line, which a test pins.
+  - **A find:** dirt flies from its cell, then coins (budget) or glints (a tool), with a scoop and a ta-da (`find`).
+  - **Opening a crate:** the crate glows in its best option's rarity and shakes for 0.52 s, then bursts open with glints in that color, a creak and a pop (`crate-open`), and the options turn over after it.
+  - **A Rare in the shop:** its own bell (`rare`, where the sparkle played) and glints from its card as the sheet lands.
+  - **A client's wish met:** "★ *name*!", Charm's hearts rising from its checklist row, and a warm chime (`wish-met`).
+  - **A house rule met:** "✓ *name*" in blue (a new popup kind), sparkles from its row, and a crisp check (`rule-met`). One lost: its ✕, dust from its row, and a bonk (`rule-lost`). A wish lost keeps M4's.
+  - **A Renovation's level-up:** stars from the room as its badge pops, three notes up (`level-up`), and a bigger shake.
+  - **A change order's stamp:** a rubber-stamp thunk (`order-stamp`) and ink spattering where it lands.
+- **Flashing** (Settings, under Motion): on by default and saved. Off, the score panel's gold pulses become a lift and a Huge week's white flash is dropped; the warm wash stays, as a tint that fades. With it on, nothing flashes more than 3 times a second.
+- **Reduce motion** also stops the pile's flight, the Huge week's lean-in, the crate's shake and every particle. Its note in Settings says so.
+
+**Why:** §7 asks for each of these moments to read as its own, and playtest 4 found M4's moments forgettable (its §4). Restraint (Kao, 2020): the per-trigger beats keep their 2 px shake, and the bursts go to moments that happen a few times a run.
+**Changes:** `implementation-plan.md` §12, Settings and accessibility (what Flashing turns off).
+
+### D-126 · An arrival as a doorbell, the arrivals' marker, and the car that drives up
+**Status:** Proposed · 2026-11-09, with the juice pull request: playtest 4's asks (its §4 and §15 item 5).
+**Decision:**
+- **The doorbell:** a household member's arrival rings the front door: "Ding-dong!" on a plank at the house's front doormat (the house's south edge before there's a front door), two rings spreading from it, and a two-tone bell of its own (`doorbell`).
+- **Their card** slides in at the board's right edge, by the reserve their cards go to: the "Ding-dong!" plank rocking as the bell rings, their room's picture (the first card they bring), who's arrived, and what's waiting. It stays 3.4 s, and a click dismisses it. The first-time hints wait for it.
+  - It replaces the arrival's banner, which was the milestone's banner in a tan plank, so nothing about an arrival reads as a milestone. The banner's `note` tone is gone.
+- **The arrivals' marker on the progress bar:** the House after the meter's flag when someone moves in as this milestone is met; its tooltip says who, and the week. The meter is the phase's, so the whole schedule stays in the checklist's lines.
+- **The car** parks on the Driveway nearest the front door or a Garage that has room for it (by the distance from its tiles), so a drive extended toward the house gets it. Ties, and a house with neither, go to the oldest Driveway, as before. When a play moves it, its body and roof slide there together in 0.9 s; a new run or a load never slides.
+
+**Why:** the user asked for the doorbell and an arrival that doesn't read as a milestone. On the car the user said either way was fine; driving up makes a longer drive visible.
+**Changes:** D-103 (Accepted): its banner. `implementation-plan.md` §12 has no rule on either.
+
+### D-127 · The roof reveal at Roofing, and "Topped out!"
+**Status:** Proposed · 2026-11-09, with the juice pull request. §12's roof reveal, and the review's "Topped out!" (`house-systems-review.md` §6).
+**Decision:**
+- **The roof** is painted from the house model in LimeZu's palette, by fixed rules: a terracotta gable over each column of rooms (the south slope lit, the north in shade, a ridge cap between them), shingles offset like bricks, a fascia along the south eaves, eaves 3 art px past the walls, an ink outline, and a brick chimney on the first room. An L or a T gets a ridge per wing. It's a canvas in the board's `roof` layer, which D-097 reserved.
+- **At the Roofing milestone,** when it's met (on time, early or in overtime), the roof drops onto the house in 0.42 s, holds 1.8 s under the milestone's banner, and lifts off in 0.56 s, with a thump and a bell (`roof-on`). The tiles' digits and badges fade out while it's on. Reduce motion fades it in and out. A missed milestone gets no roof.
+- **"Topped out!":** the first week Under one roof holds in a run, a wood plaque with the flag rises over the top of the house for 1.7 s, with stars and a cheer (`topped-out`). The rules keep no history of the checklist, so the browser remembers the runs that have topped out (by seed, client and crew, the last 30), and a replay of the same run doesn't show it again.
+- The end screen's photo of the house at each milestone stays M6's.
+
+**Why:** §12's roof reveal, and the review's idea from its parked construction stages: a stamp when the roof goes on.
+**Changes:** none to settled decisions.
 
 ### D-123 · Playtest 5's re-fit: the targets and each client's factor
 **Status:** Proposed · 2026-11-09, before playtest 5. It's the one re-fit that D-114, D-119, D-120 and D-121 left until all of playtest 4's content changes were in (playtest 4's findings §12).
@@ -1724,12 +1863,6 @@ What's still short:
 
 **Changes:** D-050 (Accepted): adds where a fixture can't go; how it leaves is unchanged. `implementation-plan.md` §4's fixture rules and the note under Appendix B's fixtures table. Garden Lights' card still says "Fits any yard piece". The sim's bots choose hosts through the same check, so they no longer put fixtures in Saplings.
 
-### D-096 · The tally's closing beats aren't auto-accelerated
-**Status:** Proposed · 2026-11-06, with the fix/ui-audit-bugs pull request (the UI and juice audit, item 9). It changes a detail of §12's Timing, approved with the plan under D-059, so it waits on the team's yes.
-**Decision:** Auto-acceleration speeds up a tally's steps only: the triggers, the sets, and the ×Mult stamps. From the multiply moment on, the beats play at the chosen speed: the pause, the total's hold, the count-up, the target's ding, and the milestone's hold. Holding Space or the right button still fast-forwards them, and a click still skips.
-**Why:** The accelerator kept growing through those beats, so the longest weeks, usually the biggest, got the shortest payoff. A 25-trigger week at 1× is at about 2× by the multiply moment, so its 0.4 s pause took about 0.2 s. The steps are where a long week drags; the payoff is short at any length.
-**Changes:** `implementation-plan.md` §12, Timing. D-059 (Accepted) still holds: the tally speeds itself up.
-
 ### D-015 · Start small, grow into the corporation
 **Status:** Proposed
 The company starts as a two-person outfit with a pickup truck, and growing it is the meta-progression. Players name their company, and the name shows up next to shared scores.
@@ -1776,7 +1909,7 @@ Choose from two or three contracts, each one a client plus a lot.
 
 ## Open questions
 
-D-074 to D-080 came out of playtest 2 (M2, 2026-11-05), D-090 to D-093 out of playtest 3 (M3, 2026-11-06), and D-094 out of the Combolands systems research the same day. The team asked to hold off on changes until more of the game is in, so each one is Open until a later phase picks it up. On 2026-11-06 the team settled D-093 (now Accepted, with D-101 to D-105), D-074 (D-106), and D-092 (D-107) for M4.
+D-074 to D-080 came out of playtest 2 (M2, 2026-11-05), D-090 to D-093 out of playtest 3 (M3, 2026-11-06), and D-094 out of the Combolands systems research the same day. The team asked to hold off on changes until more of the game is in, so each one is Open until a later phase picks it up. On 2026-11-06 the team settled D-093 (now Accepted, with D-101 to D-105), D-074 (D-106), and D-092 (D-107) for M4. On 2026-11-10 the user chose D-094's option 1 for the jam (now Accepted; options 2 to 4 are Parked until after it).
 
 ### D-074 · Packs: Fences, Driveways, and Hallways that you shape
 **Status:** Decided · 2026-11-06: the team chose Fence and Driveway packs for M4a (D-106). Was Open, from playtest 2; the direction (a week may place more than one piece) was confirmed by the team.
@@ -1906,69 +2039,6 @@ New content is preferred over raising existing numbers.
 **To decide:** which of these. The numbers come from `preview()`, so the UI still never scores anything itself.
 **Would change:** D-087.
 **2026-11-06 (Combolands research):** Combolands previews a building's score before you place it, yet a reviewer still wanted to try placements before committing (Geekly Grind), and its players asked for a compendium after launch.
-
-### D-094 · Chain reactions
-**Status:** Open · 2026-11-06, the team's request after the Combolands systems research (research.md, "Update: how Combolands' systems fit together, and chain reactions"). The options and a recommendation are below, and the choice is the team's.
-**Finding:**
-- Since D-036, a week is one scoring pass and no effect triggers another. That keeps the preview equal to the tally and rules out loops, but it leaves out what reviewers single out in Combolands and what Balatro's retriggers do: one piece setting off another.
-- Every interaction today is one hop. Auras change what a neighbor earns, links count as adjacency, and sets pay as a group. The tally pops pieces in placement order, so a big week reads as a list rather than a chain.
-- Neighbor and aura lines already record the pieces and lot features they count (`BreakdownLine.from`); modifier lines name their source only in the label.
-
-**Idea (the team's):** chain reactions like Combolands' and Balatro's.
-**Options:**
-1. **Show the chains we already have.** No rule change. The tally plays pieces depth first along what boosts what: from each piece not yet played, in placement order, it plays the piece, then each piece that piece boosts that hasn't played yet. Each piece plays once, and options 2 and 3's extra activations play inside the same walk, right after their causes. The preview draws the same arcs.
-   - *Cost:* UI only, part of M5's tally work.
-   - *Limit:* it's feel and legibility; no piece earns more than it does today.
-2. **Extra activations ("Again!").** A piece can activate more than once a week, and each extra activation adds its earnings again. Earnings are still worked out once, in today's pass, so percentages and fixtures keep their shape.
-   - *Data:* one modifier kind, `retrigger { target, times }`: the target activates `times` more a week, and an extra activation doesn't retrigger again. It goes on fixtures (target `{ host: true }`), blueprints, crews, tools (`weekModifiers`), and, from M4, tastes and phase change orders. A set that sets off its members would need a `SetDef` field or an `inSet` selector. For example, a Doorbell fixture (its host activates again), a Bedtime Stories blueprint (Bedrooms that touch a Kid piece activate again), or a Block Party tool (every piece activates once more this week).
-   - *Bound:* at most 3 activations per piece per week, its own included (`maxActivations` in `balance.ts`). Every activation counts, a relay's that earns nothing included, and one past the cap is dropped, not deferred. Counts are per placed piece, and no piece is added or removed during a tally. The resolution throws past 3 × pieces activations, so a bug fails fast instead of hanging.
-   - *Cost:* small: the kind, its card text, the tally's "Again!" step, and tests.
-3. **Relays: activations that spread.** A relay passes activations on, as in "when this activates, each touching Social piece activates again." Each activation of a relay sets off each piece it reaches once, never itself, so a chain can run from A to B to C.
-   - *Order:* activations resolve depth first. Pieces take their turns in the tally's order (option 1); a turn is one activation, then the piece's retriggers. Each activation, as it plays, sets off the pieces its relays reach, in placement order, and each of those plays at once, with everything it sets off, before the next. A piece's own turn always comes, so its extra activations stop at 2.
-   - *Bound:* option 2's cap. Every activation uses one of a piece's 3, so the resolution always ends, and two relays that reach each other both stop at the cap.
-   - *Data:* an effect kind shaped like `aura`: `relay { match: Selector; scope: 'adjacent' | 'region'; every?: number }`, on pieces. A fixture carries one through `grantEffect { target: { host: true }, effect: relay }`, as Good Bones grants growth. A relay may earn nothing itself and only pass activations on. As with auras, `adjacent` means scoring neighbors, so a relay reaches rooms linked by a Hallway.
-   - *Examples:*
-     - a Butler's Pantry: when it activates, each touching Kitchen and Dining Room activates again
-     - Wind Chimes for a Patio: touching Social pieces activate again
-     - an Intercom fixture: touching rooms activate again
-     - an Irrigation line that sets off the touching Green pieces every 2 weeks
-     - a Rare blueprint with a setup, in D-056's style: ×(1 + 0.05 per extra activation that earns Points this week), up to ×2. `plusPer` would gain a week stat (`extraActivations`) and a `max`.
-   - *Cost:* the resolution, the kind, text, termination and preview tests, and the tally playing the chain. More than option 2, but the same activation machinery.
-4. **One-time ripples.** Events that spread once and can't repeat. A Sapling that grows into a Tree also grows each touching Sapling a week, so an orchard grows in a wave; a piece with a Salvage fixture pays budget when it's demolished.
-   - *Rules:* a ripple is a one-time event, not an activation, so it may move a timer or pay once. Ripples resolve at the start of the week, after every transform: a Sapling that a ripple pushes past its timer becomes a Tree the next week, so the wave moves one ring a week, and `pieceTimers()` counts the ripple.
-   - *Cost:* content, plus a small hook per event.
-
-**Shared rules for options 2 and 3:**
-- An extra activation repeats only the piece's own earnings, with every term in them: percentages, fixtures, rhythm and growth payouts (0 in a Pool's off week), and capped terms, so a `max` or `cap` holds per activation. Its auras on its neighbors apply once. Sets (at their Remodel Plans level), specs, +Mult, and ×Mult pay once a week, however often their pieces activate. Extra activations never pay budget and never move timers. A piece with an unmet `requires` doesn't activate or relay; one under `earnNothing` still activates and relays, and adds 0.
-- `PieceScore` keeps `earned` (one activation) and gains `activations` and `weekly` (earned × activations), so the UI never multiplies. Its lines gain one per extra activation, naming the cause. The preview lists a piece when its `weekly` changes, and the property test checks that. The tally, the tile's digit, and Crown Jewel use `weekly`: the top earner is the piece with the highest `weekly`, ties going to the earliest placed, and its +100% applies to that.
-- Each piece's activations, and so the week's total, come out the same in any order; the order only decides how the tally plays them, and the rules produce it. `preview()` runs the same resolution. A §9 property test checks the counts against a plain fixpoint, and that no piece passes the cap.
-- The `tally` event lists every activation in play order with its cause (a piece, or a modifier's source), so the UI only plays it. An extra activation takes a shorter step than a turn (`againStepMs`, about 0.2 s, in `feel.ts`), a piece's retriggers play as one step ("Again ×2"), a relay pulses even when it earns nothing, and the pitch ladder climbs along a chain. At the cap, a 40-piece week would then take about 18 s at 1×, against about 12 s now. Card text and the inspect panel show the cap, since D-036 rejected a hidden one.
-- Chain pieces in the base pool are complexity 3 (D-055). Fixtures have no complexity, and shop goods ignore it, so chain fixtures, blueprints, and tools are Uncommon or Rare (shop 1 offers Commons only), and drawn chain fixtures join a phase after the other fixtures (`fromPhase` 2).
-- *Sim:* report activations per week, chain length, the share of Points from extra activations, how often a piece hits the cap, and the largest per-piece multiplier. `estimatePlay` counts activations, which are local: the candidate's own, from the relays it would touch and the retriggers that match it; its neighbors', from the pass tally; and one more for each neighbor a new relay would reach, under the cap. A play whose value it still can't see (a relay through a Hallway link, or a second hop) gets a `chainHint` and is scored exactly with the other hints (D-089).
-
-**Recommendation:**
-- **Option 1 in M5, whatever else is chosen.** It's the cheapest way to make today's interactions read as chains.
-- **Options 2 and 3 together, as a small phase between M4a and M4b, or inside M4b,** so M4b's crews and change orders can use them and M5's juice is built around them. Start with 4–6 chain items, and ask in its playtest whether a chain felt like the player's own doing.
-- **Option 4** where it fits the theme, starting with the Sapling wave.
-- **If time runs short:** option 2 alone gives the "Again!" moment with the least rule work, and relays wait until after the jam.
-- Re-fit the targets afterward (D-044), since extra activations raise Points.
-
-**To decide:** which options, and where they land (inside M4b, a phase between M4a and M4b, or after the jam); the cap; whether budget ever chains; whether a relay passes on the activations it receives (this entry assumes it does).
-
-**Would change:**
-- D-036: a week can include extra activations, within a cap that card text and the inspect panel show.
-- D-037: a piece contributes its earnings times its activations: ×3 at most, on top of percentages that add, so a +300% piece at the cap with Crown Jewel would earn ×24 its points, the range D-037 was written to avoid. Crown Jewel picks by that weekly amount.
-- D-056: Points include extra activations; +Mult and ×Mult apply once a week; option 3's Rare blueprint would be a fourth ×Mult blueprint.
-- D-050's and D-051's item counts, and D-089's hints.
-- §4's scoring pipeline, API (`PieceScore`, `Preview.lines`, the `tally` event, Crown Jewel's step) and Performance; §5's effect and modifier kinds; §8's reports; §9's property tests; §12's tally; Appendix A (`maxActivations`, the ×Mult goods); and Appendix B (the new items).
-- D-053, §7, and jam-scope.md's build order, if chains get a phase of their own.
-- Check against D-093 (chain items shouldn't reward repeating a room type) and D-090 (under these rules, a fixture that pays budget each time its host fires would pay once a week).
-
-**2026-11-06 (D-097):** M5 is now split, and M5a, with the visual juice and its tally work, comes before M4. So the Recommendation's "M5" is M5a: option 1 would land in M5a's juice stage. Options 2 and 3 can no longer land in M4 and still have the juice built around them: they would either come before M5a's juice stage, or add their "Again!" steps and arcs to the tally when they land in M4.
-
-**2026-11-06 (systems review):** under the review's house rules, a house is paid to keep one Kitchen and at most two Living Rooms, and Renovate takes a repeated room card. So chain items needn't reward repeats, and a relay that reads Social would reward packing the shared rooms into a hub. Untested (`house-systems-review.md` §8).
-
-**2026-11-07 (D-097):** M5a's visual juice is now its own pull request after M4 (D-097's juice note), and M4 was built without chain reactions. So option 1 would land in that pull request, and options 2 and 3, if chosen, come after M4: before the juice pull request, so its tally is built around them, or with it.
 
 ### Earlier open questions
 

@@ -260,3 +260,15 @@
     display: none;
   }
 }
+/* The arrivals' marker (D-126): the House past the flag when someone moves in as this
+   milestone is met. */
+.tb-arrival {
+  align-self: center;
+  display: flex;
+  margin-left: var(--space-1);
+  padding: 0 var(--px);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--wood-hi);
+  background-clip: padding-box;
+}

@@ -10,7 +10,8 @@
 //   pieces read as one patch, and each stays countable (D-093's note).
 // - Items, the DOM sprites that wobble with their piece (like a room's furniture): a Patio's
 //   parasol, chairs and table (under the Pergola when it has one), the house's one parked car on
-//   its oldest Driveway with room for it, a Fence's pickets and posts, a Pool's ladder and float,
+//   the Driveway nearest the front door or a Garage with room for it (D-126; it slides there as
+//   the drive grows, HouseLayers.tsx), a Fence's pickets and posts, a Pool's ladder and float,
 //   the Hot Tub's bubbles, the Fire Pit's fire and stumps, planters, the Sapling, the outbuildings,
 //   the hens. Fixtures: the Sprinkler on its Lawn, the Pergola over its Patio, Garden Lights as
 //   two bollards with their glow; a fixture's badge shows only where a door keeps it off.
@@ -271,10 +272,25 @@ function build(
     if (p.fixture?.id === 'gardenLights') y.lights();
     return y.done();
   };
-  // The house's one parked car: on its oldest Driveway that has room for it off the doors.
+  // The house's one parked car (D-126): on the Driveway nearest the front door or a Garage that
+  // has room for it off the doors, so a drive that grows toward the house gets it (the board
+  // slides it there). Ties, and a house with neither, go to the oldest Driveway.
   let parked = 0;
   if (opts.car) {
-    const ways = house.pieces.filter((p) => isDriveway(p.defId)).sort((a, b) => a.uid - b.uid);
+    const goals = carGoals(house, m, occ.cells);
+    const near = (p: PlacedPiece) =>
+      goals.length === 0
+        ? 0
+        : Math.min(
+            ...occ.cells
+              .get(p.uid)!
+              .flatMap((c) => goals.map((g) => Math.abs(c.x - g.x) + Math.abs(c.y - g.y))),
+          );
+    const ways = house.pieces
+      .filter((p) => isDriveway(p.defId))
+      .map((p) => ({ p, d: near(p) }))
+      .sort((a, b) => a.d - b.d || a.p.uid - b.p.uid)
+      .map(({ p }) => p);
     parked = ways.find((p) => layOut(p, true).items.some((it) => isCar(it.sprite)))?.uid ?? 0;
   }
   for (const p of house.pieces) {
@@ -379,7 +395,41 @@ export function newPieceLook(house: HouseState, defId: PieceId): Look {
   return { color: colors(next).get(uid) ?? 0 };
 }
 
-const isCar = (sprite: Item['sprite']) => sprite.startsWith('car-');
+export const isCar = (sprite: Item['sprite']) => sprite.startsWith('car-');
+
+/**
+ * Where the house's car wants to park (D-126): by the front door's doormat, and at the house's
+ * Garages, in lot cells. None without a house model (a piece drawn alone).
+ */
+function carGoals(
+  house: HouseState,
+  m: HouseModel | null,
+  cells: ReadonlyMap<number, readonly Cell[]>,
+): Cell[] {
+  if (!m) return [];
+  const goals: Cell[] = [];
+  const front = m.exits.find((e) => e.kind === 'front');
+  if (front) {
+    goals.push({
+      x: Math.floor((front.mat.x + front.mat.w / 2) / CELL),
+      y: Math.floor((front.mat.y + front.mat.h / 2) / CELL),
+    });
+  }
+  for (const p of house.pieces) {
+    if ((CONTENT.pieces[p.defId].countsAs ?? p.defId) === 'garage')
+      goals.push(...(cells.get(p.uid) ?? []));
+  }
+  return goals;
+}
+
+/** The parked car's spot (its body's top-left, lot art px), or null with no car parked. */
+export function carSpot(yard: YardModel): { x: number; y: number } | null {
+  for (const l of yard.pieces.values()) {
+    const car = l.items.find((it) => isCar(it.sprite));
+    if (car) return { x: car.x, y: car.y };
+  }
+  return null;
+}
 
 interface YardCtx {
   own: (x: number, y: number) => boolean;

@@ -112,6 +112,7 @@ import {
   WallsLayer,
 } from './HouseLayers.tsx';
 import { layerVars } from './layers.ts';
+import { ChainArc, PreviewArcs, RoofLayer, ToppedOut } from './MomentLayers.tsx';
 import { wobble } from './piece-fx.ts';
 import { Outline, TerrainLayer, YardTint } from './TerrainLayer.tsx';
 import './board-m2.css';
@@ -389,6 +390,7 @@ export function Board() {
       const o = shakeOffsets(amount);
       if (!el || !o) return;
       const { full: a, half: h } = o;
+      // Added to a Huge week's lean-in, if one is playing, rather than replacing it.
       el.animate(
         [
           { transform: 'translate(0, 0)' },
@@ -397,8 +399,39 @@ export function Board() {
           { transform: `translate(${h}px, ${a}px)` },
           { transform: 'translate(0, 0)' },
         ],
-        { duration: FEEL.shake.decayMs, easing: 'ease-out' },
+        { duration: FEEL.shake.decayMs, easing: 'ease-out', composite: 'add' },
       );
+    };
+    // A Huge week (D-124): the board leans in on the middle of the view and back, a short
+    // celebration tween (the camera itself never zooms with a transform).
+    fxHooks.zoom = () => {
+      const el = boardRef.current;
+      const view = scrollRef.current;
+      if (!el || !view) return;
+      const b = el.getBoundingClientRect();
+      const v = view.getBoundingClientRect();
+      el.style.transformOrigin = `${v.left + v.width / 2 - b.left}px ${v.top + v.height / 2 - b.top}px`;
+      const z = FEEL.ladder.zoom;
+      el.animate(
+        [
+          { transform: 'scale(1)' },
+          { transform: `scale(${z.scale})`, offset: 0.35, easing: 'ease-in-out' },
+          { transform: 'scale(1)' },
+        ],
+        { duration: z.ms, easing: 'ease-out' },
+      );
+    };
+    // A lot cell's place in the viewport, for a burst; null when it's out of the board's view.
+    fxHooks.toScreen = (x: number, y: number) => {
+      const el = boardRef.current;
+      const view = scrollRef.current;
+      if (!el || !view) return null;
+      const b = el.getBoundingClientRect();
+      const v = view.getBoundingClientRect();
+      const cell = CELL * cameraScale.value;
+      const at = { x: b.left + x * cell, y: b.top + y * cell };
+      const inside = at.x >= v.left && at.x <= v.right && at.y >= v.top && at.y <= v.bottom;
+      return inside ? at : null;
     };
   }, []);
 
@@ -744,7 +777,10 @@ export function Board() {
           {wallsLayer}
           {overhangLayer}
           {highlightsLayer}
+          <ChainArc lot={lot} scale={scale} />
+          <RoofLayer lot={lot} scale={scale} model={model} />
           {labelsLayer}
+          <ToppedOut scale={scale} model={model} />
           {demolishing && <DemolishTarget scale={scale} />}
           {ghostCells && (
             <Ghost
@@ -760,6 +796,7 @@ export function Board() {
           {!demolishing && <RenovateHints scale={scale} />}
           {renovating && <RenovateTarget scale={scale} />}
           {tooling && <ToolTarget scale={scale} />}
+          {p?.legal && <PreviewArcs preview={p} occ={occ} lot={lot} scale={scale} />}
           {p?.legal && <Badges scale={scale} />}
           <PopupLayer scale={scale} />
         </div>

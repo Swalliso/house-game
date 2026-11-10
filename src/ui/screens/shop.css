@@ -570,3 +570,51 @@
     display: none;
   }
 }
+
+/* --- A crate opening (D-125): the crate glows in its best option's rarity and shakes, then
+   bursts open (ShopScreen.tsx CrateLid) as the options turn over behind it. --------------- */
+.crate-options {
+  position: relative;
+}
+.crate-lid {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+.crate-lid .icon {
+  transform: scale(4);
+  border-radius: 0;
+  box-shadow: 0 0 0 calc(var(--px) * 2) var(--lid-glow, transparent);
+  animation: lid-glow var(--lid-ms) ease-in both;
+}
+.crate-lid.rarity-uncommon {
+  --lid-glow: var(--glow-uncommon);
+}
+.crate-lid.rarity-rare {
+  --lid-glow: var(--glow-rare);
+}
+.crate-lid.shaking .icon {
+  animation:
+    lid-glow var(--lid-ms) ease-in both,
+    lid-shake 0.13s ease-in-out infinite;
+}
+@keyframes lid-glow {
+  from {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+@keyframes lid-shake {
+  0%,
+  100% {
+    transform: scale(4) rotate(0);
+  }
+  25% {
+    transform: scale(4) rotate(-4deg);
+  }
+  75% {
+    transform: scale(4) rotate(4deg);
+  }
+}

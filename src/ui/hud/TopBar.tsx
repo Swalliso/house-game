@@ -5,13 +5,14 @@
 // and the seed (M5a).
 
 import { signal } from '@preact/signals';
-import { CONTENT, rules, SCORE_LABELS } from '../../rules/index.ts';
-import { busy, shownRun, shownScore, skip } from '../fx/director.ts';
+import { CONTENT, rules, SCORE_LABELS, type RunState } from '../../rules/index.ts';
+import { busy, shownRun, shownScore, skip, targetHit } from '../fx/director.ts';
 import { formatNumber } from '../format.ts';
 import { Button, Icon, Switch } from '../kit/kit.tsx';
 import { completeEarly, earlyOffer, forecast, preview, run, setAutoComplete } from '../store.ts';
 import { howToPlayOpen, menuOpen, openSettings } from './actions.ts';
 import { BudgetCount } from './BudgetCount.tsx';
+import { arrivalWeek, isPlural, overtimeUsed, upcomingArrivals } from './household.ts';
 import { weekTicks } from './meter.ts';
 import { Tip } from './Tip.tsx';
 import './topbar.css';
@@ -106,6 +107,8 @@ function Progress() {
     `A rough guide, not a promise: this week's ${SCORE_LABELS.total} for each week left in ` +
     `${phase}.${placing ? ' It includes the piece you’re placing.' : ''}`;
   const ticks = weekTicks(s.phaseStartScore, rules.pace(s), target, CONTENT.balance.weeksPerPhase);
+  // The milestone moment's crossing pops the flag (D-124): keyed, so it plays once a crossing.
+  const hit = targetHit.value?.id ?? null;
   return (
     <div class="tb-progress" aria-label={`${SCORE_LABELS.total} ${score} of ${target}`}>
       <div class="tb-progress-line">
@@ -149,9 +152,33 @@ function Progress() {
             />
           )}
         </div>
-        <Icon name="flag" class="tb-flag" label={`Target: ${formatNumber(target)}`} />
+        <Icon
+          name="flag"
+          class={`tb-flag ${hit ? 'hit' : ''}`}
+          key={hit ?? 'flag'}
+          label={`Target: ${formatNumber(target)}`}
+        />
+        <NextArrival s={s} />
       </div>
     </div>
+  );
+}
+
+/**
+ * The arrivals' marker on the progress bar (D-126): past the target's flag, the House when a
+ * household member moves in as this milestone is met and the next one starts.
+ */
+function NextArrival({ s }: { s: RunState }) {
+  const next = upcomingArrivals(s).filter((a) => a.phase === s.phase + 1);
+  const first = next[0];
+  if (!first) return null;
+  const names = next.map((a) => a.name.charAt(0).toUpperCase() + a.name.slice(1)).join(' and ');
+  const verb = next.length > 1 || isPlural(first) ? 'move in' : 'moves in';
+  const when = `${rules.phaseName(first.phase)}, week ${arrivalWeek(first, overtimeUsed(s))}`;
+  return (
+    <span class="tb-arrival" title={`${names} ${verb} as this milestone is met (${when})`}>
+      <Icon name="House" label={`${names} ${verb} next`} />
+    </span>
   );
 }
 
