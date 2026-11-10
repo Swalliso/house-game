@@ -325,6 +325,7 @@ function preload(): void {
   if (preloading) return;
   preloading = true;
   for (const id of kitFiles()) prefetch(id).catch(() => {});
+  music.prefetchFirst();
 }
 
 async function decodeKit(c: AudioContext): Promise<void> {
@@ -374,12 +375,12 @@ function setVolumes(v: Volumes): void {
     music: clamp01(v.music, volumes.music),
     sfx: clamp01(v.sfx, volumes.sfx),
   };
+  music.setEnabled(volumes.music > 0);
   if (!ctx || !masterBus || !sfxBus || !musicBus) return;
   const t = ctx.currentTime;
   masterBus.gain.setTargetAtTime(taper(volumes.master) * OUTPUT_TRIM, t, VOLUME_SMOOTHING_S);
   sfxBus.gain.setTargetAtTime(taper(volumes.sfx), t, VOLUME_SMOOTHING_S);
   musicBus.gain.setTargetAtTime(taper(volumes.music) * MUSIC_TRIM, t, VOLUME_SMOOTHING_S);
-  music.setEnabled(volumes.music > 0);
 }
 
 function bufferFor(c: BaseAudioContext, id: SoundId): AudioBuffer {

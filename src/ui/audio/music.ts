@@ -217,6 +217,13 @@ function glide(to: number, seconds: number): void {
   }
 }
 
+/** Fetches the first track's bytes ahead of the first click, unless the music is off. */
+function prefetchFirst(): void {
+  if (!enabled || started) return;
+  const first = upcoming();
+  if (first) for (const id of first.stems) prefetch(id).catch(() => {});
+}
+
 /** Starts the music once audio is unlocked (audio.ts). */
 function start(): void {
   started = true;
@@ -299,6 +306,7 @@ function useTracks(list: readonly Track[]): void {
 /** The game's one music player. Its methods don't use `this`. */
 export const music = {
   attach,
+  prefetchFirst,
   start,
   setEnabled,
   setScene,
