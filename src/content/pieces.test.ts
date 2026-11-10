@@ -430,6 +430,7 @@ describe('indoor rooms', () => {
       'Earns nothing unless touching the street or a Driveway',
       '+5 every week',
       '+1 budget every 2nd week',
+      '+3 if touching the Old Shed',
     ]);
     const rows = emptyRows(6, 6);
     // On the street: the build week counts as the first, so it pays in weeks 2, 4 and 6.
@@ -1165,6 +1166,14 @@ describe('the Old Shed as a neighbor (D-145)', () => {
     expect(earned(shed, [['greenhouse', 5, 4]])).toEqual([0]);
   });
 
+  it('a workshop: a reached Garage beside it earns +3, an unreached one nothing', () => {
+    // The shed two rows up from the street, a Garage under it on the street: 5 + 3.
+    const lot = ['......', '......', 'SS....', 'SS....', '......', '......'];
+    expect(earned(lot, [['garage', 0, 4]])).toEqual([8]);
+    // Beside the shed but off the street, with no Driveway: its requirement comes first.
+    expect(tally(lot, [['garage', 2, 2]]).pieces[0]).toMatchObject({ earned: 0 });
+  });
+
   it('a garden corner: the Greenhouse, a Herb Garden, and the gardens it boosts', () => {
     // The Herb Garden under the shed: 2 tiles in the sun? No: the shed shades them (D-120), so
     // it earns its +2 for the shed alone, and the Greenhouse beside it makes that 3.
@@ -1214,7 +1223,7 @@ describe('the Old Shed as a neighbor (D-145)', () => {
 
 describe('the Porch (D-145)', () => {
   it('a 1×2 yard piece from Drywall, at half a card’s weight: touching rooms earn +25%', () => {
-    expectCard('porch', ['Touching rooms earn +25%']);
+    expectCard('porch', ['Touching rooms earn +25%', '+1 per touching room (up to 4)']);
     const def = CONTENT.pieces.porch;
     expect(def).toMatchObject({ category: 'yard', drawWeight: 5, fromPhase: 4, tags: ['Outdoor'] });
     expect(CONTENT.balance.phases[def.fromPhase]!.name).toBe('Drywall');
@@ -1223,14 +1232,26 @@ describe('the Porch (D-145)', () => {
 
   it('boosts every room it touches, and nothing else', () => {
     // Two Bedrooms side by side (4 each, Quiet neighbors), a Porch under both, a Flower Bed at
-    // the Porch's end: the Bedrooms earn 5, the Porch 0, and the bed its plain front-yard 3.
+    // the Porch's end: the Bedrooms earn 5, the Porch 1 a room, and the bed its plain
+    // front-yard 3.
     const t = tally(open, [
       ['bedroom', 0, 0],
       ['bedroom', 2, 0],
       ['porch', 1, 2],
       ['flowerBed', 3, 2],
     ]);
-    expect(t.pieces.map((p) => p.earned)).toEqual([5, 5, 0, 3]);
+    expect(t.pieces.map((p) => p.earned)).toEqual([5, 5, 2, 3]);
+    expect(t.pieces[2]!.lines).toEqual([
+      {
+        label: 'Touching 2 Bedrooms',
+        op: 'add',
+        value: 2,
+        from: [
+          { kind: 'piece', uid: 1 },
+          { kind: 'piece', uid: 2 },
+        ],
+      },
+    ]);
     expect(t.pieces[0]!.lines).toContainEqual({
       label: 'Porch next door',
       op: 'pct',

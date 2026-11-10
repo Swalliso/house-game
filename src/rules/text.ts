@@ -610,6 +610,35 @@ export function neighborName(content: Content, feature: FeatureId): string {
   return featureNoun(content, feature, false);
 }
 
+/** Does the selector name this lot feature, on its own or as one of several? */
+function namesFeature(sel: Selector, id: FeatureId): boolean {
+  if (sel === 'all') return false;
+  if ('feature' in sel)
+    return typeof sel.feature === 'string' ? sel.feature === id : sel.feature.includes(id);
+  if ('any' in sel) return sel.any.some((s) => namesFeature(s, id));
+  return false;
+}
+
+function paysBeside(e: Effect, id: FeatureId): boolean {
+  if (e.kind === 'conditional') return paysBeside(e.effect, id);
+  return e.kind === 'neighbor' && e.amount > 0 && namesFeature(e.match, id);
+}
+
+/**
+ * Who wants a lot feature beside them (D-145), for the tile's panel: the cards that pay for
+ * touching it by name, read from the content so the panel can't drift from the cards. "Lawns,
+ * Flower Beds, and Fire Pits earn more beside one." A feature that counts once (the Old Shed)
+ * reads "beside it". Null when no card names it. Shape variants and members' rooms are left
+ * out: the list is what a player will see in a hand or the shop.
+ */
+export function featureWantedText(content: Content, id: FeatureId): string | null {
+  const names = Object.values(content.pieces)
+    .filter((p) => !p.countsAs && !p.member && p.effects.some((e) => paysBeside(e, id)))
+    .map((p) => plural(p.name));
+  if (names.length === 0) return null;
+  return `${joinWords(names, 'and')} earn more beside ${content.features[id].body ? 'it' : 'one'}.`;
+}
+
 // ---------------------------------------------------------------------------------------
 // D-122: what a room card plugs into.
 
@@ -937,7 +966,10 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
       text:
         `Spent in the shop between milestones. You earn ${b.milestoneBudget} per milestone met, ` +
         `${earlyBudget} per week saved by completing early, from ${joinWords(economy, 'and')}, ` +
-        `${b.shop.skipReward} for leaving the shop without buying, and by selling (half price).`,
+        `${b.shop.skipReward} for leaving the shop without buying, and by selling (half price).` +
+        (b.leftoverBudgetWow > 0
+          ? ` What you still hold when the last milestone is met pays ${b.leftoverBudgetWow} ${L.total} each.`
+          : ''),
     },
     early: {
       title: 'Complete early',

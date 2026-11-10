@@ -1092,7 +1092,12 @@ function milestoneBanner(e: Extract<GameEvent, { t: 'milestone' }>, ended: boole
   const phases = CONTENT.balance.phases;
   const next = phases[e.phase + 1]?.name;
   const onTo = ended || !next ? 'It’s a house.' : `On to ${next}.`;
-  const reward = e.reward.budget > 0 ? ` +${e.reward.budget} budget.` : '';
+  // The last milestone's budget has no shop to go to: what's held pays Wow instead (D-145).
+  const left = e.reward.leftover;
+  const leftover = left
+    ? `${left.budget} budget left: +${formatNumber(left.score)} ${SCORE_LABELS.total}.`
+    : '';
+  const reward = left ? ` ${leftover}` : e.reward.budget > 0 ? ` +${e.reward.budget} budget.` : '';
   let ms: number;
   switch (e.result) {
     case 'onTime':
@@ -1102,7 +1107,9 @@ function milestoneBanner(e: Extract<GameEvent, { t: 'milestone' }>, ended: boole
       const weeks = `${e.weeksSaved} ${e.weeksSaved === 1 ? 'week' : 'weeks'}`;
       ms = showBanner(
         `${e.name} complete, ${weeks} early!`,
-        `+${formatNumber(e.reward.score)} ${SCORE_LABELS.total} early bonus, and +${e.reward.budget} budget. ${onTo}`,
+        left
+          ? `+${formatNumber(e.reward.score)} ${SCORE_LABELS.total} early bonus. ${leftover} ${onTo}`
+          : `+${formatNumber(e.reward.score)} ${SCORE_LABELS.total} early bonus, and +${e.reward.budget} budget. ${onTo}`,
         'good',
         FEEL.bannerMs * FEEL.longBannerScale,
       );

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Content, DrawRow, PlaceAction } from '../rules/index.ts';
-import { cardText, createRules, rules } from '../rules/index.ts';
+import { cardText, createRules, featureWantedText, glossary, rules } from '../rules/index.ts';
 import { drawWeights, rowOf } from '../rules/draw.ts';
 import { computeLayout } from '../rules/layout.ts';
 import { tallyHouse } from '../rules/scoring.ts';
@@ -103,6 +103,25 @@ describe('content', () => {
       'Final Walkthrough',
     ]);
     expect(Object.keys(CONTENT.crews)).toEqual(['generalContractor', 'landscaper', 'architect']);
+  });
+
+  it('pays 100 Wow for each budget left at the last milestone (D-145)', () => {
+    expect(CONTENT.balance.leftoverBudgetWow).toBe(100);
+    expect(glossary(CONTENT).budget.text).toContain(
+      'What you still hold when the last milestone is met pays 100 Wow each.',
+    );
+  });
+
+  it('says who wants a Boulder and the Old Shed beside them, from the cards (D-145)', () => {
+    expect(featureWantedText(CONTENT, 'boulder')).toBe(
+      'Lawns, Flower Beds, and Fire Pits earn more beside one.',
+    );
+    expect(featureWantedText(CONTENT, 'oldShed')).toBe(
+      'Garages, Herb Gardens, Greenhouses, and Henhouses earn more beside it.',
+    );
+    // A penalty isn't wanting: the Pool loses to Trees, and isn't in their list.
+    expect(featureWantedText(CONTENT, 'tree')).not.toContain('Pool');
+    expect(featureWantedText(CONTENT, 'timeCapsule')).toBeNull();
   });
 
   it('deals the week in two rows: Rooms, then Layout (D-121)', () => {

@@ -1902,6 +1902,7 @@ export {
   houseConditionText,
   houseRulesText,
   lotTraitText,
+  featureWantedText,
   modifierText,
   multNumber,
   regionText,

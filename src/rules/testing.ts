@@ -419,7 +419,10 @@ export const TEST_PIECES: Record<PieceId, PieceDef> = {
     tags: ['Outdoor'],
     drawWeight: 0,
     complexity: 2,
-    effects: [{ kind: 'aura', match: { property: 'room' }, scope: 'adjacent', pct: 25 }],
+    effects: [
+      { kind: 'aura', match: { property: 'room' }, scope: 'adjacent', pct: 25 },
+      { kind: 'neighbor', match: { property: 'room' }, amount: 1, max: 4 },
+    ],
   }),
   // Member rooms (M4b, D-103): weight 0, counting as Bedrooms, never drawn or sold. No test
   // client's household brings them unless a test gives it one (withHousehold).

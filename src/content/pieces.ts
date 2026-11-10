@@ -203,6 +203,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
       },
       { kind: 'steady', amount: 5 },
       { kind: 'economy', budget: 1, every: 2 }, // garage sales
+      SHED(3), // a workshop (D-145)
     ],
   },
   homeOffice: {
@@ -582,7 +583,9 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
   },
   // D-145: the late game's own piece, in the weekly draw from Drywall at half a card's weight.
   // It reads the finished house: every room it touches earns more, so the best spot is a notch
-  // between the rooms that earn most, and a Renovation or a fixture there pays again.
+  // between the rooms that earn most, and a Renovation or a fixture there pays again. The +1 a
+  // room is so it earns in its own name: a piece that only boosts others shows 0 in the tally
+  // and "Nothing yet" in Inspect, which read as broken in the browser pass.
   porch: {
     id: 'porch',
     name: 'Porch',
@@ -593,7 +596,10 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     drawWeight: 5,
     complexity: 2,
     fromPhase: 4,
-    effects: [{ kind: 'aura', match: { property: 'room' }, scope: 'adjacent', pct: 25 }],
+    effects: [
+      { kind: 'aura', match: { property: 'room' }, scope: 'adjacent', pct: 25 },
+      { kind: 'neighbor', match: { property: 'room' }, amount: 1, max: 4 },
+    ],
   },
 
   // ---------------------------------------------------------------------------------------

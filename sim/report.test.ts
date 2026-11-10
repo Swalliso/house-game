@@ -87,6 +87,7 @@ function run(seed: string, cleared: number, over: Partial<RunRecord> = {}): RunR
       budgetEarned: 0,
       budgetLeft: 0,
       finalReward: 0,
+      leftoverWow: 0,
       budgetAtLeave: [],
       heldAtEnd: [],
       bonusRerollsBought: 0,
@@ -406,7 +407,13 @@ describe('a real run’s record', () => {
     const { record } = simulateRun(rules, 'sim-3', POLICIES.greedy!, { probePhase: null });
     const pieceWow = Object.values(record.pieces).reduce((n, p) => n + p.wow, 0);
     expect(record.setWow).toBeGreaterThan(0);
-    expect(pieceWow + record.setWow).toBeCloseTo(record.finalScore, 6);
+    // The run was won, so its leftover budget paid Wow at the last milestone (D-145): the one
+    // part of the final score no tally made (greedy never completes early here).
+    expect(record.result).toBe('won');
+    expect(record.economy.leftoverWow).toBe(
+      record.economy.budgetLeft * CONTENT.balance.leftoverBudgetWow,
+    );
+    expect(pieceWow + record.setWow + record.economy.leftoverWow).toBeCloseTo(record.finalScore, 6);
   });
 });
 

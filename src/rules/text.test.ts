@@ -270,6 +270,7 @@ describe('set chips (D-122)', () => {
       'Earns nothing unless touching the street or a Driveway',
       '+5 every week',
       '+1 budget every 2nd week',
+      '+3 if touching the Old Shed', // D-145
     ]);
     expect(cardText(CONTENT, CONTENT.pieces.driveway).effects).toEqual([
       'Must be built touching the street or a Driveway',
