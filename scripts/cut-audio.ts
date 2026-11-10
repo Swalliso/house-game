@@ -13,7 +13,8 @@
 //   }
 //
 // Edits, in order: start (seconds into the file, default: the sound's onset, found where it
-// first reaches 3% of its peak, less 3 ms), length (seconds, default: to the end), a 3 ms fade
+// first reaches 3% of its peak, less 3 ms; for music, where it first passes −60 dBFS, and it
+// ends where it last does), length (seconds, default: to the end), a 3 ms fade
 // in and `fade` seconds faded out at the end, `lowpass` (Hz), mono unless `stereo`, and then
 // the level: `loudness` (an integrated loudness in LUFS, for music) or `peak` (dBFS, default
 // −1), never over −1 dBFS. Each cut is encoded twice: Ogg Vorbis (`quality`, default 3) and
@@ -385,10 +386,33 @@ export function loudnessOf(pcm: Pcm): number {
   return lufs(mean(gated));
 }
 
+/**
+ * Music keeps its quiet intro and tail: only near-silence (under −60 dBFS) is trimmed from
+ * either end. Returns [first frame, frames].
+ */
+export function audibleSpan(pcm: Pcm): [number, number] {
+  const n = pcm.channels[0]?.length ?? 0;
+  const floor = 10 ** (-60 / 20);
+  const loud = (i: number) => pcm.channels.some((c) => Math.abs(c[i]!) >= floor);
+  let first = 0;
+  while (first < n && !loud(first)) first++;
+  let last = n - 1;
+  while (last > first && !loud(last)) last--;
+  return [first, Math.max(0, last - first + 1)];
+}
+
 /** Applies a cut's edits to its decoded source. */
 export function editCut(source: Pcm, cut: AudioCut): Pcm {
-  const start = cut.start !== undefined ? Math.round(cut.start * source.rate) : onsetOf(source);
-  const total = source.channels[0]?.length ?? 0;
+  const music = cut.loudness !== undefined;
+  const [audible, audibleFrames] = audibleSpan(source);
+  const start =
+    cut.start !== undefined
+      ? Math.round(cut.start * source.rate)
+      : music
+        ? audible
+        : onsetOf(source);
+  const total =
+    music && cut.start === undefined ? audible + audibleFrames : (source.channels[0]?.length ?? 0);
   const frames = cut.length !== undefined ? Math.round(cut.length * source.rate) : total - start;
   let pcm = slice(source, start, Math.min(frames, total - start));
   if (!cut.stereo) pcm = toMono(pcm);
