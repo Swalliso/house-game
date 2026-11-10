@@ -152,8 +152,8 @@
     margin-left: var(--space-1);
   }
   /* Narrower padding and bullet, as a window under 1500 px wide has, so a line's first words
-     fit beside a room's thumbnail at 1600×900 ("+2 per touching / room (up to 4)", not
-     "+2 per / touching roo…"), and Renovate and a tag share a line at 1440×900. */
+     fit beside a room's thumbnail at 1600×900: "+2 per touching / room (up to 4)", not
+     "+2 per / touching roo…". */
   .hand-card {
     padding-inline: var(--space-2);
   }

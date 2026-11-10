@@ -1351,6 +1351,18 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 **2026-11-09 (D-123):** the re-fit is done, for this, D-114, D-119 and D-120 together. Greedy wins 48.0% on `--check` (it was 81.5%), and 44.0% on 2,000 held-out runs across the crews. Of those, the Landscaper with its third Layout card won 36.7%, against 48.5% and 46.6% for the other crews: inside §8's 15 points. Without the third card it won 38.8%, so the card isn't what holds it back.
 
+**2026-11-09 (the hand's fix, before playtest 5):** an audit of 19e0def found the compact cards hid what they pay, and a fourth card under the Pass bar at 1600×900.
+- **A compact card shows the line that says what it pays,** not its first (`handCardLines`, text.ts). That's the first line that earns points or budget, past a link ("Links the rooms it touches…"), a placement rule ("Must touch the house…", which the lot shows) or a change ("Becomes a Tree…"). A requirement that isn't about placement follows the pay, since without it the piece earns nothing: the Doghouse's "+1 every week in a fenced yard". A card with no line that pays shows its first. So the Hallways show "+2 per touching room (up to 4)" (D-114), and the Garage "+1 every week". A fixture still shows where it goes and its first effect, which is what it does (Makes it Sunny, Counts as 2 Bedrooms); its "Earns +25%" is in Inspect. `text.test.ts` checks every card's line and every drawable fixture's.
+- **Four cards fit above the Pass bar** at 1600×900 and 1440×900, at 1× and 2×, beside Your goods' plank, with Renovate on both rooms and every card swapped in. Before, the fourth card's bottom 62 px (2×) to 126 px (1×) sat under the bar at 1600×900.
+  - "Swapped in" is the reroll die as a badge on the card's corner, its words in its title and read out, instead of a chip: beside a narrow card's picture, it wrapped Renovate and the tags onto a second line.
+  - Empty rows in a card's grid add no gap, and a narrow card has the padding and bullet of a window under 1500 px wide, so "+2 per touching / room (up to 4)" fits beside a room's thumbnail at 1600×900.
+  - In the narrowest column (1440×900), the chips run across the card under the thumbnail.
+  - Cards sit 8 px apart, not 12, on a window under 1100 px tall (where Your goods folds), so a plain five-card hand fits at 1080p.
+  - At 1× on a window 900 px tall or less, a narrow card shows its shape's glyph instead of the whole picture, as a short window's cards do: there's no half-size thumbnail at 1× (D-097), and the whole picture made each card taller than four could be.
+- **Overflow shows:** when the bar hides part of any card's text (1280×720, five cards with chips, or the readable font, whose chips keep their words, at 1600×900 and 2×), the bar gets a shade and an "N more cards" tab that scrolls the column to its end.
+- The controls strip says "1–4 pick a card" (the hand's size; keys 1–9 pick), not "1 2 3", and Inspect calls a Hallway a Hallway, as its card does.
+- No play changes: the rules' `apply()` and the sim are untouched, and `--check` on D-123's targets gives its numbers (greedy wins 48.0%, clears milestones 1–3 in 97.5%).
+
 ### D-120 · The sun: a sunny face on every lot, and rooms that want it
 **Status:** Proposed · 2026-11-09, after playtest 4 (`docs/playtests/playtest-4-findings.md` §11) and the lot session's proposal (`docs/proposals/lot-creeks-and-sun.md` §4–§7). The user picked the proposal's package; this is its second part, after D-119. Built for playtest 5.
 **Decision:**
