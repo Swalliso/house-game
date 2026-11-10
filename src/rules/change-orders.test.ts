@@ -1,9 +1,10 @@
-// Change orders (M4b; implementation-plan.md §4–§5, Appendix A · M4b): the offer after
-// milestones 2, 4, and 6 (`changeOrderAfter`), drawn from `co/<milestone>` among the eligible
-// ones; Appendix A's skip rules; the answer; requests met or missed, restrictions kept or broken
-// (with the preview's warning), and phase effects for the next phase only; the debug panel's
-// forced offer; and run codes with answers. On TEST_CONTENT with seven two-week phases whose
-// targets are 0, so passing every week meets every milestone.
+// Change orders (M4b; implementation-plan.md §4–§5, Appendix A · M4b; D-144): the offer after
+// milestones 2, 4, and 6 (`changeOrderAfter`), two orders drawn from `co/<milestone>` among the
+// eligible ones; Appendix A's skip rules; the pick, and the order passed over going back in
+// the pool; requests met or missed, restrictions kept or broken (with the preview's warning),
+// and phase effects for the next phase only, with what each would do to the house as it
+// stands; the debug panel's forced offer; and run codes with picks. On TEST_CONTENT with seven
+// two-week phases whose targets are 0, so passing every week meets every milestone.
 
 import { describe, expect, it } from 'vitest';
 import type {
@@ -69,38 +70,40 @@ const ONLY_WFH = onlyGeneric(['workingFromHome']);
 const HEAT_WAVE = C.changeOrders.heatWave as Extract<ChangeOrderDef, { kind: 'phase' }>;
 
 /**
- * Plays on: a pass each week, leaving each shop (discarding a crate), and answering change
- * orders (`accept`, or true for a phase effect), until `stop` holds.
+ * Plays on: a pass each week, leaving each shop (discarding a crate), and picking the first
+ * change order of each offer, until `stop` holds.
  */
 function playUntil(
   r: Rules,
   s: RunState,
   stop: (s: RunState) => boolean,
-  accept = true,
   max = 300,
-): { state: RunState; events: GameEvent[] } {
+): { state: RunState; events: GameEvent[]; actions: Action[] } {
   const events: GameEvent[] = [];
+  const actions: Action[] = [];
   for (let k = 0; k < max && !stop(s); k++) {
     let a: Action;
     if (s.screen === 'build') a = { t: 'pass' };
     else if (s.screen === 'shop') a = s.offers?.pick ? { t: 'pick', i: -1 } : { t: 'leaveShop' };
-    else if (s.screen === 'changeOrder') {
-      const kind = r.content.changeOrders[s.offers!.changeOrder!.id].kind;
-      a = { t: 'answerChangeOrder', accept: kind === 'phase' || accept };
-    } else break;
+    else if (s.screen === 'changeOrder') a = { t: 'answerChangeOrder', i: 0 };
+    else break;
     const out = r.apply(s, a);
     events.push(...out.events);
+    actions.push(a);
     s = out.state;
   }
-  return { state: s, events };
+  return { state: s, events, actions };
 }
+
+/** The first change order of the offer, picked. */
+const PICK: Action = { t: 'answerChangeOrder', i: 0 };
 
 const offered = (events: readonly GameEvent[]) =>
   events.flatMap((e) => (e.t === 'changeOrderOffered' ? [e] : []));
 const ofType = <T extends GameEvent['t']>(events: readonly GameEvent[], t: T) =>
   events.filter((e): e is Extract<GameEvent, { t: T }> => e.t === t);
 
-/** A run on the 'changeOrder' screen after milestone 2, with this order offered. */
+/** A run on the 'changeOrder' screen after milestone 2, with its offer waiting. */
 function offeredAfter2(r: Rules, seed = 'co'): RunState {
   const { state } = playUntil(r, r.newRun(setup(seed)), (s) => s.screen === 'changeOrder');
   expect(state.screen).toBe('changeOrder');
@@ -149,13 +152,17 @@ describe('the offer', () => {
     const run = playUntil(lost, lost.newRun(setup('lost')), (s) => s.screen === 'lost');
     expect(run.state.screen).toBe('lost');
     expect(offered(run.events)).toEqual([]);
-    // Two generic orders (M4b's), three offers: the third milestone goes straight to the shop.
+    // Two generic orders (M4b's): both after milestone 2, the one passed over alone after
+    // milestone 4, and with none left the third milestone goes straight to the shop.
     const two = createRules(seven(onlyGeneric(['workingFromHome', 'heatWave'])));
     const plain = playUntil(two, two.newRun(setup('few')), (s) => s.screen === 'won');
-    expect(offered(plain.events).map((e) => e.phase)).toEqual([2, 4]);
+    expect(offered(plain.events).map((e) => [e.phase, e.options.length])).toEqual([
+      [2, 2],
+      [4, 1],
+    ]);
   });
 
-  it('is drawn evenly from co/<milestone> among the client’s own and the generic ones', () => {
+  it('is two orders, drawn evenly from co/<milestone> among the client’s own and the generic ones', () => {
     const content = seven(withClient({ changeOrders: ['thanksgiving', 'goldenRetriever'] }));
     const r = createRules(content);
     const ids: ChangeOrderId[] = ['thanksgiving', 'goldenRetriever', ...GENERIC];
@@ -166,54 +173,131 @@ describe('the offer', () => {
       'rainySeason',
       'hoaLetter',
     ]);
-    const seen = new Set<ChangeOrderId>();
+    const first = new Set<ChangeOrderId>();
+    const pairs = new Set<string>();
     for (let k = 0; k < 12; k++) {
       const seed = `draw-${k}`;
       const s = offeredAfter2(r, seed);
       expect(r.eligibleChangeOrders({ ...s, offers: undefined })).toEqual(ids);
-      const want = stream(seed, 'co/2').pick(ids);
-      expect(s.offers?.changeOrder).toEqual({ id: want, phase: 2 });
-      seen.add(want);
+      // One draw from the stream for each, the second among the ones left.
+      const rng = stream(seed, 'co/2');
+      const pool = [...ids];
+      const want = [0, 1].flatMap(() => pool.splice(rng.int(pool.length), 1));
+      expect(want[0]).not.toBe(want[1]);
+      expect(s.offers?.changeOrder).toEqual({ ids: want, phase: 2 });
+      // The orders on offer aren't eligible for another offer while they wait.
+      expect(r.eligibleChangeOrders(s)).toEqual(ids.filter((id) => !want.includes(id)));
+      first.add(want[0]!);
+      pairs.add(want.join('/'));
     }
     // The stream decides, so different seeds offer different orders.
-    expect(seen.size).toBeGreaterThan(1);
+    expect(first.size).toBeGreaterThan(2);
+    expect(pairs.size).toBeGreaterThan(6);
   });
 
-  it('never offers one twice in a run', () => {
+  it('never offers one picked before, and can offer one passed over again', () => {
     const r = createRules(seven(withClient({ changeOrders: ['thanksgiving', 'goldenRetriever'] })));
-    const { events } = playUntil(r, r.newRun(setup('twice')), (s) => s.screen === 'won');
-    const ids = offered(events).map((e) => e.id);
-    expect(new Set(ids).size).toBe(ids.length);
+    let again = 0;
+    for (let k = 0; k < 12; k++) {
+      const { events } = playUntil(r, r.newRun(setup(`again-${k}`)), (s) => s.screen === 'won');
+      const picked: ChangeOrderId[] = [];
+      const passed: ChangeOrderId[] = [];
+      for (const e of events) {
+        if (e.t === 'changeOrderOffered') {
+          const ids = e.options.map((o) => o.id);
+          expect(ids).toHaveLength(2);
+          expect(ids[0]).not.toBe(ids[1]);
+          for (const id of ids) expect(picked).not.toContain(id);
+          again += ids.filter((id) => passed.includes(id)).length;
+        } else if (e.t === 'changeOrderAnswered') {
+          picked.push(e.id);
+          passed.push(...e.passedOver);
+        }
+      }
+      expect(picked).toHaveLength(3);
+    }
+    expect(again).toBeGreaterThan(0);
   });
 
-  it('shows on its screen: the order, whether it can be declined, and a request’s progress', () => {
+  it('after milestone 6 both are phase effects, and two are always left (D-137, D-144)', () => {
+    // Four phase effects (the three generic ones and the client's): the worst case picks a
+    // phase effect after milestones 2 and 4, which leaves exactly two.
+    const r = createRules(seven(withClient({ changeOrders: ['thanksgiving', 'goldenRetriever'] })));
+    const kindOf = (id: ChangeOrderId) => r.content.changeOrders[id].kind;
+    let worst = 0;
+    for (let k = 0; k < 20; k++) {
+      let s = r.newRun(setup(`last-${k}`));
+      const picks: ChangeOrderId[] = [];
+      for (let n = 0; n < 300 && s.screen !== 'won'; n++) {
+        let a: Action;
+        if (s.screen === 'build') a = { t: 'pass' };
+        else if (s.screen === 'shop') a = { t: 'leaveShop' };
+        else {
+          // A phase effect whenever one is on offer.
+          const ids = s.offers!.changeOrder!.ids;
+          if (s.phase === 6) {
+            expect(ids.map(kindOf)).toEqual(['phase', 'phase']);
+            if (picks.every((id) => kindOf(id) === 'phase')) worst++;
+          }
+          const i = Math.max(
+            0,
+            ids.findIndex((id) => kindOf(id) === 'phase'),
+          );
+          picks.push(ids[i]!);
+          a = { t: 'answerChangeOrder', i };
+        }
+        s = r.apply(s, a).state;
+      }
+      expect(picks).toHaveLength(3);
+    }
+    expect(worst).toBeGreaterThan(0);
+  });
+
+  it('shows on its screen: each order, a request’s progress, and the pick as the only action', () => {
     const r = createRules(seven(ONLY_WFH));
     const s = offeredAfter2(r);
+    // Only one order is eligible here, so it's offered alone.
     expect(r.changeOrderOffer(s)).toEqual({
-      id: 'workingFromHome',
-      name: 'Working from home',
-      kind: 'request',
-      text: 'A new Home Office.',
-      terms: ['A new Home Office, by the next milestone', 'Met: +3 budget'],
-      reward: { budget: 3 },
+      options: [
+        {
+          id: 'workingFromHome',
+          name: 'Working from home',
+          kind: 'request',
+          text: 'A new Home Office.',
+          terms: ['A new Home Office, by the next milestone', 'Met: +3 budget'],
+          reward: { budget: 3 },
+          phase: 2,
+          met: false,
+          progress: [{ text: '0 new of 1', ok: false }],
+        },
+      ],
       phase: 2,
-      declinable: true,
-      met: false,
-      progress: [{ text: '0 new of 1', ok: false }],
+      forced: false,
     });
-    expect(r.legalActions(s)).toEqual([
-      { t: 'answerChangeOrder', accept: true },
-      { t: 'answerChangeOrder', accept: false },
-    ]);
-    // Only the answer, the auto-complete toggle, and cheats while it waits.
+    expect(r.legalActions(s)).toEqual([{ t: 'answerChangeOrder', i: 0 }]);
+    // Only the pick, the auto-complete toggle, and cheats while it waits.
     for (const a of [{ t: 'pass' }, { t: 'leaveShop' }, { t: 'reroll' }] as Action[]) {
       expect(() => r.apply(s, a)).toThrow(IllegalAction);
     }
     expect(r.apply(s, { t: 'setAutoComplete', on: true }).state.screen).toBe('changeOrder');
     expect(r.checkPlay(s, { t: 'place', from: 'hand', i: 0, x: 0, y: 0, rot: 0 }).reason).toBe(
-      'A change order is waiting for your answer.',
+      'A change order is waiting: pick one.',
     );
     expect(r.changeOrderOffer({ ...s, screen: 'build' })).toBeNull();
+  });
+
+  it('shows two orders to pick from, each a legal pick', () => {
+    const r = createRules(seven(onlyGeneric(['workingFromHome', 'heatWave'])));
+    const s = offeredAfter2(r);
+    const offer = r.changeOrderOffer(s)!;
+    expect(offer.options.map((o) => o.id).sort()).toEqual(['heatWave', 'workingFromHome']);
+    expect(offer.options.map((o) => o.id)).toEqual(s.offers?.changeOrder?.ids);
+    expect(r.legalActions(s)).toEqual([
+      { t: 'answerChangeOrder', i: 0 },
+      { t: 'answerChangeOrder', i: 1 },
+    ]);
+    // The view is computed once per state.
+    expect(r.changeOrderOffer(s)).toBe(offer);
   });
 });
 
@@ -288,15 +372,16 @@ describe('the skip rules (Appendix A · M4b)', () => {
 describe('answers', () => {
   const r = createRules(seven(ONLY_WFH));
 
-  it('accepting a request records it from the next phase’s first week, then opens the shop', () => {
+  it('picking a request records it from the next phase’s first week, then opens the shop', () => {
     const s = offeredAfter2(r);
-    const { state, events } = r.apply(s, { t: 'answerChangeOrder', accept: true });
+    const { state, events } = r.apply(s, PICK);
     expect(events.map((e) => e.t)).toEqual(['changeOrderAnswered', 'shopOpened']);
     expect(events[0]).toEqual({
       t: 'changeOrderAnswered',
       id: 'workingFromHome',
       kind: 'request',
-      accepted: true,
+      i: 0,
+      passedOver: [],
     });
     expect(state.screen).toBe('shop');
     expect(state.offers?.changeOrder).toBeUndefined();
@@ -304,52 +389,70 @@ describe('answers', () => {
       {
         id: 'workingFromHome',
         phase: 2,
-        answer: 'accepted',
         week: s.week,
         sinceUid: s.house.nextUid,
         demolished: 0,
+        passedOver: [],
       },
     ]);
     // A request is a temporary goal: the checklist doesn't change.
     expect(r.checklist(state).map((l) => l.id)).toEqual(r.checklist(s).map((l) => l.id));
   });
 
-  it('declining costs nothing, and it never resolves', () => {
-    const s = offeredAfter2(r);
-    const declined = r.apply(s, { t: 'answerChangeOrder', accept: false });
-    expect(declined.state.changeOrders[0]).toMatchObject({ answer: 'declined' });
-    expect(declined.state.budget).toBe(s.budget);
-    const on = playUntil(r, declined.state, (x) => x.milestones.length === 3);
-    expect(ofType(on.events, 'changeOrderResolved')).toEqual([]);
-    expect(r.activeChangeOrders(on.state)).toEqual([]);
+  it('the order passed over costs nothing, never runs, and goes back in the pool (D-144)', () => {
+    const two = createRules(seven(onlyGeneric(['workingFromHome', 'heatWave'])));
+    for (const i of [0, 1]) {
+      const s = offeredAfter2(two);
+      const [picked, other] =
+        i === 0 ? s.offers!.changeOrder!.ids : [...s.offers!.changeOrder!.ids].reverse();
+      const out = two.apply(s, { t: 'answerChangeOrder', i });
+      expect(ofType(out.events, 'changeOrderAnswered')).toEqual([
+        {
+          t: 'changeOrderAnswered',
+          id: picked,
+          kind: two.content.changeOrders[picked!].kind,
+          i,
+          passedOver: [other],
+        },
+      ]);
+      expect(out.state.changeOrders).toMatchObject([{ id: picked, passedOver: [other] }]);
+      expect(out.state.budget).toBe(s.budget);
+      // Only the one picked runs: a phase effect passed over changes nothing.
+      expect(two.activeChangeOrders(out.state).map((o) => o.id)).toEqual([picked]);
+      expect(out.state.timedEffects.map((e) => e.source)).toEqual(
+        picked === 'heatWave' ? ['heatWave'] : [],
+      );
+      // Only the one picked resolves at the milestone; the other is on the next offer, alone.
+      const on = playUntil(two, out.state, (x) => x.screen === 'changeOrder');
+      expect(ofType(on.events, 'changeOrderResolved').map((e) => e.id)).toEqual([picked]);
+      expect(on.state.offers?.changeOrder).toEqual({ ids: [other], phase: 4 });
+    }
   });
 
-  it('a phase effect can only be acknowledged', () => {
+  it('a phase effect picked runs as a timed effect through its phase', () => {
     const heat = createRules(seven(onlyGeneric(['heatWave'])));
     const s = offeredAfter2(heat);
-    expect(s.offers?.changeOrder?.id).toBe('heatWave');
-    expect(heat.changeOrderOffer(s)).toMatchObject({ kind: 'phase', declinable: false });
-    expect(heat.legalActions(s)).toEqual([{ t: 'answerChangeOrder', accept: true }]);
-    expect(() => heat.apply(s, { t: 'answerChangeOrder', accept: false })).toThrow(
-      'Heat wave can’t be declined: it’s coming either way.',
-    );
-    const { state, events } = heat.apply(s, { t: 'answerChangeOrder', accept: true });
-    expect(events[0]).toMatchObject({ t: 'changeOrderAnswered', accepted: true });
-    expect(state.changeOrders[0]).toMatchObject({ answer: 'acknowledged', phase: 2 });
+    expect(s.offers?.changeOrder?.ids).toEqual(['heatWave']);
+    expect(heat.changeOrderOffer(s)?.options).toMatchObject([{ kind: 'phase', houseGain: 0 }]);
+    expect(heat.legalActions(s)).toEqual([PICK]);
+    const { state, events } = heat.apply(s, PICK);
+    expect(events[0]).toMatchObject({ t: 'changeOrderAnswered', id: 'heatWave', kind: 'phase' });
+    expect(state.changeOrders[0]).toMatchObject({ id: 'heatWave', phase: 2 });
     expect(state.timedEffects).toEqual([
       { source: 'heatWave', until: { phase: 2 }, modifiers: HEAT_WAVE.modifiers },
     ]);
   });
 
-  it('a bad answer, or one with nothing to answer, throws', () => {
+  it('a bad pick, or one with nothing to pick from, throws', () => {
     const s = offeredAfter2(r);
-    expect(() => r.apply(s, { t: 'answerChangeOrder', accept: 'yes' } as never)).toThrow(
-      IllegalAction,
-    );
+    // One order on offer: there's no second, and an earlier build's accept isn't a pick.
+    for (const bad of [{ i: 1 }, { i: -1 }, { i: 0.5 }, { i: '0' }, { accept: true }, {}]) {
+      expect(() => r.apply(s, { t: 'answerChangeOrder', ...bad } as never)).toThrow(
+        'Pick one of the change orders on offer.',
+      );
+    }
     const build = r.newRun(setup('none'));
-    expect(() => r.apply(build, { t: 'answerChangeOrder', accept: true })).toThrow(
-      'There’s no change order to answer.',
-    );
+    expect(() => r.apply(build, PICK)).toThrow('There’s no change order to answer.');
   });
 });
 
@@ -357,13 +460,10 @@ describe('requests', () => {
   const r = createRules(seven(ONLY_WFH));
   const open = emptyRows(10, 10);
 
-  /** Accepts Working from home after milestone 2, on an empty 10 × 10 lot, and leaves the shop. */
+  /** Picks Working from home after milestone 2, on an empty 10 × 10 lot, and leaves the shop. */
   function accepted(seed = 'request'): RunState {
     const s = offeredAfter2(r, seed);
-    const shop = r.apply(
-      { ...s, house: houseFrom(C, open) },
-      { t: 'answerChangeOrder', accept: true },
-    );
+    const shop = r.apply({ ...s, house: houseFrom(C, open) }, PICK);
     return r.apply(shop.state, { t: 'leaveShop' }).state;
   }
 
@@ -412,7 +512,7 @@ describe('requests', () => {
     // A Home Office built before the offer doesn't count.
     const s = offeredAfter2(r);
     const before = houseFrom(C, open, [['homeOffice', 0, 0]]);
-    const shop = r.apply({ ...s, house: before }, { t: 'answerChangeOrder', accept: true });
+    const shop = r.apply({ ...s, house: before }, PICK);
     const end = playUntil(r, shop.state, (x) => x.milestones.length === 3);
     expect(ofType(end.events, 'changeOrderResolved')[0]).toMatchObject({ result: 'missed' });
   });
@@ -420,7 +520,7 @@ describe('requests', () => {
   it('Declutter counts the pieces demolished since it was accepted', () => {
     const jun = createRules(seven(onlyGeneric([], withClient({ changeOrders: ['declutter'] }))));
     const s = offeredAfter2(jun);
-    expect(s.offers?.changeOrder?.id).toBe('declutter');
+    expect(s.offers?.changeOrder?.ids).toEqual(['declutter']);
     const house = houseFrom(
       C,
       ['B.........', ...emptyRows(10, 9)],
@@ -429,7 +529,7 @@ describe('requests', () => {
         ['closet', 6, 4],
       ],
     );
-    const shop = jun.apply({ ...s, house }, { t: 'answerChangeOrder', accept: true });
+    const shop = jun.apply({ ...s, house }, PICK);
     let t = jun.apply(shop.state, { t: 'leaveShop' }).state;
     // A Boulder isn't a piece: it doesn't count.
     t = jun.apply(t, { t: 'demolish', x: 0, y: 0 }).state;
@@ -451,20 +551,18 @@ describe('restrictions', () => {
 
   function accepted(): RunState {
     const s = offeredAfter2(r);
-    expect(s.offers?.changeOrder?.id).toBe('bigDeadline');
-    expect(r.changeOrderOffer(s)).toMatchObject({
-      kind: 'restriction',
-      declinable: true,
-      reward: { budget: 4 },
-      terms: ['Place no Loud pieces until the next milestone', 'Kept: +4 budget'],
-    });
-    const shop = r.apply(
-      { ...s, house: houseFrom(C, open, [['bedroom', 4, 4]]) },
+    expect(s.offers?.changeOrder?.ids).toEqual(['bigDeadline']);
+    const options = r.changeOrderOffer(s)!.options;
+    expect(options).toMatchObject([
       {
-        t: 'answerChangeOrder',
-        accept: true,
+        kind: 'restriction',
+        reward: { budget: 4 },
+        terms: ['Place no Loud pieces until the next milestone', 'Kept: +4 budget'],
       },
-    );
+    ]);
+    // Only a phase effect changes what the house earns.
+    expect(options[0]).not.toHaveProperty('houseGain');
+    const shop = r.apply({ ...s, house: houseFrom(C, open, [['bedroom', 4, 4]]) }, PICK);
     return r.apply(shop.state, { t: 'leaveShop' }).state;
   }
 
@@ -521,11 +619,19 @@ describe('phase effects', () => {
       y === 6 ? `T${row.slice(1)}` : y === 5 ? `.TT${row.slice(3)}` : row,
     );
     const house = houseFrom(C, lot, [['bedroom', 1, 6]]); // touching the Tree
-    const before = r.currentTally({ ...s, screen: 'build', house }).pieces[0]!;
-    const shop = r.apply({ ...s, house }, { t: 'answerChangeOrder', accept: true });
+    const without = r.currentTally({ ...s, screen: 'build', house });
+    const before = without.pieces[0]!;
+    // D-144: its card says what it would do to this house: the week's total with it, less
+    // the same week's without.
+    const offer = r.changeOrderOffer({ ...s, house })!;
+    const shop = r.apply({ ...s, house }, PICK);
     const t = r.apply(shop.state, { t: 'leaveShop' }).state;
     const during = r.currentTally(t).pieces[0]!;
     expect(during.pct).toBe(before.pct + 100);
+    expect(r.currentTally(t).total).toBeGreaterThan(without.total);
+    expect(offer.options).toMatchObject([
+      { id: 'heatWave', houseGain: r.currentTally(t).total - without.total },
+    ]);
     // Its line says which of its three effects it is.
     expect(during.lines).toContainEqual({
       label: 'Heat wave (touching a Tree)',
@@ -547,11 +653,41 @@ describe('phase effects', () => {
     expect(r.currentTally(after.state).pieces[0]!.pct).toBe(before.pct);
   });
 
+  it('its card says a gain or a loss, and nothing for a house it doesn’t touch (D-144)', () => {
+    const r = createRules(seven(onlyGeneric(['heatWave', 'rainySeason'])));
+    const s = offeredAfter2(r);
+    const gains = (state: RunState) =>
+      Object.fromEntries(r.changeOrderOffer(state)!.options.map((o) => [o.id, o.houseGain]));
+    // An empty lot: neither changes anything yet.
+    expect(gains({ ...s, house: houseFrom(C, emptyRows(10, 10)) })).toEqual({
+      heatWave: 0,
+      rainySeason: 0,
+    });
+    // A Bedroom in the sun and a Herb Garden: Heat wave halves the Sunny room, and Rainy
+    // season doubles the Green piece.
+    const house = houseFrom(C, emptyRows(10, 10), [
+      ['bedroom', 4, 4],
+      ['herbGarden', 6, 4],
+    ]);
+    const at = { ...s, house };
+    const plain = r.currentTally({ ...at, screen: 'build' });
+    expect(plain.pieces.map((p) => p.earned > 0)).toEqual([true, true]);
+    const g = gains(at);
+    expect(g.heatWave).toBeLessThan(0);
+    expect(g.rainySeason).toBeGreaterThan(0);
+    // Each is the total the phase's first week would tally with it running, less today's.
+    for (const [i, id] of s.offers!.changeOrder!.ids.entries()) {
+      const shop = r.apply(at, { t: 'answerChangeOrder', i });
+      const week = r.apply(shop.state, { t: 'leaveShop' }).state;
+      expect(r.currentTally(week).total - plain.total, id).toBe(g[id]);
+    }
+  });
+
   it('a layout modifier (Eternal night) changes the layout while it runs', () => {
     const r = createRules(seven(onlyGeneric([], withClient({ changeOrders: ['eternalNight'] }))));
     const s = offeredAfter2(r);
     const house = houseFrom(C, emptyRows(10, 10), [['bedroom', 4, 4]]);
-    const shop = r.apply({ ...s, house }, { t: 'answerChangeOrder', accept: true });
+    const shop = r.apply({ ...s, house }, PICK);
     const t = r.apply(shop.state, { t: 'leaveShop' }).state;
     const uid = t.house.pieces[0]!.uid;
     expect(r.describePiece(t, uid)?.tags).toContain('Dark');
@@ -571,12 +707,7 @@ describe('phase effects', () => {
     ]);
     house = withFixture(house, 11, 'blackoutCurtains', 1);
     const before = { ...s, screen: 'build' as const, house };
-    const night = r.apply(
-      r.apply({ ...s, house }, { t: 'answerChangeOrder', accept: true }).state,
-      {
-        t: 'leaveShop',
-      },
-    ).state;
+    const night = r.apply(r.apply({ ...s, house }, PICK).state, { t: 'leaveShop' }).state;
     const sources = (state: RunState, uid: number) => r.describePiece(state, uid)!.tagSources;
     const ETERNAL = { kind: 'changeOrder', id: 'eternalNight' } as const;
     const CURTAINS = { kind: 'fixture', id: 'blackoutCurtains', uid: 11 } as const;
@@ -607,7 +738,7 @@ describe('phase effects', () => {
 
   it('a tool’s timed effect still ends with its week beside a phase effect', () => {
     const r = createRules(seven(onlyGeneric(['heatWave'])));
-    const shop = r.apply(offeredAfter2(r), { t: 'answerChangeOrder', accept: true });
+    const shop = r.apply(offeredAfter2(r), PICK);
     let t = r.apply(shop.state, { t: 'leaveShop' }).state;
     t = r.apply(t, { t: 'debug', op: 'giveGood', good: { kind: 'tool', id: 'rushOrder' } }).state;
     t = r.apply(t, { t: 'useTool', i: 0 }).state;
@@ -624,11 +755,21 @@ describe('forceChangeOrder (the ?debug panel)', () => {
     const s = r.newRun(setup('force'));
     const forced = r.apply(s, { t: 'debug', op: 'forceChangeOrder', id: 'bigDeadline' });
     expect(forced.events).toEqual([
-      { t: 'changeOrderOffered', id: 'bigDeadline', kind: 'restriction', phase: 0, forced: true },
+      {
+        t: 'changeOrderOffered',
+        options: [{ id: 'bigDeadline', kind: 'restriction' }],
+        phase: 0,
+        forced: true,
+      },
     ]);
     expect(forced.state).toMatchObject({ screen: 'changeOrder', debug: true });
-    expect(forced.state.offers?.changeOrder).toEqual({ id: 'bigDeadline', phase: 0, forced: true });
-    const back = r.apply(forced.state, { t: 'answerChangeOrder', accept: true });
+    expect(forced.state.offers?.changeOrder).toEqual({
+      ids: ['bigDeadline'],
+      phase: 0,
+      forced: true,
+    });
+    expect(r.changeOrderOffer(forced.state)).toMatchObject({ phase: 0, forced: true });
+    const back = r.apply(forced.state, PICK);
     expect(back.events.map((e) => e.t)).toEqual(['changeOrderAnswered']);
     expect(back.state.screen).toBe('build');
     expect(back.state.offers).toBeUndefined();
@@ -641,11 +782,48 @@ describe('forceChangeOrder (the ?debug panel)', () => {
     expect(ofType(end.events, 'changeOrderResolved')[0]).toMatchObject({ result: 'kept' });
   });
 
-  it('only from the build screen, and only a real order', () => {
+  it('offers two to pick from (D-144): the one picked runs, and the week goes on', () => {
+    const s = r.newRun(setup('force'));
+    const forced = r.apply(s, {
+      t: 'debug',
+      op: 'forceChangeOrder',
+      id: 'bigDeadline',
+      other: 'heatWave',
+    });
+    expect(forced.state.offers?.changeOrder).toEqual({
+      ids: ['bigDeadline', 'heatWave'],
+      phase: 0,
+      forced: true,
+    });
+    expect(r.changeOrderOffer(forced.state)!.options.map((o) => o.id)).toEqual([
+      'bigDeadline',
+      'heatWave',
+    ]);
+    const back = r.apply(forced.state, { t: 'answerChangeOrder', i: 1 });
+    expect(back.state.screen).toBe('build');
+    expect(back.state.changeOrders).toMatchObject([
+      { id: 'heatWave', passedOver: ['bigDeadline'] },
+    ]);
+    expect(back.state.timedEffects.map((e) => e.source)).toEqual(['heatWave']);
+    expect(back.state.hand).toEqual(s.hand);
+  });
+
+  it('only from the build screen, and only real orders, two different ones', () => {
     const s = r.newRun(setup('force'));
     expect(() =>
       r.apply(s, { t: 'debug', op: 'forceChangeOrder', id: 'nope' as ChangeOrderId }),
     ).toThrow('Unknown change order.');
+    expect(() =>
+      r.apply(s, {
+        t: 'debug',
+        op: 'forceChangeOrder',
+        id: 'heatWave',
+        other: 'nope' as ChangeOrderId,
+      }),
+    ).toThrow('Unknown change order.');
+    expect(() =>
+      r.apply(s, { t: 'debug', op: 'forceChangeOrder', id: 'heatWave', other: 'heatWave' }),
+    ).toThrow('Two different change orders, or one alone.');
     const shop = playUntil(r, s, (x) => x.screen === 'shop').state;
     expect(() => r.apply(shop, { t: 'debug', op: 'forceChangeOrder', id: 'heatWave' })).toThrow(
       'A change order is forced from the build screen.',
@@ -654,26 +832,38 @@ describe('forceChangeOrder (the ?debug panel)', () => {
 });
 
 describe('run codes', () => {
-  it('carry the answers and the debug ops, and replay exactly', () => {
+  it('carry the picks and the debug ops, and replay exactly', () => {
     const content = seven(withClient({ changeOrders: ['thanksgiving', 'bigDeadline'] }));
     const r = createRules(content);
-    const actions: Action[] = [{ t: 'debug', op: 'forceChangeOrder', id: 'heatWave' }];
-    let s = r.apply(r.newRun(setup('codes')), actions[0]!).state;
-    const answer: Action = { t: 'answerChangeOrder', accept: true };
-    actions.push(answer);
-    s = r.apply(s, answer).state;
+    // A forced order alone, then two forced side by side, the second picked.
+    const actions: Action[] = [
+      { t: 'debug', op: 'forceChangeOrder', id: 'heatWave' },
+      PICK,
+      { t: 'debug', op: 'forceChangeOrder', id: 'coldSnap', other: 'hoaLetter' },
+      { t: 'answerChangeOrder', i: 1 },
+    ];
+    let s = r.newRun(setup('codes'));
+    for (const a of actions) s = r.apply(s, a).state;
+    const picks: number[] = [];
     for (let k = 0; k < 120 && s.screen !== 'won'; k++) {
       const a: Action =
         s.screen === 'build'
           ? { t: 'pass' }
           : s.screen === 'shop'
             ? { t: 'leaveShop' }
-            : { t: 'answerChangeOrder', accept: k % 2 === 0 || r.legalActions(s).length === 1 };
+            : // The first order of one offer, the last of the next.
+              {
+                t: 'answerChangeOrder',
+                i: picks.length % 2 === 0 ? 0 : r.legalActions(s).length - 1,
+              };
+      if (a.t === 'answerChangeOrder') picks.push(a.i);
       actions.push(a);
       s = r.apply(s, a).state;
     }
     expect(s.screen).toBe('won');
-    expect(s.changeOrders.length).toBeGreaterThanOrEqual(3);
+    expect(picks).toEqual([0, 1, 0]);
+    expect(s.changeOrders.map((o) => o.id).slice(0, 2)).toEqual(['heatWave', 'hoaLetter']);
+    expect(s.changeOrders).toHaveLength(5);
     const code = encodeRunCode({
       build: 'test',
       contentHash: contentHash(content),
@@ -692,20 +882,50 @@ describe('run codes', () => {
     );
   });
 
-  it('refuse a malformed answer', () => {
-    const bad = encodeRunCode({
-      build: 'test',
-      contentHash: 'x',
-      setup: setup('bad'),
-      actions: [{ t: 'answerChangeOrder', accept: 'yes' } as never],
-    });
-    expect(decodeRunCode(bad).ok).toBe(false);
-    const debug = encodeRunCode({
-      build: 'test',
-      contentHash: 'x',
-      setup: setup('bad'),
-      actions: [{ t: 'debug', op: 'forceChangeOrder', id: 7 } as never],
-    });
-    expect(decodeRunCode(debug).ok).toBe(false);
+  it('refuse a malformed pick', () => {
+    const code = (action: unknown) =>
+      encodeRunCode({
+        build: 'test',
+        contentHash: 'x',
+        setup: setup('bad'),
+        actions: [action as never],
+      });
+    for (const bad of [
+      { t: 'answerChangeOrder', i: 'yes' },
+      { t: 'answerChangeOrder', i: 0.5 },
+      { t: 'answerChangeOrder', accept: 'yes' },
+      { t: 'answerChangeOrder' },
+      { t: 'debug', op: 'forceChangeOrder', id: 7 },
+      { t: 'debug', op: 'forceChangeOrder', id: 'heatWave', other: 7 },
+    ]) {
+      expect(decodeRunCode(code(bad)).ok, JSON.stringify(bad)).toBe(false);
+    }
+  });
+
+  it('load a code from before D-144 up to its first change order, where its answer stops', () => {
+    // An earlier build offered one order and answered it with `accept`. That isn't a pick, so
+    // the code decodes, replays to the offer, and stops there with the orders waiting: it never
+    // crashes, and the run can go on from the sheet.
+    const r = createRules(seven(withClient({ changeOrders: ['thanksgiving', 'bigDeadline'] })));
+    const before = playUntil(r, r.newRun(setup('old-code')), (x) => x.screen === 'changeOrder');
+    for (const accept of [true, false]) {
+      const old = encodeRunCode({
+        build: 'older',
+        contentHash: 'older',
+        setup: setup('old-code'),
+        actions: [
+          ...before.actions,
+          { t: 'answerChangeOrder', accept } as never,
+          { t: 'leaveShop' },
+        ],
+      });
+      const decoded = decodeRunCode(old);
+      if (!decoded.ok) throw new Error(decoded.error);
+      const replayed = r.replay(decoded.data.setup, decoded.data.actions);
+      expect(replayed.failedAt).toBe(before.actions.length);
+      expect(replayed.error).toBe('Pick one of the change orders on offer.');
+      expect(replayed.state).toStrictEqual(before.state);
+      expect(r.changeOrderOffer(replayed.state)?.options).toHaveLength(2);
+    }
   });
 });

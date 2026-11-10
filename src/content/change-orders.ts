@@ -1,15 +1,16 @@
 // Change orders (M4b; implementation-plan.md §5, Appendix B's clients and generic change
-// orders; D-011): one is offered after each of milestones 2, 4, and 6, from the client's own
-// (ClientDef.changeOrders) and the generic ones, and runs through the next phase.
-// - Requests: accept or decline, no penalty; met at the next milestone → the reward. "New"
-//   (countNew) means placed since it was accepted. Requests never change the checklist.
-// - Restrictions: accept or decline; placing a piece they forbid breaks them; kept to the next
-//   milestone → the reward.
-// - Phase effects: announced, then their modifiers apply for the next phase. After milestone 6
-//   only these are offered, so every client has four (D-137): the three generic ones and one
-//   of its own (the Barkers', Juniper's, and Dale's came with D-137). Milestones 2 and 4 use up
-//   at most two. Each pays something and costs something, as Heat wave does, so the player has
-//   a reason to build differently for a phase.
+// orders; D-011): two are offered after each of milestones 2, 4, and 6, from the client's own
+// (ClientDef.changeOrders) and the generic ones, and the player picks one (D-144), which runs
+// through the next phase. The one passed over goes back in the pool.
+// - Requests: met at the next milestone → the reward; missed, no penalty. "New" (countNew)
+//   means placed since it was picked. Requests never change the checklist.
+// - Restrictions: placing a piece they forbid breaks them; kept to the next milestone → the
+//   reward.
+// - Phase effects: their modifiers apply for the next phase. After milestone 6 only these are
+//   offered, two of them, so every client has four (D-137): the three generic ones and one of
+//   its own (the Barkers', Juniper's, and Dale's came with D-137). The picks after milestones
+//   2 and 4 use up at most two, so two are always left. Each pays something and costs
+//   something, as Heat wave does, so picking between two is a trade.
 //
 // Rewards are budget, sized to the effort, here in the defs (placeholders for the sim and
 // playtest 4): 3 for one ordinary new piece; 4 for a piece that needs a spot (a Patio with a

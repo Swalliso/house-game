@@ -143,26 +143,23 @@ describe('the F hint', () => {
 });
 
 describe("the strip's keys for M4's plays", () => {
-  it("offers a change order's keys, and no F, which does nothing on its sheet", () => {
+  it("offers the change orders' keys, and no F, which does nothing on their sheet", () => {
     run.value = {
       ...start,
       screen: 'changeOrder',
-      offers: { changeOrder: { id: 'workingFromHome', phase: 0 } },
+      offers: { changeOrder: { ids: ['workingFromHome', 'heatWave'], phase: 0 } },
     };
-    expect(strip()).toEqual([
-      { keys: ['Enter'], words: 'accept' },
-      { keys: ['Esc', 'D'], words: 'decline: it costs nothing' },
-    ]);
+    expect(strip()).toEqual([{ keys: ['1', '2'], words: 'pick one' }]);
     expect(fHint()).toBeNull();
   });
 
-  it('only offers Enter on a phase effect, which can’t be declined', () => {
+  it('offers Enter on an order offered alone (D-144)', () => {
     run.value = {
       ...start,
       screen: 'changeOrder',
-      offers: { changeOrder: { id: 'heatWave', phase: 0 } },
+      offers: { changeOrder: { ids: ['heatWave'], phase: 0 } },
     };
-    expect(strip()).toEqual([{ keys: ['Enter'], words: 'got it' }]);
+    expect(strip()).toEqual([{ keys: ['Enter'], words: 'accept' }]);
   });
 
   it('leaves R out for a pack, which is clicked out a tile at a time', () => {

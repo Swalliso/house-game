@@ -286,7 +286,7 @@ describe('a real Hendersons run', () => {
     for (let k = 0; k < 400 && s.week <= 17 && s.screen !== 'lost' && s.screen !== 'won'; k++) {
       let a: Action;
       if (s.screen === 'shop') a = s.offers?.pick ? { t: 'pick', i: -1 } : { t: 'leaveShop' };
-      else if (s.screen === 'changeOrder') a = { t: 'answerChangeOrder', accept: true };
+      else if (s.screen === 'changeOrder') a = { t: 'answerChangeOrder', i: 0 };
       else if (s.score < rules.target(s))
         a = { t: 'debug', op: 'addScore', amount: rules.target(s) };
       else a = { t: 'pass' };

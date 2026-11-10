@@ -247,23 +247,24 @@ describe('who can be offered what', () => {
     }
   });
 
-  it('always leaves a phase effect for the last phase, whatever milestones 2 and 4 offered (D-137)', () => {
-    // Only phase effects come after milestone 6. Each client has at least three, so two offered
-    // before it still leave one.
+  it('always leaves two phase effects for the last phase, whatever milestones 2 and 4 picked (D-137, D-144)', () => {
+    // Only phase effects come after milestone 6, two of them to pick from. Each client has
+    // four, and the picks after milestones 2 and 4 use up two at most (one passed over goes
+    // back in the pool), so two are always left.
     const record = (id: ChangeOrderId, phase: number): ChangeOrderRecord => ({
       id,
       phase,
-      answer: ORDERS[id].kind === 'phase' ? 'acknowledged' : 'accepted',
       week: 1,
       sinceUid: 1,
       demolished: 0,
+      passedOver: [],
     });
     for (const client of CLIENT_IDS) {
       const s = { ...atFraming(client), phase: 6 };
       const phases = [...CONTENT.clients[client].changeOrders, ...GENERIC].filter(
         (id) => ORDERS[id].kind === 'phase',
       );
-      expect(phases.length, client).toBeGreaterThanOrEqual(3);
+      expect(phases.length, client).toBeGreaterThanOrEqual(4);
       expect(rules.eligibleChangeOrders(s), client).toEqual(phases);
       for (const a of phases) {
         for (const b of phases) {
@@ -272,7 +273,7 @@ describe('who can be offered what', () => {
             ...s,
             changeOrders: [record(a, 2), record(b, 4)],
           });
-          expect(left.length, `${client}: ${a}, then ${b}`).toBeGreaterThan(0);
+          expect(left.length, `${client}: ${a}, then ${b}`).toBeGreaterThanOrEqual(2);
         }
       }
     }
@@ -399,7 +400,7 @@ describe('what D-137’s orders do', () => {
       { ...start, house },
       { t: 'debug', op: 'forceChangeOrder', id: 'hoaLetter' },
     );
-    let s = rules.apply(forced.state, { t: 'answerChangeOrder', accept: true }).state;
+    let s = rules.apply(forced.state, { t: 'answerChangeOrder', i: 0 }).state;
     s = rules.apply(s, { t: 'debug', op: 'giveCard', id: 'lawn' }).state;
     const i = s.hand.length - 1;
     const at = (x: number, y: number) =>

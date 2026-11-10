@@ -497,10 +497,11 @@ class Checker {
   /** M4b: the change-order queries agree with the screen, the state, and apply(). */
   checkOrderQueries(s: RunState, legal: readonly Action[]) {
     const offer = rules.changeOrderOffer(s);
+    const ids = offer?.options.map((o) => o.id);
     if ((offer !== null) !== (s.screen === 'changeOrder')) {
-      this.fail('changeOrderOffer disagrees with the screen', { offer: offer?.id });
+      this.fail('changeOrderOffer disagrees with the screen', { offer: ids });
     }
-    const running = s.changeOrders.filter((r) => r.result === undefined && r.answer !== 'declined');
+    const running = s.changeOrders.filter((r) => r.result === undefined);
     const active = rules.activeChangeOrders(s);
     if (J(active.map((v) => v.id)) !== J(running.map((r) => r.id))) {
       this.fail(
@@ -511,15 +512,27 @@ class Checker {
     if (active.length > 0) this.see('check:activeChangeOrders');
     if (!offer) return;
     this.see('check:changeOrderOffer');
-    const declines = legal.some((a) => a.t === 'answerChangeOrder' && !a.accept);
-    const declined = accepts(s, { t: 'answerChangeOrder', accept: false });
-    if (declines !== offer.declinable || declined !== offer.declinable) {
-      this.fail('the offer, legalActions, and apply disagree on declining', {
-        id: offer.id,
-        declines,
-        declined,
-      });
+    // D-144: one or two different orders, each one a legal pick and nothing else; a phase
+    // effect says what it would do to the house, and only a phase effect does.
+    const picks = legal.flatMap((a) => (a.t === 'answerChangeOrder' ? [a.i] : []));
+    const count = offer.options.length;
+    if (
+      count < 1 ||
+      count > 2 ||
+      new Set(ids).size !== count ||
+      J(ids) !== J(s.offers?.changeOrder?.ids) ||
+      J(picks) !== J(offer.options.map((_, i) => i)) ||
+      offer.options.some((_, i) => accepts(s, { t: 'answerChangeOrder', i }) !== true) ||
+      accepts(s, { t: 'answerChangeOrder', i: count }) !== false
+    ) {
+      this.fail('the offer, legalActions, and apply disagree on the picks', { ids, picks });
     }
+    for (const o of offer.options) {
+      if ((o.kind === 'phase') !== Number.isInteger(o.houseGain)) {
+        this.fail('a house gain on the wrong kind of order, or none on a phase effect', o);
+      }
+    }
+    if (count === 2) this.see('check:changeOrderPair');
   }
 
   checkShopQueries(s: RunState) {
@@ -581,12 +594,17 @@ class Checker {
       { t: 'debug', op: 'teleport' },
       { t: 'nonsense' },
       // M4b.
-      { t: 'answerChangeOrder', accept: 'yes' },
+      { t: 'answerChangeOrder', accept: true },
+      { t: 'answerChangeOrder', i: 'first' },
+      { t: 'answerChangeOrder', i: -1 },
+      { t: 'answerChangeOrder', i: 0.5 },
       { t: 'debug', op: 'forceChangeOrder', id: 'nope' },
+      { t: 'debug', op: 'forceChangeOrder', id: 'heatWave', other: 'nope' },
+      { t: 'debug', op: 'forceChangeOrder', id: 'heatWave', other: 'heatWave' },
       { t: 'debug', op: 'forceArrival', id: 'nobody' },
       ...(s.screen === 'changeOrder'
         ? [{ t: 'leaveShop' }, { t: 'buy', i: 0 }, { t: 'sell', from: 'supplies', i: 0 }]
-        : [{ t: 'answerChangeOrder', accept: true }]),
+        : [{ t: 'answerChangeOrder', i: 0 }]),
       ...(strikeAt >= 0 ? [{ t: 'buy', i: strikeAt, strike: { kind: 'piece', id: 'nope' } }] : []),
       // The wrong screen.
       ...(isBuild(s)
@@ -762,7 +780,7 @@ class Checker {
       if (s.reserve[a.i]?.arrival) this.see('place:arrival');
       if (s.reserve[a.i]?.crew) this.see('place:crew');
     }
-    if (a.t === 'answerChangeOrder') this.see(`answer:${a.accept}`);
+    if (a.t === 'answerChangeOrder') this.see(`answer:${a.i === 0 ? 'first' : 'second'}`);
     if (a.t === 'useTool') {
       const sup = s.supplies[a.i];
       if (sup?.kind === 'tool') this.see(`toolUse:${CONTENT.tools[sup.id].use.kind}`);
@@ -779,7 +797,9 @@ class Checker {
       if (e.t === 'tally' && e.tally.xMults.length > 0) this.see('tally:xMult');
       if (e.t === 'crateOpened') this.see(`crate:${e.source}`);
       if (e.t === 'runEnded') this.see(`result:${e.result}`);
-      if (e.t === 'changeOrderOffered') this.see(`changeOrder:${e.kind}`);
+      if (e.t === 'changeOrderOffered') {
+        for (const o of e.options) this.see(`changeOrder:${o.kind}`);
+      }
       if (e.t === 'changeOrderResolved') this.see(`changeOrder:${e.result}`);
       if (e.t === 'arrived') this.see(e.forced ? 'arrived:forced' : 'arrived:due');
     }
@@ -833,12 +853,12 @@ const COVERAGE: readonly string[] = [
   ...prefixed('play', ['free']),
   ...prefixed('tally', ['fastForward', 'xMult']),
   ...prefixed('event', ['moved', 'demolished', 'transformed', 'findClaimed', 'overtimeUsed']),
-  // M4b: every crew and client, change orders of each kind answered both ways (a phase effect
-  // only one way), resolved, and the household's arrivals, due and forced, played.
+  // M4b: every crew and client, change orders of each kind offered, the first of an offer and
+  // the second picked (D-144), resolved, and the household's arrivals, due and forced, played.
   ...prefixed('crew', keys(CONTENT.crews)),
   ...prefixed('client', keys(CONTENT.clients)),
   ...prefixed('changeOrder', ['request', 'restriction', 'phase', 'missed', 'ended']),
-  ...prefixed('answer', ['true', 'false']),
+  ...prefixed('answer', ['first', 'second']),
   ...prefixed('event', ['changeOrderAnswered', 'changeOrderResolved']),
   ...prefixed('arrived', ['due', 'forced']),
   ...prefixed('place', ['arrival', 'crew']),
@@ -860,6 +880,7 @@ const CHECKS: readonly string[] = [
   ...keys(TOOL_USES).map((k) => `check:previewTool:${k}`),
   'check:toolRefused:move',
   'check:changeOrderOffer',
+  'check:changeOrderPair',
   'check:activeChangeOrders',
 ];
 

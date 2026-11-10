@@ -23,6 +23,7 @@
 
 import type {
   Action,
+  ChangeOrderId,
   DebugAction,
   Good,
   Rng,
@@ -196,11 +197,12 @@ function buildGroups(
     // miss can end the run, so it stays rare.
     { kind: 'debug:forceShop', weight: 1, actions: [debug({ t: 'debug', op: 'forceShop' })] },
     { kind: null, weight: 1, actions: [debug({ t: 'debug', op: 'forceMiss' })] },
-    // M4b: a change order now (any one, even one offered before), and a member moving in early.
+    // M4b: a change order now (any one, even one picked before), alone or beside another to
+    // pick from (D-144), and a member moving in early.
     {
       kind: 'debug:forceChangeOrder',
       weight: 1,
-      actions: [debug({ t: 'debug', op: 'forceChangeOrder', id: rng.pick(orderIds) })],
+      actions: [debug(forcedOrder(orderIds, rng))],
     },
     {
       kind: 'debug:forceArrival',
@@ -210,14 +212,21 @@ function buildGroups(
   ];
 }
 
-/** On the 'changeOrder' screen (M4b): an answer, accepting or declining at random. */
+/** A forced change order (M4b): one alone, or two different ones to pick from (D-144). */
+function forcedOrder(ids: readonly ChangeOrderId[], rng: Rng): DebugAction {
+  const id = rng.pick(ids);
+  const others = ids.filter((o) => o !== id);
+  if (others.length === 0 || rng.chance(50)) return { t: 'debug', op: 'forceChangeOrder', id };
+  return { t: 'debug', op: 'forceChangeOrder', id, other: rng.pick(others) };
+}
+
+/** On the 'changeOrder' screen (M4b, D-144): a pick, the first order or the second at random. */
 function orderGroups(rules: Rules, s: RunState): Group[] {
   const legal = rules.legalActions(s);
-  const answer = (accept: boolean) =>
-    legal.filter((a) => a.t === 'answerChangeOrder' && a.accept === accept);
+  const answer = (i: number) => legal.filter((a) => a.t === 'answerChangeOrder' && a.i === i);
   return [
-    { kind: 'answer:accept', weight: 10, actions: answer(true) },
-    { kind: 'answer:decline', weight: 10, actions: answer(false) },
+    { kind: 'answer:first', weight: 10, actions: answer(0) },
+    { kind: 'answer:second', weight: 10, actions: answer(1) },
     { kind: null, weight: 1, actions: [{ t: 'setAutoComplete', on: !s.autoComplete }] },
   ];
 }

@@ -93,13 +93,13 @@ export interface RunRecord {
   /** How the house went up, week by week (the systems review's run measures). */
   build: BuildStats;
   /**
-   * M4b: each change order offered, in order: the answer, and how it resolved (no `result` if
-   * the run ended before its milestone was met).
+   * M4b, D-144: each change order picked, in order: the ones offered beside it and passed
+   * over, and how it resolved (no `result` if the run ended before its milestone was met).
    */
   changeOrders: {
     id: ChangeOrderId;
     phase: number;
-    answer: ChangeOrderRecord['answer'];
+    passedOver: ChangeOrderRecord['passedOver'];
     result?: ChangeOrderResult;
   }[];
   ms: number;
@@ -792,7 +792,7 @@ export function simulateRun(
       changeOrders: s.changeOrders.map((r) => ({
         id: r.id,
         phase: r.phase,
-        answer: r.answer,
+        passedOver: r.passedOver,
         ...(r.result ? { result: r.result } : {}),
       })),
       ms: performance.now() - start,

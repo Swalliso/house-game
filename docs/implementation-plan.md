@@ -371,7 +371,7 @@ interface RunState {
   milestonesEarly: number              // a RunStat for scaling ×Mult
   screen: 'build' | 'changeOrder' | 'shop' | 'won' | 'lost'
   offers?: {
-    changeOrder?: ChangeOrderId
+    changeOrder?: { ids: ChangeOrderId[]; phase: number }   // D-144: two on offer, one to pick
     shop?: { slots: ShopOffer[]; sale?: number; refreshes: number; boughtAny: boolean }
     pick?: { source: CrateId | 'housewarming'; options: PickOption[] }   // an opened crate waiting for a choice
   }
@@ -395,7 +395,7 @@ type Action =
   | { t: 'demolish'; x: number; y: number }
   | { t: 'completeEarly' }
   | { t: 'setAutoComplete'; on: boolean }
-  | { t: 'answerChangeOrder'; accept: boolean }      // phase effects can only be acknowledged
+  | { t: 'answerChangeOrder'; i: number }            // D-144: which of the orders on offer is picked
   | { t: 'buy'; i: number }                           // any shop slot, including services
   | { t: 'pick'; i: number }                          // choose from an opened crate
   | { t: 'sell'; from: 'blueprints' | 'supplies'; i: number }
@@ -420,7 +420,7 @@ type Action =
 - `targetReached` (fires when the score first crosses the target)
 - `overtimeUsed`
 - `milestone` (phase, result `'onTime' | 'early' | 'overtime' | 'failed'`, weeks saved, overtime used, reward)
-- `changeOrderOffered`, `changeOrderResolved`
+- `changeOrderOffered` (the orders to pick from), `changeOrderAnswered` (the one picked and the ones passed over, D-144), `changeOrderResolved`
 - `shopOpened`, `bought`, `sold`, `crateOpened`, `picked`
 - `runEnded`
 
@@ -448,7 +448,7 @@ The UI keeps an event queue and plays it through an animation director (place �
 | | `demolish` if `demolitionsLeft > 0` and it wouldn't split the house | piece, boulder, or Old Shed removed, no refund; a find pays its reward |
 | | `install` from supplies, `useTool`, `sell` | free; the week goes on |
 | | `completeEarly` if score ≥ target, weeks remain in the phase, and it isn't an overtime week | → fast-forward (below) |
-| `changeOrder` | `answerChangeOrder` | → `shop` |
+| `changeOrder` | `answerChangeOrder`: one of the two orders on offer (D-144) | → `shop` |
 | `shop` | `buy`, `sell`, `refreshShop`, `leaveShop`; while a crate is open, only `pick` (an option, or `i = -1` to discard) and `sell` | `leaveShop` → `build`, next phase, week 1. Leaving without buying anything pays the skip reward. |
 | `won` / `lost` | none; every action throws | |
 
@@ -762,8 +762,8 @@ interface CrewDef { id; name; tier; blurb: string; modifiers: Modifier[]; startR
 // Starting pieces sit in extra reserve slots that don't count against the 2.
 
 type ChangeOrderDef = { id; name; text: string; scope: 'generic' | ClientId; tier } & (
-  | { kind: 'request'; condition: HouseCondition; reward: Reward }       // accept or decline; met by the next milestone
-  | { kind: 'phase'; modifiers: Modifier[] }                             // announced; applies for the next phase
+  | { kind: 'request'; condition: HouseCondition; reward: Reward }       // met by the next milestone
+  | { kind: 'phase'; modifiers: Modifier[] }                             // applies for the next phase
   | { kind: 'restriction'; forbid: Selector; reward: Reward }            // place nothing matching during the next phase
 )
 
@@ -901,7 +901,7 @@ Shape variants (L-Kitchen, the long Hallway) are separate cards that share a typ
   | `draw/<phase>/<slot>/<n>/<row>` | Each row of a hand (D-121: `rooms`, `layout`). `slot` is the week in the phase, or `ot1`/`ot2` for overtime. `n` counts this week's draws: 0 for the first, then +1 for each reroll and the Catalog tool. |
   | `draw/<phase>/<slot>/<n>/<row>/swap<k>` | The swaps for the row's k-th card, when it has no play (D-121). They don't count as draws. |
   | `shop/<phase>/<refresh>` | Shop offers |
-  | `co/<phase>` | The change order offered |
+  | `co/<phase>` | The two change orders offered, in the order shown (D-144) |
   | `crate/<phase>/<refresh>/<slot>` | The 3 options inside a crate (and the first shop's free Housewarming crate) |
   | `find/<x>,<y>` | A find's random reward |
   | `bot/<phase>/<screen>/<n>` | Sim bots only |
@@ -1155,6 +1155,7 @@ Built alongside M5a, on its own branch (`phase/m4-clients`, pull request #17), a
   - **requests:** accept or decline; reward, no penalty
   - **restrictions:** accept or decline; broken if a forbidden piece is placed
   - **phase effects:** announced, then applied for the next phase
+  - *2026-11-10 (D-144):* **two** arrive and the player picks one; nothing is declined. The one passed over goes back in the pool. A phase effect's card says what it would change a week's Wow by on the house as it stands (`ChangeOrderView.houseGain`).
 - Crews: General Contractor, Landscaper, Architect.
 - **First-time hints** at:
   - the first week
@@ -1792,9 +1793,9 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
   - if she still doesn't work in the sim, move her to Stretch
 - **Tastes:** a like is +50%, a dislike −50%, "earns double" +100%, all in the same bucket; "earns nothing" is ×0.
 - **Change orders:**
-  - one after each of milestones 2, 4, and 6, drawn from the client's list plus the generic ones
-  - requests and restrictions can be declined and carry no penalty
-  - phase effects are announced and apply for the next phase
+  - two after each of milestones 2, 4, and 6, drawn from the client's list plus the generic ones, and the player picks one (D-144; it was one, to accept or decline). The one passed over can be offered again; one picked never is
+  - a request missed or a restriction broken carries no penalty
+  - a phase effect applies for the next phase
   - requests are temporary goals and never change the spec
   - offers whose condition is already met, or that clearly can't be met (required pieces outside the current pool, more pieces needed than weeks left, or less free space than they need), are skipped
 - **Pool:**
@@ -2034,4 +2035,4 @@ Every checklist starts with the seven house rules (D-101), in the client's numbe
 | Rainy season | phase: `{tag Green}` +100; `earnNothing patio` | D-137 |
 | A letter from the HOA | restriction `forbid {in frontYard}`; kept: +4 budget | D-137 |
 
-Every client has four phase effects: Heat wave, Cold snap, Rainy season, and one of its own. The offer after milestone 6 offers only phase effects, and milestones 2 and 4 use up at most two, so it always comes (D-137).
+Every client has four phase effects: Heat wave, Cold snap, Rainy season, and one of its own. The offer after milestone 6 shows two phase effects and no other kind, and the picks after milestones 2 and 4 use up at most two (an order passed over goes back in the pool), so two are always left (D-137, D-144).

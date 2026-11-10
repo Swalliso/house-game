@@ -44,7 +44,7 @@
 | Demolitions | 2 per run, plus any bought in the shop |
 | Early completion | +2 budget and +10% of the phase's earnings per week saved (D-046) |
 | Budget | Starts at 0; +3 per milestone, plus early completion, economy pieces, finds, rewards, and selling (D-046, D-051) |
-| Change orders | One offered after milestones 2, 4, and 6 |
+| Change orders | Two offered after milestones 2, 4, and 6, to pick one from (D-144; it was one, to accept or decline) |
 | Score | Accumulates across the run; each milestone is a higher total |
 
 The full list of rule defaults and numbers is Appendix A of `implementation-plan.md`. They all live in `src/content/balance.ts`, and the sim sets the milestone targets from M2 (D-044).

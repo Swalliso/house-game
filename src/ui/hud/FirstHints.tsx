@@ -119,8 +119,8 @@ export const HINTS: Readonly<Record<HintId, Hint>> = {
   changeOrder: {
     title: 'Change orders',
     text:
-      'The client changed their mind. A request or a restriction pays if you accept it and ' +
-      'see it through; “This phase” changes just happen.',
+      'The client changed their mind: pick one. A request or restriction pays if you see it ' +
+      'through; a “This phase” card changes what earns.',
     spot: 'underGoods',
   },
   // Playtest 4: nothing said a spare card of a room type could renovate, so it went unused.
