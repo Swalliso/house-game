@@ -56,8 +56,9 @@ import {
   type Inspected,
 } from '../store.ts';
 import { Button, Icon } from '../kit/kit.tsx';
+import { BLUEPRINT_ICONS } from '../sprites.ts';
 import type { IconName } from '../theme/art.ts';
-import { GoodBody, goodName, offerGood, type GoodRef } from './goods.tsx';
+import { BlueprintWorth, GoodBody, goodName, offerGood, type GoodRef } from './goods.tsx';
 import { arrivalOf, midName } from './household.ts';
 import { Tip } from './Tip.tsx';
 import './inspect.css';
@@ -640,8 +641,15 @@ function ItemInfo({
   const canSell = sellAs && (s.screen === 'build' || s.screen === 'shop');
   return (
     <>
-      <h2>{goodName(good)}</h2>
+      <h2>
+        {good.kind === 'blueprint' && <Icon name={BLUEPRINT_ICONS[good.id]} class="good-glyph" />}
+        {goodName(good)}
+      </h2>
       <GoodBody good={good} where={!sellAs && good.kind !== 'piece'} />
+      {/* D-141: what a blueprint you hold is adding, from the rules. */}
+      {good.kind === 'blueprint' && sellAs && (
+        <BlueprintWorth value={rules.blueprintValue(s, good.id)} where="panel" />
+      )}
       {good.kind === 'blueprint' && sellAs && (
         <p class="muted">Bought in week {s.blueprints[sellAs.i]?.boughtWeek}.</p>
       )}
