@@ -10,6 +10,8 @@ import {
   handCardLines,
   modifierText,
   selectorText,
+  setsOfPiece,
+  setText,
   sunSideText,
 } from './text.ts';
 import { TEST_CONTENT as C } from './testing.ts';
@@ -232,5 +234,26 @@ describe('a compact hand card (D-121)', () => {
     expect(handCardLines(content2, { kind: 'piece', id: 'bedroom' })).toEqual([
       '−2 per touching Loud neighbor',
     ]);
+  });
+});
+
+describe('set chips (D-122)', () => {
+  it("names a piece's sets, touching ones first, an L-Kitchen's as a Kitchen's", () => {
+    expect(setsOfPiece(CONTENT, 'closet')).toEqual(['suite', 'fullHouse']);
+    expect(setsOfPiece(CONTENT, 'bedroom')).toEqual(['jackAndJill', 'suite', 'fullHouse']);
+    expect(setsOfPiece(CONTENT, 'lKitchen')).toEqual(setsOfPiece(CONTENT, 'kitchen'));
+    expect(setsOfPiece(CONTENT, 'patio')).toEqual([]);
+  });
+
+  it('says what a set needs and pays', () => {
+    expect(setText(CONTENT, 'suite')).toBe(
+      'Suite: a Bedroom, a Bathroom, and a Closet, touching. +15 Comfort and +0.5 Charm every week. A house can have more than one.',
+    );
+    expect(setText(CONTENT, 'jackAndJill')).toContain(
+      '2 Bedrooms and a Bathroom, each touching the Bathroom',
+    );
+    expect(setText(CONTENT, 'fullHouse')).toContain(
+      'anywhere in the house. +40 Comfort, +1 Charm, and ×2 Sparkle every week. One per house.',
+    );
   });
 });

@@ -930,6 +930,13 @@ describe('Remodel Plans: Suite and Full House (levelSet, in a run)', () => {
     // Before: 3 + 1 + 1 = 5. After: 7 + 60 = 67; Mult 250, ×2 = 500; 67 × 5 = 335.
     expect(p.before).toEqual({ points: 5, mult: 100, total: 5 });
     expect(p.after).toEqual({ points: 67, mult: 500, total: 335 });
+    // D-122: the parts. Full House's ×2 is Sparkle: 67 × (500 − 250) / 100 = 167.5. The set's
+    // own Comfort and Charm: 60 × 1.0 + 150 × 0.67 = 160.5. The halves round to the earlier part.
+    expect(p.parts.reduce((n, x) => n + x.wow, 0)).toBe(p.delta);
+    expect(p.parts.slice(0, 2)).toEqual([
+      { kind: 'sparkle', label: 'Full House', wow: 167 },
+      { kind: 'set', label: 'Full House', wow: 161 },
+    ]);
 
     const week1 = R.apply(s, play);
     expect(eventsOf(week1.events, 'setCompleted')).toEqual([

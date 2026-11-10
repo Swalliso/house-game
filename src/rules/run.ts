@@ -155,6 +155,7 @@ import {
 } from './placement.ts';
 import { stream } from './rng.ts';
 import { canUseTool, useTool, type ToolCtx } from './tools.ts';
+import { wowParts } from './attribution.ts';
 import { ageOf, onCadence, tallyHouse, unmetRequirement, type TallyContext } from './scoring.ts';
 import { isType, matchesPiece, rootType } from './selectors.ts';
 import { isRoom } from './layout.ts';
@@ -2312,6 +2313,7 @@ export function createRules(content: Content): Rules {
       specsLost: [],
       xMults: beforeTally?.xMults ?? [],
       finds: [],
+      parts: [],
     });
     if (!beforeTally) return empty(offScreen(state));
     if (!play) {
@@ -2350,6 +2352,9 @@ export function createRules(content: Content): Rules {
     const wasMet = new Map(beforeTally.specs.map((sp) => [sp.id, sp.met]));
     const sunny =
       !!week.placed && !!layoutFor(state, week.house).tags.get(week.placed.uid)?.has('Sunny');
+    // D-122: where the change comes from, named on the board.
+    const specs = clientOf(state).specs;
+    const specName = (id: string) => specs.find((sp) => sp.id === id)?.name ?? id;
     return {
       legal: true,
       ...(sunny ? { sunny: true as const } : {}),
@@ -2383,6 +2388,7 @@ export function createRules(content: Content): Rules {
         ? { renovates: { uid: week.renovated.uid, level: week.renovated.level } }
         : {}),
       ...(breaks ? { breaks } : {}),
+      parts: wowParts(content, beforeTally, week.tally, focus, specName),
     };
   }
 

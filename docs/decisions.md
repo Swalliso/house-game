@@ -1732,7 +1732,34 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 ## Proposed
 
-*Reserved numbers (2026-11-10): D-115 to D-118 are the layout session's drafts and D-122 the legibility session's; they aren't in this file yet. D-132 to D-134 are playtest 5's fixes, each logged by its own pull request: D-132 one reroll for both rows of the draw, D-133 the roof view, D-134 three more tracks. New entries start at D-135.*
+*Reserved numbers (2026-11-10): D-115 to D-118 are the layout session's drafts, not in this file yet; D-122 (legibility) is logged below. D-132 to D-134 are playtest 5's fixes, each logged by its own pull request: D-132 one reroll for both rows of the draw, D-133 the roof view, D-134 three more tracks. New entries start at D-135.*
+
+### D-122 · Score legibility, the jam slice: the play's label names its cause, and room cards name their sets
+**Status:** Proposed · 2026-11-10, at the user's "Yes, build the slice", from the legibility deep-dive (2026-11-09, options A to C; its full text is backed up in the playtest-5 session's shared notes). It builds the deep-dive's cheapest cut: part of option A (the label names its cause) and part of option B (a static set chip). For the next playtest.
+**Decision:**
+- **The rules split a play's change into parts** (`src/rules/attribution.ts`, `Preview.parts`). Comfort parts are worth their Comfort × the old Charm and Sparkle; Charm parts their Charm × the new Comfort and the old Sparkle; Sparkle takes the rest. Largest-remainder rounding makes the whole parts add up to the preview's change exactly. The parts are coarse:
+  - the played piece (an install's host, a renovated room)
+  - each other piece that earns more or less
+  - each set made or broken, with its Comfort and Charm together
+  - each checklist line turned on or off
+  - each +Mult modifier whose count changes
+  - Sparkle
+  - "Other changes" for what none of these explains
+  
+  The chaos suite checks that they add up on every previewed play of its runs.
+- **The ghost's label names the biggest cause besides the card's own,** in the same direction, when it's at least a quarter of the change and 2 Wow: "▲ +139 Wow · Suite", "▼ −48 Wow · Cozy off". The card already says what it pays itself. The Renovate and install labels name it too.
+- **A big part pulling the other way gets a line of its own** under the change, when it's at least 10 Wow and a quarter of the change: "▼ −68 Wow · Cozy off" under a +45.
+- **Room cards name a set they count toward** in a chip in Charm's tint: the touching set with the shortest name, so it shares a line with the card's tags at 1600×900, plus how many more touching sets there are. A Closet says "Suite" and a Bedroom "Suite +1". Full House shows only on cards with no touching set (Garage, Hallway, Home Office). It's static membership: it never says where. Its tip names each set's members, whether they must touch, what it pays, and whether a house can have more than one, Full House included.
+- The UI only chooses among the rules' parts (`src/ui/board/causes.ts`); it computes no scores.
+
+**Why:** the deep-dive found that in playtest 4's run only 15% of the Wow plays moved came from the played card's own lines. The biggest surprises were sets: the Closet's +139 was the Suite's +134, and no card names a set. The ghost already shows the number, so naming its cause costs no discovery. The user ruled out partner highlights on the board.
+**Considered:**
+- All of option A: a receipt in Inspect, the badges in Wow, and stakes in the tips. Option B's "In this house" boosts on a card. Option C's ledger and the piece's worth. They're about 2–3 days more, after the jam if playtests still find surprises.
+- Naming the piece's own part ("· Closet"): the card says it.
+- The set chip lit when the house holds the set's other members: closer to the highlight the user turned down (the deep-dive's Q2).
+- "Jack-and-Jill +1" on a Bedroom: at 1600×900 it took a second line and pushed the hand's fourth card out of view.
+
+**Changes:** none to settled decisions. D-087's preview gains a field. The bots read only the preview's change, so the sim's numbers can't move.
 
 ### D-137 · More change orders: three generic ones, and a phase effect for every client
 **Status:** Proposed · 2026-11-10, from playtest 4 (`docs/playtests/playtest-4-findings.md` §5), with its fix pull request. Extends D-011 and D-109. For the next playtest on /dev/.

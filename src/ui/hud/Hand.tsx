@@ -20,8 +20,11 @@ import {
   handCardLines,
   rules,
   rowOf,
+  setsOfPiece,
+  setText,
   type Card as CardData,
   type DrawRow,
+  type PieceId,
   type Tag,
 } from '../../rules/index.ts';
 import {
@@ -73,6 +76,31 @@ export function TagChips({ tags }: { tags: readonly Tag[] }) {
         </Chip>
       ))}
     </>
+  );
+}
+
+/**
+ * D-122: the set a room card counts toward, named on the card, so a Closet says Suite before
+ * it's placed. Static membership only: it never says where. It names the touching set with the
+ * shortest name (a Bedroom's Suite, not its Jack-and-Jill), so it shares a line with the card's
+ * tags at 1600×900, and how many more touching sets there are; Full House, which needs none to
+ * touch, when it's the only one. No icon: Charm's tint says set. Its tip says what each set needs
+ * and pays, Full House included.
+ */
+function SetChip({ id }: { id: PieceId }) {
+  const sets = setsOfPiece(CONTENT, id);
+  if (sets.length === 0) return null;
+  const touching = sets.filter((s) => CONTENT.sets[s].connected);
+  const pool = touching.length > 0 ? touching : sets;
+  const name = pool
+    .map((s) => CONTENT.sets[s].name)
+    .reduce((a, b) => (b.length < a.length ? b : a));
+  const more = touching.length > 1 ? ` +${touching.length - 1}` : '';
+  return (
+    <Chip tone="charm" class="set-chip" title={sets.map((s) => setText(CONTENT, s)).join('\n')}>
+      {name}
+      {more}
+    </Chip>
   );
 }
 
@@ -151,6 +179,7 @@ function CardView({ card, i }: { card: CardData; i: number }) {
               Renovate
             </Chip>
           )}
+          <SetChip id={card.id} />
           <Chip tone="wood" class="kind-chip">
             {PIECE_KIND_LABEL[kind]}
           </Chip>
