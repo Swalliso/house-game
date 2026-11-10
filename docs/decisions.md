@@ -1734,7 +1734,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 ## Proposed
 
-*Reserved numbers (2026-11-10): D-115 to D-118 are the layout session's drafts, not in this file yet; D-122 (legibility) is logged below. D-132 to D-134 are playtest 5's fixes, each logged by its own pull request: D-132 one reroll for both rows of the draw, D-133 the roof view, D-134 three more tracks. D-135 and D-136 are M6's end screen (D-135 the result line and link preview, D-136 the milestone photos); D-137 and D-138 belong to the release-day sessions. New entries start at D-139.*
+*Reserved numbers (2026-11-10): D-115 to D-118 are the layout session's drafts, not in this file yet; D-122 (legibility) is logged below. D-132 to D-134 are playtest 5's fixes, each logged by its own pull request: D-132 one reroll for both rows of the draw, D-133 the roof view, D-134 three more tracks. D-135 and D-136 are M6's end screen (D-135 the result line and link preview, D-136 the milestone photos); D-137 and D-138 belong to the release-day sessions. D-139 is the company's record. New entries start at D-140.*
 
 ### D-122 · Score legibility, the jam slice: the play's label names its cause, and room cards name their sets
 **Status:** Proposed · 2026-11-10, at the user's "Yes, build the slice", from the legibility deep-dive (2026-11-09, options A to C; its full text is backed up in the playtest-5 session's shared notes). It builds the deep-dive's cheapest cut: part of option A (the label names its cause) and part of option B (a static set chip). For the next playtest.
@@ -1853,6 +1853,36 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - More requests: most of playtest 4's ideas (Room for the in-laws, Curb appeal) fight the house rules' Bedroom ranges or need new selectors.
 
 **Changes:** D-011 and D-109 (dated notes). `implementation-plan.md` Appendix B: the clients table and Generic change orders. New content changes the content hash, so run codes from earlier builds won't replay.
+
+### D-139 · The company's record: bests, the next verdict, and a portfolio
+**Status:** Proposed · 2026-11-10, with its phase pull request (`phase/company-record`), from the friction and replayability review the user asked for the same day. The user picked it as the first step ("Yes, build it"). For the user's playtest before it merges. A first, power-free step toward D-015 and D-016, which stay Proposed.
+**Decision:**
+- **The browser keeps a record of every house it finishes,** won or lost (`src/ui/company.ts`): the lot's seed, the client and crew, the Wow, the verdict, the milestones met, when, and a photo. It also keeps the best result with each client and crew, and counts of houses built and jobs done.
+  - It's stored by channel, like the save, but not by build. A house is stored as its result and a picture, never as a run code: a run code stops replaying when the content changes, and the record should outlive updates.
+  - The portfolio lists the newest 36 houses, and the newest 24 keep their photo. The bests and the counts outlive the houses they came from.
+  - A best is the highest Wow, and a win beats any loss.
+  - The same lot, client and crew finished again replaces its entry and counts once.
+- **Only a run played to its end here is filed** (`src/ui/screens/record-run.ts`): the action that ends it comes through the store. A run that loads already finished (a `?run=` code) isn't filed, and nor is a debug run.
+- **It unlocks nothing and changes no rule** (D-016). The rules never read it.
+- **The end screen says where the house stands,** under the Wow:
+  - "Next: Charmer at 46,863": the verdict above this one and the Wow it starts at, from the rules' new `nextVerdict()`. A lost run and a Dream Home show none.
+  - Then one of: "New best for the Hendersons" with a star and what it beat; "Your first house for the Hendersons"; or "Your best for the Hendersons: 46,656". A client's best is across crews.
+- **The title screen gets a Portfolio rider** under How to play and Settings, with the number of houses built, once there's one. It opens a sheet (`src/ui/screens/Portfolio.tsx`):
+  - a line of totals: houses built, jobs done, and the best Wow in a won run
+  - **Best work:** a grid of every client by every crew, 15 squares. A win is stamped gold with its verdict and Wow, a loss says "Client walked" with its Wow, and a job not tried yet is an empty square.
+  - **Houses:** polaroids, newest first, each with its photo, client, verdict (or "Walked at 3/7"), Wow and crew.
+- **The photo** is the end screen's (D-136): the finished house without its roof, through `photoFrame`, painted by `paintPhoto` once the last tally has played. It's stored 320 px wide as a JPEG (under 30 KB in the five houses checked), not at art resolution (about 100 KB as a PNG), because every channel on the site shares one browser storage. If storage is full, the oldest photos go first.
+
+**Why:** the review found that nothing carried from one run to the next: the browser remembered settings, hints, the save and the best single week, and the end screen had no personal best. A record gives a second run something to beat, and the grid's empty squares give a reason to try another client or crew, without touching balance the day before sharing.
+**Considered:**
+- **The finished houses standing on the title's street.** This was the review's first sketch. The title's scene is drawn front-on (LimeZu's villas) and our houses are drawn from above, so a house on that lawn would read as a floor plan lying on the grass. Polaroids in a sheet use D-136's look instead.
+- Storing run codes and repainting: the first content change would empty the portfolio.
+- Unlocking clients, crews or goods with it: jam players may play once or twice, and Combolands' players resented early runs with systems locked (research.md).
+- A best per client and crew only on the end screen: the grid already shows it, and one line per client reads faster.
+- Filing debug runs: their cheats would set the records.
+
+**Changes:** D-015 and D-016 (Proposed): this is a first step that adds no unlocks and no currency. `jam-scope.md`: its "Not in the jam build" line on meta-progression. The rules gain `nextVerdict()` (`milestones.ts`), so the UI still computes no score.
+**Known gaps:** no way to clear the record yet. A portfolio house can't be opened larger or replayed from its seed. A run finished on another device or in a private window isn't in the record.
 
 ### D-133 · The roof view: the reveal's roof stays on, a Roof button brings it back, and the end screen opens with it
 **Status:** Proposed · 2026-11-10, after playtest 5 (`docs/playtests/playtest-5-findings.md`), with its fix pull request. Extends D-127. For the next playtest on /dev/.

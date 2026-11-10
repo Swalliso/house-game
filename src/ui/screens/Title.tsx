@@ -9,6 +9,9 @@
 //
 // M4: Start opens the job board (D-032, D-045), which stands on the same scene (TitleBackdrop),
 // and Continue says whose house the saved run is (D-110).
+//
+// D-139: once a house has been finished, a Portfolio rider hangs under the others, with how many
+// the company has built (company.ts, Portfolio.tsx).
 
 import './title.css';
 import type { ComponentChildren } from 'preact';
@@ -28,7 +31,8 @@ import {
 } from '../board/terrain/street.ts';
 import { FEEL } from '../fx/feel.ts';
 import { formatNumber } from '../format.ts';
-import { howToPlayOpen, settingsOpen } from '../hud/actions.ts';
+import { company } from '../company.ts';
+import { howToPlayOpen, portfolioOpen, settingsOpen } from '../hud/actions.ts';
 import { Button } from '../kit/kit.tsx';
 import { settings } from '../settings.ts';
 import { atlasImage, CELL, spritePos, spriteStyle, type SpriteId } from '../sprites.ts';
@@ -106,6 +110,20 @@ export function Title() {
                 Settings
               </Button>
             </div>
+            {company.value.built > 0 && (
+              <div class="rider">
+                <Button
+                  variant="wood"
+                  icon="trophy"
+                  class="title-portfolio"
+                  title="The houses your company has built, and its best work"
+                  onClick={() => (portfolioOpen.value = true)}
+                >
+                  Portfolio
+                  <span class="plank-count">{company.value.built}</span>
+                </Button>
+              </div>
+            )}
           </nav>
         </div>
       </main>

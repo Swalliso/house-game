@@ -16,7 +16,7 @@
 - **Clients:** a spec checklist that starts with seven house rules (D-101), tastes, a household that grows on a schedule (D-103), and change orders, with Common/Uncommon/Rare rarity.
 - **Crews:** General Contractor, Landscaper, Architect.
 - **Content:** the Core-tier items in `content-brainstorm.md`, as written in Appendix B of `implementation-plan.md`. Five pieces that were Stretch there (Sunroom, Hot Tub, Fire Pit, Henhouse, Birdhouse) are Core shop pieces now (D-051).
-- **End screen:** the finished house captioned "It's a house.", the score, and a copyable result line.
+- **End screen:** the finished house captioned "It's a house.", the score, and a copyable result line. It also names the next verdict up and how the house stands against your best for that client; the title's Portfolio shows the houses you've built and your best with each client and crew (D-139).
 - **Art and sound:** cozy pixel art from LimeZu's 16px packs, at 32 art px per cell (2×2 tiles, D-097), with Claude-drawn placeholder sprites from M1 (D-057). A first pass at juice from M1 (D-059). Calm music with reward sounds that escalate with the size of the moment (D-058). The full art pass is M5a, before M4, and the sound pass M5b, after it (D-097). M5a's visual juice is its own pull request between them.
 
 ## Stretch (only if time allows)
@@ -27,7 +27,7 @@
 
 ## Not in the jam build
 
-- Meta-progression (company growth, reputation, unlocks). Everything is available from the start.
+- Meta-progression (company growth, reputation, unlocks). Everything is available from the start. The company's record (D-139) keeps what you've built and your bests, and unlocks nothing.
 - HOA rules and difficulty tiers
 - Upstairs floor, endless mode, renovation mode
 

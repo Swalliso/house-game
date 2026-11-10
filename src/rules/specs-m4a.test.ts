@@ -972,6 +972,22 @@ describe('targetPct', () => {
     expect(r.verdict({ ...won, screen: 'lost', score: 500 })).toBe('Fixer-Upper');
   });
 
+  it('the next verdict is the band above, at the score where it starts (D-139)', () => {
+    // At 150% the last target is 45: Starter Home from 45, Dream Home from 90.
+    const r = rulesAt(150);
+    const won: RunState = { ...r.newRun(setup('verdict')), screen: 'won' };
+    expect(r.nextVerdict({ ...won, score: 45 })).toEqual({ name: 'Dream Home', score: 90 });
+    expect(r.nextVerdict({ ...won, score: 89 })).toEqual({ name: 'Dream Home', score: 90 });
+    // At the top there's nothing above, and a lost run has no next verdict.
+    expect(r.nextVerdict({ ...won, score: 90 })).toBeNull();
+    expect(r.nextVerdict({ ...won, screen: 'lost', score: 10 })).toBeNull();
+    // Each verdict's first score earns it: the two never disagree.
+    for (let score = 40; score <= 95; score++) {
+      const next = r.nextVerdict({ ...won, score });
+      if (next) expect(r.verdict({ ...won, score: next.score })).toBe(next.name);
+    }
+  });
+
   it('a milestone resolves against the client’s target: a score past the curve’s can miss', () => {
     // 5 × 200% = 10. A Bedroom earns 3 a week.
     const r = rulesAt(200);

@@ -13,6 +13,10 @@
 //
 // M6 (D-135): Copy result, above Copy run code, copies the run as one line for the group chat,
 // with a link that starts the same lot (result-line.ts).
+//
+// D-139: under the verdict, the next verdict up and the Wow it starts at, and how this house
+// stands against the company's record for its client (company.ts): a new best, or the best to
+// beat.
 
 import type { RefObject } from 'preact';
 import { useLayoutEffect, useRef, useState } from 'preact/hooks';
@@ -23,6 +27,7 @@ import {
   type MilestoneRecord,
   type RunState,
 } from '../../rules/index.ts';
+import { bestFor, company, jobKey, lastStanding } from '../company.ts';
 import { busy } from '../fx/director.ts';
 import { formatNumber } from '../format.ts';
 import { copyRunCode, copyText, startNewRun } from '../hud/actions.ts';
@@ -282,6 +287,58 @@ function Stats({ s }: { s: RunState }) {
   );
 }
 
+/** A client's name inside a sentence: "the Hendersons", "Count Vladislav". */
+export function clientInText(clientId: string): string {
+  const name = CONTENT.clients[clientId as keyof typeof CONTENT.clients]?.name;
+  return name ? name.replace(/^The\s/, 'the ') : 'this client';
+}
+
+/**
+ * Under the verdict (D-139): the verdict above this one and the Wow it starts at, then how the
+ * house stands against the company's record for its client. A debug run is never filed, so it
+ * says neither a best nor a first.
+ */
+function Standing({ s }: { s: RunState }) {
+  const next = rules.nextVerdict(s);
+  const filed = lastStanding.value;
+  const mine = filed && filed.key === jobKey(s.setup) ? filed.standing : null;
+  const client = clientInText(s.setup.clientId);
+  // Loaded already finished (not filed this visit): the record as it stands.
+  const best = mine ? mine.previous : s.debug ? null : bestFor(company.value, s.setup.clientId);
+  let record = null;
+  if (mine?.newBest) {
+    record = (
+      <p class="run-end-record best">
+        <Icon name="star" /> New best for {client}
+        {mine.previous?.won && (
+          <span class="was">
+            was <span class="num">{formatNumber(mine.previous.score)}</span>
+          </span>
+        )}
+      </p>
+    );
+  } else if (mine && !mine.previous) {
+    record = <p class="run-end-record">Your first house for {client}</p>;
+  } else if (best) {
+    record = (
+      <p class="run-end-record">
+        Your best for {client}: <span class="num">{formatNumber(best.score)}</span>
+      </p>
+    );
+  }
+  if (!next && !record) return null;
+  return (
+    <div class="run-end-standing">
+      {next && (
+        <p class="run-end-next">
+          {next.name} at <span class="num">{formatNumber(next.score)}</span>
+        </p>
+      )}
+      {record}
+    </div>
+  );
+}
+
 /**
  * The run-end screen, in place of the hand. It waits for the last tally and banner to play
  * (busy), so the player sees the final week land before the summary.
@@ -308,6 +365,7 @@ export function EndScreen() {
           <span class="value num">{formatNumber(s.score)}</span>
           <span class="unit">{won ? WOW : `of ${formatNumber(rules.target(s))} ${WOW}`}</span>
         </p>
+        <Standing s={s} />
       </header>
       <Milestones s={s} />
       <Stats s={s} />

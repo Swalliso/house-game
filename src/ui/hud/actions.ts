@@ -34,6 +34,7 @@ export {
   howToPlayOpen,
   menuOpen,
   photoShown,
+  portfolioOpen,
   settingsOpen,
 } from './modals.ts';
 export const toast = signal<{ id: number; text: string } | null>(null);

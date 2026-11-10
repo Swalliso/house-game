@@ -86,6 +86,34 @@
   color: var(--ink-soft);
 }
 
+/* Under the plaque (D-139): the next verdict up, and the house against the company's record. */
+.run-end-standing {
+  display: flex;
+  flex-direction: column;
+  gap: var(--px);
+  color: var(--ink-soft);
+  line-height: var(--lh-tight);
+}
+.run-end-standing p {
+  margin: 0;
+}
+.run-end-next::before {
+  content: 'Next: ';
+}
+.run-end-record.best {
+  color: var(--sparkle-text);
+  font-weight: 700;
+}
+.run-end-record.best .icon {
+  vertical-align: middle;
+}
+/* What it beat, on a line of its own. */
+.run-end-record.best .was {
+  display: block;
+  color: var(--ink-soft);
+  font-weight: 400;
+}
+
 /* --- Milestones: ✓ met, ✕ missed, ○ not reached (an icon and a word, never color alone) ---- */
 
 .run-end-section {

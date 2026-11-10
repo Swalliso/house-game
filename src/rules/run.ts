@@ -141,6 +141,7 @@ import {
   phaseCount,
   phaseName,
   phaseTarget,
+  nextVerdictFor,
   verdictFor,
 } from './milestones.ts';
 import { ruleFrom, runModifiers, setupRule, type ActiveMod } from './modifiers.ts';
@@ -231,6 +232,8 @@ export interface Rules {
   phaseName(phase: number): string;
   /** The run-end verdict by score band (§12); the lowest one until the run is won. */
   verdict(state: RunState): string;
+  /** The verdict above a won run's, and the score it starts at; null at the top or if not won. */
+  nextVerdict(state: RunState): { name: string; score: number } | null;
   /** Weeks of the phase not yet tallied, this one included (1 in an overtime week). */
   weeksLeft(state: RunState): number;
   /**
@@ -2568,6 +2571,7 @@ export function createRules(content: Content): Rules {
     pace: (state) => paceFor(b, state.phase, state.phaseStartScore, pctOf(state)),
     phaseName: (phase) => phaseName(b, phase),
     verdict: (state) => verdictFor(b, state.score, state.screen === 'won', pctOf(state)),
+    nextVerdict: (state) => nextVerdictFor(b, state.score, state.screen === 'won', pctOf(state)),
     weeksLeft,
     forecast: (state, play) => {
       if (state.screen !== 'build') return state.score;
