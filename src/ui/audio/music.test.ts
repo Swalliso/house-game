@@ -71,6 +71,21 @@ describe('the player', () => {
     expect(shuffled([], null, random)).toEqual([]);
   });
 
+  it('shuffles the game’s six tracks the same way, round after round (D-134)', () => {
+    expect(TRACKS.length).toBeGreaterThanOrEqual(6);
+    let seed = 11;
+    const random = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    // A long run of rounds, each starting after the last track the round before played.
+    let last: Track | null = null;
+    for (let round = 0; round < 200; round++) {
+      const order = shuffled(TRACKS, last, random);
+      expect(new Set(order)).toEqual(new Set(TRACKS));
+      expect(order).toHaveLength(TRACKS.length);
+      expect(order[0]).not.toBe(last);
+      last = order[order.length - 1]!;
+    }
+  });
+
   it('plays a screen’s stems at its mix, and every stem elsewhere', () => {
     const t = track('t', 3, { shop: [1, 0.5, 0], crate: [0, 0, 1] });
     expect(stemLevels(t, 'shop')).toEqual([1, 0.5, 0]);
