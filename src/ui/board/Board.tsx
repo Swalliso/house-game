@@ -112,7 +112,7 @@ import {
   WallsLayer,
 } from './HouseLayers.tsx';
 import { layerVars } from './layers.ts';
-import { RoofLayer, ToppedOut } from './MomentLayers.tsx';
+import { ChainArc, RoofLayer, ToppedOut } from './MomentLayers.tsx';
 import { wobble } from './piece-fx.ts';
 import { Outline, TerrainLayer, YardTint } from './TerrainLayer.tsx';
 import './board-m2.css';
@@ -777,6 +777,7 @@ export function Board() {
           {wallsLayer}
           {overhangLayer}
           {highlightsLayer}
+          <ChainArc lot={lot} scale={scale} />
           <RoofLayer lot={lot} scale={scale} model={model} />
           {labelsLayer}
           <ToppedOut scale={scale} model={model} />

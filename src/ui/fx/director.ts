@@ -41,6 +41,7 @@ import { arrivalOf, cardsPhrase, isPlural } from '../hud/household.ts';
 import { settings } from '../settings.ts';
 import { onEvents, onRunReset } from '../store.ts';
 import { formatNumber } from '../format.ts';
+import { chainOrder } from './chain.ts';
 import { FEEL } from './feel.ts';
 import { tallySpeed } from './juice.ts';
 import {
@@ -190,6 +191,16 @@ export const targetHit = signal<{ id: number } | null>(null);
 export const roofReveal = signal<{ id: number } | null>(null);
 /** "Topped out!" over the house, the first week Under one roof holds (D-127). */
 export const toppedOut = signal<{ id: number } | null>(null);
+/**
+ * D-094's option 1: while the tally plays a chain, the arc from the piece that boosts to the one
+ * it sets going, in lot cells, for that piece's step. The board's chain layer draws it.
+ */
+export const chainArc = signal<{
+  id: number;
+  from: { x: number; y: number };
+  to: { x: number; y: number };
+  ms: number;
+} | null>(null);
 /**
  * A household member's arrival (D-126): their card slides in over the board, in place of a
  * banner, so it never reads as a milestone.
@@ -402,6 +413,12 @@ function waitFirst(ms: number): Promise<void> {
  * near the top edge rise into view, and stacked popups keep their spacing.
  */
 function pieceCenter(states: readonly RunState[], uid: number): { x: number; y: number } {
+  const m = pieceMiddle(states, uid);
+  return m ? { x: m.x, y: Math.max(2, m.y) } : { x: 0, y: 2 };
+}
+
+/** The middle of a piece's footprint in lot coordinates, or null if it's in neither state. */
+function pieceMiddle(states: readonly RunState[], uid: number): { x: number; y: number } | null {
   // A Sapling that matured at the start of the next week is gone from the state after the
   // action, but its last tally still scores it: find it in the state before.
   let piece: RunState['house']['pieces'][number] | undefined;
@@ -409,11 +426,24 @@ function pieceCenter(states: readonly RunState[], uid: number): { x: number; y: 
     piece = state.house.pieces.find((p) => p.uid === uid);
     if (piece) break;
   }
-  if (!piece) return { x: 0, y: 2 };
+  if (!piece) return null;
   const shape = piece.shape ?? CONTENT.pieces[piece.defId].shape;
   const rows = piece.rot % 2 === 0 ? shape.length : shape[0]!.length;
   const cols = piece.rot % 2 === 0 ? shape[0]!.length : shape.length;
-  return { x: piece.x + cols / 2, y: Math.max(2, piece.y + rows / 2) };
+  return { x: piece.x + cols / 2, y: piece.y + rows / 2 };
+}
+
+/** The arc into a boosted piece's step from the piece that set it going (D-094), or none. */
+function chainArcTo(
+  by: number | null,
+  uid: number,
+  states: readonly RunState[],
+  ms: number,
+): (typeof chainArc)['value'] {
+  if (by === null) return null;
+  const from = pieceMiddle(states, by);
+  const to = pieceMiddle(states, uid);
+  return from && to ? { id: nextId++, from, to, ms } : null;
 }
 
 function centroid(states: readonly RunState[], uids: readonly number[]): { x: number; y: number } {
@@ -795,9 +825,12 @@ async function playTally(
   recordWeek(t.total);
   const view = tallyStart(e, flips);
   tallyView.value = { ...view };
-  const last = t.pieces.reduce((k, p, i) => (p.earned > 0 ? i : k), -1);
+  // D-094's option 1: the pieces play depth first along what boosts what (fx/chain.ts), each
+  // boosted piece right after the piece that sets it going, with an arc between them.
+  const order = chainOrder(t.pieces);
+  const last = order.reduce((k, s, i) => (s.piece.earned > 0 ? i : k), -1);
   let step = 0;
-  for (const [i, piece] of t.pieces.entries()) {
+  for (const [i, { piece, by }] of order.entries()) {
     if (piece.earned <= 0) continue;
     view.points += piece.earned;
     view.activeUid = piece.uid;
@@ -809,6 +842,7 @@ async function playTally(
       FEEL.tally.stepMs * (slow ? FEEL.ladder.slowMo : rhythm > 0 ? FEEL.moments.rhythm : 1);
     if (!skipping) {
       const c = pieceCenter([after, base], piece.uid);
+      chainArc.value = chainArcTo(by, piece.uid, [after, base], stepMs);
       popup(c.x, c.y, `+${num(piece.earned)}`, 'points', stepMs);
       // Crown Jewel's top earner: a Comfort bonus, so it reads in Comfort's color (D-019).
       const top = t.best?.uid === piece.uid;
@@ -822,6 +856,7 @@ async function playTally(
     await wait(stepMs);
   }
   view.activeUid = null;
+  chainArc.value = null;
 
   for (const set of t.sets) {
     view.stage = 'sets';
@@ -1657,6 +1692,7 @@ onRunReset(() => {
     roofReveal.value = null;
     toppedOut.value = null;
     arrivalCard.value = null;
+    chainArc.value = null;
   });
   clearParticles();
 });

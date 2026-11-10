@@ -1,11 +1,12 @@
-// The board's moments that sit on the lot (D-127): the roof reveal at the Roofing milestone, and
-// "Topped out!" the first week Under one roof holds. Both are in the board, so they keep to the
-// house however the lot is panned or zoomed, and both are drawn at the camera's scale.
+// The board's moments that sit on the lot: the roof reveal at the Roofing milestone and "Topped
+// out!" the first week Under one roof holds (D-127), and the tally's arcs along a chain (D-094's
+// option 1). They're in the board, so they keep to the house however the lot is panned or
+// zoomed, and they're drawn at the camera's scale.
 
 import { useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { Lot } from '../../rules/index.ts';
 import { paintRoof } from '../art/roof.ts';
-import { played, roofReveal, toppedOut } from '../fx/director.ts';
+import { chainArc, played, roofReveal, toppedOut } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
 import { Icon } from '../kit/kit.tsx';
 import { settings } from '../settings.ts';
@@ -127,5 +128,43 @@ export function ToppedOut({ scale, model }: { scale: number; model: HouseModel }
       <Icon name="flag" />
       <span>Topped out!</span>
     </div>
+  );
+}
+
+/**
+ * D-094's option 1: while the tally plays a chain, an arc runs from the piece that boosts to the
+ * one it sets going, tracing toward it and fading by the end of that piece's step. With Reduce
+ * motion it's drawn whole and fades.
+ */
+export function ChainArc({ lot, scale }: { lot: Lot; scale: number }) {
+  const arc = chainArc.value;
+  if (!arc) return null;
+  const px = CELL * scale;
+  const a = { x: arc.from.x * px, y: arc.from.y * px };
+  const b = { x: arc.to.x * px, y: arc.to.y * px };
+  // It bows out to one side of the way it runs (up, for an arc running left to right).
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const bow = FEEL.chain.bend * len;
+  const mx = (a.x + b.x) / 2 + (dy / len) * bow;
+  const my = (a.y + b.y) / 2 - (dx / len) * bow;
+  const d = `M${a.x} ${a.y} Q${mx} ${my} ${b.x} ${b.y}`;
+  return (
+    <svg
+      key={arc.id}
+      class="chain-arc"
+      width={lot.width * px}
+      height={(lot.height + 1) * px}
+      style={{
+        '--arc-ms': `${arc.ms}ms`,
+        '--trace-ms': `${arc.ms * FEEL.chain.traceShare}ms`,
+      }}
+      aria-hidden="true"
+    >
+      <path class="arc-under" d={d} pathLength={100} />
+      <path class="arc-line" d={d} pathLength={100} />
+      <circle class="arc-end" cx={b.x} cy={b.y} r={Math.max(3, px * 0.12)} />
+    </svg>
   );
 }

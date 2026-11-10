@@ -1184,7 +1184,7 @@ After M4 and before M5b (D-097's juice note): the reward feedback on M5a's art, 
 - M4's moments, beyond the simple pops M4 gives them (`house-systems-review.md` §6): a Renovation's level-up (M4 pops the room's stars, D-111), an arrival and the arrivals' markers on the progress bar, a change order's stamp, a house rule met or lost, and "Topped out!" the first week Under one roof holds
 - screen shake and particles, with Reduce motion, the Screen shake slider, and the Flashing toggle
 - the roof reveal at the Roofing milestone
-- D-094 (chain reactions, Open) would change the tally's order and add steps to it. Raise it with the team before this pull request reworks the tally.
+- D-094's option 1, chosen 2026-11-10: the tally plays pieces depth first along what boosts what, with an arc from each booster. Options 2–4 wait until after the jam.
 - **Its playtest:**
   - Do big moments feel big, and small ones stay out of the way?
   - Is anything too slow or too flashy?
@@ -1422,7 +1422,7 @@ The team treats reward feel as core: big combos should feel like Balatro and Com
 
 ### The weekly tally
 
-1. **Pieces trigger one at a time,** in placement order. Each trigger does four things:
+1. **Pieces trigger one at a time,** depth first along what boosts what (D-094's option 1): from each piece not yet played, in placement order, the piece, then each piece it boosts that hasn't played yet, with an arc from the booster to it. Each trigger does four things:
    - a popup at the piece in the Points color
    - the next note of the pitch ladder
    - a squash-and-wobble on the piece

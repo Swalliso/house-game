@@ -129,6 +129,69 @@
   }
 }
 
+/* --- The tally's chain arcs (D-094's option 1; MomentLayers.tsx): with the highlights ---- */
+
+.chain-arc {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: var(--z-highlights);
+  overflow: visible;
+  pointer-events: none;
+  animation: chain-fade var(--arc-ms) ease-in forwards;
+}
+.chain-arc path {
+  fill: none;
+  stroke-linecap: round;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: chain-trace var(--trace-ms) ease-out forwards;
+}
+/* A dark edge under the pale line, so it reads on floors, grass and water alike. */
+.chain-arc .arc-under {
+  stroke: var(--ink);
+  stroke-opacity: 0.55;
+  stroke-width: 6;
+}
+.chain-arc .arc-line {
+  stroke: var(--hl-active-edge);
+  stroke-width: 3;
+}
+.chain-arc .arc-end {
+  fill: var(--hl-active-edge);
+  stroke: var(--ink);
+  stroke-width: 2;
+  opacity: 0;
+  animation: chain-end var(--trace-ms) step-end forwards;
+}
+@keyframes chain-trace {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes chain-end {
+  to {
+    opacity: 1;
+  }
+}
+@keyframes chain-fade {
+  0%,
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.reduce-motion .chain-arc path {
+  animation: none;
+  stroke-dashoffset: 0;
+}
+.reduce-motion .chain-arc .arc-end {
+  animation: none;
+  opacity: 1;
+}
+
 /* --- The roof reveal (MomentLayers.tsx): over the house, under the canopy and the labels -- */
 
 .house-roof {

@@ -116,6 +116,13 @@ export const FEEL = {
   car: { slideMs: 900 },
 
   /**
+   * D-094's option 1: in the tally, an arc runs from a boosting piece to the one it sets going.
+   * It bows out by `bend` of its length, traces in `traceShare` of that piece's step, and fades
+   * by the step's end.
+   */
+  chain: { bend: 0.28, traceShare: 0.45 },
+
+  /**
    * Particles (D-125): bursts on one canvas over the page, drawn in whole UI pixels, none with
    * Reduce motion. Speeds in CSS px a second, gravity in px/s² (negative floats up), drag as
    * the share of speed lost a second, lives and `overMs` (a fountain's spread) in ms, sizes in
