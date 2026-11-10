@@ -19,6 +19,8 @@ export interface Settings {
   flashing: boolean;
   /** 0–100. */
   masterVolume: number;
+  /** 0–100 (M5b). At 0 the music stops, and none of it loads. */
+  musicVolume: number;
   sfxVolume: number;
   /**
    * The readable-font option (§12, Settings; D-059): every UI text in the system font instead
@@ -44,6 +46,7 @@ export function defaultSettings(): Settings {
     shake: 50,
     flashing: true,
     masterVolume: 70,
+    musicVolume: 70,
     sfxVolume: 80,
     readableFont: false,
   };
@@ -69,7 +72,7 @@ export function parseStored(raw: unknown, d: Settings = defaultSettings()): Part
   if (typeof r.reduceMotion === 'boolean') out.reduceMotion = r.reduceMotion;
   if (typeof r.readableFont === 'boolean') out.readableFont = r.readableFont;
   if (typeof r.flashing === 'boolean') out.flashing = r.flashing;
-  for (const k of ['shake', 'masterVolume', 'sfxVolume'] as const) {
+  for (const k of ['shake', 'masterVolume', 'musicVolume', 'sfxVolume'] as const) {
     if (k in r) out[k] = clamp100(r[k], d[k]);
   }
   return out;
@@ -105,7 +108,11 @@ export function updateSettings(patch: Partial<Settings>): void {
 if (typeof document !== 'undefined') {
   effect(() => {
     const s = settings.value;
-    audio.setVolumes({ master: s.masterVolume / 100, sfx: s.sfxVolume / 100 });
+    audio.setVolumes({
+      master: s.masterVolume / 100,
+      music: s.musicVolume / 100,
+      sfx: s.sfxVolume / 100,
+    });
     document.documentElement.classList.toggle('reduce-motion', s.reduceMotion);
     document.documentElement.classList.toggle('no-flashing', !s.flashing);
     document.documentElement.dataset.font = s.readableFont ? 'readable' : 'pixel';

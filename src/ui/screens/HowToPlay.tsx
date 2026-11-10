@@ -460,7 +460,36 @@ function HowToPlayText() {
             , from Modern Interiors and Modern Exteriors, with our own drawings in its palette.
           </li>
           <li>Fonts: Public Pixel by GGBotNet and Pixel Operator by Jayvee Enaguas, both CC0.</li>
-          <li>Sound effects made with ZzFX by Frank Force.</li>
+          <li>
+            Music: “Morning” and “Clear Air” by Kevin MacLeod (
+            <a href="https://incompetech.com/" target="_blank" rel="noreferrer">
+              incompetech.com
+            </a>
+            ) and “
+            <a
+              href="https://opengameart.org/content/sleepy-little-mouse"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Sleepy Little Mouse
+            </a>
+            ” by Tsorthan Grove, licensed under{' '}
+            <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">
+              CC BY 4.0
+            </a>
+            ; trimmed, levelled and re-encoded.
+          </li>
+          <li>
+            Sound effects: instruments from the{' '}
+            <a href="https://github.com/sgossner/VCSL" target="_blank" rel="noreferrer">
+              Versilian Community Sample Library
+            </a>{' '}
+            and foley by{' '}
+            <a href="https://kenney.nl/" target="_blank" rel="noreferrer">
+              Kenney
+            </a>
+            , both CC0, and a few made with ZzFX by Frank Force.
+          </li>
         </ul>
       </Section>
     </>

@@ -1,6 +1,6 @@
 // Settings (§12, Settings and accessibility, from M1): tally speed, Reduce motion, screen
 // shake, volume, (M4) showing the first-time hints again (D-045), (M5a) the readable font, and
-// (the juice PR, D-125) Flashing. The music slider comes with M5b.
+// (the juice PR, D-125) Flashing, and (M5b) the music's own volume.
 //
 // M5a draws it as a wood sheet with the kit's pixel controls, grouped as the UI audit asked:
 // the game, motion, sound, and the display.
@@ -109,6 +109,11 @@ export function SettingsPanel() {
           label="Volume"
           value={s.masterVolume}
           onInput={(masterVolume) => updateSettings({ masterVolume })}
+        />
+        <Slider
+          label="Music"
+          value={s.musicVolume}
+          onInput={(musicVolume) => updateSettings({ musicVolume })}
         />
         <Slider
           label="Sound effects"

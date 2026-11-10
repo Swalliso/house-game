@@ -5,6 +5,7 @@
 
 import { useEffect } from 'preact/hooks';
 import { audio } from './audio/audio.ts';
+import { startAudio } from './audio/scene.ts';
 import { Board, rotate } from './board/Board.tsx';
 import { toggleFit, zoomIn, zoomOut } from './board/camera.ts';
 import { BUILD_LABEL } from './build-info.ts';
@@ -206,7 +207,12 @@ export function App() {
   useEffect(() => {
     const unlock = () => audio.unlock();
     window.addEventListener('pointerdown', unlock);
-    return () => window.removeEventListener('pointerdown', unlock);
+    // M5b: the music follows the screen, and the sound files load once the first one is up.
+    const stopAudio = startAudio();
+    return () => {
+      window.removeEventListener('pointerdown', unlock);
+      stopAudio();
+    };
   }, []);
   // The game screen shows its notes over the board (.center); the title and the job board show
   // theirs at the top of the window (overlays.css's .title-screen ~ .notes).

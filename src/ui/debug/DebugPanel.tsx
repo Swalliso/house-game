@@ -18,6 +18,7 @@ import {
   type RunState,
 } from '../../rules/index.ts';
 import { BUILD_CHANNEL } from '../build-info.ts';
+import { music } from '../audio/music.ts';
 import { instantTally } from '../fx/director.ts';
 import { copyRunCode, showToast } from '../hud/actions.ts';
 import { upcomingArrivals } from '../hud/household.ts';
@@ -512,6 +513,13 @@ export function DebugPanel() {
             </label>
             <button type="button" onClick={() => void copyRunCode()}>
               Copy run code
+            </button>
+            <button
+              type="button"
+              onClick={() => music.next()}
+              title="M5b: skip to the next track in the shuffle"
+            >
+              Next track
             </button>
           </div>
         </div>

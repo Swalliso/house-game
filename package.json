@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "vite",
     "art:cut": "node scripts/cut-art.ts",
+    "audio:cut": "node scripts/cut-audio.ts",
     "atlas": "node scripts/build-atlas.ts",
     "build": "npm run atlas && npm run typecheck && vite build",
     "preview": "vite preview",

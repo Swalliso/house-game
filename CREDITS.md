@@ -32,11 +32,38 @@ Open House is a game jam entry for the theme "It's a house," built with Claude C
   supply slots and their pictures in the shop). The title screen's houses, trees, shrub,
   planters and car are Modern Exteriors cuts (`art/limezu/ui.json`, and the Flower Bed's
   planters from `art/limezu/yard.json`), on the lot's own lawn and street (`art/limezu/terrain.json`).
+- **Music (M5b, D-128):** three tracks under
+  [Creative Commons Attribution 4.0 (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/):
+  - "[Morning](https://incompetech.com/music/royalty-free/index.html?isrc=USUAN2300003)" and
+    "[Clear Air](https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100626)" by
+    Kevin MacLeod ([incompetech.com](https://incompetech.com)), Licensed under Creative
+    Commons: By Attribution 4.0 License.
+  - "[Sleepy Little Mouse](https://opengameart.org/content/sleepy-little-mouse)" by Tsorthan
+    Grove: its alternate mix and the same mix without drums, which play as two stems.
+
+  Our changes: each is trimmed (the silence at its end), levelled to −16 LUFS, and
+  re-encoded as Ogg Vorbis and AAC by `npm run audio:cut` (`art/audio.json`, D-130) into
+  `assets/audio/music/`, and recorded in `assets/licenses.json`. The sources stay in the
+  gitignored `art-source/audio/`. The game's How to play credits them too.
+
+- **Sound effects (M5b, D-129):** recorded instruments from the
+  [Versilian Community Sample Library (VCSL)](https://github.com/sgossner/VCSL) by Versilian
+  Studios and its contributors (CC0): marimba, hand chimes, vibraphone, glockenspiel, tubular
+  bells, a gong, a mark tree, and a slit drum. Foley and interface sounds by
+  [Kenney](https://kenney.nl) (CC0), from the OpenGameArt pages of his
+  [RPG Audio](https://opengameart.org/content/50-rpg-sound-effects),
+  [Casino Audio](https://opengameart.org/content/54-casino-sound-effects-cards-dice-chips) and
+  [Interface Sounds](https://opengameart.org/content/interface-sounds) packs: cloth, coins,
+  clay chips, clicks, a creak, a pop and a book's thump. CC0 asks for no credit; we give it anyway. Each sound is cut from its
+  source by `npm run audio:cut` (`art/audio.json`, D-130) into `assets/audio/sfx/`, as Ogg Vorbis
+  and AAC, and recorded in `assets/licenses.json`. The sources stay in the gitignored
+  `art-source/audio/`.
 - **Placeholder sound effects:** generated in the browser with
   [ZzFX](https://github.com/KilledByAPixel/ZzFX) by Frank Force (MIT). Its sample builder is
-  vendored in `src/ui/audio/zzfx.ts` with its license notice.
+  vendored in `src/ui/audio/zzfx.ts` with its license notice. A sound without a recording, or
+  whose recording hasn't loaded yet, plays its ZzFX placeholder.
 
-No recorded audio yet. Every asset we add is listed here and recorded in
+Every asset we add is listed here and recorded in
 [`assets/licenses.json`](assets/licenses.json).
 
 `assets/licenses.json` maps each file's path under `assets/` to where it came from:

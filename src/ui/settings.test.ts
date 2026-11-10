@@ -26,6 +26,15 @@ describe('stored settings', () => {
     expect(parseStored({ shake: 'loud' }, d)).toEqual({ shake: d.shake });
   });
 
+  // M5b: the music's own volume, saved like the others (§12, Settings).
+  it('keep the music volume, clamped, and default it to a calm level', () => {
+    const d = defaultSettings();
+    expect(d.musicVolume).toBeGreaterThan(0);
+    expect(parseStored({ musicVolume: 0 }, d)).toEqual({ musicVolume: 0 });
+    expect(parseStored({ musicVolume: 250 }, d)).toEqual({ musicVolume: 100 });
+    expect(parseStored({ musicVolume: 'off' }, d)).toEqual({ musicVolume: d.musicVolume });
+  });
+
   it('keep Flashing, on by default (D-125)', () => {
     const d = defaultSettings();
     expect(d.flashing).toBe(true);
