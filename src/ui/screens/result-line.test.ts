@@ -13,7 +13,7 @@ import {
   type RunSetup,
   type RunState,
 } from '../../rules/index.ts';
-import { BUILD_SHA } from '../build-info.ts';
+import { BUILD_CHANNEL, BUILD_SHA } from '../build-info.ts';
 import { appScreen, CONTENT_HASH, loadInitialRun, notice, run } from '../store.ts';
 import { lotLink, PAGES_URL, resultLine, shareBase } from './result-line.ts';
 
@@ -119,8 +119,10 @@ describe('where the link points', () => {
 describe('opening the link', () => {
   const store = new Map<string, string>();
   let address = '';
-  const SAVE = 'openhouse:local:run';
-  const PREVIOUS = 'openhouse:local:previous';
+  // The store's keys carry the build's channel: `local` here, `dev` or `main` where the deploy
+  // job runs these tests before it builds each site.
+  const SAVE = `openhouse:${BUILD_CHANNEL}:run`;
+  const PREVIOUS = `openhouse:${BUILD_CHANNEL}:previous`;
 
   /** Opens `url` as a fresh page load would. */
   function open(url: string): void {
