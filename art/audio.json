@@ -41,6 +41,24 @@
       "page": "https://opengameart.org/content/sleepy-little-mouse",
       "author": "Tsorthan Grove",
       "license": "CC-BY-4.0"
+    },
+    "ketsa-folded": {
+      "path": "ketsa",
+      "page": "https://freemusicarchive.org/music/Ketsa/lofi-downtempo/folded/",
+      "author": "Ketsa",
+      "license": "CC-BY-4.0"
+    },
+    "monplaisir-on-the-road": {
+      "path": "monplaisir",
+      "page": "https://freemusicarchive.org/music/Monplaisir/Relaxing_Ukulele/Monplaisir_-_Relaxing_Ukulele_-_06_On_the_road_looking_at_your_feet/",
+      "author": "Monplaisir",
+      "license": "CC0-1.0"
+    },
+    "holiznacc0-comfort-games-5": {
+      "path": "holiznacc0",
+      "page": "https://freemusicarchive.org/music/holiznacc0/retro-gamer-soundtrack/comfort-games-5/",
+      "author": "HoliznaCC0",
+      "license": "CC0-1.0"
     }
   },
   "cuts": {
@@ -437,6 +455,31 @@
       "loudness": -16,
       "quality": 4,
       "note": "D-128: guitars and soft piano"
+    },
+    "music/folded/full": {
+      "from": "ketsa-folded",
+      "file": "Folded.mp3",
+      "stereo": true,
+      "loudness": -16,
+      "quality": 4,
+      "note": "D-134: chill downtempo keys and guitar"
+    },
+    "music/on-the-road/full": {
+      "from": "monplaisir-on-the-road",
+      "file": "Monplaisir_-_06_-_On_the_road_looking_at_your_feet.mp3",
+      "stereo": true,
+      "loudness": -16,
+      "quality": 4,
+      "limit": true,
+      "note": "D-134: solo ukulele; its plucks peak high, so a limiter lets it reach -16 LUFS"
+    },
+    "music/comfort-games-5/full": {
+      "from": "holiznacc0-comfort-games-5",
+      "file": "Comfort Games 5.mp3",
+      "stereo": true,
+      "loudness": -16,
+      "quality": 4,
+      "note": "D-134: a sparse music box"
     }
   }
 }
