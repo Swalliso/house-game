@@ -9,6 +9,9 @@
 // its rows, the most compact that every row fits on its lines (useShape): the column is 280 to
 // 404 px wide, and the pixel font is wide, so a row that wrapped on its own would leave the list
 // ragged (playtest 5a). The full-width finale with a photo per milestone is M6's.
+//
+// M6 (D-135): Copy result, above Copy run code, copies the run as one line for the group chat,
+// with a link that starts the same lot (result-line.ts).
 
 import type { RefObject } from 'preact';
 import { useLayoutEffect, useRef, useState } from 'preact/hooks';
@@ -21,12 +24,13 @@ import {
 } from '../../rules/index.ts';
 import { busy } from '../fx/director.ts';
 import { formatNumber } from '../format.ts';
-import { copyRunCode, startNewRun } from '../hud/actions.ts';
+import { copyRunCode, copyText, startNewRun } from '../hud/actions.ts';
 import { Button, Icon, Panel, type IconName } from '../kit/kit.tsx';
 import { settings } from '../settings.ts';
 import { goToTitle, run } from '../store.ts';
 import { ICON_SIZES } from '../theme/art.ts';
 import { endSignShown, Notes } from './Overlays.tsx';
+import { resultLine } from './result-line.ts';
 import './end.css';
 
 const WOW = SCORE_LABELS.total;
@@ -310,6 +314,14 @@ export function EndScreen() {
       <div class="run-end-actions">
         <Button variant="primary" size="lg" block onClick={() => startNewRun()}>
           New run
+        </Button>
+        <Button
+          class="run-end-share"
+          icon="copy"
+          title="One line for the group chat: your verdict, Wow and milestones, and a link to play this lot"
+          onClick={() => void copyText(resultLine(s), 'Result copied')}
+        >
+          Copy result
         </Button>
         <Button icon="copy" onClick={() => void copyRunCode()}>
           Copy run code

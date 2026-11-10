@@ -32,6 +32,10 @@ Open House is a game jam entry for the theme "It's a house," built with Claude C
   supply slots and their pictures in the shop). The title screen's houses, trees, shrub,
   planters and car are Modern Exteriors cuts (`art/limezu/ui.json`, and the Flower Bed's
   planters from `art/limezu/yard.json`), on the lot's own lawn and street (`art/limezu/terrain.json`).
+- **The link preview and the tab's icon** (`public/og.png`, `public/favicon.png`, D-135): the
+  preview is a screenshot of a finished house from the game, its LimeZu sprites and our own
+  drawings, with a title sign in the game's style; the icon is a little house drawn for Open
+  House by Claude Code in LimeZu's palette. Our own work.
 - **Music (M5b, D-128 and D-134):** six tracks.
   - "[Morning](https://incompetech.com/music/royalty-free/index.html?isrc=USUAN2300003)" and
     "[Clear Air](https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100626)" by

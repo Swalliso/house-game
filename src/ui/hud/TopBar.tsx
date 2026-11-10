@@ -209,14 +209,14 @@ function Resources() {
   );
 }
 
+/** Hidden once the run is over (D-135): there's no milestone left for it to complete. */
 function AutoComplete() {
   const s = run.value;
-  const ended = s.screen === 'won' || s.screen === 'lost';
+  if (s.screen === 'won' || s.screen === 'lost') return null;
   return (
     <Switch
       class="tb-switch"
       checked={s.autoComplete}
-      disabled={ended}
       title="Complete each milestone as soon as its target is met"
       onMouseDown={noFocus}
       onChange={(want) => setAutoComplete(want)}
