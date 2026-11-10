@@ -21,6 +21,7 @@ import {
   ProgressParts,
   type Row,
   rulesOpen,
+  shownParts,
 } from './Checklist.tsx';
 
 /** The host elements a tree renders, function components called in place (none use hooks). */
@@ -76,6 +77,32 @@ describe("the checklist's progress parts", () => {
     expect(text(ProgressParts({ parts: [{ text: 'fill 0% (≥ 60%)', ok: false }] }))).not.toMatch(
       /✕/,
     );
+  });
+});
+
+describe('the progress a line shows (D-142)', () => {
+  const roof = [
+    { text: '2 rooms (≥ 4)', ok: false },
+    { text: 'fill 58% (≥ 60%)', ok: false },
+    { text: 'box 4 × 3 (≤ 2:1)', ok: true },
+  ];
+
+  it('is only what is still missing, for a line that does not hold yet', () => {
+    expect(shownParts({ met: false, progress: roof }, null).map((p) => p.text)).toEqual([
+      '2 rooms (≥ 4)',
+      'fill 58% (≥ 60%)',
+    ]);
+  });
+
+  it('is every part for a line the play being looked at flips, and for one that holds', () => {
+    expect(shownParts({ met: false, progress: roof }, 'gained')).toBe(roof);
+    expect(shownParts({ met: true, progress: roof }, 'lost')).toBe(roof);
+    expect(shownParts({ met: true, progress: roof }, null)).toBe(roof);
+  });
+
+  it('keeps every part where none is marked missing, so the line never goes blank', () => {
+    const held = [{ text: 'beside each other', ok: true }];
+    expect(shownParts({ met: false, progress: held }, null)).toBe(held);
   });
 });
 

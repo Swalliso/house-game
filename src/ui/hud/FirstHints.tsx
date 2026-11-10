@@ -1,8 +1,9 @@
 // First-time hints (D-045, M4b): a short card the first time each idea comes up, dismissed
 // with "Got it" and remembered in this browser (UI only, never game state). One shows at a
-// time, never during a tally or under a banner (an arrival's). The numbers come from the
-// rules' glossary, so they follow the content. (The controls strip under the board is M5a's
-// Hints.tsx; these were M4's Hints until the two branches met.)
+// time, never during a tally or under a banner (an arrival's). Each keeps to HINT_WORDS words
+// (D-142): one idea for the moment it applies, and the tips carry the rest. The ones that state
+// a rule come from the rules' hintText, so their numbers follow the content. (The controls
+// strip under the board is M5a's Hints.tsx; these were M4's Hints until the two branches met.)
 //
 // Each card has a spot where it covers neither what it talks about nor the controls it needs:
 // never the lot, which a hint over the board would hide pieces of and block pointing at, nor
@@ -17,7 +18,7 @@
 import { signal } from '@preact/signals';
 import type { RefObject } from 'preact';
 import { useLayoutEffect, useRef, useState } from 'preact/hooks';
-import { CONTENT, glossary, SCORE_LABELS } from '../../rules/index.ts';
+import { CONTENT, hintText, SCORE_LABELS } from '../../rules/index.ts';
 import { BUILD_CHANNEL } from '../build-info.ts';
 import { arrivalCard, banner, busy } from '../fx/director.ts';
 import { roofed } from '../fx/moments.ts';
@@ -29,6 +30,7 @@ import './first-hints.css';
 
 export type HintId =
   | 'firstWeek'
+  | 'score'
   | 'checklist'
   | 'early'
   | 'shop'
@@ -74,7 +76,7 @@ export function resetHints(): void {
   }
 }
 
-const G = glossary(CONTENT);
+const T = hintText(CONTENT);
 const L = SCORE_LABELS;
 
 /** Where a card sits: first-hint-place.ts says where each spot is. */
@@ -86,52 +88,48 @@ interface Hint {
   spot: Spot;
 }
 
-const HINTS: Record<HintId, Hint> = {
+/** Every hint, each within HINT_WORDS words (first-hints.test.ts holds them to it). */
+export const HINTS: Readonly<Record<HintId, Hint>> = {
   firstWeek: {
     title: 'Your first week',
     text:
-      `Pick a card (or press its number), click the lot to place it, then End week. ` +
-      `Each piece earns ` +
-      `${L.points} from what it touches, and ${L.mult} multiplies it into ${L.total}. ` +
-      `Reach each milestone’s target before its weeks run out. Hover anything to read it.`,
+      `Pick a card, click the lot to place it, then End week. Reach the milestone’s ` +
+      `${L.total} target in time. Hover anything to read it.`,
     spot: 'overChecklist',
   },
-  checklist: { title: G.checklist.title, text: G.checklist.text, spot: 'besideChecklist' },
-  early: { title: G.early.title, text: G.early.text, spot: 'overScore' },
-  shop: {
-    title: 'The shop',
-    text:
-      `Spend your budget on goods for the house: blueprints bend the rules all run, pieces ` +
-      `wait in your reserve, fixtures upgrade a piece you’ve built, and tools are one-offs. ` +
-      `${G.budget.text}`,
-    spot: 'underGoods',
-  },
+  // Week 2, once a week has been tallied: what the first week's hint used to say up front.
+  score: { title: `${L.points} and ${L.mult}`, text: T.score, spot: 'overChecklist' },
+  checklist: { title: 'The checklist', text: T.checklist, spot: 'besideChecklist' },
+  early: { title: 'Complete early', text: T.early, spot: 'overScore' },
+  // The shelves' own tags say what each kind of good is, and the fixture's hint comes with the
+  // first fixture.
+  shop: { title: 'The shop', text: T.shop, spot: 'underGoods' },
   // D-133: the reveal's roof stays on until you build, so the first look at the lot after
   // Roofing has it on, and this says how to get it back.
   roof: {
     title: 'The roof’s on',
     text:
-      'Roofing put a roof on the house. Picking a card takes it off so you can build, and ' +
-      'the Roof button by the zoom (or T) puts it back on, or takes it off to look inside.',
+      'Roofing put the roof on. Picking a card lifts it so you can build; the Roof button by ' +
+      'the zoom (or T) toggles it.',
     spot: 'overScore',
   },
-  fixture: { title: G.fixture.title, text: G.fixture.text, spot: 'overScore' },
+  fixture: { title: 'Fixtures', text: T.fixture, spot: 'overScore' },
   // M4b: the screen and the arrival's cards say what they are; these say why they matter.
+  // "This phase" is the sheet's chip for a phase effect (ChangeOrderScreen.tsx KIND_LABEL).
   changeOrder: {
     title: 'Change orders',
     text:
-      'The client has changed their mind. A request or a restriction is yours to accept or ' +
-      'decline, and pays if you see it through the next milestone; declining costs nothing. ' +
-      'A change to the weather or the season just happens, and lasts this phase only.',
+      'The client changed their mind. A request or a restriction pays if you accept it and ' +
+      'see it through; “This phase” changes just happen.',
     spot: 'underGoods',
   },
   // Playtest 4: nothing said a spare card of a room type could renovate, so it went unused.
-  renovate: { title: G.renovate.title, text: G.renovate.text, spot: 'overScore' },
+  renovate: { title: 'Renovate', text: T.renovate, spot: 'overScore' },
   arrival: {
     title: 'Someone’s moving in',
     text:
-      'The household grows on the schedule shown on the job board. Their room is waiting in ' +
-      'your reserve, and Room for everyone needs it from now on: build it when you can.',
+      'Their room is waiting in your reserve. Room for everyone needs it from now on, so ' +
+      'build it when you can.',
     spot: 'overScore',
   },
 };
@@ -148,7 +146,9 @@ function current(seen: ReadonlySet<string>): HintId | null {
     // D-133: first, so it comes while the reveal's roof is still on.
     ['roof', building && roofed(s)],
     ['firstWeek', building && s.week === 1],
-    ['checklist', building && s.week >= 2],
+    // A hint a week (D-142): how a week scores once one has been tallied, then the checklist.
+    ['score', building && s.week === 2],
+    ['checklist', building && s.week >= 3],
     ['early', building && earlyOffer.value.ok],
     ['fixture', building && fixtureInSight],
     // M4b: the sheet is up (it waits for the milestone's beats), and a member's cards are in

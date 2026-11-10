@@ -1884,7 +1884,10 @@ export {
   fixtureText,
   glossary,
   handCardLines,
+  HINT_WORDS,
+  hintText,
   houseConditionText,
+  houseRulesText,
   lotTraitText,
   modifierText,
   multNumber,
@@ -1898,7 +1901,7 @@ export {
   toolText,
   upgradeText,
 } from './text.ts';
-export type { Term } from './text.ts';
+export type { HintTerm, Term } from './text.ts';
 export { earnedFor, roundHalfUp, weekTotal } from './scoring.ts';
 export { ruleValue, sourceName } from './modifiers.ts';
 export { meetsHouse, outlineOf, progressOf } from './conditions.ts';

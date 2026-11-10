@@ -7,6 +7,9 @@
 // where the ones a milestone just resolved stay, marked with how they went, until the next
 // phase's first week is played.
 //
+// Its rows keep short (D-142): a line that doesn't hold shows only what's still missing, who's
+// moving in is a name and a milestone, and the wishes sit under a one-word tag.
+//
 // It has to share the left column with the score panel and Inspect at 1280×720, so it keeps
 // short: a house-rules group whose lines all hold folds into one row ("The household 4/4"),
 // which a click opens. It opens by itself while a line in it flips, under a preview or on a
@@ -61,7 +64,7 @@ import { CREW_ICONS, LOT_TRAIT_ICONS } from '../sprites.ts';
 import { activePlay, currentTally, preview, run, selected, tool } from '../store.ts';
 import { seenHints } from './FirstHints.tsx';
 import { devicePixelRatio, uiPixel } from '../theme/pixel.ts';
-import { arrivalWeek, isPlural, overtimeUsed, upcomingArrivals } from './household.ts';
+import { arrivalWeek, overtimeUsed, upcomingArrivals } from './household.ts';
 import { Tip } from './Tip.tsx';
 import { SunChip } from './sun.tsx';
 import './checklist.css';
@@ -78,11 +81,6 @@ const GROUP_NAMES: Readonly<Record<RuleGroup, string>> = {
   shape: 'The shape',
   yard: 'The yard',
 };
-
-/** "The Hendersons’ wishes", "Dale’s wishes". */
-function wishesTitle(name: string): string {
-  return `${name}${name.endsWith('s') ? '’' : '’s'} wishes`;
-}
 
 /**
  * The run the checklist judges. While an action plays back, the rules have moved on: it's the
@@ -178,6 +176,20 @@ export function ProgressParts({ parts }: { parts: readonly ProgressPart[] }) {
       ))}
     </>
   );
+}
+
+/**
+ * The progress parts a line shows (D-142). A line that doesn't hold yet shows what's still
+ * missing: its parts that hold are done, and its tip has the whole rule. A line the play being
+ * looked at flips shows them all: what it met, or what breaks.
+ */
+export function shownParts(
+  line: Pick<ChecklistLine, 'met' | 'progress'>,
+  change: 'gained' | 'lost' | null,
+): readonly ProgressPart[] {
+  if (line.met || change !== null) return line.progress;
+  const missing = line.progress.filter((p) => !p.ok);
+  return missing.length > 0 ? missing : line.progress;
 }
 
 /** A token's color, as the page has it (tokens.css), for an animation's keyframes. */
@@ -332,7 +344,7 @@ function Line({
       {change && <span class="check-change">{change === 'gained' ? 'turns on' : 'turns off'}</span>}
       {showProgress && line.progress.length > 0 && (
         <span class="check-progress">
-          <ProgressParts parts={line.progress} />
+          <ProgressParts parts={shownParts(line, change)} />
         </span>
       )}
     </li>
@@ -545,7 +557,9 @@ function Tastes({ tastes, crew }: { tastes: readonly Modifier[]; crew: Component
           folded={!open}
           title={open ? 'Click to fold them away' : 'What the client likes and dislikes'}
         >
-          <span class="fold-name">Tastes ({tastes.length})</span>
+          <span class="fold-name">
+            Tastes<span class="fold-n"> ({tastes.length})</span>
+          </span>
         </FoldButton>
         {crew}
       </div>
@@ -705,7 +719,9 @@ const tastesShown = (box: HTMLElement) =>
 
 /**
  * Who's still to move in (M4b, D-103), under the household's lines until they arrive: "Grandma
- * arrives at Drywall, week 17". Room for everyone's line already shows what they'll need.
+ * at Drywall", two lines at most in a 280 px column (D-142; with "arrives" and the week it took
+ * four). The week is in the name's tip, after what they bring. Room for everyone's line already
+ * shows what they'll need.
  */
 function ArrivalLines({ s }: { s: RunState }) {
   const coming = upcomingArrivals(s);
@@ -713,18 +729,20 @@ function ArrivalLines({ s }: { s: RunState }) {
   const overtime = overtimeUsed(s);
   return (
     <>
-      {coming.map((a) => (
-        <li key={a.id} class="check-arrival">
-          <Mark icon="House" />
-          <span class="check-name">
-            <Tip title={a.name} text={a.text}>
-              {a.name}
-            </Tip>{' '}
-            {isPlural(a) ? 'arrive' : 'arrives'} at {rules.phaseName(a.phase)}, week{' '}
-            {arrivalWeek(a, overtime)}
-          </span>
-        </li>
-      ))}
+      {coming.map((a) => {
+        const phase = rules.phaseName(a.phase);
+        return (
+          <li key={a.id} class="check-arrival">
+            <Mark icon="House" />
+            <span class="check-name">
+              <Tip title={a.name} text={`${a.text} At ${phase}, week ${arrivalWeek(a, overtime)}.`}>
+                {a.name}
+              </Tip>{' '}
+              at {phase}
+            </span>
+          </li>
+        );
+      })}
     </>
   );
 }
@@ -1054,7 +1072,9 @@ export function Checklist() {
           })}
         {wishes.length > 0 && (
           <>
-            <h3 class="plank-tag">{wishesTitle(client.name)}</h3>
+            {/* The plank above names the client, so the tag is one word, one line in every column
+                (D-142), as the job board's card heads them. */}
+            <h3 class="plank-tag">Wishes</h3>
             <ul class="check-group">{lineList(wishes)}</ul>
           </>
         )}
