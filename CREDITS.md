@@ -32,11 +32,24 @@ Open House is a game jam entry for the theme "It's a house," built with Claude C
   supply slots and their pictures in the shop). The title screen's houses, trees, shrub,
   planters and car are Modern Exteriors cuts (`art/limezu/ui.json`, and the Flower Bed's
   planters from `art/limezu/yard.json`), on the lot's own lawn and street (`art/limezu/terrain.json`).
+- **Sound effects (M5b, D-129):** recorded instruments from the
+  [Versilian Community Sample Library (VCSL)](https://github.com/sgossner/VCSL) by Versilian
+  Studios and its contributors (CC0): marimba, hand chimes, vibraphone, glockenspiel, tubular
+  bells, a gong, a mark tree, and a slit drum. Foley and interface sounds by
+  [Kenney](https://kenney.nl) (CC0), from the OpenGameArt pages of his
+  [RPG Audio](https://opengameart.org/content/50-rpg-sound-effects),
+  [Casino Audio](https://opengameart.org/content/54-casino-sound-effects-cards-dice-chips) and
+  [Interface Sounds](https://opengameart.org/content/interface-sounds) packs: cloth, coins,
+  clay chips, clicks. CC0 asks for no credit; we give it anyway. Each sound is cut from its
+  source by `npm run audio:cut` (`art/audio.json`, D-130) into `assets/audio/sfx/`, as Ogg Vorbis
+  and AAC, and recorded in `assets/licenses.json`. The sources stay in the gitignored
+  `art-source/audio/`.
 - **Placeholder sound effects:** generated in the browser with
   [ZzFX](https://github.com/KilledByAPixel/ZzFX) by Frank Force (MIT). Its sample builder is
-  vendored in `src/ui/audio/zzfx.ts` with its license notice.
+  vendored in `src/ui/audio/zzfx.ts` with its license notice. A sound without a recording, or
+  whose recording hasn't loaded yet, plays its ZzFX placeholder.
 
-No recorded audio yet. Every asset we add is listed here and recorded in
+Every asset we add is listed here and recorded in
 [`assets/licenses.json`](assets/licenses.json).
 
 `assets/licenses.json` maps each file's path under `assets/` to where it came from:

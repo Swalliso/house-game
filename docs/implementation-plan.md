@@ -1509,9 +1509,9 @@ Intensity is measured against **pace**: `max(1, (this phase's target − the sco
   - major, mixolydian, or pentatonic harmony, with rests
 
   Tempo, not style, drives arousal (Bernardi et al., 2006). Balatro plays its tracks at 0.7× speed.
-- **Synced stems:** 3–4 stems with the same tempo, key, and length (building, shop, milestone review, crate). They start together and crossfade with about a 0.3 s time constant, so changing screens never restarts the music.
+- **Synced stems:** 3–4 stems with the same tempo, key, and length (building, shop, milestone review, crate). They start together and crossfade with about a 0.3 s time constant, so changing screens never restarts the music. A track without stems changes with the screen through the music bus's low-pass filter and level instead (M5b, D-131).
 - **Enough of it:** at least 2–3 tracks of 2–3 minutes. Combolands' single short loop is its most-cited audio complaint.
-- **Files:** OGG with an M4A fallback, loop points trimmed past encoder padding, loaded after the title screen.
+- **Files:** OGG with an M4A fallback, loaded after the title screen (D-130). The tracks play through in a shuffled order with a short rest between them, so no loop points are needed (D-131).
 - **Mix:** about −16 to −18 LUFS, with music 8–10 dB under sound-effect peaks.
 
 ### Audio implementation

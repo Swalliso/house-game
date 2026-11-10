@@ -1246,6 +1246,46 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 *Reserved numbers (2026-11-09): D-115 to D-118 are the layout session's drafts and D-122 the legibility session's; they aren't in this file yet. New entries start at D-124.*
 
+### D-129 · The recorded sound set, in the music's key
+**Status:** Proposed · 2026-11-09, with M5b (D-058's reward sounds; `implementation-plan.md` §12, Sound). For playtest 5b's ears.
+**Decision:**
+- **Real instruments replace the ZzFX blips** where a recording fits (`src/ui/audio/kit.ts`), all CC0:
+  - Comfort (Points): a marimba's soft wooden plink. Charm (+Mult): a warm hand chime on the key's fifth. Sparkle (×Mult): a tubular bell on the tonic over a low gong, about 3 dB under the chime. The bell and the gong play for ×Mult and nothing else (`kit.test.ts`).
+  - Placing a room: a slit drum's thock, from 4 takes. A yard piece: a cloth's fwp, from 4 takes.
+  - The jingles (a big week, a milestone met or missed, the target reached), the multiply moment, and a purchase: short phrases on marimba, vibraphone, glockenspiel and the chimes. The coin count: clay chips. Clicks and the "can't place" bonk: Kenney's Interface Sounds. The sparkle: a mark tree's run.
+  - Sources: the VCSL sample library (Versilian Studios) and Kenney's RPG Audio, Casino Audio and Interface Sounds, through their OpenGameArt pages (kenney.nl turns scripts away). 46 short files, 1.2 MB in both formats.
+- **Everything pitched is in the playing track's key.** A note is a step of the key's scale on an instrument's own register; the ladder climbs the key's pentatonic scale from its tonic each week (two octaves, then it holds and adds the sparkle). A caller's `rate` on a pitched sound moves each note to the nearest note of that pentatonic scale, so the director's pitch nudges (a chime at 1.1×, a shop row's rising plinks) stay in key. Unpitched sounds keep the random ±0.05 rate; every sound keeps ±1.5 dB (§12, Variation). Each instrument has 4–7 samples, so no note is shifted more than half an octave in any key (`kit.test.ts`).
+- **Round-robin:** a set plays its takes in a shuffled order, never the same take twice in a row.
+- **Placeholders stay:** a sound with no recipe (Rotate's swish), or whose files haven't decoded yet, plays its ZzFX placeholder. A new moment can start with a placeholder and get a recipe later.
+- **Levels** match the placeholders' within about 3 dB (peak and early RMS), so playtests 1–5's balance carries over: the user's ears tune them from there.
+
+**Why:** D-058 asked for a timbre per score layer, a ladder in the music's key, and round-robin variants; recorded mallets also sit with calm acoustic music where synth blips don't.
+**Considered:** Kenney's jingles (fixed keys, so they'd clash with the music); Freesound (originals need a login, and its licenses vary file by file); a sprite sheet of all the sounds in one file (AAC's priming offsets would shift every cut in Chrome).
+**Changes:** none to settled decisions. `implementation-plan.md` §12 Sound: the ×Mult bell's register.
+
+### D-130 · Audio files: the cut, the formats, and loading after the title
+**Status:** Proposed · 2026-11-09, with M5b (`implementation-plan.md` §12, Files and Audio sources and licenses).
+**Decision:**
+- **`npm run audio:cut`** (`scripts/cut-audio.ts`) works like `art:cut` (D-097): `art/audio.json` names each source (a folder or zip in the gitignored `art-source/audio/`, with its page, author and license) and each cut (a file in it, where to start, how long, the fade, a low-pass, mono or stereo, and a peak or, for music, a loudness). It writes `assets/audio/<cut>.ogg` and `.m4a`, `assets/audio/index.json` (each cut's length and hash), and the `audio/` records in `assets/licenses.json`. Unchanged cuts aren't encoded again; cuts no longer listed are removed. It runs locally on macOS (Homebrew's `vorbis-tools` and the system's `afconvert`); CI checks the committed files against the manifest (`cut-audio.test.ts`).
+- **Formats:** Ogg Vorbis (quality 3 for sounds, 4 for music) where `canPlayType` says the browser plays it, AAC in M4A otherwise (Safari before 18.4). An Ogg file that won't decode is fetched again as M4A, and the rest follow it. Sounds are mono, music stereo. Music is cut to −16 LUFS (BS.1770) with peaks under −1 dBFS; sounds to a −1 dBFS peak.
+- **Loading:** the files load 0.6 s after the first screen is up (the title, usually), and decode on the first click, when the AudioContext starts. Music loads one track at a time: the next track's bytes while one plays, decoded when it's due, so at most two tracks are in memory. With the music volume at 0, no music loads.
+
+**Why:** the art pipeline's approach keeps paid or bulky sources out of the repo and every committed file traceable to its source and license. Loading after the title keeps the first screen quick.
+**Changes:** none to settled decisions.
+
+### D-131 · The music bus: screen mixes, ducking, the losing glide, and the volumes
+**Status:** Proposed · 2026-11-09, with M5b (`implementation-plan.md` §12, Music, Ducking and Losing).
+**Decision:**
+- **A shuffled playlist:** every track once before any repeats, never the last one first, with a 2.5 s rest between tracks and a 2.5 s fade in for the first. Tracks play through rather than loop, so there are no loop points to trim (§12, Files).
+- **Each screen has its mix** (`tracks.ts`), crossfaded with a 0.3 s time constant, so a screen change never restarts the music: the title, the job board, the build screen, the shop, an open crate, a milestone's review, and a run won or lost. A track with stems mixes them per screen; one without (all of D-128's picks) changes through the bus's low-pass and level instead: plain while you build, a room away in the shop (3 kHz, −1.4 dB), hushed while a crate opens (1.3 kHz, −3.7 dB). The screen follows what the player sees: the rules are already in the shop while a milestone's tally and beats play, and that's "review" (`scene.ts`).
+- **Ducking:** a jingle (a recipe marked `duck`, D-129) takes the music down 10 dB over 50 ms, holds it while the jingle rings, and lets it back up over 1 s. `audio.duck(seconds)` does the same for a moment without a recipe.
+- **Losing:** when the run is lost and its end screen shows, the music glides down to 0.6× speed over a second (tape-slow, its pitch with it), and stays there. A new run glides it back over 1.5 s.
+- **Volumes:** master, music and sound effects, saved with the other settings (default 70, 70 and 80). The music bus sits 6 dB under the sound effects' (`MUSIC_TRIM`), so −16 LUFS tracks play 8–10 dB under the sounds' peaks (§12, Mix). A music volume of 0 fades the track out and stops loading music.
+
+**Why:** §12 and D-058: calm music that never restarts between screens, rewards given room by ducking, and a loss that sags instead of cutting out (Balatro).
+**Considered:** `<audio>` elements for the music (they stream with less memory, but can't keep stems in sync or glide the speed smoothly); loops trimmed past the encoders' padding (a playlist of whole tracks needs none); fading the music out when the tab is hidden (players often keep calm music on in the background).
+**Changes:** none to settled decisions. `implementation-plan.md` §12 Music: the screen-mix fallback for tracks without stems, and the playlist instead of loop points.
+
 ### D-123 · Playtest 5's re-fit: the targets and each client's factor
 **Status:** Proposed · 2026-11-09, before playtest 5. It's the one re-fit that D-114, D-119, D-120 and D-121 left until all of playtest 4's content changes were in (playtest 4's findings §12).
 **Decision:**

@@ -1,0 +1,232 @@
+{
+  "sfx/bell-c5": {
+    "hash": "af3370ad950b7b21",
+    "seconds": 2.8,
+    "channels": 1
+  },
+  "sfx/bell-c6": {
+    "hash": "b61eb0b43e7cc5b8",
+    "seconds": 2.8,
+    "channels": 1
+  },
+  "sfx/bell-d5": {
+    "hash": "b96bdf37ad556750",
+    "seconds": 2.8,
+    "channels": 1
+  },
+  "sfx/bell-e5": {
+    "hash": "cbc7ef4da5501b16",
+    "seconds": 2.8,
+    "channels": 1
+  },
+  "sfx/bell-g5": {
+    "hash": "468f930a051095f4",
+    "seconds": 2.8,
+    "channels": 1
+  },
+  "sfx/chime-c5": {
+    "hash": "a516a941faa59f00",
+    "seconds": 1.8,
+    "channels": 1
+  },
+  "sfx/chime-c6": {
+    "hash": "69c6ae9527347ca1",
+    "seconds": 1.6,
+    "channels": 1
+  },
+  "sfx/chime-e5": {
+    "hash": "8516923e6c8e71b8",
+    "seconds": 1.8,
+    "channels": 1
+  },
+  "sfx/chime-e6": {
+    "hash": "32bf58d5fd4312d5",
+    "seconds": 1.5,
+    "channels": 1
+  },
+  "sfx/chime-gs6": {
+    "hash": "7c94a52b5afa2273",
+    "seconds": 1.4,
+    "channels": 1
+  },
+  "sfx/chip-1": {
+    "hash": "acbeba9349777e22",
+    "seconds": 0.12,
+    "channels": 1
+  },
+  "sfx/chip-2": {
+    "hash": "8763e1edde75d59b",
+    "seconds": 0.12,
+    "channels": 1
+  },
+  "sfx/chip-3": {
+    "hash": "fd6bd15dac069aa2",
+    "seconds": 0.12,
+    "channels": 1
+  },
+  "sfx/chip-4": {
+    "hash": "898100bf9be5bed2",
+    "seconds": 0.12,
+    "channels": 1
+  },
+  "sfx/click-1": {
+    "hash": "d7c68b8350c1e8a5",
+    "seconds": 0.01,
+    "channels": 1
+  },
+  "sfx/click-2": {
+    "hash": "64616f4bcde187bc",
+    "seconds": 0.01,
+    "channels": 1
+  },
+  "sfx/click-3": {
+    "hash": "a16d0b727ae31e00",
+    "seconds": 0.01,
+    "channels": 1
+  },
+  "sfx/coins": {
+    "hash": "06f1ca5295d7af72",
+    "seconds": 0.321,
+    "channels": 1
+  },
+  "sfx/fwp-1": {
+    "hash": "2579fa22559e2d4b",
+    "seconds": 0.45,
+    "channels": 1
+  },
+  "sfx/fwp-2": {
+    "hash": "aa27647ab92f34d3",
+    "seconds": 0.363,
+    "channels": 1
+  },
+  "sfx/fwp-3": {
+    "hash": "d400b0d6ea0109b0",
+    "seconds": 0.42,
+    "channels": 1
+  },
+  "sfx/fwp-4": {
+    "hash": "02c8fa4fd7187c1e",
+    "seconds": 0.38,
+    "channels": 1
+  },
+  "sfx/glock-c6": {
+    "hash": "735505b0349d9a1e",
+    "seconds": 1.3,
+    "channels": 1
+  },
+  "sfx/glock-c7": {
+    "hash": "5b146a76f47f3171",
+    "seconds": 1.2,
+    "channels": 1
+  },
+  "sfx/glock-g5": {
+    "hash": "09ecdde817912f7e",
+    "seconds": 1.3,
+    "channels": 1
+  },
+  "sfx/glock-g6": {
+    "hash": "8cfdf368583aa2e9",
+    "seconds": 1.2,
+    "channels": 1
+  },
+  "sfx/glock-g7": {
+    "hash": "6f420e266f123717",
+    "seconds": 1.1,
+    "channels": 1
+  },
+  "sfx/gong": {
+    "hash": "d825d1f47a4f5726",
+    "seconds": 2.6,
+    "channels": 1
+  },
+  "sfx/marimba-b5": {
+    "hash": "513b10a777cd93fd",
+    "seconds": 1,
+    "channels": 1
+  },
+  "sfx/marimba-c5": {
+    "hash": "f9145c9b58389154",
+    "seconds": 1.2,
+    "channels": 1
+  },
+  "sfx/marimba-c7": {
+    "hash": "84528ef218ca217d",
+    "seconds": 0.9,
+    "channels": 1
+  },
+  "sfx/marimba-f4": {
+    "hash": "15ffc5f62923452d",
+    "seconds": 1.3,
+    "channels": 1
+  },
+  "sfx/marimba-f6": {
+    "hash": "31bc0c2328e341b1",
+    "seconds": 0.9,
+    "channels": 1
+  },
+  "sfx/marimba-g5": {
+    "hash": "bddddfa329407b53",
+    "seconds": 1.1,
+    "channels": 1
+  },
+  "sfx/nope": {
+    "hash": "ee9c382d4abaa1a2",
+    "seconds": 0.103,
+    "channels": 1
+  },
+  "sfx/thock-1": {
+    "hash": "202e65e1b2aadfd6",
+    "seconds": 0.5,
+    "channels": 1
+  },
+  "sfx/thock-2": {
+    "hash": "4ea74f751f49c632",
+    "seconds": 0.5,
+    "channels": 1
+  },
+  "sfx/thock-3": {
+    "hash": "78a0c721816e28ed",
+    "seconds": 0.5,
+    "channels": 1
+  },
+  "sfx/thock-4": {
+    "hash": "4164658777d516f1",
+    "seconds": 0.5,
+    "channels": 1
+  },
+  "sfx/vibes-a5": {
+    "hash": "122376dee2bd129f",
+    "seconds": 2,
+    "channels": 1
+  },
+  "sfx/vibes-c4": {
+    "hash": "957441ebdc2f7611",
+    "seconds": 2.2,
+    "channels": 1
+  },
+  "sfx/vibes-d5": {
+    "hash": "b18a9c952ca83a17",
+    "seconds": 2,
+    "channels": 1
+  },
+  "sfx/vibes-e6": {
+    "hash": "6ca4d65289950787",
+    "seconds": 1.8,
+    "channels": 1
+  },
+  "sfx/vibes-f3": {
+    "hash": "74d9bdf03f218b97",
+    "seconds": 2.4,
+    "channels": 1
+  },
+  "sfx/vibes-g4": {
+    "hash": "9d1d3cc9f10f9886",
+    "seconds": 2.2,
+    "channels": 1
+  },
+  "sfx/wind-chimes": {
+    "hash": "e71e91a3492adeae",
+    "seconds": 1.5,
+    "channels": 2
+  }
+}

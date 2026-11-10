@@ -1,0 +1,355 @@
+{
+  "sources": {
+    "vcsl": {
+      "path": "vcsl",
+      "page": "https://github.com/sgossner/VCSL",
+      "author": "Versilian Studios (Sam Gossner) and the VCSL contributors",
+      "license": "CC0-1.0"
+    },
+    "kenney-rpg": {
+      "path": "kenney/RPGsounds_Kenney.zip",
+      "page": "https://opengameart.org/content/50-rpg-sound-effects",
+      "author": "Kenney (kenney.nl)",
+      "license": "CC0-1.0"
+    },
+    "kenney-casino": {
+      "path": "kenney/kenney_casino-audio.zip",
+      "page": "https://opengameart.org/content/54-casino-sound-effects-cards-dice-chips",
+      "author": "Kenney (kenney.nl)",
+      "license": "CC0-1.0"
+    },
+    "kenney-interface": {
+      "path": "kenney/kenney_interfaceSounds.zip",
+      "page": "https://opengameart.org/content/interface-sounds",
+      "author": "Kenney (kenney.nl)",
+      "license": "CC0-1.0"
+    }
+  },
+  "cuts": {
+    "sfx/marimba-f4": {
+      "from": "vcsl",
+      "file": "Idiophones/Struck Idiophones/Marimba/Marimba_hit_Outrigger_F3_med_01.wav",
+      "length": 1.3,
+      "fade": 0.7,
+      "note": "Comfort's plink and the ladder (VCSL names it an octave low; it sounds F4)"
+    },
+    "sfx/marimba-c5": {
+      "from": "vcsl",
+      "file": "Idiophones/Struck Idiophones/Marimba/Marimba_hit_Outrigger_C4_med_01.wav",
+      "length": 1.2,
+      "fade": 0.6,
+      "note": "Comfort's plink and the ladder"
+    },
+    "sfx/marimba-g5": {
+      "from": "vcsl",
+      "file": "Idiophones/Struck Idiophones/Marimba/Marimba_hit_Outrigger_G4_med_01.wav",
+      "length": 1.1,
+      "fade": 0.6,
+      "note": "Comfort's plink and the ladder"
+    },
+    "sfx/marimba-b5": {
+      "from": "vcsl",
+      "file": "Idiophones/Struck Idiophones/Marimba/Marimba_hit_Outrigger_B4_med_01.wav",
+      "length": 1.0,
+      "fade": 0.5,
+      "note": "Comfort's plink and the ladder"
+    },
+    "sfx/marimba-f6": {
+      "from": "vcsl",
+      "file": "Idiophones/Struck Idiophones/Marimba/Marimba_hit_Outrigger_F5_med_01.wav",
+      "length": 0.9,
+      "fade": 0.5,
+      "note": "Comfort's plink and the ladder"
+    },
+    "sfx/marimba-c7": {
+      "from": "vcsl",
+      "file": "Idiophones/Struck Idiophones/Marimba/Marimba_hit_Outrigger_C6_med_01.wav",
+      "length": 0.9,
+      "fade": 0.5,
+      "note": "the ladder's top"
+    },
+    "sfx/chime-c5": {
+      "from": "vcsl",
+      "file": "Idiophones/Struck Idiophones/Hand Chimes/sus_C4_r01_main.wav",
+      "length": 1.8,
+      "fade": 1.0,
+      "note": "Charm's warm chime (a hand chime; VCSL names it an octave low)"
+    },
+    "sfx/chime-e5": {
+      "from": "vcsl",
+      "file": "Idiophones/Struck Idiophones/Hand Chimes/sus_E4_r01_main.wav",
+      "length": 1.8,
+      "fade": 1.0,
+      "note": "Charm's warm chime"
+    },
+    "sfx/chime-c6": {
+      "from": "vcsl",
+      "file": "Idiophones/Struck Idiophones/Hand Chimes/sus_C5_r01_main.wav",
+      "length": 1.6,
+      "fade": 0.9,
+      "note": "Charm's warm chime"
+    },
+    "sfx/chime-e6": {
+      "from": "vcsl",
+      "file": "Idiophones/Struck Idiophones/Hand Chimes/sus_E5_r01_main.wav",
+      "length": 1.5,
+      "fade": 0.9,
+      "note": "Charm's warm chime"
+    },
+    "sfx/chime-gs6": {
+      "from": "vcsl",
+      "file": "Idiophones/Struck Idiophones/Hand Chimes/sus_G#5_r01_main.wav",
+      "length": 1.4,
+      "fade": 0.8,
+      "note": "Charm's warm chime"
+    },
+    "sfx/vibes-f3": {
+      "from": "vcsl",
+      "file": "Idiophones/Struck Idiophones/Vibraphone/Soft Mallets/Vibes_soft_F2_v1_rr1_Main.wav",
+      "length": 2.4,
+      "fade": 1.3,
+      "note": "the jingles' low notes"
+    },
+    "sfx/vibes-c4": {
+      "from": "vcsl",
+      "file": "Idiophones/Struck Idiophones/Vibraphone/Soft Mallets/Vibes_soft_C3_v1_rr2_Main.wav",
+      "length": 2.2,
+      "fade": 1.2,
+      "note": "the jingles' chords (soft mallets)"
+    },
+    "sfx/vibes-g4": {
+      "from": "vcsl",
+      "file": "Idiophones/Struck Idiophones/Vibraphone/Soft Mallets/Vibes_soft_G3_v1_rr1_Main.wav",
+      "length": 2.2,
+      "fade": 1.2,
+      "note": "the jingles' chords"
+    },
+    "sfx/vibes-d5": {
+      "from": "vcsl",
+      "file": "Idiophones/Struck Idiophones/Vibraphone/Soft Mallets/Vibes_soft_D4_v1_rr1_Main.wav",
+      "length": 2.0,
+      "fade": 1.1,
+      "note": "the jingles' chords"
+    },
+    "sfx/vibes-a5": {
+      "from": "vcsl",
+      "file": "Idiophones/Struck Idiophones/Vibraphone/Soft Mallets/Vibes_soft_A4_v1_rr1_Main.wav",
+      "length": 2.0,
+      "fade": 1.1,
+      "note": "the jingles' chords"
+    },
+    "sfx/vibes-e6": {
+      "from": "vcsl",
+      "file": "Idiophones/Struck Idiophones/Vibraphone/Soft Mallets/Vibes_soft_E5_v1_rr1_Main.wav",
+      "length": 1.8,
+      "fade": 1.0,
+      "note": "the jingles' chords"
+    },
+    "sfx/glock-g5": {
+      "from": "vcsl",
+      "file": "Idiophones/Struck Idiophones/Glockenspiel/glock_soft_G4_01.wav",
+      "length": 1.3,
+      "fade": 0.8,
+      "note": "the jingles' bright top, and a purchase's ding"
+    },
+    "sfx/glock-c6": {
+      "from": "vcsl",
+      "file": "Idiophones/Struck Idiophones/Glockenspiel/glock_soft_C5_02.wav",
+      "length": 1.3,
+      "fade": 0.8,
+      "note": "the jingles' bright top"
+    },
+    "sfx/glock-g6": {
+      "from": "vcsl",
+      "file": "Idiophones/Struck Idiophones/Glockenspiel/glock_soft_G5_01.wav",
+      "length": 1.2,
+      "fade": 0.7,
+      "note": "the jingles' bright top"
+    },
+    "sfx/glock-c7": {
+      "from": "vcsl",
+      "file": "Idiophones/Struck Idiophones/Glockenspiel/glock_soft_C6_01.wav",
+      "length": 1.2,
+      "fade": 0.7,
+      "note": "the jingles' bright top"
+    },
+    "sfx/glock-g7": {
+      "from": "vcsl",
+      "file": "Idiophones/Struck Idiophones/Glockenspiel/glock_soft_G6_01.wav",
+      "length": 1.1,
+      "fade": 0.7,
+      "note": "the jingles' bright top"
+    },
+    "sfx/bell-c5": {
+      "from": "vcsl",
+      "file": "Idiophones/Struck Idiophones/Tubular Bells 2/TB_hit_C4_v2_1.wav",
+      "length": 2.8,
+      "fade": 1.8,
+      "note": "Sparkle's bell, reserved for ×Mult (a tubular bell)"
+    },
+    "sfx/bell-d5": {
+      "from": "vcsl",
+      "file": "Idiophones/Struck Idiophones/Tubular Bells 2/TB_hit_D4_v2_1.wav",
+      "length": 2.8,
+      "fade": 1.8,
+      "note": "Sparkle's bell, reserved for ×Mult"
+    },
+    "sfx/bell-e5": {
+      "from": "vcsl",
+      "file": "Idiophones/Struck Idiophones/Tubular Bells 2/TB_hit_E4_v2_1.wav",
+      "length": 2.8,
+      "fade": 1.8,
+      "note": "Sparkle's bell, reserved for ×Mult"
+    },
+    "sfx/bell-g5": {
+      "from": "vcsl",
+      "file": "Idiophones/Struck Idiophones/Tubular Bells 2/TB_hit_G4_v2_1.wav",
+      "length": 2.8,
+      "fade": 1.8,
+      "note": "Sparkle's bell, reserved for ×Mult"
+    },
+    "sfx/bell-c6": {
+      "from": "vcsl",
+      "file": "Idiophones/Struck Idiophones/Tubular Bells 2/TB_hit_C5_v2_1.wav",
+      "length": 2.8,
+      "fade": 1.8,
+      "note": "Sparkle's bell, reserved for ×Mult"
+    },
+    "sfx/gong": {
+      "from": "vcsl",
+      "file": "Idiophones/Struck Idiophones/Gong 1/gong_2_mp.wav",
+      "length": 2.6,
+      "fade": 1.9,
+      "lowpass": 2500,
+      "note": "the low end under Sparkle's bell (reserved for ×Mult)"
+    },
+    "sfx/wind-chimes": {
+      "from": "vcsl",
+      "file": "Idiophones/Struck Idiophones/Mark Trees/Legacy/windchimes_fastAsc1.wav",
+      "length": 1.5,
+      "fade": 0.9,
+      "stereo": true,
+      "note": "the sparkle: a fast run up the mark tree"
+    },
+    "sfx/thock-1": {
+      "from": "vcsl",
+      "file": "Idiophones/Struck Idiophones/Slit Drum/LogDrumLo_MedM_v1_rr1_Sum.wav",
+      "length": 0.5,
+      "fade": 0.3,
+      "note": "placing a room: a soft, woody thock (a slit drum)"
+    },
+    "sfx/thock-2": {
+      "from": "vcsl",
+      "file": "Idiophones/Struck Idiophones/Slit Drum/LogDrumLo_MedM_v2_rr1_Sum.wav",
+      "length": 0.5,
+      "fade": 0.3,
+      "note": "placing a room"
+    },
+    "sfx/thock-3": {
+      "from": "vcsl",
+      "file": "Idiophones/Struck Idiophones/Slit Drum/LogDrumLo_MedM_v3_rr1_Sum.wav",
+      "length": 0.5,
+      "fade": 0.3,
+      "note": "placing a room"
+    },
+    "sfx/thock-4": {
+      "from": "vcsl",
+      "file": "Idiophones/Struck Idiophones/Slit Drum/LogDrumHi_MedM_v1_rr1_Sum.wav",
+      "length": 0.5,
+      "fade": 0.3,
+      "note": "placing a room (the drum's higher tongue)"
+    },
+    "sfx/fwp-1": {
+      "from": "kenney-rpg",
+      "file": "OGG/cloth1.ogg",
+      "length": 0.45,
+      "fade": 0.25,
+      "lowpass": 5000,
+      "note": "placing a yard piece: a soft, grassy fwp (cloth)"
+    },
+    "sfx/fwp-2": {
+      "from": "kenney-rpg",
+      "file": "OGG/cloth2.ogg",
+      "length": 0.4,
+      "fade": 0.22,
+      "lowpass": 5000,
+      "note": "placing a yard piece"
+    },
+    "sfx/fwp-3": {
+      "from": "kenney-rpg",
+      "file": "OGG/cloth3.ogg",
+      "length": 0.42,
+      "fade": 0.22,
+      "lowpass": 5000,
+      "note": "placing a yard piece"
+    },
+    "sfx/fwp-4": {
+      "from": "kenney-rpg",
+      "file": "OGG/cloth4.ogg",
+      "length": 0.38,
+      "fade": 0.2,
+      "lowpass": 5000,
+      "note": "placing a yard piece"
+    },
+    "sfx/chip-1": {
+      "from": "kenney-casino",
+      "file": "Audio/chips-collide-1.ogg",
+      "length": 0.12,
+      "fade": 0.05,
+      "note": "a coin counted into the budget (clay chips)"
+    },
+    "sfx/chip-2": {
+      "from": "kenney-casino",
+      "file": "Audio/chips-collide-2.ogg",
+      "length": 0.12,
+      "fade": 0.05,
+      "note": "a coin counted into the budget"
+    },
+    "sfx/chip-3": {
+      "from": "kenney-casino",
+      "file": "Audio/chips-collide-3.ogg",
+      "length": 0.12,
+      "fade": 0.05,
+      "note": "a coin counted into the budget"
+    },
+    "sfx/chip-4": {
+      "from": "kenney-casino",
+      "file": "Audio/chips-collide-4.ogg",
+      "length": 0.12,
+      "fade": 0.05,
+      "note": "a coin counted into the budget"
+    },
+    "sfx/coins": {
+      "from": "kenney-rpg",
+      "file": "OGG/handleCoins2.ogg",
+      "length": 0.34,
+      "fade": 0.12,
+      "note": "a purchase"
+    },
+    "sfx/click-1": {
+      "from": "kenney-interface",
+      "file": "Audio/click_002.ogg",
+      "peak": -3,
+      "note": "selecting a card or a button"
+    },
+    "sfx/click-2": {
+      "from": "kenney-interface",
+      "file": "Audio/click_003.ogg",
+      "peak": -3,
+      "note": "selecting a card or a button"
+    },
+    "sfx/click-3": {
+      "from": "kenney-interface",
+      "file": "Audio/click_005.ogg",
+      "peak": -3,
+      "note": "selecting a card or a button"
+    },
+    "sfx/nope": {
+      "from": "kenney-interface",
+      "file": "Audio/error_004.ogg",
+      "peak": -3,
+      "lowpass": 3000,
+      "note": "a placement that isn't allowed: a soft, low bonk"
+    }
+  }
+}
