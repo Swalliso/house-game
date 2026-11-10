@@ -122,7 +122,7 @@ function all(names: readonly string[]): string {
 }
 
 const CONTROLS: readonly (readonly [keys: string, does: string])[] = [
-  ['1–4', 'Pick a card'],
+  ['Number keys', 'Pick a card'],
   ['R or right-click', 'Rotate'],
   ['Click', 'Place'],
   // M4: a pack's tiles (D-106).

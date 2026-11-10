@@ -70,6 +70,31 @@ describe('effect kinds', () => {
     ]);
   });
 
+  it('a capped neighbor bonus credits the rooms it touches before rooms linked across a hall', () => {
+    // A Closet earning +1 per room, max 1. The Bathroom (uid 1) is linked to it through the
+    // Hallway; the Bedroom (uid 4) touches it. The count is the same either way; the credit
+    // (the breakdown's sources and the tally's arcs) goes to the Bedroom.
+    const c = withPieces({
+      closet: { effects: [{ kind: 'neighbor', match: { property: 'room' }, amount: 1, max: 1 }] },
+    });
+    const t = tally(c, emptyRows(8, 6), [
+      ['bathroom', 0, 0], // 1
+      ['hallway', 1, 0], // 2
+      ['closet', 3, 0], // 3
+      ['bedroom', 3, 1], // 4
+    ]);
+    const closet = t.pieces.find((p) => p.uid === 3)!;
+    expect(closet.earned).toBe(1);
+    expect(closet.lines).toEqual([
+      {
+        label: 'Touching a Bathroom and a Bedroom (1 count)',
+        op: 'add',
+        value: 1,
+        from: [{ kind: 'piece', uid: 4 }],
+      },
+    ]);
+  });
+
   it('neighbor penalties apply, and the street is Loud', () => {
     // A Bedroom on the street: 3 − 2.
     expect(earned(C, emptyRows(6, 4), [['bedroom', 0, 2]], 1)).toBe(1);

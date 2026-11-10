@@ -652,6 +652,10 @@ describe('grantView', () => {
     // Pergola: the Patio's own view (+1), then +50%: 3 × 1.5 = 4.5 → 5.
     const pergola = tally(C, installed(house, [2, 'pergola']));
     expect(scoreOf(pergola, 2)).toMatchObject({ points: 3, pct: 50, earned: 5 });
+    // A yard piece has the view, not a window: the breakdown says so.
+    const labels = scoreOf(pergola, 2).lines.map((l) => l.label);
+    expect(labels.some((l) => l.includes('the view'))).toBe(true);
+    expect(labels.some((l) => l.includes('window'))).toBe(false);
   });
 
   it("the window's view counts only for per-view bonuses, not as a neighbor of every kind", () => {

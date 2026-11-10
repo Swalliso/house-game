@@ -149,6 +149,9 @@ describe('the tokens', () => {
       // fold row.
       ['ink', 'charm-tint'],
       ['ink-soft', 'charm-tint'],
+      // The score panel's sets (hud/score.css): a set the placement would make, on Charm's tint.
+      ['comfort-deep', 'charm-tint'],
+      ['charm-deep', 'charm-tint'],
       ['ink', 'bad-tint'],
       ['ink-soft', 'bad-tint'],
       ['charm', 'bad-tint'],

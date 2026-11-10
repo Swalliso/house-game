@@ -32,7 +32,7 @@ export const CREWS: Readonly<Record<CrewId, CrewDef>> = {
     id: 'architect',
     name: 'Architect',
     tier: 'core',
-    blurb: 'Special rooms show up in the weekly draw, and every set pays a little more.',
+    blurb: 'Special pieces show up in the weekly draw, and every set pays a little more.',
     modifiers: [
       // Weight 0 + 5 for the four Core special pieces (Appendix A · M4a: "special rooms at weight 5").
       { kind: 'drawWeight', target: { piece: ['playroom', 'library', 'mudroom', 'pool'] }, add: 5 },
