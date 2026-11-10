@@ -3,6 +3,7 @@
 
 import type {
   BlueprintDef,
+  Card,
   ChangeOrderDef,
   Content,
   CrateDef,
@@ -522,6 +523,58 @@ export function cardText(content: Content, def: PieceDef): CardText {
     notes.push(`Views: ${joinWords(sources, 'and')}.`);
   }
   return { effects, notes, ...(pack ? { pack } : {}), ...(member ? { member } : {}) };
+}
+
+/**
+ * Does the effect pay: points, budget, or a boost to what it touches? A link, a requirement and
+ * a change (the Sapling's) say how a piece works, not what it earns, and a penalty isn't pay.
+ */
+function pays(e: Effect): boolean {
+  switch (e.kind) {
+    case 'steady':
+    case 'neighbor':
+    case 'rhythm':
+    case 'perTile':
+      return e.amount > 0;
+    case 'growth':
+      return e.perWeek > 0;
+    case 'enclosure':
+      return e.perTile > 0;
+    case 'economy':
+      return e.budget > 0;
+    case 'aura':
+      return (e.pct ?? 0) > 0 || (e.amount ?? 0) > 0;
+    case 'conditional':
+      return pays(e.effect);
+    case 'link':
+    case 'requires':
+    case 'transform':
+      return false;
+  }
+}
+
+/**
+ * A compact hand card's lines (D-121); Inspect has the whole text. A piece shows its first line
+ * that pays, so a Hallway shows "+2 per touching room (up to 4)" rather than its link, and the
+ * Garage "+1 every week" rather than where it must go (the lot shows that). A requirement that
+ * isn't about placement follows the pay, since without it the piece earns nothing: the
+ * Doghouse's "+1 every week in a fenced yard". A piece with no line that pays shows its first.
+ * A fixture shows where it goes and its first effect, which is what it does to its room (Makes
+ * it Sunny, Counts as 2 Bedrooms); its "Earns +25%" is in Inspect.
+ */
+export function handCardLines(content: Content, card: Card): string[] {
+  if (card.kind === 'fixture') {
+    const t = fixtureText(content, content.fixtures[card.id]);
+    return [t.fits, ...t.effects.slice(0, 1)];
+  }
+  const def = content.pieces[card.id];
+  const lines = cardText(content, def).effects;
+  const i = def.effects.findIndex(pays);
+  if (i < 0) return lines.slice(0, 1);
+  const unless = def.effects.find(
+    (e): e is Extract<Effect, { kind: 'requires' }> => e.kind === 'requires' && !e.blocksPlacement,
+  );
+  return [unless ? `${lines[i]} ${conditionPhrase(content, unless.condition)}` : lines[i]!];
 }
 
 /** "The street is", "the Pond is", but "Trees are". */

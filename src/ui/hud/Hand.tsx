@@ -8,21 +8,20 @@
 // D-121: the hand is two rows, Rooms then Layout, each under its label with its own Reroll
 // button (one count for both). A card the draw swapped in, because the one it replaced had no
 // play, says so on a chip. Demolish sits on the plank. The cards are compact, so four or five
-// fit beside Your goods: the name, the first effect line, and the chips beside a thumbnail of
-// the piece (a fixture: where it goes, and its first effect). Inspect shows the whole text on
-// hover.
+// fit beside Your goods: the name, the line that says what it pays (handCardLines), and the
+// chips beside a thumbnail of the piece (a fixture: where it goes, and what it does). Inspect
+// shows the whole text on hover.
 
-import { useEffect } from 'preact/hooks';
+import type { RefObject } from 'preact';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import {
-  cardText,
   CONTENT,
   DRAW_ROWS,
+  handCardLines,
   rules,
-  fixtureText,
   rowOf,
   type Card as CardData,
   type DrawRow,
-  type PieceDef,
   type Tag,
 } from '../../rules/index.ts';
 import {
@@ -41,6 +40,7 @@ import {
   tool,
 } from '../store.ts';
 import { rotate } from '../board/Board.tsx';
+import { settings } from '../settings.ts';
 import { Button, Card, Chip, Icon, Keycap, Panel } from '../kit/kit.tsx';
 import type { IconName } from '../theme/art.ts';
 import {
@@ -51,7 +51,7 @@ import {
   selectCard,
 } from './actions.ts';
 import { PieceArt, ShapeGlyph } from './PieceArt.tsx';
-import { RARITY_LABEL } from './goods.tsx';
+import { PIECE_KIND_LABEL, pieceKind, RARITY_LABEL } from './goods.tsx';
 import './hand.css';
 
 /**
@@ -59,22 +59,6 @@ import './hand.css';
  * to end the week) keep working after one. Tab still reaches them, and then Enter presses them.
  */
 const noFocus = (e: MouseEvent) => e.preventDefault();
-
-type Kind = 'room' | 'yard' | 'hall' | 'outbuilding';
-
-function kindOf(def: PieceDef): Kind {
-  if (def.connector) return 'hall';
-  if (def.category === 'indoor') return 'room';
-  if (def.category === 'yard') return 'yard';
-  return 'outbuilding';
-}
-
-const KIND_LABEL: Record<Kind, string> = {
-  room: 'Room',
-  yard: 'Yard',
-  hall: 'Hallway',
-  outbuilding: 'Outbuilding',
-};
 
 /**
  * A card's tags as chips, each with its icon (the icon set is named after the tags). A narrow
@@ -97,19 +81,22 @@ const ROW_LABEL: Record<DrawRow, string> = { rooms: 'Rooms', layout: 'Layout' };
 const cardName = (card: CardData): string =>
   card.kind === 'fixture' ? CONTENT.fixtures[card.id].name : CONTENT.pieces[card.id].name;
 
-/** A card the week's draw swapped in (D-121): what it replaced, which had no play. */
-function SwapChip({ i }: { i: number }) {
+/**
+ * A card the week's draw swapped in (D-121): what it replaced, which had no play. A badge on the
+ * card's corner, the reroll icon with its words in its title and read out, so it takes no room:
+ * as a chip it wrapped a narrow card's Renovate and tags onto a second line, and beside the name
+ * it wrapped the name (the note over the lot names the cards swapped out in words).
+ */
+function SwapMark({ i }: { i: number }) {
   const was = run.value.swapped.find((w) => w.i === i)?.was;
   if (!was) return null;
   return (
-    <Chip
-      tone="inset"
-      icon="reroll"
-      class="swap-chip"
-      title={`The ${cardName(was)} had nowhere to go, so this card took its place, free.`}
-    >
-      Swapped in
-    </Chip>
+    <span class="swap-mark">
+      <Icon
+        name="reroll"
+        label={`Swapped in: the ${cardName(was)} had nowhere to go, so this card took its place, free.`}
+      />
+    </span>
   );
 }
 
@@ -131,16 +118,15 @@ function pickCard(i: number): void {
 function CardView({ card, i }: { card: CardData; i: number }) {
   if (card.kind === 'fixture') return <FixtureCardView id={card.id} i={i} />;
   const def = CONTENT.pieces[card.id];
-  const text = cardText(CONTENT, def);
   const fits = cardsFit.value[i] ?? true;
   const renovates = cardsRenovate.value[i] ?? false;
   const isSelected = isPicked('hand', i);
-  const kind = kindOf(def);
+  const kind = pieceKind(def);
   const type = CONTENT.pieces[def.countsAs ?? def.id].name;
   // A pack (D-106) doesn't turn, so it never shows a turn left from another card this week.
   const rot = isSelected && !def.pack ? rotation.value : 0;
-  // A compact card (D-121): the first effect line. The rest, the notes, and a member's room
-  // (M4b, D-103: whose it is) are in Inspect.
+  // A compact card (D-121): the line that says what it pays. The rest, the notes, and a
+  // member's room (M4b, D-103: whose it is) are in Inspect.
   return (
     <Card
       as="button"
@@ -152,7 +138,7 @@ function CardView({ card, i }: { card: CardData; i: number }) {
       title={def.name}
       aside={<ShapeGlyph id={card.id} rot={rot} square />}
       art={<PieceArt id={card.id} />}
-      lines={text.effects.slice(0, 1)}
+      lines={handCardLines(CONTENT, card)}
       chips={
         <>
           {renovates && (
@@ -166,10 +152,9 @@ function CardView({ card, i }: { card: CardData; i: number }) {
             </Chip>
           )}
           <Chip tone="wood" class="kind-chip">
-            {KIND_LABEL[kind]}
+            {PIECE_KIND_LABEL[kind]}
           </Chip>
           <TagChips tags={def.tags} />
-          <SwapChip i={i} />
         </>
       }
       alert={fits ? undefined : 'Nowhere fits'}
@@ -179,7 +164,9 @@ function CardView({ card, i }: { card: CardData; i: number }) {
       aria-pressed={isSelected}
       data-card={i}
       tooltip={fits ? undefined : 'There’s nowhere on the lot this fits right now'}
-    />
+    >
+      <SwapMark i={i} />
+    </Card>
   );
 }
 
@@ -192,7 +179,6 @@ function FixtureCardView({
   i: number;
 }) {
   const def = CONTENT.fixtures[id];
-  const text = fixtureText(CONTENT, def);
   const fits = cardsFit.value[i] ?? true;
   const isSelected = isPicked('hand', i);
   return (
@@ -205,12 +191,11 @@ function FixtureCardView({
       blocked={!fits}
       lead={<Keycap>{i + 1}</Keycap>}
       title={def.name}
-      lines={[text.fits, ...text.effects.slice(0, 1)]}
+      lines={handCardLines(CONTENT, { kind: 'fixture', id })}
       chips={
         <>
           <Chip tone="wood">Fixture</Chip>
           <Chip tone={def.rarity}>{RARITY_LABEL[def.rarity]}</Chip>
-          <SwapChip i={i} />
         </>
       }
       alert={fits ? undefined : 'Nothing to put it in'}
@@ -220,7 +205,9 @@ function FixtureCardView({
       aria-pressed={isSelected}
       data-card={i}
       tooltip={fits ? undefined : 'Nothing on the lot can hold it yet'}
-    />
+    >
+      <SwapMark i={i} />
+    </Card>
   );
 }
 
@@ -329,9 +316,64 @@ function useCardInView(): void {
   }, [picked]);
 }
 
+/**
+ * How many hand cards the sticky action bar hides, wholly or in part, as the column scrolls
+ * under it: a short window, a fifth card, or Your goods open. The bar then says so, with a tab
+ * that brings them up, so a card under it is never missed (D-121).
+ */
+function useCardsUnderBar(bar: RefObject<HTMLDivElement>, shown: boolean): number {
+  const [under, setUnder] = useState(0);
+  const measure = useRef<(() => void) | null>(null);
+  useEffect(() => {
+    const el = bar.current;
+    const body = el?.parentElement;
+    const column = el?.closest<HTMLElement>('.right');
+    if (!shown || !el || !body || !column) return;
+    const count = () => {
+      const edge = el.getBoundingClientRect().top;
+      let n = 0;
+      for (const card of body.querySelectorAll<HTMLElement>('.hand-card')) {
+        // With only its padding under the bar, the card still shows all it says.
+        const { paddingBottom, borderBottomWidth } = getComputedStyle(card);
+        const pad = parseFloat(paddingBottom) + parseFloat(borderBottomWidth);
+        if (card.getBoundingClientRect().bottom - pad > edge + 1) n++;
+      }
+      setUnder(n);
+    };
+    measure.current = count;
+    count();
+    // The cards change size with the hand and the fonts, the column with the window, and Your
+    // goods above the hand when it folds.
+    const resized = new ResizeObserver(count);
+    for (const box of [column, body, ...column.children]) resized.observe(box);
+    column.addEventListener('scroll', count, { passive: true });
+    return () => {
+      measure.current = null;
+      resized.disconnect();
+      column.removeEventListener('scroll', count);
+    };
+  }, [shown]);
+  // A new week's cards, or Your goods first showing above them, can move the cards without
+  // resizing anything watched, so count again after every render (it only re-renders on a
+  // change).
+  useEffect(() => measure.current?.());
+  return under;
+}
+
+/** The tab on the bar: scroll the column to its end, so the cards under the bar come up. */
+function showCardsUnder(e: MouseEvent): void {
+  const column = (e.currentTarget as HTMLElement).closest('.right');
+  column?.scrollTo({
+    top: column.scrollHeight,
+    behavior: settings.value.reduceMotion ? 'auto' : 'smooth',
+  });
+}
+
 export function Hand() {
   const s = run.value;
   useCardInView();
+  const bar = useRef<HTMLDivElement>(null);
+  const under = useCardsUnderBar(bar, s.screen === 'build');
   if (s.screen !== 'build') return null;
   const placing = selected.value !== null;
   const pending = tentative.value;
@@ -374,8 +416,22 @@ export function Hand() {
         <HandRow key={row} row={row} />
       ))}
       {/* The action bar sticks to the column's bottom, so End week stays in view on a short
-          window. One row: Rotate and Cancel are square buttons beside it. */}
-      <div class="hand-actions">
+          window. One row: Rotate and Cancel are square buttons beside it. Cards under it get
+          a tab on its edge. */}
+      <div ref={bar} class={`hand-actions ${under > 0 ? 'has-more' : ''}`}>
+        {under > 0 && (
+          <Button
+            size="sm"
+            variant="wood"
+            icon="caretDown"
+            class="more-cards"
+            onMouseDown={noFocus}
+            onClick={showCardsUnder}
+            title="Scroll down to the rest of this week’s cards"
+          >
+            {under === 1 ? '1 more card' : `${under} more cards`}
+          </Button>
+        )}
         <Button
           iconOnly
           size="lg"

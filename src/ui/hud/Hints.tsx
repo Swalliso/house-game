@@ -135,9 +135,12 @@ export function Hints() {
       </>
     );
   } else {
+    // The hand's cards are numbered across its rows (D-121), keys 1–9: one keycap for all of
+    // them, as narrow as the old "1 2 3".
+    const cards = Math.min(9, s.hand.length);
     hints = (
       <>
-        <Hint keys={['1', '2', '3']}>pick a card</Hint>
+        {cards > 0 && <Hint keys={[cards > 1 ? `1–${cards}` : '1']}>pick a card</Hint>}
         <Hint keys={['D']}>demolish</Hint>
         <Hint keys={['Scroll']} extra>
           zoom

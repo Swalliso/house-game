@@ -16,6 +16,7 @@ import {
   type CrateId,
   type FixtureId,
   type FixtureValue,
+  type PieceDef,
   type PieceId,
   type Rarity,
   type ShopOffer,
@@ -73,17 +74,31 @@ export function goodRarity(g: GoodRef): Rarity | undefined {
   return undefined;
 }
 
-/** What kind of thing it is, in a word or two. */
+/** A piece's kind, as its card's tint and chip show it: a Hallway is a kind of its own. */
+export type PieceKind = 'room' | 'yard' | 'hall' | 'outbuilding';
+
+export function pieceKind(def: PieceDef): PieceKind {
+  if (def.connector) return 'hall';
+  if (def.category === 'indoor') return 'room';
+  if (def.category === 'yard') return 'yard';
+  return 'outbuilding';
+}
+
+export const PIECE_KIND_LABEL: Record<PieceKind, string> = {
+  room: 'Room',
+  yard: 'Yard',
+  hall: 'Hallway',
+  outbuilding: 'Outbuilding',
+};
+
+/** What kind of thing it is, in a word or two: a piece's in the hand card's word. */
 export function goodKind(g: GoodRef): string {
   if (g.kind === 'blueprint') return 'Blueprint';
   if (g.kind === 'fixture') return 'Fixture';
   if (g.kind === 'tool') return 'Tool';
   if (g.kind === 'upgrade') return 'Company upgrade';
   if (g.kind === 'crate') return 'Crate';
-  const def = CONTENT.pieces[g.id];
-  if (def.category === 'indoor') return 'Room';
-  if (def.category === 'yard') return 'Yard';
-  return 'Outbuilding';
+  return PIECE_KIND_LABEL[pieceKind(CONTENT.pieces[g.id])];
 }
 
 /** Where it goes, and how it's used. */
