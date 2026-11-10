@@ -139,9 +139,8 @@ const CONTROLS: readonly (readonly [keys: string, does: string])[] = [
   ['Esc', 'Cancel'],
   // Playtest 4: Inspect holds a clicked piece (D-113).
   ['Click a piece', 'Hold it in Inspect (click again to let go)'],
-  // M4: a change order's sheet (D-109).
-  ['Enter', 'Accept a change order'],
-  ['Esc or D', 'Decline a change order'],
+  // M4: the change orders' sheet (D-109, D-144).
+  ['1 or 2', 'Pick a change order'],
 ];
 
 function HowToPlayText() {
@@ -410,17 +409,18 @@ function HowToPlayText() {
           <ul>
             <li>
               After the {orderMilestones} milestones, before the shop, the client changes their
-              mind.
+              mind: two change orders arrive, and you <b>pick one</b>. The other may come back.
             </li>
             <li>
               <b>A request or a restriction</b> runs through the next phase: see it through for +
-              {payLow === payHigh ? payLow : `${payLow}–${payHigh}`} budget. Declining costs
+              {payLow === payHigh ? payLow : `${payLow}–${payHigh}`} budget. Missing it costs
               nothing.
             </li>
             <li>
-              <b>A phase effect</b> can't be declined: it changes what earns until the next
-              milestone.
+              <b>A phase effect</b> changes what earns until the next milestone: something earns
+              more, something less. Its card says what it would do to your house today.
             </li>
+            <li>After the last of those milestones, both are phase effects.</li>
           </ul>
         </Section>
       )}

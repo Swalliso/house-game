@@ -730,9 +730,10 @@ function ArrivalLines({ s }: { s: RunState }) {
 }
 
 const ORDERS_TIP =
-  'The client changed their mind after a milestone. A request or a restriction you accepted ' +
-  'pays when its milestone is met, if you see it through; a phase effect just runs until then. ' +
-  'How each one went stays here until the next phase’s first week is played.';
+  'The client changed their mind after a milestone, and you picked one of two change orders. ' +
+  'A request or a restriction pays when its milestone is met, if you see it through; a phase ' +
+  'effect runs until then. How each one went stays here until the next phase’s first week is ' +
+  'played.';
 
 /** "the Framing milestone": where a change order resolves. */
 const milestoneOf = (phase: number) => `the ${rules.phaseName(phase)} milestone`;

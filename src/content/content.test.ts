@@ -250,8 +250,8 @@ describe('the real rules', () => {
       let weeks = 0;
       while (s.screen === 'build' || s.screen === 'shop' || s.screen === 'changeOrder') {
         if (s.screen === 'changeOrder') {
-          // M4b: take whatever's offered (a phase effect can only be acknowledged).
-          s = r.apply(s, { t: 'answerChangeOrder', accept: true }).state;
+          // M4b, D-144: pick the first of the two on offer.
+          s = r.apply(s, { t: 'answerChangeOrder', i: 0 }).state;
           continue;
         }
         if (s.screen === 'shop') {

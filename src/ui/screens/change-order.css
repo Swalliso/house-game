@@ -1,8 +1,8 @@
-/* A change order (M4b; D-110): a kit Panel on a scrim over the board, before the shop. It
-   arrives with a paper flourish (it slides up from a slight tilt and settles), and the answer
-   is stamped on it as it goes. The timing numbers come from feel.ts, as custom properties on
-   the scrim (--co-in, --co-tilt, --co-stamp). Good and bad are blue and orange with a mark,
-   never color alone (D-047).
+/* Change orders (M4b; D-110, D-144): a kit Panel on a scrim over the board, before the shop,
+   with two orders side by side to pick one from. It arrives with a paper flourish (it slides
+   up from a slight tilt and settles), and the pick is stamped on its card as it goes. The
+   timing numbers come from feel.ts, as custom properties on the scrim (--co-in, --co-tilt,
+   --co-stamp). Good and bad are blue and orange with a mark, never color alone (D-047).
 
    Centered by grid and flex, never by translate(-50%): at rest the sheet and its stamp have no
    transform, and both land on whole device pixels (ChangeOrderScreen.tsx nudges the sheet when
@@ -25,15 +25,20 @@
     background-color: transparent;
   }
 }
-/* The sheet's box: 270 UI px wide (so the plank holds "Change order" and "from Count
-   Vladislav" on one line), at most the board's height, the sheet stretched to it (so a long
-   order scrolls inside it rather than past the board). */
+/* The sheet's box: two orders side by side, 440 UI px wide where the board has it (at 1280 px
+   it takes the board's width, about 170 UI px an order); 270 for an order offered alone (so
+   the plank holds "Change order" and "from Count Vladislav" on one line). At most the board's
+   height, the sheet stretched to it (so a long order scrolls inside its card rather than past
+   the board). */
 .co-dialog {
   position: relative;
   display: flex;
-  width: min(calc(var(--px) * 270), 100%);
+  width: min(calc(var(--px) * 440), 100%);
   max-height: 100%;
   min-height: 0;
+}
+.co-dialog.alone {
+  width: min(calc(var(--px) * 270), 100%);
 }
 .co-sheet.panel {
   flex: 1 1 auto;
@@ -87,7 +92,7 @@
   text-align: right;
 }
 
-/* --- The body: the notes, the order (which scrolls on a short board), and the buttons ------- */
+/* --- The body: the notes, the sheet's first line, and the orders ------------------------------ */
 
 .co-sheet .panel-body.co-body {
   flex: 1 1 auto;
@@ -109,29 +114,83 @@
 .co-body > .notes.docked .notice-text {
   min-width: calc(var(--px) * 140);
 }
-.co-scroll {
+.co-pick {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3) var(--space-3);
+}
+/* It holds focus so the keys wait out their delay; it's not a control, so no ring. */
+.co-pick:focus {
+  outline: none;
+  box-shadow: none;
+}
+/* "Pick one. It runs until the Framing milestone.": said once, for both orders. */
+.co-lede {
+  flex: none;
+  margin: 0;
+}
+.co-due {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: var(--space-1);
+  font-weight: 700;
+  white-space: nowrap;
+}
+/* The orders, side by side and as tall as each other. */
+.co-options {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  gap: var(--space-2);
+}
+/* One order: a slip of card paper, its words above (they scroll on a short board) and its pick
+   button at its foot, which never scrolls away. */
+.co-option {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--card);
+  background-clip: padding-box;
+  box-shadow: inset 0 calc(var(--px) * -1) 0 var(--card-lo);
+  transition: opacity var(--co-stamp) ease-out;
+}
+/* Picked, the other order steps back: it's back in the pool. */
+.co-option.passed {
+  opacity: 0.45;
+}
+.reduce-motion .co-option {
+  transition: none;
+}
+.co-option-body {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-2) var(--space-3);
   scrollbar-width: thin;
   scrollbar-color: var(--wood) var(--paper-inset);
 }
-/* It holds focus so the keys wait out their delay; it's not a control, so no ring. */
-.co-scroll:focus {
-  outline: none;
-  box-shadow: none;
-}
+/* The name, then its tag under it, so two cards' words start level whatever their names. */
 .co-title {
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-1) var(--space-2);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
 }
-.co-title h2 {
+.co-title h3 {
   margin: 0;
   font-size: var(--fs-title);
   line-height: var(--lh-title);
@@ -148,12 +207,11 @@
 }
 .co-terms,
 .co-progress,
-.co-note {
+.co-today {
   margin: 0;
 }
 .co-progress,
-.co-note,
-.co-facts dt {
+.co-pays {
   color: var(--ink-soft);
 }
 /* A part that doesn't hold yet: a cross before it, and orange. */
@@ -163,54 +221,72 @@
 .co-progress .miss .icon {
   margin-right: var(--space-1);
 }
-/* Until and Pays, between two rules. */
-.co-facts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1) var(--space-4);
-  margin: 0;
-  padding: var(--space-1) 0 calc(var(--space-1) + var(--px));
-  box-shadow:
-    inset 0 var(--px) 0 var(--paper-line),
-    inset 0 calc(var(--px) * -1) 0 var(--paper-line);
+/* D-144: what a phase effect would do to the house as it stands, as a fixture's worth is shown
+   in the shop (D-107): a strip with its own fill, a gain in the good blue on Comfort's tint
+   with an up icon, a loss in the bad orange on its tint with a down icon, and quiet on paper
+   when it changes nothing yet. */
+.co-today {
+  padding: var(--px) var(--space-1) calc(var(--px) * 2);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ringSoft) 1 / var(--px);
+  background: var(--card-hi);
+  background-clip: padding-box;
+  color: var(--ink-soft);
 }
-.co-facts div {
+.co-today.good {
+  background-color: var(--comfort-tint);
+  color: var(--good);
+}
+.co-today.bad {
+  background-color: var(--bad-tint);
+  color: var(--bad);
+}
+/* The icon and the number stay together, on the text's line; the words after them wrap. */
+.co-today-num {
+  font-weight: 700;
+  white-space: nowrap;
+}
+.co-today-num .icon {
+  margin-right: var(--space-1);
+}
+/* An order's foot, which never scrolls away: what it pays, and its pick button at the right. */
+.co-foot {
+  flex: none;
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  box-shadow: inset 0 var(--px) 0 var(--paper-line);
 }
-.co-facts dd {
+.co-reward {
   display: flex;
   align-items: center;
   gap: var(--space-1);
-  margin: 0;
+  margin-right: auto;
   font-weight: 700;
+}
+.co-pays {
+  margin-right: var(--space-1);
+  font-weight: 400;
 }
 .co-amount {
   font-family: var(--font-display);
 }
-/* The buttons, which never scroll away. */
-.co-foot {
-  flex: none;
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  box-shadow: inset 0 var(--px) 0 var(--paper-line);
-}
 
-/* --- The answer's stamp (director.ts holds it for FEEL.changeOrder.stampMs) ------------------- */
+/* --- The pick's stamp (director.ts holds it for FEEL.changeOrder.stampMs) --------------------- */
 
-/* Over the sheet, across the order's words, about its middle. It's as wide for every answer and
-   a set way down from the sheet's top (centering it on an odd height would put it on half a
-   pixel), so it rests on whole device pixels in either font. */
+/* Over the picked order, across its words. It's a set width and a set way down from the card's
+   top (centering it on an odd height would put it on half a pixel), so it rests on whole device
+   pixels in either font. */
 .co-stamp-place {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding-top: calc(var(--px) * 80);
+  padding-top: calc(var(--px) * 56);
   pointer-events: none;
 }
 .co-stamp {
@@ -241,16 +317,11 @@
   width: calc(var(--w) * var(--px) * 2);
   height: calc(var(--h) * var(--px) * 2);
 }
-/* Accepted in the good blue on Comfort's tint (5.5:1); declined quiet on the inset paper (5.2:1);
-   noted in ink on the card. */
+/* Accepted, in the good blue on Comfort's tint (5.5:1). */
 .co-stamp.accepted {
   --stamp-lip: var(--comfort-shade);
   background-color: var(--comfort-tint);
   color: var(--good);
-}
-.co-stamp.declined {
-  background-color: var(--paper-inset);
-  color: var(--ink-soft);
 }
 @keyframes co-stamp {
   from {

@@ -120,9 +120,8 @@ const HINTS: Record<HintId, Hint> = {
   changeOrder: {
     title: 'Change orders',
     text:
-      'The client has changed their mind. A request or a restriction is yours to accept or ' +
-      'decline, and pays if you see it through the next milestone; declining costs nothing. ' +
-      'A change to the weather or the season just happens, and lasts this phase only.',
+      'The client changed their mind: pick one. A request or restriction pays if you see it ' +
+      'through; a “This phase” card changes what earns.',
     spot: 'underGoods',
   },
   // Playtest 4: nothing said a spare card of a room type could renovate, so it went unused.

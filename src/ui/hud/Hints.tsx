@@ -1,8 +1,8 @@
 // The controls strip along the bottom (M5a): the keys for what you're doing now, as keycaps,
 // instead of every shortcut at once. How to play lists them all. On a short window it sits
 // under the board only, so the side columns keep their height, and drops the hints marked
-// .hint-extra. M4's keys are here too: a change order's sheet (Enter accepts, Esc or D
-// declines one that can be declined), a pack's tiles (D-106), and a Renovation (D-102).
+// .hint-extra. M4's keys are here too: the change orders' sheet (1 or 2 picks one, D-144), a
+// pack's tiles (D-106), and a Renovation (D-102).
 //
 // No hooks, here or in what it renders: hints.test.tsx calls Hints() in place.
 
@@ -22,7 +22,7 @@ import {
   tentative,
   tool,
 } from '../store.ts';
-import { shopHidden } from './actions.ts';
+import { pickKeys, shopHidden } from './actions.ts';
 import './hints.css';
 
 function Hint({
@@ -98,16 +98,14 @@ export function Hints() {
       </>
     );
   } else if (s.screen === 'changeOrder') {
-    // A change order's sheet (M4b) takes only its own keys: F does nothing there. A phase
-    // effect can't be declined, so Esc and D do nothing on one either.
+    // The change orders' sheet (M4b, D-144) takes only its own keys: F does nothing there. 1
+    // and 2 pick an order; one offered alone takes Enter.
+    const keys = pickKeys(rules.changeOrderOffer(s)?.options.length ?? 2);
     hints =
-      (rules.changeOrderOffer(s)?.declinable ?? true) ? (
-        <>
-          <Hint keys={['Enter']}>accept</Hint>
-          <Hint keys={['Esc', 'D']}>decline: it costs nothing</Hint>
-        </>
+      keys.length > 1 ? (
+        <Hint keys={[...keys]}>pick one</Hint>
       ) : (
-        <Hint keys={['Enter']}>got it</Hint>
+        <Hint keys={[...keys]}>accept</Hint>
       );
   } else if (s.screen === 'shop') {
     // The sheet covers the lot, so F and T only mean something once the shop is hidden.

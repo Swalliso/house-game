@@ -68,6 +68,15 @@ export const changeOrderShown = computed(
     appScreen.value === 'game' &&
     (orderStamp.value !== null || (run.value.screen === 'changeOrder' && !busy.value)),
 );
+/**
+ * D-144: the key that picks each change order on the sheet: 1 for the left and 2 for the right,
+ * as the buttons and the controls strip say. An order offered alone (only one was eligible, or
+ * the ?debug panel forced it) takes Enter.
+ */
+export function pickKeys(count: number): readonly string[] {
+  return count === 1 ? ['Enter'] : Array.from({ length: count }, (_, i) => String(i + 1));
+}
+
 /** Notes and toasts sit inside a sheet, not over the board: the shop's or a change order's. */
 export const notesDocked = computed(() => shopShown.value || changeOrderShown.value);
 

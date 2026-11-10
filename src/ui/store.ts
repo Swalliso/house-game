@@ -746,11 +746,11 @@ export function leaveShop(): boolean {
 }
 
 /**
- * M4b: accepts or declines the change order waiting on its screen (a phase effect is only
- * acknowledged: `accept` true). Then the shop opens, or a forced one goes back to its week.
+ * M4b, D-144: picks one of the change orders waiting on their screen (the offer's `i`-th).
+ * Then the shop opens, or a forced offer goes back to its week.
  */
-export function answerChangeOrder(accept: boolean): boolean {
-  return dispatch({ t: 'answerChangeOrder', accept });
+export function answerChangeOrder(i: number): boolean {
+  return dispatch({ t: 'answerChangeOrder', i });
 }
 
 /** The ?debug panel's cheats. They're actions, so the run code still replays. */

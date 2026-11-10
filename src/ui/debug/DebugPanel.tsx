@@ -130,6 +130,8 @@ const ORDER_GROUPS: { label: string; ids: ChangeOrderId[] }[] = [
   })),
 ].filter((g) => g.ids.length > 0);
 const orderId = signal<ChangeOrderId>(ORDERS[0]!.id);
+/** D-144: the order offered beside it, to pick one of the two; '' offers it alone. */
+const otherId = signal<ChangeOrderId | ''>('');
 /** The household member to force in; the first still to come when it's not one of them. */
 const arrivalId = signal<ArrivalId | null>(null);
 
@@ -157,9 +159,9 @@ async function botRunTo(
   };
   let step = 0;
   let lastWeek = s.week;
-  // It stops at the start of milestone n: in the shop before it, if there is one. A change
-  // order on the way (M4b) is answered as the sim's greedy answers it (sim/policies/orders.ts:
-  // it declines restrictions), and the bot goes on to the shop after it.
+  // It stops at the start of milestone n: in the shop before it, if there is one. The change
+  // orders on the way (M4b) are answered as the sim's greedy picks (sim/policies/orders.ts),
+  // and the bot goes on to the shop after it.
   const arrived = (q: RunState) =>
     q.phase === goal &&
     q.screen !== 'changeOrder' &&
@@ -425,12 +427,45 @@ export function DebugPanel() {
             </select>
             <button
               type="button"
-              disabled={!live}
-              onClick={() => debugAction({ t: 'debug', op: 'forceChangeOrder', id: orderId.value })}
-              title="Offer it now, as if a milestone had just been met: it runs through this phase, and answering comes back to this week"
+              disabled={!live || otherId.value === orderId.value}
+              onClick={() =>
+                debugAction({
+                  t: 'debug',
+                  op: 'forceChangeOrder',
+                  id: orderId.value,
+                  ...(otherId.value ? { other: otherId.value } : {}),
+                })
+              }
+              title="Offer it now, as if a milestone had just been met: the pick runs through this phase, and picking comes back to this week"
             >
               Force
             </button>
+          </div>
+
+          <div class="debug-row">
+            <label class="debug-label" for="debug-order-other">
+              Against
+            </label>
+            <select
+              id="debug-order-other"
+              value={otherId.value}
+              title="The order offered beside it, to pick one of the two (D-144)"
+              onChange={(e) =>
+                (otherId.value = (e.target as HTMLSelectElement).value as ChangeOrderId | '')
+              }
+            >
+              <option value="">Nothing: offer it alone</option>
+              {ORDER_GROUPS.map((g) => (
+                <optgroup key={g.label} label={g.label}>
+                  {g.ids.map((id) => (
+                    <option key={id} value={id} disabled={id === orderId.value}>
+                      {CONTENT.changeOrders[id].name} ·{' '}
+                      {KIND_LABEL[CONTENT.changeOrders[id].kind].toLowerCase()}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
           </div>
 
           <div class="debug-row">

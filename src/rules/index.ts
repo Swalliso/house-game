@@ -161,9 +161,10 @@ export type LotTraitId = 'creekside' | 'wooded';
 export type ArrivalId = 'twins' | 'grandma' | 'renfield' | 'nana' | 'rowan' | 'ivy';
 
 /**
- * Change orders (M4b, D-011): one offered after each of milestones 2, 4, and 6. Five generic
- * ones apply to every client; each client has two or three of its own, at least one a phase
- * effect, so the offer after milestone 6 always has one (Appendix B, D-137).
+ * Change orders (M4b, D-011): two offered after each of milestones 2, 4, and 6, to pick one
+ * from (D-144). Five generic ones apply to every client; each client has two or three of its
+ * own, at least one a phase effect, so every client has four phase effects and the offer after
+ * milestone 6 always has two (Appendix B, D-137).
  */
 export type ChangeOrderId =
   // Generic.
@@ -630,14 +631,14 @@ export interface ClientDef {
 }
 
 /**
- * A change order (M4b; implementation-plan.md §5, Appendix B). One is offered after each of
- * milestones 2, 4, and 6, from the client's own and the generic ones, and runs through the next
- * phase, resolving at its milestone.
- * - request: accept or decline; met at the milestone → `reward`. A temporary goal: it never
- *   changes the checklist. `countNew` counts pieces placed since it was accepted.
- * - restriction: accept or decline; placing a piece that matches `forbid` breaks it; kept to
- *   the milestone → `reward`.
- * - phase: announced (only acknowledged), then its modifiers apply for the next phase.
+ * A change order (M4b; implementation-plan.md §5, Appendix B). Two are offered after each of
+ * milestones 2, 4, and 6, from the client's own and the generic ones; the one picked (D-144)
+ * runs through the next phase, resolving at its milestone.
+ * - request: met at the milestone → `reward`. A temporary goal: it never changes the
+ *   checklist. `countNew` counts pieces placed since it was picked.
+ * - restriction: placing a piece that matches `forbid` breaks it; kept to the milestone →
+ *   `reward`.
+ * - phase: its modifiers apply for the next phase.
  */
 export type ChangeOrderDef = {
   id: ChangeOrderId;
@@ -998,30 +999,38 @@ export interface TimedEffect {
 /** How an accepted change order ended (M4b). A phase effect just ends. */
 export type ChangeOrderResult = 'met' | 'missed' | 'kept' | 'broken' | 'ended';
 
-/** A change order offered after a milestone, waiting for its answer on the 'changeOrder' screen. */
+/**
+ * The change orders offered after a milestone, waiting on the 'changeOrder' screen for one to
+ * be picked (D-144).
+ */
 export interface ChangeOrderOffer {
-  id: ChangeOrderId;
-  /** The phase it would run through (0-based): it resolves when that phase's milestone does. */
+  /**
+   * The orders to pick from, in the order shown: two, or one when only one is eligible (or
+   * the ?debug panel forced one alone).
+   */
+  ids: readonly ChangeOrderId[];
+  /** The phase the pick would run through (0-based): it resolves when that phase's milestone does. */
   phase: number;
   /** Forced by the ?debug panel mid-week: answering it goes back to the same week. */
   forced?: true;
 }
 
-/** A change order this run, once answered (M4b). */
+/** A change order picked this run (M4b, D-144). */
 export interface ChangeOrderRecord {
   id: ChangeOrderId;
   /** The phase it runs through (0-based). */
   phase: number;
-  answer: 'accepted' | 'declined' | 'acknowledged';
-  /** The week it was answered: the first week it counts in. */
+  /** The week it was picked: the first week it counts in. */
   week: number;
-  /** Requests: pieces with a uid from here on are new (the house's nextUid when accepted). */
+  /** Requests: pieces with a uid from here on are new (the house's nextUid when picked). */
   sinceUid: number;
-  /** Requests: pieces demolished since it was accepted (Declutter). */
+  /** Requests: pieces demolished since it was picked (Declutter). */
   demolished: number;
+  /** The orders offered beside it and passed over: they can be offered again (D-144). */
+  passedOver: readonly ChangeOrderId[];
   /** Restrictions: the forbidden piece whose placement broke it. */
   brokenBy?: number;
-  /** Once its phase's milestone resolves (accepted and acknowledged ones only). */
+  /** Once its phase's milestone resolves. */
   result?: ChangeOrderResult;
   /** What it paid: a request met or a restriction kept. */
   reward?: Reward;
@@ -1125,12 +1134,13 @@ export interface RunState {
   milestones: readonly MilestoneRecord[];
   lastTally: WeekSummary | null;
   /**
-   * The shop opens after milestones 1–6 (D-051). After milestones 2, 4, and 6 a change order
-   * comes first (M4b): its screen waits for an answer, then the shop opens.
+   * The shop opens after milestones 1–6 (D-051). After milestones 2, 4, and 6 two change
+   * orders come first (M4b, D-144): their screen waits for one to be picked, then the shop
+   * opens.
    */
   screen: 'build' | 'changeOrder' | 'shop' | 'won' | 'lost';
   offers?: { shop?: ShopVisit; pick?: CratePick; changeOrder?: ChangeOrderOffer };
-  /** M4b: every change order answered this run, in order, with how it went. */
+  /** M4b: every change order picked this run, in order, with how it went. */
   changeOrders: readonly ChangeOrderRecord[];
   /** M4b: the household members who've arrived (D-103), in order. */
   arrived: readonly ArrivalId[];
@@ -1202,10 +1212,10 @@ export type UseToolAction = {
 };
 export type LeaveShopAction = { t: 'leaveShop' };
 /**
- * M4b: the answer to the change order on the 'changeOrder' screen. Requests and restrictions
- * can be declined (no penalty); a phase effect is only acknowledged (`accept` must be true).
+ * M4b, D-144: the answer on the 'changeOrder' screen: which of the offer's orders is picked
+ * (its index in `offers.changeOrder.ids`). One must be; the others go back in the pool.
  */
-export type AnswerChangeOrderAction = { t: 'answerChangeOrder'; accept: boolean };
+export type AnswerChangeOrderAction = { t: 'answerChangeOrder'; i: number };
 /**
  * The ?debug panel's cheats. They are actions so that a run code still replays exactly, and
  * any of them marks the run as a debug run.
@@ -1223,9 +1233,10 @@ export type DebugAction =
   /**
    * M4b: offers this change order now, from the build screen, as if a milestone had just been
    * met: it runs through the current phase, and answering it goes back to the same week, hand
-   * and all. Any change order, even one already offered.
+   * and all. Any change order, even one already picked. Alone, or (D-144) beside `other`, to
+   * pick one of the two.
    */
-  | { t: 'debug'; op: 'forceChangeOrder'; id: ChangeOrderId }
+  | { t: 'debug'; op: 'forceChangeOrder'; id: ChangeOrderId; other?: ChangeOrderId }
   /** M4b: this household member arrives now: their cards go into the reserve's extra slots. */
   | { t: 'debug'; op: 'forceArrival'; id: ArrivalId };
 
@@ -1517,17 +1528,26 @@ export type GameEvent =
    * transforms, before the draw): their cards went into the reserve's extra slots.
    */
   | { t: 'arrived'; arrival: ArrivalId; phase: number; cards: readonly PieceId[]; forced?: true }
-  /** M4b: a change order is offered; the 'changeOrder' screen waits for the answer. */
+  /**
+   * M4b, D-144: change orders are offered, two as a rule; the 'changeOrder' screen waits for
+   * one to be picked.
+   */
   | {
       t: 'changeOrderOffered';
-      id: ChangeOrderId;
-      kind: ChangeOrderKind;
-      /** The phase it would run through. */
+      /** The orders to pick from, in the order shown. */
+      options: readonly { id: ChangeOrderId; kind: ChangeOrderKind }[];
+      /** The phase the pick would run through. */
       phase: number;
       forced?: true;
     }
-  /** `accepted` is true for a phase effect: it's acknowledged, and runs. */
-  | { t: 'changeOrderAnswered'; id: ChangeOrderId; kind: ChangeOrderKind; accepted: boolean }
+  /** The order picked (the offer's `i`-th), and the ones passed over, which can come again. */
+  | {
+      t: 'changeOrderAnswered';
+      id: ChangeOrderId;
+      kind: ChangeOrderKind;
+      i: number;
+      passedOver: readonly ChangeOrderId[];
+    }
   /** A piece the restriction forbids was placed while it ran: it pays nothing now. */
   | { t: 'changeOrderBroken'; id: ChangeOrderId; uid: number }
   /**
@@ -1714,8 +1734,8 @@ export interface ChecklistLine {
 }
 
 /**
- * A change order as the UI shows it (M4b): the offer on the 'changeOrder' screen, or one that's
- * running (an accepted request or restriction, or a phase effect), with its progress.
+ * A change order as the UI shows it (M4b): one of the offer's on the 'changeOrder' screen, or
+ * one that's running (a request, a restriction, or a phase effect), with its progress.
  */
 export interface ChangeOrderView {
   id: ChangeOrderId;
@@ -1729,14 +1749,27 @@ export interface ChangeOrderView {
   reward?: Reward;
   /** The phase it runs through (0-based): it resolves when that phase's milestone resolves. */
   phase: number;
-  /** Requests and restrictions can be declined; a phase effect is only acknowledged. */
-  declinable: boolean;
+  /**
+   * On an offer, a phase effect (D-144): what it would change a week's total by, with the house
+   * as it stands in the week it starts. The house will change; this is where it starts from.
+   */
+  houseGain?: number;
   /** Requests: whether it would count as met if the milestone resolved now. */
   met?: boolean;
   /** Requests: "1 new of 2", "0 of 1 demolished". */
   progress?: readonly ProgressPart[];
   /** Restrictions: the piece that broke it, once one did. */
   brokenBy?: number;
+}
+
+/** The 'changeOrder' screen's offer as the UI shows it (D-144): pick one of its orders. */
+export interface ChangeOrderOfferView {
+  /** In the order shown; `answerChangeOrder`'s `i` is an index here. */
+  options: readonly ChangeOrderView[];
+  /** The phase the pick runs through (0-based). */
+  phase: number;
+  /** Forced by the ?debug panel mid-week: answering it goes back to the same week. */
+  forced: boolean;
 }
 
 /** A room type at its limit (from the checklist's ceilings): its cards can renovate instead. */

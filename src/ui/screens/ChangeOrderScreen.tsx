@@ -1,15 +1,17 @@
-// A change order (M4b; implementation-plan.md §5, D-109): after milestones 2, 4, and 6 the
-// client changes their mind, on a sheet over the board, before the shop. A request or a
-// restriction can be accepted or declined (declining costs nothing); a phase effect is only
-// acknowledged. The sheet arrives with a paper flourish, and the answer is stamped on it as it
-// goes (director.ts plays both beats). What it asks and pays comes from the rules'
-// changeOrderOffer(): the UI only lays it out.
+// Change orders (M4b; implementation-plan.md §5, D-109, D-144): after milestones 2, 4, and 6
+// the client changes their mind, on a sheet over the board, before the shop. The sheet shows
+// two orders side by side and one must be picked: the other goes back in the pool. A request or
+// a restriction pays if it's seen through the phase; a phase effect changes what earns, and
+// says what it would do to the house as it stands. The sheet arrives with a paper flourish, and
+// the pick is stamped on its card as it goes (director.ts plays both beats). What each order
+// asks, pays and changes comes from the rules' changeOrderOffer(): the UI only lays it out.
 //
 // In the pixel UI (D-110): a kit Panel on a scrim over the board, as the shop's sheet is. It
-// holds the keyboard on its text, never on a button, so a held Enter can't answer it before
-// FEEL.changeOrder.keyDelayMs: App.tsx's keys (Enter accepts, Esc or D declines) answer it, and
-// it stays out of anyModalOpen() so they still reach it. Tab cycles inside it, and focus goes
-// back where it was when it closes. The answer is a pixel stamp that rests unrotated.
+// holds the keyboard on its text, never on a button, so a held key can't answer it before
+// FEEL.changeOrder.keyDelayMs: App.tsx's keys (1 picks the left order, 2 the right; Enter
+// takes an order offered alone) answer it, and it stays out of anyModalOpen() so they still
+// reach it. Tab cycles through the pick buttons, and focus goes back where it was when it
+// closes. The pick is a pixel stamp that rests unrotated.
 
 import type { RefObject } from 'preact';
 import { useLayoutEffect, useRef } from 'preact/hooks';
@@ -17,13 +19,16 @@ import {
   CONTENT,
   rewardText,
   rules,
+  SCORE_LABELS,
   type ChangeOrderKind,
+  type ChangeOrderOfferView,
   type ChangeOrderView,
   type Reward,
 } from '../../rules/index.ts';
-import { audio } from '../audio/audio.ts';
 import { busy, orderStamp, type OrderStamp } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
+import { signed } from '../format.ts';
+import { pickKeys } from '../hud/actions.ts';
 import { orderTerms, ProgressParts } from '../hud/Checklist.tsx';
 import { Button, Chip, Icon, Keycap, Panel, useDialogFocus, type IconName } from '../kit/kit.tsx';
 import { answerChangeOrder, run } from '../store.ts';
@@ -31,7 +36,7 @@ import { Notes } from './Overlays.tsx';
 import './change-order.css';
 
 /**
- * The sheet's tag. It shows as the phase it runs through begins (the top bar already names
+ * An order's tag. It shows as the phase it runs through begins (the top bar already names
  * it), so a phase effect is "This phase", as its sentence says (change-orders.ts).
  */
 export const KIND_LABEL: Readonly<Record<ChangeOrderKind, string>> = {
@@ -47,66 +52,33 @@ const KIND_ICON: Readonly<Record<ChangeOrderKind, IconName>> = {
   phase: 'clock',
 };
 
-/** The stamp's word and mark. */
-const STAMP: Readonly<Record<OrderStamp['answer'], { text: string; icon: IconName }>> = {
-  accepted: { text: 'Accepted', icon: 'check' },
-  declined: { text: 'Declined', icon: 'cross' },
-  noted: { text: 'Noted', icon: 'check' },
-};
-
-/**
- * A phase effect can't be declined, which the missing Decline button already says. About one
- * in four says it in a line of its own instead (playtest 4 liked "It's coming either way"), picked
- * from the run's seed and the order, so a replay shows the same line. UI only.
- */
-export const ORDER_FLAVOR = [
-  'It’s coming either way.',
-  'No takebacks: the paperwork is already stapled.',
-  'The clipboard has spoken.',
-  'Signed in pencil, but the pencil is very firm.',
-  'The foreman read it and went to lunch.',
-] as const;
-
-/** The flavor line a phase effect shows, or null for most (FNV-1a over seed, order and phase). */
-export function orderFlavor(seed: string, id: string, phase: number): string | null {
-  let h = 0x811c9dc5;
-  for (const ch of `${seed}/${id}/${phase}`) h = Math.imul(h ^ ch.charCodeAt(0), 0x01000193) >>> 0;
-  return h % 4 === 0 ? ORDER_FLAVOR[Math.floor(h / 4) % ORDER_FLAVOR.length]! : null;
-}
-
 /** When the sheet last arrived: its keys wait out its flourish (FEEL.changeOrder.keyDelayMs). */
 let shownAt = 0;
 
-/** The offer on the sheet, while it waits for an answer (not during a tally or the stamp). */
-function waitingOffer(): ChangeOrderView | null {
+/** The offer on the sheet, while it waits for a pick (not during a tally or the stamp). */
+function waitingOffer(): ChangeOrderOfferView | null {
   const s = run.value;
   if (s.screen !== 'changeOrder' || busy.value || orderStamp.value) return null;
   return rules.changeOrderOffer(s);
 }
 
-/** Accepts (or acknowledges) the change order, or declines it. Its stamp plays as it goes. */
-function answer(accept: boolean): boolean {
-  const view = waitingOffer();
-  if (!view) return false;
-  if (!accept && !view.declinable) {
-    // A phase effect is coming either way.
-    audio.play('illegal');
-    return false;
-  }
-  return answerChangeOrder(accept);
+/** Picks the offer's `i`-th order. Its stamp plays as the sheet goes. */
+function pick(i: number): boolean {
+  const offer = waitingOffer();
+  if (!offer || !offer.options[i]) return false;
+  return answerChangeOrder(i);
 }
 
 /**
- * The sheet's keys, from the game's keyboard handler (App.tsx): Enter accepts or acknowledges,
- * Esc or D declines where it can. Not until the sheet has landed, so an Enter pressed to end the
- * week can't answer the order that week brought.
+ * The sheet's keys, from the game's keyboard handler (App.tsx). Not until the sheet has landed,
+ * so a key pressed to end the week can't answer the orders that week brought.
  */
 export function changeOrderKey(key: string): boolean {
-  if (!waitingOffer()) return false;
+  const offer = waitingOffer();
+  if (!offer) return false;
   if (performance.now() - shownAt < FEEL.changeOrder.keyDelayMs) return false;
-  if (key === 'Enter') return answer(true);
-  if (key === 'Escape' || key === 'd' || key === 'D') return answer(false);
-  return false;
+  const i = pickKeys(offer.options.length).indexOf(key);
+  return i >= 0 && pick(i);
 }
 
 /** A press on a button leaves focus on the sheet's text, where the keys wait out their delay. */
@@ -118,32 +90,32 @@ const fromName = (name: string) => name.replace(/^The\s/, 'the ');
 export function ChangeOrderScreen() {
   const stamp = orderStamp.value;
   const s = run.value;
-  // Waiting for an answer once the milestone's beats are done, or answered, with its stamp: the
+  // Waiting for a pick once the milestone's beats are done, or picked, with its stamp: the
   // rules have moved on by then, so the stamp carries the sheet as it was.
   const live = stamp ? null : waitingOffer();
-  const view = stamp?.view ?? live;
+  const offer = stamp?.offer ?? live;
+  const shown = live?.options.map((o) => o.id).join('/');
   // Before the browser can deliver a key: a layout effect runs with the render that shows it.
   useLayoutEffect(() => {
-    if (live) shownAt = performance.now();
-  }, [live?.id]);
-  if (!view) return null;
+    if (shown) shownAt = performance.now();
+  }, [shown]);
+  if (!offer) return null;
   const client = CONTENT.clients[stamp?.clientId ?? s.setup.clientId];
-  const forced = stamp ? stamp.forced : !!s.offers?.changeOrder?.forced;
   // One sheet from the live offer through its stamp: it never remounts, so its arrival plays
   // once and its hold on the keyboard lasts until it goes.
   return (
     <ChangeOrderSheet
-      view={view}
+      offer={offer}
       stamp={stamp}
       from={fromName(client.name)}
-      backTo={forced ? s.slot : null}
+      backTo={offer.forced ? s.slot : null}
     />
   );
 }
 
 /**
- * The terms the sheet lists. A request's or a restriction's last term says what it pays ("Met:
- * +3 budget", text.ts changeOrderText), which the sheet's Pays line shows, coin first, so the
+ * The terms a card lists. A request's or a restriction's last term says what it pays ("Met:
+ * +3 budget", text.ts changeOrderText), which the card's Pays line shows, coin first, so the
  * list leaves it out rather than say it twice. A phase effect's terms are its modifiers.
  */
 export function sheetTerms(view: ChangeOrderView): readonly string[] {
@@ -163,6 +135,41 @@ function Pays({ reward }: { reward: Reward }) {
     );
   }
   return <>{rewardText(CONTENT, reward)}</>;
+}
+
+/**
+ * D-144: what a phase effect would do to the house as it stands, from the rules' houseGain: a
+ * strip like a fixture's worth in the shop (D-107), a gain in blue with an up icon, a loss in
+ * orange with a down icon (never color alone, D-047), quiet when it changes nothing yet. The
+ * house will change over the phase, so it says "today".
+ */
+export function todayText(gain: number): string {
+  const wow = SCORE_LABELS.total;
+  if (gain === 0) return `No ${wow} either way on your house today`;
+  return `${signed(gain)} ${wow} a week on your house today`;
+}
+
+const TODAY_TIP =
+  'What it would change this week, with your house as it stands. It runs all phase, and what you build changes it.';
+
+function Today({ gain }: { gain: number }) {
+  const wow = SCORE_LABELS.total;
+  if (gain === 0) {
+    return (
+      <p class="co-today none" title={TODAY_TIP}>
+        {todayText(0)}
+      </p>
+    );
+  }
+  return (
+    <p class={`co-today ${gain > 0 ? 'good' : 'bad'}`} title={TODAY_TIP}>
+      <span class="co-today-num">
+        <Icon name={gain > 0 ? 'up' : 'down'} />
+        {signed(gain)}
+      </span>{' '}
+      {wow} a week on your house today
+    </p>
+  );
 }
 
 /**
@@ -189,17 +196,90 @@ function useWholePixelTop(ref: RefObject<HTMLElement>): void {
   }, []);
 }
 
-function ChangeOrderSheet({
+/**
+ * One order on the sheet: what it asks or changes, what it pays, and its pick button. No hooks,
+ * here or in what it renders: change-order.test.tsx calls it in place.
+ */
+export function OrderCard({
   view,
+  i,
+  keycap,
+  alone,
+  stamp,
+}: {
+  view: ChangeOrderView;
+  i: number;
+  /** The key that picks it, as its button shows. */
+  keycap: string;
+  /** The only order on the sheet. */
+  alone: boolean;
+  stamp: OrderStamp | null;
+}) {
+  const picked = stamp?.picked === i;
+  const state = !stamp ? '' : picked ? 'picked' : 'passed';
+  return (
+    <section class={`co-option kind-${view.kind} ${state}`} aria-labelledby={`co-name-${i}`}>
+      <div class="co-option-body">
+        <div class="co-title">
+          <h3 id={`co-name-${i}`}>{view.name}</h3>
+          <Chip icon={KIND_ICON[view.kind]}>{KIND_LABEL[view.kind]}</Chip>
+        </div>
+        {/* The client's own words: the pixel font has no italics, so the quotes carry them. */}
+        <blockquote class="co-text">“{view.text}”</blockquote>
+        <ul class="pcard-lines co-terms">
+          {/* A phase effect's say what it changes; the sheet's first line says until when. */}
+          {sheetTerms(view).map((t) => (
+            <li key={t}>{t}</li>
+          ))}
+        </ul>
+        {view.progress && view.progress.length > 0 && (
+          <p class="co-progress">
+            So far: <ProgressParts parts={view.progress} />
+          </p>
+        )}
+        {view.houseGain !== undefined && <Today gain={view.houseGain} />}
+      </div>
+      <div class="co-foot">
+        {view.reward && (
+          <span class="co-reward">
+            <span class="co-pays">Pays</span>
+            <Pays reward={view.reward} />
+          </span>
+        )}
+        <Button
+          variant="primary"
+          disabled={!!stamp}
+          onMouseDown={noFocus}
+          onClick={() => pick(i)}
+          title={alone ? `Accept ${view.name} (${keycap})` : `Pick ${view.name} (${keycap})`}
+        >
+          {alone ? 'Accept' : 'Pick'}
+          <Keycap>{keycap}</Keycap>
+        </Button>
+      </div>
+      {picked && (
+        <div class="co-stamp-place">
+          <div class="co-stamp accepted" role="status">
+            <Icon name="check" />
+            Accepted
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ChangeOrderSheet({
+  offer,
   stamp,
   from,
   backTo,
 }: {
-  view: ChangeOrderView;
+  offer: ChangeOrderOfferView;
   stamp: OrderStamp | null;
   /** The client mid-sentence. */
   from: string;
-  /** The week a ?debug order goes back to, or null. */
+  /** The week a ?debug offer goes back to, or null. */
   backTo: number | null;
 }) {
   const dialog = useRef<HTMLDivElement>(null);
@@ -214,24 +294,22 @@ function ChangeOrderSheet({
     '--co-tilt': `${f.tiltDeg}deg`,
     '--co-stamp': `${f.stampInMs}ms`,
   };
-  const due = `the ${rules.phaseName(view.phase)} milestone`;
+  const due = `the ${rules.phaseName(offer.phase)} milestone`;
   const forced = backTo !== null;
-  const note = view.declinable
-    ? 'Declining costs nothing.'
-    : orderFlavor(run.value.setup.seed, view.id, view.phase);
-  const mark = stamp ? STAMP[stamp.answer] : null;
+  const alone = offer.options.length === 1;
+  const keys = pickKeys(offer.options.length);
   return (
     <div class={`change-order ui ${stamp ? 'answered' : ''}`} style={style}>
       <div
         ref={dialog}
-        class="co-dialog"
+        class={`co-dialog ${alone ? 'alone' : ''}`}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="co-name"
-        aria-describedby="co-text"
+        aria-label={alone ? 'Change order' : 'Change order: pick one'}
+        aria-describedby="co-lede"
       >
         <Panel
-          class={`co-sheet kind-${view.kind}`}
+          class="co-sheet"
           title={
             <>
               <Icon name="mail" />
@@ -249,81 +327,29 @@ function ChangeOrderSheet({
           {/* Notes and toasts sit here while the sheet is up, not over it (Overlays.tsx). A
               note's Dismiss puts focus back on the text, which holds the keyboard. */}
           <Notes docked refocus={text} />
-          <div class="co-scroll" ref={text} tabIndex={-1}>
-            <div class="co-title">
-              <h2 id="co-name">{view.name}</h2>
-              <Chip icon={KIND_ICON[view.kind]}>{KIND_LABEL[view.kind]}</Chip>
-            </div>
-            {/* The client's own words: the pixel font has no italics, so the quotes carry them. */}
-            <blockquote id="co-text" class="co-text">
-              “{view.text}”
-            </blockquote>
-            <ul class="pcard-lines co-terms">
-              {/* A phase effect's say what it changes; "Until" below says when (this phase). */}
-              {sheetTerms(view).map((t) => (
-                <li key={t}>{t}</li>
+          <div class="co-pick" ref={text} tabIndex={-1}>
+            <p id="co-lede" class="co-lede">
+              {!alone && <b>Pick one. </b>}
+              It runs until
+              <span class="co-due">
+                <Icon name="clock" />
+                {due}.
+              </span>
+              {forced ? ` Picking goes back to week ${backTo}.` : ''}
+            </p>
+            <div class="co-options">
+              {offer.options.map((view, i) => (
+                <OrderCard
+                  key={view.id}
+                  view={view}
+                  i={i}
+                  keycap={keys[i]!}
+                  alone={alone}
+                  stamp={stamp}
+                />
               ))}
-            </ul>
-            {view.progress && view.progress.length > 0 && (
-              <p class="co-progress">
-                So far: <ProgressParts parts={view.progress} />
-              </p>
-            )}
-            <dl class="co-facts">
-              <div>
-                <dt>Until</dt>
-                <dd>
-                  <Icon name="clock" />
-                  {due}
-                </dd>
-              </div>
-              {view.reward && (
-                <div>
-                  <dt>Pays</dt>
-                  <dd class="co-reward">
-                    <Pays reward={view.reward} />
-                  </dd>
-                </div>
-              )}
-            </dl>
-            {(note || forced) && (
-              <p class="co-note">
-                {note}
-                {forced ? `${note ? ' ' : ''}Answering goes back to week ${backTo}.` : ''}
-              </p>
-            )}
-          </div>
-          <div class="co-foot">
-            {view.declinable && (
-              <Button
-                disabled={!!stamp}
-                onMouseDown={noFocus}
-                onClick={() => answer(false)}
-                title="Decline it: it costs nothing (Esc or D)"
-              >
-                Decline
-                <Keycap>Esc</Keycap>
-              </Button>
-            )}
-            <Button
-              variant="primary"
-              disabled={!!stamp}
-              onMouseDown={noFocus}
-              onClick={() => answer(true)}
-              title={view.declinable ? 'Accept it (Enter)' : 'Got it (Enter)'}
-            >
-              {view.declinable ? 'Accept' : 'Got it'}
-              <Keycap>Enter</Keycap>
-            </Button>
-          </div>
-          {stamp && mark && (
-            <div class="co-stamp-place">
-              <div class={`co-stamp ${stamp.answer}`} role="status">
-                <Icon name={mark.icon} />
-                {mark.text}
-              </div>
             </div>
-          )}
+          </div>
         </Panel>
       </div>
     </div>

@@ -24,8 +24,8 @@ import {
   SCORE_LABELS,
   type ArrivalId,
   type ChangeOrderId,
+  type ChangeOrderOfferView,
   type ChangeOrderResult,
-  type ChangeOrderView,
   type ClientId,
   type GameEvent,
   type PieceId,
@@ -238,16 +238,16 @@ export const justPlaced = signal<{ uid: number; id: number } | null>(null);
 export const justRenovated = signal<{ uid: number; id: number } | null>(null);
 
 /**
- * A change order's answer, stamped on its sheet as the sheet goes (M4b): the sheet as it was
- * answered, since the rules have already moved on to the shop (or back to the week).
+ * The change order picked, stamped on its card as the sheet goes (M4b, D-144): the sheet as it
+ * was answered, since the rules have already moved on to the shop (or back to the week).
  */
 export interface OrderStamp {
   id: number;
-  view: ChangeOrderView;
+  /** The offer as it was, its ?debug flag included. */
+  offer: ChangeOrderOfferView;
   clientId: ClientId;
-  /** Offered by the ?debug panel mid-week: answering it goes back to that week. */
-  forced: boolean;
-  answer: 'accepted' | 'declined' | 'noted';
+  /** Which of the offer's orders was picked. */
+  picked: number;
 }
 export const orderStamp = signal<OrderStamp | null>(null);
 /** A household member's cards, just in the reserve (M4b): the reserve pops them in. */
@@ -533,7 +533,7 @@ function setShownScore(score: number | null): void {
 
 /**
  * Whether an action's events have beats to play. Free actions with little to animate don't. A
- * change order's answer does (M4b): its stamp holds the shop back until it lands.
+ * change order's pick does (M4b): its stamp holds the shop back until it lands.
  */
 function animates(events: readonly GameEvent[]): boolean {
   return events.some(
@@ -558,7 +558,7 @@ function withBroken(s: RunState, id: ChangeOrderId, uid: number): RunState {
   return {
     ...s,
     changeOrders: s.changeOrders.map((r) =>
-      r.id === id && r.answer === 'accepted' && r.result === undefined && r.brokenBy === undefined
+      r.id === id && r.result === undefined && r.brokenBy === undefined
         ? { ...r, brokenBy: uid }
         : r,
     ),
@@ -620,20 +620,14 @@ function showStart(events: readonly GameEvent[], before: RunState): void {
   });
 }
 
-/** The sheet as it was answered, and the answer, for its stamp (M4b). */
+/** The sheet as it was answered, and the order picked, for its stamp (M4b, D-144). */
 function stampOf(
   e: Extract<GameEvent, { t: 'changeOrderAnswered' }>,
   before: RunState,
 ): OrderStamp | null {
-  const view = rules.changeOrderOffer(before);
-  if (!view) return null;
-  return {
-    id: nextId++,
-    view,
-    clientId: before.setup.clientId,
-    forced: !!before.offers?.changeOrder?.forced,
-    answer: e.kind === 'phase' ? 'noted' : e.accepted ? 'accepted' : 'declined',
-  };
+  const offer = rules.changeOrderOffer(before);
+  if (!offer) return null;
+  return { id: nextId++, offer, clientId: before.setup.clientId, picked: e.i };
 }
 
 /** A fast-forwarded week (D-040): no placement, just a quick count and the drain. */
@@ -1424,21 +1418,20 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
           break;
         }
         case 'changeOrderAnswered': {
-          // M4b: the answer is stamped on the sheet as it goes (ChangeOrderScreen.tsx; the stamp
-          // went on show with the action, in showStart), in real time: holding hurries it, a
-          // click skips it. The shop waits for it.
+          // M4b: the pick is stamped on its card as the sheet goes (ChangeOrderScreen.tsx; the
+          // stamp went on show with the action, in showStart), in real time: holding hurries it,
+          // a click skips it. The shop waits for it.
           const stamp = orderStamp.value;
           if (stamp && !skipping) {
-            // The stamp's thunk (D-125), ink spattering where it lands, then a bright plink for
-            // a yes, or the paper swished aside.
+            // The stamp's thunk (D-125), ink spattering where it lands, then a bright plink,
+            // and the order passed over swished aside (D-144).
             audio.play('order-stamp');
             afterPaint(
               () => burstAt('ink', document.querySelector('.co-stamp')),
               FEEL.changeOrder.stampInMs,
             );
-            if (stamp.answer === 'declined') audio.play('rotate', { rate: 0.7, delay: 0.08 });
-            else
-              audio.play('plink', { rate: stamp.answer === 'accepted' ? 1.5 : 1.2, delay: 0.07 });
+            audio.play('plink', { rate: 1.5, delay: 0.07 });
+            if (stamp.offer.options.length > 1) audio.play('rotate', { rate: 0.7, delay: 0.12 });
             await wait(FEEL.changeOrder.stampMs, undefined, undefined, realSpeed);
           }
           orderStamp.value = null;

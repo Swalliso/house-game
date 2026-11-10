@@ -105,10 +105,11 @@ function useKeyboard(): void {
         return;
       }
       if (run.value.screen === 'changeOrder') {
-        // M4b: a change order waits for its answer. Only the sheet's keys work (Enter accepts,
-        // Esc or D declines one that can be declined); nothing reaches the week's controls
-        // behind it. Before the sheet is up, the milestone's beats play over the board: Esc
-        // skips them, and the camera's keys still work. Enter is always claimed, as below.
+        // M4b, D-144: the change orders wait for a pick. Only the sheet's keys work (1 picks
+        // the left order and 2 the right; Enter takes one offered alone); nothing reaches the
+        // week's controls behind it. Before the sheet is up, the milestone's beats play over
+        // the board: Esc skips them, and the camera's keys still work. Enter is always
+        // claimed, as below.
         if (e.key === 'Enter') e.preventDefault();
         if (e.repeat) return;
         if (!busy.value) {
