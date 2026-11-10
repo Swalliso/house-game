@@ -32,6 +32,7 @@ import { Inventory } from './hud/Inventory.tsx';
 import { TipLayer } from './hud/Tip.tsx';
 import { ScorePanel } from './hud/ScorePanel.tsx';
 import { TopBar } from './hud/TopBar.tsx';
+import { EndPhotos, PhotoViewer } from './screens/EndPhotos.tsx';
 import { EndCaption, EndScreen } from './screens/EndScreen.tsx';
 import { HowToPlay } from './screens/HowToPlay.tsx';
 import {
@@ -196,6 +197,7 @@ function Game() {
         <ArrivalCard />
         <TargetFlash />
         <EndCaption />
+        <EndPhotos />
         <ShopScreen />
         <ChangeOrderScreen />
         <BuildLabel inBoard />
@@ -237,6 +239,7 @@ export function App() {
         <GameMenu />
         <HowToPlay />
         <SettingsPanel />
+        <PhotoViewer />
         <CopyFallback />
         <ModalToast />
         <TipLayer />

@@ -1,0 +1,255 @@
+/* The end screen's photos (M6, D-136; EndPhotos.tsx): a strip of polaroids along the foot of the
+   board, one per milestone, under the roofed house. */
+
+/* Sizes: a 4:3 photo in a white frame, its caption under it (the name on two lines, its mark
+   and Wow, then the target). The photos share the board's width, seven side by side (the most
+   a run has), between 140 px (the narrowest that holds "Final Walk-" on a line) and 176 px, in
+   steps of 4 px so the photo's height is whole. Narrower than that, they overlap. */
+.center:has(> .end-photos) {
+  --polaroid-pad: var(--space-1);
+  --photo-fit: calc(
+    (100vw - var(--side) * 2 - var(--space-3) * 2 - var(--space-2) * 6) / 7 - var(--polaroid-pad) *
+      2
+  );
+  --photo-w: clamp(140px, var(--photo-fit), 176px);
+  --photo-h: calc(var(--photo-w) * 3 / 4);
+  --polaroid-w: calc(var(--photo-w) + var(--polaroid-pad) * 2);
+  --polaroid-caption: calc(var(--lh-tight) * 4 + var(--space-1));
+  --polaroid-h: calc(
+    var(--photo-h) + var(--polaroid-pad) * 2 + var(--space-1) + var(--polaroid-caption)
+  );
+  --photos-h: calc(var(--polaroid-h) + var(--space-4) + var(--space-2));
+}
+@supports (width: round(down, 10px, 4px)) {
+  .center:has(> .end-photos) {
+    --photo-w: clamp(140px, round(down, var(--photo-fit), 4px), 176px);
+  }
+}
+/* The board makes room for the strip, so the camera fits the house above it (the board
+   re-measures when its box changes), and the camera's buttons sit on top of it. */
+.center:has(> .end-photos) > .board-scroll {
+  bottom: var(--photos-h);
+}
+.center:has(> .end-photos) .camera-controls {
+  bottom: calc(var(--photos-h) + var(--space-3));
+}
+
+/* The table the photos are dealt onto. */
+.end-photos {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 14;
+  height: var(--photos-h);
+  padding: var(--space-4) var(--space-3) var(--space-2);
+  background: var(--wood-night);
+  box-shadow:
+    inset 0 calc(var(--px) * 2) 0 var(--wood-deep),
+    inset 0 calc(var(--px) * 3) 0 var(--shade);
+}
+/* As many as fit side by side; where they don't, they overlap like a hand of cards (each item
+   shrinks, its polaroid keeps its width), the last one whole. */
+.photo-strip {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.end-photo {
+  position: relative;
+  flex: 0 1 calc(var(--polaroid-w) + var(--space-2));
+  min-width: 0;
+}
+.end-photo:last-child {
+  flex: none;
+  width: var(--polaroid-w);
+}
+/* The one pointed at or focused comes to the front, and rises. */
+.end-photo:hover,
+.end-photo:focus-within {
+  z-index: 1;
+}
+
+.polaroid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: var(--polaroid-w);
+  height: var(--polaroid-h);
+  margin: 0;
+  padding: var(--polaroid-pad);
+  border: 0;
+  border-radius: 0;
+  background: var(--card-hi);
+  /* An edge all round, and a shade on its left: overlapping, each still reads as its own. */
+  box-shadow:
+    inset 0 0 0 var(--px) var(--card-lo),
+    calc(var(--px) * -2) 0 0 var(--shade),
+    var(--shadow-float);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: translate var(--dur-hover) ease-out;
+}
+.polaroid:hover,
+.polaroid:focus-visible {
+  translate: 0 var(--photo-lift);
+}
+.polaroid:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus), var(--shadow-float);
+}
+
+/* The photo: downscaled smoothly (D-136, like the Fit overview), on a warm blank until it's
+   painted, then developing into it. */
+.polaroid-photo {
+  display: block;
+  flex: none;
+  width: var(--photo-w);
+  height: var(--photo-h);
+  overflow: hidden;
+  background: var(--paper-inset);
+  box-shadow: inset 0 0 0 var(--px) var(--card-lo);
+}
+.polaroid-photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: auto;
+  animation: photo-develop var(--photo-develop-ms) ease-out backwards;
+}
+@keyframes photo-develop {
+  from {
+    opacity: 0;
+    filter: sepia(1) brightness(1.25) contrast(0.7);
+  }
+  40% {
+    opacity: 1;
+  }
+}
+
+.polaroid-caption {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: var(--fs-body);
+  line-height: var(--lh-tight);
+}
+/* The name on up to two lines (hyphenated, as "Ground-breaking"), so the figures line up. */
+.polaroid-name {
+  height: calc(var(--lh-tight) * 2);
+  overflow: hidden;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+  overflow-wrap: anywhere;
+}
+.polaroid-score {
+  display: flex;
+  align-items: center;
+  gap: var(--px);
+  white-space: nowrap;
+}
+.polaroid-score .num {
+  margin-left: var(--space-1);
+  font-weight: 700;
+}
+.polaroid-target {
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+.polaroid.failed .polaroid-name {
+  color: var(--bad);
+}
+
+/* The deal: each one flies up onto the table and lands square, one after another
+   (--photo-at), then its picture develops. Backwards fill only, so the hover's lift (the
+   `translate` property) is free once it has landed. */
+.end-photos.dealing .polaroid {
+  animation: photo-deal var(--photo-deal-ms) cubic-bezier(0.2, 0.9, 0.3, 1.15) backwards;
+  animation-delay: var(--photo-at);
+}
+@keyframes photo-deal {
+  from {
+    opacity: 0;
+    transform: translateY(var(--photo-from)) rotate(var(--photo-spin));
+  }
+  50% {
+    opacity: 1;
+  }
+}
+/* Dealt before (back from the title), or Reduce motion: they're simply there. */
+.end-photos:not(.dealing) .polaroid-photo img,
+.reduce-motion .end-photos .polaroid,
+.reduce-motion .end-photos .polaroid-photo img {
+  animation: none;
+}
+.reduce-motion .polaroid {
+  transition: none;
+}
+
+/* --- The larger view (PhotoViewer) -------------------------------------------------------- */
+
+.sheet.photo-sheet {
+  width: auto;
+  max-width: 94vw;
+  max-height: 94vh;
+}
+.photo-large {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+}
+.photo-large-frame {
+  display: block;
+  flex: none;
+  padding: 0;
+  background: var(--paper-inset);
+  box-shadow:
+    0 0 0 var(--polaroid-pad, var(--space-1)) var(--card-hi),
+    0 0 0 calc(var(--space-1) + var(--px)) var(--card-lo);
+}
+.photo-large-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: auto;
+}
+/* At whole device pixels per art pixel, the art stays crisp (D-097). */
+.photo-large-frame.crisp img {
+  image-rendering: pixelated;
+}
+.photo-large-caption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  column-gap: var(--space-2);
+  margin-top: var(--space-2);
+  color: var(--ink-soft);
+}
+.photo-large-caption .mark {
+  margin-right: calc(var(--space-1) * -1);
+}
+.photo-large-caption .tag {
+  font-weight: 700;
+  color: var(--ink);
+}
+.photo-large-caption.failed .tag {
+  color: var(--bad);
+}
+.photo-large-caption .num {
+  font-weight: 700;
+  color: var(--ink);
+}
+.photo-count {
+  margin-right: auto;
+  align-self: center;
+  color: var(--ink-soft);
+}

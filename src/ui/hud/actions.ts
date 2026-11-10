@@ -33,6 +33,7 @@ export {
   copyFallback,
   howToPlayOpen,
   menuOpen,
+  photoShown,
   settingsOpen,
 } from './modals.ts';
 export const toast = signal<{ id: number; text: string } | null>(null);

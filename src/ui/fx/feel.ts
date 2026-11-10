@@ -453,6 +453,24 @@ export const FEEL = {
     stamp: 280,
   },
 
+  /**
+   * The end screen's photos (M6, D-136): a polaroid for each milestone, dealt onto the table one
+   * after another once the end screen is up and the roof has landed (roof.dropMs), each with a
+   * soft flick as it lands, its picture developing from a warm blank. Reduce motion puts them
+   * all down at once, developed.
+   */
+  photos: {
+    delayMs: 650,
+    staggerMs: 140,
+    dealMs: 420,
+    developMs: 1100,
+    /** How far below the strip a polaroid starts, and how far it turns as it comes, in deg. */
+    fromPx: 48,
+    spinDeg: -9,
+    /** A hovered or focused polaroid rises this far, in CSS px (whole pixels: crisp text). */
+    liftPx: 6,
+  },
+
   /** The title screen's street (M5a): a car drives by now and then. */
   title: {
     /** Its speed, in art px a second (it moves a whole art px at a time). */
