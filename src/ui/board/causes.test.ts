@@ -51,6 +51,21 @@ describe('the cause the board names (D-122)', () => {
     expect(partLine(hidden)).toBe('▼ −68 Wow · Cozy off');
   });
 
+  it('a change of 0 names the gain that pays for the loss under it', () => {
+    const p = {
+      delta: 0,
+      parts: [part('spec', 'Room for everyone', 83), part('spec', 'Cozy off', -83)],
+    };
+    expect(causeSuffix(p)).toBe(' · Room for everyone');
+    expect(partLine(hiddenPart(p)!)).toBe('▼ −83 Wow · Cozy off');
+  });
+
+  it('never names rounding ("Other changes")', () => {
+    const p = { delta: 3, parts: [part('other', 'Other changes', 2), part('piece', 'Garage', 1)] };
+    expect(mainCause(p)).toBeNull();
+    expect(hiddenPart({ delta: 30, parts: [part('other', 'Other changes', -12)] })).toBeNull();
+  });
+
   it('names nothing when the card explains it, or the change is nothing', () => {
     expect(
       causeSuffix({

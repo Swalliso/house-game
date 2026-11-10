@@ -19,6 +19,8 @@ function tally(t: {
   specBonus?: number;
   multTerms?: Tally['multTerms'];
   times?: number[];
+  /** ×Mult sources of their own (a fixture's), after `times`. */
+  xs?: { source: XMultTerm['source']; label: string; times: number }[];
 }): Tally {
   const pieces = t.pieces ?? [];
   const sets = t.sets ?? [];
@@ -44,6 +46,11 @@ function tally(t: {
       before,
       after: mult,
     });
+  }
+  for (const x of t.xs ?? []) {
+    const before = mult;
+    mult = Math.floor((mult * x.times + 50) / 100);
+    xMults.push({ ...x, before, after: mult });
   }
   return {
     pieces,
@@ -145,6 +152,49 @@ describe('wowParts (D-122)', () => {
     const parts = wowParts(C, before, after, 2, specName);
     expect(sum(parts)).toBe(after.total - before.total);
     expect(parts).toEqual([{ kind: 'charm', label: 'Mood Lighting (3)', wow: 2 }]);
+  });
+});
+
+describe("wowParts and the card's own Sparkle (D-122)", () => {
+  const chandelier = {
+    source: { kind: 'fixture' as const, id: 'chandelier' as const, uid: 2 },
+    label: 'Chandelier',
+    times: 125,
+  };
+  const set: SetScore = {
+    set: 'entertainer',
+    key: 'entertainer:1,2,3',
+    members: [1, 2, 3],
+    points: 25,
+    mult: 100,
+  };
+  const pieces = [piece(1, 'kitchen', 4), piece(2, 'diningRoom', 3), piece(3, 'livingRoom', 4)];
+
+  it("an installed fixture's own ×Mult is the card's own part, never a cause to name", () => {
+    const before = tally({ pieces, sets: [set] });
+    const after = tally({ pieces, sets: [set], xs: [chandelier] });
+    const parts = wowParts(C, before, after, 2, specName);
+    expect(sum(parts)).toBe(after.total - before.total);
+    expect(parts).toEqual([{ kind: 'piece', label: 'Chandelier', wow: parts[0]!.wow, uid: 2 }]);
+  });
+
+  it("a ×Mult that stays put only rounds a different Charm: that's other, not Sparkle", () => {
+    const specs = (n: number) => [0, 1, 2].map((k) => ({ id: `s${k}`, met: k < n }));
+    const before = tally({
+      pieces: [piece(1, 'bedroom', 364)],
+      sets: [set],
+      specs: specs(3),
+      xs: [chandelier],
+    });
+    const after = tally({
+      pieces: [piece(1, 'bedroom', 364), piece(4, 'garage', 39)],
+      sets: [set],
+      specs: specs(2),
+      xs: [chandelier],
+    });
+    const parts = wowParts(C, before, after, 4, specName);
+    expect(sum(parts)).toBe(after.total - before.total);
+    expect(parts.some((p) => p.kind === 'sparkle')).toBe(false);
   });
 });
 

@@ -1743,11 +1743,13 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
   - each set made or broken, with its Comfort and Charm together
   - each checklist line turned on or off
   - each +Mult modifier whose count changes
-  - Sparkle
-  - "Other changes" for what none of these explains
+  - Sparkle, when a ×Mult source comes, goes or changes
+  - "Other changes" for what none of these explains, including a held ×Mult's rounding of a different Charm
+  
+  An installed fixture's own +Mult and ×Mult (a Chandelier's) count as the card's own part, as a placed piece's earnings do.
   
   The chaos suite checks that they add up on every previewed play of its runs.
-- **The ghost's label names the biggest cause besides the card's own,** in the same direction, when it's at least a quarter of the change and 2 Wow: "▲ +139 Wow · Suite", "▼ −48 Wow · Cozy off". The card already says what it pays itself. The Renovate and install labels name it too.
+- **The ghost's label names the biggest cause besides the card's own,** in the same direction, when it's at least a quarter of the change and 2 Wow: "▲ +139 Wow · Suite", "▼ −48 Wow · Cozy off". The card already says what it pays itself. A change of 0 names its biggest gain. "Other changes" is never named. The Renovate and install labels name it too.
 - **A big part pulling the other way gets a line of its own** under the change, when it's at least 10 Wow and a quarter of the change: "▼ −68 Wow · Cozy off" under a +45.
 - **Room cards name a set they count toward** in a chip in Charm's tint: the touching set with the shortest name, so it shares a line with the card's tags at 1600×900, plus how many more touching sets there are. A Closet says "Suite" and a Bedroom "Suite +1". Full House shows only on cards with no touching set (Garage, Hallway, Home Office). It's static membership: it never says where. Its tip names each set's members, whether they must touch, what it pays, and whether a house can have more than one, Full House included.
 - The UI only chooses among the rules' parts (`src/ui/board/causes.ts`); it computes no scores.

@@ -15,11 +15,16 @@ const MIN_HIDDEN = 10;
 
 type Parts = Pick<Preview, 'delta' | 'parts'>;
 
-/** The biggest cause of the change besides the piece's own, when it's a real share of it. */
+/**
+ * The biggest cause of the change besides the card's own (the piece, or the installed fixture's
+ * own Charm), when it's a real share of it. A change of 0 names its biggest gain, which pays
+ * for the loss on the line under it. "Other changes" (rounding) is never named.
+ */
 export function mainCause(p: Parts): WowPart | null {
-  if (p.delta === 0) return null;
-  const sign = Math.sign(p.delta);
-  const cause = p.parts.find((x) => Math.sign(x.wow) === sign && x.kind !== 'piece');
+  const sign = p.delta < 0 ? -1 : 1;
+  const cause = p.parts.find(
+    (x) => Math.sign(x.wow) === sign && x.kind !== 'piece' && x.kind !== 'other',
+  );
   if (!cause) return null;
   const size = Math.abs(cause.wow);
   return size >= MIN_CAUSE && size * SHARE >= Math.abs(p.delta) ? cause : null;
@@ -27,8 +32,8 @@ export function mainCause(p: Parts): WowPart | null {
 
 /** The biggest part pulling against the change (against a gain, when nothing changes), if big. */
 export function hiddenPart(p: Parts): WowPart | null {
-  const sign = p.delta > 0 || p.delta === 0 ? -1 : 1;
-  const part = p.parts.find((x) => Math.sign(x.wow) === sign);
+  const sign = p.delta < 0 ? 1 : -1;
+  const part = p.parts.find((x) => Math.sign(x.wow) === sign && x.kind !== 'other');
   if (!part) return null;
   const size = Math.abs(part.wow);
   return size >= MIN_HIDDEN && size * SHARE >= Math.abs(p.delta) ? part : null;

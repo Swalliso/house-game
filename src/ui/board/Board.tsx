@@ -975,6 +975,11 @@ function Ghost({
   const rows = labelRows(lines, px, boardUiPixel());
   const spot = labelSpot(next ? [...cells, next.cell] : cells, lot.width, rows);
   const label = { left: `${spot.x * px}px`, top: `${spot.y * px}px` };
+  const hiddenLine = hidden && (
+    <div class={`ghost-delta ghost-part ${hidden.wow > 0 ? 'good' : 'bad'}`}>
+      {partLine(hidden)}
+    </div>
+  );
   return (
     <>
       <GhostPiece
@@ -1000,6 +1005,9 @@ function Ghost({
       )}
       {/* One stack, measured and nudged into the view as one (labels.css .ghost-labels). */}
       <BoardLabel class={`ghost-labels ${spot.below ? 'below' : ''}`} style={label}>
+        {/* Below the cells the stack runs bottom up (labels.css): the hidden part goes first
+            there, so it still reads under the change it's part of. */}
+        {spot.below && hiddenLine}
         {!legal && inside.length > 0 && (
           <div class="ghost-reason">
             <span aria-hidden="true">✕ </span>
@@ -1019,11 +1027,7 @@ function Ghost({
             {pack && <span class="ghost-then">{then}</span>}
           </div>
         )}
-        {hidden && (
-          <div class={`ghost-delta ghost-part ${hidden.wow > 0 ? 'good' : 'bad'}`}>
-            {partLine(hidden)}
-          </div>
-        )}
+        {!spot.below && hiddenLine}
         {breaks && (
           <div class="ghost-reason">
             <span aria-hidden="true">✕ </span>

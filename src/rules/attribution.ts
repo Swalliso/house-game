@@ -15,7 +15,10 @@
 // Charm together), each checklist line turned on or off, each +Mult modifier that changes, and
 // Sparkle. Whatever none of those explains (a held set whose level changed) is "other".
 
-import type { Content, Tally, WowPart, WowPartKind } from './index.ts';
+import { SCORE_LABELS } from '../content/labels.ts';
+import type { Content, ModSource, Tally, WowPart, WowPartKind } from './index.ts';
+
+const OTHER = 'Other changes';
 
 export interface RawPart {
   kind: WowPartKind;
@@ -119,44 +122,68 @@ export function wowParts(
     }
   }
 
+  // The installed fixture's own +Mult and ×Mult: the card's own part, as a piece's earnings are.
+  const key = (source: unknown) => JSON.stringify(source);
+  const isOwn = (source: ModSource | { kind: 'set' }, isNew: boolean) =>
+    isNew && source.kind === 'fixture' && source.uid === focus;
+
   // +Mult modifiers whose count changed (Mood Lighting's lit rooms, say).
-  const terms = new Map<string, { label: string; d: number }>();
+  const terms = new Map<string, { label: string; d: number; source: ModSource; isNew: boolean }>();
   for (const t of before.multTerms) {
-    const key = JSON.stringify(t.source);
-    terms.set(key, { label: t.label, d: (terms.get(key)?.d ?? 0) - t.add });
+    terms.set(key(t.source), { label: t.label, d: -t.add, source: t.source, isNew: false });
   }
   for (const t of after.multTerms) {
-    const key = JSON.stringify(t.source);
-    terms.set(key, { label: t.label, d: (terms.get(key)?.d ?? 0) + t.add });
+    const was = terms.get(key(t.source));
+    terms.set(key(t.source), {
+      label: t.label,
+      d: (was?.d ?? 0) + t.add,
+      source: t.source,
+      isNew: !was,
+    });
   }
-  for (const { label, d } of terms.values()) {
-    if (d !== 0) raw.push({ kind: 'charm', label, wow: charm(d) });
-  }
-
-  // What the parts above don't explain, in Comfort and in Charm.
-  const otherComfort = P1 - P0 - comfortSeen;
-  const otherCharm = A1 - A0 - charmSeen;
-  if (otherComfort !== 0 || otherCharm !== 0) {
+  for (const { label, d, source, isNew } of terms.values()) {
+    if (d === 0) continue;
+    const own = isOwn(source, isNew);
     raw.push({
-      kind: 'other',
-      label: 'Other changes',
-      wow: otherComfort * perComfort + otherCharm * perCharm,
+      kind: own ? 'piece' : 'charm',
+      label,
+      wow: charm(d),
+      ...(own ? { uid: focus } : {}),
     });
   }
 
-  // Sparkle: the rest of the exact change.
+  // Sparkle: the rest of the exact change. When no ×Mult source came, went or changed its
+  // times, it's only the ×Mult's rounding of a different Charm: that's "other", not Sparkle.
   const sparkle = (P1 * M1 - P1 * A1 * X0) / 100;
+  const xWas = new Map(before.xMults.map((x) => [key(x.source), x]));
+  const xNow = new Map(after.xMults.map((x) => [key(x.source), x]));
+  const changed = [
+    ...after.xMults
+      .filter((x) => xWas.get(key(x.source))?.times !== x.times)
+      .map((x) => ({ label: x.label, own: isOwn(x.source, !xWas.has(key(x.source))) })),
+    ...before.xMults
+      .filter((x) => !xNow.has(key(x.source)))
+      .map((x) => ({ label: `${x.label} off`, own: false })),
+  ];
+  let drift = 0;
   if (Math.abs(sparkle) > 1e-9) {
-    const had = new Set(before.xMults.map((x) => x.label));
-    const has = new Set(after.xMults.map((x) => x.label));
-    const changed = [
-      ...after.xMults.filter((x) => !had.has(x.label)).map((x) => x.label),
-      ...before.xMults.filter((x) => !has.has(x.label)).map((x) => `${x.label} off`),
-    ];
+    if (changed.length === 0) drift = sparkle;
+    else if (changed.every((c) => c.own)) {
+      raw.push({ kind: 'piece', label: changed[0]!.label, wow: sparkle, uid: focus });
+    } else {
+      const label = changed.length === 1 ? changed[0]!.label : SCORE_LABELS.xMult;
+      raw.push({ kind: 'sparkle', label, wow: sparkle });
+    }
+  }
+
+  // What the parts above don't explain, in Comfort and in Charm, and any ×Mult rounding drift.
+  const otherComfort = P1 - P0 - comfortSeen;
+  const otherCharm = A1 - A0 - charmSeen;
+  if (otherComfort !== 0 || otherCharm !== 0 || drift !== 0) {
     raw.push({
-      kind: 'sparkle',
-      label: changed.length === 1 ? changed[0]! : 'Sparkle',
-      wow: sparkle,
+      kind: 'other',
+      label: OTHER,
+      wow: otherComfort * perComfort + otherCharm * perCharm + drift,
     });
   }
 
@@ -185,7 +212,7 @@ export function roundParts(raw: readonly RawPart[], delta: number): WowPart[] {
     ...(p.uid !== undefined ? { uid: p.uid } : {}),
   }));
   // A shortfall the parts can't absorb (none, or a rounding of the total alone).
-  if (short !== 0) parts.push({ kind: 'other', label: 'Other changes', wow: short });
+  if (short !== 0) parts.push({ kind: 'other', label: OTHER, wow: short });
   return parts
     .filter((p) => p.wow !== 0)
     .sort((a, b) => Math.abs(b.wow) - Math.abs(a.wow) || KIND_ORDER[a.kind] - KIND_ORDER[b.kind]);
