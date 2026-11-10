@@ -1244,6 +1244,60 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 ## Proposed
 
+*Reserved numbers (2026-11-09): D-115 to D-118 are the layout session's drafts and D-122 the legibility session's; they aren't in this file yet. New entries start at D-124.*
+
+### D-123 · Playtest 5's re-fit: the targets and each client's factor
+**Status:** Proposed · 2026-11-09, before playtest 5. It's the one re-fit that D-114, D-119, D-120 and D-121 left until all of playtest 4's content changes were in (playtest 4's findings §12).
+**Decision:**
+- **What it covers:** develop at 19e0def: the Hallway pay (D-114), creek lots and Creekside (D-119), the weekly draw in two rows with the Landscaper's third Layout card (D-121), and the sun (D-120). Nothing else that changes play merged after D-120 and D-121 (D-112 and D-113 are text and UI). The layout session's data PR (D-116, D-117), fusion (D-115) and the hand's card-lines fix aren't in; each runs its own `--check` against these targets.
+- **Targets:** 20, 560, 1,750, 4,850, 10,200, 18,800, 32,600 Wow (they were 15, 300, 1,100, 3,050, 6,850, 13,150, 24,500). D-085's method: `--suggest-targets` on 2,000 untargeted greedy runs (seeds `sim-*`, the five clients and three crews in turn), checked on 2,000 held-out runs (`check-*`). Held out, greedy won 44.0% against the fit's 46.6%, inside §8's band, so the curve is used as fitted. (M4b's was eased by 4%, when held out came 5 points under.)
+- **Each client's `targetPct`:** the Hendersons 115 (it was 125), Count Vladislav 90 (110), the Barkers 90 (80), Juniper 85 (85), Dale 115 (110). These are the fit's factors, used as fitted: held out, the clients are within 6.7 points of each other.
+  - The Count's drop is the sun's (D-120). Every house now has rooms that face the sun, where the old sunny band rarely reached a room. His "Sunny pieces earn nothing" takes those rooms' points, while the other clients' sunny Living Rooms and Kitchens earn +2 a week more.
+- **The crews' numbers stay.** Held out, the General Contractor won 48.5%, the Architect 46.6% and the Landscaper 36.7% (about 667 runs each). That's 11.8 points: inside §8's 15, but more than noise.
+  - On the Landscaper's 665 held-out seeds, yard earnings at +75% won 38.8%, and at +100% 35.5%: greedy builds more yard, and yard pieces don't compound. Without the third Layout card it won 38.8%.
+  - No number closes the gap, so it goes to the balance pass with the yard itself: yard pieces that grow with the house (`docs/proposals/weekly-draw.md` §6).
+- **Solar Panels stay as they are** (D-120's flag). Given free at the first shop (400 paired held-out seeds, the General Contractor), they're worth +13.6 budget a run and +16.0 points of wins [+11.7, +20.3], Wow ×1.20, even though the shop bot sells them once it wants the slot.
+  - Good Bones, also Uncommon, is worth +46.0 points [+41.0, +51.0] and Wow ×2.13 the same way, so Solar Panels aren't out of line.
+  - At every 6th week they'd be worth +8.7 budget and +8.3 points. Rooms only changes nothing (+16.0): nearly every Sunny piece is a room. The balance pass can pick either.
+- **Milestone 2 binds now.** At 560 (times the client's factor), greedy meets it on time in 80% of runs on `--check`, against 99% on the old targets. The rest take overtime there, and overtime weeks per run go from 0.66 to 1.34.
+  - The fit puts it there because the score doubles from week 8 to week 10 (median 728 to 1,451), so 98% of runs reach 560 with both overtime weeks.
+  - If playtest 5 finds milestone 2 harsh, 450 is the step down. In the fit's runs it puts greedy on time at milestone 2 in 84% of runs (70% at 560), and the estimated win rate stays at 46.6%.
+
+**Why:** on the old targets, greedy won 81.5% of `--check`'s runs and cleared milestones 1–3 in all of them, against §8's 40–50% and 92–98%. It had won 44.5% before D-114; then 48.0% with D-114, 57.5% with D-119, 69.5% with D-121, and 81.5% with D-120. Playtest 3 found a run with that much slack too easy.
+
+§8's criteria, before (19e0def) and after. The first four columns are `npm run sim -- --check` (200 runs, the General Contractor) and `--check --crew all` (200 runs, each client with every crew in turn). The last column is `--check --crew all` on 2,000 held-out runs.
+
+| Criterion | `--check` before | `--check` after | `--crew all` before | `--crew all` after | 2,000 runs, after |
+|---|---|---|---|---|---|
+| random loses by milestone 3 (≥ 95%) | 100.0% PASS | 100.0% PASS | 100.0% PASS | 100.0% PASS | 100.0% PASS |
+| novice passes milestone 1 (≥ 90%) | 99.0% PASS | 95.5% PASS | 96.5% PASS | 94.0% PASS, unsure | 95.0% PASS |
+| greedy clears milestones 1–3 (92–98%) | 100.0% FAIL | 97.5% PASS, unsure | 99.5% FAIL, unsure | 95.0% PASS, unsure | 93.7% PASS |
+| greedy wins (40–50%) | 81.5% FAIL | 48.0% PASS, unsure | 79.0% FAIL | 48.5% PASS, unsure | 44.0% [41.8–46.1] PASS |
+| early completion: always vs never, within 10 points | −9.5 PASS, unsure | −1.0 PASS | −11.0 FAIL, unsure | −7.0 PASS, unsure | −3.4 [−5.9, −0.9] PASS |
+| fences pay: probe p50 2–3, ≥ 50% offered that many | 2, 73.1% PASS, unsure | 2, 72.9% PASS, unsure | 2, 76.6% PASS | 2, 77.2% PASS | 2, 74.7% PASS |
+| clients, crews within about 15 points | 15.0 FAIL, unsure | 27.5 FAIL, unsure | 20.0, 20.9 FAIL, unsure | 30.0, 13.8 FAIL, unsure | 6.7, 11.8 PASS, unsure |
+| planner wins about 75%; no must-buy | not measured | not measured | not measured | not measured | not measured |
+
+- **The spread at 200 runs is noise.** It has 40 runs a client. Five clients with the same win rate near 45% would read more than 15 points apart 68% of the time at 40 runs each (18 points on average), and about 6 apart at 400 each. The 2,000 runs read 6.7.
+  - By client on the 2,000 runs: the Hendersons 40.5%, Count Vladislav 47.3%, the Barkers 42.5%, Juniper 47.3%, Dale 42.3%.
+  - On `--check`'s 40 runs each: 50.0%, 62.5%, 35.0%, 37.5% and 55.0%.
+- **The run's shape** on `--check`, as the median score of the runs that reached each milestone over its target: ×5.8, ×1.66, ×1.70, ×1.33, ×1.26, ×1.22 and ×1.24, against ×6.2, ×2.49, ×2.17, ×1.62, ×1.35, ×1.19 and ×1.13 before.
+  - The slack in the middle of the run is gone. Playtest 4's run led by 2.5× at milestones 2 and 3, and 1.9× at 4.
+  - Greedy's runs are lost from milestone 3 on (5, 10, 23, 34 and 32 runs at milestones 3–7), where before most were lost at 6 and 7.
+- The benchmark gate passes (606 ms).
+- The fit and the 2,000-run checks ran in parallel shards that play each seed exactly as `npm run sim` does. On the same seeds they matched the CLI's 200-run fit and its `--check --crew all` run for run. `npm run sim -- --suggest-targets --runs 2000 --crew all --dry-run` gives these numbers in about an hour.
+
+**Considered:**
+- **Easing milestones 4–7 by 4%,** as M4b did: held out came 2.6 points under the fit, not 5, and the General Contractor already sits in the band's upper half (48.0% on `--check`, 47.7% on 1,070 held-out runs).
+- **Tightening the curve by 2%** to centre the General Contractor on 45%: about 2 points off every crew, the Landscaper to about 34%. That's not worth chasing at the bot's noise: the layout session found that shifting its random streams alone moves wins 4–9 points.
+- **The 200-run fit** (`--suggest-targets --dry-run`, the General Contractor only): 20, 640, 2,000, 5,450, 10,800, 19,800, 34,400, with factors 110, 100, 90, 85 and 120. Held out, greedy won 37.5% on it: 200 runs are too few for the factors and the late targets.
+- **Nudging the factors toward the middle,** as M4b did: a step of 5 moves a client 3–10 points, more than any client's gap from the mean (3.5 at most). Fitting them to `--check`'s 40 runs a client would undo the balance on 400.
+
+**Changes:**
+- D-085 (Proposed): its targets and factors, noted there. `balance.ts` and `clients.ts`.
+- D-114, D-119, D-120 and D-121: each notes that its re-fit is done.
+- `implementation-plan.md`: Appendix B's Landscaper row gains D-121's third Layout card, which the table had missed.
+
 ### D-121 · The weekly draw in two rows: Rooms and Layout
 **Status:** Proposed · 2026-11-09, after playtest 4 and the draw brainstorm (`docs/proposals/weekly-draw.md`). The user picked Rooms 2 + Layout 2, the proposal's recommendation, with its defaults (§9). Built for playtest 5.
 **Decision:**
@@ -1295,6 +1349,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - Each is marked in place. `implementation-plan.md`: the state, the week's start, the stream keys, the rule keys, and Appendix A's rerolls and Bigger Truck.
 - The targets wait for the playtest-4 re-fit. If playtest 5 comes first, the game is easier: on the current targets greedy wins 69.5% with this and Creekside, against 48.0% before both (D-119's check).
 
+**2026-11-09 (D-123):** the re-fit is done, for this, D-114, D-119 and D-120 together. Greedy wins 48.0% on `--check` (it was 81.5%), and 44.0% on 2,000 held-out runs across the crews. Of those, the Landscaper with its third Layout card won 36.7%, against 48.5% and 46.6% for the other crews: inside §8's 15 points. Without the third card it won 38.8%, so the card isn't what holds it back.
+
 ### D-120 · The sun: a sunny face on every lot, and rooms that want it
 **Status:** Proposed · 2026-11-09, after playtest 4 (`docs/playtests/playtest-4-findings.md` §11) and the lot session's proposal (`docs/proposals/lot-creeks-and-sun.md` §4–§7). The user picked the proposal's package; this is its second part, after D-119. Built for playtest 5.
 **Decision:**
@@ -1342,6 +1398,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - The targets aren't re-fit here: the playtest-4 plan has one re-fit for all its content changes together, as D-119 and D-121 do. The Count's `targetPct` goes into it. If playtest 5 comes first, the game is much easier: on the current targets greedy wins 81.5% with D-119, D-121 and this, against 48.0% before them.
 - Solar Panels get stronger with about four Sunny buildings a house, which the sim can't see (its shop bot doesn't value budget). It's a balance-pass item: rooms only, or every 6 weeks.
 
+**2026-11-09 (D-123):** the re-fit is done. Count Vladislav's `targetPct` is 90 (it was 110), and held out he wins 47.3%, level with the other clients. Solar Panels stay as they are: given free at the first shop, they're worth +16.0 points of wins and +13.6 budget a run, against +46.0 points for Good Bones, also Uncommon. Every 6th week would halve that; rooms only would change nothing, since nearly every Sunny piece is a room.
+
 ### D-119 · Creek lots: Creekside, the pond, and the lot's traits on the job board
 **Status:** Proposed · 2026-11-09, after playtest 4 (`docs/playtests/playtest-4-findings.md` §11) and the lot session's proposal (`docs/proposals/lot-creeks-and-sun.md`). The user picked the proposal's package (§7); this is its first part. The sun (a sun direction per lot and Sunny payoffs) comes next, as its own entry. Built for playtest 5.
 **Decision:**
@@ -1371,6 +1429,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - D-049 (Accepted): its creek and pond lines, marked there. Appendix A's lot bullets in `implementation-plan.md`.
 - The targets aren't re-fit here. The playtest-4 plan has one re-fit for all its content changes together, the creek rate among them (findings §12). If playtest 5 comes before that re-fit, Creekside at +25% is the step down. It can only take back part of Creekside's half of the rise; the rarer creek makes the other half.
 
+**2026-11-09 (D-123):** the re-fit is done, with Creekside at +50% and creeks on a quarter of lots: greedy wins 48.0% on `--check`, so Creekside keeps its +50%.
+
 ### D-114 · The Hallway experiment, step 1: Hallways pay for the rooms they touch
 **Status:** Proposed · 2026-11-09, after playtest 4 (`docs/playtests/playtest-4-findings.md` §7) and the layout session's proposal (§1, on its own branch). Built for playtest 5; the user asked for it once that session reported.
 **Decision:**
@@ -1391,6 +1451,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - The content (`pieces.ts`). D-046's "a Hallway isn't a neighbor for bonuses" stands.
 - The sim's cheap estimate (`estimate.ts`) now counts a Hallway's +2 when a room is placed beside it: the Hallway isn't the room's neighbor, but the room is the Hallway's. Without it, greedy missed the week's best play when that play fed a Hallway.
 - The targets aren't re-fit for this. A re-fit waits for bigger rooms (fusion), which moves the curve more.
+
+**2026-11-09 (D-123):** re-fitted before fusion after all, with D-119, D-120 and D-121, which together took greedy to 81.5%. Fusion (D-115) will need a re-fit of its own.
 
 ### D-113 · Inspect holds a clicked piece, and the house rules fold into one row
 **Status:** Proposed · 2026-11-09, with the small UI pull request after playtest 4. The user picked this over collapsing the whole client panel.
@@ -1631,6 +1693,8 @@ What's still short:
 - That card doesn't say so: "Jack-and-Jill goes up a level for the rest of the run". The team didn't say whether that's why they held it. Its wording waits for M4, which rewrites the tools' text.
 - Week by week, the placements were close to the best play for that week: 143 Wow short over the whole run. Greedy, dealt the same hands, won with 16,505. It built two Living Rooms with Fireplaces and had a second Entertainer by week 13.
 - For playtest 4: M4's refit targets are about 3× steeper in the middle phases. Do they take away this kind of early slack without making the last two phases too tight for a player whose Charm comes late?
+
+**2026-11-09 (D-123):** re-fitted for playtest 5 the same way, 2,000 untargeted runs to fit and 2,000 held out: 20, 560, 1,750, 4,850, 10,200, 18,800, 32,600 Wow, with factors the Hendersons 115, Count Vladislav 90, the Barkers 90, Juniper 85 and Dale 115, all used as fitted. Held out, greedy wins 44.0%.
 
 ### D-095 · A piece that becomes a lot feature can't hold a fixture
 **Status:** Proposed · 2026-11-06, with the fix/transform-fixtures pull request. It fills a gap in D-050, which says how a fixture leaves but not what happens when its host transforms.
