@@ -12,7 +12,7 @@
  */
 export const LAYER = {
   /**
-   * Grass, the sunny side, the woods' floor and tree bases, rocks, the finds, the street and
+   * Grass, the woods' floor and tree bases, the Trees' shade, rocks, the finds, the street and
    * the road (canvas). It shares a stacking group (`.ground`) with the water.
    */
   terrain: 0,

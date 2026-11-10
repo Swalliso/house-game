@@ -28,8 +28,9 @@ import { rotateShape } from '../rules/grid.ts';
 import { houseFrom, type Placement } from '../rules/testing.ts';
 
 // 18 × 16, the street along the bottom edge: woods at the back left, the pond at the back
-// right, two boulders, and three Trees for shade beside the house. The sunny side is the top 4
-// rows (lotFromRows' default), and the house keeps out of it: Sunny pieces earn him nothing.
+// right, two boulders, and three Trees for shade beside the house. The sun shines from the back
+// (lotFromRows' default, D-120), so the rooms across the back are Sunny and earn him nothing;
+// this test is about his checklist, not his score.
 const LOT = [
   'TTT...............',
   'TT............PP..',

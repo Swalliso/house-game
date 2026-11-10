@@ -15,6 +15,8 @@
 //   view, a Skylight lights a patch of floor, a Chandelier hangs over the room with its glow on the
 //   floor, and a Bay Window is a cell of glass with its bay outside. All our own drawings, in
 //   LimeZu's palette (palette.ts) and ink.
+// - The sun (D-120), on the walls canvas like a Skylight's: a band of light along a Sunny room's
+//   wall that faces the sun, on each of its tiles in the sun, brighter under a window.
 //
 // Each covers what it paints (the house's bounding box plus a margin; the floor canvas also the
 // yard's ground); `x` and `y` place them on the lot, in art px.
@@ -31,6 +33,7 @@ import {
   type HouseModel,
   type Rect,
   type Room,
+  type SunLight,
 } from '../board/house-model.ts';
 import { CELL, spritePos, type SpriteId } from '../sprites.ts';
 import type { PieceId } from '../../rules/index.ts';
@@ -84,6 +87,18 @@ const DRAPE = {
 };
 /** A Skylight's patch of sun on the floor, and the Chandelier's warm glow. */
 const SUN = { rgb: [0xff, 0xfb, 0xe8] as Rgb, alpha: 0.4 } as const;
+/**
+ * The sun along a Sunny room's sunny wall (D-120), in art px from the wall: a band `near` deep
+ * and a fainter one `far` beyond it, and under a window a patch `pane` deep, the window's width.
+ */
+const SUNLIGHT = {
+  near: 4,
+  far: 3,
+  pane: 10,
+  alpha: 0.36,
+  farAlpha: 0.18,
+  paneAlpha: 0.32,
+} as const;
 const GLOW = { rgb: [0xff, 0xe2, 0x96] as Rgb, alpha: 0.2 } as const;
 
 /**
@@ -623,6 +638,52 @@ function sunPatch(cv: Canvas, m: HouseModel, r: Room): void {
   }
 }
 
+/**
+ * The sun on a Sunny room's tiles in the sun (D-120): along the wall that faces it, a band of
+ * light in two steps (pixel light, not a smooth ramp), and a brighter patch under each window
+ * there, split by the window's mullion. Over the furniture, like a Skylight's.
+ */
+function sunlight(cv: Canvas, m: HouseModel, sun: SunLight): void {
+  const s = sun.side;
+  const flat = s === 'N' || s === 'S';
+  for (const [uid, cells] of sun.rooms) {
+    for (const c of cells) {
+      // The cell's floor, inside its walls and under a north face.
+      const x0 = c.x * CELL + inset(m, c.x, c.y, 'W');
+      const x1 = (c.x + 1) * CELL - inset(m, c.x, c.y, 'E');
+      const y0 = c.y * CELL + inset(m, c.x, c.y, 'N') + (hasFace(m, c.x, c.y) ? WALL.face : 0);
+      const y1 = (c.y + 1) * CELL - inset(m, c.x, c.y, 'S');
+      // Along the wall (a) and in from it (d), clipped to the floor.
+      const lo = flat ? x0 : y0;
+      const hi = flat ? x1 : y1;
+      const deep = flat ? y1 - y0 : x1 - x0;
+      const light = (a: number, d: number, alpha: number) => {
+        if (a < lo || a >= hi || d >= deep) return;
+        if (s === 'N') cv.blend(a, y0 + d, SUN.rgb, alpha);
+        else if (s === 'S') cv.blend(a, y1 - 1 - d, SUN.rgb, alpha);
+        else if (s === 'W') cv.blend(x0 + d, a, SUN.rgb, alpha);
+        else cv.blend(x1 - 1 - d, a, SUN.rgb, alpha);
+      };
+      for (let a = lo; a < hi; a++) {
+        for (let d = 0; d < SUNLIGHT.near + SUNLIGHT.far; d++)
+          light(a, d, d < SUNLIGHT.near ? SUNLIGHT.alpha : SUNLIGHT.farAlpha);
+      }
+      // Under each window in this cell's sunny wall: the glass's width, deeper, split by the
+      // mullion's shadow.
+      for (const w of m.windows) {
+        if (w.uid !== uid || w.side !== s) continue;
+        const a0 = (flat ? w.rect.x : w.rect.y) + 1;
+        const a1 = (flat ? w.rect.x + w.rect.w : w.rect.y + w.rect.h) - 1;
+        const mid = a0 - 1 + Math.floor((a1 - a0 + 2) / 2);
+        for (let a = a0; a < a1; a++) {
+          if (a === mid) continue;
+          for (let d = 0; d < SUNLIGHT.pane; d++) light(a, d, SUNLIGHT.paneAlpha);
+        }
+      }
+    }
+  }
+}
+
 /** The Chandelier's warm light around it, in three steps (pixel light, not a smooth ramp). */
 function glow(cv: Canvas, cx: number, cy: number, rx: number, ry: number): void {
   for (let y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++) {
@@ -839,8 +900,9 @@ export function paintWalls(m: HouseModel): Pixels | null {
       for (let y = g.y; y < g.y + g.h; y++) cv.blend(line, y, THRESHOLD.rgb, THRESHOLD.alpha * 1.6);
     }
   }
-  // A Skylight's sun falls on the floor and the furniture alike; the Chandelier hangs over its
-  // room in its own light.
+  // The sun through the Sunny rooms' sunny walls, then a Skylight's: both fall on the floor and
+  // the furniture alike. The Chandelier hangs over its room in its own light.
+  if (m.sun) sunlight(cv, m, m.sun);
   for (const r of m.rooms.values()) {
     if (r.fixture === 'skylight') sunPatch(cv, m, r);
     if (r.fixture !== 'chandelier') continue;

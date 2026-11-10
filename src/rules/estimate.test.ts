@@ -264,6 +264,59 @@ function withLines(
 
 const exactIn = (R: Rules, s: RunState, p: PlaceAction) => R.scoreOnly(s, p) - R.scoreOnly(s, null);
 
+describe('the sun in the estimate (D-120)', () => {
+  // A Kitchen that earns +2 while Sunny, as the game's do. The lots' sun is at the back (top).
+  const WHILE_SUNNY = {
+    kind: 'conditional',
+    when: { is: { tag: 'Sunny' } },
+    effect: { kind: 'steady', amount: 2 },
+  } as const;
+  const kitchen = { ...C.pieces.kitchen, effects: [...C.pieces.kitchen.effects, WHILE_SUNNY] };
+  const R = createRules({ ...C, pieces: { ...C.pieces, kitchen } });
+  const est = (s: RunState, p: PlaceAction) => R.estimatePlay(s, p);
+  const exactSun = (s: RunState, p: PlaceAction) => exactIn(R, s, p);
+
+  it('sees a building’s own sun: its back row lit, unless Trees stand in front', () => {
+    const open = onLot(emptyRows(8, 6), 'kitchen');
+    const shaded = onLot(['........', '..TT....', '........', '........'], 'kitchen');
+    expect(est(open, place(0, 2, 2)).delta).toBe(exactSun(open, place(0, 2, 2)));
+    expect(est(shaded, place(0, 2, 2)).delta).toBe(exactSun(shaded, place(0, 2, 2)));
+    expect(exactSun(open, place(0, 2, 2)) - exactSun(shaded, place(0, 2, 2))).toBe(2);
+    // One Tree leaves the other back tile lit: still Sunny.
+    const half = onLot(['........', '..T.....', '........', '........'], 'kitchen');
+    expect(est(half, place(0, 2, 2)).delta).toBe(exactSun(open, place(0, 2, 2)));
+  });
+
+  it('sees the shade a new building casts on the piece behind it', () => {
+    const s = playThen(onLot(emptyRows(8, 6), 'kitchen'), place(0, 2, 2), 'bedroom', 'lawn');
+    // A Bedroom right in front of the Kitchen takes its sun: the Kitchen's −2 counts.
+    expect(est(s, place(0, 2, 0)).delta).toBe(exactSun(s, place(0, 2, 0)));
+    // Half in front, the Kitchen keeps a lit tile, and its sun.
+    expect(est(s, place(0, 3, 0)).delta).toBe(exactSun(s, place(0, 3, 0)));
+    expect(exactSun(s, place(0, 3, 0)) - exactSun(s, place(0, 2, 0))).toBe(2);
+    // A yard piece casts no shade.
+    expect(est(s, place(1, 2, 0)).delta).toBe(exactSun(s, place(1, 2, 0)));
+  });
+
+  it('sees the sun a piece gives back by clearing the Trees in front', () => {
+    let s = onLot(['........', '..TT....', '........', '........'], 'kitchen');
+    s = playThen(s, place(0, 2, 2), 'herbGarden');
+    // The Herb Garden over both Trees clears them: the Kitchen behind is Sunny again.
+    expect(R.checkPlay(s, place(0, 2, 1))).toMatchObject({ legal: true });
+    expect(est(s, place(0, 2, 1)).delta).toBe(exactSun(s, place(0, 2, 1)));
+  });
+
+  it('flags a play that moves another piece’s sun only when a modifier reads Sunny', () => {
+    const s = playThen(onLot(emptyRows(8, 6), 'kitchen'), place(0, 2, 2), 'bedroom');
+    expect(est(s, place(0, 2, 0)).sunHint).toBe(false);
+    const panels = { ...s, blueprints: [{ id: 'solarPanels' as const, boughtWeek: 1 }] };
+    expect(est(panels, place(0, 2, 0)).sunHint).toBe(true);
+    // A play that leaves the Kitchen's sun as it was isn't flagged.
+    expect(est(panels, place(0, 3, 0)).sunHint).toBe(false);
+    expect(est(panels, place(0, 5, 3)).sunHint).toBe(false);
+  });
+});
+
 describe('the checklist in the estimate', () => {
   it('ranks a play that keeps Under one roof above an otherwise-equal one that breaks it', () => {
     // Two Bedrooms side by side: a 4 × 2 box, at 2:1. A Closet under the first makes it 4 × 3;

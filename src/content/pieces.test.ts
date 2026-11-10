@@ -143,12 +143,15 @@ const open = emptyRows(10, 10);
 describe('the base pool', () => {
   it('has a test below for every card, each with its Appendix A complexity', () => {
     expect(Object.keys(COMPLEXITY).sort()).toEqual(Object.keys(CONTENT.pieces).sort());
-    // The base pool is the drawable cards; special pieces (weight 0) come from the shop.
+    // The base pool is the drawable cards; special pieces (weight 0) come from the shop. The
+    // Sunroom left them for the draw at half weight (D-120).
     const base = Object.values(CONTENT.pieces).filter((d) => d.drawWeight > 0);
-    expect(base).toHaveLength(21);
+    expect(base).toHaveLength(22);
     // The two packs (D-106) took the weight of the two cards each one replaced.
     expect(base.filter((d) => d.pack).map((d) => d.id)).toEqual(['fence', 'driveway']);
-    for (const def of base) expect(def.drawWeight, def.id).toBe(def.pack ? 20 : 10);
+    for (const def of base) {
+      expect(def.drawWeight, def.id).toBe(def.pack ? 20 : def.id === 'sunroom' ? 5 : 10);
+    }
     for (const def of Object.values(CONTENT.pieces)) {
       expect(def.complexity).toBe(COMPLEXITY[def.id]);
     }
@@ -202,7 +205,7 @@ describe('indoor rooms', () => {
         ['bathroom', 2, 0],
         ['lKitchen', 3, 0],
       ]),
-    ).toEqual([3, 1, 0]);
+    ).toEqual([3, 1, 2]); // the L-Kitchen faces the sun: +2 while Sunny (D-120)
     // A Kitchen alone pulls it below zero, which floors at 0.
     const t = tally(open, [
       ['bathroom', 0, 0],
@@ -212,35 +215,42 @@ describe('indoor rooms', () => {
   });
 
   it('Kitchen: +2 per Dining Room or Herb Garden, and both boost it', () => {
-    expectCard('kitchen', ['+2 per touching Dining Room or Herb Garden']);
+    expectCard('kitchen', [
+      '+2 per touching Dining Room or Herb Garden',
+      '+2 every week while Sunny',
+    ]);
     expect(shapeOf('kitchen')).toMatchObject({ w: 2, h: 2, rotations: 1 });
-    expect(earned(open, [['kitchen', 0, 0]])).toEqual([0]);
-    // +2, then the Dining Room's +50%: 3.
+    // On the lot's back edge its wall faces the sun (D-120): +2.
+    expect(earned(open, [['kitchen', 0, 0]])).toEqual([2]);
+    // +2, and +2 in the sun, then the Dining Room's +50%: 6. The Dining Room is in the sun too.
     expect(
       earned(open, [
         ['kitchen', 0, 0],
         ['diningRoom', 2, 0],
       ]),
-    ).toEqual([3, 0]);
-    // +2, then the Herb Garden's +25%: 2.5 rounds up to 3. The Herb Garden is on the sunny side.
+    ).toEqual([6, 2]);
+    // +2 and +2, then the Herb Garden's +25%: 5. The Herb Garden is in the Kitchen's shade.
     expect(
       earned(open, [
         ['kitchen', 0, 0],
         ['herbGarden', 0, 2],
       ]),
-    ).toEqual([3, 2]);
-    // Both: +4 at +75% is 7.
+    ).toEqual([5, 0]);
+    // Both: +6 at +75% is 10.5, so 11.
     expect(
       earned(open, [
         ['kitchen', 0, 0],
         ['diningRoom', 2, 0],
         ['herbGarden', 0, 2],
       ]),
-    ).toEqual([7, 0, 2]);
+    ).toEqual([11, 2, 0]);
   });
 
   it('L-Kitchen: the 3-tile L, counted as a Kitchen, earning the same', () => {
-    expectCard('lKitchen', ['+2 per touching Dining Room or Herb Garden']);
+    expectCard('lKitchen', [
+      '+2 per touching Dining Room or Herb Garden',
+      '+2 every week while Sunny',
+    ]);
     const def = CONTENT.pieces.lKitchen;
     expect(def.countsAs).toBe('kitchen');
     expect(def.effects).toEqual(CONTENT.pieces.kitchen.effects);
@@ -250,26 +260,30 @@ describe('indoor rooms', () => {
       h: 2,
       rotations: 4,
     });
-    // The Dining Room's aura reaches it as a Kitchen.
+    // The Dining Room's aura reaches it as a Kitchen. Both face the sun.
     expect(
       earned(open, [
         ['lKitchen', 0, 0],
         ['diningRoom', 2, 0],
       ]),
-    ).toEqual([3, 0]);
+    ).toEqual([6, 2]);
     expect(
       earned(open, [
         ['lKitchen', 0, 0],
         ['diningRoom', 2, 0],
         ['herbGarden', 0, 2],
       ]),
-    ).toEqual([7, 0, 2]);
+    ).toEqual([11, 2, 0]);
   });
 
   it('Dining Room: Kitchens and Living Rooms next to it earn +50%, and two add up', () => {
-    expectCard('diningRoom', ['Touching Kitchens and Living Rooms earn +50%']);
-    expect(earned(open, [['diningRoom', 0, 0]])).toEqual([0]);
-    // A Living Room with a view (+2 from the Flower Bed) earns 3; the Bedroom isn't boosted.
+    expectCard('diningRoom', [
+      'Touching Kitchens and Living Rooms earn +50%',
+      '+2 every week while Sunny',
+    ]);
+    expect(earned(open, [['diningRoom', 0, 0]])).toEqual([2]);
+    // A Living Room with a view (+2 from the Flower Bed) and the sun (+2) earns 6; the Dining
+    // Room below it is in its shade (D-120), and the Bedroom isn't boosted.
     expect(
       earned(open, [
         ['livingRoom', 0, 0],
@@ -277,14 +291,14 @@ describe('indoor rooms', () => {
         ['diningRoom', 0, 3],
         ['bedroom', 2, 3],
       ]),
-    ).toEqual([3, 1, 0, 3]);
-    // Two Dining Rooms: +4 at +100% is 8, shown as one aura line.
+    ).toEqual([6, 1, 0, 3]);
+    // Two Dining Rooms: +6 at +100% is 12, shown as one aura line. All three are in the sun.
     const t = tally(open, [
       ['kitchen', 2, 0],
       ['diningRoom', 0, 0],
       ['diningRoom', 4, 0],
     ]);
-    expect(t.pieces.map((p) => p.earned)).toEqual([8, 0, 0]);
+    expect(t.pieces.map((p) => p.earned)).toEqual([12, 2, 2]);
     expect(t.pieces[0]!.lines).toContainEqual({
       label: '2 Dining Rooms next door',
       op: 'pct',
@@ -297,18 +311,19 @@ describe('indoor rooms', () => {
   });
 
   it('Living Room: +2 per view (up to 3); the pond counts once', () => {
-    expectCard('livingRoom', ['+2 per touching view (up to 3)']);
+    expectCard('livingRoom', ['+2 per touching view (up to 3)', '+2 every week while Sunny']);
     expect(shapeOf('livingRoom')).toMatchObject({ w: 2, h: 3, rotations: 2 });
-    expect(earned(open, [['livingRoom', 0, 0]])).toEqual([0]);
-    // Two pond tiles are one view.
-    expect(earned(['PPP...', ...emptyRows(6, 5)], [['livingRoom', 0, 1]])).toEqual([2]);
-    // The pond, a Tree, the creek, and a Flower Bed: four views, three count.
+    // In the sun (D-120): +2.
+    expect(earned(open, [['livingRoom', 0, 0]])).toEqual([2]);
+    // Two pond tiles are one view. Water casts no shade, so it's in the sun too.
+    expect(earned(['PPP...', ...emptyRows(6, 5)], [['livingRoom', 0, 1]])).toEqual([4]);
+    // The pond, a Tree, the creek, and a Flower Bed: four views, three count, and the sun.
     const rows = ['.PP...', 'T..C..', '...C..', '...C..', '......', '......'];
     const t = tally(rows, [
       ['livingRoom', 1, 1],
       ['flowerBed', 1, 4],
     ]);
-    expect(t.pieces.map((p) => p.earned)).toEqual([6, 3]);
+    expect(t.pieces.map((p) => p.earned)).toEqual([8, 3]);
     const line = t.pieces[0]!.lines[0]!;
     expect(line.value).toBe(6);
     expect(line.from).toHaveLength(3);
@@ -381,7 +396,7 @@ describe('indoor rooms', () => {
         ['longHallway', 2, 0],
         ['diningRoom', 5, 0],
       ]),
-    ).toEqual([3, 4, 0]);
+    ).toEqual([6, 4, 2]); // the Kitchen and the Dining Room in the sun: +2 each (D-120)
     // The Kitchen touches only the Long Hallway and the Dining Room only the short one. Each
     // hall pays for the rooms it touches itself; the other hall isn't a room.
     expect(
@@ -391,7 +406,7 @@ describe('indoor rooms', () => {
         ['hallway', 4, 1, 1],
         ['diningRoom', 5, 1],
       ]),
-    ).toEqual([3, 2, 2, 0]);
+    ).toEqual([6, 2, 2, 2]);
   });
 
   it('Hallways pay +2 for each room they touch, up to 4 (D-114)', () => {
@@ -571,15 +586,26 @@ describe('yard pieces', () => {
     ]);
   });
 
-  it('Herb Garden: a view; +1 per sunny tile, and Kitchens next to it earn +25%', () => {
-    expectCard('herbGarden', ['+1 per tile on the sunny side', 'Touching Kitchens earn +25%']);
+  it('Herb Garden: a view; +1 per tile in the sun, and Kitchens next to it earn +25%', () => {
+    expectCard('herbGarden', ['+1 per tile in the sun', 'Touching Kitchens earn +25%']);
     expect(CONTENT.pieces.herbGarden.givesView).toBe(true);
     expect(shapeOf('herbGarden')).toMatchObject({ w: 2, h: 1, rotations: 2 });
-    // The sunny side is the top 4 rows here.
+    // The sun shines from the back here; a building shades the tile behind it (D-120).
     expect(earned(open, [['herbGarden', 0, 0]])).toEqual([2]);
-    expect(earned(open, [['herbGarden', 0, 3, 1]])).toEqual([1]);
-    expect(earned(open, [['herbGarden', 0, 6]])).toEqual([0]);
-    // Two of them by a Kitchen: +4 at +50% is 6. A Bedroom next to one isn't boosted.
+    expect(earned(open, [['herbGarden', 0, 6]])).toEqual([2]);
+    expect(
+      earned(open, [
+        ['closet', 0, 2],
+        ['herbGarden', 0, 3, 1], // (0,3) in the Closet's shade, (0,4) in the sun
+      ]),
+    ).toEqual([1, 1]);
+    expect(
+      earned(open, [
+        ['bedroom', 0, 4],
+        ['herbGarden', 0, 6], // both tiles in the Bedroom's shade
+      ]),
+    ).toEqual([3, 0]);
+    // Two of them by a Kitchen in the sun: +6 at +50% is 9. A Bedroom next to one isn't boosted.
     expect(
       earned(open, [
         ['kitchen', 2, 0],
@@ -587,14 +613,14 @@ describe('yard pieces', () => {
         ['herbGarden', 4, 0, 1],
         ['bedroom', 5, 0],
       ]),
-    ).toEqual([6, 2, 2, 3]);
-    // An L-Kitchen counts as a Kitchen: 2.5 rounds up to 3.
+    ).toEqual([9, 2, 2, 3]);
+    // An L-Kitchen counts as a Kitchen: +4 at +25% is 5. The Herb Garden is in its shade.
     expect(
       earned(open, [
         ['lKitchen', 0, 0],
         ['herbGarden', 0, 2],
       ]),
-    ).toEqual([3, 2]);
+    ).toEqual([5, 0]);
   });
 
   it('Patio: earns only touching a room; +2 per Living Room or Kitchen, +1 per view (up to 3)', () => {
@@ -612,7 +638,7 @@ describe('yard pieces', () => {
         ['livingRoom', 4, 1],
         ['flowerBed', 2, 4],
       ]),
-    ).toEqual([6, 0, 2, 3]);
+    ).toEqual([6, 2, 4, 3]); // the Kitchen and the Living Room in the sun: +2 each (D-120)
     // Seven Trees and a Closet around it: three of the Trees count.
     expect(
       earned(
@@ -628,7 +654,7 @@ describe('yard pieces', () => {
         ['patio', 2, 0],
         ['lKitchen', 0, 0],
       ]),
-    ).toEqual([2, 0]);
+    ).toEqual([2, 2]);
     // The Patio rule (D-105): by a Tree but touching no room, it earns nothing, though it's
     // still legal. A Hallway isn't a room, and links only rooms, so one beside it doesn't help.
     const tree = ['.T........', ...emptyRows(10, 9)];
@@ -693,7 +719,7 @@ describe('yard pieces', () => {
     ];
     expect(fencedSizes(emptyRows(7, 8), two)).toEqual([12, 12]);
     const t = tally(emptyRows(7, 8), two);
-    expect(t.pieces.map((p) => p.earned)).toEqual([6, 0, 0]);
+    expect(t.pieces.map((p) => p.earned)).toEqual([6, 2, 2]); // Living Rooms in the sun
     expect(t.pieces[0]!.lines).toEqual([
       { label: '2 fenced yards, 24 tiles (up to 6)', op: 'add', value: 6, from: [] },
     ]);
@@ -933,7 +959,7 @@ describe('"-house" outbuildings', () => {
     expect(def.givesView).toBe(true);
     expect(def.tags).toEqual(['Green', 'House']);
     expect(shapeOf('greenhouse')).toMatchObject({ w: 2, h: 2, rotations: 1 });
-    // A front-yard Flower Bed (3) and a sunny Herb Garden (2) are boosted; a Lawn isn't.
+    // A front-yard Flower Bed (3) and an Herb Garden in the sun (2) are boosted; a Lawn isn't.
     expect(
       earned(open, [
         ['greenhouse', 2, 2],
@@ -942,13 +968,13 @@ describe('"-house" outbuildings', () => {
         ['lawn', 4, 2],
       ]),
     ).toEqual([0, 5, 3, 1]);
-    // A Living Room next to it gets a view, but no boost: it isn't a yard piece.
+    // A Living Room next to it gets a view, but no boost: it isn't a yard piece. It's in the sun.
     expect(
       earned(open, [
         ['greenhouse', 0, 0],
         ['livingRoom', 2, 0],
       ]),
-    ).toEqual([0, 2]);
+    ).toEqual([0, 4]);
   });
 
   // The aura's selector is `all: [viewSource, yard]`: only gardens (the givesView yard

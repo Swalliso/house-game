@@ -14,7 +14,7 @@ import {
   type Rot,
 } from '../../rules/index.ts';
 import { lotFromRows } from '../../rules/lot.ts';
-import { houseModel, roomAt, WALL, type HouseModel } from '../board/house-model.ts';
+import { houseModel, roomAt, WALL, type HouseModel, type SunLight } from '../board/house-model.ts';
 import { CELL, spritePos, type SpriteId } from '../sprites.ts';
 import {
   BAND,
@@ -437,6 +437,48 @@ describe('fixtures painted with their room', () => {
     expect(glass[3]).toBe(255);
     // No other window crowds it.
     expect(m.windows.filter((w) => w.side === 'S' && overlapsX(w.rect, bay.rect)).length).toBe(1);
+  });
+});
+
+describe('the sun on the walls canvas (D-120)', () => {
+  it('lights a Sunny room’s floor along the wall that faces it, further under its window', () => {
+    const house: HouseState = {
+      lot: lotFromRows(Array.from({ length: 10 }, () => '.'.repeat(10))),
+      pieces: [{ uid: 1, defId: 'bedroom', x: 2, y: 2, rot: 0, placedWeek: 0 }],
+      nextUid: 2,
+    };
+    const plain = paintWalls(houseModel(house))!;
+    // The sun at the back: the Bedroom's back row is lit.
+    const sun: SunLight = {
+      side: 'N',
+      rooms: new Map([
+        [
+          1,
+          [
+            { x: 2, y: 2 },
+            { x: 3, y: 2 },
+          ],
+        ],
+      ]),
+    };
+    const m = houseModel(house, undefined, sun);
+    expect(m.sun).toBe(sun);
+    const lit = paintWalls(m)!;
+    // The floor's first row under the north face, beside the window.
+    const top = 2 * CELL + WALL.out + WALL.face;
+    const x = 2 * CELL + WALL.out + 2;
+    expect(pixel(plain, x, top)[3]).toBe(0);
+    const near = pixel(lit, x, top)[3];
+    const far = pixel(lit, x, top + 5)[3];
+    expect(near).toBeGreaterThan(far);
+    expect(far).toBeGreaterThan(0);
+    expect(pixel(lit, x, top + 8)[3]).toBe(0);
+    // Under the window's glass it reaches further, but not under its mullion.
+    const win = m.windows.find((w) => w.uid === 1 && w.side === 'N')!;
+    expect(pixel(lit, win.rect.x + 2, top + 8)[3]).toBeGreaterThan(0);
+    expect(pixel(lit, win.rect.x + win.rect.w / 2, top + 8)[3]).toBe(0);
+    // The room's front row, in its own shade, has none.
+    expect(pixel(lit, x, 3 * CELL + 10)[3]).toBe(0);
   });
 });
 

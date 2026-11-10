@@ -1,13 +1,22 @@
 // The base-pool pieces (Appendix B of implementation-plan.md): 9 indoor types, 7 yard types,
 // and 3 "-house" outbuildings, as 23 cards (shape variants are separate cards sharing a type),
-// then the 9 special pieces (weight 0): the shop's, the crates', and the Catalog's, then (M4b)
-// the 7 member rooms (weight 0), which arrive with the household (D-103).
+// then the 9 special pieces: the shop's, the crates', and the Catalog's (weight 0, but for the
+// Sunroom, drawn from Foundation since D-120), then (M4b) the 7 member rooms (weight 0), which
+// arrive with the household (D-103).
 // Shapes and tags Appendix B leaves open come from content-brainstorm.md §3, §4, and §6
 // (D-067). Complexity is Appendix A · M1's list (D-055). Every card is weight 10, so a type
 // with two cards comes up about twice as often. Numbers are placeholders for the sim and
 // playtests to tune.
 
 import type { PieceDef, PieceId } from '../rules/index.ts';
+
+/** The sun's payoff (D-120): the rooms people live in by day want a sunny wall. */
+const WHILE_SUNNY = (amount: number) =>
+  ({
+    kind: 'conditional',
+    when: { is: { tag: 'Sunny' } },
+    effect: { kind: 'steady', amount },
+  }) as const;
 
 export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
   bedroom: {
@@ -59,7 +68,10 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     drawWeight: 10,
     complexity: 1,
     fromPhase: 0,
-    effects: [{ kind: 'neighbor', match: { piece: ['diningRoom', 'herbGarden'] }, amount: 2 }],
+    effects: [
+      { kind: 'neighbor', match: { piece: ['diningRoom', 'herbGarden'] }, amount: 2 },
+      WHILE_SUNNY(2),
+    ],
   },
   lKitchen: {
     id: 'lKitchen',
@@ -72,7 +84,10 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     drawWeight: 10,
     complexity: 1,
     fromPhase: 0,
-    effects: [{ kind: 'neighbor', match: { piece: ['diningRoom', 'herbGarden'] }, amount: 2 }],
+    effects: [
+      { kind: 'neighbor', match: { piece: ['diningRoom', 'herbGarden'] }, amount: 2 },
+      WHILE_SUNNY(2),
+    ],
   },
   diningRoom: {
     id: 'diningRoom',
@@ -86,6 +101,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     fromPhase: 0,
     effects: [
       { kind: 'aura', match: { piece: ['kitchen', 'livingRoom'] }, scope: 'adjacent', pct: 50 },
+      WHILE_SUNNY(2),
     ],
   },
   livingRoom: {
@@ -98,7 +114,10 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     drawWeight: 10,
     complexity: 1,
     fromPhase: 0,
-    effects: [{ kind: 'neighbor', match: { property: 'viewSource' }, amount: 2, max: 3 }],
+    effects: [
+      { kind: 'neighbor', match: { property: 'viewSource' }, amount: 2, max: 3 },
+      WHILE_SUNNY(2),
+    ],
   },
   closet: {
     id: 'closet',
@@ -379,7 +398,8 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
   },
 
   // ---------------------------------------------------------------------------------------
-  // Special pieces (Appendix B; weight 0, so never in the base draw). The first four are Core
+  // Special pieces (Appendix B; weight 0, so never in the base draw, but for the Sunroom since
+  // D-120, which left the shop for the weekly draw). The first four are Core
   // pieces from content-brainstorm.md; the last five were Stretch and are promoted as shop
   // pieces, so the shop has buildings worth buying (D-051). Shapes Appendix B leaves open are
   // D-082's defaults: Playroom and Library 2×2, Mudroom 1×2, Pool 2×3.
@@ -445,17 +465,19 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
       { kind: 'neighbor', match: { feature: 'tree' }, amount: -2, max: 3 },
     ],
   },
+  // In the weekly draw from Foundation (D-120): it was a special piece at +2 a tile on the
+  // sunny side, and Sunny by its card wherever it stood. Now it's Sunny only on the sunny face.
   sunroom: {
     id: 'sunroom',
     name: 'Sunroom',
     tier: 'core',
     category: 'indoor',
     shape: ['##', '##'],
-    tags: ['Sunny'],
-    drawWeight: 0,
+    tags: [],
+    drawWeight: 5,
     complexity: 2,
-    fromPhase: 0,
-    effects: [{ kind: 'perTile', region: 'sunny', amount: 2 }],
+    fromPhase: 1,
+    effects: [WHILE_SUNNY(6)],
   },
   hotTub: {
     id: 'hotTub',

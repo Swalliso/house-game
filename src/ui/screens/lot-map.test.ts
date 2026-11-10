@@ -8,7 +8,7 @@ import { isLimeZuColor } from '../art/palette.ts';
 import { LOT_COLORS, lotMapKind, lotMapSize, lotSummary, type LotMapKind } from './lot-map.ts';
 
 /** A hand-built lot, a character a tile: . open, T tree, P pond, C creek, B boulder, S old shed. */
-function lot(rows: readonly string[], sunnySide: Lot['sunnySide'] = 'left'): Lot {
+function lot(rows: readonly string[], sun: Lot['sun'] = 'left'): Lot {
   const key: Record<string, TerrainId | null> = {
     '.': null,
     T: 'tree',
@@ -21,8 +21,7 @@ function lot(rows: readonly string[], sunnySide: Lot['sunnySide'] = 'left'): Lot
     width: rows[0]!.length,
     height: rows.length,
     terrain: rows.flatMap((r) => [...r].map((ch) => key[ch]!)),
-    sunnySide,
-    sunnyRows: 1,
+    sun,
     attempt: 0,
   };
 }
@@ -34,9 +33,9 @@ describe("the job board's lot map", () => {
     }
   });
 
-  it('has a color for every terrain, the sunny side, open ground, and the street', () => {
+  it('has a color for every terrain, open ground, and the street', () => {
     const terrain = Object.keys(CONTENT.features).filter((id) => id !== 'street');
-    for (const kind of [...terrain, 'ground', 'sunny', 'street']) {
+    for (const kind of [...terrain, 'ground', 'street']) {
       expect(LOT_COLORS, kind).toHaveProperty(kind);
     }
   });
@@ -67,34 +66,36 @@ describe("the job board's lot map", () => {
           if (t) expect(kind).toBe(t);
         }
       }
-      // Every lot has open ground and a sunny side.
+      // Every lot has open ground.
       expect(seen).toContain('ground');
-      expect(seen).toContain('sunny');
     }
   });
 
-  it('shows the sunny side along its edge, but never under a tree', () => {
-    const l = lot(['T...', '....', '....'], 'left');
-    expect(lotMapKind(l, 0, 0)).toBe('tree');
-    expect(lotMapKind(l, 0, 1)).toBe('sunny');
-    expect(lotMapKind(l, 1, 1)).toBe('ground');
-    const top = lot(['....', '....'], 'top');
-    expect(lotMapKind(top, 3, 0)).toBe('sunny');
-    expect(lotMapKind(top, 3, 1)).toBe('ground');
+  it('draws open ground the same whichever side the sun is on (D-120)', () => {
+    for (const sun of ['top', 'left', 'right', 'bottom'] as const) {
+      const l = lot(['T...', '....', '....'], sun);
+      expect(lotMapKind(l, 0, 0)).toBe('tree');
+      for (const [x, y] of [
+        [0, 1],
+        [3, 0],
+        [3, 2],
+      ] as const)
+        expect(lotMapKind(l, x, y)).toBe('ground');
+    }
   });
 
-  it('sums the lot up in words', () => {
-    expect(lotSummary(lot(['....', '....']))).toBe('Open ground · sunny on the left');
-    expect(lotSummary(lot(['..T.', 'TT..'], 'right'))).toBe('3 trees · sunny on the right');
-    expect(lotSummary(lot(['P...', '..T.'], 'right'))).toBe(
-      'A pond and a tree · sunny on the right',
+  it('sums the lot up in words, with the side the sun shines from', () => {
+    expect(lotSummary(lot(['....', '....']))).toBe('Open ground · sun from the left');
+    expect(lotSummary(lot(['..T.', 'TT..'], 'right'))).toBe('3 trees · sun from the right');
+    expect(lotSummary(lot(['P...', '..T.'], 'bottom'))).toBe(
+      'A pond and a tree · sun from the front',
     );
     expect(lotSummary(lot(['PC..', 'BB.S'], 'top'))).toBe(
-      'A pond, a creek, 2 boulders, and an old shed · sunny at the back',
+      'A pond, a creek, 2 boulders, and an old shed · sun from the back',
     );
     // Twelve trees or more are woods.
     expect(lotSummary(lot(['TTTTTT', 'TTTTTT', '..B...']))).toBe(
-      'Woods and a boulder · sunny on the left',
+      'Woods and a boulder · sun from the left',
     );
   });
 });

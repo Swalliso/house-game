@@ -37,6 +37,7 @@ import { RARITY_LABEL } from '../hud/goods.tsx';
 import { arrivalsOf, arrivalWeek, midName } from '../hud/household.ts';
 import { PieceArt } from '../hud/PieceArt.tsx';
 import { Tip } from '../hud/Tip.tsx';
+import { SunChip } from '../hud/sun.tsx';
 import { Button, Card, Chip, Icon, Keycap, Panel, type IconName } from '../kit/kit.tsx';
 import { CREW_ICONS, LOT_TRAIT_ICONS } from '../sprites.ts';
 import { appScreen, firstVisit, jobBoardSeed, takeContract } from '../store.ts';
@@ -371,16 +372,19 @@ function MovingIn({ arrivals }: { arrivals: readonly ArrivalDef[] }) {
 }
 
 /**
- * The lot's traits (D-119), a chip each under the map, their tips what they pay and what the lot
- * is like. A trait that suits the client (Wooded, for the Count) wears the up icon, as a taste
- * they like does. A short window keeps them: Creekside's +50% is worth seeing.
+ * The lot's sun (D-120) and traits (D-119), a chip each under the map, their tips the Sunny rule,
+ * what a trait pays and what the lot is like. A trait that suits the client (Wooded, for the
+ * Count) wears the up icon, as a taste they like does. A short window keeps them: Creekside's
+ * +50% is worth seeing.
  */
 function LotTraits({ lot, client }: { lot: Lot; client: ClientDef }) {
   const traits = lotTraits(CONTENT, lot);
-  if (traits.length === 0) return null;
   const who = fromName(client.name);
   return (
     <ul class="contract-traits" aria-label="The lot">
+      <li>
+        <SunChip sun={lot.sun} />
+      </li>
       {traits.map((t) => {
         const suits = t.suits?.includes(client.id) ?? false;
         const text = lotTraitText(CONTENT, t) + (suits ? ` A good lot for ${who}.` : '');

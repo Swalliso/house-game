@@ -640,11 +640,6 @@
     "h": 256,
     "spec": "20b95cd685aac9d4"
   },
-  "grass-sunny": {
-    "w": 32,
-    "h": 32,
-    "spec": "09b4f6656b16d96e"
-  },
   "grass-woods": {
     "w": 32,
     "h": 32,
@@ -917,11 +912,6 @@
     "h": 48,
     "spec": "b49423093e1999eb"
   },
-  "rocks-sunny": {
-    "w": 48,
-    "h": 48,
-    "spec": "c088917d465be5c1"
-  },
   "rug-check": {
     "w": 30,
     "h": 30,
@@ -1026,20 +1016,6 @@
     "ms": 130,
     "spec": "a7d394ef762dd640"
   },
-  "shore-corners-sunny": {
-    "w": 32,
-    "h": 32,
-    "frames": 8,
-    "ms": 130,
-    "spec": "32103e7eed119585"
-  },
-  "shore-sunny": {
-    "w": 48,
-    "h": 48,
-    "frames": 8,
-    "ms": 130,
-    "spec": "c40cde0e1d81a770"
-  },
   "sofa-0": {
     "w": 48,
     "h": 27,
@@ -1107,11 +1083,6 @@
     "h": 14,
     "spec": "22c24d68e0df9531"
   },
-  "sun-edge": {
-    "w": 192,
-    "h": 64,
-    "spec": "c82de262ecc30f17"
-  },
   "teddy-0": {
     "w": 18,
     "h": 17,
@@ -1126,11 +1097,6 @@
     "w": 32,
     "h": 32,
     "spec": "f28fdb4f45266c8c"
-  },
-  "time-capsule-sunny": {
-    "w": 32,
-    "h": 32,
-    "spec": "b3ca025abe7b0aa1"
   },
   "title-car": {
     "w": 61,
@@ -1251,16 +1217,6 @@
     "w": 16,
     "h": 16,
     "spec": "b34d48fbcd4f770e"
-  },
-  "tuft-sunny-0": {
-    "w": 16,
-    "h": 16,
-    "spec": "f34c48ee5efe19d7"
-  },
-  "tuft-sunny-1": {
-    "w": 16,
-    "h": 16,
-    "spec": "f04575ffed294387"
   },
   "vanity-0": {
     "w": 28,

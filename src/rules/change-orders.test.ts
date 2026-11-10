@@ -507,8 +507,11 @@ describe('phase effects', () => {
     // Heat wave: pieces touching a Tree earn +100% (TEST_BALANCE's two weeks a phase).
     const r = createRules(seven(withOrders({ workingFromHome: { scope: 'dale' } })));
     const s = offeredAfter2(r);
-    // Below the sunny side (the top 4 rows), so Heat wave's Sunny rooms −50% stays out of it.
-    const lot = emptyRows(10, 10).map((row, y) => (y === 6 ? `T${row.slice(1)}` : row));
+    // Trees above it keep it out of the sun (D-120), so Heat wave's Sunny rooms −50% stays out
+    // of it.
+    const lot = emptyRows(10, 10).map((row, y) =>
+      y === 6 ? `T${row.slice(1)}` : y === 5 ? `.TT${row.slice(3)}` : row,
+    );
     const house = houseFrom(C, lot, [['bedroom', 1, 6]]); // touching the Tree
     const before = r.currentTally({ ...s, screen: 'build', house }).pieces[0]!;
     const shop = r.apply({ ...s, house }, { t: 'answerChangeOrder', accept: true });
@@ -565,7 +568,8 @@ describe('phase effects', () => {
     );
     const s = offeredAfter2(r);
     // Nine Bathrooms in a 3 × 3 block (uids 1–9; the middle one, uid 5, is interior), an
-    // exterior Bedroom (uid 10), and a Bedroom with Blackout Curtains (uid 11). None is sunny.
+    // exterior Bedroom (uid 10), and a Bedroom with Blackout Curtains (uid 11), both in the sun
+    // (D-120).
     let house = houseFrom(C, emptyRows(10, 10), [
       ...[5, 6, 7].flatMap((y) => [1, 2, 3].map((x): Placement => ['bathroom', x, y])),
       ['bedroom', 6, 4],
@@ -583,13 +587,26 @@ describe('phase effects', () => {
     const ETERNAL = { kind: 'changeOrder', id: 'eternalNight' } as const;
     const CURTAINS = { kind: 'fixture', id: 'blackoutCurtains', uid: 11 } as const;
 
-    // Before the order: the card's tags, the interior room's Dark, the Curtains' Dark.
-    expect(sources(before, 10)).toEqual({ Quiet: [{ kind: 'card' }] });
+    // Before the order: the card's tags, the sun's Sunny, the interior room's Dark, the
+    // Curtains' Dark.
+    const SUN = { kind: 'sunny' } as const;
+    expect(sources(before, 10)).toEqual({ Quiet: [{ kind: 'card' }], Sunny: [SUN] });
     expect(sources(before, 5)).toEqual({ Wet: [{ kind: 'card' }], Dark: [{ kind: 'interior' }] });
-    expect(sources(before, 11)).toEqual({ Quiet: [{ kind: 'card' }], Dark: [CURTAINS] });
+    expect(sources(before, 11)).toEqual({
+      Quiet: [{ kind: 'card' }],
+      Sunny: [SUN],
+      Dark: [CURTAINS],
+    });
     // While it runs, every room is Dark from Eternal night too: an exterior room only from it.
-    expect(r.describePiece(night, 10)).toMatchObject({ side: 'exterior', tags: ['Quiet', 'Dark'] });
-    expect(sources(night, 10)).toEqual({ Quiet: [{ kind: 'card' }], Dark: [ETERNAL] });
+    expect(r.describePiece(night, 10)).toMatchObject({
+      side: 'exterior',
+      tags: ['Quiet', 'Sunny', 'Dark'],
+    });
+    expect(sources(night, 10)).toEqual({
+      Quiet: [{ kind: 'card' }],
+      Sunny: [SUN],
+      Dark: [ETERNAL],
+    });
     expect(sources(night, 5).Dark).toEqual([{ kind: 'interior' }, ETERNAL]);
     expect(sources(night, 11).Dark).toEqual([ETERNAL, CURTAINS]);
   });

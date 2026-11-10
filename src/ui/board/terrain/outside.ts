@@ -105,7 +105,7 @@ export function waterSlices(lot: Lot): Slice[] {
             mod(sx, SUB) === SUB - 1,
             mod(sy, SUB) === SUB - 1,
           );
-          tiles.push({ id: shoreSet(piece, false), col: piece.col, row: piece.row, sx: k, sy: j });
+          tiles.push({ id: shoreSet(piece), col: piece.col, row: piece.row, sx: k, sy: j });
         }
       }
       out.push({ side, kind: 'water', at: i, span, tiles });

@@ -24,6 +24,7 @@ import {
   type Rot,
   type SetScore,
   type SourceRef,
+  type SunSide,
   type UseToolAction,
 } from '../../rules/index.ts';
 import { audio } from '../audio/audio.ts';
@@ -32,6 +33,7 @@ import { FEEL } from '../fx/feel.ts';
 import { shakeOffsets } from '../fx/juice.ts';
 import { formatNumber, signed } from '../format.ts';
 import { changeOrderShown, shopShown } from '../hud/actions.ts';
+import { Icon } from '../kit/kit.tsx';
 import {
   activePlay,
   demolishArmed,
@@ -98,7 +100,7 @@ import {
   viewReach,
   type Occupancy,
 } from './geometry.ts';
-import { hallLinks, houseModel } from './house-model.ts';
+import { hallLinks, houseModel, sunLight } from './house-model.ts';
 import { spreadBadges } from './label-layout.ts';
 import {
   FloorLayer,
@@ -333,9 +335,11 @@ export function Board() {
   const { house } = state;
   const occ = occupancy(house);
   // The house as drawn: walls, doorways and windows from the pieces, with the Hallways'
-  // doors from the rules' links. Cached per house, so hovering never rebuilds it.
+  // doors from the rules' links and the sun's light on the Sunny rooms (D-120). Cached per
+  // house, so hovering never rebuilds it.
   const links = useMemo(() => hallLinks(state), [state]);
-  const model = houseModel(house, links);
+  const sun = useMemo(() => sunLight(state), [state]);
+  const model = houseModel(house, links, sun);
   // The yard pieces' ground and props, cached per house model.
   const yard = yardModel(house, model);
   const p = demolishing ? null : preview.value;
@@ -760,8 +764,24 @@ export function Board() {
           <PopupLayer scale={scale} />
         </div>
       </div>
+      <SunMarker side={lot.sun} />
       <CameraControls />
     </>
+  );
+}
+
+/**
+ * The side the sun shines from (D-120), on the board's view rather than the lot, so it stays in
+ * sight however the lot is panned: a warm light along that edge, in steps, and the sun's plaque
+ * at its middle (board-chrome.css). The checklist's sun chip says the same in words.
+ */
+function SunMarker({ side }: { side: SunSide }) {
+  return (
+    <div class={`sun-marker ${side}`} aria-hidden="true">
+      <span class="sun-plaque">
+        <Icon name="Sunny" /> Sun
+      </span>
+    </div>
   );
 }
 
@@ -879,13 +899,17 @@ function Ghost({
   const arrow = p && p.delta > 0 ? '▲ +' : p && p.delta < 0 ? '▼ −' : '';
   const change = p ? `${arrow}${formatNumber(Math.abs(p.delta))} ${SCORE_LABELS.total}` : '';
   const after = pack ? ` · ${pack}` : pending ? ' · End week to build' : '';
+  // A building that would be Sunny there (D-120) says so, with the sun's icon: its ☀ stands in
+  // for the icon when the label is measured.
+  const sunny = legal && !!p?.sunny;
+  const first = change + (sunny ? ' · ☀ Sunny' : '') + after;
   // Keep the labels on the board: away from the side edges, and below the ghost at the top. A
   // pack's next tile counts too, so its label and the ghost's stack clear of both. The stack
   // needs as many rows above them as it's tall, line by line (geometry.ts labelRows): more
   // where cells are small, as at 0.5×, since the labels keep their size.
   const lines = [
     ...(!legal && inside.length > 0 ? [labelLines(`✕ ${reason}`)] : []),
-    ...(legal && p ? [pack ? 2 : labelLines(change + after)] : []),
+    ...(legal && p ? [labelLines(first) + (pack ? 1 : 0)] : []),
     ...(breaks ? [labelLines(`✕ Breaks ${breaks}`)] : []),
     ...(next ? [labelLines(packNextText(next).join(''))] : []),
   ];
@@ -926,6 +950,12 @@ function Ghost({
         {legal && p && (
           <div class={`ghost-delta ${p.delta > 0 ? 'good' : p.delta < 0 ? 'bad' : ''}`}>
             {change}
+            {sunny && (
+              <span class="ghost-sun">
+                {' · '}
+                <Icon name="Sunny" /> Sunny
+              </span>
+            )}
             {after}
             {pack && <span class="ghost-then">{then}</span>}
           </div>

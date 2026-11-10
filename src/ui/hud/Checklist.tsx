@@ -50,6 +50,7 @@ import {
   type Reward,
   type RunState,
   type SpecGroup,
+  type SunSide,
 } from '../../rules/index.ts';
 import { checkFlashes, shownRun, tallyView, type CheckFlash } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
@@ -62,6 +63,7 @@ import { seenHints } from './FirstHints.tsx';
 import { devicePixelRatio, uiPixel } from '../theme/pixel.ts';
 import { arrivalWeek, isPlural, overtimeUsed, upcomingArrivals } from './household.ts';
 import { Tip } from './Tip.tsx';
+import { SunChip } from './sun.tsx';
 import './checklist.css';
 
 type RuleGroup = Exclude<SpecGroup, 'wishes'>;
@@ -587,15 +589,16 @@ function TraitChip({ trait, iconOnly = false }: { trait: LotTraitDef; iconOnly?:
 
 /**
  * The crew building the house (M4's top bar line, which M5a's top bar has no room for): its
- * icon and name on a wood chip, first in the list, and what it does all run on hover. The lot's
- * traits that pay (D-119: Creekside) follow it, so their pay isn't forgotten after the job
- * board. On a window under 1000 px tall it's CrewIcon instead (checklist.css), unless the client
+ * icon and name on a wood chip, first in the list, and what it does all run on hover. The sun's
+ * side (D-120) and the lot's traits that pay (D-119: Creekside) follow it, so neither is
+ * forgotten after the job board. On a window under 1000 px tall it's CrewIcon instead (checklist.css), unless the client
  * has no tastes for its icon to end the row of, where the plank has no room for it.
  */
 function CrewChip(props: {
   id: CrewId;
   crew: CrewDef;
   tastes: boolean;
+  sun: SunSide;
   traits: readonly LotTraitDef[];
 }) {
   const { id, crew } = props;
@@ -606,6 +609,7 @@ function CrewChip(props: {
           {crew.name}
         </Chip>
       </CrewTip>
+      <SunChip sun={props.sun} />
       {props.traits.map((t) => (
         <TraitChip key={t.id} trait={t} />
       ))}
@@ -615,7 +619,7 @@ function CrewChip(props: {
 
 /**
  * The crew's chip as its icon alone, with the same tip, its name for screen readers, then the
- * lot's paying traits' icons: on a window under 1000 px tall it rides on the plank beside the
+ * sun's and the lot's paying traits' icons: on a window under 1000 px tall it rides on the plank beside the
  * client's name (`place` "plank"), or in the pixel font in a 280 px column, where the plank has
  * no room beside the longest names, at the end of the tastes' row ("tastes"), so the first house
  * rule starts under that row (checklist.css).
@@ -624,6 +628,7 @@ function CrewIcon(props: {
   id: CrewId;
   crew: CrewDef;
   place: 'plank' | 'tastes';
+  sun: SunSide;
   traits: readonly LotTraitDef[];
 }) {
   const { id, crew } = props;
@@ -634,6 +639,7 @@ function CrewIcon(props: {
           <span class="check-sr">{crew.name}</span>
         </Chip>
       </CrewTip>
+      <SunChip sun={props.sun} iconOnly />
       {props.traits.map((t) => (
         <TraitChip key={t.id} trait={t} iconOnly />
       ))}
@@ -972,7 +978,8 @@ export function Checklist() {
   const wishes = groupRows('wishes');
   const crew = CONTENT.crews[crewId];
   const tastes = client.tastes.length > 0;
-  // The lot's traits that pay all run (D-119): Creekside on a creek lot.
+  // The sun's side (D-120), and the lot's traits that pay all run (D-119): Creekside.
+  const { sun } = base.house.lot;
   const traits = lotTraits(CONTENT, base.house.lot).filter((t) => t.modifiers.length > 0);
   return (
     <Panel
@@ -985,7 +992,7 @@ export function Checklist() {
       }
       head={
         <>
-          <CrewIcon id={crewId} crew={crew} place="plank" traits={traits} />
+          <CrewIcon id={crewId} crew={crew} place="plank" sun={sun} traits={traits} />
           <Chip
             tone="inset"
             icon="check"
@@ -999,10 +1006,10 @@ export function Checklist() {
       bodyClass="check-body"
     >
       <div ref={box} class="check-scroll">
-        <CrewChip id={crewId} crew={crew} tastes={tastes} traits={traits} />
+        <CrewChip id={crewId} crew={crew} tastes={tastes} sun={sun} traits={traits} />
         <Tastes
           tastes={client.tastes}
-          crew={<CrewIcon id={crewId} crew={crew} place="tastes" traits={traits} />}
+          crew={<CrewIcon id={crewId} crew={crew} place="tastes" sun={sun} traits={traits} />}
         />
         {/* The house rules: one row that folds them (playtest 4), then, while they're open, their
             groups. Who's still to move in shows either way. */}

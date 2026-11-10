@@ -54,8 +54,10 @@ export const FIXTURES: Readonly<Record<FixtureId, FixtureDef>> = {
     drawWeight: 5,
     fromPhase: 1,
     price: PRICES.fixture.common,
+    // Drawn, they keep the sun out too (D-120): the Count's answer to a sunny wall.
     modifiers: [
       { kind: 'grantTag', target: HOST, tag: 'Dark' },
+      { kind: 'removeTag', target: HOST, tag: 'Sunny' },
       { kind: 'earn', target: HOST, pct: 25 },
     ],
   },

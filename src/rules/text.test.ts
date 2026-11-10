@@ -6,8 +6,10 @@ import {
   definite,
   earnTargetText,
   effectText,
+  glossary,
   modifierText,
   selectorText,
+  sunSideText,
 } from './text.ts';
 import { TEST_CONTENT as C } from './testing.ts';
 import { CONTENT } from '../content/index.ts';
@@ -102,6 +104,28 @@ describe('card text', () => {
     expect(
       effectText(C, { kind: 'aura', match: { tag: 'Quiet' }, scope: 'adjacent', amount: -2 }),
     ).toBe('Touching Quiet neighbors get −2');
+  });
+
+  it('says “while Sunny” for pay that needs the sun, and “in the sun” for its tiles (D-120)', () => {
+    for (const id of ['kitchen', 'lKitchen', 'diningRoom', 'livingRoom'] as const) {
+      expect(cardText(CONTENT, CONTENT.pieces[id]).effects, id).toContain(
+        '+2 every week while Sunny',
+      );
+    }
+    expect(cardText(CONTENT, CONTENT.pieces.sunroom).effects).toEqual([
+      '+6 every week while Sunny',
+    ]);
+    expect(effectText(C, { kind: 'perTile', region: 'sunny', amount: 1 })).toBe(
+      '+1 per tile in the sun',
+    );
+    // The sides as the job board and the checklist name them: the street is the front.
+    expect((['top', 'left', 'right', 'bottom'] as const).map(sunSideText)).toEqual([
+      'back',
+      'left',
+      'right',
+      'front',
+    ]);
+    expect(glossary(CONTENT).sunny.title).toBe('Sunny');
   });
 
   it('counts names for breakdown labels', () => {

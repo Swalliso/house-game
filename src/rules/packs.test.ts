@@ -234,13 +234,22 @@ describe('a placed pack is one piece', () => {
     expect(sortCells(layout.cells.get(2)!)).toEqual(want);
     for (const c of layout.cells.get(2)!) expect(layout.occupant[c.y * 12 + c.x]).toBe(2);
     expect(layout.fencedSizes).toEqual([4]);
-    // describePiece reads it whole. Its regions are those of every tile: all sunny, but it's
-    // partly behind the house's front row (row 1) and partly in front, so in neither yard.
+    // describePiece reads it whole. Its regions are those every tile is in: two of its tiles
+    // are in the Bedroom's shade (D-120), so its sunlit tiles are the other five, and it's
+    // partly behind the house's front row (row 1) and partly in front, so in neither yard. A
+    // yard piece is never Sunny.
     expect(R.describePiece(state, 2)).toEqual({
-      tags: ['Sunny'],
-      tagSources: { Sunny: [{ kind: 'sunny' }] },
+      tags: [],
+      tagSources: {},
       side: null,
-      regions: ['sunny'],
+      regions: [],
+      sunlit: [
+        { x: 4, y: 0 },
+        { x: 4, y: 1 },
+        { x: 2, y: 2 },
+        { x: 3, y: 2 },
+        { x: 4, y: 2 },
+      ],
       view: false,
       linked: [],
       fencedYardTiles: 4,

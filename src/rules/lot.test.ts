@@ -1,14 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Lot, TerrainId } from './index.ts';
-import {
-  generateLot,
-  isSunny,
-  lotFromRows,
-  lotProblems,
-  lotToRows,
-  lotTraits,
-  terrainAt,
-} from './lot.ts';
+import { generateLot, lotFromRows, lotProblems, lotToRows, lotTraits, terrainAt } from './lot.ts';
 import { TEST_LOT_BALANCE as B } from './testing.ts';
 import { CONTENT } from '../content/index.ts';
 
@@ -144,14 +136,15 @@ describe('lot generation', () => {
     }
   });
 
-  it('keeps Tree tiles out of the sunny side', () => {
-    const lot = lotFromRows(['.T....', '......', '......', '......', '......', '......'], 'top');
-    expect(isSunny(lot, 0, 0)).toBe(true);
-    expect(isSunny(lot, 1, 0)).toBe(false);
-    expect(isSunny(lot, 0, 3)).toBe(true);
-    expect(isSunny(lot, 0, 4)).toBe(false);
-    expect(isSunny({ ...lot, sunnySide: 'left' }, 3, 0)).toBe(true);
-    expect(isSunny({ ...lot, sunnySide: 'right' }, 0, 2)).toBe(false);
+  it('gives each lot a sun from one of its four edges, a quarter each (D-120)', () => {
+    const sides = new Map<string, number>();
+    for (let i = 0; i < 1000; i++) {
+      const sun = generateLot(`sun-${i}`, B).sun;
+      sides.set(sun, (sides.get(sun) ?? 0) + 1);
+    }
+    expect([...sides.keys()].sort()).toEqual(['bottom', 'left', 'right', 'top']);
+    for (const n of sides.values()) expect(n).toBeGreaterThan(200);
+    expect(generateLot('sun-1', B)).toEqual(generateLot('sun-1', B));
   });
 
   it('flags lots the checks reject', () => {

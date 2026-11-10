@@ -272,7 +272,7 @@ function drawScene(
   }
   for (let sy = 0; sy < (LAWN_ROWS + 1) * SUB; sy++) {
     for (let sx = 0; sx < wide; sx++) {
-      const id = grassSprite(sx, sy, false);
+      const id = grassSprite(sx, sy);
       if (id) drawSprite(ctx, img, id, sx * SUBTILE, horizon + sy * SUBTILE);
     }
   }

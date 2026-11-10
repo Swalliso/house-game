@@ -1053,7 +1053,7 @@ describe('finds on generated lots', () => {
       // The finds sit on ground that was free, and the rest of the terrain is unchanged.
       const plain = generateLot(seed, bare);
       expect(plain.attempt).toBe(lot.attempt);
-      expect(plain.sunnySide).toBe(lot.sunnySide);
+      expect(plain.sun).toBe(lot.sun);
       lot.terrain.forEach((t, i) => {
         if (t === 'oldShed' || t === 'timeCapsule') expect(plain.terrain[i]).toBeNull();
         else expect(plain.terrain[i]).toBe(t);

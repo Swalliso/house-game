@@ -204,3 +204,8 @@
 .board.small .badge.cleared {
   font-size: 12px;
 }
+
+/* The sun's mark on a ghost that would be Sunny (D-120): its icon and its word kept together. */
+.board .ghost-delta .ghost-sun {
+  white-space: nowrap;
+}

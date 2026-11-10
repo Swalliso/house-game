@@ -87,3 +87,92 @@
 .reduce-motion .center .camera-controls button:active:not(:disabled) {
   transform: none;
 }
+
+/* The sun's side of the board's view (D-120, Board.tsx SunMarker): warm light along that edge in
+   three steps (pixel light, not a smooth ramp) and the sun's plaque at its middle, a wood plaque
+   like the zoom buttons'. Over the board, under its chrome and the notes; it never takes the
+   pointer, so a drag that starts there still pans. */
+.center .sun-marker {
+  --sun-light: 255 236 160;
+  --sun-step: calc(var(--px) * 4);
+  position: absolute;
+  z-index: 14;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.center .sun-marker.top,
+.center .sun-marker.bottom {
+  left: 0;
+  right: 0;
+  height: calc(var(--sun-step) * 3);
+}
+.center .sun-marker.left,
+.center .sun-marker.right {
+  top: 0;
+  bottom: 0;
+  width: calc(var(--sun-step) * 3);
+}
+.center .sun-marker.top {
+  top: 0;
+  align-items: flex-start;
+  background: linear-gradient(
+    to bottom,
+    rgb(var(--sun-light) / 0.55) 0 var(--sun-step),
+    rgb(var(--sun-light) / 0.3) 0 calc(var(--sun-step) * 2),
+    rgb(var(--sun-light) / 0.14) 0 calc(var(--sun-step) * 3)
+  );
+}
+.center .sun-marker.bottom {
+  bottom: 0;
+  align-items: flex-end;
+  background: linear-gradient(
+    to top,
+    rgb(var(--sun-light) / 0.55) 0 var(--sun-step),
+    rgb(var(--sun-light) / 0.3) 0 calc(var(--sun-step) * 2),
+    rgb(var(--sun-light) / 0.14) 0 calc(var(--sun-step) * 3)
+  );
+}
+.center .sun-marker.left {
+  left: 0;
+  justify-content: flex-start;
+  background: linear-gradient(
+    to right,
+    rgb(var(--sun-light) / 0.55) 0 var(--sun-step),
+    rgb(var(--sun-light) / 0.3) 0 calc(var(--sun-step) * 2),
+    rgb(var(--sun-light) / 0.14) 0 calc(var(--sun-step) * 3)
+  );
+}
+.center .sun-marker.right {
+  right: 0;
+  justify-content: flex-end;
+  background: linear-gradient(
+    to left,
+    rgb(var(--sun-light) / 0.55) 0 var(--sun-step),
+    rgb(var(--sun-light) / 0.3) 0 calc(var(--sun-step) * 2),
+    rgb(var(--sun-light) / 0.14) 0 calc(var(--sun-step) * 3)
+  );
+}
+.center .sun-marker .sun-plaque {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: var(--space-2);
+  padding: var(--px) var(--space-2) calc(var(--px) * 2);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ring) 1 / var(--px);
+  background: var(--wood-hi);
+  background-clip: padding-box;
+  box-shadow:
+    inset 0 var(--px) 0 var(--wood-shine),
+    inset 0 calc(var(--px) * -2) 0 var(--wood),
+    var(--shadow-card);
+  color: var(--ink);
+  font-family: var(--font-text);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  font-weight: 700;
+  white-space: nowrap;
+  image-rendering: pixelated;
+}

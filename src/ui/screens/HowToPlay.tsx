@@ -322,7 +322,9 @@ function HowToPlayText() {
             <b>The street</b> is Loud.
           </li>
           <li>
-            <b>The sunny side</b> is the brighter strip along one edge.
+            <b>The sun</b> shines from one edge of the lot, marked on the board. A room, a Hallway
+            or an outbuilding is Sunny when a wall of it faces the sun with no Tree or other
+            building in front. Light falls on a Sunny room's floor.
           </li>
           <li>
             <b>The front yard</b> is between the house and the street. The rest of the yard is the

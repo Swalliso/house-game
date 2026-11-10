@@ -1,8 +1,9 @@
-// The lot's grass (D-097): LimeZu's grass on every cell, muted so the pieces stand out, in the
-// sunny side's warmer colors where isSunny says so, with light tufts and tiny flowers scattered
-// on open ground by tile hash (the audit prototype's rates).
+// The lot's grass (D-097): LimeZu's grass on every cell, muted so the pieces stand out, with
+// light tufts and tiny flowers scattered on open ground by tile hash (the audit prototype's
+// rates). The sunny band's warmer grass went with the band (D-120): the sun shines on the whole
+// lot, and shade.ts darkens the tiles a Tree shades.
 
-import { isSunny, terrainAt, type Lot } from '../../../rules/index.ts';
+import { terrainAt, type Lot } from '../../../rules/index.ts';
 import { CELL, type SpriteId } from '../../sprites.ts';
 import { SUB, SUBTILE } from '../autotile.ts';
 import { drawSprite } from './atlas.ts';
@@ -14,7 +15,6 @@ export const TUFT_EVERY = 11;
 export const WILDFLOWERS_EVERY = 23;
 
 const TUFTS = ['tuft-0', 'tuft-1'] as const satisfies readonly SpriteId[];
-const SUNNY_TUFTS = ['tuft-sunny-0', 'tuft-sunny-1'] as const satisfies readonly SpriteId[];
 const WILDFLOWERS = [
   'wildflowers-0',
   'wildflowers-1',
@@ -31,20 +31,20 @@ export interface SubtileSprite {
 }
 
 /**
- * The tuft or the flowers on subtile (sx, sy) of open ground, if any, by tile hash: a tuft in
- * the colors of the grass it's on. The title screen's lawn strews its grass the same way.
+ * The tuft or the flowers on subtile (sx, sy) of open ground, if any, by tile hash. The title
+ * screen's lawn strews its grass the same way.
  */
-export function grassSprite(sx: number, sy: number, sunny: boolean, salt = 0): SpriteId | null {
+export function grassSprite(sx: number, sy: number, salt = 0): SpriteId | null {
   const h = tileHash(sx, sy, salt);
-  if (h % TUFT_EVERY === 0) return (sunny ? SUNNY_TUFTS : TUFTS)[(h >>> 4) & 1]!;
+  if (h % TUFT_EVERY === 0) return TUFTS[(h >>> 4) & 1]!;
   if (h % WILDFLOWERS_EVERY === 0) return WILDFLOWERS[(h >>> 5) % WILDFLOWERS.length]!;
   return null;
 }
 
 /**
  * The tufts and flowers: on subtiles of open ground only, so water, trees, rocks, and finds
- * stand on plain grass. A tuft takes the colors of the grass it's on. `salt` is the run's
- * (hash.ts seedSalt), so each lot is strewn its own way.
+ * stand on plain grass. `salt` is the run's (hash.ts seedSalt), so each lot is strewn its own
+ * way.
  */
 export function grassDecor(lot: Lot, salt = 0): SubtileSprite[] {
   const out: SubtileSprite[] = [];
@@ -53,7 +53,7 @@ export function grassDecor(lot: Lot, salt = 0): SubtileSprite[] {
       const x = Math.floor(sx / SUB);
       const y = Math.floor(sy / SUB);
       if (terrainAt(lot, x, y) !== null) continue;
-      const id = grassSprite(sx, sy, isSunny(lot, x, y), salt);
+      const id = grassSprite(sx, sy, salt);
       if (id) out.push({ sx, sy, id });
     }
   }
@@ -69,7 +69,7 @@ export function paintGrass(
 ): void {
   for (let y = 0; y < lot.height; y++) {
     for (let x = 0; x < lot.width; x++) {
-      drawSprite(ctx, img, isSunny(lot, x, y) ? 'grass-sunny' : 'grass-0', x * CELL, y * CELL);
+      drawSprite(ctx, img, 'grass-0', x * CELL, y * CELL);
     }
   }
   for (const d of grassDecor(lot, salt)) drawSprite(ctx, img, d.id, d.sx * SUBTILE, d.sy * SUBTILE);

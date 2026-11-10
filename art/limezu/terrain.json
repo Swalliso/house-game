@@ -19,34 +19,6 @@
     ],
     "note": "Open ground: LimeZu's base grass (the middle of its grass patch), repeated to one 32 px cell and muted with the audit prototype's terrain remap (its MUTE table, the colors this tile uses), so pieces stand out against the lot."
   },
-  "grass-sunny": {
-    "pack": "me",
-    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png",
-    "rect": [16, 112, 16, 16],
-    "ops": [
-      {
-        "op": "tile",
-        "size": [32, 32]
-      },
-      {
-        "op": "recolor",
-        "map": {
-          "#479757": "#6f9a4c",
-          "#37854e": "#5c8a43",
-          "#2d7256": "#4f7a45"
-        }
-      },
-      {
-        "op": "recolor",
-        "map": {
-          "#6f9a4c": "#7f9a5c",
-          "#5c8a43": "#6e8a55",
-          "#4f7a45": "#5f7652"
-        }
-      }
-    ],
-    "note": "The sunny side: LimeZu has no sunny grass, so it's the same grass with the prototype's warm remap (its WARM table), then its terrain mute, as the prototype drew the warm strip. Brighter and yellower than grass-0."
-  },
   "tuft-0": {
     "pack": "me",
     "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png",
@@ -81,40 +53,6 @@
     ],
     "note": "The smaller light grass tuft, muted like grass-0."
   },
-  "tuft-sunny-0": {
-    "pack": "me",
-    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png",
-    "rect": [400, 32, 16, 16],
-    "ops": [
-      {
-        "op": "recolor",
-        "map": {
-          "#53a65d": "#8fa868",
-          "#37854e": "#6e8a55",
-          "#479757": "#7f9a5c",
-          "#2d7256": "#5f7652"
-        }
-      }
-    ],
-    "note": "tuft-0 for the sunny side: the prototype's warm remap then its mute, the colors grass-sunny uses."
-  },
-  "tuft-sunny-1": {
-    "pack": "me",
-    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png",
-    "rect": [416, 32, 16, 16],
-    "ops": [
-      {
-        "op": "recolor",
-        "map": {
-          "#53a65d": "#8fa868",
-          "#37854e": "#6e8a55",
-          "#479757": "#7f9a5c",
-          "#2d7256": "#5f7652"
-        }
-      }
-    ],
-    "note": "tuft-1 for the sunny side."
-  },
   "wildflowers-0": {
     "pack": "me",
     "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/3_City_Props_16x16.png",
@@ -144,24 +82,6 @@
     "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/3_City_Props_16x16.png",
     "rect": [432, 240, 16, 16],
     "note": "Tiny scattered flowers, five of five."
-  },
-  "sun-edge": {
-    "pack": "me",
-    "file": "Modern_Exteriors_16x16/Autotiles_16x16/Godot_Autotiles_16x16.png",
-    "rect": [0, 320, 192, 64],
-    "ops": [
-      {
-        "op": "recolor",
-        "map": {
-          "#479757": "#7f9a5c",
-          "#37854e": "#6e8a55",
-          "#53a65d": "#8fa868",
-          "#79a15c": "#a2b27a",
-          "#34555d": "#5f7652"
-        }
-      }
-    ],
-    "note": "The sunny side's edge: LimeZu's grass with a clear inside (Godot autotile set 5, 47 tiles in the Godot layout), in grass-sunny's colors. Drawn over the shaded subtiles next to the sunny side, so sunny grass tufts and their soft shadow reach a few px into the shade: the edge reads as sunlight, and a Tree inside the band gets a round patch of shade."
   },
   "shore": {
     "pack": "me",
@@ -214,58 +134,6 @@
       }
     ],
     "note": "The animated water's inner corners (a 2 \u00d7 2 block per frame, land in the middle), for bends in the creek and notches in a pond, edited like shore."
-  },
-  "shore-sunny": {
-    "pack": "me",
-    "file": "Modern_Exteriors_16x16/Animated_16x16/Animated_Terrains_16x16/Water_Tileset_16x16.png",
-    "rect": [0, 0, 48, 48],
-    "frames": {
-      "count": 8,
-      "dx": 48,
-      "dy": 0,
-      "ms": 130
-    },
-    "ops": [
-      {
-        "op": "keyOut",
-        "colors": ["#479757"]
-      },
-      {
-        "op": "recolor",
-        "map": {
-          "#37854e": "#6e8a55",
-          "#53a65d": "#8fa868",
-          "#79a15c": "#a2b27a"
-        }
-      }
-    ],
-    "note": "The shore on the sunny side: the same water, its grass blades in grass-sunny's colors, so a pond or the creek in the band has a bank of sunny grass."
-  },
-  "shore-corners-sunny": {
-    "pack": "me",
-    "file": "Modern_Exteriors_16x16/Animated_16x16/Animated_Terrains_16x16/Water_Tileset_Outer_Corners_16x16.png",
-    "rect": [0, 0, 32, 32],
-    "frames": {
-      "count": 8,
-      "dx": 32,
-      "dy": 0,
-      "ms": 130
-    },
-    "ops": [
-      {
-        "op": "keyOut",
-        "colors": ["#479757"]
-      },
-      {
-        "op": "recolor",
-        "map": {
-          "#37854e": "#6e8a55",
-          "#53a65d": "#8fa868",
-          "#79a15c": "#a2b27a"
-        }
-      }
-    ],
-    "note": "The inner corners of shore-sunny, edited the same way."
   },
   "lily-0": {
     "pack": "me",
@@ -570,23 +438,6 @@
     ],
     "note": "Boulders: LimeZu's nine 16 \u00d7 16 rocks (Camping, a 3 \u00d7 3 block), the grass at their feet in grass-0's colors. A boulder cell shows two or three of them, picked by tile hash."
   },
-  "rocks-sunny": {
-    "pack": "me",
-    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_16x16.png",
-    "rect": [304, 592, 48, 48],
-    "ops": [
-      {
-        "op": "recolor",
-        "map": {
-          "#479757": "#7f9a5c",
-          "#37854e": "#6e8a55",
-          "#2d7256": "#5f7652",
-          "#46a44d": "#8fa868"
-        }
-      }
-    ],
-    "note": "The same rocks with the grass at their feet in grass-sunny's colors, for boulders on the sunny side."
-  },
   "old-shed": {
     "pack": "me",
     "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png",
@@ -654,50 +505,6 @@
     "file": "Modern_Exteriors_16x16/Autotiles_16x16/Godot_Autotiles_16x16.png",
     "rect": [32, 1648, 16, 16],
     "note": "The road's center line: the straight east-west tile of Godot autotile set 25 (a yellow line on asphalt), every other tile for dashes."
-  },
-  "time-capsule-sunny": {
-    "pack": "me",
-    "file": "Modern_Exteriors_16x16/Autotiles_16x16/Godot_Autotiles_16x16.png",
-    "rect": [128, 64, 16, 16],
-    "ops": [
-      {
-        "op": "compose",
-        "size": [32, 32],
-        "layers": [
-          {
-            "rect": [176, 64, 16, 16],
-            "at": [16, 0]
-          },
-          {
-            "rect": [128, 112, 16, 16],
-            "at": [0, 16]
-          },
-          {
-            "rect": [176, 112, 16, 16],
-            "at": [16, 16]
-          },
-          {
-            "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/19_Graveyard_16x16.png",
-            "rect": [402, 245, 13, 22],
-            "at": [12, 3]
-          }
-        ]
-      },
-      {
-        "op": "keyOut",
-        "colors": ["#479757"]
-      },
-      {
-        "op": "recolor",
-        "map": {
-          "#37854e": "#6e8a55",
-          "#53a65d": "#8fa868",
-          "#79a15c": "#a2b27a",
-          "#34555d": "#5f7652"
-        }
-      }
-    ],
-    "note": "The Time Capsule on the sunny side: the same, with the grass blades at its edge in grass-sunny's colors."
   },
   "grass-outside": {
     "pack": "me",

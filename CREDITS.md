@@ -15,8 +15,8 @@ Open House is a game jam entry for the theme "It's a house," built with Claude C
   by `npm run art:cut`, each recorded in `assets/licenses.json` with its sheet and rect. The
   packs stay in the gitignored `art-source/` (D-097).
 - **Placeholder sprites** (`art/*.txt`): drawn for Open House by Claude Code. Our own work.
-  LimeZu cuts replaced them in M5a (D-097): the whole lot (its grass, sunny side, water, woods,
-  rocks, finds, street, and the grass around it), and the house and the yard (floors,
+  LimeZu cuts replaced them in M5a (D-097): the whole lot (its grass, water, woods, rocks,
+  finds, street, and the grass around it), and the house and the yard (floors,
   wallpapers, furniture, the yard pieces and their props). The few left in `art/` are each
   covered by a cut of the same id, so `assets/atlas.png` holds none of them.
 - **The house's and the yard's own drawings** (`src/ui/art/drawings.ts`,

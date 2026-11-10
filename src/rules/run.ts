@@ -118,9 +118,11 @@ import {
 } from './grid.ts';
 import {
   fencedYardsBordered,
+  isBuilding,
   isLayoutModifier,
   layoutCache,
   NO_LAYOUT_MODS,
+  pieceDef,
   pieceIn,
   REGION_BIT,
   tilesIn,
@@ -2270,8 +2272,11 @@ export function createRules(content: Content): Rules {
     const after = score(week.tally);
     const cells = play.t === 'install' ? (layoutFor(state).cells.get(play.uid) ?? []) : check.cells;
     const wasMet = new Map(beforeTally.specs.map((sp) => [sp.id, sp.met]));
+    const sunny =
+      !!week.placed && !!layoutFor(state, week.house).tags.get(week.placed.uid)?.has('Sunny');
     return {
       legal: true,
+      ...(sunny ? { sunny: true as const } : {}),
       before,
       after,
       budgetBefore,
@@ -2419,7 +2424,12 @@ export function createRules(content: Content): Rules {
       const from: TagSource[] = [];
       if (own.includes(tag)) from.push({ kind: 'card' });
       if (tag === 'Dark' && layout.interior.has(piece.uid)) from.push({ kind: 'interior' });
-      if (tag === 'Sunny' && tilesIn(layout, piece.uid, 'sunny') > 0) from.push({ kind: 'sunny' });
+      if (
+        tag === 'Sunny' &&
+        isBuilding(pieceDef(content, piece)) &&
+        tilesIn(layout, piece.uid, 'sunny') > 0
+      )
+        from.push({ kind: 'sunny' });
       for (const g of grants) {
         if (g.tag !== tag) continue;
         const host = 'host' in g ? layout.byUid.get(g.host) : undefined;
@@ -2523,11 +2533,16 @@ export function createRules(content: Content): Rules {
       if (!piece) return null;
       const regions = (Object.keys(REGION_BIT) as Region[]).filter((r) => pieceIn(layout, uid, r));
       const tags = [...(layout.tags.get(uid) ?? [])];
+      const { width } = state.house.lot;
+      const sunlit = (layout.cells.get(uid) ?? [])
+        .filter((c) => layout.regionBits[cellIndex(width, c.x, c.y)]! & REGION_BIT.sunny)
+        .sort((a, b) => a.y - b.y || a.x - b.x);
       return {
         tags,
         tagSources: tagSourcesOf(state, layout, piece, tags),
         side: layout.exterior.has(uid) ? 'exterior' : layout.interior.has(uid) ? 'interior' : null,
         regions,
+        sunlit,
         view: layout.hasView.has(uid),
         linked: [...(layout.links.get(uid) ?? [])].sort((a, b) => a - b),
         fencedYardTiles: fencedYardsBordered(layout, uid).reduce(

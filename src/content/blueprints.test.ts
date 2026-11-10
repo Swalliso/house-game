@@ -227,8 +227,8 @@ describe('Curb Appeal', () => {
 describe('Quiet Hours', () => {
   it('Quiet pieces earn +50%', () => {
     expectText('quietHours', ['Quiet pieces earn +50%']);
-    // Bedroom 3 + 1 for the Library: 6. Library 2: 3. A Kitchen (Social) and a Closet (no tags)
-    // aren't boosted.
+    // Bedroom 3 + 1 for the Library: 6. Library 2: 3. A Kitchen (Social; +2 in the sun, D-120)
+    // and a Closet (no tags) aren't boosted.
     expect(
       withAndWithout('quietHours', open, [
         ['bedroom', 0, 0],
@@ -237,8 +237,8 @@ describe('Quiet Hours', () => {
         ['closet', 9, 0],
       ]),
     ).toEqual([
-      [4, 2, 0, 1],
-      [6, 3, 0, 1],
+      [4, 2, 2, 1],
+      [6, 3, 2, 1],
     ]);
   });
 });
@@ -247,7 +247,7 @@ describe('Green Thumb', () => {
   it('Green pieces earn +50%', () => {
     expectText('greenThumb', ['Green pieces earn +50%']);
     // The house is a Closet at the top right, so its front row is row 1 and the Flower Bed is in
-    // the front yard. Lawn 1 → 1.5 → 2; Flower Bed 3 → 4.5 → 5; sunny Herb Garden 2 → 3. The
+    // the front yard. Lawn 1 → 1.5 → 2; Flower Bed 3 → 4.5 → 5; Herb Garden in the sun 2 → 3. The
     // Patio (1 for the Herb Garden's view), the Hot Tub by it (3), and the Closet (1) aren't
     // Green. The Patio and the Hot Tub touch the Closet, a room, so they earn at all.
     expect(
@@ -269,8 +269,9 @@ describe('Green Thumb', () => {
 describe('Party House', () => {
   it('Social pieces earn +50%', () => {
     expectText('partyHouse', ['Social pieces earn +50%']);
-    // Kitchen: +2 at the Dining Room's +50% and the blueprint's: 4. The Patio below it: +2 for
-    // the Kitchen, 2 → 3. The Hot Tub beside the Patio and below the Dining Room: 3 → 4.5 → 5.
+    // The Kitchen and the Dining Room face the sun, +2 each (D-120). Kitchen: +4 at the Dining
+    // Room's +50% (6), and the blueprint's: 8. Dining Room: 2 → 3. The Patio below the Kitchen:
+    // +2 for it, 2 → 3. The Hot Tub beside the Patio and below the Dining Room: 3 → 4.5 → 5.
     // The Bedroom isn't Social.
     expect(
       withAndWithout('partyHouse', open, [
@@ -281,8 +282,8 @@ describe('Party House', () => {
         ['bedroom', 6, 0],
       ]),
     ).toEqual([
-      [3, 0, 2, 3, 3],
-      [4, 0, 3, 5, 3],
+      [6, 2, 2, 3, 3],
+      [8, 3, 3, 5, 3],
     ]);
   });
 });
@@ -310,8 +311,9 @@ describe('Open Concept', () => {
     expectText('openConcept', [
       'Touching Kitchens, Dining Rooms, and Living Rooms are linked: each counts as touching the whole group',
     ]);
-    // Kitchen | Living Room | Dining Room. Linked, the Kitchen gets its +2 for the Dining Room
-    // across the Living Room, at the Dining Room's +50%: 3. A Kitchen off on its own isn't.
+    // Kitchen | Living Room | Dining Room, each +2 in the sun (D-120). Linked, the Kitchen gets
+    // its +2 for the Dining Room across the Living Room, at the Dining Room's +50%: 6. A Kitchen
+    // off on its own isn't.
     const placements: Placement[] = [
       ['kitchen', 0, 0],
       ['livingRoom', 2, 0],
@@ -319,8 +321,8 @@ describe('Open Concept', () => {
       ['kitchen', 0, 6],
     ];
     expect(withAndWithout('openConcept', open, placements)).toEqual([
-      [0, 0, 0, 0],
-      [3, 0, 0, 0],
+      [2, 3, 2, 2],
+      [6, 3, 2, 2],
     ]);
     const layout = layoutWith(build(open, placements), ['openConcept']);
     expect([...layout.links.get(1)!].sort()).toEqual([2, 3]);
@@ -332,8 +334,8 @@ describe('Open Concept', () => {
       ['diningRoom', 4, 0],
     ];
     expect(withAndWithout('openConcept', open, broken)).toEqual([
-      [0, 3, 0],
-      [0, 3, 0],
+      [2, 3, 2],
+      [2, 3, 2],
     ]);
     expect(layoutWith(build(open, broken), ['openConcept']).links.get(1)).toBeUndefined();
   });
@@ -467,10 +469,12 @@ describe('Show Home', () => {
 });
 
 describe('Solar Panels', () => {
-  const house = build(open, [
-    ['bedroom', 0, 0], // on the sunny side, so Sunny
-    ['sunroom', 0, 6], // Sunny by its own tag, though in the shade
-    ['bedroom', 4, 6], // in the shade: not Sunny
+  // Two Trees at (4..5, 5) shade the second Bedroom (D-120).
+  const shaded = emptyRows(10, 10).map((row, y) => (y === 5 ? '....TT....' : row));
+  const house = build(shaded, [
+    ['bedroom', 0, 0], // a wall to the sun, so Sunny
+    ['sunroom', 0, 6], // a wall to the sun too
+    ['bedroom', 4, 6], // in the Trees' shade: not Sunny
   ]);
   const sunroomBudget = (bought: number, weeks: readonly number[]) =>
     weeks.map((w) => tallyOf(house, [['solarPanels', bought]], w).pieces[1]!.budget);
@@ -499,13 +503,14 @@ describe('Solar Panels', () => {
 describe('Crown Jewel', () => {
   it('the week’s single top earner earns +100%; ties go to the earliest placed', () => {
     expectText('crownJewel', ['Each week, your top earner earns +100%']);
-    // Two Bedrooms tie at 4; the first doubles. The Kitchen (3) and the Closet (1) don't.
+    // Two Bedrooms tie at 4; the first doubles. The Kitchen (3) and the Closet (1) don't. The
+    // Kitchen and the Dining Room are in the Bedrooms' shade, so neither earns the sun's +2.
     const house = build(open, [
       ['bedroom', 0, 0],
       ['bedroom', 2, 0],
       ['closet', 6, 0],
-      ['kitchen', 0, 4],
-      ['diningRoom', 2, 4],
+      ['kitchen', 0, 2],
+      ['diningRoom', 2, 2],
     ]);
     expect(tallyOf(house, []).pieces.map((p) => p.earned)).toEqual([4, 4, 1, 3, 0]);
     const t = tallyOf(house, ['crownJewel']);

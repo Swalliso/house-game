@@ -9,7 +9,14 @@ import { terrainAt, type Cell, type Lot } from '../../../rules/index.ts';
 import { CELL } from '../../sprites.ts';
 import { blobMask, blobTile, bySubtile, SUB, SUBTILE, withEdge } from '../autotile.ts';
 import { drawSprite, drawSubtile } from './atlas.ts';
-import type { SetTile } from './sunny.ts';
+
+/** One tile of an autotile set on one subtile. */
+export interface SetTile {
+  readonly sx: number;
+  readonly sy: number;
+  readonly col: number;
+  readonly row: number;
+}
 
 export interface WoodsFloor {
   /** The Tree cells, each floored with grass-woods. */
