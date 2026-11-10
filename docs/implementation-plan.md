@@ -412,7 +412,7 @@ type Action =
 
 `GameEvent` covers:
 
-- `handDrawn` (the final hand; with `row` for a one-row reroll, and `free` and `swapped` when swaps replaced cards with no play, D-121)
+- `handDrawn` (the final hand; `reroll` when a reroll drew it, both rows (D-132); `free` and `swapped` when swaps replaced cards with no play, D-121)
 - `placed`, `installed`, `demolished`, `transformed`, `moved`
 - `toolUsed`, `findClaimed` (a find's reward, for its own little moment)
 - `tally` (week, per-piece lines, set lines, points, mult, each ×Mult source, total, budget, `fastForward`)
@@ -468,7 +468,7 @@ The UI keeps an event queue and plays it through an animation director (place �
 
 1. Transforms resolve (a Sapling old enough becomes a Tree), so the board the player sees is the board that scores.
 2. The hand is drawn in two rows (D-121): `roomsRow` distinct Rooms cards (2) and `layoutRow` distinct Layout cards (2), each from its own pool: pieces, plus fixtures from phase 2. A type at its limit in the checklist draws at half weight (D-104).
-3. Each card with no play (no legal spot, no legal host, and no Renovation) is swapped for another card from its row, up to `swapTries` (3) tries: the first with a play, else the last tried. A reroll redraws one row (or both) and swaps the same way; the reserve doesn't count.
+3. Each card with no play (no legal spot, no legal host, and no Renovation) is swapped for another card from its row, up to `swapTries` (3) tries: the first with a play, else the last tried. A reroll redraws both rows (D-132) and swaps the same way; the reserve doesn't count.
 
 **Fast-forward (D-040):**
 
@@ -1697,7 +1697,7 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
   - offered in every phase, including the last, where it ends the run with the bonus
   - auto-complete off by default
 - **Overtime:** 2 per run, spent automatically one week at a time (§4), shown as a clock counter.
-- **Rerolls:** 1 per phase (General Contractor: 2), not carried over (bought rerolls are, in `bonusRerolls`); a free action that redraws one row of the hand, the player's pick (D-121).
+- **Rerolls:** 1 per phase (General Contractor: 2), not carried over (bought rerolls are, in `bonusRerolls`); a free action that redraws both rows of the hand (D-132; D-121 had the player pick one).
 - **Swaps** (D-121, replacing the free redraw): a card with no play is swapped for another from its row, up to 3 tries.
 - **Demolition:**
   - 2 per run; a free action

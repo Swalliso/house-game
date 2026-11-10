@@ -11,7 +11,6 @@ import type {
   Card,
   Cell,
   Content,
-  DrawRow,
   GameEvent,
   PieceId,
   PlaceAction,
@@ -20,7 +19,7 @@ import type {
   SwappedCard,
 } from './index.ts';
 import { createRules, IllegalAction, type Rules } from './run.ts';
-import { DRAW_ROWS, drawHand, rowOf, swapCandidates } from './draw.ts';
+import { DRAW_ROWS, rowOf, swapCandidates } from './draw.ts';
 import { lotFromRows } from './lot.ts';
 import { roundHalfUp } from './scoring.ts';
 import {
@@ -634,9 +633,8 @@ describe('rerolls', () => {
     expect(s).toMatchObject({ rerollsLeft: 2, draws: 1 });
     expect(beforeSwaps(s.hand, s.swapped)).toEqual(drawRows(C, seed, 0, '1', 0));
     expect(rules.canReroll(s)).toEqual({ ok: true });
-    // A reroll names its row (D-121).
-    expect(rules.legalActions(s)).toContainEqual({ t: 'reroll', row: 'rooms' });
-    expect(rules.legalActions(s)).toContainEqual({ t: 'reroll', row: 'layout' });
+    // One reroll, for both rows (D-132).
+    expect(rules.legalActions(s).filter((a) => a.t === 'reroll')).toEqual([REROLL]);
 
     const one = rules.apply(s, REROLL);
     expect(types(one.events)).toEqual(['handDrawn']);
@@ -696,10 +694,10 @@ describe('swaps (D-121)', () => {
   };
 
   /** Week 2's hand after swaps, worked out from the streams as D-121 says. */
-  function afterSwaps(seed: string, n: number, hand: readonly Card[], only?: DrawRow) {
+  function afterSwaps(seed: string, n: number, hand: readonly Card[]) {
     const out = [...hand];
     const swapped: SwappedCard[] = [];
-    for (const row of only ? [only] : DRAW_ROWS) {
+    for (const row of DRAW_ROWS) {
       const at = out.flatMap((c, i) => (rowOf(C, c) === row ? [i] : []));
       at.forEach((i, k) => {
         if (hasPlay(seed, out[i]!)) return;
@@ -766,18 +764,19 @@ describe('swaps (D-121)', () => {
     expect(week3.state.swapped.map((w) => w.i)).toEqual([0, 1, 2, 3]);
   });
 
-  it('a reroll redraws one row on its own stream, then swaps in that row only', () => {
-    const seed = findSeed((sd) => {
-      const rooms = drawRows(C, sd, 0, '2', 1).filter((c) => rowOf(C, c) === 'rooms');
-      return rooms.some((c) => !hasPlay(sd, c));
-    });
+  it('a reroll redraws both rows on their own streams (D-132), then swaps in each', () => {
+    // A seed whose rerolled hand has a card with no play in each row, so both rows swap.
+    const seed = findSeed((sd) =>
+      DRAW_ROWS.every((row) =>
+        drawRows(C, sd, 0, '2', 1)
+          .filter((c) => rowOf(C, c) === row)
+          .some((c) => !hasPlay(sd, c)),
+      ),
+    );
     const s = rules.apply(onIslands(seed), PASS).state;
-    const layout = s.hand.filter((c) => rowOf(C, c) === 'layout');
-    const { state, events } = rules.apply(s, { t: 'reroll', row: 'rooms' });
-    const rooms = drawHand(C, seed, 0, '2', 1, 2, { row: 'rooms' });
-    const rerolled = [...rooms, ...layout];
-    const { hand, swapped } = afterSwaps(seed, 1, rerolled, 'rooms');
-    expect(swapped.length).toBeGreaterThan(0);
+    const { state, events } = rules.apply(s, REROLL);
+    const { hand, swapped } = afterSwaps(seed, 1, drawRows(C, seed, 0, '2', 1));
+    expect(new Set(swapped.map((w) => rowOf(C, w.was)))).toEqual(new Set(DRAW_ROWS));
     expect(events).toEqual([
       {
         t: 'handDrawn',
@@ -787,20 +786,15 @@ describe('swaps (D-121)', () => {
         hand,
         free: true,
         reroll: true,
-        row: 'rooms',
         swapped,
       },
     ]);
-    // The Layout row is untouched, and its own swap notes moved with it.
-    expect(state.hand.slice(2)).toEqual(layout);
-    const keptNotes = s.swapped
-      .filter((w) => rowOf(C, s.hand[w.i]!) === 'layout')
-      .map((w) => ({ i: state.hand.indexOf(s.hand[w.i]!), was: w.was }));
-    expect(state.swapped).toEqual([...keptNotes, ...swapped]);
+    // The week's earlier swap notes go with the old hand.
+    expect(state.swapped).toEqual(swapped);
     expect(state).toMatchObject({ draws: 2, rerollsLeft: 1 });
   });
 
-  it('a reroll without a row redraws both, on the draw key n', () => {
+  it('a reroll redraws both rows on the draw key n, and costs one reroll', () => {
     const s = rules.apply(onEmptyLot(), PASS).state;
     const { state } = rules.apply(s, REROLL);
     expect(state.hand).toEqual(drawRows(C, 'empty', 0, '2', 1));

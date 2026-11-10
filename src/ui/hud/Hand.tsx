@@ -5,9 +5,9 @@
 // its shape as it's turned (R, or the Rotate button), and a card picked below the fold scrolls
 // into view.
 //
-// D-121: the hand is two rows, Rooms then Layout, each under its label with its own Reroll
-// button (one count for both). A card the draw swapped in, because the one it replaced had no
-// play, says so on a chip. Demolish sits on the plank. The cards are compact, so four or five
+// D-121: the hand is two rows, Rooms then Layout, each under its label. A card the draw
+// swapped in, because the one it replaced had no play, says so on a chip. Reroll and Demolish
+// sit on the plank; one reroll redraws both rows (D-132). The cards are compact, so four or five
 // fit beside Your goods: the name, the line that says what it pays (handCardLines), and the
 // chips beside a thumbnail of the piece (a fixture: where it goes, and what it does). Inspect
 // shows the whole text on hover.
@@ -212,26 +212,25 @@ function FixtureCardView({
 }
 
 /**
- * A row's reroll (D-121): new cards for that row only. A free action, so the week goes on.
- * Both rows draw on the milestone's one count, so each button shows all of it.
+ * The reroll: new cards for both rows (D-132). A free action, so the week goes on. It sits on
+ * the hand's plank, before Demolish.
  */
-function RerollButton({ row }: { row: DrawRow }) {
+function RerollButton() {
   const s = run.value;
   const can = rules.canReroll(s);
   const rerolls = s.rerollsLeft + s.bonusRerolls;
-  const label = ROW_LABEL[row];
   return (
     <Button
       size="sm"
       icon="reroll"
       class="free-action reroll"
       onMouseDown={noFocus}
-      onClick={() => void reroll(row)}
+      onClick={() => void reroll()}
       disabled={!can.ok}
-      aria-label={`Reroll the ${label} cards: ${rerolls} left`}
+      aria-label={`Reroll: new cards for both rows, ${rerolls} left`}
       title={
         can.ok
-          ? `New ${label} cards; the other row stays. It doesn’t end the week. Both rows share ${s.rerollsLeft} left this milestone${s.bonusRerolls > 0 ? `, and ${s.bonusRerolls} kept` : ''}.`
+          ? `New cards for both rows. It doesn’t end the week. ${s.rerollsLeft} left this milestone${s.bonusRerolls > 0 ? `, and ${s.bonusRerolls} kept` : ''}.`
           : (can.reason ?? 'You can’t reroll now.')
       }
     >
@@ -285,7 +284,7 @@ function DemolishButton() {
   );
 }
 
-/** One row of the hand (D-121): its label and reroll, then its cards, numbered across rows. */
+/** One row of the hand (D-121): its label, then its cards, numbered across rows. */
 function HandRow({ row }: { row: DrawRow }) {
   const s = run.value;
   const cards = s.hand.flatMap((card, i) => (rowOf(CONTENT, card) === row ? [{ card, i }] : []));
@@ -293,7 +292,6 @@ function HandRow({ row }: { row: DrawRow }) {
     <section class={`hand-row hand-row-${row}`} aria-label={`${ROW_LABEL[row]} cards`}>
       <div class="hand-row-head">
         <h3 class="hand-row-label">{ROW_LABEL[row]}</h3>
-        <RerollButton row={row} />
       </div>
       {cards.map(({ card, i }) => (
         <CardView key={`${s.week}-${s.draws}-${i}`} card={card} i={i} />
@@ -402,10 +400,24 @@ export function Hand() {
   // A pack (D-106) being clicked out: Cancel takes all its tiles off.
   const packing = pending?.t === 'place' && !!pending.shape;
   return (
-    <Panel class="hand" title="Pick a card" label="This week's cards" head={<DemolishButton />}>
-      {/* The free actions sit above their cards, so they're in view whatever the hand's
-          height: Demolish on the plank (demolishing, the hint sits right under it), each row's
-          Reroll on its label. */}
+    <Panel
+      class="hand"
+      title={
+        <>
+          <span class="hand-title-long">Pick a card</span>
+          <span class="hand-title-short">Cards</span>
+        </>
+      }
+      label="This week's cards"
+      head={
+        <>
+          <RerollButton />
+          <DemolishButton />
+        </>
+      }
+    >
+      {/* The free actions sit on the plank, above the cards, so they're in view whatever the
+          hand's height; demolishing, the hint sits right under them. */}
       {demolishing && (
         <p class="demolish-hint" role="status">
           <Icon name="hammer" />

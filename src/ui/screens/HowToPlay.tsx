@@ -352,8 +352,7 @@ function HowToPlayText() {
             Reroll
           </dt>
           <dd>
-            New cards for one row, Rooms or Layout: {rerolls} per milestone
-            {crew ? ` with the ${crew}` : ''}, shared by both rows.
+            New cards for both rows: {rerolls} per milestone{crew ? ` with the ${crew}` : ''}.
           </dd>
           <dt>
             <Icon name="hammer" />

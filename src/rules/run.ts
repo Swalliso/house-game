@@ -22,7 +22,8 @@
 // arrivals move in at their phase's first week (M4b, D-103: their cards go into the reserve's
 // extra slots), and the hand is drawn in two rows, Rooms then Layout (D-121). A card with no
 // play at all (no spot, no host, no Renovation) is swapped for another from its row, trying up
-// to `swapTries` cards; that replaced D-070's free redraw. A reroll redraws one row, then swaps.
+// to `swapTries` cards; that replaced D-070's free redraw. A reroll redraws both rows, then
+// swaps (D-132; D-121 had a reroll per row).
 //
 // Change orders (M4b): when a milestone resolves, the phase effects that ran through it end
 // and its accepted requests and restrictions resolve (a request met and a restriction kept
@@ -747,15 +748,11 @@ export function createRules(content: Content): Rules {
    * draw's `n` keys the swaps' streams, one per card. The draw's one `handDrawn` event carries
    * the hand after its swaps, and what each swapped card replaced.
    */
-  function swapDead(
-    state: RunState,
-    n: number,
-    row: DrawRow | undefined,
-  ): { state: RunState; swapped: SwappedCard[] } {
+  function swapDead(state: RunState, n: number): { state: RunState; swapped: SwappedCard[] } {
     const slot = slotKey(state.slot, state.overtimeWeek);
     let s = state;
     const swapped: SwappedCard[] = [];
-    for (const r of row ? [row] : DRAW_ROWS) {
+    for (const r of DRAW_ROWS) {
       const at = s.hand.flatMap((c, i) => (rowOf(content, c) === r ? [i] : []));
       at.forEach((i, k) => {
         if (cardHasPlay(s, i)) return;
@@ -1154,7 +1151,7 @@ export function createRules(content: Content): Rules {
     let s = arrive(resolveTransforms(state, events), events);
     s = { ...s, draws: 1, hand: drawFor(s, 0), swapped: [], freePlay: 'none' };
     // Start of week, step 4 (D-121): a card with no play is swapped for one from its row.
-    const after = swapDead(s, 0, undefined);
+    const after = swapDead(s, 0);
     events.push({
       t: 'handDrawn',
       phase: s.phase,
@@ -1618,7 +1615,6 @@ export function createRules(content: Content): Rules {
       const after = swapDead(
         { ...s, hand: drawFor(s, s.draws), draws: s.draws + 1, swapped: [] },
         s.draws,
-        undefined,
       );
       events.push({
         t: 'handDrawn',
@@ -1880,38 +1876,20 @@ export function createRules(content: Content): Rules {
       case 'reroll': {
         const can = canReroll(state);
         if (!can.ok) throw new IllegalAction(can.reason!);
-        // One row (D-121), or both: the other row's cards stay where they are.
-        const row = action.row;
+        // Both rows (D-132), then their swaps, as at the start of a week.
         const n = state.draws;
-        const hand = row
-          ? DRAW_ROWS.flatMap((r) =>
-              r === row
-                ? drawRowFor(state, n, r)
-                : state.hand.filter((c) => rowOf(content, c) === r),
-            )
-          : drawFor(state, n);
         // The phase's own rerolls go first; bought ones never expire.
         const fromPhase = state.rerollsLeft > 0;
-        // A swap note stays on a card in the row the reroll kept, at its place in the new hand.
-        const kept = row
-          ? state.swapped.flatMap((w) => {
-              const card = state.hand[w.i];
-              if (!card || rowOf(content, card) === row) return [];
-              const i = hand.indexOf(card);
-              return i >= 0 ? [{ i, was: w.was }] : [];
-            })
-          : [];
         const after = swapDead(
           {
             ...state,
-            hand,
-            swapped: kept,
+            hand: drawFor(state, n),
+            swapped: [],
             draws: n + 1,
             rerollsLeft: fromPhase ? state.rerollsLeft - 1 : state.rerollsLeft,
             bonusRerolls: fromPhase ? state.bonusRerolls : state.bonusRerolls - 1,
           },
           n,
-          row,
         );
         events.push({
           t: 'handDrawn',
@@ -1920,7 +1898,6 @@ export function createRules(content: Content): Rules {
           overtimeWeek: state.overtimeWeek,
           hand: after.state.hand,
           reroll: true,
-          ...(row ? { row } : {}),
           ...swapNote(after.swapped),
         });
         return done(after.state);
@@ -2233,7 +2210,7 @@ export function createRules(content: Content): Rules {
     });
     state.blueprints.forEach((_, i) => out.push({ t: 'sell', from: 'blueprints', i }));
     state.supplies.forEach((_, i) => out.push({ t: 'sell', from: 'supplies', i }));
-    if (canReroll(state).ok) for (const row of DRAW_ROWS) out.push({ t: 'reroll', row });
+    if (canReroll(state).ok) out.push({ t: 'reroll' });
     if (canCompleteEarly(state).ok) out.push({ t: 'completeEarly' });
     if (state.demolitionsLeft > 0) {
       const layout = layoutFor(state);
