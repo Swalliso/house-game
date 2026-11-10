@@ -25,7 +25,10 @@ export const BALANCE: Balance = {
     woodsClusters: [3, 4],
     woodsClusterSize: [15, 30],
     loneTrees: [6, 10],
-    creekPct: 70,
+    // D-119: about one lot in four, a Creekside lot. A creek lot keeps its pond half the time; a
+    // lot without a creek always has one.
+    creekPct: 25,
+    pondPctCreek: 50,
     // Keeps the creek in the back part of the lot, so the street side has room for the house.
     creekStreetGap: 6,
     pondSize: [2, 3],

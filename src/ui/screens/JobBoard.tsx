@@ -1,6 +1,7 @@
 // The job board (implementation-plan.md §7 M4a and M4b; D-032, D-045): Start opens three
 // contracts, each a client and a lot. A card shows who the client is, what they wish for, who
-// moves in and when, their tastes, and a map of the lot. Taking one opens the crew pick; hiring
+// moves in and when, their tastes, and a map of the lot with its traits (D-119: Creekside pays,
+// so the lot can be a reason to take the job). Taking one opens the crew pick; hiring
 // a crew starts the run. On a first visit, contract 0 is the Hendersons and the General
 // Contractor is marked too, both "Recommended for your first job". The contracts come from the
 // rules' jobBoard(), so the UI only renders them.
@@ -16,6 +17,8 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/ho
 import {
   CONTENT,
   jobBoard,
+  lotTraits,
+  lotTraitText,
   modifierText,
   rules,
   specText,
@@ -35,7 +38,7 @@ import { arrivalsOf, arrivalWeek, midName } from '../hud/household.ts';
 import { PieceArt } from '../hud/PieceArt.tsx';
 import { Tip } from '../hud/Tip.tsx';
 import { Button, Card, Chip, Icon, Keycap, Panel, type IconName } from '../kit/kit.tsx';
-import { CREW_ICONS } from '../sprites.ts';
+import { CREW_ICONS, LOT_TRAIT_ICONS } from '../sprites.ts';
 import { appScreen, firstVisit, jobBoardSeed, takeContract } from '../store.ts';
 import { LOT_COLORS, lotMapKind, lotMapSize, lotSummary } from './lot-map.ts';
 import { TitleBackdrop } from './Title.tsx';
@@ -305,6 +308,7 @@ function ContractCard(props: { contract: Contract; index: number; onTake: () => 
               )}
             </div>
           </div>
+          <LotTraits lot={lot} client={client} />
           {/* The map in words; its title and label say it too, so a short window drops it. */}
           <p class="contract-lot-note">{lotSummary(lot)}</p>
           <section class="contract-section">
@@ -363,6 +367,35 @@ function MovingIn({ arrivals }: { arrivals: readonly ArrivalDef[] }) {
       ))}
       .
     </p>
+  );
+}
+
+/**
+ * The lot's traits (D-119), a chip each under the map, their tips what they pay and what the lot
+ * is like. A trait that suits the client (Wooded, for the Count) wears the up icon, as a taste
+ * they like does. A short window keeps them: Creekside's +50% is worth seeing.
+ */
+function LotTraits({ lot, client }: { lot: Lot; client: ClientDef }) {
+  const traits = lotTraits(CONTENT, lot);
+  if (traits.length === 0) return null;
+  const who = fromName(client.name);
+  return (
+    <ul class="contract-traits" aria-label="The lot">
+      {traits.map((t) => {
+        const suits = t.suits?.includes(client.id) ?? false;
+        const text = lotTraitText(CONTENT, t) + (suits ? ` A good lot for ${who}.` : '');
+        return (
+          <li key={t.id}>
+            <Tip title={t.name} text={text}>
+              <Chip tone="wood" icon={LOT_TRAIT_ICONS[t.id]}>
+                {t.name}
+                {suits && <Icon name="up" label={`Suits ${who}`} />}
+              </Chip>
+            </Tip>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 

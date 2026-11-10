@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import type { Lot, TerrainId } from './index.ts';
-import { generateLot, isSunny, lotFromRows, lotProblems, lotToRows, terrainAt } from './lot.ts';
+import {
+  generateLot,
+  isSunny,
+  lotFromRows,
+  lotProblems,
+  lotToRows,
+  lotTraits,
+  terrainAt,
+} from './lot.ts';
 import { TEST_LOT_BALANCE as B } from './testing.ts';
 import { CONTENT } from '../content/index.ts';
 
@@ -166,5 +174,72 @@ describe('lot generation', () => {
   it('round-trips through ASCII rows', () => {
     const rows = ['.TPC', 'B...'];
     expect(lotToRows(lotFromRows(rows))).toEqual(rows);
+  });
+});
+
+describe('creek lots and the pond (D-119)', () => {
+  const real = CONTENT.balance.lot;
+  /** The lot without its finds, which go down last on whatever ground is free. */
+  const bare = (lot: Lot) =>
+    lot.terrain.map((t) => (t === 'oldShed' || t === 'timeCapsule' ? null : t));
+
+  it('puts a creek on about a quarter of lots, and water on every lot', () => {
+    let creeks = 0;
+    let creekPonds = 0;
+    for (let i = 0; i < 1000; i++) {
+      const lot = generateLot(`seed-${i}`, real);
+      const creek = count(lot, 'creek') > 0;
+      const pond = count(lot, 'pond') > 0;
+      if (creek) creeks++;
+      if (creek && pond) creekPonds++;
+      // A lot without a creek always has its pond.
+      if (!creek) expect(pond, `seed-${i}`).toBe(true);
+    }
+    // creekPct 25: a little under, since a lot that fails its checks is made again, and the
+    // last resort is creekless. About half the creek lots keep their pond.
+    expect(creeks).toBeGreaterThan(180);
+    expect(creeks).toBeLessThan(300);
+    expect(creekPonds / creeks).toBeGreaterThan(0.35);
+    expect(creekPonds / creeks).toBeLessThan(0.65);
+  });
+
+  it('leaves a creek lot as it was drawn, but for its pond, so fewer creeks only redraw the rest', () => {
+    // The same seeds before D-119: creekPct 70, and every pond kept.
+    const before = { ...real, creekPct: 70, pondPctCreek: 100 };
+    let same = 0;
+    for (let i = 0; i < 300; i++) {
+      const now = generateLot(`seed-${i}`, real);
+      const old = generateLot(`seed-${i}`, before);
+      if (count(now, 'creek') === 0 || now.attempt !== old.attempt) continue;
+      // The pond's tiles are open ground now or still pond; every other tile is as it was.
+      const a = bare(now);
+      const b = bare(old);
+      a.forEach((t, k) => {
+        if (b[k] === 'pond') expect(t === 'pond' || t === null).toBe(true);
+        else expect(t, `seed-${i} tile ${k}`).toBe(b[k]);
+      });
+      same++;
+    }
+    expect(same).toBeGreaterThan(50);
+  });
+});
+
+describe('lot traits (D-119)', () => {
+  it('are the traits whose terrain the lot holds enough of, in content order', () => {
+    const ids = (rows: readonly string[]) => lotTraits(CONTENT, lotFromRows(rows)).map((t) => t.id);
+    expect(ids(['....', '....'])).toEqual([]);
+    expect(ids(['..C.', '..C.'])).toEqual(['creekside']);
+    // Wooded: 100 or more Tree tiles.
+    const woods = (n: number) => {
+      const row = 'T'.repeat(n).padEnd(120, '.');
+      return [row, '.'.repeat(120)];
+    };
+    expect(ids(woods(99))).toEqual([]);
+    expect(ids(woods(100))).toEqual(['wooded']);
+    expect(ids(['C' + woods(100)[0]!.slice(1), woods(100)[1]!])).toEqual(['creekside']);
+    expect(ids(['C' + 'T'.repeat(100) + '.'.repeat(19), '.'.repeat(120)])).toEqual([
+      'creekside',
+      'wooded',
+    ]);
   });
 });

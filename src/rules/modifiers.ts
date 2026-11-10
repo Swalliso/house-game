@@ -1,7 +1,8 @@
 // Rule benders (implementation-plan.md §5). A run's modifiers come from its crew, its client's
-// tastes and pool (M4a), its blueprints, its company upgrades, this week's tools, and (M4b) a
-// change order's phase effect while its phase runs; fixtures carry their own, on their host,
-// and are gathered from the house when it's tallied (scoring.ts).
+// tastes and pool (M4a), its lot's traits (D-119: Creekside), its blueprints, its company
+// upgrades, this week's tools, and (M4b) a change order's phase effect while its phase runs;
+// fixtures carry their own, on their host, and are gathered from the house when it's tallied
+// (scoring.ts).
 //
 // `rule` modifiers change run-level numbers: (base + Σ add) × (100 + Σ pct) / 100, rounded half
 // up, never below 0. The layout kinds (grantTag, removeTag, grantView, countsAs, link) change
@@ -10,6 +11,7 @@
 import type {
   ChangeOrderId,
   Content,
+  Lot,
   ModSource,
   Modifier,
   RuleKey,
@@ -18,6 +20,7 @@ import type {
   TimedEffect,
   ToolId,
 } from './index.ts';
+import { lotTraits } from './lot.ts';
 import { roundHalfUp } from './scoring.ts';
 
 /**
@@ -40,14 +43,17 @@ export interface ActiveMod {
   host?: number;
 }
 
-/** Just what the run's modifiers depend on, so tests and the sim can build one cheaply. */
+/**
+ * Just what the run's modifiers depend on, so tests and the sim can build one cheaply. Without
+ * a house there's no lot, so no lot traits (a new run's setup rules don't read them).
+ */
 export type ModState = Pick<RunState, 'setup' | 'blueprints'> &
-  Partial<Pick<RunState, 'upgrades' | 'timedEffects'>>;
+  Partial<Pick<RunState, 'upgrades' | 'timedEffects'>> & { house?: { lot: Lot } };
 
 /**
- * Every run-level modifier: the crew's, the client's tastes and pool (M4a), each blueprint's in
- * the order bought, each company upgrade's, then the timed effects': this week's tools', and a
- * running phase effect's (M4b).
+ * Every run-level modifier: the crew's, the client's tastes and pool (M4a), the lot's traits'
+ * (D-119), each blueprint's in the order bought, each company upgrade's, then the timed effects':
+ * this week's tools', and a running phase effect's (M4b).
  */
 export function runModifiers(content: Content, state: ModState): ActiveMod[] {
   const crew = content.crews[state.setup.crewId];
@@ -61,6 +67,13 @@ export function runModifiers(content: Content, state: ModState): ActiveMod[] {
   if (!client) throw new Error(`Unknown client "${state.setup.clientId}"`);
   for (const mod of [...client.tastes, ...client.pool]) {
     out.push({ mod, source: { kind: 'client', id: client.id }, since: 0 });
+  }
+  if (state.house) {
+    for (const trait of lotTraits(content, state.house.lot)) {
+      for (const mod of trait.modifiers) {
+        out.push({ mod, source: { kind: 'lot', id: trait.id }, since: 0 });
+      }
+    }
   }
   for (const owned of state.blueprints) {
     const def = content.blueprints[owned.id];
@@ -131,5 +144,7 @@ export function sourceName(content: Content, source: ModSource): string {
       return content.tools[source.id].name;
     case 'changeOrder':
       return content.changeOrders[source.id].name;
+    case 'lot':
+      return content.lotTraits[source.id].name;
   }
 }

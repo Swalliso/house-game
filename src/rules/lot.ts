@@ -1,8 +1,9 @@
 // Lot generation from a seed (Appendix A · M1, D-048, D-049): the street on the bottom edge,
-// woods and lone Trees, a creek on most lots, a pond, boulders, and the sunny side. A lot that
-// fails the regeneration checks is made again from the next `lot/<attempt>` stream.
+// woods and lone Trees, a creek on about a quarter of lots (D-119), a pond, boulders, and the
+// sunny side. A lot that fails the regeneration checks is made again from the next
+// `lot/<attempt>` stream. Its traits (D-119), read from its terrain, are chips on the contract.
 
-import type { Cell, Lot, LotBalance, TerrainId } from './index.ts';
+import type { Cell, Content, Lot, LotBalance, LotTraitDef, TerrainId } from './index.ts';
 import { cellIndex, inBounds, ORTHOGONAL } from './grid.ts';
 import { stream, type Rng } from './rng.ts';
 
@@ -27,6 +28,18 @@ export function isSunny(lot: Lot, x: number, y: number): boolean {
     case 'right':
       return x >= lot.width - lot.sunnyRows;
   }
+}
+
+/**
+ * The lot's traits (D-119), in content order: each one whose terrain the lot holds at least
+ * `min` tiles of. Building over Trees clears them, so read from a run's lot, Wooded can go.
+ */
+export function lotTraits(content: Content, lot: Lot): LotTraitDef[] {
+  const counts = new Map<TerrainId, number>();
+  for (const t of lot.terrain) if (t) counts.set(t, (counts.get(t) ?? 0) + 1);
+  return Object.values(content.lotTraits).filter(
+    (trait) => (counts.get(trait.when.terrain) ?? 0) >= trait.when.min,
+  );
 }
 
 /**
@@ -142,11 +155,24 @@ export function lotProblems(lot: Lot, b: LotBalance): string[] {
 
 export function generateLot(seed: string, b: LotBalance): Lot {
   for (let attempt = 0; attempt < b.maxAttempts; attempt++) {
-    const lot = tryLot(stream(seed, `lot/${attempt}`), b, attempt, true);
+    const lot = pondRule(tryLot(stream(seed, `lot/${attempt}`), b, attempt, true), seed, b);
     if (lotProblems(lot, b).length === 0) return placeFinds(lot, seed, b);
   }
   // Practically unreachable (the tests check 1,000 seeds), but a creekless lot always passes.
   return placeFinds(tryLot(stream(seed, `lot/${b.maxAttempts}`), b, b.maxAttempts, false), seed, b);
+}
+
+/**
+ * The pond (D-119): a lot without a creek always keeps it, so every lot has water, and a creek
+ * lot keeps it `pondPctCreek` percent of the time, so creek lots look different. The pick comes
+ * from its own `lot/<attempt>/pond` stream, so the rest of the terrain stays as it was drawn: a
+ * pond that goes leaves open ground where it was. The checks come after it, since more ground
+ * behind the creek can leave too little on the street's side.
+ */
+function pondRule(lot: Lot, seed: string, b: LotBalance): Lot {
+  if (!lot.terrain.includes('creek')) return lot;
+  if (stream(seed, `lot/${lot.attempt}/pond`).chance(b.pondPctCreek)) return lot;
+  return { ...lot, terrain: lot.terrain.map((t) => (t === 'pond' ? null : t)) };
 }
 
 /**

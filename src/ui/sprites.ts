@@ -10,7 +10,7 @@
 
 import atlasUrl from '../../assets/atlas.png';
 import atlas from '../../assets/atlas.json';
-import type { CrewId, FixtureId, Supply, ToolId } from '../rules/index.ts';
+import type { CrewId, FixtureId, LotTraitId, Supply, ToolId } from '../rules/index.ts';
 import type { IconName } from './theme/art.ts';
 
 export type SpriteId = keyof typeof atlas.sprites;
@@ -79,6 +79,15 @@ export const CREW_ICONS: Record<CrewId, IconName> = {
   generalContractor: 'weekendCrew',
   landscaper: 'landscaper',
   architect: 'architect',
+};
+
+/**
+ * Each lot trait's icon (D-119), on its chip on the contract's card and beside the crew's on the
+ * checklist: the Wet tag's drop for the creek, the Green tag's leaf for the woods.
+ */
+export const LOT_TRAIT_ICONS: Record<LotTraitId, IconName> = {
+  creekside: 'Wet',
+  wooded: 'Green',
 };
 
 /** A sprite's rect in the atlas (an animation's first frame). */
