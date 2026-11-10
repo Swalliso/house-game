@@ -31,7 +31,7 @@ export const UPGRADES: Readonly<Record<UpgradeId, UpgradeDef>> = {
     name: 'Bigger Truck',
     tier: 'core',
     price: 8,
-    modifiers: [{ kind: 'rule', key: 'handSize', add: 1 }], // 4 cards a week
+    modifiers: [{ kind: 'rule', key: 'roomsRow', add: 1 }], // a third Rooms card a week (D-121)
   },
   foreman: {
     id: 'foreman',

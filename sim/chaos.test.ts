@@ -51,6 +51,7 @@ import {
   stream,
   weekTotal,
 } from '../src/rules/index.ts';
+import { drawnBefore } from '../src/rules/testing.ts';
 import { findMove, makeChaos, offerKind } from './policies/chaos.ts';
 import { SimError, simulateRun } from './simulate.ts';
 
@@ -106,9 +107,14 @@ const tallyEvent = (events: readonly GameEvent[]) =>
 /** What a pass would tally now (on the build screen). */
 const passTally = (s: RunState): Tally | undefined =>
   tallyEvent(rules.apply(s, { t: 'pass' }).events)?.tally;
-/** The first hand drawn in these events that isn't a reroll, the Catalog's, or the free redraw. */
-const firstHand = (events: readonly GameEvent[]) =>
-  events.find((e) => e.t === 'handDrawn' && !e.reroll && !e.special && !e.free);
+/**
+ * The first hand drawn in these events that isn't a reroll or the Catalog's, as it was drawn:
+ * before its swaps (D-121), which depend on the lot.
+ */
+const firstHand = (events: readonly GameEvent[]) => {
+  const e = events.find((e) => e.t === 'handDrawn' && !e.reroll && !e.special);
+  return e ? drawnBefore(e) : undefined;
+};
 
 /** Whether apply() accepts the action: true, false for an IllegalAction, or the other error. */
 function accepts(s: RunState, a: Action): boolean | string {

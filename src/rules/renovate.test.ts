@@ -39,6 +39,8 @@ import { placedCells } from './grid.ts';
 import { createRules, IllegalAction, type Rules } from './run.ts';
 import { base64urlEncode, contentHash, decodeRunCode, encodeRunCode } from './runcode.ts';
 import {
+  drawnBefore,
+  drawRows,
   emptyRows,
   houseFrom,
   setup,
@@ -456,7 +458,7 @@ describe('resolving a Renovation', () => {
     ]);
     expect(state.house.nextUid).toBe(2);
     expect(state).toMatchObject({ week: 2, slot: 2, draws: 1, freePlay: 'none' });
-    expect(state.hand).toHaveLength(3);
+    expect(state.hand).toHaveLength(4); // two rows of 2 (D-121)
     // The level's +4 Comfort counts this week: Points 4 × Mult (1 + 0.25 for One Kitchen) = 5.
     const tally = eventsOf(events, 'tally')[0]!.tally;
     expect(tally.pieces).toMatchObject([{ uid: 1, points: 4, pct: 0, earned: 4 }]);
@@ -796,7 +798,7 @@ describe('Weekend Crew: a Renovation can be its free play (D-083)', () => {
 
 // ---------------------------------------------------------------------------------------
 
-describe('the free redraw (D-070): a card that can only renovate doesn’t fit', () => {
+describe('a card that can only renovate (D-070, D-121): it doesn’t fit, but it has a play', () => {
   // A 2×2 lot the Kitchen fills, so nothing can be placed anywhere.
   const FULL = ['..', '..'];
 
@@ -816,25 +818,26 @@ describe('the free redraw (D-070): a card that can only renovate doesn’t fit',
     expect(R.legalPlays(s)).toEqual([renovate(0, 1), renovate(1, 1), renovate(0, 1, 'reserve')]);
   });
 
-  it('a first hand whose only plays are Renovations gets the free redraw', () => {
-    // A seed whose week-2 hand, drawn with the Kitchen at its limit, has a Kitchen card.
+  it('a card whose only play is a Renovation isn’t swapped; the cards with no play are', () => {
+    // A seed whose week-2 Rooms row, drawn with the Kitchen at its limit, has a Kitchen card.
     const opts = { atLimit: KITCHEN_AT_LIMIT };
-    const seed = Array.from({ length: 200 }, (_, k) => `redraw-${k}`).find((sd) =>
-      drawHand(K, sd, 0, slotKey(2, 0), 0, 3, opts).some(isKitchenCard),
+    const seed = Array.from({ length: 200 }, (_, k) => `swap-${k}`).find((sd) =>
+      drawRows(K, sd, 0, slotKey(2, 0), 0, opts).some(isKitchenCard),
     )!;
     expect(seed).toBeDefined();
     const s = build([['kitchen', 0, 0]], { rows: FULL, seed });
     const { state, events } = R.apply(s, PASS);
     const hands = eventsOf(events, 'handDrawn');
-    expect(hands.map((h) => h.free)).toEqual([false, true]);
-    const first = hands[0]!.hand;
-    expect(first).toEqual(drawHand(K, seed, 0, '2', 0, 3, opts));
-    expect(hands[1]!.hand).toEqual(drawHand(K, seed, 0, '2', 1, 3, opts));
-    expect(state).toMatchObject({ week: 2, freeRedrawUsed: true, draws: 2 });
-    // That first hand's Kitchen card could have renovated the Kitchen, and nothing fit.
-    const firstWeek: RunState = { ...state, hand: first };
-    expect(R.renovateTargets(firstWeek, 'hand', first.findIndex(isKitchenCard))).toEqual([1]);
-    expect(first.some((_, k) => R.cardFits(firstWeek, k))).toBe(false);
+    expect(hands).toHaveLength(1);
+    const first = drawRows(K, seed, 0, '2', 0, opts);
+    expect(drawnBefore(hands[0])).toEqual(first);
+    // Nothing fits on the full lot: every card is swapped but the Kitchen card, which can
+    // renovate the Kitchen.
+    const k = first.findIndex(isKitchenCard);
+    expect(state.hand[k]).toEqual(first[k]);
+    expect(R.renovateTargets(state, 'hand', k)).toEqual([1]);
+    expect(state.swapped.map((w) => w.i)).toEqual(first.flatMap((_, i) => (i === k ? [] : [i])));
+    expect(state).toMatchObject({ week: 2, draws: 1 });
   });
 });
 
@@ -1158,22 +1161,24 @@ describe('half-weight draws for types at their limit (D-043, amended)', () => {
   });
 
   it('in a run, a hand drawn while the Kitchen is at its limit uses the half weights', () => {
-    const plainOf = (sd: string, n = 0) => drawHand(K, sd, 0, slotKey(2, 0), n, 3);
+    const plainOf = (sd: string, n = 0) => drawRows(K, sd, 0, slotKey(2, 0), n);
     const halfOf = (sd: string, n = 0) =>
-      drawHand(K, sd, 0, slotKey(2, 0), n, 3, { atLimit: KITCHEN_AT_LIMIT });
+      drawRows(K, sd, 0, slotKey(2, 0), n, { atLimit: KITCHEN_AT_LIMIT });
     // A seed where the halving changes week 2's hand.
     const seed = Array.from({ length: 200 }, (_, k) => `half-${k}`).find(
       (sd) => JSON.stringify(plainOf(sd)) !== JSON.stringify(halfOf(sd)),
     )!;
     expect(seed).toBeDefined();
+    const before = (events: readonly GameEvent[]) =>
+      eventsOf(events, 'handDrawn').map((h) => drawnBefore(h));
     const atLimit = R.apply(build([['kitchen', 0, 0]], { seed }), PASS);
-    expect(eventsOf(atLimit.events, 'handDrawn').map((h) => h.hand)).toEqual([halfOf(seed)]);
+    expect(before(atLimit.events)).toEqual([halfOf(seed)]);
     // A reroll that week draws at half weight too.
     const rerolled = R.apply(atLimit.state, { t: 'reroll' });
-    expect(eventsOf(rerolled.events, 'handDrawn').map((h) => h.hand)).toEqual([halfOf(seed, 1)]);
+    expect(before(rerolled.events)).toEqual([halfOf(seed, 1)]);
     // Below the limit (no Kitchen yet), the same week draws at full weight.
     const below = R.apply(build([['bedroom', 0, 0]], { seed }), PASS);
-    expect(eventsOf(below.events, 'handDrawn').map((h) => h.hand)).toEqual([plainOf(seed)]);
+    expect(before(below.events)).toEqual([plainOf(seed)]);
   });
 
   it('Kitchen cards come up about half as often while the Kitchen is at its limit', () => {

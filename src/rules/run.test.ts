@@ -53,7 +53,8 @@ describe('a new run', () => {
       mode: 'standard',
     });
     expect(s).toMatchObject({ phase: 0, slot: 1, week: 1, draws: 1, score: 0, screen: 'build' });
-    expect(s.hand).toHaveLength(3);
+    // Two rows of 2 (D-121): Rooms first, then Layout.
+    expect(s.hand).toHaveLength(4);
     expect(s.house.pieces).toEqual([]);
     expect(
       rules.newRun({
@@ -89,7 +90,7 @@ describe('a week', () => {
       score: 0,
     });
     expect(state).toMatchObject({ slot: 2, week: 2, score: 0, draws: 1 });
-    expect(state.hand).toHaveLength(3);
+    expect(state.hand).toHaveLength(4);
   });
 
   it('place: the piece earns that same week', () => {
@@ -277,9 +278,9 @@ describe('legal actions', () => {
     const s = withHand(onEmptyLot(), 'bedroom', 'bathroom', 'lKitchen');
     const actions = rules.legalActions(s);
     const free = actions.filter((a) => a.t !== 'place');
-    // A new run: two rerolls (the General Contractor's extra), nothing to demolish yet, and
-    // the target isn't met, so no early completion.
-    expect(free).toEqual([PASS, { t: 'reroll' }]);
+    // A new run: two rerolls (the General Contractor's extra), each for either row (D-121),
+    // nothing to demolish yet, and the target isn't met, so no early completion.
+    expect(free).toEqual([PASS, { t: 'reroll', row: 'rooms' }, { t: 'reroll', row: 'layout' }]);
     const per = (i: number) =>
       actions.filter((a): a is PlaceAction => a.t === 'place' && a.i === i).length;
     expect(per(0)).toBe(11 * 11); // a 2×2 has one rotation

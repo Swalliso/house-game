@@ -51,3 +51,12 @@ export function pictureScale(dpr: number): number {
   const down = Math.floor(d);
   return Math.max(1, d - down > 0.5 ? down + 1 : down) / d;
 }
+
+/**
+ * A narrow hand card's thumbnail (D-121): about half the picture, still on whole device pixels,
+ * so it's half only where a screen has the pixels for it (0.5 at 2×); at 1× it stays whole.
+ */
+export function thumbScale(dpr: number): number {
+  const d = Number.isFinite(dpr) && dpr > 0 ? dpr : 1;
+  return Math.max(1, Math.round((pictureScale(d) * d) / 2)) / d;
+}

@@ -25,7 +25,15 @@ import { stream } from './rng.ts';
 import { createRules, IllegalAction, type Rules } from './run.ts';
 import { roundHalfUp } from './scoring.ts';
 import { offerPrice, SERVICES, sellPrice, SHOP_REASONS, stockGoods } from './shop.ts';
-import { emptyRows, houseFrom, setup, TEST_CONTENT as C } from './testing.ts';
+import {
+  beforeSwaps,
+  drawnBefore,
+  drawRows,
+  emptyRows,
+  houseFrom,
+  setup,
+  TEST_CONTENT as C,
+} from './testing.ts';
 
 const rules = createRules(C);
 
@@ -627,9 +635,9 @@ describe('the strike (D-076)', () => {
   it('strikeOptions lists each drawable root type: no shape variants, special pieces, or Chandelier', () => {
     const opts = rules.strikeOptions(shop1());
     // 19 base-pool piece types (the L-Kitchen and Long Hallway share theirs; the Fence and the
-    // Driveway are one pack card each) and the 10 drawable fixtures.
+    // Driveway are one pack card each) and the 10 drawable fixtures, Rooms then Layout (D-121).
     expect(opts).toHaveLength(29);
-    expect(opts).toEqual(drawableTypes(C));
+    expect(opts).toEqual([...drawableTypes(C, [], 'rooms'), ...drawableTypes(C, [], 'layout')]);
     expect(opts).toContainEqual(FENCE);
     expect(opts).toContainEqual({ kind: 'piece', id: 'driveway' });
     expect(opts).toContainEqual(FIREPLACE);
@@ -654,16 +662,23 @@ describe('the strike (D-076)', () => {
     expect(opts).toHaveLength(27);
     expect(opts).not.toContainEqual(KITCHEN);
 
-    /** Phase 2's hands over 400 rerolls, after leaving the shop. */
+    /**
+     * Every card phase 2's hands showed over 400 rerolls, after leaving the shop: the cards
+     * drawn, and any swapped in for them (D-121).
+     */
     const hands = (from: RunState) => {
       let b: RunState = { ...rules.apply(from, LEAVE).state, rerollsLeft: 400 };
       const out: Card[][] = [];
       for (let k = 0; k < 400; k++) {
         const n = b.draws;
         b = rules.apply(b, REROLL).state;
-        out.push([...b.hand]);
-        // Draw keys don't change: the same draw/<phase>/<slot>/<n> stream, a smaller pool.
-        if (k < 5) expect(b.hand).toEqual(drawHand(C, seed, 1, '1', n, 3, { struck: from.struck }));
+        out.push([...b.hand, ...b.swapped.map((w) => w.was)]);
+        // Draw keys don't change: the same draw/<phase>/<slot>/<n>/<row> streams, smaller pools.
+        if (k < 5) {
+          expect(beforeSwaps(b.hand, b.swapped)).toEqual(
+            drawRows(C, seed, 1, '1', n, { struck: from.struck }),
+          );
+        }
       }
       return out.flat();
     };
@@ -694,19 +709,32 @@ describe('the strike (D-076)', () => {
     );
   });
 
-  it('can’t leave fewer than strikeMinTypes (8) drawable types', () => {
-    const all = drawableTypes(C);
-    const s = { ...shop1(), budget: 20, struck: all.slice(0, 20) };
+  it('can’t leave fewer than strikeMinTypes drawable types in either row (D-121)', () => {
+    const rooms = drawableTypes(C, [], 'rooms');
+    const layout = drawableTypes(C, [], 'layout');
+    const floor = C.balance.shop.strikeMinTypes;
+    // The Rooms row struck down to one type above its floor.
+    const struck = rooms.slice(0, rooms.length - floor.rooms - 1);
+    const s = { ...shop1(), budget: 20, struck };
     const strike = visitOf(s).offers.length - 1;
-    expect(rules.strikeOptions(s)).toEqual(all.slice(20)); // 9 left: one more strike leaves 8
-    const after = rules.apply(s, buy(strike, all[20]!)).state;
-    expect(drawableTypes(C, after.struck)).toHaveLength(8);
-    expect(rules.strikeOptions(after)).toEqual([]);
-    expect(rules.shopOffers(after)[strike]).toMatchObject({
+    expect(rules.strikeOptions(s)).toEqual([...rooms.slice(struck.length), ...layout]);
+    const last = rooms[struck.length]!;
+    const after = rules.apply(s, buy(strike, last)).state;
+    expect(drawableTypes(C, after.struck, 'rooms')).toHaveLength(floor.rooms);
+    // Now only the Layout row's types can be struck.
+    expect(rules.strikeOptions(after)).toEqual(layout);
+    expect(illegal(() => rules.apply(after, buy(strike, rooms.at(-1)!))).reason).toBe(
+      SHOP_REASONS.rowFloor,
+    );
+    // The Layout row down to its floor too: nothing is left to strike.
+    const done = { ...after, struck: [...after.struck, ...layout.slice(0, -floor.layout)] };
+    expect(drawableTypes(C, done.struck, 'layout')).toHaveLength(floor.layout);
+    expect(rules.strikeOptions(done)).toEqual([]);
+    expect(rules.shopOffers(done)[strike]).toMatchObject({
       ok: false,
       reason: SHOP_REASONS.noStrike,
     });
-    expect(illegal(() => rules.apply(after, buy(strike, all[21]!))).reason).toBe(
+    expect(illegal(() => rules.apply(done, buy(strike, layout.at(-1)!))).reason).toBe(
       SHOP_REASONS.noStrike,
     );
   });
@@ -847,15 +875,8 @@ describe('leaving the shop', () => {
       budgetBefore: 3,
       budget: 4,
     });
-    expect(events[1]).toEqual({
-      t: 'handDrawn',
-      phase: 1,
-      slot: 1,
-      overtimeWeek: 0,
-      hand: drawHand(C, seed, 1, '1', 0, 3),
-      free: false,
-      reroll: false,
-    });
+    expect(events[1]).toMatchObject({ t: 'handDrawn', phase: 1, slot: 1, overtimeWeek: 0 });
+    expect(drawnBefore(events[1])).toEqual(drawRows(C, seed, 1, '1', 0));
     expect(state).toMatchObject({
       screen: 'build',
       phase: 1,
@@ -866,7 +887,7 @@ describe('leaving the shop', () => {
     });
     expect(state.offers?.shop).toBeUndefined();
     expect(state.draws).toBeGreaterThanOrEqual(1);
-    expect(state.hand.length).toBe(3);
+    expect(state.hand.length).toBe(4);
   });
 
   it('pays nothing after buying a good or a service, or refreshing', () => {
@@ -1000,7 +1021,7 @@ describe('the debug panel’s shop', () => {
     const { state: back, events: out } = rules.apply(shop, LEAVE);
     expect(types(out)).toEqual(['shopClosed', 'handDrawn']);
     expect(back).toMatchObject({ screen: 'build', phase: 0, slot: 1, week: 1, draws: s.draws + 1 });
-    expect(back.hand).toEqual(drawHand(C, seed, 0, '1', s.draws, 3));
+    expect(back.hand).toEqual(drawRows(C, seed, 0, '1', s.draws));
     expect(back.offers?.shop).toBeUndefined();
   });
 });

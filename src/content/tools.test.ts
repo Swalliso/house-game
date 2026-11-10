@@ -22,6 +22,7 @@ import type {
   UpgradeId,
 } from '../rules/index.ts';
 import { rules, weekTotal } from '../rules/index.ts';
+import { rowOf } from '../rules/draw.ts';
 import { emptyRows, houseFrom, setup, type Placement } from '../rules/testing.ts';
 import { PRICES } from './balance.ts';
 import { CONTENT } from './index.ts';
@@ -289,11 +290,12 @@ describe('company upgrades', () => {
     expect(slots(['draftingTable'])).toEqual({ reserve: 2, supplies: 3, blueprints: 5 });
   });
 
-  it('Bigger Truck: the next hand has 4 cards', () => {
+  it('Bigger Truck: a third Rooms card every week (D-121)', () => {
     const s = build([], { upgrades: ['biggerTruck'] });
-    expect(rules.rule(s, 'handSize')).toBe(4);
+    expect([rules.rule(s, 'roomsRow'), rules.rule(s, 'layoutRow')]).toEqual([3, 2]);
     const next = rules.apply(s, PASS).state;
-    expect(next.hand).toHaveLength(4);
+    expect(next.hand).toHaveLength(5);
+    expect(next.hand.slice(0, 3).every((c) => rowOf(CONTENT, c) === 'rooms')).toBe(true);
   });
 
   it('Foreman: one more reroll a phase, on top of the General Contractor’s', () => {

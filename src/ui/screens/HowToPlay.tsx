@@ -1,5 +1,5 @@
 // How to play: one short, scannable sheet, from the title screen or the game. The numbers
-// (hand size, rerolls, demolitions, overtime, the fenced yard's size) come from the rules, so
+// (the hand's rows, rerolls, demolitions, overtime, the fenced yard's size) come from the rules, so
 // the text keeps up with balance changes.
 //
 // M5a draws it as a wood sheet: each section under a plank tag, the formula as the score
@@ -121,7 +121,7 @@ function all(names: readonly string[]): string {
 }
 
 const CONTROLS: readonly (readonly [keys: string, does: string])[] = [
-  ['1–3', 'Pick a card'],
+  ['1–4', 'Pick a card'],
   ['R or right-click', 'Rotate'],
   ['Click', 'Place'],
   // M4: a pack's tiles (D-106).
@@ -145,7 +145,8 @@ function HowToPlayText() {
   const s = run.value;
   const b = CONTENT.balance;
   const phases = b.phases;
-  const hand = rules.rule(s, 'handSize');
+  const rooms = rules.rule(s, 'roomsRow');
+  const layout = rules.rule(s, 'layoutRow');
   const rerolls = rules.rule(s, 'rerollsPerPhase');
   const demolitions = rules.rule(s, 'demolitions');
   const overtime = rules.rule(s, 'overtime');
@@ -200,7 +201,12 @@ function HowToPlayText() {
       <Section title="A week" icon="clock">
         <ul>
           <li>
-            Pick 1 of {hand} cards, place it on the lot, then press <b>End week</b>.
+            Pick 1 of {rooms + layout} cards, place it on the lot, then press <b>End week</b>.
+          </li>
+          <li>
+            Your cards come in two rows: <b>Rooms</b> ({rooms}), and <b>Layout</b> ({layout}): the
+            hallways, the yard, and outbuildings. A card with nowhere to go is swapped for another
+            from its row, free.
           </li>
           {fenceTiles && drivewayTiles && (
             <li>
@@ -339,8 +345,8 @@ function HowToPlayText() {
             Reroll
           </dt>
           <dd>
-            Swap your hand for new cards. {rerolls} per milestone
-            {crew ? ` with the ${crew}` : ''}.
+            New cards for one row, Rooms or Layout. {rerolls} per milestone
+            {crew ? ` with the ${crew}` : ''}, for both rows.
           </dd>
           <dt>
             <Icon name="hammer" />

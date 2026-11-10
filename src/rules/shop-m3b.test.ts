@@ -47,7 +47,14 @@ import { REASONS } from './placement.ts';
 import { stream } from './rng.ts';
 import { createRules, IllegalAction, type Rules } from './run.ts';
 import { crateOptions, openVisit, SERVICES, SHOP_REASONS, stockGoods } from './shop.ts';
-import { houseFrom, setup, TEST_CONTENT as C, type Placement } from './testing.ts';
+import {
+  drawnBefore,
+  drawRows,
+  houseFrom,
+  setup,
+  TEST_CONTENT as C,
+  type Placement,
+} from './testing.ts';
 import { CONTENT } from '../content/index.ts';
 
 // ---------------------------------------------------------------------------------------
@@ -482,7 +489,7 @@ describe('buying tools and upgrades', () => {
     }
   });
 
-  it('Bigger Truck: the next hand drawn has 4 cards', () => {
+  it('Bigger Truck: the next hand drawn has a third Rooms card (D-121)', () => {
     const seed = 'bigger truck';
     const s = withGoods(
       { ...shop1(seed), budget: 20 },
@@ -490,18 +497,17 @@ describe('buying tools and upgrades', () => {
       1,
     );
     const bought = rules.apply(s, buy(0)).state;
-    expect(rules.rule(bought, 'handSize')).toBe(4);
+    expect(rules.rule(bought, 'roomsRow')).toBe(3);
     expect(bought.hand).toEqual([]);
     const { state, events } = rules.apply(bought, LEAVE);
     const first = eventsOf(events, 'handDrawn')[0]!;
-    expect(first.free).toBe(false);
-    expect(first.hand).toHaveLength(4);
-    // Phase 2 (index 1), week 1, draw 0, 4 cards.
-    expect(first.hand).toEqual(drawHand(C, seed, 1, '1', 0, 4));
-    expect(rules.apply(state, REROLL).state.hand).toHaveLength(4);
-    // Without it, 3.
+    expect(first.hand).toHaveLength(5);
+    // Phase 2 (index 1), week 1, draw 0: 3 Rooms cards, then 2 Layout cards.
+    expect(drawnBefore(first)).toEqual(drawRows(C, seed, 1, '1', 0, {}, { rooms: 3 }));
+    expect(rules.apply(state, REROLL).state.hand).toHaveLength(5);
+    // Without it, 2 + 2.
     const control = eventsOf(rules.apply(s, LEAVE).events, 'handDrawn')[0]!;
-    expect(control.hand).toHaveLength(3);
+    expect(control.hand).toHaveLength(4);
   });
 
   it('Foreman: one more reroll, from the next phase’s start', () => {

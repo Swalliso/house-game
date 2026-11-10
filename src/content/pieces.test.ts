@@ -146,9 +146,10 @@ describe('the base pool', () => {
     // The base pool is the drawable cards; special pieces (weight 0) come from the shop.
     const base = Object.values(CONTENT.pieces).filter((d) => d.drawWeight > 0);
     expect(base).toHaveLength(21);
-    // The two packs (D-106) took the weight of the two cards each one replaced.
+    // The two packs (D-106) took the weight of the two cards each one replaced, 20, until the
+    // draw's two rows (D-121): in a two-card Layout row they draw at 10, like every card.
     expect(base.filter((d) => d.pack).map((d) => d.id)).toEqual(['fence', 'driveway']);
-    for (const def of base) expect(def.drawWeight, def.id).toBe(def.pack ? 20 : 10);
+    for (const def of base) expect(def.drawWeight, def.id).toBe(10);
     for (const def of Object.values(CONTENT.pieces)) {
       expect(def.complexity).toBe(COMPLEXITY[def.id]);
     }

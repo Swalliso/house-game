@@ -2,7 +2,9 @@
 // the default crew from M2; M4b adds the Landscaper and the Architect. A crew's starting cards
 // (`startReserve`) wait in the reserve's extra slots from week 1. The numbers are from M4b's
 // sim (D-109): at sets +50% and yard draws +50%, the Architect won 61% and the Landscaper 28%
-// against the General Contractor's 38%; at these, 45.5%, 39.7%, and 41.5%.
+// against the General Contractor's 38%; at these, 45.5%, 39.7%, and 41.5%. With the draw's
+// two rows (D-121) the Landscaper's yard draws came back as a third Layout card, which can't
+// crowd out rooms: they have their own row.
 
 import type { CrewDef, CrewId } from '../rules/index.ts';
 
@@ -18,8 +20,12 @@ export const CREWS: Readonly<Record<CrewId, CrewDef>> = {
     id: 'landscaper',
     name: 'Landscaper',
     tier: 'core',
-    blurb: 'Yard pieces earn half again as much. Starts with a Sapling and a Fence.',
-    modifiers: [{ kind: 'earn', target: { property: 'yard' }, pct: 50 }],
+    blurb:
+      'Yard pieces earn half again as much, and a third Layout card comes every week. Starts with a Sapling and a Fence.',
+    modifiers: [
+      { kind: 'earn', target: { property: 'yard' }, pct: 50 },
+      { kind: 'rule', key: 'layoutRow', add: 1 },
+    ],
     startReserve: ['sapling', 'fence'],
   },
   architect: {

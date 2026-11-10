@@ -9,11 +9,18 @@
 // stays hidden until it matters: until the supply yard first opens, an empty row says nothing
 // (inventory-rows.ts). A name too long for its slot ends in an ellipsis, and shows whole on
 // hover and in the inspect panel.
+//
+// D-121: while building, it folds to its plank, with a count of what's waiting in the reserve
+// and the supplies, so the hand's two rows fit beside it: on a window under 1100 px tall (a
+// 1080p screen's included), or when the player folds it (the caret). A click on the plank
+// opens it again. In the shop it's always open.
 
+import { signal } from '@preact/signals';
 import { CONTENT, rules, type ReservePiece } from '../../rules/index.ts';
 import { justArrived } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
 import { Button, Icon, Panel, Well } from '../kit/kit.tsx';
+import type { IconName } from '../theme/art.ts';
 import { supplyIcon } from '../sprites.ts';
 import { inspected, reserveFit, run, selected, sell, suppliesFit, tool } from '../store.ts';
 import { isSelected, selectCard } from './actions.ts';
@@ -23,6 +30,49 @@ import { Tip } from './Tip.tsx';
 import './inventory.css';
 
 const noFocus = (e: MouseEvent) => e.preventDefault();
+
+/** The player's pick, folded or open (UI only); null follows the window's height. */
+export const goodsFolded = signal<boolean | null>(null);
+const shortQuery =
+  typeof window === 'undefined' || !window.matchMedia
+    ? null
+    : window.matchMedia('(max-height: 1099px)');
+const shortWindow = signal(shortQuery?.matches ?? false);
+shortQuery?.addEventListener('change', (e) => (shortWindow.value = e.matches));
+
+function FreePlayNote() {
+  return (
+    <p class="free-play" role="status">
+      Weekend Crew is here: your next build doesn’t end the week.
+    </p>
+  );
+}
+
+/** Whether Your goods is folded to its plank (D-121): never in the shop. */
+export function isFolded(shop: boolean): boolean {
+  return !shop && (goodsFolded.value ?? shortWindow.value);
+}
+
+/** The folded plank's counts: what's waiting to be used, in the reserve and the supplies. */
+function FoldCounts() {
+  const s = run.value;
+  const counts: readonly [IconName, number, string][] = [
+    ['House', s.reserve.length, 'in the reserve'],
+    ['tool', s.supplies.length, 'in the supplies'],
+  ];
+  return (
+    <span class="inv-fold-counts">
+      {counts
+        .filter(([, n]) => n > 0)
+        .map(([icon, n, what]) => (
+          <span key={icon} class="inv-fold-count" title={`${n} ${what}`}>
+            <Icon name={icon} />
+            {n}
+          </span>
+        ))}
+    </span>
+  );
+}
 
 function Empty({ n }: { n: number }) {
   return (
@@ -119,12 +169,40 @@ export function Inventory({ shop = false }: { shop?: boolean }) {
   const extra = indexed.filter(({ r }) => isExtra(r));
   const rows = inventoryRows(s, shop);
   if (!showsInventory(rows)) return null;
-  return (
-    <Panel
-      class={`inventory ${shop ? 'in-shop' : ''}`}
-      title="Your goods"
-      label="Your company’s goods"
+  const folded = isFolded(shop);
+  const title = shop ? (
+    'Your goods'
+  ) : (
+    <button
+      type="button"
+      class="inv-fold"
+      onMouseDown={noFocus}
+      onClick={() => (goodsFolded.value = !folded)}
+      aria-expanded={!folded}
+      title={folded ? 'Show your goods' : 'Fold your goods away, so the hand has more room'}
     >
+      <Icon name={folded ? 'caretRight' : 'caretDown'} />
+      <span class="inv-fold-long">Your goods</span>
+      <span class="inv-fold-short">Goods</span>
+    </button>
+  );
+  if (folded) {
+    // On a short window a folded panel with nothing to use goes, as the empty rows do.
+    const empty = s.reserve.length === 0 && s.supplies.length === 0 && !rows.freePlay;
+    return (
+      <Panel
+        class={`inventory is-folded ${empty ? 'is-empty' : ''}`}
+        title={title}
+        head={<FoldCounts />}
+        label="Your company’s goods, folded"
+      >
+        {/* Weekend Crew's note stays in view: it's about this week's build. */}
+        {rows.freePlay && <FreePlayNote />}
+      </Panel>
+    );
+  }
+  return (
+    <Panel class={`inventory ${shop ? 'in-shop' : ''}`} title={title} label="Your company’s goods">
       {rows.reserve && (
         <div class={`inv-row reserve ${s.reserve.length === 0 ? 'is-empty' : ''}`}>
           <h3 class="inv-label">
@@ -248,11 +326,7 @@ export function Inventory({ shop = false }: { shop?: boolean }) {
           </div>
         </div>
       )}
-      {rows.freePlay && (
-        <p class="free-play" role="status">
-          Weekend Crew is here: your next build doesn’t end the week.
-        </p>
-      )}
+      {rows.freePlay && <FreePlayNote />}
     </Panel>
   );
 }

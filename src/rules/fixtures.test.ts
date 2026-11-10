@@ -675,7 +675,7 @@ describe('legalPlays, legalActions, and installHosts list installs', () => {
   });
 });
 
-describe('cardFits and the free redraw for fixture cards (Appendix A · M3a)', () => {
+describe('cardFits and swaps for fixture cards (Appendix A · M3a, D-121)', () => {
   it('a fixture card fits only if some placed piece can host it', () => {
     const noLawn = build(ONE_BEDROOM, { hand: [fx('sprinkler'), fx('fireplace')] });
     expect(R.cardFits(noLawn, 0)).toBe(false);
@@ -700,10 +700,16 @@ describe('cardFits and the free redraw for fixture cards (Appendix A · M3a)', (
     expect(R.cardFits(state, 0)).toBe(true);
   });
 
-  /** BIG, but the Sprinkler (from phase 0) is the only card that's ever drawn. */
-  function onlySprinkler(): Content {
+  /**
+   * BIG, but the weekly draw is a Layout row of one card: the Sprinkler (from phase 0) or a
+   * Lawn. The Rooms row draws nothing: every other card is out of the draw.
+   */
+  function sprinklerOrLawn(): Content {
     const pieces = Object.fromEntries(
-      Object.entries(BIG.pieces).map(([id, d]) => [id, { ...d, drawWeight: 0 }]),
+      Object.entries(BIG.pieces).map(([id, d]) => [
+        id,
+        id === 'lawn' ? d : { ...d, drawWeight: 0 },
+      ]),
     ) as Record<PieceId, PieceDef>;
     const fixtures = Object.fromEntries(
       Object.entries(BIG.fixtures).map(([id, d]) => [
@@ -711,32 +717,35 @@ describe('cardFits and the free redraw for fixture cards (Appendix A · M3a)', (
         id === 'sprinkler' ? { ...d, fromPhase: 0 } : { ...d, drawWeight: 0 },
       ]),
     ) as Record<FixtureId, FixtureDef>;
-    return { ...BIG, pieces, fixtures };
+    const balance = { ...BIG.balance, rules: { ...BIG.balance.rules, layoutRow: 1 } };
+    return { ...BIG, pieces, fixtures, balance };
   }
-  const RS = createRules(onlySprinkler());
+  const SL = sprinklerOrLawn();
+  const RS = createRules(SL);
+  /** A seed whose week-2 Layout row draws the Sprinkler. */
+  const SEED = Array.from({ length: 100 }, (_, k) => `sprinkler-${k}`).find(
+    (sd) => drawHand(SL, sd, 0, '2', 0, 1, { row: 'layout' })[0]?.id === 'sprinkler',
+  )!;
 
-  it('a hand of hostless fixtures gets the free redraw', () => {
-    // The new run's lot is empty, so the Sprinkler has no Lawn: draw 0, then the free redraw.
-    const fresh = RS.newRun(setup('sprinkler'));
-    expect(fresh.hand).toEqual([fx('sprinkler')]);
-    expect(fresh.draws).toBe(2);
-    expect(fresh.freeRedrawUsed).toBe(true);
-    // A week starting with only a Bedroom on the lot: the same.
-    const s = build(ONE_BEDROOM, { rules: RS, seed: 'sprinkler' });
+  it('a fixture with no host is swapped for another card from its row (D-121)', () => {
+    expect(SEED).toBeDefined();
+    // A week starting with only a Bedroom on the lot: the Sprinkler has no Lawn to go in.
+    const s = build(ONE_BEDROOM, { rules: RS, seed: SEED });
     const { state, events } = RS.apply(s, PASS);
-    expect(eventsOf(events, 'handDrawn').map((e) => e.free)).toEqual([false, true]);
-    expect(state.draws).toBe(2);
-    expect(state.freeRedrawUsed).toBe(true);
+    const drawn = eventsOf(events, 'handDrawn');
+    expect(drawn).toHaveLength(1);
+    expect(drawn[0]).toMatchObject({ free: true, swapped: [{ i: 0, was: fx('sprinkler') }] });
+    expect(state.hand).toEqual([pc('lawn')]);
+    expect(state).toMatchObject({ draws: 1, swapped: [{ i: 0, was: fx('sprinkler') }] });
   });
 
-  it('a fixture with a host counts as fitting, so there’s no free redraw', () => {
-    const s = build(BEDROOM_AND_LAWN, { rules: RS, seed: 'sprinkler' });
+  it('a fixture with a host has a play, so it isn’t swapped', () => {
+    const s = build(BEDROOM_AND_LAWN, { rules: RS, seed: SEED });
     const { state, events } = RS.apply(s, PASS);
     expect(types(events)).toEqual(['tally', 'handDrawn']);
     expect(eventsOf(events, 'handDrawn')[0]!.free).toBe(false);
     expect(state.hand).toEqual([fx('sprinkler')]);
-    expect(state.draws).toBe(1);
-    expect(state.freeRedrawUsed).toBe(false);
+    expect(state).toMatchObject({ draws: 1, swapped: [] });
   });
 });
 

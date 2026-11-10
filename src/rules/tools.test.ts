@@ -31,11 +31,13 @@ import type {
   UseToolAction,
 } from './index.ts';
 import { createRules, IllegalAction, type Rules } from './run.ts';
-import { drawHand, drawWeights, slotKey } from './draw.ts';
+import { drawWeights, slotKey } from './draw.ts';
 import { withFixture } from './fixtures.ts';
 import { REASONS } from './placement.ts';
 import { SHOP_REASONS } from './shop.ts';
 import {
+  drawnBefore,
+  drawRows,
   emptyRows,
   houseFrom,
   setup,
@@ -571,10 +573,11 @@ describe('Catalog (specialHand)', () => {
   it('redraws the hand from special pieces as a draw (n + 1) without a reroll', () => {
     const s = build([['bedroom', 0, 0]], { tools: ['catalog'], seed: 'catalog' });
     const { state, events } = R.apply(s, use(0));
-    // The same stream a reroll would use: draw/<phase>/<slot>/<draws>, at the handSize rule (3).
-    const expected = drawHand(BIG, 'catalog', 0, slotKey(1, 0), s.draws, 3, { special: true });
+    // The same streams a reroll would use, draw/<phase>/<slot>/<draws>/<row>, each row at its
+    // rule's size (D-121): 2 special rooms, then 2 special yard pieces or outbuildings.
+    const expected = drawRows(BIG, 'catalog', 0, slotKey(1, 0), s.draws, { special: true });
     expect(state.hand).toEqual(expected);
-    expect(state.hand).toHaveLength(3);
+    expect(state.hand).toHaveLength(4);
     expect(events).toEqual([
       { t: 'toolUsed', tool: 'catalog' },
       {
@@ -599,6 +602,12 @@ describe('Catalog (specialHand)', () => {
     }
   });
 
+  it('drops the old hand’s swap notes, and has no swaps of its own (D-121)', () => {
+    const s = build([['bedroom', 0, 0]], { tools: ['catalog'], seed: 'catalog' });
+    const noted = { ...s, swapped: [{ i: 0, was: s.hand[0]! }] };
+    expect(R.apply(noted, use(0)).state.swapped).toEqual([]);
+  });
+
   it('draws special pieces and drawable fixtures at equal weight, respecting fromPhase', () => {
     // The pool's weights: every special piece and every fixture with drawWeight > 0 at 100.
     const pool = drawWeights(C, 1, { special: true });
@@ -617,7 +626,7 @@ describe('Catalog (specialHand)', () => {
       s = { ...s, supplies: [tool('catalog')] };
       const hand = r.apply(s, use(0)).state.hand;
       expect(hand).toEqual(
-        drawHand(C, `catalog-${k}`, 1, slotKey(s.slot, s.overtimeWeek), s.draws, 3, {
+        drawRows(C, `catalog-${k}`, 1, slotKey(s.slot, s.overtimeWeek), s.draws, {
           special: true,
         }),
       );
@@ -631,15 +640,15 @@ describe('Catalog (specialHand)', () => {
     expect(sawFixture).toBe(true);
   });
 
-  it('skips struck types and special pieces from a later phase; its size is the handSize rule', () => {
+  it('skips struck types and special pieces from a later phase; its rows are the rules’ sizes', () => {
     // The Pool from phase 1 on, and the Library struck: neither comes up in phase 0. With a
-    // Bigger Truck (+1 handSize) the hand has 4 cards.
+    // Bigger Truck (+1 Rooms card, D-121) the hand has 3 + 2 cards.
     const late = createRules(withPieces({ pool: { fromPhase: 1 } }, BIG));
     for (let k = 0; k < 15; k++) {
       let s = build([], { rules: late, seed: `catalog-strike-${k}`, tools: ['catalog'] });
       s = { ...s, struck: [pc('library')], upgrades: ['biggerTruck'] };
       const hand = late.apply(s, use(0)).state.hand;
-      expect(hand).toHaveLength(4);
+      expect(hand).toHaveLength(5);
       expect(hand.map((c) => c.id)).not.toContain('pool');
       expect(hand.map((c) => c.id)).not.toContain('library');
     }
@@ -1063,9 +1072,11 @@ describe('property: a tool use is a free action', () => {
     return a ?? null;
   }
 
-  /** The next week's first hand (not a free redraw) after a pass. */
-  const nextHand = (s: RunState) =>
-    eventsOf(R.apply(s, PASS).events, 'handDrawn').find((e) => !e.free)!.hand;
+  /**
+   * The next week's hand after a pass, as drawn (before its swaps, D-121: a tool can change
+   * the house, and with it which cards have a play, but never what's drawn).
+   */
+  const nextHand = (s: RunState) => drawnBefore(eventsOf(R.apply(s, PASS).events, 'handDrawn')[0]);
 
   for (const seed of ['prop-1', 'prop-2', 'prop-3', 'prop-4', 'prop-5']) {
     it(`never changes the week, slot, or later hands (seed ${seed}); only the Catalog redraws`, () => {

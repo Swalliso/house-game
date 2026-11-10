@@ -20,7 +20,9 @@
 //
 // Start of week: transforms resolve (a Sapling old enough becomes a Tree), the household's
 // arrivals move in at their phase's first week (M4b, D-103: their cards go into the reserve's
-// extra slots), a hand is drawn, and if none of it fits anywhere there's one free redraw.
+// extra slots), and the hand is drawn in two rows, Rooms then Layout (D-121). A card with no
+// play at all (no spot, no host, no Renovation) is swapped for another from its row, trying up
+// to `swapTries` cards; that replaced D-070's free redraw. A reroll redraws one row, then swaps.
 //
 // Change orders (M4b): when a milestone resolves, the phase effects that ran through it end
 // and its accepted requests and restrictions resolve (a request met and a restriction kept
@@ -40,6 +42,7 @@ import type {
   Availability,
   BuyAction,
   Card,
+  DrawRow,
   Cell,
   ChangeOrderDef,
   ChangeOrderId,
@@ -81,6 +84,7 @@ import type {
   RunSetup,
   RunState,
   SellAction,
+  SwappedCard,
   SetScore,
   Slots,
   Tag,
@@ -104,7 +108,7 @@ import {
   type CondCtx,
   type NounFn,
 } from './conditions.ts';
-import { drawHand, drawWeights, slotKey } from './draw.ts';
+import { DRAW_ROWS, drawHand, drawWeights, rowOf, slotKey, swapCandidates } from './draw.ts';
 import { estimatePlay, type Estimate } from './estimate.ts';
 import { checkInstall, installHosts, withFixture } from './fixtures.ts';
 import {
@@ -702,22 +706,85 @@ export function createRules(content: Content): Rules {
     return house === state.house ? state : { ...state, house };
   }
 
-  function drawFor(state: RunState, n: number, special = false): Card[] {
+  function drawOpts(state: RunState, row: DrawRow, special = false) {
+    return {
+      struck: state.struck,
+      mods: modsOf(state).active.map((a) => a.mod),
+      special,
+      atLimit: typesAtLimit(limitsOf(state)),
+      row,
+    };
+  }
+
+  /** One row of the hand (D-121): `roomsRow` or `layoutRow` cards on that row's stream. */
+  function drawRowFor(state: RunState, n: number, row: DrawRow, special = false): Card[] {
     return drawHand(
       content,
       state.setup.seed,
       state.phase,
       slotKey(state.slot, state.overtimeWeek),
       n,
-      rule(state, 'handSize'),
-      {
-        struck: state.struck,
-        mods: modsOf(state).active.map((a) => a.mod),
-        special,
-        atLimit: typesAtLimit(limitsOf(state)),
-      },
+      rule(state, row === 'rooms' ? 'roomsRow' : 'layoutRow'),
+      drawOpts(state, row, special),
     );
   }
+
+  /** A whole hand: the Rooms row, then the Layout row. */
+  function drawFor(state: RunState, n: number, special = false): Card[] {
+    return DRAW_ROWS.flatMap((row) => drawRowFor(state, n, row, special));
+  }
+
+  /** A card has a play: a spot, a host, or a Renovation (D-102). */
+  function cardHasPlay(state: RunState, i: number): boolean {
+    return cardFits(state, i) || renovateTargets(state, 'hand', i).length > 0;
+  }
+
+  /**
+   * Swaps (D-121): each card of `row` (both rows when unset) with no play is replaced by the
+   * first of up to `swapTries` cards from its row that has one, or by the last tried. The
+   * draw's `n` keys the swaps' streams, one per card. The draw's one `handDrawn` event carries
+   * the hand after its swaps, and what each swapped card replaced.
+   */
+  function swapDead(
+    state: RunState,
+    n: number,
+    row: DrawRow | undefined,
+  ): { state: RunState; swapped: SwappedCard[] } {
+    const slot = slotKey(state.slot, state.overtimeWeek);
+    let s = state;
+    const swapped: SwappedCard[] = [];
+    for (const r of row ? [row] : DRAW_ROWS) {
+      const at = s.hand.flatMap((c, i) => (rowOf(content, c) === r ? [i] : []));
+      at.forEach((i, k) => {
+        if (cardHasPlay(s, i)) return;
+        const was = s.hand[i]!;
+        const inRow = at.map((j) => s.hand[j]!);
+        const tries = swapCandidates(
+          content,
+          s.setup.seed,
+          s.phase,
+          slot,
+          n,
+          k,
+          b.swapTries,
+          inRow,
+          drawOpts(s, r),
+        );
+        for (const card of tries) {
+          s = { ...s, hand: s.hand.map((c, j) => (j === i ? card : c)) };
+          if (cardHasPlay(s, i)) break;
+        }
+        if (tries.length > 0) swapped.push({ i, was });
+      });
+    }
+    if (swapped.length === 0) return { state: s, swapped };
+    const notes = [...s.swapped.filter((w) => !swapped.some((x) => x.i === w.i)), ...swapped];
+    return { state: { ...s, swapped: notes }, swapped };
+  }
+
+  /** The swaps' part of a `handDrawn` event. */
+  const swapNote = (swapped: readonly SwappedCard[]) =>
+    swapped.length > 0 ? { free: true, swapped } : { free: false };
 
   // -------------------------------------------------------------------------------------
   // Rewards and finds.
@@ -1083,17 +1150,19 @@ export function createRules(content: Content): Rules {
   function startWeek(state: RunState, events: GameEvent[]): RunState {
     // Step 1: transforms; step 2 (M4b): arrivals, in their phase's first week; step 3: the draw.
     let s = arrive(resolveTransforms(state, events), events);
-    const hand = drawFor(s, 0);
-    const drawn = { phase: s.phase, slot: s.slot, overtimeWeek: s.overtimeWeek, reroll: false };
-    events.push({ t: 'handDrawn', ...drawn, hand, free: false });
-    s = { ...s, draws: 1, hand, freeRedrawUsed: false, freePlay: 'none' };
-    // Start of week, step 4: one free redraw if nothing in the first hand fits anywhere.
-    if (hand.length > 0 && !hand.some((_, i) => cardFits(s, i))) {
-      const redraw = drawFor(s, 1);
-      events.push({ t: 'handDrawn', ...drawn, hand: redraw, free: true });
-      s = { ...s, draws: 2, hand: redraw, freeRedrawUsed: true };
-    }
-    return s;
+    s = { ...s, draws: 1, hand: drawFor(s, 0), swapped: [], freePlay: 'none' };
+    // Start of week, step 4 (D-121): a card with no play is swapped for one from its row.
+    const after = swapDead(s, 0, undefined);
+    events.push({
+      t: 'handDrawn',
+      phase: s.phase,
+      slot: s.slot,
+      overtimeWeek: s.overtimeWeek,
+      hand: after.state.hand,
+      reroll: false,
+      ...swapNote(after.swapped),
+    });
+    return after.state;
   }
 
   /** A phase starts (after the shop): say if its target is already met, then its first week. */
@@ -1542,18 +1611,23 @@ export function createRules(content: Content): Rules {
       budget: s.budget,
     });
     if (visit.forced) {
-      // A shop the ?debug panel opened mid-week: back to the same week, with a fresh hand.
-      const hand = drawFor(s, s.draws);
+      // A shop the ?debug panel opened mid-week: back to the same week, with a fresh hand,
+      // drawn and swapped as a reroll of both rows would be.
+      const after = swapDead(
+        { ...s, hand: drawFor(s, s.draws), draws: s.draws + 1, swapped: [] },
+        s.draws,
+        undefined,
+      );
       events.push({
         t: 'handDrawn',
         phase: s.phase,
         slot: s.slot,
         overtimeWeek: s.overtimeWeek,
-        hand,
-        free: false,
+        hand: after.state.hand,
         reroll: false,
+        ...swapNote(after.swapped),
       });
-      return { ...s, hand, draws: s.draws + 1 };
+      return after.state;
     }
     return startPhase(s, events);
   }
@@ -1608,7 +1682,7 @@ export function createRules(content: Content): Rules {
       bonusRerolls: 0,
       demolitionsLeft: setupRule(content, clean, 'demolitions'),
       overtimeLeft: setupRule(content, clean, 'overtime'),
-      freeRedrawUsed: false,
+      swapped: [],
       autoComplete: false,
       milestonesEarly: 0,
       milestones: [],
@@ -1804,25 +1878,50 @@ export function createRules(content: Content): Rules {
       case 'reroll': {
         const can = canReroll(state);
         if (!can.ok) throw new IllegalAction(can.reason!);
-        const hand = drawFor(state, state.draws);
+        // One row (D-121), or both: the other row's cards stay where they are.
+        const row = action.row;
+        const n = state.draws;
+        const hand = row
+          ? DRAW_ROWS.flatMap((r) =>
+              r === row
+                ? drawRowFor(state, n, r)
+                : state.hand.filter((c) => rowOf(content, c) === r),
+            )
+          : drawFor(state, n);
+        // The phase's own rerolls go first; bought ones never expire.
+        const fromPhase = state.rerollsLeft > 0;
+        // A swap note stays on a card in the row the reroll kept, at its place in the new hand.
+        const kept = row
+          ? state.swapped.flatMap((w) => {
+              const card = state.hand[w.i];
+              if (!card || rowOf(content, card) === row) return [];
+              const i = hand.indexOf(card);
+              return i >= 0 ? [{ i, was: w.was }] : [];
+            })
+          : [];
+        const after = swapDead(
+          {
+            ...state,
+            hand,
+            swapped: kept,
+            draws: n + 1,
+            rerollsLeft: fromPhase ? state.rerollsLeft - 1 : state.rerollsLeft,
+            bonusRerolls: fromPhase ? state.bonusRerolls : state.bonusRerolls - 1,
+          },
+          n,
+          row,
+        );
         events.push({
           t: 'handDrawn',
           phase: state.phase,
           slot: state.slot,
           overtimeWeek: state.overtimeWeek,
-          hand,
-          free: false,
+          hand: after.state.hand,
           reroll: true,
+          ...(row ? { row } : {}),
+          ...swapNote(after.swapped),
         });
-        // The phase's own rerolls go first; bought ones never expire.
-        const fromPhase = state.rerollsLeft > 0;
-        return done({
-          ...state,
-          hand,
-          draws: state.draws + 1,
-          rerollsLeft: fromPhase ? state.rerollsLeft - 1 : state.rerollsLeft,
-          bonusRerolls: fromPhase ? state.bonusRerolls : state.bonusRerolls - 1,
-        });
+        return done(after.state);
       }
       case 'demolish': {
         if (state.demolitionsLeft <= 0) throw new IllegalAction(REASONS.noDemolitions);
@@ -2132,7 +2231,7 @@ export function createRules(content: Content): Rules {
     });
     state.blueprints.forEach((_, i) => out.push({ t: 'sell', from: 'blueprints', i }));
     state.supplies.forEach((_, i) => out.push({ t: 'sell', from: 'supplies', i }));
-    if (canReroll(state).ok) out.push({ t: 'reroll' });
+    if (canReroll(state).ok) for (const row of DRAW_ROWS) out.push({ t: 'reroll', row });
     if (canCompleteEarly(state).ok) out.push({ t: 'completeEarly' });
     if (state.demolitionsLeft > 0) {
       const layout = layoutFor(state);

@@ -35,7 +35,7 @@ function requestCompleteEarly(): void {
   completeEarly();
 }
 
-/** A click on a bar control shouldn't keep focus, so Enter and 1–3 keep working after it. */
+/** A click on a bar control shouldn't keep focus, so Enter and 1–4 keep working after it. */
 const noFocus = (e: MouseEvent) => e.preventDefault();
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;

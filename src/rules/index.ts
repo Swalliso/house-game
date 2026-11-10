@@ -349,6 +349,11 @@ export interface PieceDef {
   givesView?: true;
   /** The Hallway: links rooms, and isn't a room or a neighbor for bonuses itself. */
   connector?: true;
+  /**
+   * Its row in the weekly draw (D-121). Unset: Rooms for an indoor piece that isn't a
+   * connector, Layout for everything else (the yard, outbuildings, Hallways).
+   */
+  row?: DrawRow;
   /** The Fence: blocks the fenced-yard flood fill, as indoor tiles do. */
   wall?: true;
   /** Blocking features it can be built over without removing them (the Driveway's culvert). */
@@ -417,7 +422,9 @@ export type RuleKey =
   | 'rerollsPerPhase'
   | 'demolitions'
   | 'overtime'
-  | 'handSize'
+  // The weekly draw's two rows (D-121).
+  | 'roomsRow'
+  | 'layoutRow'
   | 'earlyRewardPct'
   // The shop's goods (M3).
   | 'reserveSlots'
@@ -627,6 +634,8 @@ export interface FixtureDef {
   rarity: Rarity;
   /** Which placed pieces can host it, checked when it's installed. */
   fits: Selector;
+  /** Its row in the weekly draw (D-121): its hosts' row. Unset: Rooms. */
+  row?: DrawRow;
   /** In the weekly draw from `fromPhase`; 0 = shop only (the Chandelier). */
   drawWeight: number;
   fromPhase: number;
@@ -755,6 +764,8 @@ export interface Balance {
   renovate: { pointsPerLevel: number; maxLevel: number };
   /** A card whose type is at its limit draws at this percent of its weight (D-043, amended). */
   drawAtLimitPct: number;
+  /** D-121: how many cards from its row a card with no play is swapped for, at most. */
+  swapTries: number;
   /** The job board (D-032, D-045): its contracts, rarity weights, and the first visit's client. */
   jobBoard: { contracts: number; rarity: Readonly<Record<Rarity, number>>; firstClient: ClientId };
   /**
@@ -802,8 +813,8 @@ export interface ShopBalance {
   services: Readonly<Record<ServiceId, ServicePrice>>;
   /** Leaving without buying anything pays this. */
   skipReward: number;
-  /** D-076: a strike can't leave fewer drawable card types than this. */
-  strikeMinTypes: number;
+  /** D-076: a strike can't leave fewer drawable card types than this in either row (D-121). */
+  strikeMinTypes: Readonly<Record<DrawRow, number>>;
   /** Options in an opened crate. */
   crateOptions: number;
   /** Savings Account interest: +1 budget per this many held, up to the `interestMax` rule. */
@@ -867,6 +878,17 @@ export interface HouseState {
 
 /** A card in the hand: a piece, or (from phase 2) a fixture. */
 export type Card = { kind: 'piece'; id: PieceId } | { kind: 'fixture'; id: FixtureId };
+
+/** The weekly draw's two rows (D-121): where a card is built, in the house or around it. */
+export type DrawRow = 'rooms' | 'layout';
+
+/** A card swapped in at the start of a week or after a reroll (D-121): the one it replaced. */
+export interface SwappedCard {
+  /** Its place in the hand. */
+  i: number;
+  /** The card it replaced, which had no play. */
+  was: Card;
+}
 
 /** A card type that can be struck from the draws (D-076): a piece type (its countsAs root) or a fixture. */
 export type CardType = Card;
@@ -1057,8 +1079,8 @@ export interface RunState {
   bonusRerolls: number;
   demolitionsLeft: number;
   overtimeLeft: number;
-  /** Whether this week's free redraw (none of the first hand fit) was used. */
-  freeRedrawUsed: boolean;
+  /** Cards swapped in this week because the ones they replaced had no play (D-121). */
+  swapped: readonly SwappedCard[];
   /** D-040: complete each milestone as soon as its target is met. Starts off. */
   autoComplete: boolean;
   /** A run stat for scaling ×Mult (Ahead of Schedule, M3). */
@@ -1121,7 +1143,8 @@ export interface RenovateAction {
 }
 export type PassAction = { t: 'pass' };
 /** Free actions: they don't end the week. */
-export type RerollAction = { t: 'reroll' };
+/** Redraws one row of the hand (D-121); without a row, both. */
+export type RerollAction = { t: 'reroll'; row?: DrawRow };
 export type DemolishAction = { t: 'demolish'; x: number; y: number };
 export type CompleteEarlyAction = { t: 'completeEarly' };
 export type SetAutoCompleteAction = { t: 'setAutoComplete'; on: boolean };
@@ -1304,10 +1327,14 @@ export type GameEvent =
       slot: number;
       overtimeWeek: number;
       hand: readonly Card[];
-      /** The free redraw: none of the week's first hand fit anywhere. */
+      /** Cards were swapped (D-121): `hand` is after the swaps, and `swapped` says what went. */
       free: boolean;
       /** A manual reroll. */
       reroll: boolean;
+      /** The row a reroll redrew; unset when both rows were drawn. */
+      row?: DrawRow;
+      /** With `free`, the cards swapped in and what each replaced, which had no play. */
+      swapped?: readonly SwappedCard[];
       /** The Catalog's redraw from special pieces and fixtures. */
       special?: true;
     }
@@ -1739,6 +1766,7 @@ export {
   uniqueRotations,
 } from './grid.ts';
 export { isSunny, terrainAt } from './lot.ts';
+export { DRAW_ROWS, rowOf } from './draw.ts';
 export {
   article,
   blueprintText,
