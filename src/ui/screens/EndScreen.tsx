@@ -36,7 +36,7 @@ import { bestFor, company, jobKey, lastStanding } from '../company.ts';
 import { busy } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
 import { formatNumber } from '../format.ts';
-import { copyRunCode, copyText, playLotAgain, startNewRun } from '../hud/actions.ts';
+import { copyRunCode, copyText, endScreenAgain, startNewRun } from '../hud/actions.ts';
 import { Button, Icon, Panel, type IconName } from '../kit/kit.tsx';
 import { settings } from '../settings.ts';
 import { goToTitle, run } from '../store.ts';
@@ -449,7 +449,7 @@ export function EndScreen() {
             // The game stays on screen, and the column was scrolled to reach this button: the
             // new run's goods and hand start at its top, as a run from the board does.
             const column = e.currentTarget.closest('.right');
-            playLotAgain(s.setup);
+            endScreenAgain(s);
             column?.scrollTo({ top: 0, behavior: 'instant' });
           }}
         >

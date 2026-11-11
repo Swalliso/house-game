@@ -69,6 +69,8 @@ const HELP = `npm run sim -- [options]
                       default the General Contractor
   --dead              also measure dead cards the review's way (each hand card's best play
                       against a pass; slower)
+  --first-job         play every run as a first job (D-151): the client's targets times the
+                      job board's firstTargetPct. Not with --suggest-targets
 
 One of these modes, or none:
   --check             §8's starting criteria on held-out seeds: greedy, random, novice, and
@@ -667,6 +669,7 @@ function parse(args: readonly string[]) {
       client: { type: 'string' },
       crew: { type: 'string' },
       dead: { type: 'boolean', default: false },
+      'first-job': { type: 'boolean', default: false },
       json: { type: 'string' },
       help: { type: 'boolean', default: false },
     },
@@ -745,10 +748,25 @@ function run(values: Values): number {
   const clients = client === 'all' ? CORE_CLIENTS : [client as ClientId];
   const crews = crew === 'all' ? CORE_CREWS : [crew as CrewId];
   const dead = values.dead;
+  const firstJob = values['first-job'];
+  if (firstJob && mode === '--suggest-targets') {
+    throw new UsageError(
+      '--suggest-targets fits the standard targets, so it takes no --first-job.',
+    );
+  }
+  if (firstJob && mode === '--bench') {
+    throw new UsageError('--bench times a standard run, so it takes no --first-job.');
+  }
+  if (firstJob) {
+    // Every report below reads the first job's targets: say so once, above them all.
+    const pct = CONTENT.balance.jobBoard.firstTargetPct;
+    console.log(`First jobs (D-151): every run's targets are ${pct}% of its client's.`);
+  }
   setupFor = (i) => ({
     clientId: clients[i % clients.length]!,
     crewId: crews[Math.floor(i / clients.length) % crews.length]!,
     ...(dead ? { deadCards: true } : {}),
+    ...(firstJob ? { mode: 'firstJob' as const } : {}),
   });
 
   const rules = createRules(CONTENT);

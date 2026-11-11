@@ -203,15 +203,25 @@ export const BALANCE: Balance = {
   // lots, 348 have no creek and deal the Hendersons a Bedroom, then a Bathroom, then a Closet or
   // a second Bedroom in weeks 1 to 3. This one has no trait, a first hand with neither a Bathroom
   // nor a Closet to play out of order, and the same four hands wherever the three go: a Suite by
-  // week 3 in 300 of 300 random placements, 41 to 61 Wow against Groundbreaking's 22. With those
-  // three weeks played as the guide says, a bot that then picks a random card met Foundation in
-  // 19 of 24 runs and Framing in 14 (12% and 5% on any lot, unguided). src/ui/hud/first-job.test.ts
-  // holds the hands, so a change to the draw says to pick again.
+  // week 3 in 300 of 300 random placements, 41 to 61 Wow against Groundbreaking's 22 (16 at
+  // D-151's targets). With those three weeks played as the guide says, a bot that then picks a
+  // random card met Foundation in 19 of 24 runs and Framing in 14 (12% and 5% on any lot,
+  // unguided). src/ui/hud/first-job.test.ts holds the hands, so a change to the draw says to pick
+  // again.
+  //
+  // firstTargetPct (D-151): a first job's client needs this percent of its usual targets. The
+  // guided opening gets a newcomer through Framing, but the 2026-11-11 survey's casual bot
+  // (greedy's move half the time) then met Roofing 52% and Drywall 20% of the time on this lot
+  // and won 3%. At 73% the Hendersons' 110% of the curve is 80%: it meets Roofing 86% and
+  // Drywall 56% of the time and wins 28% (at 80% of their own, 88%, it won 15.5%). Milestone 2
+  // alone at 450 only moved the wall. A percent of the client's own, so every client keeps its
+  // place in the order.
   jobBoard: {
     contracts: 3,
     rarity: { common: 65, uncommon: 27, rare: 8 },
     firstClient: 'hendersons',
     firstSeed: 'oh-4243',
+    firstTargetPct: 73,
   },
 
   // Change orders (M4b; jam-scope.md, implementation-plan.md §7): one is offered after each of

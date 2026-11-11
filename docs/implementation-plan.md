@@ -343,7 +343,7 @@ interface HouseState {                 // the lot and what's on it
 }
 
 interface RunState {
-  setup: RunSetup                      // { seed, clientId, crewId, mode: 'standard' | 'daily' }
+  setup: RunSetup                      // { seed, clientId, crewId, mode: 'standard' | 'firstJob' } (D-151)
   house: HouseState
   phase: number                        // 0-based milestone index
   slot: number | `ot${number}`         // week within the phase, or an overtime week

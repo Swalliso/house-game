@@ -29,6 +29,7 @@ import {
   type PlaceAction,
   type Preview,
   type Rot,
+  type RunMode,
   type RunSetup,
   type RunState,
   type SellAction,
@@ -82,8 +83,8 @@ export function firstVisit(): boolean {
 /**
  * The first job's seed (D-149), kept in the browser while that run is the one being played: the
  * first run a browser starts, from the board or from a link, and the board's first job while it
- * is still a first visit. UI only, never game state: the run itself is an ordinary one, and its
- * screen fills in week by week (hud/first-job.ts).
+ * is still a first visit. The guidance is UI only: its screen fills in week by week
+ * (hud/first-job.ts). Its targets are the rules' own: the run starts in `firstJob` mode (D-151).
  */
 export const firstJobSeed = signal<string | null>(
   (() => {
@@ -131,15 +132,22 @@ export function openJobBoard(): void {
 
 /** Takes a contract from the board with a crew: its seed and client start the run. */
 export function takeContract(contract: Contract, crewId: CrewId = 'generalContractor'): void {
-  // The first contract a browser takes is its first job; from then on the board is open.
-  if (firstVisit()) setFirstJob(contract.seed);
+  // The first contract a browser takes is its first job; from then on the board is open. The
+  // first job has its gentler targets (D-151).
+  const first = firstVisit();
+  if (first) setFirstJob(contract.seed);
   try {
     localStorage.setItem(VISITED_KEY, '1');
   } catch {
     // A private window: the board just opens with the first job again next time.
   }
   notice.value = null;
-  startRun({ seed: contract.seed, clientId: contract.clientId, crewId, mode: 'standard' });
+  startRun({
+    seed: contract.seed,
+    clientId: contract.clientId,
+    crewId,
+    mode: first ? 'firstJob' : 'standard',
+  });
   canContinue.value = false;
   appScreen.value = 'game';
 }
@@ -739,19 +747,28 @@ export function startRun(
   return { failedAt: result.failedAt, error: result.error };
 }
 
-/** Starts a run at once, without the job board (a ?seed=, ?client=, or ?crew= link). */
+/**
+ * Starts a run at once, without the job board (a ?seed=, ?client=, or ?crew= link, or a lot
+ * played again). `mode` keeps a first job's gentler targets for its own retry (D-151).
+ */
 export function newRun(
   seed = randomSeed(),
   clientId: ClientId = 'hendersons',
   crewId: CrewId = 'generalContractor',
+  mode: RunMode = 'standard',
 ): void {
   notice.value = null;
   // A friend's link is a first contact too (D-149): its screen fills in as the first job's does,
   // once. A browser that has had a first job, from a link or the board, isn't guided again by a
   // link, a Portfolio replay or a new run after a crash. The board stays as a first visit finds
   // it, so Start still opens with the first job until a contract is taken or a house finished.
-  if (firstVisit() && !guidedBefore()) setFirstJob(seed);
-  startRun({ seed, clientId, crewId, mode: 'standard' });
+  // A guided run is the browser's first job, with its gentler targets (D-151). So is a run on
+  // the first job's own lot while that job is going (the same link opened twice, or a friend's
+  // first-job result after the board's): startRun keeps it the first job, guided.
+  const guided = firstVisit() && !guidedBefore();
+  if (guided) setFirstJob(seed);
+  const first = guided || firstJobSeed.value === seed;
+  startRun({ seed, clientId, crewId, mode: first ? 'firstJob' : mode });
   canContinue.value = false;
   appScreen.value = 'game';
 }
