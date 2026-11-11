@@ -23,7 +23,8 @@
 // extra slots), and the hand is drawn in two rows, Rooms then Layout (D-121). A card with no
 // play at all (no spot, no host, no Renovation) is swapped for another from its row, trying up
 // to `swapTries` cards; that replaced D-070's free redraw. A reroll redraws both rows, then
-// swaps (D-132; D-121 had a reroll per row).
+// swaps (D-132; D-121 had a reroll per row). Neither its draw nor its swaps deal back a card it
+// replaced while its row's pool has enough others.
 //
 // Change orders (M4b): when a milestone resolves, the phase effects that ran through it end
 // and its requests and restrictions resolve (a request met and a restriction kept pay their
@@ -758,8 +759,17 @@ export function createRules(content: Content): Rules {
     };
   }
 
-  /** One row of the hand (D-121): `roomsRow` or `layoutRow` cards on that row's stream. */
-  function drawRowFor(state: RunState, n: number, row: DrawRow, special = false): Card[] {
+  /**
+   * One row of the hand (D-121): `roomsRow` or `layoutRow` cards on that row's stream. A
+   * reroll's leaves out the `held` cards while enough others remain (D-132).
+   */
+  function drawRowFor(
+    state: RunState,
+    n: number,
+    row: DrawRow,
+    special = false,
+    held: readonly Card[] = [],
+  ): Card[] {
     return drawHand(
       content,
       state.setup.seed,
@@ -767,13 +777,18 @@ export function createRules(content: Content): Rules {
       slotKey(state.slot, state.overtimeWeek),
       n,
       rule(state, row === 'rooms' ? 'roomsRow' : 'layoutRow'),
-      drawOpts(state, row, special),
+      { ...drawOpts(state, row, special), held },
     );
   }
 
   /** A whole hand: the Rooms row, then the Layout row. */
-  function drawFor(state: RunState, n: number, special = false): Card[] {
-    return DRAW_ROWS.flatMap((row) => drawRowFor(state, n, row, special));
+  function drawFor(
+    state: RunState,
+    n: number,
+    special = false,
+    held: readonly Card[] = [],
+  ): Card[] {
+    return DRAW_ROWS.flatMap((row) => drawRowFor(state, n, row, special, held));
   }
 
   /** A card has a play: a spot, a host, or a Renovation (D-102). */
@@ -785,9 +800,14 @@ export function createRules(content: Content): Rules {
    * Swaps (D-121): each card of `row` (both rows when unset) with no play is replaced by the
    * first of up to `swapTries` cards from its row that has one, or by the last tried. The
    * draw's `n` keys the swaps' streams, one per card. The draw's one `handDrawn` event carries
-   * the hand after its swaps, and what each swapped card replaced.
+   * the hand after its swaps, and what each swapped card replaced. A reroll's swaps leave out
+   * the `held` cards it replaced while enough others remain (D-132).
    */
-  function swapDead(state: RunState, n: number): { state: RunState; swapped: SwappedCard[] } {
+  function swapDead(
+    state: RunState,
+    n: number,
+    held: readonly Card[] = [],
+  ): { state: RunState; swapped: SwappedCard[] } {
     const slot = slotKey(state.slot, state.overtimeWeek);
     let s = state;
     const swapped: SwappedCard[] = [];
@@ -806,7 +826,7 @@ export function createRules(content: Content): Rules {
           k,
           b.swapTries,
           inRow,
-          drawOpts(s, r),
+          { ...drawOpts(s, r), held },
         );
         for (const card of tries) {
           s = { ...s, hand: s.hand.map((c, j) => (j === i ? card : c)) };
@@ -1711,8 +1731,8 @@ export function createRules(content: Content): Rules {
       budget: s.budget,
     });
     if (visit.forced) {
-      // A shop the ?debug panel opened mid-week: back to the same week, with a fresh hand,
-      // drawn and swapped as a reroll of both rows would be.
+      // A shop the ?debug panel opened mid-week: back to the same week, with a fresh hand on
+      // the week's next draw, swapped as at the start of a week (it may deal back old cards).
       const after = swapDead(
         { ...s, hand: drawFor(s, s.draws), draws: s.draws + 1, swapped: [] },
         s.draws,
@@ -1981,20 +2001,23 @@ export function createRules(content: Content): Rules {
       case 'reroll': {
         const can = canReroll(state);
         if (!can.ok) throw new IllegalAction(can.reason!);
-        // Both rows (D-132), then their swaps, as at the start of a week.
+        // Both rows (D-132), then their swaps, as at the start of a week, on the same streams.
+        // Neither deals back a card the hand holds now while its row's pool has enough others.
         const n = state.draws;
+        const held = state.hand;
         // The phase's own rerolls go first; bought ones never expire.
         const fromPhase = state.rerollsLeft > 0;
         const after = swapDead(
           {
             ...state,
-            hand: drawFor(state, n),
+            hand: drawFor(state, n, false, held),
             swapped: [],
             draws: n + 1,
             rerollsLeft: fromPhase ? state.rerollsLeft - 1 : state.rerollsLeft,
             bonusRerolls: fromPhase ? state.bonusRerolls : state.bonusRerolls - 1,
           },
           n,
+          held,
         );
         events.push({
           t: 'handDrawn',

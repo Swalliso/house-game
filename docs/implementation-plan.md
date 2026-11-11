@@ -468,7 +468,7 @@ The UI keeps an event queue and plays it through an animation director (place �
 
 1. Transforms resolve (a Sapling old enough becomes a Tree), so the board the player sees is the board that scores.
 2. The hand is drawn in two rows (D-121): `roomsRow` distinct Rooms cards (2) and `layoutRow` distinct Layout cards (2), each from its own pool: pieces, plus fixtures from phase 2. A type at its limit in the checklist draws at half weight (D-104).
-3. Each card with no play (no legal spot, no legal host, and no Renovation) is swapped for another card from its row, up to `swapTries` (3) tries: the first with a play, else the last tried. A reroll redraws both rows (D-132) and swaps the same way; the reserve doesn't count.
+3. Each card with no play (no legal spot, no legal host, and no Renovation) is swapped for another card from its row, up to `swapTries` (3) tries: the first with a play, else the last tried. A reroll redraws both rows (D-132) and swaps the same way; the reserve doesn't count. Its draw and its swaps leave out the cards it replaces, topping a row up from them only when its pool has too few others.
 
 **Fast-forward (D-040):**
 
@@ -915,8 +915,9 @@ Shape variants (L-Kitchen, the long Hallway) are separate cards that share a typ
   - `pending` is an optional tentative placement, so a "the preview said +12 but I got +9" bug can be reproduced.
   - A **Copy run code** button and a `?run=` URL parameter replay a run. A bug report is one string and becomes a regression test.
   - To reproduce a code from an older build: `git checkout <build>` and replay locally.
-- **Save and resume:** the same structure goes to `localStorage` after every action (best-effort; itch.io's iframe can lose storage). Keys are namespaced by channel, because the release and `/dev/` builds share one origin (D-060). On load:
+- **Save and resume:** the same structure goes to `localStorage` after every action (best-effort; itch.io's iframe can lose storage), with the build and a check beside it: the run's week, Wow, budget and pieces. Keys are namespaced by channel, because the release and `/dev/` builds share one origin (D-060). On load:
   - same `build` and replay succeeds → resume
+  - another build, the same `contentHash`, and a replay that succeeds and matches the check (or a save from before the check was kept that used no reroll) → resume, with a note that the run carried over (D-068, 2026-11-11)
   - otherwise → a short "The game updated, so this is a fresh run" note, with the old run code kept for a bug report
 
   Loading never blocks or crashes.
@@ -1148,6 +1149,7 @@ Built alongside M5a, on its own branch (`phase/m4-clients`, pull request #17), a
   - Each contract shows its lot as a thumbnail, so players can match a lot to a client. Combolands players read the starting map the same way to choose guilds.
   - On a first visit, contract 0 is always the Hendersons. They and the General Contractor are marked "Recommended for your first job". The board sits outside `apply` and the run code, so this doesn't affect replays.
   - *2026-11-11 (D-149):* on a first visit that contract is the first job, the only one that can be taken, on its own lot (`jobBoard.firstSeed`); the other two lie face down. It starts with the General Contractor, and the crew pick comes with the second run.
+  - *2026-11-11 (D-149 note):* a first visit lasts until a contract is taken or a house is finished. A link, a Portfolio replay or a new run after a crash is guided only in a browser that has never had a first job.
   - Until M4b, the General Contractor is the only crew.
 
 **M4b, then:**

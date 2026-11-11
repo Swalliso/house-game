@@ -38,9 +38,11 @@ import {
   type ClientId,
   type Contract,
   type CrewId,
+  type RunCodeData,
 } from '../rules/index.ts';
 import { BUILD_CHANNEL, BUILD_SHA } from './build-info.ts';
 import { occupancy, uidAt } from './board/geometry.ts';
+import { company } from './company.ts';
 
 export const CONTENT_HASH = contentHash(CONTENT);
 const SAVE_KEY = `openhouse:${BUILD_CHANNEL}:run`;
@@ -55,23 +57,33 @@ export const appScreen = signal<'title' | 'jobs' | 'game'>('title');
 export const jobBoardSeed = signal<string>('board');
 const VISITED_KEY = `openhouse:${BUILD_CHANNEL}:visited`;
 const FIRST_JOB_KEY = `openhouse:${BUILD_CHANNEL}:firstJob`;
+const GUIDED_KEY = `openhouse:${BUILD_CHANNEL}:guided`;
+/** The visited key after the ?debug panel's "First visit again": `again:<houses built then>`. */
+const AGAIN = /^again:(\d+)$/;
 
 /**
- * A first visit (no run started from the board yet): the board opens one contract, the first job
- * (D-149), and shows the others locked.
+ * A first visit (D-149): no contract taken from the board and no house finished in this browser.
+ * The board opens one contract, the first job, and shows the others locked. After the ?debug
+ * panel's "First visit again", only a house finished since counts.
  */
 export function firstVisit(): boolean {
+  let visited: string | null = null;
   try {
-    return localStorage.getItem(VISITED_KEY) === null;
+    visited = localStorage.getItem(VISITED_KEY);
   } catch {
-    return true;
+    // Blocked storage: the company's record still counts this visit's houses.
   }
+  const built = company.value.built;
+  if (visited === null) return built === 0;
+  const again = AGAIN.exec(visited);
+  return again !== null && built <= Number(again[1]);
 }
 
 /**
  * The first job's seed (D-149), kept in the browser while that run is the one being played: the
- * first run a browser starts, from the board or from a link. UI only, never game state: the run
- * itself is an ordinary one, and its screen fills in week by week (hud/first-job.ts).
+ * first run a browser starts, from the board or from a link, and the board's first job while it
+ * is still a first visit. UI only, never game state: the run itself is an ordinary one, and its
+ * screen fills in week by week (hud/first-job.ts).
  */
 export const firstJobSeed = signal<string | null>(
   (() => {
@@ -89,8 +101,24 @@ function setFirstJob(seed: string | null): void {
   try {
     if (seed === null) localStorage.removeItem(FIRST_JOB_KEY);
     else localStorage.setItem(FIRST_JOB_KEY, seed);
+    // A first job starting or ending: this browser has had one. Kept at its end too, for a first
+    // job saved before this key was.
+    localStorage.setItem(GUIDED_KEY, '1');
   } catch {
     // A private window: the first job is guided for this visit only.
+  }
+}
+
+/**
+ * Whether this browser has had a first job (D-149), from the board or a link, still going or
+ * over. A link, a replay or a new run after a crash is guided only before it has.
+ */
+function guidedBefore(): boolean {
+  if (firstJobSeed.value !== null) return true;
+  try {
+    return localStorage.getItem(GUIDED_KEY) !== null;
+  } catch {
+    return false;
   }
 }
 
@@ -118,13 +146,15 @@ export function takeContract(contract: Contract, crewId: CrewId = 'generalContra
 
 /**
  * The ?debug panel's "First visit again": forgets that this browser has started a run, so the
- * board opens with the first job and that run's screen fills in again. The hints are Settings'
- * to reset.
+ * board opens with the first job, that run's screen fills in again, and so does a link's until a
+ * first job has run. The houses already in the record don't count against it; one finished from
+ * now on ends it, as it would a new browser's. The hints are Settings' to reset.
  */
 export function forgetFirstVisit(): void {
   setFirstJob(null);
   try {
-    localStorage.removeItem(VISITED_KEY);
+    localStorage.setItem(VISITED_KEY, `again:${company.value.built}`);
+    localStorage.removeItem(GUIDED_KEY);
   } catch {
     // Nothing to forget.
   }
@@ -530,7 +560,23 @@ export function crashRunCode(): string {
 
 const PREVIOUS_KEY = `openhouse:${BUILD_CHANNEL}:previous`;
 
-function readSave(): { build?: unknown; code?: unknown } | null {
+/**
+ * What a saved run looked like when it was saved, kept beside its code: a save from another
+ * build carries on only if this build replays it to the same week, Wow, budget and pieces
+ * (D-068). A rules change that plays the same actions out differently shows in one of them.
+ */
+interface SaveCheck {
+  week: number;
+  score: number;
+  budget: number;
+  pieces: number;
+}
+
+function saveCheck(s: RunState): SaveCheck {
+  return { week: s.week, score: s.score, budget: s.budget, pieces: s.house.pieces.length };
+}
+
+function readSave(): { build?: unknown; code?: unknown; check?: unknown } | null {
   try {
     const saved: unknown = JSON.parse(localStorage.getItem(SAVE_KEY) ?? 'null');
     return saved && typeof saved === 'object' ? saved : null;
@@ -550,6 +596,32 @@ function runOver(code: string): boolean {
     // A setup this build can't start: as good as in progress, so its code is kept.
     return false;
   }
+}
+
+/**
+ * Whether a save from another build can carry on in this one (D-068): its content is this
+ * build's, and this build's rules replay every action, back to the run as it was saved. A save
+ * from before the check was kept beside the code (2026-11-11) has none: the content and a clean
+ * replay have to do, unless it used a reroll.
+ */
+function carriesOver(data: RunCodeData, check: unknown): boolean {
+  if (data.contentHash !== CONTENT_HASH) return false;
+  // A reroll deals other cards since D-132's note of 2026-11-11, so a save that used one can
+  // replay cleanly to a house the player never built, and only a check would catch it. Without
+  // one, the run starts fresh (the user's call, D-068's note of the same day).
+  if (check === undefined && data.actions.some((a) => a.t === 'reroll')) return false;
+  let replayed: ReturnType<typeof rules.replay>;
+  try {
+    replayed = rules.replay(data.setup, data.actions);
+  } catch {
+    return false;
+  }
+  if (replayed.failedAt !== undefined) return false;
+  if (check === undefined) return true;
+  if (!check || typeof check !== 'object') return false;
+  const now = saveCheck(replayed.state);
+  const was = check as Record<string, unknown>;
+  return (Object.keys(now) as (keyof SaveCheck)[]).every((k) => was[k] === now[k]);
 }
 
 /** Whether this build made a run code: only then can a note offer to go back to the run. */
@@ -579,7 +651,10 @@ function keepPreviousRun(saved: { code?: unknown } | null): string | undefined {
 
 function save(): void {
   try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify({ build: BUILD_SHA, code: runCode(false) }));
+    localStorage.setItem(
+      SAVE_KEY,
+      JSON.stringify({ build: BUILD_SHA, code: runCode(false), check: saveCheck(run.value) }),
+    );
   } catch {
     // Best effort: itch.io's iframe and private windows can lose storage.
   }
@@ -671,9 +746,11 @@ export function newRun(
   crewId: CrewId = 'generalContractor',
 ): void {
   notice.value = null;
-  // A friend's link is a first contact too (D-149): its screen fills in as the first job's does.
-  // The board stays as a first visit finds it, so Start still opens with the first job.
-  if (firstVisit()) setFirstJob(seed);
+  // A friend's link is a first contact too (D-149): its screen fills in as the first job's does,
+  // once. A browser that has had a first job, from a link or the board, isn't guided again by a
+  // link, a Portfolio replay or a new run after a crash. The board stays as a first visit finds
+  // it, so Start still opens with the first job until a contract is taken or a house finished.
+  if (firstVisit() && !guidedBefore()) setFirstJob(seed);
   startRun({ seed, clientId, crewId, mode: 'standard' });
   canContinue.value = false;
   appScreen.value = 'game';
@@ -836,8 +913,9 @@ export function endWeek(): void {
 }
 
 /**
- * On page load: a ?run= code first (a bug report), then the saved run if it's from this build
- * and still replays, otherwise a fresh run with a note. Loading never blocks or crashes.
+ * On page load: a ?run= code first (a bug report), then the saved run if it still replays and
+ * is from this build, or from another build with the same content that replays it to the same
+ * run (D-068), otherwise a fresh run with a note. Loading never blocks or crashes.
  */
 export function loadInitialRun(): void {
   const params = new URLSearchParams(location.search);
@@ -883,6 +961,8 @@ export function loadInitialRun(): void {
   if (seedParam || clientId || crewId) {
     const previous = keepPreviousRun(saved);
     newRun(seedParam || randomSeed(), clientId ?? 'hendersons', crewId ?? 'generalContractor');
+    // Say what the link opened (D-135): whose house, with which crew.
+    addNote(linkNote(run.value.setup, !!seedParam));
     if (previous) addPutAsideNote(previous);
     if (clientParam !== null && !clientId) {
       addNote(`There's no client "${clientParam}": this run is for the Hendersons.`);
@@ -894,12 +974,17 @@ export function loadInitialRun(): void {
   }
   if (saved && typeof saved.code === 'string') {
     const decoded = decodeRunCode(saved.code);
-    if (saved.build === BUILD_SHA && decoded.ok) {
+    // A save from this build, or from another one that plays it out the same (D-068).
+    const sameBuild = saved.build === BUILD_SHA;
+    if (decoded.ok && (sameBuild || carriesOver(decoded.data, saved.check))) {
       const { failedAt } = startRun(decoded.data.setup, decoded.data.actions);
       if (failedAt === undefined) {
         // The title screen offers Continue for a run in progress.
         canContinue.value = inProgress() && log.value.length > 0;
         appScreen.value = 'title';
+        if (!sameBuild && canContinue.value) {
+          addNote('The game updated, and your run carried over.');
+        }
         if (linkError) addNote(linkError);
         return;
       }
@@ -927,6 +1012,17 @@ export function loadInitialRun(): void {
   });
   if (linkError) addNote(linkError);
   appScreen.value = 'title';
+}
+
+/**
+ * What a ?seed=, ?client= or ?crew= link opened, by the content's names: "A shared lot: you’re
+ * building for the Hendersons with the General Contractor." A link without a seed starts a
+ * random lot.
+ */
+function linkNote(setup: RunSetup, shared: boolean): string {
+  const client = CONTENT.clients[setup.clientId].name.replace(/^The\s/, 'the ');
+  const crew = CONTENT.crews[setup.crewId].name;
+  return `${shared ? 'A shared lot' : 'A new lot'}: you’re building for ${client} with the ${crew}.`;
 }
 
 /** Adds a sentence to the note, keeping any old run code it already offers. */

@@ -3,6 +3,11 @@
 // through loadInitialRun's own ?seed=&client=&crew= path, setting aside a friend's run in
 // progress instead of losing it. The note about that run offers the way back to it (the polish
 // review): not for a run that was already over, which gets no note, nor one from an older build.
+// The note also says what the link opened: whose house, with which crew.
+//
+// And a save from another build (D-068, 2026-11-11): it carries on when its content is this
+// build's and this build replays it to the run that was saved (the week, Wow, budget and pieces
+// kept beside its code). Otherwise the note says the game updated and offers the old code.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -10,6 +15,7 @@ import {
   decodeRunCode,
   encodeRunCode,
   rules,
+  type Action,
   type MilestoneRecord,
   type RunSetup,
   type RunState,
@@ -17,6 +23,7 @@ import {
 import { BUILD_CHANNEL, BUILD_SHA } from '../build-info.ts';
 import {
   appScreen,
+  canContinue,
   CONTENT_HASH,
   crash,
   dispatch,
@@ -135,6 +142,10 @@ describe('opening the link', () => {
   // job runs these tests before it builds each site.
   const SAVE = `openhouse:${BUILD_CHANNEL}:run`;
   const PREVIOUS = `openhouse:${BUILD_CHANNEL}:previous`;
+  /** What the link to `setup` says it opened. */
+  const SHARED = 'A shared lot: you’re building for the Hendersons with the General Contractor.';
+  /** Another build's content hash. */
+  const OTHER_CONTENT = 'c0ffee00';
 
   /** Opens `url` as a fresh page load would. */
   function open(url: string): void {
@@ -166,6 +177,7 @@ describe('opening the link', () => {
     vi.unstubAllGlobals();
     notice.value = null;
     appScreen.value = 'title';
+    canContinue.value = false;
   });
 
   it('starts the same run: the same lot, hand and setup, straight into the game', () => {
@@ -188,6 +200,24 @@ describe('opening the link', () => {
     expect(run.value).toEqual(rules.newRun(other));
   });
 
+  it('says what it opened: whose house, with which crew, by their names', () => {
+    open(lotLink(setup, 'http://localhost:5173/'));
+    expect(notice.value).toEqual({ text: SHARED });
+    notice.value = null;
+    open(
+      lotLink({ ...setup, clientId: 'vladislav', crewId: 'architect' }, 'http://localhost:5173/'),
+    );
+    expect(notice.value).toEqual({
+      text: 'A shared lot: you’re building for Count Vladislav with the Architect.',
+    });
+    // A ?client= link without a seed starts a random lot.
+    notice.value = null;
+    open('http://localhost:5173/?client=barkers');
+    expect(notice.value).toEqual({
+      text: 'A new lot: you’re building for the Barkers with the General Contractor.',
+    });
+  });
+
   it("puts a friend's run in progress aside, with its code in the note", () => {
     const theirs = encodeRunCode({
       build: BUILD_SHA,
@@ -200,7 +230,7 @@ describe('opening the link', () => {
     expect(run.value.setup).toEqual(setup);
     // The note can go back to it: it's from this build.
     expect(notice.value).toEqual({
-      text: 'Your run in progress was put aside.',
+      text: `${SHARED} Your run in progress was put aside.`,
       oldCode: theirs,
       goBack: true,
     });
@@ -209,11 +239,11 @@ describe('opening the link', () => {
     expect(store.get(SAVE)).not.toContain(theirs);
   });
 
-  /** A run on `seed` with one week passed, as its code, from this build or an older one. */
-  const oneWeek = (seed: string, build = BUILD_SHA) =>
+  /** A run on `seed` with one week passed, as its code, from this build or another one. */
+  const oneWeek = (seed: string, build = BUILD_SHA, contentHash = CONTENT_HASH) =>
     encodeRunCode({
       build,
-      contentHash: CONTENT_HASH,
+      contentHash,
       setup: { ...setup, seed },
       actions: [{ t: 'pass' }],
     });
@@ -256,12 +286,15 @@ describe('opening the link', () => {
     const old = oneWeek('theirs', 'older00');
     store.set(SAVE, JSON.stringify({ build: 'older00', code: old }));
     open(lotLink(setup, 'http://localhost:5173/'));
-    expect(notice.value).toEqual({ text: 'Your run in progress was put aside.', oldCode: old });
+    expect(notice.value).toEqual({
+      text: `${SHARED} Your run in progress was put aside.`,
+      oldCode: old,
+    });
     expect(notice.value?.goBack).toBeUndefined();
   });
 
   /** A run on `seed` passed week after week until the client walks, as its code. */
-  function walkedAway(seed: string, build = BUILD_SHA): string {
+  function walkedAway(seed: string, build = BUILD_SHA, contentHash = CONTENT_HASH): string {
     const actions: { t: 'pass' }[] = [];
     let s = rules.newRun({ ...setup, seed });
     while (s.screen === 'build' && actions.length < 60) {
@@ -271,22 +304,23 @@ describe('opening the link', () => {
     expect(s.screen).toBe('lost');
     return encodeRunCode({
       build,
-      contentHash: CONTENT_HASH,
+      contentHash,
       setup: { ...setup, seed },
       actions,
     });
   }
 
-  it('says nothing when the saved run was already over: nothing was in progress', () => {
+  it('says nothing of a saved run that was already over: nothing was in progress', () => {
     store.set(SAVE, JSON.stringify({ build: BUILD_SHA, code: walkedAway('theirs') }));
     open(lotLink(setup, 'http://localhost:5173/'));
     expect(run.value.setup).toEqual(setup);
-    expect(notice.value).toBeNull();
+    expect(notice.value).toEqual({ text: SHARED });
     expect(store.has(PREVIOUS)).toBe(false);
   });
 
-  it('says the game updated for a run in progress, and nothing for one that was over', () => {
-    const old = oneWeek('theirs', 'older00');
+  it("says the game updated for a run in progress that can't carry over, and nothing for one that was over", () => {
+    // Another build's content: its runs can't carry over (D-068).
+    const old = oneWeek('theirs', 'older00', OTHER_CONTENT);
     store.set(SAVE, JSON.stringify({ build: 'older00', code: old }));
     open('http://localhost:5173/');
     expect(appScreen.value).toBe('title');
@@ -298,7 +332,10 @@ describe('opening the link', () => {
     expect(notice.value?.goBack).toBeUndefined();
     notice.value = null;
     store.clear();
-    store.set(SAVE, JSON.stringify({ build: 'older00', code: walkedAway('theirs', 'older00') }));
+    store.set(
+      SAVE,
+      JSON.stringify({ build: 'older00', code: walkedAway('theirs', 'older00', OTHER_CONTENT) }),
+    );
     open('http://localhost:5173/');
     expect(appScreen.value).toBe('title');
     expect(notice.value).toBeNull();
@@ -324,7 +361,7 @@ describe('opening the link', () => {
     });
   });
 
-  it('says nothing when the save had no weeks played', () => {
+  it('says nothing of a save with no weeks played', () => {
     const fresh = encodeRunCode({
       build: BUILD_SHA,
       contentHash: CONTENT_HASH,
@@ -333,7 +370,167 @@ describe('opening the link', () => {
     });
     store.set(SAVE, JSON.stringify({ build: BUILD_SHA, code: fresh }));
     open(lotLink(setup, 'http://localhost:5173/'));
-    expect(notice.value).toBeNull();
+    expect(notice.value).toEqual({ text: SHARED });
     expect(store.has(PREVIOUS)).toBe(false);
+  });
+
+  describe('a save from another build (D-068)', () => {
+    const theirs: RunSetup = { ...setup, seed: 'theirs' };
+    /**
+     * Three weeks built on their lot, the first legal placement each week (after a reroll in
+     * the 0-based week `rerollIn`, if given), and what save() keeps beside the code (store.ts):
+     * the run's week, Wow, budget and pieces.
+     */
+    function threeWeeks(rerollIn?: number) {
+      const actions: Action[] = [];
+      let built = rules.newRun(theirs);
+      for (let week = 0; week < 3; week++) {
+        if (week === rerollIn) {
+          actions.push({ t: 'reroll' });
+          built = rules.apply(built, { t: 'reroll' }).state;
+        }
+        const place = rules.legalActions(built).find((a) => a.t === 'place') ?? { t: 'pass' };
+        actions.push(place);
+        built = rules.apply(built, place).state;
+      }
+      const check = {
+        week: built.week,
+        score: built.score,
+        budget: built.budget,
+        pieces: built.house.pieces.length,
+      };
+      return { actions, check };
+    }
+    const { actions, check } = threeWeeks();
+    const CARRIED = 'The game updated, and your run carried over.';
+    const DROPPED = 'The game updated, so your last run couldn’t continue.';
+
+    /**
+     * Saves the run (or `acts`) as an older build would have: its code stamped with that build,
+     * and the check beside it (`null` for a save from before the check was kept). Returns the
+     * code.
+     */
+    function olderSave(
+      opts: { contentHash?: string; acts?: Action[]; extra?: Action[]; check?: unknown } = {},
+    ): string {
+      const code = encodeRunCode({
+        build: 'older00',
+        contentHash: opts.contentHash ?? CONTENT_HASH,
+        setup: theirs,
+        actions: [...(opts.acts ?? actions), ...(opts.extra ?? [])],
+      });
+      const saved = { build: 'older00', code };
+      store.set(
+        SAVE,
+        JSON.stringify(opts.check === null ? saved : { ...saved, check: opts.check ?? check }),
+      );
+      return code;
+    }
+
+    /** Opens the page: it starts a fresh run, keeping the saved code in the browser and the note. */
+    function droppedFor(code: string): void {
+      open('http://localhost:5173/');
+      expect(appScreen.value).toBe('title');
+      expect(canContinue.value).toBe(false);
+      expect(run.value.setup.seed).not.toBe('theirs');
+      expect(log.value).toEqual([]);
+      expect(notice.value).toEqual({ text: DROPPED, oldCode: code });
+      expect(store.get(PREVIOUS)).toBe(code);
+    }
+
+    it('carries a run in progress over when this build plays it out the same', () => {
+      // A check worth the name: three pieces that have earned some Wow.
+      expect(check.pieces).toBe(3);
+      expect(check.score).toBeGreaterThan(0);
+      olderSave();
+      open('http://localhost:5173/');
+      // The title offers Continue, and the note says why the run is still there.
+      expect(appScreen.value).toBe('title');
+      expect(canContinue.value).toBe(true);
+      expect(run.value.setup).toEqual(theirs);
+      expect(log.value).toEqual(actions);
+      expect(notice.value).toEqual({ text: CARRIED });
+      expect(store.has(PREVIOUS)).toBe(false);
+      // It's this build's save now, with its check.
+      const now = JSON.parse(store.get(SAVE)!);
+      expect(now.build).toBe(BUILD_SHA);
+      expect(now.check).toEqual(check);
+      const code = decodeRunCode(now.code);
+      expect(code.ok && code.data.build).toBe(BUILD_SHA);
+      expect(code.ok && code.data.actions).toEqual(actions);
+    });
+
+    it('carries over a save from before the check was kept, on its content and a clean replay', () => {
+      olderSave({ check: null });
+      open('http://localhost:5173/');
+      expect(canContinue.value).toBe(true);
+      expect(log.value).toEqual(actions);
+      expect(notice.value).toEqual({ text: CARRIED });
+    });
+
+    // A reroll deals other cards since D-132's note of 2026-11-11, so the same actions can replay
+    // cleanly to a house the player never built. Only a check catches that (the user's call).
+    const rerolled = threeWeeks(1);
+
+    it('starts fresh from a save before the check was kept that used a reroll', () => {
+      expect(rerolled.actions).toContainEqual({ t: 'reroll' });
+      droppedFor(olderSave({ acts: rerolled.actions, check: null }));
+      // The same lot's save without the reroll still carries over.
+      notice.value = null;
+      store.clear();
+      olderSave({ check: null });
+      open('http://localhost:5173/');
+      expect(canContinue.value).toBe(true);
+      expect(log.value).toEqual(actions);
+      expect(notice.value).toEqual({ text: CARRIED });
+    });
+
+    it('leaves a save with a check that used a reroll to its check', () => {
+      olderSave({ acts: rerolled.actions, check: rerolled.check });
+      open('http://localhost:5173/');
+      expect(canContinue.value).toBe(true);
+      expect(log.value).toEqual(rerolled.actions);
+      expect(notice.value).toEqual({ text: CARRIED });
+      // A fresh page load: nothing carried over yet.
+      notice.value = null;
+      canContinue.value = false;
+      store.clear();
+      droppedFor(
+        olderSave({
+          acts: rerolled.actions,
+          check: { ...rerolled.check, score: rerolled.check.score + 1 },
+        }),
+      );
+    });
+
+    it('carries a finished run over without a note: there was nothing to continue', () => {
+      const over = walkedAway('theirs', 'older00');
+      store.set(SAVE, JSON.stringify({ build: 'older00', code: over }));
+      open('http://localhost:5173/');
+      expect(run.value.screen).toBe('lost');
+      expect(canContinue.value).toBe(false);
+      expect(notice.value).toBeNull();
+      expect(store.has(PREVIOUS)).toBe(false);
+    });
+
+    it("doesn't carry over a run made with other content", () => {
+      droppedFor(olderSave({ contentHash: OTHER_CONTENT }));
+    });
+
+    it("doesn't carry over a run this build can't replay to the end", () => {
+      // The shop isn't open in week 4, so this build stops at the last action.
+      droppedFor(olderSave({ extra: [{ t: 'leaveShop' }] }));
+    });
+
+    it("doesn't carry over a run this build plays out differently", () => {
+      droppedFor(olderSave({ check: { ...check, score: check.score + 1 } }));
+      notice.value = null;
+      store.clear();
+      droppedFor(olderSave({ check: { ...check, pieces: 2 } }));
+      notice.value = null;
+      store.clear();
+      // A check that can't be read is no match either.
+      droppedFor(olderSave({ check: 'garbled' }));
+    });
   });
 });

@@ -1,17 +1,19 @@
 // Small UI actions shared by the HUD's buttons and the keyboard.
 
 import { computed, signal } from '@preact/signals';
-import { rules } from '../../rules/index.ts';
+import { rules, type ClientId, type CrewId } from '../../rules/index.ts';
 import { audio } from '../audio/audio.ts';
 import { busy, orderStamp, skip } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
-import { copyFallback, settingsOpen } from './modals.ts';
+import { copyFallback, portfolioOpen, settingsOpen } from './modals.ts';
 import {
   appScreen,
   demolishArmed,
   endWeek,
   heldPiece,
   inProgress,
+  log,
+  newRun,
   openJobBoard,
   notice,
   run,
@@ -100,6 +102,19 @@ export function startNewRun(): void {
   if (midRun && !window.confirm('Start a new run? This one will be lost.')) return;
   notice.value = null;
   openJobBoard();
+}
+
+/**
+ * The Portfolio's "Play this lot again" (D-139): a new run on a finished house's lot, for the same
+ * client with the same crew, straight into the game. The run in progress would be lost, so it
+ * asks first, as the title's New run does while Continue is offered.
+ */
+export function playLotAgain(lot: { seed: string; clientId: ClientId; crewId: CrewId }): void {
+  const atStake = inProgress() && log.value.length > 0;
+  if (atStake && !window.confirm('Play this lot again? The run in progress will be lost.')) return;
+  audio.unlock();
+  portfolioOpen.value = false;
+  newRun(lot.seed, lot.clientId, lot.crewId);
 }
 
 export function selectCard(i: number, from: Source = 'hand'): void {
