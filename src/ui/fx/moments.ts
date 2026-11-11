@@ -78,7 +78,7 @@ function runKey(s: RunSetup): string {
 }
 
 function toppedList(): string[] {
-  if (typeof localStorage === 'undefined') return [];
+  // Any touch of localStorage sits in the try: a browser that blocks site data throws on it.
   try {
     const v: unknown = JSON.parse(localStorage.getItem(TOPPED_KEY) ?? 'null');
     return Array.isArray(v) ? v.filter((k): k is string => typeof k === 'string') : [];

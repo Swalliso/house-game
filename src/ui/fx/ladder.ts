@@ -73,7 +73,7 @@ const BEST_KEY = `openhouse:${BUILD_CHANNEL}:best-week`;
 const SEEN_KEY = `openhouse:${BUILD_CHANNEL}:tiers-seen`;
 
 function read(key: string): unknown {
-  if (typeof localStorage === 'undefined') return null;
+  // Any touch of localStorage sits in the try: a browser that blocks site data throws on it.
   try {
     return JSON.parse(localStorage.getItem(key) ?? 'null');
   } catch {
@@ -82,7 +82,6 @@ function read(key: string): unknown {
 }
 
 function write(key: string, value: unknown): void {
-  if (typeof localStorage === 'undefined') return;
   try {
     localStorage.setItem(key, JSON.stringify(value));
   } catch {

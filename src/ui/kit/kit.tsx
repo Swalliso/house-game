@@ -456,6 +456,11 @@ export function Switch({
         onChange={(e) => {
           const box = e.currentTarget;
           if (onChange(box.checked) === false) box.checked = checked;
+          // Chrome leaves focus on the checkbox after a click, and the game's keys leave an
+          // input's keys alone (App.tsx), so 1–9, Enter and Space went dead after a click on
+          // Auto. Give focus back to the page. A switch reached with Tab keeps it, and so does
+          // one in a sheet (Settings), which holds the keyboard itself.
+          if (!box.matches(':focus-visible') && !box.closest('[role="dialog"]')) box.blur();
         }}
       />
       <span class="switch-track" aria-hidden="true">
