@@ -278,6 +278,26 @@ describe('a browser’s first job', () => {
     expect(firstJob.value).toBe(false);
   });
 
+  it('once lost, is played again unguided from the end screen’s Try this lot again', () => {
+    // D-150: the button hands playLotAgain the lost run's own setup. The same lot, client and
+    // crew start at week 1 with the whole screen, whether the first job came from the board or
+    // from a friend's link.
+    for (const begin of [() => takeContract(contract(firstSeed)), () => newRun(firstSeed)]) {
+      forgetFirstVisit();
+      store.clear();
+      begin();
+      expect(firstJob.value).toBe(true);
+      run.value = { ...run.value, week: 18, screen: 'lost' };
+      const lost = run.value;
+      playLotAgain(lost.setup);
+      expect(run.value.setup).toEqual(lost.setup);
+      expect(run.value.week).toBe(1);
+      expect(run.value.screen).toBe('build');
+      expect(firstJob.value).toBe(false);
+      expect(on(shown.value)).toEqual(everything);
+    }
+  });
+
   it('is a friend’s link too, which leaves the board as a first visit finds it', () => {
     newRun('shared');
     expect(firstJob.value).toBe(true);
