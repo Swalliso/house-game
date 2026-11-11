@@ -1844,6 +1844,16 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - **A friend's link** gets the calm screen but not the lot, so its hints name a card only when the hand happens to hold one.
 - **Complete early's texts** still say 4 budget and 30% for Juniper, whose jobs pay double (the polish review's note).
 
+**2026-11-11 (a fix pull request, `fix/first-visit-links`, at the user's pick of "Guided once"):** a browser is guided once. Only taking a contract from the board ended a first visit, so a link, the Portfolio's Play this lot again (D-139's 2026-11-11 note) or a new run after a crash started a first job every time in a browser that had never used the board: a friend who only plays links was guided on every link, and in the browser pane a replay was guided in a browser with three finished houses.
+- **A link, a replay or a new run after a crash is guided only in a browser that has never had a first job,** from a link or the board, still going or over (`openhouse:<channel>:guided`, UI only, set as a first job starts and as it ends, so a first job saved before the key counts too).
+- **A finished house ends a first visit,** as taking a contract does (the company's record, D-139): the board deals three contracts and a crew pick, and no run is guided. That covers browsers from before this fix that have houses and no visited key.
+- **The board keeps the first job** for a browser that hasn't taken a contract or finished a house, links played or not, and that run is guided, as this entry has it: Start still opens with the first job.
+- **The ?debug panel's First visit again** works in a browser with houses: only a house finished after it ends the first visit (it leaves the visited key at `again:<houses>`).
+- **Considered:** a link's run as the browser's first job, ending the first visit, so the board would deal three contracts after a friend's first link; and a finished house alone, which would guide a friend again on each link until they finish one.
+- `src/ui/hud/first-job.test.ts`: a second link, a third, a crash's new run, a Portfolio replay after a finished house, and a browser from before this fix all show the whole screen from week 1; a new browser's first link and the board's first job are still guided. Checked in the browser pane too, each case on its own `*.localhost` origin.
+- **Known gap:** a friend who played a link run past week 1 and then takes the board's first job gets its calm screen again, but not the opening's hints for the weeks already played: a hint of the opening goes with its week in the browser, not in the run.
+- **Changes:** this entry's "Which run is the first job" (a link is guided once) and its board bullet (a finished house opens the usual board too), and `implementation-plan.md` §7 M4a's run setup.
+
 ### D-148 · First-timer legibility before the showing: hand lines that fit, Reroll named, and the end screen on a laptop
 **Status:** Proposed · 2026-11-10, a fix pull request (`fix/showing-legibility`) from the polish review of the same day, whose list the user answered with "Yes, fix them". The group gets the game on 2026-11-11. No rules or balance change: the same sim seeds score the same before and after (Sim, below).
 **Decision:**
