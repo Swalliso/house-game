@@ -79,6 +79,20 @@ describe("a first-time hint's card", () => {
     expect(none.width).toBe(280 - 2 * GAP * PX);
   });
 
+  it('rises over the goods when they reach the window’s foot, so Got it stays on screen', () => {
+    const full = { ...LAYOUT, inventory: { left: 1008, top: 72, right: 1272, bottom: 716 } };
+    const floor = 720 - GAP * PX;
+    // Before its height is known it keeps its least height inside the window.
+    const unknown = placeFirstHint('underGoods', full, VIEW, PX, 1);
+    expect(unknown.top).toBe(floor - MIN_HEIGHT * PX);
+    expect(unknown.top + unknown.maxHeight).toBe(floor);
+    // Once measured, it rises to fit, never above the right column's top.
+    expect(placeFirstHint('underGoods', full, VIEW, PX, 1, 256).top).toBe(floor - 256);
+    expect(placeFirstHint('underGoods', full, VIEW, PX, 1, 2000).top).toBe(64 + GAP * PX);
+    // With room under the goods it stays under them.
+    expect(placeFirstHint('underGoods', LAYOUT, VIEW, PX, 1, 256).top).toBe(300 + GAP * PX);
+  });
+
   it('rises over the column when it’s taller than the room under the checklist’s top', () => {
     // Week 1 at 1280×720: the score panel's suggestion for a first set pushes the checklist down.
     const low = { ...LAYOUT, checklist: { left: 8, top: 568, right: 272, bottom: 664 } };

@@ -190,6 +190,22 @@ button:where(:not(.btn, .pcard, .inv-slot, .seg, .check-fold)):focus-visible,
   scrollbar-width: thin;
   scrollbar-color: var(--wood) var(--paper-inset);
 }
+/* More to read: a wood band along an edge with more text past it, since macOS draws a thin
+   scrollbar only while it scrolls, and the text just stopped mid-sentence. Scroll shadows in
+   hard pixel edges: the paper covers move with the text (local) and hide a band at the end it
+   has reached; the bands stay at the box's edges (scroll). */
+.left-rest > .checklist .check-scroll,
+.left-rest > .inspect > .panel-body {
+  --more-edge: calc(var(--px) * 2);
+  background:
+    linear-gradient(var(--paper), var(--paper)) top / 100% calc(var(--more-edge) * 3) no-repeat
+      local,
+    linear-gradient(var(--paper), var(--paper)) bottom / 100% calc(var(--more-edge) * 3) no-repeat
+      local,
+    linear-gradient(var(--wood), var(--wood)) top / 100% var(--more-edge) no-repeat scroll,
+    linear-gradient(var(--wood), var(--wood)) bottom / 100% var(--more-edge) no-repeat scroll,
+    var(--paper);
+}
 .left.looking .left-rest > .checklist {
   flex-shrink: 1000;
 }

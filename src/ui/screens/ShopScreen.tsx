@@ -528,6 +528,17 @@ function CratePickSheet() {
   );
 }
 
+let lastRefresh = -Infinity;
+
+/** Refresh, once for a double-click: the second click would pay again (FEEL.shop). */
+export function refreshOnce(): void {
+  const now = performance.now();
+  if (now - lastRefresh < FEEL.shop.refreshGuardMs) return;
+  lastRefresh = now;
+  if (refreshShop()) audio.play('rotate', { rate: 0.8 });
+  else audio.play('illegal');
+}
+
 /** The hidden shop's handle, at the foot of the board: it slides the sheet back up. */
 function ShopHandle() {
   return (
@@ -591,9 +602,7 @@ export function ShopScreen() {
           <Button
             icon="reroll"
             onMouseDown={noFocus}
-            onClick={() =>
-              refreshShop() ? audio.play('rotate', { rate: 0.8 }) : audio.play('illegal')
-            }
+            onClick={refreshOnce}
             disabled={!refresh.ok}
             title={refresh.ok ? 'New goods (not the services)' : refresh.reason}
           >

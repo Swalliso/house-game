@@ -16,6 +16,7 @@ import {
   newRun,
   openJobBoard,
   notice,
+  onRunReset,
   run,
   runCode,
   selected,
@@ -49,6 +50,8 @@ export function showToast(text: string): void {
 
 /** The shop is hidden to look at the lot (it's still open). */
 export const shopHidden = signal(false);
+// A new run's first shop opens on screen, not as the last run's hidden handle.
+onRunReset(() => (shopHidden.value = false));
 /** The shop's sheet is on screen: notes then sit inside it, under its header (Overlays.tsx). */
 export const shopShown = computed(
   () =>
@@ -171,7 +174,7 @@ export function isSelected(from: Source, i: number): boolean {
 /** Passing places nothing all week, so it takes a second press within a few seconds. */
 export const passArmed = signal(false);
 let passTimer: ReturnType<typeof setTimeout> | undefined;
-/** When End week last hurried a tally (FEEL.endWeek.hurryMs). */
+/** When End week last hurried a tally, or last pressed on as still hurrying (FEEL.endWeek). */
 let hurriedAt = -Infinity;
 
 export function requestEndWeek(): void {
@@ -186,8 +189,14 @@ export function requestEndWeek(): void {
   }
   if (!tentative.value && !passArmed.value) {
     // The tally is gone a moment after it's hurried, so the next quick press lands on a quiet
-    // board. It is still hurrying, not the first press of a pass.
-    if (performance.now() - hurriedAt < FEEL.endWeek.hurryMs) return;
+    // board. It is still hurrying, not the first press of a pass, and so is every press that
+    // follows it closely: steady clicking used to wait out the gap, arm a pass with one press
+    // and confirm it with the next, passing the new week unseen.
+    const now = performance.now();
+    if (now - hurriedAt < FEEL.endWeek.hurryMs) {
+      hurriedAt = now;
+      return;
+    }
     passArmed.value = true;
     clearTimeout(passTimer);
     passTimer = setTimeout(() => (passArmed.value = false), 2500);

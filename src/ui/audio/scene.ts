@@ -33,17 +33,37 @@ export function sceneFor(
   }
 }
 
-/** How long after the first screen is up the sound files start loading (§12, Files). */
+/** How long after the page has loaded the sound files start loading (§12, Files). */
 const PRELOAD_DELAY_MS = 600;
 
-/** Mixes the music for each screen from now on, and loads the sounds once the page is up. */
+/** The small-screen notice's window (overlays.css, D-047). */
+const SMALL_SCREEN = '(max-width: 899px), (max-height: 499px)';
+
+/**
+ * Mixes the music for each screen from now on, and loads the sounds once the page is up: after
+ * its fonts and art, which on a slow link they used to hold up, leaving the title's sign empty.
+ * Behind the small-screen notice they don't load at all until the sound unlocks (a phone may
+ * never play): the first click loads the set then, as a preload that hasn't run does.
+ */
 export function startAudio(): () => void {
   const stop = effect(() => {
     const s = run.value;
     audio.setScene(sceneFor(appScreen.value, s.screen, !!s.offers?.pick, busy.value));
   });
-  const timer = setTimeout(() => audio.preload(), PRELOAD_DELAY_MS);
+  let stopped = false;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const loaded =
+    document.readyState === 'complete'
+      ? Promise.resolve()
+      : new Promise<void>((resolve) =>
+          window.addEventListener('load', () => resolve(), { once: true }),
+        );
+  void Promise.all([loaded, document.fonts?.ready]).then(() => {
+    if (stopped || window.matchMedia?.(SMALL_SCREEN).matches) return;
+    timer = setTimeout(() => audio.preload(), PRELOAD_DELAY_MS);
+  });
   return () => {
+    stopped = true;
     stop();
     clearTimeout(timer);
   };
