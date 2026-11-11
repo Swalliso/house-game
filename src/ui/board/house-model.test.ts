@@ -474,6 +474,79 @@ describe('the ghost’s model', () => {
   });
 });
 
+/**
+ * What a front or side door may open onto, as house-model.ts has it (FRONT_ONTO and LAST_ONTO).
+ * A Hot Tub is not here: it takes a back door only, and never from a Closet.
+ */
+const DOOR_ONTO: ReadonlySet<PieceId> = new Set([
+  'patio',
+  'driveway',
+  'lawn',
+  'porch',
+  'flowerBed',
+  'herbGarden',
+  'sapling',
+]);
+const WALL_SIDES = [
+  ['N', 0, -1],
+  ['E', 1, 0],
+  ['S', 0, 1],
+  ['W', -1, 0],
+] as const;
+
+/**
+ * How many outside walls of these rooms a front or side door could go in: one on the street, on
+ * open ground, on a Tree's or a Time Capsule's tile, or on a yard piece such a door may open
+ * onto. A garage door's side doesn't count. None means the rooms are walled in (by the lot's
+ * side or back edge, water, a boulder, the Old Shed, a fence, an outbuilding or any other yard
+ * piece a door can't open onto), and the model gives such rooms no door of their own.
+ */
+function doorableWalls(h: HouseState, m: HouseModel, uids: ReadonlySet<number>): number {
+  const { width: W, height: H } = h.lot;
+  const yard = new Map<string, PieceId>();
+  for (const p of h.pieces) {
+    const def = CONTENT.pieces[p.defId];
+    if (def.category === 'indoor') continue;
+    for (const c of placedCells(def.shape, p.x, p.y, p.rot)) yard.set(`${c.x},${c.y}`, p.defId);
+  }
+  let n = 0;
+  for (const r of m.rooms.values()) {
+    if (!uids.has(r.uid)) continue;
+    for (const c of r.cells) {
+      for (const [side, dx, dy] of WALL_SIDES) {
+        if (edge(m, c.x, c.y, side) !== EDGE.outer) continue;
+        const x = c.x + dx;
+        const y = c.y + dy;
+        if (side === 'S' && y === H) n++;
+        if (x < 0 || y < 0 || x >= W || y >= H) continue;
+        const on = yard.get(`${x},${y}`);
+        const t = h.lot.terrain[y * W + x];
+        if (on ? DOOR_ONTO.has(on) : !t || t === 'tree' || t === 'timeCapsule') n++;
+      }
+    }
+  }
+  return n;
+}
+
+/** Whether doorways join every room to every other, outside doors aside. */
+function joined(m: HouseModel): boolean {
+  const first = [...m.rooms.keys()][0];
+  if (first === undefined) return true;
+  const seen = new Set([first]);
+  const stack = [first];
+  while (stack.length > 0) {
+    const u = stack.pop()!;
+    for (const d of m.doors) {
+      const o = d.a === u ? d.b : d.b === u ? d.a : 0;
+      if (o && !seen.has(o)) {
+        seen.add(o);
+        stack.push(o);
+      }
+    }
+  }
+  return seen.size === m.rooms.size;
+}
+
 // Random connected houses on a lot with a little terrain and yard, for the rules that must
 // always hold.
 const INDOOR = (Object.keys(CONTENT.pieces) as PieceId[]).filter(
@@ -588,6 +661,14 @@ function woodsHouse(seed: number): HouseState {
 }
 const LOW_YARD: readonly PieceId[] = ['herbGarden', 'flowerBed', 'sapling', 'patio', 'lawn'];
 
+/**
+ * A seed CI's run drew on 2026-11-11: a Closet and a Bathroom in the lot's corner behind three
+ * Doghouses, so no wall a door could go in.
+ */
+const WALLED_IN_SEED = 740461411;
+/** A Bathroom whose only way out is a back door onto a Hot Tub. */
+const HOT_TUB_ONLY_SEED = 1294966588;
+
 describe('any house', () => {
   it('is reachable: every room through doorways from an outside door', () => {
     fc.assert(
@@ -596,10 +677,36 @@ describe('any house', () => {
         const m = modelOf(h);
         if (m.rooms.size === 0) return;
         expect(m.exits.filter((e) => e.kind === 'front').length).toBeLessThanOrEqual(1);
-        expect(reachable(m).size).toBe(m.rooms.size);
+        if (m.exits.length > 0) {
+          expect(reachable(m).size, `seed ${seed}`).toBe(m.rooms.size);
+          return;
+        }
+        // No outside door at all: only a house with no wall one could go in (the model never
+        // opens a door onto the lot's side or back edge, a fence or an outbuilding), and its
+        // rooms still join each other.
+        expect(doorableWalls(h, m, new Set(m.rooms.keys())), `seed ${seed}`).toBe(0);
+        expect(joined(m), `seed ${seed}`).toBe(true);
       }),
-      { numRuns: 150 },
+      // The two rare houses are tried every time, ahead of the random ones.
+      { numRuns: 150, examples: [[WALLED_IN_SEED], [HOT_TUB_ONLY_SEED]] },
     );
+  });
+
+  it('gives a house walled in by the lot’s edge and outbuildings no outside door', () => {
+    const h = randomHouse(WALLED_IN_SEED);
+    const m = modelOf(h);
+    expect(m.rooms.size).toBe(2);
+    expect(doorableWalls(h, m, new Set(m.rooms.keys()))).toBe(0);
+    expect(m.exits).toEqual([]);
+    expect(joined(m)).toBe(true);
+  });
+
+  it('gives a room walled in but for a Hot Tub a back door onto it', () => {
+    const h = randomHouse(HOT_TUB_ONLY_SEED);
+    const m = modelOf(h);
+    expect(doorableWalls(h, m, new Set(m.rooms.keys()))).toBe(0);
+    expect(m.exits.map((e) => e.kind)).toEqual(['back']);
+    expect(reachable(m).size).toBe(m.rooms.size);
   });
 
   it('is reachable when it is built into the woods of a lot the game made', () => {
@@ -608,6 +715,11 @@ describe('any house', () => {
         const h = woodsHouse(seed);
         const m = modelOf(h);
         if (m.rooms.size === 0) return;
+        // A clearing shut in by boulders, the Old Shed and the lot's corner: no door, by design.
+        if (doorableWalls(h, m, new Set(m.rooms.keys())) === 0) {
+          expect(m.exits.filter((e) => e.kind !== 'back')).toEqual([]);
+          return;
+        }
         expect(m.exits.filter((e) => e.kind === 'front')).toHaveLength(1);
         expect(reachable(m).size, `seed ${seed}`).toBe(m.rooms.size);
       }),
