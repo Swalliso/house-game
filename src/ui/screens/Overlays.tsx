@@ -197,6 +197,13 @@ export function ModalToast() {
 }
 
 /**
+ * The address the game was opened at, read as this file loads: starting up takes a shared lot's
+ * ?seed, ?client and ?crew (and a ?run code) out of the address bar, and the notice's link must
+ * still open that lot on the laptop (D-148). Empty where there's no window (the tests).
+ */
+const OPENED_AT = typeof window === 'undefined' ? '' : window.location.href;
+
+/**
  * The notice on a small screen (D-047). A window too narrow to play at all (a phone held
  * upright; overlays.css picks which part shows) offers the link to open on a laptop in place of
  * "Play anyway", which led to a screen that could be neither played nor left (D-148). The copy
@@ -208,7 +215,7 @@ export function SmallScreenNotice() {
   if (dismissed) return null;
   const copyLink = async () => {
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      await navigator.clipboard.writeText(OPENED_AT);
       setLink('copied');
     } catch {
       setLink('shown');
@@ -224,7 +231,7 @@ export function SmallScreenNotice() {
           <Button variant="primary" onClick={() => void copyLink()}>
             <span role="status">{link === 'copied' ? 'Link copied' : 'Copy link'}</span>
           </Button>
-          {link === 'shown' && <p class="small-screen-link">{window.location.href}</p>}
+          {link === 'shown' && <p class="small-screen-link">{OPENED_AT}</p>}
         </div>
         <Button variant="primary" class="small-screen-play" onClick={() => setDismissed(true)}>
           Play anyway

@@ -559,8 +559,9 @@ function pays(e: Effect): boolean {
 
 /**
  * The most a hand card's line runs to, in characters (D-148; text.test.ts holds every card to
- * it). A narrow card's line is two lines of about 14 letters in the pixel font, and a longer
- * line lost its last words to "…": the Dining Room's lost its "+50%".
+ * it). It's the length of today's longest line, the Kitchen's, which still loses its last word
+ * on a narrow card (two lines of about 14 letters in the pixel font): the budget keeps a new
+ * line from running longer, and doesn't promise that one this long fits.
  */
 export const HAND_LINE_CHARS = 33;
 

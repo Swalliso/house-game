@@ -301,7 +301,7 @@ function DemolishButton() {
         demolishing
           ? 'Back to building (Esc)'
           : canDemolish
-            ? `Remove a piece or a boulder. No refund, and points already earned stay. ${s.demolitionsLeft} left this run.`
+            ? `Remove a piece, a boulder or the Old Shed. No refund, and points already earned stay. ${s.demolitionsLeft} left this run.`
             : 'No demolitions left this run'
       }
     >

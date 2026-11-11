@@ -244,14 +244,18 @@
   color: var(--ink);
 }
 /* Copy run code and Title: a plain row under the stats (D-148), which scrolls with the column.
-   On a narrow column each takes a row of its own. */
+   No icons and a small gap, so the two share one row on the wide column (1920 px): on two rows
+   the sticky bar cut through Title after an early loss. On a narrow column each takes a row. */
 .run-end-more {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-2);
+  gap: var(--space-1);
 }
 .run-end-more .btn {
   flex: 1 1 auto;
+}
+.run-end-more .btn .icon {
+  display: none;
 }
 /* New run and Copy result stay in view at the column's foot, as End week does: like the
    hand's bar, it reaches past the column's padding to the window's foot, so the rows scrolling
@@ -280,8 +284,7 @@
     margin: 0 calc(var(--space-2) * -1);
     padding: var(--space-2) var(--space-2) var(--space-3);
   }
-  .run-end-actions .btn .icon,
-  .run-end-more .btn .icon {
+  .run-end-actions .btn .icon {
     display: none;
   }
   /* The narrow column's names: the regular weight, so the longest ("Groundbreaking") fits. */

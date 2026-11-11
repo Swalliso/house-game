@@ -228,9 +228,10 @@ describe('a compact hand card (D-121)', () => {
     ]);
   });
 
-  // The hand's wording is its own (D-148): a narrow card's line is two lines of about 14
-  // letters, and a longer one loses its end to "…". Every card the game has, members' rooms
-  // and the fixtures the draw never deals too.
+  // The hand's wording is its own (D-148). The budget is today's longest line (the Kitchen's,
+  // which still loses its last word on a narrow card), so this keeps a new line from running
+  // longer; the maps above pin the wording. Every card the game has, members' rooms and the
+  // fixtures the draw never deals too.
   it(`keeps every line to ${HAND_LINE_CHARS} characters`, () => {
     const cards = [
       ...Object.values(CONTENT.pieces).map((p) => ({ kind: 'piece' as const, id: p.id })),

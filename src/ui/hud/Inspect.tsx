@@ -678,7 +678,7 @@ function DemolishInfo() {
     return (
       <>
         <h2>Demolish</h2>
-        <p class="muted">Point at a piece or a boulder. {left}</p>
+        <p class="muted">Point at a piece, a boulder or the Old Shed. {left}</p>
       </>
     );
   }
