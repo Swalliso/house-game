@@ -283,6 +283,11 @@ let bannerKeptUntil = -Infinity;
 
 export function skip(): void {
   if (busy.value) skipping = true;
+  dismissBanner();
+}
+
+/** A click on the banner, or a skip: it goes, unless a hurried milestone's is still new. */
+export function dismissBanner(): void {
   if (performance.now() >= bannerKeptUntil) banner.value = null;
 }
 

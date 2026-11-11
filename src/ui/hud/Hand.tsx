@@ -367,7 +367,10 @@ function useColumnTopEachWeek(): void {
   const s = run.value;
   const building = s.screen === 'build';
   useEffect(() => {
-    if (building) handColumn()?.scrollTo({ top: 0 });
+    // A run opened with a card already picked (a ?run= code's pending placement) keeps the
+    // card in view that useCardInView just scrolled to. End week has dropped the pick by now.
+    const picked = source.value === 'hand' && selected.value !== null;
+    if (building && !picked) handColumn()?.scrollTo({ top: 0 });
   }, [s.week, s.setup.seed, building]);
 }
 

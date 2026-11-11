@@ -659,9 +659,10 @@ function save(): void {
       JSON.stringify({ build: BUILD_SHA, code: runCode(false), check: saveCheck(run.value) }),
     );
   } catch {
-    // Best effort: itch.io's iframe and private windows can lose storage. Say so once, so a
-    // closed tab doesn't take a run the player thought was kept.
-    if (!unsavedSaid) {
+    // Best effort: itch.io's iframe and private windows can lose storage. Say so once, in a
+    // run (the first save that fails there), so a closed tab doesn't take a run the player
+    // thought was kept: said on the title or as a run loads, the next screen's notes wiped it.
+    if (!unsavedSaid && appScreen.value === 'game') {
       unsavedSaid = true;
       addNote(UNSAVED_NOTE);
     }
@@ -978,10 +979,10 @@ export function loadInitialRun(): void {
     addNote(linkNote(run.value.setup, !!seedParam));
     if (linkError) addNote(linkError);
     if (previous) addPutAsideNote(previous);
-    if (clientParam !== null && !clientId) {
+    if (clientParam && !clientId) {
       addNote(`There's no client "${clientParam}": this run is for the Hendersons.`);
     }
-    if (crewParam !== null && !crewId) {
+    if (crewParam && !crewId) {
       addNote(`There's no crew "${crewParam}": this run has the General Contractor.`);
     }
     return;
