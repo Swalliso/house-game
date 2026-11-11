@@ -559,11 +559,24 @@ function pays(e: Effect): boolean {
 
 /**
  * The most a hand card's line runs to, in characters (D-148; text.test.ts holds every card to
- * it). It's the length of today's longest line, the Kitchen's, which still loses its last word
- * on a narrow card (two lines of about 14 letters in the pixel font): the budget keeps a new
- * line from running longer, and doesn't promise that one this long fits.
+ * it). It's the length of today's longest line, the Patio's "+2 per touching Living Room or
+ * Kitchen", which fits whole at every window size measured (hand.css: three lines, four beside
+ * a 2× thumbnail, where a row holds about 12 letters of the pixel font). The budget keeps a new
+ * line from running longer, and doesn't promise that one this long fits: where a line wraps
+ * matters as much as its length. The Dining Room's "touching" line, one letter longer, needs a
+ * fourth line at 1280×720.
  */
-export const HAND_LINE_CHARS = 33;
+export const HAND_LINE_CHARS = 38;
+
+/**
+ * "+2 per touching Living Room or Kitchen": a bonus for what touches the piece says "touching"
+ * where the line stays within HAND_LINE_CHARS (D-148, 2026-11-11). Without it, "+2 per Dining
+ * Room or Herb Garden" reads as house-wide; Inspect and the ghost's Wow give the true reading.
+ */
+function touchingLine(lead: string, what: string, tail = ''): string {
+  const line = `${lead} touching ${what}${tail}`;
+  return line.length <= HAND_LINE_CHARS ? line : `${lead} ${what}${tail}`;
+}
 
 /** One plain kind of thing ("Bedroom", "room", "view"): not a list, a tag, or a mix. */
 function oneKind(sel: Selector): boolean {
@@ -576,10 +589,12 @@ function oneKind(sel: Selector): boolean {
 /**
  * An effect as a hand card says it (D-148): the number first, in as few words as say it. Inspect
  * and the shop keep effectText's full sentence. Only the kinds whose sentences ran long differ:
- * - a neighbor bonus that names two things drops "touching" ("+2 per Living Room or Kitchen"),
- *   and one for a tag drops "neighbor" ("+2 per touching Quiet (up to 3)");
- * - an aura leads with what it gives ("+50% to Kitchen or Living Room", "+25% to touching
- *   rooms", "+50% to yard views", "+50% to fenced Pet pieces");
+ * - a neighbor bonus that names two things says "touching" where the line has room for it
+ *   ("+2 per touching Living Room or Kitchen", but "+2 per Dining Room or Herb Garden"), and one
+ *   for a tag drops "neighbor" ("+2 per touching Quiet (up to 3)");
+ * - an aura leads with what it gives, "touching" too where it fits ("+25% to touching rooms",
+ *   "+50% to touching yard views", but "+50% to Kitchen or Living Room"), and a fenced yard's
+ *   says so ("+50% to fenced Pet pieces");
  * - a Fence's yard is "+1 per fenced tile (up to +6)".
  */
 function handEffectText(content: Content, effect: Effect): string {
@@ -588,34 +603,32 @@ function handEffectText(content: Content, effect: Effect): string {
       const sel = effect.match;
       if (effect.max === 1 || oneKind(sel)) return effectText(content, effect);
       const cap = effect.max === undefined ? '' : ` (up to ${effect.max})`;
-      const what =
-        sel !== 'all' && 'tag' in sel
-          ? `touching ${sel.tag}`
-          : selectorText(content, sel, 'one').replace(/ neighbor$/, '');
-      return `${signed(effect.amount)} per ${what}${cap}`;
+      const per = `${signed(effect.amount)} per`;
+      if (sel !== 'all' && 'tag' in sel) return `${per} touching ${sel.tag}${cap}`;
+      return touchingLine(per, selectorText(content, sel, 'one').replace(/ neighbor$/, ''), cap);
     }
     case 'aura': {
       const sel = effect.match;
       const parts: string[] = [];
       if (effect.pct) parts.push(`${signed(effect.pct)}%`);
       if (effect.amount) parts.push(signed(effect.amount));
-      const gives = parts.join(' and ');
+      const to = `${parts.join(' and ')} to`;
       const pieces = (text: string) => text.replace(/\bneighbors\b/, 'pieces');
       if (effect.scope === 'region') {
-        return `${gives} to fenced ${pieces(selectorText(content, sel, 'every'))}`;
+        return `${to} fenced ${pieces(selectorText(content, sel, 'every'))}`;
       }
-      if (oneKind(sel)) return `${gives} to touching ${selectorText(content, sel, 'every')}`;
+      if (oneKind(sel)) return `${to} touching ${selectorText(content, sel, 'every')}`;
       // A list of rooms, one of each: "Kitchen or Living Room".
       if (sel !== 'all' && 'piece' in sel)
-        return `${gives} to ${selectorText(content, sel, 'one')}`;
+        return touchingLine(to, selectorText(content, sel, 'one'));
       // "Yard pieces that give a view" are the yard's views: "yard views".
       const isSource = (s: Selector) =>
         s !== 'all' && 'property' in s && s.property === 'viewSource';
       if (sel !== 'all' && 'all' in sel && sel.all.some(isSource) && sel.all.length > 1) {
         const rest = selectorText(content, { all: sel.all.filter((s) => !isSource(s)) }, 'every');
-        if (/ pieces$/.test(rest)) return `${gives} to ${rest.replace(/ pieces$/, ' views')}`;
+        if (/ pieces$/.test(rest)) return touchingLine(to, rest.replace(/ pieces$/, ' views'));
       }
-      return `${gives} to ${pieces(selectorText(content, sel, 'every'))}`;
+      return touchingLine(to, pieces(selectorText(content, sel, 'every')));
     }
     case 'enclosure': {
       const cap = effect.cap === undefined ? '' : ` (up to ${signed(effect.cap)})`;
