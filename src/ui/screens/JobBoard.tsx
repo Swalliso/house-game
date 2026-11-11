@@ -1,8 +1,12 @@
 // The job board (implementation-plan.md §7 M4a and M4b; D-032, D-045): Start opens three
 // contracts, each a client and a lot. Taking one opens the crew pick; hiring a crew starts the
-// run. On a first visit, contract 0 is the Hendersons and the General Contractor is marked too,
-// both "Recommended for your first job". The contracts come from the rules' jobBoard(), so the
-// UI only renders them.
+// run. The contracts come from the rules' jobBoard(), so the UI only renders them.
+//
+// A first visit (D-149) has one job to take, the first job: the Hendersons, on the lot whose
+// first hands teach in order, under a gold tab and in a gold ring. The other two contracts are
+// on the board too, face down: who they're for, and "After your first job". Taking the first job
+// starts it at once with the General Contractor; the crew pick comes with the second run, when
+// there's a run behind the choice.
 //
 // A card leads with what differs between the clients on offer (D-142): who they are, their
 // wishes, and a map of the lot with its sun and traits (D-119: Creekside pays, so the lot can be
@@ -13,8 +17,7 @@
 // In the pixel UI (D-110): a wood panel standing on the title's street (Title.tsx's
 // TitleBackdrop), its cards the kit's paper Cards, rarity a band and a chip as in the shop. A
 // card's middle scrolls and its button stays in view, so the board fits 1280×720 in the pixel
-// font without the page scrolling. One lime button at most: the Recommended card's, on a first
-// visit.
+// font without the page scrolling. One lime button at most: the first job's, on a first visit.
 
 import './jobs.css';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
@@ -59,7 +62,7 @@ export function JobBoard() {
   const list = useRef<HTMLOListElement>(null);
 
   // The first card's button takes focus as the board arrives and at each step, so Enter takes
-  // it (the Recommended one, on a first visit). It's a screen, like the title, not a sheet: Tab
+  // it (the first job, on a first visit). It’s a screen, like the title, not a sheet: Tab
   // isn't held in it.
   useEffect(() => {
     list.current
@@ -70,6 +73,16 @@ export function JobBoard() {
 
   const take = (c: Contract) => {
     audio.unlock();
+    if (c.locked) {
+      audio.play('illegal');
+      return;
+    }
+    // The first job (D-149) starts at once, with the General Contractor.
+    if (c.recommended) {
+      audio.play('chime', { rate: 1.2 });
+      takeContract(c);
+      return;
+    }
     audio.play('select');
     setTaken(c);
   };
@@ -80,6 +93,10 @@ export function JobBoard() {
   };
   const back = () => (taken ? setTaken(null) : (appScreen.value = 'title'));
   const crews = Object.values(CONTENT.crews).filter((c) => c.tier === 'core');
+  // The contracts that can be taken, numbered for their keys: all of them, or on a first visit
+  // the first job alone (D-149).
+  const open = contracts.filter((c) => !c.locked);
+  const firstJob = contracts.some((c) => c.locked);
 
   // 1–3 take a contract (or hire a crew); Esc goes back a step (unless a sheet is open: Esc
   // closes that first, in App's useModalKeys, which marks the key as handled).
@@ -94,11 +111,11 @@ export function JobBoard() {
         return;
       }
       const n = Number(e.key);
-      const count = taken ? crews.length : contracts.length;
+      const count = taken ? crews.length : open.length;
       if (Number.isInteger(n) && n >= 1 && n <= count) {
         e.preventDefault();
         if (taken) hire(crews[n - 1]!.id);
-        else take(contracts[n - 1]!);
+        else take(open[n - 1]!);
       } else if (e.key === 'Escape') {
         e.preventDefault();
         back();
@@ -109,7 +126,7 @@ export function JobBoard() {
   }, [contracts, taken]);
 
   const client = taken ? CONTENT.clients[taken.clientId] : null;
-  const count = client ? crews.length : contracts.length;
+  const count = client ? crews.length : open.length;
   return (
     <TitleBackdrop class="jobs-screen">
       <main
@@ -120,12 +137,15 @@ export function JobBoard() {
         <Panel
           class="jobs-panel"
           title={<span id="jobs-title">{client ? 'Pick your crew' : 'The job board'}</span>}
-          head={<Chip tone="inset">{`Step ${client ? 2 : 1} of 2`}</Chip>}
+          // A first visit has one step: the first job starts as it's taken.
+          head={firstJob ? undefined : <Chip tone="inset">{`Step ${client ? 2 : 1} of 2`}</Chip>}
           bodyClass="jobs-body"
         >
           <p class="jobs-lede">
             {client ? (
               `For ${fromName(client.name)}. A crew changes what you draw and what pays, all run.`
+            ) : firstJob ? (
+              'Each job is one house, on one lot, for one client. Yours starts here.'
             ) : (
               <>
                 Pick a client. Each job is one house, on one lot, for them. Every house also keeps{' '}
@@ -136,17 +156,20 @@ export function JobBoard() {
           <ol class="jobs-list" ref={list}>
             {client
               ? crews.map((crew, i) => (
-                  <CrewCard
-                    key={crew.id}
-                    crew={crew}
-                    index={i}
-                    recommended={visit && crew.id === 'generalContractor'}
-                    onHire={() => hire(crew.id)}
-                  />
+                  <CrewCard key={crew.id} crew={crew} index={i} onHire={() => hire(crew.id)} />
                 ))
-              : contracts.map((c, i) => (
-                  <ContractCard key={c.seed} contract={c} index={i} onTake={() => take(c)} />
-                ))}
+              : contracts.map((c) =>
+                  c.locked ? (
+                    <LockedCard key={c.seed} contract={c} index={contracts.indexOf(c)} />
+                  ) : (
+                    <ContractCard
+                      key={c.seed}
+                      contract={c}
+                      index={open.indexOf(c)}
+                      onTake={() => take(c)}
+                    />
+                  ),
+                )}
           </ol>
           <footer class="jobs-foot">
             <Button
@@ -160,7 +183,7 @@ export function JobBoard() {
                 {Array.from({ length: count }, (_, i) => (
                   <Keycap key={i}>{i + 1}</Keycap>
                 ))}
-                <span>{client ? 'hire a crew' : 'take a job'}</span>
+                <span>{client ? 'hire a crew' : firstJob ? 'take the job' : 'take a job'}</span>
               </span>
               <span class="jobs-key">
                 <Keycap>Esc</Keycap>
@@ -174,12 +197,12 @@ export function JobBoard() {
   );
 }
 
-/** The gold tab on a card's top edge: the first visit's pick. */
-function RecommendedTag() {
+/** The gold tab on a card's top edge: the first visit's one job (D-149). */
+function FirstJobTag() {
   return (
-    <span class="contract-tag" title="Recommended for your first job">
+    <span class="contract-tag">
       <Icon name="star" />
-      Recommended
+      Your first job
     </span>
   );
 }
@@ -188,12 +211,7 @@ function RecommendedTag() {
 const beat = (index: number) => ({ '--beat': `${index * FEEL.jobs.staggerMs}ms` });
 
 /** A crew (D-012, D-109): its icon, what it does all run, and the cards it starts with. */
-function CrewCard(props: {
-  crew: CrewDef;
-  index: number;
-  recommended: boolean;
-  onHire: () => void;
-}) {
+function CrewCard(props: { crew: CrewDef; index: number; onHire: () => void }) {
   const { crew, index } = props;
   const starts = crew.startReserve ?? [];
   return (
@@ -208,7 +226,6 @@ function CrewCard(props: {
         style={beat(index)}
         aria-label={crew.name}
       >
-        {props.recommended && <RecommendedTag />}
         <div class="contract-scroll">
           <section class="contract-section">
             <h3>All run</h3>
@@ -240,7 +257,6 @@ function CrewCard(props: {
         <div class="contract-foot">
           <Button
             block
-            variant={props.recommended ? 'primary' : 'secondary'}
             class="contract-take"
             onClick={props.onHire}
             aria-label={`Hire this crew: ${crew.name}`}
@@ -274,7 +290,7 @@ function ContractCard(props: { contract: Contract; index: number; onTake: () => 
     <li class="jobs-item">
       <Card
         as="article"
-        class="contract"
+        class={contract.recommended ? 'contract first-job' : 'contract'}
         rarity={client.rarity}
         lead={<Keycap>{index + 1}</Keycap>}
         title={client.name}
@@ -283,7 +299,7 @@ function ContractCard(props: { contract: Contract; index: number; onTake: () => 
         style={beat(index)}
         aria-label={client.name}
       >
-        {contract.recommended && <RecommendedTag />}
+        {contract.recommended && <FirstJobTag />}
         <div class="contract-scroll">
           <p class="contract-brief">{client.brief}</p>
           <div class="contract-top">
@@ -315,6 +331,32 @@ function ContractCard(props: { contract: Contract; index: number; onTake: () => 
             Take the job
           </Button>
         </div>
+      </Card>
+    </li>
+  );
+}
+
+/**
+ * A contract a first visit can't take yet (D-149): who it's for and what they're after, face
+ * down, with nothing to read into and no button. The board shows there's more hiring; the first
+ * job is the one to take.
+ */
+function LockedCard({ contract, index }: { contract: Contract; index: number }) {
+  const client = CONTENT.clients[contract.clientId];
+  return (
+    <li class="jobs-item">
+      <Card
+        as="article"
+        class="contract locked"
+        title={client.name}
+        style={beat(index)}
+        aria-label={`${client.name}: after your first job`}
+      >
+        <p class="contract-brief">{client.brief}</p>
+        <p class="contract-later">
+          <Icon name="pending" />
+          After your first job
+        </p>
       </Card>
     </li>
   );

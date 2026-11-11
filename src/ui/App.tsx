@@ -12,6 +12,7 @@ import { BUILD_LABEL } from './build-info.ts';
 import { DebugPanel } from './debug/DebugPanel.tsx';
 import { ErrorBoundary } from './ErrorBoundary.tsx';
 import { busy, setHold, skip } from './fx/director.ts';
+import { FEEL } from './fx/feel.ts';
 import {
   anyModalOpen,
   cancelPlacement,
@@ -22,6 +23,8 @@ import {
 } from './hud/actions.ts';
 import { Checklist } from './hud/Checklist.tsx';
 import { FirstHints } from './hud/FirstHints.tsx';
+import { arriving, guideCard, guideStep, shown } from './hud/first-job.ts';
+import './hud/first-job.css';
 import { Hints } from './hud/Hints.tsx';
 import './hud/board-chrome.css';
 import { GameMenu } from './hud/Menu.tsx';
@@ -134,7 +137,8 @@ function useKeyboard(): void {
         // In demolish mode a pending placement is hidden, so R leaves it alone.
         if (selected.value !== null && tool.value !== 'demolish') rotate();
       } else if (e.key === 'd' || e.key === 'D') {
-        if (run.value.screen === 'build') toggleDemolish();
+        // The first job's first milestone has no Demolish yet (D-149), button or key.
+        if (run.value.screen === 'build' && shown.value.demolish) toggleDemolish();
       } else if (e.key === '+' || e.key === '=') zoomIn();
       else if (e.key === '-' || e.key === '_') zoomOut();
       else if (e.key === 'f' || e.key === 'F') toggleFit();
@@ -181,15 +185,32 @@ function Game() {
       <Hand />
     </>
   );
+  // The first job (D-149): its screen fills in week by week (first-job.ts). A part arriving
+  // this week, and the play week 1's guide is waiting for, are classes here for first-job.css.
+  const on = shown.value;
+  const step = guideStep.value;
+  const classes = [
+    'game',
+    ...[...arriving.value].map((part) => `arrive-${part}`),
+    step ? `guide-${step}` : '',
+    step === 'pick' && guideCard.value === null ? 'guide-any' : '',
+  ];
   return (
-    <div class="game">
+    <div
+      class={classes.filter(Boolean).join(' ')}
+      style={{
+        '--arrive-in': `${FEEL.firstJob.arriveMs}ms`,
+        '--arrive-ring': `${FEEL.firstJob.ringMs}ms`,
+        '--guide-pulse': `${FEEL.firstJob.pulseMs}ms`,
+      }}
+    >
       <TopBar />
       <aside class={looking ? 'left looking' : 'left'}>
-        <ScorePanel />
+        {on.score && <ScorePanel />}
         {/* What the score panel leaves, which the checklist and Inspect share (app.css). */}
         <div class="left-rest">
-          <Checklist />
-          <Inspect />
+          {on.checklist && <Checklist />}
+          {on.inspect && <Inspect />}
         </div>
       </aside>
       <main class="center">

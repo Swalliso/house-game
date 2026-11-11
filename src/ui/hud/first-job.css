@@ -1,0 +1,60 @@
+/* The first job (D-149, first-job.ts): how a part of the screen arrives the week it first shows,
+   and how week 1's guide points at the play that comes next. The times are FEEL.firstJob's, set
+   on .game (App.tsx). Short tweens, so they may use transforms (D-059): each part is at rest,
+   untransformed, when its entrance ends, and its pixel text is crisp again. */
+
+/* A part's entrance: it drops in, then a gold ring around it fades, so the eye finds what's
+   new. .game carries arrive-<part> for the week the part comes in (arrivingIn). */
+.game.arrive-score .left > .score-panel,
+.game.arrive-inspect .left-rest > .inspect,
+.game.arrive-checklist .left-rest > .checklist,
+.game.arrive-reroll .hand .free-action.reroll,
+.game.arrive-demolish .hand .free-action.demolish,
+.game.arrive-budget .tb-budget,
+.game.arrive-overtime .tb-overtime,
+.game.arrive-early .tb-switch {
+  animation:
+    part-in var(--arrive-in) cubic-bezier(0.2, 1.3, 0.4, 1) backwards,
+    part-ring var(--arrive-ring) ease-out var(--arrive-in) backwards;
+}
+@keyframes part-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--px) * -4));
+  }
+}
+@keyframes part-ring {
+  from {
+    outline: calc(var(--px) * 2) solid var(--sparkle);
+    outline-offset: var(--px);
+  }
+  to {
+    outline: calc(var(--px) * 2) solid transparent;
+    outline-offset: var(--px);
+  }
+}
+.reduce-motion .game[class*='arrive-'] :is(.score-panel, .inspect, .checklist, .free-action),
+.reduce-motion .game[class*='arrive-'] :is(.tb-budget, .tb-overtime, .tb-switch) {
+  animation: none;
+}
+
+/* The opening's guide: the card its hint names wears a gold ring that breathes until it's
+   picked, in each of the three weeks. In week 1, with no card named (another lot's hand), every
+   card does, and then End week does. The lot needs none: the ghost follows the pointer there. */
+.game .hand-card.guide-now,
+.game.guide-pick.guide-any .hand-card,
+.game.guide-end .hand-actions .end-week {
+  outline: calc(var(--px) * 2) solid var(--sparkle);
+  outline-offset: var(--px);
+  animation: guide-pulse var(--guide-pulse) ease-in-out infinite;
+}
+@keyframes guide-pulse {
+  50% {
+    outline-color: var(--sparkle-deep);
+    outline-offset: calc(var(--px) * 2);
+  }
+}
+.reduce-motion .game :is(.hand-card.guide-now, .end-week),
+.reduce-motion .game.guide-any .hand-card {
+  animation: none;
+}

@@ -14,6 +14,7 @@ import { busy } from '../fx/director.ts';
 import { Keycap } from '../kit/kit.tsx';
 import { movingUid, renovateUids, run, selected, selection, tentative, tool } from '../store.ts';
 import { pickKeys, shopHidden } from './actions.ts';
+import { shown } from './first-job.ts';
 import './hints.css';
 
 function Hint({
@@ -167,7 +168,8 @@ export function Hints() {
     hints = (
       <>
         {cards > 0 && <Hint keys={[cards > 1 ? `1–${cards}` : '1']}>pick a card</Hint>}
-        <Hint keys={['D']}>demolish</Hint>
+        {/* The first job's first milestone has no Demolish yet (D-149). */}
+        {shown.value.demolish && <Hint keys={['D']}>demolish</Hint>}
         <Hint keys={['Scroll']} extra>
           zoom
         </Hint>

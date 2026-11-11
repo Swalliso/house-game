@@ -53,6 +53,21 @@ describe("a first-time hint's card", () => {
     expect([score.left, score.top, score.width]).toEqual([8, 72, 264]);
   });
 
+  it('sits where the checklist will be while the first job has none yet (D-149)', () => {
+    // Weeks 2 and 3: the score panel is up, so the card goes under it.
+    const noList = { ...LAYOUT, checklist: undefined };
+    const under = placeFirstHint('overChecklist', noList, VIEW, PX, 1);
+    expect([under.left, under.top, under.width]).toEqual([8, 424 + GAP * PX, 264]);
+    expect(under.top + under.maxHeight).toBe(720 - GAP * PX);
+    // Week 1: no score panel either, so it sits at the column's top, inset like a panel.
+    const bare = placeFirstHint('overChecklist', { ...noList, score: undefined }, VIEW, PX, 1);
+    expect([bare.left, bare.top, bare.width]).toEqual([
+      GAP * PX,
+      64 + GAP * PX,
+      280 - 2 * GAP * PX,
+    ]);
+  });
+
   it('sits under the goods, or at the right column’s top when there are none to show', () => {
     const under = placeFirstHint('underGoods', LAYOUT, VIEW, PX, 1);
     expect([under.left, under.top, under.width]).toEqual([1008, 300 + GAP * PX, 264]);

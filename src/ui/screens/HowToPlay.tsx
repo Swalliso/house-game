@@ -388,8 +388,8 @@ function HowToPlayText() {
             Complete early
           </dt>
           <dd>
-            Once you've met the target, finish the milestone now. The weeks left play out on their
-            own (your house keeps earning), and you get a bonus.
+            Once you've met the target, finish the milestone now. You skip the builds for the weeks
+            left: they play out on their own (your house keeps earning), and you get a bonus.
           </dd>
           <dt>
             <Icon name="clock" />

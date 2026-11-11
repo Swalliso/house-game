@@ -53,6 +53,7 @@ import {
   requestEndWeek,
   selectCard,
 } from './actions.ts';
+import { guideCard, shown } from './first-job.ts';
 import { PieceArt, ShapeGlyph } from './PieceArt.tsx';
 import { PIECE_KIND_LABEL, pieceKind, RARITY_LABEL } from './goods.tsx';
 import './hand.css';
@@ -158,7 +159,8 @@ function CardView({ card, i }: { card: CardData; i: number }) {
   return (
     <Card
       as="button"
-      class="hand-card"
+      // Week 1's guide (D-149) points at the card to pick first.
+      class={guideCard.value === i ? 'hand-card guide-now' : 'hand-card'}
       tone={kind}
       selected={isSelected}
       blocked={!fits}
@@ -438,10 +440,11 @@ export function Hand() {
         </>
       }
       label="This week's cards"
+      // The first job brings the free actions in as they're needed (D-149, first-job.ts).
       head={
         <>
-          <RerollButton />
-          <DemolishButton />
+          {shown.value.reroll && <RerollButton />}
+          {shown.value.demolish && <DemolishButton />}
         </>
       }
     >

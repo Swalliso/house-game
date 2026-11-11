@@ -102,7 +102,34 @@
   --card-fill: var(--rare-tint);
 }
 
-/* The first visit's pick: a gold tab standing on the card's top edge. */
+/* The first job (D-149): the one contract a first visit can take stands in a gold ring, under
+   its gold tab. The other two are face down: a quiet card with a name, a line, and when. */
+.contract.first-job {
+  box-shadow:
+    0 0 0 calc(var(--px) * 2) var(--sparkle),
+    0 0 0 calc(var(--px) * 3) var(--sparkle-deep),
+    var(--shadow-card);
+}
+.contract.locked {
+  --card-fill: var(--paper-inset);
+  justify-content: center;
+  gap: var(--space-3);
+  color: var(--ink-soft);
+  text-align: center;
+}
+.contract.locked .pcard-head {
+  justify-content: center;
+}
+.contract-later {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  margin: 0;
+  font-weight: 700;
+}
+
+/* The first visit's one job: a gold tab standing on the card's top edge. */
 .contract-tag {
   position: absolute;
   /* Its bottom ring on the card's top ring: one ink line. */

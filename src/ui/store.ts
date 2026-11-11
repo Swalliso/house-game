@@ -54,13 +54,43 @@ export const appScreen = signal<'title' | 'jobs' | 'game'>('title');
 /** The job board's seed: contracts come from its `jobs/<i>` streams (outside the run code). */
 export const jobBoardSeed = signal<string>('board');
 const VISITED_KEY = `openhouse:${BUILD_CHANNEL}:visited`;
+const FIRST_JOB_KEY = `openhouse:${BUILD_CHANNEL}:firstJob`;
 
-/** A first visit (no run started from the board yet): contract 0 is the Hendersons, Recommended. */
+/**
+ * A first visit (no run started from the board yet): the board opens one contract, the first job
+ * (D-149), and shows the others locked.
+ */
 export function firstVisit(): boolean {
   try {
     return localStorage.getItem(VISITED_KEY) === null;
   } catch {
     return true;
+  }
+}
+
+/**
+ * The first job's seed (D-149), kept in the browser while that run is the one being played: the
+ * first run a browser starts, from the board or from a link. UI only, never game state: the run
+ * itself is an ordinary one, and its screen fills in week by week (hud/first-job.ts).
+ */
+export const firstJobSeed = signal<string | null>(
+  (() => {
+    try {
+      return localStorage.getItem(FIRST_JOB_KEY);
+    } catch {
+      return null;
+    }
+  })(),
+);
+
+function setFirstJob(seed: string | null): void {
+  if (firstJobSeed.value === seed) return;
+  firstJobSeed.value = seed;
+  try {
+    if (seed === null) localStorage.removeItem(FIRST_JOB_KEY);
+    else localStorage.setItem(FIRST_JOB_KEY, seed);
+  } catch {
+    // A private window: the first job is guided for this visit only.
   }
 }
 
@@ -73,15 +103,31 @@ export function openJobBoard(): void {
 
 /** Takes a contract from the board with a crew: its seed and client start the run. */
 export function takeContract(contract: Contract, crewId: CrewId = 'generalContractor'): void {
+  // The first contract a browser takes is its first job; from then on the board is open.
+  if (firstVisit()) setFirstJob(contract.seed);
   try {
     localStorage.setItem(VISITED_KEY, '1');
   } catch {
-    // A private window: the board just recommends the Hendersons again next time.
+    // A private window: the board just opens with the first job again next time.
   }
   notice.value = null;
   startRun({ seed: contract.seed, clientId: contract.clientId, crewId, mode: 'standard' });
   canContinue.value = false;
   appScreen.value = 'game';
+}
+
+/**
+ * The ?debug panel's "First visit again": forgets that this browser has started a run, so the
+ * board opens with the first job and that run's screen fills in again. The hints are Settings'
+ * to reset.
+ */
+export function forgetFirstVisit(): void {
+  setFirstJob(null);
+  try {
+    localStorage.removeItem(VISITED_KEY);
+  } catch {
+    // Nothing to forget.
+  }
 }
 /** The ?debug panel (implementation-plan.md §7, M2 · Debug tools). */
 export const debugEnabled = (() => {
@@ -106,6 +152,17 @@ export const run = signal<RunState>(
   }),
 );
 export const log = signal<readonly Action[]>([]);
+
+/** Whether the run being played is this browser's first job, still in progress (D-149). */
+export const firstJob = computed(
+  () => firstJobSeed.value !== null && run.value.setup.seed === firstJobSeed.value && inProgress(),
+);
+// The first job is over once its run ends, so the same lot played again later is an ordinary run.
+effect(() => {
+  const s = run.value;
+  if (firstJobSeed.value !== s.setup.seed) return;
+  if (s.screen === 'won' || s.screen === 'lost') setFirstJob(null);
+});
 
 /**
  * A one-line note for the player, such as "The game updated, so this is a fresh run." `oldCode`
@@ -597,6 +654,10 @@ export function startRun(
     log.value = result.failedAt === undefined ? actions : actions.slice(0, result.failedAt);
     resetWeek();
     inspected.value = null;
+    // Another run takes the first job's place (D-149): the first job is behind this browser.
+    if (firstJobSeed.value !== null && firstJobSeed.value !== result.state.setup.seed) {
+      setFirstJob(null);
+    }
   });
   resetListeners.forEach((l) => l());
   save();
@@ -610,6 +671,9 @@ export function newRun(
   crewId: CrewId = 'generalContractor',
 ): void {
   notice.value = null;
+  // A friend's link is a first contact too (D-149): its screen fills in as the first job's does.
+  // The board stays as a first visit finds it, so Start still opens with the first job.
+  if (firstVisit()) setFirstJob(seed);
   startRun({ seed, clientId, crewId, mode: 'standard' });
   canContinue.value = false;
   appScreen.value = 'game';

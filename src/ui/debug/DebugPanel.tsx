@@ -21,12 +21,14 @@ import { BUILD_CHANNEL } from '../build-info.ts';
 import { music } from '../audio/music.ts';
 import { instantTally } from '../fx/director.ts';
 import { copyRunCode, showToast } from '../hud/actions.ts';
+import { resetHints } from '../hud/seen-hints.ts';
 import { upcomingArrivals } from '../hud/household.ts';
 import { KIND_LABEL } from '../screens/ChangeOrderScreen.tsx';
 import {
   appScreen,
   debugAction,
   debugEnabled,
+  forgetFirstVisit,
   inProgress,
   notice,
   run,
@@ -555,6 +557,17 @@ export function DebugPanel() {
               title="M5b: skip to the next track in the shuffle"
             >
               Next track
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                forgetFirstVisit();
+                resetHints();
+                showToast('First visit again: press Start on the title');
+              }}
+              title="D-149: forget this browser's first job and its hints, so Start opens the first job again"
+            >
+              First visit again
             </button>
           </div>
         </div>

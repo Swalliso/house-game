@@ -493,6 +493,18 @@ export const FEEL = {
     inMs: 350,
   },
 
+  /**
+   * The first job (D-149; hud/first-job.css reads them as --arrive-in, --arrive-ring and
+   * --guide-pulse). A part of the screen drops in over `arriveMs` the week it first shows, then
+   * wears a gold ring that fades over `ringMs`. Week 1's guide breathes a ring on the play that
+   * comes next, once every `pulseMs`.
+   */
+  firstJob: {
+    arriveMs: 320,
+    ringMs: 1600,
+    pulseMs: 1200,
+  },
+
   /** The camera (§12, Art; D-057): wheel zoom in whole steps, drag to pan. */
   camera: {
     /** A left-button drag pans once it has moved this many px; a shorter one is a click. */

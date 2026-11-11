@@ -85,6 +85,7 @@ You run a home-building company. Each run is one contract: one client, one plot 
 ### D-012 · Crews
 **Status:** Accepted · 2026-11-04
 **Decision:** At the start of a run the player picks a builder or crew with its own strengths and focus (the equivalent of Combolands' guilds).
+*2026-11-11 (D-149, Proposed):* a browser's first job starts with the General Contractor, with no crew pick; the pick comes with the second run.
 
 ### D-013 · Shop between milestones
 **Status:** Accepted · 2026-11-04
@@ -132,6 +133,7 @@ The board sits behind a small `BoardView` interface, so Phaser could replace jus
 - The reward is the sim's to tune, so this is tuning, not a change (`house-systems-review.md` §5.8).
 **2026-11-06 (M4a):** on M4a's content (1,000 held-out runs, greedy's targets re-fitted, no arrivals yet), always against never: −12.2 points at 10% of the phase's earnings per week saved, −11.2 at 20%, and −9.8 at 30% (a pass, unsure). The reward is now +2 budget and 30% per week saved (`balance.ts`). M4b's re-check with the arrivals decides whether it needs more.
 **2026-11-07 (M4b):** with the arrivals and greedy's sense of the checklist (1,000 held-out runs, all three crews), always against never: −9.7 points at +2 budget per week saved, −5.7 at +4 (a pass, sure: 110 seeds won only by completing early, 167 only by never doing so), and −1.7 at +6. A bigger Wow share didn't help (40%: −12.4 before the arrivals): a skipped week's pieces compound, and budget buys goods that compound too. The reward is now +4 budget and 30% per week saved.
+*2026-11-11 (D-149, Proposed):* the hint, the glossary, the button's title, How to play and the Auto switch's title now say what it costs, the builds for the weeks left, which the polish review found none of them said. A browser's first job doesn't offer it in Groundbreaking.
 
 ### D-041 · Overtime weeks
 **Status:** Accepted · 2026-11-04 (confirmed by the team)
@@ -502,6 +504,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **Why:** A first run otherwise meets about 75 concepts. With no meta-progression in the jam, the run itself has to do the teaching.
 **Considered:** A fixed first contract. Rejected because it changes D-012 and needs a saved run count.
 *Extended by D-142 (Proposed 2026-11-10):* every first-time hint keeps to 25 words, how a week scores is a hint of its own in week 2, and the checklist's hint moves to week 3.
+*2026-11-11 (D-149, Proposed), at the user's ask after the first showing:* a first visit's board opens one contract, the first job, on a lot picked for its opening, and shows the others face down; it starts with the General Contractor, and the crew pick comes with the second run. So the first contract is fixed after all: the browser already remembers a first visit, which was the saved count this entry lacked. The first job's screen fills in week by week, and the first three weeks' hints walk through its opening.
 
 ### D-046 · Defaults for the rules the docs leave open
 **Status:** Accepted · 2026-11-05 (with the plan's approval); proposed 2026-11-04
@@ -1766,7 +1769,79 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 ## Proposed
 
-*Reserved numbers (2026-11-10): D-115 to D-118 are the layout session's drafts, not in this file yet; D-122 (legibility) is logged below. D-132 to D-134 are playtest 5's fixes, each logged by its own pull request: D-132 one reroll for both rows of the draw, D-133 the roof view, D-134 three more tracks. D-135 and D-136 are M6's end screen (D-135 the result line and link preview, D-136 the milestone photos); D-137 and D-138 belong to the release-day sessions. D-139 is the company's record. D-140 to D-146 are the friction batch, from the 2026-11-10 review's seven points: D-140 the Garage and the Driveway, D-141 what a blueprint is worth and its icon, D-142 first contact, D-143 the blueprint shelf, D-144 change orders two at a time, D-145 the lot and the last stretch, and D-146 the batch's one re-fit. D-147 takes the roof out again (the user's call, logged under Accepted). D-148 is the first-timer legibility batch before the showing, from the 2026-11-10 polish review (logged below). New entries start at D-149.*
+*Reserved numbers (2026-11-10): D-115 to D-118 are the layout session's drafts, not in this file yet; D-122 (legibility) is logged below. D-132 to D-134 are playtest 5's fixes, each logged by its own pull request: D-132 one reroll for both rows of the draw, D-133 the roof view, D-134 three more tracks. D-135 and D-136 are M6's end screen (D-135 the result line and link preview, D-136 the milestone photos); D-137 and D-138 belong to the release-day sessions. D-139 is the company's record. D-140 to D-146 are the friction batch, from the 2026-11-10 review's seven points: D-140 the Garage and the Driveway, D-141 what a blueprint is worth and its icon, D-142 first contact, D-143 the blueprint shelf, D-144 change orders two at a time, D-145 the lot and the last stretch, and D-146 the batch's one re-fit. D-147 takes the roof out again (the user's call, logged under Accepted). D-148 is the first-timer legibility batch before the showing, from the 2026-11-10 polish review (logged below). D-149 is the first job, from the first showing (2026-11-11, logged below). New entries start at D-150.*
+
+### D-149 · The first job: a first visit's one contract, a screen that fills in, and an opening the hints walk through
+**Status:** Proposed · 2026-11-11, with its phase pull request (`phase/first-job`), at the user's "Let's do the calm first job… I like the sound of your step 1 plan - let's kick that off". From the first showing: the user "briefly showed off the dev link" to the group, and "the game looked fun, but looked quite confusing off the bat". For the user's playtest. No rules or balance change: every run plays, scores, saves and replays as before, and `balance.ts` gains one field, which only the job board reads.
+**Decision:**
+- **A first visit's board has one job to take** (`jobBoard` in `src/rules/jobs.ts`, `JobBoard.tsx`). The user asked to "kind of force the first-time player in to that job", by blocking the others or by a golden highlight; this does both.
+  - Contract 0 is the first job: the Hendersons, on the first job's own lot (`jobBoard.firstSeed`), under a gold "Your first job" tab and in a gold ring, with the board's one lime button.
+  - The other two contracts are dealt as ever and lie face down: the client's name, their brief, and "After your first job". No click or key takes them, and the keys strip offers only 1.
+  - Taking the first job starts it at once with the General Contractor. The crew pick comes with the second run, when there's a run behind the choice.
+  - The board is the usual one, three contracts and then a crew, once the first job has been taken, finished or not.
+  - The first-visit board is 102 words and two buttons at 1440×900 (it was 145 words after D-142).
+- **The first job's lot is picked for its opening:** seed `oh-4243`.
+  - Of 6,000 lots, 348 have no creek and deal the Hendersons a Bedroom, then a Bathroom, then a Closet or a second Bedroom in weeks 1 to 3. This one has no trait to read on its card, and a first hand with neither a Bathroom nor a Closet to play out of order.
+  - Its first four hands are the same wherever the three pieces go. In 300 random placements all 300 were dealt the Bedroom, the Bathroom and the Closet, held a Suite after week 3, and had 41 to 61 Wow against Groundbreaking's 22.
+  - `src/ui/hud/first-job.test.ts` holds the hands and the set, so a change to the draw or the lot generator says to pick again.
+- **The first job's screen starts calm and fills in** (`src/ui/hud/first-job.ts`). What shows is read from the run alone, so a reload or Continue shows the same screen, and each part drops in with a gold ring that fades the week it arrives (`FEEL.firstJob`).
+  - **Week 1:** the lot, the hand, and the milestone's target.
+  - **Week 2, as the first tally starts:** the score panel it counts into, Inspect (at the column's foot), and the forecast.
+  - **Week 4, once the opening is played:** the client's checklist, with its hint, and Reroll.
+  - **Foundation:** budget, overtime, Demolish (button, key and the strip's D), and Complete early with its Auto switch. Budget shows sooner if a find pays some, and overtime if Groundbreaking needs a week of it.
+  - The score panel's "checklist lines" row waits for the checklist too, unless a line already holds: then it says where that Charm is from.
+  - Words on the build screen at 1440×900 at 2×, in the pixel font: 98 in week 1 (from 245), 135 in week 2, 231 in week 4. Things to click in week 1: 11 (from 40).
+- **The first three weeks' hints are the opening** (`FirstHints.tsx`), each still within 25 words (D-142).
+  - **Week 1 is three plays,** each lit as it comes up and ticked when done: "Pick the Bedroom.", "Click the lot to place it.", "End the week.", under "Build one piece a week to reach the Wow target up top." The card to pick, and then End week, wear a gold ring that breathes.
+  - **Week 2, "Side by side":** "Your Bedroom earns Comfort every week. Pieces also earn from what they touch: build the Bathroom touching the Bedroom."
+  - **Week 3, "Your first set":** "Build the Closet touching the Bedroom or the Bathroom: the three make a Suite. A set raises Charm, and Charm multiplies Comfort into Wow."
+  - A hint names its card only when the hand holds it and the house has what it builds on (`openingCard`); the Closet's only while the house is the Bedroom and the Bathroom alone, where any legal spot makes the set. Otherwise week 1 says "Pick a card." and every card wears the ring, week 2 says the rules' line as before, and week 3 has no hint.
+  - A hint of the opening goes with its week, "Got it" or not, so the next run never walks through it again. The first week's hint used to return every run until it was dismissed.
+  - The checklist's hint moves to week 4 in the first job (week 3 in any other run, as D-142 has it).
+- **Which run is the first job:** the first one a browser starts, kept as its seed in the browser by channel (`openhouse:<channel>:firstJob`, UI only). It ends with its run, or when another run takes its place, so the same lot played again is an ordinary run.
+  - A friend's link is a first contact too: its screen fills in the same way, and its hints name a card where the hand has one. The board stays as a first visit finds it, so Start still opens with the first job.
+- **Complete early says what it costs.** The hint: "Target met? Complete early skips the builds you have left: each week saved pays 4 budget and 30% of this milestone’s Wow." The glossary, the button's title ("…and skip 2 builds"), How to play and the Auto switch's title say it too. In the first job it isn't offered in Groundbreaking, where every build is still teaching.
+- **The ?debug panel gains "First visit again":** it forgets the first job and the hints, so Start opens the first job once more.
+
+**Sim** (scratch scripts over the rules and the sim's bots, not in the repo; the Hendersons with the General Contractor, played to the end of Framing). "Novice" is the sim's own: a random card that fits, at its best spot. "Casual" makes greedy's play half the time and the novice's otherwise.
+
+| Meets Foundation | Novice | Casual |
+|---|---|---|
+| Any lot, unguided (360 lots, 2,160 runs each) | 12.0% | 72.5% |
+| The 8 gentlest of those lots, unguided (240 fresh runs each) | 19.2% | 82.1% |
+| Those 8 with every target at 80% | 32.5% | 92.9% |
+| The opening's three weeks played as the hints say (348 lots, 2,088 runs each) | 79.5% | 99.5% |
+| The same, on the first job's lot (24 fresh runs each) | 19 of 24 | 24 of 24 |
+
+- With the opening played, the novice met Foundation on time in 15.1% of runs and Framing in 12.1%; the casual bot in 71.2% and 86.1%. On the first job's lot the novice met Framing in 14 of 24 runs.
+- A seed fixes week 1's hand exactly and weeks 2 to 4 mostly: greedy and a novice were dealt the same hand in 92%, 82% and 76% of 360 lots, and about 40% from Foundation on.
+- `npm run sim -- --check` reads the same on this branch as on develop at 84b9347, verdict for verdict and number for number: the rules don't read `firstSeed`, and no bot plays the opening.
+
+**Why:** the group's first look was at a week-1 screen of 245 words and 40 things to click, 108 of the words in the checklist. What a beginner lacks is the one idea that pieces earn from what they touch: the novice bot barely meets Foundation half the time even at 60% targets (55.4% on the gentlest lots), and meets it four times in five once three weeks are played as the hints say, with no number changed. A set by week 3 also puts the first "Huge week!" in a new player's first five minutes.
+**Considered:**
+- **Skipping the board on a first visit:** my first proposal. The user preferred the board with the other jobs blocked or the first one highlighted, and face-down cards show there's more hiring.
+- **The board locked until the first job is finished:** a player who quits the first job would be sent back to it. Once it's been taken, they've seen the guide, and have a way out.
+- **A crew pick with two crews face down:** a second screen with no choice on it.
+- **A favorable lot alone,** the user's first idea: 12.0% to 19.2% for the novice. It's the opening's cards, named and played, that carry it; the lot is picked so they come.
+- **Gentler targets for the first job** (the Hendersons' factor, or Foundation at 450): measured above, and left out. With the opening guided the novice does better at today's numbers than at 80% targets without it. The user's call if a playtest still finds Foundation a wall.
+- **A first-job run mode in the rules,** with scripted hands, targets of its own and a run that ends after Framing (where the outside review's "Quick Job" fits): the second step, only if this one falls short. It changes run codes and needs a fit.
+- **A lit spot on the lot for each piece:** the ghost's label already says what a spot earns, and any legal spot works for all three.
+- **Inspect held back until week 4:** on a 2× laptop half the hand's lines are cut (D-148), and Inspect is where the whole line is read.
+
+**Changes:**
+- D-045 (Accepted): a first visit's board opens one contract and marks no crew, and the first three weeks' hints are the opening. A dated note there; the user asked for the first job to be forced.
+- D-012 (Accepted): the first job starts with the General Contractor, and the crew pick comes with the second run. A dated note there.
+- D-040 (Accepted): the texts say what completing early costs, and the first job's first milestone doesn't offer it. A dated note there.
+- D-032 and D-142 (Proposed): the first-visit board, and the hints' list and weeks. Dated notes there.
+- `implementation-plan.md`: §2's D-045 row, §7 M4a's run setup and first-time hints, and Appendix A's job board.
+
+**Known gaps:**
+- **Not played by a person.** The numbers above are bots'; whether the screen reads as calm is the playtest's to say.
+- **Touch and Firefox weren't run.** Checked in Chrome at 1440×900 at 2× (the whole first job through the first shop) and at 1280×720, in both fonts.
+- **The checklist's hint in week 4** sits beside the checklist, over the lot's edge (D-045), and the first job's best spots are by that edge: it can cover the house until "Got it".
+- **On a short window** (1280×720) Inspect keeps to the room under the week's hint in weeks 2 and 3, about 150 px, and scrolls the rest.
+- **A friend's link** gets the calm screen but not the lot, so its hints name a card only when the hand happens to hold one.
+- **Complete early's texts** still say 4 budget and 30% for Juniper, whose jobs pay double (the polish review's note).
 
 ### D-148 · First-timer legibility before the showing: hand lines that fit, Reroll named, and the end screen on a laptop
 **Status:** Proposed · 2026-11-10, a fix pull request (`fix/showing-legibility`) from the polish review of the same day, whose list the user answered with "Yes, fix them". The group gets the game on 2026-11-11. No rules or balance change: the same sim seeds score the same before and after (Sim, below).
@@ -2134,6 +2209,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
   - **The checklist's** moves to week 3, so the first three weeks bring one hint each. It says what a line adds and that the house rules fold into one row once it's dismissed (D-113).
   - The others: Complete early 23 (from 31), the roof 24 (from 37; the roof's hint went with D-147), Fixtures 21 (from 36), change orders 24 (from 45), Renovate 25 (from 55), an arrival 21 (from 32).
   - The hints that state a rule or a number are `hintText` in `src/rules/text.ts`, with their numbers from the balance; the glossary keeps the full texts for the tips. Tests hold every hint to the budget.
+  - *2026-11-11 (D-149, Proposed):* the first week's is three plays under one line (23 words; "Hover anything to read it" went, and Inspect's own prompt says it from week 2), week 2's names the Bathroom where the hand holds it, a new one in week 3 names the Closet and the Suite, and the checklist's moves to week 4 in a browser's first job. A hint of those first three goes with its week. Complete early's says what it costs (22 words).
 - **The checklist's rows keep short:**
   - **A line that doesn't hold shows only what's still missing.** Its parts that hold are done: "A living room or two" says "0 Living Rooms (1–2)" without "1 Dining Room (≤ 1)". A line the play being looked at flips still shows every part, and the line's tip has the whole rule.
   - **Who's still to move in** is a name and a milestone, "Grandma at Drywall": two lines in a 280 px pixel-font column, where "Grandma arrives at Drywall, week 17" took four. The week is in the name's tip.
@@ -2738,6 +2814,7 @@ Common, Uncommon, and Rare clients. The proposed lineup is in `content-brainstor
 **Status:** Proposed
 Choose from two or three contracts, each one a client plus a lot.
 **2026-11-06 (M4a):** built: three contracts drawn by rarity (Common 65, Uncommon 27, Rare 8; D-026), each with a thumbnail of its lot, its wishes, household, and tastes. On a first visit the Hendersons come first, marked Recommended. The board sits outside the run code.
+*2026-11-11 (D-149, Proposed):* on a first visit the Hendersons' contract is the one to take, on the first job's own lot, and the other two lie face down until it has been taken.
 
 ---
 
