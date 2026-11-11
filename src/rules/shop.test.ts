@@ -671,12 +671,14 @@ describe('the strike (D-076)', () => {
       const out: Card[][] = [];
       for (let k = 0; k < 400; k++) {
         const n = b.draws;
+        const held = b.hand;
         b = rules.apply(b, REROLL).state;
         out.push([...b.hand, ...b.swapped.map((w) => w.was)]);
-        // Draw keys don't change: the same draw/<phase>/<slot>/<n>/<row> streams, smaller pools.
+        // Draw keys don't change: the same draw/<phase>/<slot>/<n>/<row> streams, smaller pools
+        // (and each reroll leaves out the hand it replaces, D-132).
         if (k < 5) {
           expect(beforeSwaps(b.hand, b.swapped)).toEqual(
-            drawRows(C, seed, 1, '1', n, { struck: from.struck }),
+            drawRows(C, seed, 1, '1', n, { struck: from.struck, held }),
           );
         }
       }

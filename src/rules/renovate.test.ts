@@ -1162,8 +1162,8 @@ describe('half-weight draws for types at their limit (D-043, amended)', () => {
 
   it('in a run, a hand drawn while the Kitchen is at its limit uses the half weights', () => {
     const plainOf = (sd: string, n = 0) => drawRows(K, sd, 0, slotKey(2, 0), n);
-    const halfOf = (sd: string, n = 0) =>
-      drawRows(K, sd, 0, slotKey(2, 0), n, { atLimit: KITCHEN_AT_LIMIT });
+    const halfOf = (sd: string, n = 0, held: readonly Card[] = []) =>
+      drawRows(K, sd, 0, slotKey(2, 0), n, { atLimit: KITCHEN_AT_LIMIT, held });
     // A seed where the halving changes week 2's hand.
     const seed = Array.from({ length: 200 }, (_, k) => `half-${k}`).find(
       (sd) => JSON.stringify(plainOf(sd)) !== JSON.stringify(halfOf(sd)),
@@ -1173,9 +1173,9 @@ describe('half-weight draws for types at their limit (D-043, amended)', () => {
       eventsOf(events, 'handDrawn').map((h) => drawnBefore(h));
     const atLimit = R.apply(build([['kitchen', 0, 0]], { seed }), PASS);
     expect(before(atLimit.events)).toEqual([halfOf(seed)]);
-    // A reroll that week draws at half weight too.
+    // A reroll that week draws at half weight too, leaving out the hand it replaces (D-132).
     const rerolled = R.apply(atLimit.state, { t: 'reroll' });
-    expect(before(rerolled.events)).toEqual([halfOf(seed, 1)]);
+    expect(before(rerolled.events)).toEqual([halfOf(seed, 1, atLimit.state.hand)]);
     // Below the limit (no Kitchen yet), the same week draws at full weight.
     const below = R.apply(build([['bedroom', 0, 0]], { seed }), PASS);
     expect(before(below.events)).toEqual([plainOf(seed)]);
