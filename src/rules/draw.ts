@@ -7,8 +7,9 @@
 // (D-121), Rooms and Layout, each drawn from its own cards on its own stream,
 // `draw/<phase>/<slot>/<n>/<row>` (an overtime week's slot is `ot<k>`), so a reroll, a swap,
 // or an extra week never shifts any later hand, and drawing one row never shifts the other: a
-// strike changes the pool, never the stream. A member's room (M4b, D-103) is never drawn, not
-// even by the Catalog: it arrives with its member.
+// strike changes the pool, never the stream. A reroll (D-132) leaves out the cards each row
+// holds, and its swaps the cards it replaced, while enough others remain. A member's room (M4b,
+// D-103) is never drawn, not even by the Catalog: it arrives with its member.
 
 import type { Card, CardType, Content, DrawRow, Modifier, PieceDef, PieceId } from './index.ts';
 import { stream, type Rng } from './rng.ts';
@@ -62,6 +63,11 @@ export interface DrawOptions {
   atLimit?: ReadonlySet<PieceId>;
   /** Only this row's cards (D-121); unset, every card. */
   row?: DrawRow;
+  /**
+   * A reroll's (D-132): the cards it replaces. They're left out while enough others remain;
+   * when too few do, the rest are drawn from them. The pool's weights don't change.
+   */
+  held?: readonly Card[];
 }
 
 export function drawWeights(
@@ -117,8 +123,10 @@ export function swapKey(phase: number, slot: string, n: number, row: DrawRow, k:
   return `${drawKey(phase, slot, n, row)}/swap${k}`;
 }
 
+type Pool = { card: Card; weight: number }[];
+
 /** Up to `count` distinct cards from a weighted pool, without replacement. */
-function pickDistinct(rng: Rng, pool: { card: Card; weight: number }[], count: number): Card[] {
+function pickDistinct(rng: Rng, pool: Pool, count: number): Card[] {
   const out: Card[] = [];
   while (out.length < count && pool.length > 0) {
     let total = 0;
@@ -135,9 +143,28 @@ function pickDistinct(rng: Rng, pool: { card: Card; weight: number }[], count: n
   return out;
 }
 
+const sameCard = (a: Card, b: Card) => a.kind === b.kind && a.id === b.id;
+const holds = (cards: readonly Card[], card: Card) => cards.some((c) => sameCard(c, card));
+
+/**
+ * Up to `count` distinct cards from a weighted pool, leaving out the `held` ones (D-132) while
+ * enough others remain; when too few do, the rest are drawn from the held ones in the pool, on
+ * the same stream. With none held, a plain draw.
+ */
+function pickFresh(rng: Rng, pool: Pool, count: number, held: readonly Card[] = []): Card[] {
+  const others = pool.filter((p) => !holds(held, p.card));
+  const out = pickDistinct(rng, others, count);
+  if (out.length < count) {
+    const back = pool.filter((p) => holds(held, p.card));
+    out.push(...pickDistinct(rng, back, count - out.length));
+  }
+  return out;
+}
+
 /**
  * A hand of distinct cards, weighted, without replacement. Shorter if the pool is smaller.
- * With `opts.row`, one row of the hand, on that row's stream (D-121).
+ * With `opts.row`, one row of the hand, on that row's stream (D-121); with `opts.held`, a
+ * reroll's row, leaving out the cards it replaces while enough others remain (D-132).
  */
 export function drawHand(
   content: Content,
@@ -149,15 +176,14 @@ export function drawHand(
   opts: DrawOptions = {},
 ): Card[] {
   const rng = stream(seed, drawKey(phase, slot, n, opts.row));
-  return pickDistinct(rng, drawWeights(content, phase, opts), size);
+  return pickFresh(rng, drawWeights(content, phase, opts), size, opts.held);
 }
-
-const sameCard = (a: Card, b: Card) => a.kind === b.kind && a.id === b.id;
 
 /**
  * The cards that can be swapped into a row's k-th card, in the order they're tried (D-121):
  * up to `tries` distinct cards from the row's pool, leaving out every card in `exclude` (the
- * row as it stands, the card being replaced among them).
+ * row as it stands, the card being replaced among them). In a reroll's swaps, the cards the
+ * reroll replaced (`opts.held`) are left out too while enough others remain (D-132).
  */
 export function swapCandidates(
   content: Content,
@@ -171,10 +197,8 @@ export function swapCandidates(
   opts: DrawOptions & { row: DrawRow },
 ): Card[] {
   const rng = stream(seed, swapKey(phase, slot, n, opts.row, k));
-  const pool = drawWeights(content, phase, opts).filter(
-    (p) => !exclude.some((c) => sameCard(c, p.card)),
-  );
-  return pickDistinct(rng, pool, tries);
+  const pool = drawWeights(content, phase, opts).filter((p) => !holds(exclude, p.card));
+  return pickFresh(rng, pool, tries, opts.held);
 }
 
 /**

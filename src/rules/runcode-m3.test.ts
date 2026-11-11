@@ -12,6 +12,7 @@ import { describe, expect, it } from 'vitest';
 import type {
   Action,
   BlueprintId,
+  Card,
   Content,
   FixtureId,
   GameEvent,
@@ -582,9 +583,10 @@ const LEAVE: Action = { t: 'leaveShop' };
 
 /** The hand the run's own draw would give for this week at draw count n. */
 /** The hand drawn at key n, before its swaps (D-121): both rows. */
-const handAt = (s: RunState, n: number, content: Content = C) =>
+const handAt = (s: RunState, n: number, content: Content = C, held: readonly Card[] = []) =>
   drawRows(content, s.setup.seed, s.phase, slotKey(s.slot, s.overtimeWeek), n, {
     struck: s.struck,
+    held,
   });
 
 describe('debug forceShop', () => {
@@ -664,8 +666,12 @@ describe('debug forceShop', () => {
       budgetEarned: s.budgetEarned + 1,
     });
     expect(state.offers).toBeUndefined();
-    // The same hand a reroll from before the shop would have drawn: the same draw key.
-    expect(rules.apply(s, { t: 'reroll' }).state.hand).toStrictEqual(hand);
+    // The draw key a reroll from before the shop would have drawn on. The reroll leaves out the
+    // hand it replaces (D-132); this draw, with that hand set aside in the shop, doesn't.
+    const rerolled = rules.apply(s, { t: 'reroll' }).state;
+    expect(beforeSwaps(rerolled.hand, rerolled.swapped)).toStrictEqual(
+      handAt(s, s.draws, C, s.hand),
+    );
     // And the week goes on: passing tallies week 1, then week 2 starts.
     const pass = rules.apply(state, { t: 'pass' });
     expect(eventsOf(pass.events, 'tally')).toMatchObject([{ week: 1, slot: 1, phase: 0 }]);
@@ -685,9 +691,11 @@ describe('debug forceShop', () => {
       handAt(s, n0),
       handAt(s, n0 + 1),
     ]);
-    // A reroll after them draws at n0 + 2.
+    // A reroll after them draws at n0 + 2, leaving out the hand it replaces (D-132).
     const rerolled = rules.apply(s, { t: 'reroll' }).state;
-    expect(beforeSwaps(rerolled.hand, rerolled.swapped)).toStrictEqual(handAt(s, n0 + 2));
+    expect(beforeSwaps(rerolled.hand, rerolled.swapped)).toStrictEqual(
+      handAt(s, n0 + 2, C, s.hand),
+    );
   });
 
   it('in an overtime week, leaving draws from that week’s own key (ot1)', () => {
