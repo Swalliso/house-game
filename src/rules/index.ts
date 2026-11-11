@@ -806,8 +806,17 @@ export interface Balance {
   drawAtLimitPct: number;
   /** D-121: how many cards from its row a card with no play is swapped for, at most. */
   swapTries: number;
-  /** The job board (D-032, D-045): its contracts, rarity weights, and the first visit's client. */
-  jobBoard: { contracts: number; rarity: Readonly<Record<Rarity, number>>; firstClient: ClientId };
+  /**
+   * The job board (D-032, D-045): its contracts, rarity weights, and the first visit's client.
+   * `firstSeed` is the first job's lot (D-149): the run seed of the first visit's one open
+   * contract, picked so its first hands teach in order (src/ui/hud/first-job.ts).
+   */
+  jobBoard: {
+    contracts: number;
+    rarity: Readonly<Record<Rarity, number>>;
+    firstClient: ClientId;
+    firstSeed: string;
+  };
   /**
    * M4b: the milestones (1-based) after which one change order is offered, before the shop
    * (2, 4, and 6). Never the last milestone: the run ends there.

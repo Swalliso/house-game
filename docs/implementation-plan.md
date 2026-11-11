@@ -114,7 +114,7 @@ The Status column is as of planning. With the plan's approval, everything still 
 | D-042 | Run length: 7 milestones × 4 weeks (amends D-029) | M1 | **Accepted** |
 | D-043 | Draws: `handSize` (3) distinct cards (pieces, plus fixtures from phase 2), run-fixed weights, client spec pieces weighted up, simple pieces weighted up early (D-055) | M1 / M4a | Proposed |
 | D-044 | The sim sets milestone targets, starting in M2 | M2 | Proposed |
-| D-045 | First-run onboarding without saved progress: a recommended first contract and crew, simple pieces early, first-time hints | M4 | Proposed |
+| D-045 | First-run onboarding without saved progress: a recommended first contract and crew, simple pieces early, first-time hints. D-149 (Proposed) makes the first contract the one job a first visit can take, and its first weeks a guided opening | M4 | Proposed |
 | D-046 | Defaults for the rules the docs leave open (Appendix A), including D-013 | M1–M4b | Economy budget and the fenced-yard rule confirmed; rest Proposed |
 | D-047 | Desktop first: 1280×720 minimum, mouse and keyboard plus tap support, no phone layout | M1 | **Accepted** |
 | D-048 | Lot size: 24×24 (amends D-029) | M1 | **Accepted** (the team's request) |
@@ -1147,6 +1147,7 @@ Built alongside M5a, on its own branch (`phase/m4-clients`, pull request #17), a
 - **Run setup:** a job board of 3 contracts, then a crew pick.
   - Each contract shows its lot as a thumbnail, so players can match a lot to a client. Combolands players read the starting map the same way to choose guilds.
   - On a first visit, contract 0 is always the Hendersons. They and the General Contractor are marked "Recommended for your first job". The board sits outside `apply` and the run code, so this doesn't affect replays.
+  - *2026-11-11 (D-149):* on a first visit that contract is the first job, the only one that can be taken, on its own lot (`jobBoard.firstSeed`); the other two lie face down. It starts with the General Contractor, and the crew pick comes with the second run.
   - Until M4b, the General Contractor is the only crew.
 
 **M4b, then:**
@@ -1167,6 +1168,7 @@ Built alongside M5a, on its own branch (`phase/m4-clients`, pull request #17), a
   - the first arrival (D-103)
 
   Each is dismissible and remembered in `localStorage` (UI only, not game state).
+  - *2026-11-11 (D-149):* the first three weeks' hints are the opening: three plays in week 1, then the Bathroom touching the Bedroom, then the Closet that makes a Suite, each naming its card where the hand holds it. A browser's first job shows its screen's parts as they first matter (`src/ui/hud/first-job.ts`).
 - **Sim reports** per client and per crew (§8).
 
 **Playtest 4:**
@@ -1808,6 +1810,7 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
   - 3 contracts with rarity weights Common 65, Uncommon 27, Rare 8
   - no guaranteed Rare (D-026)
   - first-visit "Recommended" marks only
+  - *2026-11-11 (D-149):* `firstSeed`, the first job's lot (`oh-4243`); a first visit's other contracts are locked
 - **Sets** (D-056): a poker-hand ladder, like Balatro's hand types, where both the Points and the Mult rise with how hard the set is:
 
   | Set | Points | +Mult | ×Mult | Per level |

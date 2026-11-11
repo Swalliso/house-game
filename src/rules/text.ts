@@ -1091,9 +1091,9 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
     early: {
       title: 'Complete early',
       text:
-        `Once the target is met, finish the milestone now. The weeks left play out quickly (pieces ` +
-        `still earn), and each week saved pays ${earlyBudget} budget and ${earlyPct}% of this ` +
-        `milestone’s ${L.total}.`,
+        `Once the target is met, finish the milestone now. You skip the builds for the weeks ` +
+        `left: they play out quickly (pieces still earn), and each week saved pays ` +
+        `${earlyBudget} budget and ${earlyPct}% of this milestone’s ${L.total}.`,
     },
     fixture: {
       title: 'Fixtures',
@@ -1260,8 +1260,9 @@ export function hintText(content: Content): Record<HintTerm, string> {
     checklist:
       `Each line that holds adds +${multNumber(b.rules.specBonus)} ${L.mult} every week. ` +
       `The house rules fold into one row after this: click it to open them.`,
+    // It says what it costs (D-149): the builds, which a new player needs more than the bonus.
     early:
-      `Target met? Complete early: the weeks left play out fast, and each week saved pays ` +
+      `Target met? Complete early skips the builds you have left: each week saved pays ` +
       `${earlyBudget} budget and ${earlyPct}% of this milestone’s ${L.total}.`,
     shop:
       `Spend your budget on goods for the house; hover one to read it. Each milestone met ` +

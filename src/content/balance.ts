@@ -198,10 +198,20 @@ export const BALANCE: Balance = {
 
   // The job board (Appendix A · M4a; D-026, D-045): 3 contracts, clients by rarity (no Rare is
   // guaranteed), and the Hendersons as contract 0 on a first visit.
+  //
+  // firstSeed is the first job's lot (D-149), the one contract a first visit can take. Of 6,000
+  // lots, 348 have no creek and deal the Hendersons a Bedroom, then a Bathroom, then a Closet or
+  // a second Bedroom in weeks 1 to 3. This one has no trait, a first hand with neither a Bathroom
+  // nor a Closet to play out of order, and the same four hands wherever the three go: a Suite by
+  // week 3 in 300 of 300 random placements, 41 to 61 Wow against Groundbreaking's 22. With those
+  // three weeks played as the guide says, a bot that then picks a random card met Foundation in
+  // 19 of 24 runs and Framing in 14 (12% and 5% on any lot, unguided). src/ui/hud/first-job.test.ts
+  // holds the hands, so a change to the draw says to pick again.
   jobBoard: {
     contracts: 3,
     rarity: { common: 65, uncommon: 27, rare: 8 },
     firstClient: 'hendersons',
+    firstSeed: 'oh-4243',
   },
 
   // Change orders (M4b; jam-scope.md, implementation-plan.md §7): one is offered after each of

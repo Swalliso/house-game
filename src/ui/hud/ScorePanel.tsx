@@ -21,6 +21,7 @@ import { formatMult, formatNumber, signed } from '../format.ts';
 import { Icon, Panel } from '../kit/kit.tsx';
 import { currentTally, pace as paceSignal, preview, run } from '../store.ts';
 import { Celebration } from './Celebration.tsx';
+import { shown as onScreen } from './first-job.ts';
 import { Tip } from './Tip.tsx';
 import './score.css';
 
@@ -443,7 +444,9 @@ export function ScorePanel() {
             beat={beat}
             waiting={!!view && view.setAt === 0 && view.sets.length > 0}
           />
-          {hasChecklist && (
+          {/* The first job's checklist comes in after the opening (D-149): until then the row
+              shows only once a line holds, to say where that Charm is from. */}
+          {hasChecklist && (onScreen.value.checklist || specCount > 0) && (
             <SpecCharm
               count={specCount}
               bonus={view ? view.specBonus : tally.specBonus}

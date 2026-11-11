@@ -87,6 +87,14 @@
     display: inline;
   }
 }
+/* The first job's first weeks have no free actions yet (D-149): the title has the plank to
+   itself, at any width. */
+.hand .panel-head:not(:has(.free-action)) .hand-title-long {
+  display: inline;
+}
+.hand .panel-head:not(:has(.free-action)) .hand-title-short {
+  display: none;
+}
 
 /* --- A card: the Card primitive (kit.css), with the hand's own sizes ----------------------- */
 

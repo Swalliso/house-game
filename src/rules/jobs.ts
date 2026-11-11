@@ -7,8 +7,9 @@
 // - Clients are drawn by rarity (Appendix A · M4a: Common 65, Uncommon 27, Rare 8; D-026), then
 //   evenly among the clients of that rarity, and never twice on one board. No Rare is
 //   guaranteed.
-// - On a first visit, contract 0 is the recommended first client (the Hendersons), and the
-//   UI marks it "Recommended for your first job".
+// - On a first visit, contract 0 is the first job (D-149): the first client (the Hendersons) on
+//   the first job's own lot (`firstSeed`), and the only contract that can be taken. The others
+//   are dealt as ever and marked locked, so the board shows who else is hiring.
 
 import type { ClientId, Content, Rarity } from './index.ts';
 import { stream } from './rng.ts';
@@ -17,8 +18,10 @@ export interface Contract {
   clientId: ClientId;
   /** The run seed if this contract is taken: it decides the lot. */
   seed: string;
-  /** Contract 0 on a first visit. */
+  /** Contract 0 on a first visit: the first job. */
   recommended: boolean;
+  /** On a first visit, every contract but the first job: it can't be taken yet (D-149). */
+  locked: boolean;
 }
 
 /** The same alphabet as the UI's seeds: no 0/o, 1/l/i. */
@@ -39,8 +42,11 @@ export function jobBoard(
     for (let k = 0; k < 6; k++) seed += SEED_ALPHABET[rng.int(SEED_ALPHABET.length)];
     const recommended = i === 0 && opts.firstVisit && !!content.clients[jb.firstClient];
     let clientId: ClientId;
-    if (recommended) clientId = jb.firstClient;
-    else {
+    if (recommended) {
+      clientId = jb.firstClient;
+      // The first job's own lot, in place of the one its stream drew.
+      seed = jb.firstSeed || seed;
+    } else {
       const left = clients.filter((c) => !used.has(c.id));
       // Each rarity's weight is shared among the clients of that rarity still on offer.
       const byRarity = new Map<Rarity, number>();
@@ -63,7 +69,7 @@ export function jobBoard(
       clientId = left[k]!.id;
     }
     used.add(clientId);
-    out.push({ clientId, seed, recommended });
+    out.push({ clientId, seed, recommended, locked: !recommended && !!out[0]?.recommended });
   }
   return out;
 }

@@ -203,6 +203,15 @@ button:where(:not(.btn, .pcard, .inv-slot, .seg, .check-fold)):focus-visible,
   flex-shrink: 0;
   min-height: 0;
 }
+/* The first job's second and third weeks (D-149) have no checklist yet: Inspect sits at the
+   column's foot, and the week's hint has the place under the score panel where the checklist
+   will be. Inspect keeps to the room under the hint (--first-hint-room is the hint's height,
+   FirstHints.tsx), its plank in view and its body scrolling, so neither covers the other. */
+.left-rest > .inspect:first-child {
+  margin-top: auto;
+  min-height: 0;
+  max-height: calc(100% - var(--first-hint-room, 0px) - var(--space-2));
+}
 /* Under 1000 px tall (D-098, amended 2026-11-08), the score panel's sets fold into one row
    (ScorePanel.tsx SetsFold), the whole list in its tip, so late in a run the checklist keeps its
    room: the list took up to 612 px of a 1280×720 column's 656. While a play is looked at, the
