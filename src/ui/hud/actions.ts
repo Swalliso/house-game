@@ -158,6 +158,13 @@ let passTimer: ReturnType<typeof setTimeout> | undefined;
 
 export function requestEndWeek(): void {
   if (run.value.screen !== 'build') return;
+  // While a tally plays with nothing waiting to be placed, Enter or a click on End week only
+  // hurries the tally, as a click anywhere else does. It never arms or confirms a pass: a
+  // double-click on End week used to pass the next week unseen (D-068).
+  if (busy.value && !tentative.value) {
+    skip();
+    return;
+  }
   if (!tentative.value && !passArmed.value) {
     passArmed.value = true;
     clearTimeout(passTimer);

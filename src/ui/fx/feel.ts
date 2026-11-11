@@ -463,6 +463,13 @@ export const FEEL = {
     liftPx: 6,
   },
 
+  /**
+   * The end screen's buttons sit where End week was, so they take no click for this long after
+   * the screen comes up: a double-click that skips the last tally doesn't land on Title or New
+   * run. Longer than a double-click, shorter than reading the verdict.
+   */
+  endScreen: { clickDelayMs: 650 },
+
   /** The title screen's street (M5a): a car drives by now and then. */
   title: {
     /** Its speed, in art px a second (it moves a whole art px at a time). */
