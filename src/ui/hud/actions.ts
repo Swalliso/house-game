@@ -1,7 +1,13 @@
 // Small UI actions shared by the HUD's buttons and the keyboard.
 
 import { computed, signal } from '@preact/signals';
-import { rules, type ClientId, type CrewId, type RunMode } from '../../rules/index.ts';
+import {
+  rules,
+  type ClientId,
+  type CrewId,
+  type RunMode,
+  type RunState,
+} from '../../rules/index.ts';
 import { audio } from '../audio/audio.ts';
 import { busy, orderStamp, skip } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
@@ -122,6 +128,15 @@ export function playLotAgain(lot: {
   audio.unlock();
   portfolioOpen.value = false;
   newRun(lot.seed, lot.clientId, lot.crewId, lot.mode);
+}
+
+/**
+ * The end screen's Try this lot again (D-150): the run's own lot, client and crew. A lost first
+ * job is tried again at its gentler targets; a won one is played again at the client's own, so
+ * the first job's targets don't outlast it (D-151).
+ */
+export function endScreenAgain(s: RunState): void {
+  playLotAgain(s.screen === 'won' ? { ...s.setup, mode: 'standard' } : s.setup);
 }
 
 export function selectCard(i: number, from: Source = 'hand'): void {

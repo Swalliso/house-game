@@ -754,6 +754,14 @@ function run(values: Values): number {
       '--suggest-targets fits the standard targets, so it takes no --first-job.',
     );
   }
+  if (firstJob && mode === '--bench') {
+    throw new UsageError('--bench times a standard run, so it takes no --first-job.');
+  }
+  if (firstJob) {
+    // Every report below reads the first job's targets: say so once, above them all.
+    const pct = CONTENT.balance.jobBoard.firstTargetPct;
+    console.log(`First jobs (D-151): every run's targets are ${pct}% of its client's.`);
+  }
   setupFor = (i) => ({
     clientId: clients[i % clients.length]!,
     crewId: crews[Math.floor(i / clients.length) % crews.length]!,

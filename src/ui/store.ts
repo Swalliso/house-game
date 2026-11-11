@@ -762,10 +762,13 @@ export function newRun(
   // once. A browser that has had a first job, from a link or the board, isn't guided again by a
   // link, a Portfolio replay or a new run after a crash. The board stays as a first visit finds
   // it, so Start still opens with the first job until a contract is taken or a house finished.
-  // A guided run is the browser's first job, with its gentler targets (D-151).
+  // A guided run is the browser's first job, with its gentler targets (D-151). So is a run on
+  // the first job's own lot while that job is going (the same link opened twice, or a friend's
+  // first-job result after the board's): startRun keeps it the first job, guided.
   const guided = firstVisit() && !guidedBefore();
   if (guided) setFirstJob(seed);
-  startRun({ seed, clientId, crewId, mode: guided ? 'firstJob' : mode });
+  const first = guided || firstJobSeed.value === seed;
+  startRun({ seed, clientId, crewId, mode: first ? 'firstJob' : mode });
   canContinue.value = false;
   appScreen.value = 'game';
 }

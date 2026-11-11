@@ -32,7 +32,7 @@ import {
   run,
   takeContract,
 } from '../store.ts';
-import { playLotAgain } from './actions.ts';
+import { endScreenAgain, playLotAgain } from './actions.ts';
 import {
   arrivingIn,
   guideStepOf,
@@ -301,6 +301,39 @@ describe('a browser’s first job', () => {
       expect(firstJob.value).toBe(false);
       expect(on(shown.value)).toEqual(everything);
     }
+  });
+
+  it('keeps its targets on its own lot opened again while it’s going (D-151)', () => {
+    // The same link twice: the first job stays the first job, guided and at its targets.
+    newRun('shared');
+    newRun('shared');
+    expect(firstJob.value).toBe(true);
+    expect(run.value.setup.mode).toBe('firstJob');
+    // The board's first job, then a friend's first-job result: the same lot, so the same job.
+    forgetFirstVisit();
+    store.clear();
+    takeContract(contract(firstSeed));
+    newRun(firstSeed);
+    expect(firstJob.value).toBe(true);
+    expect(run.value.setup.mode).toBe('firstJob');
+  });
+
+  it('keeps its targets for the end screen’s retry after a loss, not after a win (D-151)', () => {
+    takeContract(contract(firstSeed));
+    run.value = { ...run.value, week: 28, screen: 'won' };
+    endScreenAgain(run.value);
+    expect(run.value.setup).toEqual({
+      seed: firstSeed,
+      clientId: 'hendersons',
+      crewId: 'generalContractor',
+      mode: 'standard',
+    });
+    forgetFirstVisit();
+    store.clear();
+    takeContract(contract(firstSeed));
+    run.value = { ...run.value, week: 18, screen: 'lost' };
+    endScreenAgain(run.value);
+    expect(run.value.setup.mode).toBe('firstJob');
   });
 
   it('is a friend’s link too, which leaves the board as a first visit finds it', () => {
