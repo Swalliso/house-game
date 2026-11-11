@@ -1149,6 +1149,7 @@ Built alongside M5a, on its own branch (`phase/m4-clients`, pull request #17), a
   - Each contract shows its lot as a thumbnail, so players can match a lot to a client. Combolands players read the starting map the same way to choose guilds.
   - On a first visit, contract 0 is always the Hendersons. They and the General Contractor are marked "Recommended for your first job". The board sits outside `apply` and the run code, so this doesn't affect replays.
   - *2026-11-11 (D-149):* on a first visit that contract is the first job, the only one that can be taken, on its own lot (`jobBoard.firstSeed`); the other two lie face down. It starts with the General Contractor, and the crew pick comes with the second run.
+  - *2026-11-11 (D-149 note):* a first visit lasts until a contract is taken or a house is finished. A link, a Portfolio replay or a new run after a crash is guided only in a browser that has never had a first job.
   - Until M4b, the General Contractor is the only crew.
 
 **M4b, then:**

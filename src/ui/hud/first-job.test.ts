@@ -2,10 +2,15 @@
 // opening its hints name, and which run a browser's first job is. The opening is held against
 // the real lot (balance.ts's `firstSeed`): if the draw or the lot generator changes what that
 // lot deals, these say so, and the seed is picked again.
+//
+// And a browser is guided once (D-149, 2026-11-11): a link, a Portfolio replay or a new run after
+// a crash is guided only in a browser that has never had a first job, and a finished house ends
+// a first visit as taking a contract does. The board keeps its first job until then.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   CONTENT,
+  jobBoard,
   lotTraits,
   rules,
   stream,
@@ -15,21 +20,26 @@ import {
   type RunSetup,
   type RunState,
 } from '../../rules/index.ts';
+import { company, emptyCompany, fileJob, type Job } from '../company.ts';
 import {
   firstJob,
   firstJobSeed,
   firstVisit,
   forgetFirstVisit,
   newRun,
+  newRunAfterCrash,
+  notice,
   run,
   takeContract,
 } from '../store.ts';
+import { playLotAgain } from './actions.ts';
 import {
   arrivingIn,
   guideStepOf,
   OPENING,
   OPENING_WEEKS,
   openingCard,
+  shown,
   shownIn,
   type Shown,
 } from './first-job.ts';
@@ -208,17 +218,36 @@ describe('a browser’s first job', () => {
     locked: false,
   });
 
+  /** A house this browser finished: the company's record files it as its run ends. */
+  const house = (seed: string): Job => ({
+    seed,
+    clientId: 'hendersons',
+    crewId: 'generalContractor',
+    won: true,
+    score: 1000,
+    verdict: 'Charmer',
+    milestones: 7,
+    phases: 7,
+    at: 0,
+  });
+  /** Everything the build screen has: what any run but the first job shows from week 1. */
+  const everything = on(shownIn(at(1), false));
+
   beforeEach(() => {
-    store.clear();
     vi.stubGlobal('localStorage', {
       getItem: (k: string) => store.get(k) ?? null,
       setItem: (k: string, v: string) => void store.set(k, v),
       removeItem: (k: string) => void store.delete(k),
     });
+    // A new browser: no first job, no houses, and nothing kept.
     forgetFirstVisit();
+    company.value = emptyCompany();
+    store.clear();
   });
   afterEach(() => {
     forgetFirstVisit();
+    company.value = emptyCompany();
+    notice.value = null;
     vi.unstubAllGlobals();
   });
 
@@ -265,5 +294,81 @@ describe('a browser’s first job', () => {
     expect(firstJob.value).toBe(false);
     newRun('c');
     expect(firstJob.value).toBe(false);
+  });
+
+  it('comes from a link once: the next link shows the whole screen from week 1', () => {
+    newRun('first-link');
+    expect(firstJob.value).toBe(true);
+    expect(on(shown.value)).toEqual([]);
+    // Another link while the first job is going: an ordinary run, and the first job is over.
+    newRun('second-link');
+    expect(firstJob.value).toBe(false);
+    expect(firstJobSeed.value).toBeNull();
+    expect(run.value.week).toBe(1);
+    expect(on(shown.value)).toEqual(everything);
+    // The browser remembers it had one, as after a reload: a third link, and a crash's new run.
+    newRun('third-link');
+    expect(firstJob.value).toBe(false);
+    newRunAfterCrash();
+    expect(firstJob.value).toBe(false);
+    expect(on(shown.value)).toEqual(everything);
+    // The board still opens with the first job, and it's guided: no contract has been taken.
+    expect(firstVisit()).toBe(true);
+    takeContract(contract(firstSeed));
+    expect(firstJob.value).toBe(true);
+  });
+
+  it('is over once a house is finished: a replay, a link and the board are ordinary', () => {
+    // As seen on 2026-11-11: three houses finished from links, no contract taken from the
+    // board, and nothing kept of a first job (a browser from before the guided key).
+    for (const seed of ['one', 'two', 'three']) fileJob(house(seed));
+    expect(firstVisit()).toBe(false);
+    playLotAgain({ seed: 'two', clientId: 'hendersons', crewId: 'generalContractor' });
+    expect(run.value.setup.seed).toBe('two');
+    expect(firstJob.value).toBe(false);
+    expect(run.value.week).toBe(1);
+    expect(on(shown.value)).toEqual(everything);
+    newRun('a-link');
+    expect(firstJob.value).toBe(false);
+    // The board deals its three contracts, none face down.
+    const board = jobBoard(CONTENT, 'board', { firstVisit: firstVisit() });
+    expect(board.some((c) => c.locked || c.recommended)).toBe(false);
+  });
+
+  it('is over once a friend finishes the house their link guided', () => {
+    newRun('linked');
+    expect(firstJob.value).toBe(true);
+    run.value = { ...run.value, screen: 'won' };
+    fileJob(house('linked'));
+    expect(firstJobSeed.value).toBeNull();
+    expect(firstVisit()).toBe(false);
+    playLotAgain({ seed: 'linked', clientId: 'hendersons', crewId: 'generalContractor' });
+    expect(firstJob.value).toBe(false);
+    expect(on(shown.value)).toEqual(everything);
+  });
+
+  it('counts a first job saved before the guided key', () => {
+    newRun('kept');
+    // As a browser from before 2026-11-11 has it: the first job's seed and no guided key.
+    for (const k of [...store.keys()]) if (k.endsWith(':guided')) store.delete(k);
+    newRun('next');
+    expect(firstJob.value).toBe(false);
+    // Its end is kept, so a later link isn't guided either.
+    newRun('later');
+    expect(firstJob.value).toBe(false);
+  });
+
+  it('starts over with the ?debug panel’s First visit again, houses or not', () => {
+    fileJob(house('before'));
+    takeContract(contract('board'));
+    expect(firstVisit()).toBe(false);
+    forgetFirstVisit();
+    expect(firstVisit()).toBe(true);
+    newRun('link-again');
+    expect(firstJob.value).toBe(true);
+    // A house finished from now on ends it, as it would a new browser's.
+    run.value = { ...run.value, screen: 'won' };
+    fileJob(house('link-again'));
+    expect(firstVisit()).toBe(false);
   });
 });
