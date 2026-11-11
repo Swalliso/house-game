@@ -1567,6 +1567,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 **2026-11-10 (D-148, Proposed):** a compact card's line is the hand's own short wording, number first, within 33 characters (`HAND_LINE_CHARS`), not always the card's first effect line as written: "+50% to Kitchen or Living Room" for "Touching Kitchens and Living Rooms earn +50%". The two-line clamp stands, and Inspect still shows the whole card. Reroll keeps its word on the plank at every size, where a narrow column showed its icon and count; Demolish still shows those.
 
+**2026-11-11 (D-148's note of the day, Proposed):** the clamp no longer stands at two. A compact card's line has three lines at most, and four beside a 2× screen's half-size thumbnail; on a 2× window under 1100 px tall the cards sit 4 px apart, with less padding, and the thumbnail's well has none. The Greenhouse's line says "touching" again.
+
 ### D-123 · Playtest 5's re-fit: the targets and each client's factor
 **Status:** Accepted · 2026-11-10, held up in playtest 5 (`docs/playtests/playtest-5-findings.md`): harder than playtest 4, but "while challenging it still felt possible to complete". Milestone 2 keeps 560 (the user's run made it with 665 of 644), so the 450 step-down isn't needed. Proposed 2026-11-09, before playtest 5. It's the one re-fit that D-114, D-119, D-120 and D-121 left until all of playtest 4's content changes were in (playtest 4's findings §12).
 *2026-11-10 (D-146, Proposed):* the friction batch (D-140 to D-145) outgrew these numbers, and D-146 re-fits them. The method stands, with one step added: the targets are set where greedy's played survival meets the goals, because the fit's estimate overstates what overtime rescues.
@@ -1957,6 +1959,45 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - **A loss in a later phase at 1920×1080,** with more rows of stats, still has the row of two buttons under the bar until the column scrolls; so does any loss at 1680×1050 and narrower in the pixel font, where they take a row each.
 
 *2026-11-11 (D-150, Proposed):* the plain group under the stats leads with Try this lot again, on a row of its own ("Try again" in the pixel font's narrow column), and a lost run's "Next time" tip sits over it. The sticky bar still holds New run and Copy result, and the milestone rows above it are unchanged. At 1920×1080 a later loss now shows the tip's first line under the bar, where the two buttons were.
+
+**2026-11-11 (a fix pull request, `fix/hand-lines-2x`, the third step of the survey after the release; Proposed until the user has seen it):** this entry's two hand-line gaps. The line has three lines, four beside a 2× thumbnail, and the Greenhouse's says "touching" again. UI only: `contentHash` is unchanged (ffabbd52), so runs in progress carry over.
+- **Three lines at most,** at every window size (`hand.css`). Considered below had a three-line clamp push cards under the Pass bar at 1280×720 and 1920×1080; on today's short lines it moved none there, in either font.
+- **Four lines beside a 2× thumbnail,** on a window over 800 px tall (under that the shape's glyph stands in for the thumbnail, and the line has the card's width). A row there holds about 12 letters of the pixel font, so "+2 per touching view (up to 3)" takes four.
+- **On a 2× window under 1100 px tall** (where Your goods folds: 1440×900, 1470×956 and 1512×982, and 1470×840 and 1512×860 under a browser's bars), the cards sit 4 px apart (8 before), with 4 px over the name and 8 px under the chips (8 and 12), and the thumbnail's well has no padding (4), which widens the line by 8 px. Without them the fourth card went under the bar in 6 of 11 four-card hands at 1470×840.
+- **"Touching" comes back where the line stays within the 33-letter budget** (`touchingLine` in `text.ts`): the Greenhouse's "+50% to touching yard views". The Patio's "+2 per touching Living Room or Kitchen" (38) fits whole at every size, but its extra row put a fourth card under the bar in four hands: in the readable font at 1280×720 and 1366×768, and in the pixel font at 1512×860 at 2×. The Dining Room's (39) takes a fourth line at 1280×720, and the Kitchen's and the L-Kitchen's (42) five beside a 2× thumbnail. Each keeps its short line.
+
+Measured in headless Chrome on the week-1 hands of 16 lots: the first job's lot as an ordinary run, and 15 lots over the five clients and three crews (69 cards; the Landscaper's five lots deal five), and on the guided first hand (Living Room, Bedroom, Greenhouse, Garage), taken from the board in a fresh browser. A card is under the bar when the bar hides some of what it says, as the hand's "N more cards" tab counts; the count includes the five-card hands' fifth cards. Before is develop at e765f64, the game live on main.
+
+| Window | Font | Cards cut, of 69 | Cards under the bar | Guided hand: lines cut, of 4 |
+|---|---|---|---|---|
+| 1470×840 at 2× | pixel | 40 → 0 | 9 → 7 | 2 → 0 |
+| 1470×840 at 2× | readable | 0 → 0 | 14 → 7 | 0 → 0 (its fourth card is no longer under the bar) |
+| 1512×860 at 2× | pixel | 31 → 0 | 5 → 5 | 2 → 0 |
+| 1512×860 at 2× | readable | 0 → 0 | 9 → 5 | 0 → 0 |
+| 1440×900 at 2× | pixel | 40 → 0 | 5 → 5 | 2 → 0 |
+| 1440×900 at 2× | readable | 0 → 0 | 7 → 4 | 0 → 0 |
+| 1920×1080 | pixel | 6 → 0 | 1 → 1 | 0 → 0 |
+| 1920×1080 | readable | 0 → 0 | 0 → 0 | 0 → 0 |
+| 1280×720 | pixel | 6 → 0 | 19 → 19 | 0 → 0 |
+| 1280×720 | readable | 0 → 0 | 18 → 18 | 0 → 0 |
+
+No card is under the bar that wasn't before. Also checked, both fonts, with the pixel font's cut cards: 1512×982 at 2× (31 → 0; under the bar, none before or after in the pixel font, 3 → 0 in the readable), 1470×956 at 2× (40 → 0), 1728×1117 at 2× (6 → 0), and 1280×720 at 2×, 1366×768, 1440×900 and 1600×900 (6 → 0; 1600×900 had none). No card is newly under the bar there, except one at 1470×956 (Known gaps).
+
+- **Considered:**
+  - **The line across the card's width, the thumbnail beside the chips,** with three lines (this entry's first Considered): none cut, but the bar hid 15 cards at 1470×840 (9 before) and 14 at 1512×860 (5).
+  - **Three lines at 2× and today's spacing:** 12 of 69 cards still cut at 1470×840 and 1440×900, the guided hand's Living Room among them, and 13 cards under the bar at 1470×840.
+  - **Four lines and today's spacing:** none cut, but 16 cards under the bar at 1470×840, the fourth card in 6 of 11 four-card hands. With only some of the closer spacing (the gaps, or the padding, or the well), 1 to 4 cards were still newly under the bar at 1470×840 or 1512×860.
+  - **The shape's glyph for the thumbnail on a 2× window up to 900 px tall,** as at 1× (with three lines): none cut and the fewest cards under the bar, but "Living Room" wrapped under the glyph, "Greenhouse" ran into it, and most laptops would lose the pictures.
+  - **The chips beside the thumbnail in the narrowest column,** to pay for the extra lines: the bar hid more cards, not fewer (19 at 1470×840, with three lines).
+  - **Rewording to fit "touching" in:** the Dining Room's names swapped, "+50% to touching Living Room or Kitchen", and a comma for the Kitchen's "or", "+2 per touching Dining Room, Herb Garden". Both fit whole at every size measured, but each takes a row more where it shows (four lines beside a 2× thumbnail, three at 1280×720 and 1920×1080), as the Patio's did. Whether that puts cards under the bar wasn't measured.
+- **Known gaps:**
+  - The Patio's, the Dining Room's, the Kitchen's and the L-Kitchen's hand lines still leave out "touching" (above). Inspect, the shop and the ghost's Wow label give the true reading.
+  - At 1470×956 at 2× (a 15-inch MacBook Air's full screen) one five-card hand's fifth card now sits 3 px under the bar, where two others came clear (3 → 2).
+  - Beside a 2× thumbnail a line can end on a short row: "+2 per / touching / view (up to / 3)".
+  - Week-1 hands only: later weeks' fixtures (two lines each), Renovate chips and the Bigger Truck's fifth card weren't measured, nor the Chandelier's line.
+  - Chrome's emulated 2× only. Safari and Firefox weren't run; both clamp a `-webkit-box` the same way.
+  - The closer cards and the bare well wait on the user's eye (before and after screenshots of the guided hand, sent to the user with the pull request).
+- **Changes:** D-121 (Accepted): three lines, four beside a 2× thumbnail, and the closer cards on a 2× window under 1100 px tall; a dated note there. This entry's Known gaps: the Kitchen's line and the line beside a thumbnail are whole now, and of the four lines without "touching", three are left (the Kitchen's, which the L-Kitchen shares, the Dining Room's and the Patio's).
 
 ### D-146 · The friction batch's re-fit: the targets set against played runs
 **Status:** Proposed · 2026-11-10, at the user's "Merge and re-fit", once D-140 to D-145 were all in develop. A fix pull request (`fix/refit-targets`) that merges on green, so /dev/ plays at the intended difficulty; the batch's playtest decides whether it holds. It's the one re-fit D-140, D-143, D-144 and D-145 each left for the end.

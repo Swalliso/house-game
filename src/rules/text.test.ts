@@ -155,10 +155,13 @@ describe('a compact hand card (D-121)', () => {
     expect(shown).toEqual({
       bedroom: ['+3 every week'],
       bathroom: ['+3 if touching a Bedroom'],
-      // Two names drop "touching" (D-148): "+2 per touching Dining Room or…" lost its end.
+      // Two names say "touching" only within the budget (D-148, 2026-11-11): "+2 per touching
+      // Dining Room or Herb Garden" runs 42 letters, five lines beside a 2× thumbnail. The
+      // Patio's below too.
       kitchen: ['+2 per Dining Room or Herb Garden'],
       lKitchen: ['+2 per Dining Room or Herb Garden'],
-      // An aura leads with what it gives (D-148): "Touching Kitchens and…" lost its +50%.
+      // An aura leads with what it gives (D-148): "Touching Kitchens and…" lost its +50%. Its
+      // "touching" line runs 39 letters, four lines at 1280×720.
       diningRoom: ['+50% to Kitchen or Living Room'],
       livingRoom: ['+2 per touching view (up to 3)'],
       closet: ['+1 every week'],
@@ -174,7 +177,8 @@ describe('a compact hand card (D-121)', () => {
       flowerBed: ['+1 every week'],
       herbGarden: ['+1 per tile in the sun'],
       // Its "if touching a room" doesn't fit after the pay (D-148): Inspect and the lot's
-      // warning say it. The Hot Tub's and the Fire Pit's too.
+      // warning say it. The Hot Tub's and the Fire Pit's too. "+2 per touching Living Room or
+      // Kitchen" (38 letters) fits whole, but its extra row put fourth cards under the Pass bar.
       patio: ['+2 per Living Room or Kitchen'],
       fence: ['+1 per fenced tile (up to +6)'],
       // Its job (D-140), not "Must be built touching the street or a Driveway" or its +1.
@@ -183,7 +187,7 @@ describe('a compact hand card (D-121)', () => {
       // nothing.
       doghouse: ['+1 every week in a fenced yard'],
       treehouse: ['+2 every week'],
-      greenhouse: ['+50% to yard views'],
+      greenhouse: ['+50% to touching yard views'],
       playroom: ['+2 per touching Bedroom'],
       library: ['+2 per touching Quiet (up to 3)'],
       mudroom: ['+50% to fenced Pet pieces'],
@@ -229,9 +233,9 @@ describe('a compact hand card (D-121)', () => {
   });
 
   // The hand's wording is its own (D-148). The budget is today's longest line (the Kitchen's,
-  // which still loses its last word on a narrow card), so this keeps a new line from running
-  // longer; the maps above pin the wording. Every card the game has, members' rooms and the
-  // fixtures the draw never deals too.
+  // which fits whole at every window size measured on 2026-11-11: three lines, four beside a 2×
+  // thumbnail), so this keeps a new line from running longer; the maps above pin the wording.
+  // Every card the game has, members' rooms and the fixtures the draw never deals too.
   it(`keeps every line to ${HAND_LINE_CHARS} characters`, () => {
     const cards = [
       ...Object.values(CONTENT.pieces).map((p) => ({ kind: 'piece' as const, id: p.id })),
