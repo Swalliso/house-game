@@ -1771,7 +1771,58 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 ## Proposed
 
-*Reserved numbers (2026-11-10): D-115 to D-118 are the layout session's drafts, not in this file yet; D-122 (legibility) is logged below. D-132 to D-134 are playtest 5's fixes, each logged by its own pull request: D-132 one reroll for both rows of the draw, D-133 the roof view, D-134 three more tracks. D-135 and D-136 are M6's end screen (D-135 the result line and link preview, D-136 the milestone photos); D-137 and D-138 belong to the release-day sessions. D-139 is the company's record. D-140 to D-146 are the friction batch, from the 2026-11-10 review's seven points: D-140 the Garage and the Driveway, D-141 what a blueprint is worth and its icon, D-142 first contact, D-143 the blueprint shelf, D-144 change orders two at a time, D-145 the lot and the last stretch, and D-146 the batch's one re-fit. D-147 takes the roof out again (the user's call, logged under Accepted). D-148 is the first-timer legibility batch before the showing, from the 2026-11-10 polish review (logged below). D-149 is the first job, from the first showing (2026-11-11, logged below). New entries start at D-150.*
+*Reserved numbers (2026-11-10): D-115 to D-118 are the layout session's drafts, not in this file yet; D-122 (legibility) is logged below. D-132 to D-134 are playtest 5's fixes, each logged by its own pull request: D-132 one reroll for both rows of the draw, D-133 the roof view, D-134 three more tracks. D-135 and D-136 are M6's end screen (D-135 the result line and link preview, D-136 the milestone photos); D-137 and D-138 belong to the release-day sessions. D-139 is the company's record. D-140 to D-146 are the friction batch, from the 2026-11-10 review's seven points: D-140 the Garage and the Driveway, D-141 what a blueprint is worth and its icon, D-142 first contact, D-143 the blueprint shelf, D-144 change orders two at a time, D-145 the lot and the last stretch, and D-146 the batch's one re-fit. D-147 takes the roof out again (the user's call, logged under Accepted). D-148 is the first-timer legibility batch before the showing, from the 2026-11-10 polish review (logged below). D-149 is the first job, from the first showing (2026-11-11, logged below). D-150 is the end screen's lead into the next run, from the evening's what-next survey (`fix/retry-after-loss`, logged below). New entries start at D-151.*
+
+### D-150 · A lost run leads into the next: a "Next time" tip and Try this lot again
+**Status:** Proposed · 2026-11-11, a fix pull request (`fix/retry-after-loss`), from the what-next survey after release #58, at the session that ran it. UI only: no rules, content or balance change. `contentHash(CONTENT)` is `ffabbd52` on develop and on this branch, so a release keeps runs in progress (#54). For the user's playtest before it merges.
+**Decision:**
+- **Try this lot again** on the end screen (`EndScreen.tsx`): a new run on the same lot, for the same client with the same crew, straight into the game, as the Portfolio's Play this lot again does (`playLotAgain`, D-139's 2026-11-11 note). It leads the column's plain group under the stats, on a row of its own, over Copy run code and Title. The sticky bar keeps New run and Copy result (D-148). Like the screen's other buttons, it waits out the click delay.
+  - A win says **Play this lot again**, the Portfolio's words: the verdict above it ("Next: …", D-139) is a reason to.
+  - **In the pixel font in the narrow column** (a window under 1500 px wide, a 228 px row) the words don't fit (276 px), so it says "Try again" ("Play again") and its title says the rest. The readable font fits them everywhere. A container query, as the hand's plank has (D-148).
+  - **The retry isn't guided.** The first job ends with its run (D-149), so its lot played again is an ordinary run, whether the first job came from the board or a friend's link.
+  - **The column goes back to its top** as the run starts. The game stays on screen, and the column was scrolled down to reach the button, which left the new run's hand plank and Reroll out of view.
+- **"Next time"** (`src/ui/screens/next-time.ts`): after a loss, one tip under the stats, just over the button, under a plank tag like the column's other sections. It's read from the run's state alone and worded with the content's names and the score labels (D-019).
+  - **The house held no set at its last tally:** "Build a Suite: a Bedroom, a Bathroom, and a Closet, touching. A set raises Charm, which multiplies Comfort into Wow." With the Charm icon. The Suite is the set the first job's opening builds (D-149). Charm is about 69% of a typical run's Wow.
+  - **Otherwise, with a reroll left over** (the last milestone's, or a bought one kept): "You ended with a reroll to spare. When a hand has nothing your house needs, Reroll it: the week goes on." With the die.
+  - **Otherwise nothing,** and a win gets none.
+  - **Never "Complete early":** the sim finds that always completing early costs a run Wow.
+  - Each is within a hint's 25 words (`HINT_WORDS`).
+- **Tests:** `next-time.test.ts` (the tip for constructed runs, and for two runs played by the rules: a house of nothing, and the first job's opening and no more) and `first-job.test.ts` (Try this lot again after a lost first job, from the board and from a link, starts the same lot unguided).
+
+**Sim** (a scratch script over the rules and the sim's bots, not in the repo): the survey's casual bot, greedy's play half the time and the novice's otherwise, 200 runs a row, the Hendersons with the General Contractor. Which tip each lost run would get:
+
+| | Lost | Set | Reroll | None |
+|---|---|---|---|---|
+| The first job's lot, the opening played as the hints say | 195 | 0 | 195 | 0 |
+| The same lot, unguided (a retry) | 197 | 13 | 184 | 0 |
+| Random lots, unguided | 199 | 77 | 122 | 0 |
+
+- **On the first job's lot the opening's Suite holds to the end** in every loss: the set tip is for later runs and friends' links.
+- **The bots never reroll** (greedy only when no play would raise the week's total), so here every loss with a set gets the Reroll tip. A player who rerolled in their last milestone gets none.
+
+**Why:** most first jobs are lost. In the survey the casual bot met Foundation every time and Framing in 96% of runs, but Roofing in 52% and Drywall in 20%. It won 3%, and lost at a median week 22. So the screen after a loss is the one most new players reach. It gave no tip, and the same lot again was three screens away: Title, Portfolio, the house.
+**Considered:**
+- **Try this lot again in the sticky bar:** D-148 took the bar down to two buttons so the milestones show on a laptop.
+- **The tip and the button above the stats:** at 1920×1080 a later loss would show both whole above the bar, where here the bar cuts through the tip. But the button would leave Copy run code and Title, and the stats would go under the bar. The user's call after the playtest.
+- **A "Complete early" tip:** the sim shows that completing every milestone early costs Wow.
+- **A tip on a win:** its screen already names the verdict above it.
+- **Naming the set the house was nearest to:** it would read the house's pieces itself, and the rules don't say it.
+- **A "forecast short: look for a set" hint during the run:** it waits on the user's yes.
+
+**Changes:**
+- D-148 (Proposed): the column's plain group gains Try this lot again on a row of its own, and a lost run's tip over it. A dated note there.
+- D-139 (Proposed): the end screen offers the Portfolio's Play this lot again too. A dated note there.
+
+**Checked:** in headless Chrome over CDP, in a new browser, against the dev server. The board's first job was played by the casual bot with the opening to a loss at week 22 (Drywall), and its retry to a loss at week 10 with no set. Each end screen was checked at 1280×720 and 1920×1080 in the pixel font, and both columns in both fonts on a quick loss.
+- The milestone rows whole above the sticky bar are the same with the tip and the button as without them: 2 at 1280×720, all 7 at 1920×1080.
+- The bar never covers the photo strip or its captions, and no button spills out of the column.
+- A real click on the button started `oh-4243` for the same client and crew at week 1, unguided (the score panel, the checklist and Reroll in view), with the column at its top.
+
+**Known gaps:**
+- **At 1920×1080 a later loss** shows "Next time" and the tip's first line above the sticky bar, cut through by it, until the column scrolls. The milestones keep all seven rows. At 1280×720 the tip and the buttons are below the fold, as Copy run code and Title were.
+- **The score panel's "No sets yet."** names Jack-and-Jill and the Entertainer, and the tip names the Suite. Both are true.
+- **A retry replaces the lost run's house in the Portfolio:** the same lot, client and crew are filed once (D-139), and the bests keep the better result.
+- **Not played by a person.** Touch, Firefox and Safari weren't run.
 
 ### D-149 · The first job: a first visit's one contract, a screen that fills in, and an opening the hints walk through
 **Status:** Proposed · 2026-11-11, with its phase pull request (`phase/first-job`), at the user's "Let's do the calm first job… I like the sound of your step 1 plan - let's kick that off". From the first showing: the user "briefly showed off the dev link" to the group, and "the game looked fun, but looked quite confusing off the bat". For the user's playtest. No rules or balance change: every run plays, scores, saves and replays as before, and `balance.ts` gains one field, which only the job board reads.
@@ -1904,6 +1955,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - **Between 700 and 899 px wide** the top bar's Menu is still off-screen after "Play anyway".
 - **Hand lines that dropped "touching"** (the Dining Room's, the Kitchen's, the Patio's, the Greenhouse's) can be read as house-wide, while the Porch's and the Fire Pit's keep the word. It doesn't fit the line; Inspect, the shop and the ghost's Wow label give the true reading. The team's call after the showing.
 - **A loss in a later phase at 1920×1080,** with more rows of stats, still has the row of two buttons under the bar until the column scrolls; so does any loss at 1680×1050 and narrower in the pixel font, where they take a row each.
+
+*2026-11-11 (D-150, Proposed):* the plain group under the stats leads with Try this lot again, on a row of its own ("Try again" in the pixel font's narrow column), and a lost run's "Next time" tip sits over it. The sticky bar still holds New run and Copy result, and the milestone rows above it are unchanged. At 1920×1080 a later loss now shows the tip's first line under the bar, where the two buttons were.
 
 ### D-146 · The friction batch's re-fit: the targets set against played runs
 **Status:** Proposed · 2026-11-10, at the user's "Merge and re-fit", once D-140 to D-145 were all in develop. A fix pull request (`fix/refit-targets`) that merges on green, so /dev/ plays at the intended difficulty; the batch's playtest decides whether it holds. It's the one re-fit D-140, D-143, D-144 and D-145 each left for the end.
@@ -2344,6 +2397,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **Known gaps:** no way to clear the record yet. A portfolio house can't be opened larger or replayed from its seed. A run finished on another device or in a private window isn't in the record.
 *2026-11-10, from the polish review:* where the browser denies storage altogether (site data blocked, or the game in an itch.io frame in an Incognito window), the record starts empty and lasts for the visit. Reading it used to throw as the page loaded, which left the page blank; the tally's own records (the best week, the tiers seen, topped out) had the same check and are fixed with it.
 *2026-11-11, from the outside review and the polish review:* each house in the Portfolio has **Play this lot again**: a new run on its lot, for the same client with the same crew, straight into the game with the sheet closed (`playLotAgain`, through the store's `newRun`). With a run in progress it asks first, as the title's New run does while it offers Continue. A house whose client or crew this build no longer has gets no button. A portfolio house still can't be opened larger.
+*2026-11-11 (D-150, Proposed):* the end screen offers it too, as Try this lot again after a loss and Play this lot again after a win, so the same lot is one click from the end screen instead of three screens.
 
 ### D-140 · The Garage is built like any room, and earns once the street or a Driveway reaches it
 **Status:** Proposed · 2026-11-10, with its phase pull request (`phase/garage-driveway`), from the friction review the user asked for the same day (its first point). The direction is the user's: the Garage is placed like any other room, and earns only while the street or a Driveway reaches it. Settles D-080. For the user's playtest before it merges. The numbers are placeholders.
