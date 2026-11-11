@@ -657,6 +657,9 @@ function keepPreviousRun(saved: { code?: unknown } | null): string | undefined {
   return saved.code;
 }
 
+/** The note about a run that can't be saved, said once a visit. */
+let unsavedSaid = false;
+
 function save(): void {
   try {
     localStorage.setItem(
@@ -664,9 +667,18 @@ function save(): void {
       JSON.stringify({ build: BUILD_SHA, code: runCode(false), check: saveCheck(run.value) }),
     );
   } catch {
-    // Best effort: itch.io's iframe and private windows can lose storage.
+    // Best effort: itch.io's iframe and private windows can lose storage. Say so once, in a
+    // run (the first save that fails there), so a closed tab doesn't take a run the player
+    // thought was kept: said on the title or as a run loads, the next screen's notes wiped it.
+    if (!unsavedSaid && appScreen.value === 'game') {
+      unsavedSaid = true;
+      addNote(UNSAVED_NOTE);
+    }
   }
 }
+
+export const UNSAVED_NOTE =
+  'This browser isn’t keeping this site’s data, so your run lasts until you close the tab.';
 
 /** A short, readable seed for a new run. */
 export function randomSeed(): string {
@@ -975,16 +987,19 @@ export function loadInitialRun(): void {
     linkError = notice.value?.text;
     notice.value = null;
   }
-  if (seedParam || clientId || crewId) {
+  // A link that names a client or crew the game doesn't have still starts a run, with a note
+  // that says so: it used to land on the title with no word of what happened to the link.
+  if (seedParam || clientParam || crewParam) {
     const previous = keepPreviousRun(saved);
     newRun(seedParam || randomSeed(), clientId ?? 'hendersons', crewId ?? 'generalContractor');
     // Say what the link opened (D-135): whose house, with which crew.
     addNote(linkNote(run.value.setup, !!seedParam));
+    if (linkError) addNote(linkError);
     if (previous) addPutAsideNote(previous);
-    if (clientParam !== null && !clientId) {
+    if (clientParam && !clientId) {
       addNote(`There's no client "${clientParam}": this run is for the Hendersons.`);
     }
-    if (crewParam !== null && !crewId) {
+    if (crewParam && !crewId) {
       addNote(`There's no crew "${crewParam}": this run has the General Contractor.`);
     }
     return;

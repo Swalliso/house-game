@@ -353,9 +353,23 @@ export function houseConditionText(content: Content, cond: HouseCondition): stri
 
 /** A checklist line's card text: its own, or generated from its condition. */
 export function specText(content: Content, spec: SpecDef): string {
+  // A fenced-yard wish says what a fenced yard is: its name alone ("A fenced yard") left the
+  // first job's own wish with a tip that only repeated it.
+  if (spec.text === undefined && 'fencedYardTiles' in spec.condition) {
+    return fencedYardText(content, spec.condition.fencedYardTiles.min);
+  }
   const text = spec.text ?? houseConditionText(content, spec.condition);
   const sentence = text.charAt(0).toUpperCase() + text.slice(1);
   return /[.!?]$/.test(sentence) ? sentence : `${sentence}.`;
+}
+
+/** What counts as a fenced yard of at least `min` tiles (the glossary's, D-077). */
+function fencedYardText(content: Content, min: number): string {
+  const tiles = Math.max(min, content.balance.fencedYardMin);
+  return (
+    `Open ground closed in by the house, Fences, and the lot’s edge, with at least ` +
+    `${tiles} tiles. It must touch a Fence and the house, and not the street.`
+  );
 }
 
 export function effectText(content: Content, effect: Effect): string {
@@ -1188,12 +1202,7 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
       title: 'Back yard',
       text: 'The open ground level with the house or behind it, away from the street.',
     },
-    fencedYard: {
-      title: 'Fenced yard',
-      text:
-        `Open ground closed in by the house, Fences, and the lot’s edge, with at least ` +
-        `${b.fencedYardMin} tiles. It must touch a Fence and the house, and not the street.`,
-    },
+    fencedYard: { title: 'Fenced yard', text: fencedYardText(content, b.fencedYardMin) },
     sunny: {
       title: 'Sunny',
       text:

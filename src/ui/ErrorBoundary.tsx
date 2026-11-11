@@ -19,7 +19,8 @@ function safeRunCode(): string {
   }
 }
 
-export function issueUrl(message: string, code: string): string {
+/** A new GitHub issue, filled in with the build, the error (if any), and the run code. */
+function reportLink(title: string, code: string, message?: string): string {
   const body = [
     '**What happened?**',
     '',
@@ -28,14 +29,23 @@ export function issueUrl(message: string, code: string): string {
     '',
     '',
     `Build: \`${BUILD_LABEL}\``,
-    `Error: \`${message}\``,
+    ...(message === undefined ? [] : [`Error: \`${message}\``]),
     '',
     'Run code (open it with `?run=` to replay):',
     '```',
     code,
     '```',
   ].join('\n');
-  return `${ISSUES}?${new URLSearchParams({ title: `Bug: ${message.slice(0, 80)}`, body })}`;
+  return `${ISSUES}?${new URLSearchParams({ title, body })}`;
+}
+
+export function issueUrl(message: string, code: string): string {
+  return reportLink(`Bug: ${message.slice(0, 80)}`, code, message);
+}
+
+/** The Menu's Report a bug: the same form, with this run's code and no error. */
+export function bugReportUrl(code: string): string {
+  return reportLink('Bug: ', code);
 }
 
 export function CrashScreen({ message }: { message: string }) {

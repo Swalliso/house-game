@@ -17,7 +17,7 @@
 import { effect } from '@preact/signals';
 import type { RefObject } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
-import { banner, busy, flash, played, skip } from '../fx/director.ts';
+import { banner, busy, dismissBanner, flash, played, skip } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
 import {
   anyModalOpen,
@@ -37,12 +37,7 @@ export function MilestoneBanner() {
   if (!b) return null;
   return (
     <div class="banner-place">
-      <div
-        class={`banner ui ${b.tone}`}
-        key={b.id}
-        role="status"
-        onClick={() => (banner.value = null)}
-      >
+      <div class={`banner ui ${b.tone}`} key={b.id} role="status" onClick={dismissBanner}>
         <div class="banner-ribbon">
           <Icon name={b.tone === 'good' ? 'star' : 'warn'} />
           <span class="banner-title">{b.title}</span>

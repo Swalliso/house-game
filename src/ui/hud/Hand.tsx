@@ -331,18 +331,47 @@ function HandRow({ row }: { row: DrawRow }) {
   );
 }
 
+/** The right column, which scrolls: Your goods, then the hand. */
+function handColumn(): HTMLElement | null {
+  return document.querySelector<HTMLElement>('.hand')?.closest<HTMLElement>('.right') ?? null;
+}
+
 /**
  * The picked hand card scrolls fully into view (above the sticky action bar: .right's
- * scroll-padding), so picking card 3 with its key on a short window shows it.
+ * scroll-padding), so picking card 3 with its key on a short window shows it. When the pick
+ * ends (put back, or the week ended), the column goes back to where it was before the pick:
+ * left scrolled, it hid Your goods, the reserve and Reroll above it for the rest of the run.
  */
 function useCardInView(): void {
   const picked = source.value === 'hand' ? selected.value : null;
+  const before = useRef<number | null>(null);
   useEffect(() => {
-    if (picked === null) return;
+    const column = handColumn();
+    if (picked === null) {
+      if (before.current !== null) column?.scrollTo({ top: before.current });
+      before.current = null;
+      return;
+    }
+    if (before.current === null && column) before.current = column.scrollTop;
     document
       .querySelector(`.hand [data-card="${picked}"]`)
       ?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }, [picked]);
+}
+
+/**
+ * A new week (or a new run) starts with the column at its top, Your goods and Reroll in view,
+ * however the last week left it: the "N more cards" tab, or a hand scrolled by hand.
+ */
+function useColumnTopEachWeek(): void {
+  const s = run.value;
+  const building = s.screen === 'build';
+  useEffect(() => {
+    // A run opened with a card already picked (a ?run= code's pending placement) keeps the
+    // card in view that useCardInView just scrolled to. End week has dropped the pick by now.
+    const picked = source.value === 'hand' && selected.value !== null;
+    if (building && !picked) handColumn()?.scrollTo({ top: 0 });
+  }, [s.week, s.setup.seed, building]);
 }
 
 /**
@@ -401,6 +430,7 @@ function showCardsUnder(e: MouseEvent): void {
 export function Hand() {
   const s = run.value;
   useCardInView();
+  useColumnTopEachWeek();
   const bar = useRef<HTMLDivElement>(null);
   const under = useCardsUnderBar(bar, s.screen === 'build');
   if (s.screen !== 'build') return null;

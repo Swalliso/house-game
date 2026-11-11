@@ -342,6 +342,12 @@ export const FEEL = {
    * over it.
    */
   milestoneHoldMs: 900,
+  /**
+   * A click that hurried the milestone week's tally hurries the tally, not the milestone: its
+   * banner still comes up and holds as above, and only a click after it's been up this long
+   * takes it down. Steady clicking through the tally used to leave no banner at all.
+   */
+  milestoneBannerMinMs: 700,
   /** When a phase's last week crosses its target, the target's ding gets this long alone. */
   targetDingMs: 450,
 
@@ -422,6 +428,11 @@ export const FEEL = {
     turnMs: 480,
     /** A Rare's glint crossing it as it arrives (--dur-shop-shimmer). */
     shimmerMs: 1600,
+    /**
+     * A second click on Refresh this soon after one is the same click (a double-click): it
+     * used to pay again, for a shelf the player never saw.
+     */
+    refreshGuardMs: 400,
   },
 
   /**
@@ -471,10 +482,12 @@ export const FEEL = {
   endScreen: { clickDelayMs: 1000 },
 
   /**
-   * After Enter or a click on End week hurries a tally, a press this soon after is still
-   * hurrying: it doesn't arm a pass for the week that just began.
+   * After Enter or a click on End week hurries a tally, the presses that follow are still
+   * hurrying until the player stops for this long: none of them arms a pass for the week that
+   * just began. A steady click every 0.9 s or faster never passes a week; a pass after a
+   * hurried tally is a pause, then two presses.
    */
-  endWeek: { hurryMs: 650 },
+  endWeek: { hurryMs: 900 },
 
   /** The title screen's street (M5a): a car drives by now and then. */
   title: {

@@ -71,6 +71,29 @@ describe('End week during a tally', () => {
     expect(log.value).toBe(before);
   });
 
+  // Clicking End week (or tapping Enter) steadily through a tally, as an impatient player does:
+  // before, the presses waited out the gap after the hurry, then one armed a pass and the next
+  // confirmed it, so the new week passed unseen (seen on live main, 2026-11-11).
+  for (const everyMs of [150, 400, 800]) {
+    it(`never passes the new week under a steady press every ${everyMs} ms after a hurry`, () => {
+      run.value = { ...start, screen: 'build' };
+      busy.value = true;
+      requestEndWeek();
+      busy.value = false;
+      const before = log.value;
+      for (let t = everyMs; t <= 4000; t += everyMs) {
+        now += everyMs;
+        requestEndWeek();
+        expect(passArmed.value).toBe(false);
+      }
+      expect(log.value).toBe(before);
+      // A pause, then two presses, still passes.
+      now += FEEL.endWeek.hurryMs;
+      requestEndWeek();
+      expect(passArmed.value).toBe(true);
+    });
+  }
+
   it('still arms a pass on the first press once the board is quiet', () => {
     run.value = { ...start, screen: 'build' };
     requestEndWeek();

@@ -25,7 +25,36 @@
     <meta name="twitter:card" content="summary_large_image" />
   </head>
   <body>
-    <div id="app"></div>
+    <!-- Until the game's script runs (a few seconds on a slow link), a word that it's coming;
+         main.tsx clears it before the first render. -->
+    <div id="app">
+      <p
+        style="
+          margin: 0;
+          height: 100%;
+          display: grid;
+          place-items: center;
+          font:
+            16px system-ui,
+            sans-serif;
+          color: var(--ink, #3b2f2a);
+        "
+      >
+        Open House · loading…
+      </p>
+    </div>
+    <noscript>
+      <p
+        style="
+          text-align: center;
+          font:
+            16px system-ui,
+            sans-serif;
+        "
+      >
+        Open House needs JavaScript to run.
+      </p>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

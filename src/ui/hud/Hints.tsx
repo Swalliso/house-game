@@ -154,7 +154,10 @@ export function Hints() {
           <Hint keys={['Click']} extra>
             {click}
           </Hint>
-          <Hint keys={['Enter']}>{pending?.t === 'renovate' ? 'renovate it' : 'end the week'}</Hint>
+          {/* With the card only held, Enter passes the week, as the button beside it says. */}
+          <Hint keys={['Enter']}>
+            {!pending ? 'pass' : pending.t === 'renovate' ? 'renovate it' : 'end the week'}
+          </Hint>
           <Hint keys={['Esc']}>
             {pack && pending ? 'clear the tiles' : pending ? 'pick it up' : 'put it back'}
           </Hint>

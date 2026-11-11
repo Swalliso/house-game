@@ -114,7 +114,15 @@ export function placeFirstHint(
     }
     case 'underGoods': {
       const inv = a.inventory;
-      if (inv) return box(inv.bottom + gap, inv.left, width(inv));
+      if (inv) {
+        // Goods unfolded and full can reach the window's foot: the card then rises over them,
+        // so its Got it stays on screen (it used to land below the window).
+        const need = height ?? MIN_HEIGHT * px;
+        const top = inv.bottom + gap;
+        const raised =
+          top + need <= floor ? top : Math.min(top, Math.max(a.right.top + gap, floor - need));
+        return box(raised, inv.left, width(inv));
+      }
       return box(a.right.top + gap, a.right.left + gap, width(a.right) - 2 * gap);
     }
   }

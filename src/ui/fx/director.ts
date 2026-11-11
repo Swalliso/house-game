@@ -278,9 +278,17 @@ let generation = 0;
  */
 let waiting = 0;
 
+/** Until when a skip leaves the milestone's banner up (FEEL.milestoneBannerMinMs). */
+let bannerKeptUntil = -Infinity;
+
 export function skip(): void {
   if (busy.value) skipping = true;
-  banner.value = null;
+  dismissBanner();
+}
+
+/** A click on the banner, or a skip: it goes, unless a hurried milestone's is still new. */
+export function dismissBanner(): void {
+  if (performance.now() >= bannerKeptUntil) banner.value = null;
 }
 
 export function setHold(on: boolean): void {
@@ -398,6 +406,26 @@ function waitFirst(ms: number): Promise<void> {
     const start = performance.now();
     const tick = (now: number) => {
       if (now - start >= ms || gen !== generation || instantTally.value) resolve();
+      else requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+}
+
+/**
+ * Waits out a banner in real time (holding hurries it) until it goes, even while the tally is
+ * being skipped: the milestone's banner after a hurried week. A new run, or the ?debug panel's
+ * instant tally, still ends it.
+ */
+function waitBanner(ms: number, gone: () => boolean): Promise<void> {
+  const gen = generation;
+  return new Promise((resolve) => {
+    let remaining = ms;
+    let last = performance.now();
+    const tick = (now: number) => {
+      remaining -= Math.min(1000, now - last) * realSpeed();
+      last = now;
+      if (remaining <= 0 || gone() || gen !== generation || instantTally.value) resolve();
       else requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
@@ -1358,10 +1386,16 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
           if (toSheet) sheetBanner = id;
           const gone = () => banner.value?.id !== id;
           closing = true;
+          // A click that hurried this week's tally hurried the tally, not the milestone: its
+          // banner still holds, and a click once it has been up a moment takes it down. (A
+          // newer action waiting, or the ?debug instant tally, still skips it.)
+          const hurried = skipping && waiting === 0 && !instantTally.value;
+          if (hurried) bannerKeptUntil = performance.now() + FEEL.milestoneBannerMinMs;
           // The shop (or a change order) opens over the board, banner and all, so it waits the
           // banner out in real time, as the banner stays up, at any tally speed: holding hurries
           // it, a click skips.
-          if (toSheet) await wait(shown, undefined, gone, realSpeed);
+          if (hurried) await waitBanner(toSheet ? shown : FEEL.milestoneHoldMs, gone);
+          else if (toSheet) await wait(shown, undefined, gone, realSpeed);
           else await wait(FEEL.milestoneHoldMs, undefined, gone);
           break;
         }
