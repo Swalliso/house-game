@@ -291,8 +291,12 @@ describe('Kitchen Island', () => {
     ['kitchen', 4, 0],
   ];
 
-  it('its Kitchen counts as a Dining Room too, and earns +25%', () => {
-    expectText('kitchenIsland', 'Fits a Kitchen', ['Counts as a Dining Room too', 'Earns +25%']);
+  it('its Kitchen earns +25%, and its neighbors count it as a Dining Room', () => {
+    // The text says its limit (D-148): it fills no set and no checklist line.
+    expectText('kitchenIsland', 'Fits a Kitchen', [
+      'Earns +25%',
+      'Neighbors count it as a Dining Room (sets and the checklist don’t)',
+    ]);
     // All three face the sun, +2 each (D-120). Without it: the middle Kitchen is +4 at the
     // Dining Room's +50% (6); the far one has no Dining Room (2).
     expect(earned(open, row)).toEqual([2, 6, 2]);

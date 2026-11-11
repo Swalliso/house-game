@@ -14,9 +14,11 @@ import './howto.css';
 import { Fragment, type ComponentChildren } from 'preact';
 import {
   CONTENT,
+  featureWantedText,
   glossary,
   lotTraitText,
   multNumber,
+  rewardText,
   rules,
   SCORE_LABELS,
   type PieceId,
@@ -119,6 +121,12 @@ function either(names: readonly string[]): string {
 function all(names: readonly string[]): string {
   if (names.length <= 2) return names.join(' and ');
   return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
+}
+
+/** What a lot find pays, mid-sentence: "a random tool", "+3 budget". */
+function reward(id: 'oldShed' | 'timeCapsule'): string {
+  const r = CONTENT.features[id].reward;
+  return r ? rewardText(CONTENT, r).replace(/^A /, 'a ') : '';
 }
 
 const CONTROLS: readonly (readonly [keys: string, does: string])[] = [
@@ -326,6 +334,20 @@ function HowToPlayText() {
           <li>
             <b>The street</b> is Loud.
           </li>
+          {/* The lot's finds (D-145), with who wants each beside them and what each pays read
+              from the content. */}
+          <li>
+            <b>Boulders</b> block building; a demolition clears one.{' '}
+            {featureWantedText(CONTENT, 'boulder')}
+          </li>
+          <li>
+            <b>The Old Shed</b> blocks building. Demolish it for {reward('oldShed')}, or keep it:{' '}
+            {featureWantedText(CONTENT, 'oldShed')}
+          </li>
+          <li>
+            <b>A Time Capsule</b> doesn't block building: the first piece built over it digs it up
+            for {reward('timeCapsule')}.
+          </li>
           <li>
             <b>The sun</b> shines from one edge of the lot, marked on the board. A room, a Hallway
             or an outbuilding is Sunny when a wall of it faces the sun with no Tree or other
@@ -358,8 +380,8 @@ function HowToPlayText() {
             Demolish
           </dt>
           <dd>
-            Clear a piece or a boulder, with no refund. {demolitions} per run. It never splits the
-            house in two.
+            Clear a piece, a boulder or the Old Shed, with no refund. {demolitions} per run. It
+            never splits the house in two.
           </dd>
           <dt>
             <Icon name="flag" />

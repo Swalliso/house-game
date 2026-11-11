@@ -16,6 +16,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { computed, signal } from '@preact/signals';
 import {
   CONTENT,
+  lastShopText,
   rules,
   type BlueprintId,
   type CardType,
@@ -566,6 +567,9 @@ export function ShopScreen() {
   ];
   const full = shelfReasons(shelves.map((shelf) => shelf.offers));
   const skip = CONTENT.balance.shop.skipReward;
+  // The shop before the last phase (D-148): what budget kept past it is worth, from the rules.
+  const lastShop =
+    !visit.forced && s.phase === CONTENT.balance.phases.length - 1 ? lastShopText(CONTENT) : null;
   return (
     <section class="shop panel ui" role="region" aria-label={`Shop ${visit.number}`}>
       <header class="shop-head panel-head">
@@ -616,6 +620,12 @@ export function ShopScreen() {
           ))}
         </div>
       </div>
+      {lastShop && (
+        <p class="shop-last">
+          <Icon name="coin" />
+          <span>{lastShop}</span>
+        </p>
+      )}
       {/* Leaving is the sheet's one primary action, at its foot like End week's (D-087). */}
       <footer class="shop-foot">
         <p class="shop-foot-hint">

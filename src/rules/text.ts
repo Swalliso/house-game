@@ -558,37 +558,144 @@ function pays(e: Effect): boolean {
 }
 
 /**
+ * The most a hand card's line runs to, in characters (D-148; text.test.ts holds every card to
+ * it). A narrow card's line is two lines of about 14 letters in the pixel font, and a longer
+ * line lost its last words to "…": the Dining Room's lost its "+50%".
+ */
+export const HAND_LINE_CHARS = 33;
+
+/** One plain kind of thing ("Bedroom", "room", "view"): not a list, a tag, or a mix. */
+function oneKind(sel: Selector): boolean {
+  if (sel === 'all') return true;
+  if ('piece' in sel) return typeof sel.piece === 'string' || sel.piece.length === 1;
+  if ('feature' in sel) return typeof sel.feature === 'string' || sel.feature.length === 1;
+  return 'property' in sel;
+}
+
+/**
+ * An effect as a hand card says it (D-148): the number first, in as few words as say it. Inspect
+ * and the shop keep effectText's full sentence. Only the kinds whose sentences ran long differ:
+ * - a neighbor bonus that names two things drops "touching" ("+2 per Living Room or Kitchen"),
+ *   and one for a tag drops "neighbor" ("+2 per touching Quiet (up to 3)");
+ * - an aura leads with what it gives ("+50% to Kitchen or Living Room", "+25% to touching
+ *   rooms", "+50% to yard views", "+50% to fenced Pet pieces");
+ * - a Fence's yard is "+1 per fenced tile (up to +6)".
+ */
+function handEffectText(content: Content, effect: Effect): string {
+  switch (effect.kind) {
+    case 'neighbor': {
+      const sel = effect.match;
+      if (effect.max === 1 || oneKind(sel)) return effectText(content, effect);
+      const cap = effect.max === undefined ? '' : ` (up to ${effect.max})`;
+      const what =
+        sel !== 'all' && 'tag' in sel
+          ? `touching ${sel.tag}`
+          : selectorText(content, sel, 'one').replace(/ neighbor$/, '');
+      return `${signed(effect.amount)} per ${what}${cap}`;
+    }
+    case 'aura': {
+      const sel = effect.match;
+      const parts: string[] = [];
+      if (effect.pct) parts.push(`${signed(effect.pct)}%`);
+      if (effect.amount) parts.push(signed(effect.amount));
+      const gives = parts.join(' and ');
+      const pieces = (text: string) => text.replace(/\bneighbors\b/, 'pieces');
+      if (effect.scope === 'region') {
+        return `${gives} to fenced ${pieces(selectorText(content, sel, 'every'))}`;
+      }
+      if (oneKind(sel)) return `${gives} to touching ${selectorText(content, sel, 'every')}`;
+      // A list of rooms, one of each: "Kitchen or Living Room".
+      if (sel !== 'all' && 'piece' in sel)
+        return `${gives} to ${selectorText(content, sel, 'one')}`;
+      // "Yard pieces that give a view" are the yard's views: "yard views".
+      const isSource = (s: Selector) =>
+        s !== 'all' && 'property' in s && s.property === 'viewSource';
+      if (sel !== 'all' && 'all' in sel && sel.all.some(isSource) && sel.all.length > 1) {
+        const rest = selectorText(content, { all: sel.all.filter((s) => !isSource(s)) }, 'every');
+        if (/ pieces$/.test(rest)) return `${gives} to ${rest.replace(/ pieces$/, ' views')}`;
+      }
+      return `${gives} to ${pieces(selectorText(content, sel, 'every'))}`;
+    }
+    case 'enclosure': {
+      const cap = effect.cap === undefined ? '' : ` (up to ${signed(effect.cap)})`;
+      return `${signed(effect.perTile)} per fenced tile${cap}`;
+    }
+    case 'conditional': {
+      const inner = handEffectText(content, effect.effect);
+      // A region aura already says where it reaches (the Mudroom's fenced yard).
+      const said =
+        'borders' in effect.when &&
+        effect.effect.kind === 'aura' &&
+        effect.effect.scope === 'region';
+      return said ? inner : `${inner} ${conditionPhrase(content, effect.when)}`;
+    }
+    default:
+      return effectText(content, effect);
+  }
+}
+
+/**
+ * A fixture's effect as a hand card says it (D-148): what it does to its room in a few words.
+ * Inspect and the shop keep modifierText's full sentence, with who is Loud and what a view or
+ * a second Bedroom counts for.
+ */
+function handModifierText(content: Content, mod: Modifier): string {
+  if (mod.kind === 'blockPenalties' && isHost(mod.target)) {
+    const from = selectorText(content, mod.from, 'some');
+    return `${from.charAt(0).toUpperCase() + from.slice(1)} can’t lower it`;
+  }
+  if (mod.kind === 'grantView' && isHost(mod.target)) return 'Gives it a view';
+  if (mod.kind === 'countsAs' && isHost(mod.target) && (mod.times ?? 1) > 1) {
+    return `Counts as ${mod.times} ${plural(content.pieces[mod.as].name)}`;
+  }
+  if (
+    mod.kind === 'xMult' &&
+    !mod.plusPer &&
+    typeof mod.when === 'object' &&
+    'inSet' in mod.when.host
+  ) {
+    const set = article(content.sets[mod.when.host.inSet].name);
+    return `×${multNumber(mod.times)} ${SCORE_LABELS.mult} in ${set}`;
+  }
+  return modifierText(content, mod);
+}
+
+/**
  * A compact hand card's lines (D-121); Inspect has the whole text. A piece shows its first line
  * that pays, so a Hallway shows "+2 per touching room (up to 4)" rather than its link, and the
- * Driveway what it pays rather than where it must start (the lot shows that). A requirement that
- * isn't about placement follows the pay, since without it the piece earns nothing: the
- * Doghouse's "+1 every week in a fenced yard", and the Garage's "+5 by the street or a
- * Driveway" (D-140). A piece with no line that pays shows its first.
- * A fixture shows where it goes and its first effect, which is what it does to its room (Makes
- * it Sunny, Counts as 2 Bedrooms); its "Earns +25%" is in Inspect.
+ * Driveway what it pays rather than where it must start (the lot shows that). Each line is the
+ * hand's own short wording, number first, within HAND_LINE_CHARS (D-148). A requirement that
+ * isn't about placement follows the pay where both fit, since without it the piece earns
+ * nothing: the Doghouse's "+1 every week in a fenced yard", and the Garage's "+5 by the street
+ * or a Driveway" (D-140). Where they don't fit (a Patio's "if touching a room"), Inspect and the
+ * lot's warning say it. A piece with no line that pays shows its first.
+ * A fixture shows where it goes and its first effect: what it does to its room (Makes it Sunny,
+ * Counts as 2 Bedrooms) or, for the Kitchen Island, what it earns.
  */
 export function handCardLines(content: Content, card: Card): string[] {
   if (card.kind === 'fixture') {
-    const t = fixtureText(content, content.fixtures[card.id]);
-    return [t.fits, ...t.effects.slice(0, 1)];
+    const def = content.fixtures[card.id];
+    const first = def.modifiers[0];
+    return [fixtureText(content, def).fits, ...(first ? [handModifierText(content, first)] : [])];
   }
   const def = content.pieces[card.id];
-  const lines = cardText(content, def).effects;
   const i = def.effects.findIndex(pays);
-  if (i < 0) return lines.slice(0, 1);
+  if (i < 0) return cardText(content, def).effects.slice(0, 1);
+  const pay = def.effects[i]!;
+  const line = handEffectText(content, pay);
   const unless = def.effects.find(
     (e): e is Extract<Effect, { kind: 'requires' }> => e.kind === 'requires' && !e.blocksPlacement,
   );
-  if (!unless) return [lines[i]!];
+  if (!unless) return [line];
   // A steady earner that waits on touching something says both in a few words (D-140): the
-  // Garage's "+5 by the street or a Driveway" fits the card's two lines at every window size,
-  // where "+5 every week if touching the street or a Driveway" lost its last words.
-  const pay = def.effects[i]!;
+  // Garage's "+5 by the street or a Driveway", where "+5 every week if touching the street or a
+  // Driveway" lost its last words. (Beside a thumbnail even the short line can lose its end.)
   if (pay.kind === 'steady' && 'touching' in unless.condition) {
     const what = conditionText(content, unless.condition).replace(/^touching /, '');
     return [`${signed(pay.amount)} by ${what}`];
   }
-  return [`${lines[i]} ${conditionPhrase(content, unless.condition)}`];
+  const both = `${line} ${conditionPhrase(content, unless.condition)}`;
+  return [both.length <= HAND_LINE_CHARS ? both : line];
 }
 
 /** "The street is", "the Pond is", but "Trees are". */
@@ -813,6 +920,12 @@ export function modifierText(content: Content, mod: Modifier): string {
       const name = content.pieces[mod.as].name;
       const times = mod.times ?? 1;
       const what = times === 1 ? article(name) : `${times} ${plural(name)}`;
+      // The Kitchen Island: only what touches it reads it as a Dining Room. It fills no set
+      // and no checklist line (sets.ts, conditions.ts), which "Counts as a Dining Room too"
+      // promised (D-148).
+      if (isHost(mod.target) && times === 1) {
+        return `Neighbors count it as ${what} (sets and the checklist don’t)`;
+      }
       const subject = isHost(mod.target) ? 'Counts' : `${subjectText(content, mod.target)} count`;
       return `${subject} as ${what}${times === 1 ? ' too' : ' for the client'}`;
     }
@@ -1116,6 +1229,17 @@ export function houseRulesText(content: Content): string {
   return [...names, `Each adds ${adds} in every week it holds.`].join('\n');
 }
 
+/**
+ * The last shop's line (D-148): nothing there said leftover budget pays (D-145). It keeps the
+ * rule's other half, since the pay comes after the last target is met and never helps reach
+ * it. Null when leftover budget pays nothing.
+ */
+export function lastShopText(content: Content): string | null {
+  const each = content.balance.leftoverBudgetWow;
+  if (each <= 0) return null;
+  return `Last shop: budget you still hold pays ${each} ${SCORE_LABELS.total} each, but only after the last target is met.`;
+}
+
 /** How many words a first-time hint may run to (D-142). */
 export const HINT_WORDS = 25;
 
@@ -1141,9 +1265,11 @@ export function hintText(content: Content): Record<HintTerm, string> {
     shop:
       `Spend your budget on goods for the house; hover one to read it. Each milestone met ` +
       `pays ${b.milestoneBudget} more.`,
+    // It names the folded plank a bought fixture lands in (D-148): nothing else on the build
+    // screen says "supplies".
     fixture:
       'Fixtures upgrade a piece you’ve built, one each. Installing from your hand is the ' +
-      'week’s build; from your supplies it’s free.',
+      'week’s build; from your supplies (Your goods, top right) it’s free.',
     renovate:
       `Once the house has every room of a type its checklist wants, a spare card renovates ` +
       `one instead: +${b.renovate.pointsPerLevel} ${L.points} a level, up to ` +

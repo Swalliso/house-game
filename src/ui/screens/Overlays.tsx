@@ -196,15 +196,37 @@ export function ModalToast() {
   );
 }
 
+/**
+ * The notice on a small screen (D-047). A window too narrow to play at all (a phone held
+ * upright; overlays.css picks which part shows) offers the link to open on a laptop in place of
+ * "Play anyway", which led to a screen that could be neither played nor left (D-148). The copy
+ * is the notice's own: it covers the toasts. With the clipboard off limits, it shows the link.
+ */
 export function SmallScreenNotice() {
   const [dismissed, setDismissed] = useState(false);
+  const [link, setLink] = useState<'idle' | 'copied' | 'shown'>('idle');
   if (dismissed) return null;
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setLink('copied');
+    } catch {
+      setLink('shown');
+    }
+  };
   return (
     <div class="small-screen ui">
       <div class="small-screen-card">
         <h2>Open House</h2>
         <p>It's best played on a computer, with a mouse and a bigger screen.</p>
-        <Button variant="primary" onClick={() => setDismissed(true)}>
+        <div class="small-screen-phone">
+          <p>Copy the link and open it on a laptop.</p>
+          <Button variant="primary" onClick={() => void copyLink()}>
+            <span role="status">{link === 'copied' ? 'Link copied' : 'Copy link'}</span>
+          </Button>
+          {link === 'shown' && <p class="small-screen-link">{window.location.href}</p>}
+        </div>
+        <Button variant="primary" class="small-screen-play" onClick={() => setDismissed(true)}>
           Play anyway
         </Button>
       </div>

@@ -457,8 +457,8 @@ export function Hand() {
         <HandRow key={row} row={row} />
       ))}
       {/* The action bar sticks to the column's bottom, so End week stays in view on a short
-          window. One row: Rotate and Cancel are square buttons beside it. Cards under it get
-          a tab on its edge. */}
+          window. One row: Rotate and Cancel are square buttons beside it while a card is held.
+          Cards under it get a tab on its edge. */}
       <div ref={bar} class={`hand-actions ${under > 0 ? 'has-more' : ''}`}>
         {under > 0 && (
           <Button
@@ -473,17 +473,21 @@ export function Hand() {
             {under === 1 ? '1 more card' : `${under} more cards`}
           </Button>
         )}
-        <Button
-          iconOnly
-          size="lg"
-          icon="rotate"
-          class="rotate"
-          onMouseDown={noFocus}
-          onClick={rotate}
-          disabled={!placing || demolishing || !canTurn}
-          title="Rotate (R or right-click)"
-          aria-label="Rotate"
-        />
+        {/* Rotate shows only while a card is held (D-148): standing beside Pass with nothing to
+            turn, its round arrow read as the reroll. */}
+        {placing && !demolishing && (
+          <Button
+            iconOnly
+            size="lg"
+            icon="rotate"
+            class="rotate"
+            onMouseDown={noFocus}
+            onClick={rotate}
+            disabled={!canTurn}
+            title="Rotate (R or right-click)"
+            aria-label="Rotate"
+          />
+        )}
         {placing && !demolishing && (
           <Button
             iconOnly

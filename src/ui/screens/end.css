@@ -243,9 +243,20 @@
   font-weight: 700;
   color: var(--ink);
 }
-/* New run, Copy, and Title stay in view at the column's foot, as End week does: like the
+/* Copy run code and Title: a plain row under the stats (D-148), which scrolls with the column.
+   On a narrow column each takes a row of its own. */
+.run-end-more {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.run-end-more .btn {
+  flex: 1 1 auto;
+}
+/* New run and Copy result stay in view at the column's foot, as End week does: like the
    hand's bar, it reaches past the column's padding to the window's foot, so the rows scrolling
-   under it never show below it. */
+   under it never show below it. Only these two (D-148): with all four buttons the bar hid the
+   milestones on a laptop. */
 .run-end-actions {
   position: sticky;
   bottom: calc(var(--px) * -5);
@@ -269,7 +280,8 @@
     margin: 0 calc(var(--space-2) * -1);
     padding: var(--space-2) var(--space-2) var(--space-3);
   }
-  .run-end-actions .btn .icon {
+  .run-end-actions .btn .icon,
+  .run-end-more .btn .icon {
     display: none;
   }
   /* The narrow column's names: the regular weight, so the longest ("Groundbreaking") fits. */

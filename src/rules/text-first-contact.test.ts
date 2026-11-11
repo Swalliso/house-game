@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { CONTENT } from '../content/index.ts';
-import { HINT_WORDS, hintText, houseRulesText, type HintTerm } from './text.ts';
+import { HINT_WORDS, hintText, houseRulesText, lastShopText, type HintTerm } from './text.ts';
 
 const words = (text: string) => text.trim().split(/\s+/).length;
 
@@ -50,5 +50,22 @@ describe('the first-time hints that state a rule', () => {
     expect(hints.renovate).toContain(`+${b.renovate.pointsPerLevel} Comfort a level`);
     expect(hints.renovate).toContain(`up to ${b.renovate.maxLevel}.`);
     expect(hints.checklist).toContain('+0.25 Charm');
+  });
+});
+
+describe('the last shop’s line (D-148)', () => {
+  it('says what leftover budget pays, from the balance, and when', () => {
+    const b = CONTENT.balance;
+    const line = lastShopText(CONTENT);
+    expect(line).toContain(`pays ${b.leftoverBudgetWow} Wow each`);
+    // The rule's other half (D-145): it never helps reach the target.
+    expect(line).toContain('only after the last target is met');
+    const other = { ...CONTENT, balance: { ...b, leftoverBudgetWow: 250 } };
+    expect(lastShopText(other)).toContain('pays 250 Wow each');
+  });
+
+  it('says nothing when leftover budget pays nothing', () => {
+    const none = { ...CONTENT, balance: { ...CONTENT.balance, leftoverBudgetWow: 0 } };
+    expect(lastShopText(none)).toBeNull();
   });
 });

@@ -385,6 +385,16 @@ export function EndScreen() {
       <Milestones s={s} />
       <Stats s={s} />
       {s.debug && <p class="run-end-debug">A debug run: cheats were used.</p>}
+      {/* Copy run code and Title sit in the column, under the stats, not in the sticky bar
+          (D-148): four rows of buttons hid the milestones on a laptop. The Menu has both too. */}
+      <div class="run-end-more">
+        <Button icon="copy" onClick={() => void copyRunCode()}>
+          Copy run code
+        </Button>
+        <Button icon="exit" onClick={() => goToTitle()}>
+          Title
+        </Button>
+      </div>
       <div class="run-end-actions">
         <Button variant="primary" size="lg" block onClick={() => startNewRun()}>
           New run
@@ -396,12 +406,6 @@ export function EndScreen() {
           onClick={() => void copyText(resultLine(s), 'Result copied')}
         >
           Copy result
-        </Button>
-        <Button icon="copy" onClick={() => void copyRunCode()}>
-          Copy run code
-        </Button>
-        <Button icon="exit" onClick={() => goToTitle()}>
-          Title
         </Button>
       </div>
     </Panel>

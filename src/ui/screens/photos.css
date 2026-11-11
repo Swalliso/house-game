@@ -166,6 +166,34 @@
   color: var(--bad);
 }
 
+/* An overlapped polaroid (D-148): its caption keeps to the part of the card that shows (its
+   item's width), so the name and the Wow end cleanly short of the next card instead of running
+   into it, and the "of N" line, which never fits there, is left out. The name still breaks at
+   its hyphen ("Foun-dation"), but not inside a word, which left a letter on a line of its own;
+   a Wow too long for the room ends in "…". The last one, and the one pointed at or focused,
+   which comes to the front, show all of it. */
+.end-photo {
+  container: end-photo / inline-size;
+}
+.end-photo:not(:last-child, :hover, :focus-within) .polaroid-caption {
+  max-width: calc(100cqw - var(--polaroid-pad) - var(--space-1));
+  overflow: hidden;
+}
+.end-photo:not(:last-child, :hover, :focus-within) .polaroid-name {
+  overflow-wrap: normal;
+}
+.end-photo:not(:last-child, :hover, :focus-within) .polaroid-score .num {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* 148 px is the polaroid at its narrowest, which it is whenever they overlap. */
+@container end-photo (max-width: 147px) {
+  .end-photo:not(:last-child, :hover, :focus-within) .polaroid-target {
+    visibility: hidden;
+  }
+}
+
 /* The deal: each one flies up onto the table and lands square, one after another
    (--photo-at), then its picture develops. Backwards fill only, so the hover's lift (the
    `translate` property) is free once it has landed. */

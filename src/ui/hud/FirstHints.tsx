@@ -114,11 +114,13 @@ export const HINTS: Readonly<Record<HintId, Hint>> = {
   },
   // Playtest 4: nothing said a spare card of a room type could renovate, so it went unused.
   renovate: { title: 'Renovate', text: T.renovate, spot: 'overScore' },
+  // It names the folded plank the room waits in (D-148): nothing else on the build screen says
+  // "reserve".
   arrival: {
     title: 'Someone’s moving in',
     text:
-      'Their room is waiting in your reserve. Room for everyone needs it from now on, so ' +
-      'build it when you can.',
+      'Their room is waiting in your reserve: open Your goods, top right. Room for everyone ' +
+      'needs it from now on.',
     spot: 'overScore',
   },
 };

@@ -296,7 +296,9 @@
 .small-screen {
   display: none;
 }
-@media (max-width: 899px) {
+/* A narrow window, or a short one (D-148): a large phone on its side is over 900 px wide, and
+   no laptop's window is under 500 px tall. */
+@media (max-width: 899px), (max-height: 499px) {
   .small-screen {
     position: fixed;
     inset: 0;
@@ -330,6 +332,28 @@
 }
 .small-screen-card p {
   margin: 0;
+}
+/* Under 700 px wide (a phone held upright) the game can't be played or left, so the notice
+   offers the link in place of "Play anyway" (D-148). */
+.small-screen-phone {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+}
+.small-screen-link {
+  overflow-wrap: anywhere;
+  user-select: all;
+  -webkit-user-select: all;
+  color: var(--ink-soft);
+}
+@media (max-width: 699px) {
+  .small-screen-phone {
+    display: flex;
+  }
+  .small-screen-play.btn {
+    display: none;
+  }
 }
 
 .sheet.copy-sheet {

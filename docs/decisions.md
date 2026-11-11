@@ -263,6 +263,7 @@ Also: D-036 and D-043 (Accepted), where hand size becomes the `handSize` rule (3
 **Why:** Friends will open the link from a group chat, and the itch.io embed is a fixed size. Both need deciding before the layout is built. The team agreed on 2026-11-05 not to aim for mobile.
 **Amended by:** D-057 (confirmed by the team 2026-11-05): the design target is 1920×1080, since most players have at least a 1080p screen. The whole 24×24 lot fits there at a crisp 2×. 1280×720 still works, by panning. An itch.io page is optional now that Pages hosts both builds (D-060); if we make one, its embed is 1600×900 with fullscreen.
 **Amended by:** D-097 (Accepted 2026-11-06): with 32 art px per cell, the whole lot fits at 1080p at 1×, the same size on screen as the 16 px art's 2×.
+*2026-11-10 (D-148, Proposed):* the notice also shows on a window under 500 px tall, since a large phone on its side is over 900 px wide. Under 700 px wide it offers "Copy link" to open the game on a laptop, in place of "Play anyway": on a phone held upright that led to a screen that could be neither played nor left.
 
 ### D-053 · A two-person, phased build with a playtest after each phase
 **Status:** Accepted · 2026-11-05 (requested by the team)
@@ -880,6 +881,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 *Changed with the team's OK, 2026-11-08:* on windows under 1000 px tall, the score panel's idle set list folds into one row, with the full list in its tip, so M4's checklist has room; taller windows keep the full list. While a play is looked at, the panel is as it was: the list, with the sets the play would make and break, or under 800 px tall only the equation (D-110). D-110 has the row's details and the numbers. *2026-11-09, before playtest 4, for the team to confirm:* the equation-only rule while a play is looked at now starts under 1000 px tall, as the fold does, so the list never comes back on a short window: between 800 and 1000 px tall it came back while placing and, late in a run, pushed the inspect panel's total below a 1536×864 window. The inspect panel's notes name the sets a play would make and break; windows 1000 px tall and up keep the list, with them.
 *Changed by D-121 (Proposed 2026-11-09):* the hand's two rows under ROOMS and LAYOUT labels, each with its Reroll; Demolish on the hand's plank; compact cards with a thumbnail; and Your goods folding to its plank on windows under 1100 px tall.
 *Changed by D-132 (Proposed 2026-11-10):* one Reroll for both rows, on the hand's plank before Demolish; the rows keep their labels.
+*Changed by D-148 (Proposed 2026-11-10):* the end screen's sticky bar holds New run and Copy result; Copy run code and Title are plain buttons under the stats (the Menu has both). The Costs paragraph's "only 16 px at 1920×1080" had gone stale: on a won run with early finishes the column hid 334 px there and 968 px at 1280×720, with no whole milestone row above the four buttons at 1280×720. With two buttons the bar is 124 px, from 224, and the rows whole above it are 1 of 7 at 1280×720, 3 at 1440×900 and all 7 at 1920×1080. On the hand's plank Reroll keeps its word, and Rotate shows only while a card is held.
 *Proposed change, 2026-11-10 (fix/small-slips, awaiting the user's OK):* in a run the build stamp sits in the board's top-left corner, over the lot and under the banners and sheets. On windows 800 px tall or less the side columns run to the window's foot, so the window's corner stamp covered Inspect's last line. The title and the job board keep it in the window's bottom-left corner. The tally's popups also move to the display font at 16 or 24 px, as the juice PR's (#27) known gaps listed. The readable font keeps their old sizes.
 
 ### D-099 · M5a lot defaults: the terrain in Modern Exteriors
@@ -1557,6 +1559,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 **2026-11-10 (D-132, Proposed):** one reroll redraws both rows, with one Reroll on the hand's plank before Demolish; the ROOMS and LAYOUT labels stay, without buttons. A run code's reroll names no row (a code from these builds that names one replays differently from that reroll on), and greedy rerolls the whole hand. Greedy wins 47.5% on `--check`, against 48.0%.
 
+**2026-11-10 (D-148, Proposed):** a compact card's line is the hand's own short wording, number first, within 33 characters (`HAND_LINE_CHARS`), not always the card's first effect line as written: "+50% to Kitchen or Living Room" for "Touching Kitchens and Living Rooms earn +50%". The two-line clamp stands, and Inspect still shows the whole card. Reroll keeps its word on the plank at every size, where a narrow column showed its icon and count; Demolish still shows those.
+
 ### D-123 · Playtest 5's re-fit: the targets and each client's factor
 **Status:** Accepted · 2026-11-10, held up in playtest 5 (`docs/playtests/playtest-5-findings.md`): harder than playtest 4, but "while challenging it still felt possible to complete". Milestone 2 keeps 560 (the user's run made it with 665 of 644), so the 450 step-down isn't needed. Proposed 2026-11-09, before playtest 5. It's the one re-fit that D-114, D-119, D-120 and D-121 left until all of playtest 4's content changes were in (playtest 4's findings §12).
 *2026-11-10 (D-146, Proposed):* the friction batch (D-140 to D-145) outgrew these numbers, and D-146 re-fits them. The method stands, with one step added: the targets are set where greedy's played survival meets the goals, because the fit's estimate overstates what overtime rescues.
@@ -1761,7 +1765,56 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 ## Proposed
 
-*Reserved numbers (2026-11-10): D-115 to D-118 are the layout session's drafts, not in this file yet; D-122 (legibility) is logged below. D-132 to D-134 are playtest 5's fixes, each logged by its own pull request: D-132 one reroll for both rows of the draw, D-133 the roof view, D-134 three more tracks. D-135 and D-136 are M6's end screen (D-135 the result line and link preview, D-136 the milestone photos); D-137 and D-138 belong to the release-day sessions. D-139 is the company's record. D-140 to D-146 are the friction batch, from the 2026-11-10 review's seven points: D-140 the Garage and the Driveway, D-141 what a blueprint is worth and its icon, D-142 first contact, D-143 the blueprint shelf, D-144 change orders two at a time, D-145 the lot and the last stretch, and D-146 the batch's one re-fit. D-147 takes the roof out again (the user's call, logged under Accepted). New entries start at D-148.*
+*Reserved numbers (2026-11-10): D-115 to D-118 are the layout session's drafts, not in this file yet; D-122 (legibility) is logged below. D-132 to D-134 are playtest 5's fixes, each logged by its own pull request: D-132 one reroll for both rows of the draw, D-133 the roof view, D-134 three more tracks. D-135 and D-136 are M6's end screen (D-135 the result line and link preview, D-136 the milestone photos); D-137 and D-138 belong to the release-day sessions. D-139 is the company's record. D-140 to D-146 are the friction batch, from the 2026-11-10 review's seven points: D-140 the Garage and the Driveway, D-141 what a blueprint is worth and its icon, D-142 first contact, D-143 the blueprint shelf, D-144 change orders two at a time, D-145 the lot and the last stretch, and D-146 the batch's one re-fit. D-147 takes the roof out again (the user's call, logged under Accepted). D-148 is the first-timer legibility batch before the showing, from the 2026-11-10 polish review (logged below). New entries start at D-149.*
+
+### D-148 · First-timer legibility before the showing: hand lines that fit, Reroll named, and the end screen on a laptop
+**Status:** Proposed · 2026-11-10, a fix pull request (`fix/showing-legibility`) from the polish review of the same day, whose list the user answered with "Yes, fix them". The group gets the game on 2026-11-11. No rules or balance change: the same sim seeds score the same before and after (Sim, below).
+**Decision:**
+- **A hand card's line is the hand's own short wording,** number first, within 33 characters (`HAND_LINE_CHARS`, `handCardLines` in `src/rules/text.ts`). Inspect and the shop keep the full sentences.
+  - An aura leads with what it gives: "+50% to Kitchen or Living Room" (the Dining Room; "Touching Kitchens and…" had lost its +50%), "+25% to touching rooms", "+50% to touching Patios", "+50% to yard views" (the Greenhouse), "+50% to fenced Pet pieces" (the Mudroom).
+  - A neighbor bonus that names two things drops "touching": "+2 per Dining Room or Herb Garden", "+2 per Living Room or Kitchen". One for a tag drops "neighbor": "+2 per touching Quiet (up to 3)".
+  - The Fence: "+1 per fenced tile (up to +6)".
+  - A requirement follows the pay only where both fit: the Doghouse keeps "in a fenced yard"; the Patio, the Hot Tub and the Fire Pit leave "if touching a room" to Inspect and the lot's warning.
+  - Fixtures: Soundproofing "Loud neighbors can’t lower it", the Bay Window and the Pergola "Gives it a view", Bunk Beds "Counts as 2 Bedrooms", the Chandelier "×1.25 Charm in an Entertainer".
+  - **Measured in the pixel font, every piece card given to the hand** (42 cards): lines cut at 1280×720 go from 12 to 3, and at 1920×1080 from 13 to 5. In eight real week-1 hands (32 cards): 7 to 2 at both sizes.
+- **The Kitchen Island's card leads with "Earns +25%",** and its other line says its limit: "Neighbors count it as a Dining Room (sets and the checklist don’t)". It read "Counts as a Dining Room too", which promised an Entertainer or the Hendersons' wish, and it fills neither (D-081). Its two modifiers swap places in `src/content/fixtures.ts`; the rule is the same.
+- **Reroll keeps its word on the hand's plank** at every window size, in both fonts. The title gives way to it: "Cards" on a plank under 25rem, and none under 19rem (a laptop's 244 px plank), where the ROOMS and LAYOUT labels say what the cards are. Demolish stays an icon and a count where its word doesn't fit; while demolishing, Stop keeps its word and Reroll gives up its own.
+- **Rotate shows only while a card is held,** beside Cancel. Standing beside Pass with nothing to turn, its round arrow read as the reroll.
+- **The fixture's and the arrival's hints name the control:** "from your supplies (Your goods, top right) it’s free" (25 words) and "Their room is waiting in your reserve: open Your goods, top right. Room for everyone needs it from now on." (20 words).
+- **Settings:** Display, with the Readable font option, sits second, after Game. It was last, below the fold on any window under about 990 px tall.
+- **How to play:** "The lot" gains Boulders, the Old Shed and Time Capsules, with who earns beside each and what each pays read from the content (`featureWantedText`, `rewardText`). Demolish reads "Clear a piece, a boulder or the Old Shed".
+- **The end screen's sticky bar holds New run and Copy result.** Copy run code and Title are plain buttons under the stats; the Menu has both too. The bar is 124 px, from 224. Whole milestone rows above it on a won run with early finishes: 1 of 7 at 1280×720 (from none), 3 at 1440×900 (from 2), all 7 at 1920×1080 (from 6).
+- **An overlapped polaroid's caption keeps to the part of the card that shows.** The name breaks at its hyphen or ends cleanly short of the next card, a Wow too long for the room ends in "…", and the "of N" line is left out. The last polaroid, and the one pointed at or focused, show everything. At 1440×900 every name is whole and a Wow up to "5,720" is; at 1280×720 the names end after six letters.
+- **The small-screen notice** also shows on a window under 500 px tall (a large phone on its side is over 900 px wide). Under 700 px wide it offers "Copy link", with "Copy the link and open it on a laptop.", in place of "Play anyway", which opened a screen that could be neither played nor left. With the clipboard off limits, it shows the link.
+- **The last shop says what leftover budget is worth:** "Last shop: budget you still hold pays 100 Wow each, but only after the last target is met." (`lastShopText`, with the number from the balance), on a line over the shop's foot.
+
+**Sim:** `npm run sim -- --runs 120 --seed island` (greedy; 9 Kitchen Islands installed) and `--runs 60 --seed islandgift --gift fixture:kitchenIsland` (both arms; 54 installed), on develop at 9dc4be7 and on this branch: all 240 runs have the same weekly scores, milestones and results. Only the time per run differs.
+**Why:** the review played the game as a first-timer would, at laptop sizes. Every first hand had a line cut by "…", and the aura cards lost their number. Reroll was a bare die, and the round arrow beside Pass, the Rotate button, looked like it. A bought fixture landed in a folded plank that no hint named. The option that cures most short-window trouble, the readable font, was below the fold in Settings. On a won run at 1280×720 the end screen's buttons covered every milestone row.
+**Considered:**
+- **The hand line across the card's full width where a thumbnail sits beside it** (a 2× laptop, or a window about 1,680 px wide at 1×): at 1440×900 at 2× it cuts 2 of 32 week-1 cards, from 15, and four cards still fit. But the cards change height, the Pass bar moves up to 48 px, and at 1470×840 and 1512×860 at 2× the fourth card goes partly under the bar in 2 of 8 hands (none today). Left for a playtest's verdict.
+- **A three-line clamp:** the skeptics' simulations pushed cards under the bar at 1280×720 and 1920×1080.
+- **A quarter-turn glyph for Rotate:** an art change and an atlas rebuild the day before the showing.
+- **The hints moved under Your goods:** on the build screen that spot covers Reroll, Demolish and the first card.
+- **Counting leftover budget toward the last target,** or a last-shop line without "only after": D-145 pays it after the target is met, so it never turns a loss into a win, and a line that hid that would cost a friend the run.
+- **Dropping the Island's `countsAs`** for a plain "+50%": a rules change, and a re-fit.
+
+**Changes:**
+- D-121 (Accepted): a compact card's line is the hand's own wording, not always the card's first effect line as written; the two-line clamp stands. A dated note there.
+- D-132 (Proposed): Reroll keeps its word, and the plank's title gives way to it. A dated note there.
+- D-140 (Proposed): its claim that the Garage's hand line fits at every window size is corrected. A dated note there.
+- D-047 (Accepted): the notice also keys on height, and offers the link on a phone held upright. A dated note there.
+- D-098 (Accepted) and D-110 (Proposed): the end screen's sticky bar holds two buttons, and the Costs paragraph's numbers are updated in a dated note. D-110's hint list is unchanged.
+- D-136 (Proposed): the overlapped captions. A dated note there.
+- D-142 (Proposed) and D-045 (Accepted): the fixture's and the arrival's hints, still within 25 words. A dated note on D-142.
+- D-145 (Proposed): its Known gap, that nothing at the last shop says what leftover budget pays, is closed.
+
+**Known gaps:**
+- **The Kitchen's and the L-Kitchen's line,** "+2 per Dining Room or Herb Garden", still loses its last word or two on a narrow card and at 1920×1080: two 11-letter names don't fit two lines.
+- **Beside a thumbnail the line is still cut** on 2× laptops (15 of 32 week-1 cards at 1440×900, from 16) and for the Fence and the Long Hallway at 1920×1080. It needs the layout change under Considered.
+- **The Chandelier's "Fits a Dining Room or Living Room"** is cut on a narrow card; the draw never deals it.
+- **At 1280×720** an overlapped polaroid's name and Wow are still short ("Framin", "3,…"), cleanly; a 91 px slot holds six letters.
+- **Between 700 and 899 px wide** the top bar's Menu is still off-screen after "Play anyway".
+- The Demolish button's title and its hint still say "a piece or a boulder"; they don't name the Old Shed.
 
 ### D-146 · The friction batch's re-fit: the targets set against played runs
 **Status:** Proposed · 2026-11-10, at the user's "Merge and re-fit", once D-140 to D-145 were all in develop. A fix pull request (`fix/refit-targets`) that merges on green, so /dev/ plays at the intended difficulty; the batch's playtest decides whether it holds. It's the one re-fit D-140, D-143, D-144 and D-145 each left for the end.
@@ -2059,6 +2112,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 **Changes:** D-097 (Accepted): the photos are a second downscale exception (its dated note). implementation-plan.md §7 M6's end screen.
 
+**2026-11-10 (D-148, Proposed):** overlapping, a polaroid's caption ran under the next card and read as one line with it ("Foundatic|Framing", "of 12,430of 22,550"). An overlapped polaroid's caption now keeps to the part of the card that shows: the name breaks at its hyphen or ends short of the next card, a Wow too long for the room ends in "…", and the "of N" line is left out. The last one, and the one pointed at or focused, show everything. At 1440×900 every name is whole; at 1280×720, where a card shows 91 px, the names end after six letters.
+
 ### D-142 · First contact: slimmer job cards, hints held to 25 words, and a tighter checklist
 **Status:** Proposed · 2026-11-10, with its phase pull request (`phase/first-contact`), from the friction review the user asked for the same day (its point 7: the reading a new player meets in the first minutes). For the user's playtest before it merges. No rules or balance change.
 **Decision:**
@@ -2099,6 +2154,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - D-045 (Accepted) and D-077's 2026-11-07 note: a week-2 hint is added, the checklist's moves to week 3, and every hint keeps to 25 words. Dated notes there.
 - D-113 (Accepted): unchanged. The house rules still open on a first visit until the checklist's hint is dismissed; that hint now first shows in week 3.
 - `src/rules/text.ts` gains `houseRulesText`, `hintText` and `HINT_WORDS` (new functions after the glossary; nothing existing changes).
+
+**2026-11-10 (D-148, Proposed):** two hints name the control they point to, still within the 25 words: Fixtures ends "from your supplies (Your goods, top right) it’s free" (25 words), and an arrival's reads "Their room is waiting in your reserve: open Your goods, top right. Room for everyone needs it from now on." (20). On a laptop Your goods is folded to its plank, and nothing else on the build screen says "supplies" or "reserve".
 
 ### D-137 · More change orders: three generic ones, and a phase effect for every client
 **Status:** Proposed · 2026-11-10, from playtest 4 (`docs/playtests/playtest-4-findings.md` §5), with its fix pull request. Extends D-011 and D-109. For the next playtest on /dev/.
@@ -2207,7 +2264,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - **Full House's Sparkle is ×1.5** (was ×2). Its +40 Comfort and +1 Charm stay.
 - **Wording:**
   - The Garage's card: "Earns nothing unless touching the street or a Driveway", "+5 every week", "+1 budget every 2nd week".
-  - Its compact hand card: "+5 by the street or a Driveway". The generated line, "+5 every week if touching the street or a Driveway", lost its last words in the card's two lines at every window size.
+  - Its compact hand card: "+5 by the street or a Driveway". The generated line, "+5 every week if touching the street or a Driveway", lost its last words in the card's two lines at every window size. *2026-11-10 (D-148): the short line fits wherever the line has the card's width (1280×720, 1920×1080); beside a thumbnail (1440×900 at 2×, 1680×940) it still loses its last word.*
   - The Driveway's card: "Must be built touching the street or a Driveway", "+3 if touching a Garage", "+1 every week". Its hand card shows the Garage line.
   - The glossary's Sparkle entry takes Full House's number from the content.
 - **Art:** nothing new. A Garage nothing reaches draws as a closed room with its boxes, no door and no car. When a Driveway or the street touches it, its door opens on that side and its car parks inside, as D-100 and D-111 already draw.
@@ -2388,7 +2445,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - The greedy bot never demolishes, so the sim can't say whether a player keeps the shed. The playtest has to.
 - The bot places for this week's Wow. A garden corner by the shed or a notch saved for a Porch takes planning, so both are under-measured.
 - The Porch's boards are the bedrooms' floor cut. It has no walls and a darker edge, but it could read as a room at a glance.
-- Nothing at the last shop says that budget kept pays 100 Wow each. The Budget tip and How to play do.
+- Nothing at the last shop says that budget kept pays 100 Wow each. The Budget tip and How to play do. *2026-11-10 (D-148, Proposed): the last shop says it now, with "but only after the last target is met".*
 - One browser pass, in headless Chrome at 1280×720 and 1920×1080. Not checked: the pane itself, touch, devicePixelRatio 2, Firefox, Safari.
 
 ### D-134 · Three more tracks, from the same shortlist
@@ -2430,6 +2487,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **Considered:** a third button for both rows beside each row's own (three buttons for one count); a count for each row (twice the rerolls, and a re-fit).
 **Costs:** a good row can't be kept while the other redraws. Codes from D-121's builds with a row's reroll replay differently from it on.
 **Changes:** D-121 (Accepted): its reroll, the run code's row, the Reroll buttons and the sim's reroll, with a dated note there. Its notes on D-036, D-039 and D-098 are marked too. `implementation-plan.md`: the `handDrawn` event, the week's start, and Appendix A's rerolls.
+
+**2026-11-10 (D-148, Proposed):** Reroll keeps its word at every window size, in both fonts: as a bare die it went unnoticed by the review's first-timers. The title gives way to it ("Cards" under 25rem of plank, none under 19rem, which is a laptop's), Demolish still shows its icon and count where its word doesn't fit, and while demolishing Stop keeps its word and Reroll gives up its own.
 
 ### D-111 · Art for M4's content: the members' rooms, packs, and Renovate's level
 **Status:** Proposed · 2026-11-08, with the M4 pull request, after it merged `develop` (M5a). Implementation details within D-097, D-100, and §12 Art; for playtest 4.
@@ -2499,6 +2558,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **Why:** M4 was built alongside M5a, in the old look, and merged after it (D-097's juice note). Playtest 4 should try M4's game in the interface the team approved in playtest 5a, not in two looks side by side. Each default follows D-098's rules: one lime button per view, icons for the glyphs the fonts lack, sheets that hold the keyboard, and whole device pixels.
 **Costs:** the pixel font is wide (D-098's Costs). A 280 px column holds about 19 characters a line, and at 1280×720 the Hendersons' checklist needs about 2.5 times the space the column has, so it leans on folding and scrolling: there the list's head is one row, and a line a play flips, or else the house rules' first two, scrolls into view. While a play is looked at there, the lines it doesn't flip leave out their progress. Even so, a house rule's row with its progress is 64–164 px tall in a 280 px column in the pixel font, so with nothing looked at at 1280×720 the checklist often shows only one whole (the notes below). The crew's chip sits in three places by window: first in the list on a window 1000 px tall or more, as an icon on the plank under that, and on the tastes' row in a 280 px pixel-font column. On a window under 1000 px tall, picking a card hides the score panel's sets, checklist row and budget line until the play is over; the inspect panel's notes carry what the play changes. Late in a run on a short window, the inspect panel pointed at something can have only its plank and a line or two, with its body scrolling. The Wow's sizing needs CSS `round()` (Chrome 125, Safari 15.4, Firefox 118); an older browser steps the number down instead. The Hendersons' contract card needs about 660 px in the pixel font, more than a 1280×720 window gives it, so its middle scrolls.
 **Changes:** D-098 (Accepted), with the team's OK (2026-11-08): on a window under 1000 px tall the score panel's sets fold into one row while nothing is looked at (its score panel bullet and its note). *2026-11-09, for the team to confirm:* under 1000 px tall the panel also keeps to its equation while a play is looked at, so the list never comes back on a short window (D-098's note says so). It also extends D-098: notes dock in any sheet over the board, and the left column's short-window rules use its 800 px breakpoint, where M4 used 820 px, and the fold's 1000 px. D-109 (Proposed): its UI bullet points here.
+
+**2026-11-10 (D-148, Proposed):** the end screen's column, which this entry keeps from D-098: its sticky bar holds New run and Copy result, and Copy run code and Title sit under the stats (D-098's note of the same day has the numbers). The fixture's and the arrival's hints name Your goods.
 
 **2026-11-08 (the visual checks), for playtest 4:** three reviewers checked these screens, the HUD and the board in six configs: 1920×1080 and 1280×720 at a devicePixelRatio of 1, and 1724×962 at 2, each in the pixel and the readable font. A fix pass followed, then a second check, then a second fix pass (the bullets above include both). The second fix pass took on what the second check found in the HUD:
 - late in a run at 1280×720 in the pixel font, the score panel took up to 612 px of the column's 656, so the checklist showed no whole row, and one of Dale's runs (seed `sw-d1`, the Architect) overflowed the column by 124 px, which put the inspect panel below the window;
