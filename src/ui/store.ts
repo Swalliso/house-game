@@ -38,6 +38,7 @@ import {
   type ClientId,
   type Contract,
   type CrewId,
+  type RunCodeData,
 } from '../rules/index.ts';
 import { BUILD_CHANNEL, BUILD_SHA } from './build-info.ts';
 import { occupancy, uidAt } from './board/geometry.ts';
@@ -530,7 +531,23 @@ export function crashRunCode(): string {
 
 const PREVIOUS_KEY = `openhouse:${BUILD_CHANNEL}:previous`;
 
-function readSave(): { build?: unknown; code?: unknown } | null {
+/**
+ * What a saved run looked like when it was saved, kept beside its code: a save from another
+ * build carries on only if this build replays it to the same week, Wow, budget and pieces
+ * (D-068). A rules change that plays the same actions out differently shows in one of them.
+ */
+interface SaveCheck {
+  week: number;
+  score: number;
+  budget: number;
+  pieces: number;
+}
+
+function saveCheck(s: RunState): SaveCheck {
+  return { week: s.week, score: s.score, budget: s.budget, pieces: s.house.pieces.length };
+}
+
+function readSave(): { build?: unknown; code?: unknown; check?: unknown } | null {
   try {
     const saved: unknown = JSON.parse(localStorage.getItem(SAVE_KEY) ?? 'null');
     return saved && typeof saved === 'object' ? saved : null;
@@ -550,6 +567,28 @@ function runOver(code: string): boolean {
     // A setup this build can't start: as good as in progress, so its code is kept.
     return false;
   }
+}
+
+/**
+ * Whether a save from another build can carry on in this one (D-068): its content is this
+ * build's, and this build's rules replay every action, back to the run as it was saved. A save
+ * from before the check was kept beside the code (2026-11-11) has none: the content and a clean
+ * replay have to do.
+ */
+function carriesOver(data: RunCodeData, check: unknown): boolean {
+  if (data.contentHash !== CONTENT_HASH) return false;
+  let replayed: ReturnType<typeof rules.replay>;
+  try {
+    replayed = rules.replay(data.setup, data.actions);
+  } catch {
+    return false;
+  }
+  if (replayed.failedAt !== undefined) return false;
+  if (check === undefined) return true;
+  if (!check || typeof check !== 'object') return false;
+  const now = saveCheck(replayed.state);
+  const was = check as Record<string, unknown>;
+  return (Object.keys(now) as (keyof SaveCheck)[]).every((k) => was[k] === now[k]);
 }
 
 /** Whether this build made a run code: only then can a note offer to go back to the run. */
@@ -579,7 +618,10 @@ function keepPreviousRun(saved: { code?: unknown } | null): string | undefined {
 
 function save(): void {
   try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify({ build: BUILD_SHA, code: runCode(false) }));
+    localStorage.setItem(
+      SAVE_KEY,
+      JSON.stringify({ build: BUILD_SHA, code: runCode(false), check: saveCheck(run.value) }),
+    );
   } catch {
     // Best effort: itch.io's iframe and private windows can lose storage.
   }
@@ -836,8 +878,9 @@ export function endWeek(): void {
 }
 
 /**
- * On page load: a ?run= code first (a bug report), then the saved run if it's from this build
- * and still replays, otherwise a fresh run with a note. Loading never blocks or crashes.
+ * On page load: a ?run= code first (a bug report), then the saved run if it still replays and
+ * is from this build, or from another build with the same content that replays it to the same
+ * run (D-068), otherwise a fresh run with a note. Loading never blocks or crashes.
  */
 export function loadInitialRun(): void {
   const params = new URLSearchParams(location.search);
@@ -883,6 +926,8 @@ export function loadInitialRun(): void {
   if (seedParam || clientId || crewId) {
     const previous = keepPreviousRun(saved);
     newRun(seedParam || randomSeed(), clientId ?? 'hendersons', crewId ?? 'generalContractor');
+    // Say what the link opened (D-135): whose house, with which crew.
+    addNote(linkNote(run.value.setup, !!seedParam));
     if (previous) addPutAsideNote(previous);
     if (clientParam !== null && !clientId) {
       addNote(`There's no client "${clientParam}": this run is for the Hendersons.`);
@@ -894,12 +939,17 @@ export function loadInitialRun(): void {
   }
   if (saved && typeof saved.code === 'string') {
     const decoded = decodeRunCode(saved.code);
-    if (saved.build === BUILD_SHA && decoded.ok) {
+    // A save from this build, or from another one that plays it out the same (D-068).
+    const sameBuild = saved.build === BUILD_SHA;
+    if (decoded.ok && (sameBuild || carriesOver(decoded.data, saved.check))) {
       const { failedAt } = startRun(decoded.data.setup, decoded.data.actions);
       if (failedAt === undefined) {
         // The title screen offers Continue for a run in progress.
         canContinue.value = inProgress() && log.value.length > 0;
         appScreen.value = 'title';
+        if (!sameBuild && canContinue.value) {
+          addNote('The game updated, and your run carried over.');
+        }
         if (linkError) addNote(linkError);
         return;
       }
@@ -927,6 +977,17 @@ export function loadInitialRun(): void {
   });
   if (linkError) addNote(linkError);
   appScreen.value = 'title';
+}
+
+/**
+ * What a ?seed=, ?client= or ?crew= link opened, by the content's names: "A shared lot: you’re
+ * building for the Hendersons with the General Contractor." A link without a seed starts a
+ * random lot.
+ */
+function linkNote(setup: RunSetup, shared: boolean): string {
+  const client = CONTENT.clients[setup.clientId].name.replace(/^The\s/, 'the ');
+  const crew = CONTENT.crews[setup.crewId].name;
+  return `${shared ? 'A shared lot' : 'A new lot'}: you’re building for ${client} with the ${crew}.`;
 }
 
 /** Adds a sentence to the note, keeping any old run code it already offers. */

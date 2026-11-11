@@ -915,8 +915,9 @@ Shape variants (L-Kitchen, the long Hallway) are separate cards that share a typ
   - `pending` is an optional tentative placement, so a "the preview said +12 but I got +9" bug can be reproduced.
   - A **Copy run code** button and a `?run=` URL parameter replay a run. A bug report is one string and becomes a regression test.
   - To reproduce a code from an older build: `git checkout <build>` and replay locally.
-- **Save and resume:** the same structure goes to `localStorage` after every action (best-effort; itch.io's iframe can lose storage). Keys are namespaced by channel, because the release and `/dev/` builds share one origin (D-060). On load:
+- **Save and resume:** the same structure goes to `localStorage` after every action (best-effort; itch.io's iframe can lose storage), with the build and a check beside it: the run's week, Wow, budget and pieces. Keys are namespaced by channel, because the release and `/dev/` builds share one origin (D-060). On load:
   - same `build` and replay succeeds → resume
+  - another build, the same `contentHash`, and a replay that succeeds and matches the check (or a save from before the check was kept) → resume, with a note that the run carried over (D-068, 2026-11-11)
   - otherwise → a short "The game updated, so this is a fresh run" note, with the old run code kept for a bug report
 
   Loading never blocks or crashes.

@@ -5,12 +5,15 @@
 //
 // It only shows the record: nothing here is unlocked or spent, and no rule reads it (D-016).
 // The photos are shown downscaled, smoothly, as the end screen's strip shows its own.
+//
+// Each house can be played again: a new run on its lot, for the same client with the same crew
+// (playLotAgain), as long as this build still has them.
 
-import { CONTENT, SCORE_LABELS } from '../../rules/index.ts';
+import { CONTENT, SCORE_LABELS, type ClientId, type CrewId } from '../../rules/index.ts';
 import { bestScore, bestWith, company, jobKey, type Best, type Job } from '../company.ts';
 import { formatNumber } from '../format.ts';
-import { portfolioOpen } from '../hud/actions.ts';
-import { Icon, Sheet } from '../kit/kit.tsx';
+import { playLotAgain, portfolioOpen } from '../hud/actions.ts';
+import { Button, Icon, Sheet } from '../kit/kit.tsx';
 import './portfolio.css';
 
 const WOW = SCORE_LABELS.total;
@@ -18,6 +21,14 @@ const WOW = SCORE_LABELS.total;
 /** A client's or a crew's name, or its id if this build no longer has it. */
 const clientName = (id: string) => CONTENT.clients[id as keyof typeof CONTENT.clients]?.name ?? id;
 const crewName = (id: string) => CONTENT.crews[id as keyof typeof CONTENT.crews]?.name ?? id;
+
+/** A house's lot, client and crew, to play again; null if this build no longer has either. */
+export function lotOf(job: Job): { seed: string; clientId: ClientId; crewId: CrewId } | null {
+  if (!Object.hasOwn(CONTENT.clients, job.clientId) || !Object.hasOwn(CONTENT.crews, job.crewId)) {
+    return null;
+  }
+  return { seed: job.seed, clientId: job.clientId as ClientId, crewId: job.crewId as CrewId };
+}
 
 const count = (n: number, one: string, many: string) =>
   `${formatNumber(n)} ${n === 1 ? one : many}`;
@@ -85,8 +96,9 @@ function Bests() {
   );
 }
 
-function House({ job }: { job: Job }) {
+export function House({ job }: { job: Job }) {
   const client = clientName(job.clientId);
+  const lot = lotOf(job);
   return (
     <li class={`portfolio-house ${job.won ? 'won' : 'lost'}`}>
       <span class="portfolio-photo">
@@ -107,6 +119,18 @@ function House({ job }: { job: Job }) {
         </span>
         <span class="crew">{crewName(job.crewId)}</span>
       </span>
+      {lot && (
+        <Button
+          size="sm"
+          block
+          class="portfolio-again"
+          aria-label={`Play this lot again: ${client}, ${crewName(job.crewId)}`}
+          title="A new run on this lot, for the same client with the same crew"
+          onClick={() => playLotAgain(lot)}
+        >
+          Play this lot again
+        </Button>
+      )}
     </li>
   );
 }
