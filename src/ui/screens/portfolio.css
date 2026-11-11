@@ -137,6 +137,12 @@
 .portfolio-house.lost .result {
   color: var(--ink-soft);
 }
+/* Play this lot again: at the foot of the polaroid, level along a row whatever the caption,
+   and on two lines in a narrow one. */
+.portfolio-again {
+  margin-top: auto;
+  white-space: normal;
+}
 
 /* --- The title's rider --------------------------------------------------------------------- */
 
