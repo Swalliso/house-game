@@ -687,6 +687,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 **Why:** Choices the plan leaves to the build, picked so the slice can answer playtest 1's questions.
 **Amended by:** D-097 (Accepted 2026-11-06): with 32 art px per cell, the default zoom is at least 1×, the same 32 CSS px per cell as 2× was. Where display scaling isn't a whole number (125%, 150%, 175%), the floor is 1× rounded down to whole device pixels (D-097's zoom note).
+*2026-11-10, from the polish review:* while a tally plays and nothing is waiting to be placed, Enter or a click on End week only skips the tally. It never arms or confirms a pass: one double-click on End week used to pass the next week unseen. A pass is still two presses, once the tally is done, and a press within 650 ms of one that skipped a tally doesn't count as the first (`FEEL.endWeek`): four quick presses still passed a week. The end screen's buttons also take no click for their first second (`FEEL.endScreen`), since they come up where End week was and a double-click that skipped the last tally landed on Title or New run.
 
 ### D-069 · A fenced yard needs at least 10 tiles
 **Status:** Accepted · 2026-11-05 (chosen by the team in the M2 build, from the sim's enclosure probe)
@@ -1910,6 +1911,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - `navigator.share`: on desktop it opens the OS share sheet in only some browsers; the clipboard works everywhere the game runs.
 
 **Changes:** implementation-plan.md §7 M6's end screen: the result line is done (D-135); the photos are D-136's.
+*2026-11-10, from the polish review:* the note about a run put aside also offers **Go back to it**, when that run is from this build. It loads the run and puts the link's run aside in turn (if it has a week played), so the same button swaps them back. A run from an older build gets only its code, as before, since it may stop replaying. A saved run that was already over gets no note, from a link or from a game update: nothing was in progress, and its house is in the company's record. The crash screen offers Reload and continue first (a crash leaves the save as it was), and its Start a new run puts the saved run aside the same way instead of overwriting it.
 
 ### D-143 · The blueprint shelf: no dead cards, no runaway, and It's a House as a build
 **Status:** Proposed · 2026-11-10, with its phase pull request (`phase/blueprint-balance`), from the friction review the user asked for the same day (point 2). For the user's playtest before it merges. Every number is a placeholder for the playtest and D-146's re-fit; the milestone targets and the per-client factors are untouched.
@@ -2193,6 +2195,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 **Changes:** D-015 and D-016 (Proposed): this is a first step that adds no unlocks and no currency. `jam-scope.md`: its "Not in the jam build" line on meta-progression. The rules gain `nextVerdict()` (`milestones.ts`), so the UI still computes no score.
 **Known gaps:** no way to clear the record yet. A portfolio house can't be opened larger or replayed from its seed. A run finished on another device or in a private window isn't in the record.
+*2026-11-10, from the polish review:* where the browser denies storage altogether (site data blocked, or the game in an itch.io frame in an Incognito window), the record starts empty and lasts for the visit. Reading it used to throw as the page loaded, which left the page blank; the tally's own records (the best week, the tiers seen, topped out) had the same check and are fixed with it.
 
 ### D-140 · The Garage is built like any room, and earns once the street or a Driveway reaches it
 **Status:** Proposed · 2026-11-10, with its phase pull request (`phase/garage-driveway`), from the friction review the user asked for the same day (its first point). The direction is the user's: the Garage is placed like any other room, and earns only while the street or a Driveway reaches it. Settles D-080. For the user's playtest before it merges. The numbers are placeholders.

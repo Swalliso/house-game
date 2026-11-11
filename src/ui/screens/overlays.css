@@ -273,6 +273,17 @@
 .notice .btn {
   flex: none;
 }
+/* A note that offers the way back to a run has two buttons: its words take the first line and
+   the buttons the next. All on one line, the words were squeezed to a column one word wide. */
+.notice:has(.notice-back) {
+  flex-wrap: wrap;
+}
+.notice:has(.notice-back) .notice-text {
+  flex-basis: 75%;
+}
+.notice:has(.notice-back) .notice-close {
+  margin-left: auto;
+}
 .toast {
   padding: var(--space-1) var(--space-3) calc(var(--space-1) + var(--px));
   background: var(--ink);

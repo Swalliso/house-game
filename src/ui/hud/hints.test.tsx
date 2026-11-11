@@ -1,7 +1,8 @@
 // The controls strip's F hint (playtest 5a): it says what F does now. With Fit on, F goes back
 // to the zoom from before (camera.ts toggleFit), so the strip says so, during the run and after
 // it, instead of offering to fit the lot again. And M4's keys: a change order's sheet takes
-// only Enter, Esc and D, and a pack (D-106) never turns.
+// only Enter, Esc and D, and a pack (D-106) never turns. And the supplies: a tool or a fixture
+// from them is free, so the strip says how it's aimed and never offers Enter (the polish review).
 
 import type { ComponentChildren, VNode } from 'preact';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -185,6 +186,62 @@ describe("the strip's keys for M4's plays", () => {
       { keys: ['Click'], words: 'move it' },
       { keys: ['Enter'], words: 'renovate it' },
       { keys: ['Esc'], words: 'pick it up' },
+    ]);
+  });
+
+  it('says install for a fixture from the hand, and keeps Enter: it is the week’s build', () => {
+    run.value = { ...start, screen: 'build', hand: [{ kind: 'fixture', id: 'fireplace' }] };
+    selected.value = 0;
+    expect(strip()).toEqual([
+      { keys: ['Click'], words: 'a piece to install it' },
+      { keys: ['Enter'], words: 'end the week' },
+      { keys: ['Esc'], words: 'put it back' },
+    ]);
+  });
+
+  it('offers no Enter for a fixture from the supplies: installing it is free', () => {
+    run.value = { ...start, screen: 'build', supplies: [{ kind: 'fixture', id: 'fireplace' }] };
+    source.value = 'supplies';
+    selected.value = 0;
+    expect(strip()).toEqual([
+      { keys: ['Click'], words: 'a piece twice to install it' },
+      { keys: ['Esc'], words: 'put it back' },
+    ]);
+  });
+
+  it('offers no Enter and no Click for a tool used from its panel (Rush Order)', () => {
+    run.value = { ...start, screen: 'build', supplies: [{ kind: 'tool', id: 'rushOrder' }] };
+    source.value = 'supplies';
+    selected.value = 0;
+    expect(strip()).toEqual([{ keys: ['Esc'], words: 'put it back' }]);
+  });
+
+  it('says how the Copy Machine and the Moving Truck are aimed', () => {
+    run.value = {
+      ...start,
+      screen: 'build',
+      supplies: [
+        { kind: 'tool', id: 'copyMachine' },
+        { kind: 'tool', id: 'movingTruck' },
+      ],
+    };
+    source.value = 'supplies';
+    selected.value = 0;
+    expect(strip()).toEqual([
+      { keys: ['Click'], words: 'a piece twice to copy it' },
+      { keys: ['Esc'], words: 'put it back' },
+    ]);
+    selected.value = 1;
+    expect(strip()).toEqual([
+      { keys: ['Click'], words: 'the piece to move' },
+      { keys: ['Esc'], words: 'put it back' },
+    ]);
+    // Carrying a piece: R turns it, and its new spot takes two clicks.
+    movingUid.value = 1;
+    expect(strip()).toEqual([
+      { keys: ['R'], words: 'rotate' },
+      { keys: ['Click'], words: 'its new spot twice' },
+      { keys: ['Esc'], words: 'put it back' },
     ]);
   });
 

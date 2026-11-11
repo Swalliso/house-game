@@ -2,7 +2,8 @@
 // instead of every shortcut at once. How to play lists them all. On a short window it sits
 // under the board only, so the side columns keep their height, and drops the hints marked
 // .hint-extra. M4's keys are here too: the change orders' sheet (1 or 2 picks one, D-144), a
-// pack's tiles (D-106), and a Renovation (D-102).
+// pack's tiles (D-106), and a Renovation (D-102). A tool or a fixture from the supplies gets its
+// own keys: it's a free action, so the strip never offers Enter for it.
 //
 // No hooks, here or in what it renders: hints.test.tsx calls Hints() in place.
 
@@ -105,34 +106,60 @@ export function Hints() {
   } else if (selected.value !== null) {
     const sel = selection.value;
     const pending = tentative.value;
-    // A pack (D-106) is clicked out a tile at a time, so it never turns, and nor does a room
-    // waiting to be renovated (D-102); the Moving Truck turns the piece it carries (as the
-    // Rotate button does: Hand.tsx).
-    const pack = sel?.kind === 'piece' && !!CONTENT.pieces[sel.id].pack;
-    const turns =
-      (sel?.kind === 'piece' && !pack && pending?.t !== 'renovate') ||
-      (sel?.kind === 'tool' && movingUid.value !== null);
-    const click = pack
-      ? pending
-        ? 'add or take off a tile'
-        : 'the first tile'
-      : pending
-        ? 'move it'
-        : renovateUids.value.length > 0
-          ? 'place, or renovate an outlined room'
-          : 'place';
-    hints = (
-      <>
-        {turns && <Hint keys={['R']}>rotate</Hint>}
-        <Hint keys={['Click']} extra>
-          {click}
-        </Hint>
-        <Hint keys={['Enter']}>{pending?.t === 'renovate' ? 'renovate it' : 'end the week'}</Hint>
-        <Hint keys={['Esc']}>
-          {pack && pending ? 'clear the tiles' : pending ? 'pick it up' : 'put it back'}
-        </Hint>
-      </>
-    );
+    if (sel?.kind === 'tool' || (sel?.kind === 'fixture' && sel.from === 'supplies')) {
+      // From the supplies, a tool or a fixture is free and the week goes on: nothing waits for
+      // End week, so there's no Enter here (it would pass the week). The Copy Machine and a
+      // fixture take two clicks on a piece; the Moving Truck picks a piece up, then takes two
+      // clicks on its new spot, and R turns the piece it carries. Any other tool is used from
+      // its panel (Inspect's "Use it now"), so only Esc is left.
+      const use = sel.kind === 'tool' ? CONTENT.tools[sel.id].use.kind : null;
+      const carrying = use === 'move' && movingUid.value !== null;
+      const click =
+        sel.kind === 'fixture'
+          ? 'a piece twice to install it'
+          : use === 'copy'
+            ? 'a piece twice to copy it'
+            : use === 'move'
+              ? carrying
+                ? 'its new spot twice'
+                : 'the piece to move'
+              : null;
+      hints = (
+        <>
+          {carrying && <Hint keys={['R']}>rotate</Hint>}
+          {click && <Hint keys={['Click']}>{click}</Hint>}
+          <Hint keys={['Esc']}>put it back</Hint>
+        </>
+      );
+    } else {
+      // A pack (D-106) is clicked out a tile at a time, so it never turns, and nor does a room
+      // waiting to be renovated (D-102), or a fixture from the hand, which goes into a piece.
+      const pack = sel?.kind === 'piece' && !!CONTENT.pieces[sel.id].pack;
+      const turns = sel?.kind === 'piece' && !pack && pending?.t !== 'renovate';
+      const click = pack
+        ? pending
+          ? 'add or take off a tile'
+          : 'the first tile'
+        : pending
+          ? 'move it'
+          : sel?.kind === 'fixture'
+            ? 'a piece to install it'
+            : renovateUids.value.length > 0
+              ? 'place, or renovate an outlined room'
+              : 'place';
+      hints = (
+        <>
+          {turns && <Hint keys={['R']}>rotate</Hint>}
+          <Hint keys={['Click']} extra>
+            {click}
+          </Hint>
+          <Hint keys={['Enter']}>{pending?.t === 'renovate' ? 'renovate it' : 'end the week'}</Hint>
+          <Hint keys={['Esc']}>
+            {pack && pending ? 'clear the tiles' : pending ? 'pick it up' : 'put it back'}
+          </Hint>
+        </>
+      );
+    }
   } else {
     // The hand's cards are numbered across its rows (D-121), keys 1–9: one keycap for all of
     // them, as narrow as the old "1 2 3".

@@ -1,7 +1,8 @@
 // The copyable result line (D-135): what it says for a win, an early one, a loss and a debug
 // run; where its link points on each channel; and that the link really starts the same run,
 // through loadInitialRun's own ?seed=&client=&crew= path, setting aside a friend's run in
-// progress instead of losing it.
+// progress instead of losing it. The note about that run offers the way back to it (the polish
+// review): not for a run that was already over, which gets no note, nor one from an older build.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -14,7 +15,18 @@ import {
   type RunState,
 } from '../../rules/index.ts';
 import { BUILD_CHANNEL, BUILD_SHA } from '../build-info.ts';
-import { appScreen, CONTENT_HASH, loadInitialRun, notice, run } from '../store.ts';
+import {
+  appScreen,
+  CONTENT_HASH,
+  crash,
+  dispatch,
+  loadInitialRun,
+  log,
+  newRunAfterCrash,
+  notice,
+  restorePreviousRun,
+  run,
+} from '../store.ts';
 import { lotLink, PAGES_URL, resultLine, shareBase } from './result-line.ts';
 
 const setup: RunSetup = {
@@ -186,10 +198,130 @@ describe('opening the link', () => {
     store.set(SAVE, JSON.stringify({ build: BUILD_SHA, code: theirs }));
     open(lotLink(setup, 'http://localhost:5173/'));
     expect(run.value.setup).toEqual(setup);
-    expect(notice.value).toEqual({ text: 'Your run in progress was put aside.', oldCode: theirs });
+    // The note can go back to it: it's from this build.
+    expect(notice.value).toEqual({
+      text: 'Your run in progress was put aside.',
+      oldCode: theirs,
+      goBack: true,
+    });
     expect(store.get(PREVIOUS)).toBe(theirs);
     // The new run takes the save's place.
     expect(store.get(SAVE)).not.toContain(theirs);
+  });
+
+  /** A run on `seed` with one week passed, as its code, from this build or an older one. */
+  const oneWeek = (seed: string, build = BUILD_SHA) =>
+    encodeRunCode({
+      build,
+      contentHash: CONTENT_HASH,
+      setup: { ...setup, seed },
+      actions: [{ t: 'pass' }],
+    });
+
+  it('goes back to the run that was put aside, straight after the link opened', () => {
+    const theirs = oneWeek('theirs');
+    store.set(SAVE, JSON.stringify({ build: BUILD_SHA, code: theirs }));
+    open(lotLink(setup, 'http://localhost:5173/'));
+    appScreen.value = 'title';
+    expect(restorePreviousRun(notice.value!.oldCode!)).toBe(true);
+    expect(appScreen.value).toBe('game');
+    expect(run.value.setup.seed).toBe('theirs');
+    expect(log.value).toEqual([{ t: 'pass' }]);
+    // It's the saved run again; the link's run had no weeks, so there's nothing to keep of it.
+    expect(JSON.parse(store.get(SAVE)!).code).toBe(theirs);
+    expect(notice.value).toEqual({ text: 'You’re back in your run.' });
+  });
+
+  it("puts the link's run aside in turn once it has a week, so the two swap back", () => {
+    const theirs = oneWeek('theirs');
+    store.set(SAVE, JSON.stringify({ build: BUILD_SHA, code: theirs }));
+    open(lotLink(setup, 'http://localhost:5173/'));
+    expect(dispatch({ t: 'pass' })).toBe(true);
+    const links = JSON.parse(store.get(SAVE)!).code as string;
+    restorePreviousRun(theirs);
+    expect(run.value.setup.seed).toBe('theirs');
+    expect(notice.value).toEqual({
+      text: 'You’re back in your run. The other run was put aside.',
+      oldCode: links,
+      goBack: true,
+    });
+    expect(store.get(PREVIOUS)).toBe(links);
+    restorePreviousRun(links);
+    expect(run.value.setup).toEqual(setup);
+    expect(log.value).toEqual([{ t: 'pass' }]);
+    expect(notice.value?.oldCode).toBe(theirs);
+  });
+
+  it('offers only the code of a run from an older build, which may not replay', () => {
+    const old = oneWeek('theirs', 'older00');
+    store.set(SAVE, JSON.stringify({ build: 'older00', code: old }));
+    open(lotLink(setup, 'http://localhost:5173/'));
+    expect(notice.value).toEqual({ text: 'Your run in progress was put aside.', oldCode: old });
+    expect(notice.value?.goBack).toBeUndefined();
+  });
+
+  /** A run on `seed` passed week after week until the client walks, as its code. */
+  function walkedAway(seed: string, build = BUILD_SHA): string {
+    const actions: { t: 'pass' }[] = [];
+    let s = rules.newRun({ ...setup, seed });
+    while (s.screen === 'build' && actions.length < 60) {
+      actions.push({ t: 'pass' });
+      s = rules.apply(s, { t: 'pass' }).state;
+    }
+    expect(s.screen).toBe('lost');
+    return encodeRunCode({
+      build,
+      contentHash: CONTENT_HASH,
+      setup: { ...setup, seed },
+      actions,
+    });
+  }
+
+  it('says nothing when the saved run was already over: nothing was in progress', () => {
+    store.set(SAVE, JSON.stringify({ build: BUILD_SHA, code: walkedAway('theirs') }));
+    open(lotLink(setup, 'http://localhost:5173/'));
+    expect(run.value.setup).toEqual(setup);
+    expect(notice.value).toBeNull();
+    expect(store.has(PREVIOUS)).toBe(false);
+  });
+
+  it('says the game updated for a run in progress, and nothing for one that was over', () => {
+    const old = oneWeek('theirs', 'older00');
+    store.set(SAVE, JSON.stringify({ build: 'older00', code: old }));
+    open('http://localhost:5173/');
+    expect(appScreen.value).toBe('title');
+    // No way back here: an older build's run may stop replaying.
+    expect(notice.value).toEqual({
+      text: 'The game updated, so your last run couldn’t continue.',
+      oldCode: old,
+    });
+    expect(notice.value?.goBack).toBeUndefined();
+    notice.value = null;
+    store.clear();
+    store.set(SAVE, JSON.stringify({ build: 'older00', code: walkedAway('theirs', 'older00') }));
+    open('http://localhost:5173/');
+    expect(appScreen.value).toBe('title');
+    expect(notice.value).toBeNull();
+    expect(store.has(PREVIOUS)).toBe(false);
+  });
+
+  it("keeps the run when the crash screen's Start a new run replaces it", () => {
+    const theirs = oneWeek('theirs');
+    store.set(SAVE, JSON.stringify({ build: BUILD_SHA, code: theirs }));
+    open('http://localhost:5173/');
+    expect(run.value.setup.seed).toBe('theirs');
+    crash.value = { message: 'boom' };
+    newRunAfterCrash();
+    expect(crash.value).toBeNull();
+    expect(appScreen.value).toBe('game');
+    expect(run.value.setup.seed).not.toBe('theirs');
+    expect(log.value).toEqual([]);
+    expect(store.get(PREVIOUS)).toBe(theirs);
+    expect(notice.value).toEqual({
+      text: 'Your run in progress was put aside.',
+      oldCode: theirs,
+      goBack: true,
+    });
   });
 
   it('says nothing when the save had no weeks played', () => {
