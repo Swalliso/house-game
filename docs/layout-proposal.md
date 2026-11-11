@@ -1,5 +1,7 @@
 # Layout: Hallways, bigger rooms, the Garage, paths, reach, and a Porch
 
+> **Archived 2026-11-11.** Saved during branch cleanup from a session branch that never merged. The text below is as written on 2026-11-09; its status lines describe that day.
+
 **Date:** 2026-11-09, after playtest 4. Updated the same day with your answers on fusion, detached Garages and paths, and the Hallway experiment. **Status:** a proposal for you to choose from. Nothing under `src/` or in the decision log changed on this branch. Step 1 of the Hallway experiment is built: D-114, merged into develop in Swalliso/house-game#21. The other entries in §9 are drafts (D-115 to D-118; the lot, draw and legibility sessions hold D-119 to D-122). The PR that builds what you pick adds them to `decisions.md`.
 
 **Read with:** `docs/playtests/playtest-4-findings.md` (§2, §7, §9, §10, §12, §14, §16), D-046, D-074, D-080, D-093, D-101, D-102, D-106, D-112, D-114, the Parked "Merged rooms" entry, `content-brainstorm.md` §15, and `house-systems-review.md` §5.2 and §5.10.
