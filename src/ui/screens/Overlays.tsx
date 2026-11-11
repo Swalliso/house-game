@@ -19,9 +19,16 @@ import type { RefObject } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { banner, busy, flash, played, skip } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
-import { anyModalOpen, copyFallback, copyText, notesDocked, toast } from '../hud/actions.ts';
+import {
+  anyModalOpen,
+  copyFallback,
+  copyText,
+  notesDocked,
+  passArmed,
+  toast,
+} from '../hud/actions.ts';
 import { Button, Icon, Sheet } from '../kit/kit.tsx';
-import { appScreen, notice, run } from '../store.ts';
+import { appScreen, notice, restorePreviousRun, run } from '../store.ts';
 import './overlays.css';
 
 /** The milestone's banner, at the board's top center, and any notes and toasts just under it. */
@@ -148,6 +155,21 @@ export function Notes({
         <div class="notice" role="status">
           <Icon name="mail" />
           <span class="notice-text">{n.text}</span>
+          {n.oldCode && n.goBack && (
+            // The run a link put aside comes back, and the link's run is put aside in turn.
+            <Button
+              size="sm"
+              class="notice-back"
+              onClick={() => {
+                // A pass armed in the run being left isn't one for the run coming back.
+                passArmed.value = false;
+                restorePreviousRun(n.oldCode!);
+                refocus?.current?.focus({ preventScroll: true });
+              }}
+            >
+              Go back to it
+            </Button>
+          )}
           {n.oldCode && (
             <Button
               size="sm"

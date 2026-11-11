@@ -29,6 +29,7 @@ import {
 } from '../../rules/index.ts';
 import { bestFor, company, jobKey, lastStanding } from '../company.ts';
 import { busy } from '../fx/director.ts';
+import { FEEL } from '../fx/feel.ts';
 import { formatNumber } from '../format.ts';
 import { copyRunCode, copyText, startNewRun } from '../hud/actions.ts';
 import { Button, Icon, Panel, type IconName } from '../kit/kit.tsx';
@@ -354,13 +355,41 @@ function Standing({ s }: { s: RunState }) {
   );
 }
 
+/** When the end screen came up (EndScreen's layout effect), for `settled`. */
+let shownAt = -Infinity;
+
+/** The end screen is up as of `now`: its buttons wait out FEEL.endScreen.clickDelayMs. */
+export function endScreenShown(now = performance.now()): void {
+  shownAt = now;
+}
+
+/**
+ * Whether the end screen has been up long enough for a click on its buttons to be meant for
+ * them. They come up where End week was, the moment the last tally ends, so the second click of
+ * a double-click that skipped the tally used to land on Title or New run, and the end screen
+ * can't be opened again.
+ */
+export function settled(now = performance.now()): boolean {
+  return now - shownAt >= FEEL.endScreen.clickDelayMs;
+}
+
+/** A button's action, once the screen has settled. */
+const whenSettled = (act: () => void) => () => {
+  if (settled()) act();
+};
+
 /**
  * The run-end screen, in place of the hand. It waits for the last tally and banner to play
  * (busy), so the player sees the final week land before the summary.
  */
 export function EndScreen() {
   const s = run.value;
-  if ((s.screen !== 'won' && s.screen !== 'lost') || busy.value) return null;
+  const shown = (s.screen === 'won' || s.screen === 'lost') && !busy.value;
+  // Before the browser can deliver a click: a layout effect runs with the render that shows it.
+  useLayoutEffect(() => {
+    if (shown) endScreenShown();
+  }, [shown]);
+  if (!shown) return null;
   const won = s.screen === 'won';
   const phases = CONTENT.balance.phases;
   const title = won
@@ -388,22 +417,22 @@ export function EndScreen() {
       {/* Copy run code and Title sit in the column, under the stats, not in the sticky bar
           (D-148): four rows of buttons hid the milestones on a laptop. The Menu has both too. */}
       <div class="run-end-more">
-        <Button icon="copy" onClick={() => void copyRunCode()}>
+        <Button icon="copy" onClick={whenSettled(() => void copyRunCode())}>
           Copy run code
         </Button>
-        <Button icon="exit" onClick={() => goToTitle()}>
+        <Button icon="exit" onClick={whenSettled(() => goToTitle())}>
           Title
         </Button>
       </div>
       <div class="run-end-actions">
-        <Button variant="primary" size="lg" block onClick={() => startNewRun()}>
+        <Button variant="primary" size="lg" block onClick={whenSettled(() => startNewRun())}>
           New run
         </Button>
         <Button
           class="run-end-share"
           icon="copy"
           title="One line for the group chat: your verdict, Wow and milestones, and a link to play this lot"
-          onClick={() => void copyText(resultLine(s), 'Result copied')}
+          onClick={whenSettled(() => void copyText(resultLine(s), 'Result copied'))}
         >
           Copy result
         </Button>

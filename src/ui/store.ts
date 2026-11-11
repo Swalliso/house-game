@@ -107,8 +107,12 @@ export const run = signal<RunState>(
 );
 export const log = signal<readonly Action[]>([]);
 
-/** A one-line note for the player, such as "The game updated, so this is a fresh run." */
-export const notice = signal<{ text: string; oldCode?: string } | null>(null);
+/**
+ * A one-line note for the player, such as "The game updated, so this is a fresh run." `oldCode`
+ * is a run that was put aside, for the note's Copy button; `goBack` says the note can also
+ * offer to go back to it (restorePreviousRun).
+ */
+export const notice = signal<{ text: string; oldCode?: string; goBack?: boolean } | null>(null);
 /** Set when something broke: the error boundary shows it with the run code. */
 export const crash = signal<{ message: string; stack?: string; action?: Action } | null>(null);
 
@@ -478,14 +482,36 @@ function readSave(): { build?: unknown; code?: unknown } | null {
   }
 }
 
+/** Whether a saved run had already ended (won or lost), as far as this build replays it. */
+function runOver(code: string): boolean {
+  const decoded = decodeRunCode(code);
+  if (!decoded.ok) return false;
+  try {
+    const { state, failedAt } = rules.replay(decoded.data.setup, decoded.data.actions);
+    return failedAt === undefined && !inProgress(state);
+  } catch {
+    // A setup this build can't start: as good as in progress, so its code is kept.
+    return false;
+  }
+}
+
+/** Whether this build made a run code: only then can a note offer to go back to the run. */
+function fromThisBuild(code: string): boolean {
+  const decoded = decodeRunCode(code);
+  return decoded.ok && decoded.data.build === BUILD_SHA;
+}
+
 /**
  * Before a link or a game update replaces the saved run, keep its code (in the browser and in
- * the note), so a run in progress is never silently lost. Returns the code if it had any weeks.
+ * the note), so a run in progress is never silently lost. Returns the code if it had any weeks
+ * and wasn't over: a finished run's house is already in the company's record, and nothing was
+ * in progress.
  */
 function keepPreviousRun(saved: { code?: unknown } | null): string | undefined {
   if (typeof saved?.code !== 'string') return undefined;
   const decoded = decodeRunCode(saved.code);
   if (decoded.ok && decoded.data.actions.length === 0) return undefined;
+  if (runOver(saved.code)) return undefined;
   try {
     localStorage.setItem(PREVIOUS_KEY, saved.code);
   } catch {
@@ -587,6 +613,17 @@ export function newRun(
   startRun({ seed, clientId, crewId, mode: 'standard' });
   canContinue.value = false;
   appScreen.value = 'game';
+}
+
+/**
+ * The crash screen's "Start a new run" (ErrorBoundary.tsx): the run that broke is put aside
+ * first, as a link does, so its code is kept and the note can go back to it.
+ */
+export function newRunAfterCrash(): void {
+  const previous = keepPreviousRun(readSave());
+  crash.value = null;
+  newRun();
+  if (previous) addPutAsideNote(previous);
 }
 
 /** Back to the run that was loaded from the save. */
@@ -771,7 +808,7 @@ export function loadInitialRun(): void {
   if (fromUrl) {
     const previous = keepPreviousRun(saved);
     if (loadRunCode(fromUrl)) {
-      if (previous) addNote('Your run in progress was put aside.', previous);
+      if (previous) addPutAsideNote(previous);
       appScreen.value = 'game';
       return;
     }
@@ -782,7 +819,7 @@ export function loadInitialRun(): void {
   if (seedParam || clientId || crewId) {
     const previous = keepPreviousRun(saved);
     newRun(seedParam || randomSeed(), clientId ?? 'hendersons', crewId ?? 'generalContractor');
-    if (previous) addNote('Your run in progress was put aside.', previous);
+    if (previous) addPutAsideNote(previous);
     if (clientParam !== null && !clientId) {
       addNote(`There's no client "${clientParam}": this run is for the Hendersons.`);
     }
@@ -810,7 +847,10 @@ export function loadInitialRun(): void {
       crewId: 'generalContractor',
       mode: 'standard',
     });
-    addNote('The game updated, so your last run couldn’t continue.', previous);
+    // A run that was already over had nothing left to continue: no note for it.
+    if (previous || !runOver(saved.code)) {
+      addNote('The game updated, so your last run couldn’t continue.', previous);
+    }
     if (linkError) addNote(linkError);
     appScreen.value = 'title';
     return;
@@ -828,10 +868,47 @@ export function loadInitialRun(): void {
 /** Adds a sentence to the note, keeping any old run code it already offers. */
 function addNote(text: string, oldCode?: string): void {
   const current = notice.value;
+  // The way back goes with the code it loads: a new code drops the old one's.
+  const goBack = oldCode === undefined && current?.goBack;
   notice.value = {
     text: current ? `${current.text} ${text}` : text,
     oldCode: oldCode ?? current?.oldCode,
+    ...(goBack ? { goBack } : {}),
   };
+}
+
+/**
+ * The note for a run in progress that a link (or a new run after a crash) took the place of. A
+ * run from this build can come back (restorePreviousRun); one from an older build may stop
+ * replaying, so its note only offers the code.
+ */
+function addPutAsideNote(code: string, text = 'Your run in progress was put aside.'): void {
+  addNote(text, code);
+  if (notice.value && fromThisBuild(code)) notice.value = { ...notice.value, goBack: true };
+}
+
+/**
+ * The note's "Go back to it": loads the run that was put aside, and puts the run being left
+ * aside in turn (if it has any weeks), so the same button swaps them back.
+ */
+export function restorePreviousRun(code: string): boolean {
+  const decoded = decodeRunCode(code);
+  if (!decoded.ok) {
+    notice.value = { text: decoded.error };
+    return false;
+  }
+  notice.value = null;
+  const leaving = keepPreviousRun(readSave());
+  const { failedAt, error } = startRun(decoded.data.setup, decoded.data.actions);
+  appScreen.value = 'game';
+  if (failedAt !== undefined) {
+    addNote(`Your run stopped replaying at action ${failedAt + 1}: ${error}`);
+  } else if (!notice.value) {
+    // (startRun leaves its own note when a run can't start at all.)
+    addNote('You’re back in your run.');
+  }
+  if (leaving) addPutAsideNote(leaving, 'The other run was put aside.');
+  return true;
 }
 
 /** Loads a pasted run code. Returns false (with a note) if it can't be read at all. */

@@ -201,7 +201,8 @@ export function parseCompany(raw: unknown): Company {
 const KEY = `openhouse:${BUILD_CHANNEL}:company`;
 
 function load(): Company {
-  if (typeof localStorage === 'undefined') return emptyCompany();
+  // Everything that touches localStorage sits in the try: outside a browser (a test) it isn't
+  // there, and a browser that blocks site data throws on the first read of it.
   try {
     return parseCompany(JSON.parse(localStorage.getItem(KEY) ?? 'null'));
   } catch {
@@ -211,14 +212,14 @@ function load(): Company {
 
 /** Writes the record, letting the oldest photos go while the browser says it's full. */
 function store(c: Company): Company {
-  if (typeof localStorage === 'undefined') return c;
   let next: Company | null = c;
   while (next) {
     try {
       localStorage.setItem(KEY, JSON.stringify({ v: 1, ...next }));
       return next;
     } catch {
-      // Full (photos are the bulk of it), or blocked: try with one photo fewer.
+      // Full (photos are the bulk of it), blocked, or not there at all (a test): try with one
+      // photo fewer.
       next = withFewerPhotos(next);
     }
   }
