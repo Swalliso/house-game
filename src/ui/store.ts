@@ -602,10 +602,14 @@ function runOver(code: string): boolean {
  * Whether a save from another build can carry on in this one (D-068): its content is this
  * build's, and this build's rules replay every action, back to the run as it was saved. A save
  * from before the check was kept beside the code (2026-11-11) has none: the content and a clean
- * replay have to do.
+ * replay have to do, unless it used a reroll.
  */
 function carriesOver(data: RunCodeData, check: unknown): boolean {
   if (data.contentHash !== CONTENT_HASH) return false;
+  // A reroll deals other cards since D-132's note of 2026-11-11, so a save that used one can
+  // replay cleanly to a house the player never built, and only a check would catch it. Without
+  // one, the run starts fresh (the user's call, D-068's note of the same day).
+  if (check === undefined && data.actions.some((a) => a.t === 'reroll')) return false;
   let replayed: ReturnType<typeof rules.replay>;
   try {
     replayed = rules.replay(data.setup, data.actions);

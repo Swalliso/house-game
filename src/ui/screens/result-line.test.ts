@@ -376,36 +376,48 @@ describe('opening the link', () => {
 
   describe('a save from another build (D-068)', () => {
     const theirs: RunSetup = { ...setup, seed: 'theirs' };
-    // Three weeks built on their lot, the first legal placement each week.
-    const actions: Action[] = [];
-    let built = rules.newRun(theirs);
-    for (let week = 0; week < 3; week++) {
-      const place = rules.legalActions(built).find((a) => a.t === 'place') ?? { t: 'pass' };
-      actions.push(place);
-      built = rules.apply(built, place).state;
+    /**
+     * Three weeks built on their lot, the first legal placement each week (after a reroll in
+     * the 0-based week `rerollIn`, if given), and what save() keeps beside the code (store.ts):
+     * the run's week, Wow, budget and pieces.
+     */
+    function threeWeeks(rerollIn?: number) {
+      const actions: Action[] = [];
+      let built = rules.newRun(theirs);
+      for (let week = 0; week < 3; week++) {
+        if (week === rerollIn) {
+          actions.push({ t: 'reroll' });
+          built = rules.apply(built, { t: 'reroll' }).state;
+        }
+        const place = rules.legalActions(built).find((a) => a.t === 'place') ?? { t: 'pass' };
+        actions.push(place);
+        built = rules.apply(built, place).state;
+      }
+      const check = {
+        week: built.week,
+        score: built.score,
+        budget: built.budget,
+        pieces: built.house.pieces.length,
+      };
+      return { actions, check };
     }
-    /** What save() keeps beside the code (store.ts): the run's week, Wow, budget and pieces. */
-    const check = {
-      week: built.week,
-      score: built.score,
-      budget: built.budget,
-      pieces: built.house.pieces.length,
-    };
+    const { actions, check } = threeWeeks();
     const CARRIED = 'The game updated, and your run carried over.';
     const DROPPED = 'The game updated, so your last run couldn’t continue.';
 
     /**
-     * Saves the run as an older build would have: its code stamped with that build, and the
-     * check beside it (`null` for a save from before the check was kept). Returns the code.
+     * Saves the run (or `acts`) as an older build would have: its code stamped with that build,
+     * and the check beside it (`null` for a save from before the check was kept). Returns the
+     * code.
      */
     function olderSave(
-      opts: { contentHash?: string; extra?: Action[]; check?: unknown } = {},
+      opts: { contentHash?: string; acts?: Action[]; extra?: Action[]; check?: unknown } = {},
     ): string {
       const code = encodeRunCode({
         build: 'older00',
         contentHash: opts.contentHash ?? CONTENT_HASH,
         setup: theirs,
-        actions: [...actions, ...(opts.extra ?? [])],
+        actions: [...(opts.acts ?? actions), ...(opts.extra ?? [])],
       });
       const saved = { build: 'older00', code };
       store.set(
@@ -454,6 +466,41 @@ describe('opening the link', () => {
       expect(canContinue.value).toBe(true);
       expect(log.value).toEqual(actions);
       expect(notice.value).toEqual({ text: CARRIED });
+    });
+
+    // A reroll deals other cards since D-132's note of 2026-11-11, so the same actions can replay
+    // cleanly to a house the player never built. Only a check catches that (the user's call).
+    const rerolled = threeWeeks(1);
+
+    it('starts fresh from a save before the check was kept that used a reroll', () => {
+      expect(rerolled.actions).toContainEqual({ t: 'reroll' });
+      droppedFor(olderSave({ acts: rerolled.actions, check: null }));
+      // The same lot's save without the reroll still carries over.
+      notice.value = null;
+      store.clear();
+      olderSave({ check: null });
+      open('http://localhost:5173/');
+      expect(canContinue.value).toBe(true);
+      expect(log.value).toEqual(actions);
+      expect(notice.value).toEqual({ text: CARRIED });
+    });
+
+    it('leaves a save with a check that used a reroll to its check', () => {
+      olderSave({ acts: rerolled.actions, check: rerolled.check });
+      open('http://localhost:5173/');
+      expect(canContinue.value).toBe(true);
+      expect(log.value).toEqual(rerolled.actions);
+      expect(notice.value).toEqual({ text: CARRIED });
+      // A fresh page load: nothing carried over yet.
+      notice.value = null;
+      canContinue.value = false;
+      store.clear();
+      droppedFor(
+        olderSave({
+          acts: rerolled.actions,
+          check: { ...rerolled.check, score: rerolled.check.score + 1 },
+        }),
+      );
     });
 
     it('carries a finished run over without a note: there was nothing to continue', () => {
