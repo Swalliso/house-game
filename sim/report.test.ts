@@ -87,6 +87,7 @@ function run(seed: string, cleared: number, over: Partial<RunRecord> = {}): RunR
       budgetEarned: 0,
       budgetLeft: 0,
       finalReward: 0,
+      leftoverWow: 0,
       budgetAtLeave: [],
       heldAtEnd: [],
       bonusRerollsBought: 0,
@@ -406,25 +407,37 @@ describe('a real run’s record', () => {
     const { record } = simulateRun(rules, 'sim-3', POLICIES.greedy!, { probePhase: null });
     const pieceWow = Object.values(record.pieces).reduce((n, p) => n + p.wow, 0);
     expect(record.setWow).toBeGreaterThan(0);
-    expect(pieceWow + record.setWow).toBeCloseTo(record.finalScore, 6);
+    // The run was won, so its leftover budget paid Wow at the last milestone (D-145): the one
+    // part of the final score no tally made (greedy never completes early here).
+    expect(record.result).toBe('won');
+    expect(record.economy.leftoverWow).toBe(
+      record.economy.budgetLeft * CONTENT.balance.leftoverBudgetWow,
+    );
+    expect(pieceWow + record.setWow + record.economy.leftoverWow).toBeCloseTo(record.finalScore, 6);
   });
 });
 
-describe('the change orders table (M4b)', () => {
-  it('shows, per client and order, how often it was offered, accepted, and met or kept', () => {
+describe('the change orders table (M4b, D-144)', () => {
+  it('shows, per client and order, how often it was offered, picked, and met or kept', () => {
     const records = [
       run('co-a', 7, {
         changeOrders: [
-          { id: 'goldenRetriever', phase: 2, answer: 'accepted', result: 'met' },
-          { id: 'heatWave', phase: 4, answer: 'acknowledged', result: 'ended' },
+          { id: 'goldenRetriever', phase: 2, passedOver: ['heatWave'], result: 'met' },
+          { id: 'heatWave', phase: 4, passedOver: ['coldSnap'], result: 'ended' },
         ],
       }),
       run('co-b', 7, {
-        changeOrders: [{ id: 'goldenRetriever', phase: 2, answer: 'accepted', result: 'missed' }],
+        changeOrders: [
+          { id: 'goldenRetriever', phase: 2, passedOver: ['hoaLetter'], result: 'missed' },
+        ],
       }),
-      run('co-c', 7, { changeOrders: [{ id: 'goldenRetriever', phase: 2, answer: 'declined' }] }),
-      // Lost before its milestone: accepted, never resolved.
-      run('co-d', 2, { changeOrders: [{ id: 'goldenRetriever', phase: 2, answer: 'accepted' }] }),
+      run('co-c', 7, {
+        changeOrders: [
+          { id: 'coldSnap', phase: 2, passedOver: ['goldenRetriever'], result: 'ended' },
+        ],
+      }),
+      // Lost before its milestone: picked, never resolved. Offered alone.
+      run('co-d', 2, { changeOrders: [{ id: 'goldenRetriever', phase: 2, passedOver: [] }] }),
     ];
     const lines = changeOrdersReport(CONTENT, records).split('\n');
     expect(lines.some((l) => l.includes('The Hendersons (4 runs, 5 offers)'))).toBe(true);
@@ -434,7 +447,7 @@ describe('the change orders table (M4b)', () => {
         .split(/\s{2,}/)
         .map((c) => c.trim())
         .filter(Boolean);
-    // Offered 4; accepted 3 of 4; of those, 1 met, 1 missed, 1 still open.
+    // On 4 offers; picked on 3 of them; of those, 1 met, 1 missed, 1 still open.
     expect(row('We got a golden retriever')).toEqual([
       'We got a golden retriever (request)',
       '4',
@@ -443,7 +456,22 @@ describe('the change orders table (M4b)', () => {
       '33%',
       '1',
     ]);
-    expect(row('Heat wave')).toEqual(['Heat wave (phase)', '1', '100%', '–', '–', '0']);
+    // On 2 offers (picked once, passed over once).
+    expect(row('Heat wave')).toEqual(['Heat wave (phase)', '2', '50%', '–', '–', '0']);
+    // Never picked: it's listed with the offers it was passed over on.
+    expect(row('A letter from the HOA')).toEqual([
+      'A letter from the HOA (restriction)',
+      '1',
+      '0%',
+      '–',
+      '–',
+      '0',
+    ]);
+    // The offers by the kinds on them: a mixed one says how often its first-named kind won.
+    expect(row('phase / request')).toEqual(['phase / request', '2', '40%', '50%']);
+    expect(row('phase / phase')).toEqual(['phase / phase', '1', '20%', '–']);
+    expect(row('request / restriction')).toEqual(['request / restriction', '1', '20%', '100%']);
+    expect(row('request, alone')).toEqual(['request, alone', '1', '20%', '–']);
     // No change orders, no table.
     expect(changeOrdersReport(CONTENT, [run('none', 7)])).toBe('');
   });

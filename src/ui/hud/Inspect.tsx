@@ -12,6 +12,7 @@ import {
   cardText,
   CONTENT,
   definite,
+  featureWantedText,
   fixtureText,
   glossary,
   rewardText,
@@ -56,8 +57,9 @@ import {
   type Inspected,
 } from '../store.ts';
 import { Button, Icon } from '../kit/kit.tsx';
+import { BLUEPRINT_ICONS } from '../sprites.ts';
 import type { IconName } from '../theme/art.ts';
-import { GoodBody, goodName, offerGood, type GoodRef } from './goods.tsx';
+import { BlueprintWorth, GoodBody, goodName, offerGood, type GoodRef } from './goods.tsx';
 import { arrivalOf, midName } from './household.ts';
 import { Tip } from './Tip.tsx';
 import './inspect.css';
@@ -640,8 +642,15 @@ function ItemInfo({
   const canSell = sellAs && (s.screen === 'build' || s.screen === 'shop');
   return (
     <>
-      <h2>{goodName(good)}</h2>
+      <h2>
+        {good.kind === 'blueprint' && <Icon name={BLUEPRINT_ICONS[good.id]} class="good-glyph" />}
+        {goodName(good)}
+      </h2>
       <GoodBody good={good} where={!sellAs && good.kind !== 'piece'} />
+      {/* D-141: what a blueprint you hold is adding, from the rules. */}
+      {good.kind === 'blueprint' && sellAs && (
+        <BlueprintWorth value={rules.blueprintValue(s, good.id)} where="panel" />
+      )}
       {good.kind === 'blueprint' && sellAs && (
         <p class="muted">Bought in week {s.blueprints[sellAs.i]?.boughtWeek}.</p>
       )}
@@ -669,7 +678,7 @@ function DemolishInfo() {
     return (
       <>
         <h2>Demolish</h2>
-        <p class="muted">Point at a piece or a boulder. {left}</p>
+        <p class="muted">Point at a piece, a boulder or the Old Shed. {left}</p>
       </>
     );
   }
@@ -706,9 +715,10 @@ const FEATURE_TEXT: Record<string, string> = {
   pond: 'Water, and a view. It counts once as a neighbor, however much of it a piece touches. Nothing can be built on it.',
   creek:
     'Water, and a view. It counts once as a neighbor. Nothing can be built on it, except a Driveway.',
-  boulder: 'Gives nothing, and blocks building. A demolition clears it.',
-  oldShed:
-    'An old shed in the way. It blocks building until it’s demolished, and there’s a random tool inside.',
+  // Who earns beside each comes first, from the content (featureWantedText, D-145): at 1280×720
+  // the panel shows about five lines before it scrolls.
+  boulder: 'It blocks building; a demolition clears it.',
+  oldShed: 'It blocks building. Demolish it for the random tool inside.',
   timeCapsule:
     'Something buried here. It doesn’t block building: the first piece built over it digs it up for +3 budget.',
 };
@@ -847,7 +857,10 @@ export function Inspect() {
     body = t ? (
       <>
         <h2>{CONTENT.features[t].name}</h2>
-        <p>{FEATURE_TEXT[t]}</p>
+        <p>
+          {(t === 'boulder' || t === 'oldShed') && <>{featureWantedText(CONTENT, t)} </>}
+          {FEATURE_TEXT[t]}
+        </p>
         {where}
       </>
     ) : (

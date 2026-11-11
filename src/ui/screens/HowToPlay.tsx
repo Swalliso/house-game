@@ -14,9 +14,11 @@ import './howto.css';
 import { Fragment, type ComponentChildren } from 'preact';
 import {
   CONTENT,
+  featureWantedText,
   glossary,
   lotTraitText,
   multNumber,
+  rewardText,
   rules,
   SCORE_LABELS,
   type PieceId,
@@ -121,8 +123,14 @@ function all(names: readonly string[]): string {
   return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
 }
 
+/** What a lot find pays, mid-sentence: "a random tool", "+3 budget". */
+function reward(id: 'oldShed' | 'timeCapsule'): string {
+  const r = CONTENT.features[id].reward;
+  return r ? rewardText(CONTENT, r).replace(/^A /, 'a ') : '';
+}
+
 const CONTROLS: readonly (readonly [keys: string, does: string])[] = [
-  ['1–4', 'Pick a card'],
+  ['Number keys', 'Pick a card'],
   ['R or right-click', 'Rotate'],
   ['Click', 'Place'],
   // M4: a pack's tiles (D-106).
@@ -132,16 +140,13 @@ const CONTROLS: readonly (readonly [keys: string, does: string])[] = [
   ['Mouse wheel', 'Zoom'],
   ['Drag', 'Pan'],
   ['F', 'Fit the lot'],
-  // D-133: the Roof button's key, once the Roofing milestone has put the roof on.
-  ['T', 'Roof on or off, after Roofing'],
   ['Hold Space', 'Speed up the tally'],
   ['Click', 'Skip the tally'],
   ['Esc', 'Cancel'],
   // Playtest 4: Inspect holds a clicked piece (D-113).
   ['Click a piece', 'Hold it in Inspect (click again to let go)'],
-  // M4: a change order's sheet (D-109).
-  ['Enter', 'Accept a change order'],
-  ['Esc or D', 'Decline a change order'],
+  // M4: the change orders' sheet (D-109, D-144).
+  ['1 or 2', 'Pick a change order'],
 ];
 
 function HowToPlayText() {
@@ -329,6 +334,20 @@ function HowToPlayText() {
           <li>
             <b>The street</b> is Loud.
           </li>
+          {/* The lot's finds (D-145), with who wants each beside them and what each pays read
+              from the content. */}
+          <li>
+            <b>Boulders</b> block building; a demolition clears one.{' '}
+            {featureWantedText(CONTENT, 'boulder')}
+          </li>
+          <li>
+            <b>The Old Shed</b> blocks building. Demolish it for {reward('oldShed')}, or keep it:{' '}
+            {featureWantedText(CONTENT, 'oldShed')}
+          </li>
+          <li>
+            <b>A Time Capsule</b> doesn't block building: the first piece built over it digs it up
+            for {reward('timeCapsule')}.
+          </li>
           <li>
             <b>The sun</b> shines from one edge of the lot, marked on the board. A room, a Hallway
             or an outbuilding is Sunny when a wall of it faces the sun with no Tree or other
@@ -361,16 +380,16 @@ function HowToPlayText() {
             Demolish
           </dt>
           <dd>
-            Clear a piece or a boulder, with no refund. {demolitions} per run. It never splits the
-            house in two.
+            Clear a piece, a boulder or the Old Shed, with no refund. {demolitions} per run. It
+            never splits the house in two.
           </dd>
           <dt>
             <Icon name="flag" />
             Complete early
           </dt>
           <dd>
-            Once you've met the target, finish the milestone now. The weeks left play out on their
-            own (your house keeps earning), and you get a bonus.
+            Once you've met the target, finish the milestone now. You skip the builds for the weeks
+            left: they play out on their own (your house keeps earning), and you get a bonus.
           </dd>
           <dt>
             <Icon name="clock" />
@@ -386,6 +405,12 @@ function HowToPlayText() {
             You earn budget at each milestone ({b.milestoneBudget}), for each week saved by
             completing early, from economy pieces, and by selling goods back for half.
           </li>
+          {b.leftoverBudgetWow > 0 && (
+            <li>
+              No shop follows the last milestone: the budget you still hold when it’s met pays{' '}
+              {b.leftoverBudgetWow} {SCORE_LABELS.total} each.
+            </li>
+          )}
           <li>
             After every milestone but the last, the shop opens. <b>Blueprints</b> bend the rules for
             the whole run. <b>Pieces</b> wait in your reserve; placing one is a week's build.{' '}
@@ -410,17 +435,18 @@ function HowToPlayText() {
           <ul>
             <li>
               After the {orderMilestones} milestones, before the shop, the client changes their
-              mind.
+              mind: two change orders arrive, and you <b>pick one</b>. The other may come back.
             </li>
             <li>
               <b>A request or a restriction</b> runs through the next phase: see it through for +
-              {payLow === payHigh ? payLow : `${payLow}–${payHigh}`} budget. Declining costs
+              {payLow === payHigh ? payLow : `${payLow}–${payHigh}`} budget. Missing it costs
               nothing.
             </li>
             <li>
-              <b>A phase effect</b> can't be declined: it changes what earns until the next
-              milestone.
+              <b>A phase effect</b> changes what earns until the next milestone: something earns
+              more, something less. Its card says what it would do to your house today.
             </li>
+            <li>After the last of those milestones, both are phase effects.</li>
           </ul>
         </Section>
       )}

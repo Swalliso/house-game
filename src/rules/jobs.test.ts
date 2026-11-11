@@ -1,5 +1,6 @@
 // The job board (src/rules/jobs.ts): contracts from `jobs/<i>`, clients by rarity and never
-// twice, and the Hendersons first on a first visit.
+// twice, and on a first visit the first job (D-149): the Hendersons first, on the first job's
+// own lot, and the other contracts locked.
 
 import { describe, expect, it } from 'vitest';
 import type { ClientId } from './index.ts';
@@ -16,6 +17,7 @@ describe('jobBoard', () => {
     for (const c of board) {
       expect(c.seed).toMatch(/^[abcdefghjkmnpqrstuvwxyz23456789]{6}$/);
       expect(c.recommended).toBe(false);
+      expect(c.locked).toBe(false);
     }
     expect(new Set(board.map((c) => c.seed)).size).toBe(3);
   });
@@ -41,10 +43,31 @@ describe('jobBoard', () => {
     }
   });
 
-  it('keeps contract seeds from their own streams, so the first-visit mark never moves a lot', () => {
+  it('opens only the first job on a first visit, on its own lot (D-149)', () => {
+    for (let i = 0; i < 50; i++) {
+      const board = jobBoard(C, `only-${i}`, { firstVisit: true });
+      expect(board[0]).toMatchObject({ seed: C.balance.jobBoard.firstSeed, locked: false });
+      expect(board.slice(1).every((c) => c.locked)).toBe(true);
+    }
+  });
+
+  it('deals the other contracts from their own streams, so the first job never moves a lot', () => {
     const first = jobBoard(C, 'lots', { firstVisit: true });
     const later = jobBoard(C, 'lots', { firstVisit: false });
-    expect(first.map((c) => c.seed)).toEqual(later.map((c) => c.seed));
+    expect(first.slice(1).map((c) => c.seed)).toEqual(later.slice(1).map((c) => c.seed));
+    expect(first[0]!.seed).not.toBe(later[0]!.seed);
+  });
+
+  it('locks nothing when the content has no first client', () => {
+    const none = {
+      ...C,
+      balance: {
+        ...C.balance,
+        jobBoard: { ...C.balance.jobBoard, firstClient: 'nobody' as ClientId },
+      },
+    };
+    const board = jobBoard(none, 'lots', { firstVisit: true });
+    expect(board.every((c) => !c.recommended && !c.locked)).toBe(true);
   });
 
   it('deals by rarity: the commons most, the uncommon less, the rare least, none guaranteed', () => {

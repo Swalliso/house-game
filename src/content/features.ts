@@ -33,7 +33,8 @@ export const FEATURES: Readonly<Record<FeatureId, FeatureDef>> = {
     viewSource: true,
     body: true,
   },
-  // Demolishing a boulder arrives with demolitions in M2.
+  // A demolition clears one. Each Boulder is its own neighbor, like a Tree, with no tags and no
+  // view (D-145): only the pieces that name it count it (a Lawn, a Flower Bed, the Fire Pit).
   boulder: {
     id: 'boulder',
     name: 'Boulder',
@@ -41,10 +42,11 @@ export const FEATURES: Readonly<Record<FeatureId, FeatureDef>> = {
     tags: [],
     blocks: true,
     clear: 'demolish',
-    inert: true,
   },
-  // Finds (Appendix B, M3b): each pays once. They give nothing as neighbors.
-  // The Old Shed (2×2) blocks building until it's demolished, which pays a random tool.
+  // Finds (Appendix B, M3b): each pays once.
+  // The Old Shed (2×2) blocks building until it's demolished, which pays a random tool. While it
+  // stands it's one neighbor, like the pond (D-145): the pieces that would use a shed name it
+  // (the Greenhouse, a Herb Garden, the Henhouse), so keeping it competes with clearing it.
   oldShed: {
     id: 'oldShed',
     name: 'Old Shed',
@@ -52,11 +54,12 @@ export const FEATURES: Readonly<Record<FeatureId, FeatureDef>> = {
     tags: [],
     blocks: true,
     clear: 'demolish',
-    inert: true,
+    body: true,
     size: [2, 2],
     reward: { tool: 'random' },
   },
-  // A Time Capsule doesn't block: the first piece built over it pays.
+  // A Time Capsule doesn't block: the first piece built over it pays. It gives nothing as a
+  // neighbor.
   timeCapsule: {
     id: 'timeCapsule',
     name: 'Time Capsule',

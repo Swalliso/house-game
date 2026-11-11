@@ -1,23 +1,39 @@
 // The change orders (M4b) on the real content: Appendix B's per client and generic ones (the
-// Twins and Grandma's moving in are arrivals now), their kinds, rewards, and generated text;
-// what each request counts on a hand-built house; who can be offered what; and the mistakes
-// validateContent catches.
+// Twins and Grandma's moving in are arrivals now; D-137 added three generic ones and a phase
+// effect each for the Barkers, Juniper, and Dale), their kinds, rewards, and generated text;
+// what each request counts on a hand-built house; what D-137's orders do to a tally and a
+// placement; who can be offered what; and the mistakes validateContent catches.
 
 import { describe, expect, it } from 'vitest';
-import type { ChangeOrderId, ClientId, Content, HouseCondition, RunState } from '../rules/index.ts';
+import type {
+  ChangeOrderId,
+  ChangeOrderRecord,
+  ClientId,
+  Content,
+  FixtureId,
+  HouseCondition,
+  RunState,
+} from '../rules/index.ts';
 import { changeOrderText, meetsHouse, rules } from '../rules/index.ts';
+import { withFixture } from '../rules/fixtures.ts';
 import { computeLayout } from '../rules/layout.ts';
 import { emptyRows, houseFrom, type Placement } from '../rules/testing.ts';
 import { CONTENT, validateContent } from './index.ts';
 
 const ORDERS = CONTENT.changeOrders;
+const CLIENT_IDS = Object.keys(CONTENT.clients) as ClientId[];
+const GENERIC = (Object.keys(ORDERS) as ChangeOrderId[]).filter(
+  (id) => ORDERS[id].scope === 'generic',
+);
 
 describe('the change orders', () => {
-  it('are Appendix B’s: two generic, two for each client', () => {
-    const generic = Object.values(ORDERS).filter((o) => o.scope === 'generic');
-    expect(generic.map((o) => [o.id, o.kind])).toEqual([
+  it('are Appendix B’s: five generic, two or three for each client', () => {
+    expect(GENERIC.map((id) => [id, ORDERS[id].kind])).toEqual([
       ['workingFromHome', 'request'],
       ['heatWave', 'phase'],
+      ['coldSnap', 'phase'],
+      ['rainySeason', 'phase'],
+      ['hoaLetter', 'restriction'],
     ]);
     const own = (id: ClientId) =>
       CONTENT.clients[id].changeOrders.map((o) => [o, ORDERS[o].kind, ORDERS[o].scope]);
@@ -32,14 +48,17 @@ describe('the change orders', () => {
     expect(own('barkers')).toEqual([
       ['anotherRescue', 'request', 'barkers'],
       ['agilityCourse', 'request', 'barkers'],
+      ['puppies', 'phase', 'barkers'],
     ]);
     expect(own('juniper')).toEqual([
       ['declutter', 'request', 'juniper'],
       ['teaGarden', 'request', 'juniper'],
+      ['magazineShoot', 'phase', 'juniper'],
     ]);
     expect(own('dale')).toEqual([
       ['bigDeadline', 'restriction', 'dale'],
       ['startedAPodcast', 'request', 'dale'],
+      ['outOfOffice', 'phase', 'dale'],
     ]);
     expect(CONTENT.balance.changeOrderAfter).toEqual([2, 4, 6]);
   });
@@ -50,6 +69,7 @@ describe('the change orders', () => {
     );
     expect(rewards).toEqual({
       workingFromHome: { budget: 3 },
+      hoaLetter: { budget: 4 },
       goldenRetriever: { budget: 5 },
       covenVisiting: { budget: 5 },
       anotherRescue: { budget: 3 },
@@ -89,6 +109,38 @@ describe('the change orders', () => {
     ]);
     expect(terms('thanksgiving')).toEqual(['The Entertainer pays double', 'For the next phase']);
     expect(terms('eternalNight')).toEqual(['Rooms are Dark', 'For the next phase']);
+    // D-137's.
+    expect(terms('coldSnap')).toEqual([
+      'Pieces with a Fireplace earn +100%',
+      'Bathrooms earn −50%',
+      'For the next phase',
+    ]);
+    expect(terms('rainySeason')).toEqual([
+      'Green pieces earn +100%',
+      'Patios earn nothing',
+      'For the next phase',
+    ]);
+    expect(terms('hoaLetter')).toEqual([
+      'Place no pieces in the front yard until the next milestone',
+      'Kept: +4 budget',
+    ]);
+    expect(terms('puppies')).toEqual([
+      'Pet pieces earn +100%',
+      'Lawns earn +100%',
+      'Flower Beds earn nothing',
+      'For the next phase',
+    ]);
+    expect(terms('magazineShoot')).toEqual([
+      'Rooms with a view earn +100%',
+      'Closets earn nothing',
+      'Hallways earn nothing',
+      'For the next phase',
+    ]);
+    expect(terms('outOfOffice')).toEqual([
+      'Outdoor pieces earn +100%',
+      'Home Offices earn nothing',
+      'For the next phase',
+    ]);
     for (const o of Object.values(ORDERS)) {
       expect(o.text, o.id).toMatch(/^[A-Z].*\.$/);
       for (const t of changeOrderText(CONTENT, o)) expect(t, o.id).not.toMatch(/undefined|NaN/);
@@ -187,13 +239,175 @@ describe('who can be offered what', () => {
   });
 
   it('each client: their own, then the generic ones', () => {
-    for (const id of Object.keys(CONTENT.clients) as ClientId[]) {
+    for (const id of CLIENT_IDS) {
       expect(rules.eligibleChangeOrders(atFraming(id)), id).toEqual([
         ...CONTENT.clients[id].changeOrders,
-        'workingFromHome',
-        'heatWave',
+        ...GENERIC,
       ]);
     }
+  });
+
+  it('always leaves two phase effects for the last phase, whatever milestones 2 and 4 picked (D-137, D-144)', () => {
+    // Only phase effects come after milestone 6, two of them to pick from. Each client has
+    // four, and the picks after milestones 2 and 4 use up two at most (one passed over goes
+    // back in the pool), so two are always left.
+    const record = (id: ChangeOrderId, phase: number): ChangeOrderRecord => ({
+      id,
+      phase,
+      week: 1,
+      sinceUid: 1,
+      demolished: 0,
+      passedOver: [],
+    });
+    for (const client of CLIENT_IDS) {
+      const s = { ...atFraming(client), phase: 6 };
+      const phases = [...CONTENT.clients[client].changeOrders, ...GENERIC].filter(
+        (id) => ORDERS[id].kind === 'phase',
+      );
+      expect(phases.length, client).toBeGreaterThanOrEqual(4);
+      expect(rules.eligibleChangeOrders(s), client).toEqual(phases);
+      for (const a of phases) {
+        for (const b of phases) {
+          if (a === b) continue;
+          const left = rules.eligibleChangeOrders({
+            ...s,
+            changeOrders: [record(a, 2), record(b, 4)],
+          });
+          expect(left.length, `${client}: ${a}, then ${b}`).toBeGreaterThanOrEqual(2);
+        }
+      }
+    }
+  });
+});
+
+describe('what D-137’s orders do', () => {
+  const open = emptyRows(12, 12);
+
+  /**
+   * Each piece's tally with the phase effect running, against the same house without it: the
+   * change in its percentage, what it earns with it, and its budget either way.
+   */
+  function withEffect(
+    id: ChangeOrderId,
+    rows: readonly string[],
+    pieces: readonly Placement[],
+    fixture?: [uid: number, id: FixtureId],
+  ) {
+    const def = ORDERS[id];
+    if (def.kind !== 'phase') throw new Error(`${id} isn't a phase effect`);
+    const start = rules.newRun({
+      seed: 'd137',
+      clientId: 'hendersons',
+      crewId: 'generalContractor',
+      mode: 'standard',
+    });
+    let house = houseFrom(CONTENT, rows, pieces);
+    if (fixture) house = withFixture(house, fixture[0], fixture[1], 1);
+    const off: RunState = { ...start, house, timedEffects: [] };
+    const on: RunState = {
+      ...off,
+      timedEffects: [{ source: id, until: { phase: off.phase }, modifiers: def.modifiers }],
+    };
+    const before = rules.currentTally(off).pieces;
+    return rules.currentTally(on).pieces.map((p, k) => ({
+      piece: pieces[k]![0],
+      pct: p.pct - before[k]!.pct,
+      earned: p.earned,
+      earnedBefore: before[k]!.earned,
+      budget: [before[k]!.budget, p.budget],
+      lines: p.lines.map((l) => l.label),
+    }));
+  }
+
+  it('Cold snap: a room with a Fireplace earns double, Bathrooms half', () => {
+    const t = withEffect(
+      'coldSnap',
+      open,
+      [
+        ['bedroom', 0, 0],
+        ['bathroom', 2, 0],
+        ['bedroom', 0, 4],
+      ],
+      [1, 'fireplace'],
+    );
+    expect(t.map((p) => p.pct)).toEqual([100, -50, 0]);
+    expect(t[0]!.lines).toContain('Cold snap (pieces with a Fireplace)');
+    expect(t[1]!.lines).toContain('Cold snap (Bathrooms)');
+  });
+
+  it('Rainy season: Green pieces earn double, Patios nothing', () => {
+    const t = withEffect('rainySeason', open, [
+      ['livingRoom', 0, 0],
+      ['patio', 2, 0], // touching the Living Room, which pays it
+      ['lawn', 0, 6],
+      ['flowerBed', 6, 6],
+    ]);
+    expect(t.map((p) => p.pct)).toEqual([0, 0, 100, 100]);
+    expect(t[1]!.earnedBefore).toBeGreaterThan(0);
+    expect(t[1]!.earned).toBe(0);
+    expect(t[1]!.lines).toContain('Earns nothing (Rainy season)');
+  });
+
+  it('A litter of puppies: Pet pieces and Lawns earn double, Flower Beds nothing', () => {
+    const t = withEffect('puppies', open, [
+      ['doghouse', 8, 0],
+      ['lawn', 0, 6],
+      ['flowerBed', 6, 6],
+    ]);
+    expect(t.map((p) => p.pct)).toEqual([100, 100, 0]);
+    expect(t[2]!.earnedBefore).toBeGreaterThan(0);
+    expect(t[2]!.earned).toBe(0);
+  });
+
+  it('A magazine shoot: rooms with a view earn double; Closets and Hallways (Long ones too) nothing', () => {
+    // A Tree beside the first Bedroom gives it a view; the second has none.
+    const trees = ['..T.........', ...emptyRows(12, 11)];
+    const t = withEffect('magazineShoot', trees, [
+      ['bedroom', 0, 0],
+      ['bedroom', 0, 6],
+      ['longHallway', 0, 2], // touching the first Bedroom
+      ['closet', 6, 6],
+    ]);
+    expect(t.map((p) => p.pct)).toEqual([100, 0, 0, 0]);
+    for (const p of t.slice(2)) {
+      expect(p.earnedBefore, p.piece).toBeGreaterThan(0);
+      expect(p.earned, p.piece).toBe(0);
+    }
+  });
+
+  it('Out of office: Outdoor pieces earn double; Home Offices earn nothing but still pay budget', () => {
+    const t = withEffect('outOfOffice', open, [
+      ['homeOffice', 0, 0],
+      ['patio', 0, 1], // touching the Home Office, a room
+      ['lawn', 6, 6],
+    ]);
+    expect(t.map((p) => p.pct)).toEqual([0, 100, 100]);
+    expect(t[0]!.earnedBefore).toBeGreaterThan(0);
+    expect(t[0]!.earned).toBe(0);
+    expect(t[0]!.budget[1]).toBe(t[0]!.budget[0]);
+  });
+
+  it('A letter from the HOA: a piece in the front yard breaks it; one behind the house doesn’t', () => {
+    const start = rules.newRun({
+      seed: 'hoa',
+      clientId: 'dale',
+      crewId: 'generalContractor',
+      mode: 'standard',
+    });
+    // The street runs along the bottom: rows below the Bedroom's are the front yard.
+    const house = houseFrom(CONTENT, open, [['bedroom', 4, 4]]);
+    const forced = rules.apply(
+      { ...start, house },
+      { t: 'debug', op: 'forceChangeOrder', id: 'hoaLetter' },
+    );
+    let s = rules.apply(forced.state, { t: 'answerChangeOrder', i: 0 }).state;
+    s = rules.apply(s, { t: 'debug', op: 'giveCard', id: 'lawn' }).state;
+    const i = s.hand.length - 1;
+    const at = (x: number, y: number) =>
+      rules.preview(s, { t: 'place', from: 'hand', i, x, y, rot: 0 });
+    expect(at(4, 8)).toMatchObject({ legal: true, breaks: 'hoaLetter' });
+    expect(at(4, 0).legal).toBe(true);
+    expect(at(4, 0).breaks).toBeUndefined();
   });
 });
 

@@ -1,7 +1,7 @@
 // What the reward moments read from the rules' events and state (D-125, D-126, D-127): which
 // line of a piece's breakdown is a Rhythm payout, whether a checklist line is a house rule,
-// which milestone puts the roof on, where the front door is, and whether this run has topped
-// out before. They sort what the rules already worked out; none of them scores anything.
+// where the front door is, and whether this run has topped out before. They sort what the
+// rules already worked out; none of them scores anything.
 
 import {
   CONTENT,
@@ -38,17 +38,6 @@ export function isHouseRule(clientId: ClientId, index: number): boolean {
 
 /** The house rule whose first hold tops the house out (D-127). */
 export const TOPPED_OUT_RULE = 'underOneRoof';
-
-/** The milestone that puts the roof on (D-018): the roof reveal plays as it's met (D-127). */
-export const ROOFING_PHASE = CONTENT.balance.phases.findIndex((p) => p.name === 'Roofing');
-
-/**
- * Whether the house has its roof: the Roofing milestone has been met (a missed one ends the run
- * without it). From then on the camera's Roof button can put it on (D-133).
- */
-export function roofed(s: Pick<RunState, 'milestones'>): boolean {
-  return s.milestones.some((m) => m.phase === ROOFING_PHASE && m.result !== 'failed');
-}
 
 /**
  * The target a tally crosses, if it does: a targetReached right after it, before the next
@@ -89,7 +78,7 @@ function runKey(s: RunSetup): string {
 }
 
 function toppedList(): string[] {
-  if (typeof localStorage === 'undefined') return [];
+  // Any touch of localStorage sits in the try: a browser that blocks site data throws on it.
   try {
     const v: unknown = JSON.parse(localStorage.getItem(TOPPED_KEY) ?? 'null');
     return Array.isArray(v) ? v.filter((k): k is string => typeof k === 'string') : [];

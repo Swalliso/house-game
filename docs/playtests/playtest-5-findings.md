@@ -50,7 +50,7 @@ Played with no issues raised, so also Accepted: D-112 (playtest 4's quick fixes)
 ## 3. Follow-ups, each its own fix PR
 
 - **D-132, one reroll redraws both rows** (the draft session): the weekly draw's Rooms and Layout rows both redraw for one reroll, with one Reroll control. Its PR runs `--check` against develop. There's no re-fit until the balance pass, which comes after it.
-- **D-133, the roof view** (the juice session): a Roof toggle by the camera controls once the house is topped out. The reveal holds until the player's next action instead of lifting on a timer, and the end screen opens with the roof on.
+- **D-133, the roof view** (the juice session): a Roof toggle by the camera controls once the house is topped out. The reveal holds until the player's next action instead of lifting on a timer, and the end screen opens with the roof on. *Removed on 2026-11-10 by D-147, with D-127's reveal: the user decided the roof doesn't look good from above without a second storey.*
 - **D-134, three more tracks** (the sound session): from the shortlist of six the user heard, so a run's music doesn't loop as soon.
 - **After those:**
   - the balance pass and the one re-fit

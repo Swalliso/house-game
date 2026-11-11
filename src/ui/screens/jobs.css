@@ -1,6 +1,8 @@
 /* The job board and the crew pick (M4, D-110): one wood panel standing on the title's street
    (Title.tsx's TitleBackdrop), three paper cards in it. Rarity is a band inside a card's ring and
-   its chip, with the shop's tints (D-087); the first visit's pick wears a gold tab. Each card's
+   its chip, with the shop's tints (D-087); the first visit's pick wears a gold tab. A card leads
+   with who the client is, their wishes and the lot; the household and the tastes are a line each,
+   their detail in a tip, and the house rules are a term in the board's lede (D-142). Each card's
    middle scrolls and its button stays in view, so 1280×720 needs no page scroll, in either font.
    Built on kit.css; the timings come from feel.ts (FEEL.jobs) as --jobs-in and --beat.
 
@@ -100,7 +102,34 @@
   --card-fill: var(--rare-tint);
 }
 
-/* The first visit's pick: a gold tab standing on the card's top edge. */
+/* The first job (D-149): the one contract a first visit can take stands in a gold ring, under
+   its gold tab. The other two are face down: a quiet card with a name, a line, and when. */
+.contract.first-job {
+  box-shadow:
+    0 0 0 calc(var(--px) * 2) var(--sparkle),
+    0 0 0 calc(var(--px) * 3) var(--sparkle-deep),
+    var(--shadow-card);
+}
+.contract.locked {
+  --card-fill: var(--paper-inset);
+  justify-content: center;
+  gap: var(--space-3);
+  color: var(--ink-soft);
+  text-align: center;
+}
+.contract.locked .pcard-head {
+  justify-content: center;
+}
+.contract-later {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  margin: 0;
+  font-weight: 700;
+}
+
+/* The first visit's one job: a gold tab standing on the card's top edge. */
 .contract-tag {
   position: absolute;
   /* Its bottom ring on the card's top ring: one ink line. */
@@ -138,7 +167,6 @@
   box-shadow: inset 0 var(--px) 0 var(--paper-line);
 }
 .contract-brief,
-.contract-lot-note,
 .contract-quiet {
   margin: 0;
   color: var(--ink-soft);
@@ -159,7 +187,7 @@
   margin: 0;
 }
 
-/* The lot's map beside the wishes and the household. */
+/* The lot's map beside the wishes. */
 .contract-top {
   display: flex;
   align-items: flex-start;
@@ -168,9 +196,6 @@
 .contract-top-text {
   flex: 1;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
 }
 /* An ink ring around the map, whose tiles are whole UI pixels. */
 .contract-map {
@@ -220,25 +245,36 @@
   height: var(--lh-body);
 }
 
-/* The house rules, folded: a caret that turns as it opens. */
-.contract-rules summary {
+/* A card's last lines (D-142): the household and the tastes, a line each behind a mark, their
+   detail in the line's tip. Quieter than the wishes above them. */
+.contract-fine {
   display: flex;
-  align-items: center;
-  gap: var(--space-1);
+  flex-direction: column;
+  gap: var(--px);
+  margin: 0;
+  padding: 0;
   list-style: none;
-  font-weight: 700;
   color: var(--ink-soft);
-  cursor: pointer;
 }
-.contract-rules summary::-webkit-details-marker {
-  display: none;
+.contract-fine li {
+  display: flex;
+  gap: var(--space-1);
 }
-.contract-rules:not([open]) .caret-open,
-.contract-rules[open] .caret-closed {
-  display: none;
+.contract-fine li > span:last-child {
+  min-width: 0;
 }
-.contract-rules > ul {
-  margin: var(--space-1) 0 0;
+.taste-dot {
+  width: calc(var(--px) * 2);
+  height: calc(var(--px) * 2);
+  background: var(--ink-soft);
+}
+/* "Tastes", then how many they like and dislike, each count beside its arrow. */
+.taste-n {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--px);
+  margin-left: var(--space-2);
+  white-space: nowrap;
 }
 
 /* A crew's picture: its icon at four UI pixels to its pixel, in the card's well. */
@@ -306,9 +342,5 @@
   .jobs-list {
     --jobs-gap: var(--space-2);
     padding-inline: var(--space-2);
-  }
-  /* The map's title and label still say it. */
-  .contract-lot-note {
-    display: none;
   }
 }

@@ -12,6 +12,7 @@ import { BUILD_LABEL } from './build-info.ts';
 import { DebugPanel } from './debug/DebugPanel.tsx';
 import { ErrorBoundary } from './ErrorBoundary.tsx';
 import { busy, setHold, skip } from './fx/director.ts';
+import { FEEL } from './fx/feel.ts';
 import {
   anyModalOpen,
   cancelPlacement,
@@ -19,10 +20,11 @@ import {
   requestEndWeek,
   selectCard,
   toggleDemolish,
-  toggleRoof,
 } from './hud/actions.ts';
 import { Checklist } from './hud/Checklist.tsx';
 import { FirstHints } from './hud/FirstHints.tsx';
+import { arriving, guideCard, guideStep, shown } from './hud/first-job.ts';
+import './hud/first-job.css';
 import { Hints } from './hud/Hints.tsx';
 import './hud/board-chrome.css';
 import { GameMenu } from './hud/Menu.tsx';
@@ -32,6 +34,7 @@ import { Inventory } from './hud/Inventory.tsx';
 import { TipLayer } from './hud/Tip.tsx';
 import { ScorePanel } from './hud/ScorePanel.tsx';
 import { TopBar } from './hud/TopBar.tsx';
+import { EndPhotos, PhotoViewer } from './screens/EndPhotos.tsx';
 import { EndCaption, EndScreen } from './screens/EndScreen.tsx';
 import { HowToPlay } from './screens/HowToPlay.tsx';
 import {
@@ -46,12 +49,17 @@ import {
 import { SettingsPanel } from './screens/Settings.tsx';
 import { ChangeOrderScreen, changeOrderKey } from './screens/ChangeOrderScreen.tsx';
 import { JobBoard } from './screens/JobBoard.tsx';
+import { Portfolio } from './screens/Portfolio.tsx';
+import { startRecording } from './screens/record-run.ts';
 import { ShopScreen } from './screens/ShopScreen.tsx';
 import { Title } from './screens/Title.tsx';
 import { appScreen, heldPiece, run, selected, tool } from './store.ts';
 import { Particles } from './fx/Particles.tsx';
 import { ArrivalCard } from './hud/ArrivalCard.tsx';
 import { TierWash } from './hud/Celebration.tsx';
+
+// The company's record (D-139): a run is filed when it ends, on whichever screen that happens.
+startRecording();
 
 /** Esc closes the top sheet on any screen (modals.ts). */
 function useModalKeys(): void {
@@ -99,10 +107,11 @@ function useKeyboard(): void {
         return;
       }
       if (run.value.screen === 'changeOrder') {
-        // M4b: a change order waits for its answer. Only the sheet's keys work (Enter accepts,
-        // Esc or D declines one that can be declined); nothing reaches the week's controls
-        // behind it. Before the sheet is up, the milestone's beats play over the board: Esc
-        // skips them, and the camera's keys still work. Enter is always claimed, as below.
+        // M4b, D-144: the change orders wait for a pick. Only the sheet's keys work (1 picks
+        // the left order and 2 the right; Enter takes one offered alone); nothing reaches the
+        // week's controls behind it. Before the sheet is up, the milestone's beats play over
+        // the board: Esc skips them, and the camera's keys still work. Enter is always
+        // claimed, as below.
         if (e.key === 'Enter') e.preventDefault();
         if (e.repeat) return;
         if (!busy.value) {
@@ -111,7 +120,6 @@ function useKeyboard(): void {
         else if (e.key === '+' || e.key === '=') zoomIn();
         else if (e.key === '-' || e.key === '_') zoomOut();
         else if (e.key === 'f' || e.key === 'F') toggleFit();
-        else if (e.key === 't' || e.key === 'T') toggleRoof();
         return;
       }
       if (e.key === 'Enter') {
@@ -129,12 +137,11 @@ function useKeyboard(): void {
         // In demolish mode a pending placement is hidden, so R leaves it alone.
         if (selected.value !== null && tool.value !== 'demolish') rotate();
       } else if (e.key === 'd' || e.key === 'D') {
-        if (run.value.screen === 'build') toggleDemolish();
+        // The first job's first milestone has no Demolish yet (D-149), button or key.
+        if (run.value.screen === 'build' && shown.value.demolish) toggleDemolish();
       } else if (e.key === '+' || e.key === '=') zoomIn();
       else if (e.key === '-' || e.key === '_') zoomOut();
       else if (e.key === 'f' || e.key === 'F') toggleFit();
-      // The roof, once Roofing is met (D-133).
-      else if (e.key === 't' || e.key === 'T') toggleRoof();
       else if (e.key === 'Escape') {
         if (busy.value) skip();
         else cancelPlacement();
@@ -178,15 +185,32 @@ function Game() {
       <Hand />
     </>
   );
+  // The first job (D-149): its screen fills in week by week (first-job.ts). A part arriving
+  // this week, and the play week 1's guide is waiting for, are classes here for first-job.css.
+  const on = shown.value;
+  const step = guideStep.value;
+  const classes = [
+    'game',
+    ...[...arriving.value].map((part) => `arrive-${part}`),
+    step ? `guide-${step}` : '',
+    step === 'pick' && guideCard.value === null ? 'guide-any' : '',
+  ];
   return (
-    <div class="game">
+    <div
+      class={classes.filter(Boolean).join(' ')}
+      style={{
+        '--arrive-in': `${FEEL.firstJob.arriveMs}ms`,
+        '--arrive-ring': `${FEEL.firstJob.ringMs}ms`,
+        '--guide-pulse': `${FEEL.firstJob.pulseMs}ms`,
+      }}
+    >
       <TopBar />
       <aside class={looking ? 'left looking' : 'left'}>
-        <ScorePanel />
+        {on.score && <ScorePanel />}
         {/* What the score panel leaves, which the checklist and Inspect share (app.css). */}
         <div class="left-rest">
-          <Checklist />
-          <Inspect />
+          {on.checklist && <Checklist />}
+          {on.inspect && <Inspect />}
         </div>
       </aside>
       <main class="center">
@@ -196,8 +220,10 @@ function Game() {
         <ArrivalCard />
         <TargetFlash />
         <EndCaption />
+        <EndPhotos />
         <ShopScreen />
         <ChangeOrderScreen />
+        <BuildLabel inBoard />
       </main>
       <aside class="right">{right}</aside>
       <Hints />
@@ -236,6 +262,8 @@ export function App() {
         <GameMenu />
         <HowToPlay />
         <SettingsPanel />
+        <Portfolio />
+        <PhotoViewer />
         <CopyFallback />
         <ModalToast />
         <TipLayer />
@@ -243,14 +271,18 @@ export function App() {
       <Particles />
       <SmallScreenNotice />
       <DebugPanel />
-      <BuildLabel />
+      {/* In a run, the board's corner holds it (Game), clear of the side columns' feet. */}
+      {screen !== 'game' && <BuildLabel />}
     </>
   );
 }
 
-function BuildLabel() {
+function BuildLabel({ inBoard = false }: { inBoard?: boolean }) {
   return (
-    <div class="build-label" title="Build: channel · git commit">
+    <div
+      class={inBoard ? 'build-label in-board' : 'build-label'}
+      title="Build: channel · git commit"
+    >
       {BUILD_LABEL}
     </div>
   );

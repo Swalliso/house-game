@@ -30,6 +30,7 @@ import type {
   ModSource,
   MultTerm,
   PieceDef,
+  PieceId,
   PieceScore,
   PlacedPiece,
   RunStat,
@@ -50,7 +51,7 @@ import {
   type Neighbor,
 } from './layout.ts';
 import { ruleFrom, sourceName, type ActiveMod } from './modifiers.ts';
-import { matchesNeighbor, matchesPiece, meetsCondition } from './selectors.ts';
+import { matchesNeighbor, matchesPiece, meetsCondition, rootType } from './selectors.ts';
 import { matchSets } from './sets.ts';
 import {
   conditionText,
@@ -251,12 +252,16 @@ function applyEffect(
       let matched = neighbors.filter((n) => matchesNeighbor(content, layout, effect.match, n));
       // Soundproofing: a penalty from a blocked neighbor doesn't apply.
       if (effect.amount < 0) matched = matched.filter((n) => !blocked(ctx, piece.uid, n));
-      const counted = effect.max === undefined ? matched : matched.slice(0, effect.max);
+      // A cap credits the pieces that really touch it before the rooms linked across a hall.
+      const counted =
+        effect.max === undefined
+          ? matched
+          : touchingFirst(layout, piece.uid, matched).slice(0, effect.max);
       if (counted.length === 0) break;
       const capped = counted.length < matched.length ? ` (${effect.max} count)` : '';
       add(
         effect.amount * counted.length,
-        withLines ? neighborLabel(content, layout, matched) + capped : '',
+        withLines ? neighborLabel(content, layout, piece, matched) + capped : '',
         withLines ? counted.map(neighborRef) : [],
       );
       break;
@@ -351,12 +356,28 @@ function regionTargets(layout: Layout, uid: number): number[] {
   return out;
 }
 
-function neighborLabel(content: Content, layout: Layout, matched: readonly Neighbor[]): string {
+/** The neighbors in `matched` that physically touch the piece first, the linked ones after. */
+function touchingFirst(layout: Layout, uid: number, matched: readonly Neighbor[]): Neighbor[] {
+  const touching = layout.touching.get(uid)!;
+  const touches = (n: Neighbor) =>
+    n.kind !== 'piece' || touching.some((t) => t.kind === 'piece' && t.uid === n.uid);
+  return [...matched.filter(touches), ...matched.filter((n) => !touches(n))];
+}
+
+function neighborLabel(
+  content: Content,
+  layout: Layout,
+  piece: PlacedPiece,
+  matched: readonly Neighbor[],
+): string {
+  // A room sees out of its window; a yard piece (a Pergola's Patio) just has the view.
+  const view =
+    pieceDef(content, piece).category === 'indoor' ? 'the view from its window' : 'the view';
   const names = matched.map((n) =>
     n.kind === 'piece'
       ? pieceDef(content, layout.byUid.get(n.uid)!).name
       : n.kind === 'view'
-        ? 'the view from its window'
+        ? view
         : n.kind === 'street'
           ? neighborName(content, 'street')
           : neighborName(content, n.feature),
@@ -401,6 +422,30 @@ function allModifiers(content: Content, layout: Layout, run: readonly ActiveMod[
 function countPieces(content: Content, layout: Layout, sel: Selector, host?: number): number {
   let n = 0;
   for (const p of layout.house.pieces) if (matchesPiece(content, layout, sel, p.uid, host)) n++;
+  return n;
+}
+
+/**
+ * How many placed pieces match a selector when at most `maxEach` of one type count (It's a
+ * House, D-143). Types are root types, as the tidy yard counts them: an L-Kitchen is a Kitchen.
+ */
+export function countPiecesByType(
+  content: Content,
+  layout: Layout,
+  sel: Selector,
+  maxEach: number,
+  host?: number,
+): number {
+  const byType = new Map<PieceId, number>();
+  let n = 0;
+  for (const p of layout.house.pieces) {
+    if (!matchesPiece(content, layout, sel, p.uid, host)) continue;
+    const type = rootType(pieceDef(content, p));
+    const k = byType.get(type) ?? 0;
+    if (k >= maxEach) continue;
+    byType.set(type, k + 1);
+    n++;
+  }
   return n;
 }
 
@@ -616,7 +661,12 @@ export function tallyHouse(
   const multTerms: MultTerm[] = [];
   for (const m of mods) {
     if (m.mod.kind !== 'mult') continue;
-    const n = m.mod.per ? countPieces(content, layout, m.mod.per, m.host) : 1;
+    const { per, maxEach } = m.mod;
+    const n = !per
+      ? 1
+      : maxEach === undefined
+        ? countPieces(content, layout, per, m.host)
+        : countPiecesByType(content, layout, per, maxEach, m.host);
     const add = m.mod.add * n;
     if (add === 0) continue;
     mult += add;

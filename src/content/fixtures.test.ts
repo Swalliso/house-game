@@ -205,9 +205,11 @@ describe('Skylight', () => {
     const bedroom = (h: HouseState) => tallyOf(h, 4, ['solarPanels']).pieces[0]!.budget;
     expect(bedroom(build(open, INTERIOR))).toBe(0);
     expect(bedroom(house)).toBe(1);
-    // Mood Lighting's +100% for Dark rooms: 6 without the Skylight, its own 4 with it.
-    expect(earned(open, INTERIOR, [], ['moodLighting'])[0]).toBe(6);
-    expect(earned(open, INTERIOR, [[1, 'skylight']], ['moodLighting'])[0]).toBe(4);
+    // Mood Lighting's +0.4 Charm for a Dark room (D-143): there without the Skylight, gone
+    // with it.
+    const charm = (h: HouseState) => tallyOf(h, 1, ['moodLighting']).mult;
+    expect(charm(build(open, INTERIOR))).toBe(140);
+    expect(charm(house)).toBe(100);
   });
 });
 
@@ -230,11 +232,11 @@ describe('Blackout Curtains', () => {
     expect(layout.tags.get(1)!.has('Dark')).toBe(true);
     expect(layout.tags.get(1)!.has('Sunny')).toBe(false);
     expect(earned(open, [['bedroom', 0, 0]], [[1, 'blackoutCurtains']])).toEqual([4]);
-    // With Mood Lighting it's a Dark room: 3 at +125% is 6.75: 7.
-    expect(earned(open, [['bedroom', 0, 0]], [[1, 'blackoutCurtains']], ['moodLighting'])).toEqual([
-      7,
-    ]);
-    expect(earned(open, [['bedroom', 0, 0]], [], ['moodLighting'])).toEqual([3]);
+    // With Mood Lighting it's a Dark room: +0.4 Charm (D-143).
+    const charm = (installs: readonly Install[]) =>
+      tallyOf(build(open, [['bedroom', 0, 0]], installs), 1, ['moodLighting']).mult;
+    expect(charm([[1, 'blackoutCurtains']])).toBe(140);
+    expect(charm([])).toBe(100);
   });
 });
 
@@ -253,7 +255,7 @@ describe('Soundproofing', () => {
     const t = tallyOf(build(rows, street, [[1, 'soundproofing']]));
     expect(t.pieces[0]).toMatchObject({ points: 3, earned: 3 });
     expect(t.pieces[0]!.lines.every((l) => l.value >= 0)).toBe(true);
-    expect(t.pieces[1]!.earned).toBe(1);
+    expect(t.pieces[1]!.earned).toBe(5);
     // A Home Office on the street: 2 − 2 without it, 2 with it.
     expect(earned(rows, [['homeOffice', 0, 5]], [[1, 'soundproofing']])).toEqual([2]);
   });
@@ -289,8 +291,12 @@ describe('Kitchen Island', () => {
     ['kitchen', 4, 0],
   ];
 
-  it('its Kitchen counts as a Dining Room too, and earns +25%', () => {
-    expectText('kitchenIsland', 'Fits a Kitchen', ['Counts as a Dining Room too', 'Earns +25%']);
+  it('its Kitchen earns +25%, and its neighbors count it as a Dining Room', () => {
+    // The text says its limit (D-148): it fills no set and no checklist line.
+    expectText('kitchenIsland', 'Fits a Kitchen', [
+      'Earns +25%',
+      'Neighbors count it as a Dining Room (sets and the checklist don’t)',
+    ]);
     // All three face the sun, +2 each (D-120). Without it: the middle Kitchen is +4 at the
     // Dining Room's +50% (6); the far one has no Dining Room (2).
     expect(earned(open, row)).toEqual([2, 6, 2]);

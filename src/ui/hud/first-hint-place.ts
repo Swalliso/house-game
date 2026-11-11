@@ -6,7 +6,9 @@
 /**
  * - besideChecklist: right of the left column, level with the checklist, over the lot's edge.
  * - overChecklist: over the checklist, in the left column (week 1's hint, before the checklist's
- *   own, so the score panel it names stays in view).
+ *   own, so the score panel it names stays in view). In the first job's first weeks (D-149)
+ *   there's no checklist yet: the card sits under the score panel, or with no score panel
+ *   either (week 1), at the column's top.
  * - overScore: over the score panel, at the top of the left column.
  * - underGoods: in the right column, under the company's goods: the shop leaves that empty, and
  *   a change order's sheet sets the hand there aside.
@@ -101,8 +103,10 @@ export function placeFirstHint(
       return box(rise(c.top), a.left.right + gap, Math.min(BESIDE_WIDTH * px, room));
     }
     case 'overChecklist': {
-      const c = a.checklist ?? a.left;
-      return box(rise(c.top), c.left, width(c));
+      if (a.checklist) return box(rise(a.checklist.top), a.checklist.left, width(a.checklist));
+      // No checklist yet (D-149): where it will be, under the score panel, or the column's top.
+      if (a.score) return box(rise(a.score.bottom + gap), a.score.left, width(a.score));
+      return box(a.left.top + gap, a.left.left + gap, width(a.left) - 2 * gap);
     }
     case 'overScore': {
       const p = a.score ?? a.left;

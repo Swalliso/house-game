@@ -86,6 +86,34 @@
   color: var(--ink-soft);
 }
 
+/* Under the plaque (D-139): the next verdict up, and the house against the company's record. */
+.run-end-standing {
+  display: flex;
+  flex-direction: column;
+  gap: var(--px);
+  color: var(--ink-soft);
+  line-height: var(--lh-tight);
+}
+.run-end-standing p {
+  margin: 0;
+}
+.run-end-next::before {
+  content: 'Next: ';
+}
+.run-end-record.best {
+  color: var(--sparkle-text);
+  font-weight: 700;
+}
+.run-end-record.best .icon {
+  vertical-align: middle;
+}
+/* What it beat, on a line of its own. */
+.run-end-record.best .was {
+  display: block;
+  color: var(--ink-soft);
+  font-weight: 400;
+}
+
 /* --- Milestones: ✓ met, ✕ missed, ○ not reached (an icon and a word, never color alone) ---- */
 
 .run-end-section {
@@ -215,9 +243,24 @@
   font-weight: 700;
   color: var(--ink);
 }
-/* New run, Copy, and Title stay in view at the column's foot, as End week does: like the
+/* Copy run code and Title: a plain row under the stats (D-148), which scrolls with the column.
+   No icons and a small gap, so the two share one row on the wide column (1920 px): on two rows
+   the sticky bar cut through Title after an early loss. On a narrow column each takes a row. */
+.run-end-more {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+.run-end-more .btn {
+  flex: 1 1 auto;
+}
+.run-end-more .btn .icon {
+  display: none;
+}
+/* New run and Copy result stay in view at the column's foot, as End week does: like the
    hand's bar, it reaches past the column's padding to the window's foot, so the rows scrolling
-   under it never show below it. */
+   under it never show below it. Only these two (D-148): with all four buttons the bar hid the
+   milestones on a laptop. */
 .run-end-actions {
   position: sticky;
   bottom: calc(var(--px) * -5);
@@ -232,7 +275,8 @@
 .run-end-actions .btn {
   flex: 1 1 auto;
 }
-.run-end-actions .btn-primary {
+.run-end-actions .btn-primary,
+.run-end-actions .run-end-share {
   flex-basis: 100%;
 }
 @media (max-width: 1500px) {

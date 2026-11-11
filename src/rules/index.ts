@@ -59,6 +59,8 @@ export type PieceId =
   | 'firePit'
   | 'henhouse'
   | 'birdhouse'
+  // D-145: a late piece in the weekly draw from Drywall; every room it touches earns more.
+  | 'porch'
   // Member rooms (M4b, D-103): each arrives with a member of a client's household, into the
   // reserve. Never drawn, sold, or in the shop, a crate, or the Catalog; they count as Bedrooms.
   | 'nursery'
@@ -161,13 +163,18 @@ export type LotTraitId = 'creekside' | 'wooded';
 export type ArrivalId = 'twins' | 'grandma' | 'renfield' | 'nana' | 'rowan' | 'ivy';
 
 /**
- * Change orders (M4b, D-011): one offered after each of milestones 2, 4, and 6. Two generic
- * ones apply to every client; each client has two of its own (Appendix B).
+ * Change orders (M4b, D-011): two offered after each of milestones 2, 4, and 6, to pick one
+ * from (D-144). Five generic ones apply to every client; each client has two or three of its
+ * own, at least one a phase effect, so every client has four phase effects and the offer after
+ * milestone 6 always has two (Appendix B, D-137).
  */
 export type ChangeOrderId =
   // Generic.
   | 'workingFromHome'
   | 'heatWave'
+  | 'coldSnap'
+  | 'rainySeason'
+  | 'hoaLetter'
   // The Hendersons.
   | 'goldenRetriever'
   | 'thanksgiving'
@@ -177,12 +184,15 @@ export type ChangeOrderId =
   // The Barkers.
   | 'anotherRescue'
   | 'agilityCourse'
+  | 'puppies'
   // Juniper Vale.
   | 'declutter'
   | 'teaGarden'
+  | 'magazineShoot'
   // Dale.
   | 'bigDeadline'
-  | 'startedAPodcast';
+  | 'startedAPodcast'
+  | 'outOfOffice';
 
 /**
  * The checklist's headings: the house rules every client starts with (the household, the
@@ -400,7 +410,7 @@ export interface FeatureDef {
   viewSource?: true;
   /** Orthogonally connected tiles of this feature count as one neighbor (the pond, the creek). */
   body?: true;
-  /** Lot features that give nothing as neighbors (boulders, finds). */
+  /** Lot features that give nothing as neighbors (a Time Capsule). */
   inert?: true;
   /** A multi-tile object (the Old Shed's [2, 2]): demolishing any tile removes all of it. */
   size?: readonly [number, number];
@@ -471,8 +481,11 @@ export type Modifier =
   | { kind: 'earn'; target: Selector; pct: number; when?: 'lastWeekOfPhase' }
   /** Crown Jewel: the week's top earner gets `pct` more, after every other term. */
   | { kind: 'bestPiece'; pct: number }
-  /** +Mult, optionally per matching piece (It's a House). */
-  | { kind: 'mult'; add: number; per?: Selector }
+  /**
+   * +Mult, optionally per matching piece (It's a House). With `maxEach`, at most that many
+   * pieces of one type count (D-143), as a tidy yard counts its types.
+   */
+  | { kind: 'mult'; add: number; per?: Selector; maxEach?: number }
   /**
    * ×Mult: `times + add × count`. Each distinct source multiplies the week's Mult once,
    * however many pieces trigger it (D-056).
@@ -623,14 +636,14 @@ export interface ClientDef {
 }
 
 /**
- * A change order (M4b; implementation-plan.md §5, Appendix B). One is offered after each of
- * milestones 2, 4, and 6, from the client's own and the generic ones, and runs through the next
- * phase, resolving at its milestone.
- * - request: accept or decline; met at the milestone → `reward`. A temporary goal: it never
- *   changes the checklist. `countNew` counts pieces placed since it was accepted.
- * - restriction: accept or decline; placing a piece that matches `forbid` breaks it; kept to
- *   the milestone → `reward`.
- * - phase: announced (only acknowledged), then its modifiers apply for the next phase.
+ * A change order (M4b; implementation-plan.md §5, Appendix B). Two are offered after each of
+ * milestones 2, 4, and 6, from the client's own and the generic ones; the one picked (D-144)
+ * runs through the next phase, resolving at its milestone.
+ * - request: met at the milestone → `reward`. A temporary goal: it never changes the
+ *   checklist. `countNew` counts pieces placed since it was picked.
+ * - restriction: placing a piece that matches `forbid` breaks it; kept to the milestone →
+ *   `reward`.
+ * - phase: its modifiers apply for the next phase.
  */
 export type ChangeOrderDef = {
   id: ChangeOrderId;
@@ -772,6 +785,11 @@ export interface Balance {
   };
   /** Budget paid at each milestone met. */
   milestoneBudget: number;
+  /**
+   * D-145: Wow for each budget held when the last milestone is met, its own payout included
+   * (no shop follows it, so nothing else can be done with it). 0 turns it off.
+   */
+  leftoverBudgetWow: number;
   shop: ShopBalance;
   /** The fewest tiles a fenced yard needs (§4). */
   fencedYardMin: number;
@@ -788,8 +806,17 @@ export interface Balance {
   drawAtLimitPct: number;
   /** D-121: how many cards from its row a card with no play is swapped for, at most. */
   swapTries: number;
-  /** The job board (D-032, D-045): its contracts, rarity weights, and the first visit's client. */
-  jobBoard: { contracts: number; rarity: Readonly<Record<Rarity, number>>; firstClient: ClientId };
+  /**
+   * The job board (D-032, D-045): its contracts, rarity weights, and the first visit's client.
+   * `firstSeed` is the first job's lot (D-149): the run seed of the first visit's one open
+   * contract, picked so its first hands teach in order (src/ui/hud/first-job.ts).
+   */
+  jobBoard: {
+    contracts: number;
+    rarity: Readonly<Record<Rarity, number>>;
+    firstClient: ClientId;
+    firstSeed: string;
+  };
   /**
    * M4b: the milestones (1-based) after which one change order is offered, before the shop
    * (2, 4, and 6). Never the last milestone: the run ends there.
@@ -991,30 +1018,38 @@ export interface TimedEffect {
 /** How an accepted change order ended (M4b). A phase effect just ends. */
 export type ChangeOrderResult = 'met' | 'missed' | 'kept' | 'broken' | 'ended';
 
-/** A change order offered after a milestone, waiting for its answer on the 'changeOrder' screen. */
+/**
+ * The change orders offered after a milestone, waiting on the 'changeOrder' screen for one to
+ * be picked (D-144).
+ */
 export interface ChangeOrderOffer {
-  id: ChangeOrderId;
-  /** The phase it would run through (0-based): it resolves when that phase's milestone does. */
+  /**
+   * The orders to pick from, in the order shown: two, or one when only one is eligible (or
+   * the ?debug panel forced one alone).
+   */
+  ids: readonly ChangeOrderId[];
+  /** The phase the pick would run through (0-based): it resolves when that phase's milestone does. */
   phase: number;
   /** Forced by the ?debug panel mid-week: answering it goes back to the same week. */
   forced?: true;
 }
 
-/** A change order this run, once answered (M4b). */
+/** A change order picked this run (M4b, D-144). */
 export interface ChangeOrderRecord {
   id: ChangeOrderId;
   /** The phase it runs through (0-based). */
   phase: number;
-  answer: 'accepted' | 'declined' | 'acknowledged';
-  /** The week it was answered: the first week it counts in. */
+  /** The week it was picked: the first week it counts in. */
   week: number;
-  /** Requests: pieces with a uid from here on are new (the house's nextUid when accepted). */
+  /** Requests: pieces with a uid from here on are new (the house's nextUid when picked). */
   sinceUid: number;
-  /** Requests: pieces demolished since it was accepted (Declutter). */
+  /** Requests: pieces demolished since it was picked (Declutter). */
   demolished: number;
+  /** The orders offered beside it and passed over: they can be offered again (D-144). */
+  passedOver: readonly ChangeOrderId[];
   /** Restrictions: the forbidden piece whose placement broke it. */
   brokenBy?: number;
-  /** Once its phase's milestone resolves (accepted and acknowledged ones only). */
+  /** Once its phase's milestone resolves. */
   result?: ChangeOrderResult;
   /** What it paid: a request met or a restriction kept. */
   reward?: Reward;
@@ -1050,6 +1085,12 @@ export interface MilestoneReward {
   score: number;
   /** Savings Account interest, included in `budget`. */
   interest: number;
+  /**
+   * The last milestone only, when it's met (D-145): the budget held after its payout, and the
+   * Wow that paid, at `leftoverBudgetWow` each. It's in the milestone's score, not in `score`
+   * above (the early bonus).
+   */
+  leftover?: { budget: number; score: number };
 }
 
 export interface MilestoneRecord {
@@ -1118,12 +1159,13 @@ export interface RunState {
   milestones: readonly MilestoneRecord[];
   lastTally: WeekSummary | null;
   /**
-   * The shop opens after milestones 1–6 (D-051). After milestones 2, 4, and 6 a change order
-   * comes first (M4b): its screen waits for an answer, then the shop opens.
+   * The shop opens after milestones 1–6 (D-051). After milestones 2, 4, and 6 two change
+   * orders come first (M4b, D-144): their screen waits for one to be picked, then the shop
+   * opens.
    */
   screen: 'build' | 'changeOrder' | 'shop' | 'won' | 'lost';
   offers?: { shop?: ShopVisit; pick?: CratePick; changeOrder?: ChangeOrderOffer };
-  /** M4b: every change order answered this run, in order, with how it went. */
+  /** M4b: every change order picked this run, in order, with how it went. */
   changeOrders: readonly ChangeOrderRecord[];
   /** M4b: the household members who've arrived (D-103), in order. */
   arrived: readonly ArrivalId[];
@@ -1195,10 +1237,10 @@ export type UseToolAction = {
 };
 export type LeaveShopAction = { t: 'leaveShop' };
 /**
- * M4b: the answer to the change order on the 'changeOrder' screen. Requests and restrictions
- * can be declined (no penalty); a phase effect is only acknowledged (`accept` must be true).
+ * M4b, D-144: the answer on the 'changeOrder' screen: which of the offer's orders is picked
+ * (its index in `offers.changeOrder.ids`). One must be; the others go back in the pool.
  */
-export type AnswerChangeOrderAction = { t: 'answerChangeOrder'; accept: boolean };
+export type AnswerChangeOrderAction = { t: 'answerChangeOrder'; i: number };
 /**
  * The ?debug panel's cheats. They are actions so that a run code still replays exactly, and
  * any of them marks the run as a debug run.
@@ -1216,9 +1258,10 @@ export type DebugAction =
   /**
    * M4b: offers this change order now, from the build screen, as if a milestone had just been
    * met: it runs through the current phase, and answering it goes back to the same week, hand
-   * and all. Any change order, even one already offered.
+   * and all. Any change order, even one already picked. Alone, or (D-144) beside `other`, to
+   * pick one of the two.
    */
-  | { t: 'debug'; op: 'forceChangeOrder'; id: ChangeOrderId }
+  | { t: 'debug'; op: 'forceChangeOrder'; id: ChangeOrderId; other?: ChangeOrderId }
   /** M4b: this household member arrives now: their cards go into the reserve's extra slots. */
   | { t: 'debug'; op: 'forceArrival'; id: ArrivalId };
 
@@ -1510,17 +1553,26 @@ export type GameEvent =
    * transforms, before the draw): their cards went into the reserve's extra slots.
    */
   | { t: 'arrived'; arrival: ArrivalId; phase: number; cards: readonly PieceId[]; forced?: true }
-  /** M4b: a change order is offered; the 'changeOrder' screen waits for the answer. */
+  /**
+   * M4b, D-144: change orders are offered, two as a rule; the 'changeOrder' screen waits for
+   * one to be picked.
+   */
   | {
       t: 'changeOrderOffered';
-      id: ChangeOrderId;
-      kind: ChangeOrderKind;
-      /** The phase it would run through. */
+      /** The orders to pick from, in the order shown. */
+      options: readonly { id: ChangeOrderId; kind: ChangeOrderKind }[];
+      /** The phase the pick would run through. */
       phase: number;
       forced?: true;
     }
-  /** `accepted` is true for a phase effect: it's acknowledged, and runs. */
-  | { t: 'changeOrderAnswered'; id: ChangeOrderId; kind: ChangeOrderKind; accepted: boolean }
+  /** The order picked (the offer's `i`-th), and the ones passed over, which can come again. */
+  | {
+      t: 'changeOrderAnswered';
+      id: ChangeOrderId;
+      kind: ChangeOrderKind;
+      i: number;
+      passedOver: readonly ChangeOrderId[];
+    }
   /** A piece the restriction forbids was placed while it ran: it pays nothing now. */
   | { t: 'changeOrderBroken'; id: ChangeOrderId; uid: number }
   /**
@@ -1543,6 +1595,27 @@ export interface PreviewLine {
   after: number;
   /** The piece's breakdown with the play. */
   reasons: readonly BreakdownLine[];
+}
+
+/** D-122: what kind of cause a part of a play's change to the week's Wow is. */
+export type WowPartKind = 'piece' | 'neighbor' | 'set' | 'spec' | 'charm' | 'sparkle' | 'other';
+
+/**
+ * D-122: one cause of a play's change to the week's Wow (attribution.ts). The rules attribute it;
+ * the board names it. A play's parts add up to its `delta` exactly.
+ */
+export interface WowPart {
+  kind: WowPartKind;
+  /**
+   * Short, for the board's label: the piece's name ("Closet"), "Living Room earns less", a set
+   * ("Suite", "Breaks Suite"), a checklist line ("Room for everyone", "Cozy off"), a +Mult
+   * modifier's label, a ×Mult source or "Sparkle", or "Other changes".
+   */
+  label: string;
+  /** Its share of the change to the week's Wow. */
+  wow: number;
+  /** The piece, for a piece's own part and a neighbor's. */
+  uid?: number;
 }
 
 export interface Preview {
@@ -1584,6 +1657,8 @@ export interface Preview {
    * for a warning. The placement stays legal; the restriction just pays nothing.
    */
   breaks?: ChangeOrderId;
+  /** D-122: where `delta` comes from, biggest first; empty when the play isn't legal. */
+  parts: readonly WowPart[];
 }
 
 /** What demolishing at a spot would do, for the demolish tool's hover. */
@@ -1640,6 +1715,54 @@ export interface FixtureValue {
   overRun: number;
 }
 
+/**
+ * D-141: what a blueprint would add to the house as it stands, for the shop's line: the week's
+ * total with it in play, less without. In the shop the first week valued is the next phase's
+ * first, after its start-of-week transforms, as for a fixture (D-107).
+ */
+export interface BlueprintValue {
+  /** The Wow it adds in the week `when` names. */
+  gain: number;
+  /**
+   * The week `gain` is for: the first one valued, or, for a blueprint that acts only in a
+   * phase's last week (Last-Minute Push), the next of those.
+   */
+  when: 'week' | 'lastWeek';
+  /**
+   * For a granted growth timer (Good Bones): the most it adds in any one of the weeks left.
+   * Unset when it never passes `gain`.
+   */
+  growsTo?: number;
+  /** Weeks still to play in the run, the first one valued included; never overtime. */
+  weeksLeft: number;
+  /**
+   * Each of those weeks' gain, added up, with nothing more built: the house's timers run on,
+   * and each phase's last week counts as one. Roughly what it adds over the rest of the run.
+   */
+  overRun: number;
+  /** The budget it would pay over those weeks (Solar Panels). */
+  budget: number;
+  /**
+   * For a ×Mult that scales with a run stat (Ahead of Schedule's early milestones): what one
+   * more of it would add to `gain`. It depends on what the player does next, so it's shown
+   * beside the gain, never folded into it.
+   */
+  perStat?: { stat: RunStat; gain: number };
+  /**
+   * For a Mult counted per piece (It's a House's House pieces, Model Home's pieces with a
+   * fixture; D-143): what one more of them would add to a week, its own Comfort aside, and
+   * what one is called ("House piece"). It names the build, so it's shown even when `needs` is.
+   */
+  perPiece?: { what: string; gain: number };
+  /**
+   * When it would add nothing in the weeks left: what it's waiting for, in a few words ("No
+   * Dark rooms yet").
+   */
+  needs?: string;
+  /** It's one of the run's blueprints already: this is what it's adding. */
+  held: boolean;
+}
+
 export interface Legality {
   legal: boolean;
   reason?: string;
@@ -1684,8 +1807,8 @@ export interface ChecklistLine {
 }
 
 /**
- * A change order as the UI shows it (M4b): the offer on the 'changeOrder' screen, or one that's
- * running (an accepted request or restriction, or a phase effect), with its progress.
+ * A change order as the UI shows it (M4b): one of the offer's on the 'changeOrder' screen, or
+ * one that's running (a request, a restriction, or a phase effect), with its progress.
  */
 export interface ChangeOrderView {
   id: ChangeOrderId;
@@ -1699,14 +1822,27 @@ export interface ChangeOrderView {
   reward?: Reward;
   /** The phase it runs through (0-based): it resolves when that phase's milestone resolves. */
   phase: number;
-  /** Requests and restrictions can be declined; a phase effect is only acknowledged. */
-  declinable: boolean;
+  /**
+   * On an offer, a phase effect (D-144): what it would change a week's total by, with the house
+   * as it stands in the week it starts. The house will change; this is where it starts from.
+   */
+  houseGain?: number;
   /** Requests: whether it would count as met if the milestone resolved now. */
   met?: boolean;
   /** Requests: "1 new of 2", "0 of 1 demolished". */
   progress?: readonly ProgressPart[];
   /** Restrictions: the piece that broke it, once one did. */
   brokenBy?: number;
+}
+
+/** The 'changeOrder' screen's offer as the UI shows it (D-144): pick one of its orders. */
+export interface ChangeOrderOfferView {
+  /** In the order shown; `answerChangeOrder`'s `i` is an index here. */
+  options: readonly ChangeOrderView[];
+  /** The phase the pick runs through (0-based). */
+  phase: number;
+  /** Forced by the ?debug panel mid-week: answering it goes back to the same week. */
+  forced: boolean;
 }
 
 /** A room type at its limit (from the checklist's ceilings): its cards can renovate instead. */
@@ -1812,25 +1948,34 @@ export {
   fixtureText,
   glossary,
   handCardLines,
+  HINT_WORDS,
+  hintText,
   houseConditionText,
+  houseRulesText,
+  lastShopText,
   lotTraitText,
+  featureWantedText,
   modifierText,
   multNumber,
   regionText,
   rewardText,
   selectorText,
+  setsOfPiece,
+  setText,
   specText,
   sunSideText,
   toolText,
   upgradeText,
 } from './text.ts';
-export type { Term } from './text.ts';
+export type { HintTerm, Term } from './text.ts';
 export { earnedFor, roundHalfUp, weekTotal } from './scoring.ts';
 export { ruleValue, sourceName } from './modifiers.ts';
 export { meetsHouse, outlineOf, progressOf } from './conditions.ts';
 export { jobBoard, type Contract } from './jobs.ts';
 export { fitsText } from './fixtures.ts';
 export { SHOP_REASONS } from './shop.ts';
+export { countedSelector, countingMod, totalWithOneMore } from './blueprint-value.ts';
+export { matchesDef } from './selectors.ts';
 
 export { CONTENT, SCORE_LABELS } from '../content/index.ts';
 

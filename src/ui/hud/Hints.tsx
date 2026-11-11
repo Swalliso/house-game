@@ -1,8 +1,9 @@
 // The controls strip along the bottom (M5a): the keys for what you're doing now, as keycaps,
 // instead of every shortcut at once. How to play lists them all. On a short window it sits
 // under the board only, so the side columns keep their height, and drops the hints marked
-// .hint-extra. M4's keys are here too: a change order's sheet (Enter accepts, Esc or D
-// declines one that can be declined), a pack's tiles (D-106), and a Renovation (D-102).
+// .hint-extra. M4's keys are here too: the change orders' sheet (1 or 2 picks one, D-144), a
+// pack's tiles (D-106), and a Renovation (D-102). A tool or a fixture from the supplies gets its
+// own keys: it's a free action, so the strip never offers Enter for it.
 //
 // No hooks, here or in what it renders: hints.test.tsx calls Hints() in place.
 
@@ -10,19 +11,10 @@ import type { ComponentChildren } from 'preact';
 import { CONTENT, rules } from '../../rules/index.ts';
 import { isFit } from '../board/camera.ts';
 import { busy } from '../fx/director.ts';
-import { roofed } from '../fx/moments.ts';
 import { Keycap } from '../kit/kit.tsx';
-import {
-  movingUid,
-  renovateUids,
-  roofOn,
-  run,
-  selected,
-  selection,
-  tentative,
-  tool,
-} from '../store.ts';
-import { shopHidden } from './actions.ts';
+import { movingUid, renovateUids, run, selected, selection, tentative, tool } from '../store.ts';
+import { pickKeys, shopHidden } from './actions.ts';
+import { shown } from './first-job.ts';
 import './hints.css';
 
 function Hint({
@@ -71,22 +63,6 @@ function FitHint({ short = false }: { short?: boolean }) {
   return <Hint keys={['F']}>{fit ? 'back to your zoom' : 'fit the lot'}</Hint>;
 }
 
-/**
- * T puts the roof on and takes it off once the Roofing milestone is met (D-133). On the build
- * screen's full strip it takes Scroll's place, in a word no wider ("roof"), so the strip never
- * outgrows its one line; elsewhere it says what it does now.
- */
-function RoofHint({ short = false }: { short?: boolean }) {
-  if (short) {
-    return (
-      <Hint keys={['T']} extra>
-        roof
-      </Hint>
-    );
-  }
-  return <Hint keys={['T']}>{roofOn.value ? 'look inside' : 'put the roof on'}</Hint>;
-}
-
 export function Hints() {
   const s = run.value;
   let hints: ComponentChildren;
@@ -98,24 +74,19 @@ export function Hints() {
       </>
     );
   } else if (s.screen === 'changeOrder') {
-    // A change order's sheet (M4b) takes only its own keys: F does nothing there. A phase
-    // effect can't be declined, so Esc and D do nothing on one either.
+    // The change orders' sheet (M4b, D-144) takes only its own keys: F does nothing there. 1
+    // and 2 pick an order; one offered alone takes Enter.
+    const keys = pickKeys(rules.changeOrderOffer(s)?.options.length ?? 2);
     hints =
-      (rules.changeOrderOffer(s)?.declinable ?? true) ? (
-        <>
-          <Hint keys={['Enter']}>accept</Hint>
-          <Hint keys={['Esc', 'D']}>decline: it costs nothing</Hint>
-        </>
+      keys.length > 1 ? (
+        <Hint keys={[...keys]}>pick one</Hint>
       ) : (
-        <Hint keys={['Enter']}>got it</Hint>
+        <Hint keys={[...keys]}>accept</Hint>
       );
   } else if (s.screen === 'shop') {
-    // The sheet covers the lot, so F and T only mean something once the shop is hidden.
+    // The sheet covers the lot, so F only means something once the shop is hidden.
     hints = shopHidden.value ? (
-      <>
-        <FitHint />
-        {roofed(s) && <RoofHint />}
-      </>
+      <FitHint />
     ) : (
       // The sheet's own foot says where to sell, so a short window leaves these out.
       <>
@@ -124,13 +95,8 @@ export function Hints() {
       </>
     );
   } else if (s.screen !== 'build') {
-    // The end screen: it opens with the roof on, and T looks inside (D-133).
-    hints = (
-      <>
-        <FitHint />
-        {roofed(s) && <RoofHint />}
-      </>
-    );
+    // The end screen.
+    hints = <FitHint />;
   } else if (tool.value === 'demolish') {
     hints = (
       <>
@@ -141,34 +107,60 @@ export function Hints() {
   } else if (selected.value !== null) {
     const sel = selection.value;
     const pending = tentative.value;
-    // A pack (D-106) is clicked out a tile at a time, so it never turns, and nor does a room
-    // waiting to be renovated (D-102); the Moving Truck turns the piece it carries (as the
-    // Rotate button does: Hand.tsx).
-    const pack = sel?.kind === 'piece' && !!CONTENT.pieces[sel.id].pack;
-    const turns =
-      (sel?.kind === 'piece' && !pack && pending?.t !== 'renovate') ||
-      (sel?.kind === 'tool' && movingUid.value !== null);
-    const click = pack
-      ? pending
-        ? 'add or take off a tile'
-        : 'the first tile'
-      : pending
-        ? 'move it'
-        : renovateUids.value.length > 0
-          ? 'place, or renovate an outlined room'
-          : 'place';
-    hints = (
-      <>
-        {turns && <Hint keys={['R']}>rotate</Hint>}
-        <Hint keys={['Click']} extra>
-          {click}
-        </Hint>
-        <Hint keys={['Enter']}>{pending?.t === 'renovate' ? 'renovate it' : 'end the week'}</Hint>
-        <Hint keys={['Esc']}>
-          {pack && pending ? 'clear the tiles' : pending ? 'pick it up' : 'put it back'}
-        </Hint>
-      </>
-    );
+    if (sel?.kind === 'tool' || (sel?.kind === 'fixture' && sel.from === 'supplies')) {
+      // From the supplies, a tool or a fixture is free and the week goes on: nothing waits for
+      // End week, so there's no Enter here (it would pass the week). The Copy Machine and a
+      // fixture take two clicks on a piece; the Moving Truck picks a piece up, then takes two
+      // clicks on its new spot, and R turns the piece it carries. Any other tool is used from
+      // its panel (Inspect's "Use it now"), so only Esc is left.
+      const use = sel.kind === 'tool' ? CONTENT.tools[sel.id].use.kind : null;
+      const carrying = use === 'move' && movingUid.value !== null;
+      const click =
+        sel.kind === 'fixture'
+          ? 'a piece twice to install it'
+          : use === 'copy'
+            ? 'a piece twice to copy it'
+            : use === 'move'
+              ? carrying
+                ? 'its new spot twice'
+                : 'the piece to move'
+              : null;
+      hints = (
+        <>
+          {carrying && <Hint keys={['R']}>rotate</Hint>}
+          {click && <Hint keys={['Click']}>{click}</Hint>}
+          <Hint keys={['Esc']}>put it back</Hint>
+        </>
+      );
+    } else {
+      // A pack (D-106) is clicked out a tile at a time, so it never turns, and nor does a room
+      // waiting to be renovated (D-102), or a fixture from the hand, which goes into a piece.
+      const pack = sel?.kind === 'piece' && !!CONTENT.pieces[sel.id].pack;
+      const turns = sel?.kind === 'piece' && !pack && pending?.t !== 'renovate';
+      const click = pack
+        ? pending
+          ? 'add or take off a tile'
+          : 'the first tile'
+        : pending
+          ? 'move it'
+          : sel?.kind === 'fixture'
+            ? 'a piece to install it'
+            : renovateUids.value.length > 0
+              ? 'place, or renovate an outlined room'
+              : 'place';
+      hints = (
+        <>
+          {turns && <Hint keys={['R']}>rotate</Hint>}
+          <Hint keys={['Click']} extra>
+            {click}
+          </Hint>
+          <Hint keys={['Enter']}>{pending?.t === 'renovate' ? 'renovate it' : 'end the week'}</Hint>
+          <Hint keys={['Esc']}>
+            {pack && pending ? 'clear the tiles' : pending ? 'pick it up' : 'put it back'}
+          </Hint>
+        </>
+      );
+    }
   } else {
     // The hand's cards are numbered across its rows (D-121), keys 1–9: one keycap for all of
     // them, as narrow as the old "1 2 3".
@@ -176,14 +168,11 @@ export function Hints() {
     hints = (
       <>
         {cards > 0 && <Hint keys={[cards > 1 ? `1–${cards}` : '1']}>pick a card</Hint>}
-        <Hint keys={['D']}>demolish</Hint>
-        {roofed(s) ? (
-          <RoofHint short />
-        ) : (
-          <Hint keys={['Scroll']} extra>
-            zoom
-          </Hint>
-        )}
+        {/* The first job's first milestone has no Demolish yet (D-149). */}
+        {shown.value.demolish && <Hint keys={['D']}>demolish</Hint>}
+        <Hint keys={['Scroll']} extra>
+          zoom
+        </Hint>
         <FitHint short />
         <Hint keys={['Enter']}>pass</Hint>
       </>

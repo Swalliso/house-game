@@ -106,13 +106,6 @@ export const FEEL = {
     rareDelayMs: 280,
   },
 
-  /**
-   * The roof (§12, D-127, D-133): it drops onto the house from `dropPx` art px up, and lifts off
-   * the same way, in real time; the tiles' digits and badges under it fade as it moves. Its
-   * thump sounds `thumpMs` into the drop, as it lands. It stays on until something takes it off.
-   */
-  roof: { dropMs: 420, liftMs: 560, dropPx: 18, thumpMs: 250 },
-
   /** The parked car slides along the drive to its new spot when the drive grows (D-126). */
   car: { slideMs: 900 },
 
@@ -453,6 +446,36 @@ export const FEEL = {
     stamp: 280,
   },
 
+  /**
+   * The end screen's photos (M6, D-136): a polaroid for each milestone, dealt onto the table one
+   * after another once the end screen is up, each with a soft flick as it lands, its picture
+   * developing from a warm blank. Reduce motion puts them all down at once, developed.
+   */
+  photos: {
+    delayMs: 650,
+    staggerMs: 140,
+    dealMs: 420,
+    developMs: 1100,
+    /** How far below the strip a polaroid starts, and how far it turns as it comes, in deg. */
+    fromPx: 48,
+    spinDeg: -9,
+    /** A hovered or focused polaroid rises this far, in CSS px (whole pixels: crisp text). */
+    liftPx: 6,
+  },
+
+  /**
+   * The end screen's buttons sit where End week was, so they take no click for this long after
+   * the screen comes up: a double-click that skips the last tally doesn't land on Title or New
+   * run. Longer than a few quick clicks in a row, shorter than reading the verdict.
+   */
+  endScreen: { clickDelayMs: 1000 },
+
+  /**
+   * After Enter or a click on End week hurries a tally, a press this soon after is still
+   * hurrying: it doesn't arm a pass for the week that just began.
+   */
+  endWeek: { hurryMs: 650 },
+
   /** The title screen's street (M5a): a car drives by now and then. */
   title: {
     /** Its speed, in art px a second (it moves a whole art px at a time). */
@@ -468,6 +491,18 @@ export const FEEL = {
   jobs: {
     staggerMs: 70,
     inMs: 350,
+  },
+
+  /**
+   * The first job (D-149; hud/first-job.css reads them as --arrive-in, --arrive-ring and
+   * --guide-pulse). A part of the screen drops in over `arriveMs` the week it first shows, then
+   * wears a gold ring that fades over `ringMs`. Week 1's guide breathes a ring on the play that
+   * comes next, once every `pulseMs`.
+   */
+  firstJob: {
+    arriveMs: 320,
+    ringMs: 1600,
+    pulseMs: 1200,
   },
 
   /** The camera (§12, Art; D-057): wheel zoom in whole steps, drag to pan. */

@@ -12,6 +12,7 @@ import { Button, Icon, Switch } from '../kit/kit.tsx';
 import { completeEarly, earlyOffer, forecast, preview, run, setAutoComplete } from '../store.ts';
 import { howToPlayOpen, menuOpen, openSettings } from './actions.ts';
 import { BudgetCount } from './BudgetCount.tsx';
+import { shown } from './first-job.ts';
 import { arrivalWeek, isPlural, overtimeUsed, upcomingArrivals } from './household.ts';
 import { weekTicks } from './meter.ts';
 import { Tip } from './Tip.tsx';
@@ -97,8 +98,9 @@ function Progress() {
   const met = score >= target;
   const pct = Math.min(100, (score / Math.max(1, target)) * 100);
   const phase = rules.phaseName(s.phase);
-  // The forecast follows the live run, so it's hidden while a tally catches the bar up.
-  const showForecast = !tallying && s.screen === 'build';
+  // The forecast follows the live run, so it's hidden while a tally catches the bar up; and
+  // in the first job's first week (D-149), before any week has earned.
+  const showForecast = !tallying && s.screen === 'build' && shown.value.forecast;
   const f = forecast.value;
   const placing = !!preview.value?.legal;
   const fpct = Math.min(100, (f / Math.max(1, target)) * 100);
@@ -187,37 +189,43 @@ function Resources() {
   const total = rules.rule(s, 'overtime');
   const left = Math.max(0, s.overtimeLeft);
   const overtimeTitle = 'Overtime weeks left: spent automatically when a target is missed';
+  // The first job brings each in when it first matters (D-149, first-job.ts).
+  const on = shown.value;
   return (
     <>
-      <div class="tb-budget">
-        <Tip term="budget">
-          <Icon name="coin" label="Budget" />
-        </Tip>
-        <BudgetCount value={s.budget} />
-      </div>
-      <div
-        class="tb-overtime"
-        title={overtimeTitle}
-        aria-label={`Overtime weeks left: ${left} of ${total}`}
-        role="img"
-      >
-        {Array.from({ length: Math.max(total, left) }, (_, i) => (
-          <Icon key={i} name="clock" class={i < left ? '' : 'spent'} />
-        ))}
-      </div>
+      {on.budget && (
+        <div class="tb-budget">
+          <Tip term="budget">
+            <Icon name="coin" label="Budget" />
+          </Tip>
+          <BudgetCount value={s.budget} />
+        </div>
+      )}
+      {on.overtime && (
+        <div
+          class="tb-overtime"
+          title={overtimeTitle}
+          aria-label={`Overtime weeks left: ${left} of ${total}`}
+          role="img"
+        >
+          {Array.from({ length: Math.max(total, left) }, (_, i) => (
+            <Icon key={i} name="clock" class={i < left ? '' : 'spent'} />
+          ))}
+        </div>
+      )}
     </>
   );
 }
 
+/** Hidden once the run is over (D-135): there's no milestone left for it to complete. */
 function AutoComplete() {
   const s = run.value;
-  const ended = s.screen === 'won' || s.screen === 'lost';
+  if (s.screen === 'won' || s.screen === 'lost' || !shown.value.early) return null;
   return (
     <Switch
       class="tb-switch"
       checked={s.autoComplete}
-      disabled={ended}
-      title="Complete each milestone as soon as its target is met"
+      title="Complete each milestone as soon as its target is met, skipping the builds for the weeks left"
       onMouseDown={noFocus}
       onChange={(want) => setAutoComplete(want)}
     >
@@ -228,8 +236,9 @@ function AutoComplete() {
 
 function CompleteEarly() {
   const offer = earlyOffer.value;
-  // Hidden while a tally plays: the offer follows the live run, not the week on show.
-  if (!offer.ok || shownRun.value !== null) return null;
+  // Hidden while a tally plays: the offer follows the live run, not the week on show. And in
+  // the first job's first milestone (D-149), where every week's build is still teaching.
+  if (!offer.ok || shownRun.value !== null || !shown.value.early) return null;
   const armed = earlyArmed.value;
   const bonus = `+${formatNumber(offer.bonus.score)} ${SCORE_LABELS.total} · +${offer.bonus.budget} budget`;
   const detail = `saves ${plural(offer.weeksSaved, 'week')} · ${bonus}`;
@@ -242,7 +251,7 @@ function CompleteEarly() {
       class={`tb-early ${armed ? 'confirm' : ''}`}
       onMouseDown={noFocus}
       onClick={requestCompleteEarly}
-      title={`Finish ${phase} now: the weeks left play out quickly, and you get the early bonus (${bonus}). Press twice.`}
+      title={`Finish ${phase} now and skip ${plural(offer.weeksSaved, 'build')}: the weeks left play out quickly, and you get the early bonus (${bonus}). Press twice.`}
       aria-label={armed ? 'Press again to complete early' : `Complete early: ${detail}`}
     >
       <span class="tb-early-label">

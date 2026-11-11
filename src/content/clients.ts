@@ -54,7 +54,7 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
         pct: 100,
       },
     ],
-    targetPct: 115, // fitted by npm run sim -- --suggest-targets, then checked held out (D-123)
+    targetPct: 110, // fitted by npm run sim -- --suggest-targets, then checked held out (D-146)
   },
   vladislav: {
     id: 'vladislav',
@@ -87,7 +87,7 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
       { kind: 'earn', target: { piece: 'herbGarden' }, pct: -100 }, // garlic
     ],
     pool: [{ kind: 'drawWeight', target: { piece: 'library' }, add: 20 }],
-    targetPct: 90, // fitted by npm run sim -- --suggest-targets, then checked held out (D-123)
+    targetPct: 95, // fitted by npm run sim -- --suggest-targets, then checked held out (D-146)
   },
   barkers: {
     id: 'barkers',
@@ -96,7 +96,7 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
     tier: 'core',
     brief: 'Two dogs and counting, and a yard they can run in.',
     household: HOUSEHOLDS.barkers,
-    changeOrders: ['anotherRescue', 'agilityCourse'],
+    changeOrders: ['anotherRescue', 'agilityCourse', 'puppies'],
     specs: [
       ...houseRules({ household: HOUSEHOLDS.barkers }),
       {
@@ -127,7 +127,7 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
       { kind: 'drawWeight', target: { piece: 'mudroom' }, add: 20 },
       { kind: 'drawWeight', target: { piece: ['doghouse', 'fence'] }, pct: 100 },
     ],
-    targetPct: 90, // fitted by npm run sim -- --suggest-targets, then checked held out (D-123)
+    targetPct: 90, // fitted by npm run sim -- --suggest-targets, then checked held out (D-146)
   },
   juniper: {
     id: 'juniper',
@@ -136,7 +136,7 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
     tier: 'core',
     brief: 'A small house, beautifully done. Nothing extra.',
     household: HOUSEHOLDS.juniper,
-    changeOrders: ['declutter', 'teaGarden'],
+    changeOrders: ['declutter', 'teaGarden', 'magazineShoot'],
     specs: [
       // Her "a house of 4–8 rooms" (Appendix A · M4a) is her Under one roof.
       ...houseRules({ household: HOUSEHOLDS.juniper, rooms: { min: 4, max: 8 } }),
@@ -154,7 +154,7 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
       { kind: 'rule', key: 'earlyRewardPct', add: 100 },
     ],
     pool: [],
-    targetPct: 85, // fitted by npm run sim -- --suggest-targets, then checked held out (D-123)
+    targetPct: 95, // fitted by npm run sim -- --suggest-targets, then checked held out (D-146)
   },
   dale: {
     id: 'dale',
@@ -163,7 +163,7 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
     tier: 'core',
     brief: 'Works from home. Needs quiet, and an office or two.',
     household: HOUSEHOLDS.dale,
-    changeOrders: ['bigDeadline', 'startedAPodcast'],
+    changeOrders: ['bigDeadline', 'startedAPodcast', 'outOfOffice'],
     specs: [
       ...houseRules({ household: HOUSEHOLDS.dale }),
       {
@@ -188,6 +188,6 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
     ],
     tastes: [{ kind: 'budget', target: 'all', pct: 100 }],
     pool: [{ kind: 'drawWeight', target: { piece: 'homeOffice' }, pct: 100 }],
-    targetPct: 115, // fitted by npm run sim -- --suggest-targets, then checked held out (D-123)
+    targetPct: 115, // fitted by npm run sim -- --suggest-targets, then checked held out (D-146)
   },
 };

@@ -1031,6 +1031,71 @@ describe('milestone rewards', () => {
     expect(end.state.milestones).toEqual([met(0), met(1)]);
   });
 
+  describe('leftover budget at the last milestone (D-145)', () => {
+    const LEFT = { leftoverBudgetWow: 100 };
+
+    it('is off in the test content, so its runs end on the scores they always did', () => {
+      expect(C.balance.leftoverBudgetWow).toBe(0);
+      const r = createRules(content([0, 0]));
+      const { state, events } = applyAll(r, onEmptyLot(r), [PASS, PASS, LEAVE, PASS, PASS]);
+      expect(state).toMatchObject({ screen: 'won', budget: 7, score: 0 });
+      expect(eventsOf(events, 'milestone').at(-1)!.reward).toEqual({
+        budget: 3,
+        score: 0,
+        interest: 0,
+      });
+    });
+
+    it('pays Wow for every budget held when the last milestone is met, its payout included', () => {
+      const r = createRules(content([0, 0], 2, LEFT));
+      // Milestone 1 pays 3 and the shop's skip reward 1; milestone 2 pays 3 more: 7 held.
+      const { state, events } = applyAll(r, onEmptyLot(r), [PASS, PASS, LEAVE, PASS, PASS]);
+      expect(state).toMatchObject({ screen: 'won', budget: 7, score: 700 });
+      const [first, last] = eventsOf(events, 'milestone');
+      // Only the last milestone pays it: a shop follows the others.
+      expect(first!.reward).toEqual({ budget: 3, score: 0, interest: 0 });
+      expect(last).toMatchObject({
+        score: 700,
+        reward: { budget: 3, score: 0, interest: 0, leftover: { budget: 7, score: 700 } },
+      });
+      expect(state.milestones.at(-1)!.reward.leftover).toEqual({ budget: 7, score: 700 });
+      // The run's last word has it too, and so does the verdict.
+      expect(eventsOf(events, 'runEnded')[0]).toMatchObject({ result: 'won', score: 700 });
+    });
+
+    it('comes after the target is met: it never turns a miss into a win', () => {
+      // 8 budget in hand is worth 800 Wow, but the last target of 500 isn't met by the house.
+      const r = createRules(
+        content([0, 500], 2, { ...LEFT, rules: { ...C.balance.rules, overtime: 0 } }),
+      );
+      const start = applyAll(r, onEmptyLot(r), [PASS, PASS, LEAVE]).state;
+      const { state, events } = applyAll(r, { ...start, budget: 8 }, [PASS, PASS]);
+      expect(state).toMatchObject({ screen: 'lost', score: 0, budget: 8 });
+      expect(eventsOf(events, 'milestone').at(-1)!.reward).toEqual({
+        budget: 0,
+        score: 0,
+        interest: 0,
+      });
+    });
+
+    it('counts an early finish’s budget, beside its Wow bonus', () => {
+      // A Jack-and-Jill earns 29 a week against a last target of 20, in a 4-week phase.
+      const r = createRules(content([0, 20], 4, LEFT));
+      let s = applyAll(r, jackAndJillRun(r), [PASS, PASS, PASS, PASS, LEAVE]).state;
+      const before = s.budget;
+      s = r.apply(s, PASS).state; // 29 more: the target is met with 3 weeks to go
+      const { state, events } = applyAll(r, s, [COMPLETE_EARLY]);
+      const m = eventsOf(events, 'milestone').at(-1)!;
+      expect(m.result).toBe('early');
+      const held = before + m.reward.budget;
+      expect(m.reward.budget).toBeGreaterThan(3); // the milestone's 3 and the weeks saved
+      expect(m.reward.leftover).toEqual({ budget: held, score: held * 100 });
+      // The score: every tally, the early bonus, then the leftover budget.
+      const tallied = eventsOf(events, 'tally').at(-1)!.score;
+      expect(state.score).toBe(tallied + m.reward.score + held * 100);
+    });
+  });
+
   it('the milestone’s budget comes on top of what pieces paid that week', () => {
     // A Home Office pays 1 budget every 2nd week of its life: week 2 here.
     const r = createRules(content([0, 1000]));

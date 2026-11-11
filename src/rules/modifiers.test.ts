@@ -3,8 +3,9 @@
 // Tally kinds run through tallyHouse() with a TallyContext built from blueprints; layout kinds
 // through computeLayout(); a few run through a real run so the run's own context (the last
 // week, early milestones, purchase weeks) is covered too. Rules tests use TEST_CONTENT, whose
-// fixtures and blueprints are Appendix B's encodings exactly. Every piece houseFrom places has
-// placedWeek 1, so tallying in week w means age w − 1.
+// fixtures and blueprints are Appendix B's first encodings (the game's blueprints were
+// re-weighed in D-143). Every piece houseFrom places has placedWeek 1, so tallying in week w
+// means age w − 1.
 
 import { describe, expect, it } from 'vitest';
 import type {
@@ -360,6 +361,40 @@ describe('mult', () => {
     expect(t.mult).toBe(120);
     expect(t.total).toBe(10);
   });
+
+  it('with maxEach, no more than that many pieces of one type count (D-143)', () => {
+    const mod: Modifier = { kind: 'mult', add: 50, per: { tag: 'House' }, maxEach: 2 };
+    const c = withBlueprint([mod]);
+    const birdhouses: Placement[] = [
+      ['birdhouse', 6, 6],
+      ['birdhouse', 8, 6],
+      ['birdhouse', 6, 4],
+    ];
+    const of = (placements: readonly Placement[]) =>
+      tally(c, houseFrom(c, L, [...TWO_BEDROOMS, ...placements]), { blueprints: [TEST_PLAN] });
+    // The third Birdhouse adds nothing; a Henhouse is another type, so it counts.
+    expect(of(birdhouses.slice(0, 2)).multTerms).toMatchObject([
+      { label: 'Test Plan (2)', add: 100 },
+    ]);
+    expect(of(birdhouses).multTerms).toMatchObject([{ label: 'Test Plan (2)', add: 100 }]);
+    const t = of([...birdhouses, ['henhouse', 6, 8]]);
+    expect(t.multTerms).toMatchObject([{ label: 'Test Plan (3)', add: 150 }]);
+    // 8 × (1 + 3 × 0.5) = 20.
+    expect(t).toMatchObject({ points: 8, mult: 250, total: 20 });
+    expect(modifierText(c, mod)).toBe('+0.5 Charm per House piece, up to 2 of a type');
+  });
+
+  it('maxEach counts by root type: an L-Kitchen is a Kitchen', () => {
+    const c = withBlueprint([{ kind: 'mult', add: 10, per: { tag: 'Social' }, maxEach: 1 }]);
+    const house = houseFrom(c, L, [
+      ['kitchen', 0, 0],
+      ['lKitchen', 4, 0],
+      ['diningRoom', 0, 4],
+    ]);
+    expect(tally(c, house, { blueprints: [TEST_PLAN] }).multTerms).toMatchObject([
+      { label: 'Test Plan (2)', add: 20 },
+    ]);
+  });
 });
 
 // ---------------------------------------------------------------------------------------
@@ -652,6 +687,10 @@ describe('grantView', () => {
     // Pergola: the Patio's own view (+1), then +50%: 3 × 1.5 = 4.5 → 5.
     const pergola = tally(C, installed(house, [2, 'pergola']));
     expect(scoreOf(pergola, 2)).toMatchObject({ points: 3, pct: 50, earned: 5 });
+    // A yard piece has the view, not a window: the breakdown says so.
+    const labels = scoreOf(pergola, 2).lines.map((l) => l.label);
+    expect(labels.some((l) => l.includes('the view'))).toBe(true);
+    expect(labels.some((l) => l.includes('window'))).toBe(false);
   });
 
   it("the window's view counts only for per-view bonuses, not as a neighbor of every kind", () => {

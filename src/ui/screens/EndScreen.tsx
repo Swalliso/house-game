@@ -8,7 +8,15 @@
 // the one primary button, kept in view at the column's foot. Each list takes one shape for all
 // its rows, the most compact that every row fits on its lines (useShape): the column is 280 to
 // 404 px wide, and the pixel font is wide, so a row that wrapped on its own would leave the list
-// ragged (playtest 5a). The full-width finale with a photo per milestone is M6's.
+// ragged (playtest 5a). M6's photo of the house at each milestone is a strip under the board
+// (EndPhotos.tsx, D-136).
+//
+// M6 (D-135): Copy result, above Copy run code, copies the run as one line for the group chat,
+// with a link that starts the same lot (result-line.ts).
+//
+// D-139: under the verdict, the next verdict up and the Wow it starts at, and how this house
+// stands against the company's record for its client (company.ts): a new best, or the best to
+// beat.
 
 import type { RefObject } from 'preact';
 import { useLayoutEffect, useRef, useState } from 'preact/hooks';
@@ -19,14 +27,17 @@ import {
   type MilestoneRecord,
   type RunState,
 } from '../../rules/index.ts';
+import { bestFor, company, jobKey, lastStanding } from '../company.ts';
 import { busy } from '../fx/director.ts';
+import { FEEL } from '../fx/feel.ts';
 import { formatNumber } from '../format.ts';
-import { copyRunCode, startNewRun } from '../hud/actions.ts';
+import { copyRunCode, copyText, startNewRun } from '../hud/actions.ts';
 import { Button, Icon, Panel, type IconName } from '../kit/kit.tsx';
 import { settings } from '../settings.ts';
 import { goToTitle, run } from '../store.ts';
 import { ICON_SIZES } from '../theme/art.ts';
 import { endSignShown, Notes } from './Overlays.tsx';
+import { resultLine } from './result-line.ts';
 import './end.css';
 
 const WOW = SCORE_LABELS.total;
@@ -36,7 +47,7 @@ function weeks(n: number): string {
 }
 
 /** A milestone's result as a short tag (an early one's bonus is its own part: Milestones). */
-function resultTag(m: MilestoneRecord): string {
+export function resultTag(m: MilestoneRecord): string {
   switch (m.result) {
     case 'onTime':
       return 'On time';
@@ -179,7 +190,9 @@ function Milestones({ s }: { s: RunState }) {
             );
           }
           const failed = m.result === 'failed';
-          const bonus = m.result === 'early' ? m.reward.score : 0;
+          // The early bonus, and the last milestone's leftover budget (D-145): both Wow it paid.
+          const bonus =
+            (m.result === 'early' ? m.reward.score : 0) + (m.reward.leftover?.score ?? 0);
           return (
             <li key={i} class={`${failed ? 'failed' : 'met'} ${m.result}`}>
               <span class="name">{p.name}</span>
@@ -255,11 +268,24 @@ function statsShape(dl: HTMLElement): 'line' | 'stacked' {
 
 function Stats({ s }: { s: RunState }) {
   const overtime = s.milestones.reduce((sum, m) => sum + m.overtimeUsed, 0);
+  const left = s.milestones.at(-1)?.reward.leftover;
   const rows: StatRow[] = [
     // Every placement takes the next uid, so this counts demolished and grown pieces too.
     { icon: 'House', label: 'Pieces built', value: s.house.nextUid - 1 },
     { icon: 'clock', label: 'Weeks played', value: s.week },
     { icon: 'coin', label: 'Budget earned', value: formatNumber(s.budgetEarned) },
+    // What was still held at the last milestone, and the Wow it paid (D-145). Kept short: with
+    // the unit on it, this row alone put every stat on two lines at 1920×1080. The Final
+    // Walkthrough's row above says "+1,700 Wow".
+    ...(left
+      ? [
+          {
+            icon: 'coin' as const,
+            label: `${formatNumber(left.budget)} budget left`,
+            value: `+${formatNumber(left.score)}`,
+          },
+        ]
+      : []),
     { icon: 'flag', label: 'Finished early', value: s.milestonesEarly },
     { icon: 'warn', label: 'Overtime weeks', value: overtime },
   ];
@@ -277,13 +303,93 @@ function Stats({ s }: { s: RunState }) {
   );
 }
 
+/** A client's name inside a sentence: "the Hendersons", "Count Vladislav". */
+export function clientInText(clientId: string): string {
+  const name = CONTENT.clients[clientId as keyof typeof CONTENT.clients]?.name;
+  return name ? name.replace(/^The\s/, 'the ') : 'this client';
+}
+
+/**
+ * Under the verdict (D-139): the verdict above this one and the Wow it starts at, then how the
+ * house stands against the company's record for its client. A debug run is never filed, so it
+ * says neither a best nor a first.
+ */
+function Standing({ s }: { s: RunState }) {
+  const next = rules.nextVerdict(s);
+  const filed = lastStanding.value;
+  const mine = filed && filed.key === jobKey(s.setup) ? filed.standing : null;
+  const client = clientInText(s.setup.clientId);
+  // Loaded already finished (not filed this visit): the record as it stands.
+  const best = mine ? mine.previous : s.debug ? null : bestFor(company.value, s.setup.clientId);
+  let record = null;
+  if (mine?.newBest) {
+    record = (
+      <p class="run-end-record best">
+        <Icon name="star" /> New best for {client}
+        {mine.previous?.won && (
+          <span class="was">
+            was <span class="num">{formatNumber(mine.previous.score)}</span>
+          </span>
+        )}
+      </p>
+    );
+  } else if (mine && !mine.previous) {
+    record = <p class="run-end-record">Your first house for {client}</p>;
+  } else if (best) {
+    record = (
+      <p class="run-end-record">
+        Your best for {client}: <span class="num">{formatNumber(best.score)}</span>
+      </p>
+    );
+  }
+  if (!next && !record) return null;
+  return (
+    <div class="run-end-standing">
+      {next && (
+        <p class="run-end-next">
+          {next.name} at <span class="num">{formatNumber(next.score)}</span>
+        </p>
+      )}
+      {record}
+    </div>
+  );
+}
+
+/** When the end screen came up (EndScreen's layout effect), for `settled`. */
+let shownAt = -Infinity;
+
+/** The end screen is up as of `now`: its buttons wait out FEEL.endScreen.clickDelayMs. */
+export function endScreenShown(now = performance.now()): void {
+  shownAt = now;
+}
+
+/**
+ * Whether the end screen has been up long enough for a click on its buttons to be meant for
+ * them. They come up where End week was, the moment the last tally ends, so the second click of
+ * a double-click that skipped the tally used to land on Title or New run, and the end screen
+ * can't be opened again.
+ */
+export function settled(now = performance.now()): boolean {
+  return now - shownAt >= FEEL.endScreen.clickDelayMs;
+}
+
+/** A button's action, once the screen has settled. */
+const whenSettled = (act: () => void) => () => {
+  if (settled()) act();
+};
+
 /**
  * The run-end screen, in place of the hand. It waits for the last tally and banner to play
  * (busy), so the player sees the final week land before the summary.
  */
 export function EndScreen() {
   const s = run.value;
-  if ((s.screen !== 'won' && s.screen !== 'lost') || busy.value) return null;
+  const shown = (s.screen === 'won' || s.screen === 'lost') && !busy.value;
+  // Before the browser can deliver a click: a layout effect runs with the render that shows it.
+  useLayoutEffect(() => {
+    if (shown) endScreenShown();
+  }, [shown]);
+  if (!shown) return null;
   const won = s.screen === 'won';
   const phases = CONTENT.balance.phases;
   const title = won
@@ -303,19 +409,32 @@ export function EndScreen() {
           <span class="value num">{formatNumber(s.score)}</span>
           <span class="unit">{won ? WOW : `of ${formatNumber(rules.target(s))} ${WOW}`}</span>
         </p>
+        <Standing s={s} />
       </header>
       <Milestones s={s} />
       <Stats s={s} />
       {s.debug && <p class="run-end-debug">A debug run: cheats were used.</p>}
-      <div class="run-end-actions">
-        <Button variant="primary" size="lg" block onClick={() => startNewRun()}>
-          New run
-        </Button>
-        <Button icon="copy" onClick={() => void copyRunCode()}>
+      {/* Copy run code and Title sit in the column, under the stats, not in the sticky bar
+          (D-148): four rows of buttons hid the milestones on a laptop. The Menu has both too. */}
+      <div class="run-end-more">
+        <Button icon="copy" onClick={whenSettled(() => void copyRunCode())}>
           Copy run code
         </Button>
-        <Button icon="exit" onClick={() => goToTitle()}>
+        <Button icon="exit" onClick={whenSettled(() => goToTitle())}>
           Title
+        </Button>
+      </div>
+      <div class="run-end-actions">
+        <Button variant="primary" size="lg" block onClick={whenSettled(() => startNewRun())}>
+          New run
+        </Button>
+        <Button
+          class="run-end-share"
+          icon="copy"
+          title="One line for the group chat: your verdict, Wow and milestones, and a link to play this lot"
+          onClick={whenSettled(() => void copyText(resultLine(s), 'Result copied'))}
+        >
+          Copy result
         </Button>
       </div>
     </Panel>

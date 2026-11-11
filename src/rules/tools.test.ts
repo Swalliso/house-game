@@ -614,7 +614,8 @@ describe('Catalog (specialHand)', () => {
     expect(new Set(pool.map((p) => p.weight))).toEqual(new Set([100]));
     expect(pool.some((p) => p.card.kind === 'fixture' && p.card.id === 'chandelier')).toBe(false);
     expect(pool.filter((p) => p.card.kind === 'fixture')).toHaveLength(10);
-    expect(pool.filter((p) => p.card.kind === 'piece')).toHaveLength(9);
+    // The test content's 9 special pieces and its Porch (D-145), which is weight 0 there.
+    expect(pool.filter((p) => p.card.kind === 'piece')).toHaveLength(10);
 
     // In phase 1 (after shop 1 in TEST_CONTENT), fixtures come up too; the Chandelier never.
     const r = createRules(C);
@@ -784,8 +785,8 @@ describe('Fertilizer (advanceTimers)', () => {
       if (after.length > 0) {
         expect([s.screen, s.week]).toEqual(['changeOrder', 5]);
         expect(r.pieceTimers(s, 1)).toEqual(timers);
-        // Only phase effects come before the last phase: acknowledged, then the shop.
-        s = r.apply(s, { t: 'answerChangeOrder', accept: true }).state;
+        // Only phase effects come before the last phase: one picked, then the shop.
+        s = r.apply(s, { t: 'answerChangeOrder', i: 0 }).state;
       }
       expect([s.screen, s.week]).toEqual(['shop', 5]);
       expect(s.house.pieces.map((p) => p.defId)).toEqual(['sapling']);

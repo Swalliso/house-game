@@ -274,7 +274,12 @@ function cleanAction(v: unknown): Action | null {
     case 'leaveShop':
       return { t: 'leaveShop' };
     case 'answerChangeOrder':
-      return typeof v.accept === 'boolean' ? { t: 'answerChangeOrder', accept: v.accept } : null;
+      // The offer's order picked (D-144). A code from an earlier build answers the one order
+      // it was offered with `accept`: there's no such answer now, so it becomes a pick the
+      // rules refuse, and the code replays up to that offer and stops there, two orders
+      // waiting, rather than fail to load.
+      if (isInt(v.i)) return { t: 'answerChangeOrder', i: v.i };
+      return typeof v.accept === 'boolean' ? { t: 'answerChangeOrder', i: -1 } : null;
     case 'debug':
       switch (v.op) {
         case 'addScore':
@@ -293,8 +298,17 @@ function cleanAction(v: unknown): Action | null {
           return good ? { t: 'debug', op: 'giveGood', good } : null;
         }
         case 'forceChangeOrder':
-          return typeof v.id === 'string'
-            ? { t: 'debug', op: 'forceChangeOrder', id: v.id as ChangeOrderId }
+          if (typeof v.id !== 'string') return null;
+          if (v.other === undefined) {
+            return { t: 'debug', op: 'forceChangeOrder', id: v.id as ChangeOrderId };
+          }
+          return typeof v.other === 'string'
+            ? {
+                t: 'debug',
+                op: 'forceChangeOrder',
+                id: v.id as ChangeOrderId,
+                other: v.other as ChangeOrderId,
+              }
             : null;
         case 'forceArrival':
           return typeof v.id === 'string'

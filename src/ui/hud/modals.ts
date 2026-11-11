@@ -9,19 +9,32 @@ export const menuOpen = signal(false);
 export const howToPlayOpen = signal(false);
 /** Text to copy by hand, when the browser won't let us write the clipboard (some iframes). */
 export const copyFallback = signal<{ title: string; text: string } | null>(null);
+/** The end screen's photo shown larger (D-136), by its milestone's place in the strip. */
+export const photoShown = signal<number | null>(null);
+/** The company's portfolio (D-139), from the title screen. */
+export const portfolioOpen = signal(false);
 
 export function anyModalOpen(): boolean {
-  return settingsOpen.value || howToPlayOpen.value || menuOpen.value || !!copyFallback.value;
+  return (
+    settingsOpen.value ||
+    howToPlayOpen.value ||
+    menuOpen.value ||
+    !!copyFallback.value ||
+    photoShown.value !== null ||
+    portfolioOpen.value
+  );
 }
 
 /**
- * Esc closes the top one: the copy fallback over everything, then Settings or How to play
- * (each opens over the menu), then the menu.
+ * Esc closes the top one: the copy fallback over everything, then a photo, then Settings, How
+ * to play or the portfolio (each opens over the menu or the title), then the menu.
  */
 export function closeTopModal(): void {
   if (copyFallback.value) copyFallback.value = null;
-  else if (settingsOpen.value || howToPlayOpen.value) {
+  else if (photoShown.value !== null) photoShown.value = null;
+  else if (settingsOpen.value || howToPlayOpen.value || portfolioOpen.value) {
     settingsOpen.value = false;
     howToPlayOpen.value = false;
+    portfolioOpen.value = false;
   } else menuOpen.value = false;
 }

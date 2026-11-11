@@ -26,12 +26,13 @@
 // swaps (D-132; D-121 had a reroll per row).
 //
 // Change orders (M4b): when a milestone resolves, the phase effects that ran through it end
-// and its accepted requests and restrictions resolve (a request met and a restriction kept
-// pay their reward). After milestones 2, 4, and 6 (`changeOrderAfter`) one change order is
-// then drawn from `co/<milestone>` among the eligible ones (the client's and the generic ones,
-// never one offered before, minus Appendix A's skips), and the 'changeOrder' screen waits for
-// the answer before the shop opens. An accepted order runs through the next phase. Placing a
-// piece a running restriction forbids breaks it; the placement stays legal.
+// and its requests and restrictions resolve (a request met and a restriction kept pay their
+// reward). After milestones 2, 4, and 6 (`changeOrderAfter`) two change orders are then drawn
+// from `co/<milestone>` among the eligible ones (the client's and the generic ones, never one
+// picked before, minus Appendix A's skips), and the 'changeOrder' screen waits for one to be
+// picked before the shop opens (D-144). The one picked runs through the next phase; the other
+// goes back in the pool. Placing a piece a running restriction forbids breaks it; the
+// placement stays legal.
 //
 // Early completion (D-040): the bonus is computed at once from this phase's earnings and the
 // weeks saved; the remaining weeks then fast-forward (pieces earn and timers tick, but no
@@ -41,6 +42,8 @@ import type {
   Action,
   ArrivalDef,
   Availability,
+  BlueprintId,
+  BlueprintValue,
   BuyAction,
   Card,
   DrawRow,
@@ -48,6 +51,7 @@ import type {
   ChangeOrderDef,
   ChangeOrderId,
   ChangeOrderOffer,
+  ChangeOrderOfferView,
   ChangeOrderRecord,
   ChangeOrderResult,
   ChangeOrderView,
@@ -64,6 +68,7 @@ import type {
   InstallGain,
   Legality,
   MilestoneRecord,
+  MilestoneReward,
   MilestoneResult,
   OfferView,
   PieceDef,
@@ -109,6 +114,16 @@ import {
   type CondCtx,
   type NounFn,
 } from './conditions.ts';
+import {
+  blueprintNeeds,
+  countedNoun,
+  countingMod,
+  grows,
+  lastWeekOnly,
+  scalingStat,
+  scoresWeek,
+  totalWithOneMore,
+} from './blueprint-value.ts';
 import { DRAW_ROWS, drawHand, drawWeights, rowOf, slotKey, swapCandidates } from './draw.ts';
 import { estimatePlay, type Estimate } from './estimate.ts';
 import { checkInstall, installHosts, withFixture } from './fixtures.ts';
@@ -141,6 +156,7 @@ import {
   phaseCount,
   phaseName,
   phaseTarget,
+  nextVerdictFor,
   verdictFor,
 } from './milestones.ts';
 import { ruleFrom, runModifiers, setupRule, type ActiveMod } from './modifiers.ts';
@@ -155,6 +171,7 @@ import {
 } from './placement.ts';
 import { stream } from './rng.ts';
 import { canUseTool, useTool, type ToolCtx } from './tools.ts';
+import { wowParts } from './attribution.ts';
 import { ageOf, onCadence, tallyHouse, unmetRequirement, type TallyContext } from './scoring.ts';
 import { isType, matchesPiece, rootType } from './selectors.ts';
 import { isRoom } from './layout.ts';
@@ -230,6 +247,8 @@ export interface Rules {
   phaseName(phase: number): string;
   /** The run-end verdict by score band (§12); the lowest one until the run is won. */
   verdict(state: RunState): string;
+  /** The verdict above a won run's, and the score it starts at; null at the top or if not won. */
+  nextVerdict(state: RunState): { name: string; score: number } | null;
   /** Weeks of the phase not yet tallied, this one included (1 in an overtime week). */
   weeksLeft(state: RunState): number;
   /**
@@ -274,6 +293,18 @@ export interface Rules {
    */
   fixtureValue(state: RunState, fixture: FixtureId): FixtureValue | null;
   /**
+   * D-141: what a blueprint would add to the house as it stands, for the shop's line: the
+   * week's total with it in play, less without, and each week left in the run added up with
+   * nothing more built (the house's timers run on, each phase's last week counts as one, and
+   * overtime is left out). It's valued as if bought now, or, if it's held already, against the
+   * run without it. In the shop the first week is the next phase's first, after the transforms
+   * that start it, as for a fixture. A blueprint that acts only in a phase's last week gives
+   * that week's gain (`when`); one that grows says how far (`growsTo`); budget is counted
+   * apart; and one that would add nothing says what it's waiting for (`needs`). Null off the
+   * build and shop screens, or for a blueprint that changes no tally.
+   */
+  blueprintValue(state: RunState, id: BlueprintId): BlueprintValue | null;
+  /**
    * A cheap local estimate of a legal play's change to the week's total, for ranking
    * candidates before scoring the best few exactly (§4, Performance), checklist lines that
    * counts decide included (`specFlips`). Its hints mark plays whose payoff it can't see:
@@ -302,11 +333,14 @@ export interface Rules {
    * tally before and after. Illegal uses come back with their reason.
    */
   previewTool(state: RunState, action: UseToolAction): ToolPreview;
-  /** M4b: the change order waiting on the 'changeOrder' screen, or null. */
-  changeOrderOffer(state: RunState): ChangeOrderView | null;
   /**
-   * M4b: the change orders running now, in the order answered: accepted requests (with their
-   * progress) and restrictions (broken or not), and acknowledged phase effects.
+   * M4b, D-144: the change orders waiting on the 'changeOrder' screen for one to be picked, or
+   * null. A phase effect says what it would change a week's total by as the house stands.
+   */
+  changeOrderOffer(state: RunState): ChangeOrderOfferView | null;
+  /**
+   * M4b: the change orders running now, in the order picked: requests (with their progress),
+   * restrictions (broken or not), and phase effects.
    */
   activeChangeOrders(state: RunState): ChangeOrderView[];
   /**
@@ -357,6 +391,11 @@ type PlayCheck = PlacementCheck & {
 
 const NO_PLAY: Legality = { legal: false, cells: [], clearedTrees: [] };
 const NO_SCORE: WeekScore = { points: 0, mult: 100, total: 0 };
+
+/** D-144: how many change orders an offer shows, to pick one from. */
+const ORDERS_OFFERED = 2;
+const ORDER_WAITING = 'A change order is waiting: pick one.';
+const ORDER_PICK_REASON = 'Pick one of the change orders on offer.';
 
 /** What a run's modifiers add up to, computed once per state. */
 interface RunMods {
@@ -423,7 +462,7 @@ export function createRules(content: Content): Rules {
   /** Why the build screen's plays and queries aren't available on this screen. */
   function offScreen(state: RunState): string {
     if (state.screen === 'shop') return 'The shop is open.';
-    if (state.screen === 'changeOrder') return 'A change order is waiting for your answer.';
+    if (state.screen === 'changeOrder') return ORDER_WAITING;
     return 'The run is over.';
   }
 
@@ -917,15 +956,14 @@ export function createRules(content: Content): Rules {
 
   const orderDef = (id: ChangeOrderId): ChangeOrderDef => content.changeOrders[id];
 
-  /** What a request is checked with: the phase, and what's new since it was accepted. */
+  /** What a request is checked with: the phase, and what's new since it was picked. */
   const orderCtx = (state: RunState, r: { sinceUid: number; demolished: number }): CondCtx => ({
     phase: state.phase,
     order: { sinceUid: r.sinceUid, demolished: r.demolished },
   });
 
-  /** Accepted requests and restrictions still running. */
-  const running = (state: RunState) =>
-    state.changeOrders.filter((r) => r.answer === 'accepted' && r.result === undefined);
+  /** The change orders still running. */
+  const running = (state: RunState) => state.changeOrders.filter((r) => r.result === undefined);
 
   /**
    * Why a change order isn't offered now (Appendix A · M4b), or null: a request whose
@@ -955,14 +993,14 @@ export function createRules(content: Content): Rules {
   }
 
   /**
-   * The client's own change orders and the generic ones, listed in that order (the pick among
-   * them is even, not own first): never one offered before, minus the skipped, and before the
-   * last phase only phase effects.
+   * The client's own change orders and the generic ones, listed in that order (the draw among
+   * them is even, not own first): never one picked before or on offer now, minus the skipped,
+   * and before the last phase only phase effects. One offered and passed over is back in
+   * (D-144).
    */
   function eligibleOrders(state: RunState): ChangeOrderId[] {
     const offered = new Set(state.changeOrders.map((r) => r.id));
-    const pending = state.offers?.changeOrder;
-    if (pending) offered.add(pending.id);
+    for (const id of state.offers?.changeOrder?.ids ?? []) offered.add(id);
     const generic = (Object.keys(content.changeOrders) as ChangeOrderId[]).filter(
       (id) => orderDef(id).scope === 'generic',
     );
@@ -978,46 +1016,64 @@ export function createRules(content: Content): Rules {
     );
   }
 
-  /** The 'changeOrder' screen, with this offer: it runs through the state's phase. */
-  function offerOrder(
+  /**
+   * The orders a milestone's offer shows (D-144): two of the eligible ones, drawn evenly and
+   * in the order shown from `co/<milestone>`; one when only one is eligible; none with none.
+   */
+  function drawOrders(state: RunState, milestone: number): ChangeOrderId[] {
+    const pool = eligibleOrders(state);
+    const rng = stream(state.setup.seed, `co/${milestone}`);
+    const ids: ChangeOrderId[] = [];
+    while (ids.length < ORDERS_OFFERED && pool.length > 0) {
+      ids.push(...pool.splice(rng.int(pool.length), 1));
+    }
+    return ids;
+  }
+
+  /** The 'changeOrder' screen, with these on offer: the pick runs through the state's phase. */
+  function offerOrders(
     s: RunState,
-    id: ChangeOrderId,
+    ids: readonly ChangeOrderId[],
     forced: boolean,
     events: GameEvent[],
   ): RunState {
     const flag = forced ? { forced: true as const } : {};
-    const offer: ChangeOrderOffer = { id, phase: s.phase, ...flag };
-    events.push({ t: 'changeOrderOffered', id, kind: orderDef(id).kind, phase: s.phase, ...flag });
+    const offer: ChangeOrderOffer = { ids, phase: s.phase, ...flag };
+    events.push({
+      t: 'changeOrderOffered',
+      options: ids.map((id) => ({ id, kind: orderDef(id).kind })),
+      phase: s.phase,
+      ...flag,
+    });
     return { ...s, screen: 'changeOrder', offers: { ...s.offers, changeOrder: offer } };
   }
 
   /**
-   * The answer: a request or restriction accepted or declined, a phase effect acknowledged (it
-   * then runs as a timed effect until its phase's milestone). Then the shop opens, or a forced
-   * offer goes back to its week.
+   * The answer (D-144): one of the offer's orders is picked, and the rest go back in the pool.
+   * A request or a restriction then runs to its phase's milestone, and a phase effect runs as a
+   * timed effect until then. Then the shop opens, or a forced offer goes back to its week.
    */
-  function answerOrder(state: RunState, accept: unknown, events: GameEvent[]): RunState {
+  function answerOrder(state: RunState, i: unknown, events: GameEvent[]): RunState {
     const offer = state.screen === 'changeOrder' ? state.offers?.changeOrder : undefined;
     if (!offer) throw new IllegalAction('There’s no change order to answer.');
-    if (typeof accept !== 'boolean')
-      throw new IllegalAction('Accept the change order or decline it.');
-    const def = orderDef(offer.id);
-    if (def.kind === 'phase' && !accept) {
-      throw new IllegalAction(`${def.name} can’t be declined: it’s coming either way.`);
-    }
+    const id = typeof i === 'number' && Number.isInteger(i) ? offer.ids[i] : undefined;
+    if (id === undefined) throw new IllegalAction(ORDER_PICK_REASON);
+    const def = orderDef(id);
+    const passedOver = offer.ids.filter((_, k) => k !== i);
     const record: ChangeOrderRecord = {
       id: def.id,
       phase: offer.phase,
-      answer: def.kind === 'phase' ? 'acknowledged' : accept ? 'accepted' : 'declined',
       week: state.week,
       sinceUid: state.house.nextUid,
       demolished: 0,
+      passedOver,
     };
     events.push({
       t: 'changeOrderAnswered',
       id: def.id,
       kind: def.kind,
-      accepted: record.answer !== 'declined',
+      i: i as number,
+      passedOver,
     });
     const { offers: _offers, ...rest } = state;
     const { changeOrder: _answered, ...others } = state.offers ?? {};
@@ -1041,11 +1097,10 @@ export function createRules(content: Content): Rules {
 
   /**
    * At a phase's milestone (when it's met): the phase effects that ran through it end, and its
-   * accepted requests and restrictions resolve. A request met or a restriction kept pays.
+   * requests and restrictions resolve. A request met or a restriction kept pays.
    */
   function resolveOrders(s: RunState, events: GameEvent[]): RunState {
-    const ends = (r: ChangeOrderRecord) =>
-      r.result === undefined && r.answer !== 'declined' && r.phase <= s.phase;
+    const ends = (r: ChangeOrderRecord) => r.result === undefined && r.phase <= s.phase;
     const timedEffects = s.timedEffects.filter(
       (e) => !('phase' in e.until) || e.until.phase > s.phase,
     );
@@ -1104,10 +1159,7 @@ export function createRules(content: Content): Rules {
     return {
       ...state,
       changeOrders: state.changeOrders.map((r) =>
-        ids.includes(r.id) &&
-        r.answer === 'accepted' &&
-        r.result === undefined &&
-        r.brokenBy === undefined
+        ids.includes(r.id) && r.result === undefined && r.brokenBy === undefined
           ? { ...r, brokenBy: uid }
           : r,
       ),
@@ -1129,7 +1181,6 @@ export function createRules(content: Content): Rules {
       text: def.text,
       terms: changeOrderText(content, def),
       phase,
-      declinable: def.kind !== 'phase',
     };
     if (def.kind === 'phase') return view;
     if (def.kind === 'restriction') {
@@ -1144,6 +1195,51 @@ export function createRules(content: Content): Rules {
       met: meetsHouse(content, layout, def.condition, ctx),
       progress: progressOf(content, layout, def.condition, ctx, noun),
     };
+  }
+
+  /**
+   * D-144: what a phase effect on offer would change a week's total by, with the house as it
+   * stands in the week the effect starts: after a milestone, the next phase's first week, its
+   * transforms resolved as leaving the shop starts it (as a fixture in the shop is valued,
+   * D-107); for a ?debug offer, the week it interrupted. Null for a request or a restriction,
+   * which change no earnings.
+   */
+  function orderHouseGain(state: RunState, id: ChangeOrderId): number | null {
+    const def = orderDef(id);
+    const offer = state.screen === 'changeOrder' ? state.offers?.changeOrder : undefined;
+    if (def.kind !== 'phase' || !offer) return null;
+    const { offers: _offers, ...rest } = state;
+    const build: RunState = { ...rest, screen: 'build' };
+    const week = weekStarted(state) ? build : resolveTransforms(build, []);
+    const during: RunState = {
+      ...week,
+      timedEffects: [
+        ...week.timedEffects,
+        { source: def.id, until: { phase: offer.phase }, modifiers: def.modifiers },
+      ],
+    };
+    return tallyOf(during, during.house, false).total - tallyOf(week, week.house, false).total;
+  }
+
+  const offerViews = new WeakMap<RunState, ChangeOrderOfferView>();
+  /** The offer on the 'changeOrder' screen as the UI shows it, computed once per state. */
+  function offerView(state: RunState): ChangeOrderOfferView | null {
+    const offer = state.screen === 'changeOrder' ? state.offers?.changeOrder : undefined;
+    if (!offer) return null;
+    let view = offerViews.get(state);
+    if (!view) {
+      view = {
+        options: offer.ids.map((id) => {
+          const order = orderView(state, id, offer.phase);
+          const houseGain = orderHouseGain(state, id);
+          return houseGain === null ? order : { ...order, houseGain };
+        }),
+        phase: offer.phase,
+        forced: !!offer.forced,
+      };
+      offerViews.set(state, view);
+    }
+    return view;
   }
 
   function startWeek(state: RunState, events: GameEvent[]): RunState {
@@ -1288,7 +1384,7 @@ export function createRules(content: Content): Rules {
       result === 'failed'
         ? 0
         : Math.min(Math.floor(s.budget / b.shop.interestPer), rule(s, 'interestMax'));
-    const reward =
+    const paid =
       result === 'failed'
         ? { budget: 0, score: 0, interest: 0 }
         : {
@@ -1296,7 +1392,16 @@ export function createRules(content: Content): Rules {
             score: bonus?.score ?? 0,
             interest,
           };
-    const score = s.score + reward.score;
+    const last = s.phase === phaseCount(b) - 1;
+    // D-145: no shop follows the last milestone, so the budget held when it's met, this payout
+    // included, pays Wow. It comes after the target is met, so it never turns a loss into a win.
+    const held = s.budget + paid.budget;
+    const leftover =
+      last && result !== 'failed' && held > 0 && b.leftoverBudgetWow > 0
+        ? { budget: held, score: held * b.leftoverBudgetWow }
+        : null;
+    const reward: MilestoneReward = leftover ? { ...paid, leftover } : paid;
+    const score = s.score + reward.score + (leftover?.score ?? 0);
     const record: MilestoneRecord = {
       phase: s.phase,
       result,
@@ -1318,7 +1423,6 @@ export function createRules(content: Content): Rules {
     };
     // M4b: the phase's effects end, and its accepted change orders resolve (a met milestone only).
     if (result !== 'failed') next = resolveOrders(next, events);
-    const last = s.phase === phaseCount(b) - 1;
     if (result === 'failed' || last) {
       const won = result !== 'failed';
       events.push({
@@ -1340,15 +1444,12 @@ export function createRules(content: Content): Rules {
       phaseStartScore: next.score,
       rerollsLeft: rule(s, 'rerollsPerPhase'),
     };
-    // M4b: after milestones 2, 4, and 6, one change order first, from `co/<milestone>`; with
-    // none eligible, straight to the shop.
+    // M4b, D-144: after milestones 2, 4, and 6, two change orders first, from
+    // `co/<milestone>`, to pick one of; with none eligible, straight to the shop.
     const milestone = s.phase + 1;
     if (b.changeOrderAfter.includes(milestone)) {
-      const eligible = eligibleOrders(next);
-      if (eligible.length > 0) {
-        const id = stream(next.setup.seed, `co/${milestone}`).pick(eligible);
-        return offerOrder(next, id, false, events);
-      }
+      const ids = drawOrders(next, milestone);
+      if (ids.length > 0) return offerOrders(next, ids, false, events);
     }
     // The shop opens after milestones 1–6 (D-051); shop k follows milestone k.
     return openShop(next, next.phase, false, events);
@@ -1764,10 +1865,14 @@ export function createRules(content: Content): Rules {
         // M4b: offered now, as if a milestone had just been met; it runs through this phase.
         if (s.screen !== 'build')
           throw new IllegalAction('A change order is forced from the build screen.');
-        if (typeof action.id !== 'string' || !Object.hasOwn(content.changeOrders, action.id)) {
+        const ids = action.other === undefined ? [action.id] : [action.id, action.other];
+        if (ids.some((id) => typeof id !== 'string' || !Object.hasOwn(content.changeOrders, id))) {
           throw new IllegalAction('Unknown change order.');
         }
-        return offerOrder(s, action.id, true, events);
+        if (new Set(ids).size < ids.length) {
+          throw new IllegalAction('Two different change orders, or one alone.');
+        }
+        return offerOrders(s, ids, true, events);
       }
       case 'forceArrival': {
         // M4b: this household's member moves in now.
@@ -1791,7 +1896,7 @@ export function createRules(content: Content): Rules {
     'setAutoComplete',
     'debug',
   ]);
-  /** M4b: the 'changeOrder' screen waits for its answer (the auto-complete toggle and cheats aside). */
+  /** M4b: the 'changeOrder' screen waits for its pick (the auto-complete toggle and cheats aside). */
   const CHANGE_ORDER_ACTIONS = new Set<Action['t']>([
     'answerChangeOrder',
     'setAutoComplete',
@@ -1805,7 +1910,7 @@ export function createRules(content: Content): Rules {
       throw new IllegalAction('The shop is open. Leave it to start the next phase.');
     }
     if (state.screen === 'changeOrder' && !CHANGE_ORDER_ACTIONS.has(action.t)) {
-      throw new IllegalAction('A change order is waiting for your answer.');
+      throw new IllegalAction(ORDER_WAITING);
     }
     const shopOnly =
       action.t === 'buy' ||
@@ -1921,14 +2026,12 @@ export function createRules(content: Content): Rules {
             : { t: 'demolished', feature: target.feature, cells: target.cells, demolitionsLeft },
         );
         let s: RunState = { ...state, house, demolitionsLeft };
-        // M4b: a running request counts the pieces demolished since it was accepted (Declutter).
+        // M4b: a running request counts the pieces demolished since it was picked (Declutter).
         if (target.kind === 'piece' && running(s).length > 0) {
           s = {
             ...s,
             changeOrders: s.changeOrders.map((r) =>
-              r.answer === 'accepted' && r.result === undefined
-                ? { ...r, demolished: r.demolished + 1 }
-                : r,
+              r.result === undefined ? { ...r, demolished: r.demolished + 1 } : r,
             ),
           };
         }
@@ -1982,7 +2085,7 @@ export function createRules(content: Content): Rules {
       case 'leaveShop':
         return done(leaveShop(state, events));
       case 'answerChangeOrder':
-        return done(answerOrder(state, action.accept, events));
+        return done(answerOrder(state, action.i, events));
       case 'debug':
         return done(applyDebug(state, action, events));
       default:
@@ -2073,10 +2176,10 @@ export function createRules(content: Content): Rules {
   }
 
   /**
-   * The build screen's state for the week a fixture bought now would first earn in (D-107):
-   * this one, or in the shop the next phase's first week, its transforms resolved as leaving
-   * starts it (its arrivals only fill the reserve). A shop the ?debug panel opened mid-week
-   * goes back to that week. Null on the other screens.
+   * The build screen's state for the week a fixture or a blueprint bought now would first earn
+   * in (D-107, D-141): this one, or in the shop the next phase's first week, its transforms
+   * resolved as leaving starts it (its arrivals only fill the reserve). A shop the ?debug panel
+   * opened mid-week goes back to that week. Null on the other screens.
    */
   function installWeek(state: RunState): RunState | null {
     if (state.screen === 'build') return state;
@@ -2110,6 +2213,104 @@ export function createRules(content: Content): Rules {
       weeksLeft: weeks,
       overRun: best.gain * weeks,
     };
+  }
+
+  /**
+   * The week after this one in a run where nothing more is built (D-141's projection): the next
+   * slot, or the next phase's first week after a phase's last (or an overtime week), with the
+   * transforms that start it. Timed effects end as they would: a tool's with its week's tally,
+   * a phase effect with its phase.
+   */
+  function idleNextWeek(s: RunState): RunState {
+    const last = s.overtimeWeek > 0 || s.slot >= W;
+    const timedEffects = s.timedEffects.filter((e) =>
+      'week' in e.until ? e.until.week > s.week : !last || e.until.phase > s.phase,
+    );
+    const next: RunState = last
+      ? { ...s, phase: s.phase + 1, slot: 1, overtimeWeek: 0, week: s.week + 1, timedEffects }
+      : { ...s, slot: s.slot + 1, week: s.week + 1, timedEffects };
+    return resolveTransforms(next, []);
+  }
+
+  const blueprintValues = new WeakMap<RunState, Map<BlueprintId, BlueprintValue | null>>();
+
+  function blueprintValue(state: RunState, id: BlueprintId): BlueprintValue | null {
+    let known = blueprintValues.get(state);
+    if (!known) blueprintValues.set(state, (known = new Map()));
+    let value = known.get(id);
+    if (value === undefined) known.set(id, (value = valueBlueprint(state, id)));
+    return value;
+  }
+
+  function valueBlueprint(state: RunState, id: BlueprintId): BlueprintValue | null {
+    if (!Object.hasOwn(content.blueprints, id)) return null;
+    const def = content.blueprints[id];
+    const scoring = def.modifiers.filter(scoresWeek);
+    const first = installWeek(state);
+    if (scoring.length === 0 || !first) return null;
+    // As if bought now (its granted timers count from here), or as it is if it's held already.
+    const held = first.blueprints.some((o) => o.id === id);
+    const boughtWeek = first.week;
+    const withIt = (s: RunState): RunState =>
+      held ? s : { ...s, blueprints: [...s.blueprints, { id, boughtWeek }] };
+    const without = (s: RunState): RunState =>
+      held ? { ...s, blueprints: s.blueprints.filter((o) => o.id !== id) } : s;
+    const gainIn = (s: RunState) => {
+      const a = tallyOf(withIt(s), s.house, false);
+      const z = tallyOf(without(s), s.house, false);
+      return { wow: a.total - z.total, budget: a.budget - z.budget };
+    };
+
+    // This phase's weeks left, then every later phase's (overtime can't be foreseen): each one
+    // tallied with and without it, with nothing more built.
+    const weeks = weeksLeft(first) + Math.max(0, phaseCount(b) - 1 - first.phase) * W;
+    const lastOnly = lastWeekOnly(scoring);
+    let cur = first;
+    let shown: RunState | null = null;
+    let overRun = 0;
+    let budget = 0;
+    let top = 0;
+    let any = false;
+    for (let k = 0; k < weeks; k++) {
+      // The week the line's gain is for: the first, or the first that's a phase's last.
+      if (!shown && (!lastOnly || isLastWeek(cur))) shown = cur;
+      const g = gainIn(cur);
+      overRun += g.wow;
+      budget += g.budget;
+      top = Math.max(top, g.wow);
+      any ||= g.wow !== 0 || g.budget !== 0;
+      if (k < weeks - 1) cur = idleNextWeek(cur);
+    }
+    shown ??= first;
+    const gain = gainIn(shown).wow;
+    const value: BlueprintValue = {
+      gain,
+      when: lastOnly ? 'lastWeek' : 'week',
+      weeksLeft: weeks,
+      overRun,
+      budget,
+      held,
+    };
+    if (grows(scoring) && top > gain) value.growsTo = top;
+    const stat = scalingStat(scoring);
+    if (stat) {
+      const more: RunState = { ...shown, [stat]: shown[stat] + 1 };
+      value.perStat = { stat, gain: gainIn(more).wow - gain };
+    }
+    const counting = countingMod(scoring);
+    if (counting) {
+      const s = withIt(shown);
+      const tally = tallyOf(s, s.house, false);
+      const more = totalWithOneMore(tally, id, counting) - tally.total;
+      if (more !== 0) value.perPiece = { what: countedNoun(content, counting), gain: more };
+    }
+    if (!any) {
+      const s = withIt(shown);
+      value.needs = blueprintNeeds(content, def, layoutFor(s), tallyOf(s, s.house, false), {
+        milestonesEarly: s.milestonesEarly,
+      });
+    }
+    return value;
   }
 
   function legalPlacements(state: RunState): PlaceAction[] {
@@ -2154,12 +2355,9 @@ export function createRules(content: Content): Rules {
 
   function legalActions(state: RunState): Action[] {
     if (state.screen === 'changeOrder') {
-      // M4b: accept or decline; a phase effect is only acknowledged.
-      const offer = state.offers?.changeOrder;
-      if (!offer) return [];
-      const yes: Action = { t: 'answerChangeOrder', accept: true };
-      if (orderDef(offer.id).kind === 'phase') return [yes];
-      return [yes, { t: 'answerChangeOrder', accept: false }];
+      // M4b, D-144: pick one of the orders on offer.
+      const ids = state.offers?.changeOrder?.ids ?? [];
+      return ids.map((_, i): Action => ({ t: 'answerChangeOrder', i }));
     }
     const open = state.screen === 'shop' ? state.offers?.pick : undefined;
     if (open) {
@@ -2312,6 +2510,7 @@ export function createRules(content: Content): Rules {
       specsLost: [],
       xMults: beforeTally?.xMults ?? [],
       finds: [],
+      parts: [],
     });
     if (!beforeTally) return empty(offScreen(state));
     if (!play) {
@@ -2350,6 +2549,9 @@ export function createRules(content: Content): Rules {
     const wasMet = new Map(beforeTally.specs.map((sp) => [sp.id, sp.met]));
     const sunny =
       !!week.placed && !!layoutFor(state, week.house).tags.get(week.placed.uid)?.has('Sunny');
+    // D-122: where the change comes from, named on the board.
+    const specs = clientOf(state).specs;
+    const specName = (id: string) => specs.find((sp) => sp.id === id)?.name ?? id;
     return {
       legal: true,
       ...(sunny ? { sunny: true as const } : {}),
@@ -2383,6 +2585,7 @@ export function createRules(content: Content): Rules {
         ? { renovates: { uid: week.renovated.uid, level: week.renovated.level } }
         : {}),
       ...(breaks ? { breaks } : {}),
+      parts: wowParts(content, beforeTally, week.tally, focus, specName),
     };
   }
 
@@ -2562,6 +2765,7 @@ export function createRules(content: Content): Rules {
     pace: (state) => paceFor(b, state.phase, state.phaseStartScore, pctOf(state)),
     phaseName: (phase) => phaseName(b, phase),
     verdict: (state) => verdictFor(b, state.score, state.screen === 'won', pctOf(state)),
+    nextVerdict: (state) => nextVerdictFor(b, state.score, state.screen === 'won', pctOf(state)),
     weeksLeft,
     forecast: (state, play) => {
       if (state.screen !== 'build') return state.score;
@@ -2583,6 +2787,7 @@ export function createRules(content: Content): Rules {
     installHosts: hostsFor,
     installGains,
     fixtureValue,
+    blueprintValue,
     estimatePlay: (state, play) => {
       const def = placeDef(state, play);
       if (!def) throw new IllegalAction('There is no card there.');
@@ -2679,14 +2884,8 @@ export function createRules(content: Content): Rules {
         ...setFlips(passTally(state), afterTally),
       };
     },
-    changeOrderOffer: (state) => {
-      const offer = state.screen === 'changeOrder' ? state.offers?.changeOrder : undefined;
-      return offer ? orderView(state, offer.id, offer.phase) : null;
-    },
-    activeChangeOrders: (state) =>
-      state.changeOrders
-        .filter((r) => r.result === undefined && r.answer !== 'declined')
-        .map((r) => orderView(state, r.id, r.phase, r)),
+    changeOrderOffer: offerView,
+    activeChangeOrders: (state) => running(state).map((r) => orderView(state, r.id, r.phase, r)),
     eligibleChangeOrders: eligibleOrders,
     replay,
   };

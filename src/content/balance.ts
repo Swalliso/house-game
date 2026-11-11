@@ -49,19 +49,21 @@ export const BALANCE: Balance = {
   // D-018's seven milestones. The targets are written by `npm run sim -- --suggest-targets`
   // (D-044): α × the greedy bot's median cumulative Wow at each milestone. Keep the markers.
   // sim:targets:start
-  // From `npm run sim -- --suggest-targets --runs 2000 --crew all` (D-072, D-089, D-123): α × the
-  // greedy bot's median cumulative Wow at each milestone on seeds sim-*, with α set so greedy's
-  // estimated survival follows 100%, 98%, 95%, 85%, 72%, 58%, 45%. Held out (2,000 runs on
-  // check-*), greedy won 44.0% against the fit's 46.6%, so the fit is used as it is. Each
-  // client's targetPct scales these.
+  // From `npm run sim -- --suggest-targets --runs 2000 --crew all` (D-072, D-089), then set
+  // against played runs (D-146): α × the greedy bot's median cumulative Wow at each milestone on
+  // seeds sim-*. The fit's estimate overstates what an overtime week rescues (in play the next
+  // shop hasn't opened yet), so α sits where greedy's played survival follows 100%, 98%, 95%,
+  // 85%, 72%, 58%, 45%: on 2,000 runs of check-* it was 100, 98.6, 96.0, 86.7, 74.1, 58.4 and
+  // 45.6%, and 45.7% won on 2,000 runs no fit had seen (hold-*). Milestone 2 keeps 560: the
+  // median at week 8 hasn't moved. Each client's targetPct scales these.
   phases: [
-    { name: 'Groundbreaking', target: 20 }, // median 95, α 0.21
-    { name: 'Foundation', target: 560 }, // median 728, α 0.77
-    { name: 'Framing', target: 1750 }, // median 2395, α 0.73
-    { name: 'Roofing', target: 4850 }, // median 5127, α 0.95
-    { name: 'Drywall', target: 10200 }, // median 9604, α 1.06
-    { name: 'Finishes', target: 18800 }, // median 15782, α 1.19
-    { name: 'Final Walkthrough', target: 32600 }, // median 26151, α 1.25
+    { name: 'Groundbreaking', target: 20 }, // median 93, α 0.21
+    { name: 'Foundation', target: 560 }, // median 720, α 0.78
+    { name: 'Framing', target: 1900 }, // median 2520, α 0.75
+    { name: 'Roofing', target: 5200 }, // median 5447, α 0.95
+    { name: 'Drywall', target: 11300 }, // median 10577, α 1.07
+    { name: 'Finishes', target: 20500 }, // median 17763, α 1.15
+    { name: 'Final Walkthrough', target: 35700 }, // median 29891, α 1.19
   ],
   // sim:targets:end
 
@@ -96,6 +98,12 @@ export const BALANCE: Balance = {
   // Appendix A · M3a's +3 budget per milestone, raised to 4 (D-085): with 3 the greedy bot earned
   // a median 25 a run against the plan's 30–40, so the shop was too tight to plan around.
   milestoneBudget: 4,
+
+  // D-145: no shop follows the last milestone, so the budget held when it's met (its own payout
+  // and any early bonus included) pays Wow: 100 each. It's paid after the target is met, so it
+  // moves the verdict and the company's best, never a loss into a win. Greedy holds a median 10
+  // at the end of a win, about +1,000 on a final score near 37,000.
+  leftoverBudgetWow: 100,
 
   // The shop (D-051, Appendix A · M3a). Shop k opens after milestone k, for k = 1–6.
   shop: {
@@ -190,10 +198,20 @@ export const BALANCE: Balance = {
 
   // The job board (Appendix A · M4a; D-026, D-045): 3 contracts, clients by rarity (no Rare is
   // guaranteed), and the Hendersons as contract 0 on a first visit.
+  //
+  // firstSeed is the first job's lot (D-149), the one contract a first visit can take. Of 6,000
+  // lots, 348 have no creek and deal the Hendersons a Bedroom, then a Bathroom, then a Closet or
+  // a second Bedroom in weeks 1 to 3. This one has no trait, a first hand with neither a Bathroom
+  // nor a Closet to play out of order, and the same four hands wherever the three go: a Suite by
+  // week 3 in 300 of 300 random placements, 41 to 61 Wow against Groundbreaking's 22. With those
+  // three weeks played as the guide says, a bot that then picks a random card met Foundation in
+  // 19 of 24 runs and Framing in 14 (12% and 5% on any lot, unguided). src/ui/hud/first-job.test.ts
+  // holds the hands, so a change to the draw says to pick again.
   jobBoard: {
     contracts: 3,
     rarity: { common: 65, uncommon: 27, rare: 8 },
     firstClient: 'hendersons',
+    firstSeed: 'oh-4243',
   },
 
   // Change orders (M4b; jam-scope.md, implementation-plan.md §7): one is offered after each of

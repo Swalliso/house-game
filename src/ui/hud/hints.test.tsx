@@ -1,15 +1,14 @@
 // The controls strip's F hint (playtest 5a): it says what F does now. With Fit on, F goes back
 // to the zoom from before (camera.ts toggleFit), so the strip says so, during the run and after
 // it, instead of offering to fit the lot again. And M4's keys: a change order's sheet takes
-// only Enter, Esc and D, and a pack (D-106) never turns.
+// only Enter, Esc and D, and a pack (D-106) never turns. And the supplies: a tool or a fixture
+// from them is free, so the strip says how it's aimed and never offers Enter (the polish review).
 
 import type { ComponentChildren, VNode } from 'preact';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { RunState } from '../../rules/index.ts';
 import { zoom } from '../board/camera.ts';
 import { busy } from '../fx/director.ts';
-import { ROOFING_PHASE } from '../fx/moments.ts';
-import { movingUid, roofOn, run, selected, source, tentative, tool } from '../store.ts';
+import { movingUid, run, selected, source, tentative, tool } from '../store.ts';
 import { shopHidden } from './actions.ts';
 import { Hints } from './Hints.tsx';
 
@@ -89,7 +88,6 @@ afterEach(() => {
   tentative.value = null;
   movingUid.value = null;
   tool.value = 'build';
-  roofOn.value = false;
 });
 
 describe('the F hint', () => {
@@ -143,26 +141,23 @@ describe('the F hint', () => {
 });
 
 describe("the strip's keys for M4's plays", () => {
-  it("offers a change order's keys, and no F, which does nothing on its sheet", () => {
+  it("offers the change orders' keys, and no F, which does nothing on their sheet", () => {
     run.value = {
       ...start,
       screen: 'changeOrder',
-      offers: { changeOrder: { id: 'workingFromHome', phase: 0 } },
+      offers: { changeOrder: { ids: ['workingFromHome', 'heatWave'], phase: 0 } },
     };
-    expect(strip()).toEqual([
-      { keys: ['Enter'], words: 'accept' },
-      { keys: ['Esc', 'D'], words: 'decline: it costs nothing' },
-    ]);
+    expect(strip()).toEqual([{ keys: ['1', '2'], words: 'pick one' }]);
     expect(fHint()).toBeNull();
   });
 
-  it('only offers Enter on a phase effect, which can’t be declined', () => {
+  it('offers Enter on an order offered alone (D-144)', () => {
     run.value = {
       ...start,
       screen: 'changeOrder',
-      offers: { changeOrder: { id: 'heatWave', phase: 0 } },
+      offers: { changeOrder: { ids: ['heatWave'], phase: 0 } },
     };
-    expect(strip()).toEqual([{ keys: ['Enter'], words: 'got it' }]);
+    expect(strip()).toEqual([{ keys: ['Enter'], words: 'accept' }]);
   });
 
   it('leaves R out for a pack, which is clicked out a tile at a time', () => {
@@ -194,6 +189,62 @@ describe("the strip's keys for M4's plays", () => {
     ]);
   });
 
+  it('says install for a fixture from the hand, and keeps Enter: it is the week’s build', () => {
+    run.value = { ...start, screen: 'build', hand: [{ kind: 'fixture', id: 'fireplace' }] };
+    selected.value = 0;
+    expect(strip()).toEqual([
+      { keys: ['Click'], words: 'a piece to install it' },
+      { keys: ['Enter'], words: 'end the week' },
+      { keys: ['Esc'], words: 'put it back' },
+    ]);
+  });
+
+  it('offers no Enter for a fixture from the supplies: installing it is free', () => {
+    run.value = { ...start, screen: 'build', supplies: [{ kind: 'fixture', id: 'fireplace' }] };
+    source.value = 'supplies';
+    selected.value = 0;
+    expect(strip()).toEqual([
+      { keys: ['Click'], words: 'a piece twice to install it' },
+      { keys: ['Esc'], words: 'put it back' },
+    ]);
+  });
+
+  it('offers no Enter and no Click for a tool used from its panel (Rush Order)', () => {
+    run.value = { ...start, screen: 'build', supplies: [{ kind: 'tool', id: 'rushOrder' }] };
+    source.value = 'supplies';
+    selected.value = 0;
+    expect(strip()).toEqual([{ keys: ['Esc'], words: 'put it back' }]);
+  });
+
+  it('says how the Copy Machine and the Moving Truck are aimed', () => {
+    run.value = {
+      ...start,
+      screen: 'build',
+      supplies: [
+        { kind: 'tool', id: 'copyMachine' },
+        { kind: 'tool', id: 'movingTruck' },
+      ],
+    };
+    source.value = 'supplies';
+    selected.value = 0;
+    expect(strip()).toEqual([
+      { keys: ['Click'], words: 'a piece twice to copy it' },
+      { keys: ['Esc'], words: 'put it back' },
+    ]);
+    selected.value = 1;
+    expect(strip()).toEqual([
+      { keys: ['Click'], words: 'the piece to move' },
+      { keys: ['Esc'], words: 'put it back' },
+    ]);
+    // Carrying a piece: R turns it, and its new spot takes two clicks.
+    movingUid.value = 1;
+    expect(strip()).toEqual([
+      { keys: ['R'], words: 'rotate' },
+      { keys: ['Click'], words: 'its new spot twice' },
+      { keys: ['Esc'], words: 'put it back' },
+    ]);
+  });
+
   it('offers R for the Moving Truck only once it carries a piece', () => {
     run.value = { ...start, screen: 'build', supplies: [{ kind: 'tool', id: 'movingTruck' }] };
     source.value = 'supplies';
@@ -204,10 +255,9 @@ describe("the strip's keys for M4's plays", () => {
   });
 });
 
-describe("the roof's key (D-133)", () => {
-  /** Every milestone up to Roofing, met. */
-  const toRoofing = (): RunState['milestones'] =>
-    Array.from({ length: ROOFING_PHASE + 1 }, (_, phase) => ({
+describe('the camera keys after Roofing (D-147)', () => {
+  it('keeps Scroll on the build strip, and has no key for a roof', () => {
+    const met = Array.from({ length: 4 }, (_, phase) => ({
       phase,
       result: 'onTime' as const,
       target: 0,
@@ -216,24 +266,10 @@ describe("the roof's key (D-133)", () => {
       overtimeUsed: 0,
       reward: { score: 0, budget: 0, interest: 0 },
     }));
-
-  it("takes Scroll's place on the build strip once Roofing is met, in a word no wider", () => {
-    run.value = { ...start, screen: 'build' };
-    expect(strip().some((h) => h.keys.includes('T'))).toBe(false);
+    run.value = { ...start, screen: 'build', milestones: met };
     expect(strip()).toContainEqual({ keys: ['Scroll'], words: 'zoom' });
-    run.value = { ...start, screen: 'build', milestones: toRoofing() };
-    expect(strip().some((h) => h.keys.includes('Scroll'))).toBe(false);
-    expect(strip()).toContainEqual({ keys: ['T'], words: 'roof' });
-  });
-
-  it('says what T does on the end screen, which opens with the roof on', () => {
-    run.value = { ...start, screen: 'won', milestones: toRoofing() };
-    roofOn.value = true;
-    expect(strip()).toContainEqual({ keys: ['T'], words: 'look inside' });
-    roofOn.value = false;
-    expect(strip()).toContainEqual({ keys: ['T'], words: 'put the roof on' });
-    // A run lost before Roofing has no roof to put on.
-    run.value = { ...start, screen: 'lost' };
+    expect(strip().some((h) => h.keys.includes('T'))).toBe(false);
+    run.value = { ...start, screen: 'won', milestones: met };
     expect(strip().some((h) => h.keys.includes('T'))).toBe(false);
   });
 });

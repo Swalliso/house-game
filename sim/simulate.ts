@@ -93,13 +93,13 @@ export interface RunRecord {
   /** How the house went up, week by week (the systems review's run measures). */
   build: BuildStats;
   /**
-   * M4b: each change order offered, in order: the answer, and how it resolved (no `result` if
-   * the run ended before its milestone was met).
+   * M4b, D-144: each change order picked, in order: the ones offered beside it and passed
+   * over, and how it resolved (no `result` if the run ended before its milestone was met).
    */
   changeOrders: {
     id: ChangeOrderId;
     phase: number;
-    answer: ChangeOrderRecord['answer'];
+    passedOver: ChangeOrderRecord['passedOver'];
     result?: ChangeOrderResult;
   }[];
   ms: number;
@@ -189,6 +189,8 @@ export interface Economy {
   budgetLeft: number;
   /** The last milestone's budget: no shop follows it, so it can't be spent. */
   finalReward: number;
+  /** The Wow the budget held at the last milestone paid (D-145); 0 for a lost run. */
+  leftoverWow: number;
   /** Budget held as each shop closed. */
   budgetAtLeave: number[];
   /** Tool ids still in the supplies at the end. */
@@ -383,6 +385,7 @@ export function simulateRun(
     budgetEarned: 0,
     budgetLeft: 0,
     finalReward: 0,
+    leftoverWow: 0,
     budgetAtLeave: [],
     heldAtEnd: [],
     bonusRerollsBought: 0,
@@ -699,7 +702,10 @@ export function simulateRun(
             budget: e.reward.budget - b.milestoneBudget - e.reward.interest,
           });
         }
-        if (e.phase === phaseCount - 1) economy.finalReward = e.reward.budget;
+        if (e.phase === phaseCount - 1) {
+          economy.finalReward = e.reward.budget;
+          economy.leftoverWow = e.reward.leftover?.score ?? 0;
+        }
       } else if (e.t === 'shopOpened' || e.t === 'shopRefreshed') {
         if (e.t === 'shopOpened') economy.visits++;
         else economy.refreshes++;
@@ -792,7 +798,7 @@ export function simulateRun(
       changeOrders: s.changeOrders.map((r) => ({
         id: r.id,
         phase: r.phase,
-        answer: r.answer,
+        passedOver: r.passedOver,
         ...(r.result ? { result: r.result } : {}),
       })),
       ms: performance.now() - start,

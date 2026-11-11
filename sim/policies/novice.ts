@@ -21,7 +21,7 @@ import type {
 } from '../../src/rules/index.ts';
 import { rankPlays } from './greedy.ts';
 import type { Policy } from './index.ts';
-import { answerChangeOrder } from './orders.ts';
+import { pickChangeOrderNovice } from './orders.ts';
 import { random } from './random.ts';
 
 /** Plays of the chosen card scored exactly, best estimate first. */
@@ -30,8 +30,8 @@ const NOVICE_EXACT = 6;
 export const novice: Policy = {
   name: 'novice',
   act(rules: Rules, state: RunState, rng: Rng): Action {
-    // M4b: change orders as greedy answers them (accept requests, decline restrictions).
-    if (state.screen === 'changeOrder') return answerChangeOrder(rules, state);
+    // M4b, D-144: one of the two change orders: the budget on offer first (orders.ts).
+    if (state.screen === 'changeOrder') return pickChangeOrderNovice(rules, state);
     if (state.screen === 'shop') return random.act(rules, state, rng);
     const cards: { from: 'hand' | 'reserve'; i: number }[] = [];
     const renovates = (from: 'hand' | 'reserve', i: number) =>

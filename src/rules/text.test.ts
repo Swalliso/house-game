@@ -6,10 +6,14 @@ import {
   definite,
   earnTargetText,
   effectText,
+  fixtureText,
   glossary,
+  HAND_LINE_CHARS,
   handCardLines,
   modifierText,
   selectorText,
+  setsOfPiece,
+  setText,
   sunSideText,
 } from './text.ts';
 import { TEST_CONTENT as C } from './testing.ts';
@@ -151,48 +155,50 @@ describe('a compact hand card (D-121)', () => {
     expect(shown).toEqual({
       bedroom: ['+3 every week'],
       bathroom: ['+3 if touching a Bedroom'],
-      kitchen: ['+2 per touching Dining Room or Herb Garden'],
-      lKitchen: ['+2 per touching Dining Room or Herb Garden'],
-      diningRoom: ['Touching Kitchens and Living Rooms earn +50%'],
+      // Two names drop "touching" (D-148): "+2 per touching Dining Room or…" lost its end.
+      kitchen: ['+2 per Dining Room or Herb Garden'],
+      lKitchen: ['+2 per Dining Room or Herb Garden'],
+      // An aura leads with what it gives (D-148): "Touching Kitchens and…" lost its +50%.
+      diningRoom: ['+50% to Kitchen or Living Room'],
       livingRoom: ['+2 per touching view (up to 3)'],
       closet: ['+1 every week'],
       // Playtest 4's fix (D-114), behind "Links the rooms it touches…" before this.
       hallway: ['+2 per touching room (up to 4)'],
       longHallway: ['+2 per touching room (up to 4)'],
-      // Not "Must touch the house, and the street or a Driveway": the lot shows where it goes.
-      garage: ['+1 every week'],
+      // Built like any room (D-140), so its requirement is about pay: both in one short line
+      // ("…if touching the street or a Driveway" lost its last words).
+      garage: ['+5 by the street or a Driveway'],
       homeOffice: ['+2 every week'],
       lawn: ['+1 every week'],
       sapling: ['+1 every week'],
       flowerBed: ['+1 every week'],
       herbGarden: ['+1 per tile in the sun'],
-      // A requirement that isn't about placement follows the pay: without it, nothing.
-      patio: ['+2 per touching Living Room or Kitchen if touching a room'],
-      fence: ['+1 per tile of the fenced yards it borders (up to +6)'],
-      driveway: ['+1 every week in the front yard'],
+      // Its "if touching a room" doesn't fit after the pay (D-148): Inspect and the lot's
+      // warning say it. The Hot Tub's and the Fire Pit's too.
+      patio: ['+2 per Living Room or Kitchen'],
+      fence: ['+1 per fenced tile (up to +6)'],
+      // Its job (D-140), not "Must be built touching the street or a Driveway" or its +1.
+      driveway: ['+3 if touching a Garage'],
+      // A requirement that isn't about placement follows the pay where both fit: without it,
+      // nothing.
       doghouse: ['+1 every week in a fenced yard'],
       treehouse: ['+2 every week'],
-      greenhouse: ['Touching yard pieces that give a view earn +50%'],
+      greenhouse: ['+50% to yard views'],
       playroom: ['+2 per touching Bedroom'],
-      library: ['+2 per touching Quiet neighbor (up to 3)'],
-      mudroom: ['Pet pieces in the fenced yard it borders earn +50%'],
+      library: ['+2 per touching Quiet (up to 3)'],
+      mudroom: ['+50% to fenced Pet pieces'],
       pool: ['+12 every 3rd week'],
       sunroom: ['+6 every week while Sunny'],
-      hotTub: ['+3 per touching Patio if touching a room'],
-      firePit: ['Touching Patios earn +50% if touching a room'],
+      hotTub: ['+3 per touching Patio'],
+      firePit: ['+50% to touching Patios'],
       henhouse: ['+1 budget every 2nd week'],
       birdhouse: ['+1 per touching Tree (up to 3)'],
+      porch: ['+25% to touching rooms'],
     });
-    // Each is one of the card's own lines (or one with its requirement after it), with a number.
+    // Each leads with its number (D-148), so a line cut short still shows what the card pays.
     for (const p of pieces) {
       const [line] = handCardLines(CONTENT, { kind: 'piece', id: p.id });
-      const own = cardText(CONTENT, p).effects;
-      expect(
-        own.some((l) => line!.startsWith(l)),
-        p.id,
-      ).toBe(true);
-      expect(line, p.id).toMatch(/[+−]\d/);
-      expect(line, p.id).not.toMatch(/^(Links|Must|Earns nothing|Becomes)/);
+      expect(line, p.id).toMatch(/^[+−]\d/);
     }
   });
 
@@ -204,17 +210,50 @@ describe('a compact hand card (D-121)', () => {
       fireplace: ['Fits any room', 'Earns +50%'],
       skylight: ['Fits any room', 'Makes it Sunny'],
       blackoutCurtains: ['Fits any room', 'Makes it Dark'],
-      soundproofing: [
-        'Fits any room',
-        'Loud neighbors (the street, Garages, Playrooms, and Pools) can’t take points off it',
-      ],
-      kitchenIsland: ['Fits a Kitchen', 'Counts as a Dining Room too'],
-      bunkBeds: ['Fits a Bedroom', 'Counts as 2 Bedrooms for the client'],
-      bayWindow: ['Fits an exterior room', 'Gives it a view, which counts as one more view'],
+      // Who is Loud, and "can’t take points off it", are in Inspect (D-148).
+      soundproofing: ['Fits any room', 'Loud neighbors can’t lower it'],
+      // What it earns (D-148): "Counts as a Dining Room too" read as an Entertainer or the
+      // Hendersons' wish, and it fills neither.
+      kitchenIsland: ['Fits a Kitchen', 'Earns +25%'],
+      bunkBeds: ['Fits a Bedroom', 'Counts as 2 Bedrooms'],
+      bayWindow: ['Fits an exterior room', 'Gives it a view'],
       sprinkler: ['Fits a Lawn', 'Earns +100%'],
-      pergola: ['Fits a Patio', 'Gives it a view, which counts as one more view'],
+      pergola: ['Fits a Patio', 'Gives it a view'],
       gardenLights: ['Fits any yard piece', 'Makes it Pretty'],
     });
+    // One the draw never deals (the Catalog's hand can): its set, in a few words.
+    expect(handCardLines(CONTENT, { kind: 'fixture', id: 'chandelier' })).toEqual([
+      'Fits a Dining Room or Living Room',
+      '×1.25 Charm in an Entertainer',
+    ]);
+  });
+
+  // The hand's wording is its own (D-148). The budget is today's longest line (the Kitchen's,
+  // which still loses its last word on a narrow card), so this keeps a new line from running
+  // longer; the maps above pin the wording. Every card the game has, members' rooms and the
+  // fixtures the draw never deals too.
+  it(`keeps every line to ${HAND_LINE_CHARS} characters`, () => {
+    const cards = [
+      ...Object.values(CONTENT.pieces).map((p) => ({ kind: 'piece' as const, id: p.id })),
+      ...Object.values(CONTENT.fixtures).map((f) => ({ kind: 'fixture' as const, id: f.id })),
+    ];
+    for (const card of cards) {
+      for (const line of handCardLines(CONTENT, card)) {
+        expect(line.length, `${card.id}: “${line}”`).toBeLessThanOrEqual(HAND_LINE_CHARS);
+      }
+    }
+  });
+
+  it('keeps the full sentences for Inspect and the shop', () => {
+    expect(cardText(CONTENT, CONTENT.pieces.diningRoom).effects[0]).toBe(
+      'Touching Kitchens and Living Rooms earn +50%',
+    );
+    expect(cardText(CONTENT, CONTENT.pieces.patio).effects).toContain(
+      'Earns nothing unless touching a room',
+    );
+    expect(fixtureText(CONTENT, CONTENT.fixtures.soundproofing).effects).toEqual([
+      'Loud neighbors (the street, Garages, Playrooms, and Pools) can’t take points off it',
+    ]);
   });
 
   it('falls back to the first line when nothing pays', () => {
@@ -231,6 +270,48 @@ describe('a compact hand card (D-121)', () => {
     const content2 = { ...CONTENT, pieces: { ...CONTENT.pieces, bedroom: grumpy } };
     expect(handCardLines(content2, { kind: 'piece', id: 'bedroom' })).toEqual([
       '−2 per touching Loud neighbor',
+    ]);
+  });
+});
+
+describe('set chips (D-122)', () => {
+  it("names a piece's sets, touching ones first, an L-Kitchen's as a Kitchen's", () => {
+    expect(setsOfPiece(CONTENT, 'closet')).toEqual(['suite', 'fullHouse']);
+    expect(setsOfPiece(CONTENT, 'bedroom')).toEqual(['jackAndJill', 'suite', 'fullHouse']);
+    expect(setsOfPiece(CONTENT, 'lKitchen')).toEqual(setsOfPiece(CONTENT, 'kitchen'));
+    expect(setsOfPiece(CONTENT, 'patio')).toEqual([]);
+  });
+
+  it('says what a set needs and pays', () => {
+    expect(setText(CONTENT, 'suite')).toBe(
+      'Suite: a Bedroom, a Bathroom, and a Closet, touching. +15 Comfort and +0.5 Charm every week. A house can have more than one.',
+    );
+    expect(setText(CONTENT, 'jackAndJill')).toContain(
+      '2 Bedrooms and a Bathroom, each touching the Bathroom',
+    );
+    expect(setText(CONTENT, 'fullHouse')).toContain(
+      'anywhere in the house. +40 Comfort, +1 Charm, and ×1.5 Sparkle every week. One per house.',
+    );
+  });
+
+  it('the glossary names the Sparkle set at the content’s number, and the Garage’s requirement (D-140)', () => {
+    const g = glossary(CONTENT);
+    // Generated from the set, so a tuned number can't leave "×2" behind.
+    expect(g.sparkle.text).toBe(
+      'Multiplies Charm itself. Rare: the Full House set (×1.5) and a few Rare goods have it, and each needs a setup. Each source counts once a week.',
+    );
+    expect(g.requirement.text).toContain('a Garage touching the street or a Driveway');
+    // The Garage's card says it plainly: built like any room, paid once it's reached.
+    expect(cardText(CONTENT, CONTENT.pieces.garage).effects).toEqual([
+      'Earns nothing unless touching the street or a Driveway',
+      '+5 every week',
+      '+1 budget every 2nd week',
+      '+3 if touching the Old Shed', // D-145
+    ]);
+    expect(cardText(CONTENT, CONTENT.pieces.driveway).effects).toEqual([
+      'Must be built touching the street or a Driveway',
+      '+3 if touching a Garage',
+      '+1 every week',
     ]);
   });
 });

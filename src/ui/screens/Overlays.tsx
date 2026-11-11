@@ -19,9 +19,16 @@ import type { RefObject } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { banner, busy, flash, played, skip } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
-import { anyModalOpen, copyFallback, copyText, notesDocked, toast } from '../hud/actions.ts';
+import {
+  anyModalOpen,
+  copyFallback,
+  copyText,
+  notesDocked,
+  passArmed,
+  toast,
+} from '../hud/actions.ts';
 import { Button, Icon, Sheet } from '../kit/kit.tsx';
-import { appScreen, notice, run } from '../store.ts';
+import { appScreen, notice, restorePreviousRun, run } from '../store.ts';
 import './overlays.css';
 
 /** The milestone's banner, at the board's top center, and any notes and toasts just under it. */
@@ -148,6 +155,21 @@ export function Notes({
         <div class="notice" role="status">
           <Icon name="mail" />
           <span class="notice-text">{n.text}</span>
+          {n.oldCode && n.goBack && (
+            // The run a link put aside comes back, and the link's run is put aside in turn.
+            <Button
+              size="sm"
+              class="notice-back"
+              onClick={() => {
+                // A pass armed in the run being left isn't one for the run coming back.
+                passArmed.value = false;
+                restorePreviousRun(n.oldCode!);
+                refocus?.current?.focus({ preventScroll: true });
+              }}
+            >
+              Go back to it
+            </Button>
+          )}
           {n.oldCode && (
             <Button
               size="sm"
@@ -196,15 +218,44 @@ export function ModalToast() {
   );
 }
 
+/**
+ * The address the game was opened at, read as this file loads: starting up takes a shared lot's
+ * ?seed, ?client and ?crew (and a ?run code) out of the address bar, and the notice's link must
+ * still open that lot on the laptop (D-148). Empty where there's no window (the tests).
+ */
+const OPENED_AT = typeof window === 'undefined' ? '' : window.location.href;
+
+/**
+ * The notice on a small screen (D-047). A window too narrow to play at all (a phone held
+ * upright; overlays.css picks which part shows) offers the link to open on a laptop in place of
+ * "Play anyway", which led to a screen that could be neither played nor left (D-148). The copy
+ * is the notice's own: it covers the toasts. With the clipboard off limits, it shows the link.
+ */
 export function SmallScreenNotice() {
   const [dismissed, setDismissed] = useState(false);
+  const [link, setLink] = useState<'idle' | 'copied' | 'shown'>('idle');
   if (dismissed) return null;
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(OPENED_AT);
+      setLink('copied');
+    } catch {
+      setLink('shown');
+    }
+  };
   return (
     <div class="small-screen ui">
       <div class="small-screen-card">
         <h2>Open House</h2>
         <p>It's best played on a computer, with a mouse and a bigger screen.</p>
-        <Button variant="primary" onClick={() => setDismissed(true)}>
+        <div class="small-screen-phone">
+          <p>Copy the link and open it on a laptop.</p>
+          <Button variant="primary" onClick={() => void copyLink()}>
+            <span role="status">{link === 'copied' ? 'Link copied' : 'Copy link'}</span>
+          </Button>
+          {link === 'shown' && <p class="small-screen-link">{OPENED_AT}</p>}
+        </div>
+        <Button variant="primary" class="small-screen-play" onClick={() => setDismissed(true)}>
           Play anyway
         </Button>
       </div>

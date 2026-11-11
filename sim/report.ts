@@ -418,38 +418,69 @@ export function clientsReport(content: Content, records: readonly RunRecord[]): 
 }
 
 /**
- * M4b: change orders by client. Per order: how often it was offered, the share accepted (a
- * phase effect is always acknowledged), and of those accepted, the share met (a request) or kept
- * (a restriction) at its milestone; "open" counts runs that ended before it resolved.
+ * M4b, D-144: change orders by client. An offer shows two orders and one is picked. Per order:
+ * how often it was on an offer, the share of those it was picked, and of the times picked, the
+ * share met (a request) or kept (a restriction) at its milestone; "open" counts runs that
+ * ended before it resolved. Then the offers by the kinds on them, and which kind was picked.
  */
 export function changeOrdersReport(content: Content, records: readonly RunRecord[]): string {
   const rows: (string | number)[][] = [
-    ['Change orders by client', 'Offered', 'Accepted', 'Met or kept', 'Missed or broken', 'Open'],
+    ['Change orders by client', 'Offered', 'Picked', 'Met or kept', 'Missed or broken', 'Open'],
   ];
   for (const [client, rs] of groupBy(records, (r) => r.client)) {
     const def = content.clients[client as keyof typeof content.clients];
     const offers = rs.flatMap((r) => r.changeOrders ?? []);
     if (!def || offers.length === 0) continue;
     rows.push([`${def.name} (${rs.length} runs, ${offers.length} offers)`]);
-    const ids = [...new Set(offers.map((o) => o.id))];
+    const ids = [...new Set(offers.flatMap((o) => [o.id, ...(o.passedOver ?? [])]))];
     for (const id of ids) {
       const co = content.changeOrders[id];
-      const os = offers.filter((o) => o.id === id);
-      const taken = os.filter((o) => o.answer !== 'declined');
+      const taken = offers.filter((o) => o.id === id);
+      const shown = taken.length + offers.filter((o) => o.passedOver?.includes(id)).length;
       const good = taken.filter((o) => o.result === 'met' || o.result === 'kept').length;
       const bad = taken.filter((o) => o.result === 'missed' || o.result === 'broken').length;
       const phase = co.kind === 'phase';
       rows.push([
         `  ${co.name} (${co.kind})`,
-        os.length,
-        pct(taken.length, os.length),
+        shown,
+        pct(taken.length, shown),
         phase ? '–' : pct(good, taken.length),
         phase ? '–' : pct(bad, taken.length),
         taken.filter((o) => o.result === undefined).length,
       ]);
     }
   }
-  return rows.length > 1 ? '\n' + table(rows) : '';
+  if (rows.length === 1) return '';
+  return '\n' + table(rows) + offerKindsReport(content, records);
+}
+
+/**
+ * D-144: the offers by the kinds of order on them ("phase / request"), and for a mixed offer
+ * how often the first-named kind was the one picked.
+ */
+function offerKindsReport(content: Content, records: readonly RunRecord[]): string {
+  const ORDER = ['phase', 'request', 'restriction'];
+  const offers = records.flatMap((r) => r.changeOrders ?? []);
+  const groups = new Map<string, { n: number; first: number }>();
+  for (const o of offers) {
+    const picked = content.changeOrders[o.id].kind;
+    const kinds = [picked, ...(o.passedOver ?? []).map((id) => content.changeOrders[id].kind)];
+    kinds.sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
+    const key = kinds.length === 1 ? `${kinds[0]}, alone` : kinds.join(' / ');
+    const g = groups.get(key) ?? { n: 0, first: 0 };
+    g.n++;
+    if (picked === kinds[0]) g.first++;
+    groups.set(key, g);
+  }
+  const rows: (string | number)[][] = [
+    ['Change-order offers by kind', 'Offers', 'Share', 'Picked the first-named'],
+  ];
+  for (const [key, g] of [...groups].sort((a, b) => b[1].n - a[1].n)) {
+    const [first, second] = key.split(' / ');
+    const mixed = second !== undefined && second !== first;
+    rows.push([`  ${key}`, g.n, pct(g.n, offers.length), mixed ? pct(g.first, g.n) : '–']);
+  }
+  return '\n' + table(rows);
 }
 
 export function crewsReport(content: Content, records: readonly RunRecord[]): string {
@@ -934,6 +965,7 @@ export function economyReport(content: Content, records: readonly RunRecord[]): 
   const earned = records.map((r) => r.economy.budgetEarned);
   const spendable = records.map((r) => r.economy.budgetEarned - r.economy.finalReward);
   const atLeave = records.flatMap((r) => r.economy.budgetAtLeave);
+  const leftWow = records.filter((r) => r.result === 'won').map((r) => r.economy.leftoverWow);
   out.push(
     [
       `Budget earned per run: p50 ${fmt(percentile(earned, 50))} (p10 ${fmt(percentile(earned, 10))},` +
@@ -945,6 +977,10 @@ export function economyReport(content: Content, records: readonly RunRecord[]): 
         ` p90 ${fmt(percentile(atLeave, 90))} (${atLeave.length} visits)`,
       `Budget left unspent at the end: p50 ${fmt(percentile(left, 50))},` +
         ` p90 ${fmt(percentile(left, 90))}, mean ${fix(avgOf(left), 1)}`,
+      // D-145: a win's leftover budget pays Wow at the last milestone.
+      `Leftover budget’s Wow in a win (${content.balance.leftoverBudgetWow} each): p50` +
+        ` ${fmt(percentile(leftWow, 50))}, p90 ${fmt(percentile(leftWow, 90))}` +
+        ` (${leftWow.length} wins)`,
       `Shop visits left without buying (skip reward): ${pct(
         sum((r) => r.economy.skips),
         sum((r) => r.economy.visits),

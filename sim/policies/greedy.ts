@@ -5,7 +5,9 @@
 // (§4, Performance): the top TOP_K overall, the top PER_CARD of each card, and up to HINT_CAP
 // of the plays the estimate flags as blind spots (one that might complete a set, a Fence that
 // would close a fenced yard, a Hallway that would link rooms, a piece that would join an unmet
-// pair line's types), since those move the week in ways the estimate can't see. Estimate ties
+// pair line's types), since those move the week in ways the estimate can't see. Two planners
+// add pack placements the rules' suggested shapes don't list: Fences that close a yard
+// (enclosure.ts) and Driveways that run to an unreached Garage (drive.ts, D-140). Estimate ties
 // break by a seeded key per play (rankPlays), never by list position: legalPlacements runs
 // from the back row, so ranking by position built every house against the back of the lot.
 // Exact ties go to a random one of the best, from the same stream, so houses vary between runs.
@@ -28,8 +30,9 @@ import type {
   RunState,
 } from '../../src/rules/index.ts';
 import type { Policy } from './index.ts';
+import { drivePlans } from '../drive.ts';
 import { fencePlans } from '../enclosure.ts';
-import { answerChangeOrder } from './orders.ts';
+import { pickChangeOrder } from './orders.ts';
 import { shopAct, useTools, type StrikeMode } from './shop.ts';
 
 export const TOP_K = 12;
@@ -155,8 +158,8 @@ export function makeGreedy(opts: GreedyOptions = {}): Policy {
     name: 'greedy',
     label: labelOf(early, strikes),
     act(rules: Rules, state: RunState, rng: Rng): Action {
-      // M4b: accept requests, decline restrictions, acknowledge phase effects.
-      if (state.screen === 'changeOrder') return answerChangeOrder(rules, state);
+      // M4b, D-144: one of the two change orders, by what its card says (orders.ts).
+      if (state.screen === 'changeOrder') return pickChangeOrder(rules, state);
       const salt = rng.u32();
       if (state.screen === 'shop') return shopAct(rules, state, rng, { salt, strikes, early });
       if (completesEarly(rules, state, early)) return { t: 'completeEarly' };
@@ -176,6 +179,12 @@ export function makeGreedy(opts: GreedyOptions = {}): Policy {
       }
       state.hand.forEach((_, i) => exact.push(...fencePlans(rules, state, 'hand', i)));
       state.reserve.forEach((_, i) => exact.push(...fencePlans(rules, state, 'reserve', i)));
+      // And Driveway packs that run to an unreached Garage (D-140): its pay is the Garage's.
+      for (const from of ['hand', 'reserve'] as const) {
+        state[from].forEach((_, i) =>
+          exact.push(...drivePlans(rules, state, from, i).map((plan) => plan.play)),
+        );
+      }
       const passTotal = rules.scoreOnly(state, null);
       let best: (PlaceAction | InstallAction | RenovateAction)[] = [];
       let bestTotal = -Infinity;

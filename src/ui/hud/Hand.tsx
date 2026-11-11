@@ -20,8 +20,11 @@ import {
   handCardLines,
   rules,
   rowOf,
+  setsOfPiece,
+  setText,
   type Card as CardData,
   type DrawRow,
+  type PieceId,
   type Tag,
 } from '../../rules/index.ts';
 import {
@@ -50,6 +53,7 @@ import {
   requestEndWeek,
   selectCard,
 } from './actions.ts';
+import { guideCard, shown } from './first-job.ts';
 import { PieceArt, ShapeGlyph } from './PieceArt.tsx';
 import { PIECE_KIND_LABEL, pieceKind, RARITY_LABEL } from './goods.tsx';
 import './hand.css';
@@ -73,6 +77,31 @@ export function TagChips({ tags }: { tags: readonly Tag[] }) {
         </Chip>
       ))}
     </>
+  );
+}
+
+/**
+ * D-122: the set a room card counts toward, named on the card, so a Closet says Suite before
+ * it's placed. Static membership only: it never says where. It names the touching set with the
+ * shortest name (a Bedroom's Suite, not its Jack-and-Jill), so it shares a line with the card's
+ * tags at 1600×900, and how many more touching sets there are; Full House, which needs none to
+ * touch, when it's the only one. No icon: Charm's tint says set. Its tip says what each set needs
+ * and pays, Full House included.
+ */
+function SetChip({ id }: { id: PieceId }) {
+  const sets = setsOfPiece(CONTENT, id);
+  if (sets.length === 0) return null;
+  const touching = sets.filter((s) => CONTENT.sets[s].connected);
+  const pool = touching.length > 0 ? touching : sets;
+  const name = pool
+    .map((s) => CONTENT.sets[s].name)
+    .reduce((a, b) => (b.length < a.length ? b : a));
+  const more = touching.length > 1 ? ` +${touching.length - 1}` : '';
+  return (
+    <Chip tone="charm" class="set-chip" title={sets.map((s) => setText(CONTENT, s)).join('\n')}>
+      {name}
+      {more}
+    </Chip>
   );
 }
 
@@ -130,7 +159,8 @@ function CardView({ card, i }: { card: CardData; i: number }) {
   return (
     <Card
       as="button"
-      class="hand-card"
+      // Week 1's guide (D-149) points at the card to pick first.
+      class={guideCard.value === i ? 'hand-card guide-now' : 'hand-card'}
       tone={kind}
       selected={isSelected}
       blocked={!fits}
@@ -151,6 +181,7 @@ function CardView({ card, i }: { card: CardData; i: number }) {
               Renovate
             </Chip>
           )}
+          <SetChip id={card.id} />
           <Chip tone="wood" class="kind-chip">
             {PIECE_KIND_LABEL[kind]}
           </Chip>
@@ -272,7 +303,7 @@ function DemolishButton() {
         demolishing
           ? 'Back to building (Esc)'
           : canDemolish
-            ? `Remove a piece or a boulder. No refund, and points already earned stay. ${s.demolitionsLeft} left this run.`
+            ? `Remove a piece, a boulder or the Old Shed. No refund, and points already earned stay. ${s.demolitionsLeft} left this run.`
             : 'No demolitions left this run'
       }
     >
@@ -409,10 +440,11 @@ export function Hand() {
         </>
       }
       label="This week's cards"
+      // The first job brings the free actions in as they're needed (D-149, first-job.ts).
       head={
         <>
-          <RerollButton />
-          <DemolishButton />
+          {shown.value.reroll && <RerollButton />}
+          {shown.value.demolish && <DemolishButton />}
         </>
       }
     >
@@ -428,8 +460,8 @@ export function Hand() {
         <HandRow key={row} row={row} />
       ))}
       {/* The action bar sticks to the column's bottom, so End week stays in view on a short
-          window. One row: Rotate and Cancel are square buttons beside it. Cards under it get
-          a tab on its edge. */}
+          window. One row: Rotate and Cancel are square buttons beside it while a card is held.
+          Cards under it get a tab on its edge. */}
       <div ref={bar} class={`hand-actions ${under > 0 ? 'has-more' : ''}`}>
         {under > 0 && (
           <Button
@@ -444,17 +476,21 @@ export function Hand() {
             {under === 1 ? '1 more card' : `${under} more cards`}
           </Button>
         )}
-        <Button
-          iconOnly
-          size="lg"
-          icon="rotate"
-          class="rotate"
-          onMouseDown={noFocus}
-          onClick={rotate}
-          disabled={!placing || demolishing || !canTurn}
-          title="Rotate (R or right-click)"
-          aria-label="Rotate"
-        />
+        {/* Rotate shows only while a card is held (D-148): standing beside Pass with nothing to
+            turn, its round arrow read as the reroll. */}
+        {placing && !demolishing && (
+          <Button
+            iconOnly
+            size="lg"
+            icon="rotate"
+            class="rotate"
+            onMouseDown={noFocus}
+            onClick={rotate}
+            disabled={!canTurn}
+            title="Rotate (R or right-click)"
+            aria-label="Rotate"
+          />
+        )}
         {placing && !demolishing && (
           <Button
             iconOnly

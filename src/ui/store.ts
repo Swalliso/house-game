@@ -40,8 +40,7 @@ import {
   type CrewId,
 } from '../rules/index.ts';
 import { BUILD_CHANNEL, BUILD_SHA } from './build-info.ts';
-import { isIndoor, occupancy, uidAt } from './board/geometry.ts';
-import { roofed } from './fx/moments.ts';
+import { occupancy, uidAt } from './board/geometry.ts';
 
 export const CONTENT_HASH = contentHash(CONTENT);
 const SAVE_KEY = `openhouse:${BUILD_CHANNEL}:run`;
@@ -55,13 +54,43 @@ export const appScreen = signal<'title' | 'jobs' | 'game'>('title');
 /** The job board's seed: contracts come from its `jobs/<i>` streams (outside the run code). */
 export const jobBoardSeed = signal<string>('board');
 const VISITED_KEY = `openhouse:${BUILD_CHANNEL}:visited`;
+const FIRST_JOB_KEY = `openhouse:${BUILD_CHANNEL}:firstJob`;
 
-/** A first visit (no run started from the board yet): contract 0 is the Hendersons, Recommended. */
+/**
+ * A first visit (no run started from the board yet): the board opens one contract, the first job
+ * (D-149), and shows the others locked.
+ */
 export function firstVisit(): boolean {
   try {
     return localStorage.getItem(VISITED_KEY) === null;
   } catch {
     return true;
+  }
+}
+
+/**
+ * The first job's seed (D-149), kept in the browser while that run is the one being played: the
+ * first run a browser starts, from the board or from a link. UI only, never game state: the run
+ * itself is an ordinary one, and its screen fills in week by week (hud/first-job.ts).
+ */
+export const firstJobSeed = signal<string | null>(
+  (() => {
+    try {
+      return localStorage.getItem(FIRST_JOB_KEY);
+    } catch {
+      return null;
+    }
+  })(),
+);
+
+function setFirstJob(seed: string | null): void {
+  if (firstJobSeed.value === seed) return;
+  firstJobSeed.value = seed;
+  try {
+    if (seed === null) localStorage.removeItem(FIRST_JOB_KEY);
+    else localStorage.setItem(FIRST_JOB_KEY, seed);
+  } catch {
+    // A private window: the first job is guided for this visit only.
   }
 }
 
@@ -74,15 +103,31 @@ export function openJobBoard(): void {
 
 /** Takes a contract from the board with a crew: its seed and client start the run. */
 export function takeContract(contract: Contract, crewId: CrewId = 'generalContractor'): void {
+  // The first contract a browser takes is its first job; from then on the board is open.
+  if (firstVisit()) setFirstJob(contract.seed);
   try {
     localStorage.setItem(VISITED_KEY, '1');
   } catch {
-    // A private window: the board just recommends the Hendersons again next time.
+    // A private window: the board just opens with the first job again next time.
   }
   notice.value = null;
   startRun({ seed: contract.seed, clientId: contract.clientId, crewId, mode: 'standard' });
   canContinue.value = false;
   appScreen.value = 'game';
+}
+
+/**
+ * The ?debug panel's "First visit again": forgets that this browser has started a run, so the
+ * board opens with the first job and that run's screen fills in again. The hints are Settings'
+ * to reset.
+ */
+export function forgetFirstVisit(): void {
+  setFirstJob(null);
+  try {
+    localStorage.removeItem(VISITED_KEY);
+  } catch {
+    // Nothing to forget.
+  }
 }
 /** The ?debug panel (implementation-plan.md §7, M2 · Debug tools). */
 export const debugEnabled = (() => {
@@ -108,8 +153,23 @@ export const run = signal<RunState>(
 );
 export const log = signal<readonly Action[]>([]);
 
-/** A one-line note for the player, such as "The game updated, so this is a fresh run." */
-export const notice = signal<{ text: string; oldCode?: string } | null>(null);
+/** Whether the run being played is this browser's first job, still in progress (D-149). */
+export const firstJob = computed(
+  () => firstJobSeed.value !== null && run.value.setup.seed === firstJobSeed.value && inProgress(),
+);
+// The first job is over once its run ends, so the same lot played again later is an ordinary run.
+effect(() => {
+  const s = run.value;
+  if (firstJobSeed.value !== s.setup.seed) return;
+  if (s.screen === 'won' || s.screen === 'lost') setFirstJob(null);
+});
+
+/**
+ * A one-line note for the player, such as "The game updated, so this is a fresh run." `oldCode`
+ * is a run that was put aside, for the note's Copy button; `goBack` says the note can also
+ * offer to go back to it (restorePreviousRun).
+ */
+export const notice = signal<{ text: string; oldCode?: string; goBack?: boolean } | null>(null);
 /** Set when something broke: the error boundary shows it with the run code. */
 export const crash = signal<{ message: string; stack?: string; action?: Action } | null>(null);
 
@@ -160,29 +220,6 @@ effect(() => {
     heldPiece.value = null;
   }
 });
-
-/**
- * The roof view (D-133): the house from outside, under the roof the Roofing milestone put on
- * (D-127). The reveal at Roofing puts it on, and so does the end screen; the camera's Roof
- * button and T turn it on and off (actions.ts toggleRoof). Building takes it off, so it never
- * covers a play: picking anything, demolishing, holding a room in Inspect, or ending the week.
- * The sheets after a milestone (a change order, the shop) leave it on, so it's still there when
- * the lot comes back. UI only.
- */
-export const roofOn = signal(false);
-effect(() => {
-  if (!roofOn.value) return;
-  if (selected.value !== null || tool.value === 'demolish' || heldRoom()) roofOn.value = false;
-});
-
-/** Whether a room (under the roof) is held in Inspect. */
-export function heldRoom(): boolean {
-  const uid = heldPiece.value;
-  const s = run.value;
-  if (uid === null || s.screen !== 'build') return false;
-  const piece = s.house.pieces.find((p) => p.uid === uid);
-  return !!piece && isIndoor(piece.defId);
-}
 
 export type Inspected =
   | { kind: 'piece'; uid: number }
@@ -502,14 +539,36 @@ function readSave(): { build?: unknown; code?: unknown } | null {
   }
 }
 
+/** Whether a saved run had already ended (won or lost), as far as this build replays it. */
+function runOver(code: string): boolean {
+  const decoded = decodeRunCode(code);
+  if (!decoded.ok) return false;
+  try {
+    const { state, failedAt } = rules.replay(decoded.data.setup, decoded.data.actions);
+    return failedAt === undefined && !inProgress(state);
+  } catch {
+    // A setup this build can't start: as good as in progress, so its code is kept.
+    return false;
+  }
+}
+
+/** Whether this build made a run code: only then can a note offer to go back to the run. */
+function fromThisBuild(code: string): boolean {
+  const decoded = decodeRunCode(code);
+  return decoded.ok && decoded.data.build === BUILD_SHA;
+}
+
 /**
  * Before a link or a game update replaces the saved run, keep its code (in the browser and in
- * the note), so a run in progress is never silently lost. Returns the code if it had any weeks.
+ * the note), so a run in progress is never silently lost. Returns the code if it had any weeks
+ * and wasn't over: a finished run's house is already in the company's record, and nothing was
+ * in progress.
  */
 function keepPreviousRun(saved: { code?: unknown } | null): string | undefined {
   if (typeof saved?.code !== 'string') return undefined;
   const decoded = decodeRunCode(saved.code);
   if (decoded.ok && decoded.data.actions.length === 0) return undefined;
+  if (runOver(saved.code)) return undefined;
   try {
     localStorage.setItem(PREVIOUS_KEY, saved.code);
   } catch {
@@ -595,9 +654,10 @@ export function startRun(
     log.value = result.failedAt === undefined ? actions : actions.slice(0, result.failedAt);
     resetWeek();
     inspected.value = null;
-    // A finished run loads on its end screen, which opens with the roof on (D-133).
-    const over = result.state.screen === 'won' || result.state.screen === 'lost';
-    roofOn.value = over && roofed(result.state);
+    // Another run takes the first job's place (D-149): the first job is behind this browser.
+    if (firstJobSeed.value !== null && firstJobSeed.value !== result.state.setup.seed) {
+      setFirstJob(null);
+    }
   });
   resetListeners.forEach((l) => l());
   save();
@@ -611,9 +671,23 @@ export function newRun(
   crewId: CrewId = 'generalContractor',
 ): void {
   notice.value = null;
+  // A friend's link is a first contact too (D-149): its screen fills in as the first job's does.
+  // The board stays as a first visit finds it, so Start still opens with the first job.
+  if (firstVisit()) setFirstJob(seed);
   startRun({ seed, clientId, crewId, mode: 'standard' });
   canContinue.value = false;
   appScreen.value = 'game';
+}
+
+/**
+ * The crash screen's "Start a new run" (ErrorBoundary.tsx): the run that broke is put aside
+ * first, as a link does, so its code is kept and the note can go back to it.
+ */
+export function newRunAfterCrash(): void {
+  const previous = keepPreviousRun(readSave());
+  crash.value = null;
+  newRun();
+  if (previous) addPutAsideNote(previous);
 }
 
 /** Back to the run that was loaded from the save. */
@@ -700,8 +774,6 @@ export function demolishAt(x: number, y: number): boolean {
 
 /** Completes the milestone now; the rest of the phase fast-forwards (D-040). */
 export function completeEarly(): boolean {
-  // The weeks it fast-forwards tally on the lot: the roof comes off for them (D-133).
-  roofOn.value = false;
   return dispatch({ t: 'completeEarly' });
 }
 
@@ -746,11 +818,11 @@ export function leaveShop(): boolean {
 }
 
 /**
- * M4b: accepts or declines the change order waiting on its screen (a phase effect is only
- * acknowledged: `accept` true). Then the shop opens, or a forced one goes back to its week.
+ * M4b, D-144: picks one of the change orders waiting on their screen (the offer's `i`-th).
+ * Then the shop opens, or a forced offer goes back to its week.
  */
-export function answerChangeOrder(accept: boolean): boolean {
-  return dispatch({ t: 'answerChangeOrder', accept });
+export function answerChangeOrder(i: number): boolean {
+  return dispatch({ t: 'answerChangeOrder', i });
 }
 
 /** The ?debug panel's cheats. They're actions, so the run code still replays. */
@@ -760,11 +832,7 @@ export function debugAction(action: DebugAction): boolean {
 
 /** End week: commit the tentative placement, or pass. */
 export function endWeek(): void {
-  const play = tentative.value;
-  // The week's tally plays on the lot: the roof comes off for it, before the events play, so a
-  // Roofing milestone's reveal puts it back on (D-133).
-  roofOn.value = false;
-  dispatch(play ?? { t: 'pass' });
+  dispatch(tentative.value ?? { t: 'pass' });
 }
 
 /**
@@ -804,7 +872,7 @@ export function loadInitialRun(): void {
   if (fromUrl) {
     const previous = keepPreviousRun(saved);
     if (loadRunCode(fromUrl)) {
-      if (previous) addNote('Your run in progress was put aside.', previous);
+      if (previous) addPutAsideNote(previous);
       appScreen.value = 'game';
       return;
     }
@@ -815,7 +883,7 @@ export function loadInitialRun(): void {
   if (seedParam || clientId || crewId) {
     const previous = keepPreviousRun(saved);
     newRun(seedParam || randomSeed(), clientId ?? 'hendersons', crewId ?? 'generalContractor');
-    if (previous) addNote('Your run in progress was put aside.', previous);
+    if (previous) addPutAsideNote(previous);
     if (clientParam !== null && !clientId) {
       addNote(`There's no client "${clientParam}": this run is for the Hendersons.`);
     }
@@ -843,7 +911,10 @@ export function loadInitialRun(): void {
       crewId: 'generalContractor',
       mode: 'standard',
     });
-    addNote('The game updated, so your last run couldn’t continue.', previous);
+    // A run that was already over had nothing left to continue: no note for it.
+    if (previous || !runOver(saved.code)) {
+      addNote('The game updated, so your last run couldn’t continue.', previous);
+    }
     if (linkError) addNote(linkError);
     appScreen.value = 'title';
     return;
@@ -861,10 +932,47 @@ export function loadInitialRun(): void {
 /** Adds a sentence to the note, keeping any old run code it already offers. */
 function addNote(text: string, oldCode?: string): void {
   const current = notice.value;
+  // The way back goes with the code it loads: a new code drops the old one's.
+  const goBack = oldCode === undefined && current?.goBack;
   notice.value = {
     text: current ? `${current.text} ${text}` : text,
     oldCode: oldCode ?? current?.oldCode,
+    ...(goBack ? { goBack } : {}),
   };
+}
+
+/**
+ * The note for a run in progress that a link (or a new run after a crash) took the place of. A
+ * run from this build can come back (restorePreviousRun); one from an older build may stop
+ * replaying, so its note only offers the code.
+ */
+function addPutAsideNote(code: string, text = 'Your run in progress was put aside.'): void {
+  addNote(text, code);
+  if (notice.value && fromThisBuild(code)) notice.value = { ...notice.value, goBack: true };
+}
+
+/**
+ * The note's "Go back to it": loads the run that was put aside, and puts the run being left
+ * aside in turn (if it has any weeks), so the same button swaps them back.
+ */
+export function restorePreviousRun(code: string): boolean {
+  const decoded = decodeRunCode(code);
+  if (!decoded.ok) {
+    notice.value = { text: decoded.error };
+    return false;
+  }
+  notice.value = null;
+  const leaving = keepPreviousRun(readSave());
+  const { failedAt, error } = startRun(decoded.data.setup, decoded.data.actions);
+  appScreen.value = 'game';
+  if (failedAt !== undefined) {
+    addNote(`Your run stopped replaying at action ${failedAt + 1}: ${error}`);
+  } else if (!notice.value) {
+    // (startRun leaves its own note when a run can't start at all.)
+    addNote('You’re back in your run.');
+  }
+  if (leaving) addPutAsideNote(leaving, 'The other run was put aside.');
+  return true;
 }
 
 /** Loads a pasted run code. Returns false (with a note) if it can't be read at all. */

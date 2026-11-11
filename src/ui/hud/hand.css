@@ -48,16 +48,19 @@
 .hand-title-short {
   display: none;
 }
-/* The plank holds the title, Reroll, and Demolish (D-132). Where their words don't all fit,
-   the buttons show their icon and count (their titles name them); demolishing, Stop keeps its
-   word. On a narrower plank still, the title is "Cards". In the pixel font a letter is 1rem;
-   the readable font's are narrower. */
+/* The plank holds the title, Reroll, and Demolish (D-132). Reroll keeps its word (D-148): as a
+   bare die it went unnoticed, and the round arrow beside Pass read as the reroll. Where the
+   words don't all fit, Demolish shows its icon and count (its title names it), and the title
+   gives way: "Cards" on a narrower plank, and none on the narrowest (a laptop's), where the
+   rows' labels say what the cards are. Demolishing, Stop keeps its word and Reroll gives up
+   its own. In the pixel font a letter is 1rem; the readable font's are narrower. */
 @container hand-plank (max-width: 35rem) {
-  [data-font='pixel'] .free-action:not(.active) .free-action-word {
+  [data-font='pixel'] .demolish:not(.active) .free-action-word,
+  [data-font='pixel'] .panel-head:has(.demolish.active) .reroll .free-action-word {
     display: none;
   }
 }
-@container hand-plank (max-width: 19rem) {
+@container hand-plank (max-width: 25rem) {
   [data-font='pixel'] .hand-title-long {
     display: none;
   }
@@ -65,18 +68,32 @@
     display: inline;
   }
 }
-@container hand-plank (max-width: 330px) {
-  [data-font='readable'] .free-action:not(.active) .free-action-word {
+@container hand-plank (max-width: 19rem) {
+  [data-font='pixel'] .hand-title-short {
     display: none;
   }
 }
-@container hand-plank (max-width: 200px) {
+@container hand-plank (max-width: 330px) {
+  [data-font='readable'] .demolish:not(.active) .free-action-word,
+  [data-font='readable'] .panel-head:has(.demolish.active) .reroll .free-action-word {
+    display: none;
+  }
+}
+@container hand-plank (max-width: 280px) {
   [data-font='readable'] .hand-title-long {
     display: none;
   }
   [data-font='readable'] .hand-title-short {
     display: inline;
   }
+}
+/* The first job's first weeks have no free actions yet (D-149): the title has the plank to
+   itself, at any width. */
+.hand .panel-head:not(:has(.free-action)) .hand-title-long {
+  display: inline;
+}
+.hand .panel-head:not(:has(.free-action)) .hand-title-short {
+  display: none;
 }
 
 /* --- A card: the Card primitive (kit.css), with the hand's own sizes ----------------------- */

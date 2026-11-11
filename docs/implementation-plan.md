@@ -114,7 +114,7 @@ The Status column is as of planning. With the plan's approval, everything still 
 | D-042 | Run length: 7 milestones × 4 weeks (amends D-029) | M1 | **Accepted** |
 | D-043 | Draws: `handSize` (3) distinct cards (pieces, plus fixtures from phase 2), run-fixed weights, client spec pieces weighted up, simple pieces weighted up early (D-055) | M1 / M4a | Proposed |
 | D-044 | The sim sets milestone targets, starting in M2 | M2 | Proposed |
-| D-045 | First-run onboarding without saved progress: a recommended first contract and crew, simple pieces early, first-time hints | M4 | Proposed |
+| D-045 | First-run onboarding without saved progress: a recommended first contract and crew, simple pieces early, first-time hints. D-149 (Proposed) makes the first contract the one job a first visit can take, and its first weeks a guided opening | M4 | Proposed |
 | D-046 | Defaults for the rules the docs leave open (Appendix A), including D-013 | M1–M4b | Economy budget and the fenced-yard rule confirmed; rest Proposed |
 | D-047 | Desktop first: 1280×720 minimum, mouse and keyboard plus tap support, no phone layout | M1 | **Accepted** |
 | D-048 | Lot size: 24×24 (amends D-029) | M1 | **Accepted** (the team's request) |
@@ -371,7 +371,7 @@ interface RunState {
   milestonesEarly: number              // a RunStat for scaling ×Mult
   screen: 'build' | 'changeOrder' | 'shop' | 'won' | 'lost'
   offers?: {
-    changeOrder?: ChangeOrderId
+    changeOrder?: { ids: ChangeOrderId[]; phase: number }   // D-144: two on offer, one to pick
     shop?: { slots: ShopOffer[]; sale?: number; refreshes: number; boughtAny: boolean }
     pick?: { source: CrateId | 'housewarming'; options: PickOption[] }   // an opened crate waiting for a choice
   }
@@ -395,7 +395,7 @@ type Action =
   | { t: 'demolish'; x: number; y: number }
   | { t: 'completeEarly' }
   | { t: 'setAutoComplete'; on: boolean }
-  | { t: 'answerChangeOrder'; accept: boolean }      // phase effects can only be acknowledged
+  | { t: 'answerChangeOrder'; i: number }            // D-144: which of the orders on offer is picked
   | { t: 'buy'; i: number }                           // any shop slot, including services
   | { t: 'pick'; i: number }                          // choose from an opened crate
   | { t: 'sell'; from: 'blueprints' | 'supplies'; i: number }
@@ -420,7 +420,7 @@ type Action =
 - `targetReached` (fires when the score first crosses the target)
 - `overtimeUsed`
 - `milestone` (phase, result `'onTime' | 'early' | 'overtime' | 'failed'`, weeks saved, overtime used, reward)
-- `changeOrderOffered`, `changeOrderResolved`
+- `changeOrderOffered` (the orders to pick from), `changeOrderAnswered` (the one picked and the ones passed over, D-144), `changeOrderResolved`
 - `shopOpened`, `bought`, `sold`, `crateOpened`, `picked`
 - `runEnded`
 
@@ -448,7 +448,7 @@ The UI keeps an event queue and plays it through an animation director (place �
 | | `demolish` if `demolitionsLeft > 0` and it wouldn't split the house | piece, boulder, or Old Shed removed, no refund; a find pays its reward |
 | | `install` from supplies, `useTool`, `sell` | free; the week goes on |
 | | `completeEarly` if score ≥ target, weeks remain in the phase, and it isn't an overtime week | → fast-forward (below) |
-| `changeOrder` | `answerChangeOrder` | → `shop` |
+| `changeOrder` | `answerChangeOrder`: one of the two orders on offer (D-144) | → `shop` |
 | `shop` | `buy`, `sell`, `refreshShop`, `leaveShop`; while a crate is open, only `pick` (an option, or `i = -1` to discard) and `sell` | `leaveShop` → `build`, next phase, week 1. Leaving without buying anything pays the skip reward. |
 | `won` / `lost` | none; every action throws | |
 
@@ -526,15 +526,15 @@ Derived from `HouseState`, cached by house object identity:
   - Each Tree tile is a neighbor tagged Quiet and Green, and a view source. A piece at the edge of the woods can touch several, so every effect that counts Trees or views has a `max`.
   - **Water bodies** (the Pond and the Creek) count once each, however many of their tiles a piece touches. They have no tags and are view sources.
   - The **Street** runs along the bottom edge, outside the grid: one neighbor tagged Loud for any piece touching that edge.
-  - Boulders give nothing.
-  - **Finds** (M3b) give nothing as neighbors; they pay a one-time reward (below).
+  - Each **Boulder** is its own neighbor, with no tags and no view (D-145; it gave nothing before): only the pieces that name it count it (a Lawn, a Flower Bed, the Fire Pit).
+  - The **Old Shed** counts once while it stands, like a water body, with no tags and no view (D-145): the pieces that would use a shed name it (the Garage, a Herb Garden, the Greenhouse, the Henhouse). The **Time Capsule** gives nothing as a neighbor. Both finds pay a one-time reward (below).
 - **Placement:** inside the lot, not overlapping pieces, water, Boulders, or the Old Shed. Building over a Tree removes it, and the preview shows what's lost. Only a Driveway can be built over the Creek (it gets a culvert), so a house on the far bank can still have a Garage. Nothing else can, so the house sits on one bank; yard pieces can go on either.
 - **Finds:** the **Old Shed** (2×2) blocks building until it's demolished, which pays its reward. The **Time Capsule** (1×1) doesn't block: the first piece built over it pays. Rewards are data (`Reward`), and the inspect panel shows them before you commit. A multi-tile feature is one object: demolishing any of its tiles removes all of it, its reward pays once, and its `find/<x>,<y>` key uses its top-left tile.
 - **One house:**
   - If any indoor piece exists, a new indoor piece must touch one.
   - Demolishing an indoor piece that would split the house is illegal ("This would split the house").
   - If the last indoor piece is demolished, the next can go anywhere.
-- **Garage and Driveway:** the Garage (indoor) must touch the house and also touch the street or a Driveway. A Driveway must touch the street or another Driveway, so driveways always connect to the street.
+- **Garage and Driveway:** the Garage (indoor) is built like any room, touching the house, and earns only while it touches the street or a Driveway (D-140; until then it couldn't be built anywhere else). A Driveway must touch the street or another Driveway, so driveways always connect to the street.
 - **Effective tags**, resolved in a fixed order:
   1. layout facts
   2. own tags, plus **Dark** if interior and **Sunny** if a building (a room, a Hallway or an outbuilding) with a tile in the sun (D-120)
@@ -548,7 +548,7 @@ Derived from `HouseState`, cached by house object identity:
   - **Front yard:** every non-indoor tile in a row nearer the street than the house's front row (the row of its indoor tile closest to the street). Before the first room, all yard is front yard. Back yard is every other non-indoor tile, including the side yards. Counting by rows keeps "front yard" a real position on a wide lot, where a narrow house would otherwise make whole columns beside it front yard.
   - **Fenced yard:** flood-fill all non-wall tiles (walls are indoor tiles and Fence tiles; water, boulders, trees, finds, yard pieces, and outbuildings are all part of regions). The lot edge bounds the fill like a wall (it's the property line). A region is fenced if it doesn't touch the street edge, has at least 10 tiles (4 until D-069), borders at least one Fence, and borders the house (at least one indoor piece). The house rule stops a lone L-Fence in a corner from counting as a yard. "Fenced yard of 12 tiles" means the largest single one.
   - On a big lot this makes siting matter: a house built near a side or back edge closes a yard with one or two Fences, while a house in the middle needs more.
-- **Links:** a Hallway (or a connected group of Hallways) links every room touching it. Open Concept links Kitchens, Dining Rooms, and Living Rooms in one connected group. Links count as adjacency for scoring, sets, and specs. They don't count for connectivity, exterior/interior, or enclosure, and a Hallway isn't itself a neighbor for bonuses.
+- **Links:** a Hallway (or a connected group of Hallways) links every room touching it. A `link` modifier links touching pieces of its types in one connected group (Open Concept's, until D-143 gave it the Entertainer's bonus instead; no blueprint carries one now). Links count as adjacency for scoring, sets, and specs. They don't count for connectivity, exterior/interior, or enclosure, and a Hallway isn't itself a neighbor for bonuses.
 - **Fixtures (D-050):**
   - A fixture is installed in a placed piece that matches its `fits` selector (a Fireplace fits any room; a Sprinkler fits a Lawn).
   - Each piece holds one fixture. Installing a second replaces the first, and the preview shows what's lost.
@@ -690,7 +690,7 @@ The ten types from `content-brainstorm.md` become eight kinds here: the neighbor
 | `economy` | `budget`, `every?` | Garage, Home Office |
 | **`perTile`** *(new)* | `region`, `amount` | Herb Garden on tiles in the sun |
 | **`link`** *(new)* | — | Hallway |
-| **`requires`** *(new)* | `condition: PieceCondition`, `blocksPlacement` | Garage must touch the street or a Driveway (blocks placement); Doghouse earns only in a fenced yard (doesn't block) |
+| **`requires`** *(new)* | `condition: PieceCondition`, `blocksPlacement` | Driveway must touch the street or a Driveway (blocks placement); Doghouse earns only in a fenced yard, and the Garage only touching the street or a Driveway (don't block; D-140) |
 | **`conditional`** *(new)* | `when: PieceCondition`, `effect` | Flower Bed bonus in the front yard |
 | `custom` | `id` | Escape hatch |
 
@@ -720,7 +720,7 @@ interface Reward { score?: number /* a one-time Wow payout */; budget?: number; 
 type Modifier =
   | { kind: 'earn'; target: Selector; pct: number; when?: 'lastWeekOfPhase' }  // "Dark pieces earn double" → +100
   | { kind: 'bestPiece'; pct: number }                               // Crown Jewel: the week's top earner, after other terms
-  | { kind: 'mult'; add: number; per?: Selector }                    // +Mult in hundredths, optionally per matching piece (It's a House)
+  | { kind: 'mult'; add: number; per?: Selector; maxEach?: number } // +Mult in hundredths, optionally per matching piece, at most maxEach of one type (It's a House, D-143)
   | { kind: 'xMult'; times: number; plusPer?: { per: Selector | RunStat; add: number }
       when?: 'lastWeekOfPhase' | { house: HouseCondition } | { host: PieceCondition } }
       // ×Mult in hundredths: times + add × count. Model Home: times 100, plusPer {hasFixture any, 10} → ×(1 + 0.1 per fixture)
@@ -730,7 +730,7 @@ type Modifier =
   | { kind: 'grantView'; target: Selector }                         // Bay Window
   | { kind: 'blockPenalties'; target: Selector; from: Selector }     // Soundproofing: Loud neighbors' penalties don't apply
   | { kind: 'countsAs'; target: Selector; as: PieceId; times?: number }
-  | { kind: 'link'; among: PieceId[] }                             // Open Concept
+  | { kind: 'link'; among: PieceId[] }                             // touching pieces of these types link (no content since D-143)
   | { kind: 'grantEffect'; target: Selector; effect: Effect }        // Good Bones; counts from the grant week
   | { kind: 'perCountOver'; match: Selector; over: number; pct: number }  // Juniper's room limit
   | { kind: 'setBonus'; set?: SetId; pct: number }                   // +N% to a set's Points and +Mult (Thanksgiving, Architect)
@@ -762,8 +762,8 @@ interface CrewDef { id; name; tier; blurb: string; modifiers: Modifier[]; startR
 // Starting pieces sit in extra reserve slots that don't count against the 2.
 
 type ChangeOrderDef = { id; name; text: string; scope: 'generic' | ClientId; tier } & (
-  | { kind: 'request'; condition: HouseCondition; reward: Reward }       // accept or decline; met by the next milestone
-  | { kind: 'phase'; modifiers: Modifier[] }                             // announced; applies for the next phase
+  | { kind: 'request'; condition: HouseCondition; reward: Reward }       // met by the next milestone
+  | { kind: 'phase'; modifiers: Modifier[] }                             // applies for the next phase
   | { kind: 'restriction'; forbid: Selector; reward: Reward }            // place nothing matching during the next phase
 )
 
@@ -828,10 +828,10 @@ A request whose condition is already true when it would be offered is skipped fo
 { id: 'garage', name: 'Garage', category: 'indoor', tier: 'core', drawWeight: 10, complexity: 2, fromPhase: 0,
   shape: ['##', '##'], tags: ['Loud'],
   effects: [
-    { kind: 'requires', blocksPlacement: true,
+    { kind: 'requires', blocksPlacement: false,   // D-140: built like any room
       condition: { touching: { any: [{ feature: 'street' }, { piece: 'driveway' }] } } },
-    { kind: 'steady', amount: 1 },
-    { kind: 'economy', budget: 1, every: 3 },
+    { kind: 'steady', amount: 5 },
+    { kind: 'economy', budget: 1, every: 2 },
   ] },
 { id: 'sapling', name: 'Sapling', category: 'yard', tier: 'core', drawWeight: 10, complexity: 2, fromPhase: 0,
   shape: ['#'], tags: ['Green'],
@@ -901,7 +901,7 @@ Shape variants (L-Kitchen, the long Hallway) are separate cards that share a typ
   | `draw/<phase>/<slot>/<n>/<row>` | Each row of a hand (D-121: `rooms`, `layout`). `slot` is the week in the phase, or `ot1`/`ot2` for overtime. `n` counts this week's draws: 0 for the first, then +1 for each reroll and the Catalog tool. |
   | `draw/<phase>/<slot>/<n>/<row>/swap<k>` | The swaps for the row's k-th card, when it has no play (D-121). They don't count as draws. |
   | `shop/<phase>/<refresh>` | Shop offers |
-  | `co/<phase>` | The change order offered |
+  | `co/<phase>` | The two change orders offered, in the order shown (D-144) |
   | `crate/<phase>/<refresh>/<slot>` | The 3 options inside a crate (and the first shop's free Housewarming crate) |
   | `find/<x>,<y>` | A find's random reward |
   | `bot/<phase>/<screen>/<n>` | Sim bots only |
@@ -1147,6 +1147,7 @@ Built alongside M5a, on its own branch (`phase/m4-clients`, pull request #17), a
 - **Run setup:** a job board of 3 contracts, then a crew pick.
   - Each contract shows its lot as a thumbnail, so players can match a lot to a client. Combolands players read the starting map the same way to choose guilds.
   - On a first visit, contract 0 is always the Hendersons. They and the General Contractor are marked "Recommended for your first job". The board sits outside `apply` and the run code, so this doesn't affect replays.
+  - *2026-11-11 (D-149):* on a first visit that contract is the first job, the only one that can be taken, on its own lot (`jobBoard.firstSeed`); the other two lie face down. It starts with the General Contractor, and the crew pick comes with the second run.
   - Until M4b, the General Contractor is the only crew.
 
 **M4b, then:**
@@ -1155,6 +1156,7 @@ Built alongside M5a, on its own branch (`phase/m4-clients`, pull request #17), a
   - **requests:** accept or decline; reward, no penalty
   - **restrictions:** accept or decline; broken if a forbidden piece is placed
   - **phase effects:** announced, then applied for the next phase
+  - *2026-11-10 (D-144):* **two** arrive and the player picks one; nothing is declined. The one passed over goes back in the pool. A phase effect's card says what it would change a week's Wow by on the house as it stands (`ChangeOrderView.houseGain`).
 - Crews: General Contractor, Landscaper, Architect.
 - **First-time hints** at:
   - the first week
@@ -1166,6 +1168,7 @@ Built alongside M5a, on its own branch (`phase/m4-clients`, pull request #17), a
   - the first arrival (D-103)
 
   Each is dismissible and remembered in `localStorage` (UI only, not game state).
+  - *2026-11-11 (D-149):* the first three weeks' hints are the opening: three plays in week 1, then the Bathroom touching the Bedroom, then the Closet that makes a Suite, each naming its card where the hand holds it. A browser's first job shows its screen's parts as they first matter (`src/ui/hud/first-job.ts`).
 - **Sim reports** per client and per crew (§8).
 
 **Playtest 4:**
@@ -1183,13 +1186,13 @@ After M4 and before M5b (D-097's juice note): the reward feedback on M5a's art, 
 - distinct moments for a set completing, a Rhythm payout, a find, opening a crate, a Rare in the shop, and a spec being met
 - M4's moments, beyond the simple pops M4 gives them (`house-systems-review.md` §6): a Renovation's level-up (M4 pops the room's stars, D-111), an arrival and the arrivals' markers on the progress bar, a change order's stamp, a house rule met or lost, and "Topped out!" the first week Under one roof holds
 - screen shake and particles, with Reduce motion, the Screen shake slider, and the Flashing toggle
-- the roof reveal at the Roofing milestone. After playtest 5, D-133 keeps the reveal's roof on until the player's next move, adds a Roof button (T) to put it back on, and opens the end screen with it on.
+- the roof reveal at the Roofing milestone. After playtest 5, D-133 keeps the reveal's roof on until the player's next move, adds a Roof button (T) to put it back on, and opens the end screen with it on. *D-147 (2026-11-10) took the roof out: the reveal, the button and the end screen's roof.*
 - D-094's option 1, chosen 2026-11-10: the tally plays pieces depth first along what boosts what, with an arc from each booster, and the placement preview draws the same arcs. Options 2–4 wait until after the jam.
 - **Its playtest:**
   - Do big moments feel big, and small ones stay out of the way?
   - Is anything too slow or too flashy?
   - Does Huge come too often (D-124's best-week clause)?
-- **Played in playtest 5 (2026-11-10, with M5b; `docs/playtests/playtest-5-findings.md`):** the Good, Great and Huge weeks all land, and the user liked the tally, the doorbell and the arrivals. The roof reveal is easy to miss, so D-133 adds a roof view to bring it back.
+- **Played in playtest 5 (2026-11-10, with M5b; `docs/playtests/playtest-5-findings.md`):** the Good, Great and Huge weeks all land, and the user liked the tally, the doorbell and the arrivals. The roof reveal is easy to miss, so D-133 adds a roof view to bring it back. *The user took the roof out before the first showing (D-147).*
 
 ### M5b · Sound and music
 
@@ -1208,7 +1211,7 @@ After M4 (D-097). The sound half of the feel pass (D-058 and §12).
 
 - **The full sim (§8):** the planner bot, early-completion variants, and per-client and per-crew sweeps.
 - Tune targets, prices, rewards, rarity weights, Mult values, and each client's `targetPct`.
-- **The end screen:** the finished house captioned "It's a house.", a photo of the house at each milestone, the score with its verdict (Fixer-Upper to Dream Home), and a copyable result line (with a fallback for itch.io's iframe).
+- **The end screen:** the finished house captioned "It's a house.", a photo of the house at each milestone, the score with its verdict (Fixer-Upper to Dream Home), and a copyable result line (with a fallback for itch.io's iframe). The result line, its link to the same lot and the link preview are D-135. The photos are D-136: a strip of polaroids under the finished house (it had its roof on until D-147), one per resolved milestone, all through one frame so the house grows in place, dealt in with a soft flick and shown larger on a click.
 - A codex, if time allows.
 - Bug fixes from every earlier playtest's list.
 - **Playtest 6:** play three full runs with different clients and crews. Would you show this to the group?
@@ -1463,7 +1466,7 @@ Intensity is measured against **pace**: `max(1, (this phase's target − the sco
   - when the week's count-up is about to cross a milestone target, its last stretch slows to 0.5×, and the top bar's flag pops with stars as it crosses. The run total only moves in the count-up, so no piece crosses the line, and the flag takes the zoom's place (D-124).
   - a drumroll, then a sting
   - under 2.5 s, and a click skips it
-- **The roof reveal:** at the Roofing milestone (D-018) the house gets its roof, which stays on until the player's next move on the lot. From then on the camera's Roof button (T) puts it back on, and the end screen opens with it on (D-133). The end screen shows a photo of the house at each milestone, as Combolands does.
+- **The roof reveal:** removed by D-147 (2026-11-10). A one-storey roof seen from above is a flat slab over the rooms, so nothing draws one: Roofing is a milestone like the others, and the end screen shows the rooms. (It was: at the Roofing milestone the house gets its roof, which stays on until the player's next move; a Roof button (T) puts it back on, and the end screen opens with it on, D-133.) The end screen shows a photo of the house at each milestone, as Combolands does.
 - **Shop and crates:**
   - crates glow by rarity before they open, as Hearthstone packs do
   - Rare goods arrive with a shimmer and a sound
@@ -1576,7 +1579,7 @@ Intensity is measured against **pace**: `max(1, (this phase's target − the sco
   - Their props stand on their cells as items, so they wobble and settle with their piece: a parasol over a table and two chairs on a Patio; the house's one parked car on its oldest Driveway with room for it (nose in, or side on facing the house), standing only on that Driveway's own tiles, in another row or column of a ragged pack if it must (a lone tile has no room for it, D-111), orange or grey so it never matches the Garage's; a Pool's ladder and float; the Hot Tub's foam; the Fire Pit's animated fire in front of two stumps; a planter on a Flower Bed, and one per cell of a Herb Garden with greens instead of flowers; the Sapling on its soil; LimeZu's Greenhouse and modular Treehouse; a shed's front as the Henhouse's coop, with two hens on straw behind a picket front in its other cell; a Birdhouse on its pole.
   - Where LimeZu has none, our own drawings in its palette and ink: the Doghouse, the hens and the Sprinkler (`src/ui/art/drawings.ts`).
   - No prop stands on an outside door's mat or in front of its opening (nor rises over one on the overhang layer): a Patio's table and seats move clear of the door that opens onto it, under a small parasol in place of the full one (the audit prototype's), a Pergola gives way to a shallower or narrower cut on the Patio's far side, and the car parks further along its Driveway, or on the next one. Every prop keeps its whole sprite off mats and openings, and a test checks every prop's pixels against every door. An outbuilding's own building always stands: no door opens onto one, so only its roof, rising over the row behind it, can hide part of a mat.
-  - Fences and Driveways are packs (D-106): a Fence is 1–8 connected tiles and a Driveway 1–6, in any shape (`packShapeProblem` in `src/rules/grid.ts`), clicked out one by one, so each is drawn from its own tiles (`PlacedPiece.shape`), never its card's shape: the ghost as the tiles go down, the built pack, and the Moving Truck's carried pack (D-111).
+  - Fences and Driveways are packs (D-106): a Fence is 1–8 connected tiles and so is a Driveway (D-140; 1–6 before), in any shape (`packShapeProblem` in `src/rules/grid.ts`), clicked out one by one, so each is drawn from its own tiles (`PlacedPiece.shape`), never its card's shape: the ghost as the tiles go down, the built pack, and the Moving Truck's carried pack (D-111).
   - A Fence is a white picket line through the middle of its cells, out to their edges at its ends, with a post at each end and turn (LimeZu's pickets, posts and end-on strip, after the exteriors audit's line autotile). A lone tile is a short run across its cell, with a post at each end. Two Fences join only through an end's open side (the way its line runs on): in a corner or a T; end to end, each keeps its end post, so each stays countable; side by side, their ends never close them into a pen. A Fence's ghost is the Fence alone.
   - What rises above a piece's own cells (the Greenhouse's roof, the Treehouse, a Birdhouse's box, a side-on car's roof) goes on the overhang layer, over the walls. The Greenhouse and the Treehouse are cut down to rise less than a cell, so a piece behind them still shows.
   - Pieces of a type differ in color (parasols, planters, coops, birdhouses) the way rooms do, and a ghost takes the color its piece will have (or has, when the Moving Truck carries it, with its fixture).
@@ -1718,6 +1721,7 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
   - economy pieces pay every 2–3 weeks, and change-order rewards (and any set with a one-time `reward`) can pay budget (amends D-013)
   - finds pay too (Time Capsule +3), and selling pays half the price paid
   - target: 1 budget is worth about 3–5% of the final score, and a run earns roughly 30–40
+  - no shop follows the last milestone, so the budget held when it's met (its own payout and any early bonus included) pays 100 Wow each (`leftoverBudgetWow`, D-145): a tenth or less of what a budget buys when it's spent well, so spending stays right and nothing is stranded. It's paid after the target is met, so it moves the verdict and the company's best, never a loss into a win
 - **Shop (D-051):** opens after milestones 1–6, from the very first run. Combolands players say its locked early shop made first runs drag.
   - **Shop 1:**
     - 2 blueprints and 2 cards
@@ -1737,7 +1741,7 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
     - shop 1: Common only
     - shops 2–3: 70 / 25 / 5 (Common / Uncommon / Rare)
     - shops 4–6: 55 / 33 / 12
-  - **×Mult goods stay rare** (D-056): they're the three Rare ×Mult blueprints and the Rare Chandelier, so none can appear in shop 1. With these weights, a ×Mult blueprint is offered in roughly half of runs by the last shop (rough arithmetic for the sim to check). Any run can also plan for the Full House set's ×2.
+  - **×Mult goods stay rare** (D-056): they're the three Rare ×Mult blueprints and the Rare Chandelier, so none can appear in shop 1. With these weights, a ×Mult blueprint is offered in roughly half of runs by the last shop (rough arithmetic for the sim to check). Any run can also plan for the Full House set's ×1.5 (D-140; ×2 before).
   - **Placeholder prices:**
     - blueprints: Common 4, Uncommon 6, Rare 8
     - special pieces: 3
@@ -1785,16 +1789,16 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
 - **Renovate** (D-102): a room card whose type is at its limit can level a room of that type instead: +4 Comfort a level, up to 2. Levels stay through the Moving Truck and transforms. It can be Weekend Crew's next play, and a card that can only renovate doesn't count as fitting for the free redraw.
 - **Half-weight draws** (D-104): a type at its limit draws at half weight while it stays there.
 - **The yard rules** (D-105): the Patio, Hot Tub, and Fire Pit earn nothing unless they touch a room (not blocking; a Hallway alone doesn't count); Treehouses don't count each other as Kid partners.
-- **Packs** (D-106): one Fence card places 1–8 connected tiles, and one Driveway card 1–6, in one week, as one piece.
+- **Packs** (D-106): one Fence card places 1–8 connected tiles, and one Driveway card 1–8 (D-140; 1–6 before), in one week, as one piece.
 - **Juniper:**
   - her limit becomes the spec "a house of 4–8 rooms", so it's an achievement rather than free from week 1, plus a −10% taste per room over 8. Under D-101 it's her Under one roof: 4–8 rooms, filling 60% of their box
   - early-completion rewards doubled
   - if she still doesn't work in the sim, move her to Stretch
 - **Tastes:** a like is +50%, a dislike −50%, "earns double" +100%, all in the same bucket; "earns nothing" is ×0.
 - **Change orders:**
-  - one after each of milestones 2, 4, and 6, drawn from the client's list plus the generic ones
-  - requests and restrictions can be declined and carry no penalty
-  - phase effects are announced and apply for the next phase
+  - two after each of milestones 2, 4, and 6, drawn from the client's list plus the generic ones, and the player picks one (D-144; it was one, to accept or decline). The one passed over can be offered again; one picked never is
+  - a request missed or a restriction broken carries no penalty
+  - a phase effect applies for the next phase
   - requests are temporary goals and never change the spec
   - offers whose condition is already met, or that clearly can't be met (required pieces outside the current pool, more pieces needed than weeks left, or less free space than they need), are skipped
 - **Pool:**
@@ -1806,6 +1810,7 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
   - 3 contracts with rarity weights Common 65, Uncommon 27, Rare 8
   - no guaranteed Rare (D-026)
   - first-visit "Recommended" marks only
+  - *2026-11-11 (D-149):* `firstSeed`, the first job's lot (`oh-4243`); a first visit's other contracts are locked
 - **Sets** (D-056): a poker-hand ladder, like Balatro's hand types, where both the Points and the Mult rise with how hard the set is:
 
   | Set | Points | +Mult | ×Mult | Per level |
@@ -1813,7 +1818,7 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
   | Jack-and-Jill | 10 | +0.5 | | +8 Points, +0.25 |
   | Suite | 15 | +0.5 | | +10 Points, +0.25 |
   | Entertainer (one per house, D-093) | 25 | +1 | | +15 Points, +0.5 |
-  | Full House | 40 | +1 | ×2 | +20 Points, +0.5 |
+  | Full House | 40 | +1 | ×1.5 (D-140; was ×2) | +20 Points, +0.5 |
 
   - checked every week; Points and Mult pay every week while the set holds; other reward types pay once, on first completion
   - levels come from the Remodel Plans tools and last for the run
@@ -1846,9 +1851,9 @@ Every Core item from `content-brainstorm.md`, written in the §5 format. Numbers
 | Pond | `blocks`, `body`, view source | M1 |
 | **Creek** *(new)* | `blocks`, `body`, view source; 1 tile wide, never touches the street edge | M1 |
 | The sun (D-120; was the sunny side) | `Lot.sun`, one edge; the `sunny` region: tiles no Tree, Old Shed or building stands in front of, toward the sun; a building with a tile in it gains the Sunny tag | M1 (the band), D-120 (the sun) |
-| Boulder | `blocks`, `clear: demolish` | M1 (M2 demolish) |
-| **Old Shed** *(new find)* | 2×2; `blocks`, `clear: demolish`; reward: a random tool | M3b |
-| **Time Capsule** *(new find)* | 1×1; doesn't block; reward when first built over: +3 budget | M3b |
+| Boulder | `blocks`, `clear: demolish`; each tile its own neighbor, no tags (D-145: was `inert`) | M1 (M2 demolish; D-145: a neighbor) |
+| **Old Shed** *(new find)* | 2×2; `blocks`, `clear: demolish`; `body`: one neighbor while it stands, no tags (D-145: was `inert`); reward: a random tool | M3b (D-145: a neighbor) |
+| **Time Capsule** *(new find)* | 1×1; doesn't block; `inert`; reward when first built over: +3 budget | M3b |
 
 ### Indoor rooms (base pool)
 
@@ -1861,7 +1866,7 @@ Every Core item from `content-brainstorm.md`, written in the §5 format. Numbers
 | Living Room | `neighbor {property viewSource} +2 max 3`; `conditional {is Sunny} → steady 2` (D-120) | M1 |
 | Closet | `steady 1`; Suite member | M2 |
 | Hallway (1×2, 1×3) | Two cards, `connector`, `link`; `neighbor {property room} +2 max 4` (D-114) | M2 |
-| Garage | `requires {touching: [street, driveway]}` (blocks); `steady 1`; `economy 1 every 3` | M2 |
+| Garage | `requires {touching: [street, driveway]}` (doesn't block: built like any room, D-140); `steady 5`; `economy 1 every 2`; `neighbor oldShed +3, max 1` (D-145) | M2 (D-140: was a blocking requirement, `steady 1`, `economy 1 every 3`) |
 | Home Office | `steady 2`; `neighbor {tag Loud} −2`; `economy 1 every 2` | M2 |
 | **Sunroom** (2×2) | Weight 5 from Foundation (D-120; it was a special piece, Sunny by its tag, `perTile sunny +2`); `conditional {is Sunny} → steady 6` | M3a (D-120: the draw) |
 
@@ -1869,13 +1874,13 @@ Every Core item from `content-brainstorm.md`, written in the §5 format. Numbers
 
 | Item | Encoding | Built in |
 |---|---|---|
-| Lawn (2×2) | `steady 1`; `neighbor lawn +1 max 4`; tags Outdoor and Green | M1 |
+| Lawn (2×2) | `steady 1`; `neighbor [lawn, boulder] +1 max 4` (D-145: Boulders count); tags Outdoor and Green | M1 |
 | Sapling | `steady 1`; `transform into tree after 4` | M2 |
-| Flower Bed | `givesView`; `steady 1`; `conditional {in: frontYard} → steady 2`; `neighbor flowerBed +1` | M2 |
-| Herb Garden | `givesView`; `perTile sunny +1` (its tiles in the sun, D-120); `aura kitchen +25% adjacent` | M2 |
+| Flower Bed | `givesView`; `steady 1`; `conditional {in: frontYard} → steady 2`; `neighbor [flowerBed, boulder] +1` (D-145: Boulders count) | M2 |
+| Herb Garden | `givesView`; `perTile sunny +1` (its tiles in the sun, D-120); `aura kitchen +25% adjacent`; `neighbor oldShed +2, max 1` (D-145) | M2 |
 | Patio | `requires {touching {property room}}` (doesn't block: the Patio rule, D-105); `neighbor [livingRoom, kitchen] +2`; `neighbor {property viewSource} +1 max 3` | M2 (M4a: the Patio rule) |
 | Fence | A pack of 1–8 connected tiles, one piece (D-106; was the 1×4 and 5-tile L cards); `wall`; `enclosure perTile 1 cap 6` | M2 (M4a: the pack) |
-| Driveway | A pack of 1–6 connected tiles, one piece (D-106; was the 1×3 and 1×5 cards); `canCover: ['creek']`; `requires {touching: [street, driveway]}` (blocks); `conditional {in: frontYard} → steady 1` | M2 (M4a: the pack) |
+| Driveway | A pack of 1–8 connected tiles, one piece (D-106; was the 1×3 and 1×5 cards; 1–6 tiles until D-140); `canCover: ['creek']`; `requires {touching: [street, driveway]}` (blocks); `neighbor garage +3, max 1`; `steady 1` (D-140: was `conditional {in: frontYard} → steady 1`) | M2 (M4a: the pack; D-140) |
 
 ### "-house" pieces (base pool)
 
@@ -1883,11 +1888,11 @@ Every Core item from `content-brainstorm.md`, written in the §5 format. Numbers
 |---|---|---|
 | Doghouse | Outbuilding; tags Pet and House; `requires {in: fencedYard}` (doesn't block); `steady 1`; `neighbor lawn +1` | M2 |
 | Treehouse | Outbuilding; tags Kid and House; `requires {touching: tree}` (blocks); `steady 2` (D-071); `neighbor {tag Kid ∧ not treehouse} +2` (D-105) | M2 (M4a: not counting each other) |
-| Greenhouse | Outbuilding; tags Green and House; `givesView`; `aura {property viewSource ∧ yard} +50% adjacent` | M2 |
+| Greenhouse | Outbuilding; tags Green and House; `givesView`; `aura {property viewSource ∧ yard} +50% adjacent`; `neighbor oldShed +4, max 1` (D-145) | M2 |
 
 ### Special pieces (shop, clients, crews; weight 0)
 
-The last four were Stretch in `content-brainstorm.md`, with the Sunroom. They're promoted to Core as shop pieces, so the shop has buildings worth buying (D-051). Every one uses existing effect kinds. The Sunroom has been a room of the weekly draw since D-120 (the rooms table above).
+The last four were Stretch in `content-brainstorm.md`, with the Sunroom. They're promoted to Core as shop pieces, so the shop has buildings worth buying (D-051). Every one uses existing effect kinds. The Sunroom has been a room of the weekly draw since D-120 (the rooms table above). The Birdhouse and the Fire Pit left the shop for the weekly draw's Layout row in D-145, arriving late (from Roofing and from Drywall) at half a card's weight, with the Porch, which was never a special piece; the shop, the Showroom and the Catalog hold the other six.
 
 | Item | Encoding | Built in |
 |---|---|---|
@@ -1896,9 +1901,10 @@ The last four were Stretch in `content-brainstorm.md`, with the Sunroom. They're
 | Mudroom | Indoor; tag Pet; `conditional {borders: fencedYard} → aura {tag Pet} +50% region` | M3a |
 | Pool | Yard; tags Wet, Sunny, Loud; `rhythm every 3 +12`; `neighbor tree −2 max 3` | M3a |
 | **Hot Tub** (1×1) | Yard; tags Wet and Social; the Patio rule (D-105); `neighbor patio +3` | M3a |
-| **Fire Pit** (1×1) | Yard; tag Social; the Patio rule (D-105); `aura patio +50% adjacent` | M3a |
-| **Henhouse** (1×2) | Outbuilding; tag House; `economy 1 every 2`; `neighbor [herbGarden, flowerBed] +1` | M3a |
-| **Birdhouse** (1×1) | Outbuilding; tag House; `neighbor tree +1 max 3` | M3a |
+| **Fire Pit** (1×1) | Weight 5 in the Layout row from Drywall (D-145; it was a special piece). Yard; tag Social; the Patio rule (D-105); `aura patio +50% adjacent`; `neighbor boulder +2 max 2` (D-145) | M3a (D-145: the draw) |
+| **Henhouse** (1×2) | Outbuilding; tag House; `economy 1 every 2`; `neighbor [herbGarden, flowerBed] +1`; `neighbor oldShed +2, max 1` (D-145) | M3a |
+| **Birdhouse** (1×1) | Weight 5 in the Layout row from Roofing (D-145; it was a special piece). Outbuilding; tag House; `neighbor tree +1 max 3` | M3a (D-145: the draw) |
+| **Porch** (1×2) *(new, D-145)* | Weight 5 in the Layout row from Drywall, never a special piece. Yard; tag Outdoor; `aura {property room} +25% adjacent`; `neighbor {property room} +1 max 4`. Drawn from cuts already in the atlas: the wood floor, a bench and a pot of flowers | D-145 |
 
 ### Fixtures (D-050; drawn from phase 2 and sold in the shop)
 
@@ -1929,26 +1935,26 @@ Each set pays Points and +Mult every week it holds, like a poker hand (values in
 | Suite | members bedroom, bathroom, closet; connected; Points 15, Mult +0.5 | M4a |
 | Jack-and-Jill | members 2 bedrooms + bathroom; hub bathroom; Points 10, Mult +0.5 | M4a |
 | Entertainer | members kitchen, diningRoom, livingRoom; connected; max 1 (D-093); Points 25, Mult +1 | M1 (M4a: max 1) |
-| Full House | one of each of the 9 Core indoor types; not connected; max 1; Points 40, Mult +1, **×2** | M4a |
+| Full House | one of each of the 9 Core indoor types (a Garage nothing reaches counts, D-070); not connected; max 1; Points 40, Mult +1, **×1.5** (D-140; was ×2) | M4a |
 
 ### Blueprints (18)
 
-The first five come from `content-brainstorm.md`; the other thirteen are new (D-051, D-056). Their archetypes come from Combolands' heirlooms: tag boosts, terrain, structure, economy, and a few rare rule-benders. **×Mult lives only on Rare blueprints** (Last-Minute Push, Model Home, Ahead of Schedule), and each needs a setup. All are M3a, as data.
+The first five come from `content-brainstorm.md`; the other thirteen are new (D-051, D-056). Their archetypes come from Combolands' heirlooms: tag boosts, terrain, structure, economy, and a few rare rule-benders. **×Mult lives only on Rare blueprints** (Last-Minute Push, Model Home, Ahead of Schedule), and each needs a setup. All are M3a, as data. D-143 re-weighed the shelf by what holding each is worth: the rows marked D-143 changed.
 
 | Blueprint | Rarity | Encoding |
 |---|---|---|
-| Feng Shui | Common | `earn {property view} +50` |
-| Curb Appeal | Common | `earn {in frontYard} +100` |
-| **Quiet Hours** | Common | `earn {tag Quiet} +50` |
-| **Green Thumb** | Common | `earn {tag Green} +50` |
+| Feng Shui | Common | `earn {touching {property viewSource} min 3} +50`: pieces touching 3+ views (D-143; was every piece with a view) |
+| Curb Appeal | Common | `earn {in frontYard} +100`, and `earn {touching {in frontYard}} +100`: the front yard, and the pieces touching it (D-143) |
+| **Quiet Hours** | Common | `earn {tag Quiet} +75` (D-143; was +50) |
+| **Green Thumb** | Common | `earn {tag Green} +50`, and `grantEffect {tag Green} growth 1/week, max 3` (D-143) |
 | **Party House** | Common | `earn {tag Social} +50` |
-| **Waterfront** | Common | `earn {touching {feature [pond, creek]}} +50` |
-| Open Concept | Uncommon | `link among [kitchen, diningRoom, livingRoom]` |
-| Good Bones | Uncommon | `grantEffect {property room} growth 1/week, max 10` (counts from the later of placement and purchase) |
-| It's a House | Uncommon | `mult +15 per {tag House}`: +0.15 Mult for every "-house" piece on the lot |
+| **Waterfront** | Common | `earn {touching {feature [pond, creek]}} +100` (D-143; was +50) |
+| Open Concept | Uncommon | `setBonus entertainer +50`: the Entertainer pays 50% more (D-143; was `link among [kitchen, diningRoom, livingRoom]`) |
+| Good Bones | Uncommon | `grantEffect {property room} growth 1/week, max 3` (counts from the later of placement and purchase; D-143, was max 10) |
+| It's a House | Uncommon | `mult +50 per {tag House}, maxEach 3`: +0.5 Mult for every "-house" piece on the lot, up to 3 of a type (D-143; was +0.15, uncapped) |
 | **Country Living** | Uncommon | `grantEffect all neighbor {feature tree} +1 max 3` |
-| **Mood Lighting** | Uncommon | `earn {property room ∧ tag Dark} +100` |
-| **Show Home** | Uncommon | `earn {hasFixture any} +50` |
+| **Mood Lighting** | Uncommon | `mult +40 per {property room ∧ tag Dark}`: +0.4 Mult per Dark room (D-143; was `earn +100`) |
+| **Show Home** | Uncommon | `earn {hasFixture any} +100` (D-143; was +50) |
 | **Solar Panels** | Uncommon | `grantEffect {tag Sunny} economy 1 every 4` |
 | **Crown Jewel** | Rare | `bestPiece +100`: the week's top earner earns double |
 | **Dream Home** | Rare | `rule specBonus +10`: each spec met adds +0.35 Mult instead of +0.25 |
@@ -2011,9 +2017,9 @@ Every checklist starts with the seven house rules (D-101), in the client's numbe
 |---|---|---|---|---|---|
 | **Hendersons** | Bedrooms 2–3, rising with the household (their bedroom ≥ 4 and bathroom ≥ 2 are where it ends up); adjacentPair kitchen–diningRoom; fencedYardTiles ≥ 4 (any fenced yard, D-069) | `earn {tag Kid} +50`; `earn lawn +50`; `earn {tag Loud ∧ touching bedroom} −50` | bedroom, bathroom, diningRoom, fence +100% (not the Kitchen, D-108) | *Golden retriever:* request `count {doghouse ∧ in fencedYard} ≥ 1`. *Thanksgiving:* phase `setBonus entertainer +100`. (*Twins* is now their arrival at Framing, D-103.) | M4a / M4b |
 | **Count Vladislav** | `count {room ∧ tag Dark} ≥ 3`; library = 1 (D-108) | `earn {tag Dark} +100`; `earnNothing {tag Sunny}`; `earn {touching tree} +50`; `earn herbGarden −100` | library add 20 | *The coven is visiting:* request `countNew {room ∧ interior} ≥ 2`. *Eternal night:* phase `grantTag {property room} Dark` | M4a / M4b |
-| **Barkers** | fencedYardTiles ≥ 12; doghouse ≥ 2; mudroom = 1 (D-108) | `earn {tag Pet} +50`; `earn lawn +50`; `earn flowerBed −50` | mudroom add 20; doghouse, fence +100% | *Another rescue:* request `countNew doghouse ≥ 1`. *Agility course:* request `group {lawn ∧ in fencedYard} minTiles 8` (two connected Lawns) | M4a / M4b |
-| **Juniper Vale** | her Under one roof: 4–8 rooms (was `and(count {room} ≥ 4, count {room} max 8)`); `count {room ∧ view} ≥ 2` | `perCountOver {room} over 8 −10`; `earn garage −100`; `rule earlyRewardPct +100` | — | *Declutter:* request `demolishedSinceAccepted ≥ 1`. *Tea garden:* request `countNew {patio ∧ view} ≥ 1` | M4a / M4b |
-| **Dale** | homeOffice = 2 (D-108); `and(homeOffice ≥ 1, none {tag Loud ∧ touching homeOffice})` | `budget all +100` | homeOffice +100% | *Big deadline:* restriction `forbid {tag Loud}`. *Started a podcast:* request `countNew {room ∧ interior} ≥ 1` | M4a / M4b |
+| **Barkers** | fencedYardTiles ≥ 12; doghouse ≥ 2; mudroom = 1 (D-108) | `earn {tag Pet} +50`; `earn lawn +50`; `earn flowerBed −50` | mudroom add 20; doghouse, fence +100% | *Another rescue:* request `countNew doghouse ≥ 1`. *Agility course:* request `group {lawn ∧ in fencedYard} minTiles 8` (two connected Lawns). *A litter of puppies:* phase `earn {tag Pet} +100`; `earn lawn +100`; `earnNothing flowerBed` (D-137) | M4a / M4b |
+| **Juniper Vale** | her Under one roof: 4–8 rooms (was `and(count {room} ≥ 4, count {room} max 8)`); `count {room ∧ view} ≥ 2` | `perCountOver {room} over 8 −10`; `earn garage −100`; `rule earlyRewardPct +100` | — | *Declutter:* request `demolishedSinceAccepted ≥ 1`. *Tea garden:* request `countNew {patio ∧ view} ≥ 1`. *A magazine shoot:* phase `earn {room ∧ view} +100`; `earnNothing closet`; `earnNothing hallway` (Long Hallways count) (D-137) | M4a / M4b |
+| **Dale** | homeOffice = 2 (D-108); `and(homeOffice ≥ 1, none {tag Loud ∧ touching homeOffice})` | `budget all +100` | homeOffice +100% | *Big deadline:* restriction `forbid {tag Loud}`. *Started a podcast:* request `countNew {room ∧ interior} ≥ 1`. *Out of office:* phase `earn {tag Outdoor} +100`; `earnNothing homeOffice` (points only: they still pay budget) (D-137) | M4a / M4b |
 
 ### Crews
 
@@ -2030,3 +2036,8 @@ Every checklist starts with the seven house rules (D-101), in the client's numbe
 | Working from home | request `countNew homeOffice ≥ 1` | M4b |
 | ~~Grandma's moving in~~ | now the Hendersons' arrival at Drywall (D-103) | M4b |
 | Heat wave | phase: pool +100; `{touching tree}` +100; `{room ∧ Sunny}` −50 | M4b |
+| Cold snap | phase: `{hasFixture fireplace}` +100; bathroom −50 | D-137 |
+| Rainy season | phase: `{tag Green}` +100; `earnNothing patio` | D-137 |
+| A letter from the HOA | restriction `forbid {in frontYard}`; kept: +4 budget | D-137 |
+
+Every client has four phase effects: Heat wave, Cold snap, Rainy season, and one of its own. The offer after milestone 6 shows two phase effects and no other kind, and the picks after milestones 2 and 4 use up at most two (an order passed over goes back in the pool), so two are always left (D-137, D-144).

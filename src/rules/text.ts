@@ -15,11 +15,13 @@ import type {
   Modifier,
   PieceCondition,
   PieceDef,
+  PieceId,
   Property,
   Region,
   Reward,
   RuleKey,
   Selector,
+  SetId,
   SpecDef,
   SunSide,
   Tag,
@@ -130,7 +132,8 @@ export function selectorText(content: Content, sel: Selector, phrasing: Phrasing
   if ('touching' in sel) {
     const min = sel.min ?? 1;
     const what = selectorText(content, sel.touching, min === 1 ? 'one' : 'some');
-    return `${many ? 'pieces' : 'piece'} touching ${min === 1 ? article(what) : `${min} ${what}`}`;
+    // "Touching 3+ views": at least that many, worded as the checklist's "touch 2+ rooms".
+    return `${many ? 'pieces' : 'piece'} touching ${min === 1 ? article(what) : `${min}+ ${what}`}`;
   }
   if ('any' in sel)
     return joinWords(
@@ -486,8 +489,9 @@ export function memberText(content: Content, def: PieceDef): string {
 export function cardText(content: Content, def: PieceDef): CardText {
   const effects = def.effects.map((e) => {
     const text = effectText(content, e);
-    // A room must join the house too, which "Must be built touching the street or a Driveway"
-    // left out (playtest 4: a Garage by the street read as if the street alone would do).
+    // A room must join the house too, which "Must be built touching …" leaves out (playtest 4:
+    // a Garage by the street read as if the street alone would do; since D-140 the Garage is
+    // built like any room, and its line reads "Earns nothing unless …").
     const touching = 'Must be built touching ';
     return def.category === 'indoor' &&
       e.kind === 'requires' &&
@@ -554,27 +558,145 @@ function pays(e: Effect): boolean {
 }
 
 /**
+ * The most a hand card's line runs to, in characters (D-148; text.test.ts holds every card to
+ * it). It's the length of today's longest line, the Kitchen's, which still loses its last word
+ * on a narrow card (two lines of about 14 letters in the pixel font): the budget keeps a new
+ * line from running longer, and doesn't promise that one this long fits.
+ */
+export const HAND_LINE_CHARS = 33;
+
+/** One plain kind of thing ("Bedroom", "room", "view"): not a list, a tag, or a mix. */
+function oneKind(sel: Selector): boolean {
+  if (sel === 'all') return true;
+  if ('piece' in sel) return typeof sel.piece === 'string' || sel.piece.length === 1;
+  if ('feature' in sel) return typeof sel.feature === 'string' || sel.feature.length === 1;
+  return 'property' in sel;
+}
+
+/**
+ * An effect as a hand card says it (D-148): the number first, in as few words as say it. Inspect
+ * and the shop keep effectText's full sentence. Only the kinds whose sentences ran long differ:
+ * - a neighbor bonus that names two things drops "touching" ("+2 per Living Room or Kitchen"),
+ *   and one for a tag drops "neighbor" ("+2 per touching Quiet (up to 3)");
+ * - an aura leads with what it gives ("+50% to Kitchen or Living Room", "+25% to touching
+ *   rooms", "+50% to yard views", "+50% to fenced Pet pieces");
+ * - a Fence's yard is "+1 per fenced tile (up to +6)".
+ */
+function handEffectText(content: Content, effect: Effect): string {
+  switch (effect.kind) {
+    case 'neighbor': {
+      const sel = effect.match;
+      if (effect.max === 1 || oneKind(sel)) return effectText(content, effect);
+      const cap = effect.max === undefined ? '' : ` (up to ${effect.max})`;
+      const what =
+        sel !== 'all' && 'tag' in sel
+          ? `touching ${sel.tag}`
+          : selectorText(content, sel, 'one').replace(/ neighbor$/, '');
+      return `${signed(effect.amount)} per ${what}${cap}`;
+    }
+    case 'aura': {
+      const sel = effect.match;
+      const parts: string[] = [];
+      if (effect.pct) parts.push(`${signed(effect.pct)}%`);
+      if (effect.amount) parts.push(signed(effect.amount));
+      const gives = parts.join(' and ');
+      const pieces = (text: string) => text.replace(/\bneighbors\b/, 'pieces');
+      if (effect.scope === 'region') {
+        return `${gives} to fenced ${pieces(selectorText(content, sel, 'every'))}`;
+      }
+      if (oneKind(sel)) return `${gives} to touching ${selectorText(content, sel, 'every')}`;
+      // A list of rooms, one of each: "Kitchen or Living Room".
+      if (sel !== 'all' && 'piece' in sel)
+        return `${gives} to ${selectorText(content, sel, 'one')}`;
+      // "Yard pieces that give a view" are the yard's views: "yard views".
+      const isSource = (s: Selector) =>
+        s !== 'all' && 'property' in s && s.property === 'viewSource';
+      if (sel !== 'all' && 'all' in sel && sel.all.some(isSource) && sel.all.length > 1) {
+        const rest = selectorText(content, { all: sel.all.filter((s) => !isSource(s)) }, 'every');
+        if (/ pieces$/.test(rest)) return `${gives} to ${rest.replace(/ pieces$/, ' views')}`;
+      }
+      return `${gives} to ${pieces(selectorText(content, sel, 'every'))}`;
+    }
+    case 'enclosure': {
+      const cap = effect.cap === undefined ? '' : ` (up to ${signed(effect.cap)})`;
+      return `${signed(effect.perTile)} per fenced tile${cap}`;
+    }
+    case 'conditional': {
+      const inner = handEffectText(content, effect.effect);
+      // A region aura already says where it reaches (the Mudroom's fenced yard).
+      const said =
+        'borders' in effect.when &&
+        effect.effect.kind === 'aura' &&
+        effect.effect.scope === 'region';
+      return said ? inner : `${inner} ${conditionPhrase(content, effect.when)}`;
+    }
+    default:
+      return effectText(content, effect);
+  }
+}
+
+/**
+ * A fixture's effect as a hand card says it (D-148): what it does to its room in a few words.
+ * Inspect and the shop keep modifierText's full sentence, with who is Loud and what a view or
+ * a second Bedroom counts for.
+ */
+function handModifierText(content: Content, mod: Modifier): string {
+  if (mod.kind === 'blockPenalties' && isHost(mod.target)) {
+    const from = selectorText(content, mod.from, 'some');
+    return `${from.charAt(0).toUpperCase() + from.slice(1)} can’t lower it`;
+  }
+  if (mod.kind === 'grantView' && isHost(mod.target)) return 'Gives it a view';
+  if (mod.kind === 'countsAs' && isHost(mod.target) && (mod.times ?? 1) > 1) {
+    return `Counts as ${mod.times} ${plural(content.pieces[mod.as].name)}`;
+  }
+  if (
+    mod.kind === 'xMult' &&
+    !mod.plusPer &&
+    typeof mod.when === 'object' &&
+    'inSet' in mod.when.host
+  ) {
+    const set = article(content.sets[mod.when.host.inSet].name);
+    return `×${multNumber(mod.times)} ${SCORE_LABELS.mult} in ${set}`;
+  }
+  return modifierText(content, mod);
+}
+
+/**
  * A compact hand card's lines (D-121); Inspect has the whole text. A piece shows its first line
  * that pays, so a Hallway shows "+2 per touching room (up to 4)" rather than its link, and the
- * Garage "+1 every week" rather than where it must go (the lot shows that). A requirement that
- * isn't about placement follows the pay, since without it the piece earns nothing: the
- * Doghouse's "+1 every week in a fenced yard". A piece with no line that pays shows its first.
- * A fixture shows where it goes and its first effect, which is what it does to its room (Makes
- * it Sunny, Counts as 2 Bedrooms); its "Earns +25%" is in Inspect.
+ * Driveway what it pays rather than where it must start (the lot shows that). Each line is the
+ * hand's own short wording, number first, within HAND_LINE_CHARS (D-148). A requirement that
+ * isn't about placement follows the pay where both fit, since without it the piece earns
+ * nothing: the Doghouse's "+1 every week in a fenced yard", and the Garage's "+5 by the street
+ * or a Driveway" (D-140). Where they don't fit (a Patio's "if touching a room"), Inspect and the
+ * lot's warning say it. A piece with no line that pays shows its first.
+ * A fixture shows where it goes and its first effect: what it does to its room (Makes it Sunny,
+ * Counts as 2 Bedrooms) or, for the Kitchen Island, what it earns.
  */
 export function handCardLines(content: Content, card: Card): string[] {
   if (card.kind === 'fixture') {
-    const t = fixtureText(content, content.fixtures[card.id]);
-    return [t.fits, ...t.effects.slice(0, 1)];
+    const def = content.fixtures[card.id];
+    const first = def.modifiers[0];
+    return [fixtureText(content, def).fits, ...(first ? [handModifierText(content, first)] : [])];
   }
   const def = content.pieces[card.id];
-  const lines = cardText(content, def).effects;
   const i = def.effects.findIndex(pays);
-  if (i < 0) return lines.slice(0, 1);
+  if (i < 0) return cardText(content, def).effects.slice(0, 1);
+  const pay = def.effects[i]!;
+  const line = handEffectText(content, pay);
   const unless = def.effects.find(
     (e): e is Extract<Effect, { kind: 'requires' }> => e.kind === 'requires' && !e.blocksPlacement,
   );
-  return [unless ? `${lines[i]} ${conditionPhrase(content, unless.condition)}` : lines[i]!];
+  if (!unless) return [line];
+  // A steady earner that waits on touching something says both in a few words (D-140): the
+  // Garage's "+5 by the street or a Driveway", where "+5 every week if touching the street or a
+  // Driveway" lost its last words. (Beside a thumbnail even the short line can lose its end.)
+  if (pay.kind === 'steady' && 'touching' in unless.condition) {
+    const what = conditionText(content, unless.condition).replace(/^touching /, '');
+    return [`${signed(pay.amount)} by ${what}`];
+  }
+  const both = `${line} ${conditionPhrase(content, unless.condition)}`;
+  return [both.length <= HAND_LINE_CHARS ? both : line];
 }
 
 /** "The street is", "the Pond is", but "Trees are". */
@@ -595,6 +717,72 @@ export function countedNames(names: readonly string[]): string {
 
 export function neighborName(content: Content, feature: FeatureId): string {
   return featureNoun(content, feature, false);
+}
+
+/** Does the selector name this lot feature, on its own or as one of several? */
+function namesFeature(sel: Selector, id: FeatureId): boolean {
+  if (sel === 'all') return false;
+  if ('feature' in sel)
+    return typeof sel.feature === 'string' ? sel.feature === id : sel.feature.includes(id);
+  if ('any' in sel) return sel.any.some((s) => namesFeature(s, id));
+  return false;
+}
+
+function paysBeside(e: Effect, id: FeatureId): boolean {
+  if (e.kind === 'conditional') return paysBeside(e.effect, id);
+  return e.kind === 'neighbor' && e.amount > 0 && namesFeature(e.match, id);
+}
+
+/**
+ * Who wants a lot feature beside them (D-145), for the tile's panel: the cards that pay for
+ * touching it by name, read from the content so the panel can't drift from the cards. "Lawns,
+ * Flower Beds, and Fire Pits earn more beside one." A feature that counts once (the Old Shed)
+ * reads "beside it". Null when no card names it. Shape variants and members' rooms are left
+ * out: the list is what a player will see in a hand or the shop.
+ */
+export function featureWantedText(content: Content, id: FeatureId): string | null {
+  const names = Object.values(content.pieces)
+    .filter((p) => !p.countsAs && !p.member && p.effects.some((e) => paysBeside(e, id)))
+    .map((p) => plural(p.name));
+  if (names.length === 0) return null;
+  return `${joinWords(names, 'and')} earn more beside ${content.features[id].body ? 'it' : 'one'}.`;
+}
+
+// ---------------------------------------------------------------------------------------
+// D-122: what a room card plugs into.
+
+/**
+ * The sets a piece counts toward (an L-Kitchen's are a Kitchen's), the ones whose members touch
+ * first, in content order, then the ones anywhere in the house (Full House).
+ */
+export function setsOfPiece(content: Content, id: PieceId): SetId[] {
+  const def = content.pieces[id];
+  const type = def.countsAs ?? def.id;
+  const sets = Object.values(content.sets).filter((s) => (s.members[type] ?? 0) > 0);
+  return [...sets.filter((s) => s.connected), ...sets.filter((s) => !s.connected)].map((s) => s.id);
+}
+
+/**
+ * A set in a few sentences, for a card's set chip: "Suite: a Bedroom, a Bathroom, and a Closet,
+ * touching. +15 Comfort and +0.5 Charm every week. A house can have more than one."
+ */
+export function setText(content: Content, id: SetId): string {
+  const set = content.sets[id];
+  const names = Object.entries(set.members).flatMap(([piece, n]) =>
+    Array<string>(n ?? 0).fill(content.pieces[piece as PieceId].name),
+  );
+  const how = set.hub
+    ? `, each touching the ${content.pieces[set.hub].name}`
+    : set.connected
+      ? ', touching'
+      : ', anywhere in the house';
+  const { points, mult, xMult } = SCORE_LABELS;
+  const pays =
+    set.times !== undefined
+      ? `+${set.points} ${points}, +${multNumber(set.mult)} ${mult}, and ×${multNumber(set.times)} ${xMult}`
+      : `+${set.points} ${points} and +${multNumber(set.mult)} ${mult}`;
+  const repeats = set.maxInstances === 1 ? 'One per house.' : 'A house can have more than one.';
+  return `${set.name}: ${countedNames(names)}${how}. ${pays} every week. ${repeats}`;
 }
 
 // ---------------------------------------------------------------------------------------
@@ -683,7 +871,9 @@ export function modifierText(content: Content, mod: Modifier): string {
       const per = mod.per
         ? ` per ${selectorText(content, mod.per, 'one').replace(/\bneighbor\b/, 'piece')}`
         : '';
-      return `${mod.add < 0 ? '−' : '+'}${multNumber(Math.abs(mod.add))} ${CHARM}${per}`;
+      // "Of a type" is the tidy yard's wording for the same count.
+      const cap = mod.per && mod.maxEach !== undefined ? `, up to ${mod.maxEach} of a type` : '';
+      return `${mod.add < 0 ? '−' : '+'}${multNumber(Math.abs(mod.add))} ${CHARM}${per}${cap}`;
     }
     case 'xMult': {
       let amount = `×${multNumber(mod.times)} ${CHARM}`;
@@ -731,6 +921,12 @@ export function modifierText(content: Content, mod: Modifier): string {
       const name = content.pieces[mod.as].name;
       const times = mod.times ?? 1;
       const what = times === 1 ? article(name) : `${times} ${plural(name)}`;
+      // The Kitchen Island: only what touches it reads it as a Dining Room. It fills no set
+      // and no checklist line (sets.ts, conditions.ts), which "Counts as a Dining Room too"
+      // promised (D-148).
+      if (isHost(mod.target) && times === 1) {
+        return `Neighbors count it as ${what} (sets and the checklist don’t)`;
+      }
       const subject = isHost(mod.target) ? 'Counts' : `${subjectText(content, mod.target)} count`;
       return `${subject} as ${what}${times === 1 ? ' too' : ' for the client'}`;
     }
@@ -858,6 +1054,13 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
         e.kind === 'requires' ? [`${article(p.name)} ${conditionText(content, e.condition)}`] : [],
       ),
     );
+  // The sets with a ×Mult, at the content's own number: "the Full House set (×1.5)" (D-140).
+  const sparkleSets = joinWords(
+    Object.values(content.sets)
+      .filter((set) => set.times !== undefined)
+      .map((set) => `the ${set.name} set (×${multNumber(set.times!)})`),
+    'and',
+  );
   return {
     comfort: {
       title: L.points,
@@ -869,7 +1072,7 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
     },
     sparkle: {
       title: L.xMult,
-      text: `Multiplies ${L.mult} itself. Rare: the Full House set (×2) and a few Rare goods have it, and each needs a setup. Each source counts once a week.`,
+      text: `Multiplies ${L.mult} itself. Rare: ${sparkleSets ? `${sparkleSets} and ` : ''}a few Rare goods have it, and each needs a setup. Each source counts once a week.`,
     },
     wow: {
       title: L.total,
@@ -880,14 +1083,17 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
       text:
         `Spent in the shop between milestones. You earn ${b.milestoneBudget} per milestone met, ` +
         `${earlyBudget} per week saved by completing early, from ${joinWords(economy, 'and')}, ` +
-        `${b.shop.skipReward} for leaving the shop without buying, and by selling (half price).`,
+        `${b.shop.skipReward} for leaving the shop without buying, and by selling (half price).` +
+        (b.leftoverBudgetWow > 0
+          ? ` What you still hold when the last milestone is met pays ${b.leftoverBudgetWow} ${L.total} each.`
+          : ''),
     },
     early: {
       title: 'Complete early',
       text:
-        `Once the target is met, finish the milestone now. The weeks left play out quickly (pieces ` +
-        `still earn), and each week saved pays ${earlyBudget} budget and ${earlyPct}% of this ` +
-        `milestone’s ${L.total}.`,
+        `Once the target is met, finish the milestone now. You skip the builds for the weeks ` +
+        `left: they play out quickly (pieces still earn), and each week saved pays ` +
+        `${earlyBudget} budget and ${earlyPct}% of this milestone’s ${L.total}.`,
     },
     fixture: {
       title: 'Fixtures',
@@ -1005,6 +1211,75 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
 }
 
 // ---------------------------------------------------------------------------------------
+// First contact (D-142): the short forms a new player meets first. The job board names the
+// house rules once, for every card on it, and each first-time hint keeps to one budget of
+// words. The glossary above keeps the full texts, for the tips.
+
+/**
+ * The house rules every client has, for the job board: their names, a line each, in the
+ * checklist's order, then what a held one adds. A client's own numbers are on its checklist.
+ */
+export function houseRulesText(content: Content): string {
+  const names: string[] = [];
+  for (const client of Object.values(content.clients)) {
+    for (const spec of client.specs) {
+      if (spec.group !== 'wishes' && !names.includes(spec.name)) names.push(spec.name);
+    }
+  }
+  const adds = `+${multNumber(content.balance.rules.specBonus)} ${SCORE_LABELS.mult}`;
+  return [...names, `Each adds ${adds} in every week it holds.`].join('\n');
+}
+
+/**
+ * The last shop's line (D-148): nothing there said leftover budget pays (D-145). It keeps the
+ * rule's other half, since the pay comes after the last target is met and never helps reach
+ * it. Null when leftover budget pays nothing.
+ */
+export function lastShopText(content: Content): string | null {
+  const each = content.balance.leftoverBudgetWow;
+  if (each <= 0) return null;
+  return `Last shop: budget you still hold pays ${each} ${SCORE_LABELS.total} each, but only after the last target is met.`;
+}
+
+/** How many words a first-time hint may run to (D-142). */
+export const HINT_WORDS = 25;
+
+/** The first-time hints (D-045) that state a rule or a number. */
+export type HintTerm = 'score' | 'checklist' | 'early' | 'shop' | 'fixture' | 'renovate';
+
+/** Each within HINT_WORDS, with its numbers from the content. */
+export function hintText(content: Content): Record<HintTerm, string> {
+  const b = content.balance;
+  const L = SCORE_LABELS;
+  const earlyBudget = b.early.budgetPerWeek[0] ?? 0;
+  const earlyPct = b.early.scorePct[0] ?? 0;
+  return {
+    score:
+      `Pieces earn ${L.points} from what they touch, so build them side by side. ` +
+      `${L.mult} multiplies ${L.points} into ${L.total}.`,
+    checklist:
+      `Each line that holds adds +${multNumber(b.rules.specBonus)} ${L.mult} every week. ` +
+      `The house rules fold into one row after this: click it to open them.`,
+    // It says what it costs (D-149): the builds, which a new player needs more than the bonus.
+    early:
+      `Target met? Complete early skips the builds you have left: each week saved pays ` +
+      `${earlyBudget} budget and ${earlyPct}% of this milestone’s ${L.total}.`,
+    shop:
+      `Spend your budget on goods for the house; hover one to read it. Each milestone met ` +
+      `pays ${b.milestoneBudget} more.`,
+    // It names the folded plank a bought fixture lands in (D-148): nothing else on the build
+    // screen says "supplies".
+    fixture:
+      'Fixtures upgrade a piece you’ve built, one each. Installing from your hand is the ' +
+      'week’s build; from your supplies (Your goods, top right) it’s free.',
+    renovate:
+      `Once the house has every room of a type its checklist wants, a spare card renovates ` +
+      `one instead: +${b.renovate.pointsPerLevel} ${L.points} a level, up to ` +
+      `${b.renovate.maxLevel}.`,
+  };
+}
+
+// ---------------------------------------------------------------------------------------
 // Tools, company upgrades, and crates (M3b).
 
 /** What a tool does, as sentences. */
@@ -1027,7 +1302,7 @@ export function toolText(content: Content, def: ToolDef): string[] {
       const set = content.sets[u.set];
       const lv = set.level;
       return [
-        `${set.name} goes up a level for the rest of the run: +${lv.points} ${SCORE_LABELS.points} and +${multNumber(lv.mult)} ${SCORE_LABELS.mult} each`,
+        `${set.name} goes up a level for the rest of the run, even before you have one: +${lv.points} ${SCORE_LABELS.points} and +${multNumber(lv.mult)} ${SCORE_LABELS.mult} each`,
       ];
     }
     case 'extraPlay':

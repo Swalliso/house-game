@@ -58,7 +58,6 @@ export type SoundId =
   | 'doorbell'
   | 'order-stamp'
   | 'topped-out'
-  | 'roof-on'
   | 'drumroll';
 
 export interface PlayOptions {
@@ -310,14 +309,6 @@ const SOUNDS: Record<SoundId, readonly Layer[]> = {
     note(0.18, G5, 0.32, 0.2),
     note(0.26, C6, 0.34, 0.7),
     { at: 0.26, params: [0.1, 0, C7, 0.004, 0, 0.6, 0, 1, , , , , 0.035, , , , , 1, , 0.5] },
-  ],
-  // The roof going on: a wooden thump, and a bell as it settles.
-  'roof-on': [
-    {
-      at: 0,
-      params: [0.55, 0, 110, 0.002, 0.02, 0.18, 1, 1, -0.6, , , , , , , , , 0.6, 0.03, , -700],
-    },
-    note(0.1, G5, 0.24, 0.5),
   ],
   // The milestone moment's drumroll: a soft rolled snare under the count.
   drumroll: one([0.22, 0, 320, 0.05, 1.1, 0.15, 4, 1, , , , , 0.035, , , , , 0.7, , 0.9, -1600]),

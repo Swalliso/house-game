@@ -1,11 +1,16 @@
 // Change orders (M4b; implementation-plan.md §5, Appendix B's clients and generic change
-// orders; D-011): one is offered after each of milestones 2, 4, and 6, from the client's own
-// (ClientDef.changeOrders) and the generic ones, and runs through the next phase.
-// - Requests: accept or decline, no penalty; met at the next milestone → the reward. "New"
-//   (countNew) means placed since it was accepted. Requests never change the checklist.
-// - Restrictions: accept or decline; placing a piece they forbid breaks them; kept to the next
-//   milestone → the reward.
-// - Phase effects: announced, then their modifiers apply for the next phase.
+// orders; D-011): two are offered after each of milestones 2, 4, and 6, from the client's own
+// (ClientDef.changeOrders) and the generic ones, and the player picks one (D-144), which runs
+// through the next phase. The one passed over goes back in the pool.
+// - Requests: met at the next milestone → the reward; missed, no penalty. "New" (countNew)
+//   means placed since it was picked. Requests never change the checklist.
+// - Restrictions: placing a piece they forbid breaks them; kept to the next milestone → the
+//   reward.
+// - Phase effects: their modifiers apply for the next phase. After milestone 6 only these are
+//   offered, two of them, so every client has four (D-137): the three generic ones and one of
+//   its own (the Barkers', Juniper's, and Dale's came with D-137). The picks after milestones
+//   2 and 4 use up at most two, so two are always left. Each pays something and costs
+//   something, as Heat wave does, so picking between two is a trade.
 //
 // Rewards are budget, sized to the effort, here in the defs (placeholders for the sim and
 // playtest 4): 3 for one ordinary new piece; 4 for a piece that needs a spot (a Patio with a
@@ -45,6 +50,42 @@ export const CHANGE_ORDERS: Readonly<Record<ChangeOrderId, ChangeOrderDef>> = {
       { kind: 'earn', target: { touching: { feature: 'tree' } }, pct: 100 },
       { kind: 'earn', target: { all: [ROOM, { tag: 'Sunny' }] }, pct: -50 },
     ],
+  },
+  // D-137: two more phase effects and a restriction, so the same order comes up less often.
+  coldSnap: {
+    id: 'coldSnap',
+    name: 'Cold snap',
+    scope: 'generic',
+    tier: 'core',
+    kind: 'phase',
+    text: 'This phase, rooms with a Fireplace earn double, and Bathrooms earn half. The pipes froze.',
+    modifiers: [
+      // A Fireplace fits rooms only; the shop that follows the offer may sell one.
+      { kind: 'earn', target: { hasFixture: 'fireplace' }, pct: 100 },
+      { kind: 'earn', target: { piece: 'bathroom' }, pct: -50 },
+    ],
+  },
+  rainySeason: {
+    id: 'rainySeason',
+    name: 'Rainy season',
+    scope: 'generic',
+    tier: 'core',
+    kind: 'phase',
+    text: 'This phase, Green pieces earn double, and Patios earn nothing. Bring the cushions in.',
+    modifiers: [
+      { kind: 'earn', target: { tag: 'Green' }, pct: 100 },
+      { kind: 'earnNothing', target: { piece: 'patio' } },
+    ],
+  },
+  hoaLetter: {
+    id: 'hoaLetter',
+    name: 'A letter from the HOA',
+    scope: 'generic',
+    tier: 'core',
+    kind: 'restriction',
+    text: 'Nothing new in the front yard this phase, per section 9, paragraph 4.',
+    forbid: { in: 'frontYard' },
+    reward: { budget: 4 },
   },
 
   // ---------------------------------------------------------------------------------------
@@ -113,6 +154,19 @@ export const CHANGE_ORDERS: Readonly<Record<ChangeOrderId, ChangeOrderDef>> = {
     condition: { group: { all: [{ piece: 'lawn' }, { in: 'fencedYard' }] }, minTiles: 8 },
     reward: { budget: 5 },
   },
+  puppies: {
+    id: 'puppies',
+    name: 'A litter of puppies',
+    scope: 'barkers',
+    tier: 'core',
+    kind: 'phase',
+    text: 'Six puppies! This phase, Pet pieces and Lawns earn double, and Flower Beds earn nothing.',
+    modifiers: [
+      { kind: 'earn', target: { tag: 'Pet' }, pct: 100 },
+      { kind: 'earn', target: { piece: 'lawn' }, pct: 100 },
+      { kind: 'earnNothing', target: { piece: 'flowerBed' } },
+    ],
+  },
 
   // ---------------------------------------------------------------------------------------
   // Juniper Vale.
@@ -136,6 +190,20 @@ export const CHANGE_ORDERS: Readonly<Record<ChangeOrderId, ChangeOrderDef>> = {
     condition: { countNew: { all: [{ piece: 'patio' }, { property: 'view' }] }, min: 1 },
     reward: { budget: 4 },
   },
+  magazineShoot: {
+    id: 'magazineShoot',
+    name: 'A magazine shoot',
+    scope: 'juniper',
+    tier: 'core',
+    kind: 'phase',
+    text: 'This phase, rooms with a view earn double, and Closets and Hallways earn nothing. Nothing extra in the shot.',
+    modifiers: [
+      { kind: 'earn', target: { all: [ROOM, { property: 'view' }] }, pct: 100 },
+      { kind: 'earnNothing', target: { piece: 'closet' } },
+      // Long Hallways count as Hallways. Their links still hold; only their own points go.
+      { kind: 'earnNothing', target: { piece: 'hallway' } },
+    ],
+  },
 
   // ---------------------------------------------------------------------------------------
   // Dale.
@@ -158,5 +226,18 @@ export const CHANGE_ORDERS: Readonly<Record<ChangeOrderId, ChangeOrderDef>> = {
     text: 'A new interior room, for the studio.',
     condition: { countNew: { all: [ROOM, { property: 'interior' }] }, min: 1 },
     reward: { budget: 4 },
+  },
+  outOfOffice: {
+    id: 'outOfOffice',
+    name: 'Out of office',
+    scope: 'dale',
+    tier: 'core',
+    kind: 'phase',
+    text: 'This phase, Outdoor pieces earn double, and Home Offices earn nothing. Not checking email.',
+    modifiers: [
+      { kind: 'earn', target: { tag: 'Outdoor' }, pct: 100 },
+      // Points only: the Home Offices still pay their budget.
+      { kind: 'earnNothing', target: { piece: 'homeOffice' } },
+    ],
   },
 };

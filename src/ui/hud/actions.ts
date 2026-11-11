@@ -1,22 +1,19 @@
 // Small UI actions shared by the HUD's buttons and the keyboard.
 
-import { batch, computed, signal } from '@preact/signals';
+import { computed, signal } from '@preact/signals';
 import { rules } from '../../rules/index.ts';
 import { audio } from '../audio/audio.ts';
 import { busy, orderStamp, skip } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
-import { roofed } from '../fx/moments.ts';
 import { copyFallback, settingsOpen } from './modals.ts';
 import {
   appScreen,
   demolishArmed,
   endWeek,
   heldPiece,
-  heldRoom,
   inProgress,
   openJobBoard,
   notice,
-  roofOn,
   run,
   runCode,
   selected,
@@ -33,6 +30,8 @@ export {
   copyFallback,
   howToPlayOpen,
   menuOpen,
+  photoShown,
+  portfolioOpen,
   settingsOpen,
 } from './modals.ts';
 export const toast = signal<{ id: number; text: string } | null>(null);
@@ -66,42 +65,17 @@ export const changeOrderShown = computed(
     appScreen.value === 'game' &&
     (orderStamp.value !== null || (run.value.screen === 'changeOrder' && !busy.value)),
 );
+/**
+ * D-144: the key that picks each change order on the sheet: 1 for the left and 2 for the right,
+ * as the buttons and the controls strip say. An order offered alone (only one was eligible, or
+ * the ?debug panel forced it) takes Enter.
+ */
+export function pickKeys(count: number): readonly string[] {
+  return count === 1 ? ['Enter'] : Array.from({ length: count }, (_, i) => String(i + 1));
+}
+
 /** Notes and toasts sit inside a sheet, not over the board: the shop's or a change order's. */
 export const notesDocked = computed(() => shopShown.value || changeOrderShown.value);
-
-/**
- * Whether the camera's Roof button can put the roof on now (D-133): once the Roofing milestone
- * is met, with the lot in view (no sheet over it), no tally playing, and nothing being built.
- */
-export const canRoof = computed(
-  () =>
-    roofed(run.value) &&
-    !busy.value &&
-    !notesDocked.value &&
-    selected.value === null &&
-    tool.value !== 'demolish',
-);
-
-/**
- * The camera's Roof button and T (D-133): the roof on, or off to look inside. It comes off
- * whenever the lot is in view, and goes on when canRoof says so, letting go of a room held in
- * Inspect, which it would cover.
- */
-export function toggleRoof(): void {
-  if (notesDocked.value) return;
-  if (roofOn.value) {
-    roofOn.value = false;
-    audio.play('place-yard', { rate: 1.2, gain: 0.5 });
-    return;
-  }
-  if (!canRoof.value) return;
-  batch(() => {
-    if (heldRoom()) heldPiece.value = null;
-    roofOn.value = true;
-  });
-  // The roof's thump as it lands, without the reveal's chime and the music's duck.
-  audio.play('place-room', { rate: 0.75, gain: 0.7, delay: FEEL.roof.thumpMs / 1000 });
-}
 
 export async function copyText(text: string, done = 'Copied'): Promise<void> {
   try {
@@ -182,10 +156,23 @@ export function isSelected(from: Source, i: number): boolean {
 /** Passing places nothing all week, so it takes a second press within a few seconds. */
 export const passArmed = signal(false);
 let passTimer: ReturnType<typeof setTimeout> | undefined;
+/** When End week last hurried a tally (FEEL.endWeek.hurryMs). */
+let hurriedAt = -Infinity;
 
 export function requestEndWeek(): void {
   if (run.value.screen !== 'build') return;
+  // While a tally plays with nothing waiting to be placed, Enter or a click on End week only
+  // hurries the tally, as a click anywhere else does. It never arms or confirms a pass: a
+  // double-click on End week used to pass the next week unseen (D-068).
+  if (busy.value && !tentative.value) {
+    skip();
+    hurriedAt = performance.now();
+    return;
+  }
   if (!tentative.value && !passArmed.value) {
+    // The tally is gone a moment after it's hurried, so the next quick press lands on a quiet
+    // board. It is still hurrying, not the first press of a pass.
+    if (performance.now() - hurriedAt < FEEL.endWeek.hurryMs) return;
     passArmed.value = true;
     clearTimeout(passTimer);
     passTimer = setTimeout(() => (passArmed.value = false), 2500);

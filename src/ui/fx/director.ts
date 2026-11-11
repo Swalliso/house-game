@@ -24,8 +24,8 @@ import {
   SCORE_LABELS,
   type ArrivalId,
   type ChangeOrderId,
+  type ChangeOrderOfferView,
   type ChangeOrderResult,
-  type ChangeOrderView,
   type ClientId,
   type GameEvent,
   type PieceId,
@@ -39,7 +39,7 @@ import {
 import { audio } from '../audio/audio.ts';
 import { arrivalOf, cardsPhrase, isPlural } from '../hud/household.ts';
 import { settings } from '../settings.ts';
-import { onEvents, onRunReset, roofOn } from '../store.ts';
+import { onEvents, onRunReset } from '../store.ts';
 import { formatNumber } from '../format.ts';
 import { chainOrder } from './chain.ts';
 import { FEEL } from './feel.ts';
@@ -59,8 +59,6 @@ import {
   isHouseRule,
   markToppedOut,
   rhythmPaid,
-  roofed,
-  ROOFING_PHASE,
   targetCrossed,
   TOPPED_OUT_RULE,
   toppedOutBefore,
@@ -238,16 +236,16 @@ export const justPlaced = signal<{ uid: number; id: number } | null>(null);
 export const justRenovated = signal<{ uid: number; id: number } | null>(null);
 
 /**
- * A change order's answer, stamped on its sheet as the sheet goes (M4b): the sheet as it was
- * answered, since the rules have already moved on to the shop (or back to the week).
+ * The change order picked, stamped on its card as the sheet goes (M4b, D-144): the sheet as it
+ * was answered, since the rules have already moved on to the shop (or back to the week).
  */
 export interface OrderStamp {
   id: number;
-  view: ChangeOrderView;
+  /** The offer as it was, its ?debug flag included. */
+  offer: ChangeOrderOfferView;
   clientId: ClientId;
-  /** Offered by the ?debug panel mid-week: answering it goes back to that week. */
-  forced: boolean;
-  answer: 'accepted' | 'declined' | 'noted';
+  /** Which of the offer's orders was picked. */
+  picked: number;
 }
 export const orderStamp = signal<OrderStamp | null>(null);
 /** A household member's cards, just in the reserve (M4b): the reserve pops them in. */
@@ -533,7 +531,7 @@ function setShownScore(score: number | null): void {
 
 /**
  * Whether an action's events have beats to play. Free actions with little to animate don't. A
- * change order's answer does (M4b): its stamp holds the shop back until it lands.
+ * change order's pick does (M4b): its stamp holds the shop back until it lands.
  */
 function animates(events: readonly GameEvent[]): boolean {
   return events.some(
@@ -558,7 +556,7 @@ function withBroken(s: RunState, id: ChangeOrderId, uid: number): RunState {
   return {
     ...s,
     changeOrders: s.changeOrders.map((r) =>
-      r.id === id && r.answer === 'accepted' && r.result === undefined && r.brokenBy === undefined
+      r.id === id && r.result === undefined && r.brokenBy === undefined
         ? { ...r, brokenBy: uid }
         : r,
     ),
@@ -620,20 +618,14 @@ function showStart(events: readonly GameEvent[], before: RunState): void {
   });
 }
 
-/** The sheet as it was answered, and the answer, for its stamp (M4b). */
+/** The sheet as it was answered, and the order picked, for its stamp (M4b, D-144). */
 function stampOf(
   e: Extract<GameEvent, { t: 'changeOrderAnswered' }>,
   before: RunState,
 ): OrderStamp | null {
-  const view = rules.changeOrderOffer(before);
-  if (!view) return null;
-  return {
-    id: nextId++,
-    view,
-    clientId: before.setup.clientId,
-    forced: !!before.offers?.changeOrder?.forced,
-    answer: e.kind === 'phase' ? 'noted' : e.accepted ? 'accepted' : 'declined',
-  };
+  const offer = rules.changeOrderOffer(before);
+  if (!offer) return null;
+  return { id: nextId++, offer, clientId: before.setup.clientId, picked: e.i };
 }
 
 /** A fast-forwarded week (D-040): no placement, just a quick count and the drain. */
@@ -801,7 +793,7 @@ function topOut(): void {
     if (toppedOut.value?.id === id) toppedOut.value = null;
   }, FEEL.moments.toppedOutMs);
   audio.play('topped-out', { delay: 0.15 });
-  // Up from the plaque over the roof, clear of the line's own popup over the house.
+  // Up from the plaque over the top of the house, clear of the line's own popup over it.
   afterPaint(() => burstAt('stars', document.querySelector('.topped-out'), { fy: 0, scale: 1.4 }));
 }
 
@@ -1092,7 +1084,12 @@ function milestoneBanner(e: Extract<GameEvent, { t: 'milestone' }>, ended: boole
   const phases = CONTENT.balance.phases;
   const next = phases[e.phase + 1]?.name;
   const onTo = ended || !next ? 'It’s a house.' : `On to ${next}.`;
-  const reward = e.reward.budget > 0 ? ` +${e.reward.budget} budget.` : '';
+  // The last milestone's budget has no shop to go to: what's held pays Wow instead (D-145).
+  const left = e.reward.leftover;
+  const leftover = left
+    ? `${left.budget} budget left: +${formatNumber(left.score)} ${SCORE_LABELS.total}.`
+    : '';
+  const reward = left ? ` ${leftover}` : e.reward.budget > 0 ? ` +${e.reward.budget} budget.` : '';
   let ms: number;
   switch (e.result) {
     case 'onTime':
@@ -1102,7 +1099,9 @@ function milestoneBanner(e: Extract<GameEvent, { t: 'milestone' }>, ended: boole
       const weeks = `${e.weeksSaved} ${e.weeksSaved === 1 ? 'week' : 'weeks'}`;
       ms = showBanner(
         `${e.name} complete, ${weeks} early!`,
-        `+${formatNumber(e.reward.score)} ${SCORE_LABELS.total} early bonus, and +${e.reward.budget} budget. ${onTo}`,
+        left
+          ? `+${formatNumber(e.reward.score)} ${SCORE_LABELS.total} early bonus. ${leftover} ${onTo}`
+          : `+${formatNumber(e.reward.score)} ${SCORE_LABELS.total} early bonus, and +${e.reward.budget} budget. ${onTo}`,
         'good',
         FEEL.bannerMs * FEEL.longBannerScale,
       );
@@ -1123,12 +1122,6 @@ function milestoneBanner(e: Extract<GameEvent, { t: 'milestone' }>, ended: boole
   shake(FEEL.shake.milestonePx);
   if (e.result !== 'failed') {
     afterPaint(() => burstAt('sparkles', document.querySelector('.banner .banner-ribbon')));
-    // The roof reveal (§12, D-127): at the Roofing milestone the house gets its roof, under the
-    // banner, and keeps it until the player's next move on the lot (D-133: store.ts roofOn).
-    if (e.phase === ROOFING_PHASE) {
-      roofOn.value = true;
-      audio.play('roof-on', { delay: FEEL.roof.thumpMs / 1000 });
-    }
   }
   return ms;
 }
@@ -1424,21 +1417,20 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
           break;
         }
         case 'changeOrderAnswered': {
-          // M4b: the answer is stamped on the sheet as it goes (ChangeOrderScreen.tsx; the stamp
-          // went on show with the action, in showStart), in real time: holding hurries it, a
-          // click skips it. The shop waits for it.
+          // M4b: the pick is stamped on its card as the sheet goes (ChangeOrderScreen.tsx; the
+          // stamp went on show with the action, in showStart), in real time: holding hurries it,
+          // a click skips it. The shop waits for it.
           const stamp = orderStamp.value;
           if (stamp && !skipping) {
-            // The stamp's thunk (D-125), ink spattering where it lands, then a bright plink for
-            // a yes, or the paper swished aside.
+            // The stamp's thunk (D-125), ink spattering where it lands, then a bright plink,
+            // and the order passed over swished aside (D-144).
             audio.play('order-stamp');
             afterPaint(
               () => burstAt('ink', document.querySelector('.co-stamp')),
               FEEL.changeOrder.stampInMs,
             );
-            if (stamp.answer === 'declined') audio.play('rotate', { rate: 0.7, delay: 0.08 });
-            else
-              audio.play('plink', { rate: stamp.answer === 'accepted' ? 1.5 : 1.2, delay: 0.07 });
+            audio.play('plink', { rate: 1.5, delay: 0.07 });
+            if (stamp.offer.options.length > 1) audio.play('rotate', { rate: 0.7, delay: 0.12 });
             await wait(FEEL.changeOrder.stampMs, undefined, undefined, realSpeed);
           }
           orderStamp.value = null;
@@ -1462,12 +1454,6 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
       for (const e of events) {
         shopBeat(e);
         sheetBeat(e, after);
-      }
-      // The end screen opens with the roof on, the finale's picture, if Roofing put one on
-      // (D-133). Its Roof button looks inside.
-      if (ended && roofed(after) && !roofOn.value) {
-        roofOn.value = true;
-        audio.play('place-room', { rate: 0.75, gain: 0.7, delay: FEEL.roof.thumpMs / 1000 });
       }
     }
   } finally {

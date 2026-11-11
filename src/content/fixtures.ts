@@ -82,9 +82,12 @@ export const FIXTURES: Readonly<Record<FixtureId, FixtureDef>> = {
     drawWeight: 5,
     fromPhase: 1,
     price: PRICES.fixture.uncommon,
+    // What it earns comes first, so the hand card leads with it (D-148): the Dining Room it
+    // counts as is only for the pieces touching it (another Kitchen's "+2 per Dining Room"),
+    // never a set or a checklist line. The order changes no score.
     modifiers: [
-      { kind: 'countsAs', target: HOST, as: 'diningRoom' },
       { kind: 'earn', target: HOST, pct: 25 },
+      { kind: 'countsAs', target: HOST, as: 'diningRoom' },
     ],
   },
   bunkBeds: {

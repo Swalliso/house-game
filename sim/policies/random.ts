@@ -11,7 +11,7 @@ import type { Action, Rng, Rules, RunState } from '../../src/rules/index.ts';
 export const random = {
   name: 'random',
   act(rules: Rules, state: RunState, rng: Rng): Action {
-    // M4b: a change order answered at random (a phase effect can only be acknowledged).
+    // M4b, D-144: one of the change orders on offer, at random.
     if (state.screen === 'changeOrder') return rng.pick(rules.legalActions(state));
     if (state.screen === 'shop') {
       const legal = rules.legalActions(state);

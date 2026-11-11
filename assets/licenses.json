@@ -1933,5 +1933,15 @@
     "source": "https://github.com/sgossner/VCSL (vcsl): Idiophones/Struck Idiophones/Mark Trees/Legacy/windchimes_fastAsc1.wav",
     "author": "Versilian Studios (Sam Gossner) and the VCSL contributors",
     "license": "CC0-1.0"
+  },
+  "public/og.png": {
+    "source": "The link preview's picture (D-135): a screenshot of a finished run's house, its rooms in view, at two screen pixels per art pixel, with a title sign in the game's own style, captured from the game in a headless browser",
+    "author": "Open House team (captured by Claude Code); the sprites in it are LimeZu's cuts (atlas.png), our own drawings and the game's pixel fonts, each under its own record",
+    "license": "Own work; the LimeZu sprites in it keep their license (a picture of the game, not the asset)"
+  },
+  "public/favicon.png": {
+    "source": "The browser tab's icon (D-135): a house drawn as a 16×16 grid in LimeZu's palette (src/ui/theme/art.ts UI_PALETTE), at 2×",
+    "author": "Open House team (drawn by Claude Code)",
+    "license": "Own work"
   }
 }

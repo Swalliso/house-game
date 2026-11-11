@@ -393,6 +393,13 @@
 .sets li.gained {
   background: var(--charm-tint);
 }
+/* On Charm's tint the plain colors fall under 4.5:1, so a made set's numbers go deeper. */
+.sets li.gained .set-comfort {
+  color: var(--comfort-deep);
+}
+.sets li.gained .set-charm {
+  color: var(--charm-deep);
+}
 .sets li.lost {
   color: var(--bad);
 }
