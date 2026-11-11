@@ -1572,6 +1572,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 **2026-11-10 (D-148, Proposed):** a compact card's line is the hand's own short wording, number first, within 33 characters (`HAND_LINE_CHARS`), not always the card's first effect line as written: "+50% to Kitchen or Living Room" for "Touching Kitchens and Living Rooms earn +50%". The two-line clamp stands, and Inspect still shows the whole card. Reroll keeps its word on the plank at every size, where a narrow column showed its icon and count; Demolish still shows those.
 
+**2026-11-11 (D-148's note of the day, Proposed):** the clamp no longer stands at two. A compact card's line has three lines at most, and four beside a 2× screen's half-size thumbnail; on a 2× window under 1100 px tall the cards sit 4 px apart, with less padding, and the thumbnail's well has none. The Greenhouse's line says "touching" again.
+
 ### D-123 · Playtest 5's re-fit: the targets and each client's factor
 **Status:** Accepted · 2026-11-10, held up in playtest 5 (`docs/playtests/playtest-5-findings.md`): harder than playtest 4, but "while challenging it still felt possible to complete". Milestone 2 keeps 560 (the user's run made it with 665 of 644), so the 450 step-down isn't needed. Proposed 2026-11-09, before playtest 5. It's the one re-fit that D-114, D-119, D-120 and D-121 left until all of playtest 4's content changes were in (playtest 4's findings §12).
 *2026-11-10 (D-146, Proposed):* the friction batch (D-140 to D-145) outgrew these numbers, and D-146 re-fits them. The method stands, with one step added: the targets are set where greedy's played survival meets the goals, because the fit's estimate overstates what overtime rescues.
@@ -1776,7 +1778,58 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 ## Proposed
 
-*Reserved numbers (2026-11-10): D-115 to D-118 are the layout session's drafts, not in this file yet; D-122 (legibility) is logged below. D-132 to D-134 are playtest 5's fixes, each logged by its own pull request: D-132 one reroll for both rows of the draw, D-133 the roof view, D-134 three more tracks. D-135 and D-136 are M6's end screen (D-135 the result line and link preview, D-136 the milestone photos); D-137 and D-138 belong to the release-day sessions. D-139 is the company's record. D-140 to D-146 are the friction batch, from the 2026-11-10 review's seven points: D-140 the Garage and the Driveway, D-141 what a blueprint is worth and its icon, D-142 first contact, D-143 the blueprint shelf, D-144 change orders two at a time, D-145 the lot and the last stretch, and D-146 the batch's one re-fit. D-147 takes the roof out again (the user's call, logged under Accepted). D-148 is the first-timer legibility batch before the showing, from the 2026-11-10 polish review (logged below). D-149 is the first job, from the first showing (2026-11-11, logged below). New entries start at D-150.*
+*Reserved numbers (2026-11-10): D-115 to D-118 are the layout session's drafts, not in this file yet; D-122 (legibility) is logged below. D-132 to D-134 are playtest 5's fixes, each logged by its own pull request: D-132 one reroll for both rows of the draw, D-133 the roof view, D-134 three more tracks. D-135 and D-136 are M6's end screen (D-135 the result line and link preview, D-136 the milestone photos); D-137 and D-138 belong to the release-day sessions. D-139 is the company's record. D-140 to D-146 are the friction batch, from the 2026-11-10 review's seven points: D-140 the Garage and the Driveway, D-141 what a blueprint is worth and its icon, D-142 first contact, D-143 the blueprint shelf, D-144 change orders two at a time, D-145 the lot and the last stretch, and D-146 the batch's one re-fit. D-147 takes the roof out again (the user's call, logged under Accepted). D-148 is the first-timer legibility batch before the showing, from the 2026-11-10 polish review (logged below). D-149 is the first job, from the first showing (2026-11-11, logged below). D-150 is the end screen's lead into the next run, from the evening's what-next survey (`fix/retry-after-loss`, logged below). New entries start at D-151.*
+
+### D-150 · A lost run leads into the next: a "Next time" tip and Try this lot again
+**Status:** Proposed · 2026-11-11, a fix pull request (`fix/retry-after-loss`), from the what-next survey after release #58, at the session that ran it. UI only: no rules, content or balance change. `contentHash(CONTENT)` is `ffabbd52` on develop and on this branch, so a release keeps runs in progress (#54). For the user's playtest before it merges.
+**Decision:**
+- **Try this lot again** on the end screen (`EndScreen.tsx`): a new run on the same lot, for the same client with the same crew, straight into the game, as the Portfolio's Play this lot again does (`playLotAgain`, D-139's 2026-11-11 note). It leads the column's plain group under the stats, on a row of its own, over Copy run code and Title. The sticky bar keeps New run and Copy result (D-148). Like the screen's other buttons, it waits out the click delay.
+  - A win says **Play this lot again**, the Portfolio's words: the verdict above it ("Next: …", D-139) is a reason to.
+  - **In the pixel font in the narrow column** (a window under 1500 px wide, a 228 px row) the words don't fit (276 px), so it says "Try again" ("Play again") and its title says the rest. The readable font fits them everywhere. A container query, as the hand's plank has (D-148).
+  - **The retry isn't guided.** The first job ends with its run (D-149), so its lot played again is an ordinary run, whether the first job came from the board or a friend's link.
+  - **The column goes back to its top** as the run starts. The game stays on screen, and the column was scrolled down to reach the button, which left the new run's hand plank and Reroll out of view.
+- **"Next time"** (`src/ui/screens/next-time.ts`): after a loss, one tip under the stats, just over the button, under a plank tag like the column's other sections. It's read from the run's state alone and worded with the content's names and the score labels (D-019).
+  - **The house held no set at its last tally:** "Build a Suite: a Bedroom, a Bathroom, and a Closet, touching. A set raises Charm, which multiplies Comfort into Wow." With the Charm icon. The Suite is the set the first job's opening builds (D-149). Charm is about 69% of a typical run's Wow.
+  - **Otherwise, with a reroll left over** (the last milestone's, or a bought one kept): "You ended with a reroll to spare. When a hand has nothing your house needs, Reroll it: the week goes on." With the die.
+  - **Otherwise nothing,** and a win gets none.
+  - **Never "Complete early":** the sim finds that always completing early costs a run Wow.
+  - Each is within a hint's 25 words (`HINT_WORDS`).
+- **Tests:** `next-time.test.ts` (the tip for constructed runs, and for two runs played by the rules: a house of nothing, and the first job's opening and no more) and `first-job.test.ts` (Try this lot again after a lost first job, from the board and from a link, starts the same lot unguided).
+
+**Sim** (a scratch script over the rules and the sim's bots, not in the repo): the survey's casual bot, greedy's play half the time and the novice's otherwise, 200 runs a row, the Hendersons with the General Contractor. Which tip each lost run would get:
+
+| | Lost | Set | Reroll | None |
+|---|---|---|---|---|
+| The first job's lot, the opening played as the hints say | 195 | 0 | 195 | 0 |
+| The same lot, unguided (a retry) | 197 | 13 | 184 | 0 |
+| Random lots, unguided | 199 | 77 | 122 | 0 |
+
+- **On the first job's lot the opening's Suite holds to the end** in every loss: the set tip is for later runs and friends' links.
+- **The bots never reroll** (greedy only when no play would raise the week's total), so here every loss with a set gets the Reroll tip. A player who rerolled in their last milestone gets none.
+
+**Why:** most first jobs are lost. In the survey the casual bot met Foundation every time and Framing in 96% of runs, but Roofing in 52% and Drywall in 20%. It won 3%, and lost at a median week 22. So the screen after a loss is the one most new players reach. It gave no tip, and the same lot again was three screens away: Title, Portfolio, the house.
+**Considered:**
+- **Try this lot again in the sticky bar:** D-148 took the bar down to two buttons so the milestones show on a laptop.
+- **The tip and the button above the stats:** at 1920×1080 a later loss would show both whole above the bar, where here the bar cuts through the tip. But the button would leave Copy run code and Title, and the stats would go under the bar. The user's call after the playtest.
+- **A "Complete early" tip:** the sim shows that completing every milestone early costs Wow.
+- **A tip on a win:** its screen already names the verdict above it.
+- **Naming the set the house was nearest to:** it would read the house's pieces itself, and the rules don't say it.
+- **A "forecast short: look for a set" hint during the run:** it waits on the user's yes.
+
+**Changes:**
+- D-148 (Proposed): the column's plain group gains Try this lot again on a row of its own, and a lost run's tip over it. A dated note there.
+- D-139 (Proposed): the end screen offers the Portfolio's Play this lot again too. A dated note there.
+
+**Checked:** in headless Chrome over CDP, in a new browser, against the dev server. The board's first job was played by the casual bot with the opening to a loss at week 22 (Drywall), and its retry to a loss at week 10 with no set. Each end screen was checked at 1280×720 and 1920×1080 in the pixel font, and both columns in both fonts on a quick loss.
+- The milestone rows whole above the sticky bar are the same with the tip and the button as without them: 2 at 1280×720, all 7 at 1920×1080.
+- The bar never covers the photo strip or its captions, and no button spills out of the column.
+- A real click on the button started `oh-4243` for the same client and crew at week 1, unguided (the score panel, the checklist and Reroll in view), with the column at its top.
+
+**Known gaps:**
+- **At 1920×1080 a later loss** shows "Next time" and the tip's first line above the sticky bar, cut through by it, until the column scrolls. The milestones keep all seven rows. At 1280×720 the tip and the buttons are below the fold, as Copy run code and Title were.
+- **The score panel's "No sets yet."** names Jack-and-Jill and the Entertainer, and the tip names the Suite. Both are true.
+- **A retry replaces the lost run's house in the Portfolio:** the same lot, client and crew are filed once (D-139), and the bests keep the better result.
+- **Not played by a person.** Touch, Firefox and Safari weren't run.
 
 ### D-149 · The first job: a first visit's one contract, a screen that fills in, and an opening the hints walk through
 **Status:** Proposed · 2026-11-11, with its phase pull request (`phase/first-job`), at the user's "Let's do the calm first job… I like the sound of your step 1 plan - let's kick that off". From the first showing: the user "briefly showed off the dev link" to the group, and "the game looked fun, but looked quite confusing off the bat". For the user's playtest. No rules or balance change: every run plays, scores, saves and replays as before, and `balance.ts` gains one field, which only the job board reads.
@@ -1909,6 +1962,47 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - **Between 700 and 899 px wide** the top bar's Menu is still off-screen after "Play anyway".
 - **Hand lines that dropped "touching"** (the Dining Room's, the Kitchen's, the Patio's, the Greenhouse's) can be read as house-wide, while the Porch's and the Fire Pit's keep the word. It doesn't fit the line; Inspect, the shop and the ghost's Wow label give the true reading. The team's call after the showing.
 - **A loss in a later phase at 1920×1080,** with more rows of stats, still has the row of two buttons under the bar until the column scrolls; so does any loss at 1680×1050 and narrower in the pixel font, where they take a row each.
+
+*2026-11-11 (D-150, Proposed):* the plain group under the stats leads with Try this lot again, on a row of its own ("Try again" in the pixel font's narrow column), and a lost run's "Next time" tip sits over it. The sticky bar still holds New run and Copy result, and the milestone rows above it are unchanged. At 1920×1080 a later loss now shows the tip's first line under the bar, where the two buttons were.
+
+**2026-11-11 (a fix pull request, `fix/hand-lines-2x`, the third step of the survey after the release; Proposed until the user has seen it):** this entry's two hand-line gaps. The line has three lines, four beside a 2× thumbnail, and the Greenhouse's says "touching" again. UI only: `contentHash` is unchanged (ffabbd52), so runs in progress carry over.
+- **Three lines at most,** at every window size (`hand.css`). Considered below had a three-line clamp push cards under the Pass bar at 1280×720 and 1920×1080; on today's short lines it moved none there, in either font.
+- **Four lines beside a 2× thumbnail,** on a window over 800 px tall (under that the shape's glyph stands in for the thumbnail, and the line has the card's width). A row there holds about 12 letters of the pixel font, so "+2 per touching view (up to 3)" takes four.
+- **On a 2× window under 1100 px tall** (where Your goods folds: 1440×900, 1470×956 and 1512×982, and 1470×840 and 1512×860 under a browser's bars), the cards sit 4 px apart (8 before), with 4 px over the name and 8 px under the chips (8 and 12), and the thumbnail's well has no padding (4), which widens the line by 8 px. Without them the fourth card went under the bar in 6 of 11 four-card hands at 1470×840.
+- **"Touching" comes back where the line stays within the 33-letter budget** (`touchingLine` in `text.ts`): the Greenhouse's "+50% to touching yard views". The Patio's "+2 per touching Living Room or Kitchen" (38) fits whole at every size, but its extra row put a fourth card under the bar in four hands: in the readable font at 1280×720 and 1366×768, and in the pixel font at 1512×860 at 2×. The Dining Room's (39) takes a fourth line at 1280×720, and the Kitchen's and the L-Kitchen's (42) five beside a 2× thumbnail. Each keeps its short line.
+
+Measured in headless Chrome on the week-1 hands of 16 lots: the first job's lot as an ordinary run, and 15 lots over the five clients and three crews (69 cards; the Landscaper's five lots deal five), and on the guided first hand (Living Room, Bedroom, Greenhouse, Garage), taken from the board in a fresh browser. A card is under the bar when the bar hides some of what it says, as the hand's "N more cards" tab counts; the count includes the five-card hands' fifth cards. Before is develop at e765f64, the game live on main.
+
+| Window | Font | Cards cut, of 69 | Cards under the bar | Guided hand: lines cut, of 4 |
+|---|---|---|---|---|
+| 1470×840 at 2× | pixel | 40 → 0 | 9 → 7 | 2 → 0 |
+| 1470×840 at 2× | readable | 0 → 0 | 14 → 7 | 0 → 0 (its fourth card is no longer under the bar) |
+| 1512×860 at 2× | pixel | 31 → 0 | 5 → 5 | 2 → 0 |
+| 1512×860 at 2× | readable | 0 → 0 | 9 → 5 | 0 → 0 |
+| 1440×900 at 2× | pixel | 40 → 0 | 5 → 5 | 2 → 0 |
+| 1440×900 at 2× | readable | 0 → 0 | 7 → 4 | 0 → 0 |
+| 1920×1080 | pixel | 6 → 0 | 1 → 1 | 0 → 0 |
+| 1920×1080 | readable | 0 → 0 | 0 → 0 | 0 → 0 |
+| 1280×720 | pixel | 6 → 0 | 19 → 19 | 0 → 0 |
+| 1280×720 | readable | 0 → 0 | 18 → 18 | 0 → 0 |
+
+No card is under the bar that wasn't before. Also checked, both fonts, with the pixel font's cut cards: 1512×982 at 2× (31 → 0; under the bar, none before or after in the pixel font, 3 → 0 in the readable), 1470×956 at 2× (40 → 0), 1728×1117 at 2× (6 → 0), and 1280×720 at 2×, 1366×768, 1440×900 and 1600×900 (6 → 0; 1600×900 had none). No card is newly under the bar there, except one at 1470×956 (Known gaps).
+
+- **Considered:**
+  - **The line across the card's width, the thumbnail beside the chips,** with three lines (this entry's first Considered): none cut, but the bar hid 15 cards at 1470×840 (9 before) and 14 at 1512×860 (5).
+  - **Three lines at 2× and today's spacing:** 12 of 69 cards still cut at 1470×840 and 1440×900, the guided hand's Living Room among them, and 13 cards under the bar at 1470×840.
+  - **Four lines and today's spacing:** none cut, but 16 cards under the bar at 1470×840, the fourth card in 6 of 11 four-card hands. With only some of the closer spacing (the gaps, or the padding, or the well), 1 to 4 cards were still newly under the bar at 1470×840 or 1512×860.
+  - **The shape's glyph for the thumbnail on a 2× window up to 900 px tall,** as at 1× (with three lines): none cut and the fewest cards under the bar, but "Living Room" wrapped under the glyph, "Greenhouse" ran into it, and most laptops would lose the pictures.
+  - **The chips beside the thumbnail in the narrowest column,** to pay for the extra lines: the bar hid more cards, not fewer (19 at 1470×840, with three lines).
+  - **Rewording to fit "touching" in:** the Dining Room's names swapped, "+50% to touching Living Room or Kitchen", and a comma for the Kitchen's "or", "+2 per touching Dining Room, Herb Garden". Both fit whole at every size measured, but each takes a row more where it shows (four lines beside a 2× thumbnail, three at 1280×720 and 1920×1080), as the Patio's did. Whether that puts cards under the bar wasn't measured.
+- **Known gaps:**
+  - The Patio's, the Dining Room's, the Kitchen's and the L-Kitchen's hand lines still leave out "touching" (above). Inspect, the shop and the ghost's Wow label give the true reading.
+  - At 1470×956 at 2× (a 15-inch MacBook Air's full screen) one five-card hand's fifth card now sits 3 px under the bar, where two others came clear (3 → 2).
+  - Beside a 2× thumbnail a line can end on a short row: "+2 per / touching / view (up to / 3)".
+  - Week-1 hands only: later weeks' fixtures (two lines each), Renovate chips and the Bigger Truck's fifth card weren't measured, nor the Chandelier's line.
+  - Chrome's emulated 2× only. Safari and Firefox weren't run; both clamp a `-webkit-box` the same way.
+  - The closer cards and the bare well wait on the user's eye (before and after screenshots of the guided hand, sent to the user with the pull request).
+- **Changes:** D-121 (Accepted): three lines, four beside a 2× thumbnail, and the closer cards on a 2× window under 1100 px tall; a dated note there. This entry's Known gaps: the Kitchen's line and the line beside a thumbnail are whole now, and of the four lines without "touching", three are left (the Kitchen's, which the L-Kitchen shares, the Dining Room's and the Patio's).
 
 ### D-146 · The friction batch's re-fit: the targets set against played runs
 **Status:** Proposed · 2026-11-10, at the user's "Merge and re-fit", once D-140 to D-145 were all in develop. A fix pull request (`fix/refit-targets`) that merges on green, so /dev/ plays at the intended difficulty; the batch's playtest decides whether it holds. It's the one re-fit D-140, D-143, D-144 and D-145 each left for the end.
@@ -2349,6 +2443,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **Known gaps:** no way to clear the record yet. A portfolio house can't be opened larger or replayed from its seed. A run finished on another device or in a private window isn't in the record.
 *2026-11-10, from the polish review:* where the browser denies storage altogether (site data blocked, or the game in an itch.io frame in an Incognito window), the record starts empty and lasts for the visit. Reading it used to throw as the page loaded, which left the page blank; the tally's own records (the best week, the tiers seen, topped out) had the same check and are fixed with it.
 *2026-11-11, from the outside review and the polish review:* each house in the Portfolio has **Play this lot again**: a new run on its lot, for the same client with the same crew, straight into the game with the sheet closed (`playLotAgain`, through the store's `newRun`). With a run in progress it asks first, as the title's New run does while it offers Continue. A house whose client or crew this build no longer has gets no button. A portfolio house still can't be opened larger.
+*2026-11-11 (D-150, Proposed):* the end screen offers it too, as Try this lot again after a loss and Play this lot again after a win, so the same lot is one click from the end screen instead of three screens.
 
 ### D-140 · The Garage is built like any room, and earns once the street or a Driveway reaches it
 **Status:** Proposed · 2026-11-10, with its phase pull request (`phase/garage-driveway`), from the friction review the user asked for the same day (its first point). The direction is the user's: the Garage is placed like any other room, and earns only while the street or a Driveway reaches it. Settles D-080. For the user's playtest before it merges. The numbers are placeholders.

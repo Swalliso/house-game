@@ -17,6 +17,11 @@
 // D-139: under the verdict, the next verdict up and the Wow it starts at, and how this house
 // stands against the company's record for its client (company.ts): a new best, or the best to
 // beat.
+//
+// D-150: a loss leads into the next run. Under the stats, a "Next time" tip read from the run
+// (next-time.ts), then "Try this lot again", which starts the same lot, client and crew at once,
+// as the Portfolio's Play this lot again does (a win says that too). Both sit in the column, not
+// in the sticky bar (D-148), so the milestones keep the room they had above it.
 
 import type { RefObject } from 'preact';
 import { useLayoutEffect, useRef, useState } from 'preact/hooks';
@@ -31,11 +36,12 @@ import { bestFor, company, jobKey, lastStanding } from '../company.ts';
 import { busy } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
 import { formatNumber } from '../format.ts';
-import { copyRunCode, copyText, startNewRun } from '../hud/actions.ts';
+import { copyRunCode, copyText, playLotAgain, startNewRun } from '../hud/actions.ts';
 import { Button, Icon, Panel, type IconName } from '../kit/kit.tsx';
 import { settings } from '../settings.ts';
 import { goToTitle, run } from '../store.ts';
 import { ICON_SIZES } from '../theme/art.ts';
+import { nextTime } from './next-time.ts';
 import { endSignShown, Notes } from './Overlays.tsx';
 import { resultLine } from './result-line.ts';
 import './end.css';
@@ -355,6 +361,21 @@ function Standing({ s }: { s: RunState }) {
   );
 }
 
+/** D-150: a lost run's tip for the next one (next-time.ts), just over Try this lot again. */
+function NextTimeTip({ s }: { s: RunState }) {
+  const tip = nextTime(s);
+  if (!tip) return null;
+  return (
+    <section class="run-end-section run-end-tip">
+      <h3 class="plank-tag">Next time</h3>
+      <p class={`run-end-tip-text ${tip.kind}`}>
+        <Icon name={tip.kind === 'set' ? 'charm' : 'reroll'} />
+        <span>{tip.text}</span>
+      </p>
+    </section>
+  );
+}
+
 /** When the end screen came up (EndScreen's layout effect), for `settled`. */
 let shownAt = -Infinity;
 
@@ -414,9 +435,31 @@ export function EndScreen() {
       <Milestones s={s} />
       <Stats s={s} />
       {s.debug && <p class="run-end-debug">A debug run: cheats were used.</p>}
+      <NextTimeTip s={s} />
       {/* Copy run code and Title sit in the column, under the stats, not in the sticky bar
-          (D-148): four rows of buttons hid the milestones on a laptop. The Menu has both too. */}
+          (D-148): four rows of buttons hid the milestones on a laptop. The Menu has both too.
+          Try this lot again (D-150) leads the group, on a row of its own. */}
       <div class="run-end-more">
+        <Button
+          class="run-end-again"
+          icon="House"
+          title="A new run on this lot, for the same client with the same crew"
+          onClick={(e) => {
+            if (!settled()) return;
+            // The game stays on screen, and the column was scrolled to reach this button: the
+            // new run's goods and hand start at its top, as a run from the board does.
+            const column = e.currentTarget.closest('.right');
+            playLotAgain(s.setup);
+            column?.scrollTo({ top: 0, behavior: 'instant' });
+          }}
+        >
+          {/* The short word where the long one doesn't fit (end.css): one is display: none,
+              so the name read out is the one on screen. */}
+          <span class="run-end-again-long">
+            {won ? 'Play this lot again' : 'Try this lot again'}
+          </span>
+          <span class="run-end-again-short">{won ? 'Play again' : 'Try again'}</span>
+        </Button>
         <Button icon="copy" onClick={whenSettled(() => void copyRunCode())}>
           Copy run code
         </Button>

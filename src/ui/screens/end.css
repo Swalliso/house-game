@@ -243,16 +243,46 @@
   font-weight: 700;
   color: var(--ink);
 }
+/* A lost run's "Next time" (D-150), under the stats and over Try this lot again: its icon (Charm
+   for a set, the die for Reroll) beside the line, level with its first line (8 art px on 10). */
+.run-end-tip-text {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: 0;
+}
+.run-end-tip-text .icon {
+  margin-top: var(--px);
+}
 /* Copy run code and Title: a plain row under the stats (D-148), which scrolls with the column.
    No icons and a small gap, so the two share one row on the wide column (1920 px): on two rows
-   the sticky bar cut through Title after an early loss. On a narrow column each takes a row. */
+   the sticky bar cut through Title after an early loss. On a narrow column each takes a row.
+   Try this lot again (D-150) has the row above them to itself. */
 .run-end-more {
+  container: run-end-more / inline-size;
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-1);
 }
 .run-end-more .btn {
   flex: 1 1 auto;
+}
+.run-end-more .run-end-again {
+  flex-basis: 100%;
+}
+/* "Try this lot again" takes 276 px in the pixel font, and the narrow column (under 1500 px)
+   has a 228 px row: there it's "Try again" ("Play again" on a win), and the title says the
+   rest. The readable font's letters are narrower, and it fits. */
+.run-end-again-short {
+  display: none;
+}
+@container run-end-more (max-width: 17.2rem) {
+  [data-font='pixel'] .run-end-again-long {
+    display: none;
+  }
+  [data-font='pixel'] .run-end-again-short {
+    display: inline;
+  }
 }
 .run-end-more .btn .icon {
   display: none;
