@@ -255,11 +255,14 @@ describe('a browser’s first job', () => {
     expect(firstVisit()).toBe(true);
     takeContract(contract('first'));
     expect(firstJob.value).toBe(true);
+    // With the first job's gentler targets (D-151): the client's, times firstTargetPct.
+    expect(run.value.setup.mode).toBe('firstJob');
     expect(firstVisit()).toBe(false);
     // The next one is an ordinary run, and the first job is behind this browser.
     takeContract(contract('second'));
     expect(firstJob.value).toBe(false);
     expect(firstJobSeed.value).toBeNull();
+    expect(run.value.setup.mode).toBe('standard');
   });
 
   it('survives a reload: the seed is kept in the browser, by channel', () => {
@@ -290,7 +293,9 @@ describe('a browser’s first job', () => {
       run.value = { ...run.value, week: 18, screen: 'lost' };
       const lost = run.value;
       playLotAgain(lost.setup);
+      // Unguided, but with the first job's targets still (D-151): its own retry.
       expect(run.value.setup).toEqual(lost.setup);
+      expect(run.value.setup.mode).toBe('firstJob');
       expect(run.value.week).toBe(1);
       expect(run.value.screen).toBe('build');
       expect(firstJob.value).toBe(false);
@@ -301,6 +306,7 @@ describe('a browser’s first job', () => {
   it('is a friend’s link too, which leaves the board as a first visit finds it', () => {
     newRun('shared');
     expect(firstJob.value).toBe(true);
+    expect(run.value.setup.mode).toBe('firstJob');
     expect(firstVisit()).toBe(true);
     // Start then opens the first job proper, which takes over.
     takeContract(contract(firstSeed));
@@ -312,8 +318,10 @@ describe('a browser’s first job', () => {
     takeContract(contract('a'));
     newRun('b');
     expect(firstJob.value).toBe(false);
+    expect(run.value.setup.mode).toBe('standard');
     newRun('c');
     expect(firstJob.value).toBe(false);
+    expect(run.value.setup.mode).toBe('standard');
   });
 
   it('comes from a link once: the next link shows the whole screen from week 1', () => {
@@ -346,6 +354,8 @@ describe('a browser’s first job', () => {
     playLotAgain({ seed: 'two', clientId: 'hendersons', crewId: 'generalContractor' });
     expect(run.value.setup.seed).toBe('two');
     expect(firstJob.value).toBe(false);
+    // The Portfolio's lots are ordinary runs: its record keeps no mode.
+    expect(run.value.setup.mode).toBe('standard');
     expect(run.value.week).toBe(1);
     expect(on(shown.value)).toEqual(everything);
     newRun('a-link');

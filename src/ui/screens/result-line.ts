@@ -48,6 +48,8 @@ export function resultLine(s: RunState, base: string = shareBase()): string {
   const parts = [`${formatNumber(s.score)} ${SCORE_LABELS.total}`];
   parts.push(`${met}/${phases} milestones${early > 0 ? ` (${early} early)` : ''}`);
   if (s.screen === 'lost') parts.push(`the client walked at ${rules.phaseName(s.phase)}`);
+  // A first job's targets are gentler (D-151), so its verdict says so beside the score.
+  if (s.setup.mode === 'firstJob') parts.push('first-job targets');
   if (s.debug) parts.push('cheats used');
   return (
     `Open House · ${client} · ${crew} — ${rules.verdict(s)}: ${parts.join(', ')}. ` +

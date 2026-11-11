@@ -22,6 +22,7 @@ import type {
   UpgradeId,
   UseToolAction,
 } from './index.ts';
+import { isRunMode } from './milestones.ts';
 import { fnv1a } from './rng.ts';
 
 const PREFIX = 'OH1.';
@@ -326,7 +327,7 @@ function isSetup(v: unknown): v is RunSetup {
     typeof v.seed === 'string' &&
     typeof v.clientId === 'string' &&
     typeof v.crewId === 'string' &&
-    v.mode === 'standard'
+    isRunMode(v.mode)
   );
 }
 

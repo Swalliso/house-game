@@ -1771,7 +1771,50 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 ## Proposed
 
-*Reserved numbers (2026-11-10): D-115 to D-118 are the layout session's drafts, not in this file yet; D-122 (legibility) is logged below. D-132 to D-134 are playtest 5's fixes, each logged by its own pull request: D-132 one reroll for both rows of the draw, D-133 the roof view, D-134 three more tracks. D-135 and D-136 are M6's end screen (D-135 the result line and link preview, D-136 the milestone photos); D-137 and D-138 belong to the release-day sessions. D-139 is the company's record. D-140 to D-146 are the friction batch, from the 2026-11-10 review's seven points: D-140 the Garage and the Driveway, D-141 what a blueprint is worth and its icon, D-142 first contact, D-143 the blueprint shelf, D-144 change orders two at a time, D-145 the lot and the last stretch, and D-146 the batch's one re-fit. D-147 takes the roof out again (the user's call, logged under Accepted). D-148 is the first-timer legibility batch before the showing, from the 2026-11-10 polish review (logged below). D-149 is the first job, from the first showing (2026-11-11, logged below). D-150 is the end screen's lead into the next run, from the evening's what-next survey (`fix/retry-after-loss`, logged below). New entries start at D-151.*
+*Reserved numbers (2026-11-10): D-115 to D-118 are the layout session's drafts, not in this file yet; D-122 (legibility) is logged below. D-132 to D-134 are playtest 5's fixes, each logged by its own pull request: D-132 one reroll for both rows of the draw, D-133 the roof view, D-134 three more tracks. D-135 and D-136 are M6's end screen (D-135 the result line and link preview, D-136 the milestone photos); D-137 and D-138 belong to the release-day sessions. D-139 is the company's record. D-140 to D-146 are the friction batch, from the 2026-11-10 review's seven points: D-140 the Garage and the Driveway, D-141 what a blueprint is worth and its icon, D-142 first contact, D-143 the blueprint shelf, D-144 change orders two at a time, D-145 the lot and the last stretch, and D-146 the batch's one re-fit. D-147 takes the roof out again (the user's call, logged under Accepted). D-148 is the first-timer legibility batch before the showing, from the 2026-11-10 polish review (logged below). D-149 is the first job, from the first showing (2026-11-11, logged below). D-150 is the end screen's lead into the next run, from the evening's what-next survey (`fix/retry-after-loss`, logged below). D-151 is the first job's gentler targets (`phase/first-job-targets`, logged below). New entries start at D-152.*
+
+### D-151 · The first job's targets are gentler: a run mode the rules hold it to
+**Status:** Proposed · 2026-11-11, a phase pull request (`phase/first-job-targets`), at the user's "Yes, build it" to the evening survey's "Build the gentler first job (80% targets) next?". For the user's playtest before it merges. **It changes the content hash** (`jobBoard.firstTargetPct` is content), so the release that carries it drops runs in progress: release it at a quiet hour, after the last UI-only release.
+**Decision:**
+- **A run has a mode** (`RunSetup.mode`, `src/rules/index.ts`): `standard`, or `firstJob` for a browser's first job. The mode is in the run code, so a replay meets the same targets. An unknown mode is a bad setup and a damaged code, as before.
+- **A first job's client needs 73% of its usual targets** (`jobBoard.firstTargetPct` in `src/content/balance.ts`; `targetPctFor` in `src/rules/milestones.ts`). It scales the client's own factor, rounded half up: the Hendersons' 110% of the curve becomes 80% (Groundbreaking 16 instead of 22, Foundation 448 instead of 616, Roofing 4,160 instead of 5,720, the last target 28,560 instead of 39,270). Vladislav 69, the Barkers 66, Juniper 69, Dale 84. Everything else is a standard run's: the same lot, draws, scoring and streams, and the pace and the verdict read the same lowered targets.
+- **Which runs are first jobs:** the runs D-149 guides. The board's first job (the first contract a browser takes), and a first visit's link, start in `firstJob` mode. Every other run is standard.
+  - **Try this lot again on a first job keeps the mode** (D-150's button passes the run's setup to `playLotAgain`). It isn't guided (D-150), but a newcomer who lost the first job gets the same lot at the same targets. The Portfolio's Play this lot again starts a standard run: the record keeps no mode.
+- **The result line says so:** "…7/7 milestones, first-job targets. Play this lot: …", as it says "cheats used". The link it shares starts a standard run, unless the friend's browser is on its first visit.
+- **The sim** takes `--first-job` (`npm run sim -- --first-job`), and `SimOptions.mode`.
+
+**Sim** (the survey's scratch script over the sim's bots: 200 runs each, the Hendersons with the General Contractor. "Guided" plays the opening's Bedroom, Bathroom and Closet in weeks 1 to 3 as the hints say; "casual" makes greedy's play half the time and the novice's otherwise):
+
+| | Foundation | Framing | Roofing | Drywall | Wins | Ends, median week |
+|---|---|---|---|---|---|---|
+| Guided casual, the first job's lot, standard | 100% | 96% | 52% | 20% | 3.0% | 22 |
+| The same at 80% of the client's own (88%) | 100% | 100% | 74% | 45% | 15.5% | 22 |
+| **The same at 73% (80%): this entry** | 100% | 100% | 86% | 56% | **28.0%** | 26 |
+| Guided novice, the first job's lot, 73% | 100% | 83% | 18% | 3% | 0% | 18 |
+| Guided greedy, the first job's lot, 73% | 100% | 100% | 100% | 99% | 95.0% | 28 |
+| Casual on random Hendersons lots (a link's first visit), standard | 67% | 52% | 27% | 12% | 2.0% | 18 |
+| The same, 73% | 84% | 77% | 54% | 40% | 21.5% | 22 |
+
+- Standard runs don't change: the rules read the factor only in `firstJob` mode, and `npm run sim -- --check` plays standard runs.
+
+**Why:** D-149's guided opening gets a newcomer through Framing (96% for the casual bot), but the survey after release #58 found the next wall: the same bot met Roofing half the time and Drywall a fifth, and lost 97% of first jobs, ending around week 22. Lowering Foundation to 450 for everyone only moved the wall (the guided novice met Framing 43% → 44%, and won none). A first job that a casual newcomer wins about one time in four still asks them to play well, and the client walks often enough that a loss teaches; D-150's tip and retry then take them into the next run.
+**Considered:**
+- **80% of the client's own (88% for the Hendersons):** what "80% targets" sounded like. The survey's 28% was measured with the Hendersons at 80% of the curve, which is 73% of their own; at 88% the casual bot wins 15.5%.
+- **The Hendersons' factor from 110 to 100 or 80:** content alone, no new mode, but every Hendersons run, the first job's or not, would be easier, and D-146's fit holds the five clients level.
+- **Foundation 560 → 450 for everyone:** measured, and it only moves the wall one milestone (above).
+- **A percent of the curve, whatever the client:** a first visit's link to Dale (115%) would drop further than one to the Barkers (90%). A percent of the client's own keeps their order.
+- **Keeping the targets on every retry and replay of the first job's lot:** the Portfolio would need to keep the mode, and a gentler lot could be replayed forever from the record. The end screen's retry is the newcomer's way back; the Portfolio is for houses already built.
+- **Saying the targets are gentler on the job board:** more words on the first screen D-149 trimmed. The result line says it where scores are compared.
+
+**Changes:**
+- D-149 (Proposed): the first job is no longer UI only; its targets are the rules'. A dated note there.
+- D-150 (Proposed): its retry of a first job keeps the mode.
+- `implementation-plan.md` §RunState: the setup's modes.
+
+**Known gaps:**
+- **Not played by a person.** Bots only; whether the first job now feels winnable is the playtest's.
+- **The company's record and bests** don't tell a first job from a standard run: a first job's verdict, read against its lower targets, can be a best.
+- **The release drops runs in progress**, as any content change does (#54's check needs the same content hash).
 
 ### D-150 · A lost run leads into the next: a "Next time" tip and Try this lot again
 **Status:** Proposed · 2026-11-11, a fix pull request (`fix/retry-after-loss`), from the what-next survey after release #58, at the session that ran it. UI only: no rules, content or balance change. `contentHash(CONTENT)` is `ffabbd52` on develop and on this branch, so a release keeps runs in progress (#54). For the user's playtest before it merges.
@@ -1823,6 +1866,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - **The score panel's "No sets yet."** names Jack-and-Jill and the Entertainer, and the tip names the Suite. Both are true.
 - **A retry replaces the lost run's house in the Portfolio:** the same lot, client and crew are filed once (D-139), and the bests keep the better result.
 - **Not played by a person.** Touch, Firefox and Safari weren't run.
+
+**2026-11-11 (D-151, `phase/first-job-targets`):** Try this lot again on a first job keeps its `firstJob` mode, and so its gentler targets: the button passes the run's setup, mode and all, to `playLotAgain`. It stays unguided, as above. The Portfolio's Play this lot again starts a standard run.
 
 ### D-149 · The first job: a first visit's one contract, a screen that fills in, and an opening the hints walk through
 **Status:** Proposed · 2026-11-11, with its phase pull request (`phase/first-job`), at the user's "Let's do the calm first job… I like the sound of your step 1 plan - let's kick that off". From the first showing: the user "briefly showed off the dev link" to the group, and "the game looked fun, but looked quite confusing off the bat". For the user's playtest. No rules or balance change: every run plays, scores, saves and replays as before, and `balance.ts` gains one field, which only the job board reads.
@@ -1904,6 +1949,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - **Considered:** a link's run as the browser's first job, ending the first visit, so the board would deal three contracts after a friend's first link; and a finished house alone, which would guide a friend again on each link until they finish one.
 - `src/ui/hud/first-job.test.ts`: a second link, a third, a crash's new run, a Portfolio replay after a finished house, and a browser from before this fix all show the whole screen from week 1; a new browser's first link and the board's first job are still guided. Checked in the browser pane too, each case on its own `*.localhost` origin.
 - **Known gap:** a friend who played a link run past week 1 and then takes the board's first job gets its calm screen again, but not the opening's hints for the weeks already played: a hint of the opening goes with its week in the browser, not in the run.
+
+**2026-11-11 (D-151, `phase/first-job-targets`, the user's "Yes, build it"):** the first job's targets are gentler, so it is no longer UI only. A run D-149 guides (the board's first job, or a first visit's link) starts in the rules' `firstJob` mode, where the client needs 73% of its usual targets; its run code carries the mode. "Gentler targets for the first job" under Considered above is what the survey after release #58 found was still needed: the guided casual bot met Roofing 52% of the time and won 3%, and at these targets meets it 86% and wins 28%. The guidance itself is unchanged.
 - **Changes:** this entry's "Which run is the first job" (a link is guided once) and its board bullet (a finished house opens the usual board too), and `implementation-plan.md` §7 M4a's run setup.
 
 ### D-148 · First-timer legibility before the showing: hand lines that fit, Reroll named, and the end screen on a laptop

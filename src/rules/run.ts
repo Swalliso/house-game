@@ -153,11 +153,13 @@ import {
 import { generateLot } from './lot.ts';
 import {
   earlyBonus,
+  isRunMode,
   paceFor,
   phaseCount,
   phaseName,
   phaseTarget,
   nextVerdictFor,
+  targetPctFor,
   verdictFor,
 } from './milestones.ts';
 import { ruleFrom, runModifiers, setupRule, type ActiveMod } from './modifiers.ts';
@@ -442,7 +444,8 @@ export function createRules(content: Content): Rules {
     if (!c) throw new Error(`Unknown client "${state.setup.clientId}"`);
     return c;
   };
-  const pctOf = (state: RunState) => clientOf(state).targetPct;
+  /** The run's target factor: its client's, and a first job's on top of it (D-151). */
+  const pctOf = (state: RunState) => targetPctFor(content, state.setup);
   /** This phase's target for the run's client (the curve × its targetPct). */
   const targetOf = (state: RunState) => phaseTarget(b, state.phase, pctOf(state));
 
@@ -1757,7 +1760,7 @@ export function createRules(content: Content): Rules {
   function newRun(setup: RunSetup): RunState {
     if (
       typeof setup.seed !== 'string' ||
-      setup.mode !== 'standard' ||
+      !isRunMode(setup.mode) ||
       !Object.hasOwn(content.crews, setup.crewId) ||
       !Object.hasOwn(content.clients, setup.clientId)
     ) {

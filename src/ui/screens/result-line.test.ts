@@ -27,6 +27,7 @@ import {
   CONTENT_HASH,
   crash,
   dispatch,
+  forgetFirstVisit,
   loadInitialRun,
   log,
   newRunAfterCrash,
@@ -100,6 +101,15 @@ describe('the result line', () => {
     );
   });
 
+  it('says a first job had its gentler targets (D-151), and links the lot as usual', () => {
+    const s = {
+      ...finished('won', Array(phases).fill('onTime'), 1),
+      setup: { ...setup, mode: 'firstJob' },
+    } as RunState;
+    const line = resultLine(s, BASE);
+    expect(line).toContain(`milestones, first-job targets. Play this lot: ${LINK}`);
+  });
+
   it('owns up to cheats', () => {
     const s = finished('won', Array(phases).fill('onTime'), 1, { debug: true });
     expect(resultLine(s, BASE)).toContain(`milestones, cheats used. Play this lot`);
@@ -162,8 +172,13 @@ describe('opening the link', () => {
     loadInitialRun();
   }
 
+  const VISITED = `openhouse:${BUILD_CHANNEL}:visited`;
+
   beforeEach(() => {
     store.clear();
+    // A browser that has played before: its links are ordinary runs. A first visit's link is
+    // its first job (D-149), with the first job's targets (D-151): tested at the end.
+    store.set(VISITED, '1');
     vi.stubGlobal('localStorage', {
       getItem: (k: string) => store.get(k) ?? null,
       setItem: (k: string, v: string) => void store.set(k, v),
@@ -532,5 +547,17 @@ describe('opening the link', () => {
       // A check that can't be read is no match either.
       droppedFor(olderSave({ check: 'garbled' }));
     });
+  });
+
+  it('is a first visit’s first job: the same lot and hand, with gentler targets (D-151)', () => {
+    store.delete(VISITED);
+    forgetFirstVisit();
+    open(lotLink(setup, 'http://localhost:5173/'));
+    expect(run.value.setup).toEqual({ ...setup, mode: 'firstJob' });
+    // Everything the run started with is a standard run's but its setup, and so its targets.
+    const plain = rules.newRun(setup);
+    expect({ ...run.value, setup }).toEqual(plain);
+    expect(rules.target(run.value)).toBeLessThan(rules.target(plain));
+    forgetFirstVisit();
   });
 });
