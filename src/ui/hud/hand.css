@@ -263,18 +263,19 @@
 }
 /* Beside the half-size thumbnail of a 2× screen (D-148, 2026-11-11), a narrow card's line has
    about 12 pixel-font letters a row, so it gets four lines. Under 801 px tall the glyph stands
-   in for the thumbnail and the line has the card's width, so three do. On a laptop's window up
-   to 900 px tall (1440×900, or 1470×840 and 1512×860 under the browser's bars) the cards sit
-   closer, with less padding, and the thumbnail's well drops its padding, which widens the line
-   too: the fourth card still clears the Pass bar. Keeping the thumbnails and the spacing, the
-   fourth card went under the bar in 6 of 11 four-card hands at 1470×840; the glyph in their
-   place wrapped "Living Room" onto two lines. */
+   in for the thumbnail and the line has the card's width, so three do. On a laptop's window,
+   under 1100 px tall (where Your goods folds: 1440×900, 1512×982, or 1470×840 and 1512×860
+   under the browser's bars), the cards sit closer, with less padding, and the thumbnail's well
+   drops its padding, which widens the line too: the fourth card still clears the Pass bar, and
+   at 1512×982 a five-card hand still fits. Keeping the thumbnails and the spacing, the fourth
+   card went under the bar in 6 of 11 four-card hands at 1470×840; the glyph in their place
+   wrapped "Living Room" onto two lines. */
 @media (min-resolution: 2dppx) and (min-height: 801px) {
   .hand-card .pcard-lines li {
     -webkit-line-clamp: 4;
   }
 }
-@media (min-resolution: 2dppx) and (min-height: 801px) and (max-height: 900px) {
+@media (min-resolution: 2dppx) and (min-height: 801px) and (max-height: 1099px) {
   .hand .panel-body,
   .hand-row {
     gap: var(--space-1);

@@ -559,19 +559,22 @@ function pays(e: Effect): boolean {
 
 /**
  * The most a hand card's line runs to, in characters (D-148; text.test.ts holds every card to
- * it). It's the length of today's longest line, the Patio's "+2 per touching Living Room or
- * Kitchen", which fits whole at every window size measured (hand.css: three lines, four beside
- * a 2× thumbnail, where a row holds about 12 letters of the pixel font). The budget keeps a new
- * line from running longer, and doesn't promise that one this long fits: where a line wraps
- * matters as much as its length. The Dining Room's "touching" line, one letter longer, needs a
- * fourth line at 1280×720.
+ * it). It's the length of today's longest line, the Kitchen's, which fits whole at every window
+ * size measured since hand.css gave the line three lines, four beside a 2× thumbnail (a row
+ * there holds about 12 letters of the pixel font). The budget keeps a new line from running
+ * longer, and doesn't promise that one this long fits: where a line wraps matters as much as its
+ * length, and a longer line makes a taller card.
  */
-export const HAND_LINE_CHARS = 38;
+export const HAND_LINE_CHARS = 33;
 
 /**
- * "+2 per touching Living Room or Kitchen": a bonus for what touches the piece says "touching"
- * where the line stays within HAND_LINE_CHARS (D-148, 2026-11-11). Without it, "+2 per Dining
- * Room or Herb Garden" reads as house-wide; Inspect and the ghost's Wow give the true reading.
+ * "+50% to touching yard views": a bonus for what touches the piece says "touching" where the
+ * line stays within HAND_LINE_CHARS (D-148, 2026-11-11). Without it, "+2 per Living Room or
+ * Kitchen" reads as house-wide; Inspect and the ghost's Wow give the true reading. Past the
+ * budget, the Patio's "+2 per touching Living Room or Kitchen" (38 letters) fits whole, but its
+ * extra row put a fourth card under the Pass bar in the readable font at 1280×720 and 1366×768,
+ * and in the pixel font at 1512×860 at 2×. The Dining Room's (39) takes a fourth line at
+ * 1280×720, and the Kitchen's (42) five beside a 2× thumbnail.
  */
 function touchingLine(lead: string, what: string, tail = ''): string {
   const line = `${lead} touching ${what}${tail}`;
@@ -590,8 +593,8 @@ function oneKind(sel: Selector): boolean {
  * An effect as a hand card says it (D-148): the number first, in as few words as say it. Inspect
  * and the shop keep effectText's full sentence. Only the kinds whose sentences ran long differ:
  * - a neighbor bonus that names two things says "touching" where the line has room for it
- *   ("+2 per touching Living Room or Kitchen", but "+2 per Dining Room or Herb Garden"), and one
- *   for a tag drops "neighbor" ("+2 per touching Quiet (up to 3)");
+ *   (today none does: "+2 per Living Room or Kitchen"), and one for a tag drops "neighbor"
+ *   ("+2 per touching Quiet (up to 3)");
  * - an aura leads with what it gives, "touching" too where it fits ("+25% to touching rooms",
  *   "+50% to touching yard views", but "+50% to Kitchen or Living Room"), and a fenced yard's
  *   says so ("+50% to fenced Pet pieces");

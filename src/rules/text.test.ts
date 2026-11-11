@@ -156,7 +156,8 @@ describe('a compact hand card (D-121)', () => {
       bedroom: ['+3 every week'],
       bathroom: ['+3 if touching a Bedroom'],
       // Two names say "touching" only within the budget (D-148, 2026-11-11): "+2 per touching
-      // Dining Room or Herb Garden" runs 42 letters, five lines beside a 2× thumbnail.
+      // Dining Room or Herb Garden" runs 42 letters, five lines beside a 2× thumbnail. The
+      // Patio's below too.
       kitchen: ['+2 per Dining Room or Herb Garden'],
       lKitchen: ['+2 per Dining Room or Herb Garden'],
       // An aura leads with what it gives (D-148): "Touching Kitchens and…" lost its +50%. Its
@@ -176,8 +177,9 @@ describe('a compact hand card (D-121)', () => {
       flowerBed: ['+1 every week'],
       herbGarden: ['+1 per tile in the sun'],
       // Its "if touching a room" doesn't fit after the pay (D-148): Inspect and the lot's
-      // warning say it. The Hot Tub's and the Fire Pit's too. Its "touching" fits (2026-11-11).
-      patio: ['+2 per touching Living Room or Kitchen'],
+      // warning say it. The Hot Tub's and the Fire Pit's too. "+2 per touching Living Room or
+      // Kitchen" (38 letters) fits whole, but its extra row put fourth cards under the Pass bar.
+      patio: ['+2 per Living Room or Kitchen'],
       fence: ['+1 per fenced tile (up to +6)'],
       // Its job (D-140), not "Must be built touching the street or a Driveway" or its +1.
       driveway: ['+3 if touching a Garage'],
@@ -230,7 +232,7 @@ describe('a compact hand card (D-121)', () => {
     ]);
   });
 
-  // The hand's wording is its own (D-148). The budget is today's longest line (the Patio's,
+  // The hand's wording is its own (D-148). The budget is today's longest line (the Kitchen's,
   // which fits whole at every window size measured on 2026-11-11: three lines, four beside a 2×
   // thumbnail), so this keeps a new line from running longer; the maps above pin the wording.
   // Every card the game has, members' rooms and the fixtures the draw never deals too.
