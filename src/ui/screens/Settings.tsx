@@ -3,7 +3,7 @@
 // (the juice PR, D-125) Flashing, and (M5b) the music's own volume.
 //
 // M5a draws it as a wood sheet with the kit's pixel controls, grouped as the UI audit asked:
-// the game, motion, sound, and the display.
+// the game, the display, motion, and sound.
 
 import type { ComponentChildren } from 'preact';
 import { FEEL } from '../fx/feel.ts';
@@ -81,6 +81,22 @@ export function SettingsPanel() {
           </Button>
         </div>
       </Group>
+      {/* Display sits second, so the Readable font option is in view on a laptop (720 px tall);
+          not first, where the sheet's opening focus would land on it. */}
+      <Group title="Display">
+        <div class="set-row">
+          <span class="set-label">Text</span>
+          <Segmented
+            label="Text"
+            value={s.readableFont ? 'readable' : 'pixel'}
+            onChange={(v) => updateSettings({ readableFont: v === 'readable' })}
+            options={[
+              { value: 'pixel', label: 'Pixel font' },
+              { value: 'readable', label: 'Readable font' },
+            ]}
+          />
+        </div>
+      </Group>
       <Group title="Motion">
         <Switch
           class="set-switch"
@@ -120,20 +136,6 @@ export function SettingsPanel() {
           value={s.sfxVolume}
           onInput={(sfxVolume) => updateSettings({ sfxVolume })}
         />
-      </Group>
-      <Group title="Display">
-        <div class="set-row">
-          <span class="set-label">Text</span>
-          <Segmented
-            label="Text"
-            value={s.readableFont ? 'readable' : 'pixel'}
-            onChange={(v) => updateSettings({ readableFont: v === 'readable' })}
-            options={[
-              { value: 'pixel', label: 'Pixel font' },
-              { value: 'readable', label: 'Readable font' },
-            ]}
-          />
-        </div>
       </Group>
     </Sheet>
   );

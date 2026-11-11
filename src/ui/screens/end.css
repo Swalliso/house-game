@@ -243,9 +243,24 @@
   font-weight: 700;
   color: var(--ink);
 }
-/* New run, Copy, and Title stay in view at the column's foot, as End week does: like the
+/* Copy run code and Title: a plain row under the stats (D-148), which scrolls with the column.
+   No icons and a small gap, so the two share one row on the wide column (1920 px): on two rows
+   the sticky bar cut through Title after an early loss. On a narrow column each takes a row. */
+.run-end-more {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+.run-end-more .btn {
+  flex: 1 1 auto;
+}
+.run-end-more .btn .icon {
+  display: none;
+}
+/* New run and Copy result stay in view at the column's foot, as End week does: like the
    hand's bar, it reaches past the column's padding to the window's foot, so the rows scrolling
-   under it never show below it. */
+   under it never show below it. Only these two (D-148): with all four buttons the bar hid the
+   milestones on a laptop. */
 .run-end-actions {
   position: sticky;
   bottom: calc(var(--px) * -5);

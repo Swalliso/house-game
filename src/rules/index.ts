@@ -1943,6 +1943,7 @@ export {
   hintText,
   houseConditionText,
   houseRulesText,
+  lastShopText,
   lotTraitText,
   featureWantedText,
   modifierText,
