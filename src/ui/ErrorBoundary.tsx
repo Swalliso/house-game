@@ -1,10 +1,13 @@
 // The error boundary (implementation-plan.md §6): any exception in apply or rendering shows
 // "Something broke" with the run code and a feedback link, so every crash becomes a bug report.
+// The crash leaves the saved run as it was, so the first way out is a reload, which offers
+// Continue on the title. Start a new run is there for a crash that comes straight back: it puts
+// the saved run aside the way a link does (its code is kept, and the note can go back to it).
 
 import { Component, type ComponentChildren } from 'preact';
 import { useRef, useState } from 'preact/hooks';
 import { BUILD_LABEL } from './build-info.ts';
-import { crash, crashRunCode, newRun } from './store.ts';
+import { crash, crashRunCode, newRunAfterCrash } from './store.ts';
 
 const ISSUES = 'https://github.com/Swalliso/house-game/issues/new';
 
@@ -62,22 +65,22 @@ export function CrashScreen({ message }: { message: string }) {
           onFocus={(e) => (e.target as HTMLTextAreaElement).select()}
         />
         <div class="crash-buttons">
+          <button type="button" onClick={() => location.reload()}>
+            Reload and continue
+          </button>
           <button type="button" onClick={() => void copy()}>
             {copied ? 'Copied' : 'Copy run code'}
           </button>
           <a class="button" href={issueUrl(message, code)} target="_blank" rel="noreferrer">
             Report it on GitHub
           </a>
-          <button
-            type="button"
-            onClick={() => {
-              crash.value = null;
-              newRun();
-            }}
-          >
+          <button type="button" onClick={() => newRunAfterCrash()}>
             Start a new run
           </button>
         </div>
+        <p>
+          <small>Build: {BUILD_LABEL}</small>
+        </p>
         <details>
           <summary>Details</summary>
           <pre>{message}</pre>
