@@ -19,7 +19,14 @@ import type { RefObject } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { banner, busy, flash, played, skip } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
-import { anyModalOpen, copyFallback, copyText, notesDocked, toast } from '../hud/actions.ts';
+import {
+  anyModalOpen,
+  copyFallback,
+  copyText,
+  notesDocked,
+  passArmed,
+  toast,
+} from '../hud/actions.ts';
 import { Button, Icon, Sheet } from '../kit/kit.tsx';
 import { appScreen, notice, restorePreviousRun, run } from '../store.ts';
 import './overlays.css';
@@ -154,6 +161,8 @@ export function Notes({
               size="sm"
               class="notice-back"
               onClick={() => {
+                // A pass armed in the run being left isn't one for the run coming back.
+                passArmed.value = false;
                 restorePreviousRun(n.oldCode!);
                 refocus?.current?.focus({ preventScroll: true });
               }}

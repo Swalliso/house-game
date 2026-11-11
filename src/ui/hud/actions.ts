@@ -4,6 +4,7 @@ import { computed, signal } from '@preact/signals';
 import { rules } from '../../rules/index.ts';
 import { audio } from '../audio/audio.ts';
 import { busy, orderStamp, skip } from '../fx/director.ts';
+import { FEEL } from '../fx/feel.ts';
 import { copyFallback, settingsOpen } from './modals.ts';
 import {
   appScreen,
@@ -155,6 +156,8 @@ export function isSelected(from: Source, i: number): boolean {
 /** Passing places nothing all week, so it takes a second press within a few seconds. */
 export const passArmed = signal(false);
 let passTimer: ReturnType<typeof setTimeout> | undefined;
+/** When End week last hurried a tally (FEEL.endWeek.hurryMs). */
+let hurriedAt = -Infinity;
 
 export function requestEndWeek(): void {
   if (run.value.screen !== 'build') return;
@@ -163,9 +166,13 @@ export function requestEndWeek(): void {
   // double-click on End week used to pass the next week unseen (D-068).
   if (busy.value && !tentative.value) {
     skip();
+    hurriedAt = performance.now();
     return;
   }
   if (!tentative.value && !passArmed.value) {
+    // The tally is gone a moment after it's hurried, so the next quick press lands on a quiet
+    // board. It is still hurrying, not the first press of a pass.
+    if (performance.now() - hurriedAt < FEEL.endWeek.hurryMs) return;
     passArmed.value = true;
     clearTimeout(passTimer);
     passTimer = setTimeout(() => (passArmed.value = false), 2500);

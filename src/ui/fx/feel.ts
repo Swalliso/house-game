@@ -466,9 +466,15 @@ export const FEEL = {
   /**
    * The end screen's buttons sit where End week was, so they take no click for this long after
    * the screen comes up: a double-click that skips the last tally doesn't land on Title or New
-   * run. Longer than a double-click, shorter than reading the verdict.
+   * run. Longer than a few quick clicks in a row, shorter than reading the verdict.
    */
-  endScreen: { clickDelayMs: 650 },
+  endScreen: { clickDelayMs: 1000 },
+
+  /**
+   * After Enter or a click on End week hurries a tally, a press this soon after is still
+   * hurrying: it doesn't arm a pass for the week that just began.
+   */
+  endWeek: { hurryMs: 650 },
 
   /** The title screen's street (M5a): a car drives by now and then. */
   title: {

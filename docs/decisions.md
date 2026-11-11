@@ -687,7 +687,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 **Why:** Choices the plan leaves to the build, picked so the slice can answer playtest 1's questions.
 **Amended by:** D-097 (Accepted 2026-11-06): with 32 art px per cell, the default zoom is at least 1×, the same 32 CSS px per cell as 2× was. Where display scaling isn't a whole number (125%, 150%, 175%), the floor is 1× rounded down to whole device pixels (D-097's zoom note).
-*2026-11-10, from the polish review:* while a tally plays and nothing is waiting to be placed, Enter or a click on End week only skips the tally. It never arms or confirms a pass: one double-click on End week used to pass the next week unseen. A pass is still two presses, once the tally is done. The end screen's buttons also take no click for their first 650 ms (`FEEL.endScreen`), since they come up where End week was and a double-click that skipped the last tally landed on Title or New run.
+*2026-11-10, from the polish review:* while a tally plays and nothing is waiting to be placed, Enter or a click on End week only skips the tally. It never arms or confirms a pass: one double-click on End week used to pass the next week unseen. A pass is still two presses, once the tally is done, and a press within 650 ms of one that skipped a tally doesn't count as the first (`FEEL.endWeek`): four quick presses still passed a week. The end screen's buttons also take no click for their first second (`FEEL.endScreen`), since they come up where End week was and a double-click that skipped the last tally landed on Title or New run.
 
 ### D-069 · A fenced yard needs at least 10 tiles
 **Status:** Accepted · 2026-11-05 (chosen by the team in the M2 build, from the sim's enclosure probe)

@@ -7,7 +7,7 @@
 import type { ComponentChildren, RefObject, VNode } from 'preact';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { busy } from '../fx/director.ts';
-import { notesDocked } from '../hud/actions.ts';
+import { notesDocked, passArmed } from '../hud/actions.ts';
 import { appScreen, notice, run } from '../store.ts';
 import { Notes } from './Overlays.tsx';
 
@@ -55,6 +55,7 @@ afterEach(() => {
   appScreen.value = 'title';
   busy.value = false;
   notice.value = null;
+  passArmed.value = false;
 });
 
 describe("a note docked in the change order's sheet", () => {
@@ -86,6 +87,17 @@ describe('the note about a run that was put aside', () => {
     run.value = { ...start, screen: 'build' };
     notice.value = { text: 'Your run in progress was put aside.', oldCode: 'OH1.x', goBack: true };
     expect(buttonsOf(Notes({}))).toEqual(['Go back to it', 'Copy the old run code', '']);
+  });
+
+  it('lets go of a pass armed in the run being left', () => {
+    appScreen.value = 'game';
+    run.value = { ...start, screen: 'build' };
+    notice.value = { text: 'Your run in progress was put aside.', oldCode: 'OH1.x', goBack: true };
+    passArmed.value = true;
+    const back = [...walk(Notes({}))].find((v) => String(v.props.class).includes('notice-back'));
+    // (This code doesn't read, so no run loads: only the armed pass is under test.)
+    (back!.props.onClick as () => void)();
+    expect(passArmed.value).toBe(false);
   });
 
   it('offers only the code otherwise (the game updated, or an older build’s run)', () => {

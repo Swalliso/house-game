@@ -2,8 +2,9 @@
 // the tally. Before, the first such press armed a pass and the second confirmed it, so one
 // double-click on End week passed the next week without the player seeing it.
 
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { busy, skip } from '../fx/director.ts';
+import { FEEL } from '../fx/feel.ts';
 import { log, run, tentative } from '../store.ts';
 import { passArmed, requestEndWeek } from './actions.ts';
 
@@ -14,7 +15,15 @@ vi.mock('../fx/director.ts', async (original) => ({
 
 const start = run.value;
 
+/** The clock End week reads; each test starts long after the last one's presses. */
+let now = 0;
+beforeEach(() => {
+  now += 60_000;
+  vi.spyOn(performance, 'now').mockImplementation(() => now);
+});
+
 afterEach(() => {
+  vi.restoreAllMocks();
   run.value = start;
   busy.value = false;
   tentative.value = null;
@@ -42,6 +51,23 @@ describe('End week during a tally', () => {
     busy.value = true;
     const before = log.value;
     requestEndWeek();
+    expect(log.value).toBe(before);
+  });
+
+  it('does not arm a pass on a press just after the one that skipped it', () => {
+    // Four quick presses: End week, a skip, and two more on the quiet board of the next week.
+    run.value = { ...start, screen: 'build' };
+    busy.value = true;
+    requestEndWeek();
+    busy.value = false;
+    const before = log.value;
+    now += 150;
+    requestEndWeek();
+    expect(passArmed.value).toBe(false);
+    // Once the hurry is over, a pass is two presses again.
+    now += FEEL.endWeek.hurryMs;
+    requestEndWeek();
+    expect(passArmed.value).toBe(true);
     expect(log.value).toBe(before);
   });
 
