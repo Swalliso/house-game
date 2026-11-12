@@ -224,7 +224,8 @@ function inRoom(g: Geo, cx: number, cy: number): boolean {
   );
 }
 
-function analyze(m: HouseModel, room: Room): Geo {
+/** A room's floor inside its walls, over its box, and where it starts below the north faces (Geo's). */
+function floorIn(m: HouseModel, room: Room): Pick<Geo, 'ix0' | 'iy0' | 'ix1' | 'iy1' | 'floorTop'> {
   const { cells, box } = room;
   const bx0 = box.x / CELL;
   const by0 = box.y / CELL;
@@ -247,14 +248,21 @@ function analyze(m: HouseModel, room: Room): Geo {
     return t;
   };
   const faced = cells.some((c) => c.y === by0 && hasFace(m, c.x, c.y));
-  const g: Geo = {
-    m,
-    room,
+  return {
     ix0: bx0 * CELL + side('W'),
     iy0: by0 * CELL + side('N'),
     ix1: bx1 * CELL - side('E'),
     iy1: by1 * CELL - side('S'),
     floorTop: by0 * CELL + side('N') + (faced ? WALL.face : 0),
+  };
+}
+
+function analyze(m: HouseModel, room: Room): Geo {
+  const { cells } = room;
+  const g: Geo = {
+    m,
+    room,
+    ...floorIn(m, room),
     runs: [],
     blocked: [],
     gaps: [],
@@ -1013,7 +1021,11 @@ function placeSlot(L: Layout, w: Want, slot: Slot, c: Ctx): boolean {
               : [g.ix1 - sw - 1, g.ix1 - sw];
         for (const x of xs) {
           const r = { x, y, w: sw, h };
-          if (onFloor(g, r, false) && L.free(r)) {
+          // Against a wall: not where a hall opens into the next (D-159), the walkway on.
+          const walled = [Math.floor(x / CELL), Math.floor((x + sw - 1) / CELL)].every(
+            (cx) => edge(g.m, cx, Math.floor((y + h - 1) / CELL), 'S') !== EDGE.none,
+          );
+          if (walled && onFloor(g, r, false) && L.free(r)) {
             L.add(w, sprite, x, y, null);
             return true;
           }
@@ -1090,7 +1102,14 @@ function placeC(L: Layout, w: Want, sprite: ArtId): boolean {
   return middle(false, true);
 }
 
-/** A hall's runner: its two ends and as many middles as it takes, along the room's long side. */
+/**
+ * A hall's runner: its two ends and as many middles as it takes, along the room's long side.
+ * Where the hall runs straight on into another (D-159), its runner runs on to the joint in
+ * middles, in the band the whole straight run of halls shares, so their runners read as one;
+ * where another hall meets it from the side or round a corner, each runner ends cleanly short of
+ * the other. Middles always start on an even px and ends on an odd one, so the runner's checks
+ * stay in step across a joint.
+ */
 function runner(L: Layout, w: Want): boolean {
   const g = L.g;
   const across = g.ix1 - g.ix0 >= g.iy1 - g.floorTop;
@@ -1099,24 +1118,69 @@ function runner(L: Layout, w: Want): boolean {
     : ['runner-v-0', 'runner-v-1', 'runner-v-2'];
   const len = (s: SpriteId) => (across ? artSize(s).w : artSize(s).h);
   const thick = across ? artSize(head!).h : artSize(head!).w;
-  const a0 = (across ? g.ix0 : g.floorTop) + 3;
-  const a1 = (across ? g.ix1 : g.iy1) - 3;
+  const run = hallRun(g.m, g.room, across);
+  // An end that runs on starts at the joint, in a middle; one that doesn't keeps off its wall.
+  const first = run.lo ? mid! : head!;
+  const last = run.hi ? mid! : tail!;
+  const a0 = run.lo ? (across ? g.ix0 : g.floorTop) : (across ? g.ix0 : g.floorTop) + 3;
+  const a1 = run.hi ? (across ? g.ix1 : g.iy1) : (across ? g.ix1 : g.iy1) - 3;
   // Across the hall it keeps a pixel off the walls, unless the hall is exactly as deep as it.
-  const b0 = across ? g.floorTop : g.ix0;
-  const b1 = across ? g.iy1 : g.ix1;
-  if (a1 - a0 < len(head!) + len(tail!) || b1 - b0 < thick) return false;
+  const { b0, b1 } = run;
+  if (a1 - a0 < len(first) + len(last) || b1 - b0 < thick) return false;
   const b = Math.floor((b0 + b1 - thick) / 2);
   const box = across
     ? { x: a0, y: b, w: a1 - a0, h: thick }
     : { x: b, y: a0, w: thick, h: a1 - a0 };
   if (!onFloor(g, box, false, 0) || g.gaps.some((r) => overlaps(box, r))) return false;
   const at = (s: SpriteId, a: number) => L.add(w, s, across ? a : b, across ? b : a, null, true);
-  at(head!, a0);
-  for (let a = a0 + len(head!); a < a1 - len(tail!); a += len(mid!)) {
-    at(mid!, Math.min(a, a1 - len(tail!) - len(mid!)));
+  at(first, a0);
+  for (let a = a0 + len(first); a < a1 - len(last); a += len(mid!)) {
+    at(mid!, Math.min(a, a1 - len(last) - len(mid!)));
   }
-  at(tail!, a1 - len(tail!));
+  at(last, a1 - len(last));
   return true;
+}
+
+/**
+ * Where a hall's runner goes (D-159): whether each end of it (`lo`, the west or north one; `hi`)
+ * runs straight on into another hall, open to it with the runner the same way, and the band
+ * across it (b0 to b1) that the whole straight run of halls shares: the floor inside all of
+ * their walls, so their runners line up whatever walls each has.
+ */
+function hallRun(
+  m: HouseModel,
+  room: Room,
+  across: boolean,
+): { lo: boolean; hi: boolean; b0: number; b1: number } {
+  /** The hall its `hi` (or lo) end runs on into, or null. */
+  const next = (r: Room, hi: boolean): Room | null => {
+    const { x, y, w, h } = r.box;
+    // Its end cell, and the cell past it.
+    const ex = across ? (hi ? (x + w) / CELL - 1 : x / CELL) : x / CELL;
+    const ey = across ? y / CELL : hi ? (y + h) / CELL - 1 : y / CELL;
+    const side: Side = across ? (hi ? 'E' : 'W') : hi ? 'S' : 'N';
+    const cx = ex + (side === 'E' ? 1 : side === 'W' ? -1 : 0);
+    const cy = ey + (side === 'S' ? 1 : side === 'N' ? -1 : 0);
+    if (cx < 0 || cy < 0 || cx >= m.width || cy >= m.height) return null;
+    const n = m.room[cy * m.width + cx]!;
+    if (!n || n === r.uid || edge(m, ex, ey, side) !== EDGE.none) return null;
+    const o = m.rooms.get(n)!;
+    // A hall lying the same way, in the same row or column.
+    const same = across ? o.box.w > o.box.h && o.box.y === y : o.box.h > o.box.w && o.box.x === x;
+    return CONTENT.pieces[o.defId].connector && same ? o : null;
+  };
+  let b0 = -Infinity;
+  let b1 = Infinity;
+  const take = (r: Room) => {
+    const f = floorIn(m, r);
+    b0 = Math.max(b0, across ? f.floorTop : f.ix0);
+    b1 = Math.min(b1, across ? f.iy1 : f.ix1);
+  };
+  take(room);
+  for (const hi of [false, true]) {
+    for (let r = next(room, hi); r && r.uid !== room.uid; r = next(r, hi)) take(r);
+  }
+  return { lo: next(room, false) !== null, hi: next(room, true) !== null, b0, b1 };
 }
 
 /** The Garage's car, parked nose-in through its garage door. */

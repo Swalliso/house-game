@@ -401,6 +401,80 @@ describe('room layouts', () => {
   });
 });
 
+describe('Hallways joined (D-159)', () => {
+  const runner = (m: HouseModel, uid: number) =>
+    roomItems(m, uid)
+      .filter((it) => it.sprite.startsWith('runner-'))
+      .sort((p, q) => p.x - q.x || p.y - q.y);
+  /** Where a run of runner pieces starts and ends along x (or y), and the rows (columns) it's in. */
+  const span = (items: readonly Item[], across: boolean) => ({
+    from: Math.min(...items.map((i) => (across ? i.x : i.y))),
+    to: Math.max(
+      ...items.map((i) => (across ? i.x + artSize(i.sprite).w : i.y + artSize(i.sprite).h)),
+    ),
+    at: new Set(items.map((i) => (across ? i.y : i.x))),
+  });
+
+  it('lay one runner through halls end to end, lined up whatever walls each has', () => {
+    // A Hallway under a Bedroom (an inside wall to its north) and a Long Hallway past it (an
+    // outside wall): one straight corridor.
+    const m = modelOf(
+      house([
+        ['bedroom', 2, 1],
+        ['hallway', 2, 3],
+        ['longHallway', 4, 3],
+      ]),
+    );
+    const a = runner(m, 2);
+    const b = runner(m, 3);
+    const sa = span(a, true);
+    const sb = span(b, true);
+    // The first ends at the joint and the second starts there, in one row.
+    expect(sa.to).toBe(4 * CELL);
+    expect(sb.from).toBe(4 * CELL);
+    expect(sa.at.size).toBe(1);
+    expect([...sb.at]).toEqual([...sa.at]);
+    // Its ends are at the corridor's two ends: no end pieces at the joint.
+    expect(a.filter((i) => i.sprite === 'runner-h-0').map((i) => i.x)).toEqual([sa.from]);
+    expect(a.some((i) => i.sprite === 'runner-h-2')).toBe(false);
+    expect(b.some((i) => i.sprite === 'runner-h-0')).toBe(false);
+    expect(b.filter((i) => i.sprite === 'runner-h-2').length).toBe(1);
+    // Its middles start on even px on both sides of the joint, so its checks stay in step.
+    for (const i of [...a, ...b].filter((p) => p.sprite === 'runner-h-1')) expect(i.x % 2).toBe(0);
+  });
+
+  it('end each runner cleanly where a hall turns a corner or meets another from the side', () => {
+    const m = modelOf(
+      house([
+        ['longHallway', 2, 3],
+        ['hallway', 4, 4, 1],
+      ]),
+    );
+    const across = span(runner(m, 1), true);
+    const down = span(runner(m, 2), false);
+    // The first keeps its ends; the second starts below the first, inside its own cells.
+    expect(runner(m, 1).map((i) => i.sprite)).toContain('runner-h-2');
+    expect(runner(m, 2)[0]!.sprite).toBe('runner-v-0');
+    expect(down.from).toBeGreaterThanOrEqual(4 * CELL);
+    expect(across.to).toBeLessThanOrEqual(5 * CELL);
+  });
+
+  it('keep the walkway on through a joint: nothing stands against a wall that isn’t there', () => {
+    // A Hallway up from a Long Hallway's west end: its south end opens into the corridor.
+    const m = modelOf(
+      house([
+        ['hallway', 3, 3, 1],
+        ['longHallway', 3, 5],
+      ]),
+    );
+    for (const it of roomItems(m, 1)) {
+      if (it.sprite.startsWith('runner-')) continue;
+      // Its pieces stand clear of the open end's last few px.
+      expect(it.y + artSize(it.sprite).h, it.sprite).toBeLessThanOrEqual(5 * CELL - 4);
+    }
+  });
+});
+
 describe('the ghost', () => {
   const kept = (items: readonly Item[], re: RegExp) =>
     items
