@@ -351,6 +351,27 @@ export const FEEL = {
   /** When a phase's last week crosses its target, the target's ding gets this long alone. */
   targetDingMs: 450,
 
+  /**
+   * The week's stamp (D-154, week-stamp.ts): as each week of a milestone comes up on the board,
+   * "Week 2 of 4" comes in at its top center over `inMs`, holds, and fades over `outMs`, in real
+   * time at any tally speed. A milestone's first week holds `holdMs.first`, as it names the
+   * milestone and what its target needs. Its middle weeks get a smaller stamp held `holdMs.mid`,
+   * and their page flick plays at `midGain`, so some 28 stamps a run don't wear thin. The last
+   * week's holds longest, since it says what the target still needs, under its tick-tock. It
+   * never takes the pointer, and it goes at once when a tally starts.
+   */
+  weekStamp: {
+    inMs: 280,
+    holdMs: { first: 1500, mid: 650, last: 2200 },
+    outMs: 320,
+    midGain: 0.5,
+  },
+  /**
+   * End week on a milestone's last week (D-154): its "Last week" tag stamps in over this long as
+   * the week comes up, and again as a card is placed, the moment the deciding press is next.
+   */
+  lastWeekTagMs: 320,
+
   /** Banners, in real time. */
   bannerMs: 2200,
   /** A banner with more to read (early completion, overtime) stays up this many times as long. */

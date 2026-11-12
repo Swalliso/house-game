@@ -44,6 +44,7 @@ import {
   Notes,
   SmallScreenNotice,
   TargetFlash,
+  WeekStamp,
   useSkipOnClick,
 } from './screens/Overlays.tsx';
 import { SettingsPanel } from './screens/Settings.tsx';
@@ -223,6 +224,7 @@ function Game() {
         <Board />
         <Notes />
         <MilestoneBanner />
+        <WeekStamp />
         <ArrivalCard />
         <TargetFlash />
         <EndCaption />

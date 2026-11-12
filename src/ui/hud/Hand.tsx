@@ -43,6 +43,8 @@ import {
   tool,
 } from '../store.ts';
 import { rotate } from '../board/Board.tsx';
+import { busy } from '../fx/director.ts';
+import { stakesOf } from '../screens/week-stamp.ts';
 import { settings } from '../settings.ts';
 import { Button, Card, Chip, Icon, Keycap, Panel } from '../kit/kit.tsx';
 import type { IconName } from '../theme/art.ts';
@@ -458,6 +460,13 @@ export function Hand() {
       : pending
         ? 'End the week and build it (Enter)'
         : undefined;
+  // A milestone's last week, or an overtime week (D-154): the press that checks the target.
+  // End week wears a "Last week" tag on its top edge, which stamps in as the week comes up (once
+  // its tally is done) and again as a card is placed, the moment that press is next. Its title
+  // says what the target still needs. Its words stay: with a card held it's narrowest, and
+  // "End week" is all that fits at 1440 and 1728 px wide.
+  const stakes = stakesOf(s);
+  const tagged = stakes !== null && !busy.value;
   // A pack (D-106) being clicked out: Cancel takes all its tiles off.
   const packing = pending?.t === 'place' && !!pending.shape;
   return (
@@ -538,11 +547,17 @@ export function Hand() {
         <Button
           size="lg"
           variant={pending ? 'primary' : armed ? 'armed' : 'secondary'}
-          class={`end-week ${pending ? 'ready' : ''} ${armed ? 'confirm' : ''}`}
+          class={`end-week ${pending ? 'ready' : ''} ${armed ? 'confirm' : ''} ${tagged ? 'deciding' : ''}`}
           onMouseDown={noFocus}
           onClick={requestEndWeek}
-          title={endTitle}
+          title={[stakes, endTitle].filter(Boolean).join(' ') || undefined}
         >
+          {tagged && (
+            // Keyed on the card placed, so placing one stamps it in again.
+            <span class="end-week-tag" key={pending ? 'ready' : 'open'} aria-hidden="true">
+              {s.overtimeWeek > 0 ? 'Overtime' : 'Last week'}
+            </span>
+          )}
           <span class="end-week-label">{endLabel}</span>
           <span class="end-week-short" aria-hidden="true">
             {endShort}
