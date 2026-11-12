@@ -19,7 +19,7 @@ import type {
   Rules,
   RunState,
 } from '../../src/rules/index.ts';
-import { rankPlays } from './greedy.ts';
+import { rankPlays, withoutLookalikes } from './greedy.ts';
 import type { Policy } from './index.ts';
 import { pickChangeOrderNovice } from './orders.ts';
 import { random } from './random.ts';
@@ -55,8 +55,10 @@ export const novice: Policy = {
         .map((uid): InstallAction => ({ t: 'install', from: 'hand', i, uid }));
     } else {
       const plays = rules.legalPlacements(state).filter((p) => p.from === from && p.i === i);
+      // The same top NOVICE_EXACT without ranking most of a Fence card's plays (D-161).
+      const few = withoutLookalikes(rules, state, plays, salt, NOVICE_EXACT);
       options = [
-        ...rankPlays(rules, state, plays, salt)
+        ...rankPlays(rules, state, few, salt)
           .slice(0, NOVICE_EXACT)
           .map((r) => r.play),
         ...rules

@@ -48,7 +48,7 @@ import {
   type ShopOffer,
   type UseToolAction,
 } from '../../src/rules/index.ts';
-import { rankPlays, type EarlyMode } from './greedy.ts';
+import { rankPlays, withoutLookalikes, type EarlyMode } from './greedy.ts';
 
 /**
  * Whether the bot uses its strikes (D-157): 'none' never strikes and never buys +1 strike;
@@ -131,7 +131,9 @@ function bestPlacement(rules: Rules, s: RunState, salt: number): number {
   if (plays.length === 0) return 0;
   const pass = rules.scoreOnly(s, null);
   let best = 0;
-  for (const r of rankPlays(rules, s, plays, salt).slice(0, 8)) {
+  // The same top 8 without ranking most of a Fence card's plays (D-161).
+  const few = withoutLookalikes(rules, s, plays, salt, 8);
+  for (const r of rankPlays(rules, s, few, salt).slice(0, 8)) {
     best = Math.max(best, rules.scoreOnly(s, r.play) - pass);
   }
   return best;

@@ -392,27 +392,26 @@ export function computeLayout(
     let houseSide = false;
     component[start] = compId;
     const stack = [start];
+    const visit = (j: number) => {
+      if (wallTile[j]) {
+        if (fenceTile[j]) fence = true;
+        if (indoorTile[j]) houseSide = true;
+      } else if (component[j] === -1) {
+        component[j] = compId;
+        stack.push(j);
+      }
+    };
+    // Every exact score fills the whole lot, so this loop is the layout's hottest (D-161): the
+    // tiles beside each one by index, in ORTHOGONAL's order (right, below, left, above).
     while (stack.length > 0) {
       const i = stack.pop()!;
       members.push(i);
       const x = i % w;
-      const y = (i - x) / w;
-      if (y === h - 1) street = true;
-      for (const [dx, dy] of ORTHOGONAL) {
-        const nx = x + dx;
-        const ny = y + dy;
-        if (!inBounds(w, h, nx, ny)) continue;
-        const j = cellIndex(w, nx, ny);
-        if (wallTile[j]) {
-          if (fenceTile[j]) fence = true;
-          if (indoorTile[j]) houseSide = true;
-          continue;
-        }
-        if (component[j] === -1) {
-          component[j] = compId;
-          stack.push(j);
-        }
-      }
+      if (i >= size - w) street = true;
+      if (x < w - 1) visit(i + 1);
+      if (i + w < size) visit(i + w);
+      if (x > 0) visit(i - 1);
+      if (i >= w) visit(i - w);
     }
     if (!street && fence && houseSide && members.length >= minTiles) {
       const id = fencedSizes.length;

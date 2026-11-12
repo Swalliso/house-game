@@ -599,6 +599,15 @@ export function createRules(content: Content): Rules {
     } else if (play.shape !== undefined) {
       return { ...NO_PLAY, reason: `A ${def.name} has its own shape.` };
     }
+    return checkSpot(state, def, play);
+  }
+
+  /**
+   * Where a placement can go, once its card, spot, and shape are known to be well formed:
+   * checkPlay's last step, and all eachLegalSpot needs, since placementShapes lists only
+   * shapes that pass. Skipping the pack shape check there keeps a Fence's scan cheap (D-161).
+   */
+  function checkSpot(state: RunState, def: PieceDef, play: PlaceAction): PlacementCheck {
     return checkPlacement(
       content,
       layoutFor(state),
@@ -2423,7 +2432,7 @@ export function createRules(content: Content): Rules {
           const play: PlaceAction = ps.shape
             ? { t: 'place', from, i, x, y, rot: ps.rot, shape: ps.shape }
             : { t: 'place', from, i, x, y, rot: ps.rot };
-          if (checkPlay(state, play).legal && visit(play) === true) return;
+          if (checkSpot(state, def, play).legal && visit(play) === true) return;
         }
       }
     }
