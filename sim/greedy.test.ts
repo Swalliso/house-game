@@ -24,8 +24,8 @@ import { followedLines } from '../src/rules/estimate.ts';
 import { computeLayout } from '../src/rules/layout.ts';
 import { emptyRows, houseFrom, type Placement } from '../src/rules/testing.ts';
 import { drivePlans, unreached } from './drive.ts';
-import { fencePlans } from './enclosure.ts';
-import { rankPlays, shortlist, TOP_K } from './policies/greedy.ts';
+import { fencePlans, openGround } from './enclosure.ts';
+import { rankPlays, shortlist, shortlistOf, TOP_K, withoutLookalikes } from './policies/greedy.ts';
 import { greedy, makeGreedy, POLICIES, type Policy } from './policies/index.ts';
 import { STRIKE_ORDER } from './policies/shop.ts';
 import { simulateRun } from './simulate.ts';
@@ -120,6 +120,8 @@ describe('the greedy bot', () => {
     // The stock's Fence also lists its pack's shapes all over the yard: of the 18 states'
     // 57,336 legal plays, 31,860 are its (24,272 plays in all before). Scoring them all took
     // 20 s on a quiet laptop (8.6 s before), and CI took 18–25 s before, hence the timeout.
+    // D-161: the same shortlist, from far fewer estimates, and a faster layout: 14 s against
+    // D-160's 21 s, back to back. Every legal play is still scored, so the timeout stays.
     expect(states).toBeGreaterThanOrEqual(12);
     expect(hits / states).toBeGreaterThanOrEqual(0.8);
     expect(lost).toBeLessThanOrEqual(0.02 * bestSum);
@@ -264,6 +266,71 @@ describe('the greedy bot', () => {
     const act = greedy.act(rules, s, stream('fence', 'act'));
     expect(act).toMatchObject({ t: 'place', from: 'hand', i: 0 });
     expect(rules.fencedYards(rules.apply(s, act).state)).toHaveLength(1);
+  });
+
+  it('ranks only the few open-ground Fence plays that key first, and shortlists the same (D-161)', () => {
+    // The rules list a Fence pack's shapes all over the lot (most of a week's plays once the
+    // stock keeps one in the reserve, D-160). Out in the open they all estimate alike, so the
+    // bots rank just the first few by tie key; the shortlist must come out as if all were ranked.
+    let ground = 0;
+    let dropped = 0;
+    for (const seed of ['lookalike-0', 'lookalike-1']) {
+      for (const s of statesAt(seed, greedy, [6, 12, 18])) {
+        const all = rules.legalPlacements(s);
+        const mask = openGround(rules, s, all);
+        const byCard = new Map<string, ReturnType<typeof rules.estimatePlay>>();
+        all.forEach((p, n) => {
+          if (!mask[n]) return;
+          ground++;
+          const est = rules.estimatePlay(s, p);
+          const first = byCard.get(`${p.from}${p.i}`);
+          if (first) expect(est).toEqual(first);
+          else byCard.set(`${p.from}${p.i}`, est);
+          expect(est.yardHint || est.setHint || est.specHint || est.sunHint).toBe(false);
+        });
+        const plays = all.filter((p) => !(p.shape?.length === 1 && p.shape[0] === '#'));
+        const salt = stream(seed, `lookalike/${s.week}`).u32();
+        const few = withoutLookalikes(rules, s, plays, salt, TOP_K);
+        dropped += plays.length - few.length;
+        expect(shortlist(rules, s, plays, salt)).toEqual(
+          shortlistOf(rankPlays(rules, s, plays, salt)),
+        );
+        // And the shop bot's top 8 of every placement, single tiles too.
+        const top8 = (list: readonly PlaceAction[]) =>
+          rankPlays(rules, s, list, salt)
+            .slice(0, 8)
+            .map((r) => r.play);
+        expect(top8(withoutLookalikes(rules, s, all, salt, 8))).toEqual(top8(all));
+      }
+    }
+    expect(ground).toBeGreaterThan(1000);
+    expect(dropped).toBeGreaterThan(1000);
+
+    // A Fence that closes a yard is never open ground, though it touches no piece: here it
+    // meets an old Fence only at a corner, and the lot's edge closes the rest. Two Bedrooms on
+    // rows 3–4 and a Fence tile beside them at (4, 4); an upright 1×4 up column 5 shuts in
+    // columns 0–4 above the house (16 tiles). The same 1×4 up column 7 is open ground.
+    const s: RunState = {
+      ...newRun('fence'),
+      house: houseFrom(CONTENT, emptyRows(24, 24), [
+        ['bedroom', 0, 3],
+        ['bedroom', 2, 3],
+        ['fence', 4, 4, 0, ['#']],
+      ]),
+      hand: (['fence', 'flowerBed', 'lawn'] as const).map((id) => ({ kind: 'piece', id })),
+    };
+    const upright = (x: number): PlaceAction => ({
+      t: 'place',
+      from: 'hand',
+      i: 0,
+      x,
+      y: 0,
+      rot: 0,
+      shape: ['#', '#', '#', '#'],
+    });
+    expect(rules.estimatePlay(s, upright(5)).yardHint).toBe(true);
+    expect(rules.estimatePlay(s, upright(7)).yardHint).toBe(false);
+    expect([...openGround(rules, s, [upright(5), upright(7)])]).toEqual([0, 1]);
   });
 
   it('lays a Driveway pack to a Garage nothing reaches, though no suggested shape does (D-140)', () => {

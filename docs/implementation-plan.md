@@ -575,7 +575,8 @@ The 24×24 lot has four times the tiles of 12×12, so the sim needs more care th
   - Candidates are deduplicated by shape symmetry (a 2×2 has one orientation, a 1×N has two).
   - Indoor candidates must touch the house anyway. On a terrain-dense lot nearly every tile is near a feature, so pruning yard candidates saves little.
   - The greedy bot ranks candidates by a cheap local score (the piece's own earnings plus its neighbors' changes) and runs the full `scoreOnly` on the top 12 only. The top 12 always includes any candidate that completes a set instance or meets a spec (a cheap check against their definitions), since those move the week's Mult. This is the default design, not a fallback.
-  - **Benchmark gate in M2:** one greedy run under 1 second on one core, measured on the densest-terrain lot of 50 seeds. If it misses, cut the top-K, then add worker threads.
+  - A card's plays the cheap score can't tell apart are ranked only as far as the shortlist can reach (D-161): a Fence pack's spots out in the open tie, so the bots rank the few with the lowest tie keys, and the shortlist is the same.
+  - **Benchmark gate in M2:** one greedy run under 1 second on one core, measured on the densest-terrain lot of 50 seeds. If it misses, profile first: the cost may be plays ranked that no shortlist reaches (D-161). Then cut the top-K, then add worker threads.
 
 ---
 

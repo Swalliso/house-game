@@ -10,6 +10,8 @@
 // (enclosure.ts) and Driveways that run to an unreached Garage (drive.ts, D-140). Estimate ties
 // break by a seeded key per play (rankPlays), never by list position: legalPlacements runs
 // from the back row, so ranking by position built every house against the back of the lot.
+// A Fence card's plays out in the open all estimate alike, so only the few that key first are
+// ranked (withoutLookalikes, D-161): the shortlist is the same, for a fraction of the estimates.
 // Exact ties go to a random one of the best, from the same stream, so houses vary between runs.
 //
 // When even the best placement wouldn't raise this week's total, it rerolls if it can, and
@@ -32,7 +34,7 @@ import type {
 } from '../../src/rules/index.ts';
 import type { Policy } from './index.ts';
 import { drivePlans } from '../drive.ts';
-import { fencePlans } from '../enclosure.ts';
+import { fencePlans, openGround } from '../enclosure.ts';
 import { pickChangeOrder } from './orders.ts';
 import { shopAct, strikeAct, useTools, type StrikeMode } from './shop.ts';
 
@@ -100,6 +102,43 @@ export function rankPlays(
     .sort((a, b) => b.est.delta - a.est.delta || a.key - b.key);
 }
 
+/**
+ * The plays without each card's open-ground Fence plays (enclosure.ts) but the `keep` that
+ * rankPlays would put first, in their order (D-161). The estimate values a card's open-ground
+ * plays alike, with no hint, so they rank by tie key alone: a ranking that takes at most `keep`
+ * plays of a card, or `keep` in all, never reaches the others, and leaving them out moves no
+ * other play into or out of its first `keep`. That's most of a Fence card's plays, and the
+ * standing stock (D-160) keeps one in the reserve nearly every week.
+ */
+export function withoutLookalikes(
+  rules: Rules,
+  state: RunState,
+  plays: readonly PlaceAction[],
+  salt: number,
+  keep: number,
+): readonly PlaceAction[] {
+  const ground = openGround(rules, state, plays);
+  const byCard = new Map<number, number[]>();
+  ground.forEach((g, n) => {
+    if (!g) return;
+    const card = plays[n]!.i * 2 + (plays[n]!.from === 'reserve' ? 1 : 0);
+    const list = byCard.get(card);
+    if (list) list.push(n);
+    else byCard.set(card, [n]);
+  });
+  const drop = new Uint8Array(plays.length);
+  let dropped = false;
+  for (const list of byCard.values()) {
+    if (list.length <= keep) continue;
+    // rankPlays' order among equal estimates: the key, then the list's (its sort is stable).
+    const order = list.map((n) => ({ n, key: tieKey(salt, plays[n]!) }));
+    order.sort((a, b) => a.key - b.key || a.n - b.n);
+    for (let k = keep; k < order.length; k++) drop[order[k]!.n] = 1;
+    dropped = true;
+  }
+  return dropped ? plays.filter((_, n) => drop[n] === 0) : plays;
+}
+
 const hinted = (est: Estimate) => est.setHint || est.yardHint || est.linkHint || est.specHint;
 
 /** The plays worth scoring exactly, by the cheap estimate, in rank order. */
@@ -109,7 +148,12 @@ export function shortlist(
   plays: readonly PlaceAction[],
   salt: number,
 ): PlaceAction[] {
-  const ranked = rankPlays(rules, state, plays, salt);
+  const few = withoutLookalikes(rules, state, plays, salt, Math.max(TOP_K, PER_CARD));
+  return shortlistOf(rankPlays(rules, state, few, salt));
+}
+
+/** The shortlist from a ranking of every play (shortlist's last step). */
+export function shortlistOf(ranked: readonly RankedPlay[]): PlaceAction[] {
   const chosen = new Uint8Array(ranked.length);
   const perCard = new Map<number, number>();
   let hints = 0;
