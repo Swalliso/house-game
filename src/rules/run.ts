@@ -199,7 +199,7 @@ import { stream } from './rng.ts';
 import { canUseTool, useTool, type ToolCtx } from './tools.ts';
 import { wowParts } from './attribution.ts';
 import { ageOf, onCadence, tallyHouse, unmetRequirement, type TallyContext } from './scoring.ts';
-import { isType, matchesPiece, rootType } from './selectors.ts';
+import { isType, matchesPiece, rootType, type Yard } from './selectors.ts';
 import { setProgress as setProgressOf } from './sets.ts';
 import { isRoom } from './layout.ts';
 import {
@@ -348,6 +348,11 @@ export interface Rules {
   fencedYards(state: RunState): readonly number[];
   /** Every tile in a fenced yard, as lot indexes (y × width + x), for the board's tint. */
   fencedTiles(state: RunState): readonly number[];
+  /**
+   * D-166: every tile of the front or the back yard as the house stands, as lot indexes, for the
+   * board's shading while a card that reads one is picked.
+   */
+  yardTiles(state: RunState, yard: Yard): readonly number[];
   describePiece(state: RunState, uid: number): PieceInfo | null;
   describeTile(state: RunState, x: number, y: number): TileInfo | null;
   /**
@@ -3095,6 +3100,12 @@ export function createRules(content: Content): Rules {
       const ids = layoutFor(state).fencedId;
       const out: number[] = [];
       ids.forEach((id, i) => id >= 0 && out.push(i));
+      return out;
+    },
+    yardTiles: (state, yard) => {
+      const bit = REGION_BIT[yard];
+      const out: number[] = [];
+      layoutFor(state).regionBits.forEach((bits, i) => bits & bit && out.push(i));
       return out;
     },
     describePiece: (state, uid) => {

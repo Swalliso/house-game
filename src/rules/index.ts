@@ -2095,7 +2095,7 @@ export { jobBoard, type Contract } from './jobs.ts';
 export { fitsText } from './fixtures.ts';
 export { inExtraSlot, SERVICE_NAMES, SHOP_REASONS } from './shop.ts';
 export { countedSelector, countingMod, totalWithOneMore } from './blueprint-value.ts';
-export { matchesDef } from './selectors.ts';
+export { matchesDef, yardsRead, type Yard } from './selectors.ts';
 
 export { CONTENT, SCORE_LABELS } from '../content/index.ts';
 

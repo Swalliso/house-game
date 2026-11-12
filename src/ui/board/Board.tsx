@@ -17,6 +17,7 @@ import {
   placedCells,
   rules,
   SCORE_LABELS,
+  type Card,
   type Cell,
   type DemolishPreview,
   type Lot,
@@ -26,6 +27,8 @@ import {
   type SourceRef,
   type SunSide,
   type UseToolAction,
+  type Yard,
+  yardsRead,
 } from '../../rules/index.ts';
 import { audio } from '../audio/audio.ts';
 import { busy, fxHooks, popups, setHold, skip } from '../fx/director.ts';
@@ -125,7 +128,7 @@ import { wobble } from './piece-fx.ts';
 import { LifeLayer } from './LifeLayer.tsx';
 import { neighborAt, type Neighbor } from './neighbors.ts';
 import { hoveredNeighbor, NeighborsLayer, streetFor } from './NeighborsLayer.tsx';
-import { Outline, TerrainLayer, YardTint } from './TerrainLayer.tsx';
+import { Outline, SideTint, TerrainLayer, YardTint } from './TerrainLayer.tsx';
 import './board-m2.css';
 import './labels.css';
 import './install-gains.css';
@@ -137,6 +140,8 @@ const LAYER_VARS = layerVars();
 const PAD = 6;
 /** No cells: the ghost's, while nothing is being placed. */
 const NO_CELLS: readonly Cell[] = [];
+/** No yard to shade (D-166). */
+const NO_YARDS: readonly Yard[] = [];
 /** Cells smaller than this many CSS px get the smaller badges and labels (board-m2.css). */
 const SMALL_CELL_PX = 32;
 
@@ -892,6 +897,16 @@ export function Board() {
   const choosingHost = building && selection.value?.kind === 'fixture';
   const renovating = building && activePlay.value?.t === 'renovate';
   const tooling = building && selection.value?.kind === 'tool';
+  // D-166: the yard a picked piece or fixture reads, shaded while it's picked.
+  const picked = selection.value;
+  const sides = useMemo(() => {
+    if (!building || !picked || picked.kind === 'tool') return NO_YARDS;
+    const card: Card =
+      picked.kind === 'piece'
+        ? { kind: 'piece', id: picked.id }
+        : { kind: 'fixture', id: picked.id };
+    return yardsRead(CONTENT, card);
+  }, [building, picked?.kind, picked?.id]);
 
   // How far the view reaches past the board: the road and the creeks run on there, the lot's
   // life (D-155) has that much room to come and go in, and the houses on the street stand in
@@ -979,6 +994,7 @@ export function Board() {
             ghost={ghostCells?.cells ?? NO_CELLS}
           />
           <YardTint state={state} scale={scale} />
+          {sides.length > 0 && <SideTint state={state} yards={sides} scale={scale} />}
           {floorLayer}
           {itemsLayer}
           {wallsLayer}

@@ -140,6 +140,8 @@
   --street-label: rgb(58 58 80 / 0.55); /* --ink, faded, on the sidewalk */
   --yard-tint-fill: rgb(246 196 98 / 0.17); /* a fenced yard: a warm wash, a dashed edge */
   --yard-tint-edge: rgb(150 96 40 / 0.55);
+  --side-tint-fill: rgb(214 238 255 / 0.2); /* the yard a picked card reads (D-166): a cool wash */
+  --side-tint-edge: rgb(52 96 150 / 0.5);
   --demolish-fill: rgb(200 64 46 / 0.26); /* the demolish tool's target, in --danger */
   --demolish-armed-fill: rgb(200 64 46 / 0.42);
   --demolish-hint-fill: rgb(200 64 46 / 0.1);

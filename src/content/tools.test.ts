@@ -146,10 +146,10 @@ describe('Rush Order', () => {
 
 describe('Open House Party', () => {
   it('Social and Pretty pieces earn +100% this week; others don’t', () => {
-    // Social: a Living Room, a Kitchen, and a Patio earning 4 from touching both. Pretty: three
-    // Flower Beds in a row, the middle one earning 3. Apart from them, a Bedroom (Quiet). The
-    // Patio's 4 and the Flower Bed's 3 are big enough that +100% (8, 6) can't pass for a
-    // smaller boost after rounding (+50% would give 6 and 5).
+    // Social: a Living Room, a Kitchen, and a Patio earning 4 from touching both and 1 out back
+    // (D-166). Pretty: three Flower Beds in a row, the middle one earning 3. Apart from them, a
+    // Bedroom (Quiet). The Patio's 5 and the Flower Bed's 3 are big enough that +100% (10, 6)
+    // can't pass for a smaller boost after rounding (+50% would give 8 and 5).
     const s = build(
       [
         ['livingRoom', 0, 0],
@@ -164,8 +164,8 @@ describe('Open House Party', () => {
     );
     const before = rules.currentTally(s);
     const after = rules.currentTally(useTool(s).state);
-    expect(earnedOf(before, 3)).toBe(4);
-    expect(earnedOf(after, 3)).toBe(8);
+    expect(earnedOf(before, 3)).toBe(5);
+    expect(earnedOf(after, 3)).toBe(10);
     expect(earnedOf(before, 5)).toBe(3);
     expect(earnedOf(after, 5)).toBe(6);
     for (const uid of [1, 2, 3, 4, 5, 6]) {
