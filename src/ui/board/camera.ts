@@ -1,6 +1,7 @@
 // The camera (implementation-plan.md §12, Art; D-057, D-097). It zooms by changing the board's
 // scale (CSS px per art px; a cell is CELL × scale CSS px) and re-laying it out, never with
-// transform: scale(), which blurs pixel art in Safari. Zoom levels are whole device pixels per
+// transform: scale(), which blurs pixel art in Safari (the celebrations' short tweens aside: a
+// Huge week's lean-in, the end of a run's look down the street). Zoom levels are whole device pixels per
 // art pixel, from one device pixel up to 3×: 1×, 2× and 3× at a devicePixelRatio of 1, and
 // 0.5× steps on a Retina screen. The default (fitScale) is always one of them, 1× rounded down
 // to whole device pixels where display scaling isn't a whole number, and the Fit overview is
@@ -51,6 +52,31 @@ export const cameraScale = computed<number>(() => {
 
 export const isFit = computed(() => zoom.value === 'fit');
 
+/**
+ * The end of a run's look down the street (D-156): `due` from the moment a run ends in this
+ * browser until the view has pulled back and come in again (the end screen's photos wait for
+ * it), and `on` while it does (Board.tsx): the scroll area grows to 1 / `k` of its box, so the
+ * board lays out the street that much further around the lot, and is scaled by `k` to fit
+ * back in it, a celebration tween rather than a zoom step. `from` is where the view was: its
+ * scroll position, its size, and the board's place on the screen, to come back to.
+ */
+export type StreetView =
+  | { readonly phase: 'due'; readonly run: object }
+  | {
+      readonly phase: 'on';
+      readonly run: object;
+      readonly k: number;
+      readonly from: {
+        readonly left: number;
+        readonly top: number;
+        readonly width: number;
+        readonly height: number;
+        readonly x: number;
+        readonly y: number;
+      };
+    };
+export const streetView = signal<StreetView | null>(null);
+
 /** The scroll container and the board, registered by the board for anchoring zooms. */
 export const cameraEls: { scroll: HTMLElement | null; board: HTMLElement | null } = {
   scroll: null,
@@ -84,6 +110,9 @@ function anchorAt(at?: { clientX: number; clientY: number }): Anchor | null {
 }
 
 function setZoom(next: number | 'fit' | null, at?: { clientX: number; clientY: number }): void {
+  // The end of a run's look down the street has the view for a moment: a wheel, a key or a
+  // click hurries it back instead (Board.tsx).
+  if (streetView.peek()?.phase === 'on') return;
   const anchor = anchorAt(at);
   zoom.value = next;
   // Only a real change re-lays out the board; a stale anchor would jump the next one.

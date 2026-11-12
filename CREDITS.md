@@ -36,6 +36,11 @@ Open House is a game jam entry for the theme "It's a house," built with Claude C
   the street's sedans, are Modern Exteriors cuts from its animated sheets; the neighbors walking
   the sidewalk are Modern Interiors' premade characters. The title's car drives the lot's street
   too. LimeZu's art, cut and credited as above.
+- **Your houses on the street** (D-156, `art/limezu/neighbors.json`): until a player's own
+  finished houses stand on the plots around the lot, Modern Exteriors' country, modern and
+  Japanese houses do (from its Additional Houses), LimeZu's art, cut and credited as above. The
+  player's houses are painted in the browser from the game's own sprites and drawings, as the end
+  screen's photos are.
 - **The link preview and the tab's icon** (`public/og.png`, `public/favicon.png`, D-135): the
   preview is a screenshot of a finished house from the game, its LimeZu sprites and our own
   drawings, with a title sign in the game's style; the icon is a little house drawn for Open

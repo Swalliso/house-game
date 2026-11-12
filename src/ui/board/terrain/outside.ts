@@ -131,6 +131,17 @@ export function dim(r: number, g: number, b: number): [number, number, number] {
   return [one(r), one(g), one(b)];
 }
 
+/** Dims every pixel with any alpha in RGBA `px`, in place: into the garden's light (dim). */
+export function dimPixels(px: Uint8ClampedArray): void {
+  for (let i = 0; i < px.length; i += 4) {
+    if (px[i + 3] === 0) continue;
+    const [r, g, b] = dim(px[i]!, px[i + 1]!, px[i + 2]!);
+    px[i] = r;
+    px[i + 1] = g;
+    px[i + 2] = b;
+  }
+}
+
 /** Paints a slice at 1 canvas px per art px into a canvas of sliceSize, dimmed. */
 export function paintSlice(
   ctx: CanvasRenderingContext2D,
@@ -147,13 +158,6 @@ export function paintSlice(
     else drawSubtile(ctx, img, t.id, t.col, t.row, x, y);
   }
   const data = ctx.getImageData(0, 0, w, h);
-  const px = data.data;
-  for (let i = 0; i < px.length; i += 4) {
-    if (px[i + 3] === 0) continue;
-    const [r, g, b] = dim(px[i]!, px[i + 1]!, px[i + 2]!);
-    px[i] = r;
-    px[i + 1] = g;
-    px[i + 2] = b;
-  }
+  dimPixels(data.data);
   ctx.putImageData(data, 0, 0);
 }

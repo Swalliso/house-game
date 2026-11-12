@@ -3,6 +3,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { placedCells } from '../../rules/index.ts';
+import { FEEL } from '../fx/feel.ts';
 import { CELL, cellUnit } from '../sprites.ts';
 import {
   boardRows,
@@ -22,6 +23,7 @@ import {
   ROAD_ROWS,
   snapZoom,
   startScrollTop,
+  streetViewScale,
   streetLabelRun,
   streetLabelSize,
   streetScale,
@@ -76,7 +78,11 @@ describe('the board', () => {
       left: 271,
       right: 271,
       top: 6 + 24 + 43,
+      bottom: 6 + 43,
     });
+    // Below the board, the rest of the spare height, in whole device pixels (D-156).
+    expect(viewReach({ width: 1298, height: 975 }, 24, 24, 1, 1, 6).bottom).toBe(49);
+    expect(viewReach({ width: 1298, height: 975 }, 24, 24, 1, 2, 6).bottom).toBe(49.5);
     // An odd spare width rounds down to whole device pixels, never past the scroll area's edge.
     expect(viewReach({ width: 1299, height: 974 }, 24, 24, 1, 1, 6).right).toBe(271);
     expect(viewReach({ width: 1299, height: 974 }, 24, 24, 1, 2, 6).right).toBe(271.5);
@@ -85,8 +91,21 @@ describe('the board', () => {
       left: 6,
       right: 6,
       top: 6 + 48,
+      bottom: 6,
     });
-    expect(viewReach(null, 24, 24, 1, 1, 6)).toEqual({ left: 6, right: 6, top: 30 });
+    expect(viewReach(null, 24, 24, 1, 1, 6)).toEqual({ left: 6, right: 6, top: 30, bottom: 6 });
+  });
+
+  it('pulls back at the end of a run as far as shows the street, and no further (D-156)', () => {
+    const f = FEEL.streetView;
+    // 1920×1080 at 1× can't zoom out: the look down the street shows `beside` cells either side.
+    const k = streetViewScale({ width: 1114, height: 982 }, 24, 24, 1, f)!;
+    expect(k).toBeCloseTo(1114 / ((24 + 2 * f.beside) * CELL), 6);
+    expect(1114 / k).toBeGreaterThanOrEqual((24 + 2 * f.beside) * CELL - 1e-6);
+    // Zoomed in on a small window, never further back than `min`.
+    expect(streetViewScale({ width: 600, height: 500 }, 24, 24, 3, f)).toBe(f.min);
+    // A Retina view at 0.5× shows the street already: it stays put.
+    expect(streetViewScale({ width: 1002, height: 865 }, 24, 24, 0.5, f)).toBeNull();
   });
 
   it('starts a new run’s view on the street row, the road a short pan below', () => {

@@ -18,7 +18,7 @@ import type { JSX } from 'preact';
 import { useEffect, useRef } from 'preact/hooks';
 import { CONTENT, SCORE_LABELS, type Action, type MilestoneRecord } from '../../rules/index.ts';
 import { audio } from '../audio/audio.ts';
-import { cameraEls, cameraScale } from '../board/camera.ts';
+import { cameraEls, cameraScale, streetView } from '../board/camera.ts';
 import { busy } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
 import { breakable, formatNumber } from '../format.ts';
@@ -99,10 +99,13 @@ function marks(m: MilestoneRecord): IconName[] {
 
 const phaseName = (m: MilestoneRecord) => CONTENT.balance.phases[m.phase]?.name ?? 'Milestone';
 
-/** The strip, once the run is over and its last tally has played (as EndScreen waits). */
+/**
+ * The strip, once the run is over and its last tally has played (as EndScreen waits), and the
+ * view has looked down the street and come back (D-156; it shrinks the board's box).
+ */
 export function EndPhotos() {
   const s = run.value;
-  if ((s.screen !== 'won' && s.screen !== 'lost') || busy.value) return null;
+  if ((s.screen !== 'won' && s.screen !== 'lost') || busy.value || streetView.value) return null;
   return <Strip />;
 }
 

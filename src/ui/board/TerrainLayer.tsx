@@ -45,11 +45,12 @@ import './terrain/terrain.css';
 
 export { tileHash };
 
-/** How far the view reaches past the board's left, right and top edges, in CSS px. */
+/** How far the view reaches past the board's edges, in CSS px. */
 export interface Around {
   readonly left: number;
   readonly right: number;
   readonly top: number;
+  readonly bottom: number;
 }
 
 /**

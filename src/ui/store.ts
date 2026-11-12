@@ -259,6 +259,19 @@ effect(() => {
   }
 });
 
+/**
+ * A house on the street held in Inspect (D-156), by its key (board/neighbors.ts): a click on one
+ * holds it there, with its Play this lot again, while the pointer goes to the panel. Let go as a
+ * held piece is, except that the end screen keeps it: a finished run is a good time to pick an
+ * old lot to play again. UI only.
+ */
+export const heldNeighbor = signal<string | null>(null);
+effect(() => {
+  if (heldNeighbor.value !== null && (selected.value !== null || tool.value === 'demolish')) {
+    heldNeighbor.value = null;
+  }
+});
+
 export type Inspected =
   | { kind: 'piece'; uid: number }
   | { kind: 'tile'; x: number; y: number }
@@ -268,7 +281,8 @@ export type Inspected =
   | { kind: 'supply'; i: number }
   | { kind: 'blueprint'; i: number }
   | { kind: 'upgrade'; i: number }
-  | { kind: 'offer'; i: number };
+  | { kind: 'offer'; i: number }
+  | { kind: 'neighbor'; key: string };
 
 /** What's selected: a piece to place or a fixture to install, and where it's from. */
 export const selection = computed<
@@ -690,6 +704,7 @@ export function randomSeed(): string {
 
 function resetWeek(): void {
   heldPiece.value = null;
+  heldNeighbor.value = null;
   selected.value = null;
   source.value = 'hand';
   tentative.value = null;

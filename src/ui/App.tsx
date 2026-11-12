@@ -7,7 +7,7 @@ import { useEffect } from 'preact/hooks';
 import { audio } from './audio/audio.ts';
 import { startAudio } from './audio/scene.ts';
 import { Board, rotate } from './board/Board.tsx';
-import { toggleFit, zoomIn, zoomOut } from './board/camera.ts';
+import { streetView, toggleFit, zoomIn, zoomOut } from './board/camera.ts';
 import { BUILD_LABEL } from './build-info.ts';
 import { DebugPanel } from './debug/DebugPanel.tsx';
 import { ErrorBoundary } from './ErrorBoundary.tsx';
@@ -54,7 +54,7 @@ import { Portfolio } from './screens/Portfolio.tsx';
 import { startRecording } from './screens/record-run.ts';
 import { ShopScreen } from './screens/ShopScreen.tsx';
 import { Title } from './screens/Title.tsx';
-import { appScreen, heldPiece, run, selected, tool } from './store.ts';
+import { appScreen, heldNeighbor, heldPiece, run, selected, tool } from './store.ts';
 import { Particles } from './fx/Particles.tsx';
 import { ArrivalCard } from './hud/ArrivalCard.tsx';
 import { TierWash } from './hud/Celebration.tsx';
@@ -172,10 +172,14 @@ function Game() {
   useSkipOnClick();
   const screen = run.value.screen;
   const over = (screen === 'won' || screen === 'lost') && !busy.value;
-  // A play being looked at (placing, installing, a tool, demolishing), or a piece held in
-  // Inspect by a click: Inspect gets the left column's room first, so its preview, warnings,
-  // Use button, or the held piece's notes are in view (app.css).
-  const looking = selected.value !== null || tool.value === 'demolish' || heldPiece.value !== null;
+  // A play being looked at (placing, installing, a tool, demolishing), or a piece or a house on
+  // the street held in Inspect by a click: Inspect gets the left column's room first, so its
+  // preview, warnings, Use button, or the held piece's notes are in view (app.css).
+  const looking =
+    selected.value !== null ||
+    tool.value === 'demolish' ||
+    heldPiece.value !== null ||
+    heldNeighbor.value !== null;
   const right = over ? (
     <EndScreen />
   ) : screen === 'shop' ? (
@@ -214,7 +218,9 @@ function Game() {
           {on.inspect && <Inspect />}
         </div>
       </aside>
-      <main class="center">
+      {/* While the end of a run looks down the street, the board's view is bigger than its box
+          for a moment (Board.tsx): the column keeps it in. */}
+      <main class={streetView.value?.phase === 'on' ? 'center street-view' : 'center'}>
         <Board />
         <Notes />
         <MilestoneBanner />

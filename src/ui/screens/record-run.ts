@@ -1,6 +1,7 @@
 // Files a run in the company's record when it ends (D-139; company.ts), and paints its photo:
 // the finished house through the end screen's frame (photos.ts, photo-paint.ts), kept as a small
-// picture so the portfolio can show it after a game update.
+// picture so the portfolio can show it after a game update. Then its plot (D-156): the house
+// alone, as it will stand on the street beside the lots that come after it.
 //
 // Only a run this browser played to its end is filed: the action that ends it comes through the
 // store's dispatch. A run that loads already finished (a ?run= code, the save) isn't, and nor
@@ -8,10 +9,10 @@
 
 import { effect, signal } from '@preact/signals';
 import { CONTENT, rules, type RunState } from '../../rules/index.ts';
-import { fileJob, fileJobPhoto, jobKey, type Job } from '../company.ts';
+import { fileJob, fileJobPhoto, fileJobPlot, jobKey, type Job } from '../company.ts';
 import { busy } from '../fx/director.ts';
 import { inProgress, onEvents } from '../store.ts';
-import { paintPhoto } from './photo-paint.ts';
+import { paintPhoto, paintPlot } from './photo-paint.ts';
 import { photoFrame } from './photos.ts';
 
 /** The record's entry for a run that has ended. */
@@ -58,6 +59,13 @@ async function paint(key: string, state: RunState): Promise<void> {
     fileJobPhoto(key, encode(await paintPhoto(state, photoFrame(state.house))));
   } catch (e) {
     // The house is filed without its photo.
+    console.error(e);
+  }
+  try {
+    const plot = await paintPlot(state);
+    if (plot) fileJobPlot(key, plot);
+  } catch (e) {
+    // The house is filed without its plot: it won't stand on the street.
     console.error(e);
   }
 }
