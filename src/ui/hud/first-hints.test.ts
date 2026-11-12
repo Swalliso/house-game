@@ -5,7 +5,16 @@
 
 import { describe, expect, it } from 'vitest';
 import { CONTENT, HINT_WORDS, hintText, rules, type RunSetup } from '../../rules/index.ts';
-import { hintFor, HINTS, OPENING_HINTS, type HintId } from './FirstHints.tsx';
+import { FEEL } from '../fx/feel.ts';
+import {
+  hintFor,
+  hintGone,
+  HINTS,
+  momentPassed,
+  OPENING_HINTS,
+  seenTips,
+  type HintId,
+} from './FirstHints.tsx';
 
 const words = (text: string) => text.trim().split(/\s+/).length;
 /** Everything a hint's card says under its title. */
@@ -70,5 +79,75 @@ describe('the opening’s hints (D-149)', () => {
   it('say what the third week’s Closet makes, by the content’s names', () => {
     expect(HINTS.sets.text).toContain(closet.name);
     expect(HINTS.sets.text).toContain(CONTENT.sets.suite.name);
+  });
+});
+
+describe('a hint that asks for a play (D-158)', () => {
+  it('has no “Got it”: the opening’s steps, its Bathroom and its Closet', () => {
+    expect(HINTS.firstWeek.task).toBe(true);
+    expect(OPENING_HINTS.firstWeek.task).toBe(true);
+    expect(OPENING_HINTS.score.task).toBe(true);
+    expect(HINTS.sets.task).toBe(true);
+  });
+
+  it('is no other hint: one that only explains keeps its “Got it”', () => {
+    const tasks = new Set<HintId>(['firstWeek', 'sets']);
+    for (const id of Object.keys(HINTS) as HintId[]) {
+      expect(HINTS[id].task, id).toBe(tasks.has(id) ? true : undefined);
+    }
+  });
+});
+
+describe('how a hint leaves by itself (D-158)', () => {
+  const READ = FEEL.hints.readMs;
+  const build = (week: number) => ({ week, screen: 'build' as const });
+  const since = { ...build(6), at: 1000 };
+
+  it('stays through the week and the screen it came up in', () => {
+    expect(momentPassed(build(6), build(6))).toBe(false);
+    expect(hintGone('fixture', since, build(6), 1000 + READ * 10, READ)).toBe('stays');
+  });
+
+  it('goes with its week once it has been up long enough to read', () => {
+    expect(momentPassed(build(6), build(7))).toBe(true);
+    expect(hintGone('fixture', since, build(7), 1000 + READ, READ)).toBe('seen');
+  });
+
+  it('comes up again when the week left it behind sooner', () => {
+    expect(hintGone('fixture', since, build(7), 1000 + READ - 1, READ)).toBe('again');
+  });
+
+  it('goes with its screen: the shop’s as the shop closes, in the same week', () => {
+    const inShop = { week: 9, screen: 'shop' as const, at: 0 };
+    expect(hintGone('shop', inShop, { week: 9, screen: 'shop' }, READ, READ)).toBe('stays');
+    expect(hintGone('shop', inShop, build(9), READ, READ)).toBe('seen');
+  });
+
+  it('goes with its week when it’s one of the opening’s, read or not (D-149)', () => {
+    const shown = { ...build(1), at: 0 };
+    expect(hintGone('firstWeek', shown, build(1), READ * 10, READ)).toBe('stays');
+    expect(hintGone('firstWeek', shown, build(2), 1, READ)).toBe('seen');
+    expect(hintGone('sets', { ...build(3), at: 0 }, build(4), 1, READ)).toBe('seen');
+  });
+});
+
+describe('the tips to read again (D-158)', () => {
+  it('are the hints this browser has been through, in the order the game brings them up', () => {
+    expect(seenTips(new Set())).toEqual([]);
+    const tips = seenTips(new Set(['strike', 'checklist', 'firstWeek']));
+    expect(tips.map((t) => t.id)).toEqual(['firstWeek', 'checklist', 'strike']);
+    expect(tips[0]).toMatchObject({ title: HINTS.firstWeek.title, steps: HINTS.firstWeek.steps });
+    expect(tips[1]!.text).toBe(HINTS.checklist.text);
+  });
+
+  it('leave out an id this build doesn’t know', () => {
+    expect(seenTips(new Set(['gone-in-a-later-build']))).toEqual([]);
+  });
+});
+
+describe('the checklist’s hint (D-158)', () => {
+  it('says its lines are bonuses, and nothing about folding', () => {
+    expect(HINTS.checklist.text).toContain('bonuses, not requirements');
+    expect(HINTS.checklist.text).not.toMatch(/fold|click/i);
   });
 });

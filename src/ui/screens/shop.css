@@ -179,6 +179,27 @@
   align-items: flex-start;
   gap: var(--space-4);
 }
+/* A first job's staged shop (D-158): what's still to come, under what it shows. With the gift
+   alone it's the body's only line, so it reads as the yard's sign, not a footnote. */
+.shop-later {
+  margin: var(--space-3) 0 0;
+  max-width: calc(var(--offer-w) * 3 + var(--space-3) * 2);
+  color: var(--ink-soft);
+}
+.shop-later.gift {
+  margin-top: 0;
+  max-width: 44ch;
+  color: var(--ink);
+  text-align: center;
+}
+/* The gift's shop has no shelves: its one line stands in the middle of the sheet, not in a
+   corner of an empty page. */
+.panel-body.shop-body.gift-only {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
 .shelf {
   display: flex;
   flex-direction: column;

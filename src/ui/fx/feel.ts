@@ -625,6 +625,18 @@ export const FEEL = {
     pulseMs: 1200,
   },
 
+  /**
+   * The first-time hints (D-158; hud/first-hints.css reads --hint-pulse and --hint-pulses). A
+   * card's gold ring breathes `pulses` times as it comes up, once every `pulseMs`, then rests.
+   * A hint nobody sends away goes with its week once it has been up for `readMs`; one the week
+   * left behind sooner comes up again.
+   */
+  hints: {
+    pulseMs: 1200,
+    pulses: 3,
+    readMs: 4000,
+  },
+
   /** The camera (§12, Art; D-057): wheel zoom in whole steps, drag to pan. */
   camera: {
     /** A left-button drag pans once it has moved this many px; a shorter one is a click. */

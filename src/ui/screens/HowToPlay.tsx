@@ -1,6 +1,14 @@
-// How to play: one short, scannable sheet, from the title screen or the game. The numbers
-// (the hand's rows, rerolls, demolitions, overtime, the fenced yard's size) come from the rules, so
-// the text keeps up with balance changes.
+// How to play, from the title screen or the game. The numbers (the hand's rows, rerolls,
+// demolitions, overtime, the fenced yard's size) come from the rules, so the text keeps up with
+// balance changes.
+//
+// It opens short (D-158): the game in five lines, then every section folded under its plank, to
+// open the one you came for. It had grown to 1,316 words in 13 sections, 8.6 screens of
+// scrolling at 1600×900, and it's the button a careful newcomer presses before Start: an outside
+// playtester "was overwhelmed, and then I realized it was a scrolling box". On a first visit its
+// first line points at Start, whose first job teaches the rest. The first-time hints this
+// browser has been through are listed under Tips so far, so one that's gone can be read again.
+// From the shop or a change order's sheet, that section starts open.
 //
 // M5a draws it as a wood sheet: each section under a plank tag, the formula as the score
 // panel's own plaques, each set as a picture of its pieces, the free actions with their
@@ -11,6 +19,7 @@
 // content and the glossary, and their keys under Controls.
 
 import './howto.css';
+import { effect, signal, untracked } from '@preact/signals';
 import { Fragment, type ComponentChildren } from 'preact';
 import {
   CONTENT,
@@ -25,12 +34,57 @@ import {
   type SetDef,
 } from '../../rules/index.ts';
 import { howToPlayOpen } from '../hud/actions.ts';
+import { seenHints, seenTips } from '../hud/FirstHints.tsx';
 import { PieceArt } from '../hud/PieceArt.tsx';
 import { Button, Icon, Keycap, Plaque, Sheet, type IconName } from '../kit/kit.tsx';
 import { CREW_ICONS } from '../sprites.ts';
-import { run } from '../store.ts';
+import { appScreen, firstVisit, run } from '../store.ts';
 
 const GLOSSARY = glossary(CONTENT);
+
+/** The sections that fold, in the sheet's order. */
+export const SECTIONS = [
+  'tips',
+  'goal',
+  'week',
+  'scoring',
+  'client',
+  'crew',
+  'renovate',
+  'lot',
+  'actions',
+  'shop',
+  'orders',
+  'controls',
+  'credits',
+] as const;
+export type SectionId = (typeof SECTIONS)[number];
+
+/** The sections open now (UI only). Every time the sheet opens it starts from sectionsAtOpen. */
+export const openSections = signal<ReadonlySet<SectionId>>(new Set());
+
+/** What the sheet opens with: all folded, but the shop's or the change orders' from theirs. */
+export function sectionsAtOpen(
+  screen: 'title' | 'jobs' | 'game',
+  runScreen: string,
+): ReadonlySet<SectionId> {
+  if (screen !== 'game') return new Set();
+  if (runScreen === 'shop') return new Set<SectionId>(['shop']);
+  if (runScreen === 'changeOrder') return new Set<SectionId>(['orders']);
+  return new Set();
+}
+
+effect(() => {
+  if (!howToPlayOpen.value) return;
+  // Only the sheet opening sets them: a run that changes under it never folds what's being read.
+  openSections.value = untracked(() => sectionsAtOpen(appScreen.value, run.value.screen));
+});
+
+export function toggleSection(id: SectionId): void {
+  const next = new Set(openSections.value);
+  if (!next.delete(id)) next.add(id);
+  openSections.value = next;
+}
 
 /** Rendered always; it shows itself while howToPlayOpen is set. */
 export function HowToPlay() {
@@ -57,9 +111,12 @@ function HowToPlayDialog() {
       onClose={close}
       onKeyDown={onKeyDown}
       footer={
-        <Button variant="primary" onClick={close}>
-          Got it
-        </Button>
+        <>
+          <OpenAll />
+          <Button variant="primary" onClick={close}>
+            Got it
+          </Button>
+        </>
       }
     >
       <HowToPlayText />
@@ -67,23 +124,121 @@ function HowToPlayDialog() {
   );
 }
 
-function Section({
+/** Opens every section at once, for a reader who wants the whole manual; then folds them again. */
+export function OpenAll() {
+  const all = openSections.value.size === SECTIONS.length;
+  return (
+    <Button
+      variant="wood"
+      class="howto-all"
+      onClick={() => (openSections.value = all ? new Set() : new Set(SECTIONS))}
+    >
+      {all ? 'Fold all' : 'Open all'}
+    </Button>
+  );
+}
+
+/**
+ * A section under its plank, which is a button that opens and folds it (D-158). Folded, its
+ * text isn't rendered at all. Hook-free, so tests call it in place.
+ */
+export function Section({
+  id,
   title,
   icon,
   children,
 }: {
+  id: SectionId;
   title: string;
   icon?: IconName;
   children: ComponentChildren;
 }) {
+  const open = openSections.value.has(id);
   return (
-    <section class="howto-section">
-      <h3 class="plank-tag">
-        {icon && <Icon name={icon} />}
-        {title}
+    <section class={`howto-section ${open ? 'open' : 'folded'}`} data-section={id}>
+      <h3 class="howto-head">
+        <button
+          type="button"
+          class="plank-tag howto-fold"
+          aria-expanded={open}
+          onClick={() => toggleSection(id)}
+        >
+          <Icon name={open ? 'caretDown' : 'caretRight'} class="howto-caret" />
+          {icon && <Icon name={icon} />}
+          {title}
+        </button>
       </h3>
-      {children}
+      {open && children}
     </section>
+  );
+}
+
+/**
+ * The game in five lines, always open, at the top of the sheet (D-158). On a first visit its
+ * first line sends a newcomer to Start: the first job teaches the rest as they play.
+ */
+export function ShortVersion({ first }: { first: boolean }) {
+  const b = CONTENT.balance;
+  const L = SCORE_LABELS;
+  return (
+    <section class="howto-section howto-short">
+      <h3 class="plank-tag">
+        <Icon name="House" />
+        The short version
+      </h3>
+      {first && (
+        <p class="howto-first">
+          <b>New here?</b> Press <b>Start</b>: your first job teaches the rest as you play.
+        </p>
+      )}
+      <ul>
+        <li>
+          Each week: pick a card, place it on the lot, press <b>End week</b>.
+        </li>
+        <li>
+          Pieces earn <b>{L.points}</b> every week, and more for what they touch.
+        </li>
+        <li>
+          Sets and the checklist raise <b>{L.mult}</b>. {L.points} × {L.mult} is the week’s{' '}
+          <b>{L.total}</b>.
+        </li>
+        <li>
+          Reach each milestone’s {L.total} target in time: {b.phases.length} milestones of{' '}
+          {b.weeksPerPhase} weeks.
+        </li>
+        <li>Between milestones, the supply yard sells goods for the run.</li>
+      </ul>
+    </section>
+  );
+}
+
+/**
+ * The first-time hints this browser has been through, to read again (D-158): a hint that went
+ * with its week, or with "Got it", is never lost. Nothing until one has been seen.
+ */
+export function TipsSoFar() {
+  const tips = seenTips(seenHints.value);
+  if (tips.length === 0) return null;
+  return (
+    <Section id="tips" title={`Tips so far (${tips.length})`} icon="help">
+      <dl class="howto-tips">
+        {tips.map((tip) => (
+          <Fragment key={tip.id}>
+            <dt>{tip.title}</dt>
+            <dd>
+              {tip.text}
+              {tip.steps && (
+                <ol>
+                  {tip.steps.map((step) => (
+                    <li key={step}>{step}</li>
+                  ))}
+                </ol>
+              )}
+            </dd>
+          </Fragment>
+        ))}
+      </dl>
+    </Section>
   );
 }
 
@@ -151,7 +306,7 @@ const CONTROLS: readonly (readonly [keys: string, does: string])[] = [
   ['1 or 2', 'Pick a change order'],
 ];
 
-function HowToPlayText() {
+export function HowToPlayText() {
   const s = run.value;
   const b = CONTENT.balance;
   const phases = b.phases;
@@ -181,9 +336,15 @@ function HowToPlayText() {
   const [payLow, payHigh] = [Math.min(...pays), Math.max(...pays)];
   const crews = Object.values(CONTENT.crews).filter((c) => c.tier === 'core');
 
+  const jackAndJill = CONTENT.sets.jackAndJill.name;
+  const suite = CONTENT.sets.suite.name;
+  const bathroom = CONTENT.pieces.bathroom.name;
+
   return (
     <>
-      <Section title="The goal" icon="House">
+      <ShortVersion first={firstVisit()} />
+      <TipsSoFar />
+      <Section id="goal" title="The goal" icon="House">
         <p>
           Build one house for one client. The build has {phases.length} milestones of{' '}
           {b.weeksPerPhase} weeks each:
@@ -207,9 +368,15 @@ function HowToPlayText() {
           Each milestone has a <b>{L.total}</b> target. Reach it by the milestone's last week to
           move on.
         </p>
+        {/* Overtime was a section of its own until D-158: it's what a missed target costs. */}
+        <p>
+          <b>Overtime:</b> each run has {plural(overtime, 'overtime week')}. Miss a target and
+          they're spent one at a time, each with its own hand, to catch up. If you're still short
+          when they run out, the client walks and the run is over.
+        </p>
       </Section>
 
-      <Section title="A week" icon="clock">
+      <Section id="week" title="A week" icon="clock">
         <ul>
           <li>
             Pick 1 of {rooms + layout} cards, place it on the lot, then press <b>End week</b>.
@@ -233,7 +400,7 @@ function HowToPlayText() {
         </ul>
       </Section>
 
-      <Section title="Scoring" icon="sparkle">
+      <Section id="scoring" title="Scoring" icon="sparkle">
         <p class="howto-formula" aria-label={`${L.points} × ${L.mult} = ${L.total}`}>
           <Plaque tone="comfort" icon="comfort">
             {L.points}
@@ -259,6 +426,11 @@ function HowToPlayText() {
               Sets, like {sets}, add {L.points} and {L.mult}.
             </li>
           )}
+          {/* The matching rule (rules/sets.ts), which nothing on screen said (D-158). */}
+          <li>
+            A room can be in one set of each kind: one {bathroom} can serve a {jackAndJill} and a{' '}
+            {suite}, but two {suite}s need a {bathroom} each.
+          </li>
           <li>
             Hover a piece or a tile to see what it earns, and why. Click a piece to hold it there
             while you read.
@@ -271,7 +443,7 @@ function HowToPlayText() {
         </div>
       </Section>
 
-      <Section title="Your client" icon="check">
+      <Section id="client" title="Your client" icon="check">
         <ul>
           <li>
             Start opens the job board: pick 1 of {b.jobBoard.contracts} clients, each with a lot of
@@ -280,7 +452,8 @@ function HowToPlayText() {
           <li>
             <b>Their checklist</b> starts with {houseRules} house rules (the household, the shape,
             the yard), folded into one row that opens with a click, then their own wishes. Each line
-            adds +{perLine} {L.mult} in every week it holds. Hover a line to see what it needs.
+            adds +{perLine} {L.mult} in every week it holds: a bonus, not a requirement, and few
+            houses hold them all. Hover a line to see what it needs.
           </li>
           <li>
             <b>Their tastes:</b> <Icon name="up" label="Likes" /> pieces they like earn more,{' '}
@@ -295,7 +468,7 @@ function HowToPlayText() {
         </ul>
       </Section>
 
-      <Section title="Your crew" icon="weekendCrew">
+      <Section id="crew" title="Your crew" icon="weekendCrew">
         <p class="howto-note">
           Picked after the client. It changes what you draw and what pays, all run.
         </p>
@@ -312,7 +485,7 @@ function HowToPlayText() {
         </dl>
       </Section>
 
-      <Section title="Renovate" icon="star">
+      <Section id="renovate" title="Renovate" icon="star">
         <ul>
           <li>{GLOSSARY.renovate.text}</li>
           <li>
@@ -322,7 +495,7 @@ function HowToPlayText() {
         </ul>
       </Section>
 
-      <Section title="The lot" icon="Outdoor">
+      <Section id="lot" title="The lot" icon="Outdoor">
         <ul>
           <li>
             <b>Trees</b> are Quiet and give views.
@@ -368,7 +541,7 @@ function HowToPlayText() {
         </ul>
       </Section>
 
-      <Section title="Free actions" icon="hammer">
+      <Section id="actions" title="Free actions" icon="hammer">
         <p class="howto-note">These don't use up your week.</p>
         <dl class="howto-actions">
           <dt>
@@ -412,7 +585,7 @@ function HowToPlayText() {
         </dl>
       </Section>
 
-      <Section title="Budget and the shop" icon="coin">
+      <Section id="shop" title="Budget and the shop" icon="coin">
         <ul>
           <li>
             You earn budget at each milestone ({b.milestoneBudget}), for each week saved by
@@ -425,9 +598,10 @@ function HowToPlayText() {
             </li>
           )}
           <li>
-            After every milestone but the last, the shop opens. <b>Blueprints</b> bend the rules for
-            the whole run. <b>Pieces</b> wait in your reserve; placing one is a week's build.{' '}
-            <b>Fixtures</b> wait in your supplies and install for free.
+            After every milestone but the last, the shop opens. <b>Blueprints</b> are bonuses that
+            stay on for the whole run; you don’t build them. <b>Pieces</b> wait in your reserve;
+            placing one is a week's build. <b>Fixtures</b> wait in your supplies and install for
+            free.
           </li>
           <li>
             One good is on sale each visit. Refreshing costs a little more each time. Leave without
@@ -445,7 +619,7 @@ function HowToPlayText() {
       </Section>
 
       {orderMilestones && pays.length > 0 && (
-        <Section title="Change orders" icon="mail">
+        <Section id="orders" title="Change orders" icon="mail">
           <ul>
             <li>
               After the {orderMilestones} milestones, before the shop, the client changes their
@@ -465,15 +639,7 @@ function HowToPlayText() {
         </Section>
       )}
 
-      <Section title="Overtime" icon="warn">
-        <p>
-          Each run has {plural(overtime, 'overtime week')}. Miss a target and they're spent one at a
-          time, each with its own hand, to catch up. If you're still short when they run out, the
-          client walks and the run is over.
-        </p>
-      </Section>
-
-      <Section title="Controls" icon="menu">
+      <Section id="controls" title="Controls" icon="menu">
         <dl class="howto-keys">
           {CONTROLS.map(([keys, does]) => (
             <Fragment key={`${keys}-${does}`}>
@@ -491,7 +657,7 @@ function HowToPlayText() {
         </dl>
       </Section>
 
-      <Section title="Credits" icon="star">
+      <Section id="credits" title="Credits" icon="star">
         <ul>
           <li>
             Art by{' '}
