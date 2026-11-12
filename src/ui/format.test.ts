@@ -1,10 +1,13 @@
 // Where a long name breaks (format.ts SOFT_BREAKS): only at its soft hyphens, and every long
-// word a card shows has them or was measured to fit, so a name never runs off its card.
+// word a card shows has them or was measured to fit. A card's title uses them (kit.tsx Card), so
+// a name never runs off its card.
 
+import type { ComponentChildren, VNode } from 'preact';
 import { describe, expect, it } from 'vitest';
 import { CONTENT } from '../rules/index.ts';
 import { SERVICE_NAMES } from '../rules/shop.ts';
 import { breakable, SOFT_BREAKS } from './format.ts';
+import { Card } from './kit/kit.tsx';
 
 /** Every name a card's title can show: the shop's goods, the hand's cards, the job board's. */
 const CARD_NAMES = [
@@ -31,14 +34,40 @@ const FITS: Readonly<Record<string, string>> = {
 
 const letters = (word: string) => word.match(/\p{L}/gu)?.length ?? 0;
 
+/** The host elements a tree renders, function components called in place (Card has no hooks). */
+function* hosts(node: ComponentChildren): Generator<VNode<Record<string, unknown>>> {
+  if (node == null || typeof node !== 'object') return;
+  if (Array.isArray(node)) {
+    for (const n of node) yield* hosts(n);
+    return;
+  }
+  const v = node as VNode<Record<string, unknown>>;
+  if (typeof v.type === 'function') {
+    yield* hosts((v.type as (p: unknown) => ComponentChildren)(v.props));
+    return;
+  }
+  yield v;
+  yield* hosts(v.props.children as ComponentChildren);
+}
+
 describe('soft breaks in names', () => {
   it('put soft hyphens in the listed words, and change nothing else', () => {
-    expect(breakable('Soundproofing')).toBe('Sound­proofing');
+    expect(breakable('Soundproofing')).toBe('Sound\u00ADproofing');
     expect(breakable('Remodel Plans: Entertainer')).toBe('Remodel Plans: Entertainer');
     expect(breakable('Inspector’s Visit')).toBe('Inspector’s Visit');
+    // Only the list's own words, not a plain object's.
+    expect(breakable('constructor toString')).toBe('constructor toString');
     for (const [word, broken] of Object.entries(SOFT_BREAKS)) {
-      expect(broken.replaceAll('­', ''), word).toBe(word);
+      expect(broken.replaceAll('\u00AD', ''), word).toBe(word);
     }
+  });
+
+  it("are in a card's title", () => {
+    const title = (name: string) =>
+      [...hosts(Card({ title: name }))].find((v) => v.props.class === 'pcard-title')?.props
+        .children;
+    expect(title('Soundproofing')).toBe('Sound\u00ADproofing');
+    expect(title('Remodel Plans: Entertainer')).toBe('Remodel Plans: Entertainer');
   });
 
   // A shop card's title is 84 UI px wide: "Entertainer", 11 letters of the bold pixel font,
@@ -48,11 +77,11 @@ describe('soft breaks in names', () => {
   it('cover every word of 11 letters or more that a card shows', () => {
     const long = CARD_NAMES.flatMap((name) => name.split(' '))
       .filter((w) => w.split('-').some((part) => letters(part) >= 11))
-      .filter((w) => !(w in SOFT_BREAKS) && !(w in FITS));
+      .filter((w) => !Object.hasOwn(SOFT_BREAKS, w) && !Object.hasOwn(FITS, w));
     expect(long).toEqual([]);
   });
 
   it('list a word as fitting or as breaking, never both', () => {
-    expect(Object.keys(FITS).filter((w) => w in SOFT_BREAKS)).toEqual([]);
+    expect(Object.keys(FITS).filter((w) => Object.hasOwn(SOFT_BREAKS, w))).toEqual([]);
   });
 });

@@ -30,7 +30,8 @@ export function signed(n: number, f: (n: number) => string = formatNumber): stri
  * "proofing", and only where a line needs it. Chrome hyphenates no capitalized word (hyphens:
  * auto leaves it whole), and overflow-wrap would break it anywhere ("Soundproofin", "g"), so
  * the UI says where. Display only: the content's names stay as they are (they're in the content
- * hash). format.test.ts holds every long word a card shows to this list.
+ * hash). format.test.ts fails on a long word a card shows that's neither here nor on its list of
+ * words measured to fit (FITS).
  */
 export const SOFT_BREAKS: Readonly<Record<string, string>> = {
   // Milestones (the end screen's polaroids)
@@ -44,10 +45,13 @@ export const SOFT_BREAKS: Readonly<Record<string, string>> = {
   Waterfront: 'Water\u00ADfront',
 };
 
-/** A name with soft hyphens in its long words (SOFT_BREAKS). */
+/**
+ * A name with soft hyphens in its long words (SOFT_BREAKS). Only the list's own words: a word
+ * like "constructor" is the plain object's too.
+ */
 export function breakable(name: string): string {
   return name
     .split(' ')
-    .map((w) => SOFT_BREAKS[w] ?? w)
+    .map((w) => (Object.hasOwn(SOFT_BREAKS, w) ? SOFT_BREAKS[w]! : w))
     .join(' ');
 }

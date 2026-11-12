@@ -142,7 +142,8 @@ export function Card({
     >
       <span class="pcard-head">
         {lead}
-        {/* A name breaks only at its soft hyphens (format.ts), never off the card. */}
+        {/* A name breaks at its spaces, and a long word only at its soft hyphens (format.ts), so
+            it never runs off the card. */}
         <span class="pcard-title">{typeof title === 'string' ? breakable(title) : title}</span>
         {aside}
       </span>

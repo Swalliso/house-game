@@ -24,7 +24,7 @@
 .run-end .panel-head {
   container: run-end-plank / inline-size;
 }
-.run-end-code {
+.run-end-code.btn {
   --btn-h: calc(var(--px) * 13);
   flex: none;
   margin-left: auto;
@@ -334,7 +334,8 @@
 .run-end-retry .btn {
   flex: 1 1 auto;
 }
-.run-end-again {
+/* Two classes, so it wins over the rule above: with its flex: 1 1 auto, Title shared the row. */
+.run-end .run-end-again {
   flex-basis: 100%;
 }
 /* "Try this lot again" takes 276 px in the pixel font, and the narrow column (under 1500 px)
