@@ -33,6 +33,7 @@ import {
   type RunSetup,
   type RunState,
   type SellAction,
+  type StrikePreview,
   type ToolId,
   type ToolPreview,
   type UseToolAction,
@@ -214,10 +215,28 @@ export const crash = signal<{ message: string; stack?: string; action?: Action }
 // ---------------------------------------------------------------------------------------
 // What the player is doing this week.
 
-/** What a click on the lot does: build the selected card, or demolish (a free action). */
-export const tool = signal<'build' | 'demolish'>('build');
+/**
+ * What the player is doing: build the selected card, demolish, or strike a hand card (D-157);
+ * the last two are free actions.
+ */
+export const tool = signal<'build' | 'demolish' | 'strike'>('build');
 /** In demolish mode, the tile clicked once: a second click (or Demolish) confirms. */
 export const demolishArmed = signal<Cell | null>(null);
+/** In strike mode (D-157), the hand card clicked once: a second click (or its key) strikes it. */
+export const strikeArmed = signal<number | null>(null);
+/** In strike mode, what striking each hand card would do (the rules' previewStrike); else none. */
+export const strikeViews = computed<readonly StrikePreview[]>(() => {
+  const s = run.value;
+  if (tool.value !== 'strike' || s.screen !== 'build') return [];
+  return s.hand.map((_, i) => rules.previewStrike(s, i));
+});
+/**
+ * How many types were struck when this week's hand was dealt (D-157): whether the struck types
+ * bring Your goods in (inventory-rows.ts). Taken as a new week's hand is dealt, as a run loads
+ * or replays, and as one starts; never on a reroll or a strike, so a strike never brings the
+ * panel in mid-week, pushing the hand down under its stamp. The next week's hand does.
+ */
+export const struckAtDeal = signal(0);
 
 /** Where the selected item comes from: a hand card, a reserve piece, or a supply. */
 export type Source = 'hand' | 'reserve' | 'supplies';
@@ -254,7 +273,7 @@ effect(() => {
   if (uid === null) return;
   const s = run.value;
   const gone = !s.house.pieces.some((p) => p.uid === uid);
-  if (gone || s.screen !== 'build' || selected.value !== null || tool.value === 'demolish') {
+  if (gone || s.screen !== 'build' || selected.value !== null || tool.value !== 'build') {
     heldPiece.value = null;
   }
 });
@@ -267,7 +286,7 @@ effect(() => {
  */
 export const heldNeighbor = signal<string | null>(null);
 effect(() => {
-  if (heldNeighbor.value !== null && (selected.value !== null || tool.value === 'demolish')) {
+  if (heldNeighbor.value !== null && (selected.value !== null || tool.value !== 'build')) {
     heldNeighbor.value = null;
   }
 });
@@ -713,6 +732,7 @@ function resetWeek(): void {
   toolArmed.value = null;
   rotation.value = 0;
   demolishArmed.value = null;
+  strikeArmed.value = null;
   tool.value = 'build';
 }
 
@@ -764,6 +784,8 @@ export function startRun(
     log.value = result.failedAt === undefined ? actions : actions.slice(0, result.failedAt);
     resetWeek();
     inspected.value = null;
+    // A run loaded, replayed or started: its hand as dealt (D-157).
+    struckAtDeal.value = result.state.struck.length;
     // Another run takes the first job's place (D-149): the first job is behind this browser.
     if (firstJobSeed.value !== null && firstJobSeed.value !== result.state.setup.seed) {
       setFirstJob(null);
@@ -853,13 +875,17 @@ export function dispatch(action: Action, opts: { keepWeek?: boolean } = {}): boo
     log.value = [...log.value, action];
     if (opts.keepWeek) {
       // A free action keeps the card being placed, unless the list it came from changed: a
-      // reroll redraws the whole hand (D-132).
+      // reroll redraws the whole hand (D-132); a strike (D-157) replaces its type's cards, and
+      // the placement of one of them goes with it.
+      const struck = result.events.find((e) => e.t === 'cardStruck');
+      const replaced = struck?.t === 'cardStruck' ? struck.slots.map((x) => x.i) : [];
       const changed =
         action.t === 'reroll' ||
         action.t === 'debug' ||
         action.t === 'sell' ||
         action.t === 'useTool' ||
-        (action.t === 'install' && action.from === 'supplies');
+        (action.t === 'install' && action.from === 'supplies') ||
+        (source.value === 'hand' && selected.value !== null && replaced.includes(selected.value));
       if (changed) {
         selected.value = null;
         source.value = 'hand';
@@ -871,8 +897,17 @@ export function dispatch(action: Action, opts: { keepWeek?: boolean } = {}): boo
       movingUid.value = null;
       toolArmed.value = null;
       demolishArmed.value = null;
+      strikeArmed.value = null;
+      // Inspect lets go of a card a strike replaced.
+      const seen = inspected.value;
+      if (seen?.kind === 'card' && replaced.includes(seen.i)) inspected.value = null;
     } else {
       resetWeek();
+    }
+    // A new week's hand (D-157): whether struck types bring Your goods in is read from here on.
+    // Not a reroll's, nor the Catalog's mid-week hand.
+    if (result.events.some((e) => e.t === 'handDrawn' && !e.reroll && !e.special)) {
+      struckAtDeal.value = result.state.struck.length;
     }
   });
   save();
@@ -885,6 +920,16 @@ export function dispatch(action: Action, opts: { keepWeek?: boolean } = {}): boo
 /** Redraws the whole hand, both rows (D-132). */
 export function reroll(): boolean {
   return dispatch({ t: 'reroll' }, { keepWeek: true });
+}
+
+/** D-157: strikes hand card i: its type is gone for the run, a card from its row takes its place. */
+export function strikeCard(i: number): boolean {
+  const ok = dispatch({ t: 'strikeCard', i }, { keepWeek: true });
+  if (ok) {
+    tool.value = 'build';
+    strikeArmed.value = null;
+  }
+  return ok;
 }
 
 export function demolishAt(x: number, y: number): boolean {

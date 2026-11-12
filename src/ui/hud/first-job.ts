@@ -12,6 +12,8 @@
 // - Week 4, once the opening's three weeks are played: the client's checklist, and Reroll.
 // - Foundation: budget, overtime, Demolish, and Complete early with its Auto switch. Budget shows
 //   sooner if a find pays some, and overtime if Groundbreaking needs a week of it.
+// - Foundation's second week: Strike (D-157). If Foundation is completed in its first week,
+//   Strike shows from the next milestone without its entrance.
 //
 // No DOM, so it tests in Node. FirstHints.tsx words the opening's hints.
 
@@ -36,6 +38,8 @@ export interface Shown {
   overtime: boolean;
   /** Complete early, its Auto switch, and its hint. */
   early: boolean;
+  /** D-157: Strike on the plank, and its S key. */
+  strike: boolean;
 }
 
 const EVERYTHING: Shown = {
@@ -48,10 +52,14 @@ const EVERYTHING: Shown = {
   budget: true,
   overtime: true,
   early: true,
+  strike: true,
 };
 
 /** The weeks the opening walks through: the checklist and Reroll come in after them. */
 export const OPENING_WEEKS = 3;
+
+/** Strike arrives in Foundation's second week (D-157): a week after Demolish. */
+export const STRIKE_SLOT = 2;
 
 /** What the build screen shows for run `s`: everything, unless it's the first job. */
 export function shownIn(s: RunState, first: boolean): Shown {
@@ -67,6 +75,7 @@ export function shownIn(s: RunState, first: boolean): Shown {
     budget: founded || s.budget > 0 || s.screen === 'shop',
     overtime: founded || s.overtimeWeek > 0,
     early: founded,
+    strike: s.phase > 1 || (s.phase === 1 && s.slot >= STRIKE_SLOT),
   };
 }
 
@@ -85,6 +94,9 @@ export function arrivingIn(s: RunState, first: boolean): ReadonlySet<keyof Shown
   if (s.phase === 1 && s.slot === 1 && s.overtimeWeek === 0) {
     for (const k of ['demolish', 'budget', 'overtime', 'early'] as const) out.add(k);
   }
+  // A Foundation completed in its first week never gets here: Strike then shows from the next
+  // milestone without its entrance (D-157's known gap).
+  if (s.phase === 1 && s.slot === STRIKE_SLOT && s.overtimeWeek === 0) out.add('strike');
   return out;
 }
 

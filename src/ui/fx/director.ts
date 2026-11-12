@@ -23,6 +23,7 @@ import {
   rules,
   SCORE_LABELS,
   type ArrivalId,
+  type Card,
   type ChangeOrderId,
   type ChangeOrderOfferView,
   type ChangeOrderResult,
@@ -1686,6 +1687,34 @@ function growBeats(events: readonly GameEvent[], after: RunState, gen: number): 
     if (gen !== generation || busy.value) return;
     for (const e of grown) transformBeat(e, after);
   }, FEEL.transform.afterArrivalMs);
+}
+
+// ---------------------------------------------------------------------------------------
+// A strike from the hand (D-157). Its beat plays on the hand, outside the chain: a free action
+// never holds the game up (D-154), and the next action finishes it at once.
+
+/** The strike's beat: the slots that hold their struck card under its stamp, and its words. */
+export const strikeView = signal<{
+  id: number;
+  text: string;
+  cards: readonly { i: number; was: Card }[];
+  leaving: boolean;
+} | null>(null);
+/** The slots whose new card is sliding in. */
+export const struckIn = signal<{ id: number; slots: readonly number[] } | null>(null);
+/** What a screen reader hears after a strike (Hand.tsx's status line). */
+export const struckSaid = signal('');
+
+let strikeTimers: ReturnType<typeof setTimeout>[] = [];
+
+/** Ends a strike's beat at once: the new cards in their slots. */
+export function finishStrike(): void {
+  for (const t of strikeTimers) clearTimeout(t);
+  strikeTimers = [];
+  batch(() => {
+    strikeView.value = null;
+    struckIn.value = null;
+  });
 }
 
 onEvents((events, before, after) => {

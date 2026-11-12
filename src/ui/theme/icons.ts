@@ -104,6 +104,17 @@ export const ICONS = {
     kkk.kkk
     kk...kk
   `,
+  /** A card struck through (D-157): Strike on the plank, the shop's +1 strike, How to Play. */
+  strike: `
+    .kkkkkk.
+    .kWWWxx.
+    .kWWxxk.
+    .kWxxWk.
+    .kxxWWk.
+    .xxWWWk.
+    .kWWWWk.
+    .kkkkkk.
+  `,
   /** ★: a set completed, a find. */
   star: `
     ....k....

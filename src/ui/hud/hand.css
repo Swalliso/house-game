@@ -1,7 +1,7 @@
 /* The hand (M5a): paper cards with the piece's picture, the free actions, and the sticky action
    bar with End week as the one primary button. Built on kit.css. D-121: the cards in two rows,
    Rooms and Layout, each under its label. D-132: one Reroll for both rows, on the plank with
-   Demolish. */
+   Demolish. D-157: Strike between them, and strike mode's cards, stamp and new card. */
 
 .hand .panel-body,
 .hand-row {
@@ -94,6 +94,97 @@
 }
 .hand .panel-head:not(:has(.free-action)) .hand-title-short {
   display: none;
+}
+/* D-157: three free actions on the plank: Reroll, Strike, Demolish. Widths measured at 2 CSS px
+   a UI pixel with the plank's title as an empty flex spacer (three gaps of 8 px). */
+/* Pixel font: the title never has room beside the three ("Cards" would need 22.25rem), Strike
+   and Demolish show their icon and count, and Reroll keeps its word from 17.25rem (18.25 with a
+   two-digit count). */
+[data-font='pixel']
+  .hand
+  .panel-head:has(.free-action.strike)
+  :is(.hand-title-long, .hand-title-short),
+[data-font='pixel']
+  .hand
+  .panel-head:has(.free-action.strike)
+  .free-action:is(.strike, .demolish):not(.active)
+  .free-action-word {
+  display: none;
+}
+@container hand-plank (max-width: 17.24rem) {
+  [data-font='pixel'] .hand .panel-head:has(.free-action.strike) .reroll .free-action-word {
+    display: none;
+  }
+}
+@container hand-plank (max-width: 18.24rem) {
+  [data-font='pixel']
+    .hand
+    .panel-head:has(.free-action.strike):has(.count.wide)
+    .reroll
+    .free-action-word {
+    display: none;
+  }
+}
+/* In a mode (striking or demolishing), the other two show their icon and count, and the active
+   one says Stop; in the pixel font it gives up its count below 15.62rem (16.62 with a two-digit
+   count beside it). Scoped to the three-button plank: the first job's two keep D-148's words. */
+.hand
+  .panel-head:has(.free-action.strike):has(.free-action.active)
+  .free-action:not(.active)
+  .free-action-word {
+  display: none;
+}
+@container hand-plank (max-width: 15.61rem) {
+  [data-font='pixel'] .hand .panel-head:has(.free-action.strike) .free-action.active .count {
+    display: none;
+  }
+}
+@container hand-plank (max-width: 16.61rem) {
+  [data-font='pixel']
+    .hand
+    .panel-head:has(.free-action.strike):has(.count.wide)
+    .free-action.active
+    .count {
+    display: none;
+  }
+}
+/* Readable font: Demolish shows its icon and count beside the other two, Reroll keeps its word
+   at any width, Strike from 270px (it needs 246), and the title is "Cards" from 315px (287). */
+[data-font='readable']
+  .hand
+  .panel-head:has(.free-action.strike)
+  .demolish:not(.active)
+  .free-action-word,
+[data-font='readable'] .hand .panel-head:has(.free-action.strike) .hand-title-long {
+  display: none;
+}
+[data-font='readable'] .hand .panel-head:has(.free-action.strike) .hand-title-short {
+  display: inline;
+}
+@container hand-plank (max-width: 314.98px) {
+  [data-font='readable'] .hand .panel-head:has(.free-action.strike) .hand-title-short {
+    display: none;
+  }
+}
+@container hand-plank (max-width: 269.98px) {
+  [data-font='readable']
+    .hand
+    .panel-head:has(.free-action.strike)
+    .strike:not(.active)
+    .free-action-word {
+    display: none;
+  }
+}
+/* A classic scrollbar takes up to ~17px from the plank: in a mode below 14.5rem, the other two
+   give up their counts too, so Stop always fits. */
+@container hand-plank (max-width: 14.5rem) {
+  [data-font='pixel']
+    .hand
+    .panel-head:has(.free-action.strike):has(.free-action.active)
+    .free-action:not(.active)
+    .count {
+    display: none;
+  }
 }
 
 /* --- A card: the Card primitive (kit.css), with the hand's own sizes ----------------------- */
@@ -403,8 +494,9 @@
 }
 
 /* Scoped to the hand: the board's Outline uses .demolish-hint too (the Moving Truck's old spot,
-   another demolish target), and an unscoped rule filled that board-sized SVG with this paper. */
-.hand .demolish-hint {
+   another demolish target), and an unscoped rule filled that board-sized SVG with this paper.
+   Strike mode's hint (D-157) looks the same. */
+.hand :is(.demolish-hint, .strike-hint) {
   display: flex;
   align-items: flex-start;
   gap: var(--space-2);
@@ -416,8 +508,51 @@
   background-clip: padding-box;
   font-weight: 700;
 }
-.hand .demolish-hint .icon {
+.hand :is(.demolish-hint, .strike-hint) .icon {
   margin-top: var(--px);
+}
+
+/* --- Strikes (D-157) ----------------------------------------------------------------------- */
+
+/* Strike mode: the cards are the targets. A card under the pointer, or reached with Tab, wears
+   the danger band; the one clicked once lifts with a band of its own; one that can't go is
+   hatched (kit.css). */
+.hand.striking .hand-card:not(.is-struck, .is-blocked):is(:hover, :focus-visible) {
+  --card-band: var(--danger);
+}
+.hand .hand-card.strike-armed {
+  --card-band: var(--danger);
+  transform: translateY(calc(var(--px) * -3));
+  box-shadow:
+    inset 0 0 0 calc(var(--px) * 2) var(--card-band),
+    var(--shadow-float);
+}
+/* Armed from the keyboard: it keeps kit.css's focus ring, which the rule above would override. */
+.hand .hand-card.strike-armed:focus-visible {
+  box-shadow:
+    inset 0 0 0 calc(var(--px) * 2) var(--card-band),
+    var(--shadow-float),
+    var(--ring-focus);
+}
+.hand .strike-band {
+  position: absolute;
+  inset: auto 0 0;
+  padding: var(--px) var(--space-2);
+  background: var(--danger);
+  color: var(--on-wood);
+  text-align: center;
+  pointer-events: none;
+}
+.hand .strike-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.reduce-motion .hand .hand-card.strike-armed {
+  transform: none;
 }
 
 /* --- The action bar: sticky at the column's bottom ------------------------------------ */

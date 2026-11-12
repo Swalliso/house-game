@@ -65,7 +65,7 @@ describe('what the first job shows', () => {
   const all = on(shownIn(at(1), false));
 
   it('is everything, from week 1, for any other run', () => {
-    expect(all).toHaveLength(9);
+    expect(all).toHaveLength(10);
     expect(on(shownIn(at(3), false))).toEqual(all);
   });
 
@@ -88,10 +88,13 @@ describe('what the first job shows', () => {
     ]);
   });
 
-  it('shows everything from Foundation', () => {
-    expect(on(shownIn(at(5, { phase: 1, slot: 1 }), true))).toEqual(all);
+  it('shows everything from Foundation, Strike from its second week', () => {
+    const noStrike = all.filter((k) => k !== 'strike');
+    expect(on(shownIn(at(5, { phase: 1, slot: 1 }), true))).toEqual(noStrike);
     // And in the first shop, which opens before Foundation's first week.
-    expect(on(shownIn(at(5, { phase: 1, slot: 1, screen: 'shop' }), true))).toEqual(all);
+    expect(on(shownIn(at(5, { phase: 1, slot: 1, screen: 'shop' }), true))).toEqual(noStrike);
+    // D-157: one new thing a week, so Strike comes a week after Demolish.
+    expect(on(shownIn(at(6, { phase: 1, slot: 2 }), true))).toEqual(all);
   });
 
   it('shows budget as soon as a find pays some, and overtime in an overtime week', () => {
@@ -103,7 +106,7 @@ describe('what the first job shows', () => {
 
   it('keeps Demolish and Complete early for Foundation, target met or not', () => {
     const met = at(4, { score: 500 });
-    expect(shownIn(met, true)).toMatchObject({ demolish: false, early: false });
+    expect(shownIn(met, true)).toMatchObject({ demolish: false, early: false, strike: false });
   });
 });
 
@@ -121,7 +124,8 @@ describe('what arrives this week', () => {
       'early',
       'overtime',
     ]);
-    expect(parts(at(6, { phase: 1, slot: 2 }))).toEqual([]);
+    expect(parts(at(6, { phase: 1, slot: 2 }))).toEqual(['strike']);
+    expect(parts(at(7, { phase: 1, slot: 3 }))).toEqual([]);
   });
 
   it('is nothing in any other run, or off the build screen', () => {
