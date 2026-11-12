@@ -61,7 +61,7 @@ function PhaseBlock() {
     <div
       class="tb-phase"
       aria-label="Milestone and week"
-      title={`Milestone ${s.phase + 1} of ${phases.length} · week ${s.week} of the run's ${runWeeks}`}
+      data-tip={`Milestone ${s.phase + 1} of ${phases.length} · week ${s.week} of the run's ${runWeeks}`}
     >
       <div class="tb-phase-line">
         <span class="tb-phase-name">{rules.phaseName(s.phase)}</span>
@@ -79,14 +79,14 @@ function PhaseBlock() {
         ) : s.overtimeWeek > 0 ? (
           <span
             class="overtime-week"
-            title="An extra week to reach the target. The next milestone still gets all its weeks."
+            data-tip="An extra week to reach the target. The next milestone still gets all its weeks."
           >
             Overtime {s.overtimeWeek}
           </span>
         ) : last ? (
           <span
             class="last-week"
-            title={`The last week of ${rules.phaseName(s.phase)}: its target is checked as this week is tallied.`}
+            data-tip={`The last week of ${rules.phaseName(s.phase)}: its target is checked as this week is tallied.`}
           >
             Week {s.slot} of {weeks}
           </span>
@@ -144,21 +144,21 @@ function Progress() {
           </span>
         </span>
         {met && (
-          <span class="tb-met" title="Target met">
+          <span class="tb-met" data-tip="Target met" role="img" aria-label="Target met">
             ✓<span class="tb-met-text"> Target met</span>
           </span>
         )}
         {showForecast && (
           <span
             class={`tb-forecast ${fMet ? 'met' : ''} ${placing ? 'placing' : ''}`}
-            title={guide}
+            data-tip={guide}
           >
             <span class="tb-forecast-word">Forecast </span>~{formatNumber(f)}
           </span>
         )}
       </div>
       <div class="tb-meter-row">
-        <div class="meter tb-meter" title={showForecast ? guide : undefined}>
+        <div class="meter tb-meter" data-tip={showForecast ? guide : undefined}>
           {showForecast && f > score && (
             <div
               class={`tb-forecast-fill ${placing ? 'placing' : ''} ${fMet ? 'met' : ''}`}
@@ -200,7 +200,7 @@ function NextArrival({ s }: { s: RunState }) {
   const verb = next.length > 1 || isPlural(first) ? 'move in' : 'moves in';
   const when = `${rules.phaseName(first.phase)}, week ${arrivalWeek(first, overtimeUsed(s))}`;
   return (
-    <span class="tb-arrival" title={`${names} ${verb} as this milestone is met (${when})`}>
+    <span class="tb-arrival" data-tip={`${names} ${verb} as this milestone is met (${when})`}>
       <Icon name="House" label={`${names} ${verb} next`} />
     </span>
   );
@@ -226,7 +226,7 @@ function Resources() {
       {on.overtime && (
         <div
           class="tb-overtime"
-          title={overtimeTitle}
+          data-tip={overtimeTitle}
           aria-label={`Overtime weeks left: ${left} of ${total}`}
           role="img"
         >
@@ -247,7 +247,7 @@ function AutoComplete() {
     <Switch
       class="tb-switch"
       checked={s.autoComplete}
-      title="Complete each milestone as soon as its target is met, skipping the builds for the weeks left"
+      tip="Complete each milestone as soon as its target is met, skipping the builds for the weeks left"
       onMouseDown={noFocus}
       onChange={(want) => setAutoComplete(want)}
     >
@@ -273,7 +273,7 @@ function CompleteEarly() {
       class={`tb-early ${armed ? 'confirm' : ''}`}
       onMouseDown={noFocus}
       onClick={requestCompleteEarly}
-      title={`Finish ${phase} now and skip ${plural(offer.weeksSaved, 'build')}: the weeks left play out quickly, and you get the early bonus (${bonus}). Press twice.`}
+      tip={`Finish ${phase} now and skip ${plural(offer.weeksSaved, 'build')}: the weeks left play out quickly, and you get the early bonus (${bonus}). Press twice.`}
       aria-label={armed ? 'Press again to complete early' : `Complete early: ${detail}`}
     >
       <span class="tb-early-label">
@@ -310,21 +310,15 @@ export function TopBar() {
           icon="help"
           onClick={() => (howToPlayOpen.value = true)}
           aria-label="How to play"
-          title="How to play"
+          tip="How to play"
         />
-        <Button
-          iconOnly
-          icon="gear"
-          onClick={openSettings}
-          aria-label="Settings"
-          title="Settings"
-        />
+        <Button iconOnly icon="gear" onClick={openSettings} aria-label="Settings" tip="Settings" />
         <Button
           iconOnly
           icon="menu"
           onClick={() => (menuOpen.value = true)}
           aria-label="Menu"
-          title="Menu: copy the run code, or quit to the title"
+          tip="Menu: copy the run code, or quit to the title"
         />
       </nav>
     </header>

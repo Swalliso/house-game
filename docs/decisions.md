@@ -3446,6 +3446,14 @@ D-074 to D-080 came out of playtest 2 (M2, 2026-11-05), D-090 to D-093 out of pl
 **2026-11-06 (Combolands research):** Combolands' most requested feature after launch was a compendium of the run's buildings, heirlooms, and councillors (v1.0.5), and v1.0.7 took a confusing "counts as fish" line off a card. See research.md's 2026-11-06 systems update.
 **2026-11-07 (M4):** the board's terms are in the rules' glossary, written from the content: the front and back yards, fenced yards (with the 10-tile minimum), requirements (each base-pool piece's), Hallway links, timers, Renovate, and the checklist. Inspect puts them on its region names, requirement lines, link mentions, and timers, and a granted tag names where it came from ("Dark · from Eternal night"). First-time hints (D-045) cover the first week, the checklist, Complete early, the shop, a fixture, a change order, and an arrival.
 **2026-11-10 (D-142, Proposed):** the hints add how a week scores (week 2), the checklist's moves to week 3, and each keeps to 25 words. The ones that state a rule or a number are the rules' `hintText`; the glossary keeps the full texts for the tips.
+**2026-11-12 (playtest 7, one kind of tooltip):** an outside tester was put off by the browser's own title tooltips beside the game's notes. The build screen at 1600×900 had 37 of those beside 19 notes. Every tooltip is now the game's paper note (`Tip.tsx`).
+- **A control's tip** (a button, a chip, a card, a board badge, an icon's label) is a compact note, as wide as its words. A term's tip is the titled note, as before.
+- **How it's built:** one listener on the document shows the note. The kit's `Button`, `Chip`, `Card` and `Switch` take a `tip`, and plain elements a `data-tip`, so no component needs a hook, and `Tip` lost its hooks too.
+- **Timing:** a control's note waits for the pointer to rest on it for 400 ms (`FEEL.tip`), as the browser's did, so a sweep across the hand doesn't flash notes. A term's note still shows at once, and Tab focus shows one.
+- **What hides it:** a press, a key, a wheel or a scroll hides the note, and no note shows while a button is held (a drag, a pan). A disabled button still says why.
+- **A tip of several lines** (a hand card's set chip) is a list. Its lines stay apart, and its note may be half as wide again (240 UI px): three sets read 430 px tall at 1280×720 in the pixel font, not 670.
+- **Elsewhere in this log:** where an earlier entry says a control's title says something, that is now its tip.
+- **Guard:** `tips.test.tsx` finds no title attribute outside the ?debug panel, which keeps the browser's.
 
 ### D-078 · Terrain and the house's position should matter more
 **Status:** Open · 2026-11-05, from playtest 2.

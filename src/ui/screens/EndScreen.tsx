@@ -417,7 +417,7 @@ function CopyRunCode() {
       size="sm"
       icon="copy"
       class="run-end-code"
-      title="Copy run code"
+      tip="Copy run code"
       aria-label="Copy run code"
       onClick={whenSettled(() => void copyRunCode())}
     >
@@ -436,7 +436,7 @@ function AgainButton({ s, won }: { s: RunState; won: boolean }) {
     <Button
       class="run-end-again"
       icon="House"
-      title="A new run on this lot, for the same client with the same crew"
+      tip="A new run on this lot, for the same client with the same crew"
       onClick={(e) => {
         if (!settled()) return;
         // The game stays on screen, and the column may have been scrolled to reach this button:
@@ -524,7 +524,7 @@ export function EndPanel({ s }: { s: RunState }) {
         <Button
           class="run-end-share"
           icon="copy"
-          title="One line for the group chat: your verdict, Wow and milestones, and a link to play this lot"
+          tip="One line for the group chat: your verdict, Wow and milestones, and a link to play this lot"
           onClick={whenSettled(() => void copyText(resultLine(s), 'Result copied'))}
         >
           Copy result

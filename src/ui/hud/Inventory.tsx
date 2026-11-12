@@ -16,7 +16,7 @@
 // opens it again. In the shop it's always open.
 //
 // D-157: the types struck this run, once there are some: a Struck row in the open panel and the
-// shop, and folded, a count on the plank, named in its title and the fold button's. A strike
+// shop, and folded, a count on the plank, named in its tip and the fold button's. A strike
 // brings the panel in only with the next week's hand (inventory-rows.ts).
 
 import { signal } from '@preact/signals';
@@ -67,13 +67,13 @@ export function isFolded(shop: boolean): boolean {
 
 /**
  * The folded plank's counts: what's waiting to be used in the reserve and the supplies, and how
- * many types are struck this run (D-157), each named in its title (inventory-rows.ts).
+ * many types are struck this run (D-157), each named in its tip (inventory-rows.ts).
  */
 function FoldCounts() {
   return (
     <span class="inv-fold-counts">
       {foldCounts(run.value).map(([icon, n, title]) => (
-        <span key={icon} class="inv-fold-count" title={title}>
+        <span key={icon} class="inv-fold-count" data-tip={title} role="img" aria-label={title}>
           <Icon name={icon} />
           {n}
         </span>
@@ -101,7 +101,7 @@ const isExtra = (r: ReservePiece) => !!r.crew || r.arrival !== undefined;
 
 /**
  * A reserve card's slot: its name, and an extra slot's tag ("Crew", "Twins") with whose it is in
- * its title. A member's cards pop in as they arrive, after the doorbell (FEEL.arrival).
+ * its tip. A member's cards pop in as they arrive, after the doorbell (FEEL.arrival).
  */
 function ReserveSlot({ r, i, building }: { r: ReservePiece; i: number; building: boolean }) {
   const s = run.value;
@@ -139,7 +139,7 @@ function ReserveSlot({ r, i, building }: { r: ReservePiece; i: number; building:
       onMouseEnter={() => hover('reserve', i)}
       onClick={() => (building ? selectCard(i, 'reserve') : hover('reserve', i))}
       aria-pressed={isSelected('reserve', i)}
-      title={
+      data-tip={
         building
           ? fits
             ? `${def.name}${whose}: place it as this week’s build`
@@ -160,7 +160,7 @@ function SellButton({ price, name, onSell }: { price: number; name: string; onSe
       class="inv-sell"
       onMouseDown={noFocus}
       onClick={onSell}
-      title={`Sell ${name} for ${price} budget`}
+      tip={`Sell ${name} for ${price} budget`}
     >
       Sell {price}
     </Button>
@@ -188,7 +188,7 @@ export function Inventory({ shop = false }: { shop?: boolean }) {
       onMouseDown={noFocus}
       onClick={() => (goodsFolded.value = !folded)}
       aria-expanded={!folded}
-      title={
+      data-tip={
         folded
           ? `Show your goods${struck ? ` (${struck})` : ''}`
           : 'Fold your goods away, so the hand has more room'
@@ -261,7 +261,7 @@ export function Inventory({ shop = false }: { shop?: boolean }) {
                     onMouseEnter={() => hover('supply', i)}
                     onClick={() => (building ? selectCard(i, 'supplies') : hover('supply', i))}
                     aria-pressed={isSelected('supplies', i)}
-                    title={
+                    data-tip={
                       building
                         ? fits
                           ? `${def.name}: ${verb}`
@@ -305,7 +305,7 @@ export function Inventory({ shop = false }: { shop?: boolean }) {
                     onMouseDown={noFocus}
                     onMouseEnter={() => hover('blueprint', i)}
                     onClick={() => hover('blueprint', i)}
-                    title={`${def.name}: always on`}
+                    data-tip={`${def.name}: always on`}
                   >
                     <Icon name={BLUEPRINT_ICONS[b.id]} class="inv-glyph" />
                     <span class="inv-name">{def.name}</span>
@@ -333,7 +333,7 @@ export function Inventory({ shop = false }: { shop?: boolean }) {
                 key={id}
                 class="inv-slot slot-upgrade"
                 onMouseEnter={() => hover('upgrade', i)}
-                title={CONTENT.upgrades[id].name}
+                data-tip={CONTENT.upgrades[id].name}
               >
                 <span class="inv-name">{CONTENT.upgrades[id].name}</span>
               </span>

@@ -498,6 +498,16 @@ export const FEEL = {
   },
 
   /**
+   * The tip bubble (D-077's 2026-11-12 note, hud/Tip.tsx), the game's one kind of tooltip. A
+   * control's tip (a button, a chip, a card, a badge) shows once the pointer has rested on it
+   * for `delayMs`, as the browser's tooltips did, so sweeping across the hand doesn't flash a
+   * note on every card. A term's dotted underline asks for its tip, so a term's shows at once,
+   * as it always has, and so does keyboard focus. Moving from one tip straight onto another
+   * shows the next at once, within `warmMs` of the last one going.
+   */
+  tip: { delayMs: 400, warmMs: 300 },
+
+  /**
    * The end screen's photos (M6, D-136): a polaroid for each milestone, dealt onto the table one
    * after another once the end screen is up, each with a soft flick as it lands, its picture
    * developing from a warm blank. Reduce motion puts them all down at once, developed.

@@ -525,7 +525,7 @@ function Digit({ uid, value, style }: { uid: number; value: number; style: JSX.C
 /**
  * A badge on a piece (label-layout.ts places it): a square in LimeZu's ink, one icon pixel wide,
  * its icon on whole device pixels; just the ring and its fill where the cell has no room for the
- * icon. Its title says what it is.
+ * icon. Its tip says what it is.
  */
 function Badge({
   spot,
@@ -542,7 +542,7 @@ function Badge({
   return (
     <div
       class={`board-badge ${cls}`}
-      title={label}
+      data-tip={label}
       aria-label={label}
       style={{
         left: `${spot.x}px`,
@@ -600,7 +600,7 @@ function LevelStars({
     <div
       ref={ref}
       class="board-badge level-badge"
-      title={label}
+      data-tip={label}
       aria-label={label}
       style={{
         left: `${spot.x}px`,
