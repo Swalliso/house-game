@@ -1852,7 +1852,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - **Stamping only the first and last weeks:** the review's alternative. Lighter middle weeks keep the count going without the noise.
 - **A strip across the bar saying what's at stake:** it takes a line from the cards on the week the hand matters most.
 
-**Checked:** in headless Chrome over CDP against a production build, the Hendersons with the Architect (`oh-1107`), the ?debug panel's jump to Roofing, its shop left, and its four weeks passed, at 1728×963@2 (the user's window), 1440×900@2, 1920×1080@1, 1280×720@1, 1024×700@1 and 900×600@1, in the pixel font and at two sizes in the readable one. A card was placed on the last week at each.
+**Checked:** in headless Chrome over CDP against a production build, the Hendersons with the Architect on `oh-1107` and on the user's playtest-6 lot (`99k6ct`): the ?debug panel's jump to Roofing, its shop left, and its four weeks passed, at 1728×963@2 (the user's window), 1440×900@2, 1920×1080@1, 1280×720@1, 1024×700@1 and 900×600@1, in the pixel font and at two sizes in the readable one. A card was placed on the last week at each. Screenshots: `docs/playtests/week-cue-*.png`.
 - One stamp a week, in its kind and for its time (first 2.1 s, middle 1.25 s); none in the shop.
 - The plaque is 250 px wide at 1728 every week (the prototype's grew to 268), 172 at 1440.
 - End week's tag sits inside the bar at every size, and inside End week with a card held (126 px in 140 at 1440×900@2).
