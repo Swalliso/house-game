@@ -16,6 +16,7 @@ import {
   stream,
   type Action,
   type ClientId,
+  type PieceId,
   type PlaceAction,
   type RunState,
 } from '../src/rules/index.ts';
@@ -26,6 +27,7 @@ import { drivePlans, unreached } from './drive.ts';
 import { fencePlans } from './enclosure.ts';
 import { rankPlays, shortlist, TOP_K } from './policies/greedy.ts';
 import { greedy, makeGreedy, POLICIES, type Policy } from './policies/index.ts';
+import { STRIKE_ORDER } from './policies/shop.ts';
 import { simulateRun } from './simulate.ts';
 
 const newRun = (seed: string, clientId: ClientId = 'hendersons') =>
@@ -383,17 +385,34 @@ describe('the greedy bot', () => {
     expect(last).toBeGreaterThanOrEqual(1);
   }, 20_000);
 
-  it('buys the strike service only with strikes fixed', () => {
-    const strikes = (policy: Policy, seed: string): Action[] =>
-      simulateRun(rules, seed, policy, { probePhase: null, maxWeeks: 13 }).actions.filter(
-        (a) => a.t === 'buy' && a.strike !== undefined,
-      );
-    let fixed = 0;
+  it('strikes from the hand only with strikes fixed, by STRIKE_ORDER (D-157)', () => {
+    const run = (policy: Policy, seed: string) =>
+      simulateRun(rules, seed, policy, { probePhase: null, maxWeeks: 13 }).actions;
+    let struck = 0;
     for (let k = 0; k < 2; k++) {
-      expect(strikes(greedy, `strike-${k}`)).toEqual([]);
-      fixed += strikes(makeGreedy({ strikes: 'fixed' }), `strike-${k}`).length;
+      const seed = `strike-${k}`;
+      const plain = run(greedy, seed);
+      expect(plain.some((a) => a.t === 'strikeCard')).toBe(false);
+      expect(plain.some((a) => a.t === 'buy' && a.strike !== undefined)).toBe(false);
+      const fixed = run(makeGreedy({ strikes: 'fixed' }), seed);
+      // Same name, same streams: it plays like plain greedy until its first strike.
+      const first = fixed.findIndex((a) => a.t === 'strikeCard');
+      if (first >= 0) expect(fixed.slice(0, first)).toEqual(plain.slice(0, first));
+      // Each strike names a hand card whose root type is in STRIKE_ORDER; no typed buys.
+      let s = newRun(seed);
+      for (const a of fixed) {
+        if (a.t === 'strikeCard') {
+          const card = s.hand[a.i]!;
+          expect(card.kind).toBe('piece');
+          const def = CONTENT.pieces[card.id as PieceId];
+          expect(STRIKE_ORDER).toContain(def.countsAs ?? def.id);
+          struck++;
+        }
+        expect(a.t === 'buy' && a.strike !== undefined).toBe(false);
+        s = rules.apply(s, a).state;
+      }
     }
-    expect(fixed).toBeGreaterThanOrEqual(1);
+    expect(struck).toBeGreaterThanOrEqual(1);
   }, 20_000);
 
   it('labels its variants for reports and keeps one name for their streams', () => {

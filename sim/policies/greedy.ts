@@ -15,9 +15,10 @@
 // When even the best placement wouldn't raise this week's total, it rerolls if it can, and
 // passes rather than lose score. A reroll redraws both rows (D-132). It never demolishes. Its
 // options (makeGreedy) set when it completes a milestone early ('never' by default; 'always'
-// as soon as it can; 'last' only in the phase's last week) and whether it buys the strike
-// service. It shops with the shop bot, uses tools and supplies first (shop.ts), places reserve
-// pieces, and scores hand fixtures' installs exactly (there are few).
+// as soon as it can; 'last' only in the phase's last week) and whether it strikes (D-157:
+// 'none' by default; 'fixed' strikes hand cards by STRIKE_ORDER before anything else in the
+// week, and buys +1 strike). It shops with the shop bot, uses tools and supplies first
+// (shop.ts), places reserve pieces, and scores hand fixtures' installs exactly (there are few).
 
 import type {
   Action,
@@ -33,7 +34,7 @@ import type { Policy } from './index.ts';
 import { drivePlans } from '../drive.ts';
 import { fencePlans } from '../enclosure.ts';
 import { pickChangeOrder } from './orders.ts';
-import { shopAct, useTools, type StrikeMode } from './shop.ts';
+import { shopAct, strikeAct, useTools, type StrikeMode } from './shop.ts';
 
 export const TOP_K = 12;
 const PER_CARD = 2;
@@ -51,7 +52,7 @@ export type EarlyMode = 'never' | 'always' | 'last';
 export interface GreedyOptions {
   /** Default 'never'. */
   early?: EarlyMode;
-  /** Default 'none': it never buys the strike service. 'fixed' strikes by STRIKE_ORDER. */
+  /** Default 'none': it never strikes. 'fixed' strikes hand cards by STRIKE_ORDER (D-157). */
   strikes?: StrikeMode;
 }
 
@@ -163,6 +164,9 @@ export function makeGreedy(opts: GreedyOptions = {}): Policy {
       const salt = rng.u32();
       if (state.screen === 'shop') return shopAct(rules, state, rng, { salt, strikes, early });
       if (completesEarly(rules, state, early)) return { t: 'completeEarly' };
+      // D-157: a strike first, so the card that takes the struck one's slot is in the week.
+      const strike = strikes === 'fixed' ? strikeAct(rules, state) : null;
+      if (strike) return strike;
       const free = useTools(rules, state, salt);
       if (free) return free;
       const plays: PlaceAction[] = [];

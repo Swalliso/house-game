@@ -10,7 +10,7 @@
 // smaller difference between two sets of runs is noise until more runs, or paired seeds, say
 // otherwise. Kept to about 100 columns for a terminal.
 
-import type { Content } from '../src/rules/index.ts';
+import { SERVICE_NAMES, type Content, type ServiceId } from '../src/rules/index.ts';
 import { SCORE_LABELS } from '../src/content/labels.ts';
 import { BOT_BLIND } from './policies/shop.ts';
 import type { RunRecord } from './simulate.ts';
@@ -866,8 +866,7 @@ function goodName(content: Content, key: string): string {
     crate: content.crates,
     upgrade: content.upgrades,
   };
-  if (kind === 'service')
-    return { reroll: '+1 reroll', demolition: '+1 demolition', strike: 'Strike a card' }[id] ?? id;
+  if (kind === 'service') return SERVICE_NAMES[id as ServiceId] ?? id;
   return table[kind]?.[id]?.name ?? key;
 }
 
@@ -996,32 +995,39 @@ export function economyReport(content: Content, records: readonly RunRecord[]): 
   return out.join('\n');
 }
 
+/**
+ * D-157's strikes: how many a run used from the hand, bought (+1 strike) and still held at the
+ * end, then each struck type: the runs that struck it, and the week and milestone (p50). A type
+ * struck is gone for the run, so a run strikes it once.
+ */
 function strikesReport(content: Content, records: readonly RunRecord[]): string {
-  const byType = new Map<string, { strikes: number; runs: number; firstShop: number[] }>();
+  const n = Math.max(1, records.length);
+  const used = sumOf(records.map((r) => r.struck.length));
+  const bought = sumOf(records.map((r) => r.economy.bought['service:strike'] ?? 0));
+  const held = sumOf(records.map((r) => r.economy.strikesHeld));
+  const line =
+    `Strikes per run: used ${(used / n).toFixed(2)} · bought ${(bought / n).toFixed(2)}` +
+    ` · held at the end ${(held / n).toFixed(2)}`;
+  const byType = new Map<string, { weeks: number[]; phases: number[] }>();
   for (const r of records) {
-    const seen = new Set<string>();
     for (const s of r.struck) {
-      const t = byType.get(s.type) ?? { strikes: 0, runs: 0, firstShop: [] };
-      t.strikes++;
-      if (!seen.has(s.type)) {
-        seen.add(s.type);
-        t.runs++;
-        t.firstShop.push(s.shop);
-      }
+      const t = byType.get(s.type) ?? { weeks: [], phases: [] };
+      t.weeks.push(s.week);
+      t.phases.push(s.phase + 1);
       byType.set(s.type, t);
     }
   }
-  if (byType.size === 0) return 'Strikes: none bought';
-  const rows: (string | number)[][] = [['Struck type', 'Strikes', 'Runs', 'First at shop (p50)']];
-  for (const [type, t] of [...byType].sort((a, b) => b[1].runs - a[1].runs)) {
+  if (byType.size === 0) return `${line} (none used)`;
+  const rows: (string | number)[][] = [['Struck type', 'Runs', 'Week (p50)', 'Milestone (p50)']];
+  for (const [type, t] of [...byType].sort((a, b) => b[1].weeks.length - a[1].weeks.length)) {
     rows.push([
       typeName(content, type),
-      t.strikes,
-      pct1(t.runs, records.length),
-      rankQuantile(t.firstShop, 50),
+      pct1(t.weeks.length, records.length),
+      rankQuantile(t.weeks, 50),
+      rankQuantile(t.phases, 50),
     ]);
   }
-  return `\n${table(rows)}`;
+  return `${line}\n${table(rows)}`;
 }
 
 function fixturesReport(content: Content, records: readonly RunRecord[]): string {

@@ -8,9 +8,14 @@
 // - the queries agree with apply(): preview() and scoreOnly() with the tally a play makes (or
 //   the house's tally after a free play), previewTool() and canUseTool() with using the tool,
 //   previewDemolish() with demolishing, and cardFits, reserveFits, canReroll,
-//   canCompleteEarly, canRefresh, and the shop's offers with whether apply() accepts them;
+//   canCompleteEarly, canStrikeCard, canRefresh, and the shop's offers with whether apply()
+//   accepts them;
 // - a tool use is a free action (§9): the week and the hand stay (the Catalog redraws), and
 //   next week's first hand is the same as without it;
+// - a strike from the hand (D-157) is a free action too: it uses one strike, every hand card
+//   of the struck type leaves and its slot takes a card of another type from its row, the rest
+//   of the hand stays, and no later hand deals the type; +1 strike adds one, and an old run
+//   code's typed strike (D-084) strikes its type and adds none;
 // - malformed actions throw IllegalAction (never a TypeError) and change nothing, and a
 //   sample of listed legal actions apply;
 // - no query or apply() changes the state it's given;
@@ -24,6 +29,7 @@
 import { describe, expect, it } from 'vitest';
 import type {
   Action,
+  Card,
   ClientId,
   CrewId,
   DebugAction,
@@ -47,6 +53,7 @@ import {
   encodeRunCode,
   IllegalAction,
   placedCells,
+  rowOf,
   rules,
   stream,
   weekTotal,
@@ -265,6 +272,7 @@ class Checker {
       this.fail('the sim applied this action, but the walk could not', (e as Error).message);
       return s;
     }
+    if (a.t === 'strikeCard') this.checkStrike(s, a, out.state, out.events);
     this.invariants(out.state, s, a, out.events);
     if (J(s) !== before) this.fail('a query or apply() changed the state it was given');
     this.record(s, a, out.events);
@@ -493,6 +501,56 @@ class Checker {
     };
     agree('canReroll', rules.canReroll(s).ok, { t: 'reroll' });
     agree('canCompleteEarly', rules.canCompleteEarly(s).ok, { t: 'completeEarly' });
+    // D-157: canStrikeCard agrees with apply for each hand card, and one past the end.
+    for (let i = 0; i <= s.hand.length; i++) {
+      agree('canStrikeCard', rules.canStrikeCard(s, i).ok, { t: 'strikeCard', i });
+    }
+  }
+
+  /**
+   * D-157: a strike is a free action that uses one strike and strikes the card's root type:
+   * every hand card of that type leaves, each slot taking a card of another type from its own
+   * row; the rest of the hand stays, and no later hand deals the type again.
+   */
+  checkStrike(
+    s: RunState,
+    a: Extract<Action, { t: 'strikeCard' }>,
+    out: RunState,
+    events: readonly GameEvent[],
+  ) {
+    this.see('check:strike');
+    const rootOf = (c: Card) =>
+      c.kind === 'piece' ? (CONTENT.pieces[c.id].countsAs ?? c.id) : c.id;
+    const card = s.hand[a.i]!;
+    const root = { kind: card.kind, id: rootOf(card) };
+    const same = (c: Card) => c.kind === root.kind && rootOf(c) === root.id;
+    const clock = (x: RunState) => [x.screen, x.week, x.slot, x.phase, x.overtimeWeek, x.draws];
+    if (J(clock(out)) !== J(clock(s))) this.fail('a strike moved the week or the draws');
+    if (out.strikesLeft !== s.strikesLeft - 1) this.fail('a strike didn’t use one strike');
+    if (J(out.struck.at(-1)) !== J(root))
+      this.fail('a strike struck another type', { struck: out.struck.at(-1), root });
+    const e = events.find((x) => x.t === 'cardStruck');
+    if (e?.t !== 'cardStruck') {
+      this.fail('a strike sent no cardStruck event');
+      return;
+    }
+    const slots = e.slots.map((x) => x.i);
+    const gone = s.hand.flatMap((c, j) => (same(c) ? [j] : []));
+    if (J(slots) !== J(gone))
+      this.fail('a strike took other cards than its type’s', { gone, slots });
+    if (out.hand.length !== s.hand.length) this.fail('a strike changed the hand’s size');
+    out.hand.forEach((c, j) => {
+      if (!slots.includes(j)) {
+        if (J(c) !== J(s.hand[j])) this.fail('a strike changed another hand card', { j });
+      } else if (same(c)) this.fail('a struck slot holds its type', c);
+      else if (rowOf(CONTENT, c) !== rowOf(CONTENT, s.hand[j]!))
+        this.fail('a struck slot took a card from another row', c);
+    });
+    const pass = rules.apply(out, { t: 'pass' });
+    for (const x of pass.events) {
+      if (x.t === 'handDrawn' && x.hand.some(same))
+        this.fail('a struck type was drawn again', root);
+    }
   }
 
   /** M4b: the change-order queries agree with the screen, the state, and apply(). */
@@ -542,11 +600,22 @@ class Checker {
     const refresh = rules.canRefresh(s);
     if (accepts(s, { t: 'refreshShop' }) !== refresh.ok)
       this.fail('canRefresh disagrees with apply');
-    const strikes = rules.strikeOptions(s);
+    // D-157: the strike service is +1 strike, bought like any other service. An old run code's
+    // typed strike (D-084) still applies as it did: the type is struck, and no strike is added.
     for (const o of rules.shopOffers(s)) {
-      const strike = o.offer.kind === 'service' && o.offer.service === 'strike';
-      if (strike && strikes.length === 0) continue;
-      const a: Action = strike ? { t: 'buy', i: o.i, strike: strikes[0]! } : { t: 'buy', i: o.i };
+      if (o.ok && o.offer.kind === 'service' && o.offer.service === 'strike') {
+        this.see('check:strikeBuys');
+        const plain = rules.apply(s, { t: 'buy', i: o.i }).state;
+        if (plain.strikesLeft !== s.strikesLeft + 1 || J(plain.struck) !== J(s.struck))
+          this.fail('+1 strike didn’t add one strike', { o });
+        const type = rules.strikeOptions(s)[0];
+        if (type) {
+          const typed = rules.apply(s, { t: 'buy', i: o.i, strike: type }).state;
+          if (typed.strikesLeft !== s.strikesLeft || J(typed.struck) !== J([...s.struck, type]))
+            this.fail('an old code’s typed strike didn’t replay as D-084 had it', { type });
+        }
+      }
+      const a: Action = { t: 'buy', i: o.i };
       const ok = accepts(s, a);
       if (ok !== o.ok)
         this.fail('shopOffers disagrees with apply', {
@@ -586,6 +655,12 @@ class Checker {
       { t: 'pick', i: 99 },
       { t: 'demolish', x: -1, y: -1 },
       { t: 'demolish', x: 1.5, y: 0 },
+      // D-157.
+      { t: 'strikeCard', i: hand },
+      { t: 'strikeCard', i: -1 },
+      { t: 'strikeCard', i: 0.5 },
+      { t: 'strikeCard', i: '0' },
+      { t: 'strikeCard' },
       { t: 'debug', op: 'giveGood', good: { kind: 'tool', id: 'zzz' } },
       { t: 'debug', op: 'giveGood', good: null },
       { t: 'debug', op: 'giveGood', good: { kind: 'nothing', id: 'bedroom' } },
@@ -616,6 +691,7 @@ class Checker {
             { t: 'completeEarly' },
             { t: 'useTool', i: 0 },
             { t: 'demolish', x: 0, y: 0 },
+            { t: 'strikeCard', i: 0 },
           ]),
     ];
     const maybe: unknown[] = [
@@ -657,6 +733,7 @@ class Checker {
       'demolitionsLeft',
       'rerollsLeft',
       'bonusRerolls',
+      'strikesLeft',
       'overtimeLeft',
       'week',
       'draws',
@@ -878,6 +955,8 @@ const CHECKS: readonly string[] = [
   'check:previewDemolish',
   'check:shopQueries',
   'check:malformed',
+  'check:strike',
+  'check:strikeBuys',
   ...keys(TOOL_USES).map((k) => `check:previewTool:${k}`),
   'check:toolRefused:move',
   'check:changeOrderOffer',

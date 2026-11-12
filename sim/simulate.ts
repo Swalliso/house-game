@@ -4,7 +4,7 @@
 // cumulative Wow after every tallied week, each milestone, lot fill, fence use, the enclosure
 // probe after milestone 3, and the economy; and for §8's M3 and M4 reports, per-piece offers,
 // picks and earnings, the score layers, flat points by source, house siting, early
-// completions, and strikes.
+// completions, and strikes used from the hand (D-157).
 //
 // A bot that loops or breaks must not hang CI or sink a sweep without a trace (§9): each run
 // caps its steps per week and in all, and any throw from the policy or from apply() comes back
@@ -83,8 +83,11 @@ export interface RunRecord {
   siting: Siting;
   /** Each milestone completed early: weeks saved and the bonus it paid. */
   early: { phase: number; weeksSaved: number; score: number; budget: number }[];
-  /** Each strike bought: the card type (a piece's countsAs root, or a fixture) and the shop. */
-  struck: { type: string; shop: number }[];
+  /**
+   * Each strike used from the hand (D-157), in order: the type struck (a piece's countsAs root,
+   * or a fixture), the run's week, and the milestone it was in (0-based phase).
+   */
+  struck: { type: string; week: number; phase: number }[];
   /** Fence-type (wall) cards in each week's first hand, summed per phase (index = phase). */
   wallOffers: number[];
   /** The score when the run ended (early bonuses included). */
@@ -140,9 +143,9 @@ export interface BuildStats {
 }
 
 /**
- * One piece type over a run. "Offered" counts each week's first draw, never rerolls or the
- * Catalog's special hand. A card the draw swapped out (D-121) counts as offered and dead, and
- * the card it brought as offered too.
+ * One piece type over a run. "Offered" counts each week's first draw, never rerolls, the card
+ * a strike brings (D-157), or the Catalog's special hand. A card the draw swapped out (D-121)
+ * counts as offered and dead, and the card it brought as offered too.
  */
 export interface PieceStats {
   offered: number;
@@ -200,6 +203,8 @@ export interface Economy {
   /** Rerolls taken with no phase rerolls left, so a bonus one was spent. */
   bonusRerollsUsed: number;
   bonusRerollsHeld: number;
+  /** D-157: strikes still held when the run ended (bought ones are `bought['service:strike']`). */
+  strikesHeld: number;
   /**
    * Each fixture install: where from, and the change to that week's total. `weeksLeft` counts
    * the run's regular weeks still to tally, this one included.
@@ -394,6 +399,7 @@ export function simulateRun(
     bonusRerollsBought: 0,
     bonusRerollsUsed: 0,
     bonusRerollsHeld: 0,
+    strikesHeld: 0,
     installs: [],
     tools: [],
   };
@@ -720,7 +726,8 @@ export function simulateRun(
         if (e.offer.kind === 'service' && e.offer.service === 'reroll') {
           economy.bonusRerollsBought++;
         }
-        if (e.strike) struck.push({ type: e.strike.id, shop: s.offers?.shop?.number ?? 0 });
+      } else if (e.t === 'cardStruck') {
+        struck.push({ type: e.type.id, week: s.week, phase: s.phase });
       } else if (e.t === 'picked') {
         if (e.option) bump(economy.picked, goodKey(e.option));
       } else if (e.t === 'sold') {
@@ -786,6 +793,7 @@ export function simulateRun(
         budgetLeft: s.budget,
         heldAtEnd: s.supplies.flatMap((x) => (x.kind === 'tool' ? [x.id] : [])),
         bonusRerollsHeld: s.bonusRerolls,
+        strikesHeld: s.strikesLeft,
       },
       pieces,
       layers,

@@ -7,8 +7,8 @@
 // The spot: the card's plays ranked by rankPlays (the greedy bot's estimate and tie-break),
 // with the top NOVICE_EXACT scored exactly; a fixture card goes in its best host. A room card
 // at its limit can renovate (M4a) too, so its Renovations join its options, and a card that
-// can only renovate is a card with a play. It never rerolls, passes while a card has a play,
-// uses tools, demolishes, or completes early, and shops like the random bot.
+// can only renovate is a card with a play. It never rerolls, strikes (D-157), passes while a
+// card has a play, uses tools, demolishes, or completes early, and shops like the random bot.
 
 import type {
   Action,
