@@ -58,7 +58,10 @@ export type SoundId =
   | 'doorbell'
   | 'order-stamp'
   | 'topped-out'
-  | 'drumroll';
+  | 'drumroll'
+  // The week's stamp (new D-###): a page of the schedule turning, and the last week's clock.
+  | 'week-start'
+  | 'last-week';
 
 export interface PlayOptions {
   /** Exact playback rate. Giving one also turns off the random rate and gain spread. */
@@ -312,6 +315,15 @@ const SOUNDS: Record<SoundId, readonly Layer[]> = {
   ],
   // The milestone moment's drumroll: a soft rolled snare under the count.
   drumroll: one([0.22, 0, 320, 0.05, 1.1, 0.15, 4, 1, , , , , 0.035, , , , , 0.7, , 0.9, -1600]),
+  // A week's stamp: a soft papery flick.
+  'week-start': one([0.12, 0, 900, 0.004, 0.02, 0.06, 4, 1, , , , , , , , , , 1, , , -1400]),
+  // The last week's stamp: a clock's tick-tock, twice, fading.
+  'last-week': [
+    { at: 0, params: [0.18, 0, 1400, 0.001, 0, 0.03, 4, 1, , , , , , , , , , 1, , , -2000] },
+    { at: 0.36, params: [0.18, 0, 1000, 0.001, 0, 0.03, 4, 1, , , , , , , , , , 1, , , -2000] },
+    { at: 0.72, params: [0.12, 0, 1400, 0.001, 0, 0.03, 4, 1, , , , , , , , , , 1, , , -2000] },
+    { at: 1.08, params: [0.12, 0, 1000, 0.001, 0, 0.03, 4, 1, , , , , , , , , , 1, , , -2000] },
+  ],
 };
 
 export const SOUND_IDS = Object.keys(SOUNDS) as readonly SoundId[];

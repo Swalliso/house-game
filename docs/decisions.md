@@ -1824,6 +1824,47 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 *Reserved numbers (2026-11-10): D-115 to D-118 are the layout session's drafts, not in this file yet; D-122 (legibility) is logged below. D-132 to D-134 are playtest 5's fixes, each logged by its own pull request: D-132 one reroll for both rows of the draw, D-133 the roof view, D-134 three more tracks. D-135 and D-136 are M6's end screen (D-135 the result line and link preview, D-136 the milestone photos); D-137 and D-138 belong to the release-day sessions. D-139 is the company's record. D-140 to D-146 are the friction batch, from the 2026-11-10 review's seven points: D-140 the Garage and the Driveway, D-141 what a blueprint is worth and its icon, D-142 first contact, D-143 the blueprint shelf, D-144 change orders two at a time, D-145 the lot and the last stretch, and D-146 the batch's one re-fit. D-147 takes the roof out again (the user's call, logged under Accepted). D-148 is the first-timer legibility batch before the showing, from the 2026-11-10 polish review (logged below). D-149 is the first job, from the first showing (2026-11-11, logged below). D-150 is the end screen's lead into the next run, from the evening's what-next survey (`fix/retry-after-loss`, logged below). D-151 is the first job's gentler targets (`phase/first-job-targets`, logged under Accepted). New entries start at D-152.*
 
+### D-154 · The week's cue: a stamp as each week comes up, and a last week that says so
+**Status:** Proposed · 2026-11-11, a phase pull request (`phase/week-cue`), from playtest 6: "starting each Week with something on the screen saying "week 1 of 4" ... as the weeks progress there is an increasing sense of urgency ... Currently it feels like the end of the weeks can sneak up on you." UI only, plus one read-only rules selector: no rule, content or balance change. `contentHash(CONTENT)` is `8c16358c` on develop and on this branch, so saves and run codes carry over (#54). For the user's playtest before it merges. Finishes the playtest-6 prototype (`week-urgency.patch`).
+**Decision:**
+- **The week's stamp** (`src/ui/screens/week-stamp.ts`, drawn by `Overlays.tsx`): as each week of a milestone comes up and the board is quiet, "Week 2 of 4" and the milestone's four weeks as pips, at the board's top center, where the milestone's banner goes (they're never up together). It never takes the pointer, notes and toasts sit just under it as they do under a banner, and it's on screen for a fixed real time at any tally speed (`FEEL.weekStamp`, D-059). Three kinds, so some 28 stamps a run don't wear thin:
+  - **A milestone's first week** stamps in (the banner's scale) with a slip under it: "Roofing: 2,850 Wow to go in 4 weeks". A soft page flick (`week-start`). 2.1 s in all.
+  - **Its middle weeks** drop in smaller, the plate alone, the flick at half its gain. 1.25 s.
+  - **Its last week** is orange, its slip says what's still needed, "Last week of Roofing: 471 Wow to go" ("…: its target is met" once it is), under a clock's tick-tock (`last-week`, the slit drum's thock pitched up). 2.8 s.
+  - **The number is the rules'.** `rules.toGo(state)` is the phase target less the score, 0 once met: the UI doesn't subtract (§12).
+  - **None in an overtime week:** its Overtime! banner already says the week is extra and what's needed.
+  - **None in the guided first job's first week** (D-149): the opening's hint and a bare screen are enough to read. Its week 2 is the first stamp.
+  - **Each week once.** Away to the title and back doesn't stamp it again; a new page, a new run or a lot played again does.
+  - **A tally takes it down at once,** and the next week's comes as that tally ends. A banner holds it back until it goes. An action with nothing to play (a reroll, a purchase, leaving the shop) leaves it up, and leaving the shop stamps the next milestone's first week at once.
+- **End week on the deciding week** (`Hand.tsx`): a milestone's last week, or an overtime week, is the press that checks the target. End week wears an orange tag on its top edge, "Last week" ("Overtime" in overtime), in the regular face as the plaque's line is. It stamps in as the week comes up (once its tally is done) and again as a card is placed, the moment the deciding press is next. Its title says what's at stake: "The last week of Roofing: 471 Wow to go. The target is checked as this week is tallied." Its words drop 2 UI px to sit clear of the tag.
+  - **Inside the bar.** The tag reaches into the bar's own top padding and no further, a hover's lift included, so it never covers the card above (the prototype's poked 2 UI px into it at 1440×900).
+  - **Its label stays.** At the deciding press a card is held, Rotate and Cancel stand beside End week, and it's at its narrowest: 70 UI px at 1440×900 and 87 at 1728×963, where "End week" is all that fits. A longer label ("End the last week") would drop to the short one exactly then. The tag fits beside them at every size checked, down to 900×600.
+- **The plaque** (`TopBar.tsx`): the milestone's weeks as pips along its foot, in its padding, the weeks played in ink, the week on now in gold, and the last week's in orange; overtime adds a pip. On the last regular week "Week 4 of 4" turns orange, as "Overtime 1" is, but in the line's own weight, with its margin drawn as a shadow: the bold face widened the plaque 18 px at 1728 px wide.
+- **The tally director's `busy` is up only while something plays** (`director.ts`). An action with nothing to animate (leaving the shop, a reroll, a purchase) used to set it and clear it in the same call, which flicked every reader: the music's scene (to review and back, inaudibly), and the stamp, which the prototype checked a task later to dodge. The stamp still checks a microtask after what it reads changes, since `dispatch` sets the new week before the director hears of the action (`store.ts`).
+- **The defaults the review offered, taken:** every week stamped, with lighter weeks 2 and 3 (not only the first and last); the first job's stamps wait until week 2; and orange for the last week, the same orange as overtime and a miss, since all three say the target is at stake.
+- **Tests:** `week-stamp.test.ts` plays real runs through the store and the director on the instant tally: each week once and in its kind; a tally takes it down before its first frame and the next week's comes after; a reroll and leaving the shop leave it up and never mark the director busy; none in an overtime week or the first job's first week. Undoing the director's change fails two of them, and checking at once instead of a microtask later fails four. `runloop.test.ts` holds `toGo`.
+
+**Why:** the milestone is decided inside week 4's End week press (`run.ts` afterTally → endOfPhase), so every cue the game had (the target's ding, the milestone's banner) came after the decision. Nothing marked a week's start, and week 4 looked like week 1: the plaque's grey "Week 4 of 4 · 16/28" was all.
+**Considered:**
+- **A moving sun or time-of-day light:** it reads as D-120's sunny side moving, and it darkens the board as the deciding piece goes down.
+- **End week's label on the last week** ("End the last week", "Pass the final week"): see above; the tag and the title carry it.
+- **The whole button orange:** the armed Pass ("Pass? Press again") is that orange, and lime is the one "do it" color.
+- **Stamping only the first and last weeks:** the review's alternative. Lighter middle weeks keep the count going without the noise.
+- **A strip across the bar saying what's at stake:** it takes a line from the cards on the week the hand matters most.
+
+**Checked:** in headless Chrome over CDP against a production build, the Hendersons with the Architect (`oh-1107`), the ?debug panel's jump to Roofing, its shop left, and its four weeks passed, at 1728×963@2 (the user's window), 1440×900@2, 1920×1080@1, 1280×720@1, 1024×700@1 and 900×600@1, in the pixel font and at two sizes in the readable one. A card was placed on the last week at each.
+- One stamp a week, in its kind and for its time (first 2.1 s, middle 1.25 s); none in the shop.
+- The plaque is 250 px wide at 1728 every week (the prototype's grew to 268), 172 at 1440.
+- End week's tag sits inside the bar at every size, and inside End week with a card held (126 px in 140 at 1440×900@2).
+- Its stamp-in replays on placing a card.
+
+**Known gaps:**
+- **The stamp covers the board's Sun marker** (D-120) for its second or three when the sun is north, as the milestone's banner does, and the lot's top rows. It never takes the pointer.
+- **A new page stamps the week on show again:** "once a week" is once a page.
+- **A household member arriving as a week starts** shows their card at the board's right edge with the stamp at its top, and the doorbell with the flick.
+- **The two sounds weren't heard:** the flick and the tick-tock are the prototype's recipes on the kit's book and thock samples, and want the user's ear.
+- **Not played by a person.** Touch, Firefox and Safari weren't run.
+
 ### D-150 · A lost run leads into the next: a "Next time" tip and Try this lot again
 **Status:** Proposed · 2026-11-11, a fix pull request (`fix/retry-after-loss`), from the what-next survey after release #58, at the session that ran it. UI only: no rules, content or balance change. `contentHash(CONTENT)` is `ffabbd52` on develop and on this branch, so a release keeps runs in progress (#54). For the user's playtest before it merges.
 **Decision:**
