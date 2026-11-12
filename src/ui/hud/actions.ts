@@ -1,6 +1,6 @@
 // Small UI actions shared by the HUD's buttons and the keyboard.
 
-import { computed, signal } from '@preact/signals';
+import { batch, computed, signal } from '@preact/signals';
 import {
   rules,
   type ClientId,
@@ -9,9 +9,10 @@ import {
   type RunState,
 } from '../../rules/index.ts';
 import { audio } from '../audio/audio.ts';
-import { busy, orderStamp, skip } from '../fx/director.ts';
+import { busy, finishStrike, orderStamp, skip, strikeView, struckSaid } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
 import { copyFallback, portfolioOpen, settingsOpen } from './modals.ts';
+import { markHintSeen } from './seen-hints.ts';
 import {
   appScreen,
   demolishArmed,
@@ -19,7 +20,10 @@ import {
   heldNeighbor,
   heldPiece,
   inProgress,
+  inspected,
+  installArmed,
   log,
+  movingUid,
   newRun,
   openJobBoard,
   notice,
@@ -29,8 +33,12 @@ import {
   selected,
   selectItem,
   source,
+  strikeArmed,
+  strikeCard,
+  strikeViews,
   tentative,
   tool,
+  toolArmed,
   type Source,
 } from '../store.ts';
 
@@ -57,8 +65,26 @@ export function showToast(text: string): void {
 
 /** The shop is hidden to look at the lot (it's still open). */
 export const shopHidden = signal(false);
-// A new run's first shop opens on screen, not as the last run's hidden handle.
-onRunReset(() => (shopHidden.value = false));
+
+/**
+ * D-157: the hand slot whose card had the keyboard's focus as a strike took it. The new card in
+ * that slot takes the focus as it comes in (Hand.tsx), so Tab and Enter carry on from there.
+ */
+export const strikeFocus = signal<number | null>(null);
+
+/** The hand slot whose card has the focus, or null (Node's tests stub a document without one). */
+function focusedSlot(): number | null {
+  const el = typeof document === 'undefined' ? null : (document.activeElement as Element | null);
+  const at = el?.closest?.('.hand [data-card]')?.getAttribute('data-card');
+  return at == null ? null : Number(at);
+}
+
+// A new run's first shop opens on screen, not as the last run's hidden handle; and no strike's
+// focus carries over.
+onRunReset(() => {
+  shopHidden.value = false;
+  strikeFocus.value = null;
+});
 /** The shop's sheet is on screen: notes then sit inside it, under its header (Overlays.tsx). */
 export const shopShown = computed(
   () =>
@@ -147,40 +173,111 @@ export function selectCard(i: number, from: Source = 'hand'): void {
   const s = run.value;
   const list = from === 'hand' ? s.hand : from === 'reserve' ? s.reserve : s.supplies;
   if (s.screen !== 'build' || i >= list.length) return;
-  if (tool.value === 'demolish') {
-    tool.value = 'build';
-    demolishArmed.value = null;
+  // D-157: in strike mode a hand card is the target (a click, or its number key).
+  if (tool.value === 'strike' && from === 'hand') {
+    if (busy.value) skip();
+    strikeClick(i);
+    return;
+  }
+  if (tool.value !== 'build') {
+    backToBuilding();
     // Back to building: the card being placed stays picked, with its pending placement.
     if (selected.value === i && source.value === from) return;
   }
+  // A card still under its strike's stamp: the new card takes the slot at once.
+  if (from === 'hand' && strikeView.value?.cards.some((c) => c.i === i)) finishStrike();
   if (busy.value) skip();
   selectItem(from, i);
   audio.play('select');
 }
 
-/** Demolish mode (D, or the Demolish button): a click on the lot demolishes instead of building. */
-export function toggleDemolish(): void {
-  const s = run.value;
-  if (tool.value === 'demolish') {
+/** Back to building from a mode (D-157): Esc, the mode's button or key again, a click on the lot. */
+export function backToBuilding(): void {
+  batch(() => {
     tool.value = 'build';
     demolishArmed.value = null;
+    strikeArmed.value = null;
+  });
+}
+
+/**
+ * Into strike or demolish mode. A card only being looked at goes back to the hand; a placement
+ * waiting for End week stays (the lot hides it while the mode is on). One mode replaces the
+ * other: D and S switch directly.
+ */
+function enterTool(t: 'strike' | 'demolish'): void {
+  // A strike's beat ends at once (D-157): in a mode no card is still under its stamp, so S then
+  // a number can't arm a new card the player hasn't seen.
+  finishStrike();
+  batch(() => {
+    if (!tentative.value) selected.value = null;
+    installArmed.value = null;
+    toolArmed.value = null;
+    movingUid.value = null;
+    demolishArmed.value = null;
+    strikeArmed.value = null;
+    // The hand's status line starts empty, so the last strike's words aren't read out again.
+    struckSaid.value = '';
+    tool.value = t;
+  });
+  audio.play('select', { rate: 0.7 });
+}
+
+/** Demolish mode (D, or the Demolish button): a click on the lot demolishes instead of building. */
+export function toggleDemolish(): void {
+  if (tool.value === 'demolish') {
+    backToBuilding();
     return;
   }
+  const s = run.value;
   if (s.screen !== 'build' || s.demolitionsLeft <= 0) {
     audio.play('illegal');
     return;
   }
-  // A card only being looked at goes back to the hand; a placement waiting for End week stays.
-  if (!tentative.value) selected.value = null;
-  demolishArmed.value = null;
-  tool.value = 'demolish';
+  enterTool('demolish');
+}
+
+/** Strike mode (S, or the Strike button; D-157): a hand card clicked twice is struck. */
+export function toggleStrike(): void {
+  if (tool.value === 'strike') {
+    backToBuilding();
+    return;
+  }
+  if (!rules.canStrikeAny(run.value).ok) {
+    audio.play('illegal');
+    return;
+  }
+  enterTool('strike');
+}
+
+/** Strike mode's click (or number key) on hand card i: the first arms it, a second strikes it. */
+export function strikeClick(i: number): void {
+  const view = strikeViews.value[i];
+  if (!view?.ok) {
+    strikeArmed.value = null;
+    audio.play('illegal');
+    return;
+  }
+  if (strikeArmed.value === i) {
+    // Before the strike re-renders the hand: a struck card with the keyboard's focus (this one,
+    // or another of its type) hands it to the new card in its slot.
+    const had = focusedSlot();
+    strikeFocus.value = had !== null && view.cards.includes(had) ? had : null;
+    if (strikeCard(i)) markHintSeen('strike');
+    else {
+      strikeFocus.value = null;
+      audio.play('illegal');
+    }
+    return;
+  }
+  strikeArmed.value = i;
+  inspected.value = { kind: 'card', i };
   audio.play('select', { rate: 0.7 });
 }
 
 export function cancelPlacement(): void {
-  if (tool.value === 'demolish') {
-    tool.value = 'build';
-    demolishArmed.value = null;
+  if (tool.value !== 'build') {
+    backToBuilding();
     return;
   }
   if (tentative.value) tentative.value = null;

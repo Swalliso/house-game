@@ -357,12 +357,14 @@ interface RunState {
   supplies: (FixtureId | ToolId)[]     // bought fixtures and tools (3 slots), used as free actions
   rerollsLeft: number                  // reset to rerollsPerPhase at each phase start
   bonusRerolls: number                 // bought from the shop; spent after rerollsLeft and never expire
+  strikesLeft: number                  // D-157: the strikes rule at the start, +strikesPerMilestone at each milestone the run goes on from, +1 per purchase; kept
+  struck: CardType[]                   // D-076, D-157: never drawn again this run
   demolitionsLeft: number
   overtimeLeft: number
   swapped: { i: number; was: Card }[]  // D-121: the hand's cards that replaced a card with no play, and what each replaced
   blueprints: { id: BlueprintId; boughtWeek: number }[]   // 4 slots; sells for half its list price
   upgrades: UpgradeId[]                // company upgrades, permanent for the run
-  servicesBought: { reroll: number; demolition: number }              // their prices rise per purchase
+  servicesBought: { reroll: number; demolition: number; strike: number }   // their prices rise per purchase
   changeOrders: ActiveChangeOrder[]    // requests and restrictions being worked on
   timedEffects: { source: ChangeOrderId | ToolId; until: { phase: number } | { week: number }; modifiers: Modifier[] }[]
   lastTally: { points: number; mult: number; total: number; specsMet: boolean[]; setInstances: string[] }   // specsMet in checklist order
@@ -392,11 +394,12 @@ type Action =
   | { t: 'pass' }
   | { t: 'useTool'; i: number; target?: { uid: number; x?: number; y?: number; rot?: 0 | 1 | 2 | 3 } }
   | { t: 'reroll' }
+  | { t: 'strikeCard'; i: number }                    // D-157: hand card i's type is struck for the run; each card of it is replaced from its row
   | { t: 'demolish'; x: number; y: number }
   | { t: 'completeEarly' }
   | { t: 'setAutoComplete'; on: boolean }
   | { t: 'answerChangeOrder'; i: number }            // D-144: which of the orders on offer is picked
-  | { t: 'buy'; i: number }                           // any shop slot, including services
+  | { t: 'buy'; i: number; strike?: CardType }        // any shop slot, including services; strike: only an old run code's (D-076)
   | { t: 'pick'; i: number }                          // choose from an opened crate
   | { t: 'sell'; from: 'blueprints' | 'supplies'; i: number }
   | { t: 'refreshShop' }
@@ -407,12 +410,13 @@ type Action =
 
 **The week's card versus free actions (D-050, D-051):**
 - Placing a piece (from the hand or the reserve), installing a fixture **from the hand**, renovating a room (D-102), or passing is the week's turn, and it ends the week. In the rules, a week's play is `Play = { place } | { install } | { renovate } | null`. `resolveWeek` and `preview` take a `Play`, so a fixture or Renovation preview goes through the same path as a piece preview.
-- Installing a fixture **from your supplies**, using a tool, rerolling, and demolishing are free actions during the week. A free install previews as the change to this week's projected total, `resolveWeek(after, null) − resolveWeek(before, null)`.
+- Installing a fixture **from your supplies**, using a tool, rerolling, striking a hand card (D-157), and demolishing are free actions during the week. A free install previews as the change to this week's projected total, `resolveWeek(after, null) − resolveWeek(before, null)`.
 - No action places a second piece in a week, so D-004 still holds: one piece per week at most.
 
 `GameEvent` covers:
 
 - `handDrawn` (the final hand; `reroll` when a reroll drew it, both rows (D-132); `free` and `swapped` when swaps replaced cards with no play, D-121)
+- `cardStruck` (D-157: the card picked, the type, each slot's old and new card, strikes left)
 - `placed`, `installed`, `demolished`, `transformed`, `moved`
 - `toolUsed`, `findClaimed` (a find's reward, for its own little moment)
 - `tally` (week, per-piece lines, set lines, points, mult, each ×Mult source, total, budget, `fastForward`)
@@ -445,6 +449,7 @@ The UI keeps an event queue and plays it through an animation director (place �
 |---|---|---|
 | `build` | `place`, `install` from the hand, `renovate` (D-102), or `pass`: ends the week | → end of week (below) |
 | | `reroll` if `rerollsLeft > 0` | new hand; `draws + 1` |
+| | `strikeCard` if `strikesLeft > 0`, its type comes up in the weekly draw, and its row keeps its floor (D-157) | its type struck for the run; each hand card of it replaced from its row; `draws` unchanged |
 | | `demolish` if `demolitionsLeft > 0` and it wouldn't split the house | piece, boulder, or Old Shed removed, no refund; a find pays its reward |
 | | `install` from supplies, `useTool`, `sell` | free; the week goes on |
 | | `completeEarly` if score ≥ target, weeks remain in the phase, and it isn't an overtime week | → fast-forward (below) |
@@ -483,7 +488,7 @@ The UI keeps an event queue and plays it through an animation director (place �
 
 **Milestone resolves:**
 
-1. Reward: budget, plus the early bonus if any, plus interest if you own the Savings Account upgrade.
+1. Reward: budget, plus the early bonus if any, plus interest if you own the Savings Account upgrade, plus `strikesPerMilestone` strikes unless it's the last milestone (D-157).
 2. Expired timed effects drop.
 3. Active requests are checked, and unviolated restrictions are paid.
 4. Then: after the last milestone → `won`; after milestones 2, 4, and 6 → `changeOrder`; otherwise → `shop`.
@@ -741,6 +746,7 @@ type Modifier =
 type RuleKey = 'rerollsPerPhase' | 'demolitions' | 'overtime' | 'reserveSlots'
              | 'shopPricePct' | 'earlyRewardPct'
              | 'blueprintSlots' | 'supplySlots' | 'roomsRow' | 'layoutRow' | 'specBonus' | 'interestMax'   // shop goods (D-121: the rows replace handSize)
+             | 'strikes'                                    // D-157
 type RunStat = 'milestonesEarly'                    // counts for scaling ×Mult (Ahead of Schedule)
 // Values combine as (base + Σ add) × (100 + Σ pct) / 100, integer, rounded half up.
 
@@ -797,7 +803,7 @@ type PickOption = { kind: 'blueprint' | 'fixture' | 'piece'; id: string }
 
 type ShopOffer =
   | { kind: 'blueprint' | 'piece' | 'fixture' | 'tool' | 'crate' | 'upgrade'; id: string; price: number }
-  | { kind: 'service'; service: 'reroll' | 'demolition'; price: number }
+  | { kind: 'service'; service: 'reroll' | 'demolition' | 'strike'; price: number }
 ```
 
 - **Where things go:** blueprints into their slots; pieces into the reserve (placing one is the week's turn); fixtures and tools into supplies (free to use).
@@ -900,13 +906,14 @@ Shape variants (L-Kitchen, the long Hallway) are separate cards that share a typ
   | `jobs/<i>` | Contract *i*'s seed on the job board. The chosen contract's seed becomes the run seed. The board itself sits outside `apply` and the run code. |
   | `draw/<phase>/<slot>/<n>/<row>` | Each row of a hand (D-121: `rooms`, `layout`). `slot` is the week in the phase, or `ot1`/`ot2` for overtime. `n` counts this week's draws: 0 for the first, then +1 for each reroll and the Catalog tool. |
   | `draw/<phase>/<slot>/<n>/<row>/swap<k>` | The swaps for the row's k-th card, when it has no play (D-121). They don't count as draws. |
+  | `draw/<phase>/<slot>/<n>/<row>/strike<m>/<k>` | A strike's new card for the row's k-th slot (D-157): n is the hand's draw, m the run's struck types with this one. It isn't a draw. |
   | `shop/<phase>/<refresh>` | Shop offers |
   | `co/<phase>` | The two change orders offered, in the order shown (D-144) |
   | `crate/<phase>/<refresh>/<slot>` | The 3 options inside a crate (and the first shop's free Housewarming crate) |
   | `find/<x>,<y>` | A find's random reward |
   | `bot/<phase>/<screen>/<n>` | Sim bots only |
 
-  Keying hands by phase and slot means a reroll, overtime, or early completion never shifts any later hand, the shop, or change orders. Draw weights come only from the crew and client, so they're fixed for the run.
+  Keying hands by phase and slot means a reroll, overtime, or early completion never shifts any later hand, the shop, or change orders. Draw weights come only from the crew and client, less the struck types (D-084, D-157), so only a strike changes them during the run.
 - **Daily Lot:** the seed is `daily-<UTC date>`, and the Daily fixes the client and the crew too. So every player gets the same lot and the same hand for the same week and draw count. UTC keeps friends in different time zones on the same day.
 - **No floating-point drift:** scores are integers, and percentages use integer math (§4). No `Math.pow`, `exp`, or trig in the rules.
 - **Run codes:**
@@ -1168,6 +1175,7 @@ Built alongside M5a, on its own branch (`phase/m4-clients`, pull request #17), a
   - the first fixture
   - the first change order
   - the first arrival (D-103)
+  - the first Strike (D-157), once it's on the plank with a strike to use, after the opening's hints
 
   Each is dismissible and remembered in `localStorage` (UI only, not game state).
   - *2026-11-11 (D-149):* the first three weeks' hints are the opening: three plays in week 1, then the Bathroom touching the Bedroom, then the Closet that makes a Suite, each naming its card where the hand holds it. A browser's first job shows its screen's parts as they first matter (`src/ui/hud/first-job.ts`).
@@ -1275,7 +1283,7 @@ npm run sim -- --ban blueprint:fengShui
 
 ### Added in M3 and M4
 
-- **Policies:** the M3b shop bot (value per budget) and tool rules, and a default change-order policy: accept requests, decline restrictions. Since D-089: `novice` (a random card that fits, at its best spot), greedy's `--early` and `--strikes` variants, and a chaos bot for tests.
+- **Policies:** the M3b shop bot (value per budget) and tool rules, and a default change-order policy: accept requests, decline restrictions. Since D-089: `novice` (a random card that fits, at its best spot), greedy's `--early` and `--strikes` variants (since D-157, `--strikes fixed` strikes hand cards and buys +1 strike), and a chaos bot for tests.
 - **Reports** (all exist: most since D-089, and the per-client, per-crew and house reports since M4a, D-089's M4a note):
   - per-piece pick rate, score share, and dead-card rate
   - per-client and per-crew piece mixes and win rates, and change orders by client (M4)
@@ -1727,16 +1735,17 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
 - **Shop (D-051):** opens after milestones 1–6, from the very first run. Combolands players say its locked early shop made first runs drag.
   - **Shop 1:**
     - 2 blueprints and 2 cards
-    - the reroll and demolition services
+    - the three services
     - a free **Housewarming crate**: pick 1 of 3 Common blueprints. This teaches blueprints with something in hand.
   - **Shops 2–6:**
     - 3 blueprints, 2 cards (special pieces or fixtures), 2 tools, 1 crate, 1 company upgrade
-    - the two services
+    - the three services
   - One random offer (never the upgrade or a service) is **50% off** each visit.
   - **Refresh:** 2 budget, +1 for each further refresh in the same visit, back to 2 next visit. It rerolls everything except the upgrade and the services.
   - **Services:**
     - +1 reroll and +1 demolition, 1 budget each to start. A bought reroll goes into `bonusRerolls`, so the next phase's reset doesn't wipe it.
     - each purchase raises that service's price by 1 for the rest of the run, up to 4
+    - +1 strike: 2 budget, +1 each purchase, up to 5 (D-084, D-157): one more strike to use from the hand, on top of the 1 at the start and 1 at each milestone but the last. It can't be bought once nothing's left to strike.
   - **Selling:** blueprints and supplies, on the build and shop screens, for half the item's list price (rounded down), whatever you paid. Buying on sale and selling back is a wash, never a profit. Reserve pieces can't be sold.
   - **Skip reward:** leaving without buying anything pays +1 budget, so saving up is a choice too.
   - **Blueprint rarity** by shop:

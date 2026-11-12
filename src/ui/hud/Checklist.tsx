@@ -977,7 +977,7 @@ export function Checklist() {
   // After the frame's other panels have rendered: Inspect growing for the same play shrinks
   // the checklist. And again whenever the checklist's box changes size while there's a target.
   useEffect(show, [targetKey]);
-  const busyWithIt = !!view || selected.value !== null || tool.value === 'demolish';
+  const busyWithIt = !!view || selected.value !== null || tool.value !== 'build';
   useEffect(() => {
     if (busyWithIt || before.current === null) return;
     box.current?.scrollTo({ top: before.current, behavior: scrollBehavior() });

@@ -4,6 +4,7 @@
 import type {
   BlueprintDef,
   Card,
+  CardType,
   ChangeOrderDef,
   Content,
   CrateDef,
@@ -72,8 +73,13 @@ export function ordinal(n: number): string {
 /** How a selector reads: `one` "Tree or Quiet neighbor", `some` "Trees or Quiet neighbors", `every` "Trees and Quiet neighbors". */
 export type Phrasing = 'one' | 'some' | 'every';
 
+/** Names with no plural: "No more Soundproofing this run" (D-157). */
+const UNCOUNTABLE: ReadonlySet<string> = new Set(['Soundproofing']);
+
 function plural(name: string): string {
-  if (name.endsWith('s')) return name;
+  if (name.endsWith('s') || UNCOUNTABLE.has(name)) return name;
+  // Porch → Porches (D-157).
+  if (/(ch|sh|x|z)$/.test(name)) return `${name}es`;
   // Library → Libraries, Nursery → Nurseries; Driveway stays Driveways.
   if (/[^aeiou]y$/.test(name)) return `${name.slice(0, -1)}ies`;
   return `${name}s`;
@@ -893,6 +899,7 @@ const RULE_TEXT: Record<RuleKey, (n: number) => string> = {
   specBonus: (n) =>
     `Each spec met adds ${n < 0 ? '−' : '+'}${multNumber(Math.abs(n))} more ${SCORE_LABELS.mult}`,
   interestMax: (n) => `At each milestone, +1 budget per 5 you hold (up to ${signed(n)})`,
+  strikes: (n) => `${signed(n)} ${n === 1 ? 'strike' : 'strikes'}`,
 };
 
 /** A modifier as a sentence. Fixture modifiers target their host, so they read as "it". */
@@ -1082,6 +1089,8 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
   const L = SCORE_LABELS;
   const r = b.rules;
   const svc = b.shop.services;
+  // D-157: the draw's shape variants, which a strike takes with their root type.
+  const variants = variantsText(content);
   const earlyBudget = b.early.budgetPerWeek[0] ?? 0;
   const earlyPct = b.early.scorePct[0] ?? 0;
   const economy = Object.values(content.pieces)
@@ -1173,7 +1182,7 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
     },
     services: {
       title: 'Services',
-      text: `Rerolls and demolitions to keep: ${svc.reroll.base} budget each at first, ${svc.reroll.step} more each time you buy one, for the rest of the run (up to ${svc.reroll.max}). Bought rerolls never run out.`,
+      text: `One more reroll, demolition or strike, to keep: ${svc.reroll.base} budget for a reroll or a demolition at first, ${svc.strike.base} for a strike, ${svc.reroll.step} more each time you buy one, for the rest of the run (up to ${svc.reroll.max}, and ${svc.strike.max} for a strike). Bought rerolls never run out.`,
     },
     tools: {
       title: 'Tools',
@@ -1239,9 +1248,16 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
         'Some pieces change with time, counted in weeks from when they were placed: a Sapling ' +
         'becomes a Tree. The inspect panel says when.',
     },
+    // D-157: strikes are used from the hand; the shop sells more.
     strike: {
-      title: 'Strike a card',
-      text: `Pick a card type: it’s never drawn again this run. ${svc.strike.base} budget, ${svc.strike.step} more each strike (up to ${svc.strike.max}).`,
+      title: 'Strikes',
+      text:
+        `Strike a card in your hand and its type is never drawn again this run` +
+        `${variants ? ` (${variants})` : ''}: a card from its row takes its place, and the ` +
+        `week goes on. ${strikesYouGet(b)} The shop sells more: ${svc.strike.base} budget, ` +
+        `${svc.strike.step} more each time (up to ${svc.strike.max}). At least ` +
+        `${b.shop.strikeMinTypes.rooms} Rooms and ${b.shop.strikeMinTypes.layout} Layout types ` +
+        `always stay.`,
     },
   };
 }
@@ -1281,7 +1297,7 @@ export function lastShopText(content: Content): string | null {
 export const HINT_WORDS = 25;
 
 /** The first-time hints (D-045) that state a rule or a number. */
-export type HintTerm = 'score' | 'checklist' | 'early' | 'shop' | 'fixture' | 'renovate';
+export type HintTerm = 'score' | 'checklist' | 'early' | 'shop' | 'fixture' | 'renovate' | 'strike';
 
 /** Each within HINT_WORDS, with its numbers from the content. */
 export function hintText(content: Content): Record<HintTerm, string> {
@@ -1312,7 +1328,67 @@ export function hintText(content: Content): Record<HintTerm, string> {
       `Once the house has every room of a type its checklist wants, a spare card renovates ` +
       `one instead: +${b.renovate.pointsPerLevel} ${L.points} a level, up to ` +
       `${b.renovate.maxLevel}.`,
+    // D-157: what a strike does, and where more come from (23 words; 24 with none per milestone).
+    strike:
+      `Strike a card: a new one takes its place, its type is gone this run, and the week goes ` +
+      `on. ${b.strikesPerMilestone > 0 ? 'Milestones add strikes.' : 'The shop sells more.'}`,
   };
+}
+
+/** Where the glossary's strikes come from (D-157): "You start with 1 strike and get 1 more at each milestone." */
+function strikesYouGet(b: Content['balance']): string {
+  const start = b.rules.strikes;
+  const more = b.strikesPerMilestone;
+  const first = `You start with ${start} ${start === 1 ? 'strike' : 'strikes'}`;
+  return more > 0 ? `${first} and get ${more} more at each milestone.` : `${first}.`;
+}
+
+/** The draw's shape variants (D-157): "the L-Kitchen goes with the Kitchen, the Long Hallway with the Hallway". */
+function variantsText(content: Content): string {
+  return Object.values(content.pieces)
+    .flatMap((def) =>
+      def.countsAs && def.drawWeight > 0 && !def.member
+        ? [[def.name, content.pieces[def.countsAs].name] as const]
+        : [],
+    )
+    .map(([v, root], k) =>
+      k === 0 ? `the ${v} goes with the ${root}` : `the ${v} with the ${root}`,
+    )
+    .join(', ');
+}
+
+// ---------------------------------------------------------------------------------------
+// Strikes (D-157).
+
+/** A struck type's name, as Your goods lists it: its root piece's or its fixture's. */
+function typeName(content: Content, type: CardType): string {
+  if (type.kind === 'piece') return content.pieces[type.id]?.name ?? type.id;
+  return content.fixtures[type.id]?.name ?? type.id;
+}
+
+/**
+ * What a strike of this type takes from the draws, for the hand's strike mode and the card as
+ * it goes: "No more Garages this run". A piece's shape variants in the draw go with it, and are
+ * named: "No more Kitchens or L-Kitchens this run".
+ */
+export function strikeText(content: Content, type: CardType): string {
+  const names = [typeName(content, type)];
+  if (type.kind === 'piece') {
+    for (const def of Object.values(content.pieces)) {
+      if (def.countsAs === type.id && def.drawWeight > 0 && !def.member) names.push(def.name);
+    }
+  }
+  return `No more ${joinWords(names.map(plural), 'or')} this run`;
+}
+
+/** The run's struck types by name, in the order struck (D-157): Your goods' Struck row. */
+export function struckNames(content: Content, struck: readonly CardType[]): string[] {
+  return struck.map((t) => typeName(content, t));
+}
+
+/** "Struck: Garage, Skylight", or null for none (D-157): titles that list them. */
+export function struckText(content: Content, struck: readonly CardType[]): string | null {
+  return struck.length === 0 ? null : `Struck: ${struckNames(content, struck).join(', ')}`;
 }
 
 // ---------------------------------------------------------------------------------------

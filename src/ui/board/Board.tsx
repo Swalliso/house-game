@@ -33,7 +33,7 @@ import { FEEL } from '../fx/feel.ts';
 import { shakeOffsets } from '../fx/juice.ts';
 import { formatNumber, signed } from '../format.ts';
 import { causeSuffix, hiddenPart, mainCause, partLine } from './causes.ts';
-import { changeOrderShown, shopShown } from '../hud/actions.ts';
+import { backToBuilding, changeOrderShown, shopShown } from '../hud/actions.ts';
 import { Icon } from '../kit/kit.tsx';
 import {
   activePlay,
@@ -351,6 +351,9 @@ export function Board() {
   // Room above the lot for its top row's tree tops, inside the scroll area (geometry.ts).
   const room = canopyRoom(scale, dpr);
   const demolishing = tool.value === 'demolish';
+  // In a mode (demolish or strike, D-157) the placement waiting for End week is hidden: its
+  // ghost, arcs, badges and targets. End week still builds it.
+  const building = tool.value === 'build';
   const { house } = state;
   const occ = occupancy(house);
   // The house as drawn: walls, doorways and windows from the pieces, with the Hallways'
@@ -361,7 +364,7 @@ export function Board() {
   const model = houseModel(house, links, sun);
   // The yard pieces' ground and props, cached per house model.
   const yard = yardModel(house, model);
-  const p = demolishing ? null : preview.value;
+  const p = building ? preview.value : null;
   // The house's layers re-render only when the house or the zoom changes: the highlights and
   // labels follow the tally and the preview by themselves, and never redraw a canvas.
   const floorLayer = useMemo(
@@ -767,6 +770,8 @@ export function Board() {
     if (e.button === 2) {
       if (busy.value) setHold(true);
       else if (demolishing) cancelDemolish();
+      // Strike mode (D-157): never turns the hidden placement.
+      else if (tool.value === 'strike') backToBuilding();
       else if (selected.value !== null) rotate();
       return;
     }
@@ -825,6 +830,11 @@ export function Board() {
       demolishClick(c);
       return;
     }
+    // A click on the lot leaves strike mode and places nothing (D-157).
+    if (tool.value === 'strike') {
+      backToBuilding();
+      return;
+    }
     if (selection.value?.kind === 'tool') {
       toolClick(c, c && c !== 'street' ? uidAt(occ, c.x, c.y) : 0);
       return;
@@ -865,7 +875,7 @@ export function Board() {
   };
 
   const ghostCells = (() => {
-    if (demolishing) return null;
+    if (!building) return null;
     const play = activePlay.value;
     const sel = selection.value;
     if (!play || play.t !== 'place' || sel?.kind !== 'piece') return null;
@@ -877,11 +887,11 @@ export function Board() {
       cells: placedCells(play.shape ?? CONTENT.pieces[sel.id].shape, play.x, play.y, play.rot),
     };
   })();
-  const installing = !demolishing && activePlay.value?.t === 'install';
+  const installing = building && activePlay.value?.t === 'install';
   // D-107: a fixture is selected, so every legal host shows its gain.
-  const choosingHost = !demolishing && selection.value?.kind === 'fixture';
-  const renovating = !demolishing && activePlay.value?.t === 'renovate';
-  const tooling = !demolishing && selection.value?.kind === 'tool';
+  const choosingHost = building && selection.value?.kind === 'fixture';
+  const renovating = building && activePlay.value?.t === 'renovate';
+  const tooling = building && selection.value?.kind === 'tool';
 
   // How far the view reaches past the board: the road and the creeks run on there, the lot's
   // life (D-155) has that much room to come and go in, and the houses on the street stand in
@@ -898,7 +908,7 @@ export function Board() {
   const around = viewReach(space, lot.width, lot.height, scale, dpr, PAD);
   const boardClass = [
     'board',
-    !demolishing && selected.value !== null ? 'placing' : '',
+    building && selected.value !== null ? 'placing' : '',
     demolishing ? 'demolishing' : '',
     // With a hair of slack: at a ratio like 125% × 80% browser zoom (1.0000000149), 1× comes out
     // a hair under 32 px and is still full size.
@@ -989,7 +999,7 @@ export function Board() {
           )}
           {installing && <InstallTarget scale={scale} />}
           {choosingHost && <HostBadges scale={scale} />}
-          {!demolishing && <RenovateHints scale={scale} />}
+          {building && <RenovateHints scale={scale} />}
           {renovating && <RenovateTarget scale={scale} />}
           {tooling && <ToolTarget scale={scale} />}
           {p?.legal && <PreviewArcs preview={p} occ={occ} lot={lot} scale={scale} />}

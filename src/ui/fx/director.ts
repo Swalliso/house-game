@@ -9,7 +9,8 @@
 // at its milestone (its reward counting into the budget), the sheet's arrival, and the answer's
 // stamp; and a household member's arrival (a banner, and their cards popping into the reserve).
 // A transform in a phase's first week comes with leaving the shop, not a tally, and gets its beat
-// there too. Animation speed never affects the game.
+// there too. Animation speed never affects the game. A strike from the hand (D-157) gets a beat
+// of its own on the hand, outside the chain: it never sets busy, and the next action ends it.
 //
 // Speed: the chosen tally speed, plus Balatro-style auto-acceleration during the steps, plus
 // fast-forward while Space or the right mouse button is held. A click skips to the result.
@@ -22,7 +23,9 @@ import {
   rewardText,
   rules,
   SCORE_LABELS,
+  strikeText,
   type ArrivalId,
+  type Card,
   type ChangeOrderId,
   type ChangeOrderOfferView,
   type ChangeOrderResult,
@@ -39,7 +42,7 @@ import {
 import { audio } from '../audio/audio.ts';
 import { arrivalOf, cardsPhrase, isPlural } from '../hud/household.ts';
 import { settings } from '../settings.ts';
-import { onEvents, onRunReset } from '../store.ts';
+import { firstJob, onEvents, onRunReset } from '../store.ts';
 import { formatNumber } from '../format.ts';
 import { chainOrder } from './chain.ts';
 import { FEEL } from './feel.ts';
@@ -1118,10 +1121,15 @@ function milestoneBanner(e: Extract<GameEvent, { t: 'milestone' }>, ended: boole
     ? `${left.budget} budget left: +${formatNumber(left.score)} ${SCORE_LABELS.total}.`
     : '';
   const reward = left ? ` ${leftover}` : e.reward.budget > 0 ? ` +${e.reward.budget} budget.` : '';
+  // D-157: the strikes it gave, once Strike is on the plank (the first job's first milestone
+  // comes before it, first-job.ts).
+  const n = e.reward.strikes ?? 0;
+  const strikes =
+    n > 0 && (!firstJob.value || e.phase >= 1) ? ` +${n} ${n === 1 ? 'strike' : 'strikes'}.` : '';
   let ms: number;
   switch (e.result) {
     case 'onTime':
-      ms = showBanner(`${e.name} complete!`, `${onTo}${reward}`, 'good');
+      ms = showBanner(`${e.name} complete!`, `${onTo}${reward}${strikes}`, 'good');
       break;
     case 'early': {
       const weeks = `${e.weeksSaved} ${e.weeksSaved === 1 ? 'week' : 'weeks'}`;
@@ -1129,14 +1137,14 @@ function milestoneBanner(e: Extract<GameEvent, { t: 'milestone' }>, ended: boole
         `${e.name} complete, ${weeks} early!`,
         left
           ? `+${formatNumber(e.reward.score)} ${SCORE_LABELS.total} early bonus. ${leftover} ${onTo}`
-          : `+${formatNumber(e.reward.score)} ${SCORE_LABELS.total} early bonus, and +${e.reward.budget} budget. ${onTo}`,
+          : `+${formatNumber(e.reward.score)} ${SCORE_LABELS.total} early bonus, and +${e.reward.budget} budget.${strikes} ${onTo}`,
         'good',
         FEEL.bannerMs * FEEL.longBannerScale,
       );
       break;
     }
     case 'overtime':
-      ms = showBanner(`${e.name} complete, in overtime`, `${onTo}${reward}`, 'good');
+      ms = showBanner(`${e.name} complete, in overtime`, `${onTo}${reward}${strikes}`, 'good');
       break;
     case 'failed':
       ms = showBanner(
@@ -1688,7 +1696,95 @@ function growBeats(events: readonly GameEvent[], after: RunState, gen: number): 
   }, FEEL.transform.afterArrivalMs);
 }
 
+// ---------------------------------------------------------------------------------------
+// A strike from the hand (D-157). Its beat plays on the hand, outside the chain: a free action
+// never holds the game up (D-154), and the next action finishes it at once.
+
+/** The strike's beat: the slots that hold their struck card under its stamp, and its words. */
+export const strikeView = signal<{
+  id: number;
+  text: string;
+  cards: readonly { i: number; was: Card }[];
+  leaving: boolean;
+} | null>(null);
+/** The slots whose new card is sliding in. */
+export const struckIn = signal<{ id: number; slots: readonly number[] } | null>(null);
+/** What a screen reader hears after a strike (Hand.tsx's status line). */
+export const struckSaid = signal('');
+
+let strikeTimers: ReturnType<typeof setTimeout>[] = [];
+
+/** Ends a strike's beat at once: the new cards in their slots. */
+export function finishStrike(): void {
+  for (const t of strikeTimers) clearTimeout(t);
+  strikeTimers = [];
+  batch(() => {
+    strikeView.value = null;
+    struckIn.value = null;
+  });
+}
+
+const nameOf = (c: Card) =>
+  c.kind === 'fixture' ? CONTENT.fixtures[c.id].name : CONTENT.pieces[c.id].name;
+
+/**
+ * A strike's beat (FEEL.strike): the struck slots keep their old cards, dimmed, under a red plate
+ * and its slip; red ink spatters as the plate lands; the cards drop and fade; then the new ones
+ * slide in. In real time, and never busy: any action ends it at once (finishStrike).
+ */
+function strikeBeat(e: Extract<GameEvent, { t: 'cardStruck' }>): void {
+  const text = strikeText(CONTENT, e.type);
+  const names = e.slots.map((x) => nameOf(x.card));
+  struckSaid.value =
+    `${text}. New ${names.length === 1 ? 'card' : 'cards'}: ${names.join(', ')}. ` +
+    `${e.strikesLeft} ${e.strikesLeft === 1 ? 'strike' : 'strikes'} left.`;
+  audio.play('strike');
+  if (instantTally.value) return;
+  const f = FEEL.strike;
+  const id = nextId++;
+  const gen = generation;
+  const at = (ms: number, fn: () => void) =>
+    strikeTimers.push(setTimeout(() => gen === generation && fn(), ms));
+  strikeView.value = { id, text, cards: e.slots.map(({ i, was }) => ({ i, was })), leaving: false };
+  // Red ink where the plate lands, as on a change order's stamp.
+  afterPaint(() => {
+    if (strikeView.value?.id !== id) return;
+    for (const el of document.querySelectorAll('.hand .strike-stamp')) {
+      burstAt('ink', el, { colors: ['--danger', '--danger-shade'], scale: f.inkScale });
+    }
+  }, f.stampInMs);
+  at(f.stampInMs + f.holdMs, () => {
+    const v = strikeView.value;
+    if (v?.id !== id) return;
+    strikeView.value = { ...v, leaving: true };
+    audio.play('rotate', { rate: 0.7 });
+  });
+  at(f.stampInMs + f.holdMs + f.outMs, () => {
+    if (strikeView.value?.id !== id) return;
+    batch(() => {
+      strikeView.value = null;
+      struckIn.value = { id, slots: e.slots.map((x) => x.i) };
+    });
+    audio.play('select', { rate: 0.7, delay: (f.inMs * 0.7) / 1000 });
+  });
+  at(f.stampInMs + f.holdMs + f.outMs + f.inMs, () => {
+    if (struckIn.value?.id === id) struckIn.value = null;
+  });
+}
+
 onEvents((events, before, after) => {
+  // D-157: a strike's beat starts now, before this action's render, so its slot never shows the
+  // new card first; any action finishes the last one's at once; and one that strikes nothing
+  // clears the strike's words, so the hand's status line never reads them out again (with a
+  // count of strikes left that may be stale by then).
+  finishStrike();
+  let struck = false;
+  for (const e of events) {
+    if (e.t !== 'cardStruck') continue;
+    struck = true;
+    strikeBeat(e);
+  }
+  if (!struck) struckSaid.value = '';
   // A new action while a tally plays finishes that one at once, then plays its own.
   if (busy.value) skipping = true;
   chain = chain.then(() => play(events, before, after)).catch((e) => console.error(e));
@@ -1704,6 +1800,9 @@ onEvents((events, before, after) => {
 onRunReset(() => {
   generation++;
   skipping = true;
+  // D-157: a strike's beat and its words go with the run.
+  finishStrike();
+  struckSaid.value = '';
   batch(() => {
     popups.value = [];
     checkFlashes.value = [];

@@ -3,7 +3,8 @@
 // under the board only, so the side columns keep their height, and drops the hints marked
 // .hint-extra. M4's keys are here too: the change orders' sheet (1 or 2 picks one, D-144), a
 // pack's tiles (D-106), and a Renovation (D-102). A tool or a fixture from the supplies gets its
-// own keys: it's a free action, so the strip never offers Enter for it.
+// own keys: it's a free action, so the strip never offers Enter for it. Strike mode (D-157) has
+// its own too: a card's click or number key, pressed twice.
 //
 // No hooks, here or in what it renders: hints.test.tsx calls Hints() in place.
 
@@ -97,6 +98,15 @@ export function Hints() {
   } else if (s.screen !== 'build') {
     // The end screen.
     hints = <FitHint />;
+  } else if (tool.value === 'strike') {
+    // A card clicked twice, or its number pressed twice, is struck (D-157).
+    const cards = Math.min(9, s.hand.length);
+    hints = (
+      <>
+        <Hint keys={['Click', cards > 1 ? `1–${cards}` : '1']}>a card twice to strike it</Hint>
+        <Hint keys={['S', 'Esc']}>stop</Hint>
+      </>
+    );
   } else if (tool.value === 'demolish') {
     hints = (
       <>
@@ -173,6 +183,13 @@ export function Hints() {
         {cards > 0 && <Hint keys={[cards > 1 ? `1–${cards}` : '1']}>pick a card</Hint>}
         {/* The first job's first milestone has no Demolish yet (D-149). */}
         {shown.value.demolish && <Hint keys={['D']}>demolish</Hint>}
+        {/* Extra: a hint that isn't wraps the strip (hints.css). The first job brings it in at
+            Foundation's second week (D-157). */}
+        {shown.value.strike && (
+          <Hint keys={['S']} extra>
+            strike
+          </Hint>
+        )}
         <Hint keys={['Scroll']} extra>
           zoom
         </Hint>

@@ -460,7 +460,7 @@
     var(--shadow-float);
 }
 
-/* --- A crate's options and the strike picker: a sheet over the shelves --------------------- */
+/* --- A crate's options: a sheet over the shelves -------------------------------------------- */
 
 /* The scrim's one row is the scrim's own height (a definite row, where an auto one would
    grow with the sheet), so the sheet's max-height holds and its options scroll inside it on a
@@ -516,14 +516,6 @@
   justify-content: flex-end;
   padding: var(--space-2) var(--space-3);
   box-shadow: inset 0 var(--px) 0 var(--paper-line);
-}
-.strike-sheet {
-  width: min(calc(var(--px) * 300), 100%);
-}
-.strike-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1);
 }
 .crate-options {
   display: flex;

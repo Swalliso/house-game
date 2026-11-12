@@ -46,6 +46,7 @@ describe('content', () => {
           { name: 'A', target: 10 },
           { name: 'B', target: 5 },
         ],
+        strikesPerMilestone: 0.5,
       },
     };
     const problems = validateContent(broken).join('\n');
@@ -56,6 +57,7 @@ describe('content', () => {
     expect(problems).toMatch(/piece fence: pack shape ##\/##: Up to 3 tiles/);
     expect(problems).toMatch(/piece driveway: a pack has no shape variants/);
     expect(problems).toMatch(/target 2 doesn't rise/);
+    expect(problems).toMatch(/strikesPerMilestone must be a whole number ≥ 0/);
   });
 
   it('generates card text for every piece', () => {

@@ -19,3 +19,11 @@ style.setProperty('--dur-shop-pop', `${FEEL.shop.popMs}ms`);
 style.setProperty('--dur-shop-turn', `${FEEL.shop.turnMs}ms`);
 style.setProperty('--dur-shop-shimmer', `${FEEL.shop.shimmerMs}ms`);
 style.setProperty('--dur-last-week-tag', `${FEEL.lastWeekTagMs}ms`);
+// D-157: the strike's stamp, the struck card going, and the new one coming in (hand.css).
+style.setProperty('--dur-strike-stamp', `${FEEL.strike.stampInMs}ms`);
+style.setProperty('--dur-strike-out', `${FEEL.strike.outMs}ms`);
+style.setProperty('--dur-strike-in', `${FEEL.strike.inMs}ms`);
+style.setProperty('--strike-thump', String(FEEL.strike.thumpScale));
+style.setProperty('--strike-drop', String(FEEL.strike.dropPx));
+style.setProperty('--strike-tilt', `${FEEL.strike.tiltDeg}deg`);
+style.setProperty('--strike-from', String(FEEL.strike.fromPx));

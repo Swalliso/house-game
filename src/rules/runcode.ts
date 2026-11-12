@@ -189,7 +189,10 @@ function cleanPending(
   return { t: 'renovate', from: v.from, i: v.i, uid: v.uid };
 }
 
-/** A card type (for the strike service), with only its two fields. Ids are checked on replay. */
+/**
+ * A card type (a run code's strike service from before D-157), with only its two fields. Ids
+ * are checked on replay.
+ */
 function cleanCardType(v: unknown): CardType | null {
   if (!isObject(v) || typeof v.id !== 'string') return null;
   if (v.kind === 'piece') return { kind: 'piece', id: v.id as PieceId };
@@ -246,6 +249,9 @@ function cleanAction(v: unknown): Action | null {
       // Both rows (D-132). A code from D-121's builds may name a row: it's dropped, so from
       // that reroll on the code replays differently than it played (replay it on its build).
       return { t: 'reroll' };
+    case 'strikeCard':
+      // D-157: a hand card, struck with its type.
+      return isInt(v.i) ? { t: 'strikeCard', i: v.i } : null;
     case 'completeEarly':
       return { t: 'completeEarly' };
     case 'demolish':

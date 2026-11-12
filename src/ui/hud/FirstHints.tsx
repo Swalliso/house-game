@@ -30,7 +30,14 @@ import { Button, Icon } from '../kit/kit.tsx';
 import { appScreen, cardsRenovate, earlyOffer, run } from '../store.ts';
 import { devicePixelRatio, uiPixel } from '../theme/pixel.ts';
 import { placeFirstHint, type HintPlace, type HintSpot } from './first-hint-place.ts';
-import { guideStep, openingCard, shown, type GuideStep } from './first-job.ts';
+import {
+  guideStep,
+  OPENING_WEEKS,
+  openingCard,
+  shown,
+  type GuideStep,
+  type Shown,
+} from './first-job.ts';
 import { markHintSeen, resetHints, seenHints } from './seen-hints.ts';
 import './first-hints.css';
 
@@ -46,7 +53,8 @@ export type HintId =
   | 'fixture'
   | 'changeOrder'
   | 'arrival'
-  | 'renovate';
+  | 'renovate'
+  | 'strike';
 
 export function dismissHint(id: HintId): void {
   markHintSeen(id);
@@ -116,6 +124,9 @@ export const HINTS: Readonly<Record<HintId, Hint>> = {
       'needs it from now on.',
     spot: 'overScore',
   },
+  // D-157: in the left column, as Early, Fixtures and Renovate are; in the hand it would cost a
+  // card's row at 1280×720 in the pixel font.
+  strike: { title: 'Strike a card', text: T.strike, spot: 'overScore' },
 };
 
 /**
@@ -147,6 +158,19 @@ export function hintFor(id: HintId, s: RunState): Hint {
   return HINTS[id];
 }
 
+/**
+ * Strike's hint (D-157): once Strike is on screen with a strike to use, after the opening's
+ * weeks (a run that isn't the first job shows Strike from week 1; the opening's hints come first).
+ */
+export function strikeHintDue(s: RunState, on: Shown, seen: ReadonlySet<string>): boolean {
+  return (
+    s.screen === 'build' &&
+    on.strike &&
+    s.strikesLeft > 0 &&
+    (s.week > OPENING_WEEKS || seen.has('checklist'))
+  );
+}
+
 /** Which hint (if any) the run calls for now, first unseen in this order. */
 function current(seen: ReadonlySet<string>): HintId | null {
   if (appScreen.value !== 'game' || busy.value || banner.value || arrivalCard.value) return null;
@@ -172,6 +196,8 @@ function current(seen: ReadonlySet<string>): HintId | null {
     ['changeOrder', s.screen === 'changeOrder'],
     ['arrival', building && s.reserve.some((r) => r.arrival !== undefined)],
     ['renovate', building && cardsRenovate.value.some(Boolean)],
+    // D-157: last, so the opening's and the checklist's come first.
+    ['strike', strikeHintDue(s, on, seen)],
   ];
   for (const [id, now] of due) if (now && !seen.has(id)) return id;
   return null;

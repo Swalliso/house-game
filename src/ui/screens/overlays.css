@@ -336,7 +336,7 @@
   position: fixed;
 }
 /* In the shop's sheet, under its header: in the flow, so it covers none of the goods, and
-   under a crate's or the strike's sheet (.shop-scrim) when one opens over the shelves. */
+   under a crate's sheet (.shop-scrim) when one opens over the shelves. */
 .notes.docked {
   position: static;
   z-index: auto;

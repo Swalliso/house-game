@@ -14,18 +14,30 @@
 // and the supplies, so the hand's two rows fit beside it: on a window under 1100 px tall (a
 // 1080p screen's included), or when the player folds it (the caret). A click on the plank
 // opens it again. In the shop it's always open.
+//
+// D-157: the types struck this run, once there are some: a Struck row in the open panel and the
+// shop, and folded, a count on the plank, named in its title and the fold button's. A strike
+// brings the panel in only with the next week's hand (inventory-rows.ts).
 
 import { signal } from '@preact/signals';
-import { CONTENT, rules, type ReservePiece } from '../../rules/index.ts';
+import { CONTENT, rules, struckNames, struckText, type ReservePiece } from '../../rules/index.ts';
 import { justArrived } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
 import { Button, Icon, Panel, Well } from '../kit/kit.tsx';
-import type { IconName } from '../theme/art.ts';
 import { BLUEPRINT_ICONS, supplyIcon } from '../sprites.ts';
-import { inspected, reserveFit, run, selected, sell, suppliesFit, tool } from '../store.ts';
+import {
+  inspected,
+  reserveFit,
+  run,
+  selected,
+  sell,
+  struckAtDeal,
+  suppliesFit,
+  tool,
+} from '../store.ts';
 import { isSelected, selectCard } from './actions.ts';
 import { arrivalOf, arrivalTag, midName } from './household.ts';
-import { inventoryRows, showsInventory } from './inventory-rows.ts';
+import { foldCounts, foldedEmpty, inventoryRows, showsInventory } from './inventory-rows.ts';
 import { Tip } from './Tip.tsx';
 import './inventory.css';
 
@@ -53,23 +65,19 @@ export function isFolded(shop: boolean): boolean {
   return !shop && (goodsFolded.value ?? shortWindow.value);
 }
 
-/** The folded plank's counts: what's waiting to be used, in the reserve and the supplies. */
+/**
+ * The folded plank's counts: what's waiting to be used in the reserve and the supplies, and how
+ * many types are struck this run (D-157), each named in its title (inventory-rows.ts).
+ */
 function FoldCounts() {
-  const s = run.value;
-  const counts: readonly [IconName, number, string][] = [
-    ['House', s.reserve.length, 'in the reserve'],
-    ['tool', s.supplies.length, 'in the supplies'],
-  ];
   return (
     <span class="inv-fold-counts">
-      {counts
-        .filter(([, n]) => n > 0)
-        .map(([icon, n, what]) => (
-          <span key={icon} class="inv-fold-count" title={`${n} ${what}`}>
-            <Icon name={icon} />
-            {n}
-          </span>
-        ))}
+      {foldCounts(run.value).map(([icon, n, title]) => (
+        <span key={icon} class="inv-fold-count" title={title}>
+          <Icon name={icon} />
+          {n}
+        </span>
+      ))}
     </span>
   );
 }
@@ -85,7 +93,7 @@ function Empty({ n }: { n: number }) {
 }
 
 function hover(kind: 'reserve' | 'supply' | 'blueprint' | 'upgrade', i: number): void {
-  if (selected.value === null && tool.value !== 'demolish') inspected.value = { kind, i };
+  if (selected.value === null && tool.value === 'build') inspected.value = { kind, i };
 }
 
 /** A card in an extra slot (M4b): the crew's, or a household member's. */
@@ -167,9 +175,10 @@ export function Inventory({ shop = false }: { shop?: boolean }) {
   const indexed = s.reserve.map((r, i) => ({ r, i }));
   const own = indexed.filter(({ r }) => !isExtra(r));
   const extra = indexed.filter(({ r }) => isExtra(r));
-  const rows = inventoryRows(s, shop);
+  const rows = inventoryRows(s, shop, struckAtDeal.value);
   if (!showsInventory(rows)) return null;
   const folded = isFolded(shop);
+  const struck = struckText(CONTENT, s.struck);
   const title = shop ? (
     'Your goods'
   ) : (
@@ -179,7 +188,11 @@ export function Inventory({ shop = false }: { shop?: boolean }) {
       onMouseDown={noFocus}
       onClick={() => (goodsFolded.value = !folded)}
       aria-expanded={!folded}
-      title={folded ? 'Show your goods' : 'Fold your goods away, so the hand has more room'}
+      title={
+        folded
+          ? `Show your goods${struck ? ` (${struck})` : ''}`
+          : 'Fold your goods away, so the hand has more room'
+      }
     >
       <Icon name={folded ? 'caretRight' : 'caretDown'} />
       <span class="inv-fold-long">Your goods</span>
@@ -187,8 +200,9 @@ export function Inventory({ shop = false }: { shop?: boolean }) {
     </button>
   );
   if (folded) {
-    // On a short window a folded panel with nothing to use goes, as the empty rows do.
-    const empty = s.reserve.length === 0 && s.supplies.length === 0 && !rows.freePlay;
+    // On a short window a folded panel with nothing to use goes, as the empty rows do; never
+    // with something struck, whose count is on its plank (D-157).
+    const empty = foldedEmpty(s, rows);
     return (
       <Panel
         class={`inventory is-folded ${empty ? 'is-empty' : ''}`}
@@ -325,6 +339,15 @@ export function Inventory({ shop = false }: { shop?: boolean }) {
               </span>
             ))}
           </div>
+        </div>
+      )}
+      {/* D-157: the types struck this run, in the order struck. */}
+      {rows.struck && (
+        <div class="inv-row struck">
+          <h3 class="inv-label">
+            <Tip term="strike">Struck</Tip>
+          </h3>
+          <p class="inv-struck">{struckNames(CONTENT, s.struck).join(', ')}</p>
         </div>
       )}
       {rows.freePlay && <FreePlayNote />}

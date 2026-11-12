@@ -1,7 +1,7 @@
 /* The hand (M5a): paper cards with the piece's picture, the free actions, and the sticky action
    bar with End week as the one primary button. Built on kit.css. D-121: the cards in two rows,
    Rooms and Layout, each under its label. D-132: one Reroll for both rows, on the plank with
-   Demolish. */
+   Demolish. D-157: Strike between them, and strike mode's cards, stamp and new card. */
 
 .hand .panel-body,
 .hand-row {
@@ -94,6 +94,97 @@
 }
 .hand .panel-head:not(:has(.free-action)) .hand-title-short {
   display: none;
+}
+/* D-157: three free actions on the plank: Reroll, Strike, Demolish. Widths measured at 2 CSS px
+   a UI pixel with the plank's title as an empty flex spacer (three gaps of 8 px). */
+/* Pixel font: the title never has room beside the three ("Cards" would need 22.25rem), Strike
+   and Demolish show their icon and count, and Reroll keeps its word from 17.25rem (18.25 with a
+   two-digit count). */
+[data-font='pixel']
+  .hand
+  .panel-head:has(.free-action.strike)
+  :is(.hand-title-long, .hand-title-short),
+[data-font='pixel']
+  .hand
+  .panel-head:has(.free-action.strike)
+  .free-action:is(.strike, .demolish):not(.active)
+  .free-action-word {
+  display: none;
+}
+@container hand-plank (max-width: 17.24rem) {
+  [data-font='pixel'] .hand .panel-head:has(.free-action.strike) .reroll .free-action-word {
+    display: none;
+  }
+}
+@container hand-plank (max-width: 18.24rem) {
+  [data-font='pixel']
+    .hand
+    .panel-head:has(.free-action.strike):has(.count.wide)
+    .reroll
+    .free-action-word {
+    display: none;
+  }
+}
+/* In a mode (striking or demolishing), the other two show their icon and count, and the active
+   one says Stop; in the pixel font it gives up its count below 15.62rem (16.62 with a two-digit
+   count beside it). Scoped to the three-button plank: the first job's two keep D-148's words. */
+.hand
+  .panel-head:has(.free-action.strike):has(.free-action.active)
+  .free-action:not(.active)
+  .free-action-word {
+  display: none;
+}
+@container hand-plank (max-width: 15.61rem) {
+  [data-font='pixel'] .hand .panel-head:has(.free-action.strike) .free-action.active .count {
+    display: none;
+  }
+}
+@container hand-plank (max-width: 16.61rem) {
+  [data-font='pixel']
+    .hand
+    .panel-head:has(.free-action.strike):has(.count.wide)
+    .free-action.active
+    .count {
+    display: none;
+  }
+}
+/* Readable font: Demolish shows its icon and count beside the other two, Reroll keeps its word
+   at any width, Strike from 270px (it needs 246), and the title is "Cards" from 315px (287). */
+[data-font='readable']
+  .hand
+  .panel-head:has(.free-action.strike)
+  .demolish:not(.active)
+  .free-action-word,
+[data-font='readable'] .hand .panel-head:has(.free-action.strike) .hand-title-long {
+  display: none;
+}
+[data-font='readable'] .hand .panel-head:has(.free-action.strike) .hand-title-short {
+  display: inline;
+}
+@container hand-plank (max-width: 314.98px) {
+  [data-font='readable'] .hand .panel-head:has(.free-action.strike) .hand-title-short {
+    display: none;
+  }
+}
+@container hand-plank (max-width: 269.98px) {
+  [data-font='readable']
+    .hand
+    .panel-head:has(.free-action.strike)
+    .strike:not(.active)
+    .free-action-word {
+    display: none;
+  }
+}
+/* A classic scrollbar takes up to ~17px from the plank: in a mode below 14.5rem, the other two
+   give up their counts too, so Stop always fits. */
+@container hand-plank (max-width: 14.5rem) {
+  [data-font='pixel']
+    .hand
+    .panel-head:has(.free-action.strike):has(.free-action.active)
+    .free-action:not(.active)
+    .count {
+    display: none;
+  }
 }
 
 /* --- A card: the Card primitive (kit.css), with the hand's own sizes ----------------------- */
@@ -379,7 +470,7 @@
   image-rendering: pixelated;
 }
 
-/* --- Free actions: Reroll and Demolish, on the plank ----------------------------------- */
+/* --- Free actions: Reroll, Strike (D-157) and Demolish, on the plank -------------------- */
 
 .free-action {
   flex: 1 1 auto;
@@ -403,7 +494,8 @@
 }
 
 /* Scoped to the hand: the board's Outline uses .demolish-hint too (the Moving Truck's old spot,
-   another demolish target), and an unscoped rule filled that board-sized SVG with this paper. */
+   another demolish target), and an unscoped rule filled that board-sized SVG with this paper.
+   Strike mode has none (D-157): its targets are the cards, which a hint would move. */
 .hand .demolish-hint {
   display: flex;
   align-items: flex-start;
@@ -418,6 +510,143 @@
 }
 .hand .demolish-hint .icon {
   margin-top: var(--px);
+}
+
+/* --- Strikes (D-157) ----------------------------------------------------------------------- */
+
+/* Strike mode: the cards are the targets. A card under the pointer, or reached with Tab, wears
+   the danger band; the one clicked once lifts with a band of its own; one that can't go is
+   hatched (kit.css). */
+.hand.striking .hand-card:not(.is-struck, .is-blocked):is(:hover, :focus-visible) {
+  --card-band: var(--danger);
+}
+.hand .hand-card.strike-armed {
+  --card-band: var(--danger);
+  transform: translateY(calc(var(--px) * -3));
+  box-shadow:
+    inset 0 0 0 calc(var(--px) * 2) var(--card-band),
+    var(--shadow-float);
+}
+/* Armed from the keyboard: it keeps kit.css's focus ring, which the rule above would override. */
+.hand .hand-card.strike-armed:focus-visible {
+  box-shadow:
+    inset 0 0 0 calc(var(--px) * 2) var(--card-band),
+    var(--shadow-float),
+    var(--ring-focus);
+}
+.hand .strike-band {
+  position: absolute;
+  inset: auto 0 0;
+  padding: var(--px) var(--space-2);
+  background: var(--danger);
+  color: var(--on-wood);
+  text-align: center;
+  pointer-events: none;
+}
+.hand .strike-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The struck card holds its slot under the stamp, dimmed, then drops away. It still takes a
+   click, which ends the beat and picks the new card (Hand.tsx); the stamp lets clicks through.
+   Each element is at rest, untransformed, when its tween ends (D-059), and lengths are whole UI
+   pixels, so the art stays on whole device pixels. */
+.hand .hand-card.is-struck {
+  animation: strike-thump var(--dur-strike-stamp) ease-out;
+}
+.hand .hand-card.is-struck > :not(.strike-stamp) {
+  opacity: 0.45;
+}
+@keyframes strike-thump {
+  60% {
+    transform: scale(var(--strike-thump));
+  }
+}
+.hand .strike-stamp {
+  position: absolute;
+  inset: calc(var(--px) * 14) var(--space-2) auto;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--px);
+  pointer-events: none;
+  animation: strike-stamp-in var(--dur-strike-stamp) cubic-bezier(0.2, 1.3, 0.4, 1) backwards;
+}
+@keyframes strike-stamp-in {
+  from {
+    opacity: 0;
+    transform: scale(1.8);
+  }
+}
+.hand .strike-plate {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--px) var(--space-2);
+  background: var(--danger);
+  color: var(--on-wood);
+  font-size: var(--fs-title);
+  text-transform: uppercase;
+  box-shadow:
+    0 0 0 var(--px) var(--danger-shade),
+    var(--shadow-float);
+}
+.hand .strike-slip {
+  max-width: 100%;
+  padding: var(--px) var(--space-1);
+  background: var(--card);
+  color: var(--ink);
+  text-align: center;
+  box-shadow: 0 0 0 var(--px) var(--ink-soft);
+}
+.hand .hand-card.strike-out {
+  animation: strike-card-out var(--dur-strike-out) ease-in forwards;
+}
+@keyframes strike-card-out {
+  to {
+    opacity: 0;
+    transform: translateY(calc(var(--px) * var(--strike-drop))) rotate(var(--strike-tilt));
+  }
+}
+.hand .hand-card.strike-in {
+  animation: strike-card-in var(--dur-strike-in) cubic-bezier(0.2, 1.3, 0.4, 1) backwards;
+}
+@keyframes strike-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--px) * var(--strike-from) * -1));
+  }
+}
+
+/* Reduce motion: fades only, nothing moves (and no ink: bursts are off, Particles.tsx). */
+.reduce-motion .hand .hand-card.strike-armed {
+  transform: none;
+}
+.reduce-motion .hand .hand-card.is-struck,
+.reduce-motion .hand .strike-stamp {
+  animation: none;
+}
+.reduce-motion .hand .hand-card.strike-out {
+  animation: strike-fade-out var(--dur-strike-out) linear forwards;
+}
+.reduce-motion .hand .hand-card.strike-in {
+  animation: strike-fade-in var(--dur-strike-in) linear backwards;
+}
+@keyframes strike-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes strike-fade-in {
+  from {
+    opacity: 0;
+  }
 }
 
 /* --- The action bar: sticky at the column's bottom ------------------------------------ */

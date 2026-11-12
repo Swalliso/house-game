@@ -356,6 +356,13 @@ export const RECIPES: Partial<Record<SoundId, Recipe>> = {
       { set: 'thock', db: -14 },
     ],
   },
+  // A strike from the hand (D-157): a heavier, lower stamp than a change order's.
+  strike: {
+    layers: [
+      { set: 'book', db: -3, rate: 0.8 },
+      { set: 'thock', db: -10, rate: 0.7 },
+    ],
+  },
   // Topped out: a quick rising cheer and a ring on top.
   'topped-out': {
     duck: true,

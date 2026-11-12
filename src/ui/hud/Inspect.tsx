@@ -6,7 +6,9 @@
 // restriction a placement would break, whose a member's room is, where a granted tag comes from
 // ("Dark · from Eternal night"), and the sets a demolition or a tool would break. The board's
 // terms (regions, requirements, links, timers, Renovate) explain themselves on hover (D-077).
-// From D-156, whose a house on the street is, and its lot to play again.
+// From D-156, whose a house on the street is, and its lot to play again. From D-157, in strike
+// mode, what striking the card pointed at (or armed) would do: its scope, the other cards of its
+// type that go with it, a placement that goes too, or why it can't be struck.
 
 import type { ComponentChildren } from 'preact';
 import {
@@ -27,6 +29,7 @@ import {
   sunSideText,
   terrainAt,
   type BreakdownLine,
+  type Card,
   type ChangeOrderId,
   type ModSource,
   type PieceId,
@@ -59,6 +62,9 @@ import {
   movingUid,
   selection,
   sell,
+  source,
+  strikeArmed,
+  strikeViews,
   tentative,
   tool,
   toolPreview,
@@ -783,6 +789,64 @@ function DemolishInfo() {
   );
 }
 
+const handName = (c: Card) =>
+  c.kind === 'piece' ? CONTENT.pieces[c.id].name : CONTENT.fixtures[c.id].name;
+
+/** Strike mode (D-157): what striking the card pointed at, or the one armed, would do. */
+function StrikeInfo() {
+  const s = run.value;
+  const armed = strikeArmed.value;
+  const at = inspected.value;
+  const i = armed ?? (at?.kind === 'card' ? at.i : null);
+  const v = i === null ? undefined : strikeViews.value[i];
+  const left = `${s.strikesLeft} ${s.strikesLeft === 1 ? 'strike' : 'strikes'} left.`;
+  if (i === null || !v?.type) {
+    return (
+      <>
+        <h2>Strike a card</h2>
+        <p class="muted">
+          Point at a card in your hand. Its type is never drawn again this run, and a card from its
+          row takes its place. {left}
+        </p>
+      </>
+    );
+  }
+  const name = handName(s.hand[i]!);
+  if (!v.ok) {
+    return (
+      <>
+        <h2>Strike the {name}?</h2>
+        <p class="reason">
+          <Icon name="cross" />
+          <span>{v.reason ?? 'That card can’t be struck.'}</span>
+        </p>
+      </>
+    );
+  }
+  const others = v.cards.filter((j) => j !== i).map((j) => handName(s.hand[j]!));
+  const pick = source.value === 'hand' ? selected.value : null;
+  const placement = pick !== null && v.cards.includes(pick) && tentative.value !== null;
+  return (
+    <>
+      <h2>Strike the {name}?</h2>
+      <p>
+        <b>{v.text}.</b>
+      </p>
+      <p class="muted">
+        {others.length === 0
+          ? 'A new card from its row takes its place.'
+          : `The ${others.join(' and the ')} in your hand ${others.length === 1 ? 'goes' : 'go'} too: a new card from its row takes each place.`}
+        {placement && ' Its placement this week goes too.'} It doesn’t end the week. {left}
+      </p>
+      <p class="demolish-confirm">
+        {armed === i
+          ? `Click it again (or press ${i + 1}) to strike it.`
+          : 'Click it twice to strike it.'}
+      </p>
+    </>
+  );
+}
+
 const FEATURE_TEXT: Record<string, string> = {
   tree: 'Quiet and Green, and a view. Each Tree tile counts as its own neighbor. Building here clears it.',
   pond: 'Water, and a view. It counts once as a neighbor, however much of it a piece touches. Nothing can be built on it.',
@@ -801,6 +865,8 @@ const FEATURE_TEXT: Record<string, string> = {
  * placement, install or Renovation, a tool that can be used, or a legal demolition. Else null.
  */
 export function playTotals(): { before: number; after: number } | null {
+  // A strike changes no score this week (D-157).
+  if (tool.value === 'strike') return null;
   if (tool.value === 'demolish') {
     const d = demolishPreview.value;
     return d?.legal ? { before: d.before.total, after: d.after.total } : null;
@@ -896,6 +962,14 @@ function NeighborInfo({ k, held }: { k: string; held: boolean }) {
 }
 
 export function Inspect() {
+  // First, so a placement waiting for End week can't hide it (D-157).
+  if (tool.value === 'strike') {
+    return (
+      <InspectPanel foot={null}>
+        <StrikeInfo />
+      </InspectPanel>
+    );
+  }
   if (tool.value === 'demolish') {
     return (
       <InspectPanel foot={playTotals()}>

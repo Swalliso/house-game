@@ -20,6 +20,7 @@ import {
   requestEndWeek,
   selectCard,
   toggleDemolish,
+  toggleStrike,
 } from './hud/actions.ts';
 import { Checklist } from './hud/Checklist.tsx';
 import { FirstHints } from './hud/FirstHints.tsx';
@@ -135,11 +136,14 @@ function useKeyboard(): void {
         // The hand is 4 cards, or more with a crew or a blueprint (D-121).
         selectCard(Number(e.key) - 1);
       } else if (e.key === 'r' || e.key === 'R') {
-        // In demolish mode a pending placement is hidden, so R leaves it alone.
-        if (selected.value !== null && tool.value !== 'demolish') rotate();
+        // In demolish or strike mode a pending placement is hidden, so R leaves it alone.
+        if (selected.value !== null && tool.value === 'build') rotate();
       } else if (e.key === 'd' || e.key === 'D') {
         // The first job's first milestone has no Demolish yet (D-149), button or key.
         if (run.value.screen === 'build' && shown.value.demolish) toggleDemolish();
+      } else if (e.key === 's' || e.key === 'S') {
+        // The first job brings Strike in at Foundation's second week (D-149, D-157).
+        if (run.value.screen === 'build' && shown.value.strike) toggleStrike();
       } else if (e.key === '+' || e.key === '=') zoomIn();
       else if (e.key === '-' || e.key === '_') zoomOut();
       else if (e.key === 'f' || e.key === 'F') toggleFit();
@@ -177,7 +181,7 @@ function Game() {
   // preview, warnings, Use button, or the held piece's notes are in view (app.css).
   const looking =
     selected.value !== null ||
-    tool.value === 'demolish' ||
+    tool.value !== 'build' ||
     heldPiece.value !== null ||
     heldNeighbor.value !== null;
   const right = over ? (

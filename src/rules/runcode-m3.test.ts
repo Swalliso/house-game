@@ -540,16 +540,21 @@ describe('a stale run code stops at the step that fails', () => {
     expect(() => rules.legalActions(result.state)).not.toThrow();
   });
 
-  it('a strike bought without naming a card stops the replay there', () => {
+  it('a strike bought without naming a card is D-157’s +1 strike: nothing is struck', () => {
     const p = played();
     const k = p.at.strike;
     const actions = p.log.map((a, n) => (n === k ? { t: 'buy', i: (a as { i: number }).i } : a));
-    const decoded = safeDecode(rawWith(actions, { setup: p.setup }));
+    const decoded = safeDecode(rawWith(actions.slice(0, k + 1), { setup: p.setup }));
     if (!decoded.ok) throw new Error(decoded.error);
     const result = rules.replay(decoded.data.setup, decoded.data.actions);
-    expect(result.failedAt).toBe(k);
-    expect(result.error).toBe('Pick a card type to strike.');
-    expect(result.state).toStrictEqual(p.states[k - 1]);
+    expect(result.failedAt).toBeUndefined();
+    const before = p.states[k - 1]!;
+    // The same price as the typed strike, one strike more, and the Fence still in the draws.
+    expect(result.state).toStrictEqual({
+      ...p.states[k]!,
+      struck: before.struck,
+      strikesLeft: before.strikesLeft + 1,
+    });
   });
 
   // §4: apply throws IllegalAction with a reason. A code from another build can name a piece

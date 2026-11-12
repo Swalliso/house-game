@@ -421,6 +421,25 @@ export const FEEL = {
   },
 
   /**
+   * A strike from the hand (D-157), in real time, outside the tally (it never sets busy): the
+   * plate stamps onto the card in `stampInMs` (the card thumps to `thumpScale`; red ink at
+   * `inkScale` of the ink burst's count), holds `holdMs`, the card drops `dropPx` UI px and tilts
+   * `tiltDeg` as it fades over `outMs`, and the new card slides down `fromPx` UI px into its slot
+   * over `inMs`. 860 ms in all; the next action finishes it at once.
+   */
+  strike: {
+    stampInMs: 160,
+    holdMs: 280,
+    outMs: 180,
+    inMs: 240,
+    thumpScale: 0.97,
+    dropPx: 8,
+    tiltDeg: 2,
+    fromPx: 5,
+    inkScale: 0.8,
+  },
+
+  /**
    * A household member arriving (M4b, D-103; D-126): the doorbell rings at the front door, their
    * card slides in (`cardInMs`) and stays up `cardMs` in real time, and their cards pop into the
    * reserve once it has rung, with a shimmer.

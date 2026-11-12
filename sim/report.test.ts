@@ -93,6 +93,7 @@ function run(seed: string, cleared: number, over: Partial<RunRecord> = {}): RunR
       bonusRerollsBought: 0,
       bonusRerollsUsed: 0,
       bonusRerollsHeld: 0,
+      strikesHeld: 0,
       installs: [],
       tools: [],
     },
@@ -272,14 +273,14 @@ describe('the aggregation', () => {
     },
     layers: { comfort: 50, charm: 40, sparkle: 10 },
     sources: { terrain: 10, street: -2, piece: 4, plain: 8, sets: 0 },
-    struck: [{ type: 'bedroom', shop: 2 }],
+    struck: [{ type: 'bedroom', week: 6, phase: 1 }],
   });
   const b = run('b', 3, {
     pieces: { bedroom: piece({ offered: 2, dead: 1, placed: 1, wow: 40, pieceWeeks: 4 }) },
     layers: { comfort: 100, charm: 0, sparkle: 0 },
     sources: { terrain: 0, street: 0, piece: 0, plain: 20, sets: 20 },
     setWow: 60,
-    struck: [{ type: 'kitchen', shop: 1 }],
+    struck: [{ type: 'kitchen', week: 2, phase: 0 }],
   });
 
   it('pools pieces over runs', () => {
@@ -336,7 +337,8 @@ describe('the aggregation', () => {
       economy: {
         ...a.economy,
         offered: { 'tool:movingTruck': 2, 'tool:rushOrder': 1, 'service:reroll': 3 },
-        bought: { 'tool:rushOrder': 1, 'service:reroll': 1 },
+        bought: { 'tool:rushOrder': 1, 'service:reroll': 1, 'service:strike': 1 },
+        strikesHeld: 3,
         inCrates: { 'blueprint:fengShui': 1 },
         picked: { 'blueprint:fengShui': 1 },
         budgetAtLeave: [1, 0],
@@ -358,6 +360,9 @@ describe('the aggregation', () => {
       'bought, never used',
       'Remodel Plans: Entertainer',
       '+1 reroll',
+      // D-157: per run, then each struck type (a run strikes a type once).
+      'Strikes per run: used 1.00 · bought 0.50 · held at the end 1.50',
+      'Struck type',
     ]) {
       expect(text).toContain(part);
     }
@@ -368,6 +373,9 @@ describe('the aggregation', () => {
     expect(() => report(CONTENT, [], 'empty')).not.toThrow();
     expect(report(CONTENT, [b], 'never early')).toContain(
       'Early completion: never taken by greedy',
+    );
+    expect(report(CONTENT, [run('none', 2)], 'no strikes')).toContain(
+      'Strikes per run: used 0.00 · bought 0.00 · held at the end 0.00 (none used)',
     );
   });
 });

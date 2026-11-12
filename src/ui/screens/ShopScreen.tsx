@@ -1,6 +1,6 @@
 // The shop between milestones (D-051; implementation-plan.md §7, M3a): a section per kind of
 // good with rarity borders and labels, the sale, the rising refresh, the services (rerolls,
-// demolitions, and D-076's strike), and Leave, which starts the next milestone. Selling is in
+// demolitions, and D-157's strikes), and Leave, which starts the next milestone. Selling is in
 // the inventory beside it. The UI never prices anything: the rules' shopOffers() does. Each
 // fixture, on sale or in a crate, says what it's worth in your house (D-107): the rules'
 // fixtureValue() does that. So does each blueprint, the free Housewarming pick included (D-141):
@@ -19,7 +19,6 @@ import {
   lastShopText,
   rules,
   type BlueprintId,
-  type CardType,
   type FixtureId,
   type FixtureValue,
   type OfferView,
@@ -69,8 +68,6 @@ import {
 } from './shelves.ts';
 import './shop.css';
 
-/** The strike service's picker is open. */
-const striking = signal<number | null>(null);
 /** Offers just bought, for their pop. */
 const justBought = signal<number | null>(null);
 
@@ -106,23 +103,18 @@ const noFocus = (e: MouseEvent) => e.preventDefault();
 const SERVICE_TEXT: Record<ServiceId, string> = {
   reroll: 'One more reroll, to keep. Bought rerolls never run out.',
   demolition: 'One more demolition: clear a piece, a boulder, or something in the way.',
-  strike: 'Pick a card type: it’s never drawn again this run.',
+  strike: 'One more strike, to keep: a hand card’s type, gone for the run.',
 };
 
 const SERVICE_ICON: Record<ServiceId, IconName> = {
   reroll: 'reroll',
   demolition: 'hammer',
-  strike: 'cross',
+  strike: 'strike',
 };
 
 function buyOffer(o: OfferView): void {
   if (!o.ok) {
     audio.play('illegal');
-    return;
-  }
-  if (o.offer.kind === 'service' && o.offer.service === 'strike') {
-    striking.value = o.i;
-    audio.play('select');
     return;
   }
   if (buy(o.i)) {
@@ -236,6 +228,12 @@ function OfferCard({ o, mixed }: { o: OfferView; mixed: boolean }) {
       lines={good ? goodLines(good) : undefined}
       note={service ? SERVICE_TEXT[service] : undefined}
       alert={alert}
+      // D-157: the strikes held, since the hand's plank isn't on screen in the shop.
+      tooltip={
+        service === 'strike'
+          ? `You hold ${run.value.strikesLeft} ${run.value.strikesLeft === 1 ? 'strike' : 'strikes'}.`
+          : undefined
+      }
       onMouseEnter={() => good && (inspected.value = { kind: 'offer', i: o.i })}
     >
       {o.rarity === 'rare' && <span class="offer-shine" aria-hidden="true" ref={rareRef} />}
@@ -306,70 +304,6 @@ function Section({ title, offers, term, compact = false, full }: Shelf & { full:
         ))}
       </div>
     </section>
-  );
-}
-
-/** D-076: pick a card type to strike from the draws for the rest of the run. */
-function StrikePicker() {
-  const i = striking.value;
-  const s = run.value;
-  if (i === null || s.screen !== 'shop') return null;
-  const options = rules.strikeOptions(s);
-  const offer = rules.shopOffers(s)[i];
-  const close = () => (striking.value = null);
-  const pick = (t: CardType) => {
-    striking.value = null;
-    // The purchase's sound comes with its 'bought' event, as for any good (director.ts).
-    buy(i, t);
-  };
-  const name = (t: CardType) =>
-    t.kind === 'piece' ? CONTENT.pieces[t.id].name : CONTENT.fixtures[t.id].name;
-  const pieces = options.filter((t) => t.kind === 'piece');
-  const fixtures = options.filter((t) => t.kind === 'fixture');
-  const struck = s.struck.map(name);
-  return (
-    <div class="shop-scrim" role="dialog" aria-label="Strike a card type">
-      <Panel
-        class="shop-pick strike-sheet"
-        title={
-          <>
-            Strike a card <Price price={offer?.price ?? 0} />
-          </>
-        }
-      >
-        <div class="pick-scroll">
-          <p class="pick-note">
-            It’s never drawn again this run. Shape variants go with it (Kitchen takes the
-            L-Kitchen).
-          </p>
-          <h3 class="plank-tag">Pieces</h3>
-          <div class="strike-options">
-            {pieces.map((t) => (
-              <Button key={t.id} size="sm" onClick={() => pick(t)}>
-                {name(t)}
-              </Button>
-            ))}
-          </div>
-          {fixtures.length > 0 && (
-            <>
-              <h3 class="plank-tag">Fixtures</h3>
-              <div class="strike-options">
-                {fixtures.map((t) => (
-                  <Button key={t.id} size="sm" onClick={() => pick(t)}>
-                    {name(t)}
-                  </Button>
-                ))}
-              </div>
-            </>
-          )}
-          {struck.length > 0 && <p class="pick-note">Already struck: {struck.join(', ')}.</p>}
-        </div>
-        {/* Out of the scrolling part, so Cancel shows on any window. */}
-        <div class="pick-foot">
-          <Button onClick={close}>Cancel</Button>
-        </div>
-      </Panel>
-    </div>
   );
 }
 
@@ -660,7 +594,6 @@ export function ShopScreen() {
           )}
         </Button>
       </footer>
-      <StrikePicker />
       <CratePickSheet />
     </section>
   );
