@@ -210,6 +210,81 @@
       'alert alert';
   }
 }
+/* D-153: the set chip's count ("Full House 5/9", 42 px more in the pixel font and 26 in the
+   readable one) and its check (18 px) show only where they cost the card no chip row, so no card
+   grows and none goes under the Pass bar; elsewhere the chip says "Full House" as before, and its
+   tip and Inspect say how far the house is. The chips' row is a container, so these read its own
+   width, beside the thumbnail or across the card. Widths measured at 2 CSS px a UI pixel; a
+   smaller one (125%) mostly hides them sooner than it must, and a larger one (2.22 at 90% zoom)
+   can still cost a row (D-153's Known gaps). A card that can renovate keeps its line for
+   Renovate. */
+.hand-card .pcard-chips {
+  container: hand-chips / inline-size;
+}
+.hand-card .pcard-chips:has(.renovate-chip) .set-count,
+.hand-card .pcard-chips:has(.renovate-chip) .set-chip > .icon {
+  display: none;
+}
+/* The pixel font on a narrow card: the chip and a tag's icon need 220 px (1440×900, 1470×840
+   and 1512×860 at 2× and 1280×720 have 197.5 to 208), and the chip alone 184 (a Long
+   Hallway's row at 1512×860 is 181.5). */
+@container hand-chips (max-width: 219.98px) {
+  [data-font='pixel'] .hand-card .pcard-chips:has(.tag-chip) .set-count {
+    display: none;
+  }
+}
+@container hand-chips (max-width: 183.98px) {
+  [data-font='pixel'] .hand-card .set-count {
+    display: none;
+  }
+}
+/* The check, a 160 px chip in the pixel font, needs 196 beside a tag's icon (a Garage's or Home
+   Office's row is 179 to 196 px at 1× windows 1616 to 1688 wide, and 188 to 196 at 2× windows
+   1504 to 1536 wide), and 160 alone (a narrow Long Hallway's row is 124 to 152 at 1× windows 1504
+   to 1640 wide; under 142 even the plain chip spills, as it did before D-153). */
+@container hand-chips (max-width: 195.98px) {
+  [data-font='pixel'] .hand-card .pcard-chips:has(.tag-chip) .set-chip > .icon {
+    display: none;
+  }
+}
+@container hand-chips (max-width: 159.98px) {
+  [data-font='pixel'] .hand-card .set-chip > .icon {
+    display: none;
+  }
+}
+/* A wide card in the pixel font names its kind too: a Hallway's chip and "Hallway" need 298 px
+   (1792×1120 at 2× has 288). */
+@container hand-row (min-width: 308.02px) {
+  @container hand-chips (max-width: 297.98px) {
+    [data-font='pixel'] .hand-card .pcard-chips:not(:has(.tag-chip)) .set-count {
+      display: none;
+    }
+  }
+}
+/* The readable font, whose words keep their size as the UI pixel shrinks: the chip, the kind and
+   a tag share a line from 213 px (from 194.2 at 125%, a Garage's "Loud" being narrower than a
+   Home Office's "Quiet", at 196.9), and with the count they need 241, or 234 with the check
+   (1680×1050 at 2× has 232.8; 1728×963 has 242.9). */
+@container hand-chips (min-width: 194px) and (max-width: 241.98px) {
+  [data-font='readable'] .hand-card .pcard-chips:has(.tag-chip) .set-count,
+  [data-font='readable'] .hand-card .pcard-chips:has(.tag-chip) .set-chip > .icon {
+    display: none;
+  }
+}
+/* A card with no tags (a Hallway or Long Hallway) has its kind beside the chip: with the count
+   they need 179.5 px (its widest digits, "4/9"; the readable font's aren't all one width), and
+   with the check 171.7. A 1× window 1504 to 1744 wide has rows of 154 to 176 (1600×1000 and
+   1680×940 among them), and a 2× window 1504 to 1536 wide and over 1100 tall has 172 to 179. */
+@container hand-chips (max-width: 179.44px) {
+  [data-font='readable'] .hand-card .pcard-chips:not(:has(.tag-chip)) .set-count {
+    display: none;
+  }
+}
+@container hand-chips (max-width: 171.69px) {
+  [data-font='readable'] .hand-card .pcard-chips:not(:has(.tag-chip)) .set-chip > .icon {
+    display: none;
+  }
+}
 
 /* A short window (1280×720) fits more of the hand: the cards drop their pictures for their
    shape's glyph (PieceArt.tsx), and the ghost on the lot shows the rest. The picked card shows

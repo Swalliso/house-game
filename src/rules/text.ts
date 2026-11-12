@@ -22,6 +22,7 @@ import type {
   RuleKey,
   Selector,
   SetId,
+  SetProgress,
   SpecDef,
   SunSide,
   Tag,
@@ -813,6 +814,16 @@ export function setText(content: Content, id: SetId): string {
       : `+${set.points} ${points} and +${multNumber(set.mult)} ${mult}`;
   const repeats = set.maxInstances === 1 ? 'One per house.' : 'A house can have more than one.';
   return `${set.name}: ${countedNames(names)}${how}. ${pays} every week. ${repeats}`;
+}
+
+/**
+ * How far the house is toward a set, for the set chip's tip and Inspect (D-153): "Your house
+ * has 7 of the 9. Still to build: a Garage and a Home Office.", or "Your house has it."
+ */
+export function setProgressText(content: Content, p: SetProgress): string {
+  if (p.held) return 'Your house has it.';
+  const has = `Your house has ${p.have} of the ${p.need}.`;
+  return `${has} Still to build: ${countedNames(p.missing.map((id) => content.pieces[id].name))}.`;
 }
 
 // ---------------------------------------------------------------------------------------

@@ -20,6 +20,7 @@ import {
   handCardLines,
   rules,
   rowOf,
+  setProgressText,
   setsOfPiece,
   setText,
   type Card as CardData,
@@ -87,21 +88,34 @@ export function TagChips({ tags }: { tags: readonly Tag[] }) {
  * it's placed. Static membership only: it never says where. It names the touching set with the
  * shortest name (a Bedroom's Suite, not its Jack-and-Jill), so it shares a line with the card's
  * tags at 1600×900, and how many more touching sets there are; Full House, which needs none to
- * touch, when it's the only one. No icon: Charm's tint says set. Its tip says what each set needs
- * and pays, Full House included.
+ * touch, when it's the only one. No icon but D-153's check: Charm's tint says set. Its tip says
+ * what each set needs and pays, Full House included.
+ *
+ * D-153: named, Full House says how far the house is: "Full House 5/9", the member types built
+ * (the rules count them: setProgress), and a check in place of the count once the house holds
+ * it. A card that would complete it reads 8/9 like any other. Where the count or the check would
+ * cost the card a chip row, hand.css hides it, and the chip reads as before. The tip adds the
+ * count in words.
  */
-function SetChip({ id }: { id: PieceId }) {
+export function SetChip({ id }: { id: PieceId }) {
   const sets = setsOfPiece(CONTENT, id);
   if (sets.length === 0) return null;
-  const touching = sets.filter((s) => CONTENT.sets[s].connected);
+  const s = run.value;
+  const touching = sets.filter((set) => CONTENT.sets[set].connected);
   const pool = touching.length > 0 ? touching : sets;
-  const name = pool
-    .map((s) => CONTENT.sets[s].name)
-    .reduce((a, b) => (b.length < a.length ? b : a));
+  const shown = pool.reduce((a, b) =>
+    CONTENT.sets[b].name.length < CONTENT.sets[a].name.length ? b : a,
+  );
   const more = touching.length > 1 ? ` +${touching.length - 1}` : '';
+  const p = rules.setProgress(s, shown);
+  const tip = sets.map((set) => {
+    const q = rules.setProgress(s, set);
+    return q ? `${setText(CONTENT, set)} ${setProgressText(CONTENT, q)}` : setText(CONTENT, set);
+  });
   return (
-    <Chip tone="charm" class="set-chip" title={sets.map((s) => setText(CONTENT, s)).join('\n')}>
-      {name}
+    <Chip tone="charm" icon={p?.held ? 'check' : undefined} class="set-chip" title={tip.join('\n')}>
+      {CONTENT.sets[shown].name}
+      {p && !p.held && <span class="set-count">{` ${p.have}/${p.need}`}</span>}
       {more}
     </Chip>
   );
