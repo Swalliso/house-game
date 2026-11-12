@@ -128,7 +128,7 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
       { kind: 'drawWeight', target: { piece: ['doghouse', 'fence'] }, pct: 100 },
     ],
     // D-160: the first of their two Doghouses comes with them; the big fenced yard's Fence is
-    // the standing stock's, from Foundation.
+    // the standing stock's, from week 1 too (D-162).
     deliveries: [
       { phase: 0, cards: ['doghouse'], text: 'The Barkers bring one of their two Doghouses.' },
     ],

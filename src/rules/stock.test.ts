@@ -1,7 +1,8 @@
 // D-160: the standing stock and what a client brings. From `fromPhase` on, the first week of
 // each milestone tops the reserve's extra slots up to one of each stock piece, adding only what's
-// missing (a first job's first comes in week `firstJobSlot` of that phase); a client's
-// deliveries land in the first week of their phase, after its arrivals and before the draw.
+// missing (a first job's first comes in week `firstJobSlot` of `firstJobPhase`, D-162); a
+// client's deliveries land in the first week of their phase, after its arrivals and before the
+// draw.
 // Both are reserve cards in extra slots, placed as a week's build; neither is a household
 // member, and a strike never touches them. On TEST_CONTENT, with the stock turned on.
 
@@ -20,7 +21,12 @@ function stocked(over: Partial<Content['balance']> = {}, base: Content = TEST_CO
       ...base.balance,
       phases: [0, 1, 2, 3].map((k) => ({ name: `Phase ${k + 1}`, target: 0 })),
       rules: { ...base.balance.rules, strikes: 1 },
-      standingStock: { fromPhase: 1, pieces: ['hallway', 'fence'], firstJobSlot: 2 },
+      standingStock: {
+        fromPhase: 1,
+        pieces: ['hallway', 'fence'],
+        firstJobPhase: 1,
+        firstJobSlot: 2,
+      },
       ...over,
     },
   };
@@ -194,7 +200,7 @@ describe('the standing stock (D-160)', () => {
 
   it('is off with no pieces: the reserve is as before', () => {
     const off = createRules(
-      stocked({ standingStock: { fromPhase: 1, pieces: [], firstJobSlot: 1 } }),
+      stocked({ standingStock: { fromPhase: 1, pieces: [], firstJobPhase: 1, firstJobSlot: 1 } }),
     );
     const { state, events } = playUntil(off.newRun(setup('off')), at(2), off);
     expect(delivered(events)).toEqual([]);
@@ -216,6 +222,96 @@ describe('the standing stock (D-160)', () => {
     const decoded = decodeRunCode(code);
     if (!decoded.ok) throw new Error(decoded.error);
     const replayed = r.replay(decoded.data.setup, decoded.data.actions);
+    expect(replayed.failedAt).toBeUndefined();
+    expect(replayed.state).toEqual(rest.state);
+  });
+});
+
+describe('the standing stock from week 1 (D-162)', () => {
+  // The game's shape: any run from the first week, a first job from week 2 of phase 1.
+  const W1 = createRules(
+    stocked({
+      standingStock: {
+        fromPhase: 0,
+        pieces: ['hallway', 'fence'],
+        firstJobPhase: 1,
+        firstJobSlot: 2,
+      },
+    }),
+  );
+
+  it('is in the reserve as a run starts, and tops up at each milestone after', () => {
+    const start = W1.newRun(setup('week1'));
+    expect(start).toMatchObject({ phase: 0, slot: 1, week: 1 });
+    expect(start.reserve).toEqual(STOCK);
+    expect(reserveUsed(start)).toBe(0);
+    // Placed as week 1's build, the Hallway comes back at the next milestone, and only it.
+    const placed = W1.apply(start, placeReserve(W1, start, 0));
+    expect(placed.events[0]).toMatchObject({ t: 'placed', defId: 'hallway' });
+    expect(placed.state).toMatchObject({ phase: 0, slot: 2 });
+    const { state, events } = playUntil(placed.state, at(1), W1);
+    expect(delivered(events)).toEqual([
+      { t: 'delivered', from: 'stock', phase: 1, cards: ['hallway'] },
+    ]);
+    expect(state.reserve).toEqual([
+      { id: 'fence', stock: true },
+      { id: 'hallway', stock: true },
+    ]);
+  });
+
+  it('comes after the crew’s and the client’s cards, counting a Fence already there', () => {
+    const rr = createRules(
+      withClient(
+        { deliveries: [{ phase: 0, cards: ['homeOffice'], text: 'They bring it.' }] },
+        W1.content,
+      ),
+    );
+    expect(rr.newRun(setup('order')).reserve).toEqual([
+      { id: 'homeOffice', client: true },
+      ...STOCK,
+    ]);
+    // The Landscaper's starting Fence counts, so the stock brings only the Hallway.
+    expect(rr.newRun({ ...setup('order'), crewId: 'landscaper' }).reserve).toEqual([
+      { id: 'sapling', crew: true },
+      { id: 'fence', crew: true },
+      { id: 'homeOffice', client: true },
+      { id: 'hallway', stock: true },
+    ]);
+  });
+
+  it('waits in a first job for its own week, then tops up as in any run', () => {
+    const first = { ...setup('first'), mode: 'firstJob' as const };
+    const start = W1.newRun(first);
+    expect(start.reserve).toEqual([]);
+    const week1 = playUntil(start, at(1), W1);
+    expect(delivered(week1.events)).toEqual([]);
+    expect(week1.state.reserve).toEqual([]);
+    const { state, events } = W1.apply(week1.state, { t: 'pass' });
+    expect(state).toMatchObject({ phase: 1, slot: 2 });
+    expect(delivered(events)).toEqual([
+      { t: 'delivered', from: 'stock', phase: 1, cards: ['hallway', 'fence'] },
+    ]);
+    const used = W1.apply(state, placeReserve(W1, state, 1)).state;
+    const next = playUntil(used, at(2), W1);
+    expect(delivered(next.events)).toEqual([
+      { t: 'delivered', from: 'stock', phase: 2, cards: ['fence'] },
+    ]);
+  });
+
+  it('replays exactly from a run code with a week-1 stock card played', () => {
+    const start = W1.newRun(setup('replay1'));
+    const place = placeReserve(W1, start, 1);
+    const after = W1.apply(start, place).state;
+    const rest = playUntil(after, at(2), W1);
+    const code = encodeRunCode({
+      build: 'test',
+      contentHash: 'test',
+      setup: setup('replay1'),
+      actions: [place, ...rest.actions],
+    });
+    const decoded = decodeRunCode(code);
+    if (!decoded.ok) throw new Error(decoded.error);
+    const replayed = W1.replay(decoded.data.setup, decoded.data.actions);
     expect(replayed.failedAt).toBeUndefined();
     expect(replayed.state).toEqual(rest.state);
   });

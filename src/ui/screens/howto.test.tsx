@@ -4,9 +4,10 @@
 
 import type { ComponentChildren, VNode } from 'preact';
 import { afterEach, describe, expect, it } from 'vitest';
-import { CONTENT } from '../../rules/index.ts';
+import { CONTENT, rules } from '../../rules/index.ts';
 import { HINTS } from '../hud/FirstHints.tsx';
 import { seenHints } from '../hud/seen-hints.ts';
+import { run } from '../store.ts';
 import {
   HowToPlayText,
   openSections,
@@ -125,6 +126,21 @@ describe('How to play', () => {
       `A room can be in one set of each kind: one ${bathroom} can serve a ${jackAndJill.name} ` +
         `and a ${suite.name}, but two ${suite.name}s need a ${bathroom} each.`,
     );
+  });
+
+  it('says the stock is there from the start, and from Foundation in a first job (D-162)', () => {
+    open('week');
+    const said = () => text(HowToPlayText());
+    expect(said()).toContain('Always in stock: a Hallway and a Fence wait in your reserve');
+    const before = run.value;
+    try {
+      run.value = rules.newRun({ ...before.setup, mode: 'firstJob' });
+      expect(said()).toContain(
+        'Always in stock: from Foundation on, a Hallway and a Fence wait in your reserve',
+      );
+    } finally {
+      run.value = before;
+    }
   });
 
   it('introduces blueprints as bonuses you don’t build', () => {

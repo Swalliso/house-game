@@ -986,7 +986,7 @@ export const TEST_BALANCE: Balance = {
   strikesPerMilestone: 0,
   // D-160: no standing stock, so the test content's reserves are as before; stock.test.ts
   // turns it on.
-  standingStock: { fromPhase: 1, pieces: [], firstJobSlot: 1 },
+  standingStock: { fromPhase: 1, pieces: [], firstJobPhase: 1, firstJobSlot: 1 },
 };
 
 const testTool = (

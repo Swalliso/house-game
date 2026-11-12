@@ -32,6 +32,7 @@ import {
   type Card,
   type ChangeOrderId,
   type ModSource,
+  type PieceDef,
   type PieceId,
   type PieceInfo,
   type Region,
@@ -135,19 +136,38 @@ function tagReason(s: TagSource, sun: SunSide): string | null {
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
+/**
+ * What a piece that earns nothing yet is waiting for: a Fence, a fenced yard (D-162: the stock's
+ * comes in week 1, before there's a house to close one against); anything else, its neighbors.
+ */
+export function NothingYet({ def }: { def?: PieceDef }) {
+  const pays = def?.effects.filter((e) => e.kind !== 'link' && e.kind !== 'requires') ?? [];
+  if (pays.length > 0 && pays.every((e) => e.kind === 'enclosure')) {
+    return (
+      <p class="muted">
+        Nothing yet: it needs a <Tip term="fencedYard">fenced yard</Tip>.
+      </p>
+    );
+  }
+  return <p class="muted">Nothing yet: it needs the right neighbors.</p>;
+}
+
 function Lines({
   lines,
   voided = false,
+  def,
 }: {
   lines: readonly BreakdownLine[];
   /** The piece's requirement is unmet, so none of these pay. */
   voided?: boolean;
+  /** The piece, for what it waits for while nothing pays. */
+  def?: PieceDef;
 }) {
   // An unmet requirement's line is shown as its own warning row.
   const shown = lines.filter((l) => l.op !== 'none');
   if (shown.length === 0) {
     if (voided) return null;
-    return <p class="muted">Nothing yet: it needs the right neighbors.</p>;
+    return <NothingYet def={def} />;
   }
   return (
     <ul class={`lines ${voided ? 'voided' : ''}`}>
@@ -664,7 +684,11 @@ function PlacingInfo() {
         </p>
       )}
       <Unmet why={unmet} />
-      <Lines lines={p.newPiece?.lines ?? []} voided={unmet !== undefined} />
+      <Lines
+        lines={p.newPiece?.lines ?? []}
+        voided={unmet !== undefined}
+        def={sel.kind === 'piece' ? CONTENT.pieces[sel.id] : undefined}
+      />
       {others.length > 0 && (
         <>
           <h3>Changes nearby</h3>
@@ -1031,7 +1055,7 @@ export function Inspect() {
           )}
           {info ? <TagChips info={info} /> : <p class="muted">{def.tags.join(' · ')}</p>}
           <Unmet why={score.unmet} />
-          <Lines lines={score.lines} voided={score.unmet !== undefined} />
+          <Lines lines={score.lines} voided={score.unmet !== undefined} def={def} />
           {score.pct !== 0 && score.points > 0 && score.unmet === undefined && (
             <p class="muted">
               {score.points} × {100 + score.pct}% = {score.earned}

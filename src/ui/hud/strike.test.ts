@@ -274,8 +274,10 @@ describe('Your goods after a strike', () => {
   const rows = () => inventoryRows(run.value, false, struckAtDeal.value);
 
   it('a strike before milestone 1 brings the panel in with the next week’s hand', async () => {
-    // The General Contractor's reserve starts empty: before the first shop there's no panel.
-    expect(run.value.reserve).toEqual([]);
+    // The General Contractor brings nothing, and here the standing stock's cards (D-162) have
+    // been placed: an empty reserve before the first shop has no panel.
+    expect(run.value.reserve.every((r) => r.stock)).toBe(true);
+    run.value = { ...run.value, reserve: [] };
     expect(showsInventory(rows())).toBe(false);
     const [i] = strikable();
     toggleStrike();

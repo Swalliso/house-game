@@ -20,9 +20,10 @@
 //
 // Start of week: transforms resolve (a Sapling old enough becomes a Tree), the household's
 // arrivals move in at their phase's first week (M4b, D-103: their cards go into the reserve's
-// extra slots), what the client brings for that phase follows them, and from Foundation on the
-// standing stock tops those slots up to a Hallway and a Fence at each milestone's first week
-// (D-160: only what's missing). Then the hand is drawn in two rows, Rooms then Layout (D-121).
+// extra slots), what the client brings for that phase follows them, and the standing stock tops
+// those slots up to a Hallway and a Fence at each milestone's first week (D-160: only what's
+// missing; D-162: from week 1, and a first job's from Foundation's third week). Then the hand is
+// drawn in two rows, Rooms then Layout (D-121).
 // A card with no play at all (no spot, no host, no Renovation) is swapped for another from its
 // row, trying up to `swapTries` cards; that replaced D-070's free redraw. A reroll redraws both
 // rows, then swaps (D-132; D-121 had a reroll per row). Neither its draw nor its swaps deal back
@@ -1061,13 +1062,19 @@ export function createRules(content: Content): Rules {
 
   /**
    * D-160: whether the standing stock tops up this week: each milestone's first from
-   * `fromPhase` on, and in a first job, week `firstJobSlot` of `fromPhase` itself.
+   * `fromPhase` on (D-162: from week 1). A first job's first is week `firstJobSlot` of
+   * `firstJobPhase`, and each later milestone's first week after it; one whose phase ends sooner
+   * gets it at the next milestone's start.
    */
   function stockDue(s: RunState): boolean {
     const stock = b.standingStock;
-    if (s.overtimeWeek !== 0 || s.phase < stock.fromPhase) return false;
-    const first = s.phase === stock.fromPhase && s.setup.mode === 'firstJob';
-    return s.slot === (first ? stock.firstJobSlot : 1);
+    if (s.overtimeWeek !== 0) return false;
+    const [phase, slot] =
+      s.setup.mode === 'firstJob'
+        ? [stock.firstJobPhase, stock.firstJobSlot]
+        : [stock.fromPhase, 1];
+    if (s.phase < phase) return false;
+    return s.slot === (s.phase === phase ? slot : 1);
   }
 
   /**

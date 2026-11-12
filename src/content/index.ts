@@ -523,9 +523,10 @@ export function validateContent(content: Content): string[] {
   }
 
   // D-160: the standing stock is pieces of the weekly draw, from a phase of the run, and a first
-  // job's first comes in a week of that phase.
+  // job's first comes in a week of a phase of the run (D-162).
   const stock = content.balance.standingStock;
   const stockAt = 'balance standingStock';
+  const isPhase = (k: number) => Number.isInteger(k) && k >= 0 && k < content.balance.phases.length;
   for (const id of stock.pieces) {
     known(id, stockAt);
     const def = content.pieces[id];
@@ -536,12 +537,9 @@ export function validateContent(content: Content): string[] {
   if (new Set(stock.pieces).size !== stock.pieces.length) {
     problems.push(`${stockAt}: a piece twice`);
   }
-  if (
-    !Number.isInteger(stock.fromPhase) ||
-    stock.fromPhase < 0 ||
-    stock.fromPhase >= content.balance.phases.length
-  ) {
-    problems.push(`${stockAt}: fromPhase must be a phase of the run`);
+  if (!isPhase(stock.fromPhase)) problems.push(`${stockAt}: fromPhase must be a phase of the run`);
+  if (!isPhase(stock.firstJobPhase)) {
+    problems.push(`${stockAt}: firstJobPhase must be a phase of the run`);
   }
   if (
     !Number.isInteger(stock.firstJobSlot) ||

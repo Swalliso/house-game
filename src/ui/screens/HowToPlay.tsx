@@ -30,6 +30,7 @@ import {
   rewardText,
   rules,
   SCORE_LABELS,
+  stockFromText,
   stockText,
   type PieceId,
   type SetDef,
@@ -328,9 +329,10 @@ export function HowToPlayText() {
   const perLine = multNumber(rules.rule(s, 'specBonus'));
   const fenceTiles = CONTENT.pieces.fence.pack?.maxTiles;
   const drivewayTiles = CONTENT.pieces.driveway.pack?.maxTiles;
-  // D-160: the standing stock, and the milestone it starts at.
+  // D-160: the standing stock, and the milestone it starts at: none from week 1 (D-162), and
+  // Foundation in a first job.
   const stock = b.standingStock.pieces.length > 0 ? stockText(CONTENT) : null;
-  const stockFrom = phases[b.standingStock.fromPhase]?.name;
+  const stockFrom = stockFromText(CONTENT, s.setup.mode);
   const orderMilestones = all(
     b.changeOrderAfter.flatMap((k) => (phases[k - 1] ? [phases[k - 1]!.name] : [])),
   );
@@ -397,9 +399,10 @@ export function HowToPlayText() {
               Driveway. Click a tile again to take it off. It builds as one piece.
             </li>
           )}
-          {stock && stockFrom && (
+          {stock && (
             <li>
-              <b>Always in stock:</b> from {stockFrom} on, {stock}{' '}
+              <b>Always in stock:</b>
+              {stockFrom && `${stockFrom},`} {stock}{' '}
               {b.standingStock.pieces.length === 1 ? 'waits' : 'wait'} in your reserve until you
               want one. Placing one is a week's build, and the next milestone brings another.
             </li>

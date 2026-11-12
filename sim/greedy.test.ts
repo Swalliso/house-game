@@ -160,6 +160,8 @@ describe('the greedy bot', () => {
         ['hallway', 10, 7],
       ]),
       hand: (['bedroom', 'bedroom', 'bedroom'] as const).map((id) => ({ kind: 'piece', id })),
+      // The hand's Bedrooms alone: the standing stock waits from week 1 (D-162).
+      reserve: [],
     };
     expect(r.checklist(s).find((l) => l.id === 'underOneRoof')?.met).toBe(true);
     const keeps = (p: PlaceAction) => !r.preview(s, p).specsLost.includes('underOneRoof');
@@ -348,6 +350,8 @@ describe('the greedy bot', () => {
         ['garage', 4, 14],
       ]),
       hand,
+      // The hand's Driveway alone: the standing stock waits from week 1 (D-162).
+      reserve: [],
     };
     expect(unreached(rules, s, CONTENT.pieces.driveway).map((p) => p.defId)).toEqual(['garage']);
     const garage = () => rules.currentTally(s).pieces.find((p) => p.defId === 'garage')!;

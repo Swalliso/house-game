@@ -124,7 +124,8 @@ describe('Copy Machine', () => {
   it('puts a placed piece’s card in the reserve', () => {
     const s = build([['livingRoom', 0, 0]], { supplies: [tool('copyMachine')] });
     const { state } = useTool(s, { uid: 1 });
-    expect(state.reserve).toEqual([{ id: 'livingRoom' }]);
+    // After the standing stock's, there from week 1 (D-162).
+    expect(state.reserve).toEqual([...s.reserve, { id: 'livingRoom' }]);
     expect(state.house.pieces).toHaveLength(1);
   });
 });
