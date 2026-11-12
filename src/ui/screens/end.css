@@ -339,7 +339,7 @@
   flex-basis: 100%;
 }
 /* "Try this lot again" takes 276 px in the pixel font, and the narrow column (under 1500 px)
-   has a 228 px row: there it's "Try again" ("Play again" on a win), and the title says the
+   has a 228 px row: there it's "Try again" ("Play again" on a win), and its tip says the
    rest. The readable font's letters are narrower, and it fits. */
 .run-end-again-short {
   display: none;

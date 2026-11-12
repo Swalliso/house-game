@@ -50,6 +50,17 @@ describe("the tooltip's note", () => {
     expect(nearRight.tail).toBe(w - 24);
   });
 
+  it('places a compact note by its own width: centered, its tail on the term, inside the window', () => {
+    // A control's one-line tip, "Zoom in (+)", 61 CSS px wide.
+    const at = placeTip(term(960), VIEW, 2, 1, 20, 61);
+    expect(at.left + at.tail + 4.5 * 2).toBe(960);
+    expect(Math.abs(at.left + 61 / 2 - 960)).toBeLessThanOrEqual(1);
+    // By the window's right edge, it's pushed in by its own width, not the full note's.
+    const nearRight = placeTip(term(1915), VIEW, 2, 1, 20, 61);
+    expect(nearRight.left).toBe(1920 - 61 - 8);
+    expect(nearRight.tail).toBe(61 - 24);
+  });
+
   it('lands every edge on a whole device pixel', () => {
     for (const dpr of [1, 1.25, 1.5, 2]) {
       const px = dpr === 1.25 ? 1.6 : 2;

@@ -156,7 +156,7 @@ describe('two orders, one pick (D-144)', () => {
       expect(textOf(tree)).toContain(name);
       expect(section.props['aria-labelledby']).toBe(`co-name-${i}`);
       expect(textOf(button)).toBe(`Pick${i + 1}`);
-      expect(button.props.title).toBe(`Pick ${name} (${i + 1})`);
+      expect(button.props['data-tip']).toBe(`Pick ${name} (${i + 1})`);
       expect(button.props.disabled).toBe(false);
     }
   });

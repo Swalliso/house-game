@@ -174,7 +174,7 @@ export function JobBoard() {
           <footer class="jobs-foot">
             <Button
               onClick={back}
-              title={client ? 'Back to the job board (Esc)' : 'Back to the title (Esc)'}
+              tip={client ? 'Back to the job board (Esc)' : 'Back to the title (Esc)'}
             >
               Back
             </Button>
@@ -484,7 +484,7 @@ function TasteLine({
 
 /**
  * The lot, one canvas pixel per tile with the street a row below it (lot-map.ts), drawn at
- * --map-px per tile in an ink ring. Its summary in words is its title and its label.
+ * --map-px per tile in an ink ring. Its summary in words is its tip and its label.
  */
 function LotMap({ lot }: { lot: Lot }) {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -502,7 +502,7 @@ function LotMap({ lot }: { lot: Lot }) {
   }, [lot]);
   const summary = lotSummary(lot);
   return (
-    <span class="contract-map" title={summary}>
+    <span class="contract-map" data-tip={summary}>
       <canvas
         ref={ref}
         width={w}
