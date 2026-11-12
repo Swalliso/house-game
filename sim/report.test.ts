@@ -423,7 +423,9 @@ describe('a real run’s record', () => {
       record.economy.budgetLeft * CONTENT.balance.leftoverBudgetWow,
     );
     expect(pieceWow + record.setWow + record.economy.leftoverWow).toBeCloseTo(record.finalScore, 6);
-  });
+    // A whole greedy run: 4.1 s on CI before D-160, 6.1 s with the stock's Fence to rank every
+    // week, past the default 5 s.
+  }, 20_000);
 });
 
 describe('the change orders table (M4b, D-144)', () => {
