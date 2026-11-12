@@ -1822,7 +1822,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 ## Proposed
 
-*Reserved numbers (2026-11-10): D-115 to D-118 are the layout session's drafts, not in this file yet; D-122 (legibility) is logged below. D-132 to D-134 are playtest 5's fixes, each logged by its own pull request: D-132 one reroll for both rows of the draw, D-133 the roof view, D-134 three more tracks. D-135 and D-136 are M6's end screen (D-135 the result line and link preview, D-136 the milestone photos); D-137 and D-138 belong to the release-day sessions. D-139 is the company's record. D-140 to D-146 are the friction batch, from the 2026-11-10 review's seven points: D-140 the Garage and the Driveway, D-141 what a blueprint is worth and its icon, D-142 first contact, D-143 the blueprint shelf, D-144 change orders two at a time, D-145 the lot and the last stretch, and D-146 the batch's one re-fit. D-147 takes the roof out again (the user's call, logged under Accepted). D-148 is the first-timer legibility batch before the showing, from the 2026-11-10 polish review (logged below). D-149 is the first job, from the first showing (2026-11-11, logged below). D-150 is the end screen's lead into the next run, from the evening's what-next survey (`fix/retry-after-loss`, logged below). D-151 is the first job's gentler targets (`phase/first-job-targets`, logged under Accepted). New entries start at D-152.*
+*Reserved numbers (2026-11-10): D-115 to D-118 are the layout session's drafts, not in this file yet; D-122 (legibility) is logged below. D-132 to D-134 are playtest 5's fixes, each logged by its own pull request: D-132 one reroll for both rows of the draw, D-133 the roof view, D-134 three more tracks. D-135 and D-136 are M6's end screen (D-135 the result line and link preview, D-136 the milestone photos); D-137 and D-138 belong to the release-day sessions. D-139 is the company's record. D-140 to D-146 are the friction batch, from the 2026-11-10 review's seven points: D-140 the Garage and the Driveway, D-141 what a blueprint is worth and its icon, D-142 first contact, D-143 the blueprint shelf, D-144 change orders two at a time, D-145 the lot and the last stretch, and D-146 the batch's one re-fit. D-147 takes the roof out again (the user's call, logged under Accepted). D-148 is the first-timer legibility batch before the showing, from the 2026-11-10 polish review (logged below). D-149 is the first job, from the first showing (2026-11-11, logged below). D-150 is the end screen's lead into the next run, from the evening's what-next survey (`fix/retry-after-loss`, logged below). D-151 is the first job's gentler targets (`phase/first-job-targets`, logged under Accepted). D-152 to D-157 are the 2026-11-11 playtest's: D-152 Copy run code on the end screen's plank (fix/playtest-6-bugs, logged below), D-153 Full House's progress on its set chip (fix/full-house-progress, logged below), D-154 the week cue, D-155 life on the lot and D-156 your houses on the street (each logged by its own pull request), and D-157 strikes from the hand (waiting on the user's answer). New entries start at D-158.*
 
 ### D-150 · A lost run leads into the next: a "Next time" tip and Try this lot again
 **Status:** Proposed · 2026-11-11, a fix pull request (`fix/retry-after-loss`), from the what-next survey after release #58, at the session that ran it. UI only: no rules, content or balance change. `contentHash(CONTENT)` is `ffabbd52` on develop and on this branch, so a release keeps runs in progress (#54). For the user's playtest before it merges.
@@ -1876,6 +1876,66 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - **Not played by a person.** Touch, Firefox and Safari weren't run.
 
 **2026-11-11 (D-151, `phase/first-job-targets`):** Try this lot again after a lost first job keeps its `firstJob` mode, and so its gentler targets (`endScreenAgain` passes the run's setup, mode and all, to `playLotAgain`). It stays unguided, as above. After a win, Play this lot again starts a standard run, and so does the Portfolio's.
+
+**2026-11-11 (D-152, `fix/playtest-6-bugs`):** after a loss, Try this lot again and the "Next time" tip leave the group under the stats for a place straight under the verdict, over the milestones, the button first. Under the stats the button was below the fold on every window measured but 1920×1080 in the readable font (243 px under the sticky bar's top at 1728×963 in the pixel font, after a loss at Foundation); now it's whole above the bar on all four windows measured, in both fonts. The tip no longer leads into the button: at 1280×720 in the pixel font its lines pushed the button under the bar. The milestone rows above the bar pay for it after a loss (D-152's Known gaps). After a win, Play this lot again stays under the stats, over Title. This entry's Considered "The tip and the button above the stats" is close to this, a step higher; Copy run code went to the plank, and Title stays under the stats.
+
+### D-152 · Copy run code on the end screen's plank, and a lost run's retry over the milestones
+**Status:** Proposed · 2026-11-11, a fix pull request (`fix/playtest-6-bugs`), from the user's playtest of /dev/ at 9acf14a the same day: "I can't copy the code anymore at the end screen". Shipped at the user's "Yes, ship them". UI only: no rules, content or balance change, and `contentHash(CONTENT)` is `8c16358c` on develop and on this branch, so runs in progress carry over (#54).
+**Decision:**
+- **Copy run code is on the end panel's plank,** after "Job done!" ("Run over"), as Reroll is on the hand's plank (`EndScreen.tsx`, `end.css`). It copies the run code, as the Menu's Copy run code does, and the toast says "Run code copied". It's at the right column's top, in view on every window as the end screen comes up. It leaves the plain group under the stats, so there's one on the screen, and the Menu's. The sticky bar keeps New run and Copy result (D-148).
+- **The plank's title never gives way; the button's words do.** Its tooltip and its name for screen readers are always "Copy run code". On the plank it says the Menu's "Copy run code" where that fits beside the title, else "Copy code", and on the narrowest plank it's the copy icon alone; the icon joins the words wherever there's room. Container queries on the plank, in em of its own text size, so the pixel font's widths hold at any `--px` (checked at 125%, where `--px` is 1.6 CSS px).
+
+| Window | Plank | Pixel font | Readable font |
+|---|---|---|---|
+| 1920×1080 | 343 px | the icon and "Copy code" | the icon and "Copy run code" |
+| 1728×963 at 2× | 303 px | "Copy code" | the icon and "Copy run code" |
+| 1440×900 at 2×, 1280×720 | 228 px | the icon | "Copy run code" |
+
+  - **In the pixel font** "Job done!" and the button need 374 px with the icon and "Copy run code", 352 with those words alone, 318 with the icon and "Copy code", 296 with "Copy code", and 178 with the icon alone. "Run over" is 12 px shorter, but a loss's button takes a win's form: at 1920×1080 "Copy run code" would fit beside it with 3 px to spare.
+  - **The readable font** fits "Copy run code" on any plank (196 px of 228), and the icon beside it from 238 px, room to spare for a system font wider than macOS's.
+- **The button is 13 UI px tall,** not the small size's 16, and shows the copy icon's 9 UI px drawing without the blank border of its 12 UI px box: the plank grows by 8 px, not 14.
+- **After a loss, Try this lot again and the "Next time" tip come straight under the verdict,** over the milestones. Under the stats (D-150) the button was below the fold on every window measured but one. The button leads, then the tip: on a 1280×720 window, the tip's lines in the pixel font pushed a button under them below the bar. After a win, Play this lot again stays under the stats, over Title, and Title stays there after a loss.
+- **Tests:** `end-panel.test.tsx` walks the panel: the plank's Copy run code, the only one on it, and the order after a win and after a loss.
+
+Measured in headless Chrome on frozen dev-channel builds, at rest, before (develop at 9acf14a) and after. The runs are the greedy bot's win for the Hendersons with the Architect (oh-4, 7 of 7, finished live with Complete early, so it's filed as the user's was) and three losses: at Foundation (the novice bot's nl-0, week 10, the set tip) and at Roofing (greedy's nl-10, week 18, the Reroll tip), both finished live with End week, and at the Final Walkthrough (oh-1, loaded already lost). "Below" is how far a button's top sat under the sticky bar's top.
+
+| Window | Font | Copy run code, the win: before → after | Try this lot again, lost at Foundation: before → after | Whole milestone rows above the bar, the win: before → after | Lost at Foundation: before → after |
+|---|---|---|---|---|---|
+| 1728×963 at 2× | pixel | 617 px below → on the plank | 243 px below → whole | 4 → 3 (the fourth shows 81 of 82 px) | 7 → 4 |
+| 1728×963 at 2× | readable | 107 px below → on the plank | 71 px below → whole | 7 → 7 | 7 → 7 |
+| 1440×900 at 2× | pixel | 726 px below → on the plank | 660 px below → whole | 2 → 2 | 4 → 0 |
+| 1440×900 at 2× | readable | 312 px below → on the plank | 181 px below → whole | 5 → 5 | 7 → 5 |
+| 1920×1080 | pixel | 222 px below → on the plank | 86 px below → whole | 7 → 7 | 7 → 7 |
+| 1920×1080 | readable | partly under the bar → on the plank | whole → whole | 7 → 7 | 7 → 7 |
+| 1280×720 | pixel | 872 px below → on the plank | 806 px below → whole | 1 → 1 | 2 → 0 |
+| 1280×720 | readable | 458 px below → on the plank | 327 px below → whole | 3 → 3 | 6 → 1 |
+
+- **In all 32 cases** (four windows, two fonts, the win and the three losses) Copy run code sat at the column's top, whole, and took a real click at rest: the clipboard then held the run's code (OH1., 1,004 to 3,107 characters), the toast said "Run code copied", and the plank's title showed whole. Before, it took a scroll every time.
+- **After all three losses** Try this lot again was whole above the bar at rest on every window, in both fonts. The tip under it is whole too, but at 1280×720 in the pixel font, where its heading and first lines show above the bar.
+- **The other losses' milestone rows** go the same way: at Roofing 6 → 3 at 1728×963 and 4 → 0 at 1440×900 at 2× in the pixel font, and at the Final Walkthrough 7 → 3 and 4 → 1. At 1920×1080 the pixel font keeps all seven after the losses at Foundation and Roofing, and 5 of 7 after the last one.
+
+**Why:** D-148 moved Copy run code from the sticky bar to a plain row under the stats, and D-150 put Try this lot again over it. On the user's 16-inch laptop window (1728×963 at 2×, the pixel font) a won run's end screen showed the verdict, four milestones, New run and Copy result; the column scrolls 733 px more, and macOS draws its scrollbar only while it scrolls. The one copy button in view copied the result line. Nothing was broken: the button was out of sight. Try this lot again, the way back into the lot for a newcomer who loses (most first jobs are lost, D-150), was below the fold too, on every window measured but 1920×1080 in the readable font.
+**Considered:**
+- **The plank's title giving way** (the investigation's prototype): "Job done!" hidden in the pixel font on planks under 296 px, 1440×900 at 2× and 1280×720 among them. It's the end screen's headline, and the button's words can shorten instead.
+- **Back in the sticky bar on a row of its own:** the bar grows from 128 to 176 px, D-148's problem.
+- **Beside Copy result on its row:** in the pixel font the two need 362 px with "Copy code", and the bar has 303 at 1728×963 and 228 under 1500 px wide.
+- **One button that copies both:** the result line is for the group chat (D-135), and a run code is about 2,600 characters.
+- **A "more below" tab on the bar,** as the hand's "N more cards": the code is still a scroll and a look away.
+- **The tip over the button, as D-150 had them:** at 1280×720 in the pixel font the button sat under the sticky bar: its top 24 to 44 px under the bar's top after a loss finished live, out of sight, and 2 px short of whole for the run loaded already lost. On the other windows it was whole.
+- **Try this lot again in the sticky bar after a loss:** a third button in the bar, D-148's problem again.
+- **A 12 UI px button:** the plank grows by 6 px, not 8, so the win's fourth milestone row would stay whole at 1728×963 in the pixel font (by 1 px), but the words sit tighter in the button.
+
+**Changes:**
+- D-148 (Proposed): Copy run code leaves the plain group under the stats for the plank, and after a loss the group is Title alone. A dated note there.
+- D-150 (Proposed): after a loss, Try this lot again and the tip move over the milestones, the button first. A dated note there.
+
+**Known gaps:**
+- **After a loss the milestones start lower:** fewer rows show whole above the bar at rest (the table), and none at 1440×900 at 2× and 1280×720 in the pixel font. The verdict and the plaque above them say where the client walked and how far the house got.
+- **The win's fourth milestone row at 1728×963** in the pixel font loses its last pixel row, the space under its text, under the bar (81 of 82 px show).
+- **The button's words differ by window and font,** while its name is always "Copy run code": a speech-input user who says what's on it ("Copy code") may not reach it.
+- **The plank scrolls with the column:** scrolled down to the stats, Copy run code is a scroll back up (the Menu's is always there).
+- **The readable font was measured in macOS's system font;** another system's may be wider. The 238 px step for the icon leaves it 20 px, unmeasured.
+- **Not played by a person,** and Safari, Firefox and touch weren't run.
 
 ### D-149 · The first job: a first visit's one contract, a screen that fills in, and an opening the hints walk through
 **Status:** Proposed · 2026-11-11, with its phase pull request (`phase/first-job`), at the user's "Let's do the calm first job… I like the sound of your step 1 plan - let's kick that off". From the first showing: the user "briefly showed off the dev link" to the group, and "the game looked fun, but looked quite confusing off the bat". For the user's playtest. No rules or balance change: every run plays, scores, saves and replays as before, and `balance.ts` gains one field, which only the job board reads.
@@ -2013,6 +2073,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - **A loss in a later phase at 1920×1080,** with more rows of stats, still has the row of two buttons under the bar until the column scrolls; so does any loss at 1680×1050 and narrower in the pixel font, where they take a row each.
 
 *2026-11-11 (D-150, Proposed):* the plain group under the stats leads with Try this lot again, on a row of its own ("Try again" in the pixel font's narrow column), and a lost run's "Next time" tip sits over it. The sticky bar still holds New run and Copy result, and the milestone rows above it are unchanged. At 1920×1080 a later loss now shows the tip's first line under the bar, where the two buttons were.
+
+*2026-11-11 (D-152, Proposed):* Copy run code leaves the plain group under the stats for the end panel's plank, in view at the column's top: under the stats it was 617 px below the bar on the user's 1728×963 laptop, and they couldn't find it. After a loss, Try this lot again and the "Next time" tip sit over the milestones, and the group under the stats is Title alone (Play this lot again and Title after a win). The sticky bar is unchanged. The plank is 8 px taller: a won run keeps as many whole milestone rows above the bar, but at 1728×963 in the pixel font the fourth now shows 81 of its 82 px. After a loss fewer show (D-152's Known gaps).
 
 **2026-11-11 (a fix pull request, `fix/hand-lines-2x`, the third step of the survey after the release; Proposed until the user has seen it):** this entry's two hand-line gaps. The line has three lines, four beside a 2× thumbnail, and the Greenhouse's says "touching" again. UI only: `contentHash` is unchanged (ffabbd52), so runs in progress carry over.
 - **Three lines at most,** at every window size (`hand.css`). Considered below had a three-line clamp push cards under the Pass bar at 1280×720 and 1920×1080; on today's short lines it moved none there, in either font.
