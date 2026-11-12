@@ -354,6 +354,7 @@ interface RunState {
   budget: number
   hand: Card[]                         // this week's cards, the Rooms row then the Layout row (D-121: roomsRow 2, layoutRow 2); a Card is a piece or a fixture
   reserve: ReservePiece[]              // bought pieces (2 slots) + extra slots: crew starting pieces (crew), an arrival's cards (arrival, D-103), the client's (client) and the standing stock (stock, D-160)
+  stocked?: true                       // D-163: the standing stock has come (without `refill`, it comes once)
   supplies: (FixtureId | ToolId)[]     // bought fixtures and tools (3 slots), used as free actions
   rerollsLeft: number                  // reset to rerollsPerPhase at each phase start
   bonusRerolls: number                 // bought from the shop; spent after rerollsLeft and never expire
@@ -408,10 +409,10 @@ type Action =
 
 `(x, y)` is the top-left cell of the rotated shape's bounding box, and each rotation's cells are normalized so their minimum x and y are 0. There's no mirroring: no Core shape needs it (the L-Kitchen's mirror image is one of its rotations, and so is the L-Fence's).
 
-**The week's card versus free actions (D-050, D-051):**
-- Placing a piece (from the hand or the reserve), installing a fixture **from the hand**, renovating a room (D-102), or passing is the week's turn, and it ends the week. In the rules, a week's play is `Play = { place } | { install } | { renovate } | null`. `resolveWeek` and `preview` take a `Play`, so a fixture or Renovation preview goes through the same path as a piece preview.
-- Installing a fixture **from your supplies**, using a tool, rerolling, striking a hand card (D-157), and demolishing are free actions during the week. A free install previews as the change to this week's projected total, `resolveWeek(after, null) − resolveWeek(before, null)`.
-- No action places a second piece in a week, so D-004 still holds: one piece per week at most.
+**The week's card versus free actions (D-050, D-051, D-163):**
+- Placing a piece from the hand, installing a fixture **from the hand**, renovating a room with a hand card (D-102), or passing is the week's turn, and it ends the week. In the rules, a week's play is `Play = { place } | { install } | { renovate } | null`. `resolveWeek` and `preview` take a `Play`, so a fixture or Renovation preview goes through the same path as a piece preview. `rules.endsWeek(state, play)` says whether a play ends the week.
+- Placing a piece **from the reserve** (Your goods), or renovating with one, is a free action (D-163): it goes down at once and earns from this week's tally. So are installing a fixture **from your supplies**, using a tool, rerolling, striking a hand card (D-157), and demolishing. A free install previews as the change to this week's projected total, `resolveWeek(after, null) − resolveWeek(before, null)`.
+- So a week places one piece from the hand at most (two with Weekend Crew, D-083) and any number from the reserve: D-163 proposes that change to D-004.
 
 `GameEvent` covers:
 
@@ -473,7 +474,7 @@ The UI keeps an event queue and plays it through an animation director (place �
 **Start of week:**
 
 1. Transforms resolve (a Sapling old enough becomes a Tree), so the board the player sees is the board that scores.
-2. In a phase's first week (never an overtime week), the household members due move in with their cards (D-103), then the client's deliveries for that phase land (D-160). From Foundation on, the standing stock then tops the reserve's extra slots up to one Hallway and one Fence pack, only what's missing (D-160; a first job's first top-up is in Foundation's third week).
+2. In a phase's first week (never an overtime week), the household members due move in with their cards (D-103), then the client's deliveries for that phase land (D-160). At Foundation's start the standing stock then fills the reserve's extra slots up to one Hallway and one Fence pack, only what's missing, once (D-160, D-163; a first job's comes in Foundation's third week, and `refill` tops it up again at each later milestone).
 3. The hand is drawn in two rows (D-121): `roomsRow` distinct Rooms cards (2) and `layoutRow` distinct Layout cards (2), each from its own pool: pieces, plus fixtures from phase 2. A type at its limit in the checklist draws at half weight (D-104).
 4. Each card with no play (no legal spot, no legal host, and no Renovation) is swapped for another card from its row, up to `swapTries` (3) tries: the first with a play, else the last tried. A reroll redraws both rows (D-132) and swaps the same way; the reserve doesn't count. Its draw and its swaps leave out the cards it replaces, topping a row up from them only when its pool has too few others.
 
@@ -811,7 +812,7 @@ type ShopOffer =
   | { kind: 'service'; service: 'reroll' | 'demolition' | 'strike'; price: number }
 ```
 
-- **Where things go:** blueprints into their slots; pieces into the reserve (placing one is the week's turn); fixtures and tools into supplies (free to use).
+- **Where things go:** blueprints into their slots; pieces into the reserve (placing one doesn't use the week, D-163); fixtures and tools into supplies (free to use).
 - **Prices:** generated from the item's price, the `shopPricePct` rule, and the sale. Services rise by 1 per purchase for the rest of the run, up to a cap. The refresh price rises within a visit and resets at the next.
 - **Stock:** each visit's slot counts and rarity weights per phase are numbers in `balance.ts` (Appendix A).
 - **Rarity** is shown on every blueprint, fixture, and tool as a colored border plus a label, not color alone. Blueprint, fixture, and tool slots, and the Folio and Fixture Crate, all roll rarity with the current shop's blueprint weights.
@@ -1766,7 +1767,7 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
     - crates: 4
     - company upgrades: 6–8
 - **Slots:**
-  - **Reserve:** 2 pieces. A reserved piece can be placed in any later week as that week's turn. Crew starting pieces, an arrival's cards, the client's deliveries and the standing stock use extra slots (D-103, D-160).
+  - **Reserve:** 2 pieces. A reserved piece can be placed in any later week, and placing it doesn't use the week (D-163). Crew starting pieces, an arrival's cards, the client's deliveries and the standing stock use extra slots (D-103, D-160).
   - **Supplies:** 3, shared by bought fixtures and tools, used as free actions in a build week.
   - **Blueprints:** 4, no duplicates.
   - Company upgrades add one of each (Storage Unit, Tool Belt, Drafting Table).
@@ -1802,11 +1803,11 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
   - the yard: a tidy yard ("6 or more yard pieces, and no yard type stands 4 or more times"; outbuildings count; Fences, Driveways, and Saplings count toward the 6 but never break it)
   - a client wish that repeats a house rule becomes the client's numbers for it (the Hendersons' Bedrooms and Bathrooms; Juniper's 4–8 rooms is her A compact house)
   - Room for everyone rises with the household's arrivals (M4b, D-103, D-109): both ends +1 at each arrival, and from that arrival on it needs the member's room. The Hendersons go 2–3, then 3–4 from Framing (the twins) and 4–5 from Drywall (Grandma); the other clients 1–2, then 2–3 from their member's arrival. (In M4a, before arrivals, it stepped up at Framing and Drywall.)
-- **Renovate** (D-102): a room card whose type is at its limit can level a room of that type instead: +4 Comfort a level, up to 2. Levels stay through the Moving Truck and transforms. It can be Weekend Crew's next play, and a card that can only renovate doesn't count as fitting for the free redraw.
+- **Renovate** (D-102): a room card whose type is at its limit can level a room of that type instead: +4 Comfort a level, up to 2. Levels stay through the Moving Truck and transforms. It can be Weekend Crew's next play (from the reserve it's free, D-163), and a card that can only renovate doesn't count as fitting for the free redraw.
 - **Half-weight draws** (D-104): a type at its limit draws at half weight while it stays there.
 - **The yard rules** (D-105): the Patio, Hot Tub, and Fire Pit earn nothing unless they touch a room (not blocking; a Hallway alone doesn't count); Treehouses don't count each other as Kid partners.
 - **Packs** (D-106): one Fence card places 1–8 connected tiles, and one Driveway card 1–8 (D-140; 1–6 before), in one week, as one piece.
-- **The standing stock** (D-160): from Foundation on, at the start of each milestone (never in overtime) the reserve's extra slots are topped up to hold one Hallway and one Fence pack, only what's missing (`standingStock` in `balance.ts`). A card of the type already in an extra slot counts (the General Contractor's Fence, an arrival's or the client's); one bought or copied doesn't. A first job's first top-up is in Foundation's third week (`firstJobSlot`). Placing one is the week's build, and a strike of the type leaves the stock alone.
+- **The standing stock** (D-160, D-163): at Foundation's start the reserve's extra slots are filled to hold one Hallway and one Fence pack, only what's missing (`standingStock` in `balance.ts`), once: `refill: false` (D-163). With `refill: true` they're topped up again at the start of each later milestone (never in overtime), as D-160 had it. A card of the type already in an extra slot counts (the General Contractor's Fence, an arrival's or the client's); one bought or copied doesn't. A first job's comes in Foundation's third week (`firstJobSlot`). Placing one doesn't use the week (D-163), and a strike of the type leaves the stock alone.
 - **Deliveries** (D-160): `ClientDef.deliveries` land at the start of their phase's first week, after the arrivals, marked `client`, in extra slots: Dale's Home Office and the Barkers' Doghouse in week 1. A delivery isn't a household member: it moves no Room for everyone and isn't in `arrived`.
 - **Juniper:**
   - her limit becomes the spec "a house of 4–8 rooms", so it's an achievement rather than free from week 1, plus a −10% taste per room over 8. Under D-101 it's her A compact house (D-160's name): 4–8 rooms, filling 60% of their box

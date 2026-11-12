@@ -43,6 +43,7 @@ You run a home-building company. Each run is one contract: one client, one plot 
 **Amended by:** D-036: a week may also be passed without placing (confirmed 2026-11-04). D-050 and D-051 (Accepted 2026-11-05): a week's turn can instead be installing a drawn fixture; tools and bought fixtures are free actions, and no week ever gets a second piece.
 **To be amended by:** D-074 and D-075 (Open). The team confirmed after playtest 2 (2026-11-05) that a week may place more than one piece, through packs or banked buildings. *Decided by D-083 (Weekend Crew, 2026-11-05) and D-106 (packs, 2026-11-06).*
 **Amended by:** D-102 (Accepted 2026-11-06, with D-093's option B): a week's turn can instead be a Renovation, which levels a room you already have. D-106 (Accepted 2026-11-06): a Fence or Driveway pack places several connected tiles as one piece, in one play.
+*Proposed change by D-163 (2026-11-12, awaiting the user's OK):* a piece from Your goods (the reserve) doesn't use the week: it goes down at once and earns from that week. The week's turn is a card from the hand or a pass, so a week places one piece from the hand (two with Weekend Crew, D-083) and any number from Your goods.
 
 ### D-005 · Milestones with rising targets
 **Status:** Accepted · 2026-11-04
@@ -236,6 +237,7 @@ With these rules, where to put the house becomes the run's first big decision.
 
 Also: D-036 and D-043 (Accepted), where hand size becomes the `handSize` rule (3 by default, 4 with Bigger Truck). D-046 (Accepted), where this replaces its shop defaults in Appendix A (one paid refresh per visit, no selling).
 *Changed by D-121 (Proposed 2026-11-09):* hand size is two rules, `roomsRow` (2) and `layoutRow` (2); the Bigger Truck adds a Rooms card.
+*Proposed change by D-163 (2026-11-12, awaiting the user's OK):* placing a bought or crated piece doesn't use the week, so a shop piece adds a piece to a week. Tools still add none, Weekend Crew aside (D-083).
 
 ### D-052 · Schedule: feature freeze at the end of day 4
 **Status:** Superseded by D-053 · 2026-11-05 (the team is two people with no day timeboxes)
@@ -437,6 +439,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **Amended by:** D-102 and D-103 (Accepted 2026-11-06, with D-093's option B): a week's turn can be a Renovation, and the household's arrivals add a start-of-week step, after transforms and before the draw.
 *Changed by D-121 (Proposed 2026-11-09):* the hand is two rows, Rooms 2 and Layout 2 (the `roomsRow` and `layoutRow` rules replace `handSize`). A card with no play is swapped for another from its row instead of the free redraw, and a reroll redraws one row.
 *Changed by D-132 (Proposed 2026-11-10):* a reroll redraws both rows.
+*Proposed change by D-163 (2026-11-12, awaiting the user's OK):* placing a piece from the reserve, or renovating with one, is a free action: it goes down at once (End week reads Build) and earns from this week's tally. The week's turn is a card from the hand (a piece, a drawn fixture or a Renovation) or Pass.
 
 ### D-037 · Scoring math and the live preview
 **Status:** Accepted · 2026-11-05 (with the plan's approval); proposed 2026-11-04
@@ -772,6 +775,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **Changes:** D-004 (Accepted): a week can place more than one piece. D-051 (Accepted): it left out "a tool that plays a second piece in a week".
 **2026-11-06 (systems review):** if the team chooses the review's Renovate, this entry needs to say whether a Renovation can be Weekend Crew's next play. The sim allowed it (`house-systems-review.md` §8).
 **2026-11-06 (D-102, settled by the team):** a Renovation can be Weekend Crew's next play, as the sim had it. It goes down at once and the week goes on.
+*Proposed change by D-163 (2026-11-12, awaiting the user's OK):* a piece from the reserve never ends the week now, so Weekend Crew's next play is the week's next card from the hand: a piece, a drawn fixture or a Renovation. A reserve piece placed while it's ready doesn't use it up. A bought piece no longer needs it, and its price stays 5 for the playtest (D-163's Weekend Crew).
 
 ### D-084 · Striking card types: a shop service
 **Status:** Accepted · 2026-11-05 (the team chose it for M3, resolving D-076). Prices are placeholders.
@@ -1125,6 +1129,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 *D-142 (Proposed 2026-11-10):* the job board's card names who moves in on one line ("The twins and Grandma move in later"); when, and what they bring, is in the line's tip. The checklist's line is the name and the milestone ("Grandma at Drywall"), with the week in the name's tip.
 
 *Changed by D-160 (Proposed 2026-11-12):* the extra slots also hold what the client brings (`ClientDef.deliveries`: Dale's Home Office and the Barkers' Doghouse, in week 1) and the standing stock (a Hallway and a Fence from Foundation on). A phase's first week brings the client's cards right after its arrivals. A delivery isn't a member: it moves no Room for everyone, isn't in `arrived`, and has no banner.
+*Proposed change by D-163 (2026-11-12, awaiting the user's OK):* placing a member's card doesn't use the week, like every card in Your goods.
 
 ### D-104 · Half-weight draws for a type at its limit
 **Status:** Accepted · 2026-11-06 (D-093's option B).
@@ -1286,6 +1291,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **2026-11-12 (D-160):** the run record counts reserve plays by where the card came from (the stock, the client, the crew, an arrival, bought or copied), and the report says so after the Fences' line. The chaos test checks the stock's and the client's cards. No bot changed. Greedy's recall test scores 57,336 plays now, the stock Fence's among them, so it allows 120 s (60 before), and asks 80% (85%), as D-160's gaps explain. The report test's greedy run gets 20 s (the default 5 before).
 
 **2026-11-12 (D-161):** the bots rank only the few of a Fence card's open-ground plays that the shortlist can reach, and the yard planner, the rules' list of spots and the layout's fenced-yard fill are faster. The benchmark gate passes again at 0.82–0.86 s (D-160 1.53–1.59 s, develop before it 0.74–0.77 s, back to back), and `--check` gives the same runs. Greedy's recall test takes 14 s (21 s); it still scores every legal play, so it keeps its 120 s.
+
+**2026-11-12 (D-163):** a piece from Your goods doesn't end the week, so greedy scores its shortlist once and splits it by `rules.endsWeek`: the best free play goes down first when it raises the week's total, then the week's play as before. The shop bot values a bought piece at all it adds (half before). The novice is unchanged, and the chaos test's tally invariant asks `endsWeek`.
 
 ### D-071 · M2 content defaults
 **Status:** Accepted · 2026-11-06 (proposed with the M2 pull request; the team settled the Treehouse in D-105 and asked for this to be Accepted unless the sim showed the Hendersons' Kid taste making Treehouse clusters dominant. It doesn't: see below).
@@ -1863,6 +1870,89 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 *Reserved numbers (2026-11-10): D-115 to D-118 are the layout session's drafts, not in this file yet; D-122 (legibility) is logged below. D-132 to D-134 are playtest 5's fixes, each logged by its own pull request: D-132 one reroll for both rows of the draw, D-133 the roof view, D-134 three more tracks. D-135 and D-136 are M6's end screen (D-135 the result line and link preview, D-136 the milestone photos); D-137 and D-138 belong to the release-day sessions. D-139 is the company's record. D-140 to D-146 are the friction batch, from the 2026-11-10 review's seven points: D-140 the Garage and the Driveway, D-141 what a blueprint is worth and its icon, D-142 first contact, D-143 the blueprint shelf, D-144 change orders two at a time, D-145 the lot and the last stretch, and D-146 the batch's one re-fit. D-147 takes the roof out again (the user's call, logged under Accepted). D-148 is the first-timer legibility batch before the showing, from the 2026-11-10 polish review (logged below). D-149 is the first job, from the first showing (2026-11-11, logged below). D-150 is the end screen's lead into the next run, from the evening's what-next survey (`fix/retry-after-loss`, logged below). D-151 is the first job's gentler targets (`phase/first-job-targets`, logged under Accepted). D-152 to D-157 are the 2026-11-11 playtest's: D-152 Copy run code on the end screen's plank (fix/playtest-6-bugs, logged below), D-153 Full House's progress on its set chip (fix/full-house-progress, logged below), D-154 the week cue, D-155 life on the lot and D-156 your houses on the street (each logged by its own pull request), and D-157 strikes from the hand (`phase/strike-from-hand`, logged below). D-158 to D-160 answer an outside playtester's notes (2026-11-12): D-158 the tutorial fixes (`phase/tutorial-fixes`, logged below), D-159 fences that join and Hallways that open into each other (`fix/fences-and-halls-join`, logged below), and D-160 pieces you can count on (`phase/pieces-you-can-count-on`, logged below). D-161 makes the bots cheaper on D-160's Fence (`fix/greedy-fence-packs`, logged below). New entries start at D-162.*
 
+### D-163 · Your goods are free: a piece from the reserve doesn't use the week, and the standing stock comes once
+**Status:** Proposed · 2026-11-12, a phase pull request (`phase/goods-builds-free`), one of the 2026-11-12 core-loop batch (D-162 to D-167), tried in the sim and then built. A rules and content change: `contentHash(CONTENT)` goes from `79662776` to `e2939863`, so runs in progress are dropped when it merges (on /dev/) and at the next release (#54's check). The milestone targets and the clients' `targetPct` are untouched: the batch's one re-fit sizes them (Re-fit size, below). For the user's playtest before it merges.
+**Decision:**
+- **A piece from Your goods is a free build** (`endsWeek` in `run.ts`). Placing a reserve piece, or renovating with one (D-102), goes down at once, and the week goes on. It earns from this week's tally like any piece. The week still ends with a card from the hand (a piece, a fixture or a Renovation) or a pass. Every goods card counts alike: bought or copied, the crew's, an arrival's (D-103), the client's and the stock's (D-160). There's no cap: as many a week as Your goods hold.
+- **The standing stock comes once** (`standingStock.refill: false` in `balance.ts`; `stocked` in the run's state). At Foundation's start (a first job's third week, D-160) the reserve's extra slots get a Hallway and a Fence pack, only what's missing, as before. Later milestones bring no more. `refill: true` gives back D-160's top-up at every milestone, for a playtest that wants it.
+- **Weekend Crew** (D-083) makes the week's next card from the hand free. A piece from Your goods doesn't use it up. Its price stays 5 (Weekend Crew, below).
+- **Arrivals' rooms are free too,** like every goods card: one rule, and the household's rooms go down the week they arrive.
+- **On screen,** with no new panel, and every changed line as short as the one it replaces or shorter:
+  - With a piece from Your goods on the lot, End week reads **Build** ("Build it now: the week goes on (Enter)") and builds it at once. The board's label ends "free: press Build", and the key bar says "Enter build it". Weekend Crew's next card reads the same (`pendingFree` in `store.ts`).
+  - Inspect on a goods card: "From your reserve: it doesn’t use your week." Your goods' tip: "Hallway (from your stock): placing it doesn’t use your week". The shop's piece tip: "Goes in your reserve. Placing it is free: it doesn’t use your week." The job board's tip on a client's card: "It waits in your reserve, in a slot of its own: placing it doesn’t use a week." Weekend Crew's note: "Weekend Crew is here: your next card doesn’t end the week."
+  - **The stock's first-time hint** (D-142, D-160) is "Free to place": "A Hallway and a Fence wait in Your goods, top right, until you need them. Placing one doesn’t use your week." (21 words; it was 25.)
+  - **How to play's A week** (D-158): "**Your goods are free:** placing a piece from your reserve doesn't use your week. From Foundation on, a Hallway and a Fence wait there until you want them." The glossary's reserve entry says it too, and its Renovate entry says renovating is the week's build "from the hand".
+- **Bots** (D-089): greedy scores its shortlist once and splits it by `endsWeek`. The best free play goes down first if it raises the week's total; then the week's play, rerolls and passes, as before. The shop bot values a bought piece at all it adds (half before, for the week it took). The novice needs nothing: a pick from Your goods just doesn't end its week. The chaos test's tally invariant asks `endsWeek`.
+- **Tests:** the week tests in `shop.test.ts`, `renovate.test.ts`, `arrivals.test.ts`, `shop-m3b.test.ts` and `tools.test.ts` (a goods piece, a goods Renovation and a copy go down with no tally and the week unchanged; Weekend Crew stays ready after a goods piece); `stock.test.ts` (the stock comes once and never comes back once placed, a first job's once, a stock card and the week's card in one week, `refill` tops it up again); the scripted runs in `runcode-m3` and `runcode-m3b` pass the week after their reserve play; `greedy.test.ts` (a goods piece first when it adds, then the week's play); `hints.test.tsx` ("build it"); `end-week.test.ts` (Build for a goods piece).
+
+**Sim** (`npm run sim -- --check`, 200 held-out runs an arm on `check-0` to `check-199`, the General Contractor, all five clients, develop at 124bd13 against frozen copies, two jobs at a time). The three versions asked for, one that shows what drives them, D-163 as built, and D-163 with D-162's stock from week 1 (`fromPhase: 0`, in a frozen copy only):
+
+| | develop | (a) stock cards free | (b) all goods free, one a week | (c) all goods free | (d) all goods free but the stock's | D-163: all goods free, the stock once | D-163, stock from week 1 |
+|---|---|---|---|---|---|---|---|
+| Greedy wins | 49.5% [42.6–56.4] | 78.0% [71.8–83.2] | 83.0% [77.2–87.6] | 85.0% [79.4–89.3] | 70.0% [63.3–75.9] | 71.0% [64.4–76.8] | 71.5% [64.9–77.3] |
+| Builds per run (from Your goods) | 22.1 (0) | 31.5 (8.9) | 32.6 (10.7) | 33.2 (11.5) | 25.1 (2.7) | 26.7 (4.7) | 26.5 (4.7) |
+| Stock cards placed per run | 3.12 | 8.93 | 8.70 | 8.88 | 3.24 | 1.92 | 1.95 |
+| Hallways placed per run (Long Hallways) | 2.33 (0.33) | 5.96 (0.29) | 5.89 (0.31) | 6.04 (0.32) | 2.38 (0.34) | 2.15 (0.54) | 2.13 (0.55) |
+| Fences placed per run | 1.60 | 3.92 | 3.79 | 3.96 | 1.77 | 1.44 | 1.55 |
+| Yard pieces placed per run (Fences aside) | 7.1 | 9.1 | 9.7 | 9.9 | 8.3 | 10.1 | 9.8 |
+| Shop pieces bought per run (of those on the shelf) | 0.37 (6.7%) | 0.33 (5.3%) | 0.61 (9.9%) | 0.56 (9.0%) | 0.65 (10.8%) | 0.66 (10.8%) | 0.68 (11.2%) |
+| Runs ending with a fenced yard | 58.0% | 76.5% | 78.0% | 82.0% | 60.0% | 59.5% | 58.5% |
+| Room for everyone held at the end | 70.0% | 76.5% | 78.5% | 77.5% | 78.0% | 78.0% | 74.0% |
+| A compact outline (H1g) | 62% | 40% | 38% | 39% | 57% | 47% | 56% |
+| No yard inside the house (H2) | 76% | 62% | 58% | 55% | 69% | 72% | 69% |
+| The glance test (H1g, H2 and H3) | 46% | 20% | 20% | 22% | 36% | 29% | 37% |
+| Greedy's time per run, p50 | 557 ms | 767 ms | 808 ms | 751 ms | 661 ms | 669 ms | 677 ms |
+| The clients' spread (greedy, 40 runs each) | 20.0 pts | 22.5 pts | 25.0 pts | 25.0 pts | 37.5 pts | 37.5 pts | 30.0 pts |
+| Novice clears Foundation | 8.5% | 17.5% | 21.0% | 21.5% | 11.0% | 21.5% | 25.0% |
+
+- **The stock's top-up drives (a) to (c).** Once a stock card is free, D-160's top-up at every milestone ("only what's missing") is about two more builds a milestone: (a) alone is +28.5 points of greedy's win rate, and Hallways go from 2.3 to 6 a run. A cap of one free piece a week doesn't bind it, since the stock brings two a milestone of four weeks: (b) wins more than (a), not less. Every other goods card free, without the stock's, is +20.5 points (d); with the stock once, +21.5 (D-163).
+- **The trial and the build agree.** The trial of D-163's rule, through switches in a frozen copy, won 69.5% [62.8–75.5], with 26.6 builds, 1.95 stock cards and 2.15 Hallways a run. Its compact outline read 55% and its glance test 31% (the build's 47% and 29%; with the stock from week 1, 56% and 37%): the house measures move by about 8 points between arms of one rule at this size.
+- **The bots use the free builds.** Greedy places 4.7 pieces a run from Your goods (26.7 builds against 22.1): the stock's 1.92, arrivals' 1.28, bought or copied 1.11, the client's 0.39 (develop 3.12, 1.03, 0.36 and 0.29, each a week's build). It buys more pieces (0.66 a run against 0.37), and `greedy.test.ts` checks that it builds a goods piece first and then plays its week.
+- **Every other §8 verdict holds but one.** Random fails by milestone 3, novice passes milestone 1 (99.0%), early completion stays live (always 73.0% against never 71.0%: +2.0 points [−5.3, +9.3]), and the Fence probe passes. Greedy clears milestones 1–3 in 98.5% (98.0%), just over the band, unsure. The clients' spread fails, unsure, at 37.5 points: Dale 87.5%, the Hendersons 75.0%, the Barkers 75.0%, Count Vladislav 67.5%, Juniper Vale 50.0% (develop 60.0%, 47.5%, 45.0%, 55.0%, 40.0%).
+- **The house:** more pieces make more outbuildings (2.48 a run to 3.73) and one more room (p50 11 to 12). One of each shared room (H3) holds in 72% (80%).
+- **Time:** greedy's p50 669 ms (557); the benchmark gate 773 ms in the check, PASS.
+
+**Re-fit size** (`npm run sim -- --suggest-targets --dry-run`: 200 untargeted runs on `sim-*`, checked held out on `check-*`; not applied). To bring greedy back to about 45%, the targets rise by a third or more from Foundation on: 20, 800, 2,650, 7,150, 15,200, 27,300 and 49,000 (develop 20, 560, 1,900, 5,200, 11,300, 20,500 and 35,700; the last +37%). The clients' `targetPct` move by up to 20: Dale 115 → 135, the Hendersons 110 → 115, Count Vladislav 95 → 90, Juniper Vale 95 → 85, the Barkers 90 → 80. Held out, greedy then wins 39.5% [33.0–46.4]. With D-162's stock from week 1 the last target is 51,200 (+43%) and Dale's 155, and greedy wins 41.5% [34.9–48.4]. D-146's fit used 2,000 runs, and the batch's will too.
+
+**Weekend Crew** (D-083):
+- **What's left for it:** the only way to build a second card from the hand in a week (a room, a drawn fixture or a Renovation). It no longer pairs with a bought piece, which D-083 gave as its use for the reserve: a bought piece is free on its own.
+- **Its price of 5 holds for now.** A card from the hand is the week's best draw, and Weekend Crew still buys one more. The shop bot takes it from 12% of the shelves that show it (19% on develop, 6% in (c)), and the week it's used gains 83 Wow (92). A shop piece at 3 is a free build too now, so if the playtest leaves Weekend Crew on the shelf, the Rare tool price of 4 is the next step.
+
+**Why:**
+- **One rule a player can hold:** what's in your hand is the week's build, and what's in Your goods is free. A bought piece, the client's card and an arrival's room were a second hand that spent the same week as the hand's best card: the shop bot valued a bought piece at half, and bought one from 6.7% of the shelves that showed one.
+- **The stock comes once** because a free stock topped up every milestone is a faucet ((a), (c)): +28.5 to +35.5 points of greedy, six Hallways a run, and the glance test down from 46% to 20–22%. Once, it's what D-160 asked for, a Hallway and a Fence there when the house first needs them, with about develop's Hallways a run (2.15 against 2.33).
+- **Arrivals' rooms are free** for the same one rule, and Room for everyone holds more often (78.0% against 70.0%).
+- **(d) is close in numbers,** but it has two kinds of goods card, one free and one not, and the stock's cards keep spending a week a new player may waste on them (D-160's known gap).
+
+**Considered:**
+- **(a) Only the stock's cards free:** the faucet above, and two kinds of goods card.
+- **(b) All goods free, one a week:** the cap never binds, and it's one more rule.
+- **(c) All goods free, the stock topped up every milestone:** 85.0%, six Hallways a run.
+- **(d) All goods free but the stock's:** two kinds of goods card (Why).
+- **Free goods and a stock topped up every second milestone:** not tried; `refill` is the switch if the playtest wants more Hallways.
+
+**Changes:**
+- D-004 and D-036 (Accepted): a week can place more than one piece, every one but the week's card from Your goods, and placing a reserve piece is a free action. A proposed change on each, awaiting the user's OK.
+- D-051 (Accepted): a bought piece no longer costs a week. A proposed change there.
+- D-083 (Accepted): Weekend Crew's next play is the next card from the hand. A proposed change there.
+- D-103 (Accepted): an arrival's cards are free builds. A proposed change there.
+- D-089 (Accepted): greedy's free play first, and the shop bot's value for a bought piece. A dated note there.
+- D-160 (Proposed): the stock comes once and its cards are free; its hint, How to play's line, Your goods' tip and Inspect's note. A dated note there.
+- `implementation-plan.md` (§4's week's card and free actions, the state, the start of week, the shop's Where things go, Appendix A's reserve, Renovate and stock) and `jam-scope.md` (the weekly turns, the standing stock).
+
+**Checked:** one round in the dev build, in the browser pane, on Dale's job: his Home Office in Your goods, picked (Inspect: "From your reserve: it doesn’t use your week."), then on the lot. End week read Build with its tip, the board's label "free: press Build" and the key bar "Enter build it". Build placed it with the week still 1 and the hand unchanged. A Dining Room from the hand then read End week, and ending the week tallied both and dealt week 2. How to play's A week line. No console errors. Not looked at: the stock's hint and tag at Foundation, Weekend Crew in play, a Renovation from Your goods, an arrival's card, the shop's and the job board's tips, a first job, narrow windows, touch. `npm test` (2,223) and `npm run typecheck`.
+
+**Known gaps:**
+- **Not played by a person.**
+- **Greedy wins 71%** until the batch's re-fit (Re-fit size).
+- **The house's shape:** greedy's houses pass the glance test less often (29–37% against 46%). More pieces make more outbuildings, and the bot plans no shape.
+- **The clients' spread** is 37.5 points (20.0), from 40 runs each.
+- **No Hallway after the stock's first** but the draw's: a house that wants a second waits on the draw (2.15 a run; develop 2.33). `refill: true` brings the top-up back, at about +14 points of greedy ((c)).
+- **Strike's words say "No more Fences this run"** (D-157), and the stock's one Fence still comes, as before.
+- **Runs in progress drop** when this merges and at the release. A run code from an earlier build loads with "The content has changed since it was made" and replays up to its first play from the reserve, which ended the week then.
+- **A player may still spend a hand card where a goods card would do;** the hint says goods are free, and the novice clears Foundation more often (21.5% against 8.5%).
+- **Greedy's longest run** took 3.7 s in the check (2.1 s on develop), with two jobs at a time; the gate passes.
+
 ### D-161 · The bots rank only a few of a Fence card's plays out in the open, and the benchmark gate passes again
 **Status:** Proposed · 2026-11-12, a fix pull request (`fix/greedy-fence-packs`), the follow-up D-160's known gaps name, started once the user had merged D-160 (#73). D-160's standing stock keeps a Fence pack in the reserve nearly every week, and the sim's benchmark gate (§4) failed at 1.5 s against 1 s. Speed only: no rule, content, scoring, save or run-code change, and `contentHash(CONTENT)` is unchanged, so saves and run codes carry over (#54). Every bot plays as before, move for move: `npm run sim -- --check` gives the same runs.
 **Decision:**
@@ -1980,6 +2070,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - **Greedy's recall test asks 80%** (85% before): on its 5 seeds the shortlist found the exact best in 15 of 18 states, losing 0.5%, and on 20 seeds 63 of 71 (66 of 73 on develop), noise rather than a slip.
 
 **2026-11-12 (D-161):** the benchmark gate passes again, at 0.82–0.86 s (1.53–1.59 s before). The bots rank only the few of the stock Fence's open-ground plays that the shortlist can reach, and every run plays as before.
+
+*Changed by D-163 (Proposed 2026-11-12):* placing a stock card or the client's doesn't use the week, and the stock comes once, at Foundation's start (a first job's third week), with no top-up after (`standingStock.refill: false`): topped up and free, it was about two more builds a milestone. The hint is "Free to place": "A Hallway and a Fence wait in Your goods, top right, until you need them. Placing one doesn’t use your week." How to play's line, Your goods' tip and Inspect's note say the same, and Inspect's note no longer says another comes.
 
 ### D-159 · Fences that join, and Hallways that open into each other
 **Status:** Proposed · 2026-11-12, a fix pull request (`fix/fences-and-halls-join`), from the outside playtester's notes the same day (D-158's). Art only: how the board draws Fences and touching Hallways (`src/ui/art/yard.ts`, `src/ui/board/house-model.ts`, `src/ui/art/rooms.ts`). No rule, content, scoring, save or run-code change, and `contentHash(CONTENT)` is unchanged, so saves and run codes carry over (#54). It changes the art of Accepted D-093, D-097, D-100 and D-106 (below), so the user merges it after a look.
