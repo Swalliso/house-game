@@ -857,6 +857,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 **2026-11-10 (D-136), a second downscale exception:** the end screen's photos of the house at each milestone are drawn smaller than one device pixel per art pixel, smoothly, as Fit's overview is. Their larger view keeps whole device pixels per art pixel wherever the window holds one.
 
+*Changed by D-159 (Proposed 2026-11-12):* the wall between every two pieces leaves out two touching Hallway pieces, which open into each other. Rooms still never merge.
+
 ### D-098 · M5a interface defaults: the pixel UI
 **Status:** Accepted · 2026-11-07 (proposed 2026-11-06 with M5a's UI track, stage 2: part 1, the foundations, the build screen, the score panel and the top bar; part 2, the other screens. Held up in playtest 5a, confirmed by the team). Implementation details within D-057, D-059, D-097 and §12. It kept its number when the stage's tracks merged; the lot's and the house's defaults are D-099 and D-100.
 **Decision:**
@@ -958,6 +960,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
   - A Patio with doors on two opposite sides and a Pergola shows the badge on bare paving.
   - At 0.5× a two-figure digit can reach over its neighbor's planter.
   - Closets' shoes, which only fit on the neighbor's half of the band, no longer show.
+
+*Changed by D-159 (Proposed 2026-11-12):* two touching Hallway pieces open into each other, with no wall and no doorway between them (Walls, Doors). Fences that meet end to end in one line are one run with no post between them, not "so each stays countable", and a Fence reaches the house's wall beside it (Yard pieces).
 
 ### D-093 · Houses that look like houses
 **Status:** Accepted · 2026-11-06: the team chose the systems review's option B, with its recommended defaults (below). Was Open, from playtest 3, and researched the same day (research.md, "Update: houses that look like houses"; `house-systems-review.md`).
@@ -1063,6 +1067,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 **2026-11-08 (M4 merged with `develop`):** on M4's branch these parts were D-097 to D-101 until M5a, merged first, took D-097 to D-100. M4 renumbered them before its merge (D-097's juice note has the map), so its older commit messages use the old numbers: "D-093 Accepted with option B; D-097 to D-103" means D-101 to D-107.
 
+**2026-11-12 (D-159, Proposed):** connectors join connectors. Two touching Hallway pieces (the Hallway, the Long Hallway) open into each other with no wall or doorway, so joined halls read as one corridor, each piece still its own for hover, Inspect and its label. Rooms still never merge: a wall stands between every two rooms, and between a room and a hall.
+
 ### D-101 · The house rules: seven lines every checklist starts with
 **Status:** Accepted · 2026-11-06 (D-093's option B, chosen by the team). The numbers are placeholders for the sim.
 **Decision:**
@@ -1139,6 +1145,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **2026-11-08 (M4 merged with `develop`):** M5a's painters draw a pack from its own tiles, never the card's shape: its ghost as the tiles are clicked out, the built pack, and the Moving Truck's carried pack. A Fence's picket line runs through any connected shape, and a lone tile is a short run with a post at each end. The house's car stands only on its Driveway's own tiles, and a Driveway of two tiles or more, of any shape, parks it (D-111).
 *Changed by D-121 (Proposed 2026-11-09):* the Fence and Driveway packs draw at 10, not 20, in the Layout row.
 *Changed by D-140 (Proposed 2026-11-10):* a Driveway pack is 1–8 tiles, as the Fence, and the Garage it runs to no longer has to be built beside it.
+
+**2026-11-12 (D-159, Proposed):** Fences share a line and reach the wall. Two that meet end to end in one line draw no post between them, and a one-tile pack joins every Fence beside it. An end beside the house runs into its wall, a stretch alongside the house is tied to the wall at each end, and a corner touch gets a corner post, so a yard looks closed exactly where the rules count it fenced. Each pack is still its own piece, with its own payout.
 
 ### D-107 · Showing what a fixture is worth
 **Status:** Accepted · 2026-11-06 (the team chose it, resolving D-092). Built with M4b's UI.
@@ -1834,6 +1842,53 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 ## Proposed
 
 *Reserved numbers (2026-11-10): D-115 to D-118 are the layout session's drafts, not in this file yet; D-122 (legibility) is logged below. D-132 to D-134 are playtest 5's fixes, each logged by its own pull request: D-132 one reroll for both rows of the draw, D-133 the roof view, D-134 three more tracks. D-135 and D-136 are M6's end screen (D-135 the result line and link preview, D-136 the milestone photos); D-137 and D-138 belong to the release-day sessions. D-139 is the company's record. D-140 to D-146 are the friction batch, from the 2026-11-10 review's seven points: D-140 the Garage and the Driveway, D-141 what a blueprint is worth and its icon, D-142 first contact, D-143 the blueprint shelf, D-144 change orders two at a time, D-145 the lot and the last stretch, and D-146 the batch's one re-fit. D-147 takes the roof out again (the user's call, logged under Accepted). D-148 is the first-timer legibility batch before the showing, from the 2026-11-10 polish review (logged below). D-149 is the first job, from the first showing (2026-11-11, logged below). D-150 is the end screen's lead into the next run, from the evening's what-next survey (`fix/retry-after-loss`, logged below). D-151 is the first job's gentler targets (`phase/first-job-targets`, logged under Accepted). D-152 to D-157 are the 2026-11-11 playtest's: D-152 Copy run code on the end screen's plank (fix/playtest-6-bugs, logged below), D-153 Full House's progress on its set chip (fix/full-house-progress, logged below), D-154 the week cue, D-155 life on the lot and D-156 your houses on the street (each logged by its own pull request), and D-157 strikes from the hand (`phase/strike-from-hand`, logged below). New entries start at D-158.*
+
+### D-159 · Fences that join, and Hallways that open into each other
+**Status:** Proposed · 2026-11-12, a fix pull request (`fix/fences-and-halls-join`), from the outside playtester's notes the same day (D-158's). Art only: how the board draws Fences and touching Hallways (`src/ui/art/yard.ts`, `src/ui/board/house-model.ts`, `src/ui/art/rooms.ts`). No rule, content, scoring, save or run-code change, and `contentHash(CONTENT)` is unchanged, so saves and run codes carry over (#54). It changes the art of Accepted D-093, D-097, D-100 and D-106 (below), so the user merges it after a look.
+**Decision:**
+- **Two Fences that meet end to end in one line are one run,** with no post between them (`fenceArms` in `yard.ts`). In a corner or a T they join as before. Side by side along their lengths they stay two lines, not a grid.
+- **A one-tile pack joins every Fence beside it.** Where what it meets, a Fence or a wall, is only north or south of it, it stands upright with a post at each end. Beside nothing it's still a short run across.
+- **A Fence reaches the house,** which closes a yard as a Fence does:
+  - An end beside a wall runs into it: straight on, its end post against the wall (as before), or turning into it from the middle of its cell.
+  - A run alongside the house is tied to the wall at each end of the stretch, by a corner or a T, and runs straight past in between.
+  - Where it touches the house only at a corner, a post on its cell's corner and a strip to the house's corner close the gap. Two Fences touching only at a corner meet the same way.
+- **The lot's back and sides count as walls here,** as they bound the rules' fill: a Fence along one turns out to it at each end, and a one-tile pack in the back row stands upright. The street side never does, since a yard that reaches the street is never fenced. The ghost and the cards' and the shop's pictures leave the edges out, so a Fence's ghost is still the Fence alone.
+- **So a yard looks closed exactly where the rules count one.** The fenced-yard fill (`computeLayout`, D-105) spreads through every tile that isn't the house's or a Fence's, side to side only, within the lot, so a diagonal touch closes a passage. The drawing closes every passage the fill closes, and no other.
+- **Touching Hallways open into each other** (`buildModel` in `house-model.ts`): the edge between two connector pieces (the Hallway, the Long Hallway) has no wall band, stub, threshold, face or shadow, and the door tree puts no doorway there, so joined halls read as one corridor.
+  - **Rooms never merge** (D-093): a wall stands between every two rooms, and between a room and a hall. Hallways still open into every room the rules link through them.
+  - **One runner** (`hallRun` in `rooms.ts`): halls lying the same way in one row or column, joined end to end, carry their runners on to each joint in one band, so the runners read as one, their checks in step. Where a hall meets another from the side or round a corner, each runner ends short of the other.
+  - Nothing stands against a south wall that isn't there: a hall's furniture keeps off an open joint, so its walkway runs on.
+  - **Each piece is still its own:** hover and Inspect pick it alone, and it keeps its digit and its earnings label. Scoring doesn't change.
+
+**Why:** the playtester's words: "my second fence didn't connect to my first fence and become one fence", it "also didn't connect to the house it was next to", and "these hallways don't visually connect". The rules already took each as joined: Fences and the house close a yard together, and a hall links the rooms along it. The art didn't say so:
+- two Fences end to end kept a post each at the joint (D-100: "so each stays countable");
+- a Fence alongside the house ran down the middle of its cells, half a cell of grass from the wall, and one touching it at a corner stopped short of it;
+- a wall band and a doorway stood between two touching Hallways (D-093's wall between every two pieces).
+
+**Considered:**
+- **One post at an end-to-end joint:** a post mid-line still reads as two fences meeting. None reads as one fence, and the digits still say there are two.
+- **An arm to the wall from every tile alongside the house:** a ladder of spurs. The rules need only the ends, where the yard closes.
+- **Merging touching Fences in the rules** (one piece, one payout): a rule and content change, not this fix. The enclosure payout stays one per pack (D-106).
+- **Carrying the runner round a corner:** LimeZu's runner has no corner piece, and a cut of our own would have to turn its checks. Two runners ending cleanly read as one hall turning.
+- **Opening a room into a touching room of its type,** the team's Parked "merged rooms" (D-100's playtest 5a note): not here. Only halls, which join the rooms rather than being one, open into each other.
+
+**Checked:**
+- **In headless Chrome,** at 1600×900 with a devicePixelRatio of 2 and at 1920×1080 with 1, against develop at f9c0d06: one run code, built through the ?debug store and opened in both builds. A Bedroom; a Hallway and a Long Hallway end to end; a Hallway turning the corner; four Fences (one along the Bedroom's west wall and on past it, one meeting its end at a corner, one end to end with that one, one whose end stops beside the hall). The rules count the 12 tiles between them as a fenced yard (the Hendersons' "A fenced yard" holds), closed where a Fence's end touches the hall at a corner. Before, the yard looked open there and along the Bedroom's wall. Inspect named each Hallway piece alone, with its own earnings, at both sizes. The pull request has the before and after screenshots (`docs/playtests/fences-halls-join-*`).
+- **`yard.test.ts`:** end to end with no post, an end into a wall both ways, a stretch alongside tied at each end, a one-tile pack upright, a corner touch, the ghost still the Fence alone, and a property over 400 random lots (Closets, Bedrooms and up to five Fence packs of 1–6 tiles on a 9×9 lot). It floods the drawing pixel by pixel, with the house's cells and the Fences' opaque pixels as walls, and finds the rules' regions, every fenced yard `computeLayout` counts one region of its own. It passed at 6,000 runs once. Lots with two packs side by side (Known gaps) are left out.
+- **`house-model.test.ts`:** touching Hallways open into each other with no wall or doorway, never into a room, and every room is still reached. **`rooms.test.ts`:** one runner through halls end to end, ends clean at a corner or a side, the walkway clear through a joint.
+- `npm test` (2,191) and `npm run typecheck`.
+
+**Known gaps:**
+- **Two Fences side by side along their lengths** stay two lines with grass between them, as before, so the strip can look like a path where the rules see Fence.
+- **Doorways from joined halls:** each Hallway piece still opens into every room the rules link through it, so a room beside two joined halls can have two doorways from what now reads as one hall.
+- **Two Hallways side by side** along their lengths open into each other too: a hall two cells wide, with two runners.
+- **Runners don't turn corners** (Considered).
+
+**Changes:**
+- D-093 (Accepted): touching connectors open into each other; rooms still never merge. A dated note there.
+- D-097 and D-100 (Accepted): "a wall between every two pieces" leaves out two touching Hallway pieces, with no doorway between them; D-100's Fences no longer keep an end post each where they meet end to end, and they reach the house. A pointer in each.
+- D-106 (Accepted): Fences share a line where they meet and reach the wall. A dated note there.
+- `implementation-plan.md` §12 Art: the walls and the Fence paragraph.
 
 ### D-158 · Tutorial fixes: hints that wait for their play, a short How to play, and the first job's shops a shop behind
 **Status:** Proposed · 2026-11-12, a phase pull request (`phase/tutorial-fixes`), from an outside playtester's notes the same day (a realism-first player who read How to play before pressing Start, and played the first job and Dale's contract). The user's go-ahead: "Yes, build them". UI and rules text only: no rule, content or balance change, and `contentHash(CONTENT)` is unchanged, so saves and run codes carry over (#54). For the user's playtest before it merges.

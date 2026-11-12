@@ -61,14 +61,48 @@ function modelOf(h: HouseState): HouseModel {
 const uidOf = (h: HouseState, defId: PieceId, nth = 0) =>
   h.pieces.filter((p) => p.defId === defId)[nth]!.uid;
 
-/** Rooms joined by doorways, from each outside door: every room should be in one of these. */
+/** The pieces open into each other with no wall between them (touching Hallways, D-159), both ways. */
+function openJoints(m: HouseModel): Map<number, Set<number>> {
+  const out = new Map<number, Set<number>>();
+  const add = (a: number, b: number) => {
+    let s = out.get(a);
+    if (!s) out.set(a, (s = new Set()));
+    s.add(b);
+  };
+  for (let y = 0; y < m.height; y++) {
+    for (let x = 0; x < m.width; x++) {
+      const a = roomAt(m, x, y);
+      if (!a) continue;
+      for (const [nx, ny, side] of [
+        [x + 1, y, 'E'],
+        [x, y + 1, 'S'],
+      ] as const) {
+        const b = roomAt(m, nx, ny);
+        if (b && b !== a && edge(m, x, y, side) === EDGE.none) {
+          add(a, b);
+          add(b, a);
+        }
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Rooms joined by doorways, or open into each other (touching Hallways), from each outside door:
+ * every room should be in one of these.
+ */
 function reachable(m: HouseModel): Set<number> {
   const seen = new Set<number>(m.exits.map((e) => e.uid));
   const stack = [...seen];
+  const open = openJoints(m);
   while (stack.length > 0) {
     const u = stack.pop()!;
-    for (const d of m.doors) {
-      const o = d.a === u ? d.b : d.b === u ? d.a : 0;
+    const next = [
+      ...m.doors.map((d) => (d.a === u ? d.b : d.b === u ? d.a : 0)),
+      ...(open.get(u) ?? []),
+    ];
+    for (const o of next) {
       if (o && !seen.has(o)) {
         seen.add(o);
         stack.push(o);
@@ -167,6 +201,42 @@ describe('Hallways', () => {
     expect(m.doors.filter((d) => d.why === 'hall').every((d) => d.a === hall || d.b === hall)).toBe(
       true,
     );
+  });
+
+  it('open into touching Hallways with no wall between them, and never into a room (D-159)', () => {
+    // A Hallway and a Long Hallway end to end, a Hallway down from its east end, a Bedroom above.
+    const h2 = house([
+      ['hallway', 2, 3],
+      ['longHallway', 4, 3],
+      ['hallway', 6, 4, 1],
+      ['bedroom', 2, 1],
+    ]);
+    const m2 = modelOf(h2);
+    const [a, b, c, bed] = [1, 2, 3, 4];
+    // End to end, and round the corner: open. Each cell is still its own piece's.
+    expect(edge(m2, 3, 3, 'E')).toBe(EDGE.none);
+    expect(edge(m2, 6, 3, 'S')).toBe(EDGE.none);
+    expect([roomAt(m2, 3, 3), roomAt(m2, 4, 3), roomAt(m2, 6, 4)]).toEqual([a, b, c]);
+    // No doorway between them: they're one corridor.
+    for (const [p, q] of [
+      [a, b],
+      [b, c],
+    ] as const) {
+      expect(doorBetween(m2, p, q)).toBeUndefined();
+    }
+    // A room keeps its wall, with its doorway from the hall.
+    expect(edge(m2, 2, 2, 'S')).toBe(EDGE.inner);
+    expect(doorBetween(m2, a, bed)).toBeDefined();
+    // Every piece is reached, through the doorway and the open joints.
+    expect(reachable(m2).size).toBe(m2.rooms.size);
+    // Two rooms of a type still never merge.
+    const twin = modelOf(
+      house([
+        ['bedroom', 2, 2],
+        ['bedroom', 4, 2],
+      ]),
+    );
+    expect(edge(twin, 3, 2, 'E')).toBe(EDGE.inner);
   });
 });
 

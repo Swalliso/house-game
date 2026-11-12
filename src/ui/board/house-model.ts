@@ -2,9 +2,12 @@
 // by fixed rules, never by chance, so the same house always looks the same (photos and
 // replays depend on it). Pure: no DOM. Cached per house, like occupancy() in geometry.ts.
 //
-// - Edges. Every cell edge is no wall (one piece on both sides, or no room on either), a wall
-//   between two rooms (any two pieces, same type included, so rooms never merge: D-093), an
-//   outside wall (a room next to anything else, or the lot's edge), or a garage door.
+// - Edges. Every cell edge is no wall (one piece on both sides, two Hallway pieces, or no room on
+//   either), a wall between two rooms (any two pieces, same type included, so rooms never merge:
+//   D-093), an outside wall (a room next to anything else, or the lot's edge), or a garage door.
+//   Touching connectors (Hallway, Long Hallway) open into each other (D-159): a hall reads as one
+//   corridor, while each piece stays its own for hover, Inspect and its label. A room never
+//   opens into a hall that way, nor into another room.
 // - Doorways are decoration and change no score. Hallways open into every room the rules link
 //   through them (rules.describePiece's `linked`). A front door goes in a street-facing wall of
 //   the best entry room (a garage, a bathroom or a closet only when no other room can have one;
@@ -575,8 +578,9 @@ function buildModel(house: HouseState, links: HallLinks, openings: boolean): Hou
   }
 
   const at = (x: number, y: number) => (x < 0 || y < 0 || x >= W || y >= H ? 0 : room[y * W + x]!);
+  const hall = (uid: number) => isConnector(rooms.get(uid)!.defId);
   const kindOf = (a: number, b: number): EdgeKind =>
-    a === b ? EDGE.none : a && b ? EDGE.inner : EDGE.outer;
+    a === b || (a && b && hall(a) && hall(b)) ? EDGE.none : a && b ? EDGE.inner : EDGE.outer;
   const h = new Uint8Array(W * (H + 1));
   for (let y = 0; y <= H; y++) {
     for (let x = 0; x < W; x++) h[y * W + x] = kindOf(at(x, y - 1), at(x, y));
@@ -969,16 +973,26 @@ function addOpenings(m: HouseModel, house: HouseState, links: HallLinks): void {
     join(d.a, d.b);
   };
 
-  // Hallways open into every room the rules link through them, and into touching Hallways.
-  // (A room linked to nothing, the only one on its Hallways, gets its door from the tree.)
+  // Touching Hallways are one corridor, open into each other with no wall between them
+  // (buildModel, D-159), so the door tree takes them as joined. Hallways open into every room
+  // the rules link through them. (A room linked to nothing, the only one on its Hallways, gets
+  // its door from the tree.)
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const a = at(x, y);
+      if (!a || !isConnector(defOf(a))) continue;
+      for (const b of [at(x + 1, y), at(x, y + 1)]) {
+        if (b && b !== a && isConnector(defOf(b))) join(a, b);
+      }
+    }
+  }
   const touching = [...runsOf.keys()].map((k) => k.split('-').map(Number) as [number, number]);
   touching.sort((p, q) => p[0] - q[0] || p[1] - q[1]);
   const linked = (u: number) => (links.get(u)?.length ?? 0) > 0;
   for (const [a, b] of touching) {
     const ca = isConnector(defOf(a));
     const cb = isConnector(defOf(b));
-    if (!ca && !cb) continue;
-    if ((ca && cb) || (ca && linked(b)) || (cb && linked(a))) {
+    if ((ca && linked(b)) || (cb && linked(a))) {
       const d = doorBetween(a, b);
       if (d) addDoor({ ...d, why: 'hall' });
     }
