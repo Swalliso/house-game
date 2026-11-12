@@ -96,8 +96,8 @@ function possessive(name: string): string {
 /**
  * Where a card in the reserve's extra slots came from (M4b, D-160), as Your goods and Inspect say
  * it: its slot's tag ("Crew", "Twins", "Dale", "Stock"), whose it is mid-sentence for the slot's
- * title (" (with the twins)"), and Inspect's line ("Came with the twins"). Null for a card in
- * the reserve's own slots (bought, picked or copied).
+ * tip (" (with the twins)"), and Inspect's line ("Came with the twins"). Null for a card in the
+ * reserve's own slots (bought, picked or copied).
  */
 export function extraSlotWords(
   clientId: ClientId,

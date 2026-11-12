@@ -1834,7 +1834,7 @@ function CameraControls() {
     <div class="camera-controls" role="group" aria-label="Zoom">
       <button
         type="button"
-        title="Zoom out (−)"
+        data-tip="Zoom out (−)"
         aria-label="Zoom out"
         disabled={!canZoomOut()}
         onClick={() => zoomOut()}
@@ -1845,14 +1845,14 @@ function CameraControls() {
         type="button"
         class={fit ? 'on' : ''}
         aria-pressed={fit}
-        title={fit ? 'Back to your zoom (F)' : 'Fit the whole lot (F)'}
+        data-tip={fit ? 'Back to your zoom (F)' : 'Fit the whole lot (F)'}
         onClick={() => toggleFit()}
       >
         Fit
       </button>
       <button
         type="button"
-        title="Zoom in (+)"
+        data-tip="Zoom in (+)"
         aria-label="Zoom in"
         disabled={!canZoomIn()}
         onClick={() => zoomIn()}

@@ -214,7 +214,7 @@ function TagChips({ info }: { info: PieceInfo }) {
           <span
             key={t}
             class={cls.filter(Boolean).join(' ')}
-            title={why.length > 0 ? why.join(' · ') : undefined}
+            data-tip={why.length > 0 ? why.join(' · ') : undefined}
           >
             <Icon name={t as IconName} />
             {t}
@@ -740,7 +740,7 @@ function ItemInfo({
           class="sell-button"
           icon="coin"
           onClick={() => sell(sellAs.from, sellAs.i)}
-          title="Selling pays half its price, rounded down"
+          tip="Selling pays half its price, rounded down"
           aria-label={`Sell for ${price} budget`}
         >
           Sell for {price}
@@ -909,7 +909,7 @@ function LetGo({ what = 'piece' }: { what?: 'piece' | 'house' }) {
         heldPiece.value = null;
         heldNeighbor.value = null;
       }}
-      title={`Let go (Esc, or click the ${what} again)`}
+      tip={`Let go (Esc, or click the ${what} again)`}
       aria-label={`Let go of this ${what}`}
     />
   );
@@ -952,7 +952,7 @@ function NeighborInfo({ k, held }: { k: string; held: boolean }) {
       {lot && (
         <Button
           class="play-again"
-          title="A new run on this lot, for the same client with the same crew"
+          tip="A new run on this lot, for the same client with the same crew"
           onClick={() => playLotAgain(lot)}
         >
           Play this lot again

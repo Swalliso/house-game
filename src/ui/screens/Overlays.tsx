@@ -238,7 +238,7 @@ export function Notes({
               refocus?.current?.focus({ preventScroll: true });
             }}
             aria-label="Dismiss"
-            title="Dismiss"
+            tip="Dismiss"
           />
         </div>
       )}

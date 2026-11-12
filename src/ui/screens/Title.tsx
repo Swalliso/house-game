@@ -117,7 +117,7 @@ export function Title() {
                   variant="wood"
                   icon="trophy"
                   class="title-portfolio"
-                  title="The houses your company has built, and its best work"
+                  tip="The houses your company has built, and its best work"
                   onClick={() => (portfolioOpen.value = true)}
                 >
                   Portfolio

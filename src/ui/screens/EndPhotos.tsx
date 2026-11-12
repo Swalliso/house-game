@@ -196,7 +196,7 @@ function Polaroid({
         type="button"
         class={`polaroid ${failed ? 'failed' : 'met'} ${m.result}`}
         aria-label={label}
-        title={`${name}: ${resultTag(m)}. Click to see it larger.`}
+        data-tip={`${name}: ${resultTag(m)}. Click to see it larger.`}
         onClick={() => {
           audio.play('select');
           photoShown.value = i;
@@ -275,13 +275,13 @@ export function PhotoViewer() {
           <span class="photo-count num">
             {i + 1}/{shots.length}
           </span>
-          <Button disabled={i === 0} onClick={() => go(-1)} title="The milestone before (←)">
+          <Button disabled={i === 0} onClick={() => go(-1)} tip="The milestone before (←)">
             ← Previous
           </Button>
           <Button
             disabled={i === shots.length - 1}
             onClick={() => go(1)}
-            title="The milestone after (→)"
+            tip="The milestone after (→)"
           >
             Next →
           </Button>

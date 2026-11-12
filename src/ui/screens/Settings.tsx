@@ -75,7 +75,7 @@ export function SettingsPanel() {
             size="sm"
             disabled={seenHints.value.size === 0}
             onClick={showHintsAgain}
-            title="Each first-time hint shows again when its moment comes"
+            tip="Each first-time hint shows again when its moment comes"
           >
             Show them again
           </Button>

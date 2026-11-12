@@ -56,7 +56,7 @@ export function foldedEmpty(s: RunState, rows: InventoryRows): boolean {
 }
 
 /**
- * The folded plank's counts, each with its icon and its title, and only when above 0: what's
+ * The folded plank's counts, each with its icon and its tip, and only when above 0: what's
  * waiting to be used in the reserve and the supplies, and how many types are struck this run
  * (D-157). Once the plank shows, the struck count is the run's as it stands.
  */

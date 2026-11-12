@@ -156,13 +156,13 @@ function Today({ gain }: { gain: number }) {
   const wow = SCORE_LABELS.total;
   if (gain === 0) {
     return (
-      <p class="co-today none" title={TODAY_TIP}>
+      <p class="co-today none" data-tip={TODAY_TIP}>
         {todayText(0)}
       </p>
     );
   }
   return (
-    <p class={`co-today ${gain > 0 ? 'good' : 'bad'}`} title={TODAY_TIP}>
+    <p class={`co-today ${gain > 0 ? 'good' : 'bad'}`} data-tip={TODAY_TIP}>
       <span class="co-today-num">
         <Icon name={gain > 0 ? 'up' : 'down'} />
         {signed(gain)}
@@ -251,7 +251,7 @@ export function OrderCard({
           disabled={!!stamp}
           onMouseDown={noFocus}
           onClick={() => pick(i)}
-          title={alone ? `Accept ${view.name} (${keycap})` : `Pick ${view.name} (${keycap})`}
+          tip={alone ? `Accept ${view.name} (${keycap})` : `Pick ${view.name} (${keycap})`}
         >
           {alone ? 'Accept' : 'Pick'}
           <Keycap>{keycap}</Keycap>

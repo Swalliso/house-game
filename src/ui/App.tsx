@@ -293,7 +293,7 @@ function BuildLabel({ inBoard = false }: { inBoard?: boolean }) {
   return (
     <div
       class={inBoard ? 'build-label in-board' : 'build-label'}
-      title="Build: channel · git commit"
+      data-tip="Build: channel · git commit"
     >
       {BUILD_LABEL}
     </div>

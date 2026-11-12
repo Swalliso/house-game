@@ -1,6 +1,7 @@
-/* Tooltips (D-077, D-086): a dotted underline marks a term; one fixed note explains it. M5a
-   draws the note in paper with an ink ring, a hard shadow and a pixel tail (theme/frames.ts),
-   and the underline as pixel dots. */
+/* Tooltips (D-077, D-086): a dotted underline marks a term; one fixed note explains it, and
+   says what a control does (D-077's 2026-11-12 note: the game's one kind of tooltip). M5a draws
+   the note in paper with an ink ring, a hard shadow and a pixel tail (theme/frames.ts), and the
+   underline as pixel dots. */
 
 .tip {
   --tip-line: currentColor;
@@ -42,10 +43,23 @@
 .tip-title {
   font-weight: 700;
 }
-/* A tip's text keeps its line breaks: the score panel's folded sets list a set a line
-   (ScorePanel.tsx setsTip). Other tips have none, so they wrap as before. */
+/* A control's tip with no heading (Tip.tsx): as wide as its words, up to the full note's width,
+   or half as wide again for a list, a tip of several lines. Tip.tsx rounds its measured width up
+   to whole device pixels. */
+.tip-bubble.compact {
+  width: max-content;
+  max-width: calc(var(--px) * 160);
+}
+.tip-bubble.compact.wide {
+  max-width: calc(var(--px) * 240);
+}
+/* Each of a tip's lines starts a new one, a little apart: the score panel's folded sets and a
+   hand card's set chip list a set a line (ScorePanel.tsx setsTip, Hand.tsx SetChip). Other tips
+   are one line, which wraps. */
 .tip-text {
-  white-space: pre-line;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
 }
 /* A symbol the pixel fonts lack, drawn as its icon in a tip's words (Tip.tsx tipWords), keeps to
    one line with the characters it touches, as the glyph did. */

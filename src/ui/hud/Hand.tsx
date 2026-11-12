@@ -79,13 +79,14 @@ const noFocus = (e: MouseEvent) => e.preventDefault();
 
 /**
  * A card's tags as chips, each with its icon (the icon set is named after the tags). A narrow
- * hand card shows just the icons (hand.css), so each chip names its tag in its title too.
+ * hand card shows just the icons (hand.css), so each chip names its tag in its tip, and to
+ * screen readers, too.
  */
 export function TagChips({ tags }: { tags: readonly Tag[] }) {
   return (
     <>
       {tags.map((t) => (
-        <Chip key={t} icon={t as IconName} class="tag-chip" title={t}>
+        <Chip key={t} icon={t as IconName} class="tag-chip" tip={t} label={t}>
           <span class="chip-word">{t}</span>
         </Chip>
       ))}
@@ -123,7 +124,7 @@ export function SetChip({ id }: { id: PieceId }) {
     return q ? `${setText(CONTENT, set)} ${setProgressText(CONTENT, q)}` : setText(CONTENT, set);
   });
   return (
-    <Chip tone="charm" icon={p?.held ? 'check' : undefined} class="set-chip" title={tip.join('\n')}>
+    <Chip tone="charm" icon={p?.held ? 'check' : undefined} class="set-chip" tip={tip.join('\n')}>
       {CONTENT.sets[shown].name}
       {p && !p.held && <span class="set-count">{` ${p.have}/${p.need}`}</span>}
       {more}
@@ -138,7 +139,7 @@ const cardName = (card: CardData): string =>
 
 /**
  * A card the week's draw swapped in (D-121): what it replaced, which had no play. A badge on the
- * card's corner, the reroll icon with its words in its title and read out, so it takes no room:
+ * card's corner, the reroll icon with its words in its tip and read out, so it takes no room:
  * as a chip it wrapped a narrow card's Renovate and tags onto a second line, and beside the name
  * it wrapped the name (the note over the lot names the cards swapped out in words).
  */
@@ -266,7 +267,7 @@ function CardView({
               tone="uncommon"
               icon="star"
               class="renovate-chip"
-              title={`It can renovate a ${type} you have, in place: pick it, then point at an outlined room`}
+              tip={`It can renovate a ${type} you have, in place: pick it, then point at an outlined room`}
             >
               Renovate
             </Chip>
@@ -290,7 +291,7 @@ function CardView({
       aria-pressed={striking ? armed : isSelected}
       aria-disabled={striking && !view?.ok ? true : undefined}
       data-card={i}
-      tooltip={
+      tip={
         striking
           ? view?.ok
             ? view.text
@@ -359,7 +360,7 @@ function FixtureCardView({
       aria-pressed={striking ? armed : isSelected}
       aria-disabled={striking && !view?.ok ? true : undefined}
       data-card={i}
-      tooltip={
+      tip={
         striking
           ? view?.ok
             ? view.text
@@ -393,7 +394,7 @@ function RerollButton() {
       onClick={() => void reroll()}
       disabled={!can.ok}
       aria-label={`Reroll: new cards for both rows, ${rerolls} left`}
-      title={
+      tip={
         can.ok
           ? `New cards for both rows. It doesn’t end the week. ${s.rerollsLeft} left this milestone${s.bonusRerolls > 0 ? `, and ${s.bonusRerolls} kept` : ''}.`
           : (can.reason ?? 'You can’t reroll now.')
@@ -430,7 +431,7 @@ function StrikeButton() {
       disabled={!can.ok && !striking}
       aria-pressed={striking}
       aria-label={`Strike a card, ${n} left`}
-      title={
+      tip={
         striking
           ? 'Back to building (Esc)'
           : can.ok
@@ -461,7 +462,7 @@ function DemolishButton() {
       onClick={toggleDemolish}
       disabled={!canDemolish && !demolishing}
       aria-pressed={demolishing}
-      title={
+      tip={
         demolishing
           ? 'Back to building (Esc)'
           : canDemolish
@@ -642,7 +643,7 @@ export function Hand() {
     (sel?.kind === 'piece' && !CONTENT.pieces[sel.id].pack && pending?.t !== 'renovate') ||
     (sel?.kind === 'tool' && movingUid.value !== null);
   // The long label, and a short one for a narrow column (hand.css, whose container queries are
-  // measured on these words). What End week will do, build or renovate, is in its title.
+  // measured on these words). What End week will do, build or renovate, is in its tip.
   const [endLabel, endShort] = pending
     ? ['End week', 'End week']
     : armed
@@ -656,7 +657,7 @@ export function Hand() {
         : undefined;
   // A milestone's last week, or an overtime week (D-154): the press that checks the target.
   // End week wears a "Last week" tag on its top edge, which stamps in as the week comes up (once
-  // its tally is done) and again as a card is placed, the moment that press is next. Its title
+  // its tally is done) and again as a card is placed, the moment that press is next. Its tip
   // says what the target still needs. Its words stay: with a card held it's narrowest, and
   // "End week" is all that fits at 1440 and 1728 px wide.
   const stakes = stakesOf(s);
@@ -710,7 +711,7 @@ export function Hand() {
             class="more-cards"
             onMouseDown={noFocus}
             onClick={showCardsUnder}
-            title="Scroll down to the rest of this week’s cards"
+            tip="Scroll down to the rest of this week’s cards"
           >
             {under === 1 ? '1 more card' : `${under} more cards`}
           </Button>
@@ -726,7 +727,7 @@ export function Hand() {
             onMouseDown={noFocus}
             onClick={rotate}
             disabled={!canTurn}
-            title="Rotate (R or right-click)"
+            tip="Rotate (R or right-click)"
             aria-label="Rotate"
           />
         )}
@@ -738,7 +739,7 @@ export function Hand() {
             class="cancel"
             onMouseDown={noFocus}
             onClick={cancelPlacement}
-            title={
+            tip={
               packing ? 'Clear the tiles (Esc)' : pending ? 'Move it (Esc)' : 'Put it back (Esc)'
             }
             aria-label={packing ? 'Clear the tiles' : pending ? 'Move it' : 'Put it back'}
@@ -750,7 +751,7 @@ export function Hand() {
           class={`end-week ${pending ? 'ready' : ''} ${armed ? 'confirm' : ''} ${tagged ? 'deciding' : ''}`}
           onMouseDown={noFocus}
           onClick={requestEndWeek}
-          title={[stakes, endTitle].filter(Boolean).join(' ') || undefined}
+          tip={[stakes, endTitle].filter(Boolean).join(' ') || undefined}
         >
           {tagged && (
             // Keyed on the card placed, so placing one stamps it in again.

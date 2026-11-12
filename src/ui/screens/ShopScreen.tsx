@@ -234,7 +234,7 @@ function OfferCard({ o, mixed }: { o: OfferView; mixed: boolean }) {
       note={service ? SERVICE_TEXT[service] : undefined}
       alert={alert}
       // D-157: the strikes held, since the hand's plank isn't on screen in the shop.
-      tooltip={
+      tip={
         service === 'strike'
           ? `You hold ${run.value.strikesLeft} ${run.value.strikesLeft === 1 ? 'strike' : 'strikes'}.`
           : undefined
@@ -261,7 +261,7 @@ function OfferCard({ o, mixed }: { o: OfferView; mixed: boolean }) {
               onMouseDown={noFocus}
               onClick={() => buyOffer(o)}
               disabled={!o.ok}
-              title={
+              tip={
                 o.ok
                   ? `Buy ${o.name}`
                   : short > 0
@@ -366,7 +366,7 @@ function CrateOption({
           size="sm"
           class="buy"
           disabled={!ok}
-          title={ok ? `Keep ${goodName(good)}` : 'No room: sell something first'}
+          tip={ok ? `Keep ${goodName(good)}` : 'No room: sell something first'}
           onClick={() => (pickOption(i) ? audio.play('buy') : audio.play('illegal'))}
         >
           Keep
@@ -498,7 +498,7 @@ function ShopHandle() {
         variant="wood"
         class="shop-handle"
         onClick={() => (shopHidden.value = false)}
-        title="The shop is still open"
+        tip="The shop is still open"
       >
         <span aria-hidden="true">↑</span> Back to the shop
       </Button>
@@ -567,7 +567,7 @@ export function ShopScreen() {
               onMouseDown={noFocus}
               onClick={refreshOnce}
               disabled={!refresh.ok}
-              title={refresh.ok ? 'New goods (not the services)' : refresh.reason}
+              tip={refresh.ok ? 'New goods (not the services)' : refresh.reason}
             >
               <Tip term="refresh">Refresh</Tip>
               <Price price={refresh.price} short={!refresh.ok && refresh.price > s.budget} />
@@ -578,7 +578,7 @@ export function ShopScreen() {
             class="shop-look"
             onMouseDown={noFocus}
             onClick={() => (shopHidden.value = true)}
-            title="Hide the shop to look at the lot (it stays open)"
+            tip="Hide the shop to look at the lot (it stays open)"
             aria-label="Look at the lot"
           >
             <span class="shop-look-text">Look at the lot</span>
@@ -620,7 +620,7 @@ export function ShopScreen() {
           class="leave"
           onMouseDown={noFocus}
           onClick={() => leaveShop()}
-          title={visit.boughtAny ? leaveLabel : `${leaveLabel}, and +${skip} budget for saving up`}
+          tip={visit.boughtAny ? leaveLabel : `${leaveLabel}, and +${skip} budget for saving up`}
         >
           {leaveLabel}
           {!visit.boughtAny && skip > 0 && (

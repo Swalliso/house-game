@@ -288,12 +288,12 @@ function CharmAdds({
   /** In a tally, held but not reached yet: its Charm hasn't landed this week. */
   pending: boolean;
   spanRef?: RefObject<HTMLSpanElement>;
-  /** How long it adds that, for its title: "while it holds". */
+  /** How long it adds that, for its tip: "while it holds". */
   lasts?: string;
 }) {
   const words = value === null ? undefined : `+${formatMult(value)} ${SCORE_LABELS.mult} ${lasts}`;
   return (
-    <span ref={spanRef} class={`charm ${pending ? 'pending' : ''}`} title={words}>
+    <span ref={spanRef} class={`charm ${pending ? 'pending' : ''}`} data-tip={words}>
       {value !== null && (
         <>
           <span class="charm-value">+{formatMult(value)}</span>
@@ -361,7 +361,7 @@ const noFocus = (e: MouseEvent) => e.preventDefault();
 function FoldButton({
   fold,
   folded,
-  title,
+  tip,
   buttonRef,
   flash,
   onToggle,
@@ -369,7 +369,8 @@ function FoldButton({
 }: {
   fold: Fold;
   folded: boolean;
-  title: string;
+  /** Its tip (Tip.tsx): what a click does. */
+  tip: string;
   buttonRef?: RefObject<HTMLButtonElement>;
   /** The beat lighting it in a tally, if one is. */
   flash?: CheckFlash['kind'];
@@ -392,7 +393,7 @@ function FoldButton({
       aria-expanded={!folded}
       onMouseDown={noFocus}
       onClick={onToggle ?? (() => toggleFold(fold))}
-      title={title}
+      data-tip={tip}
     >
       <Mark icon={folded ? 'caretRight' : 'caretDown'} />
       {children}
@@ -439,7 +440,7 @@ function FoldRow({
       folded={folded}
       buttonRef={row}
       flash={flash?.kind}
-      title={folded ? `${name}: all ${n} hold. Click to show them.` : 'Click to fold them away'}
+      tip={folded ? `${name}: all ${n} hold. Click to show them.` : 'Click to fold them away'}
     >
       <span class="fold-name">{name}</span>
       <span class="fold-count">
@@ -493,7 +494,7 @@ function RulesRow({
       buttonRef={row}
       flash={flash?.kind}
       onToggle={() => (rulesPick.value = folded)}
-      title={
+      tip={
         folded
           ? `${held} of the ${n} house rules hold. Click to show them.`
           : 'Click to fold the house rules into this row'
@@ -555,7 +556,7 @@ function Tastes({ tastes, crew }: { tastes: readonly Modifier[]; crew: Component
         <FoldButton
           fold="tastes"
           folded={!open}
-          title={open ? 'Click to fold them away' : 'What the client likes and dislikes'}
+          tip={open ? 'Click to fold them away' : 'What the client likes and dislikes'}
         >
           <span class="fold-name">
             Tastes<span class="fold-n"> ({tastes.length})</span>
@@ -773,7 +774,7 @@ function Pays({ reward, lost }: { reward: Reward | undefined; lost: boolean }) {
     !reward.tool;
   if (!onlyBudget) return lost ? <s>{words}</s> : <>{words}</>;
   return (
-    <span class="price order-price" title={lost ? `${words}: lost` : `Pays ${words}`}>
+    <span class="price order-price" data-tip={lost ? `${words}: lost` : `Pays ${words}`}>
       <Icon name="coin" />
       {lost ? (
         <s class="price-full num">+{reward.budget}</s>
@@ -1016,7 +1017,7 @@ export function Checklist() {
             tone="inset"
             icon="check"
             class="check-count"
-            title={`${held} of ${all.length} lines hold`}
+            tip={`${held} of ${all.length} lines hold`}
           >
             {held}/{all.length}
           </Chip>

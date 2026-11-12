@@ -297,7 +297,7 @@ function Sparkles({ list }: { list: readonly XMultTerm[] }) {
           <li
             key={`${x.source.kind}:${x.label}`}
             class="sparkle-stamp"
-            title={`${SCORE_LABELS.xMult}: ×${formatMult(x.times)} ${SCORE_LABELS.mult}`}
+            data-tip={`${SCORE_LABELS.xMult}: ×${formatMult(x.times)} ${SCORE_LABELS.mult}`}
           >
             {x.label} <span class="num">×{formatMult(x.times)}</span>
           </li>

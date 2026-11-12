@@ -50,7 +50,7 @@
 }
 /* The plank holds the title, Reroll, and Demolish (D-132). Reroll keeps its word (D-148): as a
    bare die it went unnoticed, and the round arrow beside Pass read as the reroll. Where the
-   words don't all fit, Demolish shows its icon and count (its title names it), and the title
+   words don't all fit, Demolish shows its icon and count (its tip names it), and the title
    gives way: "Cards" on a narrower plank, and none on the narrowest (a laptop's), where the
    rows' labels say what the cards are. Demolishing, Stop keeps its word and Reroll gives up
    its own. In the pixel font a letter is 1rem; the readable font's are narrower. */
@@ -232,7 +232,7 @@
 }
 /* A card swapped in (D-121): the reroll die as a badge on its top corner, over the ring, so it
    takes no room from the name or the chips. Small enough to clear the shape glyph under it and
-   the row's label over a row's first card. Its words are in its title, and read out. */
+   the row's label over a row's first card. Its words are its tip, and read out. */
 .hand-card .swap-mark {
   position: absolute;
   top: calc(var(--px) * -2);
@@ -252,7 +252,7 @@
 /* A narrow card (the design target's column, 1600×900, and narrower): the name runs across,
    the line and the chips sit beside a thumbnail of the picture (half size where the screen
    has the pixels: thumbScale), and in the wide pixel font the kind's chip goes (the card's
-   tint says it, and Inspect) and the tags show just their icons, named in their titles. */
+   tint says it, and Inspect) and the tags show just their icons, named in their tips. */
 @container hand-row (max-width: 308px) {
   /* The chips' row takes the rest of a tall picture's height, the chips at its top. */
   .hand-card {

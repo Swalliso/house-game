@@ -68,7 +68,7 @@ describe('the set chip (D-122, D-153)', () => {
       expect(chip(id).props.icon, id).toBeUndefined();
     }
     // Its tip says the set and the count in words.
-    expect(chip('hallway').props.title).toBe(
+    expect(chip('hallway').props.tip).toBe(
       'Full House: a Bedroom, a Bathroom, a Kitchen, a Dining Room, a Living Room, a Closet, a Hallway, a Garage, and a Home Office, anywhere in the house. +40 Comfort, +1 Charm, and ×1.5 Sparkle every week. One per house. Your house has 5 of the 9. Still to build: a Closet, a Hallway, a Garage, and a Home Office.',
     );
   });
@@ -109,7 +109,7 @@ describe('the set chip (D-122, D-153)', () => {
     expect(chip('bedroom').props.icon).toBeUndefined();
     expect(text(chip('kitchen'))).toBe('Entertainer');
     // The tip still counts Full House, after the touching sets.
-    expect(String(chip('bedroom').props.title).split('\n').at(-1)).toMatch(
+    expect(String(chip('bedroom').props.tip).split('\n').at(-1)).toMatch(
       /^Full House: .* Your house has 5 of the 9\. Still to build: /,
     );
     expect(SetChip({ id: 'patio' })).toBeNull();

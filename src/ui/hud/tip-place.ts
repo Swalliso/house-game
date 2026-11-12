@@ -1,8 +1,9 @@
 // Where the tooltip's note goes (M5a): over its term, or under it when there's no room above for
 // the note (measured, not guessed), kept inside the window, with its tail pointing at the term.
-// Every edge lands on a whole device pixel, so the note's pixel text stays crisp.
+// Every edge lands on a whole device pixel, so the note's pixel text stays crisp. A compact note
+// (a control's one-line tip, Tip.tsx) is as wide as its words, measured, up to the full width.
 
-/** The note's width, in UI pixels (tip.css sets the same). */
+/** The note's width, in UI pixels (tip.css sets the same, and a one-line compact note's most). */
 export const NOTE_W = 160;
 /** The gap between a term and the note's tail, in UI pixels. */
 const GAP = 3;
@@ -34,7 +35,8 @@ export interface TipPlace {
 
 /**
  * Where a note `noteH` CSS px tall goes for its term: over it if it fits there, else under it if
- * it fits there, else on the roomier side, pushed back inside the window.
+ * it fits there, else on the roomier side, pushed back inside the window. A compact note gives
+ * its measured width, `noteW` CSS px; the full note is NOTE_W UI pixels wide.
  */
 export function placeTip(
   term: TipTerm,
@@ -42,9 +44,10 @@ export function placeTip(
   px: number,
   dpr: number,
   noteH: number,
+  noteW?: number,
 ): TipPlace {
   const snap = (v: number) => Math.round(v * dpr) / dpr;
-  const w = NOTE_W * px;
+  const w = noteW ?? NOTE_W * px;
   const margin = MARGIN * px;
   const left = snap(Math.max(margin, Math.min(view.w - w - margin, term.x - w / 2)));
   const tailMin = CORNER * px;
