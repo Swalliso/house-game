@@ -1226,6 +1226,20 @@ describe('forecast', () => {
   });
 });
 
+describe('toGo', () => {
+  it('is what the phase’s target still needs, 0 once it’s met (D-154’s week stamp)', () => {
+    let s = withHand(onEmptyLot(), 'bedroom', 'lawn', 'kitchen');
+    expect(rules.toGo(s)).toBe(5);
+    s = rules.apply(s, place(0, 2, 2)).state; // 3
+    expect(rules.toGo(s)).toBe(2);
+    expect(rules.toGo({ ...s, score: 9 })).toBe(0);
+    s = rules.apply(s, PASS).state; // 6 ≥ 5: phase 1 is met
+    s = rules.apply(s, LEAVE).state;
+    // Phase 2's target is 30.
+    expect(rules.toGo(s)).toBe(30 - 6);
+  });
+});
+
 // ---------------------------------------------------------------------------------------
 
 describe('piece timers', () => {

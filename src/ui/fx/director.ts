@@ -1164,7 +1164,10 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
   closing = false;
   accelerator = 0;
   targetPlayed = false;
-  busy.value = true;
+  // Busy only while something plays (D-154). An action with nothing to animate (leaving the
+  // shop, a reroll, a purchase) finishes in this one call, and setting busy for it flicked every
+  // reader of busy on and off: the music's scene, and the week's stamp, which a tally takes down.
+  if (animated) busy.value = true;
   try {
     const newSets = new Set(events.flatMap((e) => (e.t === 'setCompleted' ? [e.key] : [])));
     const ended = events.some((e) => e.t === 'runEnded');
