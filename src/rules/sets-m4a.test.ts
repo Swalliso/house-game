@@ -37,7 +37,7 @@ import type { ActiveMod } from './modifiers.ts';
 import { createRules } from './run.ts';
 import { NO_CONTEXT, tallyHouse, weekTotal, type TallyContext } from './scoring.ts';
 import { meetsCondition } from './selectors.ts';
-import { matchSets } from './sets.ts';
+import { matchSets, setProgress } from './sets.ts';
 import {
   emptyRows,
   houseFrom,
@@ -583,6 +583,122 @@ describe('Full House', () => {
     expect(t.sets.map((s) => s.key)).toEqual([FULL_KEY]);
     // Points 3 + 1 + 2 = 6, + 40 = 46; Mult 200, ×2 = 400; 46 × 4 = 184.
     expect([t.points, t.mult, t.total]).toEqual([46, 400, 184]);
+  });
+});
+
+// ---------------------------------------------------------------------------------------
+// D-153: how far the house is toward Full House, for a card's set chip and Inspect.
+
+describe('setProgress (D-153)', () => {
+  const progress = (house: HouseState) => setProgress(C, computeLayout(C, house), 'fullHouse');
+  const of = (placements: readonly Placement[]) => progress(houseFrom(C, L, placements));
+
+  it('counts the member types built, and names the ones still short', () => {
+    const noOffice = FULL.filter(([id]) => id !== 'homeOffice' && id !== 'garage');
+    expect(of(noOffice)).toEqual({
+      set: 'fullHouse',
+      have: 7,
+      need: 9,
+      missing: ['garage', 'homeOffice'],
+      held: false,
+    });
+    expect(of([])).toMatchObject({ have: 0, need: 9, held: false });
+    // A second Bedroom adds nothing; the L-Kitchen and the Long Hallway count as their types
+    // (as matchSets has them).
+    const variants = noOffice.map(([id, x, y]): Placement => [
+      id === 'kitchen' ? 'lKitchen' : id === 'hallway' ? 'longHallway' : id,
+      x,
+      y,
+    ]);
+    expect(of([...variants, ['bedroom', 10, 6]])).toMatchObject({
+      have: 7,
+      missing: ['garage', 'homeOffice'],
+    });
+  });
+
+  it("never counts a fixture's countsAs (D-081): a Kitchen Island's Dining Room, Bunk Beds", () => {
+    // The 9 types but the Dining Room (the Kitchen is uid 3), with an Island in the Kitchen.
+    const noDining = houseFrom(
+      C,
+      L,
+      FULL.filter(([id]) => id !== 'diningRoom'),
+    );
+    expect(progress(withFixture(noDining, 3, 'kitchenIsland', 1))).toMatchObject({
+      have: 8,
+      missing: ['diningRoom'],
+      held: false,
+    });
+    // Bunk Beds make the Bedroom (uid 1) count twice for count conditions, once here.
+    const noHallway = houseFrom(
+      C,
+      L,
+      FULL.filter(([id]) => id !== 'hallway'),
+    );
+    expect(progress(withFixture(noHallway, 1, 'bunkBeds', 1))).toMatchObject({
+      have: 8,
+      missing: ['hallway'],
+    });
+  });
+
+  it('is held once the house holds it, and counts down when a member is demolished', () => {
+    const house = houseFrom(C, L, FULL);
+    expect(progress(house)).toEqual({
+      set: 'fullHouse',
+      have: 9,
+      need: 9,
+      missing: [],
+      held: true,
+    });
+    // Without its Hallway (uid 7): 8 of the 9, and not held.
+    expect(progress(without(house, 7))).toMatchObject({
+      have: 8,
+      missing: ['hallway'],
+      held: false,
+    });
+  });
+
+  it('is null for a set whose members must touch', () => {
+    const layout = computeLayout(C, houseFrom(C, L, FULL));
+    expect(setProgress(C, layout, 'suite')).toBeNull();
+    expect(setProgress(C, layout, 'jackAndJill')).toBeNull();
+    expect(setProgress(C, layout, 'entertainer')).toBeNull();
+  });
+
+  it('in a run, counts what is placed: not a card previewed, and not a piece demolished', () => {
+    const R = createRules(C);
+    const runOn = (placements: readonly Placement[]): RunState => ({
+      ...R.newRun(setup('sets-m4a')),
+      house: houseFrom(C, L, placements),
+    });
+    // The Full House but its Home Office (uids 1–8), and a Home Office card.
+    const s = R.apply(runOn(FULL.slice(0, 8)), {
+      t: 'debug',
+      op: 'giveCard',
+      id: 'homeOffice',
+    }).state;
+    expect(R.setProgress(s, 'fullHouse')).toMatchObject({ have: 8, missing: ['homeOffice'] });
+    const play: PlaceAction = {
+      t: 'place',
+      from: 'hand',
+      i: s.hand.length - 1,
+      x: 3,
+      y: 4,
+      rot: 0,
+    };
+    expect(R.preview(s, play).setsGained.map((g) => g.set)).toEqual(['fullHouse']);
+    expect(R.setProgress(s, 'fullHouse')).toMatchObject({ have: 8, held: false });
+    const built = R.apply(s, play).state;
+    expect(R.setProgress(built, 'fullHouse')).toMatchObject({ have: 9, missing: [], held: true });
+    expect(R.setProgress(built, 'suite')).toBeNull();
+    // A Bedroom and the Hallway beside it: demolishing the Hallway takes the count back to 1.
+    const two = runOn([
+      ['bedroom', 0, 0],
+      ['hallway', 2, 0],
+    ]);
+    expect(R.setProgress(two, 'fullHouse')).toMatchObject({ have: 2 });
+    const demolished = R.apply(two, { t: 'demolish', x: 2, y: 0 }).state;
+    expect(demolished.house.pieces.map((p) => p.defId)).toEqual(['bedroom']);
+    expect(R.setProgress(demolished, 'fullHouse')).toMatchObject({ have: 1, held: false });
   });
 });
 

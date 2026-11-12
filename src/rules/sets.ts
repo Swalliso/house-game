@@ -16,7 +16,7 @@
 // then), so a Hallway or a bridging room placed later can complete a new instance (on its own
 // step) but never re-date one the house already holds, or swap which capped instance holds.
 
-import type { Content, PieceDef, PieceId, SetDef, SetId, SetScore } from './index.ts';
+import type { Content, PieceDef, PieceId, SetDef, SetId, SetProgress, SetScore } from './index.ts';
 import { isRoom, pieceDef, type Layout } from './layout.ts';
 
 /** Which of the set's member types this piece fills, if any (its own id first, then countsAs). */
@@ -202,6 +202,31 @@ export function matchSets(
       mult: set.mult + (level - 1) * set.level.mult,
     };
   });
+}
+
+/**
+ * How far a house is toward a set whose members needn't touch (Full House), for a card's set
+ * chip and Inspect (D-153). Members are counted as matchSets counts them, from the pieces
+ * placed: a piece's own type or its card's countsAs (a Long Hallway is a Hallway), never a
+ * fixture's (D-081: Bunk Beds' Bedroom counts once). A type built twice still counts once for
+ * Full House, which needs one of each. Null for a set whose members must touch, where a count
+ * would promise what the layout may not give.
+ */
+export function setProgress(content: Content, layout: Layout, id: SetId): SetProgress | null {
+  const set = content.sets[id];
+  if (set.connected || set.hub) return null;
+  const have = new Map<PieceId, number>();
+  for (const piece of layout.house.pieces) {
+    const type = memberType(set, pieceDef(content, piece));
+    if (type) have.set(type, (have.get(type) ?? 0) + 1);
+  }
+  const needs = Object.entries(set.members) as [PieceId, number][];
+  const missing = needs.flatMap(([type, n]) =>
+    Array<PieceId>(Math.max(0, n - (have.get(type) ?? 0))).fill(type),
+  );
+  const need = needs.reduce((a, [, n]) => a + n, 0);
+  const held = instancesOf(content, layout).some((i) => i.set.id === id);
+  return { set: id, have: need - missing.length, need, missing, held };
 }
 
 function matchSet(content: Content, layout: Layout, set: SetDef): number[][] {

@@ -92,6 +92,8 @@ import type {
   RunState,
   SellAction,
   SwappedCard,
+  SetId,
+  SetProgress,
   SetScore,
   Slots,
   Tag,
@@ -177,6 +179,7 @@ import { canUseTool, useTool, type ToolCtx } from './tools.ts';
 import { wowParts } from './attribution.ts';
 import { ageOf, onCadence, tallyHouse, unmetRequirement, type TallyContext } from './scoring.ts';
 import { isType, matchesPiece, rootType } from './selectors.ts';
+import { setProgress as setProgressOf } from './sets.ts';
 import { isRoom } from './layout.ts';
 import {
   canStrike,
@@ -322,6 +325,12 @@ export interface Rules {
   fencedTiles(state: RunState): readonly number[];
   describePiece(state: RunState, uid: number): PieceInfo | null;
   describeTile(state: RunState, x: number, y: number): TileInfo | null;
+  /**
+   * D-153: how far the house is toward a set whose members needn't touch (Full House), for a
+   * card's set chip and Inspect. Only the pieces placed count, never one being placed or
+   * previewed. Null for a set whose members must touch.
+   */
+  setProgress(state: RunState, set: SetId): SetProgress | null;
   /** The shop's offers with prices and whether each can be bought. Empty outside the shop. */
   shopOffers(state: RunState): OfferView[];
   canRefresh(state: RunState): Availability & { price: number };
@@ -2870,6 +2879,7 @@ export function createRules(content: Content): Rules {
         fencedYardTiles: id >= 0 ? layout.fencedSizes[id]! : 0,
       };
     },
+    setProgress: (state, set) => setProgressOf(content, layoutFor(state), set),
     shopOffers: (state) => viewOffers(content, state),
     canRefresh,
     sellPrice: (state, from, i) => {

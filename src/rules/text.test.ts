@@ -12,6 +12,7 @@ import {
   handCardLines,
   modifierText,
   selectorText,
+  setProgressText,
   setsOfPiece,
   setText,
   sunSideText,
@@ -295,6 +296,20 @@ describe('set chips (D-122)', () => {
     );
     expect(setText(CONTENT, 'fullHouse')).toContain(
       'anywhere in the house. +40 Comfort, +1 Charm, and ×1.5 Sparkle every week. One per house.',
+    );
+  });
+
+  it('says how far the house is toward Full House (D-153)', () => {
+    const p = { set: 'fullHouse', have: 7, need: 9, held: false } as const;
+    expect(setProgressText(CONTENT, { ...p, missing: ['garage', 'homeOffice'] })).toBe(
+      'Your house has 7 of the 9. Still to build: a Garage and a Home Office.',
+    );
+    // One type short reads the same: no star, and no word of a card that would complete it.
+    expect(setProgressText(CONTENT, { ...p, have: 8, missing: ['hallway'] })).toBe(
+      'Your house has 8 of the 9. Still to build: a Hallway.',
+    );
+    expect(setProgressText(CONTENT, { ...p, have: 9, missing: [], held: true })).toBe(
+      'Your house has it.',
     );
   });
 

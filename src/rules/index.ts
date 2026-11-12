@@ -1363,6 +1363,25 @@ export interface SetScore {
   mult: number;
 }
 
+/**
+ * How far the house is toward a set whose members needn't touch (Full House), for a card's set
+ * chip and Inspect (D-153): `Rules.setProgress`.
+ */
+export interface SetProgress {
+  set: SetId;
+  /**
+   * The members the house has toward one, each type counted up to what the set needs: for Full
+   * House, the member types built.
+   */
+  have: number;
+  /** The members one needs: 9 for Full House. */
+  need: number;
+  /** The member types still short, one entry for each member missing, in the set's order. */
+  missing: readonly PieceId[];
+  /** Whether the house holds one now. */
+  held: boolean;
+}
+
 /** A +Mult term from a modifier (It's a House, Rush Order), in hundredths. */
 export interface MultTerm {
   source: ModSource;
@@ -1970,6 +1989,7 @@ export {
   regionText,
   rewardText,
   selectorText,
+  setProgressText,
   setsOfPiece,
   setText,
   specText,
