@@ -547,7 +547,7 @@ export function Hand() {
         <Button
           size="lg"
           variant={pending ? 'primary' : armed ? 'armed' : 'secondary'}
-          class={`end-week ${pending ? 'ready' : ''} ${armed ? 'confirm' : ''} ${stakes ? 'deciding' : ''}`}
+          class={`end-week ${pending ? 'ready' : ''} ${armed ? 'confirm' : ''} ${tagged ? 'deciding' : ''}`}
           onMouseDown={noFocus}
           onClick={requestEndWeek}
           title={[stakes, endTitle].filter(Boolean).join(' ') || undefined}

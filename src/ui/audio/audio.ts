@@ -59,7 +59,7 @@ export type SoundId =
   | 'order-stamp'
   | 'topped-out'
   | 'drumroll'
-  // The week's stamp (new D-###): a page of the schedule turning, and the last week's clock.
+  // The week's stamp (D-154): a page of the schedule turning, and the last week's clock.
   | 'week-start'
   | 'last-week';
 

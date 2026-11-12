@@ -369,7 +369,7 @@ export const RECIPES: Partial<Record<SoundId, Recipe>> = {
     ],
   },
   // The milestone's drumroll keeps its ZzFX placeholder: no recording here rolls.
-  // A week's stamp (new D-###): a page of the schedule turning, a book's soft flick, quiet.
+  // A week's stamp (D-154): a page of the schedule turning, a book's soft flick, quiet.
   'week-start': { layers: [{ set: 'book', db: -16, rate: 1.25 }] },
   // The last week's: a clock's tick-tock, the slit drum's thock high up like a wood block.
   'last-week': {
