@@ -14,6 +14,8 @@
 //   sooner if a find pays some, and overtime if Groundbreaking needs a week of it.
 // - Foundation's second week: Strike (D-157). If Foundation is completed in its first week,
 //   Strike shows from the next milestone without its entrance.
+// - The shop, a shop behind (D-158): the first is the housewarming gift alone, the second has the
+//   shelves any run's first shop has, and from the third it's the whole yard (shopStageOf).
 //
 // No DOM, so it tests in Node. FirstHints.tsx words the opening's hints.
 
@@ -81,6 +83,53 @@ export function shownIn(s: RunState, first: boolean): Shown {
 
 /** What the build screen shows now. */
 export const shown = computed(() => shownIn(run.value, firstJob.value));
+
+/**
+ * How much of the shop a visit shows (D-158). An outside playtester met the whole yard at the
+ * end of week 4, a week after the checklist: "I don't know if I know enough about the game ...
+ * to be let loose in a place with this much possibility".
+ * - gift: the housewarming gift and the way on, nothing for sale.
+ * - basics: the shelves any run's first shop has (blueprints, pieces and fixtures, services).
+ * - full: every shelf the visit stocks.
+ */
+export type ShopStage = 'gift' | 'basics' | 'full';
+
+/**
+ * The first job's shops run a shop behind: its first is the gift alone, its second what any
+ * run's first shop holds, and from its third the whole yard. The goods a stage leaves out are
+ * still in the visit's stock (the rules never know): they just aren't on a shelf. Every other
+ * run, and a shop the ?debug panel opened, shows everything.
+ */
+export function shopStageOf(s: RunState, first: boolean): ShopStage {
+  const visit = s.offers?.shop;
+  if (!first || !visit || visit.forced) return 'full';
+  return visit.number <= 1 ? 'gift' : visit.number === 2 ? 'basics' : 'full';
+}
+
+/** How much of the shop shows now. */
+export const shopStage = computed(() => shopStageOf(run.value, firstJob.value));
+
+/** The shop's shelves, by what they hold. */
+export type ShelfId = 'blueprints' | 'cards' | 'tools' | 'crates' | 'upgrades' | 'services';
+
+const BASIC_SHELVES: ReadonlySet<ShelfId> = new Set(['blueprints', 'cards', 'services']);
+
+/** Whether a stage of the shop has a shelf up (D-158). */
+export function shelfShown(stage: ShopStage, shelf: ShelfId): boolean {
+  return stage === 'full' || (stage === 'basics' && BASIC_SHELVES.has(shelf));
+}
+
+/**
+ * What a staged shop says under what it shows (D-158): where the rest of the yard is, and when
+ * it opens. `next` is the milestone about to start. Nothing for a shop that shows everything.
+ */
+export function stageNote(stage: ShopStage, next: string): string | null {
+  if (stage === 'gift') {
+    return `That’s the yard for now. Its shelves open after ${next}, and your budget keeps until then.`;
+  }
+  if (stage === 'basics') return `Tools, crates and company upgrades arrive after ${next}.`;
+  return null;
+}
 
 /**
  * The part of the screen that arrives this week, for its entrance (first-job.css): a part comes

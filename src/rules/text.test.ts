@@ -289,7 +289,7 @@ describe('set chips (D-122)', () => {
 
   it('says what a set needs and pays', () => {
     expect(setText(CONTENT, 'suite')).toBe(
-      'Suite: a Bedroom, a Bathroom, and a Closet, touching. +15 Comfort and +0.5 Charm every week. A house can have more than one.',
+      'Suite: a Bedroom, a Bathroom, and a Closet, touching. +15 Comfort and +0.5 Charm every week. A house can have more than one, each with its own rooms.',
     );
     expect(setText(CONTENT, 'jackAndJill')).toContain(
       '2 Bedrooms and a Bathroom, each touching the Bathroom',
