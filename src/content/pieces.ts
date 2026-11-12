@@ -76,9 +76,11 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     drawWeight: 10,
     complexity: 1,
     fromPhase: 0,
+    perHouse: 1, // D-165: One Kitchen (and the L-Kitchen is one)
     effects: [
       { kind: 'neighbor', match: { piece: ['diningRoom', 'herbGarden'] }, amount: 2 },
       WHILE_SUNNY(2),
+      { kind: 'steady', amount: 3 },
     ],
   },
   lKitchen: {
@@ -95,6 +97,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     effects: [
       { kind: 'neighbor', match: { piece: ['diningRoom', 'herbGarden'] }, amount: 2 },
       WHILE_SUNNY(2),
+      { kind: 'steady', amount: 3 },
     ],
   },
   diningRoom: {
@@ -107,6 +110,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     drawWeight: 10,
     complexity: 1,
     fromPhase: 0,
+    perHouse: 1, // D-165: A living room or two's "at most one Dining Room"
     effects: [
       { kind: 'aura', match: { piece: ['kitchen', 'livingRoom'] }, scope: 'adjacent', pct: 50 },
       WHILE_SUNNY(2),
@@ -122,6 +126,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     drawWeight: 10,
     complexity: 1,
     fromPhase: 0,
+    perHouse: 2, // D-165: A living room or two
     effects: [
       { kind: 'neighbor', match: { property: 'viewSource' }, amount: 2, max: 3 },
       WHILE_SUNNY(2),
@@ -195,6 +200,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     drawWeight: 10,
     complexity: 2,
     fromPhase: 0,
+    perHouse: 1, // D-165: one Garage a house
     effects: [
       {
         kind: 'requires',
@@ -216,6 +222,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     drawWeight: 10,
     complexity: 2,
     fromPhase: 0,
+    perHouse: 2, // D-165: two Home Offices at most
     effects: [
       { kind: 'steady', amount: 2 },
       { kind: 'neighbor', match: { tag: 'Loud' }, amount: -2 },
@@ -447,6 +454,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     drawWeight: 0,
     complexity: 2,
     fromPhase: 0,
+    perHouse: 1, // D-165: one of each special room
     effects: [
       { kind: 'neighbor', match: { piece: 'bedroom' }, amount: 2 },
       // Noisy: the Quiet rooms around it lose a little.
@@ -463,6 +471,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     drawWeight: 0,
     complexity: 1,
     fromPhase: 0,
+    perHouse: 1, // D-165: one of each special room
     effects: [{ kind: 'neighbor', match: { tag: 'Quiet' }, amount: 2, max: 3 }],
   },
   mudroom: {
@@ -475,6 +484,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     drawWeight: 0,
     complexity: 3,
     fromPhase: 0,
+    perHouse: 1, // D-165: one of each special room
     effects: [
       {
         kind: 'conditional',
@@ -511,6 +521,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     drawWeight: 5,
     complexity: 2,
     fromPhase: 1,
+    perHouse: 1, // D-165: one of each special room
     effects: [WHILE_SUNNY(6)],
   },
   hotTub: {

@@ -159,6 +159,12 @@ export type ClientId = 'hendersons' | 'vladislav' | 'barkers' | 'juniper' | 'dal
 /** Lot traits (D-119): what a lot has that changes how you'd build there. */
 export type LotTraitId = 'creekside' | 'wooded';
 
+/**
+ * The house rules that pay on the rooms (D-165): every house has them, whoever the client,
+ * and they pay as Comfort on the rooms they're about instead of as checklist lines.
+ */
+export type RoomRuleId = 'cozy' | 'bathroomNearby';
+
 /** The household's arrivals (M4b, D-103): who moves in, by client. */
 export type ArrivalId = 'twins' | 'grandma' | 'renfield' | 'nana' | 'rowan' | 'ivy';
 
@@ -351,7 +357,14 @@ export type Effect =
    */
   | { kind: 'requires'; condition: PieceCondition; blocksPlacement: boolean }
   /** The inner effect applies only while the condition holds (the Flower Bed in the front yard). */
-  | { kind: 'conditional'; when: PieceCondition; effect: Effect };
+  | { kind: 'conditional'; when: PieceCondition; effect: Effect }
+  /**
+   * D-165: earns `amount` while a `by` piece in reach (touching it, or linked to it across a
+   * Hallway) serves it, where each `by` piece serves at most `capacity` of the pieces with this
+   * effect: a Bathroom serves two Bedrooms. The house is matched to serve as many as it can,
+   * the earliest placed first (scoring.ts).
+   */
+  | { kind: 'served'; by: Selector; amount: number; capacity: number };
 
 export interface PieceDef {
   id: PieceId;
@@ -396,6 +409,13 @@ export interface PieceDef {
    * renovate (a Bedroom card can renovate it).
    */
   member?: true;
+  /**
+   * D-165: the most of this type a house holds (one Kitchen, two Living Rooms), on the type's
+   * own card (not a variant: the L-Kitchen has the Kitchen's). Counted as the checklist counts
+   * a type, so an L-Kitchen is a Kitchen. A card of the type can't be placed once the house has
+   * that many: it renovates instead (D-102), and the type draws at half weight (D-104).
+   */
+  perHouse?: number;
 }
 
 export interface FeatureDef {
@@ -547,6 +567,20 @@ export interface LotTraitDef {
   modifiers: readonly Modifier[];
   /** Clients it suits: their contract marks the chip with the up icon. */
   suits?: readonly ClientId[];
+}
+
+/**
+ * A house rule that pays on the rooms (D-165): Cozy, A Bathroom nearby. Every run has it, whoever
+ * the client. Its modifiers join the run's like a crew's (a `grantEffect` gives each room its
+ * pay), and the lines it adds to a room's breakdown carry its name.
+ */
+export interface RoomRuleDef {
+  id: RoomRuleId;
+  /** "Cozy": the breakdown line's label, and How to play's term. */
+  name: string;
+  /** One sentence for How to play and the term's tip: "A room earns +2 per room it touches (up to 3)." */
+  text: string;
+  modifiers: readonly Modifier[];
 }
 
 export interface SetDef {
@@ -917,6 +951,8 @@ export interface Content {
   crates: Readonly<Record<CrateId, CrateDef>>;
   changeOrders: Readonly<Record<ChangeOrderId, ChangeOrderDef>>;
   lotTraits: Readonly<Record<LotTraitId, LotTraitDef>>;
+  /** D-165: the house rules that pay on the rooms (a test's content may have none). */
+  roomRules: Readonly<Partial<Record<RoomRuleId, RoomRuleDef>>>;
   balance: Balance;
 }
 
@@ -1380,7 +1416,9 @@ export type ModSource =
   /** M4b: a phase effect (Heat wave) while it runs. */
   | { kind: 'changeOrder'; id: ChangeOrderId }
   /** D-119: a trait of the lot (Creekside), all run. */
-  | { kind: 'lot'; id: LotTraitId };
+  | { kind: 'lot'; id: LotTraitId }
+  /** D-165: a house rule that pays on the rooms (Cozy), in every run. */
+  | { kind: 'house'; id: RoomRuleId };
 
 export interface BreakdownLine {
   /** Plain language: "Touching Trees or Quiet neighbors (2)". */
@@ -1389,6 +1427,8 @@ export interface BreakdownLine {
   op: 'add' | 'pct' | 'budget' | 'none';
   value: number;
   from: readonly SourceRef[];
+  /** D-165: the house rule that pays it (Cozy), so Inspect can say the rule. */
+  rule?: RoomRuleId;
 }
 
 export interface PieceScore {
@@ -2066,6 +2106,7 @@ export {
   HINT_WORDS,
   hintText,
   houseConditionText,
+  houseRuleNames,
   houseRulesText,
   lastShopText,
   lotTraitText,

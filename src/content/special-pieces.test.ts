@@ -363,7 +363,8 @@ describe('Fire Pit', () => {
       ['firePit', 2, 2],
       ['hotTub', 3, 2],
     ];
-    expect(earned(open, house)).toEqual([6, 2, 2, 0, 3]); // the Kitchen and the Living Room in the sun
+    // The Kitchen and the Living Room are in the sun (+2), and the Kitchen earns +3 of its own.
+    expect(earned(open, house)).toEqual([6, 5, 2, 0, 3]);
     // With the Kitchen a row up, the Fire Pit touches no room, so its aura doesn't apply and
     // the Patio earns its plain 4.
     const away = tally(open, [
@@ -373,7 +374,7 @@ describe('Fire Pit', () => {
       ['firePit', 2, 2],
       ['hotTub', 3, 2],
     ]);
-    expect(away.pieces.map((p) => p.earned)).toEqual([4, 2, 2, 0, 3]);
+    expect(away.pieces.map((p) => p.earned)).toEqual([4, 5, 2, 0, 3]);
     expect(away.pieces[3]!.unmet).toBe('touching a room');
     // Two Fire Pits, each touching the Kitchen too, add up: +2 at +100% is 4, shown as one
     // aura line.

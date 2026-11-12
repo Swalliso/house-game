@@ -9,8 +9,10 @@
 // Dining Room). Any other selector counts each matching piece once. Lot features never count.
 //
 // Limits: a `count` with a `max` over piece types (reached through `and` and the current
-// stage) is that type's limit. A card whose type is at its limit can renovate a room of that
-// type instead (Renovate), and draws at reduced weight (D-043, amended by D-093).
+// stage) is that type's limit, and so is a type's per-house cap on its card (D-165: one
+// Kitchen). A card whose type is at its limit can renovate a room of that type instead
+// (Renovate), and draws at reduced weight (D-043, amended by D-093); at its per-house cap it
+// can't be placed at all.
 
 import type {
   Content,
@@ -482,6 +484,28 @@ export function newPiecesNeeded(cond: HouseCondition): number {
 export function demolitionsNeeded(cond: HouseCondition): number {
   if ('and' in cond) return cond.and.reduce((n, c) => Math.max(n, demolitionsNeeded(c)), 0);
   return 'demolishedSinceAccepted' in cond ? cond.demolishedSinceAccepted.min : 0;
+}
+
+/** Each per-house cap's selector, per content, so the count cache keeps its key. */
+const perHouseSels = new WeakMap<Content, readonly (readonly [PieceId, Selector])[]>();
+
+/**
+ * D-165: the cards' per-house caps (one Kitchen, two Living Rooms) as limits, counted as the
+ * checklist counts a type.
+ */
+export function perHouseLimits(content: Content, layout: Layout): TypeLimit[] {
+  let sels = perHouseSels.get(content);
+  if (!sels) {
+    sels = Object.values(content.pieces)
+      .filter((d) => d.perHouse !== undefined && !d.countsAs)
+      .map((d) => [d.id, { piece: d.id }] as const);
+    perHouseSels.set(content, sels);
+  }
+  return sels.map(([id, sel]) => ({
+    types: [id],
+    max: content.pieces[id].perHouse!,
+    count: countMatching(content, layout, sel),
+  }));
 }
 
 /** The limit a card of this type is at, if any (the first that's reached). */

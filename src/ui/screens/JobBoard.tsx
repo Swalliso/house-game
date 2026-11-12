@@ -11,8 +11,9 @@
 // A card leads with what differs between the clients on offer (D-142): who they are, their
 // wishes, and a map of the lot with its sun and traits (D-119: Creekside pays, so the lot can be
 // a reason to take the job). The household and the tastes are a line each, the whole of each in
-// its tip (job-card.ts). The seven house rules are the same on every card, so the board names
-// them once, in its lede; a rule a client has in numbers of their own sits with their wishes.
+// its tip (job-card.ts). The house rules are the same on every card (D-165: three on the
+// checklist, two on the rooms), so the board names them once, in its lede; a rule a client has
+// in numbers of their own sits with their wishes.
 //
 // In the pixel UI (D-110): a wood panel standing on the title's street (Title.tsx's
 // TitleBackdrop), its cards the kit's paper Cards, rarity a band and a chip as in the shop. A
@@ -23,6 +24,7 @@ import './jobs.css';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import {
   CONTENT,
+  houseRuleNames,
   houseRulesText,
   jobBoard,
   lotTraits,
@@ -371,13 +373,13 @@ function LockedCard({ contract, index }: { contract: Contract; index: number }) 
 }
 
 /**
- * The house rules, named once for the whole board (D-142): every client has the same seven
- * (D-101), so they're a term in the lede, not a list on each card. Its tip names them, in the
- * rules' words.
+ * The house rules, named once for the whole board (D-142): every client has the same three on
+ * the checklist (D-101, D-165), so they're a term in the lede, not a list on each card. Its tip
+ * names them, in the rules' words, and the two that pay on the rooms.
  */
 function HouseRulesTip() {
   const text = houseRulesText(CONTENT);
-  const count = text.split('\n').length - 1;
+  const count = houseRuleNames(CONTENT).length;
   return (
     <Tip title="The house rules" text={text}>
       the same {count} house rules

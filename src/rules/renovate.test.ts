@@ -241,7 +241,7 @@ describe('when a Renovation is legal', () => {
       { types: ['diningRoom'], max: 1, count: 0 },
     ]);
     const reason =
-      'A Living Room card can renovate once the house has all the Living Rooms it wants.';
+      'A Living Room card can renovate once the house has all the Living Rooms it takes.';
     expect(r.checkPlay(s, renovate(0, 1))).toEqual({
       legal: false,
       reason,
@@ -396,7 +396,7 @@ describe('when a Renovation is legal', () => {
       { hand: [pc('garage')], reserve: [{ id: 'garage' }] },
     );
     expect(R.limits(s)).toEqual([{ types: ['kitchen'], max: 1, count: 1 }]);
-    const reason = 'A Garage card can’t renovate: the checklist doesn’t cap them.';
+    const reason = 'A Garage card can’t renovate: a house takes any number.';
     const plays = [renovate(0, 1), renovate(0, 2), renovate(0, 3), renovate(0, 2, 'reserve')];
     for (const play of plays) {
       const check = R.checkPlay(s, play);
@@ -415,13 +415,13 @@ describe('when a Renovation is legal', () => {
     const noLimit = createRules(contentWith([LIVING_ROOMS]));
     const s = build([['kitchen', 0, 0]], { rules: noLimit, hand: [pc('lKitchen')] });
     expect(noLimit.checkPlay(s, renovate(0, 1)).reason).toBe(
-      'An L-Kitchen card can’t renovate: the checklist doesn’t cap them.',
+      'An L-Kitchen card can’t renovate: a house takes any number.',
     );
     // A Kitchen ceiling the house is below: no Kitchen yet, only a Dining Room.
     const r = createRules(contentWith([ONE_KITCHEN]));
     const below = build([['diningRoom', 0, 0]], { rules: r, hand: [pc('lKitchen')] });
     expect(r.checkPlay(below, renovate(0, 1)).reason).toBe(
-      'An L-Kitchen card can renovate once the house has all the Kitchens it wants.',
+      'An L-Kitchen card can renovate once the house has all the Kitchens it takes.',
     );
     // At the Kitchen's ceiling, on the Dining Room.
     const t = build(

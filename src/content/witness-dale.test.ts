@@ -2,7 +2,7 @@
 // content, one legal placement at a time, that meets every line of his checklist at every
 // milestone. It proves the checklist can be met without a solver.
 //
-// Dale's checklist is the seven house rules in his numbers (house-rules.ts), then his two
+// Dale's checklist is the house rules in his numbers (house-rules.ts), then his two
 // wishes: two Home Offices, and nothing Loud touching one. Room for everyone grows with the
 // household (M4b, D-103): 1–2 Bedrooms, then 2–3 and Ivy's room from Framing. Ivy's Room counts
 // as a Bedroom, so the house has 2 Bedrooms of its own and, for the 3 from Framing, 2
@@ -164,7 +164,7 @@ describe("Dale's witness layout", () => {
   });
 
   it('reads as a house: no visible repeats', () => {
-    // The house rules' ceilings, plus research.md's plausibility caps on Garages and Home
+    // The cards' caps (D-165), plus research.md's plausibility caps on Garages and Home
     // Offices: Dale's two offices sit right at that cap.
     const most: [PieceId, number][] = [
       ['kitchen', 1],
@@ -179,7 +179,6 @@ describe("Dale's witness layout", () => {
 
 describe('one piece more or less on the witness breaks one line', () => {
   const cases: { what: string; add?: Placement; drop?: Placement; breaks: string }[] = [
-    { what: 'a second Kitchen', add: ['kitchen', 11, 11], breaks: 'oneKitchen' },
     { what: 'a Pool outside the offices', add: ['pool', 2, 7], breaks: 'quietOffice' },
     { what: 'demolishing the back office', drop: BACK_OFFICE, breaks: 'offices' },
   ];
@@ -194,5 +193,11 @@ describe('one piece more or less on the witness breaks one line', () => {
       const broken = lines.filter((l) => !l.met).map((l) => l.id);
       expect(broken, `at ${name}`).toEqual([breaks]);
     });
+  });
+
+  it('a second Kitchen card can’t be placed: it renovates the Kitchen (D-165)', () => {
+    expect(checkPlace(HOUSE, ['kitchen', 11, 11]).reason).toBe(
+      'The house has its Kitchen: this card renovates it.',
+    );
   });
 });

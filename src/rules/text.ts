@@ -76,7 +76,7 @@ export type Phrasing = 'one' | 'some' | 'every';
 /** Names with no plural: "No more Soundproofing this run" (D-157). */
 const UNCOUNTABLE: ReadonlySet<string> = new Set(['Soundproofing']);
 
-function plural(name: string): string {
+export function plural(name: string): string {
   if (name.endsWith('s') || UNCOUNTABLE.has(name)) return name;
   // Porch → Porches (D-157).
   if (/(ch|sh|x|z)$/.test(name)) return `${name}es`;
@@ -438,6 +438,11 @@ export function effectText(content: Content, effect: Effect): string {
         effect.effect.scope === 'region';
       return said ? inner : `${inner} ${conditionPhrase(content, effect.when)}`;
     }
+    case 'served': {
+      // D-165: "+4 with a Bathroom in reach (each serves 2)".
+      const by = article(selectorText(content, effect.by, 'one'));
+      return `${signed(effect.amount)} with ${by} in reach (each serves ${effect.capacity})`;
+    }
   }
 }
 
@@ -468,6 +473,7 @@ function conditionTags(cond: PieceCondition, out: Set<Tag>, props: Set<Property>
 
 function effectTags(e: Effect, out: Set<Tag>, props: Set<Property>): void {
   if (e.kind === 'neighbor' || e.kind === 'aura') selectorTags(e.match, out, props);
+  else if (e.kind === 'served') selectorTags(e.by, out, props);
   else if (e.kind === 'requires') conditionTags(e.condition, out, props);
   else if (e.kind === 'conditional') {
     conditionTags(e.when, out, props);
@@ -487,6 +493,8 @@ export interface CardText {
    * everyone needs it."
    */
   member?: string;
+  /** D-165: how many of its type a house holds: "One per house: another renovates it." */
+  perHouse?: string;
 }
 
 /** The possessive of a member's name: "The twins’", "Grandma’s". */
@@ -525,6 +533,8 @@ export function cardText(content: Content, def: PieceDef): CardText {
     ? `A pack: click out up to ${def.pack.maxTiles} tiles that touch, one piece in one week.`
     : undefined;
   const member = def.member ? memberText(content, def) : undefined;
+  const cap = perHouseOf(content, def);
+  const perHouse = cap === undefined ? undefined : perHouseText(cap);
   const tags = new Set<Tag>();
   const props = new Set<Property>();
   for (const e of def.effects) effectTags(e, tags, props);
@@ -547,7 +557,24 @@ export function cardText(content: Content, def: PieceDef): CardText {
     ];
     notes.push(`Views: ${joinWords(sources, 'and')}.`);
   }
-  return { effects, notes, ...(pack ? { pack } : {}), ...(member ? { member } : {}) };
+  return {
+    effects,
+    notes,
+    ...(pack ? { pack } : {}),
+    ...(member ? { member } : {}),
+    ...(perHouse ? { perHouse } : {}),
+  };
+}
+
+/** D-165: the most of a card's type a house holds, from the type's own card (an L-Kitchen's is the Kitchen's). */
+export function perHouseOf(content: Content, def: PieceDef): number | undefined {
+  return content.pieces[def.countsAs ?? def.id]?.perHouse;
+}
+
+/** "One per house: another renovates it." */
+export function perHouseText(n: number): string {
+  const count = n === 1 ? 'One' : n === 2 ? 'Two' : `${n}`;
+  return `${count} per house: another renovates it.`;
 }
 
 /**
@@ -560,6 +587,7 @@ function pays(e: Effect): boolean {
     case 'neighbor':
     case 'rhythm':
     case 'perTile':
+    case 'served':
       return e.amount > 0;
     case 'growth':
       return e.perWeek > 0;
@@ -1214,10 +1242,11 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
     renovate: {
       title: 'Renovate',
       text:
-        `Once the house has all the rooms of a type its checklist wants (one Kitchen, its ` +
-        `Bedrooms, …), a card of that type can renovate one of them in place instead of being ` +
-        `placed, with nothing torn down: +${b.renovate.pointsPerLevel} ${L.points} a level, up ` +
-        `to ${b.renovate.maxLevel}. It’s the week’s build. A card that can shows Renovate.`,
+        // D-165: "it takes": a type's limit is its card's (one Kitchen) or the checklist's.
+        `Once the house has all the rooms of a type it takes (one Kitchen, its Bedrooms, …), a ` +
+        `card of that type can renovate one of them in place instead of being placed, with ` +
+        `nothing torn down: +${b.renovate.pointsPerLevel} ${L.points} a level, up to ` +
+        `${b.renovate.maxLevel}. It’s the week’s build. A card that can shows Renovate.`,
     },
     checklist: {
       title: 'The checklist',
@@ -1282,19 +1311,30 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
 // house rules once, for every card on it, and each first-time hint keeps to one budget of
 // words. The glossary above keeps the full texts, for the tips.
 
-/**
- * The house rules every client has, for the job board: their names, a line each, in the
- * checklist's order, then what a held one adds. A client's own numbers are on its checklist.
- */
-export function houseRulesText(content: Content): string {
+/** The checklist's house rules every client has, by name, in the checklist's order. */
+export function houseRuleNames(content: Content): string[] {
   const names: string[] = [];
   for (const client of Object.values(content.clients)) {
     for (const spec of client.specs) {
       if (spec.group !== 'wishes' && !names.includes(spec.name)) names.push(spec.name);
     }
   }
+  return names;
+}
+
+/**
+ * The house rules every client has, for the job board: the checklist's, a line each, in its
+ * order, then what a held one adds, then the ones that pay on the rooms (D-165). A client's own
+ * numbers are on its checklist.
+ */
+export function houseRulesText(content: Content): string {
   const adds = `+${multNumber(content.balance.rules.specBonus)} ${SCORE_LABELS.mult}`;
-  return [...names, `Each adds ${adds} in every week it holds.`].join('\n');
+  const onRooms = Object.values(content.roomRules).map((r) => r.name);
+  return [
+    ...houseRuleNames(content),
+    `Each adds ${adds} in every week it holds.`,
+    ...(onRooms.length > 0 ? [`${joinWords(onRooms, 'and')} pay on the rooms.`] : []),
+  ].join('\n');
 }
 
 /**
@@ -1344,9 +1384,10 @@ export function hintText(content: Content): Record<HintTerm, string> {
     fixture:
       'Fixtures upgrade a piece you’ve built, one each. Installing from your hand is the ' +
       'week’s build; from your supplies (Your goods, top right) it’s free.',
+    // D-165: a type's limit is its card's (one Kitchen) or the checklist's (the Bedrooms).
     renovate:
-      `Once the house has every room of a type its checklist wants, a spare card renovates ` +
-      `one instead: +${b.renovate.pointsPerLevel} ${L.points} a level, up to ` +
+      `Once the house has all the rooms of a type it takes, a spare card renovates one ` +
+      `instead: +${b.renovate.pointsPerLevel} ${L.points} a level, up to ` +
       `${b.renovate.maxLevel}.`,
     // D-157: what a strike does, and where more come from (23 words; 24 with none per milestone).
     strike:

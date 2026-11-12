@@ -11,7 +11,10 @@
 //            applies. Then `bestPiece` (Crown Jewel) adds its pct to the single top earner,
 //            the earliest-placed on a tie.
 // A piece whose `requires` condition fails earns nothing and pays no budget, and none of its
-// effects (auras and granted ones included) apply; it still counts for sets. `blockPenalties`
+// effects (auras and granted ones included) apply; it still counts for sets. The house rules
+// that pay on the rooms (D-165) are granted effects too, and their lines carry the rule's name.
+// A `served` effect (a Bedroom's Bathroom) pays once the house's pieces are matched to the ones
+// that serve them, each serving up to its capacity (servedMatch). `blockPenalties`
 // (Soundproofing) drops negative neighbor terms and negative auras from matching neighbors.
 // A Renovated room (M4a) adds `renovate.pointsPerLevel` flat points per level, before its
 // percentages.
@@ -29,10 +32,12 @@ import type {
   Effect,
   ModSource,
   MultTerm,
+  PieceCondition,
   PieceDef,
   PieceId,
   PieceScore,
   PlacedPiece,
+  RoomRuleId,
   RunStat,
   Selector,
   SetId,
@@ -54,6 +59,7 @@ import { ruleFrom, sourceName, type ActiveMod } from './modifiers.ts';
 import { matchesNeighbor, matchesPiece, meetsCondition, rootType } from './selectors.ts';
 import { matchSets } from './sets.ts';
 import {
+  article,
   conditionText,
   countedNames,
   earnTargetText,
@@ -210,6 +216,8 @@ interface Granted {
   effect: Effect;
   since: number;
   label: string;
+  /** A house rule's grant (D-165): its lines are labelled with the rule's name alone. */
+  rule?: RoomRuleId;
 }
 
 interface Ctx {
@@ -220,6 +228,18 @@ interface Ctx {
   acc: Map<number, Acc>;
   /** Per protected piece: the selectors whose penalties don't apply, with the fixture's host. */
   blocks: Map<number, { from: Selector; host?: number }[]>;
+  /** Who serves whom, per `served` effect's `by` and capacity (D-165), as needed. */
+  served: (effect: Extract<Effect, { kind: 'served' }>) => ReadonlyMap<number, number>;
+}
+
+/** How an effect's lines are labelled: a suffix, or a house rule's name instead (D-165). */
+interface LineLabel {
+  suffix: string;
+  /** Every line the effect adds reads this alone ("Cozy"), and is marked as the rule's. */
+  as?: string;
+  rule?: RoomRuleId;
+  /** Where its pay comes from, for a conditional's inner lines: the neighbors that meet it. */
+  from?: BreakdownLine['from'];
 }
 
 function blocked(ctx: Ctx, uid: number, n: Neighbor): boolean {
@@ -233,15 +253,24 @@ function applyEffect(
   piece: PlacedPiece,
   def: PieceDef,
   effect: Effect,
-  suffix: string,
+  how: LineLabel,
   since = 0,
 ): void {
   const { content, layout, withLines } = ctx;
+  const { suffix } = how;
   const mine = ctx.acc.get(piece.uid)!;
   const age = ageOf(piece, ctx.week, since);
-  const add = (value: number, label: string, from: BreakdownLine['from'] = []) => {
+  const add = (value: number, label: string, from: BreakdownLine['from'] = how.from ?? []) => {
     mine.points += value;
-    if (withLines) mine.own.push({ label: label + suffix, op: 'add', value, from });
+    if (withLines) {
+      mine.own.push({
+        label: how.as ?? label + suffix,
+        op: 'add',
+        value,
+        from,
+        ...(how.rule ? { rule: how.rule } : {}),
+      });
+    }
   };
   switch (effect.kind) {
     case 'steady':
@@ -319,27 +348,117 @@ function applyEffect(
         if (withLines) {
           const when =
             (effect.every ?? 1) > 1 ? `Every ${ordinal(effect.every!)} week` : 'Every week';
-          mine.own.push({ label: when + suffix, op: 'budget', value: effect.budget, from: [] });
+          mine.own.push({
+            label: how.as ?? when + suffix,
+            op: 'budget',
+            value: effect.budget,
+            from: [],
+          });
         }
       }
       break;
     case 'conditional':
       if (meetsCondition(content, layout, effect.when, piece.uid)) {
+        // A condition on what it touches credits those neighbors (Cozy's rooms, D-165).
+        const touching = touchingSel(effect.when);
+        const from =
+          touching && withLines
+            ? layout.neighbors
+                .get(piece.uid)!
+                .filter((n) => matchesNeighbor(content, layout, touching, n))
+                .map(neighborRef)
+            : how.from;
         applyEffect(
           ctx,
           piece,
           def,
           effect.effect,
-          `${suffix} (${conditionText(content, effect.when)})`,
+          {
+            suffix: `${suffix} (${conditionText(content, effect.when)})`,
+            ...(how.as ? { as: how.as } : {}),
+            ...(how.rule ? { rule: how.rule } : {}),
+            ...(from ? { from } : {}),
+          },
           since,
         );
       }
       break;
+    case 'served': {
+      // D-165: a Bedroom's Bathroom, if the house's matching gives it one.
+      const by = ctx.served(effect).get(piece.uid);
+      if (by !== undefined) {
+        add(effect.amount, `Served by ${article(pieceDef(content, layout.byUid.get(by)!).name)}`, [
+          { kind: 'piece', uid: by },
+        ]);
+      }
+      break;
+    }
     case 'link':
     case 'transform':
     case 'requires':
       break;
   }
+}
+
+/** The selector a condition on touching reads (`touching`, or `is` a touching selector). */
+function touchingSel(cond: PieceCondition): Selector | null {
+  if ('touching' in cond) return cond.touching;
+  if ('is' in cond && cond.is !== 'all' && 'touching' in cond.is) return cond.is.touching;
+  return null;
+}
+
+/**
+ * Who serves whom for one `served` effect (D-165): each piece with it (`takers`, in placement
+ * order) is matched to a piece in reach that matches `by`, each of those serving up to
+ * `capacity` takers, so that as many are served as can be. Augmenting paths, takers in
+ * placement order and servers in the order they're in reach (touching before linked, then by
+ * placement), so the same house always gets the same answer. Returns taker uid → server uid.
+ */
+export function servedMatch(
+  content: Content,
+  layout: Layout,
+  takers: readonly number[],
+  by: Selector,
+  capacity: number,
+): Map<number, number> {
+  const reach = new Map<number, number[]>();
+  for (const t of takers) {
+    const touching = new Set(
+      (layout.touching.get(t) ?? []).flatMap((n) => (n.kind === 'piece' ? [n.uid] : [])),
+    );
+    const servers = (layout.neighbors.get(t) ?? []).flatMap((n) =>
+      n.kind === 'piece' && n.uid !== t && matchesPiece(content, layout, by, n.uid) ? [n.uid] : [],
+    );
+    servers.sort((a, b) => Number(touching.has(b)) - Number(touching.has(a)) || a - b);
+    reach.set(t, servers);
+  }
+  const servedBy = new Map<number, number>();
+  const load = new Map<number, number[]>();
+  const tryServe = (t: number, seen: Set<number>): boolean => {
+    for (const s of reach.get(t)!) {
+      if (seen.has(s)) continue;
+      seen.add(s);
+      const list = load.get(s) ?? [];
+      if (list.length < capacity) {
+        load.set(s, [...list, t]);
+        servedBy.set(t, s);
+        return true;
+      }
+      // Full: can one it serves move to another server?
+      for (let k = 0; k < list.length; k++) {
+        const other = list[k]!;
+        if (tryServe(other, seen)) {
+          const now = load.get(s)!.filter((u) => u !== other);
+          load.set(s, [...now, t]);
+          servedBy.set(t, s);
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+  for (const t of takers) if (capacity > 0) tryServe(t, new Set());
+  return servedBy;
 }
 
 /** The pieces whose every tile is in one of the fenced yards this piece borders. */
@@ -396,6 +515,7 @@ const XMULT_ORDER: Record<XMultTerm['source']['kind'], number> = {
   client: 4,
   changeOrder: 4,
   lot: 4,
+  house: 4,
 };
 
 /** A source as a key, so one source multiplies the week once (two Chandeliers are one source). */
@@ -485,7 +605,12 @@ export function tallyHouse(
       if (m.mod.kind === 'grantEffect') {
         let list = granted.get(piece.uid);
         if (!list) granted.set(piece.uid, (list = []));
-        list.push({ effect: m.mod.effect, since: m.since, label: sourceName(content, m.source) });
+        list.push({
+          effect: m.mod.effect,
+          since: m.since,
+          label: sourceName(content, m.source),
+          ...(m.source.kind === 'house' ? { rule: m.source.id } : {}),
+        });
       } else {
         let list = blocks.get(piece.uid);
         if (!list) blocks.set(piece.uid, (list = []));
@@ -494,20 +619,51 @@ export function tallyHouse(
     }
   }
 
-  const ctx: Ctx = { content, layout, week, withLines, acc, blocks };
   const unmet = new Map<number, string>();
+  for (const piece of pieces) {
+    const failed = unmetRequirement(content, layout, pieceDef(content, piece), piece.uid);
+    if (failed) unmet.set(piece.uid, conditionText(content, failed.condition));
+  }
+  // D-165: each `served` effect's matching, over the pieces that have it and earn.
+  const servedCache = new Map<string, ReadonlyMap<number, number>>();
+  const served = (e: Extract<Effect, { kind: 'served' }>): ReadonlyMap<number, number> => {
+    const key = `${JSON.stringify(e.by)}|${e.capacity}`;
+    let m = servedCache.get(key);
+    if (!m) {
+      const same = (x: Effect) =>
+        x.kind === 'served' &&
+        x.capacity === e.capacity &&
+        JSON.stringify(x.by) === JSON.stringify(e.by);
+      const takers = pieces
+        .filter(
+          (p) =>
+            !unmet.has(p.uid) &&
+            (pieceDef(content, p).effects.some(same) ||
+              (granted.get(p.uid) ?? []).some((g) => same(g.effect))),
+        )
+        .map((p) => p.uid);
+      m = servedMatch(content, layout, takers, e.by, e.capacity);
+      servedCache.set(key, m);
+    }
+    return m;
+  };
+
+  const ctx: Ctx = { content, layout, week, withLines, acc, blocks, served };
 
   const perLevel = content.balance.renovate.pointsPerLevel;
   for (const piece of pieces) {
     const def = pieceDef(content, piece);
-    const failed = unmetRequirement(content, layout, def, piece.uid);
-    if (failed) {
-      unmet.set(piece.uid, conditionText(content, failed.condition));
-      continue;
-    }
-    for (const effect of def.effects) applyEffect(ctx, piece, def, effect, '');
+    if (unmet.has(piece.uid)) continue;
+    for (const effect of def.effects) applyEffect(ctx, piece, def, effect, { suffix: '' });
     for (const g of granted.get(piece.uid) ?? []) {
-      applyEffect(ctx, piece, def, g.effect, ` (${g.label})`, g.since);
+      applyEffect(
+        ctx,
+        piece,
+        def,
+        g.effect,
+        g.rule ? { suffix: '', as: g.label, rule: g.rule } : { suffix: ` (${g.label})` },
+        g.since,
+      );
     }
     // Renovations (M4a): flat Comfort per level, before percentages.
     if (piece.level) {

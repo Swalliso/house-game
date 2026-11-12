@@ -1,30 +1,79 @@
-// The house rules (house-systems-review.md §4; D-093, option B): seven lines every client's
-// checklist starts with, written in that client's numbers. Each adds +0.25 Charm while it
-// holds, like any spec (D-021, D-056). A client wish that repeats a house rule becomes the
-// client's numbers for it instead of paying twice (the Hendersons' 4+ Bedrooms and 2+
-// Bathrooms are where their household ends up; Juniper's 4–8 rooms are her numbers for A compact
-// house).
+// The house rules (house-systems-review.md §4; D-093, option B; D-165): what every house keeps,
+// whoever the client. D-165 moved most of them off the checklist and onto the rooms, where the
+// board's digits show them:
 //
-// - The household (D-093's option 1): Room for everyone, a Bathroom for every two Bedrooms,
-//   One Kitchen, and a living room or two. Each has a floor, and all but the Bathroom rule a
-//   ceiling, so a second Kitchen loses a rule; a room type at its ceiling can renovate instead.
-//   Room for everyone is built from the client's household (M4b, D-103; households.ts): its
-//   Bedroom range rises by one at each end at each arrival's phase, and from each arrival on it
-//   also needs one of that member's rooms. A member's room counts as a Bedroom (countsAs).
-// - The shape: A compact house (a filled box no longer than twice its width) and Cozy (every
-//   room touches two others). D-160 renamed it from "Under one roof", which an outside
-//   playtester read as "everything connected", the placement rule; its id stays underOneRoof.
-// - The yard: a tidy yard (6 or more yard pieces, no type 4 or more times; Fences, Driveways,
-//   and Saplings count toward the 6 but never break it, so a fenced yard or a long drive is
-//   always fine).
+// - On the rooms (ROOM_RULES, as Comfort): Cozy (a room earns more for each room it touches,
+//   where D-101 had "every room touches two others" as a line) and A Bathroom nearby (a Bedroom
+//   earns more with a Bathroom in reach, each Bathroom serving two, where D-101 had "a Bathroom
+//   for every two Bedrooms").
+// - On the cards: One Kitchen and A living room or two are the Kitchen's, the Dining Room's and
+//   the Living Room's `perHouse` (pieces.ts): another card of a type the house has enough of
+//   renovates instead of being placed (D-102).
+// - On the checklist, each +0.25 Charm while it holds, like any spec (D-021, D-056), in the
+//   client's numbers: Room for everyone, A compact house, and A tidy yard. A client wish that
+//   repeats one becomes the client's numbers for it instead of paying twice (the Hendersons'
+//   4+ Bedrooms are where their household ends up; Juniper's 4–8 rooms are her numbers for A
+//   compact house).
+//   - Room for everyone is built from the client's household (M4b, D-103; households.ts): its
+//     Bedroom range rises by one at each end at each arrival's phase, and from each arrival on
+//     it also needs one of that member's rooms. A member's room counts as a Bedroom (countsAs).
+//   - A compact house: rooms that fill their box, no longer than twice its width. D-160 renamed
+//     it from "Under one roof", which an outside playtester read as "everything connected", the
+//     placement rule; its id stays underOneRoof.
+//   - A tidy yard (6 or more yard pieces, no type 4 or more times; Fences, Driveways, and
+//     Saplings count toward the 6 but never break it, so a fenced yard or a long drive is
+//     always fine).
 
-import type { ArrivalDef, HouseCondition, Household, Selector, SpecDef } from '../rules/index.ts';
+import type {
+  ArrivalDef,
+  HouseCondition,
+  Household,
+  RoomRuleDef,
+  RoomRuleId,
+  Selector,
+  SpecDef,
+} from '../rules/index.ts';
 
 /**
- * What Room for everyone and the Bathroom rule count as a Bedroom. Member rooms count as
+ * What Room for everyone and A Bathroom nearby count as a Bedroom. Member rooms count as
  * Bedrooms (`countsAs`), so they're in it.
  */
 export const BEDROOMS: Selector = { piece: 'bedroom' };
+
+/**
+ * D-165: the house rules that pay on the rooms, as Comfort. Each is a modifier every run has
+ * (source `house`), and each line it adds to a room reads the rule's name.
+ */
+export const ROOM_RULES: Readonly<Record<RoomRuleId, RoomRuleDef>> = {
+  cozy: {
+    id: 'cozy',
+    name: 'Cozy',
+    text: 'A room touching 2 or more rooms earns +2. A Hallway’s link counts.',
+    modifiers: [
+      {
+        kind: 'grantEffect',
+        target: { property: 'room' },
+        effect: {
+          kind: 'conditional',
+          when: { is: { touching: { property: 'room' }, min: 2 } },
+          effect: { kind: 'steady', amount: 2 },
+        },
+      },
+    ],
+  },
+  bathroomNearby: {
+    id: 'bathroomNearby',
+    name: 'A Bathroom nearby',
+    text: 'A Bedroom earns +8 with a Bathroom in reach, and each Bathroom serves two.',
+    modifiers: [
+      {
+        kind: 'grantEffect',
+        target: BEDROOMS,
+        effect: { kind: 'served', by: { piece: 'bathroom' }, amount: 8, capacity: 2 },
+      },
+    ],
+  },
+};
 
 /** A client's numbers for the house rules. */
 export interface HouseholdNumbers {
@@ -101,7 +150,7 @@ function bedroomText(h: Household): string {
   return `${head} to start, then one more for each arrival, and each arrival has their own room: ${tail}.`;
 }
 
-/** The seven house rules, in checklist order. */
+/** The house rules on the checklist (D-165: three of D-101's seven), in checklist order. */
 export function houseRules(n: HouseholdNumbers): SpecDef[] {
   const rooms = n.rooms ?? { min: 4 };
   const bedrooms = roomForEveryone(n.household);
@@ -116,32 +165,6 @@ export function houseRules(n: HouseholdNumbers): SpecDef[] {
       text: bedroomText(n.household),
     },
     {
-      id: 'bathrooms',
-      name: 'A Bathroom for every two Bedrooms',
-      group: 'household',
-      condition: { ratio: { count: { piece: 'bathroom' }, per: BEDROOMS, every: 2, min: 1 } },
-      text: 'A Bathroom for every two Bedrooms (at least one).',
-    },
-    {
-      id: 'oneKitchen',
-      name: 'One Kitchen',
-      group: 'household',
-      condition: { count: { piece: 'kitchen' }, min: 1, max: 1 },
-      text: 'Exactly one Kitchen. An L-Kitchen counts.',
-    },
-    {
-      id: 'livingRooms',
-      name: 'A living room or two',
-      group: 'household',
-      condition: {
-        and: [
-          { count: { piece: 'livingRoom' }, min: 1, max: 2 },
-          { count: { piece: 'diningRoom' }, max: 1 },
-        ],
-      },
-      text: '1–2 Living Rooms, and at most one Dining Room.',
-    },
-    {
       // D-160: its id from when it was "Under one roof", so saves, run codes and the sim's
       // records keep their key.
       id: 'underOneRoof',
@@ -151,22 +174,6 @@ export function houseRules(n: HouseholdNumbers): SpecDef[] {
         outline: { minRooms: rooms.min, maxRooms: rooms.max, minFillPct: 60, maxAspect: 2 },
       },
       text: `${roomsText} that fill at least 60% of the box around them, and the box is no longer than twice its width.`,
-    },
-    {
-      id: 'cozy',
-      name: 'Cozy',
-      group: 'shape',
-      condition: {
-        and: [
-          { count: { property: 'room' }, min: 6 },
-          {
-            none: {
-              all: [{ property: 'room' }, { not: { touching: { property: 'room' }, min: 2 } }],
-            },
-          },
-        ],
-      },
-      text: '6+ rooms, each touching 2 or more rooms. A Hallway’s link counts as touching.',
     },
     {
       id: 'tidyYard',

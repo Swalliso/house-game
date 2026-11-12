@@ -326,6 +326,7 @@ export function HowToPlayText() {
     (spec) => spec.group !== 'wishes',
   ).length;
   const perLine = multNumber(rules.rule(s, 'specBonus'));
+  const roomRules = Object.values(CONTENT.roomRules);
   const fenceTiles = CONTENT.pieces.fence.pack?.maxTiles;
   const drivewayTiles = CONTENT.pieces.driveway.pack?.maxTiles;
   // D-160: the standing stock, and the milestone it starts at.
@@ -432,6 +433,18 @@ export function HowToPlayText() {
             Each week your pieces' {L.points} is multiplied by {L.mult} and added to your {L.total}.
           </li>
           <li>Pieces earn (or lose) {L.points} from what they touch.</li>
+          {/* D-165: the house rules that pay on the rooms, in the rules' words. */}
+          {roomRules.length > 0 && (
+            <li>
+              Every house pays {plural(roomRules.length, 'rule')} on its rooms:{' '}
+              {roomRules.map((r, i) => (
+                <Fragment key={r.id}>
+                  {i > 0 && ' '}
+                  <b>{r.name}:</b> {r.text}
+                </Fragment>
+              ))}
+            </li>
+          )}
           {sets && (
             <li>
               Sets, like {sets}, add {L.points} and {L.mult}.

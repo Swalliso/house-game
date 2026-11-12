@@ -34,12 +34,15 @@ function owned(blueprints: readonly Owned[]) {
   );
 }
 
-/** The run's modifiers for these blueprints (and the General Contractor), without a client's tastes. */
+/**
+ * The run's modifiers for these blueprints (and the General Contractor), without a client's
+ * tastes or the house rules that pay on the rooms (D-165; room-rules.test.ts has those).
+ */
 function modsFor(blueprints: readonly Owned[]) {
   return runModifiers(CONTENT, {
     setup: setup('blueprints'),
     blueprints: owned(blueprints),
-  }).filter((m) => m.source.kind !== 'client');
+  }).filter((m) => m.source.kind !== 'client' && m.source.kind !== 'house');
 }
 
 function layoutWith(house: HouseState, blueprints: readonly Owned[]): Layout {
@@ -249,7 +252,7 @@ describe('Quiet Hours', () => {
   it('Quiet pieces earn +75% (D-143)', () => {
     expectText('quietHours', ['Quiet pieces earn +75%']);
     // Bedroom 3 + 1 for the Library: 7. Library 2: 3.5 → 4. A Kitchen (Social; +2 in the sun,
-    // D-120) and a Closet (no tags) aren't boosted.
+    // D-120, and +3 of its own, D-165) and a Closet (no tags) aren't boosted.
     expect(
       withAndWithout('quietHours', open, [
         ['bedroom', 0, 0],
@@ -258,8 +261,8 @@ describe('Quiet Hours', () => {
         ['closet', 9, 0],
       ]),
     ).toEqual([
-      [4, 2, 2, 1],
-      [7, 4, 2, 1],
+      [4, 2, 5, 1],
+      [7, 4, 5, 1],
     ]);
   });
 });
@@ -309,8 +312,9 @@ describe('Green Thumb', () => {
 describe('Party House', () => {
   it('Social pieces earn +50%', () => {
     expectText('partyHouse', ['Social pieces earn +50%']);
-    // The Kitchen and the Dining Room face the sun, +2 each (D-120). Kitchen: +4 at the Dining
-    // Room's +50% (6), and the blueprint's: 8. Dining Room: 2 → 3. The Patio below the Kitchen:
+    // The Kitchen and the Dining Room face the sun, +2 each (D-120). Kitchen: +7 with its own +3
+    // (D-165), at the Dining Room's +50% (10.5 → 11), and the blueprint's: 14. Dining Room: 2 →
+    // 3. The Patio below the Kitchen:
     // +2 for it, 2 → 3. The Hot Tub beside the Patio and below the Dining Room: 3 → 4.5 → 5.
     // The Bedroom isn't Social.
     expect(
@@ -322,8 +326,8 @@ describe('Party House', () => {
         ['bedroom', 6, 0],
       ]),
     ).toEqual([
-      [6, 2, 2, 3, 3],
-      [8, 3, 3, 5, 3],
+      [11, 2, 2, 3, 3],
+      [14, 3, 3, 5, 3],
     ]);
   });
 });
@@ -573,18 +577,17 @@ describe('Solar Panels', () => {
 describe('Crown Jewel', () => {
   it('the week’s single top earner earns +100%; ties go to the earliest placed', () => {
     expectText('crownJewel', ['Each week, your top earner earns +100%']);
-    // Two Bedrooms tie at 4; the first doubles. The Kitchen (3) and the Closet (1) don't. The
-    // Kitchen and the Dining Room are in the Bedrooms' shade, so neither earns the sun's +2.
+    // Two Bedrooms tie at 4; the first doubles. The Kitchen (its own +3, D-165) and the Closet
+    // (1) don't. The Kitchen is in the Bedrooms' shade, so it doesn't earn the sun's +2.
     const house = build(open, [
       ['bedroom', 0, 0],
       ['bedroom', 2, 0],
       ['closet', 6, 0],
       ['kitchen', 0, 2],
-      ['diningRoom', 2, 2],
     ]);
-    expect(tallyOf(house, []).pieces.map((p) => p.earned)).toEqual([4, 4, 1, 3, 0]);
+    expect(tallyOf(house, []).pieces.map((p) => p.earned)).toEqual([4, 4, 1, 3]);
     const t = tallyOf(house, ['crownJewel']);
-    expect(t.pieces.map((p) => p.earned)).toEqual([8, 4, 1, 3, 0]);
+    expect(t.pieces.map((p) => p.earned)).toEqual([8, 4, 1, 3]);
     expect(t.best).toEqual({ uid: 1, pct: 100, before: 4, after: 8 });
     expect(t.pieces[0]!.lines).toContainEqual({
       label: 'Crown Jewel: top earner',
@@ -605,14 +608,15 @@ describe('Crown Jewel', () => {
 });
 
 describe('Dream Home', () => {
-  it('raises specBonus by 10 (+0.35 Mult per spec instead of +0.25)', () => {
-    expectText('dreamHome', ['Each spec met adds +0.1 more Charm']);
+  // D-165: +0.2, from +0.1, for the shorter checklist.
+  it('raises specBonus by 20 (+0.45 Mult per spec instead of +0.25)', () => {
+    expectText('dreamHome', ['Each spec met adds +0.2 more Charm']);
     const state = (blueprints: readonly Owned[]) => ({
       setup: setup('dream'),
       blueprints: owned(blueprints),
     });
     expect(ruleValue(CONTENT, state([]), 'specBonus')).toBe(25);
-    expect(ruleValue(CONTENT, state(['dreamHome']), 'specBonus')).toBe(35);
+    expect(ruleValue(CONTENT, state(['dreamHome']), 'specBonus')).toBe(45);
   });
 
   it('is offered, now that M4a’s clients bring specs', () => {
