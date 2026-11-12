@@ -801,7 +801,9 @@ export function setsOfPiece(content: Content, id: PieceId): SetId[] {
 
 /**
  * A set in a few sentences, for a card's set chip: "Suite: a Bedroom, a Bathroom, and a Closet,
- * touching. +15 Comfort and +0.5 Charm every week. A house can have more than one."
+ * touching. +15 Comfort and +0.5 Charm every week. A house can have more than one, each with its
+ * own rooms." The last words are the matching rule (sets.ts: a piece joins one instance of a set
+ * type): an outside playtester expected two Suites around one Bathroom (D-158).
  */
 export function setText(content: Content, id: SetId): string {
   const set = content.sets[id];
@@ -818,7 +820,10 @@ export function setText(content: Content, id: SetId): string {
     set.times !== undefined
       ? `+${set.points} ${points}, +${multNumber(set.mult)} ${mult}, and ×${multNumber(set.times)} ${xMult}`
       : `+${set.points} ${points} and +${multNumber(set.mult)} ${mult}`;
-  const repeats = set.maxInstances === 1 ? 'One per house.' : 'A house can have more than one.';
+  const repeats =
+    set.maxInstances === 1
+      ? 'One per house.'
+      : 'A house can have more than one, each with its own rooms.';
   return `${set.name}: ${countedNames(names)}${how}. ${pays} every week. ${repeats}`;
 }
 
@@ -1168,9 +1173,11 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
       title: 'Supplies',
       text: `Bought fixtures wait here (${r.supplySlots} slots). Installing one is free: it doesn’t use your week. Sell for half price.`,
     },
+    // What one is before what it does (D-158): an outside playtester read the word as "a thing
+    // I would build".
     blueprints: {
       title: 'Blueprints',
-      text: `Run-long rule benders, always on (${r.blueprintSlots} slots, no duplicates). Sell one for half its price.`,
+      text: `Bonuses that stay on for the whole run. You don’t build them: they sit in your goods (${r.blueprintSlots} slots, no duplicates). Sell one for half its price.`,
     },
     rarity: {
       title: 'Rarity',
@@ -1318,9 +1325,13 @@ export function hintText(content: Content): Record<HintTerm, string> {
     score:
       `Pieces earn ${L.points} from what they touch, so build them side by side. ` +
       `${L.mult} multiplies ${L.points} into ${L.total}.`,
+    // It says the lines are bonuses (D-158): an outside playtester read the checklist as
+    // requirements "so numerous and specific that I can't possibly complete them all", and the
+    // sim's best bot holds every line in 3–28% of its runs. (It used to say the house rules fold
+    // "after this: click it to open them", while they were open.)
     checklist:
       `Each line that holds adds +${multNumber(b.rules.specBonus)} ${L.mult} every week. ` +
-      `The house rules fold into one row after this: click it to open them.`,
+      `They’re bonuses, not requirements: few houses hold them all.`,
     // It says what it costs (D-149): the builds, which a new player needs more than the bonus.
     early:
       `Target met? Complete early skips the builds you have left: each week saved pays ` +
