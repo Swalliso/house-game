@@ -491,7 +491,7 @@ describe('resolving a Renovation', () => {
     expect(tally.total).toBe(10);
   });
 
-  it('from the reserve: the card leaves the reserve, and the rest keep their order', () => {
+  it('from the reserve: the card leaves the reserve, the rest keep their order, and the week goes on (D-163)', () => {
     const s = build([['kitchen', 0, 0]], {
       hand: [pc('closet')],
       reserve: [{ id: 'bedroom' }, { id: 'lKitchen' }],
@@ -499,13 +499,16 @@ describe('resolving a Renovation', () => {
     expect(R.renovateTargets(s, 'reserve', 1)).toEqual([1]);
     expect(R.renovateTargets(s, 'reserve', 0)).toEqual([]);
     expect(R.checkPlay(s, renovate(1, 1, 'reserve')).legal).toBe(true);
+    expect(R.endsWeek(s, renovate(1, 1, 'reserve'))).toBe(false);
     const { state, events } = R.apply(s, renovate(1, 1, 'reserve'));
-    expect(eventsOf(events, 'renovated')).toEqual([
+    // No tally, and no Weekend Crew mark: a piece from Your goods doesn't use the week.
+    expect(events).toEqual([
       { t: 'renovated', uid: 1, defId: 'kitchen', level: 1, card: 'lKitchen' },
     ]);
     expect(state.reserve).toEqual([{ id: 'bedroom' }]);
+    expect(state.hand).toEqual(s.hand);
     expect(pieceOf(state, 1)!.level).toBe(1);
-    expect(state.week).toBe(2);
+    expect(state.week).toBe(s.week);
   });
 
   it('the level comes before percentages: an earn +100% doubles it', () => {
@@ -696,7 +699,9 @@ describe('previewing a Renovation', () => {
       renovates: { uid: 1, level: 2 },
     });
     expect(R.scoreOnly(s, play)).toBe(10);
-    expect(eventsOf(R.apply(s, play).events, 'tally')[0]!.tally.total).toBe(10);
+    // It doesn't end the week (D-163): the week's tally, at the pass, has it.
+    const after = R.apply(s, play).state;
+    expect(eventsOf(R.apply(after, { t: 'pass' }).events, 'tally')[0]!.tally.total).toBe(10);
   });
 
   it('an illegal Renovation previews as no change, with its reason', () => {
@@ -758,24 +763,29 @@ describe('Weekend Crew: a Renovation can be its free play (D-083)', () => {
     expect(second.state).toMatchObject({ week: 2, freePlay: 'none', score: 10 });
   });
 
-  it('works from the reserve, and a placement can end the week after it', () => {
+  it('from the reserve it isn’t the free play: the hand’s next card is (D-163)', () => {
     const s = build([['kitchen', 0, 0]], {
       hand: [pc('closet')],
       reserve: [{ id: 'kitchen' }],
       supplies: [tool('weekendCrew')],
     });
     const ready = R.apply(s, use(0)).state;
-    const free = R.apply(ready, renovate(0, 1, 'reserve'));
-    expect(free.events).toEqual([
-      { t: 'renovated', uid: 1, defId: 'kitchen', level: 1, card: 'kitchen', free: true },
+    // A piece from Your goods never ends the week, so Weekend Crew waits for the hand's card.
+    const goods = R.apply(ready, renovate(0, 1, 'reserve'));
+    expect(goods.events).toEqual([
+      { t: 'renovated', uid: 1, defId: 'kitchen', level: 1, card: 'kitchen' },
     ]);
-    expect(free.state.reserve).toEqual([]);
-    expect(free.state.hand).toEqual([pc('closet')]);
-    expect(free.state.week).toBe(1);
-    // The Closet beside the Kitchen ends the week: (Kitchen 4 + Closet 1) × 1.25 = 6.25 → 6.
-    const { events } = R.apply(free.state, { t: 'place', from: 'hand', i: 0, x: 2, y: 0, rot: 0 });
-    expect(types(events).slice(0, 2)).toEqual(['placed', 'tally']);
-    expect(eventsOf(events, 'placed')[0]).not.toHaveProperty('free');
+    expect(goods.state.freePlay).toBe('ready');
+    expect(goods.state.reserve).toEqual([]);
+    expect(goods.state.hand).toEqual([pc('closet')]);
+    expect(goods.state.week).toBe(1);
+    // The Closet beside the Kitchen is Weekend Crew's play, and a pass ends the week:
+    // (Kitchen 4 + Closet 1) × 1.25 = 6.25 → 6.
+    const crew = R.apply(goods.state, { t: 'place', from: 'hand', i: 0, x: 2, y: 0, rot: 0 });
+    expect(types(crew.events)).toEqual(['placed']);
+    expect(eventsOf(crew.events, 'placed')[0]!.free).toBe(true);
+    expect(crew.state.freePlay).toBe('used');
+    const { events } = R.apply(crew.state, { t: 'pass' });
     expect(eventsOf(events, 'tally')[0]!.tally.total).toBe(6);
   });
 

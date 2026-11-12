@@ -849,13 +849,20 @@ export interface Balance {
    */
   strikesPerMilestone: number;
   /**
-   * D-160: the standing stock. From `fromPhase` on, the first week of each milestone tops the
-   * reserve's extra slots up to one of each of `pieces`, adding only what's missing, so the stock
-   * never gives a second of one while the first waits. A first job (D-149) brings its first in
+   * D-160: the standing stock. The first week of `fromPhase` fills the reserve's extra slots up
+   * to one of each of `pieces`, adding only what's missing. A first job (D-149) brings it in
    * week `firstJobSlot` of `fromPhase` instead (1: the same week as any run), so it doesn't
-   * arrive with the parts of the screen Foundation's first week brings in.
+   * arrive with the parts of the screen Foundation's first week brings in; one that missed that
+   * week gets it at the next milestone's first. With `refill`, each later milestone's first
+   * week tops it up the same way (D-160); without, it comes once (D-163: its pieces don't use
+   * the week, so a top-up at every milestone was two more builds a milestone).
    */
-  standingStock: { fromPhase: number; pieces: readonly PieceId[]; firstJobSlot: number };
+  standingStock: {
+    fromPhase: number;
+    pieces: readonly PieceId[];
+    firstJobSlot: number;
+    refill: boolean;
+  };
 }
 
 /** What a shop visit stocks (Appendix A · M3a), by shop; the last row repeats. */
@@ -1222,6 +1229,8 @@ export interface RunState {
   changeOrders: readonly ChangeOrderRecord[];
   /** M4b: the household members who've arrived (D-103), in order. */
   arrived: readonly ArrivalId[];
+  /** D-163: the standing stock has come (without `refill`, it comes once). */
+  stocked?: true;
   /** Set by the ?debug panel's cheats: this phase's regular end counts as a miss. */
   forcedMiss?: number;
   /** Set once any debug action has changed the run. */

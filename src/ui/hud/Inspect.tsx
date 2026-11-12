@@ -575,12 +575,13 @@ function PlacingInfo() {
   const room = renovate ? run.value.house.pieces.find((q) => q.uid === play.uid) : undefined;
   const roomName = room ? CONTENT.pieces[room.defId].name : 'room';
   const hint = sel.kind === 'piece' && !renovate ? <RenovateHint id={sel.id} /> : null;
+  // D-163: a piece from the reserve is free: it doesn't use the week.
   const fromLine = renovate
     ? sel.from === 'reserve'
-      ? 'From your reserve: renovating is this week’s build.'
+      ? 'From your reserve: it doesn’t use your week.'
       : 'Renovating is this week’s build, instead of placing the card.'
     : sel.from === 'reserve'
-      ? 'From your reserve: placing it is this week’s build.'
+      ? 'From your reserve: it doesn’t use your week.'
       : sel.from === 'supplies'
         ? 'From your supplies: installing it is free, so the week goes on.'
         : install

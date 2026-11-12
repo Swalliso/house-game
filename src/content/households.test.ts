@@ -284,7 +284,12 @@ describe('validateContent', () => {
       ...CONTENT,
       balance: {
         ...CONTENT.balance,
-        standingStock: { fromPhase: 9, pieces: ['fence', 'library', 'fence'], firstJobSlot: 5 },
+        standingStock: {
+          fromPhase: 9,
+          pieces: ['fence', 'library', 'fence'],
+          firstJobSlot: 5,
+          refill: false,
+        },
       },
       clients: {
         ...CONTENT.clients,
@@ -340,11 +345,13 @@ describe('what a client brings, and the standing stock (D-160)', () => {
     }
   });
 
-  it('the stock is a Hallway and a Fence from Foundation, in a first job its third week', () => {
+  it('the stock is a Hallway and a Fence from Foundation, in a first job its third week, once', () => {
+    // D-163: it comes once (`refill: false`): its pieces don't use the week.
     expect(CONTENT.balance.standingStock).toEqual({
       fromPhase: 1,
       pieces: ['hallway', 'fence'],
       firstJobSlot: 3,
+      refill: false,
     });
     expect(CONTENT.balance.phases[1]!.name).toBe('Foundation');
     // Both stay in the weekly draw, at their usual weights, from the first week on.

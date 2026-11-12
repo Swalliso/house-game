@@ -13,7 +13,16 @@ import { CONTENT, rules } from '../../rules/index.ts';
 import { isFit } from '../board/camera.ts';
 import { busy } from '../fx/director.ts';
 import { Keycap } from '../kit/kit.tsx';
-import { movingUid, renovateUids, run, selected, selection, tentative, tool } from '../store.ts';
+import {
+  movingUid,
+  pendingFree,
+  renovateUids,
+  run,
+  selected,
+  selection,
+  tentative,
+  tool,
+} from '../store.ts';
 import { pickKeys, shopHidden } from './actions.ts';
 import { shown } from './first-job.ts';
 import './hints.css';
@@ -166,7 +175,13 @@ export function Hints() {
           </Hint>
           {/* With the card only held, Enter passes the week, as the button beside it says. */}
           <Hint keys={['Enter']}>
-            {!pending ? 'pass' : pending.t === 'renovate' ? 'renovate it' : 'end the week'}
+            {!pending
+              ? 'pass'
+              : pendingFree.value
+                ? 'build it'
+                : pending.t === 'renovate'
+                  ? 'renovate it'
+                  : 'end the week'}
           </Hint>
           <Hint keys={['Esc']}>
             {pack && pending ? 'clear the tiles' : pending ? 'pick it up' : 'put it back'}

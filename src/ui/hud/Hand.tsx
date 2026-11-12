@@ -42,6 +42,7 @@ import {
   rotation,
   run,
   movingUid,
+  pendingFree,
   selected,
   selection,
   source,
@@ -644,13 +645,18 @@ export function Hand() {
     (sel?.kind === 'tool' && movingUid.value !== null);
   // The long label, and a short one for a narrow column (hand.css, whose container queries are
   // measured on these words). What End week will do, build or renovate, is in its tip.
-  const [endLabel, endShort] = pending
-    ? ['End week', 'End week']
-    : armed
-      ? ['Pass? Press again', 'Again?']
-      : ['Pass this week', 'Pass'];
-  const endTitle =
-    pending?.t === 'renovate'
+  // D-163: a piece from Your goods doesn't end the week, so the button builds it: Build.
+  const free = pendingFree.value;
+  const [endLabel, endShort] = free
+    ? ['Build', 'Build']
+    : pending
+      ? ['End week', 'End week']
+      : armed
+        ? ['Pass? Press again', 'Again?']
+        : ['Pass this week', 'Pass'];
+  const endTitle = free
+    ? 'Build it now: the week goes on (Enter)'
+    : pending?.t === 'renovate'
       ? 'End the week and renovate the room (Enter)'
       : pending
         ? 'End the week and build it (Enter)'

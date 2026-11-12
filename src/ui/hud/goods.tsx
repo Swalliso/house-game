@@ -113,7 +113,7 @@ export function goodWhere(g: GoodRef): string {
   if (g.kind === 'tool') return 'Goes in your supplies. Use it any week, for free: it’s one use.';
   if (g.kind === 'upgrade') return 'Yours for the rest of the run.';
   if (g.kind === 'crate') return 'Opens at once: keep one of what’s inside.';
-  return 'Goes in your reserve. Placing it is your week’s build, any week you like.';
+  return 'Goes in your reserve. Placing it is free: it doesn’t use your week.';
 }
 
 /** The good's effects as plain sentences. */

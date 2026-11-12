@@ -328,7 +328,8 @@ class Checker {
   }
 
   checkPlay(s: RunState, play: PlaceAction | InstallAction | RenovateAction, pass: Tally) {
-    const free = (play.t === 'install' && play.from === 'supplies') || s.freePlay === 'ready';
+    // A supply install, a piece from Your goods (D-163) and Weekend Crew's card don't end the week.
+    const free = (play.t === 'install' && play.from === 'supplies') || !rules.endsWeek(s, play);
     const kind = `${play.t}:${play.from}${s.freePlay === 'ready' ? ':free' : ''}`;
     this.see(`check:preview:${kind}`);
     const p = rules.preview(s, play);

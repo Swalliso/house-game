@@ -397,13 +397,19 @@ export function HowToPlayText() {
               Driveway. Click a tile again to take it off. It builds as one piece.
             </li>
           )}
-          {stock && stockFrom && (
-            <li>
-              <b>Always in stock:</b> from {stockFrom} on, {stock}{' '}
-              {b.standingStock.pieces.length === 1 ? 'waits' : 'wait'} in your reserve until you
-              want one. Placing one is a week's build, and the next milestone brings another.
-            </li>
-          )}
+          <li>
+            <b>Your goods are free:</b> placing a piece from your reserve doesn't use your week.
+            {stock && stockFrom && (
+              <>
+                {' '}
+                From {stockFrom} on, {stock}{' '}
+                {b.standingStock.pieces.length === 1
+                  ? 'waits there until you want it'
+                  : 'wait there until you want them'}
+                {b.standingStock.refill ? ', and each milestone brings another' : ''}.
+              </>
+            )}
+          </li>
           <li>Every piece you've built earns again every week, so early pieces keep paying.</li>
           <li>
             Nothing helps? <b>Pass</b>: press End week twice to place nothing.
@@ -611,7 +617,7 @@ export function HowToPlayText() {
           <li>
             After every milestone but the last, the shop opens. <b>Blueprints</b> are bonuses that
             stay on for the whole run; you don’t build them. <b>Pieces</b> wait in your reserve;
-            placing one is a week's build. <b>Fixtures</b> wait in your supplies and install for
+            placing one doesn't use your week. <b>Fixtures</b> wait in your supplies and install for
             free.
           </li>
           <li>

@@ -127,7 +127,9 @@ export function extraSlotWords(
     return {
       tag: 'Stock',
       whose: ' (from your stock)',
-      from: 'From your stock: another comes at the next milestone once it’s placed',
+      from: CONTENT.balance.standingStock.refill
+        ? 'From your stock: another comes at the next milestone once it’s placed'
+        : 'From your stock',
     };
   }
   return null;
