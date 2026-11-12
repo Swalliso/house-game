@@ -402,6 +402,34 @@ export function SetLines({ id }: { id: PieceId }) {
   );
 }
 
+/**
+ * D-153: with a hand card picked, until the pointer is on the lot, only how far the house is
+ * toward the sets that need nothing to touch (Full House), a line each: "Full House: your house
+ * has 5 of the 9. Still to build: …". All of SetLines there, every set's terms, grew Inspect from
+ * 106 to 442 px at 1728×963 on every pick of a set's room, squeezing the checklist under it until
+ * the pointer reached the lot. A card pointed at, and the chip's tip, have the terms.
+ */
+export function SetProgressLines({ id }: { id: PieceId }) {
+  const s = run.value;
+  const shown = setsOfPiece(CONTENT, id).flatMap((set) => {
+    const p = rules.setProgress(s, set);
+    return p ? [p] : [];
+  });
+  return (
+    <>
+      {shown.map((p) => {
+        const said = setProgressText(CONTENT, p);
+        return (
+          <p key={p.set} class="set-progress">
+            {p.held && <Icon name="check" />}
+            <span>{`${CONTENT.sets[p.set].name}: ${said[0]!.toLowerCase()}${said.slice(1)}`}</span>
+          </p>
+        );
+      })}
+    </>
+  );
+}
+
 /** A card in the reserve's extra slots (M4b): a household member's or the crew's. */
 function ExtraSlotNote({ r }: { r: ReservePiece }) {
   const member = r.arrival !== undefined ? arrivalOf(run.value.setup.clientId, r.arrival) : null;
@@ -559,7 +587,7 @@ function PlacingInfo() {
         </p>
         {hint}
         {install && <GoodBody good={{ kind: 'fixture', id: sel.id }} />}
-        {sel.kind === 'piece' && sel.from === 'hand' && <SetLines id={sel.id} />}
+        {sel.kind === 'piece' && sel.from === 'hand' && <SetProgressLines id={sel.id} />}
       </>
     );
   }

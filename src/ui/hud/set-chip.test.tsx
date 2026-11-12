@@ -9,7 +9,7 @@ import { CONTENT, rules, type PieceId, type PlaceAction } from '../../rules/inde
 import { emptyRows, houseFrom, type Placement } from '../../rules/testing.ts';
 import { run, tentative } from '../store.ts';
 import { SetChip } from './Hand.tsx';
-import { SetLines } from './Inspect.tsx';
+import { SetLines, SetProgressLines } from './Inspect.tsx';
 
 type Node = VNode<Record<string, unknown>>;
 
@@ -131,5 +131,18 @@ describe("Inspect's set lines (D-153)", () => {
     withHouse(NINE);
     expect(lines('hallway')).toMatch(/One per house\. Your house has it\.$/);
     expect(SetLines({ id: 'patio' })).toBeNull();
+  });
+
+  it('with a card picked, give only how far the house is toward Full House', () => {
+    const picked = (id: PieceId) => text(SetProgressLines({ id }));
+    withHouse(NINE.slice(0, 5));
+    // A Bedroom's touching sets (Suite, Jack-and-Jill) have their terms when it's pointed at.
+    expect(picked('bedroom')).toBe(
+      'Full House: your house has 5 of the 9. Still to build: a Closet, a Hallway, a Garage, and a Home Office.',
+    );
+    expect(picked('hallway')).toBe(picked('bedroom'));
+    withHouse(NINE);
+    expect(picked('garage')).toBe('Full House: your house has it.');
+    expect(picked('patio')).toBe('');
   });
 });
