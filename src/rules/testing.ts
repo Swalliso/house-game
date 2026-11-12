@@ -917,6 +917,8 @@ export const TEST_BALANCE: Balance = {
     shopPricePct: 100,
     specBonus: 25,
     interestMax: 0,
+    // D-157: none, so legalActions and the bots' runs here are as before; strike tests add some.
+    strikes: 0,
   },
   early: { budgetPerWeek: [2], scorePct: [10] },
   milestoneBudget: 3,
@@ -981,6 +983,7 @@ export const TEST_BALANCE: Balance = {
   },
   // No change orders unless a test turns them on (two phases: after milestone 1 is the one).
   changeOrderAfter: [],
+  strikesPerMilestone: 0,
 };
 
 const testTool = (

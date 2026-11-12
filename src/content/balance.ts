@@ -84,6 +84,9 @@ export const BALANCE: Balance = {
     shopPricePct: 100, // Supplier Discount: −25
     specBonus: 25, // +0.25 Mult per spec met (M4a; Dream Home raises it)
     interestMax: 0, // Savings Account: +3
+    // D-157: strikes to use from the hand at the run's start (a crew could add more); each
+    // milestone adds strikesPerMilestone, and unused ones are kept.
+    strikes: 1,
   },
 
   // D-040, per week saved, by phase (the last entry repeats): +4 budget, and 30% of this phase's
@@ -158,7 +161,7 @@ export const BALANCE: Balance = {
     services: {
       reroll: { base: 1, step: 1, max: 4 },
       demolition: { base: 1, step: 1, max: 4 },
-      strike: { base: 2, step: 1, max: 5 }, // D-076, D-084
+      strike: { base: 2, step: 1, max: 5 }, // D-157: +1 strike (D-076, D-084 named a type)
     },
     skipReward: 1, // leaving without buying anything
     strikeMinTypes: { rooms: 5, layout: 4 }, // in each row (D-121)
@@ -227,4 +230,7 @@ export const BALANCE: Balance = {
   // Change orders (M4b; jam-scope.md, implementation-plan.md §7): one is offered after each of
   // these milestones (1-based), before the shop. The rewards are in change-orders.ts.
   changeOrderAfter: [2, 4, 6],
+
+  // D-157: a strike at each milestone the run goes on from (1–6), on top of the rules' strikes.
+  strikesPerMilestone: 1,
 };

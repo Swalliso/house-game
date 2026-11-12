@@ -7,9 +7,10 @@
 // (D-121), Rooms and Layout, each drawn from its own cards on its own stream,
 // `draw/<phase>/<slot>/<n>/<row>` (an overtime week's slot is `ot<k>`), so a reroll, a swap,
 // or an extra week never shifts any later hand, and drawing one row never shifts the other: a
-// strike changes the pool, never the stream. A reroll (D-132) leaves out the cards each row
-// holds, and its swaps the cards it replaced, while enough others remain. A member's room (M4b,
-// D-103) is never drawn, not even by the Catalog: it arrives with its member.
+// strike changes the pool, never the stream. A strike from the hand (D-157) draws each card it
+// replaces on a stream of its own, `.../<row>/strike<m>/<k>`. A reroll (D-132) leaves out the
+// cards each row holds, and its swaps the cards it replaced, while enough others remain. A
+// member's room (M4b, D-103) is never drawn, not even by the Catalog: it arrives with its member.
 
 import type { Card, CardType, Content, DrawRow, Modifier, PieceDef, PieceId } from './index.ts';
 import { stream, type Rng } from './rng.ts';
@@ -123,6 +124,21 @@ export function swapKey(phase: number, slot: string, n: number, row: DrawRow, k:
   return `${drawKey(phase, slot, n, row)}/swap${k}`;
 }
 
+/**
+ * The stream for a strike's draw into a row's k-th card (D-157): the hand's draw's key, then
+ * `strike<m>/<k>`, m counting the run's struck types (this one included).
+ */
+export function strikeKey(
+  phase: number,
+  slot: string,
+  n: number,
+  row: DrawRow,
+  m: number,
+  k: number,
+): string {
+  return `${drawKey(phase, slot, n, row)}/strike${m}/${k}`;
+}
+
 type Pool = { card: Card; weight: number }[];
 
 /** Up to `count` distinct cards from a weighted pool, without replacement. */
@@ -202,18 +218,44 @@ export function swapCandidates(
 }
 
 /**
+ * The cards a strike from the hand can draw into a row's k-th card (D-157), in the order
+ * they're tried: up to `tries` distinct cards from the row's pool (the struck type is out of it
+ * already), leaving out every card in `exclude` (the row as it stands), on the strike's own
+ * stream, so it never shifts another draw.
+ */
+export function strikeCandidates(
+  content: Content,
+  seed: string,
+  phase: number,
+  slot: string,
+  n: number,
+  m: number,
+  k: number,
+  tries: number,
+  exclude: readonly Card[],
+  opts: DrawOptions & { row: DrawRow },
+): Card[] {
+  const rng = stream(seed, strikeKey(phase, slot, n, opts.row, m, k));
+  const pool = drawWeights(content, phase, opts).filter((p) => !holds(exclude, p.card));
+  return pickDistinct(rng, pool, tries);
+}
+
+/**
  * Every card type that can come up in the weekly draw at some point in the run, by its root
- * type: what D-076's strike can name, and what its floor counts. With `row`, only that row's.
+ * type: what a strike can name, and what its floor counts. With `row`, only that row's. With
+ * the run's modifiers, a special piece a client or crew puts in the draw counts too (the
+ * Architect's Library, D-157); without them, only the base pool's.
  */
 export function drawableTypes(
   content: Content,
   struck: readonly CardType[] = [],
   row?: DrawRow,
+  mods: readonly Modifier[] = [],
 ): CardType[] {
   const out: CardType[] = [];
   const seen = new Set<string>();
   for (const def of Object.values(content.pieces)) {
-    if (def.drawWeight === 0 || def.member) continue;
+    if (def.member || weighted(def, def.drawWeight, mods) === 0) continue;
     const root = rootType(def);
     if (seen.has(root)) continue;
     seen.add(root);

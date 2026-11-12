@@ -158,6 +158,7 @@ const ACTION_KINDS: Record<Action['t'], true> = {
   pick: true,
   useTool: true,
   answerChangeOrder: true,
+  strikeCard: true,
   debug: true,
 };
 const DEBUG_OPS: Record<DebugAction['op'], true> = {

@@ -642,6 +642,9 @@ export function validateContent(content: Content): string[] {
     if (!Number.isInteger(v) || v < 0)
       problems.push(`balance: rule ${key} must be a whole number ≥ 0`);
   }
+  if (!Number.isInteger(b.strikesPerMilestone) || b.strikesPerMilestone < 0) {
+    problems.push('balance: strikesPerMilestone must be a whole number ≥ 0');
+  }
   b.phases.forEach((p, i) => {
     if (i > 0 && p.target <= b.phases[i - 1]!.target)
       problems.push(`balance: target ${i + 1} doesn't rise`);

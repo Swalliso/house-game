@@ -26,6 +26,12 @@
 // swaps (D-132; D-121 had a reroll per row). Neither its draw nor its swaps deal back a card it
 // replaced while its row's pool has enough others.
 //
+// Strikes (D-157): a free action on a hand card. Its type (a piece's root type, or a fixture)
+// is never drawn again this run (D-084's per-row floors hold), and it and any other hand card
+// of that type leave at once, each slot taking a card from its row as a swap would, on a
+// stream of its own. The run starts with the `strikes` rule's count and gains
+// `strikesPerMilestone` at each milestone it goes on from; the shop's service is +1 strike.
+//
 // Change orders (M4b): when a milestone resolves, the phase effects that ran through it end
 // and its requests and restrictions resolve (a request met and a restriction kept pay their
 // reward). After milestones 2, 4, and 6 (`changeOrderAfter`) two change orders are then drawn
@@ -47,6 +53,7 @@ import type {
   BlueprintValue,
   BuyAction,
   Card,
+  CardType,
   DrawRow,
   Cell,
   ChangeOrderDef,
@@ -91,6 +98,8 @@ import type {
   RunSetup,
   RunState,
   SellAction,
+  StrikePreview,
+  StruckSlot,
   SwappedCard,
   SetId,
   SetProgress,
@@ -127,7 +136,17 @@ import {
   scoresWeek,
   totalWithOneMore,
 } from './blueprint-value.ts';
-import { DRAW_ROWS, drawHand, drawWeights, rowOf, slotKey, swapCandidates } from './draw.ts';
+import {
+  DRAW_ROWS,
+  drawableTypes,
+  drawHand,
+  drawWeights,
+  isStruck,
+  rowOf,
+  slotKey,
+  strikeCandidates,
+  swapCandidates,
+} from './draw.ts';
 import { estimatePlay, type Estimate } from './estimate.ts';
 import { checkInstall, installHosts, withFixture } from './fixtures.ts';
 import {
@@ -207,6 +226,7 @@ import {
   ordinal,
   selectorText,
   specText,
+  strikeText,
 } from './text.ts';
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -338,8 +358,17 @@ export interface Rules {
   canRefresh(state: RunState): Availability & { price: number };
   /** What selling a blueprint or a supply pays now. */
   sellPrice(state: RunState, from: SellAction['from'], i: number): number;
-  /** Card types the strike service could name now (D-076). */
+  /** Card types a strike could take now (D-076, D-157): each row keeps its floor. */
   strikeOptions(state: RunState): readonly Card[];
+  /** D-157: whether Strike can be used at all now (the plank's button, S), and why not. */
+  canStrikeAny(state: RunState): Availability;
+  /** D-157: whether hand card i can be struck now, and why not. */
+  canStrikeCard(state: RunState, i: number): Availability;
+  /**
+   * D-157: what striking hand card i would do, for the hand's strike mode: whether it can,
+   * the type, the hand cards that would leave (it, and any other of its type), and the words.
+   */
+  previewStrike(state: RunState, i: number): StrikePreview;
   /** Whether a tool can be used now, with this target. */
   canUseTool(state: RunState, action: UseToolAction): Availability;
   /**
@@ -1418,15 +1447,18 @@ export function createRules(content: Content): Rules {
       result === 'failed'
         ? 0
         : Math.min(Math.floor(s.budget / b.shop.interestPer), rule(s, 'interestMax'));
-    const paid =
+    const last = s.phase === phaseCount(b) - 1;
+    // D-157: strikes at each milestone the run goes on from (1–6), never the last.
+    const strikes = result === 'failed' || last ? 0 : b.strikesPerMilestone;
+    const paid: MilestoneReward =
       result === 'failed'
         ? { budget: 0, score: 0, interest: 0 }
         : {
             budget: b.milestoneBudget + (bonus?.budget ?? 0) + interest,
             score: bonus?.score ?? 0,
             interest,
+            ...(strikes > 0 ? { strikes } : {}),
           };
-    const last = s.phase === phaseCount(b) - 1;
     // D-145: no shop follows the last milestone, so the budget held when it's met, this payout
     // included, pays Wow. It comes after the target is met, so it never turns a loss into a win.
     const held = s.budget + paid.budget;
@@ -1477,6 +1509,7 @@ export function createRules(content: Content): Rules {
       draws: 0,
       phaseStartScore: next.score,
       rerollsLeft: rule(s, 'rerollsPerPhase'),
+      strikesLeft: next.strikesLeft + strikes,
     };
     // M4b, D-144: after milestones 2, 4, and 6, two change orders first, from
     // `co/<milestone>`, to pick one of; with none eligible, straight to the shop.
@@ -1546,6 +1579,140 @@ export function createRules(content: Content): Rules {
     return { ok: true };
   }
 
+  // -------------------------------------------------------------------------------------
+  // Strikes from the hand (D-157).
+
+  /** A card's type as a strike names it: a piece's root type (the L-Kitchen is a Kitchen). */
+  function strikeType(card: Card): CardType {
+    return card.kind === 'piece'
+      ? { kind: 'piece', id: rootType(content.pieces[card.id]) }
+      : { kind: 'fixture', id: card.id };
+  }
+
+  const sameType = (a: Card, c: Card) => a.kind === c.kind && a.id === c.id;
+
+  /** The hand cards a strike of `type` takes out, in hand order. */
+  const struckSlots = (state: RunState, type: CardType): number[] =>
+    state.hand.flatMap((c, j) => (isStruck(content, [type], c) ? [j] : []));
+
+  const NOT_IN_DRAW = 'That card never comes up in the weekly draw.';
+
+  function canStrikeCard(state: RunState, i: number): Availability {
+    if (state.screen !== 'build') return { ok: false, reason: offScreen(state) };
+    if (state.strikesLeft <= 0) return { ok: false, reason: 'No strikes left.' };
+    const card = Number.isInteger(i) ? state.hand[i] : undefined;
+    if (!card) return { ok: false, reason: 'Pick a card in your hand.' };
+    // Only what the weekly draw deals: not a member's room (the ?debug panel's), nor a special
+    // piece this run's client and crew don't draw (the Catalog's).
+    const known =
+      card.kind === 'piece'
+        ? Object.hasOwn(content.pieces, card.id)
+        : Object.hasOwn(content.fixtures, card.id);
+    if (!known || (card.kind === 'piece' && content.pieces[card.id].member)) {
+      return { ok: false, reason: NOT_IN_DRAW };
+    }
+    const type = strikeType(card);
+    const mods = modsOf(state).active.map((a) => a.mod);
+    if (!drawableTypes(content, [], undefined, mods).some((t) => sameType(t, type))) {
+      return { ok: false, reason: NOT_IN_DRAW };
+    }
+    // Already struck (a ?debug card), the row at its floor, or nothing left to strike.
+    const can = canStrike(content, state, type, mods);
+    if (!can.ok) return can;
+    // Each slot it empties takes a card from its row: the hand never shrinks.
+    const gone = struckSlots(state, type);
+    for (const row of DRAW_ROWS) {
+      const need = gone.filter((j) => rowOf(content, state.hand[j]!) === row).length;
+      if (need === 0) continue;
+      const inRow = state.hand.filter((c) => rowOf(content, c) === row);
+      const pool = drawWeights(content, state.phase, {
+        ...drawOpts(state, row),
+        struck: [...state.struck, type],
+      }).filter((p) => !inRow.some((c) => sameType(c, p.card)));
+      if (pool.length < need) {
+        return { ok: false, reason: 'Nothing else in its row can come up this week.' };
+      }
+    }
+    return { ok: true };
+  }
+
+  /** D-157: whether Strike can be used at all (the plank's button and S), and why not. */
+  function canStrikeAny(state: RunState): Availability {
+    if (state.screen !== 'build') return { ok: false, reason: offScreen(state) };
+    if (state.strikesLeft <= 0) return { ok: false, reason: 'No strikes left.' };
+    const mods = modsOf(state).active.map((a) => a.mod);
+    if (strikeOptions(content, state, mods).length === 0) {
+      return { ok: false, reason: SHOP_REASONS.noStrike };
+    }
+    // A hand none of whose cards can go (special pieces the run doesn't draw, rows at their
+    // floor, nothing else in a row this week): the mode would only hatch every card.
+    if (!state.hand.some((_, i) => canStrikeCard(state, i).ok)) {
+      return { ok: false, reason: 'No card in your hand can be struck.' };
+    }
+    return { ok: true };
+  }
+
+  function previewStrike(state: RunState, i: number): StrikePreview {
+    const can = canStrikeCard(state, i);
+    const card = Number.isInteger(i) ? state.hand[i] : undefined;
+    const known =
+      card &&
+      (card.kind === 'piece'
+        ? Object.hasOwn(content.pieces, card.id)
+        : Object.hasOwn(content.fixtures, card.id));
+    if (!card || !known) return { ...can, type: null, cards: [], text: '' };
+    const type = strikeType(card);
+    return { ...can, type, cards: struckSlots(state, type), text: strikeText(content, type) };
+  }
+
+  /**
+   * D-157: strikes hand card i (already checked). Its type is never drawn again this run; it
+   * and every other hand card of that type leave, and each slot takes a card from its row as
+   * a swap does: the first of up to `swapTries` with a play, else the last tried, from
+   * `draw/<phase>/<slot>/<n>/<row>/strike<m>/<k>` (n: the hand's draw, m: the run's struck
+   * types with this one, k: the slot's place in its row). No other card moves, and the week's
+   * draws don't count it, so nothing else shifts.
+   */
+  function strikeFromHand(state: RunState, i: number, events: GameEvent[]): RunState {
+    const type = strikeType(state.hand[i]!);
+    const gone = struckSlots(state, type);
+    const struck = [...state.struck, type];
+    const n = Math.max(0, state.draws - 1);
+    const slot = slotKey(state.slot, state.overtimeWeek);
+    let s: RunState = {
+      ...state,
+      struck,
+      strikesLeft: state.strikesLeft - 1,
+      // A swapped-in card's note (D-121) goes with it.
+      swapped: state.swapped.filter((w) => !gone.includes(w.i)),
+    };
+    const slots: StruckSlot[] = [];
+    for (const j of gone) {
+      const was = s.hand[j]!;
+      const row = rowOf(content, was);
+      const at = s.hand.flatMap((c, x) => (rowOf(content, c) === row ? [x] : []));
+      const tries = strikeCandidates(
+        content,
+        s.setup.seed,
+        s.phase,
+        slot,
+        n,
+        struck.length,
+        at.indexOf(j),
+        b.swapTries,
+        at.map((x) => s.hand[x]!),
+        drawOpts(s, row),
+      );
+      for (const card of tries) {
+        s = { ...s, hand: s.hand.map((c, x) => (x === j ? card : c)) };
+        if (cardHasPlay(s, j)) break;
+      }
+      slots.push({ i: j, was, card: s.hand[j]! });
+    }
+    events.push({ t: 'cardStruck', i, type, slots, strikesLeft: s.strikesLeft });
+    return s;
+  }
+
   function canCompleteEarly(state: RunState): EarlyOffer {
     const weeksSaved = state.screen === 'build' && state.overtimeWeek === 0 ? weeksLeft(state) : 0;
     const bonus = earlyBonus(
@@ -1607,8 +1774,12 @@ export function createRules(content: Content): Rules {
         if (offer.service === 'reroll') s = { ...s, bonusRerolls: s.bonusRerolls + 1 };
         else if (offer.service === 'demolition')
           s = { ...s, demolitionsLeft: s.demolitionsLeft + 1 };
-        else {
-          const strike = action.strike!;
+        else if (action.strike === undefined) {
+          // D-157: +1 strike, used from the hand.
+          s = { ...s, strikesLeft: s.strikesLeft + 1 };
+        } else {
+          // A run code from before D-157 names the type, and replays as D-076 struck it.
+          const strike = action.strike;
           const can = canStrike(content, state, strike);
           if (!can.ok) throw new IllegalAction(can.reason!);
           s = { ...s, struck: [...s.struck, { kind: strike.kind, id: strike.id } as Card] };
@@ -1631,7 +1802,9 @@ export function createRules(content: Content): Rules {
       price,
       budgetBefore: state.budget,
       budget: s.budget,
-      ...(offer.kind === 'service' && offer.service === 'strike' ? { strike: action.strike! } : {}),
+      ...(offer.kind === 'service' && offer.service === 'strike' && action.strike
+        ? { strike: action.strike }
+        : {}),
     });
     if (offer.kind === 'crate') {
       const v = s.offers!.shop!;
@@ -1811,6 +1984,7 @@ export function createRules(content: Content): Rules {
       freePlay: 'none',
       servicesBought: { reroll: 0, demolition: 0, strike: 0 },
       struck: [],
+      strikesLeft: setupRule(content, clean, 'strikes'),
       rerollsLeft: setupRule(content, clean, 'rerollsPerPhase'),
       bonusRerolls: 0,
       demolitionsLeft: setupRule(content, clean, 'demolitions'),
@@ -2043,6 +2217,11 @@ export function createRules(content: Content): Rules {
           ...swapNote(after.swapped),
         });
         return done(after.state);
+      }
+      case 'strikeCard': {
+        const can = canStrikeCard(state, action.i);
+        if (!can.ok) throw new IllegalAction(can.reason!);
+        return done(strikeFromHand(state, action.i, events));
       }
       case 'demolish': {
         if (state.demolitionsLeft <= 0) throw new IllegalAction(REASONS.noDemolitions);
@@ -2410,12 +2589,8 @@ export function createRules(content: Content): Rules {
     }
     if (state.screen === 'shop') {
       const out: Action[] = [];
-      for (const o of viewOffers(content, state)) {
-        if (!o.ok) continue;
-        if (o.offer.kind === 'service' && o.offer.service === 'strike') {
-          for (const t of strikeOptions(content, state)) out.push({ t: 'buy', i: o.i, strike: t });
-        } else out.push({ t: 'buy', i: o.i });
-      }
+      // The strike service is +1 strike (D-157): a run code's typed strike is never listed.
+      for (const o of viewOffers(content, state)) if (o.ok) out.push({ t: 'buy', i: o.i });
       state.blueprints.forEach((_, i) => out.push({ t: 'sell', from: 'blueprints', i }));
       state.supplies.forEach((_, i) => out.push({ t: 'sell', from: 'supplies', i }));
       if (canRefresh(state).ok) out.push({ t: 'refreshShop' });
@@ -2446,6 +2621,9 @@ export function createRules(content: Content): Rules {
     state.blueprints.forEach((_, i) => out.push({ t: 'sell', from: 'blueprints', i }));
     state.supplies.forEach((_, i) => out.push({ t: 'sell', from: 'supplies', i }));
     if (canReroll(state).ok) out.push({ t: 'reroll' });
+    state.hand.forEach((_, i) => {
+      if (canStrikeCard(state, i).ok) out.push({ t: 'strikeCard', i });
+    });
     if (canCompleteEarly(state).ok) out.push({ t: 'completeEarly' });
     if (state.demolitionsLeft > 0) {
       const layout = layoutFor(state);
@@ -2893,7 +3071,15 @@ export function createRules(content: Content): Rules {
       const s = state.supplies[i];
       return s ? sellPrice(content, state, supplyPrice(content, s)) : 0;
     },
-    strikeOptions: (state) => strikeOptions(content, state),
+    strikeOptions: (state) =>
+      strikeOptions(
+        content,
+        state,
+        modsOf(state).active.map((a) => a.mod),
+      ),
+    canStrikeAny,
+    canStrikeCard,
+    previewStrike,
     canUseTool: (state, action) => canUseTool(toolCtx, state, action),
     previewTool: (state, action) => {
       const before = state.screen === 'build' ? score(passTally(state)) : NO_SCORE;

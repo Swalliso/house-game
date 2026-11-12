@@ -694,10 +694,9 @@ describe('the strike (D-076)', () => {
     expect(control).toContainEqual(FIREPLACE);
   });
 
-  it('needs a type it can strike', () => {
+  it('a run code’s typed strike (from before D-157) needs a type it can strike', () => {
     const s = { ...shop1(), budget: 20, struck: [FENCE] };
     const strike = visitOf(s).offers.length - 1;
-    expect(illegal(() => rules.apply(s, buy(strike))).reason).toMatch(/Pick a card type/);
     expect(illegal(() => rules.apply(s, buy(strike, FENCE))).reason).toMatch(/already struck/);
     // Only root types: the L-Kitchen is a Kitchen. Special pieces aren't in the draws.
     expect(() => rules.apply(s, buy(strike, { kind: 'piece', id: 'lKitchen' }))).toThrow(
@@ -977,7 +976,7 @@ describe('what each screen takes', () => {
     expect(rules.canRefresh(s).ok).toBe(false);
   });
 
-  it('legalActions in the shop: each buy (each strike option), sells, the refresh, and leaving', () => {
+  it('legalActions in the shop: each buy, sells, the refresh, and leaving', () => {
     const s = {
       ...shop1('legal'),
       budget: 100,
@@ -985,11 +984,9 @@ describe('what each screen takes', () => {
       supplies: [{ kind: 'fixture', id: 'fireplace' } as const],
     };
     const v = visitOf(s);
-    const strike = v.offers.length - 1;
-    const options = rules.strikeOptions(s);
+    // The strike service is +1 strike (D-157): one buy, naming no type.
     expect(rules.legalActions(s)).toEqual([
-      ...v.offers.slice(0, strike).map((_, i) => buy(i)),
-      ...options.map((t) => buy(strike, t)),
+      ...v.offers.map((_, i) => buy(i)),
       { t: 'sell', from: 'blueprints', i: 0 },
       { t: 'sell', from: 'supplies', i: 0 },
       REFRESH,

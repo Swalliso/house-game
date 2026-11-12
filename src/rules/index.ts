@@ -446,7 +446,9 @@ export type RuleKey =
   | 'blueprintSlots'
   | 'shopPricePct'
   | 'specBonus'
-  | 'interestMax';
+  | 'interestMax'
+  // D-157: strikes in hand at the run's start. Each strikes a hand card's type from the draws.
+  | 'strikes';
 
 /** One small function per kind in rules/tools.ts (§5, Shop goods). */
 export type ToolUse =
@@ -825,6 +827,11 @@ export interface Balance {
    * (2, 4, and 6). Never the last milestone: the run ends there.
    */
   changeOrderAfter: readonly number[];
+  /**
+   * D-157: strikes added at each milestone the run goes on from (1–6, never the last), on top
+   * of the `strikes` rule's start. Unused strikes are kept.
+   */
+  strikesPerMilestone: number;
 }
 
 /** What a shop visit stocks (Appendix A · M3a), by shop; the last row repeats. */
@@ -1095,6 +1102,8 @@ export interface MilestoneReward {
   score: number;
   /** Savings Account interest, included in `budget`. */
   interest: number;
+  /** D-157: the strikes it gave (`strikesPerMilestone`); absent when none (a failed or last one). */
+  strikes?: number;
   /**
    * The last milestone only, when it's met (D-145): the budget held after its payout, and the
    * Wow that paid, at `leftoverBudgetWow` each. It's in the milestone's score, not in `score`
@@ -1151,8 +1160,13 @@ export interface RunState {
   freePlay: 'none' | 'ready' | 'used';
   /** How many of each service have been bought: their prices rise per purchase. */
   servicesBought: Readonly<Record<ServiceId, number>>;
-  /** Card types struck from the draws (D-076): never drawn again this run. */
+  /** Card types struck from the draws (D-076, D-157): never drawn again this run. */
   struck: readonly CardType[];
+  /**
+   * D-157: strikes to use from the hand: the `strikes` rule at the start, `strikesPerMilestone`
+   * at each milestone the run goes on from, and each one bought. Kept from phase to phase.
+   */
+  strikesLeft: number;
   /** Reset to the `rerollsPerPhase` rule at each phase start; not carried over. */
   rerollsLeft: number;
   /** Bought from the shop; spent after `rerollsLeft`, and never expire. */
@@ -1226,12 +1240,21 @@ export type PassAction = { t: 'pass' };
 /** Free actions: they don't end the week. */
 /** Redraws the whole hand, both rows (D-132; D-121 had a reroll per row). */
 export type RerollAction = { t: 'reroll' };
+/**
+ * D-157: strikes hand card i. Its type (a piece's root type, or a fixture) is never drawn
+ * again this run; it and any other hand card of that type leave at once, and each slot takes
+ * a card from its row. A free action that uses one of `strikesLeft`.
+ */
+export type StrikeCardAction = { t: 'strikeCard'; i: number };
 export type DemolishAction = { t: 'demolish'; x: number; y: number };
 export type CompleteEarlyAction = { t: 'completeEarly' };
 export type SetAutoCompleteAction = { t: 'setAutoComplete'; on: boolean };
 /** Sells a blueprint or a supply for half its price, on the build and shop screens. */
 export type SellAction = { t: 'sell'; from: 'blueprints' | 'supplies'; i: number };
-/** The shop's actions. `strike` names the card type for the strike service (D-076). */
+/**
+ * The shop's actions. The strike service is +1 strike (D-157). `strike` is a run code's from
+ * before it, when the service named a card type (D-076): it still replays that way.
+ */
 export type BuyAction = { t: 'buy'; i: number; strike?: CardType };
 export type RefreshShopAction = { t: 'refreshShop' };
 /** Keeps one of an opened crate's options; -1 discards the crate. */
@@ -1291,6 +1314,7 @@ export type Action =
   | RenovateAction
   | PassAction
   | RerollAction
+  | StrikeCardAction
   | DemolishAction
   | CompleteEarlyAction
   | SetAutoCompleteAction
@@ -1423,7 +1447,25 @@ export interface Tally extends WeekScore {
   budget: number;
 }
 
+/** D-157: a hand slot a strike emptied, and the card from its row that took its place. */
+export interface StruckSlot {
+  i: number;
+  was: Card;
+  card: Card;
+}
+
 export type GameEvent =
+  /**
+   * D-157: a strike from the hand. `i` is the card picked; `slots` are every hand card of its
+   * type that left (that one among them), in hand order, each with the card that took its place.
+   */
+  | {
+      t: 'cardStruck';
+      i: number;
+      type: CardType;
+      slots: readonly StruckSlot[];
+      strikesLeft: number;
+    }
   | {
       t: 'handDrawn';
       phase: number;
@@ -1557,7 +1599,7 @@ export type GameEvent =
       price: number;
       budgetBefore: number;
       budget: number;
-      /** The strike service's card type. */
+      /** A run code's strike from before D-157: the card type the service named. */
       strike?: CardType;
     }
   | {
@@ -1924,6 +1966,16 @@ export interface Availability {
   reason?: string;
 }
 
+/** D-157: what striking a hand card would do, for the hand's strike mode (Rules.previewStrike). */
+export interface StrikePreview extends Availability {
+  /** The type it strikes: a piece's root type, or a fixture. Null with no card there. */
+  type: CardType | null;
+  /** The hand cards that would leave, in hand order: it, and any other of its type. */
+  cards: readonly number[];
+  /** "No more Garages this run", "No more Kitchens or L-Kitchens this run"; '' with no card. */
+  text: string;
+}
+
 /** A shop offer as the shop screen shows it. */
 export interface OfferView extends Availability {
   i: number;
@@ -1993,6 +2045,9 @@ export {
   setsOfPiece,
   setText,
   specText,
+  strikeText,
+  struckNames,
+  struckText,
   sunSideText,
   toolText,
   upgradeText,
@@ -2003,7 +2058,7 @@ export { ruleValue, sourceName } from './modifiers.ts';
 export { meetsHouse, outlineOf, progressOf } from './conditions.ts';
 export { jobBoard, type Contract } from './jobs.ts';
 export { fitsText } from './fixtures.ts';
-export { SHOP_REASONS } from './shop.ts';
+export { SERVICE_NAMES, SHOP_REASONS } from './shop.ts';
 export { countedSelector, countingMod, totalWithOneMore } from './blueprint-value.ts';
 export { matchesDef } from './selectors.ts';
 

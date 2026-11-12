@@ -46,7 +46,8 @@ export type HintId =
   | 'fixture'
   | 'changeOrder'
   | 'arrival'
-  | 'renovate';
+  | 'renovate'
+  | 'strike';
 
 export function dismissHint(id: HintId): void {
   markHintSeen(id);
@@ -116,6 +117,9 @@ export const HINTS: Readonly<Record<HintId, Hint>> = {
       'needs it from now on.',
     spot: 'overScore',
   },
+  // D-157: in the left column, as Early, Fixtures and Renovate are; in the hand it would cost a
+  // card's row at 1280×720 in the pixel font.
+  strike: { title: 'Strike a card', text: T.strike, spot: 'overScore' },
 };
 
 /**
