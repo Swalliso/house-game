@@ -61,7 +61,9 @@ export type SoundId =
   | 'drumroll'
   // The week's stamp (D-154): a page of the schedule turning, and the last week's clock.
   | 'week-start'
-  | 'last-week';
+  | 'last-week'
+  // Life on the lot (D-155): the flock taking off.
+  | 'flap';
 
 export interface PlayOptions {
   /** Exact playback rate. Giving one also turns off the random rate and gain spread. */
@@ -324,6 +326,10 @@ const SOUNDS: Record<SoundId, readonly Layer[]> = {
     { at: 0.72, params: [0.12, 0, 1400, 0.001, 0, 0.03, 4, 1, , , , , , , , , , 1, , , -2000] },
     { at: 1.08, params: [0.12, 0, 1000, 0.001, 0, 0.03, 4, 1, , , , , , , , , , 1, , , -2000] },
   ],
+
+  // ---- Life on the lot (D-155) ----
+  // The flock taking off: a soft flutter of low-passed noise, a few wingbeats fading out.
+  flap: one([0.3, 0, 300, 0.01, 0.16, 0.1, 4, 1, , , , , 0.07, , , , , 0.8, , 0.9, -1100]),
 };
 
 export const SOUND_IDS = Object.keys(SOUNDS) as readonly SoundId[];
