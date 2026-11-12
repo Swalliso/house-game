@@ -63,7 +63,9 @@ export type SoundId =
   | 'week-start'
   | 'last-week'
   // Life on the lot (D-155): the flock taking off.
-  | 'flap';
+  | 'flap'
+  // A strike from the hand (D-157): a heavier stamp on card stock.
+  | 'strike';
 
 export interface PlayOptions {
   /** Exact playback rate. Giving one also turns off the random rate and gain spread. */
@@ -305,6 +307,14 @@ const SOUNDS: Record<SoundId, readonly Layer[]> = {
   'order-stamp': [
     { at: 0, params: [0.6, 0, 90, 0.001, 0.01, 0.12, 1, 1, -1, , , , , , , , , 0.5, 0.02, , -600] },
     { at: 0, params: [0.2, 0, 500, 0.001, 0, 0.05, 4, 1, , , , , , , , , , 1, , , -1200] },
+  ],
+  // A strike from the hand (D-157): the change order's thunk, lower and drier, with a paper snap.
+  strike: [
+    {
+      at: 0,
+      params: [0.65, 0, 75, 0.001, 0.01, 0.14, 1, 1, -1, , , , , , , , , 0.5, 0.02, , -600],
+    },
+    { at: 0, params: [0.22, 0, 420, 0.001, 0, 0.06, 4, 1, , , , , , , , , , 1, , , -1200] },
   ],
   // Topped out: a quick rising cheer and a ring on top.
   'topped-out': [

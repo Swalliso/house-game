@@ -551,8 +551,102 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/* The struck card holds its slot under the stamp, dimmed, then drops away. It still takes a
+   click, which ends the beat and picks the new card (Hand.tsx); the stamp lets clicks through.
+   Each element is at rest, untransformed, when its tween ends (D-059), and lengths are whole UI
+   pixels, so the art stays on whole device pixels. */
+.hand .hand-card.is-struck {
+  animation: strike-thump var(--dur-strike-stamp) ease-out;
+}
+.hand .hand-card.is-struck > :not(.strike-stamp) {
+  opacity: 0.45;
+}
+@keyframes strike-thump {
+  60% {
+    transform: scale(var(--strike-thump));
+  }
+}
+.hand .strike-stamp {
+  position: absolute;
+  inset: calc(var(--px) * 14) var(--space-2) auto;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--px);
+  pointer-events: none;
+  animation: strike-stamp-in var(--dur-strike-stamp) cubic-bezier(0.2, 1.3, 0.4, 1) backwards;
+}
+@keyframes strike-stamp-in {
+  from {
+    opacity: 0;
+    transform: scale(1.8);
+  }
+}
+.hand .strike-plate {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--px) var(--space-2);
+  background: var(--danger);
+  color: var(--on-wood);
+  font-size: var(--fs-title);
+  text-transform: uppercase;
+  box-shadow:
+    0 0 0 var(--px) var(--danger-shade),
+    var(--shadow-float);
+}
+.hand .strike-slip {
+  max-width: 100%;
+  padding: var(--px) var(--space-1);
+  background: var(--card);
+  color: var(--ink);
+  text-align: center;
+  box-shadow: 0 0 0 var(--px) var(--ink-soft);
+}
+.hand .hand-card.strike-out {
+  animation: strike-card-out var(--dur-strike-out) ease-in forwards;
+}
+@keyframes strike-card-out {
+  to {
+    opacity: 0;
+    transform: translateY(calc(var(--px) * var(--strike-drop))) rotate(var(--strike-tilt));
+  }
+}
+.hand .hand-card.strike-in {
+  animation: strike-card-in var(--dur-strike-in) cubic-bezier(0.2, 1.3, 0.4, 1) backwards;
+}
+@keyframes strike-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--px) * var(--strike-from) * -1));
+  }
+}
+
+/* Reduce motion: fades only, nothing moves (and no ink: bursts are off, Particles.tsx). */
 .reduce-motion .hand .hand-card.strike-armed {
   transform: none;
+}
+.reduce-motion .hand .hand-card.is-struck,
+.reduce-motion .hand .strike-stamp {
+  animation: none;
+}
+.reduce-motion .hand .hand-card.strike-out {
+  animation: strike-fade-out var(--dur-strike-out) linear forwards;
+}
+.reduce-motion .hand .hand-card.strike-in {
+  animation: strike-fade-in var(--dur-strike-in) linear backwards;
+}
+@keyframes strike-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes strike-fade-in {
+  from {
+    opacity: 0;
+  }
 }
 
 /* --- The action bar: sticky at the column's bottom ------------------------------------ */

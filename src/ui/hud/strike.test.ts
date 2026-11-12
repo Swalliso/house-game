@@ -17,7 +17,7 @@ import {
   type PlaceAction,
   type RunSetup,
 } from '../../rules/index.ts';
-import { busy, instantTally } from '../fx/director.ts';
+import { busy, instantTally, struckSaid } from '../fx/director.ts';
 import {
   debugAction,
   endWeek,
@@ -198,6 +198,23 @@ describe('strike mode', () => {
     expect(reroll()).toBe(true);
     expect(tool.value).toBe('strike');
     expect(strikeArmed.value).toBeNull();
+  });
+
+  it('says what a strike did for screen readers, until the next action strikes nothing', () => {
+    run.value = { ...run.value, strikesLeft: 2 };
+    let [i] = strikable();
+    toggleStrike();
+    strikeTwice(i!);
+    expect(struckSaid.value).toMatch(/^No more .+ this run\. New cards?: .+\. 1 strike left\.$/);
+    // Into the mode again: the line starts empty, so the old words aren't read out again.
+    toggleStrike();
+    expect(struckSaid.value).toBe('');
+    [i] = strikable();
+    strikeTwice(i!);
+    expect(struckSaid.value).toMatch(/ 0 strikes left\.$/);
+    // An action that strikes nothing clears them too.
+    expect(reroll()).toBe(true);
+    expect(struckSaid.value).toBe('');
   });
 
   it('notes the slot whose struck card had the keyboard’s focus, and only that', () => {

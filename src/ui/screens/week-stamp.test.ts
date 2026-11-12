@@ -2,8 +2,8 @@
 // board goes quiet. A milestone's first week names it and what its target needs, its middle
 // weeks get a smaller, quieter stamp, and its last says what's still needed. None in an overtime
 // week (its banner says so), none in the guided first job's first week (D-149), and none while a
-// tally plays: a tally takes it down at once. An action with nothing to play (a reroll, leaving
-// the shop) leaves it up, and never marks the tally director busy.
+// tally plays: a tally takes it down at once. An action with nothing to play (a reroll, a strike
+// from the hand, leaving the shop) leaves it up, and never marks the tally director busy.
 //
 // The store and the director play real runs here, on the ?debug panel's instant tally.
 
@@ -24,6 +24,7 @@ import {
   reroll,
   run,
   startRun,
+  strikeCard,
 } from '../store.ts';
 import { decidingWeek, stakesOf, stampFor, weekStamp, type WeekStampView } from './week-stamp.ts';
 
@@ -187,6 +188,19 @@ describe('the stamp in play', () => {
     await settle();
     expect(run.value.hand).not.toEqual(hand);
     expect(weekStamp.value?.id).toBe(up.id);
+    expect(busyEver()).toBe(false);
+  });
+
+  it('a strike from the hand leaves it up, and never marks the director busy (D-157)', async () => {
+    await begin();
+    const up = weekStamp.value!;
+    const i = run.value.hand.findIndex((_, k) => rules.canStrikeCard(run.value, k).ok);
+    expect(i).toBeGreaterThanOrEqual(0);
+    const card = run.value.hand[i];
+    expect(strikeCard(i)).toBe(true);
+    await settle();
+    expect(weekStamp.value?.id).toBe(up.id);
+    expect(run.value.hand[i]).not.toEqual(card);
     expect(busyEver()).toBe(false);
   });
 
