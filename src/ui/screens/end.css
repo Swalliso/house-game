@@ -10,6 +10,70 @@
   gap: var(--space-3);
   padding-bottom: 0;
 }
+/* Copy run code on the plank, after the title (EndScreen.tsx, D-152), as Reroll is on the
+   hand's. The title never gives way: the button's words do, as the plank narrows. In the pixel
+   font, beside "Job done!" (a loss's "Run over" is a little shorter), it needs 23.375em for the
+   icon and "Copy run code", 22em for those words alone, 19.875em for the icon and "Copy code",
+   18.5em for "Copy code", and 11.125em for the icon alone. The em is the plank's own text size,
+   8 UI px in the pixel font, so these hold at any --px. At 2 CSS px a UI pixel, a 1,920 px
+   window (a 343 px plank) gets the icon and "Copy code", a 1,728 px one (303) "Copy code", and
+   one under about 1,700 px the icon (228 under 1,500). The readable font (14 px) has room for
+   "Copy run code" on any plank, and for the icon beside it from 17em (238 px), with room to
+   spare for a wider system font. The button is 13 UI px tall, not the small size's 16: the plank
+   grows by 4 UI px, not 7. */
+.run-end .panel-head {
+  container: run-end-plank / inline-size;
+}
+.run-end-code.btn {
+  --btn-h: calc(var(--px) * 13);
+  flex: none;
+  margin-left: auto;
+}
+/* The copy icon's drawing is 9 UI px square in its 12 (a blank pixel before it, two after):
+   just the drawing, so it fits the button. */
+.run-end-code .icon {
+  width: calc(var(--px) * 9);
+  height: calc(var(--px) * 9);
+  background-size: calc(var(--px) * 12) calc(var(--px) * 12);
+  background-position: calc(var(--px) * -1) calc(var(--px) * -1);
+}
+.run-end-code-short {
+  display: none;
+}
+@container run-end-plank (max-width: 23.375em) {
+  [data-font='pixel'] .run-end-code .icon {
+    display: none;
+  }
+}
+@container run-end-plank (max-width: 22em) {
+  [data-font='pixel'] .run-end-code .icon {
+    display: inline-block;
+  }
+  [data-font='pixel'] .run-end-code-long {
+    display: none;
+  }
+  [data-font='pixel'] .run-end-code-short {
+    display: inline;
+  }
+}
+@container run-end-plank (max-width: 19.875em) {
+  [data-font='pixel'] .run-end-code .icon {
+    display: none;
+  }
+}
+@container run-end-plank (max-width: 18.5em) {
+  [data-font='pixel'] .run-end-code .icon {
+    display: inline-block;
+  }
+  [data-font='pixel'] .run-end-code-short {
+    display: none;
+  }
+}
+@container run-end-plank (max-width: 17em) {
+  [data-font='readable'] .run-end-code .icon {
+    display: none;
+  }
+}
 
 /* --- The verdict and the final Wow -------------------------------------------------------- */
 
@@ -243,8 +307,9 @@
   font-weight: 700;
   color: var(--ink);
 }
-/* A lost run's "Next time" (D-150), under the stats and over Try this lot again: its icon (Charm
-   for a set, the die for Reroll) beside the line, level with its first line (8 art px on 10). */
+/* A lost run's "Next time" (D-150), under Try this lot again and over the milestones (D-152):
+   its icon (Charm for a set, the die for Reroll) beside the line, level with its first line (8
+   art px on 10). */
 .run-end-tip-text {
   display: flex;
   align-items: flex-start;
@@ -254,20 +319,23 @@
 .run-end-tip-text .icon {
   margin-top: var(--px);
 }
-/* Copy run code and Title: a plain row under the stats (D-148), which scrolls with the column.
-   No icons and a small gap, so the two share one row on the wide column (1920 px): on two rows
-   the sticky bar cut through Title after an early loss. On a narrow column each takes a row.
-   Try this lot again (D-150) has the row above them to itself. */
-.run-end-more {
+/* Title: a plain button under the stats (D-148), without its icon, which scrolls with the
+   column; after a win, Play this lot again (D-150) has the row above it to itself. After a loss,
+   Try this lot again has a row of its own over the milestones (D-152). Copy run code is on the
+   plank: down here it was out of sight on a laptop. */
+.run-end-more,
+.run-end-retry {
   container: run-end-more / inline-size;
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-1);
 }
-.run-end-more .btn {
+.run-end-more .btn,
+.run-end-retry .btn {
   flex: 1 1 auto;
 }
-.run-end-more .run-end-again {
+/* Two classes, so it wins over the rule above: with its flex: 1 1 auto, Title shared the row. */
+.run-end .run-end-again {
   flex-basis: 100%;
 }
 /* "Try this lot again" takes 276 px in the pixel font, and the narrow column (under 1500 px)
@@ -284,7 +352,8 @@
     display: inline;
   }
 }
-.run-end-more .btn .icon {
+.run-end-more .btn .icon,
+.run-end-retry .btn .icon {
   display: none;
 }
 /* New run and Copy result stay in view at the column's foot, as End week does: like the
