@@ -29,6 +29,7 @@ import {
   countedSelector,
   countingMod,
   DRAW_ROWS,
+  inExtraSlot,
   matchesDef,
   rowOf,
   ruleValue,
@@ -320,8 +321,9 @@ export function goodValue(rules: Rules, s: RunState, good: Good, rng: Rng, bot: 
         case 'foreman':
           return weekly * phasesLeft(rules, s) * 0.3;
         case 'storageUnit': {
-          // Only bought pieces fill the slots (a crew's and an arrival's cards sit in extra ones).
-          const used = s.reserve.filter((r) => !r.crew && !r.arrival).length;
+          // Only bought pieces fill the slots: a crew's, an arrival's, the client's and the
+          // stock's cards sit in extra ones (D-160).
+          const used = s.reserve.filter((r) => !inExtraSlot(r)).length;
           return used >= slots.reserve ? weekly * left * 0.04 : weekly * 0.5;
         }
         case 'toolBelt':

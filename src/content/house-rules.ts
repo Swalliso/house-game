@@ -2,7 +2,8 @@
 // checklist starts with, written in that client's numbers. Each adds +0.25 Charm while it
 // holds, like any spec (D-021, D-056). A client wish that repeats a house rule becomes the
 // client's numbers for it instead of paying twice (the Hendersons' 4+ Bedrooms and 2+
-// Bathrooms are where their household ends up; Juniper's 4–8 rooms is her Under one roof).
+// Bathrooms are where their household ends up; Juniper's 4–8 rooms are her numbers for A compact
+// house).
 //
 // - The household (D-093's option 1): Room for everyone, a Bathroom for every two Bedrooms,
 //   One Kitchen, and a living room or two. Each has a floor, and all but the Bathroom rule a
@@ -10,8 +11,9 @@
 //   Room for everyone is built from the client's household (M4b, D-103; households.ts): its
 //   Bedroom range rises by one at each end at each arrival's phase, and from each arrival on it
 //   also needs one of that member's rooms. A member's room counts as a Bedroom (countsAs).
-// - The shape: Under one roof (a filled box no longer than twice its width) and Cozy (every
-//   room touches two others).
+// - The shape: A compact house (a filled box no longer than twice its width) and Cozy (every
+//   room touches two others). D-160 renamed it from "Under one roof", which an outside
+//   playtester read as "everything connected", the placement rule; its id stays underOneRoof.
 // - The yard: a tidy yard (6 or more yard pieces, no type 4 or more times; Fences, Driveways,
 //   and Saplings count toward the 6 but never break it, so a fenced yard or a long drive is
 //   always fine).
@@ -28,7 +30,7 @@ export const BEDROOMS: Selector = { piece: 'bedroom' };
 export interface HouseholdNumbers {
   /** Room for everyone: the household's starting Bedroom range and its arrivals (D-103). */
   household: Household;
-  /** Under one roof's rooms: at least `min`, and at most `max` if the client has a limit. */
+  /** A compact house's rooms: at least `min`, and at most `max` if the client has a limit. */
   rooms?: { min: number; max?: number };
 }
 
@@ -140,13 +142,15 @@ export function houseRules(n: HouseholdNumbers): SpecDef[] {
       text: '1–2 Living Rooms, and at most one Dining Room.',
     },
     {
+      // D-160: its id from when it was "Under one roof", so saves, run codes and the sim's
+      // records keep their key.
       id: 'underOneRoof',
-      name: 'Under one roof',
+      name: 'A compact house',
       group: 'shape',
       condition: {
         outline: { minRooms: rooms.min, maxRooms: rooms.max, minFillPct: 60, maxAspect: 2 },
       },
-      text: `${roomsText}, filling at least 60% of their box, and the box is no longer than twice its width.`,
+      text: `${roomsText} that fill at least 60% of the box around them, and the box is no longer than twice its width.`,
     },
     {
       id: 'cozy',

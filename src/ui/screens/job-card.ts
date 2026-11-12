@@ -1,7 +1,8 @@
 // What a contract's card says in short (D-142). A card leads with what differs between the
 // clients on the board: who they are, their wishes and the lot. The household and the tastes are
-// a line each, with the whole of it in the line's tip, in the rules' own words (text.ts). This
-// only chooses and counts: every sentence comes from the rules and the content.
+// a line each, with the whole of it in the line's tip, in the rules' own words (text.ts), and so
+// is what a client brings for a wish (D-160). This only chooses and counts: every sentence comes
+// from the rules and the content.
 
 import {
   CONTENT,
@@ -13,7 +14,9 @@ import {
   type Modifier,
   type SpecDef,
 } from '../../rules/index.ts';
-import { arrivalWeek, isPlural, midName } from '../hud/household.ts';
+import { arrivalWeek, cardsPhrase, clientPlural, isPlural, midName } from '../hud/household.ts';
+
+const W = CONTENT.balance.weeksPerPhase;
 
 /** Whether a taste helps (a like, a bonus) or hurts (a dislike). */
 export function helps(mod: Modifier): boolean {
@@ -58,6 +61,30 @@ export function householdTip(client: ClientDef): string {
   return lines.join('\n');
 }
 
+/**
+ * What the client brings for its wishes (D-160), in a line: "Dale brings a Home Office", "The
+ * Barkers bring a Doghouse". Null for a client who brings nothing.
+ */
+export function deliveryLine(client: ClientDef): string | null {
+  const cards = (client.deliveries ?? []).flatMap((d) => d.cards);
+  if (cards.length === 0) return null;
+  const what = cardsPhrase(cards);
+  const verb = clientPlural(client) ? 'bring' : 'brings';
+  return `${client.name} ${verb} ${what.charAt(0).toLowerCase()}${what.slice(1)}`;
+}
+
+/**
+ * The delivery's tip, a line each, as the household's tip words an arrival: when, and what, then
+ * where it waits. "Groundbreaking (week 1): Dale brings one of his two Home Offices."
+ */
+export function deliveryTip(client: ClientDef): string {
+  const lines = (client.deliveries ?? []).map(
+    (d) => `${rules.phaseName(d.phase)} (week ${d.phase * W + 1}): ${d.text}`,
+  );
+  lines.push('It waits in your reserve, in a slot of its own: placing it is a week’s build.');
+  return lines.join('\n');
+}
+
 /** How many of the client's tastes help, how many hurt, and how many change the draw. */
 export function tasteCounts(client: ClientDef): { likes: number; dislikes: number; draws: number } {
   const likes = client.tastes.filter(helps).length;
@@ -76,7 +103,7 @@ export function tastesTip(client: ClientDef): string {
 
 /**
  * The house rules this client has in numbers of their own (D-101: a wish that repeats a house
- * rule becomes that client's numbers for it): Juniper's Under one roof, for 4–8 rooms. The card
+ * rule becomes that client's numbers for it): Juniper's A compact house, for 4–8 rooms. The card
  * lists them with the wishes, since the board names the house rules only once. Room for everyone
  * is every client's own, and the household's line covers it.
  */

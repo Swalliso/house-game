@@ -1,4 +1,4 @@
-// The board's moments that sit on the lot: "Topped out!" the first week Under one roof holds
+// The board's moments that sit on the lot: "Topped out!" the first week A compact house holds
 // (D-127), and the tally's arcs along a chain (D-094's option 1). They're in the board, so they
 // keep to the house however the lot is panned or zoomed, and they're drawn at the camera's
 // scale. The roof that D-127 and D-133 drew over the house went with D-147.

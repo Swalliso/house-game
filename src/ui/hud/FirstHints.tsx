@@ -54,7 +54,8 @@ export type HintId =
   | 'changeOrder'
   | 'arrival'
   | 'renovate'
-  | 'strike';
+  | 'strike'
+  | 'stock';
 
 export function dismissHint(id: HintId): void {
   markHintSeen(id);
@@ -127,6 +128,9 @@ export const HINTS: Readonly<Record<HintId, Hint>> = {
   // D-157: in the left column, as Early, Fixtures and Renovate are; in the hand it would cost a
   // card's row at 1280×720 in the pixel font.
   strike: { title: 'Strike a card', text: T.strike, spot: 'overScore' },
+  // D-160: the standing stock's first top-up, in the left column as the arrival's is. It names
+  // the folded plank the cards wait in.
+  stock: { title: 'Always in stock', text: T.stock, spot: 'overScore' },
 };
 
 /**
@@ -198,6 +202,8 @@ function current(seen: ReadonlySet<string>): HintId | null {
     ['renovate', building && cardsRenovate.value.some(Boolean)],
     // D-157: last, so the opening's and the checklist's come first.
     ['strike', strikeHintDue(s, on, seen)],
+    // D-160: the standing stock, once it's in the reserve (a first job's comes after Strike's).
+    ['stock', building && s.reserve.some((r) => r.stock)],
   ];
   for (const [id, now] of due) if (now && !seen.has(id)) return id;
   return null;

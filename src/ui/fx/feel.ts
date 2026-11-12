@@ -98,7 +98,7 @@ export const FEEL = {
     rhythm: 1.6,
     /** A find dug up: the dirt flies, then its reward pops out after this long. */
     findRewardMs: 160,
-    /** "Topped out!" over the house, the first week Under one roof holds: real time. */
+    /** "Topped out!" over the house, the first week A compact house holds: real time. */
     toppedOutMs: 1700,
     /** A crate's lid shakes, glowing in its best option's rarity, for this long before it opens. */
     crateShakeMs: 520,
@@ -451,6 +451,16 @@ export const FEEL = {
     popScale: 1.25,
     cardInMs: 380,
     cardMs: 3400,
+  },
+
+  /**
+   * D-160: the standing stock topping up, or a client's cards landing, after week 1: they pop
+   * into the reserve's extra slots with a soft shimmer, and no banner. With a member arriving the
+   * same week, they wait for the doorbell (`arrival.landDelayMs`) and pop with the member's.
+   */
+  delivered: {
+    popMs: 520,
+    popScale: 1.2,
   },
 
   /** A ×Mult source's gold stamp in the tally (D-056): each lands on its own beat. */

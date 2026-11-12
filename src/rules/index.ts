@@ -297,7 +297,7 @@ export type HouseCondition =
    */
   | { ratio: { count: Selector; per: Selector; every: number; min?: number } }
   /**
-   * The house's outline (Under one roof): how many rooms, how full the box around its indoor
+   * The house's outline (A compact house): how many rooms, how full the box around its indoor
    * tiles is, and how long the box is against its width.
    */
   | {
@@ -606,6 +606,20 @@ export interface ArrivalDef {
   text: string;
 }
 
+/**
+ * D-160: what a client brings for a wish, so the card it names is never left to the draw (Dale's
+ * first Home Office, the Barkers' first Doghouse). In the first week of its phase (0 = week 1),
+ * after any arrival, its cards go into the reserve's extra slots, marked as the client's. It
+ * isn't a household member: Room for everyone doesn't change, and it's no arrival.
+ */
+export interface DeliveryDef {
+  /** The phase (0-based) whose first week it lands in. */
+  phase: number;
+  cards: readonly PieceId[];
+  /** One line for the job board: what they bring. The board adds when. */
+  text: string;
+}
+
 /** Who the house is for (M4b, D-103): the Bedrooms they need to start, and who's coming. */
 export interface Household {
   /** Room for everyone's Bedroom range before anyone arrives: [min, max]. */
@@ -633,6 +647,8 @@ export interface ClientDef {
   targetPct: number;
   /** M4b: the household and its arrivals; Room for everyone is built from it (house-rules.ts). */
   household: Household;
+  /** D-160: what the client brings for its wishes, if anything (not household members). */
+  deliveries?: readonly DeliveryDef[];
   /** M4b: the client's own change orders (scope = this client); the generic ones apply too. */
   changeOrders: readonly ChangeOrderId[];
 }
@@ -832,6 +848,14 @@ export interface Balance {
    * of the `strikes` rule's start. Unused strikes are kept.
    */
   strikesPerMilestone: number;
+  /**
+   * D-160: the standing stock. From `fromPhase` on, the first week of each milestone tops the
+   * reserve's extra slots up to one of each of `pieces`, adding only what's missing, so the stock
+   * never gives a second of one while the first waits. A first job (D-149) brings its first in
+   * week `firstJobSlot` of `fromPhase` instead (1: the same week as any run), so it doesn't
+   * arrive with the parts of the screen Foundation's first week brings in.
+   */
+  standingStock: { fromPhase: number; pieces: readonly PieceId[]; firstJobSlot: number };
 }
 
 /** What a shop visit stocks (Appendix A · M3a), by shop; the last row repeats. */
@@ -964,7 +988,8 @@ export type Supply = { kind: 'fixture'; id: FixtureId } | { kind: 'tool'; id: To
 
 /**
  * A card waiting in the reserve: bought, picked, or copied (in the `reserveSlots` slots), or in
- * an extra slot that doesn't count against them: a crew's starting card or an arrival's (M4b).
+ * an extra slot that doesn't count against them: a crew's starting card or an arrival's (M4b),
+ * the client's or the standing stock's (D-160). shop.ts' inExtraSlot says which.
  */
 export interface ReservePiece {
   id: PieceId;
@@ -972,6 +997,10 @@ export interface ReservePiece {
   crew?: true;
   /** An arrival's card (D-103), in an extra slot that doesn't count against the reserve (M4b). */
   arrival?: ArrivalId;
+  /** D-160: a card the client brought (ClientDef.deliveries), in an extra slot. */
+  client?: true;
+  /** D-160: a card from the standing stock (balance.standingStock), in an extra slot. */
+  stock?: true;
 }
 
 export interface OwnedBlueprint {
@@ -1625,6 +1654,11 @@ export type GameEvent =
    */
   | { t: 'arrived'; arrival: ArrivalId; phase: number; cards: readonly PieceId[]; forced?: true }
   /**
+   * D-160: cards went into the reserve's extra slots at the start of a week, after any arrival
+   * and before the draw: what the client brought ('client'), or the standing stock's top-up.
+   */
+  | { t: 'delivered'; from: 'client' | 'stock'; phase: number; cards: readonly PieceId[] }
+  /**
    * M4b, D-144: change orders are offered, two as a rule; the 'changeOrder' screen waits for
    * one to be picked.
    */
@@ -2045,6 +2079,7 @@ export {
   setsOfPiece,
   setText,
   specText,
+  stockText,
   strikeText,
   struckNames,
   struckText,
@@ -2058,7 +2093,7 @@ export { ruleValue, sourceName } from './modifiers.ts';
 export { meetsHouse, outlineOf, progressOf } from './conditions.ts';
 export { jobBoard, type Contract } from './jobs.ts';
 export { fitsText } from './fixtures.ts';
-export { SERVICE_NAMES, SHOP_REASONS } from './shop.ts';
+export { inExtraSlot, SERVICE_NAMES, SHOP_REASONS } from './shop.ts';
 export { countedSelector, countingMod, totalWithOneMore } from './blueprint-value.ts';
 export { matchesDef } from './selectors.ts';
 

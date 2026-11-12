@@ -849,7 +849,22 @@ function fenceReport(records: readonly RunRecord[]): string {
       ` ${atLeast2(f.byM4)} of ${f.byM4.length} runs`,
     `  by milestone 4, at least the probe’s count: ${fmtRate(f.covered.k, f.covered.n)}`,
   );
+  out.push(reserveReport(records));
   return out.join('\n');
+}
+
+/**
+ * D-160: reserve cards played per run, by where they came from. The standing stock's and what
+ * the client brought are the ones a bot could leave waiting all run.
+ */
+function reserveReport(records: readonly RunRecord[]): string {
+  const n = Math.max(1, records.length);
+  const per = (k: keyof RunRecord['reservePlays']) =>
+    (sumOf(records.map((r) => r.reservePlays[k])) / n).toFixed(2);
+  return (
+    `Reserve cards played per run: the stock ${per('stock')} · the client’s ${per('client')}` +
+    ` · the crew’s ${per('crew')} · arrivals’ ${per('arrival')} · bought or copied ${per('own')}`
+  );
 }
 
 // ---------------------------------------------------------------------------------------

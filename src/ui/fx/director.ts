@@ -189,7 +189,7 @@ export const celebration = signal<{
 export const wash = signal<{ id: number; tier: Tier } | null>(null);
 /** The milestone moment's crossing: the top bar's flag pops (D-124). */
 export const targetHit = signal<{ id: number } | null>(null);
-/** "Topped out!" over the house, the first week Under one roof holds (D-127). */
+/** "Topped out!" over the house, the first week A compact house holds (D-127). */
 export const toppedOut = signal<{ id: number } | null>(null);
 /**
  * D-094's option 1: while the tally plays a chain, the arc from the piece that boosts to the one
@@ -253,6 +253,16 @@ export interface OrderStamp {
 export const orderStamp = signal<OrderStamp | null>(null);
 /** A household member's cards, just in the reserve (M4b): the reserve pops them in. */
 export const justArrived = signal<{ arrival: ArrivalId; id: number } | null>(null);
+/**
+ * D-160: the standing stock's or the client's cards, just in the reserve: the reserve slots
+ * (`slots`, by index) that pop in, after `delayMs`.
+ */
+export const justDelivered = signal<{
+  from: 'client' | 'stock';
+  slots: readonly number[];
+  delayMs: number;
+  id: number;
+} | null>(null);
 
 /**
  * The board registers these, so the director can wobble pieces, shake the screen, lean the
@@ -813,7 +823,7 @@ function checkBurst(id: string, name: BurstName): void {
 }
 
 /**
- * "Topped out!" (D-127): the first week Under one roof holds, the house is topped out as a
+ * "Topped out!" (D-127): the first week A compact house holds, the house is topped out as a
  * builder's would be. A plaque over the house with a sprig on top, stars, and a cheer, in real
  * time; the tally goes on under it.
  */
@@ -1595,9 +1605,33 @@ function sheetBeat(e: GameEvent, after: RunState): void {
     case 'arrived':
       arrivalBeat(e, after);
       break;
+    case 'delivered':
+      deliveredBeat(e, after);
+      break;
     default:
       break;
   }
+}
+
+/**
+ * D-160: the standing stock tops up, or a client's cards land (week 1's come with the run, so
+ * they never play): the cards pop into the reserve's extra slots with a soft shimmer, and nothing
+ * holds the week up. They're the reserve's last cards of their mark. A member arriving the same
+ * week comes first in the events: then they wait for the doorbell and pop with the member's, and
+ * the arrival's shimmer is theirs too.
+ */
+function deliveredBeat(e: Extract<GameEvent, { t: 'delivered' }>, after: RunState): void {
+  const marked = after.reserve.flatMap((r, i) =>
+    (e.from === 'stock' ? r.stock : r.client) ? [i] : [],
+  );
+  const withMember = justArrived.value !== null;
+  const delayMs = withMember ? FEEL.arrival.landDelayMs : 0;
+  const pop = { from: e.from, slots: marked.slice(-e.cards.length), delayMs, id: nextId++ };
+  justDelivered.value = pop;
+  setTimeout(() => {
+    if (justDelivered.value?.id === pop.id) justDelivered.value = null;
+  }, delayMs + FEEL.delivered.popMs);
+  if (!withMember) audio.play('sparkle', { gain: 0.5 });
 }
 
 /**

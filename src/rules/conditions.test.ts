@@ -126,7 +126,7 @@ const GROWING: Staged = {
   ],
 };
 
-/** Under one roof's shape, at 3+ rooms unless a test says otherwise. */
+/** A compact house's shape, at 3+ rooms unless a test says otherwise. */
 const roof = (o: Partial<OutlineRule> = {}): HouseCondition => ({
   outline: { minRooms: 3, minFillPct: 60, maxAspect: 2, ...o },
 });
@@ -1268,10 +1268,10 @@ describe('houseConditionText', () => {
 
   it('reads an outline and a variety as the house rules do', () => {
     expect(text(roof({ minRooms: 4 }))).toBe(
-      '4+ rooms, filling at least 60% of their box, and the box is no longer than twice its width',
+      '4+ rooms that fill at least 60% of the box around them, and the box is no longer than twice its width',
     );
     expect(text(roof({ minRooms: 4, maxRooms: 8, maxAspect: 3 }))).toBe(
-      '4–8 rooms, filling at least 60% of their box, and the box is no longer than 3 times its width',
+      '4–8 rooms that fill at least 60% of the box around them, and the box is no longer than 3 times its width',
     );
     expect(text({ variety: { of: YARD, min: 6, maxEach: 3 } })).toBe(
       '6 or more yard pieces, and none of a type stands 4 or more times',

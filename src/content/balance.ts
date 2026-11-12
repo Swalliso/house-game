@@ -233,4 +233,14 @@ export const BALANCE: Balance = {
 
   // D-157: a strike at each milestone the run goes on from (1–6), on top of the rules' strikes.
   strikesPerMilestone: 1,
+
+  // D-160: the standing stock, the pieces a house always needs and the draw holds back early
+  // (D-055 has complexity 3 at 5% in milestone 1 and 25% in milestone 2). From Foundation on,
+  // each milestone's first week tops the reserve's extra slots up to one Hallway and one Fence
+  // pack, adding only what's missing, so the stock never holds two of either. Placing one is the
+  // week's build. Both stay in the weekly draw at their usual weights.
+  //
+  // A first job brings its first stock in Foundation's third week: its first week already brings
+  // in Demolish, the budget, overtime and Complete early, and its second Strike (first-job.ts).
+  standingStock: { fromPhase: 1, pieces: ['hallway', 'fence'], firstJobSlot: 3 },
 };

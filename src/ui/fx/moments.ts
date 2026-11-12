@@ -88,7 +88,7 @@ function toppedList(): string[] {
 }
 
 /**
- * Whether this run has topped out before: "Topped out!" is for the first week Under one roof
+ * Whether this run has topped out before: "Topped out!" is for the first week A compact house
  * holds, and the rules keep no history of the checklist, so the browser remembers the run (by
  * its seed, client and crew; a replay of the same run counts as the same run).
  */

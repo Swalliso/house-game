@@ -984,6 +984,9 @@ export const TEST_BALANCE: Balance = {
   // No change orders unless a test turns them on (two phases: after milestone 1 is the one).
   changeOrderAfter: [],
   strikesPerMilestone: 0,
+  // D-160: no standing stock, so the test content's reserves are as before; stock.test.ts
+  // turns it on.
+  standingStock: { fromPhase: 1, pieces: [], firstJobSlot: 1 },
 };
 
 const testTool = (
