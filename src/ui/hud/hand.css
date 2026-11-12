@@ -495,8 +495,8 @@
 
 /* Scoped to the hand: the board's Outline uses .demolish-hint too (the Moving Truck's old spot,
    another demolish target), and an unscoped rule filled that board-sized SVG with this paper.
-   Strike mode's hint (D-157) looks the same. */
-.hand :is(.demolish-hint, .strike-hint) {
+   Strike mode has none (D-157): its targets are the cards, which a hint would move. */
+.hand .demolish-hint {
   display: flex;
   align-items: flex-start;
   gap: var(--space-2);
@@ -508,7 +508,7 @@
   background-clip: padding-box;
   font-weight: 700;
 }
-.hand :is(.demolish-hint, .strike-hint) .icon {
+.hand .demolish-hint .icon {
   margin-top: var(--px);
 }
 

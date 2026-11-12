@@ -622,13 +622,18 @@ export function Hand() {
   const armed = passArmed.value;
   const demolishing = tool.value === 'demolish';
   const striking = tool.value === 'strike';
-  // For screen readers: the armed card's scope and how to confirm it (D-157).
+  // For screen readers: the mode, then the armed card's scope and how to confirm it (D-157).
+  // Strike mode has no hint over the cards, as Demolish's mode has: the cards are its targets,
+  // and a hint coming in and going with the mode moved them, the second time under the stamp.
+  // The key strip, the band on the card under the pointer and Inspect say what to do.
   const a = strikeArmed.value;
   const av = a === null ? undefined : strikeViews.value[a];
-  const armedSaid =
+  const modeSaid =
     a !== null && av?.ok
       ? `${cardName(s.hand[a]!)}: ${av.text}. Click it again, or press ${a + 1}, to strike it.`
-      : null;
+      : striking
+        ? 'Strike: click a card twice to strike its type. Esc to stop.'
+        : null;
   // Only pieces turn: a fixture or a tool doesn't, except the Moving Truck's carried piece, and
   // nor does a pack (D-106), which is the tiles clicked out, or a card waiting to renovate a
   // room (D-102) (rotate() does nothing for them).
@@ -685,15 +690,10 @@ export function Hand() {
           <span>Click a piece or boulder twice to demolish it · Esc to stop</span>
         </p>
       )}
-      {striking && (
-        <p class="strike-hint" role="status">
-          <Icon name="strike" />
-          <span>Click a card twice to strike it · Esc to stop</span>
-        </p>
-      )}
-      {/* For screen readers: the armed card's scope and how to confirm, or what a strike did. */}
+      {/* For screen readers: strike mode, the armed card's scope and how to confirm, or what a
+          strike did. */}
       <p class="strike-sr" role="status">
-        {armedSaid ?? struckSaid.value}
+        {modeSaid ?? struckSaid.value}
       </p>
       {DRAW_ROWS.map((row) => (
         <HandRow key={row} row={row} />
