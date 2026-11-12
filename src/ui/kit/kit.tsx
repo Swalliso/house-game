@@ -6,6 +6,7 @@
 
 import type { ComponentChildren, JSX, RefObject } from 'preact';
 import { useEffect, useRef } from 'preact/hooks';
+import { breakable } from '../format.ts';
 import { ICON_SIZES, type IconName } from '../theme/art.ts';
 
 export type { IconName };
@@ -141,7 +142,8 @@ export function Card({
     >
       <span class="pcard-head">
         {lead}
-        <span class="pcard-title">{title}</span>
+        {/* A name breaks only at its soft hyphens (format.ts), never off the card. */}
+        <span class="pcard-title">{typeof title === 'string' ? breakable(title) : title}</span>
         {aside}
       </span>
       {art !== undefined && <span class="pcard-art">{art}</span>}
