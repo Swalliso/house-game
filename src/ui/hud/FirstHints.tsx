@@ -1,9 +1,16 @@
-// First-time hints (D-045, M4b): a short card the first time each idea comes up, dismissed
-// with "Got it" and remembered in this browser (UI only, never game state). One shows at a
-// time, never during a tally or under a banner (an arrival's). Each keeps to HINT_WORDS words
-// (D-142): one idea for the moment it applies, and the tips carry the rest. The ones that state
-// a rule come from the rules' hintText, so their numbers follow the content. (The controls
-// strip under the board is M5a's Hints.tsx; these were M4's Hints until the two branches met.)
+// First-time hints (D-045, M4b): a short card the first time each idea comes up, remembered in
+// this browser (UI only, never game state). One shows at a time, never during a tally or under a
+// banner (an arrival's). Each keeps to HINT_WORDS words (D-142): one idea for the moment it
+// applies, and the tips carry the rest. The ones that state a rule come from the rules' hintText,
+// so their numbers follow the content. (The controls strip under the board is M5a's Hints.tsx;
+// these were M4's Hints until the two branches met.)
+//
+// How a hint leaves (D-158, after an outside playtester lost week 1's steps to a reflexive "Got
+// it" and "forgot what I got"): one that asks for a play (`task`) has no button and goes when its
+// week does, so it can't be sent away before the play is made. Any other has "Got it", and goes
+// by itself with the week or the screen it came up in once it has been up long enough to read
+// (FEEL.hints.readMs), so one nobody answers never holds up the hints behind it. Whichever way it
+// went, How to play lists it under Tips so far (seenTips).
 //
 // The opening (D-149): the first three weeks' hints walk a new player through a first house.
 // Week 1's is three plays, pick, place, End week, each lit as it comes up. Where the hand holds
@@ -19,13 +26,15 @@
 //
 // In the pixel UI (D-110) a card is a paper note: a plank with the help icon and the title, the
 // text in a body that scrolls if the card is short, and a small "Got it" that never takes focus,
-// so the game's keys keep working while it's up.
+// so the game's keys keep working while it's up. It wears a gold ring that breathes a few times
+// as it comes up (D-158), so it reads as the game talking and not as one more panel.
 
 import { effect } from '@preact/signals';
 import type { RefObject } from 'preact';
 import { useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { CONTENT, hintText, SCORE_LABELS, type RunState } from '../../rules/index.ts';
 import { arrivalCard, banner, busy } from '../fx/director.ts';
+import { FEEL } from '../fx/feel.ts';
 import { Button, Icon } from '../kit/kit.tsx';
 import { appScreen, cardsRenovate, earlyOffer, run } from '../store.ts';
 import { devicePixelRatio, uiPixel } from '../theme/pixel.ts';
@@ -34,6 +43,7 @@ import {
   guideStep,
   OPENING_WEEKS,
   openingCard,
+  shopStage,
   shown,
   type GuideStep,
   type Shown,
@@ -66,11 +76,16 @@ const L = SCORE_LABELS;
 /** Where a card sits: first-hint-place.ts says where each spot is. */
 type Spot = HintSpot;
 
-interface Hint {
+export interface Hint {
   title: string;
   text: string;
   /** Week 1's plays, in order: the one that comes next is lit, and the ones done are ticked. */
   steps?: readonly [string, string, string];
+  /**
+   * It asks for a play (D-158): its card has no "Got it" and goes when its week does, so it
+   * can't be sent away before the play it names is made.
+   */
+  task?: true;
   spot: Spot;
 }
 
@@ -84,6 +99,7 @@ export const HINTS: Readonly<Record<HintId, Hint>> = {
     title: 'Your first week',
     text: `Build one piece a week to reach the ${L.total} target up top.`,
     steps: ['Pick a card.', 'Click the lot to place it.', 'End the week.'],
+    task: true,
     spot: 'overChecklist',
   },
   // Week 2, once a week has been tallied: what the first week's hint used to say up front.
@@ -96,6 +112,7 @@ export const HINTS: Readonly<Record<HintId, Hint>> = {
       `Build the ${closet.name} touching the ${bedroom.name} or the ${bathroom.name}: the three ` +
       `make a ${suite.name}. A set raises ${L.mult}, and ${L.mult} multiplies ${L.points} into ` +
       `${L.total}.`,
+    task: true,
     spot: 'overChecklist',
   },
   checklist: { title: 'The checklist', text: T.checklist, spot: 'besideChecklist' },
@@ -143,6 +160,7 @@ export const OPENING_HINTS: Readonly<Record<'firstWeek' | 'score', Hint>> = {
     text:
       `Your ${bedroom.name} earns ${L.points} every week. Pieces also earn from what they ` +
       `touch: build the ${bathroom.name} touching the ${bedroom.name}.`,
+    task: true,
     spot: 'overChecklist',
   },
 };
@@ -182,7 +200,9 @@ function current(seen: ReadonlySet<string>): HintId | null {
   // with them.
   const on = shown.value;
   const due: [HintId, boolean][] = [
-    ['shop', s.screen === 'shop'],
+    // The first job's first shop is the gift alone (D-158): the shop's hint comes with its
+    // shelves, a shop later.
+    ['shop', s.screen === 'shop' && shopStage.value !== 'gift'],
     ['firstWeek', building && s.week === 1],
     // A hint a week (D-142): how a week scores once one has been tallied, then the checklist.
     ['score', building && s.week === 2],
@@ -203,20 +223,70 @@ function current(seen: ReadonlySet<string>): HintId | null {
   return null;
 }
 
+/** The moment a hint came up in: the run's week and screen. */
+export interface Moment {
+  week: number;
+  screen: RunState['screen'];
+}
+
+/** Whether the run has moved on from the moment a hint came up in (D-158). */
+export function momentPassed(since: Moment, s: Moment): boolean {
+  return s.week !== since.week || s.screen !== since.screen;
+}
+
 /**
- * A hint of the opening goes with its week (D-149): once it has been on screen and the run has
- * moved on, it's seen, so the next run's first weeks don't walk through it again. One that was
- * never shown (a run loaded past it) stays for the run that needs it.
+ * Whether a hint that was on show goes now, seen (D-158). One of the opening's goes with its
+ * week (D-149), read or not, so the next run's first weeks don't walk through it again. Any
+ * other goes with the week or the screen it came up in, once it has been up for `readMs`: one
+ * the week left behind sooner comes up again.
  */
-const shownOnce = new Set<HintId>();
+export function hintGone(
+  id: HintId,
+  since: Moment & { at: number },
+  s: Moment,
+  now: number,
+  readMs: number,
+): 'seen' | 'again' | 'stays' {
+  const its = OPENING_WEEK[id];
+  if (its !== undefined) return s.week > its ? 'seen' : 'stays';
+  if (!momentPassed(since, s)) return 'stays';
+  return now - since.at >= readMs ? 'seen' : 'again';
+}
+
+/**
+ * The hints that have been on screen, and when each came up. One that was never shown (a run
+ * loaded past it) stays for the run that needs it.
+ */
+const shownSince = new Map<HintId, Moment & { at: number }>();
 effect(() => {
   if (appScreen.value !== 'game') return;
-  const week = run.value.week;
-  for (const id of shownOnce) {
-    const its = OPENING_WEEK[id];
-    if (its !== undefined && week > its) markHintSeen(id);
+  const s = run.value;
+  for (const [id, since] of shownSince) {
+    const gone = hintGone(id, since, s, performance.now(), FEEL.hints.readMs);
+    if (gone === 'stays') continue;
+    shownSince.delete(id);
+    if (gone === 'seen') markHintSeen(id);
   }
 });
+
+/** A tip How to play can show again: a hint this browser has been through. */
+export interface SeenTip {
+  id: HintId;
+  title: string;
+  text: string;
+  steps?: readonly string[];
+}
+
+/**
+ * The hints this browser has been through, in the order the game brings them up, as How to play
+ * lists them under Tips so far (D-158): a hint that's gone can always be read again. Each in the
+ * rules' own words, with no card named.
+ */
+export function seenTips(seen: ReadonlySet<string>): SeenTip[] {
+  return (Object.keys(HINTS) as HintId[])
+    .filter((id) => seen.has(id))
+    .map((id) => ({ id, title: HINTS[id].title, text: HINTS[id].text, steps: HINTS[id].steps }));
+}
 
 const STEPS: readonly GuideStep[] = ['pick', 'place', 'end'];
 
@@ -231,15 +301,15 @@ const ANCHORS = [
 
 /**
  * A card's own height at the width it has now: its plank, all its text (unscrolled) and its
- * foot, inside its ring.
+ * foot (a task's card has none), inside its ring.
  */
 function cardHeight(card: HTMLElement): number | undefined {
   const head = card.querySelector<HTMLElement>('.first-hint-head');
   const body = card.querySelector<HTMLElement>('.first-hint-body');
   const foot = card.querySelector<HTMLElement>('.first-hint-foot');
-  if (!head || !body || !foot) return undefined;
+  if (!head || !body) return undefined;
   const ring = card.offsetHeight - card.clientHeight;
-  return head.offsetHeight + body.scrollHeight + foot.offsetHeight + ring;
+  return head.offsetHeight + body.scrollHeight + (foot?.offsetHeight ?? 0) + ring;
 }
 
 /**
@@ -342,26 +412,33 @@ export function FirstHints() {
   const card = useRef<HTMLElement>(null);
   const place = usePlace(id, hint?.spot ?? null, card);
   if (!id || !hint) return null;
-  shownOnce.add(id);
+  if (!shownSince.has(id)) {
+    const { week, screen } = run.value;
+    shownSince.set(id, { week, screen, at: performance.now() });
+  }
   // Week 1's plays (D-149): which one comes next, from what's picked and placed.
   const at = hint.steps ? STEPS.indexOf(guideStep.value ?? 'pick') : -1;
   return (
     <aside
+      // A new hint is a new card, so its entrance and its ring's pulse play again.
+      key={id}
       ref={card}
-      class={`first-hint ui at-${hint.spot}`}
+      class={`first-hint ui at-${hint.spot} ${hint.task ? 'task' : ''}`}
       role="note"
       aria-label={`Hint: ${hint.title}`}
       // Until it's measured it waits out of sight, so it never shows over the wrong panel.
-      style={
-        place
+      style={{
+        '--hint-pulse': `${FEEL.hints.pulseMs}ms`,
+        '--hint-pulses': FEEL.hints.pulses,
+        ...(place
           ? {
               left: `${place.left}px`,
               top: `${place.top}px`,
               width: `${place.width}px`,
               maxHeight: `${place.maxHeight}px`,
             }
-          : { visibility: 'hidden' }
-      }
+          : { visibility: 'hidden' }),
+      }}
     >
       <header class="first-hint-head">
         <Icon name="help" />
@@ -386,11 +463,14 @@ export function FirstHints() {
           </ol>
         )}
       </div>
-      <div class="first-hint-foot">
-        <Button size="sm" onMouseDown={noFocus} onClick={() => dismissHint(id)}>
-          Got it
-        </Button>
-      </div>
+      {/* A hint that asks for a play has no "Got it" (D-158): it goes when its week does. */}
+      {!hint.task && (
+        <div class="first-hint-foot">
+          <Button size="sm" onMouseDown={noFocus} onClick={() => dismissHint(id)}>
+            Got it
+          </Button>
+        </div>
+      )}
     </aside>
   );
 }

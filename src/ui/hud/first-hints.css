@@ -4,7 +4,13 @@
    celebration and a change order's sheet are 30) and below notes (40) and the sheets and the
    menu (50), and takes the pointer only over its own note. Drawn like the tooltip's note
    (tip.css), with the pixel text (.ui) and the notes' drop-in (--dur-modal). Its text scrolls
-   under the plank when the note is short; "Got it" stays in view below it. */
+   under the plank when the note is short; "Got it" stays in view below it.
+
+   It wears a gold ring (D-158), the first job's color for "look here" (first-job.css): an outside
+   playtester said the cards should have "something to draw your eye to them". The ring breathes
+   a few times as the card comes up (FEEL.hints, set on the card as --hint-pulse and
+   --hint-pulses), then rests, so it never nags. An outline, so the card's box stays where
+   first-hint-place.ts put it. */
 
 .first-hint {
   position: fixed;
@@ -18,12 +24,22 @@
   box-shadow:
     inset 0 calc(var(--px) * -1) 0 var(--card-lo),
     var(--shadow-float);
-  animation: hint-in var(--dur-modal) ease-out;
+  outline: calc(var(--px) * 2) solid var(--sparkle);
+  outline-offset: var(--px);
+  animation:
+    hint-in var(--dur-modal) ease-out,
+    hint-pulse var(--hint-pulse, 1200ms) ease-in-out var(--dur-modal) var(--hint-pulses, 3);
 }
 @keyframes hint-in {
   from {
     opacity: 0;
     transform: translateY(calc(var(--px) * -3));
+  }
+}
+@keyframes hint-pulse {
+  50% {
+    outline-color: var(--sparkle-deep);
+    outline-offset: calc(var(--px) * 2);
   }
 }
 .reduce-motion .first-hint {
@@ -103,6 +119,10 @@
   flex: none;
   display: flex;
   padding: var(--space-2) var(--space-3) var(--space-3);
+}
+/* A hint that asks for a play has no "Got it" (D-158): its text ends the card. */
+.first-hint.task .first-hint-body {
+  padding-bottom: var(--space-3);
 }
 @media (max-width: 1500px) {
   .first-hint-head,

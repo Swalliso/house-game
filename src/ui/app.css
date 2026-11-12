@@ -25,10 +25,10 @@ body {
 }
 
 /* The plain button, for what the kit doesn't draw (the crash card, the debug panel, the board's
-   camera buttons). The kit's buttons, cards, slots and segments (kit.css), and the checklist's
-   fold rows (hud/checklist.css), draw every state of their own, so these rules leave them
-   alone: :where() keeps each at the specificity it had. */
-button:where(:not(.btn, .pcard, .inv-slot, .seg, .check-fold)),
+   camera buttons). The kit's buttons, cards, slots and segments (kit.css), the checklist's fold
+   rows (hud/checklist.css) and How to play's section planks (screens/howto.css) draw every state
+   of their own, so these rules leave them alone: :where() keeps each at the specificity it had. */
+button:where(:not(.btn, .pcard, .inv-slot, .seg, .check-fold, .howto-fold)),
 .button {
   font: inherit;
   font-size: 14px;
@@ -44,20 +44,22 @@ button:where(:not(.btn, .pcard, .inv-slot, .seg, .check-fold)),
 }
 /* The plain button's hover. :where() keeps it at the base rule's specificity, so a variant's
    own fill always wins: a hover never replaces it. */
-button:where(:not(.btn, .pcard, .inv-slot, .seg, .check-fold)):where(:hover:not(:disabled)),
+button:where(:not(.btn, .pcard, .inv-slot, .seg, .check-fold, .howto-fold)):where(
+    :hover:not(:disabled)
+  ),
 .button:where(:hover) {
   background: #fff3df;
 }
-button:where(:not(.btn, .pcard, .inv-slot, .seg, .check-fold)):active:not(:disabled) {
+button:where(:not(.btn, .pcard, .inv-slot, .seg, .check-fold, .howto-fold)):active:not(:disabled) {
   transform: translateY(1px);
   border-bottom-width: 2px;
 }
-button:where(:not(.btn, .pcard, .inv-slot, .seg, .check-fold)):disabled {
+button:where(:not(.btn, .pcard, .inv-slot, .seg, .check-fold, .howto-fold)):disabled {
   opacity: 0.45;
   cursor: default;
 }
 /* Focus is an ink ring with gold inside it, on paper and on wood alike. */
-button:where(:not(.btn, .pcard, .inv-slot, .seg, .check-fold)):focus-visible,
+button:where(:not(.btn, .pcard, .inv-slot, .seg, .check-fold, .howto-fold)):focus-visible,
 .button:focus-visible {
   outline: var(--px) solid var(--focus-outer);
   outline-offset: 0;
