@@ -628,7 +628,8 @@ describe('setProgress (D-153)', () => {
       missing: ['diningRoom'],
       held: false,
     });
-    // Bunk Beds make the Bedroom (uid 1) count twice for count conditions, once here.
+    // Bunk Beds make the Bedroom (uid 1) count twice for count conditions. Full House wants one
+    // Bedroom, so this only shows they change nothing here (the Island above is the real check).
     const noHallway = houseFrom(
       C,
       L,

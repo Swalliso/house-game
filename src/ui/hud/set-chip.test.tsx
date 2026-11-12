@@ -5,7 +5,7 @@
 
 import type { ComponentChildren, VNode } from 'preact';
 import { afterEach, describe, expect, it } from 'vitest';
-import { CONTENT, type PieceId } from '../../rules/index.ts';
+import { CONTENT, rules, type PieceId, type PlaceAction } from '../../rules/index.ts';
 import { emptyRows, houseFrom, type Placement } from '../../rules/testing.ts';
 import { run, tentative } from '../store.ts';
 import { SetChip } from './Hand.tsx';
@@ -78,8 +78,8 @@ describe('the set chip (D-122, D-153)', () => {
     withHouse(noHallway);
     expect(text(chip('hallway'))).toBe('Full House 8/9');
     expect(chip('hallway').props.icon).toBeUndefined();
-    // A Long Hallway built counts as the Hallway.
-    withHouse([...noHallway, ['longHallway', 8, 8]]);
+    // A Long Hallway built (in the Hallway's slot) counts as the Hallway.
+    withHouse([...noHallway, ['longHallway', 0, 8]]);
     expect(text(chip('garage'))).toBe('Full House');
     expect(count('garage')).toBeNull();
     expect(chip('garage').props.icon).toBe('check');
@@ -87,7 +87,18 @@ describe('the set chip (D-122, D-153)', () => {
 
   it('never counts a piece only being placed', () => {
     withHouse(NINE.filter(([id]) => id !== 'hallway'));
-    tentative.value = { t: 'place', from: 'hand', i: 0, x: 8, y: 8, rot: 0 };
+    // A Hallway card, placed where it would complete the set but not built until End week.
+    run.value = { ...run.value, hand: [...run.value.hand, { kind: 'piece', id: 'hallway' }] };
+    const play: PlaceAction = {
+      t: 'place',
+      from: 'hand',
+      i: run.value.hand.length - 1,
+      x: 2,
+      y: 0,
+      rot: 0,
+    };
+    expect(rules.preview(run.value, play).setsGained.map((g) => g.set)).toContain('fullHouse');
+    tentative.value = play;
     expect(text(chip('hallway'))).toBe('Full House 8/9');
   });
 

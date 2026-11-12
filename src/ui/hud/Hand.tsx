@@ -86,8 +86,8 @@ export function TagChips({ tags }: { tags: readonly Tag[] }) {
  * it's placed. Static membership only: it never says where. It names the touching set with the
  * shortest name (a Bedroom's Suite, not its Jack-and-Jill), so it shares a line with the card's
  * tags at 1600×900, and how many more touching sets there are; Full House, which needs none to
- * touch, when it's the only one. No icon: Charm's tint says set. Its tip says what each set needs
- * and pays, Full House included.
+ * touch, when it's the only one. No icon but D-153's check: Charm's tint says set. Its tip says
+ * what each set needs and pays, Full House included.
  *
  * D-153: named, Full House says how far the house is: "Full House 5/9", the member types built
  * (the rules count them: setProgress), and a check in place of the count once the house holds
