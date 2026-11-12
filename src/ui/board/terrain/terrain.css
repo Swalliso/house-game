@@ -76,13 +76,15 @@
   clip-path: inset(-4px -4px 0 -4px);
 }
 
-/* The street row is a light sidewalk: its name painted on it in LimeZu's ink, on the labels layer
-   (board/layers.ts), in the interface's pixel font (or the readable one), at 8 UI px or smaller
-   in a short row (Board.tsx StreetLabel). It lies on a stretch of sidewalk with no curb cut, and
-   sticks inside the view's left edge, so it reads whole however the lot is panned. */
+/* The street row is a light sidewalk: its name painted on it in LimeZu's ink, in the interface's
+   pixel font (or the readable one), at 8 UI px or smaller in a short row (Board.tsx StreetLabel).
+   It lies on a stretch of sidewalk with no curb cut, and sticks inside the view's left edge, so it
+   reads whole however the lot is panned. It's on the canopy's layer (board/layers.ts), over the
+   pieces and the yard, and before the lot's life in the board, so the walkers and the cars pass
+   over the paint (D-155). */
 .board .street-row {
   position: absolute;
-  z-index: var(--z-labels);
+  z-index: var(--z-canopy);
   display: flex;
   align-items: center;
   pointer-events: none;

@@ -64,19 +64,10 @@
   display: block;
   image-rendering: pixelated;
 }
-/* The car drives on the street's row (the second from the bottom), in whole art px. */
+/* The car drives on the street's row (the second from the bottom), in whole art px (fx/Drive.tsx,
+   drive.css). */
 .title-car {
-  position: absolute;
   bottom: calc(var(--scene) * 34);
-  animation: title-drive var(--drive-ms) steps(var(--drive-steps), end) infinite;
-}
-.title-car.parked {
-  animation: none;
-}
-@keyframes title-drive {
-  to {
-    transform: translateX(var(--drive));
-  }
 }
 
 /* --- The sign: a post, an arm, the board, and the riders ---------------------------------- */
