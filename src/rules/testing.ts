@@ -977,6 +977,7 @@ export const TEST_BALANCE: Balance = {
     rarity: { common: 65, uncommon: 27, rare: 8 },
     firstClient: 'hendersons',
     firstSeed: 'firstlot',
+    firstTargetPct: 80,
   },
   // No change orders unless a test turns them on (two phases: after milestone 1 is the one).
   changeOrderAfter: [],

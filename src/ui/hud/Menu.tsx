@@ -9,7 +9,8 @@ import { useRef } from 'preact/hooks';
 import { CONTENT } from '../../rules/index.ts';
 import { Button, Chip, Panel, useDialogFocus, useScrimClose } from '../kit/kit.tsx';
 import { CREW_ICONS } from '../sprites.ts';
-import { goToTitle, inProgress, run } from '../store.ts';
+import { bugReportUrl } from '../ErrorBoundary.tsx';
+import { goToTitle, inProgress, run, runCode } from '../store.ts';
 import { copyRunCode, howToPlayOpen, menuOpen, openSettings } from './actions.ts';
 import './menu.css';
 
@@ -26,6 +27,7 @@ function MenuSheet() {
     close();
     goToTitle();
   };
+  const reportBug = () => window.open(bugReportUrl(runCode()), '_blank', 'noopener,noreferrer');
   return (
     <div class="menu-backdrop" {...useScrimClose(close)}>
       <div ref={sheet} class="menu-sheet" role="dialog" aria-modal="true" aria-label="Menu">
@@ -65,6 +67,16 @@ function MenuSheet() {
               <dd class="menu-seed-value">{setup.seed}</dd>
             </div>
           </dl>
+          {/* A friend who sees something wrong: a GitHub issue with the build and this run's
+              code filled in, so it replays (the crash screen's form). */}
+          <Button
+            block
+            icon="flag"
+            onClick={reportBug}
+            title="Open a bug report on GitHub with this run's code"
+          >
+            Report a bug
+          </Button>
           <Button block icon="exit" onClick={quit} title="Back to the title screen">
             Quit to title
           </Button>

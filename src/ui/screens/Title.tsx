@@ -29,13 +29,14 @@ import {
   type StreetRow,
   type StreetTile,
 } from '../board/terrain/street.ts';
+import { Drive } from '../fx/Drive.tsx';
 import { FEEL } from '../fx/feel.ts';
 import { formatNumber } from '../format.ts';
 import { company } from '../company.ts';
 import { howToPlayOpen, portfolioOpen, settingsOpen } from '../hud/actions.ts';
 import { Button } from '../kit/kit.tsx';
 import { settings } from '../settings.ts';
-import { atlasImage, CELL, spritePos, spriteStyle, type SpriteId } from '../sprites.ts';
+import { atlasImage, CELL, spritePos, type SpriteId } from '../sprites.ts';
 import { SCENERY_SIZES, type SceneryName } from '../theme/art.ts';
 import { canContinue, continueRun, openJobBoard, run } from '../store.ts';
 
@@ -344,28 +345,20 @@ function Scene({ w, scale }: { w: number; scale: number }) {
 }
 
 /**
- * A car driving along the street, left to right, then a pause off screen. It moves in whole art
- * pixels (steps), like everything else in the scene. With Reduce motion it's parked.
+ * A car driving along the street, left to right, then a pause off screen: the street's traffic
+ * (fx/Drive.tsx), as on the lot (D-155). It moves in whole art pixels (steps), like everything
+ * else in the scene. With Reduce motion it's parked.
  */
 function Car({ viewW, scale }: { viewW: number; scale: number }) {
-  const car = spritePos('title-car');
-  const still = settings.value.reduceMotion;
-  const f = FEEL.title;
-  // Across the window and on past it for the pause, then back to the start, off screen left.
-  const distance =
-    Math.ceil(viewW) + 2 * car.w + Math.round((f.carPxPerSecond * f.carPauseMs) / 1000);
   return (
-    <span
-      class={`title-car ${still ? 'parked' : ''}`}
-      style={{
-        ...spriteStyle('title-car', scale),
-        width: `${car.w * scale}px`,
-        height: `${car.h * scale}px`,
-        left: `${(still ? Math.round(viewW * 0.62) : -car.w) * scale}px`,
-        '--drive': `${distance * scale}px`,
-        '--drive-steps': String(distance),
-        '--drive-ms': `${Math.round((distance / f.carPxPerSecond) * 1000)}ms`,
-      }}
+    <Drive
+      ids={['title-car']}
+      span={viewW}
+      speed={FEEL.street.carPxPerSecond}
+      pauseMs={FEEL.title.carPauseMs}
+      scale={scale}
+      parkedAt={settings.value.reduceMotion ? 0.62 : null}
+      class="title-car"
     />
   );
 }

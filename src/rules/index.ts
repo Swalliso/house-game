@@ -810,12 +810,15 @@ export interface Balance {
    * The job board (D-032, D-045): its contracts, rarity weights, and the first visit's client.
    * `firstSeed` is the first job's lot (D-149): the run seed of the first visit's one open
    * contract, picked so its first hands teach in order (src/ui/hud/first-job.ts).
+   * `firstTargetPct` scales a first job's targets (D-151): a `firstJob` run's client needs this
+   * percent of its usual targets (100 = no change).
    */
   jobBoard: {
     contracts: number;
     rarity: Readonly<Record<Rarity, number>>;
     firstClient: ClientId;
     firstSeed: string;
+    firstTargetPct: number;
   };
   /**
    * M4b: the milestones (1-based) after which one change order is offered, before the shop
@@ -1055,12 +1058,19 @@ export interface ChangeOrderRecord {
   reward?: Reward;
 }
 
+/**
+ * How a run is played. `firstJob` (D-151) is a browser's first job, guided by the UI (D-149):
+ * the client's targets are scaled by the job board's `firstTargetPct`, so a newcomer can get
+ * past the walls a first run meets at Roofing and Drywall. Everything else is a standard run.
+ */
+export type RunMode = 'standard' | 'firstJob';
+
 export interface RunSetup {
   seed: string;
   /** The contract's client (M4a). */
   clientId: ClientId;
   crewId: CrewId;
-  mode: 'standard';
+  mode: RunMode;
 }
 
 export interface WeekScore {
@@ -1351,6 +1361,25 @@ export interface SetScore {
   members: readonly number[];
   points: number;
   mult: number;
+}
+
+/**
+ * How far the house is toward a set whose members needn't touch (Full House), for a card's set
+ * chip and Inspect (D-153): `Rules.setProgress`.
+ */
+export interface SetProgress {
+  set: SetId;
+  /**
+   * The members the house has toward one, each type counted up to what the set needs: for Full
+   * House, the member types built.
+   */
+  have: number;
+  /** The members one needs: 9 for Full House. */
+  need: number;
+  /** The member types still short, one entry for each member missing, in the set's order. */
+  missing: readonly PieceId[];
+  /** Whether the house holds one now. */
+  held: boolean;
 }
 
 /** A +Mult term from a modifier (It's a House, Rush Order), in hundredths. */
@@ -1960,6 +1989,7 @@ export {
   regionText,
   rewardText,
   selectorText,
+  setProgressText,
   setsOfPiece,
   setText,
   specText,

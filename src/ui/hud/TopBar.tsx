@@ -52,6 +52,11 @@ function PhaseBlock() {
   const runWeeks = phases.length * weeks + overtimeUsed;
   const ended = s.screen === 'won' || s.screen === 'lost';
   const shopping = s.screen === 'shop';
+  // The milestone's weeks as pips along the plaque's foot (D-154), filling week by week, the
+  // week on now in gold. On the last regular week it and the line turn orange, as overtime's do.
+  const building = s.screen === 'build';
+  const last = building && s.overtimeWeek === 0 && rules.weeksLeft(s) === 1;
+  const pips = weeks + s.overtimeWeek;
   return (
     <div
       class="tb-phase"
@@ -78,6 +83,13 @@ function PhaseBlock() {
           >
             Overtime {s.overtimeWeek}
           </span>
+        ) : last ? (
+          <span
+            class="last-week"
+            title={`The last week of ${rules.phaseName(s.phase)}: its target is checked as this week is tallied.`}
+          >
+            Week {s.slot} of {weeks}
+          </span>
         ) : (
           `Week ${s.slot} of ${weeks}`
         )}
@@ -86,6 +98,16 @@ function PhaseBlock() {
           · {s.week}/{runWeeks}
         </span>
       </div>
+      {building && (
+        <div class={`tb-pips ${last ? 'last' : ''}`} aria-hidden="true">
+          {Array.from({ length: pips }, (_, i) => (
+            <i
+              key={i}
+              class={`${i + 1 < s.slot ? 'done' : i + 1 === s.slot ? 'now' : ''} ${i >= weeks ? 'over' : ''}`}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

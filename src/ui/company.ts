@@ -8,8 +8,11 @@
 // result and a painted photo, never as a run code, because a run code stops replaying when the
 // content changes and the record should outlive updates.
 //
+// The newest few houses also keep a plot (D-156): the house alone, dimmed, at art resolution, so
+// it can stand on the street beside later lots (board/NeighborsLayer.tsx).
+//
 // This file is the data and the storage, with no DOM beyond localStorage, so it tests in Node.
-// screens/record-run.ts files a run when it ends and paints its photo.
+// screens/record-run.ts files a run when it ends and paints its photo and its plot.
 
 import { signal } from '@preact/signals';
 import { BUILD_CHANNEL } from './build-info.ts';
@@ -29,6 +32,26 @@ export interface Job {
   at: number;
   /** The finished house, as an image data URL: only the newest PHOTOS_KEEP jobs keep theirs. */
   photo?: string;
+  /** The house on the street beside later lots: only the newest PLOTS_KEEP jobs keep theirs. */
+  plot?: Plot;
+}
+
+/**
+ * A finished house as it stands on the street beside later lots (D-156): the house alone, with
+ * no ground under it, dimmed as the garden around the lot is, as a PNG at art resolution; and
+ * where that picture lay on its own board, so it stands at the row it was built on.
+ */
+export interface Plot {
+  /** The picture, as a PNG data URL. */
+  src: string;
+  /** Its top-left on its own board, and its size, in art px. */
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  /** Its lot's size in cells: the street runs along the row below the lot. */
+  lotW: number;
+  lotH: number;
 }
 
 /** The best result with a client and a crew: the highest score, a win over any loss. */
@@ -48,9 +71,13 @@ export interface Company {
   won: number;
 }
 
-/** How many houses the portfolio shows, and how many of the newest keep their photo. */
+/**
+ * How many houses the portfolio shows, how many of the newest keep their photo, and how many of
+ * those keep their plot too: a plot is about twice a photo's size (D-156).
+ */
 export const JOBS_KEEP = 36;
 export const PHOTOS_KEEP = 24;
+export const PLOTS_KEEP = 6;
 
 export const emptyCompany = (): Company => ({ jobs: [], bests: {}, built: 0, won: 0 });
 
@@ -97,7 +124,7 @@ export interface Standing {
 
 /**
  * The record with a house filed: newest first, the same run filed again replacing its earlier
- * entry (and not counted twice), the bests raised, and the oldest photos and jobs let go.
+ * entry (and not counted twice), the bests raised, and the oldest plots, photos and jobs let go.
  */
 export function withJob(c: Company, job: Job): { company: Company; standing: Standing } {
   const previous = bestFor(c, job.clientId);
@@ -106,7 +133,7 @@ export function withJob(c: Company, job: Job): { company: Company; standing: Sta
   const again = c.jobs.some((j) => jobKey(j) === key);
   const jobs = [job, ...c.jobs.filter((j) => jobKey(j) !== key)]
     .slice(0, JOBS_KEEP)
-    .map((j, i) => (i < PHOTOS_KEEP || j.photo === undefined ? j : withoutPhoto(j)));
+    .map((j, i) => (i < PLOTS_KEEP ? j : without(j, i < PHOTOS_KEEP ? ['plot'] : PICTURES)));
   const pair = pairKey(job.clientId, job.crewId);
   const bests = better(result, c.bests[pair]) ? { ...c.bests, [pair]: result } : c.bests;
   return {
@@ -120,23 +147,45 @@ export function withJob(c: Company, job: Job): { company: Company; standing: Sta
   };
 }
 
-function withoutPhoto(j: Job): Job {
-  const { photo: _photo, ...rest } = j;
+/** A job's pictures, the bulk of the record: the plots go first when the browser is full. */
+const PICTURES = ['plot', 'photo'] as const;
+type Picture = (typeof PICTURES)[number];
+
+/** A job without the given pictures (the same job if it has none of them). */
+function without(j: Job, pictures: readonly Picture[]): Job {
+  if (pictures.every((p) => j[p] === undefined)) return j;
+  const rest = { ...j };
+  for (const p of pictures) delete rest[p];
   return rest;
+}
+
+/** The record with a job's picture set, if the job is still listed and young enough to keep it. */
+function withPicture(c: Company, key: string, keep: number, set: Partial<Job>): Company {
+  const at = c.jobs.findIndex((j) => jobKey(j) === key);
+  if (at < 0 || at >= keep) return c;
+  return { ...c, jobs: c.jobs.map((j, i) => (i === at ? { ...j, ...set } : j)) };
 }
 
 /** The record with a job's photo set, if the job is still listed and young enough to keep one. */
 export function withPhoto(c: Company, key: string, photo: string): Company {
-  const at = c.jobs.findIndex((j) => jobKey(j) === key);
-  if (at < 0 || at >= PHOTOS_KEEP) return c;
-  return { ...c, jobs: c.jobs.map((j, i) => (i === at ? { ...j, photo } : j)) };
+  return withPicture(c, key, PHOTOS_KEEP, { photo });
 }
 
-/** The record with its oldest photo dropped: what's tried when the browser's storage is full. */
-export function withFewerPhotos(c: Company): Company | null {
-  for (let i = c.jobs.length - 1; i >= 0; i--) {
-    if (c.jobs[i]!.photo !== undefined) {
-      return { ...c, jobs: c.jobs.map((j, k) => (k === i ? withoutPhoto(j) : j)) };
+/** The record with a job's plot set, if the job is still listed and young enough to keep one. */
+export function withPlot(c: Company, key: string, plot: Plot): Company {
+  return withPicture(c, key, PLOTS_KEEP, { plot });
+}
+
+/**
+ * The record with its oldest plot dropped, or once none is left its oldest photo: what's tried
+ * when the browser's storage is full. Null when there's no picture left to give up.
+ */
+export function withFewerPictures(c: Company): Company | null {
+  for (const p of PICTURES) {
+    for (let i = c.jobs.length - 1; i >= 0; i--) {
+      if (c.jobs[i]![p] !== undefined) {
+        return { ...c, jobs: c.jobs.map((j, k) => (k === i ? without(j, [p]) : j)) };
+      }
     }
   }
   return null;
@@ -155,6 +204,19 @@ function parseBest(v: unknown): Best | null {
   return { won: b.won, score: b.score, verdict: b.verdict };
 }
 
+/** A stored plot, or undefined if it doesn't read as one. */
+function parsePlot(v: unknown): Plot | undefined {
+  if (!v || typeof v !== 'object') return undefined;
+  const p = v as Record<string, unknown>;
+  if (!isText(p.src) || !p.src.startsWith('data:image/png')) return undefined;
+  const { x, y, w, h, lotW, lotH } = p;
+  if (!isCount(x) || !isCount(y) || !isCount(w) || !isCount(h)) return undefined;
+  if (!isCount(lotW) || !isCount(lotH) || w === 0 || h === 0 || lotW === 0 || lotH === 0) {
+    return undefined;
+  }
+  return { src: p.src, x, y, w, h, lotW, lotH };
+}
+
 function parseJob(v: unknown): Job | null {
   const best = parseBest(v);
   if (!best) return null;
@@ -162,6 +224,7 @@ function parseJob(v: unknown): Job | null {
   if (!isText(j.seed) || !isText(j.clientId) || !isText(j.crewId)) return null;
   if (!isCount(j.milestones) || !isCount(j.phases) || !isCount(j.at)) return null;
   const photo = isText(j.photo) && j.photo.startsWith('data:image/') ? j.photo : undefined;
+  const plot = parsePlot(j.plot);
   return {
     seed: j.seed,
     clientId: j.clientId,
@@ -171,6 +234,7 @@ function parseJob(v: unknown): Job | null {
     phases: j.phases,
     at: j.at,
     ...(photo ? { photo } : {}),
+    ...(plot ? { plot } : {}),
   };
 }
 
@@ -210,7 +274,7 @@ function load(): Company {
   }
 }
 
-/** Writes the record, letting the oldest photos go while the browser says it's full. */
+/** Writes the record, letting the oldest plots, then photos, go while the browser says it's full. */
 function store(c: Company): Company {
   let next: Company | null = c;
   while (next) {
@@ -218,9 +282,9 @@ function store(c: Company): Company {
       localStorage.setItem(KEY, JSON.stringify({ v: 1, ...next }));
       return next;
     } catch {
-      // Full (photos are the bulk of it), blocked, or not there at all (a test): try with one
-      // photo fewer.
-      next = withFewerPhotos(next);
+      // Full (the pictures are the bulk of it), blocked, or not there at all (a test): try with
+      // one picture fewer.
+      next = withFewerPictures(next);
     }
   }
   // Blocked storage: the record lasts for this visit.
@@ -243,5 +307,11 @@ export function fileJob(job: Job): Standing {
 /** Sets a filed house's photo, once it's painted. */
 export function fileJobPhoto(key: string, photo: string): void {
   const next = withPhoto(company.value, key, photo);
+  if (next !== company.value) company.value = store(next);
+}
+
+/** Sets a filed house's plot, once it's painted. */
+export function fileJobPlot(key: string, plot: Plot): void {
+  const next = withPlot(company.value, key, plot);
   if (next !== company.value) company.value = store(next);
 }

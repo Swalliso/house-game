@@ -30,6 +30,7 @@ import type {
   ShopOffer,
   SwappedCard,
   Tally,
+  RunMode,
 } from '../src/rules/index.ts';
 import { contentHash, encodeRunCode, placedCells, stream, weekTotal } from '../src/rules/index.ts';
 import { enclosureCost, type EnclosureCost } from './enclosure.ts';
@@ -222,6 +223,8 @@ export interface SimOptions {
   /** The contract's client (default the Hendersons) and the crew (the General Contractor). */
   clientId?: ClientId;
   crewId?: CrewId;
+  /** The run's mode (D-151): `firstJob` scales the client's targets; default standard. */
+  mode?: RunMode;
   /** Measure dead cards the review's way: each hand card's best play against a pass (slower). */
   deadCards?: boolean;
   /** Probe the enclosure cost at the start of this phase (0-based); null to skip. */
@@ -339,7 +342,7 @@ export function simulateRun(
     seed,
     clientId: opts.clientId ?? 'hendersons',
     crewId: opts.crewId ?? 'generalContractor',
-    mode: 'standard',
+    mode: opts.mode ?? 'standard',
   });
   const specIds = content.clients[s.setup.clientId].specs.map((sp) => sp.id);
   const build: BuildStats = {

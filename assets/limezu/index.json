@@ -682,6 +682,69 @@
     "h": 33,
     "spec": "480eec27073a13bb"
   },
+  "life-car-red": {
+    "w": 96,
+    "h": 40,
+    "frames": 6,
+    "ms": 90,
+    "spec": "fe592b8b35714315"
+  },
+  "life-car-teal": {
+    "w": 96,
+    "h": 40,
+    "frames": 6,
+    "ms": 90,
+    "spec": "711131e10223fab2"
+  },
+  "life-crow-fly": {
+    "w": 48,
+    "h": 32,
+    "frames": 6,
+    "ms": 70,
+    "spec": "91cf3b345b22388e"
+  },
+  "life-crow-l": {
+    "w": 32,
+    "h": 32,
+    "frames": 6,
+    "ms": 200,
+    "spec": "853e9f42a55d1570"
+  },
+  "life-crow-r": {
+    "w": 32,
+    "h": 32,
+    "frames": 6,
+    "ms": 200,
+    "spec": "19e44f8c3cb17c19"
+  },
+  "life-walker-1": {
+    "w": 16,
+    "h": 32,
+    "frames": 6,
+    "ms": 130,
+    "spec": "e7ced34a43f1393a"
+  },
+  "life-walker-2": {
+    "w": 16,
+    "h": 32,
+    "frames": 6,
+    "ms": 130,
+    "spec": "0ae2c86f6136e2f1"
+  },
+  "life-walker-3": {
+    "w": 16,
+    "h": 32,
+    "frames": 6,
+    "ms": 130,
+    "spec": "c52b42898020b555"
+  },
+  "life-walker-4": {
+    "w": 16,
+    "h": 32,
+    "frames": 6,
+    "ms": 130,
+    "spec": "be5107e3ad00b077"
+  },
   "lily-0": {
     "w": 16,
     "h": 16,
@@ -711,6 +774,21 @@
     "w": 30,
     "h": 30,
     "spec": "e6fc0d05861a8a38"
+  },
+  "neighbor-country": {
+    "w": 282,
+    "h": 255,
+    "spec": "5bb5dad870a5fbb2"
+  },
+  "neighbor-japanese": {
+    "w": 240,
+    "h": 224,
+    "spec": "5665537c53b9e05e"
+  },
+  "neighbor-modern": {
+    "w": 367,
+    "h": 224,
+    "spec": "49ef4d4498bef760"
   },
   "nightstand-0": {
     "w": 16,

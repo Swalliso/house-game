@@ -149,11 +149,13 @@
   display: flex;
   filter: drop-shadow(0 var(--px) 0 var(--shade));
 }
-/* The line, in two lines at most: Inspect has the rest. */
+/* The line, in three lines at most (D-148, 2026-11-11; four beside a 2× thumbnail, below):
+   Inspect has the rest. Two lines cut 40 of 69 week-1 lines at 1470×840 at 2×, and 6 at
+   1920×1080. */
 .hand-card .pcard-lines li {
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   overflow: hidden;
 }
 /* A narrow card (the design target's column, 1600×900, and narrower): the name runs across,
@@ -208,6 +210,81 @@
       'alert alert';
   }
 }
+/* D-153: the set chip's count ("Full House 5/9", 42 px more in the pixel font and 26 in the
+   readable one) and its check (18 px) show only where they cost the card no chip row, so no card
+   grows and none goes under the Pass bar; elsewhere the chip says "Full House" as before, and its
+   tip and Inspect say how far the house is. The chips' row is a container, so these read its own
+   width, beside the thumbnail or across the card. Widths measured at 2 CSS px a UI pixel; a
+   smaller one (125%) mostly hides them sooner than it must, and a larger one (2.22 at 90% zoom)
+   can still cost a row (D-153's Known gaps). A card that can renovate keeps its line for
+   Renovate. */
+.hand-card .pcard-chips {
+  container: hand-chips / inline-size;
+}
+.hand-card .pcard-chips:has(.renovate-chip) .set-count,
+.hand-card .pcard-chips:has(.renovate-chip) .set-chip > .icon {
+  display: none;
+}
+/* The pixel font on a narrow card: the chip and a tag's icon need 220 px (1440×900, 1470×840
+   and 1512×860 at 2× and 1280×720 have 197.5 to 208), and the chip alone 184 (a Long
+   Hallway's row at 1512×860 is 181.5). */
+@container hand-chips (max-width: 219.98px) {
+  [data-font='pixel'] .hand-card .pcard-chips:has(.tag-chip) .set-count {
+    display: none;
+  }
+}
+@container hand-chips (max-width: 183.98px) {
+  [data-font='pixel'] .hand-card .set-count {
+    display: none;
+  }
+}
+/* The check, a 160 px chip in the pixel font, needs 196 beside a tag's icon (a Garage's or Home
+   Office's row is 179 to 196 px at 1× windows 1616 to 1688 wide, and 188 to 196 at 2× windows
+   1504 to 1536 wide), and 160 alone (a narrow Long Hallway's row is 124 to 152 at 1× windows 1504
+   to 1640 wide; under 142 even the plain chip spills, as it did before D-153). */
+@container hand-chips (max-width: 195.98px) {
+  [data-font='pixel'] .hand-card .pcard-chips:has(.tag-chip) .set-chip > .icon {
+    display: none;
+  }
+}
+@container hand-chips (max-width: 159.98px) {
+  [data-font='pixel'] .hand-card .set-chip > .icon {
+    display: none;
+  }
+}
+/* A wide card in the pixel font names its kind too: a Hallway's chip and "Hallway" need 298 px
+   (1792×1120 at 2× has 288). */
+@container hand-row (min-width: 308.02px) {
+  @container hand-chips (max-width: 297.98px) {
+    [data-font='pixel'] .hand-card .pcard-chips:not(:has(.tag-chip)) .set-count {
+      display: none;
+    }
+  }
+}
+/* The readable font, whose words keep their size as the UI pixel shrinks: the chip, the kind and
+   a tag share a line from 213 px (from 194.2 at 125%, a Garage's "Loud" being narrower than a
+   Home Office's "Quiet", at 196.9), and with the count they need 241, or 234 with the check
+   (1680×1050 at 2× has 232.8; 1728×963 has 242.9). */
+@container hand-chips (min-width: 194px) and (max-width: 241.98px) {
+  [data-font='readable'] .hand-card .pcard-chips:has(.tag-chip) .set-count,
+  [data-font='readable'] .hand-card .pcard-chips:has(.tag-chip) .set-chip > .icon {
+    display: none;
+  }
+}
+/* A card with no tags (a Hallway or Long Hallway) has its kind beside the chip: with the count
+   they need 179.5 px (its widest digits, "4/9"; the readable font's aren't all one width), and
+   with the check 171.7. A 1× window 1504 to 1744 wide has rows of 154 to 176 (1600×1000 and
+   1680×940 among them), and a 2× window 1504 to 1536 wide and over 1100 tall has 172 to 179. */
+@container hand-chips (max-width: 179.44px) {
+  [data-font='readable'] .hand-card .pcard-chips:not(:has(.tag-chip)) .set-count {
+    display: none;
+  }
+}
+@container hand-chips (max-width: 171.69px) {
+  [data-font='readable'] .hand-card .pcard-chips:not(:has(.tag-chip)) .set-chip > .icon {
+    display: none;
+  }
+}
 
 /* A short window (1280×720) fits more of the hand: the cards drop their pictures for their
    shape's glyph (PieceArt.tsx), and the ghost on the lot shows the rest. The picked card shows
@@ -257,6 +334,33 @@
     .shape-glyph {
       display: grid;
     }
+  }
+}
+/* Beside the half-size thumbnail of a 2× screen (D-148, 2026-11-11), a narrow card's line has
+   about 12 pixel-font letters a row, so it gets four lines. Under 801 px tall the glyph stands
+   in for the thumbnail and the line has the card's width, so three do. On a laptop's window,
+   under 1100 px tall (where Your goods folds: 1440×900, 1512×982, or 1470×840 and 1512×860
+   under the browser's bars), the cards sit closer, with less padding, and the thumbnail's well
+   drops its padding, which widens the line too: the fourth card still clears the Pass bar, and
+   at 1512×982 a five-card hand still fits. Keeping the thumbnails and the spacing, the fourth
+   card went under the bar in 6 of 11 four-card hands at 1470×840; the glyph in their place
+   wrapped "Living Room" onto two lines. */
+@media (min-resolution: 2dppx) and (min-height: 801px) {
+  .hand-card .pcard-lines li {
+    -webkit-line-clamp: 4;
+  }
+}
+@media (min-resolution: 2dppx) and (min-height: 801px) and (max-height: 1099px) {
+  .hand .panel-body,
+  .hand-row {
+    gap: var(--space-1);
+  }
+  .hand .hand-card {
+    padding-top: var(--space-1);
+    padding-bottom: var(--space-2);
+  }
+  .hand-card .pcard-art {
+    padding: 0;
   }
 }
 
@@ -359,6 +463,57 @@
 .end-week-label {
   overflow: hidden;
   text-overflow: ellipsis;
+}
+/* A milestone's last week, or an overtime week (D-154): an orange tag centered on End week's
+   top edge. It reaches up into the bar's own top padding (--space-2) and no further, a hover's
+   lift included, so it never covers the card above; and down over the button's top, clear of
+   its words, which drop 2 UI px to make room. It stamps in as the week comes up and again as a
+   card is placed (Hand.tsx). */
+.hand-actions .end-week.deciding {
+  padding-top: calc(var(--px) * 4);
+}
+.end-week-tag {
+  position: absolute;
+  top: calc(var(--px) * -2);
+  left: 0;
+  right: 0;
+  width: max-content;
+  margin-inline: auto;
+  padding: 0 var(--px);
+  background: var(--bad-fill);
+  box-shadow:
+    0 0 0 var(--px) var(--ink),
+    inset 0 calc(var(--px) * -1) 0 var(--bad-deep);
+  color: var(--ink);
+  font-size: var(--fs-body);
+  line-height: calc(var(--px) * 9);
+  /* The regular face, as the plaque's last week has: the bold one is wider than End week once
+     Rotate and Cancel stand beside it at 1440 px wide. */
+  font-weight: 400;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: end-week-tag-in var(--dur-last-week-tag) cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+@keyframes end-week-tag-in {
+  0% {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+  55% {
+    opacity: 1;
+    transform: scale(0.95);
+  }
+  100% {
+    transform: none;
+  }
+}
+@keyframes end-week-tag-fade {
+  from {
+    opacity: 0;
+  }
+}
+.reduce-motion .end-week-tag {
+  animation-name: end-week-tag-fade;
 }
 .hand-actions .end-week .keycap {
   font-weight: 400;

@@ -23,4 +23,6 @@ window.addEventListener('error', (e) => console.error('Uncaught:', e.error ?? e.
 
 const root = document.getElementById('app');
 if (!root) throw new Error('index.html is missing <div id="app">');
+// index.html's "loading…" line, so the first render starts from an empty root.
+root.replaceChildren();
 render(<App />, root);

@@ -20,6 +20,7 @@ import {
   handCardLines,
   rules,
   rowOf,
+  setProgressText,
   setsOfPiece,
   setText,
   type Card as CardData,
@@ -43,6 +44,8 @@ import {
   tool,
 } from '../store.ts';
 import { rotate } from '../board/Board.tsx';
+import { busy } from '../fx/director.ts';
+import { stakesOf } from '../screens/week-stamp.ts';
 import { settings } from '../settings.ts';
 import { Button, Card, Chip, Icon, Keycap, Panel } from '../kit/kit.tsx';
 import type { IconName } from '../theme/art.ts';
@@ -85,21 +88,34 @@ export function TagChips({ tags }: { tags: readonly Tag[] }) {
  * it's placed. Static membership only: it never says where. It names the touching set with the
  * shortest name (a Bedroom's Suite, not its Jack-and-Jill), so it shares a line with the card's
  * tags at 1600×900, and how many more touching sets there are; Full House, which needs none to
- * touch, when it's the only one. No icon: Charm's tint says set. Its tip says what each set needs
- * and pays, Full House included.
+ * touch, when it's the only one. No icon but D-153's check: Charm's tint says set. Its tip says
+ * what each set needs and pays, Full House included.
+ *
+ * D-153: named, Full House says how far the house is: "Full House 5/9", the member types built
+ * (the rules count them: setProgress), and a check in place of the count once the house holds
+ * it. A card that would complete it reads 8/9 like any other. Where the count or the check would
+ * cost the card a chip row, hand.css hides it, and the chip reads as before. The tip adds the
+ * count in words.
  */
-function SetChip({ id }: { id: PieceId }) {
+export function SetChip({ id }: { id: PieceId }) {
   const sets = setsOfPiece(CONTENT, id);
   if (sets.length === 0) return null;
-  const touching = sets.filter((s) => CONTENT.sets[s].connected);
+  const s = run.value;
+  const touching = sets.filter((set) => CONTENT.sets[set].connected);
   const pool = touching.length > 0 ? touching : sets;
-  const name = pool
-    .map((s) => CONTENT.sets[s].name)
-    .reduce((a, b) => (b.length < a.length ? b : a));
+  const shown = pool.reduce((a, b) =>
+    CONTENT.sets[b].name.length < CONTENT.sets[a].name.length ? b : a,
+  );
   const more = touching.length > 1 ? ` +${touching.length - 1}` : '';
+  const p = rules.setProgress(s, shown);
+  const tip = sets.map((set) => {
+    const q = rules.setProgress(s, set);
+    return q ? `${setText(CONTENT, set)} ${setProgressText(CONTENT, q)}` : setText(CONTENT, set);
+  });
   return (
-    <Chip tone="charm" class="set-chip" title={sets.map((s) => setText(CONTENT, s)).join('\n')}>
-      {name}
+    <Chip tone="charm" icon={p?.held ? 'check' : undefined} class="set-chip" title={tip.join('\n')}>
+      {CONTENT.sets[shown].name}
+      {p && !p.held && <span class="set-count">{` ${p.have}/${p.need}`}</span>}
       {more}
     </Chip>
   );
@@ -331,18 +347,47 @@ function HandRow({ row }: { row: DrawRow }) {
   );
 }
 
+/** The right column, which scrolls: Your goods, then the hand. */
+function handColumn(): HTMLElement | null {
+  return document.querySelector<HTMLElement>('.hand')?.closest<HTMLElement>('.right') ?? null;
+}
+
 /**
  * The picked hand card scrolls fully into view (above the sticky action bar: .right's
- * scroll-padding), so picking card 3 with its key on a short window shows it.
+ * scroll-padding), so picking card 3 with its key on a short window shows it. When the pick
+ * ends (put back, or the week ended), the column goes back to where it was before the pick:
+ * left scrolled, it hid Your goods, the reserve and Reroll above it for the rest of the run.
  */
 function useCardInView(): void {
   const picked = source.value === 'hand' ? selected.value : null;
+  const before = useRef<number | null>(null);
   useEffect(() => {
-    if (picked === null) return;
+    const column = handColumn();
+    if (picked === null) {
+      if (before.current !== null) column?.scrollTo({ top: before.current });
+      before.current = null;
+      return;
+    }
+    if (before.current === null && column) before.current = column.scrollTop;
     document
       .querySelector(`.hand [data-card="${picked}"]`)
       ?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }, [picked]);
+}
+
+/**
+ * A new week (or a new run) starts with the column at its top, Your goods and Reroll in view,
+ * however the last week left it: the "N more cards" tab, or a hand scrolled by hand.
+ */
+function useColumnTopEachWeek(): void {
+  const s = run.value;
+  const building = s.screen === 'build';
+  useEffect(() => {
+    // A run opened with a card already picked (a ?run= code's pending placement) keeps the
+    // card in view that useCardInView just scrolled to. End week has dropped the pick by now.
+    const picked = source.value === 'hand' && selected.value !== null;
+    if (building && !picked) handColumn()?.scrollTo({ top: 0 });
+  }, [s.week, s.setup.seed, building]);
 }
 
 /**
@@ -401,6 +446,7 @@ function showCardsUnder(e: MouseEvent): void {
 export function Hand() {
   const s = run.value;
   useCardInView();
+  useColumnTopEachWeek();
   const bar = useRef<HTMLDivElement>(null);
   const under = useCardsUnderBar(bar, s.screen === 'build');
   if (s.screen !== 'build') return null;
@@ -428,6 +474,13 @@ export function Hand() {
       : pending
         ? 'End the week and build it (Enter)'
         : undefined;
+  // A milestone's last week, or an overtime week (D-154): the press that checks the target.
+  // End week wears a "Last week" tag on its top edge, which stamps in as the week comes up (once
+  // its tally is done) and again as a card is placed, the moment that press is next. Its title
+  // says what the target still needs. Its words stay: with a card held it's narrowest, and
+  // "End week" is all that fits at 1440 and 1728 px wide.
+  const stakes = stakesOf(s);
+  const tagged = stakes !== null && !busy.value;
   // A pack (D-106) being clicked out: Cancel takes all its tiles off.
   const packing = pending?.t === 'place' && !!pending.shape;
   return (
@@ -508,11 +561,17 @@ export function Hand() {
         <Button
           size="lg"
           variant={pending ? 'primary' : armed ? 'armed' : 'secondary'}
-          class={`end-week ${pending ? 'ready' : ''} ${armed ? 'confirm' : ''}`}
+          class={`end-week ${pending ? 'ready' : ''} ${armed ? 'confirm' : ''} ${tagged ? 'deciding' : ''}`}
           onMouseDown={noFocus}
           onClick={requestEndWeek}
-          title={endTitle}
+          title={[stakes, endTitle].filter(Boolean).join(' ') || undefined}
         >
+          {tagged && (
+            // Keyed on the card placed, so placing one stamps it in again.
+            <span class="end-week-tag" key={pending ? 'ready' : 'open'} aria-hidden="true">
+              {s.overtimeWeek > 0 ? 'Overtime' : 'Last week'}
+            </span>
+          )}
           <span class="end-week-label">{endLabel}</span>
           <span class="end-week-short" aria-hidden="true">
             {endShort}

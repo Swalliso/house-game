@@ -2,8 +2,24 @@
 // total of Wow, set by the sim (D-044). Overtime (D-041) and early completion (D-040) are in
 // run.ts; this file holds the numbers.
 
-import type { Balance } from './index.ts';
+import type { Balance, Content, RunMode, RunSetup } from './index.ts';
 import { roundHalfUp } from './scoring.ts';
+
+/** The run modes a setup can have (D-151). */
+export function isRunMode(v: unknown): v is RunMode {
+  return v === 'standard' || v === 'firstJob';
+}
+
+/**
+ * A run's target factor (M4a; 100 = the curve): its client's `targetPct`, and for a first job
+ * (D-151) that times the job board's `firstTargetPct`, rounded half up to a whole percent.
+ */
+export function targetPctFor(content: Content, setup: RunSetup): number {
+  const client = content.clients[setup.clientId];
+  if (!client) throw new Error(`Unknown client "${setup.clientId}"`);
+  if (setup.mode !== 'firstJob') return client.targetPct;
+  return roundHalfUp(client.targetPct * content.balance.jobBoard.firstTargetPct, 100);
+}
 
 export function phaseCount(b: Balance): number {
   return b.phases.length;

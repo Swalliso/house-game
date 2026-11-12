@@ -754,6 +754,51 @@
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Interiors"
   },
+  "limezu/life-car-red.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/Animated_16x16/Vehicles_16x16/Cars_16x16/Car_2_complete_6.png [0, 120, 96, 40], 6 frames [96, 0] apart",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/life-car-teal.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/Animated_16x16/Vehicles_16x16/Cars_16x16/Car_2_complete_1.png [0, 120, 96, 40], 6 frames [96, 0] apart",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/life-crow-fly.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/Animated_16x16/Animated_sheets_16x16/Crow_Flap_16x16.png [288, 0, 48, 32], 6 frames [48, 0] apart",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/life-crow-l.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/Animated_16x16/Animated_sheets_16x16/Crow_idle_16x16.png [384, 0, 32, 32], 6 frames [32, 0] apart",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/life-crow-r.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/Animated_16x16/Animated_sheets_16x16/Crow_idle_16x16.png [0, 0, 32, 32], 6 frames [32, 0] apart",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/life-walker-1.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_05.png [0, 64, 16, 32], 6 frames [16, 0] apart",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/life-walker-2.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_01.png [0, 64, 16, 32], 6 frames [16, 0] apart",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/life-walker-3.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_14.png [0, 64, 16, 32], 6 frames [16, 0] apart",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/life-walker-4.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_12.png [0, 64, 16, 32], 6 frames [16, 0] apart",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
   "limezu/lily-0.png": {
     "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png [400, 112, 16, 16]",
     "author": "LimeZu",
@@ -783,6 +828,21 @@
     "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/1_Generic_16x16.png [129, 1169, 30, 30]",
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/neighbor-country.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/24_Additional_Houses_Singles_16x16/24_Additional_Houses_Country_House_16x16.png [6, 1, 282, 255]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/neighbor-japanese.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/24_Additional_Houses_Singles_16x16/24_Additional_Houses_Japanese_House_16x16.png [0, 0, 240, 224]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/neighbor-modern.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/24_Additional_Houses_Singles_16x16/24_Additional_Houses_Modern_House_16x16.png [1, 0, 367, 224]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
   },
   "limezu/nightstand-0.png": {
     "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png [96, 164, 16, 24]",

@@ -664,6 +664,10 @@ export function validateContent(content: Content): string[] {
   }
   if (b.weeksPerPhase < 1 || b.rules.roomsRow < 1 || b.rules.layoutRow < 1)
     problems.push('balance: weeks and each row of the hand must be ≥ 1');
+  const firstPct = b.jobBoard.firstTargetPct;
+  if (!Number.isInteger(firstPct) || firstPct < 1 || firstPct > 100) {
+    problems.push('balance: jobBoard.firstTargetPct must be a whole number from 1 to 100');
+  }
   const shop = b.shop;
   if (shop.stock.length === 0) problems.push('balance: the shop needs at least one stock row');
   for (const [k, row] of shop.stock.entries()) {

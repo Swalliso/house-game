@@ -1,7 +1,13 @@
 // Small UI actions shared by the HUD's buttons and the keyboard.
 
 import { computed, signal } from '@preact/signals';
-import { rules, type ClientId, type CrewId } from '../../rules/index.ts';
+import {
+  rules,
+  type ClientId,
+  type CrewId,
+  type RunMode,
+  type RunState,
+} from '../../rules/index.ts';
 import { audio } from '../audio/audio.ts';
 import { busy, orderStamp, skip } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
@@ -10,12 +16,14 @@ import {
   appScreen,
   demolishArmed,
   endWeek,
+  heldNeighbor,
   heldPiece,
   inProgress,
   log,
   newRun,
   openJobBoard,
   notice,
+  onRunReset,
   run,
   runCode,
   selected,
@@ -49,6 +57,8 @@ export function showToast(text: string): void {
 
 /** The shop is hidden to look at the lot (it's still open). */
 export const shopHidden = signal(false);
+// A new run's first shop opens on screen, not as the last run's hidden handle.
+onRunReset(() => (shopHidden.value = false));
 /** The shop's sheet is on screen: notes then sit inside it, under its header (Overlays.tsx). */
 export const shopShown = computed(
   () =>
@@ -107,14 +117,30 @@ export function startNewRun(): void {
 /**
  * The Portfolio's "Play this lot again" (D-139): a new run on a finished house's lot, for the same
  * client with the same crew, straight into the game. The run in progress would be lost, so it
- * asks first, as the title's New run does while Continue is offered.
+ * asks first, as the title's New run does while Continue is offered. The end screen's Try this
+ * lot again (D-150) passes its run's setup, so a first job played again keeps its gentler
+ * targets (D-151); the Portfolio's lots are ordinary runs.
  */
-export function playLotAgain(lot: { seed: string; clientId: ClientId; crewId: CrewId }): void {
+export function playLotAgain(lot: {
+  seed: string;
+  clientId: ClientId;
+  crewId: CrewId;
+  mode?: RunMode;
+}): void {
   const atStake = inProgress() && log.value.length > 0;
   if (atStake && !window.confirm('Play this lot again? The run in progress will be lost.')) return;
   audio.unlock();
   portfolioOpen.value = false;
-  newRun(lot.seed, lot.clientId, lot.crewId);
+  newRun(lot.seed, lot.clientId, lot.crewId, lot.mode);
+}
+
+/**
+ * The end screen's Try this lot again (D-150): the run's own lot, client and crew. A lost first
+ * job is tried again at its gentler targets; a won one is played again at the client's own, so
+ * the first job's targets don't outlast it (D-151).
+ */
+export function endScreenAgain(s: RunState): void {
+  playLotAgain(s.screen === 'won' ? { ...s.setup, mode: 'standard' } : s.setup);
 }
 
 export function selectCard(i: number, from: Source = 'hand'): void {
@@ -159,8 +185,11 @@ export function cancelPlacement(): void {
   }
   if (tentative.value) tentative.value = null;
   else if (selected.value !== null) selected.value = null;
-  // Nothing picked: Esc lets go of a piece held in Inspect (store.ts heldPiece).
-  else heldPiece.value = null;
+  // Nothing picked: Esc lets go of a piece or a house on the street held in Inspect (store.ts).
+  else {
+    heldPiece.value = null;
+    heldNeighbor.value = null;
+  }
 }
 
 /** Is this item the one being placed or installed? */
@@ -171,7 +200,7 @@ export function isSelected(from: Source, i: number): boolean {
 /** Passing places nothing all week, so it takes a second press within a few seconds. */
 export const passArmed = signal(false);
 let passTimer: ReturnType<typeof setTimeout> | undefined;
-/** When End week last hurried a tally (FEEL.endWeek.hurryMs). */
+/** When End week last hurried a tally, or last pressed on as still hurrying (FEEL.endWeek). */
 let hurriedAt = -Infinity;
 
 export function requestEndWeek(): void {
@@ -186,8 +215,14 @@ export function requestEndWeek(): void {
   }
   if (!tentative.value && !passArmed.value) {
     // The tally is gone a moment after it's hurried, so the next quick press lands on a quiet
-    // board. It is still hurrying, not the first press of a pass.
-    if (performance.now() - hurriedAt < FEEL.endWeek.hurryMs) return;
+    // board. It is still hurrying, not the first press of a pass, and so is every press that
+    // follows it closely: steady clicking used to wait out the gap, arm a pass with one press
+    // and confirm it with the next, passing the new week unseen.
+    const now = performance.now();
+    if (now - hurriedAt < FEEL.endWeek.hurryMs) {
+      hurriedAt = now;
+      return;
+    }
     passArmed.value = true;
     clearTimeout(passTimer);
     passTimer = setTimeout(() => (passArmed.value = false), 2500);

@@ -1,0 +1,65 @@
+{
+  "life-crow-r": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/Animated_16x16/Animated_sheets_16x16/Crow_idle_16x16.png",
+    "rect": [0, 0, 32, 32],
+    "frames": { "count": 6, "dx": 32, "dy": 0, "ms": 200 },
+    "note": "Life on the lot (D-155): a crow on the open grass, facing east, bobbing as it pecks."
+  },
+  "life-crow-l": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/Animated_16x16/Animated_sheets_16x16/Crow_idle_16x16.png",
+    "rect": [384, 0, 32, 32],
+    "frames": { "count": 6, "dx": 32, "dy": 0, "ms": 200 },
+    "note": "Life on the lot (D-155): a crow on the open grass, facing west."
+  },
+  "life-crow-fly": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/Animated_16x16/Animated_sheets_16x16/Crow_Flap_16x16.png",
+    "rect": [288, 0, 48, 32],
+    "frames": { "count": 6, "dx": 48, "dy": 0, "ms": 70 },
+    "note": "Life on the lot (D-155): a crow flapping away from us, wings spread (the sheet's flying-up frames), as the flock takes off or glides in to land."
+  },
+  "life-car-teal": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/Animated_16x16/Vehicles_16x16/Cars_16x16/Car_2_complete_1.png",
+    "rect": [0, 120, 96, 40],
+    "frames": { "count": 6, "dx": 96, "dy": 0, "ms": 90 },
+    "note": "Life on the lot (D-155): a teal sedan driving east, its six bouncing frames with the exhaust's puff. Mirrored by CSS to drive west."
+  },
+  "life-car-red": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/Animated_16x16/Vehicles_16x16/Cars_16x16/Car_2_complete_6.png",
+    "rect": [0, 120, 96, 40],
+    "frames": { "count": 6, "dx": 96, "dy": 0, "ms": 90 },
+    "note": "Life on the lot (D-155): the same sedan in red, driving east in the near lane."
+  },
+  "life-walker-1": {
+    "pack": "mi",
+    "file": "2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_05.png",
+    "rect": [0, 64, 16, 32],
+    "frames": { "count": 6, "dx": 16, "dy": 0, "ms": 130 },
+    "note": "Life on the lot (D-155): a neighbor walking east along the sidewalk (the sheet's walk cycle). Mirrored by CSS to walk west."
+  },
+  "life-walker-2": {
+    "pack": "mi",
+    "file": "2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_01.png",
+    "rect": [0, 64, 16, 32],
+    "frames": { "count": 6, "dx": 16, "dy": 0, "ms": 130 },
+    "note": "Life on the lot (D-155): a second neighbor, taking the first one's turns on the sidewalk."
+  },
+  "life-walker-3": {
+    "pack": "mi",
+    "file": "2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_14.png",
+    "rect": [0, 64, 16, 32],
+    "frames": { "count": 6, "dx": 16, "dy": 0, "ms": 130 },
+    "note": "Life on the lot (D-155): an older neighbor, walking the other way."
+  },
+  "life-walker-4": {
+    "pack": "mi",
+    "file": "2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_12.png",
+    "rect": [0, 64, 16, 32],
+    "frames": { "count": 6, "dx": 16, "dy": 0, "ms": 130 },
+    "note": "Life on the lot (D-155): a neighbor in a cap, taking the older one's turns."
+  }
+}

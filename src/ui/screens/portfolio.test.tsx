@@ -6,7 +6,7 @@
 import type { ComponentChildren, VNode } from 'preact';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { rules, type RunSetup } from '../../rules/index.ts';
-import type { Job } from '../company.ts';
+import { company, emptyCompany, type Job } from '../company.ts';
 import { portfolioOpen } from '../hud/actions.ts';
 import { appScreen, log, run } from '../store.ts';
 import { House } from './Portfolio.tsx';
@@ -82,12 +82,16 @@ let confirm: ReturnType<typeof vi.fn<(question: string) => boolean>>;
 beforeEach(() => {
   confirm = vi.fn<(question: string) => boolean>(() => true);
   vi.stubGlobal('window', { confirm });
+  // A browser with a house in its portfolio has finished one: its first visit is over, so a
+  // lot played again is an ordinary run, not a first job (D-149, D-151).
+  company.value = { ...emptyCompany(), built: 1 };
   // On the title, with the sheet open over it.
   appScreen.value = 'title';
   portfolioOpen.value = true;
 });
 afterEach(() => {
   vi.unstubAllGlobals();
+  company.value = emptyCompany();
   run.value = start.run;
   log.value = start.log;
   appScreen.value = 'title';

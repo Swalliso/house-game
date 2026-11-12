@@ -1,5 +1,5 @@
-// Overlays: the milestone banner, the target flash, notes and toasts, the small-screen notice
-// (D-047). The run-end screen is in EndScreen.tsx.
+// Overlays: the milestone banner, the week's stamp (D-154), the target flash, notes and toasts,
+// the small-screen notice (D-047). The run-end screen is in EndScreen.tsx.
 //
 // M5a draws them in the pixel style: the milestone's banner is a ribbon stamped in, gold for a
 // milestone met and orange for one missed or in overtime (M4's arrivals get a card of their own
@@ -17,8 +17,10 @@
 import { effect } from '@preact/signals';
 import type { RefObject } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
-import { banner, busy, flash, played, skip } from '../fx/director.ts';
+import { SCORE_LABELS } from '../../rules/index.ts';
+import { banner, busy, dismissBanner, flash, played, skip } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
+import { formatNumber } from '../format.ts';
 import {
   anyModalOpen,
   copyFallback,
@@ -29,6 +31,7 @@ import {
 } from '../hud/actions.ts';
 import { Button, Icon, Sheet } from '../kit/kit.tsx';
 import { appScreen, notice, restorePreviousRun, run } from '../store.ts';
+import { weekStamp } from './week-stamp.ts';
 import './overlays.css';
 
 /** The milestone's banner, at the board's top center, and any notes and toasts just under it. */
@@ -37,17 +40,63 @@ export function MilestoneBanner() {
   if (!b) return null;
   return (
     <div class="banner-place">
-      <div
-        class={`banner ui ${b.tone}`}
-        key={b.id}
-        role="status"
-        onClick={() => (banner.value = null)}
-      >
+      <div class={`banner ui ${b.tone}`} key={b.id} role="status" onClick={dismissBanner}>
         <div class="banner-ribbon">
           <Icon name={b.tone === 'good' ? 'star' : 'warn'} />
           <span class="banner-title">{b.title}</span>
         </div>
         {b.detail && <p class="banner-detail">{b.detail}</p>}
+      </div>
+      <Notes under="banner" />
+    </div>
+  );
+}
+
+/**
+ * The week's stamp (D-154, week-stamp.ts), where the milestone's banner goes (they're never up
+ * together): "Week 2 of 4" and the milestone's weeks as pips. A milestone's first week names it
+ * and what its target needs on a slip under the plate; its middle weeks have the plate alone,
+ * smaller; its last is orange, and its slip says what the target still needs. Notes and toasts
+ * sit just under it, as they do under a banner.
+ */
+export function WeekStamp() {
+  const w = weekStamp.value;
+  if (!w || banner.value) return null;
+  const f = FEEL.weekStamp;
+  const toGo = `${formatNumber(w.toGo)} ${SCORE_LABELS.total} to go`;
+  const detail =
+    w.kind === 'first'
+      ? w.toGo > 0
+        ? `${w.phase}: ${toGo} in ${w.weeks} weeks`
+        : `${w.phase}: its target is met already`
+      : w.kind === 'last'
+        ? w.toGo > 0
+          ? `Last week of ${w.phase}: ${toGo}`
+          : `Last week of ${w.phase}: its target is met`
+        : null;
+  return (
+    <div class="banner-place week-stamp-place">
+      <div
+        class={`week-stamp ui ${w.kind}`}
+        key={w.id}
+        role="status"
+        style={{
+          '--ws-in': `${f.inMs}ms`,
+          '--ws-out': `${f.outMs}ms`,
+          '--ws-hold': `${w.ms - f.outMs}ms`,
+        }}
+      >
+        <div class="week-stamp-plate">
+          <span class="week-stamp-title">
+            Week {w.slot} of {w.weeks}
+          </span>
+          <span class="week-stamp-pips" aria-hidden="true">
+            {Array.from({ length: w.weeks }, (_, i) => (
+              <i key={i} class={i + 1 < w.slot ? 'done' : i + 1 === w.slot ? 'now' : ''} />
+            ))}
+          </span>
+        </div>
+        {detail && <p class="week-stamp-detail">{detail}</p>}
       </div>
       <Notes under="banner" />
     </div>
@@ -122,7 +171,7 @@ export function endSignShown(): boolean {
 export function notesUnder(): 'sign' | 'banner' | null {
   if (appScreen.value !== 'game' || notesDocked.value) return null;
   if (endSignShown()) return 'sign';
-  return banner.value ? 'banner' : null;
+  return banner.value || weekStamp.value ? 'banner' : null;
 }
 
 /**

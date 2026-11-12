@@ -92,6 +92,8 @@ import type {
   RunState,
   SellAction,
   SwappedCard,
+  SetId,
+  SetProgress,
   SetScore,
   Slots,
   Tag,
@@ -153,11 +155,13 @@ import {
 import { generateLot } from './lot.ts';
 import {
   earlyBonus,
+  isRunMode,
   paceFor,
   phaseCount,
   phaseName,
   phaseTarget,
   nextVerdictFor,
+  targetPctFor,
   verdictFor,
 } from './milestones.ts';
 import { ruleFrom, runModifiers, setupRule, type ActiveMod } from './modifiers.ts';
@@ -175,6 +179,7 @@ import { canUseTool, useTool, type ToolCtx } from './tools.ts';
 import { wowParts } from './attribution.ts';
 import { ageOf, onCadence, tallyHouse, unmetRequirement, type TallyContext } from './scoring.ts';
 import { isType, matchesPiece, rootType } from './selectors.ts';
+import { setProgress as setProgressOf } from './sets.ts';
 import { isRoom } from './layout.ts';
 import {
   canStrike,
@@ -252,6 +257,8 @@ export interface Rules {
   nextVerdict(state: RunState): { name: string; score: number } | null;
   /** Weeks of the phase not yet tallied, this one included (1 in an overtime week). */
   weeksLeft(state: RunState): number;
+  /** The Wow the phase's target still needs, 0 once it's met: the week's stamp says it (D-154). */
+  toGo(state: RunState): number;
   /**
    * A rough guide for the progress bar, not a promise: the score plus this week's total (with
    * the play, if any) for each week left in the phase.
@@ -320,6 +327,12 @@ export interface Rules {
   fencedTiles(state: RunState): readonly number[];
   describePiece(state: RunState, uid: number): PieceInfo | null;
   describeTile(state: RunState, x: number, y: number): TileInfo | null;
+  /**
+   * D-153: how far the house is toward a set whose members needn't touch (Full House), for a
+   * card's set chip and Inspect. Only the pieces placed count, never one being placed or
+   * previewed. Null for a set whose members must touch.
+   */
+  setProgress(state: RunState, set: SetId): SetProgress | null;
   /** The shop's offers with prices and whether each can be bought. Empty outside the shop. */
   shopOffers(state: RunState): OfferView[];
   canRefresh(state: RunState): Availability & { price: number };
@@ -442,7 +455,8 @@ export function createRules(content: Content): Rules {
     if (!c) throw new Error(`Unknown client "${state.setup.clientId}"`);
     return c;
   };
-  const pctOf = (state: RunState) => clientOf(state).targetPct;
+  /** The run's target factor: its client's, and a first job's on top of it (D-151). */
+  const pctOf = (state: RunState) => targetPctFor(content, state.setup);
   /** This phase's target for the run's client (the curve × its targetPct). */
   const targetOf = (state: RunState) => phaseTarget(b, state.phase, pctOf(state));
 
@@ -1757,7 +1771,7 @@ export function createRules(content: Content): Rules {
   function newRun(setup: RunSetup): RunState {
     if (
       typeof setup.seed !== 'string' ||
-      setup.mode !== 'standard' ||
+      !isRunMode(setup.mode) ||
       !Object.hasOwn(content.crews, setup.crewId) ||
       !Object.hasOwn(content.clients, setup.clientId)
     ) {
@@ -2790,6 +2804,7 @@ export function createRules(content: Content): Rules {
     verdict: (state) => verdictFor(b, state.score, state.screen === 'won', pctOf(state)),
     nextVerdict: (state) => nextVerdictFor(b, state.score, state.screen === 'won', pctOf(state)),
     weeksLeft,
+    toGo: (state) => Math.max(0, targetOf(state) - state.score),
     forecast: (state, play) => {
       if (state.screen !== 'build') return state.score;
       const legal = play ? checkPlay(state, play).legal : false;
@@ -2867,6 +2882,7 @@ export function createRules(content: Content): Rules {
         fencedYardTiles: id >= 0 ? layout.fencedSizes[id]! : 0,
       };
     },
+    setProgress: (state, set) => setProgressOf(content, layoutFor(state), set),
     shopOffers: (state) => viewOffers(content, state),
     canRefresh,
     sellPrice: (state, from, i) => {

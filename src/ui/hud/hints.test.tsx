@@ -163,9 +163,10 @@ describe("the strip's keys for M4's plays", () => {
   it('leaves R out for a pack, which is clicked out a tile at a time', () => {
     run.value = { ...start, screen: 'build', hand: [{ kind: 'piece', id: 'fence' }] };
     selected.value = 0;
+    // Held with nothing clicked out, Enter passes the week, as the button says.
     expect(strip()).toEqual([
       { keys: ['Click'], words: 'the first tile' },
-      { keys: ['Enter'], words: 'end the week' },
+      { keys: ['Enter'], words: 'pass' },
       { keys: ['Esc'], words: 'put it back' },
     ]);
     // With tiles clicked out, a click adds or takes one off, and Esc clears them all.
@@ -194,9 +195,11 @@ describe("the strip's keys for M4's plays", () => {
     selected.value = 0;
     expect(strip()).toEqual([
       { keys: ['Click'], words: 'a piece to install it' },
-      { keys: ['Enter'], words: 'end the week' },
+      { keys: ['Enter'], words: 'pass' },
       { keys: ['Esc'], words: 'put it back' },
     ]);
+    tentative.value = { t: 'install', from: 'hand', i: 0, uid: 1 };
+    expect(strip().find((h) => h.keys[0] === 'Enter')?.words).toBe('end the week');
   });
 
   it('offers no Enter for a fixture from the supplies: installing it is free', () => {

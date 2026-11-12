@@ -29,6 +29,7 @@ import {
   type PlaceAction,
   type Preview,
   type Rot,
+  type RunMode,
   type RunSetup,
   type RunState,
   type SellAction,
@@ -82,8 +83,8 @@ export function firstVisit(): boolean {
 /**
  * The first job's seed (D-149), kept in the browser while that run is the one being played: the
  * first run a browser starts, from the board or from a link, and the board's first job while it
- * is still a first visit. UI only, never game state: the run itself is an ordinary one, and its
- * screen fills in week by week (hud/first-job.ts).
+ * is still a first visit. The guidance is UI only: its screen fills in week by week
+ * (hud/first-job.ts). Its targets are the rules' own: the run starts in `firstJob` mode (D-151).
  */
 export const firstJobSeed = signal<string | null>(
   (() => {
@@ -131,15 +132,22 @@ export function openJobBoard(): void {
 
 /** Takes a contract from the board with a crew: its seed and client start the run. */
 export function takeContract(contract: Contract, crewId: CrewId = 'generalContractor'): void {
-  // The first contract a browser takes is its first job; from then on the board is open.
-  if (firstVisit()) setFirstJob(contract.seed);
+  // The first contract a browser takes is its first job; from then on the board is open. The
+  // first job has its gentler targets (D-151).
+  const first = firstVisit();
+  if (first) setFirstJob(contract.seed);
   try {
     localStorage.setItem(VISITED_KEY, '1');
   } catch {
     // A private window: the board just opens with the first job again next time.
   }
   notice.value = null;
-  startRun({ seed: contract.seed, clientId: contract.clientId, crewId, mode: 'standard' });
+  startRun({
+    seed: contract.seed,
+    clientId: contract.clientId,
+    crewId,
+    mode: first ? 'firstJob' : 'standard',
+  });
   canContinue.value = false;
   appScreen.value = 'game';
 }
@@ -251,6 +259,19 @@ effect(() => {
   }
 });
 
+/**
+ * A house on the street held in Inspect (D-156), by its key (board/neighbors.ts): a click on one
+ * holds it there, with its Play this lot again, while the pointer goes to the panel. Let go as a
+ * held piece is, except that the end screen keeps it: a finished run is a good time to pick an
+ * old lot to play again. UI only.
+ */
+export const heldNeighbor = signal<string | null>(null);
+effect(() => {
+  if (heldNeighbor.value !== null && (selected.value !== null || tool.value === 'demolish')) {
+    heldNeighbor.value = null;
+  }
+});
+
 export type Inspected =
   | { kind: 'piece'; uid: number }
   | { kind: 'tile'; x: number; y: number }
@@ -260,7 +281,8 @@ export type Inspected =
   | { kind: 'supply'; i: number }
   | { kind: 'blueprint'; i: number }
   | { kind: 'upgrade'; i: number }
-  | { kind: 'offer'; i: number };
+  | { kind: 'offer'; i: number }
+  | { kind: 'neighbor'; key: string };
 
 /** What's selected: a piece to place or a fixture to install, and where it's from. */
 export const selection = computed<
@@ -649,6 +671,9 @@ function keepPreviousRun(saved: { code?: unknown } | null): string | undefined {
   return saved.code;
 }
 
+/** The note about a run that can't be saved, said once a visit. */
+let unsavedSaid = false;
+
 function save(): void {
   try {
     localStorage.setItem(
@@ -656,9 +681,18 @@ function save(): void {
       JSON.stringify({ build: BUILD_SHA, code: runCode(false), check: saveCheck(run.value) }),
     );
   } catch {
-    // Best effort: itch.io's iframe and private windows can lose storage.
+    // Best effort: itch.io's iframe and private windows can lose storage. Say so once, in a
+    // run (the first save that fails there), so a closed tab doesn't take a run the player
+    // thought was kept: said on the title or as a run loads, the next screen's notes wiped it.
+    if (!unsavedSaid && appScreen.value === 'game') {
+      unsavedSaid = true;
+      addNote(UNSAVED_NOTE);
+    }
   }
 }
+
+export const UNSAVED_NOTE =
+  'This browser isn’t keeping this site’s data, so your run lasts until you close the tab.';
 
 /** A short, readable seed for a new run. */
 export function randomSeed(): string {
@@ -670,6 +704,7 @@ export function randomSeed(): string {
 
 function resetWeek(): void {
   heldPiece.value = null;
+  heldNeighbor.value = null;
   selected.value = null;
   source.value = 'hand';
   tentative.value = null;
@@ -739,19 +774,28 @@ export function startRun(
   return { failedAt: result.failedAt, error: result.error };
 }
 
-/** Starts a run at once, without the job board (a ?seed=, ?client=, or ?crew= link). */
+/**
+ * Starts a run at once, without the job board (a ?seed=, ?client=, or ?crew= link, or a lot
+ * played again). `mode` keeps a first job's gentler targets for its own retry (D-151).
+ */
 export function newRun(
   seed = randomSeed(),
   clientId: ClientId = 'hendersons',
   crewId: CrewId = 'generalContractor',
+  mode: RunMode = 'standard',
 ): void {
   notice.value = null;
   // A friend's link is a first contact too (D-149): its screen fills in as the first job's does,
   // once. A browser that has had a first job, from a link or the board, isn't guided again by a
   // link, a Portfolio replay or a new run after a crash. The board stays as a first visit finds
   // it, so Start still opens with the first job until a contract is taken or a house finished.
-  if (firstVisit() && !guidedBefore()) setFirstJob(seed);
-  startRun({ seed, clientId, crewId, mode: 'standard' });
+  // A guided run is the browser's first job, with its gentler targets (D-151). So is a run on
+  // the first job's own lot while that job is going (the same link opened twice, or a friend's
+  // first-job result after the board's): startRun keeps it the first job, guided.
+  const guided = firstVisit() && !guidedBefore();
+  if (guided) setFirstJob(seed);
+  const first = guided || firstJobSeed.value === seed;
+  startRun({ seed, clientId, crewId, mode: first ? 'firstJob' : mode });
   canContinue.value = false;
   appScreen.value = 'game';
 }
@@ -958,16 +1002,19 @@ export function loadInitialRun(): void {
     linkError = notice.value?.text;
     notice.value = null;
   }
-  if (seedParam || clientId || crewId) {
+  // A link that names a client or crew the game doesn't have still starts a run, with a note
+  // that says so: it used to land on the title with no word of what happened to the link.
+  if (seedParam || clientParam || crewParam) {
     const previous = keepPreviousRun(saved);
     newRun(seedParam || randomSeed(), clientId ?? 'hendersons', crewId ?? 'generalContractor');
     // Say what the link opened (D-135): whose house, with which crew.
     addNote(linkNote(run.value.setup, !!seedParam));
+    if (linkError) addNote(linkError);
     if (previous) addPutAsideNote(previous);
-    if (clientParam !== null && !clientId) {
+    if (clientParam && !clientId) {
       addNote(`There's no client "${clientParam}": this run is for the Hendersons.`);
     }
-    if (crewParam !== null && !crewId) {
+    if (crewParam && !crewId) {
       addNote(`There's no crew "${crewParam}": this run has the General Contractor.`);
     }
     return;

@@ -23,6 +23,7 @@
 /* --- The milestone's plaque ------------------------------------------------------------ */
 
 .tb-phase {
+  position: relative;
   flex: none;
   padding: var(--space-1) var(--space-2);
   border: var(--px) solid transparent;
@@ -55,6 +56,40 @@
   background: var(--bad-fill);
   color: var(--ink);
   font-weight: 700;
+}
+/* A milestone's last regular week (D-154): orange as an overtime week is, but in the line's own
+   weight and with its margin drawn as a shadow, so the plaque keeps its width (the bold face is
+   wider: it grew 18 px at 1728 px wide). */
+.tb-week .last-week {
+  background: var(--bad-fill);
+  box-shadow: 0 0 0 var(--px) var(--bad-fill);
+  color: var(--ink);
+}
+/* The milestone's weeks as pips along the plaque's foot (D-154), in its padding, so the bar
+   keeps its height: the weeks played, the week on now in gold, and the last week and any
+   overtime week in orange. */
+.tb-pips {
+  position: absolute;
+  left: var(--space-2);
+  right: var(--space-2);
+  bottom: 0;
+  display: flex;
+  gap: var(--px);
+}
+.tb-pips i {
+  flex: 1;
+  height: calc(var(--px) * 2);
+  background: var(--card-lo);
+}
+.tb-pips i.done {
+  background: var(--ink-soft);
+}
+.tb-pips i.now {
+  background: var(--sparkle-deep);
+}
+.tb-pips.last i.now,
+.tb-pips i.over.now {
+  background: var(--bad-fill);
 }
 
 /* --- The milestone meter ------------------------------------------------------------- */

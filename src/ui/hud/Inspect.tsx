@@ -6,6 +6,7 @@
 // restriction a placement would break, whose a member's room is, where a granted tag comes from
 // ("Dark · from Eternal night"), and the sets a demolition or a tool would break. The board's
 // terms (regions, requirements, links, timers, Renovate) explain themselves on hover (D-077).
+// From D-156, whose a house on the street is, and its lot to play again.
 
 import type { ComponentChildren } from 'preact';
 import {
@@ -19,6 +20,9 @@ import {
   regionText,
   rules,
   SCORE_LABELS,
+  setProgressText,
+  setsOfPiece,
+  setText,
   sourceName,
   sunSideText,
   terrainAt,
@@ -35,12 +39,17 @@ import {
   type Term,
   type ToolId,
 } from '../../rules/index.ts';
+import { isFiller } from '../board/NeighborsLayer.tsx';
+import { company, jobKey } from '../company.ts';
 import { formatMult, formatNumber, signed } from '../format.ts';
+import { clientName, crewName, lotOf } from '../screens/Portfolio.tsx';
+import { playLotAgain } from './actions.ts';
 import {
   activePlay,
   currentTally,
   demolishArmed,
   demolishPreview,
+  heldNeighbor,
   heldPiece,
   inspected,
   preview,
@@ -364,6 +373,69 @@ function MemberNote({ id }: { id: PieceId }) {
   return member ? <p class="member-note">{member}</p> : null;
 }
 
+/**
+ * D-153: the sets a hand card's piece counts toward, as its set chip's tip has them: what each
+ * needs and pays, and under Full House, which needs nothing to touch, how far the house is ("Your
+ * house has 5 of the 9. Still to build: …"), from the rules. Only the pieces placed count.
+ */
+export function SetLines({ id }: { id: PieceId }) {
+  const sets = setsOfPiece(CONTENT, id);
+  if (sets.length === 0) return null;
+  const s = run.value;
+  return (
+    <>
+      <h3>Sets</h3>
+      <ul class="effects set-lines">
+        {sets.map((set) => {
+          const p = rules.setProgress(s, set);
+          return (
+            <li key={set}>
+              {setText(CONTENT, set)}
+              {p && (
+                <>
+                  {' '}
+                  <span class="set-progress">
+                    {p.held && <Icon name="check" />}
+                    {setProgressText(CONTENT, p)}
+                  </span>
+                </>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </>
+  );
+}
+
+/**
+ * D-153: with a hand card picked, until the pointer is on the lot, only how far the house is
+ * toward the sets that need nothing to touch (Full House), a line each: "Full House: your house
+ * has 5 of the 9. Still to build: …". All of SetLines there, every set's terms, grew Inspect from
+ * 106 to 442 px at 1728×963 on every pick of a set's room, squeezing the checklist under it until
+ * the pointer reached the lot. A card pointed at, and the chip's tip, have the terms.
+ */
+export function SetProgressLines({ id }: { id: PieceId }) {
+  const s = run.value;
+  const shown = setsOfPiece(CONTENT, id).flatMap((set) => {
+    const p = rules.setProgress(s, set);
+    return p ? [p] : [];
+  });
+  return (
+    <>
+      {shown.map((p) => {
+        const said = setProgressText(CONTENT, p);
+        return (
+          <p key={p.set} class="set-progress">
+            {p.held && <Icon name="check" />}
+            <span>{`${CONTENT.sets[p.set].name}: ${said[0]!.toLowerCase()}${said.slice(1)}`}</span>
+          </p>
+        );
+      })}
+    </>
+  );
+}
+
 /** A card in the reserve's extra slots (M4b): a household member's or the crew's. */
 function ExtraSlotNote({ r }: { r: ReservePiece }) {
   const member = r.arrival !== undefined ? arrivalOf(run.value.setup.clientId, r.arrival) : null;
@@ -521,6 +593,7 @@ function PlacingInfo() {
         </p>
         {hint}
         {install && <GoodBody good={{ kind: 'fixture', id: sel.id }} />}
+        {sel.kind === 'piece' && sel.from === 'hand' && <SetProgressLines id={sel.id} />}
       </>
     );
   }
@@ -752,8 +825,11 @@ export function TotalLine({ before, after }: { before: number; after: number }) 
   );
 }
 
-/** A held piece's ✕ (store.ts heldPiece). Esc, a second click on it, or open ground do too. */
-function LetGo() {
+/**
+ * A held piece's or house's ✕ (store.ts heldPiece, heldNeighbor). Esc, a second click on it, or
+ * open ground do too.
+ */
+function LetGo({ what = 'piece' }: { what?: 'piece' | 'house' }) {
   return (
     <Button
       iconOnly
@@ -761,10 +837,61 @@ function LetGo() {
       icon="close"
       class="let-go"
       onMouseDown={(e: MouseEvent) => e.preventDefault()}
-      onClick={() => (heldPiece.value = null)}
-      title="Let go (Esc, or click the piece again)"
-      aria-label="Let go of this piece"
+      onClick={() => {
+        heldPiece.value = null;
+        heldNeighbor.value = null;
+      }}
+      title={`Let go (Esc, or click the ${what} again)`}
+      aria-label={`Let go of this ${what}`}
     />
+  );
+}
+
+/** "The Barkers' house", "Dale's house". */
+const houseOf = (name: string) => `${name}${name.endsWith('s') ? '’' : '’s'} house`;
+
+/**
+ * A house on the street (D-156): whose it was, how it went, and its lot to play again (the
+ * Portfolio's Play this lot again, which asks first while a run is at stake). LimeZu's houses
+ * say what the street is for.
+ */
+function NeighborInfo({ k, held }: { k: string; held: boolean }) {
+  const letGo = held && <LetGo what="house" />;
+  if (isFiller(k)) {
+    return (
+      <>
+        <h2>The neighbors {letGo}</h2>
+        <p>Every house you finish, won or lost, moves in along this street.</p>
+      </>
+    );
+  }
+  const job = company.value.jobs.find((j) => jobKey(j) === k);
+  // Gone from the record since the run began.
+  if (!job) return null;
+  const client = clientName(job.clientId);
+  const lot = lotOf(job);
+  return (
+    <>
+      <h2>
+        {houseOf(client)} {letGo}
+      </h2>
+      <p class="neighbor-result">
+        <Icon name={job.won ? 'check' : 'cross'} />{' '}
+        {job.won ? job.verdict : `Walked at ${job.milestones}/${job.phases}`} ·{' '}
+        {formatNumber(job.score)} {SCORE_LABELS.total}
+      </p>
+      <p class="muted">{crewName(job.crewId)}</p>
+      {lot && (
+        <Button
+          class="play-again"
+          title="A new run on this lot, for the same client with the same crew"
+          onClick={() => playLotAgain(lot)}
+        >
+          Play this lot again
+        </Button>
+      )}
+      {!held && <p class="muted">Click the house to hold it here.</p>}
+    </>
   );
 }
 
@@ -786,7 +913,13 @@ export function Inspect() {
   // A piece clicked with nothing picked stays here while the pointer goes elsewhere (playtest
   // 4: a long note couldn't be scrolled), until it's let go (store.ts heldPiece).
   const held = heldPiece.value;
-  const what: Inspected | null = held !== null ? { kind: 'piece', uid: held } : inspected.value;
+  const heldHouse = heldNeighbor.value;
+  const what: Inspected | null =
+    held !== null
+      ? { kind: 'piece', uid: held }
+      : heldHouse !== null
+        ? { kind: 'neighbor', key: heldHouse }
+        : inspected.value;
   const s = run.value;
   const idle = (
     <>
@@ -870,6 +1003,11 @@ export function Inspect() {
         <p class="muted">Build anything here.</p>
       </>
     );
+  } else if (what?.kind === 'neighbor') {
+    const { key } = what;
+    if (isFiller(key) || company.value.jobs.some((j) => jobKey(j) === key)) {
+      body = <NeighborInfo k={key} held={heldHouse !== null} />;
+    }
   } else if (what?.kind === 'street') {
     body = (
       <>
@@ -888,6 +1026,7 @@ export function Inspect() {
           <h2>{goodName(good)}</h2>
           <GoodBody good={good} />
           {card.kind === 'piece' && <MemberNote id={card.id} />}
+          {card.kind === 'piece' && <SetLines id={card.id} />}
           <p class="muted">Click the card (or press {what.i + 1}), then point at the lot.</p>
         </>
       );
@@ -932,7 +1071,10 @@ export function Inspect() {
     if (g) body = <ItemInfo good={g} />;
   }
   return (
-    <InspectPanel idle={body === idle} held={held !== null && body !== idle}>
+    <InspectPanel
+      idle={body === idle}
+      held={(held !== null || heldHouse !== null) && body !== idle}
+    >
       {body}
     </InspectPanel>
   );

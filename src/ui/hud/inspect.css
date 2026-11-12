@@ -215,6 +215,19 @@
   height: calc(var(--px) * 2);
   background: var(--ink-soft);
 }
+/* A hand card's sets (D-153): under Full House, how far the house is, on a line of its own in
+   Charm's ink, with a check once the house holds it. */
+.inspect .set-progress {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+  font-weight: 700;
+  color: var(--charm);
+}
+.inspect .set-progress .icon {
+  flex: none;
+  margin-top: var(--px);
+}
 
 /* Tags and where it is, as chips. */
 .inspect .chips {
@@ -284,7 +297,8 @@
 }
 /* The kit's buttons keep to one line; these may wrap, so they never run past the panel. */
 .inspect .sell-button,
-.inspect .use-tool {
+.inspect .use-tool,
+.inspect .play-again {
   align-self: flex-start;
   max-width: 100%;
   margin-top: var(--space-2);

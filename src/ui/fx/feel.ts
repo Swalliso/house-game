@@ -342,8 +342,35 @@ export const FEEL = {
    * over it.
    */
   milestoneHoldMs: 900,
+  /**
+   * A click that hurried the milestone week's tally hurries the tally, not the milestone: its
+   * banner still comes up and holds as above, and only a click after it's been up this long
+   * takes it down. Steady clicking through the tally used to leave no banner at all.
+   */
+  milestoneBannerMinMs: 700,
   /** When a phase's last week crosses its target, the target's ding gets this long alone. */
   targetDingMs: 450,
+
+  /**
+   * The week's stamp (D-154, week-stamp.ts): as each week of a milestone comes up on the board,
+   * "Week 2 of 4" comes in at its top center over `inMs`, holds, and fades over `outMs`, in real
+   * time at any tally speed. A milestone's first week holds `holdMs.first`, as it names the
+   * milestone and what its target needs. Its middle weeks get a smaller stamp held `holdMs.mid`,
+   * and their page flick plays at `midGain`, so some 28 stamps a run don't wear thin. The last
+   * week's holds longest, since it says what the target still needs, under its tick-tock. It
+   * never takes the pointer, and it goes at once when a tally starts.
+   */
+  weekStamp: {
+    inMs: 280,
+    holdMs: { first: 1500, mid: 650, last: 2200 },
+    outMs: 320,
+    midGain: 0.5,
+  },
+  /**
+   * End week on a milestone's last week (D-154): its "Last week" tag stamps in over this long as
+   * the week comes up, and again as a card is placed, the moment the deciding press is next.
+   */
+  lastWeekTagMs: 320,
 
   /** Banners, in real time. */
   bannerMs: 2200,
@@ -422,6 +449,11 @@ export const FEEL = {
     turnMs: 480,
     /** A Rare's glint crossing it as it arrives (--dur-shop-shimmer). */
     shimmerMs: 1600,
+    /**
+     * A second click on Refresh this soon after one is the same click (a double-click): it
+     * used to pay again, for a shelf the player never saw.
+     */
+    refreshGuardMs: 400,
   },
 
   /**
@@ -471,17 +503,86 @@ export const FEEL = {
   endScreen: { clickDelayMs: 1000 },
 
   /**
-   * After Enter or a click on End week hurries a tally, a press this soon after is still
-   * hurrying: it doesn't arm a pass for the week that just began.
+   * After Enter or a click on End week hurries a tally, the presses that follow are still
+   * hurrying until the player stops for this long: none of them arms a pass for the week that
+   * just began. A steady click every 0.9 s or faster never passes a week; a pass after a
+   * hurried tally is a pause, then two presses.
    */
-  endWeek: { hurryMs: 650 },
+  endWeek: { hurryMs: 900 },
+
+  /**
+   * The street's traffic (fx/Drive.tsx): the title's car and the lot's regulars (D-155) move a
+   * whole art px at a time, at these speeds in art px a second.
+   */
+  street: {
+    carPxPerSecond: 56,
+    /** A stroll: the walk cycle's steps keep pace with the sidewalk under them. */
+    walkerPxPerSecond: 20,
+  },
 
   /** The title screen's street (M5a): a car drives by now and then. */
   title: {
-    /** Its speed, in art px a second (it moves a whole art px at a time). */
-    carPxPerSecond: 56,
     /** How long the street stays empty between cars. */
     carPauseMs: 5000,
+  },
+
+  /**
+   * Life on the lot (D-155, board/LifeLayer.tsx): decoration only, never the rules. Off with
+   * Reduce motion; still under the shop's sheet.
+   */
+  life: {
+    /**
+     * A flock of crows on the open grass. It takes off once the pointer, the piece being placed
+     * or a change to the house comes within `startleCells` of a crow (either way), and a new
+     * flock lands the next week, `landDelayMs` after the week's tally.
+     */
+    crows: {
+      startleCells: 2,
+      landDelayMs: 900,
+      /** Gliding in from above, fading in, to its spot. */
+      landMs: 1300,
+      /** Up and away, fading out. */
+      flyMs: 1400,
+      /** Each crow after the first lands or takes off this much later. */
+      staggerMs: 110,
+      /** How far a crow flies, in cells: up, and away sideways; each one after the first, one more. */
+      flyUpCells: 4,
+      flyAwayCells: 3,
+    },
+    /**
+     * The street's regulars: each lane's next car or walker comes by this long after the last
+     * one has gone. Sparse, so the street moves in the corner of the eye but never streams past
+     * the cards: about one thing in view at a time.
+     */
+    street: {
+      /** The lane by the sidewalk (westbound), the one the default zoom shows. */
+      nearCarPauseMs: 14000,
+      /** The far lane (eastbound), which a laptop's default view shows only in part. */
+      farCarPauseMs: 26000,
+      /** The two walkers, one each way. */
+      walkerPauseMs: [18000, 27000],
+    },
+  },
+
+  /**
+   * The end of a run's look down the street (D-156): `delayMs` after the last tally, the view
+   * pulls back over `outMs` to show the houses around the lot, holds `holdMs`, and comes back
+   * over `backMs`; a click or a key hurries it back. It pulls back far enough to show `beside`
+   * cells of the street either side of the lot and `below` rows past the road, to a scale of at
+   * least `min`; a view that shows that much already (above `max`) stays put. A celebration
+   * tween (CLAUDE.md), never a zoom step (D-097). Off with Reduce motion.
+   */
+  streetView: {
+    delayMs: 350,
+    outMs: 1200,
+    holdMs: 1700,
+    backMs: 950,
+    beside: 14,
+    below: 9,
+    min: 0.45,
+    max: 0.85,
+    /** A hurried look comes back this much faster. */
+    hurry: 1.6,
   },
 
   /**
