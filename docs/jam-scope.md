@@ -7,13 +7,13 @@
 ## In the jam build
 
 - **The lot:** a 24×24 grid with a street edge, woods and lone Trees, a creek, a pond, boulders, and a sunny side, generated from a seed. From M3b, two kinds of finds: the Old Shed and Time Capsules (D-048, D-049).
-- **Weekly turns:** draw 3 cards, then place 1 (with rotation), install a drawn fixture, renovate a room whose type is at its limit (D-102), or Pass; plus a few rerolls, demolitions and strikes (D-036, D-050, D-157). A Fence or Driveway card is a pack: it places up to 8 or 6 connected tiles as one piece (D-106).
+- **Weekly turns:** draw 3 cards, then place 1 (with rotation), install a drawn fixture, renovate a room whose type is at its limit (D-102), or Pass; plus a few rerolls, demolitions and strikes (D-036, D-050, D-157). A Fence or Driveway card is a pack: it places up to 8 or 6 connected tiles as one piece (D-106). From Foundation on, a Hallway and a Fence always wait in the reserve: a standing stock, topped up at each milestone (D-160).
 - **Scoring:** tags and shared effect types (`content-brainstorm.md`, section 1). Each week scores Points × Mult, shown as **Comfort × Charm**, with rare **Sparkle** (×Mult) and the total in **Wow** (D-056, D-019). A live preview while placing shows the net change to the week and which neighbors contribute.
 - **Milestones:** construction phases with rising targets. Missing one ends the run once the run's 2 overtime weeks are used up (D-041).
 - **Early completion:** finish a phase early for budget and a score bonus while the skipped weeks fast-forward, or keep building; plus an auto-complete toggle, off by default (D-040).
 - **Fixtures:** upgrades installed in a room or yard piece you've already placed, drawn from phase 2 or bought in the shop (D-050).
 - **Shop between phases:** five kinds of goods (blueprints, special pieces, fixtures, tools, and company upgrades), plus crates and services (D-051).
-- **Clients:** a spec checklist that starts with seven house rules (D-101), tastes, a household that grows on a schedule (D-103), and change orders, with Common/Uncommon/Rare rarity.
+- **Clients:** a spec checklist that starts with seven house rules (D-101), tastes, a household that grows on a schedule (D-103), and change orders, with Common/Uncommon/Rare rarity. Dale and the Barkers bring the card their wish names in week 1 (D-160).
 - **Crews:** General Contractor, Landscaper, Architect.
 - **Content:** the Core-tier items in `content-brainstorm.md`, as written in Appendix B of `implementation-plan.md`. Five pieces that were Stretch there (Sunroom, Hot Tub, Fire Pit, Henhouse, Birdhouse) are Core shop pieces now (D-051).
 - **End screen:** the finished house captioned "It's a house.", the score, and a copyable result line. It also names the next verdict up and how the house stands against your best for that client; the title's Portfolio shows the houses you've built and your best with each client and crew (D-139).
@@ -43,6 +43,7 @@
 | Rerolls | 1 per phase (General Contractor: 2), plus any bought in the shop |
 | Demolitions | 2 per run, plus any bought in the shop |
 | Strikes | 1 at the start, +1 at each milestone but the last, plus any bought in the shop; unused ones are kept (D-157) |
+| Standing stock | A Hallway and a Fence in the reserve's extra slots, topped up at each milestone from Foundation on; a first job's comes in Foundation's third week (D-160) |
 | Early completion | +2 budget and +10% of the phase's earnings per week saved (D-046) |
 | Budget | Starts at 0; +3 per milestone, plus early completion, economy pieces, finds, rewards, and selling (D-046, D-051) |
 | Change orders | Two offered after milestones 2, 4, and 6, to pick one from (D-144; it was one, to accept or decline) |
