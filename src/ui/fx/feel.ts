@@ -544,6 +544,27 @@ export const FEEL = {
   },
 
   /**
+   * The end of a run's look down the street (D-156): `delayMs` after the last tally, the view
+   * pulls back over `outMs` to show the houses around the lot, holds `holdMs`, and comes back
+   * over `backMs`; a click or a key hurries it back. It pulls back far enough to show `beside`
+   * cells of the street either side of the lot and `below` rows past the road, to a scale of at
+   * least `min`; a view that shows that much already (above `max`) stays put. A celebration
+   * tween (CLAUDE.md), never a zoom step (D-097). Off with Reduce motion.
+   */
+  streetView: {
+    delayMs: 350,
+    outMs: 1200,
+    holdMs: 1700,
+    backMs: 950,
+    beside: 14,
+    below: 9,
+    min: 0.45,
+    max: 0.85,
+    /** A hurried look comes back this much faster. */
+    hurry: 1.6,
+  },
+
+  /**
    * The job board and the crew pick (M4, D-110): the cards are pinned up one after another,
    * `staggerMs` apart, each landing in `inMs` (jobs.css reads them as --beat and --jobs-in).
    */

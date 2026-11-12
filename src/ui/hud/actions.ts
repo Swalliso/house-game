@@ -16,6 +16,7 @@ import {
   appScreen,
   demolishArmed,
   endWeek,
+  heldNeighbor,
   heldPiece,
   inProgress,
   log,
@@ -184,8 +185,11 @@ export function cancelPlacement(): void {
   }
   if (tentative.value) tentative.value = null;
   else if (selected.value !== null) selected.value = null;
-  // Nothing picked: Esc lets go of a piece held in Inspect (store.ts heldPiece).
-  else heldPiece.value = null;
+  // Nothing picked: Esc lets go of a piece or a house on the street held in Inspect (store.ts).
+  else {
+    heldPiece.value = null;
+    heldNeighbor.value = null;
+  }
 }
 
 /** Is this item the one being placed or installed? */

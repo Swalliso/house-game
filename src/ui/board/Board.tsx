@@ -40,13 +40,17 @@ import {
   demolishArmed,
   demolishAt,
   demolishPreview,
+  heldNeighbor,
   heldPiece,
   hoverCell,
+  inProgress,
   inspected,
   installArmed,
   installGains,
   installSupply,
   movingUid,
+  onEvents,
+  onRunReset,
   packCells,
   packNext,
   packPlay,
@@ -65,6 +69,7 @@ import {
   type Inspected,
   type PackNext,
 } from '../store.ts';
+import { settings } from '../settings.ts';
 import { CELL } from '../sprites.ts';
 import { uiPixel } from '../theme/pixel.ts';
 import {
@@ -76,6 +81,7 @@ import {
   isFit,
   lotSize,
   toggleFit,
+  streetView,
   viewSize,
   wheelZoom,
   zoomIn,
@@ -97,6 +103,7 @@ import {
   startScrollTop,
   streetLabelRun,
   streetLabelSize,
+  streetViewScale,
   uidAt,
   viewReach,
   type Occupancy,
@@ -116,6 +123,8 @@ import { layerVars } from './layers.ts';
 import { ChainArc, PreviewArcs, ToppedOut } from './MomentLayers.tsx';
 import { wobble } from './piece-fx.ts';
 import { LifeLayer } from './LifeLayer.tsx';
+import { neighborAt, type Neighbor } from './neighbors.ts';
+import { hoveredNeighbor, NeighborsLayer, streetFor } from './NeighborsLayer.tsx';
 import { Outline, TerrainLayer, YardTint } from './TerrainLayer.tsx';
 import './board-m2.css';
 import './labels.css';
@@ -306,6 +315,7 @@ function sameInspected(a: Inspected | null, b: Inspected): boolean {
   if (a.kind === 'piece' && b.kind === 'piece') return a.uid === b.uid;
   if (a.kind === 'tile' && b.kind === 'tile') return a.x === b.x && a.y === b.y;
   if (a.kind === 'street' && b.kind === 'street') return a.x === b.x;
+  if (a.kind === 'neighbor' && b.kind === 'neighbor') return a.key === b.key;
   return false;
 }
 
@@ -330,6 +340,8 @@ export function Board() {
   const pointer = useRef<{ x: number; y: number } | null>(null);
   const lastScale = useRef(Number.NaN);
   const needsCenter = useRef(true);
+  /** The camera's measure of the board's space (set by its layout effect). */
+  const measureView = useRef<(() => void) | null>(null);
   const [panning, setPanning] = useState(false);
   const state = run.value;
   const { lot } = state.house;
@@ -448,6 +460,9 @@ export function Board() {
     cameraEls.scroll = el;
     cameraEls.board = boardRef.current;
     const measure = () => {
+      // The end of a run's look down the street grows the scroll area for a moment: the
+      // camera's view is the box it comes back to.
+      if (streetView.peek()?.phase === 'on') return;
       const width = el.clientWidth - 2 * PAD;
       const height = el.clientHeight - 2 * PAD;
       const dpr = window.devicePixelRatio || 1;
@@ -459,6 +474,7 @@ export function Board() {
       }
     };
     measure();
+    measureView.current = measure;
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     window.addEventListener('resize', measure);
@@ -506,12 +522,142 @@ export function Board() {
     needsCenter.current = true;
   }, [state.setup]);
 
+  // The houses on the street around the lot (D-156), fixed for the run: the record as it stood
+  // when the run began.
+  const street = useMemo(() => streetFor(state.setup.seed, lot), [state.setup]);
+
+  // The end of a run's look down the street (D-156): a run that ends here (not a debug run, nor
+  // one that loads already over) is due one once its last tally has played, and the end
+  // screen's photos wait for it.
+  const sv = streetView.value;
+  const look = sv?.phase === 'on' && sv.run === state.setup ? sv : null;
+  const tallying = busy.value;
+  useEffect(() => {
+    const offEvents = onEvents((_events, before, after) => {
+      if (
+        inProgress(before) &&
+        !inProgress(after) &&
+        !after.debug &&
+        !settings.value.reduceMotion
+      ) {
+        streetView.value = { phase: 'due', run: after.setup };
+      }
+    });
+    // A new run or a load: no look is due any more.
+    const offReset = onRunReset(() => (streetView.value = null));
+    return () => {
+      offEvents();
+      offReset();
+    };
+  }, []);
+  useEffect(() => {
+    // Meant for a run that's no longer on the board.
+    if (sv && sv.run !== state.setup) streetView.value = null;
+    if (sv?.phase !== 'due' || sv.run !== state.setup || tallying) return;
+    const t = window.setTimeout(() => {
+      const el = scrollRef.current;
+      const board = boardRef.current;
+      if (streetView.peek() !== sv) return;
+      const view = el && { width: el.clientWidth, height: el.clientHeight };
+      const k = view && streetViewScale(view, lot.width, lot.height, scale, FEEL.streetView);
+      if (!el || !board || !k) {
+        // Nothing to look at, or the view shows the street already.
+        streetView.value = null;
+        return;
+      }
+      const b = board.getBoundingClientRect();
+      streetView.value = {
+        phase: 'on',
+        run: sv.run,
+        k,
+        from: { left: el.scrollLeft, top: el.scrollTop, ...view, x: b.left, y: b.top },
+      };
+    }, FEEL.streetView.delayMs);
+    return () => window.clearTimeout(t);
+  }, [sv, tallying, state.setup]);
+  // The look itself. The scroll area has grown to 1 / k of its box and been scaled by k to fit
+  // back in it (the render below), so the street around the lot is laid out as far as the view
+  // now reaches. From where the board was, the view pulls back to that, holds, and comes back;
+  // then it's laid out as before, scrolled as it was.
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    const board = boardRef.current;
+    if (!look || !el || !board) return;
+    const f = FEEL.streetView;
+    const { k, from } = look;
+    // The same middle in view (once it all fits, there's nothing to scroll).
+    el.scrollLeft = from.left - (el.clientWidth - from.width) / 2;
+    el.scrollTop = from.top - (el.clientHeight - from.height) / 2;
+    const box = el.getBoundingClientRect();
+    const b = board.getBoundingClientRect();
+    const cx = box.left + box.width / 2;
+    const cy = box.top + box.height / 2;
+    // The board's corner as laid out, before the scale about the scroll area's middle: moved
+    // from there to where it was on the screen, at full size, it's the view as it was.
+    const near = `translate(${from.x - (cx + (b.left - cx) / k)}px, ${
+      from.y - (cy + (b.top - cy) / k)
+    }px) scale(1)`;
+    const far = `translate(0px, 0px) scale(${k})`;
+    const total = f.outMs + f.holdMs + f.backMs;
+    const back = f.outMs + f.holdMs;
+    const anim = el.animate(
+      [
+        { transform: near, easing: 'cubic-bezier(0.45, 0, 0.2, 1)' },
+        { transform: far, offset: f.outMs / total },
+        { transform: far, offset: back / total, easing: 'cubic-bezier(0.5, 0, 0.3, 1)' },
+        { transform: near },
+      ],
+      { duration: total, fill: 'forwards' },
+    );
+    anim.onfinish = () => {
+      if (streetView.peek() === look) streetView.value = null;
+    };
+    // A click, a key or the wheel hurries it back: from the hold, or from as far out as it got.
+    // (The camera holds meanwhile: camera.ts setZoom.)
+    const hurry = () => {
+      const t = Number(anim.currentTime ?? 0);
+      if (t < f.outMs) anim.currentTime = back + (1 - t / f.outMs) * f.backMs;
+      else if (t < back) anim.currentTime = back;
+      anim.playbackRate = f.hurry;
+      stopListening();
+    };
+    const HURRY = ['pointerdown', 'keydown', 'wheel'] as const;
+    const stopListening = () => {
+      for (const type of HURRY) window.removeEventListener(type, hurry, true);
+    };
+    for (const type of HURRY) window.addEventListener(type, hurry, true);
+    return () => {
+      stopListening();
+      anim.cancel();
+      if (streetView.peek() === look) streetView.value = null;
+      // As it was, unless another run has begun (that starts at its own place).
+      if (run.peek().setup === look.run) {
+        el.scrollLeft = from.left;
+        el.scrollTop = from.top;
+      }
+      // The camera didn't measure while the view was grown: a resize meanwhile counts now.
+      measureView.current?.();
+    };
+  }, [look]);
+
+  /** The house on the street under a point off the lot, if any. */
+  const neighborUnder = (clientX: number, clientY: number): Neighbor | null => {
+    const board = boardRef.current;
+    if (!board || street.length === 0) return null;
+    const rect = board.getBoundingClientRect();
+    // CSS px per art px as shown: the board's own size, so a celebration's tween counts.
+    const k = rect.width / (lot.width * CELL);
+    return neighborAt(street, (clientX - rect.left) / k, (clientY - rect.top) / k);
+  };
+
   const cellAt = (clientX: number, clientY: number): Cell | 'street' | null => {
     const board = boardRef.current;
     if (!board) return null;
     const rect = board.getBoundingClientRect();
-    const x = Math.floor((clientX - rect.left) / px);
-    const y = Math.floor((clientY - rect.top) / px);
+    // A cell as shown: the board's own size, so a celebration's tween counts.
+    const cell = rect.width / lot.width;
+    const x = Math.floor((clientX - rect.left) / cell);
+    const y = Math.floor((clientY - rect.top) / cell);
     if (x < 0 || x >= lot.width || y < 0 || y > lot.height) return null;
     return y === lot.height ? 'street' : { x, y };
   };
@@ -523,11 +669,17 @@ export function Board() {
     if (demolishNote.value && !sameCell(demolishNote.value, cell)) demolishNote.value = null;
   };
 
-  /** What the inspect panel shows for the cell under the pointer, when nothing is being placed. */
-  const inspectAt = (clientX: number, c: Cell | 'street' | null) => {
+  /**
+   * What the inspect panel shows for the cell under the pointer, or the house on the street
+   * (`n`, off the lot), when nothing is being placed.
+   */
+  const inspectAt = (clientX: number, c: Cell | 'street' | null, n: Neighbor | null = null) => {
+    hoveredNeighbor.value = n && selected.value === null && !tentative.value ? n.key : null;
     if (selected.value !== null || tentative.value) return;
     let next: Inspected | null = null;
-    if (c === 'street') {
+    if (n) {
+      next = { kind: 'neighbor', key: n.key };
+    } else if (c === 'street') {
       const x = Math.floor((clientX - boardRef.current!.getBoundingClientRect().left) / px);
       next = { kind: 'street', x };
     } else if (c) {
@@ -607,7 +759,7 @@ export function Board() {
     }
     const c = cellAt(e.clientX, e.clientY);
     setHover(c);
-    inspectAt(e.clientX, c);
+    inspectAt(e.clientX, c, c === null ? neighborUnder(e.clientX, e.clientY) : null);
   };
 
   const onPointerDown = (e: PointerEvent) => {
@@ -654,6 +806,7 @@ export function Board() {
     if (!d || d.id !== e.pointerId || d.button !== e.button) return;
     drag.current = null;
     const c = cellAt(e.clientX, e.clientY);
+    const n = c === null ? neighborUnder(e.clientX, e.clientY) : null;
     if (d.panning) {
       endPan(e);
       if (e.pointerType !== 'touch') setHover(c);
@@ -667,7 +820,7 @@ export function Board() {
     }
     // Touch has no hover: a tap moves the hover cell there and inspects what it hit.
     if (c && c !== 'street') setHover(c);
-    inspectAt(e.clientX, c);
+    inspectAt(e.clientX, c, n);
     if (demolishing) {
       demolishClick(c);
       return;
@@ -701,6 +854,8 @@ export function Board() {
     // and a click anywhere else lets go (store.ts heldPiece).
     const uid = c && c !== 'street' ? uidAt(occ, c.x, c.y) : 0;
     heldPiece.value = uid && heldPiece.value !== uid ? uid : null;
+    // A house on the street too (D-156): Inspect offers to play its lot again.
+    heldNeighbor.value = n && heldNeighbor.value !== n.key ? n.key : null;
   };
 
   const onPointerCancel = (e: PointerEvent) => {
@@ -728,9 +883,19 @@ export function Board() {
   const renovating = !demolishing && activePlay.value?.t === 'renovate';
   const tooling = !demolishing && selection.value?.kind === 'tool';
 
-  // How far the view reaches past the board: the road and the creeks run on there, and the
-  // lot's life (D-155) has that much room to come and go in.
-  const around = viewReach(viewSize.value, lot.width, lot.height, scale, dpr, PAD);
+  // How far the view reaches past the board: the road and the creeks run on there, the lot's
+  // life (D-155) has that much room to come and go in, and the houses on the street stand in
+  // it (D-156). While the end of a run looks down the street, as far as that view reaches.
+  const view = viewSize.value;
+  // The grown scroll area, in whole CSS px as its box comes out, so nothing reaches past it.
+  const space =
+    look && view
+      ? {
+          width: Math.floor((view.width + 2 * PAD) / look.k) - 2 * PAD,
+          height: Math.floor((view.height + 2 * PAD) / look.k) - 2 * PAD,
+        }
+      : view;
+  const around = viewReach(space, lot.width, lot.height, scale, dpr, PAD);
   const boardClass = [
     'board',
     !demolishing && selected.value !== null ? 'placing' : '',
@@ -746,11 +911,20 @@ export function Board() {
   return (
     <>
       <div
-        class={`board-scroll ${panning ? 'panning' : ''}`}
+        class={[
+          'board-scroll',
+          panning ? 'panning' : '',
+          hoveredNeighbor.value ? 'at-neighbor' : '',
+        ].join(' ')}
         ref={scrollRef}
         // A cell's size, for the lot's surroundings (terrain.css), which zoom with the board; and
         // over the padding at the top, the canopy's room.
-        style={{ '--board-cell': `${px}px`, paddingTop: `${PAD + room}px` }}
+        style={{
+          '--board-cell': `${px}px`,
+          paddingTop: `${PAD + room}px`,
+          // The end of a run's look down the street: 1 / k of its box, scaled back into it.
+          ...(look ? { inset: `${-50 * (1 / look.k - 1)}%`, transform: `scale(${look.k})` } : {}),
+        }}
         onPointerMove={onPointerMove}
         onPointerDown={onPointerDown}
         onPointerUp={onPointerUp}
@@ -760,6 +934,7 @@ export function Board() {
           pointer.current = null;
           // A finger lifting "leaves" too; keep a tap's hover so its ghost stays put.
           if (e.pointerType !== 'touch') setHover(null);
+          hoveredNeighbor.value = null;
           setHold(false);
         }}
         onMouseDown={(e) => e.button === 1 && e.preventDefault()}
@@ -774,6 +949,7 @@ export function Board() {
             height: `${boardRows(lot.height) * px}px`,
           }}
         >
+          <NeighborsLayer street={street} lot={lot} scale={scale} around={around} />
           <TerrainLayer
             lot={lot}
             scale={scale}

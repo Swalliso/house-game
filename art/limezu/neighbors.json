@@ -1,0 +1,20 @@
+{
+  "neighbor-country": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/24_Additional_Houses_Singles_16x16/24_Additional_Houses_Country_House_16x16.png",
+    "rect": [6, 1, 282, 255],
+    "note": "Your houses on the street (D-156): a roofed country house on a plot beside the lot or across the road, until the player's own finished houses stand there. Dimmed into the garden's light by CSS (neighbors.css)."
+  },
+  "neighbor-japanese": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/24_Additional_Houses_Singles_16x16/24_Additional_Houses_Japanese_House_16x16.png",
+    "rect": [0, 0, 240, 224],
+    "note": "Your houses on the street (D-156): a roofed Japanese house on a plot beside the lot or across the road, until the player's own finished houses stand there."
+  },
+  "neighbor-modern": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/24_Additional_Houses_Singles_16x16/24_Additional_Houses_Modern_House_16x16.png",
+    "rect": [1, 0, 367, 224],
+    "note": "Your houses on the street (D-156): a modern house with a roof deck on a plot beside the lot or across the road, until the player's own finished houses stand there."
+  }
+}

@@ -1,0 +1,37 @@
+/* Your houses on the street (NeighborsLayer.tsx, D-156): on the terrain's layer, before the
+   ground's group, so the road running on past the lot paints over a house's shadow on the
+   sidewalk. The box clips at the view's reach, so a house never makes the view scroll further,
+   and it never takes the pointer (the board finds the house under it, Board.tsx). */
+
+.board > .neighbors {
+  position: absolute;
+  z-index: var(--z-terrain);
+  overflow: clip;
+  pointer-events: none;
+}
+.neighbors > .neighbor {
+  position: absolute;
+  display: block;
+  image-rendering: pixelated;
+}
+/* LimeZu's houses in the garden's light (terrain/outside.ts dim: a quarter toward gray, then 15%
+   darker); yours were dimmed when they were painted. */
+.neighbors > .neighbor.filler {
+  filter: saturate(0.74) brightness(0.85);
+}
+/* The house under the pointer or held in Inspect, in the lot's own light while Inspect says
+   whose it is. */
+.neighbors > .neighbor.hover {
+  filter: saturate(1.35) brightness(1.18);
+}
+.neighbors > .neighbor.filler.hover {
+  filter: none;
+}
+.board-scroll.at-neighbor:not(.panning) {
+  cursor: pointer;
+}
+/* The end of a run's look down the street (Board.tsx): the board's view is bigger than its box
+   for a moment, scaled to fit it, and the column keeps it in as it pulls back and comes in. */
+.center.street-view {
+  overflow: clip;
+}

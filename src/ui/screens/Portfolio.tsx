@@ -19,8 +19,9 @@ import './portfolio.css';
 const WOW = SCORE_LABELS.total;
 
 /** A client's or a crew's name, or its id if this build no longer has it. */
-const clientName = (id: string) => CONTENT.clients[id as keyof typeof CONTENT.clients]?.name ?? id;
-const crewName = (id: string) => CONTENT.crews[id as keyof typeof CONTENT.crews]?.name ?? id;
+export const clientName = (id: string) =>
+  CONTENT.clients[id as keyof typeof CONTENT.clients]?.name ?? id;
+export const crewName = (id: string) => CONTENT.crews[id as keyof typeof CONTENT.crews]?.name ?? id;
 
 /** A house's lot, client and crew, to play again; null if this build no longer has either. */
 export function lotOf(job: Job): { seed: string; clientId: ClientId; crewId: CrewId } | null {

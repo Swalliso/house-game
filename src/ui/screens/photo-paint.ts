@@ -1,6 +1,6 @@
 // Paints the end screen's photos (D-136): the house at a milestone, through the run's frame,
 // with the board's own painters in the board's order (layers.ts), as one picture at art
-// resolution:
+// resolution (and, without the ground, a finished house's plot on the street, D-156):
 // - the terrain (TerrainLayer's draw) and the water's first frame,
 // - the floor canvas (the yard's ground, the house's shadow, doormats, floors and wall faces),
 // - every piece's items under the walls, south in front, as the items layer orders them,
@@ -13,14 +13,17 @@
 
 import type { RunState } from '../../rules/index.ts';
 import { artSize } from '../art/drawings.ts';
+import type { Plot } from '../company.ts';
 import { Canvas, paintFloors, paintWalls, type AtlasPixels } from '../art/house-paint.ts';
 import { itemRows, roomItems, type Item } from '../art/rooms.ts';
 import { yardModel } from '../art/yard.ts';
 import { atlasPixels } from '../board/HouseLayers.tsx';
 import { hallLinks, houseModel, sunLight, type Rect } from '../board/house-model.ts';
+import { opaqueBox, plotPart } from '../board/neighbors.ts';
 import { draw, streetFront } from '../board/TerrainLayer.tsx';
 import { seedSalt } from '../board/terrain/hash.ts';
 import { canopyBox, lotObjects, paintCanopy } from '../board/terrain/objects.ts';
+import { dimPixels } from '../board/terrain/outside.ts';
 import { paintWater, waterPlan } from '../board/terrain/water.ts';
 import { atlasImage, CELL } from '../sprites.ts';
 import type { PhotoFrame } from './photos.ts';
@@ -48,10 +51,19 @@ function blitPart(cv: Canvas, atlas: AtlasPixels, it: Item, part: 'top' | 'botto
   });
 }
 
-/** The house at `state`, through `frame`, as a canvas at art resolution. */
-export async function paintPhoto(state: RunState, frame: PhotoFrame): Promise<HTMLCanvasElement> {
+/**
+ * The house at `state`, through `frame`, as a canvas at art resolution. Without `ground`, the
+ * house alone on a clear canvas: no terrain, water or tree crowns. With `only`, only those
+ * pieces (by uid), lit and linked as they are in the whole house.
+ */
+export async function paintPhoto(
+  state: RunState,
+  frame: PhotoFrame,
+  { ground: withGround = true, only }: { ground?: boolean; only?: ReadonlySet<number> } = {},
+): Promise<HTMLCanvasElement> {
   const [img, atlas] = await Promise.all([atlasImage(), atlasPixels()]);
-  const { house } = state;
+  const whole = state.house;
+  const house = only ? { ...whole, pieces: whole.pieces.filter((p) => only.has(p.uid)) } : whole;
   const { lot } = house;
   const salt = seedSalt(state.setup.seed);
   const objects = lotObjects(lot, salt);
@@ -59,10 +71,10 @@ export async function paintPhoto(state: RunState, frame: PhotoFrame): Promise<HT
   // The ground, on a canvas the frame's size: the terrain, then the water's still frame.
   const ground = canvas(frame.w, frame.h);
   ground.translate(-frame.x, -frame.y);
-  draw(ground, img, lot, objects, salt, streetFront(house));
+  if (withGround) draw(ground, img, lot, objects, salt, streetFront(whole));
   ground.setTransform(1, 0, 0, 1, 0, 0);
   const water = waterPlan(lot, salt);
-  if (water.box) {
+  if (withGround && water.box) {
     const w = canvas(water.box.w * CELL, water.box.h * CELL);
     paintWater(w, img, water, 0);
     ground.drawImage(w.canvas, water.box.x * CELL - frame.x, water.box.y * CELL - frame.y);
@@ -90,7 +102,7 @@ export async function paintPhoto(state: RunState, frame: PhotoFrame): Promise<HT
 
   // The trees' crowns over everything.
   const crowns = canopyBox(lot, objects);
-  if (crowns) {
+  if (withGround && crowns) {
     const c = canvas(crowns.w, crowns.h);
     paintCanopy(c, img, objects, crowns);
     const d = c.getImageData(0, 0, crowns.w, crowns.h);
@@ -104,4 +116,33 @@ export async function paintPhoto(state: RunState, frame: PhotoFrame): Promise<HT
     0,
   );
   return out.canvas;
+}
+
+/**
+ * A finished house's plot on the street (D-156): the part of it that stands there (neighbors.ts
+ * plotPart) alone, with no ground, dimmed into the garden's light as everything past the lot's
+ * edges is (terrain/outside.ts dim), cut to what it painted, as a PNG at art resolution. Null
+ * when nothing stands there.
+ */
+export async function paintPlot(state: RunState): Promise<Plot | null> {
+  const part = plotPart(state.house);
+  if (!part) return null;
+  const { frame } = part;
+  const painted = await paintPhoto(state, frame, { ground: false, only: part.uids });
+  const data = painted.getContext('2d')!.getImageData(0, 0, frame.w, frame.h);
+  const box = opaqueBox(data.data, frame.w, frame.h);
+  if (!box) return null;
+  dimPixels(data.data);
+  const out = canvas(box.w, box.h);
+  out.putImageData(data, -box.x, -box.y, box.x, box.y, box.w, box.h);
+  const { width: lotW, height: lotH } = state.house.lot;
+  return {
+    src: out.canvas.toDataURL('image/png'),
+    x: frame.x + box.x,
+    y: frame.y + box.y,
+    w: box.w,
+    h: box.h,
+    lotW,
+    lotH,
+  };
 }

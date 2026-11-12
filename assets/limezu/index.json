@@ -775,6 +775,21 @@
     "h": 30,
     "spec": "e6fc0d05861a8a38"
   },
+  "neighbor-country": {
+    "w": 282,
+    "h": 255,
+    "spec": "5bb5dad870a5fbb2"
+  },
+  "neighbor-japanese": {
+    "w": 240,
+    "h": 224,
+    "spec": "5665537c53b9e05e"
+  },
+  "neighbor-modern": {
+    "w": 367,
+    "h": 224,
+    "spec": "49ef4d4498bef760"
+  },
   "nightstand-0": {
     "w": 16,
     "h": 24,

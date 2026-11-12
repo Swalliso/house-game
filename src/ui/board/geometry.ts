@@ -212,11 +212,12 @@ export function overviewScale(
 }
 
 /**
- * How far the view reaches past the board's left, right and top edges, in CSS px: where the road
- * and the creek run on (terrain/outside.ts). `space` is the scroll area's content box with `pad`
- * around it (the board's room above the lot comes off its top: canopyRoom); the board sits in
- * its middle when it's smaller. Whole device px, rounded down, so a strip on the right never
- * makes the scroll area wider. Before the board has measured (`space` null), just the padding.
+ * How far the view reaches past the board's edges, in CSS px: where the road and the creek run
+ * on (terrain/outside.ts) and, across the road too, the houses on the street (D-156). `space`
+ * is the scroll area's content box with `pad` around it (the board's room above the lot comes
+ * off its top: canopyRoom); the board sits in its middle when it's smaller. Whole device px,
+ * rounded down, so nothing on the right or below makes the scroll area bigger. Before the
+ * board has measured (`space` null), just the padding.
  */
 export function viewReach(
   space: { readonly width: number; readonly height: number } | null,
@@ -225,13 +226,41 @@ export function viewReach(
   scale: number,
   dpr: number,
   pad: number,
-): { left: number; right: number; top: number } {
+): { left: number; right: number; top: number; bottom: number } {
   const px = CELL * scale;
   const room = canopyRoom(scale, dpr);
   const slackX = space ? Math.max(0, (space.width - lotW * px) / 2) : 0;
   const slackY = space ? Math.max(0, (space.height - room - boardRows(lotH) * px) / 2) : 0;
   const side = Math.floor((pad + slackX) * dpr + 1e-6) / dpr;
-  return { left: side, right: side, top: pad + room + slackY };
+  const bottom = Math.floor((pad + slackY) * dpr + 1e-6) / dpr;
+  return { left: side, right: side, top: pad + room + slackY, bottom };
+}
+
+/**
+ * How far the end of a run's look down the street pulls the view back (D-156): the scale, below
+ * 1, at which a `view` (the scroll area's box, CSS px) shows the lot with `beside` cells of the
+ * street either side of it and the board with `below` rows past it (and as many over it), the
+ * camera at `scale`; at least `min`. Null when the view shows nearly that much already (the
+ * scale would be above `max`).
+ */
+export function streetViewScale(
+  view: { readonly width: number; readonly height: number },
+  lotW: number,
+  lotH: number,
+  scale: number,
+  fit: {
+    readonly beside: number;
+    readonly below: number;
+    readonly min: number;
+    readonly max: number;
+  },
+): number | null {
+  const px = CELL * scale;
+  const k = Math.min(
+    view.width / ((lotW + 2 * fit.beside) * px),
+    view.height / ((boardRows(lotH) + 2 * fit.below) * px + CANOPY_ROOM * scale),
+  );
+  return k > fit.max ? null : Math.max(fit.min, k);
 }
 
 /**
