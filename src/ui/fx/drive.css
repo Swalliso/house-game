@@ -1,0 +1,62 @@
+/* The street's traffic (fx/Drive.tsx): the title's car and the lot's regulars (D-155). A crossing
+   is one transform animation, a whole art px a step; a sprite's frames step behind its box. */
+
+.drive {
+  position: absolute;
+  animation: drive var(--drive-ms) steps(var(--drive-steps), end) var(--drive-delay, 0ms) infinite;
+}
+.drive.parked {
+  animation: none;
+}
+@keyframes drive {
+  to {
+    transform: translateX(var(--drive));
+  }
+}
+/* Sprites of different sizes stand on the same line: a car's wheels, a walker's feet. */
+.drive > .fx-sprite {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+}
+/* Two sprites taking turns: each shows for its crossing, and they swap while out of sight. */
+.drive.turns > .fx-sprite {
+  animation: drive-turn calc(var(--drive-ms) * 2) linear var(--turn-delay, 0ms) infinite;
+}
+.drive.turns.parked > .fx-sprite + .fx-sprite {
+  display: none;
+}
+@keyframes drive-turn {
+  0%,
+  49.999% {
+    visibility: visible;
+  }
+  50%,
+  100% {
+    visibility: hidden;
+  }
+}
+
+.fx-sprite {
+  display: block;
+  overflow: hidden;
+  image-rendering: pixelated;
+}
+.fx-sprite.flip {
+  transform: scaleX(-1);
+}
+.fx-frames {
+  display: block;
+  height: 100%;
+  image-rendering: pixelated;
+  animation-name: fx-frames;
+  animation-iteration-count: infinite;
+}
+@keyframes fx-frames {
+  to {
+    transform: translateX(var(--fx-frames));
+  }
+}
+.reduce-motion .fx-frames {
+  animation: none;
+}

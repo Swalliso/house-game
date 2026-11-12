@@ -489,12 +489,58 @@ export const FEEL = {
    */
   endWeek: { hurryMs: 900 },
 
+  /**
+   * The street's traffic (fx/Drive.tsx): the title's car and the lot's regulars (D-155) move a
+   * whole art px at a time, at these speeds in art px a second.
+   */
+  street: {
+    carPxPerSecond: 56,
+    /** A stroll: the walk cycle's steps keep pace with the sidewalk under them. */
+    walkerPxPerSecond: 20,
+  },
+
   /** The title screen's street (M5a): a car drives by now and then. */
   title: {
-    /** Its speed, in art px a second (it moves a whole art px at a time). */
-    carPxPerSecond: 56,
     /** How long the street stays empty between cars. */
     carPauseMs: 5000,
+  },
+
+  /**
+   * Life on the lot (D-155, board/LifeLayer.tsx): decoration only, never the rules. Off with
+   * Reduce motion; still under the shop's sheet.
+   */
+  life: {
+    /**
+     * A flock of crows on the open grass. It takes off once the pointer, the piece being placed
+     * or a change to the house comes within `startleCells` of a crow (either way), and a new
+     * flock lands the next week, `landDelayMs` after the week's tally.
+     */
+    crows: {
+      startleCells: 2,
+      landDelayMs: 900,
+      /** Gliding in from above, fading in, to its spot. */
+      landMs: 1300,
+      /** Up and away, fading out. */
+      flyMs: 1400,
+      /** Each crow after the first lands or takes off this much later. */
+      staggerMs: 110,
+      /** How far a crow flies, in cells: up, and away sideways; each one after the first, one more. */
+      flyUpCells: 4,
+      flyAwayCells: 3,
+    },
+    /**
+     * The street's regulars: each lane's next car or walker comes by this long after the last
+     * one has gone. Sparse, so the street moves in the corner of the eye but never streams past
+     * the cards: about one thing in view at a time.
+     */
+    street: {
+      /** The lane by the sidewalk (westbound), the one the default zoom shows. */
+      nearCarPauseMs: 14000,
+      /** The far lane (eastbound), which a laptop's default view shows only in part. */
+      farCarPauseMs: 26000,
+      /** The two walkers, one each way. */
+      walkerPauseMs: [18000, 27000],
+    },
   },
 
   /**

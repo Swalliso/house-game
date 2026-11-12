@@ -115,6 +115,7 @@ import {
 import { layerVars } from './layers.ts';
 import { ChainArc, PreviewArcs, ToppedOut } from './MomentLayers.tsx';
 import { wobble } from './piece-fx.ts';
+import { LifeLayer } from './LifeLayer.tsx';
 import { Outline, TerrainLayer, YardTint } from './TerrainLayer.tsx';
 import './board-m2.css';
 import './labels.css';
@@ -125,6 +126,8 @@ const LAYER_VARS = layerVars();
 
 /** The scroll container's padding (app.css), kept clear around the board. */
 const PAD = 6;
+/** No cells: the ghost's, while nothing is being placed. */
+const NO_CELLS: readonly Cell[] = [];
 /** Cells smaller than this many CSS px get the smaller badges and labels (board-m2.css). */
 const SMALL_CELL_PX = 32;
 
@@ -725,6 +728,9 @@ export function Board() {
   const renovating = !demolishing && activePlay.value?.t === 'renovate';
   const tooling = !demolishing && selection.value?.kind === 'tool';
 
+  // How far the view reaches past the board: the road and the creeks run on there, and the
+  // lot's life (D-155) has that much room to come and go in.
+  const around = viewReach(viewSize.value, lot.width, lot.height, scale, dpr, PAD);
   const boardClass = [
     'board',
     !demolishing && selected.value !== null ? 'placing' : '',
@@ -773,10 +779,20 @@ export function Board() {
             scale={scale}
             seed={state.setup.seed}
             house={state.house}
-            around={viewReach(viewSize.value, lot.width, lot.height, scale, dpr, PAD)}
+            around={around}
+          />
+          {/* Paint on the sidewalk, under whoever walks or drives over it (D-155). */}
+          <StreetLabel lot={lot} occ={occ} px={px} dpr={dpr} />
+          <LifeLayer
+            run={state.setup}
+            house={state.house}
+            seed={state.setup.seed}
+            week={state.week}
+            scale={scale}
+            around={around}
+            ghost={ghostCells?.cells ?? NO_CELLS}
           />
           <YardTint state={state} scale={scale} />
-          <StreetLabel lot={lot} occ={occ} px={px} dpr={dpr} />
           {floorLayer}
           {itemsLayer}
           {wallsLayer}

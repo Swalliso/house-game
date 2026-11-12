@@ -1,0 +1,102 @@
+/* Life on the lot (LifeLayer.tsx, D-155): the flock on the grass and the street's regulars, on
+   the canopy's layer after the canopy (board/layers.ts), so a crow in flight crosses the tree
+   tops, and under the labels. Each box clips at the view's reach, so nothing makes the view
+   scroll further, and none of it takes the pointer. */
+
+.board > .life {
+  position: absolute;
+  z-index: var(--z-canopy);
+  overflow: clip;
+  pointer-events: none;
+}
+/* Past the lot's columns the street's regulars are dimmed as the garden and the road out there
+   are (terrain/outside.ts dim: a quarter toward gray, then 15% darker). */
+.board > .life-street.off-lot {
+  filter: saturate(0.74) brightness(0.85);
+}
+.life-crows {
+  position: absolute;
+  inset: 0;
+}
+.life-crow {
+  position: absolute;
+}
+.life-crow > .fx-sprite {
+  position: absolute;
+  top: 0;
+}
+
+/* Landing: the flapping crow glides in from above, fading in, and gives way to the pecking one
+   as it touches down. Pecking is the pecking crow's own frames. */
+.life-crows.landing .life-crow {
+  animation: crow-land var(--land-ms) cubic-bezier(0.2, 0.6, 0.35, 1) var(--crow-delay) both;
+}
+.life-crows.landing .crow-flap {
+  animation: crow-flap-off var(--land-ms) linear var(--crow-delay) both;
+}
+.life-crows.landing .crow-idle {
+  animation: crow-idle-on var(--land-ms) linear var(--crow-delay) both;
+}
+@keyframes crow-land {
+  from {
+    transform: translate(var(--fly-x), var(--fly-y));
+    opacity: 0;
+  }
+  40% {
+    opacity: 1;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes crow-flap-off {
+  0%,
+  99.9% {
+    visibility: visible;
+  }
+  100% {
+    visibility: hidden;
+  }
+}
+@keyframes crow-idle-on {
+  0%,
+  99.9% {
+    visibility: hidden;
+  }
+  100% {
+    visibility: visible;
+  }
+}
+
+/* Flying off: wings out at once, then up and away, fading. */
+.life-crows.flying .crow-idle {
+  visibility: hidden;
+}
+.life-crows.flying .life-crow {
+  animation: crow-fly var(--fly-ms) cubic-bezier(0.35, 0, 0.65, 1) var(--crow-delay) both;
+}
+@keyframes crow-fly {
+  from {
+    transform: none;
+    opacity: 1;
+  }
+  15% {
+    transform: translate(calc(var(--fly-x) * 0.04), calc(var(--fly-y) * 0.15));
+  }
+  65% {
+    opacity: 1;
+  }
+  to {
+    transform: translate(var(--fly-x), var(--fly-y));
+    opacity: 0;
+  }
+}
+
+/* Under the shop's sheet or a change order's, it all holds still, as the water does. */
+.board.covered > .life .drive,
+.board.covered > .life .fx-sprite,
+.board.covered > .life .fx-frames,
+.board.covered > .life .life-crow {
+  animation-play-state: paused;
+}

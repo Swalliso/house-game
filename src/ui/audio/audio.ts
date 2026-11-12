@@ -58,7 +58,9 @@ export type SoundId =
   | 'doorbell'
   | 'order-stamp'
   | 'topped-out'
-  | 'drumroll';
+  | 'drumroll'
+  // Life on the lot (D-155): the flock taking off.
+  | 'flap';
 
 export interface PlayOptions {
   /** Exact playback rate. Giving one also turns off the random rate and gain spread. */
@@ -312,6 +314,10 @@ const SOUNDS: Record<SoundId, readonly Layer[]> = {
   ],
   // The milestone moment's drumroll: a soft rolled snare under the count.
   drumroll: one([0.22, 0, 320, 0.05, 1.1, 0.15, 4, 1, , , , , 0.035, , , , , 0.7, , 0.9, -1600]),
+
+  // ---- Life on the lot (D-155) ----
+  // The flock taking off: a soft flutter of low-passed noise, a few wingbeats fading out.
+  flap: one([0.3, 0, 300, 0.01, 0.16, 0.1, 4, 1, , , , , 0.07, , , , , 0.8, , 0.9, -1100]),
 };
 
 export const SOUND_IDS = Object.keys(SOUNDS) as readonly SoundId[];

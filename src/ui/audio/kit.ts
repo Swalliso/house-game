@@ -369,6 +369,16 @@ export const RECIPES: Partial<Record<SoundId, Recipe>> = {
     ],
   },
   // The milestone's drumroll keeps its ZzFX placeholder: no recording here rolls.
+
+  // Life on the lot (D-155): the flock taking off, three quick wingbeats from the yard's cloth,
+  // higher and softer than a yard piece landing, fading as the crows go.
+  flap: {
+    layers: [
+      { set: 'fwp', db: -14, rate: 1.4 },
+      { at: 0.09, set: 'fwp', db: -17, rate: 1.55 },
+      { at: 0.19, set: 'fwp', db: -21, rate: 1.45 },
+    ],
+  },
 };
 
 // ---- Pitch ----
