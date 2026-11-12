@@ -464,6 +464,57 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* A milestone's last week, or an overtime week (D-154): an orange tag centered on End week's
+   top edge. It reaches up into the bar's own top padding (--space-2) and no further, a hover's
+   lift included, so it never covers the card above; and down over the button's top, clear of
+   its words, which drop 2 UI px to make room. It stamps in as the week comes up and again as a
+   card is placed (Hand.tsx). */
+.hand-actions .end-week.deciding {
+  padding-top: calc(var(--px) * 4);
+}
+.end-week-tag {
+  position: absolute;
+  top: calc(var(--px) * -2);
+  left: 0;
+  right: 0;
+  width: max-content;
+  margin-inline: auto;
+  padding: 0 var(--px);
+  background: var(--bad-fill);
+  box-shadow:
+    0 0 0 var(--px) var(--ink),
+    inset 0 calc(var(--px) * -1) 0 var(--bad-deep);
+  color: var(--ink);
+  font-size: var(--fs-body);
+  line-height: calc(var(--px) * 9);
+  /* The regular face, as the plaque's last week has: the bold one is wider than End week once
+     Rotate and Cancel stand beside it at 1440 px wide. */
+  font-weight: 400;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: end-week-tag-in var(--dur-last-week-tag) cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+@keyframes end-week-tag-in {
+  0% {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+  55% {
+    opacity: 1;
+    transform: scale(0.95);
+  }
+  100% {
+    transform: none;
+  }
+}
+@keyframes end-week-tag-fade {
+  from {
+    opacity: 0;
+  }
+}
+.reduce-motion .end-week-tag {
+  animation-name: end-week-tag-fade;
+}
 .hand-actions .end-week .keycap {
   font-weight: 400;
 }

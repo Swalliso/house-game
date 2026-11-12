@@ -11,17 +11,23 @@
 // ragged (playtest 5a). M6's photo of the house at each milestone is a strip under the board
 // (EndPhotos.tsx, D-136).
 //
-// M6 (D-135): Copy result, above Copy run code, copies the run as one line for the group chat,
-// with a link that starts the same lot (result-line.ts).
+// M6 (D-135): Copy result copies the run as one line for the group chat, with a link that
+// starts the same lot (result-line.ts).
 //
 // D-139: under the verdict, the next verdict up and the Wow it starts at, and how this house
 // stands against the company's record for its client (company.ts): a new best, or the best to
 // beat.
 //
-// D-150: a loss leads into the next run. Under the stats, a "Next time" tip read from the run
-// (next-time.ts), then "Try this lot again", which starts the same lot, client and crew at once,
-// as the Portfolio's Play this lot again does (a win says that too). Both sit in the column, not
-// in the sticky bar (D-148), so the milestones keep the room they had above it.
+// D-150: a loss leads into the next run: "Try this lot again", which starts the same lot, client
+// and crew at once, as the Portfolio's Play this lot again does (a win says that too, under the
+// stats), and a "Next time" tip read from the run (next-time.ts). Both sit in the column, not in
+// the sticky bar (D-148).
+//
+// D-152 (playtest, 2026-11-11): Copy run code sits on the plank beside "Job done!" ("Run
+// over"), in view at the column's top on every window. Under the stats (D-148) it was a scroll
+// away that nothing on screen showed (617 px below the fold on a 1728×963 laptop), and a
+// playtester couldn't find it. After a loss, Try this lot again and the tip come straight under
+// the verdict, over the milestones: under the stats they were below the fold on every window.
 
 import type { RefObject } from 'preact';
 import { useLayoutEffect, useRef, useState } from 'preact/hooks';
@@ -361,7 +367,7 @@ function Standing({ s }: { s: RunState }) {
   );
 }
 
-/** D-150: a lost run's tip for the next one (next-time.ts), just over Try this lot again. */
+/** D-150: a lost run's tip for the next one (next-time.ts), just under Try this lot again (D-152). */
 function NextTimeTip({ s }: { s: RunState }) {
   const tip = nextTime(s);
   if (!tip) return null;
@@ -400,6 +406,55 @@ const whenSettled = (act: () => void) => () => {
 };
 
 /**
+ * Copy run code on the plank (D-152), as Reroll is on the hand's: in view at the column's top
+ * on every window as the screen comes up. Its words shorten as the plank narrows, to the icon
+ * alone, so the plank's title always shows (end.css); its name is always "Copy run code". The
+ * Menu has it too.
+ */
+function CopyRunCode() {
+  return (
+    <Button
+      size="sm"
+      icon="copy"
+      class="run-end-code"
+      title="Copy run code"
+      aria-label="Copy run code"
+      onClick={whenSettled(() => void copyRunCode())}
+    >
+      <span class="run-end-code-long">Copy run code</span>
+      <span class="run-end-code-short">Copy code</span>
+    </Button>
+  );
+}
+
+/**
+ * Try this lot again, or Play this lot again after a win (D-150): a new run on this lot, for the
+ * same client with the same crew, at once.
+ */
+function AgainButton({ s, won }: { s: RunState; won: boolean }) {
+  return (
+    <Button
+      class="run-end-again"
+      icon="House"
+      title="A new run on this lot, for the same client with the same crew"
+      onClick={(e) => {
+        if (!settled()) return;
+        // The game stays on screen, and the column may have been scrolled to reach this button:
+        // the new run's goods and hand start at its top, as a run from the board does.
+        const column = e.currentTarget.closest('.right');
+        endScreenAgain(s);
+        column?.scrollTo({ top: 0, behavior: 'instant' });
+      }}
+    >
+      {/* The short word where the long one doesn't fit (end.css): one is display: none, so the
+          name read out is the one on screen. */}
+      <span class="run-end-again-long">{won ? 'Play this lot again' : 'Try this lot again'}</span>
+      <span class="run-end-again-short">{won ? 'Play again' : 'Try again'}</span>
+    </Button>
+  );
+}
+
+/**
  * The run-end screen, in place of the hand. It waits for the last tally and banner to play
  * (busy), so the player sees the final week land before the summary.
  */
@@ -411,6 +466,11 @@ export function EndScreen() {
     if (shown) endScreenShown();
   }, [shown]);
   if (!shown) return null;
+  return <EndPanel s={s} />;
+}
+
+/** The end screen's panel for a finished run. No hooks of its own (end-panel.test.tsx walks it). */
+export function EndPanel({ s }: { s: RunState }) {
   const won = s.screen === 'won';
   const phases = CONTENT.balance.phases;
   const title = won
@@ -421,6 +481,7 @@ export function EndScreen() {
       class={`run-end ${won ? 'won' : 'lost'}`}
       title={won ? 'Job done!' : 'Run over'}
       label={title}
+      head={<CopyRunCode />}
     >
       <header class="run-end-head">
         {won && <Icon name="trophy" class="run-end-trophy" />}
@@ -432,37 +493,26 @@ export function EndScreen() {
         </p>
         <Standing s={s} />
       </header>
+      {/* After a loss, Try this lot again and the "Next time" tip come first (D-150, D-152):
+          under the stats they were below the fold on every window. The button leads, so it
+          shows on a 1280×720 window too, where the tip's lines would push it under the sticky
+          bar. */}
+      {!won && (
+        <>
+          <div class="run-end-retry">
+            <AgainButton s={s} won={false} />
+          </div>
+          <NextTimeTip s={s} />
+        </>
+      )}
       <Milestones s={s} />
       <Stats s={s} />
       {s.debug && <p class="run-end-debug">A debug run: cheats were used.</p>}
-      <NextTimeTip s={s} />
-      {/* Copy run code and Title sit in the column, under the stats, not in the sticky bar
-          (D-148): four rows of buttons hid the milestones on a laptop. The Menu has both too.
-          Try this lot again (D-150) leads the group, on a row of its own. */}
+      {/* Title sits in the column, under the stats, not in the sticky bar (D-148): four rows of
+          buttons hid the milestones on a laptop. The Menu has it too. After a win, Play this lot
+          again (D-150) leads the group, on a row of its own. */}
       <div class="run-end-more">
-        <Button
-          class="run-end-again"
-          icon="House"
-          title="A new run on this lot, for the same client with the same crew"
-          onClick={(e) => {
-            if (!settled()) return;
-            // The game stays on screen, and the column was scrolled to reach this button: the
-            // new run's goods and hand start at its top, as a run from the board does.
-            const column = e.currentTarget.closest('.right');
-            endScreenAgain(s);
-            column?.scrollTo({ top: 0, behavior: 'instant' });
-          }}
-        >
-          {/* The short word where the long one doesn't fit (end.css): one is display: none,
-              so the name read out is the one on screen. */}
-          <span class="run-end-again-long">
-            {won ? 'Play this lot again' : 'Try this lot again'}
-          </span>
-          <span class="run-end-again-short">{won ? 'Play again' : 'Try again'}</span>
-        </Button>
-        <Button icon="copy" onClick={whenSettled(() => void copyRunCode())}>
-          Copy run code
-        </Button>
+        {won && <AgainButton s={s} won />}
         <Button icon="exit" onClick={whenSettled(() => goToTitle())}>
           Title
         </Button>

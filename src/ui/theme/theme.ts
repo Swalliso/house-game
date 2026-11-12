@@ -18,3 +18,4 @@ for (const [name, ms] of Object.entries(FEEL.chrome)) style.setProperty(`--dur-$
 style.setProperty('--dur-shop-pop', `${FEEL.shop.popMs}ms`);
 style.setProperty('--dur-shop-turn', `${FEEL.shop.turnMs}ms`);
 style.setProperty('--dur-shop-shimmer', `${FEEL.shop.shimmerMs}ms`);
+style.setProperty('--dur-last-week-tag', `${FEEL.lastWeekTagMs}ms`);

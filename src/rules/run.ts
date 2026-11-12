@@ -257,6 +257,8 @@ export interface Rules {
   nextVerdict(state: RunState): { name: string; score: number } | null;
   /** Weeks of the phase not yet tallied, this one included (1 in an overtime week). */
   weeksLeft(state: RunState): number;
+  /** The Wow the phase's target still needs, 0 once it's met: the week's stamp says it (D-154). */
+  toGo(state: RunState): number;
   /**
    * A rough guide for the progress bar, not a promise: the score plus this week's total (with
    * the play, if any) for each week left in the phase.
@@ -2802,6 +2804,7 @@ export function createRules(content: Content): Rules {
     verdict: (state) => verdictFor(b, state.score, state.screen === 'won', pctOf(state)),
     nextVerdict: (state) => nextVerdictFor(b, state.score, state.screen === 'won', pctOf(state)),
     weeksLeft,
+    toGo: (state) => Math.max(0, targetOf(state) - state.score),
     forecast: (state, play) => {
       if (state.screen !== 'build') return state.score;
       const legal = play ? checkPlay(state, play).legal : false;
