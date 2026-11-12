@@ -14,7 +14,6 @@ import {
   rules,
   shapeCells,
   type Action,
-  type CardType,
   type Cell,
   type DebugAction,
   type DemolishPreview,
@@ -971,8 +970,9 @@ export function pickOption(i: number): boolean {
 
 // The shop (D-051).
 
-export function buy(i: number, strike?: CardType): boolean {
-  return dispatch(strike ? { t: 'buy', i, strike } : { t: 'buy', i });
+/** Buys shop offer i. The strike service is +1 strike, used from the hand (D-157). */
+export function buy(i: number): boolean {
+  return dispatch({ t: 'buy', i });
 }
 
 export function refreshShop(): boolean {

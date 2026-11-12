@@ -470,7 +470,7 @@ export function HighlightsLayer({
   const active = tallyView.value?.activeUid ?? null;
   const held = heldPiece.value;
   const lit = highlighted.value;
-  const p = tool.value === 'demolish' ? null : preview.value;
+  const p = tool.value !== 'build' ? null : preview.value;
   const gained = p?.setsGained.flatMap((s) => s.members) ?? [];
   const flashes = useMemo(
     () =>

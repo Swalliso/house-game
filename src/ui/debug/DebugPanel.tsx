@@ -248,6 +248,7 @@ function Info({ s }: { s: RunState }) {
     ['budget', s.budget],
     ['rerolls', s.rerollsLeft],
     ['demos', s.demolitionsLeft],
+    ['strikes', s.strikesLeft],
     ['overtime', s.overtimeLeft],
     ['auto', s.autoComplete ? 'on' : 'off'],
     ['debug', s.debug ? 'yes' : 'no'],

@@ -2,15 +2,25 @@
 // number pressed twice) strikes it: its type is gone for the run, and a card from its row takes
 // its place. Esc, a click on the lot, or the button again leaves the mode; D and S switch
 // between the two modes; a reroll keeps it. A placement of a card a strike replaces goes with
-// it, and a struck card with the keyboard's focus hands it to the new card in its slot.
+// it, and a struck card with the keyboard's focus hands it to the new card in its slot. Strike's
+// first-time hint waits for the opening, and the struck types bring Your goods in only with the
+// next week's hand, never mid-week under the stamp.
 //
 // The store and the director play real runs here, on the ?debug panel's instant tally.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { rules, type Card, type PlaceAction, type RunSetup } from '../../rules/index.ts';
+import {
+  CONTENT,
+  rules,
+  struckText,
+  type Card,
+  type PlaceAction,
+  type RunSetup,
+} from '../../rules/index.ts';
 import { busy, instantTally } from '../fx/director.ts';
 import {
   debugAction,
+  endWeek,
   inspected,
   log,
   reroll,
@@ -19,6 +29,7 @@ import {
   source,
   startRun,
   strikeArmed,
+  struckAtDeal,
   tentative,
   tool,
 } from '../store.ts';
@@ -29,6 +40,9 @@ import {
   toggleDemolish,
   toggleStrike,
 } from './actions.ts';
+import { strikeHintDue } from './FirstHints.tsx';
+import { shownIn } from './first-job.ts';
+import { foldCounts, foldedEmpty, inventoryRows, showsInventory } from './inventory-rows.ts';
 import { seenHints } from './seen-hints.ts';
 
 const SETUP: RunSetup = {
@@ -212,5 +226,79 @@ describe('strike mode', () => {
     strikeTwice(j);
     expect(log.value).toBe(before);
     expect(strikeFocus.value).toBeNull();
+  });
+});
+
+describe('Strike’s first-time hint', () => {
+  it('is due once Strike is on screen with a strike to use, after the opening', () => {
+    const s = rules.newRun(SETUP);
+    const on = shownIn(s, false);
+    // A standard run shows Strike from week 1: the opening's hints and the checklist's first.
+    expect(strikeHintDue(s, on, new Set())).toBe(false);
+    expect(strikeHintDue(s, on, new Set(['checklist']))).toBe(true);
+    expect(strikeHintDue({ ...s, week: 4, slot: 4 }, on, new Set())).toBe(true);
+    expect(strikeHintDue({ ...s, strikesLeft: 0 }, on, new Set(['checklist']))).toBe(false);
+    expect(strikeHintDue({ ...s, screen: 'shop' }, on, new Set(['checklist']))).toBe(false);
+    // The first job: not before Foundation's second week, where Strike arrives.
+    const seen = new Set(['checklist']);
+    for (const at of [
+      { week: 4, phase: 0, slot: 4 },
+      { week: 5, phase: 1, slot: 1 },
+    ]) {
+      const r = { ...s, ...at };
+      expect(strikeHintDue(r, shownIn(r, true), seen)).toBe(false);
+    }
+    const r = { ...s, week: 6, phase: 1, slot: 2 };
+    expect(strikeHintDue(r, shownIn(r, true), seen)).toBe(true);
+  });
+});
+
+describe('Your goods after a strike', () => {
+  const rows = () => inventoryRows(run.value, false, struckAtDeal.value);
+
+  it('a strike before milestone 1 brings the panel in with the next week’s hand', async () => {
+    // The General Contractor's reserve starts empty: before the first shop there's no panel.
+    expect(run.value.reserve).toEqual([]);
+    expect(showsInventory(rows())).toBe(false);
+    const [i] = strikable();
+    toggleStrike();
+    strikeTwice(i!);
+    expect(run.value.struck).toHaveLength(1);
+    // Mid-week it stays out: not brought in at 801 to 1099 px tall (the user's 1728×963), and
+    // folded and empty up to 800 px, so the hand never moves under the stamp.
+    expect(showsInventory(rows())).toBe(false);
+    expect(foldedEmpty(run.value, rows())).toBe(true);
+    // A reroll deals the same week's hand again.
+    expect(reroll()).toBe(true);
+    expect(showsInventory(rows())).toBe(false);
+    // The next week's hand brings it in, with the struck count on its folded plank.
+    endWeek();
+    await vi.waitFor(() => expect(busy.value).toBe(false));
+    expect(run.value.week).toBe(2);
+    expect(rows().struck).toBe(true);
+    expect(showsInventory(rows())).toBe(true);
+    expect(foldedEmpty(run.value, rows())).toBe(false);
+    expect(foldCounts(run.value)).toContainEqual([
+      'strike',
+      1,
+      struckText(CONTENT, run.value.struck),
+    ]);
+  });
+
+  it('a plank already showing counts a strike at once', () => {
+    // The Landscaper's crew cards wait in the reserve, so the plank shows from week 1.
+    startRun({ ...SETUP, crewId: 'landscaper' });
+    expect(showsInventory(rows())).toBe(true);
+    expect(foldCounts(run.value).some(([icon]) => icon === 'strike')).toBe(false);
+    const [i] = strikable();
+    toggleStrike();
+    strikeTwice(i!);
+    expect(foldCounts(run.value)).toContainEqual([
+      'strike',
+      1,
+      struckText(CONTENT, run.value.struck),
+    ]);
+    // The open panel's Struck row is a line of its own: it waits for the next week's hand too.
+    expect(rows().struck).toBe(false);
   });
 });

@@ -1,9 +1,10 @@
 // The goods panel's rows (M5a): hidden until the supply yard first opens, unless something is
-// in them; then every row shows, and the shop always shows them all.
+// in them; then every row shows, and the shop always shows them all. D-157: the types struck this
+// run, once there are some, from the hand dealt after the strike.
 
 import { describe, expect, it } from 'vitest';
 import { rules, type MilestoneRecord, type RunState } from '../../rules/index.ts';
-import { inventoryRows, showsInventory } from './inventory-rows.ts';
+import { foldCounts, foldedEmpty, inventoryRows, showsInventory } from './inventory-rows.ts';
 
 const fresh = (): RunState =>
   rules.newRun({
@@ -32,6 +33,7 @@ describe("the goods panel's rows", () => {
       blueprints: false,
       upgrades: false,
       freePlay: false,
+      struck: false,
     });
     expect(showsInventory(rows)).toBe(false);
   });
@@ -80,5 +82,49 @@ describe("the goods panel's rows", () => {
     const ready: RunState = { ...s, freePlay: 'ready' };
     expect(inventoryRows(ready, false).freePlay).toBe(true);
     expect(showsInventory(inventoryRows({ ...ready, reserve: [] }, false))).toBe(true);
+  });
+
+  it('show the struck types from the hand dealt after the strike, and at once in the shop', () => {
+    const s: RunState = {
+      ...fresh(),
+      reserve: [],
+      supplies: [],
+      struck: [
+        { kind: 'piece', id: 'garage' },
+        { kind: 'fixture', id: 'skylight' },
+      ],
+    };
+    // Struck this week, after the hand was dealt: not yet while building.
+    const now = inventoryRows(s, false, 0);
+    expect(now.struck).toBe(false);
+    expect(showsInventory(now)).toBe(false);
+    expect(foldedEmpty(s, now)).toBe(true);
+    // The next week's hand brings them in, the folded plank included.
+    const next = inventoryRows(s, false, 2);
+    expect(next).toMatchObject({ struck: true, reserve: false, supplies: false });
+    expect(showsInventory(next)).toBe(true);
+    expect(foldedEmpty(s, next)).toBe(false);
+    // The shop shows them as they are; with no snapshot, so does the build screen.
+    expect(inventoryRows(s, true, 0).struck).toBe(true);
+    expect(inventoryRows(s, false).struck).toBe(true);
+    // None struck, none shown, whatever the snapshot says.
+    expect(inventoryRows({ ...s, struck: [] }, false, 2).struck).toBe(false);
+  });
+
+  it("count each kind on the folded plank, the struck types named in the count's title", () => {
+    const s: RunState = {
+      ...fresh(),
+      reserve: [],
+      supplies: [{ kind: 'fixture', id: 'fireplace' }],
+      struck: [
+        { kind: 'piece', id: 'garage' },
+        { kind: 'fixture', id: 'skylight' },
+      ],
+    };
+    expect(foldCounts(s)).toEqual([
+      ['tool', 1, '1 in the supplies'],
+      ['strike', 2, 'Struck: Garage, Skylight'],
+    ]);
+    expect(foldCounts({ ...s, supplies: [], struck: [] })).toEqual([]);
   });
 });

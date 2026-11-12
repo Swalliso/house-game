@@ -137,6 +137,8 @@ const CONTROLS: readonly (readonly [keys: string, does: string])[] = [
   ['Click a tile again', 'Take it off a Fence or Driveway'],
   ['Enter', 'End week'],
   ['D', 'Demolish'],
+  // D-157: a hand card's type, gone for the run.
+  ['S', 'Strike: then click a card twice'],
   ['Mouse wheel', 'Zoom'],
   ['Drag', 'Pan'],
   ['F', 'Fit the lot'],
@@ -157,6 +159,7 @@ function HowToPlayText() {
   const layout = rules.rule(s, 'layoutRow');
   const rerolls = rules.rule(s, 'rerollsPerPhase');
   const demolitions = rules.rule(s, 'demolitions');
+  const strikes = rules.rule(s, 'strikes');
   const overtime = rules.rule(s, 'overtime');
   const crew = CONTENT.crews[s.setup.crewId]?.name;
   const sets = either(Object.values(CONTENT.sets).map((set) => set.name));
@@ -376,6 +379,16 @@ function HowToPlayText() {
             New cards for both rows: {rerolls} per milestone{crew ? ` with the ${crew}` : ''}.
           </dd>
           <dt>
+            <Icon name="strike" />
+            Strike
+          </dt>
+          <dd>
+            Strike a card in your hand: no more of its type this run (the{' '}
+            {CONTENT.pieces.lKitchen.name} goes with the {CONTENT.pieces.kitchen.name}), and a card
+            from its row takes its place. You start with {strikes}, get {b.strikesPerMilestone} more
+            at each milestone, and keep any you don't use.
+          </dd>
+          <dt>
             <Icon name="hammer" />
             Demolish
           </dt>
@@ -425,7 +438,8 @@ function HowToPlayText() {
             the hand is your week's build. Each piece holds one; a new one replaces it.
           </li>
           <li>
-            <b>Strike a card</b> (a shop service) and that card type never comes up again this run.
+            The <b>services</b> are one more reroll, demolition or strike, to keep. Each costs a
+            little more every time you buy one.
           </li>
         </ul>
       </Section>
