@@ -353,7 +353,7 @@ interface RunState {
   phaseStartScore: number
   budget: number
   hand: Card[]                         // this week's cards, the Rooms row then the Layout row (D-121: roomsRow 2, layoutRow 2); a Card is a piece or a fixture
-  reserve: { id: PieceId; crew?: true }[]   // bought pieces (2 slots) + crew starting pieces (extra slots, marked crew)
+  reserve: ReservePiece[]              // bought pieces (2 slots) + extra slots: crew starting pieces (crew), an arrival's cards (arrival, D-103), the client's (client) and the standing stock (stock, D-160)
   supplies: (FixtureId | ToolId)[]     // bought fixtures and tools (3 slots), used as free actions
   rerollsLeft: number                  // reset to rerollsPerPhase at each phase start
   bonusRerolls: number                 // bought from the shop; spent after rerollsLeft and never expire
@@ -416,6 +416,7 @@ type Action =
 `GameEvent` covers:
 
 - `handDrawn` (the final hand; `reroll` when a reroll drew it, both rows (D-132); `free` and `swapped` when swaps replaced cards with no play, D-121)
+- `arrived` (D-103: a household member moves in, with their cards) and `delivered` (D-160: the client's or the standing stock's cards into the reserve's extra slots), in that order before the week's `handDrawn`
 - `cardStruck` (D-157: the card picked, the type, each slot's old and new card, strikes left)
 - `placed`, `installed`, `demolished`, `transformed`, `moved`
 - `toolUsed`, `findClaimed` (a find's reward, for its own little moment)
@@ -432,7 +433,7 @@ Each phase writes out the full payload of the events and types it adds in `rules
 
 | Function | Use |
 |---|---|
-| `newRun(setup) → RunState` | Lot from the seed; crew starting pieces into the reserve; first hand drawn. `autoComplete` always starts off. |
+| `newRun(setup) → RunState` | Lot from the seed; crew starting pieces into the reserve; week 1's start, with the client's week-1 cards (D-160); first hand drawn. `autoComplete` always starts off. |
 | `apply(state, action) → { state, events }` | The only way state changes. Throws `IllegalAction` with a reason. Never mutates its input. |
 | `legalActions(state)` | For bots, and for greying out cards and buttons. |
 | `resolveWeek(state, play \| null)` | The end-of-week step: apply the week's play (a placement, an install, or none), tally, add economy budget. Both `apply` and `preview` call it, so they can't disagree. |
@@ -472,8 +473,9 @@ The UI keeps an event queue and plays it through an animation director (place �
 **Start of week:**
 
 1. Transforms resolve (a Sapling old enough becomes a Tree), so the board the player sees is the board that scores.
-2. The hand is drawn in two rows (D-121): `roomsRow` distinct Rooms cards (2) and `layoutRow` distinct Layout cards (2), each from its own pool: pieces, plus fixtures from phase 2. A type at its limit in the checklist draws at half weight (D-104).
-3. Each card with no play (no legal spot, no legal host, and no Renovation) is swapped for another card from its row, up to `swapTries` (3) tries: the first with a play, else the last tried. A reroll redraws both rows (D-132) and swaps the same way; the reserve doesn't count. Its draw and its swaps leave out the cards it replaces, topping a row up from them only when its pool has too few others.
+2. In a phase's first week (never an overtime week), the household members due move in with their cards (D-103), then the client's deliveries for that phase land (D-160). From Foundation on, the standing stock then tops the reserve's extra slots up to one Hallway and one Fence pack, only what's missing (D-160; a first job's first top-up is in Foundation's third week).
+3. The hand is drawn in two rows (D-121): `roomsRow` distinct Rooms cards (2) and `layoutRow` distinct Layout cards (2), each from its own pool: pieces, plus fixtures from phase 2. A type at its limit in the checklist draws at half weight (D-104).
+4. Each card with no play (no legal spot, no legal host, and no Renovation) is swapped for another card from its row, up to `swapTries` (3) tries: the first with a play, else the last tried. A reroll redraws both rows (D-132) and swaps the same way; the reserve doesn't count. Its draw and its swaps leave out the cards it replaces, topping a row up from them only when its pool has too few others.
 
 **Fast-forward (D-040):**
 
@@ -670,7 +672,7 @@ type HouseCondition =                             // about the house: specs, req
   | { demolishedSinceAccepted: { min: number } }
   // M4a, for the house rules (D-101):
   | { ratio: { count: Selector; per: Selector; every: number; min?: number } }   // a Bathroom for every 2 Bedrooms
-  | { outline: { minRooms: number; maxRooms?: number; minFillPct: number; maxAspect: number } }  // Under one roof
+  | { outline: { minRooms: number; maxRooms?: number; minFillPct: number; maxAspect: number } }  // A compact house (id underOneRoof; D-160)
   | { variety: { of: Selector; min: number; maxEach: number; exempt?: Selector } }              // a tidy yard
   | { stages: { fromPhase: number; condition: HouseCondition }[] }   // by milestone: a household that grows
   | { and: HouseCondition[] } | { or: HouseCondition[] } | { not: HouseCondition }
@@ -757,6 +759,7 @@ interface ClientDef {
   tastes: Modifier[]
   pool: Modifier[]               // drawWeight only
   changeOrders: ChangeOrderId[]
+  deliveries?: { phase: number; cards: PieceId[]; text: string }[]   // D-160: what the client brings, into extra reserve slots
   targetPct: number              // per-client target factor from the sim; 100 = default
 }
 
@@ -765,7 +768,8 @@ type Rarity = 'common' | 'uncommon' | 'rare'
 interface BlueprintDef { id; name; tier; rarity: Rarity; price: number; modifiers: Modifier[] }
 
 interface CrewDef { id; name; tier; blurb: string; modifiers: Modifier[]; startReserve?: PieceId[] }
-// Starting pieces sit in extra reserve slots that don't count against the 2.
+// Starting pieces sit in extra reserve slots that don't count against the 2, as do an arrival's
+// cards (D-103), the client's deliveries and the standing stock (D-160).
 
 type ChangeOrderDef = { id; name; text: string; scope: 'generic' | ClientId; tier } & (
   | { kind: 'request'; condition: HouseCondition; reward: Reward }       // met by the next milestone
@@ -1194,7 +1198,7 @@ After M4 and before M5b (D-097's juice note): the reward feedback on M5a's art, 
 
 - the tiered celebration ladder (§12)
 - distinct moments for a set completing, a Rhythm payout, a find, opening a crate, a Rare in the shop, and a spec being met
-- M4's moments, beyond the simple pops M4 gives them (`house-systems-review.md` §6): a Renovation's level-up (M4 pops the room's stars, D-111), an arrival and the arrivals' markers on the progress bar, a change order's stamp, a house rule met or lost, and "Topped out!" the first week Under one roof holds
+- M4's moments, beyond the simple pops M4 gives them (`house-systems-review.md` §6): a Renovation's level-up (M4 pops the room's stars, D-111), an arrival and the arrivals' markers on the progress bar, a change order's stamp, a house rule met or lost, and "Topped out!" the first week A compact house holds (Under one roof before D-160)
 - screen shake and particles, with Reduce motion, the Screen shake slider, and the Flashing toggle
 - the roof reveal at the Roofing milestone. After playtest 5, D-133 keeps the reveal's roof on until the player's next move, adds a Roof button (T) to put it back on, and opens the end screen with it on. *D-147 (2026-11-10) took the roof out: the reveal, the button and the end screen's roof.*
 - D-094's option 1, chosen 2026-11-10: the tally plays pieces depth first along what boosts what, with an arc from each booster, and the placement preview draws the same arcs. Options 2–4 wait until after the jam.
@@ -1700,7 +1704,7 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
 - **Building over Trees:** allowed and free; the Tree is gone.
 - **Lawn:** a 2×2 piece (was 1×1, so a big lot fills in; D-049), +1 per adjacent Lawn, at most 4. This replaces "per connected Lawn tile", which grows quadratically.
 - **Counting Trees and views:** each Tree tile is a separate neighbor, so effects that count them carry a `max` (Bedroom: 3; Library: 3; Living Room and Patio views: 3; Pool's Tree penalty: 3).
-- **Draw weights:** integers, with 10 = normal. Special pieces have weight 0 and arrive through the shop (M3a) or a client or crew (M4a and M4b).
+- **Draw weights:** integers, with 10 = normal. Special pieces have weight 0 and arrive through the shop (M3a) or a client or crew (M4a and M4b). Dale's Home Office and the Barkers' Doghouse also come with the client, one each in week 1 (D-160).
 
 ### M2
 
@@ -1761,7 +1765,7 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
     - crates: 4
     - company upgrades: 6–8
 - **Slots:**
-  - **Reserve:** 2 pieces. A reserved piece can be placed in any later week as that week's turn. Crew starting pieces use extra slots.
+  - **Reserve:** 2 pieces. A reserved piece can be placed in any later week as that week's turn. Crew starting pieces, an arrival's cards, the client's deliveries and the standing stock use extra slots (D-103, D-160).
   - **Supplies:** 3, shared by bought fixtures and tools, used as free actions in a build week.
   - **Blueprints:** 4, no duplicates.
   - Company upgrades add one of each (Storage Unit, Tool Belt, Drafting Table).
@@ -1793,16 +1797,18 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
   - Dale's "nothing Loud next to an office" counts only once he has an office; the street doesn't count
 - **The house rules** (D-093's option B, D-101): every checklist starts with seven, in the client's numbers, each +0.25 while it holds:
   - the household: Room for everyone (the client's Bedroom range), a Bathroom for every two Bedrooms (at least one), One Kitchen (an L-Kitchen counts), and a living room or two (1–2 Living Rooms, at most one Dining Room)
-  - the shape: Under one roof (4+ rooms, filling 60% of their box, the box no longer than 2:1) and Cozy (6+ rooms, each touching 2+ rooms; a Hallway's link counts)
+  - the shape: A compact house (Under one roof before D-160; 4+ rooms, filling 60% of their box, the box no longer than 2:1) and Cozy (6+ rooms, each touching 2+ rooms; a Hallway's link counts)
   - the yard: a tidy yard ("6 or more yard pieces, and no yard type stands 4 or more times"; outbuildings count; Fences, Driveways, and Saplings count toward the 6 but never break it)
-  - a client wish that repeats a house rule becomes the client's numbers for it (the Hendersons' Bedrooms and Bathrooms; Juniper's 4–8 rooms is her Under one roof)
+  - a client wish that repeats a house rule becomes the client's numbers for it (the Hendersons' Bedrooms and Bathrooms; Juniper's 4–8 rooms is her A compact house)
   - Room for everyone rises with the household's arrivals (M4b, D-103, D-109): both ends +1 at each arrival, and from that arrival on it needs the member's room. The Hendersons go 2–3, then 3–4 from Framing (the twins) and 4–5 from Drywall (Grandma); the other clients 1–2, then 2–3 from their member's arrival. (In M4a, before arrivals, it stepped up at Framing and Drywall.)
 - **Renovate** (D-102): a room card whose type is at its limit can level a room of that type instead: +4 Comfort a level, up to 2. Levels stay through the Moving Truck and transforms. It can be Weekend Crew's next play, and a card that can only renovate doesn't count as fitting for the free redraw.
 - **Half-weight draws** (D-104): a type at its limit draws at half weight while it stays there.
 - **The yard rules** (D-105): the Patio, Hot Tub, and Fire Pit earn nothing unless they touch a room (not blocking; a Hallway alone doesn't count); Treehouses don't count each other as Kid partners.
 - **Packs** (D-106): one Fence card places 1–8 connected tiles, and one Driveway card 1–8 (D-140; 1–6 before), in one week, as one piece.
+- **The standing stock** (D-160): from Foundation on, at the start of each milestone (never in overtime) the reserve's extra slots are topped up to hold one Hallway and one Fence pack, only what's missing (`standingStock` in `balance.ts`). A card of the type already in an extra slot counts (the General Contractor's Fence, an arrival's or the client's); one bought or copied doesn't. A first job's first top-up is in Foundation's third week (`firstJobSlot`). Placing one is the week's build, and a strike of the type leaves the stock alone.
+- **Deliveries** (D-160): `ClientDef.deliveries` land at the start of their phase's first week, after the arrivals, marked `client`, in extra slots: Dale's Home Office and the Barkers' Doghouse in week 1. A delivery isn't a household member: it moves no Room for everyone and isn't in `arrived`.
 - **Juniper:**
-  - her limit becomes the spec "a house of 4–8 rooms", so it's an achievement rather than free from week 1, plus a −10% taste per room over 8. Under D-101 it's her Under one roof: 4–8 rooms, filling 60% of their box
+  - her limit becomes the spec "a house of 4–8 rooms", so it's an achievement rather than free from week 1, plus a −10% taste per room over 8. Under D-101 it's her A compact house (D-160's name): 4–8 rooms, filling 60% of their box
   - early-completion rewards doubled
   - if she still doesn't work in the sim, move her to Stretch
 - **Tastes:** a like is +50%, a dislike −50%, "earns double" +100%, all in the same bucket; "earns nothing" is ×0.
@@ -2028,9 +2034,9 @@ Every checklist starts with the seven house rules (D-101), in the client's numbe
 |---|---|---|---|---|---|
 | **Hendersons** | Bedrooms 2–3, rising with the household (their bedroom ≥ 4 and bathroom ≥ 2 are where it ends up); adjacentPair kitchen–diningRoom; fencedYardTiles ≥ 4 (any fenced yard, D-069) | `earn {tag Kid} +50`; `earn lawn +50`; `earn {tag Loud ∧ touching bedroom} −50` | bedroom, bathroom, diningRoom, fence +100% (not the Kitchen, D-108) | *Golden retriever:* request `count {doghouse ∧ in fencedYard} ≥ 1`. *Thanksgiving:* phase `setBonus entertainer +100`. (*Twins* is now their arrival at Framing, D-103.) | M4a / M4b |
 | **Count Vladislav** | `count {room ∧ tag Dark} ≥ 3`; library = 1 (D-108) | `earn {tag Dark} +100`; `earnNothing {tag Sunny}`; `earn {touching tree} +50`; `earn herbGarden −100` | library add 20 | *The coven is visiting:* request `countNew {room ∧ interior} ≥ 2`. *Eternal night:* phase `grantTag {property room} Dark` | M4a / M4b |
-| **Barkers** | fencedYardTiles ≥ 12; doghouse ≥ 2; mudroom = 1 (D-108) | `earn {tag Pet} +50`; `earn lawn +50`; `earn flowerBed −50` | mudroom add 20; doghouse, fence +100% | *Another rescue:* request `countNew doghouse ≥ 1`. *Agility course:* request `group {lawn ∧ in fencedYard} minTiles 8` (two connected Lawns). *A litter of puppies:* phase `earn {tag Pet} +100`; `earn lawn +100`; `earnNothing flowerBed` (D-137) | M4a / M4b |
-| **Juniper Vale** | her Under one roof: 4–8 rooms (was `and(count {room} ≥ 4, count {room} max 8)`); `count {room ∧ view} ≥ 2` | `perCountOver {room} over 8 −10`; `earn garage −100`; `rule earlyRewardPct +100` | — | *Declutter:* request `demolishedSinceAccepted ≥ 1`. *Tea garden:* request `countNew {patio ∧ view} ≥ 1`. *A magazine shoot:* phase `earn {room ∧ view} +100`; `earnNothing closet`; `earnNothing hallway` (Long Hallways count) (D-137) | M4a / M4b |
-| **Dale** | homeOffice = 2 (D-108); `and(homeOffice ≥ 1, none {tag Loud ∧ touching homeOffice})` | `budget all +100` | homeOffice +100% | *Big deadline:* restriction `forbid {tag Loud}`. *Started a podcast:* request `countNew {room ∧ interior} ≥ 1`. *Out of office:* phase `earn {tag Outdoor} +100`; `earnNothing homeOffice` (points only: they still pay budget) (D-137) | M4a / M4b |
+| **Barkers** | fencedYardTiles ≥ 12; doghouse ≥ 2 (one comes with them in week 1, D-160); mudroom = 1 (D-108) | `earn {tag Pet} +50`; `earn lawn +50`; `earn flowerBed −50` | mudroom add 20; doghouse, fence +100% | *Another rescue:* request `countNew doghouse ≥ 1`. *Agility course:* request `group {lawn ∧ in fencedYard} minTiles 8` (two connected Lawns). *A litter of puppies:* phase `earn {tag Pet} +100`; `earn lawn +100`; `earnNothing flowerBed` (D-137) | M4a / M4b |
+| **Juniper Vale** | her A compact house: 4–8 rooms (was `and(count {room} ≥ 4, count {room} max 8)`); `count {room ∧ view} ≥ 2` | `perCountOver {room} over 8 −10`; `earn garage −100`; `rule earlyRewardPct +100` | — | *Declutter:* request `demolishedSinceAccepted ≥ 1`. *Tea garden:* request `countNew {patio ∧ view} ≥ 1`. *A magazine shoot:* phase `earn {room ∧ view} +100`; `earnNothing closet`; `earnNothing hallway` (Long Hallways count) (D-137) | M4a / M4b |
+| **Dale** | homeOffice = 2 (D-108; one comes with him in week 1, D-160); `and(homeOffice ≥ 1, none {tag Loud ∧ touching homeOffice})` | `budget all +100` | homeOffice +100% | *Big deadline:* restriction `forbid {tag Loud}`. *Started a podcast:* request `countNew {room ∧ interior} ≥ 1`. *Out of office:* phase `earn {tag Outdoor} +100`; `earnNothing homeOffice` (points only: they still pay budget) (D-137) | M4a / M4b |
 
 ### Crews
 

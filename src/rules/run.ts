@@ -20,11 +20,13 @@
 //
 // Start of week: transforms resolve (a Sapling old enough becomes a Tree), the household's
 // arrivals move in at their phase's first week (M4b, D-103: their cards go into the reserve's
-// extra slots), and the hand is drawn in two rows, Rooms then Layout (D-121). A card with no
-// play at all (no spot, no host, no Renovation) is swapped for another from its row, trying up
-// to `swapTries` cards; that replaced D-070's free redraw. A reroll redraws both rows, then
-// swaps (D-132; D-121 had a reroll per row). Neither its draw nor its swaps deal back a card it
-// replaced while its row's pool has enough others.
+// extra slots), what the client brings for that phase follows them, and from Foundation on the
+// standing stock tops those slots up to a Hallway and a Fence at each milestone's first week
+// (D-160: only what's missing). Then the hand is drawn in two rows, Rooms then Layout (D-121).
+// A card with no play at all (no spot, no host, no Renovation) is swapped for another from its
+// row, trying up to `swapTries` cards; that replaced D-070's free redraw. A reroll redraws both
+// rows, then swaps (D-132; D-121 had a reroll per row). Neither its draw nor its swaps deal back
+// a card it replaced while its row's pool has enough others.
 //
 // Strikes (D-157): a free action on a hand card. Its type (a piece's root type, or a fixture)
 // is never drawn again this run (D-084's per-row floors hold), and it and any other hand card
@@ -203,6 +205,7 @@ import { isRoom } from './layout.ts';
 import {
   canStrike,
   crateOptions,
+  inExtraSlot,
   offerPrice,
   openVisit,
   refreshPrice,
@@ -1004,14 +1007,75 @@ export function createRules(content: Content): Rules {
     };
   }
 
-  /** Start of week, step 2: in the first week of an arrival's phase, its member moves in. */
+  /**
+   * Start of week, step 2: in the first week of an arrival's phase, its member moves in; then
+   * what the client brings for that phase, and the standing stock's top-up (D-160).
+   */
   function arrive(state: RunState, events: GameEvent[]): RunState {
-    if (state.slot !== 1 || state.overtimeWeek !== 0) return state;
+    if (state.overtimeWeek !== 0) return state;
     let s = state;
-    for (const a of clientOf(state).household.arrivals) {
-      if (a.phase === s.phase && !s.arrived.includes(a.id)) s = land(s, a, events);
+    if (s.slot === 1) {
+      for (const a of clientOf(state).household.arrivals) {
+        if (a.phase === s.phase && !s.arrived.includes(a.id)) s = land(s, a, events);
+      }
+      s = deliver(s, events);
     }
-    return s;
+    return restock(s, events);
+  }
+
+  /** Cards into the reserve's extra slots, marked by where they came from (D-160). */
+  function addExtra(
+    s: RunState,
+    from: 'client' | 'stock',
+    cards: readonly PieceId[],
+    events: GameEvent[],
+  ): RunState {
+    if (cards.length === 0) return s;
+    events.push({ t: 'delivered', from, phase: s.phase, cards: [...cards] });
+    const mark = from === 'client' ? { client: true as const } : { stock: true as const };
+    return { ...s, reserve: [...s.reserve, ...cards.map((id): ReservePiece => ({ id, ...mark }))] };
+  }
+
+  /**
+   * D-160: what the client brings in the first week of this phase. Not a member: nothing joins
+   * `arrived`, and Room for everyone is as it was. A week starts once, so no list is kept.
+   */
+  function deliver(s: RunState, events: GameEvent[]): RunState {
+    const due = (clientOf(s).deliveries ?? []).filter((d) => d.phase === s.phase);
+    return addExtra(
+      s,
+      'client',
+      due.flatMap((d) => d.cards),
+      events,
+    );
+  }
+
+  /**
+   * D-160: whether the standing stock tops up this week: each milestone's first from
+   * `fromPhase` on, and in a first job, week `firstJobSlot` of `fromPhase` itself.
+   */
+  function stockDue(s: RunState): boolean {
+    const stock = b.standingStock;
+    if (s.overtimeWeek !== 0 || s.phase < stock.fromPhase) return false;
+    const first = s.phase === stock.fromPhase && s.setup.mode === 'firstJob';
+    return s.slot === (first ? stock.firstJobSlot : 1);
+  }
+
+  /**
+   * D-160: the standing stock tops the reserve's extra slots up to one of each of its pieces. A
+   * piece of that type already waiting in an extra slot (the stock's, or the Landscaper's Fence)
+   * counts, so it only adds what's missing. A strike never touches the reserve.
+   */
+  function restock(s: RunState, events: GameEvent[]): RunState {
+    if (!stockDue(s)) return s;
+    const waiting = s.reserve.filter(inExtraSlot).map((r) => r.id);
+    const missing: PieceId[] = [];
+    for (const id of b.standingStock.pieces) {
+      const k = waiting.indexOf(id);
+      if (k >= 0) waiting.splice(k, 1);
+      else missing.push(id);
+    }
+    return addExtra(s, 'stock', missing, events);
   }
 
   // -------------------------------------------------------------------------------------

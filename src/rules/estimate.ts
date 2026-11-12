@@ -28,8 +28,8 @@
 // - count and none over static selectors (piece types, room, indoor, yard, outbuilding,
 //   viewSource, and any/all/not of them), weighted as conditions.ts counts (countsAs
 //   modifiers, the piece's own card);
-// - ratio (a Bathroom for every two Bedrooms), outline (Under one roof: its rooms, the fill of
-//   their box, the box's aspect), and variety (a tidy yard, exempt types included);
+// - ratio (a Bathroom for every two Bedrooms), outline (A compact house: its rooms, the fill
+//   of their box, the box's aspect), and variety (a tidy yard, exempt types included);
 // - the current phase's stage of a staged line, and and/or/not of any of these.
 // Lines about tags (Dark), views, touching, adjacency, groups, sets, and fenced yards stay out,
 // since placing a piece can change them in ways only a new layout shows, and so do change

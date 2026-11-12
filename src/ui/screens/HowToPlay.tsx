@@ -30,6 +30,7 @@ import {
   rewardText,
   rules,
   SCORE_LABELS,
+  stockText,
   type PieceId,
   type SetDef,
 } from '../../rules/index.ts';
@@ -327,6 +328,9 @@ export function HowToPlayText() {
   const perLine = multNumber(rules.rule(s, 'specBonus'));
   const fenceTiles = CONTENT.pieces.fence.pack?.maxTiles;
   const drivewayTiles = CONTENT.pieces.driveway.pack?.maxTiles;
+  // D-160: the standing stock, and the milestone it starts at.
+  const stock = b.standingStock.pieces.length > 0 ? stockText(CONTENT) : null;
+  const stockFrom = phases[b.standingStock.fromPhase]?.name;
   const orderMilestones = all(
     b.changeOrderAfter.flatMap((k) => (phases[k - 1] ? [phases[k - 1]!.name] : [])),
   );
@@ -391,6 +395,13 @@ export function HowToPlayText() {
               <b>A Fence or a Driveway</b> is a pack: click out its tiles one by one, up to{' '}
               {fenceTiles} Fence tiles, or {drivewayTiles} Driveway tiles that reach the street or a
               Driveway. Click a tile again to take it off. It builds as one piece.
+            </li>
+          )}
+          {stock && stockFrom && (
+            <li>
+              <b>Always in stock:</b> from {stockFrom} on, {stock}{' '}
+              {b.standingStock.pieces.length === 1 ? 'waits' : 'wait'} in your reserve until you
+              want one. Placing one is a week's build, and the next milestone brings another.
             </li>
           )}
           <li>Every piece you've built earns again every week, so early pieces keep paying.</li>

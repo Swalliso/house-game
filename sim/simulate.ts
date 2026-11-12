@@ -4,7 +4,8 @@
 // cumulative Wow after every tallied week, each milestone, lot fill, fence use, the enclosure
 // probe after milestone 3, and the economy; and for §8's M3 and M4 reports, per-piece offers,
 // picks and earnings, the score layers, flat points by source, house siting, early
-// completions, and strikes used from the hand (D-157).
+// completions, strikes used from the hand (D-157), and reserve cards played by where they came
+// from (D-160: the standing stock and what the client brought among them).
 //
 // A bot that loops or breaks must not hang CI or sink a sweep without a trace (§9): each run
 // caps its steps per week and in all, and any throw from the policy or from apply() comes back
@@ -25,6 +26,7 @@ import type {
   MilestoneResult,
   PieceId,
   PickOption,
+  ReservePiece,
   Rules,
   RunState,
   ShopOffer,
@@ -36,6 +38,17 @@ import { contentHash, encodeRunCode, placedCells, stream, weekTotal } from '../s
 import { enclosureCost, type EnclosureCost } from './enclosure.ts';
 import { houseStats, type HouseStats } from './house.ts';
 import type { Policy } from './policies/index.ts';
+
+/** Where a reserve card came from (D-160): bought, picked or copied (own), or an extra slot's. */
+export type ReserveSource = 'own' | 'crew' | 'arrival' | 'client' | 'stock';
+
+export function reserveSource(r: ReservePiece): ReserveSource {
+  if (r.crew) return 'crew';
+  if (r.arrival !== undefined) return 'arrival';
+  if (r.client) return 'client';
+  if (r.stock) return 'stock';
+  return 'own';
+}
 
 export interface RunRecord {
   seed: string;
@@ -88,6 +101,11 @@ export interface RunRecord {
    * or a fixture), the run's week, and the milestone it was in (0-based phase).
    */
   struck: { type: string; week: number; phase: number }[];
+  /**
+   * D-160: reserve cards played (placed or renovated with), by where they came from: bought,
+   * picked or copied (`own`), a crew's, an arrival's, what the client brought, the stock's.
+   */
+  reservePlays: Record<ReserveSource, number>;
   /** Fence-type (wall) cards in each week's first hand, summed per phase (index = phase). */
   wallOffers: number[];
   /** The score when the run ended (early bonuses included). */
@@ -409,6 +427,13 @@ export function simulateRun(
   let setWow = 0;
   const early: RunRecord['early'] = [];
   const struck: RunRecord['struck'] = [];
+  const reservePlays: RunRecord['reservePlays'] = {
+    own: 0,
+    crew: 0,
+    arrival: 0,
+    client: 0,
+    stock: 0,
+  };
   const wallOffers = Array.from({ length: phaseCount }, () => 0);
   let firstRow = NaN;
   let firstIndoorRow: number | null = null;
@@ -634,6 +659,10 @@ export function simulateRun(
         countDead(s);
       }
       classify(s, action);
+      if ((action.t === 'place' || action.t === 'renovate') && action.from === 'reserve') {
+        const r = s.reserve[action.i];
+        if (r) reservePlays[reserveSource(r)]++;
+      }
     }
     let applied: { state: RunState; events: GameEvent[] };
     try {
@@ -802,6 +831,7 @@ export function simulateRun(
       siting: { firstRow, firstIndoorRow, frontGap, touchesStreet },
       early,
       struck,
+      reservePlays,
       wallOffers,
       finalScore: s.score,
       house: houseStats(content, s.house),

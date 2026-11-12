@@ -75,7 +75,7 @@ import { Button, Icon } from '../kit/kit.tsx';
 import { BLUEPRINT_ICONS } from '../sprites.ts';
 import type { IconName } from '../theme/art.ts';
 import { BlueprintWorth, GoodBody, goodName, offerGood, type GoodRef } from './goods.tsx';
-import { arrivalOf, midName } from './household.ts';
+import { extraSlotWords } from './household.ts';
 import { Tip } from './Tip.tsx';
 import './inspect.css';
 
@@ -442,14 +442,16 @@ export function SetProgressLines({ id }: { id: PieceId }) {
   );
 }
 
-/** A card in the reserve's extra slots (M4b): a household member's or the crew's. */
+/**
+ * A card in the reserve's extra slots (M4b, D-160): where it came from (the crew, a household
+ * member, the client, or the standing stock), and that it doesn't take a slot of the reserve's.
+ */
 function ExtraSlotNote({ r }: { r: ReservePiece }) {
-  const member = r.arrival !== undefined ? arrivalOf(run.value.setup.clientId, r.arrival) : null;
-  if (!member && !r.crew) return null;
+  const words = extraSlotWords(run.value.setup.clientId, r);
+  if (!words) return null;
   return (
     <p class="muted">
-      {member ? `Came with ${midName(member)}` : 'Your crew’s, from the start'}: in an extra slot,
-      so it doesn’t take one of your reserve’s.
+      {words.from}. It’s in an extra slot, so it doesn’t take one of your reserve’s.
     </p>
   );
 }

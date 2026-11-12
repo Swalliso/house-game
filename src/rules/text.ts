@@ -352,7 +352,7 @@ export function houseConditionText(content: Content, cond: HouseCondition): stri
         : o.maxAspect === 2
           ? 'longer than twice'
           : `longer than ${o.maxAspect} times`;
-    return `${rooms}, filling at least ${o.minFillPct}% of their box, and the box is no ${long} its width`;
+    return `${rooms} that fill at least ${o.minFillPct}% of the box around them, and the box is no ${long} its width`;
   }
   const v = cond.variety;
   return `${v.min} or more ${selectorText(content, v.of, 'some')}, and none of a type stands ${v.maxEach + 1} or more times`;
@@ -1159,7 +1159,15 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
     },
     reserve: {
       title: 'Reserve',
-      text: `Bought pieces wait here (${r.reserveSlots} slots). Placing one is your week’s build, any week you like.`,
+      text:
+        `Bought pieces wait here (${r.reserveSlots} slots). Placing one is your week’s build, ` +
+        `any week you like. Extra slots hold what your crew, the client and their household ` +
+        `bring` +
+        (b.standingStock.pieces.length > 0
+          ? `, and your stock: ${stockText(content)} from ` +
+            `${b.phases[b.standingStock.fromPhase]?.name ?? 'the start'} on, another at each ` +
+            `milestone once you’ve placed one.`
+          : '.'),
     },
     supplies: {
       title: 'Supplies',
@@ -1304,7 +1312,8 @@ export function lastShopText(content: Content): string | null {
 export const HINT_WORDS = 25;
 
 /** The first-time hints (D-045) that state a rule or a number. */
-export type HintTerm = 'score' | 'checklist' | 'early' | 'shop' | 'fixture' | 'renovate' | 'strike';
+export type HintTerm =
+  'score' | 'checklist' | 'early' | 'shop' | 'fixture' | 'renovate' | 'strike' | 'stock';
 
 /** Each within HINT_WORDS, with its numbers from the content. */
 export function hintText(content: Content): Record<HintTerm, string> {
@@ -1343,7 +1352,32 @@ export function hintText(content: Content): Record<HintTerm, string> {
     strike:
       `Strike a card: a new one takes its place, its type is gone this run, and the week goes ` +
       `on. ${b.strikesPerMilestone > 0 ? 'Milestones add strikes.' : 'The shop sells more.'}`,
+    // D-160: where the standing stock waits, and that it comes back (25 words with two pieces).
+    stock: stockHint(content),
   };
+}
+
+/**
+ * D-160: the stock's first-time hint, singular or plural by how many pieces it holds. "Until you
+ * need them": the sim's novice, which plays a card at random, met Foundation less often when it
+ * spent weeks on the stock for its own sake.
+ */
+function stockHint(content: Content): string {
+  const one = content.balance.standingStock.pieces.length === 1;
+  const what = stockText(content);
+  return (
+    `${what.charAt(0).toUpperCase() + what.slice(1)} ${one ? 'waits' : 'wait'} in Your goods, ` +
+    `top right, until you need ${one ? 'it' : 'them'}. ${one ? 'It’s' : 'Each is'} a week’s ` +
+    `build, and another comes next milestone.`
+  );
+}
+
+/** D-160: the standing stock as a phrase: "a Hallway and a Fence". */
+export function stockText(content: Content): string {
+  return joinWords(
+    content.balance.standingStock.pieces.map((id) => article(content.pieces[id].name)),
+    'and',
+  );
 }
 
 /** Where the glossary's strikes come from (D-157): "You start with 1 strike and get 1 more at each milestone." */

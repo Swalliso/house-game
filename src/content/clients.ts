@@ -127,6 +127,11 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
       { kind: 'drawWeight', target: { piece: 'mudroom' }, add: 20 },
       { kind: 'drawWeight', target: { piece: ['doghouse', 'fence'] }, pct: 100 },
     ],
+    // D-160: the first of their two Doghouses comes with them; the big fenced yard's Fence is
+    // the standing stock's, from Foundation.
+    deliveries: [
+      { phase: 0, cards: ['doghouse'], text: 'The Barkers bring one of their two Doghouses.' },
+    ],
     targetPct: 90, // fitted by npm run sim -- --suggest-targets, then checked held out (D-146)
   },
   juniper: {
@@ -138,7 +143,7 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
     household: HOUSEHOLDS.juniper,
     changeOrders: ['declutter', 'teaGarden', 'magazineShoot'],
     specs: [
-      // Her "a house of 4–8 rooms" (Appendix A · M4a) is her Under one roof.
+      // Her "a house of 4–8 rooms" (Appendix A · M4a) is her numbers for A compact house.
       ...houseRules({ household: HOUSEHOLDS.juniper, rooms: { min: 4, max: 8 } }),
       {
         id: 'viewRooms',
@@ -188,6 +193,11 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
     ],
     tastes: [{ kind: 'budget', target: 'all', pct: 100 }],
     pool: [{ kind: 'drawWeight', target: { piece: 'homeOffice' }, pct: 100 }],
+    // D-160: the first of his two Home Offices comes with him, so the wish never waits on the
+    // draw for both (a novice bot was offered none in 11% of runs on develop at dcad8da).
+    deliveries: [
+      { phase: 0, cards: ['homeOffice'], text: 'Dale brings one of his two Home Offices.' },
+    ],
     targetPct: 115, // fitted by npm run sim -- --suggest-targets, then checked held out (D-146)
   },
 };

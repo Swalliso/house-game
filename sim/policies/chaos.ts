@@ -32,6 +32,7 @@ import type {
   ShopOffer,
   UseToolAction,
 } from '../../src/rules/index.ts';
+import { inExtraSlot } from '../../src/rules/index.ts';
 import type { Policy } from './index.ts';
 
 export interface ChaosOptions {
@@ -72,7 +73,7 @@ function goodsNow(rules: Rules, s: RunState): Good[] {
       if (!s.blueprints.some((b) => b.id === id)) out.push({ kind: 'blueprint', id });
     }
   }
-  if (s.reserve.filter((r) => !r.crew && !r.arrival).length < slots.reserve) {
+  if (s.reserve.filter((r) => !inExtraSlot(r)).length < slots.reserve) {
     for (const d of Object.values(c.pieces)) {
       // Special pieces; a member's room (M4b) only ever arrives with its member.
       if (d.drawWeight === 0 && !d.member) out.push({ kind: 'piece', id: d.id });

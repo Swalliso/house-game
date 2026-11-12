@@ -52,6 +52,7 @@ import {
   decodeRunCode,
   encodeRunCode,
   IllegalAction,
+  inExtraSlot,
   placedCells,
   rowOf,
   rules,
@@ -241,10 +242,17 @@ class Checker {
     this.where = 'the first state';
     this.see(`crew:${s.setup.crewId}`);
     this.see(`client:${s.setup.clientId}`);
-    // M4b: a crew's starting cards are in the reserve's extra slots from week 1.
-    const start = CONTENT.crews[s.setup.crewId].startReserve ?? [];
-    if (J(s.reserve.map((r) => [r.id, r.crew])) !== J(start.map((id) => [id, true]))) {
-      this.fail('the crew’s starting cards aren’t in the reserve', s.reserve);
+    // M4b: a crew's starting cards are in the reserve's extra slots from week 1, and D-160:
+    // then what the client brings in week 1.
+    const start = (CONTENT.crews[s.setup.crewId].startReserve ?? []).map((id) => ({
+      id,
+      crew: true,
+    }));
+    const brought = (CONTENT.clients[s.setup.clientId].deliveries ?? [])
+      .filter((d) => d.phase === 0)
+      .flatMap((d) => d.cards.map((id) => ({ id, client: true })));
+    if (J(s.reserve) !== J([...start, ...brought])) {
+      this.fail('the crew’s and the client’s starting cards aren’t in the reserve', s.reserve);
     }
     this.invariants(s, s, null, []);
   }
@@ -751,8 +759,9 @@ class Checker {
       const slots = rules.slots(s);
       if (s.supplies.length > slots.supplies)
         this.fail('supplies over their slots', [s.supplies.length, slots]);
-      // A crew's and an arrival's cards sit in extra slots (M4b).
-      if (s.reserve.filter((r) => !r.crew && !r.arrival).length > slots.reserve)
+      // A crew's, an arrival's, the client's and the stock's cards sit in extra slots (M4b,
+      // D-160).
+      if (s.reserve.filter((r) => !inExtraSlot(r)).length > slots.reserve)
         this.fail('reserve over its slots');
       if (s.blueprints.length > slots.blueprints)
         this.fail('blueprints over their slots', [s.blueprints.length, slots]);
@@ -854,9 +863,12 @@ class Checker {
     if (a.t === 'place' || a.t === 'install' || a.t === 'sell') this.see(`${a.t}:${a.from}`);
     if ((a.t === 'place' || a.t === 'install') && s.freePlay === 'ready') this.see('play:free');
     if (a.t === 'place' && a.from === 'reserve') {
-      // M4b: a member's room (D-103) or a crew's starting card, from the extra slots.
+      // M4b: a member's room (D-103) or a crew's starting card, from the extra slots; D-160:
+      // what the client brought, or the standing stock.
       if (s.reserve[a.i]?.arrival) this.see('place:arrival');
       if (s.reserve[a.i]?.crew) this.see('place:crew');
+      if (s.reserve[a.i]?.client) this.see('place:client');
+      if (s.reserve[a.i]?.stock) this.see('place:stock');
     }
     if (a.t === 'answerChangeOrder') this.see(`answer:${a.i === 0 ? 'first' : 'second'}`);
     if (a.t === 'useTool') {
@@ -880,6 +892,7 @@ class Checker {
       }
       if (e.t === 'changeOrderResolved') this.see(`changeOrder:${e.result}`);
       if (e.t === 'arrived') this.see(e.forced ? 'arrived:forced' : 'arrived:due');
+      if (e.t === 'delivered') this.see(`delivered:${e.from}`);
     }
   }
 }
@@ -940,6 +953,9 @@ const COVERAGE: readonly string[] = [
   ...prefixed('event', ['changeOrderAnswered', 'changeOrderResolved']),
   ...prefixed('arrived', ['due', 'forced']),
   ...prefixed('place', ['arrival', 'crew']),
+  // D-160: the standing stock tops up, and its cards and the client's are played.
+  ...prefixed('delivered', ['stock']),
+  ...prefixed('place', ['client', 'stock']),
 ];
 
 /** The kinds of check that must each have run. */

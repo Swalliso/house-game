@@ -46,7 +46,15 @@ import { SunChip } from '../hud/sun.tsx';
 import { Button, Card, Chip, Icon, Keycap, Panel, type IconName } from '../kit/kit.tsx';
 import { CREW_ICONS, LOT_TRAIT_ICONS } from '../sprites.ts';
 import { appScreen, firstVisit, jobBoardSeed, takeContract } from '../store.ts';
-import { householdLine, householdTip, ownHouseRules, tasteCounts, tastesTip } from './job-card.ts';
+import {
+  deliveryLine,
+  deliveryTip,
+  householdLine,
+  householdTip,
+  ownHouseRules,
+  tasteCounts,
+  tastesTip,
+} from './job-card.ts';
 import { LOT_COLORS, lotMapKind, lotMapSize, lotSummary } from './lot-map.ts';
 import { TitleBackdrop } from './Title.tsx';
 
@@ -379,12 +387,14 @@ function HouseRulesTip() {
 
 /**
  * A card's last lines (D-142): the household and the tastes, a line each, with the whole of each
- * in its tip (job-card.ts). Who moves in, and when, and what they bring; what the client likes
- * and dislikes, counted, and what their jobs draw more of.
+ * in its tip (job-card.ts). Who moves in, and when, and what they bring; what the client brings
+ * for a wish, if anything (D-160); what the client likes and dislikes, counted, and what their
+ * jobs draw more of.
  */
 function FinePrint({ client }: { client: ClientDef }) {
   const { likes, dislikes, draws } = tasteCounts(client);
   const tastes = likes + dislikes + draws > 0;
+  const brings = deliveryLine(client);
   return (
     <ul class="contract-fine">
       <li>
@@ -398,6 +408,18 @@ function FinePrint({ client }: { client: ClientDef }) {
           </Tip>
         </span>
       </li>
+      {brings && (
+        <li>
+          <span class="taste-mark">
+            <Icon name="crate" />
+          </span>
+          <span>
+            <Tip title="What they bring" text={deliveryTip(client)}>
+              {brings}
+            </Tip>
+          </span>
+        </li>
+      )}
       {tastes && (
         <li>
           <span class="taste-mark">

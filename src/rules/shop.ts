@@ -36,6 +36,7 @@ import type {
   PickOption,
   PieceId,
   Rarity,
+  ReservePiece,
   RunState,
   ServiceId,
   ShopOffer,
@@ -77,11 +78,17 @@ export function slotsFor(content: Content, state: RunState): Slots {
 }
 
 /**
- * Reserve pieces that count against its slots: bought, picked, and copied ones. A crew's
- * starting pieces and an arrival's cards (M4b) sit in extra slots.
+ * Whether a reserve piece sits in an extra slot, which doesn't count against the reserve's: a
+ * crew's starting piece and an arrival's card (M4b), or what the client brought and the standing
+ * stock (D-160).
  */
+export function inExtraSlot(r: ReservePiece): boolean {
+  return !!r.crew || r.arrival !== undefined || !!r.client || !!r.stock;
+}
+
+/** Reserve pieces that count against its slots: bought, picked, and copied ones. */
 export function reserveUsed(state: Pick<RunState, 'reserve'>): number {
-  return state.reserve.filter((r) => !r.crew && !r.arrival).length;
+  return state.reserve.filter((r) => !inExtraSlot(r)).length;
 }
 
 export function stockFor(content: Content, shop: number): ShopStock {

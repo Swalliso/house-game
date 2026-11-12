@@ -454,6 +454,22 @@ export function validateContent(content: Content): string[] {
         problems.push(`${at}: none of its cards is its room`);
       }
     }
+    // D-160: what the client brings serves a wish: a card the checklist names, never a member's
+    // room (those come with their member), at a phase of the run.
+    (client.deliveries ?? []).forEach((d, k) => {
+      const at = `${where} delivery ${k}`;
+      const phases = content.balance.phases.length;
+      if (!Number.isInteger(d.phase) || d.phase < 0 || d.phase >= phases) {
+        problems.push(`${at}: lands at a phase from 0 to ${phases - 1}`);
+      }
+      if (!d.text) problems.push(`${at}: needs text`);
+      if (d.cards.length === 0) problems.push(`${at}: no cards`);
+      for (const id of d.cards) {
+        known(id, at);
+        if (content.pieces[id]?.member) problems.push(`${at}: ${id} is a member's room`);
+        if (!specNamed.includes(id)) problems.push(`${at}: the checklist never names ${id}`);
+      }
+    });
     if (!Number.isInteger(client.targetPct) || client.targetPct < 1) {
       problems.push(`${where}: targetPct must be a whole number ≥ 1`);
     }
@@ -504,6 +520,35 @@ export function validateContent(content: Content): string[] {
     if (def.member && !memberOf.has(def.id)) {
       problems.push(`piece ${def.id}: a member's room no arrival brings`);
     }
+  }
+
+  // D-160: the standing stock is pieces of the weekly draw, from a phase of the run, and a first
+  // job's first comes in a week of that phase.
+  const stock = content.balance.standingStock;
+  const stockAt = 'balance standingStock';
+  for (const id of stock.pieces) {
+    known(id, stockAt);
+    const def = content.pieces[id];
+    if (def && (def.member || def.drawWeight <= 0)) {
+      problems.push(`${stockAt}: ${id} isn't in the weekly draw`);
+    }
+  }
+  if (new Set(stock.pieces).size !== stock.pieces.length) {
+    problems.push(`${stockAt}: a piece twice`);
+  }
+  if (
+    !Number.isInteger(stock.fromPhase) ||
+    stock.fromPhase < 0 ||
+    stock.fromPhase >= content.balance.phases.length
+  ) {
+    problems.push(`${stockAt}: fromPhase must be a phase of the run`);
+  }
+  if (
+    !Number.isInteger(stock.firstJobSlot) ||
+    stock.firstJobSlot < 1 ||
+    stock.firstJobSlot > content.balance.weeksPerPhase
+  ) {
+    problems.push(`${stockAt}: firstJobSlot must be a week of the phase`);
   }
 
   // M4b: change orders.

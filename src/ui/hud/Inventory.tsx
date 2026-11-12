@@ -2,8 +2,10 @@
 // supplies (fixtures, installed for free), and the blueprint slots (always on). Hover shows an
 // item in the inspect panel, with Sell for blueprints and supplies; on the build screen a
 // click picks a reserve piece or a supply to place or install. A crew's starting cards and a
-// household member's (M4b) sit in extra slots after the reserve's own, tagged, and don't count
-// against it; a member's pop in as they arrive.
+// household member's (M4b), and what the client brought and the standing stock (D-160), sit in
+// extra slots after the reserve's own, tagged with where they came from ("Crew", "Twins",
+// "Dale", "Stock"), and don't count against it; a member's pop in as they arrive, and the
+// stock's as it tops up.
 //
 // M5a: a wood panel with a row per kind of good. Empty slots are recessed wells, and a row
 // stays hidden until it matters: until the supply yard first opens, an empty row says nothing
@@ -20,8 +22,15 @@
 // brings the panel in only with the next week's hand (inventory-rows.ts).
 
 import { signal } from '@preact/signals';
-import { CONTENT, rules, struckNames, struckText, type ReservePiece } from '../../rules/index.ts';
-import { justArrived } from '../fx/director.ts';
+import {
+  CONTENT,
+  inExtraSlot,
+  rules,
+  struckNames,
+  struckText,
+  type ReservePiece,
+} from '../../rules/index.ts';
+import { justArrived, justDelivered } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
 import { Button, Icon, Panel, Well } from '../kit/kit.tsx';
 import { BLUEPRINT_ICONS, supplyIcon } from '../sprites.ts';
@@ -36,7 +45,7 @@ import {
   tool,
 } from '../store.ts';
 import { isSelected, selectCard } from './actions.ts';
-import { arrivalOf, arrivalTag, midName } from './household.ts';
+import { extraSlotWords } from './household.ts';
 import { foldCounts, foldedEmpty, inventoryRows, showsInventory } from './inventory-rows.ts';
 import { Tip } from './Tip.tsx';
 import './inventory.css';
@@ -96,29 +105,43 @@ function hover(kind: 'reserve' | 'supply' | 'blueprint' | 'upgrade', i: number):
   if (selected.value === null && tool.value === 'build') inspected.value = { kind, i };
 }
 
-/** A card in an extra slot (M4b): the crew's, or a household member's. */
-const isExtra = (r: ReservePiece) => !!r.crew || r.arrival !== undefined;
+/**
+ * How a reserve card pops in (inventory.css' slot-arrive), or null: a member's cards after the
+ * doorbell (FEEL.arrival), and the stock's or the client's at once as they land (FEEL.delivered;
+ * D-160), only the cards that just came.
+ */
+function popOf(r: ReservePiece, i: number): { ms: number; delayMs: number; scale: number } | null {
+  const member = justArrived.value;
+  if (member && r.arrival === member.arrival) {
+    const f = FEEL.arrival;
+    return { ms: f.popMs, delayMs: f.landDelayMs, scale: f.popScale };
+  }
+  const came = justDelivered.value;
+  if (came?.slots.includes(i)) {
+    const f = FEEL.delivered;
+    return { ms: f.popMs, delayMs: came.delayMs, scale: f.popScale };
+  }
+  return null;
+}
 
 /**
- * A reserve card's slot: its name, and an extra slot's tag ("Crew", "Twins") with whose it is in
- * its tip. A member's cards pop in as they arrive, after the doorbell (FEEL.arrival).
+ * A reserve card's slot: its name, and an extra slot's tag ("Crew", "Twins", "Dale", "Stock")
+ * with where it came from in its tip (household.ts extraSlotWords). A card that just came pops
+ * in (popOf).
  */
 function ReserveSlot({ r, i, building }: { r: ReservePiece; i: number; building: boolean }) {
   const s = run.value;
   const def = CONTENT.pieces[r.id];
   const fits = reserveFit.value[i] ?? true;
-  const member = r.arrival !== undefined ? arrivalOf(s.setup.clientId, r.arrival) : undefined;
-  const tag = r.crew ? 'Crew' : member ? arrivalTag(member) : null;
-  const pop = justArrived.value;
-  const popping = !!pop && r.arrival === pop.arrival;
-  const f = FEEL.arrival;
-  const whose = member ? ` (with ${midName(member)})` : r.crew ? ' (your crew’s)' : '';
+  const extra = extraSlotWords(s.setup.clientId, r);
+  const pop = popOf(r, i);
+  const whose = extra?.whose ?? '';
   const classes = [
     'inv-slot',
     'slot-piece',
     def.category,
-    isExtra(r) ? 'slot-extra' : '',
-    popping ? 'just-arrived' : '',
+    inExtraSlot(r) ? 'slot-extra' : '',
+    pop ? 'just-arrived' : '',
     isSelected('reserve', i) ? 'selected' : '',
     building && !fits ? 'no-fit' : '',
   ];
@@ -127,11 +150,11 @@ function ReserveSlot({ r, i, building }: { r: ReservePiece; i: number; building:
       type="button"
       class={classes.filter(Boolean).join(' ')}
       style={
-        popping
+        pop
           ? {
-              animationDuration: `${f.popMs}ms`,
-              animationDelay: `${f.landDelayMs}ms`,
-              '--pop-scale': `${f.popScale}`,
+              animationDuration: `${pop.ms}ms`,
+              animationDelay: `${pop.delayMs}ms`,
+              '--pop-scale': `${pop.scale}`,
             }
           : undefined
       }
@@ -148,7 +171,7 @@ function ReserveSlot({ r, i, building }: { r: ReservePiece; i: number; building:
       }
     >
       <span class="inv-name">{def.name}</span>
-      {tag && <span class="inv-tag">{tag}</span>}
+      {extra && <span class="inv-tag">{extra.tag}</span>}
     </button>
   );
 }
@@ -173,8 +196,8 @@ export function Inventory({ shop = false }: { shop?: boolean }) {
   const building = s.screen === 'build';
   // The reserve's own slots first, then the extra ones, which don't count against it (M4b).
   const indexed = s.reserve.map((r, i) => ({ r, i }));
-  const own = indexed.filter(({ r }) => !isExtra(r));
-  const extra = indexed.filter(({ r }) => isExtra(r));
+  const own = indexed.filter(({ r }) => !inExtraSlot(r));
+  const extra = indexed.filter(({ r }) => inExtraSlot(r));
   const rows = inventoryRows(s, shop, struckAtDeal.value);
   if (!showsInventory(rows)) return null;
   const folded = isFolded(shop);

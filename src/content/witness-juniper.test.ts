@@ -7,7 +7,7 @@
 // - Room for everyone grows with the household (M4b, D-103): 1–2 Bedrooms, then 2–3 and
 //   Rowan's room from Drywall. Rowan's Studio counts as a Bedroom, so the house has 2 Bedrooms
 //   of its own and, for the 3 from Drywall, 2 Bathrooms. The studio is a reserve play.
-// - Cozy wants 6+ rooms and her Under one roof at most 8, so 6–8 rooms: 2 Bedrooms, 2
+// - Cozy wants 6+ rooms and her A compact house at most 8, so 6–8 rooms: 2 Bedrooms, 2
 //   Bathrooms, a Kitchen, and a Living Room, then Rowan's Studio makes 7.
 // - A tidy yard: 6 yard pieces, no type more than twice.
 
@@ -153,7 +153,7 @@ describe('Juniper Vale’s witness house', () => {
     // One piece more: a second Kitchen (an L-Kitchen on the front walk, a legal play).
     const lKitchen: Placement = ['lKitchen', 9, 10, 1];
     expect(placing(PLACEMENTS, lKitchen)).toBe('legal');
-    // One piece fewer: without the second Bathroom, 5 rooms still suit Under one roof (4–8)
+    // One piece fewer: without the second Bathroom, 5 rooms still suit A compact house (4–8)
     // but not Cozy (6+). From Drywall, Rowan's Studio makes 6, every one touching two, but 3
     // Bedrooms then need the second Bathroom.
     const oneBathroom = PLACEMENTS.filter(
