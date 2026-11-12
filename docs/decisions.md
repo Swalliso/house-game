@@ -505,6 +505,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **Considered:** A fixed first contract. Rejected because it changes D-012 and needs a saved run count.
 *Extended by D-142 (Proposed 2026-11-10):* every first-time hint keeps to 25 words, how a week scores is a hint of its own in week 2, and the checklist's hint moves to week 3.
 *2026-11-11 (D-149, Proposed), at the user's ask after the first showing:* a first visit's board opens one contract, the first job, on a lot picked for its opening, and shows the others face down; it starts with the General Contractor, and the crew pick comes with the second run. So the first contract is fixed after all: the browser already remembers a first visit, which was the saved count this entry lacked. The first job's screen fills in week by week, and the first three weeks' hints walk through its opening.
+*Changed by D-158 (Proposed 2026-11-12):* a hint that asks for a play has no "Got it" and goes with its week; any other goes by itself with its week or screen once it has been up 4 seconds; and How to play lists the hints seen, to read again. The first job's first shop is the housewarming gift alone.
 
 ### D-046 · Defaults for the rules the docs leave open
 **Status:** Accepted · 2026-11-05 (with the plan's approval); proposed 2026-11-04
@@ -1834,6 +1835,57 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 *Reserved numbers (2026-11-10): D-115 to D-118 are the layout session's drafts, not in this file yet; D-122 (legibility) is logged below. D-132 to D-134 are playtest 5's fixes, each logged by its own pull request: D-132 one reroll for both rows of the draw, D-133 the roof view, D-134 three more tracks. D-135 and D-136 are M6's end screen (D-135 the result line and link preview, D-136 the milestone photos); D-137 and D-138 belong to the release-day sessions. D-139 is the company's record. D-140 to D-146 are the friction batch, from the 2026-11-10 review's seven points: D-140 the Garage and the Driveway, D-141 what a blueprint is worth and its icon, D-142 first contact, D-143 the blueprint shelf, D-144 change orders two at a time, D-145 the lot and the last stretch, and D-146 the batch's one re-fit. D-147 takes the roof out again (the user's call, logged under Accepted). D-148 is the first-timer legibility batch before the showing, from the 2026-11-10 polish review (logged below). D-149 is the first job, from the first showing (2026-11-11, logged below). D-150 is the end screen's lead into the next run, from the evening's what-next survey (`fix/retry-after-loss`, logged below). D-151 is the first job's gentler targets (`phase/first-job-targets`, logged under Accepted). D-152 to D-157 are the 2026-11-11 playtest's: D-152 Copy run code on the end screen's plank (fix/playtest-6-bugs, logged below), D-153 Full House's progress on its set chip (fix/full-house-progress, logged below), D-154 the week cue, D-155 life on the lot and D-156 your houses on the street (each logged by its own pull request), and D-157 strikes from the hand (`phase/strike-from-hand`, logged below). New entries start at D-158.*
 
+### D-158 · Tutorial fixes: hints that wait for their play, a short How to play, and the first job's shops a shop behind
+**Status:** Proposed · 2026-11-12, a phase pull request (`phase/tutorial-fixes`), from an outside playtester's notes the same day (a realism-first player who read How to play before pressing Start, and played the first job and Dale's contract). The user's go-ahead: "Yes, build them". UI and rules text only: no rule, content or balance change, and `contentHash(CONTENT)` is unchanged, so saves and run codes carry over (#54). For the user's playtest before it merges.
+**Decision:**
+- **A hint that asks for a play has no "Got it"** (`task` in `src/ui/hud/FirstHints.tsx`): week 1's three steps, week 2's Bathroom and week 3's Closet. It goes when its week does (D-149), so it can't be sent away before the play it names is made. In week 1 that also keeps the gold ring on the card and End week's pulse, which a "Got it" used to end (`first-job.ts` `guideOn`).
+- **Every other hint keeps "Got it", and also goes by itself** with the week or the screen it came up in, once it has been up 4 seconds (`FEEL.hints.readMs`; `hintGone`). One the week left behind sooner comes up again.
+  - Before, a hint nobody answered stayed for good and held up every hint behind it (one shows at a time, in a fixed order): a player who never pressed "Got it" on the checklist's never met the hints for Complete early, fixtures, arrivals, Renovate or Strike. In my check run the checklist's sat over the lot's edge from week 4 to week 16.
+  - The house rules still fold into their row when the checklist's hint is seen (D-113): now that's a week after the checklist arrives, pressed or not.
+- **A hint that's gone can be read again:** How to play lists the hints this browser has been through under **Tips so far**, with their count, in the order the game brings them up (`seenTips`). Settings' "show hints again" still brings them all back as cards.
+- **The hint card wears a gold ring** that breathes three times as it comes up, then rests (`first-hints.css`, `FEEL.hints`): the first job's color for "look here", the same as the card the opening names. It had the panels' own plank and paper, and only a 0.2 s drop-in. An outline, so the card's box and `first-hint-place.ts` are untouched. Reduce motion keeps the ring and drops the pulse.
+- **The checklist's hint** is "Each line that holds adds +0.25 Charm every week. They’re bonuses, not requirements: few houses hold them all." (18 words). It said "The house rules fold into one row after this: click it to open them" while the rules were open.
+- **How to play opens short** (`src/ui/screens/HowToPlay.tsx`): **The short version** in five lines, then every section folded under its plank, which is a button that opens it. **Open all** in the footer is for a reader who wants the manual.
+  - 97 words and no scrolling at 1600×900, from 1,316 words in 13 sections over 8.6 screens.
+  - On a first visit its first line is "New here? Press Start: your first job teaches the rest as you play."
+  - Opened from the shop or a change order's sheet, that section starts open.
+  - Overtime's paragraph moved into The goal, where the targets are: one plank fewer.
+  - Scoring says the matching rule nothing on screen said (`rules/sets.ts`): "A room can be in one set of each kind: one Bathroom can serve a Jack-and-Jill and a Suite, but two Suites need a Bathroom each." A set's own text (`setText`, on a card's set chip and in Inspect) ends "A house can have more than one, each with its own rooms."
+  - Your client says a checklist line is "a bonus, not a requirement".
+- **The first job's shops run a shop behind** (`first-job.ts` `shopStageOf`, drawn by `ShopScreen.tsx`):
+  - **Shop 1 is the housewarming gift alone**, then "That’s the yard for now. Its shelves open after Foundation, and your budget keeps until then." No shelves, no Refresh, and the shop's hint waits.
+  - **Shop 2 has the shelves any run's first shop has** (blueprints, pieces and fixtures, the services), with "Tools, crates and company upgrades arrive after Framing." under them. The shop's hint comes here.
+  - **From shop 3 it's the whole yard.** Every other run, and a shop the ?debug panel opened, shows everything.
+  - It's staging, not a rule: the visit's stock is what it would have been, the goods a stage leaves out just aren't on a shelf, and leaving still pays the saving bonus. A sale that lands on one of them isn't seen.
+- **Blueprints say what they are where a new player meets them.** The gift: "Free: keep one. A blueprint is a bonus that stays on for the whole run; you don’t build it." (it said "to start your rule book", a third name for them). The shelf's tip and How to play lead with the same.
+
+**Why:** the playtester's words, each checked against the code and a local run:
+- "I clicked on 'how to play' and I was overwhelmed, and then I realized it was a scrolling box".
+- "I shouldn't be able to say 'got it' to a thing to make it go away forever, I forgot what I got... it should either dismiss/advance automatically when I complete the tutorial action it wants, or let me dismiss it then".
+- "the tutorial pop-ups should have something to draw your eye to them".
+- "tutorial told me to click the house rules to expand them, but the game had already done this for me".
+- "oh there's a whole shop here now... I don't know if I know enough about the game ... to be let loose in a place with this much possibility". The build screen fills in over the first job's first six weeks (D-149); the shop arrived whole at the end of week 4, a week after the checklist.
+- "blueprints are passives? they sound like ... a thing I would build".
+- "my jack and jill counts as one suite and one jack and jill, not two suites? idk if it's clear that I can't double dip".
+- The requirements "are so numerous and specific that I can't possibly complete them all": the sim's greedy bot ends a run holding 6–8 of a client's 8–10 lines, and every line in 3–28% of runs by client (500 runs, seeds `pt7`).
+
+**Considered:**
+- **Dimming everything but the hint** (the playtester's other idea): it would cover the lot the hint is about, and the ring was enough to find the card in every screenshot.
+- **The gift alone at shop 1 and everything at shop 2:** shop 2 stocks more than shop 1 (tools, a crate and an upgrade) and follows the first change order, so the pile would only move from week 4 to week 8 and grow.
+- **Staging in the rules** (a first job's own stock table): it would change the content hash and the first job's balance (D-151) for what is a matter of what's on screen.
+- **Two columns of planks** in How to play: opening a section would move every plank after it.
+
+**Checked:** in the browser pane on a fresh origin (a true first visit), at 1600×900@2 in the pixel font and at 1280×720 in both fonts: How to play from the title and from the shop, the first job's first four weeks (week 1 by hand, the rest through the store with the tally playing), then its three shops and the hints between them on the instant tally. `npm test` (2,182 and the new ones) and `npm run typecheck`.
+
+**Known gaps:**
+- **At 1280×720 in the pixel font** the folded How to play scrolls by about 126 px (four planks); in the readable font by 9 px.
+- **The 4 seconds a hint needs** are counted from when its card came up, not time spent reading it.
+- **The controls strip in the gift's shop** still says "Sell from your supplies and blueprints".
+- **Renaming Blueprints, the phase names, "Under one roof" and double-click to place** are not here: the first two are the user's calls, the third rides with the content change in D-160, the last wants the user's say (a week can't be undone).
+- **Not played by a newcomer.** Touch, Firefox and Safari weren't run.
+
+**Changes:** D-045 (Accepted): a first-time hint isn't always dismissible, and one nobody dismisses leaves by itself. D-142 and D-149 (Proposed): the checklist hint's words, the opening's hints without "Got it", and the first job's staged shops. D-110 (Accepted): How to play's layout.
+
 ### D-157 · Strikes from the hand: the card you don't want, gone for the run
 **Status:** Proposed · 2026-11-12, a phase pull request (`phase/strike-from-hand`), from playtest 6 (2026-11-11): Strike a card "should also be included in the defaults ... at least once at the start of the match ... I never really use it ... might be overly broad if it applies to a card type instead of just a single card (e.g. a garage)". Asked whether a strike takes the card or its type, the user answered "Whole type" (2026-11-12): strike a Garage and no more Garages come up this run. Changes Accepted D-084 and D-076's shop picker: built on the user's answer, and Proposed until their playtest. Three more questions for the user took their defaults for now (below). A rules and content change: `contentHash(CONTENT)` goes from `8c16358c` to `153cddb5`, so runs in progress are dropped when it merges (on /dev/) and at the next release (#54's check); their run codes still replay. For the user's playtest before it merges.
 **Decision:**
@@ -2242,6 +2294,7 @@ Measured in headless Chrome on frozen dev-channel builds, at rest, before (devel
 **2026-11-11 (D-151, `phase/first-job-targets`, the user's "Yes, build it"):** the first job's targets are gentler, so it is no longer UI only. A run D-149 guides (the board's first job, or a first visit's link) starts in the rules' `firstJob` mode, where the client needs 73% of its usual targets; its run code carries the mode. "Gentler targets for the first job" under Considered above is what the survey after release #58 found was still needed: the guided casual bot met Roofing 52% of the time and won 3%, and at these targets meets it 86% and wins 28%. The guidance itself is unchanged.
 
 **2026-11-12 (D-157, Proposed):** Strike (its button, its S key and the strip's S) arrives in Foundation's second week, a week after Demolish, ringed like the rest, and the first milestone's banner leaves its strike unsaid. A Foundation completed in its first week (Complete early, or Auto after that week's tally) has no second week to show it in, so Strike shows from the next milestone without its ring; its first-time hint still comes.
+*Extended by D-158 (Proposed 2026-11-12):* the opening's hints have no "Got it", every hint's card wears a gold ring, and the first job's shops run a shop behind (the gift alone, then a first shop's shelves, then the whole yard).
 
 ### D-148 · First-timer legibility before the showing: hand lines that fit, Reroll named, and the end screen on a laptop
 **Status:** Proposed · 2026-11-10, a fix pull request (`fix/showing-legibility`) from the polish review of the same day, whose list the user answered with "Yes, fix them". The group gets the game on 2026-11-11. No rules or balance change: the same sim seeds score the same before and after (Sim, below).
@@ -2728,6 +2781,7 @@ No card is under the bar that wasn't before. Also checked, both fonts, with the 
 **2026-11-10 (D-148, Proposed):** two hints name the control they point to, still within the 25 words: Fixtures ends "from your supplies (Your goods, top right) it’s free" (25 words), and an arrival's reads "Their room is waiting in your reserve: open Your goods, top right. Room for everyone needs it from now on." (20). On a laptop Your goods is folded to its plank, and nothing else on the build screen says "supplies" or "reserve".
 
 **2026-11-12 (D-157, Proposed):** one more first-time hint, Strike's (23 words): "Strike a card: a new one takes its place, its type is gone this run, and the week goes on. Milestones add strikes." It comes once Strike is on screen with a strike to use, after the opening's hints. Its words are `hintText`'s, and with no strikes per milestone in the balance the last sentence reads "The shop sells more."
+*Changed by D-158 (Proposed 2026-11-12):* the checklist's hint says its lines are bonuses and no longer mentions folding; hints still keep to 25 words.
 
 ### D-137 · More change orders: three generic ones, and a phase effect for every client
 **Status:** Proposed · 2026-11-10, from playtest 4 (`docs/playtests/playtest-4-findings.md` §5), with its fix pull request. Extends D-011 and D-109. For the next playtest on /dev/.
@@ -3187,6 +3241,7 @@ What's still short:
 - **The job board:** a contract's card leads with the client's brief, their wishes and the lot's map and chips. The household and the tastes are a line each, with the detail in the line's tip. The house rules are a term in the board's lede, not a fold on every card, and the lot in words under the map goes.
 - **The checklist:** the wishes' tag is "Wishes"; a line that doesn't hold shows only the parts still missing; who's still to move in is a name and a milestone; and in a 280 px pixel-font column under 1000 px tall the tastes' row is "Tastes", one line again (the sun's icon, D-120, had made "Tastes (3)" two).
 - **First-time hints:** how a week scores is added (week 2), and every hint keeps to 25 words.
+*Changed by D-158 (Proposed 2026-11-12):* How to play opens on a five-line short version with every section folded under its plank, and lists the hints seen under Tips so far.
 
 ### D-109 · M4b rules structure: change orders, arrivals, and crews
 **Status:** Proposed · 2026-11-07, with the M4 pull request. Details within D-103, D-012, and Appendix A · M4b; numbers for the sim and playtest 4.
