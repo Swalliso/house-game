@@ -254,11 +254,11 @@ export const orderStamp = signal<OrderStamp | null>(null);
 /** A household member's cards, just in the reserve (M4b): the reserve pops them in. */
 export const justArrived = signal<{ arrival: ArrivalId; id: number } | null>(null);
 /**
- * D-160: the standing stock's or the client's cards, just in the reserve: the reserve slots
- * (`slots`, by index) that pop in, after `delayMs`.
+ * D-160: the standing stock's or the client's cards, or (D-171) the crew's, just in the reserve:
+ * the reserve slots (`slots`, by index) that pop in, after `delayMs`.
  */
 export const justDelivered = signal<{
-  from: 'client' | 'stock';
+  from: 'client' | 'stock' | 'crew';
   slots: readonly number[];
   delayMs: number;
   id: number;
@@ -1642,7 +1642,7 @@ function sheetBeat(e: GameEvent, after: RunState): void {
  */
 function deliveredBeat(e: Extract<GameEvent, { t: 'delivered' }>, after: RunState): void {
   const marked = after.reserve.flatMap((r, i) =>
-    (e.from === 'stock' ? r.stock : r.client) ? [i] : [],
+    (e.from === 'stock' ? r.stock : e.from === 'crew' ? r.crew : r.client) ? [i] : [],
   );
   const withMember = justArrived.value !== null;
   const delayMs = withMember ? FEEL.arrival.landDelayMs : 0;

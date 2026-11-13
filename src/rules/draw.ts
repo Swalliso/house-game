@@ -93,7 +93,7 @@ export function drawWeights(
   const mods = opts.mods ?? [];
   const out: { card: Card; weight: number }[] = [];
   for (const def of Object.values(content.pieces)) {
-    if (def.fromPhase > phase || def.member) continue;
+    if (def.fromPhase > phase || def.member || def.addition) continue;
     const card: Card = { kind: 'piece', id: def.id };
     if (opts.row && rowOf(content, card) !== opts.row) continue;
     if (isStruck(content, struck, card)) continue;

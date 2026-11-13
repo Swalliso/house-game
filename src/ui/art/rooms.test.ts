@@ -39,8 +39,9 @@ import {
   type Item,
 } from './rooms.ts';
 
+// The Addition (D-171) never stands on the lot: it becomes part of the room it extends.
 const INDOOR = (Object.keys(CONTENT.pieces) as PieceId[]).filter(
-  (id) => CONTENT.pieces[id].category === 'indoor',
+  (id) => CONTENT.pieces[id].category === 'indoor' && !CONTENT.pieces[id].addition,
 );
 const ROOM_FIXTURES: readonly FixtureId[] = [
   'fireplace',

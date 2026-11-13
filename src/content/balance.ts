@@ -95,6 +95,8 @@ export const BALANCE: Balance = {
     // D-157: strikes to use from the hand at the run's start (a crew could add more); each
     // milestone adds strikesPerMilestone, and unused ones are kept.
     strikes: 1,
+    // D-171: 0 = a fixture from the hand is the week's turn (D-050). The Handyman adds 1.
+    freeInstalls: 0,
   },
 
   // D-040, per week saved, by phase (the last entry repeats): +4 budget, and 30% of this phase's

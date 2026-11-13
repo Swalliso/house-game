@@ -329,13 +329,13 @@ describe('what a client brings, and the standing stock (D-160)', () => {
     for (const id of ['hendersons', 'vladislav', 'juniper'] as const) {
       expect(start(id).reserve, id).toEqual(STOCK);
     }
-    // After the crew's starting cards, whose Fence the stock counts: it brings only a Hallway.
-    expect(start('barkers', 'landscaper').reserve).toEqual([
-      { id: 'sapling', crew: true },
-      { id: 'fence', crew: true },
-      { id: 'doghouse', client: true },
-      { id: 'hallway', stock: true },
-    ]);
+    // D-171: then the crew's own card, one of the Landscaper's yard pieces (it starts with no
+    // Sapling or Fence now, so the stock brings both of its cards).
+    const withCrew = start('barkers', 'landscaper').reserve;
+    expect(withCrew.slice(0, 3)).toEqual([{ id: 'doghouse', client: true }, ...STOCK]);
+    expect(withCrew).toHaveLength(4);
+    expect(withCrew[3]!.crew).toBe(true);
+    expect(CONTENT.crews.landscaper.stock).toContain(withCrew[3]!.id);
   });
 
   it('each brings one card of a wish that asks for two, and isn’t a household member', () => {

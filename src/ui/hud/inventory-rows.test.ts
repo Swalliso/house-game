@@ -51,15 +51,16 @@ describe("the goods panel's rows", () => {
     expect(showsInventory(rows)).toBe(true);
   });
 
-  it("show the reserve from week 1 when the crew's starting cards are in it (M4b)", () => {
+  it("show the reserve from week 1 when the crew's card is in it (M4b, D-171)", () => {
     const s = rules.newRun({
       seed: 'goods',
       clientId: 'hendersons',
       crewId: 'landscaper',
       mode: 'standard',
     });
-    // The Landscaper's Sapling and Fence, and the standing stock's Hallway (D-162).
-    expect(s.reserve.filter((r) => r.crew)).toHaveLength(2);
+    // The standing stock's Hallway and Fence (D-162), and the Landscaper's yard piece (D-171).
+    expect(s.reserve.filter((r) => r.crew)).toHaveLength(1);
+    expect(s.reserve.filter((r) => r.stock)).toHaveLength(2);
     expect(s.reserve.every((r) => r.crew || r.stock)).toBe(true);
     const rows = inventoryRows(s, false);
     expect(rows.reserve).toBe(true);
