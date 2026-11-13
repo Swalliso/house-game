@@ -32,11 +32,8 @@ describe("a card's household line", () => {
     const lines = householdTip(hendersons).split('\n');
     const rule = hendersons.specs.find((s) => s.id === 'roomForEveryone')!;
     expect(lines[0]).toBe(specText(CONTENT, rule));
-    // Each milestone's first week: weeks 11 and 21 at five weeks a milestone (D-170).
-    const W = CONTENT.balance.weeksPerPhase;
-    const [twins, grandma] = hendersons.household.arrivals;
-    expect(lines[1]).toBe(`Framing (week ${2 * W + 1}): ${twins!.text}`);
-    expect(lines[2]).toBe(`Drywall (week ${4 * W + 1}): ${grandma!.text}`);
+    expect(lines[1]).toBe(`Framing (week 9): ${hendersons.household.arrivals[0]!.text}`);
+    expect(lines[2]).toBe(`Drywall (week 17): ${hendersons.household.arrivals[1]!.text}`);
     expect(lines).toHaveLength(3);
   });
 });

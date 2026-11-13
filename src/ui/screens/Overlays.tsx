@@ -54,7 +54,7 @@ export function MilestoneBanner() {
 
 /**
  * The week's stamp (D-154, week-stamp.ts), where the milestone's banner goes (they're never up
- * together): "Week 2 of 5" and the milestone's weeks as pips. A milestone's first week names it
+ * together): "Week 2 of 4" and the milestone's weeks as pips. A milestone's first week names it
  * and what its target needs on a slip under the plate; its middle weeks have the plate alone,
  * smaller; its last is orange, and its slip says what the target still needs. Notes and toasts
  * sit just under it, as they do under a banner.
