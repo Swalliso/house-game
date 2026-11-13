@@ -14,6 +14,7 @@ import { isFit } from '../board/camera.ts';
 import { busy } from '../fx/director.ts';
 import { Keycap } from '../kit/kit.tsx';
 import {
+  extendUids,
   movingUid,
   pendingFree,
   renovateUids,
@@ -155,7 +156,8 @@ export function Hints() {
       // A pack (D-106) is clicked out a tile at a time, so it never turns, and nor does a room
       // waiting to be renovated (D-102), or a fixture from the hand, which goes into a piece.
       const pack = sel?.kind === 'piece' && !!CONTENT.pieces[sel.id].pack;
-      const turns = sel?.kind === 'piece' && !pack && pending?.t !== 'renovate';
+      const turns =
+        sel?.kind === 'piece' && !pack && pending?.t !== 'renovate' && pending?.t !== 'extend';
       const click = pack
         ? pending
           ? 'add or take off a tile'
@@ -164,9 +166,11 @@ export function Hints() {
           ? 'move it'
           : sel?.kind === 'fixture'
             ? 'a piece to install it'
-            : renovateUids.value.length > 0
-              ? 'place, or renovate an outlined room'
-              : 'place';
+            : extendUids.value.length > 0
+              ? 'place, or extend an outlined room'
+              : renovateUids.value.length > 0
+                ? 'place, or renovate an outlined room'
+                : 'place';
       hints = (
         <>
           {turns && <Hint keys={['R']}>rotate</Hint>}
@@ -181,7 +185,9 @@ export function Hints() {
                 ? 'build it'
                 : pending.t === 'renovate'
                   ? 'renovate it'
-                  : 'end the week'}
+                  : pending.t === 'extend'
+                    ? 'extend it'
+                    : 'end the week'}
           </Hint>
           <Hint keys={['Esc']}>
             {pack && pending ? 'clear the tiles' : pending ? 'pick it up' : 'put it back'}

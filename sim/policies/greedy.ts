@@ -27,9 +27,8 @@
 import type {
   Action,
   Estimate,
-  InstallAction,
   PlaceAction,
-  RenovateAction,
+  Play,
   Rng,
   Rules,
   RunState,
@@ -216,10 +215,10 @@ export function makeGreedy(opts: GreedyOptions = {}): Policy {
       const tool = useTools(rules, state, salt);
       if (tool) return tool;
       const plays: PlaceAction[] = [];
-      // Installs and Renovations are few, so each is scored exactly. So are Fence packs that
-      // close a yard (D-106): the rules list only a pack's suggested shapes, and the first
-      // Fence earns nothing until its yard closes.
-      const exact: (PlaceAction | InstallAction | RenovateAction)[] = [];
+      // Installs, Renovations and extensions (D-168) are few, so each is scored exactly. So are
+      // Fence packs that close a yard (D-106): the rules list only a pack's suggested shapes,
+      // and the first Fence earns nothing until its yard closes.
+      const exact: NonNullable<Play>[] = [];
       for (const p of rules.legalPlays(state)) {
         // A single tile of a pack isn't worth ranking: the planner below finds the ones that
         // close a yard, and a lone Fence or Driveway tile earns next to nothing.
@@ -238,9 +237,9 @@ export function makeGreedy(opts: GreedyOptions = {}): Policy {
       const passTotal = rules.scoreOnly(state, null);
       // D-163: a piece from Your goods doesn't end the week. The shortlist is scored once, and
       // the best such play goes down first if it adds to this week's total; then the week's.
-      let best: (PlaceAction | InstallAction | RenovateAction)[] = [];
+      let best: NonNullable<Play>[] = [];
       let bestTotal = -Infinity;
-      let free: (PlaceAction | InstallAction | RenovateAction)[] = [];
+      let free: NonNullable<Play>[] = [];
       let freeTotal = -Infinity;
       for (const play of [...shortlist(rules, state, plays, salt), ...exact]) {
         const total = rules.scoreOnly(state, play);

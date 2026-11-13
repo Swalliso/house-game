@@ -20,11 +20,14 @@
 import type { RefObject } from 'preact';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import {
+  article,
   CONTENT,
   DRAW_ROWS,
+  growGain,
   handCardLines,
   rules,
   rowOf,
+  SCORE_LABELS,
   setProgressText,
   setsOfPiece,
   setText,
@@ -36,6 +39,7 @@ import {
 } from '../../rules/index.ts';
 import {
   cardsFit,
+  cardsExtend,
   cardsRenovate,
   inspected,
   reroll,
@@ -239,6 +243,9 @@ function CardView({
   const def = CONTENT.pieces[card.id];
   const { striking, view, fits, isSelected, armed, blocked, cls } = strikeLook(i, held, entering);
   const renovates = cardsRenovate.value[i] ?? false;
+  // D-168: a card that can grow a room of its type says so, where Renovate's chip was.
+  const grows = cardsExtend.value[i] ?? false;
+  const gain = growGain(CONTENT, def);
   const kind = pieceKind(def);
   const type = CONTENT.pieces[def.countsAs ?? def.id].name;
   // A pack (D-106) doesn't turn, so it never shows a turn left from another card this week.
@@ -263,7 +270,17 @@ function CardView({
       lines={handCardLines(CONTENT, card)}
       chips={
         <>
-          {renovates && !held && !striking && (
+          {grows && !held && !striking && (
+            <Chip
+              tone="uncommon"
+              icon="plus"
+              class="renovate-chip extend-chip"
+              tip={`It can extend ${article(type)} you have, +${gain} ${SCORE_LABELS.points}: pick it, then point at an outlined room`}
+            >
+              Extend
+            </Chip>
+          )}
+          {renovates && !grows && !held && !striking && (
             <Chip
               tone="uncommon"
               icon="star"
@@ -641,7 +658,10 @@ export function Hand() {
   // room (D-102) (rotate() does nothing for them).
   const sel = selection.value;
   const canTurn =
-    (sel?.kind === 'piece' && !CONTENT.pieces[sel.id].pack && pending?.t !== 'renovate') ||
+    (sel?.kind === 'piece' &&
+      !CONTENT.pieces[sel.id].pack &&
+      pending?.t !== 'renovate' &&
+      pending?.t !== 'extend') ||
     (sel?.kind === 'tool' && movingUid.value !== null);
   // The long label, and a short one for a narrow column (hand.css, whose container queries are
   // measured on these words). What End week will do, build or renovate, is in its tip.
@@ -658,9 +678,11 @@ export function Hand() {
     ? 'Build it now: the week goes on (Enter)'
     : pending?.t === 'renovate'
       ? 'End the week and renovate the room (Enter)'
-      : pending
-        ? 'End the week and build it (Enter)'
-        : undefined;
+      : pending?.t === 'extend'
+        ? 'End the week and extend the room (Enter)'
+        : pending
+          ? 'End the week and build it (Enter)'
+          : undefined;
   // A milestone's last week, or an overtime week (D-154): the press that checks the target.
   // End week wears a "Last week" tag on its top edge, which stamps in as the week comes up (once
   // its tally is done) and again as a card is placed, the moment that press is next. Its tip

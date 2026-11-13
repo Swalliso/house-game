@@ -136,12 +136,17 @@ export interface BuildStats {
     rooms: number;
     arrivals: number;
     renovations: number;
+    /** D-168: extensions. */
+    extensions: number;
     yard: number;
     fixtures: number;
     hallways: number;
     passes: number;
   };
   renovations: number;
+  /** D-168: extensions, and the run's week of each. */
+  extensions: number;
+  extensionWeeks: number[];
   /** Tallied weeks (fast-forwarded ones included). */
   tallies: number;
   /** Weeks each checklist line held, by spec id; the week it first held (absent: never). */
@@ -370,8 +375,19 @@ export function simulateRun(
   const specIds = content.clients[s.setup.clientId].specs.map((sp) => sp.id);
   const build: BuildStats = {
     roomsByPhase: Array.from({ length: phaseCount }, () => 0),
-    late: { rooms: 0, arrivals: 0, renovations: 0, yard: 0, fixtures: 0, hallways: 0, passes: 0 },
+    late: {
+      rooms: 0,
+      arrivals: 0,
+      renovations: 0,
+      extensions: 0,
+      yard: 0,
+      fixtures: 0,
+      hallways: 0,
+      passes: 0,
+    },
     renovations: 0,
+    extensions: 0,
+    extensionWeeks: [],
     tallies: 0,
     specWeeks: {},
     specFirst: {},
@@ -542,7 +558,10 @@ export function simulateRun(
     const pending =
       failed &&
       action &&
-      (action.t === 'place' || action.t === 'install' || action.t === 'renovate')
+      (action.t === 'place' ||
+        action.t === 'install' ||
+        action.t === 'renovate' ||
+        action.t === 'extend')
         ? action
         : undefined;
     const runCode = encodeRunCode({
@@ -594,6 +613,10 @@ export function simulateRun(
     } else if (a.t === 'renovate') {
       build.renovations++;
       if (late) build.late.renovations++;
+    } else if (a.t === 'extend') {
+      build.extensions++;
+      build.extensionWeeks.push(st.week);
+      if (late) build.late.extensions++;
     } else if (late && a.t === 'install' && a.from === 'hand') build.late.fixtures++;
     else if (late && a.t === 'pass') build.late.passes++;
   };
@@ -659,7 +682,10 @@ export function simulateRun(
         countDead(s);
       }
       classify(s, action);
-      if ((action.t === 'place' || action.t === 'renovate') && action.from === 'reserve') {
+      if (
+        (action.t === 'place' || action.t === 'renovate' || action.t === 'extend') &&
+        action.from === 'reserve'
+      ) {
         const r = s.reserve[action.i];
         if (r) reservePlays[reserveSource(r)]++;
       }
@@ -687,7 +713,10 @@ export function simulateRun(
       // Weekend Crew's gain is the free build it makes room for.
       if (
         s.freePlay === 'ready' &&
-        (action.t === 'place' || action.t === 'install' || action.t === 'renovate')
+        (action.t === 'place' ||
+          action.t === 'install' ||
+          action.t === 'renovate' ||
+          action.t === 'extend')
       ) {
         const crew = economy.tools.findLast((t) => t.id === 'weekendCrew');
         if (crew) crew.gain = rules.preview(s, action).delta;

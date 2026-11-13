@@ -192,8 +192,20 @@ export const BALANCE: Balance = {
   ],
 
   // Renovate (house-systems-review.md §4, D-093 option B): a room card whose type is at its
-  // limit levels up a room of that type instead: +4 Comfort a level, up to 2 levels.
+  // limit levels up a room of that type instead: +4 Comfort a level, up to 2 levels. D-168: only
+  // a room the card can't extend (boxed in, or grown already).
   renovate: { pointsPerLevel: 4, maxLevel: 2 },
+  // D-168, Extend a room: a Bedroom, Kitchen, Living Room or Dining Room card laid beside a room
+  // of its type, sharing 2 or more tiles of wall with it, joins that room, once a room, any week.
+  // A bigger room earns +2 Comfort a tile beyond its own card's (a Bedroom or Kitchen card: +8, a
+  // Living Room card: +12). In the sim (200 held-out runs), +1 a tile left greedy extending about
+  // once a run and winning as often as without it; +2 made it a real choice, 2.3 a run.
+  extend: {
+    types: ['bedroom', 'kitchen', 'livingRoom', 'diningRoom'],
+    maxPerRoom: 1,
+    pointsPerTile: 2,
+    minShared: 2,
+  },
   // A type at its limit draws at half weight while it stays there (D-043, amended by D-093).
   drawAtLimitPct: 50,
   // A card with no play is swapped for one from its row, trying up to 3 cards (D-121).

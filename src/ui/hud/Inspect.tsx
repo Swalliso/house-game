@@ -15,6 +15,7 @@ import {
   cardText,
   CONTENT,
   definite,
+  growGain,
   featureWantedText,
   fixtureText,
   glossary,
@@ -60,6 +61,7 @@ import {
   preview,
   renovateUids,
   reservePlace,
+  extendUids,
   run,
   selected,
   movingUid,
@@ -408,7 +410,7 @@ function SpecChanges({ gained, lost }: { gained: readonly string[]; lost: readon
 
 /**
  * A member's room (M4b, D-103): whose it is, that it counts as a Bedroom, and from when. A
- * room the house takes so many of (D-165): "One per house: another renovates it."
+ * room the house takes so many of (D-165): "One per house: extend or renovate."
  */
 function MemberNote({ id }: { id: PieceId }) {
   const { member, perHouse } = cardText(CONTENT, CONTENT.pieces[id]);
@@ -605,6 +607,25 @@ function RenovateHint({ id, only = false }: { id: PieceId; only?: boolean }) {
   );
 }
 
+/**
+ * D-168: a room card that can grow a room of its type: the board outlines those rooms while the
+ * card is picked, and pointing at one grows it toward the pointer. Not while a play waits for
+ * End week.
+ */
+/** `only`: the card has no spot on the lot (D-165's caps), so growing a room leads (D-169). */
+function ExtendHint({ id, only = false }: { id: PieceId; only?: boolean }) {
+  if (extendUids.value.length === 0 || tentative.value) return null;
+  const def = CONTENT.pieces[id];
+  const type = CONTENT.pieces[def.countsAs ?? def.id].name;
+  return (
+    <p class="muted">
+      {only ? '' : 'Or '}
+      <Tip term="extend">{only ? 'Extend' : 'extend'}</Tip> one: point at an outlined {type} (+
+      {growGain(CONTENT, def)} {SCORE_LABELS.points}).
+    </p>
+  );
+}
+
 function PlacingInfo() {
   const p = preview.value;
   const sel = selection.value;
@@ -612,12 +633,16 @@ function PlacingInfo() {
   if (sel.kind === 'tool') return <ToolInfo id={sel.id} i={sel.i} />;
   const name = sel.kind === 'piece' ? CONTENT.pieces[sel.id].name : CONTENT.fixtures[sel.id].name;
   const install = sel.kind === 'fixture';
-  // A room card over a room its type is capped at: a Renovation (M4a, D-102).
+  // A room card over a room its type is capped at: a Renovation (M4a, D-102); over a room of its
+  // type it can grow: an extension (D-168).
   const play = activePlay.value;
   const renovate = play?.t === 'renovate';
-  const room = renovate ? run.value.house.pieces.find((q) => q.uid === play.uid) : undefined;
+  const grow = play?.t === 'extend';
+  const room =
+    renovate || grow ? run.value.house.pieces.find((q) => q.uid === play.uid) : undefined;
   const roomName = room ? CONTENT.pieces[room.defId].name : 'room';
-  // A card with no spot on the lot (its type is capped, D-165) can only renovate.
+  // A card with no spot on the lot (its type is capped, D-165) can only extend a room or renovate
+  // one: the first of those it can do leads (D-169).
   const placeable =
     sel.kind !== 'piece' ||
     (sel.from === 'hand'
@@ -626,21 +651,28 @@ function PlacingInfo() {
         ? reservePlace.value[sel.i]
         : true) !== false;
   const hint =
-    sel.kind === 'piece' && !renovate ? <RenovateHint id={sel.id} only={!placeable} /> : null;
-  // D-163: a piece from the reserve is free: it doesn't use the week.
-  const fromLine = renovate
-    ? sel.from === 'reserve'
+    sel.kind === 'piece' && !renovate && !grow ? (
+      <>
+        <ExtendHint id={sel.id} only={!placeable} />
+        <RenovateHint id={sel.id} only={!placeable && extendUids.value.length === 0} />
+      </>
+    ) : null;
+  // D-163: a piece from the reserve is free: it doesn't use the week, placed, renovating, or
+  // extending a room (D-169).
+  const fromLine =
+    sel.from === 'reserve'
       ? 'From your reserve: it doesn’t use your week.'
-      : 'Renovating is this week’s build, instead of placing the card.'
-    : sel.from === 'reserve'
-      ? 'From your reserve: it doesn’t use your week.'
-      : sel.from === 'supplies'
-        ? 'From your supplies: installing it is free, so the week goes on.'
-        : install
-          ? 'From your hand: installing it is this week’s build.'
-          : null;
+      : grow
+        ? 'Extending is this week’s build, instead of placing the card.'
+        : renovate
+          ? 'Renovating is this week’s build, instead of placing the card.'
+          : sel.from === 'supplies'
+            ? 'From your supplies: installing it is free, so the week goes on.'
+            : install
+              ? 'From your hand: installing it is this week’s build.'
+              : null;
   // A member's room (M4b): whose it is.
-  const member = sel.kind === 'piece' && !renovate ? <MemberNote id={sel.id} /> : null;
+  const member = sel.kind === 'piece' && !renovate && !grow ? <MemberNote id={sel.id} /> : null;
   if (!p) {
     return (
       <>
@@ -664,7 +696,13 @@ function PlacingInfo() {
     // The rules say why: not at the limit yet, the wrong room, or fully renovated.
     return (
       <>
-        <h2>{renovate ? `Renovate ${definite(roomName)}?` : name}</h2>
+        <h2>
+          {renovate
+            ? `Renovate ${definite(roomName)}?`
+            : grow
+              ? `Extend ${definite(roomName)}?`
+              : name}
+        </h2>
         <p class="reason">
           <Icon name="cross" />
           <span>{p.reason}</span>
@@ -680,8 +718,9 @@ function PlacingInfo() {
     install && p.host !== undefined
       ? run.value.house.pieces.find((q) => q.uid === p.host)
       : undefined;
-  // An install's host, or the room a Renovation levels: what it earns, before and after.
-  const hostLine = install || renovate ? p.lines.find((l) => l.isNew) : undefined;
+  // An install's host, or the room a Renovation levels or an extension grows: what it earns,
+  // before and after.
+  const hostLine = install || renovate || grow ? p.lines.find((l) => l.isNew) : undefined;
   const earns = hostLine
     ? `${hostLine.before} → ${hostLine.after}`
     : `earns ${p.newPiece?.earned ?? 0}`;
@@ -695,6 +734,10 @@ function PlacingInfo() {
       ) : renovate ? (
         <h2>
           Renovate {definite(roomName)} <span class="earns">{earns}</span>
+        </h2>
+      ) : grow ? (
+        <h2>
+          Extend {definite(roomName)} <span class="earns">{earns}</span>
         </h2>
       ) : (
         <h2>

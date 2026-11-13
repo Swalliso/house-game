@@ -13,6 +13,7 @@ import type { ComponentChildren, JSX } from 'preact';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import {
   CONTENT,
+  cellsToShape,
   definite,
   placedCells,
   rules,
@@ -57,6 +58,8 @@ import {
   pendingFree,
   preview,
   renovateUids,
+  extendUids,
+  hoverQuarter,
   rotation,
   run,
   selected,
@@ -149,7 +152,7 @@ export function rotate(): void {
   // A pack (D-106) is the tiles clicked out, so it has nothing to turn, and a Renovation
   // waiting for End week (D-102) is the room as it stands.
   if (sel?.kind === 'piece' && CONTENT.pieces[sel.id].pack) return;
-  if (tentative.value?.t === 'renovate') return;
+  if (tentative.value?.t === 'renovate' || tentative.value?.t === 'extend') return;
   if (sel?.kind === 'tool') {
     if (movingUid.value === null) return;
     rotation.value = ((rotation.value + 1) % 4) as 0 | 1 | 2 | 3;
@@ -666,6 +669,22 @@ export function Board() {
     return y === lot.height ? 'street' : { x, y };
   };
 
+  /** D-168: where in its cell the pointer is, in quarters, for the side a room grows toward. */
+  const setQuarter = (clientX: number, clientY: number) => {
+    const board = boardRef.current;
+    if (!board) return;
+    const rect = board.getBoundingClientRect();
+    const cell = rect.width / lot.width;
+    const fx = (clientX - rect.left) / cell;
+    const fy = (clientY - rect.top) / cell;
+    const q = {
+      x: Math.min(3, Math.max(0, Math.floor((fx - Math.floor(fx)) * 4))),
+      y: Math.min(3, Math.max(0, Math.floor((fy - Math.floor(fy)) * 4))),
+    };
+    const prev = hoverQuarter.value;
+    if (q.x !== prev.x || q.y !== prev.y) hoverQuarter.value = q;
+  };
+
   const setHover = (c: Cell | 'street' | null) => {
     const cell = c === 'street' ? null : c;
     const prev = hoverCell.value;
@@ -763,6 +782,7 @@ export function Board() {
     }
     const c = cellAt(e.clientX, e.clientY);
     setHover(c);
+    setQuarter(e.clientX, e.clientY);
     inspectAt(e.clientX, c, c === null ? neighborUnder(e.clientX, e.clientY) : null);
   };
 
@@ -879,19 +899,37 @@ export function Board() {
     if (!building) return null;
     const play = activePlay.value;
     const sel = selection.value;
-    if (!play || play.t !== 'place' || sel?.kind !== 'piece') return null;
+    if (!play || sel?.kind !== 'piece') return null;
+    if (play.t === 'extend') {
+      // D-168: the room as it will be once grown, drawn whole over the room as it stands.
+      const grown = preview.value?.extends;
+      const room = state.house.pieces.find((q) => q.uid === play.uid);
+      if (!grown || !room) return null;
+      const box = cellsToShape(grown.cells);
+      return {
+        defId: room.defId,
+        rot: 0 as Rot,
+        shape: box.shape,
+        cells: [...grown.cells],
+        grows: room.uid,
+      };
+    }
+    if (play.t !== 'place') return null;
     return {
       defId: sel.id,
       rot: play.rot,
       // A pack's tiles (D-106) are the play's own shape.
       shape: play.shape,
       cells: placedCells(play.shape ?? CONTENT.pieces[sel.id].shape, play.x, play.y, play.rot),
+      grows: undefined,
     };
   })();
   const installing = building && activePlay.value?.t === 'install';
   // D-107: a fixture is selected, so every legal host shows its gain.
   const choosingHost = building && selection.value?.kind === 'fixture';
   const renovating = building && activePlay.value?.t === 'renovate';
+  // D-168: pointing at a room of the card's type that can't grow: why, on the room.
+  const cantGrow = building && activePlay.value?.t === 'extend' && !preview.value?.legal;
   const tooling = building && selection.value?.kind === 'tool';
 
   // How far the view reaches past the board: the road and the creeks run on there, the lot's
@@ -995,13 +1033,16 @@ export function Board() {
               rot={ghostCells.rot}
               shape={ghostCells.shape}
               cells={ghostCells.cells}
+              grows={ghostCells.grows}
               scale={scale}
             />
           )}
           {installing && <InstallTarget scale={scale} />}
           {choosingHost && <HostBadges scale={scale} />}
           {building && <RenovateHints scale={scale} />}
+          {building && <ExtendHints scale={scale} />}
           {renovating && <RenovateTarget scale={scale} />}
+          {cantGrow && <CantGrow scale={scale} />}
           {tooling && <ToolTarget scale={scale} />}
           {p?.legal && <PreviewArcs preview={p} occ={occ} lot={lot} scale={scale} />}
           {p?.legal && <Badges scale={scale} />}
@@ -1113,13 +1154,16 @@ function Ghost({
   rot,
   shape,
   cells,
+  grows,
   scale,
 }: {
   defId: PieceId;
   rot: Rot;
-  /** A pack's tiles (D-106): the play's own shape, not the card's. */
+  /** A pack's tiles (D-106), or a grown room's whole outline (D-168): not the card's shape. */
   shape?: readonly string[] | undefined;
   cells: Cell[];
+  /** D-168: the room an extension grows: the ghost is that room, in its own colors. */
+  grows?: number | undefined;
   scale: number;
 }) {
   const p = preview.value;
@@ -1187,9 +1231,11 @@ function Ghost({
         cells={cells}
         scale={scale}
         look={
-          isIndoor(defId)
-            ? newRoomLook(run.value.house, defId)
-            : newPieceLook(run.value.house, defId)
+          grows !== undefined
+            ? roomLook(run.value.house, grows)
+            : isIndoor(defId)
+              ? newRoomLook(run.value.house, defId)
+              : newPieceLook(run.value.house, defId)
         }
         class={`ghost ${legal ? 'legal' : 'illegal'} ${pending ? 'pending' : ''}`}
       />
@@ -1284,6 +1330,55 @@ function RenovateHints({ scale }: { scale: number }) {
           class="renovate-hint"
         />
       ))}
+    </>
+  );
+}
+
+/**
+ * D-168: the rooms the selected card can extend, outlined faintly so they're easy to find, as
+ * Renovate's are. Pointing at one grows it toward the pointer.
+ */
+function ExtendHints({ scale }: { scale: number }) {
+  const uids = extendUids.value;
+  const state = run.value;
+  if (uids.length === 0 || tentative.value) return null;
+  const occ = occupancy(state.house);
+  return (
+    <>
+      {uids.map((uid) => (
+        <Outline
+          key={uid}
+          cells={occ.cells.get(uid) ?? []}
+          scale={scale}
+          lot={state.house.lot}
+          class="renovate-hint"
+        />
+      ))}
+    </>
+  );
+}
+
+/** D-168: a room of the card's type that can't grow, outlined orange with why. */
+function CantGrow({ scale }: { scale: number }) {
+  const p = preview.value;
+  const play = activePlay.value;
+  const state = run.value;
+  const { lot } = state.house;
+  if (!p || !play || play.t !== 'extend' || p.legal) return null;
+  const occ = occupancy(state.house);
+  const cells = occ.cells.get(play.uid) ?? [];
+  if (cells.length === 0) return null;
+  const px = CELL * scale;
+  const text = p.reason ?? 'It can’t grow.';
+  const spot = oneLabelSpot(cells, lot.width, px, `✕ ${text}`);
+  const style = { left: `${spot.x * px}px`, top: `${spot.y * px}px` };
+  return (
+    <>
+      <Outline cells={cells} scale={scale} lot={lot} class="install-target illegal" />
+      <BoardLabel class={`ghost-reason ${spot.below ? 'below' : ''}`} style={style}>
+        <span aria-hidden="true">✕ </span>
+        {text}
+      </BoardLabel>
     </>
   );
 }

@@ -195,7 +195,7 @@ describe('one piece more or less breaks just the line it should', () => {
     const lKitchen: Placement = ['lKitchen', 6, 11, 2]; // in front of the Bathroom and Bedroom 2
     const check = checkPlace(houseAt(PHASES.at(-1)!), lKitchen);
     expect(check.legal).toBe(false);
-    expect(check.reason).toBe('The house has its Kitchen: this card renovates it.');
+    expect(check.reason).toBe('The house has its Kitchen: this card extends or renovates it.');
   });
 
   it('a fourth Bedroom of their own is one too many: the range rises only for the household', () => {

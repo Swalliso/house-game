@@ -851,9 +851,22 @@ export interface Balance {
   verdicts: readonly VerdictDef[];
   /**
    * Renovate (house-systems-review.md §4): a room card whose type is at its limit levels up a
-   * room of that type instead. Each level adds flat Comfort, up to `maxLevel`.
+   * room of that type instead. Each level adds flat Comfort, up to `maxLevel`. D-168: only a
+   * room the card can't extend (no open ground beside it, or grown as far as it goes).
    */
   renovate: { pointsPerLevel: number; maxLevel: number };
+  /**
+   * D-168, Extend a room: a card of one of these room types (by root type) laid beside a room of
+   * its type, sharing at least `minShared` tiles of wall with it, joins that room, up to
+   * `maxPerRoom` cards a room. An extended room adds `pointsPerTile` flat Comfort for each tile
+   * beyond its own card's, before its percentages.
+   */
+  extend: {
+    types: readonly PieceId[];
+    maxPerRoom: number;
+    pointsPerTile: number;
+    minShared: number;
+  };
   /** A card whose type is at its limit draws at this percent of its weight (D-043, amended). */
   drawAtLimitPct: number;
   /** D-121: how many cards from its row a card with no play is swapped for, at most. */
@@ -999,8 +1012,13 @@ export interface PlacedPiece {
   fixture?: { id: FixtureId; week: number };
   /** Renovations (M4a): each level adds Comfort. Kept through a move and a transform. */
   level?: number;
-  /** A pack's own tiles (D-106), as ASCII rows; turned by `rot` like any shape. */
+  /**
+   * A pack's own tiles (D-106), or an extended room's (D-168), as ASCII rows; turned by `rot`
+   * like any shape.
+   */
   shape?: readonly string[];
+  /** D-168: how many room cards have joined it (Extend a room). Its `shape` holds their tiles. */
+  extended?: number;
 }
 
 export interface HouseState {
@@ -1311,6 +1329,22 @@ export interface RenovateAction {
   i: number;
   uid: number;
 }
+/**
+ * D-168, Extend a room: a room card laid beside a room of its type, sharing wall with it, joins
+ * that room: its tiles become the room's, which stays one piece (its uid, fixture, timers and
+ * place in the placement order) with a bigger outline. (x, y, rot) place the card's own shape,
+ * as a placement's would. It's the week's turn, like placing.
+ */
+export interface ExtendAction {
+  t: 'extend';
+  from: 'hand' | 'reserve';
+  i: number;
+  /** The room that grows. */
+  uid: number;
+  x: number;
+  y: number;
+  rot: Rot;
+}
 export type PassAction = { t: 'pass' };
 /** Free actions: they don't end the week. */
 /** Redraws the whole hand, both rows (D-132; D-121 had a reroll per row). */
@@ -1387,6 +1421,7 @@ export type Action =
   | PlaceAction
   | InstallAction
   | RenovateAction
+  | ExtendAction
   | PassAction
   | RerollAction
   | StrikeCardAction
@@ -1403,10 +1438,10 @@ export type Action =
   | DebugAction;
 
 /**
- * A week's play: a placement, an install, a Renovation, or nothing (a pass). Previews take
- * supply installs too.
+ * A week's play: a placement, an install, a Renovation, an extension (D-168), or nothing (a
+ * pass). Previews take supply installs too.
  */
-export type Play = PlaceAction | InstallAction | RenovateAction | null;
+export type Play = PlaceAction | InstallAction | RenovateAction | ExtendAction | null;
 
 /** What caused a breakdown line, so the UI can badge it. */
 export type SourceRef =
@@ -1645,6 +1680,18 @@ export type GameEvent =
       /** Weekend Crew's free play: the week goes on. */
       free?: true;
     }
+  | {
+      t: 'extended';
+      uid: number;
+      defId: PieceId;
+      /** The card's type, which may differ from the room's (a Bedroom card on a member's room). */
+      card: PieceId;
+      /** The tiles that joined the room. */
+      cells: readonly Cell[];
+      clearedTrees: readonly Cell[];
+      /** Weekend Crew's free play: the week goes on. */
+      free?: true;
+    }
   | { t: 'targetReached'; phase: number; target: number; score: number }
   | { t: 'overtimeUsed'; phase: number; overtimeLeft: number; target: number; score: number }
   | {
@@ -1800,6 +1847,8 @@ export interface Preview {
   replaces?: FixtureId;
   /** For a Renovation: the room, and the level it would reach. */
   renovates?: { uid: number; level: number };
+  /** D-168: for an extension, the room that grows, and its tiles once it has. */
+  extends?: { uid: number; cells: readonly Cell[] };
   /** Checklist lines the play would turn on, and off (spec ids). */
   specsGained: readonly string[];
   specsLost: readonly string[];
@@ -1940,8 +1989,8 @@ export interface RunCodeData {
   contentHash: string;
   setup: RunSetup;
   actions: readonly Action[];
-  /** A tentative placement, install, or Renovation, so a preview bug can be reproduced. */
-  pending?: PlaceAction | InstallAction | RenovateAction;
+  /** A tentative placement, install, Renovation, or extension, so a preview bug can be reproduced. */
+  pending?: PlaceAction | InstallAction | RenovateAction | ExtendAction;
 }
 
 /** One part of a checklist line's progress: "Bedrooms 3 (3–4)", "fill 61% (≥ 60%)". */
@@ -2112,6 +2161,7 @@ export {
   effectText,
   fixtureText,
   glossary,
+  growGain,
   handCardLines,
   HINT_WORDS,
   hintText,

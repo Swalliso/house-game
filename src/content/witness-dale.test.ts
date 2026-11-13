@@ -197,7 +197,7 @@ describe('one piece more or less on the witness breaks one line', () => {
 
   it('a second Kitchen card can’t be placed: it renovates the Kitchen (D-165)', () => {
     expect(checkPlace(HOUSE, ['kitchen', 11, 11]).reason).toBe(
-      'The house has its Kitchen: this card renovates it.',
+      'The house has its Kitchen: this card extends or renovates it.',
     );
   });
 });

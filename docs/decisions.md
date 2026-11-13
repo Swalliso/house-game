@@ -965,6 +965,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **2026-11-07 (playtest 5a):** the team loved how the rooms change as fixtures go into them, and how they connect to the rooms and the yard around them. In their run that happened at almost every step: the Dining Room took a doorway and a window from the Living Room, Bunk Beds replaced a bed and its nightstand, a Pergola replaced a Patio's parasol, a back door opened onto each Patio, and a Bay Window widened a Living Room's wall.
 - The review also found the door tree running through bedrooms when no public room touches a Hallway. In their house Bedroom 3 was the only way from the living rooms to the hall wing, and the Library and the Home Office opened off a bedroom. Doors are decoration, so no score changes; it's for a later pass on how houses read (D-093).
 - *The team's idea, Parked:* merged rooms. Two Living Rooms would become one big living room, and two Bedrooms a primary bedroom, with a limit so rooms can't merge endlessly. Today a wall stands between every two pieces, same type included (this decision's Walls). See the Parked list and `content-brainstorm.md` §15.
+  *D-168 (Proposed 2026-11-12):* built as Extend a room: a room card grows a room of its type, once, into one piece with a bigger outline, and a grown room takes a second group of furniture.
 
 **2026-11-07 (playtest 5a), the review's fixes:** made with the team's OK before merging, and described in the bullets above.
 - The wall between two rooms always shows. Tall furniture keeps to its own room's half of the band, and four wall faces were recut to stand apart from their floors: the Library's (pale olive, where its red-brown panelling matched its floor), the Bathroom's (mint with a white stripe), the Garage's (light grey paint) and the Closet's (white panels). In the team's house the Home Office and the Library had read as one room.
@@ -1126,6 +1127,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **Why:** a duplicate card gets somewhere better to go than a second copy across the lot (the review's force 3). Without it the ceilings make dead cards: under option A, 38% of Kitchen cards were dead, against 6% with Renovate.
 **Changes:** D-004, D-036, and D-050 (Accepted): a week's turn can be a Renovation.
 **2026-11-08 (M4 merged with `develop`):** "Levels show on the board" is now a pixel badge with a star per level, by the room's other badges. It's placed with M5a's labels, so it never covers the digit or another badge, and it pops on a Renovation. Where it can't fit it's left out, and the inspect panel states the level (D-111).
+*Proposed change by D-168 (2026-11-12, awaiting the user's OK):* a capped card renovates a room only where it can't extend it (no open ground beside the room fits the card, or the room has grown already). Where the room can grow, the card extends it instead. Renovations fall from 2.57 a run to 1.92 in greedy's held-out runs, most of them in the last weeks.
 
 *Proposed change by D-165 (2026-11-12, awaiting the user's OK):* a type's limit can also be its card's (`perHouse`): one Kitchen, one Dining Room, two Living Rooms, one of each special room, and two Home Offices. A card at its card's limit can't be placed at all. It renovates, or it's swapped for free once it has nothing to renovate (D-121). The checklist's ceilings (the Bedrooms) work as before.
 
@@ -1152,6 +1154,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **Decision:** while a room type is at its limit (D-102), its cards draw at half weight (`drawAtLimitPct`, 50). The draw streams don't change, so a replay stays exact.
 **Why:** the draw couldn't see the house: 63–67% of offered room cards went untaken in the review's packages. It isn't the whole-run halving of the Kitchen's cards that D-093 rejected; a weight drops only while its type is at its limit.
 **Changes:** D-043 (Accepted): draw weights depend on the house while a type is at its limit.
+*D-168 (Proposed 2026-11-12):* kept. With extensions and no Renovate, drawing a capped type at full weight cost greedy 11 points (52.0% against 63.0% on the same 200 held-out seeds).
 
 *Proposed change by D-165 (2026-11-12, awaiting the user's OK):* a type at its card's limit (`perHouse`) draws at half weight too.
 
@@ -2175,6 +2178,87 @@ What the columns mean:
 - **The checklist panel's look is D-167's** and unchanged here. Its fold now holds three one-line groups: the household, the shape, and the yard.
 - **Two clients' numbers now pull against the room rules.** Juniper's small house holds at the end in 13% of runs, and Count Vladislav's Bedroom range in 65%. They're the client's numbers, so the re-fit or a playtest decides whether they move.
 - **The Bathroom ratio isn't better,** only level with develop (above).
+
+### D-168 · Extend a room: a room card can grow a room of its type, and Renovate is for a room that can't
+**Status:** Proposed · 2026-11-12, a phase pull request (`phase/extend-a-room`), from the 2026-11-12 core-loop gap analysis, for the user's playtest. The user's ask: a room that grows, since renovating "doesn't really change anything visually". It builds the team's Parked merged rooms (D-100's playtest 5a note) the way `content-brainstorm.md` §15 picked. The content hash changes (79662776 → da8b40c7), so a run in progress doesn't carry over when it merges (#54).
+**Decision:**
+- **Extend a room** (the play `t: 'extend'`): a Bedroom, Kitchen, Living Room or Dining Room card, by root type (an L-Kitchen card grows a Kitchen, and a Bedroom card a household member's room), laid on open ground beside a room of its type and sharing at least 2 tiles of wall with it (`extend.minShared`), joins that room instead of being placed. Placement's ground rules hold for its tiles: on the lot, nothing built there, no water, boulder or Old Shed; Trees under it go, and finds pay. A member's own card never extends (D-103).
+- **Any week, once a room** (`extend.maxPerRoom`, 1).
+- **+2 Comfort a tile** the room has beyond its own card's (`extend.pointsPerTile`), flat and before its percentages: +8 from a Bedroom, Kitchen or Dining Room card, +6 from an L-Kitchen, +12 from a Living Room. Its breakdown line is "Extended (4 more tiles)". The room also touches whatever its new tiles touch. Counts don't change: it's one room, so sets, the checklist and the limits count it once.
+- **It's the week's build,** from the hand or the reserve, as a Renovation is: Weekend Crew can make it the free play, and a card that can extend has a play, so the draw doesn't swap it (D-121).
+- **The room stays one piece:** its uid, fixture, timers, level and place in the placement order, with the whole outline as its own shape (`PlacedPiece.shape`, D-106's field; `extended` counts the cards). The Moving Truck carries and turns all of it, a demolition takes all of it from any of its tiles, a transform (the Nursery into the Kids' Room) keeps the outline and its Comfort, the Copy Machine copies the card and not the outline, and Bunk Beds count it twice, as before.
+- **Renovate becomes the fallback** (a proposed change to D-102): a capped card renovates a room only where it can't extend it, because no open ground beside the room fits the card or the room has grown already. Elsewhere the rules say "That Kitchen can still grow." D-104's half-weight draw stays.
+- **On screen,** with no new panel: a card that can extend shows an Extend chip where Renovate's was ("It can extend a Bedroom you have, +8 Comfort: pick it, then point at an outlined room"). With the card picked, the rooms it can grow are outlined; pointing at one lays the card on that room's side nearest the pointer, and the ghost is the whole room as it would be, furnished. A room of its type that can't grow is outlined orange with the reason. The hint bar says "place, or extend an outlined room" and Enter "extend it"; Inspect says "Extend the Dining Room 3 → 15" with the Extended line. A first-time hint, Extend a room (23 words; Renovate's has 24), comes the first time a card can, and the How to Play sheet's Renovate section is now "Extend or renovate". Renovate's own hint and glossary entry say it's for a room the card can't extend, in fewer words than before. An extension plays the placement's beat with "Bigger Dining Room!".
+- **A grown room takes a second group of furniture** (`big` in `src/ui/art/rooms.ts`): a Bedroom a dresser and a sitting corner (an armchair, a floor lamp and a mat); a Living Room a bookcase, a second sofa, an armchair, a floor lamp and a tall plant; a Kitchen more counters and a table with chairs; a Dining Room a sideboard, a cabinet, a tall plant and a lamp. All are LimeZu sprites already in the atlas, so `assets/licenses.json` and `CREDITS.md` don't change.
+- **Run codes** carry extensions, and a code whose pending play is an extension opens with its ghost.
+
+**The five choices, by trial.** Greedy on 200 held-out runs an arm (`npm run sim -- --seed check --runs 200`: check-0 to check-199, the General Contractor, all five clients), each arm a frozen copy of this branch on develop 124bd13, paired by seed with develop. Late building is the house-building plays (rooms, arrivals, Renovations and extensions) of weeks 17–28 in won runs; the glance test and A compact house's shape (H1g) are over won runs too.
+
+| Arm | Greedy wins | Won only here / only on develop | Extensions a run (median week) | Renovations a run | Late building | Glance | Compact |
+|---|---|---|---|---|---|---|---|
+| develop | 49.5% | | none | 2.57 | 4.43 | 40% | 60% |
+| +1 a tile, Renovate kept | 53.5% | 17 / 9 | 0.91 (12) | 2.35 | 4.70 | 36% | 53% |
+| +1, Renovate only where it can't grow | 51.5% | 16 / 12 | 1.06 (11) | 1.96 | 4.61 | 33% | 50% |
+| +1, no Renovate | 51.5% | 18 / 14 | 1.20 (12) | 0 | 3.68 | 33% | 50% |
+| +1, no Renovate, only at the type's limit | 51.5% | 16 / 12 | 0.78 (14) | 0 | 3.75 | 36% | 50% |
+| +1, no Renovate, twice a room | 49.5% | 17 / 17 | 1.54 (13) | 0 | 3.71 | 33% | 47% |
+| +2, Renovate kept | 60.5% | 42 / 20 | 2.30 (10) | 2.08 | 4.82 | 40% | 54% |
+| **+2, Renovate only where it can't grow (built)** | **61.5%** | **42 / 18** | **2.32 (11)** | **1.92** | **4.80** | **36%** | **50%** |
+| +2, no Renovate | 63.0% | 43 / 16 | 2.42 (11) | 0 | 3.64 | 31% | 52% |
+| +2, no Renovate, 1 tile of wall | 64.0% | 47 / 18 | 2.81 (11) | 0 | 3.73 | 27% | 42% |
+| +2, no Renovate, only at the type's limit | 56.0% | 29 / 16 | 1.53 (12) | 0 | 3.75 | 33% | 49% |
+| +2, no Renovate, twice a room | 68.0% | 50 / 13 | 3.48 (12) | 0 | 3.89 | 29% | 48% |
+| +2, no Renovate, D-104 off | 52.0% | 46 / 41 | 2.67 (10) | 0 | 3.87 | 28% | 48% |
+
+1. **Renovate's place: the fallback.** Where a room can grow, the card grows it, as the brief leaned; Renovate stays for a room that can't. Without Renovate, the last weeks have less to build (3.64 house-building plays in weeks 17–28 against develop's 4.43), because by then most rooms are boxed in: in 60 runs of the +2 arm without it, a card that could extend a room was in hand in 54% of weeks 17–28, but a spot for it existed in only 18%. As the fallback, late building rises to 4.80 (0.75 of it extensions), and Renovations fall from 2.57 a run to 1.92, most of them late.
+2. **When: any week.** Only at the type's limit (Renovate's trigger), extensions fell to 0.78–1.53 a run with the median at week 12–14, and greedy won 7 points less at +2. A feature the user wants to see should come up in most runs: any week, the median extension comes at week 11 (p10 week 3, p90 week 22). It also doesn't depend on where the checklist puts the limits, which D-165 is changing.
+3. **Which types, and how far: Bedrooms, Kitchens, Living Rooms and Dining Rooms, once a room.** Bathrooms, Closets and Hallways keep their size: a big Bathroom or Closet reads as a mistake, and a Hallway joins what it touches already. Twice a room made 3.48 extensions a run, greedy won 68%, and the glance test fell to 29%, with rooms growing into corridors. Sharing 1 tile of wall instead of 2 let cards hang off corners: 42% kept a compact shape.
+4. **What it pays: +2 Comfort a tile.** At +1, greedy extended about once a run and won as often as on develop: the card's tiles were worth less than a new room. At +2 an extension is worth a week, 2.3 a run, and a grown Living Room earns +12 before its percentages. It's one short line: "+8 Comfort" on the chip and in Inspect.
+5. **The rest:** the room keeps its fixture, the Moving Truck carries the whole room, a demolition takes it all, a transform keeps the outline and its Comfort, the Copy Machine copies the card, and Bunk Beds' count doesn't change (no count changes with size). Each has a test in `src/rules/extend.test.ts`.
+
+**Sim, the whole check** (`npm run sim -- --check`, 200 held-out runs a bot, develop 124bd13 against this branch, frozen copies; the milestone targets and the clients' `targetPct` aren't re-fitted, per the batch):
+
+| | develop | D-168 |
+|---|---|---|
+| Greedy wins | 49.5% [42.6–56.4] | 61.5% [54.6–68.0] |
+| Paired by seed | | 42 won only here, 18 only on develop; final score ×1.08 at the median |
+| Greedy clears milestones 1–3 | 98.0% | 99.0% |
+| Novice passes milestone 1 | 98.5% | 98.5% |
+| Early always against never | 40.0% / 49.5% | 57.0% / 61.5% |
+| Extensions a run (in wins) | none | 2.32 (2.54) |
+| Renovations a run | 2.57 | 1.92 |
+| Rooms at the end, median, in wins (Bedrooms, mean) | 13 (3.05) | 11 (2.74) |
+| Yard plays in wins (Hallways) | 5.04 (1.21) | 4.70 (0.93) |
+| Glance test, wins (all runs) | 40% (46%) | 36% (40%) |
+| A compact house's shape, wins (all runs) | 60% (62%) | 50% (56%) |
+| Outline, all runs: corners ≤ 24 / fill ≥ 0.6 | 74.5% / 84.5% | 63.0% / 79.0% |
+| Clients: Hendersons, Vladislav, Barkers, Juniper, Dale | 47.5, 55.0, 45.0, 40.0, 60.0% | 45.0, 65.0, 60.0, 62.5, 75.0% |
+| Living Rooms' share of Wow | 13.3% | 23.5% |
+| Greedy's time per run, p50 | 646 ms | 553 ms |
+
+- **What extensions replace:** new rooms (11 at the end against 13), Renovations (0.65 fewer a run), and some yard filler and Hallways in won runs. The novice extends 0.21 times a run.
+- **Notches or sprawl:** mostly they stick out. The outline's median corner count went from 20 to 24 and the share within 24 from 74.5% to 63%, while the fill held (median 0.65 in both; at least 0.6 in 79% against 84.5%).
+- **Greedy's win rate** is 12 points over §8's 40–50%, and the clients' spread is 30 points: the batch's one re-fit should run on the merged batch.
+
+**Why:** a grown room is something the player sees (a new outline and a second group of furniture), where a Renovation changes a star. The capped card keeps its late use as Renovate.
+**Considered:**
+- **Taking Renovate out:** one concept fewer, and greedy won 63.0%, but late weeks lose their use for a capped card (3.64 late building) and the glance test fell to 31%.
+- **Only at the type's limit, twice a room, 1 tile of wall, D-104 off:** the table's rows.
+- **§15's other two ways,** bigger room types and an open plan: the first rewrites how rooms count, and the second only changes the look.
+
+**Changes:**
+- D-102 (Accepted): Renovate is for a room the card can't extend. A proposed change there, awaiting the user's OK.
+- D-104 (Accepted): unchanged; a dated note there with the arm that kept it.
+- D-100 (Accepted): its Parked merged rooms are built; a dated note there. The Parked list's Merged rooms points here, and so does `content-brainstorm.md` §15.
+- `implementation-plan.md` §3 and §5: the play, its event and its scoring term; M4's Renovate line.
+- `sim/greedy.test.ts`: greedy's recall floor is 75% of its 18 states, from 80%. With grown rooms the houses differ: 14 of 18 there; on 20 seeds 62 of 74 (83.8%, 0.40% of the Wow lost) against develop's 63 of 71 (88.7%, 0.34%). A bigger Bedroom gives a Closet more spots that make the Suite, and they share the shortlist's hint cap.
+- The rules tests' balance extends nothing (as it offers no change orders), so Renovate's tests keep their rooms; `extend.test.ts` turns it on.
+
+**Known gaps:**
+- **Not played by a person.** Whether pointing at a room to grow it feels natural, and how the ghost picks a side: the side nearest the pointer, at a quarter of a tile, so on a small room it can switch sides as the pointer crosses the middle.
+- **The art was checked on two run codes,** at 1× and 2× in a headless Chrome (a grown Bedroom, two grown Living Rooms and a Kitchen, and a Dining Room's ghost), not every type, color and outline. An odd outline (a Kitchen grown by an L-Kitchen card into a zigzag) can leave a piece of furniture out; nothing overlaps. The browser pane was hidden, so the pane pass checked the DOM: the chip, the first hint, the hint bar and Inspect. Sounds weren't heard.
+- **Shapes:** extensions mostly stick out, and the glance test falls 4 points in wins. If houses look sprawling in play, an extension could be asked to fill a notch (share 3 or more tiles of wall, or touch two rooms).
+- **D-165** (#78) makes a capped card unplaceable: it renovates, and its line says "One per house: another renovates it." With this, that card extends where it can and renovates only where it can't, so the line would be "another extends or renovates it". Both pull requests touch `run.ts`'s Renovate checks, the Renovate texts, How to Play and `testing.ts`; whichever merges second keeps both rules.
 
 ### D-161 · The bots rank only a few of a Fence card's plays out in the open, and the benchmark gate passes again
 **Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: speed only, and every sim run plays as before. Proposed 2026-11-12, a fix pull request (`fix/greedy-fence-packs`), the follow-up D-160's known gaps name, started once the user had merged D-160 (#73). D-160's standing stock keeps a Fence pack in the reserve nearly every week, and the sim's benchmark gate (§4) failed at 1.5 s against 1 s. Speed only: no rule, content, scoring, save or run-code change, and `contentHash(CONTENT)` is unchanged, so saves and run codes carry over (#54). Every bot plays as before, move for move: `npm run sim -- --check` gives the same runs.
@@ -3904,7 +3988,7 @@ Choose from two or three contracts, each one a client plus a lot.
 - **A roof for the house, with a second storey** (the user's idea, 2026-11-10): D-147 took the top-down roof out because a one-storey roof is a flat slab over the rooms. A second storey would give it height and something to cover. For the next jam session; it's a large rework (rooms on two floors, stairs, the board's layers), and goes with the upstairs floor above.
 - **Tour-order scoring:** the walkthrough as a scoring chain, where some rooms boost every room visited after them. Interesting, but hard for players to predict.
 - **Company HQ screen:** a visual home for meta-progression.
-- **Merged rooms** (the team's idea from playtest 5a, 2026-11-07): two Living Rooms that become one big living room, or two Bedrooms that become a primary bedroom, with a limit so rooms can't merge endlessly. It's D-093's option 4 in another form. Of the three ways sketched in `content-brainstorm.md` §15, the team picked *Extend a room* as the closest: a spare room card grows a room of its type into one bigger room, on the model of M4's Renovate (D-102). Revisit after playtest 4 has tried Renovate.
+- ~~Merged rooms~~ (the team's idea from playtest 5a, 2026-11-07): built as *Extend a room*, D-168 (Proposed 2026-11-12), off this list.
 
 ## Open questions
 

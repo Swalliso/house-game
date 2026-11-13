@@ -196,7 +196,7 @@ describe('the Barkers’ witness house', () => {
   it('takes no second Kitchen: an L-Kitchen card renovates the first (D-165)', () => {
     // An L-Kitchen counts as a Kitchen: here it would fill the front corner beside the first.
     const check = checkNext(HOUSE, ['lKitchen', 10, 8]);
-    expect(check.reason).toBe('The house has its Kitchen: this card renovates it.');
+    expect(check.reason).toBe('The house has its Kitchen: this card extends or renovates it.');
   });
 
   // One piece more or less, and exactly one line goes false at every milestone.

@@ -494,7 +494,7 @@ export interface CardText {
    * everyone needs it."
    */
   member?: string;
-  /** D-165: how many of its type a house holds: "One per house: another renovates it." */
+  /** D-165: how many of its type a house holds: "One per house: extend or renovate." */
   perHouse?: string;
 }
 
@@ -572,10 +572,12 @@ export function perHouseOf(content: Content, def: PieceDef): number | undefined 
   return content.pieces[def.countsAs ?? def.id]?.perHouse;
 }
 
-/** "One per house: another renovates it." */
+/** "One per house: extend or renovate." */
 export function perHouseText(n: number): string {
   const count = n === 1 ? 'One' : n === 2 ? 'Two' : `${n}`;
-  return `${count} per house: another renovates it.`;
+  // D-169: a spare card extends a room it can grow (D-168), and renovates otherwise: six words,
+  // as D-165's "another renovates it" had.
+  return `${count} per house: extend or renovate.`;
 }
 
 /**
@@ -739,6 +741,31 @@ function handModifierText(content: Content, mod: Modifier): string {
  * A fixture shows where it goes and its first effect: what it does to its room (Makes it Sunny,
  * Counts as 2 Bedrooms) or, for the Kitchen Island, what it earns.
  */
+/** D-168: "A Bedroom, Kitchen, Living Room, or Dining Room", the types that can grow. */
+function extendTypesText(content: Content): string {
+  const names = content.balance.extend.types.map((t) => content.pieces[t].name);
+  const text = article(joinWords(names, 'or'));
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+/** "once", "twice", "3 times". */
+function timesText(n: number): string {
+  return n === 1 ? 'once' : n === 2 ? 'twice' : `${n} times`;
+}
+
+/**
+ * D-168: what extending a room with this card adds: `extend.pointsPerTile` for each of its tiles,
+ * flat, before the room's percentages. 0 for a card that can't extend a room.
+ */
+export function growGain(content: Content, def: PieceDef): number {
+  const root = def.countsAs ?? def.id;
+  if (def.member || def.category !== 'indoor' || !content.balance.extend.types.includes(root)) {
+    return 0;
+  }
+  const tiles = def.shape.reduce((n, row) => n + row.split('#').length - 1, 0);
+  return tiles * content.balance.extend.pointsPerTile;
+}
+
 export function handCardLines(content: Content, card: Card): string[] {
   if (card.kind === 'fixture') {
     const def = content.fixtures[card.id];
@@ -1109,6 +1136,7 @@ export type Term =
   | 'crates'
   | 'upgrades'
   | 'renovate'
+  | 'extend'
   | 'checklist'
   | 'frontYard'
   | 'backYard'
@@ -1242,11 +1270,22 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
     renovate: {
       title: 'Renovate',
       text:
-        // D-165: "it takes": a type's limit is its card's (one Kitchen) or the checklist's.
+        // D-165: "it takes": a type's limit is its card's (one Kitchen) or the checklist's. D-168:
+        // only a room it can't extend.
         `Once the house has all the rooms of a type it takes (one Kitchen, its Bedrooms, …), a ` +
-        `card of that type can renovate one of them in place instead of being placed: ` +
+        `card of that type can renovate one it can’t extend instead of being placed: ` +
         `+${b.renovate.pointsPerLevel} ${L.points} a level, up to ${b.renovate.maxLevel}. ` +
         `From the hand it’s the week’s build. A card that can shows Renovate.`,
+    },
+    // D-168: what Extend a room is, in fewer words than Renovate's entry. D-163: from Your goods
+    // it's free, as placing one is.
+    extend: {
+      title: 'Extend a room',
+      text:
+        `${extendTypesText(content)} card can extend a room of its type instead of being placed: ` +
+        `point at the room. It gains the card’s tiles, +${b.extend.pointsPerTile} ${L.points} ` +
+        `each, ${timesText(b.extend.maxPerRoom)} a room. From the hand it’s the week’s build; ` +
+        `still one room.`,
     },
     checklist: {
       title: 'The checklist',
@@ -1353,7 +1392,7 @@ export const HINT_WORDS = 25;
 
 /** The first-time hints (D-045) that state a rule or a number. */
 export type HintTerm =
-  'score' | 'checklist' | 'early' | 'shop' | 'fixture' | 'renovate' | 'strike' | 'stock';
+  'score' | 'checklist' | 'early' | 'shop' | 'fixture' | 'extend' | 'renovate' | 'strike' | 'stock';
 
 /** Each within HINT_WORDS, with its numbers from the content. */
 export function hintText(content: Content): Record<HintTerm, string> {
@@ -1384,11 +1423,15 @@ export function hintText(content: Content): Record<HintTerm, string> {
     fixture:
       'Fixtures upgrade a piece you’ve built, one each. Installing from your hand is the ' +
       'week’s build; from your supplies (Your goods, top right) it’s free.',
-    // D-165: a type's limit is its card's (one Kitchen) or the checklist's (the Bedrooms).
+    // D-168: how to extend, and what it pays (23 words), in no more than Renovate's.
+    extend:
+      `Pick a card marked Extend, then point at an outlined room of its type: it grows by the ` +
+      `card. +${b.extend.pointsPerTile} ${L.points} a tile.`,
+    // D-165: a type's limit is its card's (one Kitchen) or the checklist's (the Bedrooms). D-168:
+    // a room that can grow grows, so Renovate is for one that can't. 24 words, as each had.
     renovate:
-      `Once the house has all the rooms of a type it takes, a spare card renovates one ` +
-      `instead: +${b.renovate.pointsPerLevel} ${L.points} a level, up to ` +
-      `${b.renovate.maxLevel}.`,
+      `Once the house has all of a type it takes, spare cards renovate ones they can’t ` +
+      `extend: +${b.renovate.pointsPerLevel} ${L.points} a level, up to ${b.renovate.maxLevel}.`,
     // D-157: what a strike does, and where more come from (23 words; 24 with none per milestone).
     strike:
       `Strike a card: a new one takes its place, its type is gone this run, and the week goes ` +

@@ -233,7 +233,7 @@ describe('per-house caps on the cards', () => {
     const s = build([['kitchen', 2, 2]], [pc('lKitchen')]);
     const check = R.checkPlay(s, { t: 'place', from: 'hand', i: 0, x: 6, y: 6, rot: 0 });
     expect(check.legal).toBe(false);
-    expect(check.reason).toBe('The house has its Kitchen: this card renovates it.');
+    expect(check.reason).toBe('The house has its Kitchen: this card extends or renovates it.');
     expect(R.legalPlacements(s)).toEqual([]);
     expect(R.cardFits(s, 0)).toBe(false);
     expect(R.renovateTargets(s, 'hand', 0)).toEqual([1]);
@@ -252,14 +252,14 @@ describe('per-house caps on the cards', () => {
     );
     expect(R.cardFits(two, 0)).toBe(false);
     expect(R.checkPlay(two, { t: 'place', from: 'hand', i: 0, x: 8, y: 6, rot: 0 }).reason).toBe(
-      'The house has its Living Rooms: this card renovates one.',
+      'The house has its Living Rooms: this card extends or renovates one.',
     );
     expect(cardText(CAPPED, CAPPED.pieces.livingRoom).perHouse).toBe(
-      'Two per house: another renovates it.',
+      'Two per house: extend or renovate.',
     );
     // A variant card has its type's cap.
     expect(cardText(CAPPED, CAPPED.pieces.lKitchen).perHouse).toBe(
-      'One per house: another renovates it.',
+      'One per house: extend or renovate.',
     );
     expect(cardText(CAPPED, CAPPED.pieces.bedroom).perHouse).toBeUndefined();
   });

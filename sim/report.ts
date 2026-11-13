@@ -239,12 +239,20 @@ export function houseReport(content: Content, records: readonly RunRecord[]): st
     [
       '  House-building plays, weeks 17–28',
       ...cols((rs) =>
-        mean(rs, (r) => r.build.late.rooms + r.build.late.arrivals + r.build.late.renovations),
+        mean(
+          rs,
+          (r) =>
+            r.build.late.rooms +
+            r.build.late.arrivals +
+            r.build.late.renovations +
+            (r.build.late.extensions ?? 0),
+        ),
       ),
     ],
     ['    rooms from the hand', ...cols((rs) => mean(rs, (r) => r.build.late.rooms))],
     ["    the arrivals' rooms", ...cols((rs) => mean(rs, (r) => r.build.late.arrivals))],
     ['    Renovations', ...cols((rs) => mean(rs, (r) => r.build.late.renovations))],
+    ['    extensions (D-168)', ...cols((rs) => mean(rs, (r) => r.build.late.extensions ?? 0))],
     [
       '    yard, fixtures, Hallways, passes',
       ...cols((rs) =>
@@ -258,6 +266,7 @@ export function houseReport(content: Content, records: readonly RunRecord[]): st
       ),
     ],
     ['  Renovations per run', ...cols((rs) => mean(rs, (r) => r.build.renovations))],
+    ['  Extensions per run (D-168)', ...cols((rs) => mean(rs, (r) => r.build.extensions ?? 0))],
     ['  Big weeks, median', ...cols((rs) => median(rs, (r) => r.build.bigWeeks))],
     [
       '  Wow from pieces placed in milestones 1–2',

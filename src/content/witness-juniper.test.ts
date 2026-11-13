@@ -154,7 +154,7 @@ describe('Juniper Vale’s witness house', () => {
     // A second Kitchen card (an L-Kitchen on the front walk) renovates instead (D-165).
     const lKitchen: Placement = ['lKitchen', 9, 10, 1];
     expect(placing(PLACEMENTS, lKitchen)).toBe(
-      'The house has its Kitchen: this card renovates it.',
+      'The house has its Kitchen: this card extends or renovates it.',
     );
     // Rowan's Studio left in the reserve: from Drywall, Room for everyone needs it.
     const noRowan = houseFrom(CONTENT, LOT, PLACEMENTS);
