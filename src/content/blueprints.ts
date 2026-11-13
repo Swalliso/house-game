@@ -102,8 +102,10 @@ export const BLUEPRINTS: Readonly<Record<BlueprintId, BlueprintDef>> = {
 
   // Rare: the rule-benders, and the only ×Mult blueprints (D-056).
   crownJewel: blueprint('crownJewel', 'Crown Jewel', 'rare', [{ kind: 'bestPiece', pct: 100 }]),
+  // D-165: +0.2 a line, from +0.1, now that the checklist is about half as long (a run holds
+  // about 3 lines a week, where it held about 5.6).
   dreamHome: blueprint('dreamHome', 'Dream Home', 'rare', [
-    { kind: 'rule', key: 'specBonus', add: 10 },
+    { kind: 'rule', key: 'specBonus', add: 20 },
   ]),
   // Pulls against completing early: a fast-forwarded last week doesn't count.
   lastMinutePush: blueprint('lastMinutePush', 'Last-Minute Push', 'rare', [

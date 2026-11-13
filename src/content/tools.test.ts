@@ -209,10 +209,11 @@ describe('Fertilizer', () => {
 });
 
 describe('Inspector’s Visit', () => {
-  it('adds +25 to the spec bonus for this week', () => {
+  // D-165: +50, from +25, for the shorter checklist.
+  it('adds +50 to the spec bonus for this week', () => {
     const s = build([], { supplies: [tool('inspectorsVisit')] });
     expect(rules.rule(s, 'specBonus')).toBe(25);
-    expect(rules.rule(useTool(s).state, 'specBonus')).toBe(50);
+    expect(rules.rule(useTool(s).state, 'specBonus')).toBe(75);
   });
 });
 

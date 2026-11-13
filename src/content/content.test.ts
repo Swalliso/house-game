@@ -217,23 +217,24 @@ describe('the slice pieces', () => {
         ['bathroom', 2, 0],
         ['kitchen', 3, 0],
       ]).pieces,
-    ).toEqual([3, 1, 2]); // the Kitchen in the sun: +2 (D-120)
+    ).toEqual([3, 1, 5]); // the Kitchen in the sun: +2 (D-120), and +3 of its own (D-165)
   });
 
   it('Kitchen and L-Kitchen: +2 per Dining Room, boosted by its aura', () => {
-    // Both in the sun (D-120): the Kitchen's +2 and +2 at +50% is 6, the Dining Room's +2.
+    // Both in the sun (D-120): the Kitchen's +2, +2 and its own +3 (D-165) at +50% is 10.5 →
+    // 11, the Dining Room's +2.
     expect(
       earnedOf(open, [
         ['kitchen', 0, 0],
         ['diningRoom', 2, 0],
       ]).pieces,
-    ).toEqual([6, 2]);
+    ).toEqual([11, 2]);
     expect(
       earnedOf(open, [
         ['lKitchen', 0, 0],
         ['diningRoom', 2, 0],
       ]).pieces,
-    ).toEqual([6, 2]);
+    ).toEqual([11, 2]);
   });
 
   it('Living Room: +2 per view (max 3), and the Dining Room boosts it too', () => {
@@ -270,13 +271,13 @@ describe('the slice pieces', () => {
       ['bathroom', 2, 2],
       ['bedroom', 2, 3],
     ]);
-    // The Kitchen, the Dining Room and the Living Room face the sun, +2 each (D-120): Kitchen 6;
-    // Dining 2; Living 3 (no view); the Bedrooms touch, so 4 each; Bathroom 3. Sets: 25 + 10
-    // Points and +1 + 0.5 Mult.
-    expect(t.pieces).toEqual([6, 2, 3, 4, 3, 4]);
-    expect(t.points).toBe(22 + 25 + 10);
+    // The Kitchen, the Dining Room and the Living Room face the sun, +2 each (D-120): Kitchen 11
+    // (with its own +3, D-165); Dining 2; Living 3 (no view); the Bedrooms touch, so 4 each;
+    // Bathroom 3. Sets: 25 + 10 Points and +1 + 0.5 Mult.
+    expect(t.pieces).toEqual([11, 2, 3, 4, 3, 4]);
+    expect(t.points).toBe(27 + 25 + 10);
     expect(t.mult).toBe(250);
-    expect(t.total).toBe(143); // 57 × 2.5 = 142.5 → 143
+    expect(t.total).toBe(155); // 62 × 2.5
   });
 });
 

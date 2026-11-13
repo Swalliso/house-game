@@ -1351,6 +1351,7 @@ export const TEST_CONTENT: Content = {
   crates: TEST_CRATES,
   changeOrders: TEST_CHANGE_ORDERS,
   lotTraits: TEST_LOT_TRAITS,
+  roomRules: {},
   balance: TEST_BALANCE,
 };
 

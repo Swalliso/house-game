@@ -132,7 +132,8 @@ describe('the greedy bot', () => {
     // with Trees down both sides. A Bedroom earns most beside the Trees, but there the box
     // grows to 10 × 4, and A compact house's +0.25 Mult is worth more than the Trees. A
     // corner, or a row above or below, keeps it. The Hallways only link here, as before D-114,
-    // so nothing but the Trees pulls; with their pay, see the end.
+    // and the house rules on the rooms are left out (D-165: Cozy pulls a Bedroom in too), so
+    // nothing but the Trees pulls; with both, see the end.
     const linkOnly = (id: 'hallway' | 'longHallway') => ({
       ...CONTENT.pieces[id],
       effects: [{ kind: 'link' as const }],
@@ -142,7 +143,7 @@ describe('the greedy bot', () => {
       hallway: linkOnly('hallway'),
       longHallway: linkOnly('longHallway'),
     };
-    const r = createRules({ ...CONTENT, pieces });
+    const r = createRules({ ...CONTENT, pieces, roomRules: {} });
     const rows = emptyRows(16, 12).map((row, y) =>
       y >= 4 && y <= 7 ? `.T${'.'.repeat(12)}T.` : row,
     );
@@ -170,7 +171,12 @@ describe('the greedy bot', () => {
     for (const p of plays) best = Math.max(best, r.scoreOnly(s, p));
     // Ranked as if there were no checklist, the shortlist is all Bedrooms by the Trees.
     const hendersons = { ...CONTENT.clients.hendersons, specs: [] };
-    const blind = createRules({ ...CONTENT, pieces, clients: { ...CONTENT.clients, hendersons } });
+    const blind = createRules({
+      ...CONTENT,
+      pieces,
+      roomRules: {},
+      clients: { ...CONTENT.clients, hendersons },
+    });
     const salt = stream('roof', 'shortlist').u32();
     const blindList = shortlist(blind, s, plays, salt);
     expect(blindList.some(keeps)).toBe(false);
@@ -193,8 +199,8 @@ describe('the greedy bot', () => {
   it('sees the real checklists’ count, ratio, outline, and variety lines flip exactly', () => {
     // Every client, three weeks of a greedy run: the lines a placement turns on and off, as
     // the estimate counts them, are the exact tally's, on the lines it follows. Every client
-    // has the house rules counts decide; Cozy (every room touching two) is left out.
-    const RULES = ['roomForEveryone', 'bathrooms', 'oneKitchen', 'livingRooms', 'underOneRoof'];
+    // has the house rules counts decide (D-165: the three on the checklist).
+    const RULES = ['roomForEveryone', 'underOneRoof'];
     let checked = 0;
     let on = 0;
     let off = 0;
@@ -204,7 +210,6 @@ describe('the greedy bot', () => {
         const ctx = { specs, phase: s.phase };
         const ids = followedLines(CONTENT, computeLayout(CONTENT, s.house), ctx);
         expect(ids).toEqual(expect.arrayContaining([...RULES, 'tidyYard']));
-        expect(ids).not.toContain('cozy');
         // Every fifth placement (about 3,700 in all when this was written, 40 flipping a line).
         const plays = rules.legalPlacements(s);
         for (let k = 0; k < plays.length; k += 5) {

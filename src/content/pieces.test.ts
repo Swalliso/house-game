@@ -209,7 +209,7 @@ describe('indoor rooms', () => {
         ['bathroom', 2, 0],
         ['lKitchen', 3, 0],
       ]),
-    ).toEqual([3, 1, 2]); // the L-Kitchen faces the sun: +2 while Sunny (D-120)
+    ).toEqual([3, 1, 5]); // the L-Kitchen: +2 while Sunny (D-120), and +3 of its own (D-165)
     // A Kitchen alone pulls it below zero, which floors at 0.
     const t = tally(open, [
       ['bathroom', 0, 0],
@@ -218,42 +218,47 @@ describe('indoor rooms', () => {
     expect(t.pieces[0]).toMatchObject({ points: -2, earned: 0 });
   });
 
-  it('Kitchen: +2 per Dining Room or Herb Garden, and both boost it', () => {
+  it('Kitchen: +3, +2 per Dining Room or Herb Garden, and both boost it', () => {
     expectCard('kitchen', [
       '+2 per touching Dining Room or Herb Garden',
       '+2 every week while Sunny',
+      '+3 every week',
     ]);
+    expect(CONTENT.pieces.kitchen.perHouse).toBe(1); // D-165: one a house
     expect(shapeOf('kitchen')).toMatchObject({ w: 2, h: 2, rotations: 1 });
-    // On the lot's back edge its wall faces the sun (D-120): +2.
-    expect(earned(open, [['kitchen', 0, 0]])).toEqual([2]);
-    // +2, and +2 in the sun, then the Dining Room's +50%: 6. The Dining Room is in the sun too.
+    // Its own +3 (D-165). On the lot's back edge its wall faces the sun (D-120): +2.
+    expect(earned(open, [['kitchen', 0, 0]])).toEqual([5]);
+    // +2, +2 in the sun and +3, then the Dining Room's +50%: 10.5, so 11. The Dining Room is in
+    // the sun too.
     expect(
       earned(open, [
         ['kitchen', 0, 0],
         ['diningRoom', 2, 0],
       ]),
-    ).toEqual([6, 2]);
-    // +2 and +2, then the Herb Garden's +25%: 5. The Herb Garden is in the Kitchen's shade.
+    ).toEqual([11, 2]);
+    // +2, +2 and +3, then the Herb Garden's +25%: 8.75, so 9. The Herb Garden is in the
+    // Kitchen's shade.
     expect(
       earned(open, [
         ['kitchen', 0, 0],
         ['herbGarden', 0, 2],
       ]),
-    ).toEqual([5, 0]);
-    // Both: +6 at +75% is 10.5, so 11.
+    ).toEqual([9, 0]);
+    // Both: +9 at +75% is 15.75, so 16.
     expect(
       earned(open, [
         ['kitchen', 0, 0],
         ['diningRoom', 2, 0],
         ['herbGarden', 0, 2],
       ]),
-    ).toEqual([11, 2, 0]);
+    ).toEqual([16, 2, 0]);
   });
 
   it('L-Kitchen: the 3-tile L, counted as a Kitchen, earning the same', () => {
     expectCard('lKitchen', [
       '+2 per touching Dining Room or Herb Garden',
       '+2 every week while Sunny',
+      '+3 every week',
     ]);
     const def = CONTENT.pieces.lKitchen;
     expect(def.countsAs).toBe('kitchen');
@@ -270,14 +275,14 @@ describe('indoor rooms', () => {
         ['lKitchen', 0, 0],
         ['diningRoom', 2, 0],
       ]),
-    ).toEqual([6, 2]);
+    ).toEqual([11, 2]);
     expect(
       earned(open, [
         ['lKitchen', 0, 0],
         ['diningRoom', 2, 0],
         ['herbGarden', 0, 2],
       ]),
-    ).toEqual([11, 2, 0]);
+    ).toEqual([16, 2, 0]);
   });
 
   it('Dining Room: Kitchens and Living Rooms next to it earn +50%, and two add up', () => {
@@ -296,13 +301,14 @@ describe('indoor rooms', () => {
         ['bedroom', 2, 3],
       ]),
     ).toEqual([6, 1, 0, 3]);
-    // Two Dining Rooms: +6 at +100% is 12, shown as one aura line. All three are in the sun.
+    // Two Dining Rooms: +9 (+4, +2 in the sun and the Kitchen's own +3) at +100% is 18, shown
+    // as one aura line. All three are in the sun.
     const t = tally(open, [
       ['kitchen', 2, 0],
       ['diningRoom', 0, 0],
       ['diningRoom', 4, 0],
     ]);
-    expect(t.pieces.map((p) => p.earned)).toEqual([12, 2, 2]);
+    expect(t.pieces.map((p) => p.earned)).toEqual([18, 2, 2]);
     expect(t.pieces[0]!.lines).toContainEqual({
       label: '2 Dining Rooms next door',
       op: 'pct',
@@ -400,7 +406,7 @@ describe('indoor rooms', () => {
         ['longHallway', 2, 0],
         ['diningRoom', 5, 0],
       ]),
-    ).toEqual([6, 4, 2]); // the Kitchen and the Dining Room in the sun: +2 each (D-120)
+    ).toEqual([11, 4, 2]); // the Kitchen (with its own +3) and the Dining Room in the sun (D-120)
     // The Kitchen touches only the Long Hallway and the Dining Room only the short one. Each
     // hall pays for the rooms it touches itself; the other hall isn't a room.
     expect(
@@ -410,7 +416,7 @@ describe('indoor rooms', () => {
         ['hallway', 4, 1, 1],
         ['diningRoom', 5, 1],
       ]),
-    ).toEqual([6, 2, 2, 2]);
+    ).toEqual([11, 2, 2, 2]);
   });
 
   it('Hallways pay +2 for each room they touch, up to 4 (D-114)', () => {
@@ -571,7 +577,8 @@ describe('indoor rooms', () => {
     expect(R.checkPlay(s2, drive).legal).toBe(true);
     const t2 = R.apply(s2, drive).events.find((e) => e.t === 'tally')!.tally;
     const [g, d] = t2.pieces.slice(-2);
-    expect(g).toMatchObject({ defId: 'garage', points: 5 });
+    // 5, and +2 for Cozy (D-165): it touches the Kitchen, the Dining Room and the Home Office.
+    expect(g).toMatchObject({ defId: 'garage', points: 7 });
     expect(g!.unmet).toBeUndefined();
     expect(g!.earned).toBeGreaterThan(0);
     expect(d).toMatchObject({ defId: 'driveway', points: 1 + 3 });
@@ -738,7 +745,8 @@ describe('yard pieces', () => {
         ['herbGarden', 0, 6], // both tiles in the Bedroom's shade
       ]),
     ).toEqual([3, 0]);
-    // Two of them by a Kitchen in the sun: +6 at +50% is 9. A Bedroom next to one isn't boosted.
+    // Two of them by a Kitchen in the sun: +9 (with its own +3) at +50% is 13.5 → 14. A Bedroom
+    // next to one isn't boosted.
     expect(
       earned(open, [
         ['kitchen', 2, 0],
@@ -746,14 +754,14 @@ describe('yard pieces', () => {
         ['herbGarden', 4, 0, 1],
         ['bedroom', 5, 0],
       ]),
-    ).toEqual([9, 2, 2, 3]);
-    // An L-Kitchen counts as a Kitchen: +4 at +25% is 5. The Herb Garden is in its shade.
+    ).toEqual([14, 2, 2, 3]);
+    // An L-Kitchen counts as a Kitchen: +7 at +25% is 8.75 → 9. The Herb Garden is in its shade.
     expect(
       earned(open, [
         ['lKitchen', 0, 0],
         ['herbGarden', 0, 2],
       ]),
-    ).toEqual([5, 0]);
+    ).toEqual([9, 0]);
   });
 
   it('Patio: earns only touching a room; +2 per Living Room or Kitchen, +1 per view (up to 3)', () => {
@@ -771,7 +779,7 @@ describe('yard pieces', () => {
         ['livingRoom', 4, 1],
         ['flowerBed', 2, 4],
       ]),
-    ).toEqual([6, 2, 4, 3]); // the Kitchen and the Living Room in the sun: +2 each (D-120)
+    ).toEqual([6, 5, 4, 3]); // the Kitchen (+3 of its own) and the Living Room in the sun (D-120)
     // Seven Trees and a Closet around it: three of the Trees count.
     expect(
       earned(
@@ -787,7 +795,7 @@ describe('yard pieces', () => {
         ['patio', 2, 0],
         ['lKitchen', 0, 0],
       ]),
-    ).toEqual([2, 2]);
+    ).toEqual([2, 5]);
     // The Patio rule (D-105): by a Tree but touching no room, it earns nothing, though it's
     // still legal. A Hallway isn't a room, and links only rooms, so one beside it doesn't help.
     const tree = ['.T........', ...emptyRows(10, 9)];

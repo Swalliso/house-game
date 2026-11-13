@@ -1,7 +1,8 @@
 // The Hendersons' witness layout (implementation-plan.md §5, §9): a house a player could build,
 // one legal placement at a time, that meets every line of their checklist at every milestone.
-// It proves their specs can be met without a solver. Their checklist is the seven house rules
-// in their numbers, then Kitchen beside the Dining Room and A fenced yard. Room for everyone
+// It proves their specs can be met without a solver. Their checklist is the house rules in their
+// numbers (D-165: Room for everyone, A compact house, A tidy yard), then Kitchen beside the
+// Dining Room and A fenced yard. Room for everyone
 // grows with the household (M4b, D-103): 2–3 Bedrooms, then 3–4 and the twins' room from
 // Framing, then 4–5 and Grandma's room from Drywall. Each member's room counts as a Bedroom,
 // so three Bedrooms of their own fit every stage.
@@ -17,7 +18,7 @@
 //    7 .T..LLLKKDDee...
 //    8 hh..LLLKKDDww...   The house fills a 7 × 4 box with 8 rooms to Framing, then 7 × 6
 //    9 hhww11b2233ww...   with 9 and 11. Both of their own Bathrooms sit between Bedrooms,
-//   10 ..ww11b2233.....   so every room touches two others (Cozy).
+//   10 ..ww11b2233.....   so every room touches two others (Cozy pays on each).
 //   11 ffff.*..*.......
 //   12 ..............B.   The play yard (columns 0–3, rows 7–10) is closed by two Fences,
 //   13 ................   the house, and the lot's edge: 16 tiles, clear of the street.
@@ -190,39 +191,22 @@ describe("the Hendersons' witness layout", () => {
 });
 
 describe('one piece more or less breaks just the line it should', () => {
-  it('a second Kitchen breaks One Kitchen (an L-Kitchen counts)', () => {
+  it('a second Kitchen card can’t be placed: it renovates the Kitchen (an L-Kitchen counts)', () => {
     const lKitchen: Placement = ['lKitchen', 6, 11, 2]; // in front of the Bathroom and Bedroom 2
-    expect(checkPlace(houseAt(PHASES.at(-1)!), lKitchen).legal).toBe(true);
-    for (const phase of PHASES) {
-      expect(failing(houseAt(phase, [lKitchen]), phase), rules.phaseName(phase)).toEqual([
-        'oneKitchen',
-      ]);
-    }
-  });
-
-  it('without the second Bathroom, the Bedrooms break the Bathroom rule', () => {
-    const house = (phase: number) =>
-      houseFrom(
-        CONTENT,
-        LOT,
-        houseAt(phase)
-          .pieces.filter((p) => !(p.defId === 'bathroom' && p.x === 6 && p.y === 10))
-          .map((p): Placement => [p.defId, p.x, p.y, p.rot, p.shape]),
-      );
-    for (const phase of PHASES) {
-      expect(failing(house(phase), phase), rules.phaseName(phase)).toEqual(['bathrooms']);
-    }
+    const check = checkPlace(houseAt(PHASES.at(-1)!), lKitchen);
+    expect(check.legal).toBe(false);
+    expect(check.reason).toBe('The house has its Kitchen: this card renovates it.');
   });
 
   it('a fourth Bedroom of their own is one too many: the range rises only for the household', () => {
     const bedroom: Placement = ['bedroom', 6, 11]; // in front of the Bathroom and Bedroom 2
     expect(checkPlace(houseAt(PHASES.at(-1)!), bedroom).legal).toBe(true);
     for (const phase of PHASES) {
-      // 4 Bedrooms against 2–3; with the Nursery, 5 against 3–4 (and 5 need a third Bathroom);
-      // with Grandma's Room too, 6 against 4–5.
-      const expected =
-        phase === 2 || phase === 3 ? ['roomForEveryone', 'bathrooms'] : ['roomForEveryone'];
-      expect(failing(houseAt(phase, [bedroom]), phase), rules.phaseName(phase)).toEqual(expected);
+      // 4 Bedrooms against 2–3; with the Nursery, 5 against 3–4; with Grandma's Room too, 6
+      // against 4–5.
+      expect(failing(houseAt(phase, [bedroom]), phase), rules.phaseName(phase)).toEqual([
+        'roomForEveryone',
+      ]);
     }
   });
 

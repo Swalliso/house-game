@@ -34,6 +34,12 @@
 // Lines about tags (Dark), views, touching, adjacency, groups, sets, and fenced yards stay out,
 // since placing a piece can change them in ways only a new layout shows, and so do change
 // orders' counts of new pieces and demolitions.
+//
+// The house rules that pay on the rooms (D-165) are granted effects: they count for the new
+// piece and its neighbors as their own effects do (Cozy's rooms touched; a room reaching a
+// "touching 2+" threshold), and A Bathroom nearby from the house's matching as it stands: a new
+// Bedroom is served if a Bathroom in reach has room, a new Bathroom serves unserved Bedrooms in
+// reach up to its capacity. Other grants (Good Bones) stay out, as before.
 
 import type {
   Cell,
@@ -41,6 +47,7 @@ import type {
   Effect,
   HouseCondition,
   Modifier,
+  PieceCondition,
   PieceDef,
   PieceId,
   PlacedPiece,
@@ -63,7 +70,7 @@ import {
 } from './layout.ts';
 import type { ActiveMod } from './modifiers.ts';
 import { isType, matchesDef, matchesNeighbor, matchesPiece, rootType } from './selectors.ts';
-import { earnedFor, specsMet } from './scoring.ts';
+import { earnedFor, servedMatch, specsMet } from './scoring.ts';
 
 export interface Estimate {
   /** The week's total's estimated change, checklist lines it would turn on or off included. */
@@ -329,8 +336,34 @@ export function estimatePlay(
   const scoreOf = new Map(tally.pieces.map((p) => [p.uid, p]));
   const matchN = (sel: Selector) =>
     neighbors.filter((n) => matchesNeighbor(content, layout, sel, n)).length;
+  const grants = houseGrants(mods);
+  /** The room rules' effects on a placed piece (D-165). */
+  const grantedOn = (uid: number): Effect[] =>
+    grants.filter((g) => matchesPiece(content, layout, g.target, uid)).map((g) => g.effect);
+  /** Takers the new piece would serve, per served effect's key (its capacity runs out). */
+  const newServes = new Map<string, number>();
   /** What a placed piece's effect gains from the new piece as a neighbor, under its cap. */
   const gain = (uid: number, e: PieceDef['effects'][number]): number => {
+    if (e.kind === 'conditional') {
+      // A threshold on what it touches ("+N while touching 2+ rooms"): the new piece is the one
+      // that reaches it.
+      const sel = touchingOf(e.when);
+      if (!sel || e.effect.kind !== 'steady') return 0;
+      if (!matchesNew(content, layout, sel.sel, def, cells, sun)) return 0;
+      const already = (layout.neighbors.get(uid) ?? []).filter((m) =>
+        matchesNeighbor(content, layout, sel.sel, m),
+      ).length;
+      return already === sel.min - 1 ? e.effect.amount : 0;
+    }
+    if (e.kind === 'served') {
+      if (!matchesNew(content, layout, e.by, def, cells, sun)) return 0;
+      const key = servedKey(e);
+      if (servedNow(content, layout, scoreOf, grants, e).servedBy.has(uid)) return 0;
+      const k = newServes.get(key) ?? 0;
+      if (k >= e.capacity) return 0;
+      newServes.set(key, k + 1);
+      return e.amount;
+    }
     if (e.kind !== 'neighbor' || !matchesNew(content, layout, e.match, def, cells, sun)) return 0;
     const already = (layout.neighbors.get(uid) ?? []).filter((m) =>
       matchesNeighbor(content, layout, e.match, m),
@@ -362,15 +395,27 @@ export function estimatePlay(
         break;
       case 'conditional': {
         const w = e.when;
-        const holds =
-          'in' in w
+        const touching = touchingOf(w);
+        const holds = touching
+          ? matchN(touching.sel) >= touching.min
+          : 'in' in w
             ? allInRegion(layout, cells, w.in, sun)
-            : 'touching' in w
-              ? matchN(w.touching) >= (w.min ?? 1)
-              : 'is' in w
-                ? matchesNew(content, layout, w.is, def, cells, sun)
-                : true;
+            : 'is' in w
+              ? matchesNew(content, layout, w.is, def, cells, sun)
+              : true;
         if (holds) addOwn(e.effect);
+        break;
+      }
+      case 'served': {
+        // D-165: a new taker is served if a server in reach has room left.
+        const { load } = servedNow(content, layout, scoreOf, grants, e);
+        const room = neighbors.some(
+          (n) =>
+            n.kind === 'piece' &&
+            matchesPiece(content, layout, e.by, n.uid) &&
+            (load.get(n.uid) ?? 0) < e.capacity,
+        );
+        if (room) points += e.amount;
         break;
       }
       default:
@@ -384,6 +429,9 @@ export function estimatePlay(
       if ('in' in c && !allInRegion(layout, cells, c.in, sun)) blocked = true;
       if ('touching' in c && matchN(c.touching) < (c.min ?? 1)) blocked = true;
     } else addOwn(e);
+  }
+  for (const g of grants) {
+    if (matchesNew(content, layout, g.target, def, cells, sun)) addOwn(g.effect);
   }
 
   // The run's percentage modifiers that would match the new piece (blueprints, the crew).
@@ -441,6 +489,7 @@ export function estimatePlay(
         points += e.amount ?? 0;
       } else dPoints += gain(n.uid, e);
     }
+    for (const e of grantedOn(n.uid)) dPoints += gain(n.uid, e);
     if (!blocked) {
       for (const e of def.effects) {
         if (
@@ -515,6 +564,66 @@ export function estimatePlay(
     specHint,
     sunHint: sunChanges && mods.some(({ mod }) => readsSunny(mod)),
   };
+}
+
+// ---------------------------------------------------------------------------------------
+// The house rules on the rooms (D-165).
+
+type Grant = Extract<Modifier, { kind: 'grantEffect' }>;
+type Served = Extract<Effect, { kind: 'served' }>;
+
+/** The room rules' grants among the run's modifiers. */
+function houseGrants(mods: readonly ActiveMod[]): Grant[] {
+  return mods.flatMap((m) =>
+    m.source.kind === 'house' && m.mod.kind === 'grantEffect' ? [m.mod] : [],
+  );
+}
+
+/** A condition on what the piece touches: its selector and how many it needs. */
+function touchingOf(cond: PieceCondition): { sel: Selector; min: number } | null {
+  if ('touching' in cond) return { sel: cond.touching, min: cond.min ?? 1 };
+  if ('is' in cond && cond.is !== 'all' && 'touching' in cond.is) {
+    return { sel: cond.is.touching, min: cond.is.min ?? 1 };
+  }
+  return null;
+}
+
+const servedKey = (e: Served) => `${JSON.stringify(e.by)}|${e.capacity}`;
+
+/** The house's matching for a served effect as it stands, and each server's load, per layout. */
+const servedCache = new WeakMap<
+  Layout,
+  Map<string, { servedBy: Map<number, number>; load: Map<number, number> }>
+>();
+
+function servedNow(
+  content: Content,
+  layout: Layout,
+  scoreOf: ReadonlyMap<number, { unmet?: string }>,
+  grants: readonly Grant[],
+  e: Served,
+): { servedBy: Map<number, number>; load: Map<number, number> } {
+  let perLayout = servedCache.get(layout);
+  if (!perLayout) servedCache.set(layout, (perLayout = new Map()));
+  const key = servedKey(e);
+  let hit = perLayout.get(key);
+  if (!hit) {
+    const same = (x: Effect) => x.kind === 'served' && servedKey(x) === key;
+    const takers = layout.house.pieces
+      .filter(
+        (p) =>
+          !scoreOf.get(p.uid)?.unmet &&
+          (pieceDef(content, p).effects.some(same) ||
+            grants.some((g) => same(g.effect) && matchesPiece(content, layout, g.target, p.uid))),
+      )
+      .map((p) => p.uid);
+    const servedBy = servedMatch(content, layout, takers, e.by, e.capacity);
+    const load = new Map<number, number>();
+    for (const s of servedBy.values()) load.set(s, (load.get(s) ?? 0) + 1);
+    hit = { servedBy, load };
+    perLayout.set(key, hit);
+  }
+  return hit;
 }
 
 // ---------------------------------------------------------------------------------------

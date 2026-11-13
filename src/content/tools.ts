@@ -40,9 +40,10 @@ export const TOOLS: Readonly<Record<ToolId, ToolDef>> = {
   }),
   catalog: tool('catalog', 'Catalog', 'common', { kind: 'specialHand' }),
   fertilizer: tool('fertilizer', 'Fertilizer', 'uncommon', { kind: 'advanceTimers', weeks: 2 }),
+  // D-165: +0.5 a line for the week, from +0.25, for the shorter checklist (see Dream Home).
   inspectorsVisit: tool('inspectorsVisit', 'Inspector’s Visit', 'uncommon', {
     kind: 'weekModifiers',
-    modifiers: [{ kind: 'rule', key: 'specBonus', add: 25 }],
+    modifiers: [{ kind: 'rule', key: 'specBonus', add: 50 }],
   }),
   dumpster: tool('dumpster', 'Dumpster', 'common', { kind: 'reward', reward: { demolitions: 2 } }),
   remodelJackAndJill: tool('remodelJackAndJill', 'Remodel Plans: Jack-and-Jill', 'common', {

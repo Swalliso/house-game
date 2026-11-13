@@ -278,7 +278,7 @@ house-game/
 │   │   ├── fixtures.ts       # installing fixtures, host checks
 │   │   ├── shop.ts           # offers, prices, selling, the sale item
 │   │   ├── tools.ts          # one-shot tools from the shop, one function per tool kind
-│   │   ├── conditions.ts     # house conditions: client specs, the house rules, change-order requests (D-101)
+│   │   ├── conditions.ts     # house conditions: client specs, the house rules, change-order requests (D-101), the cards' per-house limits (D-165)
 │   │   ├── jobs.ts           # the job board's contracts, outside the run code (D-032)
 │   │   ├── run.ts            # RunState, apply(), legalActions(), the transition table, change orders, arrivals
 │   │   ├── runcode.ts        # encode and decode run codes; replay()
@@ -287,7 +287,7 @@ house-game/
 │   │   ├── tags.ts  features.ts  pieces.ts  fixtures.ts  sets.ts
 │   │   ├── blueprints.ts  tools.ts  upgrades.ts  crates.ts
 │   │   ├── clients.ts  crews.ts  change-orders.ts
-│   │   ├── house-rules.ts  households.ts   # the seven house rules (D-101) and each client's arrivals (D-103)
+│   │   ├── house-rules.ts  households.ts   # the house rules (D-101; D-165: three lines, two room rules) and each client's arrivals (D-103)
 │   │   ├── balance.ts        # lot size, weeks, targets, prices, rewards (one owner)
 │   │   └── index.ts          # registry + validateContent()
 │   ├── ui/                   # Preact: renders state, calls rules, never computes scores
@@ -516,7 +516,7 @@ Per piece, in placement order:
 For the week (all Mult values are integers in hundredths, so ×1.25 is 125):
 
 5. **Points** = `Σ earned + Σ set Points` (each set instance's Points at its level, scaled by any `setBonus` with the same formula).
-6. **+Mult:** `mult = 100 + specBonus × specsMet + Σ set Mult + Σ mult modifiers`, where each set's Mult is also scaled by `setBonus`. `specBonus` is 25 in `balance.ts` (Dream Home raises it to 35), so 4 specs met give ×2, the same as D-037's additive spec bonus (refines D-021).
+6. **+Mult:** `mult = 100 + specBonus × specsMet + Σ set Mult + Σ mult modifiers`, where each set's Mult is also scaled by `setBonus`. `specBonus` is 25 in `balance.ts` (Dream Home raises it to 45 since D-165; 35 before), so 4 specs met give ×2, the same as D-037's additive spec bonus (refines D-021).
 7. **×Mult:** each distinct active ×Mult source multiplies `mult` once, whatever number of pieces trigger it: `mult = floor((mult × times + 50) / 100)`. Distinct sources multiply each other, so three different ×2 sources make ×8, but one source can never apply twice (Ballionaire's rule). The order is fixed: sets, then fixtures, then blueprints, then this week's tools. That removes Balatro's joker-order puzzle, which suits a cozy game.
 8. **Total** = `floor((Points × mult + 50) / 100)`.
 
@@ -613,6 +613,7 @@ interface PieceDef {
   canCover?: FeatureId[]       // Driveway: ['creek'], a culvert
   givesView?: true
   countsAs?: PieceId           // L-Kitchen counts as a Kitchen
+  perHouse?: number            // D-165: the most of its type a house holds (one Kitchen); a capped card renovates
   shape: string[]              // ASCII rows: '#' filled, '.' empty
   tags: Tag[]
   drawWeight: number           // 10 = normal; 0 = not in the base pool (special pieces)
@@ -673,14 +674,15 @@ type HouseCondition =                             // about the house: specs, req
   | { set: SetId; min?: number }
   | { demolishedSinceAccepted: { min: number } }
   // M4a, for the house rules (D-101):
-  | { ratio: { count: Selector; per: Selector; every: number; min?: number } }   // a Bathroom for every 2 Bedrooms
+  | { ratio: { count: Selector; per: Selector; every: number; min?: number } }   // a Bathroom for every 2 Bedrooms (a room rule since D-165)
   | { outline: { minRooms: number; maxRooms?: number; minFillPct: number; maxAspect: number } }  // A compact house (id underOneRoof; D-160)
   | { variety: { of: Selector; min: number; maxEach: number; exempt?: Selector } }              // a tidy yard
   | { stages: { fromPhase: number; condition: HouseCondition }[] }   // by milestone: a household that grows
   | { and: HouseCondition[] } | { or: HouseCondition[] } | { not: HouseCondition }
 // Counts over piece types count rooms by their own card, weighted by countsAs modifiers for
 // that type: Bunk Beds make a Bedroom count twice, and a Kitchen Island doesn't add a Dining
-// Room (D-101). A count with a `max` over piece types is that type's limit (D-102, D-104).
+// Room (D-101). A count with a `max` over piece types is that type's limit (D-102, D-104), and so
+// is a card's `perHouse` (D-165).
 ```
 
 ### Effect kinds
@@ -701,6 +703,7 @@ The ten types from `content-brainstorm.md` become eight kinds here: the neighbor
 | **`link`** *(new)* | — | Hallway |
 | **`requires`** *(new)* | `condition: PieceCondition`, `blocksPlacement` | Driveway must touch the street or a Driveway (blocks placement); Doghouse earns only in a fenced yard, and the Garage only touching the street or a Driveway (don't block; D-140) |
 | **`conditional`** *(new)* | `when: PieceCondition`, `effect` | Flower Bed bonus in the front yard |
+| **`served`** *(D-165)* | `by`, `amount`, `capacity` | A Bathroom nearby: a Bedroom earns `amount` with a `by` in reach, each serving `capacity` (a maximum matching, ties to the earlier taker) |
 | `custom` | `id` | Escape hatch |
 
 An unmet `requires` makes the piece earn no score and no budget, and shows a warning icon. Nothing is removed automatically.
@@ -757,7 +760,7 @@ type RunStat = 'milestonesEarly'                    // counts for scaling ×Mult
 interface ClientDef {
   id; name; rarity: 'common' | 'uncommon' | 'rare'; tier; brief: string
   specs: { id: string; name: string; group: 'household' | 'shape' | 'yard' | 'wishes'
-           condition: HouseCondition; text?: string }[]   // the seven house rules first (D-101)
+           condition: HouseCondition; text?: string }[]   // the house rules first (D-101; three since D-165)
   tastes: Modifier[]
   pool: Modifier[]               // drawWeight only
   changeOrders: ChangeOrderId[]
@@ -1803,6 +1806,7 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
   - the yard: a tidy yard ("6 or more yard pieces, and no yard type stands 4 or more times"; outbuildings count; Fences, Driveways, and Saplings count toward the 6 but never break it)
   - a client wish that repeats a house rule becomes the client's numbers for it (the Hendersons' Bedrooms and Bathrooms; Juniper's 4–8 rooms is her A compact house)
   - Room for everyone rises with the household's arrivals (M4b, D-103, D-109): both ends +1 at each arrival, and from that arrival on it needs the member's room. The Hendersons go 2–3, then 3–4 from Framing (the twins) and 4–5 from Drywall (Grandma); the other clients 1–2, then 2–3 from their member's arrival. (In M4a, before arrivals, it stepped up at Framing and Drywall.)
+- *D-165 (Proposed 2026-11-12):* three of these stay on the checklist: Room for everyone, A compact house, and a tidy yard. Cozy ("a room touching 2 or more rooms earns +2") and A Bathroom nearby ("a Bedroom earns +8 with a Bathroom in reach, and each Bathroom serves two") pay on the rooms as Comfort: `content.roomRules`, modifiers every run has (source `house`). One Kitchen and a living room or two are the cards' `perHouse`: one Kitchen, one Dining Room, two Living Rooms; the special rooms one each, and two Home Offices. The Kitchen earns +3 a week of its own.
 - **Renovate** (D-102): a room card whose type is at its limit can level a room of that type instead: +4 Comfort a level, up to 2. Levels stay through the Moving Truck and transforms. It can be Weekend Crew's next play (from the reserve it's free, D-163), and a card that can only renovate doesn't count as fitting for the free redraw.
 - **Half-weight draws** (D-104): a type at its limit draws at half weight while it stays there.
 - **The yard rules** (D-105): the Patio, Hot Tub, and Fire Pit earn nothing unless they touch a room (not blocking; a Hallway alone doesn't count); Treehouses don't count each other as Kid partners.
@@ -1976,7 +1980,7 @@ The first five come from `content-brainstorm.md`; the other thirteen are new (D-
 | **Show Home** | Uncommon | `earn {hasFixture any} +100` (D-143; was +50) |
 | **Solar Panels** | Uncommon | `grantEffect {tag Sunny} economy 1 every 4` |
 | **Crown Jewel** | Rare | `bestPiece +100`: the week's top earner earns double |
-| **Dream Home** | Rare | `rule specBonus +10`: each spec met adds +0.35 Mult instead of +0.25 |
+| **Dream Home** | Rare | `rule specBonus +20`: each spec met adds +0.45 Mult instead of +0.25 (D-165; +10 before) |
 | **Last-Minute Push** | Rare | `xMult times 200 when lastWeekOfPhase`: ×2 in a phase's last week, which pulls against completing early |
 | **Model Home** | Rare | `xMult times 100 plusPer {per {hasFixture any}, add 10}`: ×(1 + 0.1 per piece with a fixture); it grows as you install |
 | **Ahead of Schedule** | Rare | `xMult times 100 plusPer {per milestonesEarly, add 20}`: ×(1 + 0.2 per milestone completed early this run), which rewards cashing out early |
@@ -1993,7 +1997,7 @@ Combolands' potions and Islanders' boons are the models: one-shot, cheap, and th
 | Open House Party | Common | `weekModifiers [earn {tag Social} +100, earn {tag Pretty} +100]` |
 | Catalog | Common | `specialHand`: redraw this hand from special pieces and fixtures |
 | Fertilizer | Uncommon | `advanceTimers 2` |
-| Inspector's Visit | Uncommon | `weekModifiers [rule specBonus +25]`: this week, each spec met adds +0.5 Mult |
+| Inspector's Visit | Uncommon | `weekModifiers [rule specBonus +50]`: this week, each spec met adds +0.75 Mult (D-165; +25 before) |
 | Dumpster | Common | `reward {demolitions: 2}` |
 | Remodel Plans: Suite | Common | `levelSet suite` |
 | Remodel Plans: Jack-and-Jill | Common | `levelSet jackAndJill` |
@@ -2030,7 +2034,7 @@ Packs, as in Combolands and Balatro: open one and keep 1 of 3.
 
 ### Clients
 
-Every checklist starts with the seven house rules (D-101), in the client's numbers; the Specs column lists each client's own wishes and numbers. A wish that repeats a house rule became that rule's numbers.
+Every checklist starts with the house rules (D-101; three since D-165), in the client's numbers; the Specs column lists each client's own wishes and numbers. A wish that repeats a house rule became that rule's numbers.
 
 | Client | Specs | Tastes | Pool | Change orders | Built in |
 |---|---|---|---|---|---|

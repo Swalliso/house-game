@@ -50,6 +50,7 @@ import { clientName, crewName, lotOf } from '../screens/Portfolio.tsx';
 import { playLotAgain } from './actions.ts';
 import {
   activePlay,
+  cardsPlace,
   currentTally,
   demolishArmed,
   demolishPreview,
@@ -58,6 +59,7 @@ import {
   inspected,
   preview,
   renovateUids,
+  reservePlace,
   run,
   selected,
   movingUid,
@@ -173,7 +175,7 @@ function Lines({
     <ul class={`lines ${voided ? 'voided' : ''}`}>
       {shown.map((l, i) => (
         <li key={i} class={l.value < 0 ? 'bad' : 'good'}>
-          <span>{l.label}</span>
+          <span>{l.rule ? <RuleName line={l} /> : l.label}</span>
           <span class="value">
             {l.value < 0 ? '−' : '+'}
             {Math.abs(l.value)}
@@ -182,6 +184,17 @@ function Lines({
         </li>
       ))}
     </ul>
+  );
+}
+
+/** D-165: a house rule's line on a room ("Cozy") says the rule in its tip. */
+function RuleName({ line }: { line: BreakdownLine }) {
+  const rule = line.rule && CONTENT.roomRules[line.rule];
+  if (!rule) return <>{line.label}</>;
+  return (
+    <Tip title={rule.name} text={rule.text}>
+      {line.label}
+    </Tip>
   );
 }
 
@@ -393,10 +406,18 @@ function SpecChanges({ gained, lost }: { gained: readonly string[]; lost: readon
   );
 }
 
-/** A member's room (M4b, D-103): whose it is, that it counts as a Bedroom, and from when. */
+/**
+ * A member's room (M4b, D-103): whose it is, that it counts as a Bedroom, and from when. A
+ * room the house takes so many of (D-165): "One per house: another renovates it."
+ */
 function MemberNote({ id }: { id: PieceId }) {
-  const member = cardText(CONTENT, CONTENT.pieces[id]).member;
-  return member ? <p class="member-note">{member}</p> : null;
+  const { member, perHouse } = cardText(CONTENT, CONTENT.pieces[id]);
+  return (
+    <>
+      {member && <p class="member-note">{member}</p>}
+      {perHouse && <p class="member-note">{perHouse}</p>}
+    </>
+  );
 }
 
 /**
@@ -570,14 +591,16 @@ function RenovateStars({ level }: { level: number }) {
  * (M4a, D-102): the board outlines those rooms while the card is picked. Not while a placement
  * waits for End week: the outlines are hidden then, and pointing doesn't renovate.
  */
-function RenovateHint({ id }: { id: PieceId }) {
+/** `only`: the card has no spot on the lot, so renovating is its one play (D-165's caps). */
+function RenovateHint({ id, only = false }: { id: PieceId; only?: boolean }) {
   if (renovateUids.value.length === 0 || tentative.value) return null;
   const def = CONTENT.pieces[id];
   const type = CONTENT.pieces[def.countsAs ?? def.id].name;
   return (
     <p class="muted">
-      Or <Tip term="renovate">renovate</Tip> one in place, with nothing torn down: point at an
-      outlined {type} ({RENOVATE_GAIN}).
+      {only ? '' : 'Or '}
+      <Tip term="renovate">{only ? 'Renovate' : 'renovate'}</Tip> one in place, with nothing torn
+      down: point at an outlined {type} ({RENOVATE_GAIN}).
     </p>
   );
 }
@@ -594,7 +617,16 @@ function PlacingInfo() {
   const renovate = play?.t === 'renovate';
   const room = renovate ? run.value.house.pieces.find((q) => q.uid === play.uid) : undefined;
   const roomName = room ? CONTENT.pieces[room.defId].name : 'room';
-  const hint = sel.kind === 'piece' && !renovate ? <RenovateHint id={sel.id} /> : null;
+  // A card with no spot on the lot (its type is capped, D-165) can only renovate.
+  const placeable =
+    sel.kind !== 'piece' ||
+    (sel.from === 'hand'
+      ? cardsPlace.value[sel.i]
+      : sel.from === 'reserve'
+        ? reservePlace.value[sel.i]
+        : true) !== false;
+  const hint =
+    sel.kind === 'piece' && !renovate ? <RenovateHint id={sel.id} only={!placeable} /> : null;
   // D-163: a piece from the reserve is free: it doesn't use the week.
   const fromLine = renovate
     ? sel.from === 'reserve'
@@ -615,11 +647,13 @@ function PlacingInfo() {
         <h2>{name}</h2>
         {fromLine && <p class="muted">{fromLine}</p>}
         {member}
-        <p class="muted">
-          {install
-            ? 'Point at a piece on the lot to see what it would do there.'
-            : 'Point at the lot to see what it would earn.'}
-        </p>
+        {(install || placeable) && (
+          <p class="muted">
+            {install
+              ? 'Point at a piece on the lot to see what it would do there.'
+              : 'Point at the lot to see what it would earn.'}
+          </p>
+        )}
         {hint}
         {install && <GoodBody good={{ kind: 'fixture', id: sel.id }} />}
         {sel.kind === 'piece' && sel.from === 'hand' && <SetProgressLines id={sel.id} />}
@@ -1071,6 +1105,7 @@ export function Inspect() {
             ))}
           </ul>
           {text.member && <p class="member-note">{text.member}</p>}
+          {text.perHouse && <p class="member-note">{text.perHouse}</p>}
           {piece.fixture && (
             <>
               <h3>Fixture: {CONTENT.fixtures[piece.fixture.id].name}</h3>

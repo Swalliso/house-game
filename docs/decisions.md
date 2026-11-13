@@ -364,6 +364,8 @@ Also: D-036 and D-043 (Accepted), where hand size becomes the `handSize` rule (3
 - D-019: the layers' names (Comfort, Charm, Sparkle, Wow).
 - D-050 and D-051 (Accepted): adds the Chandelier (11 fixtures), Model Home and Ahead of Schedule (18 blueprints), and the Remodel Plans tool kind (12 tools); turns It's a House and Rush Order into +Mult; turns Last-Minute Push into ×Mult.
 
+*Proposed change by D-165 (2026-11-12, awaiting the user's OK):* +0.25 per spec met stays, on a checklist of 5–6 lines. Two house rules pay Comfort on the rooms instead (Cozy, and A Bathroom nearby). Dream Home is +0.2 a line (from +0.1), and Inspector's Visit +0.5 for its week (from +0.25).
+
 ### D-018 · Milestones are construction phases
 **Status:** Accepted · 2026-11-05 (with the plan's approval)
 Groundbreaking → Foundation → Framing → Roofing → Drywall → Finishes → Final Walkthrough. Each milestone is a client walkthrough.
@@ -378,6 +380,8 @@ See also D-038 (Accepted): the data format, piece-id targets, relational selecto
 Each client has a short spec checklist (e.g., 4 Bedrooms, 2 Bathrooms, a Fenced Yard), and each item met multiplies weekly score. Together with the client's tastes, this is how clients judge the house differently.
 See also D-037 (Accepted): spec bonuses add (+25% each) rather than compound. D-056 (Accepted 2026-11-05): each spec met adds +0.25 to the week's Mult.
 **Amended by:** D-101 (Accepted 2026-11-06, with D-093's option B): every checklist starts with seven house rules in the client's numbers, and a spec can have a ceiling as well as a floor. Each house rule has a floor, so Appendix A's "specs are positive achievements" still holds.
+
+*Proposed change by D-165 (2026-11-12, awaiting the user's OK):* a checklist starts with three house rules, not seven, and two more pay on the rooms (D-101's note).
 
 ### D-025 · House data separate from run data
 **Status:** Accepted · 2026-11-05 (with the plan's approval). The state shape is in `implementation-plan.md` §4 (`HouseState` separate from `RunState`).
@@ -1085,6 +1089,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 *Changed by D-160 (Proposed 2026-11-12):* Under one roof is called A compact house, with the same id (`underOneRoof`) and numbers: an outside playtester read the old name as "everything connected".
 
+*D-165 (Proposed 2026-11-12):* three of D-101's seven lines stay on the checklist. Cozy and the Bathroom rule pay on the rooms, and the cards cap the shared and special rooms. On the sim's held-out seeds the measures hold or improve: the glance test 46% to 56%, one of each 81% to 98%, repeats 12% to 0%, and tiny houses 28% to 6%. The Bathroom ratio is level (86.5% to 85.0%, within noise).
+
 ### D-101 · The house rules: seven lines every checklist starts with
 **Status:** Accepted · 2026-11-06 (D-093's option B, chosen by the team). The numbers are placeholders for the sim.
 **Decision:**
@@ -1105,6 +1111,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 *Changed by D-160 (Proposed 2026-11-12):* Under one roof is A compact house (same id and numbers): "4+ rooms that fill at least 60% of the box around them, and the box is no longer than twice its width."
 
+*Proposed change by D-165 (2026-11-12, awaiting the user's OK):* the checklist keeps three house rules: Room for everyone, A compact house, and A tidy yard. Cozy and the Bathroom rule pay on the rooms instead, as Comfort: "A room touching 2 or more rooms earns +2" and "A Bedroom earns +8 with a Bathroom in reach, and each Bathroom serves two". One Kitchen and A living room or two become the cards' own limits (`perHouse`): one Kitchen, one Dining Room, and two Living Rooms.
+
 ### D-102 · Renovate
 **Status:** Accepted · 2026-11-06 (D-093's option B; the team chose +4 a level, up to 2, and the name Renovate).
 **Decision:**
@@ -1118,6 +1126,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **Why:** a duplicate card gets somewhere better to go than a second copy across the lot (the review's force 3). Without it the ceilings make dead cards: under option A, 38% of Kitchen cards were dead, against 6% with Renovate.
 **Changes:** D-004, D-036, and D-050 (Accepted): a week's turn can be a Renovation.
 **2026-11-08 (M4 merged with `develop`):** "Levels show on the board" is now a pixel badge with a star per level, by the room's other badges. It's placed with M5a's labels, so it never covers the digit or another badge, and it pops on a Renovation. Where it can't fit it's left out, and the inspect panel states the level (D-111).
+
+*Proposed change by D-165 (2026-11-12, awaiting the user's OK):* a type's limit can also be its card's (`perHouse`): one Kitchen, one Dining Room, two Living Rooms, one of each special room, and two Home Offices. A card at its card's limit can't be placed at all. It renovates, or it's swapped for free once it has nothing to renovate (D-121). The checklist's ceilings (the Bedrooms) work as before.
 
 ### D-103 · The household's arrivals
 **Status:** Accepted · 2026-11-06 (D-093's option B; the team chose fixed arrivals, not declinable). Built in M4b.
@@ -1142,6 +1152,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **Decision:** while a room type is at its limit (D-102), its cards draw at half weight (`drawAtLimitPct`, 50). The draw streams don't change, so a replay stays exact.
 **Why:** the draw couldn't see the house: 63–67% of offered room cards went untaken in the review's packages. It isn't the whole-run halving of the Kitchen's cards that D-093 rejected; a weight drops only while its type is at its limit.
 **Changes:** D-043 (Accepted): draw weights depend on the house while a type is at its limit.
+
+*Proposed change by D-165 (2026-11-12, awaiting the user's OK):* a type at its card's limit (`perHouse`) draws at half weight too.
 
 ### D-105 · The yard rules: the Patio rule, a tidy yard, and Treehouses
 **Status:** Accepted · 2026-11-06 (D-093's option B; the team chose the tidy yard as the yard brake).
@@ -1445,6 +1457,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - Every client has the same seven house rules, which took the room Inspect needed.
 
 **Changes:** D-109's UI note: the house-rule groups now fold inside one row for the whole rules. D-110's left column: a held piece counts as looked at.
+
+*D-165 (Proposed 2026-11-12):* the fold holds three house rules ("House rules 2/3"), in groups of one line each.
 
 ### D-114 · The Hallway experiment, step 1: Hallways pay for the rooms they touch
 **Status:** Accepted · 2026-11-10, held up in playtest 5 (`docs/playtests/playtest-5-findings.md`): the Hallways "felt good", and the user didn't bolt them to the outside just for their +2, so step 1's "between rooms" fallback isn't needed. Proposed 2026-11-09, after playtest 4 (`docs/playtests/playtest-4-findings.md` §7) and the layout session's proposal (§1, on its own branch). Built for playtest 5; the user asked for it once that session reported.
@@ -2015,6 +2029,152 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - **Runs in progress drop** when this merges and at the release. A run code from an earlier build loads with "The content has changed since it was made" and replays up to its first play from the reserve, which ended the week then.
 - **A player may still spend a hand card where a goods card would do;** the hint says goods are free, and the novice clears Foundation more often (21.5% against 8.5%).
 - **Greedy's longest run** took 3.7 s in the check (2.1 s on develop), with two jobs at a time; the gate passes.
+
+### D-165 · House rules on the rooms: Cozy and A Bathroom nearby pay where you can see them, and the checklist keeps three lines
+**Status:** Proposed · 2026-11-12, a phase pull request (`phase/rules-on-rooms`), one of the six sessions from the core-loop gap analysis (the user wants rules that explain themselves, and less text). For the user's playtest before it merges. It changes Accepted D-101, D-021 and D-056, and the limits of D-102 and D-104: proposed changes awaiting the user's OK, with a dated note on each. The milestone targets and the clients' `targetPct` are untouched; the batch's one re-fit sizes them (below). `contentHash(CONTENT)` changes, so runs in progress drop.
+**Decision:**
+- **Two house rules pay on the rooms, as Comfort, where the board's digits show them** (`ROOM_RULES` in `house-rules.ts`, `Content.roomRules`). Every run has them, as modifiers from a new source kind, `house`. Each line one adds to a room reads the rule's name, and Inspect's tip on the line gives the rule.
+  - **Cozy:** "A room touching 2 or more rooms earns +2. A Hallway’s link counts." It was a checklist line: "6+ rooms, each touching 2 or more rooms."
+  - **A Bathroom nearby:** "A Bedroom earns +8 with a Bathroom in reach, and each Bathroom serves two." It was "A Bathroom for every two Bedrooms (at least one)." A member's room counts as a Bedroom (D-103). In reach means touching, or linked by a Hallway.
+  - It's a new effect kind, `served`. The Bedrooms share out the Bathrooms in reach, at most two to a Bathroom, so that as many as possible are served. Ties go to the earlier Bedroom, and to a touching Bathroom before a linked one (`servedMatch` in `scoring.ts`, by augmenting paths).
+- **One Kitchen and A living room or two become what the cards do** (`PieceDef.perHouse`): one Kitchen (an L-Kitchen is one), one Dining Room, and two Living Rooms.
+  - A card whose type the house has enough of can't be placed. It renovates instead (D-102) and draws at half weight (D-104).
+  - The card says so: "One per house: another renovates it."
+  - It stays in hand while it has a room to renovate, and is swapped for free once it has none (D-121).
+- **The special rooms get the same cap:** one Garage, Sunroom, Library, Mudroom and Playroom each, and two Home Offices. Without the caps, Cozy's pay brought back the repeats D-093 removed (V1 below). A change order that needs a type the house is full of is skipped, like any order the house can't take.
+- **The Kitchen earns +3 a week of its own** (the L-Kitchen too). With One Kitchen off the checklist, nothing else asked for a Kitchen, and 31.5% of the bot's houses had none (V6).
+- **The checklist keeps three house rules,** then the client's wishes:
+  - Room for everyone;
+  - A compact house, the one shape line (dropping it took the compact outline from 60% to 24%, V2);
+  - A tidy yard.
+
+  That's 5–6 lines, where it was 9–10. Each still adds +0.25 Charm while it holds.
+- **Dream Home and Inspector's Visit stay, doubled.** Dream Home adds +0.2 a line (from +0.1), and Inspector's Visit +0.5 a line for its week (from +0.25). A run holds about 2.95 lines a week, where it held 5.6, so each is worth about what it was.
+- **A line names the neighbors it counts.** The line of an effect that needs a touching neighbor (Cozy's, or the Bathroom's own "+3 if touching a Bedroom") lists them in `from`, as a neighbor effect's line always did. So the placement preview marks them, and the tally's chains run through them (D-094's option 1).
+- **The bots see the room rules.** The estimate (`estimate.ts`) counts what a play adds or takes through them, as it does any neighbor effect. Without that, greedy ranks plays as if the rules didn't pay. It ranks every play by the estimate and scores only its shortlist exactly.
+- **On screen.** There's no new panel. The checklist loses four lines (52 words with their names), and the two rules' names and texts take 31:
+  - How to play's Scoring names the two rules in one bullet, in their own words.
+  - The job board's lede says "the same 3 house rules", and its tip adds "Cozy and A Bathroom nearby pay on the rooms."
+  - The Renovate glossary and hint say "all the rooms of a type it takes", where they said "its checklist wants".
+  - A capped card's text, and Inspect, carry the per-house line.
+
+**The variants** (greedy, 200 held-out runs each on `check-0` to `check-199`, the General Contractor, from frozen copies, two jobs at a time). Every variant has the Kitchen, Dining Room and Living Room caps.
+
+| | Cozy | A Bathroom nearby | Also | Greedy wins | Glance | Compact | One of each | Repeats | Bathroom ratio | Tiny | Rooms, p50 | Lines held a week | Growth: Comfort / Charm |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| develop (124bd13) | a line | a line | seven lines on the checklist | 49.5% | 46.0% | 62.5% | 80.5% | 11.5% | 86.5% | 28.0% | 11 | 5.57 of 9 | 49% / 51% |
+| V1 | +2 a room it touches, up to 3 | +4 | | 85.0% | 27.0% | 60.0% | 59.0% | 0% | 76.0% | 1.5% | 16 | 2.88 of 5 | 37% / 63% |
+| V2 | as V1 | +4 | no A compact house | 86.0% | 15.0% | 24.0% | 56.0% | 0% | 77.0% | 1.0% | 17 | 2.24 of 4.2 | 38% / 62% |
+| V3 | +6 at 2+ rooms | +4 | no A compact house | stopped once V2 showed the shape line has to stay | | | | | | | | | |
+| V4 | +1 a room it touches, up to 3 | +6 | | 69.5% | 34.0% | 55.0% | 68.5% | 0% | 75.5% | 6.0% | 14 | 2.88 of 5 | 42% / 58% |
+| V5 | +3 at 2+ rooms | +6 | | 68.5% | 37.0% | 58.5% | 69.0% | 0% | 80.5% | 8.5% | 14 | 2.85 of 5 | 42% / 58% |
+| V6 | none | +6 | | 37.0% | 33.0% | 62.5% | 66.0% | 0% | 74.5% | 31.5% | 10 | 2.81 of 5 | 50% / 50% |
+| V7 | +2 at 2+ rooms | +8 | the special rooms' caps; the Kitchen's +3 | 69.5% | 54.0% | 65.5% | 97.5% | 0% | 86.5% | 6.0% | 13 | 2.94 of 5 | 44% / 56% |
+| V8 | +2 at 2+ rooms | +10 | as V7 | 73.0% | 56.0% | 66.0% | 96.5% | 0% | 86.0% | 6.5% | 13 | 2.93 of 5 | 42% / 58% |
+| **This** | +2 at 2+ rooms | +8 | V7, with Dream Home and Inspector's Visit doubled | **72.0%** | **55.5%** | **66.5%** | **97.5%** | **0%** | **85.0%** | **5.5%** | 13 | 2.95 of 5 | 42% / 58% |
+
+What the columns mean:
+- **The house measures** are `sim/house.ts`'s, on each run's last house:
+  - Glance is H1g, H2 and H3 together.
+  - Compact is H1g.
+  - One of each is H3.
+  - Repeats are visible repeats.
+  - Tiny is 8 rooms or fewer.
+- **Lines held a week** is the mean over every tallied week.
+- **Growth** splits each week's change in Wow between Comfort and Charm (a Shapley split of Points × Mult). The checklist's lines are 4% of it on develop and 2% here.
+
+**What must hold** (paired `npm run sim -- --check`, develop at 124bd13 against this, on the same seeds):
+- **The house measures hold or improve,** for all 200 runs:
+
+  | Measure | develop | this |
+  |---|---|---|
+  | Glance | 46% | 56% |
+  | Compact | 63% | 67% |
+  | No yard inside the house (H2) | 77% | 78% |
+  | One of each | 81% | 98% |
+  | Repeats | 12% | 0% |
+  | research.md's plausibility check | 71% | 95% |
+  | Tiny | 28% | 6% |
+  | No household | 16% | 3% |
+  | Kitchens / Living Rooms / Dining Rooms, mean | 1.0 / 1.6 / 0.9 | 1.0 / 1.6 / 0.9 |
+
+  - **The Bathroom ratio is the one measure that dips: 86.5% to 85.0%,** 27 houses that miss it against 30. That's noise: only 7 seeds miss it in both runs, 20 only on develop and 23 only here.
+  - V7, the same rules before the Dream Home change, held 86.5%. +10 (V8) held 86.0%, so more pay doesn't lift it.
+  - The houses that miss it have 3 Bedrooms and 1 Bathroom, with the third Bedroom unserved.
+  - Corners went from a median of 20 to 22, in bigger houses, still inside the compact outline's 24.
+- **§8's criteria:**
+  - **Greedy wins:** 49.5% [42.6–56.4] against 72.0% [65.4–77.8]. FAIL against 40–50%.
+  - **Milestones 1–3:** 98.0% against 99.0%. FAIL, unsure, against 92–98%.
+  - **Novice passes milestone 1:** 98.5% against 97.5%.
+  - **Early completion:** −9.5 points against −7.5.
+  - **Random, and fences:** both pass, as on develop.
+  - **The spread between clients** grows from 20 points to 30:
+
+    | Client | develop | this |
+    |---|---|---|
+    | The Hendersons | 47.5% | 77.5% |
+    | Count Vladislav | 55.0% | 82.5% |
+    | The Barkers | 45.0% | 60.0% |
+    | Juniper Vale | 40.0% | 55.0% |
+    | Dale | 60.0% | 85.0% |
+- **The benchmark gate passes:** 581 ms here, 654 ms on develop, run under the same load.
+- **What the checklist is worth now:**
+  - Lines held a week: 5.57 of 9 before, 2.95 of 5 now.
+  - The lines' share of the week's Charm (lines held × 0.25 against the additive Mult), at weeks 4, 8, 12, 20 and 28: 38%, 44%, 42%, 32% and 24% before; 29%, 30%, 26%, 18% and 13% now.
+  - In weeks where Charm rose, Wow jumped a median 141 on develop against 42 for the other weeks. Here it's 227 against 42. With fewer lines, a rise is mostly a set coming together, worth more in a bigger house.
+- **Lines held at the end** (all runs) that moved most:
+  - Juniper's A compact house, her 4–8 rooms: 48% to 13%. The room rules pay for a ninth room.
+  - Count Vladislav's Room for everyone: 93% to 65%. His houses end with 4 or more Bedrooms in 13 of 40 runs, where they did in 2, past his 2–3: a served Bedroom earns +8.
+  - A tidy yard dipped for the Hendersons (65% to 58%) and Count Vladislav (55% to 48%), with fewer yard plays: 3.6 a run in weeks 17–28, where there were 4.2.
+
+**What the re-fit will need:** greedy wins 72.0% on today's targets, where it won 49.5%, and its final Wow's median rises from 33,843 to 42,359 (+25%). A dry run of `npm run sim -- --suggest-targets --dry-run` on this alone fits the targets to the curve (fit on `sim-*`, checked on `check-*`); the clients' `targetPct` is unchanged:
+
+| Milestone | Today | Fitted |
+|---|---|---|
+| Groundbreaking | 19 | 25 |
+| Foundation | 532 | 770 |
+| Framing | 1,805 | 2,250 |
+| Roofing | 4,940 | 6,450 |
+| Drywall | 10,735 | 14,000 |
+| Finishes | 19,475 | 27,800 |
+| Final Walkthrough | 33,915 | 51,700 |
+
+- With those targets, greedy wins 42.0% [35.4–48.9], clears milestones 1–3 in 96.0%, and the novice passes milestone 1 in 96.0%. All three pass §8.
+- The client spread stays wide at 27.5 points: the Hendersons 35.0%, Count Vladislav 57.5%, the Barkers 45.0%, Juniper 30.0%, and Dale 42.5%. The batch's re-fit sizes it with the other sessions' changes, so `targetPct` is its call.
+
+**Why:**
+- The outside tester found the checklist's lines "so numerous and specific that I can't possibly complete them all", and the user is often "not sure why points work the way they do".
+- A line pays Charm on the whole week, so its pay shows on the Charm plaque, not on the room that earned it. A room's own digit is where a player looks.
+- Cozy and the Bathroom rule are about how rooms sit, so they pay on the rooms. One Kitchen and A living room or two were never choices; they're what a house is, so the cards say it.
+- The sim showed what each piece costs and keeps:
+  - **Cozy grows the house.** The old all-or-nothing line kept outlines compact by pushing Bathrooms and Closets into notches (`house-systems-review.md`). Paid per room, Cozy grows the house instead (V1: 16 rooms), so its pay has to be small and need two neighbors (V5, V7).
+  - **Without Cozy,** houses shrink, and the bot builds no Kitchen (V6).
+  - **The caps on the special rooms** keep one of each.
+  - **The Kitchen's own pay** keeps the Kitchen.
+
+**Considered:**
+- **Cozy paid for each room it touches** (V1, V4): it grows the house past the compact outline, and without the caps the repeats come back.
+- **Dropping A compact house as well** (V2): the compact outline fell from 60% to 24%.
+- **No Cozy** (V6): 31.5% tiny houses, and as many with no Kitchen.
+- **A Bathroom nearby at +10** (V8): no better Bathroom ratio, and greedy wins more.
+- **Letting Dream Home and Inspector's Visit raise the room rules' pay too:** more text on a rare blueprint and a tool. Doubling keeps their worth with one number each.
+
+**Changes:**
+- **D-101 (Accepted):** the house rules are three lines and two room rules, and One Kitchen and A living room or two are the cards'. A proposed change, awaiting the user's OK.
+- **D-021 (Accepted):** a checklist starts with three house rules, not seven. A proposed change.
+- **D-056 (Accepted):** +0.25 per spec met stays, and two house rules pay Comfort on the rooms instead. A proposed change.
+- **D-102 and D-104 (Accepted):** a type's limit can be its card's (`perHouse`), as well as the checklist's. A proposed change on each.
+- **D-093 (Accepted):** its measures hold or improve (above). A dated note.
+- **D-113 (Accepted):** the fold holds three lines. A dated note.
+- **D-142 (Proposed):** the job board says 3 house rules, and its tip names the room rules. A dated note.
+- **D-085:** the targets need the batch's re-fit.
+- **`implementation-plan.md`:** the data format (`perHouse`, `roomRules`, the `served` effect), the house rules, and the checklist.
+
+**Known gaps:**
+- **Not played by a person.** Whether "+2 Cozy" and "+8 A Bathroom nearby" read on a room is the playtest's question.
+- **The checklist panel's look is D-167's** and unchanged here. Its fold now holds three one-line groups: the household, the shape, and the yard.
+- **Two clients' numbers now pull against the room rules.** Juniper's small house holds at the end in 13% of runs, and Count Vladislav's Bedroom range in 65%. They're the client's numbers, so the re-fit or a playtest decides whether they move.
+- **The Bathroom ratio isn't better,** only level with develop (above).
 
 ### D-161 · The bots rank only a few of a Fence card's plays out in the open, and the benchmark gate passes again
 **Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: speed only, and every sim run plays as before. Proposed 2026-11-12, a fix pull request (`fix/greedy-fence-packs`), the follow-up D-160's known gaps name, started once the user had merged D-160 (#73). D-160's standing stock keeps a Fence pack in the reserve nearly every week, and the sim's benchmark gate (§4) failed at 1.5 s against 1 s. Speed only: no rule, content, scoring, save or run-code change, and `contentHash(CONTENT)` is unchanged, so saves and run codes carry over (#54). Every bot plays as before, move for move: `npm run sim -- --check` gives the same runs.
@@ -3138,6 +3298,8 @@ No card is under the bar that wasn't before. Also checked, both fonts, with the 
 *Changed by D-158 (Proposed 2026-11-12):* the checklist's hint says its lines are bonuses and no longer mentions folding; hints still keep to 25 words.
 
 **2026-11-12 (D-160, Proposed):** one more first-time hint, the standing stock's (25 words): "A Hallway and a Fence wait in Your goods, top right, until you need them. Each is a week’s build, and another comes next milestone." The job board's fine print names what Dale and the Barkers bring ("Dale brings a Home Office"), and its tip when. Juniper's rule in her own numbers is her A compact house now.
+
+*D-165 (Proposed 2026-11-12):* the lede says "the same 3 house rules", and the tip ends "Cozy and A Bathroom nearby pay on the rooms."
 
 ### D-137 · More change orders: three generic ones, and a phase effect for every client
 **Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: played in playtest 6 (/dev/ at 9acf14a, 2026-11-11) with no issues raised. Proposed 2026-11-10, from playtest 4 (`docs/playtests/playtest-4-findings.md` §5), with its fix pull request. Extends D-011 and D-109. For the next playtest on /dev/.

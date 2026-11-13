@@ -24,6 +24,7 @@ import { CREWS } from './crews.ts';
 import { FEATURES } from './features.ts';
 import { FIXTURES } from './fixtures.ts';
 import { LOT_TRAITS } from './lot-traits.ts';
+import { ROOM_RULES } from './house-rules.ts';
 import { PIECES } from './pieces.ts';
 import { SETS } from './sets.ts';
 import { TOOLS } from './tools.ts';
@@ -44,6 +45,7 @@ export const CONTENT: Content = {
   crates: CRATES,
   changeOrders: CHANGE_ORDERS,
   lotTraits: LOT_TRAITS,
+  roomRules: ROOM_RULES,
   balance: BALANCE,
 };
 

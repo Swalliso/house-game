@@ -554,18 +554,25 @@ export const cardsRenovate = computed(() =>
   run.value.hand.map((_, i) => rules.renovateTargets(run.value, 'hand', i).length > 0),
 );
 
+/** Which hand cards have a spot on the lot (D-165: a card whose type is capped has none). */
+export const cardsPlace = computed(() =>
+  run.value.hand.map((_, i) => rules.cardFits(run.value, i)),
+);
+
 /**
  * Which cards have somewhere to go, for greying out the rest: a spot, or a room to renovate
  * (a renovate-only card still doesn't count for the free redraw, D-070).
  */
 export const cardsFit = computed(() =>
-  run.value.hand.map((_, i) => rules.cardFits(run.value, i) || !!cardsRenovate.value[i]),
+  run.value.hand.map((_, i) => !!cardsPlace.value[i] || !!cardsRenovate.value[i]),
 );
-/** The same for reserve pieces and supplies. */
+/** The same for reserve pieces: a spot, then a spot or a room to renovate. */
+export const reservePlace = computed(() =>
+  run.value.reserve.map((_, i) => rules.reserveFits(run.value, i)),
+);
 export const reserveFit = computed(() =>
   run.value.reserve.map(
-    (_, i) =>
-      rules.reserveFits(run.value, i) || rules.renovateTargets(run.value, 'reserve', i).length > 0,
+    (_, i) => !!reservePlace.value[i] || rules.renovateTargets(run.value, 'reserve', i).length > 0,
   ),
 );
 export const suppliesFit = computed(() =>

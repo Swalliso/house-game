@@ -124,6 +124,7 @@ import {
   meetsHouse,
   neededTypes,
   newPiecesNeeded,
+  perHouseLimits,
   progressOf,
   typeLimits,
   typesAtLimit,
@@ -229,6 +230,8 @@ import {
   conditionText,
   definite,
   ordinal,
+  perHouseOf,
+  plural,
   selectorText,
   specText,
   strikeText,
@@ -503,14 +506,32 @@ export function createRules(content: Content): Rules {
   const targetOf = (state: RunState) => phaseTarget(b, state.phase, pctOf(state));
 
   const limitsCache = new WeakMap<RunState, TypeLimit[]>();
-  /** The checklist's ceilings as they stand: a type at its limit can renovate, and draws less. */
+  /**
+   * The checklist's ceilings as they stand, then the cards' per-house caps (D-165): a type at
+   * its limit can renovate, and draws less.
+   */
   function limitsOf(state: RunState): TypeLimit[] {
     let l = limitsCache.get(state);
     if (!l) {
-      l = typeLimits(content, layoutFor(state), clientOf(state).specs, { phase: state.phase });
+      const layout = layoutFor(state);
+      l = [
+        ...typeLimits(content, layout, clientOf(state).specs, { phase: state.phase }),
+        ...perHouseLimits(content, layout),
+      ];
       limitsCache.set(state, l);
     }
     return l;
+  }
+
+  /** D-165: the per-house cap a card's type has reached (one Kitchen), if any. */
+  function capReached(state: RunState, def: PieceDef): TypeLimit | null {
+    const cap = perHouseOf(content, def);
+    if (cap === undefined) return null;
+    const root = rootType(def);
+    return (
+      limitsOf(state).find((l) => l.max === cap && l.count >= l.max && l.types.includes(root)) ??
+      null
+    );
   }
 
   /** A phase's last week or an overtime week, actually played: Last-Minute Push's ×2. */
@@ -585,6 +606,17 @@ export function createRules(content: Content): Rules {
     }
     const def = placeDef(state, play);
     if (!def) return { ...NO_PLAY, reason: 'There is no card there.' };
+    // D-165: a house holds one Kitchen; another Kitchen card renovates it.
+    if (capReached(state, def)) {
+      const room = content.pieces[rootType(def)].name;
+      return {
+        ...NO_PLAY,
+        reason:
+          perHouseOf(content, def) === 1
+            ? `The house has its ${room}: this card renovates it.`
+            : `The house has its ${plural(room)}: this card renovates one.`,
+      };
+    }
     if (
       ![0, 1, 2, 3].includes(play.rot) ||
       !Number.isInteger(play.x) ||
@@ -643,18 +675,19 @@ export function createRules(content: Content): Rules {
     if (def.member) {
       return { ...NO_PLAY, reason: `${card} card can’t renovate: it’s a household member’s room.` };
     }
-    // A room card on a room (house-systems-review.md §4), whose type the checklist caps.
+    // A room card on a room (house-systems-review.md §4), whose type the checklist or its own
+    // card caps (D-165).
     const root = rootType(def);
     const capped = isRoom(def) && limitsOf(state).some((l) => l.types.includes(root));
     if (!capped) {
-      return { ...NO_PLAY, reason: `${card} card can’t renovate: the checklist doesn’t cap them.` };
+      return { ...NO_PLAY, reason: `${card} card can’t renovate: a house takes any number.` };
     }
     const limit = limitReached(limitsOf(state), root);
     if (!limit) {
       const many = selectorText(content, { piece: root }, 'some');
       return {
         ...NO_PLAY,
-        reason: `${card} card can renovate once the house has all the ${many} it wants.`,
+        reason: `${card} card can renovate once the house has all the ${many} it takes.`,
       };
     }
     const target = Number.isInteger(play.uid) ? layoutFor(state).byUid.get(play.uid) : undefined;
@@ -1122,9 +1155,9 @@ export function createRules(content: Content): Rules {
   /**
    * Why a change order isn't offered now (Appendix A · M4b), or null: a request whose
    * condition the house already meets, or that clearly can't be met (more new pieces than a
-   * phase has weeks, more demolitions than are left, or a piece type it needs that's neither in
-   * the draw for this phase nor in the reserve). Restrictions and phase effects are always
-   * offered.
+   * phase has weeks, more demolitions than are left, a piece type it needs that's neither in
+   * the draw for this phase nor in the reserve, or, D-165, one whose per-house cap the house
+   * has reached). Restrictions and phase effects are always offered.
    */
   function skipReason(state: RunState, def: ChangeOrderDef): string | null {
     if (def.kind !== 'request') return null;
@@ -1140,8 +1173,13 @@ export function createRules(content: Content): Rules {
     const available = (id: PieceId) =>
       pool.some((w) => w.card.kind === 'piece' && isType(content.pieces[w.card.id], id)) ||
       state.reserve.some((r) => isType(content.pieces[r.id], id));
+    const capped = (id: PieceId) => {
+      const def = content.pieces[id];
+      return !!def && capReached(state, def) !== null;
+    };
     for (const types of neededTypes(cond)) {
       if (!types.some(available)) return 'A piece it needs isn’t in the draw or the reserve.';
+      if (types.every(capped)) return 'The house can’t take another of a piece it needs.';
     }
     return null;
   }
@@ -2443,7 +2481,7 @@ export function createRules(content: Content): Rules {
   ): void {
     if (state.screen !== 'build') return;
     const def = placeDef(state, { t: 'place', from, i, x: 0, y: 0, rot: 0 });
-    if (!def) return;
+    if (!def || capReached(state, def)) return;
     const { width, height } = state.house.lot;
     for (const ps of placementShapes(def)) {
       const { w, h } = bounds(ps.cells);
