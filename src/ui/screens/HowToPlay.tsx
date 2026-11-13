@@ -592,7 +592,10 @@ export function HowToPlayText() {
             <Icon name="clock" />
             Auto-complete
           </dt>
-          <dd>Turn it on and every milestone completes early as soon as its target is met.</dd>
+          <dd>
+            It shows beside Complete early. Turn it on and every milestone completes early as soon
+            as its target is met.
+          </dd>
         </dl>
       </Section>
 

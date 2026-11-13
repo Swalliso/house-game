@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest';
 import { SCORE_LABELS, type SetId, type SetScore } from '../../rules/index.ts';
 import { FEEL } from '../fx/feel.ts';
 import { TotalLine } from './Inspect.tsx';
-import { FoldRow, setsTip, wowSizeClass } from './ScorePanel.tsx';
+import { charmTip, comfortTip, FoldRow, setsTip, wowSizeClass } from './ScorePanel.tsx';
 import { Tip } from './Tip.tsx';
 
 type Node = VNode<Record<string, unknown>>;
@@ -119,6 +119,27 @@ describe("the score panel's folded sets", () => {
     const tip = [...walk(row)].find((v) => v.type === Tip)!;
     expect(text(tip.props.children as ComponentChildren)).toBe('No sets yet.');
     expect(tip.props.text).toMatch(/Jack-and-Jill.*Entertainer/);
+  });
+});
+
+describe("the plaques' tips, the panel being its equation at rest (D-167)", () => {
+  const { points: COMFORT } = SCORE_LABELS;
+
+  it("give Comfort what the sets add, then each set as the sets' row lists them", () => {
+    expect(comfortTip(SETS, level)).toBe(`3 sets add +83 ${COMFORT}.\n${setsTip(SETS, level)}`);
+    expect(comfortTip(SETS.slice(0, 1), level)).toMatch(/^1 set adds \+11 /);
+  });
+
+  it('suggest a first set while there are none', () => {
+    expect(comfortTip([], level)).toMatch(/^No sets yet\. Try .*Jack-and-Jill.*Entertainer/);
+  });
+
+  it('give Charm what the sets add, and the checklist lines that hold', () => {
+    // 6 lines at +0.35 each (in hundredths), as a Dream Home's run has them.
+    expect(charmTip(SETS, 6, 35)).toBe('+3.03 from 3 sets.\n+2.1 from 6 checklist lines.');
+    expect(charmTip([], 1, 25)).toBe('No sets yet.\n+0.25 from 1 checklist line.');
+    // Before the first job's checklist comes in, only the sets (D-149).
+    expect(charmTip(SETS.slice(0, 1), null, 25)).toBe('+0.55 from 1 set.');
   });
 });
 

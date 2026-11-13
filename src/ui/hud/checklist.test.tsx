@@ -22,6 +22,7 @@ import {
   type Row,
   rulesOpen,
   shownParts,
+  wishesFold,
 } from './Checklist.tsx';
 
 /** The host elements a tree renders, function components called in place (none use hooks). */
@@ -210,5 +211,65 @@ describe('what a play being looked at scrolls into view', () => {
     expect(playTarget(rows(), 'bigDeadline')).toEqual(['[data-order="bigDeadline"]']);
     // A flipped line comes first.
     expect(playTarget(rows({ cozy: 'gained' }), 'bigDeadline')?.[0]).toBe('[data-row="cozy"]');
+  });
+});
+
+describe('the wishes that hold fold into their row (D-167)', () => {
+  /** A wish as the checklist builds its row: held or not, flipped or lit if asked. */
+  const wish = (id: string, met: boolean, extra: Partial<Row> = {}): Row => ({
+    line: { id, name: id, group: 'wishes', met, text: id, progress: [] },
+    change: null,
+    flash: undefined,
+    pending: false,
+    ...extra,
+  });
+  const ids = (rs: readonly Row[]) => rs.map((r) => r.line.id);
+  const none = new Set<string>();
+
+  it('keeps every wish in view, under the plain tag, while none holds', () => {
+    const rows = [wish('bigYard', false), wish('doghouses', false), wish('mudroom', false)];
+    const f = wishesFold(rows, false, none);
+    expect(f.held).toBe(0);
+    expect(f.folded).toBe(false);
+    expect(ids(f.shown)).toEqual(['bigYard', 'doghouses', 'mudroom']);
+    expect(f.hidden).toEqual([]);
+  });
+
+  it('folds the ones that hold, and spells out only what is still missing', () => {
+    const rows = [wish('bigYard', true), wish('doghouses', false), wish('mudroom', true)];
+    const f = wishesFold(rows, false, none);
+    expect(f.held).toBe(2);
+    expect(f.folded).toBe(true);
+    expect(ids(f.shown)).toEqual(['doghouses']);
+    expect(ids(f.hidden)).toEqual(['bigYard', 'mudroom']);
+    // All of them held: the row alone.
+    const all = wishesFold([wish('bigYard', true), wish('mudroom', true)], false, none);
+    expect(all.shown).toEqual([]);
+  });
+
+  it('shows them all while the player has the row open', () => {
+    const rows = [wish('bigYard', true), wish('doghouses', false)];
+    const f = wishesFold(rows, true, none);
+    expect(f.folded).toBe(false);
+    expect(ids(f.shown)).toEqual(['bigYard', 'doghouses']);
+    expect(f.hidden).toEqual([]);
+  });
+
+  it('brings back a held wish the play being looked at would turn off', () => {
+    const rows = [wish('bigYard', true, { change: 'lost' }), wish('mudroom', true)];
+    expect(ids(wishesFold(rows, false, none).shown)).toEqual(['bigYard']);
+  });
+
+  it('keeps a wish a tally turned on or off in view until the tally ends', () => {
+    const met = { id: 1, index: 7, kind: 'met', ms: 700 } as const;
+    const lost = { id: 2, index: 8, kind: 'lost', ms: 700 } as const;
+    const held = { id: 3, index: 9, kind: 'held', ms: 250 } as const;
+    // While its beat lights it.
+    expect(ids(wishesFold([wish('a', true, { flash: met })], false, none).shown)).toEqual(['a']);
+    expect(ids(wishesFold([wish('b', true, { flash: lost })], false, none).shown)).toEqual(['b']);
+    // A beat on a wish that already held lights the row instead.
+    expect(ids(wishesFold([wish('c', true, { flash: held })], false, none).hidden)).toEqual(['c']);
+    // And after its beat, for as long as the tally lasts.
+    expect(ids(wishesFold([wish('a', true)], false, new Set(['a'])).shown)).toEqual(['a']);
   });
 });

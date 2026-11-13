@@ -864,6 +864,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **2026-11-10 (D-136), a second downscale exception:** the end screen's photos of the house at each milestone are drawn smaller than one device pixel per art pixel, smoothly, as Fit's overview is. Their larger view keeps whole device pixels per art pixel wherever the window holds one.
 
 *Changed by D-159 (Proposed 2026-11-12):* the wall between every two pieces leaves out two touching Hallway pieces, which open into each other. Rooms still never merge.
+*Proposed change by D-167 (2026-11-12, awaiting the user's OK):* the top bar's auto-complete switch shows only beside Complete early, while that's offered, and all the while it's on. It's still off by default (D-040).
 
 ### D-098 · M5a interface defaults: the pixel UI
 **Status:** Accepted · 2026-11-07 (proposed 2026-11-06 with M5a's UI track, stage 2: part 1, the foundations, the build screen, the score panel and the top bar; part 2, the other screens. Held up in playtest 5a, confirmed by the team). Implementation details within D-057, D-059, D-097 and §12. It kept its number when the stage's tracks merged; the lot's and the house's defaults are D-099 and D-100.
@@ -909,6 +910,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 *Changed by D-157 (Proposed 2026-11-12):* the strike picker's sheet is gone: a strike is used on a hand card. The hand's plank holds Reroll, Strike and Demolish; Strike shows its icon and count where its word doesn't fit, as Demolish does, and in the pixel font the plank's title gives way to the three. Your goods lists the struck types (a Struck row, and folded, a count), and from the week's hand after a strike they count as something in it.
 
 *D-160 (Proposed 2026-11-12):* Your goods tags each card in the reserve's extra slots with where it came from (Crew, the member, the client or Stock), and Inspect says so.
+
+*Proposed change by D-167 (2026-11-12, awaiting the user's OK):* the top bar says where the run is once. The plaque leaves out which milestone of the seven and the run's week (its tip has both), and the forecast's number leaves the line above the meter for the meter's tip; its fill and tick stay. The auto-complete switch shows beside Complete early (D-073's note). The score panel is its equation at rest on every window: its sets row and checklist row slide in for a tally, the full list on windows 1000 px tall and up goes, and the Comfort plaque's tip lists the sets (this entry's sets bullet and its 2026-11-08 note).
 
 ### D-099 · M5a lot defaults: the terrain in Modern Exteriors
 **Status:** Accepted · 2026-11-07 (proposed 2026-11-06 with M5a's lot track, stage 2, and its merge into the phase branch; held up in playtest 5a, confirmed by the team). Implementation details within D-049 and D-097; §12 Art's Rendering bullets describe them.
@@ -1435,6 +1438,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 **Changes:** D-109's UI note: the house-rule groups now fold inside one row for the whole rules. D-110's left column: a held piece counts as looked at.
 
+*Proposed change by D-167 (2026-11-12, awaiting the user's OK):* the client's wishes fold too. Once one holds, the "Wishes" tag is a row like the house rules' ("Wishes 1/2 ✓ +0.35"), and the wishes that hold fold into it. A wish that doesn't hold stays in view with its progress, the wishes don't start open on a first visit, and change orders still never fold.
+
 ### D-114 · The Hallway experiment, step 1: Hallways pay for the rooms they touch
 **Status:** Accepted · 2026-11-10, held up in playtest 5 (`docs/playtests/playtest-5-findings.md`): the Hallways "felt good", and the user didn't bolt them to the outside just for their +2, so step 1's "between rooms" fallback isn't needed. Proposed 2026-11-09, after playtest 4 (`docs/playtests/playtest-4-findings.md` §7) and the layout session's proposal (§1, on its own branch). Built for playtest 5; the user asked for it once that session reported.
 **Decision:**
@@ -1865,6 +1870,59 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 *Reserved numbers (2026-11-10): D-115 to D-118 are the layout session's drafts, not in this file yet; D-122 (legibility) is logged below. D-132 to D-134 are playtest 5's fixes, each logged by its own pull request: D-132 one reroll for both rows of the draw, D-133 the roof view, D-134 three more tracks. D-135 and D-136 are M6's end screen (D-135 the result line and link preview, D-136 the milestone photos); D-137 and D-138 belong to the release-day sessions. D-139 is the company's record. D-140 to D-146 are the friction batch, from the 2026-11-10 review's seven points: D-140 the Garage and the Driveway, D-141 what a blueprint is worth and its icon, D-142 first contact, D-143 the blueprint shelf, D-144 change orders two at a time, D-145 the lot and the last stretch, and D-146 the batch's one re-fit. D-147 takes the roof out again (the user's call, logged under Accepted). D-148 is the first-timer legibility batch before the showing, from the 2026-11-10 polish review (logged below). D-149 is the first job, from the first showing (2026-11-11, logged below). D-150 is the end screen's lead into the next run, from the evening's what-next survey (`fix/retry-after-loss`, logged below). D-151 is the first job's gentler targets (`phase/first-job-targets`, logged under Accepted). D-152 to D-157 are the 2026-11-11 playtest's: D-152 Copy run code on the end screen's plank (fix/playtest-6-bugs, logged below), D-153 Full House's progress on its set chip (fix/full-house-progress, logged below), D-154 the week cue, D-155 life on the lot and D-156 your houses on the street (each logged by its own pull request), and D-157 strikes from the hand (`phase/strike-from-hand`, logged below). D-158 to D-160 answer an outside playtester's notes (2026-11-12): D-158 the tutorial fixes (`phase/tutorial-fixes`, logged below), D-159 fences that join and Hallways that open into each other (`fix/fences-and-halls-join`, logged below), and D-160 pieces you can count on (`phase/pieces-you-can-count-on`, logged below). D-161 makes the bots cheaper on D-160's Fence (`fix/greedy-fence-packs`, logged below). New entries start at D-162.*
 
+### D-167 · The build screen's text diet: progress said once, Auto-complete beside Complete early, the wishes that hold fold, and Each week keeps to its equation
+**Status:** Proposed · 2026-11-12, a phase pull request (`phase/text-diet`), one of the six sessions from the 2026-11-12 core-loop gap analysis, from the user's "I think we might need to simplify the amount of text where feasible ... Our UI is quite busy and overwhelming to new players at the moment I feel." Overlays and information on demand are fine; what sits on screen at rest should shrink, and the pieces keep their digits. Seven cuts were measured and mocked up with their counts; the user picked four (A to D below) and where Auto-complete goes ("Beside Complete early"). UI only: no rule, content, scoring or save change, and `contentHash(CONTENT)` stays `79662776`, so saves and run codes carry over (#54). It changes Accepted D-073, D-098, D-110 and D-113: proposed changes awaiting the user's OK, with a dated note on each. For the user's playtest before it merges.
+**Decision:**
+- **A · The top bar says where the run is once** (`TopBar.tsx`).
+  - The plaque is the milestone and its week, with the pips: "Framing", "Week 3 of 4". Which milestone of the seven ("3/7") and the run's week ("· 13/30") leave it for its tip, which already said them: "Milestone 3 of 7 · week 13 of the run's 30" (`plaqueTip`).
+  - The forecast's number ("Forecast ~4,341", its word on wide windows only) leaves the line above the meter, which keeps the score and its target whole: "2,549 / 2,090 Wow". The forecast is the meter's pale fill and tick, as it was, and its number leads the meter's tip: "Forecast ~4,341 Wow. A rough guide, not a promise: …" (`forecastTip`).
+- **B · The Auto switch shows beside Complete early** (`autoSwitchShown`): while Complete early is offered (not during a tally), and all the while it's on, so it can be turned off. Off, with nothing to complete early, the bar leaves it out. As before, it's hidden once the run is over (D-135), and a first job brings it in with Complete early in Foundation (D-149). Its tip and How to play say where it is: "It shows with Complete early, and stays while it’s on."
+- **C · The wishes that hold fold into a row** (`wishesFold`, `WishesRow` in `Checklist.tsx`), as the house rules do (D-113).
+  - Once a wish holds, the "Wishes" tag becomes a row: "Wishes 1/2 ✓ +0.35", with the Charm of the wishes folded into it. A click shows them all, and folds them again.
+  - A wish that doesn't hold stays a line under the row, with its progress, so what's still wanted is always in view.
+  - A held wish the play being looked at would turn off shows under the row. A tally's beat on a folded wish lights the row, and a wish the tally turns on or off stays in view until the tally ends, then folds.
+  - Change orders never fold, as before. Unlike the house rules, the wishes don't start open on a first visit.
+- **D · Each week is its equation at rest** (`ScorePanel.tsx`): Comfort × Charm = Wow and nothing under it, on every window, and while a play is looked at.
+  - The sets row ("2 sets +35 +1.5") and the checklist row ("✓ 6 checklist lines +2.1") slide in as a tally starts (`FEEL.chrome.detail`, 200 ms), count as before (D-110: "0 sets", dimmed, then each set lighting its members on the board, then each line), and slide away once the tally ends. So during a tally the panel is as tall as it was at rest under 1000 px.
+  - The plaques' tips say what they hold. Comfort's: "2 sets add +35 Comfort.", then each set a line (the fold row's tip before), or "No sets yet." with the first-set suggestion. Charm's: "+1.5 from 2 sets." and "+2.1 from 6 checklist lines." (`comfortTip`, `charmTip`). The sums are the rules' per-set numbers added up for display, as the fold row's were.
+  - The full set list on windows 1000 px tall and up goes, and with it a preview's ★ and ✕ on the sets: Inspect's notes name the sets a play would make and break, as they have under 1000 px since 2026-11-09 (D-110).
+  - Reduce motion drops the slide.
+
+**Measured** in headless Chrome on static builds of develop (124bd13) and this branch. The greedy bot's won run for the Hendersons, opened by its run code at weeks 1, 8, 14 and 24 and in its third shop (week 13), at rest with every hint seen, at 1600×900 at 2× and 1280×720 at 1×, in both fonts. What's in view, inside every clipping box: words (tokens with a letter), numbers (runs of digits), pieces of text, things to click, tips. Words · numbers, before → after:
+
+| | 1600×900, pixel | 1600×900, readable | 1280×720, pixel | 1280×720, readable |
+|---|---|---|---|---|
+| Week 1 | 119 → 112 · 36 → 29 | 130 → 123 · 36 → 29 | 80 → 85 · 32 → 29 | 104 → 120 · 35 → 30 |
+| Week 8 | 117 → 112 · 47 → 37 | 126 → 121 · 47 → 37 | 80 → 106 · 42 → 36 | 122 → 118 · 45 → 37 |
+| Week 14 | 103 → 93 · 56 → 48 | 115 → 105 · 56 → 48 | 69 → 87 · 50 → 46 | 110 → 101 · 53 → 47 |
+| Week 24 | 109 → 99 · 65 → 57 | 121 → 111 · 65 → 57 | 80 → 93 · 61 → 55 | 116 → 107 · 62 → 56 |
+| Third shop | 161 → 174 · 61 → 54 | 248 → 239 · 61 → 54 | 120 → 125 · 52 → 49 | 173 → 191 · 55 → 50 |
+
+- **Where it comes off,** at week 14 at 1600×900 in the pixel font: the top bar 6 → 4 words and 10 → 5 numbers, the score panel 8 → 5 and 8 → 3, the checklist 19 → 14 words. Pieces of text fall by 3 to 13 at every moment, and tips by up to 3 (the shop at 1280×720 has one more, on a checklist line it no longer cuts off).
+- **Where words rise, the screen shows what it used to cut off.** The room the score panel and the checklist give back goes to the column's box. At 1280×720 in the pixel font the checklist's hidden part goes from 52–180 px to 0–2 px, and Inspect's idle prompt (23 words) comes into view, as it does in the shop at 1600×900. Cut F, not picked, would have folded that prompt.
+
+**Why:** the user's words above. At rest the build screen said things twice (the milestone's place on the plaque and in its tip, the forecast as a number and as the meter's fill), showed a switch that matters only when Complete early does, and listed the week's makeup under the equation that already sums it. Each cut keeps what it removes on demand: in a tip, a click or the tally.
+**Considered** (mocked up with counts, not picked):
+- **E · The keys strip quiet at rest:** only the keys for what's under way (placing, demolishing, striking, a tally). −13 words.
+- **F · Inspect waits on its plank:** its idle prompt folded once the first job's teaching is done. −22 words.
+- **G · Steady earners say their number:** a card's "+2 every week" read "+2". It can read as a one-off.
+- **Auto-complete in Settings,** the other place offered for B.
+
+**Changes:**
+- D-073 (Accepted): the top bar's auto-complete switch shows only beside Complete early and while it's on. A dated note there.
+- D-098 (Accepted): its top bar bullet (the forecast's number, the switch), its score panel's sets bullet and its 2026-11-08 note (taller windows keep the full list). A dated note there.
+- D-110 (Accepted): the score panel's sets row and checklist row are the tally's on every window, and its equation-only rule while a play is looked at holds at rest too. A dated note there.
+- D-113 (Accepted): "the client's wishes and change orders never fold": the wishes that hold fold into their row, and change orders still never fold. A dated note there.
+- D-149 (Proposed) and D-154 (Accepted): the forecast, the Auto switch and the plaque they describe. Dated notes there.
+- `implementation-plan.md` §12: the tally's sets row. How to play: Auto-complete's entry.
+- D-165 (#78, Proposed) leaves three house rules on the checklist. C works the same with whatever lines are left, but both change `Checklist.tsx`, so whichever merges second resolves a conflict there.
+
+**Known gaps:**
+- **The checklist moves as a tally starts:** its box gives the score panel's two rows their room (about 110 px at 1600×900) over 200 ms, and gets it back as the tally ends.
+- **Which wish holds takes a click** to see once it folds; the row's tip says how many.
+- **At 1280×720 more words are in view** (Inspect's idle prompt), though fewer numbers, as measured above.
+- **Not played by a person.** Checked once in headless Chrome: a tally's rows sliding in and away, the switch beside Complete early and turned on, the wishes' row opened and folded. Touch, Firefox and Safari weren't run, and nothing was measured with D-165's checklist.
+
 ### D-161 · The bots rank only a few of a Fence card's plays out in the open, and the benchmark gate passes again
 **Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: speed only, and every sim run plays as before. Proposed 2026-11-12, a fix pull request (`fix/greedy-fence-packs`), the follow-up D-160's known gaps name, started once the user had merged D-160 (#73). D-160's standing stock keeps a Fence pack in the reserve nearly every week, and the sim's benchmark gate (§4) failed at 1.5 s against 1 s. Speed only: no rule, content, scoring, save or run-code change, and `contentHash(CONTENT)` is unchanged, so saves and run codes carry over (#54). Every bot plays as before, move for move: `npm run sim -- --check` gives the same runs.
 **Decision:**
@@ -2292,6 +2350,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - **The two sounds weren't heard:** the flick and the tick-tock are the prototype's recipes on the kit's book and thock samples, and want the user's ear.
 - **Not played by a person.** Touch, Firefox and Safari weren't run.
 
+*D-167 (Proposed 2026-11-12):* the plaque leaves out "3/7" and "· 16/28" (its tip has them), so it's narrower than the widths above. The pips and the last week's orange are as here.
+
 ### D-150 · A lost run leads into the next: a "Next time" tip and Try this lot again
 **Status:** Proposed · 2026-11-11, a fix pull request (`fix/retry-after-loss`), from the what-next survey after release #58, at the session that ran it. UI only: no rules, content or balance change. `contentHash(CONTENT)` is `ffabbd52` on develop and on this branch, so a release keeps runs in progress (#54). For the user's playtest before it merges.
 **Decision:**
@@ -2494,6 +2554,8 @@ Measured in headless Chrome on frozen dev-channel builds, at rest, before (devel
 *Extended by D-158 (Proposed 2026-11-12):* the opening's hints have no "Got it", every hint's card wears a gold ring, and the first job's shops run a shop behind (the gift alone, then a first shop's shelves, then the whole yard).
 
 **2026-11-12 (D-160, Proposed):** a first job's standing stock (a Hallway and a Fence in the reserve) comes in Foundation's third week, a week after Strike, not its first. A Foundation that ends sooner gets it at Framing's start.
+
+**2026-11-12 (D-167, Proposed):** the forecast week 2 brings in is the meter's pale fill and tick, with its number in the meter's tip. Foundation's Auto switch shows only beside Complete early while that's offered, or while it's on. The score panel's sets and checklist rows show during a tally only, and the checklist row still waits for the checklist unless a line holds.
 
 ### D-148 · First-timer legibility before the showing: hand lines that fit, Reroll named, and the end screen on a laptop
 **Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: played in playtest 6 (/dev/ at 9acf14a, 2026-11-11) with no issues raised. The user still finds the screen busy for new players (2026-11-12), and D-167 (Proposed) carries on from here. Proposed 2026-11-10, a fix pull request (`fix/showing-legibility`) from the polish review of the same day, whose list the user answered with "Yes, fix them". The group gets the game on 2026-11-11. No rules or balance change: the same sim seeds score the same before and after (Sim, below).
@@ -3443,6 +3505,7 @@ What's still short:
 - **The checklist:** the wishes' tag is "Wishes"; a line that doesn't hold shows only the parts still missing; who's still to move in is a name and a milestone; and in a 280 px pixel-font column under 1000 px tall the tastes' row is "Tastes", one line again (the sun's icon, D-120, had made "Tastes (3)" two).
 - **First-time hints:** how a week scores is added (week 2), and every hint keeps to 25 words.
 *Changed by D-158 (Proposed 2026-11-12):* How to play opens on a five-line short version with every section folded under its plank, and lists the hints seen under Tips so far.
+*Proposed change by D-167 (2026-11-12, awaiting the user's OK):* the score panel keeps to its equation on every window, at rest as well as while a play is looked at. Its sets row and checklist row come in for a tally only, sliding in as it starts and away once it ends, and count as above. The fold row's tip, every set a line, is the Comfort plaque's tip now, and Charm's tip says how much comes from sets and how much from checklist lines. The budget line is as it was.
 
 ### D-109 · M4b rules structure: change orders, arrivals, and crews
 **Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: played in playtests 4 to 6 with no issues raised. Proposed 2026-11-07, with the M4 pull request. Details within D-103, D-012, and Appendix A · M4b; numbers for the sim and playtest 4.

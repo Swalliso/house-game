@@ -3,6 +3,11 @@
 // target's flag), the run's resources (budget, overtime), the auto-complete switch, Complete
 // early, and the run's buttons: How to play, Settings, and the Menu, which holds Copy run code
 // and the seed (M5a).
+//
+// D-167 (the text diet): it says where the run is once. The plaque is the milestone and its
+// week, with the pips; which milestone of the seven and the run's week are its tip. The forecast
+// is the meter's pale fill and tick, its number in the meter's tip. The Auto switch shows only
+// beside Complete early while that's offered, and while it's on.
 
 import { signal } from '@preact/signals';
 import { CONTENT, rules, SCORE_LABELS, type RunState } from '../../rules/index.ts';
@@ -42,6 +47,33 @@ const noFocus = (e: MouseEvent) => e.preventDefault();
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
+/** The plaque's tip (D-167): where the run is, which the plaque itself no longer prints. */
+export function plaqueTip(phase: number, phases: number, week: number, runWeeks: number): string {
+  return `Milestone ${phase + 1} of ${phases} · week ${week} of the run's ${runWeeks}`;
+}
+
+/**
+ * The meter's tip while it shows the forecast (D-167): the forecast's number, which no longer
+ * sits beside the score, then what it is.
+ */
+export function forecastTip(forecast: string, guide: string): string {
+  return `Forecast ~${forecast} ${SCORE_LABELS.total}. ${guide}`;
+}
+
+/**
+ * Whether the Auto-complete switch shows (D-167): beside Complete early while that's offered,
+ * and all the while it's on, so it can be turned off. Never once the run is over (D-135), nor
+ * before the first job brings Complete early in (D-149).
+ */
+export function autoSwitchShown(o: {
+  on: boolean;
+  offered: boolean;
+  over: boolean;
+  early: boolean;
+}): boolean {
+  return !o.over && o.early && (o.on || o.offered);
+}
+
 function PhaseBlock() {
   // While a tally plays, the bar stays on the week being tallied.
   const s = shownRun.value ?? run.value;
@@ -57,17 +89,16 @@ function PhaseBlock() {
   const building = s.screen === 'build';
   const last = building && s.overtimeWeek === 0 && rules.weeksLeft(s) === 1;
   const pips = weeks + s.overtimeWeek;
+  // Which milestone of the seven, and the run's week, are the plaque's tip (D-167): the plaque
+  // itself says the milestone and its week once, with the pips.
   return (
     <div
       class="tb-phase"
       aria-label="Milestone and week"
-      data-tip={`Milestone ${s.phase + 1} of ${phases.length} · week ${s.week} of the run's ${runWeeks}`}
+      data-tip={plaqueTip(s.phase, phases.length, s.week, runWeeks)}
     >
       <div class="tb-phase-line">
         <span class="tb-phase-name">{rules.phaseName(s.phase)}</span>
-        <span class="tb-phase-count">
-          {s.phase + 1}/{phases.length}
-        </span>
       </div>
       <div class="tb-week">
         {ended ? (
@@ -93,10 +124,6 @@ function PhaseBlock() {
         ) : (
           `Week ${s.slot} of ${weeks}`
         )}
-        <span class="tb-run-week">
-          {' '}
-          · {s.week}/{runWeeks}
-        </span>
       </div>
       {building && (
         <div class={`tb-pips ${last ? 'last' : ''}`} aria-hidden="true">
@@ -130,6 +157,8 @@ function Progress() {
   const guide =
     `A rough guide, not a promise: this week's ${SCORE_LABELS.total} for each week left in ` +
     `${phase}.${placing ? ' It includes the piece you’re placing.' : ''}`;
+  // The forecast is the meter's pale fill and tick, its number in the meter's tip (D-167).
+  const meterTip = showForecast ? forecastTip(formatNumber(f), guide) : undefined;
   const ticks = weekTicks(s.phaseStartScore, rules.pace(s), target, CONTENT.balance.weeksPerPhase);
   // The milestone moment's crossing pops the flag (D-124): keyed, so it plays once a crossing.
   const hit = targetHit.value?.id ?? null;
@@ -148,17 +177,9 @@ function Progress() {
             ✓<span class="tb-met-text"> Target met</span>
           </span>
         )}
-        {showForecast && (
-          <span
-            class={`tb-forecast ${fMet ? 'met' : ''} ${placing ? 'placing' : ''}`}
-            data-tip={guide}
-          >
-            <span class="tb-forecast-word">Forecast </span>~{formatNumber(f)}
-          </span>
-        )}
       </div>
       <div class="tb-meter-row">
-        <div class="meter tb-meter" data-tip={showForecast ? guide : undefined}>
+        <div class="meter tb-meter" data-tip={meterTip}>
           {showForecast && f > score && (
             <div
               class={`tb-forecast-fill ${placing ? 'placing' : ''} ${fMet ? 'met' : ''}`}
@@ -239,15 +260,26 @@ function Resources() {
   );
 }
 
-/** Hidden once the run is over (D-135): there's no milestone left for it to complete. */
+/**
+ * Beside Complete early while that's offered, and all the while it's on (D-167): it used to sit in
+ * the bar all run. Hidden once the run is over (D-135): there's no milestone left for it to
+ * complete.
+ */
 function AutoComplete() {
   const s = run.value;
-  if (s.screen === 'won' || s.screen === 'lost' || !shown.value.early) return null;
+  const show = autoSwitchShown({
+    on: s.autoComplete,
+    // As Complete early is: offered, and not while a tally plays.
+    offered: earlyOffer.value.ok && shownRun.value === null,
+    over: s.screen === 'won' || s.screen === 'lost',
+    early: shown.value.early,
+  });
+  if (!show) return null;
   return (
     <Switch
       class="tb-switch"
       checked={s.autoComplete}
-      tip="Complete each milestone as soon as its target is met, skipping the builds for the weeks left"
+      tip="Complete each milestone as soon as its target is met, skipping the builds for the weeks left. It shows with Complete early, and stays while it’s on."
       onMouseDown={noFocus}
       onChange={(want) => setAutoComplete(want)}
     >
