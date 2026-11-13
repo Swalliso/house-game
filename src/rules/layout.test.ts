@@ -137,6 +137,19 @@ describe('placement', () => {
     expect(check([], 'bathroom', 1, 2).reason).toBe(REASONS.boulder);
   });
 
+  it('refuses the lake, and an Old Woods lot’s Trees (D-174)', () => {
+    const at = (house: ReturnType<typeof houseFrom>, x: number) =>
+      checkPlacement(C, computeLayout(C, house), C.pieces.bathroom, x, 0, 0, 1, (h) =>
+        computeLayout(C, h),
+      );
+    expect(at(houseFrom(C, ['LLL.', 'L...', '....']), 1).reason).toBe(REASONS.lake);
+    const plain = houseFrom(C, ['T...', '....', '....']);
+    const old = { ...plain, lot: { ...plain.lot, kind: 'oldWoods' as const } };
+    expect(at(plain, 0).legal).toBe(true);
+    expect(at(old, 0).reason).toBe(REASONS.kept);
+    expect(at(old, 1).legal).toBe(true);
+  });
+
   it('builds over Trees and reports them cleared', () => {
     const result = check([], 'bathroom', 0, 0);
     expect(result.legal).toBe(true);

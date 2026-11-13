@@ -26,7 +26,7 @@ import type {
   TerrainId,
 } from './index.ts';
 import { cellIndex, inBounds, ORTHOGONAL, placedCells } from './grid.ts';
-import { terrainAt } from './lot.ts';
+import { protectedTerrain, terrainAt } from './lot.ts';
 import { isRoom, pieceDef, type Layout } from './layout.ts';
 import { isType, meetsCondition } from './selectors.ts';
 import { conditionText, definite } from './text.ts';
@@ -36,6 +36,9 @@ export const REASONS = {
   occupied: "Something's already built there.",
   pond: "You can't build on the pond.",
   creek: "You can't build on the creek.",
+  lake: "You can't build on the lake.",
+  // D-174's Old Woods: the lot's trait keeps them, and its tip says so.
+  kept: 'These old Trees stay: build around them.',
   boulder: "A boulder's in the way.",
   oldShed: 'The Old Shed’s in the way: demolish it first.',
   disconnected: 'Rooms must connect to the house.',
@@ -87,13 +90,19 @@ export function checkPlacement(
   const clearedTrees: Cell[] = [];
   // Finds built over (a Time Capsule): they're cleared like Trees, and each pays once.
   const finds: Cell[] = [];
+  const kept = protectedTerrain(content, lot);
   for (const c of cells) {
     const t = terrainAt(lot, c.x, c.y);
     if (t === null) continue;
     const feature = content.features[t];
+    if (kept.has(t)) return fail(REASONS.kept);
     if (feature.clear === 'buildOver') (feature.reward ? finds : clearedTrees).push(c);
     else if (feature.blocks && !def.canCover?.includes(t)) {
-      return fail(t === 'pond' || t === 'creek' || t === 'oldShed' ? REASONS[t] : REASONS.boulder);
+      return fail(
+        t === 'pond' || t === 'creek' || t === 'lake' || t === 'oldShed'
+          ? REASONS[t]
+          : REASONS.boulder,
+      );
     }
   }
   const found = finds.length > 0 ? { finds } : {};
@@ -350,7 +359,9 @@ export function checkDemolish(
   const cells = content.features[t].size ? featureCells(lot, x, y) : [{ x, y }];
   const target: DemolishTarget = { kind: 'feature', feature: t, cells };
   if (content.features[t].clear === 'demolish') return { legal: true, target };
-  if (t === 'pond' || t === 'creek') return { legal: false, reason: REASONS.water, target };
+  if (t === 'pond' || t === 'creek' || t === 'lake') {
+    return { legal: false, reason: REASONS.water, target };
+  }
   if (t === 'tree') return { legal: false, reason: REASONS.tree, target };
   return { legal: false, reason: REASONS.nothingThere, target };
 }

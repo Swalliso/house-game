@@ -44,11 +44,22 @@ export const BALANCE: Balance = {
     findStreetGap: 4,
     // D-166: most lots are shaped toward a trait once they pass their checks. Rocky has 14–22
     // Boulders (a plain lot 6–10), Open only its lone Trees, a pond lot a pond of 14–20 tiles
-    // (a plain one 4–9). With the creek and the woods' own Wooded, about one lot in five is
-    // plain, and most carry one trait or two.
-    kinds: { plain: 35, rocky: 25, open: 20, pond: 20 },
+    // (a plain one 4–9). With the creek and the woods' own Wooded, about one meadow lot in five
+    // is plain, and most carry one trait or two.
+    // D-174: a run's lot comes from a biome, its look and its family of kinds. The meadow is
+    // D-166's lots and today's look, and the first job's. The lakeside deals a lake along the
+    // back, a big pond, or a creek through the middle; the autumn woods grow more woods (most of
+    // its lots are Wooded), and some keep every Tree (Old Woods); a dry lot is Rocky or Open,
+    // and seldom has a creek.
+    biomes: {
+      meadow: { weight: 40, kinds: { plain: 35, rocky: 25, open: 20, pond: 20 } },
+      lakeside: { weight: 20, kinds: { lake: 40, pond: 30, split: 30 } },
+      autumn: { weight: 20, kinds: { plain: 60, oldWoods: 40 }, woodsClusters: [4, 5] },
+      dry: { weight: 20, kinds: { rocky: 50, open: 50 }, creekPct: 10 },
+    },
     rockyBoulders: [8, 12],
     pondTiles: [14, 20],
+    lakeRows: [2, 5],
   },
 
   weeksPerPhase: 5, // D-042, D-170

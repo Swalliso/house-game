@@ -11,6 +11,7 @@ import type { SpriteId } from '../../sprites.ts';
 import { blobMask, bySubtile, quarterPiece, SUB, SUBTILE } from '../autotile.ts';
 import { ROAD_ROWS } from '../geometry.ts';
 import { drawSprite, drawSubtile } from './atlas.ts';
+import { inLook, lotLook } from './biome.ts';
 import { pavingTile, streetRows } from './street.ts';
 import { shoreSet, waterCells } from './water.ts';
 
@@ -81,6 +82,7 @@ export function waterSlices(lot: Lot): Slice[] {
   const { width: w, height: h } = lot;
   const cells = waterCells(lot);
   const water = bySubtile(cells);
+  const look = lotLook(lot);
   const out: Slice[] = [];
   const edges: { side: Side; cell: (i: number) => [number, number]; length: number }[] = [
     { side: 'left', cell: (i) => [-1, i], length: h },
@@ -105,7 +107,8 @@ export function waterSlices(lot: Lot): Slice[] {
             mod(sx, SUB) === SUB - 1,
             mod(sy, SUB) === SUB - 1,
           );
-          tiles.push({ id: shoreSet(piece), col: piece.col, row: piece.row, sx: k, sy: j });
+          const id = inLook(shoreSet(piece), look);
+          tiles.push({ id, col: piece.col, row: piece.row, sx: k, sy: j });
         }
       }
       out.push({ side, kind: 'water', at: i, span, tiles });

@@ -132,6 +132,7 @@ import { wobble } from './piece-fx.ts';
 import { LifeLayer } from './LifeLayer.tsx';
 import { neighborAt, type Neighbor } from './neighbors.ts';
 import { hoveredNeighbor, NeighborsLayer, streetFor } from './NeighborsLayer.tsx';
+import { lotLook } from './terrain/biome.ts';
 import { Outline, SideTint, TerrainLayer, YardTint } from './TerrainLayer.tsx';
 import './board-m2.css';
 import './labels.css';
@@ -977,6 +978,8 @@ export function Board() {
       <div
         class={[
           'board-scroll',
+          // D-174: the garden around the lot in its biome's colors (terrain.css).
+          lotLook(state.house.lot) === 'meadow' ? '' : `look-${lotLook(state.house.lot)}`,
           panning ? 'panning' : '',
           hoveredNeighbor.value ? 'at-neighbor' : '',
         ].join(' ')}

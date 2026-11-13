@@ -645,7 +645,7 @@ export const TEST_BLUEPRINTS: Record<BlueprintId, BlueprintDef> = {
     { kind: 'earn', target: { tag: 'Social' }, pct: 50 },
   ]),
   waterfront: bp('waterfront', 'Waterfront', 'common', [
-    { kind: 'earn', target: { touching: { feature: ['pond', 'creek'] } }, pct: 50 },
+    { kind: 'earn', target: { touching: { feature: ['pond', 'creek', 'lake'] } }, pct: 50 },
   ]),
   openConcept: bp('openConcept', 'Open Concept', 'uncommon', [
     { kind: 'link', among: ['kitchen', 'diningRoom', 'livingRoom'] },
@@ -754,6 +754,15 @@ export const TEST_FEATURES: Record<FeatureId, FeatureDef> = {
   creek: {
     id: 'creek',
     name: 'Creek',
+    tier: 'core',
+    tags: [],
+    blocks: true,
+    viewSource: true,
+    body: true,
+  },
+  lake: {
+    id: 'lake',
+    name: 'Lake',
     tier: 'core',
     tags: [],
     blocks: true,
@@ -951,10 +960,17 @@ export const TEST_LOT_BALANCE: LotBalance = {
   oldSheds: [0, 0],
   timeCapsules: [0, 0],
   findStreetGap: 4,
-  // Generated test lots stay plain (D-166), as they were drawn before lot kinds.
-  kinds: { plain: 1, rocky: 0, open: 0, pond: 0 },
+  // Generated test lots stay plain meadow lots (D-166, D-174), as they were drawn before lot
+  // kinds and biomes.
+  biomes: {
+    meadow: { weight: 1, kinds: { plain: 1 } },
+    lakeside: { weight: 0, kinds: {} },
+    autumn: { weight: 0, kinds: {} },
+    dry: { weight: 0, kinds: {} },
+  },
   rockyBoulders: [8, 12],
   pondTiles: [14, 20],
+  lakeRows: [2, 5],
 };
 
 export const TEST_BALANCE: Balance = {
@@ -1426,6 +1442,21 @@ export const TEST_LOT_TRAITS: Record<LotTraitId, LotTraitDef> = {
     name: 'Open',
     blurb: 'Few Trees.',
     when: { kind: 'open' },
+    modifiers: [],
+  },
+  lakefront: {
+    id: 'lakefront',
+    name: 'Lakefront',
+    blurb: 'A lake.',
+    when: { kind: 'lake' },
+    modifiers: [],
+  },
+  oldWoods: {
+    id: 'oldWoods',
+    name: 'Old Woods',
+    blurb: 'Its Trees stay.',
+    when: { kind: 'oldWoods' },
+    protects: ['tree'],
     modifiers: [],
   },
 };

@@ -5,7 +5,15 @@
 import { describe, expect, it } from 'vitest';
 import { CONTENT, rules, type Lot, type TerrainId } from '../../rules/index.ts';
 import { isLimeZuColor } from '../art/palette.ts';
-import { LOT_COLORS, lotMapKind, lotMapSize, lotSummary, type LotMapKind } from './lot-map.ts';
+import {
+  LOOK_COLORS,
+  LOT_COLORS,
+  lotMapColor,
+  lotMapKind,
+  lotMapSize,
+  lotSummary,
+  type LotMapKind,
+} from './lot-map.ts';
 
 /** A hand-built lot, a character a tile: . open, T tree, P pond, C creek, B boulder, S old shed. */
 function lot(rows: readonly string[], sun: Lot['sun'] = 'left'): Lot {
@@ -43,6 +51,20 @@ describe("the job board's lot map", () => {
   it('gives each kind of tile its own color', () => {
     const colors = Object.values(LOT_COLORS).map((c) => c.toLowerCase());
     expect(new Set(colors).size).toBe(colors.length);
+  });
+
+  it('draws a biome’s grass and trees in its own colors, each its own (D-174)', () => {
+    for (const [look, own] of Object.entries(LOOK_COLORS)) {
+      const all = { ...LOT_COLORS, ...own };
+      for (const hex of Object.values(own)) expect(isLimeZuColor(hex), `${look} ${hex}`).toBe(true);
+      const colors = Object.values(all).map((c) => c.toLowerCase());
+      expect(new Set(colors).size, look).toBe(colors.length);
+    }
+    const autumn: Lot = { ...lot(['T.', '..']), biome: 'autumn' };
+    expect(lotMapColor(autumn, 0, 0)).toBe(LOOK_COLORS.autumn.tree);
+    expect(lotMapColor(autumn, 1, 0)).toBe(LOOK_COLORS.autumn.ground);
+    expect(lotMapColor({ ...autumn, biome: 'lakeside' }, 0, 0)).toBe(LOT_COLORS.tree);
+    expect(lotMapColor(autumn, 0, 2)).toBe(LOT_COLORS.street);
   });
 
   it("maps a contract's lot tile by tile, the street a row below it", () => {

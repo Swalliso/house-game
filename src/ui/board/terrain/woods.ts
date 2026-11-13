@@ -9,6 +9,7 @@ import { terrainAt, type Cell, type Lot } from '../../../rules/index.ts';
 import { CELL } from '../../sprites.ts';
 import { blobMask, blobTile, bySubtile, SUB, SUBTILE, withEdge } from '../autotile.ts';
 import { drawSprite, drawSubtile } from './atlas.ts';
+import { inLook, lotLook, type Look } from './biome.ts';
 
 /** One tile of an autotile set on one subtile. */
 export interface SetTile {
@@ -23,6 +24,8 @@ export interface WoodsFloor {
   readonly cells: readonly Cell[];
   /** The woods-edge tiles, on the floor's subtiles with open ground beside them. */
   readonly edge: readonly SetTile[];
+  /** The lot's look (D-174). */
+  readonly look: Look;
 }
 
 export function woodsFloor(lot: Lot): WoodsFloor {
@@ -44,7 +47,7 @@ export function woodsFloor(lot: Lot): WoodsFloor {
       }
     }
   }
-  return { cells, edge };
+  return { cells, edge, look: lotLook(lot) };
 }
 
 export function paintWoodsFloor(
@@ -52,8 +55,10 @@ export function paintWoodsFloor(
   img: CanvasImageSource,
   floor: WoodsFloor,
 ): void {
-  for (const c of floor.cells) drawSprite(ctx, img, 'grass-woods', c.x * CELL, c.y * CELL);
+  const ground = inLook('grass-woods', floor.look);
+  const edge = inLook('woods-edge', floor.look);
+  for (const c of floor.cells) drawSprite(ctx, img, ground, c.x * CELL, c.y * CELL);
   for (const t of floor.edge) {
-    drawSubtile(ctx, img, 'woods-edge', t.col, t.row, t.sx * SUBTILE, t.sy * SUBTILE);
+    drawSubtile(ctx, img, edge, t.col, t.row, t.sx * SUBTILE, t.sy * SUBTILE);
   }
 }

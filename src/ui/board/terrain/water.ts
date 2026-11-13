@@ -19,6 +19,7 @@ import {
   type QuarterPiece,
 } from '../autotile.ts';
 import { drawSprite, drawSubtile } from './atlas.ts';
+import { inLook, lotLook, type Look } from './biome.ts';
 import type { SubtileSprite } from './grass.ts';
 import { tileHash } from './hash.ts';
 
@@ -49,6 +50,8 @@ export interface CellBox {
 export interface WaterPlan {
   /** The cells the water covers, as a box: its canvas's place. Null when there's no water. */
   readonly box: CellBox | null;
+  /** The lot's look (D-174): the grass blades at the water's edge. */
+  readonly look: Look;
   /** A piece of the shore set on every subtile of water, in lot subtiles. */
   readonly tiles: readonly WaterTile[];
   readonly lilies: readonly SubtileSprite[];
@@ -57,7 +60,7 @@ export interface WaterPlan {
 /**
  * The water, cell by cell, on the lot and off it: off the lot, a pond ends, and a creek flows
  * on from the ends of its path (straight on, as far as you like); where it runs along the
- * lot's edge it keeps a bank there.
+ * lot's edge it keeps a bank there. A lake (D-174) runs on past the lot's back edge and sides.
  */
 export function waterCells(lot: Lot): Inside {
   const { width: w, height: h } = lot;
@@ -73,7 +76,8 @@ export function waterCells(lot: Lot): Inside {
   const ends = withEdge(isEnd, w, h, 'extend');
   const creek = (x: number, y: number) => (onLot(x, y) ? isCreek(x, y) : ends(x, y));
   const pond = withEdge((x, y) => terrainAt(lot, x, y) === 'pond', w, h, 'outside');
-  return (x, y) => creek(x, y) || pond(x, y);
+  const lake = withEdge((x, y) => terrainAt(lot, x, y) === 'lake', w, h, 'extend');
+  return (x, y) => creek(x, y) || pond(x, y) || lake(x, y);
 }
 
 /**
@@ -109,7 +113,7 @@ export function waterPlan(lot: Lot, salt = 0): WaterPlan {
     }
   }
   const box = x1 < 0 ? null : { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 };
-  return { box, tiles, lilies };
+  return { box, look: lotLook(lot), tiles, lilies };
 }
 
 /**
@@ -131,7 +135,7 @@ export function paintWater(
     drawSubtile(
       ctx,
       img,
-      shoreSet(piece),
+      inLook(shoreSet(piece), plan.look),
       piece.col,
       piece.row,
       sx * SUBTILE - ox,

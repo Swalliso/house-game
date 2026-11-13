@@ -19,6 +19,7 @@ import {
   featureWantedText,
   fixtureText,
   glossary,
+  protectedTerrain,
   rewardText,
   regionText,
   rules,
@@ -954,9 +955,13 @@ function StrikeInfo() {
 
 const FEATURE_TEXT: Record<string, string> = {
   tree: 'Quiet and Green, and a view. Each Tree tile counts as its own neighbor. Building here clears it.',
+  // D-174: on an Old Woods lot the Trees stay, in placement's own words.
+  keptTree:
+    'Quiet and Green, and a view. Each Tree tile counts as its own neighbor. These old Trees stay: build around them.',
   pond: 'Water, and a view. It counts once as a neighbor, however much of it a piece touches. Nothing can be built on it.',
   creek:
     'Water, and a view. It counts once as a neighbor. Nothing can be built on it, except a Driveway.',
+  lake: 'Water, and a view. It counts once as a neighbor, however much of it a piece touches. Nothing can be built on it.',
   // Who earns beside each comes first, from the content (featureWantedText, D-145): at 1280×720
   // the panel shows about five lines before it scrolls.
   boulder: 'It blocks building; a demolition clears it.',
@@ -1172,7 +1177,7 @@ export function Inspect() {
         <h2>{CONTENT.features[t].name}</h2>
         <p>
           {(t === 'boulder' || t === 'oldShed') && <>{featureWantedText(CONTENT, t)} </>}
-          {FEATURE_TEXT[t]}
+          {FEATURE_TEXT[protectedTerrain(CONTENT, s.house.lot).has(t) ? 'keptTree' : t]}
         </p>
         {where}
       </>

@@ -635,15 +635,45 @@
     "h": 32,
     "spec": "0fe4e49d269d5874"
   },
+  "grass-0-autumn": {
+    "w": 32,
+    "h": 32,
+    "spec": "ffbdde628aa1cc2d"
+  },
+  "grass-0-dry": {
+    "w": 32,
+    "h": 32,
+    "spec": "e698a3e36723b50c"
+  },
   "grass-outside": {
     "w": 256,
     "h": 256,
     "spec": "20b95cd685aac9d4"
   },
+  "grass-outside-autumn": {
+    "w": 256,
+    "h": 256,
+    "spec": "13fdeef03ec02adc"
+  },
+  "grass-outside-dry": {
+    "w": 256,
+    "h": 256,
+    "spec": "df1dadbf6e577e82"
+  },
   "grass-woods": {
     "w": 32,
     "h": 32,
     "spec": "d0c5d40705b424cc"
+  },
+  "grass-woods-autumn": {
+    "w": 32,
+    "h": 32,
+    "spec": "89d770e0c4a671a3"
+  },
+  "grass-woods-dry": {
+    "w": 32,
+    "h": 32,
+    "spec": "310119b0d0d471ec"
   },
   "greenhouse": {
     "w": 56,
@@ -990,6 +1020,16 @@
     "h": 48,
     "spec": "b49423093e1999eb"
   },
+  "rocks-autumn": {
+    "w": 48,
+    "h": 48,
+    "spec": "fea48a33aed34c8e"
+  },
+  "rocks-dry": {
+    "w": 48,
+    "h": 48,
+    "spec": "87bb054e04c1b01c"
+  },
   "rug-check": {
     "w": 30,
     "h": 30,
@@ -1087,12 +1127,40 @@
     "ms": 130,
     "spec": "a590d97e646d6ccd"
   },
+  "shore-autumn": {
+    "w": 48,
+    "h": 48,
+    "frames": 8,
+    "ms": 130,
+    "spec": "35038b9789b65889"
+  },
   "shore-corners": {
     "w": 32,
     "h": 32,
     "frames": 8,
     "ms": 130,
     "spec": "a7d394ef762dd640"
+  },
+  "shore-corners-autumn": {
+    "w": 32,
+    "h": 32,
+    "frames": 8,
+    "ms": 130,
+    "spec": "348902223deeccb4"
+  },
+  "shore-corners-dry": {
+    "w": 32,
+    "h": 32,
+    "frames": 8,
+    "ms": 130,
+    "spec": "282c9e5f32e2bb4d"
+  },
+  "shore-dry": {
+    "w": 48,
+    "h": 48,
+    "frames": 8,
+    "ms": 130,
+    "spec": "2bd92db79414d000"
   },
   "sofa-0": {
     "w": 48,
@@ -1176,6 +1244,16 @@
     "h": 32,
     "spec": "f28fdb4f45266c8c"
   },
+  "time-capsule-autumn": {
+    "w": 32,
+    "h": 32,
+    "spec": "ad32c9e96623a1f7"
+  },
+  "time-capsule-dry": {
+    "w": 32,
+    "h": 32,
+    "spec": "04443c0e922aa4ef"
+  },
   "title-car": {
     "w": 61,
     "h": 37,
@@ -1236,6 +1314,16 @@
     "h": 32,
     "spec": "06aea4724e521f73"
   },
+  "tree-apple-autumn": {
+    "w": 32,
+    "h": 32,
+    "spec": "67b967bac53cf13f"
+  },
+  "tree-apple-dry": {
+    "w": 32,
+    "h": 32,
+    "spec": "46ceb7962164c7ed"
+  },
   "tree-big": {
     "w": 64,
     "h": 52,
@@ -1246,10 +1334,40 @@
     "h": 51,
     "spec": "cd392d360968c42d"
   },
+  "tree-big-apple-autumn": {
+    "w": 64,
+    "h": 51,
+    "spec": "230e8f033bd4ee57"
+  },
+  "tree-big-apple-dry": {
+    "w": 64,
+    "h": 51,
+    "spec": "0854bd6822b97b37"
+  },
+  "tree-big-autumn": {
+    "w": 64,
+    "h": 52,
+    "spec": "7f9ae01e2cb1a23f"
+  },
+  "tree-big-dry": {
+    "w": 64,
+    "h": 52,
+    "spec": "5b017d886b2a62ca"
+  },
   "tree-bush": {
     "w": 32,
     "h": 24,
     "spec": "d4cdfd578acd8787"
+  },
+  "tree-bush-autumn": {
+    "w": 32,
+    "h": 24,
+    "spec": "e0b789e88b1b106c"
+  },
+  "tree-bush-dry": {
+    "w": 32,
+    "h": 24,
+    "spec": "ad54efbc7efa6c1f"
   },
   "tree-bushy": {
     "w": 32,
@@ -1261,25 +1379,85 @@
     "h": 29,
     "spec": "77ee8f1bc2fcbdec"
   },
+  "tree-bushy-apple-autumn": {
+    "w": 32,
+    "h": 29,
+    "spec": "50e054df2fdb88ea"
+  },
+  "tree-bushy-apple-dry": {
+    "w": 32,
+    "h": 29,
+    "spec": "881f4656a891afdc"
+  },
+  "tree-bushy-autumn": {
+    "w": 32,
+    "h": 29,
+    "spec": "8fed94c4bb9715e9"
+  },
+  "tree-bushy-dry": {
+    "w": 32,
+    "h": 29,
+    "spec": "af7595babe83b505"
+  },
   "tree-conifer": {
     "w": 32,
     "h": 45,
     "spec": "dfff3ffa8bc6d734"
+  },
+  "tree-conifer-autumn": {
+    "w": 32,
+    "h": 45,
+    "spec": "53a40daeaa48b0fc"
   },
   "tree-conifer-cones": {
     "w": 32,
     "h": 45,
     "spec": "e72d67304b12b9a2"
   },
+  "tree-conifer-cones-autumn": {
+    "w": 32,
+    "h": 45,
+    "spec": "0420ed283af15dbc"
+  },
+  "tree-conifer-cones-dry": {
+    "w": 32,
+    "h": 45,
+    "spec": "9c5cd07e2a5157fc"
+  },
+  "tree-conifer-dry": {
+    "w": 32,
+    "h": 45,
+    "spec": "0cd845910dcb0f83"
+  },
   "tree-pine": {
     "w": 32,
     "h": 53,
     "spec": "e6034aacee0f95d6"
   },
+  "tree-pine-autumn": {
+    "w": 32,
+    "h": 53,
+    "spec": "d126a5980a833a94"
+  },
+  "tree-pine-dry": {
+    "w": 32,
+    "h": 53,
+    "spec": "19fe6f8f720966f8"
+  },
   "tree-round": {
     "w": 32,
     "h": 37,
     "spec": "ad12b4602c6e8b63"
+  },
+  "tree-round-autumn": {
+    "w": 32,
+    "h": 37,
+    "spec": "27843830dc7ad649"
+  },
+  "tree-round-dry": {
+    "w": 32,
+    "h": 37,
+    "spec": "2b803ce37ca479d4"
   },
   "treehouse": {
     "w": 64,
@@ -1291,10 +1469,30 @@
     "h": 16,
     "spec": "31fb415dd7a541bb"
   },
+  "tuft-0-autumn": {
+    "w": 16,
+    "h": 16,
+    "spec": "a1e253ada21e287e"
+  },
+  "tuft-0-dry": {
+    "w": 16,
+    "h": 16,
+    "spec": "fb332762a2032d6f"
+  },
   "tuft-1": {
     "w": 16,
     "h": 16,
     "spec": "b34d48fbcd4f770e"
+  },
+  "tuft-1-autumn": {
+    "w": 16,
+    "h": 16,
+    "spec": "902e0e149396d0a8"
+  },
+  "tuft-1-dry": {
+    "w": 16,
+    "h": 16,
+    "spec": "84acee90e111500d"
   },
   "vanity-0": {
     "w": 28,
@@ -1316,30 +1514,90 @@
     "h": 16,
     "spec": "5d12301d9cec2db7"
   },
+  "wildflowers-0-autumn": {
+    "w": 16,
+    "h": 16,
+    "spec": "30d5e8ef061dac4c"
+  },
+  "wildflowers-0-dry": {
+    "w": 16,
+    "h": 16,
+    "spec": "928efb5e126d4167"
+  },
   "wildflowers-1": {
     "w": 16,
     "h": 16,
     "spec": "74e7a69cd775ec8f"
+  },
+  "wildflowers-1-autumn": {
+    "w": 16,
+    "h": 16,
+    "spec": "43b39117fbb3dae5"
+  },
+  "wildflowers-1-dry": {
+    "w": 16,
+    "h": 16,
+    "spec": "5e5391d6cce959c9"
   },
   "wildflowers-2": {
     "w": 16,
     "h": 16,
     "spec": "fe6672817f14b4e9"
   },
+  "wildflowers-2-autumn": {
+    "w": 16,
+    "h": 16,
+    "spec": "c651d97e12e4fe5d"
+  },
+  "wildflowers-2-dry": {
+    "w": 16,
+    "h": 16,
+    "spec": "fc154cdd26d9e398"
+  },
   "wildflowers-3": {
     "w": 16,
     "h": 16,
     "spec": "9cda911bb20c9795"
+  },
+  "wildflowers-3-autumn": {
+    "w": 16,
+    "h": 16,
+    "spec": "fb00b2da63545a61"
+  },
+  "wildflowers-3-dry": {
+    "w": 16,
+    "h": 16,
+    "spec": "be4a58b0f6137285"
   },
   "wildflowers-4": {
     "w": 16,
     "h": 16,
     "spec": "48ef859f63e0099b"
   },
+  "wildflowers-4-autumn": {
+    "w": 16,
+    "h": 16,
+    "spec": "5e6ff8754fe61f20"
+  },
+  "wildflowers-4-dry": {
+    "w": 16,
+    "h": 16,
+    "spec": "81782e1c9dca0584"
+  },
   "woods-edge": {
     "w": 192,
     "h": 64,
     "spec": "e9eeb33af3f43922"
+  },
+  "woods-edge-autumn": {
+    "w": 192,
+    "h": 64,
+    "spec": "9075c41b451b9d8b"
+  },
+  "woods-edge-dry": {
+    "w": 192,
+    "h": 64,
+    "spec": "27f7cb93cd19fe4e"
   },
   "yard-concrete": {
     "w": 32,

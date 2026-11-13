@@ -15,6 +15,11 @@ import type { IconName } from './theme/art.ts';
 
 export type SpriteId = keyof typeof atlas.sprites;
 
+/** Whether the atlas has a sprite by this id (D-174's biome cuts are looked up by name). */
+export function hasSprite(id: string): id is SpriteId {
+  return Object.hasOwn(atlas.sprites, id);
+}
+
 /** Art px per game cell: a 2×2 block of LimeZu's 16 px tiles (D-097). */
 export const CELL = 32;
 
@@ -111,6 +116,7 @@ export const CREW_ICONS: Record<CrewId, IconName> = {
  * Each lot trait's icon (D-119), on its chip on the contract's card and beside the crew's on the
  * checklist: the Wet tag's drop for the creek, the Green tag's leaf for the woods, and (D-166) a
  * pond, a Boulder, and a meadow for an Open lot (not the sun: the lot's sun chip sits beside it).
+ * D-174: the pond's for the lake, and the leaf for Old Woods, which never sits beside Wooded.
  */
 export const LOT_TRAIT_ICONS: Record<LotTraitId, IconName> = {
   creekside: 'Wet',
@@ -118,6 +124,8 @@ export const LOT_TRAIT_ICONS: Record<LotTraitId, IconName> = {
   wooded: 'Green',
   rocky: 'boulder',
   open: 'meadow',
+  lakefront: 'pond',
+  oldWoods: 'Green',
 };
 
 /** A sprite's rect in the atlas (an animation's first frame). */

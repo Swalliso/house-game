@@ -336,7 +336,7 @@ describe('Party House', () => {
 
 describe('Waterfront', () => {
   it('pieces touching the pond or the creek earn +100% (D-143)', () => {
-    expectText('waterfront', ['Pieces touching the Pond or the Creek earn +100%']);
+    expectText('waterfront', ['Pieces touching the Pond, Creek, or Lake earn +100%']);
     // Bedrooms by the pond and by the creek: 3 → 6. One between them touches neither.
     const rows = ['PP........', ...emptyRows(10, 6), 'CCCCCCCCCC', ...emptyRows(10, 2)];
     expect(

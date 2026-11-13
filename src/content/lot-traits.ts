@@ -4,8 +4,9 @@
 // and tilts the draw toward the cards that use it, like a client's pool; it stays on the
 // checklist.
 //
-// Most lots are shaped as they're drawn (balance.ts `lot.kinds`): Rocky, Open and Pondside come
-// from that, Creekside from the creek, and Wooded from the woods as they grew.
+// Most lots are shaped as they're drawn (balance.ts `lot.biomes`' kinds): Rocky, Open,
+// Pondside, Lakefront and Old Woods come from that, Creekside from the creek, and Wooded from
+// the woods as they grew.
 
 import type { LotTraitDef, LotTraitId } from '../rules/index.ts';
 
@@ -62,6 +63,10 @@ export const LOT_TRAITS: Readonly<Record<LotTraitId, LotTraitDef>> = {
   // D-166: only the lone Trees are left (6–10; a plain lot has 50 or more), so there's room and
   // sun for a yard, and yard pieces earn double: at +50% the Trees' loss outweighed it. The
   // Hendersons and the Barkers like Lawns.
+  // D-174: the batch (D-162–D-169) grew every other lot's houses more than an Open lot's, and
+  // its re-fit left Open 21 points under the same lots (27% against 48.5%). Its tilt toward
+  // Lawns and Herb Gardens cost 10 of them; the sun it promises pays the rest back: with the
+  // tilt gone and Sunny pieces at +50%, 49.5%. The Count earns nothing from the sun.
   open: {
     id: 'open',
     name: 'Open',
@@ -69,8 +74,37 @@ export const LOT_TRAITS: Readonly<Record<LotTraitId, LotTraitDef>> = {
     when: { kind: 'open' },
     modifiers: [
       { kind: 'earn', target: { property: 'yard' }, pct: 100 },
-      { kind: 'drawWeight', target: { piece: ['lawn', 'herbGarden'] }, pct: 100 },
+      { kind: 'earn', target: { tag: 'Sunny' }, pct: 50 },
     ],
     suits: ['hendersons', 'barkers'],
+  },
+  // D-174: the lakeside's lake along the back edge. Its shore runs the lot's width, so the house
+  // can string along it. It pays the pond's rate: forced onto every lot, greedy built 2.4 rooms
+  // on the shore at +50% and 2.7 at +100%.
+  lakefront: {
+    id: 'lakefront',
+    name: 'Lakefront',
+    blurb: 'A lake, and views from its shore.',
+    when: { kind: 'lake' },
+    modifiers: [
+      { kind: 'earn', target: { touching: { feature: 'lake' } }, pct: 100 },
+      { kind: 'drawWeight', target: { piece: 'patio' }, pct: 100 },
+    ],
+  },
+  // D-174: an autumn wood whose Trees all stay: the house fits between them, and placement says
+  // why when a piece would go over one. It replaces Wooded, which is about clearing them. Greedy
+  // on its 81 lots of hold-0 to hold-999 won 33% at +50%, 40% at +75% and 53% at +100% (develop
+  // 46% on the same seeds); a roomier lot (75% free, not 65%) didn't help.
+  oldWoods: {
+    id: 'oldWoods',
+    name: 'Old Woods',
+    blurb: 'Its Trees stay: build around them.',
+    when: { kind: 'oldWoods' },
+    protects: ['tree'],
+    modifiers: [
+      { kind: 'earn', target: { touching: { feature: 'tree' } }, pct: 100 },
+      { kind: 'drawWeight', target: { piece: ['treehouse', 'birdhouse'] }, pct: 100 },
+    ],
+    suits: ['vladislav'],
   },
 };

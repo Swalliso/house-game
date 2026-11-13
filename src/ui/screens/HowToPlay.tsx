@@ -527,7 +527,7 @@ export function HowToPlayText() {
             <b>Trees</b> are Quiet and give views.
           </li>
           <li>
-            <b>The pond and the creek</b> give views.
+            <b>The pond, the creek and the lake</b> give views.
           </li>
           {/* D-166: every trait, by name, in place of the creek lot's line. */}
           <li>
