@@ -347,7 +347,7 @@ describe('the greedy bot', () => {
     expect(rules.estimatePlay(s, upright(5)).yardHint).toBe(true);
     expect(rules.estimatePlay(s, upright(7)).yardHint).toBe(false);
     expect([...openGround(rules, s, [upright(5), upright(7)])]).toEqual([0, 1]);
-  });
+  }, 20_000); // 3.0–5.2 s on CI's runners: the 5 s default timed out on a slow one
 
   it('lays a Driveway pack to a Garage nothing reaches, though no suggested shape does (D-140)', () => {
     // A Bedroom on rows 12–13 of an empty 24 × 24 lot and a Garage under it, on rows 14–15: the
