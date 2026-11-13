@@ -147,8 +147,20 @@ export type FeatureId =
 /** The features that sit on tiles of the lot. */
 export type TerrainId = Exclude<FeatureId, 'street'>;
 
-/** Sets (D-056): a poker-hand ladder. M4a adds the Suite and Full House. */
-export type SetId = 'jackAndJill' | 'suite' | 'entertainer' | 'fullHouse';
+/**
+ * Sets (D-056): a poker-hand ladder. M4a adds the Suite and Full House; D-164 the yard sets,
+ * whose members include yard pieces and outbuildings.
+ */
+export type SetId =
+  | 'jackAndJill'
+  | 'suite'
+  | 'entertainer'
+  | 'fullHouse'
+  | 'backyard'
+  | 'harvest'
+  | 'dogRun'
+  | 'playYard'
+  | 'driveIn';
 
 /** Crews (D-012): picked at the start of a run. The General Contractor is the default. */
 export type CrewId = 'generalContractor' | 'landscaper' | 'architect';

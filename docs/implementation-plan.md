@@ -1845,8 +1845,14 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
   | Jack-and-Jill | 10 | +0.5 | | +8 Points, +0.25 |
   | Suite | 15 | +0.5 | | +10 Points, +0.25 |
   | Entertainer (one per house, D-093) | 25 | +1 | | +15 Points, +0.5 |
+  | Backyard (one per house, D-164) | 15 | +0.5 | | +10 Points, +0.25 |
+  | Harvest (one per house, D-164) | 15 | +0.5 | | +10 Points, +0.25 |
+  | Dog Run (one per house, D-164) | 10 | +0.5 | | +8 Points, +0.25 |
+  | Play Yard (one per house, D-164) | 10 | +0.5 | | +8 Points, +0.25 |
+  | Drive-In (one per house, D-164) | 10 | +0.25 | | +8 Points, +0.25 |
   | Full House | 40 | +1 | ×1.5 (D-140; was ×2) | +20 Points, +0.5 |
 
+  - *2026-11-12 (D-164):* the yard sets' members are yard pieces and outbuildings, matched by type as rooms are (a pack is one member); no Remodel Plans level them yet
   - checked every week; Points and Mult pay every week while the set holds; other reward types pay once, on first completion
   - levels come from the Remodel Plans tools and last for the run
   - instances are matched greedily in placement order
@@ -1962,6 +1968,11 @@ Each set pays Points and +Mult every week it holds, like a poker hand (values in
 | Suite | members bedroom, bathroom, closet; connected; Points 15, Mult +0.5 | M4a |
 | Jack-and-Jill | members 2 bedrooms + bathroom; hub bathroom; Points 10, Mult +0.5 | M4a |
 | Entertainer | members kitchen, diningRoom, livingRoom; connected; max 1 (D-093); Points 25, Mult +1 | M1 (M4a: max 1) |
+| Backyard | members livingRoom, patio, lawn; connected; max 1; Points 15, Mult +0.5 | D-164 |
+| Harvest | members kitchen, herbGarden, greenhouse; connected; max 1; Points 15, Mult +0.5 | D-164 |
+| Dog Run | members doghouse, lawn, fence; connected; max 1; Points 10, Mult +0.5 | D-164 |
+| Play Yard | members treehouse, lawn, fence; connected; max 1; Points 10, Mult +0.5 | D-164 |
+| Drive-In | members garage, driveway; connected; max 1; Points 10, Mult +0.25 | D-164 |
 | Full House | one of each of the 9 Core indoor types (a Garage nothing reaches counts, D-070); not connected; max 1; Points 40, Mult +1, **×1.5** (D-140; was ×2) | M4a |
 
 ### Blueprints (18)
@@ -2008,7 +2019,7 @@ Combolands' potions and Islanders' boons are the models: one-shot, cheap, and th
 | Remodel Plans: Entertainer | Common | `levelSet entertainer` |
 | Remodel Plans: Full House | Uncommon | `levelSet fullHouse` |
 
-The four Remodel Plans work like Balatro's Planet cards: each permanently levels one set type, so a player can choose a set to build the run around (D-056).
+The four Remodel Plans work like Balatro's Planet cards: each permanently levels one set type, so a player can choose a set to build the run around (D-056). *2026-11-12 (D-164):* the five yard sets have levels but no Remodel Plans: five more tools would thin the shelf.
 
 ### Company upgrades (7; M3b)
 

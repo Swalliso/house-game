@@ -366,6 +366,8 @@ Also: D-036 and D-043 (Accepted), where hand size becomes the `handSize` rule (3
 
 *Proposed change by D-165 (2026-11-12, awaiting the user's OK):* +0.25 per spec met stays, on a checklist of 5–6 lines. Two house rules pay Comfort on the rooms instead (Cozy, and A Bathroom nearby). Dream Home is +0.2 a line (from +0.1), and Inspector's Visit +0.5 for its week (from +0.25).
 
+*Proposed change by D-164 (2026-11-12, awaiting the user's OK):* five yard sets join the ladder, with yard pieces and outbuildings as members. The Backyard (a Living Room, a Patio, a Lawn) and the Harvest (a Kitchen, a Herb Garden, a Greenhouse) pay +15 Points and +0.5 Mult. The Dog Run (a Doghouse, a Lawn, a Fence) and the Play Yard (a Treehouse, a Lawn, a Fence) pay +10 and +0.5, and the Drive-In (a Garage, a Driveway) +10 and +0.25. Each is one per house, its members touch, and none pays more than the Entertainer. No Remodel Plans level them yet.
+
 ### D-018 · Milestones are construction phases
 **Status:** Accepted · 2026-11-05 (with the plan's approval)
 Groundbreaking → Foundation → Framing → Roofing → Drywall → Finishes → Final Walkthrough. Each milestone is a client walkthrough.
@@ -1169,6 +1171,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **Changes:** D-071 and D-079 (the Treehouse); D-074 (packs stay free under the tidy yard).
 **2026-11-06 (M4a sim):** counting only yard types for the tidy yard (outbuildings neither count toward the 6 nor break it) was tried: one yard type standing 4+ times rose from 5% to 11% of wins, and greedy won 2 points less. Outbuildings keep counting.
 
+**2026-11-12 (D-164, Proposed):** the yard sets leave these rules as they are. Each set asks for one of each type, so none wants a 4th, and one yard type standing 4+ times went from 8% to 10% of greedy's wins (noise). A Hallway joins no yard piece to a set, just as it meets no Patio's rule. The Backyard gives a Patio beside a Living Room a Lawn to finish it, and the tidy yard held at the end in 75% of wins (68% before).
+
 ### D-106 · Packs: Fences and Driveways you shape
 **Status:** Accepted · 2026-11-06 (the team chose it for M4a, resolving D-074). The numbers are placeholders.
 **Decision:**
@@ -1314,6 +1318,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **2026-11-12 (D-161):** the bots rank only the few of a Fence card's open-ground plays that the shortlist can reach, and the yard planner, the rules' list of spots and the layout's fenced-yard fill are faster. The benchmark gate passes again at 0.82–0.86 s (D-160 1.53–1.59 s, develop before it 0.74–0.77 s, back to back), and `--check` gives the same runs. Greedy's recall test takes 14 s (21 s); it still scores every legal play, so it keeps its 120 s.
 
 **2026-11-12 (D-163):** a piece from Your goods doesn't end the week, so greedy scores its shortlist once and splits it by `rules.endsWeek`: the best free play goes down first when it raises the week's total, then the week's play as before. The shop bot values a bought piece at all it adds (half before). The novice is unchanged, and the chaos test's tally invariant asks `endsWeek`.
+
+**2026-11-12 (D-164, Proposed):** the run record counts yard plays per milestone (`yardByPhase`), each set's weeks held, first week held and instances at the end, and the yard types wedged inside the house (`wedgedTypes`). The report adds a "Yard pieces by milestone" row and a table of sets after the house report. No bot changed. Greedy's recall test asks 75% (80%), as D-164's gaps explain.
 
 ### D-071 · M2 content defaults
 **Status:** Accepted · 2026-11-06 (proposed with the M2 pull request; the team settled the Treehouse in D-105 and asked for this to be Accepted unless the sim showed the Hendersons' Kid taste making Treehouse clusters dominant. It doesn't: see below).
@@ -2260,6 +2266,159 @@ What the columns mean:
 - **Shapes:** extensions mostly stick out, and the glance test falls 4 points in wins. If houses look sprawling in play, an extension could be asked to fill a notch (share 3 or more tiles of wall, or touch two rooms).
 - **D-165** (#78) makes a capped card unplaceable: it renovates, and its line says "One per house: another renovates it." With this, that card extends where it can and renovates only where it can't, so the line would be "another extends or renovates it". Both pull requests touch `run.ts`'s Renovate checks, the Renovate texts, How to Play and `testing.ts`; whichever merges second keeps both rules.
 
+### D-164 · Yard sets: the Backyard, the Harvest, the Dog Run, the Play Yard and the Drive-In
+**Status:** Proposed · 2026-11-12, a phase pull request (`phase/yard-sets`), from the core-loop gap analysis the same day: the user wants yard cards worth playing and a lot that matters. Five sets join D-056's ladder with yard pieces and outbuildings as members. Set matching was already type-generic, so no rule changed. A content change: `contentHash(CONTENT)` goes from `79662776` to `d170da62`, so runs in progress drop when it merges (on /dev/) and at the next release (#54's check). For the user's playtest before it merges.
+**Decision:**
+- **Five sets** (`src/content/sets.ts`), after the indoor ones and before Full House. Each is one per house (`maxInstances: 1`, as the Entertainer is), and its members touch (`connected`):
+
+  | Set | Members | Every week | Per level | Crosses the wall |
+  |---|---|---|---|---|
+  | Backyard | a Living Room, a Patio, a Lawn | +15 Comfort, +0.5 Charm | +10, +0.25 | the Living Room |
+  | Harvest | a Kitchen, a Herb Garden, a Greenhouse | +15, +0.5 | +10, +0.25 | the Kitchen |
+  | Dog Run | a Doghouse, a Lawn, a Fence | +10, +0.5 | +8, +0.25 | |
+  | Play Yard | a Treehouse, a Lawn, a Fence | +10, +0.5 | +8, +0.25 | |
+  | Drive-In | a Garage, a Driveway | +10, +0.25 | +8, +0.25 | the Garage |
+
+  - **Members match as rooms do** (`memberType`): by type, so an L-Kitchen is a Kitchen. A Fence or Driveway pack is one member, whatever its tiles (D-106). A Hallway links rooms only, so it never joins a yard piece to a set, just as it never meets a Patio's rule (D-105). Every member is a card the weekly draw can deal from milestone 1 (D-055). The Greenhouse, Doghouse and Fence are complexity 3, so they're rare before milestone 3, and the stock keeps a Fence waiting from Foundation on (D-160). The Fire Pit (drawn from Drywall), the Hot Tub and the Pool (shop only) are in none.
+  - **A piece joins one instance of each set type** (`sets.ts`): one Lawn can serve the Backyard, the Dog Run and the Play Yard at once. Likewise one Fence serves the Dog Run and the Play Yard, one Kitchen the Entertainer and the Harvest, one Living Room the Entertainer and the Backyard, and one Garage the Drive-In and Full House.
+  - **None wants a 4th of a type.** Each asks for one of each, so the tidy yard (D-105) stands as it is.
+  - **Their sizes:** the two that cross the wall pay what a Suite does (+15, +0.5). The yard-only Dog Run and Play Yard pay what a Jack-and-Jill does (+10, +0.5), since their Lawn and Fence are cheap and shared. The two-member Drive-In pays +10 and +0.25. None outpays the Entertainer (+25, +1). The Architect's +10% to every set (D-109) reaches them too.
+  - **No Remodel Plans for them.** Each has a `level`, as the indoor sets do, but no tool levels it, so it does nothing yet. Five more tools would thin the shop's shelf.
+- **On screen, as the indoor sets are** (D-122, D-153), with no new panel:
+  - **The set chip** names a set on every member card, by D-122's rule: the touching set with the shortest name, and "+N" for the card's other touching sets.
+    - New on yard cards: a Lawn says "Dog Run +2", a Fence "Dog Run +1", a Patio "Backyard", a Doghouse "Dog Run", a Treehouse "Play Yard", a Herb Garden or Greenhouse "Harvest", and a Driveway "Drive-In".
+    - Changed on rooms: a Kitchen says "Harvest +1" and a Living Room "Backyard +1" (both "Entertainer" before). A Garage says "Drive-In" (before, "Full House 0/9"), since a touching set names the chip (D-153); its tip still gives the count.
+  - **The Lawn's "+2" hides** on a narrow card in the pixel font wherever it would cost a chip row, as D-153's count does. In `hand.css` that's under 212 px beside its two tags' icons: 1280×720, and 1440×900, 1470×840, 1512×860 and 1504×900 at 2×. There the chip says "Dog Run", and its tip and Inspect name all three sets.
+  - **Inspect's set lines** (D-153's `SetLines`) and the chip's tip use the same words: "Drive-In: a Garage and a Driveway, touching. +10 Comfort and +0.25 Charm every week. One per house."
+  - **The play's label, the tally's pop and the score panel** treat them as any set:
+    - "▲ +32 Wow · Backyard" on the ghost
+    - "Completes Backyard: +15 Comfort, +0.5 Charm" in Inspect
+    - "Backyard complete!" over the members
+    - the score panel's set line
+  - **How to play** pictures all nine sets. Its Scoring lines now read "Sets (pictured below), indoors and out, add Comfort and Charm." (before: "Sets, like the Jack-and-Jill, the Entertainer, the Suite or the Full House, add …") and "A piece can be in one set of each kind: …" ("A room" before; D-158).
+- **Lot features as members:** asked about, but not built. A Tree, the Pond or the Creek isn't a piece: it has no uid and no place in the placement order, and `matchSets` walks only `house.pieces`. The layout already lists features as neighbors (each Tree tile, the Pond and the Creek once). A set like "a Treehouse beside a Tree" would need:
+  - a feature member kind in `SetDef`
+  - `matchSets` and `setProgress` to take a feature body as a member, with a stable id (a body id or a Tree's tile) and a place before any piece
+  - a cleared Tree to break the set, as a demolished room does, and a Sapling's Tree to join at its transform
+  - words for features in `setText`, the chip's tip, Inspect, How to play's pictures and the preview's parts
+  - `setHint` (`estimate.ts`) to flag a member placed beside a feature
+  
+  About a day with tests.
+- **The sim** (D-089) gains these measures for every run, and no bot changed:
+  - yard plays per milestone (`yardByPhase`; the report's "Yard pieces by milestone" row)
+  - each set's weeks held, first week held, and instances at the end (a table of sets after the house report)
+  - which yard types are wedged inside the house (`wedgedTypes`)
+  
+  Greedy's recall test now asks 75% (80% before); see Known gaps.
+- **Tests:**
+  - `src/rules/sets-yard.test.ts`, on the real content:
+    - a Backyard chain, and the same with one member apart
+    - a Hallway between members, which joins nothing
+    - a Fence pack as one member
+    - one Lawn and one Fence in three sets
+    - one of each set per house
+    - an L-Kitchen in both the Entertainer and the Harvest
+    - a Drive-In reached from the street, and a Garage alone
+    - greedy's set hint on a Lawn that completes a set, and not on one apart
+  - `runloop.test.ts`: a demolished Garage breaks its Drive-In
+  - `text.test.ts` and `content.test.ts`
+  - `set-chip.test.tsx`: each yard card's chip, the changed room chips, the Garage's count in its tip, and Inspect's line
+  - `howto.test.tsx`
+
+**Sim** (`npm run sim -- --check`, 200 held-out runs per arm on `check-0` to `check-199`, the General Contractor, develop at 124bd13 against this, from frozen copies, at most two jobs at once; the milestone targets and the clients' `targetPct` were not re-fit):
+
+| | develop | D-164 |
+|---|---|---|
+| Greedy wins | 49.5% [42.6–56.4] | 56.0% [49.1–62.7] |
+| Seeds won in one arm only | 10 | 23 |
+| Clients' win rates: Hendersons, Vladislav, Barkers, Juniper, Dale | 47.5, 55.0, 45.0, 40.0, 60.0 | 52.5, 57.5, 57.5, 55.0, 57.5 |
+| Clients' spread | 20.0 points (FAIL, unsure) | 5.0 points (PASS, unsure) |
+| Lawns placed per run (pick rate) | 0.99 (18%) | 1.42 (25%) |
+| Treehouses | 0.59 (15%) | 0.73 (19%) |
+| Greenhouses | 0.96 (37%) | 1.14 (42%) |
+| Herb Gardens | 1.26 (33%) | 1.39 (35%) |
+| Patios | 0.82 (15%) | 0.90 (16%) |
+| Doghouses | 0.46 (15%) | 0.51 (16%) |
+| Fences | 1.60 (43%) | 1.66 (43%) |
+| Garages · Driveways | 0.28 (7%) · 0.14 (4%) | 0.25 (7%) · 0.17 (5%) |
+| Hallways | 2.00 (76%) | 1.82 (69%) |
+| Yard plays by milestone, mean | 0.6 0.9 1.2 1.7 1.7 1.4 1.2 | 0.6 1.0 1.3 2.0 1.8 1.7 1.4 |
+| Yard plays in weeks 17–28 (wins · all) | 5.0 · 4.2 | 5.6 · 4.9 |
+| Held at the end (wins): Backyard · Harvest · Dog Run · Play Yard · Drive-In | – | 41% · 28% · 21% · 28% · 7% |
+| First held, p50 (week) | – | 12 · 17 · 23 · 21 · 12 |
+| Held at the end (wins): Entertainer · Jack-and-Jill · Suite · Full House | 97% · 90% · 92% · 44% | 94% · 84% · 87% · 36% |
+| Charm's share of Wow, p50 | 72% | 74% |
+| No yard inside the house, H2 (wins · all) | 73% · 77% | 72% · 75% |
+| Wedged yard pieces per run (wins) | 0.95 | 0.96 |
+| Plausible (wins) | 77% | 80% |
+| Glance test (wins) | 40% | 47% |
+| 3+ outbuildings (wins) | 44% | 58% |
+| One yard type 4+ times (wins) | 8% | 10% |
+| Tidy yard at the end (wins) | 68% | 75% |
+| A fenced yard at the end (wins · all) | 55% · 58% | 49% · 52% |
+| The Hendersons' A fenced yard (held at the end) | 75% | 68% |
+| The Barkers' A big fenced yard | 53% | 38% |
+| The Barkers' Two Doghouses | 38% | 43% |
+
+- **§8's verdicts:**
+  - Unchanged: random fails by milestone 3 (100%), novice passes milestone 1 (98.5%), and the Fence probe passes (offered its count by milestone 4 in 64.6% of runs; 66.7% on develop). Early completion stays a live choice: always −10.0 points [−18.4, −1.6] against never, −9.5 on develop.
+  - Greedy wins 56.0%, over the 40–50% band (FAIL, unsure; PASS on develop at 49.5%). It clears milestones 1–3 in 98.5% (98.0%), just over the 92–98% band.
+  - As asked, nothing was re-fit: the yard sets add about 6 points to greedy's win rate.
+- **The benchmark gate passes:** back to back, develop ran 839–896 ms and this 855–869 ms (the limit is 1,000). The check's own timing lines (p50 542 → 695 ms) ran beside other sim jobs, so they don't measure the change.
+- **What moved the fenced yards** (the same seeds, 200 greedy runs, one set at a time):
+  - **The Backyard alone:** a fenced yard at the end falls from 55% to 47% of wins, and the Barkers' big one from 53% to 43%. Greedy places Lawns (0.99 → 1.42 a run) in weeks it used to place Fences (1.60 → 1.42).
+  - **The Dog Run and the Play Yard alone:** 52% and 48% (Fences rise to 1.79).
+  - **The Harvest alone:** 56% and 48%.
+- **A first try with a Kitchen Garden** (a Kitchen, a Herb Garden and a Flower Bed) pushed Flower Beds and Herb Gardens into the house's notches, and no yard inside the house fell from 73% to 65% of wins. The Harvest's Greenhouse is an outbuilding, which stands apart, and H2 held (72%).
+
+**What greedy can't see:** greedy ranks every play by the rules' estimate and scores the best 12 exactly, plus each card's best 2 and up to 24 hinted plays. `setHint` in `estimate.ts` flags a play whose piece touches another member of a touching set, so greedy scores any play that completes a yard set exactly, and takes it when it pays. But greedy never plans for a set. It won't put a Patio beside the Living Room for a Lawn two weeks later, or a Doghouse where a Fence can follow. So its set numbers above are a floor.
+
+A one-step planner shows the other end. In this experiment (not committed), a play that brings two of a three-member set together, for a set the house doesn't hold yet, scores half that set's weekly worth on top:
+- It holds the Backyard in 75% of runs, the Dog Run in 77%, the Play Yard in 75%, the Harvest in 47% and the Drive-In in 4%.
+- It places Lawns 2.46 times a run (a 46% pick rate), Fences 3.31 (94%), Doghouses 1.22 (42%), Treehouses 1.18 (33%) and Patios 1.46 (28%). It makes 5.4 yard plays in weeks 17–28 (7.0 in wins).
+- But it wins only 47% [40–54]. Chasing every set costs rooms (the Entertainer is held in 56% of runs, against 79%), and more Patios end up wedged in the house (34 per 100 runs, against 13; H2 holds in 61% of wins).
+
+So a player who builds toward a yard set will hold it far more often than greedy does, and play the weak yard cards two to three times as often, at some cost in rooms.
+
+**Why:** the gap analysis found yard cards weak. On develop greedy picks a Lawn, a Doghouse, a Treehouse, a Garage or a Driveway in 4–18% of the weeks it's offered, and late weeks go to rooms more than the yard. Sets are the game's way of saying "these belong together", and the indoor ones carry most of a house's Charm. Yard sets give the weak cards partners, and the three that cross the wall tie the yard to the rooms beside it.
+**Considered:**
+- **A Kitchen Garden** (a Kitchen, a Herb Garden, a Flower Bed): it wedged Flower Beds into the house (Sim, above).
+- **Sets that ask for two of a yard type** ("two Lawns and a Fence"): they would push a yard type toward the tidy yard's ceiling of 3.
+- **Lot features as members** (a Treehouse by a Tree): a rules change (above).
+- **Remodel Plans for each set:** five more tools on the shelf.
+
+**Changes:**
+- D-056 (Accepted): five more sets on its ladder, none above the Entertainer. A proposed change there, awaiting the user's OK.
+- D-105 (Accepted): unchanged. A dated note there on how the yard sets meet the tidy yard and the Patio rule.
+- D-122 and D-153 (Proposed): the chip on yard cards, the changed room chips, and the Lawn's "+2". A dated note on each.
+- D-158 (Proposed): How to play's two lines. A dated note there.
+- D-089 (Accepted): the sim's new measures, and the recall test's bar. A dated note there.
+- `implementation-plan.md` Appendix A: the Sets tables and the Remodel Plans line.
+
+**Checked:** one round in the dev build, in headless Chrome over CDP at 1600×900. Through ?debug, the run built a Living Room, a Patio beside it, and then a Lawn that completed the Backyard. Checked:
+- the hand's chips, and Inspect on the Lawn (its three sets)
+- the ghost's "▲ +32 Wow · Backyard", and Inspect's "Completes Backyard"
+- the "Backyard complete!" pop over the members, and the panel's set line after the tally
+- How to play's nine pictures and its lines
+- no console errors
+
+The hand's chip rows were also measured against a develop build at 11 window sizes, from 1280×720 to 1920×1080 at 1× and 2×, in both fonts (see Known gaps).
+
+**Known gaps:**
+- **Not played by a person.**
+- **Runs in progress drop** when this merges and at the release, since the content hash changes.
+- **Greedy wins 56%,** over §8's 40–50%. As asked, nothing was re-fit.
+- **Fenced yards fall,** from 55% to 49% of wins, and the Barkers' A big fenced yard most of all (53% → 38%): greedy spends Fence weeks on the Backyard's Lawns. The Barkers still win more (45% → 57.5%). If the playtest shows the same, the Backyard could pay +10.
+- **Some cards grow a chip row.** D-153 keeps counts and checks from doing that, but a plain chip has no such rule:
+  - A Fence or Driveway card had no chips, so its set chip adds a row (24 px at 1×, 28 at 2×) at every size.
+  - In the pixel font, a Treehouse's "Play Yard" or a Patio's "Backyard" beside two tags' icons needs 202–204 px. At 1504×900 and 1512×860 at 2× (rows of 196–197.5 px) they take a second row, as a Kitchen's "Entertainer" did there on develop; the Kitchen's "Harvest +1" now fits on one. At 1600×1000 the Patio, Greenhouse and Lawn take a second row, as the Kitchen and the Living Room already did on develop.
+  - In the readable font, whose tags show their words, a yard card's kind and two tags already take 217–251 px, so its set chip goes on a second row at 1536×864, 1600×900 and 1680×1050 at 2×. At 1680×1050 a Living Room's "Backyard +1" does too (232.9 px on a 232.8 px row).
+  - The hand column scrolls at these sizes on develop too, so a taller card pushes the ones under it further down.
+- **The Kitchen and Living Room name a yard set first** ("Harvest +1", "Backyard +1"), by D-122's shortest-name rule, and the Entertainer moves to their "+1" and their tips. That's what fits the chip row, but a newcomer may read the Kitchen as a garden room. Worth watching in the playtest.
+- **The Drive-In is rare,** held in 7% of wins: greedy picks a Garage in 7% of the weeks it's offered and a Driveway in 4%.
+- **Greedy's recall test now asks 75%** (80% before). On its 5 seeds the shortlist found the exact best in 15 of 19 states (78.9%), losing 0.97%. On 20 seeds it found 68 of 74 (91.9%), against develop's 63 of 71 (88.7%), so this is noise, not a slip.
+- **No Remodel Plans** level a yard set, and the Architect's +10% to them wasn't simulated: the check runs the General Contractor.
+
 ### D-161 · The bots rank only a few of a Fence card's plays out in the open, and the benchmark gate passes again
 **Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: speed only, and every sim run plays as before. Proposed 2026-11-12, a fix pull request (`fix/greedy-fence-packs`), the follow-up D-160's known gaps name, started once the user had merged D-160 (#73). D-160's standing stock keeps a Fence pack in the reserve nearly every week, and the sim's benchmark gate (§4) failed at 1.5 s against 1 s. Speed only: no rule, content, scoring, save or run-code change, and `contentHash(CONTENT)` is unchanged, so saves and run codes carry over (#54). Every bot plays as before, move for move: `npm run sim -- --check` gives the same runs.
 **Decision:**
@@ -2479,6 +2638,8 @@ What the columns mean:
 - **Not played by a newcomer.** Touch, Firefox and Safari weren't run.
 
 **Changes:** D-045 (Accepted): a first-time hint isn't always dismissible, and one nobody dismisses leaves by itself. D-142 and D-149 (Proposed): the checklist hint's words, the opening's hints without "Got it", and the first job's staged shops. D-110 (Accepted): How to play's layout.
+
+**2026-11-12 (D-164, Proposed):** with nine sets, Scoring's first set line no longer lists them: "Sets (pictured below), indoors and out, add Comfort and Charm." The matching rule says "A piece can be in one set of each kind: …" ("A room" before), since a Lawn or a Fence can serve two or three. The pictures show the five yard sets too, and a yard set's own text ends "One per house."
 
 ### D-157 · Strikes from the hand: the card you don't want, gone for the run
 **Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: on /dev/ since 2026-11-12 (#70). Asked on the sheet whether it felt right in play, they chose Accept. Proposed 2026-11-12, a phase pull request (`phase/strike-from-hand`), from playtest 6 (2026-11-11): Strike a card "should also be included in the defaults ... at least once at the start of the match ... I never really use it ... might be overly broad if it applies to a card type instead of just a single card (e.g. a garage)". Asked whether a strike takes the card or its type, the user answered "Whole type" (2026-11-12): strike a Garage and no more Garages come up this run. Changes Accepted D-084 and D-076's shop picker: built on the user's answer, and Proposed until their playtest. Three more questions for the user took their defaults for now (below). A rules and content change: `contentHash(CONTENT)` goes from `8c16358c` to `153cddb5`, so runs in progress are dropped when it merges (on /dev/) and at the next release (#54's check); their run codes still replay. For the user's playtest before it merges.
@@ -3073,6 +3234,8 @@ No card is under the bar that wasn't before. Also checked, both fonts, with the 
 
 **2026-11-11 (D-153, `fix/full-house-progress`):** the chip counts Full House where it names it: "Full House 5/9", the member types the house has built (the rules' `setProgress`), and a check in place of the count once the house holds it, wherever that costs the card no chip row (elsewhere it says "Full House" as above). Its tip says the count in words, and Inspect names a hand card's sets. Touching sets get no count, and a card that would complete a set gets no star.
 
+**2026-11-12 (D-164, Proposed):** yard pieces and outbuildings are set members now, so their cards get the chip by the same rule: a Lawn "Dog Run +2", a Fence "Dog Run +1", a Patio "Backyard", a Treehouse "Play Yard", a Greenhouse "Harvest", a Driveway "Drive-In". The shortest names put a Kitchen at "Harvest +1" and a Living Room at "Backyard +1", with the Entertainer in their "+1" and their tips.
+
 ### D-153 · Full House counts on the set chip, and Inspect explains a card's sets
 **Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: it answers their own question from playtest 6 and shipped at their "Yes, ship them". Proposed 2026-11-11, a fix pull request (`fix/full-house-progress`), from the user's playtest of /dev/ at 9acf14a: they asked why their Hallway card said "Full House". At the user's "Yes, ship them": the count, a check once the house holds the set, and the set explained in Inspect, but not a star on the card that would complete it. Builds on D-122's chip. A rules selector, its words, and the UI: no content or balance change. `contentHash(CONTENT)` is `8c16358c` on develop and on this branch. For the user's playtest.
 **Decision:**
@@ -3115,6 +3278,8 @@ No card is under the bar that wasn't before. Also checked, both fonts, with the 
 - **At 90% zoom** (2.22 CSS px a UI pixel: the user's 1728×963 window becomes 1920×1070 at 1.8×) the widths, in CSS px, are too small. In a width sweep at 1.8× (windows 1300 to 2600 wide, 900 and 1070 tall), in the pixel font, the count cost a row on 218 of 820 Full House chips (Hallways at windows 1556 to 2596 wide, Long Hallways 1636 to 2596, Garages and Home Offices 1732 to 1780), and the check on 124 of 820 (Garages and Home Offices at 1300 to 1700, Long Hallways at 1524 to 1892, Hallways at 1812 to 1892); in the readable font, the count on 4 of 820. The pixel font's widths written in the chips' own em would follow the UI pixel, but its text doesn't scale exactly (1% short at 125%), so that needs its own measuring.
 - **The readable font's widths are the macOS system font's** (`system-ui`); another system's font has other widths.
 - Not played by a person. Touch, Firefox and Safari weren't run.
+
+**2026-11-12 (D-164, Proposed):** a Garage's chip now names the Drive-In, a touching set, so it shows no Full House count; its tip still gives it. The Lawn's "+2" (it's in three touching sets) hides as the count does, wherever it would cost a chip row: on a narrow card in the pixel font, under 212 px beside its two tags' icons. A plain yard chip has no such rule, so some cards grow a row (D-164's Known gaps).
 
 ### D-144 · Change orders come two at a time, and the player picks one
 **Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: their own proposal, played in playtest 6 (/dev/ at 9acf14a, 2026-11-11) with no issues raised. Proposed 2026-11-10, from the friction review of 2026-11-10 (its point 4) and the user's own proposal, with its pull request. Changes D-109's offer and builds on D-137. For the next playtest.

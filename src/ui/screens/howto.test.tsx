@@ -105,7 +105,7 @@ describe('How to play', () => {
     expect(sectionsAtOpen('jobs', 'shop').size).toBe(0);
   });
 
-  it('says a room can be in one set of each kind, by the content’s names', () => {
+  it('says a piece can be in one set of each kind, by the content’s names', () => {
     // Scoring also draws the sets' pictures, which use hooks: read its lists alone, from the
     // section as the sheet hands it over, without rendering the rest.
     const vnodes = (kids: ComponentChildren): VNode<Record<string, unknown>>[] =>
@@ -123,7 +123,7 @@ describe('How to play', () => {
     const { jackAndJill, suite } = CONTENT.sets;
     const bathroom = CONTENT.pieces.bathroom.name;
     expect(said).toContain(
-      `A room can be in one set of each kind: one ${bathroom} can serve a ${jackAndJill.name} ` +
+      `A piece can be in one set of each kind: one ${bathroom} can serve a ${jackAndJill.name} ` +
         `and a ${suite.name}, but two ${suite.name}s need a ${bathroom} each.`,
     );
   });

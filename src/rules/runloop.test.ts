@@ -1079,7 +1079,12 @@ describe('demolitions', () => {
     expect(garage.earned).toBeGreaterThan(0);
     const pv = rules.previewDemolish(s, 2, 11);
     expect(pv).toMatchObject({ legal: true, target: { uid: 2, defId: 'driveway' } });
-    expect(pv.delta).toBe(-(garage.earned + driveway.earned));
+    // The two are a Drive-In too (D-164), so the demolition breaks it: the week loses both
+    // pieces' earnings and the set's Comfort, and the set's Charm with them.
+    const driveIn = before.sets.find((x) => x.set === 'driveIn')!;
+    expect(pv.setsLost.map((x) => x.key)).toEqual([driveIn.key]);
+    expect(pv.after.points).toBe(before.points - garage.earned - driveway.earned - driveIn.points);
+    expect(pv.after.mult).toBe(before.mult - driveIn.mult);
     const after = rules.currentTally(rules.apply(s, { t: 'demolish', x: 2, y: 11 }).state);
     expect(after.pieces).toEqual([
       expect.objectContaining({ defId: 'garage', earned: 0, budget: 0, unmet: expect.any(String) }),

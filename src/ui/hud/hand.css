@@ -343,6 +343,14 @@
     display: none;
   }
 }
+/* D-164: a Lawn, in three touching sets, says "Dog Run +2", which beside its two tags' icons needs
+   212 px (1280×720, and 1440×900, 1470×840 and 1512×860 at 2×, have 197.5 to 208): there it says
+   "Dog Run", and its tip and Inspect name all three. */
+@container hand-chips (max-width: 211.98px) {
+  [data-font='pixel'] .hand-card .pcard-chips:has(.tag-chip ~ .tag-chip) .set-more[data-n='2'] {
+    display: none;
+  }
+}
 /* A wide card in the pixel font names its kind too: a Hallway's chip and "Hallway" need 298 px
    (1792×1120 at 2× has 288). */
 @container hand-row (min-width: 308.02px) {

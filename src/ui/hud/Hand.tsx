@@ -122,6 +122,7 @@ export function SetChip({ id }: { id: PieceId }) {
   const shown = pool.reduce((a, b) =>
     CONTENT.sets[b].name.length < CONTENT.sets[a].name.length ? b : a,
   );
+  // D-164: in its own span, which a narrow Lawn hides beside its two tags (hand.css).
   const more = touching.length > 1 ? ` +${touching.length - 1}` : '';
   const p = rules.setProgress(s, shown);
   const tip = sets.map((set) => {
@@ -132,7 +133,11 @@ export function SetChip({ id }: { id: PieceId }) {
     <Chip tone="charm" icon={p?.held ? 'check' : undefined} class="set-chip" tip={tip.join('\n')}>
       {CONTENT.sets[shown].name}
       {p && !p.held && <span class="set-count">{` ${p.have}/${p.need}`}</span>}
-      {more}
+      {more && (
+        <span class="set-more" data-n={touching.length - 1}>
+          {more}
+        </span>
+      )}
     </Chip>
   );
 }

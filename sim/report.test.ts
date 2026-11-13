@@ -110,6 +110,7 @@ function run(seed: string, cleared: number, over: Partial<RunRecord> = {}): RunR
     house: houseStats(CONTENT, { lot: lotFromRows(['....', '....']), pieces: [], nextUid: 1 }),
     build: {
       roomsByPhase: Array.from({ length: PHASES }, () => 0),
+      yardByPhase: Array.from({ length: PHASES }, () => 0),
       late: {
         rooms: 0,
         arrivals: 0,
@@ -127,6 +128,9 @@ function run(seed: string, cleared: number, over: Partial<RunRecord> = {}): RunR
       specWeeks: {},
       specFirst: {},
       specEnd: {},
+      setWeeks: {},
+      setFirst: {},
+      setEnd: {},
       earlyPieceWow: 0,
       bigWeeks: 0,
       dead: null,
