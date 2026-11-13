@@ -1,4 +1,4 @@
-// The week's stamp (D-154): "Week 2 of 4" at the board's top center as each week of a
+// The week's stamp (D-154): "Week 2 of 5" at the board's top center as each week of a
 // milestone comes up, so the weeks don't slip by. A milestone's first week names it and what
 // its target needs; its middle weeks get a smaller, quieter stamp; its last is orange, says what
 // the target still needs, and ticks like a clock. An overtime week has its Overtime! banner

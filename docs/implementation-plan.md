@@ -111,7 +111,7 @@ The Status column is as of planning. With the plan's approval, everything still 
 | D-039 | Randomness and run codes: `sfc32`, keyed streams, build-stamped run codes | M1 | Proposed |
 | D-040 | Early completion fast-forwards (amends D-006) | M2 | **Accepted** |
 | D-041 | Overtime: 2 weeks per run (amends D-005) | M2 | **Accepted** |
-| D-042 | Run length: 7 milestones × 4 weeks (amends D-029) | M1 | **Accepted** |
+| D-042 | Run length: 7 milestones × 4 weeks (amends D-029); D-170 proposes 5 | M1 | **Accepted** |
 | D-043 | Draws: `handSize` (3) distinct cards (pieces, plus fixtures from phase 2), run-fixed weights, client spec pieces weighted up, simple pieces weighted up early (D-055) | M1 / M4a | Proposed |
 | D-044 | The sim sets milestone targets, starting in M2 | M2 | Proposed |
 | D-045 | First-run onboarding without saved progress: a recommended first contract and crew, simple pieces early, first-time hints. D-149 (Proposed) makes the first contract the one job a first visit can take, and its first weeks a guided opening | M4 | Proposed |
@@ -490,7 +490,7 @@ The UI keeps an event queue and plays it through an animation director (place �
 2. Each remaining week then runs `resolveWeek(state, null)`. Pieces earn and timers tick, but no hands are drawn. These weeks aren't passes.
 3. The milestone resolves with result `'early'`.
 
-**Overtime week (D-041):** an extra week appended to the current phase. The next phase still gets its full 4 weeks, so a run can last up to 30 weeks. Its hand is keyed `draw/<phase>/ot<k>/<n>`, it uses the phase's remaining rerolls, phase effects still apply, and it can't be completed early. If the target still isn't met after the last overtime week's tally, the run is lost.
+**Overtime week (D-041):** an extra week appended to the current phase. The next phase still gets all its weeks (`weeksPerPhase`: 5 since D-170, 4 before), so a run can last up to 37 weeks. Its hand is keyed `draw/<phase>/ot<k>/<n>`, it uses the phase's remaining rerolls, phase effects still apply, and it can't be completed early. If the target still isn't met after the last overtime week's tally, the run is lost.
 
 **Milestone resolves:**
 
