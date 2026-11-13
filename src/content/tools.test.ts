@@ -333,7 +333,9 @@ describe('company upgrades', () => {
   it('Savings Account: +1 budget per 5 held at a milestone, up to 3', () => {
     /** Meets milestone 1 holding `budget`, and returns its interest. */
     const interest = (budget: number, upgrades: UpgradeId[]) => {
-      let s: RunState = { ...build([['bedroom', 0, 0]], { upgrades }), budget, score: 15 };
+      const start = build([['bedroom', 0, 0]], { upgrades });
+      // At the target already, so it's met on time whatever the targets are.
+      let s: RunState = { ...start, budget, score: rules.target(start) };
       const events: GameEvent[] = [];
       while (s.screen === 'build') {
         const out = rules.apply(s, PASS);

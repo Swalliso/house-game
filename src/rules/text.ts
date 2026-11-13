@@ -1434,7 +1434,7 @@ export function hintText(content: Content): Record<HintTerm, string> {
       `Pick a card marked Extend, then point at an outlined room of its type: it grows by the ` +
       `card. +${b.extend.pointsPerTile} ${L.points} a tile.`,
     // D-165: a type's limit is its card's (one Kitchen) or the checklist's (the Bedrooms). D-168:
-    // a room that can grow grows, so Renovate is for one that can't. 24 words, as each had.
+    // a room that can grow grows, so Renovate is for one that can't. 24 words (D-165's had 25).
     renovate:
       `Once the house has all of a type it takes, spare cards renovate ones they can’t ` +
       `extend: +${b.renovate.pointsPerLevel} ${L.points} a level, up to ${b.renovate.maxLevel}.`,
