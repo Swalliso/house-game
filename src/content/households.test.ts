@@ -171,8 +171,9 @@ describe('member rooms', () => {
         ['flowerBed', 2, 4],
       ]),
       // Her room counts as a Bedroom, so the Bathroom earns its +3 too; the Kitchen faces the
-      // sun (+2, D-120); the Flower Bed is in the front yard (1 + 2).
-    ).toEqual([3 + 2 + 2 + 1, 3, 2, 3]);
+      // sun (+2, D-120) and earns +3 of its own (D-165); the Flower Bed is in the front yard
+      // (1 + 2).
+    ).toEqual([3 + 2 + 2 + 1, 3, 2 + 3, 3]);
   });
 
   it('Renfield’s Room: 2, +1 per touching room (up to 3)', () => {
@@ -284,7 +285,13 @@ describe('validateContent', () => {
       ...CONTENT,
       balance: {
         ...CONTENT.balance,
-        standingStock: { fromPhase: 9, pieces: ['fence', 'library', 'fence'], firstJobSlot: 5 },
+        standingStock: {
+          fromPhase: 9,
+          pieces: ['fence', 'library', 'fence'],
+          firstJobPhase: -1,
+          firstJobSlot: 5,
+          refill: false,
+        },
       },
       clients: {
         ...CONTENT.clients,
@@ -302,6 +309,7 @@ describe('validateContent', () => {
     expect(problems).toMatch(/standingStock: library isn't in the weekly draw/);
     expect(problems).toMatch(/standingStock: a piece twice/);
     expect(problems).toMatch(/standingStock: fromPhase must be a phase of the run/);
+    expect(problems).toMatch(/standingStock: firstJobPhase must be a phase of the run/);
     expect(problems).toMatch(/standingStock: firstJobSlot must be a week of the phase/);
   });
 });
@@ -309,18 +317,24 @@ describe('validateContent', () => {
 describe('what a client brings, and the standing stock (D-160)', () => {
   const start = (clientId: ClientId, crewId: CrewId = 'generalContractor') =>
     rules.newRun({ seed: 'brings', clientId, crewId, mode: 'standard' });
+  const STOCK = [
+    { id: 'hallway', stock: true },
+    { id: 'fence', stock: true },
+  ];
 
   it('Dale brings a Home Office and the Barkers a Doghouse, in week 1; no one else brings any', () => {
-    expect(start('dale').reserve).toEqual([{ id: 'homeOffice', client: true }]);
-    expect(start('barkers').reserve).toEqual([{ id: 'doghouse', client: true }]);
+    // D-162: the stock comes in week 1 too, after what the client brings.
+    expect(start('dale').reserve).toEqual([{ id: 'homeOffice', client: true }, ...STOCK]);
+    expect(start('barkers').reserve).toEqual([{ id: 'doghouse', client: true }, ...STOCK]);
     for (const id of ['hendersons', 'vladislav', 'juniper'] as const) {
-      expect(start(id).reserve, id).toEqual([]);
+      expect(start(id).reserve, id).toEqual(STOCK);
     }
-    // After the crew's starting cards.
+    // After the crew's starting cards, whose Fence the stock counts: it brings only a Hallway.
     expect(start('barkers', 'landscaper').reserve).toEqual([
       { id: 'sapling', crew: true },
       { id: 'fence', crew: true },
       { id: 'doghouse', client: true },
+      { id: 'hallway', stock: true },
     ]);
   });
 
@@ -340,13 +354,25 @@ describe('what a client brings, and the standing stock (D-160)', () => {
     }
   });
 
-  it('the stock is a Hallway and a Fence from Foundation, in a first job its third week', () => {
+  it('the stock is a Hallway and a Fence: from week 1, in a first job Foundation’s third week', () => {
+    // D-162: from Groundbreaking's first week; a first job keeps D-160's week (first-job.ts).
+    // D-163: its pieces don't use the week. D-169: topped up at each milestone (`refill`).
     expect(CONTENT.balance.standingStock).toEqual({
-      fromPhase: 1,
+      fromPhase: 0,
       pieces: ['hallway', 'fence'],
+      firstJobPhase: 1,
       firstJobSlot: 3,
+      refill: true,
     });
     expect(CONTENT.balance.phases[1]!.name).toBe('Foundation');
+    expect(
+      rules.newRun({
+        seed: 'brings',
+        clientId: 'hendersons',
+        crewId: 'generalContractor',
+        mode: 'firstJob',
+      }).reserve,
+    ).toEqual([]);
     // Both stay in the weekly draw, at their usual weights, from the first week on.
     for (const phase of [0, 1, 4]) {
       const ids = drawWeights(CONTENT, phase).map((w) => w.card.id);

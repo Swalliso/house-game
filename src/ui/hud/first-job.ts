@@ -30,7 +30,7 @@ export interface Shown {
   /** The score panel: Comfort × Charm = Wow. */
   score: boolean;
   inspect: boolean;
-  /** The top bar's forecast, beside the target. */
+  /** The top bar's forecast: the meter's pale fill and tick, its number in the meter's tip. */
   forecast: boolean;
   /** The client's panel: tastes, house rules, and wishes. */
   checklist: boolean;

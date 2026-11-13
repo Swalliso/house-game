@@ -6,14 +6,16 @@
 //
 // The spot: the card's plays ranked by rankPlays (the greedy bot's estimate and tie-break),
 // with the top NOVICE_EXACT scored exactly; a fixture card goes in its best host. A room card
-// at its limit can renovate (M4a) too, so its Renovations join its options, and a card that
-// can only renovate is a card with a play. It never rerolls, strikes (D-157), passes while a
+// at its limit can renovate (M4a) too, so its Renovations join its options, and so do its
+// extensions of a room of its type (D-168); a card that can only renovate or extend is a card
+// with a play. It never rerolls, strikes (D-157), passes while a
 // card has a play, uses tools, demolishes, or completes early, and shops like the random bot.
+// A card from Your goods doesn't end its week (D-163), so it picks again after one.
 
 import type {
   Action,
   InstallAction,
-  PlaceAction,
+  Play,
   RenovateAction,
   Rng,
   Rules,
@@ -35,7 +37,8 @@ export const novice: Policy = {
     if (state.screen === 'shop') return random.act(rules, state, rng);
     const cards: { from: 'hand' | 'reserve'; i: number }[] = [];
     const renovates = (from: 'hand' | 'reserve', i: number) =>
-      rules.renovateTargets(state, from, i).length > 0;
+      rules.renovateTargets(state, from, i).length > 0 ||
+      rules.extendTargets(state, from, i).length > 0;
     state.hand.forEach(
       (_, i) =>
         (rules.cardFits(state, i) || renovates('hand', i)) && cards.push({ from: 'hand', i }),
@@ -48,7 +51,7 @@ export const novice: Policy = {
     if (cards.length === 0) return { t: 'pass' };
     const { from, i } = rng.pick(cards);
     const salt = rng.u32();
-    let options: (PlaceAction | InstallAction | RenovateAction)[];
+    let options: NonNullable<Play>[];
     if (from === 'hand' && state.hand[i]!.kind === 'fixture') {
       options = rules
         .installHosts(state, 'hand', i)
@@ -64,6 +67,8 @@ export const novice: Policy = {
         ...rules
           .renovateTargets(state, from, i)
           .map((uid): RenovateAction => ({ t: 'renovate', from, i, uid })),
+        // D-168: every spot where it could extend a room of its type (a few a room).
+        ...rules.extendSpots(state, from, i),
       ];
     }
     let best = options[0]!;

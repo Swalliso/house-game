@@ -9,7 +9,8 @@
 //   draw (n + 1) that doesn't use a reroll; it has no swaps (D-121)
 // - advanceTimers (Fertilizer): every piece's ageBonus goes up
 // - reward (Dumpster), levelSet (Remodel Plans: +1 level for a set type, for the run)
-// - extraPlay (Weekend Crew, D-075/D-083): this week's next play doesn't end the week; one a week
+// - extraPlay (Weekend Crew, D-075/D-083): this week's next card from the hand doesn't end the
+//   week (a piece from the reserve never does, D-163); one a week
 
 import type {
   Availability,

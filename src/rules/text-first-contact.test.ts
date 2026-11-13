@@ -3,7 +3,15 @@
 
 import { describe, expect, it } from 'vitest';
 import { CONTENT } from '../content/index.ts';
-import { HINT_WORDS, hintText, houseRulesText, lastShopText, type HintTerm } from './text.ts';
+import {
+  HINT_WORDS,
+  glossary,
+  hintText,
+  houseRuleNames,
+  houseRulesText,
+  lastShopText,
+  type HintTerm,
+} from './text.ts';
 
 const words = (text: string) => text.trim().split(/\s+/).length;
 
@@ -14,7 +22,8 @@ describe('the house rules, named once for the job board', () => {
     const hendersons = CONTENT.clients.hendersons.specs
       .filter((s) => s.group !== 'wishes')
       .map((s) => s.name);
-    expect(lines.slice(0, -1)).toEqual(hendersons);
+    expect(houseRuleNames(CONTENT)).toEqual(hendersons);
+    expect(lines.slice(0, -2)).toEqual(hendersons);
     for (const client of Object.values(CONTENT.clients)) {
       for (const spec of client.specs) {
         if (spec.group !== 'wishes') expect(lines).toContain(spec.name);
@@ -23,13 +32,22 @@ describe('the house rules, named once for the job board', () => {
     }
   });
 
-  it('ends with what a held one adds, from the balance', () => {
-    expect(lines.at(-1)).toBe('Each adds +0.25 Charm in every week it holds.');
+  it('then says what a held one adds, from the balance', () => {
+    expect(lines.at(-2)).toBe('Each adds +0.25 Charm in every week it holds.');
     const dearer = {
       ...CONTENT,
       balance: { ...CONTENT.balance, rules: { ...CONTENT.balance.rules, specBonus: 50 } },
     };
-    expect(houseRulesText(dearer).split('\n').at(-1)).toContain('+0.5 Charm');
+    expect(houseRulesText(dearer).split('\n').at(-2)).toContain('+0.5 Charm');
+  });
+
+  it('ends with the rules that pay on the rooms (D-165)', () => {
+    expect(lines.at(-1)).toBe('Cozy and A Bathroom nearby pay on the rooms.');
+    expect(
+      houseRulesText({ ...CONTENT, roomRules: {} })
+        .split('\n')
+        .at(-1),
+    ).toBe('Each adds +0.25 Charm in every week it holds.');
   });
 });
 
@@ -50,6 +68,27 @@ describe('the first-time hints that state a rule', () => {
     expect(hints.renovate).toContain(`+${b.renovate.pointsPerLevel} Comfort a level`);
     expect(hints.renovate).toContain(`up to ${b.renovate.maxLevel}.`);
     expect(hints.checklist).toContain('+0.25 Charm');
+  });
+});
+
+describe('a stock topped up at each milestone (D-169)', () => {
+  const b = CONTENT.balance;
+  const once = {
+    ...CONTENT,
+    balance: { ...b, standingStock: { ...b.standingStock, refill: false } },
+  };
+
+  it('says so in the hint and the reserve’s entry, in no more words than a stock that comes once', () => {
+    expect(b.standingStock.refill).toBe(true);
+    const hint = hintText(CONTENT).stock;
+    expect(hint).toBe(
+      'A Hallway and a Fence wait in Your goods, top right. Placing one doesn’t use your week. ' +
+        'Another comes each milestone.',
+    );
+    expect(words(hint)).toBeLessThanOrEqual(words(hintText(once).stock));
+    const entry = glossary(CONTENT).reserve.text;
+    expect(entry).toContain('and your stock: a Hallway and a Fence, refilled each milestone.');
+    expect(words(entry)).toBeLessThanOrEqual(words(glossary(once).reserve.text));
   });
 });
 

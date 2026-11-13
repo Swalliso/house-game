@@ -5,7 +5,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { busy, skip } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
-import { log, run, tentative } from '../store.ts';
+import { houseFrom, emptyRows } from '../../rules/testing.ts';
+import { CONTENT } from '../../rules/index.ts';
+import { log, pendingFree, run, tentative } from '../store.ts';
 import { passArmed, requestEndWeek } from './actions.ts';
 
 vi.mock('../fx/director.ts', async (original) => ({
@@ -99,5 +101,32 @@ describe('End week during a tally', () => {
     requestEndWeek();
     expect(passArmed.value).toBe(true);
     expect(skip).not.toHaveBeenCalled();
+  });
+});
+
+describe('Build: a piece from Your goods (D-163)', () => {
+  it('builds it at once, and the week goes on with the hand as it was', () => {
+    const s = {
+      ...start,
+      screen: 'build' as const,
+      house: houseFrom(CONTENT, emptyRows(24, 24)),
+      reserve: [{ id: 'bedroom' as const }],
+    };
+    run.value = s;
+    tentative.value = { t: 'place', from: 'reserve', i: 0, x: 4, y: 4, rot: 0 };
+    expect(pendingFree.value).toBe(true);
+    requestEndWeek();
+    expect(run.value.house.pieces.map((p) => p.defId)).toEqual(['bedroom']);
+    expect(run.value).toMatchObject({ week: s.week, hand: s.hand, reserve: [] });
+    expect(tentative.value).toBeNull();
+    expect(pendingFree.value).toBe(false);
+  });
+
+  it('is End week again for a card from the hand', () => {
+    run.value = { ...start, screen: 'build', house: houseFrom(CONTENT, emptyRows(24, 24)) };
+    const i = run.value.hand.findIndex((c) => c.kind === 'piece');
+    const play = { t: 'place' as const, from: 'hand' as const, i, x: 4, y: 4, rot: 0 as const };
+    tentative.value = play;
+    expect(pendingFree.value).toBe(false);
   });
 });

@@ -147,8 +147,20 @@ export type FeatureId =
 /** The features that sit on tiles of the lot. */
 export type TerrainId = Exclude<FeatureId, 'street'>;
 
-/** Sets (D-056): a poker-hand ladder. M4a adds the Suite and Full House. */
-export type SetId = 'jackAndJill' | 'suite' | 'entertainer' | 'fullHouse';
+/**
+ * Sets (D-056): a poker-hand ladder. M4a adds the Suite and Full House; D-164 the yard sets,
+ * whose members include yard pieces and outbuildings.
+ */
+export type SetId =
+  | 'jackAndJill'
+  | 'suite'
+  | 'entertainer'
+  | 'fullHouse'
+  | 'backyard'
+  | 'harvest'
+  | 'dogRun'
+  | 'playYard'
+  | 'driveIn';
 
 /** Crews (D-012): picked at the start of a run. The General Contractor is the default. */
 export type CrewId = 'generalContractor' | 'landscaper' | 'architect';
@@ -156,8 +168,21 @@ export type CrewId = 'generalContractor' | 'landscaper' | 'architect';
 /** Clients (M4a): who the house is for. Each brings a checklist, tastes, and a pool. */
 export type ClientId = 'hendersons' | 'vladislav' | 'barkers' | 'juniper' | 'dale';
 
-/** Lot traits (D-119): what a lot has that changes how you'd build there. */
-export type LotTraitId = 'creekside' | 'wooded';
+/** Lot traits (D-119, D-166): what a lot has that changes how you'd build there. */
+export type LotTraitId = 'creekside' | 'pondside' | 'wooded' | 'rocky' | 'open';
+
+/**
+ * A lot's kind (D-166): drawn once the lot has passed its checks. A plain lot stays as drawn;
+ * the others are shaped toward a trait (more Boulders, no woods, a bigger pond).
+ */
+export type LotKind = 'plain' | 'rocky' | 'open' | 'pond';
+export type ShapedKind = Exclude<LotKind, 'plain'>;
+
+/**
+ * The house rules that pay on the rooms (D-165): every house has them, whoever the client,
+ * and they pay as Comfort on the rooms they're about instead of as checklist lines.
+ */
+export type RoomRuleId = 'cozy' | 'bathroomNearby';
 
 /** The household's arrivals (M4b, D-103): who moves in, by client. */
 export type ArrivalId = 'twins' | 'grandma' | 'renfield' | 'nana' | 'rowan' | 'ivy';
@@ -351,7 +376,14 @@ export type Effect =
    */
   | { kind: 'requires'; condition: PieceCondition; blocksPlacement: boolean }
   /** The inner effect applies only while the condition holds (the Flower Bed in the front yard). */
-  | { kind: 'conditional'; when: PieceCondition; effect: Effect };
+  | { kind: 'conditional'; when: PieceCondition; effect: Effect }
+  /**
+   * D-165: earns `amount` while a `by` piece in reach (touching it, or linked to it across a
+   * Hallway) serves it, where each `by` piece serves at most `capacity` of the pieces with this
+   * effect: a Bathroom serves two Bedrooms. The house is matched to serve as many as it can,
+   * the earliest placed first (scoring.ts).
+   */
+  | { kind: 'served'; by: Selector; amount: number; capacity: number };
 
 export interface PieceDef {
   id: PieceId;
@@ -396,6 +428,13 @@ export interface PieceDef {
    * renovate (a Bedroom card can renovate it).
    */
   member?: true;
+  /**
+   * D-165: the most of this type a house holds (one Kitchen, two Living Rooms), on the type's
+   * own card (not a variant: the L-Kitchen has the Kitchen's). Counted as the checklist counts
+   * a type, so an L-Kitchen is a Kitchen. A card of the type can't be placed once the house has
+   * that many: it renovates instead (D-102), and the type draws at half weight (D-104).
+   */
+  perHouse?: number;
 }
 
 export interface FeatureDef {
@@ -518,7 +557,7 @@ export type Modifier =
   | { kind: 'setBonus'; set?: SetId; pct: number }
   /** Economy output of matching pieces. */
   | { kind: 'budget'; target: Selector | 'all'; pct: number }
-  /** Clients and crews only, so weights stay fixed for the run (D-043). */
+  /** Clients, crews and lot traits (D-166) only, so weights stay fixed for the run (D-043). */
   | { kind: 'drawWeight'; target: Selector; add?: number; pct?: number }
   | { kind: 'rule'; key: RuleKey; add?: number; pct?: number };
 
@@ -533,9 +572,10 @@ export interface CrewDef {
 }
 
 /**
- * A lot trait (D-119): a chip on the contract's card. The lot has it while it holds at least
- * `min` tiles of `terrain`. Its modifiers join the run's, like a crew's, and a trait that has
- * some stays on the checklist all run.
+ * A lot trait (D-119): a chip on the contract's card. A lot has it when it holds at least `min`
+ * tiles of `terrain`, or (D-166) was shaped to `kind`, as the run begins, and keeps it all run.
+ * Its modifiers join the run's, like a crew's (its `drawWeight` ones too, as a client's pool
+ * does), and a trait that has some stays on the checklist all run.
  */
 export interface LotTraitDef {
   id: LotTraitId;
@@ -543,10 +583,24 @@ export interface LotTraitDef {
   name: string;
   /** The tip's last line, after what the modifiers say: "Only a Driveway crosses it." */
   blurb: string;
-  when: { terrain: TerrainId; min: number };
+  when: { terrain: TerrainId; min: number } | { kind: ShapedKind };
   modifiers: readonly Modifier[];
   /** Clients it suits: their contract marks the chip with the up icon. */
   suits?: readonly ClientId[];
+}
+
+/**
+ * A house rule that pays on the rooms (D-165): Cozy, A Bathroom nearby. Every run has it, whoever
+ * the client. Its modifiers join the run's like a crew's (a `grantEffect` gives each room its
+ * pay), and the lines it adds to a room's breakdown carry its name.
+ */
+export interface RoomRuleDef {
+  id: RoomRuleId;
+  /** "Cozy": the breakdown line's label, and How to play's term. */
+  name: string;
+  /** One sentence for How to play and the term's tip: "A room earns +2 per room it touches (up to 3)." */
+  text: string;
+  modifiers: readonly Modifier[];
 }
 
 export interface SetDef {
@@ -772,6 +826,15 @@ export interface LotBalance {
   timeCapsules: Range;
   /** Finds stay at least this many rows clear of the street edge, so the front stays open. */
   findStreetGap: number;
+  /**
+   * Lot kinds (D-166), by weight, drawn from each lot's own `lot/<attempt>/kind` stream once it
+   * has passed its checks, before its finds. A plain lot stays exactly as drawn.
+   */
+  kinds: Readonly<Record<LotKind, number>>;
+  /** A Rocky lot's Boulders, on top of `boulders`. */
+  rockyBoulders: Range;
+  /** A pond lot's pond grows to this many tiles (a lot whose creek took its pond stays plain). */
+  pondTiles: Range;
 }
 
 export interface PhaseDef {
@@ -813,13 +876,31 @@ export interface Balance {
   fencedYardMin: number;
   /** D-055: draw-weight percentages by phase (the last row repeats), for complexity 1, 2, and 3. */
   complexityPct: readonly (readonly [number, number, number])[];
+  /**
+   * D-166: the run modes whose lot cards skip that ramp, at full weight from Groundbreaking. A
+   * lot card is a Layout piece but the Hallways and the Fence, which read the house (draw.ts).
+   */
+  lotCardsFullIn: readonly RunMode[];
   /** Run-end verdicts by score band, lowest first (§12, The score's names). */
   verdicts: readonly VerdictDef[];
   /**
    * Renovate (house-systems-review.md §4): a room card whose type is at its limit levels up a
-   * room of that type instead. Each level adds flat Comfort, up to `maxLevel`.
+   * room of that type instead. Each level adds flat Comfort, up to `maxLevel`. D-168: only a
+   * room the card can't extend (no open ground beside it, or grown as far as it goes).
    */
   renovate: { pointsPerLevel: number; maxLevel: number };
+  /**
+   * D-168, Extend a room: a card of one of these room types (by root type) laid beside a room of
+   * its type, sharing at least `minShared` tiles of wall with it, joins that room, up to
+   * `maxPerRoom` cards a room. An extended room adds `pointsPerTile` flat Comfort for each tile
+   * beyond its own card's, before its percentages.
+   */
+  extend: {
+    types: readonly PieceId[];
+    maxPerRoom: number;
+    pointsPerTile: number;
+    minShared: number;
+  };
   /** A card whose type is at its limit draws at this percent of its weight (D-043, amended). */
   drawAtLimitPct: number;
   /** D-121: how many cards from its row a card with no play is swapped for, at most. */
@@ -849,13 +930,21 @@ export interface Balance {
    */
   strikesPerMilestone: number;
   /**
-   * D-160: the standing stock. From `fromPhase` on, the first week of each milestone tops the
-   * reserve's extra slots up to one of each of `pieces`, adding only what's missing, so the stock
-   * never gives a second of one while the first waits. A first job (D-149) brings its first in
-   * week `firstJobSlot` of `fromPhase` instead (1: the same week as any run), so it doesn't
-   * arrive with the parts of the screen Foundation's first week brings in.
+   * D-160: the standing stock. The first week of `fromPhase` fills the reserve's extra slots up
+   * to one of each of `pieces`, adding only what's missing. A first job (D-149) brings it in
+   * week `firstJobSlot` of `firstJobPhase` instead (D-162), so it doesn't arrive with the guided
+   * opening or the parts of the screen Foundation brings in; one that missed that week gets it
+   * at the next milestone's first. With `refill`, each later milestone's first week tops it up
+   * the same way (D-160); without, it comes once (D-163: its pieces don't use the week, so a
+   * top-up at every milestone was two more builds a milestone).
    */
-  standingStock: { fromPhase: number; pieces: readonly PieceId[]; firstJobSlot: number };
+  standingStock: {
+    fromPhase: number;
+    pieces: readonly PieceId[];
+    firstJobPhase: number;
+    firstJobSlot: number;
+    refill: boolean;
+  };
 }
 
 /** What a shop visit stocks (Appendix A · M3a), by shop; the last row repeats. */
@@ -917,6 +1006,8 @@ export interface Content {
   crates: Readonly<Record<CrateId, CrateDef>>;
   changeOrders: Readonly<Record<ChangeOrderId, ChangeOrderDef>>;
   lotTraits: Readonly<Record<LotTraitId, LotTraitDef>>;
+  /** D-165: the house rules that pay on the rooms (a test's content may have none). */
+  roomRules: Readonly<Partial<Record<RoomRuleId, RoomRuleDef>>>;
   balance: Balance;
 }
 
@@ -939,6 +1030,14 @@ export interface Lot {
   sun: SunSide;
   /** Which `lot/<attempt>` stream made it. */
   attempt: number;
+  /** The kind it was shaped to (D-166); unset on a plain lot. */
+  kind?: ShapedKind;
+  /**
+   * Its traits as the run began (D-166), in content order: they pay and tilt the draw all run,
+   * so building over Trees can't take Wooded away. Unset on a fresh lot or a test's, whose
+   * traits are read from its terrain.
+   */
+  traits?: readonly LotTraitId[];
 }
 
 export interface PlacedPiece {
@@ -955,8 +1054,13 @@ export interface PlacedPiece {
   fixture?: { id: FixtureId; week: number };
   /** Renovations (M4a): each level adds Comfort. Kept through a move and a transform. */
   level?: number;
-  /** A pack's own tiles (D-106), as ASCII rows; turned by `rot` like any shape. */
+  /**
+   * A pack's own tiles (D-106), or an extended room's (D-168), as ASCII rows; turned by `rot`
+   * like any shape.
+   */
   shape?: readonly string[];
+  /** D-168: how many room cards have joined it (Extend a room). Its `shape` holds their tiles. */
+  extended?: number;
 }
 
 export interface HouseState {
@@ -1222,6 +1326,8 @@ export interface RunState {
   changeOrders: readonly ChangeOrderRecord[];
   /** M4b: the household members who've arrived (D-103), in order. */
   arrived: readonly ArrivalId[];
+  /** D-163: the standing stock has come (without `refill`, it comes once). */
+  stocked?: true;
   /** Set by the ?debug panel's cheats: this phase's regular end counts as a miss. */
   forcedMiss?: number;
   /** Set once any debug action has changed the run. */
@@ -1264,6 +1370,22 @@ export interface RenovateAction {
   from: 'hand' | 'reserve';
   i: number;
   uid: number;
+}
+/**
+ * D-168, Extend a room: a room card laid beside a room of its type, sharing wall with it, joins
+ * that room: its tiles become the room's, which stays one piece (its uid, fixture, timers and
+ * place in the placement order) with a bigger outline. (x, y, rot) place the card's own shape,
+ * as a placement's would. It's the week's turn, like placing.
+ */
+export interface ExtendAction {
+  t: 'extend';
+  from: 'hand' | 'reserve';
+  i: number;
+  /** The room that grows. */
+  uid: number;
+  x: number;
+  y: number;
+  rot: Rot;
 }
 export type PassAction = { t: 'pass' };
 /** Free actions: they don't end the week. */
@@ -1341,6 +1463,7 @@ export type Action =
   | PlaceAction
   | InstallAction
   | RenovateAction
+  | ExtendAction
   | PassAction
   | RerollAction
   | StrikeCardAction
@@ -1357,10 +1480,10 @@ export type Action =
   | DebugAction;
 
 /**
- * A week's play: a placement, an install, a Renovation, or nothing (a pass). Previews take
- * supply installs too.
+ * A week's play: a placement, an install, a Renovation, an extension (D-168), or nothing (a
+ * pass). Previews take supply installs too.
  */
-export type Play = PlaceAction | InstallAction | RenovateAction | null;
+export type Play = PlaceAction | InstallAction | RenovateAction | ExtendAction | null;
 
 /** What caused a breakdown line, so the UI can badge it. */
 export type SourceRef =
@@ -1380,7 +1503,9 @@ export type ModSource =
   /** M4b: a phase effect (Heat wave) while it runs. */
   | { kind: 'changeOrder'; id: ChangeOrderId }
   /** D-119: a trait of the lot (Creekside), all run. */
-  | { kind: 'lot'; id: LotTraitId };
+  | { kind: 'lot'; id: LotTraitId }
+  /** D-165: a house rule that pays on the rooms (Cozy), in every run. */
+  | { kind: 'house'; id: RoomRuleId };
 
 export interface BreakdownLine {
   /** Plain language: "Touching Trees or Quiet neighbors (2)". */
@@ -1389,6 +1514,8 @@ export interface BreakdownLine {
   op: 'add' | 'pct' | 'budget' | 'none';
   value: number;
   from: readonly SourceRef[];
+  /** D-165: the house rule that pays it (Cozy), so Inspect can say the rule. */
+  rule?: RoomRuleId;
 }
 
 export interface PieceScore {
@@ -1595,6 +1722,18 @@ export type GameEvent =
       /** Weekend Crew's free play: the week goes on. */
       free?: true;
     }
+  | {
+      t: 'extended';
+      uid: number;
+      defId: PieceId;
+      /** The card's type, which may differ from the room's (a Bedroom card on a member's room). */
+      card: PieceId;
+      /** The tiles that joined the room. */
+      cells: readonly Cell[];
+      clearedTrees: readonly Cell[];
+      /** Weekend Crew's free play: the week goes on. */
+      free?: true;
+    }
   | { t: 'targetReached'; phase: number; target: number; score: number }
   | { t: 'overtimeUsed'; phase: number; overtimeLeft: number; target: number; score: number }
   | {
@@ -1750,6 +1889,8 @@ export interface Preview {
   replaces?: FixtureId;
   /** For a Renovation: the room, and the level it would reach. */
   renovates?: { uid: number; level: number };
+  /** D-168: for an extension, the room that grows, and its tiles once it has. */
+  extends?: { uid: number; cells: readonly Cell[] };
   /** Checklist lines the play would turn on, and off (spec ids). */
   specsGained: readonly string[];
   specsLost: readonly string[];
@@ -1890,8 +2031,8 @@ export interface RunCodeData {
   contentHash: string;
   setup: RunSetup;
   actions: readonly Action[];
-  /** A tentative placement, install, or Renovation, so a preview bug can be reproduced. */
-  pending?: PlaceAction | InstallAction | RenovateAction;
+  /** A tentative placement, install, Renovation, or extension, so a preview bug can be reproduced. */
+  pending?: PlaceAction | InstallAction | RenovateAction | ExtendAction;
 }
 
 /** One part of a checklist line's progress: "Bedrooms 3 (3–4)", "fill 61% (≥ 60%)". */
@@ -2062,10 +2203,12 @@ export {
   effectText,
   fixtureText,
   glossary,
+  growGain,
   handCardLines,
   HINT_WORDS,
   hintText,
   houseConditionText,
+  houseRuleNames,
   houseRulesText,
   lastShopText,
   lotTraitText,
@@ -2079,6 +2222,7 @@ export {
   setsOfPiece,
   setText,
   specText,
+  stockFromText,
   stockText,
   strikeText,
   struckNames,
@@ -2095,7 +2239,7 @@ export { jobBoard, type Contract } from './jobs.ts';
 export { fitsText } from './fixtures.ts';
 export { inExtraSlot, SERVICE_NAMES, SHOP_REASONS } from './shop.ts';
 export { countedSelector, countingMod, totalWithOneMore } from './blueprint-value.ts';
-export { matchesDef } from './selectors.ts';
+export { matchesDef, yardsRead, type Yard } from './selectors.ts';
 
 export { CONTENT, SCORE_LABELS } from '../content/index.ts';
 

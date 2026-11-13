@@ -201,6 +201,17 @@ export function pieceDef(content: Content, piece: PlacedPiece): PieceDef {
   return def;
 }
 
+/**
+ * D-168: the tiles an extended room has beyond its own card's (0 for any other piece): what its
+ * size pays for.
+ */
+export function grownTiles(content: Content, piece: PlacedPiece): number {
+  if (!piece.extended || !piece.shape) return 0;
+  const tiles = (rows: readonly string[]) =>
+    rows.reduce((n, row) => n + row.split('#').length - 1, 0);
+  return Math.max(0, tiles(piece.shape) - tiles(pieceDef(content, piece).shape));
+}
+
 /** A room is an indoor piece that isn't a connector. */
 export function isRoom(def: PieceDef): boolean {
   return def.category === 'indoor' && !def.connector;

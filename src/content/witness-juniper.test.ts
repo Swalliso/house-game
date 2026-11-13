@@ -1,14 +1,15 @@
 // Juniper Vale's witness layout (implementation-plan.md §5, §9 · M4a): a house built by hand
 // from the real content that meets every line of her checklist at every milestone, which
-// proves her specs can be met without a solver. Her checklist is the seven house rules in her
+// proves her specs can be met without a solver. Her checklist is the house rules in her
 // numbers (house-rules.ts) and her one wish, Two rooms with a view.
 //
 // The numbers that shape it:
 // - Room for everyone grows with the household (M4b, D-103): 1–2 Bedrooms, then 2–3 and
 //   Rowan's room from Drywall. Rowan's Studio counts as a Bedroom, so the house has 2 Bedrooms
 //   of its own and, for the 3 from Drywall, 2 Bathrooms. The studio is a reserve play.
-// - Cozy wants 6+ rooms and her A compact house at most 8, so 6–8 rooms: 2 Bedrooms, 2
-//   Bathrooms, a Kitchen, and a Living Room, then Rowan's Studio makes 7.
+// - Her A compact house is 4–8 rooms: 2 Bedrooms, 2 Bathrooms, a Kitchen, and a Living Room,
+//   then Rowan's Studio makes 7. (Cozy, a line until D-165, wanted 6+, each touching two; it
+//   pays on the rooms now.)
 // - A tidy yard: 6 yard pieces, no type more than twice.
 
 import { describe, expect, it } from 'vitest';
@@ -141,7 +142,7 @@ describe('Juniper Vale’s witness house', () => {
     });
     const house = houseAt(PHASES.length - 1);
 
-    // It reads as a house: no visible repeats, as the household rules demand too.
+    // It reads as a house: no visible repeats, as the cards' caps demand too (D-165).
     const ofType = (type: PieceId) =>
       house.pieces.filter((p) => (CONTENT.pieces[p.defId].countsAs ?? p.defId) === type).length;
     expect(ofType('kitchen')).toBeLessThanOrEqual(1); // Kitchens and L-Kitchens together
@@ -149,26 +150,16 @@ describe('Juniper Vale’s witness house', () => {
     expect(ofType('diningRoom')).toBeLessThanOrEqual(1);
   });
 
-  it('loses exactly one line when one piece is added or taken away', () => {
-    // One piece more: a second Kitchen (an L-Kitchen on the front walk, a legal play).
+  it('takes no second Kitchen, and loses one line without Rowan’s Studio', () => {
+    // A second Kitchen card (an L-Kitchen on the front walk) renovates instead (D-165).
     const lKitchen: Placement = ['lKitchen', 9, 10, 1];
-    expect(placing(PLACEMENTS, lKitchen)).toBe('legal');
-    // One piece fewer: without the second Bathroom, 5 rooms still suit A compact house (4–8)
-    // but not Cozy (6+). From Drywall, Rowan's Studio makes 6, every one touching two, but 3
-    // Bedrooms then need the second Bathroom.
-    const oneBathroom = PLACEMENTS.filter(
-      ([id, x, y]) => !(id === 'bathroom' && x === 9 && y === 7),
+    expect(placing(PLACEMENTS, lKitchen)).toBe(
+      'The house has its Kitchen: this card extends or renovates it.',
     );
     // Rowan's Studio left in the reserve: from Drywall, Room for everyone needs it.
     const noRowan = houseFrom(CONTENT, LOT, PLACEMENTS);
     PHASES.forEach(({ name }, phase) => {
       const names = (house: HouseState) => missed(house, phase).map((line) => line.name);
-      expect(names(houseAt(phase, [...PLACEMENTS, lKitchen])), `at ${name}`).toEqual([
-        'One Kitchen',
-      ]);
-      expect(names(houseAt(phase, oneBathroom)), `at ${name}`).toEqual(
-        phase >= 4 ? ['A Bathroom for every two Bedrooms'] : ['Cozy'],
-      );
       expect(names(noRowan), `at ${name}`).toEqual(phase >= 4 ? ['Room for everyone'] : []);
     });
   });

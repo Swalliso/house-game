@@ -96,13 +96,14 @@ function possessive(name: string): string {
 /**
  * Where a card in the reserve's extra slots came from (M4b, D-160), as Your goods and Inspect say
  * it: its slot's tag ("Crew", "Twins", "Dale", "Stock"), whose it is mid-sentence for the slot's
- * tip (" (with the twins)"), and Inspect's line ("Came with the twins"). Null for a card in the
- * reserve's own slots (bought, picked or copied).
+ * tip (" (with the twins)"), and Inspect's line ("Came with the twins"), or the whole of
+ * Inspect's note where it says more (a refilled stock's). Null for a card in the reserve's own
+ * slots (bought, picked or copied).
  */
 export function extraSlotWords(
   clientId: ClientId,
   r: ReservePiece,
-): { tag: string; whose: string; from: string } | null {
+): { tag: string; whose: string; from: string; note?: string } | null {
   if (r.crew) return { tag: 'Crew', whose: ' (your crew’s)', from: 'Your crew’s, from the start' };
   if (r.arrival !== undefined) {
     const member = arrivalOf(clientId, r.arrival);
@@ -127,7 +128,11 @@ export function extraSlotWords(
     return {
       tag: 'Stock',
       whose: ' (from your stock)',
-      from: 'From your stock: another comes at the next milestone once it’s placed',
+      from: 'From your stock',
+      // D-169: a refilled stock's note says so, in as many words as the others' (16).
+      ...(CONTENT.balance.standingStock.refill && {
+        note: 'From your stock, in an extra slot, not one of your reserve’s. Another comes each milestone.',
+      }),
     };
   }
   return null;

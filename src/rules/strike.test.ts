@@ -522,8 +522,9 @@ describe('change orders after a strike (D-157)', () => {
     });
     expect(s0.phase).toBe(0);
     expect(real.eligibleChangeOrders(s0)).toContain('workingFromHome');
-    // None in the reserve, where it could still be placed from.
-    expect(s0.reserve).toEqual([]);
+    // None in the reserve, where it could still be placed from: only the standing stock (D-162).
+    expect(s0.reserve.every((r) => r.stock)).toBe(true);
+    expect(s0.reserve.some((r) => r.id === 'homeOffice')).toBe(false);
     const office: Card = { kind: 'piece', id: 'homeOffice' };
     const s: RunState = { ...s0, hand: [office, ...s0.hand.slice(1)] };
     const { state } = real.apply(s, { t: 'strikeCard', i: 0 });

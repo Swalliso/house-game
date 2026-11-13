@@ -7,7 +7,7 @@
 ## In the jam build
 
 - **The lot:** a 24×24 grid with a street edge, woods and lone Trees, a creek, a pond, boulders, and a sunny side, generated from a seed. From M3b, two kinds of finds: the Old Shed and Time Capsules (D-048, D-049).
-- **Weekly turns:** draw 3 cards, then place 1 (with rotation), install a drawn fixture, renovate a room whose type is at its limit (D-102), or Pass; plus a few rerolls, demolitions and strikes (D-036, D-050, D-157). A Fence or Driveway card is a pack: it places up to 8 or 6 connected tiles as one piece (D-106). From Foundation on, a Hallway and a Fence always wait in the reserve: a standing stock, topped up at each milestone (D-160).
+- **Weekly turns:** draw 3 cards, then place 1 (with rotation), install a drawn fixture, renovate a room whose type is at its limit (D-102), or Pass; plus a few rerolls, demolitions and strikes (D-036, D-050, D-157). A Fence or Driveway card is a pack: it places up to 8 or 6 connected tiles as one piece (D-106). Placing a piece from the reserve (Your goods) doesn't use the week (D-163). In week 1 a Hallway and a Fence come into the reserve once: a standing stock (D-160, D-162, D-163).
 - **Scoring:** tags and shared effect types (`content-brainstorm.md`, section 1). Each week scores Points × Mult, shown as **Comfort × Charm**, with rare **Sparkle** (×Mult) and the total in **Wow** (D-056, D-019). A live preview while placing shows the net change to the week and which neighbors contribute.
 - **Milestones:** construction phases with rising targets. Missing one ends the run once the run's 2 overtime weeks are used up (D-041).
 - **Early completion:** finish a phase early for budget and a score bonus while the skipped weeks fast-forward, or keep building; plus an auto-complete toggle, off by default (D-040).
@@ -43,7 +43,7 @@
 | Rerolls | 1 per phase (General Contractor: 2), plus any bought in the shop |
 | Demolitions | 2 per run, plus any bought in the shop |
 | Strikes | 1 at the start, +1 at each milestone but the last, plus any bought in the shop; unused ones are kept (D-157) |
-| Standing stock | A Hallway and a Fence in the reserve's extra slots, topped up at each milestone from Foundation on; a first job's comes in Foundation's third week (D-160) |
+| Standing stock | A Hallway and a Fence in the reserve's extra slots, once, in week 1; a first job's comes in Foundation's third week (D-160, D-162, D-163) |
 | Early completion | +2 budget and +10% of the phase's earnings per week saved (D-046) |
 | Budget | Starts at 0; +3 per milestone, plus early completion, economy pieces, finds, rewards, and selling (D-046, D-051) |
 | Change orders | Two offered after milestones 2, 4, and 6, to pick one from (D-144; it was one, to accept or decline) |

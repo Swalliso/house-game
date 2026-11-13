@@ -110,12 +110,27 @@ function run(seed: string, cleared: number, over: Partial<RunRecord> = {}): RunR
     house: houseStats(CONTENT, { lot: lotFromRows(['....', '....']), pieces: [], nextUid: 1 }),
     build: {
       roomsByPhase: Array.from({ length: PHASES }, () => 0),
-      late: { rooms: 0, arrivals: 0, renovations: 0, yard: 0, fixtures: 0, hallways: 0, passes: 0 },
+      yardByPhase: Array.from({ length: PHASES }, () => 0),
+      late: {
+        rooms: 0,
+        arrivals: 0,
+        renovations: 0,
+        extensions: 0,
+        yard: 0,
+        fixtures: 0,
+        hallways: 0,
+        passes: 0,
+      },
       renovations: 0,
+      extensions: 0,
+      extensionWeeks: [],
       tallies: 4,
       specWeeks: {},
       specFirst: {},
       specEnd: {},
+      setWeeks: {},
+      setFirst: {},
+      setEnd: {},
       earlyPieceWow: 0,
       bigWeeks: 0,
       dead: null,
@@ -412,8 +427,9 @@ describe('a real run’s record', () => {
   });
 
   it('shares all of the Wow between the pieces and the sets', () => {
-    // A greedy run builds sets, so the sets' row is tested with real Points in it.
-    const { record } = simulateRun(rules, 'sim-3', POLICIES.greedy!, { probePhase: null });
+    // A greedy run builds sets, so the sets' row is tested with real Points in it. (sim-3 was
+    // the seed until D-166's draw lost it, and sim-5 until D-169's targets did.)
+    const { record } = simulateRun(rules, 'sim-9', POLICIES.greedy!, { probePhase: null });
     const pieceWow = Object.values(record.pieces).reduce((n, p) => n + p.wow, 0);
     expect(record.setWow).toBeGreaterThan(0);
     // The run was won, so its leftover budget paid Wow at the last milestone (D-145): the one

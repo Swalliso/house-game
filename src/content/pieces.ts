@@ -26,6 +26,27 @@ const WHILE_SUNNY = (amount: number) =>
 const SHED = (amount: number) =>
   ({ kind: 'neighbor', match: { feature: 'oldShed' }, amount, max: 1 }) as const;
 
+/**
+ * A yard piece's side (D-166): what goes out back (a Patio, a Lawn, a Pool, a Treehouse) earns
+ * more in the back yard, behind the house's front, and what greets the street (the Porch, the
+ * Driveway, the Flower Bed) in the front yard, between the house and the street. So where the
+ * house sits decides how much room each side gets: a house against the street has no front
+ * yard. The line comes last, so a hand card still shows what the piece is for; the board shades
+ * the yard while the card is picked. The front pays more because it's the smaller side and its
+ * pieces fewer; at +2 out back greedy took a yard piece over a room or a Hallway often enough
+ * to lose 7 points of wins (D-166's trial).
+ */
+const BACK_YARD = {
+  kind: 'conditional',
+  when: { in: 'backYard' },
+  effect: { kind: 'steady', amount: 1 },
+} as const;
+const FRONT_YARD = {
+  kind: 'conditional',
+  when: { in: 'frontYard' },
+  effect: { kind: 'steady', amount: 2 },
+} as const;
+
 export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
   bedroom: {
     id: 'bedroom',
@@ -76,9 +97,11 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     drawWeight: 10,
     complexity: 1,
     fromPhase: 0,
+    perHouse: 1, // D-165: One Kitchen (and the L-Kitchen is one)
     effects: [
       { kind: 'neighbor', match: { piece: ['diningRoom', 'herbGarden'] }, amount: 2 },
       WHILE_SUNNY(2),
+      { kind: 'steady', amount: 3 },
     ],
   },
   lKitchen: {
@@ -95,6 +118,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     effects: [
       { kind: 'neighbor', match: { piece: ['diningRoom', 'herbGarden'] }, amount: 2 },
       WHILE_SUNNY(2),
+      { kind: 'steady', amount: 3 },
     ],
   },
   diningRoom: {
@@ -107,6 +131,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     drawWeight: 10,
     complexity: 1,
     fromPhase: 0,
+    perHouse: 1, // D-165: A living room or two's "at most one Dining Room"
     effects: [
       { kind: 'aura', match: { piece: ['kitchen', 'livingRoom'] }, scope: 'adjacent', pct: 50 },
       WHILE_SUNNY(2),
@@ -122,6 +147,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     drawWeight: 10,
     complexity: 1,
     fromPhase: 0,
+    perHouse: 2, // D-165: A living room or two
     effects: [
       { kind: 'neighbor', match: { property: 'viewSource' }, amount: 2, max: 3 },
       WHILE_SUNNY(2),
@@ -195,6 +221,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     drawWeight: 10,
     complexity: 2,
     fromPhase: 0,
+    perHouse: 1, // D-165: one Garage a house
     effects: [
       {
         kind: 'requires',
@@ -216,6 +243,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     drawWeight: 10,
     complexity: 2,
     fromPhase: 0,
+    perHouse: 2, // D-165: two Home Offices at most
     effects: [
       { kind: 'steady', amount: 2 },
       { kind: 'neighbor', match: { tag: 'Loud' }, amount: -2 },
@@ -241,6 +269,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
         amount: 1,
         max: 4,
       },
+      BACK_YARD,
     ],
   },
   sapling: {
@@ -316,6 +345,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
       { kind: 'requires', condition: { touching: { property: 'room' } }, blocksPlacement: false },
       { kind: 'neighbor', match: { piece: ['livingRoom', 'kitchen'] }, amount: 2 },
       { kind: 'neighbor', match: { property: 'viewSource' }, amount: 1, max: 3 },
+      BACK_YARD,
     ],
   },
   // The Fence is a pack (D-106): one card places 1–8 connected tiles in a week, as one piece
@@ -342,7 +372,10 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
   // the Garage earns only once the drive (or the street) reaches it. 8 tiles, as the Fence: a
   // Garage on the street side of a median house is 8 rows back. The only piece that can be
   // built over the creek (a culvert), so a house on the far bank can still have a Garage. It
-  // replaced the 1×3 and 1×5 cards, at their combined weight.
+  // replaced the 1×3 and 1×5 cards, at their combined weight. D-166: it's a front-yard piece,
+  // +2 while every tile is in the front yard (D-140 had +1 anywhere), and the board shades the
+  // front yard while the card is picked, the answer to D-080's misread. Paid per tile, greedy
+  // laid 8-tile drives as carpets (placed 0.14 → 0.95 a run).
   driveway: {
     id: 'driveway',
     name: 'Driveway',
@@ -362,8 +395,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
         blocksPlacement: true,
       },
       { kind: 'neighbor', match: { piece: 'garage' }, amount: 3, max: 1 },
-      // +1 anywhere (D-140, settling D-080): "in the front yard" read as "square to the street".
-      { kind: 'steady', amount: 1 },
+      FRONT_YARD,
     ],
   },
   // The "-house" family: small outbuildings that all carry the House tag.
@@ -382,6 +414,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
       { kind: 'requires', condition: { in: 'fencedYard' }, blocksPlacement: false },
       { kind: 'steady', amount: 1 },
       { kind: 'neighbor', match: { piece: 'lawn' }, amount: 1 },
+      BACK_YARD,
     ],
   },
   treehouse: {
@@ -405,6 +438,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
         match: { all: [{ tag: 'Kid' }, { not: { piece: 'treehouse' } }] },
         amount: 2,
       },
+      BACK_YARD,
     ],
   },
   greenhouse: {
@@ -447,6 +481,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     drawWeight: 0,
     complexity: 2,
     fromPhase: 0,
+    perHouse: 1, // D-165: one of each special room
     effects: [
       { kind: 'neighbor', match: { piece: 'bedroom' }, amount: 2 },
       // Noisy: the Quiet rooms around it lose a little.
@@ -463,6 +498,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     drawWeight: 0,
     complexity: 1,
     fromPhase: 0,
+    perHouse: 1, // D-165: one of each special room
     effects: [{ kind: 'neighbor', match: { tag: 'Quiet' }, amount: 2, max: 3 }],
   },
   mudroom: {
@@ -475,6 +511,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     drawWeight: 0,
     complexity: 3,
     fromPhase: 0,
+    perHouse: 1, // D-165: one of each special room
     effects: [
       {
         kind: 'conditional',
@@ -497,6 +534,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
       { kind: 'rhythm', every: 3, amount: 12 },
       // Leaves in the water.
       { kind: 'neighbor', match: { feature: 'tree' }, amount: -2, max: 3 },
+      BACK_YARD,
     ],
   },
   // In the weekly draw from Foundation (D-120): it was a special piece at +2 a tile on the
@@ -511,6 +549,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     drawWeight: 5,
     complexity: 2,
     fromPhase: 1,
+    perHouse: 1, // D-165: one of each special room
     effects: [WHILE_SUNNY(6)],
   },
   hotTub: {
@@ -528,6 +567,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
       // doesn't block placement, and touching only a Hallway doesn't count.
       { kind: 'requires', condition: { touching: { property: 'room' } }, blocksPlacement: false },
       { kind: 'neighbor', match: { piece: 'patio' }, amount: 3 },
+      BACK_YARD,
     ],
   },
   // In the weekly draw from Drywall (D-145), at half a card's weight: something to place late
@@ -549,6 +589,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
       { kind: 'requires', condition: { touching: { property: 'room' } }, blocksPlacement: false },
       { kind: 'aura', match: { piece: 'patio' }, scope: 'adjacent', pct: 50 },
       { kind: 'neighbor', match: { feature: 'boulder' }, amount: 2, max: 2 },
+      BACK_YARD,
     ],
   },
   henhouse: {
@@ -599,6 +640,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     effects: [
       { kind: 'aura', match: { property: 'room' }, scope: 'adjacent', pct: 25 },
       { kind: 'neighbor', match: { property: 'room' }, amount: 1, max: 4 },
+      FRONT_YARD,
     ],
   },
 

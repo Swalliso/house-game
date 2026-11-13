@@ -328,22 +328,15 @@
 .budget-words {
   min-width: 0;
 }
-.score-sets-title {
-  margin: var(--space-1) 0 0;
-  padding-top: var(--space-2);
-  border-top: var(--px) solid var(--paper-line);
-  font-size: var(--fs-body);
-  color: var(--ink-soft);
-}
 .sets {
   margin: 0;
   padding: 0;
   list-style: none;
 }
-/* Every set the same two lines: its name, then its level and its Comfort and Charm, at the
-   right. In the pixel font a side column (280 to 404 px) leaves a row about 220 to 336 px,
-   and "Jack-and-Jill Lv 2 +18 +0.75" needs 366, so sharing a line would put the values beside
-   the name in some rows and under it in others. */
+/* The sets' row and the checklist's, the same two lines each: what it is, then its Comfort and
+   Charm, at the right. In the pixel font a side column (280 to 404 px) leaves a row about 220
+   to 336 px, so sharing a line would put the values beside the words in some columns and under
+   them in others. */
 .sets li {
   display: flex;
   flex-wrap: wrap;
@@ -358,8 +351,8 @@
   align-items: baseline;
   column-gap: var(--space-2);
 }
-/* A set the placement makes (★) or breaks (✕): the icon leads its name, centered on it without
-   making the line taller. */
+/* An icon leads the words (the checklist row's check), centered on them without making the line
+   taller. */
 .sets .set-name .icon {
   align-self: center;
 }
@@ -378,7 +371,6 @@
 [data-font='readable'] .sets .set-name {
   flex: 0 1 auto;
 }
-[data-font='readable'] .set-level,
 [data-font='readable'] .set-values {
   flex: none;
 }
@@ -390,26 +382,6 @@
   color: var(--charm);
   font-weight: 700;
 }
-.sets li.gained {
-  background: var(--charm-tint);
-}
-/* On Charm's tint the plain colors fall under 4.5:1, so a made set's numbers go deeper. */
-.sets li.gained .set-comfort {
-  color: var(--comfort-deep);
-}
-.sets li.gained .set-charm {
-  color: var(--charm-deep);
-}
-.sets li.lost {
-  color: var(--bad);
-}
-.sets li.lost .set-name {
-  text-decoration: line-through;
-}
-.set-level {
-  color: var(--ink-soft);
-  white-space: nowrap;
-}
 .sets-empty {
   margin: 0;
   color: var(--ink-soft);
@@ -417,15 +389,10 @@
 
 /* --- The sets folded into one row (D-098, amended 2026-11-08) ------------------------------- */
 
-/* The heading and the list, or the one row in their place: app.css picks, on a window under
-   1000 px tall with nothing looked at. The row has a set's shape, so two lines in the pixel font
-   and one in the readable font, under a hairline in the heading's place, as the checklist's
-   row below it has; "No sets yet." keeps the suggestion as its tip. */
-.sets-full {
-  display: contents;
-}
+/* The sets as one row, in a tally on every window (D-167): a set's shape, so two lines in the
+   pixel font and one in the readable font, under a hairline, as the checklist's row below it
+   has. The whole list is its tip, and the plaques' tips at rest. */
 .sets-fold {
-  display: none;
   padding-top: var(--px);
   border-top: var(--px) solid var(--paper-line);
 }
@@ -455,13 +422,41 @@ p.sets-fold {
 
 /* --- The checklist's part of the Charm (M4a) ------------------------------------------------ */
 
-/* The sets and the checklist's row, as one block: a short window lets it go while a play is
-   looked at (app.css). Inside, the panel's own spacing. */
+/* The sets' row and the checklist's, as one block (D-167): closed at rest and while a play is
+   looked at, so the panel is its equation, and open in a tally, where they count up. It slides
+   open and shut (FEEL.chrome.detail), so the panels under it move rather than jump. Closed, it
+   gives back the panel's gap above it (its first row's margin is inside the part that folds),
+   and its rows are hidden from the keyboard once it's shut. */
 .score-detail {
+  display: grid;
+  grid-template-rows: 0fr;
+  margin-top: calc(var(--space-2) * -1);
+  min-width: 0;
+  transition: grid-template-rows var(--dur-detail) ease-out;
+}
+.score-detail.open {
+  grid-template-rows: 1fr;
+}
+.score-detail-rows {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  min-height: 0;
   min-width: 0;
+  overflow: hidden;
+  visibility: hidden;
+  transition: visibility 0s linear var(--dur-detail);
+}
+.score-detail-rows > :first-child {
+  margin-top: var(--space-2);
+}
+.score-detail.open > .score-detail-rows {
+  visibility: visible;
+  transition: none;
+}
+.reduce-motion .score-detail,
+.reduce-motion .score-detail-rows {
+  transition: none;
 }
 /* "3 checklist lines", with what they add to Charm at the right: a set's row (.sets li), under
    a hairline. Its count pulses as each line lands in the tally (FEEL.checklist.tickMs, inline). */

@@ -36,7 +36,7 @@ import { CONTENT, hintText, SCORE_LABELS, type RunState } from '../../rules/inde
 import { arrivalCard, banner, busy } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
 import { Button, Icon } from '../kit/kit.tsx';
-import { appScreen, cardsRenovate, earlyOffer, run } from '../store.ts';
+import { appScreen, cardsExtend, cardsRenovate, earlyOffer, run } from '../store.ts';
 import { devicePixelRatio, uiPixel } from '../theme/pixel.ts';
 import { placeFirstHint, type HintPlace, type HintSpot } from './first-hint-place.ts';
 import {
@@ -63,6 +63,7 @@ export type HintId =
   | 'fixture'
   | 'changeOrder'
   | 'arrival'
+  | 'extend'
   | 'renovate'
   | 'strike'
   | 'stock';
@@ -132,6 +133,8 @@ export const HINTS: Readonly<Record<HintId, Hint>> = {
     spot: 'underGoods',
   },
   // Playtest 4: nothing said a spare card of a room type could renovate, so it went unused.
+  // D-168: Extend a room, the same way, the first time a card can.
+  extend: { title: 'Extend a room', text: T.extend, spot: 'overScore' },
   renovate: { title: 'Renovate', text: T.renovate, spot: 'overScore' },
   // It names the folded plank the room waits in (D-148): nothing else on the build screen says
   // "reserve".
@@ -145,9 +148,9 @@ export const HINTS: Readonly<Record<HintId, Hint>> = {
   // D-157: in the left column, as Early, Fixtures and Renovate are; in the hand it would cost a
   // card's row at 1280×720 in the pixel font.
   strike: { title: 'Strike a card', text: T.strike, spot: 'overScore' },
-  // D-160: the standing stock's first top-up, in the left column as the arrival's is. It names
-  // the folded plank the cards wait in.
-  stock: { title: 'Always in stock', text: T.stock, spot: 'overScore' },
+  // D-160: the standing stock's arrival, in the left column as the arrival's is. It names the
+  // folded plank the cards wait in, and (D-163) that placing one doesn't use the week.
+  stock: { title: 'Free to place', text: T.stock, spot: 'overScore' },
 };
 
 /**
@@ -219,6 +222,7 @@ function current(seen: ReadonlySet<string>): HintId | null {
     // the reserve.
     ['changeOrder', s.screen === 'changeOrder'],
     ['arrival', building && s.reserve.some((r) => r.arrival !== undefined)],
+    ['extend', building && cardsExtend.value.some(Boolean)],
     ['renovate', building && cardsRenovate.value.some(Boolean)],
     // D-157: last, so the opening's and the checklist's come first.
     ['strike', strikeHintDue(s, on, seen)],

@@ -284,7 +284,11 @@ describe('set chips (D-122)', () => {
     expect(setsOfPiece(CONTENT, 'closet')).toEqual(['suite', 'fullHouse']);
     expect(setsOfPiece(CONTENT, 'bedroom')).toEqual(['jackAndJill', 'suite', 'fullHouse']);
     expect(setsOfPiece(CONTENT, 'lKitchen')).toEqual(setsOfPiece(CONTENT, 'kitchen'));
-    expect(setsOfPiece(CONTENT, 'patio')).toEqual([]);
+    // D-164: yard pieces and outbuildings name their yard sets; a Lawn is in three.
+    expect(setsOfPiece(CONTENT, 'patio')).toEqual(['backyard']);
+    expect(setsOfPiece(CONTENT, 'lawn')).toEqual(['backyard', 'dogRun', 'playYard']);
+    expect(setsOfPiece(CONTENT, 'garage')).toEqual(['driveIn', 'fullHouse']);
+    expect(setsOfPiece(CONTENT, 'sapling')).toEqual([]);
   });
 
   it('says what a set needs and pays', () => {
@@ -330,7 +334,7 @@ describe('set chips (D-122)', () => {
     expect(cardText(CONTENT, CONTENT.pieces.driveway).effects).toEqual([
       'Must be built touching the street or a Driveway',
       '+3 if touching a Garage',
-      '+1 every week',
+      '+2 every week in the front yard', // D-166
     ]);
   });
 });

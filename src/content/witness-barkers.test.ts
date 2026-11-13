@@ -193,14 +193,14 @@ describe('the Barkers’ witness house', () => {
     expect(countOf(HOUSE, 'diningRoom')).toBeLessThanOrEqual(1);
   });
 
+  it('takes no second Kitchen: an L-Kitchen card renovates the first (D-165)', () => {
+    // An L-Kitchen counts as a Kitchen: here it would fill the front corner beside the first.
+    const check = checkNext(HOUSE, ['lKitchen', 10, 8]);
+    expect(check.reason).toBe('The house has its Kitchen: this card extends or renovates it.');
+  });
+
   // One piece more or less, and exactly one line goes false at every milestone.
   it.each<{ change: string; placements: readonly Placement[]; lost: string }>([
-    {
-      // An L-Kitchen counts as a Kitchen: here it fills the front corner beside the first.
-      change: 'a second Kitchen',
-      placements: [...PLACEMENTS, ['lKitchen', 10, 8]],
-      lost: 'oneKitchen',
-    },
     { change: 'one Doghouse fewer', placements: PLACEMENTS.slice(0, -1), lost: 'doghouses' },
   ])('$change loses exactly one line ($lost)', ({ placements, lost }) => {
     expectBuildable(placements);

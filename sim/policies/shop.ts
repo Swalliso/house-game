@@ -87,8 +87,6 @@ export const BOT_BLIND: Readonly<Record<string, string>> = {
 const BAR_WEEKS_PER_BUDGET = 0.12;
 /** Blueprints keep paying on pieces built later, so their value is scaled up a little. */
 const FUTURE_PIECES = 1.25;
-/** A reserve piece takes a week's build, so it's worth a share of what it adds. */
-const RESERVE_SHARE = 0.5;
 /** The share of the cards a counting blueprint counts that the bot expects to build (D-143). */
 const TAKE_RATE = 0.5;
 /**
@@ -248,8 +246,9 @@ export function goodValue(rules: Rules, s: RunState, good: Good, rng: Rng, bot: 
       return now + plannedValue(rules, withIt, good.id, left);
     }
     case 'piece': {
+      // D-163: placing it doesn't use the week, so it's worth all it adds (half before).
       const b = asBuild(s, { hand: [{ kind: 'piece', id: good.id }], reserve: [] });
-      return bestPlacement(rules, b, bot.salt) * left * RESERVE_SHARE;
+      return bestPlacement(rules, b, bot.salt) * left;
     }
     case 'fixture': {
       const b = asBuild(s, { supplies: [{ kind: 'fixture', id: good.id }] });
@@ -281,7 +280,7 @@ export function goodValue(rules: Rules, s: RunState, good: Good, rng: Rng, bot: 
           return (weekly / Math.max(1, s.house.pieces.length)) * left * 0.8;
         case 'copy': {
           const top = Math.max(0, ...rules.currentTally(s).pieces.map((p) => p.earned));
-          return top * left * RESERVE_SHARE * 0.6;
+          return top * left * 0.6;
         }
         case 'advanceTimers':
           return weekly * 0.4;

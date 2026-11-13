@@ -122,8 +122,14 @@ describe('the greedy bot', () => {
     // 20 s on a quiet laptop (8.6 s before), and CI took 18–25 s before, hence the timeout.
     // D-161: the same shortlist, from far fewer estimates, and a faster layout: 14 s against
     // D-160's 21 s, back to back. Every legal play is still scored, so the timeout stays.
+    // D-168: greedy now extends rooms, so these are other houses: 14 of 18, losing 0.4%. On 20
+    // seeds, 62 of 74 (83.8%, 0.40% lost) against develop's 63 of 71 (88.7%, 0.34%): a bigger
+    // Bedroom gives a Closet more spots that make the Suite, and they share the hint cap.
+    // D-164: the yard sets change these houses, and the 5 seeds matched in 15 of 19 states,
+    // losing 0.97%. On 20 seeds it was 68 of 74 (91.9%, 0.37% lost) against develop's 63 of 71
+    // (88.7%, 0.34%): five seeds are a small sample, so the bar is 3 in 4 here.
     expect(states).toBeGreaterThanOrEqual(12);
-    expect(hits / states).toBeGreaterThanOrEqual(0.8);
+    expect(hits / states).toBeGreaterThanOrEqual(0.75);
     expect(lost).toBeLessThanOrEqual(0.02 * bestSum);
   }, 120_000); // ~57,000 plays scored exactly: about a minute on a slow CI runner
 
@@ -132,7 +138,8 @@ describe('the greedy bot', () => {
     // with Trees down both sides. A Bedroom earns most beside the Trees, but there the box
     // grows to 10 × 4, and A compact house's +0.25 Mult is worth more than the Trees. A
     // corner, or a row above or below, keeps it. The Hallways only link here, as before D-114,
-    // so nothing but the Trees pulls; with their pay, see the end.
+    // and the house rules on the rooms are left out (D-165: Cozy pulls a Bedroom in too), so
+    // nothing but the Trees pulls; with both, see the end.
     const linkOnly = (id: 'hallway' | 'longHallway') => ({
       ...CONTENT.pieces[id],
       effects: [{ kind: 'link' as const }],
@@ -142,7 +149,7 @@ describe('the greedy bot', () => {
       hallway: linkOnly('hallway'),
       longHallway: linkOnly('longHallway'),
     };
-    const r = createRules({ ...CONTENT, pieces });
+    const r = createRules({ ...CONTENT, pieces, roomRules: {} });
     const rows = emptyRows(16, 12).map((row, y) =>
       y >= 4 && y <= 7 ? `.T${'.'.repeat(12)}T.` : row,
     );
@@ -160,6 +167,8 @@ describe('the greedy bot', () => {
         ['hallway', 10, 7],
       ]),
       hand: (['bedroom', 'bedroom', 'bedroom'] as const).map((id) => ({ kind: 'piece', id })),
+      // The hand's Bedrooms alone: the standing stock waits from week 1 (D-162).
+      reserve: [],
     };
     expect(r.checklist(s).find((l) => l.id === 'underOneRoof')?.met).toBe(true);
     const keeps = (p: PlaceAction) => !r.preview(s, p).specsLost.includes('underOneRoof');
@@ -168,7 +177,12 @@ describe('the greedy bot', () => {
     for (const p of plays) best = Math.max(best, r.scoreOnly(s, p));
     // Ranked as if there were no checklist, the shortlist is all Bedrooms by the Trees.
     const hendersons = { ...CONTENT.clients.hendersons, specs: [] };
-    const blind = createRules({ ...CONTENT, pieces, clients: { ...CONTENT.clients, hendersons } });
+    const blind = createRules({
+      ...CONTENT,
+      pieces,
+      roomRules: {},
+      clients: { ...CONTENT.clients, hendersons },
+    });
     const salt = stream('roof', 'shortlist').u32();
     const blindList = shortlist(blind, s, plays, salt);
     expect(blindList.some(keeps)).toBe(false);
@@ -191,8 +205,8 @@ describe('the greedy bot', () => {
   it('sees the real checklists’ count, ratio, outline, and variety lines flip exactly', () => {
     // Every client, three weeks of a greedy run: the lines a placement turns on and off, as
     // the estimate counts them, are the exact tally's, on the lines it follows. Every client
-    // has the house rules counts decide; Cozy (every room touching two) is left out.
-    const RULES = ['roomForEveryone', 'bathrooms', 'oneKitchen', 'livingRooms', 'underOneRoof'];
+    // has the house rules counts decide (D-165: the three on the checklist).
+    const RULES = ['roomForEveryone', 'underOneRoof'];
     let checked = 0;
     let on = 0;
     let off = 0;
@@ -202,7 +216,6 @@ describe('the greedy bot', () => {
         const ctx = { specs, phase: s.phase };
         const ids = followedLines(CONTENT, computeLayout(CONTENT, s.house), ctx);
         expect(ids).toEqual(expect.arrayContaining([...RULES, 'tidyYard']));
-        expect(ids).not.toContain('cozy');
         // Every fifth placement (about 3,700 in all when this was written, 40 flipping a line).
         const plays = rules.legalPlacements(s);
         for (let k = 0; k < plays.length; k += 5) {
@@ -232,6 +245,9 @@ describe('the greedy bot', () => {
         ['bedroom', 2, 3],
       ]),
       hand: (['fence', 'flowerBed', 'lawn'] as const).map((id) => ({ kind: 'piece', id })),
+      // The hand's Fence alone: the standing stock waits from week 1 (D-162), and it's free
+      // (D-163), so greedy would build it first.
+      reserve: [],
     };
     // The rules list the pack's suggested shapes: the upright 1×4 in column 4 closes the yard,
     // and the estimate flags it; ranked near the bottom, it's on the shortlist for its hint.
@@ -348,6 +364,8 @@ describe('the greedy bot', () => {
         ['garage', 4, 14],
       ]),
       hand,
+      // The hand's Driveway alone: the standing stock waits from week 1 (D-162).
+      reserve: [],
     };
     expect(unreached(rules, s, CONTENT.pieces.driveway).map((p) => p.defId)).toEqual(['garage']);
     const garage = () => rules.currentTally(s).pieces.find((p) => p.defId === 'garage')!;
@@ -488,6 +506,20 @@ describe('the greedy bot', () => {
     }
     expect(struck).toBeGreaterThanOrEqual(1);
   }, 20_000);
+
+  it('builds a piece from Your goods first when it adds, then plays the week (D-163)', () => {
+    // A bought Bedroom in the reserve in week 1: it doesn't use the week, so greedy builds it
+    // first, and the hand's best card is still the week's play.
+    const s: RunState = { ...newRun('goods-0'), reserve: [{ id: 'bedroom' }] };
+    const first = greedy.act(rules, s, stream('goods-0', 'first'));
+    expect(first).toMatchObject({ t: 'place', from: 'reserve', i: 0 });
+    expect(rules.endsWeek(s, first as PlaceAction)).toBe(false);
+    const after = rules.apply(s, first).state;
+    expect(after).toMatchObject({ week: s.week, hand: s.hand, reserve: [] });
+    const second = greedy.act(rules, after, stream('goods-0', 'second'));
+    expect(second).toMatchObject({ t: 'place', from: 'hand' });
+    expect(rules.endsWeek(after, second as PlaceAction)).toBe(true);
+  });
 
   it('labels its variants for reports and keeps one name for their streams', () => {
     expect(POLICIES.greedy).toBe(greedy);

@@ -4,9 +4,10 @@
 
 import type { ComponentChildren, VNode } from 'preact';
 import { afterEach, describe, expect, it } from 'vitest';
-import { CONTENT } from '../../rules/index.ts';
+import { CONTENT, rules } from '../../rules/index.ts';
 import { HINTS } from '../hud/FirstHints.tsx';
 import { seenHints } from '../hud/seen-hints.ts';
+import { run } from '../store.ts';
 import {
   HowToPlayText,
   openSections,
@@ -104,7 +105,7 @@ describe('How to play', () => {
     expect(sectionsAtOpen('jobs', 'shop').size).toBe(0);
   });
 
-  it('says a room can be in one set of each kind, by the content’s names', () => {
+  it('says a piece can be in one set of each kind, by the content’s names', () => {
     // Scoring also draws the sets' pictures, which use hooks: read its lists alone, from the
     // section as the sheet hands it over, without rendering the rest.
     const vnodes = (kids: ComponentChildren): VNode<Record<string, unknown>>[] =>
@@ -122,9 +123,27 @@ describe('How to play', () => {
     const { jackAndJill, suite } = CONTENT.sets;
     const bathroom = CONTENT.pieces.bathroom.name;
     expect(said).toContain(
-      `A room can be in one set of each kind: one ${bathroom} can serve a ${jackAndJill.name} ` +
+      `A piece can be in one set of each kind: one ${bathroom} can serve a ${jackAndJill.name} ` +
         `and a ${suite.name}, but two ${suite.name}s need a ${bathroom} each.`,
     );
+  });
+
+  it('says the stock is there from the start, and from Foundation in a first job (D-162)', () => {
+    open('week');
+    const said = () => text(HowToPlayText());
+    expect(said()).toContain(
+      "Your goods are free: placing a piece from your reserve doesn't use your week. " +
+        'A Hallway and a Fence wait there. Another comes each milestone.',
+    );
+    const before = run.value;
+    try {
+      run.value = rules.newRun({ ...before.setup, mode: 'firstJob' });
+      expect(said()).toContain(
+        'From Foundation on, a Hallway and a Fence wait there. Another comes each milestone.',
+      );
+    } finally {
+      run.value = before;
+    }
   });
 
   it('introduces blueprints as bonuses you don’t build', () => {

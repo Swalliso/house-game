@@ -14,6 +14,8 @@
 // ranked (withoutLookalikes, D-161): the shortlist is the same, for a fraction of the estimates.
 // Exact ties go to a random one of the best, from the same stream, so houses vary between runs.
 //
+// A piece from Your goods doesn't end the week (D-163): the best such play goes down first when
+// it raises the week's total, and the week's play comes after it, from the same shortlist.
 // When even the best placement wouldn't raise this week's total, it rerolls if it can, and
 // passes rather than lose score. A reroll redraws both rows (D-132). It never demolishes. Its
 // options (makeGreedy) set when it completes a milestone early ('never' by default; 'always'
@@ -25,9 +27,8 @@
 import type {
   Action,
   Estimate,
-  InstallAction,
   PlaceAction,
-  RenovateAction,
+  Play,
   Rng,
   Rules,
   RunState,
@@ -211,13 +212,13 @@ export function makeGreedy(opts: GreedyOptions = {}): Policy {
       // D-157: a strike first, so the card that takes the struck one's slot is in the week.
       const strike = strikes === 'fixed' ? strikeAct(rules, state) : null;
       if (strike) return strike;
-      const free = useTools(rules, state, salt);
-      if (free) return free;
+      const tool = useTools(rules, state, salt);
+      if (tool) return tool;
       const plays: PlaceAction[] = [];
-      // Installs and Renovations are few, so each is scored exactly. So are Fence packs that
-      // close a yard (D-106): the rules list only a pack's suggested shapes, and the first
-      // Fence earns nothing until its yard closes.
-      const exact: (PlaceAction | InstallAction | RenovateAction)[] = [];
+      // Installs, Renovations and extensions (D-168) are few, so each is scored exactly. So are
+      // Fence packs that close a yard (D-106): the rules list only a pack's suggested shapes,
+      // and the first Fence earns nothing until its yard closes.
+      const exact: NonNullable<Play>[] = [];
       for (const p of rules.legalPlays(state)) {
         // A single tile of a pack isn't worth ranking: the planner below finds the ones that
         // close a yard, and a lone Fence or Driveway tile earns next to nothing.
@@ -234,15 +235,23 @@ export function makeGreedy(opts: GreedyOptions = {}): Policy {
         );
       }
       const passTotal = rules.scoreOnly(state, null);
-      let best: (PlaceAction | InstallAction | RenovateAction)[] = [];
+      // D-163: a piece from Your goods doesn't end the week. The shortlist is scored once, and
+      // the best such play goes down first if it adds to this week's total; then the week's.
+      let best: NonNullable<Play>[] = [];
       let bestTotal = -Infinity;
+      let free: NonNullable<Play>[] = [];
+      let freeTotal = -Infinity;
       for (const play of [...shortlist(rules, state, plays, salt), ...exact]) {
         const total = rules.scoreOnly(state, play);
-        if (total > bestTotal) {
+        if (!rules.endsWeek(state, play)) {
+          if (total > freeTotal) [freeTotal, free] = [total, [play]];
+          else if (total === freeTotal) free.push(play);
+        } else if (total > bestTotal) {
           bestTotal = total;
           best = [play];
         } else if (total === bestTotal) best.push(play);
       }
+      if (free.length > 0 && freeTotal > passTotal) return rng.pick(free);
       if (best.length === 0 || bestTotal <= passTotal) {
         if (rules.canReroll(state).ok) return { t: 'reroll' };
         if (best.length === 0 || bestTotal < passTotal) return { t: 'pass' };

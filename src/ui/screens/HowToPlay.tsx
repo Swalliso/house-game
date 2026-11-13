@@ -25,11 +25,11 @@ import {
   CONTENT,
   featureWantedText,
   glossary,
-  lotTraitText,
   multNumber,
   rewardText,
   rules,
   SCORE_LABELS,
+  stockFromText,
   stockText,
   type PieceId,
   type SetDef,
@@ -266,13 +266,6 @@ function SetPicture({ set }: { set: SetDef }) {
   );
 }
 
-/** "the A or the B" from a list of names. */
-function either(names: readonly string[]): string {
-  const the = names.map((n) => `the ${n}`);
-  if (the.length <= 1) return the[0] ?? '';
-  return `${the.slice(0, -1).join(', ')} or ${the[the.length - 1]}`;
-}
-
 /** "A, B, and C" from a list of names, as the rules' text lists them. */
 function all(names: readonly string[]): string {
   if (names.length <= 2) return names.join(' and ');
@@ -318,7 +311,6 @@ export function HowToPlayText() {
   const strikes = rules.rule(s, 'strikes');
   const overtime = rules.rule(s, 'overtime');
   const crew = CONTENT.crews[s.setup.crewId]?.name;
-  const sets = either(Object.values(CONTENT.sets).map((set) => set.name));
   const L = SCORE_LABELS;
   const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
   // M4: the client's checklist, packs, change orders, and the crews.
@@ -326,11 +318,14 @@ export function HowToPlayText() {
     (spec) => spec.group !== 'wishes',
   ).length;
   const perLine = multNumber(rules.rule(s, 'specBonus'));
+  const roomRules = Object.values(CONTENT.roomRules);
   const fenceTiles = CONTENT.pieces.fence.pack?.maxTiles;
   const drivewayTiles = CONTENT.pieces.driveway.pack?.maxTiles;
-  // D-160: the standing stock, and the milestone it starts at.
+  // D-160: the standing stock, and the milestone it starts at: none from week 1 (D-162), and
+  // Foundation in a first job.
   const stock = b.standingStock.pieces.length > 0 ? stockText(CONTENT) : null;
-  const stockFrom = phases[b.standingStock.fromPhase]?.name;
+  const stockFrom = stockFromText(CONTENT, s.setup.mode);
+  const upperFirst = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
   const orderMilestones = all(
     b.changeOrderAfter.flatMap((k) => (phases[k - 1] ? [phases[k - 1]!.name] : [])),
   );
@@ -397,13 +392,21 @@ export function HowToPlayText() {
               Driveway. Click a tile again to take it off. It builds as one piece.
             </li>
           )}
-          {stock && stockFrom && (
-            <li>
-              <b>Always in stock:</b> from {stockFrom} on, {stock}{' '}
-              {b.standingStock.pieces.length === 1 ? 'waits' : 'wait'} in your reserve until you
-              want one. Placing one is a week's build, and the next milestone brings another.
-            </li>
-          )}
+          <li>
+            <b>Your goods are free:</b> placing a piece from your reserve doesn't use your week.
+            {stock && (
+              <>
+                {' '}
+                {upperFirst(stockFrom ? `${stockFrom.trim()}, ${stock}` : stock)}{' '}
+                {b.standingStock.pieces.length === 1 ? 'waits there' : 'wait there'}
+                {/* D-169: refilled, "until you want them" gives way to another each milestone. */}
+                {b.standingStock.refill
+                  ? '. Another comes each milestone'
+                  : ` until you want ${b.standingStock.pieces.length === 1 ? 'it' : 'them'}`}
+                .
+              </>
+            )}
+          </li>
           <li>Every piece you've built earns again every week, so early pieces keep paying.</li>
           <li>
             Nothing helps? <b>Pass</b>: press End week twice to place nothing.
@@ -432,14 +435,25 @@ export function HowToPlayText() {
             Each week your pieces' {L.points} is multiplied by {L.mult} and added to your {L.total}.
           </li>
           <li>Pieces earn (or lose) {L.points} from what they touch.</li>
-          {sets && (
+          {/* D-165: the house rules that pay on the rooms, in the rules' words. */}
+          {roomRules.length > 0 && (
             <li>
-              Sets, like {sets}, add {L.points} and {L.mult}.
+              Every house pays {plural(roomRules.length, 'rule')} on its rooms:{' '}
+              {roomRules.map((r, i) => (
+                <Fragment key={r.id}>
+                  {i > 0 && ' '}
+                  <b>{r.name}:</b> {r.text}
+                </Fragment>
+              ))}
             </li>
           )}
+          {/* D-164: nine sets, so the pictures name them, not a list in the sentence. */}
+          <li>
+            Sets (pictured below), indoors and out, add {L.points} and {L.mult}.
+          </li>
           {/* The matching rule (rules/sets.ts), which nothing on screen said (D-158). */}
           <li>
-            A room can be in one set of each kind: one {bathroom} can serve a {jackAndJill} and a{' '}
+            A piece can be in one set of each kind: one {bathroom} can serve a {jackAndJill} and a{' '}
             {suite}, but two {suite}s need a {bathroom} each.
           </li>
           <li>
@@ -496,12 +510,13 @@ export function HowToPlayText() {
         </dl>
       </Section>
 
-      <Section id="renovate" title="Renovate" icon="star">
+      <Section id="renovate" title="Extend or renovate" icon="star">
         <ul>
+          <li>{GLOSSARY.extend.text}</li>
           <li>{GLOSSARY.renovate.text}</li>
           <li>
-            While you hold such a card, the rooms it can renovate are outlined: click one, then End
-            week. Inspect shows each room's level.
+            While you hold such a card, the rooms it can extend or renovate are outlined: click one,
+            then End week.
           </li>
         </ul>
       </Section>
@@ -514,9 +529,13 @@ export function HowToPlayText() {
           <li>
             <b>The pond and the creek</b> give views.
           </li>
+          {/* D-166: every trait, by name, in place of the creek lot's line. */}
           <li>
-            <b>A creek lot</b> is marked {CONTENT.lotTraits.creekside.name} on the job board.{' '}
-            {lotTraitText(CONTENT, CONTENT.lotTraits.creekside)}
+            <b>A lot&rsquo;s traits</b> (
+            {Object.values(CONTENT.lotTraits)
+              .map((t) => t.name)
+              .join(', ')}
+            ) are chips on the job board. Each pays all run and deals more of the cards it suits.
           </li>
           <li>
             <b>The street</b> is Loud.
@@ -592,7 +611,10 @@ export function HowToPlayText() {
             <Icon name="clock" />
             Auto-complete
           </dt>
-          <dd>Turn it on and every milestone completes early as soon as its target is met.</dd>
+          <dd>
+            It shows beside Complete early. Turn it on and every milestone completes early as soon
+            as its target is met.
+          </dd>
         </dl>
       </Section>
 
@@ -611,7 +633,7 @@ export function HowToPlayText() {
           <li>
             After every milestone but the last, the shop opens. <b>Blueprints</b> are bonuses that
             stay on for the whole run; you don’t build them. <b>Pieces</b> wait in your reserve;
-            placing one is a week's build. <b>Fixtures</b> wait in your supplies and install for
+            placing one doesn't use your week. <b>Fixtures</b> wait in your supplies and install for
             free.
           </li>
           <li>

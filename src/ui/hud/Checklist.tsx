@@ -8,7 +8,9 @@
 // phase's first week is played.
 //
 // Its rows keep short (D-142): a line that doesn't hold shows only what's still missing, who's
-// moving in is a name and a milestone, and the wishes sit under a one-word tag.
+// moving in is a name and a milestone, and the wishes sit under a one-word tag. Once a wish
+// holds (D-167), the tag is a row like the house rules', "Wishes 1/2" with their Charm, and the
+// wishes that hold fold into it: only what's still missing is spelled out.
 //
 // It has to share the left column with the score panel and Inspect at 1280×720, so it keeps
 // short: a house-rules group whose lines all hold folds into one row ("The household 4/4"),
@@ -71,10 +73,10 @@ import './checklist.css';
 
 type RuleGroup = Exclude<SpecGroup, 'wishes'>;
 /**
- * A row that folds: the house rules as a whole, a house-rules group, or the client's tastes on a
- * short window.
+ * A row that folds: the house rules as a whole, a house-rules group, the client's tastes on a
+ * short window, or the client's wishes that hold (D-167).
  */
-type Fold = 'rules' | RuleGroup | 'tastes';
+type Fold = 'rules' | RuleGroup | 'tastes' | 'wishes';
 
 const GROUP_NAMES: Readonly<Record<RuleGroup, string>> = {
   household: 'The household',
@@ -115,8 +117,8 @@ const resolvedOrders = computed<readonly ChangeOrderRecord[]>(() => {
 });
 
 /**
- * Rows the player opened by hand (UI only): a house-rules group whose lines all hold, or the
- * tastes, which fold on a short window (checklist.css).
+ * Rows the player opened by hand (UI only): a house-rules group whose lines all hold, the
+ * tastes, which fold on a short window (checklist.css), or the wishes that hold (D-167).
  */
 const opened = signal<ReadonlySet<Fold>>(new Set());
 
@@ -148,6 +150,29 @@ export function rulesOpen(
   if (rules.length === 0) return true;
   const flips = rules.some((r) => r.change !== null || (r.flash && r.flash.kind !== 'held'));
   return flips || tallyFlipped || (pick ?? firstVisit);
+}
+
+/**
+ * The client's wishes as the checklist shows them (D-167). Once one holds they fold like the house
+ * rules: a row, "Wishes 1/2", and under it only the wishes still to do. Those that hold come
+ * back while the player has the row open, while the play being looked at would turn one off,
+ * and from a tally's beat that turns one on or off (`kept`, by line id) until that tally ends,
+ * so a line never folds away mid-count. `hidden` are the ones folded into the row.
+ */
+export function wishesFold(
+  rows: readonly Row[],
+  open: boolean,
+  kept: ReadonlySet<string>,
+): { held: number; folded: boolean; shown: readonly Row[]; hidden: readonly Row[] } {
+  const held = rows.filter((r) => r.line.met).length;
+  const folded = held > 0 && !open;
+  const stays = (r: Row) =>
+    !folded ||
+    !r.line.met ||
+    r.change !== null ||
+    kept.has(r.line.id) ||
+    (r.flash !== undefined && r.flash.kind !== 'held');
+  return { held, folded, shown: rows.filter(stays), hidden: rows.filter((r) => !stays(r)) };
 }
 
 /**
@@ -507,6 +532,64 @@ function RulesRow({
       </span>
       <CharmAdds
         value={folded && held > 0 ? held * bonus : null}
+        pending={pending}
+        spanRef={charm}
+        lasts="while they hold"
+      />
+    </FoldButton>
+  );
+}
+
+/**
+ * The client's wishes' row once one holds (D-167): "Wishes 1/2" with a check, and while it's
+ * folded the Charm of the ones that hold, which fold into it. A click opens or folds them. While
+ * folded, a tally's beat on a wish folded into it lights this row, as the house rules' row does.
+ */
+function WishesRow({
+  rows,
+  hidden,
+  folded,
+  bonus,
+  pending,
+}: {
+  rows: readonly Row[];
+  /** The wishes folded into it (wishesFold). */
+  hidden: readonly Row[];
+  folded: boolean;
+  bonus: number;
+  /** In a tally, a wish that holds the tally hasn't reached yet: its Charm hasn't landed. */
+  pending: boolean;
+}) {
+  const row = useRef<HTMLButtonElement>(null);
+  const charm = useRef<HTMLSpanElement>(null);
+  const flash = hidden.reduce<CheckFlash | undefined>(
+    (a, r) => (r.flash && (!a || r.flash.id > a.id) ? r.flash : a),
+    undefined,
+  );
+  useEffect(() => {
+    if (flash) playFlash(flash, row.current, charm.current);
+  }, [flash?.id]);
+  const n = rows.length;
+  const held = rows.filter((r) => r.line.met).length;
+  return (
+    <FoldButton
+      fold="wishes"
+      folded={folded}
+      buttonRef={row}
+      flash={flash?.kind}
+      tip={
+        folded
+          ? `${held} of the ${n} wishes ${held === 1 ? 'holds' : 'hold'}. Click to show them.`
+          : 'Click to fold the wishes that hold into this row'
+      }
+    >
+      <span class="fold-name">Wishes</span>
+      <span class={`fold-count ${held < n ? 'partial' : ''}`}>
+        {held}/{n}
+        <Icon name="check" />
+      </span>
+      <CharmAdds
+        value={folded ? held * bonus : null}
         pending={pending}
         spanRef={charm}
         lasts="while they hold"
@@ -884,6 +967,8 @@ export function Checklist() {
   const box = useRef<HTMLDivElement>(null);
   /** Groups a tally's flip opened: they stay open until it ends, so nothing folds mid-count. */
   const tallyOpen = useRef(new Set<RuleGroup>());
+  /** Wishes a tally's beat turned on or off (D-167): in view until it ends, by line id. */
+  const tallyKept = useRef(new Set<string>());
   const view = tallyView.value;
   const base = judged.value;
   const all = lines.value;
@@ -905,12 +990,20 @@ export function Checklist() {
       pending: !!view && met && k > view.specAt,
     };
   });
-  if (!view) tallyOpen.current.clear();
+  if (!view) {
+    tallyOpen.current.clear();
+    tallyKept.current.clear();
+  }
   for (const f of flashes) {
-    const g = rows[f.index]?.line.group;
-    if (f.kind !== 'held' && g && g !== 'wishes') tallyOpen.current.add(g);
+    const r = rows[f.index];
+    const g = r?.line.group;
+    if (f.kind === 'held' || !r || !g) continue;
+    if (g === 'wishes') tallyKept.current.add(r.line.id);
+    else tallyOpen.current.add(g);
   }
   const groupRows = (g: SpecGroup) => rows.filter((r) => r.line.group === g);
+  const wishes = groupRows('wishes');
+  const wished = wishesFold(wishes, opened.value.has('wishes'), tallyKept.current);
   const ruleRows = rows.filter((r) => r.line.group !== 'wishes');
   const rulesFolded = !rulesOpen(
     rows,
@@ -948,7 +1041,9 @@ export function Checklist() {
     const g = lit.line.group;
     target = [
       g === 'wishes'
-        ? `[data-row="${lit.line.id}"]`
+        ? wished.hidden.includes(lit)
+          ? '[data-fold="wishes"]'
+          : `[data-row="${lit.line.id}"]`
         : rulesFolded
           ? '[data-fold="rules"]'
           : isFolded(g)
@@ -995,10 +1090,9 @@ export function Checklist() {
   if (all.length === 0) return null;
   const lineList = (rs: readonly Row[]) =>
     rs.map((r) => <Line key={r.line.id} {...r} bonus={bonus} />);
-  const wishes = groupRows('wishes');
   const crew = CONTENT.crews[crewId];
   const tastes = client.tastes.length > 0;
-  // The sun's side (D-120), and the lot's traits that pay all run (D-119): Creekside.
+  // The sun's side (D-120), and the lot's traits that pay all run (D-119, D-166).
   const { sun } = base.house.lot;
   const traits = lotTraits(CONTENT, base.house.lot).filter((t) => t.modifiers.length > 0);
   return (
@@ -1075,9 +1169,20 @@ export function Checklist() {
         {wishes.length > 0 && (
           <>
             {/* The plank above names the client, so the tag is one word, one line in every column
-                (D-142), as the job board's card heads them. */}
-            <h3 class="plank-tag">Wishes</h3>
-            <ul class="check-group">{lineList(wishes)}</ul>
+                (D-142), as the job board's card heads them. Once a wish holds it's a row the
+                wishes that hold fold into (D-167). */}
+            {wished.held > 0 ? (
+              <WishesRow
+                rows={wishes}
+                hidden={wished.hidden}
+                folded={wished.folded}
+                bonus={bonus}
+                pending={wishes.some((r) => r.pending)}
+              />
+            ) : (
+              <h3 class="plank-tag">Wishes</h3>
+            )}
+            {wished.shown.length > 0 && <ul class="check-group">{lineList(wished.shown)}</ul>}
           </>
         )}
         {(running.length > 0 || done.length > 0) && (

@@ -21,6 +21,7 @@ import type {
   Region,
   Reward,
   RuleKey,
+  RunMode,
   Selector,
   SetId,
   SetProgress,
@@ -76,7 +77,7 @@ export type Phrasing = 'one' | 'some' | 'every';
 /** Names with no plural: "No more Soundproofing this run" (D-157). */
 const UNCOUNTABLE: ReadonlySet<string> = new Set(['Soundproofing']);
 
-function plural(name: string): string {
+export function plural(name: string): string {
   if (name.endsWith('s') || UNCOUNTABLE.has(name)) return name;
   // Porch → Porches (D-157).
   if (/(ch|sh|x|z)$/.test(name)) return `${name}es`;
@@ -438,6 +439,11 @@ export function effectText(content: Content, effect: Effect): string {
         effect.effect.scope === 'region';
       return said ? inner : `${inner} ${conditionPhrase(content, effect.when)}`;
     }
+    case 'served': {
+      // D-165: "+4 with a Bathroom in reach (each serves 2)".
+      const by = article(selectorText(content, effect.by, 'one'));
+      return `${signed(effect.amount)} with ${by} in reach (each serves ${effect.capacity})`;
+    }
   }
 }
 
@@ -468,6 +474,7 @@ function conditionTags(cond: PieceCondition, out: Set<Tag>, props: Set<Property>
 
 function effectTags(e: Effect, out: Set<Tag>, props: Set<Property>): void {
   if (e.kind === 'neighbor' || e.kind === 'aura') selectorTags(e.match, out, props);
+  else if (e.kind === 'served') selectorTags(e.by, out, props);
   else if (e.kind === 'requires') conditionTags(e.condition, out, props);
   else if (e.kind === 'conditional') {
     conditionTags(e.when, out, props);
@@ -487,6 +494,8 @@ export interface CardText {
    * everyone needs it."
    */
   member?: string;
+  /** D-165: how many of its type a house holds: "One per house: extend or renovate." */
+  perHouse?: string;
 }
 
 /** The possessive of a member's name: "The twins’", "Grandma’s". */
@@ -525,6 +534,8 @@ export function cardText(content: Content, def: PieceDef): CardText {
     ? `A pack: click out up to ${def.pack.maxTiles} tiles that touch, one piece in one week.`
     : undefined;
   const member = def.member ? memberText(content, def) : undefined;
+  const cap = perHouseOf(content, def);
+  const perHouse = cap === undefined ? undefined : perHouseText(cap);
   const tags = new Set<Tag>();
   const props = new Set<Property>();
   for (const e of def.effects) effectTags(e, tags, props);
@@ -547,7 +558,26 @@ export function cardText(content: Content, def: PieceDef): CardText {
     ];
     notes.push(`Views: ${joinWords(sources, 'and')}.`);
   }
-  return { effects, notes, ...(pack ? { pack } : {}), ...(member ? { member } : {}) };
+  return {
+    effects,
+    notes,
+    ...(pack ? { pack } : {}),
+    ...(member ? { member } : {}),
+    ...(perHouse ? { perHouse } : {}),
+  };
+}
+
+/** D-165: the most of a card's type a house holds, from the type's own card (an L-Kitchen's is the Kitchen's). */
+export function perHouseOf(content: Content, def: PieceDef): number | undefined {
+  return content.pieces[def.countsAs ?? def.id]?.perHouse;
+}
+
+/** "One per house: extend or renovate." */
+export function perHouseText(n: number): string {
+  const count = n === 1 ? 'One' : n === 2 ? 'Two' : `${n}`;
+  // D-169: a spare card extends a room it can grow (D-168), and renovates otherwise: six words,
+  // as D-165's "another renovates it" had.
+  return `${count} per house: extend or renovate.`;
 }
 
 /**
@@ -560,6 +590,7 @@ function pays(e: Effect): boolean {
     case 'neighbor':
     case 'rhythm':
     case 'perTile':
+    case 'served':
       return e.amount > 0;
     case 'growth':
       return e.perWeek > 0;
@@ -710,6 +741,31 @@ function handModifierText(content: Content, mod: Modifier): string {
  * A fixture shows where it goes and its first effect: what it does to its room (Makes it Sunny,
  * Counts as 2 Bedrooms) or, for the Kitchen Island, what it earns.
  */
+/** D-168: "A Bedroom, Kitchen, Living Room, or Dining Room", the types that can grow. */
+function extendTypesText(content: Content): string {
+  const names = content.balance.extend.types.map((t) => content.pieces[t].name);
+  const text = article(joinWords(names, 'or'));
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+/** "once", "twice", "3 times". */
+function timesText(n: number): string {
+  return n === 1 ? 'once' : n === 2 ? 'twice' : `${n} times`;
+}
+
+/**
+ * D-168: what extending a room with this card adds: `extend.pointsPerTile` for each of its tiles,
+ * flat, before the room's percentages. 0 for a card that can't extend a room.
+ */
+export function growGain(content: Content, def: PieceDef): number {
+  const root = def.countsAs ?? def.id;
+  if (def.member || def.category !== 'indoor' || !content.balance.extend.types.includes(root)) {
+    return 0;
+  }
+  const tiles = def.shape.reduce((n, row) => n + row.split('#').length - 1, 0);
+  return tiles * content.balance.extend.pointsPerTile;
+}
+
 export function handCardLines(content: Content, card: Card): string[] {
   if (card.kind === 'fixture') {
     const def = content.fixtures[card.id];
@@ -1047,12 +1103,18 @@ export function blueprintText(content: Content, def: BlueprintDef): string[] {
 }
 
 /**
- * A lot trait's tip (D-119): what its modifiers do, all run, then its blurb. "Pieces touching
- * the Creek earn +50%, all run. Only a Driveway crosses it."
+ * A lot trait's tip (D-119): what it pays, all run, what it deals more of (D-166), then its
+ * blurb. "Pieces touching the Creek earn +50%, all run. More Patios in the draw. Only a Driveway
+ * crosses it."
  */
 export function lotTraitText(content: Content, def: LotTraitDef): string {
-  const pays = def.modifiers.map((m) => `${modifierText(content, m)}, all run.`);
-  return [...pays, def.blurb].join(' ');
+  const lines = def.modifiers.map((m) => {
+    const ids = m.kind === 'drawWeight' ? pieceIds(m.target) : null;
+    if (!ids) return `${modifierText(content, m)}, all run.`;
+    const names = ids.map((id) => plural(content.pieces[id].name));
+    return `More ${joinWords(names, 'and')} in the draw.`;
+  });
+  return [...lines, def.blurb].join(' ');
 }
 
 // ---------------------------------------------------------------------------------------
@@ -1080,6 +1142,7 @@ export type Term =
   | 'crates'
   | 'upgrades'
   | 'renovate'
+  | 'extend'
   | 'checklist'
   | 'frontYard'
   | 'backYard'
@@ -1098,6 +1161,8 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
   const variants = variantsText(content);
   const earlyBudget = b.early.budgetPerWeek[0] ?? 0;
   const earlyPct = b.early.scorePct[0] ?? 0;
+  // D-169: a stock that's topped up at each milestone, as the reserve's entry says.
+  const refills = b.standingStock.pieces.length > 0 && b.standingStock.refill;
   const economy = Object.values(content.pieces)
     .filter((p) => p.drawWeight > 0 && !p.countsAs && p.effects.some((e) => e.kind === 'economy'))
     .map((p) => p.name);
@@ -1160,13 +1225,14 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
     reserve: {
       title: 'Reserve',
       text:
-        `Bought pieces wait here (${r.reserveSlots} slots). Placing one is your week’s build, ` +
-        `any week you like. Extra slots hold what your crew, the client and their household ` +
+        `Bought pieces wait here (${r.reserveSlots} slots). Placing one ` +
+        // D-169: a refilled stock says so in the words "is free: it" took (35 words either way).
+        (refills ? 'doesn’t ' : 'is free: it doesn’t ') +
+        `use your week. Extra slots hold what your crew, the client and their household ` +
         `bring` +
         (b.standingStock.pieces.length > 0
-          ? `, and your stock: ${stockText(content)} from ` +
-            `${b.phases[b.standingStock.fromPhase]?.name ?? 'the start'} on, another at each ` +
-            `milestone once you’ve placed one.`
+          ? `, and your stock: ${stockText(content)}${stockFromText(content, 'standard')}` +
+            (refills ? ', refilled each milestone.' : '.')
           : '.'),
     },
     supplies: {
@@ -1214,10 +1280,22 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
     renovate: {
       title: 'Renovate',
       text:
-        `Once the house has all the rooms of a type its checklist wants (one Kitchen, its ` +
-        `Bedrooms, …), a card of that type can renovate one of them in place instead of being ` +
-        `placed, with nothing torn down: +${b.renovate.pointsPerLevel} ${L.points} a level, up ` +
-        `to ${b.renovate.maxLevel}. It’s the week’s build. A card that can shows Renovate.`,
+        // D-165: "it takes": a type's limit is its card's (one Kitchen) or the checklist's. D-168:
+        // only a room it can't extend.
+        `Once the house has all the rooms of a type it takes (one Kitchen, its Bedrooms, …), a ` +
+        `card of that type can renovate one it can’t extend instead of being placed: ` +
+        `+${b.renovate.pointsPerLevel} ${L.points} a level, up to ${b.renovate.maxLevel}. ` +
+        `From the hand it’s the week’s build. A card that can shows Renovate.`,
+    },
+    // D-168: what Extend a room is, in fewer words than Renovate's entry. D-163: from Your goods
+    // it's free, as placing one is.
+    extend: {
+      title: 'Extend a room',
+      text:
+        `${extendTypesText(content)} card can extend a room of its type instead of being placed: ` +
+        `point at the room. It gains the card’s tiles, +${b.extend.pointsPerTile} ${L.points} ` +
+        `each, ${timesText(b.extend.maxPerRoom)} a room. From the hand it’s the week’s build; ` +
+        `still one room.`,
     },
     checklist: {
       title: 'The checklist',
@@ -1282,19 +1360,30 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
 // house rules once, for every card on it, and each first-time hint keeps to one budget of
 // words. The glossary above keeps the full texts, for the tips.
 
-/**
- * The house rules every client has, for the job board: their names, a line each, in the
- * checklist's order, then what a held one adds. A client's own numbers are on its checklist.
- */
-export function houseRulesText(content: Content): string {
+/** The checklist's house rules every client has, by name, in the checklist's order. */
+export function houseRuleNames(content: Content): string[] {
   const names: string[] = [];
   for (const client of Object.values(content.clients)) {
     for (const spec of client.specs) {
       if (spec.group !== 'wishes' && !names.includes(spec.name)) names.push(spec.name);
     }
   }
+  return names;
+}
+
+/**
+ * The house rules every client has, for the job board: the checklist's, a line each, in its
+ * order, then what a held one adds, then the ones that pay on the rooms (D-165). A client's own
+ * numbers are on its checklist.
+ */
+export function houseRulesText(content: Content): string {
   const adds = `+${multNumber(content.balance.rules.specBonus)} ${SCORE_LABELS.mult}`;
-  return [...names, `Each adds ${adds} in every week it holds.`].join('\n');
+  const onRooms = Object.values(content.roomRules).map((r) => r.name);
+  return [
+    ...houseRuleNames(content),
+    `Each adds ${adds} in every week it holds.`,
+    ...(onRooms.length > 0 ? [`${joinWords(onRooms, 'and')} pay on the rooms.`] : []),
+  ].join('\n');
 }
 
 /**
@@ -1313,7 +1402,7 @@ export const HINT_WORDS = 25;
 
 /** The first-time hints (D-045) that state a rule or a number. */
 export type HintTerm =
-  'score' | 'checklist' | 'early' | 'shop' | 'fixture' | 'renovate' | 'strike' | 'stock';
+  'score' | 'checklist' | 'early' | 'shop' | 'fixture' | 'extend' | 'renovate' | 'strike' | 'stock';
 
 /** Each within HINT_WORDS, with its numbers from the content. */
 export function hintText(content: Content): Record<HintTerm, string> {
@@ -1344,32 +1433,52 @@ export function hintText(content: Content): Record<HintTerm, string> {
     fixture:
       'Fixtures upgrade a piece you’ve built, one each. Installing from your hand is the ' +
       'week’s build; from your supplies (Your goods, top right) it’s free.',
+    // D-168: how to extend, and what it pays (23 words), in no more than Renovate's.
+    extend:
+      `Pick a card marked Extend, then point at an outlined room of its type: it grows by the ` +
+      `card. +${b.extend.pointsPerTile} ${L.points} a tile.`,
+    // D-165: a type's limit is its card's (one Kitchen) or the checklist's (the Bedrooms). D-168:
+    // a room that can grow grows, so Renovate is for one that can't. 24 words (D-165's had 25).
     renovate:
-      `Once the house has every room of a type its checklist wants, a spare card renovates ` +
-      `one instead: +${b.renovate.pointsPerLevel} ${L.points} a level, up to ` +
-      `${b.renovate.maxLevel}.`,
+      `Once the house has all of a type it takes, spare cards renovate ones they can’t ` +
+      `extend: +${b.renovate.pointsPerLevel} ${L.points} a level, up to ${b.renovate.maxLevel}.`,
     // D-157: what a strike does, and where more come from (23 words; 24 with none per milestone).
     strike:
       `Strike a card: a new one takes its place, its type is gone this run, and the week goes ` +
       `on. ${b.strikesPerMilestone > 0 ? 'Milestones add strikes.' : 'The shop sells more.'}`,
-    // D-160: where the standing stock waits, and that it comes back (25 words with two pieces).
+    // D-160: where the standing stock waits; D-163: that it doesn't use the week; D-169: that
+    // another comes each milestone (21 words either way).
     stock: stockHint(content),
   };
 }
 
 /**
- * D-160: the stock's first-time hint, singular or plural by how many pieces it holds. "Until you
- * need them": the sim's novice, which plays a card at random, met Foundation less often when it
- * spent weeks on the stock for its own sake.
+ * D-160: the stock's first-time hint, singular or plural by how many pieces it holds. D-163:
+ * placing one doesn't use the week (21 words). D-169: with `refill`, "until you need them"
+ * gives way to "Another comes each milestone." (21 words too).
  */
 function stockHint(content: Content): string {
-  const one = content.balance.standingStock.pieces.length === 1;
+  const { pieces, refill } = content.balance.standingStock;
+  const one = pieces.length === 1;
   const what = stockText(content);
   return (
     `${what.charAt(0).toUpperCase() + what.slice(1)} ${one ? 'waits' : 'wait'} in Your goods, ` +
-    `top right, until you need ${one ? 'it' : 'them'}. ${one ? 'It’s' : 'Each is'} a week’s ` +
-    `build, and another comes next milestone.`
+    (refill ? 'top right. ' : `top right, until you need ${one ? 'it' : 'them'}. `) +
+    `Placing ${one ? 'it' : 'one'} doesn’t use your week.` +
+    (refill ? ' Another comes each milestone.' : '')
   );
+}
+
+/**
+ * D-162: when a run of `mode` first gets the standing stock, as words to follow it: " from
+ * Foundation on" (a first job), or nothing for a stock that's there from week 1.
+ */
+export function stockFromText(content: Content, mode: RunMode): string {
+  const stock = content.balance.standingStock;
+  const phase = mode === 'firstJob' ? stock.firstJobPhase : stock.fromPhase;
+  const first = mode === 'firstJob' ? stock.firstJobSlot : 1;
+  if (phase === 0 && first === 1) return '';
+  return ` from ${content.balance.phases[phase]?.name ?? `phase ${phase + 1}`} on`;
 }
 
 /** D-160: the standing stock as a phrase: "a Hallway and a Fence". */
@@ -1463,7 +1572,7 @@ export function toolText(content: Content, def: ToolDef): string[] {
       ];
     }
     case 'extraPlay':
-      return ['This week’s next build doesn’t end the week: place two pieces this week'];
+      return ['Your next card this week doesn’t end the week: build two from your hand'];
   }
 }
 

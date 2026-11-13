@@ -1,4 +1,4 @@
-// The company's goods (M3a HUD): the reserve (bought pieces, placed as a week's build), the
+// The company's goods (M3a HUD): the reserve (bought pieces, placed free: D-163), the
 // supplies (fixtures, installed for free), and the blueprint slots (always on). Hover shows an
 // item in the inspect panel, with Sell for blueprints and supplies; on the build screen a
 // click picks a reserve piece or a supply to place or install. A crew's starting cards and a
@@ -64,7 +64,7 @@ shortQuery?.addEventListener('change', (e) => (shortWindow.value = e.matches));
 function FreePlayNote() {
   return (
     <p class="free-play" role="status">
-      Weekend Crew is here: your next build doesn’t end the week.
+      Weekend Crew is here: your next card doesn’t end the week.
     </p>
   );
 }
@@ -165,7 +165,7 @@ function ReserveSlot({ r, i, building }: { r: ReservePiece; i: number; building:
       data-tip={
         building
           ? fits
-            ? `${def.name}${whose}: place it as this week’s build`
+            ? `${def.name}${whose}: placing it doesn’t use your week`
             : `${def.name}${whose}: nowhere on the lot fits it right now`
           : `${def.name}${whose}`
       }
@@ -233,7 +233,7 @@ export function Inventory({ shop = false }: { shop?: boolean }) {
         head={<FoldCounts />}
         label="Your company’s goods, folded"
       >
-        {/* Weekend Crew's note stays in view: it's about this week's build. */}
+        {/* Weekend Crew's note stays in view: it's about this week's card. */}
         {rows.freePlay && <FreePlayNote />}
       </Panel>
     );

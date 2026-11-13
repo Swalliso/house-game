@@ -154,6 +154,7 @@ const ACTION_KINDS: Record<Action['t'], true> = {
   place: true,
   install: true,
   renovate: true,
+  extend: true,
   pass: true,
   reroll: true,
   demolish: true,
@@ -251,8 +252,23 @@ class Checker {
     const brought = (CONTENT.clients[s.setup.clientId].deliveries ?? [])
       .filter((d) => d.phase === 0)
       .flatMap((d) => d.cards.map((id) => ({ id, client: true })));
-    if (J(s.reserve) !== J([...start, ...brought])) {
-      this.fail('the crew’s and the client’s starting cards aren’t in the reserve', s.reserve);
+    // D-162: then the standing stock, from week 1 in any run but a first job, only what a card
+    // already in an extra slot (the Landscaper's Fence) doesn't stand for.
+    const stock = CONTENT.balance.standingStock;
+    const waiting: string[] = [...start, ...brought].map((r) => r.id);
+    const stocked: { id: string; stock: true }[] = [];
+    if (s.setup.mode === 'standard' && stock.fromPhase === 0) {
+      for (const id of stock.pieces) {
+        const k = waiting.indexOf(id);
+        if (k >= 0) waiting.splice(k, 1);
+        else stocked.push({ id, stock: true });
+      }
+    }
+    if (J(s.reserve) !== J([...start, ...brought, ...stocked])) {
+      this.fail(
+        'the crew’s, the client’s and the stock’s first cards aren’t in the reserve',
+        s.reserve,
+      );
     }
     this.invariants(s, s, null, []);
   }
@@ -328,7 +344,8 @@ class Checker {
   }
 
   checkPlay(s: RunState, play: PlaceAction | InstallAction | RenovateAction, pass: Tally) {
-    const free = (play.t === 'install' && play.from === 'supplies') || s.freePlay === 'ready';
+    // A supply install, a piece from Your goods (D-163) and Weekend Crew's card don't end the week.
+    const free = (play.t === 'install' && play.from === 'supplies') || !rules.endsWeek(s, play);
     const kind = `${play.t}:${play.from}${s.freePlay === 'ready' ? ':free' : ''}`;
     this.see(`check:preview:${kind}`);
     const p = rules.preview(s, play);
@@ -953,9 +970,10 @@ const COVERAGE: readonly string[] = [
   ...prefixed('event', ['changeOrderAnswered', 'changeOrderResolved']),
   ...prefixed('arrived', ['due', 'forced']),
   ...prefixed('place', ['arrival', 'crew']),
-  // D-160: the standing stock tops up, and its cards and the client's are played.
-  ...prefixed('delivered', ['stock']),
+  // D-160: the standing stock's cards and the client's are played. The stock lands with the
+  // run (D-162), and D-169's top-ups at each later milestone are `delivered` events.
   ...prefixed('place', ['client', 'stock']),
+  ...prefixed('delivered', ['stock']),
 ];
 
 /** The kinds of check that must each have run. */

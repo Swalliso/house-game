@@ -5,8 +5,8 @@
 //   come from the `shop/<shop>/<refresh>` stream and never include a blueprint the run owns.
 //   Blueprint and fixture slots roll rarity with the shop's weights; a rarity with nothing
 //   left falls back to the likeliest one that has something.
-// - Where things go: blueprints into their slots; pieces into the reserve (placing one is the
-//   week's turn); fixtures into supplies (free to install). Only bought, picked, and copied
+// - Where things go: blueprints into their slots; pieces into the reserve (placing one doesn't
+//   use the week, D-163); fixtures into supplies (free to install). Only bought, picked, and copied
 //   pieces fill the reserve's slots: a crew's starting pieces and an arrival's cards (M4b) sit
 //   in extra slots. A member's room (M4b) is never on sale and never in a crate.
 // - Prices: the item's price × the `shopPricePct` rule, rounded half up, then the sale (one

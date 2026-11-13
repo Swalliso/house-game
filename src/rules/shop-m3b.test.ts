@@ -1232,12 +1232,12 @@ describe('Time Capsules', () => {
     expect(state.budget).toBe(3);
   });
 
-  it('from the reserve too', () => {
+  it('from the reserve too, and the week goes on (D-163)', () => {
     const s = onLot(CAPSULE, [], { reserve: [{ id: 'closet' }] });
     const { state, events } = RB.apply(s, { ...CLOSET_THERE, from: 'reserve' });
-    expect(types(events).slice(0, 3)).toEqual(['placed', 'findClaimed', 'tally']);
+    expect(types(events)).toEqual(['placed', 'findClaimed']);
     expect(events[1]).toEqual(CLAIM);
-    expect(state).toMatchObject({ budget: 3, reserve: [] });
+    expect(state).toMatchObject({ budget: 3, reserve: [], week: s.week });
   });
 
   it('a piece over two capsules pays each', () => {
