@@ -1161,6 +1161,8 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
   const variants = variantsText(content);
   const earlyBudget = b.early.budgetPerWeek[0] ?? 0;
   const earlyPct = b.early.scorePct[0] ?? 0;
+  // D-169: a stock that's topped up at each milestone, as the reserve's entry says.
+  const refills = b.standingStock.pieces.length > 0 && b.standingStock.refill;
   const economy = Object.values(content.pieces)
     .filter((p) => p.drawWeight > 0 && !p.countsAs && p.effects.some((e) => e.kind === 'economy'))
     .map((p) => p.name);
@@ -1223,12 +1225,14 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
     reserve: {
       title: 'Reserve',
       text:
-        `Bought pieces wait here (${r.reserveSlots} slots). Placing one is free: it doesn’t ` +
+        `Bought pieces wait here (${r.reserveSlots} slots). Placing one ` +
+        // D-169: a refilled stock says so in the words "is free: it" took (35 words either way).
+        (refills ? 'doesn’t ' : 'is free: it doesn’t ') +
         `use your week. Extra slots hold what your crew, the client and their household ` +
         `bring` +
         (b.standingStock.pieces.length > 0
           ? `, and your stock: ${stockText(content)}${stockFromText(content, 'standard')}` +
-            (b.standingStock.refill ? ', another at each milestone once you’ve placed one.' : '.')
+            (refills ? ', refilled each milestone.' : '.')
           : '.'),
     },
     supplies: {
@@ -1442,14 +1446,16 @@ export function hintText(content: Content): Record<HintTerm, string> {
     strike:
       `Strike a card: a new one takes its place, its type is gone this run, and the week goes ` +
       `on. ${b.strikesPerMilestone > 0 ? 'Milestones add strikes.' : 'The shop sells more.'}`,
-    // D-160: where the standing stock waits; D-163: that it doesn't use the week (19 words).
+    // D-160: where the standing stock waits; D-163: that it doesn't use the week; D-169: that
+    // another comes each milestone (21 words either way).
     stock: stockHint(content),
   };
 }
 
 /**
  * D-160: the stock's first-time hint, singular or plural by how many pieces it holds. D-163:
- * placing one doesn't use the week (21 words); with `refill`, another comes (24).
+ * placing one doesn't use the week (21 words). D-169: with `refill`, "until you need them"
+ * gives way to "Another comes each milestone." (21 words too).
  */
 function stockHint(content: Content): string {
   const { pieces, refill } = content.balance.standingStock;
@@ -1457,8 +1463,9 @@ function stockHint(content: Content): string {
   const what = stockText(content);
   return (
     `${what.charAt(0).toUpperCase() + what.slice(1)} ${one ? 'waits' : 'wait'} in Your goods, ` +
-    `top right, until you need ${one ? 'it' : 'them'}. Placing ${one ? 'it' : 'one'} ` +
-    (refill ? 'is free, and another comes next milestone.' : 'doesn’t use your week.')
+    (refill ? 'top right. ' : `top right, until you need ${one ? 'it' : 'them'}. `) +
+    `Placing ${one ? 'it' : 'one'} doesn’t use your week.` +
+    (refill ? ' Another comes each milestone.' : '')
   );
 }
 

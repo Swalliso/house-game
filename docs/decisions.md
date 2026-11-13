@@ -1868,7 +1868,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 ### D-151 · The first job's targets are gentler: a run mode the rules hold it to
 **Status:** Accepted · 2026-11-11, at the user's "Played well, merge" after its playtest, with its phase pull request (`phase/first-job-targets`), from the user's "Yes, build it" to the evening survey's "Build the gentler first job (80% targets) next?". **It changes the content hash** (`jobBoard.firstTargetPct` is content), so the release that carries it drops runs in progress: release it at a quiet hour.
-*Proposed change by D-169 (2026-11-12, awaiting the user's OK):* `firstTargetPct` is 66, not 73. On D-169's targets, with the Hendersons at 115, 73% left the casual bot winning 18.0% of first jobs (600 runs; the same script wins 26.8% on develop, where this entry measured 28.0%). At 66% the Hendersons' 115% of the curve is 76%: the bot meets Roofing 88.8% and Drywall 66.0% of the time and wins 27.0% (400 runs). The first job's targets are Groundbreaking 27, Foundation 593, Roofing 6,194 and the last 49,324.
+*Proposed change by D-169 (2026-11-12, awaiting the user's OK):* `firstTargetPct` is 60, not 73. On D-169's targets, fitted with the stock topped up at each milestone and the Hendersons at 110, 66% left the casual bot winning 17.8% of first jobs (400 runs; the same script wins 26.8% on develop, where this entry measured 28.0%). At 60% the Hendersons' 110% of the curve is 66%: the bot meets Roofing 92.0% and Drywall 70.5% of the time and wins 27.8% (400 runs). The first job's targets are Groundbreaking 23, Foundation 475, Roofing 6,006 and the last 50,622.
 **Decision:**
 - **A run has a mode** (`RunSetup.mode`, `src/rules/index.ts`): `standard`, or `firstJob` for a browser's first job. The mode is in the run code, so a replay meets the same targets. An unknown mode is a bad setup and a damaged code, as before.
 - **A first job's client needs 73% of its usual targets** (`jobBoard.firstTargetPct` in `src/content/balance.ts`; `targetPctFor` in `src/rules/milestones.ts`). It scales the client's own factor, rounded half up: the Hendersons' 110% of the curve becomes 80% (Groundbreaking 16 instead of 22, Foundation 448 instead of 616, Roofing 4,160 instead of 5,720, the last target 28,560 instead of 39,270). Vladislav 69, the Barkers 66, Juniper 69, Dale 84. Everything else is a standard run's: the same lot, draws, scoring and streams, and the pace and the verdict read the same lowered targets.
@@ -1965,7 +1965,7 @@ Choose from two or three contracts, each one a client plus a lot.
 
 **2026-11-10 (D-146, Proposed):** re-fitted after the friction batch (D-140 to D-145): 20, 560, 1,900, 5,200, 11,300, 20,500, 35,700 Wow, with factors the Hendersons 110, Count Vladislav 95, the Barkers 90, Juniper 95 and Dale 115. The fit as written came 7.6 points under held out, so the targets are set where greedy's played survival meets the goals. On 2,000 runs no fit had seen, greedy wins 45.7%.
 
-*Proposed change by D-169 (2026-11-12, awaiting the user's OK):* re-fitted on the merged core-loop batch (D-162 to D-168): 35, 780, 2,650, 8,150, 18,600, 36,000, 64,900 Wow, with factors the Hendersons 115, Count Vladislav 80, the Barkers 90, Juniper 80 and Dale 140. D-146's method, with one step more: each client's factor is set against played runs too. On 2,000 runs no fit had seen, greedy wins 44.1%.
+*Proposed change by D-169 (2026-11-12, awaiting the user's OK):* re-fitted on the merged core-loop batch (D-162 to D-168), with the stock topped up at each milestone (the user's choice): 35, 720, 3,250, 9,100, 21,500, 40,900, 76,700 Wow, with factors the Hendersons 110, Count Vladislav 80, the Barkers 90, Juniper 75 and Dale 140. D-146's method, with one step more: each client's factor is set against played runs too. On 2,000 runs no fit had seen, greedy wins 44.3%.
 
 ### D-095 · A piece that becomes a lot feature can't hold a fixture
 **Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: live since 2026-11-06 with no issues raised. Proposed 2026-11-06, with the fix/transform-fixtures pull request. It fills a gap in D-050, which says how a fixture leaves but not what happens when its host transforms.
@@ -2593,7 +2593,7 @@ What's still short:
 
 ### D-146 · The friction batch's re-fit: the targets set against played runs
 **Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: played in playtest 6 (/dev/ at 9acf14a, 2026-11-11). These targets stand until the re-fit that follows D-162 to D-168. Proposed 2026-11-10, at the user's "Merge and re-fit", once D-140 to D-145 were all in develop. A fix pull request (`fix/refit-targets`) that merges on green, so /dev/ plays at the intended difficulty; the batch's playtest decides whether it holds. It's the one re-fit D-140, D-143, D-144 and D-145 each left for the end.
-*Proposed change by D-169 (2026-11-12, awaiting the user's OK):* that re-fit is D-169's. Its targets rise 39–82% from milestone 2, and each client's factor is set against played runs too: the fit's own factors played 12 points apart.
+*Proposed change by D-169 (2026-11-12, awaiting the user's OK):* that re-fit is D-169's. Its targets rise 71–115% from Framing, and each client's factor is set against played runs too: a fit's own factors had played 12 points apart.
 **Decision:**
 - **What it covers:** develop at 4f75b34, with D-140 to D-145.
 - **Targets:** 20, 560, 1,900, 5,200, 11,300, 20,500, 35,700 Wow (they were 20, 560, 1,750, 4,850, 10,200, 18,800, 32,600). Milestones 3–7 rise 7–11%, about what greedy's median score rose at each (5, 6, 10, 13 and 14%).
@@ -3178,7 +3178,8 @@ Measured in headless Chrome on frozen dev-channel builds, at rest, before (devel
 **2026-11-12 (D-162, Proposed):** the stock comes from week 1 in any run but a first job, which keeps Foundation's third week as a setting of its own (`firstJobPhase`, `firstJobSlot`). "A stock from Groundbreaking" under Considered is what the user asked for: "available from the start of the round". The Barkers' Doghouse stays in week 1, now with the stock's Fence the same week, which answers the first question above. The decision's "the General Contractor's starting Fence" is the Landscaper's: the General Contractor starts with no cards.
 
 *Changed by D-163 (Proposed 2026-11-12):* placing a stock card or the client's doesn't use the week, and the stock comes once, at Foundation's start (a first job's third week), with no top-up after (`standingStock.refill: false`): topped up and free, it was about two more builds a milestone. The hint is "Free to place": "A Hallway and a Fence wait in Your goods, top right, until you need them. Placing one doesn’t use your week." How to play's line, Your goods' tip and Inspect's note say the same, and Inspect's note no longer says another comes.
-*Proposed change by D-169 (2026-11-12, awaiting the user's OK):* with D-162 and D-163 in one build, the stock comes once, in week 1 (a first job's in Foundation's third week), and building it is free.
+*Proposed change by D-169 (2026-11-12, awaiting the user's OK):* with D-162 and D-163 in one build, the stock comes in week 1 (a first job's in Foundation's third week), and building it is free.
+*2026-11-12 (D-169):* the user chose the top-ups: asked "With free builds from Your goods, how should the Hallway and Fence stock arrive?", they answered "Every milestone". So the stock is still topped up at each milestone's start, only what's missing, as this entry has it (`refill: true`), and D-163's "comes once" doesn't stand.
 
 ### D-161 · The bots rank only a few of a Fence card's plays out in the open, and the benchmark gate passes again
 **Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: speed only, and every sim run plays as before. Proposed 2026-11-12, a fix pull request (`fix/greedy-fence-packs`), the follow-up D-160's known gaps name, started once the user had merged D-160 (#73). D-160's standing stock keeps a Fence pack in the reserve nearly every week, and the sim's benchmark gate (§4) failed at 1.5 s against 1 s. Speed only: no rule, content, scoring, save or run-code change, and `contentHash(CONTENT)` is unchanged, so saves and run codes carry over (#54). Every bot plays as before, move for move: `npm run sim -- --check` gives the same runs.
@@ -3305,95 +3306,119 @@ Measured in headless Chrome on frozen dev-channel builds, at rest, before (devel
 - **Shops every other milestone** were sized with greedy and today's goods, not built, fitted or played; nor was "more powerful things".
 
 ### D-169 · The batch build: D-162 to D-168 in one branch, their overlaps settled, and one re-fit
-**Status:** Proposed · 2026-11-12, a phase pull request (`phase/batch-build`), from the 2026-11-12 gap analysis's plan. The seven pull requests of the batch (#76 to #80, #82, #83) each merged cleanly with develop alone but not with each other, and together they made the game far easier, so the user gets one branch to merge and play on /dev/, with the targets re-fitted. Merging it merges the seven: GitHub marks #76 to #83 as merged. It changes the content hash (`79662776` on develop → `f8ea12fb`), so runs in progress drop when it merges and at the next release. For the user's playtest; D-162 to D-168 stay Proposed until then.
+**Status:** Proposed · 2026-11-12, a phase pull request (`phase/batch-build`), from the 2026-11-12 gap analysis's plan. The seven pull requests of the batch (#76 to #80, #82, #83) each merged cleanly with develop alone but not with each other, and together they made the game far easier, so the user gets one branch to merge and play on /dev/, with the targets re-fitted. Merging it merges the seven: GitHub marks #76 to #83 as merged. It changes the content hash (`79662776` on develop → `698c254c`), so runs in progress drop when it merges and at the next release. For the user's playtest; D-162 to D-168 stay Proposed until then.
 *2026-11-12 (D-170, Proposed):* at five weeks a milestone the targets, the clients' factors and the first job's percent are fitted again by this entry's method. The four-week numbers here stand only without D-170.
 **Decision:**
 - **What merged, in this order, each as a merge commit** (never squashed or rebased, so one feature can still be reverted by its merge): #76 D-162 (the stock from week 1), #77 D-163 (Your goods are free), #78 D-165 (house rules on the rooms), #80 D-168 (Extend a room), #79 D-164 (yard sets), #82 D-166 (the lot decides), #83 D-167 (the text diet). Tests passed after each merge.
-- **The stock (D-162 with D-163):** it comes once (`standingStock.refill: false`), in week 1 of a standard run (`fromPhase: 0`), and in a first job in Foundation's third week (`firstJobPhase: 1`, `firstJobSlot: 3`). Building it is free, like everything in Your goods. `stockDue` keeps both pull requests' checks: a first job's own week, and nothing more once `stocked` unless `refill`. Week 1's stock lands inside `newRun` (D-162), which sets `stocked` too. `refill: true` brings back D-160's top-up at each milestone: on these targets it lifts greedy from 44.5% to 58.9% on the same 2,000 runs of `check-*` (Considered).
+- **The stock (D-162 with D-163, and the user's choice): it comes in week 1 of a standard run and again at each milestone's start, only what's missing** (`standingStock.refill: true`, D-160's top-up; `fromPhase: 0`). In a first job it comes in Foundation's third week (`firstJobPhase: 1`, `firstJobSlot: 3`), then at each later milestone's start. Building it is free, like everything in Your goods. The user chose the top-ups on 2026-11-12: asked "With free builds from Your goods, how should the Hallway and Fence stock arrive?", with the choices "Once, in week 1" and "Every milestone", they answered "Every milestone", having been told that free and topped up was the strong version (78–85% for greedy in D-163's trial, with corridor-like houses). `stockDue` keeps both pull requests' checks: a first job's own week, and with `refill` each later milestone's first week. Week 1's stock lands inside `newRun` (D-162), which sets `stocked` too. What the top-ups do to greedy's houses is under the re-fit; once (`refill: false`) is under Considered. No cap or other brake was added.
+- **The stock's words say another comes each milestone, in no more words than D-163's said it came once:**
+  - The hint ("Free to place"): "A Hallway and a Fence wait in Your goods, top right. Placing one doesn’t use your week. Another comes each milestone." (21 words, as "…top right, until you need them. Placing one doesn’t use your week.").
+  - Inspect's note on a stock card: "From your stock, in an extra slot, not one of your reserve’s. Another comes each milestone." (16 words, as "From your stock. It’s in an extra slot, so it doesn’t take one of your reserve’s.").
+  - How to play's A week: "A Hallway and a Fence wait there. Another comes each milestone." (11 words, as "…wait there until you want them."; a first job's starts "From Foundation on,").
+  - The reserve's glossary entry: "Placing one doesn’t use your week. … and your stock: a Hallway and a Fence, refilled each milestone." (35 words, as D-163's "Placing one is free: it doesn’t use your week. … a Hallway and a Fence."). D-160's longer top-up words, which `refill` had kept, are gone.
 - **A capped room card (D-165 with D-168): it extends the room where it can, and renovates otherwise.** `checkPlay` still refuses a placement at the cap; `checkExtend` never looks at caps; `checkRenovate` keeps D-168's "That Kitchen can still grow." On screen:
   - The card's line is "One per house: extend or renovate." (D-165 had "One per house: another renovates it.": six words each.) "Two per house: …" for the Living Rooms and Home Offices.
   - Placing one says "The house has its Kitchen: this card extends or renovates it."
   - Inspect leads with "Extend one: point at an outlined Kitchen (+8 Comfort)." on a card with no spot on the lot (no "Or"), then "Or renovate one in place…" where a room of its type can't grow; with nothing to grow, "Renovate one in place…" leads, as D-165 had it.
 - **Free goods with Extend (D-163 with D-168): extending a room with a card from Your goods doesn't use the week either,** by the same rule as placing one: `fromGoods` covers `extend`, so `endsWeek` is false for it, End week reads Build, and the board's label and Inspect say the same. Inspect's reserve line is "From your reserve: it doesn’t use your week." for a placement, a Renovation and an extension alike (D-168 had "From your reserve: extending is this week’s build."). An extension from the hand is still the week's build. **Weekend Crew's note still reads true:** "Your next card this week doesn’t end the week: build two from your hand." An extension is one of the two, and a piece from Your goods never needed it.
 - **Other overlaps, each read to keep both pull requests' intent:**
-  - How to play's A week: D-163's "**Your goods are free:** placing a piece from your reserve doesn't use your week." with D-162's week-1 words: "A Hallway and a Fence wait there until you want them." (a first job: "From Foundation on, a Hallway and a Fence wait there until you want them."). D-162 kept develop's "Always in stock:" label; it gives way to D-163's, as #77 had it.
-  - The reserve's glossary: D-162's `stockFromText` (nothing for week 1) with D-163's `refill` clause: "…and your stock: a Hallway and a Fence."
+  - How to play's A week: D-163's "**Your goods are free:** placing a piece from your reserve doesn't use your week." with D-162's week-1 words and the top-ups (above). D-162 kept develop's "Always in stock:" label; it gives way to D-163's, as #77 had it.
+  - The reserve's glossary: D-162's `stockFromText` (nothing for week 1) with the top-ups' clause (above).
   - Renovate's glossary: D-165's "a type it takes", D-168's "one it can’t extend", and D-163's "From the hand it’s the week’s build", dropping "in place," so it's no longer than D-165's. Its first-time hint: "Once the house has all of a type it takes, spare cards renovate ones they can’t extend: +4 Comfort a level, up to 2." (24 words, as D-168's was; D-165's had 25). Extend's glossary says "From the hand it’s the week’s build; still one room." in as many words as D-168's.
   - How to play's Scoring keeps D-165's line on the room rules and D-164's sets line.
   - The sim's run record keeps D-168's extensions and D-164's yard plays by milestone; both recall-test notes stay (both set the bar at 3 in 4).
-  - Tests whose numbers moved with both D-165's room rules and D-166's yard sides were recomputed on the merged content, not taken from either side. The first-job comparisons set aside the stock (D-162, D-163) and D-166's draw, which deals a standard run's lot cards at full weight from week 1. The chaos bot no longer looks for a stock delivery in a standard run: the stock lands with the run, once, so its `delivered` event is a first job's (`stock.test.ts`). The run-code determinism test takes three seeds that still reach every kind of action.
+  - Tests whose numbers moved with both D-165's room rules and D-166's yard sides were recomputed on the merged content, not taken from either side. The first-job comparisons set aside the stock (D-162, D-163) and D-166's draw, which deals a standard run's lot cards at full weight from week 1. The chaos bot sees the stock's top-ups delivered at later milestones (week 1's lands with the run). The run-code determinism test takes three seeds that still reach every kind of action.
   - D-163's note on the plan's standing-stock line called the starting Fence the General Contractor's; it's the Landscaper's (D-162 noted the same).
-- **The re-fit** (D-146's method, on the merged batch: 2,000 untargeted greedy runs to fit, seeds `sim-*`, the five clients and three crews in turn; 2,000 runs of `check-*` to set the goals; 2,000 of `hold-*` to check):
-  - **Targets:** 35, 780, 2,650, 8,150, 18,600, 36,000, 64,900 Wow (develop: 20, 560, 1,900, 5,200, 11,300, 20,500, 35,700). From milestone 2 they rise 39–82%, about what greedy's median score rose: 1,153 at week 8 where D-146 had 720, and 55,038 at the end where it had 29,891.
-  - **Each client's `targetPct`:** the Hendersons 115 (it was 110), Count Vladislav 80 (95), the Barkers 90 (90), Juniper 80 (95), Dale 140 (115).
-  - **The fit as written came out too hard,** as D-146's did: 35, 980, 3,050, 8,750, 19,300, 38,000, 70,400. On `check-*` greedy won 38.5% [36.4–40.7] against the fit's estimate of 46.5%: 8.0 points under (D-146's was 7.6).
-  - **So the targets are set where played survival meets the goals,** D-146's second step: the gaps at milestones 2 to 7 (2.7, 2.7, 3.4, 3.5, 5.3 and 8.0 points) are added to the goals, and the same `sim-*` runs are fitted again.
-  - **Then each client's factor the same way,** a step D-146 didn't need. The second fit's own factors (the Hendersons 120, Count Vladislav 75, the Barkers 90, Juniper 80, Dale 135) played 12 points apart on `check-*`, the Hendersons 40.8% and Count Vladislav 52.8%, where the first fit's had played 4.3 apart. So each client's gap between the fit's estimate and its play on `check-*` (2.5 to 11.8 points) is added to its own goal, and its factor fitted again in steps of 5. The numbers come from `check-*` alone; `hold-*` had shown the same spread wider (20.5 points).
+- **The re-fit, with the top-ups** (D-146's method, on the merged batch: 2,000 untargeted greedy runs to fit, seeds `sim-*`, the five clients and three crews in turn; 2,000 runs of `check-*` to set the goals and the factors; 2,000 of `hold-*` to check):
+  - **Targets:** 35, 720, 3,250, 9,100, 21,500, 40,900, 76,700 Wow (develop: 20, 560, 1,900, 5,200, 11,300, 20,500, 35,700). From Framing they rise 71–115%, about what greedy's median score rose: 4,410 at week 12 where D-146 had 2,520, and 62,156 at the end where it had 29,891. (Fitted with the stock once, they were 35, 780, 2,650, 8,150, 18,600, 36,000 and 64,900.)
+  - **Each client's `targetPct`:** the Hendersons 110 (as on develop), Count Vladislav 80 (95), the Barkers 90 (90), Juniper 75 (95), Dale 140 (115).
+  - **The first fit started from the goals as raised for the stock once** (the base goals plus that fit's played gaps): 35, 930, 2,950, 9,500, 20,800, 40,100, 71,500, with the Hendersons 115, Count Vladislav 80, the Barkers 90, Juniper 75 and Dale 135. Greedy won 50.5% [48.3–52.7] on `check-*` and 48.7% on `hold-*`: with the top-ups, the fit's estimate overstates play by less (4.4 points at the end, where it had been 8.0).
+  - **So the second fit's goals are the base goals plus the gaps it measured** (1.9, 1.7, 4.4, 2.8, 5.1 and 4.4 points at milestones 2 to 7), D-146's second step, and **each client's factor is set from its own gap** on those `check-*` runs (1.5 to 6.2 points), the step this entry added.
   - **Played, greedy's survival follows the goals** (100, 98, 95, 85, 72, 58, 45%):
-    - On `check-*` (2,000 runs): 100.0, 98.8, 97.0, 86.5, 74.6, 57.6 and 44.5% [42.3–46.7].
-    - On `hold-*` (2,000 runs): 100.0, 98.5, 96.7, 85.4, 71.8, 56.0 and **44.1%** [41.9–46.3].
-  - **The clients are level:** on `check-*` the Hendersons 46.5%, Count Vladislav 45.0%, the Barkers 41.8%, Juniper 43.5% and Dale 46.0% (4.7 points); on `hold-*` 41.5, 44.5, 43.3, 47.3 and 44.3% (5.8). The crews (the General Contractor, the Landscaper, the Architect): 43.6, 44.1 and 46.0% on `check-*`; 48.7, 39.1 and 44.7% on `hold-*`.
-  - **For a player:** the Hendersons' second milestone is 897 Wow (616 on develop) and their last 74,635 (39,270). The last is 51,920 for Count Vladislav and for Juniper, 58,410 for the Barkers and 90,860 for Dale.
-- **The first job's `firstTargetPct` is 66** (D-151 had 73). D-151 set 73 so a casual bot (the guided opening, then greedy's play half the time) won about 28% of first jobs. On these targets, with the Hendersons at 115, 73% left it 18.0% (600 runs; the same script wins 26.8% on develop). On the first job's lot, the Hendersons with the General Contractor:
+    - On `check-*` (2,000 runs): 100.0, 99.7, 96.1, 86.0, 73.3, 58.8 and 45.9% [43.7–48.1].
+    - On `hold-*` (2,000 runs): 100.0, 99.4, 95.0, 85.2, 71.0, 58.7 and **44.3%** [42.1–46.5].
+  - **The clients:** on `check-*` the Hendersons 48.0%, Count Vladislav 46.3%, the Barkers 47.0%, Juniper 45.0% and Dale 43.3% (4.7 points); on `hold-*` 41.8, 42.5, 44.5, 50.0 and 42.8% (8.2). The crews (the General Contractor, the Landscaper, the Architect): 46.6, 44.2 and 46.9% on `check-*`; 45.4, 42.4 and 45.1% on `hold-*`.
+  - **For a player:** the Hendersons' second milestone is 792 Wow (616 on develop) and their last 84,370 (39,270). The last is 61,360 for Count Vladislav, 69,030 for the Barkers, 57,525 for Juniper and 107,380 for Dale.
+- **The top-ups and the houses:** **they sprawl, as D-163's trial found.** Greedy places every free Hallway it's given, so a run has about four more Hallways and two more Fences, and fewer of its houses pass the compact outline (H1g) and the glance test:
+
+| Greedy | Wins | Hallways a run | Fences a run | Stock cards placed | Compact outline | Glance test |
+|---|---|---|---|---|---|---|
+| Develop's targets, `--check`'s 200 runs: the stock once | 91.5% | 1.63 | 1.56 | | 47% | 32% |
+| … topped up | 97.0% | 6.58 | 4.21 | | 36% | 22% |
+| These targets, 2,000 runs of `check-*`: the stock once | 32.8% | 1.51 | 1.48 | 1.62 | 52.6% | 36.6% |
+| … topped up (this build) | **45.9%** | **5.76** | **3.62** | **8.44** | **41.0%** | **25.1%** |
+| … the Fence alone topped up (sim only, 1,002 of those runs) | 34.9% | 1.48 | 3.11 | 3.52 | 54.6% | 36.8% |
+
+  - On develop's targets nearly every run wins, so those are finished houses: the top-ups take the compact outline from 47% to 36% and the glance test from 32% to 22%. On these targets, of greedy's winning houses 15.3% pass the glance test topped up against 21.8% once (26.0% and 32.6% compact).
+  - **The numbers look bad for the houses:** six free Hallways a run make corridors. **The smallest brake I'd suggest is to top up the Fence alone, with the Hallway once:** in the sim the houses are then the stock-once arm's (compact 54.6%, glance 36.8%) while a Fence still comes each milestone, and greedy's win rate falls to 34.9%, so it would need a re-fit of its own. It's a list of which pieces refill in `standingStock` and a line in `restock`. Not built: the user decides after playing.
+- **The first job's `firstTargetPct` is 60** (D-151 had 73). D-151 set 73 so a casual bot (the guided opening, then greedy's play half the time) won about 28% of first jobs. On these targets, with the Hendersons at 110, 66% left it 17.8% (with the stock once it had been 66%, at 27.0%). On the first job's lot, the Hendersons with the General Contractor, 400 runs an arm:
 
 | `firstTargetPct` | The Hendersons' share of the curve | Roofing | Drywall | Finishes | Wins |
 |---|---|---|---|---|---|
-| 73, develop (600 runs) | 80% | 82.0% | 55.2% | 39.2% | 26.8% |
-| 73 (600 runs) | 84% | 80.7% | 52.5% | 29.0% | 18.0% |
-| 69 (400 runs) | 79% | 85.0% | 62.2% | 39.5% | 23.5% |
-| **66 (400 runs)** | **76%** | 88.8% | 66.0% | 41.5% | **27.0%** |
-| 65 (200 runs) | 75% | 91.5% | 69.5% | 41.0% | 28.5% |
+| 70 | 77% | 80.3% | 48.5% | 28.3% | 13.5% |
+| 66 | 73% | 85.5% | 57.5% | 34.0% | 17.8% |
+| 62 | 68% | 90.0% | 66.0% | 42.5% | 22.5% |
+| **60** | **66%** | 92.0% | 70.5% | 47.8% | **27.8%** |
+| 58 | 64% | 94.5% | 75.3% | 51.5% | 32.3% |
+| 56 | 62% | 95.8% | 78.3% | 56.0% | 36.5% |
 
-  The first job's targets are now Groundbreaking 27, Foundation 593, Roofing 6,194 and the last 49,324 (D-151: 16, 448, 4,160 and 28,560). Its opening is unchanged: the same four hands, a Suite by week 3 wherever the three pieces go, now 58 to 82 Wow against 27.
+  The first job's targets are now Groundbreaking 23, Foundation 475, Roofing 6,006 and the last 50,622 (D-151: 16, 448, 4,160 and 28,560). Its opening is unchanged: the same four hands, a Suite by week 3 wherever the three pieces go, 58 to 82 Wow against 23.
 - **The log:** the verdict sheet's 30 Accepted and 6 Parked entries move under *Accepted* and *Parked* (pure moves, statuses unchanged), and its note says so.
 
-**Sim:** §8's criteria on `npm run sim -- --check` (200 runs, `check-0` to `check-199`, the General Contractor): the merged batch on develop's targets (before) and on these (after). The last two columns are the re-fit's 2,000 runs each of `check-*` and `hold-*`, every client with every crew in turn.
+**Sim:** §8's criteria on `npm run sim -- --check` (200 runs, `check-0` to `check-199`, the General Contractor): the merged batch on develop's targets (before), with the stock once and topped up, and on these targets with the top-ups (after). The last two columns are the re-fit's 2,000 runs each of `check-*` and `hold-*`, every client with every crew in turn.
 
-| Criterion | `--check` before | `--check` after | `check-*`, 2,000 | `hold-*`, 2,000 |
-|---|---|---|---|---|
-| random loses by milestone 3 (≥ 95%) | 100.0% PASS | 100.0% PASS | | |
-| novice passes milestone 1 (≥ 90%) | 99.5% PASS | 99.5% PASS | | |
-| greedy clears milestones 1–3 (92–98%) | 100.0% FAIL | 96.5% PASS, unsure | 97.0% | 96.7% |
-| greedy wins (40–50%) | 91.5% FAIL | 49.5% PASS, unsure | 44.5% | 44.1% |
-| early completion: always vs never, within 10 points | −3.0 PASS | −5.0 PASS, unsure | | |
-| fences pay: probe p50 2–3, ≥ 50% offered that many | 2, 57.7% PASS | 2, 59.6% PASS | | |
-| clients, crews within about 15 points | 12.5 PASS, unsure | 17.5 FAIL, unsure | 4.7, 2.4 | 5.8, 9.6 |
+| Criterion | Before, the stock once | Before, topped up | After | `check-*`, 2,000 | `hold-*`, 2,000 |
+|---|---|---|---|---|---|
+| random loses by milestone 3 (≥ 95%) | 100.0% PASS | 100.0% PASS | 100.0% PASS | | |
+| novice passes milestone 1 (≥ 90%) | 99.5% PASS | 99.5% PASS | 99.5% PASS | | |
+| greedy clears milestones 1–3 (92–98%) | 100.0% FAIL | 100.0% FAIL | 96.0% PASS | 96.1% | 95.0% |
+| greedy wins (40–50%) | 91.5% FAIL | 97.0% FAIL | 53.0% FAIL, unsure | 45.9% | 44.3% |
+| early completion: always vs never, within 10 points | −3.0 PASS | −3.5 PASS | −14.5 FAIL, unsure | | |
+| fences pay: probe p50 2–3, ≥ 50% offered that many | 2, 57.7% PASS | 2, 52.9% PASS, unsure | 2, 56.1% PASS, unsure | | |
+| clients, crews within about 15 points | 12.5 PASS, unsure | 7.5 PASS, unsure | 12.5 PASS, unsure | 4.7, 2.7 | 8.2, 3.0 |
 
 - **Develop's own `--check`** (124bd13, in D-164's table) has greedy at 49.5%.
-- **`--check`'s client line** is 40 runs a client: the Hendersons 52.5%, Count Vladislav 55.0%, the Barkers 42.5%, Juniper 40.0% and Dale 57.5%. On 2,000 runs the spread is 4.7 and 5.8 points (above).
-- **Milestone 2 is met on time** in 82.5% of `--check`'s runs (80.0% in D-146), and a run uses 1.47 overtime weeks (1.47 in D-146).
-- **The houses:** greedy's pass the glance test in 40% of runs (D-163 measured 46% on develop), and 13% are tiny (8 or fewer rooms). A run extends 1.8 rooms and renovates 1.8.
+- **`--check`'s greedy line reads high** on its 200 runs, all with the General Contractor (53.0% [46.1–59.8]); on 2,000 runs of `check-*` the General Contractor wins 46.6%, and every run 45.9%.
+- **Early completion costs more with the top-ups:** always completing early wins 38.5% against never 53.0% on the same 200 seeds (25 won only always, 54 only never), where it was −3.0 with the stock once on develop's targets and −5.0 on the stock-once fit.
+- **`--check`'s client line** is 40 runs a client: the Hendersons 47.5%, Count Vladislav 60.0%, the Barkers 55.0%, Juniper 50.0% and Dale 52.5%. On 2,000 runs the spread is 4.7 and 8.2 points (above).
+- **Milestone 2 is met on time** in 92.5% of `--check`'s runs (80.0% in D-146), and a run uses 1.32 overtime weeks (1.47 in D-146).
+- **The houses** (`--check`, all 200 runs): 34% pass the compact outline and 25% the glance test (11% of the wins), the median has 13 rooms, and 11% are tiny (8 or fewer). A run extends 1.3 rooms and renovates 2.0.
+- **The benchmark gate fails here:** the densest lot's greedy run took 1,257 ms under load (limit 1 s). Back to back, it takes about 1.6 times as long as with the stock once (1,670–1,830 ms against 1,070–1,120 ms): greedy has a free Hallway to weigh most weeks, and seven more pieces a run to score. The stock-once build took 636 ms in CI, so CI should land near the limit.
 
-**Why:** one build the user can merge and play, with the overlaps read one way, and targets set for the game it plays. On develop's targets each pull request alone moved greedy's win rate from 49.5% to between 47.5% (D-162) and 72% (D-165), and the seven together to 91.5%: a run with that much slack is the "too easy mid-run" playtest 3 found.
+**Why:** one build the user can merge and play, with the overlaps read one way (the stock as the user chose it), and targets set for the game it plays. On develop's targets each pull request alone moved greedy's win rate from 49.5% to between 47.5% (D-162) and 72% (D-165), and the seven together to 91.5%: a run with that much slack is the "too easy mid-run" playtest 3 found.
 
 **Considered:**
 - **Merging the seven into develop one by one,** resolving each conflict in the next pull request: seven reviews, seven content hashes, and /dev/ too easy for days until the last.
 - **Squashing the batch:** one commit is tidier, but a feature can't be reverted alone, and GitHub wouldn't mark the seven as merged.
-- **The stock at every milestone** (`refill: true`, D-160's top-up, with D-163's free builds): about seven more free builds a run (12.3 pieces from Your goods against 5.1, 33.5 placements against 25.9) and 14.4 more points of greedy's win rate on the same 2,000 runs and targets (58.9% against 44.5%; 428 runs won only with it, 142 only without). D-163 measured the same 14 points on develop's targets. If the playtest wants it, it needs a re-fit of its own, and the targets rise again.
+- **The stock once** (`refill: false`, D-163's, and this entry's reading until the user chose): on these targets greedy wins 32.8% against 45.9% on the same 2,000 runs of `check-*` (151 seeds won only with it, 413 only with the top-ups), with 25.0 placements a run against 32.5 and 1.62 stock cards against 8.44; its houses are in the table above. Fitted for it, the targets were 35, 780, 2,650, 8,150, 18,600, 36,000 and 64,900, and greedy won 44.1% held out.
+- **The Fence alone topped up** (the Hallway once): the smallest brake on the sprawl, measured in the sim only (above). Not built, as the user asked: they decide after playing.
 - **A capped card's line "One per house: another extends or renovates it."**: eight words, two more than D-165's.
 
-**Changes:** D-160 (the stock: once, from week 1); D-162 and D-163 (each other's half of the stock); D-165 and D-168 (each other's capped card); D-085, D-123 and D-146 (the targets and the factors, noted there); D-151 (`firstTargetPct` 73 → 66, a proposed change noted there).
+**Changes:** D-160 (the stock: from week 1, free, and still topped up at each milestone, the user's choice, noted there); D-162 and D-163 (each other's half of the stock; D-163's "comes once" doesn't stand, noted there); D-165 and D-168 (each other's capped card); D-085, D-123 and D-146 (the targets and the factors, noted there); D-151 (`firstTargetPct` 73 → 60, a proposed change noted there).
 
-**Checked:** `npm test` (2,308 tests), `npm run typecheck` and `npm run format`, and one round in the dev build (headless Chrome at 1600×900):
+**Checked:** `npm test` (2,309 tests), `npm run typecheck` and `npm run format`, and one round in the dev build (headless Chrome at 1600×900), then a second for the top-ups:
 - A standard run's week 1 (Count Vladislav, `check-1`): the Hallway and the Fence in Your goods, tagged Stock, and the lot's Pondside on the plank. The Hallway placed from Your goods: End week read Build, Inspect "From your reserve: it doesn’t use your week.", and after Build it was still week 1 with the same hand.
 - A Lawn picked: its back-yard side tinted. A Bedroom card: its Extend chip, "Or extend one: point at an outlined Bedroom (+8 Comfort).", the ghost's "Extended (4 more tiles) +8", and a 4×2 Bedroom after End week.
 - On `check-2` (the Hendersons): a Living Room, a Patio from Your goods, then a Lawn whose Inspect read "Completes Backyard: +15 Comfort, +0.5 Charm"; the next tally held the Backyard. The Lawn's chip reads "Dog Run +2", D-122's shortest name, with the Backyard in its tip.
-- A first job in a fresh profile: the board's one contract, the guide's "Pick the Bedroom.", an empty reserve, and develop's four cards. Its target read 29 before `firstTargetPct` moved to 66, which makes it 27.
+- A first job in a fresh profile: the board's one contract, the guide's "Pick the Bedroom.", an empty reserve, and develop's four cards. Its target read 29 before the re-fit; it's now 23.
+- **The top-ups** (`check-1`, Count Vladislav): the stock's Hallway placed in week 1 (free: still week 1); Groundbreaking played out with its target met; in Foundation's first week Your goods held a Hallway again and still one Fence (the unplaced one wasn't doubled). Inspect on the stock's Fence: "From your stock, in an extra slot, not one of your reserve’s. Another comes each milestone." How to play's A week: "…A Hallway and a Fence wait there. Another comes each milestone."
 - No console errors or exceptions.
 
 **Known gaps:**
 - **Not played by a person.** Every number here is the greedy bot's; it doesn't plan a set, a yard side or a lot trait, so a person who does has more room.
 - **The factor step is new to D-146's method,** which used the fit's factors as fitted. It reads each client's gap from `check-*` alone, 400 runs a client, so a factor can be a step of 5 off.
-- **`estimateSurvival` still overstates what overtime rescues** (8.0 points here, 7.6 in D-146), so `--suggest-targets` alone writes targets too hard. A re-fit still needs D-146's second step.
-- **`--check`'s client line fails at 40 runs a client** (17.5 points). The 2,000-run sets put the spread at 4.7 and 5.8.
-- **The Landscaper** won 39.1% on `hold-*` against the General Contractor's 48.7%, where `check-*` had the three within 2.4 points.
+- **`estimateSurvival` still overstates what overtime rescues** (4.4 points at the end with the top-ups, 8.0 with the stock once, 7.6 in D-146), so `--suggest-targets` alone writes targets too hard. A re-fit still needs D-146's second step.
+- **The top-ups make greedy's houses sprawl** (the table above): the brake, if any, is the user's call after playing.
+- **`--check` reads greedy high and early completion costly,** both unsure: 53.0% (45.9% on 2,000 runs) and −14.5 points on its 200 General Contractor runs.
+- **The benchmark gate** fails here under load and may fail in CI, the `sim` job (informational): the densest lot's run takes about 1.6 times as long as with the stock once.
+- **Juniper** won 50.0% on `hold-*` against 45.0% on `check-*`, where the factor was set.
 - **The first job's figure is one bot on one lot,** 400 runs an arm. Whether a newcomer finds it winnable is the playtest's.
 - **Runs in progress drop** when this merges into develop, and at the next release (the content hash changes).
-- **The verification round didn't look at:** touch, Firefox, Safari, 2× screens or narrow windows; the shop and its first-job staging, a milestone's screen, overtime, change orders or the end screen; How to play in the browser (its test reads it); a capped card's Extend or Renovate, an extension from Your goods, or Weekend Crew's two builds on screen (tests only); a first job's stock in Foundation's third week (a test only); a client's card in Your goods (Dale, the Barkers); sound; or `refill: true` in play.
+- **The verification round didn't look at:** touch, Firefox, Safari, 2× screens or narrow windows; the shop and its first-job staging, a milestone's screen, overtime, change orders or the end screen; a capped card's Extend or Renovate, an extension from Your goods, or Weekend Crew's two builds on screen (tests only); a first job's stock in Foundation's third week and its top-ups (tests only); the stock's first-time hint and the reserve's glossary entry with the top-ups (tests only); a client's card in Your goods (Dale, the Barkers); or sound.
 
 ### D-162 · The standing stock from week 1: a Hallway and a Fence wait from the run's start
 **Status:** Proposed · 2026-11-12, a phase pull request (`phase/stock-from-week-1`), from the user's read of the core loop the same day: they want D-160's Hallway and Fence "available from the start of the round, as I frequently find myself wanting to place those at the start to allow my house to open up and expand down the line." One of three sessions started from that gap analysis, beside D-163 (a piece from Your goods doesn't use the week) and D-164 (yard sets); the batch gets one re-fit of the targets after them. It changes D-160 (Proposed) only. A rules and content change: `contentHash(CONTENT)` goes from `79662776` to `6272e566`, so runs in progress are dropped when it merges (on /dev/) and at the next release (#54's check). For the user's playtest before it merges.
-*2026-11-12 (D-169, Proposed):* built with D-163 in `phase/batch-build`: the stock still comes in week 1, but once (D-163's `refill: false`), and building it is free. A first job's still comes in Foundation's third week.
+*2026-11-12 (D-169, Proposed):* built with D-163 in `phase/batch-build`: the stock still comes in week 1 and is topped up at each milestone's start, as here (the user's choice, noted in D-163), and building it is free. A first job's still comes in Foundation's third week.
 **Decision:**
 - **Any run but a first job has the standing stock from week 1** (`standingStock.fromPhase` 0, was 1). A Hallway and a Fence pack wait in the reserve's extra slots as Groundbreaking starts, after the crew's and the client's cards, and each milestone's first week tops them up as before, only what's missing. The Landscaper's starting Fence counts, so its runs start with the stock's Hallway alone.
 - **A first job keeps D-160's week, Foundation's third,** now a setting of its own (`firstJobPhase` 1, `firstJobSlot` 3): its first three weeks are the guided opening (Bedroom, Bathroom, Closet), and Foundation's first two bring in Demolish, the budget, overtime and Complete early, then Strike, one new thing a week. One whose Foundation ends sooner gets the stock at Framing's start, as before. `validateContent` checks that `firstJobPhase` is a phase of the run. First jobs play exactly as before (Sim, below).
@@ -3451,7 +3476,8 @@ Measured in headless Chrome on frozen dev-channel builds, at rest, before (devel
 
 ### D-163 · Your goods are free: a piece from the reserve doesn't use the week, and the standing stock comes once
 **Status:** Proposed · 2026-11-12, a phase pull request (`phase/goods-builds-free`), one of the 2026-11-12 core-loop batch (D-162 to D-167), tried in the sim and then built. A rules and content change: `contentHash(CONTENT)` goes from `79662776` to `e2939863`, so runs in progress are dropped when it merges (on /dev/) and at the next release (#54's check). The milestone targets and the clients' `targetPct` are untouched: the batch's one re-fit sizes them (Re-fit size, below). For the user's playtest before it merges.
-*2026-11-12 (D-169, Proposed):* built with D-162 in `phase/batch-build`: the stock comes once, in week 1 of a standard run rather than at Foundation's start (a first job's in Foundation's third week, as here). Extending a room with a card from Your goods (D-168) is free too.
+*2026-11-12 (D-169, Proposed):* built with D-162 in `phase/batch-build`: the stock comes in week 1 of a standard run rather than at Foundation's start (a first job's in Foundation's third week, as here). Extending a room with a card from Your goods (D-168) is free too.
+*2026-11-12 (D-169, the user's choice):* **the stock no longer comes once.** Asked "With free builds from Your goods, how should the Hallway and Fence stock arrive?" ("Once, in week 1" or "Every milestone"), the user answered "Every milestone", knowing that free and topped up was the strong version (78–85% for greedy in this entry's trial, with corridor-like houses). So it's topped up at each milestone's start, only what's missing (`refill: true`, D-160's top-up), and building it stays free. D-169 fits the targets with it, and its words say another comes each milestone in no more words than these had.
 **Decision:**
 - **A piece from Your goods is a free build** (`endsWeek` in `run.ts`). Placing a reserve piece, or renovating with one (D-102), goes down at once, and the week goes on. It earns from this week's tally like any piece. The week still ends with a card from the hand (a piece, a fixture or a Renovation) or a pass. Every goods card counts alike: bought or copied, the crew's, an arrival's (D-103), the client's and the stock's (D-160). There's no cap: as many a week as Your goods hold.
 - **The standing stock comes once** (`standingStock.refill: false` in `balance.ts`; `stocked` in the run's state). At Foundation's start (a first job's third week, D-160) the reserve's extra slots get a Hallway and a Fence pack, only what's missing, as before. Later milestones bring no more. `refill: true` gives back D-160's top-up at every milestone, for a playtest that wants it.
@@ -3525,7 +3551,7 @@ Measured in headless Chrome on frozen dev-channel builds, at rest, before (devel
 **Known gaps:**
 - **Not played by a person.**
 - **Greedy wins 71%** until the batch's re-fit (Re-fit size).
-  - *2026-11-12 (D-169):* the batch's re-fit is done: greedy wins 49.5% on `--check`, and 44.1% on 2,000 runs no fit had seen.
+  - *2026-11-12 (D-169):* the batch's re-fit is done, with the stock topped up at each milestone: greedy wins 45.9% on 2,000 runs of `check-*`, and 44.3% on 2,000 runs no fit had seen.
 - **The house's shape:** greedy's houses pass the glance test less often (29–37% against 46%). More pieces make more outbuildings, and the bot plans no shape.
 - **The clients' spread** is 37.5 points (20.0), from 40 runs each.
 - **No Hallway after the stock's first** but the draw's: a house that wants a second waits on the draw (2.15 a run; develop 2.33). `refill: true` brings the top-up back, at about +14 points of greedy ((c)).
@@ -3646,7 +3672,7 @@ What the columns mean:
 
 - With those targets, greedy wins 42.0% [35.4–48.9], clears milestones 1–3 in 96.0%, and the novice passes milestone 1 in 96.0%. All three pass §8.
 - The client spread stays wide at 27.5 points: the Hendersons 35.0%, Count Vladislav 57.5%, the Barkers 45.0%, Juniper 30.0%, and Dale 42.5%. The batch's re-fit sizes it with the other sessions' changes, so `targetPct` is its call.
-  - *2026-11-12 (D-169):* the re-fit sets each client's factor against played runs: on 2,000 runs no fit had seen, the clients are within 5.8 points.
+  - *2026-11-12 (D-169):* the re-fit sets each client's factor against played runs: on 2,000 runs no fit had seen, the clients are within 8.2 points.
 
 **Why:**
 - The outside tester found the checklist's lines "so numerous and specific that I can't possibly complete them all", and the user is often "not sure why points work the way they do".
@@ -3744,7 +3770,7 @@ What the columns mean:
 - **What extensions replace:** new rooms (11 at the end against 13), Renovations (0.65 fewer a run), and some yard filler and Hallways in won runs. The novice extends 0.21 times a run.
 - **Notches or sprawl:** mostly they stick out. The outline's median corner count went from 20 to 24 and the share within 24 from 74.5% to 63%, while the fill held (median 0.65 in both; at least 0.6 in 79% against 84.5%).
 - **Greedy's win rate** is 12 points over §8's 40–50%, and the clients' spread is 30 points: the batch's one re-fit should run on the merged batch.
-  - *2026-11-12 (D-169):* the batch's re-fit is done: greedy wins 49.5% on `--check`, and 44.1% on 2,000 runs no fit had seen.
+  - *2026-11-12 (D-169):* the batch's re-fit is done, with the stock topped up at each milestone: greedy wins 45.9% on 2,000 runs of `check-*`, and 44.3% on 2,000 runs no fit had seen.
 
 **Why:** a grown room is something the player sees (a new outline and a second group of furniture), where a Renovation changes a star. The capped card keeps its late use as Renovate.
 **Considered:**
@@ -3908,7 +3934,7 @@ The hand's chip rows were also measured against a develop build at 11 window siz
 - **Not played by a person.**
 - **Runs in progress drop** when this merges and at the release, since the content hash changes.
 - **Greedy wins 56%,** over §8's 40–50%. As asked, nothing was re-fit.
-  - *2026-11-12 (D-169):* the batch's re-fit is done: greedy wins 49.5% on `--check`, and 44.1% on 2,000 runs no fit had seen.
+  - *2026-11-12 (D-169):* the batch's re-fit is done, with the stock topped up at each milestone: greedy wins 45.9% on 2,000 runs of `check-*`, and 44.3% on 2,000 runs no fit had seen.
 - **Fenced yards fall,** from 55% to 49% of wins, and the Barkers' A big fenced yard most of all (53% → 38%): greedy spends Fence weeks on the Backyard's Lawns. The Barkers still win more (45% → 57.5%). If the playtest shows the same, the Backyard could pay +10.
 - **Some cards grow a chip row.** D-153 keeps counts and checks from doing that, but a plain chip has no such rule:
   - A Fence or Driveway card had no chips, so its set chip adds a row (24 px at 1×, 28 at 2×) at every size.
@@ -4007,7 +4033,7 @@ The hand's chip rows were also measured against a develop build at 11 window siz
 **Known gaps:**
 - The front yard is counted by rows (D-049): the side yards are back yard, and a piece that straddles the house's front row earns neither side's line.
 - **Smaller houses:** with the yard paying, greedy's tiny houses rise from 28% to 38% of runs. D-165, which pays the rooms, pulls the other way; the batch's re-fit and the playtest should look at the two together.
-  - *2026-11-12 (D-169):* with D-165 too, on the re-fitted batch, 13% of greedy's houses are tiny (`--check`, all 200 runs), and the median house has 13 rooms.
+  - *2026-11-12 (D-169):* with D-165 too, on the re-fitted batch with the stock topped up, 11% of greedy's houses are tiny (`--check`, all 200 runs), and the median house has 13 rooms.
 - A shaped lot that fails its checks stays plain: of 2,000 lots, one Rocky draw did, and 51 of 412 pond draws fell on a creek lot without a pond, so Pondside is 18.1% of lots against its 20%.
 - The first job's lot is plain by its seed, so "Play this lot again" on it is plain too, in either mode.
 - A first job's hands still ramp, so a newcomer's first run and their second deal differently from week 1: the second has the lot's cards at once.

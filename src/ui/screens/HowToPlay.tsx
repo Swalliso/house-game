@@ -398,10 +398,12 @@ export function HowToPlayText() {
               <>
                 {' '}
                 {upperFirst(stockFrom ? `${stockFrom.trim()}, ${stock}` : stock)}{' '}
-                {b.standingStock.pieces.length === 1
-                  ? 'waits there until you want it'
-                  : 'wait there until you want them'}
-                {b.standingStock.refill ? ', and each milestone brings another' : ''}.
+                {b.standingStock.pieces.length === 1 ? 'waits there' : 'wait there'}
+                {/* D-169: refilled, "until you want them" gives way to another each milestone. */}
+                {b.standingStock.refill
+                  ? '. Another comes each milestone'
+                  : ` until you want ${b.standingStock.pieces.length === 1 ? 'it' : 'them'}`}
+                .
               </>
             )}
           </li>

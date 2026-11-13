@@ -133,13 +133,13 @@ describe('How to play', () => {
     const said = () => text(HowToPlayText());
     expect(said()).toContain(
       "Your goods are free: placing a piece from your reserve doesn't use your week. " +
-        'A Hallway and a Fence wait there until you want them.',
+        'A Hallway and a Fence wait there. Another comes each milestone.',
     );
     const before = run.value;
     try {
       run.value = rules.newRun({ ...before.setup, mode: 'firstJob' });
       expect(said()).toContain(
-        'From Foundation on, a Hallway and a Fence wait there until you want them.',
+        'From Foundation on, a Hallway and a Fence wait there. Another comes each milestone.',
       );
     } finally {
       run.value = before;

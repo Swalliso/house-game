@@ -494,7 +494,8 @@ function ExtraSlotNote({ r }: { r: ReservePiece }) {
   if (!words) return null;
   return (
     <p class="muted">
-      {words.from}. It’s in an extra slot, so it doesn’t take one of your reserve’s.
+      {words.note ??
+        `${words.from}. It’s in an extra slot, so it doesn’t take one of your reserve’s.`}
     </p>
   );
 }

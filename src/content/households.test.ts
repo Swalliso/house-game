@@ -354,15 +354,15 @@ describe('what a client brings, and the standing stock (D-160)', () => {
     }
   });
 
-  it('the stock is a Hallway and a Fence once: from week 1, in a first job Foundation’s third week', () => {
+  it('the stock is a Hallway and a Fence: from week 1, in a first job Foundation’s third week', () => {
     // D-162: from Groundbreaking's first week; a first job keeps D-160's week (first-job.ts).
-    // D-163: it comes once (`refill: false`): its pieces don't use the week.
+    // D-163: its pieces don't use the week. D-169: topped up at each milestone (`refill`).
     expect(CONTENT.balance.standingStock).toEqual({
       fromPhase: 0,
       pieces: ['hallway', 'fence'],
       firstJobPhase: 1,
       firstJobSlot: 3,
-      refill: false,
+      refill: true,
     });
     expect(CONTENT.balance.phases[1]!.name).toBe('Foundation');
     expect(

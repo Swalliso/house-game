@@ -267,15 +267,16 @@ export const BALANCE: Balance = {
   // first week brings in Demolish, the budget, overtime and Complete early, and its second
   // Strike (first-job.ts).
   //
-  // D-163: placing one doesn't use the week, so it comes once (`refill: false`). Topped up at
+  // D-163: placing one doesn't use the week, so it came once (`refill: false`). Topped up at
   // every milestone (D-160's `refill: true`), the free stock was about two more builds a
   // milestone: greedy won 85% of the check's runs against develop's 49.5%, with six Hallways a
-  // run. D-169: the batch keeps both, once and from week 1.
+  // run. D-169: the user chose the top-ups (2026-11-12), so it comes in week 1 and again at
+  // each milestone's start, only what's missing, and the targets are fitted with it.
   standingStock: {
     fromPhase: 0,
     pieces: ['hallway', 'fence'],
     firstJobPhase: 1,
     firstJobSlot: 3,
-    refill: false,
+    refill: true,
   },
 };

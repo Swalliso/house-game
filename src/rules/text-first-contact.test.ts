@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { CONTENT } from '../content/index.ts';
 import {
   HINT_WORDS,
+  glossary,
   hintText,
   houseRuleNames,
   houseRulesText,
@@ -67,6 +68,27 @@ describe('the first-time hints that state a rule', () => {
     expect(hints.renovate).toContain(`+${b.renovate.pointsPerLevel} Comfort a level`);
     expect(hints.renovate).toContain(`up to ${b.renovate.maxLevel}.`);
     expect(hints.checklist).toContain('+0.25 Charm');
+  });
+});
+
+describe('a stock topped up at each milestone (D-169)', () => {
+  const b = CONTENT.balance;
+  const once = {
+    ...CONTENT,
+    balance: { ...b, standingStock: { ...b.standingStock, refill: false } },
+  };
+
+  it('says so in the hint and the reserve’s entry, in no more words than a stock that comes once', () => {
+    expect(b.standingStock.refill).toBe(true);
+    const hint = hintText(CONTENT).stock;
+    expect(hint).toBe(
+      'A Hallway and a Fence wait in Your goods, top right. Placing one doesn’t use your week. ' +
+        'Another comes each milestone.',
+    );
+    expect(words(hint)).toBeLessThanOrEqual(words(hintText(once).stock));
+    const entry = glossary(CONTENT).reserve.text;
+    expect(entry).toContain('and your stock: a Hallway and a Fence, refilled each milestone.');
+    expect(words(entry)).toBeLessThanOrEqual(words(glossary(once).reserve.text));
   });
 });
 
