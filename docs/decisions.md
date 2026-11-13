@@ -3306,7 +3306,7 @@ Measured in headless Chrome on frozen dev-channel builds, at rest, before (devel
 - **`--check`'s client line** is 40 runs a client: the Hendersons 47.5%, Count Vladislav 60.0%, the Barkers 55.0%, Juniper 50.0% and Dale 52.5%. On 2,000 runs the spread is 4.7 and 8.2 points (above).
 - **Milestone 2 is met on time** in 92.5% of `--check`'s runs (80.0% in D-146), and a run uses 1.32 overtime weeks (1.47 in D-146).
 - **The houses** (`--check`, all 200 runs): 34% pass the compact outline and 25% the glance test (11% of the wins), the median has 13 rooms, and 11% are tiny (8 or fewer). A run extends 1.3 rooms and renovates 2.0.
-- **The benchmark gate fails here:** the densest lot's greedy run took 1,257 ms under load (limit 1 s). Back to back, it takes about 1.6 times as long as with the stock once (1,670–1,830 ms against 1,070–1,120 ms): greedy has a free Hallway to weigh most weeks, and seven more pieces a run to score. The stock-once build took 636 ms in CI, so CI should land near the limit.
+- **The benchmark gate fails:** the densest lot's greedy run took 1,517 ms in CI (limit 1 s), where the stock-once build took 636 ms. Back to back here it takes about 1.6 times as long (1,670–1,830 ms against 1,070–1,120 ms): greedy has a free Hallway to weigh most weeks, and seven more pieces a run to score. D-161's remedy for the Fence (the bots rank only a few of a card's plays out in the open) would likely fit the Hallway too, but it changes greedy's play, so it needs a re-fit of its own; not done here.
 
 **Why:** one build the user can merge and play, with the overlaps read one way (the stock as the user chose it), and targets set for the game it plays. On develop's targets each pull request alone moved greedy's win rate from 49.5% to between 47.5% (D-162) and 72% (D-165), and the seven together to 91.5%: a run with that much slack is the "too easy mid-run" playtest 3 found.
 
@@ -3333,7 +3333,7 @@ Measured in headless Chrome on frozen dev-channel builds, at rest, before (devel
 - **`estimateSurvival` still overstates what overtime rescues** (4.4 points at the end with the top-ups, 8.0 with the stock once, 7.6 in D-146), so `--suggest-targets` alone writes targets too hard. A re-fit still needs D-146's second step.
 - **The top-ups make greedy's houses sprawl** (the table above): the brake, if any, is the user's call after playing.
 - **`--check` reads greedy high and early completion costly,** both unsure: 53.0% (45.9% on 2,000 runs) and −14.5 points on its 200 General Contractor runs.
-- **The benchmark gate** fails here under load and may fail in CI, the `sim` job (informational): the densest lot's run takes about 1.6 times as long as with the stock once.
+- **The benchmark gate fails** in CI's `sim` job (informational): 1,517 ms against a 1 s limit, where the stock once took 636 ms (above).
 - **Juniper** won 50.0% on `hold-*` against 45.0% on `check-*`, where the factor was set.
 - **The first job's figure is one bot on one lot,** 400 runs an arm. Whether a newcomer finds it winnable is the playtest's.
 - **Runs in progress drop** when this merges into develop, and at the next release (the content hash changes).
