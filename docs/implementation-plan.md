@@ -337,8 +337,9 @@ All state is plain, JSON-serializable data. D-025 keeps the house separate from 
 ```ts
 interface HouseState {                 // the lot and what's on it
   lot: Lot                             // width × height, street edge, the sun's side (D-120), terrain (woods, creek, pond, boulders, finds)
-  pieces: PlacedPiece[]                // { uid, defId, x, y, rot, placedWeek, ageBonus, fixture?: { id, week }, level?, shape? }
-                                       // level: Renovations (D-102); shape: a pack's own tiles (D-106)
+  pieces: PlacedPiece[]                // { uid, defId, x, y, rot, placedWeek, ageBonus, fixture?: { id, week }, level?, shape?, extended? }
+                                       // level: Renovations (D-102); shape: a pack's own tiles (D-106), or an extended
+                                       // room's whole outline (D-168), whose `extended` counts the cards that joined it
   nextUid: number
 }
 
@@ -391,6 +392,8 @@ type Action =
       shape?: string[] }                              // a pack card's tiles (D-106), as ASCII rows
   | { t: 'install'; from: 'hand' | 'supplies'; i: number; uid: number }  // a fixture into a placed piece
   | { t: 'renovate'; from: 'hand' | 'reserve'; i: number; uid: number }  // a capped room card on its room (D-102)
+  | { t: 'extend'; from: 'hand' | 'reserve'; i: number; uid: number; x: number; y: number; rot: 0 | 1 | 2 | 3 }
+                                                      // a room card laid beside a room of its type, joining it (D-168)
   | { t: 'pass' }
   | { t: 'useTool'; i: number; target?: { uid: number; x?: number; y?: number; rot?: 0 | 1 | 2 | 3 } }
   | { t: 'reroll' }
@@ -409,7 +412,7 @@ type Action =
 `(x, y)` is the top-left cell of the rotated shape's bounding box, and each rotation's cells are normalized so their minimum x and y are 0. There's no mirroring: no Core shape needs it (the L-Kitchen's mirror image is one of its rotations, and so is the L-Fence's).
 
 **The week's card versus free actions (D-050, D-051):**
-- Placing a piece (from the hand or the reserve), installing a fixture **from the hand**, renovating a room (D-102), or passing is the week's turn, and it ends the week. In the rules, a week's play is `Play = { place } | { install } | { renovate } | null`. `resolveWeek` and `preview` take a `Play`, so a fixture or Renovation preview goes through the same path as a piece preview.
+- Placing a piece (from the hand or the reserve), installing a fixture **from the hand**, renovating a room (D-102), extending a room (D-168), or passing is the week's turn, and it ends the week. In the rules, a week's play is `Play = { place } | { install } | { renovate } | { extend } | null`. `resolveWeek` and `preview` take a `Play`, so a fixture, Renovation or extension preview goes through the same path as a piece preview.
 - Installing a fixture **from your supplies**, using a tool, rerolling, striking a hand card (D-157), and demolishing are free actions during the week. A free install previews as the change to this week's projected total, `resolveWeek(after, null) − resolveWeek(before, null)`.
 - No action places a second piece in a week, so D-004 still holds: one piece per week at most.
 
@@ -421,7 +424,7 @@ type Action =
 - `placed`, `installed`, `demolished`, `transformed`, `moved`
 - `toolUsed`, `findClaimed` (a find's reward, for its own little moment)
 - `tally` (week, per-piece lines, set lines, points, mult, each ×Mult source, total, budget, `fastForward`)
-- `setCompleted`, `specMet`, `specLost` (distinct moments for juice), `renovated`
+- `setCompleted`, `specMet`, `specLost` (distinct moments for juice), `renovated`, `extended` (D-168)
 - `targetReached` (fires when the score first crosses the target)
 - `overtimeUsed`
 - `milestone` (phase, result `'onTime' | 'early' | 'overtime' | 'failed'`, weeks saved, overtime used, reward)
@@ -448,7 +451,7 @@ The UI keeps an event queue and plays it through an animation director (place �
 
 | Screen | Legal actions | What happens |
 |---|---|---|
-| `build` | `place`, `install` from the hand, `renovate` (D-102), or `pass`: ends the week | → end of week (below) |
+| `build` | `place`, `install` from the hand, `renovate` (D-102), `extend` (D-168), or `pass`: ends the week | → end of week (below) |
 | | `reroll` if `rerollsLeft > 0` | new hand; `draws + 1` |
 | | `strikeCard` if `strikesLeft > 0`, its type comes up in the weekly draw, and its row keeps its floor (D-157) | its type struck for the run; each hand card of it replaced from its row; `draws` unchanged |
 | | `demolish` if `demolitionsLeft > 0` and it wouldn't split the house | piece, boulder, or Old Shed removed, no refund; a find pays its reward |
@@ -475,7 +478,7 @@ The UI keeps an event queue and plays it through an animation director (place �
 1. Transforms resolve (a Sapling old enough becomes a Tree), so the board the player sees is the board that scores.
 2. In a phase's first week (never an overtime week), the household members due move in with their cards (D-103), then the client's deliveries for that phase land (D-160). From Foundation on, the standing stock then tops the reserve's extra slots up to one Hallway and one Fence pack, only what's missing (D-160; a first job's first top-up is in Foundation's third week).
 3. The hand is drawn in two rows (D-121): `roomsRow` distinct Rooms cards (2) and `layoutRow` distinct Layout cards (2), each from its own pool: pieces, plus fixtures from phase 2. A type at its limit in the checklist draws at half weight (D-104).
-4. Each card with no play (no legal spot, no legal host, and no Renovation) is swapped for another card from its row, up to `swapTries` (3) tries: the first with a play, else the last tried. A reroll redraws both rows (D-132) and swaps the same way; the reserve doesn't count. Its draw and its swaps leave out the cards it replaces, topping a row up from them only when its pool has too few others.
+4. Each card with no play (no legal spot, no legal host, no Renovation and no extension) is swapped for another card from its row, up to `swapTries` (3) tries: the first with a play, else the last tried. A reroll redraws both rows (D-132) and swaps the same way; the reserve doesn't count. Its draw and its swaps leave out the cards it replaces, topping a row up from them only when its pool has too few others.
 
 **Fast-forward (D-040):**
 
@@ -507,7 +510,7 @@ The research behind the split: Balatro puts ×Mult on 70% of its Rare jokers and
 
 Per piece, in placement order:
 
-1. `points` = base + all flat terms: neighbor bonuses and penalties, per-tile bonuses, growth, rhythm payouts, flat bonuses or penalties from auras, and a Renovated room's +4 a level (D-102).
+1. `points` = base + all flat terms: neighbor bonuses and penalties, per-tile bonuses, growth, rhythm payouts, flat bonuses or penalties from auras, a Renovated room's +4 a level (D-102), and an extended room's +2 a tile beyond its own card's (D-168).
 2. `pct` = the sum of all percentage terms: auras, tastes, blueprints, fixtures, crew, phase effects, and this week's tools. **Percentages add**, so two "earn double" effects make +200% (×3), not ×4.
 3. `earned = floor((max(0, points) × max(0, 100 + pct) + 50) / 100)`. Integer math, rounding half up. Penalties can never combine into a positive score. If any "earns nothing" term applies, `earned = 0`.
 4. `bestPiece` (Crown Jewel) then applies its percentage to the single highest `earned`, using the same formula. Ties go to the earliest-placed piece.
@@ -1802,7 +1805,8 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
   - the yard: a tidy yard ("6 or more yard pieces, and no yard type stands 4 or more times"; outbuildings count; Fences, Driveways, and Saplings count toward the 6 but never break it)
   - a client wish that repeats a house rule becomes the client's numbers for it (the Hendersons' Bedrooms and Bathrooms; Juniper's 4–8 rooms is her A compact house)
   - Room for everyone rises with the household's arrivals (M4b, D-103, D-109): both ends +1 at each arrival, and from that arrival on it needs the member's room. The Hendersons go 2–3, then 3–4 from Framing (the twins) and 4–5 from Drywall (Grandma); the other clients 1–2, then 2–3 from their member's arrival. (In M4a, before arrivals, it stepped up at Framing and Drywall.)
-- **Renovate** (D-102): a room card whose type is at its limit can level a room of that type instead: +4 Comfort a level, up to 2. Levels stay through the Moving Truck and transforms. It can be Weekend Crew's next play, and a card that can only renovate doesn't count as fitting for the free redraw.
+- **Renovate** (D-102): a room card whose type is at its limit can level a room of that type instead: +4 Comfort a level, up to 2. Levels stay through the Moving Truck and transforms. It can be Weekend Crew's next play, and a card that can only renovate doesn't count as fitting for the free redraw. D-168 (Proposed): only a room the card can't extend.
+- **Extend a room** (D-168, Proposed): a Bedroom, Kitchen, Living Room or Dining Room card laid beside a room of its type, sharing 2+ tiles of wall, joins it, once a room and any week: +2 Comfort a tile beyond its own card's. The room stays one piece with the whole outline as its own shape, and takes a second group of furniture.
 - **Half-weight draws** (D-104): a type at its limit draws at half weight while it stays there.
 - **The yard rules** (D-105): the Patio, Hot Tub, and Fire Pit earn nothing unless they touch a room (not blocking; a Hallway alone doesn't count); Treehouses don't count each other as Kid partners.
 - **Packs** (D-106): one Fence card places 1–8 connected tiles, and one Driveway card 1–8 (D-140; 1–6 before), in one week, as one piece.

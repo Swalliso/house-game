@@ -229,6 +229,8 @@ The Core items above add up to roughly 9 indoor rooms, 7 yard pieces, 4 special 
 
 **Tier:** Later. It's on the decision log's Parked list; revisit after playtest 4 has tried M4's Renovate (D-102).
 
+*2026-11-12:* built as *Extend a room*, D-168 (Proposed): once a room, any week, +2 Comfort a tile, and a grown room takes a second group of furniture. No level comes with it; Renovate stays for a room that can't grow. Off the Parked list.
+
 The team's idea: build a Living Room against another Living Room and the two become one bigger living room. Two Bedrooms could become a primary bedroom the same way. A limit keeps rooms from merging endlessly. A house that reshapes itself as it grows would feel more alive.
 
 **Today:** the rules score every piece on its own. Two touching Bedrooms are two neighbors (each gives the other +1), and each fills its own slot in a set. On the board a wall stands between every two pieces, same type included (D-097, D-100). The one grouping rule is the Open Concept blueprint, which links touching Kitchens, Dining Rooms and Living Rooms without changing counts or walls. Bunk Beds make a Bedroom count twice in count conditions, never in sets.
