@@ -197,9 +197,7 @@ describe('the opening', () => {
   });
 
   it('is what the first job’s lot deals, wherever the three pieces go', () => {
-    // The first job's own Groundbreaking target (D-151): at five weeks a milestone (D-170) a
-    // standard run's needs more than the opening's three weeks make.
-    const target = rules.target(rules.newRun({ ...SETUP, mode: 'firstJob' }));
+    const target = rules.target(rules.newRun(SETUP));
     for (let v = 0; v < 40; v++) {
       const rng = stream(firstSeed, `test/opening/${v}`);
       let s = rules.newRun(SETUP);
@@ -209,7 +207,7 @@ describe('the opening', () => {
         expect(plays.length).toBeGreaterThan(0);
         s = rules.apply(s, plays[rng.int(plays.length)]!).state;
       }
-      // Three weeks in: the set holds, the first job's target is met, and the guide is done.
+      // Three weeks in: the set holds, Groundbreaking's target is met, and the guide is done.
       expect(rules.currentTally(s).sets.map((x) => x.set)).toEqual(['suite']);
       expect(s.score).toBeGreaterThanOrEqual(target);
       expect(s.week).toBe(OPENING_WEEKS + 1);

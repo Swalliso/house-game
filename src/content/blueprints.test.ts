@@ -639,9 +639,6 @@ describe('Dream Home', () => {
 });
 
 describe('Last-Minute Push', () => {
-  /** Weeks a milestone (D-042; D-170 makes it 5). */
-  const W = CONTENT.balance.weeksPerPhase;
-
   it('×2 Mult only in a phase’s last week', () => {
     expectText('lastMinutePush', [
       '×2 Charm in each phase’s last week (played, not completed early)',
@@ -661,9 +658,9 @@ describe('Last-Minute Push', () => {
     ]);
   });
 
-  it('in a real run: the last week and each overtime week, when they’re played', () => {
-    // A Bedroom (3 a week) can't reach a target of 1000: the weeks before the last pay 3, the
-    // last and both overtime weeks pay 6.
+  it('in a real run: week 4 and each overtime week, when they’re played', () => {
+    // A Bedroom (3 a week) can't reach a target of 1000: weeks 1–3 pay 3, week 4 and both
+    // overtime weeks pay 6.
     const r = rulesWith(1000);
     let s = runWith(r, [['bedroom', 0, 0]], ['lastMinutePush']);
     const tallies: TallyEvent[] = [];
@@ -673,16 +670,18 @@ describe('Last-Minute Push', () => {
       s = state;
     }
     expect(tallies.map((t) => [t.slot, t.overtimeWeek, t.tally.total])).toEqual([
-      ...Array.from({ length: W - 1 }, (_, k) => [k + 1, 0, 3]),
-      [W, 0, 6],
-      [W + 1, 1, 6],
-      [W + 2, 2, 6],
+      [1, 0, 3],
+      [2, 0, 3],
+      [3, 0, 3],
+      [4, 0, 6],
+      [5, 1, 6],
+      [6, 2, 6],
     ]);
   });
 
   it('a fast-forwarded last week doesn’t count', () => {
-    // Target 5: met after week 2. Completing early in week 3 fast-forwards the rest at 3 a
-    // week; played, the last week would have paid 6.
+    // Target 5: met after week 2. Completing early in week 3 fast-forwards weeks 3 and 4 at 3
+    // each; played, week 4 would have paid 6.
     const r = rulesWith(5);
     let s = runWith(r, [['bedroom', 0, 0]], ['lastMinutePush']);
     s = r.apply(s, { t: 'pass' }).state;
@@ -690,14 +689,15 @@ describe('Last-Minute Push', () => {
     expect(s).toMatchObject({ slot: 3, score: 6 });
     const { state, events } = r.apply(s, { t: 'completeEarly' });
     const ff = talliesIn(events);
-    expect(ff.map((t) => [t.slot, t.fastForward, t.tally.total])).toEqual(
-      Array.from({ length: W - 2 }, (_, k) => [k + 3, true, 3]),
-    );
-    expect(ff.at(-1)!.tally.xMults).toEqual([]);
+    expect(ff.map((t) => [t.slot, t.fastForward, t.tally.total])).toEqual([
+      [3, true, 3],
+      [4, true, 3],
+    ]);
+    expect(ff[1]!.tally.xMults).toEqual([]);
     expect(state.milestones[0]!.result).toBe('early');
-    // The same last week, played.
-    let played = s;
-    while (played.slot < W) played = r.apply(played, { t: 'pass' }).state;
+    // The same week 4, played.
+    const played = r.apply(s, { t: 'pass' }).state;
+    expect(played.slot).toBe(4);
     expect(r.currentTally(played)).toMatchObject({ mult: 200, total: 6 });
   });
 });

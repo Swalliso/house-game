@@ -289,7 +289,7 @@ describe('validateContent', () => {
           fromPhase: 9,
           pieces: ['fence', 'library', 'fence'],
           firstJobPhase: -1,
-          firstJobSlot: CONTENT.balance.weeksPerPhase + 1,
+          firstJobSlot: 5,
           refill: false,
         },
       },
@@ -383,16 +383,10 @@ describe('what a client brings, and the standing stock (D-160)', () => {
 });
 
 describe('a real Hendersons run', () => {
-  it('the twins arrive as Framing starts and Grandma as Drywall does, into the reserve, before the draw', () => {
-    const W = CONTENT.balance.weeksPerPhase;
-    const [framing, drywall] = [2 * W + 1, 4 * W + 1];
+  it('the twins arrive in week 9 and Grandma in week 17, into the reserve, before the draw', () => {
     let s = start('hendersons', 'household-run');
     const arrived: { week: number; arrival: string; reserve: number }[] = [];
-    for (
-      let k = 0;
-      k < 400 && s.week <= drywall && s.screen !== 'lost' && s.screen !== 'won';
-      k++
-    ) {
+    for (let k = 0; k < 400 && s.week <= 17 && s.screen !== 'lost' && s.screen !== 'won'; k++) {
       let a: Action;
       if (s.screen === 'shop') a = s.offers?.pick ? { t: 'pick', i: -1 } : { t: 'leaveShop' };
       else if (s.screen === 'changeOrder') a = { t: 'answerChangeOrder', i: 0 };
@@ -414,11 +408,11 @@ describe('a real Hendersons run', () => {
       }
       s = out.state;
     }
-    // The standing stock's Hallway and Fence came in week 1 (D-162) and wait unplaced, so each
-    // arrival's cards follow them.
+    // D-160: the standing stock's Hallway and Fence came in Foundation's first week (week 5)
+    // and wait unplaced, so each arrival's cards follow them.
     expect(arrived).toEqual([
-      { week: framing, arrival: 'twins', reserve: 3 },
-      { week: drywall, arrival: 'grandma', reserve: 5 },
+      { week: 9, arrival: 'twins', reserve: 3 },
+      { week: 17, arrival: 'grandma', reserve: 5 },
     ]);
     expect(s.reserve).toEqual([
       { id: 'hallway', stock: true },
