@@ -37,11 +37,16 @@ describe('the placeholder sounds', () => {
       const samples = renderSound(id, 44100);
       expect(samples.length, id).toBeGreaterThan(0);
       expect(samples.length / 44100, id).toBeLessThan(2);
+      // One check a sound, not one a sample: about a million `expect` calls took this test to
+      // 4.8–4.9 s on CI, against its 5 s limit.
       let peak = 0;
-      for (const v of samples) {
-        expect(Number.isFinite(v), id).toBe(true);
+      let firstBad = -1;
+      for (let i = 0; i < samples.length; i++) {
+        const v = samples[i]!;
+        if (firstBad < 0 && !Number.isFinite(v)) firstBad = i;
         peak = Math.max(peak, Math.abs(v));
       }
+      expect(firstBad, `${id}: the first sample that isn't finite`).toBe(-1);
       expect(peak, id).toBeGreaterThan(0.01);
       expect(peak, id).toBeLessThanOrEqual(0.95 + 1e-6);
     }
