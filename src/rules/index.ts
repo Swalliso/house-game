@@ -830,6 +830,11 @@ export interface Balance {
   fencedYardMin: number;
   /** D-055: draw-weight percentages by phase (the last row repeats), for complexity 1, 2, and 3. */
   complexityPct: readonly (readonly [number, number, number])[];
+  /**
+   * D-166: the run modes whose lot cards skip that ramp, at full weight from Groundbreaking. A
+   * lot card is a Layout piece but the Hallways and the Fence, which read the house (draw.ts).
+   */
+  lotCardsFullIn: readonly RunMode[];
   /** Run-end verdicts by score band, lowest first (§12, The score's names). */
   verdicts: readonly VerdictDef[];
   /**

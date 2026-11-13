@@ -970,6 +970,8 @@ export const TEST_BALANCE: Balance = {
     [100, 30, 5],
     [100, 60, 25],
   ],
+  // Test draws keep D-055's ramp for every card (D-166's draw is tested with the real content).
+  lotCardsFullIn: [],
   verdicts: [
     { name: 'Fixer-Upper', minPctOfTarget: 0 },
     { name: 'Starter Home', minPctOfTarget: 100 },

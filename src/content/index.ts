@@ -15,6 +15,7 @@ import { isConnected, packShapeProblem, parseShape, shapeCells } from '../rules/
 import { cardText, changeOrderText, modifierText, specText, toolText } from '../rules/text.ts';
 import { DRAW_ROWS, drawableTypes, drawWeights, rowOf } from '../rules/draw.ts';
 import { isType } from '../rules/selectors.ts';
+import { isRunMode } from '../rules/milestones.ts';
 import { BALANCE } from './balance.ts';
 import { BLUEPRINTS } from './blueprints.ts';
 import { CHANGE_ORDERS } from './change-orders.ts';
@@ -705,6 +706,9 @@ export function validateContent(content: Content): string[] {
   });
   if (b.complexityPct.length === 0 || b.complexityPct.some((row) => row.length !== 3)) {
     problems.push('balance: complexityPct needs rows of three');
+  }
+  for (const mode of b.lotCardsFullIn) {
+    if (!isRunMode(mode)) problems.push(`balance: lotCardsFullIn has unknown mode "${mode}"`);
   }
   for (const row of DRAW_ROWS) {
     const size = row === 'rooms' ? b.rules.roomsRow : b.rules.layoutRow;

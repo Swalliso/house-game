@@ -188,6 +188,9 @@ export const BALANCE: Balance = {
     [100, 85, 60],
     [100, 100, 100],
   ],
+  // D-166: in a standard run the lot's cards (the yard, the outbuildings, the Garage) come at
+  // full weight from week 1, while the house is sited; a first job keeps the ramp (D-149).
+  lotCardsFullIn: ['standard'],
 
   // The run-end verdict by final score, as a percentage of the last target (§12).
   verdicts: [

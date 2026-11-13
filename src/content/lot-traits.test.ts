@@ -1,5 +1,6 @@
 // D-166, the lot decides: five lot traits, each a chip with a short blurb, a payoff that lasts
-// the run, and a tilt to the draw toward the cards that use it.
+// the run, and a tilt to the draw toward the cards that use it; and a standard run deals the
+// lot's cards at full weight from week 1.
 
 import { describe, expect, it } from 'vitest';
 import {
@@ -11,7 +12,7 @@ import {
   type PieceId,
   type RunState,
 } from '../rules/index.ts';
-import { drawWeights } from '../rules/draw.ts';
+import { drawWeights, isLotCard } from '../rules/draw.ts';
 import { lotFromRows } from '../rules/lot.ts';
 import { runModifiers } from '../rules/modifiers.ts';
 import { houseFrom } from '../rules/testing.ts';
@@ -118,5 +119,38 @@ describe('lot traits (D-166)', () => {
 
   it('a test’s lot from rows has no shaped trait, however bare', () => {
     expect(lotTraits(CONTENT, lotFromRows(LOT))).toEqual([]);
+  });
+});
+
+describe('lot cards from week 1 (D-166)', () => {
+  it('are the Layout row’s pieces but the Hallways and the Fence', () => {
+    const lotCards = Object.values(CONTENT.pieces)
+      .filter((def) => !def.member && isLotCard(CONTENT, def))
+      .map((def) => def.id);
+    for (const id of ['lawn', 'patio', 'sapling', 'flowerBed', 'herbGarden', 'driveway'] as const) {
+      expect(lotCards).toContain(id);
+    }
+    for (const id of ['treehouse', 'doghouse', 'greenhouse', 'garage', 'birdhouse', 'porch'] as const) {
+      expect(lotCards).toContain(id);
+    }
+    for (const id of ['hallway', 'longHallway', 'fence', 'bedroom', 'kitchen'] as const) {
+      expect(lotCards).not.toContain(id);
+    }
+  });
+
+  it('come at full weight in Groundbreaking, where D-055’s ramp holds the rest back', () => {
+    const at = (full: boolean, id: PieceId) =>
+      drawWeights(CONTENT, 0, { lotCardsFull: full }).find((w) => w.card.id === id)?.weight ?? 0;
+    // Complexity 2 and 3 lot cards: 30% and 5% on the ramp, 100% outside it.
+    expect(at(false, 'flowerBed')).toBe(10 * 30);
+    expect(at(true, 'flowerBed')).toBe(10 * 100);
+    expect(at(false, 'greenhouse')).toBe(10 * 5);
+    expect(at(true, 'greenhouse')).toBe(10 * 100);
+    // Complexity 1 is full either way; the Hallway, the Fence and the rooms keep the ramp.
+    for (const id of ['lawn', 'hallway', 'fence', 'homeOffice'] as const) {
+      expect(at(true, id), id).toBe(at(false, id));
+    }
+    // A standard run's draw has them so; a first job's keeps the ramp.
+    expect(CONTENT.balance.lotCardsFullIn).toEqual(['standard']);
   });
 });

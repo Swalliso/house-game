@@ -816,6 +816,8 @@ export function createRules(content: Content): Rules {
       special,
       atLimit: typesAtLimit(limitsOf(state)),
       row,
+      // D-166: a standard run deals the lot's cards at full weight from week 1.
+      lotCardsFull: b.lotCardsFullIn.includes(state.setup.mode),
     };
   }
 

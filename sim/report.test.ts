@@ -412,8 +412,9 @@ describe('a real run’s record', () => {
   });
 
   it('shares all of the Wow between the pieces and the sets', () => {
-    // A greedy run builds sets, so the sets' row is tested with real Points in it.
-    const { record } = simulateRun(rules, 'sim-3', POLICIES.greedy!, { probePhase: null });
+    // A greedy run builds sets, so the sets' row is tested with real Points in it. (sim-3 was
+    // the seed until D-166's draw lost it.)
+    const { record } = simulateRun(rules, 'sim-5', POLICIES.greedy!, { probePhase: null });
     const pieceWow = Object.values(record.pieces).reduce((n, p) => n + p.wow, 0);
     expect(record.setWow).toBeGreaterThan(0);
     // The run was won, so its leftover budget paid Wow at the last milestone (D-145): the one
