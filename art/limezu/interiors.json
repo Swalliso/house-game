@@ -1,0 +1,752 @@
+{
+  "wardrobe-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/2_LivingRoom_16x16.png",
+    "rect": [114, 68, 27, 39],
+    "note": "A tall oak wardrobe with two doors, against a Bedroom's north wall."
+  },
+  "chest-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/2_LivingRoom_16x16.png",
+    "rect": [52, 245, 25, 21],
+    "note": "A low chest of three drawers."
+  },
+  "nightlamp-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png",
+    "rect": [0, 1150, 15, 18],
+    "note": "A white nightstand with a grey table lamp."
+  },
+  "nightlamp-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png",
+    "rect": [16, 1150, 15, 18],
+    "note": "A white nightstand with a brown table lamp."
+  },
+  "nightlamp-2": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png",
+    "rect": [32, 1150, 15, 18],
+    "note": "A white nightstand with a blue table lamp."
+  },
+  "tv-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png",
+    "rect": [145, 203, 29, 20],
+    "note": "A flat television on its stand."
+  },
+  "ottoman-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/2_LivingRoom_16x16.png",
+    "rect": [33, 123, 30, 18],
+    "note": "A low upholstered bench in pink, for the foot of a bed."
+  },
+  "ottoman-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/2_LivingRoom_16x16.png",
+    "rect": [65, 123, 30, 18],
+    "note": "A low upholstered bench in cream, for the foot of a bed."
+  },
+  "rug-sq-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png",
+    "rect": [113, 1073, 30, 30],
+    "note": "A square olive rug with rounded corners."
+  },
+  "rug-sq-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png",
+    "rect": [161, 1073, 30, 30],
+    "note": "A square orange rug with rounded corners."
+  },
+  "rug-sq-2": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png",
+    "rect": [209, 1073, 30, 30],
+    "note": "A square pale grey rug with rounded corners."
+  },
+  "rug-oval": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png",
+    "rect": [55, 107, 52, 45],
+    "note": "A big oval rug in pale lilac."
+  },
+  "rug-pink": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/4_Bedroom_16x16.png",
+    "rect": [209, 1153, 30, 30],
+    "note": "A square pink rug with white dots."
+  },
+  "lamp-floor-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/2_LivingRoom_16x16.png",
+    "rect": [208, 152, 15, 33],
+    "note": "A standard lamp with a red shade."
+  },
+  "lamp-floor-2": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/2_LivingRoom_16x16.png",
+    "rect": [192, 152, 15, 33],
+    "note": "A standard lamp with a blue shade."
+  },
+  "piano": {
+    "pack": "mi",
+    "file": "3_Animated_objects/16x16/spritesheets/animated_wall_piano.png",
+    "rect": [0, 0, 31, 32],
+    "note": "An upright piano against the wall (the animated piano's first frame)."
+  },
+  "tv-old": {
+    "pack": "mi",
+    "file": "3_Animated_objects/16x16/spritesheets/animated_old_tv.png",
+    "rect": [6, 8, 19, 21],
+    "frames": {
+      "count": 6,
+      "dx": 32,
+      "dy": 0,
+      "ms": 160
+    },
+    "note": "An old television with its aerial, its screen flickering over six frames."
+  },
+  "fishtank": {
+    "pack": "mi",
+    "file": "3_Animated_objects/16x16/spritesheets/animated_fishtank_orange.png",
+    "rect": [4, 7, 24, 23],
+    "frames": {
+      "count": 8,
+      "dx": 32,
+      "dy": 0,
+      "ms": 200
+    },
+    "note": "A fish tank on its cabinet, its fish swimming over eight frames."
+  },
+  "clock": {
+    "pack": "mi",
+    "file": "3_Animated_objects/16x16/spritesheets/animated_cuckoo_clock.png",
+    "rect": [2, 10, 12, 17],
+    "frames": {
+      "count": 10,
+      "dx": 16,
+      "dy": 0,
+      "ms": 150
+    },
+    "note": "A cuckoo clock on the wall, its pendulum swinging over ten frames."
+  },
+  "table-round-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/14_Basement_16x16.png",
+    "rect": [20, 8, 24, 24],
+    "note": "A small round table in pale wood."
+  },
+  "table-round-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/14_Basement_16x16.png",
+    "rect": [20, 56, 24, 24],
+    "note": "A small round table in red wood."
+  },
+  "table-round-2": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/14_Basement_16x16.png",
+    "rect": [20, 104, 24, 24],
+    "note": "A small round table in honey wood."
+  },
+  "plant-palm": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/2_LivingRoom_16x16.png",
+    "rect": [213, 0, 23, 31],
+    "note": "A potted palm."
+  },
+  "plant-ficus": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/2_LivingRoom_16x16.png",
+    "rect": [192, 8, 16, 31],
+    "note": "A slim potted tree."
+  },
+  "plant-leafy": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/2_LivingRoom_16x16.png",
+    "rect": [213, 345, 22, 30],
+    "note": "A big leafy plant in a clay pot."
+  },
+  "sofa-side-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/14_Basement_16x16.png",
+    "rect": [81, 70, 22, 58],
+    "note": "A grey sofa seen from its side, its back to the west: it stands against a west wall, facing east."
+  },
+  "sofa-side-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/14_Basement_16x16.png",
+    "rect": [57, 70, 22, 58],
+    "note": "A grey sofa seen from its side, its back to the east: it stands against an east wall, facing west."
+  },
+  "bookcase-mid-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/5_Classroom_and_library_16x16.png",
+    "rect": [67, 210, 27, 40],
+    "note": "A tall bookcase full of books."
+  },
+  "bookcase-low-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/5_Classroom_and_library_16x16.png",
+    "rect": [130, 219, 27, 31],
+    "note": "A low bookcase full of books."
+  },
+  "side-lamp": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/2_LivingRoom_16x16.png",
+    "rect": [192, 122, 16, 22],
+    "note": "A side table with a lamp on it."
+  },
+  "side-plant": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/2_LivingRoom_16x16.png",
+    "rect": [208, 124, 16, 20],
+    "note": "A side table with a potted plant on it."
+  },
+  "picture-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/1_Generic_16x16.png",
+    "rect": [5, 218, 21, 13],
+    "note": "A framed painting of a forest, hung on the north wall."
+  },
+  "picture-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/1_Generic_16x16.png",
+    "rect": [34, 219, 28, 13],
+    "note": "A framed painting of a sunset, hung on the north wall."
+  },
+  "picture-2": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/1_Generic_16x16.png",
+    "rect": [66, 219, 28, 13],
+    "note": "A framed painting of the sea, hung on the north wall."
+  },
+  "fridge-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png",
+    "rect": [160, 375, 16, 36],
+    "note": "A blue-grey fridge."
+  },
+  "fridge-2": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png",
+    "rect": [176, 375, 16, 36],
+    "note": "A steel-grey fridge."
+  },
+  "mat-kitchen-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png",
+    "rect": [17, 433, 30, 30],
+    "note": "A square blue kitchen mat."
+  },
+  "mat-kitchen-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png",
+    "rect": [65, 433, 30, 30],
+    "note": "A square olive kitchen mat."
+  },
+  "dining-table-3": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png",
+    "rect": [57, 336, 30, 16],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [30, 42],
+        "layers": [
+          {
+            "rect": [57, 348, 30, 26],
+            "at": [0, 16]
+          }
+        ]
+      }
+    ],
+    "note": "A dining table under a red checked cloth, lengthened to the plain tables’ 42 px (four rows of its cloth repeated) so two chairs sit down each side."
+  },
+  "dining-table-4": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png",
+    "rect": [105, 384, 30, 16],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [30, 42],
+        "layers": [
+          {
+            "rect": [105, 396, 30, 26],
+            "at": [0, 16]
+          }
+        ]
+      }
+    ],
+    "note": "A dining table under a white cloth, lengthened to the plain tables’ 42 px (four rows of its cloth repeated) so two chairs sit down each side."
+  },
+  "dining-table-5": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png",
+    "rect": [57, 384, 30, 16],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [30, 42],
+        "layers": [
+          {
+            "rect": [57, 396, 30, 26],
+            "at": [0, 16]
+          }
+        ]
+      }
+    ],
+    "note": "A dining table under a pink checked cloth, lengthened to the plain tables’ 42 px (four rows of its cloth repeated) so two chairs sit down each side."
+  },
+  "hutch": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/2_LivingRoom_16x16.png",
+    "rect": [229, 297, 23, 31],
+    "note": "A china hutch with its plates on show."
+  },
+  "sideboard": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/2_LivingRoom_16x16.png",
+    "rect": [19, 245, 27, 23],
+    "note": "A low sideboard with two doors."
+  },
+  "bath-mat-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/3_Bathroom_16x16.png",
+    "rect": [34, 458, 27, 12],
+    "note": "A blue striped bath mat."
+  },
+  "bath-mat-2": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/3_Bathroom_16x16.png",
+    "rect": [67, 458, 26, 18],
+    "note": "A checked bath mat."
+  },
+  "bath-mat-3": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/3_Bathroom_16x16.png",
+    "rect": [3, 490, 26, 18],
+    "note": "A rainbow striped bath mat."
+  },
+  "hamper-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/3_Bathroom_16x16.png",
+    "rect": [129, 196, 14, 17],
+    "note": "A wicker laundry hamper."
+  },
+  "hamper-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/3_Bathroom_16x16.png",
+    "rect": [145, 196, 14, 17],
+    "note": "A blue laundry hamper."
+  },
+  "lectern": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/5_Classroom_and_library_16x16.png",
+    "rect": [232, 236, 17, 30],
+    "note": "A reading stand with an open book."
+  },
+  "globe-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/5_Classroom_and_library_16x16.png",
+    "rect": [225, 17, 13, 21],
+    "note": "A globe on a silver stand."
+  },
+  "hall-bench-0": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/1_Generic_16x16.png",
+    "rect": [1, 254, 30, 18],
+    "note": "A pale wooden bench."
+  },
+  "hall-bench-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/1_Generic_16x16.png",
+    "rect": [33, 254, 30, 18],
+    "note": "A red wooden bench."
+  },
+  "counter-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png",
+    "rect": [49, 128, 8, 11],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [16, 24],
+        "at": [0, 13],
+        "layers": [
+          {
+            "rect": [103, 128, 8, 11],
+            "at": [8, 13]
+          },
+          {
+            "rect": [144, 54, 8, 10],
+            "at": [0, 3]
+          },
+          {
+            "rect": [184, 54, 8, 10],
+            "at": [8, 3]
+          }
+        ]
+      }
+    ],
+    "note": "A 16 px counter: a pale wood top over cream cabinets."
+  },
+  "counter-sink-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png",
+    "rect": [49, 128, 8, 11],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [32, 24],
+        "at": [0, 13],
+        "layers": [
+          {
+            "rect": [64, 128, 16, 11],
+            "at": [8, 13]
+          },
+          {
+            "rect": [103, 128, 8, 11],
+            "at": [24, 13]
+          },
+          {
+            "rect": [144, 54, 16, 10],
+            "at": [0, 3]
+          },
+          {
+            "rect": [176, 54, 16, 10],
+            "at": [16, 3]
+          },
+          {
+            "rect": [133, 113, 26, 11],
+            "at": [3, 1]
+          }
+        ]
+      }
+    ],
+    "note": "A 32 px counter with its sink: a pale wood top over cream cabinets."
+  },
+  "kitchen-island-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png",
+    "rect": [49, 128, 8, 11],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [40, 25],
+        "at": [0, 14],
+        "layers": [
+          {
+            "rect": [64, 128, 32, 11],
+            "at": [8, 14]
+          },
+          {
+            "rect": [103, 128, 8, 11],
+            "at": [32, 14]
+          },
+          {
+            "rect": [144, 54, 24, 10],
+            "at": [0, 4]
+          },
+          {
+            "rect": [176, 54, 16, 10],
+            "at": [24, 4]
+          },
+          {
+            "rect": [17, 369, 13, 11],
+            "at": [14, 0]
+          }
+        ]
+      }
+    ],
+    "note": "The Kitchen Island in the pale wood over cream counters, with its bowl of fruit."
+  },
+  "kitchen-island-1-24": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png",
+    "rect": [49, 128, 8, 11],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [24, 25],
+        "at": [0, 14],
+        "layers": [
+          {
+            "rect": [64, 128, 8, 11],
+            "at": [8, 14]
+          },
+          {
+            "rect": [103, 128, 8, 11],
+            "at": [16, 14]
+          },
+          {
+            "rect": [144, 54, 8, 10],
+            "at": [0, 4]
+          },
+          {
+            "rect": [152, 54, 8, 10],
+            "at": [8, 4]
+          },
+          {
+            "rect": [184, 54, 8, 10],
+            "at": [16, 4]
+          },
+          {
+            "rect": [17, 369, 13, 11],
+            "at": [5, 0]
+          }
+        ]
+      }
+    ],
+    "note": "A 24 px Kitchen Island in the pale wood over cream counters."
+  },
+  "kitchen-island-1-16": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png",
+    "rect": [49, 128, 8, 11],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [16, 25],
+        "at": [0, 14],
+        "layers": [
+          {
+            "rect": [103, 128, 8, 11],
+            "at": [8, 14]
+          },
+          {
+            "rect": [144, 54, 8, 10],
+            "at": [0, 4]
+          },
+          {
+            "rect": [184, 54, 8, 10],
+            "at": [8, 4]
+          },
+          {
+            "rect": [17, 369, 13, 11],
+            "at": [1, 0]
+          }
+        ]
+      }
+    ],
+    "note": "A 16 px Kitchen Island in the pale wood over cream counters."
+  },
+  "counter-2": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png",
+    "rect": [49, 144, 8, 11],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [16, 24],
+        "at": [0, 13],
+        "layers": [
+          {
+            "rect": [103, 144, 8, 11],
+            "at": [8, 13]
+          },
+          {
+            "rect": [64, 70, 8, 10],
+            "at": [0, 3]
+          },
+          {
+            "rect": [104, 70, 8, 10],
+            "at": [8, 3]
+          }
+        ]
+      }
+    ],
+    "note": "A 16 px counter: a blue top over honey cabinets."
+  },
+  "counter-sink-2": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png",
+    "rect": [49, 144, 8, 11],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [32, 24],
+        "at": [0, 13],
+        "layers": [
+          {
+            "rect": [64, 144, 16, 11],
+            "at": [8, 13]
+          },
+          {
+            "rect": [103, 144, 8, 11],
+            "at": [24, 13]
+          },
+          {
+            "rect": [64, 70, 16, 10],
+            "at": [0, 3]
+          },
+          {
+            "rect": [96, 70, 16, 10],
+            "at": [16, 3]
+          },
+          {
+            "rect": [133, 113, 26, 11],
+            "at": [3, 1]
+          }
+        ]
+      }
+    ],
+    "note": "A 32 px counter with its sink: a blue top over honey cabinets."
+  },
+  "kitchen-island-2": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png",
+    "rect": [49, 144, 8, 11],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [40, 25],
+        "at": [0, 14],
+        "layers": [
+          {
+            "rect": [64, 144, 32, 11],
+            "at": [8, 14]
+          },
+          {
+            "rect": [103, 144, 8, 11],
+            "at": [32, 14]
+          },
+          {
+            "rect": [64, 70, 24, 10],
+            "at": [0, 4]
+          },
+          {
+            "rect": [96, 70, 16, 10],
+            "at": [24, 4]
+          },
+          {
+            "rect": [17, 369, 13, 11],
+            "at": [14, 0]
+          }
+        ]
+      }
+    ],
+    "note": "The Kitchen Island in the blue over honey counters, with its bowl of fruit."
+  },
+  "kitchen-island-2-24": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png",
+    "rect": [49, 144, 8, 11],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [24, 25],
+        "at": [0, 14],
+        "layers": [
+          {
+            "rect": [64, 144, 8, 11],
+            "at": [8, 14]
+          },
+          {
+            "rect": [103, 144, 8, 11],
+            "at": [16, 14]
+          },
+          {
+            "rect": [64, 70, 8, 10],
+            "at": [0, 4]
+          },
+          {
+            "rect": [72, 70, 8, 10],
+            "at": [8, 4]
+          },
+          {
+            "rect": [104, 70, 8, 10],
+            "at": [16, 4]
+          },
+          {
+            "rect": [17, 369, 13, 11],
+            "at": [5, 0]
+          }
+        ]
+      }
+    ],
+    "note": "A 24 px Kitchen Island in the blue over honey counters."
+  },
+  "kitchen-island-2-16": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png",
+    "rect": [49, 144, 8, 11],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [16, 25],
+        "at": [0, 14],
+        "layers": [
+          {
+            "rect": [103, 144, 8, 11],
+            "at": [8, 14]
+          },
+          {
+            "rect": [64, 70, 8, 10],
+            "at": [0, 4]
+          },
+          {
+            "rect": [104, 70, 8, 10],
+            "at": [8, 4]
+          },
+          {
+            "rect": [17, 369, 13, 11],
+            "at": [1, 0]
+          }
+        ]
+      }
+    ],
+    "note": "A 16 px Kitchen Island in the blue over honey counters."
+  },
+  "pc-old": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/5_Classroom_and_library_16x16.png",
+    "rect": [0, 167, 16, 19],
+    "note": "An old computer on its stand."
+  },
+  "clothes-rail-1": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/21_Clothing_Store.png",
+    "rect": [149, 284, 22, 22],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [22, 24],
+        "layers": [
+          {
+            "rect": [149, 252, 22, 4],
+            "at": [0, 0]
+          },
+          {
+            "rect": [149, 307, 22, 2],
+            "at": [0, 22]
+          }
+        ]
+      }
+    ],
+    "note": "A clothes rail of green and blue shirts, under the first rail’s bar."
+  },
+  "clothes-rail-2": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/21_Clothing_Store.png",
+    "rect": [149, 316, 22, 22],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [22, 24],
+        "layers": [
+          {
+            "rect": [149, 252, 22, 4],
+            "at": [0, 0]
+          },
+          {
+            "rect": [149, 339, 22, 2],
+            "at": [0, 22]
+          }
+        ]
+      }
+    ],
+    "note": "A clothes rail of pink and red shirts, under the first rail’s bar."
+  }
+}
