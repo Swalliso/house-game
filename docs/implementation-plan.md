@@ -1454,7 +1454,7 @@ The team treats reward feel as core: big combos should feel like Balatro and Com
    - the next note of the pitch ladder
    - a squash-and-wobble on the piece
    - a tiny screen-shake impulse
-2. **Sets held light up next,** each adding its Points (Points color) and its +Mult (Mult color, with a warmer chime). Then each spec met adds +Mult. The score panel lists the sets; on a window under 1000 px tall it folds them into one row (and keeps to its equation while a play is looked at), how many with their Points and Mult added up and the list in its tip, a set a line. In the tally that row counts up from "0 sets" with the sets counted so far, lighting with each one, its numbers popping (D-098's 2026-11-08 change, D-110).
+2. **Sets held light up next,** each adding its Points (Points color) and its +Mult (Mult color, with a warmer chime). Then each spec met adds +Mult. At rest the score panel is its equation alone (D-167), with the sets listed in the Comfort plaque's tip, a set a line. As the tally starts, a sets row and a checklist row slide in under it: the sets row counts up from "0 sets" with the sets counted so far, lighting with each one, its numbers popping (D-110), and both slide away once the tally ends.
 3. **Each ×Mult source then lands on its own:** a gold "×2" stamp, a heavier, lower sound, and a bigger wobble. It's the heaviest-sounding moment in a normal week.
 4. **The multiply moment:**
    - a 0.4 s pause

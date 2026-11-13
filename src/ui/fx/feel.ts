@@ -13,8 +13,8 @@ export const FEEL = {
     /** And no popup is shorter than this. */
     popupMinMs: 350,
     /**
-     * Each set held lights up, adding Comfort, then Charm. Also how long the score panel's
-     * folded sets row stays lit when the sets change outside a tally (D-098's 2026-11-08 change).
+     * Each set held lights up, adding Comfort, then Charm, and the score panel's sets row with
+     * it.
      */
     setStepMs: 700,
     /** The pause before Comfort × Charm collapse into the week's total. */
@@ -495,6 +495,11 @@ export const FEEL = {
     modal: 180,
     /** The milestone meter's fill and forecast sliding to a new value. */
     meter: 250,
+    /**
+     * The score panel's sets and checklist rows sliding in under its equation as a tally starts,
+     * and away once it ends (D-167): at rest the panel is the equation alone.
+     */
+    detail: 200,
     /** The shop's sheet sliding up over the board. */
     sheet: 260,
     /** A milestone's ribbon stamping in (it stays up for bannerMs). */

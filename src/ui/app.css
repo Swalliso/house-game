@@ -230,21 +230,14 @@ button:where(:not(.btn, .pcard, .inv-slot, .seg, .check-fold, .howto-fold)):focu
   min-height: 0;
   max-height: calc(100% - var(--first-hint-room, 0px) - var(--space-2));
 }
-/* Under 1000 px tall (D-098, amended 2026-11-08), the score panel's sets fold into one row
-   (ScorePanel.tsx SetsFold), the whole list in its tip, so late in a run the checklist keeps its
-   room: the list took up to 612 px of a 1280×720 column's 656. While a play is looked at, the
-   panel keeps to its equation (2026-11-09: the list came back between 800 and 1000 px, and late
-   in a run pushed Inspect's total below a 1536×864 window): Inspect's notes say which sets,
-   checklist lines and budget the play would change, and the checklist marks the lines. With
-   nothing looked at, the idle Inspect gives way first, down to its plank (its body scrolls). */
+/* The score panel is its equation at rest and while a play is looked at, its sets' and
+   checklist's rows only in a tally (D-167, score.css; before it, the sets folded into one row
+   under 1000 px tall, D-098's 2026-11-08 change). Under 1000 px tall, while a play is looked at,
+   its budget line goes too (2026-11-09: late in a run it pushed Inspect's total below a
+   1536×864 window): Inspect's notes say which sets, checklist lines and budget the play would
+   change, and the checklist marks the lines. With nothing looked at, the idle Inspect gives way
+   first, down to its plank (its body scrolls). */
 @media (height < 1000px) {
-  .score-panel .sets-full {
-    display: none;
-  }
-  .score-panel .sets-fold {
-    display: block;
-  }
-  .left.looking .score-detail,
   .left.looking .score-panel .budget-line {
     display: none;
   }
