@@ -43,6 +43,7 @@ import type {
 import { placedCells } from './grid.ts';
 import { createRules, IllegalAction, type Rules } from './run.ts';
 import { decodeRunCode, encodeRunCode, contentHash } from './runcode.ts';
+import { cardText } from './text.ts';
 import {
   emptyRows,
   houseFrom,
@@ -315,11 +316,16 @@ describe('extending a room', () => {
     expect(r.checklist(state)[0]).toMatchObject({ id: 'beds', met: false });
   });
 
-  it('from the reserve, the reserve card is spent', () => {
-    const s = build(BEDROOM, { reserve: [{ id: 'bedroom' }] });
+  it('from the reserve, the reserve card is spent, and the week goes on (D-163, D-169)', () => {
+    const s = build(BEDROOM, { reserve: [{ id: 'bedroom' }], hand: [pc('closet')] });
     expect(R.extendTargets(s, 'reserve', 0)).toEqual([1]);
-    const { state } = R.apply(s, extend(0, 1, 4, 2, 0, 'reserve'));
-    expect(state.reserve).toEqual([]);
+    const play = extend(0, 1, 4, 2, 0, 'reserve');
+    // Your goods are free: extending with one is too, by the same rule as placing one.
+    expect(R.endsWeek(s, play)).toBe(false);
+    const { state, events } = R.apply(s, play);
+    expect(types(events)).toEqual(['extended']);
+    expect(eventsOf(events, 'extended')[0]).not.toHaveProperty('free');
+    expect(state).toMatchObject({ week: 1, slot: 1, reserve: [], hand: [pc('closet')] });
     expect(pieceOf(state, 1).extended).toBe(1);
   });
 
@@ -391,6 +397,37 @@ describe('Renovate is the fallback', () => {
       legal: true,
       renovate: { uid: 1, level: 1, card: 'kitchen' },
     });
+  });
+});
+
+describe('a card at its per-house cap (D-165) extends where it can (D-169)', () => {
+  const capped = createRules(withPieces({ kitchen: { perHouse: 1 } }, contentWith([])));
+
+  it('has no spot on the lot, grows a room that can grow, and renovates only one boxed in', () => {
+    const open = build([['kitchen', 2, 2]], { rules: capped, hand: [pc('kitchen')] });
+    expect(capped.cardFits(open, 0)).toBe(false);
+    expect(capped.extendTargets(open, 'hand', 0)).toEqual([1]);
+    expect(capped.renovateTargets(open, 'hand', 0)).toEqual([]);
+    expect(
+      capped.checkPlay(open, { t: 'place', from: 'hand', i: 0, x: 8, y: 2, rot: 0 }),
+    ).toMatchObject({
+      legal: false,
+      reason: 'The house has its Kitchen: this card extends or renovates it.',
+    });
+    const boxed = build(
+      [
+        ['kitchen', 0, 0],
+        ['closet', 2, 1],
+        ['closet', 0, 2],
+      ],
+      { rules: capped, hand: [pc('kitchen')] },
+    );
+    expect(capped.extendTargets(boxed, 'hand', 0)).toEqual([]);
+    expect(capped.renovateTargets(boxed, 'hand', 0)).toEqual([1]);
+    // The card says both, in D-165's six words.
+    expect(cardText(capped.content, capped.content.pieces.kitchen).perHouse).toBe(
+      'One per house: extend or renovate.',
+    );
   });
 });
 
