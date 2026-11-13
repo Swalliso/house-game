@@ -326,7 +326,9 @@ describe('the real rules', () => {
         weeks++;
       }
       expect(['won', 'lost']).toContain(s.screen);
-      expect(weeks).toBeLessThanOrEqual(30);
+      // Every milestone's weeks, and the run's overtime.
+      const b = CONTENT.balance;
+      expect(weeks).toBeLessThanOrEqual(b.phases.length * b.weeksPerPhase + b.rules.overtime);
     }
     // A shared CI runner can be several times slower than a laptop.
   }, 30_000);

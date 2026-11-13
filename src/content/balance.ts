@@ -51,7 +51,7 @@ export const BALANCE: Balance = {
     pondTiles: [14, 20],
   },
 
-  weeksPerPhase: 4, // D-042
+  weeksPerPhase: 5, // D-042, D-170
 
   // D-018's seven milestones. The targets are written by `npm run sim -- --suggest-targets`
   // (D-044): α × the greedy bot's median cumulative Wow at each milestone. Keep the markers.
