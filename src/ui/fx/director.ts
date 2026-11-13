@@ -1628,6 +1628,21 @@ function sheetBeat(e: GameEvent, after: RunState): void {
     case 'delivered':
       deliveredBeat(e, after);
       break;
+    case 'crewTool': {
+      // D-171: the crew's tool is in the supplies as the milestone's first week opens (or sold,
+      // with the supplies full): a neutral flash names it, with the delivery's shimmer.
+      const name = CONTENT.tools[e.tool].name;
+      flash.value = {
+        id: nextId++,
+        text:
+          e.sold === undefined
+            ? `Your crew brought a ${name}`
+            : `Supplies full: ${name} sold for ${num(e.sold)}`,
+        tone: 'note',
+      };
+      audio.play('sparkle', { gain: 0.5 });
+      break;
+    }
     default:
       break;
   }

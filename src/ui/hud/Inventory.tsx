@@ -133,7 +133,7 @@ function ReserveSlot({ r, i, building }: { r: ReservePiece; i: number; building:
   const s = run.value;
   const def = CONTENT.pieces[r.id];
   const fits = reserveFit.value[i] ?? true;
-  const extra = extraSlotWords(s.setup.clientId, r);
+  const extra = extraSlotWords(s.setup.clientId, r, s.setup.crewId);
   const pop = popOf(r, i);
   const whose = extra?.whose ?? '';
   const classes = [

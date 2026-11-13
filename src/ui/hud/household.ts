@@ -11,6 +11,7 @@ import {
   type ArrivalId,
   type ClientDef,
   type ClientId,
+  type CrewId,
   type PieceId,
   type ReservePiece,
   type RunState,
@@ -103,8 +104,22 @@ function possessive(name: string): string {
 export function extraSlotWords(
   clientId: ClientId,
   r: ReservePiece,
+  /** The run's crew: a card from its stock (D-171) says another comes each milestone. */
+  crewId?: CrewId,
 ): { tag: string; whose: string; from: string; note?: string } | null {
-  if (r.crew) return { tag: 'Crew', whose: ' (your crew’s)', from: 'Your crew’s, from the start' };
+  if (r.crew) {
+    // D-171: a crew's card comes from its stock, one each milestone; a starting card (M4b) came
+    // once. The note is the stock's, in as many words (16).
+    const stocked = !!crewId && (CONTENT.crews[crewId].stock ?? []).includes(r.id);
+    return {
+      tag: 'Crew',
+      whose: ' (your crew’s)',
+      from: stocked ? 'From your crew' : 'Your crew’s, from the start',
+      ...(stocked && {
+        note: 'From your crew, in an extra slot, not one of your reserve’s. Another comes each milestone.',
+      }),
+    };
+  }
   if (r.arrival !== undefined) {
     const member = arrivalOf(clientId, r.arrival);
     if (!member) return null;
