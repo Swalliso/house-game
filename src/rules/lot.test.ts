@@ -302,7 +302,10 @@ describe('lot kinds (D-166)', () => {
         for (let y = 0; y < now.height; y++) {
           for (let x = 0; x < now.width; x++) {
             if (terrainAt(now, x, y) !== 'tree') continue;
-            for (const [dx, dy] of [[1, 0], [0, 1]] as const) {
+            for (const [dx, dy] of [
+              [1, 0],
+              [0, 1],
+            ] as const) {
               expect(terrainAt(now, x + dx, y + dy)).not.toBe('tree');
             }
           }

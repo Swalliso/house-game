@@ -20,7 +20,12 @@ import { houseFrom } from '../rules/testing.ts';
 const R = createRules(CONTENT);
 /** Juniper: no taste for a yard piece or for anything by the lot's features, and no pool. */
 const start = () =>
-  R.newRun({ seed: 'lot-traits', clientId: 'juniper', crewId: 'generalContractor', mode: 'standard' });
+  R.newRun({
+    seed: 'lot-traits',
+    clientId: 'juniper',
+    crewId: 'generalContractor',
+    mode: 'standard',
+  });
 
 describe('lot traits (D-166)', () => {
   it('each pays all run, tilts the draw, and says so in eight words or fewer', () => {
@@ -46,7 +51,10 @@ describe('lot traits (D-166)', () => {
       open: ['lawn', 'herbGarden'],
     };
     for (const [id, pieces] of Object.entries(tilted) as [LotTraitId, PieceId[]][]) {
-      const s: RunState = { ...start(), house: { ...start().house, lot: { ...start().house.lot, traits: [id] } } };
+      const s: RunState = {
+        ...start(),
+        house: { ...start().house, lot: { ...start().house.lot, traits: [id] } },
+      };
       const all = runModifiers(CONTENT, s);
       expect(all.filter((a) => a.source.kind === 'lot').map((a) => a.source)).toContainEqual({
         kind: 'lot',
@@ -81,9 +89,16 @@ describe('lot traits (D-166)', () => {
 
   it('Rocky: pieces touching a Boulder earn +50%', () => {
     // Two Bedrooms, each 3 + 1 for the other (Quiet). The top one touches the Boulder at (2, 1).
-    const [top, below] = tally(withAt('B', 2, 1), [['bedroom', 0, 0], ['bedroom', 0, 2]], {
-      kind: 'rocky',
-    });
+    const [top, below] = tally(
+      withAt('B', 2, 1),
+      [
+        ['bedroom', 0, 0],
+        ['bedroom', 0, 2],
+      ],
+      {
+        kind: 'rocky',
+      },
+    );
     expect(top).toMatchObject({ points: 4, pct: 50, earned: 6 });
     expect(top!.lines.filter((l) => l.op === 'pct')).toEqual([
       { label: 'Rocky', op: 'pct', value: 50, from: [] },
@@ -94,9 +109,16 @@ describe('lot traits (D-166)', () => {
   });
 
   it('Pondside: pieces touching the pond earn double', () => {
-    const [top, below] = tally(withAt('P', 2, 1), [['bedroom', 0, 0], ['bedroom', 0, 2]], {
-      kind: 'pond',
-    });
+    const [top, below] = tally(
+      withAt('P', 2, 1),
+      [
+        ['bedroom', 0, 0],
+        ['bedroom', 0, 2],
+      ],
+      {
+        kind: 'pond',
+      },
+    );
     expect(top).toMatchObject({ points: 4, pct: 100, earned: 8 });
     expect(below).toMatchObject({ points: 4, pct: 0, earned: 4 });
   });
@@ -109,9 +131,17 @@ describe('lot traits (D-166)', () => {
 
   it('Open: yard pieces earn double, and rooms don’t', () => {
     // Two Lawns touching: 1 + 1 each, in front of the Bedroom.
-    const [bed, a, b] = tally(LOT, [['bedroom', 0, 0], ['lawn', 2, 4], ['lawn', 3, 4]], {
-      kind: 'open',
-    });
+    const [bed, a, b] = tally(
+      LOT,
+      [
+        ['bedroom', 0, 0],
+        ['lawn', 2, 4],
+        ['lawn', 3, 4],
+      ],
+      {
+        kind: 'open',
+      },
+    );
     expect(bed).toMatchObject({ pct: 0 });
     expect(a).toMatchObject({ points: 2, pct: 100, earned: 4 });
     expect(b).toMatchObject({ points: 2, pct: 100, earned: 4 });
@@ -130,7 +160,14 @@ describe('lot cards from week 1 (D-166)', () => {
     for (const id of ['lawn', 'patio', 'sapling', 'flowerBed', 'herbGarden', 'driveway'] as const) {
       expect(lotCards).toContain(id);
     }
-    for (const id of ['treehouse', 'doghouse', 'greenhouse', 'garage', 'birdhouse', 'porch'] as const) {
+    for (const id of [
+      'treehouse',
+      'doghouse',
+      'greenhouse',
+      'garage',
+      'birdhouse',
+      'porch',
+    ] as const) {
       expect(lotCards).toContain(id);
     }
     for (const id of ['hallway', 'longHallway', 'fence', 'bedroom', 'kitchen'] as const) {

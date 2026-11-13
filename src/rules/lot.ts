@@ -312,7 +312,8 @@ function growPond(lot: Lot, rng: Rng, b: LotBalance): Lot | null {
         if ((t !== null && t !== 'tree') || nearCreek(x, y)) continue;
         let n = 0;
         for (const [dx, dy] of ORTHOGONAL) {
-          if (inBounds(w, h, x + dx, y + dy) && terrain[cellIndex(w, x + dx, y + dy)] === 'pond') n++;
+          if (inBounds(w, h, x + dx, y + dy) && terrain[cellIndex(w, x + dx, y + dy)] === 'pond')
+            n++;
         }
         if (n === 0 || n < most) continue;
         if (n > most) {

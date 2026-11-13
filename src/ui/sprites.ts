@@ -110,14 +110,14 @@ export const CREW_ICONS: Record<CrewId, IconName> = {
 /**
  * Each lot trait's icon (D-119), on its chip on the contract's card and beside the crew's on the
  * checklist: the Wet tag's drop for the creek, the Green tag's leaf for the woods, and (D-166) a
- * pond, a Boulder, and the Sunny tag's sun for an Open lot.
+ * pond, a Boulder, and a meadow for an Open lot (not the sun: the lot's sun chip sits beside it).
  */
 export const LOT_TRAIT_ICONS: Record<LotTraitId, IconName> = {
   creekside: 'Wet',
   pondside: 'pond',
   wooded: 'Green',
   rocky: 'boulder',
-  open: 'Sunny',
+  open: 'meadow',
 };
 
 /** A sprite's rect in the atlas (an animation's first frame). */
