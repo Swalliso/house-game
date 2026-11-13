@@ -18,11 +18,19 @@
 // terrain; the board's scroll area keeps room for it above the lot (geometry.ts CANOPY_ROOM).
 // Both redraw before the browser paints (once the atlas has loaded), so a tree cleared for a
 // piece goes in the same frame the piece appears. No canvas takes the pointer.
-// Over the group, under the pieces, a soft tint shows the house's fenced yards.
+// Over the group, under the pieces, a soft tint shows the house's fenced yards, and while a card
+// that reads one is picked, the front or the back yard (D-166).
 
 import type { JSX } from 'preact';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { rules, type Cell, type HouseState, type Lot, type RunState } from '../../rules/index.ts';
+import {
+  rules,
+  type Cell,
+  type HouseState,
+  type Lot,
+  type RunState,
+  type Yard,
+} from '../../rules/index.ts';
 import { atlasImage, CELL, withAtlasImage } from '../sprites.ts';
 import { boardRows, cellsOutline, occupancy, uidAt } from './geometry.ts';
 import { sheetRect } from './terrain/atlas.ts';
@@ -345,6 +353,37 @@ export function Outline({
       <path class="fill" d={fill} />
       <path class="edge" d={edge} />
     </svg>
+  );
+}
+
+/**
+ * D-166: the yard a picked card reads (rules.yardTiles), the front or the back, shaded under the
+ * pieces while it's picked, so where its "in the back yard" pays is on the board itself. Before
+ * the house has a room the whole lot is front yard (layout.ts), so a back-yard card shows none.
+ */
+export function SideTint({
+  state,
+  yards,
+  scale,
+}: {
+  state: RunState;
+  yards: readonly Yard[];
+  scale: number;
+}) {
+  const { house } = state;
+  const cells = useMemo(() => {
+    const w = house.lot.width;
+    return yards.map((yard) => ({
+      yard,
+      cells: rules.yardTiles(state, yard).map((i) => ({ x: i % w, y: Math.floor(i / w) })),
+    }));
+  }, [house, yards.join()]); // The yards depend only on the house.
+  return (
+    <>
+      {cells.map(({ yard, cells: c }) => (
+        <Outline key={yard} cells={c} scale={scale} lot={house.lot} class={`side-tint ${yard}`} />
+      ))}
+    </>
   );
 }
 

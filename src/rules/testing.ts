@@ -951,6 +951,10 @@ export const TEST_LOT_BALANCE: LotBalance = {
   oldSheds: [0, 0],
   timeCapsules: [0, 0],
   findStreetGap: 4,
+  // Generated test lots stay plain (D-166), as they were drawn before lot kinds.
+  kinds: { plain: 1, rocky: 0, open: 0, pond: 0 },
+  rockyBoulders: [8, 12],
+  pondTiles: [14, 20],
 };
 
 export const TEST_BALANCE: Balance = {
@@ -1022,6 +1026,8 @@ export const TEST_BALANCE: Balance = {
     [100, 30, 5],
     [100, 60, 25],
   ],
+  // Test draws keep D-055's ramp for every card (D-166's draw is tested with the real content).
+  lotCardsFullIn: [],
   verdicts: [
     { name: 'Fixer-Upper', minPctOfTarget: 0 },
     { name: 'Starter Home', minPctOfTarget: 100 },
@@ -1381,8 +1387,9 @@ export const TEST_CHANGE_ORDERS: Record<ChangeOrderId, ChangeOrderDef> = {
 };
 
 /**
- * The lot traits (D-119), without modifiers: generated test lots have creeks on 70% of seeds,
- * and Creekside would change their scores. Tests of Creekside give it its pay (modifiers.test.ts).
+ * The lot traits (D-119, D-166), without modifiers: generated test lots have creeks on 70% of
+ * seeds, and Creekside would change their scores. Tests of a trait's pay give it its modifiers
+ * (modifiers.test.ts).
  */
 export const TEST_LOT_TRAITS: Record<LotTraitId, LotTraitDef> = {
   creekside: {
@@ -1392,6 +1399,13 @@ export const TEST_LOT_TRAITS: Record<LotTraitId, LotTraitDef> = {
     when: { terrain: 'creek', min: 1 },
     modifiers: [],
   },
+  pondside: {
+    id: 'pondside',
+    name: 'Pondside',
+    blurb: 'A big pond.',
+    when: { kind: 'pond' },
+    modifiers: [],
+  },
   wooded: {
     id: 'wooded',
     name: 'Wooded',
@@ -1399,6 +1413,20 @@ export const TEST_LOT_TRAITS: Record<LotTraitId, LotTraitDef> = {
     when: { terrain: 'tree', min: 100 },
     modifiers: [],
     suits: ['vladislav'],
+  },
+  rocky: {
+    id: 'rocky',
+    name: 'Rocky',
+    blurb: 'Lots of Boulders.',
+    when: { kind: 'rocky' },
+    modifiers: [],
+  },
+  open: {
+    id: 'open',
+    name: 'Open',
+    blurb: 'Few Trees.',
+    when: { kind: 'open' },
+    modifiers: [],
   },
 };
 

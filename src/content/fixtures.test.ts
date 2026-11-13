@@ -392,7 +392,8 @@ describe('Bay Window', () => {
         ],
         [[1, 'bayWindow']],
       ),
-    ).toEqual([4, 2]); // the window's view and the sun
+      // The window's view and the sun; the Patio's +2 for the Living Room and +1 out back (D-166).
+    ).toEqual([4, 3]);
   });
 
   it('fits an exterior room, checked when it’s installed; it stays if the room becomes interior', () => {
@@ -449,13 +450,14 @@ describe('Pergola', () => {
     expect(earned(open, closet, [[1, 'pergola']])).toEqual([2, 1]);
     // Alone it touches no room, so it earns nothing, Pergola or not (the Patio rule, D-105).
     expect(earned(open, [['patio', 0, 0]], [[1, 'pergola']])).toEqual([0]);
-    // Beside a Kitchen (in the sun, +2, and +3 of its own, D-165): (2 + 1) at +50% is 4.5 → 5.
+    // Beside a Kitchen (in the sun, +2, and +3 of its own, D-165), out back (+1, D-166): the
+    // Patio's (2 + 1 + 1) at +50% is 6.
     const kitchen: Placement[] = [
       ['patio', 2, 0],
       ['kitchen', 0, 0],
     ];
-    expect(earned(open, kitchen)).toEqual([2, 5]);
-    expect(earned(open, kitchen, [[1, 'pergola']])).toEqual([5, 5]);
+    expect(earned(open, kitchen)).toEqual([3, 5]);
+    expect(earned(open, kitchen, [[1, 'pergola']])).toEqual([6, 5]);
     // Three Trees and the Pergola's view, beside a Closet: four views, three count: 3 at +50%.
     const trees = ['.TT.', 'T...', ...emptyRows(4, 2)];
     const wooded: Placement[] = [
@@ -475,7 +477,7 @@ describe('Garden Lights', () => {
       '+50% more in the front yard',
     ]);
     // The Bedroom's front row is row 1: a Lawn in rows 4–5 is front yard (1 at +50%: 2); one
-    // in rows 0–1 is back yard (1).
+    // in rows 0–1 is back yard (1, and +1 out back, D-166).
     const placements: Placement[] = [
       ['bedroom', 0, 0],
       ['lawn', 4, 4],
@@ -485,7 +487,7 @@ describe('Garden Lights', () => {
       [2, 'gardenLights'],
       [3, 'gardenLights'],
     ];
-    expect(earned(open, placements, installs)).toEqual([3, 2, 1]);
+    expect(earned(open, placements, installs)).toEqual([3, 2, 2]);
     const layout = layoutOf(open, placements, installs);
     expect(layout.tags.get(2)!.has('Pretty')).toBe(true);
     expect(layout.tags.get(3)!.has('Pretty')).toBe(true);

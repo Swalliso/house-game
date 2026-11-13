@@ -43,6 +43,19 @@
 .yard-tint .fill {
   fill: var(--yard-tint-fill);
 }
+/* D-166: the front or the back yard while a card that reads it is picked. */
+.side-tint {
+  z-index: var(--z-yard-tint);
+}
+.side-tint .fill {
+  fill: var(--side-tint-fill);
+}
+.side-tint .edge {
+  stroke: var(--side-tint-edge);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+  stroke-linecap: butt;
+}
 .yard-tint .edge {
   stroke: var(--yard-tint-edge);
   stroke-width: 2;

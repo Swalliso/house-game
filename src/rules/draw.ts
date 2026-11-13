@@ -54,6 +54,15 @@ function weighted(def: PieceDef, base: number, mods: readonly Modifier[]): numbe
   return Math.max(0, Math.floor(((base + add) * Math.max(0, 100 + pct)) / 100));
 }
 
+/**
+ * A lot card (D-166): a Layout piece that reads the lot, so the yard pieces, the outbuildings
+ * and the Garage. The Hallways (connectors) and the Fence (a wall) are build-arounds that read
+ * the house, and keep D-055's ramp in every run.
+ */
+export function isLotCard(content: Content, def: PieceDef): boolean {
+  return rowOf(content, { kind: 'piece', id: def.id }) === 'layout' && !def.connector && !def.wall;
+}
+
 export interface DrawOptions {
   struck?: readonly CardType[];
   /** The run's modifiers; only `drawWeight` ones count. */
@@ -64,6 +73,8 @@ export interface DrawOptions {
   atLimit?: ReadonlySet<PieceId>;
   /** Only this row's cards (D-121); unset, every card. */
   row?: DrawRow;
+  /** Lot cards at full weight, outside D-055's ramp (D-166: a standard run's draw). */
+  lotCardsFull?: boolean;
   /**
    * A reroll's (D-132): the cards it replaces. They're left out while enough others remain;
    * when too few do, the rest are drawn from them. The pool's weights don't change.
@@ -91,8 +102,10 @@ export function drawWeights(
       weight = def.drawWeight === 0 ? 100 : 0;
     } else {
       // Weights in hundredths (drawWeight × percent), so nothing rounds away: a weight-10
-      // complexity-3 piece at 5% stays drawable, just rarely (D-055).
-      weight = weighted(def, def.drawWeight, mods) * row[def.complexity - 1]!;
+      // complexity-3 piece at 5% stays drawable, just rarely (D-055). A standard run's lot
+      // cards skip the ramp (D-166).
+      const pct = opts.lotCardsFull && isLotCard(content, def) ? 100 : row[def.complexity - 1]!;
+      weight = weighted(def, def.drawWeight, mods) * pct;
     }
     if (opts.atLimit?.has(rootType(def))) {
       weight = Math.floor((weight * content.balance.drawAtLimitPct) / 100);

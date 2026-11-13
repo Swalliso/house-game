@@ -179,7 +179,7 @@ import {
   type Layout,
   type LayoutModifier,
 } from './layout.ts';
-import { generateLot } from './lot.ts';
+import { generateLot, withTraits } from './lot.ts';
 import {
   earlyBonus,
   isRunMode,
@@ -206,7 +206,7 @@ import { stream } from './rng.ts';
 import { canUseTool, useTool, type ToolCtx } from './tools.ts';
 import { wowParts } from './attribution.ts';
 import { ageOf, onCadence, tallyHouse, unmetRequirement, type TallyContext } from './scoring.ts';
-import { isType, matchesPiece, rootType } from './selectors.ts';
+import { isType, matchesPiece, rootType, type Yard } from './selectors.ts';
 import { setProgress as setProgressOf } from './sets.ts';
 import { isRoom } from './layout.ts';
 import {
@@ -372,6 +372,11 @@ export interface Rules {
   fencedYards(state: RunState): readonly number[];
   /** Every tile in a fenced yard, as lot indexes (y × width + x), for the board's tint. */
   fencedTiles(state: RunState): readonly number[];
+  /**
+   * D-166: every tile of the front or the back yard as the house stands, as lot indexes, for the
+   * board's shading while a card that reads one is picked.
+   */
+  yardTiles(state: RunState, yard: Yard): readonly number[];
   describePiece(state: RunState, uid: number): PieceInfo | null;
   describeTile(state: RunState, x: number, y: number): TileInfo | null;
   /**
@@ -1017,6 +1022,8 @@ export function createRules(content: Content): Rules {
       special,
       atLimit: typesAtLimit(limitsOf(state)),
       row,
+      // D-166: a standard run deals the lot's cards at full weight from week 1.
+      lotCardsFull: b.lotCardsFullIn.includes(state.setup.mode),
     };
   }
 
@@ -2246,7 +2253,10 @@ export function createRules(content: Content): Rules {
     ) {
       throw new Error('Bad run setup');
     }
-    const lot = generateLot(setup.seed, b.lot);
+    // A run keeps the traits its lot begins with (D-166). The first job's lot stays plain, in
+    // any mode: it's the lot, not the run, that the guided job was built on (D-149).
+    const plain = !!b.jobBoard.firstSeed && setup.seed === b.jobBoard.firstSeed;
+    const lot = withTraits(content, generateLot(setup.seed, b.lot, { plain }));
     const clean: RunSetup = {
       seed: setup.seed,
       clientId: setup.clientId,
@@ -3436,6 +3446,12 @@ export function createRules(content: Content): Rules {
       const ids = layoutFor(state).fencedId;
       const out: number[] = [];
       ids.forEach((id, i) => id >= 0 && out.push(i));
+      return out;
+    },
+    yardTiles: (state, yard) => {
+      const bit = REGION_BIT[yard];
+      const out: number[] = [];
+      layoutFor(state).regionBits.forEach((bits, i) => bits & bit && out.push(i));
       return out;
     },
     describePiece: (state, uid) => {

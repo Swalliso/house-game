@@ -174,6 +174,7 @@ The board sits behind a small `BoardView` interface, so Phaser could replace jus
   Terrain covers about a fifth of the lot. Each kind is a `FeatureDef` in `src/content`.
   *Changed by D-119 (Proposed 2026-11-09):* a creek on about a quarter of lots, not most, and a creek lot is Creekside (pieces touching the creek earn +50%, all run). The pond stays on every lot without a creek and on half the creek lots.
   *Changed by D-120 (Proposed 2026-11-09):* the sunny side becomes the sun's side, one edge of the lot. A tile is in the sun unless it's a Tree, or a Tree, the Old Shed or a building stands one step toward the sun, and a building with a tile in the sun is Sunny.
+  *Proposed change, 2026-11-12 (D-166, awaiting the user's OK):* lot kinds. Once a lot passes its checks, most are shaped toward a trait on a stream of their own: a Rocky lot gets 8–12 more Boulders (14–22), an Open lot loses its woods (its lone Trees stay), and a pond lot's pond grows to 14–20 tiles. A plain lot (35% of draws) is the lot it was, and the first job's lot is always plain. Each kind is a lot trait that pays all run (D-119).
 - Water bodies count once as a neighbor. Each Tree tile counts separately, so effects that count Trees or views have a cap.
 - Only a Driveway can be built over the creek (a culvert), so the house sits on one bank but can still have a Garage.
 - The lot edge bounds a fenced yard like a wall, so a house near an edge makes a cheap fenced yard. A fenced yard must also border the house, so a lone Fence in a corner doesn't count.
@@ -497,6 +498,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 *Changed by D-160 (Proposed 2026-11-12):* the draw is as here, but two kinds of pieces now come from outside it, into the reserve's extra slots: from Foundation on, a standing stock keeps one Hallway and one Fence pack waiting, topped up at each milestone; and Dale and the Barkers bring the card their wish names in week 1.
 *D-162 (Proposed 2026-11-12):* the standing stock is there from week 1, and in a first job from Foundation's third week.
 
+*Proposed change, 2026-11-12 (D-166, awaiting the user's OK):* the lot's traits add weights too. Each deals more of the cards that use it, +100%: Patios by water, Treehouses and Birdhouses on a Wooded lot, Flower Beds and Fire Pits on a Rocky one, Lawns and Herb Gardens on an Open one. A run keeps the traits it began with, so the weights still stay fixed for the run.
+
 ### D-044 · The sim sets milestone targets
 **Status:** Accepted · 2026-11-05 (with the plan's approval); proposed 2026-11-04
 **Decision:**
@@ -553,6 +556,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 *D-160 (Proposed 2026-11-12):* the Hallway and the Fence keep complexity 3 and their weights here. From Foundation on the standing stock keeps one of each waiting in the reserve, so a house that needs one no longer waits on the draw.
 *D-162 (Proposed 2026-11-12):* the stock keeps them waiting from week 1, and in a first job from Foundation's third week. The weights are as here.
+
+*Proposed change, 2026-11-12 (D-166, awaiting the user's OK):* in a standard run the lot's cards skip the ramp. Every Layout piece but the Hallways and the Fence (the yard pieces, the outbuildings, the Garage) draws at full weight from Groundbreaking, while the house is sited. A first job keeps the ramp, and the Hallways and the Fence keep it everywhere. The first four weeks' Layout row goes from half Lawns and Patios to ten lot cards at about a tenth each.
 
 ### D-057 · Art: cozy top-down pixel art
 **Status:** Accepted · 2026-11-05: the direction at the team's request, and the details below with the plan's approval.
@@ -1523,6 +1528,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 **2026-11-09 (D-123):** the re-fit is done, with Creekside at +50% and creeks on a quarter of lots: greedy wins 48.0% on `--check`, so Creekside keeps its +50%.
 
+*Proposed change, 2026-11-12 (D-166, awaiting the user's OK):* five traits, each paying all run and dealing more of the cards that use it. Creekside also deals more Patios. Wooded pays: pieces touching a Tree earn +25%, and it deals more Treehouses and Birdhouses; its blurb is now "Building over a Tree clears it." New: Pondside (a 14–20 tile pond: pieces touching it earn double; more Patios), Rocky (14–22 Boulders: +50% touching a Boulder; more Flower Beds and Fire Pits) and Open (only the lone Trees: yard pieces earn double; more Lawns and Herb Gardens). A run keeps the traits it began with, so clearing Trees no longer takes Wooded away. A trait's tip adds what it deals more of ("More Patios in the draw."), and How to play's creek-lot line becomes one line for all five.
+
 ### D-120 · The sun: a sunny face on every lot, and rooms that want it
 **Status:** Accepted · 2026-11-10, held up in playtest 5 (`docs/playtests/playtest-5-findings.md`): the sunny side "feels much better than the previous system". Proposed 2026-11-09, after playtest 4 (`docs/playtests/playtest-4-findings.md` §11) and the lot session's proposal (`docs/proposals/lot-creeks-and-sun.md` §4–§7). The user picked the proposal's package; this is its second part, after D-119. Built for playtest 5.
 **Decision:**
@@ -2418,6 +2425,99 @@ The hand's chip rows were also measured against a develop build at 11 window siz
 - **The Drive-In is rare,** held in 7% of wins: greedy picks a Garage in 7% of the weeks it's offered and a Driveway in 4%.
 - **Greedy's recall test now asks 75%** (80% before). On its 5 seeds the shortlist found the exact best in 15 of 19 states (78.9%), losing 0.97%. On 20 seeds it found 68 of 74 (91.9%), against develop's 63 of 71 (88.7%), so this is noise, not a slip.
 - **No Remodel Plans** level a yard set, and the Architect's +10% to them wasn't simulated: the check runs the General Contractor.
+
+### D-166 · The lot decides: yard pieces with a side, lots that differ, and the lot's cards from week 1
+**Status:** Proposed · 2026-11-12, a phase pull request (`phase/the-lot`), from the 2026-11-12 gap analysis. The user: "I'd love for the lot to have more of an impact on the gameplay as well and how you develop but I'm not quite sure how we accomplish that." They want rules that feel intuitive more than more text, and yard cards worth playing. Takes up D-078 (Open since playtest 2). Built in three steps, measured after each. Four changes to Accepted entries are proposed changes awaiting the user's OK: D-043, D-049, D-055 and D-119 (dated notes there). A rules and content change: `contentHash(CONTENT)` goes from `79662776` to `b2f7a3cc`, so runs in progress are dropped when it merges (#54's check). Targets aren't re-fit: the core-loop batch has one re-fit. For the user's playtest before it merges.
+**Decision:**
+1. **Yard pieces have a side.** Where the house sits now decides how much room each side gets, and a house against the street has no front yard.
+   - **Out back,** behind the house's front row (D-049): the Patio, Lawn, Fire Pit, Hot Tub, Pool, Treehouse and Doghouse earn **+1 every week in the back yard**.
+   - **Out front,** between the house and the street: the Flower Bed (+2, as before), the Porch (+2, new) and the Driveway (+2 while the whole drive is in the front yard; D-140 had +1 anywhere). The front pays more because it's the smaller side.
+   - The side's line comes last on the card, so a hand card still shows what the piece is for (`handCardLines`).
+   - **The board shades the yard a picked card reads** (`SideTint`: a pale blue fill with a dashed edge, under the pieces), front or back, the option D-078 and D-080 listed. No new words: the card's own line says "in the back yard". A fixture whose target names a yard shades it too (Garden Lights). `yardsRead` in `selectors.ts` reads the regions a card's effects name, and `rules.yardTiles` gives the tiles.
+2. **Lots that differ.** Five lot traits, each a chip on the contract's card, a payoff that lasts the run, and more of its cards in the draw (a `drawWeight` modifier, as a client's pool has):
+
+   | Trait | The lot | Pays all run | More in the draw | Blurb |
+   |---|---|---|---|---|
+   | Creekside | a creek, as before | pieces touching the Creek +50%, as before | Patios | Only a Driveway crosses it. |
+   | **Pondside** | a pond of 14–20 tiles (a plain lot's is 4–9) | pieces touching the Pond +100% | Patios | A big pond, and views from its banks. |
+   | Wooded | 100 or more Tree tiles, as before | pieces touching a Tree +25% (it paid nothing) | Treehouses, Birdhouses | Building over a Tree clears it. |
+   | **Rocky** | 14–22 Boulders (a plain lot 6–10) | pieces touching a Boulder +50% | Flower Beds, Fire Pits | A demolition clears a Boulder. |
+   | **Open** | only the lone Trees (6–10; a plain lot has 50 or more) | yard pieces +100% | Lawns, Herb Gardens | Few Trees, lots of sun. |
+
+   - **Lot kinds** shape most lots (`balance.lot.kinds`: plain 35, Rocky 25, Open 20, pond 20). Once a lot passes its checks, its kind is drawn from its own `lot/<attempt>/kind` stream, so a plain lot is exactly the lot it was. A shaped lot that would fail the checks stays as drawn, and so does a pond lot whose creek took its pond. Rocky's Boulders go down as the first ones did; Open clears every Tree that touches another; the pond grows a tile at a time onto open ground or Trees, where most of its tiles touch, and keeps its margins (off the edges, two rows from the street, a tile from the creek). The first job's lot (`jobBoard.firstSeed`) is always plain: the guided job was built on it (D-149).
+   - Rocky, Pondside and Open name the kind the lot was shaped to (`when: { kind }`), so a test's bare lot isn't Open. Creekside and Wooded read the terrain, as before.
+   - **A run keeps the traits it began with** (`Lot.traits`, set by `newRun`), so clearing Trees can't take Wooded away, and the draw's weights stay fixed for the run (D-043).
+   - Of 2,000 lots (`check-0` to `check-1999`): 20.0% plain, 58.2% one trait, 20.5% two, 1.4% three. Creekside 24.6%, Rocky 23.6%, Open 20.2%, Pondside 18.1%, Wooded 17.0%.
+   - **Where they show:** as D-119's chips, on the contract and beside the crew's on the checklist. A trait's tip is what it pays, all run, then "More Patios in the draw.", then its blurb: "Pieces touching a Boulder earn +50%, all run. More Flower Beds and Fire Pits in the draw. A demolition clears a Boulder." Three new 8×8 icons: a pond with a lily pad, a Boulder, and a patch of meadow for Open (not the Sunny tag's sun, which would sit beside the lot's sun chip). How to play's creek-lot line becomes one line for all five: "A lot's traits (Creekside, Pondside, Wooded, Rocky, Open) are chips on the job board. Each pays all run and deals more of the cards it suits."
+3. **The lot's cards from week 1** (a proposed change to D-055, awaiting the user's OK): in a standard run, the lot cards draw at full weight from Groundbreaking, outside D-055's ramp (`lotCardsFullIn: ['standard']`). A lot card is any Layout piece but the Hallways and the Fence (`isLotCard` in `draw.ts`): the yard pieces, the outbuildings and the Garage. The Hallways and the Fence read the house, not the lot, and keep the ramp everywhere; the standing stock supplies them (D-160, D-162). A first job keeps the ramp.
+   - **The first four weeks' hands** (200 runs, the Layout row's 400 cards a week): before, the Lawn and the Patio were about half of them (week 1: Patio 105, Lawn 72), the Hallways and the Fence about 5%, and the Greenhouse and the Doghouse 2–4%. Now ten lot cards share them evenly, 22 to 54 each in week 1 (Patio 54, Herb Garden 52, Flower Bed 47, Doghouse 44, Treehouse 41, Driveway 36, Greenhouse 34, Garage 34, Lawn 29, Sapling 22), and the Hallways and the Fence are about 1% (4–7 of 400 a week, against 14–23). The Rooms row's draw is as it was.
+
+**Numbers** (greedy, 200 held-out runs on `check-0` to `check-199`, the five Core clients in turn, the General Contractor; frozen copies, paired by seed, two jobs at a time; develop at 124bd13. D-145's measure: a piece's Wow goes to its flat lines by their points, and a lot trait's percentage keeps its own share.)
+
+| | develop | 1: sides | 1–2: traits | 1–3: D-166 |
+|---|---|---|---|---|
+| Greedy wins (won only before / only after, against the column before) | 49.5% | 48.5% (26/24) | 51.5% (27/33) | 52.0% (29/30) |
+| Final Wow, median | 33,843 | 33,880 | 35,290 | 34,829 |
+| **The lot's share of the Wow** (D-145) | 25.3% | 25.4% | 31.0% | **31.3%** |
+| … Trees / Boulders / the Old Shed / the sun | 14.4 / 1.3 / 2.4 / 5.5 | 14.3 / 1.4 / 2.5 / 5.4 | 11.1 / 2.5 / 2.4 / 5.3 | 11.3 / 2.2 / 3.0 / 5.5 |
+| … the traits (Creekside, Open, Rocky, Wooded, Pondside) | 1.0 (1.0, –) | 1.2 | 8.9 | 8.4 (1.1, 3.6, 2.0, 1.0, 0.7) |
+| The lot with the yards' lines (front, back) | 26.5% (1.3, 0) | 28.5% (1.5, 1.6) | 35.1% | 35.0% (2.2, 1.5) |
+| Sets' share of the Wow | 26.3% | 25.0% | 19.9% | 21.8% |
+| Back-yard pieces in the back yard at the end | 55.8% of 579 | 83.5% of 772 | 80.6% of 928 | 77.6% of 858 |
+| Front-yard pieces in the front yard at the end | 74.1% of 266 | 77.7% of 282 | 83.8% of 377 | 83.7% of 418 |
+| The house's front, rows from the street (p25/p50/p75) | 3/9/14 | 3/9/14 | 3/10/14 | 4/11/15 |
+| Wins by the front's rows: 0–3 / 4–9 / 10+ | 45 / 54 / 50% | 37 / 56 / 51% | 37 / 56 / 58% | 42 / 49 / 57% |
+| … final Wow median | 30,779 / 35,033 / 33,899 | 22,569 / 38,231 / 33,880 | 24,392 / 35,693 / 36,902 | 33,481 / 32,982 / 36,138 |
+
+- **Each step:**
+  - **1 (sides):** back-yard pieces end in the back yard 84% of the time, against 56%; the front-yard pieces' share barely moves (74% → 78%: the Flower Bed already paid there). Greedy's win rate doesn't move.
+  - **2 (traits):** the lot's share rises from 25% to 31%. Paired by trait against step 1, on the seeds that have it: plain lots 17 → 17 wins of 45 (the same runs), Creekside 25 → 27 of 46, Wooded 19 → 20 of 35, Rocky 29 → 29 of 48, Open 18 → 22 of 41, Pondside 18 → 15 of 29. With all three steps, the lots' win rates, unpaired: plain 44%, Creekside 50%, Open 51%, Pondside 55%, Wooded 60%, Rocky 60% (n 29–48 each; Rocky's seeds already won 60% before they were shaped), a spread of 16 points.
+  - **3 (cards from week 1):** greedy as before (52.0% against 51.5%, 30 seeds each way). Lawns placed ÷ offered 36% → 40%, the Doghouse 16% → 11%, the Greenhouse 38% → 31%: seen more, picked less.
+- **Layout pick rates, develop → D-166** (placed ÷ offered in the week's first hand): Lawn 18% → 40%, Patio 15% → 22%, Flower Bed 28% → 35%, Herb Garden 33% → 37%, Treehouse 15% → 21%, Fire Pit 3% → 14%, Porch 29% → 37%, Driveway 4% → 8%, Sapling 5% → 8%, Birdhouse 39% → 42%, Fence 43% → 44%, Garage 7% → 6%, Doghouse 15% → 11%, Greenhouse 37% → 31%, Hallway 76% → 68%, Long Hallway 12% → 9%.
+- **`npm run sim -- --check`,** develop against D-166 from frozen copies: greedy wins 49.5% → 52.0% [45.1–58.8] (FAIL, unsure: §8 asks 40–50%), and clears milestones 1–3 in 98.0% → 99.0% of runs (FAIL, unsure). Early completion's gap is −9.5 → −11.0 points (FAIL, unsure). The clients' spread narrows from 20.0 to 10.0 points (PASS, unsure: the Hendersons 47.5%, the Count 50.0%, the Barkers 50.0%, Juniper 57.5%, Dale 55.0%). The novice meets Groundbreaking in 98.0% of runs (98.5%). Runs offered their Fence probe's count by milestone 4: 66.7% → 54.0% (PASS): the lot's cards crowd the Fence out of the early Layout row. The benchmark gate: 635 ms, PASS.
+  - **The house** (all 200 runs): the glance test 46% → 51%, a compact outline 63% → 69%, one of each shared room 81% → 89%, visible repeats 12% → 6%, research.md's plausibility check 71% → 76%. But the houses are smaller: rooms a median 11 → 9, tiny houses (8 or fewer rooms) 28% → 38%, room pieces by milestone 3.4 2.4 1.9 1.2 1.1 0.6 0.5 → 3.0 2.2 1.7 1.1 1.0 0.6 0.5. The yard grows: one yard type 4 or more times 10% → 18%, 3 or more outbuildings 36% → 48%; a fenced yard at the end 58% → 53%. Yard pieces now pay their way, so greedy builds fewer rooms.
+- **With D-164's yard sets** (its pushed branch's `sets.ts` and `SetId` laid over each arm; same seeds): develop 49.5% → D-164 56.0% → D-166 too 66.5%. D-166's steps on top of D-164: sides 57.5% (19/22), traits 62.5% (21/31), cards from week 1 66.5% (21/29). The two compound: D-164 adds 6.5 points on develop and 14.5 on D-166 (7 seeds won only without it, 36 only with), and D-166 adds 2.5 alone and 10.5 with D-164. Even plain lots gain with both (21 → 28 wins of 45): the lot's cards from week 1 and the traits' tilts deal the yard sets' members sooner and more often. Lawns are placed from 48% of their offers with both. The batch's one re-fit should be measured with both in.
+
+**What the numbers can't show:** greedy builds a week at a time. It never takes a contract for its lot (the sim is handed the seed), never sites the house for the pond or the rocks before the payoff is in its hand, and never saves the back for a yard. So these are what a player who doesn't plan gets from the lot. A person must judge:
+- whether the shading reads at a glance, and whether it helps a newcomer more than it clutters the board while a card is picked
+- whether five chips (two or three on a fifth of lots) read on the contract and the checklist, and whether the tips are clear
+- whether an Open lot feels like the yard lot, or like the lot that lost its Trees (its rooms lose their Quiet neighbors and views)
+- whether a Rocky lot feels like a rock garden or clutter, and whether a 14–20 tile pond looks right with the water's autotiling
+- whether a standard run's first weeks feel richer or busier now that Greenhouses, Doghouses and Driveways come up as often as Lawns (the novice bot, which plays at random among its plays, still meets Groundbreaking in 98.0% of runs)
+
+**Checked in the dev build** (one round, on its own port; the browser pane was hidden, so through the page's store and DOM, and headless Chrome at 1600×900 for the pictures):
+- `?seed=check-1&client=vladislav` deals a Pondside lot, its pond big with lily pads, and `?seed=check-12&client=barkers` a Rocky one, Boulders scattered across it. With a Bedroom mid-lot, picking a Lawn shades the back yard, beside and behind the house, and a Flower Bed the front yard down to the street. A Herb Garden or a Bathroom shades nothing.
+- An Open lot (Juniper's, `89jde3`): its chip on the job board, and its tip, "Yard pieces earn +100%, all run. More Lawns and Herb Gardens in the draw. Few Trees, lots of sun."
+- The checklist's plank holds the crew's, the sun's and the traits' icons, the meadow's among them.
+
+**Follow-ups (written down, not built):**
+- **Views at range.** A room would have a view of a Tree or water a few tiles off in a straight line, not only touching it. Today a view needs the feature beside the room, so a view and a back yard pull the same way; at range, the house could sit back across a lawn from the pond, and siting becomes frontage against outlook. It changes D-035 (Accepted), whose adjacency is touching only, and it needs a range rule in the layout, the estimate, and a way to show what a room sees.
+- **Clearing a Tree or a Boulder pays budget** (D-090, Open). Building over a Tree could pay 1 (lumber) and demolishing a Boulder 2, so a Wooded or Rocky lot's cost of building is also income for the shop. It needs D-085's band (milestones may pay less) and the shop bot to value it; D-145's leftover budget is its sink of last resort.
+
+**Considered:**
+- **Traits from terrain counts alone** (a Rocky chip for a lot that happens to have 12 Boulders): a chip that means "a few more" isn't worth reading. Shaping a lot makes its chip say something.
+- **Open as "20 Trees or fewer":** every test lot and any bare lot read Open, with yard pieces paying double in every rules test. Open is the kind a lot was shaped to.
+- **Pondside at +50%** cost greedy 6 of the 29 wins on its lots (Wow ×0.88): the pond's bank is short beside a creek's, and a big pond takes ground from the house. A 10–14 tile pond at +50% cost 4, and at +100% 4; 14–20 tiles at +100% cost 3 (Wow ×1.00), and is the one chosen, as the pond that looks big.
+- **Open at +50%:** 3 of its 41 wins lost (the Trees' Quiet and views outweighed it); at +100%, 4 gained (Wow ×1.14).
+- **The back yard at +2:** greedy took yard pieces over rooms and Hallways (Hallways 2.0 → 1.3 a run) and won 42.0%. At +1 out back and +2 out front, 48.5%.
+- **The Driveway paid per tile in the front yard:** greedy laid 8-tile drives as carpets (0.14 → 0.95 placed a run). It's +2 once, while the whole drive is in front.
+- **A wish that reads the lot** (D-078's note): the checklist is D-165's, and this entry adds nothing to a client's.
+- **The Hallways and the Fence at full weight from week 1:** they read the house, and the standing stock already brings one of each.
+
+**Changes:**
+- D-078 (Open): what this does about each of its options, a dated note there.
+- D-043, D-049, D-055 and D-119 (Accepted): proposed changes awaiting the user's OK, dated notes there.
+- D-140 (Proposed): the Driveway's +1 anywhere becomes +2 in the front yard. D-080 (Decided by D-140): the front yard is shaded while a Driveway is picked. Dated notes there.
+- `implementation-plan.md`: §4's yards, Appendix A's lot generation, lot traits and hands, and Appendix B's yard rows and a table of lot traits.
+
+**Known gaps:**
+- The front yard is counted by rows (D-049): the side yards are back yard, and a piece that straddles the house's front row earns neither side's line.
+- **Smaller houses:** with the yard paying, greedy's tiny houses rise from 28% to 38% of runs. D-165, which pays the rooms, pulls the other way; the batch's re-fit and the playtest should look at the two together.
+- A shaped lot that fails its checks stays plain: of 2,000 lots, one Rocky draw did, and 51 of 412 pond draws fell on a creek lot without a pond, so Pondside is 18.1% of lots against its 20%.
+- The first job's lot is plain by its seed, so "Play this lot again" on it is plain too, in either mode.
+- A first job's hands still ramp, so a newcomer's first run and their second deal differently from week 1: the second has the lot's cards at once.
+- **The checklist's plank on a short window:** under 1,000 px tall, the crew's, the sun's and each trait's icon ride on the plank beside the client's name and the line count, so on a lot with two traits a long name is cut short. Develop already cuts it on a Creekside lot. Left for a layout fix: the traits' icons could move to the tastes' row there.
+- One verification round in the dev build (above); the rest is for the playtest.
 
 ### D-161 · The bots rank only a few of a Fence card's plays out in the open, and the benchmark gate passes again
 **Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: speed only, and every sim run plays as before. Proposed 2026-11-12, a fix pull request (`fix/greedy-fence-packs`), the follow-up D-160's known gaps name, started once the user had merged D-160 (#73). D-160's standing stock keeps a Fence pack in the reserve nearly every week, and the sim's benchmark gate (§4) failed at 1.5 s against 1 s. Speed only: no rule, content, scoring, save or run-code change, and `contentHash(CONTENT)` is unchanged, so saves and run codes carry over (#54). Every bot plays as before, move for move: `npm run sim -- --check` gives the same runs.
@@ -3657,6 +3757,7 @@ No card is under the bar that wasn't before. Also checked, both fonts, with the 
 - **The Driveway's job is the Garage:** +3 if it touches one, and +1 a week anywhere. The "+1 in the front yard" is gone: playtest 2 read it as "square to the street" (D-080).
   - It still must be built touching the street or a Driveway, so a drive always grows from the street.
   - The pack that touches the Garage is the one paid for it.
+  - *D-166 (Proposed 2026-11-12):* the "+1 a week anywhere" becomes "+2 every week in the front yard", while the whole drive is in it, and the board shades the front yard while a Driveway is picked: the answer to playtest 2's misread. Paid per tile there, greedy laid 8-tile drives as carpets.
 - **A Driveway pack is up to 8 tiles** (was 6), as the Fence.
 - **Full House's Sparkle is ×1.5** (was ×2). Its +40 Comfort and +1 Charm stay.
 - **Wording:**
@@ -4234,6 +4335,7 @@ New content is preferred over raising existing numbers.
 **2026-11-06 (Combolands research):** in Combolands, each kind of map feature has buildings that need it, make it, or clear it for a payout, and players read the island before picking guilds. Here only the Sapling makes terrain, Boulders give nothing, and clearing a Tree pays nothing. See research.md's 2026-11-06 systems update.
 **2026-11-06 (systems review):** under the review's option B, Charm's share of greedy's Wow rises from 59% to 73%, which works against this entry. M4a's Suite and Full House, which ship anyway, are part of that rise. Of the new rooms, only the Kids' Room reads the terrain, through Trees (`house-systems-review.md` §8, §10).
 **2026-11-10 (D-145, Proposed):** Boulders and the Old Shed are neighbors now, each with pieces that want it, and the Birdhouse joins the draw. Measured on 200 held-out greedy runs by the Wow each line earned, the lot was already 23.1% of the Wow on develop (Trees 14.6 points, the sun 6.6, Creekside 1.2), and is 26.6% with D-145 (Boulders 1.5, the shed 1.8); the friction review's "2–3%" multiplied two shares that Charm scales alike. Still open: where the house sits against the street (greedy's front row is a median 9–10 rows back, before and after), a wish that reads the lot, and lots that differ more in Boulders, so a Rocky chip would mean something.
+**2026-11-12 (D-166, Proposed):** takes up all three options, for the user's playtest. Pieces that care about the lot: yard pieces have a side (seven earn +1 in the back yard, three +2 in the front), and five lot traits (Creekside, Pondside, Wooded, Rocky, Open) each pay all run and deal more of the cards that use them. Most lots are shaped toward one, and a Rocky lot has 14–22 Boulders, so its chip means something. Bigger terms on the lot: Wooded pays +25% by a Tree, Rocky +50% by a Boulder, Pondside double by the pond, Open double for yard pieces. Shading: the board shades the yard a picked card reads. And a standard run deals the lot's cards from week 1. On 200 held-out greedy runs the lot is 31.3% of the Wow by D-145's measure (25.3% on develop; 35.0% with the yards' lines). Where the house sits still moves greedy little: with its front 0–3 rows from the street it wins 42%, 4–9 rows 49%, 10 or more 57%, the intervals overlapping, and greedy can't plan siting. Still open: a wish that reads the lot (the checklist is D-165's), and views at range, D-166's follow-up, which would change D-035. If D-166 holds up in play, it decides this entry.
 
 ### D-079 · Treehouses shouldn't reward clustering
 **Status:** Decided · 2026-11-06: the team took the review's Kid half in D-105 (Treehouses don't count each other as Kid partners), to stand unless M4a's sim showed the Hendersons' Kid taste making clusters dominant. It doesn't (below). Was Open, from playtest 2.
@@ -4265,6 +4367,7 @@ New content is preferred over raising existing numbers.
 **2026-11-10 (D-140):** the friction review found the cause behind the second finding: the Garage card had no legal spot in 82% of the weeks it was offered, so a Driveway almost never had a Garage to serve. D-140 lets the Garage be built like any room and makes the Driveway's job reaching it: the Garage earns only once the street or a Driveway touches it, and the Driveway is paid for touching one.
 - Of the options above: it's a pack (D-106), now of 8 tiles, and it has a bonus of its own (+3 at a Garage). Its front-yard pay, which the first finding is about, is gone: it earns +1 anywhere. Showing the front yard on the board is still open for the pieces that read it (D-099's note). A Garage isn't likelier after a Driveway, since it no longer needs one to be built.
 - The Combolands link isn't built (D-140's Considered).
+**2026-11-12 (D-166, Proposed):** the first option is in: the board shades the front yard while a Driveway, or any card that reads it, is picked. The Driveway earns +2 there again, while the whole drive is in the front yard.
 
 ### D-090 · Budget from how you build
 **Status:** Open · 2026-11-06, from playtest 3.

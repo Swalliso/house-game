@@ -1,11 +1,13 @@
 // D-151: a browser's first job is a run in `firstJob` mode, whose client needs the job board's
 // firstTargetPct of its usual targets. Everything else about the run is a standard run's: the
-// same lot, the same draws, the same scoring. The mode travels in the run code, so a replay
-// meets the same targets.
+// same lot, the same draws, the same scoring, but for D-166's draw: a standard run deals the
+// lot's cards at full weight from week 1, and a first job keeps D-055's ramp. The mode travels in
+// the run code, so a replay meets the same targets.
 
 import { describe, expect, it } from 'vitest';
 import { CONTENT } from '../content/index.ts';
-import type { RunSetup } from './index.ts';
+import type { Card, RunSetup } from './index.ts';
+import { rowOf } from './draw.ts';
 import { isRunMode, phaseTarget, targetPctFor } from './milestones.ts';
 import { createRules } from './run.ts';
 import { contentHash, decodeRunCode, encodeRunCode } from './runcode.ts';
@@ -58,20 +60,47 @@ describe('a first job’s targets (D-151)', () => {
   });
 
   it('change nothing else: the same lot, hand, budget and streams as a standard run', () => {
-    const s = rules.newRun(first);
-    const plain = rules.newRun(standard);
-    // But the standing stock: a standard run's is there from week 1, a first job's comes in
+    // With the lot's cards on D-055's ramp in both modes, the two runs differ only in setup and
+    // the standing stock: a standard run's is there from week 1, a first job's comes in
     // Foundation's third week (D-162, stock.test.ts), once (D-163: `stocked`).
+    const ramped = createRules({ ...CONTENT, balance: { ...b, lotCardsFullIn: [] } });
+    const s = ramped.newRun(first);
+    const plain = ramped.newRun(standard);
     expect(s.reserve).toEqual([]);
     expect(plain.reserve.length).toBeGreaterThan(0);
     expect(plain.reserve.every((r) => r.stock)).toBe(true);
     expect(plain.stocked).toBe(true);
     expect({ ...s, setup: plain.setup, reserve: plain.reserve, stocked: true }).toEqual(plain);
     // And a week played the same way scores the same.
-    const a = rules.apply(s, { t: 'pass' }).state;
-    const c = rules.apply(plain, { t: 'pass' }).state;
+    const a = ramped.apply(s, { t: 'pass' }).state;
+    const c = ramped.apply(plain, { t: 'pass' }).state;
     expect(a.score).toBe(c.score);
     expect(a.hand).toEqual(c.hand);
+  });
+
+  it('keep D-055’s ramp for the lot’s cards, where a standard run deals them at full weight (D-166)', () => {
+    expect(b.lotCardsFullIn).toEqual(['standard']);
+    const rooms = (s: { hand: readonly Card[] }) =>
+      s.hand.filter((c) => rowOf(CONTENT, c) === 'rooms');
+    let s = rules.newRun(first);
+    let plain = rules.newRun(standard);
+    // The standing stock aside (D-162, D-163), as above.
+    expect({
+      ...s,
+      setup: plain.setup,
+      hand: plain.hand,
+      reserve: plain.reserve,
+      stocked: plain.stocked,
+    }).toEqual(plain);
+    let layoutDiffers = false;
+    for (let week = 1; week <= 4; week++) {
+      // The Rooms row is drawn alike; the Layout row from a different pool.
+      expect(rooms(s), `week ${week}`).toEqual(rooms(plain));
+      if (JSON.stringify(s.hand) !== JSON.stringify(plain.hand)) layoutDiffers = true;
+      s = rules.apply(s, { t: 'pass' }).state;
+      plain = rules.apply(plain, { t: 'pass' }).state;
+    }
+    expect(layoutDiffers).toBe(true);
   });
 
   it('travel in the run code, so a replay meets the same targets', () => {

@@ -555,10 +555,20 @@ describe('opening the link', () => {
     open(lotLink(setup, 'http://localhost:5173/'));
     expect(run.value.setup).toEqual({ ...setup, mode: 'firstJob' });
     // Everything the run started with is a standard run's but its setup, and so its targets,
-    // and the standing stock, which comes to a first job later (D-162).
+    // the standing stock, which comes to a first job later (D-162), and its Layout row: a first
+    // job keeps D-055's ramp for the lot's cards (D-166).
     const plain = rules.newRun(setup);
     expect(run.value.reserve).toEqual([]);
-    expect({ ...run.value, setup, reserve: plain.reserve, stocked: plain.stocked }).toEqual(plain);
+    expect({
+      ...run.value,
+      setup,
+      reserve: plain.reserve,
+      stocked: plain.stocked,
+      hand: plain.hand,
+    }).toEqual(plain);
+    expect(run.value.hand.slice(0, CONTENT.balance.rules.roomsRow)).toEqual(
+      plain.hand.slice(0, CONTENT.balance.rules.roomsRow),
+    );
     expect(rules.target(run.value)).toBeLessThan(rules.target(plain));
     forgetFirstVisit();
   });

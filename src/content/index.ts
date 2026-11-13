@@ -15,6 +15,7 @@ import { isConnected, packShapeProblem, parseShape, shapeCells } from '../rules/
 import { cardText, changeOrderText, modifierText, specText, toolText } from '../rules/text.ts';
 import { DRAW_ROWS, drawableTypes, drawWeights, rowOf } from '../rules/draw.ts';
 import { isType } from '../rules/selectors.ts';
+import { isRunMode } from '../rules/milestones.ts';
 import { BALANCE } from './balance.ts';
 import { BLUEPRINTS } from './blueprints.ts';
 import { CHANGE_ORDERS } from './change-orders.ts';
@@ -385,16 +386,25 @@ export function validateContent(content: Content): string[] {
     );
   }
 
-  // D-119: a lot trait reads a terrain that sits on the lot, and pays like a crew.
+  // D-119: a lot trait reads a terrain that sits on the lot, and pays like a crew. D-166: or
+  // the kind the lot was shaped to; and it may tilt the draw, as a run keeps the traits it began
+  // with.
   for (const [key, trait] of Object.entries(content.lotTraits)) {
     const where = `lot trait ${key}`;
     if (trait.id !== key) problems.push(`${where}: id is "${trait.id}"`);
-    const t = trait.when.terrain as string;
-    if (t === 'street' || !content.features[trait.when.terrain]) {
-      problems.push(`${where}: "${t}" isn't a terrain on the lot`);
-    }
-    if (!Number.isInteger(trait.when.min) || trait.when.min < 1) {
-      problems.push(`${where}: min must be a whole number ≥ 1`);
+    const when = trait.when;
+    if ('kind' in when) {
+      if (!['rocky', 'open', 'pond'].includes(when.kind)) {
+        problems.push(`${where}: "${when.kind}" isn't a lot kind that shapes a lot`);
+      }
+    } else {
+      const t = when.terrain as string;
+      if (t === 'street' || !content.features[when.terrain]) {
+        problems.push(`${where}: "${t}" isn't a terrain on the lot`);
+      }
+      if (!Number.isInteger(when.min) || when.min < 1) {
+        problems.push(`${where}: min must be a whole number ≥ 1`);
+      }
     }
     for (const id of trait.suits ?? []) {
       if (!content.clients[id]) problems.push(`${where}: unknown client "${id}"`);
@@ -403,7 +413,7 @@ export function validateContent(content: Content): string[] {
       problems.push(
         ...modifierProblems(content, m, `${where} modifier ${k}`, {
           fixture: false,
-          drawWeight: false,
+          drawWeight: true,
         }),
       ),
     );
@@ -696,6 +706,9 @@ export function validateContent(content: Content): string[] {
   });
   if (b.complexityPct.length === 0 || b.complexityPct.some((row) => row.length !== 3)) {
     problems.push('balance: complexityPct needs rows of three');
+  }
+  for (const mode of b.lotCardsFullIn) {
+    if (!isRunMode(mode)) problems.push(`balance: lotCardsFullIn has unknown mode "${mode}"`);
   }
   for (const row of DRAW_ROWS) {
     const size = row === 'rooms' ? b.rules.roomsRow : b.rules.layoutRow;

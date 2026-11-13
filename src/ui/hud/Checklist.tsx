@@ -998,7 +998,7 @@ export function Checklist() {
   const wishes = groupRows('wishes');
   const crew = CONTENT.crews[crewId];
   const tastes = client.tastes.length > 0;
-  // The sun's side (D-120), and the lot's traits that pay all run (D-119): Creekside.
+  // The sun's side (D-120), and the lot's traits that pay all run (D-119, D-166).
   const { sun } = base.house.lot;
   const traits = lotTraits(CONTENT, base.house.lot).filter((t) => t.modifiers.length > 0);
   return (

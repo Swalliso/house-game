@@ -282,24 +282,26 @@ describe('Green Thumb', () => {
       'Green pieces earn +50%',
       'Green pieces: +1 more each week it stands (up to +3)',
     ]);
-    // The house is a Closet at the top right, so its front row is row 1 and the Flower Bed is in
-    // the front yard. In week 1 each Green piece has grown +1: Lawn 1 + 1 at +50% is 3; Flower
-    // Bed 3 + 1 is 6; Herb Garden in the sun 2 + 1 is 4.5 → 5. The Patio (1 for the Herb
-    // Garden's view), the Hot Tub by it (3), and the Closet (1) aren't Green. The Patio and the
-    // Hot Tub touch the Closet, a room, so they earn at all.
+    // The house is a Closet at the top right, so its front row is row 1: the Flower Bed is in
+    // the front yard, and the Lawn, the Patio and the Hot Tub out back (+1 each, D-166). In week
+    // 1 each Green piece has grown +1: Lawn 2 + 1 at +50% is 4.5 → 5; Flower Bed 3 + 1 is 6;
+    // Herb Garden in the sun 2 + 1 is 4.5 → 5. The Patio (1 for the Herb Garden's view), the
+    // Hot Tub by it (3), and the Closet (1) aren't Green. The Patio and the Hot Tub touch the
+    // Closet, a room, so they earn at all.
     expect(withAndWithout('greenThumb', open, garden)).toEqual([
-      [1, 3, 2, 1, 3, 1],
-      [3, 6, 5, 1, 3, 1],
+      [2, 3, 2, 2, 4, 1],
+      [5, 6, 5, 2, 4, 1],
     ]);
   });
 
   it('the growth stops at +3, and counts from the later of placement and purchase', () => {
     const lawn = (bought: number, week: number) =>
       tallyOf(build(open, garden), [['greenThumb', bought]], week).pieces[0]!.earned;
-    // Bought in week 1: 1 + 2 in week 2 (4.5 → 5), 1 + 3 from week 3 (6).
-    expect([1, 2, 3, 9].map((w) => lawn(1, w))).toEqual([3, 5, 6, 6]);
+    // The Lawn earns 2 out back (D-166). Bought in week 1: 2 + 2 in week 2 (6), 2 + 3 from
+    // week 3 (7.5 → 8).
+    expect([1, 2, 3, 9].map((w) => lawn(1, w))).toEqual([5, 6, 8, 8]);
     // Bought in week 5 for a Lawn from week 1: +1 again in week 5.
-    expect(lawn(5, 5)).toBe(3);
+    expect(lawn(5, 5)).toBe(5);
     expect(tallyOf(build(open, garden), ['greenThumb'], 3).pieces[0]!.lines).toContainEqual({
       label: 'Grown for 3 weeks (Green Thumb)',
       op: 'add',
@@ -522,7 +524,8 @@ describe('Mood Lighting', () => {
 describe('Show Home', () => {
   it('pieces with a fixture earn +100% (D-143)', () => {
     expectText('showHome', ['Pieces with a fixture earn +100%']);
-    // A Bedroom with a Fireplace: 3 at +150% → 7.5 → 8. A Lawn with a Sprinkler: 1 at +200%.
+    // A Bedroom with a Fireplace: 3 at +150% → 7.5 → 8. A Lawn with a Sprinkler, out back (1 + 1,
+    // D-166): 2 at +200%.
     const house = build(
       open,
       [
@@ -537,8 +540,8 @@ describe('Show Home', () => {
         ],
       },
     );
-    expect(tallyOf(house, []).pieces.map((p) => p.earned)).toEqual([5, 3, 2]);
-    expect(tallyOf(house, ['showHome']).pieces.map((p) => p.earned)).toEqual([8, 3, 3]);
+    expect(tallyOf(house, []).pieces.map((p) => p.earned)).toEqual([5, 3, 4]);
+    expect(tallyOf(house, ['showHome']).pieces.map((p) => p.earned)).toEqual([8, 3, 6]);
   });
 });
 
@@ -707,17 +710,17 @@ describe('Model Home', () => {
       ['lawn', 4, 0],
       ['closet', 8, 0],
     ];
-    // No fixtures: ×1, so no ×Mult at all.
+    // No fixtures: ×1, so no ×Mult at all. The Lawn is out back: 1 + 1 (D-166).
     expect(tallyOf(build(open, placements), ['modelHome'])).toMatchObject({
-      points: 5,
+      points: 6,
       mult: 100,
-      total: 5,
+      total: 6,
       xMults: [],
     });
-    // A Fireplace (Bedroom 5): ×1.1, so 7 × 1.1 = 7.7 → 8.
+    // A Fireplace (Bedroom 5): ×1.1, so 8 × 1.1 = 8.8 → 9.
     const one = build(open, placements, { installs: [[1, 'fireplace']] });
-    expect(tallyOf(one, ['modelHome'])).toMatchObject({ points: 7, mult: 110, total: 8 });
-    // And a Sprinkler (Lawn 2): ×1.2, so 8 × 1.2 = 9.6 → 10.
+    expect(tallyOf(one, ['modelHome'])).toMatchObject({ points: 8, mult: 110, total: 9 });
+    // And a Sprinkler (Lawn 4): ×1.2, so 10 × 1.2 = 12.
     const two = build(open, placements, {
       installs: [
         [1, 'fireplace'],
@@ -725,7 +728,7 @@ describe('Model Home', () => {
       ],
     });
     const t = tallyOf(two, ['modelHome']);
-    expect(t).toMatchObject({ points: 8, mult: 120, total: 10 });
+    expect(t).toMatchObject({ points: 10, mult: 120, total: 12 });
     expect(t.xMults).toEqual([
       {
         source: { kind: 'blueprint', id: 'modelHome' },

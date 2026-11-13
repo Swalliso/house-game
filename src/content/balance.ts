@@ -42,6 +42,13 @@ export const BALANCE: Balance = {
     oldSheds: [1, 1],
     timeCapsules: [1, 2],
     findStreetGap: 4,
+    // D-166: most lots are shaped toward a trait once they pass their checks. Rocky has 14–22
+    // Boulders (a plain lot 6–10), Open only its lone Trees, a pond lot a pond of 14–20 tiles
+    // (a plain one 4–9). With the creek and the woods' own Wooded, about one lot in five is
+    // plain, and most carry one trait or two.
+    kinds: { plain: 35, rocky: 25, open: 20, pond: 20 },
+    rockyBoulders: [8, 12],
+    pondTiles: [14, 20],
   },
 
   weeksPerPhase: 4, // D-042
@@ -181,6 +188,9 @@ export const BALANCE: Balance = {
     [100, 85, 60],
     [100, 100, 100],
   ],
+  // D-166: in a standard run the lot's cards (the yard, the outbuildings, the Garage) come at
+  // full weight from week 1, while the house is sited; a first job keeps the ramp (D-149).
+  lotCardsFullIn: ['standard'],
 
   // The run-end verdict by final score, as a percentage of the last target (§12).
   verdicts: [

@@ -1103,12 +1103,18 @@ export function blueprintText(content: Content, def: BlueprintDef): string[] {
 }
 
 /**
- * A lot trait's tip (D-119): what its modifiers do, all run, then its blurb. "Pieces touching
- * the Creek earn +50%, all run. Only a Driveway crosses it."
+ * A lot trait's tip (D-119): what it pays, all run, what it deals more of (D-166), then its
+ * blurb. "Pieces touching the Creek earn +50%, all run. More Patios in the draw. Only a Driveway
+ * crosses it."
  */
 export function lotTraitText(content: Content, def: LotTraitDef): string {
-  const pays = def.modifiers.map((m) => `${modifierText(content, m)}, all run.`);
-  return [...pays, def.blurb].join(' ');
+  const lines = def.modifiers.map((m) => {
+    const ids = m.kind === 'drawWeight' ? pieceIds(m.target) : null;
+    if (!ids) return `${modifierText(content, m)}, all run.`;
+    const names = ids.map((id) => plural(content.pieces[id].name));
+    return `More ${joinWords(names, 'and')} in the draw.`;
+  });
+  return [...lines, def.blurb].join(' ');
 }
 
 // ---------------------------------------------------------------------------------------

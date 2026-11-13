@@ -556,7 +556,7 @@ Derived from `HouseState`, cached by house object identity:
 - **Exterior and interior:** a room is exterior if any of its tiles touches a non-indoor tile or the lot edge; otherwise it's interior.
 - **View:** a piece touching a view source (a Tree, the Pond, the Creek, or a piece with `givesView`: Flower Bed, Herb Garden, Greenhouse), or one with a `grantView` modifier (Bay Window). "Per View" counts distinct adjacent sources, with a `max`.
 - **Regions:** a multi-tile piece is *in* a region only if all its tiles are.
-  - **Front yard:** every non-indoor tile in a row nearer the street than the house's front row (the row of its indoor tile closest to the street). Before the first room, all yard is front yard. Back yard is every other non-indoor tile, including the side yards. Counting by rows keeps "front yard" a real position on a wide lot, where a narrow house would otherwise make whole columns beside it front yard.
+  - **Front yard:** every non-indoor tile in a row nearer the street than the house's front row (the row of its indoor tile closest to the street). Before the first room, all yard is front yard. Back yard is every other non-indoor tile, including the side yards. Counting by rows keeps "front yard" a real position on a wide lot, where a narrow house would otherwise make whole columns beside it front yard. Each yard piece has a side (D-166): the Patio, Lawn, Fire Pit, Hot Tub, Pool, Treehouse and Doghouse earn +1 in the back yard; the Flower Bed, Porch and Driveway +2 in the front. While a picked card reads a yard, the board shades it (`rules.yardTiles`).
   - **Fenced yard:** flood-fill all non-wall tiles (walls are indoor tiles and Fence tiles; water, boulders, trees, finds, yard pieces, and outbuildings are all part of regions). The lot edge bounds the fill like a wall (it's the property line). A region is fenced if it doesn't touch the street edge, has at least 10 tiles (4 until D-069), borders at least one Fence, and borders the house (at least one indoor piece). The house rule stops a lone L-Fence in a corner from counting as a yard. "Fenced yard of 12 tiles" means the largest single one.
   - On a big lot this makes siting matter: a house built near a side or back edge closes a yard with one or two Fences, while a house in the middle needs more.
 - **Links:** a Hallway (or a connected group of Hallways) links every room touching it. A `link` modifier links touching pieces of its types in one connected group (Open Concept's, until D-143 gave it the Entertainer's bonus instead; no blueprint carries one now). Links count as adjacency for scoring, sets, and specs. They don't count for connectivity, exterior/interior, or enclosure, and a Hallway isn't itself a neighbor for bonuses.
@@ -1683,13 +1683,15 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
 - **Lot generation (D-049),** on 24×24 (width and height are separate numbers in `balance.ts`):
   - the street on the bottom edge
   - **woods:** 3–4 clusters of 15–30 Tree tiles, grown as blobs, plus 6–10 lone Trees
-  - **creek** on about a quarter of lots (`creekPct` 25, D-119; it was 70%): a 1-tile-wide meandering line from the back edge to a side edge, or side to side, stepping orthogonally (no diagonal steps, no U-turns), never touching the street edge or the pond. A creek lot is Creekside: pieces touching the creek earn +50%, all run (a lot trait, D-119)
+  - **creek** on about a quarter of lots (`creekPct` 25, D-119; it was 70%): a 1-tile-wide meandering line from the back edge to a side edge, or side to side, stepping orthogonally (no diagonal steps, no U-turns), never touching the street edge or the pond. A creek lot is Creekside (a lot trait, D-119, below)
   - one pond, 2×2 to 3×3: on every lot without a creek, and on half the creek lots (`pondPctCreek`, from its own `lot/<attempt>/pond` stream, D-119)
   - 6–10 single-tile boulders
   - the sun's side (D-120; it was a sunny band of 4 rows): the back, the left, the right or the street side, a quarter each, from its own `lot/<attempt>/sun` stream. A tile is in the sun unless it's a Tree, or a Tree, the Old Shed or a building (a room, a Hallway or an outbuilding) stands one step toward the sun; off the lot is open
   - **finds** (from M3b): one Old Shed and one or two Time Capsules, placed away from the street half
   - terrain covers about a fifth of the lot (about 110–130 tiles)
   - regenerate (with the next `lot/<attempt>` key) if fewer than 85% of tiles are free of water, Boulders, and the Old Shed, if fewer than 10 street-edge tiles are free, or if the creek leaves less than 60% of the buildable tiles on the street's side
+  - **lot kinds** (D-166): once a lot passes the checks and before its finds, its kind is drawn from its own `lot/<attempt>/kind` stream by `kinds`' weights (plain 35, Rocky 25, Open 20, pond 20), so a plain lot is exactly the lot it was. A **Rocky** lot gets 8–12 more Boulders (`rockyBoulders`, 14–22 in all), an **Open** lot loses its woods (the lone Trees stay), and a **pond** lot's pond grows to 14–20 tiles (`pondTiles`), onto open ground or Trees, keeping its margins. A shaped lot that would fail the checks, or a pond lot whose creek took its pond, stays as drawn. The first job's lot (`jobBoard.firstSeed`) is always plain (D-149)
+  - **lot traits** (D-119, D-166): chips on the contract, each paying all run and doubling its cards' draw weight. Creekside (a creek), Pondside (a pond lot), Wooded (100 or more Tree tiles), Rocky and Open (those kinds); Appendix B lists them. Of 2,000 lots, 20% have none, 58% one, 22% two or three. A run keeps the traits it began with (`Lot.traits`), so clearing Trees can't take Wooded away and the draw's weights stay fixed
 - **First earning:** a piece earns in the week it's placed. Transforms happen at the start of the week, so the preview equals what the week adds.
 - **Pass:** always allowed, no reward.
 - **Hands:** 3 distinct card types, weighted. **Simple pieces are more likely early** (D-055), as in Combolands and Luck be a Landlord:
@@ -1707,12 +1709,13 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
   - **complexity 2** (a condition, a region, a timer, or a requirement): Flower Bed, Herb Garden, Sapling, Driveway, Garage, Home Office, Treehouse
   - **complexity 3** (build-arounds): Fence, Hallway, Doghouse, Greenhouse, and every special piece
   - Complex pieces can still show up early, just rarely. A client's spec pieces get their +100% on top, so the Hendersons' Fence isn't starved.
+  - **A standard run's lot cards skip the ramp** (D-166, `lotCardsFullIn`): every Layout piece but the Hallways and the Fence (the yard pieces, the outbuildings, the Garage) draws at full weight from Groundbreaking. A first job keeps the ramp (D-149), and the Hallways and the Fence keep it everywhere.
   - `fromPhase` stays only as a hard gate where a card can't work yet: fixtures join from phase 2 (M3a).
 - **Shape variants:** separate cards (Kitchen and L-Kitchen; short and long Hallway) sharing a type for specs and sets.
 - **Building over Trees:** allowed and free; the Tree is gone.
 - **Lawn:** a 2×2 piece (was 1×1, so a big lot fills in; D-049), +1 per adjacent Lawn, at most 4. This replaces "per connected Lawn tile", which grows quadratically.
 - **Counting Trees and views:** each Tree tile is a separate neighbor, so effects that count them carry a `max` (Bedroom: 3; Library: 3; Living Room and Patio views: 3; Pool's Tree penalty: 3).
-- **Draw weights:** integers, with 10 = normal. Special pieces have weight 0 and arrive through the shop (M3a) or a client or crew (M4a and M4b). Dale's Home Office and the Barkers' Doghouse also come with the client, one each in week 1 (D-160).
+- **Draw weights:** integers, with 10 = normal, from the piece, the client, the crew and (D-166) the lot's traits. Special pieces have weight 0 and arrive through the shop (M3a) or a client or crew (M4a and M4b). Dale's Home Office and the Barkers' Doghouse also come with the client, one each in week 1 (D-160).
 
 ### M2
 
@@ -1888,6 +1891,18 @@ Every Core item from `content-brainstorm.md`, written in the §5 format. Numbers
 | **Old Shed** *(new find)* | 2×2; `blocks`, `clear: demolish`; `body`: one neighbor while it stands, no tags (D-145: was `inert`); reward: a random tool | M3b (D-145: a neighbor) |
 | **Time Capsule** *(new find)* | 1×1; doesn't block; `inert`; reward when first built over: +3 budget | M3b |
 
+### Lot traits (D-119, D-166)
+
+Each trait's modifiers join the run's (source `lot`), and its `drawWeight` ones tilt the draw. Its tip: what it pays, all run, what it deals more of, then its blurb.
+
+| Trait | When | Pays all run | More in the draw | Blurb |
+|---|---|---|---|---|
+| Creekside | `terrain creek, min 1` | `earn {touching creek} +50` | Patio +100% (D-166) | Only a Driveway crosses it. |
+| **Pondside** *(D-166)* | `kind pond` | `earn {touching pond} +100` | Patio +100% | A big pond, and views from its banks. |
+| Wooded | `terrain tree, min 100` | `earn {touching tree} +25` (D-166: it paid nothing) | Treehouse, Birdhouse +100% | Building over a Tree clears it. |
+| **Rocky** *(D-166)* | `kind rocky` | `earn {touching boulder} +50` | Flower Bed, Fire Pit +100% | A demolition clears a Boulder. |
+| **Open** *(D-166)* | `kind open` | `earn {property yard} +100` | Lawn, Herb Garden +100% | Few Trees, lots of sun. |
+
 ### Indoor rooms (base pool)
 
 | Item | Encoding | Built in |
@@ -1907,20 +1922,20 @@ Every Core item from `content-brainstorm.md`, written in the §5 format. Numbers
 
 | Item | Encoding | Built in |
 |---|---|---|
-| Lawn (2×2) | `steady 1`; `neighbor [lawn, boulder] +1 max 4` (D-145: Boulders count); tags Outdoor and Green | M1 |
+| Lawn (2×2) | `steady 1`; `neighbor [lawn, boulder] +1 max 4` (D-145: Boulders count); `conditional {in: backYard} → steady 1` (D-166); tags Outdoor and Green | M1 |
 | Sapling | `steady 1`; `transform into tree after 4` | M2 |
 | Flower Bed | `givesView`; `steady 1`; `conditional {in: frontYard} → steady 2`; `neighbor [flowerBed, boulder] +1` (D-145: Boulders count) | M2 |
 | Herb Garden | `givesView`; `perTile sunny +1` (its tiles in the sun, D-120); `aura kitchen +25% adjacent`; `neighbor oldShed +2, max 1` (D-145) | M2 |
-| Patio | `requires {touching {property room}}` (doesn't block: the Patio rule, D-105); `neighbor [livingRoom, kitchen] +2`; `neighbor {property viewSource} +1 max 3` | M2 (M4a: the Patio rule) |
+| Patio | `requires {touching {property room}}` (doesn't block: the Patio rule, D-105); `neighbor [livingRoom, kitchen] +2`; `neighbor {property viewSource} +1 max 3`; `conditional {in: backYard} → steady 1` (D-166) | M2 (M4a: the Patio rule) |
 | Fence | A pack of 1–8 connected tiles, one piece (D-106; was the 1×4 and 5-tile L cards); `wall`; `enclosure perTile 1 cap 6` | M2 (M4a: the pack) |
-| Driveway | A pack of 1–8 connected tiles, one piece (D-106; was the 1×3 and 1×5 cards; 1–6 tiles until D-140); `canCover: ['creek']`; `requires {touching: [street, driveway]}` (blocks); `neighbor garage +3, max 1`; `steady 1` (D-140: was `conditional {in: frontYard} → steady 1`) | M2 (M4a: the pack; D-140) |
+| Driveway | A pack of 1–8 connected tiles, one piece (D-106; was the 1×3 and 1×5 cards; 1–6 tiles until D-140); `canCover: ['creek']`; `requires {touching: [street, driveway]}` (blocks); `neighbor garage +3, max 1`; `conditional {in: frontYard} → steady 2`, the whole drive in the front yard (D-166; D-140 had `steady 1`, and before it `conditional {in: frontYard} → steady 1`) | M2 (M4a: the pack; D-140) |
 
 ### "-house" pieces (base pool)
 
 | Item | Encoding | Built in |
 |---|---|---|
-| Doghouse | Outbuilding; tags Pet and House; `requires {in: fencedYard}` (doesn't block); `steady 1`; `neighbor lawn +1` | M2 |
-| Treehouse | Outbuilding; tags Kid and House; `requires {touching: tree}` (blocks); `steady 2` (D-071); `neighbor {tag Kid ∧ not treehouse} +2` (D-105) | M2 (M4a: not counting each other) |
+| Doghouse | Outbuilding; tags Pet and House; `requires {in: fencedYard}` (doesn't block); `steady 1`; `neighbor lawn +1`; `conditional {in: backYard} → steady 1` (D-166) | M2 |
+| Treehouse | Outbuilding; tags Kid and House; `requires {touching: tree}` (blocks); `steady 2` (D-071); `neighbor {tag Kid ∧ not treehouse} +2` (D-105); `conditional {in: backYard} → steady 1` (D-166) | M2 (M4a: not counting each other) |
 | Greenhouse | Outbuilding; tags Green and House; `givesView`; `aura {property viewSource ∧ yard} +50% adjacent`; `neighbor oldShed +4, max 1` (D-145) | M2 |
 
 ### Special pieces (shop, clients, crews; weight 0)
@@ -1932,12 +1947,12 @@ The last four were Stretch in `content-brainstorm.md`, with the Sunroom. They're
 | Playroom | Indoor; tags Loud and Kid; `neighbor bedroom +2`; `aura {tag Quiet} −2 flat adjacent` | M3a |
 | Library | Indoor; tag Quiet; `neighbor {tag Quiet} +2 max 3` | M3a |
 | Mudroom | Indoor; tag Pet; `conditional {borders: fencedYard} → aura {tag Pet} +50% region` | M3a |
-| Pool | Yard; tags Wet, Sunny, Loud; `rhythm every 3 +12`; `neighbor tree −2 max 3` | M3a |
-| **Hot Tub** (1×1) | Yard; tags Wet and Social; the Patio rule (D-105); `neighbor patio +3` | M3a |
-| **Fire Pit** (1×1) | Weight 5 in the Layout row from Drywall (D-145; it was a special piece). Yard; tag Social; the Patio rule (D-105); `aura patio +50% adjacent`; `neighbor boulder +2 max 2` (D-145) | M3a (D-145: the draw) |
+| Pool | Yard; tags Wet, Sunny, Loud; `rhythm every 3 +12`; `neighbor tree −2 max 3`; `conditional {in: backYard} → steady 1` (D-166) | M3a |
+| **Hot Tub** (1×1) | Yard; tags Wet and Social; the Patio rule (D-105); `neighbor patio +3`; `conditional {in: backYard} → steady 1` (D-166) | M3a |
+| **Fire Pit** (1×1) | Weight 5 in the Layout row from Drywall (D-145; it was a special piece). Yard; tag Social; the Patio rule (D-105); `aura patio +50% adjacent`; `neighbor boulder +2 max 2` (D-145); `conditional {in: backYard} → steady 1` (D-166) | M3a (D-145: the draw) |
 | **Henhouse** (1×2) | Outbuilding; tag House; `economy 1 every 2`; `neighbor [herbGarden, flowerBed] +1`; `neighbor oldShed +2, max 1` (D-145) | M3a |
 | **Birdhouse** (1×1) | Weight 5 in the Layout row from Roofing (D-145; it was a special piece). Outbuilding; tag House; `neighbor tree +1 max 3` | M3a (D-145: the draw) |
-| **Porch** (1×2) *(new, D-145)* | Weight 5 in the Layout row from Drywall, never a special piece. Yard; tag Outdoor; `aura {property room} +25% adjacent`; `neighbor {property room} +1 max 4`. Drawn from cuts already in the atlas: the wood floor, a bench and a pot of flowers | D-145 |
+| **Porch** (1×2) *(new, D-145)* | Weight 5 in the Layout row from Drywall, never a special piece. Yard; tag Outdoor; `aura {property room} +25% adjacent`; `neighbor {property room} +1 max 4`; `conditional {in: frontYard} → steady 2` (D-166). Drawn from cuts already in the atlas: the wood floor, a bench and a pot of flowers | D-145 |
 
 ### Fixtures (D-050; drawn from phase 2 and sold in the shop)
 
