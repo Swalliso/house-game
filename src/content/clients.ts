@@ -54,7 +54,7 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
         pct: 100,
       },
     ],
-    targetPct: 115, // fitted by npm run sim -- --suggest-targets, set against played runs (D-169)
+    targetPct: 110, // fitted by npm run sim -- --suggest-targets, set against played runs (D-170)
   },
   vladislav: {
     id: 'vladislav',
@@ -87,7 +87,7 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
       { kind: 'earn', target: { piece: 'herbGarden' }, pct: -100 }, // garlic
     ],
     pool: [{ kind: 'drawWeight', target: { piece: 'library' }, add: 20 }],
-    targetPct: 80, // fitted by npm run sim -- --suggest-targets, set against played runs (D-169)
+    targetPct: 80, // fitted by npm run sim -- --suggest-targets, set against played runs (D-170)
   },
   barkers: {
     id: 'barkers',
@@ -132,7 +132,7 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
     deliveries: [
       { phase: 0, cards: ['doghouse'], text: 'The Barkers bring one of their two Doghouses.' },
     ],
-    targetPct: 90, // fitted by npm run sim -- --suggest-targets, set against played runs (D-169)
+    targetPct: 85, // fitted by npm run sim -- --suggest-targets, set against played runs (D-170)
   },
   juniper: {
     id: 'juniper',
@@ -159,7 +159,7 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
       { kind: 'rule', key: 'earlyRewardPct', add: 100 },
     ],
     pool: [],
-    targetPct: 80, // fitted by npm run sim -- --suggest-targets, set against played runs (D-169)
+    targetPct: 70, // fitted by npm run sim -- --suggest-targets, set against played runs (D-170)
   },
   dale: {
     id: 'dale',
@@ -198,6 +198,6 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
     deliveries: [
       { phase: 0, cards: ['homeOffice'], text: 'Dale brings one of his two Home Offices.' },
     ],
-    targetPct: 140, // fitted by npm run sim -- --suggest-targets, set against played runs (D-169)
+    targetPct: 150, // fitted by npm run sim -- --suggest-targets, set against played runs (D-170)
   },
 };

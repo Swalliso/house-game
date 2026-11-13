@@ -25,7 +25,7 @@ const first: RunSetup = { ...standard, mode: 'firstJob' };
 
 describe('a first job’s targets (D-151)', () => {
   it('are each client’s, times the job board’s firstTargetPct, to a whole percent', () => {
-    expect(b.jobBoard.firstTargetPct).toBe(66);
+    expect(b.jobBoard.firstTargetPct).toBe(60);
     for (const client of Object.values(CONTENT.clients)) {
       const setup = { ...standard, clientId: client.id };
       expect(targetPctFor(CONTENT, setup)).toBe(client.targetPct);
@@ -33,8 +33,8 @@ describe('a first job’s targets (D-151)', () => {
         roundHalfUp(client.targetPct * b.jobBoard.firstTargetPct, 100),
       );
     }
-    // The Hendersons, the first job's client: 115% of the curve becomes 76% (D-169).
-    expect(targetPctFor(CONTENT, first)).toBe(76);
+    // The Hendersons, the first job's client: 110% of the curve becomes 66% (D-170).
+    expect(targetPctFor(CONTENT, first)).toBe(66);
   });
 
   it('are what the run is held to, milestone by milestone, and what its verdict reads', () => {
@@ -43,12 +43,12 @@ describe('a first job’s targets (D-151)', () => {
     for (let phase = 0; phase < b.phases.length; phase++) {
       s = { ...s, phase };
       plain = { ...plain, phase };
-      expect(rules.target(s)).toBe(phaseTarget(b, phase, 76));
-      expect(rules.target(plain)).toBe(phaseTarget(b, phase, 115));
+      expect(rules.target(s)).toBe(phaseTarget(b, phase, 66));
+      expect(rules.target(plain)).toBe(phaseTarget(b, phase, 110));
       expect(rules.target(s)).toBeLessThan(rules.target(plain));
     }
     // A won run's verdict is measured against its own last target.
-    const last = phaseTarget(b, b.phases.length - 1, 76);
+    const last = phaseTarget(b, b.phases.length - 1, 66);
     const top = b.verdicts[b.verdicts.length - 1]!;
     const won = {
       ...s,
