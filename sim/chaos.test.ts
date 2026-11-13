@@ -251,8 +251,23 @@ class Checker {
     const brought = (CONTENT.clients[s.setup.clientId].deliveries ?? [])
       .filter((d) => d.phase === 0)
       .flatMap((d) => d.cards.map((id) => ({ id, client: true })));
-    if (J(s.reserve) !== J([...start, ...brought])) {
-      this.fail('the crew’s and the client’s starting cards aren’t in the reserve', s.reserve);
+    // D-162: then the standing stock, from week 1 in any run but a first job, only what a card
+    // already in an extra slot (the Landscaper's Fence) doesn't stand for.
+    const stock = CONTENT.balance.standingStock;
+    const waiting: string[] = [...start, ...brought].map((r) => r.id);
+    const stocked: { id: string; stock: true }[] = [];
+    if (s.setup.mode === 'standard' && stock.fromPhase === 0) {
+      for (const id of stock.pieces) {
+        const k = waiting.indexOf(id);
+        if (k >= 0) waiting.splice(k, 1);
+        else stocked.push({ id, stock: true });
+      }
+    }
+    if (J(s.reserve) !== J([...start, ...brought, ...stocked])) {
+      this.fail(
+        'the crew’s, the client’s and the stock’s first cards aren’t in the reserve',
+        s.reserve,
+      );
     }
     this.invariants(s, s, null, []);
   }

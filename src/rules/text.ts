@@ -21,6 +21,7 @@ import type {
   Region,
   Reward,
   RuleKey,
+  RunMode,
   Selector,
   SetId,
   SetProgress,
@@ -1164,9 +1165,9 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
         `any week you like. Extra slots hold what your crew, the client and their household ` +
         `bring` +
         (b.standingStock.pieces.length > 0
-          ? `, and your stock: ${stockText(content)} from ` +
-            `${b.phases[b.standingStock.fromPhase]?.name ?? 'the start'} on, another at each ` +
-            `milestone once you’ve placed one.`
+          ? `, and your stock: ${stockText(content)}` +
+            `${stockFromText(content, 'standard')}, another at each milestone once you’ve ` +
+            `placed one.`
           : '.'),
     },
     supplies: {
@@ -1370,6 +1371,18 @@ function stockHint(content: Content): string {
     `top right, until you need ${one ? 'it' : 'them'}. ${one ? 'It’s' : 'Each is'} a week’s ` +
     `build, and another comes next milestone.`
   );
+}
+
+/**
+ * D-162: when a run of `mode` first gets the standing stock, as words to follow it: " from
+ * Foundation on" (a first job), or nothing for a stock that's there from week 1.
+ */
+export function stockFromText(content: Content, mode: RunMode): string {
+  const stock = content.balance.standingStock;
+  const phase = mode === 'firstJob' ? stock.firstJobPhase : stock.fromPhase;
+  const first = mode === 'firstJob' ? stock.firstJobSlot : 1;
+  if (phase === 0 && first === 1) return '';
+  return ` from ${content.balance.phases[phase]?.name ?? `phase ${phase + 1}`} on`;
 }
 
 /** D-160: the standing stock as a phrase: "a Hallway and a Fence". */

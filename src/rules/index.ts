@@ -852,10 +852,16 @@ export interface Balance {
    * D-160: the standing stock. From `fromPhase` on, the first week of each milestone tops the
    * reserve's extra slots up to one of each of `pieces`, adding only what's missing, so the stock
    * never gives a second of one while the first waits. A first job (D-149) brings its first in
-   * week `firstJobSlot` of `fromPhase` instead (1: the same week as any run), so it doesn't
-   * arrive with the parts of the screen Foundation's first week brings in.
+   * week `firstJobSlot` of `firstJobPhase` instead, then each later milestone's first week as any
+   * run (D-162), so it doesn't arrive with the guided opening or the parts of the screen
+   * Foundation brings in.
    */
-  standingStock: { fromPhase: number; pieces: readonly PieceId[]; firstJobSlot: number };
+  standingStock: {
+    fromPhase: number;
+    pieces: readonly PieceId[];
+    firstJobPhase: number;
+    firstJobSlot: number;
+  };
 }
 
 /** What a shop visit stocks (Appendix A · M3a), by shop; the last row repeats. */
@@ -2079,6 +2085,7 @@ export {
   setsOfPiece,
   setText,
   specText,
+  stockFromText,
   stockText,
   strikeText,
   struckNames,

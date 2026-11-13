@@ -284,7 +284,12 @@ describe('validateContent', () => {
       ...CONTENT,
       balance: {
         ...CONTENT.balance,
-        standingStock: { fromPhase: 9, pieces: ['fence', 'library', 'fence'], firstJobSlot: 5 },
+        standingStock: {
+          fromPhase: 9,
+          pieces: ['fence', 'library', 'fence'],
+          firstJobPhase: -1,
+          firstJobSlot: 5,
+        },
       },
       clients: {
         ...CONTENT.clients,
@@ -302,6 +307,7 @@ describe('validateContent', () => {
     expect(problems).toMatch(/standingStock: library isn't in the weekly draw/);
     expect(problems).toMatch(/standingStock: a piece twice/);
     expect(problems).toMatch(/standingStock: fromPhase must be a phase of the run/);
+    expect(problems).toMatch(/standingStock: firstJobPhase must be a phase of the run/);
     expect(problems).toMatch(/standingStock: firstJobSlot must be a week of the phase/);
   });
 });
@@ -309,18 +315,24 @@ describe('validateContent', () => {
 describe('what a client brings, and the standing stock (D-160)', () => {
   const start = (clientId: ClientId, crewId: CrewId = 'generalContractor') =>
     rules.newRun({ seed: 'brings', clientId, crewId, mode: 'standard' });
+  const STOCK = [
+    { id: 'hallway', stock: true },
+    { id: 'fence', stock: true },
+  ];
 
   it('Dale brings a Home Office and the Barkers a Doghouse, in week 1; no one else brings any', () => {
-    expect(start('dale').reserve).toEqual([{ id: 'homeOffice', client: true }]);
-    expect(start('barkers').reserve).toEqual([{ id: 'doghouse', client: true }]);
+    // D-162: the stock comes in week 1 too, after what the client brings.
+    expect(start('dale').reserve).toEqual([{ id: 'homeOffice', client: true }, ...STOCK]);
+    expect(start('barkers').reserve).toEqual([{ id: 'doghouse', client: true }, ...STOCK]);
     for (const id of ['hendersons', 'vladislav', 'juniper'] as const) {
-      expect(start(id).reserve, id).toEqual([]);
+      expect(start(id).reserve, id).toEqual(STOCK);
     }
-    // After the crew's starting cards.
+    // After the crew's starting cards, whose Fence the stock counts: it brings only a Hallway.
     expect(start('barkers', 'landscaper').reserve).toEqual([
       { id: 'sapling', crew: true },
       { id: 'fence', crew: true },
       { id: 'doghouse', client: true },
+      { id: 'hallway', stock: true },
     ]);
   });
 
@@ -340,13 +352,23 @@ describe('what a client brings, and the standing stock (D-160)', () => {
     }
   });
 
-  it('the stock is a Hallway and a Fence from Foundation, in a first job its third week', () => {
+  it('the stock is a Hallway and a Fence from week 1, in a first job from Foundation’s third week', () => {
+    // D-162: from Groundbreaking's first week; a first job keeps D-160's week (first-job.ts).
     expect(CONTENT.balance.standingStock).toEqual({
-      fromPhase: 1,
+      fromPhase: 0,
       pieces: ['hallway', 'fence'],
+      firstJobPhase: 1,
       firstJobSlot: 3,
     });
     expect(CONTENT.balance.phases[1]!.name).toBe('Foundation');
+    expect(
+      rules.newRun({
+        seed: 'brings',
+        clientId: 'hendersons',
+        crewId: 'generalContractor',
+        mode: 'firstJob',
+      }).reserve,
+    ).toEqual([]);
     // Both stay in the weekly draw, at their usual weights, from the first week on.
     for (const phase of [0, 1, 4]) {
       const ids = drawWeights(CONTENT, phase).map((w) => w.card.id);

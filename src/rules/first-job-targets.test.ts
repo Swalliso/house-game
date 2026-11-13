@@ -60,7 +60,12 @@ describe('a first job’s targets (D-151)', () => {
   it('change nothing else: the same lot, hand, budget and streams as a standard run', () => {
     const s = rules.newRun(first);
     const plain = rules.newRun(standard);
-    expect({ ...s, setup: plain.setup }).toEqual(plain);
+    // But the standing stock: a standard run's is there from week 1, a first job's comes in
+    // Foundation's third week (D-162, stock.test.ts).
+    expect(s.reserve).toEqual([]);
+    expect(plain.reserve.length).toBeGreaterThan(0);
+    expect(plain.reserve.every((r) => r.stock)).toBe(true);
+    expect({ ...s, setup: plain.setup, reserve: plain.reserve }).toEqual(plain);
     // And a week played the same way scores the same.
     const a = rules.apply(s, { t: 'pass' }).state;
     const c = rules.apply(plain, { t: 'pass' }).state;

@@ -58,12 +58,24 @@ describe("the goods panel's rows", () => {
       crewId: 'landscaper',
       mode: 'standard',
     });
-    expect(s.reserve.length).toBeGreaterThan(0);
-    expect(s.reserve.every((r) => r.crew)).toBe(true);
+    // The Landscaper's Sapling and Fence, and the standing stock's Hallway (D-162).
+    expect(s.reserve.filter((r) => r.crew)).toHaveLength(2);
+    expect(s.reserve.every((r) => r.crew || r.stock)).toBe(true);
     const rows = inventoryRows(s, false);
     expect(rows.reserve).toBe(true);
     expect(rows.blueprints).toBe(false);
     expect(showsInventory(rows)).toBe(true);
+  });
+
+  it('show the standing stock from week 1, and nothing in a first job’s week 1 (D-162)', () => {
+    const s = fresh();
+    expect(s.reserve.length).toBeGreaterThan(0);
+    expect(s.reserve.every((r) => r.stock)).toBe(true);
+    expect(showsInventory(inventoryRows(s, false))).toBe(true);
+    // A first job's stock waits for Foundation's third week, so its calm screen has no goods.
+    const first = rules.newRun({ ...s.setup, mode: 'firstJob' });
+    expect(first.reserve).toEqual([]);
+    expect(showsInventory(inventoryRows(first, false))).toBe(false);
   });
 
   it('show every row once a milestone has passed, and always in the shop', () => {
