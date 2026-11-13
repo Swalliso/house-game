@@ -354,7 +354,7 @@ interface RunState {
   phaseStartScore: number
   budget: number
   hand: Card[]                         // this week's cards, the Rooms row then the Layout row (D-121: roomsRow 2, layoutRow 2); a Card is a piece or a fixture
-  reserve: ReservePiece[]              // bought pieces (2 slots) + extra slots: crew starting pieces (crew), an arrival's cards (arrival, D-103), the client's (client) and the standing stock (stock, D-160)
+  reserve: ReservePiece[]              // bought pieces (2 slots) + extra slots: the crew's cards (crew: a starting piece, or one from its stock, D-171), an arrival's cards (arrival, D-103), the client's (client) and the standing stock (stock, D-160)
   stocked?: true                       // D-163: the standing stock has come (without `refill`, it comes once)
   supplies: (FixtureId | ToolId)[]     // bought fixtures and tools (3 slots), used as free actions
   rerollsLeft: number                  // reset to rerollsPerPhase at each phase start
@@ -413,7 +413,7 @@ type Action =
 `(x, y)` is the top-left cell of the rotated shape's bounding box, and each rotation's cells are normalized so their minimum x and y are 0. There's no mirroring: no Core shape needs it (the L-Kitchen's mirror image is one of its rotations, and so is the L-Fence's).
 
 **The week's card versus free actions (D-050, D-051, D-163):**
-- Placing a piece from the hand, installing a fixture **from the hand**, renovating a room with a hand card (D-102), extending a room with one (D-168), or passing is the week's turn, and it ends the week. In the rules, a week's play is `Play = { place } | { install } | { renovate } | { extend } | null`. `resolveWeek` and `preview` take a `Play`, so a fixture, Renovation or extension preview goes through the same path as a piece preview. `rules.endsWeek(state, play)` says whether a play ends the week.
+- Placing a piece from the hand, installing a fixture **from the hand**, renovating a room with a hand card (D-102), extending a room with one (D-168), or passing is the week's turn, and it ends the week. In the rules, a week's play is `Play = { place } | { install } | { renovate } | { extend } | null`. `resolveWeek` and `preview` take a `Play`, so a fixture, Renovation or extension preview goes through the same path as a piece preview. `rules.endsWeek(state, play)` says whether a play ends the week: under the Handyman's `freeInstalls` (D-171) a fixture from the hand doesn't.
 - Placing a piece **from the reserve** (Your goods), or renovating or extending a room with one, is a free action (D-163, D-169): it goes down at once and earns from this week's tally. So are installing a fixture **from your supplies**, using a tool, rerolling, striking a hand card (D-157), and demolishing. A free install previews as the change to this week's projected total, `resolveWeek(after, null) − resolveWeek(before, null)`.
 - So a week places one piece from the hand at most (two with Weekend Crew, D-083) and any number from the reserve: D-163 changed D-004 that way (Accepted 2026-11-13).
 
@@ -426,6 +426,7 @@ type Action =
 - `toolUsed`, `findClaimed` (a find's reward, for its own little moment)
 - `tally` (week, per-piece lines, set lines, points, mult, each ×Mult source, total, budget, `fastForward`)
 - `setCompleted`, `specMet`, `specLost` (distinct moments for juice), `renovated`, `extended` (D-168)
+- `delivered` (D-160: the client's cards, the standing stock's top-up, and D-171 the crew's own card) and `crewTool` (D-171: the crew's tool came, or was sold with the supplies full)
 - `targetReached` (fires when the score first crosses the target)
 - `overtimeUsed`
 - `milestone` (phase, result `'onTime' | 'early' | 'overtime' | 'failed'`, weeks saved, overtime used, reward)
@@ -437,7 +438,7 @@ Each phase writes out the full payload of the events and types it adds in `rules
 
 | Function | Use |
 |---|---|
-| `newRun(setup) → RunState` | Lot from the seed; crew starting pieces into the reserve; week 1's start, with the client's week-1 cards (D-160); first hand drawn. `autoComplete` always starts off. |
+| `newRun(setup) → RunState` | Lot from the seed; crew starting pieces into the reserve; week 1's start, with the client's week-1 cards (D-160), the standing stock and the crew's own card (D-171); first hand drawn. `autoComplete` always starts off. |
 | `apply(state, action) → { state, events }` | The only way state changes. Throws `IllegalAction` with a reason. Never mutates its input. |
 | `legalActions(state)` | For bots, and for greying out cards and buttons. |
 | `resolveWeek(state, play \| null)` | The end-of-week step: apply the week's play (a placement, an install, or none), tally, add economy budget. Both `apply` and `preview` call it, so they can't disagree. |
@@ -775,7 +776,9 @@ type Rarity = 'common' | 'uncommon' | 'rare'
 
 interface BlueprintDef { id; name; tier; rarity: Rarity; price: number; modifiers: Modifier[] }
 
-interface CrewDef { id; name; tier; blurb: string; modifiers: Modifier[]; startReserve?: PieceId[] }
+interface CrewDef { id; name; tier; blurb: string; modifiers: Modifier[]; startReserve?: PieceId[];
+                    stock?: PieceId[];     // D-171: its own card each time the standing stock comes, one at a time
+                    orderTool?: ToolId }   // D-171: a tool at each milestone that follows a change order
 // Starting pieces sit in extra reserve slots that don't count against the 2, as do an arrival's
 // cards (D-103), the client's deliveries and the standing stock (D-160).
 
@@ -1776,7 +1779,7 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
     - crates: 4
     - company upgrades: 6–8
 - **Slots:**
-  - **Reserve:** 2 pieces. A reserved piece can be placed in any later week, and placing it doesn't use the week (D-163). Crew starting pieces, an arrival's cards, the client's deliveries and the standing stock use extra slots (D-103, D-160).
+  - **Reserve:** 2 pieces. A reserved piece can be placed in any later week, and placing it doesn't use the week (D-163). Crew starting pieces, an arrival's cards, the client's deliveries, the standing stock and the crew's own card (D-171) use extra slots (D-103, D-160).
   - **Supplies:** 3, shared by bought fixtures and tools, used as free actions in a build week.
   - **Blueprints:** 4, no duplicates.
   - Company upgrades add one of each (Storage Unit, Tool Belt, Drafting Table).
@@ -1835,6 +1838,7 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
   - the base pool is 9 indoor + 7 yard + 3 "-house" pieces
   - each client's spec pieces get +100% weight, and their signature special pieces are added at weight 20
   - Landscaper: yard pieces +50% earnings (D-109; the plan's +50% weight and +25% earnings made it the weakest crew)
+  - **Each crew's own free build (D-171),** on top of the standing stock: the General Contractor gets a Weekend Crew at the start of each milestone that follows a change order (`orderTool`; sold at once with the supplies full); the Landscaper a yard piece and the Architect an Addition in the reserve's extra slots each time the standing stock comes, one at a time (`stock`, in an order drawn once a run from `crew/stock`); the Handyman installs fixtures from the hand without ending the week (`rule freeInstalls`). An Addition (`PieceDef.addition`) is never placed: it extends a room of any extendable type (D-168) by its four tiles, and is never drawn, sold, or in a crate or the Catalog.
   - Architect: special rooms at weight 5, and sets +10% (D-109; +50% made it the strongest by 23 points)
 - **Job board:**
   - 3 contracts with rarity weights Common 65, Uncommon 27, Rare 8
@@ -2078,9 +2082,10 @@ Every checklist starts with the house rules (D-101; three since D-165), in the c
 
 | Crew | Encoding | Built in |
 |---|---|---|
-| General Contractor | `rule rerollsPerPhase +1` | M4b (default crew from M2) |
-| Landscaper | `earn {yard} +50` (was `drawWeight {yard} +50%`; `earn {yard} +25`, D-109); `rule layoutRow +1`, a third Layout card (D-121); `startReserve [sapling, fence]` | M4b |
-| Architect | `drawWeight [playroom, library, mudroom, pool] add 5`; `setBonus +10` (was +50, D-109) | M4b |
+| General Contractor | `rule rerollsPerPhase +1`; `orderTool weekendCrew` (D-171) | M4b (default crew from M2) |
+| Landscaper | `earn {yard} +50` (was `drawWeight {yard} +50%`; `earn {yard} +25`, D-109); `rule layoutRow +1`, a third Layout card (D-121); `stock [lawn, flowerBed, patio, herbGarden, treehouse, greenhouse, doghouse, sapling]` (D-171; was `startReserve [sapling, fence]`) | M4b |
+| Architect | `drawWeight [playroom, library, mudroom, pool] add 5`; `setBonus +10` (was +50, D-109); `stock [addition]` (D-171) | M4b |
+| Handyman | `rule freeInstalls +1`: a fixture from the hand doesn't end the week | D-171 |
 
 ### Generic change orders
 
