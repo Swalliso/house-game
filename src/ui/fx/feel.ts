@@ -353,10 +353,10 @@ export const FEEL = {
 
   /**
    * The week's stamp (D-154, week-stamp.ts): as each week of a milestone comes up on the board,
-   * "Week 2 of 5" comes in at its top center over `inMs`, holds, and fades over `outMs`, in real
+   * "Week 2 of 4" comes in at its top center over `inMs`, holds, and fades over `outMs`, in real
    * time at any tally speed. A milestone's first week holds `holdMs.first`, as it names the
    * milestone and what its target needs. Its middle weeks get a smaller stamp held `holdMs.mid`,
-   * and their page flick plays at `midGain`, so some 35 stamps a run don't wear thin. The last
+   * and their page flick plays at `midGain`, so some 28 stamps a run don't wear thin. The last
    * week's holds longest, since it says what the target still needs, under its tick-tock. It
    * never takes the pointer, and it goes at once when a tally starts.
    */
