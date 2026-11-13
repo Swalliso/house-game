@@ -561,7 +561,7 @@ Derived from `HouseState`, cached by house object identity:
   - On a big lot this makes siting matter: a house built near a side or back edge closes a yard with one or two Fences, while a house in the middle needs more.
 - **Links:** a Hallway (or a connected group of Hallways) links every room touching it. A `link` modifier links touching pieces of its types in one connected group (Open Concept's, until D-143 gave it the Entertainer's bonus instead; no blueprint carries one now). Links count as adjacency for scoring, sets, and specs. They don't count for connectivity, exterior/interior, or enclosure, and a Hallway isn't itself a neighbor for bonuses.
 - **Fixtures (D-050):**
-  - A fixture is installed in a placed piece that matches its `fits` selector (a Fireplace fits any room; a Sprinkler fits a Lawn).
+  - A fixture is installed in a placed piece that matches its `fits` selector (a Fireplace fits most rooms, D-172; a Sprinkler fits a Lawn).
   - Each piece holds one fixture. Installing a second replaces the first, and the preview shows what's lost.
   - A fixture's modifiers apply to its host only (the `{ host: true }` selector), from the tally of the week it's installed.
   - It goes when its host is demolished; there's no refund.
@@ -1960,19 +1960,19 @@ Every fixture's modifiers target `{ host: true }`, written as "host" here. Draw 
 
 | Fixture | Fits | Encoding | Rarity | Built in |
 |---|---|---|---|---|
-| Fireplace | any room | `earn host +50`; `earn {host ∧ piece [livingRoom, library]} +50` (so +100 there) | Common | M3a |
+| Fireplace | most rooms (D-172: not a Bathroom, Closet, Garage or Mudroom) | `earn host +50`; `earn {host ∧ piece [livingRoom, library]} +50` (so +100 there) | Common | M3a |
 | Skylight | any room | `grantTag host Sunny`; `removeTag host Dark` | Common | M3a |
-| Blackout Curtains | any room | `grantTag host Dark`; `removeTag host Sunny` (D-120) | Common | M3a |
+| Blackout Curtains | most rooms (D-172: not a Bathroom, Closet or Garage) | `grantTag host Dark`; `removeTag host Sunny` (D-120) | Common | M3a |
 | Soundproofing | any room | `blockPenalties host from {tag Loud}` (the street included) | Common | M3a |
 | Kitchen Island | kitchen | `countsAs host diningRoom`; `earn host +25` | Uncommon | M3a |
 | Bunk Beds | bedroom | `countsAs host bedroom times 2` (counts twice in `count` conditions, such as the Hendersons' 4 Bedrooms; once in sets) | Uncommon | M3a |
-| Bay Window | an exterior room | `grantView host` | Common | M3a |
+| Bay Window | most exterior rooms (D-172: not a Bathroom, Closet or Garage) | `grantView host` | Common | M3a |
 | Sprinkler | lawn | `earn host +100` | Common | M3a |
 | Pergola | patio | `grantView host`; `earn host +50` | Uncommon | M3a |
 | Garden Lights | any yard piece | `grantTag host Pretty`; `earn {host ∧ in frontYard} +50` | Common | M3a |
 | **Chandelier** *(D-056)* | dining room or living room | `xMult times 125 when {host: {inSet: entertainer}}`: ×1.25 Mult while its room is part of an Entertainer. Shop only (draw weight 0). | Rare | M3a |
 
-`fits` is checked when a fixture is installed. A Bay Window stays if its room later becomes interior. No fixture goes in a Sapling, which becomes a Tree, so Garden Lights fit every yard piece but that one (D-095).
+`fits` is checked when a fixture is installed. A Bay Window stays if its room later becomes interior. D-172: a fixture that leaves a few room types out (`{ all: [room, { not: { piece: […] } }] }`) reads "most rooms" on its card, a variant or a member's room goes by its type, and a refused install names the room ("A Fireplace goes in most rooms, not a Bathroom."). No fixture goes in a Sapling, which becomes a Tree, so Garden Lights fit every yard piece but that one (D-095).
 
 ### Sets
 

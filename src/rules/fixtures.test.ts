@@ -541,7 +541,7 @@ describe('fitsText and fixtureText', () => {
   it('every real fixture has a fits line and one non-empty effect line per modifier', () => {
     for (const def of Object.values(CONTENT.fixtures)) {
       const text = fixtureText(CONTENT, def);
-      expect(text.fits, def.id).toMatch(/^Fits (any |an? )\S/);
+      expect(text.fits, def.id).toMatch(/^Fits (any |an? |most )\S/);
       expect(text.effects.length, def.id).toBe(def.modifiers.length);
       expect(text.effects.length, def.id).toBeGreaterThan(0);
       for (const line of [text.fits, ...text.effects]) {
@@ -551,10 +551,15 @@ describe('fitsText and fixtureText', () => {
     }
   });
 
-  // Appendix B's Fits column says "an exterior room": { all: [room, exterior] } reads so.
-  it('a Bay Window fits "an exterior room"', () => {
+  // Appendix B's Fits column says "an exterior room": { all: [room, exterior] } reads so. D-172:
+  // a real fixture that takes rooms but a few types reads "most rooms", and the real Bay Window,
+  // which needs an outside wall too, "most exterior rooms".
+  it('a Bay Window fits "an exterior room", or "most exterior rooms" when it leaves some out', () => {
     expect(fitsText(C, 'bayWindow')).toBe('an exterior room');
-    expect(fixtureText(CONTENT, CONTENT.fixtures.bayWindow).fits).toBe('Fits an exterior room');
+    expect(fitsText(CONTENT, 'bayWindow')).toBe('most exterior rooms');
+    expect(fixtureText(CONTENT, CONTENT.fixtures.bayWindow).fits).toBe('Fits most exterior rooms');
+    expect(fitsText(CONTENT, 'fireplace')).toBe('most rooms');
+    expect(fitsText(CONTENT, 'skylight')).toBe('any room');
   });
 
   // "part of an Entertainer", not "a Entertainer".
