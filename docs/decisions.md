@@ -3285,6 +3285,23 @@ Measured in headless Chrome on frozen dev-channel builds, at rest, before (devel
 - **Old Woods' pay** (its 81 lots of `hold-0` to `hold-999`; develop won 45.7% on those seeds): +50%, Stage 1's pick, 33.3%; +75% 39.5%; **+100% 53.1%** (and 42.5% on its 73 lots of `hold-1000` to `hold-1999`). A roomier lot, 75% free with Old Woods 60 of the autumn draws, won 33.0% at +50%: the space isn't what it lacked. Stage 1's ~40% at +50% was measured with the meadow's woods; the autumn woods are thicker (about 106 Trees).
 - **Open's pay** (Stage 1, the same 200 lots forced Open, develop's targets): as develop has it, 27% against 48.5% for those lots as drawn. D-166 alone had left Open above the average (57.0% against 48.5%); the batch's re-fit (D-169) took it to 24.5%. Without the tilt it wins 10 points more, and with Sunny pieces at +50% 49.5%.
 
+**`npm run sim -- --check`** (200 runs, `check-0` to `check-199`, the General Contractor), D-170's run on develop against D-174's:
+
+| Criterion | develop (D-170) | D-174 |
+|---|---|---|
+| random loses by milestone 3 (≥ 95%) | 100.0% PASS | 100.0% PASS |
+| novice passes milestone 1 (≥ 90%) | 99.0% PASS | 99.0% PASS |
+| greedy clears milestones 1–3 (92–98%) | 97.5% PASS, unsure | 98.0% PASS, unsure |
+| greedy wins (40–50%) | 52.0% FAIL, unsure | 53.0% FAIL, unsure |
+| early completion: always vs never, within 10 points | −10.5 FAIL, unsure | −7.0 PASS, unsure |
+| fences pay: probe p50 2–3, ≥ 50% offered that many | 2, 66.5% PASS | 2, 70.3% PASS |
+| clients, crews within about 15 points | 20.0 FAIL, unsure | 25.0 FAIL, unsure |
+
+- **`--check`'s greedy line reads high** on its 200 runs, as D-170's does; the 2,000 held-out runs above are the measure.
+- **Its client line** is 40 runs a client: the Hendersons 65.0%, Count Vladislav 55.0%, the Barkers 40.0%, Juniper 45.0% and Dale 60.0%. On 2,000 held-out runs they are 17.0 points apart (above).
+- **The houses:** 27% pass the compact outline and 17% the glance test (D-170: 31% and 22%); the median house has 14 rooms on 20.8% of the lot, as before, and 11% are tiny (10%). Milestone 2 is met on time in 87.0% of runs (86.5%), with 1.27 overtime weeks a run (1.34).
+- **The benchmark gate fails,** as on develop: the densest lot's run took 1,104 ms here (limit 1 s).
+
 **Why:** playtest 8 asked for the lots and biomes to be fleshed out, and Stage 1 found develop's lots 30 points apart (Open at 29%, Wooded at 59%), with only a creek, a big pond and Boulders moving where the house goes. A biome gives a run its own look from the first glance at the job board, and each brings lots that ask for a different house: a long one along a lakeshore, one on one bank of a creek, one woven between old Trees. The words stay at two chips and one refusal.
 
 **Considered** (Stage 1's options page):
