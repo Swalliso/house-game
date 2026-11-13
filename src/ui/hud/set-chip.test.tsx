@@ -62,11 +62,17 @@ const count = (id: PieceId): string | null => {
 describe('the set chip (D-122, D-153)', () => {
   it('counts the Full House types built on a card whose only set it is', () => {
     withHouse(NINE.slice(0, 5));
-    for (const id of ['hallway', 'longHallway', 'garage', 'homeOffice'] as const) {
+    for (const id of ['hallway', 'longHallway', 'homeOffice'] as const) {
       expect(text(chip(id)), id).toBe('Full House 5/9');
       expect(count(id), id).toBe(' 5/9');
       expect(chip(id).props.icon, id).toBeUndefined();
     }
+    // D-164: the Garage's touching set is Drive-In now, so its chip names that, and its tip
+    // still counts Full House after it.
+    expect(text(chip('garage'))).toBe('Drive-In');
+    expect(String(chip('garage').props.tip).split('\n').at(-1)).toMatch(
+      /^Full House: .* Your house has 5 of the 9\. /,
+    );
     // Its tip says the set and the count in words.
     expect(chip('hallway').props.tip).toBe(
       'Full House: a Bedroom, a Bathroom, a Kitchen, a Dining Room, a Living Room, a Closet, a Hallway, a Garage, and a Home Office, anywhere in the house. +40 Comfort, +1 Charm, and ×1.5 Sparkle every week. One per house. Your house has 5 of the 9. Still to build: a Closet, a Hallway, a Garage, and a Home Office.',
@@ -80,9 +86,9 @@ describe('the set chip (D-122, D-153)', () => {
     expect(chip('hallway').props.icon).toBeUndefined();
     // A Long Hallway built (in the Hallway's slot) counts as the Hallway.
     withHouse([...noHallway, ['longHallway', 0, 8]]);
-    expect(text(chip('garage'))).toBe('Full House');
-    expect(count('garage')).toBeNull();
-    expect(chip('garage').props.icon).toBe('check');
+    expect(text(chip('homeOffice'))).toBe('Full House');
+    expect(count('homeOffice')).toBeNull();
+    expect(chip('homeOffice').props.icon).toBe('check');
   });
 
   it('never counts a piece only being placed', () => {
@@ -107,12 +113,36 @@ describe('the set chip (D-122, D-153)', () => {
     expect(text(chip('bedroom'))).toBe('Suite +1');
     expect(count('bedroom')).toBeNull();
     expect(chip('bedroom').props.icon).toBeUndefined();
-    expect(text(chip('kitchen'))).toBe('Entertainer');
+    expect(text(chip('diningRoom'))).toBe('Entertainer');
     // The tip still counts Full House, after the touching sets.
     expect(String(chip('bedroom').props.tip).split('\n').at(-1)).toMatch(
       /^Full House: .* Your house has 5 of the 9\. Still to build: /,
     );
-    expect(SetChip({ id: 'patio' })).toBeNull();
+    expect(SetChip({ id: 'sapling' })).toBeNull();
+  });
+
+  it('names a yard set on the yard cards, and on the rooms that start one (D-164)', () => {
+    withHouse(NINE.slice(0, 5));
+    // The shortest name among the touching sets, as D-122 picks it, so a room in a yard set
+    // can name it: a Living Room's Backyard (8 letters) beats its Entertainer (11).
+    expect(text(chip('livingRoom'))).toBe('Backyard +1');
+    expect(text(chip('kitchen'))).toBe('Harvest +1');
+    expect(text(chip('lKitchen'))).toBe('Harvest +1');
+    expect(text(chip('patio'))).toBe('Backyard');
+    expect(text(chip('herbGarden'))).toBe('Harvest');
+    expect(text(chip('greenhouse'))).toBe('Harvest');
+    expect(text(chip('lawn'))).toBe('Dog Run +2');
+    expect(text(chip('fence'))).toBe('Dog Run +1');
+    expect(text(chip('doghouse'))).toBe('Dog Run');
+    expect(text(chip('treehouse'))).toBe('Play Yard');
+    expect(text(chip('driveway'))).toBe('Drive-In');
+    // A touching set has no count, and the tip has every set's terms: the Lawn's three.
+    expect(count('lawn')).toBeNull();
+    expect(String(chip('lawn').props.tip).split('\n')).toEqual([
+      'Backyard: a Living Room, a Patio, and a Lawn, touching. +15 Comfort and +0.5 Charm every week. One per house.',
+      'Dog Run: a Doghouse, a Lawn, and a Fence, touching. +10 Comfort and +0.5 Charm every week. One per house.',
+      'Play Yard: a Treehouse, a Lawn, and a Fence, touching. +10 Comfort and +0.5 Charm every week. One per house.',
+    ]);
   });
 });
 
@@ -130,7 +160,11 @@ describe("Inspect's set lines (D-153)", () => {
     );
     withHouse(NINE);
     expect(lines('hallway')).toMatch(/One per house\. Your house has it\.$/);
-    expect(SetLines({ id: 'patio' })).toBeNull();
+    expect(SetLines({ id: 'sapling' })).toBeNull();
+    // A yard card's sets, which need their members to touch, get no progress line (D-164).
+    expect(lines('driveway')).toBe(
+      'SetsDrive-In: a Garage and a Driveway, touching. +10 Comfort and +0.25 Charm every week. One per house.',
+    );
   });
 
   it('with a card picked, give only how far the house is toward Full House', () => {

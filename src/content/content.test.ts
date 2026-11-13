@@ -80,7 +80,7 @@ describe('content', () => {
     });
   });
 
-  it('has the base pool: 23 piece types as 25 cards, four sets, and seven milestones', () => {
+  it('has the base pool: 23 piece types as 25 cards, nine sets, and seven milestones', () => {
     // The base pool is what the weekly draw deals; special pieces (weight 0) come from the shop.
     // The Sunroom left them for the draw (D-120), then the Birdhouse and the Fire Pit, which
     // arrive late with the Porch (D-145).
@@ -103,7 +103,18 @@ describe('content', () => {
     expect(defs.filter((d) => d.countsAs).map((d) => d.id)).toEqual(['lKitchen', 'longHallway']);
     expect(defs.filter((d) => d.pack).map((d) => d.id)).toEqual(['fence', 'driveway']);
     expect(CONTENT.pieces.lKitchen.countsAs).toBe('kitchen');
-    expect(Object.keys(CONTENT.sets)).toEqual(['jackAndJill', 'entertainer', 'suite', 'fullHouse']);
+    // The indoor sets, the yard sets (D-164), then Full House, the ladder's top.
+    expect(Object.keys(CONTENT.sets)).toEqual([
+      'jackAndJill',
+      'entertainer',
+      'suite',
+      'backyard',
+      'harvest',
+      'dogRun',
+      'playYard',
+      'driveIn',
+      'fullHouse',
+    ]);
     expect(CONTENT.balance.phases.map((p) => p.name)).toEqual([
       'Groundbreaking',
       'Foundation',

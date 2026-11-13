@@ -266,13 +266,6 @@ function SetPicture({ set }: { set: SetDef }) {
   );
 }
 
-/** "the A or the B" from a list of names. */
-function either(names: readonly string[]): string {
-  const the = names.map((n) => `the ${n}`);
-  if (the.length <= 1) return the[0] ?? '';
-  return `${the.slice(0, -1).join(', ')} or ${the[the.length - 1]}`;
-}
-
 /** "A, B, and C" from a list of names, as the rules' text lists them. */
 function all(names: readonly string[]): string {
   if (names.length <= 2) return names.join(' and ');
@@ -318,7 +311,6 @@ export function HowToPlayText() {
   const strikes = rules.rule(s, 'strikes');
   const overtime = rules.rule(s, 'overtime');
   const crew = CONTENT.crews[s.setup.crewId]?.name;
-  const sets = either(Object.values(CONTENT.sets).map((set) => set.name));
   const L = SCORE_LABELS;
   const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
   // M4: the client's checklist, packs, change orders, and the crews.
@@ -432,14 +424,13 @@ export function HowToPlayText() {
             Each week your pieces' {L.points} is multiplied by {L.mult} and added to your {L.total}.
           </li>
           <li>Pieces earn (or lose) {L.points} from what they touch.</li>
-          {sets && (
-            <li>
-              Sets, like {sets}, add {L.points} and {L.mult}.
-            </li>
-          )}
+          {/* D-164: nine sets, so the pictures name them, not a list in the sentence. */}
+          <li>
+            Sets (pictured below), indoors and out, add {L.points} and {L.mult}.
+          </li>
           {/* The matching rule (rules/sets.ts), which nothing on screen said (D-158). */}
           <li>
-            A room can be in one set of each kind: one {bathroom} can serve a {jackAndJill} and a{' '}
+            A piece can be in one set of each kind: one {bathroom} can serve a {jackAndJill} and a{' '}
             {suite}, but two {suite}s need a {bathroom} each.
           </li>
           <li>

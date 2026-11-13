@@ -131,6 +131,8 @@ export interface RunRecord {
 export interface BuildStats {
   /** Room pieces placed in each milestone, overtime included (Hallways left out). */
   roomsByPhase: number[];
+  /** Yard pieces and outbuildings placed in each milestone, overtime included (D-164). */
+  yardByPhase: number[];
   /** Week-ending plays in weeks 17–28 of the run (each week's play counts once). */
   late: {
     rooms: number;
@@ -149,6 +151,13 @@ export interface BuildStats {
   specFirst: Record<string, number>;
   /** The lines held at the last tally. */
   specEnd: Record<string, boolean>;
+  /**
+   * D-164: weeks each set type held (one instance or more), by set id; the week it first held
+   * (absent: never); and its instances at the last tally.
+   */
+  setWeeks: Record<string, number>;
+  setFirst: Record<string, number>;
+  setEnd: Record<string, number>;
   /** Wow from pieces placed in milestones 1–2, attributed as PieceStats.wow is. */
   earlyPieceWow: number;
   /** Weeks 5 on whose total is at least 15% above the week before. */
@@ -370,12 +379,16 @@ export function simulateRun(
   const specIds = content.clients[s.setup.clientId].specs.map((sp) => sp.id);
   const build: BuildStats = {
     roomsByPhase: Array.from({ length: phaseCount }, () => 0),
+    yardByPhase: Array.from({ length: phaseCount }, () => 0),
     late: { rooms: 0, arrivals: 0, renovations: 0, yard: 0, fixtures: 0, hallways: 0, passes: 0 },
     renovations: 0,
     tallies: 0,
     specWeeks: {},
     specFirst: {},
     specEnd: {},
+    setWeeks: {},
+    setFirst: {},
+    setEnd: {},
     earlyPieceWow: 0,
     bigWeeks: 0,
     dead: opts.deadCards ? {} : null,
@@ -383,6 +396,8 @@ export function simulateRun(
   /** The milestone each piece was placed in, by uid (transforms keep the uid). */
   const placedPhase = new Map<number, number>();
   let lastTotal: number | null = null;
+  /** The set instances held at the latest tally, by set id. */
+  let lastSets: Record<string, number> = {};
   let deadWeek = -1;
   const { width, height } = s.house.lot;
   const rowsFromStreet = (y: number) => height - 1 - y;
@@ -587,9 +602,12 @@ export function simulateRun(
           if (a.from === 'reserve' && 'arrival' in card) build.late.arrivals++;
           else build.late.rooms++;
         }
-      } else if (late) {
-        if (def.connector) build.late.hallways++;
-        else build.late.yard++;
+      } else {
+        if (def.category !== 'indoor') build.yardByPhase[Math.min(st.phase, phaseCount - 1)]!++;
+        if (late) {
+          if (def.connector) build.late.hallways++;
+          else build.late.yard++;
+        }
       }
     } else if (a.t === 'renovate') {
       build.renovations++;
@@ -714,6 +732,12 @@ export function simulateRun(
           build.specWeeks[sp.id] = (build.specWeeks[sp.id] ?? 0) + 1;
           build.specFirst[sp.id] ??= e.week;
         }
+        lastSets = {};
+        for (const set of e.tally.sets) lastSets[set.set] = (lastSets[set.set] ?? 0) + 1;
+        for (const id of Object.keys(lastSets)) {
+          build.setWeeks[id] = (build.setWeeks[id] ?? 0) + 1;
+          build.setFirst[id] ??= e.week;
+        }
         if (e.week >= 5 && lastTotal !== null && e.tally.total * 100 >= lastTotal * 115) {
           build.bigWeeks++;
         }
@@ -795,6 +819,7 @@ export function simulateRun(
   (s.lastTally?.specsMet ?? []).forEach((met, k) => {
     if (specIds[k]) build.specEnd[specIds[k]] = met;
   });
+  build.setEnd = lastSets;
   return {
     record: {
       seed,
