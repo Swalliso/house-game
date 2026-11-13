@@ -13,7 +13,7 @@ Our game jam entry for the theme **"It's a house."** A one-week jam with friends
 
 Related docs: `research.md` (sources and reference notes), `content-brainstorm.md` (draft pieces, clients, and crews), `jam-scope.md` (jam scope and starting numbers), `implementation-plan.md` (architecture and build order), `house-systems-review.md` (how houses grow without sprawling: D-093's systems review).
 
-**2026-11-12, the verdict sheet:** the user went through the 41 entries then marked Proposed. 30 are Accepted, 5 stay Proposed (D-140, D-145, D-149, D-150 and D-158: each waits on a playtest it hasn't had, or on what D-164 and D-166 build), and 6 that were never built are Parked (D-015, D-016, D-017, D-022, D-023 and D-024). Each entry's status line says so. They keep their places under *Proposed* for now, so that the open pull requests of D-162 to D-168, which add notes to some of them, merge cleanly; they move under *Accepted* and *Parked* once those have merged.
+**2026-11-12, the verdict sheet:** the user went through the 41 entries then marked Proposed. 30 are Accepted, 5 stay Proposed (D-140, D-145, D-149, D-150 and D-158: each waits on a playtest it hasn't had, or on what D-164 and D-166 build), and 6 that were never built are Parked (D-015, D-016, D-017, D-022, D-023 and D-024). Each entry's status line says so. D-169 moved them under *Accepted* and *Parked* once the batch (D-162 to D-168) had merged, with no other change.
 
 ## The game in one paragraph
 
@@ -1907,6 +1907,1317 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - **The company's record and bests** don't tell a first job from a standard run: a first job's verdict, read against its lower targets, can be a best.
 - **The release drops runs in progress**, as any content change does (#54's check needs the same content hash).
 
+### D-031 · Client rarity tiers
+**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: built in M4a (below) and played since playtest 4. Was Proposed.
+Common, Uncommon, and Rare clients. The proposed lineup is in `content-brainstorm.md`, section 10.
+**2026-11-06 (M4a):** built with five Core clients: the Hendersons, the Barkers, and Dale are Common, Juniper Uncommon, and Count Vladislav Rare.
+
+### D-032 · Job board at run start
+**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: built in M4a (below) and played since playtest 4. Was Proposed.
+Choose from two or three contracts, each one a client plus a lot.
+**2026-11-06 (M4a):** built: three contracts drawn by rarity (Common 65, Uncommon 27, Rare 8; D-026), each with a thumbnail of its lot, its wishes, household, and tastes. On a first visit the Hendersons come first, marked Recommended. The board sits outside the run code.
+*2026-11-11 (D-149, Proposed):* on a first visit the Hendersons' contract is the one to take, on the first job's own lot, and the other two lie face down until it has been taken.
+
+---
+
+### D-085 · M3 balance: the milestone budget and the targets
+**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: the milestone budget has been played since playtest 3, where it "felt about right"; the targets here were replaced by D-123 and D-146 (below). Proposed 2026-11-05, with the M3 pull request; numbers for the sim and playtests to tune.
+**Decision:**
+- **Milestones pay 4 budget,** not Appendix A's 3. At 3 the greedy bot (which never completes early) earned a median 25 a run against the plan's 30–40, so the shop was too tight to plan around. At 4 it earns a median 30 (p10 15, p90 42).
+- **Targets** (`--suggest-targets`, 200 runs, with the shop bot): 15, 190, 490, 1,050, 2,250, 4,600, 9,500 Wow, up from M2's 15, 120, 270, 650, 1,350, 2,900, 5,300. The shop's blueprints, fixtures, and tools roughly double a late-run week. D-072's survival curve and criteria still hold: greedy clears milestones 1–3 93% of the time and wins 44%; random wins none and fails at milestone 1 or 2.
+- The shop's other numbers are Appendix A's placeholders, in `balance.ts`.
+
+**Changes:** Appendix A · M3a's +3 per milestone. D-072's targets.
+**2026-11-06 (D-089):** these numbers came from the old greedy, whose estimate ties went to the back row, and whose shop bot always struck Driveways and Fences. On the same targets the new greedy clears milestones 1–3 in 93.5% [89.2–96.2] and wins 60.0% [53.1–66.5] (`--check`, 200 held-out runs), so the targets are now easy for it. The old greedy's 44% was also measured on the seeds the targets were fitted to; on held-out seeds it won about 52%. The budget numbers also came from a bot that never completes early; `--early always` shows what early completion earns. Re-running `--suggest-targets` is the team's call.
+**2026-11-06 (playtest 3):** the team found the run too easy once the shop's goods were in, and the budget about right: they could buy what they wanted without being able to buy everything. Their run (seed `jbf3zs`, build 77016ef) won with 14,116 Wow against 9,500, and earned 41 budget.
+- Milestones 1 and 2 were close: 20 against 15, and 247 against 190, which took a week of overtime.
+- From milestone 3 the targets stopped binding: 1,172 against 490, 2,515 against 1,050, 4,830 against 2,250, 8,954 against 4,600 (completed a week early), and 14,116 against 9,500.
+- Each of milestones 4, 5, and 6 was already met when its phase began, because the score carries over (D-028): 1,172 against 1,050, 2,515 against 2,250, and 4,830 against 4,600.
+- They completed early once and found it hard to judge whether it paid, since the targets weren't pressing.
+- D-089's unapplied fit (530 to 12,800) would still have lost to this run from milestone 3 on. A player who builds an engine pulls away in the middle of the run, so the curve's middle is too low, not just its end.
+
+**2026-11-06 (systems review):** under the review's option B, greedy wins 94.5% of 200 held-out runs at these targets.
+- The review's pick for option B is 15, 250, 870, 2,650, 5,800, 11,700, 20,900. On 200 held-out runs, greedy wins 46.5% and clears milestones 1–3 in 94%.
+- A player like playtest 3's would face margins of 1.7, 1.4–1.5, and 1.2–1.3× at milestones 4–6, against the 2.4, 2.15, and 1.95× they had.
+- Milestone 3 stays as loose as before, about 2.3–2.5× for such a player. It has to while greedy clears milestones 1–3 in 92% or more. Milestone 2 loosens, to about 1.7× against the 1.3× they had.
+- The projection maps one playtest run onto the sim. M4a re-fits on the content it ships, and M4b re-fits again once the arrivals are in (`house-systems-review.md` §5.8, §6).
+**2026-11-06 (M4a, preliminary):** re-fitted on M4a's content before M4b's arrivals (1,000 untargeted greedy runs to fit, 1,000 held out to check): 15, 310, 1,100, 3,150, 6,950, 12,800, 23,300 Wow, with each client's `targetPct` (the Hendersons 100, Count Vladislav 115, the Barkers 90, Juniper 85, Dale 105).
+- Milestone 1's α is now 0.2, a target of about 15, where the review kept it. At the fit's old 0.4 (a target of 30), the novice bot passed milestone 1 in only 85% of runs; at 15, in 98%.
+- Held out, greedy won 40.3%, about 6 points under the fit's estimate, so the final curve will be eased as the review's was. No client was more than 14 points from another (unsure).
+- These aren't in `balance.ts` yet: the M4 pull request writes the curve fitted with the arrivals in.
+**2026-11-07 (M4b, the numbers in `balance.ts`):** fitted with the arrivals, all five clients and three crews, the crews' balance (D-109), and +4 budget per week saved (D-040): 2,000 untargeted greedy runs to fit, then 2,000 held out to check.
+- **Targets:** 15, 300, 1,100, 3,050, 6,850, 13,150, 24,500 Wow. The fit gave 3,200, 7,150, 13,700, 25,500 for milestones 4–7, and greedy won 41.2% held out against its estimated 46%, so those four are eased by 4%, as the review eased its curve.
+- **Each client's `targetPct`:** the Hendersons 125, Count Vladislav 110, the Barkers 80, Juniper 85, Dale 110: the fit's factors, moved toward the middle by their held-out win rates.
+- **§8 on 2,000 held-out runs:** greedy wins 44.3% [42.1–46.5] and clears milestones 1–3 in 94.4%; novice passes milestone 1 in 97.0%; random loses by milestone 3 in 98.9%; completing early always wins 5.1 points less than never; the clients are within 3.5 points of each other (42.5–46.0%) and the crews within 6.5 (40.2–46.6%). The planner's two criteria wait for M6's planner.
+
+**2026-11-07 (playtest 5a):** M5a didn't change the rules, so this run (seed `bv6bsv`, build 1712fd6) played these targets. The team won with 10,005 Wow against 9,500 after one week of overtime, and earned 33 budget.
+- Their lead shrank at every milestone: 113 against 15 (7.5×), 631 against 190 (3.3×), 1,273 against 490 (2.6×), 2,089 against 1,050 (2.0×), 3,477 against 2,250 (1.55×), 5,273 against 4,600 (1.15×), then 9,061 against 9,500 (0.95×) at the last deadline. Playtest 3's run was the reverse: tight at milestones 1 and 2, loose from milestone 3.
+- Charm came early, then stalled. The Entertainer gave ×2 in week 4, and it stayed there until week 17. Two Jack-and-Jills took it to ×2.5 (week 17) and ×3 (week 24), and both Remodel Plans went in only in week 25, for ×4. The first was bought at the third shop and held for 12 weeks. A Remodel Plans levels its set even before the set exists, so using it the week it was bought reaches 9,627 by week 28, on time.
+- That card doesn't say so: "Jack-and-Jill goes up a level for the rest of the run". The team didn't say whether that's why they held it. Its wording waits for M4, which rewrites the tools' text.
+- Week by week, the placements were close to the best play for that week: 143 Wow short over the whole run. Greedy, dealt the same hands, won with 16,505. It built two Living Rooms with Fireplaces and had a second Entertainer by week 13.
+- For playtest 4: M4's refit targets are about 3× steeper in the middle phases. Do they take away this kind of early slack without making the last two phases too tight for a player whose Charm comes late?
+
+**2026-11-09 (D-123):** re-fitted for playtest 5 the same way, 2,000 untargeted runs to fit and 2,000 held out: 20, 560, 1,750, 4,850, 10,200, 18,800, 32,600 Wow, with factors the Hendersons 115, Count Vladislav 90, the Barkers 90, Juniper 85 and Dale 115, all used as fitted. Held out, greedy wins 44.0%.
+
+**2026-11-10 (D-146, Proposed):** re-fitted after the friction batch (D-140 to D-145): 20, 560, 1,900, 5,200, 11,300, 20,500, 35,700 Wow, with factors the Hendersons 110, Count Vladislav 95, the Barkers 90, Juniper 95 and Dale 115. The fit as written came 7.6 points under held out, so the targets are set where greedy's played survival meets the goals. On 2,000 runs no fit had seen, greedy wins 45.7%.
+
+### D-095 · A piece that becomes a lot feature can't hold a fixture
+**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: live since 2026-11-06 with no issues raised. Proposed 2026-11-06, with the fix/transform-fixtures pull request. It fills a gap in D-050, which says how a fixture leaves but not what happens when its host transforms.
+**Decision:**
+- A fixture can't go in a piece that becomes a lot feature. Today that's only the Sapling, which becomes a Tree.
+- The install check says so. Pointing a fixture at a Sapling shows "A Sapling becomes a Tree, so it can't hold a fixture." The Sapling isn't offered as a host, so Garden Lights with only a Sapling to go in are greyed out and count as not fitting for the free redraw.
+- A fixture that doesn't fit the piece anyway, such as a Sprinkler, still says where it goes.
+- A piece that transforms into another piece would keep its fixture, as a Bay Window stays when its room becomes interior.
+
+**Why:** Garden Lights fit any yard piece, and the Sapling is one. When the Sapling became a Tree, its piece left the house and took the lights with it. The preview didn't warn about it, and the only thing on screen was "Grew into a Tree!". §4 names two ways a fixture leaves: a new one replaces it, or its host is demolished. The check is in the rules, so every fixture gets it, including new ones written as data, without naming the Sapling.
+**Considered:**
+- Taking the Sapling out of Garden Lights' `fits`. It's one line of data, but the card would read "Fits a yard piece and anything but Saplings" unless the text code learns a new phrasing, and every later yard fixture would have to repeat it.
+- Returning the fixture to supplies when its host transforms. Demolition gives no refund (D-050), and supplies can be full.
+- Keeping the loss and warning about it in the install preview and the transform's popup. That's more UI work, and the player still loses the card.
+
+**Changes:** D-050 (Accepted): adds where a fixture can't go; how it leaves is unchanged. `implementation-plan.md` §4's fixture rules and the note under Appendix B's fixtures table. Garden Lights' card still says "Fits any yard piece". The sim's bots choose hosts through the same check, so they no longer put fixtures in Saplings.
+
+### D-108 · Client numbers from M4a's sim: one signature room each, and the Hendersons' pool
+**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: played in playtests 4 to 6 with no issues raised. Proposed 2026-11-06, with the M4 pull request; numbers for the sim and playtest 4.
+**Decision:**
+- A client's wish for its signature room has a ceiling, like One Kitchen: Count Vladislav wants **One Library**, the Barkers **One Mudroom**, and Dale **exactly two Home Offices**. Extra cards of those types renovate instead (D-102), and draw at half weight while the type is at its limit (D-104).
+- The Hendersons' pool helps their Kitchen-beside-the-Dining-Room wish through the Dining Room (+100%, with Bedrooms, Bathrooms, and Fences), but not the Kitchen: every house takes exactly one, and spare Kitchen cards were the review's most common dead card.
+- The fenced-yard wishes waiting on D-106 are in: the Hendersons want any fenced yard, and the Barkers a big one, 12 tiles or more (Appendix B).
+
+**Why:** M4a's sim (1,000 held-out greedy runs, 200 per client). Without ceilings, Count Vladislav placed 4.2 Libraries a run and Dale 2.8 Home Offices, and one of each shared room (H3) held in 54% of wins, against the review's 77% for its A + Renovate. With them:
+- one of each shared room 81% of wins, the glance test 44% (from 29%), research.md's plausibility check 76% (from 51%), and a compact outline 67% (from 59%)
+- Count Vladislav places 1.2 Libraries a run, and his houses pass the glance test in 41% of runs (from 7%); Dale places 1.9 Home Offices (glance 52%, from 29%)
+- greedy's win rate is unchanged (40.3% against 39.9%)
+
+**Changes:** Appendix B's specs for Count Vladislav (library ≥ 1), the Barkers (mudroom ≥ 1), and Dale (homeOffice ≥ 2), and the Hendersons' pool (spec pieces + fence +100%).
+
+### D-109 · M4b rules structure: change orders, arrivals, and crews
+**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: played in playtests 4 to 6 with no issues raised. Proposed 2026-11-07, with the M4 pull request. Details within D-103, D-012, and Appendix A · M4b; numbers for the sim and playtest 4.
+**Decision:**
+- **Change orders:**
+  - *2026-11-10 (D-144, Proposed):* the lines below describe one order at a time, to accept or decline. Now two are offered and one is picked; nothing is declined or only announced; and an order passed over can be offered again (one picked never is). The skips, the last-phase rule, what breaks a restriction and how each kind resolves are unchanged.
+  - one after each of milestones 2, 4, and 6 (`changeOrderAfter`), on its own screen before the shop, drawn from the `co/<milestone>` stream, evenly among the client's own orders and the generic ones (Working from home, Heat wave), never one offered before in the run. *(2026-11-09, D-112: this said "the client's own orders, then the generic ones", which read as own first; the pick has always been even.)* *(2026-11-10, D-137: five generic ones now, with Cold snap, Rainy season, and A letter from the HOA; and the Barkers, Juniper, and Dale each have a phase effect of their own.)*
+  - skipped: one already met, one needing more new pieces than a phase has weeks, a demolition request with no demolitions left, and one whose piece is neither in this phase's draw nor in the reserve. The plan's "less free space than it needs" isn't checked.
+  - **before the last phase, only phase effects:** a request's or a restriction's reward would come at the run's end, where budget buys nothing
+    - *2026-11-10 (D-137):* with Heat wave the only generic phase effect, the Barkers, Juniper, and Dale got no offer here in about half their runs (greedy, 200 held-out runs: 48–54% of their runs that cleared milestone 6 got one, against 78–86% for the other two). Every client now has four phase effects, so it always comes.
+  - requests and restrictions can be declined at no cost; accepted, they run through the next phase and pay when its milestone is met (nothing if the run is lost). Rewards are budget, 3–5, in each order's definition.
+  - a phase effect is announced (it can't be declined) and runs as a timed effect until the next phase's milestone
+  - only a placement breaks a restriction (not a move or a transform); it stays legal, and the preview names the order it would break
+  - Declutter counts the pieces demolished since it was accepted, not Boulders or the Old Shed
+- **Arrivals** (D-103), as client data (`households.ts`): the Hendersons' twins (a Nursery, which grows into a Kids' Room 8 weeks after it's placed, keeping its level and fixture) at Framing and Grandma (Grandma's Room and a Bathroom card) at Drywall; Count Vladislav's Renfield at Framing; the Barkers' Nana at Drywall; Juniper's Rowan (a studio) at Drywall; and Dale's daughter Ivy at Framing.
+  - Bedroom ranges: the Hendersons 2–3, then 3–4 from Framing and 4–5 from Drywall; the other four 1–2, then 2–3 from their member's arrival. M4a's placeholder steps are gone.
+  - A member's room counts as a Bedroom everywhere a Bedroom counts: Room for everyone, the Bathroom ratio, the Bedroom limit, sets (a Nursery fills a Jack-and-Jill's Bedroom), and Bedroom effects. A member's card can't renovate, but a Bedroom card can renovate a member's room.
+  - Member cards wait in the reserve's extra slots, like a crew's starting cards: buying, crates, and tools count only bought pieces.
+- **Crews:** the Landscaper (yard pieces earn +50%; starts with a Sapling and a Fence) and the Architect (the Playroom, Library, Mudroom, and Pool in the weekly draw at weight 5; every set pays +10%), picked on the job board after the contract. On a first visit the General Contractor is marked "Recommended for your first job" with the Hendersons.
+  - The plan's numbers (the Landscaper's yard draws +50% and earnings +25%, the Architect's sets +50%) failed §8's spread: the Architect won 60.9%, the General Contractor 37.9%, and the Landscaper 27.5% (1,000 held-out runs). Extra yard draws crowd out the rooms the checklist needs, and sets drive most of the Charm. At these numbers: 45.5%, 41.5%, and 39.7%.
+- **Debug ops:** force a change order (offered now, running through the current phase) or a client's arrival (its cards now, once).
+
+- **The UI** (2026-11-07): the left column fits 1280×720 and up: house-rule groups whose lines all hold fold into one row (they open while a line in them flips), and while a play is being looked at, Inspect comes first. A source with several earn lines names what each is for ("Count Vladislav (Dark pieces)"). A demolition's preview names the sets it would break; a set that re-forms from other pieces isn't counted. The change-order sheet takes its keys only after a short pause (so an Enter meant for End week can't answer it), and stamps the answer before the shop opens. *(2026-11-10, D-144: its keys are 1 and 2, one for each order, and the stamp lands on the one picked.)* Orders a milestone resolved stay in the checklist panel with their result until the next phase's first tally, so skipping the tally never hides them. An arrival's banner doesn't hold up the week.
+  - *2026-11-08 (M4 merged with `develop`):* these screens are in M5a's pixel UI now, with these rules kept (D-110). The left column's short-window rule moved from 820 px to D-098's 800 px, and (2026-11-09) to the fold's 1000 px. Its aim at 1280×720 while placing: the score panel, at least two checklist rows and the inspect panel's preview in view, in both fonts. Re-checked at 1280×720 before playtest 4 (2026-11-09): the inspect panel's preview and its total are always in view, and the column is never taller than the window, the pointer on something or not. Two rows show in 20 of 21 week-1 plays (every client and crew) in the pixel font and in all 21 in the readable font; with nothing looked at late in a run, two house rules with their progress show at scroll 0 in 7 of 30 states in the pixel font and in 25 in the readable font (D-110's notes have the numbers).
+
+**Why:** the plan's M4b, D-103, and the sim's needs. The last-phase rule is new: without it, the offer after milestone 6 paid budget at the end of the run.
+**Changes:** jam-scope.md's change orders (the Twins and Grandma's moving in are arrivals now, D-103). Appendix A · M4b's skip rules (free space isn't checked).
+*Changed by D-121 (Proposed 2026-11-09):* the Landscaper also draws a third Layout card every week.
+
+### D-110 · M4's screens in the pixel UI
+**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: played in playtests 4 to 6 with no issues raised. Proposed 2026-11-08, with the M4 pull request, after it merged `develop` (M5a). Implementation details within D-098 and D-109; for playtest 4.
+**Decision:**
+- **One interface:** M4's screens are built from M5a's kit (`src/ui/kit`: panels, sheets, paper cards, chips, keycaps, and icons) on the theme's tokens, in the pixel font with the readable option, like every other screen (D-098). Every color is a token, so M4's stylesheets come off `theme.test.ts`'s legacy list, and its 4.5:1 check covers their text, on a translucent wash too (it blends the wash over the paper under it). Glyphs the pixel fonts lack are icons, the rules' own words included: a tip draws the glossary's warning sign (Requirements, "on the board") as the warn icon in both fonts, kept on one line with the "(" before it (`Tip.tsx` tipWords).
+- **The job board and the crew pick:** one wood panel over the title's street, "The job board" or "Pick your crew" on its plank, with "Step 1 of 2" or "Step 2 of 2" as a chip. Contracts and crews are paper cards, three in a row, each with a keycap (1–3), a middle that scrolls, and a foot that doesn't, holding its button; a contract also has its rarity's band, fill and chip (a plain chip: the shop's rarity tag explains goods). 1–3 take a card, and Esc or Back goes back a step. Focus moves to the first card's button at each step. The columns and insets are whole UI pixels, so the cards rest on whole device pixels.
+  - "Recommended for your first job" is a gold tab with a star on the card's top edge. On a first visit only that card's button is lime (the Hendersons' Take the job, then the General Contractor's Hire this crew), so the view has one lime button, as the build screen has End week (D-098).
+  - A contract shows its lot as a small map of the lot and its street row in LimeZu's colors, at 3 UI px a cell (2 on a window up to 1500 px wide or under 800 px tall), in the ink ring, with the lot in words as its title (and as a line under it on a window 800 px tall or more); its tastes as rows with up, down and reroll icons (likes, dislikes, draws); and its house rules folded behind a caret.
+  - A crew card shows the crew's icon at 4 UI px per art px (D-111), its blurb, its "All run" lines, and the pieces it starts with as the hand draws them, on every window (the cards have the room at 1280×720).
+- **The change order** is a sheet over the board, 270 UI px wide, with the mail icon and "Change order" on its plank and the client's name beside them ("from the Hendersons", on one line).
+  - *2026-11-10 (D-144, Proposed):* the sheet holds two orders now, each a paper card with its own Pick button, and is 440 UI px wide where the board has room (270 for an order offered alone). The keys are 1 and 2. Each card's words scroll and its foot doesn't. "Until" is said once above both, and the stamp, always "Accepted", lands on the card picked. The bullets below describe the one-order sheet; holding the keyboard on the text, the docked notes and the pause under it are unchanged.
+  - It holds the keyboard on its text, never on a button, so a held Enter can't skip `FEEL.changeOrder`'s pause (D-109). Tab stays inside it, and focus goes back where it was when it closes. It isn't one of the modals (`anyModalOpen()`), so the game's keys answer it: Enter accepts (or says Got it to a phase effect), and Esc or D declines a request or a restriction.
+  - Its middle scrolls: the order's name with a chip for its kind (a request's mail, a restriction's cross, a phase effect's clock), the client's words, the terms, "So far", how long it runs, and what it pays, the coin first (D-098). The terms leave a request's or a restriction's reward to that Pays line, so the sheet says it once. Its foot doesn't scroll: Decline, for a request or a restriction, is plain, and Accept or Got it is lime, each with its keycap.
+  - The answer is a pixel stamp, a check or a cross and the word (Accepted, Declined, or Noted for a phase effect), that comes to rest unrotated, a set way down the sheet so it lands on whole device pixels, before the shop opens.
+  - Notes dock inside it, under its plank: D-098's Overlays bullet now covers any sheet over the board, not only the shop. The sheet is narrow, so a note's buttons (an old run's Copy, and Dismiss) go under its words, at the right. A note's Dismiss, by mouse or keyboard, puts focus back on the sheet's text, which holds the keyboard, rather than let it fall to the page (`Notes`' refocus); the Enter that pressed it doesn't answer the order.
+  - Under it, the board's water and animated props pause, as they do under the shop (D-099).
+- **The client's checklist** is a panel in the left column. The client's name is on its plank, with their brief as its tip. The crew is a wood chip with its icon, first in the list, whose tip is the crew's blurb and its "All run" lines. The house rules, the client's wishes and the change orders sit under plank tags.
+  - On a window under 1000 px tall the list's head is one row, so the first house rule starts right under it: the tastes fold into their row; the crew's chip shows its icon alone, with the same tip, on the plank beside the client's name (in the pixel font in a 280 px column, where the plank has no room beside the Hendersons' or Count Vladislav's name, 216 and 218 of its 228 px, at the end of the tastes' row instead); and the House rules tag is left out, the score panel's checklist row naming the checklist (2026-11-09: the chip, the tastes and the tag took the box's first 120–140 px at 1280×720).
+  - Marks are icons: a check for a line that holds, a pending mark for one that doesn't, a star or a cross for a line turned on or off this week, a clock for a phase effect, the House for who's still to move in, and a caret on a fold row. A progress part that doesn't hold yet has a cross, here and on the change order's sheet.
+  - On a window wider than 1500 px a held line shows its "+0.25"; on a narrower one (280 px columns), a Charm icon, with the value in its tip. The plank counts the lines held on a window wider than 1760 px, where it has room beside the longest client's name; the score panel's checklist row counts them on every window.
+  - The tastes are a row each, marked up, down, or a dot for neither. On a window under 1000 px tall they fold into one row, "Tastes (3)" as the job board calls them, one line in every column ("Likes and dislikes (3)" took two in the pixel font). House-rule groups fold as D-109 says; a fold row shows its count with a check, and never takes focus on a click.
+  - A change order's reward reads coin first, struck through once it's broken or missed. Only a play that would break a restriction takes the warning's tint: a resolved order's cross, struck name and result word say the rest.
+- **The left column** is never taller than the window and never scrolls as a whole: the score panel keeps its height, and the checklist and the inspect panel share the rest, a box of their own, each scrolling inside its own body, with the inspect panel's plank and foot always in view. While a play is being looked at, the inspect panel comes first (D-109). The checklist keeps its plank and two rows (56 UI px). Pointed at something, the inspect panel keeps a few lines (80 UI px), or, on a short window late in a run, the share of the box the checklist's minimum leaves it (2026-11-09: late in Dale's run at 1280×720 the score panel took 416 of the column's 656 px, and the 80 UI px overflowed it by 40). A play being looked at brings into view the first row it flips, with a line beside it where both fit, or else the change order it would break. A play that does neither brings the house rules' first two rows into view while the tastes are folded into their row (under 1000 px tall, unless the player opened them), and otherwise leaves the checklist where it is, so tastes in view stay in view (placing a Lawn at 1920×1080 keeps "Lawns earn +50%"). Once the play is over, the checklist goes back where the player had it.
+  - **The score panel's sets fold** into one row on a window under 1000 px tall (D-098, changed with the team's OK on 2026-11-08), so late in a run the checklist keeps its room. The row has a set's shape: "4 sets" (or "1 set") with their Comfort and Charm added up at the right, under a hairline where the "Sets" heading was, and every set's name, level, Comfort and Charm in its tip, a set a line. "No sets yet." keeps the first-set suggestion as its tip, in both fonts. The sums are the rules' per-set numbers added up for display, as the checklist's row multiplies its count by the bonus; the UI scores nothing. In a tally the row counts the sets as the tally does, with Comfort and Charm: "0 sets", dimmed, until the tally reaches them, then each set as it's counted, the row lighting with the set's members on the board, in the board's set highlight (a rose wash under a Charm edge), and its numbers popping from the right (`FEEL.checklist.tickMs`). It also lights for a set's beat (`FEEL.tally.setStepMs`) when the sets change outside a tally: a Remodel Plans' level, a demolition. Reduce motion keeps the light and drops the pop. Windows 1000 px tall and up keep the list, which shows the sets a play being looked at would make and break.
+  - **The week's Wow** sizes itself to the room beside its word, so it never runs onto the plaque's frame, and keeps a gap after the word wider than a space (6 UI px; 2026-11-09: "56,789" sat 2 UI px from it at 1280×720). Public Pixel's glyphs are an em wide, so in the pixel font the size is that room over the number's glyph count, rounded down to the font's grid of 4 UI px and kept between 8 and 16 UI px (CSS `round()` in an inline-size container); the readable font's digits take about 0.62 em. At 1280×720 in the pixel font a Wow of 1,000 or more shows at 24 px and one of 10,000 or more at 16 px; at 1724×962 the hero 32 px holds to four digits, at 1920×1080 to five. A browser without `round()` steps the number down at four digits and at six.
+  - **The inspect panel's total**, "This week: X → Y Wow", is its foot, under the body that scrolls, so it stays in view however long the preview: a placement, an install or a Renovation, a tool that can be used, a demolition. A tool's Use button and a demolition's "Click it again" end the body, above it.
+  - **The budget line** keeps its coin beside the first line of its words, as the inspect panel's notes do: two lines in a 280 px column, not three.
+  - On a window under 1000 px tall the score panel keeps to its equation while a play is looked at: its sets, its checklist row and its budget line hide, and the inspect panel's notes say which sets, checklist lines and budget the play would change. This was the 820 px rule M4 built for D-109's left column, then D-098's 800 px breakpoint; since 2026-11-09 it's the fold's 1000 px, as the list coming back between 800 and 1000 px tall pushed the inspect panel's total below a 1536×864 window late in a run. With nothing looked at, the idle inspect panel gives way first, down to its plank, and on a window under 800 px tall the checklist keeps 44 UI px. While a play is looked at, the checklist keeps 84 UI px in the pixel font, whose rows are two or three lines tall.
+  - In a 280 px column the pixel font's checklist row in the score panel leaves out its check icon, as the equation's labels leave theirs, so "7 checklist lines" keeps to its first line: the row is two lines, a set's shape, not three.
+  - On a window under 1000 px tall, a line a play would turn on leaves out its progress, which the play meets, so the row above it stays in view; while a play is looked at, so does a line it leaves as it was (a change order keeps its status). Until 2026-11-09 this was only on a 1280×720-class window (1500 px wide or less, 800 px tall or less): at 1536×864 a Home Office's flipped wish, with its progress, was taller than the checklist's box.
+  - The aim at 1280×720 while placing: the score panel, at least two checklist rows, and the inspect panel's preview in view, in both fonts. *2026-11-09, before playtest 4:* met in 20 of 21 week-1 plays (every client and crew) in the pixel font and in all 21 in the readable font, with the preview's total always in view (2026-11-08: 3 and 16). Dale's Home Office shows one: its flipped row and the line beside it are taller than the box. The notes below have the numbers.
+- **First-time hints** (D-045, D-077's note) are paper notes with a wood plank and the help icon, by the panel each explains, on whole device pixels and inside the window (`first-hint-place.ts`): the first week, the checklist, Complete early, the shop, a fixture, a change order, and an arrival. A note by the checklist that's taller than the room below it rises until it fits, rather than scroll its text in a sliver. They never take focus. Got it dismisses one for good, and Settings shows them again. They're `FirstHints.tsx`; `Hints.tsx` stays D-098's controls strip.
+- **The controls strip** (D-098) adds a change order's keys (Enter accepts, Esc or D declines), a pack's clicks (click a tile to add it, and again to take it off), and a pending Renovation ("renovate it" on Enter), which has nothing to turn: the strip leaves out R, R does nothing, and the Rotate button is off.
+- **The board's labels** (D-098): a pack's ghost label is two short lines, its change to the week's Wow with how many tiles are out ("3 of 8 tiles"), then "Click to start" or "End week to build"; the next tile's own chip says what a click there would do. Renovating, the room's label names the level it would reach and the change to the week. A stack of labels takes as many rows above its cells as it is tall (`geometry.ts` labelRows), so near the lot's top edge, at 0.5× and Fit, it drops below its cells rather than run off the board. These labels keep the ▲, ▼ and ✕ that M5a's labels use, which the pixel fonts lack (a known gap in both). A popup that would be cut off at the side of the board's view (a room's "Renovated · level 1" at the lot's edge at 1280×720) is nudged inside it, as the labels are.
+- **A fixture's worth** (D-107) is a strip on the shop's fixture cards and on a crate's fixture options: the best host, this week's gain with an up or down icon, and the gain over the weeks left. While installing, each host's gain is one of D-098's preview badges, above the walls, the best ringed in gold, sized and placed on whole device pixels with no transform at rest, so its ink ring stays crisp. Where its spot would cover another host's badge or a piece's digit or badge (two one-cell rooms side by side at 1×), it moves to the nearest clear spot within a cell, up or down before sideways; the best gain's is placed first and keeps its spot (`label-layout.ts` spreadBadges).
+- **The inventory** (D-098) adds the extra slots for the crew's and the household's cards after the reserve's own, each tagged ("Crew", "Twins"); where a name and its tag don't fit side by side (Grandma's Room in a 280 px column), the tag goes under the name, which stays whole. An arrival's cards pop in.
+- **The client and the crew** are named on the checklist and in the Menu, beside the seed (the Menu is 200 UI px wide now, so the crew's chip fits beside its label). The top bar keeps D-098's layout, its week line reading "Change order" while one is open. The title's Continue says whose house the saved run is ("For the Hendersons"), above its phase, week and Wow.
+- **End week** keeps D-098's measured labels. A pending Renovation says so in its title, in the strip ("renovate it"), and in the inspect panel.
+- **An arrival's banner** is a wood plank with the House icon, not the gold milestone ribbon, so an arrival doesn't read as a milestone met. It doesn't hold up the week (D-109).
+- **How to play** gains short sections on M4's systems, with numbers from the rules, the content and the glossary as the rest of the sheet has them: "Your client" (the job board, the checklist's seven house rules at +0.25 Charm a held line, the tastes, the household's arrivals), "Your crew" (each crew's icon and blurb), "Renovate" and "Change orders" (the milestones they follow, what they pay); packs are a line in "A week". Its controls add a change order's keys (Enter; Esc or D) and a pack's click (a tile again takes it off). Full House's picture wraps to fit the sheet.
+- *Open for the team:* client portraits. LimeZu's premade Modern Interiors characters (a pack already cleared) could put a face on the job board and the change-order sheet. The default is none for playtest 4: the screens work with names, the lot map and text, and portraits could come with the juice pull request or M5b.
+
+**Why:** M4 was built alongside M5a, in the old look, and merged after it (D-097's juice note). Playtest 4 should try M4's game in the interface the team approved in playtest 5a, not in two looks side by side. Each default follows D-098's rules: one lime button per view, icons for the glyphs the fonts lack, sheets that hold the keyboard, and whole device pixels.
+**Costs:** the pixel font is wide (D-098's Costs). A 280 px column holds about 19 characters a line, and at 1280×720 the Hendersons' checklist needs about 2.5 times the space the column has, so it leans on folding and scrolling: there the list's head is one row, and a line a play flips, or else the house rules' first two, scrolls into view. While a play is looked at there, the lines it doesn't flip leave out their progress. Even so, a house rule's row with its progress is 64–164 px tall in a 280 px column in the pixel font, so with nothing looked at at 1280×720 the checklist often shows only one whole (the notes below). The crew's chip sits in three places by window: first in the list on a window 1000 px tall or more, as an icon on the plank under that, and on the tastes' row in a 280 px pixel-font column. On a window under 1000 px tall, picking a card hides the score panel's sets, checklist row and budget line until the play is over; the inspect panel's notes carry what the play changes. Late in a run on a short window, the inspect panel pointed at something can have only its plank and a line or two, with its body scrolling. The Wow's sizing needs CSS `round()` (Chrome 125, Safari 15.4, Firefox 118); an older browser steps the number down instead. The Hendersons' contract card needs about 660 px in the pixel font, more than a 1280×720 window gives it, so its middle scrolls.
+**Changes:** D-098 (Accepted), with the team's OK (2026-11-08): on a window under 1000 px tall the score panel's sets fold into one row while nothing is looked at (its score panel bullet and its note). *2026-11-09, for the team to confirm:* under 1000 px tall the panel also keeps to its equation while a play is looked at, so the list never comes back on a short window (D-098's note says so). It also extends D-098: notes dock in any sheet over the board, and the left column's short-window rules use its 800 px breakpoint, where M4 used 820 px, and the fold's 1000 px. D-109 (Proposed): its UI bullet points here.
+
+**2026-11-10 (D-148, Proposed):** the end screen's column, which this entry keeps from D-098: its sticky bar holds New run and Copy result, and Copy run code and Title sit under the stats (D-098's note of the same day has the numbers). The fixture's and the arrival's hints name Your goods.
+
+**2026-11-08 (the visual checks), for playtest 4:** three reviewers checked these screens, the HUD and the board in six configs: 1920×1080 and 1280×720 at a devicePixelRatio of 1, and 1724×962 at 2, each in the pixel and the readable font. A fix pass followed, then a second check, then a second fix pass (the bullets above include both). The second fix pass took on what the second check found in the HUD:
+- late in a run at 1280×720 in the pixel font, the score panel took up to 612 px of the column's 656, so the checklist showed no whole row, and one of Dale's runs (seed `sw-d1`, the Architect) overflowed the column by 124 px, which put the inspect panel below the window;
+- a weekly Wow of four digits ran onto its plaque's frame there;
+- the inspect panel's "This week" total was cut off in 8 of 21 week-1 plays;
+- on larger windows, a play that flipped nothing scrolled the tastes out of view ("Lawns earn +50%" while placing a Lawn at 1920×1080);
+- a docked note's Dismiss dropped the keyboard's focus to the page;
+- and the Requirements tip drew its ⚠ in the system font.
+
+Measured again on the result, in the six configs: the left column overflows in none of 19 late states (the greedy bot's runs of all five clients at their change orders after milestones 2, 4 and 6, and the end) or 6 arrivals; the Wow stays inside its frame from one digit to seven; the total is whole in every placing play measured; and a Lawn, Closet, Fence, Driveway, Bedroom or Renovation leaves the checklist's scroll at 0. The job board and the crew pick, the change order, How to play, the hints, the inventory, the Menu and the board's labels and popups passed. What was still short in the left column went to a third check (the next note).
+
+**2026-11-09 (the third check), before playtest 4:** two reviewers checked the left column again, with the pointer on things as well as away from them, and on windows between the six configs. They found:
+- late in Dale's run at 1280×720 in the pixel font (seed `sw-d1`, the Architect), pointing at anything (the lot, a hand card, a good in the right column during the last change order) overflowed the column by 40 px, or 90 with a second Sparkle stamp: the inspect panel kept its 80 UI px, and its total went below the window;
+- on windows 800 to 1000 px tall and under about 1700 px wide (1536×864, 1440×900, 1600×900), placing late in Dale's run brought the score panel's set list back and overflowed the column by up to 150 px, the total below the window;
+- where the sets fold, the checklist seldom showed two house rules with their progress at scroll 0: in none of 30 idle states at 1280×720 in the pixel font (in 23 not even one), in 13 at 1724×962, and in none of 24 at 1536×864 or 1440×900, the crew's chip, the tastes and the House rules tag taking the box's first 120–256 px;
+- at 1280×720 in the pixel font, placing in week 1, a play that flipped nothing showed no whole house rule: two rows showed in 3 of 21 plays;
+- and smaller: the folded row showed the week's sets before the tally counted them; the Wow's digits crowded its word from five digits; the fold's tip ran the sets together; and placing late in a run at 1724×962 left the checklist a 66 px box.
+
+A third fix pass took them on (the bullets above describe the result): the checklist and the inspect panel share what the score panel leaves, so the inspect panel's minimum is a share of that room and the column is never taller than the window; under 1000 px tall the score panel keeps to its equation while a play is looked at; the checklist's head is one row there (the tastes folded, the crew's icon on the plank or the tastes' row, no House rules tag), and a play that flips nothing brings the house rules' first two rows into view while the tastes are folded; the score panel's checklist row keeps to two lines in a 280 px column; the folded row counts up with the tally; its tip lists a set a line; and the Wow keeps a 6 UI px gap after its word.
+
+Measured on the result, in nine configs (the six, and 1536×864, 1440×900 and 1600×900 in the pixel font):
+- **The column is never taller than the window** in 423 states (in each config, the 19 late states, 6 arrivals and 5 late build weeks with nothing looked at, a hand card hovered, and placing each hand card), 441 with the pointer away or on open ground, a piece or a hand card, the last change order with the pointer on a blueprint or a supply, Dale with two Sparkle stamps (a 446 px score panel at 1280×720) idle and pointed, the tally's every frame, and Dale's late placing and installing and the Hendersons' won screen on ten more windows from 1366×768 to 1680×1050, in both fonts. The total is whole in every placing play.
+- **At 1280×720 in the pixel font**, late in a run the score panel takes 272–396 px with nothing looked at (two stamps: 446) and the checklist's box 134–258 px; the head above the first house rule is 32 px (it was 120–140; 124–256 at 1724×962). Pointed at something, the inspect panel gets 140 px late in Dale's run (90 with two stamps), the checklist its plank and the tastes' row.
+- **Whole house rules with their progress at scroll 0** (an unmet line with its progress, or a folded group's row with its count), two or more in the 30 idle states: at 1280×720 in 7 in the pixel font (none before; one in 20, none in 3) and 25 in the readable font (19 before); at 1724×962 in 29 and 30 (13 and 28); at 1536×864, 1440×900 and 1600×900 in the pixel font in 21, 23 and 25. Windows 1000 px tall and up are as they were (1920×1080: 18 and 30).
+- **Placing in week 1** (21 plays, every client and crew), two whole checklist lines or more in 20 of 21 at 1280×720 in the pixel font (3 before; a Lawn now shows two, a Fence three), all 21 in the readable font (16), all 21 at 1724×962 in both fonts (14 in the pixel font), 20 at 1440×900 and all 21 at 1536×864 and 1600×900. Dale's Home Office shows one in a 280 px column: its flipped wish and the line beside it are taller than the box. Late in a run at 1724×962 the checklist's box while placing is 120–270 px (66 before), and the inspect panel's body 186–382 px.
+- **The checklist's scroll:** at 1920×1080 a play that flips nothing leaves it at 0 with the tastes in view, as before; under 1000 px tall, where the tastes are folded, it brings the first two house rules into view only where they aren't (a Lawn and a Driveway at 1280×720 in the pixel font, 32 and 6 px); a flip still brings its row in, and Esc puts the box back.
+- **The folded row** counts up with the tally ("0 sets", dimmed, then 1 to 4 sets at their beats) at 1280×720 in both fonts and at 1724×962, lit on every frame of a set's beat and on no other, also with Reduce motion; its tip names every set, a line each, inside the window. **The Wow** keeps 14 px or more after its word up to six digits in every config.
+
+What's still short:
+- **At 1280×720 in the pixel font, with nothing looked at,** two house rules with their progress show at scroll 0 in only 7 of the 30 idle states: an unmet line's row is 64–164 px tall in a 280 px column ("Room for everyone" with its progress takes up to eight lines), and held lines and who's still to move in sit between the unmet ones. Three show none: Count Vladislav's won screen and a late build week, and Dale's change order after milestone 4, where held lines come first.
+- **A flipped row taller than the checklist's box** while placing shows cut: a Dining Room that turns off "A living room or two" late in Dale's run (144 px in a 122 px box at 1280×720).
+- **1920×1080, 1000 px tall and up,** keeps D-098's list while a play is looked at, so the checklist keeps 56 UI px there: late in Dale's run its box is 60 px while placing, and in week 1 his Home Office shows its flipped wish cut. The pixel font's 84 UI px could apply there too, at the cost of the inspect panel's room.
+- **The inspect panel:** a member's notes ("The twins' room: it counts as a Bedroom…") come after the card's kind and effects, so they're out of view while its card is only hovered. They show while it's being placed, cut short at 1280×720 in the pixel font.
+- **Host badges while installing:** at 0.5× a badge moved off another can end up over the next room (the Closet's ±0 over a Bedroom), or, in a block of one-cell rooms, touch a digit. Hovering a host whose preview marks a neighboring host moves the other badges, and can put one on the preview's + mark. The install label covers the badges of the hosts above it, and stays there while an install is pending.
+- **Smaller:** demolishing doesn't mark or bring into view the checklist lines it would flip, nor the score panel the sets it would break; the inspect panel lists both. A weekly Wow of seven digits in a 280 px column sits 2 UI px from its word, at the pixel font's 16 px floor.
+- **From before M4, left as they are:** the build stamp covers the left column's foot at 1280×720 (D-098's corner, chosen to stay clear of End week), now the inspect panel's frame under its plank or its total; on the score panel's list, a set the play would make is tinted with Charm's tint, on which its Comfort reads at 4.1:1 and its Charm at 4.49:1 (M5a's colors, not yet among `theme.test.ts`'s pairs); and a click on a cell that can't take a pending play drops the play, a pending Renovation included.
+
+*Changed by D-142 (Proposed 2026-11-10):*
+- **The job board:** a contract's card leads with the client's brief, their wishes and the lot's map and chips. The household and the tastes are a line each, with the detail in the line's tip. The house rules are a term in the board's lede, not a fold on every card, and the lot in words under the map goes.
+- **The checklist:** the wishes' tag is "Wishes"; a line that doesn't hold shows only the parts still missing; who's still to move in is a name and a milestone; and in a 280 px pixel-font column under 1000 px tall the tastes' row is "Tastes", one line again (the sun's icon, D-120, had made "Tastes (3)" two).
+- **First-time hints:** how a week scores is added (week 2), and every hint keeps to 25 words.
+*Changed by D-158 (Proposed 2026-11-12):* How to play opens on a five-line short version with every section folded under its plank, and lists the hints seen under Tips so far.
+*Proposed change by D-167 (2026-11-12, awaiting the user's OK):* the score panel keeps to its equation on every window, at rest as well as while a play is looked at. Its sets row and checklist row come in for a tally only, sliding in as it starts and away once it ends, and count as above. The fold row's tip, every set a line, is the Comfort plaque's tip now, and Charm's tip says how much comes from sets and how much from checklist lines. The budget line is as it was.
+
+### D-111 · Art for M4's content: the members' rooms, packs, and Renovate's level
+**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: played in playtests 4 to 6 with no issues raised. Proposed 2026-11-08, with the M4 pull request, after it merged `develop` (M5a). Implementation details within D-097, D-100, and §12 Art; for playtest 4.
+**Decision:**
+- **The members' rooms** (D-103): the Nursery, the Kids' Room, Grandma's Room, Renfield's Room, Nana's Room, Rowan's Studio, and Ivy's Room.
+  - Each has its own floor and wallpaper, as every room type does (D-097), cut from LimeZu's Room_Builder sheets into a manifest of their own (`art/limezu/members.json`). Each wallpaper stands ΔE 20 or more from its floor, like every room's (D-100's test), and none reuses another type's floor or wallpaper: `house-paint.test.ts` now lets only the two kitchens and the two hallways share.
+  - Their furniture is laid out by `rooms.ts`'s slot rules (D-100), from LimeZu cuts, most of them new, that say whose room it is: the twins' crib (a blue blanket beside a pink one), a low dresser to change them on, a rug and a teddy in the Nursery; two children's beds side by side, a toy box, a rug and a toy train in the Kids' Room; Grandma's bed with her vanity beside it, or her curio cabinet where the vanity won't fit, an armchair and a standard lamp; a cot, two candles that flicker and a spider bobbing on its thread in Renfield's (LimeZu has no corner cobweb); Nana's bed beside the dogs' bed, an armchair and a rug; an easel, a stool, a pot of paint and a finished painting on the wall in Rowan's Studio; a child's bed, a school desk and a globe in Ivy's Room.
+  - Renfield's Room and Rowan's Studio are one cell across, so a piece in them is at most 22 px wide and 26 px tall, or comes in a second shape: an upright cot or a side-on one, an easel with or without its finial (or its painting on the wall, where a door's walkway leaves too little floor).
+  - The dogs' bed in Nana's Room is our own drawing, in LimeZu's palette and ink, like the Doghouse (`drawings.ts`): a dog asleep on a red cushion, since LimeZu's interiors have a cat but no dog.
+  - Bunk Beds stand in place of the crib or the bed in a member's 2×2 room, as in a Bedroom; in the two rooms one cell across they show as a badge. Doors treat a member's room as the Bedroom it counts as (D-103), and where they can, open the Nursery and the Kids' Room off a Bedroom, Ivy's Room off the Home Office and Nana's Room off the Mudroom (`house-model.ts`).
+  - When the Nursery grows into the Kids' Room, its art changes with its type, the crib becoming two beds; its level and fixture stay (D-109).
+- **Packs** (D-106) are drawn from their own tiles, never the card's shape: the ghost as the tiles are clicked out, the built pack, and the Moving Truck's carried pack (D-100's ghost rule).
+  - A Fence's picket line runs through any connected shape, joining other Fences as D-100's do. A lone tile is a short run across its cell, with a post at each end.
+  - The house's car stands only on its Driveway's own tiles: everything below its over line, wheels and body, with its roof rising over the row behind no further than a side-on car's does. A ragged pack parks it in another row (side on) or column (nose in), so a Driveway of two tiles or more, of any shape, parks it where no door is in the way. A lone tile sends it to the house's next Driveway.
+- **Renovate's level** (D-102): a pixel badge with a star per level, as tall as the ⚠. `label-layout.ts` places it last, so it moves nothing: beside the ⚠, else under it (a row, then a column), else in the ⚠'s place, else under the fixture's badge, else under the top badges at the room's left, else at the top of another of its top cells (an L-Kitchen's other arm). It stays on the room's own cells inside its walls, clear of the digit, the other badges and what the labels keep off (D-100). Where only a smaller badge fits, it shrinks as the other badges do, never below a device pixel per icon pixel. It pops on a Renovation (`FEEL.levelPop`; not under Reduce motion). Where it can't fit it's left out, and the inspect panel states the level.
+- **Renovate's outline** around the rooms a card can renovate is drawn in art pixels, so it grows with the zoom like the walls it follows and stays easy to find at 2× and 3×.
+- **The crews' icons:** our own 8×8 drawings in LimeZu's palette, like D-098's icons, for a crew's chip and, at 4 UI px per art px, its card. The General Contractor's is the Weekend Crew's hard hat (the hammer already means Demolish), the Landscaper's a garden spade (its bonus is for yard pieces, and most of them aren't Green), and the Architect's the goods' blueprint, redrawn at 8×8. No crew's icon is a tag's.
+- **Two carets** open and close folds and the contract's house rules (▸ closed, ▾ open): small wood triangles in the ink outline, smaller than the ▲ ▼ marks, so an open fold doesn't read as a dislike. The open one is the closed one turned a quarter in the same 8×8 box, so a row keeps its place when it toggles.
+
+**Why:** M4's new pieces had no art in M5a's look. M5a drew a yard piece from its card's shape, which a pack doesn't keep, and the merge gave the members' rooms the Bedroom's floor and wallpaper for the time being. D-097 gives every room type its own floor and furniture, and D-100 draws every piece from its own cells. A Renovation needs a mark on the board, and M5a's labels already decide where a badge can go.
+**Costs:** 50 new LimeZu cuts, each with its record in `assets/licenses.json` (`CREDITS.md` credits LimeZu already), and one more drawing of ours. A 2×2 room's north wall holds the bed and one piece, so Grandma's Room shows her vanity or her curio cabinet, rarely both, and no nightstand. Where Renfield's Room lies one cell deep and a door's walkway takes its floor (about one such room in seven, in random houses), there's no room for the cot: it shows the candles and the spider. The level badge is left out only where no badge fits: at 1×, a one-row room that also shows a fixture's badge and the ⚠ on a screen of ratio 1; Renfield's Room and Rowan's Studio at 0.5×; a one-row room a Treehouse's roof fills. A lone Driveway tile parks no car.
+**Changes:** None to settled decisions. It extends D-100 (Accepted): its Furniture bullet gains the members' rooms, its Yard pieces bullet the packs' own shapes, the lone Fence tile and where the car parks, and its Labels bullet the level badge. D-098 (Accepted): the crews' icons and the carets join its icons.
+
+**2026-11-08 (the visual checks), for playtest 4:** checked in D-110's six configs, with nothing to fix: the seven members' rooms at all four turns, bare and with Bunk Beds, Soundproofing or Blackout Curtains; the Nursery growing into the Kids' Room; Fences of one to eight tiles and Driveways of one to six (rows, L's, T's, a block) as they're clicked out, built and carried by the Moving Truck, at 0.5× to 2× and Fit, with their labels near the lot's top edge; the parked car; and Renovate's outline, its labels and the stars at levels 1 and 2, at 1×, 2× and Fit. The candles and the spider animate as the Fireplace does, so they hold still under Reduce motion and under a sheet over the board (`house.css`, `terrain.css`). The board's open items are D-110's host badges.
+
+### D-122 · Score legibility, the jam slice: the play's label names its cause, and room cards name their sets
+**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: played in playtest 6 (/dev/ at 9acf14a, 2026-11-11), where it raised one question, which D-153 answered. The user still isn't always sure why points move (2026-11-12), and D-165 (Proposed) goes after that. Proposed 2026-11-10, at the user's "Yes, build the slice", from the legibility deep-dive (2026-11-09, options A to C; its full text is backed up in the playtest-5 session's shared notes). It builds the deep-dive's cheapest cut: part of option A (the label names its cause) and part of option B (a static set chip). For the next playtest.
+**Decision:**
+- **The rules split a play's change into parts** (`src/rules/attribution.ts`, `Preview.parts`). Comfort parts are worth their Comfort × the old Charm and Sparkle; Charm parts their Charm × the new Comfort and the old Sparkle; Sparkle takes the rest. Largest-remainder rounding makes the whole parts add up to the preview's change exactly. The parts are coarse:
+  - the played piece (an install's host, a renovated room)
+  - each other piece that earns more or less
+  - each set made or broken, with its Comfort and Charm together
+  - each checklist line turned on or off
+  - each +Mult modifier whose count changes
+  - Sparkle, when a ×Mult source comes, goes or changes
+  - "Other changes" for what none of these explains, including a held ×Mult's rounding of a different Charm
+  
+  An installed fixture's own +Mult and ×Mult (a Chandelier's) count as the card's own part, as a placed piece's earnings do.
+  
+  The chaos suite checks that they add up on every previewed play of its runs.
+- **The ghost's label names the biggest cause besides the card's own,** in the same direction, when it's at least a quarter of the change and 2 Wow: "▲ +139 Wow · Suite", "▼ −48 Wow · Cozy off". The card already says what it pays itself. A change of 0 names its biggest gain. "Other changes" is never named. The Renovate and install labels name it too.
+- **A big part pulling the other way gets a line of its own** under the change, when it's at least 10 Wow and a quarter of the change: "▼ −68 Wow · Cozy off" under a +45.
+- **Room cards name a set they count toward** in a chip in Charm's tint: the touching set with the shortest name, so it shares a line with the card's tags at 1600×900, plus how many more touching sets there are. A Closet says "Suite" and a Bedroom "Suite +1". Full House shows only on cards with no touching set (Garage, Hallway, Home Office). It's static membership: it never says where. Its tip names each set's members, whether they must touch, what it pays, and whether a house can have more than one, Full House included.
+- The UI only chooses among the rules' parts (`src/ui/board/causes.ts`); it computes no scores.
+
+**Why:** the deep-dive found that in playtest 4's run only 15% of the Wow plays moved came from the played card's own lines. The biggest surprises were sets: the Closet's +139 was the Suite's +134, and no card names a set. The ghost already shows the number, so naming its cause costs no discovery. The user ruled out partner highlights on the board.
+**Considered:**
+- All of option A: a receipt in Inspect, the badges in Wow, and stakes in the tips. Option B's "In this house" boosts on a card. Option C's ledger and the piece's worth. They're about 2–3 days more, after the jam if playtests still find surprises.
+- Naming the piece's own part ("· Closet"): the card says it.
+- The set chip lit when the house holds the set's other members: closer to the highlight the user turned down (the deep-dive's Q2).
+- "Jack-and-Jill +1" on a Bedroom: at 1600×900 it took a second line and pushed the hand's fourth card out of view.
+
+**Changes:** none to settled decisions. D-087's preview gains a field. The bots read only the preview's change, so the sim's numbers can't move.
+
+**2026-11-11 (D-153, `fix/full-house-progress`):** the chip counts Full House where it names it: "Full House 5/9", the member types the house has built (the rules' `setProgress`), and a check in place of the count once the house holds it, wherever that costs the card no chip row (elsewhere it says "Full House" as above). Its tip says the count in words, and Inspect names a hand card's sets. Touching sets get no count, and a card that would complete a set gets no star.
+
+**2026-11-12 (D-164, Proposed):** yard pieces and outbuildings are set members now, so their cards get the chip by the same rule: a Lawn "Dog Run +2", a Fence "Dog Run +1", a Patio "Backyard", a Treehouse "Play Yard", a Greenhouse "Harvest", a Driveway "Drive-In". The shortest names put a Kitchen at "Harvest +1" and a Living Room at "Backyard +1", with the Entertainer in their "+1" and their tips.
+
+### D-132 · One reroll redraws both rows of the draw
+**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: their own ask, played in playtest 6 (/dev/ at 9acf14a, 2026-11-11) with no issues raised. Proposed 2026-11-10, after playtest 5, at the user's ask (`docs/playtests/playtest-5-findings.md`). Changes D-121. The targets aren't re-fit here: the balance pass's one re-fit comes after it, on the last day.
+**Decision:**
+- **A reroll redraws both rows,** Rooms and Layout, for one reroll: the milestone's own first, then a kept one, as before. Each row draws on its own stream, `draw/<phase>/<slot>/<n>/<row>`, as a week's first draw does, then each card with no play is swapped as D-121 says. A card picked from the old hand goes with it, and the week goes on.
+- **One Reroll,** on the hand's plank before Demolish, with the milestone's count. Its title says "New cards for both rows" and that it doesn't end the week, and it's read out as "Reroll: new cards for both rows, N left". The ROOMS and LAYOUT labels stay, without buttons.
+- **The plank** holds the title, Reroll and Demolish. As in D-121's narrow column, the buttons show their icon and count where their words don't fit (their titles name them), and while demolishing, Stop keeps its word. On a narrow plank (in the pixel font, at 1600×900 and smaller windows) the title is "Cards", not "Pick a card", so both buttons fit beside it.
+- **How to play** says "New cards for both rows" for Reroll, with the milestone's count. R rotates, as before, so the controls strip doesn't change: there's no reroll key.
+- **Run codes:** a reroll names no row. A code from D-121's builds whose reroll names one still parses, but the row is dropped, so from that reroll on the code replays differently than it played. Its build stamp names the commit that replays it.
+- **The sim:** greedy rerolls when no play would raise the week's total, as before, and no longer picks a row.
+
+**Why:** in playtest 5 the user said "two rows of the draw feel okay, but I think a reroll should reroll both sections of the draw instead of just one." In their run (seed drf4yj, the Hendersons with the General Contractor, won with 50,129 against 37,490) they rerolled 10 times, 8 Rooms and 2 Layout, and twice spent two rerolls in a row, Rooms then Layout, to redraw the whole hand.
+- **This PR's check,** greedy on 200 held-out seeds (`--check`), paired against develop (56e1e02):
+  - Wins 48.0% → 47.5%, −0.5 points [−1.5, +0.5] (1 seed won only before, none only with this). Greedy early always wins 47.0% both ways.
+  - Wow ×0.999 at milestone 3 and ×1.000 at milestone 5; at the end, ×0.999 on the 95 seeds both won (×0.988 over all 200, nearly all of it the one lost run). The median final Wow is 29,648 → 29,619.
+  - Greedy rerolls only when no play would raise the week's total, 0.13 times a run before and 0.09 now, and 192 of the 200 runs end on the same Wow. So the sim says little about players, who reroll far more (the user, 10 times in a run).
+  - §8's criteria keep their verdicts: greedy's wins pass, unsure, at 47.5% [40.7–54.4], it clears milestones 1–3 in 97.5%, and the clients' spread fails, unsure, at 25.0 points (27.5 before).
+
+**Considered:** a third button for both rows beside each row's own (three buttons for one count); a count for each row (twice the rerolls, and a re-fit).
+**Costs:** a good row can't be kept while the other redraws. Codes from D-121's builds with a row's reroll replay differently from it on.
+**Changes:** D-121 (Accepted): its reroll, the run code's row, the Reroll buttons and the sim's reroll, with a dated note there. Its notes on D-036, D-039 and D-098 are marked too. `implementation-plan.md`: the `handDrawn` event, the week's start, and Appendix A's rerolls.
+
+**2026-11-10 (D-148, Proposed):** Reroll keeps its word at every window size, in both fonts: as a bare die it went unnoticed by the review's first-timers. The title gives way to it ("Cards" under 25rem of plank, none under 19rem, which is a laptop's), Demolish still shows its icon and count where its word doesn't fit, and while demolishing Stop keeps its word and Reroll gives up its own.
+
+**2026-11-11 (a fix pull request, `fix/reroll-no-repeats`):** a reroll no longer deals back the cards it replaces. It drew from the same pools as the week's first draw with nothing left out, as the 2026-11-10 polish review found: on 4,000 lots here, 75.4% of first-week rerolls (the General Contractor's) brought back a card they replaced, 30.6% half the hand or more, and 8 the very same hand.
+- **Each row is drawn from its pool without the cards it holds,** and the reroll's swaps leave those out too. Only when a row's pool has too few others (strikes can leave a Landscaper's three Layout cards one) is it topped up from the cards it held, at their weights, on the same stream (`held` in `draw.ts`, beside the swap's `exclude`). A week's own swaps still try any card that isn't in the row.
+- **The streams' keys don't change,** so a reroll still shifts no later hand. A week's first draw and its swaps, the Catalog's redraw and the ?debug panel's forced shop draw as before.
+- **Measured** on 4,000 lots for each Core crew (the Core clients in turn), first-week rerolls that dealt back a card they replaced: 75.4% → 0 with the General Contractor (its second reroll against the first's hand, 76.7% → 0), 91.5% → 0 with the Landscaper, 72.0% → 0 with the Architect. At every week start of 100 greedy runs (2,624 weeks): 51.6% → 0. With the draw's change alone, the reroll's swaps still brought one back in 2.6% (7.8% at milestone 2), so they leave them out too.
+- **Greedy on `--check`,** 200 held-out seeds paired against develop (87aa6ae): wins 47.0% → 48.5%, +1.5 points [−0.2, +3.2], with 3 seeds won only with this (all Count Vladislav's) and none only before. Greedy rerolls 0.08 times a run (0.09 now) and only the 11 runs that rerolled change; 90 of the 94 won both ways end on the same Wow (×1.000 over the 94). Greedy early always wins 42.0% both ways. §8's verdicts hold: greedy's wins pass, unsure; it clears milestones 1–3 in 97.5% (97.0%); the clients' spread fails, unsure, at 30.0 points (22.5), from those three Vladislav runs. The targets aren't re-fit.
+- **Run codes** with a reroll in them replay differently from that reroll on, as any change to the draw does.
+- **Changes:** this entry's first bullet (a reroll's rows leave out the cards it replaces), and `implementation-plan.md`'s week start.
+
+**2026-11-12 (D-157, Proposed):** the plank holds Reroll, Strike and Demolish. In the pixel font its title ("Pick a card", "Cards") gives way whenever Strike is on it, and outside a mode Reroll keeps its word on planks from 17.25rem (D-148's note). In the readable font the title is "Cards", and none on planks under 315 px. The first job's two-button plank keeps this entry's rules. Free strikes thin the rows sooner than bought ones did, so a reroll's top-up from the cards it held (the 2026-11-11 note) can come sooner too.
+
+### D-134 · Three more tracks, from the same shortlist
+**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: played in playtest 6 (/dev/ at 9acf14a, 2026-11-11) with no issues raised. Proposed 2026-11-10, after playtest 5 (`docs/playtests/playtest-5-findings.md`), with its fix pull request. Extends D-128. For the user's ears on /dev/.
+**Decision:**
+- **The shortlist's other three join D-128's,** so a run shuffles six tracks (D-131) and plays about 16 minutes before one repeats, where three played about eight. The user heard all six on M5b's listening page and turned none down, so these come in without another listening round:
+  - "Folded" by Ketsa (Free Music Archive, CC BY 4.0): busier lo-fi downtempo; 78 BPM, 3:12, A major.
+  - "On the road, looking at your feet" by Monplaisir (Free Music Archive, CC0): solo ukulele; 68 BPM, 1:58, G major.
+  - "Comfort Games 5" by HoliznaCC0 (Free Music Archive, CC0): a music box; 70 BPM, 2:21, C major.
+- **Cut and keyed like D-128's three:** Ogg and M4A at −16 LUFS (D-130), each key estimated from the recording the same way, so the rewards play in it (D-129). Each comes as one mix, so the bus's filter and level change it by screen (D-131). `music.test.ts` shuffles the six for 200 rounds: every track once a round, never the last one first.
+- **Licenses were read again on each track's page.** The credits, with our changes, are in `CREDITS.md`, `assets/licenses.json` and How to play's Credits. CC0 asks for no credit; we give it anyway.
+- **A limiter for loud plucks:** On the road's ukulele plucks peak far over the rest of it, so the −1 dBFS peak cap held it at −20 LUFS. A cut in `art/audio.json` can now take `limit`: it reaches its loudness through a look-ahead limiter (2 ms ahead, 80 ms release) that holds the peaks under −1 dBFS and leaves the rest alone (`cut-audio.test.ts`). On the road lands at −16 LUFS.
+- **Size:** the three add 13.3 MB to the Pages build (6.1 MB of Ogg and 7.1 MB of M4A), so music is 33.5 MB of its 34 MB. A player still loads one format, about 2 MB a track, one track ahead (D-130).
+
+**Why:** in playtest 5 the music "is good", but three tracks "start to loop pretty noticeably" over a run. The user had picked D-128's three from this shortlist by ear, and asked for "maybe an additional 3".
+**Considered:**
+- A new search for tracks: these three were already found, checked and heard.
+- `limit` for Clear Air (−17.7 LUFS) and Sleepy Little Mouse's mix with drums (−16.8 LUFS), whose peaks also hold them under −16: the user called the music good as it is, so their levels wait for the user's ears.
+
+**Changes:** D-128 (Accepted): six tracks, not three (its dated note). D-130 (Accepted): a cut can take `limit`. `implementation-plan.md` §7 M5b and §12 Music: six tracks, about 16 minutes.
+
+### D-135 · Sharing a run: the result line, its link, and the link preview
+**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: played in playtest 6 (/dev/ at 9acf14a, 2026-11-11) with no issues raised. Proposed 2026-11-10, with its fix pull request (`fix/share-result`), the first half of M6's end screen (implementation-plan.md §7 M6). For the group on release day.
+**Decision:**
+- **Copy result,** on the end screen above Copy run code, copies one line for the group chat: `Open House · The Hendersons · General Contractor — Charmer: 50,129 Wow, 7/7 milestones (1 early). Play this lot: https://swalliso.github.io/house-game/?seed=drf4yj&client=hendersons&crew=generalContractor`.
+  - Its parts: the client and crew by their names, the verdict, the final Wow, the milestones met (overtime counts as met) and how many were early (left out when none were). A lost run adds "the client walked at Roofing"; a debug run adds "cheats used".
+  - It's `resultLine(state)` in `src/ui/screens/result-line.ts`, pure apart from reading the channel: the rules say every number, it only words them (`result-line.test.ts`).
+  - It goes through `copyText` like the run code: a toast says "Result copied", and where the clipboard is refused (itch.io's iframe) the copy fallback shows the line to copy by hand.
+- **The link starts the same lot:** the run's seed, client and crew, through `loadInitialRun`'s `?seed=&client=&crew=`. That's the run's whole setup, so the lot, the draws and the shop are the same as long as the plays are; the friend plays their own run on it. The test opens the link through `loadInitialRun` itself and gets `rules.newRun(setup)` exactly.
+  - **It points at Pages by the build's channel,** never at the page it was copied from: a release links to `https://swalliso.github.io/house-game/`, develop to `/dev/`, a local build to its own address. A run played in itch.io's iframe still links to Pages.
+  - **A friend's run in progress is put aside, not lost** (the link's old behavior, unchanged): the link's run takes the save, the old run's code stays in the browser (`openhouse:<channel>:previous`), and the note says "Your run in progress was put aside." with "Copy the old run code". A save with no weeks played is replaced without a note. Saves are per channel, so a release link never touches a develop run.
+- **The Auto switch hides on the end screen** (won or lost), where it was greyed out: there's no milestone left to complete.
+- **The link preview,** for the group chat: `og:title`, `og:description` (the title screen's pitch), `og:image` with its size and alt text, and `twitter:card` (`summary_large_image`) in `index.html`.
+  - **`public/og.png`** (1200×630): a finished run's house with its roof on, on its lot by the street, at two screen pixels per art pixel, under a wood sign in the game's style: "Open House" and "It's a house." It's captured from the game (seed og4, the greedy bot's win for Count Vladislav). *2026-11-10 (D-147): captured again without the roof, the rooms in view, from the same seed and client on that build (the debug panel's bot-built house, won), in the same frame and under the same sign.*
+  - **Scrapers need absolute URLs,** so `vite.config.ts` fills in `%SHARE_BASE%`: develop's build points at `/dev/og.png`, which exists as soon as develop deploys; a release and a local build point at the root.
+  - **`public/favicon.png`:** a 16×16 house in LimeZu's palette at 2×, for the tab. Both are recorded in `assets/licenses.json` and `CREDITS.md`, and the licenses test now checks `public/` too.
+
+**Why:** M6's plan asks for "a copyable result line (with a fallback for itch.io's iframe)", and the game goes to the group on 2026-11-11. A line with a link to the same lot lets a friend try to beat a score on equal terms, and the preview makes the link worth clicking.
+**Considered:**
+- Linking the run code (`?run=`): it replays the sharer's whole house and lands on their end screen, which spoils the lot. The setup is enough to play it.
+- The page's own address for every build: an itch.io iframe's address isn't a page a friend can open.
+- `og:image` pointing at the release for every build: a develop link would show no picture until the next release.
+- `navigator.share`: on desktop it opens the OS share sheet in only some browsers; the clipboard works everywhere the game runs.
+
+**Changes:** implementation-plan.md §7 M6's end screen: the result line is done (D-135); the photos are D-136's.
+*2026-11-10, from the polish review:* the note about a run put aside also offers **Go back to it**, when that run is from this build. It loads the run and puts the link's run aside in turn (if it has a week played), so the same button swaps them back. A run from an older build gets only its code, as before, since it may stop replaying. A saved run that was already over gets no note, from a link or from a game update: nothing was in progress, and its house is in the company's record. The crash screen offers Reload and continue first (a crash leaves the save as it was), and its Start a new run puts the saved run aside the same way instead of overwriting it.
+*2026-11-11, from the outside review and the polish review:* a link that starts a run says what it opened, by the content's names: "A shared lot: you’re building for the Hendersons with the General Contractor." A `?client=` or `?crew=` link without a seed starts a random lot, so it says "A new lot". The line comes first, before the note about a run put aside. A run put aside from an older build still gets only its code, even when it would carry over now (D-068's note of the same day).
+
+### D-136 · The end screen's photos: a polaroid of the house at each milestone
+**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: played in playtest 6 (/dev/ at 9acf14a, 2026-11-11) with no issues raised. Proposed 2026-11-10, with M6's phase pull request (`phase/m6-end-photos`), the second half of M6's end screen (implementation-plan.md §7 M6). For the user's playtest before it merges. An exception to D-097 (its dated note).
+**Amended by:** D-147 (Accepted 2026-11-10): the house above the strip has no roof, so the hero and the photos both look inside, and the deal doesn't wait for a roof to land.
+**Decision:**
+- **A strip of polaroids along the foot of the board** on the end screen, under the roofed house, which stays the hero. There's one polaroid for each milestone that resolved: early, on time, in overtime, or the one the client walked at. A won run has seven; a lost one has one for each milestone up to and including the missed one.
+  - Each polaroid shows its photo, the milestone's name, its mark (✓ or ✗, with early's flag or overtime's clock) and its Wow against the target.
+  - The board gives up the strip's height, so the camera fits the house above it. The camera's buttons move up with it.
+- **The photos come from the run itself.** `milestoneShots` (`src/ui/screens/photos.ts`, tested in Node) replays the setup and actions with `newRun` and `apply`, as a run code does. It keeps the state each time `state.milestones` grows. It's memoized per run, about 26 ms in the browser, and it stops quietly at an action that no longer applies.
+- **One frame for every photo** (`photoFrame`): the finished house's rooms (or every piece, for a yard with no rooms), a cell around them, grown to 4:3 about their middle and kept on the board. The house grows in place from one photo to the next, like a time-lapse.
+  - A house whose rooms run down 18 rows or more is taller than a 4:3 frame the board's width can hold, so it loses its top and bottom edges.
+- **Painted with the board's own painters,** in the board's order (`photo-paint.ts`): the terrain (`TerrainLayer`'s `draw`, now exported), the water's first frame, the floors and the yard's ground, each piece's items with south in front, the walls, the tall items' tops, and the trees' crowns.
+  - The photos look inside, without the roof, since the hero above has it on. They have no digits, badges or tint.
+  - It never mounts the board's components, so the live board's caches and its car's slide (`HouseLayers`' module-level `lastCar`) are untouched.
+  - The photos are painted one per frame once the end screen is up (about 0.1 s for seven) and shown as images.
+- **The deal** (`FEEL.photos`):
+  - The polaroids come up onto the table 650 ms after the end screen, once the roof has landed, 140 ms apart. Each flies 48 px up in 420 ms, turning from 9°, and lands square with a soft flick (`place-yard`, a little higher each time).
+  - Each picture develops from a warm blank over 1.1 s once it's painted.
+  - A run's strip is dealt once: back from the title, it's simply there. Reduce motion puts them down at once, developed, without the flicks.
+  - At rest they lie square: tilted, the pixel captions would blur.
+- **Sizes:** the photos share the board's width, seven side by side, from 140 px wide (the narrowest that holds "Final Walk-" on a line) to 176 px. The long names break at soft hyphens.
+  - At 1920×1080 all seven fit side by side.
+  - In a narrower window they overlap like a hand of cards, the last one whole. The one pointed at or focused comes to the front and rises 6 px.
+- **The photos are a downscale exception to D-097,** like the Fit overview: the strip shows them smaller than one device pixel per art pixel, smoothly.
+- **Click one** (or Tab to it and press Enter) to see it larger. A sheet shows the photo, with its mark, how it went, its Wow against the target and its week.
+  - The photo is drawn at whole device pixels per art pixel where the window holds one (1× for a typical house at 1920×1080), else smoothly smaller.
+  - ← and → (or Previous and Next) step through the strip, and Esc closes it (`modals.ts` `photoShown`).
+
+**Why:** M6's plan asks for "a photo of the house at each milestone" on the end screen. The rooms that change as they're built and furnished were what playtest 5a liked best, and the roof hides them at the end. A strip of the house growing tells the run's story at a glance, under the finished house.
+**Considered:**
+- The roof on from Roofing: half the photos would be the same red roof.
+- Framing each photo on its own house: the house would jump around instead of growing.
+- Tilted polaroids at rest: the pixel captions blur.
+- A strip that scrolls sideways: at 1280×720 it would hide the last milestones.
+- A grid in the right-hand column: too narrow for seven.
+- Captions under the type scale's 16 px floor.
+- Rendering a second set of the board's components: twice the DOM, and the car's slide is shared state.
+
+**Changes:** D-097 (Accepted): the photos are a second downscale exception (its dated note). implementation-plan.md §7 M6's end screen.
+
+**2026-11-10 (D-148, Proposed):** overlapping, a polaroid's caption ran under the next card and read as one line with it ("Foundatic|Framing", "of 12,430of 22,550"). An overlapped polaroid's caption now keeps to the part of the card that shows: the name breaks at its hyphen or ends short of the next card, a Wow too long for the room ends in "…", and the "of N" line is left out. The last one, and the one pointed at or focused, show everything. At 1440×900 every name is whole; at 1280×720, where a card shows 91 px, the names end after six letters.
+
+### D-137 · More change orders: three generic ones, and a phase effect for every client
+**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: played in playtest 6 (/dev/ at 9acf14a, 2026-11-11) with no issues raised. Proposed 2026-11-10, from playtest 4 (`docs/playtests/playtest-4-findings.md` §5), with its fix pull request. Extends D-011 and D-109. For the next playtest on /dev/.
+**Decision:**
+- **Six new change orders, as data** with existing modifier kinds (`earn`, `earnNothing`, a `forbid` selector), so 18 in all. Each client draws from 7 or 8, about the 8 playtest 4's findings proposed.
+  - Generic: *Cold snap* (phase: rooms with a Fireplace earn double, Bathrooms half: the pipes froze), *Rainy season* (phase: Green pieces earn double, Patios nothing), and *A letter from the HOA* (restriction: nothing new in the front yard; kept, +4 budget, as Big deadline).
+  - The Barkers' *A litter of puppies* (phase: Pet pieces and Lawns earn double, Flower Beds nothing), Juniper's *A magazine shoot* (phase: rooms with a view earn double, Closets and Hallways nothing, Long Hallways included), and Dale's *Out of office* (phase: Outdoor pieces earn double, Home Offices nothing, though they still pay their budget).
+- **Every client has four phase effects** (the three generic ones and one of its own), so the offer after milestone 6, which offers only phase effects (D-109), always comes: milestones 2 and 4 use up at most two.
+- **Each phase effect pays something and costs something,** as Heat wave does, so it asks the player to build differently for a phase rather than just adding Wow. This matters more now that the third offer always comes, in the run's biggest phase. Cold snap's upside needs a Fireplace, which the shop right after the offer may sell.
+- The pick stays even among the client's own orders and the generic ones (D-112), so a client's own orders come up less often: 2 of 7 for the Hendersons and Count Vladislav (from 2 of 4), 3 of 8 for the others.
+- *2026-11-10 (D-144):* each offer now shows two orders to pick one from, so the four phase effects a client has must leave two for milestone 6, and they do: the picks after milestones 2 and 4 use up two at most, and an order passed over goes back in the pool. D-144's sim found Eternal night and A magazine shoot picked almost every time they're offered, so "each pays something and costs something" doesn't yet hold for those two.
+
+**Sim** (`npm run sim -- --check`, 200 held-out runs per bot on the same seeds; develop at 0b4e27c against this change; targets not re-fitted):
+- Runs that cleared milestone 6 and got an offer after it, by client (greedy): the Hendersons 78% → 100%, Count Vladislav 86% → 100%, the Barkers 48% → 100%, Juniper 54% → 100%, Dale 54% → 100%.
+- Greedy wins 47.5% [40.7–54.4] → 46.0% [39.2–52.9]. Paired by seed, its final Wow after ÷ before is p50 0.999 (p25 0.934, p75 1.029); per client p50 1.000, 0.982, 1.000, 1.004, 0.986. Its final Wow p50 over all runs is 29,619 → 29,175, and at the Final Walkthrough, for runs that reached it, 36,333 → 35,065.
+- Every §8 criterion that passed still passes. The client spread is 30.0 points (from 25.0) at 40 runs a client, which is noise: the re-fit's 2,000-run check gave 6.7 (D-123).
+- Greedy declines every restriction (`sim/policies/orders.ts`), so A letter from the HOA doesn't show in its numbers.
+
+**Why:** in playtest 4 the team found change orders fun but wanted more variety and randomness; D-112 changed only their wording. A client drew from 4 orders, and the Barkers, Juniper and Dale, with only Heat wave as a phase effect, often got no third order at all.
+**Considered:**
+- One or two more generic phase effects alone: that guarantees the third offer too, but leaves three clients with nothing of their own at the end of the run.
+- Effects that only pay (a ×Mult, double everything): with the third offer now always coming, they'd raise greedy's win rate. Playtest 4's rare tier with a big phase effect can come later.
+- Weighting the client's own orders ×2 (playtest 4's proposal): a rules change, not data. Left for a playtest to ask for.
+- Playtest 4's Power outage became Dale's Out of office, where a Home Office matters most. "Open house weekend" was left out: its name is too close to the Open House Party tool.
+- More requests: most of playtest 4's ideas (Room for the in-laws, Curb appeal) fight the house rules' Bedroom ranges or need new selectors.
+
+**Changes:** D-011 and D-109 (dated notes). `implementation-plan.md` Appendix B: the clients table and Generic change orders. New content changes the content hash, so run codes from earlier builds won't replay.
+
+### D-139 · The company's record: bests, the next verdict, and a portfolio
+**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: played in playtest 6 (/dev/ at 9acf14a, 2026-11-11) with no issues raised. Proposed 2026-11-10, with its phase pull request (`phase/company-record`), from the friction and replayability review the user asked for the same day. The user picked it as the first step ("Yes, build it"). For the user's playtest before it merges. A first, power-free step toward D-015 and D-016, which stayed Proposed then and were Parked on 2026-11-12.
+**Decision:**
+- **The browser keeps a record of every house it finishes,** won or lost (`src/ui/company.ts`): the lot's seed, the client and crew, the Wow, the verdict, the milestones met, when, and a photo. It also keeps the best result with each client and crew, and counts of houses built and jobs done.
+  - It's stored by channel, like the save, but not by build. A house is stored as its result and a picture, never as a run code: a run code stops replaying when the content changes, and the record should outlive updates.
+  - The portfolio lists the newest 36 houses, and the newest 24 keep their photo. The bests and the counts outlive the houses they came from.
+  - A best is the highest Wow, and a win beats any loss.
+  - The same lot, client and crew finished again replaces its entry and counts once.
+- **Only a run played to its end here is filed** (`src/ui/screens/record-run.ts`): the action that ends it comes through the store. A run that loads already finished (a `?run=` code) isn't filed, and nor is a debug run.
+- **It unlocks nothing and changes no rule** (D-016). The rules never read it.
+- **The end screen says where the house stands,** under the Wow:
+  - "Next: Charmer at 46,863": the verdict above this one and the Wow it starts at, from the rules' new `nextVerdict()`. A lost run and a Dream Home show none.
+  - Then one of: "New best for the Hendersons" with a star and what it beat; "Your first house for the Hendersons"; or "Your best for the Hendersons: 46,656". A client's best is across crews.
+- **The title screen gets a Portfolio rider** under How to play and Settings, with the number of houses built, once there's one. It opens a sheet (`src/ui/screens/Portfolio.tsx`):
+  - a line of totals: houses built, jobs done, and the best Wow in a won run
+  - **Best work:** a grid of every client by every crew, 15 squares. A win is stamped gold with its verdict and Wow, a loss says "Client walked" with its Wow, and a job not tried yet is an empty square.
+  - **Houses:** polaroids, newest first, each with its photo, client, verdict (or "Walked at 3/7"), Wow and crew.
+- **The photo** is the end screen's (D-136): the finished house without its roof, through `photoFrame`, painted by `paintPhoto` once the last tally has played. It's stored 320 px wide as a JPEG (under 30 KB in the five houses checked), not at art resolution (about 100 KB as a PNG), because every channel on the site shares one browser storage. If storage is full, the oldest photos go first.
+
+**Why:** the review found that nothing carried from one run to the next: the browser remembered settings, hints, the save and the best single week, and the end screen had no personal best. A record gives a second run something to beat, and the grid's empty squares give a reason to try another client or crew, without touching balance the day before sharing.
+**Considered:**
+- **The finished houses standing on the title's street.** This was the review's first sketch. The title's scene is drawn front-on (LimeZu's villas) and our houses are drawn from above, so a house on that lawn would read as a floor plan lying on the grass. Polaroids in a sheet use D-136's look instead.
+- Storing run codes and repainting: the first content change would empty the portfolio.
+- Unlocking clients, crews or goods with it: jam players may play once or twice, and Combolands' players resented early runs with systems locked (research.md).
+- A best per client and crew only on the end screen: the grid already shows it, and one line per client reads faster.
+- Filing debug runs: their cheats would set the records.
+
+**Changes:** D-015 and D-016 (Proposed): this is a first step that adds no unlocks and no currency. `jam-scope.md`: its "Not in the jam build" line on meta-progression. The rules gain `nextVerdict()` (`milestones.ts`), so the UI still computes no score.
+**Known gaps:** no way to clear the record yet. A portfolio house can't be opened larger or replayed from its seed. A run finished on another device or in a private window isn't in the record.
+*2026-11-10, from the polish review:* where the browser denies storage altogether (site data blocked, or the game in an itch.io frame in an Incognito window), the record starts empty and lasts for the visit. Reading it used to throw as the page loaded, which left the page blank; the tally's own records (the best week, the tiers seen, topped out) had the same check and are fixed with it.
+*2026-11-11, from the outside review and the polish review:* each house in the Portfolio has **Play this lot again**: a new run on its lot, for the same client with the same crew, straight into the game with the sheet closed (`playLotAgain`, through the store's `newRun`). With a run in progress it asks first, as the title's New run does while it offers Continue. A house whose client or crew this build no longer has gets no button. A portfolio house still can't be opened larger.
+*2026-11-11 (D-150, Proposed):* the end screen offers it too, as Try this lot again after a loss and Play this lot again after a win, so the same lot is one click from the end screen instead of three screens.
+*2026-11-11 (D-156, Proposed):* the newest six houses also keep a **plot**: the house alone, dimmed, as a PNG at art resolution, with where it stood on its lot (`Job.plot`), so it can stand on the street beside the lots that come after it. A plot is 42 to 73 KB as base64, about twice a photo, so six add about 350 KB to the record's one JSON value (`openhouse:<channel>:company`), in the browser storage every channel on the site shares. When the browser says it's full, the plots go first, oldest first, then the photos (`withFewerPictures`). Houses filed before it have no plot.
+
+### D-141 · Showing what a blueprint is worth, and an icon for each
+**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: played in playtest 6 (/dev/ at 9acf14a, 2026-11-11) with no issues raised. Proposed 2026-11-10, with its phase pull request (`phase/blueprint-worth`), from the friction review the user asked for the same day (point 3). Extends D-107. For the user's playtest before it merges. It changes no balance and no rule.
+**Decision:**
+- **Every blueprint on offer says what it would add to your house,** under its rules text: on the shop's cards, on a crate's blueprint options, and on the free Housewarming pick. A blueprint you hold says what it's adding, in the inspect panel.
+- **The numbers come from the rules** (`blueprintValue(state, id)`, beside `fixtureValue`): a week's total with the blueprint in play, less without. The UI only words them.
+  - The first week valued is D-107's: this week on the build screen; in the shop, the next phase's first week, after its start-of-week transforms.
+  - **The run figure adds up each week left,** with nothing more built, instead of multiplying one week by the weeks left. The house's timers run on, Saplings become Trees, a phase effect ends with its phase, a staged checklist line changes with its milestone, and each phase's last week counts as one. Overtime is left out, as in D-107.
+  - A blueprint you hold is valued against the run without it.
+- **Where one week's snapshot would be wrong or empty, the line says so.** The rules read the blueprint's modifier kinds, never its id, so a retuned or new blueprint is valued without a change here.
+  - **Growth** (Good Bones): "+41 Wow a week, growing to +325", and the run figure counts the growth.
+  - **A phase's last week only** (Last-Minute Push): "+621 Wow in a phase's last week", counted once a phase.
+  - **Budget** (Solar Panels): its own line with the coin, "+12 budget over the run". Budget is never turned into Wow.
+  - **Future choices** (Ahead of Schedule): what it adds with the milestones completed early so far, and "+124 Wow a week for each milestone completed early" beside it, never folded in.
+  - **Spec bonuses and links** (Dream Home, Open Concept) need no special case: the tally already reads them.
+- **A blueprint that would add nothing in the weeks left says what it's waiting for,** in a few words from its first modifier with nothing to act on: "No Dark rooms yet", "No pieces with a fixture yet", "No milestone completed early yet", "None of its pieces touch yet" (a link with no group), "Nothing is earning yet". If its pieces are there but a percentage rounds away, it says "Green pieces here earn too little yet". Otherwise "Adds nothing to your house yet".
+- **A blueprint that changes only a run rule the tally doesn't read gets no line.** None of the 18 does today.
+- **Each blueprint has its own icon** (`src/ui/theme/icons.ts`, mapped by `BLUEPRINT_ICONS` in `src/ui/sprites.ts`, so a blueprint without one fails typecheck). They're our own drawings in LimeZu's palette (D-098), 8×8 like a tool's or a fixture's (Dream Home is 9×9), and each draws its name: a yin-yang, a mailbox, a moon, a sprout, a party hat, a sailboat, a floor plan, a timber frame, a house, a barn, a candle, a lawn sign, the sun over a panel, a crown, a house with a heart, an hourglass, a house under glass, a ticked calendar.
+  - They show in the shop's art slot, on crate options, in your goods' blueprint slots, and in the inspect panel's heading.
+  - On a short window (1280×720) the shop's cards have no pictures (`shop.css`), so a blueprint's icon sits beside its title there.
+
+**Why:** the review found a fixture's card said what it was worth and a blueprint's showed only its rules text, under one icon shared by all 18. A blueprint is the bigger purchase, and the free first pick is a new player's first shop decision.
+**Considered:**
+- **One week × weeks left, as D-107 does.** It's simpler to explain, but it reads Good Bones at a tenth of its worth, Last-Minute Push at nothing, and anything on a Sapling or under a phase effect wrong. A fixture's line keeps D-107's sum; changing it is a separate call.
+- **Folding budget into Wow,** or Ahead of Schedule's future milestones into its gain: both would be guesses.
+- **Wording the "needs" line by blueprint id:** the next balance pass would have to keep a table in step.
+- **Blue-paper icons, white on blue, like the old shared one:** 18 line drawings at 8×8 are hard to tell apart. Color does that job.
+- **12×12 icons:** more room, but they'd stand taller than a tool's in your goods.
+
+**Changes:** D-107 (Accepted): a dated note. D-087: the shop's blueprint cards. The rules gain `blueprintValue()` (`src/rules/run.ts`, with `src/rules/blueprint-value.ts`).
+**Known gaps:**
+- "If the house stays as it is" is a floor for most blueprints: a house keeps growing. The tip says so.
+- Waterfront says "No pieces touching the Pond or the Creek yet" even on a lot with neither.
+- A blueprint whose value is 0 in the first week but not later (Country Living beside a Sapling) leads with the run figure alone.
+- Valuing a blueprint tallies every week left twice. Three on a shelf took about 3 ms per state in a dev build (18 took 18 ms), and the rules keep each state's values.
+
+*Changed by D-143 (Proposed 2026-11-10):* a blueprint whose Mult counts pieces (It's a House, Mood Lighting, Model Home) also says what each one adds, "+47 Wow a week for each House piece", beside its gain or its "needs" line. No blueprint links any more, so "None of its pieces touch yet" no longer shows.
+
+### D-142 · First contact: slimmer job cards, hints held to 25 words, and a tighter checklist
+**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: played in playtest 6 (/dev/ at 9acf14a, 2026-11-11) with no issues raised. The user still finds the screen busy for new players (2026-11-12), and D-167 (Proposed) carries on from here. Proposed 2026-11-10, with its phase pull request (`phase/first-contact`), from the friction review the user asked for the same day (its point 7: the reading a new player meets in the first minutes). For the user's playtest before it merges. No rules or balance change.
+**Decision:**
+- **A contract's card leads with what differs between the clients on offer:** who they are (the name, the rarity, the brief), their wishes, and the lot (its map, its sun and its traits, D-119).
+  - **The household is one line:** "The twins and Grandma move in later". Its tip has Room for everyone in that client's numbers, then each arrival: when, and what they bring.
+  - **The tastes are one line:** "Tastes", with how many the client likes and dislikes beside an up and a down arrow. Its tip lists every taste, and what the draws have more of, a line each in the rules' words.
+  - **The house rules are named once for the board,** in its lede: "Every house also keeps the same 7 house rules". That's a term, and its tip names the seven and what a held one adds (`houseRulesText` in `src/rules/text.ts`).
+  - **A house rule a client has in numbers of their own sits with their wishes:** today that's Juniper's Under one roof, for 4–8 rooms. The card finds them by comparing each rule's text across the clients (`ownHouseRules`), so nothing is listed by hand.
+  - The lot in words under the map goes; the map's title and label still say it.
+  - The card's short lines are chosen and counted in `src/ui/screens/job-card.ts`; every sentence is the rules' or the content's.
+  - **Words on a card** (all its text, the button and the keycap included): the Hendersons 42–44 (from 80–95), Count Vladislav 28–29 (from 63–77), the Barkers 38–39 (from 87–90), Juniper Vale 34 (from 55–69) and Dale 36–37 (from 72–75); a range is the lot's chips and, before, its line in words. The first-visit board in the screenshots is 145 words (from 270 at 1440×900). At 1280×720 in the pixel font all three cards scrolled (179, 129 and 37 px out of view); now none scrolls at 1280×720, 1440×900 or 1920×1080, in either font.
+- **Every first-time hint keeps to 25 words** (`HINT_WORDS`): one idea for the moment it applies, and the tips carry the rest.
+  - **The shop's** is "Spend your budget on goods for the house; hover one to read it. Each milestone met pays 4 more." (19 words, from 65). The shelves' tags already say what each kind of good is, and the fixture's hint comes with the first fixture.
+  - **The first week's** is 24 words (from 44): pick, place, End week, the target, and "Hover anything to read it". How a week scores moves to a new hint in week 2, "Comfort and Charm" (18 words), once a week has been tallied.
+  - **The checklist's** moves to week 3, so the first three weeks bring one hint each. It says what a line adds and that the house rules fold into one row once it's dismissed (D-113).
+  - The others: Complete early 23 (from 31), the roof 24 (from 37; the roof's hint went with D-147), Fixtures 21 (from 36), change orders 24 (from 45), Renovate 25 (from 55), an arrival 21 (from 32).
+  - The hints that state a rule or a number are `hintText` in `src/rules/text.ts`, with their numbers from the balance; the glossary keeps the full texts for the tips. Tests hold every hint to the budget.
+  - *2026-11-11 (D-149, Proposed):* the first week's is three plays under one line (23 words; "Hover anything to read it" went, and Inspect's own prompt says it from week 2), week 2's names the Bathroom where the hand holds it, a new one in week 3 names the Closet and the Suite, and the checklist's moves to week 4 in a browser's first job. A hint of those first three goes with its week. Complete early's says what it costs (22 words).
+- **The checklist's rows keep short:**
+  - **A line that doesn't hold shows only what's still missing.** Its parts that hold are done: "A living room or two" says "0 Living Rooms (1–2)" without "1 Dining Room (≤ 1)". A line the play being looked at flips still shows every part, and the line's tip has the whole rule.
+  - **Who's still to move in** is a name and a milestone, "Grandma at Drywall": two lines in a 280 px pixel-font column, where "Grandma arrives at Drywall, week 17" took four. The week is in the name's tip.
+  - **The wishes' tag is "Wishes",** one line in every column ("The Hendersons' wishes" took three in a 280 px column). The plank above it names the client.
+  - **The tastes' row is "Tastes"** in a 280 px pixel-font column under 1000 px tall, where "Tastes (3)" took two lines beside the crew's and the sun's icons. Wider columns and the readable font keep the count.
+  - **Measured at 1440×900 in the pixel font** (the checklist's box is 404 px), on a Hendersons run: with the house rules folded, week 3's rows take 330 px (from 450), so nothing scrolls; mid-run, with a change order, 414 px in a 380 px box (from 514). On a first visit, with the house rules open (D-113), 938 px (from 1,118): it still scrolls. At 1280×720 the folded week-3 rows take 330 px in a 258 px box (from 450).
+
+**Why:** the review read the first screens as a first-time player would. Each contract's card carried the wishes, the household, the arrivals with their weeks, the tastes, the draws and the house rules; at 1280×720 in the pixel font all three scrolled, and the Hendersons' tastes were below the fold. The shop's first hint was a 65-word paragraph. On a first visit at 1440×900 the checklist held 1,118 px of rows in a 404 px box. The group gets the game on 2026-11-11, and these are the screens they meet first. Run-based games show the choice of a run as a name, a picture and two or three lines (a character or a deck select), with the rest on demand.
+**Considered:**
+- **A flip side or a "Details" fold on each card:** tips are already the game's way ("Hover anything to read it"), need no new control, and open from the keyboard with Tab.
+- **The house rules folded on a first visit too:** it's the one change that would make a first visit's checklist fit at 900 px. D-113 (Accepted the same day) opens them until the checklist's hint is dismissed, so it's left for the user: one line in `rulesOpen`.
+- **The client's wishes above the house rules:** it would change D-101's order, and D-110's rules for what a play scrolls into view were tuned to it.
+- **"House rules 1/7" on one line in a 280 px pixel-font column:** the words and the count alone are wider than the column.
+- **Held lines folding away inside an open group:** early in a run almost none hold, so it saves nothing in the first minutes.
+- **The change order's hint in two versions by the order's kind:** another session is changing how change orders are offered.
+
+**Changes:**
+- D-110 (Proposed): its job board bullet (a card no longer lists the tastes as rows, the house rules behind a caret, or the lot in words), its checklist bullets (the wishes' tag, "Tastes" in a narrow column) and its list of first-time hints. Dated notes there.
+- D-101 (Accepted), for the user's OK: a line that doesn't hold shows only the parts of its progress still missing. A dated note there.
+- D-103 (Accepted): the job board still shows who moves in from week 1; when is in the line's tip, and the checklist's line names the milestone without the week. A dated note there.
+- D-045 (Accepted) and D-077's 2026-11-07 note: a week-2 hint is added, the checklist's moves to week 3, and every hint keeps to 25 words. Dated notes there.
+- D-113 (Accepted): unchanged. The house rules still open on a first visit until the checklist's hint is dismissed; that hint now first shows in week 3.
+- `src/rules/text.ts` gains `houseRulesText`, `hintText` and `HINT_WORDS` (new functions after the glossary; nothing existing changes).
+
+**2026-11-10 (D-148, Proposed):** two hints name the control they point to, still within the 25 words: Fixtures ends "from your supplies (Your goods, top right) it’s free" (25 words), and an arrival's reads "Their room is waiting in your reserve: open Your goods, top right. Room for everyone needs it from now on." (20). On a laptop Your goods is folded to its plank, and nothing else on the build screen says "supplies" or "reserve".
+
+**2026-11-12 (D-157, Proposed):** one more first-time hint, Strike's (23 words): "Strike a card: a new one takes its place, its type is gone this run, and the week goes on. Milestones add strikes." It comes once Strike is on screen with a strike to use, after the opening's hints. Its words are `hintText`'s, and with no strikes per milestone in the balance the last sentence reads "The shop sells more."
+*Changed by D-158 (Proposed 2026-11-12):* the checklist's hint says its lines are bonuses and no longer mentions folding; hints still keep to 25 words.
+
+**2026-11-12 (D-160, Proposed):** one more first-time hint, the standing stock's (25 words): "A Hallway and a Fence wait in Your goods, top right, until you need them. Each is a week’s build, and another comes next milestone." The job board's fine print names what Dale and the Barkers bring ("Dale brings a Home Office"), and its tip when. Juniper's rule in her own numbers is her A compact house now.
+
+*D-165 (Proposed 2026-11-12):* the lede says "the same 3 house rules", and the tip ends "Cozy and A Bathroom nearby pay on the rooms."
+
+### D-143 · The blueprint shelf: no dead cards, no runaway, and It's a House as a build
+**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: played in playtest 6 (/dev/ at 9acf14a, 2026-11-11) with no issues raised. The user still finds many shop goods not worth buying (2026-11-12), so a trim of the shelf is still to come. Proposed 2026-11-10, with its phase pull request (`phase/blueprint-balance`), from the friction review the user asked for the same day (point 2). For the user's playtest before it merges. Every number is a placeholder for the playtest and D-146's re-fit; the milestone targets and the per-client factors are untouched.
+**Finding:**
+- **The review read the shelf from what the shop bot buys:** Feng Shui held in 99% of wins, and Green Thumb, Open Concept, Mood Lighting and It's a House bought 2–5% of the times offered. A buy rate mixes a blueprint's strength with what the bot can see, so each of the 18 was measured by what holding it is worth.
+- **The measure:** the blueprint given free at the first shop, against the same seeds where it's never on offer: `npm run sim -- --gift blueprint:ID --off-shelf` (300 held-out seeds, `check-0` to `check-299`, greedy with the General Contractor, every Core client in turn). "Worth" is the final Wow, given ÷ never offered (the geometric mean over the seeds), with the change in win rate in points. Its 95% interval is about ±0.08 on the ratio and ±5 points.
+  - Plain `--gift` reads a blueprint the bot buys anyway at about nothing (Feng Shui: ×1.04), because the placebo arm holds it too. `--off-shelf` is new, for that.
+- **What it showed** (develop at 15e9dc2):
+  - **The must-buy was Good Bones, not Feng Shui:** ×2.54 and +49 points of win rate, and still ×2.16 and +42 points given at the second shop, the first that sells an Uncommon. Its hold rate hid it: an Uncommon is on a shelf in about half of runs.
+  - **Feng Shui was the best Common by far:** ×1.43, with the next at ×1.10.
+  - **Six were worth nothing:** Curb Appeal, Green Thumb, Quiet Hours, It's a House, Show Home and Waterfront, at ×0.96 to ×1.03. Holding It's a House, the bot built 3.3 "-house" pieces in place of 1.2 and gained nothing.
+  - **Open Concept (×1.09) and Mood Lighting (×1.08) weren't weak, only invisible to the bot,** which values a blueprint on the house as it stands. They sat at the median (×1.10) and were bought 4% and 3% of the times offered.
+
+**Decision:**
+- **It's a House** (Uncommon) is a build: **"+0.5 Charm per House piece, up to 3 of a type"** (was +0.15, any number).
+  - The House pieces are the Doghouse, the Treehouse and the Greenhouse from the weekly draw, and the Henhouse and the Birdhouse from the shop. One that earns nothing (a Doghouse outside a fenced yard) still counts.
+  - **3 of a type is the tidy yard's own number** (D-105), so the build never pays for a fourth Doghouse. The Treehouse's rules (D-079, D-105) are unchanged: it needs a Tree, and Treehouses still don't count each other as Kid partners.
+  - **In a house built for it** (given at the first shop, on the new shelf): the bot ends with 7.1 "-house" pieces of 3.4 types (1.4 pieces without it), wins 72% of runs against 55%, and its final Wow is ×1.36. The tidy yard holds at the end in 83% of those runs, against 52% without it, and one "-house" type stands 4 or more times in 5% of them.
+  - **The payoff shows as it grows:** the weekly tally pops "It's a House (4): +2 Charm" as before, and the shop's line now says what each piece adds (below).
+  - It stays Uncommon and +Charm. ×Mult stays on the three Rare blueprints (D-056).
+- **Good Bones** (Uncommon): rooms grow +1 a week **up to +3** (was +10). From the first shop it's now ×1.51 and +18 points: still the best Uncommon to hold, and no longer the whole run.
+- **Feng Shui** (Common): **"Pieces touching 3+ views earn +50%"** (was every piece with a view). One Flower Bed no longer lights up every room around it: a room wants the woods, the water, or a small garden of its own. A Bay Window's view counts as one. Now ×1.05, and held in 71% of the bot's wins (was 96%).
+- **The Commons that were worth nothing:**
+  - **Quiet Hours:** Quiet pieces earn +75% (was +50%).
+  - **Green Thumb:** Green pieces earn +50%, and grow +1 a week, up to +3. A garden's pieces earn 1 or 2, so half again of that was nothing.
+  - **Curb Appeal:** pieces in the front yard earn +100%, and so do the pieces touching one: the rooms behind a front garden.
+  - **Waterfront:** pieces touching the Pond or the Creek earn +100% (was +50%).
+- **Open Concept** (Uncommon): **"The Entertainer pays 50% more"**, its Comfort and its Charm, at any level. It replaces the link among Kitchens, Dining Rooms and Living Rooms, which added a few Comfort to a Kitchen and nothing a player would see. The rules still know a `link` modifier; no blueprint carries one.
+- **Mood Lighting** (Uncommon): **"+0.4 Charm per Dark room"** (was Dark rooms earn +100%). A room is Dark when it's interior or has Blackout Curtains, as before. A house has few Dark rooms (1.6 by the last shop), so doubling them was worth little at any percentage; Charm for each one shows the moment a room goes Dark.
+- **Show Home** (Uncommon): pieces with a fixture earn +100% (was +50%).
+- **Unchanged:** Party House, Country Living, Solar Panels, and the five Rares.
+- **Rules:**
+  - A `mult … per` modifier takes `maxEach`: no more than that many pieces of one type count, by root type, as the tidy yard counts them.
+  - A selector's "touching 3" reads "touching 3+", as the checklist's "touch 2+ rooms".
+- **The shop's value line** (D-141) says what each counted piece adds: "+47 Wow a week for each House piece", "for each Dark room", "for each piece with a fixture" (Model Home). It stands beside the week's gain, and beside "No House pieces yet" when the house has none, so the card names its build. The rules give it by modifier kind (`blueprintValue().perPiece`), the piece's own Comfort aside.
+- **The shop bot plans a little** (`sim/policies/shop.ts`), so a build-around isn't worth nothing before its build starts:
+  - A blueprint whose Mult counts pieces is also worth the pieces the bot expects to add: what one more adds today, at the rate the draw shows such cards (half of them taken), each paying from its week on. For pieces a card can't tell (a Dark room, a piece with a fixture) it expects 0.12 a week.
+  - A bonus to a set the house doesn't hold yet counts for half the weeks left, once half the set's room types are built.
+  - A granted growth is valued at the week halfway through the weeks left (it was the first week's gain times up to 10, Good Bones' old cap).
+  - When it sells a blueprint to make room, what a held one is still building toward counts.
+
+**Sim** (200 held-out runs for `--check`, 300 for worth; develop at 15e9dc2 against this change; targets not re-fitted):
+
+| `--check` | develop | this change |
+|---|---|---|
+| greedy wins | 54.0% [47.1–60.8] | 56.0% [49.1–62.7] |
+| greedy clears milestones 1–3 | 97.0% | 96.5% |
+| completing early, always against never | 45.0% vs 54.0% (−9.0) | 48.5% vs 56.0% (−7.5) |
+| client spread | 35.0 points | 35.0 points |
+| the blueprint held in the most wins | Feng Shui, 96% | Quiet Hours, 74% |
+| one yard type standing 4+ times, in wins | 6% | 12% |
+
+| Blueprint | Rarity | Worth before | Worth after | Bought before | after | Held in runs / wins before | after |
+|---|---|---|---|---|---|---|---|
+| Feng Shui | Common | ×1.43 (+9) | ×1.05 (+4) | 73% | 30% | 93% / 96% | 70% / 71% |
+| Curb Appeal | Common | ×0.96 (−7) | ×1.13 (+8) | 4% | 9% | 18% / 14% | 29% / 33% |
+| Quiet Hours | Common | ×0.98 (−1) | ×1.09 (+1) | 25% | 29% | 58% / 61% | 67% / 74% |
+| Green Thumb | Common | ×0.97 (−3) | ×1.17 (+3) | 1% | 15% | 11% / 7% | 44% / 43% |
+| Party House | Common | ×1.10 (0) | ×1.03 (−3) | 42% | 29% | 78% / 77% | 70% / 66% |
+| Waterfront | Common | ×1.03 (+1) | ×1.03 (0) | 7% | 7% | 23% / 21% | 24% / 19% |
+| Open Concept | Uncommon | ×1.09 (+3) | ×1.13 (+8) | 4% | 33% | 4% / 4% | 21% / 29% |
+| Good Bones | Uncommon | ×2.54 (+49) | ×1.51 (+18) | 55% | 32% | 33% / 52% | 28% / 35% |
+| It's a House | Uncommon | ×0.98 (−1) | ×1.36 (+17) | 2% | 21% | 4% / 2% | 19% / 18% |
+| Country Living | Uncommon | ×1.33 (+17) | ×1.31 (+12) | 25% | 20% | 18% / 23% | 17% / 21% |
+| Mood Lighting | Uncommon | ×1.08 (+7) | ×1.32 (+13) | 3% | 22% | 3% / 4% | 15% / 22% |
+| Show Home | Uncommon | ×1.01 (+2) | ×1.16 (+4) | 8% | 11% | 10% / 11% | 10% / 11% |
+| Solar Panels | Uncommon | ×1.20 (+14) | ×1.19 (+10) | 0% | 0% | 1% / 1% | 2% / 2% |
+| Crown Jewel | Rare | ×1.48 (+19) | ×1.33 (+13) | 28% | 18% | 11% / 14% | 7% / 4% |
+| Dream Home | Rare | ×1.26 (+12) | ×1.18 (+6) | 22% | 17% | 6% / 7% | 6% / 7% |
+| Last-Minute Push | Rare | ×1.40 (+14) | ×1.27 (+4) | 44% | 38% | 11% / 16% | 10% / 11% |
+| Model Home | Rare | ×1.73 (+32) | ×1.61 (+28) | 44% | 35% | 13% / 21% | 10% / 14% |
+| Ahead of Schedule | Rare | ×1.03 (+3) | ×1.02 (0) | 0% | 0% | 1% / 1% | 1% / 0% |
+
+- The median worth went from ×1.10 to ×1.18. The best to hold was ×2.54 and is ×1.61, a Rare. Six stood at ×1.03 or less, beside Ahead of Schedule, which the bot can't use; now two do, Party House and Waterfront.
+- Each "after" is measured on the new shelf, where the arm without the blueprint has better things to buy, so an unchanged blueprint reads a little lower.
+- "Bought" is of the times it was on a shelf. Solar Panels and Ahead of Schedule are the bot's blind spots (budget, and completing early).
+
+**Why:**
+- **Lifts before cuts,** as the review asked: eight of the ten changes are lifts or new jobs. The two cuts are the two that a run was decided by.
+- **Good Bones' flat Comfort on every room** is multiplied by each room's percentages and then by Charm, so +10 a room was most of a late week. At +3 it's worth what a Rare is.
+- **Feng Shui paid for a view, and one Flower Bed gave every room around it one.** Three views asks for a spot: the woods, the water, or a garden, which makes the lot matter (playtest 2: terrain barely did).
+- **It's a House is the theme's card,** so it's the shelf's clearest build: every little house on the lot adds half a Charm, in the tally, every week. An Uncommon is seen in about half of runs, early enough to build for.
+- **A blueprint the bot can't see isn't weak.** Mood Lighting and Open Concept needed a visible payoff more than a bigger one, and the bot needed to plan one step.
+
+**Considered:**
+- **It's a House as a Rare with ×Mult** (×1 plus 0.2 per "-house" piece): Sparkle is the bigger moment, but a Rare is on a shelf in about a quarter of runs, mostly from the fourth shop, too late to build for.
+- **Paying per kind of "-house":** the draw holds three kinds, so the chase would stall at three until the shop sold a Henhouse or a Birdhouse.
+- **No cap:** a fourth Doghouse (one tile, built anywhere) would pay +0.5 Charm for breaking the tidy yard's +0.25.
+- **+0.25 and +0.35 a piece:** ×1.09 and ×1.25 on the old shelf, with 5.2 and 6.2 pieces built, against ×1.49 and 7.0 at +0.5 (the tuning seeds, `bp-0` to `bp-299`, as every figure in this list).
+- **Good Bones at +5 or +4:** ×1.75 and ×1.63 from the second shop, against ×1.52 at +3 and ×2.16 at +10.
+- **Feng Shui at 2+ views:** ×1.16 on the new shelf, but held in 84% of wins, and greedy's win rate goes to 59.5%. It's the one to switch to if 3 views plays as too stingy. One view at +25%: ×1.28 on the old shelf, where one view at +50% was ×1.48.
+- **Quiet Hours at +100%:** ×1.31 against ×1.25 at +75%, and held in 81% of wins.
+- **Green Thumb growing to +6:** ×1.35, more than a Common should be. Growth alone, to +4: ×1.14.
+- **Mood Lighting at +150%:** ×1.09, no better than +100%. Charm per Dark room at +0.25, +0.35 and +0.5: ×1.15, ×1.26 and ×1.48.
+- **Open Concept keeping its link beside the Entertainer's bonus:** ×1.33, but the two lines made its card too tall for a 1280×720 window (Buy fell below the fold). The bonus alone: ×1.25 at 50%, ×1.45 at "pays double".
+- **Curb Appeal:** the touching line at +25% and +50%: ×1.04 and ×1.07. +3 Comfort for each front-yard piece in place of the percentage: ×1.00.
+- **Trimming Country Living or Model Home:** left. One needs woods and the other fixtures, and neither is held in more than 21% of wins.
+- **Teaching the bot to plan an enclosed room or a front garden:** it builds one week at a time, so those stay a person's builds. Their figures here are floors.
+
+**Changes:** D-051 and implementation-plan.md Appendix B: ten blueprints' encodings. D-056: It's a House's +Mult is +0.5 a piece with a cap; the ×Mult list is unchanged. D-105: its "3 of a type" is also this build's cap. D-141: the value line gains "for each" (`perPiece`), and "None of its pieces touch yet" no longer shows (no blueprint links). The sim (§8, D-089): `--off-shelf`, and the shop bot's planning.
+**Known gaps:**
+- **Waterfront is still worth nothing to the bot** (×1.03) at any number: it doesn't site by water, and not every lot has any. It's a card for a lot, and D-145 is reworking the lot.
+- **The three Commons that boost rooms** (Feng Shui, Quiet Hours, Party House) are each held in 66–74% of wins, a little over the review's two-thirds, and each is worth little at the margin (×1.03 to ×1.09). They stand in for each other: they're what a first shop sells for 4 that works on rooms already built.
+- **One yard type stands 4+ times in 12% of wins** (was 6%). Not traced to one blueprint; Green Thumb and Curb Appeal are the likely ones, since a fourth Flower Bed can now earn more than the tidy yard's +0.25 Charm.
+- **Every figure is greedy's,** a bot that builds one week at a time. A build a person plans (three views, an enclosed room) is worth more to them than this says, and a blueprint's worth depends on the shop it's given at (all of these: the first).
+- **The Each week panel has no standing line for a blueprint's Charm:** It's a House shows in the tally's pop and in the Charm total, not as its own row.
+- **Greedy wins 56.0%** against 54.0%, inside the interval, and both above §8's 40–50%: D-146's re-fit takes it from here.
+  - *2026-11-10 (D-146):* the re-fit is done: 47.0% on `--check`, and 45.7% on 2,000 runs no fit had seen.
+- **Ahead of Schedule** reads ×1.02 because greedy never completes early (D-040), and wasn't touched.
+
+### D-144 · Change orders come two at a time, and the player picks one
+**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: their own proposal, played in playtest 6 (/dev/ at 9acf14a, 2026-11-11) with no issues raised. Proposed 2026-11-10, from the friction review of 2026-11-10 (its point 4) and the user's own proposal, with its pull request. Changes D-109's offer and builds on D-137. For the next playtest.
+**Decision:**
+- **Two orders, one pick.** After each of milestones 2, 4 and 6 the sheet shows two change orders side by side and one must be picked. There is no "neither" and nothing is declined: a request or a restriction that is picked counts as accepted, and a phase effect that is picked runs.
+- **The two can be of different kinds.** They're drawn evenly from the eligible orders (the client's own and the generic ones, minus D-109's skips), one and then the other from the `co/<milestone>` stream, and shown in the order drawn. After milestone 6 both are phase effects, as D-109 has it.
+- **The order passed over goes back in the pool** and can come up again. One that was picked never does.
+  - The pool never runs dry: every client has four phase effects (D-137), and the picks after milestones 2 and 4 use up two at most, so two are always left for milestone 6. A test holds this for every client and every pair of earlier picks.
+  - With one order eligible, it's offered alone (its button says Accept and takes Enter). The real content can't get there; test content and the ?debug panel can.
+- **A phase effect's card says what it would do to the house as it stands:** "+266 Wow a week on your house today", or a loss, or "No Wow either way". It's a rules number (`ChangeOrderView.houseGain`): the total of the week the effect starts in with it running, less the same week without it, valued as a fixture in the shop is (D-107). The UI only words it. A request still shows its progress, and both paying kinds show what they pay.
+- **The answer names the pick:** `answerChangeOrder { i }`, an index into the offer. `changeOrderOffered` lists the options, `changeOrderAnswered` names the pick and the ones passed over, and a run's record of an order keeps `passedOver`. A record's `answer` field is gone: every recorded order was picked.
+- **Older run codes and saves.** A code from an earlier build answers its one order with `accept`. That's no longer an answer, so the code loads, replays up to its first change order, and stops there with two orders waiting and a note. A save from another build was already set aside with a note (its build stamp differs).
+- **The sheet** (D-110's look): one Panel, 440 UI px wide where the board has room and the board's width at 1280×720, with a paper card for each order. "Pick one. It runs until the Drywall milestone." is said once, above both. Each card has its own Pick button. Keys: 1 picks the left order and 2 the right, after the sheet has landed (D-109's key delay); Tab reaches both buttons. The stamp, "Accepted", lands on the card picked and the other fades. The lines a phase effect sometimes showed ("It's coming either way") are gone, since they're no longer true.
+- **The ?debug panel** can force one order alone, or two to pick from ("Against").
+- **The bots** read the cards, and none plans for the order it picks. Greedy takes a phase effect that gains Wow on its house today (the better of two), else a request or a restriction (the bigger reward), else the phase effect that costs least. Novice takes a paying order when there is one, else the phase effect with the better number. Random and chaos pick at random.
+
+**Sim** (`npm run sim -- --check`, 200 held-out runs per bot on the same seeds; develop at 15e9dc2, which has D-140 to D-142, against this change merged with it; targets not re-fitted):
+- Every offer showed two orders: 511 offers in greedy's 200 runs, none alone. Every run that cleared milestone 6 got its offer (134 of 134).
+- Offers by kind (greedy): two phase effects 45%, a phase effect and a request 30%, a phase effect and a restriction 13%, a request and a restriction 6%, two requests 5%, two restrictions 1%. Offered a phase effect beside a request, greedy picked the phase effect 53% of the time; beside a restriction, 58%.
+- How often greedy picked each order when it was offered, all clients together: Rainy season 27%, Out of office 29%, A litter of puppies 31%, Working from home 33%, Big deadline 33%, Cold snap 38%, Declutter 38%, The coven is visiting 47%, Another rescue 50%, A letter from the HOA 51%, A tea garden 53%, Started a podcast 65%, We got a golden retriever 67%, We're hosting Thanksgiving 84%, Heat wave 85%, An agility course 93%, Eternal night 94%, A magazine shoot 96%.
+  - **Two are close to automatic:** Eternal night (for Count Vladislav it only pays: every room turns Dark, which he doubles) and A magazine shoot. They're the ones to give a cost, or a bigger one, if playtests agree.
+  - Rainy season is the least wanted: Count Vladislav's and Juniper's bots each took it 17% of the time.
+- 36 of the 134 offers after milestone 6 (27%) were the worst case: phase effects picked after milestones 2 and 4, so the last two were the whole pool. 129 of 511 offers (25%) showed an order passed over earlier in the run.
+- Greedy wins 54.0% [47.1–60.8] → 56.5% [49.6–63.2]; both are over §8's 40–50% line, which D-140 had already crossed. Paired by seed, 12 runs won only with the pick and 7 only without, and final Wow after ÷ before is p50 1.001 (p25 1.000, p75 1.058); per client p50 1.000, 1.007, 1.000, 1.000, 1.004. The batch's re-fit sets the targets once every friction fix is in.
+- **Early completion crosses its line:** always against never is 45.0% vs 54.0% (−9.0 points) → 45.5% vs 56.5% (−11.0; §8 asks for within 10). The pick helps the bot that plays every week more than the one that completes early. For the re-fit to check again.
+- *2026-11-10 (D-146):* the re-fit is done. Greedy wins 47.0% on `--check`, and early completion is back inside its line (−5.0 points; −5.1 on 2,000 runs).
+- By client (40 runs each): the Hendersons 42.5% → 55.0%, Count Vladislav 77.5% → 77.5%, the Barkers 42.5% → 37.5%, Juniper 47.5% → 50.0%, Dale 60.0% → 62.5%. The spread is 35.0 → 40.0 points, at 40 runs a client.
+- The other §8 criteria read the same before and after: random fails by milestone 3 in 100% of runs, novice passes milestone 1 in 97.0%, greedy clears milestones 1–3 in 97.0%, and fences pay their way.
+- Greedy keeps a restriction it doesn't plan for 50–100% of the time and meets a request 0–20% of the time, so for it a request is mostly a way to keep a costly phase effect out. A player who builds for the request gets its budget too.
+- *On the base the branch was cut from* (develop at 67aa75e, before D-140 to D-142): greedy won 46.0% → 52.5%, 15 runs only with the pick and 2 only without, and early completion was −1.0 → −5.0 points.
+
+**Why:** the review found no decision in a change order. 330 of 498 offers in the sim were phase effects, whose sheet had one button, and declining a request or a restriction was never right because accepting cost nothing. D-137 had already made each phase effect pay something and cost something, so choosing between two is a trade, and a request or a restriction beside one is a way out of an effect that would hurt this house.
+**Considered:**
+- **A "neither" button:** a pair of paying orders would never be turned down, and a pair of phase effects that both cost would always be, so it brings back the answer that's always right.
+- **The order passed over leaves the run:** two shown at each of three moments could then use up four phase effects before milestone 6, so it needs six a client.
+- **One or two more generic phase effects,** to widen the last offer (a quarter of them are the whole pool): not added. The pool never runs dry, and new orders the day before the release would need their own wording and balance pass. They're cheap to add as data if a playtest finds the last offer stale.
+- **The number over the whole phase** ("+1,064 Wow this phase"): overtime and whatever is built in the phase change it. A week on today's house is what the rules can stand behind, and the card's tip says the house will change.
+- **Both kinds always mixed** (one phase effect, one paying order): after milestone 6 only phase effects make sense, and a pair of them is the most common and the most interesting offer.
+- **Pick by clicking the card:** a card is a lot of text to click by accident; each has a button.
+
+**Changes:** D-109 (the offer, declining, and phase effects being announced: dated notes), D-137 and D-011 (dated notes), D-110's sheet. `implementation-plan.md`: §4's state, action, events and transitions, §6's `co/<phase>` stream, M4b's list, Appendix A's change orders and Appendix B's note on phase effects; `jam-scope.md`'s table. Run codes from earlier builds stop at their first change order.
+
+### D-146 · The friction batch's re-fit: the targets set against played runs
+**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: played in playtest 6 (/dev/ at 9acf14a, 2026-11-11). These targets stand until the re-fit that follows D-162 to D-168. Proposed 2026-11-10, at the user's "Merge and re-fit", once D-140 to D-145 were all in develop. A fix pull request (`fix/refit-targets`) that merges on green, so /dev/ plays at the intended difficulty; the batch's playtest decides whether it holds. It's the one re-fit D-140, D-143, D-144 and D-145 each left for the end.
+**Decision:**
+- **What it covers:** develop at 4f75b34, with D-140 to D-145.
+- **Targets:** 20, 560, 1,900, 5,200, 11,300, 20,500, 35,700 Wow (they were 20, 560, 1,750, 4,850, 10,200, 18,800, 32,600). Milestones 3–7 rise 7–11%, about what greedy's median score rose at each (5, 6, 10, 13 and 14%).
+- **Each client's `targetPct`:** the Hendersons 110 (it was 115), Count Vladislav 95 (90), the Barkers 90 (90), Juniper 95 (85), Dale 115 (115). These are the fit's factors, used as fitted.
+- **The fit as written came out too hard.** D-085's method (`--suggest-targets` on 2,000 untargeted greedy runs, seeds `sim-*`, the five clients and three crews in turn) gave 20, 640, 2,050, 5,500, 11,500, 21,500, 37,700. On 2,000 held-out runs (`check-*`) greedy won 37.5% [35.4–39.6] against the fit's estimate of 45.1%: 7.6 points under, and below §8's band. D-123's fit came 2.6 under, and M4b's 5.
+- **Why the estimate runs high:** it reads an overtime week off the untargeted run's next week. In that run the milestone's shop has already opened and its budget is paid; in play, an overtime week comes before both.
+  - The seeds aren't the cause: the same check seeds played untargeted give the same estimate (45.0%).
+  - A run that takes no overtime plays week for week as its untargeted twin.
+  - The fit as written leaned on overtime: 36% of runs needed it at milestone 2 (61% met it on time), and a run used 1.61 overtime weeks.
+- **So the targets are set where played survival meets the goals.** The gap between estimate and play at each milestone (1.9, 1.8, 3.7, 2.6, 6.2 and 7.5 points) is added to that milestone's goal, and the same `sim-*` runs are fitted again: 20, 580, 1,900, 5,200, 11,300, 20,400, 35,700.
+- **Milestone 2 keeps 560** (not 580), and the rest are fitted on from there. Greedy's median at week 8 is 720, where D-123 had 728, so nothing in the batch made the first two phases stronger. It's the milestone playtest 5's run made with 665 of 644.
+- **Played, greedy's survival follows the goals** (100, 98, 95, 85, 72, 58, 45%):
+  - On `check-*` (2,000 runs): 100.0, 98.6, 96.0, 86.7, 74.1, 58.4 and 45.6%.
+  - On `hold-*` (2,000 runs that no fit or goal had seen): 100.0, 98.5, 96.3, 86.9, 73.2, 58.0 and **45.7%**.
+- **The crews' numbers stay.** On `check-*` the General Contractor won 41.9%, the Landscaper 50.5% and the Architect 44.2%; on `hold-*` 46.1%, 47.1% and 43.9%. The Landscaper's gap in D-123 (36.7%) has closed: D-145 gave the yard more that counts.
+
+**Why:** on D-123's targets, greedy won 65.5% of `--check`'s runs once the whole batch was in, against §8's 40–50%. It had won 46.0% before the batch and 54.0% with D-140 to D-142; D-143, D-144 and D-145 each took it to 54.5–56.5% alone, and to 65.5% together. Playtest 3 found a run with that much slack too easy.
+
+§8's criteria, before (4f75b34) and after. The first three columns are `npm run sim -- --check` (200 runs, the General Contractor) and `--check --crew all` (200 runs, each client with every crew in turn). The last is `--check --crew all` on 2,000 runs of `check-*`.
+
+| Criterion | `--check` before | `--check` after | `--crew all` after | 2,000 runs, after |
+|---|---|---|---|---|
+| random loses by milestone 3 (≥ 95%) | 100.0% PASS | 100.0% PASS | 100.0% PASS | 100.0% PASS |
+| novice passes milestone 1 (≥ 90%) | 99.5% PASS | 99.0% PASS | 96.5% PASS | 97.5% PASS |
+| greedy clears milestones 1–3 (92–98%) | 98.5% FAIL, unsure | 97.0% PASS, unsure | 97.5% PASS, unsure | 96.0% PASS |
+| greedy wins (40–50%) | 65.5% FAIL | 47.0% PASS, unsure | 49.0% PASS, unsure | 45.6% [43.4–47.7] PASS |
+| early completion: always vs never, within 10 points | −11.0 FAIL, unsure | −5.0 PASS, unsure | −9.5 PASS, unsure | −5.1 [−7.8, −2.4] PASS |
+| fences pay: probe p50 2–3, ≥ 50% offered that many | 2, 68.4% PASS | 2, 67.9% PASS | 2, 70.0% PASS | 2, 70.7% PASS |
+| clients, crews within about 15 points | 25.0 FAIL, unsure | 22.5 FAIL, unsure | 20.0, 3.6 FAIL, unsure | 5.0, 8.6 PASS, unsure |
+| planner wins about 75%; no must-buy | not measured | not measured | not measured | not measured |
+
+- **The clients are level.** On `check-*`: the Hendersons 47.8%, Count Vladislav 47.3%, the Barkers 42.8%, Juniper 42.8%, Dale 47.3%. On `hold-*`: 48.8, 44.3, 46.8, 42.5 and 46.3%. The spread at 200 runs is noise, as in D-123 (40 runs a client).
+- **Milestone 2 is met on time as often as before:** 80.0% of `--check`'s runs (80.5% before). A run uses 1.47 overtime weeks (1.15 before, on targets the batch had outgrown; 1.34 after D-123).
+- **The run's shape** on `--check`, as the median score of the runs that reached each milestone over its target: ×5.3, ×1.51, ×1.54, ×1.25, ×1.16, ×1.15 and ×1.22, against ×5.6, ×1.61, ×1.77, ×1.40, ×1.30, ×1.26 and ×1.27 before.
+- **For a player:** the Hendersons' second milestone is 616 Wow (it was 644), and their last is 39,270 (37,490). The last is 33,915 for Count Vladislav and for Juniper, 32,130 for the Barkers and 41,055 for Dale.
+- The fit and the 2,000-run checks ran in parallel shards that play each seed exactly as `npm run sim -- --crew all` does. On `check-0` to `check-199` they matched the CLI's `--check --crew all` run for run.
+
+**Considered:**
+- **The fit as written:** 37.5% held out, and milestone 2 at 640 with no change in the first two phases.
+- **Easing milestones 4–7 by a flat percent,** as M4b did: it would take about 6%, and leaves milestones 2 and 3 where two runs in five need overtime by Foundation.
+- **Milestone 2 at 580,** the second fit's own number: 3.6% over the one the user played and accepted, for a first phase that hasn't changed.
+- **Fixing the estimate** so an overtime week is read from a run that hasn't had its shop: the right repair, but it needs a model of that week, which is more than the day before the release should carry. Until then a re-fit needs this entry's second step.
+
+**Changes:** D-085 and D-123: the targets and the factors, noted there. `src/content/balance.ts` and `clients.ts`. D-140, D-143, D-144 and D-145: each notes that its re-fit is done.
+
+**Known gaps:**
+- The check seeds set six goals, so `hold-*`'s 45.7% is the clean held-out figure. `--check` runs on `check-*` and reads 47.0%.
+- `estimateSurvival` still overstates what overtime rescues, so `--suggest-targets` alone would write targets about 8 points too hard.
+- Every figure is the greedy bot's. It doesn't plan a Driveway, a "-house" build or the order it picks, so a person who does has more room than these numbers say.
+- Not playtested: the user's playtest of D-140 to D-145 is on these targets.
+
+### D-148 · First-timer legibility before the showing: hand lines that fit, Reroll named, and the end screen on a laptop
+**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: played in playtest 6 (/dev/ at 9acf14a, 2026-11-11) with no issues raised. The user still finds the screen busy for new players (2026-11-12), and D-167 (Proposed) carries on from here. Proposed 2026-11-10, a fix pull request (`fix/showing-legibility`) from the polish review of the same day, whose list the user answered with "Yes, fix them". The group gets the game on 2026-11-11. No rules or balance change: the same sim seeds score the same before and after (Sim, below).
+**Decision:**
+- **A hand card's line is the hand's own short wording,** number first, within 33 characters (`HAND_LINE_CHARS`, `handCardLines` in `src/rules/text.ts`). 33 is the longest line today, the Kitchen's, which is still cut (Known gaps): the budget keeps new lines from running longer, and doesn't mean a line that long fits. Inspect and the shop keep the full sentences.
+  - An aura leads with what it gives: "+50% to Kitchen or Living Room" (the Dining Room; "Touching Kitchens and…" had lost its +50%), "+25% to touching rooms", "+50% to touching Patios", "+50% to yard views" (the Greenhouse), "+50% to fenced Pet pieces" (the Mudroom).
+  - A neighbor bonus that names two things drops "touching": "+2 per Dining Room or Herb Garden", "+2 per Living Room or Kitchen". One for a tag drops "neighbor": "+2 per touching Quiet (up to 3)".
+  - The Fence: "+1 per fenced tile (up to +6)".
+  - A requirement follows the pay only where both fit: the Doghouse keeps "in a fenced yard"; the Patio, the Hot Tub and the Fire Pit leave "if touching a room" to Inspect and the lot's warning.
+  - Fixtures: Soundproofing "Loud neighbors can’t lower it", the Bay Window and the Pergola "Gives it a view", Bunk Beds "Counts as 2 Bedrooms", the Chandelier "×1.25 Charm in an Entertainer".
+  - **Measured in the pixel font, every piece card given to the hand** (42 cards): lines cut at 1280×720 go from 12 to 3, and at 1920×1080 from 13 to 5. In eight real week-1 hands (32 cards): 7 to 2 at both sizes.
+- **The Kitchen Island's card leads with "Earns +25%",** and its other line says its limit: "Neighbors count it as a Dining Room (sets and the checklist don’t)". It read "Counts as a Dining Room too", which promised an Entertainer or the Hendersons' wish, and it fills neither (D-081). Its two modifiers swap places in `src/content/fixtures.ts`; the rule is the same.
+- **Reroll keeps its word on the hand's plank** at every window size, in both fonts. The title gives way to it: "Cards" on a plank under 25rem, and none under 19rem (a laptop's 244 px plank), where the ROOMS and LAYOUT labels say what the cards are. Demolish stays an icon and a count where its word doesn't fit; while demolishing, Stop keeps its word and Reroll gives up its own.
+- **Rotate shows only while a card is held,** beside Cancel. Standing beside Pass with nothing to turn, its round arrow read as the reroll.
+- **The fixture's and the arrival's hints name the control:** "from your supplies (Your goods, top right) it’s free" (25 words) and "Their room is waiting in your reserve: open Your goods, top right. Room for everyone needs it from now on." (20 words).
+- **Settings:** Display, with the Readable font option, sits second, after Game. It was last, below the fold on any window under about 990 px tall.
+- **How to play:** "The lot" gains Boulders, the Old Shed and Time Capsules, with who earns beside each and what each pays read from the content (`featureWantedText`, `rewardText`). Demolish reads "Clear a piece, a boulder or the Old Shed", and the Demolish button's title and Inspect's prompt name the three the same way.
+- **The end screen's sticky bar holds New run and Copy result.** Copy run code and Title are plain buttons under the stats, without icons; the Menu has both too. They share one row on the wide column (1920 px, the pixel font) and in the readable font, so a first-week loss at 1920×1080 shows both whole above the bar; on two rows the bar cut through Title. The bar is 124 px, from 224. Whole milestone rows above it on a won run with early finishes: 1 of 7 at 1280×720 (from none), 3 at 1440×900 (from 2), all 7 at 1920×1080 (from 6).
+- **An overlapped polaroid's caption keeps to the part of the card that shows.** The name breaks at its hyphen or ends cleanly short of the next card, a Wow too long for the room ends in "…", and the "of N" line is left out. The last polaroid, and the one pointed at or focused, show everything. At 1440×900 every name is whole and a Wow up to "5,720" is; at 1280×720 the names end after six letters.
+- **The small-screen notice** also shows on a window under 500 px tall (a large phone on its side is over 900 px wide). Under 700 px wide it offers "Copy link", with "Copy the link and open it on a laptop.", in place of "Play anyway", which opened a screen that could be neither played nor left. With the clipboard off limits, it shows the link. The link is the address as the friend opened it: starting up takes a shared lot's `?seed`, `?client` and `?crew` out of the address bar, so the notice keeps its own copy and the laptop opens the same lot.
+- **The last shop says what leftover budget is worth:** "Last shop: budget you still hold pays 100 Wow each, but only after the last target is met." (`lastShopText`, with the number from the balance), on a line over the shop's foot.
+
+**Sim:** `npm run sim -- --runs 120 --seed island` (greedy; 9 Kitchen Islands installed) and `--runs 60 --seed islandgift --gift fixture:kitchenIsland` (both arms; 54 installed), on develop at 9dc4be7 and on this branch: all 240 runs have the same weekly scores, milestones and results. Only the time per run differs.
+**Why:** the review played the game as a first-timer would, at laptop sizes. Every first hand had a line cut by "…", and the aura cards lost their number. Reroll was a bare die, and the round arrow beside Pass, the Rotate button, looked like it. A bought fixture landed in a folded plank that no hint named. The option that cures most short-window trouble, the readable font, was below the fold in Settings. On a won run at 1280×720 the end screen's buttons covered every milestone row.
+**Considered:**
+- **The hand line across the card's full width where a thumbnail sits beside it** (a 2× laptop, or a window about 1,680 px wide at 1×): at 1440×900 at 2× it cuts 2 of 32 week-1 cards, from 15, and four cards still fit. But the cards change height, the Pass bar moves up to 48 px, and at 1470×840 and 1512×860 at 2× the fourth card goes partly under the bar in 2 of 8 hands (none today). Left for a playtest's verdict.
+- **A three-line clamp:** the skeptics' simulations pushed cards under the bar at 1280×720 and 1920×1080.
+- **A quarter-turn glyph for Rotate:** an art change and an atlas rebuild the day before the showing.
+- **The hints moved under Your goods:** on the build screen that spot covers Reroll, Demolish and the first card.
+- **Counting leftover budget toward the last target,** or a last-shop line without "only after": D-145 pays it after the target is met, so it never turns a loss into a win, and a line that hid that would cost a friend the run.
+- **Dropping the Island's `countsAs`** for a plain "+50%": a rules change, and a re-fit.
+
+**Changes:**
+- D-121 (Accepted): a compact card's line is the hand's own wording, not always the card's first effect line as written; the two-line clamp stands. A dated note there.
+- D-132 (Proposed): Reroll keeps its word, and the plank's title gives way to it. A dated note there.
+- D-140 (Proposed): its claim that the Garage's hand line fits at every window size is corrected. A dated note there.
+- D-047 (Accepted): the notice also keys on height, and offers the link on a phone held upright. A dated note there.
+- D-098 (Accepted) and D-110 (Proposed): the end screen's sticky bar holds two buttons, and the Costs paragraph's numbers are updated in a dated note. D-110's hint list is unchanged.
+- D-136 (Proposed): the overlapped captions. A dated note there.
+- D-142 (Proposed) and D-045 (Accepted): the fixture's and the arrival's hints, still within 25 words. A dated note on D-142.
+- D-145 (Proposed): its Known gap, that nothing at the last shop says what leftover budget pays, is closed.
+
+**Known gaps:**
+- **The Kitchen's and the L-Kitchen's line,** "+2 per Dining Room or Herb Garden", still loses its last word or two on a narrow card and at 1920×1080: two 11-letter names don't fit two lines.
+- **Beside a thumbnail the line is still cut** on 2× laptops (15 of 32 week-1 cards at 1440×900, from 16) and for the Fence and the Long Hallway at 1920×1080. It needs the layout change under Considered.
+- **The Chandelier's "Fits a Dining Room or Living Room"** is cut on a narrow card; the draw never deals it.
+- **At 1280×720** an overlapped polaroid's name and Wow are still short ("Framin", "3,…"), cleanly; a 91 px slot holds six letters.
+- **Between 700 and 899 px wide** the top bar's Menu is still off-screen after "Play anyway".
+- **Hand lines that dropped "touching"** (the Dining Room's, the Kitchen's, the Patio's, the Greenhouse's) can be read as house-wide, while the Porch's and the Fire Pit's keep the word. It doesn't fit the line; Inspect, the shop and the ghost's Wow label give the true reading. The team's call after the showing.
+- **A loss in a later phase at 1920×1080,** with more rows of stats, still has the row of two buttons under the bar until the column scrolls; so does any loss at 1680×1050 and narrower in the pixel font, where they take a row each.
+
+*2026-11-11 (D-150, Proposed):* the plain group under the stats leads with Try this lot again, on a row of its own ("Try again" in the pixel font's narrow column), and a lost run's "Next time" tip sits over it. The sticky bar still holds New run and Copy result, and the milestone rows above it are unchanged. At 1920×1080 a later loss now shows the tip's first line under the bar, where the two buttons were.
+
+*2026-11-11 (D-152, Proposed):* Copy run code leaves the plain group under the stats for the end panel's plank, in view at the column's top: under the stats it was 617 px below the bar on the user's 1728×963 laptop, and they couldn't find it. After a loss, Try this lot again and the "Next time" tip sit over the milestones, and the group under the stats is Title alone (Play this lot again and Title after a win). The sticky bar is unchanged. The plank is 8 px taller: a won run keeps as many whole milestone rows above the bar, except at 1728×963 in the pixel font (4 → 3: the fourth shows 81 of its 82 px). After a loss fewer show (D-152's Known gaps).
+
+**2026-11-11 (a fix pull request, `fix/hand-lines-2x`, the third step of the survey after the release; Proposed until the user has seen it):** this entry's two hand-line gaps. The line has three lines, four beside a 2× thumbnail, and the Greenhouse's says "touching" again. UI only: `contentHash` is unchanged (ffabbd52), so runs in progress carry over.
+- **Three lines at most,** at every window size (`hand.css`). Considered below had a three-line clamp push cards under the Pass bar at 1280×720 and 1920×1080; on today's short lines it moved none there, in either font.
+- **Four lines beside a 2× thumbnail,** on a window over 800 px tall (under that the shape's glyph stands in for the thumbnail, and the line has the card's width). A row there holds about 12 letters of the pixel font, so "+2 per touching view (up to 3)" takes four.
+- **On a 2× window under 1100 px tall** (where Your goods folds: 1440×900, 1470×956 and 1512×982, and 1470×840 and 1512×860 under a browser's bars), the cards sit 4 px apart (8 before), with 4 px over the name and 8 px under the chips (8 and 12), and the thumbnail's well has no padding (4), which widens the line by 8 px. Without them the fourth card went under the bar in 6 of 11 four-card hands at 1470×840.
+- **"Touching" comes back where the line stays within the 33-letter budget** (`touchingLine` in `text.ts`): the Greenhouse's "+50% to touching yard views". The Patio's "+2 per touching Living Room or Kitchen" (38) fits whole at every size, but its extra row put a fourth card under the bar in four hands: in the readable font at 1280×720 and 1366×768, and in the pixel font at 1512×860 at 2×. The Dining Room's (39) takes a fourth line at 1280×720, and the Kitchen's and the L-Kitchen's (42) five beside a 2× thumbnail. Each keeps its short line.
+
+Measured in headless Chrome on the week-1 hands of 16 lots: the first job's lot as an ordinary run, and 15 lots over the five clients and three crews (69 cards; the Landscaper's five lots deal five), and on the guided first hand (Living Room, Bedroom, Greenhouse, Garage), taken from the board in a fresh browser. A card is under the bar when the bar hides some of what it says, as the hand's "N more cards" tab counts; the count includes the five-card hands' fifth cards. Before is develop at e765f64, the game live on main.
+
+| Window | Font | Cards cut, of 69 | Cards under the bar | Guided hand: lines cut, of 4 |
+|---|---|---|---|---|
+| 1470×840 at 2× | pixel | 40 → 0 | 9 → 7 | 2 → 0 |
+| 1470×840 at 2× | readable | 0 → 0 | 14 → 7 | 0 → 0 (its fourth card is no longer under the bar) |
+| 1512×860 at 2× | pixel | 31 → 0 | 5 → 5 | 2 → 0 |
+| 1512×860 at 2× | readable | 0 → 0 | 9 → 5 | 0 → 0 |
+| 1440×900 at 2× | pixel | 40 → 0 | 5 → 5 | 2 → 0 |
+| 1440×900 at 2× | readable | 0 → 0 | 7 → 4 | 0 → 0 |
+| 1920×1080 | pixel | 6 → 0 | 1 → 1 | 0 → 0 |
+| 1920×1080 | readable | 0 → 0 | 0 → 0 | 0 → 0 |
+| 1280×720 | pixel | 6 → 0 | 19 → 19 | 0 → 0 |
+| 1280×720 | readable | 0 → 0 | 18 → 18 | 0 → 0 |
+
+No card is under the bar that wasn't before. Also checked, both fonts, with the pixel font's cut cards: 1512×982 at 2× (31 → 0; under the bar, none before or after in the pixel font, 3 → 0 in the readable), 1470×956 at 2× (40 → 0), 1728×1117 at 2× (6 → 0), and 1280×720 at 2×, 1366×768, 1440×900 and 1600×900 (6 → 0; 1600×900 had none). No card is newly under the bar there, except one at 1470×956 (Known gaps).
+
+- **Considered:**
+  - **The line across the card's width, the thumbnail beside the chips,** with three lines (this entry's first Considered): none cut, but the bar hid 15 cards at 1470×840 (9 before) and 14 at 1512×860 (5).
+  - **Three lines at 2× and today's spacing:** 12 of 69 cards still cut at 1470×840 and 1440×900, the guided hand's Living Room among them, and 13 cards under the bar at 1470×840.
+  - **Four lines and today's spacing:** none cut, but 16 cards under the bar at 1470×840, the fourth card in 6 of 11 four-card hands. With only some of the closer spacing (the gaps, or the padding, or the well), 1 to 4 cards were still newly under the bar at 1470×840 or 1512×860.
+  - **The shape's glyph for the thumbnail on a 2× window up to 900 px tall,** as at 1× (with three lines): none cut and the fewest cards under the bar, but "Living Room" wrapped under the glyph, "Greenhouse" ran into it, and most laptops would lose the pictures.
+  - **The chips beside the thumbnail in the narrowest column,** to pay for the extra lines: the bar hid more cards, not fewer (19 at 1470×840, with three lines).
+  - **Rewording to fit "touching" in:** the Dining Room's names swapped, "+50% to touching Living Room or Kitchen", and a comma for the Kitchen's "or", "+2 per touching Dining Room, Herb Garden". Both fit whole at every size measured, but each takes a row more where it shows (four lines beside a 2× thumbnail, three at 1280×720 and 1920×1080), as the Patio's did. Whether that puts cards under the bar wasn't measured.
+- **Known gaps:**
+  - The Patio's, the Dining Room's, the Kitchen's and the L-Kitchen's hand lines still leave out "touching" (above). Inspect, the shop and the ghost's Wow label give the true reading.
+  - At 1470×956 at 2× (a 15-inch MacBook Air's full screen) one five-card hand's fifth card now sits 3 px under the bar, where two others came clear (3 → 2).
+  - Beside a 2× thumbnail a line can end on a short row: "+2 per / touching / view (up to / 3)".
+  - Week-1 hands only: later weeks' fixtures (two lines each), Renovate chips and the Bigger Truck's fifth card weren't measured, nor the Chandelier's line.
+  - Chrome's emulated 2× only. Safari and Firefox weren't run; both clamp a `-webkit-box` the same way.
+  - The closer cards and the bare well wait on the user's eye (before and after screenshots of the guided hand, sent to the user with the pull request).
+- **Changes:** D-121 (Accepted): three lines, four beside a 2× thumbnail, and the closer cards on a 2× window under 1100 px tall; a dated note there. This entry's Known gaps: the Kitchen's line and the line beside a thumbnail are whole now, and of the four lines without "touching", three are left (the Kitchen's, which the L-Kitchen shares, the Dining Room's and the Patio's).
+
+**2026-11-12 (D-157, Proposed):** with Strike on the plank, Reroll gives up its word in the pixel font on planks under 17.25rem (18.25 with a two-digit count), windows under about 1,595 px wide, and Demolish and Strike show their icons and counts. The readable font keeps Reroll's word at every width. In either mode, Strike's as well as Demolish's, Stop keeps its word and the other two give up theirs, in both fonts and at every width: this entry's rule while demolishing, widened. The first job's two-button plank keeps this entry's rules. It's D-157's default for now, against this entry's "at every window size", for the user to revisit at the playtest; their 1728×963 window keeps the word outside a mode.
+
+### D-152 · Copy run code on the end screen's plank, and a lost run's retry over the milestones
+**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: it answers their own report from playtest 6 and shipped at their "Yes, ship them". Proposed 2026-11-11, a fix pull request (`fix/playtest-6-bugs`), from the user's playtest of /dev/ at 9acf14a the same day: "I can't copy the code anymore at the end screen". Shipped at the user's "Yes, ship them". UI only: no rules, content or balance change, and `contentHash(CONTENT)` is `8c16358c` on develop and on this branch, so runs in progress carry over (#54).
+**Decision:**
+- **Copy run code is on the end panel's plank,** after "Job done!" ("Run over"), as Reroll is on the hand's plank (`EndScreen.tsx`, `end.css`). It copies the run code, as the Menu's Copy run code does, and the toast says "Run code copied". It's at the right column's top, in view on every window as the end screen comes up. It leaves the plain group under the stats, so there's one on the screen, and the Menu's. The sticky bar keeps New run and Copy result (D-148).
+- **The plank's title never gives way; the button's words do.** Its tooltip and its name for screen readers are always "Copy run code". On the plank it says the Menu's "Copy run code" where that fits beside the title, else "Copy code", and on the narrowest plank it's the copy icon alone; the icon joins the words wherever there's room. Container queries on the plank, in em of its own text size, so the pixel font's widths hold at any `--px` (checked at 125%, where `--px` is 1.6 CSS px).
+
+| Window | Plank | Pixel font | Readable font |
+|---|---|---|---|
+| 1920×1080 | 343 px | the icon and "Copy code" | the icon and "Copy run code" |
+| 1728×963 at 2× | 303 px | "Copy code" | the icon and "Copy run code" |
+| 1440×900 at 2×, 1280×720 | 228 px | the icon | "Copy run code" |
+
+  - **In the pixel font** "Job done!" and the button need 374 px with the icon and "Copy run code", 352 with those words alone, 318 with the icon and "Copy code", 296 with "Copy code", and 178 with the icon alone. "Run over" is 12 px shorter, but a loss's button takes a win's form: at 1920×1080 "Copy run code" would fit beside it with 3 px to spare.
+  - **The readable font** fits "Copy run code" on any plank (196 px of 228), and the icon beside it from 238 px, room to spare for a system font wider than macOS's.
+- **The button is 13 UI px tall,** not the small size's 16, and shows the copy icon's 9 UI px drawing without the blank border of its 12 UI px box: the plank grows by 8 px, not 14.
+- **After a loss, Try this lot again and the "Next time" tip come straight under the verdict,** over the milestones. Under the stats (D-150) the button was below the fold on every window measured but one. The button leads, then the tip: on a 1280×720 window, the tip's lines in the pixel font pushed a button under them below the bar. After a win, Play this lot again stays under the stats, on a row of its own over Title, and Title stays there after a loss.
+- **Tests:** `end-panel.test.tsx` walks the panel: the plank's Copy run code, the only one on it, and the order after a win and after a loss.
+
+Measured in headless Chrome on frozen dev-channel builds, at rest, before (develop at 9acf14a) and after. The runs are the greedy bot's win for the Hendersons with the Architect (oh-4, 7 of 7, finished live with Complete early, so it's filed as the user's was) and three losses: at Foundation (the novice bot's nl-0, week 10, the set tip) and at Roofing (greedy's nl-10, week 18, the Reroll tip), both finished live with End week, and at the Final Walkthrough (oh-1, loaded already lost). "Below" is how far a button's top sat under the sticky bar's top.
+
+| Window | Font | Copy run code, the win: before → after | Try this lot again, lost at Foundation: before → after | Whole milestone rows above the bar, the win: before → after | Lost at Foundation: before → after |
+|---|---|---|---|---|---|
+| 1728×963 at 2× | pixel | 617 px below → on the plank | 243 px below → whole | 4 → 3 (the fourth shows 81 of 82 px) | 7 → 4 |
+| 1728×963 at 2× | readable | 107 px below → on the plank | 71 px below → whole | 7 → 7 | 7 → 7 |
+| 1440×900 at 2× | pixel | 726 px below → on the plank | 660 px below → whole | 2 → 2 | 4 → 0 |
+| 1440×900 at 2× | readable | 312 px below → on the plank | 181 px below → whole | 5 → 5 | 7 → 5 |
+| 1920×1080 | pixel | 222 px below → on the plank | 86 px below → whole | 7 → 7 | 7 → 7 |
+| 1920×1080 | readable | partly under the bar → on the plank | whole → whole | 7 → 7 | 7 → 7 |
+| 1280×720 | pixel | 872 px below → on the plank | 806 px below → whole | 1 → 1 | 2 → 0 |
+| 1280×720 | readable | 458 px below → on the plank | 327 px below → whole | 3 → 3 | 6 → 1 |
+
+- **In all 32 cases** (four windows, two fonts, the win and the three losses) Copy run code sat at the column's top, whole, and took a real click at rest: the clipboard then held the run's code (OH1., 1,004 to 3,107 characters), the toast said "Run code copied", and the plank's title showed whole. Before, it took a scroll every time.
+- **After all three losses** Try this lot again was whole above the bar at rest on every window, in both fonts. The tip under it is whole too, but at 1280×720 in the pixel font, where its heading and first lines show above the bar.
+- **The other losses' milestone rows** go the same way: at Roofing 6 → 3 at 1728×963 and 4 → 0 at 1440×900 at 2× in the pixel font, and at the Final Walkthrough 7 → 3 and 4 → 1. At 1920×1080 the pixel font keeps all seven after the losses at Foundation and Roofing, and 5 of 7 after the last one.
+
+**Why:** D-148 moved Copy run code from the sticky bar to a plain row under the stats, and D-150 put Try this lot again over it. On the user's 16-inch laptop window (1728×963 at 2×, the pixel font) a won run's end screen showed the verdict, four milestones, New run and Copy result; the column scrolls 733 px more, and macOS draws its scrollbar only while it scrolls. The one copy button in view copied the result line. Nothing was broken: the button was out of sight. Try this lot again, the way back into the lot for a newcomer who loses (most first jobs are lost, D-150), was below the fold too, on every window measured but 1920×1080 in the readable font.
+**Considered:**
+- **The plank's title giving way** (the investigation's prototype): "Job done!" hidden in the pixel font on planks under 296 px, 1440×900 at 2× and 1280×720 among them. It's the end screen's headline, and the button's words can shorten instead.
+- **Back in the sticky bar on a row of its own:** the bar grows from 128 to 176 px, D-148's problem.
+- **Beside Copy result on its row:** in the pixel font the two need 362 px with "Copy code", and the bar has 303 at 1728×963 and 228 under 1500 px wide.
+- **One button that copies both:** the result line is for the group chat (D-135), and a run code is about 2,600 characters.
+- **A "more below" tab on the bar,** as the hand's "N more cards": the code is still a scroll and a look away.
+- **The tip over the button, as D-150 had them:** at 1280×720 in the pixel font the button sat under the sticky bar: its top 24 to 44 px under the bar's top after a loss finished live, out of sight, and 2 px short of whole for the run loaded already lost. On the other windows it was whole.
+- **Try this lot again in the sticky bar after a loss:** a third button in the bar, D-148's problem again.
+- **A 12 UI px button:** the plank grows by 6 px, not 8, so the win's fourth milestone row would stay whole at 1728×963 in the pixel font (by 1 px), but the words sit tighter in the button.
+
+**Changes:**
+- D-148 (Proposed): Copy run code leaves the plain group under the stats for the plank, and after a loss the group is Title alone. A dated note there.
+- D-150 (Proposed): after a loss, Try this lot again and the tip move over the milestones, the button first. A dated note there.
+
+**Known gaps:**
+- **After a loss the milestones start lower:** fewer rows show whole above the bar at rest (the table), and none at 1440×900 at 2× and 1280×720 in the pixel font. The verdict and the plaque above them say where the client walked and how far the house got.
+- **The win's fourth milestone row at 1728×963** in the pixel font loses its last pixel row, the space under its text, under the bar (81 of 82 px show).
+- **The button's words differ by window and font,** while its name is always "Copy run code": a speech-input user who says what's on it ("Copy code") may not reach it.
+- **The plank scrolls with the column:** scrolled down to the stats, Copy run code is a scroll back up (the Menu's is always there).
+- **The readable font was measured in macOS's system font;** another system's may be wider. The 238 px step for the icon leaves it 20 px, unmeasured.
+- **Not played by a person,** and Safari, Firefox and touch weren't run.
+
+### D-153 · Full House counts on the set chip, and Inspect explains a card's sets
+**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: it answers their own question from playtest 6 and shipped at their "Yes, ship them". Proposed 2026-11-11, a fix pull request (`fix/full-house-progress`), from the user's playtest of /dev/ at 9acf14a: they asked why their Hallway card said "Full House". At the user's "Yes, ship them": the count, a check once the house holds the set, and the set explained in Inspect, but not a star on the card that would complete it. Builds on D-122's chip. A rules selector, its words, and the UI: no content or balance change. `contentHash(CONTENT)` is `8c16358c` on develop and on this branch. For the user's playtest.
+**Decision:**
+- **A chip that names Full House counts it** (`SetChip`, `src/ui/hud/Hand.tsx`): "Full House 5/9", the member types the house has built, and a check in place of the count once the house holds the set. The chip names the set D-122 picks: the touching set with the shortest name, plus "+N", or Full House on a card whose only set it is (a Hallway, Long Hallway, Garage or Home Office). A touching set gets no count: whether its members touch is the layout's, so a count would promise what it may not give.
+- **The rules count** (`Rules.setProgress`, from `setProgress` in `src/rules/sets.ts`): the member types among the pieces placed, read as `matchSets` reads them: a piece's own type or its card's `countsAs` (a Long Hallway is the Hallway, an L-Kitchen the Kitchen), never a fixture's (D-081: a Kitchen Island's Dining Room doesn't count, and Bunk Beds' Bedroom counts once). A second Bedroom adds nothing. Held is the set matcher's own answer. A piece being placed or previewed isn't in the house yet, so it never counts, and a demolition takes its type off at once. Null for a set whose members must touch.
+- **No star:** a card that would complete the set reads "8/9" like any other. D-122 set a lit chip aside, and the user didn't approve one.
+- **The chip's tip** adds the count in words after Full House's line: "Your house has 5 of the 9. Still to build: a Closet, a Hallway, a Garage, and a Home Office." or "Your house has it." (`setProgressText`, `src/rules/text.ts`).
+- **The count and the check show only where they cost the card no chip row** (`hand.css`), so at 1× and 2× no card grows and none goes under the Pass bar (125% and 90% zoom: Known gaps). Elsewhere the chip says "Full House", as D-122's did, and its tip and Inspect say how far the house is. The chips' row is a container, so the rules read its own width:
+  - **The pixel font:** on a narrow card the chip and a tag's icon need 220 px with the count. A Garage or Home Office shows it at 1728×963 and 1680×1050 at 2×, and at 1920×1080, 1600×900 and 1536×864, but not at 1440×900, 1470×840 or 1512×860 at 2× or at 1280×720, whose rows are 197.5 to 208 px. A Hallway, with no tags, shows it at all of these, and a Long Hallway at all but 1512×860 (a 181.5 px row for a 184 px chip). A wide card names its kind too, so there a Hallway's count needs a 298 px row (1792×1120 at 2× has 288). The check makes the chip 160 px, so it needs 196 beside a tag's icon and 160 alone: it waits on a Garage's or Home Office's rows of 179 to 196 px (1× windows 1616 to 1688 wide, and 2× windows 1504 to 1536 wide, 1504×900 among them) and on a narrow Long Hallway's rows under 160 (1× windows 1504 to 1640 wide; under 142 even the plain chip spills, as it did before).
+  - **The readable font,** whose words keep their size at 125%: a Garage's or Home Office's chip, kind and tag share a line from 213 px (at 125%, from 194.2 for a Garage, whose "Loud" is narrower than a Home Office's "Quiet", and 196.9 for a Home Office) and need 241 with the count (234 with the check), so on rows from 194 to 241 px both wait. They show at 1728×963 (242.9 px), 1920×1080, 1600×900 and 1536×864, and not at 1440×900, 1470×840, 1512×860 or 1680×1050 at 2× or at 1280×720. A Hallway or Long Hallway has no tag, but its kind beside the chip: with the count they need 179.5 px (the widest count, "4/9": this font's digits differ in width) and with the check 171.7, so both wait on narrower rows, which 1× windows 1504 to 1744 wide have (154 to 176 px; 1600×1000 and 1680×940 among them), and 2× windows 1504 to 1536 wide and over 1100 tall (172 to 179). At the six sizes the fit sweep measures, they show.
+  - **A card that can renovate** keeps its line for Renovate: no count or check. Of the cards whose chip names Full House, only a Home Office can, for Dale once he has his two (his house rule caps them).
+- **Inspect explains a hand card's sets** (`SetLines`, `src/ui/hud/Inspect.tsx`) under a "Sets" heading: for each set the card's piece counts toward, what it needs and pays (`setText`, the chip's tip), and under Full House the progress line in Charm's ink, with the check once it's held. Pointing at a hand card, after the card's text and before "Click the card…". With a hand card picked, until the pointer is on the lot, only the progress line, named (`SetProgressLines`): "Full House: your house has 5 of the 9. Still to build: …". Every set's lines there grew Inspect from 106 to 467 px at 1728×963 in the pixel font, on every pick of a set's room. Not in the placement preview, whose "Completes Full House" note is about that spot, nor for the reserve's pieces.
+- **Tests:** `sets-m4a.test.ts` (the count, the variants, fixtures, a demolition, and in a run: a previewed card doesn't count, a built one does, a demolished one comes off), `text.test.ts` (the words), and `set-chip.test.tsx` (the chip's text, count, check and tip; a Hallway card placed where it would complete the set, which the chip doesn't count until it's built; and Inspect's lines, called in place: a card pointed at gets every set's, a card picked only Full House's progress).
+
+**Why:** the chip names the set a card counts toward, and the Hallway, Garage and Home Office belong only to Full House: one each of nine types anywhere in the house, the one set with Sparkle (×1.5). It never said how close the house was, so the name read as a claim the house didn't back. The count says how near the set is at a glance, and Inspect says the rest.
+**Considered:**
+- **A star on the card that would complete the set,** named ahead of its touching sets (the investigation's prototype): not approved. It's D-122's lit chip by another name.
+- **A count on touching sets** ("Suite 2/3"): the layout decides whether they touch.
+- **Letting the count wrap:** in the pixel font at 1440×900, 1470×840 and 1512×860 at 2× and at 1280×720, a Garage or Home Office grew a chip row (28 px), and 3 to 5 more cards in the 43 hands measured at each size went under the Pass bar.
+- **Hiding the count on every narrow card:** it hid it at 1728×963, the user's window, where it fits.
+- **The count alone on a narrow card** ("5/9", the name in its tip, as a narrow card's tags show only their icons): a number with no set beside it.
+- **Measuring each card in script** and dropping the count where it wraps: exact for any font, but the hand's other fits are container queries, and the chip would need hooks.
+
+**Changes:**
+- D-122 (Proposed): its chip counts Full House, with a check once held, where that costs no chip row, and its tip says the count. A dated note there.
+
+**Checked:** in headless Chrome over CDP, against frozen builds of develop (9acf14a) and this branch (`VITE_CHANNEL=dev`), at 1728×963, 1440×900, 1470×840 and 1512×860 at 2× and at 1920×1080 and 1280×720, in both fonts. Each size and font had 43 hands: the guided first job and 16 week-1 lots (the hand-lines set), the same lots with a Garage and a Home Office given through ?debug, and ten mid-run states from greedy runs, with a Full House card in hand at each count from 0/9 to 8/9 and held.
+- Cut hand lines: 0 on both builds. Cards under the Pass bar: the same in every hand. No card's height changed.
+- A row probe at 19 sizes (adding 1680×1050, 1792×1120, 1470×956, 1512×982 and 1920×1200 at 2×, 1600×900, 1366×768, 1536×864 and 2560×1440 at 1×, and four windows at 125% and 175%) put each Full House card in hand with its count and held, with and without a Renovate chip: no chip row grew in 608 cases.
+- In play: with a Home Office placed and waiting for End week, its card and the Garage card in hand still read 6/9, and after End week the next hand's Home Office read 7/9. On Dale's house, which held the set, a Hallway and a Garage given through ?debug read "✓ Full House" at 1920×1080, at 1728×963 in both fonts and at 1440×900 (the Garage's check waits at 1280×720 in the readable font, as above); the Home Office card there can renovate (Dale's two Home Offices), so it read "Full House". Demolishing the Garage took the Hallway and Garage cards to 8/9 at once, and Inspect said "Still to build: a Garage." Run again on the final build after the review: the same.
+- **Review (2026-11-12):** a width sweep found what the six sizes miss: in the readable font a Hallway's or Long Hallway's count and check took its kind onto a second chip row, and in the pixel font the check did the same beside a Garage's or Home Office's tag and spilled out of a narrow Long Hallway's chip (the windows are above). In the fit sweep's hands at 1680×940 in the readable font, 3 Long Hallway cards had grown 28 px and one more card had gone under the Pass bar (37 → 38), and at 1600×1000 a Hallway had grown. The rules above for the check and for tagless cards fix them; checking that fix at 125% found a Garage's chips sharing a line from 194.2 px, so the readable font's band starts at 194, not 196.
+- **The width sweep** of the final build: each Full House chip as drawn, against its row with the count and the check forced off, in both fonts, at 4/9 (the readable font's widest count) and on a house that holds the set. 1× windows 1200 to 2560 wide in 8 px steps, 720, 900, 1080 and 1200 tall; 2× ones 780, 900, 1080 and 1117 tall; 2 px steps across the bands. In 30,240 chips (the count showing in 11,377 and the check in 13,648), no chip row grew and no chip spilled. At 125% (windows 1100 to 2200 wide, 691, 864 and 960 tall), 8,640 chips: none but the Home Office's 6 in Known gaps. The pixel font's runs and the readable font's 2 px steps used a build whose only difference is that band, which only hides more.
+- **The fit sweep again,** on the final build, with 1680×940 and 1600×1000 at 1× added: cut lines, cards under the Pass bar and every card's height are the same as on develop at all eight sizes in both fonts. At the two new sizes the count shows on 49 and 48 of the 52 Full House cards not yet held in the readable font, and on 1 and 0 in the pixel font, whose rows there are narrower.
+
+**Known gaps:**
+- **Pointing at a card, its sets sit below the fold** of Inspect's few lines while the checklist has the room (D-110): the "Sets" heading in the pixel font, and the progress line in both fonts. They're out of reach while pointing, since crossing the board to Inspect makes it show the tile under the pointer (`inspectAt`). Picking the card gives Inspect the room: the lines show whole at 1728×963 and 1920×1080, and in the readable font at all six sizes; in the pixel font at the four narrower sizes the progress line needs a scroll. Giving Inspect the room for a card pointed at too (App.tsx's `looking`) would change D-110: the user's call.
+- **Picking a Full House room grows Inspect by its progress line** while the pointer is off the lot, and it shrinks back on the lot. At 1728×963 in the pixel font, on a house with 2 of the 9 (seven rooms still to build, a long line), Inspect goes from develop's 106 px to 270 and the checklist from 529 to 365 (a Bedroom or a Garage picked, the same). Before the trim, with every set's lines, it went to 467 and 168. The line shortens as the house fills. For the playtest.
+- **The count waits more than it must** in places: in the readable font on rows from 194 to 213 px at 1× and 2× (1440×900, 1470×840, 1512×860 and 1280×720), whose chips already take two lines, so the count would cost no row there (the band is for 125%, where such rows hold them on one); on a Hallway's or Long Hallway's rows under 153.7 px in the readable font, and beside a tag's icon on rows from 160 to 178 in the pixel font (the check), where the chips already take two lines; on Dale's Home Office cards once they can renovate, though at many sizes it would fit (1728×963 among them); and at 125% in the pixel font. The tip and Inspect still say it.
+- **At 125%, a Home Office's count costs a chip row** on a wide card in the pixel font at windows 1700 to 1708 wide (the narrow/wide switch, where a wide card's row is 288 to 290 px and the chips need 290.8). A rule for it would hide the count on 2× wide cards too, where it fits.
+- **At 90% zoom** (2.22 CSS px a UI pixel: the user's 1728×963 window becomes 1920×1070 at 1.8×) the widths, in CSS px, are too small. In a width sweep at 1.8× (windows 1300 to 2600 wide, 900 and 1070 tall), in the pixel font, the count cost a row on 218 of 820 Full House chips (Hallways at windows 1556 to 2596 wide, Long Hallways 1636 to 2596, Garages and Home Offices 1732 to 1780), and the check on 124 of 820 (Garages and Home Offices at 1300 to 1700, Long Hallways at 1524 to 1892, Hallways at 1812 to 1892); in the readable font, the count on 4 of 820. The pixel font's widths written in the chips' own em would follow the UI pixel, but its text doesn't scale exactly (1% short at 125%), so that needs its own measuring.
+- **The readable font's widths are the macOS system font's** (`system-ui`); another system's font has other widths.
+- Not played by a person. Touch, Firefox and Safari weren't run.
+
+**2026-11-12 (D-164, Proposed):** a Garage's chip now names the Drive-In, a touching set, so it shows no Full House count; its tip still gives it. The Lawn's "+2" (it's in three touching sets) hides as the count does, wherever it would cost a chip row: on a narrow card in the pixel font, under 212 px beside its two tags' icons. A plain yard chip has no such rule, so some cards grow a row (D-164's Known gaps).
+
+### D-154 · The week's cue: a stamp as each week comes up, and a last week that says so
+**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: on /dev/ and then main (#69) since 2026-11-12. Asked on the sheet whether it felt right in play, they chose Accept. Proposed 2026-11-11, a phase pull request (`phase/week-cue`), from playtest 6: "starting each Week with something on the screen saying "week 1 of 4" ... as the weeks progress there is an increasing sense of urgency ... Currently it feels like the end of the weeks can sneak up on you." UI only, plus one read-only rules selector: no rule, content or balance change. `contentHash(CONTENT)` is `8c16358c` on develop and on this branch, so saves and run codes carry over (#54). For the user's playtest before it merges. Finishes the playtest-6 prototype (`week-urgency.patch`).
+**Decision:**
+- **The week's stamp** (`src/ui/screens/week-stamp.ts`, drawn by `Overlays.tsx`): as each week of a milestone comes up and the board is quiet, "Week 2 of 4" and the milestone's four weeks as pips, at the board's top center, where the milestone's banner goes (they're never up together). It never takes the pointer, notes and toasts sit just under it as they do under a banner, and it's on screen for a fixed real time at any tally speed (`FEEL.weekStamp`, D-059). Three kinds, so some 28 stamps a run don't wear thin:
+  - **A milestone's first week** stamps in (the banner's scale) with a slip under it: "Roofing: 2,850 Wow to go in 4 weeks". A soft page flick (`week-start`). 2.1 s in all.
+  - **Its middle weeks** drop in smaller, the plate alone, the flick at half its gain. 1.25 s.
+  - **Its last week** is orange, its slip says what's still needed, "Last week of Roofing: 471 Wow to go" ("…: its target is met" once it is), under a clock's tick-tock (`last-week`, the slit drum's thock pitched up). 2.8 s.
+  - **The number is the rules'.** `rules.toGo(state)` is the phase target less the score, 0 once met: the UI doesn't subtract (§12).
+  - **None in an overtime week:** its Overtime! banner already says the week is extra and what's needed.
+  - **None in the guided first job's first week** (D-149): the opening's hint and a bare screen are enough to read. Its week 2 is the first stamp.
+  - **Each week once.** Away to the title and back doesn't stamp it again; a new page, a new run or a lot played again does.
+  - **A tally takes it down at once,** and the next week's comes as that tally ends. A banner holds it back until it goes. An action with nothing to play (a reroll, a purchase, leaving the shop) leaves it up, and leaving the shop stamps the next milestone's first week at once.
+- **End week on the deciding week** (`Hand.tsx`): a milestone's last week, or an overtime week, is the press that checks the target. End week wears an orange tag on its top edge, "Last week" ("Overtime" in overtime), in the regular face as the plaque's line is. It stamps in as the week comes up (once its tally is done) and again as a card is placed, the moment the deciding press is next. Its title says what's at stake: "The last week of Roofing: 471 Wow to go. The target is checked as this week is tallied." Its words drop 2 UI px to sit clear of the tag.
+  - **Inside the bar.** The tag reaches into the bar's own top padding and no further, a hover's lift included, so it never covers the card above (the prototype's poked 2 UI px into it at 1440×900).
+  - **Its label stays.** At the deciding press a card is held, Rotate and Cancel stand beside End week, and it's at its narrowest: 70 UI px at 1440×900 and 87 at 1728×963, where "End week" is all that fits. A longer label ("End the last week") would drop to the short one exactly then. The tag fits beside them at every size checked, down to 900×600.
+- **The plaque** (`TopBar.tsx`): the milestone's weeks as pips along its foot, in its padding, the weeks played in ink, the week on now in gold, and the last week's in orange; overtime adds a pip. On the last regular week "Week 4 of 4" turns orange, as "Overtime 1" is, but in the line's own weight, with its margin drawn as a shadow: the bold face widened the plaque 18 px at 1728 px wide.
+- **The tally director's `busy` is up only while something plays** (`director.ts`). An action with nothing to animate (leaving the shop, a reroll, a purchase) used to set it and clear it in the same call, which flicked every reader: the music's scene (to review and back, inaudibly), and the stamp, which the prototype checked a task later to dodge. The stamp still checks a microtask after what it reads changes, since `dispatch` sets the new week before the director hears of the action (`store.ts`).
+- **The defaults the review offered, taken:** every week stamped, with lighter weeks 2 and 3 (not only the first and last); the first job's stamps wait until week 2; and orange for the last week, the same orange as overtime and a miss, since all three say the target is at stake.
+- **Tests:** `week-stamp.test.ts` plays real runs through the store and the director on the instant tally: each week once and in its kind; a tally takes it down before its first frame and the next week's comes after; a reroll and leaving the shop leave it up and never mark the director busy; none in an overtime week or the first job's first week. Undoing the director's change fails two of them, and checking at once instead of a microtask later fails four. `runloop.test.ts` holds `toGo`.
+
+**Why:** the milestone is decided inside week 4's End week press (`run.ts` afterTally → endOfPhase), so every cue the game had (the target's ding, the milestone's banner) came after the decision. Nothing marked a week's start, and week 4 looked like week 1: the plaque's grey "Week 4 of 4 · 16/28" was all.
+**Considered:**
+- **A moving sun or time-of-day light:** it reads as D-120's sunny side moving, and it darkens the board as the deciding piece goes down.
+- **End week's label on the last week** ("End the last week", "Pass the final week"): see above; the tag and the title carry it.
+- **The whole button orange:** the armed Pass ("Pass? Press again") is that orange, and lime is the one "do it" color.
+- **Stamping only the first and last weeks:** the review's alternative. Lighter middle weeks keep the count going without the noise.
+- **A strip across the bar saying what's at stake:** it takes a line from the cards on the week the hand matters most.
+
+**Checked:** in headless Chrome over CDP against a production build, the Hendersons with the Architect on `oh-1107` and on the user's playtest-6 lot (`99k6ct`): the ?debug panel's jump to Roofing, its shop left, and its four weeks passed, at 1728×963@2 (the user's window), 1440×900@2, 1920×1080@1, 1280×720@1, 1024×700@1 and 900×600@1, in the pixel font and at two sizes in the readable one. A card was placed on the last week at each. Screenshots: `docs/playtests/week-cue-*.png`.
+- One stamp a week, in its kind and for its time (first 2.1 s, middle 1.25 s); none in the shop.
+- The plaque is 250 px wide at 1728 every week (the prototype's grew to 268), 172 at 1440.
+- End week's tag sits inside the bar at every size, and inside End week with a card held (126 px in 140 at 1440×900@2).
+- Its stamp-in replays on placing a card.
+
+**Known gaps:**
+- **The stamp covers the board's Sun marker** (D-120) for its second or three when the sun is north, as the milestone's banner does, and the lot's top rows. It never takes the pointer.
+- **A new page stamps the week on show again:** "once a week" is once a page.
+- **A household member arriving as a week starts** shows their card at the board's right edge with the stamp at its top, and the doorbell with the flick.
+- **The two sounds weren't heard:** the flick and the tick-tock are the prototype's recipes on the kit's book and thock samples, and want the user's ear.
+- **Not played by a person.** Touch, Firefox and Safari weren't run.
+
+*D-167 (Proposed 2026-11-12):* the plaque leaves out "3/7" and "· 16/28" (its tip has them), so it's narrower than the widths above. The pips and the last week's orange are as here.
+
+### D-155 · Life on the lot: crows that fly off, and the street's regulars
+**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: on /dev/ and then main (#69) since 2026-11-12. Asked on the sheet whether it felt right in play, they chose Accept. Proposed 2026-11-11, with its phase pull request (`phase/lot-life`), from playtest 6 on /dev/ at 9acf14a: "we kind of need to have more interactivity with the map to make things feel more alive and dynamic or more lived in. The map in general feels a bit empty and barren." Built from the playtest investigation's prototype. UI only: no rules, content or balance change, so `contentHash(CONTENT)` is develop's and a release keeps runs in progress (#54). For the user's playtest before it merges.
+**Decision:**
+- **A flock of crows on the lot's open grass** (`board/life.ts` flock, `board/LifeLayer.tsx`): two or three crows, pecking, on a 2 × 2 block of grass. Every cell within one of the block is open too: no piece, Tree, water, rock or find, so no crown, roof or tall prop stands over a crow. The run's seed and the week pick the block by hash, never by chance: the same week of the same run gets the same flock.
+  - **It takes off** when the pointer, the piece being placed (its ghost, or one placed and waiting for End week) or a change to the ground comes within 2 cells of a crow, either way. A piece built, moved or torn down there changes the ground. The crows flap up and away from what startled them, fading, over 1.4 s, with a soft flap: three of the yard's cloth fwps, higher and quieter than a yard piece landing. With nothing to flee, they leave over the lot's nearer edge.
+  - **One flock a week.** Once it has gone, the grass stays empty until the next week's flock glides in, fading in, 0.9 s after the week's tally. It lands out of reach of the pointer and the piece in hand, so it never takes off as it touches down. A flock still on the grass at End week leaves quietly as the week turns.
+  - No room for one, no flock: a lot that's built up or wooded can go without.
+- **The street's regulars:** a walker each way on the sidewalk and a car in each lane, crossing the view from past one edge to past the other, then out of sight for a while. Traffic keeps to the right: the lane by the sidewalk goes west, the far lane east.
+  - **One regular to a lane,** so none ever drives through another. Two in a lane at the same speed would meet whenever their pauses differ. Variety comes from regulars taking turns, swapping while out of sight: the westbound car is a teal sedan, then the title screen's blue hatchback; each walker is one of two neighbors.
+  - **Sparse:** the lane by the sidewalk sees a car about every 14 s after the last one leaves, the far lane every 26 s, and each walker every 18 to 27 s. Cars drive at the title's 56 art px a second, walkers stroll at 20.
+  - **It's the title's traffic** (`fx/Drive.tsx`): the title screen's car now drives through the same code, so its look and numbers are as before.
+  - **Past the lot's columns it's dimmed** as the garden and the road out there are (`outside.ts` dim): a car comes out of the same light as the road it's on.
+- **All of it is CSS,** transform and opacity only, moving a whole art px a step (D-097), so nothing wakes the main thread between events. Every timing is in `fx/feel.ts` (`FEEL.street`, `FEEL.life`), and the sprites' own frames are in their cuts.
+- **Layers:** on the canopy's layer, after the canopy, so a crow in flight crosses over the tree tops, and under the labels, the ghost and the popups. A crow on the grass never needs to be behind anything, since nothing within a cell of it rises. Each part is a box the size of the view's reach around the board (`viewReach`) that clips, so nothing in it makes the view scroll further. None of it takes the pointer.
+  - **The STREET label moves down to the canopy's layer,** just before the life: it's paint on the sidewalk, and the walkers and the cars pass over it. On the labels layer it was drawn over a passing car's roof and a walker's legs. Nothing else reaches the street row, so it still shows over the pieces and the yard as before.
+- **Off with Reduce motion,** none of it drawn and no flap; still under the shop's sheet or a change order's, as the water is. The title's car still parks with Reduce motion.
+- **It runs in the guided first job too** (D-149), since it's calm: the build brief's default, for the user to overrule at the playtest.
+- **Art:** nine LimeZu cuts (`art/limezu/life.json`): two pecking crows (east and west) and one flapping crow from Modern Exteriors' animated sheets; a teal and a red sedan from its cars, with their bounce and the exhaust's puff; four neighbors' walk cycles from Modern Interiors' premade characters. The cars and walkers are cut facing east and mirrored by CSS to go west. The atlas grows from 101,576 to 109,431 bytes.
+- **Tests:** `life.test.ts` (the flock is the same for the same run and week, moves from week to week, keeps a cell of open grass around each crow, lands out of reach of the pointer and the piece in hand, and stays away when there's no room; what startles it; which way it flies; one regular to a lane, on the sidewalk or the road, keeping to the right) and `drive.test.ts` (a crossing's length and time, and the title's car unchanged).
+
+**The lanes at each window's default zoom** (1×), in headless Chrome against the dev server:
+- **1728×963 at 2×** (the user's window): the sidewalk and the lane by it are in view. When the sun is south its plaque sits over the middle of that lane, and the zoom buttons over its right end, so a car passes behind them. The far lane is under the view's bottom edge: its cars show their roofs. The view pans down 35 px to the rest.
+- **1440×900 at 2×:** only the sidewalk, at the view's foot, so the walkers and the crows are the life in view. The road is a short pan below, as D-099 has it.
+- **1920×1080 at 1×:** the whole street, the board fitting with room to spare.
+- **Zoomed out** (0.5× on a 2× screen), or at Fit: the whole street and the road running on, with its traffic, to the view's edges.
+
+**Why:** only the lot's water moved, so the map read as still and empty. A flock that scatters at the pointer answers "interactivity with the map" at once, and the street gives the lot a world around it. Juice is core (D-059), and all of it is decoration the rules never see.
+**Considered:**
+- **The prototype's street:** its far lane's car ran along the board's foot, under the view's edge at the default zoom, and its timings were in the component. Here the lane by the sidewalk carries the most traffic, and every timing is in `feel.ts`.
+- **A second traffic system:** the title's car does the same thing, so both use one (`Drive`).
+- **Crows on the canopy's layer only in flight:** nothing rises over a landed crow, so one layer does for both.
+- **Pigeons for variety, crows perching on fences or roofs, the household walking in when a member arrives, weather for the change orders, and time of day across the weeks:** the investigation's later batches, for after this playtest. Time of day conflicts with the week-urgency work and D-120's sun.
+
+**Changes:** none to settled decisions.
+- D-098 (Accepted): the title's car drives through the shared traffic code; `FEEL.title.carPxPerSecond` became `FEEL.street.carPxPerSecond`, the same 56.
+- D-099 (Accepted): its water past the lot's edges stays still. The flock and the street's regulars are the first things besides the water that move by themselves. Its STREET label is on the canopy's layer now, under the street's life, not the labels layer.
+- D-136 (Proposed): the end screen's photos paint the terrain and the house, so the life isn't in them.
+
+**Checked:** in headless Chrome over CDP, in new browsers, against the dev server, on seed `99k6ct` (the Hendersons, the General Contractor), at 1728×963 and 1440×900 at 2× and at 1920×1080, at the default zoom and zoomed out. The flock landed, took off when the pointer came within a cell and a half and was gone 1.7 s later, left as End week turned the week, and the next week's flock glided in 0.9 s after the tally. The scroll area kept its size with life in it (1002 × 900 at 1728×963, 880 × 900 at 1440×900, 1114 × 982 at 1920×1080). With the board covered, every life animation paused, and ran again uncovered. With Reduce motion, nothing was drawn. The title's car still drove by. No console errors.
+
+**Known gaps:**
+- **At 1440×900 at 2× no car shows at the default zoom,** and at 1728×963 the far lane's cars show only their roofs, until the view pans down or zooms out.
+- **A crow flying out over the garden isn't dimmed** past the lot's edge, as the street's regulars are. It fades out as it goes.
+- **The flap wasn't heard:** headless Chrome plays no sound. It's checked as a recipe (its samples exist and round-robin) and a placeholder (it renders under the peak).
+- **Not played by a person.** The browser pane, Safari, Firefox and touch weren't run.
+
+### D-156 · Your houses on the street
+**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: on /dev/ and then main (#69) since 2026-11-12. Asked on the sheet whether it felt right in play, they chose Accept. Proposed 2026-11-11, with its phase pull request (`phase/neighbors`), from playtest 6 on /dev/ at 9acf14a: the map felt empty and barren, and the user asked for neighbors: the houses they've finished, on the plots around the lot. Built from the playtest investigation's mockup and its paint-alone patch, after D-155 and on top of its branch (#64): both add to the lot's surroundings and the atlas. UI only: no rules, content or balance change, so `contentHash(CONTENT)` is develop's and a release keeps runs in progress (#54). For the user's playtest before it merges.
+**Decision:**
+- **Your finished houses stand on the plots around the lot** (`board/neighbors.ts`, `board/NeighborsLayer.tsx`): beside it on both sides, on the same street, and across the road. Zoomed out, the street is your work; at the default zoom the nearest two peek in at the lot's sides.
+  - **The newest finished houses, won or lost** (the build brief's default), the newest on the nearest plot: beside the lot on one side, then the other, then across the road, then the next ones out the same way. The run's seed says which side comes first.
+  - **Fixed for the run:** the street is the record as it stood when the run began. The house a run files at its end moves in for the next run.
+  - **A house beside the lot stands at the row it was built on,** so it meets the same street: one built on its lot's front row touches the sidewalk, and one built up its lot keeps its front yard. A cell of grass from the lot's property line to the nearest house, two between houses.
+  - **Across the road** a house has no row of its own on this street, so the houses there line up a cell under the far curb, from the middle out. They show the side the game draws, the 3/4 view having no back, so they face away.
+  - **A creek running on past the lot's edge** (D-099) at a house's rows sends it to the next plot it fits, across the road at the latest, so no house stands in the water.
+  - **The run's own lot is left out:** a lot played again doesn't stand next door to itself.
+- **What stands on the street is the house, not the whole yard:** its rooms and every yard piece touching one (a porch, the garage's driveway, a fence along a wall), whole. Yard pieces off on their own stay home. A house of yard pieces alone stands as all of them.
+- **It's painted when its run ends** (`screens/record-run.ts`; `screens/photo-paint.ts` `paintPlot`), after the photo, by the end screen's painter (D-136) without the ground (no terrain, water or tree crowns) and with only those pieces, lit and linked as in the whole house. It's dimmed into the garden's light, as everything past the lot's edges is (`outside.ts` dim), cut to what it painted, and filed as a PNG at art resolution with where it lay on its board (`Job.plot`; D-139's note). At every zoom step it's as crisp as the lot (D-097). The newest six houses keep one.
+- **Until there are houses enough,** LimeZu's own houses stand on the nearest three plots (the build brief's default): a country house, a modern house with a roof deck and a Japanese house, from Modern Exteriors' Additional Houses, dimmed by CSS. A new company sees three neighbors, and each house it finishes takes one of their plots.
+- **Hover a house** and it lights up, in the lot's own light, while Inspect says whose it was: "The Barkers’ house", its verdict (or "Walked at 3/7") and Wow, and its crew. **A click holds it in Inspect,** as a click holds a piece, lit, with **Play this lot again** (D-139's `playLotAgain`, which asks first while a run is at stake). Esc, the ✕, another click or picking a card lets go. LimeZu's houses say "Every house you finish, won or lost, moves in along this street."
+- **The end of a run looks down the street** (`Board.tsx`, `FEEL.streetView`): once the last tally has played, the view pulls back over 1.2 s to show the street, with the new house on its lot among the others, holds for 1.7 s and comes back over 0.95 s. Then the photos deal in, as before. It pulls back far enough to show 14 cells either side of the lot and 9 rows past the road: to 0.67 at 1920×1080 at 1×, where the camera can't zoom out, 0.59 at 1728×963 at 2× and 0.53 at 1440×900 at 2×, at their default zoom. A view that shows that much already (0.5× on a 2× screen) stays put.
+  - **A celebration tween, not a zoom step** (CLAUDE.md): the scroll area grows to 1 / k of its box for those four seconds, so the board lays out the garden, the road, the creeks, the houses and the street's life that much further around the lot, and is scaled by k to fit back in its box, from where the view was and back again. Its pixels are uneven while it plays, as Fit's are. A zoom step below the smallest would change D-097, so that's for the user to decide.
+  - **A click, a key or the wheel hurries it back;** the camera holds while it plays. Only a run that ends here gets it: not a debug run, nor one that loads already over. Off with Reduce motion.
+- **Layers:** on the terrain's layer, under the ground's group, so the road running on past the lot paints over a shadow that reaches the sidewalk, and the street's regulars (D-155) pass in front. In a box the size of the view's reach that clips (`viewReach`, which now reaches below the board too), so no house makes the view scroll further. It never takes the pointer: the board finds the house under it.
+- **Art:** three LimeZu cuts (`art/limezu/neighbors.json`). The atlas grows from 109,431 to 157,632 bytes (1024 × 946).
+- **Tests:** `neighbors.test.ts` (what of a house stands on the street; LimeZu's houses until yours stand there; the newest nearest; at the row it was built on; never two in one place, nor one on the lot or the road; out of the creek; the sides by the run's seed; the house under the pointer), `company.test.ts` (plots kept for the newest six, given up first when the browser is full, read back, and a bad one dropped with its job kept), `geometry.test.ts` (the view's reach below the board; how far the end of a run pulls back).
+
+**Why:** the lot sat alone in a dimmed garden, and the record (D-139) already held every house this browser has finished. Standing them around the lot fills the map with the player's own work and makes the next run's street a little longer each time: a sense of progress with no power in it (D-016). The look at the end of a run shows the new house joining them, on screens that can't zoom out too.
+**Considered:**
+- **The stored photos as plots** (D-139's JPEGs): smoothed, with their own grass and trees cut at the frame, at no known scale, so they'd sit soft beside the pixel art and couldn't meet the street. The street starts with the next finished house instead (the build brief's default).
+- **Repainting old houses from a stored layout:** D-139 refused run codes for this reason, since a content or art change would change the houses.
+- **The whole lot's pieces as the plot:** yard pieces spread across the lot (15 × 22 to 22 × 22 cells in the investigation's runs), so a plot would be a lot of scattered fences and beds, at about twice the storage.
+- **A fractional zoom step for screens that can't zoom out:** it changes Accepted D-097, and the look at the end of a run shows the street there without one.
+- **Sold signs on empty plots,** as in the investigation's mockup: LimeZu's houses make a street for a new player.
+- **A floating tip by the house** (the mockup): Inspect is where the board says what's under the pointer, and holding a house keeps its button in reach.
+
+**Changes:**
+- D-097 (Accepted), not changed: for four seconds at the end of a run the board's view is scaled by a transform, a celebration tween as CLAUDE.md allows, like a Huge week's lean-in. The camera's zoom steps are unchanged, and no fractional step was added.
+- D-099 (Accepted): `viewReach` reaches below the board as well.
+- D-136 (Proposed): `paintPhoto` takes `ground` and `only` options, and the photos are painted as before. The strip deals in after the look down the street.
+- D-139 (Proposed): the record keeps a plot on its newest six houses, given up before any photo when the browser is full (its 2026-11-11 note).
+
+**Checked:** in headless Chrome over CDP, in new browsers, against the dev server. Six runs played by the greedy bot (four won, two lost) were filed with their plots: 42 to 73 KB each as base64, 342 KB for the record with the six (without their photos, which the script didn't file). On seed `99k6ct`, at 1728×963 and 1440×900 at 2× and at 1920×1080 at 1×: all six stood beside the lot and across the road, the scroll area kept its size (1002 × 900, 880 × 900, 1114 × 982), and a new browser's lot had LimeZu's three. Hovering a house lit it and filled Inspect, a click held it, and Play this lot again started that lot's run, which showed the other five. A run's last action dispatched on the board looked down the street at 1920×1080 (0.67) and 1728×963 (0.59), came back after 3.85 s to the scroll position it left, and the photos dealt in after it. No console errors.
+
+**Known gaps:**
+- **Houses filed before this build have no plot,** so a player's street starts with their next house.
+- **The street's regulars jump** when the look down the street starts and ends: their crossing grows with the view's reach.
+- **A plot is dimmed when it's painted,** so a later change to the garden's dimming won't reach the houses already filed.
+- **At 1440×900 at 2×,** the nearest houses show less than a cell at the default zoom.
+- **Not played by a person.** The browser pane, Safari, Firefox and touch weren't run.
+
+### D-157 · Strikes from the hand: the card you don't want, gone for the run
+**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: on /dev/ since 2026-11-12 (#70). Asked on the sheet whether it felt right in play, they chose Accept. Proposed 2026-11-12, a phase pull request (`phase/strike-from-hand`), from playtest 6 (2026-11-11): Strike a card "should also be included in the defaults ... at least once at the start of the match ... I never really use it ... might be overly broad if it applies to a card type instead of just a single card (e.g. a garage)". Asked whether a strike takes the card or its type, the user answered "Whole type" (2026-11-12): strike a Garage and no more Garages come up this run. Changes Accepted D-084 and D-076's shop picker: built on the user's answer, and Proposed until their playtest. Three more questions for the user took their defaults for now (below). A rules and content change: `contentHash(CONTENT)` goes from `8c16358c` to `153cddb5`, so runs in progress are dropped when it merges (on /dev/) and at the next release (#54's check); their run codes still replay. For the user's playtest before it merges.
+**Decision:**
+- **Strike is a free action on the hand's plank,** between Reroll and Demolish, with its count. Click it (or press S), then click a hand card twice: the first click arms it and Inspect says what goes, the second strikes it. Esc, S, the button again, a right-click or a click on the lot stops, and D switches to Demolish's mode; a number key twice strikes that card. It doesn't end the week. While either mode is on, a placement waiting for End week leaves the lot (its ghost, arcs, badges and targets), as it already did in Demolish's, and End week still builds it, unless a strike took its card (Inspect says so before the second click).
+  - **Strike mode puts no hint over the cards,** where Demolish's mode does: the cards are its targets, and a three-line hint coming in with the mode and going with it on the second click moved them, the second time by about 72 px under the stamp (1728×963@2, the pixel font), so the card that came under the pointer took Inspect during the beat. The key strip ("Click 1–4 a card twice to strike it"), the band on the card under the pointer and Inspect say what to do, and screen readers hear the mode. The cards don't move as the mode starts or ends.
+- **A strike takes the card's whole type for the run.** The type is never drawn again, and a shape variant goes with its root, as D-084 had it: the L-Kitchen with the Kitchen, the Long Hallway with the Hallway. Every hand card of the type leaves at once. The words say so on the card, in Inspect and in the button's title: "No more Garages this run", "No more Kitchens or L-Kitchens this run".
+- **A card from its row takes each place,** drawn on a stream of its own, `draw/<phase>/<slot>/<n>/<row>/strike<m>/<k>` (n: the hand's draw; m: the run's struck types, this one included; k: the slot's place in its row). Like D-121's swaps, it tries up to `swapTries` (3) cards for one with a play. It never shifts another draw: the week's draws don't count it, and a reroll and the next week draw on their own keys, from the smaller pool.
+- **How many:** 1 at the start (the `strikes` rule, so a crew or upgrade could add some), and 1 more at each milestone the run goes on from (`strikesPerMilestone`; none for a missed milestone or the last). Unused strikes are kept. The milestone's banner says "+1 strike."
+- **D-084's floors hold per row** (D-121): at least 5 Rooms and 4 Layout types stay drawable. A card that can't go is hatched in strike mode ("Can't strike") and says why: its row is at its floor, its type is already struck, the weekly draw never deals it (a special piece in the Catalog's hand, a household member's room), nothing else in its row can come up this week, or no strikes are left. With no card in the hand that can go, Strike itself is off, and its title says so.
+- **The floor counts the special pieces this run's client or crew puts in the draw:** the Architect's Playroom, Library, Mudroom and Pool; Count Vladislav's Library; the Barkers' Mudroom. Those can be struck. Content allows draw weights only on clients and crews, so what the floor counts never changes during a run.
+- **The plank holds Reroll, Strike and Demolish.** Strike shows its icon and count where its word doesn't fit, as Demolish does. In the pixel font the plank's title gives way to the three, and Reroll keeps its word on planks from 17.25rem (18.25 with a two-digit count); on narrower planks, windows under about 1,595 px wide, it shows its die and count (D-148's note). The readable font keeps Reroll's word at every width, and its title is "Cards" on planks from 315 px. In either mode, Strike's or Demolish's, the active button says Stop and the other two give up their words, Reroll's included, in both fonts (D-148 already had Reroll give up its word while demolishing). The first job's two-button plank, before Strike arrives, keeps D-148's rules.
+- **The shop's third service is "+1 strike",** at D-084's prices (2 budget, then 1 more each time, up to 5). It names no type, and can't be bought once nothing's left to strike. Its card's title says how many you hold, since the plank isn't on screen in the shop. StrikePicker, the shop's list of 33 names, is gone.
+- **Your goods lists the struck types,** "Struck" then "Garage, Skylight", in the open panel and in the shop. Folded, its plank shows how many beside the reserve's and the supplies' counts, named in its title and the fold button's, and stays up while anything is struck, even on a short window with an empty reserve and supplies.
+  - **A strike never brings Your goods in mid-week.** Whether the struck types show there while building (the panel itself, its Struck row, a short window's folded plank staying up) reads how many were struck when this week's hand was dealt: a count the store takes as a new week's hand is dealt, as a run loads or replays and as one starts, and never on a reroll, the Catalog's redraw or a strike. So where they weren't showing, a run's first strike shows there with the next week's hand, not under its stamp: on the user's 1728×963 window, before milestone 1, the plank coming in would push the hand down as the stamp plays. A folded plank that's already up counts it at once, and once they show, each later strike shows at once.
+- **The beat** (`FEEL.strike`): a red "Struck" plate stamps onto the card with its slip ("No more Garages this run") and red ink, the card drops away, and the new card slides into its slot, over a papery thump (`strike`: the kit's book and thock samples, slowed). 0.86 s in real time. It never holds the game up: the director doesn't go busy, and the next action finishes it at once, a click on the struck card included (it picks the new one). A card struck from the keyboard hands its focus to the new card. With Reduce motion it fades.
+- **The first job** (D-149) brings Strike in at Foundation's second week, a week after Demolish, and the first milestone's banner leaves its strike unsaid. Strike's first-time hint (D-142, 23 words) comes in any run once Strike is on screen with a strike to use, after the opening's hints: "Strike a card: a new one takes its place, its type is gone this run, and the week goes on. Milestones add strikes."
+- **Old run codes replay exactly.** A strike bought in the shop that names a type (D-076) still strikes it and adds no strike. A strike buy naming none, which no build ever logged, now adds a strike.
+- **Sim** (D-089): the default greedy never strikes and never buys one. `--strikes fixed` strikes hand cards by D-084's order, root types first to last (Driveway, Fence, Hallway, Doghouse, Sapling), before anything else in its week, and buys +1 strike while it holds fewer strikes than those types it could still strike.
+- **Three questions for the user, decided on their defaults for now** and to revisit at the playtest:
+  - **Reroll's word in the pixel font** gives way on planks under 17.25rem (the plank, above), where D-148 kept it at every size. The user's 1728×963 window keeps it outside a mode.
+  - **Your goods folded** shows a struck count, and a panel with anything struck is never empty (above), with one change from the default: a strike never brings the panel in mid-week. The alternative was no count, the struck types then only in titles while building.
+  - **The shop and its crates** still sell struck types (Known gaps): leaving out struck types would change old run codes' shops and crates, so they'd no longer replay.
+- **Tests:** `src/rules/strike.test.ts` (how many strikes, the keys, both cards of a type and their draws, the first card tried with a play, no other draw shifted, every reason a card can't go, a Catalog hand, a change order thinned, +1 strike and an old code's typed strike, the words, run codes, determinism) and a property in `properties.test.ts` (a strike keeps the hand's size, the week and the draws); `sim/chaos.test.ts` checks every chaos strike as the whole type, and `greedy.test.ts`, `report.test.ts` and `shop.test.ts` the bot and its report. In the UI: `hud/strike.test.ts` (the mode, refusals, a placement it replaces, focus, the hint, Your goods after a strike), `fx/strike.test.ts` (the beat's steps, never busy, any action ending it, its sounds, the banner's "+1 strike."), `week-stamp.test.ts` (a strike leaves the week's stamp up), `strike-save.test.ts` (a save with a strike reloads on the same build), and the tests of the goods rows, the hints and the first job.
+
+**Sim** (`npm run sim -- --check`, 200 held-out runs an arm, against develop at c6882eb):
+- **Greedy's 200 records are develop's,** and so are those of greedy with early always: the default bot never strikes. Every verdict reads as develop's: random fails by milestone 3 in 100.0% [98.1–100.0], novice passes milestone 1 in 99.0% [96.4–99.7], greedy clears milestones 1–3 in 97.5% and wins 48.5% [41.7–55.4], early always wins 42.0% (−6.5 points [−14.8, +1.8]), the Fence probe's p50 is 2 (68.1%), and the clients' spread fails, unsure, at 30.0 points, as on develop.
+- **Random and novice shop differently from shop 1,** where the strike service is now one buy, not one for each type: 144 of random's 200 records and 112 of novice's are the same, no random run's result or milestones changed, and 4 novice runs cleared one milestone fewer (check-27, -64, -173 and -178). Novice's criterion is decided before the first shop.
+- **The report** names the service "+1 strike" and counts strikes per run: "used 0.00 · bought 0.00 · held at the end 6.26 (none used)", the 1 at the start and 1 for each milestone a run went on from.
+- **`--strikes fixed`** (`--runs 200 --seed check`) wins 50.0% [43.1–56.9] against the default's 48.5%: +1.5 points [−6.5, +9.5], 35 seeds won only with it and 32 only without, final Wow ×0.987 (geometric mean; p50 1.009). It strikes in every run, the first at a median week 2, and a run uses 4.92 strikes, buys 1.10 (+1 strike at 220 of its 1,088 shop visits) and holds 2.48 at the end. Each of its five types is struck in 95.5–99.5% of runs: the Sapling and the Hallway 99.5%, the Driveway 99.0%, the Fence 98.5%, the Doghouse 95.5%.
+- **On develop, `--strikes fixed`** bought typed strikes, 2.05 a run, and won 40.5% [33.9–47.4], −8.0 points [−14.7, −1.3] against its default (16 seeds won only with it, 32 only without). Here it's +9.5 points [+2.0, +17.0] against develop's (40 against 21).
+- **The benchmark gate** (one default greedy run) passes at 566 ms, against develop's 565 (one timing each, at a load of about 5.5). No target re-fit.
+
+**Why:** the user never used the strike: it was a shop service, a list of 33 names away from the card that annoyed them, and nothing showed afterward. On the card, at the moment it's unwanted, a strike pays at once (a new card) and for the rest of the run (the type never comes back), and it's seen: the stamp, the new card sliding in, the Struck row. The sim can't tell strikes from the hand from none (`--strikes fixed` is within noise of the default, which never strikes), so it's a call about feel, and the targets stay.
+**Considered:**
+- **One card only, the type staying:** the draw is a weighted pool of types, not a deck (D-043), so "just this Garage" can only mean this week's card: a one-slot reroll beside Reroll and D-121's free swap. The user chose the whole type.
+- **Free strikes spent in the shop's picker:** keeps the list of names away from the card, and a strike given at the start has nowhere to go until the first shop.
+- **A strike that lasts until the next milestone:** narrower, but its words would need an end date, and the user picked the run.
+- **One click to strike:** a whole type for the run is too much for a stray click. Demolish asks for two.
+- **Dropping the shop's service:** kept as +1 strike at today's prices. Drop it if playtests find strikes plentiful.
+- **Taking struck types out of the shop's stock and crates** (the shop's fixtures and special pieces, the Fixture Crate, the Showroom, and the Garden Center's yard and outbuilding pieces, 13 of whose 16 are weekly-draw types): it would change old run codes' shops and crates, so they'd no longer replay. See Known gaps.
+- **Your goods folded without a struck count:** the struck types would show only in two titles while building, and at 1280×720 the plank, with its fold button, would hide whenever the reserve and the supplies are empty.
+- **The struck types bringing Your goods in at once:** the default as first written. Before milestone 1 a strike would bring the panel in mid-week, moving the hand down under the stamp.
+
+**Changes:**
+- D-084 (Accepted): strikes come free, 1 at the start and 1 at each milestone the run goes on from, are kept, and are used from the hand; the service is +1 strike at its prices and names no type. A dated note there.
+- D-076 (Decided): its shop picker goes; "a few per run" is how strikes come now. A dated note there.
+- D-088 (Accepted): `--strikes fixed`'s shop bot buys +1 strike, and the strikes report counts strikes used, bought and held. A dated note there.
+- D-089 (Accepted): `--strikes fixed` strikes from the hand, and the chaos test strikes too. A dated note there.
+- D-098 (Accepted): the strike picker's sheet goes, Strike joins the hand's plank, and Your goods lists the struck types. A dated note there.
+- D-121 (Accepted): a strike's new card draws like a swap, on its own key; the floor counts the special pieces the run draws; folded, Your goods counts the struck types. A dated note there.
+- D-132 (Proposed): the plank holds three buttons, and in the pixel font its title gives way to them. A dated note there.
+- D-148 (Proposed): Reroll's word on a narrow plank in the pixel font, and in either mode. A dated note there.
+- D-149 (Proposed): Strike arrives in Foundation's second week. A dated note there.
+- D-142 (Proposed): one more first-time hint. A dated note there.
+- `implementation-plan.md`: the state, the actions, the free actions, the events, the transitions, the milestone's reward, the rule keys, the shop's offers, the streams, the first-time hints, the sim's policies and Appendix A's services. `jam-scope.md`: the weekly turns and the starting numbers.
+
+**Checked:** one quick round, at the user's call ("Yes, quick check"), in headless Chrome on frozen dev builds of a standard run (the Hendersons with the General Contractor):
+- **1728×963@2 in the pixel font, and 1280×720 in both fonts:** Strike, then a card clicked twice. The cards stay where they were as the mode starts, as the card is armed and as the stamp lands; the "Struck" plate and its slip ("No more Dining Rooms this run") stay inside the card; a card from its row takes the slot (a Kitchen), Strike's count goes from 1 to 0, Inspect asks "Strike the Dining Room?" while it's armed and leaves the old card during the beat, and there are no console errors. At 1280×720 in the pixel font the cards under the slot move 4 px after the beat, as the new card is taller: a different card, as after a reroll.
+- **The plank:** at 1728×963@2 in the pixel font, Reroll keeps its word, and Strike and Demolish show their icons and counts; at 1280×720, Reroll's word goes in the pixel font and stays in the readable one.
+- **Your goods** (the build's smoke, 1728×963@2): the plank stays hidden after a strike in Groundbreaking's first week and comes in with the next week's hand, its struck count titled "Struck: Living Room".
+- **Not looked at in a browser:** the keyboard's focus passing to the new card, Reduce motion, a strike that takes two cards (a Kitchen and an L-Kitchen; the rules tests have it), the first job's Foundation weeks, three counts on the narrowest folded plank, classic scrollbars, and the sound (headless Chrome is muted).
+
+**Known gaps:**
+- **Not played by a person,** and the sound wasn't heard. Touch, Firefox and Safari weren't run.
+- **Runs in progress drop** when this merges and at the release, as any content change does.
+- **In the pixel font Reroll shows only its die and count** on planks under 17.25rem (windows under about 1,595 px wide), where D-148 named it for the first-timers who missed a bare die. The default for now (above).
+- **The shop and crates can still sell a struck type** (the default for now, above): a fixture (the shop, the Fixture Crate), a special piece (the shop, the Showroom), or a yard or outbuilding piece from the Garden Center crate, which never reads the struck list. 13 of the Garden Center's 16 pieces are weekly-draw types, four of `--strikes fixed`'s five among them (Driveway, Fence, Doghouse, Sapling). "No more" means the weekly draw.
+- **No warning when a strike takes a type the checklist or a change order still wants** (the only Kitchen): the bold line in Inspect says what goes. A strike can make a running change order's request unmeetable (striking the Home Office while *Working from home* runs, with none in the reserve), and it thins later offers: a request whose piece is neither in the draw nor in the reserve isn't offered (`skipReason`).
+- **Your goods folded** (the default under 1100 px tall) shows only how many types are struck; their names are in its titles. Unless its folded plank is already up, a run's first strike shows in Your goods only with the next week's hand, and until then only Strike's title names it. Before milestone 1, with nothing in the reserve or the supplies, the panel then comes in as that hand is dealt, moving the hand down. Up to 800 px tall the folded plank then stays up for the rest of the run, where it used to hide while the reserve and the supplies were empty. Three counts on the narrowest plank weren't measured.
+- **A struck card in the Catalog's hand** is replaced from the weekly pool, not the Catalog's special one (a test pins it).
+- **The first job's first shop sells +1 strike** a week before Strike shows on the plank.
+- **A first job whose Foundation ends in its first week** (Complete early, or Auto after that week's tally) shows Strike from the next milestone without its entrance ring; its hint still comes.
+- **No "Next time" tip (D-150) for strikes left unused** after a loss: a follow-up if the playtest finds strikes still unused.
+- **The sim doesn't model the first job's reveal:** `--first-job --strikes fixed` strikes from week 1.
+- **No sim run reached a row's floor,** and no chaos strike took two cards of one type at once (32 hand strikes over its 10 seeds): the rules tests hold both, the second with a Kitchen and an L-Kitchen in one hand.
+- **The plank wasn't checked on a browser with classic scrollbars,** only with their widths taken off.
+
+**2026-11-12 (D-160, Proposed):** a strike of the Hallway or the Fence leaves the standing stock alone: the type is never drawn again, and the stock still keeps one waiting in the reserve. "No more" means the weekly draw, as with the shop and crates.
+
+### D-159 · Fences that join, and Hallways that open into each other
+**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: art only, merged that day for their look. Proposed 2026-11-12, a fix pull request (`fix/fences-and-halls-join`), from the outside playtester's notes the same day (D-158's). Art only: how the board draws Fences and touching Hallways (`src/ui/art/yard.ts`, `src/ui/board/house-model.ts`, `src/ui/art/rooms.ts`). No rule, content, scoring, save or run-code change, and `contentHash(CONTENT)` is unchanged, so saves and run codes carry over (#54). It changes the art of Accepted D-093, D-097, D-100 and D-106 (below), so the user merges it after a look.
+**Decision:**
+- **Two Fences that meet end to end in one line are one run,** with no post between them (`fenceArms` in `yard.ts`). In a corner or a T they join as before. Side by side along their lengths they stay two lines, not a grid.
+- **A one-tile pack joins every Fence beside it.** Where what it meets, a Fence or a wall, is only north or south of it, it stands upright with a post at each end. Beside nothing it's still a short run across.
+- **A Fence reaches the house,** which closes a yard as a Fence does:
+  - An end beside a wall runs into it: straight on, its end post against the wall (as before), or turning into it from the middle of its cell.
+  - A run alongside the house is tied to the wall at each end of the stretch, by a corner or a T, and runs straight past in between.
+  - Where it touches the house only at a corner, a post on its cell's corner and a strip to the house's corner close the gap. Two Fences touching only at a corner meet the same way.
+- **The lot's back and sides count as walls here,** as they bound the rules' fill: a Fence along one turns out to it at each end, and a one-tile pack in the back row stands upright. The street side never does, since a yard that reaches the street is never fenced. The ghost and the cards' and the shop's pictures leave the edges out, so a Fence's ghost is still the Fence alone.
+- **So a yard looks closed exactly where the rules count one.** The fenced-yard fill (`computeLayout`, D-105) spreads through every tile that isn't the house's or a Fence's, side to side only, within the lot, so a diagonal touch closes a passage. The drawing closes every passage the fill closes, and no other.
+- **Touching Hallways open into each other** (`buildModel` in `house-model.ts`): the edge between two connector pieces (the Hallway, the Long Hallway) has no wall band, stub, threshold, face or shadow, and the door tree puts no doorway there, so joined halls read as one corridor.
+  - **Rooms never merge** (D-093): a wall stands between every two rooms, and between a room and a hall. Hallways still open into every room the rules link through them.
+  - **One runner** (`hallRun` in `rooms.ts`): halls lying the same way in one row or column, joined end to end, carry their runners on to each joint in one band, so the runners read as one, their checks in step. Where a hall meets another from the side or round a corner, each runner ends short of the other.
+  - Nothing stands against a south wall that isn't there: a hall's furniture keeps off an open joint, so its walkway runs on.
+  - **Each piece is still its own:** hover and Inspect pick it alone, and it keeps its digit and its earnings label. Scoring doesn't change.
+
+**Why:** the playtester's words: "my second fence didn't connect to my first fence and become one fence", it "also didn't connect to the house it was next to", and "these hallways don't visually connect". The rules already took each as joined: Fences and the house close a yard together, and a hall links the rooms along it. The art didn't say so:
+- two Fences end to end kept a post each at the joint (D-100: "so each stays countable");
+- a Fence alongside the house ran down the middle of its cells, half a cell of grass from the wall, and one touching it at a corner stopped short of it;
+- a wall band and a doorway stood between two touching Hallways (D-093's wall between every two pieces).
+
+**Considered:**
+- **One post at an end-to-end joint:** a post mid-line still reads as two fences meeting. None reads as one fence, and the digits still say there are two.
+- **An arm to the wall from every tile alongside the house:** a ladder of spurs. The rules need only the ends, where the yard closes.
+- **Merging touching Fences in the rules** (one piece, one payout): a rule and content change, not this fix. The enclosure payout stays one per pack (D-106).
+- **Carrying the runner round a corner:** LimeZu's runner has no corner piece, and a cut of our own would have to turn its checks. Two runners ending cleanly read as one hall turning.
+- **Opening a room into a touching room of its type,** the team's Parked "merged rooms" (D-100's playtest 5a note): not here. Only halls, which join the rooms rather than being one, open into each other.
+
+**Checked:**
+- **In headless Chrome,** at 1600×900 with a devicePixelRatio of 2 and at 1920×1080 with 1, against develop at f9c0d06: one run code, built through the ?debug store and opened in both builds. A Bedroom; a Hallway and a Long Hallway end to end; a Hallway turning the corner; four Fences (one along the Bedroom's west wall and on past it, one meeting its end at a corner, one end to end with that one, one whose end stops beside the hall). The rules count the 12 tiles between them as a fenced yard (the Hendersons' "A fenced yard" holds), closed where a Fence's end touches the hall at a corner. Before, the yard looked open there and along the Bedroom's wall. Inspect named each Hallway piece alone, with its own earnings, at both sizes. The pull request has the before and after screenshots (`docs/playtests/fences-halls-join-*`).
+- **`yard.test.ts`:** end to end with no post, an end into a wall both ways, a stretch alongside tied at each end, a one-tile pack upright, a corner touch, the ghost still the Fence alone, and a property over 400 random lots (Closets, Bedrooms and up to five Fence packs of 1–6 tiles on a 9×9 lot). It floods the drawing pixel by pixel, with the house's cells and the Fences' opaque pixels as walls, and finds the rules' regions, every fenced yard `computeLayout` counts one region of its own. It passed at 6,000 runs once. Lots with two packs side by side (Known gaps) are left out.
+- **`house-model.test.ts`:** touching Hallways open into each other with no wall or doorway, never into a room, and every room is still reached. **`rooms.test.ts`:** one runner through halls end to end, ends clean at a corner or a side, the walkway clear through a joint.
+- `npm test` (2,191) and `npm run typecheck`.
+
+**Known gaps:**
+- **Two Fences side by side along their lengths** stay two lines with grass between them, as before, so the strip can look like a path where the rules see Fence.
+- **Doorways from joined halls:** each Hallway piece still opens into every room the rules link through it, so a room beside two joined halls can have two doorways from what now reads as one hall.
+- **Two Hallways side by side** along their lengths open into each other too: a hall two cells wide, with two runners.
+- **Runners don't turn corners** (Considered).
+
+**Changes:**
+- D-093 (Accepted): touching connectors open into each other; rooms still never merge. A dated note there.
+- D-097 and D-100 (Accepted): "a wall between every two pieces" leaves out two touching Hallway pieces, with no doorway between them; D-100's Fences no longer keep an end post each where they meet end to end, and they reach the house. A pointer in each.
+- D-106 (Accepted): Fences share a line where they meet and reach the wall. A dated note there.
+- `implementation-plan.md` §12 Art: the walls and the Fence paragraph.
+
+### D-160 · Pieces you can count on: a Hallway and a Fence always in stock, and clients who bring what their wishes name
+**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: "I also like the addition of the guaranteed hallways/fences". They asked for the stock from the start of a run, which D-162 (Proposed) builds. Proposed 2026-11-12, a phase pull request (`phase/pieces-you-can-count-on`), from an outside playtester's notes the same day: "I'd kill for a ... hallway ... certain pieces should just always be available maybe?", and "I never even got a home office the first time I did the two home office contract". They also read "under one roof" as something it isn't. Item 3 of that playtest's plan, in a session the user started. It adds to D-103's extra slots and renames one of D-101's house rules. The weekly draw is unchanged: D-055's weights, D-121's rows, and D-157's strikes and `strikeMinTypes`. A rules and content change: `contentHash(CONTENT)` goes from `153cddb5` to `79662776`, so runs in progress are dropped when it merges (on /dev/) and at the next release (#54's check). For the user's playtest before it merges.
+**Decision:**
+- **A standing stock** (`standingStock` in `balance.ts`): from Foundation on, at the start of each milestone the reserve's extra slots are topped up so they hold one Hallway and one Fence pack. Only what's missing comes. A card of the type already waiting in an extra slot counts (the General Contractor's starting Fence, an arrival's or the client's card), and one bought or copied into the reserve's own slots doesn't. So the stock never brings two of either, and one placed this milestone comes back at the next. Overtime weeks bring nothing.
+  - **Placing one is the week's build,** like any reserve piece. Stock cards are marked `stock` and sit in extra slots, so they never take one of the reserve's 2 (`inExtraSlot` in `shop.ts`).
+  - **Both types stay in the weekly draw** (the Layout row), with their weights, the strikes and the floor as they were. A strike of the Hallway or the Fence leaves the stock alone: the type is never drawn again, and the stock still keeps one waiting.
+  - **A first job** (D-149) gets its first stock in Foundation's third week (`firstJobSlot` 3), not its first. Foundation's first week already brings Demolish, the budget, overtime and Complete early, and its second brings Strike (D-157): one new thing a week. A first job whose Foundation ends sooner gets the stock at Framing's start, as any run does.
+- **A client brings what its wish names** (`ClientDef.deliveries`: a phase, the cards, a line for the job board). The cards land at the start of that phase's first week, right after the household's arrivals, marked `client`, in extra slots. Dale brings one Home Office and the Barkers one Doghouse, in week 1 ("Dale brings one of his two Home Offices."). A delivery isn't a household member: it never moves Room for everyone, isn't in `arrived`, and gets no doorbell or banner. The fenced-yard wishes (the Hendersons' A fenced yard, the Barkers' A big fenced yard) are served by the stock's Fence.
+  - `validateContent` checks each delivery (a phase the run has, its line, at least one card, no member's room, a line on that client's checklist that names the card) and the stock (known pieces in the weekly draw, no duplicates, a phase the run has, a first job's week inside the milestone).
+- **Events:** `delivered` (`from: 'client' | 'stock'`, the phase, the cards), in the order `arrived`, the client's `delivered`, the stock's `delivered`, then `handDrawn`.
+- **Your goods** (D-098) tags each extra-slot card with where it came from: "Crew", the member ("Twins", "Grandma"), the client ("Dale", "Barkers") or "Stock", and its tip says whose it is ("Hallway (from your stock): place it as this week’s build"). Inspect's note on it reads "From your stock: another comes at the next milestone once it’s placed" or "Dale brought it", then says it's in an extra slot. A card that comes pops into its slot with a soft sparkle (`FEEL.delivered`, 0.52 s), after the doorbell if a member moved in that week.
+- **The job board** (D-142's fine print) says what Dale and the Barkers bring, beside a crate: "Dale brings a Home Office", "The Barkers bring a Doghouse". Its tip says when ("Groundbreaking (week 1): …") and that placing it is a week's build.
+- **A first-time hint** (D-142, 25 words), "Always in stock", once the stock is in the reserve: "A Hallway and a Fence wait in Your goods, top right, until you need them. Each is a week’s build, and another comes next milestone." It says "until you need them", not "place one": the novice bot, which plays a random card, spent weeks on stock cards that earn little alone. How to play's A week (D-158) gets one line, "Always in stock: from Foundation on, a Hallway and a Fence wait in your reserve until you want one. Placing one is a week's build, and the next milestone brings another.", and the reserve's glossary entry adds the stock to what its extra slots hold.
+- **"Under one roof" is now "A compact house"** (D-101), still `underOneRoof` in code, so saves, run codes and the sim's records keep their key: "4+ rooms that fill at least 60% of the box around them, and the box is no longer than twice its width." The tester read the old name as "everything connected", which is the placement rule. The plan, the code's comments and this log's notes on the current rules use the new name; `house-systems-review.md`, `layout-proposal.md` and the design and playtest notes keep the old one, as written then.
+- **Sim** (D-089): the run record counts reserve plays by where the card came from (`reservePlays`), and the report says so after the Fences' line ("Reserve cards played per run: the stock 3.12 · the client’s 0.29 · the crew’s 0.00 · arrivals’ 1.03 · bought or copied 0.36"). No bot changed: they already play reserve cards. The chaos test checks a stock card's and a client's card's placement, and every stock top-up.
+- **Tests:** `src/rules/stock.test.ts` (the top-up from Foundation, only what's missing, the crew's Fence counting and a bought one not, overtime, the first job's third week and its early finish, extra slots, a week's build, a strike leaving it, an empty list, replays, Dale's week-1 card and the events' order), `households.test.ts` (the Hendersons' run with the stock, `validateContent`'s checks, Dale's and the Barkers' week-1 cards and the wishes they serve, the stock's settings), `hud/household.test.ts` (the tags and Inspect's words), `job-card.test.ts` (the line and its tip) and the chaos test.
+- **Questions for the user, decided on their defaults for now** and to revisit at the playtest:
+  - **The Barkers' Doghouse comes in week 1,** as asked, a milestone before the stock's Fence. It earns nothing outside a fenced yard, and the novice bot places it at once (Sim, below). Delivering it at Foundation is a one-line change (`phase: 1`).
+  - **A first job's stock waits for Foundation's third week** (above). A milestone later was the other choice; Framing is far for a newcomer who wants a Hallway.
+
+**Sim** (`npm run sim -- --check`, 200 held-out runs an arm on `check-0` to `check-199`, the General Contractor, against develop at dcad8da from frozen copies; then 200 greedy runs per client on the same seeds, and 300 novice runs per client on `pt7`, the playtest's seeds):
+
+| | develop | D-160 |
+|---|---|---|
+| Greedy wins (`--check`) | 48.5% [41.7–55.4] | 49.5% [42.6–56.4] |
+| Hallways placed per run (Long Hallways) | 0.58 (0.54) | 2.00 (0.33) |
+| Fences placed per run | 0.56 | 1.60 |
+| Runs ending with a fenced yard | 33.0% | 58.0% |
+| Dale's Two Home Offices at the end (greedy) | 89.5% | 96.0% |
+| The Barkers' Two Doghouses (greedy) | 23.0% | 37.0% |
+| The Barkers' A big fenced yard (greedy) | 42.0% | 51.0% |
+| The Hendersons' A fenced yard (greedy) | 50.0% | 66.0% |
+| Novice on Dale: no Home Office ever to hand | 11.0% | 0% |
+| Novice on Dale: at most one to hand | 38.0% | 9.7% |
+| Novice on Dale: Two Home Offices at the end | 9.3% | 28.3% |
+| Novice on the Barkers: Two Doghouses at the end | 3.0% | 15.3% |
+
+- **Every §8 verdict reads as develop's.** Random fails by milestone 3, novice passes milestone 1, greedy clears milestones 1–3 (unsure) and wins 40–50% (unsure), early completion is live (always −9.5 points [−18.0, −1.0] against never; −6.5 on develop), and the Fence probe passes. The clients' spread still fails, unsure, at 20.0 points (30.0 on develop): the Hendersons 47.5%, Count Vladislav 55.0%, the Barkers 45.0%, Juniper Vale 40.0%, Dale 60.0%. Greedy stays inside 40–50%, so no re-fit.
+- **The bots play them.** Greedy places 3.12 stock cards a run and 0.29 of the client's (0.99 on Dale's job, 0.47 on the Barkers'); novice 1.50 and 0.35 (0.86 and 0.87). Per client, greedy wins 54.0% of Dale's jobs (48.0%), 45.0% of the Barkers' (44.5%) and 47.5% of the Hendersons' (51.0%), each within noise.
+- **Novice passes Foundation less often:** the Hendersons' first job 17.0% (21.0%; Groundbreaking 99.7% both), Dale's 4.7% (6.0%), the Barkers' 7.3% (14.3%). It plays a random card at its best spot, so the stock's cards take its weeks as often as any other. On the Barkers' job it also places the Doghouse in week 1, where it earns nothing: Groundbreaking's p50 Wow goes from 35 to 29, and on time from 86.7% to 67.0% (met 98.3%, from 99.7%). No novice run fences a yard, before or after.
+- **The benchmark gate fails.** One greedy run on bench-12 takes 1.41 s in the check (develop 0.57 s), and 1.54–1.56 s run back to back with develop's 0.75 s, over its 1 s. The stock's Fence is in the reserve nearly every week, so greedy ranks its pack's suggested shapes all over the yard (42,290 of the run's 78,243 estimates) and the yard planner runs every week. Bots only: the UI never runs one. Greedy's recall test scores every legal play, 57,336 of them now (24,272 on develop), so its timeout goes from 60 to 120 s. The report test's whole greedy run took 6.1 s on CI (4.1 s before), past the default 5 s, so it gets 20 s. CI's sim job took 6 minutes on develop's last pull request and will take longer, inside its 20.
+
+**Why:** the weakest cards are the ones a house most often needs once: a Hallway to link rooms, a Fence to close a yard. At complexity 3 they're drawn at 5% in milestone 1 and 25% in milestone 2 (D-055), so half of runs saw no Hallway by week 8, and for clients that don't favor it 69% saw no Fence. More of them in the draw isn't the answer: they're the first cards the strike bot strikes, and they'd crowd out the rooms. Waiting in the reserve, they're there when the player wants one and cost no draw. A wish that names a special card waited on the draw the same way: a novice on Dale's job never saw a Home Office in 11% of runs.
+**Considered:**
+- **More weight, or a lower complexity:** more of the weakest cards in every hand.
+- **A stock from Groundbreaking:** milestone 1 is a few rooms and a first look at the board; Hallways and Fences matter once there are rooms to link and a yard to close.
+- **The stock as a shop service or a crate:** the first shop is after milestone 1, and a choice there is one more thing to learn. In the reserve it's just there.
+- **Deliveries as household members:** a member moves Room for everyone and brings a banner; what a client brings is just a card.
+
+**Changes:**
+- D-043 (Accepted): two kinds of pieces come from outside the weekly draw now, the stock and the client's deliveries. A dated note there.
+- D-055 (Accepted): the Hallway and the Fence keep their weights, and the stock keeps one of each waiting from Foundation on. A dated note there.
+- D-093 and D-101 (Accepted): Under one roof is A compact house, with the same id and numbers. A dated note on each.
+- D-103 (Accepted): the extra slots also hold the client's cards and the stock's, and a phase's first week brings deliveries after arrivals. A dated note there.
+- D-098, D-121 and D-127 (Accepted): Your goods' tags; the stock waits outside the rows; "Topped out!" plays when A compact house first holds. A dated note on each.
+- D-089 (Accepted): the report's reserve line, the chaos test, and the recall test's numbers. A dated note there.
+- D-142, D-149 and D-157 (Proposed): the stock's hint and the job board's line; a first job's stock in Foundation's third week; a strike leaves the stock alone. A dated note on each.
+- `implementation-plan.md`: the state, `ClientDef`, the events, `newRun`, the start of week, and Appendix A's slots, house rules, stock and deliveries. `jam-scope.md`: the weekly turns, the clients and the starting numbers.
+
+**Checked:** one round in the dev build, in the browser pane: the job board's line and tip on Dale's card; Dale's week-1 Home Office in Your goods, tagged "Dale", and its Inspect note; the stock's Hallway and Fence tagged "Stock" from Foundation, the hint and Inspect's note; no console errors. Not looked at: a first job's third week, the pop and its sound, Reduce motion, the Barkers' card, narrow windows in the pixel font, touch.
+
+**Known gaps:**
+- **Not played by a person.**
+- **Runs in progress drop** when this merges and at the release. A run code from an earlier build loads with "The content has changed since it was made" and replays up to its first reserve play from Foundation on (from week 1 on Dale's and the Barkers' jobs): the stock's and the client's cards now sit ahead of later buys, so an old index can name another card.
+- **A player who places whatever's there** may spend weeks on stock cards, as the novice bot does (Sim). The hint says "until you need them". If the playtest finds that, the stock could start at Framing.
+- **Strike's words say "No more Fences this run",** and the stock still brings one each milestone: "no more" means the weekly draw, as with the shop and crates (D-157).
+- **The stock tops up only at a milestone's start:** one placed in a milestone's first week isn't back until the next. Inspect's note says so.
+- **The benchmark gate fails** (1.4–1.6 s against 1 s), and bot-heavy tests run slower. A follow-up can make greedy cheaper on Fence packs, for instance by ranking a pack's suggested shapes only where they could close a yard or count for a line, once the playtest has settled the stock.
+- **Greedy's recall test asks 80%** (85% before): on its 5 seeds the shortlist found the exact best in 15 of 18 states, losing 0.5%, and on 20 seeds 63 of 71 (66 of 73 on develop), noise rather than a slip.
+
+**2026-11-12 (D-161):** the benchmark gate passes again, at 0.82–0.86 s (1.53–1.59 s before). The bots rank only the few of the stock Fence's open-ground plays that the shortlist can reach, and every run plays as before.
+
+**2026-11-12 (D-162, Proposed):** the stock comes from week 1 in any run but a first job, which keeps Foundation's third week as a setting of its own (`firstJobPhase`, `firstJobSlot`). "A stock from Groundbreaking" under Considered is what the user asked for: "available from the start of the round". The Barkers' Doghouse stays in week 1, now with the stock's Fence the same week, which answers the first question above. The decision's "the General Contractor's starting Fence" is the Landscaper's: the General Contractor starts with no cards.
+
+*Changed by D-163 (Proposed 2026-11-12):* placing a stock card or the client's doesn't use the week, and the stock comes once, at Foundation's start (a first job's third week), with no top-up after (`standingStock.refill: false`): topped up and free, it was about two more builds a milestone. The hint is "Free to place": "A Hallway and a Fence wait in Your goods, top right, until you need them. Placing one doesn’t use your week." How to play's line, Your goods' tip and Inspect's note say the same, and Inspect's note no longer says another comes.
+
+### D-161 · The bots rank only a few of a Fence card's plays out in the open, and the benchmark gate passes again
+**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: speed only, and every sim run plays as before. Proposed 2026-11-12, a fix pull request (`fix/greedy-fence-packs`), the follow-up D-160's known gaps name, started once the user had merged D-160 (#73). D-160's standing stock keeps a Fence pack in the reserve nearly every week, and the sim's benchmark gate (§4) failed at 1.5 s against 1 s. Speed only: no rule, content, scoring, save or run-code change, and `contentHash(CONTENT)` is unchanged, so saves and run codes carry over (#54). Every bot plays as before, move for move: `npm run sim -- --check` gives the same runs.
+**Decision:**
+- **Open ground** (`openGround` in `sim/enclosure.ts`): a Fence pack's play whose tiles touch no piece, where the tiles around them (diagonals too) that are on the lot and aren't walls make one connected ring that reaches the street, through a tile on the street row if the play has one there. The rules' estimate values all of a card's open-ground plays alike, with no hint. The Fence earns only through its yard (D-106), its checklist lines don't depend on where it stands, and no neighbor gains or loses by it. Nor can it close a yard: every region beside its tiles holds a tile of the ring, so they're one region, and any way it had to the street that crossed the new tiles leaves them through the ring, so it still reaches the street.
+- **The bots rank only the first few of them** (`withoutLookalikes` in `greedy.ts`): for each card, the open-ground plays with the lowest tie keys, as many as the ranking can reach. That's 12 for greedy's shortlist (its top 12, and each card's best 2), 8 for the shop bot's placements and 6 for the novice's. Equal estimates rank by tie key (D-089), so a cut at that many never reaches the rest, and leaving them out moves no other play: the shortlist is the one every play ranked gives.
+- **The yard planner** (`candidateYards`, for `fencePlans`) skips the rectangles that can't give a one-pack run. Prefix sums count a rectangle's free tiles and those beside the house, and its boundary is walked along its edge, stopping at the ninth tile or one that can't take a Fence. Its plans are the same as before.
+- **The rules list a card's spots without checking its pack shape again at each one** (`checkSpot` in `run.ts`): `placementShapes` lists only shapes that pass. `checkPlay` still checks any play it's given.
+- **The layout's fenced-yard fill finds the tiles beside each one by index** (`computeLayout`), not through `ORTHOGONAL` and two helper calls. Every exact score fills the whole lot, and it was the hottest loop left. The same tiles, in the same order.
+
+**Numbers:**
+- **The benchmark gate** (`npm run sim -- --bench`, one greedy run on bench-12, frozen copies run back to back, five rounds): develop before D-160 (a76326f) 744–765 ms; D-160 (46c1b9f) 1,534–1,585 ms; this 822–857 ms. PASS. Along the way: listing spots without the shape check took it to 1.35 s, the yard planner to 1.06 s, ranking few open-ground plays to 0.90–0.98 s, and the layout fill to 0.82–0.86 s.
+- **Estimates in that run:** 32,631 (78,243 on D-160, 29,520 before it); the stock Fence's 6,075 (51,687). Exact scores: 1,391 on both. The yard planner: 19 ms of a profiled run (284 ms).
+- **Greedy's recall test** takes 14 s against D-160's 21 s, back to back. It still scores all 57,336 legal plays, so its 120 s timeout stays.
+- **Checked the same:** on 36 greedy runs across the five clients (1,112 decisions; 2.38 million of their 2.62 million Fence plays on open ground), every open-ground play estimated as the rest of its card's, and greedy's shortlist, the shop bot's top 8 and the novice's top 6 matched the ranking of every play. The old and new yard planners agreed on all 724 decisions of 24 runs (`fencePlans` at 8 and 100 tiles, `enclosureCost`).
+
+**Sim** (`npm run sim -- --check`, 200 held-out runs an arm on `check-0` to `check-199`, the General Contractor, D-160 at 46c1b9f against this, from frozen copies, two jobs at once): all 800 run records are the same, field for field, apart from each run's time, and the two reports differ only in their timing lines.
+
+| | D-160 | D-161 |
+|---|---|---|
+| Greedy wins | 49.5% [42.6–56.4] | 49.5% [42.6–56.4] |
+| Hallways placed per run (Long Hallways) | 2.00 (0.33) | 2.00 (0.33) |
+| Fences placed per run | 1.60 | 1.60 |
+| Runs ending with a fenced yard | 58.0% | 58.0% |
+| The Hendersons' A fenced yard (held at the end, 40 runs) | 75% | 75% |
+| The Barkers' A big fenced yard | 53% | 53% |
+| The Barkers' Two Doghouses | 38% | 38% |
+| Dale's Two Home Offices | 98% | 98% |
+| Greedy's time per run, p50 (max) | 1,035 ms (1,853) | 536 ms (1,225) |
+| The whole check | 388 s | 197 s |
+| The gate, at the check's end | 1,285 ms, FAIL | 622 ms, PASS |
+
+**Why:** the stock's Fence lists its pack's suggested shapes all over the lot: 51,687 of the bench run's 78,243 estimates were its. Nine in ten are out in the open, where the estimate can't tell them apart, so only the few the shortlist reaches matter. The gate is §4's promise that a sim of 200 runs stays quick, and CI's sim job prints it on every pull request.
+**Considered:**
+- **Ranking a pack's shapes only where they could close a yard, touch the house or a Fence, or flip a line** (D-160's suggestion): a Fence anywhere flips a count line, and which tied spots reach the shortlist would change, and so would play.
+- **Scoring Fence packs through the planner and a few chosen shapes:** changes play too, and the planner finds only rectangles.
+- **Cutting the top-K, or worker threads** (§4's advice): the cost was estimating plays that never reach the top 12, and threads don't make one run faster.
+
+**Changes:**
+- D-089 (Accepted): the gate passes again, and the recall test's time. A dated note there.
+- D-160 (Proposed): its known gap about the gate. A dated note there.
+- `implementation-plan.md` §4: the sim's line on ranking, and the gate's advice (profile first).
+
+**Known gaps:**
+- **`openGround` knows what the estimate reads.** If the Fence earns another way, or the estimate learns where a piece stands for a Fence, a card's open-ground plays may stop tying. `greedy.test.ts` checks on real states that they tie, and that the shortlist is the one every play ranked gives, so such a change fails a test instead of shifting play.
+- **The gate has about 15% to spare here,** and CI's runner swings by a third (develop's last three pull requests read 729–960 ms there). What's left of D-160's cost is exact scoring: bigger houses, and the stock's Hallway and Fence scored each week.
+
 ## Proposed
 
 *Reserved numbers (2026-11-10): D-115 to D-118 are the layout session's drafts, not in this file yet; D-122 (legibility) is logged below. D-132 to D-134 are playtest 5's fixes, each logged by its own pull request: D-132 one reroll for both rows of the draw, D-133 the roof view, D-134 three more tracks. D-135 and D-136 are M6's end screen (D-135 the result line and link preview, D-136 the milestone photos); D-137 and D-138 belong to the release-day sessions. D-139 is the company's record. D-140 to D-146 are the friction batch, from the 2026-11-10 review's seven points: D-140 the Garage and the Driveway, D-141 what a blueprint is worth and its icon, D-142 first contact, D-143 the blueprint shelf, D-144 change orders two at a time, D-145 the lot and the last stretch, and D-146 the batch's one re-fit. D-147 takes the roof out again (the user's call, logged under Accepted). D-148 is the first-timer legibility batch before the showing, from the 2026-11-10 polish review (logged below). D-149 is the first job, from the first showing (2026-11-11, logged below). D-150 is the end screen's lead into the next run, from the evening's what-next survey (`fix/retry-after-loss`, logged below). D-151 is the first job's gentler targets (`phase/first-job-targets`, logged under Accepted). D-152 to D-157 are the 2026-11-11 playtest's: D-152 Copy run code on the end screen's plank (fix/playtest-6-bugs, logged below), D-153 Full House's progress on its set chip (fix/full-house-progress, logged below), D-154 the week cue, D-155 life on the lot and D-156 your houses on the street (each logged by its own pull request), and D-157 strikes from the hand (`phase/strike-from-hand`, logged below). D-158 to D-160 answer an outside playtester's notes (2026-11-12): D-158 the tutorial fixes (`phase/tutorial-fixes`, logged below), D-159 fences that join and Hallways that open into each other (`fix/fences-and-halls-join`, logged below), and D-160 pieces you can count on (`phase/pieces-you-can-count-on`, logged below). D-161 makes the bots cheaper on D-160's Fence (`fix/greedy-fence-packs`, logged below). D-162 to D-164 are the core-loop batch from the 2026-11-12 gap analysis, each logged by its own pull request: D-162 the standing stock from week 1 (`phase/stock-from-week-1`, logged below), D-163 a piece from Your goods that doesn't use the week, and D-164 yard sets. D-165 to D-170 are reserved for the batch's later work. New entries start at D-171.*
@@ -2577,175 +3888,6 @@ The hand's chip rows were also measured against a develop build at 11 window siz
 - **At 1280×720 more words are in view** (Inspect's idle prompt), though fewer numbers, as measured above.
 - **Not played by a person.** Checked once in headless Chrome: a tally's rows sliding in and away, the switch beside Complete early and turned on, the wishes' row opened and folded. Touch, Firefox and Safari weren't run, and nothing was measured with D-165's checklist.
 
-### D-161 · The bots rank only a few of a Fence card's plays out in the open, and the benchmark gate passes again
-**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: speed only, and every sim run plays as before. Proposed 2026-11-12, a fix pull request (`fix/greedy-fence-packs`), the follow-up D-160's known gaps name, started once the user had merged D-160 (#73). D-160's standing stock keeps a Fence pack in the reserve nearly every week, and the sim's benchmark gate (§4) failed at 1.5 s against 1 s. Speed only: no rule, content, scoring, save or run-code change, and `contentHash(CONTENT)` is unchanged, so saves and run codes carry over (#54). Every bot plays as before, move for move: `npm run sim -- --check` gives the same runs.
-**Decision:**
-- **Open ground** (`openGround` in `sim/enclosure.ts`): a Fence pack's play whose tiles touch no piece, where the tiles around them (diagonals too) that are on the lot and aren't walls make one connected ring that reaches the street, through a tile on the street row if the play has one there. The rules' estimate values all of a card's open-ground plays alike, with no hint. The Fence earns only through its yard (D-106), its checklist lines don't depend on where it stands, and no neighbor gains or loses by it. Nor can it close a yard: every region beside its tiles holds a tile of the ring, so they're one region, and any way it had to the street that crossed the new tiles leaves them through the ring, so it still reaches the street.
-- **The bots rank only the first few of them** (`withoutLookalikes` in `greedy.ts`): for each card, the open-ground plays with the lowest tie keys, as many as the ranking can reach. That's 12 for greedy's shortlist (its top 12, and each card's best 2), 8 for the shop bot's placements and 6 for the novice's. Equal estimates rank by tie key (D-089), so a cut at that many never reaches the rest, and leaving them out moves no other play: the shortlist is the one every play ranked gives.
-- **The yard planner** (`candidateYards`, for `fencePlans`) skips the rectangles that can't give a one-pack run. Prefix sums count a rectangle's free tiles and those beside the house, and its boundary is walked along its edge, stopping at the ninth tile or one that can't take a Fence. Its plans are the same as before.
-- **The rules list a card's spots without checking its pack shape again at each one** (`checkSpot` in `run.ts`): `placementShapes` lists only shapes that pass. `checkPlay` still checks any play it's given.
-- **The layout's fenced-yard fill finds the tiles beside each one by index** (`computeLayout`), not through `ORTHOGONAL` and two helper calls. Every exact score fills the whole lot, and it was the hottest loop left. The same tiles, in the same order.
-
-**Numbers:**
-- **The benchmark gate** (`npm run sim -- --bench`, one greedy run on bench-12, frozen copies run back to back, five rounds): develop before D-160 (a76326f) 744–765 ms; D-160 (46c1b9f) 1,534–1,585 ms; this 822–857 ms. PASS. Along the way: listing spots without the shape check took it to 1.35 s, the yard planner to 1.06 s, ranking few open-ground plays to 0.90–0.98 s, and the layout fill to 0.82–0.86 s.
-- **Estimates in that run:** 32,631 (78,243 on D-160, 29,520 before it); the stock Fence's 6,075 (51,687). Exact scores: 1,391 on both. The yard planner: 19 ms of a profiled run (284 ms).
-- **Greedy's recall test** takes 14 s against D-160's 21 s, back to back. It still scores all 57,336 legal plays, so its 120 s timeout stays.
-- **Checked the same:** on 36 greedy runs across the five clients (1,112 decisions; 2.38 million of their 2.62 million Fence plays on open ground), every open-ground play estimated as the rest of its card's, and greedy's shortlist, the shop bot's top 8 and the novice's top 6 matched the ranking of every play. The old and new yard planners agreed on all 724 decisions of 24 runs (`fencePlans` at 8 and 100 tiles, `enclosureCost`).
-
-**Sim** (`npm run sim -- --check`, 200 held-out runs an arm on `check-0` to `check-199`, the General Contractor, D-160 at 46c1b9f against this, from frozen copies, two jobs at once): all 800 run records are the same, field for field, apart from each run's time, and the two reports differ only in their timing lines.
-
-| | D-160 | D-161 |
-|---|---|---|
-| Greedy wins | 49.5% [42.6–56.4] | 49.5% [42.6–56.4] |
-| Hallways placed per run (Long Hallways) | 2.00 (0.33) | 2.00 (0.33) |
-| Fences placed per run | 1.60 | 1.60 |
-| Runs ending with a fenced yard | 58.0% | 58.0% |
-| The Hendersons' A fenced yard (held at the end, 40 runs) | 75% | 75% |
-| The Barkers' A big fenced yard | 53% | 53% |
-| The Barkers' Two Doghouses | 38% | 38% |
-| Dale's Two Home Offices | 98% | 98% |
-| Greedy's time per run, p50 (max) | 1,035 ms (1,853) | 536 ms (1,225) |
-| The whole check | 388 s | 197 s |
-| The gate, at the check's end | 1,285 ms, FAIL | 622 ms, PASS |
-
-**Why:** the stock's Fence lists its pack's suggested shapes all over the lot: 51,687 of the bench run's 78,243 estimates were its. Nine in ten are out in the open, where the estimate can't tell them apart, so only the few the shortlist reaches matter. The gate is §4's promise that a sim of 200 runs stays quick, and CI's sim job prints it on every pull request.
-**Considered:**
-- **Ranking a pack's shapes only where they could close a yard, touch the house or a Fence, or flip a line** (D-160's suggestion): a Fence anywhere flips a count line, and which tied spots reach the shortlist would change, and so would play.
-- **Scoring Fence packs through the planner and a few chosen shapes:** changes play too, and the planner finds only rectangles.
-- **Cutting the top-K, or worker threads** (§4's advice): the cost was estimating plays that never reach the top 12, and threads don't make one run faster.
-
-**Changes:**
-- D-089 (Accepted): the gate passes again, and the recall test's time. A dated note there.
-- D-160 (Proposed): its known gap about the gate. A dated note there.
-- `implementation-plan.md` §4: the sim's line on ranking, and the gate's advice (profile first).
-
-**Known gaps:**
-- **`openGround` knows what the estimate reads.** If the Fence earns another way, or the estimate learns where a piece stands for a Fence, a card's open-ground plays may stop tying. `greedy.test.ts` checks on real states that they tie, and that the shortlist is the one every play ranked gives, so such a change fails a test instead of shifting play.
-- **The gate has about 15% to spare here,** and CI's runner swings by a third (develop's last three pull requests read 729–960 ms there). What's left of D-160's cost is exact scoring: bigger houses, and the stock's Hallway and Fence scored each week.
-
-### D-160 · Pieces you can count on: a Hallway and a Fence always in stock, and clients who bring what their wishes name
-**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: "I also like the addition of the guaranteed hallways/fences". They asked for the stock from the start of a run, which D-162 (Proposed) builds. Proposed 2026-11-12, a phase pull request (`phase/pieces-you-can-count-on`), from an outside playtester's notes the same day: "I'd kill for a ... hallway ... certain pieces should just always be available maybe?", and "I never even got a home office the first time I did the two home office contract". They also read "under one roof" as something it isn't. Item 3 of that playtest's plan, in a session the user started. It adds to D-103's extra slots and renames one of D-101's house rules. The weekly draw is unchanged: D-055's weights, D-121's rows, and D-157's strikes and `strikeMinTypes`. A rules and content change: `contentHash(CONTENT)` goes from `153cddb5` to `79662776`, so runs in progress are dropped when it merges (on /dev/) and at the next release (#54's check). For the user's playtest before it merges.
-**Decision:**
-- **A standing stock** (`standingStock` in `balance.ts`): from Foundation on, at the start of each milestone the reserve's extra slots are topped up so they hold one Hallway and one Fence pack. Only what's missing comes. A card of the type already waiting in an extra slot counts (the General Contractor's starting Fence, an arrival's or the client's card), and one bought or copied into the reserve's own slots doesn't. So the stock never brings two of either, and one placed this milestone comes back at the next. Overtime weeks bring nothing.
-  - **Placing one is the week's build,** like any reserve piece. Stock cards are marked `stock` and sit in extra slots, so they never take one of the reserve's 2 (`inExtraSlot` in `shop.ts`).
-  - **Both types stay in the weekly draw** (the Layout row), with their weights, the strikes and the floor as they were. A strike of the Hallway or the Fence leaves the stock alone: the type is never drawn again, and the stock still keeps one waiting.
-  - **A first job** (D-149) gets its first stock in Foundation's third week (`firstJobSlot` 3), not its first. Foundation's first week already brings Demolish, the budget, overtime and Complete early, and its second brings Strike (D-157): one new thing a week. A first job whose Foundation ends sooner gets the stock at Framing's start, as any run does.
-- **A client brings what its wish names** (`ClientDef.deliveries`: a phase, the cards, a line for the job board). The cards land at the start of that phase's first week, right after the household's arrivals, marked `client`, in extra slots. Dale brings one Home Office and the Barkers one Doghouse, in week 1 ("Dale brings one of his two Home Offices."). A delivery isn't a household member: it never moves Room for everyone, isn't in `arrived`, and gets no doorbell or banner. The fenced-yard wishes (the Hendersons' A fenced yard, the Barkers' A big fenced yard) are served by the stock's Fence.
-  - `validateContent` checks each delivery (a phase the run has, its line, at least one card, no member's room, a line on that client's checklist that names the card) and the stock (known pieces in the weekly draw, no duplicates, a phase the run has, a first job's week inside the milestone).
-- **Events:** `delivered` (`from: 'client' | 'stock'`, the phase, the cards), in the order `arrived`, the client's `delivered`, the stock's `delivered`, then `handDrawn`.
-- **Your goods** (D-098) tags each extra-slot card with where it came from: "Crew", the member ("Twins", "Grandma"), the client ("Dale", "Barkers") or "Stock", and its tip says whose it is ("Hallway (from your stock): place it as this week’s build"). Inspect's note on it reads "From your stock: another comes at the next milestone once it’s placed" or "Dale brought it", then says it's in an extra slot. A card that comes pops into its slot with a soft sparkle (`FEEL.delivered`, 0.52 s), after the doorbell if a member moved in that week.
-- **The job board** (D-142's fine print) says what Dale and the Barkers bring, beside a crate: "Dale brings a Home Office", "The Barkers bring a Doghouse". Its tip says when ("Groundbreaking (week 1): …") and that placing it is a week's build.
-- **A first-time hint** (D-142, 25 words), "Always in stock", once the stock is in the reserve: "A Hallway and a Fence wait in Your goods, top right, until you need them. Each is a week’s build, and another comes next milestone." It says "until you need them", not "place one": the novice bot, which plays a random card, spent weeks on stock cards that earn little alone. How to play's A week (D-158) gets one line, "Always in stock: from Foundation on, a Hallway and a Fence wait in your reserve until you want one. Placing one is a week's build, and the next milestone brings another.", and the reserve's glossary entry adds the stock to what its extra slots hold.
-- **"Under one roof" is now "A compact house"** (D-101), still `underOneRoof` in code, so saves, run codes and the sim's records keep their key: "4+ rooms that fill at least 60% of the box around them, and the box is no longer than twice its width." The tester read the old name as "everything connected", which is the placement rule. The plan, the code's comments and this log's notes on the current rules use the new name; `house-systems-review.md`, `layout-proposal.md` and the design and playtest notes keep the old one, as written then.
-- **Sim** (D-089): the run record counts reserve plays by where the card came from (`reservePlays`), and the report says so after the Fences' line ("Reserve cards played per run: the stock 3.12 · the client’s 0.29 · the crew’s 0.00 · arrivals’ 1.03 · bought or copied 0.36"). No bot changed: they already play reserve cards. The chaos test checks a stock card's and a client's card's placement, and every stock top-up.
-- **Tests:** `src/rules/stock.test.ts` (the top-up from Foundation, only what's missing, the crew's Fence counting and a bought one not, overtime, the first job's third week and its early finish, extra slots, a week's build, a strike leaving it, an empty list, replays, Dale's week-1 card and the events' order), `households.test.ts` (the Hendersons' run with the stock, `validateContent`'s checks, Dale's and the Barkers' week-1 cards and the wishes they serve, the stock's settings), `hud/household.test.ts` (the tags and Inspect's words), `job-card.test.ts` (the line and its tip) and the chaos test.
-- **Questions for the user, decided on their defaults for now** and to revisit at the playtest:
-  - **The Barkers' Doghouse comes in week 1,** as asked, a milestone before the stock's Fence. It earns nothing outside a fenced yard, and the novice bot places it at once (Sim, below). Delivering it at Foundation is a one-line change (`phase: 1`).
-  - **A first job's stock waits for Foundation's third week** (above). A milestone later was the other choice; Framing is far for a newcomer who wants a Hallway.
-
-**Sim** (`npm run sim -- --check`, 200 held-out runs an arm on `check-0` to `check-199`, the General Contractor, against develop at dcad8da from frozen copies; then 200 greedy runs per client on the same seeds, and 300 novice runs per client on `pt7`, the playtest's seeds):
-
-| | develop | D-160 |
-|---|---|---|
-| Greedy wins (`--check`) | 48.5% [41.7–55.4] | 49.5% [42.6–56.4] |
-| Hallways placed per run (Long Hallways) | 0.58 (0.54) | 2.00 (0.33) |
-| Fences placed per run | 0.56 | 1.60 |
-| Runs ending with a fenced yard | 33.0% | 58.0% |
-| Dale's Two Home Offices at the end (greedy) | 89.5% | 96.0% |
-| The Barkers' Two Doghouses (greedy) | 23.0% | 37.0% |
-| The Barkers' A big fenced yard (greedy) | 42.0% | 51.0% |
-| The Hendersons' A fenced yard (greedy) | 50.0% | 66.0% |
-| Novice on Dale: no Home Office ever to hand | 11.0% | 0% |
-| Novice on Dale: at most one to hand | 38.0% | 9.7% |
-| Novice on Dale: Two Home Offices at the end | 9.3% | 28.3% |
-| Novice on the Barkers: Two Doghouses at the end | 3.0% | 15.3% |
-
-- **Every §8 verdict reads as develop's.** Random fails by milestone 3, novice passes milestone 1, greedy clears milestones 1–3 (unsure) and wins 40–50% (unsure), early completion is live (always −9.5 points [−18.0, −1.0] against never; −6.5 on develop), and the Fence probe passes. The clients' spread still fails, unsure, at 20.0 points (30.0 on develop): the Hendersons 47.5%, Count Vladislav 55.0%, the Barkers 45.0%, Juniper Vale 40.0%, Dale 60.0%. Greedy stays inside 40–50%, so no re-fit.
-- **The bots play them.** Greedy places 3.12 stock cards a run and 0.29 of the client's (0.99 on Dale's job, 0.47 on the Barkers'); novice 1.50 and 0.35 (0.86 and 0.87). Per client, greedy wins 54.0% of Dale's jobs (48.0%), 45.0% of the Barkers' (44.5%) and 47.5% of the Hendersons' (51.0%), each within noise.
-- **Novice passes Foundation less often:** the Hendersons' first job 17.0% (21.0%; Groundbreaking 99.7% both), Dale's 4.7% (6.0%), the Barkers' 7.3% (14.3%). It plays a random card at its best spot, so the stock's cards take its weeks as often as any other. On the Barkers' job it also places the Doghouse in week 1, where it earns nothing: Groundbreaking's p50 Wow goes from 35 to 29, and on time from 86.7% to 67.0% (met 98.3%, from 99.7%). No novice run fences a yard, before or after.
-- **The benchmark gate fails.** One greedy run on bench-12 takes 1.41 s in the check (develop 0.57 s), and 1.54–1.56 s run back to back with develop's 0.75 s, over its 1 s. The stock's Fence is in the reserve nearly every week, so greedy ranks its pack's suggested shapes all over the yard (42,290 of the run's 78,243 estimates) and the yard planner runs every week. Bots only: the UI never runs one. Greedy's recall test scores every legal play, 57,336 of them now (24,272 on develop), so its timeout goes from 60 to 120 s. The report test's whole greedy run took 6.1 s on CI (4.1 s before), past the default 5 s, so it gets 20 s. CI's sim job took 6 minutes on develop's last pull request and will take longer, inside its 20.
-
-**Why:** the weakest cards are the ones a house most often needs once: a Hallway to link rooms, a Fence to close a yard. At complexity 3 they're drawn at 5% in milestone 1 and 25% in milestone 2 (D-055), so half of runs saw no Hallway by week 8, and for clients that don't favor it 69% saw no Fence. More of them in the draw isn't the answer: they're the first cards the strike bot strikes, and they'd crowd out the rooms. Waiting in the reserve, they're there when the player wants one and cost no draw. A wish that names a special card waited on the draw the same way: a novice on Dale's job never saw a Home Office in 11% of runs.
-**Considered:**
-- **More weight, or a lower complexity:** more of the weakest cards in every hand.
-- **A stock from Groundbreaking:** milestone 1 is a few rooms and a first look at the board; Hallways and Fences matter once there are rooms to link and a yard to close.
-- **The stock as a shop service or a crate:** the first shop is after milestone 1, and a choice there is one more thing to learn. In the reserve it's just there.
-- **Deliveries as household members:** a member moves Room for everyone and brings a banner; what a client brings is just a card.
-
-**Changes:**
-- D-043 (Accepted): two kinds of pieces come from outside the weekly draw now, the stock and the client's deliveries. A dated note there.
-- D-055 (Accepted): the Hallway and the Fence keep their weights, and the stock keeps one of each waiting from Foundation on. A dated note there.
-- D-093 and D-101 (Accepted): Under one roof is A compact house, with the same id and numbers. A dated note on each.
-- D-103 (Accepted): the extra slots also hold the client's cards and the stock's, and a phase's first week brings deliveries after arrivals. A dated note there.
-- D-098, D-121 and D-127 (Accepted): Your goods' tags; the stock waits outside the rows; "Topped out!" plays when A compact house first holds. A dated note on each.
-- D-089 (Accepted): the report's reserve line, the chaos test, and the recall test's numbers. A dated note there.
-- D-142, D-149 and D-157 (Proposed): the stock's hint and the job board's line; a first job's stock in Foundation's third week; a strike leaves the stock alone. A dated note on each.
-- `implementation-plan.md`: the state, `ClientDef`, the events, `newRun`, the start of week, and Appendix A's slots, house rules, stock and deliveries. `jam-scope.md`: the weekly turns, the clients and the starting numbers.
-
-**Checked:** one round in the dev build, in the browser pane: the job board's line and tip on Dale's card; Dale's week-1 Home Office in Your goods, tagged "Dale", and its Inspect note; the stock's Hallway and Fence tagged "Stock" from Foundation, the hint and Inspect's note; no console errors. Not looked at: a first job's third week, the pop and its sound, Reduce motion, the Barkers' card, narrow windows in the pixel font, touch.
-
-**Known gaps:**
-- **Not played by a person.**
-- **Runs in progress drop** when this merges and at the release. A run code from an earlier build loads with "The content has changed since it was made" and replays up to its first reserve play from Foundation on (from week 1 on Dale's and the Barkers' jobs): the stock's and the client's cards now sit ahead of later buys, so an old index can name another card.
-- **A player who places whatever's there** may spend weeks on stock cards, as the novice bot does (Sim). The hint says "until you need them". If the playtest finds that, the stock could start at Framing.
-- **Strike's words say "No more Fences this run",** and the stock still brings one each milestone: "no more" means the weekly draw, as with the shop and crates (D-157).
-- **The stock tops up only at a milestone's start:** one placed in a milestone's first week isn't back until the next. Inspect's note says so.
-- **The benchmark gate fails** (1.4–1.6 s against 1 s), and bot-heavy tests run slower. A follow-up can make greedy cheaper on Fence packs, for instance by ranking a pack's suggested shapes only where they could close a yard or count for a line, once the playtest has settled the stock.
-- **Greedy's recall test asks 80%** (85% before): on its 5 seeds the shortlist found the exact best in 15 of 18 states, losing 0.5%, and on 20 seeds 63 of 71 (66 of 73 on develop), noise rather than a slip.
-
-**2026-11-12 (D-161):** the benchmark gate passes again, at 0.82–0.86 s (1.53–1.59 s before). The bots rank only the few of the stock Fence's open-ground plays that the shortlist can reach, and every run plays as before.
-
-**2026-11-12 (D-162, Proposed):** the stock comes from week 1 in any run but a first job, which keeps Foundation's third week as a setting of its own (`firstJobPhase`, `firstJobSlot`). "A stock from Groundbreaking" under Considered is what the user asked for: "available from the start of the round". The Barkers' Doghouse stays in week 1, now with the stock's Fence the same week, which answers the first question above. The decision's "the General Contractor's starting Fence" is the Landscaper's: the General Contractor starts with no cards.
-
-*Changed by D-163 (Proposed 2026-11-12):* placing a stock card or the client's doesn't use the week, and the stock comes once, at Foundation's start (a first job's third week), with no top-up after (`standingStock.refill: false`): topped up and free, it was about two more builds a milestone. The hint is "Free to place": "A Hallway and a Fence wait in Your goods, top right, until you need them. Placing one doesn’t use your week." How to play's line, Your goods' tip and Inspect's note say the same, and Inspect's note no longer says another comes.
-
-### D-159 · Fences that join, and Hallways that open into each other
-**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: art only, merged that day for their look. Proposed 2026-11-12, a fix pull request (`fix/fences-and-halls-join`), from the outside playtester's notes the same day (D-158's). Art only: how the board draws Fences and touching Hallways (`src/ui/art/yard.ts`, `src/ui/board/house-model.ts`, `src/ui/art/rooms.ts`). No rule, content, scoring, save or run-code change, and `contentHash(CONTENT)` is unchanged, so saves and run codes carry over (#54). It changes the art of Accepted D-093, D-097, D-100 and D-106 (below), so the user merges it after a look.
-**Decision:**
-- **Two Fences that meet end to end in one line are one run,** with no post between them (`fenceArms` in `yard.ts`). In a corner or a T they join as before. Side by side along their lengths they stay two lines, not a grid.
-- **A one-tile pack joins every Fence beside it.** Where what it meets, a Fence or a wall, is only north or south of it, it stands upright with a post at each end. Beside nothing it's still a short run across.
-- **A Fence reaches the house,** which closes a yard as a Fence does:
-  - An end beside a wall runs into it: straight on, its end post against the wall (as before), or turning into it from the middle of its cell.
-  - A run alongside the house is tied to the wall at each end of the stretch, by a corner or a T, and runs straight past in between.
-  - Where it touches the house only at a corner, a post on its cell's corner and a strip to the house's corner close the gap. Two Fences touching only at a corner meet the same way.
-- **The lot's back and sides count as walls here,** as they bound the rules' fill: a Fence along one turns out to it at each end, and a one-tile pack in the back row stands upright. The street side never does, since a yard that reaches the street is never fenced. The ghost and the cards' and the shop's pictures leave the edges out, so a Fence's ghost is still the Fence alone.
-- **So a yard looks closed exactly where the rules count one.** The fenced-yard fill (`computeLayout`, D-105) spreads through every tile that isn't the house's or a Fence's, side to side only, within the lot, so a diagonal touch closes a passage. The drawing closes every passage the fill closes, and no other.
-- **Touching Hallways open into each other** (`buildModel` in `house-model.ts`): the edge between two connector pieces (the Hallway, the Long Hallway) has no wall band, stub, threshold, face or shadow, and the door tree puts no doorway there, so joined halls read as one corridor.
-  - **Rooms never merge** (D-093): a wall stands between every two rooms, and between a room and a hall. Hallways still open into every room the rules link through them.
-  - **One runner** (`hallRun` in `rooms.ts`): halls lying the same way in one row or column, joined end to end, carry their runners on to each joint in one band, so the runners read as one, their checks in step. Where a hall meets another from the side or round a corner, each runner ends short of the other.
-  - Nothing stands against a south wall that isn't there: a hall's furniture keeps off an open joint, so its walkway runs on.
-  - **Each piece is still its own:** hover and Inspect pick it alone, and it keeps its digit and its earnings label. Scoring doesn't change.
-
-**Why:** the playtester's words: "my second fence didn't connect to my first fence and become one fence", it "also didn't connect to the house it was next to", and "these hallways don't visually connect". The rules already took each as joined: Fences and the house close a yard together, and a hall links the rooms along it. The art didn't say so:
-- two Fences end to end kept a post each at the joint (D-100: "so each stays countable");
-- a Fence alongside the house ran down the middle of its cells, half a cell of grass from the wall, and one touching it at a corner stopped short of it;
-- a wall band and a doorway stood between two touching Hallways (D-093's wall between every two pieces).
-
-**Considered:**
-- **One post at an end-to-end joint:** a post mid-line still reads as two fences meeting. None reads as one fence, and the digits still say there are two.
-- **An arm to the wall from every tile alongside the house:** a ladder of spurs. The rules need only the ends, where the yard closes.
-- **Merging touching Fences in the rules** (one piece, one payout): a rule and content change, not this fix. The enclosure payout stays one per pack (D-106).
-- **Carrying the runner round a corner:** LimeZu's runner has no corner piece, and a cut of our own would have to turn its checks. Two runners ending cleanly read as one hall turning.
-- **Opening a room into a touching room of its type,** the team's Parked "merged rooms" (D-100's playtest 5a note): not here. Only halls, which join the rooms rather than being one, open into each other.
-
-**Checked:**
-- **In headless Chrome,** at 1600×900 with a devicePixelRatio of 2 and at 1920×1080 with 1, against develop at f9c0d06: one run code, built through the ?debug store and opened in both builds. A Bedroom; a Hallway and a Long Hallway end to end; a Hallway turning the corner; four Fences (one along the Bedroom's west wall and on past it, one meeting its end at a corner, one end to end with that one, one whose end stops beside the hall). The rules count the 12 tiles between them as a fenced yard (the Hendersons' "A fenced yard" holds), closed where a Fence's end touches the hall at a corner. Before, the yard looked open there and along the Bedroom's wall. Inspect named each Hallway piece alone, with its own earnings, at both sizes. The pull request has the before and after screenshots (`docs/playtests/fences-halls-join-*`).
-- **`yard.test.ts`:** end to end with no post, an end into a wall both ways, a stretch alongside tied at each end, a one-tile pack upright, a corner touch, the ghost still the Fence alone, and a property over 400 random lots (Closets, Bedrooms and up to five Fence packs of 1–6 tiles on a 9×9 lot). It floods the drawing pixel by pixel, with the house's cells and the Fences' opaque pixels as walls, and finds the rules' regions, every fenced yard `computeLayout` counts one region of its own. It passed at 6,000 runs once. Lots with two packs side by side (Known gaps) are left out.
-- **`house-model.test.ts`:** touching Hallways open into each other with no wall or doorway, never into a room, and every room is still reached. **`rooms.test.ts`:** one runner through halls end to end, ends clean at a corner or a side, the walkway clear through a joint.
-- `npm test` (2,191) and `npm run typecheck`.
-
-**Known gaps:**
-- **Two Fences side by side along their lengths** stay two lines with grass between them, as before, so the strip can look like a path where the rules see Fence.
-- **Doorways from joined halls:** each Hallway piece still opens into every room the rules link through it, so a room beside two joined halls can have two doorways from what now reads as one hall.
-- **Two Hallways side by side** along their lengths open into each other too: a hall two cells wide, with two runners.
-- **Runners don't turn corners** (Considered).
-
-**Changes:**
-- D-093 (Accepted): touching connectors open into each other; rooms still never merge. A dated note there.
-- D-097 and D-100 (Accepted): "a wall between every two pieces" leaves out two touching Hallway pieces, with no doorway between them; D-100's Fences no longer keep an end post each where they meet end to end, and they reach the house. A pointer in each.
-- D-106 (Accepted): Fences share a line where they meet and reach the wall. A dated note there.
-- `implementation-plan.md` §12 Art: the walls and the Fence paragraph.
-
 ### D-158 · Tutorial fixes: hints that wait for their play, a short How to play, and the first job's shops a shop behind
 **Status:** Proposed · 2026-11-12, a phase pull request (`phase/tutorial-fixes`), from an outside playtester's notes the same day (a realism-first player who read How to play before pressing Start, and played the first job and Dale's contract). The user's go-ahead: "Yes, build them". UI and rules text only: no rule, content or balance change, and `contentHash(CONTENT)` is unchanged, so saves and run codes carry over (#54). For the user's playtest before it merges.
 **Decision:**
@@ -2798,219 +3940,6 @@ The hand's chip rows were also measured against a develop build at 11 window siz
 **Changes:** D-045 (Accepted): a first-time hint isn't always dismissible, and one nobody dismisses leaves by itself. D-142 and D-149 (Proposed): the checklist hint's words, the opening's hints without "Got it", and the first job's staged shops. D-110 (Accepted): How to play's layout.
 
 **2026-11-12 (D-164, Proposed):** with nine sets, Scoring's first set line no longer lists them: "Sets (pictured below), indoors and out, add Comfort and Charm." The matching rule says "A piece can be in one set of each kind: …" ("A room" before), since a Lawn or a Fence can serve two or three. The pictures show the five yard sets too, and a yard set's own text ends "One per house."
-
-### D-157 · Strikes from the hand: the card you don't want, gone for the run
-**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: on /dev/ since 2026-11-12 (#70). Asked on the sheet whether it felt right in play, they chose Accept. Proposed 2026-11-12, a phase pull request (`phase/strike-from-hand`), from playtest 6 (2026-11-11): Strike a card "should also be included in the defaults ... at least once at the start of the match ... I never really use it ... might be overly broad if it applies to a card type instead of just a single card (e.g. a garage)". Asked whether a strike takes the card or its type, the user answered "Whole type" (2026-11-12): strike a Garage and no more Garages come up this run. Changes Accepted D-084 and D-076's shop picker: built on the user's answer, and Proposed until their playtest. Three more questions for the user took their defaults for now (below). A rules and content change: `contentHash(CONTENT)` goes from `8c16358c` to `153cddb5`, so runs in progress are dropped when it merges (on /dev/) and at the next release (#54's check); their run codes still replay. For the user's playtest before it merges.
-**Decision:**
-- **Strike is a free action on the hand's plank,** between Reroll and Demolish, with its count. Click it (or press S), then click a hand card twice: the first click arms it and Inspect says what goes, the second strikes it. Esc, S, the button again, a right-click or a click on the lot stops, and D switches to Demolish's mode; a number key twice strikes that card. It doesn't end the week. While either mode is on, a placement waiting for End week leaves the lot (its ghost, arcs, badges and targets), as it already did in Demolish's, and End week still builds it, unless a strike took its card (Inspect says so before the second click).
-  - **Strike mode puts no hint over the cards,** where Demolish's mode does: the cards are its targets, and a three-line hint coming in with the mode and going with it on the second click moved them, the second time by about 72 px under the stamp (1728×963@2, the pixel font), so the card that came under the pointer took Inspect during the beat. The key strip ("Click 1–4 a card twice to strike it"), the band on the card under the pointer and Inspect say what to do, and screen readers hear the mode. The cards don't move as the mode starts or ends.
-- **A strike takes the card's whole type for the run.** The type is never drawn again, and a shape variant goes with its root, as D-084 had it: the L-Kitchen with the Kitchen, the Long Hallway with the Hallway. Every hand card of the type leaves at once. The words say so on the card, in Inspect and in the button's title: "No more Garages this run", "No more Kitchens or L-Kitchens this run".
-- **A card from its row takes each place,** drawn on a stream of its own, `draw/<phase>/<slot>/<n>/<row>/strike<m>/<k>` (n: the hand's draw; m: the run's struck types, this one included; k: the slot's place in its row). Like D-121's swaps, it tries up to `swapTries` (3) cards for one with a play. It never shifts another draw: the week's draws don't count it, and a reroll and the next week draw on their own keys, from the smaller pool.
-- **How many:** 1 at the start (the `strikes` rule, so a crew or upgrade could add some), and 1 more at each milestone the run goes on from (`strikesPerMilestone`; none for a missed milestone or the last). Unused strikes are kept. The milestone's banner says "+1 strike."
-- **D-084's floors hold per row** (D-121): at least 5 Rooms and 4 Layout types stay drawable. A card that can't go is hatched in strike mode ("Can't strike") and says why: its row is at its floor, its type is already struck, the weekly draw never deals it (a special piece in the Catalog's hand, a household member's room), nothing else in its row can come up this week, or no strikes are left. With no card in the hand that can go, Strike itself is off, and its title says so.
-- **The floor counts the special pieces this run's client or crew puts in the draw:** the Architect's Playroom, Library, Mudroom and Pool; Count Vladislav's Library; the Barkers' Mudroom. Those can be struck. Content allows draw weights only on clients and crews, so what the floor counts never changes during a run.
-- **The plank holds Reroll, Strike and Demolish.** Strike shows its icon and count where its word doesn't fit, as Demolish does. In the pixel font the plank's title gives way to the three, and Reroll keeps its word on planks from 17.25rem (18.25 with a two-digit count); on narrower planks, windows under about 1,595 px wide, it shows its die and count (D-148's note). The readable font keeps Reroll's word at every width, and its title is "Cards" on planks from 315 px. In either mode, Strike's or Demolish's, the active button says Stop and the other two give up their words, Reroll's included, in both fonts (D-148 already had Reroll give up its word while demolishing). The first job's two-button plank, before Strike arrives, keeps D-148's rules.
-- **The shop's third service is "+1 strike",** at D-084's prices (2 budget, then 1 more each time, up to 5). It names no type, and can't be bought once nothing's left to strike. Its card's title says how many you hold, since the plank isn't on screen in the shop. StrikePicker, the shop's list of 33 names, is gone.
-- **Your goods lists the struck types,** "Struck" then "Garage, Skylight", in the open panel and in the shop. Folded, its plank shows how many beside the reserve's and the supplies' counts, named in its title and the fold button's, and stays up while anything is struck, even on a short window with an empty reserve and supplies.
-  - **A strike never brings Your goods in mid-week.** Whether the struck types show there while building (the panel itself, its Struck row, a short window's folded plank staying up) reads how many were struck when this week's hand was dealt: a count the store takes as a new week's hand is dealt, as a run loads or replays and as one starts, and never on a reroll, the Catalog's redraw or a strike. So where they weren't showing, a run's first strike shows there with the next week's hand, not under its stamp: on the user's 1728×963 window, before milestone 1, the plank coming in would push the hand down as the stamp plays. A folded plank that's already up counts it at once, and once they show, each later strike shows at once.
-- **The beat** (`FEEL.strike`): a red "Struck" plate stamps onto the card with its slip ("No more Garages this run") and red ink, the card drops away, and the new card slides into its slot, over a papery thump (`strike`: the kit's book and thock samples, slowed). 0.86 s in real time. It never holds the game up: the director doesn't go busy, and the next action finishes it at once, a click on the struck card included (it picks the new one). A card struck from the keyboard hands its focus to the new card. With Reduce motion it fades.
-- **The first job** (D-149) brings Strike in at Foundation's second week, a week after Demolish, and the first milestone's banner leaves its strike unsaid. Strike's first-time hint (D-142, 23 words) comes in any run once Strike is on screen with a strike to use, after the opening's hints: "Strike a card: a new one takes its place, its type is gone this run, and the week goes on. Milestones add strikes."
-- **Old run codes replay exactly.** A strike bought in the shop that names a type (D-076) still strikes it and adds no strike. A strike buy naming none, which no build ever logged, now adds a strike.
-- **Sim** (D-089): the default greedy never strikes and never buys one. `--strikes fixed` strikes hand cards by D-084's order, root types first to last (Driveway, Fence, Hallway, Doghouse, Sapling), before anything else in its week, and buys +1 strike while it holds fewer strikes than those types it could still strike.
-- **Three questions for the user, decided on their defaults for now** and to revisit at the playtest:
-  - **Reroll's word in the pixel font** gives way on planks under 17.25rem (the plank, above), where D-148 kept it at every size. The user's 1728×963 window keeps it outside a mode.
-  - **Your goods folded** shows a struck count, and a panel with anything struck is never empty (above), with one change from the default: a strike never brings the panel in mid-week. The alternative was no count, the struck types then only in titles while building.
-  - **The shop and its crates** still sell struck types (Known gaps): leaving out struck types would change old run codes' shops and crates, so they'd no longer replay.
-- **Tests:** `src/rules/strike.test.ts` (how many strikes, the keys, both cards of a type and their draws, the first card tried with a play, no other draw shifted, every reason a card can't go, a Catalog hand, a change order thinned, +1 strike and an old code's typed strike, the words, run codes, determinism) and a property in `properties.test.ts` (a strike keeps the hand's size, the week and the draws); `sim/chaos.test.ts` checks every chaos strike as the whole type, and `greedy.test.ts`, `report.test.ts` and `shop.test.ts` the bot and its report. In the UI: `hud/strike.test.ts` (the mode, refusals, a placement it replaces, focus, the hint, Your goods after a strike), `fx/strike.test.ts` (the beat's steps, never busy, any action ending it, its sounds, the banner's "+1 strike."), `week-stamp.test.ts` (a strike leaves the week's stamp up), `strike-save.test.ts` (a save with a strike reloads on the same build), and the tests of the goods rows, the hints and the first job.
-
-**Sim** (`npm run sim -- --check`, 200 held-out runs an arm, against develop at c6882eb):
-- **Greedy's 200 records are develop's,** and so are those of greedy with early always: the default bot never strikes. Every verdict reads as develop's: random fails by milestone 3 in 100.0% [98.1–100.0], novice passes milestone 1 in 99.0% [96.4–99.7], greedy clears milestones 1–3 in 97.5% and wins 48.5% [41.7–55.4], early always wins 42.0% (−6.5 points [−14.8, +1.8]), the Fence probe's p50 is 2 (68.1%), and the clients' spread fails, unsure, at 30.0 points, as on develop.
-- **Random and novice shop differently from shop 1,** where the strike service is now one buy, not one for each type: 144 of random's 200 records and 112 of novice's are the same, no random run's result or milestones changed, and 4 novice runs cleared one milestone fewer (check-27, -64, -173 and -178). Novice's criterion is decided before the first shop.
-- **The report** names the service "+1 strike" and counts strikes per run: "used 0.00 · bought 0.00 · held at the end 6.26 (none used)", the 1 at the start and 1 for each milestone a run went on from.
-- **`--strikes fixed`** (`--runs 200 --seed check`) wins 50.0% [43.1–56.9] against the default's 48.5%: +1.5 points [−6.5, +9.5], 35 seeds won only with it and 32 only without, final Wow ×0.987 (geometric mean; p50 1.009). It strikes in every run, the first at a median week 2, and a run uses 4.92 strikes, buys 1.10 (+1 strike at 220 of its 1,088 shop visits) and holds 2.48 at the end. Each of its five types is struck in 95.5–99.5% of runs: the Sapling and the Hallway 99.5%, the Driveway 99.0%, the Fence 98.5%, the Doghouse 95.5%.
-- **On develop, `--strikes fixed`** bought typed strikes, 2.05 a run, and won 40.5% [33.9–47.4], −8.0 points [−14.7, −1.3] against its default (16 seeds won only with it, 32 only without). Here it's +9.5 points [+2.0, +17.0] against develop's (40 against 21).
-- **The benchmark gate** (one default greedy run) passes at 566 ms, against develop's 565 (one timing each, at a load of about 5.5). No target re-fit.
-
-**Why:** the user never used the strike: it was a shop service, a list of 33 names away from the card that annoyed them, and nothing showed afterward. On the card, at the moment it's unwanted, a strike pays at once (a new card) and for the rest of the run (the type never comes back), and it's seen: the stamp, the new card sliding in, the Struck row. The sim can't tell strikes from the hand from none (`--strikes fixed` is within noise of the default, which never strikes), so it's a call about feel, and the targets stay.
-**Considered:**
-- **One card only, the type staying:** the draw is a weighted pool of types, not a deck (D-043), so "just this Garage" can only mean this week's card: a one-slot reroll beside Reroll and D-121's free swap. The user chose the whole type.
-- **Free strikes spent in the shop's picker:** keeps the list of names away from the card, and a strike given at the start has nowhere to go until the first shop.
-- **A strike that lasts until the next milestone:** narrower, but its words would need an end date, and the user picked the run.
-- **One click to strike:** a whole type for the run is too much for a stray click. Demolish asks for two.
-- **Dropping the shop's service:** kept as +1 strike at today's prices. Drop it if playtests find strikes plentiful.
-- **Taking struck types out of the shop's stock and crates** (the shop's fixtures and special pieces, the Fixture Crate, the Showroom, and the Garden Center's yard and outbuilding pieces, 13 of whose 16 are weekly-draw types): it would change old run codes' shops and crates, so they'd no longer replay. See Known gaps.
-- **Your goods folded without a struck count:** the struck types would show only in two titles while building, and at 1280×720 the plank, with its fold button, would hide whenever the reserve and the supplies are empty.
-- **The struck types bringing Your goods in at once:** the default as first written. Before milestone 1 a strike would bring the panel in mid-week, moving the hand down under the stamp.
-
-**Changes:**
-- D-084 (Accepted): strikes come free, 1 at the start and 1 at each milestone the run goes on from, are kept, and are used from the hand; the service is +1 strike at its prices and names no type. A dated note there.
-- D-076 (Decided): its shop picker goes; "a few per run" is how strikes come now. A dated note there.
-- D-088 (Accepted): `--strikes fixed`'s shop bot buys +1 strike, and the strikes report counts strikes used, bought and held. A dated note there.
-- D-089 (Accepted): `--strikes fixed` strikes from the hand, and the chaos test strikes too. A dated note there.
-- D-098 (Accepted): the strike picker's sheet goes, Strike joins the hand's plank, and Your goods lists the struck types. A dated note there.
-- D-121 (Accepted): a strike's new card draws like a swap, on its own key; the floor counts the special pieces the run draws; folded, Your goods counts the struck types. A dated note there.
-- D-132 (Proposed): the plank holds three buttons, and in the pixel font its title gives way to them. A dated note there.
-- D-148 (Proposed): Reroll's word on a narrow plank in the pixel font, and in either mode. A dated note there.
-- D-149 (Proposed): Strike arrives in Foundation's second week. A dated note there.
-- D-142 (Proposed): one more first-time hint. A dated note there.
-- `implementation-plan.md`: the state, the actions, the free actions, the events, the transitions, the milestone's reward, the rule keys, the shop's offers, the streams, the first-time hints, the sim's policies and Appendix A's services. `jam-scope.md`: the weekly turns and the starting numbers.
-
-**Checked:** one quick round, at the user's call ("Yes, quick check"), in headless Chrome on frozen dev builds of a standard run (the Hendersons with the General Contractor):
-- **1728×963@2 in the pixel font, and 1280×720 in both fonts:** Strike, then a card clicked twice. The cards stay where they were as the mode starts, as the card is armed and as the stamp lands; the "Struck" plate and its slip ("No more Dining Rooms this run") stay inside the card; a card from its row takes the slot (a Kitchen), Strike's count goes from 1 to 0, Inspect asks "Strike the Dining Room?" while it's armed and leaves the old card during the beat, and there are no console errors. At 1280×720 in the pixel font the cards under the slot move 4 px after the beat, as the new card is taller: a different card, as after a reroll.
-- **The plank:** at 1728×963@2 in the pixel font, Reroll keeps its word, and Strike and Demolish show their icons and counts; at 1280×720, Reroll's word goes in the pixel font and stays in the readable one.
-- **Your goods** (the build's smoke, 1728×963@2): the plank stays hidden after a strike in Groundbreaking's first week and comes in with the next week's hand, its struck count titled "Struck: Living Room".
-- **Not looked at in a browser:** the keyboard's focus passing to the new card, Reduce motion, a strike that takes two cards (a Kitchen and an L-Kitchen; the rules tests have it), the first job's Foundation weeks, three counts on the narrowest folded plank, classic scrollbars, and the sound (headless Chrome is muted).
-
-**Known gaps:**
-- **Not played by a person,** and the sound wasn't heard. Touch, Firefox and Safari weren't run.
-- **Runs in progress drop** when this merges and at the release, as any content change does.
-- **In the pixel font Reroll shows only its die and count** on planks under 17.25rem (windows under about 1,595 px wide), where D-148 named it for the first-timers who missed a bare die. The default for now (above).
-- **The shop and crates can still sell a struck type** (the default for now, above): a fixture (the shop, the Fixture Crate), a special piece (the shop, the Showroom), or a yard or outbuilding piece from the Garden Center crate, which never reads the struck list. 13 of the Garden Center's 16 pieces are weekly-draw types, four of `--strikes fixed`'s five among them (Driveway, Fence, Doghouse, Sapling). "No more" means the weekly draw.
-- **No warning when a strike takes a type the checklist or a change order still wants** (the only Kitchen): the bold line in Inspect says what goes. A strike can make a running change order's request unmeetable (striking the Home Office while *Working from home* runs, with none in the reserve), and it thins later offers: a request whose piece is neither in the draw nor in the reserve isn't offered (`skipReason`).
-- **Your goods folded** (the default under 1100 px tall) shows only how many types are struck; their names are in its titles. Unless its folded plank is already up, a run's first strike shows in Your goods only with the next week's hand, and until then only Strike's title names it. Before milestone 1, with nothing in the reserve or the supplies, the panel then comes in as that hand is dealt, moving the hand down. Up to 800 px tall the folded plank then stays up for the rest of the run, where it used to hide while the reserve and the supplies were empty. Three counts on the narrowest plank weren't measured.
-- **A struck card in the Catalog's hand** is replaced from the weekly pool, not the Catalog's special one (a test pins it).
-- **The first job's first shop sells +1 strike** a week before Strike shows on the plank.
-- **A first job whose Foundation ends in its first week** (Complete early, or Auto after that week's tally) shows Strike from the next milestone without its entrance ring; its hint still comes.
-- **No "Next time" tip (D-150) for strikes left unused** after a loss: a follow-up if the playtest finds strikes still unused.
-- **The sim doesn't model the first job's reveal:** `--first-job --strikes fixed` strikes from week 1.
-- **No sim run reached a row's floor,** and no chaos strike took two cards of one type at once (32 hand strikes over its 10 seeds): the rules tests hold both, the second with a Kitchen and an L-Kitchen in one hand.
-- **The plank wasn't checked on a browser with classic scrollbars,** only with their widths taken off.
-
-**2026-11-12 (D-160, Proposed):** a strike of the Hallway or the Fence leaves the standing stock alone: the type is never drawn again, and the stock still keeps one waiting in the reserve. "No more" means the weekly draw, as with the shop and crates.
-
-### D-156 · Your houses on the street
-**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: on /dev/ and then main (#69) since 2026-11-12. Asked on the sheet whether it felt right in play, they chose Accept. Proposed 2026-11-11, with its phase pull request (`phase/neighbors`), from playtest 6 on /dev/ at 9acf14a: the map felt empty and barren, and the user asked for neighbors: the houses they've finished, on the plots around the lot. Built from the playtest investigation's mockup and its paint-alone patch, after D-155 and on top of its branch (#64): both add to the lot's surroundings and the atlas. UI only: no rules, content or balance change, so `contentHash(CONTENT)` is develop's and a release keeps runs in progress (#54). For the user's playtest before it merges.
-**Decision:**
-- **Your finished houses stand on the plots around the lot** (`board/neighbors.ts`, `board/NeighborsLayer.tsx`): beside it on both sides, on the same street, and across the road. Zoomed out, the street is your work; at the default zoom the nearest two peek in at the lot's sides.
-  - **The newest finished houses, won or lost** (the build brief's default), the newest on the nearest plot: beside the lot on one side, then the other, then across the road, then the next ones out the same way. The run's seed says which side comes first.
-  - **Fixed for the run:** the street is the record as it stood when the run began. The house a run files at its end moves in for the next run.
-  - **A house beside the lot stands at the row it was built on,** so it meets the same street: one built on its lot's front row touches the sidewalk, and one built up its lot keeps its front yard. A cell of grass from the lot's property line to the nearest house, two between houses.
-  - **Across the road** a house has no row of its own on this street, so the houses there line up a cell under the far curb, from the middle out. They show the side the game draws, the 3/4 view having no back, so they face away.
-  - **A creek running on past the lot's edge** (D-099) at a house's rows sends it to the next plot it fits, across the road at the latest, so no house stands in the water.
-  - **The run's own lot is left out:** a lot played again doesn't stand next door to itself.
-- **What stands on the street is the house, not the whole yard:** its rooms and every yard piece touching one (a porch, the garage's driveway, a fence along a wall), whole. Yard pieces off on their own stay home. A house of yard pieces alone stands as all of them.
-- **It's painted when its run ends** (`screens/record-run.ts`; `screens/photo-paint.ts` `paintPlot`), after the photo, by the end screen's painter (D-136) without the ground (no terrain, water or tree crowns) and with only those pieces, lit and linked as in the whole house. It's dimmed into the garden's light, as everything past the lot's edges is (`outside.ts` dim), cut to what it painted, and filed as a PNG at art resolution with where it lay on its board (`Job.plot`; D-139's note). At every zoom step it's as crisp as the lot (D-097). The newest six houses keep one.
-- **Until there are houses enough,** LimeZu's own houses stand on the nearest three plots (the build brief's default): a country house, a modern house with a roof deck and a Japanese house, from Modern Exteriors' Additional Houses, dimmed by CSS. A new company sees three neighbors, and each house it finishes takes one of their plots.
-- **Hover a house** and it lights up, in the lot's own light, while Inspect says whose it was: "The Barkers’ house", its verdict (or "Walked at 3/7") and Wow, and its crew. **A click holds it in Inspect,** as a click holds a piece, lit, with **Play this lot again** (D-139's `playLotAgain`, which asks first while a run is at stake). Esc, the ✕, another click or picking a card lets go. LimeZu's houses say "Every house you finish, won or lost, moves in along this street."
-- **The end of a run looks down the street** (`Board.tsx`, `FEEL.streetView`): once the last tally has played, the view pulls back over 1.2 s to show the street, with the new house on its lot among the others, holds for 1.7 s and comes back over 0.95 s. Then the photos deal in, as before. It pulls back far enough to show 14 cells either side of the lot and 9 rows past the road: to 0.67 at 1920×1080 at 1×, where the camera can't zoom out, 0.59 at 1728×963 at 2× and 0.53 at 1440×900 at 2×, at their default zoom. A view that shows that much already (0.5× on a 2× screen) stays put.
-  - **A celebration tween, not a zoom step** (CLAUDE.md): the scroll area grows to 1 / k of its box for those four seconds, so the board lays out the garden, the road, the creeks, the houses and the street's life that much further around the lot, and is scaled by k to fit back in its box, from where the view was and back again. Its pixels are uneven while it plays, as Fit's are. A zoom step below the smallest would change D-097, so that's for the user to decide.
-  - **A click, a key or the wheel hurries it back;** the camera holds while it plays. Only a run that ends here gets it: not a debug run, nor one that loads already over. Off with Reduce motion.
-- **Layers:** on the terrain's layer, under the ground's group, so the road running on past the lot paints over a shadow that reaches the sidewalk, and the street's regulars (D-155) pass in front. In a box the size of the view's reach that clips (`viewReach`, which now reaches below the board too), so no house makes the view scroll further. It never takes the pointer: the board finds the house under it.
-- **Art:** three LimeZu cuts (`art/limezu/neighbors.json`). The atlas grows from 109,431 to 157,632 bytes (1024 × 946).
-- **Tests:** `neighbors.test.ts` (what of a house stands on the street; LimeZu's houses until yours stand there; the newest nearest; at the row it was built on; never two in one place, nor one on the lot or the road; out of the creek; the sides by the run's seed; the house under the pointer), `company.test.ts` (plots kept for the newest six, given up first when the browser is full, read back, and a bad one dropped with its job kept), `geometry.test.ts` (the view's reach below the board; how far the end of a run pulls back).
-
-**Why:** the lot sat alone in a dimmed garden, and the record (D-139) already held every house this browser has finished. Standing them around the lot fills the map with the player's own work and makes the next run's street a little longer each time: a sense of progress with no power in it (D-016). The look at the end of a run shows the new house joining them, on screens that can't zoom out too.
-**Considered:**
-- **The stored photos as plots** (D-139's JPEGs): smoothed, with their own grass and trees cut at the frame, at no known scale, so they'd sit soft beside the pixel art and couldn't meet the street. The street starts with the next finished house instead (the build brief's default).
-- **Repainting old houses from a stored layout:** D-139 refused run codes for this reason, since a content or art change would change the houses.
-- **The whole lot's pieces as the plot:** yard pieces spread across the lot (15 × 22 to 22 × 22 cells in the investigation's runs), so a plot would be a lot of scattered fences and beds, at about twice the storage.
-- **A fractional zoom step for screens that can't zoom out:** it changes Accepted D-097, and the look at the end of a run shows the street there without one.
-- **Sold signs on empty plots,** as in the investigation's mockup: LimeZu's houses make a street for a new player.
-- **A floating tip by the house** (the mockup): Inspect is where the board says what's under the pointer, and holding a house keeps its button in reach.
-
-**Changes:**
-- D-097 (Accepted), not changed: for four seconds at the end of a run the board's view is scaled by a transform, a celebration tween as CLAUDE.md allows, like a Huge week's lean-in. The camera's zoom steps are unchanged, and no fractional step was added.
-- D-099 (Accepted): `viewReach` reaches below the board as well.
-- D-136 (Proposed): `paintPhoto` takes `ground` and `only` options, and the photos are painted as before. The strip deals in after the look down the street.
-- D-139 (Proposed): the record keeps a plot on its newest six houses, given up before any photo when the browser is full (its 2026-11-11 note).
-
-**Checked:** in headless Chrome over CDP, in new browsers, against the dev server. Six runs played by the greedy bot (four won, two lost) were filed with their plots: 42 to 73 KB each as base64, 342 KB for the record with the six (without their photos, which the script didn't file). On seed `99k6ct`, at 1728×963 and 1440×900 at 2× and at 1920×1080 at 1×: all six stood beside the lot and across the road, the scroll area kept its size (1002 × 900, 880 × 900, 1114 × 982), and a new browser's lot had LimeZu's three. Hovering a house lit it and filled Inspect, a click held it, and Play this lot again started that lot's run, which showed the other five. A run's last action dispatched on the board looked down the street at 1920×1080 (0.67) and 1728×963 (0.59), came back after 3.85 s to the scroll position it left, and the photos dealt in after it. No console errors.
-
-**Known gaps:**
-- **Houses filed before this build have no plot,** so a player's street starts with their next house.
-- **The street's regulars jump** when the look down the street starts and ends: their crossing grows with the view's reach.
-- **A plot is dimmed when it's painted,** so a later change to the garden's dimming won't reach the houses already filed.
-- **At 1440×900 at 2×,** the nearest houses show less than a cell at the default zoom.
-- **Not played by a person.** The browser pane, Safari, Firefox and touch weren't run.
-
-### D-155 · Life on the lot: crows that fly off, and the street's regulars
-**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: on /dev/ and then main (#69) since 2026-11-12. Asked on the sheet whether it felt right in play, they chose Accept. Proposed 2026-11-11, with its phase pull request (`phase/lot-life`), from playtest 6 on /dev/ at 9acf14a: "we kind of need to have more interactivity with the map to make things feel more alive and dynamic or more lived in. The map in general feels a bit empty and barren." Built from the playtest investigation's prototype. UI only: no rules, content or balance change, so `contentHash(CONTENT)` is develop's and a release keeps runs in progress (#54). For the user's playtest before it merges.
-**Decision:**
-- **A flock of crows on the lot's open grass** (`board/life.ts` flock, `board/LifeLayer.tsx`): two or three crows, pecking, on a 2 × 2 block of grass. Every cell within one of the block is open too: no piece, Tree, water, rock or find, so no crown, roof or tall prop stands over a crow. The run's seed and the week pick the block by hash, never by chance: the same week of the same run gets the same flock.
-  - **It takes off** when the pointer, the piece being placed (its ghost, or one placed and waiting for End week) or a change to the ground comes within 2 cells of a crow, either way. A piece built, moved or torn down there changes the ground. The crows flap up and away from what startled them, fading, over 1.4 s, with a soft flap: three of the yard's cloth fwps, higher and quieter than a yard piece landing. With nothing to flee, they leave over the lot's nearer edge.
-  - **One flock a week.** Once it has gone, the grass stays empty until the next week's flock glides in, fading in, 0.9 s after the week's tally. It lands out of reach of the pointer and the piece in hand, so it never takes off as it touches down. A flock still on the grass at End week leaves quietly as the week turns.
-  - No room for one, no flock: a lot that's built up or wooded can go without.
-- **The street's regulars:** a walker each way on the sidewalk and a car in each lane, crossing the view from past one edge to past the other, then out of sight for a while. Traffic keeps to the right: the lane by the sidewalk goes west, the far lane east.
-  - **One regular to a lane,** so none ever drives through another. Two in a lane at the same speed would meet whenever their pauses differ. Variety comes from regulars taking turns, swapping while out of sight: the westbound car is a teal sedan, then the title screen's blue hatchback; each walker is one of two neighbors.
-  - **Sparse:** the lane by the sidewalk sees a car about every 14 s after the last one leaves, the far lane every 26 s, and each walker every 18 to 27 s. Cars drive at the title's 56 art px a second, walkers stroll at 20.
-  - **It's the title's traffic** (`fx/Drive.tsx`): the title screen's car now drives through the same code, so its look and numbers are as before.
-  - **Past the lot's columns it's dimmed** as the garden and the road out there are (`outside.ts` dim): a car comes out of the same light as the road it's on.
-- **All of it is CSS,** transform and opacity only, moving a whole art px a step (D-097), so nothing wakes the main thread between events. Every timing is in `fx/feel.ts` (`FEEL.street`, `FEEL.life`), and the sprites' own frames are in their cuts.
-- **Layers:** on the canopy's layer, after the canopy, so a crow in flight crosses over the tree tops, and under the labels, the ghost and the popups. A crow on the grass never needs to be behind anything, since nothing within a cell of it rises. Each part is a box the size of the view's reach around the board (`viewReach`) that clips, so nothing in it makes the view scroll further. None of it takes the pointer.
-  - **The STREET label moves down to the canopy's layer,** just before the life: it's paint on the sidewalk, and the walkers and the cars pass over it. On the labels layer it was drawn over a passing car's roof and a walker's legs. Nothing else reaches the street row, so it still shows over the pieces and the yard as before.
-- **Off with Reduce motion,** none of it drawn and no flap; still under the shop's sheet or a change order's, as the water is. The title's car still parks with Reduce motion.
-- **It runs in the guided first job too** (D-149), since it's calm: the build brief's default, for the user to overrule at the playtest.
-- **Art:** nine LimeZu cuts (`art/limezu/life.json`): two pecking crows (east and west) and one flapping crow from Modern Exteriors' animated sheets; a teal and a red sedan from its cars, with their bounce and the exhaust's puff; four neighbors' walk cycles from Modern Interiors' premade characters. The cars and walkers are cut facing east and mirrored by CSS to go west. The atlas grows from 101,576 to 109,431 bytes.
-- **Tests:** `life.test.ts` (the flock is the same for the same run and week, moves from week to week, keeps a cell of open grass around each crow, lands out of reach of the pointer and the piece in hand, and stays away when there's no room; what startles it; which way it flies; one regular to a lane, on the sidewalk or the road, keeping to the right) and `drive.test.ts` (a crossing's length and time, and the title's car unchanged).
-
-**The lanes at each window's default zoom** (1×), in headless Chrome against the dev server:
-- **1728×963 at 2×** (the user's window): the sidewalk and the lane by it are in view. When the sun is south its plaque sits over the middle of that lane, and the zoom buttons over its right end, so a car passes behind them. The far lane is under the view's bottom edge: its cars show their roofs. The view pans down 35 px to the rest.
-- **1440×900 at 2×:** only the sidewalk, at the view's foot, so the walkers and the crows are the life in view. The road is a short pan below, as D-099 has it.
-- **1920×1080 at 1×:** the whole street, the board fitting with room to spare.
-- **Zoomed out** (0.5× on a 2× screen), or at Fit: the whole street and the road running on, with its traffic, to the view's edges.
-
-**Why:** only the lot's water moved, so the map read as still and empty. A flock that scatters at the pointer answers "interactivity with the map" at once, and the street gives the lot a world around it. Juice is core (D-059), and all of it is decoration the rules never see.
-**Considered:**
-- **The prototype's street:** its far lane's car ran along the board's foot, under the view's edge at the default zoom, and its timings were in the component. Here the lane by the sidewalk carries the most traffic, and every timing is in `feel.ts`.
-- **A second traffic system:** the title's car does the same thing, so both use one (`Drive`).
-- **Crows on the canopy's layer only in flight:** nothing rises over a landed crow, so one layer does for both.
-- **Pigeons for variety, crows perching on fences or roofs, the household walking in when a member arrives, weather for the change orders, and time of day across the weeks:** the investigation's later batches, for after this playtest. Time of day conflicts with the week-urgency work and D-120's sun.
-
-**Changes:** none to settled decisions.
-- D-098 (Accepted): the title's car drives through the shared traffic code; `FEEL.title.carPxPerSecond` became `FEEL.street.carPxPerSecond`, the same 56.
-- D-099 (Accepted): its water past the lot's edges stays still. The flock and the street's regulars are the first things besides the water that move by themselves. Its STREET label is on the canopy's layer now, under the street's life, not the labels layer.
-- D-136 (Proposed): the end screen's photos paint the terrain and the house, so the life isn't in them.
-
-**Checked:** in headless Chrome over CDP, in new browsers, against the dev server, on seed `99k6ct` (the Hendersons, the General Contractor), at 1728×963 and 1440×900 at 2× and at 1920×1080, at the default zoom and zoomed out. The flock landed, took off when the pointer came within a cell and a half and was gone 1.7 s later, left as End week turned the week, and the next week's flock glided in 0.9 s after the tally. The scroll area kept its size with life in it (1002 × 900 at 1728×963, 880 × 900 at 1440×900, 1114 × 982 at 1920×1080). With the board covered, every life animation paused, and ran again uncovered. With Reduce motion, nothing was drawn. The title's car still drove by. No console errors.
-
-**Known gaps:**
-- **At 1440×900 at 2× no car shows at the default zoom,** and at 1728×963 the far lane's cars show only their roofs, until the view pans down or zooms out.
-- **A crow flying out over the garden isn't dimmed** past the lot's edge, as the street's regulars are. It fades out as it goes.
-- **The flap wasn't heard:** headless Chrome plays no sound. It's checked as a recipe (its samples exist and round-robin) and a placeholder (it renders under the peak).
-- **Not played by a person.** The browser pane, Safari, Firefox and touch weren't run.
-
-### D-154 · The week's cue: a stamp as each week comes up, and a last week that says so
-**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: on /dev/ and then main (#69) since 2026-11-12. Asked on the sheet whether it felt right in play, they chose Accept. Proposed 2026-11-11, a phase pull request (`phase/week-cue`), from playtest 6: "starting each Week with something on the screen saying "week 1 of 4" ... as the weeks progress there is an increasing sense of urgency ... Currently it feels like the end of the weeks can sneak up on you." UI only, plus one read-only rules selector: no rule, content or balance change. `contentHash(CONTENT)` is `8c16358c` on develop and on this branch, so saves and run codes carry over (#54). For the user's playtest before it merges. Finishes the playtest-6 prototype (`week-urgency.patch`).
-**Decision:**
-- **The week's stamp** (`src/ui/screens/week-stamp.ts`, drawn by `Overlays.tsx`): as each week of a milestone comes up and the board is quiet, "Week 2 of 4" and the milestone's four weeks as pips, at the board's top center, where the milestone's banner goes (they're never up together). It never takes the pointer, notes and toasts sit just under it as they do under a banner, and it's on screen for a fixed real time at any tally speed (`FEEL.weekStamp`, D-059). Three kinds, so some 28 stamps a run don't wear thin:
-  - **A milestone's first week** stamps in (the banner's scale) with a slip under it: "Roofing: 2,850 Wow to go in 4 weeks". A soft page flick (`week-start`). 2.1 s in all.
-  - **Its middle weeks** drop in smaller, the plate alone, the flick at half its gain. 1.25 s.
-  - **Its last week** is orange, its slip says what's still needed, "Last week of Roofing: 471 Wow to go" ("…: its target is met" once it is), under a clock's tick-tock (`last-week`, the slit drum's thock pitched up). 2.8 s.
-  - **The number is the rules'.** `rules.toGo(state)` is the phase target less the score, 0 once met: the UI doesn't subtract (§12).
-  - **None in an overtime week:** its Overtime! banner already says the week is extra and what's needed.
-  - **None in the guided first job's first week** (D-149): the opening's hint and a bare screen are enough to read. Its week 2 is the first stamp.
-  - **Each week once.** Away to the title and back doesn't stamp it again; a new page, a new run or a lot played again does.
-  - **A tally takes it down at once,** and the next week's comes as that tally ends. A banner holds it back until it goes. An action with nothing to play (a reroll, a purchase, leaving the shop) leaves it up, and leaving the shop stamps the next milestone's first week at once.
-- **End week on the deciding week** (`Hand.tsx`): a milestone's last week, or an overtime week, is the press that checks the target. End week wears an orange tag on its top edge, "Last week" ("Overtime" in overtime), in the regular face as the plaque's line is. It stamps in as the week comes up (once its tally is done) and again as a card is placed, the moment the deciding press is next. Its title says what's at stake: "The last week of Roofing: 471 Wow to go. The target is checked as this week is tallied." Its words drop 2 UI px to sit clear of the tag.
-  - **Inside the bar.** The tag reaches into the bar's own top padding and no further, a hover's lift included, so it never covers the card above (the prototype's poked 2 UI px into it at 1440×900).
-  - **Its label stays.** At the deciding press a card is held, Rotate and Cancel stand beside End week, and it's at its narrowest: 70 UI px at 1440×900 and 87 at 1728×963, where "End week" is all that fits. A longer label ("End the last week") would drop to the short one exactly then. The tag fits beside them at every size checked, down to 900×600.
-- **The plaque** (`TopBar.tsx`): the milestone's weeks as pips along its foot, in its padding, the weeks played in ink, the week on now in gold, and the last week's in orange; overtime adds a pip. On the last regular week "Week 4 of 4" turns orange, as "Overtime 1" is, but in the line's own weight, with its margin drawn as a shadow: the bold face widened the plaque 18 px at 1728 px wide.
-- **The tally director's `busy` is up only while something plays** (`director.ts`). An action with nothing to animate (leaving the shop, a reroll, a purchase) used to set it and clear it in the same call, which flicked every reader: the music's scene (to review and back, inaudibly), and the stamp, which the prototype checked a task later to dodge. The stamp still checks a microtask after what it reads changes, since `dispatch` sets the new week before the director hears of the action (`store.ts`).
-- **The defaults the review offered, taken:** every week stamped, with lighter weeks 2 and 3 (not only the first and last); the first job's stamps wait until week 2; and orange for the last week, the same orange as overtime and a miss, since all three say the target is at stake.
-- **Tests:** `week-stamp.test.ts` plays real runs through the store and the director on the instant tally: each week once and in its kind; a tally takes it down before its first frame and the next week's comes after; a reroll and leaving the shop leave it up and never mark the director busy; none in an overtime week or the first job's first week. Undoing the director's change fails two of them, and checking at once instead of a microtask later fails four. `runloop.test.ts` holds `toGo`.
-
-**Why:** the milestone is decided inside week 4's End week press (`run.ts` afterTally → endOfPhase), so every cue the game had (the target's ding, the milestone's banner) came after the decision. Nothing marked a week's start, and week 4 looked like week 1: the plaque's grey "Week 4 of 4 · 16/28" was all.
-**Considered:**
-- **A moving sun or time-of-day light:** it reads as D-120's sunny side moving, and it darkens the board as the deciding piece goes down.
-- **End week's label on the last week** ("End the last week", "Pass the final week"): see above; the tag and the title carry it.
-- **The whole button orange:** the armed Pass ("Pass? Press again") is that orange, and lime is the one "do it" color.
-- **Stamping only the first and last weeks:** the review's alternative. Lighter middle weeks keep the count going without the noise.
-- **A strip across the bar saying what's at stake:** it takes a line from the cards on the week the hand matters most.
-
-**Checked:** in headless Chrome over CDP against a production build, the Hendersons with the Architect on `oh-1107` and on the user's playtest-6 lot (`99k6ct`): the ?debug panel's jump to Roofing, its shop left, and its four weeks passed, at 1728×963@2 (the user's window), 1440×900@2, 1920×1080@1, 1280×720@1, 1024×700@1 and 900×600@1, in the pixel font and at two sizes in the readable one. A card was placed on the last week at each. Screenshots: `docs/playtests/week-cue-*.png`.
-- One stamp a week, in its kind and for its time (first 2.1 s, middle 1.25 s); none in the shop.
-- The plaque is 250 px wide at 1728 every week (the prototype's grew to 268), 172 at 1440.
-- End week's tag sits inside the bar at every size, and inside End week with a card held (126 px in 140 at 1440×900@2).
-- Its stamp-in replays on placing a card.
-
-**Known gaps:**
-- **The stamp covers the board's Sun marker** (D-120) for its second or three when the sun is north, as the milestone's banner does, and the lot's top rows. It never takes the pointer.
-- **A new page stamps the week on show again:** "once a week" is once a page.
-- **A household member arriving as a week starts** shows their card at the board's right edge with the stamp at its top, and the doorbell with the flick.
-- **The two sounds weren't heard:** the flick and the tick-tock are the prototype's recipes on the kit's book and thock samples, and want the user's ear.
-- **Not played by a person.** Touch, Firefox and Safari weren't run.
-
-*D-167 (Proposed 2026-11-12):* the plaque leaves out "3/7" and "· 16/28" (its tip has them), so it's narrower than the widths above. The pips and the last week's orange are as here.
 
 ### D-150 · A lost run leads into the next: a "Next time" tip and Try this lot again
 **Status:** Proposed · 2026-11-11, a fix pull request (`fix/retry-after-loss`), from the what-next survey after release #58, at the session that ran it. UI only: no rules, content or balance change. `contentHash(CONTENT)` is `ffabbd52` on develop and on this branch, so a release keeps runs in progress (#54). For the user's playtest before it merges.
@@ -3066,64 +3995,6 @@ The hand's chip rows were also measured against a develop build at 11 window siz
 **2026-11-11 (D-151, `phase/first-job-targets`):** Try this lot again after a lost first job keeps its `firstJob` mode, and so its gentler targets (`endScreenAgain` passes the run's setup, mode and all, to `playLotAgain`). It stays unguided, as above. After a win, Play this lot again starts a standard run, and so does the Portfolio's.
 
 **2026-11-11 (D-152, `fix/playtest-6-bugs`):** after a loss, Try this lot again and the "Next time" tip leave the group under the stats for a place straight under the verdict, over the milestones, the button first. Under the stats the button was below the fold on every window measured but 1920×1080 in the readable font (243 px under the sticky bar's top at 1728×963 in the pixel font, after a loss at Foundation); now it's whole above the bar on all four windows measured, in both fonts. The tip no longer leads into the button: at 1280×720 in the pixel font its lines pushed the button under the bar. The milestone rows above the bar pay for it after a loss (D-152's Known gaps). After a win, Play this lot again stays under the stats, over Title. This entry's Considered "The tip and the button above the stats" is close to this, a step higher; Copy run code went to the plank, and Title stays under the stats.
-
-### D-152 · Copy run code on the end screen's plank, and a lost run's retry over the milestones
-**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: it answers their own report from playtest 6 and shipped at their "Yes, ship them". Proposed 2026-11-11, a fix pull request (`fix/playtest-6-bugs`), from the user's playtest of /dev/ at 9acf14a the same day: "I can't copy the code anymore at the end screen". Shipped at the user's "Yes, ship them". UI only: no rules, content or balance change, and `contentHash(CONTENT)` is `8c16358c` on develop and on this branch, so runs in progress carry over (#54).
-**Decision:**
-- **Copy run code is on the end panel's plank,** after "Job done!" ("Run over"), as Reroll is on the hand's plank (`EndScreen.tsx`, `end.css`). It copies the run code, as the Menu's Copy run code does, and the toast says "Run code copied". It's at the right column's top, in view on every window as the end screen comes up. It leaves the plain group under the stats, so there's one on the screen, and the Menu's. The sticky bar keeps New run and Copy result (D-148).
-- **The plank's title never gives way; the button's words do.** Its tooltip and its name for screen readers are always "Copy run code". On the plank it says the Menu's "Copy run code" where that fits beside the title, else "Copy code", and on the narrowest plank it's the copy icon alone; the icon joins the words wherever there's room. Container queries on the plank, in em of its own text size, so the pixel font's widths hold at any `--px` (checked at 125%, where `--px` is 1.6 CSS px).
-
-| Window | Plank | Pixel font | Readable font |
-|---|---|---|---|
-| 1920×1080 | 343 px | the icon and "Copy code" | the icon and "Copy run code" |
-| 1728×963 at 2× | 303 px | "Copy code" | the icon and "Copy run code" |
-| 1440×900 at 2×, 1280×720 | 228 px | the icon | "Copy run code" |
-
-  - **In the pixel font** "Job done!" and the button need 374 px with the icon and "Copy run code", 352 with those words alone, 318 with the icon and "Copy code", 296 with "Copy code", and 178 with the icon alone. "Run over" is 12 px shorter, but a loss's button takes a win's form: at 1920×1080 "Copy run code" would fit beside it with 3 px to spare.
-  - **The readable font** fits "Copy run code" on any plank (196 px of 228), and the icon beside it from 238 px, room to spare for a system font wider than macOS's.
-- **The button is 13 UI px tall,** not the small size's 16, and shows the copy icon's 9 UI px drawing without the blank border of its 12 UI px box: the plank grows by 8 px, not 14.
-- **After a loss, Try this lot again and the "Next time" tip come straight under the verdict,** over the milestones. Under the stats (D-150) the button was below the fold on every window measured but one. The button leads, then the tip: on a 1280×720 window, the tip's lines in the pixel font pushed a button under them below the bar. After a win, Play this lot again stays under the stats, on a row of its own over Title, and Title stays there after a loss.
-- **Tests:** `end-panel.test.tsx` walks the panel: the plank's Copy run code, the only one on it, and the order after a win and after a loss.
-
-Measured in headless Chrome on frozen dev-channel builds, at rest, before (develop at 9acf14a) and after. The runs are the greedy bot's win for the Hendersons with the Architect (oh-4, 7 of 7, finished live with Complete early, so it's filed as the user's was) and three losses: at Foundation (the novice bot's nl-0, week 10, the set tip) and at Roofing (greedy's nl-10, week 18, the Reroll tip), both finished live with End week, and at the Final Walkthrough (oh-1, loaded already lost). "Below" is how far a button's top sat under the sticky bar's top.
-
-| Window | Font | Copy run code, the win: before → after | Try this lot again, lost at Foundation: before → after | Whole milestone rows above the bar, the win: before → after | Lost at Foundation: before → after |
-|---|---|---|---|---|---|
-| 1728×963 at 2× | pixel | 617 px below → on the plank | 243 px below → whole | 4 → 3 (the fourth shows 81 of 82 px) | 7 → 4 |
-| 1728×963 at 2× | readable | 107 px below → on the plank | 71 px below → whole | 7 → 7 | 7 → 7 |
-| 1440×900 at 2× | pixel | 726 px below → on the plank | 660 px below → whole | 2 → 2 | 4 → 0 |
-| 1440×900 at 2× | readable | 312 px below → on the plank | 181 px below → whole | 5 → 5 | 7 → 5 |
-| 1920×1080 | pixel | 222 px below → on the plank | 86 px below → whole | 7 → 7 | 7 → 7 |
-| 1920×1080 | readable | partly under the bar → on the plank | whole → whole | 7 → 7 | 7 → 7 |
-| 1280×720 | pixel | 872 px below → on the plank | 806 px below → whole | 1 → 1 | 2 → 0 |
-| 1280×720 | readable | 458 px below → on the plank | 327 px below → whole | 3 → 3 | 6 → 1 |
-
-- **In all 32 cases** (four windows, two fonts, the win and the three losses) Copy run code sat at the column's top, whole, and took a real click at rest: the clipboard then held the run's code (OH1., 1,004 to 3,107 characters), the toast said "Run code copied", and the plank's title showed whole. Before, it took a scroll every time.
-- **After all three losses** Try this lot again was whole above the bar at rest on every window, in both fonts. The tip under it is whole too, but at 1280×720 in the pixel font, where its heading and first lines show above the bar.
-- **The other losses' milestone rows** go the same way: at Roofing 6 → 3 at 1728×963 and 4 → 0 at 1440×900 at 2× in the pixel font, and at the Final Walkthrough 7 → 3 and 4 → 1. At 1920×1080 the pixel font keeps all seven after the losses at Foundation and Roofing, and 5 of 7 after the last one.
-
-**Why:** D-148 moved Copy run code from the sticky bar to a plain row under the stats, and D-150 put Try this lot again over it. On the user's 16-inch laptop window (1728×963 at 2×, the pixel font) a won run's end screen showed the verdict, four milestones, New run and Copy result; the column scrolls 733 px more, and macOS draws its scrollbar only while it scrolls. The one copy button in view copied the result line. Nothing was broken: the button was out of sight. Try this lot again, the way back into the lot for a newcomer who loses (most first jobs are lost, D-150), was below the fold too, on every window measured but 1920×1080 in the readable font.
-**Considered:**
-- **The plank's title giving way** (the investigation's prototype): "Job done!" hidden in the pixel font on planks under 296 px, 1440×900 at 2× and 1280×720 among them. It's the end screen's headline, and the button's words can shorten instead.
-- **Back in the sticky bar on a row of its own:** the bar grows from 128 to 176 px, D-148's problem.
-- **Beside Copy result on its row:** in the pixel font the two need 362 px with "Copy code", and the bar has 303 at 1728×963 and 228 under 1500 px wide.
-- **One button that copies both:** the result line is for the group chat (D-135), and a run code is about 2,600 characters.
-- **A "more below" tab on the bar,** as the hand's "N more cards": the code is still a scroll and a look away.
-- **The tip over the button, as D-150 had them:** at 1280×720 in the pixel font the button sat under the sticky bar: its top 24 to 44 px under the bar's top after a loss finished live, out of sight, and 2 px short of whole for the run loaded already lost. On the other windows it was whole.
-- **Try this lot again in the sticky bar after a loss:** a third button in the bar, D-148's problem again.
-- **A 12 UI px button:** the plank grows by 6 px, not 8, so the win's fourth milestone row would stay whole at 1728×963 in the pixel font (by 1 px), but the words sit tighter in the button.
-
-**Changes:**
-- D-148 (Proposed): Copy run code leaves the plain group under the stats for the plank, and after a loss the group is Title alone. A dated note there.
-- D-150 (Proposed): after a loss, Try this lot again and the tip move over the milestones, the button first. A dated note there.
-
-**Known gaps:**
-- **After a loss the milestones start lower:** fewer rows show whole above the bar at rest (the table), and none at 1440×900 at 2× and 1280×720 in the pixel font. The verdict and the plaque above them say where the client walked and how far the house got.
-- **The win's fourth milestone row at 1728×963** in the pixel font loses its last pixel row, the space under its text, under the bar (81 of 82 px show).
-- **The button's words differ by window and font,** while its name is always "Copy run code": a speech-input user who says what's on it ("Copy code") may not reach it.
-- **The plank scrolls with the column:** scrolled down to the stats, Copy run code is a scroll back up (the Menu's is always there).
-- **The readable font was measured in macOS's system font;** another system's may be wider. The 238 px step for the icon leaves it 20 px, unmeasured.
-- **Not played by a person,** and Safari, Firefox and touch weren't run.
 
 ### D-149 · The first job: a first visit's one contract, a screen that fills in, and an opening the hints walk through
 **Status:** Proposed · 2026-11-11, with its phase pull request (`phase/first-job`), at the user's "Let's do the calm first job… I like the sound of your step 1 plan - let's kick that off". From the first showing: the user "briefly showed off the dev link" to the group, and "the game looked fun, but looked quite confusing off the bat". For the user's playtest. No rules or balance change: every run plays, scores, saves and replays as before, and `balance.ts` gains one field, which only the job board reads.
@@ -3216,599 +4087,6 @@ Measured in headless Chrome on frozen dev-channel builds, at rest, before (devel
 **2026-11-12 (D-160, Proposed):** a first job's standing stock (a Hallway and a Fence in the reserve) comes in Foundation's third week, a week after Strike, not its first. A Foundation that ends sooner gets it at Framing's start.
 
 **2026-11-12 (D-167, Proposed):** the forecast week 2 brings in is the meter's pale fill and tick, with its number in the meter's tip. Foundation's Auto switch shows only beside Complete early while that's offered, or while it's on. The score panel's sets and checklist rows show during a tally only, and the checklist row still waits for the checklist unless a line holds.
-
-### D-148 · First-timer legibility before the showing: hand lines that fit, Reroll named, and the end screen on a laptop
-**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: played in playtest 6 (/dev/ at 9acf14a, 2026-11-11) with no issues raised. The user still finds the screen busy for new players (2026-11-12), and D-167 (Proposed) carries on from here. Proposed 2026-11-10, a fix pull request (`fix/showing-legibility`) from the polish review of the same day, whose list the user answered with "Yes, fix them". The group gets the game on 2026-11-11. No rules or balance change: the same sim seeds score the same before and after (Sim, below).
-**Decision:**
-- **A hand card's line is the hand's own short wording,** number first, within 33 characters (`HAND_LINE_CHARS`, `handCardLines` in `src/rules/text.ts`). 33 is the longest line today, the Kitchen's, which is still cut (Known gaps): the budget keeps new lines from running longer, and doesn't mean a line that long fits. Inspect and the shop keep the full sentences.
-  - An aura leads with what it gives: "+50% to Kitchen or Living Room" (the Dining Room; "Touching Kitchens and…" had lost its +50%), "+25% to touching rooms", "+50% to touching Patios", "+50% to yard views" (the Greenhouse), "+50% to fenced Pet pieces" (the Mudroom).
-  - A neighbor bonus that names two things drops "touching": "+2 per Dining Room or Herb Garden", "+2 per Living Room or Kitchen". One for a tag drops "neighbor": "+2 per touching Quiet (up to 3)".
-  - The Fence: "+1 per fenced tile (up to +6)".
-  - A requirement follows the pay only where both fit: the Doghouse keeps "in a fenced yard"; the Patio, the Hot Tub and the Fire Pit leave "if touching a room" to Inspect and the lot's warning.
-  - Fixtures: Soundproofing "Loud neighbors can’t lower it", the Bay Window and the Pergola "Gives it a view", Bunk Beds "Counts as 2 Bedrooms", the Chandelier "×1.25 Charm in an Entertainer".
-  - **Measured in the pixel font, every piece card given to the hand** (42 cards): lines cut at 1280×720 go from 12 to 3, and at 1920×1080 from 13 to 5. In eight real week-1 hands (32 cards): 7 to 2 at both sizes.
-- **The Kitchen Island's card leads with "Earns +25%",** and its other line says its limit: "Neighbors count it as a Dining Room (sets and the checklist don’t)". It read "Counts as a Dining Room too", which promised an Entertainer or the Hendersons' wish, and it fills neither (D-081). Its two modifiers swap places in `src/content/fixtures.ts`; the rule is the same.
-- **Reroll keeps its word on the hand's plank** at every window size, in both fonts. The title gives way to it: "Cards" on a plank under 25rem, and none under 19rem (a laptop's 244 px plank), where the ROOMS and LAYOUT labels say what the cards are. Demolish stays an icon and a count where its word doesn't fit; while demolishing, Stop keeps its word and Reroll gives up its own.
-- **Rotate shows only while a card is held,** beside Cancel. Standing beside Pass with nothing to turn, its round arrow read as the reroll.
-- **The fixture's and the arrival's hints name the control:** "from your supplies (Your goods, top right) it’s free" (25 words) and "Their room is waiting in your reserve: open Your goods, top right. Room for everyone needs it from now on." (20 words).
-- **Settings:** Display, with the Readable font option, sits second, after Game. It was last, below the fold on any window under about 990 px tall.
-- **How to play:** "The lot" gains Boulders, the Old Shed and Time Capsules, with who earns beside each and what each pays read from the content (`featureWantedText`, `rewardText`). Demolish reads "Clear a piece, a boulder or the Old Shed", and the Demolish button's title and Inspect's prompt name the three the same way.
-- **The end screen's sticky bar holds New run and Copy result.** Copy run code and Title are plain buttons under the stats, without icons; the Menu has both too. They share one row on the wide column (1920 px, the pixel font) and in the readable font, so a first-week loss at 1920×1080 shows both whole above the bar; on two rows the bar cut through Title. The bar is 124 px, from 224. Whole milestone rows above it on a won run with early finishes: 1 of 7 at 1280×720 (from none), 3 at 1440×900 (from 2), all 7 at 1920×1080 (from 6).
-- **An overlapped polaroid's caption keeps to the part of the card that shows.** The name breaks at its hyphen or ends cleanly short of the next card, a Wow too long for the room ends in "…", and the "of N" line is left out. The last polaroid, and the one pointed at or focused, show everything. At 1440×900 every name is whole and a Wow up to "5,720" is; at 1280×720 the names end after six letters.
-- **The small-screen notice** also shows on a window under 500 px tall (a large phone on its side is over 900 px wide). Under 700 px wide it offers "Copy link", with "Copy the link and open it on a laptop.", in place of "Play anyway", which opened a screen that could be neither played nor left. With the clipboard off limits, it shows the link. The link is the address as the friend opened it: starting up takes a shared lot's `?seed`, `?client` and `?crew` out of the address bar, so the notice keeps its own copy and the laptop opens the same lot.
-- **The last shop says what leftover budget is worth:** "Last shop: budget you still hold pays 100 Wow each, but only after the last target is met." (`lastShopText`, with the number from the balance), on a line over the shop's foot.
-
-**Sim:** `npm run sim -- --runs 120 --seed island` (greedy; 9 Kitchen Islands installed) and `--runs 60 --seed islandgift --gift fixture:kitchenIsland` (both arms; 54 installed), on develop at 9dc4be7 and on this branch: all 240 runs have the same weekly scores, milestones and results. Only the time per run differs.
-**Why:** the review played the game as a first-timer would, at laptop sizes. Every first hand had a line cut by "…", and the aura cards lost their number. Reroll was a bare die, and the round arrow beside Pass, the Rotate button, looked like it. A bought fixture landed in a folded plank that no hint named. The option that cures most short-window trouble, the readable font, was below the fold in Settings. On a won run at 1280×720 the end screen's buttons covered every milestone row.
-**Considered:**
-- **The hand line across the card's full width where a thumbnail sits beside it** (a 2× laptop, or a window about 1,680 px wide at 1×): at 1440×900 at 2× it cuts 2 of 32 week-1 cards, from 15, and four cards still fit. But the cards change height, the Pass bar moves up to 48 px, and at 1470×840 and 1512×860 at 2× the fourth card goes partly under the bar in 2 of 8 hands (none today). Left for a playtest's verdict.
-- **A three-line clamp:** the skeptics' simulations pushed cards under the bar at 1280×720 and 1920×1080.
-- **A quarter-turn glyph for Rotate:** an art change and an atlas rebuild the day before the showing.
-- **The hints moved under Your goods:** on the build screen that spot covers Reroll, Demolish and the first card.
-- **Counting leftover budget toward the last target,** or a last-shop line without "only after": D-145 pays it after the target is met, so it never turns a loss into a win, and a line that hid that would cost a friend the run.
-- **Dropping the Island's `countsAs`** for a plain "+50%": a rules change, and a re-fit.
-
-**Changes:**
-- D-121 (Accepted): a compact card's line is the hand's own wording, not always the card's first effect line as written; the two-line clamp stands. A dated note there.
-- D-132 (Proposed): Reroll keeps its word, and the plank's title gives way to it. A dated note there.
-- D-140 (Proposed): its claim that the Garage's hand line fits at every window size is corrected. A dated note there.
-- D-047 (Accepted): the notice also keys on height, and offers the link on a phone held upright. A dated note there.
-- D-098 (Accepted) and D-110 (Proposed): the end screen's sticky bar holds two buttons, and the Costs paragraph's numbers are updated in a dated note. D-110's hint list is unchanged.
-- D-136 (Proposed): the overlapped captions. A dated note there.
-- D-142 (Proposed) and D-045 (Accepted): the fixture's and the arrival's hints, still within 25 words. A dated note on D-142.
-- D-145 (Proposed): its Known gap, that nothing at the last shop says what leftover budget pays, is closed.
-
-**Known gaps:**
-- **The Kitchen's and the L-Kitchen's line,** "+2 per Dining Room or Herb Garden", still loses its last word or two on a narrow card and at 1920×1080: two 11-letter names don't fit two lines.
-- **Beside a thumbnail the line is still cut** on 2× laptops (15 of 32 week-1 cards at 1440×900, from 16) and for the Fence and the Long Hallway at 1920×1080. It needs the layout change under Considered.
-- **The Chandelier's "Fits a Dining Room or Living Room"** is cut on a narrow card; the draw never deals it.
-- **At 1280×720** an overlapped polaroid's name and Wow are still short ("Framin", "3,…"), cleanly; a 91 px slot holds six letters.
-- **Between 700 and 899 px wide** the top bar's Menu is still off-screen after "Play anyway".
-- **Hand lines that dropped "touching"** (the Dining Room's, the Kitchen's, the Patio's, the Greenhouse's) can be read as house-wide, while the Porch's and the Fire Pit's keep the word. It doesn't fit the line; Inspect, the shop and the ghost's Wow label give the true reading. The team's call after the showing.
-- **A loss in a later phase at 1920×1080,** with more rows of stats, still has the row of two buttons under the bar until the column scrolls; so does any loss at 1680×1050 and narrower in the pixel font, where they take a row each.
-
-*2026-11-11 (D-150, Proposed):* the plain group under the stats leads with Try this lot again, on a row of its own ("Try again" in the pixel font's narrow column), and a lost run's "Next time" tip sits over it. The sticky bar still holds New run and Copy result, and the milestone rows above it are unchanged. At 1920×1080 a later loss now shows the tip's first line under the bar, where the two buttons were.
-
-*2026-11-11 (D-152, Proposed):* Copy run code leaves the plain group under the stats for the end panel's plank, in view at the column's top: under the stats it was 617 px below the bar on the user's 1728×963 laptop, and they couldn't find it. After a loss, Try this lot again and the "Next time" tip sit over the milestones, and the group under the stats is Title alone (Play this lot again and Title after a win). The sticky bar is unchanged. The plank is 8 px taller: a won run keeps as many whole milestone rows above the bar, except at 1728×963 in the pixel font (4 → 3: the fourth shows 81 of its 82 px). After a loss fewer show (D-152's Known gaps).
-
-**2026-11-11 (a fix pull request, `fix/hand-lines-2x`, the third step of the survey after the release; Proposed until the user has seen it):** this entry's two hand-line gaps. The line has three lines, four beside a 2× thumbnail, and the Greenhouse's says "touching" again. UI only: `contentHash` is unchanged (ffabbd52), so runs in progress carry over.
-- **Three lines at most,** at every window size (`hand.css`). Considered below had a three-line clamp push cards under the Pass bar at 1280×720 and 1920×1080; on today's short lines it moved none there, in either font.
-- **Four lines beside a 2× thumbnail,** on a window over 800 px tall (under that the shape's glyph stands in for the thumbnail, and the line has the card's width). A row there holds about 12 letters of the pixel font, so "+2 per touching view (up to 3)" takes four.
-- **On a 2× window under 1100 px tall** (where Your goods folds: 1440×900, 1470×956 and 1512×982, and 1470×840 and 1512×860 under a browser's bars), the cards sit 4 px apart (8 before), with 4 px over the name and 8 px under the chips (8 and 12), and the thumbnail's well has no padding (4), which widens the line by 8 px. Without them the fourth card went under the bar in 6 of 11 four-card hands at 1470×840.
-- **"Touching" comes back where the line stays within the 33-letter budget** (`touchingLine` in `text.ts`): the Greenhouse's "+50% to touching yard views". The Patio's "+2 per touching Living Room or Kitchen" (38) fits whole at every size, but its extra row put a fourth card under the bar in four hands: in the readable font at 1280×720 and 1366×768, and in the pixel font at 1512×860 at 2×. The Dining Room's (39) takes a fourth line at 1280×720, and the Kitchen's and the L-Kitchen's (42) five beside a 2× thumbnail. Each keeps its short line.
-
-Measured in headless Chrome on the week-1 hands of 16 lots: the first job's lot as an ordinary run, and 15 lots over the five clients and three crews (69 cards; the Landscaper's five lots deal five), and on the guided first hand (Living Room, Bedroom, Greenhouse, Garage), taken from the board in a fresh browser. A card is under the bar when the bar hides some of what it says, as the hand's "N more cards" tab counts; the count includes the five-card hands' fifth cards. Before is develop at e765f64, the game live on main.
-
-| Window | Font | Cards cut, of 69 | Cards under the bar | Guided hand: lines cut, of 4 |
-|---|---|---|---|---|
-| 1470×840 at 2× | pixel | 40 → 0 | 9 → 7 | 2 → 0 |
-| 1470×840 at 2× | readable | 0 → 0 | 14 → 7 | 0 → 0 (its fourth card is no longer under the bar) |
-| 1512×860 at 2× | pixel | 31 → 0 | 5 → 5 | 2 → 0 |
-| 1512×860 at 2× | readable | 0 → 0 | 9 → 5 | 0 → 0 |
-| 1440×900 at 2× | pixel | 40 → 0 | 5 → 5 | 2 → 0 |
-| 1440×900 at 2× | readable | 0 → 0 | 7 → 4 | 0 → 0 |
-| 1920×1080 | pixel | 6 → 0 | 1 → 1 | 0 → 0 |
-| 1920×1080 | readable | 0 → 0 | 0 → 0 | 0 → 0 |
-| 1280×720 | pixel | 6 → 0 | 19 → 19 | 0 → 0 |
-| 1280×720 | readable | 0 → 0 | 18 → 18 | 0 → 0 |
-
-No card is under the bar that wasn't before. Also checked, both fonts, with the pixel font's cut cards: 1512×982 at 2× (31 → 0; under the bar, none before or after in the pixel font, 3 → 0 in the readable), 1470×956 at 2× (40 → 0), 1728×1117 at 2× (6 → 0), and 1280×720 at 2×, 1366×768, 1440×900 and 1600×900 (6 → 0; 1600×900 had none). No card is newly under the bar there, except one at 1470×956 (Known gaps).
-
-- **Considered:**
-  - **The line across the card's width, the thumbnail beside the chips,** with three lines (this entry's first Considered): none cut, but the bar hid 15 cards at 1470×840 (9 before) and 14 at 1512×860 (5).
-  - **Three lines at 2× and today's spacing:** 12 of 69 cards still cut at 1470×840 and 1440×900, the guided hand's Living Room among them, and 13 cards under the bar at 1470×840.
-  - **Four lines and today's spacing:** none cut, but 16 cards under the bar at 1470×840, the fourth card in 6 of 11 four-card hands. With only some of the closer spacing (the gaps, or the padding, or the well), 1 to 4 cards were still newly under the bar at 1470×840 or 1512×860.
-  - **The shape's glyph for the thumbnail on a 2× window up to 900 px tall,** as at 1× (with three lines): none cut and the fewest cards under the bar, but "Living Room" wrapped under the glyph, "Greenhouse" ran into it, and most laptops would lose the pictures.
-  - **The chips beside the thumbnail in the narrowest column,** to pay for the extra lines: the bar hid more cards, not fewer (19 at 1470×840, with three lines).
-  - **Rewording to fit "touching" in:** the Dining Room's names swapped, "+50% to touching Living Room or Kitchen", and a comma for the Kitchen's "or", "+2 per touching Dining Room, Herb Garden". Both fit whole at every size measured, but each takes a row more where it shows (four lines beside a 2× thumbnail, three at 1280×720 and 1920×1080), as the Patio's did. Whether that puts cards under the bar wasn't measured.
-- **Known gaps:**
-  - The Patio's, the Dining Room's, the Kitchen's and the L-Kitchen's hand lines still leave out "touching" (above). Inspect, the shop and the ghost's Wow label give the true reading.
-  - At 1470×956 at 2× (a 15-inch MacBook Air's full screen) one five-card hand's fifth card now sits 3 px under the bar, where two others came clear (3 → 2).
-  - Beside a 2× thumbnail a line can end on a short row: "+2 per / touching / view (up to / 3)".
-  - Week-1 hands only: later weeks' fixtures (two lines each), Renovate chips and the Bigger Truck's fifth card weren't measured, nor the Chandelier's line.
-  - Chrome's emulated 2× only. Safari and Firefox weren't run; both clamp a `-webkit-box` the same way.
-  - The closer cards and the bare well wait on the user's eye (before and after screenshots of the guided hand, sent to the user with the pull request).
-- **Changes:** D-121 (Accepted): three lines, four beside a 2× thumbnail, and the closer cards on a 2× window under 1100 px tall; a dated note there. This entry's Known gaps: the Kitchen's line and the line beside a thumbnail are whole now, and of the four lines without "touching", three are left (the Kitchen's, which the L-Kitchen shares, the Dining Room's and the Patio's).
-
-**2026-11-12 (D-157, Proposed):** with Strike on the plank, Reroll gives up its word in the pixel font on planks under 17.25rem (18.25 with a two-digit count), windows under about 1,595 px wide, and Demolish and Strike show their icons and counts. The readable font keeps Reroll's word at every width. In either mode, Strike's as well as Demolish's, Stop keeps its word and the other two give up theirs, in both fonts and at every width: this entry's rule while demolishing, widened. The first job's two-button plank keeps this entry's rules. It's D-157's default for now, against this entry's "at every window size", for the user to revisit at the playtest; their 1728×963 window keeps the word outside a mode.
-
-### D-146 · The friction batch's re-fit: the targets set against played runs
-**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: played in playtest 6 (/dev/ at 9acf14a, 2026-11-11). These targets stand until the re-fit that follows D-162 to D-168. Proposed 2026-11-10, at the user's "Merge and re-fit", once D-140 to D-145 were all in develop. A fix pull request (`fix/refit-targets`) that merges on green, so /dev/ plays at the intended difficulty; the batch's playtest decides whether it holds. It's the one re-fit D-140, D-143, D-144 and D-145 each left for the end.
-**Decision:**
-- **What it covers:** develop at 4f75b34, with D-140 to D-145.
-- **Targets:** 20, 560, 1,900, 5,200, 11,300, 20,500, 35,700 Wow (they were 20, 560, 1,750, 4,850, 10,200, 18,800, 32,600). Milestones 3–7 rise 7–11%, about what greedy's median score rose at each (5, 6, 10, 13 and 14%).
-- **Each client's `targetPct`:** the Hendersons 110 (it was 115), Count Vladislav 95 (90), the Barkers 90 (90), Juniper 95 (85), Dale 115 (115). These are the fit's factors, used as fitted.
-- **The fit as written came out too hard.** D-085's method (`--suggest-targets` on 2,000 untargeted greedy runs, seeds `sim-*`, the five clients and three crews in turn) gave 20, 640, 2,050, 5,500, 11,500, 21,500, 37,700. On 2,000 held-out runs (`check-*`) greedy won 37.5% [35.4–39.6] against the fit's estimate of 45.1%: 7.6 points under, and below §8's band. D-123's fit came 2.6 under, and M4b's 5.
-- **Why the estimate runs high:** it reads an overtime week off the untargeted run's next week. In that run the milestone's shop has already opened and its budget is paid; in play, an overtime week comes before both.
-  - The seeds aren't the cause: the same check seeds played untargeted give the same estimate (45.0%).
-  - A run that takes no overtime plays week for week as its untargeted twin.
-  - The fit as written leaned on overtime: 36% of runs needed it at milestone 2 (61% met it on time), and a run used 1.61 overtime weeks.
-- **So the targets are set where played survival meets the goals.** The gap between estimate and play at each milestone (1.9, 1.8, 3.7, 2.6, 6.2 and 7.5 points) is added to that milestone's goal, and the same `sim-*` runs are fitted again: 20, 580, 1,900, 5,200, 11,300, 20,400, 35,700.
-- **Milestone 2 keeps 560** (not 580), and the rest are fitted on from there. Greedy's median at week 8 is 720, where D-123 had 728, so nothing in the batch made the first two phases stronger. It's the milestone playtest 5's run made with 665 of 644.
-- **Played, greedy's survival follows the goals** (100, 98, 95, 85, 72, 58, 45%):
-  - On `check-*` (2,000 runs): 100.0, 98.6, 96.0, 86.7, 74.1, 58.4 and 45.6%.
-  - On `hold-*` (2,000 runs that no fit or goal had seen): 100.0, 98.5, 96.3, 86.9, 73.2, 58.0 and **45.7%**.
-- **The crews' numbers stay.** On `check-*` the General Contractor won 41.9%, the Landscaper 50.5% and the Architect 44.2%; on `hold-*` 46.1%, 47.1% and 43.9%. The Landscaper's gap in D-123 (36.7%) has closed: D-145 gave the yard more that counts.
-
-**Why:** on D-123's targets, greedy won 65.5% of `--check`'s runs once the whole batch was in, against §8's 40–50%. It had won 46.0% before the batch and 54.0% with D-140 to D-142; D-143, D-144 and D-145 each took it to 54.5–56.5% alone, and to 65.5% together. Playtest 3 found a run with that much slack too easy.
-
-§8's criteria, before (4f75b34) and after. The first three columns are `npm run sim -- --check` (200 runs, the General Contractor) and `--check --crew all` (200 runs, each client with every crew in turn). The last is `--check --crew all` on 2,000 runs of `check-*`.
-
-| Criterion | `--check` before | `--check` after | `--crew all` after | 2,000 runs, after |
-|---|---|---|---|---|
-| random loses by milestone 3 (≥ 95%) | 100.0% PASS | 100.0% PASS | 100.0% PASS | 100.0% PASS |
-| novice passes milestone 1 (≥ 90%) | 99.5% PASS | 99.0% PASS | 96.5% PASS | 97.5% PASS |
-| greedy clears milestones 1–3 (92–98%) | 98.5% FAIL, unsure | 97.0% PASS, unsure | 97.5% PASS, unsure | 96.0% PASS |
-| greedy wins (40–50%) | 65.5% FAIL | 47.0% PASS, unsure | 49.0% PASS, unsure | 45.6% [43.4–47.7] PASS |
-| early completion: always vs never, within 10 points | −11.0 FAIL, unsure | −5.0 PASS, unsure | −9.5 PASS, unsure | −5.1 [−7.8, −2.4] PASS |
-| fences pay: probe p50 2–3, ≥ 50% offered that many | 2, 68.4% PASS | 2, 67.9% PASS | 2, 70.0% PASS | 2, 70.7% PASS |
-| clients, crews within about 15 points | 25.0 FAIL, unsure | 22.5 FAIL, unsure | 20.0, 3.6 FAIL, unsure | 5.0, 8.6 PASS, unsure |
-| planner wins about 75%; no must-buy | not measured | not measured | not measured | not measured |
-
-- **The clients are level.** On `check-*`: the Hendersons 47.8%, Count Vladislav 47.3%, the Barkers 42.8%, Juniper 42.8%, Dale 47.3%. On `hold-*`: 48.8, 44.3, 46.8, 42.5 and 46.3%. The spread at 200 runs is noise, as in D-123 (40 runs a client).
-- **Milestone 2 is met on time as often as before:** 80.0% of `--check`'s runs (80.5% before). A run uses 1.47 overtime weeks (1.15 before, on targets the batch had outgrown; 1.34 after D-123).
-- **The run's shape** on `--check`, as the median score of the runs that reached each milestone over its target: ×5.3, ×1.51, ×1.54, ×1.25, ×1.16, ×1.15 and ×1.22, against ×5.6, ×1.61, ×1.77, ×1.40, ×1.30, ×1.26 and ×1.27 before.
-- **For a player:** the Hendersons' second milestone is 616 Wow (it was 644), and their last is 39,270 (37,490). The last is 33,915 for Count Vladislav and for Juniper, 32,130 for the Barkers and 41,055 for Dale.
-- The fit and the 2,000-run checks ran in parallel shards that play each seed exactly as `npm run sim -- --crew all` does. On `check-0` to `check-199` they matched the CLI's `--check --crew all` run for run.
-
-**Considered:**
-- **The fit as written:** 37.5% held out, and milestone 2 at 640 with no change in the first two phases.
-- **Easing milestones 4–7 by a flat percent,** as M4b did: it would take about 6%, and leaves milestones 2 and 3 where two runs in five need overtime by Foundation.
-- **Milestone 2 at 580,** the second fit's own number: 3.6% over the one the user played and accepted, for a first phase that hasn't changed.
-- **Fixing the estimate** so an overtime week is read from a run that hasn't had its shop: the right repair, but it needs a model of that week, which is more than the day before the release should carry. Until then a re-fit needs this entry's second step.
-
-**Changes:** D-085 and D-123: the targets and the factors, noted there. `src/content/balance.ts` and `clients.ts`. D-140, D-143, D-144 and D-145: each notes that its re-fit is done.
-
-**Known gaps:**
-- The check seeds set six goals, so `hold-*`'s 45.7% is the clean held-out figure. `--check` runs on `check-*` and reads 47.0%.
-- `estimateSurvival` still overstates what overtime rescues, so `--suggest-targets` alone would write targets about 8 points too hard.
-- Every figure is the greedy bot's. It doesn't plan a Driveway, a "-house" build or the order it picks, so a person who does has more room than these numbers say.
-- Not playtested: the user's playtest of D-140 to D-145 is on these targets.
-
-### D-122 · Score legibility, the jam slice: the play's label names its cause, and room cards name their sets
-**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: played in playtest 6 (/dev/ at 9acf14a, 2026-11-11), where it raised one question, which D-153 answered. The user still isn't always sure why points move (2026-11-12), and D-165 (Proposed) goes after that. Proposed 2026-11-10, at the user's "Yes, build the slice", from the legibility deep-dive (2026-11-09, options A to C; its full text is backed up in the playtest-5 session's shared notes). It builds the deep-dive's cheapest cut: part of option A (the label names its cause) and part of option B (a static set chip). For the next playtest.
-**Decision:**
-- **The rules split a play's change into parts** (`src/rules/attribution.ts`, `Preview.parts`). Comfort parts are worth their Comfort × the old Charm and Sparkle; Charm parts their Charm × the new Comfort and the old Sparkle; Sparkle takes the rest. Largest-remainder rounding makes the whole parts add up to the preview's change exactly. The parts are coarse:
-  - the played piece (an install's host, a renovated room)
-  - each other piece that earns more or less
-  - each set made or broken, with its Comfort and Charm together
-  - each checklist line turned on or off
-  - each +Mult modifier whose count changes
-  - Sparkle, when a ×Mult source comes, goes or changes
-  - "Other changes" for what none of these explains, including a held ×Mult's rounding of a different Charm
-  
-  An installed fixture's own +Mult and ×Mult (a Chandelier's) count as the card's own part, as a placed piece's earnings do.
-  
-  The chaos suite checks that they add up on every previewed play of its runs.
-- **The ghost's label names the biggest cause besides the card's own,** in the same direction, when it's at least a quarter of the change and 2 Wow: "▲ +139 Wow · Suite", "▼ −48 Wow · Cozy off". The card already says what it pays itself. A change of 0 names its biggest gain. "Other changes" is never named. The Renovate and install labels name it too.
-- **A big part pulling the other way gets a line of its own** under the change, when it's at least 10 Wow and a quarter of the change: "▼ −68 Wow · Cozy off" under a +45.
-- **Room cards name a set they count toward** in a chip in Charm's tint: the touching set with the shortest name, so it shares a line with the card's tags at 1600×900, plus how many more touching sets there are. A Closet says "Suite" and a Bedroom "Suite +1". Full House shows only on cards with no touching set (Garage, Hallway, Home Office). It's static membership: it never says where. Its tip names each set's members, whether they must touch, what it pays, and whether a house can have more than one, Full House included.
-- The UI only chooses among the rules' parts (`src/ui/board/causes.ts`); it computes no scores.
-
-**Why:** the deep-dive found that in playtest 4's run only 15% of the Wow plays moved came from the played card's own lines. The biggest surprises were sets: the Closet's +139 was the Suite's +134, and no card names a set. The ghost already shows the number, so naming its cause costs no discovery. The user ruled out partner highlights on the board.
-**Considered:**
-- All of option A: a receipt in Inspect, the badges in Wow, and stakes in the tips. Option B's "In this house" boosts on a card. Option C's ledger and the piece's worth. They're about 2–3 days more, after the jam if playtests still find surprises.
-- Naming the piece's own part ("· Closet"): the card says it.
-- The set chip lit when the house holds the set's other members: closer to the highlight the user turned down (the deep-dive's Q2).
-- "Jack-and-Jill +1" on a Bedroom: at 1600×900 it took a second line and pushed the hand's fourth card out of view.
-
-**Changes:** none to settled decisions. D-087's preview gains a field. The bots read only the preview's change, so the sim's numbers can't move.
-
-**2026-11-11 (D-153, `fix/full-house-progress`):** the chip counts Full House where it names it: "Full House 5/9", the member types the house has built (the rules' `setProgress`), and a check in place of the count once the house holds it, wherever that costs the card no chip row (elsewhere it says "Full House" as above). Its tip says the count in words, and Inspect names a hand card's sets. Touching sets get no count, and a card that would complete a set gets no star.
-
-**2026-11-12 (D-164, Proposed):** yard pieces and outbuildings are set members now, so their cards get the chip by the same rule: a Lawn "Dog Run +2", a Fence "Dog Run +1", a Patio "Backyard", a Treehouse "Play Yard", a Greenhouse "Harvest", a Driveway "Drive-In". The shortest names put a Kitchen at "Harvest +1" and a Living Room at "Backyard +1", with the Entertainer in their "+1" and their tips.
-
-### D-153 · Full House counts on the set chip, and Inspect explains a card's sets
-**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: it answers their own question from playtest 6 and shipped at their "Yes, ship them". Proposed 2026-11-11, a fix pull request (`fix/full-house-progress`), from the user's playtest of /dev/ at 9acf14a: they asked why their Hallway card said "Full House". At the user's "Yes, ship them": the count, a check once the house holds the set, and the set explained in Inspect, but not a star on the card that would complete it. Builds on D-122's chip. A rules selector, its words, and the UI: no content or balance change. `contentHash(CONTENT)` is `8c16358c` on develop and on this branch. For the user's playtest.
-**Decision:**
-- **A chip that names Full House counts it** (`SetChip`, `src/ui/hud/Hand.tsx`): "Full House 5/9", the member types the house has built, and a check in place of the count once the house holds the set. The chip names the set D-122 picks: the touching set with the shortest name, plus "+N", or Full House on a card whose only set it is (a Hallway, Long Hallway, Garage or Home Office). A touching set gets no count: whether its members touch is the layout's, so a count would promise what it may not give.
-- **The rules count** (`Rules.setProgress`, from `setProgress` in `src/rules/sets.ts`): the member types among the pieces placed, read as `matchSets` reads them: a piece's own type or its card's `countsAs` (a Long Hallway is the Hallway, an L-Kitchen the Kitchen), never a fixture's (D-081: a Kitchen Island's Dining Room doesn't count, and Bunk Beds' Bedroom counts once). A second Bedroom adds nothing. Held is the set matcher's own answer. A piece being placed or previewed isn't in the house yet, so it never counts, and a demolition takes its type off at once. Null for a set whose members must touch.
-- **No star:** a card that would complete the set reads "8/9" like any other. D-122 set a lit chip aside, and the user didn't approve one.
-- **The chip's tip** adds the count in words after Full House's line: "Your house has 5 of the 9. Still to build: a Closet, a Hallway, a Garage, and a Home Office." or "Your house has it." (`setProgressText`, `src/rules/text.ts`).
-- **The count and the check show only where they cost the card no chip row** (`hand.css`), so at 1× and 2× no card grows and none goes under the Pass bar (125% and 90% zoom: Known gaps). Elsewhere the chip says "Full House", as D-122's did, and its tip and Inspect say how far the house is. The chips' row is a container, so the rules read its own width:
-  - **The pixel font:** on a narrow card the chip and a tag's icon need 220 px with the count. A Garage or Home Office shows it at 1728×963 and 1680×1050 at 2×, and at 1920×1080, 1600×900 and 1536×864, but not at 1440×900, 1470×840 or 1512×860 at 2× or at 1280×720, whose rows are 197.5 to 208 px. A Hallway, with no tags, shows it at all of these, and a Long Hallway at all but 1512×860 (a 181.5 px row for a 184 px chip). A wide card names its kind too, so there a Hallway's count needs a 298 px row (1792×1120 at 2× has 288). The check makes the chip 160 px, so it needs 196 beside a tag's icon and 160 alone: it waits on a Garage's or Home Office's rows of 179 to 196 px (1× windows 1616 to 1688 wide, and 2× windows 1504 to 1536 wide, 1504×900 among them) and on a narrow Long Hallway's rows under 160 (1× windows 1504 to 1640 wide; under 142 even the plain chip spills, as it did before).
-  - **The readable font,** whose words keep their size at 125%: a Garage's or Home Office's chip, kind and tag share a line from 213 px (at 125%, from 194.2 for a Garage, whose "Loud" is narrower than a Home Office's "Quiet", and 196.9 for a Home Office) and need 241 with the count (234 with the check), so on rows from 194 to 241 px both wait. They show at 1728×963 (242.9 px), 1920×1080, 1600×900 and 1536×864, and not at 1440×900, 1470×840, 1512×860 or 1680×1050 at 2× or at 1280×720. A Hallway or Long Hallway has no tag, but its kind beside the chip: with the count they need 179.5 px (the widest count, "4/9": this font's digits differ in width) and with the check 171.7, so both wait on narrower rows, which 1× windows 1504 to 1744 wide have (154 to 176 px; 1600×1000 and 1680×940 among them), and 2× windows 1504 to 1536 wide and over 1100 tall (172 to 179). At the six sizes the fit sweep measures, they show.
-  - **A card that can renovate** keeps its line for Renovate: no count or check. Of the cards whose chip names Full House, only a Home Office can, for Dale once he has his two (his house rule caps them).
-- **Inspect explains a hand card's sets** (`SetLines`, `src/ui/hud/Inspect.tsx`) under a "Sets" heading: for each set the card's piece counts toward, what it needs and pays (`setText`, the chip's tip), and under Full House the progress line in Charm's ink, with the check once it's held. Pointing at a hand card, after the card's text and before "Click the card…". With a hand card picked, until the pointer is on the lot, only the progress line, named (`SetProgressLines`): "Full House: your house has 5 of the 9. Still to build: …". Every set's lines there grew Inspect from 106 to 467 px at 1728×963 in the pixel font, on every pick of a set's room. Not in the placement preview, whose "Completes Full House" note is about that spot, nor for the reserve's pieces.
-- **Tests:** `sets-m4a.test.ts` (the count, the variants, fixtures, a demolition, and in a run: a previewed card doesn't count, a built one does, a demolished one comes off), `text.test.ts` (the words), and `set-chip.test.tsx` (the chip's text, count, check and tip; a Hallway card placed where it would complete the set, which the chip doesn't count until it's built; and Inspect's lines, called in place: a card pointed at gets every set's, a card picked only Full House's progress).
-
-**Why:** the chip names the set a card counts toward, and the Hallway, Garage and Home Office belong only to Full House: one each of nine types anywhere in the house, the one set with Sparkle (×1.5). It never said how close the house was, so the name read as a claim the house didn't back. The count says how near the set is at a glance, and Inspect says the rest.
-**Considered:**
-- **A star on the card that would complete the set,** named ahead of its touching sets (the investigation's prototype): not approved. It's D-122's lit chip by another name.
-- **A count on touching sets** ("Suite 2/3"): the layout decides whether they touch.
-- **Letting the count wrap:** in the pixel font at 1440×900, 1470×840 and 1512×860 at 2× and at 1280×720, a Garage or Home Office grew a chip row (28 px), and 3 to 5 more cards in the 43 hands measured at each size went under the Pass bar.
-- **Hiding the count on every narrow card:** it hid it at 1728×963, the user's window, where it fits.
-- **The count alone on a narrow card** ("5/9", the name in its tip, as a narrow card's tags show only their icons): a number with no set beside it.
-- **Measuring each card in script** and dropping the count where it wraps: exact for any font, but the hand's other fits are container queries, and the chip would need hooks.
-
-**Changes:**
-- D-122 (Proposed): its chip counts Full House, with a check once held, where that costs no chip row, and its tip says the count. A dated note there.
-
-**Checked:** in headless Chrome over CDP, against frozen builds of develop (9acf14a) and this branch (`VITE_CHANNEL=dev`), at 1728×963, 1440×900, 1470×840 and 1512×860 at 2× and at 1920×1080 and 1280×720, in both fonts. Each size and font had 43 hands: the guided first job and 16 week-1 lots (the hand-lines set), the same lots with a Garage and a Home Office given through ?debug, and ten mid-run states from greedy runs, with a Full House card in hand at each count from 0/9 to 8/9 and held.
-- Cut hand lines: 0 on both builds. Cards under the Pass bar: the same in every hand. No card's height changed.
-- A row probe at 19 sizes (adding 1680×1050, 1792×1120, 1470×956, 1512×982 and 1920×1200 at 2×, 1600×900, 1366×768, 1536×864 and 2560×1440 at 1×, and four windows at 125% and 175%) put each Full House card in hand with its count and held, with and without a Renovate chip: no chip row grew in 608 cases.
-- In play: with a Home Office placed and waiting for End week, its card and the Garage card in hand still read 6/9, and after End week the next hand's Home Office read 7/9. On Dale's house, which held the set, a Hallway and a Garage given through ?debug read "✓ Full House" at 1920×1080, at 1728×963 in both fonts and at 1440×900 (the Garage's check waits at 1280×720 in the readable font, as above); the Home Office card there can renovate (Dale's two Home Offices), so it read "Full House". Demolishing the Garage took the Hallway and Garage cards to 8/9 at once, and Inspect said "Still to build: a Garage." Run again on the final build after the review: the same.
-- **Review (2026-11-12):** a width sweep found what the six sizes miss: in the readable font a Hallway's or Long Hallway's count and check took its kind onto a second chip row, and in the pixel font the check did the same beside a Garage's or Home Office's tag and spilled out of a narrow Long Hallway's chip (the windows are above). In the fit sweep's hands at 1680×940 in the readable font, 3 Long Hallway cards had grown 28 px and one more card had gone under the Pass bar (37 → 38), and at 1600×1000 a Hallway had grown. The rules above for the check and for tagless cards fix them; checking that fix at 125% found a Garage's chips sharing a line from 194.2 px, so the readable font's band starts at 194, not 196.
-- **The width sweep** of the final build: each Full House chip as drawn, against its row with the count and the check forced off, in both fonts, at 4/9 (the readable font's widest count) and on a house that holds the set. 1× windows 1200 to 2560 wide in 8 px steps, 720, 900, 1080 and 1200 tall; 2× ones 780, 900, 1080 and 1117 tall; 2 px steps across the bands. In 30,240 chips (the count showing in 11,377 and the check in 13,648), no chip row grew and no chip spilled. At 125% (windows 1100 to 2200 wide, 691, 864 and 960 tall), 8,640 chips: none but the Home Office's 6 in Known gaps. The pixel font's runs and the readable font's 2 px steps used a build whose only difference is that band, which only hides more.
-- **The fit sweep again,** on the final build, with 1680×940 and 1600×1000 at 1× added: cut lines, cards under the Pass bar and every card's height are the same as on develop at all eight sizes in both fonts. At the two new sizes the count shows on 49 and 48 of the 52 Full House cards not yet held in the readable font, and on 1 and 0 in the pixel font, whose rows there are narrower.
-
-**Known gaps:**
-- **Pointing at a card, its sets sit below the fold** of Inspect's few lines while the checklist has the room (D-110): the "Sets" heading in the pixel font, and the progress line in both fonts. They're out of reach while pointing, since crossing the board to Inspect makes it show the tile under the pointer (`inspectAt`). Picking the card gives Inspect the room: the lines show whole at 1728×963 and 1920×1080, and in the readable font at all six sizes; in the pixel font at the four narrower sizes the progress line needs a scroll. Giving Inspect the room for a card pointed at too (App.tsx's `looking`) would change D-110: the user's call.
-- **Picking a Full House room grows Inspect by its progress line** while the pointer is off the lot, and it shrinks back on the lot. At 1728×963 in the pixel font, on a house with 2 of the 9 (seven rooms still to build, a long line), Inspect goes from develop's 106 px to 270 and the checklist from 529 to 365 (a Bedroom or a Garage picked, the same). Before the trim, with every set's lines, it went to 467 and 168. The line shortens as the house fills. For the playtest.
-- **The count waits more than it must** in places: in the readable font on rows from 194 to 213 px at 1× and 2× (1440×900, 1470×840, 1512×860 and 1280×720), whose chips already take two lines, so the count would cost no row there (the band is for 125%, where such rows hold them on one); on a Hallway's or Long Hallway's rows under 153.7 px in the readable font, and beside a tag's icon on rows from 160 to 178 in the pixel font (the check), where the chips already take two lines; on Dale's Home Office cards once they can renovate, though at many sizes it would fit (1728×963 among them); and at 125% in the pixel font. The tip and Inspect still say it.
-- **At 125%, a Home Office's count costs a chip row** on a wide card in the pixel font at windows 1700 to 1708 wide (the narrow/wide switch, where a wide card's row is 288 to 290 px and the chips need 290.8). A rule for it would hide the count on 2× wide cards too, where it fits.
-- **At 90% zoom** (2.22 CSS px a UI pixel: the user's 1728×963 window becomes 1920×1070 at 1.8×) the widths, in CSS px, are too small. In a width sweep at 1.8× (windows 1300 to 2600 wide, 900 and 1070 tall), in the pixel font, the count cost a row on 218 of 820 Full House chips (Hallways at windows 1556 to 2596 wide, Long Hallways 1636 to 2596, Garages and Home Offices 1732 to 1780), and the check on 124 of 820 (Garages and Home Offices at 1300 to 1700, Long Hallways at 1524 to 1892, Hallways at 1812 to 1892); in the readable font, the count on 4 of 820. The pixel font's widths written in the chips' own em would follow the UI pixel, but its text doesn't scale exactly (1% short at 125%), so that needs its own measuring.
-- **The readable font's widths are the macOS system font's** (`system-ui`); another system's font has other widths.
-- Not played by a person. Touch, Firefox and Safari weren't run.
-
-**2026-11-12 (D-164, Proposed):** a Garage's chip now names the Drive-In, a touching set, so it shows no Full House count; its tip still gives it. The Lawn's "+2" (it's in three touching sets) hides as the count does, wherever it would cost a chip row: on a narrow card in the pixel font, under 212 px beside its two tags' icons. A plain yard chip has no such rule, so some cards grow a row (D-164's Known gaps).
-
-### D-144 · Change orders come two at a time, and the player picks one
-**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: their own proposal, played in playtest 6 (/dev/ at 9acf14a, 2026-11-11) with no issues raised. Proposed 2026-11-10, from the friction review of 2026-11-10 (its point 4) and the user's own proposal, with its pull request. Changes D-109's offer and builds on D-137. For the next playtest.
-**Decision:**
-- **Two orders, one pick.** After each of milestones 2, 4 and 6 the sheet shows two change orders side by side and one must be picked. There is no "neither" and nothing is declined: a request or a restriction that is picked counts as accepted, and a phase effect that is picked runs.
-- **The two can be of different kinds.** They're drawn evenly from the eligible orders (the client's own and the generic ones, minus D-109's skips), one and then the other from the `co/<milestone>` stream, and shown in the order drawn. After milestone 6 both are phase effects, as D-109 has it.
-- **The order passed over goes back in the pool** and can come up again. One that was picked never does.
-  - The pool never runs dry: every client has four phase effects (D-137), and the picks after milestones 2 and 4 use up two at most, so two are always left for milestone 6. A test holds this for every client and every pair of earlier picks.
-  - With one order eligible, it's offered alone (its button says Accept and takes Enter). The real content can't get there; test content and the ?debug panel can.
-- **A phase effect's card says what it would do to the house as it stands:** "+266 Wow a week on your house today", or a loss, or "No Wow either way". It's a rules number (`ChangeOrderView.houseGain`): the total of the week the effect starts in with it running, less the same week without it, valued as a fixture in the shop is (D-107). The UI only words it. A request still shows its progress, and both paying kinds show what they pay.
-- **The answer names the pick:** `answerChangeOrder { i }`, an index into the offer. `changeOrderOffered` lists the options, `changeOrderAnswered` names the pick and the ones passed over, and a run's record of an order keeps `passedOver`. A record's `answer` field is gone: every recorded order was picked.
-- **Older run codes and saves.** A code from an earlier build answers its one order with `accept`. That's no longer an answer, so the code loads, replays up to its first change order, and stops there with two orders waiting and a note. A save from another build was already set aside with a note (its build stamp differs).
-- **The sheet** (D-110's look): one Panel, 440 UI px wide where the board has room and the board's width at 1280×720, with a paper card for each order. "Pick one. It runs until the Drywall milestone." is said once, above both. Each card has its own Pick button. Keys: 1 picks the left order and 2 the right, after the sheet has landed (D-109's key delay); Tab reaches both buttons. The stamp, "Accepted", lands on the card picked and the other fades. The lines a phase effect sometimes showed ("It's coming either way") are gone, since they're no longer true.
-- **The ?debug panel** can force one order alone, or two to pick from ("Against").
-- **The bots** read the cards, and none plans for the order it picks. Greedy takes a phase effect that gains Wow on its house today (the better of two), else a request or a restriction (the bigger reward), else the phase effect that costs least. Novice takes a paying order when there is one, else the phase effect with the better number. Random and chaos pick at random.
-
-**Sim** (`npm run sim -- --check`, 200 held-out runs per bot on the same seeds; develop at 15e9dc2, which has D-140 to D-142, against this change merged with it; targets not re-fitted):
-- Every offer showed two orders: 511 offers in greedy's 200 runs, none alone. Every run that cleared milestone 6 got its offer (134 of 134).
-- Offers by kind (greedy): two phase effects 45%, a phase effect and a request 30%, a phase effect and a restriction 13%, a request and a restriction 6%, two requests 5%, two restrictions 1%. Offered a phase effect beside a request, greedy picked the phase effect 53% of the time; beside a restriction, 58%.
-- How often greedy picked each order when it was offered, all clients together: Rainy season 27%, Out of office 29%, A litter of puppies 31%, Working from home 33%, Big deadline 33%, Cold snap 38%, Declutter 38%, The coven is visiting 47%, Another rescue 50%, A letter from the HOA 51%, A tea garden 53%, Started a podcast 65%, We got a golden retriever 67%, We're hosting Thanksgiving 84%, Heat wave 85%, An agility course 93%, Eternal night 94%, A magazine shoot 96%.
-  - **Two are close to automatic:** Eternal night (for Count Vladislav it only pays: every room turns Dark, which he doubles) and A magazine shoot. They're the ones to give a cost, or a bigger one, if playtests agree.
-  - Rainy season is the least wanted: Count Vladislav's and Juniper's bots each took it 17% of the time.
-- 36 of the 134 offers after milestone 6 (27%) were the worst case: phase effects picked after milestones 2 and 4, so the last two were the whole pool. 129 of 511 offers (25%) showed an order passed over earlier in the run.
-- Greedy wins 54.0% [47.1–60.8] → 56.5% [49.6–63.2]; both are over §8's 40–50% line, which D-140 had already crossed. Paired by seed, 12 runs won only with the pick and 7 only without, and final Wow after ÷ before is p50 1.001 (p25 1.000, p75 1.058); per client p50 1.000, 1.007, 1.000, 1.000, 1.004. The batch's re-fit sets the targets once every friction fix is in.
-- **Early completion crosses its line:** always against never is 45.0% vs 54.0% (−9.0 points) → 45.5% vs 56.5% (−11.0; §8 asks for within 10). The pick helps the bot that plays every week more than the one that completes early. For the re-fit to check again.
-- *2026-11-10 (D-146):* the re-fit is done. Greedy wins 47.0% on `--check`, and early completion is back inside its line (−5.0 points; −5.1 on 2,000 runs).
-- By client (40 runs each): the Hendersons 42.5% → 55.0%, Count Vladislav 77.5% → 77.5%, the Barkers 42.5% → 37.5%, Juniper 47.5% → 50.0%, Dale 60.0% → 62.5%. The spread is 35.0 → 40.0 points, at 40 runs a client.
-- The other §8 criteria read the same before and after: random fails by milestone 3 in 100% of runs, novice passes milestone 1 in 97.0%, greedy clears milestones 1–3 in 97.0%, and fences pay their way.
-- Greedy keeps a restriction it doesn't plan for 50–100% of the time and meets a request 0–20% of the time, so for it a request is mostly a way to keep a costly phase effect out. A player who builds for the request gets its budget too.
-- *On the base the branch was cut from* (develop at 67aa75e, before D-140 to D-142): greedy won 46.0% → 52.5%, 15 runs only with the pick and 2 only without, and early completion was −1.0 → −5.0 points.
-
-**Why:** the review found no decision in a change order. 330 of 498 offers in the sim were phase effects, whose sheet had one button, and declining a request or a restriction was never right because accepting cost nothing. D-137 had already made each phase effect pay something and cost something, so choosing between two is a trade, and a request or a restriction beside one is a way out of an effect that would hurt this house.
-**Considered:**
-- **A "neither" button:** a pair of paying orders would never be turned down, and a pair of phase effects that both cost would always be, so it brings back the answer that's always right.
-- **The order passed over leaves the run:** two shown at each of three moments could then use up four phase effects before milestone 6, so it needs six a client.
-- **One or two more generic phase effects,** to widen the last offer (a quarter of them are the whole pool): not added. The pool never runs dry, and new orders the day before the release would need their own wording and balance pass. They're cheap to add as data if a playtest finds the last offer stale.
-- **The number over the whole phase** ("+1,064 Wow this phase"): overtime and whatever is built in the phase change it. A week on today's house is what the rules can stand behind, and the card's tip says the house will change.
-- **Both kinds always mixed** (one phase effect, one paying order): after milestone 6 only phase effects make sense, and a pair of them is the most common and the most interesting offer.
-- **Pick by clicking the card:** a card is a lot of text to click by accident; each has a button.
-
-**Changes:** D-109 (the offer, declining, and phase effects being announced: dated notes), D-137 and D-011 (dated notes), D-110's sheet. `implementation-plan.md`: §4's state, action, events and transitions, §6's `co/<phase>` stream, M4b's list, Appendix A's change orders and Appendix B's note on phase effects; `jam-scope.md`'s table. Run codes from earlier builds stop at their first change order.
-
-### D-135 · Sharing a run: the result line, its link, and the link preview
-**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: played in playtest 6 (/dev/ at 9acf14a, 2026-11-11) with no issues raised. Proposed 2026-11-10, with its fix pull request (`fix/share-result`), the first half of M6's end screen (implementation-plan.md §7 M6). For the group on release day.
-**Decision:**
-- **Copy result,** on the end screen above Copy run code, copies one line for the group chat: `Open House · The Hendersons · General Contractor — Charmer: 50,129 Wow, 7/7 milestones (1 early). Play this lot: https://swalliso.github.io/house-game/?seed=drf4yj&client=hendersons&crew=generalContractor`.
-  - Its parts: the client and crew by their names, the verdict, the final Wow, the milestones met (overtime counts as met) and how many were early (left out when none were). A lost run adds "the client walked at Roofing"; a debug run adds "cheats used".
-  - It's `resultLine(state)` in `src/ui/screens/result-line.ts`, pure apart from reading the channel: the rules say every number, it only words them (`result-line.test.ts`).
-  - It goes through `copyText` like the run code: a toast says "Result copied", and where the clipboard is refused (itch.io's iframe) the copy fallback shows the line to copy by hand.
-- **The link starts the same lot:** the run's seed, client and crew, through `loadInitialRun`'s `?seed=&client=&crew=`. That's the run's whole setup, so the lot, the draws and the shop are the same as long as the plays are; the friend plays their own run on it. The test opens the link through `loadInitialRun` itself and gets `rules.newRun(setup)` exactly.
-  - **It points at Pages by the build's channel,** never at the page it was copied from: a release links to `https://swalliso.github.io/house-game/`, develop to `/dev/`, a local build to its own address. A run played in itch.io's iframe still links to Pages.
-  - **A friend's run in progress is put aside, not lost** (the link's old behavior, unchanged): the link's run takes the save, the old run's code stays in the browser (`openhouse:<channel>:previous`), and the note says "Your run in progress was put aside." with "Copy the old run code". A save with no weeks played is replaced without a note. Saves are per channel, so a release link never touches a develop run.
-- **The Auto switch hides on the end screen** (won or lost), where it was greyed out: there's no milestone left to complete.
-- **The link preview,** for the group chat: `og:title`, `og:description` (the title screen's pitch), `og:image` with its size and alt text, and `twitter:card` (`summary_large_image`) in `index.html`.
-  - **`public/og.png`** (1200×630): a finished run's house with its roof on, on its lot by the street, at two screen pixels per art pixel, under a wood sign in the game's style: "Open House" and "It's a house." It's captured from the game (seed og4, the greedy bot's win for Count Vladislav). *2026-11-10 (D-147): captured again without the roof, the rooms in view, from the same seed and client on that build (the debug panel's bot-built house, won), in the same frame and under the same sign.*
-  - **Scrapers need absolute URLs,** so `vite.config.ts` fills in `%SHARE_BASE%`: develop's build points at `/dev/og.png`, which exists as soon as develop deploys; a release and a local build point at the root.
-  - **`public/favicon.png`:** a 16×16 house in LimeZu's palette at 2×, for the tab. Both are recorded in `assets/licenses.json` and `CREDITS.md`, and the licenses test now checks `public/` too.
-
-**Why:** M6's plan asks for "a copyable result line (with a fallback for itch.io's iframe)", and the game goes to the group on 2026-11-11. A line with a link to the same lot lets a friend try to beat a score on equal terms, and the preview makes the link worth clicking.
-**Considered:**
-- Linking the run code (`?run=`): it replays the sharer's whole house and lands on their end screen, which spoils the lot. The setup is enough to play it.
-- The page's own address for every build: an itch.io iframe's address isn't a page a friend can open.
-- `og:image` pointing at the release for every build: a develop link would show no picture until the next release.
-- `navigator.share`: on desktop it opens the OS share sheet in only some browsers; the clipboard works everywhere the game runs.
-
-**Changes:** implementation-plan.md §7 M6's end screen: the result line is done (D-135); the photos are D-136's.
-*2026-11-10, from the polish review:* the note about a run put aside also offers **Go back to it**, when that run is from this build. It loads the run and puts the link's run aside in turn (if it has a week played), so the same button swaps them back. A run from an older build gets only its code, as before, since it may stop replaying. A saved run that was already over gets no note, from a link or from a game update: nothing was in progress, and its house is in the company's record. The crash screen offers Reload and continue first (a crash leaves the save as it was), and its Start a new run puts the saved run aside the same way instead of overwriting it.
-*2026-11-11, from the outside review and the polish review:* a link that starts a run says what it opened, by the content's names: "A shared lot: you’re building for the Hendersons with the General Contractor." A `?client=` or `?crew=` link without a seed starts a random lot, so it says "A new lot". The line comes first, before the note about a run put aside. A run put aside from an older build still gets only its code, even when it would carry over now (D-068's note of the same day).
-
-### D-143 · The blueprint shelf: no dead cards, no runaway, and It's a House as a build
-**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: played in playtest 6 (/dev/ at 9acf14a, 2026-11-11) with no issues raised. The user still finds many shop goods not worth buying (2026-11-12), so a trim of the shelf is still to come. Proposed 2026-11-10, with its phase pull request (`phase/blueprint-balance`), from the friction review the user asked for the same day (point 2). For the user's playtest before it merges. Every number is a placeholder for the playtest and D-146's re-fit; the milestone targets and the per-client factors are untouched.
-**Finding:**
-- **The review read the shelf from what the shop bot buys:** Feng Shui held in 99% of wins, and Green Thumb, Open Concept, Mood Lighting and It's a House bought 2–5% of the times offered. A buy rate mixes a blueprint's strength with what the bot can see, so each of the 18 was measured by what holding it is worth.
-- **The measure:** the blueprint given free at the first shop, against the same seeds where it's never on offer: `npm run sim -- --gift blueprint:ID --off-shelf` (300 held-out seeds, `check-0` to `check-299`, greedy with the General Contractor, every Core client in turn). "Worth" is the final Wow, given ÷ never offered (the geometric mean over the seeds), with the change in win rate in points. Its 95% interval is about ±0.08 on the ratio and ±5 points.
-  - Plain `--gift` reads a blueprint the bot buys anyway at about nothing (Feng Shui: ×1.04), because the placebo arm holds it too. `--off-shelf` is new, for that.
-- **What it showed** (develop at 15e9dc2):
-  - **The must-buy was Good Bones, not Feng Shui:** ×2.54 and +49 points of win rate, and still ×2.16 and +42 points given at the second shop, the first that sells an Uncommon. Its hold rate hid it: an Uncommon is on a shelf in about half of runs.
-  - **Feng Shui was the best Common by far:** ×1.43, with the next at ×1.10.
-  - **Six were worth nothing:** Curb Appeal, Green Thumb, Quiet Hours, It's a House, Show Home and Waterfront, at ×0.96 to ×1.03. Holding It's a House, the bot built 3.3 "-house" pieces in place of 1.2 and gained nothing.
-  - **Open Concept (×1.09) and Mood Lighting (×1.08) weren't weak, only invisible to the bot,** which values a blueprint on the house as it stands. They sat at the median (×1.10) and were bought 4% and 3% of the times offered.
-
-**Decision:**
-- **It's a House** (Uncommon) is a build: **"+0.5 Charm per House piece, up to 3 of a type"** (was +0.15, any number).
-  - The House pieces are the Doghouse, the Treehouse and the Greenhouse from the weekly draw, and the Henhouse and the Birdhouse from the shop. One that earns nothing (a Doghouse outside a fenced yard) still counts.
-  - **3 of a type is the tidy yard's own number** (D-105), so the build never pays for a fourth Doghouse. The Treehouse's rules (D-079, D-105) are unchanged: it needs a Tree, and Treehouses still don't count each other as Kid partners.
-  - **In a house built for it** (given at the first shop, on the new shelf): the bot ends with 7.1 "-house" pieces of 3.4 types (1.4 pieces without it), wins 72% of runs against 55%, and its final Wow is ×1.36. The tidy yard holds at the end in 83% of those runs, against 52% without it, and one "-house" type stands 4 or more times in 5% of them.
-  - **The payoff shows as it grows:** the weekly tally pops "It's a House (4): +2 Charm" as before, and the shop's line now says what each piece adds (below).
-  - It stays Uncommon and +Charm. ×Mult stays on the three Rare blueprints (D-056).
-- **Good Bones** (Uncommon): rooms grow +1 a week **up to +3** (was +10). From the first shop it's now ×1.51 and +18 points: still the best Uncommon to hold, and no longer the whole run.
-- **Feng Shui** (Common): **"Pieces touching 3+ views earn +50%"** (was every piece with a view). One Flower Bed no longer lights up every room around it: a room wants the woods, the water, or a small garden of its own. A Bay Window's view counts as one. Now ×1.05, and held in 71% of the bot's wins (was 96%).
-- **The Commons that were worth nothing:**
-  - **Quiet Hours:** Quiet pieces earn +75% (was +50%).
-  - **Green Thumb:** Green pieces earn +50%, and grow +1 a week, up to +3. A garden's pieces earn 1 or 2, so half again of that was nothing.
-  - **Curb Appeal:** pieces in the front yard earn +100%, and so do the pieces touching one: the rooms behind a front garden.
-  - **Waterfront:** pieces touching the Pond or the Creek earn +100% (was +50%).
-- **Open Concept** (Uncommon): **"The Entertainer pays 50% more"**, its Comfort and its Charm, at any level. It replaces the link among Kitchens, Dining Rooms and Living Rooms, which added a few Comfort to a Kitchen and nothing a player would see. The rules still know a `link` modifier; no blueprint carries one.
-- **Mood Lighting** (Uncommon): **"+0.4 Charm per Dark room"** (was Dark rooms earn +100%). A room is Dark when it's interior or has Blackout Curtains, as before. A house has few Dark rooms (1.6 by the last shop), so doubling them was worth little at any percentage; Charm for each one shows the moment a room goes Dark.
-- **Show Home** (Uncommon): pieces with a fixture earn +100% (was +50%).
-- **Unchanged:** Party House, Country Living, Solar Panels, and the five Rares.
-- **Rules:**
-  - A `mult … per` modifier takes `maxEach`: no more than that many pieces of one type count, by root type, as the tidy yard counts them.
-  - A selector's "touching 3" reads "touching 3+", as the checklist's "touch 2+ rooms".
-- **The shop's value line** (D-141) says what each counted piece adds: "+47 Wow a week for each House piece", "for each Dark room", "for each piece with a fixture" (Model Home). It stands beside the week's gain, and beside "No House pieces yet" when the house has none, so the card names its build. The rules give it by modifier kind (`blueprintValue().perPiece`), the piece's own Comfort aside.
-- **The shop bot plans a little** (`sim/policies/shop.ts`), so a build-around isn't worth nothing before its build starts:
-  - A blueprint whose Mult counts pieces is also worth the pieces the bot expects to add: what one more adds today, at the rate the draw shows such cards (half of them taken), each paying from its week on. For pieces a card can't tell (a Dark room, a piece with a fixture) it expects 0.12 a week.
-  - A bonus to a set the house doesn't hold yet counts for half the weeks left, once half the set's room types are built.
-  - A granted growth is valued at the week halfway through the weeks left (it was the first week's gain times up to 10, Good Bones' old cap).
-  - When it sells a blueprint to make room, what a held one is still building toward counts.
-
-**Sim** (200 held-out runs for `--check`, 300 for worth; develop at 15e9dc2 against this change; targets not re-fitted):
-
-| `--check` | develop | this change |
-|---|---|---|
-| greedy wins | 54.0% [47.1–60.8] | 56.0% [49.1–62.7] |
-| greedy clears milestones 1–3 | 97.0% | 96.5% |
-| completing early, always against never | 45.0% vs 54.0% (−9.0) | 48.5% vs 56.0% (−7.5) |
-| client spread | 35.0 points | 35.0 points |
-| the blueprint held in the most wins | Feng Shui, 96% | Quiet Hours, 74% |
-| one yard type standing 4+ times, in wins | 6% | 12% |
-
-| Blueprint | Rarity | Worth before | Worth after | Bought before | after | Held in runs / wins before | after |
-|---|---|---|---|---|---|---|---|
-| Feng Shui | Common | ×1.43 (+9) | ×1.05 (+4) | 73% | 30% | 93% / 96% | 70% / 71% |
-| Curb Appeal | Common | ×0.96 (−7) | ×1.13 (+8) | 4% | 9% | 18% / 14% | 29% / 33% |
-| Quiet Hours | Common | ×0.98 (−1) | ×1.09 (+1) | 25% | 29% | 58% / 61% | 67% / 74% |
-| Green Thumb | Common | ×0.97 (−3) | ×1.17 (+3) | 1% | 15% | 11% / 7% | 44% / 43% |
-| Party House | Common | ×1.10 (0) | ×1.03 (−3) | 42% | 29% | 78% / 77% | 70% / 66% |
-| Waterfront | Common | ×1.03 (+1) | ×1.03 (0) | 7% | 7% | 23% / 21% | 24% / 19% |
-| Open Concept | Uncommon | ×1.09 (+3) | ×1.13 (+8) | 4% | 33% | 4% / 4% | 21% / 29% |
-| Good Bones | Uncommon | ×2.54 (+49) | ×1.51 (+18) | 55% | 32% | 33% / 52% | 28% / 35% |
-| It's a House | Uncommon | ×0.98 (−1) | ×1.36 (+17) | 2% | 21% | 4% / 2% | 19% / 18% |
-| Country Living | Uncommon | ×1.33 (+17) | ×1.31 (+12) | 25% | 20% | 18% / 23% | 17% / 21% |
-| Mood Lighting | Uncommon | ×1.08 (+7) | ×1.32 (+13) | 3% | 22% | 3% / 4% | 15% / 22% |
-| Show Home | Uncommon | ×1.01 (+2) | ×1.16 (+4) | 8% | 11% | 10% / 11% | 10% / 11% |
-| Solar Panels | Uncommon | ×1.20 (+14) | ×1.19 (+10) | 0% | 0% | 1% / 1% | 2% / 2% |
-| Crown Jewel | Rare | ×1.48 (+19) | ×1.33 (+13) | 28% | 18% | 11% / 14% | 7% / 4% |
-| Dream Home | Rare | ×1.26 (+12) | ×1.18 (+6) | 22% | 17% | 6% / 7% | 6% / 7% |
-| Last-Minute Push | Rare | ×1.40 (+14) | ×1.27 (+4) | 44% | 38% | 11% / 16% | 10% / 11% |
-| Model Home | Rare | ×1.73 (+32) | ×1.61 (+28) | 44% | 35% | 13% / 21% | 10% / 14% |
-| Ahead of Schedule | Rare | ×1.03 (+3) | ×1.02 (0) | 0% | 0% | 1% / 1% | 1% / 0% |
-
-- The median worth went from ×1.10 to ×1.18. The best to hold was ×2.54 and is ×1.61, a Rare. Six stood at ×1.03 or less, beside Ahead of Schedule, which the bot can't use; now two do, Party House and Waterfront.
-- Each "after" is measured on the new shelf, where the arm without the blueprint has better things to buy, so an unchanged blueprint reads a little lower.
-- "Bought" is of the times it was on a shelf. Solar Panels and Ahead of Schedule are the bot's blind spots (budget, and completing early).
-
-**Why:**
-- **Lifts before cuts,** as the review asked: eight of the ten changes are lifts or new jobs. The two cuts are the two that a run was decided by.
-- **Good Bones' flat Comfort on every room** is multiplied by each room's percentages and then by Charm, so +10 a room was most of a late week. At +3 it's worth what a Rare is.
-- **Feng Shui paid for a view, and one Flower Bed gave every room around it one.** Three views asks for a spot: the woods, the water, or a garden, which makes the lot matter (playtest 2: terrain barely did).
-- **It's a House is the theme's card,** so it's the shelf's clearest build: every little house on the lot adds half a Charm, in the tally, every week. An Uncommon is seen in about half of runs, early enough to build for.
-- **A blueprint the bot can't see isn't weak.** Mood Lighting and Open Concept needed a visible payoff more than a bigger one, and the bot needed to plan one step.
-
-**Considered:**
-- **It's a House as a Rare with ×Mult** (×1 plus 0.2 per "-house" piece): Sparkle is the bigger moment, but a Rare is on a shelf in about a quarter of runs, mostly from the fourth shop, too late to build for.
-- **Paying per kind of "-house":** the draw holds three kinds, so the chase would stall at three until the shop sold a Henhouse or a Birdhouse.
-- **No cap:** a fourth Doghouse (one tile, built anywhere) would pay +0.5 Charm for breaking the tidy yard's +0.25.
-- **+0.25 and +0.35 a piece:** ×1.09 and ×1.25 on the old shelf, with 5.2 and 6.2 pieces built, against ×1.49 and 7.0 at +0.5 (the tuning seeds, `bp-0` to `bp-299`, as every figure in this list).
-- **Good Bones at +5 or +4:** ×1.75 and ×1.63 from the second shop, against ×1.52 at +3 and ×2.16 at +10.
-- **Feng Shui at 2+ views:** ×1.16 on the new shelf, but held in 84% of wins, and greedy's win rate goes to 59.5%. It's the one to switch to if 3 views plays as too stingy. One view at +25%: ×1.28 on the old shelf, where one view at +50% was ×1.48.
-- **Quiet Hours at +100%:** ×1.31 against ×1.25 at +75%, and held in 81% of wins.
-- **Green Thumb growing to +6:** ×1.35, more than a Common should be. Growth alone, to +4: ×1.14.
-- **Mood Lighting at +150%:** ×1.09, no better than +100%. Charm per Dark room at +0.25, +0.35 and +0.5: ×1.15, ×1.26 and ×1.48.
-- **Open Concept keeping its link beside the Entertainer's bonus:** ×1.33, but the two lines made its card too tall for a 1280×720 window (Buy fell below the fold). The bonus alone: ×1.25 at 50%, ×1.45 at "pays double".
-- **Curb Appeal:** the touching line at +25% and +50%: ×1.04 and ×1.07. +3 Comfort for each front-yard piece in place of the percentage: ×1.00.
-- **Trimming Country Living or Model Home:** left. One needs woods and the other fixtures, and neither is held in more than 21% of wins.
-- **Teaching the bot to plan an enclosed room or a front garden:** it builds one week at a time, so those stay a person's builds. Their figures here are floors.
-
-**Changes:** D-051 and implementation-plan.md Appendix B: ten blueprints' encodings. D-056: It's a House's +Mult is +0.5 a piece with a cap; the ×Mult list is unchanged. D-105: its "3 of a type" is also this build's cap. D-141: the value line gains "for each" (`perPiece`), and "None of its pieces touch yet" no longer shows (no blueprint links). The sim (§8, D-089): `--off-shelf`, and the shop bot's planning.
-**Known gaps:**
-- **Waterfront is still worth nothing to the bot** (×1.03) at any number: it doesn't site by water, and not every lot has any. It's a card for a lot, and D-145 is reworking the lot.
-- **The three Commons that boost rooms** (Feng Shui, Quiet Hours, Party House) are each held in 66–74% of wins, a little over the review's two-thirds, and each is worth little at the margin (×1.03 to ×1.09). They stand in for each other: they're what a first shop sells for 4 that works on rooms already built.
-- **One yard type stands 4+ times in 12% of wins** (was 6%). Not traced to one blueprint; Green Thumb and Curb Appeal are the likely ones, since a fourth Flower Bed can now earn more than the tidy yard's +0.25 Charm.
-- **Every figure is greedy's,** a bot that builds one week at a time. A build a person plans (three views, an enclosed room) is worth more to them than this says, and a blueprint's worth depends on the shop it's given at (all of these: the first).
-- **The Each week panel has no standing line for a blueprint's Charm:** It's a House shows in the tally's pop and in the Charm total, not as its own row.
-- **Greedy wins 56.0%** against 54.0%, inside the interval, and both above §8's 40–50%: D-146's re-fit takes it from here.
-  - *2026-11-10 (D-146):* the re-fit is done: 47.0% on `--check`, and 45.7% on 2,000 runs no fit had seen.
-- **Ahead of Schedule** reads ×1.02 because greedy never completes early (D-040), and wasn't touched.
-
-### D-136 · The end screen's photos: a polaroid of the house at each milestone
-**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: played in playtest 6 (/dev/ at 9acf14a, 2026-11-11) with no issues raised. Proposed 2026-11-10, with M6's phase pull request (`phase/m6-end-photos`), the second half of M6's end screen (implementation-plan.md §7 M6). For the user's playtest before it merges. An exception to D-097 (its dated note).
-**Amended by:** D-147 (Accepted 2026-11-10): the house above the strip has no roof, so the hero and the photos both look inside, and the deal doesn't wait for a roof to land.
-**Decision:**
-- **A strip of polaroids along the foot of the board** on the end screen, under the roofed house, which stays the hero. There's one polaroid for each milestone that resolved: early, on time, in overtime, or the one the client walked at. A won run has seven; a lost one has one for each milestone up to and including the missed one.
-  - Each polaroid shows its photo, the milestone's name, its mark (✓ or ✗, with early's flag or overtime's clock) and its Wow against the target.
-  - The board gives up the strip's height, so the camera fits the house above it. The camera's buttons move up with it.
-- **The photos come from the run itself.** `milestoneShots` (`src/ui/screens/photos.ts`, tested in Node) replays the setup and actions with `newRun` and `apply`, as a run code does. It keeps the state each time `state.milestones` grows. It's memoized per run, about 26 ms in the browser, and it stops quietly at an action that no longer applies.
-- **One frame for every photo** (`photoFrame`): the finished house's rooms (or every piece, for a yard with no rooms), a cell around them, grown to 4:3 about their middle and kept on the board. The house grows in place from one photo to the next, like a time-lapse.
-  - A house whose rooms run down 18 rows or more is taller than a 4:3 frame the board's width can hold, so it loses its top and bottom edges.
-- **Painted with the board's own painters,** in the board's order (`photo-paint.ts`): the terrain (`TerrainLayer`'s `draw`, now exported), the water's first frame, the floors and the yard's ground, each piece's items with south in front, the walls, the tall items' tops, and the trees' crowns.
-  - The photos look inside, without the roof, since the hero above has it on. They have no digits, badges or tint.
-  - It never mounts the board's components, so the live board's caches and its car's slide (`HouseLayers`' module-level `lastCar`) are untouched.
-  - The photos are painted one per frame once the end screen is up (about 0.1 s for seven) and shown as images.
-- **The deal** (`FEEL.photos`):
-  - The polaroids come up onto the table 650 ms after the end screen, once the roof has landed, 140 ms apart. Each flies 48 px up in 420 ms, turning from 9°, and lands square with a soft flick (`place-yard`, a little higher each time).
-  - Each picture develops from a warm blank over 1.1 s once it's painted.
-  - A run's strip is dealt once: back from the title, it's simply there. Reduce motion puts them down at once, developed, without the flicks.
-  - At rest they lie square: tilted, the pixel captions would blur.
-- **Sizes:** the photos share the board's width, seven side by side, from 140 px wide (the narrowest that holds "Final Walk-" on a line) to 176 px. The long names break at soft hyphens.
-  - At 1920×1080 all seven fit side by side.
-  - In a narrower window they overlap like a hand of cards, the last one whole. The one pointed at or focused comes to the front and rises 6 px.
-- **The photos are a downscale exception to D-097,** like the Fit overview: the strip shows them smaller than one device pixel per art pixel, smoothly.
-- **Click one** (or Tab to it and press Enter) to see it larger. A sheet shows the photo, with its mark, how it went, its Wow against the target and its week.
-  - The photo is drawn at whole device pixels per art pixel where the window holds one (1× for a typical house at 1920×1080), else smoothly smaller.
-  - ← and → (or Previous and Next) step through the strip, and Esc closes it (`modals.ts` `photoShown`).
-
-**Why:** M6's plan asks for "a photo of the house at each milestone" on the end screen. The rooms that change as they're built and furnished were what playtest 5a liked best, and the roof hides them at the end. A strip of the house growing tells the run's story at a glance, under the finished house.
-**Considered:**
-- The roof on from Roofing: half the photos would be the same red roof.
-- Framing each photo on its own house: the house would jump around instead of growing.
-- Tilted polaroids at rest: the pixel captions blur.
-- A strip that scrolls sideways: at 1280×720 it would hide the last milestones.
-- A grid in the right-hand column: too narrow for seven.
-- Captions under the type scale's 16 px floor.
-- Rendering a second set of the board's components: twice the DOM, and the car's slide is shared state.
-
-**Changes:** D-097 (Accepted): the photos are a second downscale exception (its dated note). implementation-plan.md §7 M6's end screen.
-
-**2026-11-10 (D-148, Proposed):** overlapping, a polaroid's caption ran under the next card and read as one line with it ("Foundatic|Framing", "of 12,430of 22,550"). An overlapped polaroid's caption now keeps to the part of the card that shows: the name breaks at its hyphen or ends short of the next card, a Wow too long for the room ends in "…", and the "of N" line is left out. The last one, and the one pointed at or focused, show everything. At 1440×900 every name is whole; at 1280×720, where a card shows 91 px, the names end after six letters.
-
-### D-142 · First contact: slimmer job cards, hints held to 25 words, and a tighter checklist
-**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: played in playtest 6 (/dev/ at 9acf14a, 2026-11-11) with no issues raised. The user still finds the screen busy for new players (2026-11-12), and D-167 (Proposed) carries on from here. Proposed 2026-11-10, with its phase pull request (`phase/first-contact`), from the friction review the user asked for the same day (its point 7: the reading a new player meets in the first minutes). For the user's playtest before it merges. No rules or balance change.
-**Decision:**
-- **A contract's card leads with what differs between the clients on offer:** who they are (the name, the rarity, the brief), their wishes, and the lot (its map, its sun and its traits, D-119).
-  - **The household is one line:** "The twins and Grandma move in later". Its tip has Room for everyone in that client's numbers, then each arrival: when, and what they bring.
-  - **The tastes are one line:** "Tastes", with how many the client likes and dislikes beside an up and a down arrow. Its tip lists every taste, and what the draws have more of, a line each in the rules' words.
-  - **The house rules are named once for the board,** in its lede: "Every house also keeps the same 7 house rules". That's a term, and its tip names the seven and what a held one adds (`houseRulesText` in `src/rules/text.ts`).
-  - **A house rule a client has in numbers of their own sits with their wishes:** today that's Juniper's Under one roof, for 4–8 rooms. The card finds them by comparing each rule's text across the clients (`ownHouseRules`), so nothing is listed by hand.
-  - The lot in words under the map goes; the map's title and label still say it.
-  - The card's short lines are chosen and counted in `src/ui/screens/job-card.ts`; every sentence is the rules' or the content's.
-  - **Words on a card** (all its text, the button and the keycap included): the Hendersons 42–44 (from 80–95), Count Vladislav 28–29 (from 63–77), the Barkers 38–39 (from 87–90), Juniper Vale 34 (from 55–69) and Dale 36–37 (from 72–75); a range is the lot's chips and, before, its line in words. The first-visit board in the screenshots is 145 words (from 270 at 1440×900). At 1280×720 in the pixel font all three cards scrolled (179, 129 and 37 px out of view); now none scrolls at 1280×720, 1440×900 or 1920×1080, in either font.
-- **Every first-time hint keeps to 25 words** (`HINT_WORDS`): one idea for the moment it applies, and the tips carry the rest.
-  - **The shop's** is "Spend your budget on goods for the house; hover one to read it. Each milestone met pays 4 more." (19 words, from 65). The shelves' tags already say what each kind of good is, and the fixture's hint comes with the first fixture.
-  - **The first week's** is 24 words (from 44): pick, place, End week, the target, and "Hover anything to read it". How a week scores moves to a new hint in week 2, "Comfort and Charm" (18 words), once a week has been tallied.
-  - **The checklist's** moves to week 3, so the first three weeks bring one hint each. It says what a line adds and that the house rules fold into one row once it's dismissed (D-113).
-  - The others: Complete early 23 (from 31), the roof 24 (from 37; the roof's hint went with D-147), Fixtures 21 (from 36), change orders 24 (from 45), Renovate 25 (from 55), an arrival 21 (from 32).
-  - The hints that state a rule or a number are `hintText` in `src/rules/text.ts`, with their numbers from the balance; the glossary keeps the full texts for the tips. Tests hold every hint to the budget.
-  - *2026-11-11 (D-149, Proposed):* the first week's is three plays under one line (23 words; "Hover anything to read it" went, and Inspect's own prompt says it from week 2), week 2's names the Bathroom where the hand holds it, a new one in week 3 names the Closet and the Suite, and the checklist's moves to week 4 in a browser's first job. A hint of those first three goes with its week. Complete early's says what it costs (22 words).
-- **The checklist's rows keep short:**
-  - **A line that doesn't hold shows only what's still missing.** Its parts that hold are done: "A living room or two" says "0 Living Rooms (1–2)" without "1 Dining Room (≤ 1)". A line the play being looked at flips still shows every part, and the line's tip has the whole rule.
-  - **Who's still to move in** is a name and a milestone, "Grandma at Drywall": two lines in a 280 px pixel-font column, where "Grandma arrives at Drywall, week 17" took four. The week is in the name's tip.
-  - **The wishes' tag is "Wishes",** one line in every column ("The Hendersons' wishes" took three in a 280 px column). The plank above it names the client.
-  - **The tastes' row is "Tastes"** in a 280 px pixel-font column under 1000 px tall, where "Tastes (3)" took two lines beside the crew's and the sun's icons. Wider columns and the readable font keep the count.
-  - **Measured at 1440×900 in the pixel font** (the checklist's box is 404 px), on a Hendersons run: with the house rules folded, week 3's rows take 330 px (from 450), so nothing scrolls; mid-run, with a change order, 414 px in a 380 px box (from 514). On a first visit, with the house rules open (D-113), 938 px (from 1,118): it still scrolls. At 1280×720 the folded week-3 rows take 330 px in a 258 px box (from 450).
-
-**Why:** the review read the first screens as a first-time player would. Each contract's card carried the wishes, the household, the arrivals with their weeks, the tastes, the draws and the house rules; at 1280×720 in the pixel font all three scrolled, and the Hendersons' tastes were below the fold. The shop's first hint was a 65-word paragraph. On a first visit at 1440×900 the checklist held 1,118 px of rows in a 404 px box. The group gets the game on 2026-11-11, and these are the screens they meet first. Run-based games show the choice of a run as a name, a picture and two or three lines (a character or a deck select), with the rest on demand.
-**Considered:**
-- **A flip side or a "Details" fold on each card:** tips are already the game's way ("Hover anything to read it"), need no new control, and open from the keyboard with Tab.
-- **The house rules folded on a first visit too:** it's the one change that would make a first visit's checklist fit at 900 px. D-113 (Accepted the same day) opens them until the checklist's hint is dismissed, so it's left for the user: one line in `rulesOpen`.
-- **The client's wishes above the house rules:** it would change D-101's order, and D-110's rules for what a play scrolls into view were tuned to it.
-- **"House rules 1/7" on one line in a 280 px pixel-font column:** the words and the count alone are wider than the column.
-- **Held lines folding away inside an open group:** early in a run almost none hold, so it saves nothing in the first minutes.
-- **The change order's hint in two versions by the order's kind:** another session is changing how change orders are offered.
-
-**Changes:**
-- D-110 (Proposed): its job board bullet (a card no longer lists the tastes as rows, the house rules behind a caret, or the lot in words), its checklist bullets (the wishes' tag, "Tastes" in a narrow column) and its list of first-time hints. Dated notes there.
-- D-101 (Accepted), for the user's OK: a line that doesn't hold shows only the parts of its progress still missing. A dated note there.
-- D-103 (Accepted): the job board still shows who moves in from week 1; when is in the line's tip, and the checklist's line names the milestone without the week. A dated note there.
-- D-045 (Accepted) and D-077's 2026-11-07 note: a week-2 hint is added, the checklist's moves to week 3, and every hint keeps to 25 words. Dated notes there.
-- D-113 (Accepted): unchanged. The house rules still open on a first visit until the checklist's hint is dismissed; that hint now first shows in week 3.
-- `src/rules/text.ts` gains `houseRulesText`, `hintText` and `HINT_WORDS` (new functions after the glossary; nothing existing changes).
-
-**2026-11-10 (D-148, Proposed):** two hints name the control they point to, still within the 25 words: Fixtures ends "from your supplies (Your goods, top right) it’s free" (25 words), and an arrival's reads "Their room is waiting in your reserve: open Your goods, top right. Room for everyone needs it from now on." (20). On a laptop Your goods is folded to its plank, and nothing else on the build screen says "supplies" or "reserve".
-
-**2026-11-12 (D-157, Proposed):** one more first-time hint, Strike's (23 words): "Strike a card: a new one takes its place, its type is gone this run, and the week goes on. Milestones add strikes." It comes once Strike is on screen with a strike to use, after the opening's hints. Its words are `hintText`'s, and with no strikes per milestone in the balance the last sentence reads "The shop sells more."
-*Changed by D-158 (Proposed 2026-11-12):* the checklist's hint says its lines are bonuses and no longer mentions folding; hints still keep to 25 words.
-
-**2026-11-12 (D-160, Proposed):** one more first-time hint, the standing stock's (25 words): "A Hallway and a Fence wait in Your goods, top right, until you need them. Each is a week’s build, and another comes next milestone." The job board's fine print names what Dale and the Barkers bring ("Dale brings a Home Office"), and its tip when. Juniper's rule in her own numbers is her A compact house now.
-
-*D-165 (Proposed 2026-11-12):* the lede says "the same 3 house rules", and the tip ends "Cozy and A Bathroom nearby pay on the rooms."
-
-### D-137 · More change orders: three generic ones, and a phase effect for every client
-**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: played in playtest 6 (/dev/ at 9acf14a, 2026-11-11) with no issues raised. Proposed 2026-11-10, from playtest 4 (`docs/playtests/playtest-4-findings.md` §5), with its fix pull request. Extends D-011 and D-109. For the next playtest on /dev/.
-**Decision:**
-- **Six new change orders, as data** with existing modifier kinds (`earn`, `earnNothing`, a `forbid` selector), so 18 in all. Each client draws from 7 or 8, about the 8 playtest 4's findings proposed.
-  - Generic: *Cold snap* (phase: rooms with a Fireplace earn double, Bathrooms half: the pipes froze), *Rainy season* (phase: Green pieces earn double, Patios nothing), and *A letter from the HOA* (restriction: nothing new in the front yard; kept, +4 budget, as Big deadline).
-  - The Barkers' *A litter of puppies* (phase: Pet pieces and Lawns earn double, Flower Beds nothing), Juniper's *A magazine shoot* (phase: rooms with a view earn double, Closets and Hallways nothing, Long Hallways included), and Dale's *Out of office* (phase: Outdoor pieces earn double, Home Offices nothing, though they still pay their budget).
-- **Every client has four phase effects** (the three generic ones and one of its own), so the offer after milestone 6, which offers only phase effects (D-109), always comes: milestones 2 and 4 use up at most two.
-- **Each phase effect pays something and costs something,** as Heat wave does, so it asks the player to build differently for a phase rather than just adding Wow. This matters more now that the third offer always comes, in the run's biggest phase. Cold snap's upside needs a Fireplace, which the shop right after the offer may sell.
-- The pick stays even among the client's own orders and the generic ones (D-112), so a client's own orders come up less often: 2 of 7 for the Hendersons and Count Vladislav (from 2 of 4), 3 of 8 for the others.
-- *2026-11-10 (D-144):* each offer now shows two orders to pick one from, so the four phase effects a client has must leave two for milestone 6, and they do: the picks after milestones 2 and 4 use up two at most, and an order passed over goes back in the pool. D-144's sim found Eternal night and A magazine shoot picked almost every time they're offered, so "each pays something and costs something" doesn't yet hold for those two.
-
-**Sim** (`npm run sim -- --check`, 200 held-out runs per bot on the same seeds; develop at 0b4e27c against this change; targets not re-fitted):
-- Runs that cleared milestone 6 and got an offer after it, by client (greedy): the Hendersons 78% → 100%, Count Vladislav 86% → 100%, the Barkers 48% → 100%, Juniper 54% → 100%, Dale 54% → 100%.
-- Greedy wins 47.5% [40.7–54.4] → 46.0% [39.2–52.9]. Paired by seed, its final Wow after ÷ before is p50 0.999 (p25 0.934, p75 1.029); per client p50 1.000, 0.982, 1.000, 1.004, 0.986. Its final Wow p50 over all runs is 29,619 → 29,175, and at the Final Walkthrough, for runs that reached it, 36,333 → 35,065.
-- Every §8 criterion that passed still passes. The client spread is 30.0 points (from 25.0) at 40 runs a client, which is noise: the re-fit's 2,000-run check gave 6.7 (D-123).
-- Greedy declines every restriction (`sim/policies/orders.ts`), so A letter from the HOA doesn't show in its numbers.
-
-**Why:** in playtest 4 the team found change orders fun but wanted more variety and randomness; D-112 changed only their wording. A client drew from 4 orders, and the Barkers, Juniper and Dale, with only Heat wave as a phase effect, often got no third order at all.
-**Considered:**
-- One or two more generic phase effects alone: that guarantees the third offer too, but leaves three clients with nothing of their own at the end of the run.
-- Effects that only pay (a ×Mult, double everything): with the third offer now always coming, they'd raise greedy's win rate. Playtest 4's rare tier with a big phase effect can come later.
-- Weighting the client's own orders ×2 (playtest 4's proposal): a rules change, not data. Left for a playtest to ask for.
-- Playtest 4's Power outage became Dale's Out of office, where a Home Office matters most. "Open house weekend" was left out: its name is too close to the Open House Party tool.
-- More requests: most of playtest 4's ideas (Room for the in-laws, Curb appeal) fight the house rules' Bedroom ranges or need new selectors.
-
-**Changes:** D-011 and D-109 (dated notes). `implementation-plan.md` Appendix B: the clients table and Generic change orders. New content changes the content hash, so run codes from earlier builds won't replay.
-
-### D-141 · Showing what a blueprint is worth, and an icon for each
-**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: played in playtest 6 (/dev/ at 9acf14a, 2026-11-11) with no issues raised. Proposed 2026-11-10, with its phase pull request (`phase/blueprint-worth`), from the friction review the user asked for the same day (point 3). Extends D-107. For the user's playtest before it merges. It changes no balance and no rule.
-**Decision:**
-- **Every blueprint on offer says what it would add to your house,** under its rules text: on the shop's cards, on a crate's blueprint options, and on the free Housewarming pick. A blueprint you hold says what it's adding, in the inspect panel.
-- **The numbers come from the rules** (`blueprintValue(state, id)`, beside `fixtureValue`): a week's total with the blueprint in play, less without. The UI only words them.
-  - The first week valued is D-107's: this week on the build screen; in the shop, the next phase's first week, after its start-of-week transforms.
-  - **The run figure adds up each week left,** with nothing more built, instead of multiplying one week by the weeks left. The house's timers run on, Saplings become Trees, a phase effect ends with its phase, a staged checklist line changes with its milestone, and each phase's last week counts as one. Overtime is left out, as in D-107.
-  - A blueprint you hold is valued against the run without it.
-- **Where one week's snapshot would be wrong or empty, the line says so.** The rules read the blueprint's modifier kinds, never its id, so a retuned or new blueprint is valued without a change here.
-  - **Growth** (Good Bones): "+41 Wow a week, growing to +325", and the run figure counts the growth.
-  - **A phase's last week only** (Last-Minute Push): "+621 Wow in a phase's last week", counted once a phase.
-  - **Budget** (Solar Panels): its own line with the coin, "+12 budget over the run". Budget is never turned into Wow.
-  - **Future choices** (Ahead of Schedule): what it adds with the milestones completed early so far, and "+124 Wow a week for each milestone completed early" beside it, never folded in.
-  - **Spec bonuses and links** (Dream Home, Open Concept) need no special case: the tally already reads them.
-- **A blueprint that would add nothing in the weeks left says what it's waiting for,** in a few words from its first modifier with nothing to act on: "No Dark rooms yet", "No pieces with a fixture yet", "No milestone completed early yet", "None of its pieces touch yet" (a link with no group), "Nothing is earning yet". If its pieces are there but a percentage rounds away, it says "Green pieces here earn too little yet". Otherwise "Adds nothing to your house yet".
-- **A blueprint that changes only a run rule the tally doesn't read gets no line.** None of the 18 does today.
-- **Each blueprint has its own icon** (`src/ui/theme/icons.ts`, mapped by `BLUEPRINT_ICONS` in `src/ui/sprites.ts`, so a blueprint without one fails typecheck). They're our own drawings in LimeZu's palette (D-098), 8×8 like a tool's or a fixture's (Dream Home is 9×9), and each draws its name: a yin-yang, a mailbox, a moon, a sprout, a party hat, a sailboat, a floor plan, a timber frame, a house, a barn, a candle, a lawn sign, the sun over a panel, a crown, a house with a heart, an hourglass, a house under glass, a ticked calendar.
-  - They show in the shop's art slot, on crate options, in your goods' blueprint slots, and in the inspect panel's heading.
-  - On a short window (1280×720) the shop's cards have no pictures (`shop.css`), so a blueprint's icon sits beside its title there.
-
-**Why:** the review found a fixture's card said what it was worth and a blueprint's showed only its rules text, under one icon shared by all 18. A blueprint is the bigger purchase, and the free first pick is a new player's first shop decision.
-**Considered:**
-- **One week × weeks left, as D-107 does.** It's simpler to explain, but it reads Good Bones at a tenth of its worth, Last-Minute Push at nothing, and anything on a Sapling or under a phase effect wrong. A fixture's line keeps D-107's sum; changing it is a separate call.
-- **Folding budget into Wow,** or Ahead of Schedule's future milestones into its gain: both would be guesses.
-- **Wording the "needs" line by blueprint id:** the next balance pass would have to keep a table in step.
-- **Blue-paper icons, white on blue, like the old shared one:** 18 line drawings at 8×8 are hard to tell apart. Color does that job.
-- **12×12 icons:** more room, but they'd stand taller than a tool's in your goods.
-
-**Changes:** D-107 (Accepted): a dated note. D-087: the shop's blueprint cards. The rules gain `blueprintValue()` (`src/rules/run.ts`, with `src/rules/blueprint-value.ts`).
-**Known gaps:**
-- "If the house stays as it is" is a floor for most blueprints: a house keeps growing. The tip says so.
-- Waterfront says "No pieces touching the Pond or the Creek yet" even on a lot with neither.
-- A blueprint whose value is 0 in the first week but not later (Country Living beside a Sapling) leads with the run figure alone.
-- Valuing a blueprint tallies every week left twice. Three on a shelf took about 3 ms per state in a dev build (18 took 18 ms), and the rules keep each state's values.
-
-*Changed by D-143 (Proposed 2026-11-10):* a blueprint whose Mult counts pieces (It's a House, Mood Lighting, Model Home) also says what each one adds, "+47 Wow a week for each House piece", beside its gain or its "needs" line. No blueprint links any more, so "None of its pieces touch yet" no longer shows.
-
-### D-139 · The company's record: bests, the next verdict, and a portfolio
-**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: played in playtest 6 (/dev/ at 9acf14a, 2026-11-11) with no issues raised. Proposed 2026-11-10, with its phase pull request (`phase/company-record`), from the friction and replayability review the user asked for the same day. The user picked it as the first step ("Yes, build it"). For the user's playtest before it merges. A first, power-free step toward D-015 and D-016, which stayed Proposed then and were Parked on 2026-11-12.
-**Decision:**
-- **The browser keeps a record of every house it finishes,** won or lost (`src/ui/company.ts`): the lot's seed, the client and crew, the Wow, the verdict, the milestones met, when, and a photo. It also keeps the best result with each client and crew, and counts of houses built and jobs done.
-  - It's stored by channel, like the save, but not by build. A house is stored as its result and a picture, never as a run code: a run code stops replaying when the content changes, and the record should outlive updates.
-  - The portfolio lists the newest 36 houses, and the newest 24 keep their photo. The bests and the counts outlive the houses they came from.
-  - A best is the highest Wow, and a win beats any loss.
-  - The same lot, client and crew finished again replaces its entry and counts once.
-- **Only a run played to its end here is filed** (`src/ui/screens/record-run.ts`): the action that ends it comes through the store. A run that loads already finished (a `?run=` code) isn't filed, and nor is a debug run.
-- **It unlocks nothing and changes no rule** (D-016). The rules never read it.
-- **The end screen says where the house stands,** under the Wow:
-  - "Next: Charmer at 46,863": the verdict above this one and the Wow it starts at, from the rules' new `nextVerdict()`. A lost run and a Dream Home show none.
-  - Then one of: "New best for the Hendersons" with a star and what it beat; "Your first house for the Hendersons"; or "Your best for the Hendersons: 46,656". A client's best is across crews.
-- **The title screen gets a Portfolio rider** under How to play and Settings, with the number of houses built, once there's one. It opens a sheet (`src/ui/screens/Portfolio.tsx`):
-  - a line of totals: houses built, jobs done, and the best Wow in a won run
-  - **Best work:** a grid of every client by every crew, 15 squares. A win is stamped gold with its verdict and Wow, a loss says "Client walked" with its Wow, and a job not tried yet is an empty square.
-  - **Houses:** polaroids, newest first, each with its photo, client, verdict (or "Walked at 3/7"), Wow and crew.
-- **The photo** is the end screen's (D-136): the finished house without its roof, through `photoFrame`, painted by `paintPhoto` once the last tally has played. It's stored 320 px wide as a JPEG (under 30 KB in the five houses checked), not at art resolution (about 100 KB as a PNG), because every channel on the site shares one browser storage. If storage is full, the oldest photos go first.
-
-**Why:** the review found that nothing carried from one run to the next: the browser remembered settings, hints, the save and the best single week, and the end screen had no personal best. A record gives a second run something to beat, and the grid's empty squares give a reason to try another client or crew, without touching balance the day before sharing.
-**Considered:**
-- **The finished houses standing on the title's street.** This was the review's first sketch. The title's scene is drawn front-on (LimeZu's villas) and our houses are drawn from above, so a house on that lawn would read as a floor plan lying on the grass. Polaroids in a sheet use D-136's look instead.
-- Storing run codes and repainting: the first content change would empty the portfolio.
-- Unlocking clients, crews or goods with it: jam players may play once or twice, and Combolands' players resented early runs with systems locked (research.md).
-- A best per client and crew only on the end screen: the grid already shows it, and one line per client reads faster.
-- Filing debug runs: their cheats would set the records.
-
-**Changes:** D-015 and D-016 (Proposed): this is a first step that adds no unlocks and no currency. `jam-scope.md`: its "Not in the jam build" line on meta-progression. The rules gain `nextVerdict()` (`milestones.ts`), so the UI still computes no score.
-**Known gaps:** no way to clear the record yet. A portfolio house can't be opened larger or replayed from its seed. A run finished on another device or in a private window isn't in the record.
-*2026-11-10, from the polish review:* where the browser denies storage altogether (site data blocked, or the game in an itch.io frame in an Incognito window), the record starts empty and lasts for the visit. Reading it used to throw as the page loaded, which left the page blank; the tally's own records (the best week, the tiers seen, topped out) had the same check and are fixed with it.
-*2026-11-11, from the outside review and the polish review:* each house in the Portfolio has **Play this lot again**: a new run on its lot, for the same client with the same crew, straight into the game with the sheet closed (`playLotAgain`, through the store's `newRun`). With a run in progress it asks first, as the title's New run does while it offers Continue. A house whose client or crew this build no longer has gets no button. A portfolio house still can't be opened larger.
-*2026-11-11 (D-150, Proposed):* the end screen offers it too, as Try this lot again after a loss and Play this lot again after a win, so the same lot is one click from the end screen instead of three screens.
-*2026-11-11 (D-156, Proposed):* the newest six houses also keep a **plot**: the house alone, dimmed, as a PNG at art resolution, with where it stood on its lot (`Job.plot`), so it can stand on the street beside the lots that come after it. A plot is 42 to 73 KB as base64, about twice a photo, so six add about 350 KB to the record's one JSON value (`openhouse:<channel>:company`), in the browser storage every channel on the site shares. When the browser says it's full, the plots go first, oldest first, then the photos (`withFewerPictures`). Houses filed before it have no plot.
 
 ### D-140 · The Garage is built like any room, and earns once the street or a Driveway reaches it
 **Status:** Proposed · 2026-11-10, with its phase pull request (`phase/garage-driveway`), from the friction review the user asked for the same day (its first point). The direction is the user's: the Garage is placed like any other room, and earns only while the street or a Driveway reaches it. Settles D-080. For the user's playtest before it merges. The numbers are placeholders.
@@ -4008,270 +4286,14 @@ No card is under the bar that wasn't before. Also checked, both fonts, with the 
 - Nothing at the last shop says that budget kept pays 100 Wow each. The Budget tip and How to play do. *2026-11-10 (D-148, Proposed): the last shop says it now, with "but only after the last target is met".*
 - One browser pass, in headless Chrome at 1280×720 and 1920×1080. Not checked: the pane itself, touch, devicePixelRatio 2, Firefox, Safari.
 
-### D-134 · Three more tracks, from the same shortlist
-**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: played in playtest 6 (/dev/ at 9acf14a, 2026-11-11) with no issues raised. Proposed 2026-11-10, after playtest 5 (`docs/playtests/playtest-5-findings.md`), with its fix pull request. Extends D-128. For the user's ears on /dev/.
-**Decision:**
-- **The shortlist's other three join D-128's,** so a run shuffles six tracks (D-131) and plays about 16 minutes before one repeats, where three played about eight. The user heard all six on M5b's listening page and turned none down, so these come in without another listening round:
-  - "Folded" by Ketsa (Free Music Archive, CC BY 4.0): busier lo-fi downtempo; 78 BPM, 3:12, A major.
-  - "On the road, looking at your feet" by Monplaisir (Free Music Archive, CC0): solo ukulele; 68 BPM, 1:58, G major.
-  - "Comfort Games 5" by HoliznaCC0 (Free Music Archive, CC0): a music box; 70 BPM, 2:21, C major.
-- **Cut and keyed like D-128's three:** Ogg and M4A at −16 LUFS (D-130), each key estimated from the recording the same way, so the rewards play in it (D-129). Each comes as one mix, so the bus's filter and level change it by screen (D-131). `music.test.ts` shuffles the six for 200 rounds: every track once a round, never the last one first.
-- **Licenses were read again on each track's page.** The credits, with our changes, are in `CREDITS.md`, `assets/licenses.json` and How to play's Credits. CC0 asks for no credit; we give it anyway.
-- **A limiter for loud plucks:** On the road's ukulele plucks peak far over the rest of it, so the −1 dBFS peak cap held it at −20 LUFS. A cut in `art/audio.json` can now take `limit`: it reaches its loudness through a look-ahead limiter (2 ms ahead, 80 ms release) that holds the peaks under −1 dBFS and leaves the rest alone (`cut-audio.test.ts`). On the road lands at −16 LUFS.
-- **Size:** the three add 13.3 MB to the Pages build (6.1 MB of Ogg and 7.1 MB of M4A), so music is 33.5 MB of its 34 MB. A player still loads one format, about 2 MB a track, one track ahead (D-130).
+## Parked
 
-**Why:** in playtest 5 the music "is good", but three tracks "start to loop pretty noticeably" over a run. The user had picked D-128's three from this shortlist by ear, and asked for "maybe an additional 3".
-**Considered:**
-- A new search for tracks: these three were already found, checked and heard.
-- `limit` for Clear Air (−17.7 LUFS) and Sleepy Little Mouse's mix with drums (−16.8 LUFS), whose peaks also hold them under −16: the user called the music good as it is, so their levels wait for the user's ears.
-
-**Changes:** D-128 (Accepted): six tracks, not three (its dated note). D-130 (Accepted): a cut can take `limit`. `implementation-plan.md` §7 M5b and §12 Music: six tracks, about 16 minutes.
-
-### D-132 · One reroll redraws both rows of the draw
-**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: their own ask, played in playtest 6 (/dev/ at 9acf14a, 2026-11-11) with no issues raised. Proposed 2026-11-10, after playtest 5, at the user's ask (`docs/playtests/playtest-5-findings.md`). Changes D-121. The targets aren't re-fit here: the balance pass's one re-fit comes after it, on the last day.
-**Decision:**
-- **A reroll redraws both rows,** Rooms and Layout, for one reroll: the milestone's own first, then a kept one, as before. Each row draws on its own stream, `draw/<phase>/<slot>/<n>/<row>`, as a week's first draw does, then each card with no play is swapped as D-121 says. A card picked from the old hand goes with it, and the week goes on.
-- **One Reroll,** on the hand's plank before Demolish, with the milestone's count. Its title says "New cards for both rows" and that it doesn't end the week, and it's read out as "Reroll: new cards for both rows, N left". The ROOMS and LAYOUT labels stay, without buttons.
-- **The plank** holds the title, Reroll and Demolish. As in D-121's narrow column, the buttons show their icon and count where their words don't fit (their titles name them), and while demolishing, Stop keeps its word. On a narrow plank (in the pixel font, at 1600×900 and smaller windows) the title is "Cards", not "Pick a card", so both buttons fit beside it.
-- **How to play** says "New cards for both rows" for Reroll, with the milestone's count. R rotates, as before, so the controls strip doesn't change: there's no reroll key.
-- **Run codes:** a reroll names no row. A code from D-121's builds whose reroll names one still parses, but the row is dropped, so from that reroll on the code replays differently than it played. Its build stamp names the commit that replays it.
-- **The sim:** greedy rerolls when no play would raise the week's total, as before, and no longer picks a row.
-
-**Why:** in playtest 5 the user said "two rows of the draw feel okay, but I think a reroll should reroll both sections of the draw instead of just one." In their run (seed drf4yj, the Hendersons with the General Contractor, won with 50,129 against 37,490) they rerolled 10 times, 8 Rooms and 2 Layout, and twice spent two rerolls in a row, Rooms then Layout, to redraw the whole hand.
-- **This PR's check,** greedy on 200 held-out seeds (`--check`), paired against develop (56e1e02):
-  - Wins 48.0% → 47.5%, −0.5 points [−1.5, +0.5] (1 seed won only before, none only with this). Greedy early always wins 47.0% both ways.
-  - Wow ×0.999 at milestone 3 and ×1.000 at milestone 5; at the end, ×0.999 on the 95 seeds both won (×0.988 over all 200, nearly all of it the one lost run). The median final Wow is 29,648 → 29,619.
-  - Greedy rerolls only when no play would raise the week's total, 0.13 times a run before and 0.09 now, and 192 of the 200 runs end on the same Wow. So the sim says little about players, who reroll far more (the user, 10 times in a run).
-  - §8's criteria keep their verdicts: greedy's wins pass, unsure, at 47.5% [40.7–54.4], it clears milestones 1–3 in 97.5%, and the clients' spread fails, unsure, at 25.0 points (27.5 before).
-
-**Considered:** a third button for both rows beside each row's own (three buttons for one count); a count for each row (twice the rerolls, and a re-fit).
-**Costs:** a good row can't be kept while the other redraws. Codes from D-121's builds with a row's reroll replay differently from it on.
-**Changes:** D-121 (Accepted): its reroll, the run code's row, the Reroll buttons and the sim's reroll, with a dated note there. Its notes on D-036, D-039 and D-098 are marked too. `implementation-plan.md`: the `handDrawn` event, the week's start, and Appendix A's rerolls.
-
-**2026-11-10 (D-148, Proposed):** Reroll keeps its word at every window size, in both fonts: as a bare die it went unnoticed by the review's first-timers. The title gives way to it ("Cards" under 25rem of plank, none under 19rem, which is a laptop's), Demolish still shows its icon and count where its word doesn't fit, and while demolishing Stop keeps its word and Reroll gives up its own.
-
-**2026-11-11 (a fix pull request, `fix/reroll-no-repeats`):** a reroll no longer deals back the cards it replaces. It drew from the same pools as the week's first draw with nothing left out, as the 2026-11-10 polish review found: on 4,000 lots here, 75.4% of first-week rerolls (the General Contractor's) brought back a card they replaced, 30.6% half the hand or more, and 8 the very same hand.
-- **Each row is drawn from its pool without the cards it holds,** and the reroll's swaps leave those out too. Only when a row's pool has too few others (strikes can leave a Landscaper's three Layout cards one) is it topped up from the cards it held, at their weights, on the same stream (`held` in `draw.ts`, beside the swap's `exclude`). A week's own swaps still try any card that isn't in the row.
-- **The streams' keys don't change,** so a reroll still shifts no later hand. A week's first draw and its swaps, the Catalog's redraw and the ?debug panel's forced shop draw as before.
-- **Measured** on 4,000 lots for each Core crew (the Core clients in turn), first-week rerolls that dealt back a card they replaced: 75.4% → 0 with the General Contractor (its second reroll against the first's hand, 76.7% → 0), 91.5% → 0 with the Landscaper, 72.0% → 0 with the Architect. At every week start of 100 greedy runs (2,624 weeks): 51.6% → 0. With the draw's change alone, the reroll's swaps still brought one back in 2.6% (7.8% at milestone 2), so they leave them out too.
-- **Greedy on `--check`,** 200 held-out seeds paired against develop (87aa6ae): wins 47.0% → 48.5%, +1.5 points [−0.2, +3.2], with 3 seeds won only with this (all Count Vladislav's) and none only before. Greedy rerolls 0.08 times a run (0.09 now) and only the 11 runs that rerolled change; 90 of the 94 won both ways end on the same Wow (×1.000 over the 94). Greedy early always wins 42.0% both ways. §8's verdicts hold: greedy's wins pass, unsure; it clears milestones 1–3 in 97.5% (97.0%); the clients' spread fails, unsure, at 30.0 points (22.5), from those three Vladislav runs. The targets aren't re-fit.
-- **Run codes** with a reroll in them replay differently from that reroll on, as any change to the draw does.
-- **Changes:** this entry's first bullet (a reroll's rows leave out the cards it replaces), and `implementation-plan.md`'s week start.
-
-**2026-11-12 (D-157, Proposed):** the plank holds Reroll, Strike and Demolish. In the pixel font its title ("Pick a card", "Cards") gives way whenever Strike is on it, and outside a mode Reroll keeps its word on planks from 17.25rem (D-148's note). In the readable font the title is "Cards", and none on planks under 315 px. The first job's two-button plank keeps this entry's rules. Free strikes thin the rows sooner than bought ones did, so a reroll's top-up from the cards it held (the 2026-11-11 note) can come sooner too.
-
-### D-111 · Art for M4's content: the members' rooms, packs, and Renovate's level
-**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: played in playtests 4 to 6 with no issues raised. Proposed 2026-11-08, with the M4 pull request, after it merged `develop` (M5a). Implementation details within D-097, D-100, and §12 Art; for playtest 4.
-**Decision:**
-- **The members' rooms** (D-103): the Nursery, the Kids' Room, Grandma's Room, Renfield's Room, Nana's Room, Rowan's Studio, and Ivy's Room.
-  - Each has its own floor and wallpaper, as every room type does (D-097), cut from LimeZu's Room_Builder sheets into a manifest of their own (`art/limezu/members.json`). Each wallpaper stands ΔE 20 or more from its floor, like every room's (D-100's test), and none reuses another type's floor or wallpaper: `house-paint.test.ts` now lets only the two kitchens and the two hallways share.
-  - Their furniture is laid out by `rooms.ts`'s slot rules (D-100), from LimeZu cuts, most of them new, that say whose room it is: the twins' crib (a blue blanket beside a pink one), a low dresser to change them on, a rug and a teddy in the Nursery; two children's beds side by side, a toy box, a rug and a toy train in the Kids' Room; Grandma's bed with her vanity beside it, or her curio cabinet where the vanity won't fit, an armchair and a standard lamp; a cot, two candles that flicker and a spider bobbing on its thread in Renfield's (LimeZu has no corner cobweb); Nana's bed beside the dogs' bed, an armchair and a rug; an easel, a stool, a pot of paint and a finished painting on the wall in Rowan's Studio; a child's bed, a school desk and a globe in Ivy's Room.
-  - Renfield's Room and Rowan's Studio are one cell across, so a piece in them is at most 22 px wide and 26 px tall, or comes in a second shape: an upright cot or a side-on one, an easel with or without its finial (or its painting on the wall, where a door's walkway leaves too little floor).
-  - The dogs' bed in Nana's Room is our own drawing, in LimeZu's palette and ink, like the Doghouse (`drawings.ts`): a dog asleep on a red cushion, since LimeZu's interiors have a cat but no dog.
-  - Bunk Beds stand in place of the crib or the bed in a member's 2×2 room, as in a Bedroom; in the two rooms one cell across they show as a badge. Doors treat a member's room as the Bedroom it counts as (D-103), and where they can, open the Nursery and the Kids' Room off a Bedroom, Ivy's Room off the Home Office and Nana's Room off the Mudroom (`house-model.ts`).
-  - When the Nursery grows into the Kids' Room, its art changes with its type, the crib becoming two beds; its level and fixture stay (D-109).
-- **Packs** (D-106) are drawn from their own tiles, never the card's shape: the ghost as the tiles are clicked out, the built pack, and the Moving Truck's carried pack (D-100's ghost rule).
-  - A Fence's picket line runs through any connected shape, joining other Fences as D-100's do. A lone tile is a short run across its cell, with a post at each end.
-  - The house's car stands only on its Driveway's own tiles: everything below its over line, wheels and body, with its roof rising over the row behind no further than a side-on car's does. A ragged pack parks it in another row (side on) or column (nose in), so a Driveway of two tiles or more, of any shape, parks it where no door is in the way. A lone tile sends it to the house's next Driveway.
-- **Renovate's level** (D-102): a pixel badge with a star per level, as tall as the ⚠. `label-layout.ts` places it last, so it moves nothing: beside the ⚠, else under it (a row, then a column), else in the ⚠'s place, else under the fixture's badge, else under the top badges at the room's left, else at the top of another of its top cells (an L-Kitchen's other arm). It stays on the room's own cells inside its walls, clear of the digit, the other badges and what the labels keep off (D-100). Where only a smaller badge fits, it shrinks as the other badges do, never below a device pixel per icon pixel. It pops on a Renovation (`FEEL.levelPop`; not under Reduce motion). Where it can't fit it's left out, and the inspect panel states the level.
-- **Renovate's outline** around the rooms a card can renovate is drawn in art pixels, so it grows with the zoom like the walls it follows and stays easy to find at 2× and 3×.
-- **The crews' icons:** our own 8×8 drawings in LimeZu's palette, like D-098's icons, for a crew's chip and, at 4 UI px per art px, its card. The General Contractor's is the Weekend Crew's hard hat (the hammer already means Demolish), the Landscaper's a garden spade (its bonus is for yard pieces, and most of them aren't Green), and the Architect's the goods' blueprint, redrawn at 8×8. No crew's icon is a tag's.
-- **Two carets** open and close folds and the contract's house rules (▸ closed, ▾ open): small wood triangles in the ink outline, smaller than the ▲ ▼ marks, so an open fold doesn't read as a dislike. The open one is the closed one turned a quarter in the same 8×8 box, so a row keeps its place when it toggles.
-
-**Why:** M4's new pieces had no art in M5a's look. M5a drew a yard piece from its card's shape, which a pack doesn't keep, and the merge gave the members' rooms the Bedroom's floor and wallpaper for the time being. D-097 gives every room type its own floor and furniture, and D-100 draws every piece from its own cells. A Renovation needs a mark on the board, and M5a's labels already decide where a badge can go.
-**Costs:** 50 new LimeZu cuts, each with its record in `assets/licenses.json` (`CREDITS.md` credits LimeZu already), and one more drawing of ours. A 2×2 room's north wall holds the bed and one piece, so Grandma's Room shows her vanity or her curio cabinet, rarely both, and no nightstand. Where Renfield's Room lies one cell deep and a door's walkway takes its floor (about one such room in seven, in random houses), there's no room for the cot: it shows the candles and the spider. The level badge is left out only where no badge fits: at 1×, a one-row room that also shows a fixture's badge and the ⚠ on a screen of ratio 1; Renfield's Room and Rowan's Studio at 0.5×; a one-row room a Treehouse's roof fills. A lone Driveway tile parks no car.
-**Changes:** None to settled decisions. It extends D-100 (Accepted): its Furniture bullet gains the members' rooms, its Yard pieces bullet the packs' own shapes, the lone Fence tile and where the car parks, and its Labels bullet the level badge. D-098 (Accepted): the crews' icons and the carets join its icons.
-
-**2026-11-08 (the visual checks), for playtest 4:** checked in D-110's six configs, with nothing to fix: the seven members' rooms at all four turns, bare and with Bunk Beds, Soundproofing or Blackout Curtains; the Nursery growing into the Kids' Room; Fences of one to eight tiles and Driveways of one to six (rows, L's, T's, a block) as they're clicked out, built and carried by the Moving Truck, at 0.5× to 2× and Fit, with their labels near the lot's top edge; the parked car; and Renovate's outline, its labels and the stars at levels 1 and 2, at 1×, 2× and Fit. The candles and the spider animate as the Fireplace does, so they hold still under Reduce motion and under a sheet over the board (`house.css`, `terrain.css`). The board's open items are D-110's host badges.
-
-### D-110 · M4's screens in the pixel UI
-**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: played in playtests 4 to 6 with no issues raised. Proposed 2026-11-08, with the M4 pull request, after it merged `develop` (M5a). Implementation details within D-098 and D-109; for playtest 4.
-**Decision:**
-- **One interface:** M4's screens are built from M5a's kit (`src/ui/kit`: panels, sheets, paper cards, chips, keycaps, and icons) on the theme's tokens, in the pixel font with the readable option, like every other screen (D-098). Every color is a token, so M4's stylesheets come off `theme.test.ts`'s legacy list, and its 4.5:1 check covers their text, on a translucent wash too (it blends the wash over the paper under it). Glyphs the pixel fonts lack are icons, the rules' own words included: a tip draws the glossary's warning sign (Requirements, "on the board") as the warn icon in both fonts, kept on one line with the "(" before it (`Tip.tsx` tipWords).
-- **The job board and the crew pick:** one wood panel over the title's street, "The job board" or "Pick your crew" on its plank, with "Step 1 of 2" or "Step 2 of 2" as a chip. Contracts and crews are paper cards, three in a row, each with a keycap (1–3), a middle that scrolls, and a foot that doesn't, holding its button; a contract also has its rarity's band, fill and chip (a plain chip: the shop's rarity tag explains goods). 1–3 take a card, and Esc or Back goes back a step. Focus moves to the first card's button at each step. The columns and insets are whole UI pixels, so the cards rest on whole device pixels.
-  - "Recommended for your first job" is a gold tab with a star on the card's top edge. On a first visit only that card's button is lime (the Hendersons' Take the job, then the General Contractor's Hire this crew), so the view has one lime button, as the build screen has End week (D-098).
-  - A contract shows its lot as a small map of the lot and its street row in LimeZu's colors, at 3 UI px a cell (2 on a window up to 1500 px wide or under 800 px tall), in the ink ring, with the lot in words as its title (and as a line under it on a window 800 px tall or more); its tastes as rows with up, down and reroll icons (likes, dislikes, draws); and its house rules folded behind a caret.
-  - A crew card shows the crew's icon at 4 UI px per art px (D-111), its blurb, its "All run" lines, and the pieces it starts with as the hand draws them, on every window (the cards have the room at 1280×720).
-- **The change order** is a sheet over the board, 270 UI px wide, with the mail icon and "Change order" on its plank and the client's name beside them ("from the Hendersons", on one line).
-  - *2026-11-10 (D-144, Proposed):* the sheet holds two orders now, each a paper card with its own Pick button, and is 440 UI px wide where the board has room (270 for an order offered alone). The keys are 1 and 2. Each card's words scroll and its foot doesn't. "Until" is said once above both, and the stamp, always "Accepted", lands on the card picked. The bullets below describe the one-order sheet; holding the keyboard on the text, the docked notes and the pause under it are unchanged.
-  - It holds the keyboard on its text, never on a button, so a held Enter can't skip `FEEL.changeOrder`'s pause (D-109). Tab stays inside it, and focus goes back where it was when it closes. It isn't one of the modals (`anyModalOpen()`), so the game's keys answer it: Enter accepts (or says Got it to a phase effect), and Esc or D declines a request or a restriction.
-  - Its middle scrolls: the order's name with a chip for its kind (a request's mail, a restriction's cross, a phase effect's clock), the client's words, the terms, "So far", how long it runs, and what it pays, the coin first (D-098). The terms leave a request's or a restriction's reward to that Pays line, so the sheet says it once. Its foot doesn't scroll: Decline, for a request or a restriction, is plain, and Accept or Got it is lime, each with its keycap.
-  - The answer is a pixel stamp, a check or a cross and the word (Accepted, Declined, or Noted for a phase effect), that comes to rest unrotated, a set way down the sheet so it lands on whole device pixels, before the shop opens.
-  - Notes dock inside it, under its plank: D-098's Overlays bullet now covers any sheet over the board, not only the shop. The sheet is narrow, so a note's buttons (an old run's Copy, and Dismiss) go under its words, at the right. A note's Dismiss, by mouse or keyboard, puts focus back on the sheet's text, which holds the keyboard, rather than let it fall to the page (`Notes`' refocus); the Enter that pressed it doesn't answer the order.
-  - Under it, the board's water and animated props pause, as they do under the shop (D-099).
-- **The client's checklist** is a panel in the left column. The client's name is on its plank, with their brief as its tip. The crew is a wood chip with its icon, first in the list, whose tip is the crew's blurb and its "All run" lines. The house rules, the client's wishes and the change orders sit under plank tags.
-  - On a window under 1000 px tall the list's head is one row, so the first house rule starts right under it: the tastes fold into their row; the crew's chip shows its icon alone, with the same tip, on the plank beside the client's name (in the pixel font in a 280 px column, where the plank has no room beside the Hendersons' or Count Vladislav's name, 216 and 218 of its 228 px, at the end of the tastes' row instead); and the House rules tag is left out, the score panel's checklist row naming the checklist (2026-11-09: the chip, the tastes and the tag took the box's first 120–140 px at 1280×720).
-  - Marks are icons: a check for a line that holds, a pending mark for one that doesn't, a star or a cross for a line turned on or off this week, a clock for a phase effect, the House for who's still to move in, and a caret on a fold row. A progress part that doesn't hold yet has a cross, here and on the change order's sheet.
-  - On a window wider than 1500 px a held line shows its "+0.25"; on a narrower one (280 px columns), a Charm icon, with the value in its tip. The plank counts the lines held on a window wider than 1760 px, where it has room beside the longest client's name; the score panel's checklist row counts them on every window.
-  - The tastes are a row each, marked up, down, or a dot for neither. On a window under 1000 px tall they fold into one row, "Tastes (3)" as the job board calls them, one line in every column ("Likes and dislikes (3)" took two in the pixel font). House-rule groups fold as D-109 says; a fold row shows its count with a check, and never takes focus on a click.
-  - A change order's reward reads coin first, struck through once it's broken or missed. Only a play that would break a restriction takes the warning's tint: a resolved order's cross, struck name and result word say the rest.
-- **The left column** is never taller than the window and never scrolls as a whole: the score panel keeps its height, and the checklist and the inspect panel share the rest, a box of their own, each scrolling inside its own body, with the inspect panel's plank and foot always in view. While a play is being looked at, the inspect panel comes first (D-109). The checklist keeps its plank and two rows (56 UI px). Pointed at something, the inspect panel keeps a few lines (80 UI px), or, on a short window late in a run, the share of the box the checklist's minimum leaves it (2026-11-09: late in Dale's run at 1280×720 the score panel took 416 of the column's 656 px, and the 80 UI px overflowed it by 40). A play being looked at brings into view the first row it flips, with a line beside it where both fit, or else the change order it would break. A play that does neither brings the house rules' first two rows into view while the tastes are folded into their row (under 1000 px tall, unless the player opened them), and otherwise leaves the checklist where it is, so tastes in view stay in view (placing a Lawn at 1920×1080 keeps "Lawns earn +50%"). Once the play is over, the checklist goes back where the player had it.
-  - **The score panel's sets fold** into one row on a window under 1000 px tall (D-098, changed with the team's OK on 2026-11-08), so late in a run the checklist keeps its room. The row has a set's shape: "4 sets" (or "1 set") with their Comfort and Charm added up at the right, under a hairline where the "Sets" heading was, and every set's name, level, Comfort and Charm in its tip, a set a line. "No sets yet." keeps the first-set suggestion as its tip, in both fonts. The sums are the rules' per-set numbers added up for display, as the checklist's row multiplies its count by the bonus; the UI scores nothing. In a tally the row counts the sets as the tally does, with Comfort and Charm: "0 sets", dimmed, until the tally reaches them, then each set as it's counted, the row lighting with the set's members on the board, in the board's set highlight (a rose wash under a Charm edge), and its numbers popping from the right (`FEEL.checklist.tickMs`). It also lights for a set's beat (`FEEL.tally.setStepMs`) when the sets change outside a tally: a Remodel Plans' level, a demolition. Reduce motion keeps the light and drops the pop. Windows 1000 px tall and up keep the list, which shows the sets a play being looked at would make and break.
-  - **The week's Wow** sizes itself to the room beside its word, so it never runs onto the plaque's frame, and keeps a gap after the word wider than a space (6 UI px; 2026-11-09: "56,789" sat 2 UI px from it at 1280×720). Public Pixel's glyphs are an em wide, so in the pixel font the size is that room over the number's glyph count, rounded down to the font's grid of 4 UI px and kept between 8 and 16 UI px (CSS `round()` in an inline-size container); the readable font's digits take about 0.62 em. At 1280×720 in the pixel font a Wow of 1,000 or more shows at 24 px and one of 10,000 or more at 16 px; at 1724×962 the hero 32 px holds to four digits, at 1920×1080 to five. A browser without `round()` steps the number down at four digits and at six.
-  - **The inspect panel's total**, "This week: X → Y Wow", is its foot, under the body that scrolls, so it stays in view however long the preview: a placement, an install or a Renovation, a tool that can be used, a demolition. A tool's Use button and a demolition's "Click it again" end the body, above it.
-  - **The budget line** keeps its coin beside the first line of its words, as the inspect panel's notes do: two lines in a 280 px column, not three.
-  - On a window under 1000 px tall the score panel keeps to its equation while a play is looked at: its sets, its checklist row and its budget line hide, and the inspect panel's notes say which sets, checklist lines and budget the play would change. This was the 820 px rule M4 built for D-109's left column, then D-098's 800 px breakpoint; since 2026-11-09 it's the fold's 1000 px, as the list coming back between 800 and 1000 px tall pushed the inspect panel's total below a 1536×864 window late in a run. With nothing looked at, the idle inspect panel gives way first, down to its plank, and on a window under 800 px tall the checklist keeps 44 UI px. While a play is looked at, the checklist keeps 84 UI px in the pixel font, whose rows are two or three lines tall.
-  - In a 280 px column the pixel font's checklist row in the score panel leaves out its check icon, as the equation's labels leave theirs, so "7 checklist lines" keeps to its first line: the row is two lines, a set's shape, not three.
-  - On a window under 1000 px tall, a line a play would turn on leaves out its progress, which the play meets, so the row above it stays in view; while a play is looked at, so does a line it leaves as it was (a change order keeps its status). Until 2026-11-09 this was only on a 1280×720-class window (1500 px wide or less, 800 px tall or less): at 1536×864 a Home Office's flipped wish, with its progress, was taller than the checklist's box.
-  - The aim at 1280×720 while placing: the score panel, at least two checklist rows, and the inspect panel's preview in view, in both fonts. *2026-11-09, before playtest 4:* met in 20 of 21 week-1 plays (every client and crew) in the pixel font and in all 21 in the readable font, with the preview's total always in view (2026-11-08: 3 and 16). Dale's Home Office shows one: its flipped row and the line beside it are taller than the box. The notes below have the numbers.
-- **First-time hints** (D-045, D-077's note) are paper notes with a wood plank and the help icon, by the panel each explains, on whole device pixels and inside the window (`first-hint-place.ts`): the first week, the checklist, Complete early, the shop, a fixture, a change order, and an arrival. A note by the checklist that's taller than the room below it rises until it fits, rather than scroll its text in a sliver. They never take focus. Got it dismisses one for good, and Settings shows them again. They're `FirstHints.tsx`; `Hints.tsx` stays D-098's controls strip.
-- **The controls strip** (D-098) adds a change order's keys (Enter accepts, Esc or D declines), a pack's clicks (click a tile to add it, and again to take it off), and a pending Renovation ("renovate it" on Enter), which has nothing to turn: the strip leaves out R, R does nothing, and the Rotate button is off.
-- **The board's labels** (D-098): a pack's ghost label is two short lines, its change to the week's Wow with how many tiles are out ("3 of 8 tiles"), then "Click to start" or "End week to build"; the next tile's own chip says what a click there would do. Renovating, the room's label names the level it would reach and the change to the week. A stack of labels takes as many rows above its cells as it is tall (`geometry.ts` labelRows), so near the lot's top edge, at 0.5× and Fit, it drops below its cells rather than run off the board. These labels keep the ▲, ▼ and ✕ that M5a's labels use, which the pixel fonts lack (a known gap in both). A popup that would be cut off at the side of the board's view (a room's "Renovated · level 1" at the lot's edge at 1280×720) is nudged inside it, as the labels are.
-- **A fixture's worth** (D-107) is a strip on the shop's fixture cards and on a crate's fixture options: the best host, this week's gain with an up or down icon, and the gain over the weeks left. While installing, each host's gain is one of D-098's preview badges, above the walls, the best ringed in gold, sized and placed on whole device pixels with no transform at rest, so its ink ring stays crisp. Where its spot would cover another host's badge or a piece's digit or badge (two one-cell rooms side by side at 1×), it moves to the nearest clear spot within a cell, up or down before sideways; the best gain's is placed first and keeps its spot (`label-layout.ts` spreadBadges).
-- **The inventory** (D-098) adds the extra slots for the crew's and the household's cards after the reserve's own, each tagged ("Crew", "Twins"); where a name and its tag don't fit side by side (Grandma's Room in a 280 px column), the tag goes under the name, which stays whole. An arrival's cards pop in.
-- **The client and the crew** are named on the checklist and in the Menu, beside the seed (the Menu is 200 UI px wide now, so the crew's chip fits beside its label). The top bar keeps D-098's layout, its week line reading "Change order" while one is open. The title's Continue says whose house the saved run is ("For the Hendersons"), above its phase, week and Wow.
-- **End week** keeps D-098's measured labels. A pending Renovation says so in its title, in the strip ("renovate it"), and in the inspect panel.
-- **An arrival's banner** is a wood plank with the House icon, not the gold milestone ribbon, so an arrival doesn't read as a milestone met. It doesn't hold up the week (D-109).
-- **How to play** gains short sections on M4's systems, with numbers from the rules, the content and the glossary as the rest of the sheet has them: "Your client" (the job board, the checklist's seven house rules at +0.25 Charm a held line, the tastes, the household's arrivals), "Your crew" (each crew's icon and blurb), "Renovate" and "Change orders" (the milestones they follow, what they pay); packs are a line in "A week". Its controls add a change order's keys (Enter; Esc or D) and a pack's click (a tile again takes it off). Full House's picture wraps to fit the sheet.
-- *Open for the team:* client portraits. LimeZu's premade Modern Interiors characters (a pack already cleared) could put a face on the job board and the change-order sheet. The default is none for playtest 4: the screens work with names, the lot map and text, and portraits could come with the juice pull request or M5b.
-
-**Why:** M4 was built alongside M5a, in the old look, and merged after it (D-097's juice note). Playtest 4 should try M4's game in the interface the team approved in playtest 5a, not in two looks side by side. Each default follows D-098's rules: one lime button per view, icons for the glyphs the fonts lack, sheets that hold the keyboard, and whole device pixels.
-**Costs:** the pixel font is wide (D-098's Costs). A 280 px column holds about 19 characters a line, and at 1280×720 the Hendersons' checklist needs about 2.5 times the space the column has, so it leans on folding and scrolling: there the list's head is one row, and a line a play flips, or else the house rules' first two, scrolls into view. While a play is looked at there, the lines it doesn't flip leave out their progress. Even so, a house rule's row with its progress is 64–164 px tall in a 280 px column in the pixel font, so with nothing looked at at 1280×720 the checklist often shows only one whole (the notes below). The crew's chip sits in three places by window: first in the list on a window 1000 px tall or more, as an icon on the plank under that, and on the tastes' row in a 280 px pixel-font column. On a window under 1000 px tall, picking a card hides the score panel's sets, checklist row and budget line until the play is over; the inspect panel's notes carry what the play changes. Late in a run on a short window, the inspect panel pointed at something can have only its plank and a line or two, with its body scrolling. The Wow's sizing needs CSS `round()` (Chrome 125, Safari 15.4, Firefox 118); an older browser steps the number down instead. The Hendersons' contract card needs about 660 px in the pixel font, more than a 1280×720 window gives it, so its middle scrolls.
-**Changes:** D-098 (Accepted), with the team's OK (2026-11-08): on a window under 1000 px tall the score panel's sets fold into one row while nothing is looked at (its score panel bullet and its note). *2026-11-09, for the team to confirm:* under 1000 px tall the panel also keeps to its equation while a play is looked at, so the list never comes back on a short window (D-098's note says so). It also extends D-098: notes dock in any sheet over the board, and the left column's short-window rules use its 800 px breakpoint, where M4 used 820 px, and the fold's 1000 px. D-109 (Proposed): its UI bullet points here.
-
-**2026-11-10 (D-148, Proposed):** the end screen's column, which this entry keeps from D-098: its sticky bar holds New run and Copy result, and Copy run code and Title sit under the stats (D-098's note of the same day has the numbers). The fixture's and the arrival's hints name Your goods.
-
-**2026-11-08 (the visual checks), for playtest 4:** three reviewers checked these screens, the HUD and the board in six configs: 1920×1080 and 1280×720 at a devicePixelRatio of 1, and 1724×962 at 2, each in the pixel and the readable font. A fix pass followed, then a second check, then a second fix pass (the bullets above include both). The second fix pass took on what the second check found in the HUD:
-- late in a run at 1280×720 in the pixel font, the score panel took up to 612 px of the column's 656, so the checklist showed no whole row, and one of Dale's runs (seed `sw-d1`, the Architect) overflowed the column by 124 px, which put the inspect panel below the window;
-- a weekly Wow of four digits ran onto its plaque's frame there;
-- the inspect panel's "This week" total was cut off in 8 of 21 week-1 plays;
-- on larger windows, a play that flipped nothing scrolled the tastes out of view ("Lawns earn +50%" while placing a Lawn at 1920×1080);
-- a docked note's Dismiss dropped the keyboard's focus to the page;
-- and the Requirements tip drew its ⚠ in the system font.
-
-Measured again on the result, in the six configs: the left column overflows in none of 19 late states (the greedy bot's runs of all five clients at their change orders after milestones 2, 4 and 6, and the end) or 6 arrivals; the Wow stays inside its frame from one digit to seven; the total is whole in every placing play measured; and a Lawn, Closet, Fence, Driveway, Bedroom or Renovation leaves the checklist's scroll at 0. The job board and the crew pick, the change order, How to play, the hints, the inventory, the Menu and the board's labels and popups passed. What was still short in the left column went to a third check (the next note).
-
-**2026-11-09 (the third check), before playtest 4:** two reviewers checked the left column again, with the pointer on things as well as away from them, and on windows between the six configs. They found:
-- late in Dale's run at 1280×720 in the pixel font (seed `sw-d1`, the Architect), pointing at anything (the lot, a hand card, a good in the right column during the last change order) overflowed the column by 40 px, or 90 with a second Sparkle stamp: the inspect panel kept its 80 UI px, and its total went below the window;
-- on windows 800 to 1000 px tall and under about 1700 px wide (1536×864, 1440×900, 1600×900), placing late in Dale's run brought the score panel's set list back and overflowed the column by up to 150 px, the total below the window;
-- where the sets fold, the checklist seldom showed two house rules with their progress at scroll 0: in none of 30 idle states at 1280×720 in the pixel font (in 23 not even one), in 13 at 1724×962, and in none of 24 at 1536×864 or 1440×900, the crew's chip, the tastes and the House rules tag taking the box's first 120–256 px;
-- at 1280×720 in the pixel font, placing in week 1, a play that flipped nothing showed no whole house rule: two rows showed in 3 of 21 plays;
-- and smaller: the folded row showed the week's sets before the tally counted them; the Wow's digits crowded its word from five digits; the fold's tip ran the sets together; and placing late in a run at 1724×962 left the checklist a 66 px box.
-
-A third fix pass took them on (the bullets above describe the result): the checklist and the inspect panel share what the score panel leaves, so the inspect panel's minimum is a share of that room and the column is never taller than the window; under 1000 px tall the score panel keeps to its equation while a play is looked at; the checklist's head is one row there (the tastes folded, the crew's icon on the plank or the tastes' row, no House rules tag), and a play that flips nothing brings the house rules' first two rows into view while the tastes are folded; the score panel's checklist row keeps to two lines in a 280 px column; the folded row counts up with the tally; its tip lists a set a line; and the Wow keeps a 6 UI px gap after its word.
-
-Measured on the result, in nine configs (the six, and 1536×864, 1440×900 and 1600×900 in the pixel font):
-- **The column is never taller than the window** in 423 states (in each config, the 19 late states, 6 arrivals and 5 late build weeks with nothing looked at, a hand card hovered, and placing each hand card), 441 with the pointer away or on open ground, a piece or a hand card, the last change order with the pointer on a blueprint or a supply, Dale with two Sparkle stamps (a 446 px score panel at 1280×720) idle and pointed, the tally's every frame, and Dale's late placing and installing and the Hendersons' won screen on ten more windows from 1366×768 to 1680×1050, in both fonts. The total is whole in every placing play.
-- **At 1280×720 in the pixel font**, late in a run the score panel takes 272–396 px with nothing looked at (two stamps: 446) and the checklist's box 134–258 px; the head above the first house rule is 32 px (it was 120–140; 124–256 at 1724×962). Pointed at something, the inspect panel gets 140 px late in Dale's run (90 with two stamps), the checklist its plank and the tastes' row.
-- **Whole house rules with their progress at scroll 0** (an unmet line with its progress, or a folded group's row with its count), two or more in the 30 idle states: at 1280×720 in 7 in the pixel font (none before; one in 20, none in 3) and 25 in the readable font (19 before); at 1724×962 in 29 and 30 (13 and 28); at 1536×864, 1440×900 and 1600×900 in the pixel font in 21, 23 and 25. Windows 1000 px tall and up are as they were (1920×1080: 18 and 30).
-- **Placing in week 1** (21 plays, every client and crew), two whole checklist lines or more in 20 of 21 at 1280×720 in the pixel font (3 before; a Lawn now shows two, a Fence three), all 21 in the readable font (16), all 21 at 1724×962 in both fonts (14 in the pixel font), 20 at 1440×900 and all 21 at 1536×864 and 1600×900. Dale's Home Office shows one in a 280 px column: its flipped wish and the line beside it are taller than the box. Late in a run at 1724×962 the checklist's box while placing is 120–270 px (66 before), and the inspect panel's body 186–382 px.
-- **The checklist's scroll:** at 1920×1080 a play that flips nothing leaves it at 0 with the tastes in view, as before; under 1000 px tall, where the tastes are folded, it brings the first two house rules into view only where they aren't (a Lawn and a Driveway at 1280×720 in the pixel font, 32 and 6 px); a flip still brings its row in, and Esc puts the box back.
-- **The folded row** counts up with the tally ("0 sets", dimmed, then 1 to 4 sets at their beats) at 1280×720 in both fonts and at 1724×962, lit on every frame of a set's beat and on no other, also with Reduce motion; its tip names every set, a line each, inside the window. **The Wow** keeps 14 px or more after its word up to six digits in every config.
-
-What's still short:
-- **At 1280×720 in the pixel font, with nothing looked at,** two house rules with their progress show at scroll 0 in only 7 of the 30 idle states: an unmet line's row is 64–164 px tall in a 280 px column ("Room for everyone" with its progress takes up to eight lines), and held lines and who's still to move in sit between the unmet ones. Three show none: Count Vladislav's won screen and a late build week, and Dale's change order after milestone 4, where held lines come first.
-- **A flipped row taller than the checklist's box** while placing shows cut: a Dining Room that turns off "A living room or two" late in Dale's run (144 px in a 122 px box at 1280×720).
-- **1920×1080, 1000 px tall and up,** keeps D-098's list while a play is looked at, so the checklist keeps 56 UI px there: late in Dale's run its box is 60 px while placing, and in week 1 his Home Office shows its flipped wish cut. The pixel font's 84 UI px could apply there too, at the cost of the inspect panel's room.
-- **The inspect panel:** a member's notes ("The twins' room: it counts as a Bedroom…") come after the card's kind and effects, so they're out of view while its card is only hovered. They show while it's being placed, cut short at 1280×720 in the pixel font.
-- **Host badges while installing:** at 0.5× a badge moved off another can end up over the next room (the Closet's ±0 over a Bedroom), or, in a block of one-cell rooms, touch a digit. Hovering a host whose preview marks a neighboring host moves the other badges, and can put one on the preview's + mark. The install label covers the badges of the hosts above it, and stays there while an install is pending.
-- **Smaller:** demolishing doesn't mark or bring into view the checklist lines it would flip, nor the score panel the sets it would break; the inspect panel lists both. A weekly Wow of seven digits in a 280 px column sits 2 UI px from its word, at the pixel font's 16 px floor.
-- **From before M4, left as they are:** the build stamp covers the left column's foot at 1280×720 (D-098's corner, chosen to stay clear of End week), now the inspect panel's frame under its plank or its total; on the score panel's list, a set the play would make is tinted with Charm's tint, on which its Comfort reads at 4.1:1 and its Charm at 4.49:1 (M5a's colors, not yet among `theme.test.ts`'s pairs); and a click on a cell that can't take a pending play drops the play, a pending Renovation included.
-
-*Changed by D-142 (Proposed 2026-11-10):*
-- **The job board:** a contract's card leads with the client's brief, their wishes and the lot's map and chips. The household and the tastes are a line each, with the detail in the line's tip. The house rules are a term in the board's lede, not a fold on every card, and the lot in words under the map goes.
-- **The checklist:** the wishes' tag is "Wishes"; a line that doesn't hold shows only the parts still missing; who's still to move in is a name and a milestone; and in a 280 px pixel-font column under 1000 px tall the tastes' row is "Tastes", one line again (the sun's icon, D-120, had made "Tastes (3)" two).
-- **First-time hints:** how a week scores is added (week 2), and every hint keeps to 25 words.
-*Changed by D-158 (Proposed 2026-11-12):* How to play opens on a five-line short version with every section folded under its plank, and lists the hints seen under Tips so far.
-*Proposed change by D-167 (2026-11-12, awaiting the user's OK):* the score panel keeps to its equation on every window, at rest as well as while a play is looked at. Its sets row and checklist row come in for a tally only, sliding in as it starts and away once it ends, and count as above. The fold row's tip, every set a line, is the Comfort plaque's tip now, and Charm's tip says how much comes from sets and how much from checklist lines. The budget line is as it was.
-
-### D-109 · M4b rules structure: change orders, arrivals, and crews
-**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: played in playtests 4 to 6 with no issues raised. Proposed 2026-11-07, with the M4 pull request. Details within D-103, D-012, and Appendix A · M4b; numbers for the sim and playtest 4.
-**Decision:**
-- **Change orders:**
-  - *2026-11-10 (D-144, Proposed):* the lines below describe one order at a time, to accept or decline. Now two are offered and one is picked; nothing is declined or only announced; and an order passed over can be offered again (one picked never is). The skips, the last-phase rule, what breaks a restriction and how each kind resolves are unchanged.
-  - one after each of milestones 2, 4, and 6 (`changeOrderAfter`), on its own screen before the shop, drawn from the `co/<milestone>` stream, evenly among the client's own orders and the generic ones (Working from home, Heat wave), never one offered before in the run. *(2026-11-09, D-112: this said "the client's own orders, then the generic ones", which read as own first; the pick has always been even.)* *(2026-11-10, D-137: five generic ones now, with Cold snap, Rainy season, and A letter from the HOA; and the Barkers, Juniper, and Dale each have a phase effect of their own.)*
-  - skipped: one already met, one needing more new pieces than a phase has weeks, a demolition request with no demolitions left, and one whose piece is neither in this phase's draw nor in the reserve. The plan's "less free space than it needs" isn't checked.
-  - **before the last phase, only phase effects:** a request's or a restriction's reward would come at the run's end, where budget buys nothing
-    - *2026-11-10 (D-137):* with Heat wave the only generic phase effect, the Barkers, Juniper, and Dale got no offer here in about half their runs (greedy, 200 held-out runs: 48–54% of their runs that cleared milestone 6 got one, against 78–86% for the other two). Every client now has four phase effects, so it always comes.
-  - requests and restrictions can be declined at no cost; accepted, they run through the next phase and pay when its milestone is met (nothing if the run is lost). Rewards are budget, 3–5, in each order's definition.
-  - a phase effect is announced (it can't be declined) and runs as a timed effect until the next phase's milestone
-  - only a placement breaks a restriction (not a move or a transform); it stays legal, and the preview names the order it would break
-  - Declutter counts the pieces demolished since it was accepted, not Boulders or the Old Shed
-- **Arrivals** (D-103), as client data (`households.ts`): the Hendersons' twins (a Nursery, which grows into a Kids' Room 8 weeks after it's placed, keeping its level and fixture) at Framing and Grandma (Grandma's Room and a Bathroom card) at Drywall; Count Vladislav's Renfield at Framing; the Barkers' Nana at Drywall; Juniper's Rowan (a studio) at Drywall; and Dale's daughter Ivy at Framing.
-  - Bedroom ranges: the Hendersons 2–3, then 3–4 from Framing and 4–5 from Drywall; the other four 1–2, then 2–3 from their member's arrival. M4a's placeholder steps are gone.
-  - A member's room counts as a Bedroom everywhere a Bedroom counts: Room for everyone, the Bathroom ratio, the Bedroom limit, sets (a Nursery fills a Jack-and-Jill's Bedroom), and Bedroom effects. A member's card can't renovate, but a Bedroom card can renovate a member's room.
-  - Member cards wait in the reserve's extra slots, like a crew's starting cards: buying, crates, and tools count only bought pieces.
-- **Crews:** the Landscaper (yard pieces earn +50%; starts with a Sapling and a Fence) and the Architect (the Playroom, Library, Mudroom, and Pool in the weekly draw at weight 5; every set pays +10%), picked on the job board after the contract. On a first visit the General Contractor is marked "Recommended for your first job" with the Hendersons.
-  - The plan's numbers (the Landscaper's yard draws +50% and earnings +25%, the Architect's sets +50%) failed §8's spread: the Architect won 60.9%, the General Contractor 37.9%, and the Landscaper 27.5% (1,000 held-out runs). Extra yard draws crowd out the rooms the checklist needs, and sets drive most of the Charm. At these numbers: 45.5%, 41.5%, and 39.7%.
-- **Debug ops:** force a change order (offered now, running through the current phase) or a client's arrival (its cards now, once).
-
-- **The UI** (2026-11-07): the left column fits 1280×720 and up: house-rule groups whose lines all hold fold into one row (they open while a line in them flips), and while a play is being looked at, Inspect comes first. A source with several earn lines names what each is for ("Count Vladislav (Dark pieces)"). A demolition's preview names the sets it would break; a set that re-forms from other pieces isn't counted. The change-order sheet takes its keys only after a short pause (so an Enter meant for End week can't answer it), and stamps the answer before the shop opens. *(2026-11-10, D-144: its keys are 1 and 2, one for each order, and the stamp lands on the one picked.)* Orders a milestone resolved stay in the checklist panel with their result until the next phase's first tally, so skipping the tally never hides them. An arrival's banner doesn't hold up the week.
-  - *2026-11-08 (M4 merged with `develop`):* these screens are in M5a's pixel UI now, with these rules kept (D-110). The left column's short-window rule moved from 820 px to D-098's 800 px, and (2026-11-09) to the fold's 1000 px. Its aim at 1280×720 while placing: the score panel, at least two checklist rows and the inspect panel's preview in view, in both fonts. Re-checked at 1280×720 before playtest 4 (2026-11-09): the inspect panel's preview and its total are always in view, and the column is never taller than the window, the pointer on something or not. Two rows show in 20 of 21 week-1 plays (every client and crew) in the pixel font and in all 21 in the readable font; with nothing looked at late in a run, two house rules with their progress show at scroll 0 in 7 of 30 states in the pixel font and in 25 in the readable font (D-110's notes have the numbers).
-
-**Why:** the plan's M4b, D-103, and the sim's needs. The last-phase rule is new: without it, the offer after milestone 6 paid budget at the end of the run.
-**Changes:** jam-scope.md's change orders (the Twins and Grandma's moving in are arrivals now, D-103). Appendix A · M4b's skip rules (free space isn't checked).
-*Changed by D-121 (Proposed 2026-11-09):* the Landscaper also draws a third Layout card every week.
-
-### D-108 · Client numbers from M4a's sim: one signature room each, and the Hendersons' pool
-**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: played in playtests 4 to 6 with no issues raised. Proposed 2026-11-06, with the M4 pull request; numbers for the sim and playtest 4.
-**Decision:**
-- A client's wish for its signature room has a ceiling, like One Kitchen: Count Vladislav wants **One Library**, the Barkers **One Mudroom**, and Dale **exactly two Home Offices**. Extra cards of those types renovate instead (D-102), and draw at half weight while the type is at its limit (D-104).
-- The Hendersons' pool helps their Kitchen-beside-the-Dining-Room wish through the Dining Room (+100%, with Bedrooms, Bathrooms, and Fences), but not the Kitchen: every house takes exactly one, and spare Kitchen cards were the review's most common dead card.
-- The fenced-yard wishes waiting on D-106 are in: the Hendersons want any fenced yard, and the Barkers a big one, 12 tiles or more (Appendix B).
-
-**Why:** M4a's sim (1,000 held-out greedy runs, 200 per client). Without ceilings, Count Vladislav placed 4.2 Libraries a run and Dale 2.8 Home Offices, and one of each shared room (H3) held in 54% of wins, against the review's 77% for its A + Renovate. With them:
-- one of each shared room 81% of wins, the glance test 44% (from 29%), research.md's plausibility check 76% (from 51%), and a compact outline 67% (from 59%)
-- Count Vladislav places 1.2 Libraries a run, and his houses pass the glance test in 41% of runs (from 7%); Dale places 1.9 Home Offices (glance 52%, from 29%)
-- greedy's win rate is unchanged (40.3% against 39.9%)
-
-**Changes:** Appendix B's specs for Count Vladislav (library ≥ 1), the Barkers (mudroom ≥ 1), and Dale (homeOffice ≥ 2), and the Hendersons' pool (spec pieces + fence +100%).
-
-### D-085 · M3 balance: the milestone budget and the targets
-**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: the milestone budget has been played since playtest 3, where it "felt about right"; the targets here were replaced by D-123 and D-146 (below). Proposed 2026-11-05, with the M3 pull request; numbers for the sim and playtests to tune.
-**Decision:**
-- **Milestones pay 4 budget,** not Appendix A's 3. At 3 the greedy bot (which never completes early) earned a median 25 a run against the plan's 30–40, so the shop was too tight to plan around. At 4 it earns a median 30 (p10 15, p90 42).
-- **Targets** (`--suggest-targets`, 200 runs, with the shop bot): 15, 190, 490, 1,050, 2,250, 4,600, 9,500 Wow, up from M2's 15, 120, 270, 650, 1,350, 2,900, 5,300. The shop's blueprints, fixtures, and tools roughly double a late-run week. D-072's survival curve and criteria still hold: greedy clears milestones 1–3 93% of the time and wins 44%; random wins none and fails at milestone 1 or 2.
-- The shop's other numbers are Appendix A's placeholders, in `balance.ts`.
-
-**Changes:** Appendix A · M3a's +3 per milestone. D-072's targets.
-**2026-11-06 (D-089):** these numbers came from the old greedy, whose estimate ties went to the back row, and whose shop bot always struck Driveways and Fences. On the same targets the new greedy clears milestones 1–3 in 93.5% [89.2–96.2] and wins 60.0% [53.1–66.5] (`--check`, 200 held-out runs), so the targets are now easy for it. The old greedy's 44% was also measured on the seeds the targets were fitted to; on held-out seeds it won about 52%. The budget numbers also came from a bot that never completes early; `--early always` shows what early completion earns. Re-running `--suggest-targets` is the team's call.
-**2026-11-06 (playtest 3):** the team found the run too easy once the shop's goods were in, and the budget about right: they could buy what they wanted without being able to buy everything. Their run (seed `jbf3zs`, build 77016ef) won with 14,116 Wow against 9,500, and earned 41 budget.
-- Milestones 1 and 2 were close: 20 against 15, and 247 against 190, which took a week of overtime.
-- From milestone 3 the targets stopped binding: 1,172 against 490, 2,515 against 1,050, 4,830 against 2,250, 8,954 against 4,600 (completed a week early), and 14,116 against 9,500.
-- Each of milestones 4, 5, and 6 was already met when its phase began, because the score carries over (D-028): 1,172 against 1,050, 2,515 against 2,250, and 4,830 against 4,600.
-- They completed early once and found it hard to judge whether it paid, since the targets weren't pressing.
-- D-089's unapplied fit (530 to 12,800) would still have lost to this run from milestone 3 on. A player who builds an engine pulls away in the middle of the run, so the curve's middle is too low, not just its end.
-
-**2026-11-06 (systems review):** under the review's option B, greedy wins 94.5% of 200 held-out runs at these targets.
-- The review's pick for option B is 15, 250, 870, 2,650, 5,800, 11,700, 20,900. On 200 held-out runs, greedy wins 46.5% and clears milestones 1–3 in 94%.
-- A player like playtest 3's would face margins of 1.7, 1.4–1.5, and 1.2–1.3× at milestones 4–6, against the 2.4, 2.15, and 1.95× they had.
-- Milestone 3 stays as loose as before, about 2.3–2.5× for such a player. It has to while greedy clears milestones 1–3 in 92% or more. Milestone 2 loosens, to about 1.7× against the 1.3× they had.
-- The projection maps one playtest run onto the sim. M4a re-fits on the content it ships, and M4b re-fits again once the arrivals are in (`house-systems-review.md` §5.8, §6).
-**2026-11-06 (M4a, preliminary):** re-fitted on M4a's content before M4b's arrivals (1,000 untargeted greedy runs to fit, 1,000 held out to check): 15, 310, 1,100, 3,150, 6,950, 12,800, 23,300 Wow, with each client's `targetPct` (the Hendersons 100, Count Vladislav 115, the Barkers 90, Juniper 85, Dale 105).
-- Milestone 1's α is now 0.2, a target of about 15, where the review kept it. At the fit's old 0.4 (a target of 30), the novice bot passed milestone 1 in only 85% of runs; at 15, in 98%.
-- Held out, greedy won 40.3%, about 6 points under the fit's estimate, so the final curve will be eased as the review's was. No client was more than 14 points from another (unsure).
-- These aren't in `balance.ts` yet: the M4 pull request writes the curve fitted with the arrivals in.
-**2026-11-07 (M4b, the numbers in `balance.ts`):** fitted with the arrivals, all five clients and three crews, the crews' balance (D-109), and +4 budget per week saved (D-040): 2,000 untargeted greedy runs to fit, then 2,000 held out to check.
-- **Targets:** 15, 300, 1,100, 3,050, 6,850, 13,150, 24,500 Wow. The fit gave 3,200, 7,150, 13,700, 25,500 for milestones 4–7, and greedy won 41.2% held out against its estimated 46%, so those four are eased by 4%, as the review eased its curve.
-- **Each client's `targetPct`:** the Hendersons 125, Count Vladislav 110, the Barkers 80, Juniper 85, Dale 110: the fit's factors, moved toward the middle by their held-out win rates.
-- **§8 on 2,000 held-out runs:** greedy wins 44.3% [42.1–46.5] and clears milestones 1–3 in 94.4%; novice passes milestone 1 in 97.0%; random loses by milestone 3 in 98.9%; completing early always wins 5.1 points less than never; the clients are within 3.5 points of each other (42.5–46.0%) and the crews within 6.5 (40.2–46.6%). The planner's two criteria wait for M6's planner.
-
-**2026-11-07 (playtest 5a):** M5a didn't change the rules, so this run (seed `bv6bsv`, build 1712fd6) played these targets. The team won with 10,005 Wow against 9,500 after one week of overtime, and earned 33 budget.
-- Their lead shrank at every milestone: 113 against 15 (7.5×), 631 against 190 (3.3×), 1,273 against 490 (2.6×), 2,089 against 1,050 (2.0×), 3,477 against 2,250 (1.55×), 5,273 against 4,600 (1.15×), then 9,061 against 9,500 (0.95×) at the last deadline. Playtest 3's run was the reverse: tight at milestones 1 and 2, loose from milestone 3.
-- Charm came early, then stalled. The Entertainer gave ×2 in week 4, and it stayed there until week 17. Two Jack-and-Jills took it to ×2.5 (week 17) and ×3 (week 24), and both Remodel Plans went in only in week 25, for ×4. The first was bought at the third shop and held for 12 weeks. A Remodel Plans levels its set even before the set exists, so using it the week it was bought reaches 9,627 by week 28, on time.
-- That card doesn't say so: "Jack-and-Jill goes up a level for the rest of the run". The team didn't say whether that's why they held it. Its wording waits for M4, which rewrites the tools' text.
-- Week by week, the placements were close to the best play for that week: 143 Wow short over the whole run. Greedy, dealt the same hands, won with 16,505. It built two Living Rooms with Fireplaces and had a second Entertainer by week 13.
-- For playtest 4: M4's refit targets are about 3× steeper in the middle phases. Do they take away this kind of early slack without making the last two phases too tight for a player whose Charm comes late?
-
-**2026-11-09 (D-123):** re-fitted for playtest 5 the same way, 2,000 untargeted runs to fit and 2,000 held out: 20, 560, 1,750, 4,850, 10,200, 18,800, 32,600 Wow, with factors the Hendersons 115, Count Vladislav 90, the Barkers 90, Juniper 85 and Dale 115, all used as fitted. Held out, greedy wins 44.0%.
-
-**2026-11-10 (D-146, Proposed):** re-fitted after the friction batch (D-140 to D-145): 20, 560, 1,900, 5,200, 11,300, 20,500, 35,700 Wow, with factors the Hendersons 110, Count Vladislav 95, the Barkers 90, Juniper 95 and Dale 115. The fit as written came 7.6 points under held out, so the targets are set where greedy's played survival meets the goals. On 2,000 runs no fit had seen, greedy wins 45.7%.
-
-### D-095 · A piece that becomes a lot feature can't hold a fixture
-**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: live since 2026-11-06 with no issues raised. Proposed 2026-11-06, with the fix/transform-fixtures pull request. It fills a gap in D-050, which says how a fixture leaves but not what happens when its host transforms.
-**Decision:**
-- A fixture can't go in a piece that becomes a lot feature. Today that's only the Sapling, which becomes a Tree.
-- The install check says so. Pointing a fixture at a Sapling shows "A Sapling becomes a Tree, so it can't hold a fixture." The Sapling isn't offered as a host, so Garden Lights with only a Sapling to go in are greyed out and count as not fitting for the free redraw.
-- A fixture that doesn't fit the piece anyway, such as a Sprinkler, still says where it goes.
-- A piece that transforms into another piece would keep its fixture, as a Bay Window stays when its room becomes interior.
-
-**Why:** Garden Lights fit any yard piece, and the Sapling is one. When the Sapling became a Tree, its piece left the house and took the lights with it. The preview didn't warn about it, and the only thing on screen was "Grew into a Tree!". §4 names two ways a fixture leaves: a new one replaces it, or its host is demolished. The check is in the rules, so every fixture gets it, including new ones written as data, without naming the Sapling.
-**Considered:**
-- Taking the Sapling out of Garden Lights' `fits`. It's one line of data, but the card would read "Fits a yard piece and anything but Saplings" unless the text code learns a new phrasing, and every later yard fixture would have to repeat it.
-- Returning the fixture to supplies when its host transforms. Demolition gives no refund (D-050), and supplies can be full.
-- Keeping the loss and warning about it in the install preview and the transform's popup. That's more UI work, and the player still loses the card.
-
-**Changes:** D-050 (Accepted): adds where a fixture can't go; how it leaves is unchanged. `implementation-plan.md` §4's fixture rules and the note under Appendix B's fixtures table. Garden Lights' card still says "Fits any yard piece". The sim's bots choose hosts through the same check, so they no longer put fixtures in Saplings.
+- **Renovation mode:** the client lives in the house while you do renovations and additions. Revisit once the core is fun.
+- **Upstairs floor:** revisit after the basement.
+- **A roof for the house, with a second storey** (the user's idea, 2026-11-10): D-147 took the top-down roof out because a one-storey roof is a flat slab over the rooms. A second storey would give it height and something to cover. For the next jam session; it's a large rework (rooms on two floors, stairs, the board's layers), and goes with the upstairs floor above.
+- **Tour-order scoring:** the walkthrough as a scoring chain, where some rooms boost every room visited after them. Interesting, but hard for players to predict.
+- **Company HQ screen:** a visual home for meta-progression.
+- ~~Merged rooms~~ (the team's idea from playtest 5a, 2026-11-07): built as *Extend a room*, D-168 (Proposed 2026-11-12), off this list.
 
 ### D-015 · Start small, grow into the corporation
 **Status:** Parked · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: a good idea, deferred. It was never built. Was Proposed.
@@ -4296,28 +4318,6 @@ Floors are layers on the same grid with a floor switcher, with the other floor s
 ### D-024 · Endless mode after the Final Walkthrough
 **Status:** Parked · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: a good idea, deferred. It was never built. Was Proposed.
 After winning, keep going with rising targets and more change orders. Nearly free if the milestone system keeps generating phases.
-
-### D-031 · Client rarity tiers
-**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: built in M4a (below) and played since playtest 4. Was Proposed.
-Common, Uncommon, and Rare clients. The proposed lineup is in `content-brainstorm.md`, section 10.
-**2026-11-06 (M4a):** built with five Core clients: the Hendersons, the Barkers, and Dale are Common, Juniper Uncommon, and Count Vladislav Rare.
-
-### D-032 · Job board at run start
-**Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: built in M4a (below) and played since playtest 4. Was Proposed.
-Choose from two or three contracts, each one a client plus a lot.
-**2026-11-06 (M4a):** built: three contracts drawn by rarity (Common 65, Uncommon 27, Rare 8; D-026), each with a thumbnail of its lot, its wishes, household, and tastes. On a first visit the Hendersons come first, marked Recommended. The board sits outside the run code.
-*2026-11-11 (D-149, Proposed):* on a first visit the Hendersons' contract is the one to take, on the first job's own lot, and the other two lie face down until it has been taken.
-
----
-
-## Parked
-
-- **Renovation mode:** the client lives in the house while you do renovations and additions. Revisit once the core is fun.
-- **Upstairs floor:** revisit after the basement.
-- **A roof for the house, with a second storey** (the user's idea, 2026-11-10): D-147 took the top-down roof out because a one-storey roof is a flat slab over the rooms. A second storey would give it height and something to cover. For the next jam session; it's a large rework (rooms on two floors, stairs, the board's layers), and goes with the upstairs floor above.
-- **Tour-order scoring:** the walkthrough as a scoring chain, where some rooms boost every room visited after them. Interesting, but hard for players to predict.
-- **Company HQ screen:** a visual home for meta-progression.
-- ~~Merged rooms~~ (the team's idea from playtest 5a, 2026-11-07): built as *Extend a room*, D-168 (Proposed 2026-11-12), off this list.
 
 ## Open questions
 
