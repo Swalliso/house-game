@@ -111,7 +111,7 @@ The Status column is as of planning. With the plan's approval, everything still 
 | D-039 | Randomness and run codes: `sfc32`, keyed streams, build-stamped run codes | M1 | Proposed |
 | D-040 | Early completion fast-forwards (amends D-006) | M2 | **Accepted** |
 | D-041 | Overtime: 2 weeks per run (amends D-005) | M2 | **Accepted** |
-| D-042 | Run length: 7 milestones × 4 weeks (amends D-029); D-170 proposes 5 | M1 | **Accepted** |
+| D-042 | Run length: 7 milestones × 4 weeks (amends D-029) | M1 | **Accepted** |
 | D-043 | Draws: `handSize` (3) distinct cards (pieces, plus fixtures from phase 2), run-fixed weights, client spec pieces weighted up, simple pieces weighted up early (D-055) | M1 / M4a | Proposed |
 | D-044 | The sim sets milestone targets, starting in M2 | M2 | Proposed |
 | D-045 | First-run onboarding without saved progress: a recommended first contract and crew, simple pieces early, first-time hints. D-149 (Proposed) makes the first contract the one job a first visit can take, and its first weeks a guided opening | M4 | Proposed |
@@ -415,7 +415,7 @@ type Action =
 **The week's card versus free actions (D-050, D-051, D-163):**
 - Placing a piece from the hand, installing a fixture **from the hand**, renovating a room with a hand card (D-102), extending a room with one (D-168), or passing is the week's turn, and it ends the week. In the rules, a week's play is `Play = { place } | { install } | { renovate } | { extend } | null`. `resolveWeek` and `preview` take a `Play`, so a fixture, Renovation or extension preview goes through the same path as a piece preview. `rules.endsWeek(state, play)` says whether a play ends the week.
 - Placing a piece **from the reserve** (Your goods), or renovating or extending a room with one, is a free action (D-163, D-169): it goes down at once and earns from this week's tally. So are installing a fixture **from your supplies**, using a tool, rerolling, striking a hand card (D-157), and demolishing. A free install previews as the change to this week's projected total, `resolveWeek(after, null) − resolveWeek(before, null)`.
-- So a week places one piece from the hand at most (two with Weekend Crew, D-083) and any number from the reserve: D-163 proposes that change to D-004.
+- So a week places one piece from the hand at most (two with Weekend Crew, D-083) and any number from the reserve: D-163 changed D-004 that way (Accepted 2026-11-13).
 
 `GameEvent` covers:
 
@@ -490,7 +490,7 @@ The UI keeps an event queue and plays it through an animation director (place �
 2. Each remaining week then runs `resolveWeek(state, null)`. Pieces earn and timers tick, but no hands are drawn. These weeks aren't passes.
 3. The milestone resolves with result `'early'`.
 
-**Overtime week (D-041):** an extra week appended to the current phase. The next phase still gets all its weeks (`weeksPerPhase`: 5 since D-170, 4 before), so a run can last up to 37 weeks. Its hand is keyed `draw/<phase>/ot<k>/<n>`, it uses the phase's remaining rerolls, phase effects still apply, and it can't be completed early. If the target still isn't met after the last overtime week's tally, the run is lost.
+**Overtime week (D-041):** an extra week appended to the current phase. The next phase still gets its full 4 weeks, so a run can last up to 30 weeks. Its hand is keyed `draw/<phase>/ot<k>/<n>`, it uses the phase's remaining rerolls, phase effects still apply, and it can't be completed early. If the target still isn't met after the last overtime week's tally, the run is lost.
 
 **Milestone resolves:**
 
@@ -1813,9 +1813,9 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
   - the yard: a tidy yard ("6 or more yard pieces, and no yard type stands 4 or more times"; outbuildings count; Fences, Driveways, and Saplings count toward the 6 but never break it)
   - a client wish that repeats a house rule becomes the client's numbers for it (the Hendersons' Bedrooms and Bathrooms; Juniper's 4–8 rooms is her A compact house)
   - Room for everyone rises with the household's arrivals (M4b, D-103, D-109): both ends +1 at each arrival, and from that arrival on it needs the member's room. The Hendersons go 2–3, then 3–4 from Framing (the twins) and 4–5 from Drywall (Grandma); the other clients 1–2, then 2–3 from their member's arrival. (In M4a, before arrivals, it stepped up at Framing and Drywall.)
-- *D-165 (Proposed 2026-11-12):* three of these stay on the checklist: Room for everyone, A compact house, and a tidy yard. Cozy ("a room touching 2 or more rooms earns +2") and A Bathroom nearby ("a Bedroom earns +8 with a Bathroom in reach, and each Bathroom serves two") pay on the rooms as Comfort: `content.roomRules`, modifiers every run has (source `house`). One Kitchen and a living room or two are the cards' `perHouse`: one Kitchen, one Dining Room, two Living Rooms; the special rooms one each, and two Home Offices. The Kitchen earns +3 a week of its own.
-- **Renovate** (D-102): a room card whose type is at its limit can level a room of that type instead: +4 Comfort a level, up to 2. Levels stay through the Moving Truck and transforms. It can be Weekend Crew's next play (from the reserve it's free, D-163), and a card that can only renovate doesn't count as fitting for the free redraw. D-168 (Proposed): only a room the card can't extend.
-- **Extend a room** (D-168, Proposed): a Bedroom, Kitchen, Living Room or Dining Room card laid beside a room of its type, sharing 2+ tiles of wall, joins it, once a room and any week: +2 Comfort a tile beyond its own card's. The room stays one piece with the whole outline as its own shape, and takes a second group of furniture. A card whose type is capped (D-165) extends where it can and renovates otherwise, and one from the reserve is free (D-163; D-169).
+- *D-165 (Accepted 2026-11-13):* three of these stay on the checklist: Room for everyone, A compact house, and a tidy yard. Cozy ("a room touching 2 or more rooms earns +2") and A Bathroom nearby ("a Bedroom earns +8 with a Bathroom in reach, and each Bathroom serves two") pay on the rooms as Comfort: `content.roomRules`, modifiers every run has (source `house`). One Kitchen and a living room or two are the cards' `perHouse`: one Kitchen, one Dining Room, two Living Rooms; the special rooms one each, and two Home Offices. The Kitchen earns +3 a week of its own.
+- **Renovate** (D-102): a room card whose type is at its limit can level a room of that type instead: +4 Comfort a level, up to 2. Levels stay through the Moving Truck and transforms. It can be Weekend Crew's next play (from the reserve it's free, D-163), and a card that can only renovate doesn't count as fitting for the free redraw. D-168: only a room the card can't extend.
+- **Extend a room** (D-168): a Bedroom, Kitchen, Living Room or Dining Room card laid beside a room of its type, sharing 2+ tiles of wall, joins it, once a room and any week: +2 Comfort a tile beyond its own card's. The room stays one piece with the whole outline as its own shape, and takes a second group of furniture. A card whose type is capped (D-165) extends where it can and renovates otherwise, and one from the reserve is free (D-163; D-169).
 - **Half-weight draws** (D-104): a type at its limit draws at half weight while it stays there.
 - **The yard rules** (D-105): the Patio, Hot Tub, and Fire Pit earn nothing unless they touch a room (not blocking; a Hallway alone doesn't count); Treehouses don't count each other as Kid partners.
 - **Packs** (D-106): one Fence card places 1–8 connected tiles, and one Driveway card 1–8 (D-140; 1–6 before), in one week, as one piece.

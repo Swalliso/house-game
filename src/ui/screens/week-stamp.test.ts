@@ -47,14 +47,15 @@ describe('which stamp a week gets', () => {
   const f = FEEL.weekStamp;
 
   it('a milestone’s first week, its middle weeks and its last, each held its own time', () => {
-    const kinds = Array.from({ length: W }, (_, k) => stampFor(at(k + 1), false)?.kind);
-    expect(kinds).toEqual(['first', ...Array<string>(W - 2).fill('mid'), 'last']);
-    for (const slot of [1, 2, W]) {
+    expect(W).toBe(4);
+    const kinds = [1, 2, 3, 4].map((slot) => stampFor(at(slot), false)?.kind);
+    expect(kinds).toEqual(['first', 'mid', 'mid', 'last']);
+    for (const slot of [1, 2, 4]) {
       const v = stampFor(at(slot), false)!;
       expect(v.ms).toBe(f.inMs + f.holdMs[v.kind] + f.outMs);
       expect(v).toMatchObject({ slot, weeks: W, phase: rules.phaseName(0) });
     }
-    // The middle weeks' are the shortest, so a run's many don't wear thin; the last's longest.
+    // The middle weeks' are the shortest, so some 28 a run don't wear thin; the last's longest.
     expect(f.holdMs.mid).toBeLessThan(f.holdMs.first);
     expect(f.holdMs.first).toBeLessThan(f.holdMs.last);
   });
@@ -77,10 +78,7 @@ describe('which stamp a week gets', () => {
   });
 
   it('End week’s deciding week: the last, and each overtime week', () => {
-    expect(Array.from({ length: W }, (_, k) => decidingWeek(at(k + 1)))).toEqual([
-      ...Array<boolean>(W - 1).fill(false),
-      true,
-    ]);
+    expect([1, 2, 3, 4].map((slot) => decidingWeek(at(slot)))).toEqual([false, false, false, true]);
     expect(decidingWeek(at(W + 1, { overtimeWeek: 1 }))).toBe(true);
     expect(decidingWeek(at(W, { screen: 'shop' }))).toBe(false);
     expect(stakesOf(at(2))).toBeNull();
@@ -157,10 +155,7 @@ describe('the stamp in play', () => {
       await passTo(week);
       kinds.push(`${weekStamp.value?.kind} ${weekStamp.value?.slot}`);
     }
-    expect(kinds).toEqual([
-      ...Array.from({ length: W - 2 }, (_, k) => `mid ${k + 2}`),
-      `last ${W}`,
-    ]);
+    expect(kinds).toEqual(['mid 2', 'mid 3', `last ${W}`]);
     expect(weekStamp.value?.toGo).toBe(rules.toGo(run.value));
     // One stamp a week: the first week's, then one for each week after it.
     const ids = [...new Set(seen.flatMap((e) => (e.stamp ? [e.stamp.id] : [])))];
