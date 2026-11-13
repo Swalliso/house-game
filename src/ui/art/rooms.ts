@@ -383,6 +383,8 @@ interface Ctx {
   /** Which way this room's small choices go (which corner, which side), from its uid's hash. */
   flip: boolean;
   fixture: FixtureId | undefined;
+  /** D-168: an extended room, bigger than its card: it takes a second group of furniture. */
+  big: boolean;
 }
 
 function pick<T>(list: readonly T[], n: number): T {
@@ -495,6 +497,8 @@ const SPECS: Readonly<Record<RoomType, (c: Ctx) => Want[]>> = {
       ...fireplace(c, far!),
       want(ns, near!),
       want(ns, far!),
+      // D-168: a big bedroom's sitting corner (an armchair and a floor lamp) and its dresser.
+      ...(c.big ? bigBedroom(c) : []),
       want(pick(ROUND_RUGS, c.rank), 'R'),
       want('plant-potted', ...corners(c, 'SW', 'SE')),
     ];
@@ -523,6 +527,15 @@ const SPECS: Readonly<Record<RoomType, (c: Ctx) => Want[]>> = {
       chair('CR'),
       ...fireplace(c, 'N'),
       want(pick(MATS, c.rank + 1), 'R'),
+      // D-168: a big dining room's sideboard (a dresser), a cabinet, a tall plant and a lamp.
+      ...(c.big
+        ? [
+            want(pick(DRESSERS, c.rank), 'N', 'NW', 'NE'),
+            want(pick(CURIOS, c.rank), 'N', 'NE', 'NW'),
+            want('plant-tall', ...corners(c, 'SW', 'SE'), 'C'),
+            want('lamp-floor', ...corners(c, 'SE', 'SW')),
+          ]
+        : []),
     ];
   },
   livingRoom: (c) => {
@@ -542,6 +555,7 @@ const SPECS: Readonly<Record<RoomType, (c: Ctx) => Want[]>> = {
         want('plant-potted', far!),
         rug,
         want('coffee-table', 'C'),
+        ...(c.big ? bigLiving(c) : []),
       ];
     }
     return [
@@ -550,6 +564,8 @@ const SPECS: Readonly<Record<RoomType, (c: Ctx) => Want[]>> = {
       want('plant-potted', 'NR'),
       want('coffee-table', 'C'),
       rug,
+      // D-168: a big living room's second group: another sofa, a bookcase, armchairs, a lamp.
+      ...(c.big ? bigLiving(c) : []),
       want('plant-potted', ...corners(c, 'SW', 'SE')),
     ];
   },
@@ -743,8 +759,48 @@ function kitchen(c: Ctx): Want[] {
     // wall, or beside the range's run where it still fits.
     want('fridge', 'N', 'NL', 'NR'),
     want('counter', 'N'),
-    // A breakfast table, where the floor is free for it.
-    ...(island ? [] : [want('breakfast-table', 'C')]),
+    // A breakfast table, where the floor is free for it. D-168: a big kitchen seats a family at
+    // a dining table with a chair each side, or keeps the breakfast table where that won't fit.
+    ...(island ? [] : c.big ? familyTable(c) : [want('breakfast-table', 'C')]),
+    // D-168: and its run of counters goes on.
+    ...(c.big
+      ? [
+          want('counter', 'N', 'NW', 'NE'),
+          want('counter', 'N', 'NW', 'NE'),
+          want('plant-tall', ...corners(c, 'SW', 'SE')),
+        ]
+      : []),
+  ];
+}
+
+/** D-168: a big kitchen's table: a dining table and two chairs, else the breakfast table. */
+function familyTable(c: Ctx): Want[] {
+  const t = c.rank % TABLES.length;
+  return [
+    { sprites: [TABLES[t]!, 'breakfast-table'], slots: ['C'], aisle: 13 - 3 },
+    { sprites: [`chair-east-${t}` as SpriteId], slots: ['CL'], tuck: 3 },
+    { sprites: [`chair-west-${t}` as SpriteId], slots: ['CR'], tuck: 3 },
+  ];
+}
+
+/** D-168: a big bedroom's dresser and sitting corner. */
+function bigBedroom(c: Ctx): Want[] {
+  return [
+    want(pick(DRESSERS, c.rank + 1), 'N', 'NE', 'NW'),
+    want(pick(ARMCHAIRS, c.rank + 1), ...corners(c, 'SE', 'SW'), 'C'),
+    want('lamp-floor', ...corners(c, 'SW', 'SE'), 'NE', 'NW'),
+    want(pick(MATS, c.rank + 2), 'C'),
+  ];
+}
+
+/** D-168: a big living room's second group. */
+function bigLiving(c: Ctx): Want[] {
+  return [
+    want(pick(BOOKCASES, c.rank), 'N', 'NE', 'NW'),
+    want(pick(SOFAS, c.rank + 1), 'C', 'S'),
+    want(pick(ARMCHAIRS, c.rank + 2), ...corners(c, 'SW', 'SE'), 'C'),
+    want('lamp-floor', ...corners(c, 'SE', 'SW'), 'NE', 'NW'),
+    want('plant-tall', 'NW', 'NE'),
   ];
 }
 
@@ -997,6 +1053,8 @@ function placeSlot(L: Layout, w: Want, slot: Slot, c: Ctx): boolean {
       } else if (slot === 'CL' || slot === 'CR') {
         const a = L.lastC;
         if (!a?.rect) continue;
+        // A chair (it tucks) sits only at a table: never beside a range in the middle (D-168).
+        if (w.tuck && !a.item.sprite.startsWith('dining-table')) continue;
         const tuck = w.tuck ?? 0;
         const x = slot === 'CL' ? a.rect.x - sw + tuck : a.rect.x + a.rect.w - tuck;
         // Down the side of a long table, two to a side: the upper seat, then the lower.
@@ -1330,6 +1388,11 @@ export function newRoomLook(house: HouseState, defId: PieceId): PieceLook {
   return { color: paletteOf(defId, [...same, uid], uid), flip: flipOf(uid) };
 }
 
+/** D-168: how many tiles a room's own card has; an extended room has more. */
+function cardTiles(defId: PieceId): number {
+  return CONTENT.pieces[defId].shape.reduce((n, row) => n + row.split('#').length - 1, 0);
+}
+
 function layOut(m: HouseModel, uid: number): RoomLayout {
   const room = m.rooms.get(uid);
   // A type without a layout of its own is furnished as its countsAs root (byType).
@@ -1341,6 +1404,7 @@ function layOut(m: HouseModel, uid: number): RoomLayout {
     rank: look ? look.color : palette(m, room),
     flip: look?.flip ?? flipOf(uid),
     fixture: room.fixture,
+    big: room.cells.length > cardTiles(room.defId),
   };
   const wants = spec(c);
   const L = new Layout(analyze(m, room));

@@ -878,3 +878,80 @@ describe('any house', () => {
     expect(furnished / rooms).toBeGreaterThan(0.97);
   });
 });
+
+describe('a grown room (D-168)', () => {
+  /** A room of `id` grown to `shape`, turned `rot`, at (3, 3), with Closets along `sides`. */
+  function grown(id: PieceId, shape: readonly string[], rot: Rot = 0, sides = ''): HouseState {
+    const cells = placedCells(shape, 3, 3, rot);
+    const used = new Set(cells.map((c) => `${c.x},${c.y}`));
+    const pieces: PlacedPiece[] = [
+      { uid: 1, defId: id, x: 3, y: 3, rot, placedWeek: 0, shape, extended: 1 },
+    ];
+    for (const s of sides) {
+      const [dx, dy] = ({ N: [0, -1], S: [0, 1], W: [-1, 0], E: [1, 0] } as const)[s as 'N']!;
+      for (const c of cells) {
+        const k = `${c.x + dx},${c.y + dy}`;
+        if (used.has(k)) continue;
+        used.add(k);
+        pieces.push({
+          uid: pieces.length + 1,
+          defId: 'closet',
+          x: c.x + dx,
+          y: c.y + dy,
+          rot: 0,
+          placedWeek: 1,
+        });
+      }
+    }
+    const rows = Array.from({ length: 14 }, () => '.'.repeat(14));
+    return { lot: lotFromRows(rows), pieces, nextUid: pieces.length + 1 };
+  }
+
+  // Outlines a card of the type makes beside a room of it (2 tiles of wall or more), some from
+  // the sim's runs: a Kitchen grown by an L-Kitchen card, a Living Room by one turned.
+  const SHAPES: readonly (readonly [PieceId, readonly string[]])[] = [
+    ['bedroom', ['####', '####']],
+    ['bedroom', ['##', '##', '##', '##']],
+    ['kitchen', ['####', '####']],
+    ['kitchen', ['.##', '###', '##.']],
+    ['lKitchen', ['####', '###.']],
+    ['livingRoom', ['######', '######']],
+    ['livingRoom', ['#####', '#####', '##...']],
+    ['livingRoom', ['##..', '####', '####', '..##']],
+    ['diningRoom', ['####', '####']],
+    ['diningRoom', ['##', '##', '##', '##']],
+  ];
+
+  it('lay out in every rotation, alone and boxed in, without clashes', () => {
+    for (const [id, shape] of SHAPES) {
+      for (const rot of [0, 1, 2, 3] as Rot[]) {
+        for (const sides of ['', 'NS', 'EW', 'NESW']) {
+          const m = modelOf(grown(id, shape, rot, sides));
+          expect(problems(m, 1), `${id} ${shape.join('/')} r${rot} ${sides}`).toEqual([]);
+        }
+      }
+    }
+  });
+
+  it('take a second group of furniture: more pieces than the card’s room, and the group’s own', () => {
+    const OWN: readonly (readonly [PieceId, readonly string[], RegExp])[] = [
+      ['bedroom', ['####', '####'], /^armchair-/],
+      ['kitchen', ['####', '####'], /^dining-table-/],
+      ['livingRoom', ['######', '######'], /^bookcase-/],
+      ['diningRoom', ['####', '####'], /^dresser-/],
+    ];
+    for (const [id, shape, own] of OWN) {
+      const card = roomItems(modelOf(house([[id, 3, 3]], 14)), 1);
+      const big = roomItems(modelOf(grown(id, shape)), 1);
+      const solid = (items: readonly Item[]) => items.filter((it) => !FLAT.test(it.sprite));
+      expect(solid(big).length, id).toBeGreaterThan(solid(card).length);
+      expect(
+        big.some((it) => own.test(it.sprite)),
+        `${id}: ${own}`,
+      ).toBe(true);
+    }
+    // A big Living Room has a second sofa.
+    const living = roomItems(modelOf(grown('livingRoom', ['######', '######'])), 1);
+    expect(living.filter((it) => it.sprite.startsWith('sofa-'))).toHaveLength(2);
+  });
+});

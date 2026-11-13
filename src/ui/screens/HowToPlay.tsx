@@ -496,12 +496,13 @@ export function HowToPlayText() {
         </dl>
       </Section>
 
-      <Section id="renovate" title="Renovate" icon="star">
+      <Section id="renovate" title="Extend or renovate" icon="star">
         <ul>
+          <li>{GLOSSARY.extend.text}</li>
           <li>{GLOSSARY.renovate.text}</li>
           <li>
-            While you hold such a card, the rooms it can renovate are outlined: click one, then End
-            week. Inspect shows each room's level.
+            While you hold such a card, the rooms it can extend or renovate are outlined: click one,
+            then End week.
           </li>
         </ul>
       </Section>

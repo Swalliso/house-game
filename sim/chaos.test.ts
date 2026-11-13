@@ -154,6 +154,7 @@ const ACTION_KINDS: Record<Action['t'], true> = {
   place: true,
   install: true,
   renovate: true,
+  extend: true,
   pass: true,
   reroll: true,
   demolish: true,

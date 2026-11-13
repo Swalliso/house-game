@@ -162,6 +162,8 @@ function buildGroups(
     },
     // A Renovation (M4a), when a card's type is at its limit: a few rooms, like a fixture's hosts.
     { kind: 'renovate', weight: 12 * end, actions: of((a) => a.t === 'renovate') },
+    // D-168: an extension, when a card of a room type can grow a room of its type.
+    { kind: 'extend', weight: 12 * end, actions: of((a) => a.t === 'extend') },
     { kind: 'pass', weight: 6 * end, actions: [{ t: 'pass' }] },
     {
       kind: 'install:supplies',

@@ -582,6 +582,7 @@ function animates(events: readonly GameEvent[]): boolean {
       e.t === 'demolished' ||
       e.t === 'installed' ||
       e.t === 'renovated' ||
+      e.t === 'extended' ||
       e.t === 'moved' ||
       e.t === 'findClaimed' ||
       e.t === 'toolUsed' ||
@@ -1227,6 +1228,25 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
           if (e.free && !skipping) {
             const c = pieceCenter([after, base], e.uid);
             popup(c.x, c.y - 0.6, 'Weekend Crew!', 'note', FEEL.installMs);
+          }
+          await wait(FEEL.placeMs);
+          break;
+        }
+        case 'extended': {
+          // D-168: the room settles into its new outline, with a knock of building work and dust
+          // from the new tiles, and says what it became.
+          justPlaced.value = { uid: e.uid, id: nextId++ };
+          audio.play('place-room');
+          if (!skipping) {
+            const n = Math.max(1, e.cells.length);
+            const x = e.cells.reduce((a, q) => a + q.x + 0.5, 0) / n;
+            const y = e.cells.reduce((a, q) => a + q.y + 0.5, 0) / n;
+            if (e.free) popup(x, y - 0.6, 'Weekend Crew!', 'note', FEEL.installMs);
+            popup(x, y, `Bigger ${CONTENT.pieces[e.defId].name}!`, 'points', FEEL.installMs);
+            audio.play('place-room', { rate: 1.25, delay: 0.1 });
+            audio.play('chime', { delay: 0.18, rate: 1.1 });
+            boardBurst('dust', { x, y });
+            if (motion()) fxHooks.wobble(e.uid);
           }
           await wait(FEEL.placeMs);
           break;

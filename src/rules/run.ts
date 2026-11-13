@@ -58,6 +58,7 @@ import type {
   CardType,
   DrawRow,
   Cell,
+  ExtendAction,
   ChangeOrderDef,
   ChangeOrderId,
   ChangeOrderOffer,
@@ -154,6 +155,8 @@ import { checkInstall, installHosts, withFixture } from './fixtures.ts';
 import {
   bounds,
   cellIndex,
+  cellsToShape,
+  ORTHOGONAL,
   packShapeProblem,
   placedCells,
   rotateShape,
@@ -188,6 +191,7 @@ import {
 import { ruleFrom, runModifiers, setupRule, type ActiveMod } from './modifiers.ts';
 import {
   addPiece,
+  clearTiles,
   checkDemolish as checkDemolishOn,
   checkMove,
   checkPlacement,
@@ -264,7 +268,7 @@ export interface Rules {
   cardFits(state: RunState, i: number): boolean;
   /** Whether a reserve piece has any legal spot. */
   reserveFits(state: RunState, i: number): boolean;
-  checkPlay(state: RunState, play: PlaceAction | InstallAction | RenovateAction): Legality;
+  checkPlay(state: RunState, play: NonNullable<Play>): Legality;
   /** A play's effect on this week's total. A supplies install previews as the same change. */
   preview(state: RunState, play: Play): Preview;
   /** The week's total with this play, without breakdown lines (the sim's cheap path). */
@@ -298,10 +302,20 @@ export interface Rules {
   pieceTimers(state: RunState, uid: number): string[];
   /** Every legal placement of every card in the hand and the reserve (distinct rotations). */
   legalPlacements(state: RunState): PlaceAction[];
-  /** Every legal play that ends the week: placements, hand fixtures in each host, and Renovations. */
-  legalPlays(state: RunState): (PlaceAction | InstallAction | RenovateAction)[];
+  /**
+   * Every legal play that ends the week: placements, hand fixtures in each host, Renovations, and
+   * extensions (D-168).
+   */
+  legalPlays(state: RunState): NonNullable<Play>[];
   /** The rooms a hand or reserve card could renovate now (empty unless its type is at its limit). */
   renovateTargets(state: RunState, from: RenovateAction['from'], i: number): number[];
+  /**
+   * D-168: every legal extension by a hand or reserve card, of room `uid` or of every room it
+   * can extend, rooms in placement order, then by rotation and spot.
+   */
+  extendSpots(state: RunState, from: ExtendAction['from'], i: number, uid?: number): ExtendAction[];
+  /** D-168: the rooms a hand or reserve card could extend now, in placement order. */
+  extendTargets(state: RunState, from: ExtendAction['from'], i: number): number[];
   /** The checklist's ceilings as they stand (M4a): types at their limit can renovate. */
   limits(state: RunState): readonly TypeLimit[];
   /** The client's checklist with progress, as the house stands (or with a play, as it would). */
@@ -420,6 +434,7 @@ interface WeekResult {
   placed: Extract<GameEvent, { t: 'placed' }> | null;
   installed: Extract<GameEvent, { t: 'installed' }> | null;
   renovated: Extract<GameEvent, { t: 'renovated' }> | null;
+  extended: Extract<GameEvent, { t: 'extended' }> | null;
 }
 
 /** One shape a card is listed at: a rotation of its own, or a pack's tiles at rot 0. */
@@ -433,6 +448,8 @@ interface PlacementShape {
 type PlayCheck = PlacementCheck & {
   install?: { uid: number; fixture: FixtureId; replaces?: FixtureId };
   renovate?: { uid: number; level: number; card: PieceId };
+  /** D-168: the room that grows, and its outline once it has (its box's corner and rows). */
+  extend?: { uid: number; card: PieceId; x: number; y: number; shape: string[] };
 };
 
 const NO_PLAY: Legality = { legal: false, cells: [], clearedTrees: [] };
@@ -447,6 +464,16 @@ const ORDER_PICK_REASON = 'Pick one of the change orders on offer.';
 interface RunMods {
   active: readonly ActiveMod[];
   layout: readonly LayoutModifier[];
+}
+
+/** D-168: how many tiles of wall two sets of cells share (pairs of tiles side by side). */
+function sharedWall(a: readonly Cell[], b: readonly Cell[]): number {
+  const inB = new Set(b.map((c) => `${c.x},${c.y}`));
+  let n = 0;
+  for (const c of a) {
+    for (const [dx, dy] of ORTHOGONAL) if (inB.has(`${c.x + dx},${c.y + dy}`)) n++;
+  }
+  return n;
 }
 
 export function createRules(content: Content): Rules {
@@ -528,8 +555,14 @@ export function createRules(content: Content): Rules {
     return tallyHouse(content, layoutFor(state, house), state.week, withLines, tallyCtx(state, ff));
   }
 
-  /** The piece a placement would build (or a Renovation spend): a hand card or a reserve piece. */
-  function placeDef(state: RunState, play: PlaceAction | RenovateAction): PieceDef | null {
+  /**
+   * The piece a placement would build (or a Renovation or an extension spend): a hand card or a
+   * reserve piece.
+   */
+  function placeDef(
+    state: RunState,
+    play: PlaceAction | RenovateAction | ExtendAction,
+  ): PieceDef | null {
     if (!Number.isInteger(play.i)) return null;
     if (play.from === 'hand') {
       const card = state.hand[play.i];
@@ -556,12 +589,10 @@ export function createRules(content: Content): Rules {
     return null;
   }
 
-  function checkPlay(
-    state: RunState,
-    play: PlaceAction | InstallAction | RenovateAction,
-  ): PlayCheck {
+  function checkPlay(state: RunState, play: NonNullable<Play>): PlayCheck {
     if (state.screen !== 'build') return { ...NO_PLAY, reason: offScreen(state) };
     if (play.t === 'renovate') return checkRenovate(state, play);
+    if (play.t === 'extend') return checkExtend(state, play);
     if (play.t === 'install') {
       const fixture = installFixture(state, play);
       if (!fixture) return { ...NO_PLAY, reason: 'There is no fixture there.' };
@@ -623,7 +654,8 @@ export function createRules(content: Content): Rules {
 
   /**
    * Renovate (M4a): a room card whose type is at its limit, on a room of that type below the
-   * top level. The limit comes from the client's checklist (one Kitchen, …).
+   * top level. The limit comes from the client's checklist (one Kitchen, …). D-168: only on a
+   * room the card can't extend.
    */
   function checkRenovate(state: RunState, play: RenovateAction): PlayCheck {
     const def = placeDef(state, play);
@@ -655,6 +687,13 @@ export function createRules(content: Content): Rules {
       return { ...NO_PLAY, reason: `${card} card renovates ${article(rooms)}.` };
     }
     const level = target.level ?? 0;
+    // D-168: a room that can grow grows; Renovate is for one boxed in or grown as far as it goes.
+    if (extendSpots(state, play.from, play.i, target.uid).length > 0) {
+      return {
+        ...NO_PLAY,
+        reason: `${capitalize(definite(targetDef.name, 'that'))} can still grow.`,
+      };
+    }
     if (level >= b.renovate.maxLevel) {
       // "That Kitchen", but "Grandma’s Room": a possessive name takes no determiner.
       const room = capitalize(definite(targetDef.name, 'that'));
@@ -669,10 +708,100 @@ export function createRules(content: Content): Rules {
     };
   }
 
+  /** D-168: the room types a card can extend, by root type. */
+  const extendable: ReadonlySet<PieceId> = new Set(b.extend.types);
+
+  /** D-168: a room card that could extend a room: an extendable type, and not a member's card. */
+  function extendsAny(def: PieceDef | null): def is PieceDef {
+    return !!def && !def.member && isRoom(def) && extendable.has(rootType(def));
+  }
+
+  /**
+   * D-168, Extend a room: a room card of an extendable type, laid on open ground beside a room of
+   * its type with room for another card, sharing at least `minShared` tiles of wall with it.
+   * Placement's own rules hold for the card's tiles (on the lot, nothing built there, no water,
+   * boulder or Old Shed; Trees under it go, and finds pay). Its tiles join the room.
+   */
+  function checkExtend(state: RunState, play: ExtendAction): PlayCheck {
+    const def = placeDef(state, play);
+    if (!def) return { ...NO_PLAY, reason: 'There is no card there.' };
+    const card = capitalize(article(def.name));
+    // A member's room is placed, never spent on another room (D-103).
+    if (def.member) {
+      return {
+        ...NO_PLAY,
+        reason: `${card} card can’t extend a room: it’s a household member’s room.`,
+      };
+    }
+    if (!extendsAny(def)) return { ...NO_PLAY, reason: `${card} card can’t extend a room.` };
+    const root = rootType(def);
+    const layout = layoutFor(state);
+    const target = Number.isInteger(play.uid) ? layout.byUid.get(play.uid) : undefined;
+    if (!target) return { ...NO_PLAY, reason: 'Pick a room to extend.' };
+    const targetDef = content.pieces[target.defId];
+    if (!isType(targetDef, root)) {
+      const rooms = selectorText(content, { piece: root }, 'one');
+      return { ...NO_PLAY, reason: `${card} card extends ${article(rooms)}.` };
+    }
+    if ((target.extended ?? 0) >= b.extend.maxPerRoom) {
+      // "That Kitchen", but "Grandma’s Room": a possessive name takes no determiner.
+      const room = capitalize(definite(targetDef.name, 'that'));
+      return { ...NO_PLAY, reason: `${room} is as big as it gets.` };
+    }
+    if (
+      ![0, 1, 2, 3].includes(play.rot) ||
+      !Number.isInteger(play.x) ||
+      !Number.isInteger(play.y)
+    ) {
+      return { ...NO_PLAY, reason: 'That is not a spot on the lot.' };
+    }
+    const roomCells = layout.cells.get(target.uid)!;
+    const cells = placedCells(def.shape, play.x, play.y, play.rot);
+    const { width } = state.house.lot;
+    const own = new Set(roomCells.map((c) => cellIndex(width, c.x, c.y)));
+    if (cells.some((c) => own.has(cellIndex(width, c.x, c.y)))) {
+      // Laid on the room itself (the board's way of asking about a room that can't grow).
+      const room = definite(targetDef.name);
+      return {
+        ...NO_PLAY,
+        reason:
+          extendSpots(state, play.from, play.i, target.uid).length === 0
+            ? `There’s no open ground beside ${room} to grow into.`
+            : `Lay the card beside ${room}, not on it.`,
+      };
+    }
+    const spot = checkPlacement(
+      content,
+      layout,
+      def,
+      play.x,
+      play.y,
+      play.rot,
+      state.week,
+      (house) => layoutFor(state, house),
+    );
+    if (!spot.legal) return { ...NO_PLAY, reason: spot.reason, cells: spot.cells };
+    if (sharedWall(spot.cells, roomCells) < b.extend.minShared) {
+      return {
+        ...NO_PLAY,
+        reason: `It must share ${b.extend.minShared} tiles of wall with ${definite(targetDef.name)}.`,
+        cells: spot.cells,
+      };
+    }
+    const grown = cellsToShape([...roomCells, ...spot.cells]);
+    return {
+      legal: true,
+      cells: spot.cells,
+      clearedTrees: spot.clearedTrees,
+      ...(spot.finds ? { finds: spot.finds } : {}),
+      extend: { uid: target.uid, card: def.id, x: grown.x, y: grown.y, shape: grown.shape },
+    };
+  }
+
   /** A play's change to the house (checked here), with its event. */
   function applyPlay(
     state: RunState,
-    play: PlaceAction | InstallAction | RenovateAction,
+    play: NonNullable<Play>,
     legality?: PlayCheck,
   ): Omit<WeekResult, 'tally'> {
     const check = legality ?? checkPlay(state, play);
@@ -688,6 +817,39 @@ export function createRules(content: Content): Rules {
         placed: null,
         installed: null,
         renovated: { t: 'renovated', uid, defId: piece.defId, level, card },
+        extended: null,
+      };
+    }
+    if (play.t === 'extend') {
+      // D-168: the room takes the card's tiles. It keeps its uid, fixture, timers, level and
+      // place in the placement order; its own shape is the whole outline, unturned.
+      const { uid, card, x, y, shape } = check.extend!;
+      const piece = state.house.pieces.find((p) => p.uid === uid)!;
+      const grown: PlacedPiece = {
+        ...piece,
+        x,
+        y,
+        rot: 0,
+        shape,
+        extended: (piece.extended ?? 0) + 1,
+      };
+      return {
+        house: {
+          ...state.house,
+          lot: clearTiles(state.house.lot, [...check.clearedTrees, ...(check.finds ?? [])]),
+          pieces: state.house.pieces.map((p) => (p.uid === uid ? grown : p)),
+        },
+        placed: null,
+        installed: null,
+        renovated: null,
+        extended: {
+          t: 'extended',
+          uid,
+          defId: piece.defId,
+          card,
+          cells: check.cells,
+          clearedTrees: check.clearedTrees,
+        },
       };
     }
     if (play.t === 'install') {
@@ -696,6 +858,7 @@ export function createRules(content: Content): Rules {
         house: withFixture(state.house, uid, fixture, state.week),
         placed: null,
         renovated: null,
+        extended: null,
         installed: {
           t: 'installed',
           uid,
@@ -723,6 +886,7 @@ export function createRules(content: Content): Rules {
       house,
       installed: null,
       renovated: null,
+      extended: null,
       placed: {
         t: 'placed',
         uid: piece.uid,
@@ -750,6 +914,7 @@ export function createRules(content: Content): Rules {
         placed: null,
         installed: null,
         renovated: null,
+        extended: null,
       };
     }
     const result = applyPlay(state, play, legality);
@@ -846,9 +1011,13 @@ export function createRules(content: Content): Rules {
     return DRAW_ROWS.flatMap((row) => drawRowFor(state, n, row, special, held));
   }
 
-  /** A card has a play: a spot, a host, or a Renovation (D-102). */
+  /** A card has a play: a spot, a host, a Renovation (D-102), or an extension (D-168). */
   function cardHasPlay(state: RunState, i: number): boolean {
-    return cardFits(state, i) || renovateTargets(state, 'hand', i).length > 0;
+    return (
+      cardFits(state, i) ||
+      renovateTargets(state, 'hand', i).length > 0 ||
+      extendTargets(state, 'hand', i).length > 0
+    );
   }
 
   /**
@@ -2209,7 +2378,8 @@ export function createRules(content: Content): Rules {
       case 'pass':
       case 'place':
       case 'install':
-      case 'renovate': {
+      case 'renovate':
+      case 'extend': {
         const play = action.t === 'pass' ? null : action;
         if (play?.t === 'install' && play.from === 'supplies') {
           // A free action: the fixture goes in, and the week goes on.
@@ -2223,13 +2393,16 @@ export function createRules(content: Content): Rules {
         }
         const check = play ? checkPlay(state, play) : undefined;
         const fromReserve =
-          (play?.t === 'place' || play?.t === 'renovate') && play.from === 'reserve';
+          (play?.t === 'place' || play?.t === 'renovate' || play?.t === 'extend') &&
+          play.from === 'reserve';
         if (play && state.freePlay === 'ready') {
-          // Weekend Crew (D-075): this play doesn't end the week. A Renovation can be it (D-083).
+          // Weekend Crew (D-075): this play doesn't end the week. A Renovation can be it (D-083),
+          // and so can an extension (D-168).
           const result = applyPlay(state, play, check);
           if (result.placed) events.push({ ...result.placed, free: true });
           if (result.installed) events.push({ ...result.installed, free: true });
           if (result.renovated) events.push({ ...result.renovated, free: true });
+          if (result.extended) events.push({ ...result.extended, free: true });
           let s: RunState = { ...state, house: result.house, freePlay: 'used' };
           s = fromReserve
             ? { ...s, reserve: s.reserve.filter((_, k) => k !== play.i) }
@@ -2245,6 +2418,7 @@ export function createRules(content: Content): Rules {
         if (week.placed) events.push(week.placed);
         if (week.installed) events.push(week.installed);
         if (week.renovated) events.push(week.renovated);
+        if (week.extended) events.push(week.extended);
         let s = state;
         if (play && fromReserve) {
           s = { ...s, reserve: s.reserve.filter((_, k) => k !== play.i) };
@@ -2622,8 +2796,87 @@ export function createRules(content: Content): Rules {
     return out;
   }
 
-  function legalPlays(state: RunState): (PlaceAction | InstallAction | RenovateAction)[] {
-    const out: (PlaceAction | InstallAction | RenovateAction)[] = legalPlacements(state);
+  /** D-168: extension spots by state, then by card and room. */
+  const spotsCache = new WeakMap<RunState, Map<string, ExtendAction[]>>();
+
+  function extendSpots(
+    state: RunState,
+    from: ExtendAction['from'],
+    i: number,
+    uid?: number,
+  ): ExtendAction[] {
+    if (state.screen !== 'build') return [];
+    const def = placeDef(state, { t: 'extend', from, i, uid: 0, x: 0, y: 0, rot: 0 });
+    if (!extendsAny(def)) return [];
+    let byKey = spotsCache.get(state);
+    if (!byKey) spotsCache.set(state, (byKey = new Map()));
+    const key = `${from}/${i}/${uid ?? '*'}`;
+    const hit = byKey.get(key);
+    if (hit) return hit;
+    const out: ExtendAction[] = [];
+    const layout = layoutFor(state);
+    const { width: w, height: h } = state.house.lot;
+    const root = rootType(def);
+    for (const room of state.house.pieces) {
+      if (uid !== undefined && room.uid !== uid) continue;
+      if (!isType(content.pieces[room.defId], root)) continue;
+      if ((room.extended ?? 0) >= b.extend.maxPerRoom) continue;
+      const roomCells = layout.cells.get(room.uid)!;
+      const own = new Set(roomCells.map((c) => cellIndex(w, c.x, c.y)));
+      // The open tiles around the room: a spot must cover one of them, so each of the card's
+      // tiles on each of them is a candidate corner.
+      const around: { x: number; y: number }[] = [];
+      for (const c of roomCells) {
+        for (const [dx, dy] of ORTHOGONAL) {
+          const x = c.x + dx;
+          const y = c.y + dy;
+          if (x < 0 || y < 0 || x >= w || y >= h) continue;
+          const k = cellIndex(w, x, y);
+          if (own.has(k) || layout.occupant[k]! >= 0) continue;
+          around.push({ x, y });
+        }
+      }
+      for (const rot of uniqueRotations(def.shape)) {
+        const cells = shapeCells(def.shape, rot);
+        const seen = new Set<string>();
+        const spots: { x: number; y: number }[] = [];
+        for (const a of around) {
+          for (const c of cells) {
+            const x = a.x - c.x;
+            const y = a.y - c.y;
+            const k = `${x},${y}`;
+            if (seen.has(k)) continue;
+            seen.add(k);
+            spots.push({ x, y });
+          }
+        }
+        spots.sort((p, q) => p.y - q.y || p.x - q.x);
+        for (const { x, y } of spots) {
+          // Off the lot or on something built (the room itself included): no spot. checkExtend
+          // would say so too, but asking it about the room itself asks for these spots again.
+          const clear = cells.every((c) => {
+            const cx = c.x + x;
+            const cy = c.y + y;
+            return (
+              cx >= 0 && cy >= 0 && cx < w && cy < h && layout.occupant[cellIndex(w, cx, cy)]! < 0
+            );
+          });
+          if (!clear) continue;
+          const play: ExtendAction = { t: 'extend', from, i, uid: room.uid, x, y, rot };
+          if (checkExtend(state, play).legal) out.push(play);
+        }
+      }
+    }
+    byKey.set(key, out);
+    return out;
+  }
+
+  function extendTargets(state: RunState, from: ExtendAction['from'], i: number): number[] {
+    return [...new Set(extendSpots(state, from, i).map((p) => p.uid))];
+  }
+
+  function legalPlays(state: RunState): NonNullable<Play>[] {
+    const out: NonNullable<Play>[] = legalPlacements(state);
     state.hand.forEach((card, i) => {
       if (card.kind !== 'fixture') return;
       for (const uid of hostsFor(state, 'hand', i))
@@ -2639,6 +2892,11 @@ export function createRules(content: Content): Rules {
       for (const uid of renovateTargets(state, 'reserve', i))
         out.push({ t: 'renovate', from: 'reserve', i, uid });
     });
+    // D-168: extensions, after the Renovations.
+    state.hand.forEach((card, i) => {
+      if (card.kind === 'piece') out.push(...extendSpots(state, 'hand', i));
+    });
+    state.reserve.forEach((_, i) => out.push(...extendSpots(state, 'reserve', i)));
     return out;
   }
 
@@ -2809,12 +3067,13 @@ export function createRules(content: Content): Rules {
     const week = resolveWeek(state, play, true, check);
     // M4b: a running restriction this placement would break, for the warning.
     const breaks = week.placed ? breaksOf(state, week.house, week.placed.uid)[0] : undefined;
-    const focus = week.placed?.uid ?? week.installed?.uid ?? week.renovated!.uid;
+    const focus =
+      week.placed?.uid ?? week.installed?.uid ?? week.renovated?.uid ?? week.extended!.uid;
     const beforeEarned = new Map<number, PieceScore>(beforeTally.pieces.map((p) => [p.uid, p]));
     const lines: PreviewLine[] = [];
     let newPiece: PieceScore | null = null;
     for (const p of week.tally.pieces) {
-      // The new piece, or an install's host, or the room a Renovation levels.
+      // The new piece, or an install's host, or the room a Renovation levels or an extension grows.
       const isNew = p.uid === focus;
       if (isNew) newPiece = p;
       const was = beforeEarned.get(p.uid)?.earned ?? 0;
@@ -2871,6 +3130,14 @@ export function createRules(content: Content): Rules {
         : {}),
       ...(week.renovated
         ? { renovates: { uid: week.renovated.uid, level: week.renovated.level } }
+        : {}),
+      ...(week.extended
+        ? {
+            extends: {
+              uid: week.extended.uid,
+              cells: layoutFor(state, week.house).cells.get(week.extended.uid) ?? [],
+            },
+          }
         : {}),
       ...(breaks ? { breaks } : {}),
       parts: wowParts(content, beforeTally, week.tally, focus, specName),
@@ -3071,6 +3338,8 @@ export function createRules(content: Content): Rules {
     legalPlacements,
     legalPlays,
     renovateTargets,
+    extendSpots,
+    extendTargets,
     limits: limitsOf,
     checklist,
     installHosts: hostsFor,

@@ -15,6 +15,7 @@ import {
   cardText,
   CONTENT,
   definite,
+  growGain,
   featureWantedText,
   fixtureText,
   glossary,
@@ -57,6 +58,7 @@ import {
   inspected,
   preview,
   renovateUids,
+  extendUids,
   run,
   selected,
   movingUid,
@@ -562,6 +564,23 @@ function RenovateHint({ id }: { id: PieceId }) {
   );
 }
 
+/**
+ * D-168: a room card that can grow a room of its type: the board outlines those rooms while the
+ * card is picked, and pointing at one grows it toward the pointer. Not while a play waits for
+ * End week.
+ */
+function ExtendHint({ id }: { id: PieceId }) {
+  if (extendUids.value.length === 0 || tentative.value) return null;
+  const def = CONTENT.pieces[id];
+  const type = CONTENT.pieces[def.countsAs ?? def.id].name;
+  return (
+    <p class="muted">
+      Or <Tip term="extend">extend</Tip> one: point at an outlined {type} (+{growGain(CONTENT, def)}{' '}
+      {SCORE_LABELS.points}).
+    </p>
+  );
+}
+
 function PlacingInfo() {
   const p = preview.value;
   const sel = selection.value;
@@ -569,25 +588,38 @@ function PlacingInfo() {
   if (sel.kind === 'tool') return <ToolInfo id={sel.id} i={sel.i} />;
   const name = sel.kind === 'piece' ? CONTENT.pieces[sel.id].name : CONTENT.fixtures[sel.id].name;
   const install = sel.kind === 'fixture';
-  // A room card over a room its type is capped at: a Renovation (M4a, D-102).
+  // A room card over a room its type is capped at: a Renovation (M4a, D-102); over a room of its
+  // type it can grow: an extension (D-168).
   const play = activePlay.value;
   const renovate = play?.t === 'renovate';
-  const room = renovate ? run.value.house.pieces.find((q) => q.uid === play.uid) : undefined;
+  const grow = play?.t === 'extend';
+  const room =
+    renovate || grow ? run.value.house.pieces.find((q) => q.uid === play.uid) : undefined;
   const roomName = room ? CONTENT.pieces[room.defId].name : 'room';
-  const hint = sel.kind === 'piece' && !renovate ? <RenovateHint id={sel.id} /> : null;
-  const fromLine = renovate
+  const hint =
+    sel.kind === 'piece' && !renovate && !grow ? (
+      <>
+        <ExtendHint id={sel.id} />
+        <RenovateHint id={sel.id} />
+      </>
+    ) : null;
+  const fromLine = grow
     ? sel.from === 'reserve'
-      ? 'From your reserve: renovating is this week’s build.'
-      : 'Renovating is this week’s build, instead of placing the card.'
-    : sel.from === 'reserve'
-      ? 'From your reserve: placing it is this week’s build.'
-      : sel.from === 'supplies'
-        ? 'From your supplies: installing it is free, so the week goes on.'
-        : install
-          ? 'From your hand: installing it is this week’s build.'
-          : null;
+      ? 'From your reserve: extending is this week’s build.'
+      : 'Extending is this week’s build, instead of placing the card.'
+    : renovate
+      ? sel.from === 'reserve'
+        ? 'From your reserve: renovating is this week’s build.'
+        : 'Renovating is this week’s build, instead of placing the card.'
+      : sel.from === 'reserve'
+        ? 'From your reserve: placing it is this week’s build.'
+        : sel.from === 'supplies'
+          ? 'From your supplies: installing it is free, so the week goes on.'
+          : install
+            ? 'From your hand: installing it is this week’s build.'
+            : null;
   // A member's room (M4b): whose it is.
-  const member = sel.kind === 'piece' && !renovate ? <MemberNote id={sel.id} /> : null;
+  const member = sel.kind === 'piece' && !renovate && !grow ? <MemberNote id={sel.id} /> : null;
   if (!p) {
     return (
       <>
@@ -609,7 +641,13 @@ function PlacingInfo() {
     // The rules say why: not at the limit yet, the wrong room, or fully renovated.
     return (
       <>
-        <h2>{renovate ? `Renovate ${definite(roomName)}?` : name}</h2>
+        <h2>
+          {renovate
+            ? `Renovate ${definite(roomName)}?`
+            : grow
+              ? `Extend ${definite(roomName)}?`
+              : name}
+        </h2>
         <p class="reason">
           <Icon name="cross" />
           <span>{p.reason}</span>
@@ -625,8 +663,9 @@ function PlacingInfo() {
     install && p.host !== undefined
       ? run.value.house.pieces.find((q) => q.uid === p.host)
       : undefined;
-  // An install's host, or the room a Renovation levels: what it earns, before and after.
-  const hostLine = install || renovate ? p.lines.find((l) => l.isNew) : undefined;
+  // An install's host, or the room a Renovation levels or an extension grows: what it earns,
+  // before and after.
+  const hostLine = install || renovate || grow ? p.lines.find((l) => l.isNew) : undefined;
   const earns = hostLine
     ? `${hostLine.before} → ${hostLine.after}`
     : `earns ${p.newPiece?.earned ?? 0}`;
@@ -640,6 +679,10 @@ function PlacingInfo() {
       ) : renovate ? (
         <h2>
           Renovate {definite(roomName)} <span class="earns">{earns}</span>
+        </h2>
+      ) : grow ? (
+        <h2>
+          Extend {definite(roomName)} <span class="earns">{earns}</span>
         </h2>
       ) : (
         <h2>

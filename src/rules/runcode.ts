@@ -10,6 +10,7 @@ import type {
   CardType,
   ChangeOrderId,
   Content,
+  ExtendAction,
   FixtureId,
   Good,
   InstallAction,
@@ -164,6 +165,29 @@ function isRenovate(v: unknown): v is RenovateAction {
   );
 }
 
+function isExtend(v: unknown): v is ExtendAction {
+  return (
+    isObject(v) &&
+    v.t === 'extend' &&
+    (v.from === 'hand' || v.from === 'reserve') &&
+    isInt(v.i) &&
+    isInt(v.uid) &&
+    isInt(v.x) &&
+    isInt(v.y) &&
+    (v.rot === 0 || v.rot === 1 || v.rot === 2 || v.rot === 3)
+  );
+}
+
+const cleanExtend = (v: ExtendAction): ExtendAction => ({
+  t: 'extend',
+  from: v.from,
+  i: v.i,
+  uid: v.uid,
+  x: v.x,
+  y: v.y,
+  rot: v.rot,
+});
+
 const cleanPlace = (v: PlaceAction): PlaceAction => ({
   t: 'place',
   from: v.from,
@@ -182,10 +206,11 @@ const cleanInstall = (v: InstallAction): InstallAction => ({
 
 /** A tentative play, with only its known fields. */
 function cleanPending(
-  v: PlaceAction | InstallAction | RenovateAction,
-): PlaceAction | InstallAction | RenovateAction {
+  v: PlaceAction | InstallAction | RenovateAction | ExtendAction,
+): PlaceAction | InstallAction | RenovateAction | ExtendAction {
   if (v.t === 'place') return cleanPlace(v);
   if (v.t === 'install') return cleanInstall(v);
+  if (v.t === 'extend') return cleanExtend(v);
   return { t: 'renovate', from: v.from, i: v.i, uid: v.uid };
 }
 
@@ -243,6 +268,8 @@ function cleanAction(v: unknown): Action | null {
       return isInstall(v) ? cleanInstall(v) : null;
     case 'renovate':
       return isRenovate(v) ? { t: 'renovate', from: v.from, i: v.i, uid: v.uid } : null;
+    case 'extend':
+      return isExtend(v) ? cleanExtend(v) : null;
     case 'pass':
       return { t: 'pass' };
     case 'reroll':
@@ -356,7 +383,13 @@ export function decodeRunCode(code: string): DecodeResult {
   if (!cleaned || cleaned.some((a) => a === null)) {
     return { ok: false, error: 'That run code has an action this build doesn’t know.' };
   }
-  if (pending !== undefined && !isPlace(pending) && !isInstall(pending) && !isRenovate(pending)) {
+  if (
+    pending !== undefined &&
+    !isPlace(pending) &&
+    !isInstall(pending) &&
+    !isRenovate(pending) &&
+    !isExtend(pending)
+  ) {
     return { ok: false, error: 'That run code has a damaged pending placement.' };
   }
   const data: RunCodeData = {

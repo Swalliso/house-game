@@ -972,6 +972,14 @@ export const TEST_BALANCE: Balance = {
     { name: 'Dream Home', minPctOfTarget: 200 },
   ],
   renovate: { pointsPerLevel: 4, maxLevel: 2 },
+  // D-168: no room extends unless a test turns it on (extend.test.ts does), so a room card on a
+  // room of its type renovates, as Renovate's tests expect.
+  extend: {
+    types: [],
+    maxPerRoom: 1,
+    pointsPerTile: 1,
+    minShared: 2,
+  },
   drawAtLimitPct: 50,
   swapTries: 3,
   jobBoard: {

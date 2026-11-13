@@ -14,7 +14,8 @@
 // effects (auras and granted ones included) apply; it still counts for sets. `blockPenalties`
 // (Soundproofing) drops negative neighbor terms and negative auras from matching neighbors.
 // A Renovated room (M4a) adds `renovate.pointsPerLevel` flat points per level, before its
-// percentages.
+// percentages, and an extended room (D-168) `extend.pointsPerTile` for each tile beyond its own
+// card's, the same way.
 // For the week (Mult in hundredths, starting at 100):
 //   Points = Σ earned + Σ set Points (at its level, scaled by `setBonus`)
 //   Mult   = 100 + Σ set Mult (the same) + specBonus × specs met + Σ `mult` modifiers
@@ -44,6 +45,7 @@ import type {
 import { meetsHouse, type CondCtx } from './conditions.ts';
 import {
   fencedYardsBordered,
+  grownTiles,
   neighborRef,
   pieceDef,
   tilesIn,
@@ -498,6 +500,7 @@ export function tallyHouse(
   const unmet = new Map<number, string>();
 
   const perLevel = content.balance.renovate.pointsPerLevel;
+  const perTile = content.balance.extend.pointsPerTile;
   for (const piece of pieces) {
     const def = pieceDef(content, piece);
     const failed = unmetRequirement(content, layout, def, piece.uid);
@@ -518,6 +521,20 @@ export function tallyHouse(
           label: `Renovated (level ${piece.level})`,
           op: 'add',
           value: perLevel * piece.level,
+          from: [],
+        });
+      }
+    }
+    // D-168: an extended room's size, flat Comfort a tile beyond its card's, before percentages.
+    const grown = grownTiles(content, piece);
+    if (grown > 0 && perTile !== 0) {
+      const a = acc.get(piece.uid)!;
+      a.points += perTile * grown;
+      if (withLines) {
+        a.own.push({
+          label: `Extended (${grown} more tiles)`,
+          op: 'add',
+          value: perTile * grown,
           from: [],
         });
       }
