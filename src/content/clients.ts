@@ -54,7 +54,7 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
         pct: 100,
       },
     ],
-    targetPct: 115, // fitted by npm run sim -- --suggest-targets, set against played runs (D-169)
+    targetPct: 110, // fitted by npm run sim -- --suggest-targets, set against played runs (D-169)
   },
   vladislav: {
     id: 'vladislav',
@@ -159,7 +159,7 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
       { kind: 'rule', key: 'earlyRewardPct', add: 100 },
     ],
     pool: [],
-    targetPct: 80, // fitted by npm run sim -- --suggest-targets, set against played runs (D-169)
+    targetPct: 75, // fitted by npm run sim -- --suggest-targets, set against played runs (D-169)
   },
   dale: {
     id: 'dale',

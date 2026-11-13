@@ -971,8 +971,9 @@ const COVERAGE: readonly string[] = [
   ...prefixed('arrived', ['due', 'forced']),
   ...prefixed('place', ['arrival', 'crew']),
   // D-160: the standing stock's cards and the client's are played. The stock lands with the
-  // run, once (D-162, D-163), so its `delivered` event is a first job's (stock.test.ts).
+  // run (D-162), and D-169's top-ups at each later milestone are `delivered` events.
   ...prefixed('place', ['client', 'stock']),
+  ...prefixed('delivered', ['stock']),
 ];
 
 /** The kinds of check that must each have run. */

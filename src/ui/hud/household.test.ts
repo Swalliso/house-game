@@ -29,6 +29,8 @@ describe('an extra slot’s words', () => {
     expect(extraSlotWords('dale', { id: 'hallway', stock: true })).toMatchObject({
       tag: 'Stock',
       whose: ' (from your stock)',
+      // D-169: refilled at each milestone, in as many words as the others' notes (16).
+      note: 'From your stock, in an extra slot, not one of your reserve’s. Another comes each milestone.',
     });
   });
 
