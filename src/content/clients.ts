@@ -132,7 +132,7 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
     deliveries: [
       { phase: 0, cards: ['doghouse'], text: 'The Barkers bring one of their two Doghouses.' },
     ],
-    targetPct: 85, // fitted by npm run sim -- --suggest-targets, set against played runs (D-170)
+    targetPct: 90, // fitted by npm run sim -- --suggest-targets, set against played runs (D-170)
   },
   juniper: {
     id: 'juniper',
@@ -159,7 +159,7 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
       { kind: 'rule', key: 'earlyRewardPct', add: 100 },
     ],
     pool: [],
-    targetPct: 70, // fitted by npm run sim -- --suggest-targets, set against played runs (D-170)
+    targetPct: 65, // fitted by npm run sim -- --suggest-targets, set against played runs (D-170)
   },
   dale: {
     id: 'dale',
@@ -198,6 +198,6 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
     deliveries: [
       { phase: 0, cards: ['homeOffice'], text: 'Dale brings one of his two Home Offices.' },
     ],
-    targetPct: 150, // fitted by npm run sim -- --suggest-targets, set against played runs (D-170)
+    targetPct: 155, // fitted by npm run sim -- --suggest-targets, set against played runs (D-170)
   },
 };
