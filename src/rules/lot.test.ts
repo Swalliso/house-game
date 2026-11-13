@@ -1,10 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import type { Lot, TerrainId } from './index.ts';
-import { generateLot, lotFromRows, lotProblems, lotToRows, lotTraits, terrainAt } from './lot.ts';
+import {
+  generateLot,
+  lotFromRows,
+  lotProblems,
+  lotToRows,
+  lotTraits,
+  terrainAt,
+  withTraits,
+} from './lot.ts';
 import { TEST_LOT_BALANCE as B } from './testing.ts';
 import { CONTENT } from '../content/index.ts';
 
 const count = (lot: Lot, t: TerrainId) => lot.terrain.filter((x) => x === t).length;
+/** Lot kinds off (D-166): every lot plain, as drawn before them. */
+const PLAIN = { plain: 1, rocky: 0, open: 0, pond: 0 };
 
 function creekCells(lot: Lot) {
   const cells: { x: number; y: number }[] = [];
@@ -197,11 +207,13 @@ describe('creek lots and the pond (D-119)', () => {
   });
 
   it('leaves a creek lot as it was drawn, but for its pond, so fewer creeks only redraw the rest', () => {
-    // The same seeds before D-119: creekPct 70, and every pond kept.
-    const before = { ...real, creekPct: 70, pondPctCreek: 100 };
+    // The same seeds before D-119: creekPct 70, and every pond kept. Both plain (D-166 shapes
+    // lots after this, on streams of their own).
+    const plain = { ...real, kinds: PLAIN };
+    const before = { ...plain, creekPct: 70, pondPctCreek: 100 };
     let same = 0;
     for (let i = 0; i < 300; i++) {
-      const now = generateLot(`seed-${i}`, real);
+      const now = generateLot(`seed-${i}`, plain);
       const old = generateLot(`seed-${i}`, before);
       if (count(now, 'creek') === 0 || now.attempt !== old.attempt) continue;
       // The pond's tiles are open ground now or still pond; every other tile is as it was.
@@ -220,6 +232,7 @@ describe('creek lots and the pond (D-119)', () => {
 describe('lot traits (D-119)', () => {
   it('are the traits whose terrain the lot holds enough of, in content order', () => {
     const ids = (rows: readonly string[]) => lotTraits(CONTENT, lotFromRows(rows)).map((t) => t.id);
+    // No Trees isn't Open: that's a kind a lot is shaped to (D-166), and a test's lot has none.
     expect(ids(['....', '....'])).toEqual([]);
     expect(ids(['..C.', '..C.'])).toEqual(['creekside']);
     // Wooded: 100 or more Tree tiles.
@@ -234,5 +247,125 @@ describe('lot traits (D-119)', () => {
       'creekside',
       'wooded',
     ]);
+  });
+});
+
+// ---------------------------------------------------------------------------------------
+// D-166: lot kinds. Once a lot passes its checks, most are shaped toward a trait.
+
+describe('lot kinds (D-166)', () => {
+  const real = CONTENT.balance.lot;
+  const plain = { ...real, kinds: PLAIN };
+  /** The lot without its finds, which go down last on whatever ground is free. */
+  const bare = (lot: Lot) =>
+    lot.terrain.map((t) => (t === 'oldShed' || t === 'timeCapsule' ? null : t));
+  const lots = Array.from({ length: 600 }, (_, i) => ({
+    now: generateLot(`seed-${i}`, real),
+    before: generateLot(`seed-${i}`, plain),
+  }));
+
+  it('leaves a plain lot exactly as it was drawn before kinds', () => {
+    let plains = 0;
+    for (const { now, before } of lots) {
+      if (now.kind) continue;
+      expect(now).toEqual(before);
+      plains++;
+    }
+    expect(plains).toBeGreaterThan(150);
+  });
+
+  it('shapes a lot only as its kind says, and every shaped lot passes the checks', () => {
+    const kinds: Record<string, number> = {};
+    for (const { now, before } of lots) {
+      if (!now.kind) continue;
+      kinds[now.kind] = (kinds[now.kind] ?? 0) + 1;
+      expect(now.attempt).toBe(before.attempt);
+      expect(lotProblems({ ...now, terrain: bare(now) }, real)).toEqual([]);
+      const a = bare(now);
+      const b = bare(before);
+      a.forEach((t, k) => {
+        if (t === b[k]) return;
+        // Rocky: Boulders on open ground. Open: woods Trees gone. Pond: open ground or Trees.
+        if (now.kind === 'rocky') expect([b[k], t]).toEqual([null, 'boulder']);
+        if (now.kind === 'open') expect([b[k], t]).toEqual(['tree', null]);
+        if (now.kind === 'pond') expect([null, 'tree']).toContain(b[k]);
+        if (now.kind === 'pond') expect(t).toBe('pond');
+      });
+      if (now.kind === 'rocky') {
+        const more = count(now, 'boulder') - count(before, 'boulder');
+        expect(more).toBeGreaterThanOrEqual(real.rockyBoulders[0]);
+        expect(more).toBeLessThanOrEqual(real.rockyBoulders[1]);
+      }
+      if (now.kind === 'open') {
+        // Only the lone Trees are left: none touches another.
+        expect(count(now, 'tree')).toBeLessThanOrEqual(real.loneTrees[1]);
+        for (let y = 0; y < now.height; y++) {
+          for (let x = 0; x < now.width; x++) {
+            if (terrainAt(now, x, y) !== 'tree') continue;
+            for (const [dx, dy] of [[1, 0], [0, 1]] as const) {
+              expect(terrainAt(now, x + dx, y + dy)).not.toBe('tree');
+            }
+          }
+        }
+      }
+      if (now.kind === 'pond') {
+        const ponds = count(now, 'pond');
+        expect(ponds).toBeGreaterThanOrEqual(real.pondTiles[0]);
+        expect(ponds).toBeLessThanOrEqual(real.pondTiles[1]);
+        // Still two rows clear of the street, and a tile clear of the creek.
+        for (let x = 0; x < now.width; x++) {
+          expect(terrainAt(now, x, now.height - 1)).not.toBe('pond');
+          expect(terrainAt(now, x, now.height - 2)).not.toBe('pond');
+        }
+        for (let y = 0; y < now.height; y++) {
+          for (let x = 0; x < now.width; x++) {
+            if (terrainAt(now, x, y) !== 'pond') continue;
+            for (let dy = -1; dy <= 1; dy++) {
+              for (let dx = -1; dx <= 1; dx++) {
+                expect(terrainAt(now, x + dx, y + dy)).not.toBe('creek');
+              }
+            }
+          }
+        }
+      }
+    }
+    // By `kinds`' weights (25, 20, 20 of 100); a creek lot without a pond stays plain.
+    expect(kinds.rocky! / lots.length).toBeGreaterThan(0.18);
+    expect(kinds.rocky! / lots.length).toBeLessThan(0.32);
+    expect(kinds.open! / lots.length).toBeGreaterThan(0.14);
+    expect(kinds.open! / lots.length).toBeLessThan(0.26);
+    expect(kinds.pond! / lots.length).toBeGreaterThan(0.12);
+    expect(kinds.pond! / lots.length).toBeLessThan(0.24);
+  });
+
+  it('gives most lots one trait or two, and about one in five none', () => {
+    const n = [0, 0, 0, 0];
+    for (const { now } of lots) n[Math.min(3, lotTraits(CONTENT, now).length)]!++;
+    expect(n[0]! / lots.length).toBeGreaterThan(0.13);
+    expect(n[0]! / lots.length).toBeLessThan(0.28);
+    expect((n[1]! + n[2]!) / lots.length).toBeGreaterThan(0.7);
+  });
+
+  it('names the kind a lot was shaped to as its trait, and a run keeps the traits it began with', () => {
+    const rocky = lots.find(({ now }) => now.kind === 'rocky')!.now;
+    expect(lotTraits(CONTENT, rocky).map((t) => t.id)).toContain('rocky');
+    const open = lots.find(({ now }) => now.kind === 'open')!.now;
+    expect(lotTraits(CONTENT, open).map((t) => t.id)).toContain('open');
+    expect(lotTraits(CONTENT, open).map((t) => t.id)).not.toContain('wooded');
+    // A Wooded lot's traits, kept: clearing every Tree leaves it Wooded for the run.
+    const wooded = lots.find(({ now }) => count(now, 'tree') >= 100)!.now;
+    const kept = withTraits(CONTENT, wooded);
+    expect(kept.traits).toContain('wooded');
+    const cleared: Lot = { ...kept, terrain: kept.terrain.map((t) => (t === 'tree' ? null : t)) };
+    expect(lotTraits(CONTENT, cleared).map((t) => t.id)).toContain('wooded');
+    expect(lotTraits(CONTENT, { ...cleared, traits: undefined }).map((t) => t.id)).not.toContain(
+      'wooded',
+    );
+  });
+
+  it('keeps a lot plain when asked: the first job’s', () => {
+    const shaped = lots.findIndex(({ now }) => now.kind !== undefined);
+    const seed = `seed-${shaped}`;
+    expect(generateLot(seed, real, { plain: true })).toEqual(generateLot(seed, plain));
   });
 });

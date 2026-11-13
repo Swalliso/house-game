@@ -301,6 +301,27 @@ export const ICONS = {
     .kWWkWk.
     .kkkkkk.
   `,
+  // --- Lot traits (8×8, D-166): a Pondside lot's pond, a lily pad on it; a Rocky lot's Boulder.
+  pond: `
+    ........
+    ........
+    .kkkkkk.
+    kCCBBBBk
+    kCBBBvvk
+    kBBBbVVk
+    .kkkkkk.
+    ........
+  `,
+  boulder: `
+    ........
+    ...kkk..
+    ..kLGGk.
+    .kLGGggk
+    kLGGgggk
+    kGGggggk
+    kgggggfk
+    .kkkkkk.
+  `,
   // --- Fixtures (8×8): a fixture's badge on the board, its supply slot, and the shop's art slot
   // where it has no sprite on the board (sprites.ts FIXTURE_ICONS) ----------------------------
   /** The Fireplace: a stone hearth, its fire on the logs. */

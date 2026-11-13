@@ -1,10 +1,21 @@
 // Lot generation from a seed (Appendix A · M1, D-048, D-049): the street on the bottom edge,
 // woods and lone Trees, a creek on about a quarter of lots (D-119), a pond, boulders, and the
 // edge the sun shines from (D-120). A lot that fails the regeneration checks is made again from
-// the next `lot/<attempt>` stream. Its traits (D-119), read from its terrain, are chips on the
-// contract.
+// the next `lot/<attempt>` stream. Then its kind (D-166) shapes most lots toward a trait: more
+// Boulders, no woods, a bigger pond. Its traits (D-119), read from its terrain, are chips on
+// the contract, and a run keeps the ones it began with.
 
-import type { Cell, Content, Lot, LotBalance, LotTraitDef, SunSide, TerrainId } from './index.ts';
+import type {
+  Cell,
+  Content,
+  Lot,
+  LotBalance,
+  LotKind,
+  LotTraitDef,
+  ShapedKind,
+  SunSide,
+  TerrainId,
+} from './index.ts';
 import { cellIndex, inBounds, ORTHOGONAL } from './grid.ts';
 import { stream, type Rng } from './rng.ts';
 
@@ -33,14 +44,26 @@ export const SUN_STEP: Readonly<Record<SunSide, readonly [dx: number, dy: number
 };
 
 /**
- * The lot's traits (D-119), in content order: each one whose terrain the lot holds at least
- * `min` tiles of. Building over Trees clears them, so read from a run's lot, Wooded can go.
+ * The lot's traits (D-119), in content order. A run's lot keeps the ones it began with
+ * (`Lot.traits`, D-166), so clearing Trees can't take Wooded away mid-run; any other lot has
+ * each trait it was shaped to, and each whose terrain it holds at least `min` tiles of.
  */
 export function lotTraits(content: Content, lot: Lot): LotTraitDef[] {
+  const kept = lot.traits;
+  if (kept) return Object.values(content.lotTraits).filter((trait) => kept.includes(trait.id));
+  return traitsNow(content, lot);
+}
+
+/** A run's lot (D-166): the lot with the traits it begins with, kept for the run. */
+export function withTraits(content: Content, lot: Lot): Lot {
+  return { ...lot, traits: traitsNow(content, lot).map((t) => t.id) };
+}
+
+function traitsNow(content: Content, lot: Lot): LotTraitDef[] {
   const counts = new Map<TerrainId, number>();
   for (const t of lot.terrain) if (t) counts.set(t, (counts.get(t) ?? 0) + 1);
-  return Object.values(content.lotTraits).filter(
-    (trait) => (counts.get(trait.when.terrain) ?? 0) >= trait.when.min,
+  return Object.values(content.lotTraits).filter(({ when }) =>
+    'kind' in when ? lot.kind === when.kind : (counts.get(when.terrain) ?? 0) >= when.min,
   );
 }
 
@@ -155,11 +178,17 @@ export function lotProblems(lot: Lot, b: LotBalance): string[] {
 // ---------------------------------------------------------------------------------------
 // Generation.
 
-export function generateLot(seed: string, b: LotBalance): Lot {
+/**
+ * A lot from its seed. `plain` keeps it as drawn, with no kind (D-166): the first job's lot,
+ * which the guided job was built on (D-149).
+ */
+export function generateLot(seed: string, b: LotBalance, opts: { plain?: boolean } = {}): Lot {
   for (let attempt = 0; attempt < b.maxAttempts; attempt++) {
     const bare = tryLot(stream(seed, `lot/${attempt}`), b, attempt, true, sunFor(seed, attempt));
     const lot = pondRule(bare, seed, b);
-    if (lotProblems(lot, b).length === 0) return placeFinds(lot, seed, b);
+    if (lotProblems(lot, b).length === 0) {
+      return placeFinds(opts.plain ? lot : shapeLot(lot, seed, b), seed, b);
+    }
   }
   // Practically unreachable (the tests check 1,000 seeds), but a creekless lot always passes.
   const last = b.maxAttempts;
@@ -189,6 +218,115 @@ function pondRule(lot: Lot, seed: string, b: LotBalance): Lot {
   if (!lot.terrain.includes('creek')) return lot;
   if (stream(seed, `lot/${lot.attempt}/pond`).chance(b.pondPctCreek)) return lot;
   return { ...lot, terrain: lot.terrain.map((t) => (t === 'pond' ? null : t)) };
+}
+
+/** The kinds in the order their weights are read (D-166). */
+export const LOT_KINDS: readonly LotKind[] = ['plain', 'rocky', 'open', 'pond'];
+
+/**
+ * The lot's kind (D-166), by `kinds`' weights, from its own `lot/<attempt>/kind` stream once the
+ * lot has passed its checks, so a plain lot is exactly the lot it was before. The others are
+ * shaped toward a trait: a Rocky lot gets `rockyBoulders` more Boulders, an Open lot loses its
+ * woods (its lone Trees stay), and a pond lot's pond grows to `pondTiles` tiles. A lot the
+ * shaping would make fail the checks, or a pond lot whose creek took its pond, stays as drawn.
+ */
+export function lotKind(seed: string, attempt: number, b: LotBalance): LotKind {
+  const total = LOT_KINDS.reduce((sum, k) => sum + Math.max(0, b.kinds[k] ?? 0), 0);
+  if (total <= 0) return 'plain';
+  let r = stream(seed, `lot/${attempt}/kind`).int(total);
+  for (const k of LOT_KINDS) {
+    const w = Math.max(0, b.kinds[k] ?? 0);
+    if (r < w) return k;
+    r -= w;
+  }
+  return 'plain';
+}
+
+function shapeLot(lot: Lot, seed: string, b: LotBalance): Lot {
+  const kind = lotKind(seed, lot.attempt, b);
+  if (kind === 'plain') return lot;
+  const rng = stream(seed, `lot/${lot.attempt}/kind/${kind}`);
+  const shaped = SHAPES[kind](lot, rng, b);
+  return shaped && lotProblems(shaped, b).length === 0 ? { ...shaped, kind } : lot;
+}
+
+const SHAPES: Record<ShapedKind, (lot: Lot, rng: Rng, b: LotBalance) => Lot | null> = {
+  rocky: addBoulders,
+  open: clearWoods,
+  pond: growPond,
+};
+
+/** Rocky (D-166): more Boulders, anywhere on open ground, as the first ones went down. */
+function addBoulders(lot: Lot, rng: Rng, b: LotBalance): Lot {
+  const { width: w, height: h } = lot;
+  const terrain = lot.terrain.slice();
+  const at = (x: number, y: number) => terrain[cellIndex(w, x, y)] ?? null;
+  const n = rng.range(b.rockyBoulders[0], b.rockyBoulders[1]);
+  for (let k = 0; k < n; k++) {
+    const c = randomEmpty(rng, w, h, at);
+    if (c) terrain[cellIndex(w, c.x, c.y)] = 'boulder';
+  }
+  return { ...lot, terrain };
+}
+
+/**
+ * Open (D-166): the woods go, and the lone Trees stay. A woods Tree touches another Tree; a
+ * lone one never does (tryLot places them so).
+ */
+function clearWoods(lot: Lot): Lot {
+  const { width: w } = lot;
+  const terrain = lot.terrain.map((t, i) => {
+    if (t !== 'tree') return t;
+    const x = i % w;
+    const y = (i - x) / w;
+    const woods = ORTHOGONAL.some(([dx, dy]) => terrainAt(lot, x + dx, y + dy) === 'tree');
+    return woods ? null : t;
+  });
+  return { ...lot, terrain };
+}
+
+/**
+ * A pond lot (D-166): the pond grows a tile at a time onto open ground or Trees, where the most
+ * of its tiles touch, so it stays round. It keeps tryLot's margins: off the lot's edges, two
+ * rows from the street, and a tile clear of the creek. Null when it can't reach `pondTiles`.
+ */
+function growPond(lot: Lot, rng: Rng, b: LotBalance): Lot | null {
+  const { width: w, height: h } = lot;
+  const terrain = lot.terrain.slice();
+  let size = terrain.filter((t) => t === 'pond').length;
+  if (size === 0) return null;
+  const goal = rng.range(b.pondTiles[0], b.pondTiles[1]);
+  const nearCreek = (x: number, y: number) => {
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) if (terrainAt(lot, x + dx, y + dy) === 'creek') return true;
+    }
+    return false;
+  };
+  while (size < goal) {
+    let best: number[] = [];
+    let most = 0;
+    for (let y = 1; y <= h - 3; y++) {
+      for (let x = 1; x <= w - 2; x++) {
+        const i = cellIndex(w, x, y);
+        const t = terrain[i] ?? null;
+        if ((t !== null && t !== 'tree') || nearCreek(x, y)) continue;
+        let n = 0;
+        for (const [dx, dy] of ORTHOGONAL) {
+          if (inBounds(w, h, x + dx, y + dy) && terrain[cellIndex(w, x + dx, y + dy)] === 'pond') n++;
+        }
+        if (n === 0 || n < most) continue;
+        if (n > most) {
+          most = n;
+          best = [];
+        }
+        best.push(i);
+      }
+    }
+    if (best.length === 0) return null;
+    terrain[best[rng.int(best.length)]!] = 'pond';
+    size++;
+  }
+  return { ...lot, terrain };
 }
 
 /**

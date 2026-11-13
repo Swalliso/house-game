@@ -25,7 +25,6 @@ import {
   CONTENT,
   featureWantedText,
   glossary,
-  lotTraitText,
   multNumber,
   rewardText,
   rules,
@@ -514,9 +513,13 @@ export function HowToPlayText() {
           <li>
             <b>The pond and the creek</b> give views.
           </li>
+          {/* D-166: every trait, by name, in place of the creek lot's line. */}
           <li>
-            <b>A creek lot</b> is marked {CONTENT.lotTraits.creekside.name} on the job board.{' '}
-            {lotTraitText(CONTENT, CONTENT.lotTraits.creekside)}
+            <b>A lot&rsquo;s traits</b> (
+            {Object.values(CONTENT.lotTraits)
+              .map((t) => t.name)
+              .join(', ')}
+            ) are chips on the job board. Each pays all run and deals more of the cards it suits.
           </li>
           <li>
             <b>The street</b> is Loud.

@@ -1413,12 +1413,16 @@ describe('lot traits (D-119)', () => {
     expect(scoreOf(t, 2)).toMatchObject({ points: 4, pct: 0, earned: 4 });
   });
 
-  it('read as a tip: what they pay, all run, then the blurb', () => {
+  it('read as a tip: what they pay, all run, what they deal more of (D-166), then the blurb', () => {
     const creekside = CONTENT.lotTraits.creekside;
     expect(lotTraitText(CONTENT, creekside)).toBe(
-      'Pieces touching the Creek earn +50%, all run. Only a Driveway crosses it.',
+      'Pieces touching the Creek earn +50%, all run. More Patios in the draw. Only a Driveway crosses it.',
     );
-    expect(lotTraitText(CONTENT, CONTENT.lotTraits.wooded)).toBe(CONTENT.lotTraits.wooded.blurb);
+    expect(lotTraitText(CONTENT, CONTENT.lotTraits.wooded)).toBe(
+      'Pieces touching a Tree earn +25%, all run. More Treehouses and Birdhouses in the draw. Building over a Tree clears it.',
+    );
+    // A trait that only hints reads as its blurb (the test content's).
+    expect(lotTraitText(C, C.lotTraits.wooded)).toBe(C.lotTraits.wooded.blurb);
   });
 });
 

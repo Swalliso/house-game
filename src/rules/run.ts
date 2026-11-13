@@ -173,7 +173,7 @@ import {
   type Layout,
   type LayoutModifier,
 } from './layout.ts';
-import { generateLot } from './lot.ts';
+import { generateLot, withTraits } from './lot.ts';
 import {
   earlyBonus,
   isRunMode,
@@ -2028,7 +2028,10 @@ export function createRules(content: Content): Rules {
     ) {
       throw new Error('Bad run setup');
     }
-    const lot = generateLot(setup.seed, b.lot);
+    // A run keeps the traits its lot begins with (D-166). The first job's lot stays plain, in
+    // any mode: it's the lot, not the run, that the guided job was built on (D-149).
+    const plain = !!b.jobBoard.firstSeed && setup.seed === b.jobBoard.firstSeed;
+    const lot = withTraits(content, generateLot(setup.seed, b.lot, { plain }));
     const clean: RunSetup = {
       seed: setup.seed,
       clientId: setup.clientId,

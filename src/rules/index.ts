@@ -156,8 +156,15 @@ export type CrewId = 'generalContractor' | 'landscaper' | 'architect';
 /** Clients (M4a): who the house is for. Each brings a checklist, tastes, and a pool. */
 export type ClientId = 'hendersons' | 'vladislav' | 'barkers' | 'juniper' | 'dale';
 
-/** Lot traits (D-119): what a lot has that changes how you'd build there. */
-export type LotTraitId = 'creekside' | 'wooded';
+/** Lot traits (D-119, D-166): what a lot has that changes how you'd build there. */
+export type LotTraitId = 'creekside' | 'pondside' | 'wooded' | 'rocky' | 'open';
+
+/**
+ * A lot's kind (D-166): drawn once the lot has passed its checks. A plain lot stays as drawn;
+ * the others are shaped toward a trait (more Boulders, no woods, a bigger pond).
+ */
+export type LotKind = 'plain' | 'rocky' | 'open' | 'pond';
+export type ShapedKind = Exclude<LotKind, 'plain'>;
 
 /** The household's arrivals (M4b, D-103): who moves in, by client. */
 export type ArrivalId = 'twins' | 'grandma' | 'renfield' | 'nana' | 'rowan' | 'ivy';
@@ -518,7 +525,7 @@ export type Modifier =
   | { kind: 'setBonus'; set?: SetId; pct: number }
   /** Economy output of matching pieces. */
   | { kind: 'budget'; target: Selector | 'all'; pct: number }
-  /** Clients and crews only, so weights stay fixed for the run (D-043). */
+  /** Clients, crews and lot traits (D-166) only, so weights stay fixed for the run (D-043). */
   | { kind: 'drawWeight'; target: Selector; add?: number; pct?: number }
   | { kind: 'rule'; key: RuleKey; add?: number; pct?: number };
 
@@ -533,9 +540,10 @@ export interface CrewDef {
 }
 
 /**
- * A lot trait (D-119): a chip on the contract's card. The lot has it while it holds at least
- * `min` tiles of `terrain`. Its modifiers join the run's, like a crew's, and a trait that has
- * some stays on the checklist all run.
+ * A lot trait (D-119): a chip on the contract's card. A lot has it when it holds at least `min`
+ * tiles of `terrain`, or (D-166) was shaped to `kind`, as the run begins, and keeps it all run.
+ * Its modifiers join the run's, like a crew's (its `drawWeight` ones too, as a client's pool
+ * does), and a trait that has some stays on the checklist all run.
  */
 export interface LotTraitDef {
   id: LotTraitId;
@@ -543,7 +551,7 @@ export interface LotTraitDef {
   name: string;
   /** The tip's last line, after what the modifiers say: "Only a Driveway crosses it." */
   blurb: string;
-  when: { terrain: TerrainId; min: number };
+  when: { terrain: TerrainId; min: number } | { kind: ShapedKind };
   modifiers: readonly Modifier[];
   /** Clients it suits: their contract marks the chip with the up icon. */
   suits?: readonly ClientId[];
@@ -772,6 +780,15 @@ export interface LotBalance {
   timeCapsules: Range;
   /** Finds stay at least this many rows clear of the street edge, so the front stays open. */
   findStreetGap: number;
+  /**
+   * Lot kinds (D-166), by weight, drawn from each lot's own `lot/<attempt>/kind` stream once it
+   * has passed its checks, before its finds. A plain lot stays exactly as drawn.
+   */
+  kinds: Readonly<Record<LotKind, number>>;
+  /** A Rocky lot's Boulders, on top of `boulders`. */
+  rockyBoulders: Range;
+  /** A pond lot's pond grows to this many tiles (a lot whose creek took its pond stays plain). */
+  pondTiles: Range;
 }
 
 export interface PhaseDef {
@@ -939,6 +956,14 @@ export interface Lot {
   sun: SunSide;
   /** Which `lot/<attempt>` stream made it. */
   attempt: number;
+  /** The kind it was shaped to (D-166); unset on a plain lot. */
+  kind?: ShapedKind;
+  /**
+   * Its traits as the run began (D-166), in content order: they pay and tilt the draw all run,
+   * so building over Trees can't take Wooded away. Unset on a fresh lot or a test's, whose
+   * traits are read from its terrain.
+   */
+  traits?: readonly LotTraitId[];
 }
 
 export interface PlacedPiece {
