@@ -4,9 +4,10 @@
 // input and throws IllegalAction with a reason. resolveWeek() is the one end-of-week step;
 // apply() and preview() both call it, so they can't disagree.
 //
-// A week: place a card from the hand or the reserve, install a fixture from the hand, or pass
-// (each ends the week), with free actions before that: install from the supplies, sell, reroll,
-// demolish, complete early, and the auto-complete toggle.
+// A week: place a card from the hand, install a fixture from the hand, or pass (each ends the
+// week), with free actions before that: place a piece from the reserve (D-163: Your goods don't
+// use the week), install from the supplies, sell, reroll, demolish, complete early, and the
+// auto-complete toggle.
 //
 // End of week: the tally adds to the score and budget. If auto-complete is on, the target is
 // met, and weeks remain, the milestone completes early. At the phase's last week (or an
@@ -15,15 +16,15 @@
 //
 // Milestones: after milestones 1–6 the shop opens (D-051); leaving it starts the next phase.
 // After the last one the run is won. Tools (M3b) are free actions; Weekend Crew makes the
-// week's next play free too (D-075). Finds pay once: the Old Shed when demolished, a Time
-// Capsule when first built over.
+// week's next card from the hand free too (D-075, D-163). Finds pay once: the Old Shed when
+// demolished, a Time Capsule when first built over.
 //
 // Start of week: transforms resolve (a Sapling old enough becomes a Tree), the household's
 // arrivals move in at their phase's first week (M4b, D-103: their cards go into the reserve's
-// extra slots), what the client brings for that phase follows them, and the standing stock tops
-// those slots up to a Hallway and a Fence at each milestone's first week (D-160: only what's
-// missing; D-162: from week 1, and a first job's from Foundation's third week). Then the hand is
-// drawn in two rows, Rooms then Layout (D-121).
+// extra slots), what the client brings for that phase follows them, and the standing stock fills
+// those slots up to a Hallway and a Fence (D-160: only what's missing): once, in week 1 (D-162; a
+// first job's in Foundation's third week), and again at each milestone's first week only with
+// `refill` (D-163). Then the hand is drawn in two rows, Rooms then Layout (D-121).
 // A card with no play at all (no spot, no host, no Renovation) is swapped for another from its
 // row, trying up to `swapTries` cards; that replaced D-070's free redraw. A reroll redraws both
 // rows, then swaps (D-132; D-121 had a reroll per row). Neither its draw nor its swaps deal back
@@ -299,7 +300,15 @@ export interface Rules {
   pieceTimers(state: RunState, uid: number): string[];
   /** Every legal placement of every card in the hand and the reserve (distinct rotations). */
   legalPlacements(state: RunState): PlaceAction[];
-  /** Every legal play that ends the week: placements, hand fixtures in each host, and Renovations. */
+  /**
+   * D-163: whether a play ends the week. A play from Your goods (the reserve) never does; nor
+   * does the next hand card while Weekend Crew is ready (D-083).
+   */
+  endsWeek(state: RunState, play: PlaceAction | InstallAction | RenovateAction): boolean;
+  /**
+   * Every legal play: placements, hand fixtures in each host, and Renovations. `endsWeek` says
+   * which end the week (D-163: a play from Your goods doesn't).
+   */
   legalPlays(state: RunState): (PlaceAction | InstallAction | RenovateAction)[];
   /** The rooms a hand or reserve card could renovate now (empty unless its type is at its limit). */
   renovateTargets(state: RunState, from: RenovateAction['from'], i: number): number[];
@@ -1061,14 +1070,15 @@ export function createRules(content: Content): Rules {
   }
 
   /**
-   * D-160: whether the standing stock tops up this week: each milestone's first from
-   * `fromPhase` on (D-162: from week 1). A first job's first is week `firstJobSlot` of
-   * `firstJobPhase`, and each later milestone's first week after it; one whose phase ends sooner
-   * gets it at the next milestone's start.
+   * D-160: whether the standing stock comes this week: the first week of `fromPhase` (D-162:
+   * week 1; a first job's is week `firstJobSlot` of `firstJobPhase`), then each later
+   * milestone's first with `refill`. Without it (D-163) the stock comes once: a first job that
+   * completed that milestone before its week gets it at the next milestone's first.
    */
   function stockDue(s: RunState): boolean {
     const stock = b.standingStock;
     if (s.overtimeWeek !== 0) return false;
+    if (s.stocked && !stock.refill) return false;
     const [phase, slot] =
       s.setup.mode === 'firstJob'
         ? [stock.firstJobPhase, stock.firstJobSlot]
@@ -1078,9 +1088,10 @@ export function createRules(content: Content): Rules {
   }
 
   /**
-   * D-160: the standing stock tops the reserve's extra slots up to one of each of its pieces. A
-   * piece of that type already waiting in an extra slot (the stock's, or the Landscaper's Fence)
-   * counts, so it only adds what's missing. A strike never touches the reserve.
+   * D-160: the standing stock fills the reserve's extra slots up to one of each of its pieces. A
+   * piece of that type already waiting in an extra slot (the Landscaper's Fence, an arrival's or
+   * the client's card) counts, so it only adds what's missing. A strike never touches the
+   * reserve.
    */
   function restock(s: RunState, events: GameEvent[]): RunState {
     if (!stockDue(s)) return s;
@@ -1091,7 +1102,7 @@ export function createRules(content: Content): Rules {
       if (k >= 0) waiting.splice(k, 1);
       else missing.push(id);
     }
-    return addExtra(s, 'stock', missing, events);
+    return { ...addExtra(s, 'stock', missing, events), stocked: true };
   }
 
   // -------------------------------------------------------------------------------------
@@ -2229,15 +2240,19 @@ export function createRules(content: Content): Rules {
           });
         }
         const check = play ? checkPlay(state, play) : undefined;
-        const fromReserve =
-          (play?.t === 'place' || play?.t === 'renovate') && play.from === 'reserve';
-        if (play && state.freePlay === 'ready') {
-          // Weekend Crew (D-075): this play doesn't end the week. A Renovation can be it (D-083).
+        const fromReserve = !!play && fromGoods(play);
+        if (play && !endsWeek(state, play)) {
+          // D-163: a piece from Your goods goes down at once, and the week goes on. So does
+          // Weekend Crew's next card (D-075), which a Renovation can be (D-083): `free` marks it.
+          const crew = !fromReserve;
           const result = applyPlay(state, play, check);
-          if (result.placed) events.push({ ...result.placed, free: true });
-          if (result.installed) events.push({ ...result.installed, free: true });
-          if (result.renovated) events.push({ ...result.renovated, free: true });
-          let s: RunState = { ...state, house: result.house, freePlay: 'used' };
+          const mark = crew ? { free: true as const } : {};
+          if (result.placed) events.push({ ...result.placed, ...mark });
+          if (result.installed) events.push({ ...result.installed, ...mark });
+          if (result.renovated) events.push({ ...result.renovated, ...mark });
+          let s: RunState = crew
+            ? { ...state, house: result.house, freePlay: 'used' }
+            : { ...state, house: result.house };
           s = fromReserve
             ? { ...s, reserve: s.reserve.filter((_, k) => k !== play.i) }
             : { ...s, hand: s.hand.filter((_, k) => k !== play.i) };
@@ -2252,10 +2267,8 @@ export function createRules(content: Content): Rules {
         if (week.placed) events.push(week.placed);
         if (week.installed) events.push(week.installed);
         if (week.renovated) events.push(week.renovated);
+        // Only a hand card or a pass gets here: a piece from Your goods never ends the week.
         let s = state;
-        if (play && fromReserve) {
-          s = { ...s, reserve: s.reserve.filter((_, k) => k !== play.i) };
-        }
         // M4b: a piece a running restriction forbids breaks it, before the milestone can resolve.
         if (week.placed) {
           const uid = week.placed.uid;
@@ -2627,6 +2640,21 @@ export function createRules(content: Content): Rules {
       if (checkRenovate(state, { t: 'renovate', from, i, uid: p.uid }).legal) out.push(p.uid);
     }
     return out;
+  }
+
+  /**
+   * D-163: a play from Your goods: a reserve piece placed, or renovating with one. It never ends
+   * the week, and it isn't Weekend Crew's next play either.
+   */
+  const fromGoods = (play: PlaceAction | InstallAction | RenovateAction): boolean =>
+    play.t !== 'install' && play.from === 'reserve';
+
+  /**
+   * D-163: whether a play ends the week. A play from Your goods never does, and nor does the
+   * next hand card while Weekend Crew is ready (D-083). Every other play does, as a pass does.
+   */
+  function endsWeek(state: RunState, play: PlaceAction | InstallAction | RenovateAction): boolean {
+    return !fromGoods(play) && state.freePlay !== 'ready';
   }
 
   function legalPlays(state: RunState): (PlaceAction | InstallAction | RenovateAction)[] {
@@ -3052,6 +3080,7 @@ export function createRules(content: Content): Rules {
     legalActions,
     cardFits,
     reserveFits,
+    endsWeek,
     checkPlay,
     preview,
     scoreOnly,

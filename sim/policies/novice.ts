@@ -9,6 +9,7 @@
 // at its limit can renovate (M4a) too, so its Renovations join its options, and a card that
 // can only renovate is a card with a play. It never rerolls, strikes (D-157), passes while a
 // card has a play, uses tools, demolishes, or completes early, and shops like the random bot.
+// A card from Your goods doesn't end its week (D-163), so it picks again after one.
 
 import type {
   Action,

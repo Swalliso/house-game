@@ -61,11 +61,12 @@ describe('a first job’s targets (D-151)', () => {
     const s = rules.newRun(first);
     const plain = rules.newRun(standard);
     // But the standing stock: a standard run's is there from week 1, a first job's comes in
-    // Foundation's third week (D-162, stock.test.ts).
+    // Foundation's third week (D-162, stock.test.ts), once (D-163: `stocked`).
     expect(s.reserve).toEqual([]);
     expect(plain.reserve.length).toBeGreaterThan(0);
     expect(plain.reserve.every((r) => r.stock)).toBe(true);
-    expect({ ...s, setup: plain.setup, reserve: plain.reserve }).toEqual(plain);
+    expect(plain.stocked).toBe(true);
+    expect({ ...s, setup: plain.setup, reserve: plain.reserve, stocked: true }).toEqual(plain);
     // And a week played the same way scores the same.
     const a = rules.apply(s, { t: 'pass' }).state;
     const c = rules.apply(plain, { t: 'pass' }).state;

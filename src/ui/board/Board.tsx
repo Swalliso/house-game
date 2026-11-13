@@ -54,6 +54,7 @@ import {
   packCells,
   packNext,
   packPlay,
+  pendingFree,
   preview,
   renovateUids,
   rotation,
@@ -1134,7 +1135,9 @@ function Ghost({
   // on a line of its own, so neither wraps in the pixel font (labels.css's widest label). A
   // click's own effect is the next tile's label (PackNextLabel).
   const pack = def.pack ? `${cells.length} of ${def.pack.maxTiles} tiles` : null;
-  const then = pending ? 'End week to build' : 'Click to start';
+  // D-163: a piece from Your goods builds with Build, and the week goes on.
+  const free = pendingFree.value;
+  const then = pending ? (free ? 'Free: press Build' : 'End week to build') : 'Click to start';
   const inside = cells.filter((cell) => cell.x >= 0 && cell.y >= 0);
   // M4b: a running restriction this placement would break. It stays legal; it just pays nothing.
   const breaks = legal && p?.breaks ? CONTENT.changeOrders[p.breaks].name : null;
@@ -1147,7 +1150,11 @@ function Ghost({
   const change = p
     ? `${arrow}${formatNumber(Math.abs(p.delta))} ${SCORE_LABELS.total}${cause ? ` · ${cause}` : ''}`
     : '';
-  const after = pack ? ` · ${pack}` : pending ? ' · End week to build' : '';
+  const after = pack
+    ? ` · ${pack}`
+    : pending
+      ? ` · ${free ? 'free: press Build' : 'End week to build'}`
+      : '';
   // A building that would be Sunny there (D-120) says so, with the sun's icon: its ☀ stands in
   // for the icon when the label is measured.
   const sunny = legal && !!p?.sunny;
@@ -1307,7 +1314,11 @@ function RenovateTarget({ scale }: { scale: number }) {
         ? `▼ −${formatNumber(-p.delta)} ${wow}`
         : `±0 ${wow}`;
   const legal = p.legal && !!p.renovates;
-  const then = pending ? ' · End week to renovate' : '';
+  const then = pending
+    ? pendingFree.value
+      ? ' · free: press Build'
+      : ' · End week to renovate'
+    : '';
   const text = legal
     ? `Renovate ${definite(name)} to level ${p.renovates!.level}: ${change}${causeSuffix(p)}${then}`
     : (p.reason ?? 'It can’t be renovated.');
@@ -1367,7 +1378,9 @@ function InstallTarget({ scale }: { scale: number }) {
         : `±0 ${wow}`;
   const replaces = p.replaces ? ` · replaces its ${CONTENT.fixtures[p.replaces].name}` : '';
   const then = pending
-    ? ' · End week to install'
+    ? pendingFree.value
+      ? ' · free: press Build'
+      : ' · End week to install'
     : play.from === 'supplies'
       ? armed
         ? ' · click again to install'

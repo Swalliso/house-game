@@ -558,7 +558,7 @@ describe('opening the link', () => {
     // and the standing stock, which comes to a first job later (D-162).
     const plain = rules.newRun(setup);
     expect(run.value.reserve).toEqual([]);
-    expect({ ...run.value, setup, reserve: plain.reserve }).toEqual(plain);
+    expect({ ...run.value, setup, reserve: plain.reserve, stocked: plain.stocked }).toEqual(plain);
     expect(rules.target(run.value)).toBeLessThan(rules.target(plain));
     forgetFirstVisit();
   });

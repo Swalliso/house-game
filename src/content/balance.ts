@@ -235,14 +235,24 @@ export const BALANCE: Balance = {
   strikesPerMilestone: 1,
 
   // D-160: the standing stock, the pieces a house always needs and the draw holds back early
-  // (D-055 has complexity 3 at 5% in milestone 1 and 25% in milestone 2). Each milestone's first
-  // week tops the reserve's extra slots up to one Hallway and one Fence pack, adding only what's
-  // missing, so the stock never holds two of either. Placing one is the week's build. Both stay
-  // in the weekly draw at their usual weights.
+  // (D-055 has complexity 3 at 5% in milestone 1 and 25% in milestone 2). It fills the reserve's
+  // extra slots up to one Hallway and one Fence pack, adding only what's missing. Both stay in
+  // the weekly draw at their usual weights.
   //
   // D-162: from week 1, so a house can open up from its first rooms. A first job keeps D-160's
   // timing, Foundation's third week: its first three weeks are the guided opening, Foundation's
   // first week brings in Demolish, the budget, overtime and Complete early, and its second
   // Strike (first-job.ts).
-  standingStock: { fromPhase: 0, pieces: ['hallway', 'fence'], firstJobPhase: 1, firstJobSlot: 3 },
+  //
+  // D-163: placing one doesn't use the week, so it comes once (`refill: false`). Topped up at
+  // every milestone (D-160's `refill: true`), the free stock was about two more builds a
+  // milestone: greedy won 85% of the check's runs against develop's 49.5%, with six Hallways a
+  // run. D-169: the batch keeps both, once and from week 1.
+  standingStock: {
+    fromPhase: 0,
+    pieces: ['hallway', 'fence'],
+    firstJobPhase: 1,
+    firstJobSlot: 3,
+    refill: false,
+  },
 };

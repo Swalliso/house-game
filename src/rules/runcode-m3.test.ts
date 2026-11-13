@@ -375,8 +375,10 @@ function playM3Run(): Played {
   act({ t: 'sell', from: 'supplies', i: 0 });
   act({ t: 'leaveShop' });
 
-  // Phase 2, week 1: the bought piece from the reserve is the week's turn.
+  // Phase 2, week 1: the bought piece from the reserve goes down free (D-163), and a pass ends
+  // the week.
   act(firstPlacement('reserve', () => true));
+  act({ t: 'pass' });
 
   // Week 2: free actions, and a fixture card left pending.
   act({ t: 'reroll' });

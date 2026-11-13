@@ -1161,13 +1161,12 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
     reserve: {
       title: 'Reserve',
       text:
-        `Bought pieces wait here (${r.reserveSlots} slots). Placing one is your week’s build, ` +
-        `any week you like. Extra slots hold what your crew, the client and their household ` +
+        `Bought pieces wait here (${r.reserveSlots} slots). Placing one is free: it doesn’t ` +
+        `use your week. Extra slots hold what your crew, the client and their household ` +
         `bring` +
         (b.standingStock.pieces.length > 0
-          ? `, and your stock: ${stockText(content)}` +
-            `${stockFromText(content, 'standard')}, another at each milestone once you’ve ` +
-            `placed one.`
+          ? `, and your stock: ${stockText(content)}${stockFromText(content, 'standard')}` +
+            (b.standingStock.refill ? ', another at each milestone once you’ve placed one.' : '.')
           : '.'),
     },
     supplies: {
@@ -1217,8 +1216,8 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
       text:
         `Once the house has all the rooms of a type its checklist wants (one Kitchen, its ` +
         `Bedrooms, …), a card of that type can renovate one of them in place instead of being ` +
-        `placed, with nothing torn down: +${b.renovate.pointsPerLevel} ${L.points} a level, up ` +
-        `to ${b.renovate.maxLevel}. It’s the week’s build. A card that can shows Renovate.`,
+        `placed: +${b.renovate.pointsPerLevel} ${L.points} a level, up ` +
+        `to ${b.renovate.maxLevel}. From the hand it’s the week’s build. A card that can shows Renovate.`,
     },
     checklist: {
       title: 'The checklist',
@@ -1353,23 +1352,23 @@ export function hintText(content: Content): Record<HintTerm, string> {
     strike:
       `Strike a card: a new one takes its place, its type is gone this run, and the week goes ` +
       `on. ${b.strikesPerMilestone > 0 ? 'Milestones add strikes.' : 'The shop sells more.'}`,
-    // D-160: where the standing stock waits, and that it comes back (25 words with two pieces).
+    // D-160: where the standing stock waits; D-163: that it doesn't use the week (19 words).
     stock: stockHint(content),
   };
 }
 
 /**
- * D-160: the stock's first-time hint, singular or plural by how many pieces it holds. "Until you
- * need them": the sim's novice, which plays a card at random, met Foundation less often when it
- * spent weeks on the stock for its own sake.
+ * D-160: the stock's first-time hint, singular or plural by how many pieces it holds. D-163:
+ * placing one doesn't use the week (21 words); with `refill`, another comes (24).
  */
 function stockHint(content: Content): string {
-  const one = content.balance.standingStock.pieces.length === 1;
+  const { pieces, refill } = content.balance.standingStock;
+  const one = pieces.length === 1;
   const what = stockText(content);
   return (
     `${what.charAt(0).toUpperCase() + what.slice(1)} ${one ? 'waits' : 'wait'} in Your goods, ` +
-    `top right, until you need ${one ? 'it' : 'them'}. ${one ? 'It’s' : 'Each is'} a week’s ` +
-    `build, and another comes next milestone.`
+    `top right, until you need ${one ? 'it' : 'them'}. Placing ${one ? 'it' : 'one'} ` +
+    (refill ? 'is free, and another comes next milestone.' : 'doesn’t use your week.')
   );
 }
 
@@ -1476,7 +1475,7 @@ export function toolText(content: Content, def: ToolDef): string[] {
       ];
     }
     case 'extraPlay':
-      return ['This week’s next build doesn’t end the week: place two pieces this week'];
+      return ['Your next card this week doesn’t end the week: build two from your hand'];
   }
 }
 

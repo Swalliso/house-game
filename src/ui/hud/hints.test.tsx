@@ -204,6 +204,20 @@ describe("the strip's keys for M4's plays", () => {
     expect(strip().find((h) => h.keys[0] === 'Enter')?.words).toBe('end the week');
   });
 
+  it('says build it for a piece from the reserve: it doesn’t use the week (D-163)', () => {
+    run.value = { ...start, screen: 'build', reserve: [{ id: 'bedroom' }] };
+    source.value = 'reserve';
+    selected.value = 0;
+    expect(strip().find((h) => h.keys[0] === 'Enter')?.words).toBe('pass');
+    tentative.value = { t: 'place', from: 'reserve', i: 0, x: 4, y: 4, rot: 0 };
+    expect(strip()).toEqual([
+      { keys: ['R'], words: 'rotate' },
+      { keys: ['Click'], words: 'move it' },
+      { keys: ['Enter'], words: 'build it' },
+      { keys: ['Esc'], words: 'pick it up' },
+    ]);
+  });
+
   it('offers no Enter for a fixture from the supplies: installing it is free', () => {
     run.value = { ...start, screen: 'build', supplies: [{ kind: 'fixture', id: 'fireplace' }] };
     source.value = 'supplies';

@@ -234,6 +234,9 @@ describe('the greedy bot', () => {
         ['bedroom', 2, 3],
       ]),
       hand: (['fence', 'flowerBed', 'lawn'] as const).map((id) => ({ kind: 'piece', id })),
+      // The hand's Fence alone: the standing stock waits from week 1 (D-162), and it's free
+      // (D-163), so greedy would build it first.
+      reserve: [],
     };
     // The rules list the pack's suggested shapes: the upright 1×4 in column 4 closes the yard,
     // and the estimate flags it; ranked near the bottom, it's on the shortlist for its hint.
@@ -492,6 +495,20 @@ describe('the greedy bot', () => {
     }
     expect(struck).toBeGreaterThanOrEqual(1);
   }, 20_000);
+
+  it('builds a piece from Your goods first when it adds, then plays the week (D-163)', () => {
+    // A bought Bedroom in the reserve in week 1: it doesn't use the week, so greedy builds it
+    // first, and the hand's best card is still the week's play.
+    const s: RunState = { ...newRun('goods-0'), reserve: [{ id: 'bedroom' }] };
+    const first = greedy.act(rules, s, stream('goods-0', 'first'));
+    expect(first).toMatchObject({ t: 'place', from: 'reserve', i: 0 });
+    expect(rules.endsWeek(s, first as PlaceAction)).toBe(false);
+    const after = rules.apply(s, first).state;
+    expect(after).toMatchObject({ week: s.week, hand: s.hand, reserve: [] });
+    const second = greedy.act(rules, after, stream('goods-0', 'second'));
+    expect(second).toMatchObject({ t: 'place', from: 'hand' });
+    expect(rules.endsWeek(after, second as PlaceAction)).toBe(true);
+  });
 
   it('labels its variants for reports and keeps one name for their streams', () => {
     expect(POLICIES.greedy).toBe(greedy);

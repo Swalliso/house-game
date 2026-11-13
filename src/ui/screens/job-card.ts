@@ -81,7 +81,7 @@ export function deliveryTip(client: ClientDef): string {
   const lines = (client.deliveries ?? []).map(
     (d) => `${rules.phaseName(d.phase)} (week ${d.phase * W + 1}): ${d.text}`,
   );
-  lines.push('It waits in your reserve, in a slot of its own: placing it is a week’s build.');
+  lines.push('It waits in your reserve, in a slot of its own: placing it doesn’t use a week.');
   return lines.join('\n');
 }
 

@@ -343,7 +343,8 @@ class Checker {
   }
 
   checkPlay(s: RunState, play: PlaceAction | InstallAction | RenovateAction, pass: Tally) {
-    const free = (play.t === 'install' && play.from === 'supplies') || s.freePlay === 'ready';
+    // A supply install, a piece from Your goods (D-163) and Weekend Crew's card don't end the week.
+    const free = (play.t === 'install' && play.from === 'supplies') || !rules.endsWeek(s, play);
     const kind = `${play.t}:${play.from}${s.freePlay === 'ready' ? ':free' : ''}`;
     this.see(`check:preview:${kind}`);
     const p = rules.preview(s, play);
@@ -968,8 +969,8 @@ const COVERAGE: readonly string[] = [
   ...prefixed('event', ['changeOrderAnswered', 'changeOrderResolved']),
   ...prefixed('arrived', ['due', 'forced']),
   ...prefixed('place', ['arrival', 'crew']),
-  // D-160: the standing stock tops up, and its cards and the client's are played.
-  ...prefixed('delivered', ['stock']),
+  // D-160: the standing stock's cards and the client's are played. The stock lands with the
+  // run, once (D-162, D-163), so its `delivered` event is a first job's (stock.test.ts).
   ...prefixed('place', ['client', 'stock']),
 ];
 

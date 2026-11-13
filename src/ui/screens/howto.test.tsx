@@ -131,12 +131,15 @@ describe('How to play', () => {
   it('says the stock is there from the start, and from Foundation in a first job (D-162)', () => {
     open('week');
     const said = () => text(HowToPlayText());
-    expect(said()).toContain('Always in stock: a Hallway and a Fence wait in your reserve');
+    expect(said()).toContain(
+      "Your goods are free: placing a piece from your reserve doesn't use your week. " +
+        'A Hallway and a Fence wait there until you want them.',
+    );
     const before = run.value;
     try {
       run.value = rules.newRun({ ...before.setup, mode: 'firstJob' });
       expect(said()).toContain(
-        'Always in stock: from Foundation on, a Hallway and a Fence wait in your reserve',
+        'From Foundation on, a Hallway and a Fence wait there until you want them.',
       );
     } finally {
       run.value = before;

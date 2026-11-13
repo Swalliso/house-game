@@ -250,6 +250,15 @@ export const hoverCell = signal<Cell | null>(null);
  * tentatively. A pack (D-106) grows here a tile per click.
  */
 export const tentative = signal<PlaceAction | InstallAction | RenovateAction | null>(null);
+/**
+ * D-163: the play waiting doesn't end the week: a piece from Your goods, or Weekend Crew's next
+ * card. End week reads Build then, and builds it at once.
+ */
+export const pendingFree = computed(() => {
+  const play = tentative.value;
+  const s = run.value;
+  return !!play && s.screen === 'build' && !rules.endsWeek(s, play);
+});
 /** A supply install's first click: a second click on the same piece installs it (D-073). */
 export const installArmed = signal<number | null>(null);
 /** The Moving Truck: the piece picked up to move, by uid. */
