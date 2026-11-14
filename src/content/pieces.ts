@@ -788,4 +788,20 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
       { kind: 'neighbor', match: { piece: 'homeOffice' }, amount: 2, max: 1 },
     ],
   },
+  // D-171: the Architect's card, one each milestone from its stock. It's never placed: laid
+  // beside a Bedroom, Kitchen, Living Room or Dining Room it becomes part of that room, as a
+  // card of the room's type would (D-168): four tiles, so +8 Comfort. It earns nothing itself.
+  addition: {
+    id: 'addition',
+    name: 'Addition',
+    tier: 'core',
+    category: 'indoor',
+    addition: true,
+    shape: ['##', '##'],
+    tags: [],
+    drawWeight: 0,
+    complexity: 1,
+    fromPhase: 0,
+    effects: [],
+  },
 };

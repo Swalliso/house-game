@@ -1106,6 +1106,7 @@ const RULE_KEYS: Record<RuleKey, true> = {
   specBonus: true,
   interestMax: true,
   strikes: true,
+  freeInstalls: true,
 };
 
 describe('rule', () => {

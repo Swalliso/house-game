@@ -639,6 +639,11 @@ export function createRules(content: Content): Rules {
     }
     const def = placeDef(state, play);
     if (!def) return { ...NO_PLAY, reason: 'There is no card there.' };
+    // D-171: an Addition is never a room of its own.
+    if (def.addition) {
+      const rooms = selectorText(content, { piece: [...b.extend.types] }, 'one');
+      return { ...NO_PLAY, reason: `An Addition grows a room: lay it beside ${article(rooms)}.` };
+    }
     // D-165: a house holds one Kitchen; another Kitchen card extends it where it can grow
     // (D-168), and renovates it otherwise (D-169).
     if (capReached(state, def)) {
@@ -757,9 +762,20 @@ export function createRules(content: Content): Rules {
   /** D-168: the room types a card can extend, by root type. */
   const extendable: ReadonlySet<PieceId> = new Set(b.extend.types);
 
-  /** D-168: a room card that could extend a room: an extendable type, and not a member's card. */
+  /**
+   * D-168: a room card that could extend a room: an extendable type, and not a member's card.
+   * D-171: or the Addition, which extends a room of any extendable type.
+   */
   function extendsAny(def: PieceDef | null): def is PieceDef {
-    return !!def && !def.member && isRoom(def) && extendable.has(rootType(def));
+    if (!def) return false;
+    return !!def.addition || (!def.member && isRoom(def) && extendable.has(rootType(def)));
+  }
+
+  /** D-168, D-171: whether this card extends a room of that type. */
+  function extendsType(card: PieceDef, room: PieceDef): boolean {
+    return card.addition
+      ? isRoom(room) && extendable.has(rootType(room))
+      : isType(room, rootType(card));
   }
 
   /**
@@ -785,9 +801,16 @@ export function createRules(content: Content): Rules {
     const target = Number.isInteger(play.uid) ? layout.byUid.get(play.uid) : undefined;
     if (!target) return { ...NO_PLAY, reason: 'Pick a room to extend.' };
     const targetDef = content.pieces[target.defId];
-    if (!isType(targetDef, root)) {
-      const rooms = selectorText(content, { piece: root }, 'one');
-      return { ...NO_PLAY, reason: `${card} card extends ${article(rooms)}.` };
+    if (!extendsType(def, targetDef)) {
+      const rooms = selectorText(
+        content,
+        { piece: def.addition ? [...b.extend.types] : root },
+        'one',
+      );
+      return {
+        ...NO_PLAY,
+        reason: `${card} ${def.addition ? '' : 'card '}extends ${article(rooms)}.`,
+      };
     }
     if ((target.extended ?? 0) >= b.extend.maxPerRoom) {
       // "That Kitchen", but "Grandma’s Room": a possessive name takes no determiner.
@@ -1246,19 +1269,24 @@ export function createRules(content: Content): Rules {
       }
       s = deliver(s, events);
     }
-    return restock(s, events);
+    return crewTool(crewStock(restock(s, events), events), events);
   }
 
-  /** Cards into the reserve's extra slots, marked by where they came from (D-160). */
+  /** Cards into the reserve's extra slots, marked by where they came from (D-160, D-171). */
   function addExtra(
     s: RunState,
-    from: 'client' | 'stock',
+    from: 'client' | 'stock' | 'crew',
     cards: readonly PieceId[],
     events: GameEvent[],
   ): RunState {
     if (cards.length === 0) return s;
     events.push({ t: 'delivered', from, phase: s.phase, cards: [...cards] });
-    const mark = from === 'client' ? { client: true as const } : { stock: true as const };
+    const mark =
+      from === 'client'
+        ? { client: true as const }
+        : from === 'crew'
+          ? { crew: true as const }
+          : { stock: true as const };
     return { ...s, reserve: [...s.reserve, ...cards.map((id): ReservePiece => ({ id, ...mark }))] };
   }
 
@@ -1300,6 +1328,64 @@ export function createRules(content: Content): Rules {
    * the client's card) counts, so it only adds what's missing. A strike never touches the
    * reserve.
    */
+  /**
+   * D-171: a crew's stock in the order it comes this run: drawn once from `crew/stock`, every
+   * card before any comes again.
+   */
+  function crewStockOrder(seed: string, pool: readonly PieceId[]): PieceId[] {
+    const rng = stream(seed, 'crew/stock');
+    const left = [...pool];
+    const order: PieceId[] = [];
+    while (left.length > 0) order.push(...left.splice(rng.int(left.length), 1));
+    return order;
+  }
+
+  /**
+   * D-171: the week the crew's own card and the standing stock's first cards come is the same;
+   * after it the crew's comes at each milestone's first week, whether or not the standing stock
+   * refills.
+   */
+  function crewStockDue(s: RunState): boolean {
+    const stock = b.standingStock;
+    if (s.overtimeWeek !== 0) return false;
+    const [phase, slot] =
+      s.setup.mode === 'firstJob'
+        ? [stock.firstJobPhase, stock.firstJobSlot]
+        : [stock.fromPhase, 1];
+    if (s.phase < phase) return false;
+    return s.slot === (s.phase === phase ? slot : 1);
+  }
+
+  /**
+   * D-171: the crew's own card (CrewDef.stock): one into the reserve's extra slots when it's
+   * due, the milestone's in the run's order, unless one of the crew's still waits there.
+   */
+  function crewStock(s: RunState, events: GameEvent[]): RunState {
+    const pool = content.crews[s.setup.crewId].stock;
+    if (!pool || pool.length === 0 || !crewStockDue(s)) return s;
+    if (s.reserve.some((r) => r.crew)) return s;
+    const order = crewStockOrder(s.setup.seed, pool);
+    return addExtra(s, 'crew', [order[s.phase % order.length]!], events);
+  }
+
+  /**
+   * D-171: the crew's tool (CrewDef.orderTool), in the first week of each milestone that
+   * follows a change order. Into the supplies, or sold at once when they're full (payReward's
+   * rule for a reward's tool).
+   */
+  function crewTool(s: RunState, events: GameEvent[]): RunState {
+    const tool = content.crews[s.setup.crewId].orderTool;
+    if (!tool || s.overtimeWeek !== 0 || s.slot !== 1) return s;
+    if (!b.changeOrderAfter.includes(s.phase)) return s;
+    if (s.supplies.length < slotsFor(content, s).supplies) {
+      events.push({ t: 'crewTool', tool, phase: s.phase });
+      return { ...s, supplies: [...s.supplies, { kind: 'tool', id: tool }] };
+    }
+    const sold = sellPrice(content, s, content.tools[tool].price);
+    events.push({ t: 'crewTool', tool, phase: s.phase, sold });
+    return { ...s, budget: s.budget + sold, budgetEarned: s.budgetEarned + sold };
+  }
+
   function restock(s: RunState, events: GameEvent[]): RunState {
     if (!stockDue(s)) return s;
     const waiting = s.reserve.filter(inExtraSlot).map((r) => r.id);
@@ -2461,7 +2547,8 @@ export function createRules(content: Content): Rules {
           // D-163: a piece from Your goods goes down at once, and the week goes on: placed,
           // renovating, or extending a room (D-168, D-169). So does Weekend Crew's next card
           // (D-075), which a Renovation (D-083) or an extension can be: `free` marks it.
-          const crew = !fromReserve;
+          // D-171: the Handyman's install isn't Weekend Crew's card: that stays ready.
+          const crew = !fromReserve && !freeInstall(state, play);
           const result = applyPlay(state, play, check);
           const mark = crew ? { free: true as const } : {};
           if (result.placed) events.push({ ...result.placed, ...mark });
@@ -2662,7 +2749,8 @@ export function createRules(content: Content): Rules {
   ): void {
     if (state.screen !== 'build') return;
     const def = placeDef(state, { t: 'place', from, i, x: 0, y: 0, rot: 0 });
-    if (!def || capReached(state, def)) return;
+    // D-171: an Addition has no spot of its own.
+    if (!def || def.addition || capReached(state, def)) return;
     const { width, height } = state.house.lot;
     for (const ps of placementShapes(def)) {
       const { w, h } = bounds(ps.cells);
@@ -2870,11 +2958,16 @@ export function createRules(content: Content): Rules {
     play.t !== 'install' && play.from === 'reserve';
 
   /**
-   * D-163: whether a play ends the week. A play from Your goods never does, and nor does the
-   * next hand card while Weekend Crew is ready (D-083). Every other play does, as a pass does.
+   * D-163: whether a play ends the week. A play from Your goods never does, nor does the next
+   * hand card while Weekend Crew is ready (D-083), nor (D-171) a fixture from the hand under
+   * `freeInstalls`. Every other play does, as a pass does.
    */
+  /** D-171: a fixture from the hand under `freeInstalls` (the Handyman): the week goes on. */
+  const freeInstall = (state: RunState, play: NonNullable<Play>): boolean =>
+    play.t === 'install' && play.from === 'hand' && rule(state, 'freeInstalls') > 0;
+
   function endsWeek(state: RunState, play: NonNullable<Play>): boolean {
-    return !fromGoods(play) && state.freePlay !== 'ready';
+    return !fromGoods(play) && !freeInstall(state, play) && state.freePlay !== 'ready';
   }
 
   /** D-168: extension spots by state, then by card and room. */
@@ -2900,7 +2993,7 @@ export function createRules(content: Content): Rules {
     const root = rootType(def);
     for (const room of state.house.pieces) {
       if (uid !== undefined && room.uid !== uid) continue;
-      if (!isType(content.pieces[room.defId], root)) continue;
+      if (!extendsType(def, content.pieces[room.defId])) continue;
       if ((room.extended ?? 0) >= b.extend.maxPerRoom) continue;
       const roomCells = layout.cells.get(room.uid)!;
       const own = new Set(roomCells.map((c) => cellIndex(w, c.x, c.y)));

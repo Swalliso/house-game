@@ -99,12 +99,14 @@ export function supplyIcon(s: Supply): IconName {
  * menu, and its card's picture on the crew pick, at 4 UI px per art px. The General Contractor
  * wears the crew's hard hat, as the Weekend Crew and the company upgrades do; the hammer is
  * Demolish's. The Landscaper's spade stands for every yard piece; the leaf is the Green tag's,
- * which most yard pieces don't carry, and the sack is the Fertilizer's.
+ * which most yard pieces don't carry, and the sack is the Fertilizer's. The Handyman (D-171)
+ * carries a toolbox.
  */
 export const CREW_ICONS: Record<CrewId, IconName> = {
   generalContractor: 'weekendCrew',
   landscaper: 'landscaper',
   architect: 'architect',
+  handyman: 'handyman',
 };
 
 /**

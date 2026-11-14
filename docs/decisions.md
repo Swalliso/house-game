@@ -91,6 +91,7 @@ You run a home-building company. Each run is one contract: one client, one plot 
 **Status:** Accepted · 2026-11-04
 **Decision:** At the start of a run the player picks a builder or crew with its own strengths and focus (the equivalent of Combolands' guilds).
 *2026-11-11 (D-149, Proposed):* a browser's first job starts with the General Contractor, with no crew pick; the pick comes with the second run.
+*Proposed change by D-171 (2026-11-13, awaiting the user's OK):* a fourth crew, the Handyman, and each crew gets a free build of its own on top of the standing stock: a Weekend Crew with each change order (the General Contractor), a yard piece each milestone (the Landscaper), an Addition each milestone (the Architect), and fixtures from the hand without ending the week (the Handyman).
 
 ### D-013 · Shop between milestones
 **Status:** Accepted · 2026-11-04
@@ -211,6 +212,7 @@ With these rules, where to put the house becomes the run's first big decision.
 **Changes:** D-004 (Accepted): a week's turn can be an install instead of a placement. A week never gets a second piece. `jam-scope.md`: Fixtures move from Stretch into the jam build.
 **2026-11-06 (D-095, Proposed):** Garden Lights in a Sapling vanished when it became a Tree, since a Tree is a lot feature, not a piece. A piece that becomes a lot feature now can't hold a fixture. How a fixture leaves is unchanged.
 *Proposed change by D-172 (2026-11-13, awaiting the user's OK):* three fixtures leave rooms out. The Fireplace no longer fits a Bathroom, Closet, Garage or Mudroom, and Blackout Curtains and the Bay Window no longer fit a Bathroom, Closet or Garage. Their cards read "Fits most rooms".
+*Proposed change by D-171 (2026-11-13, awaiting the user's OK):* with the Handyman as the crew, installing a drawn fixture doesn't end the week (`freeInstalls`); for every other crew it's still the week's turn.
 
 ### D-051 · The shop: five kinds of goods
 **Status:** Accepted · 2026-11-05 (confirmed by the team)
@@ -795,6 +797,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **2026-11-06 (systems review):** if the team chooses the review's Renovate, this entry needs to say whether a Renovation can be Weekend Crew's next play. The sim allowed it (`house-systems-review.md` §8).
 **2026-11-06 (D-102, settled by the team):** a Renovation can be Weekend Crew's next play, as the sim had it. It goes down at once and the week goes on.
 *Changed by D-163 (2026-11-12; Accepted 2026-11-13, playtest 8):* a piece from the reserve never ends the week now, so Weekend Crew's next play is the week's next card from the hand: a piece, a drawn fixture or a Renovation. A reserve piece placed while it's ready doesn't use it up. A bought piece no longer needs it, and its price stays 5 for the playtest (D-163's Weekend Crew).
+*Proposed change by D-171 (2026-11-13, awaiting the user's OK):* the General Contractor brings a Weekend Crew at the start of the third, fifth and seventh milestones, into the supplies (sold at once when they're full). The shop still sells it.
 
 ### D-084 · Striking card types: a shop service
 **Status:** Accepted · 2026-11-05 (the team chose it for M3, resolving D-076). Prices are placeholders.
@@ -1912,6 +1915,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - **Not played by a person.** Bots only; whether the first job now feels winnable is the playtest's.
 - **The company's record and bests** don't tell a first job from a standard run: a first job's verdict, read against its lower targets, can be a best.
 - **The release drops runs in progress**, as any content change does (#54's check needs the same content hash).
+*Proposed change by D-171 (2026-11-13, awaiting the user's OK):* `firstTargetPct` is 57. On D-171's targets, with the General Contractor's Weekend Crews from the third milestone, 60% left the casual bot winning 25.3% of first jobs (400 runs); at 57% it wins 29.3%, and the first job's targets are Groundbreaking 22, Foundation 454, Roofing 6,426 and the last 54,873.
 
 ### D-031 · Client rarity tiers
 **Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: built in M4a (below) and played since playtest 4. Was Proposed.
@@ -2026,6 +2030,7 @@ Choose from two or three contracts, each one a client plus a lot.
 **Why:** the plan's M4b, D-103, and the sim's needs. The last-phase rule is new: without it, the offer after milestone 6 paid budget at the end of the run.
 **Changes:** jam-scope.md's change orders (the Twins and Grandma's moving in are arrivals now, D-103). Appendix A · M4b's skip rules (free space isn't checked).
 *Changed by D-121 (Proposed 2026-11-09):* the Landscaper also draws a third Layout card every week.
+*Proposed change by D-171 (2026-11-13, awaiting the user's OK):* the Landscaper's starting Sapling and Fence give way to a yard piece from its own stock each milestone, and the four crews are fitted again with their own free builds.
 
 ### D-110 · M4's screens in the pixel UI
 **Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: played in playtests 4 to 6 with no issues raised. Proposed 2026-11-08, with the M4 pull request, after it merged `develop` (M5a). Implementation details within D-098 and D-109; for playtest 4.
@@ -3905,6 +3910,7 @@ What the columns mean:
 - **The art was checked on two run codes,** at 1× and 2× in a headless Chrome (a grown Bedroom, two grown Living Rooms and a Kitchen, and a Dining Room's ghost), not every type, color and outline. An odd outline (a Kitchen grown by an L-Kitchen card into a zigzag) can leave a piece of furniture out; nothing overlaps. The browser pane was hidden, so the pane pass checked the DOM: the chip, the first hint, the hint bar and Inspect. Sounds weren't heard.
 - **Shapes:** extensions mostly stick out, and the glance test falls 4 points in wins. If houses look sprawling in play, an extension could be asked to fill a notch (share 3 or more tiles of wall, or touch two rooms).
 - **D-165** (#78) makes a capped card unplaceable: it renovates, and its line says "One per house: another renovates it." With this, that card extends where it can and renovates only where it can't, so the line would be "another extends or renovates it". Both pull requests touch `run.ts`'s Renovate checks, the Renovate texts, How to Play and `testing.ts`; whichever merges second keeps both rules.
+*Proposed change by D-171 (2026-11-13, awaiting the user's OK):* the Architect's Addition extends a room of any of the four types by its own four tiles; it's a card that is never placed.
 
 ### D-169 · The batch build: D-162 to D-168 in one branch, their overlaps settled, and one re-fit
 **Status:** Accepted · 2026-11-13, the user's playtest verdict (playtest 8: two runs of the batch on /dev/, build 193f13c): "difficulty targets still feel good to me. there were times where I wasn't sure if I was going to be able to complete things on time or not." They played at D-170's five weeks; these four-week targets are fitted by the same method and stand again now that D-170 is Parked, not yet played by the user. Its changes to Accepted entries, written here and on those entries as proposed, are accepted with it. Proposed 2026-11-12, a phase pull request (`phase/batch-build`), from the 2026-11-12 gap analysis's plan. The seven pull requests of the batch (#76 to #80, #82, #83) each merged cleanly with develop alone but not with each other, and together they made the game far easier, so the user gets one branch to merge and play on /dev/, with the targets re-fitted. Merging it merges the seven: GitHub marks #76 to #83 as merged. It changes the content hash (`79662776` on develop → `698c254c`), so runs in progress drop when it merges and at the next release. For the user's playtest; D-162 to D-168 stay Proposed until then.
@@ -4015,10 +4021,119 @@ What the columns mean:
 - **The first job's figure is one bot on one lot,** 400 runs an arm. Whether a newcomer finds it winnable is the playtest's.
 - **Runs in progress drop** when this merges into develop, and at the next release (the content hash changes).
 - **The verification round didn't look at:** touch, Firefox, Safari, 2× screens or narrow windows; the shop and its first-job staging, a milestone's screen, overtime, change orders or the end screen; a capped card's Extend or Renovate, an extension from Your goods, or Weekend Crew's two builds on screen (tests only); a first job's stock in Foundation's third week and its top-ups (tests only); the stock's first-time hint and the reserve's glossary entry with the top-ups (tests only); a client's card in Your goods (Dale, the Barkers); or sound.
+*Proposed change by D-171 (2026-11-13, awaiting the user's OK):* with each crew's own free build the targets from Framing on rise 12 to 15% (3,750, 10,200, 24,400, 46,100 and 87,100); the first two and each client's factor stand. Greedy wins 47.0% on `check-*` and 44.9% on `hold-*`.
 
 ## Proposed
 
-*Reserved numbers (2026-11-10): D-115 to D-118 are the layout session's drafts, not in this file yet; D-122 (legibility) is logged below. D-132 to D-134 are playtest 5's fixes, each logged by its own pull request: D-132 one reroll for both rows of the draw, D-133 the roof view, D-134 three more tracks. D-135 and D-136 are M6's end screen (D-135 the result line and link preview, D-136 the milestone photos); D-137 and D-138 belong to the release-day sessions. D-139 is the company's record. D-140 to D-146 are the friction batch, from the 2026-11-10 review's seven points: D-140 the Garage and the Driveway, D-141 what a blueprint is worth and its icon, D-142 first contact, D-143 the blueprint shelf, D-144 change orders two at a time, D-145 the lot and the last stretch, and D-146 the batch's one re-fit. D-147 takes the roof out again (the user's call, logged under Accepted). D-148 is the first-timer legibility batch before the showing, from the 2026-11-10 polish review (logged below). D-149 is the first job, from the first showing (2026-11-11, logged below). D-150 is the end screen's lead into the next run, from the evening's what-next survey (`fix/retry-after-loss`, logged below). D-151 is the first job's gentler targets (`phase/first-job-targets`, logged under Accepted). D-152 to D-157 are the 2026-11-11 playtest's: D-152 Copy run code on the end screen's plank (fix/playtest-6-bugs, logged below), D-153 Full House's progress on its set chip (fix/full-house-progress, logged below), D-154 the week cue, D-155 life on the lot and D-156 your houses on the street (each logged by its own pull request), and D-157 strikes from the hand (`phase/strike-from-hand`, logged below). D-158 to D-160 answer an outside playtester's notes (2026-11-12): D-158 the tutorial fixes (`phase/tutorial-fixes`, logged below), D-159 fences that join and Hallways that open into each other (`fix/fences-and-halls-join`, logged below), and D-160 pieces you can count on (`phase/pieces-you-can-count-on`, logged below). D-161 makes the bots cheaper on D-160's Fence (`fix/greedy-fence-packs`, logged below). D-162 to D-168 are the core-loop batch from the 2026-11-12 gap analysis, each logged by its own pull request: D-162 the standing stock from week 1 (`phase/stock-from-week-1`), D-163 Your goods are free (`phase/goods-builds-free`), D-164 yard sets (`phase/yard-sets`), D-165 house rules on the rooms (`phase/rules-on-rooms`), D-166 the lot decides (`phase/the-lot`), D-167 the text diet (`phase/text-diet`) and D-168 Extend a room (`phase/extend-a-room`), all logged below. D-169 builds the seven in one branch (`phase/batch-build`, logged below), and D-170 is five weeks a milestone (`phase/five-week-milestones`). D-171 is held for crews that change what's free. New entries start at D-172.*
+*Reserved numbers (2026-11-10): D-115 to D-118 are the layout session's drafts, not in this file yet; D-122 (legibility) is logged below. D-132 to D-134 are playtest 5's fixes, each logged by its own pull request: D-132 one reroll for both rows of the draw, D-133 the roof view, D-134 three more tracks. D-135 and D-136 are M6's end screen (D-135 the result line and link preview, D-136 the milestone photos); D-137 and D-138 belong to the release-day sessions. D-139 is the company's record. D-140 to D-146 are the friction batch, from the 2026-11-10 review's seven points: D-140 the Garage and the Driveway, D-141 what a blueprint is worth and its icon, D-142 first contact, D-143 the blueprint shelf, D-144 change orders two at a time, D-145 the lot and the last stretch, and D-146 the batch's one re-fit. D-147 takes the roof out again (the user's call, logged under Accepted). D-148 is the first-timer legibility batch before the showing, from the 2026-11-10 polish review (logged below). D-149 is the first job, from the first showing (2026-11-11, logged below). D-150 is the end screen's lead into the next run, from the evening's what-next survey (`fix/retry-after-loss`, logged below). D-151 is the first job's gentler targets (`phase/first-job-targets`, logged under Accepted). D-152 to D-157 are the 2026-11-11 playtest's: D-152 Copy run code on the end screen's plank (fix/playtest-6-bugs, logged below), D-153 Full House's progress on its set chip (fix/full-house-progress, logged below), D-154 the week cue, D-155 life on the lot and D-156 your houses on the street (each logged by its own pull request), and D-157 strikes from the hand (`phase/strike-from-hand`, logged below). D-158 to D-160 answer an outside playtester's notes (2026-11-12): D-158 the tutorial fixes (`phase/tutorial-fixes`, logged below), D-159 fences that join and Hallways that open into each other (`fix/fences-and-halls-join`, logged below), and D-160 pieces you can count on (`phase/pieces-you-can-count-on`, logged below). D-161 makes the bots cheaper on D-160's Fence (`fix/greedy-fence-packs`, logged below). D-162 to D-168 are the core-loop batch from the 2026-11-12 gap analysis, each logged by its own pull request: D-162 the standing stock from week 1 (`phase/stock-from-week-1`), D-163 Your goods are free (`phase/goods-builds-free`), D-164 yard sets (`phase/yard-sets`), D-165 house rules on the rooms (`phase/rules-on-rooms`), D-166 the lot decides (`phase/the-lot`), D-167 the text diet (`phase/text-diet`) and D-168 Extend a room (`phase/extend-a-room`), all logged below. D-169 builds the seven in one branch (`phase/batch-build`, logged below), and D-170 is five weeks a milestone (`phase/five-week-milestones`). D-171 is each crew's own free build (`phase/crews-free`) and D-172 fixtures where they make sense (`fix/fixtures-where-they-fit`), both logged below. D-173 and D-174 are logged by their own pull requests (#86 and #87). New entries start at D-175.*
+
+### D-171 · Each crew's own free build: a Weekend Crew, a yard piece, an Addition, and the Handyman
+**Status:** Proposed · 2026-11-13, a phase pull request (`phase/crews-free`), stacked on D-172's (#89), for the user's playtest. The user, 2026-11-12: "I also like the sound of having crews change what's free, as currently I think we don't have as much variety in that aspect as I'd like to see." Playtest 8 (2026-11-13) then settled the stock: "I think the free hallway and fence every milestone works pretty well and helps give the structure a more house-like shape." So each crew adds to the stock and none takes from it. Asked to pick from Stage 1's table (below), the user chose "One crew card a milestone" over "Bigger: two a milestone" and "Leave crews as they are", and "Yes, add the Handyman". It changes Accepted D-012, D-050, D-083, D-109 and D-168, and the numbers of D-151 and D-169: proposed changes awaiting the user's OK, with a dated note on each. A rules and content change: `contentHash(CONTENT)` goes from `6478ddb5` (D-172) to `2827829b`, so runs in progress drop when it merges.
+**Decision:**
+- **Every crew keeps the stock** (D-160, D-169): a Hallway and a Fence from week 1, topped up at each milestone. Each crew adds one free build of its own kind:
+
+| Crew | Its own | When | What else it keeps |
+|---|---|---|---|
+| General Contractor | A Weekend Crew (D-083): the next card that week doesn't end it, so two cards from the hand go down in one week | The first week of each milestone that follows a change order: the third, fifth and seventh | One extra reroll every phase |
+| Landscaper | A yard piece in Your goods: a Lawn, Flower Bed, Patio, Herb Garden, Treehouse, Greenhouse, Doghouse or Sapling | Week 1, then each milestone's first week | Yard pieces +50%; a third Layout card every week. Its starting Sapling and Fence are gone: this takes their place |
+| Architect | An Addition in Your goods | Week 1, then each milestone's first week | Special pieces in the draw; sets +10% |
+| Handyman (new) | Fixtures from the hand go in without ending the week | Every week | Nothing else |
+
+- **A crew's card comes when the standing stock does, one at a time** (`CrewDef.stock`): week 1 of a standard run and each later milestone's first week, never in overtime; in a first job from Foundation's third week, with the stock. None comes while one of the crew's still waits in Your goods, so they can't pile up. It sits in the reserve's extra slots after the stock's cards, marked as the crew's, and is free to build like everything there (D-163).
+- **The Landscaper's eight come in an order drawn once a run** (the `crew/stock` stream), every piece before any comes again: seven milestones, so a run never sees one twice.
+- **The Addition** (`addition` in `src/content/pieces.ts`, `PieceDef.addition`) is a card that is never placed. Laid beside a Bedroom, Kitchen, Living Room or Dining Room (D-168's four types; a variant or a member's room by its type), sharing two tiles of wall, it becomes part of that room: four tiles, so +8 Comfort, once a room. It isn't a room (`isRoom` is false for it), earns nothing itself, and is never drawn, sold, struck, or in the shop, a crate, or the Catalog. Its card: "+8 to the room it grows". Its picture is a bare room.
+- **The General Contractor's Weekend Crew** (`CrewDef.orderTool`) goes into the supplies at the start of the milestones in `changeOrderAfter` (after milestones 2, 4 and 6), whether or not a change order was on offer. With the supplies full it's sold at once for half its price, as a reward's tool is (D-049). It's the tool the shop sells, used the same way and any week; the crew's own icon was already its hard hat.
+- **The Handyman's rule** is one key, `freeInstalls`: above 0, installing a fixture from the hand doesn't end the week (`endsWeek`), and isn't Weekend Crew's card either. A fixture from the supplies was already free (D-050).
+- **On screen:**
+  - The crew pick takes four crews in one row. Each card leads with what the crew brings, in pictures (the Landscaper's eight yard pieces, the Architect's Addition, the General Contractor's Weekend Crew), under "Each milestone" or "With each change order"; the numbers ("All run") follow. The Handyman's icon is a toolbox, our own drawing.
+  - In Your goods a crew's card carries the "Crew" tag, and its note is the stock's in as many words (16): "From your crew, in an extra slot, not one of your reserve's. Another comes each milestone."
+  - An Addition picked from Your goods outlines the rooms it can grow, and Inspect reads "Extend one: point at an outlined room (+8 Comfort)." Laid on open ground it says "An Addition grows a room: lay it beside a Bedroom, Kitchen, Living Room, or Dining Room."
+  - A neutral flash names the Weekend Crew as it arrives ("Your crew brought a Weekend Crew"), or says it was sold.
+  - A Handyman's fixture from the hand reads "free: press Build" on the board and "From your hand: installing it is free, so the week goes on." in Inspect, as a free build does everywhere (D-163).
+- **Words:** the Landscaper's blurb is 21 words (22 before) and the Architect's 14 (14); the General Contractor's names its second perk in 13 (7); the Handyman's is 10. No new tooltip, panel or first-time hint: the stock's hint ("Free to place") covers a crew's card.
+- **The first job** keeps the General Contractor. Its first Weekend Crew comes at the third milestone, long after the guided opening, and `firstTargetPct` is 57 (below).
+
+**Stage 1, the sim** (greedy, 600 runs an arm on `check-0` to `check-599`, every client in turn, the four-week targets of D-169 before any re-fit; a prototype in a scratch copy, which played the same as the build with its switches off):
+
+| Crew | Rule | Wins | Builds a run |
+|---|---|---|---|
+| General Contractor | today | 47.7% | 35.2 |
+| Landscaper | today | 46.3% | 36.9 |
+| Architect | today | 44.5% | 34.9 |
+| **General Contractor** | **two cards in one week at the third, fifth and seventh milestones** | **56.7%** | 37.9 |
+| **Landscaper** | **a yard piece each milestone** (5.5 of 7 played) | **60.3%** | 42.1 |
+| **Architect** | **an Addition each milestone** (3.8 of 7 played) | **57.7%** | 40.2 |
+| **Handyman** | **fixtures from the hand are free** (10.5 a run) | **61.0%** | 38.8 |
+| Landscaper | the first yard piece each week is free | 90.8% | 61.1 |
+| Landscaper | … without its +50% | 86.7% | 60.5 |
+| Landscaper | … without its third Layout card | 87.7% | 59.0 |
+| Landscaper | two yard pieces each milestone | 71.2% | 47.2 |
+| General Contractor | a small room each milestone (a Closet, Bathroom or Home Office) | 80.2% | 42.9 |
+| General Contractor | a Bathroom each milestone | 67.8% | 42.7 |
+| General Contractor | a Closet each milestone | 60.3% | 41.8 |
+| General Contractor | a Closet, Porch, Driveway, Long Hallway or Garage each milestone | 67.2% | 41.2 |
+| General Contractor | two cards in one week, every milestone's first week | 73.2% | 42.5 |
+| General Contractor | … every milestone's last week | 71.5% | 42.5 |
+| General Contractor | … the first, third, fifth and seventh milestones | 66.8% | 39.9 |
+| General Contractor | … the second, fourth and sixth milestones | 55.8% | 38.5 |
+| Architect | extending from the hand is free | 53.0% | 38.2 |
+| Architect | … and an Addition each milestone | 59.0% | 40.7 |
+| Architect | an Addition that grows any room | 57.0% | 40.5 |
+| Architect | two of those each milestone | 62.5% | 42.7 |
+| Handyman | free installs and a shop 20% cheaper | 67.0% | 39.9 |
+| Handyman | a fixture in the supplies each milestone, nothing else | 50.2% | 35.8 |
+
+  - **A free build every week can't be balanced against the other crews:** the Landscaper's nearly doubles its builds and wins nine runs in ten, with or without its other perks.
+  - **A free room is worth about twice a free yard piece or Addition,** so every per-milestone card tried for the General Contractor overshoots. A Closet each milestone matches on average and swings by client (Juniper 39.2%, the Hendersons 72.5%: her room limit). Three double-builds a run land beside the other crews, and a week-1 double is worth much more than a later one.
+  - **The Architect has a ceiling:** a room grows once and four types grow, so free extensions on top of the Addition add 1.3 points, and an Addition that grows any room adds none.
+  - **The picked set sits within 4.3 points** (56.7 to 61.0%), from 3.2 today.
+
+**The fit** (D-169's method: 2,000 untargeted greedy runs on `sim-*` with the four crews and the five clients in turn, then 2,000 each of `check-*` and `hold-*` on the fitted targets):
+- **Targets:** 35, 720, 3,750, 10,200, 24,400, 46,100, 87,100 Wow (D-169: 35, 720, 3,250, 9,100, 21,500, 40,900, 76,700). The first two stand; from Framing on they rise 12 to 15%, about what greedy's median rose (72,450 at the end, from 62,156).
+- **Each client's `targetPct` stands:** the Hendersons 110, Count Vladislav 80, the Barkers 90, Juniper 75, Dale 140. The fit returned D-169's.
+- **The first fit is the one kept.** Its goals were the base goals plus the gaps D-169 had measured between the fit's estimate and play (99.9, 96.7, 89.4, 74.8, 63.1 and 49.4% at milestones 2 to 7), and played survival came out on the base goals (100, 98, 95, 85, 72, 58, 45%):
+  - `check-*`: 100, 99.8, 95.0, 86.2, 72.3, 59.9 and **47.0%** [44.9–49.2].
+  - `hold-*` (no fit saw it): 100, 99.6, 95.0, 86.0, 70.3, 58.2 and **44.9%** [42.7–47.0].
+  - D-169's second step (the base goals plus this fit's own gaps, and each client's own step) was run and not kept. It moved Foundation's goal from 99.9% to 98.1% and its target from 720 to 1,150, where an overtime week rescues less than the estimate says, so played survival fell under the goals early (94.7 and 92.5% at milestones 2 and 3 on `check-*`) and to 44.5% and 42.0% at the end.
+- **The crews:** on `check-*` the General Contractor 41.8%, the Landscaper 49.2%, the Architect 49.8% and the Handyman 47.4% (8.0 points); on `hold-*` 39.4, 44.2, 45.4 and 50.4% (11.0). **The General Contractor is greedy's weakest crew, by about six points.** The bot never uses its other perk (0.1 rerolls a run), and 12% of its Weekend Crews are sold on arrival, because the bot holds tools for a milestone's last week and its supplies are full. A fourth Weekend Crew in week 1 would add about ten points (Stage 1: 66.8 against 56.7%); it isn't built, since a week-1 double would land in a first job's guided opening. A number to turn after playing.
+- **The clients:** on `check-*` the Hendersons 47.3%, Count Vladislav 44.3%, the Barkers 46.0%, Juniper 51.2% and Dale 46.5% (7.0 points); on `hold-*` 45.3, 39.0, 48.0, 48.5 and 43.5% (9.5).
+- **The crews' cards in play** (`check-*`): the Landscaper plays 5.3 of its yard pieces a run and builds 38.7 pieces (32.6 for the General Contractor); the Architect plays 3.8 Additions and extends 4.1 rooms a run.
+- **`npm run sim -- --check`** (200 runs, the General Contractor): greedy clears milestones 1 to 3 in 94.0% and wins **45.0%** [38.3–51.9], which passes (unsure); D-169's build read 53.0% there and failed. Novice 99.5%, random 100%, fences, and the clients' spread (10.0 points) pass. Early completion still fails, unsure: always 31.5% against never 45.0% (−13.5 points; −14.5 on D-169).
+- **For a player:** the Hendersons' third milestone is 4,125 Wow (3,575 before) and their last 95,810 (84,370). The last is 69,680 for Count Vladislav, 78,390 for the Barkers, 65,325 for Juniper and 121,940 for Dale.
+- **The first job's `firstTargetPct` is 57** (60 before). The casual bot (the guided opening, then greedy's play half the time; the Hendersons with the General Contractor on the first job's lot, 400 runs an arm):
+
+| `firstTargetPct` | Roofing | Drywall | Finishes | Wins |
+|---|---|---|---|---|
+| 64 | 82.8% | 57.5% | 36.5% | 20.5% |
+| 62 | 86.5% | 60.8% | 39.5% | 22.8% |
+| 60 | 87.0% | 64.8% | 42.5% | 25.3% |
+| 58 | 89.3% | 68.5% | 46.0% | 26.5% |
+| **57** | 90.3% | 70.3% | 49.8% | **29.3%** |
+| 56 | 91.5% | 72.3% | 51.3% | 31.5% |
+
+  D-151's aim is about 28%. The first job's targets are Groundbreaking 22, Foundation 454, Roofing 6,426 and the last 54,873 (D-169: 23, 475, 6,006 and 50,622).
+
+**Why:**
+- The crews changed what you draw and what pays, and only the Landscaper's two starting cards changed what you could build. A card in Your goods each milestone is the mechanic the user had just played and liked, so it needs nothing new to learn: the third card is the crew's.
+- Each crew's card is its trade: the Landscaper's yard, the Architect's bigger rooms (the user: "extend feels worthwhile and reads as one bigger room"), the General Contractor's extra hands when the plans change, the Handyman's fittings.
+- One card a milestone adds three to five builds a run. The user found five weeks a milestone "a bit on the long side"; the bigger set (two a milestone) adds seven to ten, about what the fifth week did.
+
+**Considered:**
+- *The specialty free every week* (the first idea: the Landscaper's Layout card as a free build). Measured, and out: see the table.
+- *Two a milestone* (a double-build every milestone, two yard pieces, two Additions that grow any room): 73.2, 71.2 and 62.5%. It needs the Addition to grow a Bathroom or Closet, which needs room art it doesn't have, and it lengthens the run. For after D-173, if the user wants more.
+- *A room card for the General Contractor,* the same shape as the other crews' cards. Too strong at every size tried, or uneven by client.
+- *Taking the stock from some crews* (the Architect alone keeps the Hallway), as a brake on corridors. The sim's corridors were the bot's habit: the user found the stock made houses more house-like, so every crew keeps it.
+- *A Weekend Crew as a rule* (the milestone's first week builds two) instead of a tool. A tool can be held for the week it's needed, uses the screens it already has, and keeps a first job's opening untouched.
+- *The Handyman with a cheaper shop or more fixtures in the draw* (the brainstorm's version). Free installs alone already match the other crews.
+
+**Changes:** D-012 (Accepted): a fourth crew, and each crew's own free build. D-109 (Accepted): the Landscaper's starting Sapling and Fence give way to its stock; the crews' numbers are fitted again. D-083 (Accepted): the General Contractor brings a Weekend Crew three times a run. D-050 (Accepted): under the Handyman a fixture from the hand doesn't end the week. D-168 (Accepted): an Addition extends a room of any of the four types. D-169 (Accepted): the targets from Framing on. D-151 (Accepted): `firstTargetPct` 57. Dated notes on each. `implementation-plan.md` (the reserve, `CrewDef`, the events, Appendix A's crews line and Appendix B's table), `content-brainstorm.md` (the Handyman).
+
+**Checked:** `npm test` (2,327 tests; `src/content/crews-free.test.ts` holds the new rules, and the chaos bot now reaches a crew's card arriving, the tool arriving, a free install and an Addition growing a room), `npm run typecheck`, `npm run format:check`. One round in the dev build (the pane at 1600×900 and 1280×720, driven through the store): the crew pick with four cards in one row; an Architect's week 1 with the Addition in Your goods, the Bedroom outlined once built, Inspect's line, and the Bedroom grown to 2×4 in the same week; the General Contractor's flash and the Weekend Crew in the supplies at the third milestone's first week; a Handyman's Bay Window installed from the hand with the week still open. No console errors.
+
+**Known gaps:**
+- Not looked at: the Landscaper's card on screen (tests hold it), a first job, the Weekend Crew sold with the supplies full on screen, touch, Firefox, Safari, 2× screens, sound.
+- A late Addition can wait unused once every room that can grow has grown (the bot plays 3.8 of 7). Letting it grow other room types needs room art for a bigger Bathroom or Closet.
+- **The sim's benchmark gate still fails, by less:** 1,334 to 1,354 ms on this branch against 1,425 to 1,482 ms on develop, the same machine (limit 1 s). D-169 named D-161's technique on the Hallway as the likely fix. Profiling says otherwise: 62% of a run is exact scoring, the reserve's Hallway is 60 ms of 1,296, and the cost is scoring the whole shortlist again after every free build. This pull request takes the one exact saving found: greedy scores its free plays first, and the week's plays only when no free play is taken (the same picks; 40 runs gave identical records; 12 to 14% faster). Passing 1 s needs faster exact scoring, or a gate that counts time per action now that a run has about 40 builds where it had 28 when the limit was set. That changes §4's criterion, so it's the user's call; CI's `sim` job reports the gate without blocking.
 
 ### D-172 · Fixtures go where they make sense: no Fireplace in a Bathroom
 **Status:** Proposed · 2026-11-13, a fix pull request (`fix/fixtures-where-they-fit`), from playtest 8. The user: "I think we also need to look at some of the fixtures (like fireplace) to make sure we can't apply them to places that are non-sensical (e.g. the bathroom)." Left unmerged for their look at the list below. A content change: `contentHash(CONTENT)` goes from `698c254c` to `6478ddb5`, so runs in progress drop when it merges.

@@ -94,9 +94,12 @@ describe('special pieces', () => {
   it('are the 6 weight-0 pieces: never in the weekly draw, all in the shop and the Catalog', () => {
     // Member rooms (M4b) are weight 0 too, but arrive with the household (households.test.ts).
     // The Sunroom left them for the weekly draw (D-120), then the Birdhouse and the Fire Pit
-    // (D-145).
+    // (D-145). The Addition (D-171) is weight 0 as well: the Architect's stock is its only way in.
     const weightless = (Object.keys(CONTENT.pieces) as PieceId[]).filter(
-      (id) => CONTENT.pieces[id].drawWeight === 0 && !CONTENT.pieces[id].member,
+      (id) =>
+        CONTENT.pieces[id].drawWeight === 0 &&
+        !CONTENT.pieces[id].member &&
+        !CONTENT.pieces[id].addition,
     );
     expect(weightless.sort()).toEqual([...SPECIAL].sort());
     for (let phase = 0; phase < CONTENT.balance.phases.length; phase++) {

@@ -16,6 +16,7 @@
 //
 // A piece from Your goods doesn't end the week (D-163): the best such play goes down first when
 // it raises the week's total, and the week's play comes after it, from the same shortlist.
+// The free plays are scored first, and the week's plays only once no free play is taken (D-171).
 // When even the best placement wouldn't raise this week's total, it rerolls if it can, and
 // passes rather than lose score. A reroll redraws both rows (D-132). It never demolishes. Its
 // options (makeGreedy) set when it completes a milestone early ('never' by default; 'always'
@@ -235,23 +236,34 @@ export function makeGreedy(opts: GreedyOptions = {}): Policy {
         );
       }
       const passTotal = rules.scoreOnly(state, null);
-      // D-163: a piece from Your goods doesn't end the week. The shortlist is scored once, and
-      // the best such play goes down first if it adds to this week's total; then the week's.
-      let best: NonNullable<Play>[] = [];
-      let bestTotal = -Infinity;
+      // D-163: a piece from Your goods doesn't end the week: the best such play goes down first
+      // if it adds to this week's total; then the week's. D-171: the free plays are scored first,
+      // and the week's plays only when no free play is taken. The next call scores those again on
+      // the house as it then stands, so scoring them here as well was work thrown away (most of
+      // a week with free builds in it). The same plays in the same order, so the same picks.
+      const candidates = [...shortlist(rules, state, plays, salt), ...exact];
+      const weekEnding: NonNullable<Play>[] = [];
       let free: NonNullable<Play>[] = [];
       let freeTotal = -Infinity;
-      for (const play of [...shortlist(rules, state, plays, salt), ...exact]) {
+      for (const play of candidates) {
+        if (rules.endsWeek(state, play)) {
+          weekEnding.push(play);
+          continue;
+        }
         const total = rules.scoreOnly(state, play);
-        if (!rules.endsWeek(state, play)) {
-          if (total > freeTotal) [freeTotal, free] = [total, [play]];
-          else if (total === freeTotal) free.push(play);
-        } else if (total > bestTotal) {
+        if (total > freeTotal) [freeTotal, free] = [total, [play]];
+        else if (total === freeTotal) free.push(play);
+      }
+      if (free.length > 0 && freeTotal > passTotal) return rng.pick(free);
+      let best: NonNullable<Play>[] = [];
+      let bestTotal = -Infinity;
+      for (const play of weekEnding) {
+        const total = rules.scoreOnly(state, play);
+        if (total > bestTotal) {
           bestTotal = total;
           best = [play];
         } else if (total === bestTotal) best.push(play);
       }
-      if (free.length > 0 && freeTotal > passTotal) return rng.pick(free);
       if (best.length === 0 || bestTotal <= passTotal) {
         if (rules.canReroll(state).ok) return { t: 'reroll' };
         if (best.length === 0 || bestTotal < passTotal) return { t: 'pass' };

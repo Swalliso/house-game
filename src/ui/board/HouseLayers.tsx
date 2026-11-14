@@ -756,6 +756,13 @@ export function pieceArtPlan(
   /** A pack's own tiles (D-106), when they aren't the card's shape. */
   shape?: readonly string[],
 ): PieceArtPlan {
+  // D-171: an Addition is never built as a piece of its own (it becomes part of the room it
+  // grows), so its card shows a bare room on the hall's floor: walls, and nothing in it yet.
+  if (CONTENT.pieces[defId].addition) {
+    const model = pieceModel('hallway', rot, look, shape ?? CONTENT.pieces[defId].shape);
+    const frame = { x: 0, y: 0, w: model.width * CELL, h: model.height * CELL };
+    return { frame, paint: (a: AtlasPixels) => paintPiece(model, a, []) };
+  }
   if (isIndoor(defId)) {
     const model = pieceModel(defId, rot, look, shape);
     const frame = { x: 0, y: 0, w: model.width * CELL, h: model.height * CELL };

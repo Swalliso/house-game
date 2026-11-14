@@ -212,9 +212,12 @@ export function grownTiles(content: Content, piece: PlacedPiece): number {
   return Math.max(0, tiles(piece.shape) - tiles(pieceDef(content, piece).shape));
 }
 
-/** A room is an indoor piece that isn't a connector. */
+/**
+ * A room is an indoor piece that isn't a connector, nor D-171's Addition, which is never a piece
+ * on the lot: it becomes part of the room it extends.
+ */
 export function isRoom(def: PieceDef): boolean {
-  return def.category === 'indoor' && !def.connector;
+  return def.category === 'indoor' && !def.connector && !def.addition;
 }
 
 /**

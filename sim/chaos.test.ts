@@ -73,7 +73,7 @@ interface Seed {
 }
 
 const CLIENTS: readonly ClientId[] = ['hendersons', 'vladislav', 'barkers', 'juniper', 'dale'];
-const CREWS: readonly CrewId[] = ['generalContractor', 'landscaper', 'architect'];
+const CREWS: readonly CrewId[] = ['generalContractor', 'landscaper', 'architect', 'handyman'];
 
 /** Runs with cheats (most reach the end), and one without (it plays on to a loss). */
 const SEEDS: readonly Seed[] = [
@@ -264,7 +264,17 @@ class Checker {
         else stocked.push({ id, stock: true });
       }
     }
-    if (J(s.reserve) !== J([...start, ...brought, ...stocked])) {
+    // D-171: then the crew's own card, one from its stock, the week the standing stock comes.
+    const own = CONTENT.crews[s.setup.crewId].stock ?? [];
+    const crewCard = s.setup.mode === 'standard' && stock.fromPhase === 0 && own.length > 0;
+    const fixed = [...start, ...brought, ...stocked];
+    const last = s.reserve[fixed.length];
+    if (
+      J(s.reserve.slice(0, fixed.length)) !== J(fixed) ||
+      s.reserve.length !== fixed.length + (crewCard ? 1 : 0) ||
+      (crewCard &&
+        !(last?.crew && own.includes(last.id) && J(last) === J({ id: last.id, crew: true })))
+    ) {
       this.fail(
         'the crew’s, the client’s and the stock’s first cards aren’t in the reserve',
         s.reserve,
@@ -879,6 +889,11 @@ class Checker {
     if (a.t === 'debug') this.see(`debug:${a.op}`);
     if (a.t === 'place' || a.t === 'install' || a.t === 'sell') this.see(`${a.t}:${a.from}`);
     if ((a.t === 'place' || a.t === 'install') && s.freePlay === 'ready') this.see('play:free');
+    // D-171: the Handyman's fixture from the hand, and the Architect's Addition.
+    if (a.t === 'install' && a.from === 'hand' && !rules.endsWeek(s, a)) this.see('install:free');
+    if (a.t === 'extend' && a.from === 'reserve' && s.reserve[a.i]?.id === 'addition') {
+      this.see('extend:addition');
+    }
     if (a.t === 'place' && a.from === 'reserve') {
       // M4b: a member's room (D-103) or a crew's starting card, from the extra slots; D-160:
       // what the client brought, or the standing stock.
@@ -974,6 +989,12 @@ const COVERAGE: readonly string[] = [
   // run (D-162), and D-169's top-ups at each later milestone are `delivered` events.
   ...prefixed('place', ['client', 'stock']),
   ...prefixed('delivered', ['stock']),
+  // D-171: a crew's own card comes at a later milestone, the General Contractor's tool comes,
+  // the Handyman installs from the hand without ending the week, and an Addition grows a room.
+  ...prefixed('delivered', ['crew']),
+  ...prefixed('event', ['crewTool']),
+  ...prefixed('install', ['free']),
+  ...prefixed('extend', ['addition']),
 ];
 
 /** The kinds of check that must each have run. */

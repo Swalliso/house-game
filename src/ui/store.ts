@@ -496,11 +496,15 @@ export const activePlay = computed<Play>(() => {
   return place;
 });
 
-/** D-168: whether a card of this piece could grow a room of that one (its type, extendable). */
+/**
+ * D-168: whether a card of this piece could grow a room of that one (its type, extendable).
+ * D-171: an Addition grows a room of any extendable type.
+ */
 function growsType(card: PieceId, room: PieceId): boolean {
   const def = CONTENT.pieces[card];
   const root = def.countsAs ?? def.id;
   const r = CONTENT.pieces[room];
+  if (def.addition) return CONTENT.balance.extend.types.includes(r.countsAs ?? r.id);
   return (
     !def.member &&
     def.category === 'indoor' &&

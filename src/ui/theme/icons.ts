@@ -792,6 +792,17 @@ export const ICONS = {
     kjwwwjjk
     kkkkkkkk
   `,
+  /** The Handyman (D-171): a toolbox, its latch in gold. */
+  handyman: `
+    ..kkkk..
+    ..k..k..
+    kkkkkkkk
+    kynnnnNk
+    kkkyykkk
+    knnnnnNk
+    knnnnNNk
+    kkkkkkkk
+  `,
   // --- Kinds of goods (12×12): the shop's art slots, until each good has its own sprite -------
   /** A blueprint: a house drawn on blue paper. */
   blueprint: `

@@ -199,6 +199,8 @@ describe('a compact hand card (D-121)', () => {
       henhouse: ['+1 budget every 2nd week'],
       birdhouse: ['+1 per touching Tree (up to 3)'],
       porch: ['+25% to touching rooms'],
+      // D-171: the Architect's card, which only ever waits in Your goods.
+      addition: ['+8 to the room it grows'],
     });
     // Each leads with its number (D-148), so a line cut short still shows what the card pays.
     for (const p of pieces) {

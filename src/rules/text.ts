@@ -516,7 +516,22 @@ export function memberText(content: Content, def: PieceDef): string {
   return `A household member’s room: it counts as ${bedroom}.`;
 }
 
+/**
+ * D-171: the Addition's one line, on its card and in the hand's short form: what it grows and
+ * what the room gains (D-168's `extend.pointsPerTile` for each of its tiles).
+ */
+export function additionLine(content: Content, def: PieceDef): string {
+  return `${signed(growGain(content, def))} to the room it grows`;
+}
+
 export function cardText(content: Content, def: PieceDef): CardText {
+  if (def.addition) {
+    const rooms = extendTypesText(content);
+    return {
+      effects: [additionLine(content, def)],
+      notes: [`${rooms}, once a room. It becomes part of the room.`],
+    };
+  }
   const effects = def.effects.map((e) => {
     const text = effectText(content, e);
     // A room must join the house too, which "Must be built touching …" leaves out (playtest 4:
@@ -759,7 +774,10 @@ function timesText(n: number): string {
  */
 export function growGain(content: Content, def: PieceDef): number {
   const root = def.countsAs ?? def.id;
-  if (def.member || def.category !== 'indoor' || !content.balance.extend.types.includes(root)) {
+  if (
+    !def.addition &&
+    (def.member || def.category !== 'indoor' || !content.balance.extend.types.includes(root))
+  ) {
     return 0;
   }
   const tiles = def.shape.reduce((n, row) => n + row.split('#').length - 1, 0);
@@ -773,6 +791,7 @@ export function handCardLines(content: Content, card: Card): string[] {
     return [fixtureText(content, def).fits, ...(first ? [handModifierText(content, first)] : [])];
   }
   const def = content.pieces[card.id];
+  if (def.addition) return [additionLine(content, def)];
   const i = def.effects.findIndex(pays);
   if (i < 0) return cardText(content, def).effects.slice(0, 1);
   const pay = def.effects[i]!;
@@ -961,6 +980,7 @@ const RULE_TEXT: Record<RuleKey, (n: number) => string> = {
     `Each spec met adds ${n < 0 ? '−' : '+'}${multNumber(Math.abs(n))} more ${SCORE_LABELS.mult}`,
   interestMax: (n) => `At each milestone, +1 budget per 5 you hold (up to ${signed(n)})`,
   strikes: (n) => `${signed(n)} ${n === 1 ? 'strike' : 'strikes'}`,
+  freeInstalls: () => 'Fixtures from your hand don’t use your week',
 };
 
 /** A modifier as a sentence. Fixture modifiers target their host, so they read as "it". */

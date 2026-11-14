@@ -63,8 +63,17 @@
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  grid-template-columns: repeat(3, round(down, calc((100% - 2 * var(--jobs-gap)) / 3), var(--px)));
+  /* Three contracts; the crews set --jobs-cols to their count (four since D-171). */
+  --jobs-cols: 3;
+  grid-template-columns: repeat(var(--jobs-cols), minmax(0, 1fr));
+  grid-template-columns: repeat(
+    var(--jobs-cols),
+    round(
+      down,
+      calc((100% - (var(--jobs-cols) - 1) * var(--jobs-gap)) / var(--jobs-cols)),
+      var(--px)
+    )
+  );
   grid-template-rows: minmax(0, 1fr);
   gap: var(--jobs-gap);
   margin: 0;

@@ -524,6 +524,17 @@ export const TEST_PIECES: Record<PieceId, PieceDef> = {
     drawWeight: 0,
     effects: [{ kind: 'steady', amount: 3 }],
   }),
+  // D-171: it only extends a room; no crew here has it in its stock (crew-stock.test.ts adds it).
+  addition: piece({
+    id: 'addition',
+    name: 'Addition',
+    category: 'indoor',
+    addition: true,
+    shape: ['##', '##'],
+    tags: [],
+    drawWeight: 0,
+    effects: [],
+  }),
 };
 
 const HOST = { host: true } as const;
@@ -728,6 +739,14 @@ export const TEST_CREWS: Record<CrewId, CrewDef> = {
       { kind: 'drawWeight', target: { piece: ['playroom', 'library', 'mudroom', 'pool'] }, add: 5 },
       { kind: 'setBonus', pct: 50 },
     ],
+  },
+  // D-171: fixtures from the hand go in without ending the week.
+  handyman: {
+    id: 'handyman',
+    name: 'Handyman',
+    tier: 'core',
+    blurb: 'Fixtures from the hand are free to install.',
+    modifiers: [{ kind: 'rule', key: 'freeInstalls', add: 1 }],
   },
 };
 
@@ -979,6 +998,7 @@ export const TEST_BALANCE: Balance = {
     interestMax: 0,
     // D-157: none, so legalActions and the bots' runs here are as before; strike tests add some.
     strikes: 0,
+    freeInstalls: 0,
   },
   early: { budgetPerWeek: [2], scorePct: [10] },
   milestoneBudget: 3,
