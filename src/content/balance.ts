@@ -56,22 +56,21 @@ export const BALANCE: Balance = {
   // D-018's seven milestones. The targets are written by `npm run sim -- --suggest-targets`
   // (D-044): α × the greedy bot's median cumulative Wow at each milestone. Keep the markers.
   // sim:targets:start
-  // From `npm run sim -- --suggest-targets --runs 2000 --crew all` (D-072, D-089) on the batch
-  // with the stock topped up at each milestone (D-169), then set against played runs (D-146): α
-  // × the greedy bot's median cumulative Wow at each milestone on seeds sim-*. The fit's estimate
+  // From `npm run sim -- --suggest-targets --runs 2000 --crew all` (D-072, D-089) with each
+  // crew's own free build and the Handyman (D-171), then set against played runs (D-146): α ×
+  // the greedy bot's median cumulative Wow at each milestone on seeds sim-*. The fit's estimate
   // overstates what an overtime week rescues (in play the next shop hasn't opened yet), so α sits
   // where greedy's played survival follows 100%, 98%, 95%, 85%, 72%, 58%, 45%: on 2,000 runs of
-  // check-* it was 100, 99.7, 96.1, 86.0, 73.3, 58.8 and 45.9%, and 44.3% won on 2,000 runs no
-  // fit had seen (hold-*). Each client's targetPct scales these, and was set against played runs
-  // the same way (D-169).
+  // check-* it was 100, 99.8, 95.0, 86.2, 72.3, 59.9 and 47.0%, and 44.9% won on 2,000 runs no
+  // fit had seen (hold-*). Each client's targetPct scales these: D-169's factors still fit.
   phases: [
-    { name: 'Groundbreaking', target: 35 }, // median 166, α 0.21
-    { name: 'Foundation', target: 720 }, // median 1248, α 0.58
-    { name: 'Framing', target: 3250 }, // median 4410, α 0.74
-    { name: 'Roofing', target: 9100 }, // median 10073, α 0.90
-    { name: 'Drywall', target: 21500 }, // median 20643, α 1.04
-    { name: 'Finishes', target: 40900 }, // median 36319, α 1.13
-    { name: 'Final Walkthrough', target: 76700 }, // median 62156, α 1.23
+    { name: 'Groundbreaking', target: 35 }, // median 182, α 0.19
+    { name: 'Foundation', target: 720 }, // median 1365, α 0.53
+    { name: 'Framing', target: 3750 }, // median 5012, α 0.75
+    { name: 'Roofing', target: 10200 }, // median 11209, α 0.91
+    { name: 'Drywall', target: 24400 }, // median 23374, α 1.04
+    { name: 'Finishes', target: 46100 }, // median 41729, α 1.10
+    { name: 'Final Walkthrough', target: 87100 }, // median 72450, α 1.20
   ],
   // sim:targets:end
 
@@ -231,8 +230,8 @@ export const BALANCE: Balance = {
   // lots, 348 have no creek and deal the Hendersons a Bedroom, then a Bathroom, then a Closet or
   // a second Bedroom in weeks 1 to 3. This one has no trait, a first hand with neither a Bathroom
   // nor a Closet to play out of order, and the same four hands wherever the three go: a Suite by
-  // week 3 in 300 of 300 random placements, 58 to 82 Wow against Groundbreaking's 39 (23 at a
-  // first job's targets; D-169). With those three weeks played as the guide says, a bot that
+  // week 3 in 300 of 300 random placements, 58 to 82 Wow against Groundbreaking's 39 (22 at a
+  // first job's targets; D-171). With those three weeks played as the guide says, a bot that
   // then picks a random card met Foundation in 19 of 24 runs and Framing in 14 on D-149's
   // targets (12% and 5% on any lot, unguided). src/ui/hud/first-job.test.ts holds the hands, so
   // a change to the draw says to pick again.
@@ -241,16 +240,18 @@ export const BALANCE: Balance = {
   // guided opening gets a newcomer through Framing, but the 2026-11-11 survey's casual bot
   // (greedy's move half the time) then met Roofing 52% and Drywall 20% of the time on this lot
   // and won 3%. At 73% it won 28% (D-151). On D-169's targets, fitted with the stock topped up
-  // at each milestone, 66% left it 18% (400 runs), so it's 60%: the Hendersons' 110% of the
-  // curve is 66%, and the bot meets Roofing 92% and Drywall 71% of the time and wins 28% (400
-  // runs). Milestone 2 alone at 450 only moved the wall. A percent of the client's own, so
+  // at each milestone, 66% left it 18% (400 runs), so it was 60% (28%). On D-171's targets,
+  // with the General Contractor's Weekend Crews from the third milestone, 60% left it 25% (400
+  // runs), so it's 57%: the Hendersons' 110% of the curve is 63%, and the bot meets Roofing 90%
+  // and Drywall 70% of the time and wins 29% (400 runs). Milestone 2 alone at 450 only moved
+  // the wall. A percent of the client's own, so
   // every client keeps its place in the order.
   jobBoard: {
     contracts: 3,
     rarity: { common: 65, uncommon: 27, rare: 8 },
     firstClient: 'hendersons',
     firstSeed: 'oh-4243',
-    firstTargetPct: 60,
+    firstTargetPct: 57,
   },
 
   // Change orders (M4b; jam-scope.md, implementation-plan.md §7): one is offered after each of
