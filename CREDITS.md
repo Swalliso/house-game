@@ -36,6 +36,11 @@ Open House is a game jam entry for the theme "It's a house," built with Claude C
   the street's sedans, are Modern Exteriors cuts from its animated sheets; the neighbors walking
   the sidewalk are Modern Interiors' premade characters. The title's car drives the lot's street
   too. LimeZu's art, cut and credited as above.
+- **The autumn woods and the dry lot** (D-174, `art/limezu/biomes.json`): the lot's grass,
+  woods, trees, rocks, shore and the garden around it, recolored from our cuts of Modern
+  Exteriors to LimeZu's own autumn and olive colorways of its Camping trees (their pixel twins,
+  muted as our greens are) and to grass that matches. LimeZu's art, cut, edited as its licenses
+  allow, and credited as above.
 - **Rooms in more than one arrangement** (D-173, `art/limezu/interiors.json`): the wardrobes,
   nightlamps, desks, bookcases, televisions, side-on sofas, piano, fish tank, cuckoo clock,
   pictures, hutch, round and cloth-covered tables, plants, rugs, mats and clothes rails that give

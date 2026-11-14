@@ -55,7 +55,7 @@ export const BLUEPRINTS: Readonly<Record<BlueprintId, BlueprintDef>> = {
     { kind: 'earn', target: { tag: 'Social' }, pct: 50 },
   ]),
   waterfront: blueprint('waterfront', 'Waterfront', 'common', [
-    { kind: 'earn', target: { touching: { feature: ['pond', 'creek'] } }, pct: 100 },
+    { kind: 'earn', target: { touching: { feature: ['pond', 'creek', 'lake'] } }, pct: 100 },
   ]),
 
   // Uncommon: structure, terrain, and economy.

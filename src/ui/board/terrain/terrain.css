@@ -63,6 +63,13 @@
   background-attachment: local;
   image-rendering: pixelated;
 }
+/* D-174: the garden in the lot's biome (art/limezu/biomes.json). */
+.center .board-scroll.look-autumn {
+  background-image: url('../../../../assets/limezu/grass-outside-autumn.png');
+}
+.center .board-scroll.look-dry {
+  background-image: url('../../../../assets/limezu/grass-outside-dry.png');
+}
 .board-scroll > .board {
   box-shadow: none;
 }

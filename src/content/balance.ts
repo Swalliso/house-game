@@ -44,11 +44,22 @@ export const BALANCE: Balance = {
     findStreetGap: 4,
     // D-166: most lots are shaped toward a trait once they pass their checks. Rocky has 14–22
     // Boulders (a plain lot 6–10), Open only its lone Trees, a pond lot a pond of 14–20 tiles
-    // (a plain one 4–9). With the creek and the woods' own Wooded, about one lot in five is
-    // plain, and most carry one trait or two.
-    kinds: { plain: 35, rocky: 25, open: 20, pond: 20 },
+    // (a plain one 4–9). With the creek and the woods' own Wooded, about one meadow lot in five
+    // is plain, and most carry one trait or two.
+    // D-174: a run's lot comes from a biome, its look and its family of kinds. The meadow is
+    // D-166's lots and today's look, and the first job's. The lakeside deals a lake along the
+    // back, a big pond, or a creek through the middle; the autumn woods grow more woods (most of
+    // its lots are Wooded), and some keep every Tree (Old Woods); a dry lot is Rocky or Open,
+    // and seldom has a creek.
+    biomes: {
+      meadow: { weight: 40, kinds: { plain: 35, rocky: 25, open: 20, pond: 20 } },
+      lakeside: { weight: 20, kinds: { lake: 40, pond: 30, split: 30 } },
+      autumn: { weight: 20, kinds: { plain: 60, oldWoods: 40 }, woodsClusters: [4, 5] },
+      dry: { weight: 20, kinds: { rocky: 50, open: 50 }, creekPct: 10 },
+    },
     rockyBoulders: [8, 12],
     pondTiles: [14, 20],
+    lakeRows: [2, 5],
   },
 
   weeksPerPhase: 4, // D-042
@@ -56,21 +67,22 @@ export const BALANCE: Balance = {
   // D-018's seven milestones. The targets are written by `npm run sim -- --suggest-targets`
   // (D-044): α × the greedy bot's median cumulative Wow at each milestone. Keep the markers.
   // sim:targets:start
-  // From `npm run sim -- --suggest-targets --runs 2000 --crew all` (D-072, D-089) with each
-  // crew's own free build and the Handyman (D-171), then set against played runs (D-146): α ×
-  // the greedy bot's median cumulative Wow at each milestone on seeds sim-*. The fit's estimate
-  // overstates what an overtime week rescues (in play the next shop hasn't opened yet), so α sits
-  // where greedy's played survival follows 100%, 98%, 95%, 85%, 72%, 58%, 45%: on 2,000 runs of
-  // check-* it was 100, 99.8, 95.0, 86.2, 72.3, 59.9 and 47.0%, and 44.9% won on 2,000 runs no
-  // fit had seen (hold-*). Each client's targetPct scales these: D-169's factors still fit.
+  // From `npm run sim -- --suggest-targets --runs 2000 --crew all` (D-072, D-089) with the
+  // biomes' lots and Creekside at +100% (D-174), on D-171's crews, then set against played runs
+  // (D-146): α × the greedy bot's median cumulative Wow at each milestone on seeds sim-*. The
+  // fit's estimate overstates what an overtime week rescues (in play the next shop hasn't opened
+  // yet), so α sits where greedy's played survival follows 100%, 98%, 95%, 85%, 72%, 58%, 45%: on
+  // 2,000 runs of check-* it was 100, 99.5, 94.5, 86.2, 71.8, 59.9 and 46.4%, and 48.0% won on
+  // 2,000 runs no fit had seen (hold-*). Each client's targetPct scales these, D-169's factors
+  // held: the fit's own (120, 75, 95, 70, 140) played the clients 17 points apart.
   phases: [
-    { name: 'Groundbreaking', target: 35 }, // median 182, α 0.19
-    { name: 'Foundation', target: 720 }, // median 1365, α 0.53
-    { name: 'Framing', target: 3750 }, // median 5012, α 0.75
-    { name: 'Roofing', target: 10200 }, // median 11209, α 0.91
-    { name: 'Drywall', target: 24400 }, // median 23374, α 1.04
-    { name: 'Finishes', target: 46100 }, // median 41729, α 1.10
-    { name: 'Final Walkthrough', target: 87100 }, // median 72450, α 1.20
+    { name: 'Groundbreaking', target: 40 }, // median 208, α 0.19
+    { name: 'Foundation', target: 800 }, // median 1513, α 0.53
+    { name: 'Framing', target: 3850 }, // median 5209, α 0.74
+    { name: 'Roofing', target: 10700 }, // median 11736, α 0.91
+    { name: 'Drywall', target: 25100 }, // median 24252, α 1.03
+    { name: 'Finishes', target: 47800 }, // median 42380, α 1.13
+    { name: 'Final Walkthrough', target: 91300 }, // median 74315, α 1.23
   ],
   // sim:targets:end
 
@@ -230,8 +242,8 @@ export const BALANCE: Balance = {
   // lots, 348 have no creek and deal the Hendersons a Bedroom, then a Bathroom, then a Closet or
   // a second Bedroom in weeks 1 to 3. This one has no trait, a first hand with neither a Bathroom
   // nor a Closet to play out of order, and the same four hands wherever the three go: a Suite by
-  // week 3 in 300 of 300 random placements, 58 to 82 Wow against Groundbreaking's 39 (22 at a
-  // first job's targets; D-171). With those three weeks played as the guide says, a bot that
+  // week 3 in 300 of 300 random placements, 58 to 82 Wow against Groundbreaking's 44 (24 at a
+  // first job's targets; D-174). With those three weeks played as the guide says, a bot that
   // then picks a random card met Foundation in 19 of 24 runs and Framing in 14 on D-149's
   // targets (12% and 5% on any lot, unguided). src/ui/hud/first-job.test.ts holds the hands, so
   // a change to the draw says to pick again.
@@ -242,16 +254,17 @@ export const BALANCE: Balance = {
   // and won 3%. At 73% it won 28% (D-151). On D-169's targets, fitted with the stock topped up
   // at each milestone, 66% left it 18% (400 runs), so it was 60% (28%). On D-171's targets,
   // with the General Contractor's Weekend Crews from the third milestone, 60% left it 25% (400
-  // runs), so it's 57%: the Hendersons' 110% of the curve is 63%, and the bot meets Roofing 90%
-  // and Drywall 70% of the time and wins 29% (400 runs). Milestone 2 alone at 450 only moved
-  // the wall. A percent of the client's own, so
-  // every client keeps its place in the order.
+  // runs), so it was 57% (29%). On D-174's targets, fitted again with the biomes' lots, 57% left
+  // it 26.8% and 53% 33.5%, so it's 55%: the Hendersons' 110% of the curve is 61%, and the bot
+  // meets Roofing 90% and Drywall 70% of the time and wins 28% (400 runs). Milestone 2 alone at
+  // 450 only moved the wall. A percent of the client's own, so every client keeps its place in
+  // the order.
   jobBoard: {
     contracts: 3,
     rarity: { common: 65, uncommon: 27, rare: 8 },
     firstClient: 'hendersons',
     firstSeed: 'oh-4243',
-    firstTargetPct: 57,
+    firstTargetPct: 55,
   },
 
   // Change orders (M4b; jam-scope.md, implementation-plan.md §7): one is offered after each of

@@ -30,14 +30,23 @@ const start = () =>
 describe('lot traits (D-166)', () => {
   it('each pays all run, tilts the draw, and says so in eight words or fewer', () => {
     const ids = Object.keys(CONTENT.lotTraits);
-    expect(ids).toEqual(['creekside', 'pondside', 'wooded', 'rocky', 'open']);
+    expect(ids).toEqual([
+      'creekside',
+      'pondside',
+      'wooded',
+      'rocky',
+      'open',
+      'lakefront',
+      'oldWoods',
+    ]);
     for (const def of Object.values(CONTENT.lotTraits)) {
       expect(
         def.modifiers.some((m) => m.kind === 'earn'),
         def.id,
       ).toBe(true);
+      // Open pays its sun instead (D-174): its tilt toward Lawns cost greedy 10 points.
       const tilt = def.modifiers.find((m) => m.kind === 'drawWeight');
-      expect(tilt, def.id).toBeDefined();
+      if (def.id !== 'open') expect(tilt, def.id).toBeDefined();
       expect(def.blurb.split(/\s+/).length, def.id).toBeLessThanOrEqual(8);
     }
   });
@@ -48,7 +57,10 @@ describe('lot traits (D-166)', () => {
       pondside: ['patio'],
       wooded: ['treehouse', 'birdhouse'],
       rocky: ['flowerBed', 'firePit'],
-      open: ['lawn', 'herbGarden'],
+      // D-174: Open pays its sun, and tilts nothing.
+      open: [],
+      lakefront: ['patio'],
+      oldWoods: ['treehouse', 'birdhouse'],
     };
     for (const [id, pieces] of Object.entries(tilted) as [LotTraitId, PieceId[]][]) {
       const s: RunState = {
@@ -129,8 +141,9 @@ describe('lot traits (D-166)', () => {
     expect(bed).toMatchObject({ points: 4, pct: 25, earned: 5 });
   });
 
-  it('Open: yard pieces earn double, and rooms don’t', () => {
-    // Two Lawns touching: 1 + 1 each, in front of the Bedroom.
+  it('Open: yard pieces earn double, and Sunny pieces +50% (D-174)', () => {
+    // Two Lawns touching: 1 + 1 each, in front of the Bedroom, which the sun (from the back)
+    // shines on.
     const [bed, a, b] = tally(
       LOT,
       [
@@ -142,7 +155,7 @@ describe('lot traits (D-166)', () => {
         kind: 'open',
       },
     );
-    expect(bed).toMatchObject({ pct: 0 });
+    expect(bed).toMatchObject({ pct: 50 });
     expect(a).toMatchObject({ points: 2, pct: 100, earned: 4 });
     expect(b).toMatchObject({ points: 2, pct: 100, earned: 4 });
   });

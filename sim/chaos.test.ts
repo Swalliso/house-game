@@ -96,6 +96,10 @@ const SEEDS: readonly Seed[] = [
       { kind: 'fixture', id: 'chandelier' },
     ],
   },
+  // An Addition growing a room (D-171) needs the Architect and a room with space to grow, which
+  // random play misses about one run in three: chaos-2 and chaos-6 both missed it on D-174's
+  // lots, and the coverage test then played ten more seeds. This Architect run reaches it.
+  { seed: 'chaos-addition', cheat: true, crewId: 'architect' },
 ];
 
 /** Problems kept per run: past this the run is broken enough. */

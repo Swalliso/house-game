@@ -145,7 +145,7 @@ export type Rarity = 'common' | 'uncommon' | 'rare';
 
 /** Lot features (D-049). The street runs along the bottom edge, outside the grid. Finds (M3b) pay once. */
 export type FeatureId =
-  'street' | 'tree' | 'pond' | 'creek' | 'boulder' | 'oldShed' | 'timeCapsule';
+  'street' | 'tree' | 'pond' | 'creek' | 'lake' | 'boulder' | 'oldShed' | 'timeCapsule';
 /** The features that sit on tiles of the lot. */
 export type TerrainId = Exclude<FeatureId, 'street'>;
 
@@ -174,14 +174,22 @@ export type CrewId = 'generalContractor' | 'landscaper' | 'architect' | 'handyma
 export type ClientId = 'hendersons' | 'vladislav' | 'barkers' | 'juniper' | 'dale';
 
 /** Lot traits (D-119, D-166): what a lot has that changes how you'd build there. */
-export type LotTraitId = 'creekside' | 'pondside' | 'wooded' | 'rocky' | 'open';
+export type LotTraitId =
+  'creekside' | 'pondside' | 'wooded' | 'rocky' | 'open' | 'lakefront' | 'oldWoods';
 
 /**
  * A lot's kind (D-166): drawn once the lot has passed its checks. A plain lot stays as drawn;
- * the others are shaped toward a trait (more Boulders, no woods, a bigger pond).
+ * the others are shaped toward a trait (more Boulders, no woods, a bigger pond, D-174's lake
+ * along the back, a creek through the middle, old woods whose Trees stay).
  */
-export type LotKind = 'plain' | 'rocky' | 'open' | 'pond';
+export type LotKind = 'plain' | 'rocky' | 'open' | 'pond' | 'lake' | 'split' | 'oldWoods';
 export type ShapedKind = Exclude<LotKind, 'plain'>;
+
+/**
+ * A run's biome (D-174): the lot's look, and the family of lot kinds it deals. The first job's
+ * lot is always a meadow, today's look.
+ */
+export type BiomeId = 'meadow' | 'lakeside' | 'autumn' | 'dry';
 
 /**
  * The house rules that pay on the rooms (D-165): every house has them, whoever the client,
@@ -612,6 +620,11 @@ export interface LotTraitDef {
   blurb: string;
   when: { terrain: TerrainId; min: number } | { kind: ShapedKind };
   modifiers: readonly Modifier[];
+  /**
+   * Terrain no piece is built over on this lot (D-174's Old Woods keeps its Trees): placement
+   * refuses it, as it does water.
+   */
+  protects?: readonly TerrainId[];
   /** Clients it suits: their contract marks the chip with the up icon. */
   suits?: readonly ClientId[];
 }
@@ -854,14 +867,28 @@ export interface LotBalance {
   /** Finds stay at least this many rows clear of the street edge, so the front stays open. */
   findStreetGap: number;
   /**
-   * Lot kinds (D-166), by weight, drawn from each lot's own `lot/<attempt>/kind` stream once it
-   * has passed its checks, before its finds. A plain lot stays exactly as drawn.
+   * Biomes (D-174), by weight, from each seed's own `lot/biome` stream, before the lot is drawn:
+   * each sets the lot's look and its lot kinds (D-166), which are drawn from each lot's own
+   * `lot/<attempt>/kind` stream once it has passed its checks, before its finds. A plain lot
+   * stays exactly as drawn.
    */
-  kinds: Readonly<Record<LotKind, number>>;
+  biomes: Readonly<Record<BiomeId, BiomeBalance>>;
   /** A Rocky lot's Boulders, on top of `boulders`. */
   rockyBoulders: Range;
   /** A pond lot's pond grows to this many tiles (a lot whose creek took its pond stays plain). */
   pondTiles: Range;
+  /** A lake lot's lake (D-174): this many rows from the back edge, its shore wandering. */
+  lakeRows: Range;
+}
+
+/** A biome's lots (D-174): how often it comes up, its kinds, and its own draw. */
+export interface BiomeBalance {
+  weight: number;
+  /** Its lot kinds by weight (D-166); a kind it leaves out never comes up there. */
+  kinds: Readonly<Partial<Record<LotKind, number>>>;
+  /** Overrides of the lot's draw: more woods in the autumn woods, fewer creeks on a dry lot. */
+  woodsClusters?: Range;
+  creekPct?: number;
 }
 
 export interface PhaseDef {
@@ -1059,6 +1086,8 @@ export interface Lot {
   attempt: number;
   /** The kind it was shaped to (D-166); unset on a plain lot. */
   kind?: ShapedKind;
+  /** Its biome (D-174): the look, and the kinds it was drawn from. Unset on a meadow lot. */
+  biome?: Exclude<BiomeId, 'meadow'>;
   /**
    * Its traits as the run began (D-166), in content order: they pay and tilt the draw all run,
    * so building over Trees can't take Wooded away. Unset on a fresh lot or a test's, whose
@@ -2231,7 +2260,7 @@ export {
   shapeCells,
   uniqueRotations,
 } from './grid.ts';
-export { lotTraits, SUN_SIDES, SUN_STEP, terrainAt } from './lot.ts';
+export { lotBiome, lotTraits, protectedTerrain, SUN_SIDES, SUN_STEP, terrainAt } from './lot.ts';
 export { DRAW_ROWS, rowOf } from './draw.ts';
 export {
   article,

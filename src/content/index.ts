@@ -395,7 +395,7 @@ export function validateContent(content: Content): string[] {
     if (trait.id !== key) problems.push(`${where}: id is "${trait.id}"`);
     const when = trait.when;
     if ('kind' in when) {
-      if (!['rocky', 'open', 'pond'].includes(when.kind)) {
+      if (!['rocky', 'open', 'pond', 'lake', 'split', 'oldWoods'].includes(when.kind)) {
         problems.push(`${where}: "${when.kind}" isn't a lot kind that shapes a lot`);
       }
     } else {

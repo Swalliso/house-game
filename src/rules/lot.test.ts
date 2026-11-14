@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import type { Lot, TerrainId } from './index.ts';
+import type { Lot, LotBalance, LotKind, TerrainId } from './index.ts';
 import {
   generateLot,
+  KIND_CHECKS,
+  lotBiome,
   lotFromRows,
   lotProblems,
   lotToRows,
   lotTraits,
+  protectedTerrain,
   terrainAt,
   withTraits,
 } from './lot.ts';
@@ -14,7 +17,32 @@ import { CONTENT } from '../content/index.ts';
 
 const count = (lot: Lot, t: TerrainId) => lot.terrain.filter((x) => x === t).length;
 /** Lot kinds off (D-166): every lot plain, as drawn before them. */
-const PLAIN = { plain: 1, rocky: 0, open: 0, pond: 0 };
+const PLAIN = { plain: 1 };
+/** The meadow alone (D-174), with these kinds: D-166's lots as they were before biomes. */
+function meadowOnly(
+  b: LotBalance,
+  kinds: Readonly<Partial<Record<LotKind, number>>> = b.biomes.meadow.kinds,
+): LotBalance {
+  return {
+    ...b,
+    biomes: {
+      meadow: { weight: 1, kinds },
+      lakeside: { weight: 0, kinds: {} },
+      autumn: { weight: 0, kinds: {} },
+      dry: { weight: 0, kinds: {} },
+    },
+  };
+}
+/** The lot without its finds, which go down last on whatever ground is free. */
+const withoutFinds = (lot: Lot): Lot => ({
+  ...lot,
+  terrain: lot.terrain.map((t) => (t === 'oldShed' || t === 'timeCapsule' ? null : t)),
+});
+/** The checks a lot of this kind passed (D-174: a lake, a split creek, old woods relax them). */
+const checksFor = (lot: Lot, b: LotBalance) => {
+  const k = lot.kind ? KIND_CHECKS[lot.kind] : undefined;
+  return lotProblems(withoutFinds(lot), { ...b, ...k?.checks }, k?.kept);
+};
 
 function creekCells(lot: Lot) {
   const cells: { x: number; y: number }[] = [];
@@ -63,11 +91,7 @@ describe('lot generation', () => {
     let finds = 0;
     for (let i = 0; i < 1000; i++) {
       const lot = generateLot(`seed-${i}`, real);
-      const bare: Lot = {
-        ...lot,
-        terrain: lot.terrain.map((t) => (t === 'oldShed' || t === 'timeCapsule' ? null : t)),
-      };
-      expect(lotProblems(bare, real)).toEqual([]);
+      expect(checksFor(lot, real), `seed-${i}`).toEqual([]);
       if (count(lot, 'oldShed') > 0 && count(lot, 'timeCapsule') > 0) finds++;
     }
     expect(finds).toBe(1000);
@@ -181,7 +205,8 @@ describe('lot generation', () => {
 });
 
 describe('creek lots and the pond (D-119)', () => {
-  const real = CONTENT.balance.lot;
+  // The meadow's draw (D-174): a dry lot seldom has a creek, and a lake lot has none.
+  const real = meadowOnly(CONTENT.balance.lot);
   /** The lot without its finds, which go down last on whatever ground is free. */
   const bare = (lot: Lot) =>
     lot.terrain.map((t) => (t === 'oldShed' || t === 'timeCapsule' ? null : t));
@@ -209,7 +234,7 @@ describe('creek lots and the pond (D-119)', () => {
   it('leaves a creek lot as it was drawn, but for its pond, so fewer creeks only redraw the rest', () => {
     // The same seeds before D-119: creekPct 70, and every pond kept. Both plain (D-166 shapes
     // lots after this, on streams of their own).
-    const plain = { ...real, kinds: PLAIN };
+    const plain = meadowOnly(real, PLAIN);
     const before = { ...plain, creekPct: 70, pondPctCreek: 100 };
     let same = 0;
     for (let i = 0; i < 300; i++) {
@@ -254,8 +279,9 @@ describe('lot traits (D-119)', () => {
 // D-166: lot kinds. Once a lot passes its checks, most are shaped toward a trait.
 
 describe('lot kinds (D-166)', () => {
-  const real = CONTENT.balance.lot;
-  const plain = { ...real, kinds: PLAIN };
+  // D-166's kinds, as the meadow deals them (D-174).
+  const real = meadowOnly(CONTENT.balance.lot);
+  const plain = meadowOnly(real, PLAIN);
   /** The lot without its finds, which go down last on whatever ground is free. */
   const bare = (lot: Lot) =>
     lot.terrain.map((t) => (t === 'oldShed' || t === 'timeCapsule' ? null : t));
@@ -370,5 +396,123 @@ describe('lot kinds (D-166)', () => {
     const shaped = lots.findIndex(({ now }) => now.kind !== undefined);
     const seed = `seed-${shaped}`;
     expect(generateLot(seed, real, { plain: true })).toEqual(generateLot(seed, plain));
+  });
+});
+
+// ---------------------------------------------------------------------------------------
+// D-174: biomes, the lakeside's lake and its creek through the middle, the autumn woods' old
+// woods, and the dry lot's few creeks.
+
+describe('biomes and their lots (D-174)', () => {
+  const real = CONTENT.balance.lot;
+  const lots = Array.from({ length: 1000 }, (_, i) => generateLot(`seed-${i}`, real));
+  const ids = (lot: Lot) => lotTraits(CONTENT, lot).map((t) => t.id);
+
+  it('draws a biome by its weight, and a meadow lot is the lot D-166 drew', () => {
+    const n: Record<string, number> = {};
+    for (const lot of lots) n[lotBiome(lot)] = (n[lotBiome(lot)] ?? 0) + 1;
+    // Weights 40, 20, 20, 20.
+    expect(n.meadow! / lots.length).toBeGreaterThan(0.34);
+    expect(n.meadow! / lots.length).toBeLessThan(0.46);
+    for (const id of ['lakeside', 'autumn', 'dry']) {
+      expect(n[id]! / lots.length, id).toBeGreaterThan(0.15);
+      expect(n[id]! / lots.length, id).toBeLessThan(0.25);
+    }
+    lots.forEach((lot, i) => {
+      if (lotBiome(lot) !== 'meadow') return;
+      expect(lot.biome).toBeUndefined();
+      expect(lot).toEqual(generateLot(`seed-${i}`, meadowOnly(real)));
+    });
+  });
+
+  it('keeps the first job’s lot a plain meadow lot, whatever biome its seed would draw', () => {
+    for (let i = 0; i < 200; i++) {
+      const lot = generateLot(`seed-${i}`, real, { plain: true });
+      expect(lot.biome).toBeUndefined();
+      expect(lot.kind).toBeUndefined();
+      expect(lot).toEqual(generateLot(`seed-${i}`, meadowOnly(real, PLAIN)));
+    }
+    expect(lots.some((lot) => lot.biome)).toBe(true);
+  });
+
+  it('deals each biome only its own kinds, and each lot passes its kind’s checks', () => {
+    for (const lot of lots) {
+      if (lot.kind) expect(real.biomes[lotBiome(lot)].kinds[lot.kind] ?? 0).toBeGreaterThan(0);
+      expect(checksFor(lot, real)).toEqual([]);
+    }
+  });
+
+  it('keeps in the checks what the kind’s trait keeps standing', () => {
+    for (const trait of Object.values(CONTENT.lotTraits)) {
+      if (!('kind' in trait.when)) continue;
+      const kept = KIND_CHECKS[trait.when.kind]?.kept;
+      expect([...(kept ?? [])], trait.id).toEqual([...(trait.protects ?? [])]);
+    }
+  });
+
+  it('carves a lake along the back edge, lakeRows deep, and the lake is the lot’s water', () => {
+    const lakes = lots.filter((lot) => lot.kind === 'lake');
+    expect(lakes.length).toBeGreaterThan(40);
+    for (const lot of lakes) {
+      expect(lotBiome(lot)).toBe('lakeside');
+      expect(count(lot, 'pond')).toBe(0);
+      expect(count(lot, 'creek')).toBe(0);
+      for (let x = 0; x < lot.width; x++) {
+        let d = 0;
+        while (terrainAt(lot, x, d) === 'lake') d++;
+        expect(d).toBeGreaterThanOrEqual(real.lakeRows[0]);
+        expect(d).toBeLessThanOrEqual(real.lakeRows[1]);
+        for (let y = d; y < lot.height; y++) expect(terrainAt(lot, x, y)).not.toBe('lake');
+      }
+      expect(ids(lot)).toContain('lakefront');
+    }
+  });
+
+  it('runs a split lot’s creek from side to side through the middle rows', () => {
+    const splits = lots.filter((lot) => lot.kind === 'split');
+    expect(splits.length).toBeGreaterThan(30);
+    for (const lot of splits) {
+      const cells = creekCells(lot);
+      expect(cells.some((c) => c.x === 0)).toBe(true);
+      expect(cells.some((c) => c.x === lot.width - 1)).toBe(true);
+      for (const c of cells) {
+        expect(c.y).toBeGreaterThanOrEqual(Math.floor(lot.height * 0.36));
+        expect(c.y).toBeLessThanOrEqual(Math.floor(lot.height * 0.58));
+      }
+      expect(ids(lot)).toContain('creekside');
+    }
+  });
+
+  it('grows more woods in the autumn woods, and an old wood keeps its Trees and isn’t Wooded', () => {
+    const trees = (biome: string) => {
+      const plain = lots.filter((lot) => lotBiome(lot) === biome && !lot.kind);
+      return plain.reduce((sum, lot) => sum + count(lot, 'tree'), 0) / plain.length;
+    };
+    expect(trees('autumn')).toBeGreaterThan(trees('meadow') + 12);
+    const old = lots.filter((lot) => lot.kind === 'oldWoods');
+    expect(old.length).toBeGreaterThan(40);
+    for (const lot of old) {
+      expect(lotBiome(lot)).toBe('autumn');
+      expect(ids(lot)).toContain('oldWoods');
+      expect(ids(lot)).not.toContain('wooded');
+      expect([...protectedTerrain(CONTENT, lot)]).toEqual(['tree']);
+    }
+    // A run keeps it: a lot's kept traits still keep its Trees.
+    expect([...protectedTerrain(CONTENT, withTraits(CONTENT, old[0]!))]).toEqual(['tree']);
+    expect(
+      protectedTerrain(
+        CONTENT,
+        lots.find((lot) => !lot.kind)!,
+      ).size,
+    ).toBe(0);
+  });
+
+  it('gives a dry lot a creek seldom', () => {
+    const creekShare = (biome: string) => {
+      const some = lots.filter((lot) => lotBiome(lot) === biome);
+      return some.filter((lot) => count(lot, 'creek') > 0).length / some.length;
+    };
+    expect(creekShare('dry')).toBeLessThan(0.16);
+    expect(creekShare('meadow')).toBeGreaterThan(0.16);
   });
 });

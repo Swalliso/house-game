@@ -123,6 +123,14 @@ export function selectorText(content: Content, sel: Selector, phrasing: Phrasing
   }
   if ('feature' in sel) {
     const ids = typeof sel.feature === 'string' ? [sel.feature] : sel.feature;
+    // D-174: several of the lot's one-of-a-kind features share one "the", so Waterfront's
+    // "the Pond, Creek, or Lake" still fits a shop card.
+    if (ids.length > 1 && ids.every((id) => id !== 'street' && content.features[id].body)) {
+      return `the ${joinWords(
+        ids.map((id) => content.features[id].name),
+        conj,
+      )}`;
+    }
     return joinWords(
       ids.map((id) => featureNoun(content, id, many)),
       conj,
@@ -813,7 +821,7 @@ export function handCardLines(content: Content, card: Card): string[] {
 
 /** "The street is", "the Pond is", but "Trees are". */
 function isSingularFeature(id: FeatureId): boolean {
-  return id === 'street' || id === 'pond' || id === 'creek';
+  return id === 'street' || id === 'pond' || id === 'creek' || id === 'lake';
 }
 
 /** "2 Trees, a Bedroom, and the Creek", for breakdown labels. */
@@ -1142,7 +1150,7 @@ export function blueprintText(content: Content, def: BlueprintDef): string[] {
 
 /**
  * A lot trait's tip (D-119): what it pays, all run, what it deals more of (D-166), then its
- * blurb. "Pieces touching the Creek earn +50%, all run. More Patios in the draw. Only a Driveway
+ * blurb. "Pieces touching the Creek earn +100%, all run. More Patios in the draw. Only a Driveway
  * crosses it."
  */
 export function lotTraitText(content: Content, def: LotTraitDef): string {

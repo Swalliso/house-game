@@ -57,7 +57,7 @@ import {
   tasteCounts,
   tastesTip,
 } from './job-card.ts';
-import { LOT_COLORS, lotMapKind, lotMapSize, lotSummary } from './lot-map.ts';
+import { lotMapColor, lotMapSize, lotSummary } from './lot-map.ts';
 import { TitleBackdrop } from './Title.tsx';
 
 /** "the Hendersons", "Count Vladislav": the client mid-sentence. */
@@ -566,7 +566,7 @@ function LotMap({ lot }: { lot: Lot }) {
     if (!ctx) return;
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
-        ctx.fillStyle = LOT_COLORS[lotMapKind(lot, x, y)];
+        ctx.fillStyle = lotMapColor(lot, x, y);
         ctx.fillRect(x, y, 1, 1);
       }
     }

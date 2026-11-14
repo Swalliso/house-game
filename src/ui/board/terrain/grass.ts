@@ -7,6 +7,7 @@ import { terrainAt, type Lot } from '../../../rules/index.ts';
 import { CELL, type SpriteId } from '../../sprites.ts';
 import { SUB, SUBTILE } from '../autotile.ts';
 import { drawSprite } from './atlas.ts';
+import { inLook, lotLook } from './biome.ts';
 import { tileHash } from './hash.ts';
 
 /** About one subtile of open ground in this many gets a tuft… */
@@ -60,17 +61,21 @@ export function grassDecor(lot: Lot, salt = 0): SubtileSprite[] {
   return out;
 }
 
-/** Grass on every cell of the lot, then the tufts and flowers. */
+/** Grass on every cell of the lot, then the tufts and flowers, in the lot's look (D-174). */
 export function paintGrass(
   ctx: CanvasRenderingContext2D,
   img: CanvasImageSource,
   lot: Lot,
   salt = 0,
 ): void {
+  const look = lotLook(lot);
+  const grass = inLook('grass-0', look);
   for (let y = 0; y < lot.height; y++) {
     for (let x = 0; x < lot.width; x++) {
-      drawSprite(ctx, img, 'grass-0', x * CELL, y * CELL);
+      drawSprite(ctx, img, grass, x * CELL, y * CELL);
     }
   }
-  for (const d of grassDecor(lot, salt)) drawSprite(ctx, img, d.id, d.sx * SUBTILE, d.sy * SUBTILE);
+  for (const d of grassDecor(lot, salt)) {
+    drawSprite(ctx, img, inLook(d.id, look), d.sx * SUBTILE, d.sy * SUBTILE);
+  }
 }

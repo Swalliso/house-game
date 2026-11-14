@@ -118,7 +118,7 @@ The Status column is as of planning. With the plan's approval, everything still 
 | D-046 | Defaults for the rules the docs leave open (Appendix A), including D-013 | M1–M4b | Economy budget and the fenced-yard rule confirmed; rest Proposed |
 | D-047 | Desktop first: 1280×720 minimum, mouse and keyboard plus tap support, no phone layout | M1 | **Accepted** |
 | D-048 | Lot size: 24×24 (amends D-029) | M1 | **Accepted** (the team's request) |
-| D-049 | Terrain and big-lot rules: woods, creek, finds, a camera, bigger yard pieces | M1 / M3b | **Accepted** (the creek's rate and the pond changed by D-119) |
+| D-049 | Terrain and big-lot rules: woods, creek, finds, a camera, bigger yard pieces | M1 / M3b | **Accepted** (the creek's rate and the pond changed by D-119); D-174 proposes biomes and a lake |
 | D-050 | Fixtures are in the jam build: drawn (installing one is the week's turn) or bought (installing one is free) | M3a | **Accepted** (the team's request) |
 | D-051 | The shop: five kinds of goods plus crates and services, rarity, selling, a sale item, rising refresh prices | M3a / M3b | **Accepted** |
 | D-052 | Schedule: feature freeze at the end of day 4, then two days of playtesting and refinement | M0 | *Superseded by D-053* |
@@ -555,7 +555,7 @@ Derived from `HouseState`, cached by house object identity:
   5. conditions, specs, and sets
   6. per-piece effects
 - **Exterior and interior:** a room is exterior if any of its tiles touches a non-indoor tile or the lot edge; otherwise it's interior.
-- **View:** a piece touching a view source (a Tree, the Pond, the Creek, or a piece with `givesView`: Flower Bed, Herb Garden, Greenhouse), or one with a `grantView` modifier (Bay Window). "Per View" counts distinct adjacent sources, with a `max`.
+- **View:** a piece touching a view source (a Tree, the Pond, the Creek, the Lake (D-174), or a piece with `givesView`: Flower Bed, Herb Garden, Greenhouse), or one with a `grantView` modifier (Bay Window). "Per View" counts distinct adjacent sources, with a `max`.
 - **Regions:** a multi-tile piece is *in* a region only if all its tiles are.
   - **Front yard:** every non-indoor tile in a row nearer the street than the house's front row (the row of its indoor tile closest to the street). Before the first room, all yard is front yard. Back yard is every other non-indoor tile, including the side yards. Counting by rows keeps "front yard" a real position on a wide lot, where a narrow house would otherwise make whole columns beside it front yard. Each yard piece has a side (D-166): the Patio, Lawn, Fire Pit, Hot Tub, Pool, Treehouse and Doghouse earn +1 in the back yard; the Flower Bed, Porch and Driveway +2 in the front. While a picked card reads a yard, the board shades it (`rules.yardTiles`).
   - **Fenced yard:** flood-fill all non-wall tiles (walls are indoor tiles and Fence tiles; water, boulders, trees, finds, yard pieces, and outbuildings are all part of regions). The lot edge bounds the fill like a wall (it's the property line). A region is fenced if it doesn't touch the street edge, has at least 10 tiles (4 until D-069), borders at least one Fence, and borders the house (at least one indoor piece). The house rule stops a lone L-Fence in a corner from counting as a yard. "Fenced yard of 12 tiles" means the largest single one.
@@ -1693,8 +1693,9 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
   - **finds** (from M3b): one Old Shed and one or two Time Capsules, placed away from the street half
   - terrain covers about a fifth of the lot (about 110–130 tiles)
   - regenerate (with the next `lot/<attempt>` key) if fewer than 85% of tiles are free of water, Boulders, and the Old Shed, if fewer than 10 street-edge tiles are free, or if the creek leaves less than 60% of the buildable tiles on the street's side
-  - **lot kinds** (D-166): once a lot passes the checks and before its finds, its kind is drawn from its own `lot/<attempt>/kind` stream by `kinds`' weights (plain 35, Rocky 25, Open 20, pond 20), so a plain lot is exactly the lot it was. A **Rocky** lot gets 8–12 more Boulders (`rockyBoulders`, 14–22 in all), an **Open** lot loses its woods (the lone Trees stay), and a **pond** lot's pond grows to 14–20 tiles (`pondTiles`), onto open ground or Trees, keeping its margins. A shaped lot that would fail the checks, or a pond lot whose creek took its pond, stays as drawn. The first job's lot (`jobBoard.firstSeed`) is always plain (D-149)
-  - **lot traits** (D-119, D-166): chips on the contract, each paying all run and doubling its cards' draw weight. Creekside (a creek), Pondside (a pond lot), Wooded (100 or more Tree tiles), Rocky and Open (those kinds); Appendix B lists them. Of 2,000 lots, 20% have none, 58% one, 22% two or three. A run keeps the traits it began with (`Lot.traits`), so clearing Trees can't take Wooded away and the draw's weights stay fixed
+  - **biomes** (D-174): before the lot is drawn, its biome comes from the seed's own `lot/biome` stream by `biomes`' weights: the **meadow** 40 (D-166's lots and today's look), the **lakeside** 20, the **autumn woods** 20 (4–5 woods clusters, so most of its lots are Wooded) and a **dry** lot 20 (a creek on 10% of lots). Each biome deals its own lot kinds and sets the board's look (the autumn woods and a dry lot draw `art/limezu/biomes.json`'s cuts; the lakeside looks like the meadow). A lot that fails its checks is drawn again in the same biome. The first job's lot is a plain meadow lot
+  - **lot kinds** (D-166, D-174): once a lot passes the checks and before its finds, its kind is drawn from its own `lot/<attempt>/kind` stream by its biome's `kinds` weights (the meadow: plain 35, Rocky 25, Open 20, pond 20; the lakeside: lake 40, pond 30, split 30; the autumn woods: plain 60, Old Woods 40; a dry lot: Rocky 50, Open 50), so a plain lot is exactly the lot it was. A **Rocky** lot gets 8–12 more Boulders (`rockyBoulders`, 14–22 in all), an **Open** lot loses its woods (the lone Trees stay), a **pond** lot's pond grows to 14–20 tiles (`pondTiles`), onto open ground or Trees, keeping its margins, a **lake** lot's back 2–5 rows are a lake (`lakeRows`, its shore wandering a row at a time; its pond and creek go), a **split** lot's creek runs side to side through the middle rows (36–58% of the way back), and an **Old Woods** lot keeps its woods as drawn, every Tree standing. Each kind's checks (`KIND_CHECKS`): a lake lot needs 65% of its tiles free, a split lot 30% of its buildable tiles on the street's side, and an Old Woods lot counts its Trees as lost ground the house can't cross (65% free). A shaped lot that would fail its checks, or a pond lot whose creek took its pond, stays as drawn. The first job's lot (`jobBoard.firstSeed`) is always plain (D-149)
+  - **lot traits** (D-119, D-166, D-174): chips on the contract, each paying all run and doubling its cards' draw weight (Open pays the sun instead). Creekside (a creek), Pondside (a pond lot), Wooded (100 or more Tree tiles, not on an Old Woods lot), Rocky, Open, Lakefront and Old Woods (those kinds); Appendix B lists them. Old Woods keeps its Trees (`protects`): no piece is built over one, and placement says so. Of 2,000 lots, 20% have none, 58% one, 22% two or three. A run keeps the traits it began with (`Lot.traits`), so clearing Trees can't take Wooded away and the draw's weights stay fixed
 - **First earning:** a piece earns in the week it's placed. Transforms happen at the start of the week, so the preview equals what the week adds.
 - **Pass:** always allowed, no reward.
 - **Hands:** 3 distinct card types, weighted. **Simple pieces are more likely early** (D-055), as in Combolands and Luck be a Landlord:
@@ -1889,23 +1890,26 @@ Every Core item from `content-brainstorm.md`, written in the §5 format. Numbers
 | Street | Feature on the bottom edge, tags Loud; one neighbor for pieces touching it; defines the front yard | M1 |
 | Mature tree (woods and lone trees) | Feature per tile, tags Quiet and Green, view source; `clear: buildOver` | M1 |
 | Pond | `blocks`, `body`, view source | M1 |
+| **Lake** *(D-174)* | `blocks`, `body`, view source; a lake lot's back 2–5 rows, drawn running on past the lot's back edge and sides | D-174 |
 | **Creek** *(new)* | `blocks`, `body`, view source; 1 tile wide, never touches the street edge | M1 |
 | The sun (D-120; was the sunny side) | `Lot.sun`, one edge; the `sunny` region: tiles no Tree, Old Shed or building stands in front of, toward the sun; a building with a tile in it gains the Sunny tag | M1 (the band), D-120 (the sun) |
 | Boulder | `blocks`, `clear: demolish`; each tile its own neighbor, no tags (D-145: was `inert`) | M1 (M2 demolish; D-145: a neighbor) |
 | **Old Shed** *(new find)* | 2×2; `blocks`, `clear: demolish`; `body`: one neighbor while it stands, no tags (D-145: was `inert`); reward: a random tool | M3b (D-145: a neighbor) |
 | **Time Capsule** *(new find)* | 1×1; doesn't block; `inert`; reward when first built over: +3 budget | M3b |
 
-### Lot traits (D-119, D-166)
+### Lot traits (D-119, D-166, D-174)
 
-Each trait's modifiers join the run's (source `lot`), and its `drawWeight` ones tilt the draw. Its tip: what it pays, all run, what it deals more of, then its blurb.
+Each trait's modifiers join the run's (source `lot`), and its `drawWeight` ones tilt the draw. Its tip: what it pays, all run, what it deals more of, then its blurb. A trait's `protects` is terrain no piece is built over on its lot.
 
 | Trait | When | Pays all run | More in the draw | Blurb |
 |---|---|---|---|---|
-| Creekside | `terrain creek, min 1` | `earn {touching creek} +50` | Patio +100% (D-166) | Only a Driveway crosses it. |
+| Creekside | `terrain creek, min 1` | `earn {touching creek} +100` (D-174: +50) | Patio +100% (D-166) | Only a Driveway crosses it. |
 | **Pondside** *(D-166)* | `kind pond` | `earn {touching pond} +100` | Patio +100% | A big pond, and views from its banks. |
 | Wooded | `terrain tree, min 100` | `earn {touching tree} +25` (D-166: it paid nothing) | Treehouse, Birdhouse +100% | Building over a Tree clears it. |
 | **Rocky** *(D-166)* | `kind rocky` | `earn {touching boulder} +50` | Flower Bed, Fire Pit +100% | A demolition clears a Boulder. |
-| **Open** *(D-166)* | `kind open` | `earn {property yard} +100` | Lawn, Herb Garden +100% | Few Trees, lots of sun. |
+| **Open** *(D-166)* | `kind open` | `earn {property yard} +100`; `earn {tag Sunny} +50` (D-174) | nothing (D-174: it dealt Lawns and Herb Gardens) | Few Trees, lots of sun. |
+| **Lakefront** *(D-174)* | `kind lake` | `earn {touching lake} +100` | Patio +100% | A lake, and views from its shore. |
+| **Old Woods** *(D-174)* | `kind oldWoods`; `protects: [tree]` | `earn {touching tree} +100` | Treehouse, Birdhouse +100% | Its Trees stay: build around them. |
 
 ### Indoor rooms (base pool)
 
