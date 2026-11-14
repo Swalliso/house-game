@@ -30,6 +30,7 @@ import {
 import { CELL, spritePos } from '../sprites.ts';
 import { artSize } from './drawings.ts';
 import {
+  arrangements,
   byType,
   itemRows,
   newRoomLook,
@@ -86,6 +87,8 @@ const FLAT = /^(rug-|runner-|mat-|bath-mat)/;
 const TIGHT = /^(toilet-|clothes-rail|car-)/;
 /** And a dining table, which keeps its chairs before a walkway (its chairs keep out of it). */
 const WALKWAY = /^(toilet-|clothes-rail|car-|dining-table)/;
+/** The tables dining chairs tuck under: plain, under a cloth, or round (D-173). */
+const TABLE = /^(dining-table|table-round)/;
 
 /** An item's footprint: its sprite below the line it rises over. */
 function foot(it: Item): Rect {
@@ -100,6 +103,9 @@ function problems(m: HouseModel, uid: number): string[] {
   const room = m.rooms.get(uid)!;
   const items = roomItems(m, uid);
   const name = (it: Item) => `${room.defId} ${uid}: ${it.sprite} at ${it.x},${it.y}`;
+  // A Dining Room's round table is its dining table (D-173).
+  const walks = (it: Item) =>
+    WALKWAY.test(it.sprite) || (room.defId === 'diningRoom' && TABLE.test(it.sprite));
   const own = (cx: number, cy: number) =>
     cx >= 0 && cy >= 0 && cx < m.width && cy < m.height && m.room[cy * m.width + cx] === uid;
   for (const it of items) {
@@ -147,13 +153,13 @@ function problems(m: HouseModel, uid: number): string[] {
     // Never in an opening; out of the walkways in front of them unless it's a tight piece.
     for (const d of m.doors.filter((d) => d.a === uid || d.b === uid)) {
       if (overlaps(f, d.gap)) out.push(`${name(it)} is in a doorway`);
-      if (!FLAT.test(it.sprite) && !WALKWAY.test(it.sprite) && overlaps(f, d.clear)) {
+      if (!FLAT.test(it.sprite) && !walks(it) && overlaps(f, d.clear)) {
         out.push(`${name(it)} blocks a doorway`);
       }
     }
     for (const e of m.exits.filter((e) => e.uid === uid)) {
       if (overlaps(f, e.gap)) out.push(`${name(it)} is in an outside door`);
-      if (!FLAT.test(it.sprite) && !WALKWAY.test(it.sprite) && overlaps(f, e.clear)) {
+      if (!FLAT.test(it.sprite) && !walks(it) && overlaps(f, e.clear)) {
         out.push(`${name(it)} blocks an outside door`);
       }
     }
@@ -165,8 +171,7 @@ function problems(m: HouseModel, uid: number): string[] {
       const a = foot(solid[i]!);
       const b = foot(solid[j]!);
       const chair = /^chair-/.test(solid[i]!.sprite) || /^chair-/.test(solid[j]!.sprite);
-      const table =
-        /^dining-table/.test(solid[i]!.sprite) || /^dining-table/.test(solid[j]!.sprite);
+      const table = TABLE.test(solid[i]!.sprite) || TABLE.test(solid[j]!.sprite);
       const tuck = chair && table ? 3 : 0;
       const shrunk = { x: a.x + tuck, y: a.y, w: Math.max(0, a.w - 2 * tuck), h: a.h };
       if (overlaps(shrunk, b)) out.push(`${name(solid[i]!)} overlaps ${solid[j]!.sprite}`);
@@ -175,8 +180,14 @@ function problems(m: HouseModel, uid: number): string[] {
   return out;
 }
 
-/** A room with one slab of rooms against each of `sides`, as in the contact sheets. */
-function boxedIn(id: PieceId, rot: Rot, sides: string, fixture?: FixtureId): HouseState {
+/** A room with one slab of rooms (`fill`s) against each of `sides`, as in the contact sheets. */
+function boxedIn(
+  id: PieceId,
+  rot: Rot,
+  sides: string,
+  fixture?: FixtureId,
+  fill: PieceId = 'closet',
+): HouseState {
   const cells = placedCells(CONTENT.pieces[id].shape, 0, 0, rot);
   const specs: Spec[] = [[id, 3, 3, rot, fixture]];
   const used = new Set(cells.map((c) => `${c.x + 3},${c.y + 3}`));
@@ -190,10 +201,23 @@ function boxedIn(id: PieceId, rot: Rot, sides: string, fixture?: FixtureId): Hou
     for (const c of out) {
       if (used.has(`${c.x},${c.y}`)) continue;
       used.add(`${c.x},${c.y}`);
-      specs.push(['closet', c.x, c.y]);
+      specs.push([fill, c.x, c.y]);
     }
   }
   return house(specs);
+}
+
+/**
+ * The house with its room 1 renumbered so that it takes arrangement `style` (D-173): the first
+ * uid from 100 on whose pick it is. The only room of its type (another would bump it).
+ */
+function restyle(h: HouseState, style: number): HouseState {
+  const main = h.pieces.find((p) => p.uid === 1)!;
+  expect(h.pieces.filter((p) => p.defId === main.defId)).toHaveLength(1);
+  let uid = 100;
+  while (newRoomLook({ ...h, pieces: [], nextUid: uid }, main.defId).style !== style) uid++;
+  const pieces = h.pieces.map((p) => (p.uid === 1 ? { ...p, uid } : p));
+  return { ...h, pieces, nextUid: Math.max(...pieces.map((p) => p.uid)) + 1 };
 }
 
 describe('room layouts', () => {
@@ -328,20 +352,11 @@ describe('room layouts', () => {
   });
 
   it('vary rooms of a type in more than their key piece: Living Rooms differ in sofa and rug', () => {
-    // Four Living Rooms take the four colors; the two grey sofas never share a rug.
-    const m = modelOf(
-      house(
-        [
-          ['livingRoom', 1, 1, 0, 'fireplace'],
-          ['livingRoom', 4, 1, 0, 'fireplace'],
-          ['livingRoom', 7, 1, 0, 'fireplace'],
-          ['livingRoom', 10, 1, 0, 'fireplace'],
-        ],
-        14,
-      ),
-    );
-    const look = [1, 2, 3, 4].map((uid) => {
-      const sprites = roomItems(m, uid).map((i) => i.sprite);
+    // Four Living Rooms take the four colors; the two grey sofas never share a rug. (In the
+    // first arrangement, the one with the sofa, D-173: a ghost's model takes its look.)
+    const look = [0, 1, 2, 3].map((color) => {
+      const m = pieceModel('livingRoom', 0, { color, style: 0, fixture: 'fireplace' });
+      const sprites = roomItems(m, 1).map((i) => i.sprite);
       return {
         sofa: sprites.find((sp) => sp.startsWith('sofa-'))!,
         rug: sprites.find((sp) => sp.startsWith('rug-'))!,
@@ -476,6 +491,191 @@ describe('Hallways joined (D-159)', () => {
   });
 });
 
+describe('arrangements (D-173)', () => {
+  /** The common types, each with the fixtures drawn as its furniture. */
+  const COMMON: readonly (readonly [PieceId, readonly (FixtureId | undefined)[]])[] = [
+    ['bedroom', [undefined, 'fireplace', 'bunkBeds']],
+    ['livingRoom', [undefined, 'fireplace']],
+    ['kitchen', [undefined, 'fireplace', 'kitchenIsland']],
+    ['lKitchen', [undefined, 'fireplace', 'kitchenIsland']],
+    ['diningRoom', [undefined, 'fireplace']],
+    ['bathroom', [undefined, 'fireplace']],
+    ['closet', [undefined, 'fireplace']],
+    ['homeOffice', [undefined, 'fireplace']],
+    ['hallway', [undefined, 'fireplace']],
+    ['longHallway', [undefined, 'fireplace']],
+  ];
+  /** Each arrangement's key piece. */
+  const KEYS: Readonly<Partial<Record<PieceId, readonly RegExp[]>>> = {
+    bedroom: [/^bed-double/, /^bed-double/, /^bed-double/],
+    livingRoom: [/^sofa-\d/, /^bookcase-/, /^tv-/],
+    kitchen: [/^range/, /^range/, /^range/],
+    lKitchen: [/^range/, /^range/, /^range/],
+    diningRoom: [/^dining-table/, /^dining-table/, /^table-round/],
+    bathroom: [/^toilet/, /^toilet/, /^toilet/],
+    closet: [/^clothes-rail$/, /^clothes-rail-1$/, /^clothes-rail-2$/],
+    homeOffice: [/^desk/, /^(pc-old|desk)/, /^desk/],
+    hallway: [/^runner/, /^runner/, /^runner/],
+    longHallway: [/^runner/, /^runner/, /^runner/],
+  };
+  /** A layout's rug, by family: each Bedroom arrangement has its own. */
+  const rug = (items: readonly Item[]) =>
+    items.find((it) => it.sprite.startsWith('rug-'))?.sprite.replace(/-\d+$/, '');
+
+  it('come three to a common type, and one to the others (a member’s room keeps its own)', () => {
+    for (const [id] of COMMON) expect(arrangements(id), id).toBe(3);
+    for (const id of ['grandmasRoom', 'nanasRoom', 'kidsRoom', 'library', 'garage'] as const) {
+      expect(arrangements(id), id).toBe(1);
+    }
+  });
+
+  it('lay out in every rotation, alone and boxed in, with each fixture, without clashes', () => {
+    for (const [id, fixtures] of COMMON) {
+      const fill = id === 'closet' ? 'bathroom' : 'closet';
+      // A turn that leaves its cells as they were lays it out as before (sprites never turn).
+      const shapes = new Map<string, Rot>();
+      for (const rot of [0, 1, 2, 3] as Rot[]) {
+        const key = JSON.stringify(placedCells(CONTENT.pieces[id].shape, 0, 0, rot));
+        if (!shapes.has(key)) shapes.set(key, rot);
+      }
+      for (let style = 0; style < arrangements(id); style++) {
+        for (const fixture of fixtures) {
+          for (const rot of shapes.values()) {
+            for (const sides of ['', 'NS', 'EW', 'NESW']) {
+              const h = restyle(boxedIn(id, rot, sides, fixture, fill), style);
+              const uid = h.pieces[0]!.uid;
+              expect(roomLook(h, uid).style).toBe(style);
+              const at = `${id} ${style} ${fixture ?? ''} r${rot} ${sides}`;
+              expect(problems(modelOf(h), uid), at).toEqual([]);
+            }
+          }
+        }
+      }
+    }
+  });
+
+  it('keep the key piece in each, in every rotation and color (a piece alone: the ghost)', () => {
+    for (const [id] of COMMON) {
+      for (let style = 0; style < arrangements(id); style++) {
+        for (const rot of [0, 1, 2, 3] as Rot[]) {
+          for (const color of [0, 1, 2]) {
+            const m = pieceModel(id, rot, { color, style });
+            const at = `${id} ${style} r${rot} ${color}`;
+            expect(
+              roomItems(m, 1).some((it) => KEYS[id]![style]!.test(it.sprite)),
+              at,
+            ).toBe(true);
+            expect(problems(m, 1), at).toEqual([]);
+          }
+        }
+      }
+    }
+  });
+
+  it('draw the Fireplace, Bunk Beds and the Kitchen Island in each wherever the first does', () => {
+    for (const [id, fixtures] of COMMON) {
+      for (const fixture of fixtures) {
+        if (!fixture) continue;
+        for (const rot of [0, 1, 2, 3] as Rot[]) {
+          const shown = (style: number) =>
+            roomLayout(pieceModel(id, rot, { color: 0, style, fixture }), 1).fixtureShown;
+          if (!shown(0)) continue;
+          for (let style = 1; style < arrangements(id); style++) {
+            expect(shown(style), `${id} ${style} ${fixture} r${rot}`).toBe(true);
+          }
+        }
+      }
+    }
+  });
+
+  it('stand the Kitchen Island in each kitchen’s own counters', () => {
+    const SETS = [
+      /^kitchen-island(-24|-16)?$/,
+      /^kitchen-island-1(-24|-16)?$/,
+      /^kitchen-island-2/,
+    ];
+    const COUNTERS = [/^counter(-sink)?$/, /^counter(-sink)?-1$/, /^counter(-sink)?-2$/];
+    for (const id of ['kitchen', 'lKitchen'] as const) {
+      for (let style = 0; style < 3; style++) {
+        for (const rot of [0, 1, 2, 3] as Rot[]) {
+          const m = pieceModel(id, rot, { color: 0, style, fixture: 'kitchenIsland' });
+          const sprites = roomItems(m, 1).map((it) => it.sprite);
+          const at = `${id} ${style} r${rot}`;
+          expect(
+            sprites.filter((sp) => sp.startsWith('kitchen-island')),
+            at,
+          ).toHaveLength(1);
+          expect(
+            sprites.some((sp) => SETS[style]!.test(sp)),
+            at,
+          ).toBe(true);
+          // Its counters are the same set (an L-Kitchen's arm may leave no room for one).
+          const counters = sprites.filter((sp) => sp.startsWith('counter'));
+          expect(
+            counters.every((sp) => COUNTERS[style]!.test(sp)),
+            at,
+          ).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('differ between rooms of a type: three Bedrooms, three arrangements', () => {
+    const h = house([
+      ['bedroom', 1, 1],
+      ['bedroom', 3, 1],
+      ['bedroom', 5, 1],
+    ]);
+    expect(new Set([1, 2, 3].map((uid) => roomLook(h, uid).style)).size).toBe(3);
+    // Each with its own rug: round, square, pink or checked.
+    const m = modelOf(h);
+    expect(new Set([1, 2, 3].map((uid) => rug(roomItems(m, uid)))).size).toBe(3);
+  });
+
+  it('keep a room’s arrangement when other rooms are built, or a newer one demolished', () => {
+    const two: Spec[] = [
+      ['bedroom', 1, 1],
+      ['bedroom', 3, 1],
+    ];
+    const more: Spec[] = [...two, ['bedroom', 5, 1], ['kitchen', 1, 3], ['bedroom', 3, 3]];
+    for (const uid of [1, 2]) {
+      expect(roomLook(house(more), uid).style, `uid ${uid}`).toBe(roomLook(house(two), uid).style);
+    }
+    // Any room older than a demolished one keeps its pick: it never depends on a newer room.
+    const many = house(
+      Array.from({ length: 8 }, (_, i): Spec => ['bedroom', (i % 4) * 2, 2 * (i >> 2)]),
+    );
+    for (let gone = 1; gone <= 8; gone++) {
+      const left = { ...many, pieces: many.pieces.filter((p) => p.uid !== gone) };
+      for (let uid = 1; uid < gone; uid++) {
+        expect(roomLook(left, uid).style, `${gone} gone, uid ${uid}`).toBe(
+          roomLook(many, uid).style,
+        );
+      }
+    }
+  });
+
+  it('leave a card’s picture as it was: its type’s first arrangement (its piece alone, uid 1)', () => {
+    for (const [id] of COMMON) {
+      const look = roomLook(house([[id, 4, 4]]), 1);
+      expect(look.style, id).toBe(0);
+      expect(roomItems(pieceModel(id, 0), 1), id).toEqual(roomItems(pieceModel(id, 0, look), 1));
+    }
+  });
+
+  it('stand a television room’s sofas along its side walls, facing each other', () => {
+    // A Living Room is two cells across and three deep: deep enough for them.
+    const m = pieceModel('livingRoom', 0, { color: 0, style: 2 });
+    const items = roomItems(m, 1);
+    const west = items.find((it) => it.sprite === 'sofa-side-0')!;
+    const east = items.find((it) => it.sprite === 'sofa-side-1')!;
+    const row = (it: Item) => Math.floor((it.y + artSize(it.sprite).h - 1) / CELL);
+    expect(west.x).toBe(inset(m, 0, row(west), 'W'));
+    expect(east.x + artSize(east.sprite).w).toBe(2 * CELL - inset(m, 1, row(east), 'E'));
+    expect(problems(m, 1)).toEqual([]);
+  });
+});
+
 describe('the ghost', () => {
   const kept = (items: readonly Item[], re: RegExp) =>
     items
@@ -483,14 +683,16 @@ describe('the ghost', () => {
       .filter((sp) => re.test(sp))
       .sort();
 
-  it('has the colors a new room will get, bumped by the older rooms of its type', () => {
+  it('has the colors and arrangement a new room will get, bumped by the older rooms of its type', () => {
     const two: Spec[] = [
       ['bedroom', 1, 1],
       ['bedroom', 3, 1],
     ];
+    const three = house([...two, ['bedroom', 5, 1]]);
     const look = newRoomLook(house(two), 'bedroom');
+    expect(look.style).toBe(roomLook(three, 3).style);
     const ghost = roomItems(pieceModel('bedroom', 0, look), 1);
-    const built = roomItems(modelOf(house([...two, ['bedroom', 5, 1]])), 3);
+    const built = roomItems(modelOf(three), 3);
     // The same bed and rug (where they stand may differ: the house gives it doors).
     expect(kept(ghost, /^(bed-|rug-)/)).toEqual(kept(built, /^(bed-|rug-)/));
   });
@@ -930,6 +1132,29 @@ describe('a grown room (D-168)', () => {
           const m = modelOf(grown(id, shape, rot, sides));
           expect(problems(m, 1), `${id} ${shape.join('/')} r${rot} ${sides}`).toEqual([]);
         }
+      }
+    }
+  });
+
+  it('lay out in each arrangement too (D-173), and take more furniture than the card’s room', () => {
+    for (const [id, shape] of SHAPES) {
+      for (let style = 0; style < arrangements(id); style++) {
+        for (const rot of [0, 1, 2, 3] as Rot[]) {
+          for (const sides of ['', 'NS', 'EW', 'NESW']) {
+            const h = restyle(grown(id, shape, rot, sides), style);
+            const uid = h.pieces[0]!.uid;
+            const at = `${id} ${shape.join('/')} ${style} r${rot} ${sides}`;
+            expect(problems(modelOf(h), uid), at).toEqual([]);
+          }
+        }
+        const solid = (m: HouseModel, uid: number) =>
+          roomItems(m, uid).filter((it) => !FLAT.test(it.sprite)).length;
+        const big = restyle(grown(id, shape), style);
+        const card = restyle(house([[id, 3, 3]], 14), style);
+        expect(
+          solid(modelOf(big), big.pieces[0]!.uid),
+          `${id} ${shape.join('/')} ${style}`,
+        ).toBeGreaterThan(solid(modelOf(card), card.pieces[0]!.uid));
       }
     }
   });

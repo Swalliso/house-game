@@ -12,6 +12,7 @@
 // - C: the free floor below what stands on the north wall. CL/CR: beside the last C piece.
 // - R: a rug or a hall's runner, centered on the floor, under everything else.
 // - S, SW, SE: against the south wall, in the middle or a corner.
+// - W, E: against the west or east wall, seen from the side (a side-on sofa).
 // - G: the Garage's car, nose-in through its garage door.
 //
 // A piece against a north wall stands with its back on the floor's top edge, under the wall's
@@ -29,18 +30,25 @@
 // of the floor when its doors leave no wall free.
 //
 // Fixtures: the Fireplace, Bunk Beds and the Kitchen Island (in three sizes) are furniture here,
-// tried through all their slots before a stand-in (the bed Bunk Beds replace). The Skylight,
-// Soundproofing, Blackout Curtains, the Chandelier and the Bay Window are painted with the room
-// (house-paint.ts, the model's bay); the layout says where Blackout Curtains hang (in view, in
-// front of the furniture). RoomLayout.fixtureShown is false when a room's fixture can't be drawn
-// or wouldn't be seen, so its badge shows instead and a purchase is always visible.
+// in every arrangement, tried through all their slots before a stand-in (the bed Bunk Beds
+// replace). The Skylight, Soundproofing, Blackout Curtains, the Chandelier and the Bay Window are
+// painted with the room (house-paint.ts, the model's bay); the layout says where Blackout Curtains
+// hang (in view, in front of the furniture). RoomLayout.fixtureShown is false when a room's
+// fixture can't be drawn or wouldn't be seen, so its badge shows instead and a purchase is always
+// visible.
 //
-// Rooms of one type differ in color (duvets, sofas, woods, rugs): each takes the color its uid's
-// hash picks, or the next one if an older room of its type has it, so up to the palette's size
-// they never look copy-pasted, and demolishing a room leaves the others as they were (unless it
-// had bumped one). Small choices (which corner, which side) go by the hash too. Never by chance:
-// a house always looks the same. A ghost (pieceModel with a look) takes the colors and choices its
-// room will have once placed (newRoomLook), or has while the Moving Truck carries it (roomLook).
+// Rooms of one type differ in color (duvets, sofas, woods, rugs) and, for the common types, in
+// arrangement (D-173, ARRANGEMENTS): a Bedroom's bed beside its nightstands, a wardrobe or a desk;
+// a Living Room set around its sofa, for reading or for the television; kitchens in three sets
+// of counters. Each room takes the color and the arrangement its uid's hash picks, or the next one
+// if an older room of its type has it, so up to each list's size they never look copy-pasted.
+// Building a room never changes an older one, and demolishing a room leaves the others as they
+// were (unless it had bumped one: then that one takes its own pick back). An extended or moved
+// room keeps its uid, so its look. Small choices (which corner, which side) go by the hash too.
+// Never by chance: a house always looks the same. A ghost (pieceModel with a look) takes the
+// colors, arrangement and choices its room will have once placed (newRoomLook), or has while the
+// Moving Truck carries it (roomLook). A card's picture (pieceModel without a look: its piece
+// alone, uid 1) has its type's first arrangement, the one cards have always shown.
 //
 // The members' rooms (D-103) are furnished as their own (D-111): the twins' crib, two children's
 // beds, Grandma's vanity and curio cabinet, Renfield's cot and candles, Nana's dogs' bed (our own
@@ -161,10 +169,30 @@ const BACK: Readonly<Record<string, number>> = {
   'paint-pot': 5,
   // Hung on the north wall: all but a row of it over the face and the band.
   painting: 15,
+  picture: 12,
+  clock: 16,
   candles: 6,
   // It hangs from the band's top: its thread over the band and the face.
   spider: 19,
   'own-dog-bed': 4,
+  // D-173's arrangements.
+  wardrobe: 27,
+  chest: 11,
+  tv: 12,
+  'tv-old': 12,
+  piano: 20,
+  fishtank: 12,
+  'plant-palm': 20,
+  'plant-ficus': 20,
+  'plant-leafy': 18,
+  'bookcase-mid': 28,
+  'bookcase-low': 19,
+  'side-lamp': 12,
+  'side-plant': 10,
+  hutch: 19,
+  sideboard: 12,
+  lectern: 20,
+  'hall-bench': 10,
 };
 
 function family(sprite: ArtId): string {
@@ -348,7 +376,8 @@ function onFloor(g: Geo, r: Rect, face: boolean, tol = 1): boolean {
 // ---------------------------------------------------------------------------------------
 // What each room type wants.
 
-type Slot = 'N' | 'NL' | 'NR' | 'NW' | 'NE' | 'C' | 'CL' | 'CR' | 'R' | 'S' | 'SW' | 'SE' | 'G';
+type Slot =
+  'N' | 'NL' | 'NR' | 'NW' | 'NE' | 'C' | 'CL' | 'CR' | 'R' | 'S' | 'SW' | 'SE' | 'W' | 'E' | 'G';
 
 interface Want {
   /**
@@ -510,34 +539,26 @@ const SPECS: Readonly<Record<RoomType, (c: Ctx) => Want[]>> = {
   ],
   kitchen: (c) => kitchen(c),
   lKitchen: (c) => kitchen(c),
-  diningRoom: (c) => {
-    const t = c.rank % TABLES.length;
-    const chair = (s: 'CL' | 'CR'): Want => ({
-      sprites: [`chair-${s === 'CL' ? 'east' : 'west'}-${t}` as SpriteId],
-      slots: [s],
-      tuck: 3,
-    });
-    return [
-      // In the middle of the floor with room for a chair each side, or against the north wall
-      // where a door's walkway takes the middle.
-      { sprites: [TABLES[t]!], slots: ['C'], aisle: 13 - 3 },
-      chair('CL'),
-      chair('CR'),
-      chair('CL'),
-      chair('CR'),
-      ...fireplace(c, 'N'),
-      want(pick(MATS, c.rank + 1), 'R'),
-      // D-168: a big dining room's sideboard (a dresser), a cabinet, a tall plant and a lamp.
-      ...(c.big
-        ? [
-            want(pick(DRESSERS, c.rank), 'N', 'NW', 'NE'),
-            want(pick(CURIOS, c.rank), 'N', 'NE', 'NW'),
-            want('plant-tall', ...corners(c, 'SW', 'SE'), 'C'),
-            want('lamp-floor', ...corners(c, 'SE', 'SW')),
-          ]
-        : []),
-    ];
-  },
+  diningRoom: (c) => [
+    // In the middle of the floor with room for a chair each side, or against the north wall
+    // where a door's walkway takes the middle.
+    { sprites: [pick(TABLES, c.rank)], slots: ['C'], aisle: 13 - 3 },
+    chair(c, 'CL'),
+    chair(c, 'CR'),
+    chair(c, 'CL'),
+    chair(c, 'CR'),
+    ...fireplace(c, 'N'),
+    want(pick(MATS, c.rank + 1), 'R'),
+    // D-168: a big dining room's sideboard (a dresser), a cabinet, a tall plant and a lamp.
+    ...(c.big
+      ? [
+          want(pick(DRESSERS, c.rank), 'N', 'NW', 'NE'),
+          want(pick(CURIOS, c.rank), 'N', 'NE', 'NW'),
+          want('plant-tall', ...corners(c, 'SW', 'SE'), 'C'),
+          want('lamp-floor', ...corners(c, 'SE', 'SW')),
+        ]
+      : []),
+  ],
   livingRoom: (c) => {
     const sofa = pick(SOFAS, c.rank);
     const rug: Want = {
@@ -724,8 +745,9 @@ const SPECS: Readonly<Record<RoomType, (c: Ctx) => Want[]>> = {
 };
 
 /**
- * A member's room's bed (the first of `beds` that fits), or Bunk Beds in its place, as in a
- * Bedroom: a member's room counts as a Bedroom, so Bunk Beds fit it.
+ * A bed (the first of `beds` that fits), or Bunk Beds in its place: a Bedroom's in its other
+ * arrangements (D-173), and a member's room's, as in a Bedroom: a member's room counts as a
+ * Bedroom, so Bunk Beds fit it.
  */
 function bedOr(c: Ctx, ...beds: ArtId[]): Want {
   return c.fixture === 'bunkBeds'
@@ -741,27 +763,19 @@ function bedOr(c: Ctx, ...beds: ArtId[]): Want {
  * arm, or beside a door's walkway).
  */
 function kitchen(c: Ctx): Want[] {
-  const island = c.fixture === 'kitchenIsland';
+  const isle = c.fixture === 'kitchenIsland';
   return [
     want('range', 'N', 'C'),
     ...fireplace(c, 'NL', 'NR'),
     { sprites: ['counter-sink', 'counter'], slots: ['NL', 'NR', 'CR', 'CL'] },
-    ...(island
-      ? [
-          {
-            sprites: ['kitchen-island', 'kitchen-island-24', 'kitchen-island-16'],
-            slots: ['C'],
-            fixture: true,
-          } satisfies Want,
-        ]
-      : []),
+    ...(isle ? [island(ISLANDS.white)] : []),
     // Not one of the range's group (its counter with the sink comes first): on another north
     // wall, or beside the range's run where it still fits.
     want('fridge', 'N', 'NL', 'NR'),
     want('counter', 'N'),
     // A breakfast table, where the floor is free for it. D-168: a big kitchen seats a family at
     // a dining table with a chair each side, or keeps the breakfast table where that won't fit.
-    ...(island ? [] : c.big ? familyTable(c) : [want('breakfast-table', 'C')]),
+    ...(isle ? [] : c.big ? familyTable(c) : [want('breakfast-table', 'C')]),
     // D-168: and its run of counters goes on.
     ...(c.big
       ? [
@@ -773,14 +787,40 @@ function kitchen(c: Ctx): Want[] {
   ];
 }
 
+/**
+ * The Kitchen Island in a kitchen's counters (D-173: the white ones, the wood or the blue), the
+ * full one or a smaller one (in an L-Kitchen's arm, or beside a walkway).
+ */
+function island(sprites: readonly SpriteId[]): Want {
+  return { sprites, slots: ['C'], fixture: true };
+}
+const ISLANDS = {
+  white: ['kitchen-island', 'kitchen-island-24', 'kitchen-island-16'],
+  wood: ['kitchen-island-1', 'kitchen-island-1-24', 'kitchen-island-1-16'],
+  blue: ['kitchen-island-2', 'kitchen-island-2-24', 'kitchen-island-2-16'],
+} as const satisfies Readonly<Record<string, readonly SpriteId[]>>;
+
 /** D-168: a big kitchen's table: a dining table and two chairs, else the breakfast table. */
 function familyTable(c: Ctx): Want[] {
-  const t = c.rank % TABLES.length;
   return [
-    { sprites: [TABLES[t]!, 'breakfast-table'], slots: ['C'], aisle: 13 - 3 },
-    { sprites: [`chair-east-${t}` as SpriteId], slots: ['CL'], tuck: 3 },
-    { sprites: [`chair-west-${t}` as SpriteId], slots: ['CR'], tuck: 3 },
+    { sprites: [pick(TABLES, c.rank), 'breakfast-table'], slots: ['C'], aisle: 13 - 3 },
+    chair(c, 'CL'),
+    chair(c, 'CR'),
   ];
+}
+
+/**
+ * A dining chair at the west (CL) or east (CR) side of the table, facing it, in the wood of the
+ * room's own table color: it tucks under a dining table (D-173: a round one too), and stands
+ * nowhere else.
+ */
+function chair(c: Ctx, side: 'CL' | 'CR'): Want {
+  const t = c.rank % TABLES.length;
+  return {
+    sprites: [`chair-${side === 'CL' ? 'east' : 'west'}-${t}` as SpriteId],
+    slots: [side],
+    tuck: 3,
+  };
 }
 
 /** D-168: a big bedroom's dresser and sitting corner. */
@@ -813,6 +853,329 @@ function hall(c: Ctx): Want[] {
     ...fireplace(c, 'N'),
     want('coat-rack', 'N'),
     want('plant-potted', 'S'),
+  ];
+}
+
+// ---------------------------------------------------------------------------------------
+// D-173: the common types' other arrangements.
+
+/**
+ * Each common type's arrangements after its first (SPECS'): a room takes one by its uid
+ * (arrangementOf), so rooms of a type differ in what stands where, not only in color. Each keeps
+ * its type's key piece (a desk in every Home Office) and its fixtures: the Fireplace, Bunk Beds
+ * and the Kitchen Island. By the room's own type only: a member's room keeps its own furniture.
+ */
+const ARRANGEMENTS: Readonly<Partial<Record<PieceId, readonly ((c: Ctx) => Want[])[]>>> = {
+  bedroom: [bedroomWardrobe, bedroomDesk],
+  livingRoom: [readingRoom, tvRoom],
+  kitchen: [woodKitchen, blueKitchen],
+  lKitchen: [woodKitchen, blueKitchen],
+  diningRoom: [clothDining, hutchDining],
+  bathroom: [hamperBathroom, plantBathroom],
+  closet: [
+    (c) => closet(c, 'clothes-rail-1', pick(HAMPERS, c.rank)),
+    (c) => closet(c, 'clothes-rail-2', pick(SHOES, c.rank + 1)),
+  ],
+  homeOffice: [oldOffice, fishOffice],
+  hallway: [benchHall, clockHall],
+  longHallway: [benchHall, clockHall],
+};
+
+/** How many arrangements a room of type `defId` comes in (D-173). */
+export function arrangements(defId: PieceId): number {
+  return 1 + (ARRANGEMENTS[defId]?.length ?? 0);
+}
+
+const NIGHTLAMPS: readonly SpriteId[] = ['nightlamp-0', 'nightlamp-1', 'nightlamp-2'];
+const SQ_RUGS: readonly SpriteId[] = ['rug-sq-0', 'rug-sq-1', 'rug-sq-2'];
+const OTTOMANS: readonly SpriteId[] = ['ottoman-0', 'ottoman-1'];
+const LAMPS: readonly SpriteId[] = ['lamp-floor-1', 'lamp-floor-2', 'lamp-floor'];
+const ROUND_TABLES: readonly SpriteId[] = ['table-round-0', 'table-round-1', 'table-round-2'];
+/** The dining tables under a cloth: red checks, white, pink checks. */
+const CLOTHS: readonly SpriteId[] = ['dining-table-3', 'dining-table-4', 'dining-table-5'];
+const KITCHEN_MATS: readonly SpriteId[] = ['mat-kitchen-0', 'mat-kitchen-1'];
+const HAMPERS: readonly SpriteId[] = ['hamper-0', 'hamper-1'];
+const PICTURES: readonly SpriteId[] = ['picture-0', 'picture-1', 'picture-2'];
+const BENCHES: readonly SpriteId[] = ['hall-bench-0', 'hall-bench-1'];
+
+/** A Bedroom's bed beside a tall wardrobe (a low chest where it won't fit), a lamp at its other side. */
+function bedroomWardrobe(c: Ctx): Want[] {
+  const [near, far] = corners(c, 'NL', 'NR');
+  return [
+    bedOr(c, pick(BEDS, c.rank)),
+    ...fireplace(c, far!),
+    { sprites: ['wardrobe-0', 'chest-0'], slots: [far!] },
+    want(pick(NIGHTLAMPS, c.rank), near!),
+    // A big one's television, an ottoman at the bed's foot and a plant.
+    ...(c.big
+      ? [
+          want('tv-0', 'N', 'NE', 'NW'),
+          want(pick(OTTOMANS, c.rank), 'C'),
+          want('plant-leafy', ...corners(c, 'SW', 'SE')),
+        ]
+      : []),
+    want(pick(SQ_RUGS, c.rank), 'R'),
+    // Below the wardrobe's side, an armchair where the floor is deep enough, or a small plant.
+    {
+      sprites: [pick(ARMCHAIRS, c.rank + 1), 'plant-small'],
+      slots: far === 'NR' ? ['SE', 'SW'] : ['SW', 'SE'],
+    },
+  ];
+}
+
+/** A Bedroom's bed beside a desk (a smaller one where it won't fit), a lamp at its other side. */
+function bedroomDesk(c: Ctx): Want[] {
+  const [near, far] = corners(c, 'NL', 'NR');
+  return [
+    bedOr(c, pick(BEDS, c.rank)),
+    ...fireplace(c, far!),
+    { sprites: [pick(SCHOOL_DESKS, c.rank), 'desk-small'], slots: [far!] },
+    want(pick(NIGHTLAMPS, c.rank + 1), near!),
+    // A big one's low bookcase, an armchair and a floor lamp.
+    ...(c.big
+      ? [
+          want('bookcase-low-0', 'N', 'NE', 'NW'),
+          want(pick(ARMCHAIRS, c.rank), 'C'),
+          want(pick(LAMPS, c.rank), ...corners(c, 'SW', 'SE')),
+        ]
+      : []),
+    want(c.rank % 2 ? 'rug-pink' : 'rug-check', 'R'),
+    { sprites: ['plant-ficus', 'plant-small'], slots: corners(c, 'SE', 'SW') },
+  ];
+}
+
+/**
+ * A Living Room set for reading: a tall bookcase (a low one where it won't fit) with a floor lamp
+ * and a slim tree, two armchairs at a round table on an oval rug, a palm in a corner. A Fireplace
+ * takes the bookcase's wall, a low bookcase beside it where there's room.
+ */
+function readingRoom(c: Ctx): Want[] {
+  const [near, far] = corners(c, 'NL', 'NR');
+  return [
+    ...(c.fixture === 'fireplace'
+      ? [
+          { sprites: ['fireplace'], slots: ['N'], fixture: true } satisfies Want,
+          want('bookcase-low-0', near!),
+        ]
+      : [
+          { sprites: ['bookcase-mid-0', 'bookcase-low-0'], slots: ['N', 'C'] } satisfies Want,
+          want(pick(LAMPS, c.rank), near!),
+        ]),
+    want('plant-ficus', far!),
+    want(pick(ARMCHAIRS, c.rank), 'C'),
+    want(pick(ARMCHAIRS, c.rank + 1), 'CR', 'CL'),
+    { sprites: ['rug-oval', rugOf(WIDE_RUGS, c.rank), rugOf(TALL_RUGS, c.rank)], slots: ['R'] },
+    want(pick(ROUND_TABLES, c.rank), 'C'),
+    // A big one's piano and a lamp on a side table.
+    ...(c.big ? [want('piano', 'N', 'NE', 'NW'), want('side-lamp', 'N', 'NW', 'NE')] : []),
+    want('plant-palm', ...corners(c, 'SW', 'SE')),
+  ];
+}
+
+/**
+ * A Living Room set for the television: side tables beside it, sofas along the side walls facing
+ * each other where the room is deep enough for them, armchairs at a coffee table between them. A
+ * Fireplace takes the wall, the television beside it (the old one where the new won't fit).
+ */
+function tvRoom(c: Ctx): Want[] {
+  const [near, far] = corners(c, 'NL', 'NR');
+  return [
+    ...(c.fixture === 'fireplace'
+      ? [
+          { sprites: ['fireplace'], slots: ['N'], fixture: true } satisfies Want,
+          { sprites: ['tv-0', 'tv-old'], slots: [near!] } satisfies Want,
+        ]
+      : [
+          { sprites: ['tv-0', 'tv-old'], slots: ['N', 'C'] } satisfies Want,
+          want('side-plant', near!),
+        ]),
+    want('side-lamp', far!),
+    want('sofa-side-0', 'W'),
+    want('sofa-side-1', 'E'),
+    want('coffee-table', 'C'),
+    want(pick(ARMCHAIRS, c.rank), 'CL'),
+    want(pick(ARMCHAIRS, c.rank + 2), 'CR'),
+    { sprites: [rugOf(WIDE_RUGS, c.rank), rugOf(TALL_RUGS, c.rank)], slots: ['R'] },
+    // A big one's fish tank and a plant.
+    ...(c.big ? [want('fishtank', 'N', 'NE', 'NW'), want('plant-leafy', 'NW', 'NE')] : []),
+    want('plant-potted', ...corners(c, 'SW', 'SE')),
+  ];
+}
+
+/**
+ * A Kitchen in pale wood over cream cabinets, its sink on the range's other side and a blue-grey
+ * fridge, a round table on a mat (or the Kitchen Island, in the same wood).
+ */
+function woodKitchen(c: Ctx): Want[] {
+  const isle = c.fixture === 'kitchenIsland';
+  return [
+    want('range', 'N', 'C'),
+    ...fireplace(c, 'NL', 'NR'),
+    { sprites: ['counter-sink-1', 'counter-1'], slots: ['NR', 'NL', 'CR', 'CL'] },
+    ...(isle ? [island(ISLANDS.wood)] : []),
+    want('fridge-1', 'N', 'NL', 'NR'),
+    want('counter-1', 'N'),
+    ...(isle ? [] : [want(pick(KITCHEN_MATS, c.rank), 'R'), want(pick(ROUND_TABLES, c.rank), 'C')]),
+    // A big one's run of counters goes on, and it has a plant.
+    ...(c.big
+      ? [want('counter-1', 'N', 'NW', 'NE'), want('plant-leafy', ...corners(c, 'SW', 'SE'))]
+      : []),
+    want('plant-small', ...corners(c, 'SE', 'SW')),
+  ];
+}
+
+/**
+ * A Kitchen in blue over honey cabinets with a steel fridge, a breakfast table on a mat (a big
+ * one's family table, or the Kitchen Island, in the same blue).
+ */
+function blueKitchen(c: Ctx): Want[] {
+  const isle = c.fixture === 'kitchenIsland';
+  return [
+    want('range', 'N', 'C'),
+    ...fireplace(c, 'NL', 'NR'),
+    { sprites: ['counter-sink-2', 'counter-2'], slots: ['NL', 'NR', 'CR', 'CL'] },
+    ...(isle ? [island(ISLANDS.blue)] : []),
+    want('fridge-2', 'N', 'NL', 'NR'),
+    want('counter-2', 'N'),
+    ...(isle
+      ? []
+      : [
+          want(pick(KITCHEN_MATS, c.rank + 1), 'R'),
+          ...(c.big ? familyTable(c) : [want('breakfast-table', 'C')]),
+        ]),
+    ...(c.big ? [want('counter-2', 'N', 'NW', 'NE')] : []),
+    want('plant-leafy', ...corners(c, 'SW', 'SE')),
+  ];
+}
+
+/** A Dining Room's table under a cloth with four chairs, a square rug; a big one's hutch and sideboard. */
+function clothDining(c: Ctx): Want[] {
+  return [
+    { sprites: [pick(CLOTHS, c.rank)], slots: ['C'], aisle: 13 - 3 },
+    chair(c, 'CL'),
+    chair(c, 'CR'),
+    chair(c, 'CL'),
+    chair(c, 'CR'),
+    ...fireplace(c, 'N'),
+    want(pick(SQ_RUGS, c.rank), 'R'),
+    ...(c.big
+      ? [
+          want('hutch', 'N', 'NW', 'NE'),
+          want('sideboard', 'N', 'NE', 'NW'),
+          want('plant-leafy', ...corners(c, 'SW', 'SE')),
+        ]
+      : []),
+  ];
+}
+
+/**
+ * A Dining Room's china hutch (a sideboard where it won't fit), a round table with a chair each
+ * side below it on an oval rug, a plant. A Fireplace takes the hutch's wall, over the table, as
+ * in the first arrangement.
+ */
+function hutchDining(c: Ctx): Want[] {
+  const fire = c.fixture === 'fireplace';
+  return [
+    ...(fire ? [] : [{ sprites: ['hutch', 'sideboard'], slots: ['N'] } satisfies Want]),
+    { sprites: [pick(ROUND_TABLES, c.rank)], slots: ['C'], aisle: 13 - 3 },
+    chair(c, 'CL'),
+    chair(c, 'CR'),
+    ...fireplace(c, 'N'),
+    ...(c.big
+      ? [want('sideboard', 'N', 'NE', 'NW'), want(pick(LAMPS, c.rank), ...corners(c, 'SW', 'SE'))]
+      : []),
+    want('rug-oval', 'R'),
+    want('plant-leafy', ...corners(c, 'SE', 'SW'), 'NW', 'NE'),
+  ];
+}
+
+/** A Bathroom's laundry hamper beside the toilet or in a corner, where there's room, and a striped mat. */
+function hamperBathroom(c: Ctx): Want[] {
+  const [near, far] = corners(c, 'NL', 'NR');
+  return [
+    { sprites: [pick(TOILETS, c.rank)], slots: ['N'], lift: 8 },
+    ...fireplace(c, 'NR', 'NL'),
+    want(pick(HAMPERS, c.rank), near!, far!),
+    want('bath-mat-1', 'R'),
+    want(pick(HAMPERS, c.rank), ...corners(c, 'SW', 'SE')),
+  ];
+}
+
+/** A Bathroom's small plant beside the toilet or in a corner, where there's room, and a plush mat. */
+function plantBathroom(c: Ctx): Want[] {
+  const [near, far] = corners(c, 'NL', 'NR');
+  return [
+    { sprites: [pick(TOILETS, c.rank)], slots: ['N'], lift: 8 },
+    ...fireplace(c, 'NR', 'NL'),
+    want('plant-small', far!, near!),
+    { sprites: ['bath-mat-3', 'bath-mat-2'], slots: ['R'] },
+    want('plant-small', ...corners(c, 'SE', 'SW')),
+  ];
+}
+
+/** A Closet's rail of shirts in another color, and `below` where there's floor for it. */
+function closet(c: Ctx, rail: SpriteId, below: SpriteId): Want[] {
+  return [
+    { sprites: [rail], slots: ['N'], lift: 8 },
+    ...fireplace(c, 'NR', 'NL'),
+    want(below, 'S', 'C'),
+  ];
+}
+
+/**
+ * A Home Office's old computer between two narrow bookcases where the room is deep enough for
+ * them (a lamp and a plant on side tables where it isn't), a square rug, a globe.
+ */
+function oldOffice(c: Ctx): Want[] {
+  return [
+    { sprites: ['pc-old', 'desk-small'], slots: ['N', 'C', 'S'] },
+    ...fireplace(c, 'NR', 'NL'),
+    { sprites: ['bookcase-narrow', 'side-lamp'], slots: ['NL'] },
+    { sprites: ['bookcase-narrow', 'side-plant'], slots: ['NR'] },
+    want(pick(SQ_RUGS, c.rank), 'R'),
+    want('globe-1', ...corners(c, 'SW', 'SE')),
+  ];
+}
+
+/**
+ * A Home Office's small desk beside a fish tank (against the south wall where the north is too
+ * short for both), a plant on a side table, a reading stand where there's floor for it.
+ */
+function fishOffice(c: Ctx): Want[] {
+  const [near, far] = corners(c, 'NL', 'NR');
+  return [
+    { sprites: ['desk-small', 'desk-study'], slots: ['N', 'C', 'S'] },
+    ...fireplace(c, far!),
+    want('fishtank', far!, ...corners(c, 'SE', 'SW')),
+    want('side-plant', near!),
+    want('rug-sq-2', 'R'),
+    want('lectern', 'C', 'S'),
+    want('plant-leafy', ...corners(c, 'SW', 'SE')),
+  ];
+}
+
+/** A hall's bench, a picture over the runner, a slim tree and the coat rack where they fit. */
+function benchHall(c: Ctx): Want[] {
+  return [
+    { sprites: [], slots: ['R'], runner: true },
+    // In a corner, or in the middle of the wall where doors take the corners.
+    { sprites: [pick(BENCHES, c.rank)], slots: [...corners(c, 'NW', 'NE'), 'N'] },
+    ...fireplace(c, 'N'),
+    want(pick(PICTURES, c.rank), 'N'),
+    want('plant-ficus', ...corners(c, 'NW', 'NE'), 'N'),
+    want('coat-rack', 'N'),
+  ];
+}
+
+/** A hall's side table with a lamp (or a plant), a cuckoo clock and a picture, a leafy plant. */
+function clockHall(c: Ctx): Want[] {
+  return [
+    { sprites: [], slots: ['R'], runner: true },
+    { sprites: ['side-lamp', 'side-plant'], slots: [...corners(c, 'NE', 'NW'), 'N'] },
+    ...fireplace(c, 'N'),
+    want('clock', 'N'),
+    want(pick(PICTURES, c.rank + 1), 'N'),
+    want('plant-leafy', ...corners(c, 'NE', 'NW'), 'N', 'S'),
   ];
 }
 
@@ -915,6 +1278,9 @@ class Layout {
   }
 }
 
+/** The tables chairs tuck under: a dining table, plain or under a cloth, or a round one (D-173). */
+const TABLE = /^(dining-table|table-round)/;
+
 function shrinkX(r: Rect, by: number): Rect {
   return { x: r.x + by, y: r.y, w: Math.max(0, r.w - 2 * by), h: r.h };
 }
@@ -991,7 +1357,10 @@ function placeGroup(L: Layout, key: Want, members: readonly Want[]): Set<Want> {
           const feet: Rect[] = [];
           for (const [w, sp] of order) {
             const y = L.wallY(r, sp, w.lift);
-            if (y === null || !L.fitsWall(r, sp, x, y, pass, feet)) break;
+            // Only the key piece may stand in a walkway (a one-cell room's toilet), never what
+            // stands beside it (D-173: a hamper beside the toilet).
+            const p = w === key ? pass : { ...pass, walkways: true };
+            if (y === null || !L.fitsWall(r, sp, x, y, p, feet)) break;
             const { w: sw, h } = artSize(sp);
             trial.push({ want: w, sprite: sp, x, y });
             feet.push({ x, y: Math.max(y, r.yb), w: sw, h: y + h - Math.max(y, r.yb) });
@@ -1054,7 +1423,7 @@ function placeSlot(L: Layout, w: Want, slot: Slot, c: Ctx): boolean {
         const a = L.lastC;
         if (!a?.rect) continue;
         // A chair (it tucks) sits only at a table: never beside a range in the middle (D-168).
-        if (w.tuck && !a.item.sprite.startsWith('dining-table')) continue;
+        if (w.tuck && !TABLE.test(a.item.sprite)) continue;
         const tuck = w.tuck ?? 0;
         const x = slot === 'CL' ? a.rect.x - sw + tuck : a.rect.x + a.rect.w - tuck;
         // Down the side of a long table, two to a side: the upper seat, then the lower.
@@ -1083,6 +1452,22 @@ function placeSlot(L: Layout, w: Want, slot: Slot, c: Ctx): boolean {
           const walled = [Math.floor(x / CELL), Math.floor((x + sw - 1) / CELL)].every(
             (cx) => edge(g.m, cx, Math.floor((y + h - 1) / CELL), 'S') !== EDGE.none,
           );
+          if (walled && onFloor(g, r, false) && L.free(r)) {
+            L.add(w, sprite, x, y, null);
+            return true;
+          }
+        }
+      } else if (slot === 'W' || slot === 'E') {
+        // Against the side wall all along it (not where a hall opens on, D-159), off its
+        // doorways and their walkways: the middle first, then up and down.
+        const x = slot === 'W' ? g.ix0 : g.ix1 - sw;
+        const cx = Math.floor((slot === 'W' ? x : x + sw - 1) / CELL);
+        for (const y of spots(g.floorTop + 1, g.iy1 - 1, h)) {
+          const r = { x, y, w: sw, h };
+          let walled = true;
+          for (let cy = Math.floor(y / CELL); cy <= Math.floor((y + h - 1) / CELL); cy++) {
+            if (edge(g.m, cx, cy, slot) === EDGE.none) walled = false;
+          }
           if (walled && onFloor(g, r, false) && L.free(r)) {
             L.add(w, sprite, x, y, null);
             return true;
@@ -1339,21 +1724,15 @@ const COLORS: Readonly<Partial<Record<PieceId, number>>> = {
 };
 
 /**
- * A room's color: the one its uid's hash picks, or the next one free of the older rooms of its
- * type (in uid order, so in placement order). Distinct up to the palette's size, and stable: an
- * older room's color never depends on a newer one.
+ * Room `uid`'s pick of `n` (a color, an arrangement) among the rooms of its type, `uids` (its own
+ * included): the one its uid's hash (`salt`) picks, or the next one free of the older rooms of its
+ * type (in uid order, so in placement order). Distinct up to `n`, and stable: an older room's pick
+ * never depends on a newer one.
  */
-function palette(m: HouseModel, room: Room): number {
-  const same = [...m.rooms.values()].filter((r) => r.defId === room.defId).map((r) => r.uid);
-  return paletteOf(room.defId, same, room.uid);
-}
-
-/** Room `uid`'s color among the rooms of its type, `uids` (its own included). */
-function paletteOf(defId: PieceId, uids: readonly number[], uid: number): number {
-  const n = byType(COLORS, defId) ?? 1;
+function pickOf(n: number, salt: number, uids: readonly number[], uid: number): number {
   const taken = new Set<number>();
   for (const u of [...uids].sort((a, b) => a - b)) {
-    const start = uidHash(u, 11) % n;
+    const start = uidHash(u, salt) % n;
     let c = start;
     for (let k = 0; k < n; k++) {
       c = (start + k) % n;
@@ -1366,10 +1745,35 @@ function paletteOf(defId: PieceId, uids: readonly number[], uid: number): number
   return 0;
 }
 
+/** Room `uid`'s color among the rooms of its type, `uids` (its own included). */
+function paletteOf(defId: PieceId, uids: readonly number[], uid: number): number {
+  return pickOf(byType(COLORS, defId) ?? 1, 11, uids, uid);
+}
+
+/**
+ * Room `uid`'s arrangement among the rooms of its type, `uids` (its own included): as its color,
+ * by a hash of its own (D-173). Uid 1 picks each type's first arrangement (with up to five of
+ * them), so a piece alone without a look, a card's picture, keeps the look cards have always had.
+ */
+function arrangementOf(defId: PieceId, uids: readonly number[], uid: number): number {
+  return pickOf(arrangements(defId), ARRANGEMENT_SALT, uids, uid);
+}
+
+/** A salt whose hash of uid 1 is a multiple of 60: the first of 2, 3, 4 or 5 arrangements. */
+const ARRANGEMENT_SALT = 184;
+
+/** The uids of the house's rooms of `room`'s type, its own included. */
+function sameType(m: HouseModel, room: Room): number[] {
+  return [...m.rooms.values()].filter((r) => r.defId === room.defId).map((r) => r.uid);
+}
+
 /** Which way a room's small choices go: a bit of its uid's hash. */
 const flipOf = (uid: number) => ((uidHash(uid, 7) >>> 3) & 1) === 1;
 
-/** How placed room `uid` looks (its color, its choices, its fixture): its ghost's while the Moving Truck carries it. */
+/**
+ * How placed room `uid` looks (its color, its arrangement, its choices, its fixture): its ghost's
+ * while the Moving Truck carries it, or while a card extends it (D-168).
+ */
 export function roomLook(house: HouseState, uid: number): PieceLook {
   const piece = house.pieces.find((p) => p.uid === uid);
   if (!piece) return { color: 0 };
@@ -1377,6 +1781,7 @@ export function roomLook(house: HouseState, uid: number): PieceLook {
   return {
     color: paletteOf(piece.defId, same, uid),
     flip: flipOf(uid),
+    style: arrangementOf(piece.defId, same, uid),
     ...(piece.fixture ? { fixture: piece.fixture.id } : {}),
   };
 }
@@ -1384,8 +1789,12 @@ export function roomLook(house: HouseState, uid: number): PieceLook {
 /** How a new room of type `defId` will look once it's placed (its uid is the house's next): its ghost's. */
 export function newRoomLook(house: HouseState, defId: PieceId): PieceLook {
   const uid = house.nextUid;
-  const same = house.pieces.filter((p) => p.defId === defId).map((p) => p.uid);
-  return { color: paletteOf(defId, [...same, uid], uid), flip: flipOf(uid) };
+  const same = [...house.pieces.filter((p) => p.defId === defId).map((p) => p.uid), uid];
+  return {
+    color: paletteOf(defId, same, uid),
+    flip: flipOf(uid),
+    style: arrangementOf(defId, same, uid),
+  };
 }
 
 /** D-168: how many tiles a room's own card has; an extended room has more. */
@@ -1400,13 +1809,16 @@ function layOut(m: HouseModel, uid: number): RoomLayout {
   if (!room || !spec) return { items: [], fixtureShown: !room?.fixture };
   // A piece alone (a ghost) looks as it will once placed; a placed room by the house.
   const look = m.look;
+  const same = look ? [] : sameType(m, room);
   const c: Ctx = {
-    rank: look ? look.color : palette(m, room),
+    rank: look ? look.color : paletteOf(room.defId, same, uid),
     flip: look?.flip ?? flipOf(uid),
     fixture: room.fixture,
     big: room.cells.length > cardTiles(room.defId),
   };
-  const wants = spec(c);
+  // Its arrangement (D-173): the first is its type's SPECS entry, the others ARRANGEMENTS'.
+  const style = look ? (look.style ?? 0) : arrangementOf(room.defId, same, uid);
+  const wants = ((style > 0 && ARRANGEMENTS[room.defId]?.[style - 1]) || spec)(c);
   const L = new Layout(analyze(m, room));
   const done = new Set<Want>();
   /** Places want `w` (the i-th) through its slots: an N piece with its group first. */

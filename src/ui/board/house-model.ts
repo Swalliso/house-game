@@ -139,12 +139,14 @@ export interface Room {
 
 /**
  * How a piece will look once it's placed, for its ghost: its color (an index into its type's
- * palette, as the house will give it), which way its small choices go, and its fixture.
+ * palette, as the house will give it), which way its small choices go, its fixture, and a room's
+ * arrangement (D-173: an index into its type's, as the house will give it; the first without one).
  */
 export interface PieceLook {
   color: number;
   flip?: boolean;
   fixture?: FixtureId;
+  style?: number;
 }
 
 export interface HouseModel {
@@ -388,7 +390,9 @@ export function pieceModel(
   /** A pack's own tiles (PlacedPiece.shape), when they aren't the card's shape. */
   own?: readonly string[],
 ): HouseModel {
-  const looks = look ? `${look.color}:${look.flip ?? ''}:${look.fixture ?? ''}` : '';
+  const looks = look
+    ? `${look.color}:${look.flip ?? ''}:${look.fixture ?? ''}:${look.style ?? ''}`
+    : '';
   const key = `${defId}:${rot}:${own?.join('/') ?? ''}:${looks}`;
   let m = solo.get(key);
   if (!m) {
