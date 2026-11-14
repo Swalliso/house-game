@@ -342,7 +342,8 @@ export function validateContent(content: Content): string[] {
     }
     const text = cardText(content, def);
     if (
-      text.effects.length !== def.effects.length ||
+      // D-171: the Addition has no effect of its own, and one line that says what it grows.
+      text.effects.length !== (def.addition ? 1 : def.effects.length) ||
       text.effects.some((t) => !t || t.includes('undefined'))
     ) {
       problems.push(`${where}: card text didn't generate`);

@@ -4,12 +4,13 @@
 // pieces.ts; when tuning changes a number, change the test with it.
 
 import { describe, expect, it } from 'vitest';
-import type { BlueprintId, FixtureId, HouseState, Rarity, Tally } from '../rules/index.ts';
+import type { BlueprintId, FixtureId, HouseState, PieceId, Rarity, Tally } from '../rules/index.ts';
 import { drawWeights } from '../rules/draw.ts';
 import { checkInstall, withFixture } from '../rules/fixtures.ts';
-import { computeLayout, isLayoutModifier, type Layout } from '../rules/layout.ts';
+import { computeLayout, isLayoutModifier, isRoom, type Layout } from '../rules/layout.ts';
 import { runModifiers } from '../rules/modifiers.ts';
 import { NO_CONTEXT, tallyHouse } from '../rules/scoring.ts';
+import { matchesDef, rootType } from '../rules/selectors.ts';
 import { fixtureText } from '../rules/text.ts';
 import { emptyRows, houseFrom, setup, type Placement } from '../rules/testing.ts';
 import { PRICES } from './balance.ts';
@@ -138,8 +139,8 @@ describe('fixtures', () => {
 });
 
 describe('Fireplace', () => {
-  it('+50% in any room; +100% in a Living Room or a Library', () => {
-    expectText('fireplace', 'Fits any room', [
+  it('+50% in its room; +100% in a Living Room or a Library', () => {
+    expectText('fireplace', 'Fits most rooms', [
       'Earns +50%',
       '+50% more in a Living Room or Library',
     ]);
@@ -178,9 +179,83 @@ describe('Fireplace', () => {
     expect(fits(open, placements, 'fireplace', 1)).toEqual({ legal: true });
     expect(fits(open, placements, 'fireplace', 2)).toEqual({
       legal: false,
-      reason: 'A Fireplace goes in any room, not a Hallway.',
+      reason: 'A Fireplace goes in most rooms, not a Hallway.',
     });
     expect(fits(open, placements, 'fireplace', 3)).toMatchObject({ legal: false });
+  });
+});
+
+// D-172: the room fixtures leave out the rooms they'd look wrong in. A variant and a member's
+// room go by their type (an L-Kitchen is a Kitchen, Grandma's Room a Bedroom).
+describe('where the room fixtures go (D-172)', () => {
+  const OUT: Partial<Record<FixtureId, readonly PieceId[]>> = {
+    fireplace: ['bathroom', 'closet', 'garage', 'mudroom'],
+    blackoutCurtains: ['bathroom', 'closet', 'garage'],
+    // A skylit Bathroom and a soundproofed Garage are real things.
+    skylight: [],
+    soundproofing: [],
+  };
+
+  // The Bay Window leaves out a Bathroom, Closet and Garage too; it needs an outside wall, which
+  // only a house has, so the next test asks checkInstall.
+  it('each takes every room type but the ones it leaves out', () => {
+    const rooms = Object.values(CONTENT.pieces).filter(isRoom);
+    expect(rooms.length).toBeGreaterThan(15);
+    for (const [id, out] of Object.entries(OUT) as [FixtureId, readonly PieceId[]][]) {
+      for (const room of rooms) {
+        expect(matchesDef(CONTENT.fixtures[id].fits, room), `${id} in ${room.id}`).toBe(
+          !out.includes(rootType(room)),
+        );
+      }
+    }
+    expect(matchesDef(CONTENT.fixtures.fireplace.fits, CONTENT.pieces.lKitchen)).toBe(true);
+    expect(matchesDef(CONTENT.fixtures.fireplace.fits, CONTENT.pieces.grandmasRoom)).toBe(true);
+  });
+
+  it('a refused install names the room', () => {
+    const placements: Placement[] = [
+      ['bathroom', 0, 0],
+      ['closet', 2, 0],
+      ['garage', 4, 0],
+      ['mudroom', 0, 3],
+      ['bedroom', 4, 3],
+    ];
+    const no = (reason: string) => ({ legal: false, reason });
+    expect(fits(open, placements, 'fireplace', 1)).toEqual(
+      no('A Fireplace goes in most rooms, not a Bathroom.'),
+    );
+    expect(fits(open, placements, 'fireplace', 2)).toEqual(
+      no('A Fireplace goes in most rooms, not a Closet.'),
+    );
+    expect(fits(open, placements, 'fireplace', 3)).toEqual(
+      no('A Fireplace goes in most rooms, not a Garage.'),
+    );
+    expect(fits(open, placements, 'fireplace', 4)).toEqual(
+      no('A Fireplace goes in most rooms, not a Mudroom.'),
+    );
+    expect(fits(open, placements, 'fireplace', 5)).toEqual({ legal: true });
+    expect(fits(open, placements, 'blackoutCurtains', 1)).toEqual(
+      no('Blackout Curtains go in most rooms, not a Bathroom.'),
+    );
+    // Curtains in a Mudroom are fine: it has a window by the door.
+    expect(fits(open, placements, 'blackoutCurtains', 4)).toEqual({ legal: true });
+    expect(fits(open, placements, 'bayWindow', 1)).toEqual(
+      no('A Bay Window goes in most exterior rooms, not a Bathroom.'),
+    );
+    expect(fits(open, placements, 'bayWindow', 2)).toEqual(
+      no('A Bay Window goes in most exterior rooms, not a Closet.'),
+    );
+    expect(fits(open, placements, 'bayWindow', 3)).toEqual(
+      no('A Bay Window goes in most exterior rooms, not a Garage.'),
+    );
+    expect(fits(open, placements, 'bayWindow', 4)).toEqual({ legal: true });
+    expect(fits(open, placements, 'bayWindow', 5)).toEqual({ legal: true });
+    for (const uid of [1, 2, 3, 4, 5]) {
+      expect(fits(open, placements, 'skylight', uid), `skylight in ${uid}`).toEqual({
+        legal: true,
+      });
+      expect(fits(open, placements, 'soundproofing', uid)).toEqual({ legal: true });
+    }
   });
 });
 
@@ -216,7 +291,7 @@ describe('Skylight', () => {
 
 describe('Blackout Curtains', () => {
   it('makes its room Dark, and +25%', () => {
-    expectText('blackoutCurtains', 'Fits any room', [
+    expectText('blackoutCurtains', 'Fits most rooms', [
       'Makes it Dark',
       'It’s never Sunny',
       'Earns +25%',
@@ -361,7 +436,7 @@ describe('Bunk Beds', () => {
 
 describe('Bay Window', () => {
   it('gives its room a view, which is one more view for its own per-view bonus', () => {
-    expectText('bayWindow', 'Fits an exterior room', [
+    expectText('bayWindow', 'Fits most exterior rooms', [
       'Gives it a view, which counts as one more view',
     ]);
     // A Living Room with no view, in the sun (D-120): 2, then 4 with the window.

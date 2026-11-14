@@ -491,7 +491,7 @@ export function SetProgressLines({ id }: { id: PieceId }) {
  * member, the client, or the standing stock), and that it doesn't take a slot of the reserve's.
  */
 function ExtraSlotNote({ r }: { r: ReservePiece }) {
-  const words = extraSlotWords(run.value.setup.clientId, r);
+  const words = extraSlotWords(run.value.setup.clientId, r, run.value.setup.crewId);
   if (!words) return null;
   return (
     <p class="muted">
@@ -618,7 +618,8 @@ function RenovateHint({ id, only = false }: { id: PieceId; only?: boolean }) {
 function ExtendHint({ id, only = false }: { id: PieceId; only?: boolean }) {
   if (extendUids.value.length === 0 || tentative.value) return null;
   const def = CONTENT.pieces[id];
-  const type = CONTENT.pieces[def.countsAs ?? def.id].name;
+  // D-171: an Addition grows a room of any type that can grow.
+  const type = def.addition ? 'room' : CONTENT.pieces[def.countsAs ?? def.id].name;
   return (
     <p class="muted">
       {only ? '' : 'Or '}
@@ -671,7 +672,10 @@ function PlacingInfo() {
           : sel.from === 'supplies'
             ? 'From your supplies: installing it is free, so the week goes on.'
             : install
-              ? 'From your hand: installing it is this week’s build.'
+              ? // D-171: the Handyman's installs are free, as a supply's are for every crew.
+                rules.rule(run.value, 'freeInstalls') > 0
+                ? 'From your hand: installing it is free, so the week goes on.'
+                : 'From your hand: installing it is this week’s build.'
               : null;
   // A member's room (M4b): whose it is.
   const member = sel.kind === 'piece' && !renovate && !grow ? <MemberNote id={sel.id} /> : null;

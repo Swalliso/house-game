@@ -69,7 +69,9 @@ export type PieceId =
   | 'renfieldsRoom'
   | 'nanasRoom'
   | 'rowansStudio'
-  | 'ivysRoom';
+  | 'ivysRoom'
+  // D-171: the Architect's card. Never placed: it only extends a room (PieceDef.addition).
+  | 'addition';
 
 /** Fixtures (D-050): installed in a placed piece. 7 for rooms, 3 for the yard, and the Chandelier. */
 export type FixtureId =
@@ -162,8 +164,11 @@ export type SetId =
   | 'playYard'
   | 'driveIn';
 
-/** Crews (D-012): picked at the start of a run. The General Contractor is the default. */
-export type CrewId = 'generalContractor' | 'landscaper' | 'architect';
+/**
+ * Crews (D-012): picked at the start of a run. The General Contractor is the default; D-171
+ * adds the Handyman.
+ */
+export type CrewId = 'generalContractor' | 'landscaper' | 'architect' | 'handyman';
 
 /** Clients (M4a): who the house is for. Each brings a checklist, tastes, and a pool. */
 export type ClientId = 'hendersons' | 'vladislav' | 'barkers' | 'juniper' | 'dale';
@@ -437,6 +442,12 @@ export interface PieceDef {
    */
   member?: true;
   /**
+   * D-171: the Architect's Addition. It's never placed: it only extends, and it extends a room
+   * of any extendable type (D-168), by its own tiles. Never drawn, sold, struck, copied, or in
+   * the shop, a crate, or the Catalog.
+   */
+  addition?: true;
+  /**
    * D-165: the most of this type a house holds (one Kitchen, two Living Rooms), on the type's
    * own card (not a variant: the L-Kitchen has the Kitchen's). Counted as the checklist counts
    * a type, so an L-Kitchen is a Kitchen. A card of the type can't be placed once the house has
@@ -495,7 +506,9 @@ export type RuleKey =
   | 'specBonus'
   | 'interestMax'
   // D-157: strikes in hand at the run's start. Each strikes a hand card's type from the draws.
-  | 'strikes';
+  | 'strikes'
+  // D-171: above 0, a fixture from the hand goes in without ending the week (the Handyman).
+  | 'freeInstalls';
 
 /** One small function per kind in rules/tools.ts (§5, Shop goods). */
 export type ToolUse =
@@ -577,6 +590,20 @@ export interface CrewDef {
   modifiers: readonly Modifier[];
   /** Cards in the reserve from week 1, in extra slots that don't count against it (M4b). */
   startReserve?: readonly PieceId[];
+  /**
+   * D-171: the crew's own stock. Whenever the standing stock comes (week 1, then each
+   * milestone's first week; a first job's from its own week), one of these cards goes into the
+   * reserve's extra slots, marked as the crew's, unless one of the crew's still waits there.
+   * With several, they come in an order drawn once a run (`crew/stock`), all of them before
+   * any comes again.
+   */
+  stock?: readonly PieceId[];
+  /**
+   * D-171: a tool into the supplies at the start of each milestone that follows a change
+   * order (`balance.changeOrderAfter`), whether or not one was on offer. With the supplies full
+   * it's sold at once, as a reward's tool is.
+   */
+  orderTool?: ToolId;
 }
 
 /**
@@ -1126,7 +1153,10 @@ export type Supply = { kind: 'fixture'; id: FixtureId } | { kind: 'tool'; id: To
  */
 export interface ReservePiece {
   id: PieceId;
-  /** A crew's starting piece, in an extra slot that doesn't count against the reserve (M4b). */
+  /**
+   * A crew's card, in an extra slot that doesn't count against the reserve: a starting piece
+   * (M4b) or one from its stock (D-171).
+   */
   crew?: true;
   /** An arrival's card (D-103), in an extra slot that doesn't count against the reserve (M4b). */
   arrival?: ArrivalId;
@@ -1823,9 +1853,20 @@ export type GameEvent =
   | { t: 'arrived'; arrival: ArrivalId; phase: number; cards: readonly PieceId[]; forced?: true }
   /**
    * D-160: cards went into the reserve's extra slots at the start of a week, after any arrival
-   * and before the draw: what the client brought ('client'), or the standing stock's top-up.
+   * and before the draw: what the client brought ('client'), the standing stock's top-up, or
+   * (D-171) the card from the crew's own stock ('crew').
    */
-  | { t: 'delivered'; from: 'client' | 'stock'; phase: number; cards: readonly PieceId[] }
+  | {
+      t: 'delivered';
+      from: 'client' | 'stock' | 'crew';
+      phase: number;
+      cards: readonly PieceId[];
+    }
+  /**
+   * D-171: the crew's tool came (CrewDef.orderTool), at the start of a milestone that follows
+   * a change order. `sold`: the supplies were full, so it was sold for this much at once.
+   */
+  | { t: 'crewTool'; tool: ToolId; phase: number; sold?: number }
   /**
    * M4b, D-144: change orders are offered, two as a rule; the 'changeOrder' screen waits for
    * one to be picked.

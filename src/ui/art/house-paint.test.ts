@@ -168,8 +168,9 @@ describe('the floor canvas', () => {
   it('gives every room type a floor and a wallpaper of its own, the members’ rooms too (D-111)', () => {
     // D-097: every room type has its own floor, so none falls back to another's. Only the two
     // kitchens share theirs, and the two halls.
+    // The Addition (D-171) never stands on the lot: it takes the floor of the room it joins.
     const indoor = (Object.keys(CONTENT.pieces) as PieceId[]).filter(
-      (id) => CONTENT.pieces[id].category === 'indoor',
+      (id) => CONTENT.pieces[id].category === 'indoor' && !CONTENT.pieces[id].addition,
     );
     expect(Object.keys(FLOOR).sort()).toEqual([...indoor].sort());
     expect(Object.keys(FACE).sort()).toEqual([...indoor].sort());

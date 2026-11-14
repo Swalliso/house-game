@@ -201,6 +201,8 @@ describe('a compact hand card (D-121)', () => {
       henhouse: ['+1 budget every 2nd week'],
       birdhouse: ['+1 per touching Tree (up to 3)'],
       porch: ['+25% to touching rooms'],
+      // D-171: the Architect's card, which only ever waits in Your goods.
+      addition: ['+8 to the room it grows'],
     });
     // Each leads with its number (D-148), so a line cut short still shows what the card pays.
     for (const p of pieces) {
@@ -214,16 +216,16 @@ describe('a compact hand card (D-121)', () => {
       fixtures.map((f) => [f.id, handCardLines(CONTENT, { kind: 'fixture', id: f.id })]),
     );
     expect(shown).toEqual({
-      fireplace: ['Fits any room', 'Earns +50%'],
+      fireplace: ['Fits most rooms', 'Earns +50%'],
       skylight: ['Fits any room', 'Makes it Sunny'],
-      blackoutCurtains: ['Fits any room', 'Makes it Dark'],
+      blackoutCurtains: ['Fits most rooms', 'Makes it Dark'],
       // Who is Loud, and "can’t take points off it", are in Inspect (D-148).
       soundproofing: ['Fits any room', 'Loud neighbors can’t lower it'],
       // What it earns (D-148): "Counts as a Dining Room too" read as an Entertainer or the
       // Hendersons' wish, and it fills neither.
       kitchenIsland: ['Fits a Kitchen', 'Earns +25%'],
       bunkBeds: ['Fits a Bedroom', 'Counts as 2 Bedrooms'],
-      bayWindow: ['Fits an exterior room', 'Gives it a view'],
+      bayWindow: ['Fits most exterior rooms', 'Gives it a view'],
       sprinkler: ['Fits a Lawn', 'Earns +100%'],
       pergola: ['Fits a Patio', 'Gives it a view'],
       gardenLights: ['Fits any yard piece', 'Makes it Pretty'],

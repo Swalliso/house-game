@@ -46,7 +46,7 @@ import { PieceArt } from '../hud/PieceArt.tsx';
 import { Tip } from '../hud/Tip.tsx';
 import { SunChip } from '../hud/sun.tsx';
 import { Button, Card, Chip, Icon, Keycap, Panel, type IconName } from '../kit/kit.tsx';
-import { CREW_ICONS, LOT_TRAIT_ICONS } from '../sprites.ts';
+import { CREW_ICONS, LOT_TRAIT_ICONS, TOOL_ICONS } from '../sprites.ts';
 import { appScreen, firstVisit, jobBoardSeed, takeContract } from '../store.ts';
 import {
   deliveryLine,
@@ -163,7 +163,12 @@ export function JobBoard() {
               </>
             )}
           </p>
-          <ol class="jobs-list" ref={list}>
+          {/* D-171: four crews stand in one row, as the three contracts do. */}
+          <ol
+            class="jobs-list"
+            ref={list}
+            style={client ? { '--jobs-cols': crews.length } : undefined}
+          >
             {client
               ? crews.map((crew, i) => (
                   <CrewCard key={crew.id} crew={crew} index={i} onHire={() => hire(crew.id)} />
@@ -220,10 +225,15 @@ function FirstJobTag() {
 /** The card's stagger, as it's pinned up (FEEL.jobs). */
 const beat = (index: number) => ({ '--beat': `${index * FEEL.jobs.staggerMs}ms` });
 
-/** A crew (D-012, D-109): its icon, what it does all run, and the cards it starts with. */
+/**
+ * A crew (D-012, D-109): its icon, what it does all run, and the cards it starts with. D-171:
+ * and what it brings, in pictures: its own card each milestone, or its tool with a change order.
+ */
 function CrewCard(props: { crew: CrewDef; index: number; onHire: () => void }) {
   const { crew, index } = props;
   const starts = crew.startReserve ?? [];
+  const stock = crew.stock ?? [];
+  const tool = crew.orderTool ? CONTENT.tools[crew.orderTool] : null;
   return (
     <li class="jobs-item">
       <Card
@@ -237,6 +247,43 @@ function CrewCard(props: { crew: CrewDef; index: number; onHire: () => void }) {
         aria-label={crew.name}
       >
         <div class="contract-scroll">
+          {/* D-171: what the crew brings leads, in pictures; the numbers follow. */}
+          {stock.length > 0 && (
+            <section class="contract-section">
+              <h3>Each milestone</h3>
+              <ul
+                class="crew-starts"
+                aria-label={stock.map((id) => CONTENT.pieces[id].name).join(', ')}
+              >
+                {stock.map((id) => (
+                  <li key={id}>
+                    <span
+                      class={`pcard-art ${CONTENT.pieces[id].category === 'indoor' ? '' : 'yard'}`}
+                    >
+                      <PieceArt id={id} />
+                    </span>
+                    {stock.length === 1 && <span>{CONTENT.pieces[id].name}</span>}
+                  </li>
+                ))}
+              </ul>
+              <p class="contract-quiet">
+                {stock.length === 1 ? 'It waits' : 'One of these waits'} in Your goods, free to
+                build.
+              </p>
+            </section>
+          )}
+          {tool && (
+            <section class="contract-section">
+              <h3>With each change order</h3>
+              <ul class="crew-starts">
+                <li>
+                  <Icon name={TOOL_ICONS[tool.id]} class="crew-icon" />
+                  <span>{tool.name}</span>
+                </li>
+              </ul>
+              <p class="contract-quiet">Build two cards in one week.</p>
+            </section>
+          )}
           <section class="contract-section">
             <h3>All run</h3>
             <ul class="contract-tastes">

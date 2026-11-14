@@ -63,7 +63,8 @@ describe('content', () => {
   it('generates card text for every piece', () => {
     for (const def of Object.values(CONTENT.pieces)) {
       const text = cardText(CONTENT, def);
-      expect(text.effects.length).toBe(def.effects.length);
+      // D-171: the Addition earns nothing itself; its one line says what it grows.
+      expect(text.effects.length).toBe(def.addition ? 1 : def.effects.length);
     }
     expect(cardText(CONTENT, CONTENT.pieces.livingRoom).effects).toEqual([
       '+2 per touching view (up to 3)',
@@ -124,7 +125,12 @@ describe('content', () => {
       'Finishes',
       'Final Walkthrough',
     ]);
-    expect(Object.keys(CONTENT.crews)).toEqual(['generalContractor', 'landscaper', 'architect']);
+    expect(Object.keys(CONTENT.crews)).toEqual([
+      'generalContractor',
+      'landscaper',
+      'architect',
+      'handyman',
+    ]);
   });
 
   it('pays 100 Wow for each budget left at the last milestone (D-145)', () => {

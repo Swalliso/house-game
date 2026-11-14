@@ -619,8 +619,9 @@ function joined(m: HouseModel): boolean {
 
 // Random connected houses on a lot with a little terrain and yard, for the rules that must
 // always hold.
+// The Addition (D-171) never stands on the lot: it becomes part of the room it extends.
 const INDOOR = (Object.keys(CONTENT.pieces) as PieceId[]).filter(
-  (id) => CONTENT.pieces[id].category === 'indoor',
+  (id) => CONTENT.pieces[id].category === 'indoor' && !CONTENT.pieces[id].addition,
 );
 const YARD: readonly PieceId[] = ['patio', 'driveway', 'fence', 'lawn', 'hotTub', 'doghouse'];
 

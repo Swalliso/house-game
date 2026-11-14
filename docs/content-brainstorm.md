@@ -197,7 +197,7 @@ Clients also have a **rarity**. Common clients make up most runs, Uncommon ones 
 | General Contractor | Balanced card pool; one extra reroll each phase. The starter crew. | Core |
 | Landscaper | Yard pieces show up more and earn more; starts with a Sapling and a Fence | Core |
 | Architect | More special rooms in the pool; Sets earn more | Core |
-| Handyman | Fixtures show up often; a cheaper shop; can move one placed piece per phase | Stretch |
+| Handyman | Fixtures show up often; a cheaper shop; can move one placed piece per phase | Stretch; built in D-171 as: fixtures from the hand install without using the week |
 
 ## 12. Generic change orders
 

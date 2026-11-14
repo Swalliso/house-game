@@ -124,6 +124,7 @@ const COMPLEXITY: Record<PieceId, 1 | 2 | 3> = {
   nanasRoom: 1,
   rowansStudio: 1,
   ivysRoom: 1,
+  addition: 1,
 };
 
 /** The card's complexity matches Appendix A, and its text reads cleanly. */
