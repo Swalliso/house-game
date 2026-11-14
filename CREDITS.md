@@ -41,6 +41,13 @@ Open House is a game jam entry for the theme "It's a house," built with Claude C
   Exteriors to LimeZu's own autumn and olive colorways of its Camping trees (their pixel twins,
   muted as our greens are) and to grass that matches. LimeZu's art, cut, edited as its licenses
   allow, and credited as above.
+- **Rooms in more than one arrangement** (D-173, `art/limezu/interiors.json`): the wardrobes,
+  nightlamps, desks, bookcases, televisions, side-on sofas, piano, fish tank, cuckoo clock,
+  pictures, hutch, round and cloth-covered tables, plants, rugs, mats and clothes rails that give
+  the common rooms their other arrangements, Modern Interiors cuts. The wood and blue counters and
+  their Kitchen Islands, the cloth tables lengthened to seat four, and the clothes rails under
+  the first rail's bar are composed from the same sheets by `npm run art:cut`. LimeZu's art, cut
+  and credited as above.
 - **Your houses on the street** (D-156, `art/limezu/neighbors.json`): until a player's own
   finished houses stand on the plots around the lot, Modern Exteriors' country, modern and
   Japanese houses do (from its Additional Houses), LimeZu's art, cut and credited as above. The
