@@ -1903,7 +1903,7 @@ Each trait's modifiers join the run's (source `lot`), and its `drawWeight` ones 
 
 | Trait | When | Pays all run | More in the draw | Blurb |
 |---|---|---|---|---|
-| Creekside | `terrain creek, min 1` | `earn {touching creek} +50` | Patio +100% (D-166) | Only a Driveway crosses it. |
+| Creekside | `terrain creek, min 1` | `earn {touching creek} +100` (D-174: +50) | Patio +100% (D-166) | Only a Driveway crosses it. |
 | **Pondside** *(D-166)* | `kind pond` | `earn {touching pond} +100` | Patio +100% | A big pond, and views from its banks. |
 | Wooded | `terrain tree, min 100` | `earn {touching tree} +25` (D-166: it paid nothing) | Treehouse, Birdhouse +100% | Building over a Tree clears it. |
 | **Rocky** *(D-166)* | `kind rocky` | `earn {touching boulder} +50` | Flower Bed, Fire Pit +100% | A demolition clears a Boulder. |

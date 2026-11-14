@@ -1150,7 +1150,7 @@ export function blueprintText(content: Content, def: BlueprintDef): string[] {
 
 /**
  * A lot trait's tip (D-119): what it pays, all run, what it deals more of (D-166), then its
- * blurb. "Pieces touching the Creek earn +50%, all run. More Patios in the draw. Only a Driveway
+ * blurb. "Pieces touching the Creek earn +100%, all run. More Patios in the draw. Only a Driveway
  * crosses it."
  */
 export function lotTraitText(content: Content, def: LotTraitDef): string {

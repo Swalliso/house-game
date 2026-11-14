@@ -1544,7 +1544,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 *Changed, 2026-11-12 (D-166; Accepted 2026-11-13, playtest 8):* five traits, each paying all run and dealing more of the cards that use it. Creekside also deals more Patios. Wooded pays: pieces touching a Tree earn +25%, and it deals more Treehouses and Birdhouses; its blurb is now "Building over a Tree clears it." New: Pondside (a 14–20 tile pond: pieces touching it earn double; more Patios), Rocky (14–22 Boulders: +50% touching a Boulder; more Flower Beds and Fire Pits) and Open (only the lone Trees: yard pieces earn double; more Lawns and Herb Gardens). A run keeps the traits it began with, so clearing Trees no longer takes Wooded away. A trait's tip adds what it deals more of ("More Patios in the draw."), and How to play's creek-lot line becomes one line for all five.
 
-*Proposed change, 2026-11-13 (D-174, awaiting the user's OK):* seven traits. Lakefront (a lake lot: pieces touching the Lake earn +100%, more Patios) and Old Woods (an autumn lot whose Trees stay: pieces touching a Tree earn +100%, more Treehouses and Birdhouses; it takes Wooded's place on its lot). Open pays Sunny pieces +50% in place of its tilt toward Lawns and Herb Gardens. How to play's line lists all seven, from the content.
+*Proposed change, 2026-11-13 (D-174, awaiting the user's OK):* seven traits. Lakefront (a lake lot: pieces touching the Lake earn +100%, more Patios) and Old Woods (an autumn lot whose Trees stay: pieces touching a Tree earn +100%, more Treehouses and Birdhouses; it takes Wooded's place on its lot). Open pays Sunny pieces +50% in place of its tilt toward Lawns and Herb Gardens. Creekside pays +100%, as Pondside and Lakefront do: at +50% a creek lot was greedy's weakest. How to play's line lists all seven, from the content.
 
 ### D-120 · The sun: a sunny face on every lot, and rooms that want it
 **Status:** Accepted · 2026-11-10, held up in playtest 5 (`docs/playtests/playtest-5-findings.md`): the sunny side "feels much better than the previous system". Proposed 2026-11-09, after playtest 4 (`docs/playtests/playtest-4-findings.md` §11) and the lot session's proposal (`docs/proposals/lot-creeks-and-sun.md` §4–§7). The user picked the proposal's package; this is its second part, after D-119. Built for playtest 5.
@@ -1920,6 +1920,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - **The company's record and bests** don't tell a first job from a standard run: a first job's verdict, read against its lower targets, can be a best.
 - **The release drops runs in progress**, as any content change does (#54's check needs the same content hash).
 *Proposed change by D-171 (2026-11-13, awaiting the user's OK):* `firstTargetPct` is 57. On D-171's targets, with the General Contractor's Weekend Crews from the third milestone, 60% left the casual bot winning 25.3% of first jobs (400 runs); at 57% it wins 29.3%, and the first job's targets are Groundbreaking 22, Foundation 454, Roofing 6,426 and the last 54,873.
+*Proposed change by D-174 (2026-11-13, awaiting the user's OK):* `firstTargetPct` is 55. On D-174's targets, fitted again with the biomes' lots, 57% left the casual bot winning 26.8% of first jobs and 55% 28.0% (400 runs an arm; develop 29.3%). The first job's targets are Groundbreaking 24, Foundation 488, Roofing 6,527 and the last 55,693.
 
 ### D-031 · Client rarity tiers
 **Status:** Accepted · 2026-11-12, the user's verdict on the 2026-11-12 verdict sheet: built in M4a (below) and played since playtest 4. Was Proposed.
@@ -3776,7 +3777,7 @@ What the columns mean:
   - *2026-11-12 (D-169):* with D-165 too, on the re-fitted batch with the stock topped up, 11% of greedy's houses are tiny (`--check`, all 200 runs), and the median house has 13 rooms.
 - A shaped lot that fails its checks stays plain: of 2,000 lots, one Rocky draw did, and 51 of 412 pond draws fell on a creek lot without a pond, so Pondside is 18.1% of lots against its 20%.
 - The first job's lot is plain by its seed, so "Play this lot again" on it is plain too, in either mode.
-  - *Proposed change, 2026-11-13 (D-174, awaiting the user's OK):* the kinds are drawn by biome. The meadow keeps these weights, and an Open lot pays Sunny pieces +50% with no tilt: after the batch's re-fit, greedy won 29% of its runs on Open lots and 46% on all (five weeks, D-170's build).
+  - *Proposed change, 2026-11-13 (D-174, awaiting the user's OK):* the kinds are drawn by biome. The meadow keeps these weights, and an Open lot pays Sunny pieces +50% with no tilt: after the batch's re-fit, greedy won 29% of its runs on Open lots and 46% on all (five weeks, D-170's build). Creekside pays +100% where the table above has +50%: on D-171's targets greedy won 38.7% of its creek lots and 44.9% of all.
 - A first job's hands still ramp, so a newcomer's first run and their second deal differently from week 1: the second has the lot's cards at once.
 - **The checklist's plank on a short window:** under 1,000 px tall, the crew's, the sun's and each trait's icon ride on the plank beside the client's name and the line count, so on a lot with two traits a long name is cut short. Develop already cuts it on a Creekside lot. Left for a layout fix: the traits' icons could move to the tastes' row there.
 - One verification round in the dev build (above); the rest is for the playtest.
@@ -4028,13 +4029,14 @@ What the columns mean:
 - **Runs in progress drop** when this merges into develop, and at the next release (the content hash changes).
 - **The verification round didn't look at:** touch, Firefox, Safari, 2× screens or narrow windows; the shop and its first-job staging, a milestone's screen, overtime, change orders or the end screen; a capped card's Extend or Renovate, an extension from Your goods, or Weekend Crew's two builds on screen (tests only); a first job's stock in Foundation's third week and its top-ups (tests only); the stock's first-time hint and the reserve's glossary entry with the top-ups (tests only); a client's card in Your goods (Dale, the Barkers); or sound.
 *Proposed change by D-171 (2026-11-13, awaiting the user's OK):* with each crew's own free build the targets from Framing on rise 12 to 15% (3,750, 10,200, 24,400, 46,100 and 87,100); the first two and each client's factor stand. Greedy wins 47.0% on `check-*` and 44.9% on `hold-*`.
+*Proposed change by D-174 (2026-11-13, awaiting the user's OK):* fitted again on top of D-171's with the biomes' lots and Creekside at +100%: 40, 800, 3,850, 10,700, 25,100, 47,800 and 91,300, each client's factor held (the fit's own played the clients 17 points apart). Greedy wins 46.4% on `check-*` and 48.0% on `hold-*`.
 
 ## Proposed
 
 *Reserved numbers (2026-11-10): D-115 to D-118 are the layout session's drafts, not in this file yet; D-122 (legibility) is logged below. D-132 to D-134 are playtest 5's fixes, each logged by its own pull request: D-132 one reroll for both rows of the draw, D-133 the roof view, D-134 three more tracks. D-135 and D-136 are M6's end screen (D-135 the result line and link preview, D-136 the milestone photos); D-137 and D-138 belong to the release-day sessions. D-139 is the company's record. D-140 to D-146 are the friction batch, from the 2026-11-10 review's seven points: D-140 the Garage and the Driveway, D-141 what a blueprint is worth and its icon, D-142 first contact, D-143 the blueprint shelf, D-144 change orders two at a time, D-145 the lot and the last stretch, and D-146 the batch's one re-fit. D-147 takes the roof out again (the user's call, logged under Accepted). D-148 is the first-timer legibility batch before the showing, from the 2026-11-10 polish review (logged below). D-149 is the first job, from the first showing (2026-11-11, logged below). D-150 is the end screen's lead into the next run, from the evening's what-next survey (`fix/retry-after-loss`, logged below). D-151 is the first job's gentler targets (`phase/first-job-targets`, logged under Accepted). D-152 to D-157 are the 2026-11-11 playtest's: D-152 Copy run code on the end screen's plank (fix/playtest-6-bugs, logged below), D-153 Full House's progress on its set chip (fix/full-house-progress, logged below), D-154 the week cue, D-155 life on the lot and D-156 your houses on the street (each logged by its own pull request), and D-157 strikes from the hand (`phase/strike-from-hand`, logged below). D-158 to D-160 answer an outside playtester's notes (2026-11-12): D-158 the tutorial fixes (`phase/tutorial-fixes`, logged below), D-159 fences that join and Hallways that open into each other (`fix/fences-and-halls-join`, logged below), and D-160 pieces you can count on (`phase/pieces-you-can-count-on`, logged below). D-161 makes the bots cheaper on D-160's Fence (`fix/greedy-fence-packs`, logged below). D-162 to D-168 are the core-loop batch from the 2026-11-12 gap analysis, each logged by its own pull request: D-162 the standing stock from week 1 (`phase/stock-from-week-1`), D-163 Your goods are free (`phase/goods-builds-free`), D-164 yard sets (`phase/yard-sets`), D-165 house rules on the rooms (`phase/rules-on-rooms`), D-166 the lot decides (`phase/the-lot`), D-167 the text diet (`phase/text-diet`) and D-168 Extend a room (`phase/extend-a-room`), all logged below. D-169 builds the seven in one branch (`phase/batch-build`, logged below), and D-170 is five weeks a milestone (`phase/five-week-milestones`). D-171 is each crew's own free build (`phase/crews-free`) and D-172 fixtures where they make sense (`fix/fixtures-where-they-fit`), both logged below. D-173 is logged by its own pull request (#86). D-174 is lots and biomes (`phase/lots-and-biomes`, logged below). New entries start at D-175.*
 
-### D-174 · Lots and biomes: four biomes, a lake, a creek through the middle, Old Woods, and Open paid again
-**Status:** Proposed · 2026-11-13, a phase pull request (`phase/lots-and-biomes`, #87), from playtest 8 (the user asked for the lots and biomes to be fleshed out). Stage 1 measured develop's lots and set out three directions with mockups; the user picked "Biomes with shapes", its recommendation. **It changes Accepted D-035 (the Lake counts once), D-049 (biomes and the lake), D-110 (the lot map's colors), D-119 (seven traits) and D-166 (the kinds by biome, Open's pay)**, as proposed changes awaiting the user's OK, noted there. It was built at five weeks a milestone and then merged with develop after #88 took the milestones back to four (D-170 Parked): the numbers below are at four weeks, with the five-week ones kept. It changes the content hash (`698c254c` → `749374a8`), so runs in progress drop when it merges. For the user's playtest.
+### D-174 · Lots and biomes: four biomes, a lake, a creek through the middle, Old Woods, Open paid again, and the creek at +100%
+**Status:** Proposed · 2026-11-13, a phase pull request (`phase/lots-and-biomes`, #87), from playtest 8 (the user asked for the lots and biomes to be fleshed out). Stage 1 measured develop's lots and set out three directions with mockups; the user picked "Biomes with shapes", its recommendation. **It changes Accepted D-035 (the Lake counts once), D-049 (biomes and the lake), D-110 (the lot map's colors), D-119 (seven traits, the creek at +100%), D-151 (`firstTargetPct` 55), D-166 (the kinds by biome, Open's and the creek's pay) and D-169 (the targets, fitted again)**, as proposed changes awaiting the user's OK, noted there, and Proposed D-171's targets, noted there. It was built at five weeks a milestone and then merged with develop after #88 took the milestones back to four (D-170 Parked), and again after D-172 (#89) and D-171 (#91), whose crews came with their own fit: the numbers below are against D-171's targets, with the earlier ones kept. It changes the content hash (`2827829b` → `afeff7e3`), so runs in progress drop when it merges. For the user's playtest.
 **Decision:**
 - **Four biomes** (`balance.lot.biomes`): a lot's biome is drawn before anything else, from the seed's own `lot/biome` stream, and then its kind from the biome's own weights:
   - **The meadow** (weight 40): D-166's lots in today's look (plain 35, Rocky 25, Open 20, pond 20). The first job's lot is always a plain meadow. A meadow lot is the lot develop draws for the same seed.
@@ -4047,61 +4049,70 @@ What the columns mean:
 - **A creek through the middle** (`kind split`): side to side between rows 8 and 13, so the house sits on one bank and only a Driveway crosses. The street's side keeps at least 30% of the lot (60% elsewhere), and a pond beside the creek goes. It's Creekside, as any creek lot.
 - **Old Woods** (`kind oldWoods`, `protects: ['tree']`): the autumn woods as drawn, but no piece is built over a Tree. Placement refuses one with "These old Trees stay: build around them.", and a Tree's inspect line says the same. Pieces touching a Tree earn **+100%**, all run, and more Treehouses and Birdhouses in the draw. "Its Trees stay: build around them." It takes Wooded's place on its lot. The lot needs 65% of its tiles free and the street reachable around the Trees (`KIND_CHECKS`), and the bots' Driveway planner (D-140) goes around its Trees.
 - **Open paid again** (D-166's trait, on meadow and dry lots): yard pieces earn +100%, as before, and Sunny pieces **+50%**; its tilt toward Lawns and Herb Gardens goes. Its tip: "Yard pieces earn +100%, all run. Sunny pieces earn +50%, all run. Few Trees, lots of sun."
+- **Creekside pays +100%** (D-166's +50%), as Pondside and Lakefront do, so the lot's water pays alike. On D-171's targets a creek lot was greedy's weakest on develop (38.7% of its 463 lots of `hold-*`, against 44.9% on all), and the creek through the middle the weakest kind here (40.0%): what the creek takes from the lot cost more than its bank paid back. Its tip: "Pieces touching the Creek earn +100%, all run. More Patios in the draw. Only a Driveway crosses it."
+- **The targets are fitted again,** on top of D-171's (D-169's method): 40, 800, 3,850, 10,700, 25,100, 47,800 and 91,300 Wow, each client's factor as it was, and a first job's `firstTargetPct` 55 (below).
 - **Words:** two new chips whose blurbs are no longer than today's longest (37 characters). How to play lists the seven traits from the content and says the lake gives views. Waterfront counts the Lake, and a list of the lot's one-of-a-kind features shares one "the": "Pieces touching the Pond, Creek, or Lake earn +100%", so its line on a shop card ("No pieces touching the Pond, Creek, or Lake yet", 47 characters) still fits. The Living Room's views note names the Lake. A biome has no name on screen: its colors and its chips say it. No new tooltip or panel.
 
-**Sim:** greedy on held-out seeds, every client with every crew in turn (`--crew all`'s order), on develop's targets (four weeks, D-169), the same harness for both.
+**Sim:** greedy on held-out seeds, every client with every crew in turn (`--crew all`'s order: five clients, and four crews since D-171), the same harness for both.
 
-| Greedy wins, `hold-0` to `hold-1999` | develop (0dc2d8c) | D-174 |
+**Before the fit,** on D-171's targets (develop 8f29829, with #89 and #91), D-174 as first built won 51.1% [49.0–53.3] of `hold-0` to `hold-1999` against develop's 44.9% [42.7–47.0]: +6.3 points paired by seed [+4.1, +8.5] (both won 714, D-174 only 309, develop only 183). That's over the 5 points at which this pull request re-fits. The lot kinds were 17.9 points apart (the creek through the middle 40.0% to the lake 57.9%; develop 20.9), over the 15 it aims for, and the creek was the low end, as on develop, where a creek lot is greedy's weakest (38.7% of 463; 42.2% here). So Creekside pays +100%, and the targets are fitted again on top of D-171's. Earlier measures: +4.6 points at four weeks on D-169's targets (48.9% against 44.3%, the kinds 13.4 points apart), +3.4 at five weeks.
+
+**The fit** (D-169's method as D-171 ran it: 2,000 untargeted greedy runs on `sim-*`, D-171's goals, which are the base goals plus D-169's measured gaps, then 2,000 runs each of `check-*` and `hold-*` on the fitted targets):
+- **Targets:** 40, 800, 3,850, 10,700, 25,100, 47,800, 91,300 Wow (D-171: 35, 720, 3,750, 10,200, 24,400, 46,100, 87,100). The first two rise 11 to 14%, the rest 3 to 5%, about what greedy's median rose (74,315 at the end, from 72,450).
+- **Each client's `targetPct` stands** (D-169's: the Hendersons 110, Count Vladislav 80, the Barkers 90, Juniper 75, Dale 140), and the targets were fitted with them held. The fit's own factors (120, 75, 95, 70 and 140) played the clients 17.0 points apart on `check-*` (the Barkers 39.8% to Juniper 56.8%) and 20.0 on `hold-*`.
+- `check-*`: survival 100, 99.5, 94.5, 86.2, 71.8, 59.9 and **46.4%** (D-171: 100, 99.8, 95.0, 86.2, 72.3, 59.9 and 47.0%). The clients 6.2 points apart (Count Vladislav 42.8% to Juniper 49.0%), the crews 6.8 (the General Contractor 43.0% to the Architect 49.8%).
+- `hold-*`, which no fit saw: survival 100, 99.4, 96.0, 87.8, 73.3, 61.0 and **48.0%** [45.8–50.2] (develop: 100, 99.5, 95.0, 86.0, 70.2, 58.2 and 44.9%), +3.1 points paired by seed [+0.9, +5.4] (both won 662, D-174 only 298, develop only 235).
+- **The first job's `firstTargetPct` is 55** (57 before). The casual bot (the guided opening, then greedy's move half the time; the Hendersons with the General Contractor on the first job's lot, 400 runs an arm) won 26.8% at 57 on these targets, **28.0% at 55** and 33.5% at 53; on develop at 57, 29.3%. At 55 it meets Roofing 89.8% and Drywall 70.0% of the time (develop 90.3% and 70.3%). The Hendersons' 110% of the curve becomes 61%, and the first job's targets are Groundbreaking 24, Foundation 488, Roofing 6,527 and the last 55,693 (D-171: 22, 454, 6,426 and 54,873).
+
+| Greedy wins, `hold-0` to `hold-1999` | develop (D-171's targets) | D-174 (its fit) |
 |---|---|---|
-| every run | 44.3% [42.1–46.5] | **48.9%** [46.7–51.1] |
-| paired by seed | | +4.6 points [+2.5, +6.7] (both won 701, D-174 only 277, develop only 185) |
-| the lot kinds' spread | 22.8 points | **13.4 points** |
-| the traits' spread | 28.9 points | 13.0 points |
+| every run | 44.9% [42.7–47.0] | **48.0%** [45.8–50.2] |
+| the lot kinds' spread | 20.9 points | **10.6 points** |
+| the traits' spread | 30.4 points | 15.0 points |
 
-- **No re-fit:** +4.6 points is under the 5 at which this pull request was to re-fit, though its interval reaches 6.7; greedy's 48.9% is inside §8's 40–50%. Develop's own figure is D-169's (44.3% on `hold-*`). The final Wow's median rises from 59,709 to 63,862.
 - **The lots, by kind:**
 
 | Lot kind | develop | D-174 |
 |---|---|---|
-| plain | 48.7% (766) | 49.6% (585) |
-| Rocky | 44.5% (483) | 49.0% (404) |
-| Open | 29.2% (407) | 47.7% (365) |
-| a big pond | 52.0% (344) | 49.3% (227) |
-| a lake | | 55.9% (145) |
+| plain | 47.3% (766) | 49.4% (585) |
+| Rocky | 51.1% (483) | 48.3% (404) |
+| Open | 30.2% (407) | 46.6% (365) |
+| a big pond | 48.0% (344) | 49.3% (227) |
+| a lake | | 53.1% (145) |
 | a creek through the middle | | 42.5% (120) |
-| Old Woods | | 46.8% (154) |
-| **spread** | **22.8 points** | **13.4 points** |
+| Old Woods | | 42.9% (154) |
+| **spread** | **20.9 points** | **10.6 points** |
 
-- **By trait:** Wooded 58.1 → 58.2%, Lakefront 55.9%, Pondside 52.0 → 49.3%, Rocky 44.5 → 49.0%, Open 29.2 → 47.7%, Old Woods 46.8%, Creekside 42.5 → 45.2%, none 47.5 → 43.9%. **By biome:** the dry lot 50.5%, the autumn woods 50.4%, the lakeside 48.4%, the meadow 47.6%: of 2,000 lots, 799 meadow, 414 dry, 411 autumn and 376 lakeside.
-- **On the meadow** (799 lots), D-174 plays exactly as develop but for Open's 159 lots, where greedy wins 69 runs to develop's 45.
-- **The clients:** the Hendersons 41.8 → 49.0%, Count Vladislav 42.5 → 45.0%, the Barkers 44.5 → 48.0%, Juniper 50.0 → 53.2%, Dale 42.8 → 49.2%: 8.2 points apart, as on develop. The crews: the General Contractor 45.4 → 49.4%, the Landscaper 42.4 → 48.9%, the Architect 45.1 → 48.4%. Survival by milestone: 100, 99.5, 96.5, 88.3, 75.5, 64.3 and 48.9% (develop: 100, 99.4, 95.0, 85.2, 71.0, 58.7 and 44.3%).
+- **By trait:** Wooded 60.6 → 57.9%, Lakefront 53.1%, Pondside 48.0 → 49.3%, Rocky 51.1 → 48.3%, Open 30.2 → 46.6%, Creekside 38.7 → 45.8%, Old Woods 42.9%, none 46.3 → 42.2%. **By biome:** the autumn woods 51.1%, the lakeside 51.1%, dry 49.3%, the meadow 44.3%: of 2,000 lots, 799 meadow, 414 dry, 411 autumn and 376 lakeside.
+- **Where the runs gained come from:** of the 63 over develop, the autumn woods' plain lots (more of them Wooded) give 25, dry Open lots 19, the meadow's Open lots 13, Old Woods and the lake 11 each. The meadow's other lots, develop's own for the same seeds, lose 24 to the higher targets.
+- **The clients:** the Hendersons 45.2 → 48.2%, Count Vladislav 39.0 → 41.0%, the Barkers 48.0 → 51.2%, Juniper 48.5 → 50.8%, Dale 43.5 → 48.8%: 10.2 points apart (develop 9.5). **The crews:** the General Contractor 39.4 → 44.8%, the Landscaper 44.2 → 47.4%, the Architect 45.4 → 46.6%, the Handyman 50.4 → 53.2%: 8.4 points apart (develop 11.0).
 - **What the lots do to the house:**
-  - A lake lot: the first room on the shore in 37% of runs, 2.9 rooms on it (5.1 pieces).
-  - A creek through the middle: the first room on its bank in 43%, 3.6 rooms on it (develop's creek lots: 38% and 3.2).
-  - Old Woods: 9.1 rooms touching a Tree and none cleared, against 7.6 rooms and 30 Trees cleared on an autumn lot without it.
-  - The lot's share of the Wow (D-145's measure) is 22.2%, 25.0% with the yards' lines (develop 20.5% and 23.6%).
-- **At five weeks** (D-170's build, before #88; `hold-0` to `hold-1999`): D-174 49.2% [47.1–51.4] against develop's 45.8%, +3.4 points, with the kinds within 10.7 points (develop 26.8): plain 48.7%, Rocky 48.0%, Open 45.2%, the pond 55.9%, the lake 55.2%, the creek through the middle 50.0%, Old Woods 48.1%.
-- **Old Woods' pay** was tuned at five weeks, on its 81 lots of `hold-0` to `hold-999` (develop won 45.7% on those seeds): +50%, Stage 1's pick, 33.3%; +75% 39.5%; **+100% 53.1%**. A roomier lot, 75% free with Old Woods 60 of the autumn draws, won 33.0% at +50%: the space isn't what it lacked. Stage 1's ~40% at +50% was measured with the meadow's woods; the autumn woods are thicker (about 106 Trees). At four weeks, +100% wins 46.8% of its 154 lots.
+  - A lake lot: the first room on the shore in 37% of runs, 2.9 rooms on it (5.2 pieces).
+  - A creek through the middle: the first room on its bank in 47%, 3.8 rooms on it (develop's creek lots: 36% and 3.0).
+  - A creek lot at +100%: the first room on the bank in 42% of runs, 3.5 rooms on it (develop at +50%: 36% and 3.0). On the meadow's creek lots, the same lots as develop's, 42% and 3.4 against 40% and 3.3: greedy hardly moves the house for the bank's pay.
+  - Old Woods: 8.5 rooms touching a Tree and none cleared, against 7.2 rooms and 31 Trees cleared on an autumn lot without it.
+  - The lot's share of the Wow (D-145's measure) is 22.5%, 25.3% with the yards' lines (develop 19.9% and 23.0%).
+- **Old Woods' pay** was tuned at five weeks, on its 81 lots of `hold-0` to `hold-999` (develop won 45.7% on those seeds): +50%, Stage 1's pick, 33.3%; +75% 39.5%; **+100% 53.1%**. A roomier lot, 75% free with Old Woods 60 of the autumn draws, won 33.0% at +50%: the space isn't what it lacked. Stage 1's ~40% at +50% was measured with the meadow's woods; the autumn woods are thicker (about 106 Trees). On this fit, +100% wins 42.9% of its 154 lots.
 - **Open's pay** (Stage 1, the same 200 lots forced Open, five weeks): as develop has it, 27% against 48.5% for those lots as drawn. D-166 alone had left Open above the average (57.0% against 48.5%); the batch's re-fit (D-169) took it to 24.5%. Without the tilt it wins 10 points more, and with Sunny pieces at +50% 49.5%.
 
-**`npm run sim -- --check`** (200 runs, `check-0` to `check-199`, the General Contractor), D-169's run (develop's content) against D-174's:
+**`npm run sim -- --check`** (200 runs, `check-0` to `check-199`, the General Contractor), develop (D-171's) against D-174's fit:
 
-| Criterion | develop (D-169) | D-174 |
+| Criterion | develop (D-171) | D-174 |
 |---|---|---|
 | random loses by milestone 3 (≥ 95%) | 100.0% PASS | 100.0% PASS |
-| novice passes milestone 1 (≥ 90%) | 99.5% PASS | 98.5% PASS |
-| greedy clears milestones 1–3 (92–98%) | 96.0% PASS | 98.0% PASS, unsure |
-| greedy wins (40–50%) | 53.0% FAIL, unsure | 58.5% FAIL |
-| early completion: always vs never, within 10 points | −14.5 FAIL, unsure | −15.0 FAIL, unsure |
-| fences pay: probe p50 2–3, ≥ 50% offered that many | 2, 56.1% PASS, unsure | 2, 63.4% PASS |
-| clients, crews within about 15 points | 12.5 PASS, unsure | 22.5 FAIL, unsure |
+| novice passes milestone 1 (≥ 90%) | 99.5% PASS | 98.0% PASS |
+| greedy clears milestones 1–3 (92–98%) | 94.0% PASS, unsure | 95.0% PASS, unsure |
+| greedy wins (40–50%) | 45.0% PASS, unsure | 46.5% PASS, unsure |
+| early completion: always vs never, within 10 points | −13.5 FAIL, unsure | −8.0 PASS, unsure |
+| fences pay: probe p50 2–3, ≥ 50% offered that many | 2, 56.7% PASS, unsure | 2, 58.6% PASS |
+| clients, crews within about 15 points | 10.0 PASS, unsure | 20.0 FAIL, unsure |
+| the benchmark gate (1 s) | 1,119 ms FAIL | 617 ms PASS |
 
-- **`--check`'s greedy line fails outright** (58.5% [51.6–65.1]), where D-169's read 53.0%, unsure: its 200 runs are the General Contractor's alone, and D-169's 2,000 runs of `check-*` gave 45.9% where these 200 gave 53.0%. The 2,000 held-out runs above (48.9%) are the measure the re-fit line reads.
-- **Its client line** is 40 runs a client: the Hendersons 67.5%, Count Vladislav 65.0%, the Barkers 57.5%, Juniper 45.0% and Dale 57.5%. On 2,000 held-out runs they are 8.2 points apart (above).
-- **The houses:** 32% pass the compact outline and 21% the glance test (D-169: 34% and 25%); the median house has 13 rooms on 19.1% of the lot, and 12% are tiny (11%). Milestone 2 is met on time in 93.5% of runs (92.5%), with 1.23 overtime weeks a run (1.32).
-- **The benchmark gate passes** at four weeks: the densest lot's run took 817 ms here (limit 1 s).
+- **Its client line** is 40 runs a client: the Hendersons 57.5%, Count Vladislav 47.5%, the Barkers 47.5%, Juniper 37.5% and Dale 42.5%. On 2,000 held-out runs they are 10.2 points apart (above).
+- **The benchmark gate** runs the densest of 50 lots, and the lots differ: develop's is `bench-12` (167 terrain tiles, a 28-week run), D-174's `bench-24` (180 tiles), whose run ends in week 22. It passes here because that run is shorter, not because runs are faster.
+- **The houses** (all 200 runs): 22% pass the glance test and 33% the compact outline (develop 21% and 37%); the median house has 13 rooms, and 11% are tiny (both as develop). Milestone 2 is met on time in 90.0% of runs (92.0%), with 1.43 overtime weeks a run (1.45).
 
-**Why:** playtest 8 asked for the lots and biomes to be fleshed out, and Stage 1 found develop's lots 30 points apart (Open at 29%, Wooded at 59%), with only a creek, a big pond and Boulders moving where the house goes. A biome gives a run its own look from the first glance at the job board, and each brings lots that ask for a different house: a long one along a lakeshore, one on one bank of a creek, one woven between old Trees. The words stay at two chips and one refusal.
+**Why:** playtest 8 asked for the lots and biomes to be fleshed out, and Stage 1 found develop's lots 30 points apart (Open at 29%, Wooded at 59%), with only a creek, a big pond and Boulders moving where the house goes. A biome gives a run its own look from the first glance at the job board, and each brings lots that ask for a different house: a long one along a lakeshore, one on one bank of a creek, one woven between old Trees. The words stay at two chips and one refusal. The creek pays as the pond and the lake do: at +50% it was the weakest lot on develop, and the creek through the middle the weakest here. The targets are fitted again because these lots made greedy's runs 6.3 points easier on D-171's targets, over this pull request's 5.
 
 **Considered** (Stage 1's options page):
 - **A, lot shapes alone:** the lake, the creek through the middle and a narrow lot. The narrow lot (14–16 wide) left the house one column narrower and greedy where it was, so it was left out; the other two are here.
@@ -4109,16 +4120,19 @@ What the columns mean:
 - **A desert or a winter lot:** neither pack has sand, cacti or snow, and sand with olive trees reads as savanna.
 - **Old Woods at +50% or +75%, or on a roomier lot:** above.
 - **Fixing Open by its tilt alone:** 10 of its 21 points; the sun it promises pays back the rest.
+- **Lakefront at +75%** in place of the creek's raise: the lake was the top kind before the fit (57.9%), but the creek was the low end on develop too, and one rate for the water is one number less to learn.
+- **The fit's own client factors** (120, 75, 95, 70 and 140): above. D-169's played closer, so they stand.
 
-**Changes:** D-035, D-049, D-110, D-119 and D-166 (Accepted): proposed changes awaiting the user's OK, dated notes there. `implementation-plan.md` (the decision table's D-049 row, Appendix A's biomes, lot kinds and lot traits, Appendix B's views, the Lake, and the traits' table). `CREDITS.md` and `assets/licenses.json` (the 50 cuts).
+**Changes:** D-035, D-049, D-110, D-119, D-151, D-166 and D-169 (Accepted): proposed changes awaiting the user's OK, dated notes there. D-171 (Proposed): its targets, a dated note there. `implementation-plan.md` (the decision table's D-049 row, Appendix A's biomes, lot kinds and lot traits, Appendix B's views, the Lake, and the traits' table, Creekside at +100). `CREDITS.md` and `assets/licenses.json` (the 50 cuts).
 
-**Checked:** `npm test` (2,319 tests), `npm run typecheck`, `npm run format` and `npm run build`, after the merge with #88; one round in the dev build before it (the week count doesn't reach what it looked at), headless Chrome at 1600×900 at 1× and 2× (the job board also at 1280×720). Seven lots played by greedy to week 12 (a meadow, an autumn lot with Wooded, Old Woods, a lake, a creek through the middle, a dry Open lot and a dry Rocky one): each in its own colors with the garden around it, the lake and the creek running on past the lot's edges; at 2× every art pixel a whole 2×2 block (99.7% of blocks; the rest are text). Old Woods' refusal on a Tree beside the house, and its chip on the checklist's plank. Two job boards with three biomes each: their maps and chips. The inspect panel on a lake tile, an Old Woods Tree and a Wooded Tree. No console errors. Not looked at: phones and narrow windows, touch, Safari and Firefox, the Fit overview at 2×, the end screen, the milestone photos and the street of your houses (they use the same painters), How to play's page, a whole run by hand, and sound.
+**Checked:** `npm test` (2,337 tests), `npm run typecheck`, `npm run format` and `npm run build`, after the merges with #88, #89 and #91, the creek's raise and the fit; one round in the dev build before them (the week count, the crews, the targets and the creek's number don't reach what it looked at), headless Chrome at 1600×900 at 1× and 2× (the job board also at 1280×720). Seven lots played by greedy to week 12 (a meadow, an autumn lot with Wooded, Old Woods, a lake, a creek through the middle, a dry Open lot and a dry Rocky one): each in its own colors with the garden around it, the lake and the creek running on past the lot's edges; at 2× every art pixel a whole 2×2 block (99.7% of blocks; the rest are text). Old Woods' refusal on a Tree beside the house, and its chip on the checklist's plank. Two job boards with three biomes each: their maps and chips. The inspect panel on a lake tile, an Old Woods Tree and a Wooded Tree. No console errors. Not looked at: phones and narrow windows, touch, Safari and Firefox, the Fit overview at 2×, the end screen, the milestone photos and the street of your houses (they use the same painters), How to play's page, a whole run by hand, and sound.
 
 **Known gaps:**
 - **Not played by a person.** Greedy can't plan around a lake's shore or old Trees; a person may find Old Woods easier or harder than it does.
-- **Close to the re-fit line:** greedy wins 4.6 points more than on develop (interval +2.5 to +6.7), and `--check`'s 200-run greedy line now fails outright (58.5%). Of the 92 runs gained, Open's lots give 44, the autumn woods' plain lots 23 (more of them Wooded), Old Woods and the lake 12 each. If play finds runs easier, D-169's re-fit brings greedy back to about 44%.
-- **The creek through the middle** is the low kind at four weeks: 42.5% of its 120 lots (50.0% at five weeks).
-- **Count Vladislav on Old Woods:** its chip wears his up icon (he likes Trees, as Wooded's does), but greedy won 39% of his 36 Old Woods runs (31% at five weeks), where the other clients won 43–55%. He wins 9 of 70 Open lots (develop 12 of 82). Small samples; if play agrees, drop the up icon or look at why.
+- **The fit:** greedy wins 48.0% of `hold-*` on it against develop's 44.9% on D-171's (+3.1 points [+0.9, +5.4]), while `check-*`, which the fit read, says 46.4% (D-171: 47.0%). The new lots carry the gain; the meadow's own lots lose a few runs to the higher targets (354 wins of 799 against develop's 365).
+- **The low kinds** are the creek through the middle (42.5% of its 120 lots) and Old Woods (42.9% of 154); the lake is the top (53.1%). The bank's +100% hardly moves greedy's house on the meadow's creek lots (42% of first rooms on the bank against 40%).
+- **`--check`'s client line fails, unsure:** 40 runs a client, Juniper 37.5% to the Hendersons 57.5%. On 2,000 held-out runs they're 10.2 points apart (develop 9.5).
+- **Count Vladislav on Old Woods:** its chip wears his up icon (he likes Trees, as Wooded's does), but greedy won 9 of his 36 Old Woods runs (25%), where the other clients won 41–63%. He wins 8 of 70 Open lots (develop 11 of 82). Small samples; if play agrees, drop the up icon or look at why.
 - **A link on a first visit** is guided on the link's own lot (D-149), which may now be any biome; only the first job's own seed is always a plain meadow.
 - **D-173's atlas:** #86 adds furniture to the same atlas. Whichever merges second rebuilds `assets/atlas.*` with `npm run atlas`, not by hand.
 
@@ -4185,6 +4199,7 @@ What the columns mean:
 
 **The fit** (D-169's method: 2,000 untargeted greedy runs on `sim-*` with the four crews and the five clients in turn, then 2,000 each of `check-*` and `hold-*` on the fitted targets):
 - **Targets:** 35, 720, 3,750, 10,200, 24,400, 46,100, 87,100 Wow (D-169: 35, 720, 3,250, 9,100, 21,500, 40,900, 76,700). The first two stand; from Framing on they rise 12 to 15%, about what greedy's median rose (72,450 at the end, from 62,156).
+  - *Changed by D-174 (Proposed, 2026-11-13):* fitted again with the biomes' lots and Creekside at +100%: 40, 800, 3,850, 10,700, 25,100, 47,800 and 91,300, D-169's factors held, and `firstTargetPct` 55.
 - **Each client's `targetPct` stands:** the Hendersons 110, Count Vladislav 80, the Barkers 90, Juniper 75, Dale 140. The fit returned D-169's.
 - **The first fit is the one kept.** Its goals were the base goals plus the gaps D-169 had measured between the fit's estimate and play (99.9, 96.7, 89.4, 74.8, 63.1 and 49.4% at milestones 2 to 7), and played survival came out on the base goals (100, 98, 95, 85, 72, 58, 45%):
   - `check-*`: 100, 99.8, 95.0, 86.2, 72.3, 59.9 and **47.0%** [44.9–49.2].
