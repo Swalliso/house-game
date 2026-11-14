@@ -210,6 +210,7 @@ With these rules, where to put the house becomes the run's first big decision.
 **Considered:** Every install as a free action, which turns the hand into a shopping list. Every install costing a week, which makes bought fixtures a poor buy. Fixtures only in the shop.
 **Changes:** D-004 (Accepted): a week's turn can be an install instead of a placement. A week never gets a second piece. `jam-scope.md`: Fixtures move from Stretch into the jam build.
 **2026-11-06 (D-095, Proposed):** Garden Lights in a Sapling vanished when it became a Tree, since a Tree is a lot feature, not a piece. A piece that becomes a lot feature now can't hold a fixture. How a fixture leaves is unchanged.
+*Proposed change by D-172 (2026-11-13, awaiting the user's OK):* three fixtures leave rooms out. The Fireplace no longer fits a Bathroom, Closet, Garage or Mudroom, and Blackout Curtains and the Bay Window no longer fit a Bathroom, Closet or Garage. Their cards read "Fits most rooms".
 
 ### D-051 · The shop: five kinds of goods
 **Status:** Accepted · 2026-11-05 (confirmed by the team)
@@ -4018,6 +4019,37 @@ What the columns mean:
 ## Proposed
 
 *Reserved numbers (2026-11-10): D-115 to D-118 are the layout session's drafts, not in this file yet; D-122 (legibility) is logged below. D-132 to D-134 are playtest 5's fixes, each logged by its own pull request: D-132 one reroll for both rows of the draw, D-133 the roof view, D-134 three more tracks. D-135 and D-136 are M6's end screen (D-135 the result line and link preview, D-136 the milestone photos); D-137 and D-138 belong to the release-day sessions. D-139 is the company's record. D-140 to D-146 are the friction batch, from the 2026-11-10 review's seven points: D-140 the Garage and the Driveway, D-141 what a blueprint is worth and its icon, D-142 first contact, D-143 the blueprint shelf, D-144 change orders two at a time, D-145 the lot and the last stretch, and D-146 the batch's one re-fit. D-147 takes the roof out again (the user's call, logged under Accepted). D-148 is the first-timer legibility batch before the showing, from the 2026-11-10 polish review (logged below). D-149 is the first job, from the first showing (2026-11-11, logged below). D-150 is the end screen's lead into the next run, from the evening's what-next survey (`fix/retry-after-loss`, logged below). D-151 is the first job's gentler targets (`phase/first-job-targets`, logged under Accepted). D-152 to D-157 are the 2026-11-11 playtest's: D-152 Copy run code on the end screen's plank (fix/playtest-6-bugs, logged below), D-153 Full House's progress on its set chip (fix/full-house-progress, logged below), D-154 the week cue, D-155 life on the lot and D-156 your houses on the street (each logged by its own pull request), and D-157 strikes from the hand (`phase/strike-from-hand`, logged below). D-158 to D-160 answer an outside playtester's notes (2026-11-12): D-158 the tutorial fixes (`phase/tutorial-fixes`, logged below), D-159 fences that join and Hallways that open into each other (`fix/fences-and-halls-join`, logged below), and D-160 pieces you can count on (`phase/pieces-you-can-count-on`, logged below). D-161 makes the bots cheaper on D-160's Fence (`fix/greedy-fence-packs`, logged below). D-162 to D-168 are the core-loop batch from the 2026-11-12 gap analysis, each logged by its own pull request: D-162 the standing stock from week 1 (`phase/stock-from-week-1`), D-163 Your goods are free (`phase/goods-builds-free`), D-164 yard sets (`phase/yard-sets`), D-165 house rules on the rooms (`phase/rules-on-rooms`), D-166 the lot decides (`phase/the-lot`), D-167 the text diet (`phase/text-diet`) and D-168 Extend a room (`phase/extend-a-room`), all logged below. D-169 builds the seven in one branch (`phase/batch-build`, logged below), and D-170 is five weeks a milestone (`phase/five-week-milestones`). D-171 is held for crews that change what's free. New entries start at D-172.*
+
+### D-172 · Fixtures go where they make sense: no Fireplace in a Bathroom
+**Status:** Proposed · 2026-11-13, a fix pull request (`fix/fixtures-where-they-fit`), from playtest 8. The user: "I think we also need to look at some of the fixtures (like fireplace) to make sure we can't apply them to places that are non-sensical (e.g. the bathroom)." Left unmerged for their look at the list below. A content change: `contentHash(CONTENT)` goes from `698c254c` to `6478ddb5`, so runs in progress drop when it merges.
+**Decision:**
+- **Three fixtures leave rooms out.** Until now the Fireplace, the Skylight, Blackout Curtains and Soundproofing fit any room (every indoor piece but the two Hallways), and the Bay Window any room on an outside wall.
+
+| Fixture | No longer fits | Card |
+|---|---|---|
+| Fireplace | a Bathroom, Closet, Garage or Mudroom | "Fits most rooms" |
+| Blackout Curtains | a Bathroom, Closet or Garage | "Fits most rooms" |
+| Bay Window | a Bathroom, Closet or Garage | "Fits most exterior rooms" |
+| Skylight, Soundproofing | no change: a skylit Bathroom and a soundproofed Garage are real things | "Fits any room" |
+
+- **A variant or a member's room goes by its type,** as everywhere: an L-Kitchen takes what a Kitchen takes, Grandma's Room what a Bedroom does.
+- **No new words on screen.** "Fits most rooms" is as long as "Fits any room" was. The board already shows which rooms take a picked fixture (only those get a gain badge), and a refused install names the room: "A Fireplace goes in most rooms, not a Bathroom."
+- **Data only:** each `fits` is `{ all: [room, { not: { piece: […] } }] }` (`roomsBut` in `src/content/fixtures.ts`), which the selectors already read. `fitsPhrase` (`src/rules/text.ts`) words a card's line and the refusal from one place.
+- **Not changed:** the room art still has a place for a Fireplace in a Closet, Bathroom, Garage and Mudroom (`src/ui/art/rooms.ts`). It can't be reached now and is left in, because D-173's pull request (#86) rewrites those lists; taking it out is for after that merges.
+
+**Sim:** greedy on the four-week build, 600 runs of `check-*` (every client with every crew in turn), before and after on the same seeds: **45.3% and 45.3%** (one seed won only before, one only after); 548 of the 600 runs played out the same to the last point. Count Vladislav, who leans on Blackout Curtains for Three Dark rooms: 45.8% both ways, and the line held at the end in 76.7% of his runs both ways. Installs a run 3.68 and 3.65. No re-fit.
+
+**Why:** a Fireplace in a Bathroom reads as a mistake, and the user saw it. The fix is in where the card can go, not in a note that explains it.
+
+**Considered:**
+- *A list of rooms each fixture does fit.* Every new room would need adding to each list; leaving rooms out says the same in fewer names.
+- *A named group ("living spaces") on the cards.* A new term to learn, for something the board shows.
+- *Leaving out more* (the Kitchen or the kids' rooms for the Fireplace, the Mudroom for the curtains). A kitchen hearth and a nursery fireplace are odd, not nonsense; the list keeps to what reads as a mistake.
+- *Limiting the Skylight or Soundproofing.* Both make sense in any room.
+
+**Changes:** D-050 (Accepted): where three fixtures fit; `implementation-plan.md`'s Appendix B table and its Fixtures note.
+
+**Checked:** `npm test`, `npm run typecheck`, `npm run format:check`. One round in the dev build (the store and the board on a running page, 1024×768): with a Fireplace picked from the supplies, only the Bedroom has a gain badge; pointing at the Bathroom is refused with "A Fireplace goes in most rooms, not a Bathroom."; the Skylight is offered both rooms; no console errors. Not looked at: the card's "Fits most rooms" line on screen (tests hold the text), Blackout Curtains and the Bay Window on screen, the shop's cards, touch, other browsers.
 
 ### D-158 · Tutorial fixes: hints that wait for their play, a short How to play, and the first job's shops a shop behind
 **Status:** Proposed · 2026-11-12, a phase pull request (`phase/tutorial-fixes`), from an outside playtester's notes the same day (a realism-first player who read How to play before pressing Start, and played the first job and Dale's contract). The user's go-ahead: "Yes, build them". UI and rules text only: no rule, content or balance change, and `contentHash(CONTENT)` is unchanged, so saves and run codes carry over (#54). For the user's playtest before it merges.

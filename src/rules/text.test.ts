@@ -212,16 +212,16 @@ describe('a compact hand card (D-121)', () => {
       fixtures.map((f) => [f.id, handCardLines(CONTENT, { kind: 'fixture', id: f.id })]),
     );
     expect(shown).toEqual({
-      fireplace: ['Fits any room', 'Earns +50%'],
+      fireplace: ['Fits most rooms', 'Earns +50%'],
       skylight: ['Fits any room', 'Makes it Sunny'],
-      blackoutCurtains: ['Fits any room', 'Makes it Dark'],
+      blackoutCurtains: ['Fits most rooms', 'Makes it Dark'],
       // Who is Loud, and "can’t take points off it", are in Inspect (D-148).
       soundproofing: ['Fits any room', 'Loud neighbors can’t lower it'],
       // What it earns (D-148): "Counts as a Dining Room too" read as an Entertainer or the
       // Hendersons' wish, and it fills neither.
       kitchenIsland: ['Fits a Kitchen', 'Earns +25%'],
       bunkBeds: ['Fits a Bedroom', 'Counts as 2 Bedrooms'],
-      bayWindow: ['Fits an exterior room', 'Gives it a view'],
+      bayWindow: ['Fits most exterior rooms', 'Gives it a view'],
       sprinkler: ['Fits a Lawn', 'Earns +100%'],
       pergola: ['Fits a Patio', 'Gives it a view'],
       gardenLights: ['Fits any yard piece', 'Makes it Pretty'],

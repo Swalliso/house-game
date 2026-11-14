@@ -1088,14 +1088,32 @@ export interface FixtureText {
   effects: string[];
 }
 
+/**
+ * Where a fixture goes, as its card and a refused install say it: "any room", "any yard piece",
+ * "a Kitchen", "an exterior room". D-172: a fixture that takes rooms but a few types reads "most
+ * rooms" ("most exterior rooms"), in as many words as "any room": the board shows which rooms
+ * take it, and a refused install names the room it was tried on.
+ */
+export function fitsPhrase(content: Content, sel: Selector): string {
+  const isProperty = (s: Selector, p: string) => s !== 'all' && 'property' in s && s.property === p;
+  if (isProperty(sel, 'room')) return 'any room';
+  if (isProperty(sel, 'yard')) return 'any yard piece';
+  if (sel !== 'all' && 'all' in sel) {
+    const isNot = (s: Selector): boolean => s !== 'all' && 'not' in s;
+    const rest = sel.all.filter((s) => !isNot(s));
+    const roomsOnly = rest.every((s) => isProperty(s, 'room') || isProperty(s, 'exterior'));
+    if (sel.all.some(isNot) && roomsOnly && rest.some((s) => isProperty(s, 'room'))) {
+      return rest.some((s) => isProperty(s, 'exterior')) ? 'most exterior rooms' : 'most rooms';
+    }
+  }
+  return article(selectorText(content, sel, 'one'));
+}
+
 export function fixtureText(content: Content, def: FixtureDef): FixtureText {
-  const sel = def.fits;
-  let fits: string;
-  if (sel !== 'all' && 'property' in sel && sel.property === 'room') fits = 'Fits any room';
-  else if (sel !== 'all' && 'property' in sel && sel.property === 'yard')
-    fits = 'Fits any yard piece';
-  else fits = `Fits ${article(selectorText(content, sel, 'one'))}`;
-  return { fits, effects: def.modifiers.map((m) => modifierText(content, m)) };
+  return {
+    fits: `Fits ${fitsPhrase(content, def.fits)}`,
+    effects: def.modifiers.map((m) => modifierText(content, m)),
+  };
 }
 
 export function blueprintText(content: Content, def: BlueprintDef): string[] {
