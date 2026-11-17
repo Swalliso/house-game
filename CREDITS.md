@@ -55,6 +55,10 @@ Open House is a game jam entry for the theme "It's a house," built with Claude C
   their Kitchen Islands, the cloth tables lengthened to seat four, and the clothes rails under
   the first rail's bar are composed from the same sheets by `npm run art:cut`. LimeZu's art, cut
   and credited as above.
+- **The clients' own things** (D-183, `art/limezu/interiors.json`): Count Vladislav's coffin,
+  from Modern Interiors' Halloween theme, and the candle in a wall sconce beside it, from its
+  animated objects (its flame flickers over three frames). LimeZu's art, cut and credited as
+  above. The Barkers' dogs' bed is our own drawing, the one in Nana's Room.
 - **Your houses on the street** (D-156, `art/limezu/neighbors.json`): until a player's own
   finished houses stand on the plots around the lot, Modern Exteriors' country, modern and
   Japanese houses do (from its Additional Houses), LimeZu's art, cut and credited as above. The

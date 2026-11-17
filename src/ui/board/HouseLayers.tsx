@@ -224,11 +224,16 @@ function artStyle(id: ArtId, scale: number): { style: JSX.CSSProperties; bx: num
 /**
  * An item's rows under the walls (`bottom`: all of them, unless it rises above its cells) or over
  * them (`top`). An animated item's frames sit side by side in a strip that slides behind the
- * item's box (transform only), under the walls; its top stays on the first frame. D-178: `whole`
- * is a copy of all of it, on its first frame, hidden except while it drops in (piece-fx.ts drop);
- * `i` is its place in its room's list, so a drop finds its parts.
+ * item's box (transform only), in both parts: its rows over the walls step with the rest, so a
+ * flame on a wall's band flickers (the Count's wall candle, D-183). The two parts start together
+ * and step as one: both layers key an item's parts by its place in its piece's list, and the
+ * strip by the item (its sprite and where it stands), so a part's strip is only ever made anew in
+ * the same render as the other's. D-178: `whole` is a copy of all of it, on its first frame (an
+ * animated item's too, so it's always the plain `item-drop` the drop looks for), hidden except
+ * while it drops in (piece-fx.ts drop); `i` is its place in its room's list, so a drop finds its
+ * parts.
  */
-function ItemPart({
+export function ItemPart({
   item,
   box,
   scale,
@@ -252,13 +257,14 @@ function ItemPart({
     width: `${w * scale}px`,
     height: `${(to - from) * scale}px`,
   };
-  const anim = part === 'bottom' ? artFrames(item.sprite) : null;
+  const anim = part === 'whole' ? null : artFrames(item.sprite);
   // The parked car's parts, so they can slide together when it moves (useCarSlide).
   const car = isCar(item.sprite) && part !== 'whole' ? '' : undefined;
   if (anim) {
     return (
       <div class="item" data-car={car} data-i={i} style={{ ...place, overflow: 'hidden' }}>
         <div
+          key={`${item.sprite}@${item.x},${item.y}`}
           class="item-frames"
           style={{
             ...style,
@@ -539,7 +545,10 @@ function PieceOverhang({
 }: {
   uid: number;
   box: Rect;
-  /** All its items: those that rise above their cells show their tops. */
+  /**
+   * All its items, as under the walls (PieceItems): those that rise above their cells show their
+   * tops, each keyed by its place in this list, so an item's two parts mount together (ItemPart).
+   */
   items: readonly Item[];
   scale: number;
   /** D-178: a copy of each item too, after the tops, for its drop. */
@@ -1068,6 +1077,7 @@ export function GhostPiece({
       look?.style,
       look?.unmet,
       look?.lit,
+      look?.client,
     ],
   );
   const { frame } = art;

@@ -374,11 +374,11 @@ export function Board() {
   const { house } = state;
   const occ = occupancy(house);
   // The house as drawn: walls, doorways and windows from the pieces, with the Hallways'
-  // doors from the rules' links and the sun's light on the Sunny rooms (D-120). Cached per
-  // house, so hovering never rebuilds it.
+  // doors from the rules' links and the sun's light on the Sunny rooms (D-120), and the
+  // client's own things in their room (D-183). Cached per house, so hovering never rebuilds it.
   const links = useMemo(() => hallLinks(state), [state]);
   const sun = useMemo(() => sunLight(state), [state]);
-  const model = houseModel(house, links, sun);
+  const model = houseModel(house, links, sun, state.setup.clientId);
   // The yard pieces' ground and props, cached per house model. A piece whose requirement isn't
   // met, by the rules' tally, draws so: the Doghouse's dog on its lead (D-179). One whose fenced
   // yard has just closed wakes up with a wobble and a bark (useWakeUps).
@@ -1283,9 +1283,9 @@ function Ghost({
         scale={scale}
         look={
           grows !== undefined
-            ? roomLook(run.value.house, grows)
+            ? roomLook(run.value.house, grows, run.value.setup.clientId)
             : isIndoor(defId)
-              ? newRoomLook(run.value.house, defId)
+              ? newRoomLook(run.value.house, defId, run.value.setup.clientId)
               : {
                   ...newPieceLook(run.value.house, defId),
                   // D-179: as the preview says it will land (the Doghouse's dog on its lead).
@@ -1773,7 +1773,7 @@ function ToolTarget({ scale }: { scale: number }) {
         scale={scale}
         look={
           isIndoor(piece.defId)
-            ? roomLook(state.house, piece.uid)
+            ? roomLook(state.house, piece.uid, state.setup.clientId)
             : pieceLook(state.house, piece.uid, unmetOf(currentTally.value.pieces))
         }
         class={`ghost ${ok ? 'legal' : 'illegal'} ${armed ? 'pending' : ''}`}

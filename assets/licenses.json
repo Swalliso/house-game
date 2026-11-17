@@ -1014,6 +1014,11 @@
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Interiors"
   },
+  "limezu/coffin.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/11_Halloween_16x16.png [198, 68, 23, 38]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
   "limezu/coop-0.png": {
     "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png [227, 720, 8, 32]; Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png [240, 720, 16, 32]; Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png [262, 720, 8, 32]",
     "author": "LimeZu",
@@ -2561,6 +2566,11 @@
   },
   "limezu/visit-pop.png": {
     "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 4_User_Interface_Elements/UI_thinking_emotes_animation_16x16.png [0, 32, 16, 32], 4 frames [16, 0] apart",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/wall-candle.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 3_Animated_objects/16x16/spritesheets/animated_wall_candle.png [3, 6, 10, 14], 3 frames [16, 0] apart",
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Interiors"
   },

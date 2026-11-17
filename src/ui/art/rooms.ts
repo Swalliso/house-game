@@ -61,6 +61,7 @@
 import {
   CONTENT,
   isFinished,
+  type ClientId,
   type FixtureId,
   type HouseState,
   type PieceId,
@@ -206,6 +207,8 @@ const BACK: Readonly<Record<string, number>> = {
   sideboard: 12,
   lectern: 20,
   'hall-bench': 10,
+  // D-183: the client's own things. The candle hangs on the north wall's band and face.
+  'wall-candle': 14,
 };
 
 function family(sprite: ArtId): string {
@@ -427,6 +430,8 @@ interface Ctx {
   fixture: FixtureId | undefined;
   /** D-168: an extended room, bigger than its card: it takes a second group of furniture. */
   big: boolean;
+  /** D-183: the client whose own things this room takes (theirsIn), or none. */
+  client: ClientId | undefined;
 }
 
 function pick<T>(list: readonly T[], n: number): T {
@@ -1193,6 +1198,149 @@ function clockHall(c: Ctx): Want[] {
 }
 
 // ---------------------------------------------------------------------------------------
+// D-183: the client's own things.
+
+/**
+ * A client's own things (D-183): the room type they move into, the ways they can go into a room's
+ * wants (best first), and what shows they're in: the room takes the first way that shows one of
+ * `marks`, or else the last.
+ */
+interface Theirs {
+  type: PieceId;
+  ways: (wants: readonly Want[], c: Ctx) => Want[][];
+  marks: readonly ArtId[];
+  /**
+   * Where the first way doesn't show them: the room takes, of the ways that do, the one that keeps
+   * the most furniture (the first of those on a tie), not the first.
+   */
+  most?: boolean;
+}
+
+/** Rugs, runners and mats lie under the furniture: left out of how much of it a room keeps. */
+const UNDERFOOT = /^(rug-|runner-|mat-|bath-mat)/;
+
+/** How much furniture a layout has: its pieces' area in art px, what lies underfoot left out. */
+function furniture(l: RoomLayout): number {
+  let n = 0;
+  for (const it of l.items) {
+    if (UNDERFOOT.test(it.sprite)) continue;
+    const { w, h } = artSize(it.sprite);
+    n += w * h;
+  }
+  return n;
+}
+
+/**
+ * Each client's own things (D-183), by the room type they move into. The first room of that type
+ * (its lowest uid: the oldest, so a newer one never takes them away) has them over whichever
+ * arrangement it has; a member's room is its own type, so it never does (D-111). Looks only: the
+ * table stays here, off the client's definition, so the content hash holds. The other clients'
+ * rooms, and the client's other rooms, are as they were.
+ */
+const THEIRS: Readonly<Partial<Record<ClientId, Theirs>>> = {
+  vladislav: { type: 'bedroom', ways: coffinRoom, marks: ['wall-candle', 'candles'] },
+  barkers: { type: 'livingRoom', ways: dogsBed, marks: ['own-dog-bed'], most: true },
+};
+
+/**
+ * Which of `rooms` (a house's pieces, or a model's rooms) takes `client`'s own things: the one of
+ * their type with the lowest uid. Undefined for a client without any, or before such a room.
+ */
+export function theirsIn(
+  rooms: Iterable<{ readonly uid: number; readonly defId: PieceId }>,
+  client: ClientId | undefined,
+): number | undefined {
+  const type = client && THEIRS[client]?.type;
+  if (!type) return undefined;
+  let first: number | undefined;
+  for (const r of rooms) {
+    if (r.defId === type && (first === undefined || r.uid < first)) first = r.uid;
+  }
+  return first;
+}
+
+/**
+ * `wants` with `extra` among them, in each place it can go: last first, where nothing makes way
+ * for it, then one place earlier at a time, so the least of the room's furniture does, down to
+ * just after the key piece and what stands beside it (never between a piece and what stands beside
+ * it); and last of all before everything, for a room whose key piece leaves no floor at all (a
+ * sofa that its doors push into the middle of the room).
+ */
+function placesFor(wants: readonly Want[], extra: Want): Want[][] {
+  const beside = (w: Want | undefined) => /^[NC][LR]$/.test(w?.slots[0] ?? '');
+  let key = 1;
+  while (key < wants.length && beside(wants[key])) key++;
+  const ways: Want[][] = [];
+  for (let i = wants.length; i >= key; i--) {
+    if (!beside(wants[i])) ways.push([...wants.slice(0, i), extra, ...wants.slice(i)]);
+  }
+  ways.push([extra, ...wants]);
+  return ways;
+}
+
+/** A Bedroom's key piece in every arrangement: its bed, or Bunk Beds with the bed as their stand-in (bedOr). */
+const isBed = (w: Want) =>
+  [...w.sprites, ...(w.standIn ?? [])].some((sp) => /^bed-double/.test(sp));
+
+/**
+ * Count Vladislav's first Bedroom: his coffin where the bed would stand, and a candle on the wall
+ * in place of the bed's near bedside piece (a nightstand or a nightlamp), beside the coffin. Where
+ * the wall has no room left for it (a wardrobe or a Fireplace beside the coffin, doors on both
+ * sides), his candles stand on the floor instead, as in Renfield's Room. Bunk Beds still win: the
+ * coffin only stands in for them where they don't fit, as the bed would have.
+ */
+function coffinRoom(wants: readonly Want[], c: Ctx): Want[][] {
+  const [near, far] = corners(c, 'NL', 'NR');
+  const candle: Want = { sprites: ['wall-candle'], slots: [near!, far!, 'N'] };
+  const bedside = (w: Want) =>
+    w.slots.length === 1 &&
+    w.slots[0] === near &&
+    w.sprites.every((sp) => /^(nightstand|nightlamp)-/.test(sp));
+  const key = wants.findIndex(isBed);
+  const spot = wants.findIndex(bedside);
+  const room = wants.flatMap((w, i): Want[] => {
+    if (i === spot) return [candle];
+    if (i !== key) return [w];
+    const coffin: Want = w.fixture
+      ? { ...w, standIn: ['coffin', ...(w.standIn ?? [])] }
+      : { ...w, sprites: ['coffin', ...w.sprites] };
+    // Without a bedside piece to take the place of, the candle is the first beside the coffin.
+    return spot < 0 ? [coffin, candle] : [coffin];
+  });
+  const candles: Want = { sprites: ['candles'], slots: [...corners(c, 'SW', 'SE'), 'C', 'S'] };
+  return [room, ...placesFor(room, candles)];
+}
+
+/**
+ * `wants` with `sprite` in place of a plant or a lamp (`small`) beside the key piece, in its slot:
+ * one way for each such piece, in the room's own order.
+ */
+function inPlaceOf(wants: readonly Want[], sprite: ArtId, small: RegExp): Want[][] {
+  const ways: Want[][] = [];
+  for (let i = 1; i < wants.length && /^[NC][LR]$/.test(wants[i]!.slots[0] ?? ''); i++) {
+    const w = wants[i]!;
+    if (w.fixture || !w.sprites.every((sp) => small.test(sp))) continue;
+    ways.push(wants.map((x, j) => (j === i ? { sprites: [sprite], slots: [w.slots[0]!] } : x)));
+  }
+  return ways;
+}
+
+/**
+ * The Barkers' first Living Room: the dogs' bed (our own drawing, as in Nana's Room) in a south
+ * corner, else on the floor in front, by the south wall, a side wall or the north wall. Where the
+ * room is full, it takes the place of a plant or a lamp beside the sofa, the bookcase or the
+ * television, or some of the room's furniture makes way for it (placesFor): whichever keeps the
+ * most furniture (THEIRS' `most`).
+ */
+function dogsBed(wants: readonly Want[], c: Ctx): Want[][] {
+  const [anywhere, ...ways] = placesFor(wants, {
+    sprites: ['own-dog-bed'],
+    slots: [...corners(c, 'SE', 'SW'), 'C', 'S', ...corners(c, 'E', 'W'), 'N', 'NW', 'NE'],
+  });
+  return [anywhere!, ...inPlaceOf(wants, 'own-dog-bed', /^(plant-|side-|lamp-)/), ...ways];
+}
+
+// ---------------------------------------------------------------------------------------
 // Laying a room out.
 
 /**
@@ -1787,10 +1935,11 @@ function sameType(m: HouseModel, room: Room): number[] {
 const flipOf = (uid: number) => ((uidHash(uid, 7) >>> 3) & 1) === 1;
 
 /**
- * How placed room `uid` looks (its color, its arrangement, its choices, its fixture): its ghost's
- * while the Moving Truck carries it, or while a card extends it (D-168).
+ * How placed room `uid` looks (its color, its arrangement, its choices, its fixture, and whether
+ * it has the run's `client`'s own things, D-183): its ghost's while the Moving Truck carries it,
+ * or while a card extends it (D-168).
  */
-export function roomLook(house: HouseState, uid: number): PieceLook {
+export function roomLook(house: HouseState, uid: number, client?: ClientId): PieceLook {
   const piece = house.pieces.find((p) => p.uid === uid);
   if (!piece) return { color: 0 };
   const same = house.pieces.filter((p) => p.defId === piece.defId).map((p) => p.uid);
@@ -1800,17 +1949,22 @@ export function roomLook(house: HouseState, uid: number): PieceLook {
     style: arrangementOf(piece.defId, same, uid),
     ...(piece.fixture ? { fixture: piece.fixture.id } : {}),
     ...(isFinished(piece) ? { lit: true } : {}),
+    ...(client && theirsIn(house.pieces, client) === uid ? { client } : {}),
   };
 }
 
-/** How a new room of type `defId` will look once it's placed (its uid is the house's next): its ghost's. */
-export function newRoomLook(house: HouseState, defId: PieceId): PieceLook {
+/**
+ * How a new room of type `defId` will look once it's placed (its uid is the house's next): its
+ * ghost's, with the run's `client`'s own things if it will be the first room of their type (D-183).
+ */
+export function newRoomLook(house: HouseState, defId: PieceId, client?: ClientId): PieceLook {
   const uid = house.nextUid;
   const same = [...house.pieces.filter((p) => p.defId === defId).map((p) => p.uid), uid];
   return {
     color: paletteOf(defId, same, uid),
     flip: flipOf(uid),
     style: arrangementOf(defId, same, uid),
+    ...(client && theirsIn([...house.pieces, { uid, defId }], client) === uid ? { client } : {}),
   };
 }
 
@@ -1819,7 +1973,8 @@ function cardTiles(defId: PieceId): number {
   return CONTENT.pieces[defId].shape.reduce((n, row) => n + row.split('#').length - 1, 0);
 }
 
-function layOut(m: HouseModel, uid: number): RoomLayout {
+/** Room `uid`'s layout: its arrangement's wants, or `given` ones (D-183: a way the client's things go in). */
+function layOut(m: HouseModel, uid: number, given?: readonly Want[]): RoomLayout {
   const room = m.rooms.get(uid);
   // A type without a layout of its own is furnished as its countsAs root (byType).
   const spec = room && byType(SPECS, room.defId);
@@ -1832,10 +1987,35 @@ function layOut(m: HouseModel, uid: number): RoomLayout {
     flip: look?.flip ?? flipOf(uid),
     fixture: room.fixture,
     big: room.cells.length > cardTiles(room.defId),
+    // D-183: a ghost has the client's things if its look says so; a placed room if it's theirs.
+    client: look
+      ? look.client
+      : theirsIn(m.rooms.values(), m.client) === uid
+        ? m.client
+        : undefined,
   };
   // Its arrangement (D-173): the first is its type's SPECS entry, the others ARRANGEMENTS'.
   const style = look ? (look.style ?? 0) : arrangementOf(room.defId, same, uid);
-  const wants = ((style > 0 && ARRANGEMENTS[room.defId]?.[style - 1]) || spec)(c);
+  const wants = given ?? ((style > 0 && ARRANGEMENTS[room.defId]?.[style - 1]) || spec)(c);
+  // D-183: the client's own things go in over whichever arrangement it has, the first of their
+  // ways that shows them (or the one of those that keeps the most furniture), or else the last.
+  const theirs = given || !c.client ? undefined : THEIRS[c.client];
+  if (theirs?.type === room.defId) {
+    let out: RoomLayout | undefined;
+    let most = -1;
+    for (const [i, way] of theirs.ways(wants, c).entries()) {
+      const layout = layOut(m, uid, way);
+      if (!layout.items.some((it) => theirs.marks.includes(it.sprite))) {
+        if (most < 0) out = layout;
+        continue;
+      }
+      const kept = furniture(layout);
+      if (kept > most) [out, most] = [layout, kept];
+      // The first way makes nothing give way: the others are weighed only when it can't show them.
+      if (!theirs.most || i === 0) break;
+    }
+    if (out) return out;
+  }
   const L = new Layout(analyze(m, room));
   const done = new Set<Want>();
   /** Places want `w` (the i-th) through its slots: an N piece with its group first. */
