@@ -1201,6 +1201,25 @@ interface Theirs {
   type: PieceId;
   ways: (wants: readonly Want[], c: Ctx) => Want[][];
   marks: readonly ArtId[];
+  /**
+   * Where the first way doesn't show them: the room takes, of the ways that do, the one that keeps
+   * the most furniture (the first of those on a tie), not the first.
+   */
+  most?: boolean;
+}
+
+/** Rugs, runners and mats lie under the furniture: left out of how much of it a room keeps. */
+const UNDERFOOT = /^(rug-|runner-|mat-|bath-mat)/;
+
+/** How much furniture a layout has: its pieces' area in art px, what lies underfoot left out. */
+function furniture(l: RoomLayout): number {
+  let n = 0;
+  for (const it of l.items) {
+    if (UNDERFOOT.test(it.sprite)) continue;
+    const { w, h } = artSize(it.sprite);
+    n += w * h;
+  }
+  return n;
 }
 
 /**
@@ -1212,7 +1231,7 @@ interface Theirs {
  */
 const THEIRS: Readonly<Partial<Record<ClientId, Theirs>>> = {
   vladislav: { type: 'bedroom', ways: coffinRoom, marks: ['wall-candle', 'candles'] },
-  barkers: { type: 'livingRoom', ways: dogsBed, marks: ['own-dog-bed'] },
+  barkers: { type: 'livingRoom', ways: dogsBed, marks: ['own-dog-bed'], most: true },
 };
 
 /**
@@ -1302,7 +1321,8 @@ function inPlaceOf(wants: readonly Want[], sprite: ArtId, small: RegExp): Want[]
  * The Barkers' first Living Room: the dogs' bed (our own drawing, as in Nana's Room) in a south
  * corner, else on the floor in front, by the south wall, a side wall or the north wall. Where the
  * room is full, it takes the place of a plant or a lamp beside the sofa, the bookcase or the
- * television; and only then does the least of the room's furniture make way for it (placesFor).
+ * television, or some of the room's furniture makes way for it (placesFor): whichever keeps the
+ * most furniture (THEIRS' `most`).
  */
 function dogsBed(wants: readonly Want[], c: Ctx): Want[][] {
   const [anywhere, ...ways] = placesFor(wants, {
@@ -1966,13 +1986,21 @@ function layOut(m: HouseModel, uid: number, given?: readonly Want[]): RoomLayout
   const style = look ? (look.style ?? 0) : arrangementOf(room.defId, same, uid);
   const wants = given ?? ((style > 0 && ARRANGEMENTS[room.defId]?.[style - 1]) || spec)(c);
   // D-183: the client's own things go in over whichever arrangement it has, the first of their
-  // ways that shows them (or else the last).
+  // ways that shows them (or the one of those that keeps the most furniture), or else the last.
   const theirs = given || !c.client ? undefined : THEIRS[c.client];
   if (theirs?.type === room.defId) {
     let out: RoomLayout | undefined;
-    for (const way of theirs.ways(wants, c)) {
-      out = layOut(m, uid, way);
-      if (out.items.some((it) => theirs.marks.includes(it.sprite))) break;
+    let most = -1;
+    for (const [i, way] of theirs.ways(wants, c).entries()) {
+      const layout = layOut(m, uid, way);
+      if (!layout.items.some((it) => theirs.marks.includes(it.sprite))) {
+        if (most < 0) out = layout;
+        continue;
+      }
+      const kept = furniture(layout);
+      if (kept > most) [out, most] = [layout, kept];
+      // The first way makes nothing give way: the others are weighed only when it can't show them.
+      if (!theirs.most || i === 0) break;
     }
     if (out) return out;
   }
