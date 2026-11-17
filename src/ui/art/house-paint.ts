@@ -890,7 +890,7 @@ export type LightPart = 'glow' | 'shade';
  *
  * D-177: on the board, `people` are the room's members as items (people.ts roomPeople): one
  * standing in front of its lamp covers it, so its shade, or the hanging lamp, isn't lit over them
- * there.
+ * there; and the pool and the halo fall round a member, wherever they stand, not on them.
  */
 export function paintLight(
   m: HouseModel,
@@ -926,6 +926,12 @@ export function paintLight(
   };
   // The halo falls on the room's floor, faces and furniture, never on its walls' bands.
   const inside = (px: number, py: number) => own(px, py) && !mask.has(px, py);
+  // D-177: the pool and the halo fall round a member of the household standing in the room, not
+  // on them, wherever they stand: at the lamp's foot its light, at half strength or more, would
+  // wash them out (Grandma's grey hair and purple trousers read as one amber).
+  const someone = (px: number, py: number) => people.some((p) => drawnAt(atlas, p, px, py));
+  const onFloor = (px: number, py: number) => floor(px, py) && !someone(px, py);
+  const onInside = (px: number, py: number) => inside(px, py) && !someone(px, py);
   const lit = (c: Rgb): Rgb => {
     const { rgb, mix } = LAMP_LIGHT.shade;
     return [
@@ -940,8 +946,8 @@ export function paintLight(
     // hangs over everything in the room, as the Chandelier does, but a member in front of it).
     const at = pendantAt(m, r);
     const mid = at.x + at.w / 2;
-    lightOval(cv, LAMP_LIGHT.pool, mid, at.y + at.h + PENDANT_POOL, floor);
-    lightOval(cv, LAMP_LIGHT.halo, mid, at.y + PENDANT_SHADE, inside);
+    lightOval(cv, LAMP_LIGHT.pool, mid, at.y + at.h + PENDANT_POOL, onFloor);
+    lightOval(cv, LAMP_LIGHT.halo, mid, at.y + PENDANT_SHADE, onInside);
     const front = inFrontOfLamp(people, at.y + at.h, atlas);
     paintPendant(cv, at, (px, py) => inside(px, py) && !front(px, py), lit);
     return cv.pixels();
@@ -952,8 +958,8 @@ export function paintLight(
   const [from, to] = parts.shade;
   const mid = lamp.x + w / 2;
   if (part !== 'shade') {
-    lightOval(cv, LAMP_LIGHT.pool, mid, lamp.y + parts.foot, floor);
-    lightOval(cv, LAMP_LIGHT.halo, mid, lamp.y + (from + to) / 2, inside);
+    lightOval(cv, LAMP_LIGHT.pool, mid, lamp.y + parts.foot, onFloor);
+    lightOval(cv, LAMP_LIGHT.halo, mid, lamp.y + (from + to) / 2, onInside);
   }
   if (part === 'glow') return cv.pixels();
 

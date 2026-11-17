@@ -684,6 +684,26 @@ describe('a finished room’s lamp behind a member of the household (D-177)', ()
     expect(kids.find((k) => k?.key === 'light-1')?.props.people).toBe(mine);
   });
 
+  /** The lot pixels a painter lit at all (the glow is never solid). */
+  const anyLit = (p: Pixels | null) => new Set(p ? covered(p).map((q) => `${q.x},${q.y}`) : []);
+
+  it('lets the glow fall round Grandma beside her nightlamp, not on her', () => {
+    const h = house([
+      ['grandmasRoom', 4, 4, 0, { fixture: { id: 'soundproofing', week: 1 }, level: 1 }],
+    ]);
+    const { m, people: inRooms } = withMember(h, 'grandma', 'hendersons');
+    const mine = inRooms.get(1)!;
+    const her = drawn(mine[0]!);
+    const alone = anyLit(paintLight(m, 1, atlas, 'glow'));
+    const withHer = anyLit(paintLight(m, 1, atlas, 'glow', mine));
+    // Painted without her (the photos), the pool and the halo fall on her; with her, none of
+    // them does, and they're the same everywhere else.
+    expect([...alone].filter((k) => her.has(k)).length).toBeGreaterThan(50);
+    expect([...withHer].filter((k) => her.has(k))).toEqual([]);
+    expect([...alone].filter((k) => !her.has(k) && !withHer.has(k))).toEqual([]);
+    expect([...withHer].every((k) => alone.has(k))).toBe(true);
+  });
+
   it('in every member’s room, turn and boxed-in way: one in front of it covers its shade', () => {
     const misses: string[] = [];
     let front = 0;
@@ -708,6 +728,9 @@ describe('a finished room’s lamp behind a member of the household (D-177)', ()
             const lit = solid(paintLight(m, 1, atlas, 'shade', mine));
             const alone = solid(paintLight(m, 1, atlas, 'shade'));
             const name = `${member} ${fixture} r${rot} ${sides || 'alone'}`;
+            // In front of the lamp or behind it, its glow falls round them, not on them.
+            const glow = anyLit(paintLight(m, 1, atlas, 'glow', mine));
+            if ([...drawn(me)].some((k) => glow.has(k))) misses.push(`${name}: glow on them`);
             // The board draws them after the lamp, in front of it, wherever their feet are no
             // higher than its foot: none of its lit shade over them, and the rest as before.
             if (list.indexOf(me) < list.indexOf(lamp)) {
@@ -764,7 +787,8 @@ describe('a finished room’s lamp behind a member of the household (D-177)', ()
     const onHim = (p: Pixels | null) =>
       [...solid(p)].filter((k) => lamp.has(k) && drawn(him).has(k));
     // Painted without him (the photos), the lamp hangs over him, on the walls canvas and lit;
-    // with him, neither, and nothing else changes.
+    // with him, neither, and nothing else changes: the walls only where the lamp was on him, the
+    // glow only on him (its pool and halo fall round him too).
     const walls = paintWalls(m);
     const glow = paintLight(m, 1, atlas, 'glow');
     const household = { people: inRooms, atlas };
@@ -772,12 +796,13 @@ describe('a finished room’s lamp behind a member of the household (D-177)', ()
     expect(onHim(glow).length).toBeGreaterThan(10);
     expect(onHim(paintWalls(m, household))).toEqual([]);
     expect(onHim(paintLight(m, 1, atlas, 'glow', mine))).toEqual([]);
-    for (const d of [
-      differ(walls, paintWalls(m, household)),
-      differ(glow, paintLight(m, 1, atlas, 'glow', mine)),
-    ]) {
-      expect([...d].filter((k) => !lamp.has(k) || !drawn(him).has(k))).toEqual([]);
-    }
+    const wallsChanged = differ(walls, paintWalls(m, household));
+    expect([...wallsChanged].filter((k) => !lamp.has(k) || !drawn(him).has(k))).toEqual([]);
+    const glowChanged = differ(glow, paintLight(m, 1, atlas, 'glow', mine));
+    expect([...glowChanged].filter((k) => !drawn(him).has(k))).toEqual([]);
+    expect(
+      [...anyLit(paintLight(m, 1, atlas, 'glow', mine))].filter((k) => drawn(him).has(k)),
+    ).toEqual([]);
     // The board hands the walls canvas the members in their rooms.
     const layer = WallsLayer({ lot: h.lot, scale: 2, model: m, people: inRooms });
     expect((layer as VNode<{ people?: unknown }>).props.people).toBe(inRooms);
@@ -808,27 +833,34 @@ describe('a finished room’s lamp behind a member of the household (D-177)', ()
             const name = `${member} ${fixture} r${rot} ${sides || 'alone'}`;
             const walls = paintWalls(m, { people: inRooms, atlas });
             const glow = paintLight(m, 1, atlas, 'glow', mine);
-            const changed = [
-              ...differ(paintWalls(m), walls),
-              ...differ(paintLight(m, 1, atlas, 'glow'), glow),
-            ];
+            const wallsChanged = differ(paintWalls(m), walls);
+            const glowChanged = differ(paintLight(m, 1, atlas, 'glow'), glow);
+            const mineDrawn = drawn(me);
+            // Its pool and halo fall round them wherever they stand: the glow changes on them only,
+            // and none of it is on them but the lamp hung in front of them.
+            if ([...glowChanged].some((k) => !mineDrawn.has(k))) {
+              misses.push(`${name}: glow changed off them`);
+            }
+            if ([...anyLit(glow)].some((k) => mineDrawn.has(k) && !lamp.has(k))) {
+              misses.push(`${name}: glow on them`);
+            }
             // In front of it, their feet no higher than its bulb's foot: none of it over them, on
             // the walls canvas or lit, and nothing else changed. Behind it, it hangs as before.
             if (me.y + artSize(me.sprite).h < at.y + at.h) {
               behind++;
-              if (changed.length > 0) misses.push(`${name}: behind, yet changed`);
+              if (wallsChanged.size > 0) misses.push(`${name}: behind, yet changed`);
+              if ([...glowChanged].some((k) => lamp.has(k))) misses.push(`${name}: behind, unlit`);
               continue;
             }
             front++;
-            const mineDrawn = drawn(me);
             const over = [...solid(walls), ...solid(glow)].filter(
               (k) => lamp.has(k) && mineDrawn.has(k),
             );
             if (over.length > 0) misses.push(`${name}: ${over.length} px of it over them`);
-            if (changed.some((k) => !lamp.has(k) || !mineDrawn.has(k))) {
+            if ([...wallsChanged].some((k) => !lamp.has(k) || !mineDrawn.has(k))) {
               misses.push(`${name}: changed off them`);
             }
-            if (changed.length > 0) wasOver++;
+            if (wallsChanged.size > 0) wasOver++;
           }
         }
       }
@@ -857,10 +889,15 @@ describe('a finished room’s lamp behind a member of the household (D-177)', ()
     const lamp = new Set(pendantPixels(at).map((q) => `${q.x},${q.y}`));
     const over = [...solid(paintWalls(m))].filter((k) => lamp.has(k) && drawn(him).has(k));
     expect(over.length).toBeGreaterThan(0);
-    // Drawn as before: the lamp in front of him.
+    // Drawn as before: the lamp in front of him, on the walls canvas and lit. Only its pool and
+    // halo leave him out.
     expect(differ(paintWalls(m), paintWalls(m, { people: inRooms, atlas })).size).toBe(0);
-    expect(
-      differ(paintLight(m, 1, atlas, 'glow'), paintLight(m, 1, atlas, 'glow', mine)).size,
-    ).toBe(0);
+    const glowChanged = differ(
+      paintLight(m, 1, atlas, 'glow'),
+      paintLight(m, 1, atlas, 'glow', mine),
+    );
+    expect([...glowChanged].every((k) => drawn(him).has(k) && !lamp.has(k))).toBe(true);
+    const lit = anyLit(paintLight(m, 1, atlas, 'glow', mine));
+    expect([...lit].filter((k) => drawn(him).has(k) && !lamp.has(k))).toEqual([]);
   });
 });
