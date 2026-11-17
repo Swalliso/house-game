@@ -420,8 +420,10 @@ export function pieceModel(
   /** A pack's own tiles (PlacedPiece.shape), when they aren't the card's shape. */
   own?: readonly string[],
 ): HouseModel {
+  // Every field of the look, so the model's own `look` is always the one asked for.
   const looks = look
-    ? `${look.color}:${look.flip ?? ''}:${look.fixture ?? ''}:${look.style ?? ''}:${look.lit ? 'lit' : ''}:${look.client ?? ''}`
+    ? `${look.color}:${look.flip ?? ''}:${look.fixture ?? ''}:${look.style ?? ''}:` +
+      `${look.unmet ? 'unmet' : ''}:${look.lit ? 'lit' : ''}:${look.client ?? ''}`
     : '';
   const key = `${defId}:${rot}:${own?.join('/') ?? ''}:${looks}`;
   let m = solo.get(key);
