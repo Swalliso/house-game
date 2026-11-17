@@ -31,7 +31,7 @@ export const LAYER = {
   walls: 5,
   /**
    * Tall items above their own footprint: furniture over the north wall, outbuilding roofs.
-   * D-181: the finished rooms' lights share it, after the tops (LightsLayer.tsx).
+   * D-181: each finished room's light shares it, right after its own tops (HouseLayers.tsx).
    */
   overhang: 6,
   /** Kept for a roof over the house (D-097). Nothing draws here since D-147 took the roof out. */

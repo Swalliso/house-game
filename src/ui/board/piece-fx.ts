@@ -10,8 +10,9 @@
 import { FEEL } from '../fx/feel.ts';
 
 /**
- * A piece's elements in each layer. D-181: a finished room's light, when its lamp stands with
- * the furniture, moves with the items.
+ * A piece's elements in each layer. D-181: a finished room's lit shade, when its lamp stands
+ * with the furniture, moves with the items; the light's pool and halo stay still, as the floor
+ * does.
  */
 export type Part = 'items' | 'overhang' | 'digit' | 'flash' | 'light';
 

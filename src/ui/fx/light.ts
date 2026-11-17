@@ -1,6 +1,6 @@
-// D-181: a finished room's lamp coming on (FEEL.lightOn), as the board's lights layer animates
-// it. Pure, so the tests can hold the flicker to the Flashing setting's promise: never more than
-// three flashes a second, and none at all with it off.
+// D-181: a finished room's lamp coming on (FEEL.lightOn), as the board animates its light
+// (HouseLayers.tsx RoomLight). Pure, so the tests can hold the flicker to the Flashing setting's
+// promise: never more than three flashes a second, and none at all with it off.
 
 import { FEEL } from './feel.ts';
 

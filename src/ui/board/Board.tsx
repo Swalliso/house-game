@@ -130,7 +130,6 @@ import { layerVars } from './layers.ts';
 import { ChainArc, PreviewArcs, ToppedOut } from './MomentLayers.tsx';
 import { wobble } from './piece-fx.ts';
 import { LifeLayer } from './LifeLayer.tsx';
-import { LightsLayer } from './LightsLayer.tsx';
 import { neighborAt, type Neighbor } from './neighbors.ts';
 import { hoveredNeighbor, NeighborsLayer, streetFor } from './NeighborsLayer.tsx';
 import { lotLook } from './terrain/biome.ts';
@@ -390,12 +389,11 @@ export function Board() {
     () => <WallsLayer lot={lot} scale={scale} model={model} />,
     [lot, scale, model],
   );
+  // The tall items' tops, and the finished rooms' lights among them (D-181).
   const overhangLayer = useMemo(
     () => <OverhangLayer model={model} yard={yard} scale={scale} />,
     [model, yard, scale],
   );
-  // D-181: the finished rooms' lights, over the tall items' tops.
-  const lightsLayer = useMemo(() => <LightsLayer model={model} scale={scale} />, [model, scale]);
   const highlightsLayer = useMemo(
     () => <HighlightsLayer house={house} occ={occ} lot={lot} scale={scale} />,
     [house, occ, lot, scale],
@@ -1044,7 +1042,6 @@ export function Board() {
           {itemsLayer}
           {wallsLayer}
           {overhangLayer}
-          {lightsLayer}
           {highlightsLayer}
           <ChainArc lot={lot} scale={scale} />
           {labelsLayer}

@@ -44,6 +44,22 @@
   /* The same origin in both layers, so an item and its top wobble as one. */
   transform-origin: 50% 60%;
 }
+/* D-181: a finished room's light on the overhang, after its tops (HouseLayers.tsx RoomLight): the
+   glow, which stays still, and a standing lamp's lit shade, which wobbles with the lamp. */
+.room-light {
+  position: absolute;
+}
+.room-light > canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+.room-light-shade {
+  /* The items' origin, so the lit shade and its lamp wobble as one. */
+  transform-origin: 50% 60%;
+}
 .item {
   position: absolute;
   image-rendering: pixelated;

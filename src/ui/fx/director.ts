@@ -244,11 +244,11 @@ export const justPlaced = signal<{ uid: number; id: number } | null>(null);
 export const justRenovated = signal<{ uid: number; id: number } | null>(null);
 /**
  * D-181: the rooms an action has just finished (a fixture, and grown by Extend or Renovate),
- * while their lights wait for its beat: the board's lights layer keeps them off. Empty at rest,
- * so a loaded run, the photos and Reduce motion show every finished room lit.
+ * while their lights wait for its beat: the board keeps them off (HouseLayers.tsx RoomLight).
+ * Empty at rest, so a loaded run, the photos and Reduce motion show every finished room lit.
  */
 export const lightsHeld = signal<ReadonlySet<number>>(new Set());
-/** D-181: a finished room's light switching on: the lights layer flickers it on, once per id. */
+/** D-181: a finished room's light switching on: the board flickers it on, once per id. */
 export const lightSwitched = signal<{ uid: number; id: number } | null>(null);
 
 /**
@@ -623,7 +623,8 @@ function holdLights(uids: readonly number[], on = false): void {
 
 /**
  * D-181: a room the action finished lights up, after the beat that finished it: its lamp clicks
- * on with a small pop and flickers on (the lights layer), and the find's glints fly from it.
+ * on with a small pop and flickers on (HouseLayers.tsx RoomLight), and the find's glints fly
+ * from it.
  * Skipped, the light is just on.
  */
 async function lightBeat(uid: number, after: RunState): Promise<void> {
