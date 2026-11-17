@@ -28,6 +28,7 @@ import {
   rules,
   terrainAt,
   type Cell,
+  type ClientId,
   type FixtureId,
   type HouseState,
   type PieceId,
@@ -147,6 +148,11 @@ export interface PieceLook {
   flip?: boolean;
   fixture?: FixtureId;
   style?: number;
+  /**
+   * D-183: the client whose own things this room takes (the Count's coffin): set only when it is,
+   * or will be once placed, the first room of the type their things go in (rooms.ts THEIRS).
+   */
+  client?: ClientId;
 }
 
 export interface HouseModel {
@@ -171,6 +177,11 @@ export interface HouseModel {
   bounds: Rect | null;
   /** Where the sun falls (sunLight): on the board's house, not on a piece alone. */
   sun?: SunLight;
+  /**
+   * D-183: the run's client, whose own things move into the first room of their type (rooms.ts
+   * THEIRS): on the board's house, not on a piece alone (its look says whether it takes them).
+   */
+  client?: ClientId;
 }
 
 /** Where the sun falls in the house (D-120): the walls that face it, and the Sunny rooms' tiles in it. */
@@ -308,7 +319,13 @@ export function uidHash(n: number, salt = 0): number {
 
 const cache = new WeakMap<
   HouseState,
-  { links: HallLinks; sun: SunLight | null; key: string; model: HouseModel }
+  {
+    links: HallLinks;
+    sun: SunLight | null;
+    client: ClientId | undefined;
+    key: string;
+    model: HouseModel;
+  }
 >();
 
 function linksKey(links: HallLinks): string {
@@ -328,18 +345,20 @@ function sunKey(sun: SunLight | null): string {
 }
 
 /**
- * The house's model, with Hallway doors from `links` (hallLinks) and the sun's light from `sun`
- * (sunLight). Cached per house object, and a house never changes once made, so it's computed
- * once per placement, not per render.
+ * The house's model, with Hallway doors from `links` (hallLinks), the sun's light from `sun`
+ * (sunLight), and the run's client (D-183: their own things in the first room of their type).
+ * Cached per house object, and a house never changes once made, so it's computed once per
+ * placement, not per render.
  */
 export function houseModel(
   house: HouseState,
   links: HallLinks = NO_LINKS,
   sun: SunLight | null = null,
+  client?: ClientId,
 ): HouseModel {
   const hit = cache.get(house);
-  if (hit && hit.links === links && hit.sun === sun) return hit.model;
-  const key = `${linksKey(links)}|${sunKey(sun)}`;
+  if (hit && hit.links === links && hit.sun === sun && hit.client === client) return hit.model;
+  const key = `${linksKey(links)}|${sunKey(sun)}|${client ?? ''}`;
   if (hit && hit.key === key) {
     hit.links = links;
     hit.sun = sun;
@@ -347,7 +366,8 @@ export function houseModel(
   }
   const model = buildModel(house, links, true);
   if (sun && sun.rooms.size > 0) model.sun = sun;
-  cache.set(house, { links, sun, key, model });
+  if (client) model.client = client;
+  cache.set(house, { links, sun, client, key, model });
   return model;
 }
 
@@ -391,7 +411,7 @@ export function pieceModel(
   own?: readonly string[],
 ): HouseModel {
   const looks = look
-    ? `${look.color}:${look.flip ?? ''}:${look.fixture ?? ''}:${look.style ?? ''}`
+    ? `${look.color}:${look.flip ?? ''}:${look.fixture ?? ''}:${look.style ?? ''}:${look.client ?? ''}`
     : '';
   const key = `${defId}:${rot}:${own?.join('/') ?? ''}:${looks}`;
   let m = solo.get(key);

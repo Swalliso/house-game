@@ -82,8 +82,8 @@ export async function paintPhoto(
   const cv = new Canvas(frame.x, frame.y, frame.w, frame.h);
   cv.data.set(ground.getImageData(0, 0, frame.w, frame.h).data);
 
-  // The house, as the board draws it.
-  const model = houseModel(house, hallLinks(state), sunLight(state));
+  // The house, as the board draws it: the client's own things in their room too (D-183).
+  const model = houseModel(house, hallLinks(state), sunLight(state), state.setup.clientId);
   const yard = yardModel(house, model);
   const floors = paintFloors(model, atlas, { yard });
   if (floors) cv.over(floors);

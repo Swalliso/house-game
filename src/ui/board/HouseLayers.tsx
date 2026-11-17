@@ -853,7 +853,7 @@ export function GhostPiece({
   const shapeKey = shape?.join('/');
   const art = useMemo(
     () => pieceArtPlan(defId, rot, look, shape),
-    [defId, rot, shapeKey, look?.color, look?.flip, look?.fixture, look?.style],
+    [defId, rot, shapeKey, look?.color, look?.flip, look?.fixture, look?.style, look?.client],
   );
   const { frame } = art;
   const bw = Math.max(...cells.map((c) => c.x)) - minX + 1;
