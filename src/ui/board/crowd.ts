@@ -9,7 +9,8 @@
 // game finds a path. So the crowd lines the sidewalk in front of the house, each side facing the
 // front door's middle. Who comes from the west walks east, in the sidewalk's eastbound lane, and
 // stops west of the door; who comes from the east the other way. In each lane the one nearest
-// the door sets off first, so nobody walks through anybody.
+// the door sets off first, so nobody walks through anybody. Nor does anyone stop where the
+// household stands waiting for a room, at the kerb or at a door on the sidewalk (D-177).
 
 import { FEEL } from '../fx/feel.ts';
 import { CELL, spritePos, type SpriteId } from '../sprites.ts';
@@ -114,6 +115,45 @@ function clearOf(cuts: readonly boolean[], width: number, x: number, w: number, 
 }
 
 /**
+ * `d`, how far a visitor `w` wide stands from the door's middle `door` on its `dir` side (−1
+ * west), moved out until they stand on none of the `held` spans.
+ */
+function pastHeld(
+  held: readonly (readonly [number, number])[],
+  door: number,
+  d: number,
+  w: number,
+  dir: 1 | -1,
+): number {
+  const half = Math.round(w / 2);
+  for (let tries = 0; tries <= held.length; tries++) {
+    const x = door + dir * d - half;
+    const hit = held.filter(([x0, x1]) => x < x1 && x0 < x + w);
+    if (hit.length === 0) break;
+    d =
+      dir > 0
+        ? Math.max(...hit.map(([, x1]) => x1)) - door + half
+        : door - Math.min(...hit.map(([x0]) => x0)) + w - half;
+  }
+  return d;
+}
+
+/**
+ * D-177: of `boxes` in lot art px (the household waiting for their rooms, and their suitcases:
+ * people.ts waitingBoxes), the spans the crowd keeps off on a lot `height` cells tall: those that
+ * come down into a walker's reach, standing in either lane of the sidewalk. Someone at the kerb,
+ * or at a door on the lot's bottom row, is in it; someone at a door further up the lot isn't.
+ */
+export function heldSpans(
+  boxes: readonly { x: number; y: number; w: number; h: number }[],
+  height: number,
+): [number, number][] {
+  const tallest = Math.max(...WALKERS.map((id) => spritePos(id).h));
+  const reach = height * CELL + Math.min(LANES.walkWest, LANES.walkEast) - tallest;
+  return boxes.filter((b) => b.y + b.h > reach).map((b) => [b.x, b.x + b.w]);
+}
+
+/**
  * Who turns out for a won run, and the cars at the kerb. `band` is the verdict's place in
  * balance.verdicts (0, Fixer-Upper, up to Dream Home), `doorX` the front door's middle in art px
  * from the lot's west edge, `width` the lot's in columns, and `cuts[x]` says a Driveway's
@@ -129,6 +169,9 @@ function clearOf(cuts: readonly boolean[], width: number, x: number, w: number, 
  *   lane's traffic comes from the east), the next west of it, the third past the first; never
  *   across a drive or the lot's edge. They roll in from the east, the westmost first, so none
  *   drives through another.
+ * - `held` (D-177): spans of the sidewalk, [x0, x1) in art px from the lot's west edge, where
+ *   someone stands already (heldSpans). Nobody stops on one: a visitor who would moves out past
+ *   it, away from the door, and the rest of their side after them.
  */
 export function crowdPlan(
   seed: string,
@@ -136,6 +179,7 @@ export function crowdPlan(
   doorX: number,
   width: number,
   cuts: readonly boolean[] = [],
+  held: readonly (readonly [number, number])[] = [],
   f: CrowdFeel = FEEL.openHouse,
 ): Crowd {
   const salt = seedSalt(seed) ^ SALT;
@@ -153,6 +197,7 @@ export function crowdPlan(
     for (let k = 0; k < count; k++) {
       const id = walkers[(k + 2 * s) % walkers.length]!;
       const { w } = spritePos(id);
+      d = pastHeld(held, door, d, w, dir);
       visitors.push({
         id,
         from: side,

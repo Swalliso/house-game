@@ -17,8 +17,10 @@ import { effect, signal } from '@preact/signals';
 import { CONTENT, placedCells, rules, type GameEvent, type RunState } from '../../rules/index.ts';
 import { audio } from '../audio/audio.ts';
 import { cameraEls, lotSize, streetView } from '../board/camera.ts';
-import { crowdPlan, type Crowd } from '../board/crowd.ts';
+import { crowdPlan, heldSpans, type Crowd } from '../board/crowd.ts';
 import { center, occupancy, uidAt } from '../board/geometry.ts';
+import { hallLinks, houseModel, sunLight } from '../board/house-model.ts';
+import { people, waitingBoxes } from '../board/people.ts';
 import { CELL } from '../sprites.ts';
 import { inProgress, onEvents, onRunReset } from '../store.ts';
 import { busy } from './director.ts';
@@ -71,6 +73,16 @@ function kerbCuts(state: RunState): boolean[] {
 }
 
 /**
+ * D-177: where the household still waiting for their rooms stands in the crowd's way, at the
+ * kerb or at a door on the lot's bottom row, as the board draws them once the run is over (the
+ * guided first job's end included: it's no longer guided).
+ */
+function waiting(state: RunState): [number, number][] {
+  const model = houseModel(state.house, hallLinks(state), sunLight(state), state.setup.clientId);
+  return heldSpans(waitingBoxes(people(state, model)), state.house.lot.height);
+}
+
+/**
  * The open house an action's events call for, or null: a run won by this action (it was in
  * progress before and isn't after, and it isn't a debug run). The crowd's plan, the front door
  * and the last tally's best earners, read now while the run is at hand.
@@ -91,6 +103,7 @@ export function openHouseOf(
     doorX,
     after.house.lot.width,
     kerbCuts(after),
+    waiting(after),
   );
   let last: Extract<GameEvent, { t: 'tally' }> | null = null;
   for (const e of events) if (e.t === 'tally') last = e;

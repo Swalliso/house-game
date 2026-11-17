@@ -1,9 +1,10 @@
 // A won run's open house (D-175, open-house.ts): only a run won in this browser gets one, the
 // look's own guards (not a lost run, not a debug run, not a run loaded already over); its crowd
-// follows the verdict and its hearts the last tally's best earners; the fanfare waits for the
-// look down the street, or with no look coming (Reduce motion on as the run was won, even if
-// it's turned off during the last tally, or a board with nothing to look with) plays alone once
-// the last tally is over; and a new run empties the street.
+// follows the verdict and keeps off the household waiting at the door (D-177), and its hearts
+// follow the last tally's best earners; the fanfare waits for the look down the street, or with
+// no look coming (Reduce motion on as the run was won, even if it's turned off during the last
+// tally, or a board with nothing to look with) plays alone once the last tally is over; and a
+// new run empties the street.
 //
 // The store and the director play real actions here, on the ?debug panel's instant tally. A
 // won run is a run put on its last week with its target met: one End week wins it. There's no
@@ -21,6 +22,9 @@ import {
 } from '../../rules/index.ts';
 import { audio } from '../audio/audio.ts';
 import { streetView } from '../board/camera.ts';
+import { hallLinks, houseModel, sunLight } from '../board/house-model.ts';
+import { people, waitingBoxes } from '../board/people.ts';
+import { CELL, spritePos } from '../sprites.ts';
 import { settings } from '../settings.ts';
 import { appScreen, debugAction, endWeek, inProgress, onEvents, run, startRun } from '../store.ts';
 import { busy, instantTally } from './director.ts';
@@ -85,6 +89,32 @@ describe('which runs get one', () => {
     expect(openHouseOf(won.events, before, { ...won.state, debug: true })).toBeNull();
     expect(openHouseOf(won.events, won.state, won.state)).toBeNull();
     expect(openHouseOf(won.events, before, before)).toBeNull();
+  });
+
+  it('keeps the crowd off a member still waiting at the front door, on the sidewalk (D-177)', () => {
+    // Grandma has come, and her room was never built: she waits at the Living Room's door, in the
+    // lot's bottom row, her feet on the sidewalk.
+    const waited = { ...before, arrived: ['grandma'] } as RunState;
+    const r = rules.apply(waited, { t: 'pass' });
+    expect(r.state.screen).toBe('won');
+    const s = r.state;
+    const model = houseModel(s.house, hallLinks(s), sunLight(s), s.setup.clientId);
+    const grandma = people(s, model);
+    expect(grandma.map((p) => p.place)).toEqual(['door']);
+    expect(grandma[0]!.y).toBeGreaterThan(s.house.lot.height * CELL);
+    const crowd = openHouseOf(r.events, waited, s)!.crowd;
+    // Without her, the nearest stood where she does.
+    const open = openHouseOf(won.events, before, won.state)!.crowd;
+    const on = (
+      v: { x: number; id: Parameters<typeof spritePos>[0] },
+      b: { x: number; w: number },
+    ) => v.x < b.x + b.w && b.x < v.x + spritePos(v.id).w;
+    const boxes = waitingBoxes(grandma);
+    expect(open.visitors.some((v) => boxes.some((b) => on(v, b)))).toBe(true);
+    for (const v of crowd.visitors) {
+      for (const b of boxes) expect(on(v, b), `${v.id} at ${v.x}`).toBe(false);
+    }
+    expect(crowd.visitors).toHaveLength(open.visitors.length);
   });
 
   it('a smaller crowd for a smaller verdict', () => {

@@ -1,14 +1,23 @@
 // A won run's open house (D-175, crowd.ts): the same run always gets the same crowd, the turnout
 // follows the verdict, the crowd lines the sidewalk in front of the house facing the front door
-// with no two on one spot, nobody walks through anybody, the cars park past the crowd and never
-// across a drive, and all of it comes to rest inside a win's look down the street.
+// with no two on one spot and nobody on the household waiting there (D-177), nobody walks through
+// anybody, the cars park past the crowd and never across a drive, and all of it comes to rest
+// inside a win's look down the street.
 
 import { describe, expect, it } from 'vitest';
 import { CONTENT } from '../../rules/index.ts';
 import { arrivePlan } from '../fx/Drive.tsx';
 import { FEEL } from '../fx/feel.ts';
 import { CELL, spritePos } from '../sprites.ts';
-import { CARS, CROWD_LANES, crowdPlan, WALKERS, type Crowd, type Visitor } from './crowd.ts';
+import {
+  CARS,
+  CROWD_LANES,
+  crowdPlan,
+  heldSpans,
+  WALKERS,
+  type Crowd,
+  type Visitor,
+} from './crowd.ts';
 import { LANES } from './life.ts';
 
 const SEEDS = ['jbf3zs', 'abc123', 'house7', '99k6ct', 'bv6bsv', 'oh-1107', 'stamp-1', 'z'];
@@ -123,6 +132,61 @@ describe('where they stop', () => {
         }
       }
     }
+  });
+});
+
+describe('the household waiting (D-177)', () => {
+  const w = spritePos('life-walker-1').w;
+  const same = (v: Visitor) => [v.id, v.from, v.base, v.delayMs];
+
+  it('stops nobody where a member stands, the rest of their side moved out after them', () => {
+    for (const { seed, band, door, crowd: open } of plans()) {
+      // Someone waiting at the door with their suitcase, and someone a little way east.
+      const held: [number, number][] = [
+        [door - 13, door + 13],
+        [door + 40, door + 66],
+      ];
+      const crowd = crowdPlan(seed, band, door, LOT, [], held);
+      const at = `${seed} ${band} ${door}`;
+      // The same people, from the same ends, in the same lanes, setting off as before.
+      expect(crowd.visitors.map(same), at).toEqual(open.visitors.map(same));
+      crowd.visitors.forEach((v, i) => {
+        for (const [x0, x1] of held) expect(v.x < x1 && x0 < v.x + w, `${at}: ${v.x}`).toBe(false);
+        // On their own side of the door, and no nearer it than they'd have stood.
+        expect(Math.sign(mid(v) - door), at).toBe(v.from === 'west' ? -1 : 1);
+        expect(Math.abs(mid(v) - door), at).toBeGreaterThanOrEqual(
+          Math.abs(mid(open.visitors[i]!) - door),
+        );
+      });
+      // Still a walker's width apart at least in each lane, the nearest the door first.
+      for (const side of ['west', 'east'] as const) {
+        const row = crowd.visitors.filter((v) => v.from === side);
+        for (let i = 1; i < row.length; i++) {
+          expect(Math.abs(row[i]!.x - row[i - 1]!.x), at).toBeGreaterThanOrEqual(w);
+          expect(Math.abs(mid(row[i]!) - door)).toBeGreaterThan(Math.abs(mid(row[i - 1]!) - door));
+        }
+      }
+      // The cars park past them all the same.
+      const west = Math.min(...crowd.visitors.map((v) => v.x));
+      const east = Math.max(...crowd.visitors.map((v) => right(v.x, v.id)));
+      for (const c of crowd.cars) expect(c.x >= east || right(c.x, c.id) <= west, at).toBe(true);
+    }
+  });
+
+  it('holds only those who come down into a walker’s reach on the sidewalk', () => {
+    const street = 12 * CELL;
+    // At the kerb (feet 14 art px down the street row) and their suitcase; at a door on the
+    // bottom row (a mat's depth down it); and at a door a row up the lot, out of reach.
+    const kerb = { x: 100, y: street + 14 - 26, w: 16, h: 26 };
+    const bag = { x: 110, y: street + 15 - 19, w: 16, h: 19 };
+    const bottom = { x: 200, y: street + 7 - 26, w: 16, h: 26 };
+    const upLot = { x: 300, y: street - CELL + 7 - 26, w: 16, h: 26 };
+    expect(heldSpans([kerb, bag, bottom, upLot], 12)).toEqual([
+      [100, 116],
+      [110, 126],
+      [200, 216],
+    ]);
+    expect(heldSpans([], 12)).toEqual([]);
   });
 });
 
