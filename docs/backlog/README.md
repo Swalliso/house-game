@@ -94,15 +94,15 @@ reading the code, not from building anything.
 
 | Story | What the player gets | Size | Kind | Needs first | Status |
 |---|---|---|---|---|---|
-| [S01](s01-open-house-day.md) | A win brings a crowd to the kerb, hearts and a fanfare | M | UI only | | Building (D-175) |
-| [S02](s02-set-doors.md) | Rooms in a set open into each other | M | UI only | The user's pick from a sheet | Building stage 1 (D-176) |
-| [S03](s03-household-walks-in.md) | An arriving member walks up and waits at the door | M | UI and art | | Building (D-177) |
-| [S04](s04-furniture-drops-in.md) | A placed room's furniture drops in piece by piece | S | UI only | | Building (D-178) |
-| [S05](s05-doghouse-wakes-up.md) | The Doghouse's dog is on a lead until the fence closes | M | UI and art | | Building (D-179) |
-| [S06](s06-rain-for-rainy-season.md) | It rains while Rainy season runs, with puddles on the Patios | S | UI only | | Building (D-180) |
-| [S07](s07-finished-rooms-light-up.md) | A fitted and grown room turns its lights on | S, then M | UI only, then rules | Stage 2 waits for the batch | Building stage 1 (D-181) |
-| [S08](s08-client-at-the-door.md) | The client appears at each milestone, with hearts on their wishes | M | UI and art | Easier after S03 | Building (D-182) |
-| [S09](s09-their-things-move-in.md) | The Count's coffin and the Barkers' dog bed | M | UI and art | | Building (D-183) |
+| [S01](s01-open-house-day.md) | A win brings a crowd to the kerb, hearts and a fanfare | M | UI only | | Awaits playtest: #94, batch #93 (D-175) |
+| [S02](s02-set-doors.md) | Rooms in a set open into each other | M | UI only | The user's pick from a sheet | Stage 1 waits for the user's pick: draft #102 (D-176) |
+| [S03](s03-household-walks-in.md) | An arriving member walks up and waits at the door | M | UI and art | | Awaits playtest: #95, batch #93 (D-177) |
+| [S04](s04-furniture-drops-in.md) | A placed room's furniture drops in piece by piece | S | UI only | | Awaits playtest: #96, batch #93 (D-178) |
+| [S05](s05-doghouse-wakes-up.md) | The Doghouse's dog is on a lead until the fence closes | M | UI and art | | Awaits playtest: #97, batch #93 (D-179) |
+| [S06](s06-rain-for-rainy-season.md) | It rains while Rainy season runs, with puddles on the Patios | S | UI only | | Awaits playtest: #98, batch #93 (D-180) |
+| [S07](s07-finished-rooms-light-up.md) | A fitted and grown room turns its lights on | S, then M | UI only, then rules | Stage 2 waits for the batch | Stage 1 awaits playtest: #99, batch #93 (D-181) |
+| [S08](s08-client-at-the-door.md) | The client appears at each milestone, with hearts on their wishes | M | UI and art | Easier after S03 | Awaits playtest: #100, batch #93 (D-182) |
+| [S09](s09-their-things-move-in.md) | The Count's coffin and the Barkers' dog bed | M | UI and art | | Awaits playtest: #101, batch #93 (D-183) |
 | [S10](s10-house-builds-itself.md) | The house rebuilds itself on the end screen | M | UI only | S01 played | Not started |
 | [S11](s11-walkthrough-tour.md) | The camera tours the rooms after a win | M | UI only | S01 played | Not started |
 | [S12](s12-dusk-when-you-win.md) | Evening falls and the rooms light up after a win | S, then M | UI only | S01 played; a mockup the user likes | Not started |
