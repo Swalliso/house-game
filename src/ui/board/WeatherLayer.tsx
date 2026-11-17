@@ -4,7 +4,7 @@
 //   keeps to the lot and out of the house's rooms (it doesn't rain indoors), over the tree tops
 //   and the lot's life, under the highlights, the labels and the ghost. It fades in once the
 //   change order's sheet has closed and out as the phase's milestone lands: the run as the top
-//   bar shows it (the director's shownRun while an action plays) says when.
+//   bar shows it (the director's shownRun while an action of this run plays) says when.
 // - A puddle lies on each Patio the rain zeroes, as the rules' own breakdown line says, on the
 //   paving where the fewest of the Patio's props stand, under them. Now and then a drop lands in
 //   it. It's a layer over the piece's cells, not a filter on the piece (D-100), so the painters
@@ -27,6 +27,7 @@ import { isIndoor, occupancy, uidAt } from './geometry.ts';
 import type { HouseModel } from './house-model.ts';
 import { atlasPixels, drawingUrl } from './HouseLayers.tsx';
 import {
+  playingOn,
   PUDDLE,
   puddleBeat,
   puddleSpot,
@@ -238,18 +239,18 @@ function LotWeather({
   scale: number;
 }) {
   // The run as the top bar shows it: an order picked starts once its sheet's stamp has gone,
-  // and one that ran through a phase stops as that phase's milestone lands.
-  const playing = shownRun.value;
-  const weather = weatherOf(playing ?? run.value);
+  // and one that ran through a phase stops as that phase's milestone lands. Only this run's: just
+  // after a new run or a load, the director still holds the last run's for a frame (weather.ts).
+  const playing = playingOn(run.value, shownRun.value, tallyView.value);
+  const weather = weatherOf(playing?.run ?? run.value);
   // The Patios it zeroes: as the tally playing scores them (a Patio just placed among them), or
   // as the house stands. Between an action's other beats the rules have moved on (past the
   // milestone, even), so they stay as they were until it has played.
   const held = useRef<readonly number[]>([]);
-  const view = tallyView.value;
   const zeroed = !weather
     ? []
-    : view
-      ? zeroedBy(view.pieces, weather.order)
+    : playing?.view
+      ? zeroedBy(playing.view.pieces, weather.order)
       : playing
         ? held.current
         : zeroedBy(currentTally.value.pieces, weather.order);

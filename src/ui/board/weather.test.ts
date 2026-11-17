@@ -1,6 +1,7 @@
-// Weather for a change order (D-180): which order has which look and for how long, which pieces
-// get a puddle (the rules' own line says which the rain zeroed) and where it lies, the rain's
-// tiles and its outline over the lot, and that all of it holds still under a sheet over the board.
+// Weather for a change order (D-180): which order has which look and for how long, which run it
+// follows while an action plays (never the last run's), which pieces get a puddle (the rules' own
+// line says which the rain zeroed) and where it lies, the rain's tiles and its outline over the
+// lot, and that all of it holds still under a sheet over the board.
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -19,6 +20,7 @@ import { FEEL } from '../fx/feel.ts';
 import { CELL } from '../sprites.ts';
 import {
   ORDER_WEATHER,
+  playingOn,
   PUDDLE,
   puddleBeat,
   puddleSpot,
@@ -84,6 +86,46 @@ describe('which change order has a look', () => {
     }
     expect(s.milestones.at(-1)?.result).not.toBe('failed');
     expect(weatherOf(s)).toBeNull();
+  });
+});
+
+describe('the run it follows', () => {
+  // A run with Rainy season on and a Patio it zeroes, beside a Bedroom.
+  const house = houseFrom(CONTENT, emptyRows(12, 12), [
+    ['bedroom', 2, 2],
+    ['patio', 2, 4],
+  ]);
+  const rainy = (): RunState => ({
+    ...rules.newRun(SETUP),
+    house,
+    timedEffects: [phaseEffect('rainySeason')],
+  });
+
+  it('is the director’s while an action of the board’s run plays, with the tally it plays', () => {
+    const before = rainy();
+    const view = rules.currentTally(before);
+    // The rules have moved on a week: the board has the run after the action.
+    const after = rules.apply(before, { t: 'pass' }).state;
+    expect(after.setup).toBe(before.setup);
+    expect(playingOn(after, before, view)).toEqual({ run: before, view });
+    // Between the action's beats there's no tally, and the run as it was still counts.
+    expect(playingOn(after, before, null)).toEqual({ run: before, view: null });
+    expect(playingOn(after, null, null)).toBeNull();
+  });
+
+  it('is never the last run’s: a new run mid-tally has none of its rain or puddles', () => {
+    // The director lets go of the last run a frame after a new one starts: for a render it
+    // still shows that run, raining, and the tally it was playing, with a Patio zeroed.
+    const last = rainy();
+    const view = rules.currentTally(last);
+    expect(weatherOf(last)?.look).toBe('rain');
+    expect(zeroedBy(view.pieces, 'rainySeason')).toHaveLength(1);
+    // "Play this lot again": the same lot, client and crew, but a run of its own.
+    const again = rules.newRun(SETUP);
+    expect(again.setup).toEqual(last.setup);
+    expect(playingOn(again, last, view)).toBeNull();
+    // So the weather is the board's run's: dry, with no tally to find Patios in.
+    expect(weatherOf(playingOn(again, last, view)?.run ?? again)).toBeNull();
   });
 });
 

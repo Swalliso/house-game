@@ -1,8 +1,9 @@
 // Weather for a change order (S06, D-180), the part that decides, kept pure so tests can check
 // it: which running order has a look (the table is here, in the UI: looks are never content),
-// which pieces it marks with a puddle (the rules' own breakdown says which it zeroed), where on a
-// piece a puddle lies, where the rain's streaks stand in their tiles, and the rain's outline over
-// the lot. WeatherLayer.tsx draws it. None of it is the rules: it reads them and changes nothing.
+// which run it follows while an action plays (only the board's), which pieces it marks with a
+// puddle (the rules' own breakdown says which it zeroed), where on a piece a puddle lies, where
+// the rain's streaks stand in their tiles, and the rain's outline over the lot. WeatherLayer.tsx
+// draws it. None of it is the rules: it reads them and changes nothing.
 
 import {
   CONTENT,
@@ -40,6 +41,22 @@ export function weatherOf(
     if (look) return { look, order };
   }
   return null;
+}
+
+/**
+ * The action playing on the `board`'s run, as the director shows it: the run as it was when the
+ * action started (the top bar's: the rules have moved on, past a milestone even), and the tally
+ * it plays, if any. Null when nothing plays, and when the director's run is another one. It lets
+ * go of a run only on the frame after a new run starts or one loads, so for a render it can still
+ * hold the last run's, with that run's rain and its tally's Patios. A run is its setup: a new
+ * run's is a new object, even on the same lot, and every action keeps it.
+ */
+export function playingOn<R extends Pick<RunState, 'setup'>, V>(
+  board: R,
+  shown: R | null,
+  view: V | null,
+): { run: R; view: V | null } | null {
+  return shown && shown.setup === board.setup ? { run: shown, view } : null;
 }
 
 /**
