@@ -130,6 +130,7 @@ import { layerVars } from './layers.ts';
 import { ChainArc, PreviewArcs, ToppedOut } from './MomentLayers.tsx';
 import { wobble } from './piece-fx.ts';
 import { LifeLayer } from './LifeLayer.tsx';
+import { WeatherLayer } from './WeatherLayer.tsx';
 import { neighborAt, type Neighbor } from './neighbors.ts';
 import { hoveredNeighbor, NeighborsLayer, streetFor } from './NeighborsLayer.tsx';
 import { lotLook } from './terrain/biome.ts';
@@ -1035,6 +1036,8 @@ export function Board() {
             around={around}
             ghost={ghostCells?.cells ?? NO_CELLS}
           />
+          {/* A change order's weather (D-180): rain on the lot, puddles on the Patios it zeroes. */}
+          <WeatherLayer run={state.setup} house={house} model={model} yard={yard} scale={scale} />
           <YardTint state={state} scale={scale} />
           {sides.length > 0 && <SideTint state={state} yards={sides} scale={scale} />}
           {floorLayer}

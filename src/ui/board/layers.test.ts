@@ -13,6 +13,18 @@ describe('the board layers', () => {
     expect(LAYER.ghost).toBeLessThan(LAYER.popups);
   });
 
+  it('put a change order’s puddles on the ground and its rain over the lot, under the interface', () => {
+    // D-180: a puddle lies on the paving, under the props that stand on it.
+    expect(LAYER.floor).toBeLessThan(LAYER.puddles);
+    expect(LAYER.puddles).toBeLessThan(LAYER.items);
+    // The rain falls over the tree tops (and the lot's life on their layer), and the highlights,
+    // the labels and the ghost read through it.
+    expect(LAYER.canopy).toBeLessThan(LAYER.weather);
+    expect(LAYER.weather).toBeLessThan(LAYER.highlights);
+    expect(LAYER.weather).toBeLessThan(LAYER.labels);
+    expect(LAYER.weather).toBeLessThan(LAYER.ghost);
+  });
+
   it('give CSS a --z variable for every layer', () => {
     const vars = layerVars();
     expect(Object.keys(vars)).toHaveLength(Object.keys(LAYER).length);
