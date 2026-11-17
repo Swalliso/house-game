@@ -405,9 +405,10 @@ export function Board() {
     () => <ItemsLayer house={house} model={model} yard={yard} scale={scale} people={inRooms} />,
     [house, model, yard, scale, inRooms],
   );
+  // A finished room's hanging lamp stays behind a member standing in front of it (D-177).
   const wallsLayer = useMemo(
-    () => <WallsLayer lot={lot} scale={scale} model={model} />,
-    [lot, scale, model],
+    () => <WallsLayer lot={lot} scale={scale} model={model} people={inRooms} />,
+    [lot, scale, model, inRooms],
   );
   // The tall items' tops, and the finished rooms' lights among them (D-181).
   const overhangLayer = useMemo(

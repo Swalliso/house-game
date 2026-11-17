@@ -120,18 +120,24 @@ function put(ctx: CanvasRenderingContext2D, p: Pixels | null): void {
     ctx.putImageData(new ImageData(p.data as Uint8ClampedArray<ArrayBuffer>, p.w, p.h), p.x, p.y);
 }
 
-/** A canvas over the whole board (the lot and its street row), at art resolution. */
+/**
+ * A canvas over the whole board (the lot and its street row), at art resolution. On the walls
+ * canvas, a finished room's hanging lamp stays behind a member standing in front of it (D-177,
+ * `people`), whose pixels come from the atlas.
+ */
 function HouseCanvas({
   lot,
   scale,
   model,
   yard,
+  people,
   layer,
 }: {
   lot: Lot;
   scale: number;
   model: HouseModel;
   yard?: YardModel;
+  people?: ReadonlyMap<number, readonly Item[]> | undefined;
   layer: 'floor' | 'walls';
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -141,15 +147,21 @@ function HouseCanvas({
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
     if (layer === 'walls') {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      put(ctx, paintWalls(model));
-      return;
+      const paint = (atlas?: AtlasPixels) => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        put(ctx, paintWalls(model, atlas && people ? { people, atlas } : undefined));
+      };
+      if (!people?.size) {
+        paint();
+        return;
+      }
+      return withAtlas(paint);
     }
     return withAtlas((atlas) => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       put(ctx, paintFloors(model, atlas, { ...(yard ? { yard } : {}) }));
     });
-  }, [model, yard, layer]);
+  }, [model, yard, people, layer]);
   return (
     <canvas
       ref={ref}
@@ -170,7 +182,16 @@ export function FloorLayer(p: { lot: Lot; scale: number; model: HouseModel; yard
   return <HouseCanvas {...p} layer="floor" />;
 }
 
-export function WallsLayer(p: { lot: Lot; scale: number; model: HouseModel }) {
+/**
+ * The walls canvas: bands, doorways, windows, the sun, and the fixtures and lamps that hang.
+ * `people` (D-177): the members in their rooms, as ItemsLayer's, in front of a lamp that hangs.
+ */
+export function WallsLayer(p: {
+  lot: Lot;
+  scale: number;
+  model: HouseModel;
+  people?: ReadonlyMap<number, readonly Item[]>;
+}) {
   return <HouseCanvas {...p} layer="walls" />;
 }
 
@@ -591,7 +612,8 @@ function PieceOverhang({
  * loaded run shows it on, with no beat, and so does Reduce motion.
  *
  * D-177: a member of the household standing in front of the lamp covers it, as the furniture in
- * front of it does: its shade isn't lit over them (`people`, the room's members as items).
+ * front of it does: its lit shade, or the hanging lamp lit, isn't drawn over them (`people`, the
+ * room's members as items), nor is the hanging lamp on the walls canvas (WallsLayer).
  */
 function RoomLight({
   model,

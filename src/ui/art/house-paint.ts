@@ -20,7 +20,8 @@
 // - A finished room's lamp, lit (D-181): a pool and a halo of amber light round it and its shade
 //   glowing, over everything the room draws, on the room's own floor (paintLight). A room with no
 //   lamp standing hangs one over its own floor (our own drawing, with the walls, like the
-//   Chandelier), lit the same.
+//   Chandelier), lit the same. On the board, a member of the household standing in front of a
+//   lamp (D-177) covers it.
 //
 // Each covers what it paints (the house's bounding box plus a margin; the floor canvas also the
 // yard's ground); `x` and `y` place them on the lot, in art px.
@@ -827,11 +828,22 @@ function drawnAt(atlas: AtlasPixels, it: Item, px: number, py: number): boolean 
 }
 
 /**
+ * D-177: the household's members standing in their rooms as the board draws them, each one an
+ * item of their room, by room uid (board/people.ts roomPeople), and the atlas their pixels are
+ * in. The photos and the ghosts draw nobody.
+ */
+export interface Household {
+  readonly people: ReadonlyMap<number, readonly Item[]>;
+  readonly atlas: AtlasPixels;
+}
+
+/**
  * D-177 × D-181: whether a member of the room, of `people` (board/people.ts roomPeople: each one
  * an item of their room, as the board draws them), who stands in front of its lamp (the lamp's
- * bottom edge at `bottom`) is drawn at (px, py). The board sorts a member in with the room's
- * furniture by bottom edge, in front of whatever's is no lower than their feet (people.ts
- * withPeople), and so with its lamp: there they cover it.
+ * bottom edge at `bottom`: a hanging lamp's is its bulb's) is drawn at (px, py). The board sorts
+ * a member in with the room's furniture by bottom edge, in front of whatever's is no lower than
+ * their feet (people.ts withPeople), and so with its lamp, standing or hanging: there they cover
+ * it.
  */
 function inFrontOfLamp(
   people: readonly Item[],
@@ -877,7 +889,8 @@ export type LightPart = 'glow' | 'shade';
  * without). Null when the room has no lamp lit, or no such part.
  *
  * D-177: on the board, `people` are the room's members as items (people.ts roomPeople): one
- * standing in front of its lamp covers it, so its shade isn't lit over them there.
+ * standing in front of its lamp covers it, so its shade, or the hanging lamp, isn't lit over them
+ * there.
  */
 export function paintLight(
   m: HouseModel,
@@ -924,12 +937,13 @@ export function paintLight(
 
   if (!lamp) {
     // The hanging lamp: the pool on the floor below it, the halo, and the lamp itself lit (it
-    // hangs over everything in the room, as the Chandelier does).
+    // hangs over everything in the room, as the Chandelier does, but a member in front of it).
     const at = pendantAt(m, r);
     const mid = at.x + at.w / 2;
     lightOval(cv, LAMP_LIGHT.pool, mid, at.y + at.h + PENDANT_POOL, floor);
     lightOval(cv, LAMP_LIGHT.halo, mid, at.y + PENDANT_SHADE, inside);
-    paintPendant(cv, at, inside, lit);
+    const front = inFrontOfLamp(people, at.y + at.h, atlas);
+    paintPendant(cv, at, (px, py) => inside(px, py) && !front(px, py), lit);
     return cv.pixels();
   }
   const parts = lampParts(lamp.sprite);
@@ -1142,8 +1156,11 @@ export function wallMask(m: HouseModel, box: { x: number; y: number; w: number; 
 /** Margin around the house for a Bay Window's bay, which juts out past the wall. */
 const MARGIN = WALL.bay + 2;
 
-/** The walls canvas's pixels. Null with no rooms. */
-export function paintWalls(m: HouseModel): Pixels | null {
+/**
+ * The walls canvas's pixels. Null with no rooms. On the board, `household` has the members in
+ * their rooms: a finished room's hanging lamp isn't drawn over one standing in front of it.
+ */
+export function paintWalls(m: HouseModel, household?: Household): Pixels | null {
   const b = m.bounds;
   if (!b) return null;
   const cv = new Canvas(
@@ -1290,12 +1307,18 @@ export function paintWalls(m: HouseModel): Pixels | null {
     });
   }
   // D-181: a finished room's hanging lamp, as it is, over its own floor; its light (paintLight)
-  // lights it.
+  // lights it. D-177: behind a member of the household who stands in front of it.
   for (const r of m.rooms.values()) {
     if (!r.finished || !roomLayout(m, r.uid).pendant) continue;
+    const at = pendantAt(m, r);
+    const people = household?.people.get(r.uid);
+    const front =
+      household && people ? inFrontOfLamp(people, at.y + at.h, household.atlas) : () => false;
     const own = (px: number, py: number) =>
-      roomAt(m, Math.floor(px / CELL), Math.floor(py / CELL)) === r.uid && !mask.has(px, py);
-    paintPendant(cv, pendantAt(m, r), own);
+      roomAt(m, Math.floor(px / CELL), Math.floor(py / CELL)) === r.uid &&
+      !mask.has(px, py) &&
+      !front(px, py);
+    paintPendant(cv, at, own);
   }
   return cv.pixels();
 }

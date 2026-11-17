@@ -26,7 +26,7 @@ import {
   type Rot,
 } from '../../rules/index.ts';
 import { lotFromRows } from '../../rules/lot.ts';
-import { OverhangLayer } from '../board/HouseLayers.tsx';
+import { OverhangLayer, WallsLayer } from '../board/HouseLayers.tsx';
 import {
   hallLinks,
   houseModel,
@@ -729,5 +729,138 @@ describe('a finished room’s lamp behind a member of the household (D-177)', ()
     expect(front).toBeGreaterThan(50);
     // Painted without them, as the photos are, it was over them in some.
     expect(wasOver).toBeGreaterThan(5);
+  });
+
+  /** The lot pixels where two painters' pixels differ. */
+  function differ(a: Pixels | null, b: Pixels | null): Set<string> {
+    const out = new Set<string>();
+    const at = (p: Pixels | null, x: number, y: number) =>
+      !p || x < p.x || y < p.y || x >= p.x + p.w || y >= p.y + p.h
+        ? '0,0,0,0'
+        : rgba(p, x, y).join();
+    for (const p of [a, b]) {
+      if (!p) continue;
+      for (let y = p.y; y < p.y + p.h; y++) {
+        for (let x = p.x; x < p.x + p.w; x++) {
+          if (at(a, x, y) !== at(b, x, y)) out.add(`${x},${y}`);
+        }
+      }
+    }
+    return out;
+  }
+
+  it('hangs behind Renfield, who stands in front of it in his room turned upright', () => {
+    const h = house([
+      ['renfieldsRoom', 4, 4, 1, { fixture: { id: 'skylight', week: 1 }, level: 1 }],
+    ]);
+    const { m, people: inRooms } = withMember(h, 'renfield', 'vladislav');
+    expect(roomLayout(m, 1).pendant).toBe(true);
+    const mine = inRooms.get(1)!;
+    const him = mine[0]!;
+    const at = pendantAt(m, m.rooms.get(1)!);
+    // His feet are below its bulb: the board's sort puts him in front of it.
+    expect(him.y + artSize(him.sprite).h).toBeGreaterThan(at.y + at.h);
+    const lamp = new Set(pendantPixels(at).map((q) => `${q.x},${q.y}`));
+    const onHim = (p: Pixels | null) =>
+      [...solid(p)].filter((k) => lamp.has(k) && drawn(him).has(k));
+    // Painted without him (the photos), the lamp hangs over him, on the walls canvas and lit;
+    // with him, neither, and nothing else changes.
+    const walls = paintWalls(m);
+    const glow = paintLight(m, 1, atlas, 'glow');
+    const household = { people: inRooms, atlas };
+    expect(onHim(walls).length).toBeGreaterThan(10);
+    expect(onHim(glow).length).toBeGreaterThan(10);
+    expect(onHim(paintWalls(m, household))).toEqual([]);
+    expect(onHim(paintLight(m, 1, atlas, 'glow', mine))).toEqual([]);
+    for (const d of [
+      differ(walls, paintWalls(m, household)),
+      differ(glow, paintLight(m, 1, atlas, 'glow', mine)),
+    ]) {
+      expect([...d].filter((k) => !lamp.has(k) || !drawn(him).has(k))).toEqual([]);
+    }
+    // The board hands the walls canvas the members in their rooms.
+    const layer = WallsLayer({ lot: h.lot, scale: 2, model: m, people: inRooms });
+    expect((layer as VNode<{ people?: unknown }>).props.people).toBe(inRooms);
+  });
+
+  it('in every member’s room, turn and boxed-in way: one in front of a hanging lamp covers it', () => {
+    const misses: string[] = [];
+    let front = 0;
+    let behind = 0;
+    let wasOver = 0;
+    for (const [member, client] of MEMBERS) {
+      const id = roomOf(member, client);
+      for (const fixture of [
+        'soundproofing',
+        'skylight',
+        'fireplace',
+        'blackoutCurtains',
+      ] as const) {
+        for (const rot of [0, 1, 2, 3] as const) {
+          for (const sides of ['', 'N', 'S', 'E', 'W', 'NS', 'EW', 'NE', 'SW']) {
+            const h = boxedIn(id, rot, sides, { fixture: { id: fixture, week: 1 }, level: 1 });
+            const { m, people: inRooms } = withMember(h, member, client);
+            const mine = inRooms.get(1);
+            if (!roomLayout(m, 1).pendant || !mine) continue;
+            const me = mine[0]!;
+            const at = pendantAt(m, m.rooms.get(1)!);
+            const lamp = new Set(pendantPixels(at).map((q) => `${q.x},${q.y}`));
+            const name = `${member} ${fixture} r${rot} ${sides || 'alone'}`;
+            const walls = paintWalls(m, { people: inRooms, atlas });
+            const glow = paintLight(m, 1, atlas, 'glow', mine);
+            const changed = [
+              ...differ(paintWalls(m), walls),
+              ...differ(paintLight(m, 1, atlas, 'glow'), glow),
+            ];
+            // In front of it, their feet no higher than its bulb's foot: none of it over them, on
+            // the walls canvas or lit, and nothing else changed. Behind it, it hangs as before.
+            if (me.y + artSize(me.sprite).h < at.y + at.h) {
+              behind++;
+              if (changed.length > 0) misses.push(`${name}: behind, yet changed`);
+              continue;
+            }
+            front++;
+            const mineDrawn = drawn(me);
+            const over = [...solid(walls), ...solid(glow)].filter(
+              (k) => lamp.has(k) && mineDrawn.has(k),
+            );
+            if (over.length > 0) misses.push(`${name}: ${over.length} px of it over them`);
+            if (changed.some((k) => !lamp.has(k) || !mineDrawn.has(k))) {
+              misses.push(`${name}: changed off them`);
+            }
+            if (changed.length > 0) wasOver++;
+          }
+        }
+      }
+    }
+    expect(misses).toEqual([]);
+    expect(front).toBeGreaterThan(50);
+    // Painted without them, as the photos are, it hung over them in some. (None of these rooms
+    // stands them behind it: the next test does.)
+    expect(behind).toBe(0);
+    expect(wasOver).toBeGreaterThan(5);
+  });
+
+  it('still hangs in front of Rowan, who stands behind it, at the back of his studio', () => {
+    // His studio upright, finished, with a Living Room west of it: he stands by its side door,
+    // his feet above the hanging lamp's foot, and its cord and cap over his feet.
+    const h = house([
+      ['rowansStudio', 4, 4, 1, { fixture: { id: 'fireplace', week: 1 }, level: 1 }],
+      ['livingRoom', 3, 3, 1],
+    ]);
+    const { m, people: inRooms } = withMember(h, 'rowan', 'juniper');
+    expect(roomLayout(m, 1).pendant).toBe(true);
+    const mine = inRooms.get(1)!;
+    const him = mine[0]!;
+    const at = pendantAt(m, m.rooms.get(1)!);
+    expect(him.y + artSize(him.sprite).h).toBeLessThan(at.y + at.h);
+    const lamp = new Set(pendantPixels(at).map((q) => `${q.x},${q.y}`));
+    const over = [...solid(paintWalls(m))].filter((k) => lamp.has(k) && drawn(him).has(k));
+    expect(over.length).toBeGreaterThan(0);
+    // Drawn as before: the lamp in front of him.
+    expect(differ(paintWalls(m), paintWalls(m, { people: inRooms, atlas })).size).toBe(0);
+    expect(
+      differ(paintLight(m, 1, atlas, 'glow'), paintLight(m, 1, atlas, 'glow', mine)).size,
+    ).toBe(0);
   });
 });
