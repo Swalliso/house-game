@@ -1513,5 +1513,5 @@ describe('the client’s own things (D-183)', () => {
     expect([...changed.keys()].sort()).toEqual(['barkers', 'vladislav']);
     expect(changed.get('vladislav')).toBeGreaterThan(10);
     expect(changed.get('barkers')).toBeGreaterThan(10);
-  });
+  }, 20_000); // 1.1 s here and 2.5 s on CI: as close to the 5 s default as the dog-bed test
 });
