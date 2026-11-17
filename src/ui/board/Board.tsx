@@ -35,6 +35,7 @@ import { audio } from '../audio/audio.ts';
 import { busy, fxHooks, popups, setHold, skip } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
 import { shakeOffsets } from '../fx/juice.ts';
+import { openHouseFor } from '../fx/open-house.ts';
 import { formatNumber, signed } from '../format.ts';
 import { causeSuffix, hiddenPart, mainCause, partLine } from './causes.ts';
 import { backToBuilding, changeOrderShown, shopShown } from '../hud/actions.ts';
@@ -572,7 +573,12 @@ export function Board() {
       const board = boardRef.current;
       if (streetView.peek() !== sv) return;
       const view = el && { width: el.clientWidth, height: el.clientHeight };
-      const k = view && streetViewScale(view, lot.width, lot.height, scale, FEEL.streetView);
+      // D-175: a won run's view that shows the street already plays its open house in place,
+      // in a window as long.
+      const k =
+        view &&
+        (streetViewScale(view, lot.width, lot.height, scale, FEEL.streetView) ??
+          (openHouseFor(sv.run) ? 1 : null));
       if (!el || !board || !k) {
         // Nothing to look at, or the view shows the street already.
         streetView.value = null;
@@ -611,8 +617,10 @@ export function Board() {
       from.y - (cy + (b.top - cy) / k)
     }px) scale(1)`;
     const far = `translate(0px, 0px) scale(${k})`;
-    const total = f.outMs + f.holdMs + f.backMs;
-    const back = f.outMs + f.holdMs;
+    // D-175: a won run's look holds longer, while its crowd walks in.
+    const holdMs = openHouseFor(look.run) ? FEEL.openHouse.holdMs : f.holdMs;
+    const total = f.outMs + holdMs + f.backMs;
+    const back = f.outMs + holdMs;
     const anim = el.animate(
       [
         { transform: near, easing: 'cubic-bezier(0.45, 0, 0.2, 1)' },
