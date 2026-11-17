@@ -60,6 +60,11 @@ Open House is a game jam entry for the theme "It's a house," built with Claude C
   Japanese houses do (from its Additional Houses), LimeZu's art, cut and credited as above. The
   player's houses are painted in the browser from the game's own sprites and drawings, as the end
   screen's photos are.
+- **The client at the door** (D-182, `art/limezu/clients.json`): the clients' figures are Modern
+  Interiors' premade characters (11, 13, 18 and 20), and Count Vladislav is composed from its
+  character generator's body, eyes, outfit and hairstyle sheets, recolored. The thought bubbles,
+  their heart and their question mark are from its interface sheet's thinking emotes. LimeZu's
+  art, cut, edited as its licenses allow, and credited as above.
 - **The link preview and the tab's icon** (`public/og.png`, `public/favicon.png`, D-135): the
   preview is a screenshot of a finished house from the game, its LimeZu sprites and our own
   drawings, with a title sign in the game's style; the icon is a little house drawn for Open

@@ -71,6 +71,7 @@ import {
   toppedOutBefore,
 } from './moments.ts';
 import { burst, burstAt, clearParticles, type BurstName, type BurstOptions } from './particles.ts';
+import { bubbleOpensMs, visitOf, type Visit } from './visit.ts';
 
 /**
  * `spec` names a client's wish the week turned on, in Charm's color, and `rule` a house rule
@@ -195,6 +196,8 @@ export const wash = signal<{ id: number; tier: Tier } | null>(null);
 export const targetHit = signal<{ id: number } | null>(null);
 /** "Topped out!" over the house, the first week A compact house holds (D-127). */
 export const toppedOut = signal<{ id: number } | null>(null);
+/** The client at the door (D-182), while their visit plays: the board's moments draw it. */
+export const clientVisit = signal<(Visit & { id: number }) | null>(null);
 /**
  * D-094's option 1: while the tally plays a chain, the arc from the piece that boosts to the one
  * it sets going, in lot cells, for that piece's step. The board's chain layer draws it.
@@ -318,6 +321,8 @@ let bannerKeptUntil = -Infinity;
 export function skip(): void {
   if (busy.value) skipping = true;
   dismissBanner();
+  // D-182: the client's visit goes with it.
+  clientVisit.value = null;
 }
 
 /** A click on the banner, or a skip: it goes, unless a hurried milestone's is still new. */
@@ -1524,8 +1529,11 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
           if (hurried) bannerKeptUntil = performance.now() + FEEL.milestoneBannerMinMs;
           // The shop (or a change order) opens over the board, banner and all, so it waits the
           // banner out in real time, as the banner stays up, at any tally speed: holding hurries
-          // it, a click skips.
-          if (hurried) await waitBanner(toSheet ? shown : FEEL.milestoneHoldMs, gone);
+          // it, a click skips. D-182: a milestone met that isn't the last brings the client to
+          // the door over the banner's last second, and the sheet waits for them too.
+          const visit = toSheet && !ended ? visitDue(e, after) : null;
+          if (visit) await visitBeat(visit, shown, hurried, gone);
+          else if (hurried) await waitBanner(toSheet ? shown : FEEL.milestoneHoldMs, gone);
           else if (toSheet) await wait(shown, undefined, gone, realSpeed);
           else await wait(FEEL.milestoneHoldMs, undefined, gone);
           break;
@@ -1810,6 +1818,67 @@ function arrivalBeat(e: Extract<GameEvent, { t: 'arrived' }>, after: RunState): 
   if (!skipping && motion()) walkIn.value = { arrival: e.arrival, id: nextId++ };
 }
 
+/**
+ * D-182: what a milestone's visit shows (fx/visit.ts), if it brings one: a milestone met (the
+ * caller sees to it that it isn't the last), outside the guided first job, with Reduce motion
+ * off, at a house with a door to come to.
+ */
+function visitDue(e: Extract<GameEvent, { t: 'milestone' }>, after: RunState): Visit | null {
+  if (e.result === 'failed' || firstJob.value || !motion()) return null;
+  return visitOf(after);
+}
+
+/**
+ * D-182: the client at the door. They come `FEEL.visit.underBannerMs` before the milestone's
+ * banner would go and stay `FEEL.visit.ms`, in real time, as the banner does: holding hurries
+ * them, and after a hurried week they come under its banner even though the tally is skipped. A
+ * click takes them down with the banner; a click before they come, a newer action or the
+ * instant tally, and they never come. The sheet after the milestone waits for them.
+ */
+async function visitBeat(
+  v: Visit,
+  shown: number,
+  hurried: boolean,
+  gone: () => boolean,
+): Promise<void> {
+  const f = FEEL.visit;
+  const gen = generation;
+  const hold = (ms: number, until: () => boolean) =>
+    hurried ? waitBanner(ms, until) : wait(ms, undefined, until, realSpeed);
+  const lead = Math.max(0, shown - f.underBannerMs);
+  await hold(lead, gone);
+  if (gone() || gen !== generation || (skipping && !hurried)) return;
+  const id = nextId++;
+  clientVisit.value = { ...v, id };
+  const away = () => clientVisit.value?.id !== id || gen !== generation;
+  visitSounds(v, id);
+  await hold(shown - lead, () => gone() || away());
+  await hold(Math.max(0, f.ms - (shown - lead)), away);
+  if (clientVisit.value?.id === id) clientVisit.value = null;
+}
+
+/** The major pentatonic's steps up an octave, as playback rates: the hearts' pops climb them. */
+const VISIT_STEPS = [0, 2, 4, 7, 9, 12].map((semitones) => 2 ** (semitones / 12));
+
+/**
+ * D-182: the visit's pops, each as its bubble opens (its pop-in frames done): the client's own,
+ * lower for a question, then each heart a step up the scale. None after the visit is skipped.
+ */
+function visitSounds(v: Visit, id: number): void {
+  const f = FEEL.visit;
+  const opens = bubbleOpensMs();
+  const at = (ms: number, play: () => void) =>
+    setTimeout(() => {
+      if (clientVisit.value?.id === id) play();
+    }, ms);
+  audio.play('bubble', { rate: 0.75, gain: 0.6 });
+  at(f.bubbleMs + opens, () => audio.play('bubble', { rate: v.bubble === 'ask' ? 0.85 : 1 }));
+  v.hearts.forEach((_, i) => {
+    const rate = VISIT_STEPS[Math.min(i, VISIT_STEPS.length - 1)]!;
+    at(f.heartsMs + i * f.heartStaggerMs + opens, () => audio.play('bubble', { rate }));
+  });
+}
+
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /**
@@ -1991,6 +2060,7 @@ onRunReset(() => {
     chainArc.value = null;
     lightsHeld.value = new Set();
     lightSwitched.value = null;
+    clientVisit.value = null;
   });
   clearParticles();
 });

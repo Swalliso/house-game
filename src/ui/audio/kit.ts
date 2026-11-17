@@ -433,6 +433,10 @@ export const RECIPES: Partial<Record<SoundId, Recipe>> = {
       { at: 0.09, inst: 'glock', step: 2, db: -15 },
     ],
   },
+
+  // The client at the door (D-182): a thought bubble popping up, Kenney's pop, small and soft.
+  // The director plays the hearts' up the scale by rate.
+  bubble: { layers: [{ set: 'pop', db: -13, rate: 1.25 }] },
 };
 
 // ---- Pitch ----

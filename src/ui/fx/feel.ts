@@ -360,6 +360,24 @@ export const FEEL = {
    */
   milestoneHoldMs: 900,
   /**
+   * The client at the door (D-182, fx/visit.ts): at a milestone met that isn't the last, the
+   * client pops in at the front door `underBannerMs` before the milestone's banner goes, and
+   * stays `ms` in all, so the shop opens `ms − underBannerMs` later than it did. In real time, as
+   * the banner is (holding hurries it, a click skips it). They grow up from their feet over
+   * `popMs`; their bubble starts `bubbleMs` in and the hearts over their wishes' pieces from
+   * `heartsMs`, `heartStaggerMs` apart, each popping up through its frames; all of it fades
+   * over the last `outMs`.
+   */
+  visit: {
+    ms: 1500,
+    underBannerMs: 1000,
+    popMs: 220,
+    bubbleMs: 160,
+    heartsMs: 300,
+    heartStaggerMs: 110,
+    outMs: 220,
+  },
+  /**
    * A click that hurried the milestone week's tally hurries the tally, not the milestone: its
    * banner still comes up and holds as above, and only a click after it's been up this long
    * takes it down. Steady clicking through the tally used to leave no banner at all.
