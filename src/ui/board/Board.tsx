@@ -409,6 +409,7 @@ export function Board() {
     () => <WallsLayer lot={lot} scale={scale} model={model} />,
     [lot, scale, model],
   );
+  // The tall items' tops, and the finished rooms' lights among them (D-181).
   const overhangLayer = useMemo(
     () => <OverhangLayer model={model} yard={yard} scale={scale} people={inRooms} />,
     [model, yard, scale, inRooms],

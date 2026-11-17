@@ -423,6 +423,16 @@ export const RECIPES: Partial<Record<SoundId, Recipe>> = {
       { at: 0.97, set: 'wind-chimes', db: -12 },
     ],
   },
+
+  // A finished room's lamp coming on (D-181): the switch's click, the crate's small pop, and a
+  // glockenspiel's third as the light comes up.
+  'light-on': {
+    layers: [
+      { set: 'click', db: -8 },
+      { at: 0.05, set: 'pop', db: -12 },
+      { at: 0.09, inst: 'glock', step: 2, db: -15 },
+    ],
+  },
 };
 
 // ---- Pitch ----

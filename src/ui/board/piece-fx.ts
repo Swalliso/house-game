@@ -11,8 +11,12 @@
 
 import { FEEL } from '../fx/feel.ts';
 
-/** A piece's elements in each layer. */
-export type Part = 'items' | 'overhang' | 'digit' | 'flash';
+/**
+ * A piece's elements in each layer. D-181: a finished room's lit shade, when its lamp stands
+ * with the furniture, moves with the items; the light's pool and halo stay still, as the floor
+ * does.
+ */
+export type Part = 'items' | 'overhang' | 'digit' | 'flash' | 'light';
 
 const parts = new Map<number, Map<Part, Element>>();
 
@@ -92,7 +96,7 @@ export function wobble(uid: number): void {
     { transform: `scale(${2 - s * 0.97}, ${s * 0.97})` },
     { transform: 'scale(1)' },
   ];
-  for (const part of ['items', 'overhang'] as const) {
+  for (const part of ['items', 'overhang', 'light'] as const) {
     play(uid, part, frames, { duration: FEEL.wobble.ms, easing: 'ease-out' });
   }
   play(
@@ -115,7 +119,7 @@ export function settle(uid: number): void {
     { transform: 'translateY(0) scale(0.98)' },
     { transform: 'scale(1)' },
   ];
-  for (const part of ['items', 'overhang'] as const) {
+  for (const part of ['items', 'overhang', 'light'] as const) {
     play(uid, part, frames, { duration: FEEL.placeMs, easing: 'ease-out' });
   }
   flash(uid, FEEL.placeMs * 2);

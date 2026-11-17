@@ -69,7 +69,9 @@ export type SoundId =
   // A won run's open house (D-175): the fanfare.
   | 'run-won'
   // The Doghouse wakes up (D-179): its dog, let off its lead, barks.
-  | 'bark';
+  | 'bark'
+  // A finished room's lamp coming on (D-181).
+  | 'light-on';
 
 export interface PlayOptions {
   /** Exact playback rate. Giving one also turns off the random rate and gain spread. */
@@ -373,6 +375,13 @@ const SOUNDS: Record<SoundId, readonly Layer[]> = {
       params: [0.5, 0, 460, 0.004, 0.03, 0.08, 2, 1, -2.5, , , , , 0.35, , , , 0.6, 0.02, , -1400],
     },
     { at: 0, params: [0.14, 0, 900, 0.002, 0.01, 0.04, 4, 1, , , , , , , , , , 1, , , -2400] },
+  ],
+
+  // A finished room's lamp coming on (D-181): a switch's click, a small pop, and a warm E.
+  'light-on': [
+    { at: 0, params: [0.3, 0, 1400, 0.001, 0, 0.02, 1, 1, , , , , , , , , , 1, , , -2500] },
+    { at: 0.05, params: [0.3, 0, 400, 0.001, 0.01, 0.06, 4, 1, , , , , , , , , , 1, , , -1500] },
+    note(0.09, E6, 0.22, 0.45),
   ],
 };
 

@@ -4,21 +4,35 @@
 // - the terrain (TerrainLayer's draw) and the water's first frame,
 // - the floor canvas (the yard's ground, the house's shadow, doormats, floors and wall faces),
 // - every piece's items under the walls, south in front, as the items layer orders them,
-// - the walls, then the tall items' tops over them (the overhang layer),
+// - the walls, then the tall items' tops over them, south in front, and each finished room's
+//   light right after its own tops (the overhang layer; D-181), so a piece further south stands
+//   in front of the light,
 // - the trees' crowns (the canopy).
 // No digits or badges, and no tint.
 //
 // It paints from the state it's given, never through the board's components, so it can't touch
 // the live board's caches or its car's slide (HouseLayers' lastCar).
 
-import { rules, type RunState } from '../../rules/index.ts';
+import { rules, type HouseState, type RunState } from '../../rules/index.ts';
 import { artSize } from '../art/drawings.ts';
 import type { Plot } from '../company.ts';
-import { Canvas, paintFloors, paintWalls, type AtlasPixels } from '../art/house-paint.ts';
+import {
+  Canvas,
+  paintFloors,
+  paintLight,
+  paintWalls,
+  type AtlasPixels,
+} from '../art/house-paint.ts';
 import { itemRows, roomItems, type Item } from '../art/rooms.ts';
-import { unmetOf, yardModel } from '../art/yard.ts';
+import { unmetOf, yardModel, type YardModel } from '../art/yard.ts';
 import { atlasPixels } from '../board/HouseLayers.tsx';
-import { hallLinks, houseModel, sunLight, type Rect } from '../board/house-model.ts';
+import {
+  hallLinks,
+  houseModel,
+  sunLight,
+  type HouseModel,
+  type Rect,
+} from '../board/house-model.ts';
 import { opaqueBox, plotPart } from '../board/neighbors.ts';
 import { draw, streetFront } from '../board/TerrainLayer.tsx';
 import { seedSalt } from '../board/terrain/hash.ts';
@@ -49,6 +63,36 @@ function blitPart(cv: Canvas, atlas: AtlasPixels, it: Item, part: 'top' | 'botto
     w: artSize(it.sprite).w,
     h: to - from,
   });
+}
+
+/**
+ * The house's pieces over its floor canvas, as the board's layers draw them: every piece's items
+ * under the walls, south in front; the walls; then each piece's tall tops, south in front, and a
+ * finished room's light right after its own tops (D-181), as the overhang layer orders them.
+ */
+export function paintHouse(
+  cv: Canvas,
+  house: HouseState,
+  model: HouseModel,
+  yard: YardModel,
+  atlas: AtlasPixels,
+): void {
+  const pieces: { uid: number; box: Rect; items: readonly Item[]; i: number }[] = [];
+  house.pieces.forEach((p, i) => {
+    const room = model.rooms.get(p.uid);
+    const at = room ? { box: room.box, items: roomItems(model, p.uid) } : yard.pieces.get(p.uid);
+    if (at) pieces.push({ uid: p.uid, box: at.box, items: at.items, i });
+  });
+  // South in front: each piece by its bottom row, ties in the house's order (the DOM's).
+  pieces.sort((a, b) => a.box.y + a.box.h - (b.box.y + b.box.h) || a.i - b.i);
+  for (const p of pieces) for (const it of p.items) blitPart(cv, atlas, it, 'bottom');
+  const walls = paintWalls(model);
+  if (walls) cv.over(walls);
+  for (const p of pieces) {
+    for (const it of p.items) blitPart(cv, atlas, it, 'top');
+    const light = model.rooms.get(p.uid)?.finished ? paintLight(model, p.uid, atlas) : null;
+    if (light) cv.over(light);
+  }
 }
 
 /**
@@ -88,18 +132,7 @@ export async function paintPhoto(
   const yard = yardModel(house, model, unmetOf(rules.currentTally(state).pieces));
   const floors = paintFloors(model, atlas, { yard });
   if (floors) cv.over(floors);
-  const pieces: { box: Rect; items: readonly Item[]; i: number }[] = [];
-  house.pieces.forEach((p, i) => {
-    const room = model.rooms.get(p.uid);
-    const at = room ? { box: room.box, items: roomItems(model, p.uid) } : yard.pieces.get(p.uid);
-    if (at) pieces.push({ box: at.box, items: at.items, i });
-  });
-  // South in front: each piece by its bottom row, ties in the house's order (the DOM's).
-  pieces.sort((a, b) => a.box.y + a.box.h - (b.box.y + b.box.h) || a.i - b.i);
-  for (const p of pieces) for (const it of p.items) blitPart(cv, atlas, it, 'bottom');
-  const walls = paintWalls(model);
-  if (walls) cv.over(walls);
-  for (const p of pieces) for (const it of p.items) blitPart(cv, atlas, it, 'top');
+  paintHouse(cv, house, model, yard, atlas);
 
   // The trees' crowns over everything.
   const crowns = canopyBox(lot, objects);

@@ -58,7 +58,13 @@
 // stand under the north wall of a one-cell-deep one, or come in a second shape for it (an upright
 // cot or a side-on one, an easel without its finial).
 
-import { CONTENT, type FixtureId, type HouseState, type PieceId } from '../../rules/index.ts';
+import {
+  CONTENT,
+  isFinished,
+  type FixtureId,
+  type HouseState,
+  type PieceId,
+} from '../../rules/index.ts';
 import {
   EDGE,
   WALL,
@@ -97,6 +103,13 @@ export interface RoomLayout {
   fixtureShown: boolean;
   /** Where Blackout Curtains hang on a north face, in view in front of the furniture (house-paint.ts). */
   drape?: Rect;
+  /** D-181: a finished room's lamp, one of `items`, which house-paint.ts paintLight lights. */
+  lamp?: Item;
+  /**
+   * D-181: a finished room with no lamp standing hangs one instead (a kitchen's, over its table,
+   * or a room too full for one): house-paint.ts draws it with the walls and lights it.
+   */
+  pendant?: true;
 }
 
 /**
@@ -1215,6 +1228,8 @@ class Layout {
   readonly taken = new Map<Run, [number, number]>();
   lastRun: Run | null = null;
   lastC: Placed | null = null;
+  /** Where nothing more may stand: a finished room's added lamp keeps off its curtains (D-181). */
+  avoid: readonly Rect[] = [];
   constructor(g: Geo) {
     this.g = g;
   }
@@ -1222,6 +1237,7 @@ class Layout {
   /** Whether a footprint is clear of doorways and of other pieces (tucking `tuck` px under the last C piece). */
   free(r: Rect, tuck = 0, walkways = true): boolean {
     if ((walkways ? this.g.blocked : this.g.gaps).some((b) => overlaps(r, b))) return false;
+    if (this.avoid.some((a) => overlaps(r, a))) return false;
     return this.placed.every((p) => {
       if (!p.rect) return true;
       const q = tuck && p === this.lastC ? shrinkX(p.rect, tuck) : p.rect;
@@ -1783,6 +1799,7 @@ export function roomLook(house: HouseState, uid: number): PieceLook {
     flip: flipOf(uid),
     style: arrangementOf(piece.defId, same, uid),
     ...(piece.fixture ? { fixture: piece.fixture.id } : {}),
+    ...(isFinished(piece) ? { lit: true } : {}),
   };
 }
 
@@ -1850,6 +1867,14 @@ function layOut(m: HouseModel, uid: number): RoomLayout {
       place({ ...rest, sprites: standIn, fixture: false }, i);
     }
   }
+  // Blackout Curtains hang where the furniture leaves a north face in view.
+  const f = room.fixture;
+  const drape = f === 'blackoutCurtains' ? drapeSpot(m, room, L.placed) : null;
+  // D-181: a finished room lights its lamp, adding one after everything else where it has none
+  // (and off the curtains), so the rest of the room stands where it did; a kitchen, or a room with
+  // no floor for one, hangs one over the room instead.
+  const lamp = room.finished && !HANGS.has(room.defId) ? lampOf(L, c, drape) : undefined;
+  const pendant = !!room.finished && !lamp;
   // Back to front: rugs and runners first, then by bottom edge, west to east.
   const items = L.placed
     .map((p) => ({ p, flat: !p.rect, bottom: p.item.y + artSize(p.item.sprite).h }))
@@ -1857,15 +1882,54 @@ function layOut(m: HouseModel, uid: number): RoomLayout {
       (a, b) => Number(b.flat) - Number(a.flat) || a.bottom - b.bottom || a.p.item.x - b.p.item.x,
     )
     .map(({ p }) => p.item);
-  const f = room.fixture;
-  const drape = f === 'blackoutCurtains' ? drapeSpot(m, room, L.placed) : null;
   let fixtureShown = true;
   if (f) {
     const drawn = wants.filter((w) => w.fixture);
     fixtureShown =
       drawn.length > 0 ? L.placed.some((p) => p.want.fixture) : paintedShown(m, room, f, drape);
   }
-  return { items, fixtureShown, ...(drape ? { drape } : {}) };
+  return {
+    items,
+    fixtureShown,
+    ...(drape ? { drape } : {}),
+    ...(lamp ? { lamp } : {}),
+    ...(pendant ? { pendant: true as const } : {}),
+  };
+}
+
+/** D-181: the rooms whose light hangs over the table: the kitchens'. */
+const HANGS: ReadonlySet<PieceId> = new Set<PieceId>(['kitchen', 'lKitchen']);
+
+/** D-181: the lamps a finished room can light, by sprite family: a floor lamp first. */
+const LAMP_FAMILIES = ['lamp-floor', 'side-lamp', 'nightlamp'] as const;
+
+/** Whether an item is one of the lamps a finished room lights. */
+export function isLamp(sprite: ArtId): boolean {
+  return (LAMP_FAMILIES as readonly string[]).includes(family(sprite));
+}
+
+/**
+ * D-181: the lamp a finished room lights: the floor lamp a grown room's second group brings
+ * (D-168), or whatever lamp its arrangement has (a nightlamp, a side lamp). A room without one
+ * gets a floor lamp in its own color, else a side lamp, else a nightlamp, wherever one stands by
+ * the furniture's own rules: in a corner, at a wall's end, against a wall, and never in front of
+ * the room's Blackout Curtains (`drape`, worked out before it). None where none fits: the room
+ * hangs its lamp instead (RoomLayout.pendant).
+ */
+function lampOf(L: Layout, c: Ctx, drape: Rect | null): Item | undefined {
+  for (const fam of LAMP_FAMILIES) {
+    const p = L.placed.find((q) => family(q.item.sprite) === fam);
+    if (p) return p.item;
+  }
+  // The curtains on their face, and their rod's ends (drapeFace).
+  if (drape) L.avoid = [{ x: drape.x - 1, y: drape.y, w: drape.w + 2, h: drape.h }];
+  const slots: Slot[] = [...corners(c, 'SE', 'SW'), 'NE', 'NW', 'N', 'S', 'W', 'E'];
+  const kinds: SpriteId[] = [pick(LAMPS, c.rank), 'side-lamp', pick(NIGHTLAMPS, c.rank)];
+  for (const sprite of kinds) {
+    const w = want(sprite, ...slots);
+    if (slots.some((slot) => placeSlot(L, w, slot, c))) return L.placed[L.placed.length - 1]!.item;
+  }
+  return undefined;
 }
 
 /**

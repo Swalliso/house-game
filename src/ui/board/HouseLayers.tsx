@@ -5,7 +5,8 @@
 //   piece's props (yard.ts)
 // - walls: one canvas of wall bands, doorways, windows and garage rails
 // - overhang: the parts of tall items that rise over their room's north wall, or above a yard
-//   piece's own cells (outbuildings' roofs, the Treehouse, a Birdhouse's box)
+//   piece's own cells (outbuildings' roofs, the Treehouse, a Birdhouse's box), and each finished
+//   room's light right after its own tops (RoomLight, D-181), ordered by bottom row
 // - highlights: the tally's active piece, a set's members, the placement's new sets, and each
 //   piece's flash, as outlines (never CSS filters on whole pieces)
 // - labels: each piece's digit and its fixture, ⚠ and Renovate level badges, inside its walls
@@ -39,6 +40,7 @@ import {
 import {
   Canvas,
   paintFloors,
+  paintLight,
   paintPiece,
   paintWalls,
   paintYardPiece,
@@ -52,10 +54,13 @@ import {
   highlighted,
   justPlaced,
   justRenovated,
+  lightsHeld,
+  lightSwitched,
   played,
   tallyView,
 } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
+import { lightOnFrames } from '../fx/light.ts';
 import { settings } from '../settings.ts';
 import { atlasImage, CELL, FIXTURE_ICONS, spriteStyle } from '../sprites.ts';
 import { ICON_SIZES, type IconName } from '../theme/art.ts';
@@ -454,7 +459,10 @@ export function ItemsLayer({
 
 /**
  * The parts of items above their own cells, above the walls: tall furniture over its room's north
- * wall, and a yard piece's parts above its cells (outbuildings' roofs, the Treehouse, a car's roof).
+ * wall, and a yard piece's parts above its cells (outbuildings' roofs, the Treehouse, a car's
+ * roof). Each piece's are ordered by its bottom row, further south in front, and a finished room's
+ * light comes right after its own tops (D-181): over its room, and behind a piece further south
+ * that rises into it (a Treehouse's deck, a Greenhouse's roof).
  */
 export function OverhangLayer({
   model,
@@ -479,28 +487,44 @@ export function OverhangLayer({
       box: r.box,
       items: withPeople(roomItems(model, r.uid), people?.get(r.uid)),
       copies: r.uid === dropUid,
+      lit: !!r.finished,
     })),
     ...[...yard.pieces.values()].map((l) => ({
       uid: l.uid,
       box: l.box,
       items: l.items,
       copies: false,
+      lit: false,
     })),
   ];
   return (
     <div class="overhang">
-      {parts.map((p) =>
-        p.copies || hasTop(p.items) ? (
-          <PieceOverhang
-            key={p.uid}
-            uid={p.uid}
-            box={p.box}
-            items={p.items}
-            scale={scale}
-            copies={p.copies}
-          />
-        ) : null,
-      )}
+      {parts.flatMap((p) => {
+        const z = (p.box.y + p.box.h) / CELL;
+        return [
+          p.copies || hasTop(p.items) ? (
+            <PieceOverhang
+              key={p.uid}
+              uid={p.uid}
+              box={p.box}
+              items={p.items}
+              scale={scale}
+              copies={p.copies}
+              z={z}
+            />
+          ) : null,
+          p.lit ? (
+            <RoomLight
+              key={`light-${p.uid}`}
+              model={model}
+              uid={p.uid}
+              box={p.box}
+              scale={scale}
+              z={z}
+            />
+          ) : null,
+        ];
+      })}
     </div>
   );
 }
@@ -511,6 +535,7 @@ function PieceOverhang({
   items,
   scale,
   copies,
+  z,
 }: {
   uid: number;
   box: Rect;
@@ -519,6 +544,8 @@ function PieceOverhang({
   scale: number;
   /** D-178: a copy of each item too, after the tops, for its drop. */
   copies: boolean;
+  /** Its bottom row: further south in front. */
+  z: number;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => (ref.current ? register(uid, 'overhang', ref.current) : undefined), [uid]);
@@ -531,7 +558,7 @@ function PieceOverhang({
         top: `${box.y * scale}px`,
         width: `${box.w * scale}px`,
         height: `${box.h * scale}px`,
-        zIndex: (box.y + box.h) / CELL,
+        zIndex: z,
       }}
     >
       {items.map((item, i) => (
@@ -541,6 +568,81 @@ function PieceOverhang({
         items.map((item, i) => (
           <ItemPart key={i} item={item} box={box} scale={scale} part="whole" i={i} />
         ))}
+    </div>
+  );
+}
+
+/**
+ * D-181: a finished room's light (house-paint.ts paintLight), in the overhang layer at the room's
+ * bottom row, right after its tall tops, so a lamp's shade glows over the wall band it rises
+ * across and a piece further south stands in front. Two canvases over the room's box: the glow
+ * (the pool and the halo, and a hanging lamp lit) stays still, as the floor and the walls do, so
+ * no wobble spreads it over the walls; a standing lamp's lit shade moves with the furniture when
+ * the room wobbles or settles (piece-fx.ts's 'light' part).
+ *
+ * A room an action has just finished keeps its light off until the director's beat switches it
+ * on (lightsHeld, lightSwitched): it flickers on, or fades in with Flashing off (fx/light.ts). A
+ * loaded run shows it on, with no beat, and so does Reduce motion.
+ */
+function RoomLight({
+  model,
+  uid,
+  box,
+  scale,
+  z,
+}: {
+  model: HouseModel;
+  uid: number;
+  box: Rect;
+  scale: number;
+  z: number;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const glow = useRef<HTMLCanvasElement>(null);
+  const shade = useRef<HTMLCanvasElement>(null);
+  const held = lightsHeld.value.has(uid);
+  const on = lightSwitched.value?.uid === uid ? lightSwitched.value.id : 0;
+  const stands = !!roomLayout(model, uid).lamp;
+  const plans = useMemo(
+    () => ({
+      glow: { frame: box, paint: (atlas: AtlasPixels) => paintLight(model, uid, atlas, 'glow') },
+      shade: { frame: box, paint: (atlas: AtlasPixels) => paintLight(model, uid, atlas, 'shade') },
+    }),
+    [model, uid, box],
+  );
+  // Before the browser paints, so the light changes in the same frame as the room.
+  useLayoutEffect(() => paintPieceArt(glow.current, plans.glow), [plans]);
+  useLayoutEffect(
+    () => (stands ? paintPieceArt(shade.current, plans.shade) : undefined),
+    [plans, stands],
+  );
+  useLayoutEffect(
+    () => (stands && shade.current ? register(uid, 'light', shade.current) : undefined),
+    [uid, stands],
+  );
+  // Its switch: once per id, so remounting the game screen doesn't play it again.
+  useLayoutEffect(() => {
+    if (!on || on <= played.light || !ref.current || settings.value.reduceMotion) return;
+    played.light = on;
+    const { frames, ms, easing } = lightOnFrames(settings.value.flashing);
+    ref.current.animate(frames, { duration: ms, easing });
+  }, [on]);
+  return (
+    <div
+      ref={ref}
+      class="room-light"
+      style={{
+        left: `${box.x * scale}px`,
+        top: `${box.y * scale}px`,
+        width: `${box.w * scale}px`,
+        height: `${box.h * scale}px`,
+        zIndex: z,
+        ...(held ? { opacity: 0 } : {}),
+      }}
+      aria-hidden="true"
+    >
+      <canvas ref={glow} width={box.w} height={box.h} />
+      {stands && <canvas ref={shade} class="room-light-shade" width={box.w} height={box.h} />}
     </div>
   );
 }
@@ -956,7 +1058,17 @@ export function GhostPiece({
   const shapeKey = shape?.join('/');
   const art = useMemo(
     () => pieceArtPlan(defId, rot, look, shape),
-    [defId, rot, shapeKey, look?.color, look?.flip, look?.fixture, look?.style, look?.unmet],
+    [
+      defId,
+      rot,
+      shapeKey,
+      look?.color,
+      look?.flip,
+      look?.fixture,
+      look?.style,
+      look?.unmet,
+      look?.lit,
+    ],
   );
   const { frame } = art;
   const bw = Math.max(...cells.map((c) => c.x)) - minX + 1;
