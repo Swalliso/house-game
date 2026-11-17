@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { decodePng } from '../../../scripts/png.ts';
 import {
   CONTENT,
+  isFinished,
   placedCells,
   rules,
   type ClientId,
@@ -1513,5 +1514,65 @@ describe('the client’s own things (D-183)', () => {
     expect([...changed.keys()].sort()).toEqual(['barkers', 'vladislav']);
     expect(changed.get('vladislav')).toBeGreaterThan(10);
     expect(changed.get('barkers')).toBeGreaterThan(10);
+  });
+
+  // D-181 × D-183: a finished room lights its lamp after everything else, their things included.
+  it('keep their things in their first room once it’s finished, its lamp lit and the rest where it stood', () => {
+    const lit = (h: HouseState): HouseState => ({
+      ...h,
+      pieces: h.pieces.map((p) => (p.uid === h.pieces[0]!.uid ? { ...p, level: 1 } : p)),
+    });
+    const unlit = (h: HouseState): HouseState => ({
+      ...h,
+      pieces: h.pieces.map((p) => {
+        if (p.uid !== h.pieces[0]!.uid) return p;
+        const { level: _level, extended: _extended, ...rest } = p;
+        return rest;
+      }),
+    });
+    const KINDS = [
+      ['bedroom', 'vladislav', ['bunkBeds', ...ROOM_FIXTURES], [['####', '####']]],
+      [
+        'livingRoom',
+        'barkers',
+        ['chandelier', ...ROOM_FIXTURES],
+        [
+          ['######', '######'],
+          ['#####', '#####', '##...'],
+          ['##..', '####', '####', '..##'],
+        ],
+      ],
+    ] as const;
+    for (const [id, client, fixtures, grown] of KINDS) {
+      for (const [at, h] of cases(id, fixtures, grown)) {
+        const done = lit(h);
+        const uid = done.pieces[0]!.uid;
+        expect(isFinished(done.pieces[0]!), at).toBe(true);
+        const m = modelOf(done, client);
+        const layout = roomLayout(m, uid);
+        const items = layout.items.map((it) => it.sprite);
+        if (client === 'vladislav') {
+          const bunks = items.some((sp) => sp.startsWith('bunk-bed'));
+          expect(items.includes('coffin') !== bunks, at).toBe(true);
+          expect(
+            items.some((sp) => sp === 'wall-candle' || sp === 'candles'),
+            at,
+          ).toBe(true);
+        } else {
+          expect(items, at).toContain('own-dog-bed');
+        }
+        expect(layout.lamp !== undefined || layout.pendant === true, at).toBe(true);
+        expect(problems(m, uid), at).toEqual([]);
+        // Everything that stood in the room before it was finished stands where it did.
+        const before = roomLayout(modelOf(unlit(done), client), uid).items;
+        for (const it of before) {
+          expect(
+            layout.items.some((x) => x.sprite === it.sprite && x.x === it.x && x.y === it.y),
+            `${at}: ${it.sprite} at ${it.x},${it.y}`,
+          ).toBe(true);
+        }
+        expect(layout.items.length - before.length, at).toBeLessThanOrEqual(1);
+      }
+    }
   });
 });

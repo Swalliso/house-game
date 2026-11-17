@@ -1973,8 +1973,12 @@ function cardTiles(defId: PieceId): number {
   return CONTENT.pieces[defId].shape.reduce((n, row) => n + row.split('#').length - 1, 0);
 }
 
-/** Room `uid`'s layout: its arrangement's wants, or `given` ones (D-183: a way the client's things go in). */
-function layOut(m: HouseModel, uid: number, given?: readonly Want[]): RoomLayout {
+/**
+ * Room `uid`'s layout: its arrangement's wants, or `given` ones (D-183: a way the client's things
+ * go in). `lit` false lays a finished room out as it stood before (D-181: without the lamp it
+ * adds), to weigh the client's ways by.
+ */
+function layOut(m: HouseModel, uid: number, given?: readonly Want[], lit = true): RoomLayout {
   const room = m.rooms.get(uid);
   // A type without a layout of its own is furnished as its countsAs root (byType).
   const spec = room && byType(SPECS, room.defId);
@@ -1999,22 +2003,24 @@ function layOut(m: HouseModel, uid: number, given?: readonly Want[]): RoomLayout
   const wants = given ?? ((style > 0 && ARRANGEMENTS[room.defId]?.[style - 1]) || spec)(c);
   // D-183: the client's own things go in over whichever arrangement it has, the first of their
   // ways that shows them (or the one of those that keeps the most furniture), or else the last.
+  // Each is weighed as the room stood before it was finished: the lamp a finished room adds
+  // (D-181) would tip the scales, and finishing it would move the rest of its furniture.
   const theirs = given || !c.client ? undefined : THEIRS[c.client];
   if (theirs?.type === room.defId) {
-    let out: RoomLayout | undefined;
+    let out: { way: readonly Want[]; layout: RoomLayout } | undefined;
     let most = -1;
     for (const [i, way] of theirs.ways(wants, c).entries()) {
-      const layout = layOut(m, uid, way);
+      const layout = layOut(m, uid, way, false);
       if (!layout.items.some((it) => theirs.marks.includes(it.sprite))) {
-        if (most < 0) out = layout;
+        if (most < 0) out = { way, layout };
         continue;
       }
       const kept = furniture(layout);
-      if (kept > most) [out, most] = [layout, kept];
+      if (kept > most) [out, most] = [{ way, layout }, kept];
       // The first way makes nothing give way: the others are weighed only when it can't show them.
       if (!theirs.most || i === 0) break;
     }
-    if (out) return out;
+    if (out) return room.finished && lit ? layOut(m, uid, out.way) : out.layout;
   }
   const L = new Layout(analyze(m, room));
   const done = new Set<Want>();
@@ -2053,8 +2059,9 @@ function layOut(m: HouseModel, uid: number, given?: readonly Want[]): RoomLayout
   // D-181: a finished room lights its lamp, adding one after everything else where it has none
   // (and off the curtains), so the rest of the room stands where it did; a kitchen, or a room with
   // no floor for one, hangs one over the room instead.
-  const lamp = room.finished && !HANGS.has(room.defId) ? lampOf(L, c, drape) : undefined;
-  const pendant = !!room.finished && !lamp;
+  const lights = lit && !!room.finished;
+  const lamp = lights && !HANGS.has(room.defId) ? lampOf(L, c, drape) : undefined;
+  const pendant = lights && !lamp;
   // Back to front: rugs and runners first, then by bottom edge, west to east.
   const items = L.placed
     .map((p) => ({ p, flat: !p.rect, bottom: p.item.y + artSize(p.item.sprite).h }))
