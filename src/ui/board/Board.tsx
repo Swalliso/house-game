@@ -132,6 +132,8 @@ import { wobble } from './piece-fx.ts';
 import { LifeLayer } from './LifeLayer.tsx';
 import { neighborAt, type Neighbor } from './neighbors.ts';
 import { hoveredNeighbor, NeighborsLayer, streetFor } from './NeighborsLayer.tsx';
+import { people as placePeople, roomPeople } from './people.ts';
+import { PeopleLayer } from './PeopleLayer.tsx';
 import { lotLook } from './terrain/biome.ts';
 import { Outline, SideTint, TerrainLayer, YardTint } from './TerrainLayer.tsx';
 import './board-m2.css';
@@ -374,6 +376,9 @@ export function Board() {
   const model = houseModel(house, links, sun);
   // The yard pieces' ground and props, cached per house model.
   const yard = yardModel(house, model);
+  // D-177: the household's members, in their rooms (with the furniture) or waiting at the door.
+  const household = useMemo(() => placePeople(state, model), [state.arrived, state.setup, model]);
+  const inRooms = useMemo(() => roomPeople(model, household), [model, household]);
   const p = building ? preview.value : null;
   // The house's layers re-render only when the house or the zoom changes: the highlights and
   // labels follow the tally and the preview by themselves, and never redraw a canvas.
@@ -382,16 +387,16 @@ export function Board() {
     [lot, scale, model, yard],
   );
   const itemsLayer = useMemo(
-    () => <ItemsLayer house={house} model={model} yard={yard} scale={scale} />,
-    [house, model, yard, scale],
+    () => <ItemsLayer house={house} model={model} yard={yard} scale={scale} people={inRooms} />,
+    [house, model, yard, scale, inRooms],
   );
   const wallsLayer = useMemo(
     () => <WallsLayer lot={lot} scale={scale} model={model} />,
     [lot, scale, model],
   );
   const overhangLayer = useMemo(
-    () => <OverhangLayer model={model} yard={yard} scale={scale} />,
-    [model, yard, scale],
+    () => <OverhangLayer model={model} yard={yard} scale={scale} people={inRooms} />,
+    [model, yard, scale, inRooms],
   );
   const highlightsLayer = useMemo(
     () => <HighlightsLayer house={house} occ={occ} lot={lot} scale={scale} />,
@@ -1041,6 +1046,7 @@ export function Board() {
           {itemsLayer}
           {wallsLayer}
           {overhangLayer}
+          <PeopleLayer people={household} model={model} scale={scale} />
           {highlightsLayer}
           <ChainArc lot={lot} scale={scale} />
           {labelsLayer}

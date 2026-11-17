@@ -451,6 +451,26 @@ export const FEEL = {
     popScale: 1.25,
     cardInMs: 380,
     cardMs: 3400,
+    /**
+     * D-177: once the bell has rung twice (`delayMs`), the member walks up from the road, over
+     * the kerb, to the front door's doormat in `ms`, pulling their suitcase, and waits there
+     * (board/people.ts walkPlan). A deeper front yard takes longer, never faster than
+     * `maxPxPerSecond` art px a second, and never longer than `maxMs`: in a deeper yard still
+     * they set off partway up it (people.ts walkStart). Their steps keep pace with the ground, a
+     * walk cycle to `cyclePx`, each frame shown within `frameMs`. They fade in over `fadeMs` as
+     * they set off, and a walk that can't come up from the street (the house in the way) fades
+     * them in where they wait over `standInMs`.
+     */
+    walk: {
+      delayMs: 600,
+      ms: 1500,
+      maxMs: 2500,
+      maxPxPerSecond: 72,
+      cyclePx: 16,
+      frameMs: [60, 130] as const,
+      fadeMs: 180,
+      standInMs: 400,
+    },
   },
 
   /**
