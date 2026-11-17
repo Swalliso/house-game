@@ -1,11 +1,13 @@
 // A won run's open house (D-175, open-house.ts): only a run won in this browser gets one, the
 // look's own guards (not a lost run, not a debug run, not a run loaded already over); its crowd
 // follows the verdict and its hearts the last tally's best earners; the fanfare waits for the
-// look down the street, or with Reduce motion on plays alone once the last tally is over; and a
-// new run empties the street.
+// look down the street, or with no look coming (Reduce motion on as the run was won, even if
+// it's turned off during the last tally, or a board with nothing to look with) plays alone once
+// the last tally is over; and a new run empties the street.
 //
 // The store and the director play real actions here, on the ?debug panel's instant tally. A
-// won run is a run put on its last week with its target met: one End week wins it.
+// won run is a run put on its last week with its target met: one End week wins it. There's no
+// board, so its listener stands in for it: the look comes due in the action's own dispatch.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -20,7 +22,7 @@ import {
 import { audio } from '../audio/audio.ts';
 import { streetView } from '../board/camera.ts';
 import { settings } from '../settings.ts';
-import { appScreen, debugAction, endWeek, run, startRun } from '../store.ts';
+import { appScreen, debugAction, endWeek, inProgress, onEvents, run, startRun } from '../store.ts';
 import { busy, instantTally } from './director.ts';
 import { FEEL } from './feel.ts';
 import { openHouse, openHouseFor, openHouseOf, verdictBand } from './open-house.ts';
@@ -131,6 +133,7 @@ describe('which runs get one', () => {
 
 describe('in play', () => {
   const played: string[] = [];
+  let offBoard = () => {};
 
   /** Lets the director play what's queued, and the open house's microtask run. */
   async function settle(): Promise<void> {
@@ -138,18 +141,40 @@ describe('in play', () => {
     await new Promise((r) => setTimeout(r, 0));
   }
 
-  /** Puts SETUP's run on its last week with `score`, and plays End week. */
-  async function endLastWeek(score: number, debug = false): Promise<void> {
+  /** Microtasks only, until the open house is due: the last tally is still playing then. */
+  async function untilDue(): Promise<void> {
+    for (let n = 0; n < 20 && openHouse.value?.phase !== 'due'; n++) await Promise.resolve();
+  }
+
+  /** Puts SETUP's run on its last week with `score`, and plays End week: its tally starts. */
+  async function playLastWeek(score: number, debug = false): Promise<void> {
     appScreen.value = 'game';
     startRun(SETUP);
     await settle();
     if (debug) debugAction({ t: 'debug', op: 'addBudget', amount: 1 });
     run.value = lastWeek(score, run.value);
     endWeek();
+  }
+
+  /** The same, and the tally played out. */
+  async function endLastWeek(score: number, debug = false): Promise<void> {
+    await playLastWeek(score, debug);
     await settle();
   }
 
   beforeEach(() => {
+    // The board's own listener (Board.tsx): a run that ends here, not a debug run, with Reduce
+    // motion off, is due its look down the street, in the same dispatch.
+    offBoard = onEvents((_events, before, after) => {
+      if (
+        inProgress(before) &&
+        !inProgress(after) &&
+        !after.debug &&
+        !settings.value.reduceMotion
+      ) {
+        streetView.value = { phase: 'due', run: after.setup };
+      }
+    });
     // The tally waits on frames: here they're a timer's turn.
     vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) =>
       setTimeout(() => cb(performance.now()), 0),
@@ -163,6 +188,7 @@ describe('in play', () => {
 
   afterEach(async () => {
     await settle();
+    offBoard();
     streetView.value = null;
     settings.value = { ...settings.value, reduceMotion: false };
     startRun(SETUP);
@@ -178,6 +204,7 @@ describe('in play', () => {
     const due = openHouse.value!;
     expect(due).toMatchObject({ phase: 'due', run: run.value.setup, hurried: false });
     expect(openHouseFor(run.value.setup)).toBe(true);
+    expect(streetView.value).toMatchObject({ phase: 'due', run: run.value.setup });
     // Nothing plays until the look starts.
     await new Promise((r) => setTimeout(r, FEEL.streetView.delayMs + 50));
     expect(played).not.toContain('run-won');
@@ -210,6 +237,35 @@ describe('in play', () => {
     expect(played.filter((id) => id === 'run-won')).toHaveLength(1);
     expect(openHouse.value?.phase).toBe('on');
     expect(streetView.value).toBeNull();
+  });
+
+  it('Reduce motion turned off during the last tally: still the fanfare, as no look is coming', async () => {
+    settings.value = { ...settings.value, reduceMotion: true };
+    await playLastWeek(10 ** 7);
+    await untilDue();
+    // Due with the last tally still playing, and no look due: Reduce motion was on.
+    expect(openHouse.value?.phase).toBe('due');
+    expect(busy.value).toBe(true);
+    expect(streetView.value).toBeNull();
+    settings.value = { ...settings.value, reduceMotion: false };
+    await settle();
+    await vi.waitFor(() => expect(played).toContain('run-won'), {
+      timeout: FEEL.streetView.delayMs + 500,
+    });
+    expect(played.filter((id) => id === 'run-won')).toHaveLength(1);
+    expect(openHouse.value?.phase).toBe('on');
+  });
+
+  it('a look that was due and never started: the fanfare alone', async () => {
+    await endLastWeek(10 ** 7);
+    expect(openHouse.value?.phase).toBe('due');
+    // The board had nothing to look with (Board.tsx): it drops the look.
+    streetView.value = null;
+    await vi.waitFor(() => expect(played).toContain('run-won'), {
+      timeout: FEEL.streetView.delayMs + 500,
+    });
+    expect(played.filter((id) => id === 'run-won')).toHaveLength(1);
+    expect(openHouse.value?.phase).toBe('on');
   });
 
   it('none for a lost run or a debug run', async () => {

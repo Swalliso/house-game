@@ -10,7 +10,8 @@
 // now, and not a debug run, so a run loaded already over gets none), and the run won. A won run
 // whose view shows the street already plays it in place, for as long (Board.tsx), and a win's
 // look holds longer (FEEL.openHouse.holdMs). With Reduce motion on there's no look and nothing
-// is drawn; the fanfare still plays, as the look would have started.
+// is drawn; the fanfare still plays, as the look would have started. So it does for any win
+// whose look isn't coming: it never waits on a look that won't start.
 
 import { effect, signal } from '@preact/signals';
 import { CONTENT, placedCells, rules, type GameEvent, type RunState } from '../../rules/index.ts';
@@ -18,7 +19,6 @@ import { audio } from '../audio/audio.ts';
 import { cameraEls, lotSize, streetView } from '../board/camera.ts';
 import { crowdPlan, type Crowd } from '../board/crowd.ts';
 import { center, occupancy, uidAt } from '../board/geometry.ts';
-import { settings } from '../settings.ts';
 import { CELL } from '../sprites.ts';
 import { inProgress, onEvents, onRunReset } from '../store.ts';
 import { busy } from './director.ts';
@@ -199,9 +199,13 @@ effect(() => {
     begin(oh);
     return;
   }
-  // With Reduce motion on there's no look down the street: the fanfare alone, once the last
-  // tally is over, as the look would have started.
-  if (settings.value.reduceMotion && !busy.value && !look && fanfareTimer === undefined) {
+  // No look down the street is coming: the fanfare alone, once the last tally is over, as the
+  // look would have started. A look that's coming is due by now: the board makes it due in the
+  // win's own dispatch, before this open house's microtask. None comes when Reduce motion was on
+  // as the run was won (even if it's turned off while the last tally plays), or when the board
+  // had nothing to look with (Board.tsx). Busy is read first, so this always wakes as the tally
+  // ends.
+  if (!busy.value && !look && fanfareTimer === undefined) {
     fanfareTimer = setTimeout(() => {
       fanfareTimer = undefined;
       if (openHouse.peek() !== oh) return;
