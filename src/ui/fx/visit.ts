@@ -68,18 +68,27 @@ const BELOW_MAT = 16;
 /**
  * Where the client stands: at the front door, where the doorbell rings (D-126, `frontDoor` in
  * moments.ts, which gives the mat's middle but not its side), facing us, over its mat and clear
- * of the house. An entry set back between two rooms has room for them there, where beside it a
- * wall may not. A door in a side wall has them on the mat's outer side. With no front door yet,
- * under the middle of the house's south edge. Null before the first room.
+ * of the house. At a door in a south wall they stand below the mat, their head up to the sill:
+ * an entry set back between two rooms has room for them there, where beside it a wall may not.
+ * At a door in a north wall their feet are on the mat, by the wall, so all of them is north of
+ * it. A door in a side wall has them on the mat's outer side. With no front door yet, under the
+ * middle of the house's south edge. Null before the first room.
  */
 export function doorstep(state: RunState): ArtPoint | null {
   const model = houseModel(state.house, hallLinks(state), sunLight(state));
   const front = model.exits.find((e) => e.kind === 'front');
   if (front) {
     const m = front.mat;
-    if (front.side === 'W') return { x: m.x + m.w - FIGURE_HALF, y: m.y + m.h };
-    if (front.side === 'E') return { x: m.x + FIGURE_HALF, y: m.y + m.h };
-    return { x: m.x + m.w / 2, y: m.y + m.h + BELOW_MAT };
+    switch (front.side) {
+      case 'S':
+        return { x: m.x + m.w / 2, y: m.y + m.h + BELOW_MAT };
+      case 'N':
+        return { x: m.x + m.w / 2, y: m.y + m.h };
+      case 'W':
+        return { x: m.x + m.w - FIGURE_HALF, y: m.y + m.h };
+      case 'E':
+        return { x: m.x + FIGURE_HALF, y: m.y + m.h };
+    }
   }
   const b = model.bounds;
   if (!b) return null;

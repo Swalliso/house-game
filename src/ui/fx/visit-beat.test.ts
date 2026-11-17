@@ -1,8 +1,9 @@
 // The client's visit in the director (D-182, director.ts visitBeat): at a milestone met that
 // isn't the last, the client comes to the door under the banner's last second and stays
 // FEEL.visit.ms, so the sheet after the milestone opens FEEL.visit.ms − underBannerMs later than
-// it did. A click takes the visit down at once. Nothing comes for a missed milestone, in the
-// guided first job, with Reduce motion, or on the ?debug panel's instant tally.
+// it did. A click takes the visit down at once, after a played tally or a hurried one. Nothing
+// comes for a missed milestone, in the guided first job, with Reduce motion, or on the ?debug
+// panel's instant tally.
 //
 // The store and the director play real runs here, on fake timers: frames are 16 ms timeouts.
 
@@ -11,7 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CONTENT, rules, type RunSetup } from '../../rules/index.ts';
 import { settings, updateSettings } from '../settings.ts';
 import { debugAction, dispatch, endWeek, firstJobSeed, run, startRun } from '../store.ts';
-import { banner, busy, clientVisit, instantTally, skip } from './director.ts';
+import { banner, busy, clientVisit, instantTally, skip, tallyView } from './director.ts';
 import { FEEL } from './feel.ts';
 
 const W = CONTENT.balance.weeksPerPhase;
@@ -51,6 +52,8 @@ async function toLastWeek(): Promise<void> {
 
 /** What the milestone week shows, in fake ms from the milestone's banner. */
 interface Seen {
+  /** The click that hurried the week's tally (`hurry`): before the banner, so negative. */
+  hurriedAt: number | null;
   bannerAt: number | null;
   visitAt: number | null;
   visitGoneAt: number | null;
@@ -58,11 +61,17 @@ interface Seen {
   visit: typeof clientVisit.value;
 }
 
-/** Ends the milestone's last week, meeting its target (or missing it), and watches. */
-async function playMilestone(opts: { miss?: boolean; clickAt?: number } = {}): Promise<Seen> {
+/**
+ * Ends the milestone's last week, meeting its target (or missing it), and watches. `hurry`
+ * clicks while the week's tally plays; `clickAt` clicks that long after the visit comes.
+ */
+async function playMilestone(
+  opts: { miss?: boolean; hurry?: boolean; clickAt?: number } = {},
+): Promise<Seen> {
   if (opts.miss) debugAction({ t: 'debug', op: 'forceMiss' });
   else debugAction({ t: 'debug', op: 'addScore', amount: rules.toGo(run.value) });
   const seen: Seen = {
+    hurriedAt: null,
     bannerAt: null,
     visitAt: null,
     visitGoneAt: null,
@@ -83,6 +92,10 @@ async function playMilestone(opts: { miss?: boolean; clickAt?: number } = {}): P
   endWeek();
   for (let t = 0; t < 30000 && busy.value; t += 16) {
     await vi.advanceTimersByTimeAsync(16);
+    if (opts.hurry && seen.hurriedAt === null && tallyView.value) {
+      seen.hurriedAt = performance.now() - start;
+      skip();
+    }
     if (opts.clickAt !== undefined && seen.visitAt !== null) {
       if (performance.now() - start >= seen.visitAt + opts.clickAt && clientVisit.value) skip();
     }
@@ -94,6 +107,7 @@ async function playMilestone(opts: { miss?: boolean; clickAt?: number } = {}): P
   const rel = (t: number | null) => (t === null ? null : t - from);
   return {
     ...seen,
+    hurriedAt: rel(seen.hurriedAt),
     visitAt: rel(seen.visitAt),
     visitGoneAt: rel(seen.visitGoneAt),
     doneAt: rel(seen.doneAt),
@@ -149,6 +163,27 @@ describe('the client’s visit', () => {
     expect(seen.visitAt).not.toBeNull();
     expect(seen.visitGoneAt! - seen.visitAt!).toBeLessThan(200 + 50);
     expect(seen.doneAt!).toBeLessThan(seen.visitAt! + f.ms);
+  });
+
+  it('comes after a hurried tally, and still goes at once for a click', async () => {
+    // A click mid-tally hurries the week, not the milestone: the banner holds in real time and
+    // the client comes under it as ever. There a click doesn't end the waits by itself
+    // (waitBanner ignores it), so skip() taking the visit down is what lets the sheet open.
+    startRun(SETUP);
+    await toLastWeek();
+    const seen = await playMilestone({ hurry: true, clickAt: 200 });
+    expect(seen.hurriedAt).not.toBeNull();
+    expect(seen.hurriedAt!).toBeLessThan(0);
+    const lead = FEEL.bannerMs - f.underBannerMs;
+    // They come after the hurried banner's kept window, so the click takes the banner down too.
+    expect(lead).toBeGreaterThan(FEEL.milestoneBannerMinMs);
+    expect(seen.visitAt).toBeGreaterThanOrEqual(lead);
+    expect(seen.visitAt).toBeLessThan(lead + 100);
+    // The click, 200 ms in, takes the visit down, and the sheet follows a frame or two later,
+    // not after the visit's last half second (FEEL.visit.ms − underBannerMs).
+    expect(seen.visitGoneAt! - seen.visitAt!).toBeLessThan(200 + 50);
+    expect(seen.doneAt! - seen.visitAt!).toBeLessThan(200 + 100);
+    expect(run.value.screen === 'shop' || run.value.screen === 'changeOrder').toBe(true);
   });
 
   it('never comes for a missed milestone', async () => {
