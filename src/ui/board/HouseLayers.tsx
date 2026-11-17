@@ -203,9 +203,13 @@ function artStyle(id: ArtId, scale: number): { style: JSX.CSSProperties; bx: num
 /**
  * An item's rows under the walls (`bottom`: all of them, unless it rises above its cells) or over
  * them (`top`). An animated item's frames sit side by side in a strip that slides behind the
- * item's box (transform only), under the walls; its top stays on the first frame.
+ * item's box (transform only), in both parts: its rows over the walls step with the rest, so a
+ * flame on a wall's band flickers (the Count's wall candle, D-183). The two parts start together
+ * and step as one: both layers key an item's parts by its place in its piece's list, and the
+ * strip by the item (its sprite and where it stands), so a part's strip is only ever made anew in
+ * the same render as the other's.
  */
-function ItemPart({
+export function ItemPart({
   item,
   box,
   scale,
@@ -227,13 +231,14 @@ function ItemPart({
     width: `${w * scale}px`,
     height: `${(to - from) * scale}px`,
   };
-  const anim = part === 'bottom' ? artFrames(item.sprite) : null;
+  const anim = artFrames(item.sprite);
   // The parked car's parts, so they can slide together when it moves (useCarSlide).
   const car = isCar(item.sprite) ? '' : undefined;
   if (anim) {
     return (
       <div class="item" data-car={car} style={{ ...place, overflow: 'hidden' }}>
         <div
+          key={`${item.sprite}@${item.x},${item.y}`}
           class="item-frames"
           style={{
             ...style,
@@ -390,19 +395,19 @@ export function OverhangLayer({
   yard: YardModel;
   scale: number;
 }) {
-  const tops = (items: readonly Item[]) => items.filter((it) => itemRows(it).top);
+  const hasTop = (items: readonly Item[]) => items.some((it) => itemRows(it).top);
   const parts = [
     ...[...model.rooms.values()].map((r) => ({
       uid: r.uid,
       box: r.box,
-      items: tops(roomItems(model, r.uid)),
+      items: roomItems(model, r.uid),
     })),
-    ...[...yard.pieces.values()].map((l) => ({ uid: l.uid, box: l.box, items: tops(l.items) })),
+    ...[...yard.pieces.values()].map((l) => ({ uid: l.uid, box: l.box, items: l.items })),
   ];
   return (
     <div class="overhang">
       {parts.map((p) =>
-        p.items.length > 0 ? (
+        hasTop(p.items) ? (
           <PieceOverhang key={p.uid} uid={p.uid} box={p.box} items={p.items} scale={scale} />
         ) : null,
       )}
@@ -418,6 +423,10 @@ function PieceOverhang({
 }: {
   uid: number;
   box: Rect;
+  /**
+   * All its items, as under the walls (PieceItems): those that rise above their cells show their
+   * tops, each keyed by its place in this list, so an item's two parts mount together (ItemPart).
+   */
   items: readonly Item[];
   scale: number;
 }) {
