@@ -69,13 +69,7 @@ import { cellsOutline, isIndoor, type Occupancy } from './geometry.ts';
 import { inset, pieceModel, type HouseModel, type PieceLook, type Rect } from './house-model.ts';
 import { pieceLabels, type BadgeSpot, type Side } from './label-layout.ts';
 import { withPeople } from './people.ts';
-import {
-  drop as dropFx,
-  finishDrop,
-  register,
-  settle as settleFx,
-  wobble,
-} from './piece-fx.ts';
+import { drop as dropFx, finishDrop, register, settle as settleFx, wobble } from './piece-fx.ts';
 import { asleepIn, wokenUp, type Seen } from './wake-up.ts';
 import { seedSalt } from './terrain/hash.ts';
 import { canopyParts, lotObjects } from './terrain/objects.ts';
