@@ -46,7 +46,14 @@ import {
 } from '../art/house-paint.ts';
 import { itemRows, roomItems, roomLayout, type Item } from '../art/rooms.ts';
 import { carSpot, isCar, risingParts, yardPieceLayout, type YardModel } from '../art/yard.ts';
-import { highlighted, justPlaced, justRenovated, played, tallyView } from '../fx/director.ts';
+import {
+  dropLanded,
+  highlighted,
+  justPlaced,
+  justRenovated,
+  played,
+  tallyView,
+} from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
 import { settings } from '../settings.ts';
 import { atlasImage, CELL, FIXTURE_ICONS, spriteStyle } from '../sprites.ts';
@@ -55,7 +62,7 @@ import { currentTally, heldPiece, preview, tool } from '../store.ts';
 import { cellsOutline, isIndoor, type Occupancy } from './geometry.ts';
 import { inset, pieceModel, type HouseModel, type PieceLook, type Rect } from './house-model.ts';
 import { pieceLabels, type BadgeSpot, type Side } from './label-layout.ts';
-import { register, settle as settleFx } from './piece-fx.ts';
+import { drop as dropFx, finishDrop, register, settle as settleFx } from './piece-fx.ts';
 import { seedSalt } from './terrain/hash.ts';
 import { canopyParts, lotObjects } from './terrain/objects.ts';
 import './house.css';
@@ -203,21 +210,25 @@ function artStyle(id: ArtId, scale: number): { style: JSX.CSSProperties; bx: num
 /**
  * An item's rows under the walls (`bottom`: all of them, unless it rises above its cells) or over
  * them (`top`). An animated item's frames sit side by side in a strip that slides behind the
- * item's box (transform only), under the walls; its top stays on the first frame.
+ * item's box (transform only), under the walls; its top stays on the first frame. D-178: `whole`
+ * is a copy of all of it, on its first frame, hidden except while it drops in (piece-fx.ts drop);
+ * `i` is its place in its room's list, so a drop finds its parts.
  */
 function ItemPart({
   item,
   box,
   scale,
   part,
+  i,
 }: {
   item: Item;
   box: { x: number; y: number };
   scale: number;
-  part: 'top' | 'bottom';
+  part: 'top' | 'bottom' | 'whole';
+  i?: number;
 }) {
-  const { w } = artSize(item.sprite);
-  const rows = itemRows(item)[part];
+  const { w, h } = artSize(item.sprite);
+  const rows = part === 'whole' ? ([0, h] as const) : itemRows(item)[part];
   if (!rows) return null;
   const [from, to] = rows;
   const { style, bx, by } = artStyle(item.sprite, scale);
@@ -229,10 +240,10 @@ function ItemPart({
   };
   const anim = part === 'bottom' ? artFrames(item.sprite) : null;
   // The parked car's parts, so they can slide together when it moves (useCarSlide).
-  const car = isCar(item.sprite) ? '' : undefined;
+  const car = isCar(item.sprite) && part !== 'whole' ? '' : undefined;
   if (anim) {
     return (
-      <div class="item" data-car={car} style={{ ...place, overflow: 'hidden' }}>
+      <div class="item" data-car={car} data-i={i} style={{ ...place, overflow: 'hidden' }}>
         <div
           class="item-frames"
           style={{
@@ -250,8 +261,9 @@ function ItemPart({
   }
   return (
     <div
-      class="item"
+      class={part === 'whole' ? 'item item-drop' : 'item'}
       data-car={car}
+      data-i={i}
       style={{ ...style, ...place, backgroundPosition: `${bx}px ${by - from * scale}px` }}
     />
   );
@@ -300,12 +312,15 @@ function PieceItems({
   items,
   scale,
   settle,
+  drop,
 }: {
   uid: number;
   box: Rect;
   items: readonly Item[];
   scale: number;
   settle?: number | undefined;
+  /** D-178: a room just placed drops its furniture in, item by item, rather than settle. */
+  drop?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   // Registered and settled before the browser paints, so the first frame a placed piece is seen
@@ -314,7 +329,26 @@ function PieceItems({
   useLayoutEffect(() => {
     if (!settle || settle <= played.settle || settings.value.reduceMotion) return;
     played.settle = settle;
-    settleFx(uid);
+    if (!drop) {
+      settleFx(uid);
+      return;
+    }
+    // D-178: once this render has mounted every layer's parts (the overhang's copies too), and
+    // still before the browser paints. The next piece placed, or the room going, finishes it.
+    let live = true;
+    queueMicrotask(() => {
+      if (!live) return;
+      dropFx(uid, {
+        count: items.length,
+        scale,
+        rate: settings.value.tallySpeed,
+        onLand: (k) => dropLanded(uid, k),
+      });
+    });
+    return () => {
+      live = false;
+      finishDrop(uid);
+    };
   }, [settle]);
   return (
     <div
@@ -329,7 +363,7 @@ function PieceItems({
       }}
     >
       {items.map((item, i) => (
-        <ItemPart key={i} item={item} box={box} scale={scale} part="bottom" />
+        <ItemPart key={i} item={item} box={box} scale={scale} part="bottom" i={i} />
       ))}
     </div>
   );
@@ -370,6 +404,7 @@ export function ItemsLayer({
             items={at.items}
             scale={scale}
             settle={settle}
+            drop={!!room && settle !== undefined && placed?.drop === true}
           />
         );
       })}
@@ -390,20 +425,37 @@ export function OverhangLayer({
   yard: YardModel;
   scale: number;
 }) {
-  const tops = (items: readonly Item[]) => items.filter((it) => itemRows(it).top);
+  const hasTop = (items: readonly Item[]) => items.some((it) => itemRows(it).top);
+  // D-178: the room just placed also has a copy of each of its items here, to drop in over the
+  // walls (piece-fx.ts drop). Hidden except while it plays, they stay until the next placement.
+  const placed = justPlaced.value;
+  const dropUid = placed?.drop ? placed.uid : null;
   const parts = [
     ...[...model.rooms.values()].map((r) => ({
       uid: r.uid,
       box: r.box,
-      items: tops(roomItems(model, r.uid)),
+      items: roomItems(model, r.uid),
+      copies: r.uid === dropUid,
     })),
-    ...[...yard.pieces.values()].map((l) => ({ uid: l.uid, box: l.box, items: tops(l.items) })),
+    ...[...yard.pieces.values()].map((l) => ({
+      uid: l.uid,
+      box: l.box,
+      items: l.items,
+      copies: false,
+    })),
   ];
   return (
     <div class="overhang">
       {parts.map((p) =>
-        p.items.length > 0 ? (
-          <PieceOverhang key={p.uid} uid={p.uid} box={p.box} items={p.items} scale={scale} />
+        p.copies || hasTop(p.items) ? (
+          <PieceOverhang
+            key={p.uid}
+            uid={p.uid}
+            box={p.box}
+            items={p.items}
+            scale={scale}
+            copies={p.copies}
+          />
         ) : null,
       )}
     </div>
@@ -415,11 +467,15 @@ function PieceOverhang({
   box,
   items,
   scale,
+  copies,
 }: {
   uid: number;
   box: Rect;
+  /** All its items: those that rise above their cells show their tops. */
   items: readonly Item[];
   scale: number;
+  /** D-178: a copy of each item too, after the tops, for its drop. */
+  copies: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => (ref.current ? register(uid, 'overhang', ref.current) : undefined), [uid]);
@@ -436,8 +492,12 @@ function PieceOverhang({
       }}
     >
       {items.map((item, i) => (
-        <ItemPart key={i} item={item} box={box} scale={scale} part="top" />
+        <ItemPart key={i} item={item} box={box} scale={scale} part="top" i={i} />
       ))}
+      {copies &&
+        items.map((item, i) => (
+          <ItemPart key={i} item={item} box={box} scale={scale} part="whole" i={i} />
+        ))}
     </div>
   );
 }
