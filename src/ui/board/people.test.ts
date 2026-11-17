@@ -1,10 +1,12 @@
 // The household on the board (D-177): who is drawn, a member with a room standing in its doorway
-// clear of the walls and on the floor its doors keep free, the others waiting at the front door
-// or the kerb side by side, sorted in with the furniture by their feet, and the walk up from the
-// street.
+// clear of the walls and in front of the furniture, the others waiting at the front door or the
+// kerb side by side, sorted in with the furniture by their feet, and the walk up from the street
+// around what stands in the yard, and when it plays.
 
+import { readFileSync } from 'node:fs';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { decodePng } from '../../../scripts/png.ts';
 import {
   CONTENT,
   placedCells,
@@ -18,8 +20,10 @@ import {
   type RunMode,
 } from '../../rules/index.ts';
 import { lotFromRows } from '../../rules/lot.ts';
-import { wallMask } from '../art/house-paint.ts';
-import { roomItems, type Item } from '../art/rooms.ts';
+import { artSize, drawingPixels, isDrawing, type ArtId } from '../art/drawings.ts';
+import { paintWalls, type Pixels } from '../art/house-paint.ts';
+import { itemRows, roomItems, type Item } from '../art/rooms.ts';
+import { yardModel } from '../art/yard.ts';
 import { FEEL } from '../fx/feel.ts';
 import { CELL, spriteFrames, spritePos } from '../sprites.ts';
 import { floorTop, hallLinks, houseModel, type HouseModel, type Rect } from './house-model.ts';
@@ -27,6 +31,8 @@ import {
   CAST,
   FIGURE,
   KERB_PX,
+  LEGS,
+  PULLED,
   SUITCASE_W,
   WAITING,
   WALK_FROM_PX,
@@ -37,11 +43,25 @@ import {
   personItem,
   roomPeople,
   suitcaseAt,
+  walkObstacles,
   walkPlan,
   walkStart,
   withPeople,
   type Person,
 } from './people.ts';
+import { walkNow } from './PeopleLayer.tsx';
+
+const png = decodePng(readFileSync(new URL('../../../assets/atlas.png', import.meta.url)), 'atlas');
+
+/** Whether pixel (x, y) of an atlas sprite or one of our drawings is drawn. */
+function opaque(id: ArtId, x: number, y: number): boolean {
+  if (isDrawing(id)) {
+    const d = drawingPixels(id);
+    return d.data[(y * d.w * d.frames + x) * 4 + 3]! > 0;
+  }
+  const s = spritePos(id);
+  return png.rgba[((s.y + y) * png.width + s.x + x) * 4 + 3]! > 0;
+}
 
 type Spec = readonly [PieceId, number, number, Rot?];
 
@@ -99,15 +119,65 @@ function figureBox(p: { x: number; y: number }): Rect {
 const inside = (r: Rect, x: number, y: number) =>
   x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h;
 
-/** A figure's lowest rows, its legs, that no wall band may be under: they stand on the floor. */
-const LEGS = 10;
+/** The walls canvas's alpha at lot pixel (x, y): 0 off the canvas. */
+function wallAlpha(walls: Pixels | null, x: number, y: number): number {
+  if (!walls || x < walls.x || y < walls.y || x >= walls.x + walls.w || y >= walls.y + walls.h) {
+    return 0;
+  }
+  return walls.data[((y - walls.y) * walls.w + x - walls.x) * 4 + 3]!;
+}
+
+/**
+ * How many of a member's pixels their room's furniture covers, as the board draws it: a piece
+ * after them in the room's items (withPeople) covers them where both are drawn, and a piece's rows
+ * on the overhang (above the walls) cover every row of theirs under the walls.
+ */
+function coveredPixels(m: HouseModel, p: Person): number {
+  const me = personItem(m, p);
+  const items = withPeople(roomItems(m, p.uid), [me]);
+  const at = items.indexOf(me);
+  const myTop = itemRows(me).top;
+  const { w, h } = artSize(me.sprite);
+  let n = 0;
+  for (let j = 0; j < h; j++) {
+    for (let i = 0; i < w; i++) {
+      if (!opaque(me.sprite, i, j)) continue;
+      const raised = myTop !== null && j < myTop[1];
+      const hit = items.some((it, k) => {
+        if (k === at) return false;
+        const ix = me.x + i - it.x;
+        const iy = me.y + j - it.y;
+        const size = artSize(it.sprite);
+        if (ix < 0 || iy < 0 || ix >= size.w || iy >= size.h || !opaque(it.sprite, ix, iy)) {
+          return false;
+        }
+        const top = itemRows(it).top;
+        const itRaised = top !== null && iy < top[1];
+        return raised ? itRaised && k > at : itRaised || k > at;
+      });
+      if (hit) n++;
+    }
+  }
+  return n;
+}
+
+/** A figure's outermost columns' pixels, its arms: what a piece flush with a door's clear floor may cover. */
+function arms(p: Person): number {
+  const { w, h } = artSize(p.cast.stand);
+  let n = 0;
+  for (let j = 0; j < h; j++) {
+    if (opaque(p.cast.stand, 0, j)) n++;
+    if (opaque(p.cast.stand, w - 1, j)) n++;
+  }
+  return n;
+}
 
 /**
  * What a member in a room must be: their feet on its floor, below its north walls' faces; no
- * pixel of the walls' canvas (drawn over the rooms' items) under the figure below the line it
- * rises over, and that line above their legs; and, where the room has a door in a north or south
- * wall, their feet on that door's clear floor, which no furniture stands on in any arrangement
- * (D-173).
+ * pixel of the walls canvas (drawn over the rooms' items: the bands, and a doorway's threshold)
+ * under the figure below the line it rises over, and that line above their legs; no more of them
+ * covered by the room's furniture than their arms; and near one of the room's doors, within a
+ * cell and a half of the floor it keeps clear.
  */
 function checkInRoom(m: HouseModel, p: Person): void {
   const room = m.rooms.get(p.uid)!;
@@ -123,25 +193,32 @@ function checkInRoom(m: HouseModel, p: Person): void {
     floorTop(m, cx, cy),
   );
   const box = figureBox(p);
-  const mask = wallMask(m, { x: 0, y: 0, w: m.width * CELL, h: (m.height + 1) * CELL });
+  const walls = paintWalls(m);
   const over = overLine(m, p.x, p.y) ?? box.y;
   expect(p.y - over, `${room.defId}: a wall band under the figure's legs`).toBeGreaterThanOrEqual(
     LEGS,
   );
   for (let y = Math.max(box.y, over); y < p.y; y++) {
     for (let x = box.x; x < box.x + box.w; x++) {
-      expect(mask.has(x, y), `${room.defId}: a wall over the figure at (${x}, ${y})`).toBe(false);
+      expect(
+        wallAlpha(walls, x, y),
+        `${room.defId}: the walls over the figure at (${x}, ${y})`,
+      ).toBe(0);
     }
   }
-  const flatDoors = [
-    ...m.doors.filter((d) => d.dir === 'h' && (d.a === p.uid || d.b === p.uid)),
-    ...m.exits.filter((e) => e.uid === p.uid && (e.side === 'N' || e.side === 'S')),
+  expect(coveredPixels(m, p), `${room.defId}: furniture in front of them`).toBeLessThanOrEqual(
+    arms(p),
+  );
+  const clears = [
+    ...m.doors.filter((d) => d.a === p.uid || d.b === p.uid).map((d) => d.clear),
+    ...m.exits.filter((e) => e.uid === p.uid).map((e) => e.clear),
   ];
-  if (flatDoors.length > 0) {
-    expect(
-      flatDoors.some((d) => inside(d.clear, fx, fy)),
-      `${room.defId}: feet on a door's clear floor`,
-    ).toBe(true);
+  const away = (r: Rect) =>
+    Math.max(r.x - fx, 0, fx - (r.x + r.w - 1)) + Math.max(r.y - fy, 0, fy - (r.y + r.h - 1));
+  if (clears.length > 0) {
+    expect(Math.min(...clears.map(away)), `${room.defId}: near a door`).toBeLessThanOrEqual(
+      CELL + FIGURE.w,
+    );
   }
 }
 
@@ -181,8 +258,11 @@ describe('who is drawn', () => {
     expect(
       people(setUp('vladislav', [], houseOf([['livingRoom', 4, 6]])).state, emptyModel()),
     ).toEqual([]);
-    const first = setUp('vladislav', ['renfield'], houseOf([['livingRoom', 4, 6]]), 'firstJob');
-    expect(people(first.state, first.model)).toEqual([]);
+    const first = setUp('hendersons', ['grandma'], houseOf([['livingRoom', 4, 6]]), 'firstJob');
+    expect(people(first.state, first.model, true)).toEqual([]);
+    // A first job's lot played again after a loss, or its run code opened later, keeps the
+    // first job's targets (D-151) but isn't guided: its household is drawn.
+    expect(people(first.state, first.model, false).map((p) => p.arrival)).toEqual(['grandma']);
   });
 });
 
@@ -258,16 +338,34 @@ describe('in their room', () => {
     checkInRoom(after.model, p!);
   });
 
-  it('stands clear of the walls and on free floor, for every member, room turned every way', () => {
+  it('stands clear of the walls and in front of the furniture, for every member, room turned every way', () => {
     for (const id of CASTED) {
       const room = roomOf(id);
       for (const rot of [0, 1, 2, 3] as const) {
-        // Alone; beside a Living Room on the west; under a Hallway; and above a Kitchen.
+        // The room's far column east, for a Living Room beside it there.
+        const east = Math.max(
+          ...placedCells(CONTENT.pieces[room].shape, 5, 5, rot).map((c) => c.x),
+        );
+        // Alone; beside a Living Room on the west, and on the east, each built before it and
+        // after it (so the room's uid, and its colors and small choices, differ); under a
+        // Hallway; and above a Kitchen.
         const layouts: Spec[][] = [
           [[room, 5, 5, rot]],
           [
             ['livingRoom', 3, 5],
             [room, 5, 5, rot],
+          ],
+          [
+            [room, 5, 5, rot],
+            ['livingRoom', 3, 5],
+          ],
+          [
+            ['livingRoom', east + 1, 5],
+            [room, 5, 5, rot],
+          ],
+          [
+            [room, 5, 5, rot],
+            ['livingRoom', east + 1, 5],
           ],
           [
             ['hallway', 5, 4, 0],
@@ -288,7 +386,100 @@ describe('in their room', () => {
     }
   });
 
-  it('stands clear of the walls and on free floor in any house (random houses)', () => {
+  it("steps out from behind the furniture beside a side wall's door (the review's houses)", () => {
+    // Nana's armchair and Renfield's cot stood in front of them beside these doors, the only ones
+    // their rooms have: 68% and 75% of the figure hidden.
+    const cases: [ArrivalId, Spec[]][] = [
+      [
+        'nana',
+        [
+          ['livingRoom', 8, 6],
+          ['nanasRoom', 6, 6],
+        ],
+      ],
+      [
+        'renfield',
+        [
+          ['livingRoom', 4, 6],
+          ['renfieldsRoom', 6, 6],
+        ],
+      ],
+      [
+        'nana',
+        [
+          ['livingRoom', 7, 5],
+          ['nanasRoom', 5, 5],
+        ],
+      ],
+      [
+        'renfield',
+        [
+          ['livingRoom', 3, 5],
+          ['renfieldsRoom', 5, 5],
+        ],
+      ],
+    ];
+    for (const [id, specs] of cases) {
+      const { state, model } = setUp(CLIENT_OF[id], [id], houseOf(specs));
+      const p = people(state, model).find((q) => q.arrival === id)!;
+      expect(model.doors.filter((d) => d.a === p.uid || d.b === p.uid).map((d) => d.dir)).toEqual([
+        'v',
+      ]);
+      expect(model.exits.some((e) => e.uid === p.uid)).toBe(false);
+      checkInRoom(model, p);
+      expect(coveredPixels(model, p), `${id}: covered`).toBe(0);
+    }
+  });
+
+  it('stands on the clear floor of a door in the north or south wall', () => {
+    // Under a Hallway, with the front door in the south wall; and above a Kitchen, their door
+    // in the south wall between them.
+    for (const specs of [
+      [
+        ['hallway', 5, 4, 0],
+        ['grandmasRoom', 5, 5],
+      ],
+      [
+        ['grandmasRoom', 5, 4],
+        ['kitchen', 5, 6],
+      ],
+    ] as Spec[][]) {
+      const { state, model } = setUp('hendersons', ['grandma'], houseOf(specs));
+      const p = people(state, model)[0]!;
+      const flat = [
+        ...model.doors.filter((d) => d.dir === 'h' && (d.a === p.uid || d.b === p.uid)),
+        ...model.exits.filter((e) => e.uid === p.uid && (e.side === 'N' || e.side === 'S')),
+      ];
+      expect(flat.length).toBeGreaterThan(0);
+      expect(flat.some((d) => inside(d.clear, p.x, p.y - 1))).toBe(true);
+      checkInRoom(model, p);
+    }
+  });
+
+  it("rises over a north wall's outside door, threshold and all, on the overhang", () => {
+    // Grandma's Room with its only outside door in its north wall, onto a Patio: the walls canvas
+    // draws the door's threshold across the opening, where the figure's head is.
+    const { state, model } = setUp(
+      'hendersons',
+      ['grandma'],
+      houseOf([
+        ['grandmasRoom', 7, 4, 1],
+        ['kitchen', 5, 5, 2],
+        ['fence', 1, 6, 0],
+        ['patio', 6, 2, 3],
+        ['hotTub', 5, 4, 2],
+        ['fence', 8, 3, 2],
+      ]),
+    );
+    const p = people(state, model)[0]!;
+    const exit = model.exits.find((e) => e.uid === p.uid && e.side === 'N')!;
+    expect(inside(exit.clear, p.x, p.y - 1)).toBe(true);
+    // Its rows over the opening's band go on the overhang, so the threshold is under them.
+    expect(overLine(model, p.x, p.y)).toBe(exit.gap.y + exit.gap.h);
+    checkInRoom(model, p);
+  });
+
+  it('stands clear of the walls and in front of the furniture in any house (random houses)', () => {
     fc.assert(
       fc.property(
         fc.integer({ min: 1, max: 2 ** 31 - 1 }),
@@ -301,7 +492,15 @@ describe('in their room', () => {
           checkInRoom(model, p);
         },
       ),
-      { numRuns: 300 },
+      // Renfield where his door's clear floor is under his cot's top; Ivy with a desk flush
+      // with her door's clear floor, at her arm.
+      {
+        numRuns: 300,
+        examples: [
+          [9031, 'renfield'],
+          [326, 'ivy'],
+        ],
+      },
     );
   });
 
@@ -408,6 +607,113 @@ describe('the walk in', () => {
     }
     // At a stroll the cycle covers its stride: 60 px in 1.5 s is 40 px/s, a cycle in 0.4 s.
     expect(short.frameMs).toBe(Math.round(((f.cyclePx / 6) * 1000) / 40));
+    // The shortest walk from behind something keeps its steps in pace too.
+    const least = walkPlan(f.minPx, 6, f);
+    expect(least.ms).toBe(f.ms);
+    expect(((f.cyclePx / 6) * 1000) / (f.minPx / (least.ms / 1000))).toBeLessThanOrEqual(
+      f.frameMs[1],
+    );
+  });
+
+  it('sets off from behind what stands in its way, or fades in at the door with too little left', () => {
+    const { minPx } = FEEL.arrival.walk;
+    const { state, model } = setUp('dale', ['ivy'], houseOf([['livingRoom', 4, 6]]));
+    const p = people(state, model)[0]!;
+    const road = SIZE * CELL + WALK_FROM_PX;
+    const across = (y: number, h = 10): Rect => ({ x: p.x - 20, y, w: 40, h });
+    // Across the line halfway down the yard: they set off just north of it, the suitcase's foot
+    // clear of its top.
+    expect(walkStart(model, p, Infinity, [across(360)], minPx)).toEqual({
+      x: p.x,
+      y: 360 - PULLED.dy,
+    });
+    // The nearest of two.
+    expect(walkStart(model, p, Infinity, [across(400), across(340)], minPx)!.y).toBe(
+      340 - PULLED.dy,
+    );
+    // Right below the door: too little left to walk.
+    expect(walkStart(model, p, Infinity, [across(p.y + 10)], minPx)).toBeNull();
+    // Beside the line, or wholly behind their spot (they pass in front of it): no matter.
+    const beside: Rect = { x: p.x + FIGURE.w, y: 360, w: 20, h: 10 };
+    const behind: Rect = { x: p.x - 8, y: p.y - 20, w: 16, h: 20 };
+    expect(walkStart(model, p, Infinity, [beside, behind], minPx)).toEqual({ x: p.x, y: road });
+    // The suitcase pulled behind them counts: one only in its columns is in the way.
+    const right: Rect = { x: p.x + FIGURE.w / 2, y: 360, w: 6, h: 10 };
+    expect(walkStart(model, p, Infinity, [right], minPx)!.y).toBe(360 - PULLED.dy);
+  });
+
+  it("doesn't walk over the parked car or a Patio's seats below the door", () => {
+    // The front door onto a Driveway, its car parked in the line; or onto a Patio, its small
+    // parasol and seats there.
+    for (const yard of ['driveway', 'patio'] as const) {
+      const house = houseOf([
+        ['livingRoom', 4, 6],
+        [yard, 4, 9, 1],
+      ]);
+      const { state, model } = setUp('dale', ['ivy'], house);
+      const p = people(state, model)[0]!;
+      expect(p.place).toBe('door');
+      const blocks = walkObstacles(house, yardModel(house, model));
+      expect(walkStart(model, p), yard).not.toBeNull();
+      expect(walkStart(model, p, Infinity, blocks, FEEL.arrival.walk.minPx), yard).toBeNull();
+    }
+  });
+
+  it("counts the yard's props, a Pool's water and the lot's own features no piece covers", () => {
+    const rows = [...EMPTY];
+    rows[10] = 'PP........TB';
+    rows[11] = 'CC..........';
+    const house = houseOf(
+      [
+        ['livingRoom', 4, 6],
+        ['pool', 6, 9],
+        ['driveway', 1, 11, 0],
+      ],
+      rows,
+    );
+    const model = houseModel(house);
+    const yard = yardModel(house, model);
+    const blocks = walkObstacles(house, yard);
+    const has = (r: Rect) =>
+      blocks.some((b) => b.x === r.x && b.y === r.y && b.w === r.w && b.h === r.h);
+    const tile = (x: number, y: number): Rect => ({ x: x * CELL, y: y * CELL, w: CELL, h: CELL });
+    for (const l of yard.pieces.values()) {
+      for (const it of l.items) expect(has({ x: it.x, y: it.y, ...artSize(it.sprite) })).toBe(true);
+    }
+    for (const c of yard.pieces.get(2)!.cells) expect(has(tile(c.x, c.y))).toBe(true);
+    for (const [x, y] of [
+      [0, 10],
+      [1, 10],
+      [10, 10],
+      [11, 10],
+      [0, 11],
+    ]) {
+      expect(has(tile(x!, y!)), `${x},${y}`).toBe(true);
+    }
+    // The Driveway's bridge over the creek is walked on.
+    expect(has(tile(1, 11))).toBe(false);
+    // Open ground and the Living Room aren't.
+    expect(has(tile(5, 10))).toBe(false);
+    expect(has(tile(4, 6))).toBe(false);
+  });
+
+  it("walks from the doorbell's own render, and stops at the next doorbell or a run reset", () => {
+    const grandma = { arrival: 'grandma', id: 7 } as const;
+    const twins = { arrival: 'twins', id: 8 } as const;
+    // A doorbell not walked yet: walking already in the render it comes in, before the effect
+    // that starts the walk has run (and with nothing under way), so no frame shows them at the
+    // door first. Not with Reduce motion.
+    expect(walkNow(grandma, null, 6, false)).toEqual(grandma);
+    expect(walkNow(grandma, null, 6, true)).toBeNull();
+    // Under way, once its effect has run.
+    expect(walkNow(grandma, grandma, 7, false)).toEqual(grandma);
+    // A board mounted again (Menu, then Continue) doesn't play it twice.
+    expect(walkNow(grandma, null, 7, false)).toBeNull();
+    // The next doorbell ends it, even one for a member who doesn't walk (the twins have no
+    // cast), and even before the walk's own state is reset; so does a run reset.
+    expect(walkNow(twins, grandma, 8, false)).toBeNull();
+    expect(walkNow(twins, grandma, 7, false)).toEqual(twins);
+    expect(walkNow(null, grandma, 7, false)).toBeNull();
   });
 });
 

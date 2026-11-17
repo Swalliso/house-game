@@ -458,8 +458,11 @@ export const FEEL = {
      * `maxPxPerSecond` art px a second, and never longer than `maxMs`: in a deeper yard still
      * they set off partway up it (people.ts walkStart). Their steps keep pace with the ground, a
      * walk cycle to `cyclePx`, each frame shown within `frameMs`. They fade in over `fadeMs` as
-     * they set off, and a walk that can't come up from the street (the house in the way) fades
-     * them in where they wait over `standInMs`.
+     * they set off. With something in the yard in their way (a Fence, a parked car, a Tree, the
+     * water) they set off just north of it, if that leaves `minPx` art px or more to walk (at
+     * `ms`, slower than that and their steps would outrun the ground). A walk that can't come up
+     * from the street (the house in the way, or too little left) fades them in where they wait
+     * over `standInMs`.
      */
     walk: {
       delayMs: 600,
@@ -469,6 +472,7 @@ export const FEEL = {
       cyclePx: 16,
       frameMs: [60, 130] as const,
       fadeMs: 180,
+      minPx: 32,
       standInMs: 400,
     },
   },

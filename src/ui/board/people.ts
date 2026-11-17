@@ -3,10 +3,12 @@
 // run and the house model and changes nothing, and none of it is the rules.
 //
 // - A member who has arrived and has one of their rooms built (a placed piece of a type in their
-//   ArrivalDef.room) stands in one of its doorways, on the floor the door keeps clear of
-//   furniture in every arrangement (Doorway.clear, D-173), facing south. The rooms' items
-//   (HouseLayers.tsx) draw them, sorted with the furniture by bottom row, the rows that rise over
-//   a wall band behind them on the overhang, as tall furniture's do.
+//   ArrivalDef.room) stands in one of its doorways, facing south: on the floor a door in the
+//   room's north or south wall keeps clear of furniture in every arrangement (Doorway.clear,
+//   D-173), or beside a side wall's door, where nothing of the room's own furniture stands in
+//   front of them. The rooms' items (HouseLayers.tsx) draw them, sorted with the furniture by
+//   bottom row, the rows that rise over a wall band behind them on the overhang, as tall
+//   furniture's do.
 // - One still waiting for a room stands at the front door's doormat with a suitcase, side by side
 //   with anyone else waiting, or at the kerb when the house has no front door. PeopleLayer.tsx
 //   draws them, and the walk up from the street when the doorbell rings for them.
@@ -16,12 +18,31 @@
 // (the sprite's bottom edge), so a figure FIGURE.w wide and FIGURE.h tall covers
 // [x − w/2, x + w/2) × [y − h, y).
 
-import { CONTENT, type ArrivalDef, type ArrivalId, type RunState } from '../../rules/index.ts';
+import {
+  CONTENT,
+  terrainAt,
+  type ArrivalDef,
+  type ArrivalId,
+  type HouseState,
+  type PieceId,
+  type RunState,
+} from '../../rules/index.ts';
 import { artSize } from '../art/drawings.ts';
-import { wallMask } from '../art/house-paint.ts';
-import type { Item } from '../art/rooms.ts';
+import { Mask, wallMask } from '../art/house-paint.ts';
+import { roomItems, type Item } from '../art/rooms.ts';
+import type { YardModel } from '../art/yard.ts';
 import { CELL, type SpriteId } from '../sprites.ts';
-import { inset, roomAt, type HouseModel, type Rect, type Room, type Side } from './house-model.ts';
+import { occupancy } from './geometry.ts';
+import {
+  floorTop,
+  grow,
+  inset,
+  roomAt,
+  type HouseModel,
+  type Rect,
+  type Room,
+  type Side,
+} from './house-model.ts';
 
 /**
  * Who plays each member (art/limezu/people.json): standing (facing south), walking north, and
@@ -56,6 +77,12 @@ export const CAST: Readonly<Partial<Record<ArrivalId, Cast>>> = {
 
 /** Every cast figure's size, standing or walking: 16 × 26 art px, its feet on its bottom row. */
 export const FIGURE = { w: 16, h: 26 } as const;
+
+/**
+ * A figure in a room stands on the floor: at least its lowest `LEGS` rows are under the walls with
+ * no wall band under them (their over line, overLine, is at least this far above their feet).
+ */
+export const LEGS = 10;
 
 /**
  * Waiting at the door: each one's suitcase stands `suitcaseDx` art px right of their middle (its
@@ -98,13 +125,16 @@ function arrivalDef(state: Pick<RunState, 'setup'>, id: ArrivalId): ArrivalDef |
 
 /**
  * Who of the household is on the board, and where: each member who has arrived and has a cast,
- * in the order they arrived. Nobody in the guided first job (D-149).
+ * in the order they arrived. Nobody while `guided` (store.ts firstJob: the guided first job,
+ * D-149); a first job's lot played again, or its run code opened later, isn't guided, and its
+ * household is drawn.
  */
 export function people(
   state: Pick<RunState, 'setup' | 'arrived'>,
   model: HouseModel,
+  guided = false,
 ): readonly Person[] {
-  if (state.setup.mode === 'firstJob') return [];
+  if (guided) return [];
   const out: Person[] = [];
   const waiting: { arrival: ArrivalId; cast: Cast }[] = [];
   for (const id of state.arrived) {
@@ -135,45 +165,108 @@ export function people(
 // In a room.
 
 /**
- * Where a member stands in their room: in one of its doorways, on the part of the door's clear
- * floor inside the room, facing south. Best first: a door in the room's south wall (they stand at
- * the front of the room), an outside door in it, a door in its north wall (at the back, under the
- * wall's face), an outside door there, and then the side walls, where they stand clear of the
- * wall's band. Ties go to the model's order. A room with no door at all (none could fit) has them
- * at the middle of its floor's south edge.
+ * A place a member may stand in their room: its spot, how good it is (doorwaySpot), and which way
+ * it may move. On a north or south door's clear floor (`clear`), the feet slide along that line
+ * and stay on it; beside a side wall's door they move down the wall and into the room, `away`
+ * from the wall (−1 west, 1 east).
+ */
+interface Stand {
+  x: number;
+  y: number;
+  rank: number;
+  clear?: Rect;
+  away?: -1 | 1;
+}
+
+/** Sliding along a line: the spot itself, then a px further each way, west first. */
+const SLIDE: readonly (readonly [number, number])[] = Array.from(
+  { length: 2 * CELL + 1 },
+  (_, i) => [i % 2 === 1 ? -(i + 1) / 2 : i / 2, 0] as const,
+);
+
+/**
+ * From beside a side wall's door: down the wall (what stands lower is in front of a figure, so
+ * lower clears it), into the room up to a figure's width, and up a little; nearest first, and of
+ * those as near, the lowest.
+ */
+const SIDE: readonly (readonly [number, number])[] = (() => {
+  const out: [number, number][] = [];
+  for (let dx = 0; dx <= FIGURE.w; dx++) for (let dy = -8; dy <= CELL; dy++) out.push([dx, dy]);
+  return out.sort((a, b) => a[0] + Math.abs(a[1]) - (b[0] + Math.abs(b[1])) || b[1] - a[1]);
+})();
+
+/**
+ * Where a member stands in their room: in one of its doorways, facing south. Best first: a door in
+ * the room's south wall (they stand at the front of the room), an outside door in it, a door in its
+ * north wall (at the back, under the wall's face), an outside door there, each on the part of the
+ * door's clear floor inside the room; and then a side wall's door or outside door, beside the
+ * opening and clear of the wall's band. Ties go to the model's order. Last, and for a room with no
+ * door at all (none could fit), the middle of its floor's south edge.
+ *
+ * Nothing of the room's own furniture may stand in front of them (hiddenBy): at each of those, in
+ * turn, they take the nearest spot where none would cover them, sliding along a north or south
+ * door's clear floor, or from beside a side door down the wall and into the room. A figure is
+ * wider than the floor a door keeps clear (16 px to its 14), so on that floor a piece standing
+ * flush with it may be in front of their outermost column, an arm, where no spot along it is
+ * clear of all of them. Their feet stay on the room's floor, below its north faces, with their
+ * legs under the walls (standsAt). Where no spot is clear, the least covered.
  */
 export function doorwaySpot(m: HouseModel, room: Room): { x: number; y: number } {
   const uid = room.uid;
   const half = FIGURE.w / 2;
-  const spots: { x: number; y: number; rank: number }[] = [];
+  const stands: Stand[] = [];
   for (const d of m.doors) {
     if (d.a !== uid && d.b !== uid) continue;
     const { gap, clear } = d;
     if (d.dir === 'h') {
       const mid = gap.x + gap.w / 2;
       // North of the wall: their feet just above its band; south of it, below its face.
-      if (d.a === uid) spots.push({ x: mid, y: gap.y, rank: 0 });
-      else spots.push({ x: mid, y: clear.y + clear.h, rank: 2 });
+      if (d.a === uid) stands.push({ x: mid, y: gap.y, rank: 0, clear });
+      else stands.push({ x: mid, y: clear.y + clear.h, rank: 2, clear });
     } else {
       // Beside a side wall's door: clear of the band, their feet at the walkway's foot.
-      const x = d.a === uid ? gap.x - half : gap.x + gap.w + half;
-      spots.push({ x, y: clear.y + clear.h, rank: 4 });
+      const west = d.a === uid;
+      const x = west ? gap.x - half : gap.x + gap.w + half;
+      stands.push({ x, y: clear.y + clear.h, rank: 4, away: west ? -1 : 1 });
     }
   }
   for (const e of m.exits) {
     if (e.uid !== uid) continue;
     const { gap, clear } = e;
     const mid = gap.x + gap.w / 2;
-    if (e.side === 'S') spots.push({ x: mid, y: gap.y, rank: 1 });
-    else if (e.side === 'N') spots.push({ x: mid, y: clear.y + clear.h, rank: 3 });
-    else if (e.side === 'W') spots.push({ x: gap.x + gap.w + half, y: gap.y + gap.h, rank: 4 });
-    else spots.push({ x: gap.x - half, y: gap.y + gap.h, rank: 4 });
+    const y = gap.y + gap.h;
+    if (e.side === 'S') stands.push({ x: mid, y: gap.y, rank: 1, clear });
+    else if (e.side === 'N') stands.push({ x: mid, y: clear.y + clear.h, rank: 3, clear });
+    else if (e.side === 'W') stands.push({ x: gap.x + gap.w + half, y, rank: 4, away: 1 });
+    else stands.push({ x: gap.x - half, y, rank: 4, away: -1 });
   }
-  // The first of the best rank (sort is stable).
-  const best = spots.sort((p, q) => p.rank - q.rank)[0];
-  const spot = best ?? floorFoot(m, room);
-  return { x: Math.round(keepOffSideWalls(m, spot.x, spot.y)), y: Math.round(spot.y) };
+  stands.sort((p, q) => p.rank - q.rank); // stable: ties keep the model's order
+  const foot = floorFoot(m, room);
+  stands.push({ ...foot, rank: 5, clear: { x: room.box.x, y: foot.y - 1, w: room.box.w, h: 1 } });
+
+  const items = roomItems(m, uid);
+  const walls = bandMask(m, grow(room.box, CELL));
+  let best: { x: number; y: number; hidden: number } | null = null;
+  for (const s of stands) {
+    let armOnly: { x: number; y: number } | null = null;
+    for (const [dx, dy] of s.clear ? SLIDE : SIDE) {
+      const y = s.y + dy;
+      const x = keepOffSideWalls(m, s.x + (s.away ?? 1) * dx, y);
+      if (s.clear && !inRect(s.clear, x, y - 1)) continue;
+      const over = standsAt(m, uid, walls, x, y);
+      if (over === null) continue;
+      const hidden = hiddenBy(items, x, y, over);
+      if (hidden === 0) return { x, y };
+      if (s.clear && !armOnly && hiddenBy(items, x, y, over, 1) === 0) armOnly = { x, y };
+      if (!best || hidden < best.hidden) best = { x, y, hidden };
+    }
+    if (armOnly) return armOnly;
+  }
+  return best ? { x: best.x, y: best.y } : { x: keepOffSideWalls(m, foot.x, foot.y), y: foot.y };
 }
+
+const inRect = (r: Rect, x: number, y: number) =>
+  x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h;
 
 /** The middle of a room's floor's south edge: where a member stands in a room with no door. */
 function floorFoot(m: HouseModel, room: Room): { x: number; y: number } {
@@ -181,6 +274,63 @@ function floorFoot(m: HouseModel, room: Room): { x: number; y: number } {
   const cx = Math.floor(x / CELL);
   const cy = (room.box.y + room.box.h) / CELL - 1;
   return { x, y: (cy + 1) * CELL - inset(m, cx, cy, 'S') };
+}
+
+/**
+ * Whether a figure can stand at (x, y) in room `uid`, and its over line if it can (undefined with
+ * no wall band under it), or null: its feet on the room's floor, below the north face and above
+ * the south wall's band, and its lowest LEGS rows under the walls with no band under them. (Its
+ * middle is already clear of the side walls: keepOffSideWalls.)
+ */
+function standsAt(
+  m: HouseModel,
+  uid: number,
+  walls: Mask,
+  x: number,
+  y: number,
+): number | undefined | null {
+  const cx = Math.floor(x / CELL);
+  const cy = Math.floor((y - 1) / CELL);
+  if (roomAt(m, cx, cy) !== uid) return null;
+  if (y - 1 < floorTop(m, cx, cy) || y > (cy + 1) * CELL - inset(m, cx, cy, 'S')) return null;
+  const over = overIn(walls, x, y);
+  return over !== undefined && y - over < LEGS ? null : over;
+}
+
+/**
+ * How much of a figure standing at (x, y), its over line `over`, its room's furniture would hide,
+ * in art px of overlap (by the pieces' boxes, so no less than the pixels): each piece sorted in
+ * front of it (withPeople: its bottom edge below their feet) wherever it overlaps the figure, and
+ * a piece behind it where the rows it raises on the overhang (Item.over) overlap the figure's rows
+ * under the walls. The rugs lie under everyone. `edge` columns at each side of the figure don't
+ * count.
+ */
+export function hiddenBy(
+  items: readonly Item[],
+  x: number,
+  y: number,
+  over: number | undefined,
+  edge = 0,
+): number {
+  const x0 = x - FIGURE.w / 2 + edge;
+  const x1 = x + FIGURE.w / 2 - edge;
+  const top = y - FIGURE.h;
+  const under = over ?? top;
+  let n = 0;
+  for (const it of items) {
+    if (FLAT.test(it.sprite)) continue;
+    const { w, h } = artSize(it.sprite);
+    const cols = Math.min(x1, it.x + w) - Math.max(x0, it.x);
+    if (cols <= 0) continue;
+    const rows =
+      it.y + h > y
+        ? y - Math.max(top, it.y)
+        : it.over === undefined
+          ? 0
+          : Math.min(y, it.over) - Math.max(under, it.y);
+    if (rows > 0) n += cols * rows;
+  }
+  return n;
 }
 
 /**
@@ -201,19 +351,37 @@ function keepOffSideWalls(m: HouseModel, x: number, y: number): number {
 }
 
 /**
+ * The walls canvas's bands over `box` (house-paint.ts wallMask) with the doorways' and outside
+ * doors' openings in them: what the canvas draws in an opening (its threshold line) is the wall's
+ * too, so a figure's rows over an opening behind them go on the overhang with the band's.
+ */
+function bandMask(m: HouseModel, box: Rect): Mask {
+  const mask = wallMask(m, box);
+  for (const d of m.doors) mask.rect(d.gap, true);
+  for (const e of m.exits) mask.rect(e.gap, true);
+  return mask;
+}
+
+/** overLine's, in a band mask that covers the figure (bandMask). */
+function overIn(walls: Mask, x: number, y: number): number | undefined {
+  const x0 = x - FIGURE.w / 2;
+  for (let row = y - 1; row >= y - FIGURE.h; row--) {
+    for (let col = x0; col < x0 + FIGURE.w; col++) if (walls.has(col, row)) return row + 1;
+  }
+  return undefined;
+}
+
+/**
  * The line a figure standing at (x, y) rises over: just below the lowest row of wall band under
- * it (house-paint.ts wallMask, the walls canvas's bands): a north wall's, a side wall's that ends
- * above their feet, or the corner where an outside wall turns. Every band under the figure is
- * behind it, north of its feet, so the rows above the line go on the overhang, over the walls, as
- * a tall piece of furniture's do (Item.over). Undefined when no band is under the figure.
+ * it, its openings counted in (bandMask: the walls canvas's bands, and a door's threshold line):
+ * a north wall's, a north door's or outside door's, a side wall's that ends above their feet, or
+ * the corner where an outside wall turns. Every band under the figure is behind it, north of its
+ * feet, so the rows above the line go on the overhang, over the walls, as a tall piece of
+ * furniture's do (Item.over). Undefined when no band is under the figure.
  */
 export function overLine(m: HouseModel, x: number, y: number): number | undefined {
   const box = { x: x - FIGURE.w / 2, y: y - FIGURE.h, w: FIGURE.w, h: FIGURE.h };
-  const mask = wallMask(m, box);
-  for (let row = y - 1; row >= box.y; row--) {
-    for (let col = box.x; col < box.x + box.w; col++) if (mask.has(col, row)) return row + 1;
-  }
-  return undefined;
+  return overIn(bandMask(m, box), x, y);
 }
 
 /** A member in their room as one of its items: their standing sprite, at their spot. */
@@ -327,26 +495,69 @@ export function suitcaseAt(
 // ---------------------------------------------------------------------------------------------
 // The walk in.
 
+/** Yard pieces whose ground is water: a walk never crosses it. */
+const WET: ReadonlySet<PieceId> = new Set(['pool', 'hotTub']);
+
+/**
+ * What stands in the yard in a walk's way (D-177), as boxes in lot art px: each yard piece's props
+ * (yard.ts's items: a parked car, a parasol and its seats, a Fence's pickets, an outbuilding, a
+ * bollard), a Pool's or a Hot Tub's water, and each tile of the lot's own features that no piece
+ * covers (its Trees, Boulders and water, the Old Shed, a Time Capsule). The house is walkStart's
+ * own. The people layer is drawn over all of them, so a walker crossing one would be in front of
+ * it, or on the water.
+ */
+export function walkObstacles(house: HouseState, yard: YardModel): Rect[] {
+  const out: Rect[] = [];
+  const tile = (x: number, y: number): Rect => ({ x: x * CELL, y: y * CELL, w: CELL, h: CELL });
+  for (const l of yard.pieces.values()) {
+    for (const it of l.items) out.push({ x: it.x, y: it.y, ...artSize(it.sprite) });
+    if (WET.has(l.defId)) for (const c of l.cells) out.push(tile(c.x, c.y));
+  }
+  const { lot } = house;
+  const occ = occupancy(house);
+  for (let y = 0; y < lot.height; y++) {
+    for (let x = 0; x < lot.width; x++) {
+      if (terrainAt(lot, x, y) && !occ.uids[y * lot.width + x]) out.push(tile(x, y));
+    }
+  }
+  return out;
+}
+
 /**
  * Where a member walking in sets off: straight south of their spot, on the road `WALK_FROM_PX`
  * down the street row, so they cross the kerb and the front yard to the door in a straight line.
  * In a front yard deeper than `reach` art px they set off `reach` below their spot, on the way up,
- * so the walk keeps to its longest (FEEL.arrival.walk's `maxMs`). No path is found (D-177): where
- * the house stands in that line, under the figure or the suitcase it pulls (a front door that
- * isn't on the street's side), there's no walk, and null.
+ * so the walk keeps to its longest (FEEL.arrival.walk's `maxMs`). No path is found (D-177):
+ * - Where the house stands in that line, under the figure or the suitcase it pulls (a front door
+ *   that isn't on the street's side), there's no walk, and null.
+ * - Where one of `obstacles` (walkObstacles) is in it, they'd cross it in front of it or on its
+ *   water: they set off just north of the nearest, as if from behind it, or, with under `minPx`
+ *   left to walk, there's no walk, and null. One wholly behind their spot they pass in front of.
  */
 export function walkStart(
   m: HouseModel,
   p: { x: number; y: number },
   reach = Infinity,
+  obstacles: readonly Rect[] = [],
+  minPx = 0,
 ): { x: number; y: number } | null {
   const y = Math.min(Math.max(m.height * CELL + WALK_FROM_PX, p.y), p.y + Math.floor(reach));
-  const x0 = Math.floor((p.x - FIGURE.w / 2) / CELL);
-  const x1 = Math.floor((p.x + PULLED.dx + SUITCASE_W - 1) / CELL);
+  const left = p.x - FIGURE.w / 2;
+  const right = Math.max(p.x + FIGURE.w / 2, p.x + PULLED.dx + SUITCASE_W);
+  const x0 = Math.floor(left / CELL);
+  const x1 = Math.floor((right - 1) / CELL);
   for (let cy = Math.max(0, Math.floor((p.y - 1) / CELL)); cy < m.height && cy * CELL < y; cy++) {
     for (let cx = x0; cx <= x1; cx++) if (roomAt(m, cx, cy)) return null;
   }
-  return { x: p.x, y };
+  // The suitcase's foot is the walk's lowest point: it stays north of what's in the way.
+  let from = y;
+  for (const o of obstacles) {
+    if (o.x < right && o.x + o.w > left && o.y + o.h > p.y && o.y < y + PULLED.dy) {
+      from = Math.min(from, o.y - PULLED.dy);
+    }
+  }
+  if (from < y && from - p.y < Math.max(1, minPx)) return null;
+  return { x: p.x, y: from };
 }
 
 /**

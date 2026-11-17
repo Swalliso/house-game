@@ -1,9 +1,9 @@
 // The household at the front door (D-177): each member still waiting for a room stands at the
 // doormat, or at the kerb when the house has no front door, with their suitcase beside them; and
 // once the doorbell has rung for one (director.ts walkIn), they first walk up from the street,
-// over the kerb, to their place (from partway up a deep front yard), pulling the suitcase behind
-// them. Where each one stands is
-// people.ts; the members in their rooms are drawn with the rooms' furniture (HouseLayers.tsx).
+// over the kerb, to their place (from partway up a deep front yard, or from behind what stands in
+// the yard in their way), pulling the suitcase behind them. Where each one stands is people.ts;
+// the members in their rooms are drawn with the rooms' furniture (HouseLayers.tsx).
 //
 // Decoration only: it never takes the pointer. It comes after the overhang, on its z-index, so a
 // figure at the door stands in front of the house's south wall, the room behind it and its tall
@@ -18,7 +18,7 @@ import { walkIn } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
 import { settings } from '../settings.ts';
 import { spriteFrames, spritePos, spriteStyle, type SpriteId } from '../sprites.ts';
-import type { HouseModel } from './house-model.ts';
+import type { HouseModel, Rect } from './house-model.ts';
 import { FIGURE, PULLED, suitcaseAt, walkPlan, walkStart, type Person } from './people.ts';
 import './people.css';
 
@@ -120,51 +120,77 @@ function Walker({
   );
 }
 
-/** A walk under way: whose, and its timing. */
-interface Walk {
+/** A walk: whose, and the doorbell it's for (director.ts walkIn's id). */
+export interface Walk {
   readonly arrival: ArrivalId;
   readonly id: number;
 }
 
 /**
+ * The walk to draw this render, from the latest doorbell (`bell`, director.ts walkIn), the walk
+ * under way (`under`) and the last doorbell walked (`played`). A doorbell not walked yet walks
+ * from this very render, unless Reduce motion is on: the first frame they're drawn in is the
+ * walk's (still unseen, before its delay), never one of them already at the door. A walk under way
+ * lasts while its doorbell is the latest: the next one, even for someone who doesn't walk, or a
+ * run reset (no doorbell), ends it.
+ */
+export function walkNow(
+  bell: Walk | null,
+  under: Walk | null,
+  played: number,
+  reduceMotion: boolean,
+): Walk | null {
+  if (bell && bell.id > played && !reduceMotion) return { arrival: bell.arrival, id: bell.id };
+  return under && under.id === bell?.id ? under : null;
+}
+
+/**
  * The members outside the house: waiting at the door or the kerb, and the one the doorbell just
- * rang for walking up first. `people` is people.ts's, for the board's run and house.
+ * rang for walking up first. `people` is people.ts's, for the board's run and house, and
+ * `obstacles` what stands in the yard in a walk's way (people.ts walkObstacles).
  */
 export function PeopleLayer({
   people,
   model,
+  obstacles,
   scale,
 }: {
   people: readonly Person[];
   model: HouseModel;
+  obstacles: readonly Rect[];
   scale: number;
 }) {
   const [walking, setWalking] = useState<Walk | null>(null);
-  const latest = useRef({ people, model });
-  latest.current = { people, model };
+  const latest = useRef({ people, model, obstacles });
+  latest.current = { people, model, obstacles };
   const w = walkIn.value;
   const f = FEEL.arrival.walk;
   // The longest walk, in art px: a deeper front yard is crossed from partway up (walkStart).
   const reach = (f.maxMs * f.maxPxPerSecond) / 1000;
+  const start = (m: HouseModel, p: Person, o: readonly Rect[]) =>
+    walkStart(m, p, reach, o, f.minPx);
+  const active = walkNow(w, walking, playedWalk, settings.value.reduceMotion);
 
   // A doorbell for a member: their walk, once, unless Reduce motion is on. It's over after its
-  // delay and its own length, or at once if they don't wait outside (a room of theirs was built).
+  // delay and its own length, or at once if they don't wait outside (a room of theirs was built),
+  // or when the next doorbell, or a run reset, tears it down.
   useEffect(() => {
     if (!w || w.id <= playedWalk) return;
     playedWalk = w.id;
     if (settings.value.reduceMotion) return;
-    const { people: all, model: m } = latest.current;
+    const { people: all, model: m, obstacles: o } = latest.current;
     const p = all.find((q) => q.arrival === w.arrival && q.place !== 'room');
     if (!p) return;
-    const start = walkStart(m, p, reach);
+    const from = start(m, p, o);
     const frames = spriteFrames(p.cast.walk)?.frames ?? 1;
-    const ms = start ? walkPlan(start.y - p.y, frames, f).ms : f.standInMs;
+    const ms = from ? walkPlan(from.y - p.y, frames, f).ms : f.standInMs;
     setWalking({ arrival: w.arrival, id: w.id });
-    const t = window.setTimeout(
-      () => setWalking((cur) => (cur?.id === w.id ? null : cur)),
-      f.delayMs + ms,
-    );
-    return () => window.clearTimeout(t);
+    const done = () => setWalking((cur) => (cur?.id === w.id ? null : cur));
+    const t = window.setTimeout(done, f.delayMs + ms);
+    return () => {
+      window.clearTimeout(t);
+      done();
+    };
   }, [w?.id]);
 
   const outside = people.filter((p) => p.place !== 'room');
@@ -172,15 +198,15 @@ export function PeopleLayer({
   return (
     <div class="people" aria-hidden="true">
       {outside.map((p) => {
-        if (walking?.arrival !== p.arrival) {
+        if (active?.arrival !== p.arrival) {
           return <Waiting key={p.arrival} p={p} scale={scale} />;
         }
-        const start = walkStart(model, p, reach);
-        if (!start) {
+        const from = start(model, p, obstacles);
+        if (!from) {
           // No way up from the street: they fade in where they wait.
           return (
             <span
-              key={p.arrival}
+              key={`${p.arrival}-${active.id}`}
               class="stand-in"
               style={{ '--walk-delay': `${f.delayMs}ms`, '--stand-in-ms': `${f.standInMs}ms` }}
             >
@@ -189,12 +215,12 @@ export function PeopleLayer({
           );
         }
         const frames = spriteFrames(p.cast.walk)?.frames ?? 1;
-        const plan = walkPlan(start.y - p.y, frames, f);
+        const plan = walkPlan(from.y - p.y, frames, f);
         return (
           <Walker
-            key={`${p.arrival}-${walking.id}`}
+            key={`${p.arrival}-${active.id}`}
             p={p}
-            from={start.y}
+            from={from.y}
             ms={plan.ms}
             frameMs={plan.frameMs}
             delayMs={f.delayMs}
