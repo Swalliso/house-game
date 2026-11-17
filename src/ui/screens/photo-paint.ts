@@ -18,7 +18,7 @@ import { Canvas, paintFloors, paintWalls, type AtlasPixels } from '../art/house-
 import { itemRows, roomItems, type Item } from '../art/rooms.ts';
 import { yardModel } from '../art/yard.ts';
 import { atlasPixels } from '../board/HouseLayers.tsx';
-import { hallLinks, houseModel, sunLight, type Rect } from '../board/house-model.ts';
+import { hallLinks, heldSets, houseModel, sunLight, type Rect } from '../board/house-model.ts';
 import { opaqueBox, plotPart } from '../board/neighbors.ts';
 import { draw, streetFront } from '../board/TerrainLayer.tsx';
 import { seedSalt } from '../board/terrain/hash.ts';
@@ -54,7 +54,7 @@ function blitPart(cv: Canvas, atlas: AtlasPixels, it: Item, part: 'top' | 'botto
 /**
  * The house at `state`, through `frame`, as a canvas at art resolution. Without `ground`, the
  * house alone on a clear canvas: no terrain, water or tree crowns. With `only`, only those
- * pieces (by uid), lit and linked as they are in the whole house.
+ * pieces (by uid), lit and linked as they are in the whole house, its sets' doors included.
  */
 export async function paintPhoto(
   state: RunState,
@@ -83,7 +83,7 @@ export async function paintPhoto(
   cv.data.set(ground.getImageData(0, 0, frame.w, frame.h).data);
 
   // The house, as the board draws it.
-  const model = houseModel(house, hallLinks(state), sunLight(state));
+  const model = houseModel(house, hallLinks(state), sunLight(state), heldSets(state));
   const yard = yardModel(house, model);
   const floors = paintFloors(model, atlas, { yard });
   if (floors) cv.over(floors);

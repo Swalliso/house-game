@@ -115,7 +115,7 @@ import {
   viewReach,
   type Occupancy,
 } from './geometry.ts';
-import { hallLinks, houseModel, sunLight } from './house-model.ts';
+import { hallLinks, heldSets, houseModel, sunLight } from './house-model.ts';
 import { spreadBadges } from './label-layout.ts';
 import {
   FloorLayer,
@@ -371,7 +371,9 @@ export function Board() {
   // house, so hovering never rebuilds it.
   const links = useMemo(() => hallLinks(state), [state]);
   const sun = useMemo(() => sunLight(state), [state]);
-  const model = houseModel(house, links, sun);
+  // The held sets' rooms open into each other (D-176).
+  const sets = useMemo(() => heldSets(state), [state]);
+  const model = houseModel(house, links, sun, sets);
   // The yard pieces' ground and props, cached per house model.
   const yard = yardModel(house, model);
   const p = building ? preview.value : null;
