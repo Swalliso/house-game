@@ -105,6 +105,12 @@ export interface Layer {
   readonly rect: Rect;
   readonly at: Point;
   readonly ops?: readonly Op[];
+  /**
+   * In an animation, frame k reads this layer as far along as its own frame (rect + k × (dx,
+   * dy)), so a figure composed from the character generator's parts walks: its outfit and hair
+   * step with its body (D-177). Without it, every frame gets the same rect.
+   */
+  readonly follow?: boolean;
 }
 export type Op = TileOp | RecolorOp | KeyOutOp | FlipXOp | ComposeOp;
 
@@ -267,12 +273,16 @@ function parseOps(value: unknown, where: string): Op[] {
 
 function parseLayer(value: unknown, where: string): Layer {
   const o = record(value, where);
-  onlyFields(o, ['file', 'rect', 'at', 'ops'], where);
+  onlyFields(o, ['file', 'rect', 'at', 'ops', 'follow'], where);
+  if (o.follow !== undefined && o.follow !== true) {
+    throw new Error(`${where}.follow must be true, or left out`);
+  }
   return {
     ...(o.file !== undefined ? { file: zipPath(o.file, `${where}.file`) } : {}),
     rect: rect(o.rect, `${where}.rect`),
     at: point(o.at, `${where}.at`),
     ...(o.ops !== undefined ? { ops: parseOps(o.ops, `${where}.ops`) } : {}),
+    ...(o.follow ? { follow: true } : {}),
   };
 }
 
@@ -417,6 +427,8 @@ export interface OpContext {
   /** The sheet a layer reads when it names no file of its own. */
   readonly file: string;
   readonly sheet: (file: string) => RgbaImage;
+  /** In an animation, how far this frame's rect is from the first's: k × (dx, dy). */
+  readonly frame?: Point;
 }
 
 interface OpKind<T extends Op> {
@@ -529,7 +541,9 @@ export const OPS: OpKinds = {
       op.layers.forEach((layer, i) => {
         const at = `${where}.layers[${i}]`;
         const file = layer.file ?? ctx.file;
-        let piece = crop(ctx.sheet(file), layer.rect, `${at}.rect (${file})`);
+        const [x, y, w, h] = layer.rect;
+        const [fx, fy] = layer.follow ? (ctx.frame ?? [0, 0]) : [0, 0];
+        let piece = crop(ctx.sheet(file), [x + fx, y + fy, w, h], `${at}.rect (${file})`);
         piece = applyOps(piece, layer.ops ?? [], { ...ctx, file }, `${at}.ops`);
         paste(canvas, piece, layer.at, at);
       });
@@ -562,7 +576,10 @@ export function cutSprite(spec: CutSpec, sheet: (file: string) => RgbaImage, whe
     const r: Rect = [x + k * (spec.frames?.dx ?? 0), y + k * (spec.frames?.dy ?? 0), w, h];
     if (r[0] < 0 || r[1] < 0) throw new Error(`${at}: [${r.join(', ')}] is off the sheet`);
     const frame = crop(source, r, `${at}.rect (${spec.file})`);
-    frames.push(applyOps(frame, spec.ops ?? [], { file: spec.file, sheet }, `${at}.ops`));
+    const offset: Point = [r[0] - x, r[1] - y];
+    frames.push(
+      applyOps(frame, spec.ops ?? [], { file: spec.file, sheet, frame: offset }, `${at}.ops`),
+    );
   }
   const fw = frames[0]!.width;
   const fh = frames[0]!.height;
@@ -615,7 +632,8 @@ export function sourceRects(spec: CutSpec): string[] {
       if (op.op !== 'compose') continue;
       for (const layer of op.layers) {
         const layerFile = layer.file ?? file;
-        out.push(`${layerFile} ${rectText(layer.rect)}`);
+        const along = layer.follow && frames ? ', following the frames' : '';
+        out.push(`${layerFile} ${rectText(layer.rect)}${along}`);
         visit(layer.ops ?? [], layerFile);
       }
     }

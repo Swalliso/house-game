@@ -1,0 +1,162 @@
+{
+  "people-grandma": {
+    "pack": "mi",
+    "file": "2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_06.png",
+    "rect": [48, 6, 16, 26],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": { "#724a40": "#898887", "#805449": "#969695", "#866150": "#a2a2a0" }
+      }
+    ],
+    "note": "The household walks in (D-177): Grandma standing, facing south, her hair grayed with the grays of LimeZu's own gray-haired premade character (14)."
+  },
+  "people-grandma-walk": {
+    "pack": "mi",
+    "file": "2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_06.png",
+    "rect": [96, 70, 16, 26],
+    "frames": { "count": 6, "dx": 16, "dy": 0, "ms": 100 },
+    "ops": [
+      {
+        "op": "recolor",
+        "map": { "#724a40": "#898887", "#805449": "#969695", "#866150": "#a2a2a0" }
+      }
+    ],
+    "note": "The household walks in (D-177): Grandma walking north, up from the street to the front door (the sheet's walk cycle, seen from behind)."
+  },
+  "people-renfield": {
+    "pack": "mi",
+    "file": "2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_08.png",
+    "rect": [48, 6, 16, 26],
+    "note": "The household walks in (D-177): Renfield, the Count's man, standing: the premade character with the monocle and the long coat."
+  },
+  "people-renfield-walk": {
+    "pack": "mi",
+    "file": "2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_08.png",
+    "rect": [96, 70, 16, 26],
+    "frames": { "count": 6, "dx": 16, "dy": 0, "ms": 100 },
+    "note": "The household walks in (D-177): Renfield walking north."
+  },
+  "people-nana": {
+    "pack": "mi",
+    "file": "2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_10.png",
+    "rect": [48, 6, 16, 26],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#8a6552": "#898887",
+          "#957350": "#969695",
+          "#ba8d5e": "#a2a2a0",
+          "#956020": "#898887"
+        }
+      }
+    ],
+    "note": "The household walks in (D-177): Nana standing, in her white frock, her hair grayed as Grandma's is."
+  },
+  "people-nana-walk": {
+    "pack": "mi",
+    "file": "2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_10.png",
+    "rect": [96, 70, 16, 26],
+    "frames": { "count": 6, "dx": 16, "dy": 0, "ms": 100 },
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#8a6552": "#898887",
+          "#957350": "#969695",
+          "#ba8d5e": "#a2a2a0",
+          "#956020": "#898887"
+        }
+      }
+    ],
+    "note": "The household walks in (D-177): Nana walking north."
+  },
+  "people-rowan": {
+    "pack": "mi",
+    "file": "2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_04.png",
+    "rect": [48, 6, 16, 26],
+    "note": "The household walks in (D-177): Rowan, who paints, standing: the premade character in the red beanie and striped trousers."
+  },
+  "people-rowan-walk": {
+    "pack": "mi",
+    "file": "2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_04.png",
+    "rect": [96, 70, 16, 26],
+    "frames": { "count": 6, "dx": 16, "dy": 0, "ms": 100 },
+    "note": "The household walks in (D-177): Rowan walking north."
+  },
+  "people-ivy": {
+    "pack": "mi",
+    "file": "2_Characters/Character_Generator/Bodies_kids/16x16/Body_1_kid.png",
+    "rect": [48, 6, 16, 26],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [16, 26],
+        "layers": [
+          {
+            "file": "2_Characters/Character_Generator/Outfits_kids/16x16/Outfit_kid_3.png",
+            "rect": [48, 6, 16, 26],
+            "at": [0, 0]
+          },
+          {
+            "file": "2_Characters/Character_Generator/Eyes_kids/16x16/Eyes_kids_1.png",
+            "rect": [48, 6, 16, 26],
+            "at": [0, 0]
+          },
+          {
+            "file": "2_Characters/Character_Generator/Hairstyles_kids/16x16/Hairstyle_kid_4_3.png",
+            "rect": [48, 6, 16, 26],
+            "at": [0, 0]
+          }
+        ]
+      }
+    ],
+    "note": "The household walks in (D-177): Dale's daughter Ivy standing, composed from the character generator's kids' parts (a body, a blue top, eyes, brown hair in buns): the packs have no ready-made child."
+  },
+  "people-ivy-walk": {
+    "pack": "mi",
+    "file": "2_Characters/Character_Generator/Bodies_kids/16x16/Body_1_kid.png",
+    "rect": [96, 70, 16, 26],
+    "frames": { "count": 6, "dx": 16, "dy": 0, "ms": 100 },
+    "ops": [
+      {
+        "op": "compose",
+        "size": [16, 26],
+        "layers": [
+          {
+            "file": "2_Characters/Character_Generator/Outfits_kids/16x16/Outfit_kid_3.png",
+            "rect": [96, 70, 16, 26],
+            "at": [0, 0],
+            "follow": true
+          },
+          {
+            "file": "2_Characters/Character_Generator/Hairstyles_kids/16x16/Hairstyle_kid_4_3.png",
+            "rect": [96, 70, 16, 26],
+            "at": [0, 0],
+            "follow": true
+          }
+        ]
+      }
+    ],
+    "note": "The household walks in (D-177): Ivy walking north, each frame composed from the same frame of each part."
+  },
+  "people-suitcase-green": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/20_Subway_and_Train_Station_Singles_16x16/ME_Singles_Subway_and_Train_Station_16x16_Green_Trolley_1.png",
+    "rect": [0, 13, 16, 19],
+    "note": "The household walks in (D-177): a green rolling suitcase, its handle up, that a member pulls up to the front door and waits beside."
+  },
+  "people-suitcase-blue": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/20_Subway_and_Train_Station_Singles_16x16/ME_Singles_Subway_and_Train_Station_16x16_Blue_Trolley_1.png",
+    "rect": [0, 13, 16, 19],
+    "note": "The household walks in (D-177): the suitcase in blue."
+  },
+  "people-suitcase-tan": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/20_Subway_and_Train_Station_Singles_16x16/ME_Singles_Subway_and_Train_Station_16x16_Yellow_Trolley_1.png",
+    "rect": [0, 13, 16, 19],
+    "note": "The household walks in (D-177): the suitcase in tan."
+  }
+}
