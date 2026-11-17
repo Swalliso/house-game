@@ -49,10 +49,13 @@
   image-rendering: pixelated;
 }
 /* D-178: an item's copy over the walls, seen only while it drops in (piece-fx.ts drop), squashing
-   on its foot as it lands. */
+   on its foot as it lands. An item all under the walls lands in its own place, on its foot too. */
+.item-drop,
+.piece-items > .item {
+  transform-origin: 50% 100%;
+}
 .item-drop {
   opacity: 0;
-  transform-origin: 50% 100%;
 }
 /* An animated item's frames side by side, stepping left one frame at a time (the Fireplace's
    flame): the frames are its own, so it's transform only. */

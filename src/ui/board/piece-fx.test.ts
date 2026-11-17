@@ -1,8 +1,9 @@
 // A piece's parts move as one (D-059): a part that mounts after its piece's settle or wobble has
 // started (a tall top on the overhang layer, the flash, a fixture's new part) joins it where it
 // has got to, whichever layer registers first. A placed room's furniture drops in item by item
-// (D-178): each item falls as a copy over the walls, inside the budget, while its two halves wait
-// hidden together, at the tally speed setting, and anything the player does next finishes it.
+// (D-178): each item falls as a copy over the walls, inside the budget, and lands in its own place
+// under them, or a tall one as its copy while its two halves wait hidden together; at the tally
+// speed setting; and anything the player does next finishes it, never without its first thock.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FEEL } from '../fx/feel.ts';
@@ -10,8 +11,10 @@ import {
   drop,
   dropFrames,
   dropPlan,
+  fallFrames,
   finishDrop,
   finishDrops,
+  landFrames,
   register,
   settle,
   wobble,
@@ -192,6 +195,38 @@ describe('a room’s drop', () => {
     }
   });
 
+  it('lands an item under the walls in its own place as its copy would have, from touchdown', () => {
+    for (const artPx of [1, 2, 0.8]) {
+      const copy = dropFrames(artPx);
+      const falls = fallFrames(artPx);
+      // Its copy falls as a tall item's does, over fallMs, opaque, and is down on its spot at the end.
+      expect(falls.map((k) => k.transform)).toEqual([
+        ...copy.slice(0, f.fallPx).map((k) => k.transform),
+        'translateY(0px) scale(1, 1)',
+      ]);
+      falls.slice(0, -1).forEach((k, j) => {
+        expect(k.easing).toBe('steps(1, end)');
+        expect(k.offset as number).toBeCloseTo(((copy[j]!.offset as number) * EACH) / f.fallMs, 9);
+      });
+      expect(falls.at(-1)!.offset).toBe(1);
+      expect(falls.every((k) => k.opacity === 1)).toBe(true);
+    }
+    // The item itself lands with the copy's squash and stretch, at the same times from touchdown.
+    const landing = dropFrames(1).slice(f.fallPx, -1);
+    const lands = landFrames();
+    expect(lands.map((k) => [k.transform, k.easing])).toEqual(
+      landing.map((k) => [k.transform, k.easing]),
+    );
+    lands.forEach((k, j) => {
+      const ms = (landing[j]!.offset as number) * EACH;
+      expect((k.offset as number) * f.landMs + f.fallMs).toBeCloseTo(ms, 9);
+    });
+    // Its opacity is its own: it shows once its hiding is over.
+    expect(lands.every((k) => k.opacity === undefined)).toBe(true);
+    // A copy is opaque by the time it touches down.
+    expect(f.fadeMs).toBeLessThanOrEqual(f.fallMs);
+  });
+
   describe('on the board', () => {
     beforeEach(() => {
       vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
@@ -217,27 +252,39 @@ describe('a room’s drop', () => {
       return { bottoms, top, copies, flash };
     }
 
-    it('drops each item as its copy over the walls, its two halves hidden until it lands', () => {
+    it('drops each item as its copy over the walls, and lands it in its own place', () => {
       const r = room(20);
       drop(20, { count: 3, scale: 2, rate: 1 });
       r.copies.forEach((c, i) => {
+        const tall = i === 1;
         const [fall, fade] = c.runs;
-        expect(fall).toMatchObject({ delay: i * f.staggerMs, duration: EACH });
-        expect(fall!.frames).toEqual(dropFrames(2));
+        expect(c.runs).toHaveLength(2);
+        expect(fall).toMatchObject({ delay: i * f.staggerMs, duration: tall ? EACH : f.fallMs });
+        expect(fall!.frames).toEqual(tall ? dropFrames(2) : fallFrames(2));
         expect(fade).toMatchObject({ delay: i * f.staggerMs, duration: f.fadeMs });
         expect(fade!.frames).toEqual([{ opacity: 0 }, { opacity: 1 }]);
       });
-      // The tall bookcase's two halves wait out one animation, ending as its copy comes to rest.
+      // The rug and the chair, all under the walls (and so under a garage door's rail, a side
+      // wall's band or a sunny room's light, as at rest): each is hidden until its copy touches
+      // down, and lands in its own place from that very moment.
+      for (const i of [0, 2]) {
+        const [hide, land] = r.bottoms[i]!.runs;
+        expect(r.bottoms[i]!.runs).toHaveLength(2);
+        expect(hide).toMatchObject({ delay: 0, duration: i * f.staggerMs + f.fallMs });
+        expect(hide!.frames).toEqual([{ opacity: 0 }, { opacity: 0 }]);
+        expect(land).toMatchObject({ delay: i * f.staggerMs + f.fallMs, duration: f.landMs });
+        expect(land!.frames).toEqual(landFrames());
+      }
+      // The tall bookcase lands as its copy: its two halves wait out one animation, ending as its
+      // copy comes to rest over them, and never move apart.
       const [bottom] = r.bottoms[1]!.runs;
       const [top] = r.top.runs;
       const timing = (a?: Run) => a && [a.frames, a.delay, a.duration, a.playbackRate];
+      expect(r.bottoms[1]!.runs).toHaveLength(1);
+      expect(r.top.runs).toHaveLength(1);
       expect(timing(bottom)).toEqual(timing(top));
       expect(bottom).toMatchObject({ delay: 0, duration: f.staggerMs + LANDED });
       expect(bottom!.frames).toEqual([{ opacity: 0 }, { opacity: 0 }]);
-      for (const i of [0, 2]) {
-        expect(r.bottoms[i]!.runs).toHaveLength(1);
-        expect(r.bottoms[i]!.runs[0]).toMatchObject({ duration: i * f.staggerMs + LANDED });
-      }
       // The new floor flashes, as the settle's does.
       expect(r.flash.runs).toHaveLength(1);
       expect(r.flash.runs[0]!.duration).toBe(FEEL.placeMs * 2);
@@ -259,7 +306,9 @@ describe('a room’s drop', () => {
         const r = room(22);
         const onLand = vi.fn();
         drop(22, { count: 3, scale: 1, rate, onLand });
-        expect(runsOf(r).length).toBe(3 * 2 + 3 + 1 + 1);
+        // Each copy's fall and fade; the rug's and the chair's hiding and landing; the bookcase's
+        // two halves' hiding; the floor's flash.
+        expect(runsOf(r).length).toBe(3 * 2 + 2 * 2 + 2 + 1);
         expect(runsOf(r).every((a) => a.playbackRate === rate)).toBe(true);
         let t = 0;
         const to = (ms: number) => {
@@ -279,7 +328,7 @@ describe('a room’s drop', () => {
       }
     });
 
-    it('finishes at once on a click, a key or the wheel, with its thocks still to come', () => {
+    it('finishes at once on a click, a key or the wheel, and its later thocks never come', () => {
       for (const type of ['pointerdown', 'keydown', 'wheel']) {
         const r = room(23);
         const onLand = vi.fn();
@@ -291,6 +340,37 @@ describe('a room’s drop', () => {
         expect(runsOf(r).every((a) => a.finished)).toBe(true);
         vi.advanceTimersByTime(2000);
         expect(onLand).toHaveBeenCalledTimes(1);
+      }
+    });
+
+    it('lands at once, with its first thock, when finished before its first item lands', () => {
+      // The first thock and the dust are the placement's own (the director plays no other): a
+      // double-click on End week, a key pressed straight after a build, or the next build, before
+      // the first landing (fallMs at the tally speed), never leaves the room silent.
+      const finishers: ((uid: number) => void)[] = [
+        () => window.dispatchEvent(new Event('pointerdown')),
+        () => window.dispatchEvent(new Event('keydown')),
+        () => window.dispatchEvent(new Event('wheel')),
+        (uid) => finishDrop(uid),
+        () => drop(99, { count: 1, scale: 1, rate: 1 }),
+      ];
+      for (const rate of [1, 0.5]) {
+        for (const [at, finish] of [0, f.fallMs / rate - 10].flatMap((ms) =>
+          finishers.map((fn) => [ms, fn] as const),
+        )) {
+          const r = room(27);
+          const onLand = vi.fn();
+          drop(27, { count: 3, scale: 1, rate, onLand });
+          vi.advanceTimersByTime(at);
+          expect(onLand).not.toHaveBeenCalled();
+          finish(27);
+          expect(runsOf(r).every((a) => a.finished)).toBe(true);
+          expect(onLand.mock.calls).toEqual([[0]]);
+          // And never again: the later ones are cut, and the first isn't played twice.
+          vi.advanceTimersByTime(2000);
+          finishDrops();
+          expect(onLand.mock.calls).toEqual([[0]]);
+        }
       }
     });
 

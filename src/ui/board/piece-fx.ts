@@ -130,13 +130,21 @@ export function settle(uid: number): void {
 // band through it between its two halves. So an item falls as a copy of its whole sprite on the
 // overhang layer, over the walls (HouseLayers.tsx draws the copies for the room just placed),
 // while its own parts, its bottom in the items layer and its top on the overhang, wait hidden.
-// Both halves wait out the same animation, so they show together, as the copy comes to rest over
-// them in the same pixels; the copy then fades away. Every animation of a room starts in one call,
-// so they share a start time.
+//
+// Most items stand all under the walls. As one touches down, its copy goes and the item itself
+// lands in its own place, so what the walls draw over it at rest (the Garage's car's rear in its
+// garage door's rail, a pixel tucked under a side wall, a sunny room's light) is over it as it
+// lands. A tall item, its top over its north wall's band, lands as its copy instead: its two halves
+// can't squash and stretch in their two layers without the band showing between them. Both halves
+// wait out the same animation, so they show together, as the copy comes to rest over them in the
+// same pixels; the copy then fades away. Every animation of a room starts in one call, so they
+// share a start time.
 //
 // It plays at the tally speed setting, and a click, a key, the wheel or the next placement
-// finishes it at once, with its thocks still to come. It never holds input: the director's beat
-// still waits FEEL.placeMs, and the rest plays on while the player moves on.
+// finishes it at once: its items at rest, and its later thocks never played. Its first thock and
+// its dust are never cut: a room finished before its first item lands lands then. It never holds
+// input: the director's beat still waits FEEL.placeMs, and the rest plays on while the player
+// moves on.
 
 /** What a room's drop needs from the board. */
 export interface DropOptions {
@@ -179,49 +187,89 @@ export function dropPlan(count: number): DropPlan {
   return { delays, thocks, endMs: (delays[last] ?? 0) + dropItemMs() };
 }
 
-/** One item's drop: its fall, its landing, and its copy handing over to it. */
+/** One item's drop: its fall, its landing, and (a tall item's) its copy handing over to it. */
 function dropItemMs(): number {
   const f = FEEL.drop;
   return f.fallMs + f.landMs + f.swapMs;
 }
 
+/** An item `lift` CSS px above its spot, scaled (x, y) on its foot. */
+function pose(lift: number, [sx, sy]: readonly [number, number] = [1, 1]): Keyframe {
+  return { transform: `translateY(${lift > 0 ? -lift : 0}px) scale(${sx}, ${sy})` };
+}
+
 /**
- * One item's copy as keyframes, over FEEL.drop's `fallMs` + `landMs` + `swapMs`: it falls
- * `fallPx` art px (`artPx` CSS px each) as a dropped thing does, slowly and then faster, a whole
- * art px at a time (each step held until the next), squashes on its foot and springs back, then
- * fades at rest over the item's own parts, which show from then on. The walls' canvas lies
- * between the two, so what it draws over the furniture (a sunny room's light) fades in, where
- * a swap at a stroke would flick it on. Opaque until then: a copy is hidden except while it drops.
+ * The fall as keyframes, each at `at(its ms)`: `fallPx` art px (`artPx` CSS px each) down to its
+ * spot over `fallMs`, as a dropped thing falls, slowly and then faster, a whole art px at a time
+ * (each step held until the next).
  */
-export function dropFrames(artPx: number): Keyframe[] {
+function fall(artPx: number, at: (ms: number) => number): Keyframe[] {
   const f = FEEL.drop;
-  const at = (ms: number) => ms / dropItemMs();
-  const pose = (up: number, [sx, sy]: readonly [number, number] = [1, 1], opacity = 1) => ({
-    transform: `translateY(${up > 0 ? -up * artPx : 0}px) scale(${sx}, ${sy})`,
-    opacity,
-  });
   const frames: Keyframe[] = [];
   // Its height t ms into the fall is fallPx × (1 − (t / fallMs)²), shown rounded up: it's `up` art
   // px above its spot from when that height comes down to `up`.
   for (let up = f.fallPx; up > 0; up--) {
     const ms = f.fallMs * Math.sqrt(1 - up / f.fallPx);
-    frames.push({ ...pose(up), offset: at(ms), easing: 'steps(1, end)' });
+    frames.push({ ...pose(up * artPx), offset: at(ms), easing: 'steps(1, end)' });
   }
-  const landed = f.fallMs + f.landMs;
-  frames.push(
-    { ...pose(0), offset: at(f.fallMs), easing: 'ease-out' },
-    { ...pose(0, f.squash), offset: at(f.fallMs + f.landMs * 0.3), easing: 'ease-in-out' },
-    { ...pose(0, f.stretch), offset: at(f.fallMs + f.landMs * 0.65), easing: 'ease-out' },
-    { ...pose(0), offset: at(landed) },
-    { ...pose(0, [1, 1], 0), offset: 1 },
-  );
   return frames;
+}
+
+/**
+ * The landing as keyframes, each at `at(its ms)`: down on its spot at `from` ms, it squashes on its
+ * foot and springs back, at rest `landMs` later.
+ */
+function landing(from: number, at: (ms: number) => number): Keyframe[] {
+  const f = FEEL.drop;
+  return [
+    { ...pose(0), offset: at(from), easing: 'ease-out' },
+    { ...pose(0, f.squash), offset: at(from + f.landMs * 0.3), easing: 'ease-in-out' },
+    { ...pose(0, f.stretch), offset: at(from + f.landMs * 0.65), easing: 'ease-out' },
+    { ...pose(0), offset: at(from + f.landMs) },
+  ];
+}
+
+const opaque = (frames: Keyframe[]): Keyframe[] => frames.map((k) => ({ ...k, opacity: 1 }));
+
+/**
+ * A tall item's copy as keyframes, over FEEL.drop's `fallMs` + `landMs` + `swapMs`: it falls,
+ * lands, then fades at rest over the item's own parts, which show from then on. The walls' canvas
+ * lies between the two, so what it draws over the furniture (a sunny room's light) fades in, where
+ * a swap at a stroke would flick it on. Opaque until then: a copy is hidden except while it drops.
+ */
+export function dropFrames(artPx: number): Keyframe[] {
+  const f = FEEL.drop;
+  const at = (ms: number) => ms / dropItemMs();
+  return [
+    ...opaque([...fall(artPx, at), ...landing(f.fallMs, at)]),
+    { ...pose(0), opacity: 0, offset: 1 },
+  ];
+}
+
+/**
+ * The copy of an item all under the walls as keyframes, over FEEL.drop's `fallMs`: it only falls,
+ * opaque, and is gone as it touches down, where the item itself lands (landFrames).
+ */
+export function fallFrames(artPx: number): Keyframe[] {
+  const at = (ms: number) => ms / FEEL.drop.fallMs;
+  return opaque([...fall(artPx, at), { ...pose(0), offset: 1 }]);
+}
+
+/**
+ * An item all under the walls lands in its own place as keyframes, over FEEL.drop's `landMs` from
+ * touchdown: the squash and the stretch a tall item's copy lands with, on the item's foot.
+ */
+export function landFrames(): Keyframe[] {
+  return landing(0, (ms) => ms / FEEL.drop.landMs);
 }
 
 interface Dropping {
   uid: number;
   anims: Animation[];
   timers: ReturnType<typeof setTimeout>[];
+  onLand: ((k: number) => void) | undefined;
+  /** Its first landing has come, with its thock and its dust. */
+  landed: boolean;
 }
 
 let dropping: Dropping[] = [];
@@ -246,7 +294,16 @@ function forget(d: Dropping): void {
   for (const t of d.timers) clearTimeout(t);
 }
 
-/** Ends a drop at once: every item at rest, and the thocks still to come never played. */
+/** Thock `k` of a drop has come, as its item lands: the first with the room's dust. */
+function land(d: Dropping, k: number): void {
+  if (k === 0) d.landed = true;
+  d.onLand?.(k);
+}
+
+/**
+ * Ends a drop at once: every item at rest, and its later thocks never played. A room ended before
+ * its first item had landed lands now, with its thock and its dust: they're the placement's own.
+ */
 function end(d: Dropping): void {
   forget(d);
   for (const a of d.anims) {
@@ -256,9 +313,10 @@ function end(d: Dropping): void {
       // An animation that can't finish (its element gone) has nothing left to show.
     }
   }
+  if (!d.landed) land(d, 0);
 }
 
-/** Finishes every drop at once: the items at rest, and the thocks still to come not played. */
+/** Finishes every drop at once: the items at rest, and of the thocks still to come only a first. */
 export function finishDrops(): void {
   for (const d of [...dropping]) end(d);
 }
@@ -287,10 +345,7 @@ export function drop(uid: number, o: DropOptions): void {
   const f = FEEL.drop;
   const rate = o.rate > 0 ? o.rate : 1;
   const plan = dropPlan(o.count);
-  const each = dropItemMs();
-  // The parts wait until the copy comes to rest over them.
-  const landed = f.fallMs + f.landMs;
-  const d: Dropping = { uid, anims: [], timers: [] };
+  const d: Dropping = { uid, anims: [], timers: [], onLand: o.onLand, landed: false };
   const animate = (el: Element, frames: Keyframe[], timing: KeyframeAnimationOptions) => {
     const a = el.animate(frames, timing);
     a.playbackRate = rate;
@@ -299,16 +354,32 @@ export function drop(uid: number, o: DropOptions): void {
   const copies = byIndex(get(uid, 'overhang'), true);
   const tops = byIndex(get(uid, 'overhang'), false);
   const bottoms = byIndex(get(uid, 'items'), false);
-  const frames = dropFrames(o.scale);
+  const tall = dropFrames(o.scale);
+  const falls = fallFrames(o.scale);
+  const lands = landFrames();
+  const hidden = [{ opacity: 0 }, { opacity: 0 }];
+  const fadeIn = [{ opacity: 0 }, { opacity: 1 }];
   for (const [i, delay] of plan.delays.entries()) {
     const copy = copies.get(i);
     // Without its copy, an item stays as it is.
     if (!copy) continue;
-    animate(copy, frames, { duration: each, delay });
-    // Started after the fall, so its opacity is the one shown while it plays.
-    animate(copy, [{ opacity: 0 }, { opacity: 1 }], { duration: f.fadeMs, delay });
-    for (const part of [bottoms.get(i), tops.get(i)]) {
-      if (part) animate(part, [{ opacity: 0 }, { opacity: 0 }], { duration: delay + landed });
+    const bottom = bottoms.get(i);
+    const top = tops.get(i);
+    if (bottom && !top) {
+      // All of it under the walls: its copy only falls, and as it touches down the item itself
+      // lands in its place, under what the walls draw over it at rest.
+      animate(copy, falls, { duration: f.fallMs, delay });
+      // Started after the fall, so its opacity is the one shown while it plays.
+      animate(copy, fadeIn, { duration: Math.min(f.fadeMs, f.fallMs), delay });
+      animate(bottom, hidden, { duration: delay + f.fallMs });
+      animate(bottom, lands, { duration: f.landMs, delay: delay + f.fallMs });
+      continue;
+    }
+    // A tall item lands as its copy; its two halves wait until it comes to rest over them.
+    animate(copy, tall, { duration: dropItemMs(), delay });
+    animate(copy, fadeIn, { duration: f.fadeMs, delay });
+    for (const part of [bottom, top]) {
+      if (part) animate(part, hidden, { duration: delay + f.fallMs + f.landMs });
     }
   }
   // The floor flashes as the settle's does.
@@ -321,7 +392,7 @@ export function drop(uid: number, o: DropOptions): void {
     });
   }
   for (const { i, k } of plan.thocks) {
-    d.timers.push(setTimeout(() => o.onLand?.(k), ((plan.delays[i] ?? 0) + f.fallMs) / rate));
+    d.timers.push(setTimeout(() => land(d, k), ((plan.delays[i] ?? 0) + f.fallMs) / rate));
   }
   // Over once it has all played (the animations start on the next frame: a frame's grace).
   d.timers.push(setTimeout(() => forget(d), Math.max(plan.endMs, flashMs) / rate + 50));

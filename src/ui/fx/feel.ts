@@ -384,8 +384,9 @@ export const FEEL = {
   /**
    * A placed room's furniture drops in (D-178, piece-fx.ts drop), back to front: each item falls
    * `fallPx` art px over `fallMs`, a whole art px at a time and faster as it goes, fading in over
-   * `fadeMs`, then lands on its foot with a `squash` and a `stretch` (scale x, y) over `landMs`,
-   * and at rest hands over to the item itself over `swapMs` (the walls' light on it fades in).
+   * `fadeMs` (no longer than the fall), then lands on its foot with a `squash` and a `stretch`
+   * (scale x, y) over `landMs`: in its own place, or a tall item as its copy, which at rest hands
+   * over to the item itself over `swapMs` (the walls' light on it fades in).
    * Each starts `staggerMs` after the one before, or sooner in a room of many, so the last starts
    * within `budgetMs` of the first. Up to `thocks` landings thock (the first, the middle, the
    * last), each `thockSemitones` above the one before and the later ones at `thockGain`, and
