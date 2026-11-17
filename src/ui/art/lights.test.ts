@@ -15,7 +15,10 @@ import {
   cellsToShape,
   matchesDef,
   placedCells,
+  rules,
+  type ArrivalId,
   type Cell,
+  type ClientId,
   type FixtureId,
   type HouseState,
   type PieceId,
@@ -25,14 +28,17 @@ import {
 import { lotFromRows } from '../../rules/lot.ts';
 import { OverhangLayer } from '../board/HouseLayers.tsx';
 import {
+  hallLinks,
   houseModel,
   overlaps,
   pieceModel,
   roomAt,
+  sunLight,
   type HouseModel,
   type Rect,
   type Room,
 } from '../board/house-model.ts';
+import { people, roomPeople, withPeople } from '../board/people.ts';
 import { paintHouse } from '../screens/photo-paint.ts';
 import { CELL, spritePos, type SpriteId } from '../sprites.ts';
 import { artSize } from './drawings.ts';
@@ -595,5 +601,133 @@ describe('a finished room’s light among the overhang', () => {
     expect(tree.props.z).toBeGreaterThan(kids[light]!.props.z);
     // An unfinished room has no light.
     expect(kids.filter((k) => String(k.key).startsWith('light-'))).toHaveLength(1);
+  });
+});
+
+describe('a finished room’s lamp behind a member of the household (D-177)', () => {
+  /** Each member with a cast, their client and their room. */
+  const MEMBERS: readonly (readonly [ArrivalId, ClientId])[] = [
+    ['grandma', 'hendersons'],
+    ['renfield', 'vladislav'],
+    ['nana', 'barkers'],
+    ['rowan', 'juniper'],
+    ['ivy', 'dale'],
+  ];
+  const roomOf = (id: ArrivalId, client: ClientId): PieceId =>
+    CONTENT.clients[client].household.arrivals.find((a) => a.id === id)!.room[0]!;
+
+  /** `member` arrived in house `h`, as the board places them: its model, and them as items. */
+  function withMember(h: HouseState, member: ArrivalId, client: ClientId) {
+    const state = {
+      ...rules.newRun({
+        seed: 'lights',
+        clientId: client,
+        crewId: 'generalContractor',
+        mode: 'standard',
+      }),
+      house: h,
+      arrived: [member],
+    };
+    const m = houseModel(h, hallLinks(state), sunLight(state), client);
+    return { m, people: roomPeople(m, people(state, m)) };
+  }
+
+  /** The lot pixels a painter lit solid. */
+  const solid = (p: Pixels | null) =>
+    new Set(
+      p
+        ? covered(p)
+            .filter((q) => q.a === 255)
+            .map((q) => `${q.x},${q.y}`)
+        : [],
+    );
+
+  /** The lot pixels an item draws. */
+  function drawn(it: Item): Set<string> {
+    const out = new Set<string>();
+    const { w, h } = artSize(it.sprite);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        if (spritePixel(it.sprite as SpriteId, x, y)[3]! > 0) out.add(`${it.x + x},${it.y + y}`);
+      }
+    }
+    return out;
+  }
+
+  it('lights no shade over Grandma, who stands in front of her nightlamp', () => {
+    // A review's house: Grandma's Room alone, finished, adds a nightlamp behind her doorway.
+    const h = house([
+      ['grandmasRoom', 4, 4, 0, { fixture: { id: 'soundproofing', week: 1 }, level: 1 }],
+    ]);
+    const { m, people: inRooms } = withMember(h, 'grandma', 'hendersons');
+    const lamp = roomLayout(m, 1).lamp!;
+    expect(lamp.sprite).toMatch(/^nightlamp-/);
+    const mine = inRooms.get(1)!;
+    const her = mine[0]!;
+    // The board draws her after the lamp, in front of it.
+    const list = withPeople(roomItems(m, 1), mine);
+    expect(list.indexOf(her)).toBeGreaterThan(list.indexOf(lamp));
+    const onHer = (p: Pixels | null) => [...solid(p)].filter((k) => drawn(her).has(k));
+    // Painted without her (the photos), the lit shade lies over her; with her, none of it does,
+    // and it's the same everywhere else.
+    expect(onHer(paintLight(m, 1, atlas, 'shade')).length).toBeGreaterThan(10);
+    expect(onHer(paintLight(m, 1, atlas, 'shade', mine))).toEqual([]);
+    const all = solid(paintLight(m, 1, atlas, 'shade'));
+    const less = solid(paintLight(m, 1, atlas, 'shade', mine));
+    expect([...all].filter((k) => !less.has(k) && !drawn(her).has(k))).toEqual([]);
+    expect([...less].every((k) => all.has(k))).toBe(true);
+    // The board's overhang hands the room's members to its light.
+    const layer = OverhangLayer({ model: m, yard: yardModel(h, m), scale: 2, people: inRooms });
+    const kids = (layer as VNode<{ children: unknown }>).props.children as (VNode<{
+      people?: unknown;
+    }> | null)[];
+    expect(kids.find((k) => k?.key === 'light-1')?.props.people).toBe(mine);
+  });
+
+  it('in every member’s room, turn and boxed-in way: one in front of it covers its shade', () => {
+    const misses: string[] = [];
+    let front = 0;
+    let wasOver = 0;
+    for (const [member, client] of MEMBERS) {
+      const id = roomOf(member, client);
+      for (const fixture of [
+        'soundproofing',
+        'skylight',
+        'fireplace',
+        'blackoutCurtains',
+      ] as const) {
+        for (const rot of [0, 1, 2, 3] as const) {
+          for (const sides of ['', 'N', 'S', 'E', 'W', 'NS', 'EW', 'NE', 'SW']) {
+            const h = boxedIn(id, rot, sides, { fixture: { id: fixture, week: 1 }, level: 1 });
+            const { m, people: inRooms } = withMember(h, member, client);
+            const lamp = roomLayout(m, 1).lamp;
+            const mine = inRooms.get(1);
+            if (!lamp || !mine) continue;
+            const me = mine[0]!;
+            const list = withPeople(roomItems(m, 1), mine);
+            const lit = solid(paintLight(m, 1, atlas, 'shade', mine));
+            const alone = solid(paintLight(m, 1, atlas, 'shade'));
+            const name = `${member} ${fixture} r${rot} ${sides || 'alone'}`;
+            // The board draws them after the lamp, in front of it, wherever their feet are no
+            // higher than its foot: none of its lit shade over them, and the rest as before.
+            if (list.indexOf(me) < list.indexOf(lamp)) {
+              if ([...alone].some((k) => !lit.has(k))) misses.push(`${name}: behind, yet unlit`);
+              continue;
+            }
+            front++;
+            const over = [...drawn(me)].filter((k) => lit.has(k));
+            if (over.length > 0) misses.push(`${name}: ${over.length} px lit over them`);
+            if ([...drawn(me)].some((k) => alone.has(k))) wasOver++;
+            if ([...alone].some((k) => !lit.has(k) && !drawn(me).has(k))) {
+              misses.push(`${name}: unlit off them`);
+            }
+          }
+        }
+      }
+    }
+    expect(misses).toEqual([]);
+    expect(front).toBeGreaterThan(50);
+    // Painted without them, as the photos are, it was over them in some.
+    expect(wasOver).toBeGreaterThan(5);
   });
 });

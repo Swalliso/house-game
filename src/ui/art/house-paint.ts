@@ -818,6 +818,30 @@ function artPixel(atlas: AtlasPixels, id: ArtId, x: number, y: number): readonly
   return [atlas.data[i]!, atlas.data[i + 1]!, atlas.data[i + 2]!, atlas.data[i + 3]!];
 }
 
+/** Whether item `it` draws lot pixel (px, py). */
+function drawnAt(atlas: AtlasPixels, it: Item, px: number, py: number): boolean {
+  const s = artSize(it.sprite);
+  const ix = px - it.x;
+  const iy = py - it.y;
+  return ix >= 0 && iy >= 0 && ix < s.w && iy < s.h && artPixel(atlas, it.sprite, ix, iy)[3]! > 0;
+}
+
+/**
+ * D-177 × D-181: whether a member of the room, of `people` (board/people.ts roomPeople: each one
+ * an item of their room, as the board draws them), who stands in front of its lamp (the lamp's
+ * bottom edge at `bottom`) is drawn at (px, py). The board sorts a member in with the room's
+ * furniture by bottom edge, in front of whatever's is no lower than their feet (people.ts
+ * withPeople), and so with its lamp: there they cover it.
+ */
+function inFrontOfLamp(
+  people: readonly Item[],
+  bottom: number,
+  atlas: AtlasPixels,
+): (px: number, py: number) => boolean {
+  const front = people.filter((p) => p.y + artSize(p.sprite).h >= bottom);
+  return (px, py) => front.some((p) => drawnAt(atlas, p, px, py));
+}
+
 /** Pixel light in an oval, in three steps, where `on` lets it fall. */
 function lightOval(
   cv: Canvas,
@@ -851,12 +875,16 @@ export type LightPart = 'glow' | 'shade';
  * house's outline stays crisp; and the shade's own pixels where they're in view (not under a wall
  * band or behind another piece), or the hanging lamp, lit. With `part`, only that part (both
  * without). Null when the room has no lamp lit, or no such part.
+ *
+ * D-177: on the board, `people` are the room's members as items (people.ts roomPeople): one
+ * standing in front of its lamp covers it, so its shade isn't lit over them there.
  */
 export function paintLight(
   m: HouseModel,
   uid: number,
   atlas: AtlasPixels,
   part?: LightPart,
+  people: readonly Item[] = [],
 ): Pixels | null {
   const r = m.rooms.get(uid);
   const layout = r ? roomLayout(m, uid) : null;
@@ -916,9 +944,11 @@ export function paintLight(
   if (part === 'glow') return cv.pixels();
 
   // The shade: where the board shows it. Its rows above the band's line are on the overhang, over
-  // the walls; the rest is under them. A piece drawn after it (further south) covers it.
+  // the walls; the rest is under them. A piece drawn after it (further south) covers it, and so
+  // does a member standing in front of it.
   const rows = itemRows(lamp);
   const after = layout.items.slice(layout.items.indexOf(lamp) + 1);
+  const front = inFrontOfLamp(people, lamp.y + artSize(lamp.sprite).h, atlas);
   for (let y = from; y < to; y++) {
     const over = rows.top !== null && y < rows.top[1];
     for (let x = 0; x < w; x++) {
@@ -928,14 +958,7 @@ export function paintLight(
       const px = lamp.x + x;
       const py = lamp.y + y;
       if (!own(px, py) || (!over && mask.has(px, py))) continue;
-      const covered = after.some((it) => {
-        const s = artSize(it.sprite);
-        const ix = px - it.x;
-        const iy = py - it.y;
-        return (
-          ix >= 0 && iy >= 0 && ix < s.w && iy < s.h && artPixel(atlas, it.sprite, ix, iy)[3]! > 0
-        );
-      });
+      const covered = after.some((it) => drawnAt(atlas, it, px, py)) || front(px, py);
       if (!covered) cv.set(px, py, lit([pr!, pg!, pb!]));
     }
   }

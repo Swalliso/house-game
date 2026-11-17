@@ -488,6 +488,7 @@ export function OverhangLayer({
       items: withPeople(roomItems(model, r.uid), people?.get(r.uid)),
       copies: r.uid === dropUid,
       lit: !!r.finished,
+      people: people?.get(r.uid),
     })),
     ...[...yard.pieces.values()].map((l) => ({
       uid: l.uid,
@@ -495,6 +496,7 @@ export function OverhangLayer({
       items: l.items,
       copies: false,
       lit: false,
+      people: undefined,
     })),
   ];
   return (
@@ -521,6 +523,7 @@ export function OverhangLayer({
               box={p.box}
               scale={scale}
               z={z}
+              people={p.people}
             />
           ) : null,
         ];
@@ -586,6 +589,9 @@ function PieceOverhang({
  * A room an action has just finished keeps its light off until the director's beat switches it
  * on (lightsHeld, lightSwitched): it flickers on, or fades in with Flashing off (fx/light.ts). A
  * loaded run shows it on, with no beat, and so does Reduce motion.
+ *
+ * D-177: a member of the household standing in front of the lamp covers it, as the furniture in
+ * front of it does: its shade isn't lit over them (`people`, the room's members as items).
  */
 function RoomLight({
   model,
@@ -593,12 +599,14 @@ function RoomLight({
   box,
   scale,
   z,
+  people,
 }: {
   model: HouseModel;
   uid: number;
   box: Rect;
   scale: number;
   z: number;
+  people?: readonly Item[] | undefined;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const glow = useRef<HTMLCanvasElement>(null);
@@ -608,10 +616,16 @@ function RoomLight({
   const stands = !!roomLayout(model, uid).lamp;
   const plans = useMemo(
     () => ({
-      glow: { frame: box, paint: (atlas: AtlasPixels) => paintLight(model, uid, atlas, 'glow') },
-      shade: { frame: box, paint: (atlas: AtlasPixels) => paintLight(model, uid, atlas, 'shade') },
+      glow: {
+        frame: box,
+        paint: (atlas: AtlasPixels) => paintLight(model, uid, atlas, 'glow', people),
+      },
+      shade: {
+        frame: box,
+        paint: (atlas: AtlasPixels) => paintLight(model, uid, atlas, 'shade', people),
+      },
     }),
-    [model, uid, box],
+    [model, uid, box, people],
   );
   // Before the browser paints, so the light changes in the same frame as the room.
   useLayoutEffect(() => paintPieceArt(glow.current, plans.glow), [plans]);
