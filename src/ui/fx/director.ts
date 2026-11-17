@@ -42,7 +42,7 @@ import {
 import { audio } from '../audio/audio.ts';
 import { arrivalOf, cardsPhrase, isPlural } from '../hud/household.ts';
 import { settings } from '../settings.ts';
-import { firstJob, onEvents, onRunReset } from '../store.ts';
+import { firstJob, onEvents, onRunReset, run } from '../store.ts';
 import { formatNumber } from '../format.ts';
 import { chainOrder } from './chain.ts';
 import { FEEL } from './feel.ts';
@@ -233,8 +233,11 @@ export const played = {
   wash: 0,
   arrival: 0,
 };
-/** The piece that was just placed, for its settle animation. */
-export const justPlaced = signal<{ uid: number; id: number } | null>(null);
+/**
+ * The piece that was just placed, for its settle animation. D-178: `drop` when it's a room whose
+ * furniture drops in, item by item, instead (piece-fx.ts drop).
+ */
+export const justPlaced = signal<{ uid: number; id: number; drop?: true } | null>(null);
 /** The room that was just renovated, for its level badge's pop. */
 export const justRenovated = signal<{ uid: number; id: number } | null>(null);
 
@@ -1178,6 +1181,22 @@ function milestoneBanner(e: Extract<GameEvent, { t: 'milestone' }>, ended: boole
   return ms;
 }
 
+/**
+ * D-178: one of a dropping room's thocking landings (piece-fx.ts dropPlan) has come: thock `k`,
+ * a slit drum's thock as a room has always landed with, each one a step higher than the one
+ * before; dust puffs from the room with the first.
+ */
+export function dropLanded(uid: number, k: number): void {
+  const f = FEEL.drop;
+  audio.play(
+    'place-room',
+    k === 0 ? undefined : { rate: 2 ** ((k * f.thockSemitones) / 12), gain: f.thockGain },
+  );
+  if (k !== 0) return;
+  const at = pieceMiddle([run.peek()], uid);
+  if (at) boardBurst('dust', at, { scale: f.dust });
+}
+
 async function play(events: GameEvent[], before: RunState, after: RunState): Promise<void> {
   const gen = generation;
   const animated = animates(events);
@@ -1227,9 +1246,15 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
       if (gen !== generation) return;
       switch (e.t) {
         case 'placed': {
-          justPlaced.value = { uid: e.uid, id: nextId++ };
           const yard = CONTENT.pieces[e.defId].category !== 'indoor';
-          audio.play(yard ? 'place-yard' : 'place-room');
+          // D-178: a room's furniture drops in on the board, item by item, and thocks as it lands
+          // (dropLanded), playing on past this beat. Not with a newer action waiting, nor on the
+          // ?debug panel's instant tally.
+          const drop = !yard && !skipping && !instantTally.value && motion();
+          justPlaced.value = drop
+            ? { uid: e.uid, id: nextId++, drop }
+            : { uid: e.uid, id: nextId++ };
+          if (!drop) audio.play(yard ? 'place-yard' : 'place-room');
           if (e.free && !skipping) {
             const c = pieceCenter([after, base], e.uid);
             popup(c.x, c.y - 0.6, 'Weekend Crew!', 'note', FEEL.installMs);

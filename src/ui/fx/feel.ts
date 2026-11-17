@@ -382,6 +382,36 @@ export const FEEL = {
   placeMs: 220,
 
   /**
+   * A placed room's furniture drops in (D-178, piece-fx.ts drop), back to front: each item falls
+   * `fallPx` art px over `fallMs`, a whole art px at a time and faster as it goes, fading in over
+   * `fadeMs` (no longer than the fall), then lands on its foot with a `squash` and a `stretch`
+   * (scale x, y) over `landMs`: in its own place, or a tall item as its copy, which at rest hands
+   * over to the item itself over `swapMs` (the walls' light on it fades in).
+   * Each starts `staggerMs` after the one before, or sooner in a room of many, so the last starts
+   * within `budgetMs` of the first. Up to `thocks` landings thock (the first, the middle, the
+   * last), each `thockSemitones` above the one before and the later ones at `thockGain`, and
+   * `dust` puffs with the first. It plays at the tally speed setting and never holds input: the
+   * placement's beat still waits `placeMs`, and the rest plays on while the player moves on. A
+   * click, a key, the wheel or the next placement finishes it. None with Reduce motion.
+   */
+  drop: {
+    budgetMs: 330,
+    staggerMs: 60,
+    fallMs: 80,
+    fallPx: 8,
+    fadeMs: 40,
+    landMs: 120,
+    squash: [1.14, 0.84],
+    stretch: [0.96, 1.05],
+    swapMs: 60,
+    thocks: 3,
+    thockSemitones: 2,
+    thockGain: 0.85,
+    /** The dust preset's count, scaled: a room landing, not a find dug up. */
+    dust: 0.7,
+  },
+
+  /**
    * Budget counts coin by coin (§12, Shop and crates; Balatro's): 0.18 s a coin, faster above
    * 9 and above 20, and one "+N" jump above 60. Spending counts down at the fastest rate.
    */
