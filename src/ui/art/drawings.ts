@@ -1,13 +1,14 @@
 // Our own pixel drawings, for what LimeZu doesn't draw (D-097): the Doghouse, the Henhouse's hens,
-// the Sprinkler, and the dogs' bed in Nana's Room (D-111). They're in LimeZu's style: its palette,
-// its ink (#3a3a50) for outlines, light from the top left, and its shadow (the ink at 100/255)
-// under things that stand on the ground.
+// the Sprinkler, the dogs' bed in Nana's Room (D-111), and the Doghouse's dog, on its lead and
+// loose (D-179). They're in LimeZu's style: its palette, its ink (#3a3a50) for outlines, light
+// from the top left, and its shadow (the ink at 100/255) under things that stand on the ground.
 // Pure: each is rows of characters, one per art px, each a color from KEY ('.' is clear). The
 // painters read their pixels; the board shows them as images (HouseLayers.tsx).
 //
 // Ids start with "own-", so they never collide with the atlas's sprites. ArtId is either kind:
 // items in rooms and yards may be one or the other.
 
+import { FEEL } from '../fx/feel.ts';
 import { spriteFrames, spritePos, type SpriteId } from '../sprites.ts';
 
 type Rgba = readonly [number, number, number, number];
@@ -39,6 +40,7 @@ export const KEY: Readonly<Record<string, Rgba>> = {
   U: [0xc7, 0x8c, 0x59, 255], // a brown hen
   u: [0x91, 0x6e, 0x41, 255],
   y: [0xf2, 0xb2, 0x2b, 255], // beaks and feet
+  p: [0xee, 0xa5, 0xb8, 255], // a dog's tongue
 };
 
 /**
@@ -165,6 +167,89 @@ const DOG_BED = [
   '......ssssssssssss....',
 ] as const;
 
+/**
+ * The Doghouse's dog on its lead (D-179), while the Doghouse earns nothing outside a fenced yard:
+ * the Barkers' brown dog with a white blaze, in the dogs' bed's colors, sitting in the kennel's
+ * doorway, facing us, its red lead sagging from its collar to a ring on the kennel's corner post.
+ * Drawn to stand at (3, 20) in the Doghouse's cell, over the kennel (yard.ts).
+ */
+const DOG_ON_LEAD = [
+  '.......kkkkkkk...',
+  '......kkvvUUUkk..',
+  '.g...kBBvUUUUBBk.',
+  '.kr..kBkUkUkUkBk.',
+  '..r..kBBUhhhUBBk.',
+  '...r..kkUhkhUkk..',
+  '....rrrrkrrrkk...',
+  '......kUUhhhUUk..',
+  '.....kUUkhhhkUUk.',
+  '.....kUUkhhhkUUk.',
+  '......kkkhkhkkk..',
+  '.......sssssss...',
+] as const;
+
+/** The dog let loose: sitting up, its tongue out and its tail up. */
+const DOG_UP = [
+  '..kkkkkkk...',
+  '.kkvvUUUkk..',
+  'kBBvUUUUBBk.',
+  'kBkUkUkUkBk.',
+  'kBBUhhhUBBk.',
+  '.kkUhkhUkk..',
+  '..kkhphkk.k.',
+  '..krrprrkkUk',
+  '.kUUhhhUUkk.',
+  'kUUkhhhkUUk.',
+  'kUUkhhhkUUk.',
+  '.kkkhkhkkk..',
+] as const;
+
+/** The same dog in the air, mid-hop, its legs tucked under it. */
+const DOG_HOP = [...DOG_UP.slice(0, 9), 'kUUhhhhhUUk.', '.kkkkkkkkk..'];
+
+/** Rows laid into a clear frame `w` × `h`, each drawing at its spot (x, y), later ones on top. */
+function laid(
+  w: number,
+  h: number,
+  parts: readonly (readonly [readonly string[], number, number])[],
+): string[] {
+  const rows = Array.from({ length: h }, () => Array.from({ length: w }, () => '.'));
+  for (const [grid, x, y] of parts) {
+    grid.forEach((row, j) => {
+      [...row].forEach((ch, i) => {
+        if (ch !== '.') rows[y + j]![x + i] = ch;
+      });
+    });
+  }
+  return rows.map((r) => r.join(''));
+}
+
+/**
+ * The loose dog (D-179) as one animation in a box 15 × 29 that stands at (0, 3) in the Doghouse's
+ * cell (yard.ts): sitting up on the kennel's roof, hopping down to the grass by the kennel's
+ * corner, sitting there, and hopping back up. Every frame lasts FEEL.dog.hopMs: a hop is one
+ * frame in the air, a rest as many frames as its time takes. Its first frame, on the roof, is the
+ * one that stands still under Reduce motion and that the cards, the ghost and the photos show.
+ */
+const DOG_LOOSE = (() => {
+  const on = (ms: number) => Math.max(1, Math.round(ms / FEEL.dog.hopMs));
+  const roof = laid(15, 29, [[DOG_UP, 3, 0]]);
+  const air = laid(15, 29, [
+    [DOG_HOP, 1, 8],
+    [['...ssssss...'], 1, 27],
+  ]);
+  const grass = laid(15, 29, [
+    [DOG_UP, 0, 16],
+    [['..ssssssss..'], 0, 28],
+  ]);
+  return [
+    ...Array.from({ length: on(FEEL.dog.roofMs) }, () => roof),
+    air,
+    ...Array.from({ length: on(FEEL.dog.grassMs) }, () => grass),
+    air,
+  ];
+})();
+
 /** Rows mirrored left to right. */
 function mirror(rows: readonly string[]): string[] {
   return rows.map((r) => [...r].reverse().join(''));
@@ -185,6 +270,8 @@ export const DRAWINGS = {
   'own-hen-brown-e': { frames: [mirror(BROWN_HEN)] },
   'own-sprinkler': { frames: SPRINKLER, ms: 180 },
   'own-dog-bed': { frames: [DOG_BED] },
+  'own-dog-on-lead': { frames: [DOG_ON_LEAD] },
+  'own-dog-loose': { frames: DOG_LOOSE, ms: FEEL.dog.hopMs },
 } as const satisfies Record<string, Drawing>;
 
 export type DrawingId = keyof typeof DRAWINGS;

@@ -67,7 +67,9 @@ export type SoundId =
   // A strike from the hand (D-157): a heavier stamp on card stock.
   | 'strike'
   // A won run's open house (D-175): the fanfare.
-  | 'run-won';
+  | 'run-won'
+  // The Doghouse wakes up (D-179): its dog, let off its lead, barks.
+  | 'bark';
 
 export interface PlayOptions {
   /** Exact playback rate. Giving one also turns off the random rate and gain spread. */
@@ -360,6 +362,17 @@ const SOUNDS: Record<SoundId, readonly Layer[]> = {
     note(0.92, G5, 0.26, 0.9),
     note(0.92, E5, 0.24, 0.9),
     { at: 0.97, params: [0.1, 0, C7, 0.005, 0.1, 0.5, 0, 1, , , , , 0.035, , , , , 1, , 0.5] },
+  ],
+
+  // ---- The Doghouse wakes up (D-179) ----
+  // Its dog barks once: a rough, low-passed "ruff" from 460 Hz whose pitch falls by about a
+  // third in its 0.13 s, over a breath of noise at its start.
+  bark: [
+    {
+      at: 0,
+      params: [0.5, 0, 460, 0.004, 0.03, 0.08, 2, 1, -2.5, , , , , 0.35, , , , 0.6, 0.02, , -1400],
+    },
+    { at: 0, params: [0.14, 0, 900, 0.002, 0.01, 0.04, 4, 1, , , , , , , , , , 1, , , -2400] },
   ],
 };
 

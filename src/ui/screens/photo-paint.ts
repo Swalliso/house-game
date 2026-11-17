@@ -11,12 +11,12 @@
 // It paints from the state it's given, never through the board's components, so it can't touch
 // the live board's caches or its car's slide (HouseLayers' lastCar).
 
-import type { RunState } from '../../rules/index.ts';
+import { rules, type RunState } from '../../rules/index.ts';
 import { artSize } from '../art/drawings.ts';
 import type { Plot } from '../company.ts';
 import { Canvas, paintFloors, paintWalls, type AtlasPixels } from '../art/house-paint.ts';
 import { itemRows, roomItems, type Item } from '../art/rooms.ts';
-import { yardModel } from '../art/yard.ts';
+import { unmetOf, yardModel } from '../art/yard.ts';
 import { atlasPixels } from '../board/HouseLayers.tsx';
 import { hallLinks, houseModel, sunLight, type Rect } from '../board/house-model.ts';
 import { opaqueBox, plotPart } from '../board/neighbors.ts';
@@ -82,9 +82,10 @@ export async function paintPhoto(
   const cv = new Canvas(frame.x, frame.y, frame.w, frame.h);
   cv.data.set(ground.getImageData(0, 0, frame.w, frame.h).data);
 
-  // The house, as the board draws it.
+  // The house, as the board draws it: a Doghouse's dog as it was then, on its lead or loose
+  // (D-179), from the rules' tally of the whole house.
   const model = houseModel(house, hallLinks(state), sunLight(state));
-  const yard = yardModel(house, model);
+  const yard = yardModel(house, model, unmetOf(rules.currentTally(state).pieces));
   const floors = paintFloors(model, atlas, { yard });
   if (floors) cv.over(floors);
   const pieces: { box: Rect; items: readonly Item[]; i: number }[] = [];

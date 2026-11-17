@@ -42,6 +42,7 @@ import { backToBuilding, changeOrderShown, shopShown } from '../hud/actions.ts';
 import { Icon } from '../kit/kit.tsx';
 import {
   activePlay,
+  currentTally,
   demolishArmed,
   demolishAt,
   demolishPreview,
@@ -97,7 +98,7 @@ import {
   zoomOut,
 } from './camera.ts';
 import { newRoomLook, roomLook } from '../art/rooms.ts';
-import { newPieceLook, pieceLook, yardModel } from '../art/yard.ts';
+import { newPieceLook, pieceLook, unmetOf, yardModel } from '../art/yard.ts';
 import {
   boardRows,
   canopyRoom,
@@ -126,6 +127,7 @@ import {
   ItemsLayer,
   LabelsLayer,
   OverhangLayer,
+  useWakeUps,
   WallsLayer,
 } from './HouseLayers.tsx';
 import { layerVars } from './layers.ts';
@@ -376,8 +378,12 @@ export function Board() {
   const links = useMemo(() => hallLinks(state), [state]);
   const sun = useMemo(() => sunLight(state), [state]);
   const model = houseModel(house, links, sun);
-  // The yard pieces' ground and props, cached per house model.
-  const yard = yardModel(house, model);
+  // The yard pieces' ground and props, cached per house model. A piece whose requirement isn't
+  // met, by the rules' tally, draws so: the Doghouse's dog on its lead (D-179). One whose fenced
+  // yard has just closed wakes up with a wobble and a bark (useWakeUps).
+  const unmet = unmetOf(currentTally.value.pieces);
+  const yard = yardModel(house, model, unmet);
+  useWakeUps(state.setup, house, unmet);
   // D-177: the household's members, in their rooms (with the furniture) or waiting at the door;
   // nobody in the guided first job. What stands in the yard in a walk's way.
   const guided = firstJob.value;
@@ -1275,7 +1281,11 @@ function Ghost({
             ? roomLook(run.value.house, grows)
             : isIndoor(defId)
               ? newRoomLook(run.value.house, defId)
-              : newPieceLook(run.value.house, defId)
+              : {
+                  ...newPieceLook(run.value.house, defId),
+                  // D-179: as the preview says it will land (the Doghouse's dog on its lead).
+                  ...(p?.newPiece?.unmet !== undefined ? { unmet: true } : {}),
+                }
         }
         class={`ghost ${legal ? 'legal' : 'illegal'} ${pending ? 'pending' : ''}`}
       />
@@ -1759,7 +1769,7 @@ function ToolTarget({ scale }: { scale: number }) {
         look={
           isIndoor(piece.defId)
             ? roomLook(state.house, piece.uid)
-            : pieceLook(state.house, piece.uid)
+            : pieceLook(state.house, piece.uid, unmetOf(currentTally.value.pieces))
         }
         class={`ghost ${ok ? 'legal' : 'illegal'} ${armed ? 'pending' : ''}`}
       />

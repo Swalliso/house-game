@@ -16,6 +16,10 @@
 //   the Hot Tub's bubbles, the Fire Pit's fire and stumps, planters, the Sapling, the outbuildings,
 //   the hens, a Porch's bench and pot of flowers. Fixtures: the Sprinkler on its Lawn, the Pergola over its Patio, Garden Lights as
 //   two bollards with their glow; a fixture's badge shows only where a door keeps it off.
+// - A piece's picture can depend on whether its requirement is met, from the rules' tally
+//   (yardModel's `unmet`; D-179): the Doghouse's dog sits on its lead in the kennel's doorway
+//   while it earns nothing outside a fenced yard, and once the yard closes it's loose, hopping
+//   between the kennel's roof and the grass. No other piece has an "off" look.
 // - Nothing stands on an outside door's mat or in front of its opening: a Patio's seats move
 //   clear of the door that opens onto it (under a small parasol in place of the full one), the
 //   car parks further along its Driveway, or on the next one, and a Pergola, which reaches every
@@ -124,19 +128,36 @@ const SHADE: Rgb = [0x3a, 0x3a, 0x50];
 // ---------------------------------------------------------------------------------------
 // The cache.
 
-const cache = new WeakMap<HouseModel, YardModel>();
+const cache = new WeakMap<HouseModel, { unmet: string; yard: YardModel }>();
+
+const NONE: ReadonlySet<number> = new Set();
 
 /**
  * The yard of the house `m` was built from (houseModel): every yard piece's ground and items, and
- * the curb cuts. Cached per model, so it's built once per placement, not per render.
+ * the curb cuts. `unmet` holds the pieces whose requirement isn't met, from the rules' tally
+ * (unmetOf): the Doghouse draws its dog on its lead there (D-179). Cached per model and unmet
+ * set, so it's built once per placement, not per render: a requirement is met or not by where
+ * the pieces stand, so the set changes only with the house.
  */
-export function yardModel(house: HouseState, m: HouseModel): YardModel {
-  let y = cache.get(m);
-  if (!y) {
-    y = build(house, m, { street: true, car: true, edges: true });
-    cache.set(m, y);
-  }
-  return y;
+export function yardModel(
+  house: HouseState,
+  m: HouseModel,
+  unmet: ReadonlySet<number> = NONE,
+): YardModel {
+  const key = [...unmet].sort((a, b) => a - b).join(',');
+  const hit = cache.get(m);
+  if (hit?.unmet === key) return hit.yard;
+  const yard = build(house, m, { street: true, car: true, edges: true, unmet });
+  cache.set(m, { unmet: key, yard });
+  return yard;
+}
+
+/**
+ * The pieces whose requirement isn't met (D-179): those the rules' tally gives an `unmet` text
+ * (PieceScore.unmet, the ⚠'s), for yardModel. The UI never works out a requirement itself.
+ */
+export function unmetOf(pieces: readonly { uid: number; unmet?: string }[]): ReadonlySet<number> {
+  return new Set(pieces.flatMap((p) => (p.unmet === undefined ? [] : [p.uid])));
 }
 
 const solo = new Map<string, YardLayout>();
@@ -148,7 +169,8 @@ export type Look = PieceLook;
  * One yard piece alone, for the ghost: in its own frame (its bounding box's top-left cell is
  * (0, 0)), in the color and with the fixture `look` gives it (pieceLook, newPieceLook), in a
  * pack's own tiles (D-106) when `own` gives them, with no curb cut and no parked car (the house
- * has one, on the oldest Driveway with room for it).
+ * has one, on the oldest Driveway with room for it). With `look.unmet` it's drawn as a piece
+ * whose requirement isn't met (D-179): the ghost lands as the preview says the piece will.
  */
 export function yardPieceLayout(
   defId: PieceId,
@@ -157,7 +179,7 @@ export function yardPieceLayout(
   /** A pack's own tiles (PlacedPiece.shape), when they aren't the card's shape. */
   own?: readonly string[],
 ): YardLayout {
-  const key = `${defId}:${rot}:${own?.join('/') ?? ''}:${look.color}:${look.fixture ?? ''}`;
+  const key = `${defId}:${rot}:${own?.join('/') ?? ''}:${look.color}:${look.fixture ?? ''}:${look.unmet ? 'unmet' : ''}`;
   let l = solo.get(key);
   if (!l) {
     const shape = own ?? CONTENT.pieces[defId].shape;
@@ -190,6 +212,7 @@ export function yardPieceLayout(
       car: false,
       edges: false,
       color: look.color,
+      unmet: look.unmet ? new Set([1]) : NONE,
     }).pieces.get(1)!;
     solo.set(key, l);
   }
@@ -213,7 +236,14 @@ const isDriveway = (id: PieceId) => kind(id) === 'driveway';
 function build(
   house: HouseState,
   m: HouseModel | null,
-  opts: { street: boolean; car: boolean; edges: boolean; color?: number },
+  opts: {
+    street: boolean;
+    car: boolean;
+    edges: boolean;
+    color?: number;
+    /** The pieces whose requirement isn't met (yardModel). */
+    unmet: ReadonlySet<number>;
+  },
 ): YardModel {
   const occ = occupancy(house);
   const { width: W, height: H } = house.lot;
@@ -288,6 +318,7 @@ function build(
       color: opts.color ?? color.get(p.uid) ?? 0,
       ...(east !== west ? { toward: east } : {}),
       fence,
+      unmet: opts.unmet.has(p.uid),
     });
     LAYOUTS[p.defId]?.(y);
     if (p.fixture?.id === 'gardenLights') y.lights();
@@ -397,12 +428,16 @@ export function risingParts(l: YardLayout): Rect[] {
   });
 }
 
-/** A placed yard piece's look, for its ghost while the Moving Truck carries it. */
-export function pieceLook(house: HouseState, uid: number): Look {
+/**
+ * A placed yard piece's look, for its ghost while the Moving Truck carries it: as it stands now,
+ * its requirement unmet if `unmet` (yardModel's) holds it.
+ */
+export function pieceLook(house: HouseState, uid: number, unmet: ReadonlySet<number> = NONE): Look {
   const p = house.pieces.find((q) => q.uid === uid);
   return {
     color: colors(house).get(uid) ?? 0,
     ...(p?.fixture ? { fixture: p.fixture.id } : {}),
+    ...(unmet.has(uid) ? { unmet: true } : {}),
   };
 }
 
@@ -468,6 +503,8 @@ interface YardCtx {
   toward?: boolean;
   /** Every Fence cell's arms on the lot, joined across pieces and out to the house (fenceArms). */
   fence: { arms: ReadonlyMap<string, FenceArms> };
+  /** Its requirement isn't met (yardModel's `unmet`): the Doghouse's dog is on its lead (D-179). */
+  unmet: boolean;
 }
 
 /** One yard piece being laid out. */
@@ -570,7 +607,8 @@ class Yard {
    * Stands an outbuilding's own building (the Treehouse, the Greenhouse, the coop, the Doghouse,
    * the Birdhouse) with its top-left at (x, y), always: it's the piece itself, and no door opens
    * onto an outbuilding, so only its roof rising over the row behind it can meet a door's mat,
-   * which it hides as anything tall in front of it would.
+   * which it hides as anything tall in front of it would. The Doghouse's dog stands the same way
+   * (D-179): it says whether the piece earns, so it always shows, and it stays on the cell.
    */
   stand(sprite: Item['sprite'], x: number, y: number): void {
     this.items.push({ sprite, x, y });
@@ -836,6 +874,12 @@ const LAYOUTS: Partial<Record<PieceId, (y: Yard) => void>> = {
 
   doghouse: (y) => {
     y.stand('own-doghouse', y.box.x + 1, y.box.y + 7);
+    // Its dog (D-179): outside a fenced yard, where the Doghouse earns nothing, it sits on its
+    // lead in the kennel's doorway; in one, it's loose, hopping between the kennel's roof and the
+    // grass by its corner (drawings.ts). Both keep to the cell, clear of the ⚠ at its top left
+    // and the digit at its bottom right.
+    if (y.ctx.unmet) y.stand('own-dog-on-lead', y.box.x + 3, y.box.y + 20);
+    else y.stand('own-dog-loose', y.box.x, y.box.y + 3);
   },
 
   treehouse: (y) => {

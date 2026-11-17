@@ -147,6 +147,11 @@ export interface PieceLook {
   flip?: boolean;
   fixture?: FixtureId;
   style?: number;
+  /**
+   * D-179: a yard piece whose requirement won't be met there (the preview's `unmet`): the
+   * Doghouse's dog on its lead (yard.ts). Rooms don't read it.
+   */
+  unmet?: boolean;
 }
 
 export interface HouseModel {

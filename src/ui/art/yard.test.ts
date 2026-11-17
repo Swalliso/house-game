@@ -24,6 +24,8 @@ import {
 import { computeLayout } from '../../rules/layout.ts';
 import { lotFromRows } from '../../rules/lot.ts';
 import { grow, houseModel, overlaps, type Rect } from '../board/house-model.ts';
+import { digitBox, pieceLabels } from '../board/label-layout.ts';
+import { FEEL } from '../fx/feel.ts';
 import { CELL, spritePos, type SpriteId } from '../sprites.ts';
 import {
   artFrames,
@@ -43,6 +45,7 @@ import {
   newPieceLook,
   pieceLook,
   risingParts,
+  unmetOf,
   yardModel,
   yardPieceLayout,
   type Ground,
@@ -977,9 +980,9 @@ describe('our own drawings', () => {
     }
   });
 
-  it('cover what LimeZu doesn’t draw: the Doghouse, the hens, the Sprinkler', () => {
+  it('cover what LimeZu doesn’t draw: the Doghouse and its dog, the hens, the Sprinkler', () => {
     const dog = yardOf(house([['doghouse', 3, 3]])).pieces.get(1)!;
-    expect(dog.items.map((i) => i.sprite)).toEqual(['own-doghouse']);
+    expect(dog.items.map((i) => i.sprite)).toEqual(['own-doghouse', 'own-dog-loose']);
     const hens = yardOf(house([['henhouse', 3, 3]])).pieces.get(1)!;
     expect(hens.items.filter((i) => i.sprite.startsWith('own-hen')).length).toBe(2);
     expect(hens.items.some((i) => i.sprite.startsWith('coop-'))).toBe(true);
@@ -988,6 +991,127 @@ describe('our own drawings', () => {
     for (const hen of hens.items.filter((i) => i.sprite.startsWith('own-hen'))) {
       expect(Math.floor(hen.x / CELL) === Math.floor(coop.x / CELL)).toBe(false);
     }
+  });
+});
+
+describe('the Doghouse’s dog (D-179)', () => {
+  const h = house([['doghouse', 3, 3]]);
+  const m = houseModel(h);
+  const lead = yardModel(h, m, new Set([1])).pieces.get(1)!;
+  const loose = yardModel(h, m).pieces.get(1)!;
+  const dog = (l: YardLayout) => l.items.find((i) => i.sprite.startsWith('own-dog-'))!;
+
+  it('sits on its lead while its requirement isn’t met, and is loose once it is', () => {
+    expect(lead.items.map((i) => i.sprite)).toEqual(['own-doghouse', 'own-dog-on-lead']);
+    expect(loose.items.map((i) => i.sprite)).toEqual(['own-doghouse', 'own-dog-loose']);
+    for (const l of [lead, loose]) {
+      expect(problems(l)).toEqual([]);
+      // In front of the kennel, and never above its own cell: no other piece's labels move.
+      expect(l.items.at(-1)).toBe(dog(l));
+      expect(risingParts(l)).toEqual([]);
+    }
+  });
+
+  it('is the only “off” look: every other yard piece draws the same either way', () => {
+    for (const id of YARD) {
+      if (id === 'doghouse') continue;
+      for (const rot of [0, 1] as const) {
+        const one = house([[id, 3, 3, rot]]);
+        const model = houseModel(one);
+        const off = yardModel(one, model, new Set([1])).pieces.get(1);
+        expect(off, `${id} r${rot}`).toEqual(yardModel(one, model).pieces.get(1));
+      }
+    }
+  });
+
+  it('keeps clear of its own ⚠ and digit at 1× and up', () => {
+    /** A label's box in lot art px, grown to whole art px. */
+    const art = (b: { x: number; y: number; w: number; h: number }, px: number): Rect => {
+      const k = CELL / px;
+      const x = Math.floor(b.x * k);
+      const y = Math.floor(b.y * k);
+      return { x, y, w: Math.ceil((b.x + b.w) * k) - x, h: Math.ceil((b.y + b.h) * k) - y };
+    };
+    for (const [px, dpr] of [
+      [32, 1],
+      [64, 1],
+      [96, 1],
+      [32, 2],
+      [48, 2],
+    ] as const) {
+      const labels = (unmet: boolean, digit: number) =>
+        pieceLabels({
+          cells: [{ x: 3, y: 3 }],
+          inset: () => 0,
+          px,
+          dpr,
+          digit,
+          fixture: false,
+          unmet,
+        });
+      // On its lead it earns nothing: the ⚠, and a 0.
+      const off = labels(true, 1);
+      expect(pixelOn(dog(lead), art(off.unmet!, px)), `${px}/${dpr}`).toBeNull();
+      expect(pixelOn(dog(lead), art(digitBox(off.digit!, 1), px)), `${px}/${dpr}`).toBeNull();
+      // Loose, in any frame of its hop, off a score of one figure or two.
+      for (const n of [1, 2]) {
+        const on = labels(false, n);
+        expect(
+          pixelOn(dog(loose), art(digitBox(on.digit!, n), px)),
+          `${px}/${dpr} ${n}`,
+        ).toBeNull();
+      }
+    }
+  });
+
+  it('hops between the roof and the grass, frame by frame, and stands on the roof in its first', () => {
+    const roof = Math.round(FEEL.dog.roofMs / FEEL.dog.hopMs);
+    const grass = Math.round(FEEL.dog.grassMs / FEEL.dog.hopMs);
+    expect(artFrames('own-dog-loose')).toEqual({
+      frames: roof + 1 + grass + 1,
+      stride: artSize('own-dog-loose').w,
+      ms: FEEL.dog.hopMs,
+    });
+    // Its first frame (what Reduce motion, the cards and the photos show) is on the kennel's
+    // roof, above the kennel's front wall; later ones reach the grass at the cell's foot.
+    const it = dog(loose);
+    const { w } = artSize(it.sprite);
+    const front = { x: it.x, y: 3 * CELL + 19, w, h: CELL - 19 };
+    const d = drawingPixels('own-dog-loose');
+    const firstFrameOnly = (r: Rect) => {
+      for (let y = r.y; y < r.y + r.h; y++)
+        for (let x = r.x; x < r.x + r.w; x++) {
+          const i = ((y - it.y) * d.w * d.frames + (x - it.x)) * 4 + 3;
+          if (d.data[i]! > 0) return `${x},${y}`;
+        }
+      return null;
+    };
+    expect(firstFrameOnly(front)).toBeNull();
+    expect(pixelOn(it, front)).not.toBeNull();
+  });
+
+  it('shows on the ghost as the preview says the Doghouse will land, and loose on its card', () => {
+    const one = house([['doghouse', 1, 1]]);
+    const placed = framed(yardModel(one, houseModel(one), new Set([1])).pieces.get(1)!);
+    const look = pieceLook(one, 1, new Set([1]));
+    expect(look.unmet).toBe(true);
+    expect(pieceLook(one, 1).unmet).toBeUndefined();
+    expect(yardPieceLayout('doghouse', 0, look).items).toEqual(placed.items);
+    // A card's picture has no look: the dog loose, as on a Doghouse that earns.
+    expect(yardPieceLayout('doghouse', 0).items.map((i) => i.sprite)).toContain('own-dog-loose');
+  });
+
+  it('is cached per house model and unmet set', () => {
+    const asleep = yardModel(h, m, new Set([1]));
+    expect(yardModel(h, m, new Set([1]))).toBe(asleep);
+    const awake = yardModel(h, m);
+    expect(awake).not.toBe(asleep);
+    expect(yardModel(h, m, new Set())).toBe(awake);
+  });
+
+  it('reads the rules’ tally for which requirements aren’t met', () => {
+    const pieces = [{ uid: 1 }, { uid: 2, unmet: 'in a fenced yard' }, { uid: 4, unmet: 'x' }];
+    expect([...unmetOf(pieces)]).toEqual([2, 4]);
   });
 });
 
