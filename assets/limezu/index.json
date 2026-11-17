@@ -286,6 +286,31 @@
     "h": 21,
     "spec": "cd50d9f9d16747a0"
   },
+  "client-barkers": {
+    "w": 16,
+    "h": 32,
+    "spec": "4b75ed89f5337075"
+  },
+  "client-dale": {
+    "w": 16,
+    "h": 32,
+    "spec": "e456759f76a972f5"
+  },
+  "client-hendersons": {
+    "w": 16,
+    "h": 32,
+    "spec": "3c7b71b48d19ff8f"
+  },
+  "client-juniper": {
+    "w": 16,
+    "h": 32,
+    "spec": "fdadd1986de1744b"
+  },
+  "client-vladislav": {
+    "w": 16,
+    "h": 32,
+    "spec": "b3c06e564e083d00"
+  },
   "clock": {
     "w": 12,
     "h": 17,
@@ -1829,6 +1854,27 @@
     "w": 28,
     "h": 30,
     "spec": "e3602e2c6cb3b362"
+  },
+  "visit-ask": {
+    "w": 16,
+    "h": 32,
+    "frames": 2,
+    "ms": 320,
+    "spec": "131a92d9980229b7"
+  },
+  "visit-heart": {
+    "w": 16,
+    "h": 32,
+    "frames": 2,
+    "ms": 320,
+    "spec": "cbac70320bbefe27"
+  },
+  "visit-pop": {
+    "w": 16,
+    "h": 32,
+    "frames": 4,
+    "ms": 70,
+    "spec": "eb47aaca3c0132c3"
   },
   "wardrobe-0": {
     "w": 27,

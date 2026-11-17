@@ -1,0 +1,91 @@
+{
+  "client-hendersons": {
+    "pack": "mi",
+    "file": "2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_11.png",
+    "rect": [48, 0, 16, 32],
+    "note": "The client at the door (D-182): the Hendersons, a household shown as one figure, standing and facing us (the sheet's fourth standing frame). A parent in a field jacket with a backpack: a growing family's everyday look."
+  },
+  "client-vladislav": {
+    "pack": "mi",
+    "file": "2_Characters/Character_Generator/Bodies/16x16/Body_06.png",
+    "rect": [48, 0, 16, 32],
+    "ops": [
+      { "op": "recolor", "map": { "#b4613f": "#c6b4a5" } },
+      {
+        "op": "compose",
+        "size": [16, 32],
+        "layers": [
+          {
+            "file": "2_Characters/Character_Generator/Eyes/16x16/Eyes_01.png",
+            "rect": [48, 0, 16, 32],
+            "at": [0, 0],
+            "ops": [{ "op": "recolor", "map": { "#674d49": "#d93232" } }]
+          },
+          {
+            "file": "2_Characters/Character_Generator/Outfits/16x16/Outfit_06_01.png",
+            "rect": [48, 0, 16, 32],
+            "at": [0, 0]
+          },
+          {
+            "file": "2_Characters/Character_Generator/Hairstyles/16x16/Hairstyle_13_04.png",
+            "rect": [48, 0, 16, 32],
+            "at": [0, 0],
+            "ops": [
+              {
+                "op": "recolor",
+                "map": { "#5b4643": "#3a3a50", "#674d49": "#46465e", "#6f5449": "#565972" }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "note": "The client at the door (D-182): Count Vladislav. No premade character is a vampire, so he's composed from the character generator's parts, standing and facing us: the palest body with its blush painted out in its own shade, the generator's first eyes with red irises (the red of his cravat), the dark suit with a red cravat, and a swept hairstyle with a lock over the brow, its browns recolored to the outline's blue-blacks."
+  },
+  "client-barkers": {
+    "pack": "mi",
+    "file": "2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_13.png",
+    "rect": [48, 0, 16, 32],
+    "note": "The client at the door (D-182): the Barkers, a household shown as one figure, standing and facing us. A dog walker's easy look: a quiff and a light shirt."
+  },
+  "client-juniper": {
+    "pack": "mi",
+    "file": "2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_18.png",
+    "rect": [48, 0, 16, 32],
+    "note": "The client at the door (D-182): Juniper Vale, standing and facing us, in a pink cap and a striped top."
+  },
+  "client-dale": {
+    "pack": "mi",
+    "file": "2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_20.png",
+    "rect": [48, 0, 16, 32],
+    "note": "The client at the door (D-182): Dale, who works from home, standing and facing us: a beanie, glasses and a cardigan."
+  },
+  "visit-pop": {
+    "pack": "mi",
+    "file": "4_User_Interface_Elements/UI_thinking_emotes_animation_16x16.png",
+    "rect": [0, 32, 16, 32],
+    "frames": { "count": 4, "dx": 16, "dy": 0, "ms": 70 },
+    "note": "The client's visit (D-182): a thought bubble popping up, the sheet's sample animation's first four frames (a dot, the tail, a small bubble, a wide one). Every bubble of the visit plays it once, then shows its icon."
+  },
+  "visit-heart": {
+    "pack": "mi",
+    "file": "4_User_Interface_Elements/UI_thinking_emotes_animation_16x16.png",
+    "rect": [64, 32, 16, 32],
+    "frames": { "count": 2, "dx": 16, "dy": 0, "ms": 320 },
+    "note": "The client's visit (D-182): the sample animation's last two frames, a red heart in the bubble, beating, over each piece a met wish names and over a client whose wishes all hold."
+  },
+  "visit-ask": {
+    "pack": "mi",
+    "file": "4_User_Interface_Elements/UI_thinking_emotes_animation_16x16.png",
+    "rect": [32, 80, 16, 16],
+    "frames": { "count": 2, "dx": 16, "dy": 0, "ms": 320 },
+    "ops": [
+      {
+        "op": "compose",
+        "size": [16, 32],
+        "layers": [{ "rect": [64, 48, 16, 16], "at": [0, 16] }]
+      }
+    ],
+    "note": "The client's visit (D-182): the sheet's blue question mark in its bubble (its two frames), over the heart frames' tail, as the sheet says to swap the sample's last two frames for another emote's. Over a client with a wish still open."
+  }
+}
