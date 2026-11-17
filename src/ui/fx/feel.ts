@@ -630,6 +630,51 @@ export const FEEL = {
   },
 
   /**
+   * A won run's open house (D-175, fx/open-house.ts, board/crowd.ts): as the look down the street
+   * pulls back, the fanfare plays, a crowd walks in along the sidewalk and stops in front of the
+   * house, and cars pull up at the kerb; as it's pulled back, confetti bursts at the front door
+   * and hearts rise over the last tally's best earners. The view holds `holdMs` for a win
+   * (FEEL.streetView's otherwise), so the crowd stands a moment before it comes back. Off with
+   * Reduce motion but for the fanfare.
+   */
+  openHouse: {
+    /** Visitors and parked cars for each verdict, Fixer-Upper to Dream Home (balance.verdicts). */
+    visitors: [1, 3, 5, 7, 10],
+    cars: [1, 1, 2, 2, 3],
+    holdMs: 2300,
+    /**
+     * A visitor walks `walkPx` art px to their spot, briskly, their steps quickened to keep pace
+     * with the sidewalk; each sets off `staggerMs` after the one before, nearest the door first,
+     * fading in over `fadeMs`.
+     */
+    walkPx: 64,
+    walkPxPerSecond: 28,
+    staggerMs: 80,
+    fadeMs: 240,
+    /**
+     * Where they stop, in art px by the run's seed: the nearest either side `innerPx` from the
+     * front door's middle, the next ones `gapPx` further out each (a walker is 16 wide).
+     */
+    innerPx: [5, 10],
+    gapPx: [16, 22],
+    /**
+     * A car rolls in `rollPx` art px at the street's car speed and parks `carGapPx` past the
+     * crowd or the car before it, the westmost first, `carStaggerMs` apart.
+     */
+    rollPx: 96,
+    carGapPx: [10, 18],
+    carStaggerMs: 300,
+    /**
+     * Hearts rise over this many of the last tally's best earners, and the confetti from the
+     * front door is a Huge week's fountain (its count times `confetti`).
+     */
+    hearts: 3,
+    confetti: 1.6,
+    /** A hurried look: the rest of the crowd's walk plays this many times as fast. */
+    hurry: 4,
+  },
+
+  /**
    * The job board and the crew pick (M4, D-110): the cards are pinned up one after another,
    * `staggerMs` apart, each landing in `inMs` (jobs.css reads them as --beat and --jobs-in).
    */

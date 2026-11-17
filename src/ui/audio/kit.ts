@@ -397,6 +397,32 @@ export const RECIPES: Partial<Record<SoundId, Recipe>> = {
       { at: 0.19, set: 'fwp', db: -21, rate: 1.45 },
     ],
   },
+
+  // A won run's open house (D-175): the fanfare, after Huge's and Topped out!'s. The fifth three
+  // times up to the octave over a vibraphone chord, then the sixth and the seventh up to the
+  // octave again under the whole tonic chord, the glockenspiel and the wind chimes, landing
+  // about as the look down the street has pulled back. For the user's ear.
+  'run-won': {
+    duck: true,
+    layers: [
+      { at: 0, inst: 'marimba', step: 4, db: -9 },
+      { at: 0.12, inst: 'marimba', step: 4, db: -9 },
+      { at: 0.24, inst: 'marimba', step: 4, db: -9 },
+      { at: 0.36, inst: 'marimba', step: 7, db: -7.5 },
+      { at: 0.36, inst: 'vibes', step: 0, db: -13 },
+      { at: 0.36, inst: 'vibes', step: 2, db: -14 },
+      { at: 0.66, inst: 'marimba', step: 5, db: -9 },
+      { at: 0.78, inst: 'marimba', step: 6, db: -9 },
+      { at: 0.92, inst: 'marimba', step: 7, db: -7 },
+      { at: 0.92, inst: 'vibes', step: -7, db: -12 },
+      { at: 0.92, inst: 'vibes', step: 0, db: -11 },
+      { at: 0.92, inst: 'vibes', step: 2, db: -12 },
+      { at: 0.92, inst: 'vibes', step: 4, db: -12 },
+      { at: 0.92, inst: 'chime', step: 4, db: -12 },
+      { at: 0.92, inst: 'glock', step: 7, db: -15 },
+      { at: 0.97, set: 'wind-chimes', db: -12 },
+    ],
+  },
 };
 
 // ---- Pitch ----
