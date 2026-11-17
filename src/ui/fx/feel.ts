@@ -278,6 +278,14 @@ export const FEEL = {
   /** Squash-and-wobble on a triggering piece. */
   wobble: { ms: 260, scale: 1.12 },
   /**
+   * The Doghouse wakes up (D-179). When a Fence closes its yard, the dog on its lead is let loose
+   * as the house changes, and `wakeDelayMs` later, as the Fence has settled (placeMs), the piece
+   * wobbles once and the dog barks (`barkGain`). The loose dog sits on the kennel's roof for
+   * `roofMs`, hops down to the grass, sits there for `grassMs` and hops back up: a hop is one
+   * frame in the air, and every frame lasts `hopMs`, so it moves a whole art px at a time.
+   */
+  dog: { wakeDelayMs: 220, barkGain: 0.9, hopMs: 140, roofMs: 2380, grassMs: 1680 },
+  /**
    * A piece's floor flashes white as it wobbles or settles, peaking at this opacity: its floor
    * and walls are drawn with the whole house, so the flash shows which room is reacting.
    */

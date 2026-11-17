@@ -27,6 +27,7 @@ import {
   type PlacedPiece,
   type Rot,
 } from '../../rules/index.ts';
+import { audio } from '../audio/audio.ts';
 import {
   artFrames,
   artSize,
@@ -55,7 +56,8 @@ import { currentTally, heldPiece, preview, tool } from '../store.ts';
 import { cellsOutline, isIndoor, type Occupancy } from './geometry.ts';
 import { inset, pieceModel, type HouseModel, type PieceLook, type Rect } from './house-model.ts';
 import { pieceLabels, type BadgeSpot, type Side } from './label-layout.ts';
-import { register, settle as settleFx } from './piece-fx.ts';
+import { register, settle as settleFx, wobble } from './piece-fx.ts';
+import { asleepIn, wokenUp, type Seen } from './wake-up.ts';
 import { seedSalt } from './terrain/hash.ts';
 import { canopyParts, lotObjects } from './terrain/objects.ts';
 import './house.css';
@@ -291,6 +293,34 @@ function useCarSlide(
       });
     }
   }, [spot?.x, spot?.y, lot]);
+}
+
+/**
+ * Which Doghouses the board last showed on their lead, and in which run (wake-up.ts): none before
+ * its first draw. Like lastCar, it outlives a remount (Menu, then Continue), so that plays nothing.
+ */
+let lastSeen: Seen | null = null;
+
+/**
+ * D-179: a Doghouse whose fenced yard has just closed wakes up. Its picture swaps the dog on its
+ * lead for the loose one with the house (yard.ts), in the frame the Fence appears; then, as the
+ * Fence settles (`FEEL.dog.wakeDelayMs`), the piece wobbles once and the dog barks. A load, a new
+ * run and a Doghouse placed straight into a fenced yard play nothing. Reduce motion keeps the bark
+ * and leaves the wobble out. `run` is the run's setup, whose identity is the run's: unlike the
+ * lot, a placement that clears a Tree doesn't replace it.
+ */
+export function useWakeUps(run: object, house: HouseState, unmet: ReadonlySet<number>): void {
+  const asleep = asleepIn(house, unmet);
+  const key = [...asleep].join(',');
+  useLayoutEffect(() => {
+    const woken = wokenUp(lastSeen, run, house, unmet);
+    lastSeen = { run, asleep };
+    if (woken.length === 0) return;
+    window.setTimeout(() => {
+      if (!settings.value.reduceMotion) for (const uid of woken) wobble(uid);
+      audio.play('bark', { gain: FEEL.dog.barkGain });
+    }, FEEL.dog.wakeDelayMs);
+  }, [run, key]);
 }
 
 /** A piece's items under the walls: a room's furniture, or a yard piece's props. */
@@ -853,7 +883,7 @@ export function GhostPiece({
   const shapeKey = shape?.join('/');
   const art = useMemo(
     () => pieceArtPlan(defId, rot, look, shape),
-    [defId, rot, shapeKey, look?.color, look?.flip, look?.fixture, look?.style],
+    [defId, rot, shapeKey, look?.color, look?.flip, look?.fixture, look?.style, look?.unmet],
   );
   const { frame } = art;
   const bw = Math.max(...cells.map((c) => c.x)) - minX + 1;
