@@ -36,6 +36,7 @@ import {
   SUITCASE_W,
   WAITING,
   WALK_FROM_PX,
+  besideWaiting,
   doorSpots,
   kerbSpots,
   overLine,
@@ -46,6 +47,7 @@ import {
   walkObstacles,
   walkPlan,
   walkStart,
+  waitingBoxes,
   withPeople,
   type Person,
 } from './people.ts';
@@ -556,6 +558,67 @@ describe('sorting in with the furniture', () => {
     const items = withPeople(roomItems(model, 2), byRoom.get(2));
     expect(items).toHaveLength(roomItems(model, 2).length + 1);
     expect(items.filter((i) => i.sprite === 'people-grandma')).toHaveLength(1);
+  });
+});
+
+describe('someone else at the door (D-182)', () => {
+  /** The client at the door (fx/visit.ts): 16 art px wide, their tallest head 24 px up. */
+  const CLIENT = { w: 16, h: 24 } as const;
+
+  /** A member standing at (x, y) at the door, or the kerb. */
+  const at = (x: number, y: number, place: Person['place'] = 'door'): Person => ({
+    arrival: 'grandma',
+    cast: CAST.grandma!,
+    place,
+    uid: 0,
+    x,
+    y,
+  });
+
+  it('counts what each waiting member covers, their suitcase too, and nobody in a room', () => {
+    const { state, model } = setUp('vladislav', ['renfield'], houseOf([['livingRoom', 4, 6]]));
+    const [p] = people(state, model);
+    const bag = suitcaseAt(p!, p!.cast.suitcase);
+    expect(waitingBoxes([p!])).toEqual([
+      figureBox(p!),
+      { ...bag, w: SUITCASE_W, h: spritePos(p!.cast.suitcase).h },
+    ]);
+    const housed = setUp(
+      'vladislav',
+      ['renfield'],
+      houseOf([
+        ['livingRoom', 4, 6],
+        [roomOf('renfield'), 6, 6],
+      ]),
+    );
+    const inRoom = people(housed.state, housed.model);
+    expect(inRoom.map((q) => q.place)).toEqual(['room']);
+    expect(waitingBoxes(inRoom)).toEqual([]);
+    expect(besideWaiting(housed.model, inRoom, CLIENT)).toBeNull();
+  });
+
+  it('stands one more at the end of the line, where the next to wait would', () => {
+    const m = emptyModel();
+    const y = SIZE * CELL + KERB_PX;
+    const line = kerbSpots(m, 2).map((s) => at(s.x, s.y, 'kerb'));
+    expect(besideWaiting(m, line, CLIENT)).toEqual({ x: line[1]!.x + WAITING.spacing, y });
+    expect(besideWaiting(m, [], CLIENT)).toBeNull();
+  });
+
+  it('takes the place before the first where the next is off the lot or on the house', () => {
+    const m = emptyModel();
+    // The line as far east as it goes: one more would be off the lot.
+    const east = SIZE * CELL - (FIGURE.w / 2 + WAITING.suitcaseDx + FIGURE.w) + FIGURE.w / 2;
+    expect(besideWaiting(m, [at(east, 200)], CLIENT)).toEqual({
+      x: east - WAITING.spacing,
+      y: 200,
+    });
+    // West of a Kitchen at (4, 4), feet in its top row: one more east would stand in it.
+    const { model } = setUp('hendersons', [], houseOf([['kitchen', 4, 4]]));
+    expect(besideWaiting(model, [at(98, 5 * CELL)], CLIENT)).toEqual({ x: 72, y: 5 * CELL });
+    // Neither on a lot a cell wide.
+    const narrow = houseModel(houseOf([], ['.']));
+    expect(besideWaiting(narrow, [at(FIGURE.w / 2, 20)], CLIENT)).toBeNull();
   });
 });
 

@@ -13,6 +13,9 @@
 //   with anyone else waiting, or at the kerb when the house has no front door. PeopleLayer.tsx
 //   draws them, and the walk up from the street when the doorbell rings for them.
 // - Nobody in the guided first job, and only the members with a cast: the twins wait for one.
+// - The client's visit at a milestone (D-182, fx/visit.ts) comes to the same doormat: with anyone
+//   waiting there, or at the kerb where they'd stand, the client joins the end of their line
+//   (besideWaiting), so nobody stands on anybody.
 //
 // Spots are in lot art px (CELL per cell): `x` the figure's middle, `y` the line its feet stand on
 // (the sprite's bottom edge), so a figure FIGURE.w wide and FIGURE.h tall covers
@@ -37,6 +40,7 @@ import {
   floorTop,
   grow,
   inset,
+  overlaps,
   roomAt,
   type HouseModel,
   type Rect,
@@ -490,6 +494,70 @@ export function suitcaseAt(
 ): { x: number; y: number } {
   const { h } = artSize(sprite);
   return { x: p.x + WAITING.suitcaseDx, y: p.y + WAITING.suitcaseDy - h };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Someone else at the door: the client's visit (D-182).
+
+/**
+ * What the members waiting at the door or the kerb cover, in lot art px: each one's figure and
+ * their suitcase. Members in their rooms cover nothing here.
+ */
+export function waitingBoxes(all: readonly Person[]): Rect[] {
+  return all.flatMap((p) => {
+    if (p.place === 'room') return [];
+    const s = suitcaseAt(p, p.cast.suitcase);
+    return [
+      { x: p.x - FIGURE.w / 2, y: p.y - FIGURE.h, w: FIGURE.w, h: FIGURE.h },
+      { x: s.x, y: s.y, ...artSize(p.cast.suitcase) },
+    ];
+  });
+}
+
+/**
+ * Whether a figure `size` wide and tall, its feet's middle at `at`, stands on the lot (across it:
+ * the kerb's line is on the sidewalk, below it), with no room of the house under its feet, and
+ * clear of each of `boxes`.
+ */
+export function standsClear(
+  m: HouseModel,
+  at: { x: number; y: number },
+  size: { w: number; h: number },
+  boxes: readonly Rect[],
+): boolean {
+  const box = { x: at.x - size.w / 2, y: at.y - size.h, w: size.w, h: size.h };
+  if (box.x < 0 || box.x + box.w > m.width * CELL) return false;
+  const cy = Math.floor((at.y - 1) / CELL);
+  for (let cx = Math.floor(box.x / CELL); cx <= Math.floor((box.x + box.w - 1) / CELL); cx++) {
+    if (roomAt(m, cx, cy)) return false;
+  }
+  return !boxes.some((b) => overlaps(box, b));
+}
+
+/**
+ * D-182: where one more figure (the client at the door) stands with the members waiting at the
+ * front door or the kerb, as people() places them: the next in their line, where a member
+ * arriving now would stand, else the place before its first. A west door's line runs west, away
+ * from the house, and every other east (doorSpots, lineUp). Each place is kept on the lot, off
+ * the house and clear of everyone waiting and their suitcases (standsClear). Null with nobody
+ * waiting, or neither place free (an entry set back between two rooms).
+ */
+export function besideWaiting(
+  m: HouseModel,
+  all: readonly Person[],
+  size: { w: number; h: number },
+): { x: number; y: number } | null {
+  const line = all.filter((p) => p.place !== 'room');
+  const first = line[0];
+  if (!first) return null;
+  const front = m.exits.find((e) => e.kind === 'front');
+  const dir = first.place === 'door' && front?.side === 'W' ? -1 : 1;
+  const boxes = waitingBoxes(line);
+  for (const i of [line.length, -1]) {
+    const at = { x: first.x + dir * i * WAITING.spacing, y: first.y };
+    if (standsClear(m, at, size, boxes)) return at;
+  }
+  return null;
 }
 
 // ---------------------------------------------------------------------------------------------

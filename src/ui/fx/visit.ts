@@ -7,7 +7,16 @@
 
 import { CONTENT, rules, type ClientId, type PieceId, type RunState } from '../../rules/index.ts';
 import { furnitureSpot, occupancy } from '../board/geometry.ts';
-import { hallLinks, houseModel, sunLight, WALL } from '../board/house-model.ts';
+import {
+  hallLinks,
+  houseModel,
+  overlaps,
+  sunLight,
+  WALL,
+  type HouseModel,
+  type Rect,
+} from '../board/house-model.ts';
+import { besideWaiting, people, standsClear, waitingBoxes } from '../board/people.ts';
 import { CELL, spriteFrames, type SpriteId } from '../sprites.ts';
 
 /** Each client's figure (art/limezu/clients.json): a household shows as one figure. */
@@ -60,6 +69,11 @@ export interface Visit {
 /** Half the figure's width in art px. */
 const FIGURE_HALF = 8;
 /**
+ * The figure as it stands, from its feet: 16 art px wide, its tallest head 24 px up (8 px down
+ * its 32 px frame).
+ */
+const FIGURE_BOX = { w: 2 * FIGURE_HALF, h: 24 } as const;
+/**
  * How far below a south door's mat their feet are, in art px: the tallest head (8 art px down
  * its 32 px frame) comes up to the door's sill, so they stand over the mat, clear of the house.
  */
@@ -73,9 +87,42 @@ const BELOW_MAT = 16;
  * At a door in a north wall their feet are on the mat, by the wall, so all of them is north of
  * it. A door in a side wall has them on the mat's outer side. With no front door yet, under the
  * middle of the house's south edge. Null before the first room.
+ *
+ * D-177: a member of the household waiting for their room stands on that mat too, or at the kerb
+ * with no front door, with their suitcase (board/people.ts). Where the client's spot would cover
+ * any of them, the client joins the end of their line instead, as the next to wait there would
+ * (besideWaiting); with no place free in it, they step out of the line's way (outOfTheirWay).
  */
 export function doorstep(state: RunState): ArtPoint | null {
   const model = houseModel(state.house, hallLinks(state), sunLight(state));
+  const own = atTheDoor(model);
+  if (!own) return null;
+  const waiting = people(state, model).filter((p) => p.place !== 'room');
+  const boxes = waitingBoxes(waiting);
+  const box = { x: own.x - FIGURE_HALF, y: own.y - FIGURE_BOX.h, ...FIGURE_BOX };
+  if (!boxes.some((b) => overlaps(box, b))) return own;
+  return besideWaiting(model, waiting, FIGURE_BOX) ?? outOfTheirWay(model, own, boxes) ?? own;
+}
+
+/**
+ * Where no place in the waiting line is free: the client's own spot moved just clear of what it
+ * covers, in front of the line (south of it), or behind it (north) at a north door and at the
+ * kerb, where in front would be the road. Null if even that isn't on the lot and off the house.
+ */
+function outOfTheirWay(model: HouseModel, own: ArtPoint, boxes: readonly Rect[]): ArtPoint | null {
+  const box = { x: own.x - FIGURE_HALF, y: own.y - FIGURE_BOX.h, ...FIGURE_BOX };
+  const hit = boxes.filter((b) => overlaps(box, b));
+  const side = model.exits.find((e) => e.kind === 'front')?.side;
+  const behind = side === undefined || side === 'N';
+  const y = behind
+    ? Math.min(...hit.map((b) => b.y))
+    : Math.max(...hit.map((b) => b.y + b.h)) + FIGURE_BOX.h;
+  const at = { x: own.x, y };
+  return standsClear(model, at, FIGURE_BOX, boxes) ? at : null;
+}
+
+/** The client's own spot at the front door (doorstep's), with nobody else there. */
+function atTheDoor(model: HouseModel): ArtPoint | null {
   const front = model.exits.find((e) => e.kind === 'front');
   if (front) {
     const m = front.mat;

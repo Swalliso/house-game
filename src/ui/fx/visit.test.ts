@@ -1,8 +1,8 @@
 // The client at the door (D-182, visit.ts): a figure for every client, hearts only over the
 // pieces a met wish names (the rules' checklist says which hold), the client's own bubble a
 // question mark while a wish is open and a heart once all hold, and a spot at the front door, in
-// whichever wall, over its mat and clear of the house. The beat itself, in the director, is
-// visit-beat.test.ts.
+// whichever wall, over its mat and clear of the house, or beside a household member waiting there
+// (D-177). The beat itself, in the director, is visit-beat.test.ts.
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -17,6 +17,7 @@ import {
 import { lotFromRows } from '../../rules/lot.ts';
 import { isIndoor, occupancy } from '../board/geometry.ts';
 import { hallLinks, houseModel, sunLight, type Rect, type Side } from '../board/house-model.ts';
+import { people, WAITING, waitingBoxes } from '../board/people.ts';
 import { CELL, spritePos } from '../sprites.ts';
 import { CLIENT_FIGURES, doorstep, MAX_HEARTS, visitOf, WISH_PIECES } from './visit.ts';
 
@@ -206,5 +207,108 @@ describe('doorstep', () => {
 
   it('has nowhere to stand before the first room', () => {
     expect(doorstep(stateWith('hendersons', []))).toBeNull();
+  });
+});
+
+describe('doorstep, with a member of the household waiting (D-177)', () => {
+  /** The run with Grandma arrived and no room of hers built: she waits at the door, or the kerb. */
+  const withGrandma = (s: RunState): RunState => ({ ...s, arrived: ['grandma'] });
+
+  /** The client's figure with their feet at `feet`, from their tallest head (24 art px up). */
+  const clientBox = (feet: { x: number; y: number }): Rect => ({
+    x: feet.x - 8,
+    y: feet.y - 24,
+    w: 16,
+    h: 24,
+  });
+
+  /**
+   * Where the client stands with Grandma waiting, checked: clear of her and her suitcase, across
+   * the lot, with no room under their feet, in whole art px. With her, and the house's model.
+   */
+  function besideHer(s: RunState) {
+    const model = houseModel(s.house, hallLinks(s), sunLight(s), s.setup.clientId);
+    const line = people(s, model).filter((p) => p.place !== 'room');
+    expect(line.map((p) => p.arrival)).toEqual(['grandma']);
+    const feet = doorstep(s)!;
+    const box = clientBox(feet);
+    for (const b of waitingBoxes(line)) {
+      expect(overlaps(box, b), JSON.stringify({ feet, b })).toBe(false);
+    }
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.w).toBeLessThanOrEqual(model.width * CELL);
+    expect(indoorUnder(s, { x: box.x, y: feet.y - 1, w: box.w, h: 1 })).toEqual([]);
+    expect(Number.isInteger(feet.x) && Number.isInteger(feet.y)).toBe(true);
+    return { feet, grandma: line[0]!, model };
+  }
+
+  it('joins the end of her line at a south door, where on their own they’d stand on her', () => {
+    const s = stateWith('hendersons', [['kitchen', 4, 4]]);
+    const alone = doorstep(s)!;
+    const { feet, grandma } = besideHer(withGrandma(s));
+    expect(waitingBoxes([grandma]).some((b) => overlaps(clientBox(alone), b))).toBe(true);
+    // The next place along: where a second member waiting would stand.
+    expect(feet).toEqual({ x: grandma.x + WAITING.spacing, y: grandma.y });
+  });
+
+  it.each(BOXED_IN)(
+    'joins her line at a front door facing %s, away from the house',
+    (side, rows) => {
+      const lot = EMPTY.map((row, y) => rows[y] ?? row);
+      const { feet, grandma, model } = besideHer(
+        withGrandma(stateWith('hendersons', [['kitchen', 4, 4]], lot)),
+      );
+      expect(model.exits.find((e) => e.kind === 'front')!.side).toBe(side);
+      // A west door's line runs west, away from the house; every other one east.
+      const along = side === 'W' ? -1 : 1;
+      expect(feet).toEqual({ x: grandma.x + along * WAITING.spacing, y: grandma.y });
+    },
+  );
+
+  it('joins her at the kerb when the house has no front door', () => {
+    // The Kitchen on the lot's bottom rows with Boulders all round, so no wall of it takes a door,
+    // and where its mat would be is just over Grandma's head at the kerb.
+    const rows: Record<number, string> = {
+      8: '....BB......',
+      9: '...B..B.....',
+      10: '...B..B.....',
+      11: '....BB......',
+    };
+    const lot = EMPTY.map((row, y) => rows[y] ?? row);
+    const s = stateWith('hendersons', [['kitchen', 4, 9]], lot);
+    const alone = doorstep(s)!;
+    const { feet, grandma, model } = besideHer(withGrandma(s));
+    expect(model.exits.some((e) => e.kind === 'front')).toBe(false);
+    expect(grandma.place).toBe('kerb');
+    expect(waitingBoxes([grandma]).some((b) => overlaps(clientBox(alone), b))).toBe(true);
+    expect(feet).toEqual({ x: grandma.x + WAITING.spacing, y: grandma.y });
+  });
+
+  it('steps in front of her where her line has no place free: a west door on the lot’s edge', () => {
+    // The Kitchen against the lot's west edge, its door west: past her is off the lot, and the
+    // place before her is in the Kitchen.
+    const rows: Record<number, string> = {
+      3: '.BB.........',
+      4: '...B........',
+      5: '...B........',
+      6: '.BB.........',
+    };
+    const lot = EMPTY.map((row, y) => rows[y] ?? row);
+    const s = stateWith('hendersons', [['kitchen', 1, 4]], lot);
+    const { feet, grandma, model } = besideHer(withGrandma(s));
+    expect(model.exits.find((e) => e.kind === 'front')!.side).toBe('W');
+    // Their own spot's x, their head just below her suitcase's foot.
+    expect(feet).toEqual({ x: doorstep(s)!.x, y: grandma.y + WAITING.suitcaseDy + 24 });
+  });
+
+  it('keeps to their own spot with her in her room', () => {
+    const house: Spec[] = [
+      ['kitchen', 4, 4],
+      ['grandmasRoom', 6, 4],
+    ];
+    const s = withGrandma(stateWith('hendersons', house));
+    const model = houseModel(s.house, hallLinks(s), sunLight(s), s.setup.clientId);
+    expect(people(s, model).map((p) => p.place)).toEqual(['room']);
+    expect(doorstep(s)).toEqual(doorstep(stateWith('hendersons', house)));
   });
 });
