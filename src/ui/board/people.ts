@@ -15,7 +15,8 @@
 // - Nobody in the guided first job, and only the members with a cast: the twins wait for one.
 // - The client's visit at a milestone (D-182, fx/visit.ts) comes to the same doormat: with anyone
 //   waiting there, or at the kerb where they'd stand, the client joins the end of their line
-//   (besideWaiting), so nobody stands on anybody.
+//   (besideWaiting), so nobody stands on anybody, and neither the client nor their bubble covers
+//   anyone of the household (householdBoxes), a member in the front door's doorway included.
 //
 // Spots are in lot art px (CELL per cell): `x` the figure's middle, `y` the line its feet stand on
 // (the sprite's bottom edge), so a figure FIGURE.w wide and FIGURE.h tall covers
@@ -499,6 +500,11 @@ export function suitcaseAt(
 // ---------------------------------------------------------------------------------------------
 // Someone else at the door: the client's visit (D-182).
 
+/** A member's figure, in lot art px: [x − 8, x + 8) × [y − 26, y). */
+function figureBox(p: { x: number; y: number }): Rect {
+  return { x: p.x - FIGURE.w / 2, y: p.y - FIGURE.h, w: FIGURE.w, h: FIGURE.h };
+}
+
 /**
  * What the members waiting at the door or the kerb cover, in lot art px: each one's figure and
  * their suitcase. Members in their rooms cover nothing here.
@@ -507,11 +513,17 @@ export function waitingBoxes(all: readonly Person[]): Rect[] {
   return all.flatMap((p) => {
     if (p.place === 'room') return [];
     const s = suitcaseAt(p, p.cast.suitcase);
-    return [
-      { x: p.x - FIGURE.w / 2, y: p.y - FIGURE.h, w: FIGURE.w, h: FIGURE.h },
-      { x: s.x, y: s.y, ...artSize(p.cast.suitcase) },
-    ];
+    return [figureBox(p), { x: s.x, y: s.y, ...artSize(p.cast.suitcase) }];
   });
+}
+
+/**
+ * What the whole household covers, in lot art px: those waiting and their suitcases
+ * (waitingBoxes), and the figure of each member in their room, whose doorway can be the front
+ * door's own.
+ */
+export function householdBoxes(all: readonly Person[]): Rect[] {
+  return [...waitingBoxes(all), ...all.filter((p) => p.place === 'room').map(figureBox)];
 }
 
 /**
@@ -539,13 +551,15 @@ export function standsClear(
  * front door or the kerb, as people() places them: the next in their line, where a member
  * arriving now would stand, else the place before its first. A west door's line runs west, away
  * from the house, and every other east (doorSpots, lineUp). Each place is kept on the lot, off
- * the house and clear of everyone waiting and their suitcases (standsClear). Null with nobody
- * waiting, or neither place free (an entry set back between two rooms).
+ * the house and clear of everyone waiting and their suitcases (standsClear), and passes `also`
+ * (the client's own check: their bubble, fx/visit.ts). Null with nobody waiting, or neither place
+ * free (an entry set back between two rooms).
  */
 export function besideWaiting(
   m: HouseModel,
   all: readonly Person[],
   size: { w: number; h: number },
+  also: (at: { x: number; y: number }) => boolean = () => true,
 ): { x: number; y: number } | null {
   const line = all.filter((p) => p.place !== 'room');
   const first = line[0];
@@ -555,7 +569,7 @@ export function besideWaiting(
   const boxes = waitingBoxes(line);
   for (const i of [line.length, -1]) {
     const at = { x: first.x + dir * i * WAITING.spacing, y: first.y };
-    if (standsClear(m, at, size, boxes)) return at;
+    if (standsClear(m, at, size, boxes) && also(at)) return at;
   }
   return null;
 }

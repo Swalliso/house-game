@@ -38,6 +38,7 @@ import {
   WALK_FROM_PX,
   besideWaiting,
   doorSpots,
+  householdBoxes,
   kerbSpots,
   overLine,
   people,
@@ -595,6 +596,19 @@ describe('someone else at the door (D-182)', () => {
     expect(inRoom.map((q) => q.place)).toEqual(['room']);
     expect(waitingBoxes(inRoom)).toEqual([]);
     expect(besideWaiting(housed.model, inRoom, CLIENT)).toBeNull();
+    // The whole household: those waiting with their suitcases, and the figure of each in a room.
+    expect(householdBoxes([p!])).toEqual(waitingBoxes([p!]));
+    expect(householdBoxes(inRoom)).toEqual([figureBox(inRoom[0]!)]);
+    expect(householdBoxes([...inRoom, p!])).toEqual([...waitingBoxes([p!]), figureBox(inRoom[0]!)]);
+  });
+
+  it('passes over a place in the line that the client’s own check refuses', () => {
+    const m = emptyModel();
+    const line = kerbSpots(m, 1).map((s) => at(s.x, s.y, 'kerb'));
+    const next = { x: line[0]!.x + WAITING.spacing, y: line[0]!.y };
+    const before = { x: line[0]!.x - WAITING.spacing, y: line[0]!.y };
+    expect(besideWaiting(m, line, CLIENT, (q) => q.x !== next.x)).toEqual(before);
+    expect(besideWaiting(m, line, CLIENT, () => false)).toBeNull();
   });
 
   it('stands one more at the end of the line, where the next to wait would', () => {

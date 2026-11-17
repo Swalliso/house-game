@@ -4,7 +4,9 @@
 // whichever wall, over its mat and clear of the house, or beside a household member waiting there
 // (D-177). The beat itself, in the director, is visit-beat.test.ts.
 
+import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { decodePng } from '../../../scripts/png.ts';
 import {
   CONTENT,
   rules,
@@ -18,8 +20,17 @@ import { lotFromRows } from '../../rules/lot.ts';
 import { isIndoor, occupancy } from '../board/geometry.ts';
 import { hallLinks, houseModel, sunLight, type Rect, type Side } from '../board/house-model.ts';
 import { people, WAITING, waitingBoxes } from '../board/people.ts';
-import { CELL, spritePos } from '../sprites.ts';
-import { CLIENT_FIGURES, doorstep, MAX_HEARTS, visitOf, WISH_PIECES } from './visit.ts';
+import { CELL, spriteFrames, spritePos } from '../sprites.ts';
+import {
+  BUBBLE,
+  bubbleBox,
+  CLIENT_FIGURES,
+  doorstep,
+  MAX_HEARTS,
+  STEP_ASIDE,
+  visitOf,
+  WISH_PIECES,
+} from './visit.ts';
 
 const EMPTY = Array.from({ length: 12 }, () => '.'.repeat(12));
 type Spec = readonly [PieceId, number, number, Rot?];
@@ -86,6 +97,30 @@ describe('the tables', () => {
       expect(spritePos(CLIENT_FIGURES[id]), id).toMatchObject({ w: 16, h: 32 });
     }
     expect(new Set(Object.values(CLIENT_FIGURES)).size).toBe(CLIENTS.length);
+  });
+
+  it('know what a bubble draws: every frame of its pop-in and both icons, and no more', () => {
+    const png = decodePng(readFileSync(new URL('../../../assets/atlas.png', import.meta.url)));
+    let x0 = Infinity;
+    let y0 = Infinity;
+    let x1 = -Infinity;
+    let y1 = -Infinity;
+    for (const id of ['visit-pop', 'visit-ask', 'visit-heart'] as const) {
+      const s = spritePos(id);
+      const f = spriteFrames(id)!;
+      expect(s).toMatchObject({ w: 16, h: 32 });
+      for (let k = 0; k < f.frames; k++) {
+        for (let y = 0; y < s.h; y++) {
+          for (let x = 0; x < s.w; x++) {
+            if (png.rgba[((s.y + y) * png.width + s.x + k * f.stride + x) * 4 + 3] === 0) continue;
+            [x0, y0, x1, y1] = [Math.min(x0, x), Math.min(y0, y), Math.max(x1, x), Math.max(y1, y)];
+          }
+        }
+      }
+    }
+    expect({ x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 }).toEqual(BUBBLE.drawn);
+    // Its tail ends a pixel below what it draws, under the middle of its last dot.
+    expect(BUBBLE.tailY).toBe(BUBBLE.drawn.y + BUBBLE.drawn.h);
   });
 
   it('point only at wishes that count one type of piece, and name that piece', () => {
@@ -233,8 +268,9 @@ describe('doorstep, with a member of the household waiting (D-177)', () => {
   });
 
   /**
-   * Where the client stands with Grandma waiting, checked: clear of her and her suitcase, across
-   * the lot, with no room under their feet, in whole art px. With her, and the house's model.
+   * Where the client stands with Grandma waiting, checked: they and their bubble clear of her and
+   * her suitcase, across the lot, with no room under their feet, in whole art px. With her, and
+   * the house's model.
    */
   function besideHer(s: RunState) {
     const model = houseModel(s.house, hallLinks(s), sunLight(s), s.setup.clientId);
@@ -244,6 +280,7 @@ describe('doorstep, with a member of the household waiting (D-177)', () => {
     const box = clientBox(feet);
     for (const b of waitingBoxes(line)) {
       expect(overlaps(box, b), JSON.stringify({ feet, b })).toBe(false);
+      expect(overlaps(bubbleBox(feet), b), JSON.stringify({ feet, b, bubble: true })).toBe(false);
     }
     expect(box.x).toBeGreaterThanOrEqual(0);
     expect(box.x + box.w).toBeLessThanOrEqual(model.width * CELL);
@@ -307,8 +344,36 @@ describe('doorstep, with a member of the household waiting (D-177)', () => {
     const s = stateWith('hendersons', [['kitchen', 1, 4]], lot);
     const { feet, grandma, model } = besideHer(withGrandma(s));
     expect(model.exits.find((e) => e.kind === 'front')!.side).toBe('W');
-    // Their own spot's x, their head just below her suitcase's foot.
-    expect(feet).toEqual({ x: doorstep(s)!.x, y: grandma.y + WAITING.suitcaseDy + 24 });
+    // Their head just below her suitcase's foot, and just far enough east of their own spot that
+    // their bubble, rising beside her, clears her suitcase's east edge (besideHer checks it): in
+    // front of her at their own x, it covered half the suitcase.
+    const front = { x: doorstep(s)!.x, y: grandma.y + WAITING.suitcaseDy + 24 };
+    const bag = waitingBoxes([grandma])[1]!;
+    expect(overlaps(bubbleBox(front), bag)).toBe(true);
+    expect(feet).toEqual({
+      x: bag.x + bag.w - BUBBLE.drawn.x + BUBBLE.tailX - BUBBLE.dx,
+      y: front.y,
+    });
+    expect(feet.x - front.x).toBeLessThanOrEqual(STEP_ASIDE.along);
+  });
+
+  it('steps further out of her way where nothing beside her is free: an entry set back', () => {
+    // The Hallway's front door at the back of a notch a cell wide and three deep, between two
+    // Kitchens and two Bedrooms: her line has no place free, nor has the row in front of her.
+    const s = stateWith('hendersons', [
+      ['hallway', 5, 3],
+      ['kitchen', 3, 3],
+      ['kitchen', 6, 3],
+      ['bedroom', 3, 5],
+      ['bedroom', 6, 5],
+    ]);
+    const { feet, grandma, model } = besideHer(withGrandma(s));
+    expect(model.exits.find((e) => e.kind === 'front')).toMatchObject({ side: 'S', uid: 1 });
+    // In front of her, their head just below her suitcase's foot, their bubble was over her.
+    const front = { x: doorstep(s)!.x, y: grandma.y + WAITING.suitcaseDy + 24 };
+    expect(waitingBoxes([grandma]).some((b) => overlaps(bubbleBox(front), b))).toBe(true);
+    // Now straight on south of there, as far as their bubble rises over their head.
+    expect(feet).toEqual({ x: front.x, y: front.y + STEP_ASIDE.out });
   });
 
   it('keeps to their own spot with her in her room', () => {
@@ -321,4 +386,32 @@ describe('doorstep, with a member of the household waiting (D-177)', () => {
     expect(people(s, model).map((p) => p.place)).toEqual(['room']);
     expect(doorstep(s)).toEqual(doorstep(stateWith('hendersons', house)));
   });
+
+  // Her room's front door is the house's: she stands in its doorway, just inside (D-177).
+  it.each([
+    ['S', 'their bubble', EMPTY, 11],
+    ['N', 'their figure', EMPTY.map((row, y) => BOXED_IN[0]![1][y] ?? row), 16],
+  ] as const)(
+    'steps aside where she stands in the front door’s doorway, facing %s, keeping %s off her',
+    (side, what, lot, dx) => {
+      const house: Spec[] = [['grandmasRoom', 4, 4]];
+      const s = withGrandma(stateWith('hendersons', house, lot));
+      const model = houseModel(s.house, hallLinks(s), sunLight(s), s.setup.clientId);
+      expect(model.exits.find((e) => e.kind === 'front')).toMatchObject({ side, uid: 1 });
+      const [grandma] = people(s, model);
+      expect(grandma).toMatchObject({ place: 'room', uid: 1 });
+      const her = { x: grandma!.x - 8, y: grandma!.y - 26, w: 16, h: 26 };
+      // On their own, the client's bubble (at a south door) or figure (at a north one, her head
+      // rising over the wall) was on her.
+      const alone = doorstep(stateWith('hendersons', house, lot))!;
+      const was = what === 'their bubble' ? bubbleBox(alone) : clientBox(alone);
+      expect(overlaps(was, her)).toBe(true);
+      const feet = doorstep(s)!;
+      expect(overlaps(clientBox(feet), her), JSON.stringify(feet)).toBe(false);
+      expect(overlaps(bubbleBox(feet), her), JSON.stringify(feet)).toBe(false);
+      // Along their own row, the nearest spot east that keeps both off her.
+      expect(feet).toEqual({ x: alone.x + dx, y: alone.y });
+      expect(indoorUnder(s, { x: feet.x - 8, y: feet.y - 1, w: 16, h: 1 })).toEqual([]);
+    },
+  );
 });

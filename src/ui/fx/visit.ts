@@ -16,7 +16,13 @@ import {
   type HouseModel,
   type Rect,
 } from '../board/house-model.ts';
-import { besideWaiting, people, standsClear, waitingBoxes } from '../board/people.ts';
+import {
+  besideWaiting,
+  householdBoxes,
+  people,
+  standsClear,
+  waitingBoxes,
+} from '../board/people.ts';
 import { CELL, spriteFrames, type SpriteId } from '../sprites.ts';
 
 /** Each client's figure (art/limezu/clients.json): a household shows as one figure. */
@@ -80,6 +86,49 @@ const FIGURE_BOX = { w: 2 * FIGURE_HALF, h: 24 } as const;
 const BELOW_MAT = 16;
 
 /**
+ * A thought bubble (MomentLayers.tsx draws the client's and each heart's): a 16 × 32 frame whose
+ * tail ends at (tailX, tailY) in it, kept on the lot. The client's tail ends `dx` art px right of
+ * the middle of their figure, a pixel above its tallest head. What a bubble draws, through each
+ * frame of its pop-in and of both icons, is the `drawn` part of its frame.
+ */
+export const BUBBLE = {
+  tailX: 8,
+  tailY: 24,
+  dx: 4,
+  drawn: { x: 1, y: 0, w: 14, h: 24 },
+} as const;
+
+/** Where the client's bubble's tail ends, their feet at `feet`. */
+export function bubbleTail(feet: ArtPoint): ArtPoint {
+  return { x: feet.x + BUBBLE.dx, y: feet.y - FIGURE_BOX.h - 1 };
+}
+
+/** What the client's bubble draws over, in lot art px, their feet at `feet`. */
+export function bubbleBox(feet: ArtPoint): Rect {
+  const tail = bubbleTail(feet);
+  return {
+    x: tail.x - BUBBLE.tailX + BUBBLE.drawn.x,
+    y: Math.max(0, tail.y - BUBBLE.tailY) + BUBBLE.drawn.y,
+    w: BUBBLE.drawn.w,
+    h: BUBBLE.drawn.h,
+  };
+}
+
+/** The client's figure, from their tallest head to their feet at `feet`, in lot art px. */
+const figureAt = (feet: ArtPoint): Rect => ({
+  x: feet.x - FIGURE_HALF,
+  y: feet.y - FIGURE_BOX.h,
+  ...FIGURE_BOX,
+});
+
+/**
+ * How far the client steps aside to keep themselves and their bubble off the household, in art
+ * px: `along` their row, either way, a figure and a half; and `out` of the line's way, as far as
+ * their bubble rises over their head, so that a bubble over the line clears it.
+ */
+export const STEP_ASIDE = { along: 24, out: BUBBLE.tailY - BUBBLE.drawn.y + 1 } as const;
+
+/**
  * Where the client stands: at the front door, where the doorbell rings (D-126, `frontDoor` in
  * moments.ts, which gives the mat's middle but not its side), facing us, over its mat and clear
  * of the house. At a door in a south wall they stand below the mat, their head up to the sill:
@@ -89,37 +138,83 @@ const BELOW_MAT = 16;
  * middle of the house's south edge. Null before the first room.
  *
  * D-177: a member of the household waiting for their room stands on that mat too, or at the kerb
- * with no front door, with their suitcase (board/people.ts). Where the client's spot would cover
- * any of them, the client joins the end of their line instead, as the next to wait there would
- * (besideWaiting); with no place free in it, they step out of the line's way (outOfTheirWay).
+ * with no front door, with their suitcase, and a member with a room stands in one of its doorways,
+ * which can be the front door's own (board/people.ts). Neither the client nor their bubble may
+ * cover any of them (householdBoxes). Where their own spot would, the client joins the end of the
+ * line of those waiting, as the next to wait there would (besideWaiting). With no place free in
+ * it, they step out of the line's way (outOfTheirWay), and, where their bubble would still cover
+ * someone, to the nearest spot near there that keeps it clear (nearestFit); with nobody waiting
+ * in their way, to the nearest one along their own row. Where none is near, the figure at least
+ * keeps off the line, as it did before the bubble counted.
  */
 export function doorstep(state: RunState): ArtPoint | null {
   // The house as the board draws it (the board's own model, from its cache).
   const model = houseModel(state.house, hallLinks(state), sunLight(state), state.setup.clientId);
   const own = atTheDoor(model);
   if (!own) return null;
-  const waiting = people(state, model).filter((p) => p.place !== 'room');
-  const boxes = waitingBoxes(waiting);
-  const box = { x: own.x - FIGURE_HALF, y: own.y - FIGURE_BOX.h, ...FIGURE_BOX };
-  if (!boxes.some((b) => overlaps(box, b))) return own;
-  return besideWaiting(model, waiting, FIGURE_BOX) ?? outOfTheirWay(model, own, boxes) ?? own;
+  const household = people(state, model);
+  const waiting = household.filter((p) => p.place !== 'room');
+  const line = waitingBoxes(waiting);
+  const boxes = householdBoxes(household);
+  const clear = (at: ArtPoint) =>
+    !boxes.some((b) => overlaps(figureAt(at), b) || overlaps(bubbleBox(at), b));
+  if (clear(own)) return own;
+  const fits = (at: ArtPoint) => clear(at) && standsClear(model, at, FIGURE_BOX, []);
+  const aside = outOfTheirWay(model, own, line);
+  return (
+    besideWaiting(model, waiting, FIGURE_BOX, fits) ??
+    nearestFit(aside?.at, fits, aside?.away) ??
+    nearestFit(own, fits) ??
+    besideWaiting(model, waiting, FIGURE_BOX) ??
+    (aside && standsClear(model, aside.at, FIGURE_BOX, line) ? aside.at : null) ??
+    own
+  );
 }
 
 /**
- * Where no place in the waiting line is free: the client's own spot moved just clear of what it
- * covers, in front of the line (south of it), or behind it (north) at a north door and at the
- * kerb, where in front would be the road. Null if even that isn't on the lot and off the house.
+ * Where no place in the waiting line is free: the client's own spot moved just clear of the
+ * line's figures and suitcases it covers, in front of the line (south of it), or behind it
+ * (north) at a north door and at the kerb, where in front would be the road; and which way is
+ * further out of the line's way. Null when it covers none of them.
  */
-function outOfTheirWay(model: HouseModel, own: ArtPoint, boxes: readonly Rect[]): ArtPoint | null {
-  const box = { x: own.x - FIGURE_HALF, y: own.y - FIGURE_BOX.h, ...FIGURE_BOX };
-  const hit = boxes.filter((b) => overlaps(box, b));
+function outOfTheirWay(
+  model: HouseModel,
+  own: ArtPoint,
+  line: readonly Rect[],
+): { at: ArtPoint; away: -1 | 1 } | null {
+  const hit = line.filter((b) => overlaps(figureAt(own), b));
+  if (hit.length === 0) return null;
   const side = model.exits.find((e) => e.kind === 'front')?.side;
   const behind = side === undefined || side === 'N';
   const y = behind
     ? Math.min(...hit.map((b) => b.y))
     : Math.max(...hit.map((b) => b.y + b.h)) + FIGURE_BOX.h;
-  const at = { x: own.x, y };
-  return standsClear(model, at, FIGURE_BOX, boxes) ? at : null;
+  return { at: { x: own.x, y }, away: behind ? -1 : 1 };
+}
+
+/**
+ * The nearest spot to `from` that `fits`, by |dx| + |dy| (of two as near, the one nearer its row,
+ * then the one east): up to STEP_ASIDE.along either way along its row, and with `away`, up to
+ * STEP_ASIDE.out further that way, south (1) or north (−1). Null if none does.
+ */
+function nearestFit(
+  from: ArtPoint | undefined,
+  fits: (at: ArtPoint) => boolean,
+  away: -1 | 0 | 1 = 0,
+): ArtPoint | null {
+  if (!from) return null;
+  const out = away === 0 ? 0 : STEP_ASIDE.out;
+  for (let d = 0; d <= STEP_ASIDE.along + out; d++) {
+    for (let k = 0; k <= Math.min(d, out); k++) {
+      const dx = d - k;
+      if (dx > STEP_ASIDE.along) continue;
+      for (const x of dx === 0 ? [from.x] : [from.x + dx, from.x - dx]) {
+        const at = { x, y: from.y + away * k };
+        if (fits(at)) return at;
+      }
+    }
+  }
+  return null;
 }
 
 /** The client's own spot at the front door (doorstep's), with nobody else there. */

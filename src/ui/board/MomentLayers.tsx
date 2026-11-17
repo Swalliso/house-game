@@ -9,7 +9,7 @@ import { previewArcs } from '../fx/chain.ts';
 import { chainArc, clientVisit, toppedOut } from '../fx/director.ts';
 import { FxSprite } from '../fx/Drive.tsx';
 import { FEEL } from '../fx/feel.ts';
-import { bubbleOpensMs, CLIENT_FIGURES, type ArtPoint } from '../fx/visit.ts';
+import { BUBBLE, bubbleOpensMs, bubbleTail, CLIENT_FIGURES, type ArtPoint } from '../fx/visit.ts';
 import { Icon } from '../kit/kit.tsx';
 import { CELL } from '../sprites.ts';
 import type { Occupancy } from './geometry.ts';
@@ -42,17 +42,16 @@ export function ToppedOut({ scale, model }: { scale: number; model: HouseModel }
   );
 }
 
-/** A client's figure (16 × 32 art px, standing on its frame's foot), and their heads' top. */
-const FIGURE = { w: 16, h: 32, head: 8 };
-/** Where a bubble's tail ends in its 16 × 32 frame: under the middle of its last dot. */
-const BUBBLE = { tailX: 8, tailY: 24 };
+/** A client's figure (16 × 32 art px, standing on its frame's foot). */
+const FIGURE = { w: 16, h: 32 };
 
 /**
  * The client at the door (D-182, fx/visit.ts): their figure at the front door, growing up
  * from their feet; their own bubble over their head, a question mark or a heart; and a heart
  * over each piece one of their met wishes names. Each bubble pops up through its frames in its
  * turn (FEEL.visit), then its icon beats, and all of it fades at the end. It never takes the
- * pointer: a click anywhere skips it. With S03's people layer it can move there.
+ * pointer: a click anywhere skips it. With S03's people layer it can move there. Where it
+ * stands keeps them and their bubble off the household (visit.ts doorstep, bubbleTail).
  */
 export function ClientVisit({ scale }: { scale: number }) {
   const v = clientVisit.value;
@@ -80,12 +79,7 @@ export function ClientVisit({ scale }: { scale: number }) {
           top: `${(feet.y - FIGURE.h) * scale}px`,
         }}
       />
-      <Bubble
-        icon={v.bubble}
-        tail={{ x: feet.x + 4, y: feet.y - FIGURE.h + FIGURE.head - 1 }}
-        delayMs={f.bubbleMs}
-        scale={scale}
-      />
+      <Bubble icon={v.bubble} tail={bubbleTail(feet)} delayMs={f.bubbleMs} scale={scale} />
       {v.hearts.map((h, i) => (
         <Bubble
           key={i}
