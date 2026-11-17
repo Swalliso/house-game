@@ -671,6 +671,32 @@ export const FEEL = {
   },
 
   /**
+   * Weather for a change order (S06, D-180, board/WeatherLayer.tsx): rain on the lot while Rainy
+   * season runs, and a puddle on each Patio it zeroes. Decoration only, never the rules. Still
+   * under a sheet over the board; no rain with Reduce motion, and the puddles hold still.
+   */
+  weather: {
+    rain: {
+      /** It fades in as the change order's sheet closes, and out as the phase's milestone lands. */
+      inMs: 1600,
+      outMs: 1100,
+      /**
+       * Two sheets of streaks (board/weather.ts SHEETS), the far one fainter and slower. Each steps
+       * a whole art px or two at a time, every `stepMs`: `across` × `down` streaks a tile, where
+       * fewer thin the rain out.
+       */
+      far: { stepMs: 42, across: 1, down: 4 },
+      near: { stepMs: 36, across: 2, down: 3 },
+    },
+    puddle: {
+      /** Fading in on a Patio the rain has just zeroed. */
+      inMs: 500,
+      /** Each frame of a drop landing in it (art/drawings.ts own-puddle). */
+      frameMs: 150,
+    },
+  },
+
+  /**
    * The end of a run's look down the street (D-156): `delayMs` after the last tally, the view
    * pulls back over `outMs` to show the houses around the lot, holds `holdMs`, and comes back
    * over `backMs`; a click or a key hurries it back. It pulls back far enough to show `beside`

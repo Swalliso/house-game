@@ -178,7 +178,7 @@ export function WallsLayer(p: { lot: Lot; scale: number; model: HouseModel }) {
 const drawingUrls = new Map<DrawingId, string>();
 
 /** One of our drawings (drawings.ts) as an image, made once. */
-function drawingUrl(id: DrawingId): string {
+export function drawingUrl(id: DrawingId): string {
   let url = drawingUrls.get(id);
   if (!url) {
     const d = drawingPixels(id);
