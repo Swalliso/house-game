@@ -6,12 +6,15 @@
 // The store and the director play real runs here, on a house made for the test.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CONTENT, isFinished, type RunSetup } from '../../rules/index.ts';
+import { CONTENT, isFinished, type ClientId, type RunSetup } from '../../rules/index.ts';
 import { emptyRows, houseFrom } from '../../rules/testing.ts';
+import { lampSpot } from '../art/house-paint.ts';
 import { audio } from '../audio/audio.ts';
+import { hallLinks, houseModel, sunLight } from '../board/house-model.ts';
 import { settings } from '../settings.ts';
+import { CELL } from '../sprites.ts';
 import { installSupply, run, startRun } from '../store.ts';
-import { busy, instantTally, lightsHeld, lightSwitched } from './director.ts';
+import { busy, fxHooks, instantTally, lightsHeld, lightSwitched } from './director.ts';
 import { FEEL } from './feel.ts';
 import { lightOnFrames } from './light.ts';
 
@@ -111,6 +114,36 @@ describe('the light coming on', () => {
     expect(lightsHeld.value.size).toBe(0);
     await vi.waitFor(() => expect(busy.value).toBe(false));
     expect(lightsHeld.value.size).toBe(0);
+  });
+
+  it('sends its glints from the lamp the board lights, in the client’s own room too (D-183)', async () => {
+    // The Barkers' first Living Room, grown by Extend, with their dogs' bed in it.
+    startRun({ ...SETUP, clientId: 'barkers' });
+    const h = houseFrom(CONTENT, emptyRows(12, 12), [['livingRoom', 2, 2]]);
+    run.value = {
+      ...run.value,
+      house: { ...h, pieces: h.pieces.map((p) => ({ ...p, extended: 1 })) },
+      supplies: [{ kind: 'fixture', id: 'fireplace' }],
+    };
+    const bursts: { x: number; y: number }[] = [];
+    const toScreen = fxHooks.toScreen;
+    fxHooks.toScreen = (x, y) => {
+      bursts.push({ x, y });
+      return null;
+    };
+    try {
+      expect(installSupply(0, 1)).toBe(true);
+      await vi.waitFor(() => expect(busy.value).toBe(false));
+    } finally {
+      fxHooks.toScreen = toScreen;
+    }
+    const s = run.value;
+    const lamp = (client?: ClientId) =>
+      lampSpot(houseModel(s.house, hallLinks(s), sunLight(s), client), 1)!;
+    const theirs = lamp('barkers');
+    // Their dogs' bed moves the lamp: a house without them would light it elsewhere.
+    expect(theirs).not.toEqual(lamp());
+    expect(bursts).toContainEqual({ x: theirs.x / CELL, y: theirs.y / CELL });
   });
 
   it('a new run lets go of a light still waiting for its beat', async () => {

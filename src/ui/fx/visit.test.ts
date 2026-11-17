@@ -208,6 +208,16 @@ describe('doorstep', () => {
   it('has nowhere to stand before the first room', () => {
     expect(doorstep(stateWith('hendersons', []))).toBeNull();
   });
+
+  it('reads the house the board draws, the client’s things and all, and leaves its model cached', () => {
+    const s = stateWith('barkers', [
+      ['kitchen', 4, 4],
+      ['livingRoom', 6, 4],
+    ]);
+    const board = houseModel(s.house, hallLinks(s), sunLight(s), s.setup.clientId);
+    expect(visitOf(s)).not.toBeNull();
+    expect(houseModel(s.house, hallLinks(s), sunLight(s), s.setup.clientId)).toBe(board);
+  });
 });
 
 describe('doorstep, with a member of the household waiting (D-177)', () => {

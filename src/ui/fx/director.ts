@@ -645,7 +645,9 @@ async function lightBeat(uid: number, after: RunState): Promise<void> {
   if (skipping) return;
   lightSwitched.value = { uid, id: nextId++ };
   audio.play('light-on');
-  const at = lampSpot(houseModel(after.house, hallLinks(after), sunLight(after)), uid);
+  // The house as the board draws it, the client's own things in their room too (D-183).
+  const model = houseModel(after.house, hallLinks(after), sunLight(after), after.setup.clientId);
+  const at = lampSpot(model, uid);
   if (at) {
     boardBurst(
       'glints',

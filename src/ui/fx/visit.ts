@@ -94,7 +94,8 @@ const BELOW_MAT = 16;
  * (besideWaiting); with no place free in it, they step out of the line's way (outOfTheirWay).
  */
 export function doorstep(state: RunState): ArtPoint | null {
-  const model = houseModel(state.house, hallLinks(state), sunLight(state));
+  // The house as the board draws it (the board's own model, from its cache).
+  const model = houseModel(state.house, hallLinks(state), sunLight(state), state.setup.clientId);
   const own = atTheDoor(model);
   if (!own) return null;
   const waiting = people(state, model).filter((p) => p.place !== 'room');
