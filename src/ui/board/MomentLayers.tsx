@@ -1,16 +1,20 @@
 // The board's moments that sit on the lot: "Topped out!" the first week A compact house holds
-// (D-127), and the tally's arcs along a chain (D-094's option 1). They're in the board, so they
-// keep to the house however the lot is panned or zoomed, and they're drawn at the camera's
-// scale. The roof that D-127 and D-133 drew over the house went with D-147.
+// (D-127), the tally's arcs along a chain (D-094's option 1), and the client at the door at a
+// milestone (D-182). They're in the board, so they keep to the house however the lot is panned
+// or zoomed, and they're drawn at the camera's scale. The roof that D-127 and D-133 drew over
+// the house went with D-147.
 
 import type { Lot, Preview } from '../../rules/index.ts';
 import { previewArcs } from '../fx/chain.ts';
-import { chainArc, toppedOut } from '../fx/director.ts';
+import { chainArc, clientVisit, toppedOut } from '../fx/director.ts';
+import { FxSprite } from '../fx/Drive.tsx';
 import { FEEL } from '../fx/feel.ts';
+import { bubbleOpensMs, CLIENT_FIGURES, type ArtPoint } from '../fx/visit.ts';
 import { Icon } from '../kit/kit.tsx';
 import { CELL } from '../sprites.ts';
 import type { Occupancy } from './geometry.ts';
 import type { HouseModel } from './house-model.ts';
+import './visit.css';
 
 /**
  * "Topped out!" (D-127): a plaque with a flag over the top of the house, the first week Under
@@ -35,6 +39,101 @@ export function ToppedOut({ scale, model }: { scale: number; model: HouseModel }
       <Icon name="flag" />
       <span>Topped out!</span>
     </div>
+  );
+}
+
+/** A client's figure (16 × 32 art px, standing on its frame's foot), and their heads' top. */
+const FIGURE = { w: 16, h: 32, head: 8 };
+/** Where a bubble's tail ends in its 16 × 32 frame: under the middle of its last dot. */
+const BUBBLE = { tailX: 8, tailY: 24 };
+
+/**
+ * The client at the door (D-182, fx/visit.ts): their figure at the front door, growing up
+ * from their feet; their own bubble over their head, a question mark or a heart; and a heart
+ * over each piece one of their met wishes names. Each bubble pops up through its frames in its
+ * turn (FEEL.visit), then its icon beats, and all of it fades at the end. It never takes the
+ * pointer: a click anywhere skips it. With S03's people layer it can move there.
+ */
+export function ClientVisit({ scale }: { scale: number }) {
+  const v = clientVisit.value;
+  if (!v) return null;
+  const f = FEEL.visit;
+  const { feet } = v;
+  return (
+    <div
+      class="client-visit"
+      key={v.id}
+      aria-hidden="true"
+      style={{
+        '--visit-pop-ms': `${f.popMs}ms`,
+        '--visit-opens-ms': `${bubbleOpensMs()}ms`,
+        '--visit-out-at': `${f.ms - f.outMs}ms`,
+        '--visit-out-ms': `${f.outMs}ms`,
+      }}
+    >
+      <FxSprite
+        id={CLIENT_FIGURES[v.clientId]}
+        scale={scale}
+        class="visit-client"
+        style={{
+          left: `${(feet.x - FIGURE.w / 2) * scale}px`,
+          top: `${(feet.y - FIGURE.h) * scale}px`,
+        }}
+      />
+      <Bubble
+        icon={v.bubble}
+        tail={{ x: feet.x + 4, y: feet.y - FIGURE.h + FIGURE.head - 1 }}
+        delayMs={f.bubbleMs}
+        scale={scale}
+      />
+      {v.hearts.map((h, i) => (
+        <Bubble
+          key={i}
+          icon="heart"
+          // The tail reaches a quarter cell above the piece's middle, so a small piece's bubble
+          // floats over it rather than on it.
+          tail={{ x: h.x, y: h.y - CELL / 4 }}
+          delayMs={f.heartsMs + i * f.heartStaggerMs}
+          scale={scale}
+        />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * A thought bubble whose tail ends at `tail` (art px on the lot): hidden until `delayMs`, then
+ * its pop-in frames once (a dot, the tail, a small bubble, a wide one), then its icon's two
+ * frames, beating. It never pokes above the lot, where the view often ends (the canopy's room is
+ * scrolled away): a piece on the top row gets its heart on it rather than over it.
+ */
+function Bubble({
+  icon,
+  tail,
+  delayMs,
+  scale,
+}: {
+  icon: 'heart' | 'ask';
+  tail: ArtPoint;
+  delayMs: number;
+  scale: number;
+}) {
+  return (
+    <span
+      class="visit-bubble"
+      style={{
+        left: `${(tail.x - BUBBLE.tailX) * scale}px`,
+        top: `${Math.max(0, tail.y - BUBBLE.tailY) * scale}px`,
+        '--bubble-delay': `${delayMs}ms`,
+      }}
+    >
+      <FxSprite id="visit-pop" scale={scale} class="bubble-pop" />
+      <FxSprite
+        id={icon === 'heart' ? 'visit-heart' : 'visit-ask'}
+        scale={scale}
+        class="bubble-icon"
+      />
+    </span>
   );
 }
 

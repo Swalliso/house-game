@@ -127,7 +127,7 @@ import {
   WallsLayer,
 } from './HouseLayers.tsx';
 import { layerVars } from './layers.ts';
-import { ChainArc, PreviewArcs, ToppedOut } from './MomentLayers.tsx';
+import { ChainArc, ClientVisit, PreviewArcs, ToppedOut } from './MomentLayers.tsx';
 import { wobble } from './piece-fx.ts';
 import { LifeLayer } from './LifeLayer.tsx';
 import { neighborAt, type Neighbor } from './neighbors.ts';
@@ -1045,6 +1045,7 @@ export function Board() {
           <ChainArc lot={lot} scale={scale} />
           {labelsLayer}
           <ToppedOut scale={scale} model={model} />
+          <ClientVisit scale={scale} />
           {demolishing && <DemolishTarget scale={scale} />}
           {ghostCells && (
             <Ghost

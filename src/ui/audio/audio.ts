@@ -65,7 +65,9 @@ export type SoundId =
   // Life on the lot (D-155): the flock taking off.
   | 'flap'
   // A strike from the hand (D-157): a heavier stamp on card stock.
-  | 'strike';
+  | 'strike'
+  // The client at the door (D-182): a thought bubble popping up.
+  | 'bubble';
 
 export interface PlayOptions {
   /** Exact playback rate. Giving one also turns off the random rate and gain spread. */
@@ -340,6 +342,10 @@ const SOUNDS: Record<SoundId, readonly Layer[]> = {
   // ---- Life on the lot (D-155) ----
   // The flock taking off: a soft flutter of low-passed noise, a few wingbeats fading out.
   flap: one([0.3, 0, 300, 0.01, 0.16, 0.1, 4, 1, , , , , 0.07, , , , , 0.8, , 0.9, -1100]),
+
+  // ---- The client at the door (D-182) ----
+  // A thought bubble popping up: a quick, soft sine blip that bends upward.
+  bubble: one([0.3, 0, 620, 0.002, 0.01, 0.07, 0, 1, 14, , , , , , , , , 0.6, 0.02]),
 };
 
 export const SOUND_IDS = Object.keys(SOUNDS) as readonly SoundId[];
