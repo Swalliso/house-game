@@ -20,6 +20,7 @@ import {
   article,
   CONTENT,
   definite,
+  isFinished,
   rewardText,
   rules,
   SCORE_LABELS,
@@ -39,9 +40,12 @@ import {
   type Tally,
   type XMultTerm,
 } from '../../rules/index.ts';
+import { lampSpot } from '../art/house-paint.ts';
 import { audio } from '../audio/audio.ts';
+import { hallLinks, houseModel, sunLight } from '../board/house-model.ts';
 import { arrivalOf, cardsPhrase, isPlural } from '../hud/household.ts';
 import { settings } from '../settings.ts';
+import { CELL } from '../sprites.ts';
 import { firstJob, onEvents, onRunReset } from '../store.ts';
 import { formatNumber } from '../format.ts';
 import { chainOrder } from './chain.ts';
@@ -232,11 +236,20 @@ export const played = {
   levelPop: 0,
   wash: 0,
   arrival: 0,
+  light: 0,
 };
 /** The piece that was just placed, for its settle animation. */
 export const justPlaced = signal<{ uid: number; id: number } | null>(null);
 /** The room that was just renovated, for its level badge's pop. */
 export const justRenovated = signal<{ uid: number; id: number } | null>(null);
+/**
+ * D-181: the rooms an action has just finished (a fixture, and grown by Extend or Renovate),
+ * while their lights wait for its beat: the board's lights layer keeps them off. Empty at rest,
+ * so a loaded run, the photos and Reduce motion show every finished room lit.
+ */
+export const lightsHeld = signal<ReadonlySet<number>>(new Set());
+/** D-181: a finished room's light switching on: the lights layer flickers it on, once per id. */
+export const lightSwitched = signal<{ uid: number; id: number } | null>(null);
 
 /**
  * The change order picked, stamped on its card as the sheet goes (M4b, D-144): the sheet as it
@@ -588,6 +601,45 @@ function animates(events: readonly GameEvent[]): boolean {
       e.t === 'toolUsed' ||
       e.t === 'changeOrderAnswered',
   );
+}
+
+/** D-181: the rooms an action finished: finished after it, not before (a new room never is). */
+function finishedBy(before: RunState, after: RunState): number[] {
+  const was = new Set(before.house.pieces.filter((p) => isFinished(p)).map((p) => p.uid));
+  return after.house.pieces
+    .filter((p) => CONTENT.pieces[p.defId].category === 'indoor')
+    .filter((p) => isFinished(p) && !was.has(p.uid))
+    .map((p) => p.uid);
+}
+
+/** D-181: rooms' lights off until their beat, or (`on`) back on. */
+function holdLights(uids: readonly number[], on = false): void {
+  const held = lightsHeld.value;
+  if (on ? !uids.some((u) => held.has(u)) : uids.length === 0) return;
+  lightsHeld.value = on
+    ? new Set([...held].filter((u) => !uids.includes(u)))
+    : new Set([...held, ...uids]);
+}
+
+/**
+ * D-181: a room the action finished lights up, after the beat that finished it: its lamp clicks
+ * on with a small pop and flickers on (the lights layer), and the find's glints fly from it.
+ * Skipped, the light is just on.
+ */
+async function lightBeat(uid: number, after: RunState): Promise<void> {
+  holdLights([uid], true);
+  if (skipping) return;
+  lightSwitched.value = { uid, id: nextId++ };
+  audio.play('light-on');
+  const at = lampSpot(houseModel(after.house, hallLinks(after), sunLight(after)), uid);
+  if (at) {
+    boardBurst(
+      'glints',
+      { x: at.x / CELL, y: at.y / CELL },
+      { delayMs: FEEL.lightOn.burstDelayMs, scale: 0.7 },
+    );
+  }
+  await wait(FEEL.lightOn.beatMs);
 }
 
 /**
@@ -1187,6 +1239,13 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
   // shop, a reroll, a purchase) finishes in this one call, and setting busy for it flicked every
   // reader of busy on and off: the music's scene, and the week's stamp, which a tally takes down.
   if (animated) busy.value = true;
+  // D-181: the rooms this action finished, each lit after the last of its beats that did it.
+  const lit = finishedBy(before, after);
+  const lightAt = new Map<number, number>();
+  for (const [i, e] of events.entries()) {
+    if ((e.t === 'installed' || e.t === 'renovated' || e.t === 'extended') && lit.includes(e.uid))
+      lightAt.set(e.uid, i);
+  }
   try {
     const newSets = new Set(events.flatMap((e) => (e.t === 'setCompleted' ? [e.key] : [])));
     const ended = events.some((e) => e.t === 'runEnded');
@@ -1517,6 +1576,8 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
         default:
           break;
       }
+      // D-181: a room this beat finished switches its light on.
+      for (const [uid, at] of lightAt) if (at === i) await lightBeat(uid, after);
     }
     // The shop appears as this finishes, so its beats (its chime, a Rare's sparkle) play now,
     // not at the click, before the tally and the milestone could give a Rare away. So does a
@@ -1532,6 +1593,8 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
       }
     }
   } finally {
+    // D-181: a light no beat switched on (a skipped or interrupted play) is just on.
+    holdLights(lit, true);
     batch(() => {
       tallyView.value = null;
       highlighted.value = [];
@@ -1856,6 +1919,9 @@ onEvents((events, before, after) => {
   if (!struck) struckSaid.value = '';
   // A new action while a tally plays finishes that one at once, then plays its own.
   if (busy.value) skipping = true;
+  // D-181: a room this action finishes keeps its light off until its beat switches it on (with
+  // Reduce motion it's just on).
+  if (animates(events) && motion() && !instantTally.value) holdLights(finishedBy(before, after));
   chain = chain.then(() => play(events, before, after)).catch((e) => console.error(e));
   if (animates(events)) {
     // Its starting state goes on show now, not when play() starts a microtask later: the
@@ -1887,6 +1953,8 @@ onRunReset(() => {
     toppedOut.value = null;
     arrivalCard.value = null;
     chainArc.value = null;
+    lightsHeld.value = new Set();
+    lightSwitched.value = null;
   });
   clearParticles();
 });

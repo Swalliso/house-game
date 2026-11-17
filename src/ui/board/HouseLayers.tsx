@@ -5,7 +5,8 @@
 //   piece's props (yard.ts)
 // - walls: one canvas of wall bands, doorways, windows and garage rails
 // - overhang: the parts of tall items that rise over their room's north wall, or above a yard
-//   piece's own cells (outbuildings' roofs, the Treehouse, a Birdhouse's box)
+//   piece's own cells (outbuildings' roofs, the Treehouse, a Birdhouse's box); then the finished
+//   rooms' lights (LightsLayer.tsx, D-181)
 // - highlights: the tally's active piece, a set's members, the placement's new sets, and each
 //   piece's flash, as outlines (never CSS filters on whole pieces)
 // - labels: each piece's digit and its fixture, ⚠ and Renovate level badges, inside its walls
@@ -853,7 +854,7 @@ export function GhostPiece({
   const shapeKey = shape?.join('/');
   const art = useMemo(
     () => pieceArtPlan(defId, rot, look, shape),
-    [defId, rot, shapeKey, look?.color, look?.flip, look?.fixture, look?.style],
+    [defId, rot, shapeKey, look?.color, look?.flip, look?.fixture, look?.style, look?.lit],
   );
   const { frame } = art;
   const bw = Math.max(...cells.map((c) => c.x)) - minX + 1;

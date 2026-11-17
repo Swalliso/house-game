@@ -25,6 +25,7 @@
 
 import {
   CONTENT,
+  isFinished,
   rules,
   terrainAt,
   type Cell,
@@ -135,6 +136,8 @@ export interface Room {
   box: Rect;
   /** Its fixture, if it has one. */
   fixture?: FixtureId;
+  /** D-181: finished (rules' isFinished: a fixture, and grown), so its lamp is lit. */
+  finished?: true;
 }
 
 /**
@@ -147,6 +150,8 @@ export interface PieceLook {
   flip?: boolean;
   fixture?: FixtureId;
   style?: number;
+  /** D-181: a finished room's lamp is lit (the Moving Truck carrying one). */
+  lit?: boolean;
 }
 
 export interface HouseModel {
@@ -391,7 +396,7 @@ export function pieceModel(
   own?: readonly string[],
 ): HouseModel {
   const looks = look
-    ? `${look.color}:${look.flip ?? ''}:${look.fixture ?? ''}:${look.style ?? ''}`
+    ? `${look.color}:${look.flip ?? ''}:${look.fixture ?? ''}:${look.style ?? ''}:${look.lit ? 'lit' : ''}`
     : '';
   const key = `${defId}:${rot}:${own?.join('/') ?? ''}:${looks}`;
   let m = solo.get(key);
@@ -423,6 +428,9 @@ export function pieceModel(
     };
     m = buildModel(house, NO_LINKS, false);
     if (look) m.look = look;
+    // D-181: a finished room carried by the Moving Truck keeps its lamp lit.
+    const room = m.rooms.get(1);
+    if (look?.lit && room) room.finished = true;
     solo.set(key, m);
   }
   return m;
@@ -574,6 +582,7 @@ function buildModel(house: HouseState, links: HallLinks, openings: boolean): Hou
       cells,
       box: { x: x0 * CELL, y: y0 * CELL, w: (x1 - x0) * CELL, h: (y1 - y0) * CELL },
       ...(p.fixture ? { fixture: p.fixture.id } : {}),
+      ...(isFinished(p) ? { finished: true as const } : {}),
     });
     bx0 = Math.min(bx0, x0);
     by0 = Math.min(by0, y0);

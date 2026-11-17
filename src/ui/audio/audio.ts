@@ -65,7 +65,9 @@ export type SoundId =
   // Life on the lot (D-155): the flock taking off.
   | 'flap'
   // A strike from the hand (D-157): a heavier stamp on card stock.
-  | 'strike';
+  | 'strike'
+  // A finished room's lamp coming on (D-181).
+  | 'light-on';
 
 export interface PlayOptions {
   /** Exact playback rate. Giving one also turns off the random rate and gain spread. */
@@ -340,6 +342,13 @@ const SOUNDS: Record<SoundId, readonly Layer[]> = {
   // ---- Life on the lot (D-155) ----
   // The flock taking off: a soft flutter of low-passed noise, a few wingbeats fading out.
   flap: one([0.3, 0, 300, 0.01, 0.16, 0.1, 4, 1, , , , , 0.07, , , , , 0.8, , 0.9, -1100]),
+
+  // A finished room's lamp coming on (D-181): a switch's click, a small pop, and a warm E.
+  'light-on': [
+    { at: 0, params: [0.3, 0, 1400, 0.001, 0, 0.02, 1, 1, , , , , , , , , , 1, , , -2500] },
+    { at: 0.05, params: [0.3, 0, 400, 0.001, 0.01, 0.06, 4, 1, , , , , , , , , , 1, , , -1500] },
+    note(0.09, E6, 0.22, 0.45),
+  ],
 };
 
 export const SOUND_IDS = Object.keys(SOUNDS) as readonly SoundId[];

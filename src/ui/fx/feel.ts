@@ -290,6 +290,15 @@ export const FEEL = {
   levelPop: { ms: 420, scale: 1.6 },
   /** A Renovation's beat (M4a): the room wobbles, says its new level, and knocks twice. */
   renovateMs: 480,
+  /**
+   * D-181: a finished room's lamp coming on, right after the beat that finished it (a fixture
+   * installed, a Renovation, an extension): the switch's click and a small pop, the find's glints
+   * from the lamp after `burstDelayMs`, and the light flickering on over `flickerMs`, on at once,
+   * then down to each of `dips` (an opacity) and back (fx/light.ts). Two dips in under a second
+   * stay under 3 flashes a second; with Flashing off it fades in over `fadeMs`. `beatMs` is its
+   * beat, at tally speed.
+   */
+  lightOn: { flickerMs: 760, dips: [0.2, 0.55], fadeMs: 420, beatMs: 560, burstDelayMs: 60 },
 
   /**
    * The client's checklist in the tally (M4a), after the sets: each line held lights its row

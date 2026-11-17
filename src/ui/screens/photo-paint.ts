@@ -5,6 +5,7 @@
 // - the floor canvas (the yard's ground, the house's shadow, doormats, floors and wall faces),
 // - every piece's items under the walls, south in front, as the items layer orders them,
 // - the walls, then the tall items' tops over them (the overhang layer),
+// - the finished rooms' lights over those (the lights layer, D-181),
 // - the trees' crowns (the canopy).
 // No digits or badges, and no tint.
 //
@@ -14,7 +15,13 @@
 import type { RunState } from '../../rules/index.ts';
 import { artSize } from '../art/drawings.ts';
 import type { Plot } from '../company.ts';
-import { Canvas, paintFloors, paintWalls, type AtlasPixels } from '../art/house-paint.ts';
+import {
+  Canvas,
+  paintFloors,
+  paintLights,
+  paintWalls,
+  type AtlasPixels,
+} from '../art/house-paint.ts';
 import { itemRows, roomItems, type Item } from '../art/rooms.ts';
 import { yardModel } from '../art/yard.ts';
 import { atlasPixels } from '../board/HouseLayers.tsx';
@@ -99,6 +106,8 @@ export async function paintPhoto(
   const walls = paintWalls(model);
   if (walls) cv.over(walls);
   for (const p of pieces) for (const it of p.items) blitPart(cv, atlas, it, 'top');
+  const lights = paintLights(model, atlas);
+  if (lights) cv.over(lights);
 
   // The trees' crowns over everything.
   const crowns = canopyBox(lot, objects);

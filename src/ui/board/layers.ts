@@ -29,7 +29,10 @@ export const LAYER = {
   items: 4,
   /** Wall bands, door gaps, window glass, garage rails, the painted fixtures (canvas). */
   walls: 5,
-  /** Tall items above their own footprint: furniture over the north wall, outbuilding roofs. */
+  /**
+   * Tall items above their own footprint: furniture over the north wall, outbuilding roofs.
+   * D-181: the finished rooms' lights share it, after the tops (LightsLayer.tsx).
+   */
   overhang: 6,
   /** Kept for a roof over the house (D-097). Nothing draws here since D-147 took the roof out. */
   roof: 7,
