@@ -1295,7 +1295,7 @@ describe('the client’s own things (D-183)', () => {
       expect(key && !items.some((sp) => KEY[style]!.test(sp)), at).toBe(false);
       expect(problems(m, uid), at).toEqual([]);
     }
-  });
+  }, 20_000); // 2.3 s here, and over 5 s on a slow CI runner: the 5 s default timed out
 
   it('show in the ghost of the room that will be theirs, in every arrangement, turn and color', () => {
     for (let style = 0; style < 3; style++) {
