@@ -254,6 +254,11 @@ export const orderStamp = signal<OrderStamp | null>(null);
 /** A household member's cards, just in the reserve (M4b): the reserve pops them in. */
 export const justArrived = signal<{ arrival: ArrivalId; id: number } | null>(null);
 /**
+ * D-177: a household member walking in once the doorbell has rung: the people layer walks them up
+ * from the street to the front door (board/PeopleLayer.tsx), each id once.
+ */
+export const walkIn = signal<{ arrival: ArrivalId; id: number } | null>(null);
+/**
  * D-160: the standing stock's or the client's cards, or (D-171) the crew's, just in the reserve:
  * the reserve slots (`slots`, by index) that pop in, after `delayMs`.
  */
@@ -1674,7 +1679,8 @@ function deliveredBeat(e: Extract<GameEvent, { t: 'delivered' }>, after: RunStat
  * and a ring spreading from the doormat), their card slides in over the board with their room's
  * picture (ArrivalCard.tsx), and their cards pop into the reserve's extra slots (Inventory.tsx).
  * It doesn't hold the week up: the card goes on its own (or with a click on it), and the
- * first-time hints wait for it.
+ * first-time hints wait for it. Then the member walks up from the street to wait at the door
+ * (D-177, board/PeopleLayer.tsx).
  */
 function arrivalBeat(e: Extract<GameEvent, { t: 'arrived' }>, after: RunState): void {
   const a = arrivalOf(after.setup.clientId, e.arrival);
@@ -1710,6 +1716,9 @@ function arrivalBeat(e: Extract<GameEvent, { t: 'arrived' }>, after: RunState): 
       boardBurst('ring', door, { delayMs: f.dongMs });
     });
   }
+  // D-177: then they walk up from the street to wait at the door (FEEL.arrival.walk). Hurried or
+  // with Reduce motion, they're simply there.
+  if (!skipping && motion()) walkIn.value = { arrival: e.arrival, id: nextId++ };
 }
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -1882,6 +1891,7 @@ onRunReset(() => {
     justRenovated.value = null;
     orderStamp.value = null;
     justArrived.value = null;
+    walkIn.value = null;
     wash.value = null;
     targetHit.value = null;
     toppedOut.value = null;

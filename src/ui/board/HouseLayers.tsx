@@ -55,6 +55,7 @@ import { currentTally, heldPiece, preview, tool } from '../store.ts';
 import { cellsOutline, isIndoor, type Occupancy } from './geometry.ts';
 import { inset, pieceModel, type HouseModel, type PieceLook, type Rect } from './house-model.ts';
 import { pieceLabels, type BadgeSpot, type Side } from './label-layout.ts';
+import { withPeople } from './people.ts';
 import { register, settle as settleFx } from './piece-fx.ts';
 import { seedSalt } from './terrain/hash.ts';
 import { canopyParts, lotObjects } from './terrain/objects.ts';
@@ -337,18 +338,21 @@ function PieceItems({
 
 /**
  * One container per piece: a room's furniture, or a yard piece's props. Each orders itself by its
- * bottom row, so things further south are in front.
+ * bottom row, so things further south are in front. `people` (D-177): the household's members in
+ * their rooms, by room uid, sorted in with its furniture (people.ts withPeople).
  */
 export function ItemsLayer({
   house,
   model,
   yard,
   scale,
+  people,
 }: {
   house: HouseState;
   model: HouseModel;
   yard: YardModel;
   scale: number;
+  people?: ReadonlyMap<number, readonly Item[]>;
 }) {
   const placed = justPlaced.value;
   const ref = useRef<HTMLDivElement>(null);
@@ -359,7 +363,7 @@ export function ItemsLayer({
         const settle = placed?.uid === p.uid ? placed.id : undefined;
         const room = model.rooms.get(p.uid);
         const at = room
-          ? { box: room.box, items: roomItems(model, p.uid) }
+          ? { box: room.box, items: withPeople(roomItems(model, p.uid), people?.get(p.uid)) }
           : yard.pieces.get(p.uid);
         if (!at) return null;
         return (
@@ -385,17 +389,20 @@ export function OverhangLayer({
   model,
   yard,
   scale,
+  people,
 }: {
   model: HouseModel;
   yard: YardModel;
   scale: number;
+  /** D-177: the members in their rooms, as ItemsLayer's: a figure's head over a north wall. */
+  people?: ReadonlyMap<number, readonly Item[]>;
 }) {
   const tops = (items: readonly Item[]) => items.filter((it) => itemRows(it).top);
   const parts = [
     ...[...model.rooms.values()].map((r) => ({
       uid: r.uid,
       box: r.box,
-      items: tops(roomItems(model, r.uid)),
+      items: tops(withPeople(roomItems(model, r.uid), people?.get(r.uid))),
     })),
     ...[...yard.pieces.values()].map((l) => ({ uid: l.uid, box: l.box, items: tops(l.items) })),
   ];

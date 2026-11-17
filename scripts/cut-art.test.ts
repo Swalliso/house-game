@@ -331,6 +331,53 @@ describe('cutSprite', () => {
     }
   });
 
+  it('reads a compose layer that follows as far along as each frame (D-177)', () => {
+    const cut = cutSprite(
+      spec({
+        rect: [0, 0, 2, 2],
+        frames: { count: 3, dx: 4, dy: 1, ms: 100 },
+        ops: [
+          {
+            op: 'compose',
+            size: [2, 2],
+            layers: [
+              { file: OTHER, rect: [2, 3, 1, 1], at: [1, 1], follow: true },
+              { file: OTHER, rect: [12, 3, 1, 1], at: [0, 1] },
+            ],
+          },
+        ],
+      }),
+      sheet,
+      'x',
+    );
+    for (let k = 0; k < 3; k++) {
+      // Frame k's following layer comes from [2 + 4k, 3 + k]; the other stays where it is.
+      expect(px(cut.image, k * 2 + 1, 1), `frame ${k}`).toEqual(
+        px(sheets[OTHER]!, 2 + 4 * k, 3 + k),
+      );
+      expect(px(cut.image, k * 2, 1), `frame ${k}`).toEqual(px(sheets[OTHER]!, 12, 3));
+    }
+    expect(() =>
+      parseManifest(
+        JSON.stringify({
+          'people-x': {
+            pack: 'mi',
+            file: 'A.png',
+            rect: [0, 0, 1, 1],
+            ops: [
+              {
+                op: 'compose',
+                size: [1, 1],
+                layers: [{ rect: [0, 0, 1, 1], at: [0, 0], follow: 1 }],
+              },
+            ],
+          },
+        }),
+        'm.json',
+      ),
+    ).toThrow(/layers\[0\]\.follow must be true, or left out/);
+  });
+
   it('names the entry, the frame, and the sheet when a rect is off it', () => {
     expect(() => cutSprite(spec({ rect: [60, 0, 8, 8] }), sheet, 'm.json: "floor-x"')).toThrow(
       'm.json: "floor-x".rect (Sheets/sheet.png): [60, 0, 8, 8] is outside the 64×32 sheet',
