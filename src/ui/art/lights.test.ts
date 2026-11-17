@@ -752,7 +752,7 @@ describe('a finished room’s lamp behind a member of the household (D-177)', ()
     expect(front).toBeGreaterThan(50);
     // Painted without them, as the photos are, it was over them in some.
     expect(wasOver).toBeGreaterThan(5);
-  });
+  }, 20_000); // 1.2 s here and 3.2 s on CI: as close to the 5 s default as its hanging-lamp twin
 
   /** The lot pixels where two painters' pixels differ. */
   function differ(a: Pixels | null, b: Pixels | null): Set<string> {
@@ -871,7 +871,7 @@ describe('a finished room’s lamp behind a member of the household (D-177)', ()
     // stands them behind it: the next test does.)
     expect(behind).toBe(0);
     expect(wasOver).toBeGreaterThan(5);
-  });
+  }, 20_000); // 3.0 s here, and over 5 s on a slow CI runner: the 5 s default timed out
 
   it('still hangs in front of Rowan, who stands behind it, at the back of his studio', () => {
     // His studio upright, finished, with a Living Room west of it: he stands by its side door,

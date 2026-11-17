@@ -1574,5 +1574,5 @@ describe('the client’s own things (D-183)', () => {
         expect(layout.items.length - before.length, at).toBeLessThanOrEqual(1);
       }
     }
-  });
+  }, 20_000); // 2.7 s here, and over 5 s on a slow CI runner: the 5 s default timed out
 });
