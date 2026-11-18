@@ -7,8 +7,9 @@ import { BALANCE } from '../../content/balance.ts';
 import type { Cell, FixtureId, HouseState, PieceId, PlacedPiece } from '../../rules/index.ts';
 import { generateLot, lotFromRows } from '../../rules/lot.ts';
 import { FEEL } from '../fx/feel.ts';
-import { spritePos } from '../sprites.ts';
-import { occupancy, uidAt } from './geometry.ts';
+import { CELL, spritePos } from '../sprites.ts';
+import { digitCell, occupancy, uidAt } from './geometry.ts';
+import { digitBox, pieceLabels } from './label-layout.ts';
 import {
   flight,
   flock,
@@ -215,6 +216,66 @@ describe('the flock', () => {
       ];
       const h = withPieces(field(['', '', '', '.T']), pieces);
       for (let week = 1; week <= 6; week++) expect(onIt(flock(h, 'seed', week), lawn)).toBe(true);
+    });
+
+    it('keep off the cell with a Lawn’s score digit, which the labels draw over them', () => {
+      // One Lawn, two side by side, two stacked, and four in a square: a block that straddles
+      // Lawns can take in another Lawn's digit.
+      const layouts: PlacedPiece[][] = [
+        [lawnAt(9, 4, 1)],
+        [lawnAt(4, 4, 1), lawnAt(6, 4, 2)],
+        [lawnAt(9, 2, 1), lawnAt(9, 4, 2)],
+        [lawnAt(3, 3, 1), lawnAt(5, 3, 2), lawnAt(3, 5, 3), lawnAt(5, 5, 4)],
+      ];
+      for (const pieces of layouts) {
+        const h = withPieces(field(), pieces);
+        const occ = occupancy(h);
+        const digits = pieces.map((p) => digitCell(occ.cells.get(p.uid)!));
+        const sizes = new Set<number>();
+        for (const seed of SEEDS) {
+          for (let week = 1; week <= 24; week++) {
+            const crows = flock(h, seed, week);
+            expect(crows.every((c) => uidAt(occ, c.x, c.y) !== 0)).toBe(true);
+            sizes.add(crows.length);
+            for (const c of crows) {
+              for (const d of digits)
+                expect(c.x === d.x && c.y === d.y, `${seed} ${week}`).toBe(false);
+            }
+          }
+        }
+        // Still two crows on a diagonal some weeks, three the rest.
+        expect([...sizes].sort()).toEqual([2, 3]);
+      }
+      // At 1× and up, a Lawn's digit (three characters at most) stays in its cell, and a crow
+      // keeps to its own (above), so the crows on its other cells are clear of it.
+      const cells = occupancy(withPieces(field(), [lawnAt(9, 4, 1)])).cells.get(1)!;
+      const d = digitCell(cells);
+      for (const [scale, dpr] of [
+        [1, 1],
+        [2, 1],
+        [3, 1],
+        [1, 2],
+        [1.5, 2],
+        [2, 2],
+        [2.5, 2],
+        [3, 2],
+      ] as const) {
+        const px = CELL * scale;
+        for (const chars of [1, 2, 3]) {
+          const spot = pieceLabels({
+            cells,
+            inset: () => 0,
+            px,
+            dpr,
+            digit: chars,
+            fixture: false,
+            unmet: false,
+          }).digit!;
+          const b = digitBox(spot, chars);
+          expect(b.x >= d.x * px && b.x + b.w <= (d.x + 1) * px, `${scale}× ${chars}`).toBe(true);
+          expect(b.y >= d.y * px && b.y + b.h <= (d.y + 1) * px, `${scale}× ${chars}`).toBe(true);
+        }
+      }
     });
 
     it('still keep out of reach of the pointer on a Lawn', () => {

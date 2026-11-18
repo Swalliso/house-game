@@ -6,7 +6,7 @@
 
 import type { Cell, HouseState } from '../../rules/index.ts';
 import type { SpriteId } from '../sprites.ts';
-import { occupancy, uidAt, type Occupancy } from './geometry.ts';
+import { digitCell, occupancy, uidAt, type Occupancy } from './geometry.ts';
 import { seedSalt, tileHash } from './terrain/hash.ts';
 
 /** A crow: its cell, where in it (art px from the cell's corner), and which way it faces. */
@@ -47,6 +47,27 @@ function onLawn(occ: Occupancy, x: number, y: number): boolean {
   return true;
 }
 
+/** A 2 × 2 block's cells, from its corner, in the order a flock counts them. */
+const BLOCK: readonly (readonly [number, number])[] = [
+  [0, 0],
+  [1, 0],
+  [1, 1],
+  [0, 1],
+];
+
+/**
+ * D-185: which of the block at (x, y)'s cells (an index into BLOCK) holds a Lawn's weekly score
+ * digit, its bottom-right cell (§12, Numbers), or -1 if none does. A Lawn is 2 × 2, so a block
+ * holds one at most.
+ */
+function digitIn(occ: Occupancy, x: number, y: number): number {
+  return BLOCK.findIndex(([ox, oy]) => {
+    const cells = occ.cells.get(uidAt(occ, x + ox, y + oy));
+    const d = cells && digitCell(cells);
+    return d !== undefined && d.x === x + ox && d.y === y + oy;
+  });
+}
+
 /** Whether two cells are within `d` of each other, either way (a square around each). */
 export function within(a: Cell, b: Cell, d: number): boolean {
   return Math.abs(a.x - b.x) <= d && Math.abs(a.y - b.y) <= d;
@@ -60,7 +81,7 @@ export function within(a: Cell, b: Cell, d: number): boolean {
  * within `startle` cells of a crow, so the flock doesn't take off as it lands. Of the blocks that
  * qualify, the run's seed and the week pick one by hash, never by chance: the same week of the
  * same run gets the same flock. A block all on Lawns wins over the bare grass (D-185): the birds
- * come to the house's Lawns. No block, no flock.
+ * come to the house's Lawns, and keep off the cell with a Lawn's digit. No block, no flock.
  */
 export function flock(
   house: HouseState,
@@ -95,18 +116,16 @@ export function flock(
   const pick = lawn ?? best;
   if (!pick) return [];
   const { x, y, h } = pick;
-  // Three crows leave one cell of the block out; one block in four gets two, on a diagonal.
-  const cells: [number, number][] = [
-    [0, 0],
-    [1, 0],
-    [1, 1],
-    [0, 1],
-  ];
-  const skip = h % 4;
+  // Three crows leave one cell of the block out; one block in four gets two, on a diagonal. On a
+  // Lawn, the cell they leave out is the one with its score's digit, and two take the other
+  // diagonal (D-185): the labels are drawn over the flock, so a crow there would stand under it.
+  const digit = pick === lawn ? digitIn(occ, x, y) : -1;
+  const skip = digit >= 0 ? digit : h % 4;
+  const diagonal = digit >= 0 ? (digit + 1) % 2 : h % 2;
   const spots =
     (h >>> 2) % 4 === 0
-      ? [cells[skip % 2]!, cells[(skip % 2) + 2]!]
-      : cells.filter((_, i) => i !== skip);
+      ? [BLOCK[diagonal]!, BLOCK[diagonal + 2]!]
+      : BLOCK.filter((_, i) => i !== skip);
   return spots.map(([ox, oy], i) => {
     const r = tileHash(x + ox, y + oy, salt ^ (i + 7));
     return {
