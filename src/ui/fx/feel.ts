@@ -554,6 +554,22 @@ export const FEEL = {
   },
 
   /**
+   * D-185: the household standing, at the front door or in their room (board/people.ts pace,
+   * PeopleLayer.tsx Standing): decoration only. Each member breathes, each frame of their idle
+   * shown `idleFrameMs`. Now and then an adult reads, and a turn later takes a call, each frame
+   * of the book or the phone shown `busyFrameMs`: a turn every `turnMs` (between the two, by hash
+   * of the run's seed and who they are), and the book or the phone shows for its first 16%, a
+   * few seconds (people.css's member-*-turn keyframes: 8% of the two turns). Held still under a
+   * sheet over the board; with Reduce motion they stand on their first frame, and never read or
+   * call.
+   */
+  household: {
+    idleFrameMs: 450,
+    busyFrameMs: 350,
+    turnMs: [20000, 40000] as const,
+  },
+
+  /**
    * D-160: the standing stock topping up, or a client's cards landing, after week 1: they pop
    * into the reserve's extra slots with a soft shimmer, and no banner. With a member arriving the
    * same week, they wait for the doorbell (`arrival.landDelayMs`) and pop with the member's.

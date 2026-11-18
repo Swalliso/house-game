@@ -1850,7 +1850,17 @@
     "license": "LicenseRef-LimeZu-Modern-Interiors"
   },
   "limezu/people-grandma.png": {
-    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_06.png [48, 6, 16, 26]",
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_06.png [288, 38, 16, 26], 6 frames [16, 0] apart; 2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_06.png [48, 6, 16, 26], following the frames",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/people-grandma-phone.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_06.png [48, 198, 16, 26], 6 frames [16, 0] apart",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/people-grandma-read.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_06.png [0, 230, 16, 26], 12 frames [16, 0] apart",
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Interiors"
   },
@@ -1860,7 +1870,7 @@
     "license": "LicenseRef-LimeZu-Modern-Interiors"
   },
   "limezu/people-ivy.png": {
-    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 2_Characters/Character_Generator/Bodies_kids/16x16/Body_1_kid.png [48, 6, 16, 26]; 2_Characters/Character_Generator/Outfits_kids/16x16/Outfit_kid_3.png [48, 6, 16, 26]; 2_Characters/Character_Generator/Eyes_kids/16x16/Eyes_kids_1.png [48, 6, 16, 26]; 2_Characters/Character_Generator/Hairstyles_kids/16x16/Hairstyle_kid_4_3.png [48, 6, 16, 26]",
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 2_Characters/Character_Generator/Bodies_kids/16x16/Body_1_kid.png [288, 38, 16, 26], 6 frames [16, 0] apart; 2_Characters/Character_Generator/Outfits_kids/16x16/Outfit_kid_3.png [288, 38, 16, 26], following the frames; 2_Characters/Character_Generator/Eyes_kids/16x16/Eyes_kids_1.png [288, 38, 16, 26], following the frames; 2_Characters/Character_Generator/Hairstyles_kids/16x16/Hairstyle_kid_4_3.png [288, 38, 16, 26], following the frames; 2_Characters/Character_Generator/Bodies_kids/16x16/Body_1_kid.png [48, 6, 16, 26], following the frames; 2_Characters/Character_Generator/Outfits_kids/16x16/Outfit_kid_3.png [48, 6, 16, 26], following the frames; 2_Characters/Character_Generator/Eyes_kids/16x16/Eyes_kids_1.png [48, 6, 16, 26], following the frames; 2_Characters/Character_Generator/Hairstyles_kids/16x16/Hairstyle_kid_4_3.png [48, 6, 16, 26], following the frames",
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Interiors"
   },
@@ -1870,7 +1880,17 @@
     "license": "LicenseRef-LimeZu-Modern-Interiors"
   },
   "limezu/people-nana.png": {
-    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_10.png [48, 6, 16, 26]",
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_10.png [288, 38, 16, 26], 6 frames [16, 0] apart; 2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_10.png [48, 6, 16, 26], following the frames",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/people-nana-phone.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_10.png [48, 198, 16, 26], 6 frames [16, 0] apart",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/people-nana-read.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_10.png [0, 230, 16, 26], 12 frames [16, 0] apart",
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Interiors"
   },
@@ -1880,7 +1900,17 @@
     "license": "LicenseRef-LimeZu-Modern-Interiors"
   },
   "limezu/people-renfield.png": {
-    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_08.png [48, 6, 16, 26]",
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_08.png [288, 38, 16, 26], 6 frames [16, 0] apart; 2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_08.png [48, 6, 16, 26], following the frames",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/people-renfield-phone.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_08.png [48, 198, 16, 26], 6 frames [16, 0] apart",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/people-renfield-read.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_08.png [0, 230, 16, 26], 12 frames [16, 0] apart",
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Interiors"
   },
@@ -1890,7 +1920,17 @@
     "license": "LicenseRef-LimeZu-Modern-Interiors"
   },
   "limezu/people-rowan.png": {
-    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_04.png [48, 6, 16, 26]",
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_04.png [288, 38, 16, 26], 6 frames [16, 0] apart; 2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_04.png [48, 6, 16, 26], following the frames",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/people-rowan-phone.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_04.png [48, 198, 16, 26], 6 frames [16, 0] apart",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/people-rowan-read.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_04.png [0, 230, 16, 26], 12 frames [16, 0] apart",
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Interiors"
   },

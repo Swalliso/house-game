@@ -68,7 +68,8 @@ import { currentTally, heldPiece, preview, tool } from '../store.ts';
 import { cellsOutline, isIndoor, type Occupancy } from './geometry.ts';
 import { inset, pieceModel, type HouseModel, type PieceLook, type Rect } from './house-model.ts';
 import { pieceLabels, type BadgeSpot, type Side } from './label-layout.ts';
-import { withPeople } from './people.ts';
+import { isPerson, withPeople } from './people.ts';
+import { Standing } from './PeopleLayer.tsx';
 import { drop as dropFx, finishDrop, register, settle as settleFx, wobble } from './piece-fx.ts';
 import { asleepIn, wokenUp, type Seen } from './wake-up.ts';
 import { seedSalt } from './terrain/hash.ts';
@@ -246,7 +247,9 @@ function artStyle(id: ArtId, scale: number): { style: JSX.CSSProperties; bx: num
  * the same render as the other's. D-178: `whole` is a copy of all of it, on its first frame (an
  * animated item's too, so it's always the plain `item-drop` the drop looks for), hidden except
  * while it drops in (piece-fx.ts drop); `i` is its place in its room's list, so a drop finds its
- * parts.
+ * parts. D-185: a member of the household standing in the room breathes, and reads or takes a
+ * call now and then (PeopleLayer.tsx Standing): their strips, in both parts, keyed as an animated
+ * item's strip is, so the parts step as one.
  */
 export function ItemPart({
   item,
@@ -272,6 +275,19 @@ export function ItemPart({
     width: `${w * scale}px`,
     height: `${(to - from) * scale}px`,
   };
+  if (part !== 'whole' && isPerson(item)) {
+    return (
+      <div class="item" data-i={i} style={{ ...place, overflow: 'hidden' }}>
+        <Standing
+          key={`${item.sprite}@${item.x},${item.y}`}
+          cast={item.cast}
+          pace={item.pace}
+          scale={scale}
+          from={from}
+        />
+      </div>
+    );
+  }
   const anim = part === 'whole' ? null : artFrames(item.sprite);
   // The parked car's parts, so they can slide together when it moves (useCarSlide).
   const car = isCar(item.sprite) && part !== 'whole' ? '' : undefined;

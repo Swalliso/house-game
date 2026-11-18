@@ -1223,7 +1223,23 @@
   "people-grandma": {
     "w": 16,
     "h": 26,
-    "spec": "0f7f5d3c919aa128"
+    "frames": 6,
+    "ms": 450,
+    "spec": "fc368d845c17ea8d"
+  },
+  "people-grandma-phone": {
+    "w": 16,
+    "h": 26,
+    "frames": 6,
+    "ms": 350,
+    "spec": "78a84ed2ae6a034f"
+  },
+  "people-grandma-read": {
+    "w": 16,
+    "h": 26,
+    "frames": 12,
+    "ms": 350,
+    "spec": "98fa269d190b497f"
   },
   "people-grandma-walk": {
     "w": 16,
@@ -1235,7 +1251,9 @@
   "people-ivy": {
     "w": 16,
     "h": 26,
-    "spec": "572f55086ee1e057"
+    "frames": 6,
+    "ms": 450,
+    "spec": "2271a18896f3eca6"
   },
   "people-ivy-walk": {
     "w": 16,
@@ -1247,7 +1265,23 @@
   "people-nana": {
     "w": 16,
     "h": 26,
-    "spec": "8c3737db14986b2e"
+    "frames": 6,
+    "ms": 450,
+    "spec": "7a8fffffe0ecf132"
+  },
+  "people-nana-phone": {
+    "w": 16,
+    "h": 26,
+    "frames": 6,
+    "ms": 350,
+    "spec": "5ca08753d9ac86da"
+  },
+  "people-nana-read": {
+    "w": 16,
+    "h": 26,
+    "frames": 12,
+    "ms": 350,
+    "spec": "eff9330453cedb69"
   },
   "people-nana-walk": {
     "w": 16,
@@ -1259,7 +1293,23 @@
   "people-renfield": {
     "w": 16,
     "h": 26,
-    "spec": "a52e40db20536027"
+    "frames": 6,
+    "ms": 450,
+    "spec": "68fdc6d4c0caeda0"
+  },
+  "people-renfield-phone": {
+    "w": 16,
+    "h": 26,
+    "frames": 6,
+    "ms": 350,
+    "spec": "ab36947a363ab56d"
+  },
+  "people-renfield-read": {
+    "w": 16,
+    "h": 26,
+    "frames": 12,
+    "ms": 350,
+    "spec": "c27550515cf61055"
   },
   "people-renfield-walk": {
     "w": 16,
@@ -1271,7 +1321,23 @@
   "people-rowan": {
     "w": 16,
     "h": 26,
-    "spec": "f69f38a8cbe38554"
+    "frames": 6,
+    "ms": 450,
+    "spec": "77b1b96976d577fe"
+  },
+  "people-rowan-phone": {
+    "w": 16,
+    "h": 26,
+    "frames": 6,
+    "ms": 350,
+    "spec": "64f1708aff1a3ce1"
+  },
+  "people-rowan-read": {
+    "w": 16,
+    "h": 26,
+    "frames": 12,
+    "ms": 350,
+    "spec": "df23a127946a96a8"
   },
   "people-rowan-walk": {
     "w": 16,
