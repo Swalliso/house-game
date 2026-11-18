@@ -1,0 +1,68 @@
+/* The client at the door (D-182, MomentLayers.tsx ClientVisit): over the house and the yard,
+   with the tally's popups, and never taking the pointer. At rest every sprite is untransformed,
+   on whole device pixels; only the client's pop is a tween (CLAUDE.md allows short ones). The
+   director skips it all with Reduce motion, so nothing here needs a reduced form. */
+
+.client-visit {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: var(--z-popups);
+  pointer-events: none;
+  animation: visit-out var(--visit-out-ms) ease-in var(--visit-out-at) forwards;
+}
+@keyframes visit-out {
+  to {
+    opacity: 0;
+  }
+}
+.client-visit .fx-sprite {
+  position: absolute;
+}
+
+/* The client grows up from their feet, a little past full height, and settles. */
+.client-visit .visit-client {
+  transform-origin: 50% 100%;
+  animation: visit-client var(--visit-pop-ms) cubic-bezier(0.25, 1.6, 0.45, 1) both;
+}
+@keyframes visit-client {
+  from {
+    opacity: 0;
+    transform: scale(0.6, 0.2);
+  }
+  40% {
+    opacity: 1;
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* A bubble: hidden until its turn, then its pop-in frames once, then its icon's frames. */
+.visit-bubble {
+  position: absolute;
+}
+.visit-bubble > .fx-sprite {
+  left: 0;
+  top: 0;
+}
+.visit-bubble > .bubble-pop {
+  animation: visit-on 1ms linear var(--bubble-delay) both;
+}
+.visit-bubble > .bubble-pop > .fx-frames {
+  animation-delay: var(--bubble-delay);
+  animation-iteration-count: 1;
+  animation-fill-mode: forwards;
+}
+.visit-bubble > .bubble-icon {
+  animation: visit-on 1ms linear calc(var(--bubble-delay) + var(--visit-opens-ms)) both;
+}
+@keyframes visit-on {
+  from {
+    visibility: hidden;
+  }
+  to {
+    visibility: visible;
+  }
+}

@@ -35,15 +35,18 @@ import { audio } from '../audio/audio.ts';
 import { busy, fxHooks, popups, setHold, skip } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
 import { shakeOffsets } from '../fx/juice.ts';
+import { openHouseFor } from '../fx/open-house.ts';
 import { formatNumber, signed } from '../format.ts';
 import { causeSuffix, hiddenPart, mainCause, partLine } from './causes.ts';
 import { backToBuilding, changeOrderShown, shopShown } from '../hud/actions.ts';
 import { Icon } from '../kit/kit.tsx';
 import {
   activePlay,
+  currentTally,
   demolishArmed,
   demolishAt,
   demolishPreview,
+  firstJob,
   heldNeighbor,
   heldPiece,
   hoverCell,
@@ -95,7 +98,7 @@ import {
   zoomOut,
 } from './camera.ts';
 import { newRoomLook, roomLook } from '../art/rooms.ts';
-import { newPieceLook, pieceLook, yardModel } from '../art/yard.ts';
+import { newPieceLook, pieceLook, unmetOf, yardModel } from '../art/yard.ts';
 import {
   boardRows,
   canopyRoom,
@@ -124,14 +127,18 @@ import {
   ItemsLayer,
   LabelsLayer,
   OverhangLayer,
+  useWakeUps,
   WallsLayer,
 } from './HouseLayers.tsx';
 import { layerVars } from './layers.ts';
-import { ChainArc, PreviewArcs, ToppedOut } from './MomentLayers.tsx';
+import { ChainArc, ClientVisit, PreviewArcs, ToppedOut } from './MomentLayers.tsx';
 import { wobble } from './piece-fx.ts';
 import { LifeLayer } from './LifeLayer.tsx';
+import { WeatherLayer } from './WeatherLayer.tsx';
 import { neighborAt, type Neighbor } from './neighbors.ts';
 import { hoveredNeighbor, NeighborsLayer, streetFor } from './NeighborsLayer.tsx';
+import { people as placePeople, roomPeople, walkObstacles } from './people.ts';
+import { PeopleLayer } from './PeopleLayer.tsx';
 import { lotLook } from './terrain/biome.ts';
 import { Outline, SideTint, TerrainLayer, YardTint } from './TerrainLayer.tsx';
 import './board-m2.css';
@@ -367,15 +374,28 @@ export function Board() {
   const { house } = state;
   const occ = occupancy(house);
   // The house as drawn: walls, doorways and windows from the pieces, with the Hallways'
-  // doors from the rules' links and the sun's light on the Sunny rooms (D-120). Cached per
-  // house, so hovering never rebuilds it.
+  // doors from the rules' links and the sun's light on the Sunny rooms (D-120), and the
+  // client's own things in their room (D-183). Cached per house, so hovering never rebuilds it.
   const links = useMemo(() => hallLinks(state), [state]);
   const sun = useMemo(() => sunLight(state), [state]);
   // The held sets' rooms open into each other (D-176).
   const sets = useMemo(() => heldSets(state), [state]);
-  const model = houseModel(house, links, sun, sets);
-  // The yard pieces' ground and props, cached per house model.
-  const yard = yardModel(house, model);
+  const model = houseModel(house, links, sun, state.setup.clientId, sets);
+  // The yard pieces' ground and props, cached per house model. A piece whose requirement isn't
+  // met, by the rules' tally, draws so: the Doghouse's dog on its lead (D-179). One whose fenced
+  // yard has just closed wakes up with a wobble and a bark (useWakeUps).
+  const unmet = unmetOf(currentTally.value.pieces);
+  const yard = yardModel(house, model, unmet);
+  useWakeUps(state.setup, house, unmet);
+  // D-177: the household's members, in their rooms (with the furniture) or waiting at the door;
+  // nobody in the guided first job. What stands in the yard in a walk's way.
+  const guided = firstJob.value;
+  const household = useMemo(
+    () => placePeople(state, model, guided),
+    [state.arrived, state.setup, model, guided],
+  );
+  const inRooms = useMemo(() => roomPeople(model, household), [model, household]);
+  const walkBlocks = useMemo(() => walkObstacles(house, yard), [house, yard]);
   const p = building ? preview.value : null;
   // The house's layers re-render only when the house or the zoom changes: the highlights and
   // labels follow the tally and the preview by themselves, and never redraw a canvas.
@@ -384,16 +404,18 @@ export function Board() {
     [lot, scale, model, yard],
   );
   const itemsLayer = useMemo(
-    () => <ItemsLayer house={house} model={model} yard={yard} scale={scale} />,
-    [house, model, yard, scale],
+    () => <ItemsLayer house={house} model={model} yard={yard} scale={scale} people={inRooms} />,
+    [house, model, yard, scale, inRooms],
   );
+  // A finished room's hanging lamp stays behind a member standing in front of it (D-177).
   const wallsLayer = useMemo(
-    () => <WallsLayer lot={lot} scale={scale} model={model} />,
-    [lot, scale, model],
+    () => <WallsLayer lot={lot} scale={scale} model={model} people={inRooms} />,
+    [lot, scale, model, inRooms],
   );
+  // The tall items' tops, and the finished rooms' lights among them (D-181).
   const overhangLayer = useMemo(
-    () => <OverhangLayer model={model} yard={yard} scale={scale} />,
-    [model, yard, scale],
+    () => <OverhangLayer model={model} yard={yard} scale={scale} people={inRooms} />,
+    [model, yard, scale, inRooms],
   );
   const highlightsLayer = useMemo(
     () => <HighlightsLayer house={house} occ={occ} lot={lot} scale={scale} />,
@@ -574,7 +596,12 @@ export function Board() {
       const board = boardRef.current;
       if (streetView.peek() !== sv) return;
       const view = el && { width: el.clientWidth, height: el.clientHeight };
-      const k = view && streetViewScale(view, lot.width, lot.height, scale, FEEL.streetView);
+      // D-175: a won run's view that shows the street already plays its open house in place,
+      // in a window as long.
+      const k =
+        view &&
+        (streetViewScale(view, lot.width, lot.height, scale, FEEL.streetView) ??
+          (openHouseFor(sv.run) ? 1 : null));
       if (!el || !board || !k) {
         // Nothing to look at, or the view shows the street already.
         streetView.value = null;
@@ -613,8 +640,10 @@ export function Board() {
       from.y - (cy + (b.top - cy) / k)
     }px) scale(1)`;
     const far = `translate(0px, 0px) scale(${k})`;
-    const total = f.outMs + f.holdMs + f.backMs;
-    const back = f.outMs + f.holdMs;
+    // D-175: a won run's look holds longer, while its crowd walks in.
+    const holdMs = openHouseFor(look.run) ? FEEL.openHouse.holdMs : f.holdMs;
+    const total = f.outMs + holdMs + f.backMs;
+    const back = f.outMs + holdMs;
     const anim = el.animate(
       [
         { transform: near, easing: 'cubic-bezier(0.45, 0, 0.2, 1)' },
@@ -1037,16 +1066,20 @@ export function Board() {
             around={around}
             ghost={ghostCells?.cells ?? NO_CELLS}
           />
+          {/* A change order's weather (D-180): rain on the lot, puddles on the Patios it zeroes. */}
+          <WeatherLayer run={state.setup} house={house} model={model} yard={yard} scale={scale} />
           <YardTint state={state} scale={scale} />
           {sides.length > 0 && <SideTint state={state} yards={sides} scale={scale} />}
           {floorLayer}
           {itemsLayer}
           {wallsLayer}
           {overhangLayer}
+          <PeopleLayer people={household} model={model} obstacles={walkBlocks} scale={scale} />
           {highlightsLayer}
           <ChainArc lot={lot} scale={scale} />
           {labelsLayer}
           <ToppedOut scale={scale} model={model} />
+          <ClientVisit scale={scale} />
           {demolishing && <DemolishTarget scale={scale} />}
           {ghostCells && (
             <Ghost
@@ -1253,10 +1286,14 @@ function Ghost({
         scale={scale}
         look={
           grows !== undefined
-            ? roomLook(run.value.house, grows)
+            ? roomLook(run.value.house, grows, run.value.setup.clientId)
             : isIndoor(defId)
-              ? newRoomLook(run.value.house, defId)
-              : newPieceLook(run.value.house, defId)
+              ? newRoomLook(run.value.house, defId, run.value.setup.clientId)
+              : {
+                  ...newPieceLook(run.value.house, defId),
+                  // D-179: as the preview says it will land (the Doghouse's dog on its lead).
+                  ...(p?.newPiece?.unmet !== undefined ? { unmet: true } : {}),
+                }
         }
         class={`ghost ${legal ? 'legal' : 'illegal'} ${pending ? 'pending' : ''}`}
       />
@@ -1739,8 +1776,8 @@ function ToolTarget({ scale }: { scale: number }) {
         scale={scale}
         look={
           isIndoor(piece.defId)
-            ? roomLook(state.house, piece.uid)
-            : pieceLook(state.house, piece.uid)
+            ? roomLook(state.house, piece.uid, state.setup.clientId)
+            : pieceLook(state.house, piece.uid, unmetOf(currentTally.value.pieces))
         }
         class={`ghost ${ok ? 'legal' : 'illegal'} ${armed ? 'pending' : ''}`}
       />

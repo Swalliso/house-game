@@ -15,12 +15,12 @@
     "license": "MIT"
   },
   "src/ui/art/drawings.ts": {
-    "source": "Our own pixel drawings in LimeZu's palette, as text grids: the Doghouse, the hens, the Sprinkler, and the dogs' bed in Nana's Room",
+    "source": "Our own pixel drawings in LimeZu's palette, as text grids: the Doghouse, the hens, the Sprinkler, the dogs' bed in Nana's Room, the Doghouse's dog, on its lead and loose, and the rain's streaks and the Patio's puddle (D-180)",
     "author": "Open House team (drawn by Claude Code)",
     "license": "Own work"
   },
   "src/ui/art/house-paint.ts": {
-    "source": "Our own painters in LimeZu's palette: the walls and windows, and the painted fixtures (the Chandelier, Blackout Curtains, Soundproofing, the Skylight's light, the Bay Window)",
+    "source": "Our own painters in LimeZu's palette: the walls and windows, the painted fixtures (the Chandelier, Blackout Curtains, Soundproofing, the Skylight's light, the Bay Window), and a finished room's hanging lamp and its lamps' light (D-181)",
     "author": "Open House team (drawn by Claude Code)",
     "license": "Own work"
   },
@@ -959,6 +959,31 @@
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Interiors"
   },
+  "limezu/client-barkers.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_13.png [48, 0, 16, 32]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/client-dale.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_20.png [48, 0, 16, 32]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/client-hendersons.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_11.png [48, 0, 16, 32]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/client-juniper.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_18.png [48, 0, 16, 32]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/client-vladislav.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 2_Characters/Character_Generator/Bodies/16x16/Body_06.png [48, 0, 16, 32]; 2_Characters/Character_Generator/Eyes/16x16/Eyes_01.png [48, 0, 16, 32]; 2_Characters/Character_Generator/Outfits/16x16/Outfit_06_01.png [48, 0, 16, 32]; 2_Characters/Character_Generator/Hairstyles/16x16/Hairstyle_13_04.png [48, 0, 16, 32]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
   "limezu/clock.png": {
     "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 3_Animated_objects/16x16/spritesheets/animated_cuckoo_clock.png [2, 10, 12, 17], 10 frames [16, 0] apart",
     "author": "LimeZu",
@@ -986,6 +1011,11 @@
   },
   "limezu/coffee-table.png": {
     "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/1_Generic_16x16.png [85, 104, 38, 21]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/coffin.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/11_Halloween_16x16.png [198, 68, 23, 38]",
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Interiors"
   },
@@ -1779,6 +1809,71 @@
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Interiors"
   },
+  "limezu/people-grandma.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_06.png [48, 6, 16, 26]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/people-grandma-walk.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_06.png [96, 70, 16, 26], 6 frames [16, 0] apart",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/people-ivy.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 2_Characters/Character_Generator/Bodies_kids/16x16/Body_1_kid.png [48, 6, 16, 26]; 2_Characters/Character_Generator/Outfits_kids/16x16/Outfit_kid_3.png [48, 6, 16, 26]; 2_Characters/Character_Generator/Eyes_kids/16x16/Eyes_kids_1.png [48, 6, 16, 26]; 2_Characters/Character_Generator/Hairstyles_kids/16x16/Hairstyle_kid_4_3.png [48, 6, 16, 26]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/people-ivy-walk.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 2_Characters/Character_Generator/Bodies_kids/16x16/Body_1_kid.png [96, 70, 16, 26], 6 frames [16, 0] apart; 2_Characters/Character_Generator/Outfits_kids/16x16/Outfit_kid_3.png [96, 70, 16, 26], following the frames; 2_Characters/Character_Generator/Hairstyles_kids/16x16/Hairstyle_kid_4_3.png [96, 70, 16, 26], following the frames",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/people-nana.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_10.png [48, 6, 16, 26]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/people-nana-walk.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_10.png [96, 70, 16, 26], 6 frames [16, 0] apart",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/people-renfield.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_08.png [48, 6, 16, 26]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/people-renfield-walk.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_08.png [96, 70, 16, 26], 6 frames [16, 0] apart",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/people-rowan.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_04.png [48, 6, 16, 26]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/people-rowan-walk.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_04.png [96, 70, 16, 26], 6 frames [16, 0] apart",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/people-suitcase-blue.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/20_Subway_and_Train_Station_Singles_16x16/ME_Singles_Subway_and_Train_Station_16x16_Blue_Trolley_1.png [0, 13, 16, 19]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/people-suitcase-green.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/20_Subway_and_Train_Station_Singles_16x16/ME_Singles_Subway_and_Train_Station_16x16_Green_Trolley_1.png [0, 13, 16, 19]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/people-suitcase-tan.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/20_Subway_and_Train_Station_Singles_16x16/ME_Singles_Subway_and_Train_Station_16x16_Yellow_Trolley_1.png [0, 13, 16, 19]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
   "limezu/pergola.png": {
     "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/17_Garden_16x16.png [0, 608, 64, 61]",
     "author": "LimeZu",
@@ -2456,6 +2551,26 @@
   },
   "limezu/vanity-1.png": {
     "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/2_LivingRoom_16x16.png [34, 76, 28, 30]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/visit-ask.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 4_User_Interface_Elements/UI_thinking_emotes_animation_16x16.png [32, 80, 16, 16], 2 frames [16, 0] apart; 4_User_Interface_Elements/UI_thinking_emotes_animation_16x16.png [64, 48, 16, 16]",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/visit-heart.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 4_User_Interface_Elements/UI_thinking_emotes_animation_16x16.png [64, 32, 16, 32], 2 frames [16, 0] apart",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/visit-pop.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 4_User_Interface_Elements/UI_thinking_emotes_animation_16x16.png [0, 32, 16, 32], 4 frames [16, 0] apart",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/wall-candle.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 3_Animated_objects/16x16/spritesheets/animated_wall_candle.png [3, 6, 10, 14], 3 frames [16, 0] apart",
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Interiors"
   },

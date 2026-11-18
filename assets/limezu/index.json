@@ -286,6 +286,31 @@
     "h": 21,
     "spec": "cd50d9f9d16747a0"
   },
+  "client-barkers": {
+    "w": 16,
+    "h": 32,
+    "spec": "4b75ed89f5337075"
+  },
+  "client-dale": {
+    "w": 16,
+    "h": 32,
+    "spec": "e456759f76a972f5"
+  },
+  "client-hendersons": {
+    "w": 16,
+    "h": 32,
+    "spec": "3c7b71b48d19ff8f"
+  },
+  "client-juniper": {
+    "w": 16,
+    "h": 32,
+    "spec": "fdadd1986de1744b"
+  },
+  "client-vladislav": {
+    "w": 16,
+    "h": 32,
+    "spec": "b3c06e564e083d00"
+  },
   "clock": {
     "w": 12,
     "h": 17,
@@ -317,6 +342,11 @@
     "w": 38,
     "h": 21,
     "spec": "1927e1b792ed048c"
+  },
+  "coffin": {
+    "w": 23,
+    "h": 38,
+    "spec": "73f08a1fd2d1bb51"
   },
   "coop-0": {
     "w": 32,
@@ -1134,6 +1164,81 @@
     "h": 19,
     "spec": "bc913116b65ff7c2"
   },
+  "people-grandma": {
+    "w": 16,
+    "h": 26,
+    "spec": "0f7f5d3c919aa128"
+  },
+  "people-grandma-walk": {
+    "w": 16,
+    "h": 26,
+    "frames": 6,
+    "ms": 100,
+    "spec": "4cf90badceb93ff8"
+  },
+  "people-ivy": {
+    "w": 16,
+    "h": 26,
+    "spec": "572f55086ee1e057"
+  },
+  "people-ivy-walk": {
+    "w": 16,
+    "h": 26,
+    "frames": 6,
+    "ms": 100,
+    "spec": "8a9a61292c21de64"
+  },
+  "people-nana": {
+    "w": 16,
+    "h": 26,
+    "spec": "8c3737db14986b2e"
+  },
+  "people-nana-walk": {
+    "w": 16,
+    "h": 26,
+    "frames": 6,
+    "ms": 100,
+    "spec": "79192d312c87533f"
+  },
+  "people-renfield": {
+    "w": 16,
+    "h": 26,
+    "spec": "a52e40db20536027"
+  },
+  "people-renfield-walk": {
+    "w": 16,
+    "h": 26,
+    "frames": 6,
+    "ms": 100,
+    "spec": "57fb43612ee1b1ff"
+  },
+  "people-rowan": {
+    "w": 16,
+    "h": 26,
+    "spec": "f69f38a8cbe38554"
+  },
+  "people-rowan-walk": {
+    "w": 16,
+    "h": 26,
+    "frames": 6,
+    "ms": 100,
+    "spec": "f79d1110e179db19"
+  },
+  "people-suitcase-blue": {
+    "w": 16,
+    "h": 19,
+    "spec": "c22013610f40dbf5"
+  },
+  "people-suitcase-green": {
+    "w": 16,
+    "h": 19,
+    "spec": "3ba4980620d34b8e"
+  },
+  "people-suitcase-tan": {
+    "w": 16,
+    "h": 19,
+    "spec": "928673b1d11e20ef"
+  },
   "pergola": {
     "w": 64,
     "h": 61,
@@ -1829,6 +1934,34 @@
     "w": 28,
     "h": 30,
     "spec": "e3602e2c6cb3b362"
+  },
+  "visit-ask": {
+    "w": 16,
+    "h": 32,
+    "frames": 2,
+    "ms": 320,
+    "spec": "131a92d9980229b7"
+  },
+  "visit-heart": {
+    "w": 16,
+    "h": 32,
+    "frames": 2,
+    "ms": 320,
+    "spec": "cbac70320bbefe27"
+  },
+  "visit-pop": {
+    "w": 16,
+    "h": 32,
+    "frames": 4,
+    "ms": 70,
+    "spec": "eb47aaca3c0132c3"
+  },
+  "wall-candle": {
+    "w": 10,
+    "h": 14,
+    "frames": 3,
+    "ms": 160,
+    "spec": "a113a7f1d92b72df"
   },
   "wardrobe-0": {
     "w": 27,
