@@ -42,7 +42,7 @@ import {
 } from '../../rules/index.ts';
 import { lampSpot } from '../art/house-paint.ts';
 import { audio } from '../audio/audio.ts';
-import { hallLinks, houseModel, sunLight } from '../board/house-model.ts';
+import { hallLinks, heldSets, houseModel, sunLight } from '../board/house-model.ts';
 import { arrivalOf, cardsPhrase, isPlural } from '../hud/household.ts';
 import { settings } from '../settings.ts';
 import { CELL } from '../sprites.ts';
@@ -645,8 +645,15 @@ async function lightBeat(uid: number, after: RunState): Promise<void> {
   if (skipping) return;
   lightSwitched.value = { uid, id: nextId++ };
   audio.play('light-on');
-  // The house as the board draws it, the client's own things in their room too (D-183).
-  const model = houseModel(after.house, hallLinks(after), sunLight(after), after.setup.clientId);
+  // The house as the board draws it, the client's own things in their room too (D-183) and the
+  // held sets' doors (D-176).
+  const model = houseModel(
+    after.house,
+    hallLinks(after),
+    sunLight(after),
+    after.setup.clientId,
+    heldSets(after),
+  );
   const at = lampSpot(model, uid);
   if (at) {
     boardBurst(

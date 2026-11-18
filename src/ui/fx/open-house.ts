@@ -19,7 +19,7 @@ import { audio } from '../audio/audio.ts';
 import { cameraEls, lotSize, streetView } from '../board/camera.ts';
 import { crowdPlan, heldSpans, type Crowd } from '../board/crowd.ts';
 import { center, occupancy, uidAt } from '../board/geometry.ts';
-import { hallLinks, houseModel, sunLight } from '../board/house-model.ts';
+import { hallLinks, heldSets, houseModel, sunLight } from '../board/house-model.ts';
 import { people, waitingBoxes } from '../board/people.ts';
 import { CELL } from '../sprites.ts';
 import { inProgress, onEvents, onRunReset } from '../store.ts';
@@ -78,7 +78,13 @@ function kerbCuts(state: RunState): boolean[] {
  * guided first job's end included: it's no longer guided).
  */
 function waiting(state: RunState): [number, number][] {
-  const model = houseModel(state.house, hallLinks(state), sunLight(state), state.setup.clientId);
+  const model = houseModel(
+    state.house,
+    hallLinks(state),
+    sunLight(state),
+    state.setup.clientId,
+    heldSets(state),
+  );
   return heldSpans(waitingBoxes(people(state, model)), state.house.lot.height);
 }
 

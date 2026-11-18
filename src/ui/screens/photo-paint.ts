@@ -28,6 +28,7 @@ import { unmetOf, yardModel, type YardModel } from '../art/yard.ts';
 import { atlasPixels } from '../board/HouseLayers.tsx';
 import {
   hallLinks,
+  heldSets,
   houseModel,
   sunLight,
   type HouseModel,
@@ -98,7 +99,7 @@ export function paintHouse(
 /**
  * The house at `state`, through `frame`, as a canvas at art resolution. Without `ground`, the
  * house alone on a clear canvas: no terrain, water or tree crowns. With `only`, only those
- * pieces (by uid), lit and linked as they are in the whole house.
+ * pieces (by uid), lit and linked as they are in the whole house, its sets' doors included.
  */
 export async function paintPhoto(
   state: RunState,
@@ -126,10 +127,16 @@ export async function paintPhoto(
   const cv = new Canvas(frame.x, frame.y, frame.w, frame.h);
   cv.data.set(ground.getImageData(0, 0, frame.w, frame.h).data);
 
-  // The house, as the board draws it: the client's own things in their room too (D-183), and a
-  // Doghouse's dog as it was then, on its lead or loose (D-179), from the rules' tally of the
-  // whole house.
-  const model = houseModel(house, hallLinks(state), sunLight(state), state.setup.clientId);
+  // The house, as the board draws it: the client's own things in their room too (D-183), the held
+  // sets' doors (D-176), and a Doghouse's dog as it was then, on its lead or loose (D-179), from
+  // the rules' tally of the whole house.
+  const model = houseModel(
+    house,
+    hallLinks(state),
+    sunLight(state),
+    state.setup.clientId,
+    heldSets(state),
+  );
   const yard = yardModel(house, model, unmetOf(rules.currentTally(state).pieces));
   const floors = paintFloors(model, atlas, { yard });
   if (floors) cv.over(floors);

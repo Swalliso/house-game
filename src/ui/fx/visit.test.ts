@@ -18,7 +18,14 @@ import {
 } from '../../rules/index.ts';
 import { lotFromRows } from '../../rules/lot.ts';
 import { isIndoor, occupancy } from '../board/geometry.ts';
-import { hallLinks, houseModel, sunLight, type Rect, type Side } from '../board/house-model.ts';
+import {
+  hallLinks,
+  heldSets,
+  houseModel,
+  sunLight,
+  type Rect,
+  type Side,
+} from '../board/house-model.ts';
 import { people, WAITING, waitingBoxes } from '../board/people.ts';
 import { CELL, spriteFrames, spritePos } from '../sprites.ts';
 import {
@@ -249,9 +256,28 @@ describe('doorstep', () => {
       ['kitchen', 4, 4],
       ['livingRoom', 6, 4],
     ]);
-    const board = houseModel(s.house, hallLinks(s), sunLight(s), s.setup.clientId);
+    const board = houseModel(s.house, hallLinks(s), sunLight(s), s.setup.clientId, heldSets(s));
     expect(visitOf(s)).not.toBeNull();
-    expect(houseModel(s.house, hallLinks(s), sunLight(s), s.setup.clientId)).toBe(board);
+    expect(houseModel(s.house, hallLinks(s), sunLight(s), s.setup.clientId, heldSets(s))).toBe(
+      board,
+    );
+  });
+
+  it('reads the board’s model with a held set’s doors (D-176), and leaves it cached', () => {
+    // The Entertainer's three rooms: a member may stand in a set door (board/people.ts), so the
+    // doorstep reads the model the board draws, set doors and all.
+    const s = stateWith('barkers', [
+      ['kitchen', 4, 4],
+      ['livingRoom', 6, 4],
+      ['diningRoom', 4, 6],
+    ]);
+    expect(heldSets(s).map((h) => h.set)).toContain('entertainer');
+    const board = houseModel(s.house, hallLinks(s), sunLight(s), s.setup.clientId, heldSets(s));
+    expect(board.doors.filter((d) => d.why === 'set').length).toBeGreaterThan(0);
+    expect(visitOf(s)).not.toBeNull();
+    expect(houseModel(s.house, hallLinks(s), sunLight(s), s.setup.clientId, heldSets(s))).toBe(
+      board,
+    );
   });
 });
 

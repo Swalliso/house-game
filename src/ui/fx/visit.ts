@@ -9,6 +9,7 @@ import { CONTENT, rules, type ClientId, type PieceId, type RunState } from '../.
 import { furnitureSpot, occupancy } from '../board/geometry.ts';
 import {
   hallLinks,
+  heldSets,
   houseModel,
   overlaps,
   sunLight,
@@ -148,8 +149,15 @@ export const STEP_ASIDE = { along: 24, out: BUBBLE.tailY - BUBBLE.drawn.y + 1 } 
  * keeps off the line, as it did before the bubble counted.
  */
 export function doorstep(state: RunState): ArtPoint | null {
-  // The house as the board draws it (the board's own model, from its cache).
-  const model = houseModel(state.house, hallLinks(state), sunLight(state), state.setup.clientId);
+  // The house as the board draws it (the board's own model, from its cache), the held sets'
+  // doors too (D-176): a member may stand in one (board/people.ts doorwaySpot).
+  const model = houseModel(
+    state.house,
+    hallLinks(state),
+    sunLight(state),
+    state.setup.clientId,
+    heldSets(state),
+  );
   const own = atTheDoor(model);
   if (!own) return null;
   const household = people(state, model);

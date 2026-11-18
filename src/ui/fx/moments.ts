@@ -11,7 +11,7 @@ import {
   type RunSetup,
   type RunState,
 } from '../../rules/index.ts';
-import { hallLinks, houseModel, sunLight } from '../board/house-model.ts';
+import { hallLinks, heldSets, houseModel, sunLight } from '../board/house-model.ts';
 import { BUILD_CHANNEL } from '../build-info.ts';
 import { CELL } from '../sprites.ts';
 
@@ -57,8 +57,15 @@ export function targetCrossed(events: readonly GameEvent[], at: number): number 
  * when there's no front door yet, or null before the first room.
  */
 export function frontDoor(state: RunState): { x: number; y: number } | null {
-  // With the client, as the board builds it (D-183), so the two share one cached model.
-  const model = houseModel(state.house, hallLinks(state), sunLight(state), state.setup.clientId);
+  // With the client (D-183) and the held sets' doors (D-176), as the board builds it, so the two
+  // share one cached model.
+  const model = houseModel(
+    state.house,
+    hallLinks(state),
+    sunLight(state),
+    state.setup.clientId,
+    heldSets(state),
+  );
   const front = model.exits.find((e) => e.kind === 'front');
   if (front) {
     return { x: (front.mat.x + front.mat.w / 2) / CELL, y: (front.mat.y + front.mat.h / 2) / CELL };

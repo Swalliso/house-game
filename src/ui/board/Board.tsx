@@ -118,7 +118,7 @@ import {
   viewReach,
   type Occupancy,
 } from './geometry.ts';
-import { hallLinks, houseModel, sunLight } from './house-model.ts';
+import { hallLinks, heldSets, houseModel, sunLight } from './house-model.ts';
 import { spreadBadges } from './label-layout.ts';
 import {
   FloorLayer,
@@ -378,7 +378,9 @@ export function Board() {
   // client's own things in their room (D-183). Cached per house, so hovering never rebuilds it.
   const links = useMemo(() => hallLinks(state), [state]);
   const sun = useMemo(() => sunLight(state), [state]);
-  const model = houseModel(house, links, sun, state.setup.clientId);
+  // The held sets' rooms open into each other (D-176).
+  const sets = useMemo(() => heldSets(state), [state]);
+  const model = houseModel(house, links, sun, state.setup.clientId, sets);
   // The yard pieces' ground and props, cached per house model. A piece whose requirement isn't
   // met, by the rules' tally, draws so: the Doghouse's dog on its lead (D-179). One whose fenced
   // yard has just closed wakes up with a wobble and a bark (useWakeUps).
