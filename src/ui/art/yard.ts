@@ -16,6 +16,9 @@
 //   the Hot Tub's bubbles, the Fire Pit's fire and stumps, planters, the Sapling, the outbuildings,
 //   the hens, a Porch's bench and pot of flowers. Fixtures: the Sprinkler on its Lawn, the Pergola over its Patio, Garden Lights as
 //   two bollards with their glow; a fixture's badge shows only where a door keeps it off.
+// - The yard's pieces live (D-185): a butterfly flutters over each Flower Bed and Herb Garden,
+//   the Pool's float bobs, and the hens peck, each on its own beat. All of it is items' frames,
+//   stepped a whole art px at a time, and their first frames are the pieces at rest.
 // - A piece's picture can depend on whether its requirement is met, from the rules' tally
 //   (yardModel's `unmet`; D-179): the Doghouse's dog sits on its lead in the kennel's doorway
 //   while it earns nothing outside a fenced yard, and once the yard closes it's loose, hopping
@@ -55,7 +58,7 @@ import {
   type PlacedPiece,
   type Rot,
 } from '../../rules/index.ts';
-import { isIndoor, occupancy } from '../board/geometry.ts';
+import { digitCell, isIndoor, occupancy } from '../board/geometry.ts';
 import {
   grow,
   overlaps,
@@ -65,7 +68,7 @@ import {
   type Rect,
 } from '../board/house-model.ts';
 import { CELL, type SpriteId } from '../sprites.ts';
-import { artSize } from './drawings.ts';
+import { artSize, HEN_PHASES, henDrawing } from './drawings.ts';
 import type { Item } from './rooms.ts';
 
 export type Rgb = readonly [number, number, number];
@@ -383,10 +386,14 @@ function build(
   };
 }
 
-/** How many colors a yard piece's main prop comes in (parasols, planters, coops, birdhouses). */
+/**
+ * How many colors a yard piece's main prop comes in (parasols, planters, coops, birdhouses), and
+ * the butterfly over a Herb Garden (D-185; a Flower Bed's takes its planter's).
+ */
 const COLORS: Readonly<Partial<Record<PieceId, number>>> = {
   patio: 3,
   flowerBed: 4,
+  herbGarden: 4,
   henhouse: 3,
   birdhouse: 4,
 };
@@ -757,6 +764,34 @@ const BIRDHOUSES: readonly SpriteId[] = [
   'birdhouse-2',
   'birdhouse-3',
 ];
+/**
+ * The butterflies (D-185), by color: white, blue, red and yellow, in the planters' order (blue,
+ * yellow, white and pink flowers), so each bed's stands out from its flowers.
+ */
+const BUTTERFLIES: readonly SpriteId[] = [
+  'butterfly-0',
+  'butterfly-1',
+  'butterfly-2',
+  'butterfly-3',
+];
+
+/**
+ * A butterfly fluttering over a Flower Bed or a Herb Garden (D-185), in the piece's color
+ * (colors(): the hash's pick, neighbors' differ, and the ghost shows the one it'll get). It
+ * flaps and bobs on its own frames, over the plants of the piece's cell without the digit (a
+ * Flower Bed's one cell), 3 to 9 px in from its west edge: clear of the digit at the cell's foot,
+ * and of a fixture's badge at the piece's top right, which reaches 16 px in at 1×. Its cut is
+ * clear under the butterfly, so the item's foot is on the cell's last rows, at or in front of
+ * the planter's, and it draws over the plants rather than behind them.
+ */
+function butterfly(y: Yard): void {
+  const sprite = pick(BUTTERFLIES, y.ctx.color);
+  const digit = digitCell(y.cells);
+  const c = y.cells.find((q) => q.x !== digit.x || q.y !== digit.y) ?? digit;
+  const x = c.x * CELL + 3 + ((y.hash >>> 11) % 7);
+  const foot = c.y * CELL + CELL - ((y.hash >>> 14) % 3);
+  y.put(sprite, x, foot - artSize(sprite).h);
+}
 
 /** A seat on each side of a little table, facing it: where they keep off the doors, or none. */
 function seats(
@@ -835,7 +870,8 @@ const LAYOUTS: Partial<Record<PieceId, (y: Yard) => void>> = {
   pool: (y) => {
     poolTiles(y);
     const { x, y: top, w, h } = y.box;
-    // The ladder over the north coping, and a float on the water by the piece's hash.
+    // The ladder over the north coping, and a float on the water by the piece's hash, bobbing on
+    // its frames (D-185).
     y.put('pool-ladder', y.hash % 2 ? x + w - 22 : x + 8, top + 1);
     const fx = x + 10 + ((y.hash >>> 3) % Math.max(1, w - 52));
     const fy = top + 22 + ((y.hash >>> 7) % Math.max(1, h - 50));
@@ -858,10 +894,12 @@ const LAYOUTS: Partial<Record<PieceId, (y: Yard) => void>> = {
 
   flowerBed: (y) => {
     y.put(pick(PLANTERS, y.ctx.color), y.box.x + 1, y.box.y + 11);
+    butterfly(y);
   },
 
   herbGarden: (y) => {
     for (const c of y.cells) y.put('herb-planter', c.x * CELL + 1, c.y * CELL + 9);
+    butterfly(y);
   },
 
   sapling: (y) => {
@@ -912,8 +950,11 @@ const LAYOUTS: Partial<Record<PieceId, (y: Yard) => void>> = {
     y.oval(rx + 16, ry + 17, 12, 9, STRAW, 0.35);
     y.stand(pick(COOPS, y.ctx.color), coop.x * CELL, coop.y * CELL);
     const brown = (y.hash >>> 5) % 2 === 1;
-    y.put(brown ? 'own-hen-brown-e' : 'own-hen-e', rx + 4, ry + 5);
-    y.put(brown ? 'own-hen-w' : 'own-hen-brown-w', rx + 17, ry + 9);
+    // Each pecks now and then (D-185), on its own beat by the hash, never the other's.
+    const beat = (y.hash >>> 9) % HEN_PHASES;
+    const other = beat + 1 + ((y.hash >>> 13) % (HEN_PHASES - 1));
+    y.put(henDrawing(brown ? 'brown-e' : 'e', beat), rx + 4, ry + 5);
+    y.put(henDrawing(brown ? 'w' : 'brown-w', other), rx + 17, ry + 9);
     // The run's picket front, post to post.
     y.put('picket-run', rx, ry + 15);
     y.put('picket-run', rx + 16, ry + 15);

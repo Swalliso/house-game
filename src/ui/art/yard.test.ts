@@ -5,6 +5,7 @@
 // pack's in its own tiles (D-106); any pack a player can click out.
 
 import fc from 'fast-check';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { decodePng } from '../../../scripts/png.ts';
@@ -23,6 +24,7 @@ import {
 } from '../../rules/index.ts';
 import { computeLayout } from '../../rules/layout.ts';
 import { lotFromRows } from '../../rules/lot.ts';
+import { digitCell } from '../board/geometry.ts';
 import { grow, houseModel, overlaps, type Rect } from '../board/house-model.ts';
 import { digitBox, pieceLabels } from '../board/label-layout.ts';
 import { FEEL } from '../fx/feel.ts';
@@ -32,6 +34,8 @@ import {
   artSize,
   DRAWINGS,
   drawingPixels,
+  HEN_PHASES,
+  henDrawing,
   inKey,
   isDrawing,
   KEY,
@@ -111,6 +115,23 @@ function pixelOn(it: Item, r: Rect, from = 0): string | null {
   }
   return null;
 }
+
+/** A label's box (label-layout.ts, CSS px on a board of `px` CSS px a cell) in lot art px, grown to whole art px. */
+function labelArt(b: { x: number; y: number; w: number; h: number }, px: number): Rect {
+  const k = CELL / px;
+  const x = Math.floor(b.x * k);
+  const y = Math.floor(b.y * k);
+  return { x, y, w: Math.ceil((b.x + b.w) * k) - x, h: Math.ceil((b.y + b.h) * k) - y };
+}
+
+/** Zooms to hold labels to, as [CSS px a cell, device pixel ratio]: 1× and up. */
+const ZOOMS = [
+  [32, 1],
+  [64, 1],
+  [96, 1],
+  [32, 2],
+  [48, 2],
+] as const;
 
 /** An outbuilding's own building: the Treehouse, the Greenhouse, the Doghouse, a coop, a Birdhouse. */
 const BUILDINGS = /^(treehouse|greenhouse|own-doghouse|coop-\d|birdhouse-\d)$/;
@@ -1025,20 +1046,8 @@ describe('the Doghouse’s dog (D-179)', () => {
   });
 
   it('keeps clear of its own ⚠ and digit at 1× and up', () => {
-    /** A label's box in lot art px, grown to whole art px. */
-    const art = (b: { x: number; y: number; w: number; h: number }, px: number): Rect => {
-      const k = CELL / px;
-      const x = Math.floor(b.x * k);
-      const y = Math.floor(b.y * k);
-      return { x, y, w: Math.ceil((b.x + b.w) * k) - x, h: Math.ceil((b.y + b.h) * k) - y };
-    };
-    for (const [px, dpr] of [
-      [32, 1],
-      [64, 1],
-      [96, 1],
-      [32, 2],
-      [48, 2],
-    ] as const) {
+    const art = labelArt;
+    for (const [px, dpr] of ZOOMS) {
       const labels = (unmet: boolean, digit: number) =>
         pieceLabels({
           cells: [{ x: 3, y: 3 }],
@@ -1112,6 +1121,194 @@ describe('the Doghouse’s dog (D-179)', () => {
   it('reads the rules’ tally for which requirements aren’t met', () => {
     const pieces = [{ uid: 1 }, { uid: 2, unmet: 'in a fenced yard' }, { uid: 4, unmet: 'x' }];
     expect([...unmetOf(pieces)]).toEqual([2, 4]);
+  });
+});
+
+describe('the yard’s life (D-185)', () => {
+  /** A house of one piece, `id` at (3, 3) turned `rot`, as uid `uid`: its hash picks its looks. */
+  const one = (id: PieceId, uid: number, rot: Rot = 0): HouseState => ({
+    lot: lotFromRows(Array.from({ length: 12 }, () => '.'.repeat(12))),
+    pieces: [{ uid, defId: id, x: 3, y: 3, rot, placedWeek: 0 }],
+    nextUid: uid + 1,
+  });
+  const UIDS = Array.from({ length: 40 }, (_, i) => i + 1);
+  const BEDS = ['flowerBed', 'herbGarden'] as const;
+  const isButterfly = (it: Item) => it.sprite.startsWith('butterfly-');
+
+  it('flutters a butterfly over every Flower Bed and Herb Garden, in front of its plants', () => {
+    for (const id of BEDS) {
+      for (const rot of [0, 1, 2, 3] as const) {
+        for (const uid of UIDS) {
+          const h = one(id, uid, rot);
+          const l = yardOf(h).pieces.get(uid)!;
+          const name = `${id} r${rot} #${uid}`;
+          expect(problems(l), name).toEqual([]);
+          const flies = l.items.filter(isButterfly);
+          expect(flies.length, name).toBe(1);
+          const b = flies[0]!;
+          // The piece's color (colors(), as its ghost has it), flapping on its own frames.
+          expect(b.sprite, name).toBe(`butterfly-${pieceLook(h, uid).color}`);
+          expect(artFrames(b.sprite)?.frames, name).toBe(4);
+          // Over a cell without the digit (a Flower Bed has one), drawn after that cell's plants.
+          const cell = { x: Math.floor(b.x / CELL), y: Math.floor(b.y / CELL) };
+          const digit = digitCell(l.cells);
+          expect(l.cells.length === 1 || cell.x !== digit.x || cell.y !== digit.y, name).toBe(true);
+          const plants = l.items.filter(
+            (it) =>
+              it.sprite.includes('planter') &&
+              Math.floor(it.x / CELL) === cell.x &&
+              Math.floor(it.y / CELL) === cell.y,
+          );
+          expect(plants.length, name).toBe(1);
+          expect(l.items.indexOf(b), name).toBeGreaterThan(l.items.indexOf(plants[0]!));
+          // All of it over its own cell: nothing rises over the row behind, so no label moves.
+          expect(risingParts(l), name).toEqual([]);
+        }
+      }
+    }
+  });
+
+  it('keeps the butterfly clear of the digit and a fixture’s badge at 1× and up, in any frame', () => {
+    for (const id of BEDS) {
+      for (const rot of [0, 1, 2, 3] as const) {
+        for (const uid of UIDS) {
+          const l = yardOf(one(id, uid, rot)).pieces.get(uid)!;
+          const b = l.items.find(isButterfly)!;
+          for (const [px, dpr] of ZOOMS) {
+            for (const fixture of [false, true]) {
+              for (const n of [1, 2, 3]) {
+                const labels = pieceLabels({
+                  cells: l.cells,
+                  inset: () => 0,
+                  px,
+                  dpr,
+                  digit: n,
+                  fixture,
+                  unmet: false,
+                });
+                const name = `${id} r${rot} #${uid} ${px}/${dpr} ${n}${fixture ? ' +badge' : ''}`;
+                const digit = labelArt(digitBox(labels.digit!, n), px);
+                expect(pixelOn(b, digit), name).toBeNull();
+                if (fixture) expect(pixelOn(b, labelArt(labels.fixture!, px)), name).toBeNull();
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+
+  it('gives neighbors’ butterflies different colors, each flapping at its own pace', () => {
+    const fly = (l: YardLayout) => l.items.find(isButterfly)!.sprite;
+    for (const id of BEDS) {
+      const specs: Spec[] = [
+        [id, 1, 1],
+        [id, 1, 3],
+        [id, 1, 5],
+        [id, 1, 7],
+      ];
+      const four = yardOf(house(specs));
+      expect(new Set([1, 2, 3, 4].map((u) => fly(four.pieces.get(u)!))).size, id).toBe(4);
+      // A ghost shows the butterfly its piece will have.
+      const ghost = yardPieceLayout(id, 0, newPieceLook(house(specs.slice(0, 3)), id));
+      expect(fly(ghost), id).toBe(fly(four.pieces.get(4)!));
+    }
+    // Two side by side drift apart, rather than flap in step.
+    const paces = [0, 1, 2, 3].map((c) => artFrames(`butterfly-${c}` as SpriteId)!.ms);
+    expect(new Set(paces).size).toBe(4);
+  });
+
+  it('bobs the Pool’s float: the still float in its first frame, 1 px lower in its second', () => {
+    const f = artFrames('pool-float-0')!;
+    expect(f.frames).toBe(2);
+    const { x, y, w, h } = spritePos('pool-float-0');
+    const row = (k: number, j: number) => {
+      const i = ((y + j) * atlas.width + x + k * f.stride) * 4;
+      return atlas.rgba.subarray(i, i + w * 4);
+    };
+    // Its first frame is the still float it always was (D-185 asks for it pixel for pixel): the
+    // sha256 of the float's RGBA as cut before it bobbed.
+    const first = new Uint8Array(w * h * 4);
+    for (let j = 0; j < h; j++) first.set(row(0, j), j * w * 4);
+    expect(createHash('sha256').update(first).digest('hex')).toBe(
+      '13fd50d75e3623d483d7936b057859bef79e10a9bd976dc9631960f81e26831a',
+    );
+    // The second is the first moved down a row, sunk to the same waterline: nothing new.
+    expect(row(1, 0).every((v) => v === 0)).toBe(true);
+    for (let j = 1; j < h; j++) expect([...row(1, j)], `row ${j}`).toEqual([...row(0, j - 1)]);
+  });
+
+  it('pecks now and then: each hen on its own beat, with its head up in its first frame', () => {
+    // The two hens in a run never peck together, whatever the hash.
+    for (const uid of UIDS) {
+      const l = yardOf(one('henhouse', uid)).pieces.get(uid)!;
+      const hens = l.items.filter((it) => it.sprite.startsWith('own-hen-'));
+      expect(hens.length, `#${uid}`).toBe(2);
+      expect(hens[0]!.sprite.at(-1), `#${uid}`).not.toBe(hens[1]!.sprite.at(-1));
+    }
+    /** The top of a hen's comb: its head's height. */
+    const comb = (rows: readonly string[]) => rows.findIndex((r) => r.includes('d'));
+    for (const look of ['w', 'e', 'brown-w', 'brown-e'] as const) {
+      const pecks = new Set<number>();
+      for (let beat = 0; beat < HEN_PHASES; beat++) {
+        const id = henDrawing(look, beat);
+        const { frames } = DRAWINGS[id];
+        const rest = frames[0]!;
+        const name = `${id}`;
+        // At rest in its first frame, as every beat is, and the same hen as the other beats'.
+        expect(rest, name).toEqual(DRAWINGS[henDrawing(look, 0)].frames[0]);
+        // A cycle of FEEL.hen: its rest, then two pecks, a frame each, a frame apart.
+        expect(artFrames(id), name).toEqual({
+          frames: Math.round(FEEL.hen.restMs / FEEL.hen.peckMs) + 3,
+          stride: artSize(id).w,
+          ms: FEEL.hen.peckMs,
+        });
+        const down = frames.flatMap((fr, k) => (fr.join('/') === rest.join('/') ? [] : [k]));
+        expect(down.length, name).toBe(2);
+        expect(down[1]! - down[0]!, name).toBe(2);
+        // Head down, feet still.
+        const peck = frames[down[0]!]!;
+        expect(comb(peck), name).toBeGreaterThan(comb(rest));
+        expect(peck.slice(-2), name).toEqual(rest.slice(-2));
+        for (const k of down) {
+          expect(pecks.has(k), `${name} frame ${k}`).toBe(false);
+          pecks.add(k);
+        }
+      }
+    }
+  });
+
+  it('breathes in the dogs’ bed: a breath every 2 to 3 s, the dog’s flank 1 px higher', () => {
+    const f = artFrames('own-dog-bed')!;
+    const breath = f.frames * f.ms;
+    expect(breath).toBe(FEEL.dogBed.breathMs);
+    // Any faster reads as a twitch.
+    expect(breath).toBeGreaterThanOrEqual(2000);
+    expect(breath).toBeLessThanOrEqual(3000);
+    const { frames } = DRAWINGS['own-dog-bed'];
+    const out = frames[0]!;
+    const breathing = frames.filter((fr) => fr.join('/') !== out.join('/'));
+    expect(new Set(breathing.map((fr) => fr.join('/'))).size).toBe(1);
+    expect(breathing.length * f.ms).toBe(FEEL.dogBed.inMs);
+    const inn = breathing[0]!;
+    // Where its body starts, down each column from behind the cushion's back rim: the flank's
+    // columns 1 px higher, every other pixel where it was (the head, the cushion, the shadow).
+    const body = (rows: readonly string[], x: number) =>
+      rows.findIndex((r, y) => y >= 2 && 'vUu'.includes(r[x]!));
+    const moved = new Set<number>();
+    out.forEach((row, y) =>
+      [...row].forEach((ch, x) => {
+        if (inn[y]![x] !== ch) moved.add(x);
+      }),
+    );
+    expect(moved.size).toBeGreaterThan(0);
+    for (const x of moved) expect(body(inn, x), `column ${x}`).toBe(body(out, x) - 1);
+    for (let x = 0; x < out[0]!.length; x++)
+      if (!moved.has(x))
+        expect(
+          inn.map((r) => r[x]),
+          `column ${x}`,
+        ).toEqual(out.map((r) => r[x]));
   });
 });
 
