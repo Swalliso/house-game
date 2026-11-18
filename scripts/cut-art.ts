@@ -16,6 +16,11 @@
 // - pack: "mi" (Modern Interiors) or "me" (Modern Exteriors). file: the sheet's path in the
 //   pack's zip. rect: [x, y, w, h] in that sheet.
 // - frames (optional): an animation. Frame k is cut at rect + k × (dx, dy), and shows for ms.
+//   Its hold (optional, D-185) says how many ms-long frames of the strip each one takes, in
+//   order: [24, 1, 1, 0] rests on the first for 24, plays the next two once each and leaves the
+//   last out. So a sheet that loops without a pause (LimeZu's piano) rests between its moves,
+//   still stepped by CSS steps(). The first frame comes first, at least once: it's the rest pose
+//   the cards, the ghost and the photos show.
 // - ops (optional): edits, in order, applied to each frame. See OPS below: tile, recolor,
 //   keyOut, flipX, and compose. Adding one is a parse and an apply function.
 // - note (optional): for people. It isn't part of the spec hash.
@@ -119,6 +124,11 @@ export interface Frames {
   readonly dx: number;
   readonly dy: number;
   readonly ms: number;
+  /**
+   * D-185: how many of the strip's frames each of the `count` takes, in order (0 leaves one out):
+   * a rest is a frame held for longer. Without it, each takes one.
+   */
+  readonly hold?: readonly number[];
 }
 
 /** One manifest entry. */
@@ -243,7 +253,7 @@ function zipPath(value: unknown, where: string): string {
 
 function parseFrames(value: unknown, where: string): Frames {
   const o = record(value, where);
-  onlyFields(o, ['count', 'dx', 'dy', 'ms'], where);
+  onlyFields(o, ['count', 'dx', 'dy', 'ms', 'hold'], where);
   const frames: Frames = {
     count: integer(o.count, `${where}.count`, 2),
     dx: integer(o.dx, `${where}.dx`),
@@ -251,7 +261,19 @@ function parseFrames(value: unknown, where: string): Frames {
     ms: integer(o.ms, `${where}.ms`, 1),
   };
   if (frames.dx === 0 && frames.dy === 0) throw new Error(`${where}: dx and dy can't both be 0`);
-  return frames;
+  if (o.hold === undefined) return frames;
+  const at = `${where}.hold`;
+  const hold = numbers(o.hold, frames.count, at, `a list of ${frames.count} counts, one a frame`);
+  const counts = hold.map((n, k) => integer(n, `${at}[${k}]`, k === 0 ? 1 : 0));
+  if (counts.reduce((a, b) => a + b, 0) < 2) throw new Error(`${at} must make at least 2 frames`);
+  return { ...frames, hold: counts };
+}
+
+/** The strip's frames, by the index of the frame each one shows (Frames.hold). */
+export function stripOrder(frames: Frames | undefined): number[] {
+  const count = frames?.count ?? 1;
+  const hold = frames?.hold ?? Array.from({ length: count }, () => 1);
+  return hold.flatMap((n, k) => Array.from({ length: n }, () => k));
 }
 
 function parseOps(value: unknown, where: string): Op[] {
@@ -583,16 +605,20 @@ export function cutSprite(spec: CutSpec, sheet: (file: string) => RgbaImage, whe
   }
   const fw = frames[0]!.width;
   const fh = frames[0]!.height;
-  const image = blank(fw * count, fh);
-  frames.forEach((frame, k) => {
+  // Side by side in the strip's order: each frame as many times as it's held (D-185).
+  const order = stripOrder(spec.frames);
+  const n = order.length;
+  const image = blank(fw * n, fh);
+  order.forEach((k, i) => {
+    const frame = frames[k]!;
     for (let row = 0; row < fh; row++) {
       image.rgba.set(
         frame.rgba.subarray(row * fw * 4, (row + 1) * fw * 4),
-        (row * fw * count + k * fw) * 4,
+        (row * fw * n + i * fw) * 4,
       );
     }
   });
-  return { image, w: fw, h: fh, frames: count, ...(spec.frames ? { ms: spec.frames.ms } : {}) };
+  return { image, w: fw, h: fh, frames: n, ...(spec.frames ? { ms: spec.frames.ms } : {}) };
 }
 
 // ---------------------------------------------------------------------------------------

@@ -31,12 +31,16 @@ import {
   type HouseModel,
   type Rect,
 } from '../board/house-model.ts';
+import { digitBox, pieceLabels } from '../board/label-layout.ts';
+import { householdBoxes, people } from '../board/people.ts';
 import { CELL, spritePos } from '../sprites.ts';
 import { artSize } from './drawings.ts';
 import { paintPiece, type AtlasPixels, type Pixels } from './house-paint.ts';
 import {
   arrangements,
   byType,
+  catIn,
+  isCat,
   itemRows,
   newRoomLook,
   roomItems,
@@ -95,6 +99,9 @@ const TIGHT = /^(toilet-|clothes-rail|car-)/;
 const WALKWAY = /^(toilet-|clothes-rail|car-|dining-table)/;
 /** The tables dining chairs tuck under: plain, under a cloth, or round (D-173). */
 const TABLE = /^(dining-table|table-round)/;
+
+/** The house cat's top rows, its ears and the top of its back, lie over what's behind it (D-185). */
+const EARS = 5;
 
 /** An item's footprint: its sprite below the line it rises over. */
 function foot(it: Item): Rect {
@@ -170,12 +177,17 @@ function problems(m: HouseModel, uid: number): string[] {
       }
     }
   }
-  // Off each other: rugs and runners lie under things; dining chairs tuck 3 px under the table.
+  // Off each other: rugs and runners lie under things; dining chairs tuck 3 px under the table;
+  // the house cat's ears lie over the foot of what stands behind it (D-185).
   const solid = items.filter((it) => !FLAT.test(it.sprite));
+  const body = (it: Item): Rect => {
+    const f = foot(it);
+    return isCat(it.sprite) ? { ...f, y: f.y + EARS, h: f.h - EARS } : f;
+  };
   for (let i = 0; i < solid.length; i++) {
     for (let j = i + 1; j < solid.length; j++) {
-      const a = foot(solid[i]!);
-      const b = foot(solid[j]!);
+      const a = body(solid[i]!);
+      const b = body(solid[j]!);
       const chair = /^chair-/.test(solid[i]!.sprite) || /^chair-/.test(solid[j]!.sprite);
       const table = TABLE.test(solid[i]!.sprite) || TABLE.test(solid[j]!.sprite);
       const tuck = chair && table ? 3 : 0;
@@ -1474,25 +1486,37 @@ describe('the client’s own things (D-183)', () => {
         atlas,
         [...m.rooms.keys()].flatMap((uid) => roomItems(m, uid)),
       )!;
-    /** How many pixels differ, outside room `skip`'s cells and inside them. */
-    const differ = (m: HouseModel, a: Pixels, b: Pixels, skip: number | undefined) => {
+    /** How many pixels differ: inside room `skip`'s cells, inside box `cat`, and elsewhere. */
+    const differ = (
+      m: HouseModel,
+      a: Pixels,
+      b: Pixels,
+      skip: number | undefined,
+      cat: Rect | undefined,
+    ) => {
       expect([b.x, b.y, b.w, b.h]).toEqual([a.x, a.y, a.w, a.h]);
       let out = 0;
       let inside = 0;
+      let under = 0;
       for (let i = 0; i < a.w * a.h; i++) {
-        const cx = Math.floor((a.x + (i % a.w)) / CELL);
-        const cy = Math.floor((a.y + Math.floor(i / a.w)) / CELL);
+        const x = a.x + (i % a.w);
+        const y = a.y + Math.floor(i / a.w);
+        const cx = Math.floor(x / CELL);
+        const cy = Math.floor(y / CELL);
         const own = skip !== undefined && m.room[cy * m.width + cx] === skip;
+        const lies = !!cat && overlaps({ x, y, w: 1, h: 1 }, cat);
         for (let k = 0; k < 4; k++) {
           if (a.data[i * 4 + k] === b.data[i * 4 + k]) continue;
           if (own) inside++;
+          else if (lies) under++;
           else out++;
           break;
         }
       }
-      return { out, inside };
+      return { out, inside, under };
     };
     const changed = new Map<ClientId, number>();
+    const cats = new Map<ClientId, number>();
     for (let seed = 1; seed <= 40; seed++) {
       const h = randomHouse(seed * 7919);
       const plain = modelOf(h);
@@ -1501,19 +1525,33 @@ describe('the client’s own things (D-183)', () => {
       for (const client of CLIENTS) {
         const m = modelOf(h, client);
         const theirs = theirsIn(h.pieces, client);
-        // Every room but theirs lays out as before, so it paints as before.
+        // Every room but theirs lays out as before, so it paints as before; the house cat's
+        // (D-185) as before with the cat lying in it, so it paints as before outside the cat.
+        let cat: Item | undefined;
         [...m.rooms.keys()].forEach((uid, i) => {
-          if (uid !== theirs) expect(roomLayout(m, uid), `${seed} ${client}`).toEqual(layouts[i]);
+          if (uid === theirs) return;
+          const { cat: lying, ...rest } = roomLayout(m, uid);
+          const items = rest.items.filter((it) => it !== lying);
+          expect({ ...rest, items }, `${seed} ${client}`).toEqual(layouts[i]);
+          if (!lying) return;
+          expect(uid, `${seed} ${client}`).toBe(catIn(h.pieces, client));
+          cat = lying;
         });
-        const { out, inside } = differ(m, before, paint(m), theirs);
+        const box = cat && { x: cat.x, y: cat.y, ...artSize(cat.sprite) };
+        const { out, inside, under } = differ(m, before, paint(m), theirs, box);
         expect(out, `seed ${seed} ${client}`).toBe(0);
         if (inside > 0) changed.set(client, (changed.get(client) ?? 0) + 1);
+        if (under > 0) cats.set(client, (cats.get(client) ?? 0) + 1);
       }
     }
-    // Only the two clients with things of their own change a room, and they do in most houses.
+    // Only the two clients with things of their own change a room, and they do in most houses;
+    // a cat lies down in houses of the four clients with one (in those with a Living Room it
+    // fits in), never the Barkers' (D-185).
     expect([...changed.keys()].sort()).toEqual(['barkers', 'vladislav']);
     expect(changed.get('vladislav')).toBeGreaterThan(10);
     expect(changed.get('barkers')).toBeGreaterThan(10);
+    expect([...cats.keys()].sort()).toEqual(['dale', 'hendersons', 'juniper', 'vladislav']);
+    for (const n of cats.values()) expect(n).toBeGreaterThan(3);
   }, 20_000); // 1.1 s here and 2.5 s on CI: as close to the 5 s default as the dog-bed test
 
   // D-181 × D-183: a finished room lights its lamp after everything else, their things included.
@@ -1575,4 +1613,140 @@ describe('the client’s own things (D-183)', () => {
       }
     }
   }, 20_000); // 2.7 s here, and over 5 s on a slow CI runner: the 5 s default timed out
+
+  // D-185: the house cat, the client's own pet as their things are.
+  describe('the house cat (D-185)', () => {
+    const CAT: Readonly<Record<ClientId, string | undefined>> = {
+      hendersons: 'cat',
+      vladislav: 'cat-black',
+      barkers: undefined,
+      juniper: 'cat',
+      dale: 'cat',
+    };
+    const catsIn = (m: HouseModel, uid: number) => sprites(m, uid).filter((sp) => isCat(sp));
+
+    it('lies in the first Living Room of a client with one: grey, the Count’s black, none with the Barkers’ dogs', () => {
+      const h = house([
+        ['livingRoom', 2, 2],
+        ['livingRoom', 4, 2],
+        ['bedroom', 6, 2],
+      ]);
+      for (const client of CLIENTS) {
+        const m = modelOf(h, client);
+        const cat = CAT[client];
+        expect(catIn(h.pieces, client), client).toBe(cat ? 1 : undefined);
+        expect(catsIn(m, 1), client).toEqual(cat ? [cat] : []);
+        expect(roomLayout(m, 1).cat?.sprite, client).toBe(cat);
+        for (const uid of [2, 3]) expect(catsIn(m, uid), `${client} ${uid}`).toEqual([]);
+      }
+      // The Count's black cat lies where the grey one does: they're the same cat, recolored.
+      const grey = roomLayout(modelOf(h, 'juniper'), 1).cat!;
+      expect(roomLayout(modelOf(h, 'vladislav'), 1).cat).toEqual({ ...grey, sprite: 'cat-black' });
+      // A house no client's run is building has none.
+      for (const uid of [1, 2, 3]) expect(catsIn(modelOf(h), uid)).toEqual([]);
+    });
+
+    it('is never in a piece alone: a card’s picture, or the ghost of the room that will be its', () => {
+      for (const client of CLIENTS) {
+        for (let style = 0; style < arrangements('livingRoom'); style++) {
+          for (const rot of [0, 1, 2, 3] as Rot[]) {
+            const piece = pieceModel('livingRoom', rot, { color: 0, style, client });
+            expect(catsIn(piece, 1), `${client} ${style} r${rot}`).toEqual([]);
+          }
+        }
+        const ghost = pieceModel('livingRoom', 0, newRoomLook(house([]), 'livingRoom', client));
+        expect(catsIn(ghost, 1), client).toEqual([]);
+      }
+    });
+
+    it('stays when a newer Living Room is built, and moves to the next when its room is demolished', () => {
+      const h = house([
+        ['livingRoom', 2, 2],
+        ['livingRoom', 4, 2],
+      ]);
+      expect(catsIn(modelOf(h, 'dale'), 1)).toEqual(['cat']);
+      expect(catsIn(modelOf(h, 'dale'), 2)).toEqual([]);
+      const gone = { ...h, pieces: h.pieces.filter((p) => p.uid !== 1) };
+      expect(catIn(gone.pieces, 'dale')).toBe(2);
+      expect(catsIn(modelOf(gone, 'dale'), 2)).toEqual(['cat']);
+    });
+
+    it('lies down last, in every arrangement, footprint and fixture, lit or not: nothing else moves', () => {
+      const fixtures: readonly (FixtureId | undefined)[] = [
+        undefined,
+        'chandelier',
+        ...ROOM_FIXTURES,
+      ];
+      const grown = [
+        ['######', '######'],
+        ['#####', '#####', '##...'],
+        ['##..', '####', '####', '..##'],
+      ];
+      let rooms = 0;
+      let lying = 0;
+      // Every other case finished, its lamp lit (D-181), which lies down before the cat.
+      for (const [i, [at, h]] of cases('livingRoom', fixtures, grown).entries()) {
+        const built: HouseState =
+          i % 2 ? { ...h, pieces: h.pieces.map((p, k) => (k === 0 ? { ...p, level: 1 } : p)) } : h;
+        const uid = built.pieces[0]!.uid;
+        const m = modelOf(built, 'juniper');
+        const { cat, ...rest } = roomLayout(m, uid);
+        rooms++;
+        // The room as a house no client's run is building lays it out, its lamp and all.
+        const items = rest.items.filter((it) => it !== cat);
+        expect({ ...rest, items }, at).toEqual(roomLayout(modelOf(built), uid));
+        if (!cat) continue;
+        lying++;
+        expect(problems(m, uid), at).toEqual([]);
+      }
+      // A room too full for it goes without: 9 in 10 of these boxed-in rooms have one.
+      expect(lying / rooms).toBeGreaterThan(0.85);
+    }, 20_000);
+
+    it('keeps off its room’s labels at 1× and up, and the household’s heads, in any house', () => {
+      const setups = new Map(
+        CLIENTS.map((clientId) => [
+          clientId,
+          rules.newRun({ seed: 'cat', clientId, crewId: 'generalContractor', mode: 'standard' })
+            .setup,
+        ]),
+      );
+      let lying = 0;
+      for (let seed = 1; seed <= 200; seed++) {
+        const h = randomHouse(seed * 7919);
+        for (const client of CLIENTS) {
+          const m = modelOf(h, client);
+          const uid = catIn(m.rooms.values(), client);
+          const cat = uid === undefined ? undefined : roomLayout(m, uid).cat;
+          if (uid === undefined || !cat) continue;
+          lying++;
+          const at = `seed ${seed} ${client}`;
+          expect(problems(m, uid), at).toEqual([]);
+          const box = { x: cat.x, y: cat.y, ...artSize(cat.sprite) };
+          // Its digit, a score three digits long, and both its badges, at 1× (a cell CELL CSS px):
+          // they're largest in art px there.
+          const l = pieceLabels({
+            cells: m.rooms.get(uid)!.cells,
+            inset: (c, side) => inset(m, c.x, c.y, side),
+            px: CELL,
+            dpr: 2,
+            digit: 3,
+            fixture: true,
+            unmet: true,
+          });
+          for (const b of [digitBox(l.digit!, 3), l.fixture!, l.unmet!]) {
+            expect(overlaps(box, b), `${at}: ${JSON.stringify(b)}`).toBe(false);
+          }
+          // The whole household arrived: in their rooms' doorways, or waiting at the front door.
+          const arrived = CONTENT.clients[client].household.arrivals.map((a) => a.id);
+          const all = people({ setup: setups.get(client)!, arrived }, m);
+          for (const b of householdBoxes(all)) {
+            expect(overlaps(box, b), `${at}: ${JSON.stringify(b)}`).toBe(false);
+          }
+        }
+      }
+      // About half of these random houses' first Living Rooms, crowded with doors, have one.
+      expect(lying).toBeGreaterThan(120);
+    }, 20_000);
+  });
 });
