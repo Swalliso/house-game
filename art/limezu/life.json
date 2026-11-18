@@ -20,6 +20,37 @@
     "frames": { "count": 6, "dx": 48, "dy": 0, "ms": 70 },
     "note": "Life on the lot (D-155): a crow flapping away from us, wings spread (the sheet's flying-up frames), as the flock takes off or glides in to land."
   },
+  "life-frog": {
+    "pack": "mi",
+    "file": "3_Animated_objects/16x16/spritesheets/animated_frog_idle.png",
+    "rect": [0, 0, 16, 16],
+    "frames": { "count": 6, "dx": 16, "dy": 0, "ms": 120 },
+    "note": "Life at the water (D-185): a frog sitting on a pond's big lily pad, puffing its throat and blinking (LimeZu loops the six frames at 100 ms; the board holds its first frame for a few seconds between breaths)."
+  },
+  "life-fish-1": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/Animated_16x16/Animated_sheets_16x16/Fishes_1_16x16.png",
+    "rect": [0, 0, 16, 16],
+    "frames": { "count": 11, "dx": 16, "dy": 0, "ms": 110 },
+    "ops": [{ "op": "keyOut", "colors": ["#3ca3b2"] }],
+    "note": "Life at the water (D-185): a small school of fish passing just under the surface, from nothing to nothing (the sheet's twelfth frame is empty, so it's left out). The open water drawn behind them is keyed out, so only their shadows go over the lot's water, whose open water is that color."
+  },
+  "life-fish-2": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/Animated_16x16/Animated_sheets_16x16/Fishes_2_16x16.png",
+    "rect": [0, 0, 16, 16],
+    "frames": { "count": 14, "dx": 16, "dy": 0, "ms": 110 },
+    "ops": [{ "op": "keyOut", "colors": ["#3ca3b2"] }],
+    "note": "Life at the water (D-185): a fish rising, a faint ring spreading from it, and circling once under the surface. Its water is keyed out as life-fish-1's."
+  },
+  "life-fish-3": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/Animated_16x16/Animated_sheets_16x16/Fishes_3_16x16.png",
+    "rect": [0, 0, 16, 16],
+    "frames": { "count": 14, "dx": 16, "dy": 0, "ms": 110 },
+    "ops": [{ "op": "keyOut", "colors": ["#3ca3b2"] }],
+    "note": "Life at the water (D-185): two fish circling each other under the surface. Its water is keyed out as life-fish-1's."
+  },
   "life-car-teal": {
     "pack": "me",
     "file": "Modern_Exteriors_16x16/Animated_16x16/Vehicles_16x16/Cars_16x16/Car_2_complete_1.png",
