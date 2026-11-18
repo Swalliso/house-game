@@ -32,10 +32,11 @@ import {
   type RunState,
 } from '../../rules/index.ts';
 import { artSize } from '../art/drawings.ts';
-import { Mask, wallMask } from '../art/house-paint.ts';
+import { Mask, wallMask, type Figure } from '../art/house-paint.ts';
 import { roomItems, type Item } from '../art/rooms.ts';
 import type { YardModel } from '../art/yard.ts';
-import { CELL, type SpriteId } from '../sprites.ts';
+import { FEEL } from '../fx/feel.ts';
+import { CELL, spriteFrames, type SpriteId } from '../sprites.ts';
 import { occupancy } from './geometry.ts';
 import {
   floorTop,
@@ -48,37 +49,119 @@ import {
   type Room,
   type Side,
 } from './house-model.ts';
+import { seedSalt, tileHash } from './terrain/hash.ts';
 
 /**
  * Who plays each member (art/limezu/people.json): standing (facing south), walking north, and
- * their suitcase.
+ * their suitcase. D-185: standing, they breathe: `stand`'s frames are the sheet's idle, its first
+ * frame the figure standing still. An adult also reads (`read`) and takes a call (`phone`) now and
+ * then, facing south; each of these strips is a loop.
  */
 export interface Cast {
   readonly stand: SpriteId;
   readonly walk: SpriteId;
   readonly suitcase: SpriteId;
+  readonly read?: SpriteId;
+  readonly phone?: SpriteId;
 }
 
 /**
  * The cast, by arrival (src/content/households.ts). Premade characters the street's walkers don't
  * use: Grandma and Nana grayed, Renfield in his monocle, Rowan in a painter's beanie, and Ivy
- * composed from the character generator's kids' parts. The twins have none yet: they're left out.
+ * composed from the character generator's kids' parts, which have no book or phone. The twins
+ * have none yet: they're left out.
  */
 export const CAST: Readonly<Partial<Record<ArrivalId, Cast>>> = {
   grandma: {
     stand: 'people-grandma',
     walk: 'people-grandma-walk',
     suitcase: 'people-suitcase-green',
+    read: 'people-grandma-read',
+    phone: 'people-grandma-phone',
   },
   renfield: {
     stand: 'people-renfield',
     walk: 'people-renfield-walk',
     suitcase: 'people-suitcase-tan',
+    read: 'people-renfield-read',
+    phone: 'people-renfield-phone',
   },
-  nana: { stand: 'people-nana', walk: 'people-nana-walk', suitcase: 'people-suitcase-blue' },
-  rowan: { stand: 'people-rowan', walk: 'people-rowan-walk', suitcase: 'people-suitcase-green' },
+  nana: {
+    stand: 'people-nana',
+    walk: 'people-nana-walk',
+    suitcase: 'people-suitcase-blue',
+    read: 'people-nana-read',
+    phone: 'people-nana-phone',
+  },
+  rowan: {
+    stand: 'people-rowan',
+    walk: 'people-rowan-walk',
+    suitcase: 'people-suitcase-green',
+    read: 'people-rowan-read',
+    phone: 'people-rowan-phone',
+  },
   ivy: { stand: 'people-ivy', walk: 'people-ivy-walk', suitcase: 'people-suitcase-blue' },
 };
+
+/**
+ * Every strip a member shows standing (D-185): their idle, then an adult's book and phone, in the
+ * order of their turns (Pace). Each is a figure's size, and they stand in the same box.
+ */
+export function looks(cast: Cast): SpriteId[] {
+  return [cast.stand, ...(cast.read ? [cast.read] : []), ...(cast.phone ? [cast.phone] : [])];
+}
+
+/**
+ * D-185: how a member moves as they stand, at the door or in their room (PeopleLayer.tsx Standing).
+ * Each frame of their idle shows `idleMs`. An adult with a book and a phone reads in the first of
+ * two turns and takes a call in the second, `turnsMs` the two (0: no turns), each frame of the
+ * book or the phone shown `busyMs`. Every loop and every turn is `delayMs` in (≤ 0: as if begun
+ * that long before it was drawn), so the turns and the strips step together.
+ */
+export interface Pace {
+  readonly idleMs: number;
+  readonly busyMs: number;
+  readonly turnsMs: number;
+  readonly delayMs: number;
+}
+
+/** FEEL.household's shape, for pace. */
+export interface HouseholdFeel {
+  readonly idleFrameMs: number;
+  readonly busyFrameMs: number;
+  readonly turnMs: readonly [number, number];
+}
+
+const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
+
+/**
+ * A member's pace (Pace), by hash of the run's seed and who they are, never chance, so a run code
+ * shows them the same. A turn is about `f.turnMs` long, between its two ends, and a whole number
+ * of loops of the book's and the phone's strips, so each opens on its first frame. Where in the
+ * two turns they start is by hash too: one may be reading as the board first shows them.
+ */
+export function pace(
+  arrival: ArrivalId,
+  cast: Cast,
+  seed: string,
+  f: HouseholdFeel = FEEL.household,
+): Pace {
+  const salt = seedSalt(`${seed}/${arrival}`);
+  const idle = (spriteFrames(cast.stand)?.frames ?? 1) * f.idleFrameMs;
+  const strips = cast.read && cast.phone ? [cast.read, cast.phone] : [];
+  if (strips.length === 0) {
+    const delayMs = 0 - (tileHash(0, 1, salt) % idle);
+    return { idleMs: f.idleFrameMs, busyMs: f.busyFrameMs, turnsMs: 0, delayMs };
+  }
+  const loop = strips
+    .map((s) => (spriteFrames(s)?.frames ?? 1) * f.busyFrameMs)
+    .reduce((a, b) => (a / gcd(a, b)) * b);
+  const lo = Math.max(1, Math.ceil(f.turnMs[0] / loop));
+  const hi = Math.max(lo, Math.floor(f.turnMs[1] / loop));
+  const turnsMs = 2 * loop * (lo + (tileHash(0, 2, salt) % (hi - lo + 1)));
+  const delayMs = 0 - (tileHash(0, 3, salt) % turnsMs);
+  return { idleMs: f.idleFrameMs, busyMs: f.busyFrameMs, turnsMs, delayMs };
+}
 
 /** Every cast figure's size, standing or walking: 16 × 26 art px, its feet on its bottom row. */
 export const FIGURE = { w: 16, h: 26 } as const;
@@ -121,6 +204,8 @@ export interface Person {
   /** The figure's middle and the line its feet stand on, in lot art px. */
   readonly x: number;
   readonly y: number;
+  /** D-185: how they move as they stand there. */
+  readonly pace: Pace;
 }
 
 /** The rules' data on a member of this client's household. */
@@ -141,18 +226,19 @@ export function people(
 ): readonly Person[] {
   if (guided) return [];
   const out: Person[] = [];
-  const waiting: { arrival: ArrivalId; cast: Cast }[] = [];
+  const waiting: { arrival: ArrivalId; cast: Cast; pace: Pace }[] = [];
   for (const id of state.arrived) {
     const cast = CAST[id];
     const def = arrivalDef(state, id);
     if (!cast || !def) continue;
+    const how = pace(id, cast, state.setup.seed);
     // Their oldest room, if one is built.
     const room = [...model.rooms.values()].find((r) => def.room.includes(r.defId));
     if (room) {
       const at = doorwaySpot(model, room);
-      out.push({ arrival: id, cast, place: 'room', uid: room.uid, ...at });
+      out.push({ arrival: id, cast, place: 'room', uid: room.uid, ...at, pace: how });
     } else {
-      waiting.push({ arrival: id, cast });
+      waiting.push({ arrival: id, cast, pace: how });
     }
   }
   if (waiting.length === 0) return out;
@@ -389,17 +475,44 @@ export function overLine(m: HouseModel, x: number, y: number): number | undefine
   return overIn(bandMask(m, box), x, y);
 }
 
-/** A member in their room as one of its items: their standing sprite, at their spot. */
-export function personItem(m: HouseModel, p: Person): Item {
-  const item: Item = { sprite: p.cast.stand, x: p.x - FIGURE.w / 2, y: p.y - FIGURE.h };
+/**
+ * A member in their room as one of its items (D-177): their standing figure at their spot, its
+ * first frame `sprite`'s. D-185: `looks` are every strip they show there (their `cast`'s), `pace`
+ * how they step (HouseLayers.tsx draws them with PeopleLayer.tsx's Standing), and a lamp's light
+ * keeps off what any frame of theirs draws (house-paint.ts Figure).
+ */
+export interface PersonItem extends Figure {
+  readonly sprite: SpriteId;
+  readonly looks: readonly SpriteId[];
+  readonly cast: Cast;
+  readonly pace: Pace;
+}
+
+/** Whether a room's item is a member of the household (personItem). */
+export function isPerson(it: Item): it is PersonItem {
+  return 'pace' in it;
+}
+
+/** A member in their room as one of its items: their standing figure, at their spot. */
+export function personItem(m: HouseModel, p: Person): PersonItem {
   const over = overLine(m, p.x, p.y);
-  if (over !== undefined) item.over = over;
-  return item;
+  return {
+    sprite: p.cast.stand,
+    x: p.x - FIGURE.w / 2,
+    y: p.y - FIGURE.h,
+    ...(over !== undefined ? { over } : {}),
+    looks: looks(p.cast),
+    cast: p.cast,
+    pace: p.pace,
+  };
 }
 
 /** The members in rooms, as items by room uid. */
-export function roomPeople(m: HouseModel, all: readonly Person[]): ReadonlyMap<number, Item[]> {
-  const out = new Map<number, Item[]>();
+export function roomPeople(
+  m: HouseModel,
+  all: readonly Person[],
+): ReadonlyMap<number, PersonItem[]> {
+  const out = new Map<number, PersonItem[]>();
   for (const p of all) {
     if (p.place !== 'room') continue;
     const list = out.get(p.uid);
