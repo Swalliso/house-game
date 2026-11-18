@@ -1,6 +1,7 @@
 // Life on and around the lot (D-155): decoration only, never the rules and never a click.
-// - A flock of crows pecks on the lot's open grass. It takes off, up and away, fading, when the
-//   pointer, the piece being placed or a change to the house comes near, with a soft flap; a
+// - A flock of crows pecks on the lot's open grass, on a Lawn with nothing installed if it can
+//   (D-185). It takes off, up and away, fading, when the pointer, the piece being placed or a
+//   change to the house comes near (a Sprinkler installed on its Lawn too), with a soft flap; a
 //   flock still there at End week leaves quietly. The next week's flock glides in once the
 //   week's tally is over.
 // - The street's regulars come by now and then: a walker each way on the sidewalk and a car in
