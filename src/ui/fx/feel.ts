@@ -286,6 +286,17 @@ export const FEEL = {
    */
   dog: { wakeDelayMs: 220, barkGain: 0.9, hopMs: 140, roofMs: 2380, grassMs: 1680 },
   /**
+   * The hens by a Henhouse peck now and then (D-185, drawings.ts): each holds its head up for
+   * `restMs`, then pecks twice (down, up, down), every frame `peckMs`, on its own phase.
+   */
+  hen: { peckMs: 200, restMs: 3800 },
+  /**
+   * The dog asleep in the dogs' bed (Nana's Room, the Barkers' first Living Room) breathes once
+   * every `breathMs`, its flank 1 px higher for `inMs` of it, in frames of `stepMs` (D-185).
+   * Under 2 s a breath reads as a twitch.
+   */
+  dogBed: { breathMs: 2500, inMs: 1000, stepMs: 500 },
+  /**
    * A piece's floor flashes white as it wobbles or settles, peaking at this opacity: its floor
    * and walls are drawn with the whole house, so the flash shows which room is reacting.
    */

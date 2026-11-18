@@ -849,6 +849,26 @@
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Interiors"
   },
+  "limezu/butterfly-0.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 3_Animated_objects/16x16/spritesheets/animated_butterfly_2.png [4, 0, 7, 1], 4 frames [16, 0] apart; 3_Animated_objects/16x16/spritesheets/animated_butterfly_2.png [4, 7, 7, 8], following the frames",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/butterfly-1.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 3_Animated_objects/16x16/spritesheets/animated_butterfly.png [4, 0, 7, 1], 4 frames [16, 0] apart; 3_Animated_objects/16x16/spritesheets/animated_butterfly.png [4, 7, 7, 8], following the frames",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/butterfly-2.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 3_Animated_objects/16x16/spritesheets/animated_butterfly_3.png [4, 0, 7, 1], 4 frames [16, 0] apart; 3_Animated_objects/16x16/spritesheets/animated_butterfly_3.png [4, 7, 7, 8], following the frames",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/butterfly-3.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 3_Animated_objects/16x16/spritesheets/animated_butterfly_6.png [4, 0, 7, 1], 4 frames [16, 0] apart; 3_Animated_objects/16x16/spritesheets/animated_butterfly_6.png [4, 7, 7, 8], following the frames",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
   "limezu/candles.png": {
     "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 3_Animated_objects/16x16/spritesheets/animated_candle.png [2, 8, 13, 14], 3 frames [16, 0] apart",
     "author": "LimeZu",
@@ -1995,7 +2015,7 @@
     "license": "LicenseRef-LimeZu-Modern-Exteriors"
   },
   "limezu/pool-float-0.png": {
-    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/14_Swimming_Pool_16x16.png [288, 178, 32, 22]",
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/14_Swimming_Pool_16x16.png [288, 178, 32, 22], 2 frames [0, -1] apart",
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Exteriors"
   },

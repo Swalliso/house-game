@@ -1,6 +1,7 @@
 // Our own pixel drawings, for what LimeZu doesn't draw (D-097): the Doghouse, the Henhouse's hens,
 // the Sprinkler, the dogs' bed in Nana's Room (D-111), the Doghouse's dog, on its lead and loose
 // (D-179), and rain and its puddles (D-180, drawn by board/WeatherLayer.tsx rather than as items).
+// The hens peck and the dog in the bed breathes (D-185), each from its first frame, at rest.
 // They're in LimeZu's style: its palette, its ink (#3a3a50) for outlines, light from the top
 // left, and its shadow (the ink at 100/255) under things that stand on the ground.
 // Pure: each is rows of characters, one per art px, each a color from KEY ('.' is clear). The
@@ -99,8 +100,67 @@ const HEN = [
   '...sssss.',
 ] as const;
 
+/** The hen pecking (D-185): its head down in front of its feet, its beak at the ground. */
+const HEN_PECK = [
+  '.........',
+  '.........',
+  '....kkk..',
+  '..ddkhhk.',
+  '.khhkhhhk',
+  'khohhHHhk',
+  'yykhhhHHk',
+  '...kyyk..',
+  '...sssss.',
+] as const;
+
+/** A drawing in brown: the hen's white feathers and their shade. */
+const brown = (rows: readonly string[]) =>
+  rows.map((row) => row.replace(/h/g, 'U').replace(/H/g, 'u'));
+
 /** The same hen in brown. */
-const BROWN_HEN = HEN.map((row) => row.replace(/h/g, 'U').replace(/H/g, 'u'));
+const BROWN_HEN = brown(HEN);
+const BROWN_HEN_PECK = brown(HEN_PECK);
+
+/**
+ * The beats the hens peck on (D-185): each hen's drawing comes in one phase of its peck cycle per
+ * beat, and yard.ts picks one by its piece's hash, so the two hens in a run never peck together.
+ */
+const PHASES = [0, 1, 2, 3] as const;
+type HenPhase = (typeof PHASES)[number];
+export const HEN_PHASES = PHASES.length;
+
+/** A hen's look (yard.ts): white or brown, facing west or east. */
+export type HenLook = 'w' | 'e' | 'brown-w' | 'brown-e';
+
+/**
+ * A hen's peck cycle (D-185): its head up for FEEL.hen.restMs, then down, up and down again,
+ * every frame FEEL.hen.peckMs. Phase p starts p quarters of the way through its rest, so each
+ * phase's first frame is still the hen at rest, head up: what Reduce motion, the cards and the
+ * photos show.
+ */
+function pecking(
+  up: readonly string[],
+  down: readonly string[],
+  phase: number,
+): (readonly string[])[] {
+  const rest = Math.max(1, Math.round(FEEL.hen.restMs / FEEL.hen.peckMs));
+  const cycle = [...Array.from({ length: rest }, () => up), down, up, down];
+  const turn = Math.floor((phase * rest) / HEN_PHASES);
+  return [...cycle.slice(turn), ...cycle.slice(0, turn)];
+}
+
+/** A hen's drawings, one per phase: `${id}-0` to `${id}-3`. */
+function hens<const Id extends string>(
+  id: Id,
+  up: readonly string[],
+  down: readonly string[],
+): Record<`${Id}-${HenPhase}`, Drawing> {
+  const phases = PHASES.map((p) => [
+    `${id}-${p}`,
+    { frames: pecking(up, down, p), ms: FEEL.hen.peckMs },
+  ]);
+  return Object.fromEntries(phases) as Record<`${Id}-${HenPhase}`, Drawing>;
+}
 
 /**
  * The Sprinkler: a little oscillating sprinkler on the lawn, its fan of droplets in three frames
@@ -178,6 +238,37 @@ const DOG_BED = [
   '....kkkkkkkkkkkkkk....',
   '......ssssssssssss....',
 ] as const;
+
+/** The sleeping dog breathing in (D-185): its flank, behind its neck, 1 px higher. */
+const DOG_BED_IN = [
+  '......kkkkkkkkkk......',
+  '....kkkkRRRRRRRRkk....',
+  '..kkvvUUkkkkkkkkkrkk..',
+  '.kkvUkUUBkWWvvvvUkrdk.',
+  '.kkUUUUUBBkkUUUUUkkddk',
+  'kRkkhUUUBBvUUUUUuukkdk',
+  'kRkhhhkkBBUUUUuuuukkdk',
+  'krrkkkwkkUUUUUuuukkkdk',
+  'krrrrkkkkkkkkkkkkkdddk',
+  'kdrrrrrrrrrrrrrrrrdddk',
+  '.kddddddddddddddddDDk.',
+  '..kkDDDDDDDDDDDDDDkk..',
+  '....kkkkkkkkkkkkkk....',
+  '......ssssssssssss....',
+] as const;
+
+/**
+ * The dogs' bed asleep (D-185): one breath every FEEL.dogBed.breathMs, its flank up for `inMs` of
+ * it, in frames of `stepMs`. Its first frame is the dog breathed out: the bed as it always was.
+ */
+const DOG_BED_BREATHING = (() => {
+  const { breathMs, inMs, stepMs } = FEEL.dogBed;
+  const on = (ms: number) => Math.max(1, Math.round(ms / stepMs));
+  return [
+    ...Array.from({ length: on(breathMs - inMs) }, () => DOG_BED),
+    ...Array.from({ length: on(inMs) }, () => DOG_BED_IN),
+  ];
+})();
 
 /**
  * The Doghouse's dog on its lead (D-179), while the Doghouse earns nothing outside a fenced yard:
@@ -342,12 +433,13 @@ interface Drawing {
 
 export const DRAWINGS = {
   'own-doghouse': { frames: [DOGHOUSE] },
-  'own-hen-w': { frames: [HEN] },
-  'own-hen-e': { frames: [mirror(HEN)] },
-  'own-hen-brown-w': { frames: [BROWN_HEN] },
-  'own-hen-brown-e': { frames: [mirror(BROWN_HEN)] },
+  // The hens peck (D-185), each phase a drawing of its own: yard.ts picks one per hen.
+  ...hens('own-hen-w', HEN, HEN_PECK),
+  ...hens('own-hen-e', mirror(HEN), mirror(HEN_PECK)),
+  ...hens('own-hen-brown-w', BROWN_HEN, BROWN_HEN_PECK),
+  ...hens('own-hen-brown-e', mirror(BROWN_HEN), mirror(BROWN_HEN_PECK)),
   'own-sprinkler': { frames: SPRINKLER, ms: 180 },
-  'own-dog-bed': { frames: [DOG_BED] },
+  'own-dog-bed': { frames: DOG_BED_BREATHING, ms: FEEL.dogBed.stepMs },
   'own-dog-on-lead': { frames: [DOG_ON_LEAD] },
   'own-dog-loose': { frames: DOG_LOOSE, ms: FEEL.dog.hopMs },
   'own-rain-near': { frames: [RAIN_NEAR] },
@@ -375,6 +467,11 @@ export type ArtId = SpriteId | DrawingId;
 
 export function isDrawing(id: string): id is DrawingId {
   return id.startsWith('own-') && id in DRAWINGS;
+}
+
+/** A hen's drawing (D-185): its look, pecking on beat `beat` (any whole number, by HEN_PHASES). */
+export function henDrawing(look: HenLook, beat: number): DrawingId {
+  return `own-hen-${look}-${PHASES[beat % HEN_PHASES]!}`;
 }
 
 /** A drawing's pixels: its frames side by side, RGBA (not premultiplied), w × frames by h. */
