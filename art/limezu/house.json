@@ -1156,7 +1156,14 @@
     "pack": "mi",
     "file": "3_Animated_objects/16x16/spritesheets/animated_toybox_full.png",
     "rect": [1, 9, 15, 15],
-    "note": "A toy chest (the animated toy box's first frame), against a Playroom's north wall."
+    "frames": {
+      "count": 12,
+      "dx": 16,
+      "dy": 0,
+      "ms": 200,
+      "hold": [30, 1, 3, 0, 0, 0, 0, 0, 0, 0, 0, 1]
+    },
+    "note": "A toy chest, against a Playroom's north wall. D-185: shut for 6 s (its first frame, as it always was), then its lid lifts and the toys peek out for 0.6 s, and it drops back. LimeZu's frames 3 to 9 raise the lid up to 9 px above this rect, so they're left out: a taller cut would move every toy box. Frame 10 is frame 2 again."
   },
   "teddy-0": {
     "pack": "mi",

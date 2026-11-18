@@ -93,7 +93,14 @@
     "pack": "mi",
     "file": "3_Animated_objects/16x16/spritesheets/animated_wall_piano.png",
     "rect": [0, 0, 31, 32],
-    "note": "An upright piano against the wall (the animated piano's first frame)."
+    "frames": {
+      "count": 8,
+      "dx": 32,
+      "dy": 0,
+      "ms": 200,
+      "hold": [25, 1, 1, 1, 6, 1, 1, 1]
+    },
+    "note": "An upright piano against the wall. D-185: in use now and then. It stands open for 5 s (its first frame, as it always was), its lid closes over the keys in three frames, stays shut 1.2 s and opens again: LimeZu's eight frames, held longer at rest than their 500 ms."
   },
   "tv-old": {
     "pack": "mi",
@@ -761,5 +768,44 @@
     "rect": [3, 6, 10, 14],
     "frames": { "count": 3, "dx": 16, "dy": 0, "ms": 160 },
     "note": "A candle in a wall sconce, its flame flickering over three frames: the Count's light on the wall beside his coffin (D-183). The halo's top three faint rows are left out, so it hangs within an outside wall's band and face, clear of the floor in front."
+  },
+  "cat": {
+    "pack": "mi",
+    "file": "3_Animated_objects/16x16/spritesheets/animated_cat.png",
+    "rect": [7, 0, 28, 15],
+    "frames": {
+      "count": 12,
+      "dx": 48,
+      "dy": 0,
+      "ms": 160,
+      "hold": [28, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0]
+    },
+    "note": "D-185: the house cat, a grey one lying on the floor of the first Living Room. It lies still with its tail curled for 4.5 s (its first frame, the rest pose), then swishes its tail over seven frames. LimeZu's last four frames are its first again, so they're left out. The rect is all twelve frames' tails and shadow."
+  },
+  "cat-black": {
+    "pack": "mi",
+    "file": "3_Animated_objects/16x16/spritesheets/animated_cat.png",
+    "rect": [7, 0, 28, 15],
+    "frames": {
+      "count": 12,
+      "dx": 48,
+      "dy": 0,
+      "ms": 160,
+      "hold": [28, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0]
+    },
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#3a3a50": "#1c1b26",
+          "#46465e": "#262533",
+          "#565972": "#2e2d3d",
+          "#6c6e85": "#383748",
+          "#8b8bab": "#444357",
+          "#9da3b7": "#545368"
+        }
+      }
+    ],
+    "note": "D-185: Count Vladislav's cat, the house cat in black: its six greys a shade of charcoal each, darkest to lightest, its shadow as it was."
   }
 }

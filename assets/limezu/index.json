@@ -251,6 +251,20 @@
     "h": 37,
     "spec": "0bbd9b7a4769ff04"
   },
+  "cat": {
+    "w": 28,
+    "h": 15,
+    "frames": 35,
+    "ms": 160,
+    "spec": "b95d691a27d2078c"
+  },
+  "cat-black": {
+    "w": 28,
+    "h": 15,
+    "frames": 35,
+    "ms": 160,
+    "spec": "ac4a13359d2a046e"
+  },
   "chair-east-0": {
     "w": 13,
     "h": 21,
@@ -1257,7 +1271,9 @@
   "piano": {
     "w": 31,
     "h": 32,
-    "spec": "adada3369340140e"
+    "frames": 37,
+    "ms": 200,
+    "spec": "1e447584f39938f6"
   },
   "picket-post": {
     "w": 5,
@@ -1721,7 +1737,9 @@
   "toy-box": {
     "w": 15,
     "h": 15,
-    "spec": "f92c6d8287526c1c"
+    "frames": 35,
+    "ms": 200,
+    "spec": "509e4dcbb143044b"
   },
   "toy-train": {
     "w": 55,

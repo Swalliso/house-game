@@ -924,6 +924,16 @@
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Exteriors"
   },
+  "limezu/cat.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 3_Animated_objects/16x16/spritesheets/animated_cat.png [7, 0, 28, 15], 12 frames [48, 0] apart",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
+  "limezu/cat-black.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 3_Animated_objects/16x16/spritesheets/animated_cat.png [7, 0, 28, 15], 12 frames [48, 0] apart",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
   "limezu/chair-east-0.png": {
     "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 1_Interiors/16x16/Theme_Sorter/12_Kitchen_16x16.png [98, 177, 13, 21]",
     "author": "LimeZu",
@@ -1890,7 +1900,7 @@
     "license": "LicenseRef-LimeZu-Modern-Exteriors"
   },
   "limezu/piano.png": {
-    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 3_Animated_objects/16x16/spritesheets/animated_wall_piano.png [0, 0, 31, 32]",
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 3_Animated_objects/16x16/spritesheets/animated_wall_piano.png [0, 0, 31, 32], 8 frames [32, 0] apart",
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Interiors"
   },
@@ -2340,7 +2350,7 @@
     "license": "LicenseRef-LimeZu-Modern-Interiors"
   },
   "limezu/toy-box.png": {
-    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 3_Animated_objects/16x16/spritesheets/animated_toybox_full.png [1, 9, 15, 15]",
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 3_Animated_objects/16x16/spritesheets/animated_toybox_full.png [1, 9, 15, 15], 12 frames [16, 0] apart",
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Interiors"
   },

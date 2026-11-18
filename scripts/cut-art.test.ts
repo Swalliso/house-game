@@ -138,6 +138,19 @@ describe('manifests', () => {
       /dx and dy can't both be 0/,
     );
     expect(() => parse({ ...entry, frames: { count: 2, dx: 16, dy: 0 } })).toThrow(/\.ms/);
+    // D-185: a hold for each frame, the first shown at least once, two frames at least in all.
+    const held = (hold: unknown) =>
+      parse({ ...entry, frames: { count: 3, dx: 16, dy: 0, ms: 100, hold } });
+    expect(held([5, 1, 0]).get('floor-x')!.frames!.hold).toEqual([5, 1, 0]);
+    expect(() => held([5, 1])).toThrow(/\.frames\.hold must be a list of 3 counts, one a frame/);
+    expect(() => held([0, 1, 1])).toThrow(
+      /\.frames\.hold\[0\] must be a whole number of at least 1/,
+    );
+    expect(() => held([2, -1, 1])).toThrow(
+      /\.frames\.hold\[1\] must be a whole number of at least 0/,
+    );
+    expect(() => held([1, 0.5, 1])).toThrow(/\.frames\.hold\[1\]/);
+    expect(() => held([1, 0, 0])).toThrow(/\.frames\.hold must make at least 2 frames/);
     expect(() => parse({ ...entry, ops: [] })).toThrow(/\.ops must be a non-empty list/);
     expect(() => parse({ ...entry, ops: [{ op: 'rotate' }] })).toThrow(
       /\.ops\[0\]: unknown op "rotate" \(one of tile, recolor, keyOut, flipX, compose\)/,
@@ -329,6 +342,25 @@ describe('cutSprite', () => {
         px(sheets[SHEET]!, 4 + 8 * k, 6 + k),
       );
     }
+  });
+
+  it('holds a frame for a rest and leaves out a frame held 0, its first frame first (D-185)', () => {
+    const frames = { count: 4, dx: 8, dy: 1, ms: 200 };
+    const plain = cutSprite(spec({ frames }), sheet, 'x');
+    const cut = cutSprite(spec({ frames: { ...frames, hold: [3, 1, 0, 2] } }), sheet, 'x');
+    // Frame 0 three times, frame 1 once, frame 3 twice: six frames of 200 ms.
+    expect([cut.image.width, cut.image.height, cut.w, cut.h, cut.frames, cut.ms]).toEqual([
+      36, 5, 6, 5, 6, 200,
+    ]);
+    [0, 0, 0, 1, 3, 3].forEach((k, i) => {
+      for (let y = 0; y < 5; y++) {
+        for (let x = 0; x < 6; x++) {
+          expect(px(cut.image, i * 6 + x, y), `strip frame ${i}`).toEqual(
+            px(plain.image, k * 6 + x, y),
+          );
+        }
+      }
+    });
   });
 
   it('reads a compose layer that follows as far along as each frame (D-177)', () => {

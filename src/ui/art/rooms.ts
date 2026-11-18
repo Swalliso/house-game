@@ -57,6 +57,12 @@
 // pieces are at most 22 px wide, to stand in a one-cell-wide room, and at most 26 px tall, to
 // stand under the north wall of a one-cell-deep one, or come in a second shape for it (an upright
 // cot or a side-on one, an easel without its finial).
+//
+// The house cat (D-185) lies on the floor of the run's first Living Room, the client's own pet as
+// their things are (D-183): none for the Barkers, who have their dogs, and a black one for the
+// Count. It lies down after everything else, the lamp included, where the furniture leaves floor
+// free, so nothing else moves and a full room goes without. Only the board's house has one: a
+// piece alone (a card's picture, the ghost) never does.
 
 import {
   CONTENT,
@@ -111,6 +117,8 @@ export interface RoomLayout {
    * or a room too full for one): house-paint.ts draws it with the walls and lights it.
    */
   pendant?: true;
+  /** D-185: the house cat lying on its floor, one of `items` (catIn says which room has it). */
+  cat?: Item;
 }
 
 /**
@@ -1219,11 +1227,14 @@ interface Theirs {
 /** Rugs, runners and mats lie under the furniture: left out of how much of it a room keeps. */
 const UNDERFOOT = /^(rug-|runner-|mat-|bath-mat)/;
 
-/** How much furniture a layout has: its pieces' area in art px, what lies underfoot left out. */
+/**
+ * How much furniture a layout has: its pieces' area in art px, what lies underfoot left out, and
+ * the house cat (D-185), which isn't furniture.
+ */
 function furniture(l: RoomLayout): number {
   let n = 0;
   for (const it of l.items) {
-    if (UNDERFOOT.test(it.sprite)) continue;
+    if (UNDERFOOT.test(it.sprite) || isCat(it.sprite)) continue;
     const { w, h } = artSize(it.sprite);
     n += w * h;
   }
@@ -1338,6 +1349,141 @@ function dogsBed(wants: readonly Want[], c: Ctx): Want[][] {
     slots: [...corners(c, 'SE', 'SW'), 'C', 'S', ...corners(c, 'E', 'W'), 'N', 'NW', 'NE'],
   });
   return [anywhere!, ...inPlaceOf(wants, 'own-dog-bed', /^(plant-|side-|lamp-)/), ...ways];
+}
+
+// ---------------------------------------------------------------------------------------
+// D-185: the house cat.
+
+/**
+ * Each client's cat (D-185), the grey one from LimeZu's sheet or the Count's black one: their own
+ * pet, as their things are (D-183). The Barkers have their dogs, so none. Looks only: the table
+ * stays here, off the client's definition, so the content hash holds.
+ */
+const CATS: Readonly<Partial<Record<ClientId, SpriteId>>> = {
+  hendersons: 'cat',
+  vladislav: 'cat-black',
+  juniper: 'cat',
+  dale: 'cat',
+};
+
+/** The room type the cat lives in: the run's first one of it (catIn). */
+const CAT_ROOM: PieceId = 'livingRoom';
+
+/** Whether an item is a house cat (D-185): a pet, not furniture. */
+export function isCat(sprite: ArtId): boolean {
+  return sprite === 'cat' || sprite === 'cat-black';
+}
+
+/**
+ * Which of `rooms` (a house's pieces, or a model's rooms) `client`'s cat lies in (D-185): their
+ * first Living Room, the one with the lowest uid, as their things go in their first room of a
+ * type (theirsIn). Undefined for a client without a cat, or before they have a Living Room.
+ */
+export function catIn(
+  rooms: Iterable<{ readonly uid: number; readonly defId: PieceId }>,
+  client: ClientId | undefined,
+): number | undefined {
+  if (!client || !CATS[client]) return undefined;
+  let first: number | undefined;
+  for (const r of rooms) {
+    if (r.defId === CAT_ROOM && (first === undefined || r.uid < first)) first = r.uid;
+  }
+  return first;
+}
+
+/**
+ * What the cat keeps off, in art px (catKeepsOff). `ears`: its top rows (its ears, the top of its
+ * back) may lie over the foot of what stands behind it, as it lies up against a coffee table.
+ * `digit` and `badge`: the room's digit in its bottom-right cell's corner, and its badges along
+ * its top row under the wall (label-layout.ts: the most a 3-digit score or a badge takes at 1×).
+ * `figure` and `pair`: a member of the household (D-177), and a member and their suitcase in the
+ * line at the front door (people.ts FIGURE and WAITING.spacing). Standing south of the room, their
+ * heads rise over its south wall onto its floor, drawn over what lies there.
+ */
+const CAT = {
+  ears: 5,
+  digit: { w: 28, h: 13 },
+  badge: 16,
+  figure: { w: 16, h: 26 },
+  pair: 26,
+} as const;
+
+/** D-185: the floor the cat keeps off in `room` (CAT), as rects in lot art px. */
+function catKeepsOff(m: HouseModel, room: Room): Rect[] {
+  const { digit, badge, figure, pair } = CAT;
+  const cells = room.cells;
+  // The digit's cell, as label-layout.ts finds it: the bottom row's rightmost.
+  const d = [...cells].sort((a, b) => b.y - a.y || b.x - a.x)[0]!;
+  const right = (d.x + 1) * CELL - inset(m, d.x, d.y, 'E');
+  const bottom = (d.y + 1) * CELL - inset(m, d.x, d.y, 'S');
+  const out: Rect[] = [{ x: right - digit.w, y: bottom - digit.h, w: digit.w, h: digit.h }];
+  // The badges, and a Renovated room's stars beside the ⚠: along the top row, under its wall.
+  const top = Math.min(...cells.map((c) => c.y));
+  for (const c of cells) {
+    if (c.y !== top) continue;
+    out.push({ x: c.x * CELL, y: top * CELL, w: CELL, h: inset(m, c.x, top, 'N') + badge });
+  }
+  // The heads of figures standing on [x0, x1) south of the wall whose band's top is `wall`, their
+  // feet on `feet`: the part over the floor.
+  const heads = (x0: number, x1: number, feet: number, wall: number) => {
+    const y = feet - figure.h;
+    if (y < wall) out.push({ x: x0, y, w: x1 - x0, h: wall - y });
+  };
+  // A member in the doorway from their room south of it (people.ts doorwaySpot): their feet on
+  // the south edge of its clear floor, anywhere along it.
+  const household = m.client ? CONTENT.clients[m.client].household.arrivals : [];
+  const members = new Set(household.flatMap((a) => a.room));
+  for (const dw of m.doors) {
+    const south = dw.dir === 'h' && dw.a === room.uid ? m.rooms.get(dw.b) : undefined;
+    if (!south || !members.has(south.defId)) continue;
+    const { clear } = dw;
+    const half = figure.w / 2;
+    heads(clear.x - half, clear.x + clear.w + half, clear.y + clear.h, dw.gap.y);
+  }
+  // At a front door in its south wall: the members with no room built yet, who wait there once
+  // they arrive, lined up across the mat (people.ts lineUp), and the client at either end of
+  // their line (D-182), a px to spare each side.
+  const front = m.exits.find((e) => e.kind === 'front');
+  if (front?.uid === room.uid && front.side === 'S') {
+    const { mat, gap } = front;
+    const mid = mat.x + mat.w / 2;
+    const built = new Set([...m.rooms.values()].map((r) => r.defId));
+    const n = household.filter((a) => !a.room.some((id) => built.has(id))).length;
+    heads(mid - (n / 2 + 1) * pair - 1, mid + (n / 2) * pair + figure.w + 1, mat.y + mat.h, gap.y);
+  }
+  return out;
+}
+
+/**
+ * D-185: the cat lies down last of all, after the lamp a finished room adds (D-181), so nothing else
+ * in the room moves. It lies on the floor inside the walls, below the north faces, off the
+ * doorways' walkways and what catKeepsOff lists, clear of everything standing but for its ears
+ * (CAT.ears); as near as it can to the front of the room's middle piece (the coffee table in front
+ * of a sofa, a reading room's table), or to the middle of the floor; the nearer side of the room
+ * its small choices take (Ctx.flip) on a tie. None where none fits: a full room goes without.
+ */
+function catOf(L: Layout, c: Ctx, sprite: SpriteId): Item | undefined {
+  const g = L.g;
+  const { w, h } = artSize(sprite);
+  const off = [...g.blocked, ...L.avoid, ...catKeepsOff(g.m, g.room)];
+  const solid = L.placed.flatMap((p) => (p.rect ? [p.rect] : []));
+  const mid = L.lastC?.rect;
+  const fx = mid ? mid.x + mid.w / 2 : (g.ix0 + g.ix1) / 2;
+  const fy = mid ? mid.y + mid.h : (g.floorTop + g.iy1) / 2;
+  let best: { x: number; y: number; d: number } | null = null;
+  for (let y = g.floorTop + 1; y + h <= g.iy1; y++) {
+    for (let x = g.ix0; x + w <= g.ix1; x++) {
+      const r = { x, y, w, h };
+      const body = { x, y: y + CAT.ears, w, h: h - CAT.ears };
+      if (off.some((o) => overlaps(r, o)) || solid.some((s) => overlaps(body, s))) continue;
+      if (!onFloor(g, r, false, 0)) continue;
+      const d = Math.abs(x + w / 2 - fx) + Math.abs(y + CAT.ears - fy);
+      // On a tie, the westmost or the eastmost, as the room's flip says.
+      const better = !best || d < best.d || (d === best.d && (c.flip ? x < best.x : x > best.x));
+      if (better) best = { x, y, d };
+    }
+  }
+  return best ? L.add(want(sprite, 'C'), sprite, best.x, best.y, null).item : undefined;
 }
 
 // ---------------------------------------------------------------------------------------
@@ -2062,6 +2208,9 @@ function layOut(m: HouseModel, uid: number, given?: readonly Want[], lit = true)
   const lights = lit && !!room.finished;
   const lamp = lights && !HANGS.has(room.defId) ? lampOf(L, c, drape) : undefined;
   const pendant = lights && !lamp;
+  // D-185: the house cat lies down after that, last of all. Only the board's house has one.
+  const pet = !look && catIn(m.rooms.values(), m.client) === uid ? CATS[m.client!] : undefined;
+  const cat = pet ? catOf(L, c, pet) : undefined;
   // Back to front: rugs and runners first, then by bottom edge, west to east.
   const items = L.placed
     .map((p) => ({ p, flat: !p.rect, bottom: p.item.y + artSize(p.item.sprite).h }))
@@ -2081,6 +2230,7 @@ function layOut(m: HouseModel, uid: number, given?: readonly Want[], lit = true)
     ...(drape ? { drape } : {}),
     ...(lamp ? { lamp } : {}),
     ...(pendant ? { pendant: true as const } : {}),
+    ...(cat ? { cat } : {}),
   };
 }
 
