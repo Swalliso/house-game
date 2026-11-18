@@ -4,6 +4,7 @@
 // JobBoard.tsx so lot-map.test.ts can hold its colors to the palette.
 
 import { sunSideText, terrainAt, type Lot, type TerrainId } from '../../rules/index.ts';
+import { lotLook, type Look } from '../board/terrain/biome.ts';
 
 /** What a tile of the map shows: its terrain, else open ground; or the street. */
 export type LotMapKind = TerrainId | 'ground' | 'street';
@@ -18,12 +19,30 @@ export const LOT_COLORS: Readonly<Record<LotMapKind, string>> = {
   tree: '#32675a',
   pond: '#4995e3',
   creek: '#50a7e8',
+  /** D-174: the lake, a deeper blue than the pond. */
+  lake: '#4280dd',
   boulder: '#989ebe',
   oldShed: '#7e6151',
   timeCapsule: '#b48f54',
   /** The street's row, under the lot: the road's grey. */
   street: '#8b8bab',
 };
+
+/**
+ * A biome's own grass and trees on the map (D-174), as its board draws them; the rest as
+ * LOT_COLORS. Also LimeZu's.
+ */
+export const LOOK_COLORS: Readonly<Record<Look, Readonly<Partial<Record<LotMapKind, string>>>>> = {
+  meadow: {},
+  autumn: { ground: '#8d9580', tree: '#b35e3f' },
+  dry: { ground: '#c8c27e', tree: '#b29638' },
+};
+
+/** Tile (x, y)'s color on the map, in the lot's look. */
+export function lotMapColor(lot: Lot, x: number, y: number): string {
+  const kind = lotMapKind(lot, x, y);
+  return LOOK_COLORS[lotLook(lot)][kind] ?? LOT_COLORS[kind];
+}
 
 /** The map's size in tiles: the lot, and the street's row under it. */
 export function lotMapSize(lot: Lot): { w: number; h: number } {
@@ -40,6 +59,7 @@ export function lotMapKind(lot: Lot, x: number, y: number): LotMapKind {
 export function lotSummary(lot: Lot): string {
   const count = (id: TerrainId) => lot.terrain.filter((t) => t === id).length;
   const parts: string[] = [];
+  if (count('lake') > 0) parts.push('a lake');
   if (count('pond') > 0) parts.push('a pond');
   if (count('creek') > 0) parts.push('a creek');
   const trees = count('tree');

@@ -124,7 +124,8 @@ describe('Copy Machine', () => {
   it('puts a placed piece’s card in the reserve', () => {
     const s = build([['livingRoom', 0, 0]], { supplies: [tool('copyMachine')] });
     const { state } = useTool(s, { uid: 1 });
-    expect(state.reserve).toEqual([{ id: 'livingRoom' }]);
+    // After the standing stock's, there from week 1 (D-162).
+    expect(state.reserve).toEqual([...s.reserve, { id: 'livingRoom' }]);
     expect(state.house.pieces).toHaveLength(1);
   });
 });
@@ -146,10 +147,10 @@ describe('Rush Order', () => {
 
 describe('Open House Party', () => {
   it('Social and Pretty pieces earn +100% this week; others don’t', () => {
-    // Social: a Living Room, a Kitchen, and a Patio earning 4 from touching both. Pretty: three
-    // Flower Beds in a row, the middle one earning 3. Apart from them, a Bedroom (Quiet). The
-    // Patio's 4 and the Flower Bed's 3 are big enough that +100% (8, 6) can't pass for a
-    // smaller boost after rounding (+50% would give 6 and 5).
+    // Social: a Living Room, a Kitchen, and a Patio earning 4 from touching both and 1 out back
+    // (D-166). Pretty: three Flower Beds in a row, the middle one earning 3. Apart from them, a
+    // Bedroom (Quiet). The Patio's 5 and the Flower Bed's 3 are big enough that +100% (10, 6)
+    // can't pass for a smaller boost after rounding (+50% would give 8 and 5).
     const s = build(
       [
         ['livingRoom', 0, 0],
@@ -164,8 +165,8 @@ describe('Open House Party', () => {
     );
     const before = rules.currentTally(s);
     const after = rules.currentTally(useTool(s).state);
-    expect(earnedOf(before, 3)).toBe(4);
-    expect(earnedOf(after, 3)).toBe(8);
+    expect(earnedOf(before, 3)).toBe(5);
+    expect(earnedOf(after, 3)).toBe(10);
     expect(earnedOf(before, 5)).toBe(3);
     expect(earnedOf(after, 5)).toBe(6);
     for (const uid of [1, 2, 3, 4, 5, 6]) {
@@ -208,10 +209,11 @@ describe('Fertilizer', () => {
 });
 
 describe('Inspector’s Visit', () => {
-  it('adds +25 to the spec bonus for this week', () => {
+  // D-165: +50, from +25, for the shorter checklist.
+  it('adds +50 to the spec bonus for this week', () => {
     const s = build([], { supplies: [tool('inspectorsVisit')] });
     expect(rules.rule(s, 'specBonus')).toBe(25);
-    expect(rules.rule(useTool(s).state, 'specBonus')).toBe(50);
+    expect(rules.rule(useTool(s).state, 'specBonus')).toBe(75);
   });
 });
 
@@ -331,7 +333,9 @@ describe('company upgrades', () => {
   it('Savings Account: +1 budget per 5 held at a milestone, up to 3', () => {
     /** Meets milestone 1 holding `budget`, and returns its interest. */
     const interest = (budget: number, upgrades: UpgradeId[]) => {
-      let s: RunState = { ...build([['bedroom', 0, 0]], { upgrades }), budget, score: 15 };
+      const start = build([['bedroom', 0, 0]], { upgrades });
+      // At the target already, so it's met on time whatever the targets are.
+      let s: RunState = { ...start, budget, score: rules.target(start) };
       const events: GameEvent[] = [];
       while (s.screen === 'build') {
         const out = rules.apply(s, PASS);

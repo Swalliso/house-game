@@ -61,8 +61,9 @@ const HELP = `npm run sim -- [options]
   --policy NAME       random | novice | greedy (default greedy)
   --early MODE        greedy completes milestones early: never (default) | always |
                       last (only when that saves exactly one week)
-  --strikes MODE      greedy buys the strike service: none (default) | fixed (Driveway,
-                      Fence, Hallway, Doghouse, then Sapling, as the M3 bot did)
+  --strikes MODE      greedy's strikes (D-157): none (default) | fixed: it strikes hand
+                      cards (Driveway, Fence, Hallway, Doghouse, then Sapling) and buys
+                      +1 strike while it holds fewer strikes than those types left
   --client ID         whose house: a client id, or all (default): seed i gets the i-th Core
                       client in turn, so every arm plays each seed with the same client
   --crew ID           the crew: a crew id, or all (each client gets every crew in turn);

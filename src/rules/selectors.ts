@@ -9,7 +9,17 @@
 // A feature's tags come from its FeatureDef. Inside a fixture's modifiers, `{ host: true }`
 // is the piece it's installed in, so matchers take the host's uid when there is one.
 
-import type { Content, PieceCondition, PieceDef, PieceId, Selector, Tag } from './index.ts';
+import type {
+  Card,
+  Content,
+  Effect,
+  PieceCondition,
+  PieceDef,
+  PieceId,
+  Region,
+  Selector,
+  Tag,
+} from './index.ts';
 import {
   fencedYardsBordered,
   isRoom,
@@ -158,6 +168,68 @@ export function matchesDef(sel: Selector, def: PieceDef): boolean {
     }
   }
   return false;
+}
+
+// ---------------------------------------------------------------------------------------
+// D-166: the yards a card reads, for the board's shading while it's picked.
+
+/** The two yards, split at the house's front row (layout.ts). */
+export type Yard = Extract<Region, 'frontYard' | 'backYard'>;
+const YARDS: readonly Yard[] = ['frontYard', 'backYard'];
+
+function selectorRegions(sel: Selector, out: Set<Region>): void {
+  if (sel === 'all') return;
+  if ('in' in sel) out.add(sel.in);
+  else if ('touching' in sel) selectorRegions(sel.touching, out);
+  else if ('any' in sel) sel.any.forEach((s) => selectorRegions(s, out));
+  else if ('all' in sel) sel.all.forEach((s) => selectorRegions(s, out));
+  else if ('not' in sel) selectorRegions(sel.not, out);
+}
+
+function conditionRegions(c: PieceCondition, out: Set<Region>): void {
+  if ('in' in c) out.add(c.in);
+  else if ('touching' in c) selectorRegions(c.touching, out);
+  else if ('is' in c) selectorRegions(c.is, out);
+  else if ('and' in c) c.and.forEach((x) => conditionRegions(x, out));
+  else if ('or' in c) c.or.forEach((x) => conditionRegions(x, out));
+  else if ('not' in c) conditionRegions(c.not, out);
+}
+
+function effectRegions(e: Effect, out: Set<Region>): void {
+  switch (e.kind) {
+    case 'perTile':
+      out.add(e.region);
+      break;
+    case 'conditional':
+      conditionRegions(e.when, out);
+      effectRegions(e.effect, out);
+      break;
+    case 'requires':
+      conditionRegions(e.condition, out);
+      break;
+    case 'neighbor':
+    case 'aura':
+      selectorRegions(e.match, out);
+      break;
+    default:
+      break;
+  }
+}
+
+/**
+ * The yards a card's lines name (D-166): a piece's effects ("+1 every week in the back yard"),
+ * or a fixture's modifiers (Garden Lights' front yard). The board shades them while it's picked.
+ */
+export function yardsRead(content: Content, card: Card): Yard[] {
+  const out = new Set<Region>();
+  if (card.kind === 'piece') {
+    for (const e of content.pieces[card.id]?.effects ?? []) effectRegions(e, out);
+  } else {
+    for (const m of content.fixtures[card.id]?.modifiers ?? []) {
+      if ('target' in m && m.target !== 'all') selectorRegions(m.target, out);
+    }
+  }
+  return YARDS.filter((y) => out.has(y));
 }
 
 /** Distinct neighbors (for scoring: links count, connectors don't) matching the selector. */

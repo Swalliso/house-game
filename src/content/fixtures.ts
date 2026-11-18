@@ -7,11 +7,18 @@
 // Skylight, Blackout Curtains, and Bunk Beds also earn +25% (D-082): their Appendix B effects
 // (Sunny, Dark, counting twice) only pay off with a blueprint or M4a's client specs, so on their
 // own they'd be dead cards in M3.
+//
+// D-172: a fixture fits only where it makes sense. The Fireplace, Blackout Curtains and the Bay
+// Window took any room, a Bathroom, Closet or Garage included; now each names the rooms it
+// leaves out (`roomsBut`), and its card says "most rooms". The Skylight and Soundproofing still
+// fit any room: a skylit Bathroom and a soundproofed Garage are real things.
 
-import type { FixtureDef, FixtureId } from '../rules/index.ts';
+import type { FixtureDef, FixtureId, PieceId } from '../rules/index.ts';
 import { PRICES } from './balance.ts';
 
 const ROOM = { property: 'room' } as const;
+/** D-172: every room but these (a variant counts as its type, as everywhere). */
+const roomsBut = (...out: PieceId[]) => ({ all: [ROOM, { not: { piece: out } }] }) as const;
 const HOST = { host: true } as const;
 
 export const FIXTURES: Readonly<Record<FixtureId, FixtureDef>> = {
@@ -20,7 +27,8 @@ export const FIXTURES: Readonly<Record<FixtureId, FixtureDef>> = {
     name: 'Fireplace',
     tier: 'core',
     rarity: 'common',
-    fits: ROOM,
+    // No hearth in a room of tile, coats or cars.
+    fits: roomsBut('bathroom', 'closet', 'garage', 'mudroom'),
     drawWeight: 5,
     fromPhase: 1,
     price: PRICES.fixture.common,
@@ -50,7 +58,7 @@ export const FIXTURES: Readonly<Record<FixtureId, FixtureDef>> = {
     name: 'Blackout Curtains',
     tier: 'core',
     rarity: 'common',
-    fits: ROOM,
+    fits: roomsBut('bathroom', 'closet', 'garage'),
     drawWeight: 5,
     fromPhase: 1,
     price: PRICES.fixture.common,
@@ -111,7 +119,9 @@ export const FIXTURES: Readonly<Record<FixtureId, FixtureDef>> = {
     tier: 'core',
     rarity: 'common',
     // Checked when it's installed: it stays if the room later becomes interior.
-    fits: { all: [ROOM, { property: 'exterior' }] },
+    fits: {
+      all: [ROOM, { property: 'exterior' }, { not: { piece: ['bathroom', 'closet', 'garage'] } }],
+    },
     drawWeight: 5,
     fromPhase: 1,
     price: PRICES.fixture.common,

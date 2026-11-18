@@ -1,6 +1,7 @@
 // Rule benders (implementation-plan.md §5). A run's modifiers come from its crew, its client's
-// tastes and pool (M4a), its lot's traits (D-119: Creekside), its blueprints, its company
-// upgrades, this week's tools, and (M4b) a change order's phase effect while its phase runs;
+// tastes and pool (M4a), its lot's traits (D-119: Creekside), the house rules that pay on the
+// rooms (D-165: Cozy), its blueprints, its company upgrades, this week's tools, and (M4b) a
+// change order's phase effect while its phase runs;
 // fixtures carry their own, on their host, and are gathered from the house when it's tallied
 // (scoring.ts).
 //
@@ -52,8 +53,8 @@ export type ModState = Pick<RunState, 'setup' | 'blueprints'> &
 
 /**
  * Every run-level modifier: the crew's, the client's tastes and pool (M4a), the lot's traits'
- * (D-119), each blueprint's in the order bought, each company upgrade's, then the timed effects':
- * this week's tools', and a running phase effect's (M4b).
+ * (D-119), the room rules' (D-165), each blueprint's in the order bought, each company upgrade's,
+ * then the timed effects': this week's tools', and a running phase effect's (M4b).
  */
 export function runModifiers(content: Content, state: ModState): ActiveMod[] {
   const crew = content.crews[state.setup.crewId];
@@ -73,6 +74,11 @@ export function runModifiers(content: Content, state: ModState): ActiveMod[] {
       for (const mod of trait.modifiers) {
         out.push({ mod, source: { kind: 'lot', id: trait.id }, since: 0 });
       }
+    }
+  }
+  for (const rule of Object.values(content.roomRules)) {
+    for (const mod of rule!.modifiers) {
+      out.push({ mod, source: { kind: 'house', id: rule!.id }, since: 0 });
     }
   }
   for (const owned of state.blueprints) {
@@ -146,5 +152,7 @@ export function sourceName(content: Content, source: ModSource): string {
       return content.changeOrders[source.id].name;
     case 'lot':
       return content.lotTraits[source.id].name;
+    case 'house':
+      return content.roomRules[source.id]?.name ?? source.id;
   }
 }

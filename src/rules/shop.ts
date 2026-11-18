@@ -5,8 +5,8 @@
 //   come from the `shop/<shop>/<refresh>` stream and never include a blueprint the run owns.
 //   Blueprint and fixture slots roll rarity with the shop's weights; a rarity with nothing
 //   left falls back to the likeliest one that has something.
-// - Where things go: blueprints into their slots; pieces into the reserve (placing one is the
-//   week's turn); fixtures into supplies (free to install). Only bought, picked, and copied
+// - Where things go: blueprints into their slots; pieces into the reserve (placing one doesn't
+//   use the week, D-163); fixtures into supplies (free to install). Only bought, picked, and copied
 //   pieces fill the reserve's slots: a crew's starting pieces and an arrival's cards (M4b) sit
 //   in extra slots. A member's room (M4b) is never on sale and never in a crate.
 // - Prices: the item's price × the `shopPricePct` rule, rounded half up, then the sale (one
@@ -15,8 +15,9 @@
 //   is discounted.
 // - Selling pays half the item's price at the current discount, rounded down, whatever was
 //   paid, so buying on sale and selling back is never a profit.
-// - The strike service (D-076) names a card type, which never comes up in the draws again.
-//   At least `strikeMinTypes` drawable types always remain in each row of the draw (D-121).
+// - The strike service is +1 strike, used from the hand (D-157). A run code from before names
+//   a card type with it (D-076), which never comes up in the draws again, and replays so. At
+//   least `strikeMinTypes` drawable types always remain in each row of the draw (D-121).
 // - M3b: tools (rarity-weighted, into supplies), a crate (pick 1 of its options from the
 //   `crate/<shop>/<refresh>/<slot>` stream), and one company upgrade per visit from shop 2,
 //   from `shop/<shop>/upgrade` so a refresh keeps it. Shop 1 opens with the free Housewarming
@@ -28,12 +29,14 @@ import type {
   CardType,
   Content,
   CrateId,
+  Modifier,
   CratePick,
   FixtureId,
   OfferView,
   PickOption,
   PieceId,
   Rarity,
+  ReservePiece,
   RunState,
   ServiceId,
   ShopOffer,
@@ -45,7 +48,7 @@ import type {
   UpgradeId,
 } from './index.ts';
 import { DRAW_ROWS, drawableTypes, isStruck } from './draw.ts';
-import { ruleValue } from './modifiers.ts';
+import { ruleValue, runModifiers } from './modifiers.ts';
 import { stream, type Rng } from './rng.ts';
 import { roundHalfUp } from './scoring.ts';
 import { matchesDef } from './selectors.ts';
@@ -75,11 +78,17 @@ export function slotsFor(content: Content, state: RunState): Slots {
 }
 
 /**
- * Reserve pieces that count against its slots: bought, picked, and copied ones. A crew's
- * starting pieces and an arrival's cards (M4b) sit in extra slots.
+ * Whether a reserve piece sits in an extra slot, which doesn't count against the reserve's: a
+ * crew's starting piece and an arrival's card (M4b), or what the client brought and the standing
+ * stock (D-160).
  */
+export function inExtraSlot(r: ReservePiece): boolean {
+  return !!r.crew || r.arrival !== undefined || !!r.client || !!r.stock;
+}
+
+/** Reserve pieces that count against its slots: bought, picked, and copied ones. */
 export function reserveUsed(state: Pick<RunState, 'reserve'>): number {
-  return state.reserve.filter((r) => !r.crew && !r.arrival).length;
+  return state.reserve.filter((r) => !inExtraSlot(r)).length;
 }
 
 export function stockFor(content: Content, shop: number): ShopStock {
@@ -116,7 +125,7 @@ export function offerName(content: Content, offer: ShopOffer): string {
 export const SERVICE_NAMES: Readonly<Record<ServiceId, string>> = {
   reroll: '+1 reroll',
   demolition: '+1 demolition',
-  strike: 'Strike a card',
+  strike: '+1 strike',
 };
 
 /** The item's own price, before the discount and the sale. */
@@ -186,19 +195,35 @@ export function sellPrice(content: Content, state: RunState, list: number): numb
   return Math.floor((discounted(content, state, list) * content.balance.shop.sellPct) / 100);
 }
 
-/** Card types the strike service could name now: any whose row keeps its floor (D-121). */
-export function strikeOptions(content: Content, state: RunState): CardType[] {
+/** The run's modifiers, for its draw weights: a special piece its client or crew draws counts. */
+const modsOf = (content: Content, state: RunState): Modifier[] =>
+  runModifiers(content, state).map((a) => a.mod);
+
+/**
+ * Card types a strike could take now: any whose row keeps its floor (D-121), counting the
+ * special pieces the run's client or crew puts in the draw (D-157). `mods` are the run's.
+ */
+export function strikeOptions(
+  content: Content,
+  state: RunState,
+  mods: readonly Modifier[] = modsOf(content, state),
+): CardType[] {
   return DRAW_ROWS.flatMap((row) => {
-    const left = drawableTypes(content, state.struck, row);
+    const left = drawableTypes(content, state.struck, row, mods);
     return left.length - 1 >= content.balance.shop.strikeMinTypes[row] ? left : [];
   });
 }
 
-export function canStrike(content: Content, state: RunState, type: CardType): Availability {
+export function canStrike(
+  content: Content,
+  state: RunState,
+  type: CardType,
+  mods: readonly Modifier[] = modsOf(content, state),
+): Availability {
   if (!type || (type.kind !== 'piece' && type.kind !== 'fixture')) {
     return { ok: false, reason: 'Pick a card type to strike.' };
   }
-  const options = strikeOptions(content, state);
+  const options = strikeOptions(content, state, mods);
   if (options.length === 0) return { ok: false, reason: SHOP_REASONS.noStrike };
   const known =
     type.kind === 'piece'
@@ -210,7 +235,7 @@ export function canStrike(content: Content, state: RunState, type: CardType): Av
   }
   if (!options.some((o) => o.kind === type.kind && o.id === type.id)) {
     // A type still drawn whose row is at its floor (D-121), or one never drawn at all.
-    const drawn = drawableTypes(content, state.struck).some(
+    const drawn = drawableTypes(content, state.struck, undefined, mods).some(
       (o) => o.kind === type.kind && o.id === type.id,
     );
     return { ok: false, reason: drawn ? SHOP_REASONS.rowFloor : 'That card isn’t in the draws.' };
@@ -339,7 +364,10 @@ export function stockGoods(
 
   // Special pieces; a member's room (M4b) arrives with its member and is never sold.
   let pieces = (Object.keys(content.pieces) as PieceId[]).filter(
-    (id) => content.pieces[id].drawWeight === 0 && !content.pieces[id].member,
+    (id) =>
+      content.pieces[id].drawWeight === 0 &&
+      !content.pieces[id].member &&
+      !content.pieces[id].addition,
   );
   let fixtures = Object.keys(content.fixtures) as FixtureId[];
   for (let k = 0; k < stock.cards; k++) {
@@ -437,7 +465,7 @@ export function crateOptions(
     const crate = content.crates[source as CrateId];
     let left = (Object.keys(content.pieces) as PieceId[]).filter((id) => {
       const def = content.pieces[id];
-      if (def.member) return false;
+      if (def.member || def.addition) return false;
       if (crate.pool === 'special' && def.drawWeight !== 0) return false;
       return !crate.filter || matchesDef(crate.filter, def);
     });

@@ -3,12 +3,13 @@
 // it, instead of offering to fit the lot again. And M4's keys: a change order's sheet takes
 // only Enter, Esc and D, and a pack (D-106) never turns. And the supplies: a tool or a fixture
 // from them is free, so the strip says how it's aimed and never offers Enter (the polish review).
+// And strike mode (D-157): a card's click or number key, twice.
 
 import type { ComponentChildren, VNode } from 'preact';
 import { afterEach, describe, expect, it } from 'vitest';
 import { zoom } from '../board/camera.ts';
 import { busy } from '../fx/director.ts';
-import { movingUid, run, selected, source, tentative, tool } from '../store.ts';
+import { firstJobSeed, movingUid, run, selected, source, tentative, tool } from '../store.ts';
 import { shopHidden } from './actions.ts';
 import { Hints } from './Hints.tsx';
 
@@ -88,6 +89,7 @@ afterEach(() => {
   tentative.value = null;
   movingUid.value = null;
   tool.value = 'build';
+  firstJobSeed.value = null;
 });
 
 describe('the F hint', () => {
@@ -202,6 +204,20 @@ describe("the strip's keys for M4's plays", () => {
     expect(strip().find((h) => h.keys[0] === 'Enter')?.words).toBe('end the week');
   });
 
+  it('says build it for a piece from the reserve: it doesn’t use the week (D-163)', () => {
+    run.value = { ...start, screen: 'build', reserve: [{ id: 'bedroom' }] };
+    source.value = 'reserve';
+    selected.value = 0;
+    expect(strip().find((h) => h.keys[0] === 'Enter')?.words).toBe('pass');
+    tentative.value = { t: 'place', from: 'reserve', i: 0, x: 4, y: 4, rot: 0 };
+    expect(strip()).toEqual([
+      { keys: ['R'], words: 'rotate' },
+      { keys: ['Click'], words: 'move it' },
+      { keys: ['Enter'], words: 'build it' },
+      { keys: ['Esc'], words: 'pick it up' },
+    ]);
+  });
+
   it('offers no Enter for a fixture from the supplies: installing it is free', () => {
     run.value = { ...start, screen: 'build', supplies: [{ kind: 'fixture', id: 'fireplace' }] };
     source.value = 'supplies';
@@ -285,5 +301,37 @@ describe("the build strip's card keys", () => {
     // The Bigger Truck or the Landscaper adds a fifth.
     run.value = { ...start, screen: 'build', hand: [card, card, card, card, card] };
     expect(strip()[0]).toEqual({ keys: ['1–5'], words: 'pick a card' });
+  });
+});
+
+describe('strike mode’s keys (D-157)', () => {
+  const card = { kind: 'piece', id: 'bedroom' } as const;
+
+  it('says a card, clicked or its number pressed, twice strikes it, and S or Esc stops', () => {
+    for (const n of [1, 4, 5]) {
+      run.value = { ...start, screen: 'build', hand: Array.from({ length: n }, () => card) };
+      tool.value = 'strike';
+      const cards = Math.min(9, run.value.hand.length);
+      expect(strip()).toEqual([
+        { keys: ['Click', cards > 1 ? `1–${cards}` : '1'], words: 'a card twice to strike it' },
+        { keys: ['S', 'Esc'], words: 'stop' },
+      ]);
+    }
+  });
+
+  it('offers S on the build strip, as an extra, once Strike is on the plank', () => {
+    run.value = { ...start, screen: 'build', hand: [card, card, card, card] };
+    const s = [...walk(Hints())].find(
+      (v) =>
+        hasClass(v, 'hint') &&
+        [...walk(v.props.children as ComponentChildren)].some(
+          (k) => k.type === 'kbd' && text(k) === 'S',
+        ),
+    );
+    expect(s && hasClass(s, 'hint-extra')).toBe(true);
+    expect(strip()).toContainEqual({ keys: ['S'], words: 'strike' });
+    // The first job's first milestone has no Strike yet (D-149, D-157).
+    firstJobSeed.value = start.setup.seed;
+    expect(strip().some((h) => h.keys.includes('S'))).toBe(false);
   });
 });

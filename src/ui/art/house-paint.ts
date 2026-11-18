@@ -17,6 +17,11 @@
 //   LimeZu's palette (palette.ts) and ink.
 // - The sun (D-120), on the walls canvas like a Skylight's: a band of light along a Sunny room's
 //   wall that faces the sun, on each of its tiles in the sun, brighter under a window.
+// - A finished room's lamp, lit (D-181): a pool and a halo of amber light round it and its shade
+//   glowing, over everything the room draws, on the room's own floor (paintLight). A room with no
+//   lamp standing hangs one over its own floor (our own drawing, with the walls, like the
+//   Chandelier), lit the same. On the board, a member of the household standing in front of a
+//   lamp (D-177) covers it.
 //
 // Each covers what it paints (the house's bounding box plus a margin; the floor canvas also the
 // yard's ground); `x` and `y` place them on the lot, in art px.
@@ -36,7 +41,7 @@ import {
   type SunLight,
 } from '../board/house-model.ts';
 import { CELL, spritePos, type SpriteId } from '../sprites.ts';
-import type { PieceId } from '../../rules/index.ts';
+import type { Cell, PieceId } from '../../rules/index.ts';
 import { artSize, drawingPixels, isDrawing, type ArtId } from './drawings.ts';
 import { byType, itemRows, roomLayout, type Item } from './rooms.ts';
 import type { Ground, YardLayout, YardModel } from './yard.ts';
@@ -128,6 +133,33 @@ const CHANDELIER_INK: Readonly<Record<string, Rgb>> = {
   c: [0xcc, 0xe6, 0xec],
 };
 
+/**
+ * D-181: the lamp a finished room hangs where none stands (a kitchen's, over its table, or a room
+ * with no floor left for one): our own drawing, as the Chandelier is, a cream shade under a brass
+ * cap on its cord. k ink, G brass, S the shade, s its shading, w its rim, F the bulb.
+ */
+const PENDANT = [
+  '....k....',
+  '....k....',
+  '...kGk...',
+  '..kSSsk..',
+  '.kSSSSsk.',
+  '.kSSSSsk.',
+  'kSSSSSSsk',
+  'kwwwwwwwk',
+  '.kkFFFkk.',
+] as const;
+const PENDANT_INK: Readonly<Record<string, Rgb>> = {
+  k: INK,
+  G: [0xf2, 0xb2, 0x2b],
+  S: [0xe0, 0xd0, 0xb2],
+  s: [0xd0, 0xbe, 0x9c],
+  w: [0xb9, 0x9e, 0x86],
+  F: [0xd4, 0xde, 0xe6],
+};
+/** Its bulb lit: the palette's pale yellow. */
+const PENDANT_BULB: Rgb = [0xff, 0xf5, 0x9a];
+
 /** Every color the painters draw with (not the light and shade they blend over it): LimeZu's palette. */
 export const PAINTED: readonly Rgb[] = [
   INK,
@@ -143,6 +175,8 @@ export const PAINTED: readonly Rgb[] = [
   ...Object.values(PAD),
   ...Object.values(DRAPE),
   ...Object.values(CHANDELIER_INK),
+  ...Object.values(PENDANT_INK),
+  PENDANT_BULB,
 ];
 
 /** The house's shadow on the lot: light from the top-left (D-057). */
@@ -533,11 +567,18 @@ export function paintFloors(
 
 /** A room's floor inside its walls (over its box) and the floor's top under the north faces. */
 function floorBox(m: HouseModel, r: Room): Rect {
-  const cells = r.cells;
-  const x0 = r.box.x / CELL;
-  const y0 = r.box.y / CELL;
-  const x1 = x0 + r.box.w / CELL;
-  const y1 = y0 + r.box.h / CELL;
+  return floorOver(m, r.cells, r.box);
+}
+
+/**
+ * The floor inside the walls over `box` (lot art px, whole cells), of `cells` (a room's own,
+ * in it): what floorBox is for a whole room, for a rectangle of its cells.
+ */
+function floorOver(m: HouseModel, cells: readonly Cell[], box: Rect): Rect {
+  const x0 = box.x / CELL;
+  const y0 = box.y / CELL;
+  const x1 = x0 + box.w / CELL;
+  const y1 = y0 + box.h / CELL;
   const side = (s: 'N' | 'E' | 'S' | 'W') =>
     Math.max(
       0,
@@ -554,12 +595,12 @@ function floorBox(m: HouseModel, r: Room): Rect {
         .map((c) => inset(m, c.x, c.y, s)),
     );
   const face = cells.some((c) => c.y === y0 && hasFace(m, c.x, c.y)) ? WALL.face : 0;
-  const top = r.box.y + side('N') + face;
+  const top = box.y + side('N') + face;
   return {
-    x: r.box.x + side('W'),
+    x: box.x + side('W'),
     y: top,
-    w: r.box.w - side('W') - side('E'),
-    h: r.box.y + r.box.h - side('S') - top,
+    w: box.w - side('W') - side('E'),
+    h: box.y + box.h - side('S') - top,
   };
 }
 
@@ -711,6 +752,359 @@ export function chandelierAt(
   return { x: Math.floor(f.x + (f.w - w) / 2), y: Math.floor(f.y + f.h / 2 - h + 2), w, h };
 }
 
+/**
+ * D-181: a finished room's lamp, lit (paintLight): a warm pool on the floor round its foot, a halo
+ * round its shade, and the shade glowing from inside. It reads apart from the room's other light:
+ * amber and low beside its lamp, where the Chandelier's glow is pale yellow in the middle of the
+ * room and hangs from a chandelier, and round, where the sun lies in a cream band along a wall.
+ * Pixel light, as the Chandelier's: full strength in the middle, then two thirds, then a third.
+ */
+export const LAMP_LIGHT = {
+  pool: { rgb: [0xff, 0xa8, 0x40] as Rgb, alpha: 0.5, rx: 28, ry: 14 },
+  halo: { rgb: [0xff, 0xbc, 0x50] as Rgb, alpha: 0.55, rx: 14, ry: 13 },
+  /** The shade lit from inside: its cloth taken this far toward `rgb`; its ink outline stays. */
+  shade: { rgb: [0xff, 0xf0, 0xb8] as Rgb, mix: 0.8 },
+} as const;
+
+/**
+ * Each lamp's shade (its rows from the top, [from, to)) and the row of its foot, where its light
+ * pools on the floor: by sprite, else by family (a nightlamp's foot is its little table's).
+ */
+const LAMP_PARTS: Readonly<Record<string, { shade: readonly [number, number]; foot: number }>> = {
+  'lamp-floor': { shade: [0, 13], foot: 31 },
+  'lamp-floor-1': { shade: [0, 14], foot: 31 },
+  'lamp-floor-2': { shade: [0, 14], foot: 31 },
+  'side-lamp': { shade: [0, 9], foot: 20 },
+  nightlamp: { shade: [0, 9], foot: 16 },
+};
+
+/** A lamp's parts, by its sprite or else its family. */
+function lampParts(sprite: ArtId): { shade: readonly [number, number]; foot: number } | undefined {
+  return LAMP_PARTS[sprite] ?? LAMP_PARTS[sprite.replace(/-\d+$/, '')];
+}
+
+/**
+ * D-181: where room `uid`'s lamp gives its light, in art px: the middle of its shade, or of the
+ * lamp it hangs. Null when the room has no lamp lit. The director's moment bursts from it.
+ */
+export function lampSpot(m: HouseModel, uid: number): { x: number; y: number } | null {
+  const r = m.rooms.get(uid);
+  const layout = r?.finished ? roomLayout(m, uid) : null;
+  if (!r || !layout) return null;
+  const lamp = layout.lamp;
+  const parts = lamp && lampParts(lamp.sprite);
+  if (lamp && parts) {
+    return {
+      x: lamp.x + artSize(lamp.sprite).w / 2,
+      y: lamp.y + (parts.shade[0] + parts.shade[1]) / 2,
+    };
+  }
+  if (!layout.pendant) return null;
+  const at = pendantAt(m, r);
+  return { x: at.x + at.w / 2, y: at.y + PENDANT_SHADE };
+}
+
+/** LimeZu's outline inks, which a lit shade keeps. */
+const LAMP_INKS: readonly Rgb[] = [INK, [0x46, 0x46, 0x5e], [0x56, 0x59, 0x72]];
+
+/** Pixel (x, y) of a sprite or drawing (an animation's first frame): its RGBA. */
+function artPixel(atlas: AtlasPixels, id: ArtId, x: number, y: number): readonly number[] {
+  if (isDrawing(id)) {
+    const d = drawingPixels(id);
+    const i = (y * d.w * d.frames + x) * 4;
+    return [d.data[i]!, d.data[i + 1]!, d.data[i + 2]!, d.data[i + 3]!];
+  }
+  const s = spritePos(id);
+  const i = ((s.y + y) * atlas.width + s.x + x) * 4;
+  return [atlas.data[i]!, atlas.data[i + 1]!, atlas.data[i + 2]!, atlas.data[i + 3]!];
+}
+
+/** Whether item `it` draws lot pixel (px, py). */
+function drawnAt(atlas: AtlasPixels, it: Item, px: number, py: number): boolean {
+  const s = artSize(it.sprite);
+  const ix = px - it.x;
+  const iy = py - it.y;
+  return ix >= 0 && iy >= 0 && ix < s.w && iy < s.h && artPixel(atlas, it.sprite, ix, iy)[3]! > 0;
+}
+
+/**
+ * D-177: the household's members standing in their rooms as the board draws them, each one an
+ * item of their room, by room uid (board/people.ts roomPeople), and the atlas their pixels are
+ * in. The photos and the ghosts draw nobody.
+ */
+export interface Household {
+  readonly people: ReadonlyMap<number, readonly Item[]>;
+  readonly atlas: AtlasPixels;
+}
+
+/**
+ * D-177 × D-181: whether a member of the room, of `people` (board/people.ts roomPeople: each one
+ * an item of their room, as the board draws them), who stands in front of its lamp (the lamp's
+ * bottom edge at `bottom`: a hanging lamp's is its bulb's) is drawn at (px, py). The board sorts
+ * a member in with the room's furniture by bottom edge, in front of whatever's is no lower than
+ * their feet (people.ts withPeople), and so with its lamp, standing or hanging: there they cover
+ * it.
+ */
+function inFrontOfLamp(
+  people: readonly Item[],
+  bottom: number,
+  atlas: AtlasPixels,
+): (px: number, py: number) => boolean {
+  const front = people.filter((p) => p.y + artSize(p.sprite).h >= bottom);
+  return (px, py) => front.some((p) => drawnAt(atlas, p, px, py));
+}
+
+/** Pixel light in an oval, in three steps, where `on` lets it fall. */
+function lightOval(
+  cv: Canvas,
+  o: { rgb: Rgb; alpha: number; rx: number; ry: number },
+  cx: number,
+  cy: number,
+  on: (px: number, py: number) => boolean,
+): void {
+  for (let y = Math.floor(cy - o.ry); y <= Math.ceil(cy + o.ry); y++) {
+    for (let x = Math.floor(cx - o.rx); x <= Math.ceil(cx + o.rx); x++) {
+      const d = ((x + 0.5 - cx) / o.rx) ** 2 + ((y + 0.5 - cy) / o.ry) ** 2;
+      if (d >= 1 || !on(x, y)) continue;
+      cv.blend(x, y, o.rgb, d < 0.3 ? o.alpha : d < 0.65 ? o.alpha * 0.66 : o.alpha * 0.33);
+    }
+  }
+}
+
+/**
+ * D-181: the two parts of a finished room's light on the board. The glow (the pool on the floor,
+ * the halo, and a hanging lamp lit) stays still, as the floor and the walls do; a standing lamp's
+ * lit shade moves with the lamp when the room's furniture wobbles (piece-fx.ts's 'light' part).
+ */
+export type LightPart = 'glow' | 'shade';
+
+/**
+ * D-181: room `uid`'s lamp lit (rooms.ts gives a finished room its lamp), over everything the
+ * room draws: the board's overhang layer puts it right after the room's tall tops, and the
+ * photos paint it there too, so a piece further south (a Treehouse's deck rising into the room)
+ * stands in front of it. In the room's box, and only on its own cells: the pool on its floor and
+ * the halo round the shade (on its floor, faces and furniture), never on its wall bands, so the
+ * house's outline stays crisp; and the shade's own pixels where they're in view (not under a wall
+ * band or behind another piece), or the hanging lamp, lit. With `part`, only that part (both
+ * without). Null when the room has no lamp lit, or no such part.
+ *
+ * D-177: on the board, `people` are the room's members as items (people.ts roomPeople): one
+ * standing in front of its lamp covers it, so its shade, or the hanging lamp, isn't lit over them
+ * there; and the pool and the halo fall round a member, wherever they stand, not on them.
+ */
+export function paintLight(
+  m: HouseModel,
+  uid: number,
+  atlas: AtlasPixels,
+  part?: LightPart,
+  people: readonly Item[] = [],
+): Pixels | null {
+  const r = m.rooms.get(uid);
+  const layout = r ? roomLayout(m, uid) : null;
+  if (!r || !layout || (!layout.lamp && !layout.pendant)) return null;
+  const lamp = layout.lamp;
+  // A hanging lamp's light is all glow: it hangs with the walls.
+  if (part === 'shade' && !lamp) return null;
+  const cv = new Canvas(r.box.x, r.box.y, r.box.w, r.box.h);
+  const mask = wallMask(m, cv);
+  const own = (px: number, py: number) =>
+    roomAt(m, Math.floor(px / CELL), Math.floor(py / CELL)) === uid;
+  // The floor: the room's cells inside their walls and below their north faces (and off the
+  // corner an L's outside wall turns in).
+  const floor = (px: number, py: number) => {
+    const cx = Math.floor(px / CELL);
+    const cy = Math.floor(py / CELL);
+    if (roomAt(m, cx, cy) !== uid || mask.has(px, py)) return false;
+    const lx = px - cx * CELL;
+    const ly = py - cy * CELL;
+    return (
+      lx >= inset(m, cx, cy, 'W') &&
+      lx < CELL - inset(m, cx, cy, 'E') &&
+      ly >= inset(m, cx, cy, 'N') + (hasFace(m, cx, cy) ? WALL.face : 0) &&
+      ly < CELL - inset(m, cx, cy, 'S')
+    );
+  };
+  // The halo falls on the room's floor, faces and furniture, never on its walls' bands.
+  const inside = (px: number, py: number) => own(px, py) && !mask.has(px, py);
+  // D-177: the pool and the halo fall round a member of the household standing in the room, not
+  // on them, wherever they stand: at the lamp's foot its light, at half strength or more, would
+  // wash them out (Grandma's grey hair and purple trousers read as one amber).
+  const someone = (px: number, py: number) => people.some((p) => drawnAt(atlas, p, px, py));
+  const onFloor = (px: number, py: number) => floor(px, py) && !someone(px, py);
+  const onInside = (px: number, py: number) => inside(px, py) && !someone(px, py);
+  const lit = (c: Rgb): Rgb => {
+    const { rgb, mix } = LAMP_LIGHT.shade;
+    return [
+      Math.round(c[0] + (rgb[0] - c[0]) * mix),
+      Math.round(c[1] + (rgb[1] - c[1]) * mix),
+      Math.round(c[2] + (rgb[2] - c[2]) * mix),
+    ];
+  };
+
+  if (!lamp) {
+    // The hanging lamp: the pool on the floor below it, the halo, and the lamp itself lit (it
+    // hangs over everything in the room, as the Chandelier does, but a member in front of it).
+    const at = pendantAt(m, r);
+    const mid = at.x + at.w / 2;
+    lightOval(cv, LAMP_LIGHT.pool, mid, at.y + at.h + PENDANT_POOL, onFloor);
+    lightOval(cv, LAMP_LIGHT.halo, mid, at.y + PENDANT_SHADE, onInside);
+    const front = inFrontOfLamp(people, at.y + at.h, atlas);
+    paintPendant(cv, at, (px, py) => inside(px, py) && !front(px, py), lit);
+    return cv.pixels();
+  }
+  const parts = lampParts(lamp.sprite);
+  if (!parts) return null;
+  const { w } = artSize(lamp.sprite);
+  const [from, to] = parts.shade;
+  const mid = lamp.x + w / 2;
+  if (part !== 'shade') {
+    lightOval(cv, LAMP_LIGHT.pool, mid, lamp.y + parts.foot, onFloor);
+    lightOval(cv, LAMP_LIGHT.halo, mid, lamp.y + (from + to) / 2, onInside);
+  }
+  if (part === 'glow') return cv.pixels();
+
+  // The shade: where the board shows it. Its rows above the band's line are on the overhang, over
+  // the walls; the rest is under them. A piece drawn after it (further south) covers it, and so
+  // does a member standing in front of it.
+  const rows = itemRows(lamp);
+  const after = layout.items.slice(layout.items.indexOf(lamp) + 1);
+  const front = inFrontOfLamp(people, lamp.y + artSize(lamp.sprite).h, atlas);
+  for (let y = from; y < to; y++) {
+    const over = rows.top !== null && y < rows.top[1];
+    for (let x = 0; x < w; x++) {
+      const [pr, pg, pb, pa] = artPixel(atlas, lamp.sprite, x, y);
+      if (pa !== 255) continue;
+      if (LAMP_INKS.some((k) => k[0] === pr && k[1] === pg && k[2] === pb)) continue;
+      const px = lamp.x + x;
+      const py = lamp.y + y;
+      if (!own(px, py) || (!over && mask.has(px, py))) continue;
+      const covered = after.some((it) => drawnAt(atlas, it, px, py)) || front(px, py);
+      if (!covered) cv.set(px, py, lit([pr!, pg!, pb!]));
+    }
+  }
+  return cv.pixels();
+}
+
+/** The middle of the hanging lamp's shade, from its top, and how far below it its pool lies. */
+const PENDANT_SHADE = 5.5;
+const PENDANT_POOL = 6;
+
+/**
+ * Where a finished room's hanging lamp hangs, all of it over the room's own floor and off its
+ * wall bands: over the middle of the floor, as the Chandelier does (a quarter of the floor east
+ * of it in a room that has one). Where that isn't the room's floor (an L-Kitchen's middle is the
+ * corner its walls turn), over the middle of the biggest rectangle of the room's own floor it
+ * hangs clear over: in an L-Kitchen, the arm without a north face, which has the most floor.
+ */
+export function pendantAt(m: HouseModel, r: Room): Rect {
+  const f = floorBox(m, r);
+  const first = hangOver(f, r.fixture === 'chandelier' ? Math.floor(f.w / 4) : 0);
+  const mask = wallMask(m, r.box);
+  const clear = (at: Rect) =>
+    pendantPixels(at).every(
+      (p) =>
+        roomAt(m, Math.floor(p.x / CELL), Math.floor(p.y / CELL)) === r.uid && !mask.has(p.x, p.y),
+    );
+  if (clear(first)) return first;
+  for (const floor of floorRects(m, r)) {
+    const at = hangOver(floor, 0);
+    if (clear(at)) return at;
+  }
+  return first;
+}
+
+/** The hanging lamp over the middle of floor `f`, `shift` px east: its bulb just below the middle. */
+function hangOver(f: Rect, shift: number): Rect {
+  const w = PENDANT[0].length;
+  const h = PENDANT.length;
+  return { x: Math.floor(f.x + (f.w - w) / 2) + shift, y: Math.floor(f.y + f.h / 2 - h + 2), w, h };
+}
+
+/**
+ * The floors of the rectangles of room `r`'s own cells, the biggest first; of two the same size,
+ * the one nearer the middle of the room's floor, then the northmost, then the westmost.
+ */
+function floorRects(m: HouseModel, r: Room): Rect[] {
+  const x0 = r.box.x / CELL;
+  const y0 = r.box.y / CELL;
+  const x1 = x0 + r.box.w / CELL;
+  const y1 = y0 + r.box.h / CELL;
+  const own = new Set(r.cells.map((c) => `${c.x},${c.y}`));
+  const whole = floorBox(m, r);
+  const mx = whole.x + whole.w / 2;
+  const my = whole.y + whole.h / 2;
+  const out: { f: Rect; near: number }[] = [];
+  for (let ay = y0; ay < y1; ay++) {
+    for (let ax = x0; ax < x1; ax++) {
+      for (let by = ay + 1; by <= y1; by++) {
+        for (let bx = ax + 1; bx <= x1; bx++) {
+          const cells: Cell[] = [];
+          for (let y = ay; y < by; y++) for (let x = ax; x < bx; x++) cells.push({ x, y });
+          if (!cells.every((c) => own.has(`${c.x},${c.y}`))) continue;
+          const box = { x: ax * CELL, y: ay * CELL, w: (bx - ax) * CELL, h: (by - ay) * CELL };
+          const f = floorOver(m, cells, box);
+          if (f.w <= 0 || f.h <= 0) continue;
+          out.push({ f, near: (f.x + f.w / 2 - mx) ** 2 + (f.y + f.h / 2 - my) ** 2 });
+        }
+      }
+    }
+  }
+  return out
+    .sort(
+      (a, b) => b.f.w * b.f.h - a.f.w * a.f.h || a.near - b.near || a.f.y - b.f.y || a.f.x - b.f.x,
+    )
+    .map((o) => o.f);
+}
+
+/** D-181: the lot pixels the hanging lamp covers, hanging at `at` (pendantAt). */
+export function pendantPixels(at: Rect): { x: number; y: number }[] {
+  const out: { x: number; y: number }[] = [];
+  PENDANT.forEach((row, j) => {
+    for (let i = 0; i < row.length; i++)
+      if (PENDANT_INK[row[i]!]) out.push({ x: at.x + i, y: at.y + j });
+  });
+  return out;
+}
+
+/**
+ * The hanging lamp at `at`, where `keep` lets it (its room's own cells, off the wall bands): as
+ * it is, or with `lit` taking its shade and the bulb lit.
+ */
+function paintPendant(
+  cv: Canvas,
+  at: Rect,
+  keep: (px: number, py: number) => boolean,
+  lit?: (c: Rgb) => Rgb,
+): void {
+  PENDANT.forEach((row, j) => {
+    for (let i = 0; i < row.length; i++) {
+      const k = row[i]!;
+      const c = PENDANT_INK[k];
+      if (!c || !keep(at.x + i, at.y + j)) continue;
+      const shade = k === 'S' || k === 's' || k === 'w';
+      cv.set(at.x + i, at.y + j, !lit ? c : k === 'F' ? PENDANT_BULB : shade ? lit(c) : c);
+    }
+  });
+}
+
+/**
+ * D-181: every finished room's lamp lit, over the house's box: a room alone (the Moving Truck's
+ * ghost). The board and the photos light each room in the overhang's order instead.
+ */
+export function paintLights(m: HouseModel, atlas: AtlasPixels): Pixels | null {
+  const b = m.bounds;
+  if (!b) return null;
+  let cv: Canvas | null = null;
+  for (const r of m.rooms.values()) {
+    if (!r.finished) continue;
+    const p = paintLight(m, r.uid, atlas);
+    if (!p) continue;
+    cv ??= new Canvas(b.x * CELL, b.y * CELL, b.w * CELL, b.h * CELL);
+    cv.over(p);
+  }
+  return cv?.pixels() ?? null;
+}
+
 /** The wall bands as a mask: outside walls inside their rooms, walls between rooms straddling the line. */
 export function wallMask(m: HouseModel, box: { x: number; y: number; w: number; h: number }): Mask {
   const mask = new Mask(box);
@@ -768,8 +1162,11 @@ export function wallMask(m: HouseModel, box: { x: number; y: number; w: number; 
 /** Margin around the house for a Bay Window's bay, which juts out past the wall. */
 const MARGIN = WALL.bay + 2;
 
-/** The walls canvas's pixels. Null with no rooms. */
-export function paintWalls(m: HouseModel): Pixels | null {
+/**
+ * The walls canvas's pixels. Null with no rooms. On the board, `household` has the members in
+ * their rooms: a finished room's hanging lamp isn't drawn over one standing in front of it.
+ */
+export function paintWalls(m: HouseModel, household?: Household): Pixels | null {
   const b = m.bounds;
   if (!b) return null;
   const cv = new Canvas(
@@ -915,6 +1312,20 @@ export function paintWalls(m: HouseModel): Pixels | null {
       }
     });
   }
+  // D-181: a finished room's hanging lamp, as it is, over its own floor; its light (paintLight)
+  // lights it. D-177: behind a member of the household who stands in front of it.
+  for (const r of m.rooms.values()) {
+    if (!r.finished || !roomLayout(m, r.uid).pendant) continue;
+    const at = pendantAt(m, r);
+    const people = household?.people.get(r.uid);
+    const front =
+      household && people ? inFrontOfLamp(people, at.y + at.h, household.atlas) : () => false;
+    const own = (px: number, py: number) =>
+      roomAt(m, Math.floor(px / CELL), Math.floor(py / CELL)) === r.uid &&
+      !mask.has(px, py) &&
+      !front(px, py);
+    paintPendant(cv, at, own);
+  }
   return cv.pixels();
 }
 
@@ -948,6 +1359,9 @@ export function paintPiece(
       h: to - from,
     });
   }
+  // D-181: a finished room's lamp, lit (a room the Moving Truck carries).
+  const lights = paintLights(m, atlas);
+  if (lights) cv.over(lights);
   return cv.pixels();
 }
 

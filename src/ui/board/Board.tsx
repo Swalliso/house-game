@@ -13,10 +13,12 @@ import type { ComponentChildren, JSX } from 'preact';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import {
   CONTENT,
+  cellsToShape,
   definite,
   placedCells,
   rules,
   SCORE_LABELS,
+  type Card,
   type Cell,
   type DemolishPreview,
   type Lot,
@@ -26,20 +28,25 @@ import {
   type SourceRef,
   type SunSide,
   type UseToolAction,
+  type Yard,
+  yardsRead,
 } from '../../rules/index.ts';
 import { audio } from '../audio/audio.ts';
 import { busy, fxHooks, popups, setHold, skip } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
 import { shakeOffsets } from '../fx/juice.ts';
+import { openHouseFor } from '../fx/open-house.ts';
 import { formatNumber, signed } from '../format.ts';
 import { causeSuffix, hiddenPart, mainCause, partLine } from './causes.ts';
-import { changeOrderShown, shopShown } from '../hud/actions.ts';
+import { backToBuilding, changeOrderShown, shopShown } from '../hud/actions.ts';
 import { Icon } from '../kit/kit.tsx';
 import {
   activePlay,
+  currentTally,
   demolishArmed,
   demolishAt,
   demolishPreview,
+  firstJob,
   heldNeighbor,
   heldPiece,
   hoverCell,
@@ -54,8 +61,11 @@ import {
   packCells,
   packNext,
   packPlay,
+  pendingFree,
   preview,
   renovateUids,
+  extendUids,
+  hoverQuarter,
   rotation,
   run,
   selected,
@@ -88,7 +98,7 @@ import {
   zoomOut,
 } from './camera.ts';
 import { newRoomLook, roomLook } from '../art/rooms.ts';
-import { newPieceLook, pieceLook, yardModel } from '../art/yard.ts';
+import { newPieceLook, pieceLook, unmetOf, yardModel } from '../art/yard.ts';
 import {
   boardRows,
   canopyRoom,
@@ -108,7 +118,7 @@ import {
   viewReach,
   type Occupancy,
 } from './geometry.ts';
-import { hallLinks, houseModel, sunLight } from './house-model.ts';
+import { hallLinks, heldSets, houseModel, sunLight } from './house-model.ts';
 import { spreadBadges } from './label-layout.ts';
 import {
   FloorLayer,
@@ -117,15 +127,20 @@ import {
   ItemsLayer,
   LabelsLayer,
   OverhangLayer,
+  useWakeUps,
   WallsLayer,
 } from './HouseLayers.tsx';
 import { layerVars } from './layers.ts';
-import { ChainArc, PreviewArcs, ToppedOut } from './MomentLayers.tsx';
+import { ChainArc, ClientVisit, PreviewArcs, ToppedOut } from './MomentLayers.tsx';
 import { wobble } from './piece-fx.ts';
 import { LifeLayer } from './LifeLayer.tsx';
+import { WeatherLayer } from './WeatherLayer.tsx';
 import { neighborAt, type Neighbor } from './neighbors.ts';
 import { hoveredNeighbor, NeighborsLayer, streetFor } from './NeighborsLayer.tsx';
-import { Outline, TerrainLayer, YardTint } from './TerrainLayer.tsx';
+import { people as placePeople, roomPeople, walkObstacles } from './people.ts';
+import { PeopleLayer } from './PeopleLayer.tsx';
+import { lotLook } from './terrain/biome.ts';
+import { Outline, SideTint, TerrainLayer, YardTint } from './TerrainLayer.tsx';
 import './board-m2.css';
 import './labels.css';
 import './install-gains.css';
@@ -137,6 +152,8 @@ const LAYER_VARS = layerVars();
 const PAD = 6;
 /** No cells: the ghost's, while nothing is being placed. */
 const NO_CELLS: readonly Cell[] = [];
+/** No yard to shade (D-166). */
+const NO_YARDS: readonly Yard[] = [];
 /** Cells smaller than this many CSS px get the smaller badges and labels (board-m2.css). */
 const SMALL_CELL_PX = 32;
 
@@ -148,7 +165,7 @@ export function rotate(): void {
   // A pack (D-106) is the tiles clicked out, so it has nothing to turn, and a Renovation
   // waiting for End week (D-102) is the room as it stands.
   if (sel?.kind === 'piece' && CONTENT.pieces[sel.id].pack) return;
-  if (tentative.value?.t === 'renovate') return;
+  if (tentative.value?.t === 'renovate' || tentative.value?.t === 'extend') return;
   if (sel?.kind === 'tool') {
     if (movingUid.value === null) return;
     rotation.value = ((rotation.value + 1) % 4) as 0 | 1 | 2 | 3;
@@ -351,17 +368,35 @@ export function Board() {
   // Room above the lot for its top row's tree tops, inside the scroll area (geometry.ts).
   const room = canopyRoom(scale, dpr);
   const demolishing = tool.value === 'demolish';
+  // In a mode (demolish or strike, D-157) the placement waiting for End week is hidden: its
+  // ghost, arcs, badges and targets. End week still builds it.
+  const building = tool.value === 'build';
   const { house } = state;
   const occ = occupancy(house);
   // The house as drawn: walls, doorways and windows from the pieces, with the Hallways'
-  // doors from the rules' links and the sun's light on the Sunny rooms (D-120). Cached per
-  // house, so hovering never rebuilds it.
+  // doors from the rules' links and the sun's light on the Sunny rooms (D-120), and the
+  // client's own things in their room (D-183). Cached per house, so hovering never rebuilds it.
   const links = useMemo(() => hallLinks(state), [state]);
   const sun = useMemo(() => sunLight(state), [state]);
-  const model = houseModel(house, links, sun);
-  // The yard pieces' ground and props, cached per house model.
-  const yard = yardModel(house, model);
-  const p = demolishing ? null : preview.value;
+  // The held sets' rooms open into each other (D-176).
+  const sets = useMemo(() => heldSets(state), [state]);
+  const model = houseModel(house, links, sun, state.setup.clientId, sets);
+  // The yard pieces' ground and props, cached per house model. A piece whose requirement isn't
+  // met, by the rules' tally, draws so: the Doghouse's dog on its lead (D-179). One whose fenced
+  // yard has just closed wakes up with a wobble and a bark (useWakeUps).
+  const unmet = unmetOf(currentTally.value.pieces);
+  const yard = yardModel(house, model, unmet);
+  useWakeUps(state.setup, house, unmet);
+  // D-177: the household's members, in their rooms (with the furniture) or waiting at the door;
+  // nobody in the guided first job. What stands in the yard in a walk's way.
+  const guided = firstJob.value;
+  const household = useMemo(
+    () => placePeople(state, model, guided),
+    [state.arrived, state.setup, model, guided],
+  );
+  const inRooms = useMemo(() => roomPeople(model, household), [model, household]);
+  const walkBlocks = useMemo(() => walkObstacles(house, yard), [house, yard]);
+  const p = building ? preview.value : null;
   // The house's layers re-render only when the house or the zoom changes: the highlights and
   // labels follow the tally and the preview by themselves, and never redraw a canvas.
   const floorLayer = useMemo(
@@ -369,16 +404,18 @@ export function Board() {
     [lot, scale, model, yard],
   );
   const itemsLayer = useMemo(
-    () => <ItemsLayer house={house} model={model} yard={yard} scale={scale} />,
-    [house, model, yard, scale],
+    () => <ItemsLayer house={house} model={model} yard={yard} scale={scale} people={inRooms} />,
+    [house, model, yard, scale, inRooms],
   );
+  // A finished room's hanging lamp stays behind a member standing in front of it (D-177).
   const wallsLayer = useMemo(
-    () => <WallsLayer lot={lot} scale={scale} model={model} />,
-    [lot, scale, model],
+    () => <WallsLayer lot={lot} scale={scale} model={model} people={inRooms} />,
+    [lot, scale, model, inRooms],
   );
+  // The tall items' tops, and the finished rooms' lights among them (D-181).
   const overhangLayer = useMemo(
-    () => <OverhangLayer model={model} yard={yard} scale={scale} />,
-    [model, yard, scale],
+    () => <OverhangLayer model={model} yard={yard} scale={scale} people={inRooms} />,
+    [model, yard, scale, inRooms],
   );
   const highlightsLayer = useMemo(
     () => <HighlightsLayer house={house} occ={occ} lot={lot} scale={scale} />,
@@ -559,7 +596,12 @@ export function Board() {
       const board = boardRef.current;
       if (streetView.peek() !== sv) return;
       const view = el && { width: el.clientWidth, height: el.clientHeight };
-      const k = view && streetViewScale(view, lot.width, lot.height, scale, FEEL.streetView);
+      // D-175: a won run's view that shows the street already plays its open house in place,
+      // in a window as long.
+      const k =
+        view &&
+        (streetViewScale(view, lot.width, lot.height, scale, FEEL.streetView) ??
+          (openHouseFor(sv.run) ? 1 : null));
       if (!el || !board || !k) {
         // Nothing to look at, or the view shows the street already.
         streetView.value = null;
@@ -598,8 +640,10 @@ export function Board() {
       from.y - (cy + (b.top - cy) / k)
     }px) scale(1)`;
     const far = `translate(0px, 0px) scale(${k})`;
-    const total = f.outMs + f.holdMs + f.backMs;
-    const back = f.outMs + f.holdMs;
+    // D-175: a won run's look holds longer, while its crowd walks in.
+    const holdMs = openHouseFor(look.run) ? FEEL.openHouse.holdMs : f.holdMs;
+    const total = f.outMs + holdMs + f.backMs;
+    const back = f.outMs + holdMs;
     const anim = el.animate(
       [
         { transform: near, easing: 'cubic-bezier(0.45, 0, 0.2, 1)' },
@@ -660,6 +704,22 @@ export function Board() {
     const y = Math.floor((clientY - rect.top) / cell);
     if (x < 0 || x >= lot.width || y < 0 || y > lot.height) return null;
     return y === lot.height ? 'street' : { x, y };
+  };
+
+  /** D-168: where in its cell the pointer is, in quarters, for the side a room grows toward. */
+  const setQuarter = (clientX: number, clientY: number) => {
+    const board = boardRef.current;
+    if (!board) return;
+    const rect = board.getBoundingClientRect();
+    const cell = rect.width / lot.width;
+    const fx = (clientX - rect.left) / cell;
+    const fy = (clientY - rect.top) / cell;
+    const q = {
+      x: Math.min(3, Math.max(0, Math.floor((fx - Math.floor(fx)) * 4))),
+      y: Math.min(3, Math.max(0, Math.floor((fy - Math.floor(fy)) * 4))),
+    };
+    const prev = hoverQuarter.value;
+    if (q.x !== prev.x || q.y !== prev.y) hoverQuarter.value = q;
   };
 
   const setHover = (c: Cell | 'street' | null) => {
@@ -759,6 +819,7 @@ export function Board() {
     }
     const c = cellAt(e.clientX, e.clientY);
     setHover(c);
+    setQuarter(e.clientX, e.clientY);
     inspectAt(e.clientX, c, c === null ? neighborUnder(e.clientX, e.clientY) : null);
   };
 
@@ -767,6 +828,8 @@ export function Board() {
     if (e.button === 2) {
       if (busy.value) setHold(true);
       else if (demolishing) cancelDemolish();
+      // Strike mode (D-157): never turns the hidden placement.
+      else if (tool.value === 'strike') backToBuilding();
       else if (selected.value !== null) rotate();
       return;
     }
@@ -825,6 +888,11 @@ export function Board() {
       demolishClick(c);
       return;
     }
+    // A click on the lot leaves strike mode and places nothing (D-157).
+    if (tool.value === 'strike') {
+      backToBuilding();
+      return;
+    }
     if (selection.value?.kind === 'tool') {
       toolClick(c, c && c !== 'street' ? uidAt(occ, c.x, c.y) : 0);
       return;
@@ -865,23 +933,51 @@ export function Board() {
   };
 
   const ghostCells = (() => {
-    if (demolishing) return null;
+    if (!building) return null;
     const play = activePlay.value;
     const sel = selection.value;
-    if (!play || play.t !== 'place' || sel?.kind !== 'piece') return null;
+    if (!play || sel?.kind !== 'piece') return null;
+    if (play.t === 'extend') {
+      // D-168: the room as it will be once grown, drawn whole over the room as it stands.
+      const grown = preview.value?.extends;
+      const room = state.house.pieces.find((q) => q.uid === play.uid);
+      if (!grown || !room) return null;
+      const box = cellsToShape(grown.cells);
+      return {
+        defId: room.defId,
+        rot: 0 as Rot,
+        shape: box.shape,
+        cells: [...grown.cells],
+        grows: room.uid,
+      };
+    }
+    if (play.t !== 'place') return null;
     return {
       defId: sel.id,
       rot: play.rot,
       // A pack's tiles (D-106) are the play's own shape.
       shape: play.shape,
       cells: placedCells(play.shape ?? CONTENT.pieces[sel.id].shape, play.x, play.y, play.rot),
+      grows: undefined,
     };
   })();
-  const installing = !demolishing && activePlay.value?.t === 'install';
+  const installing = building && activePlay.value?.t === 'install';
   // D-107: a fixture is selected, so every legal host shows its gain.
-  const choosingHost = !demolishing && selection.value?.kind === 'fixture';
-  const renovating = !demolishing && activePlay.value?.t === 'renovate';
-  const tooling = !demolishing && selection.value?.kind === 'tool';
+  const choosingHost = building && selection.value?.kind === 'fixture';
+  const renovating = building && activePlay.value?.t === 'renovate';
+  // D-168: pointing at a room of the card's type that can't grow: why, on the room.
+  const cantGrow = building && activePlay.value?.t === 'extend' && !preview.value?.legal;
+  const tooling = building && selection.value?.kind === 'tool';
+  // D-166: the yard a picked piece or fixture reads, shaded while it's picked.
+  const picked = selection.value;
+  const sides = useMemo(() => {
+    if (!building || !picked || picked.kind === 'tool') return NO_YARDS;
+    const card: Card =
+      picked.kind === 'piece'
+        ? { kind: 'piece', id: picked.id }
+        : { kind: 'fixture', id: picked.id };
+    return yardsRead(CONTENT, card);
+  }, [building, picked?.kind, picked?.id]);
 
   // How far the view reaches past the board: the road and the creeks run on there, the lot's
   // life (D-155) has that much room to come and go in, and the houses on the street stand in
@@ -898,7 +994,7 @@ export function Board() {
   const around = viewReach(space, lot.width, lot.height, scale, dpr, PAD);
   const boardClass = [
     'board',
-    !demolishing && selected.value !== null ? 'placing' : '',
+    building && selected.value !== null ? 'placing' : '',
     demolishing ? 'demolishing' : '',
     // With a hair of slack: at a ratio like 125% × 80% browser zoom (1.0000000149), 1× comes out
     // a hair under 32 px and is still full size.
@@ -913,6 +1009,8 @@ export function Board() {
       <div
         class={[
           'board-scroll',
+          // D-174: the garden around the lot in its biome's colors (terrain.css).
+          lotLook(state.house.lot) === 'meadow' ? '' : `look-${lotLook(state.house.lot)}`,
           panning ? 'panning' : '',
           hoveredNeighbor.value ? 'at-neighbor' : '',
         ].join(' ')}
@@ -968,15 +1066,20 @@ export function Board() {
             around={around}
             ghost={ghostCells?.cells ?? NO_CELLS}
           />
+          {/* A change order's weather (D-180): rain on the lot, puddles on the Patios it zeroes. */}
+          <WeatherLayer run={state.setup} house={house} model={model} yard={yard} scale={scale} />
           <YardTint state={state} scale={scale} />
+          {sides.length > 0 && <SideTint state={state} yards={sides} scale={scale} />}
           {floorLayer}
           {itemsLayer}
           {wallsLayer}
           {overhangLayer}
+          <PeopleLayer people={household} model={model} obstacles={walkBlocks} scale={scale} />
           {highlightsLayer}
           <ChainArc lot={lot} scale={scale} />
           {labelsLayer}
           <ToppedOut scale={scale} model={model} />
+          <ClientVisit scale={scale} />
           {demolishing && <DemolishTarget scale={scale} />}
           {ghostCells && (
             <Ghost
@@ -984,13 +1087,16 @@ export function Board() {
               rot={ghostCells.rot}
               shape={ghostCells.shape}
               cells={ghostCells.cells}
+              grows={ghostCells.grows}
               scale={scale}
             />
           )}
           {installing && <InstallTarget scale={scale} />}
           {choosingHost && <HostBadges scale={scale} />}
-          {!demolishing && <RenovateHints scale={scale} />}
+          {building && <RenovateHints scale={scale} />}
+          {building && <ExtendHints scale={scale} />}
           {renovating && <RenovateTarget scale={scale} />}
+          {cantGrow && <CantGrow scale={scale} />}
           {tooling && <ToolTarget scale={scale} />}
           {p?.legal && <PreviewArcs preview={p} occ={occ} lot={lot} scale={scale} />}
           {p?.legal && <Badges scale={scale} />}
@@ -1102,13 +1208,16 @@ function Ghost({
   rot,
   shape,
   cells,
+  grows,
   scale,
 }: {
   defId: PieceId;
   rot: Rot;
-  /** A pack's tiles (D-106): the play's own shape, not the card's. */
+  /** A pack's tiles (D-106), or a grown room's whole outline (D-168): not the card's shape. */
   shape?: readonly string[] | undefined;
   cells: Cell[];
+  /** D-168: the room an extension grows: the ghost is that room, in its own colors. */
+  grows?: number | undefined;
   scale: number;
 }) {
   const p = preview.value;
@@ -1124,7 +1233,9 @@ function Ghost({
   // on a line of its own, so neither wraps in the pixel font (labels.css's widest label). A
   // click's own effect is the next tile's label (PackNextLabel).
   const pack = def.pack ? `${cells.length} of ${def.pack.maxTiles} tiles` : null;
-  const then = pending ? 'End week to build' : 'Click to start';
+  // D-163: a piece from Your goods builds with Build, and the week goes on.
+  const free = pendingFree.value;
+  const then = pending ? (free ? 'Free: press Build' : 'End week to build') : 'Click to start';
   const inside = cells.filter((cell) => cell.x >= 0 && cell.y >= 0);
   // M4b: a running restriction this placement would break. It stays legal; it just pays nothing.
   const breaks = legal && p?.breaks ? CONTENT.changeOrders[p.breaks].name : null;
@@ -1137,7 +1248,11 @@ function Ghost({
   const change = p
     ? `${arrow}${formatNumber(Math.abs(p.delta))} ${SCORE_LABELS.total}${cause ? ` · ${cause}` : ''}`
     : '';
-  const after = pack ? ` · ${pack}` : pending ? ' · End week to build' : '';
+  const after = pack
+    ? ` · ${pack}`
+    : pending
+      ? ` · ${free ? 'free: press Build' : 'End week to build'}`
+      : '';
   // A building that would be Sunny there (D-120) says so, with the sun's icon: its ☀ stands in
   // for the icon when the label is measured.
   const sunny = legal && !!p?.sunny;
@@ -1170,9 +1285,15 @@ function Ghost({
         cells={cells}
         scale={scale}
         look={
-          isIndoor(defId)
-            ? newRoomLook(run.value.house, defId)
-            : newPieceLook(run.value.house, defId)
+          grows !== undefined
+            ? roomLook(run.value.house, grows, run.value.setup.clientId)
+            : isIndoor(defId)
+              ? newRoomLook(run.value.house, defId, run.value.setup.clientId)
+              : {
+                  ...newPieceLook(run.value.house, defId),
+                  // D-179: as the preview says it will land (the Doghouse's dog on its lead).
+                  ...(p?.newPiece?.unmet !== undefined ? { unmet: true } : {}),
+                }
         }
         class={`ghost ${legal ? 'legal' : 'illegal'} ${pending ? 'pending' : ''}`}
       />
@@ -1272,6 +1393,55 @@ function RenovateHints({ scale }: { scale: number }) {
 }
 
 /**
+ * D-168: the rooms the selected card can extend, outlined faintly so they're easy to find, as
+ * Renovate's are. Pointing at one grows it toward the pointer.
+ */
+function ExtendHints({ scale }: { scale: number }) {
+  const uids = extendUids.value;
+  const state = run.value;
+  if (uids.length === 0 || tentative.value) return null;
+  const occ = occupancy(state.house);
+  return (
+    <>
+      {uids.map((uid) => (
+        <Outline
+          key={uid}
+          cells={occ.cells.get(uid) ?? []}
+          scale={scale}
+          lot={state.house.lot}
+          class="renovate-hint"
+        />
+      ))}
+    </>
+  );
+}
+
+/** D-168: a room of the card's type that can't grow, outlined orange with why. */
+function CantGrow({ scale }: { scale: number }) {
+  const p = preview.value;
+  const play = activePlay.value;
+  const state = run.value;
+  const { lot } = state.house;
+  if (!p || !play || play.t !== 'extend' || p.legal) return null;
+  const occ = occupancy(state.house);
+  const cells = occ.cells.get(play.uid) ?? [];
+  if (cells.length === 0) return null;
+  const px = CELL * scale;
+  const text = p.reason ?? 'It can’t grow.';
+  const spot = oneLabelSpot(cells, lot.width, px, `✕ ${text}`);
+  const style = { left: `${spot.x * px}px`, top: `${spot.y * px}px` };
+  return (
+    <>
+      <Outline cells={cells} scale={scale} lot={lot} class="install-target illegal" />
+      <BoardLabel class={`ghost-reason ${spot.below ? 'below' : ''}`} style={style}>
+        <span aria-hidden="true">✕ </span>
+        {text}
+      </BoardLabel>
+    </>
+  );
+}
+
+/**
  * Renovating (D-102): the room under the pointer outlined, blue with the level it would reach
  * and what it would do to the week's Wow, or orange with why not (not at the limit yet, the
  * wrong room, fully renovated).
@@ -1297,7 +1467,11 @@ function RenovateTarget({ scale }: { scale: number }) {
         ? `▼ −${formatNumber(-p.delta)} ${wow}`
         : `±0 ${wow}`;
   const legal = p.legal && !!p.renovates;
-  const then = pending ? ' · End week to renovate' : '';
+  const then = pending
+    ? pendingFree.value
+      ? ' · free: press Build'
+      : ' · End week to renovate'
+    : '';
   const text = legal
     ? `Renovate ${definite(name)} to level ${p.renovates!.level}: ${change}${causeSuffix(p)}${then}`
     : (p.reason ?? 'It can’t be renovated.');
@@ -1357,7 +1531,9 @@ function InstallTarget({ scale }: { scale: number }) {
         : `±0 ${wow}`;
   const replaces = p.replaces ? ` · replaces its ${CONTENT.fixtures[p.replaces].name}` : '';
   const then = pending
-    ? ' · End week to install'
+    ? pendingFree.value
+      ? ' · free: press Build'
+      : ' · End week to install'
     : play.from === 'supplies'
       ? armed
         ? ' · click again to install'
@@ -1600,8 +1776,8 @@ function ToolTarget({ scale }: { scale: number }) {
         scale={scale}
         look={
           isIndoor(piece.defId)
-            ? roomLook(state.house, piece.uid)
-            : pieceLook(state.house, piece.uid)
+            ? roomLook(state.house, piece.uid, state.setup.clientId)
+            : pieceLook(state.house, piece.uid, unmetOf(currentTally.value.pieces))
         }
         class={`ghost ${ok ? 'legal' : 'illegal'} ${armed ? 'pending' : ''}`}
       />
@@ -1824,7 +2000,7 @@ function CameraControls() {
     <div class="camera-controls" role="group" aria-label="Zoom">
       <button
         type="button"
-        title="Zoom out (−)"
+        data-tip="Zoom out (−)"
         aria-label="Zoom out"
         disabled={!canZoomOut()}
         onClick={() => zoomOut()}
@@ -1835,14 +2011,14 @@ function CameraControls() {
         type="button"
         class={fit ? 'on' : ''}
         aria-pressed={fit}
-        title={fit ? 'Back to your zoom (F)' : 'Fit the whole lot (F)'}
+        data-tip={fit ? 'Back to your zoom (F)' : 'Fit the whole lot (F)'}
         onClick={() => toggleFit()}
       >
         Fit
       </button>
       <button
         type="button"
-        title="Zoom in (+)"
+        data-tip="Zoom in (+)"
         aria-label="Zoom in"
         disabled={!canZoomIn()}
         onClick={() => zoomIn()}

@@ -21,8 +21,10 @@ Open House is a game jam entry for the theme "It's a house," built with Claude C
   covered by a cut of the same id, so `assets/atlas.png` holds none of them.
 - **The house's and the yard's own drawings** (`src/ui/art/drawings.ts`,
   `src/ui/art/house-paint.ts`, `src/ui/art/yard.ts`): the Doghouse, the hens, the Sprinkler,
-  the dogs' bed in Nana's Room, the walls and windows, the painted fixtures (the Chandelier,
-  Blackout Curtains, Soundproofing, the Skylight's light, the Bay Window), and the yard's own
+  the dogs' bed in Nana's Room, the Doghouse's dog (on its lead, and loose on the kennel's roof
+  and the grass), the rain's streaks and the Patio's puddle (D-180), the walls and windows, the
+  painted fixtures (the Chandelier, Blackout Curtains, Soundproofing, the Skylight's light, the
+  Bay Window), a finished room's hanging lamp and its lamps' light (D-181), and the yard's own
   touches (the Henhouse's straw, the Sprinkler's wet patch, Garden Lights' light), drawn for Open
   House by Claude Code in LimeZu's palette. Our own work.
 - **The interface's frames, icons and the title's sky** (`src/ui/theme/frames.ts`,
@@ -36,11 +38,37 @@ Open House is a game jam entry for the theme "It's a house," built with Claude C
   the street's sedans, are Modern Exteriors cuts from its animated sheets; the neighbors walking
   the sidewalk are Modern Interiors' premade characters. The title's car drives the lot's street
   too. LimeZu's art, cut and credited as above.
+- **The household** (D-177, `art/limezu/people.json`): Grandma, Renfield, Nana and Rowan,
+  standing and walking up to the door, are Modern Interiors' premade characters, Grandma's and
+  Nana's hair recolored gray; Ivy is composed by `npm run art:cut` from the same pack's character
+  generator (a kid's body, outfit, eyes and hair). Their suitcases are Modern Exteriors' station
+  trolleys. LimeZu's art, cut, edited as its licenses allow, and credited as above.
+- **The autumn woods and the dry lot** (D-174, `art/limezu/biomes.json`): the lot's grass,
+  woods, trees, rocks, shore and the garden around it, recolored from our cuts of Modern
+  Exteriors to LimeZu's own autumn and olive colorways of its Camping trees (their pixel twins,
+  muted as our greens are) and to grass that matches. LimeZu's art, cut, edited as its licenses
+  allow, and credited as above.
+- **Rooms in more than one arrangement** (D-173, `art/limezu/interiors.json`): the wardrobes,
+  nightlamps, desks, bookcases, televisions, side-on sofas, piano, fish tank, cuckoo clock,
+  pictures, hutch, round and cloth-covered tables, plants, rugs, mats and clothes rails that give
+  the common rooms their other arrangements, Modern Interiors cuts. The wood and blue counters and
+  their Kitchen Islands, the cloth tables lengthened to seat four, and the clothes rails under
+  the first rail's bar are composed from the same sheets by `npm run art:cut`. LimeZu's art, cut
+  and credited as above.
+- **The clients' own things** (D-183, `art/limezu/interiors.json`): Count Vladislav's coffin,
+  from Modern Interiors' Halloween theme, and the candle in a wall sconce beside it, from its
+  animated objects (its flame flickers over three frames). LimeZu's art, cut and credited as
+  above. The Barkers' dogs' bed is our own drawing, the one in Nana's Room.
 - **Your houses on the street** (D-156, `art/limezu/neighbors.json`): until a player's own
   finished houses stand on the plots around the lot, Modern Exteriors' country, modern and
   Japanese houses do (from its Additional Houses), LimeZu's art, cut and credited as above. The
   player's houses are painted in the browser from the game's own sprites and drawings, as the end
   screen's photos are.
+- **The client at the door** (D-182, `art/limezu/clients.json`): the clients' figures are Modern
+  Interiors' premade characters (11, 13, 18 and 20), and Count Vladislav is composed from its
+  character generator's body, eyes, outfit and hairstyle sheets, recolored. The thought bubbles,
+  their heart and their question mark are from its interface sheet's thinking emotes. LimeZu's
+  art, cut, edited as its licenses allow, and credited as above.
 - **The link preview and the tab's icon** (`public/og.png`, `public/favicon.png`, D-135): the
   preview is a screenshot of a finished house from the game, its LimeZu sprites and our own
   drawings, with a title sign in the game's style; the icon is a little house drawn for Open

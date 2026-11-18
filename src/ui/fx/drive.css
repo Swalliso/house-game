@@ -60,3 +60,47 @@
 .reduce-motion .fx-frames {
   animation: none;
 }
+
+/* One way, and stop (Arrive, D-175's open house): the same stepped, transform-only move, a whole
+   art px a step, fading in as it sets off. Then it stands on one frame where it stopped: the
+   stand is a second animation on the frames, later in the list, so from its moment on it wins
+   over the walk cycle, and holds. */
+.arrive {
+  position: absolute;
+  animation:
+    arrive var(--arrive-ms) steps(var(--arrive-steps), end) var(--arrive-delay) both,
+    arrive-fade var(--arrive-fade) linear var(--arrive-delay) both;
+}
+@keyframes arrive {
+  from {
+    transform: translateX(var(--arrive-from));
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes arrive-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.arrive > .fx-sprite {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+}
+.arrive .arrive-frames {
+  animation-name: fx-frames, arrive-stand;
+  animation-iteration-count: infinite, 1;
+  animation-delay: 0ms, var(--stand-at);
+  animation-fill-mode: none, forwards;
+}
+@keyframes arrive-stand {
+  from,
+  to {
+    transform: translateX(var(--stand));
+  }
+}

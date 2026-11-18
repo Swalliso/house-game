@@ -201,9 +201,23 @@ export function pieceDef(content: Content, piece: PlacedPiece): PieceDef {
   return def;
 }
 
-/** A room is an indoor piece that isn't a connector. */
+/**
+ * D-168: the tiles an extended room has beyond its own card's (0 for any other piece): what its
+ * size pays for.
+ */
+export function grownTiles(content: Content, piece: PlacedPiece): number {
+  if (!piece.extended || !piece.shape) return 0;
+  const tiles = (rows: readonly string[]) =>
+    rows.reduce((n, row) => n + row.split('#').length - 1, 0);
+  return Math.max(0, tiles(piece.shape) - tiles(pieceDef(content, piece).shape));
+}
+
+/**
+ * A room is an indoor piece that isn't a connector, nor D-171's Addition, which is never a piece
+ * on the lot: it becomes part of the room it extends.
+ */
 export function isRoom(def: PieceDef): boolean {
-  return def.category === 'indoor' && !def.connector;
+  return def.category === 'indoor' && !def.connector && !def.addition;
 }
 
 /**
@@ -392,27 +406,26 @@ export function computeLayout(
     let houseSide = false;
     component[start] = compId;
     const stack = [start];
+    const visit = (j: number) => {
+      if (wallTile[j]) {
+        if (fenceTile[j]) fence = true;
+        if (indoorTile[j]) houseSide = true;
+      } else if (component[j] === -1) {
+        component[j] = compId;
+        stack.push(j);
+      }
+    };
+    // Every exact score fills the whole lot, so this loop is the layout's hottest (D-161): the
+    // tiles beside each one by index, in ORTHOGONAL's order (right, below, left, above).
     while (stack.length > 0) {
       const i = stack.pop()!;
       members.push(i);
       const x = i % w;
-      const y = (i - x) / w;
-      if (y === h - 1) street = true;
-      for (const [dx, dy] of ORTHOGONAL) {
-        const nx = x + dx;
-        const ny = y + dy;
-        if (!inBounds(w, h, nx, ny)) continue;
-        const j = cellIndex(w, nx, ny);
-        if (wallTile[j]) {
-          if (fenceTile[j]) fence = true;
-          if (indoorTile[j]) houseSide = true;
-          continue;
-        }
-        if (component[j] === -1) {
-          component[j] = compId;
-          stack.push(j);
-        }
-      }
+      if (i >= size - w) street = true;
+      if (x < w - 1) visit(i + 1);
+      if (i + w < size) visit(i + w);
+      if (x > 0) visit(i - 1);
+      if (i >= w) visit(i - w);
     }
     if (!street && fence && houseSide && members.length >= minTiles) {
       const id = fencedSizes.length;

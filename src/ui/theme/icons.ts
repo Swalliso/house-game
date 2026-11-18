@@ -104,6 +104,17 @@ export const ICONS = {
     kkk.kkk
     kk...kk
   `,
+  /** A card struck through (D-157): Strike on the plank, the shop's +1 strike, How to Play. */
+  strike: `
+    .kkkkkk.
+    .kWWWxx.
+    .kWWxxk.
+    .kWxxWk.
+    .kxxWWk.
+    .xxWWWk.
+    .kWWWWk.
+    .kkkkkk.
+  `,
   /** ★: a set completed, a find. */
   star: `
     ....k....
@@ -289,6 +300,38 @@ export const ICONS = {
     .kWWkWk.
     .kWWkWk.
     .kkkkkk.
+  `,
+  // --- Lot traits (8×8, D-166): a Pondside lot's pond, a lily pad on it; a Rocky lot's Boulder;
+  // an Open lot's meadow, not the Sunny tag's sun (the lot's sun chip sits beside it).
+  pond: `
+    ........
+    ........
+    .kkkkkk.
+    kCCBBBBk
+    kCBBBvvk
+    kBBBbVVk
+    .kkkkkk.
+    ........
+  `,
+  boulder: `
+    ........
+    ...kkk..
+    ..kLGGk.
+    .kLGGggk
+    kLGGgggk
+    kGGggggk
+    kgggggfk
+    .kkkkkk.
+  `,
+  meadow: `
+    ........
+    .kkkkkk.
+    kAvAvvAk
+    kvvvAvvk
+    kvAvvvAk
+    kvvVvAvk
+    .kkkkkk.
+    ........
   `,
   // --- Fixtures (8×8): a fixture's badge on the board, its supply slot, and the shop's art slot
   // where it has no sprite on the board (sprites.ts FIXTURE_ICONS) ----------------------------
@@ -747,6 +790,17 @@ export const ICONS = {
     kwwwwwjk
     kjwjwjjk
     kjwwwjjk
+    kkkkkkkk
+  `,
+  /** The Handyman (D-171): a toolbox, its latch in gold. */
+  handyman: `
+    ..kkkk..
+    ..k..k..
+    kkkkkkkk
+    kynnnnNk
+    kkkyykkk
+    knnnnnNk
+    knnnnNNk
     kkkkkkkk
   `,
   // --- Kinds of goods (12×12): the shop's art slots, until each good has its own sprite -------

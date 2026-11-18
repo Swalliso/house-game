@@ -15,6 +15,7 @@ import { isConnected, packShapeProblem, parseShape, shapeCells } from '../rules/
 import { cardText, changeOrderText, modifierText, specText, toolText } from '../rules/text.ts';
 import { DRAW_ROWS, drawableTypes, drawWeights, rowOf } from '../rules/draw.ts';
 import { isType } from '../rules/selectors.ts';
+import { isRunMode } from '../rules/milestones.ts';
 import { BALANCE } from './balance.ts';
 import { BLUEPRINTS } from './blueprints.ts';
 import { CHANGE_ORDERS } from './change-orders.ts';
@@ -24,6 +25,7 @@ import { CREWS } from './crews.ts';
 import { FEATURES } from './features.ts';
 import { FIXTURES } from './fixtures.ts';
 import { LOT_TRAITS } from './lot-traits.ts';
+import { ROOM_RULES } from './house-rules.ts';
 import { PIECES } from './pieces.ts';
 import { SETS } from './sets.ts';
 import { TOOLS } from './tools.ts';
@@ -44,6 +46,7 @@ export const CONTENT: Content = {
   crates: CRATES,
   changeOrders: CHANGE_ORDERS,
   lotTraits: LOT_TRAITS,
+  roomRules: ROOM_RULES,
   balance: BALANCE,
 };
 
@@ -339,7 +342,8 @@ export function validateContent(content: Content): string[] {
     }
     const text = cardText(content, def);
     if (
-      text.effects.length !== def.effects.length ||
+      // D-171: the Addition has no effect of its own, and one line that says what it grows.
+      text.effects.length !== (def.addition ? 1 : def.effects.length) ||
       text.effects.some((t) => !t || t.includes('undefined'))
     ) {
       problems.push(`${where}: card text didn't generate`);
@@ -383,16 +387,25 @@ export function validateContent(content: Content): string[] {
     );
   }
 
-  // D-119: a lot trait reads a terrain that sits on the lot, and pays like a crew.
+  // D-119: a lot trait reads a terrain that sits on the lot, and pays like a crew. D-166: or
+  // the kind the lot was shaped to; and it may tilt the draw, as a run keeps the traits it began
+  // with.
   for (const [key, trait] of Object.entries(content.lotTraits)) {
     const where = `lot trait ${key}`;
     if (trait.id !== key) problems.push(`${where}: id is "${trait.id}"`);
-    const t = trait.when.terrain as string;
-    if (t === 'street' || !content.features[trait.when.terrain]) {
-      problems.push(`${where}: "${t}" isn't a terrain on the lot`);
-    }
-    if (!Number.isInteger(trait.when.min) || trait.when.min < 1) {
-      problems.push(`${where}: min must be a whole number ≥ 1`);
+    const when = trait.when;
+    if ('kind' in when) {
+      if (!['rocky', 'open', 'pond', 'lake', 'split', 'oldWoods'].includes(when.kind)) {
+        problems.push(`${where}: "${when.kind}" isn't a lot kind that shapes a lot`);
+      }
+    } else {
+      const t = when.terrain as string;
+      if (t === 'street' || !content.features[when.terrain]) {
+        problems.push(`${where}: "${t}" isn't a terrain on the lot`);
+      }
+      if (!Number.isInteger(when.min) || when.min < 1) {
+        problems.push(`${where}: min must be a whole number ≥ 1`);
+      }
     }
     for (const id of trait.suits ?? []) {
       if (!content.clients[id]) problems.push(`${where}: unknown client "${id}"`);
@@ -401,7 +414,7 @@ export function validateContent(content: Content): string[] {
       problems.push(
         ...modifierProblems(content, m, `${where} modifier ${k}`, {
           fixture: false,
-          drawWeight: false,
+          drawWeight: true,
         }),
       ),
     );
@@ -454,6 +467,22 @@ export function validateContent(content: Content): string[] {
         problems.push(`${at}: none of its cards is its room`);
       }
     }
+    // D-160: what the client brings serves a wish: a card the checklist names, never a member's
+    // room (those come with their member), at a phase of the run.
+    (client.deliveries ?? []).forEach((d, k) => {
+      const at = `${where} delivery ${k}`;
+      const phases = content.balance.phases.length;
+      if (!Number.isInteger(d.phase) || d.phase < 0 || d.phase >= phases) {
+        problems.push(`${at}: lands at a phase from 0 to ${phases - 1}`);
+      }
+      if (!d.text) problems.push(`${at}: needs text`);
+      if (d.cards.length === 0) problems.push(`${at}: no cards`);
+      for (const id of d.cards) {
+        known(id, at);
+        if (content.pieces[id]?.member) problems.push(`${at}: ${id} is a member's room`);
+        if (!specNamed.includes(id)) problems.push(`${at}: the checklist never names ${id}`);
+      }
+    });
     if (!Number.isInteger(client.targetPct) || client.targetPct < 1) {
       problems.push(`${where}: targetPct must be a whole number ≥ 1`);
     }
@@ -504,6 +533,33 @@ export function validateContent(content: Content): string[] {
     if (def.member && !memberOf.has(def.id)) {
       problems.push(`piece ${def.id}: a member's room no arrival brings`);
     }
+  }
+
+  // D-160: the standing stock is pieces of the weekly draw, from a phase of the run, and a first
+  // job's first comes in a week of a phase of the run (D-162).
+  const stock = content.balance.standingStock;
+  const stockAt = 'balance standingStock';
+  const isPhase = (k: number) => Number.isInteger(k) && k >= 0 && k < content.balance.phases.length;
+  for (const id of stock.pieces) {
+    known(id, stockAt);
+    const def = content.pieces[id];
+    if (def && (def.member || def.drawWeight <= 0)) {
+      problems.push(`${stockAt}: ${id} isn't in the weekly draw`);
+    }
+  }
+  if (new Set(stock.pieces).size !== stock.pieces.length) {
+    problems.push(`${stockAt}: a piece twice`);
+  }
+  if (!isPhase(stock.fromPhase)) problems.push(`${stockAt}: fromPhase must be a phase of the run`);
+  if (!isPhase(stock.firstJobPhase)) {
+    problems.push(`${stockAt}: firstJobPhase must be a phase of the run`);
+  }
+  if (
+    !Number.isInteger(stock.firstJobSlot) ||
+    stock.firstJobSlot < 1 ||
+    stock.firstJobSlot > content.balance.weeksPerPhase
+  ) {
+    problems.push(`${stockAt}: firstJobSlot must be a week of the phase`);
   }
 
   // M4b: change orders.
@@ -642,12 +698,18 @@ export function validateContent(content: Content): string[] {
     if (!Number.isInteger(v) || v < 0)
       problems.push(`balance: rule ${key} must be a whole number ≥ 0`);
   }
+  if (!Number.isInteger(b.strikesPerMilestone) || b.strikesPerMilestone < 0) {
+    problems.push('balance: strikesPerMilestone must be a whole number ≥ 0');
+  }
   b.phases.forEach((p, i) => {
     if (i > 0 && p.target <= b.phases[i - 1]!.target)
       problems.push(`balance: target ${i + 1} doesn't rise`);
   });
   if (b.complexityPct.length === 0 || b.complexityPct.some((row) => row.length !== 3)) {
     problems.push('balance: complexityPct needs rows of three');
+  }
+  for (const mode of b.lotCardsFullIn) {
+    if (!isRunMode(mode)) problems.push(`balance: lotCardsFullIn has unknown mode "${mode}"`);
   }
   for (const row of DRAW_ROWS) {
     const size = row === 'rooms' ? b.rules.roomsRow : b.rules.layoutRow;

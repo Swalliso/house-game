@@ -694,10 +694,9 @@ describe('the strike (D-076)', () => {
     expect(control).toContainEqual(FIREPLACE);
   });
 
-  it('needs a type it can strike', () => {
+  it('a run code’s typed strike (from before D-157) needs a type it can strike', () => {
     const s = { ...shop1(), budget: 20, struck: [FENCE] };
     const strike = visitOf(s).offers.length - 1;
-    expect(illegal(() => rules.apply(s, buy(strike))).reason).toMatch(/Pick a card type/);
     expect(illegal(() => rules.apply(s, buy(strike, FENCE))).reason).toMatch(/already struck/);
     // Only root types: the L-Kitchen is a Kitchen. Special pieces aren't in the draws.
     expect(() => rules.apply(s, buy(strike, { kind: 'piece', id: 'lKitchen' }))).toThrow(
@@ -915,7 +914,7 @@ describe('leaving the shop', () => {
 });
 
 describe('the reserve', () => {
-  it('placing a reserve piece is the week’s turn, and frees its slot', () => {
+  it('placing a reserve piece doesn’t use the week (D-163), and frees its slot', () => {
     let s = withGoods({ ...shop1(), budget: 10 }, [{ kind: 'piece', id: 'library' }]);
     s = applyAll(rules, s, [buy(0), LEAVE]).state;
     s = { ...s, house: houseFrom(C, emptyRows(8, 8)) };
@@ -923,13 +922,23 @@ describe('the reserve', () => {
     expect(rules.reserveFits(s, 0)).toBe(true);
     const play: Action = { t: 'place', from: 'reserve', i: 0, x: 0, y: 0, rot: 0 };
     expect(rules.legalActions(s)).toContainEqual(play);
+    expect(rules.endsWeek(s, play)).toBe(false);
     const { state, events } = rules.apply(s, play);
-    expect(types(events).slice(0, 2)).toEqual(['placed', 'tally']);
+    // It goes down at once, with no tally and no Weekend Crew mark: the week goes on.
+    expect(types(events)).toEqual(['placed']);
     expect(eventsOf(events, 'placed')[0]).toMatchObject({ defId: 'library', x: 0, y: 0 });
-    expect(eventsOf(events, 'tally')[0]!.passed).toBe(false);
+    expect(eventsOf(events, 'placed')[0]!.free).toBeUndefined();
     expect(state.reserve).toEqual([]);
-    expect(state.house.pieces.map((p) => [p.defId, p.placedWeek])).toEqual([['library', 3]]);
-    expect(state).toMatchObject({ phase: 1, slot: 2, week: 4 });
+    expect(state.hand).toEqual(s.hand);
+    expect(state).toMatchObject({ phase: 1, slot: 1, week: 3, score: s.score });
+    // It earns from this week's tally, which a pass (or a hand card) ends.
+    const week = rules.apply(state, { t: 'pass' });
+    expect(eventsOf(week.events, 'tally')[0]!.passed).toBe(true);
+    expect(week.state.house.pieces.map((p) => [p.defId, p.placedWeek])).toEqual([['library', 3]]);
+    const library = week.state.house.pieces[0]!.uid;
+    const tallied = eventsOf(week.events, 'tally')[0]!.tally.pieces.map((p) => p.uid);
+    expect(tallied).toContain(library);
+    expect(week.state).toMatchObject({ phase: 1, slot: 2, week: 4 });
   });
 
   it('reserveFits says whether a reserve piece has a legal spot', () => {
@@ -977,7 +986,7 @@ describe('what each screen takes', () => {
     expect(rules.canRefresh(s).ok).toBe(false);
   });
 
-  it('legalActions in the shop: each buy (each strike option), sells, the refresh, and leaving', () => {
+  it('legalActions in the shop: each buy, sells, the refresh, and leaving', () => {
     const s = {
       ...shop1('legal'),
       budget: 100,
@@ -985,11 +994,9 @@ describe('what each screen takes', () => {
       supplies: [{ kind: 'fixture', id: 'fireplace' } as const],
     };
     const v = visitOf(s);
-    const strike = v.offers.length - 1;
-    const options = rules.strikeOptions(s);
+    // The strike service is +1 strike (D-157): one buy, naming no type.
     expect(rules.legalActions(s)).toEqual([
-      ...v.offers.slice(0, strike).map((_, i) => buy(i)),
-      ...options.map((t) => buy(strike, t)),
+      ...v.offers.map((_, i) => buy(i)),
       { t: 'sell', from: 'blueprints', i: 0 },
       { t: 'sell', from: 'supplies', i: 0 },
       REFRESH,

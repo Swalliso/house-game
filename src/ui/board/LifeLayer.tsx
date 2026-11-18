@@ -6,6 +6,8 @@
 // - The street's regulars come by now and then: a walker each way on the sidewalk and a car in
 //   each lane, in from past one edge of the view and out past the other, driving the way the
 //   title's car does (fx/Drive.tsx).
+// - D-175: a won run's open house (Crowd.tsx): a crowd on the sidewalk and cars at the kerb, from
+//   the look down the street until the next run. The sidewalk's and the kerb's regulars wait.
 // It's all CSS animation, transform and opacity only, so nothing wakes the main thread between
 // events; which grass, and when, is life.ts. It sits on the canopy's layer, after the canopy,
 // so a crow in flight crosses over the tree tops, and under the labels. Each part is a box the
@@ -18,9 +20,12 @@ import { audio } from '../audio/audio.ts';
 import { busy } from '../fx/director.ts';
 import { Drive, FxSprite } from '../fx/Drive.tsx';
 import { FEEL } from '../fx/feel.ts';
+import { openHouse } from '../fx/open-house.ts';
 import { settings } from '../settings.ts';
 import { CELL, spritePos } from '../sprites.ts';
 import { hoverCell } from '../store.ts';
+import { Crowd } from './Crowd.tsx';
+import { CROWD_LANES } from './crowd.ts';
 import { boardRows } from './geometry.ts';
 import { flight, flock, groundKey, regulars, startledBy, type Crow } from './life.ts';
 import type { Around } from './TerrainLayer.tsx';
@@ -33,7 +38,18 @@ import './life.css';
  * past them, dimmed as the garden and the road out there are (terrain/outside.ts dim), so a car
  * comes out of the same light as the road it's on.
  */
-function Street({ lot, scale, around }: { lot: Lot; scale: number; around: Around }) {
+function Street({
+  lot,
+  scale,
+  around,
+  held = false,
+}: {
+  lot: Lot;
+  scale: number;
+  around: Around;
+  /** D-175: the open house has the sidewalk and the kerb, so their regulars wait. */
+  held?: boolean;
+}) {
   const px = CELL * scale;
   const width = lot.width * px + around.left + around.right;
   const rows = boardRows(lot.height) - lot.height + 1;
@@ -52,7 +68,7 @@ function Street({ lot, scale, around }: { lot: Lot; scale: number; around: Aroun
         aria-hidden="true"
         style={{ ...box, clipPath: `inset(0 ${around.right}px 0 ${around.left}px)` }}
       >
-        <Regulars width={width} scale={scale} />
+        <Regulars width={width} scale={scale} held={held} />
       </div>
       <div
         class="life life-street off-lot"
@@ -62,18 +78,19 @@ function Street({ lot, scale, around }: { lot: Lot; scale: number; around: Aroun
           maskImage: `linear-gradient(to right, #000 ${from}, transparent ${from}, transparent ${to}, #000 ${to})`,
         }}
       >
-        <Regulars width={width} scale={scale} />
+        <Regulars width={width} scale={scale} held={held} />
       </div>
     </>
   );
 }
 
-/** The regulars along a street box `width` CSS px wide. */
-function Regulars({ width, scale }: { width: number; scale: number }) {
+/** The regulars along a street box `width` CSS px wide; `held`: all but the far lane's car. */
+function Regulars({ width, scale, held }: { width: number; scale: number; held: boolean }) {
   const f = FEEL.street;
+  const passing = regulars(FEEL.life.street).filter((r) => !held || !CROWD_LANES.includes(r.base));
   return (
     <>
-      {regulars(FEEL.life.street).map((r) => {
+      {passing.map((r) => {
         const h = Math.max(...r.ids.map((id) => spritePos(id).h));
         return (
           <Drive
@@ -296,10 +313,14 @@ export function LifeLayer({
   const { lot } = house;
   const runs = useRef<{ run: object | null; n: number }>({ run: null, n: 0 });
   if (runs.current.run !== run) runs.current = { run, n: runs.current.n + 1 };
+  // D-175: a won run's open house, from the moment the look down the street starts.
+  const oh = openHouse.value;
+  const crowd = oh?.run === run && oh.phase === 'on' ? oh : null;
+  const held = crowd !== null;
   const street = useMemo(
-    () => <Street lot={lot} scale={scale} around={around} />,
-    // The street changes only with the zoom and the view's reach.
-    [lot.width, lot.height, scale, around.left, around.right],
+    () => <Street lot={lot} scale={scale} around={around} held={held} />,
+    // The street changes only with the zoom and the view's reach, and the open house.
+    [lot.width, lot.height, scale, around.left, around.right, held],
   );
   if (settings.value.reduceMotion) return null;
   return (
@@ -313,6 +334,18 @@ export function LifeLayer({
         around={around}
         ghost={ghost}
       />
+      {/* Before the street's regulars: its far-lane car passes in front of the crowd. */}
+      {crowd && (
+        <Crowd
+          key={`crowd-${runs.current.n}`}
+          plan={crowd.crowd}
+          lot={lot}
+          scale={scale}
+          around={around}
+          startedAt={crowd.at}
+          hurried={crowd.hurried}
+        />
+      )}
       {street}
     </>
   );

@@ -5,7 +5,7 @@
 // and households.ts: when tuning changes one, change the test with it.
 
 import { describe, expect, it } from 'vitest';
-import type { Action, ClientId, Content, PieceId, RunState, Tag } from '../rules/index.ts';
+import type { Action, ClientId, Content, CrewId, PieceId, RunState, Tag } from '../rules/index.ts';
 import { cardText, rules } from '../rules/index.ts';
 import { drawWeights } from '../rules/draw.ts';
 import { bounds, shapeCells } from '../rules/grid.ts';
@@ -171,8 +171,9 @@ describe('member rooms', () => {
         ['flowerBed', 2, 4],
       ]),
       // Her room counts as a Bedroom, so the Bathroom earns its +3 too; the Kitchen faces the
-      // sun (+2, D-120); the Flower Bed is in the front yard (1 + 2).
-    ).toEqual([3 + 2 + 2 + 1, 3, 2, 3]);
+      // sun (+2, D-120) and earns +3 of its own (D-165); the Flower Bed is in the front yard
+      // (1 + 2).
+    ).toEqual([3 + 2 + 2 + 1, 3, 2 + 3, 3]);
   });
 
   it('Renfield’s Room: 2, +1 per touching room (up to 3)', () => {
@@ -277,6 +278,108 @@ describe('validateContent', () => {
       /arrival ivy: the checklist never names ivysRoom/,
     );
   });
+
+  it('catches a delivery’s and the standing stock’s mistakes (D-160)', () => {
+    const dale = CONTENT.clients.dale;
+    const broken: Content = {
+      ...CONTENT,
+      balance: {
+        ...CONTENT.balance,
+        standingStock: {
+          fromPhase: 9,
+          pieces: ['fence', 'library', 'fence'],
+          firstJobPhase: -1,
+          firstJobSlot: 5,
+          refill: false,
+        },
+      },
+      clients: {
+        ...CONTENT.clients,
+        dale: {
+          ...dale,
+          deliveries: [{ phase: 7, cards: ['ivysRoom', 'lawn'], text: '' }],
+        },
+      },
+    };
+    const problems = validateContent(broken).join('\n');
+    expect(problems).toMatch(/client dale delivery 0: lands at a phase from 0 to 6/);
+    expect(problems).toMatch(/client dale delivery 0: needs text/);
+    expect(problems).toMatch(/client dale delivery 0: ivysRoom is a member's room/);
+    expect(problems).toMatch(/client dale delivery 0: the checklist never names lawn/);
+    expect(problems).toMatch(/standingStock: library isn't in the weekly draw/);
+    expect(problems).toMatch(/standingStock: a piece twice/);
+    expect(problems).toMatch(/standingStock: fromPhase must be a phase of the run/);
+    expect(problems).toMatch(/standingStock: firstJobPhase must be a phase of the run/);
+    expect(problems).toMatch(/standingStock: firstJobSlot must be a week of the phase/);
+  });
+});
+
+describe('what a client brings, and the standing stock (D-160)', () => {
+  const start = (clientId: ClientId, crewId: CrewId = 'generalContractor') =>
+    rules.newRun({ seed: 'brings', clientId, crewId, mode: 'standard' });
+  const STOCK = [
+    { id: 'hallway', stock: true },
+    { id: 'fence', stock: true },
+  ];
+
+  it('Dale brings a Home Office and the Barkers a Doghouse, in week 1; no one else brings any', () => {
+    // D-162: the stock comes in week 1 too, after what the client brings.
+    expect(start('dale').reserve).toEqual([{ id: 'homeOffice', client: true }, ...STOCK]);
+    expect(start('barkers').reserve).toEqual([{ id: 'doghouse', client: true }, ...STOCK]);
+    for (const id of ['hendersons', 'vladislav', 'juniper'] as const) {
+      expect(start(id).reserve, id).toEqual(STOCK);
+    }
+    // D-171: then the crew's own card, one of the Landscaper's yard pieces (it starts with no
+    // Sapling or Fence now, so the stock brings both of its cards).
+    const withCrew = start('barkers', 'landscaper').reserve;
+    expect(withCrew.slice(0, 3)).toEqual([{ id: 'doghouse', client: true }, ...STOCK]);
+    expect(withCrew).toHaveLength(4);
+    expect(withCrew[3]!.crew).toBe(true);
+    expect(CONTENT.crews.landscaper.stock).toContain(withCrew[3]!.id);
+  });
+
+  it('each brings one card of a wish that asks for two, and isn’t a household member', () => {
+    const wish = (clientId: ClientId, id: string) =>
+      CONTENT.clients[clientId].specs.find((s) => s.id === id)!.condition;
+    expect(wish('dale', 'offices')).toEqual({ count: { piece: 'homeOffice' }, min: 2, max: 2 });
+    expect(wish('barkers', 'doghouses')).toEqual({ count: { piece: 'doghouse' }, min: 2 });
+    for (const id of ['dale', 'barkers'] as const) {
+      const client = CONTENT.clients[id];
+      expect(client.deliveries?.map((d) => [d.phase, d.cards])).toEqual([
+        [0, [id === 'dale' ? 'homeOffice' : 'doghouse']],
+      ]);
+      // Room for everyone is the household's alone: one Bedroom range, one arrival.
+      expect(start(id).arrived).toEqual([]);
+      expect(client.household.arrivals).toHaveLength(1);
+    }
+  });
+
+  it('the stock is a Hallway and a Fence: from week 1, in a first job Foundation’s third week', () => {
+    // D-162: from Groundbreaking's first week; a first job keeps D-160's week (first-job.ts).
+    // D-163: its pieces don't use the week. D-169: topped up at each milestone (`refill`).
+    expect(CONTENT.balance.standingStock).toEqual({
+      fromPhase: 0,
+      pieces: ['hallway', 'fence'],
+      firstJobPhase: 1,
+      firstJobSlot: 3,
+      refill: true,
+    });
+    expect(CONTENT.balance.phases[1]!.name).toBe('Foundation');
+    expect(
+      rules.newRun({
+        seed: 'brings',
+        clientId: 'hendersons',
+        crewId: 'generalContractor',
+        mode: 'firstJob',
+      }).reserve,
+    ).toEqual([]);
+    // Both stay in the weekly draw, at their usual weights, from the first week on.
+    for (const phase of [0, 1, 4]) {
+      const ids = drawWeights(CONTENT, phase).map((w) => w.card.id);
+      expect(ids).toContain('hallway');
+      expect(ids).toContain('fence');
+    }
+  });
 });
 
 describe('a real Hendersons run', () => {
@@ -305,11 +408,15 @@ describe('a real Hendersons run', () => {
       }
       s = out.state;
     }
+    // D-160: the standing stock's Hallway and Fence came in Foundation's first week (week 5)
+    // and wait unplaced, so each arrival's cards follow them.
     expect(arrived).toEqual([
-      { week: 9, arrival: 'twins', reserve: 1 },
-      { week: 17, arrival: 'grandma', reserve: 3 },
+      { week: 9, arrival: 'twins', reserve: 3 },
+      { week: 17, arrival: 'grandma', reserve: 5 },
     ]);
     expect(s.reserve).toEqual([
+      { id: 'hallway', stock: true },
+      { id: 'fence', stock: true },
       { id: 'nursery', arrival: 'twins' },
       { id: 'grandmasRoom', arrival: 'grandma' },
       { id: 'bathroom', arrival: 'grandma' },

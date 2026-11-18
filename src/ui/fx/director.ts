@@ -9,7 +9,8 @@
 // at its milestone (its reward counting into the budget), the sheet's arrival, and the answer's
 // stamp; and a household member's arrival (a banner, and their cards popping into the reserve).
 // A transform in a phase's first week comes with leaving the shop, not a tally, and gets its beat
-// there too. Animation speed never affects the game.
+// there too. Animation speed never affects the game. A strike from the hand (D-157) gets a beat
+// of its own on the hand, outside the chain: it never sets busy, and the next action ends it.
 //
 // Speed: the chosen tally speed, plus Balatro-style auto-acceleration during the steps, plus
 // fast-forward while Space or the right mouse button is held. A click skips to the result.
@@ -19,10 +20,13 @@ import {
   article,
   CONTENT,
   definite,
+  isFinished,
   rewardText,
   rules,
   SCORE_LABELS,
+  strikeText,
   type ArrivalId,
+  type Card,
   type ChangeOrderId,
   type ChangeOrderOfferView,
   type ChangeOrderResult,
@@ -36,10 +40,13 @@ import {
   type Tally,
   type XMultTerm,
 } from '../../rules/index.ts';
+import { lampSpot } from '../art/house-paint.ts';
 import { audio } from '../audio/audio.ts';
+import { hallLinks, heldSets, houseModel, sunLight } from '../board/house-model.ts';
 import { arrivalOf, cardsPhrase, isPlural } from '../hud/household.ts';
 import { settings } from '../settings.ts';
-import { onEvents, onRunReset } from '../store.ts';
+import { CELL } from '../sprites.ts';
+import { firstJob, onEvents, onRunReset, run } from '../store.ts';
 import { formatNumber } from '../format.ts';
 import { chainOrder } from './chain.ts';
 import { FEEL } from './feel.ts';
@@ -64,6 +71,7 @@ import {
   toppedOutBefore,
 } from './moments.ts';
 import { burst, burstAt, clearParticles, type BurstName, type BurstOptions } from './particles.ts';
+import { bubbleOpensMs, visitOf, type Visit } from './visit.ts';
 
 /**
  * `spec` names a client's wish the week turned on, in Charm's color, and `rule` a house rule
@@ -186,8 +194,10 @@ export const celebration = signal<{
 export const wash = signal<{ id: number; tier: Tier } | null>(null);
 /** The milestone moment's crossing: the top bar's flag pops (D-124). */
 export const targetHit = signal<{ id: number } | null>(null);
-/** "Topped out!" over the house, the first week Under one roof holds (D-127). */
+/** "Topped out!" over the house, the first week A compact house holds (D-127). */
 export const toppedOut = signal<{ id: number } | null>(null);
+/** The client at the door (D-182), while their visit plays: the board's moments draw it. */
+export const clientVisit = signal<(Visit & { id: number }) | null>(null);
 /**
  * D-094's option 1: while the tally plays a chain, the arc from the piece that boosts to the one
  * it sets going, in lot cells, for that piece's step. The board's chain layer draws it.
@@ -229,11 +239,23 @@ export const played = {
   levelPop: 0,
   wash: 0,
   arrival: 0,
+  light: 0,
 };
-/** The piece that was just placed, for its settle animation. */
-export const justPlaced = signal<{ uid: number; id: number } | null>(null);
+/**
+ * The piece that was just placed, for its settle animation. D-178: `drop` when it's a room whose
+ * furniture drops in, item by item, instead (piece-fx.ts drop).
+ */
+export const justPlaced = signal<{ uid: number; id: number; drop?: true } | null>(null);
 /** The room that was just renovated, for its level badge's pop. */
 export const justRenovated = signal<{ uid: number; id: number } | null>(null);
+/**
+ * D-181: the rooms an action has just finished (a fixture, and grown by Extend or Renovate),
+ * while their lights wait for its beat: the board keeps them off (HouseLayers.tsx RoomLight).
+ * Empty at rest, so a loaded run, the photos and Reduce motion show every finished room lit.
+ */
+export const lightsHeld = signal<ReadonlySet<number>>(new Set());
+/** D-181: a finished room's light switching on: the board flickers it on, once per id. */
+export const lightSwitched = signal<{ uid: number; id: number } | null>(null);
 
 /**
  * The change order picked, stamped on its card as the sheet goes (M4b, D-144): the sheet as it
@@ -250,6 +272,21 @@ export interface OrderStamp {
 export const orderStamp = signal<OrderStamp | null>(null);
 /** A household member's cards, just in the reserve (M4b): the reserve pops them in. */
 export const justArrived = signal<{ arrival: ArrivalId; id: number } | null>(null);
+/**
+ * D-177: a household member walking in once the doorbell has rung: the people layer walks them up
+ * from the street to the front door (board/PeopleLayer.tsx), each id once.
+ */
+export const walkIn = signal<{ arrival: ArrivalId; id: number } | null>(null);
+/**
+ * D-160: the standing stock's or the client's cards, or (D-171) the crew's, just in the reserve:
+ * the reserve slots (`slots`, by index) that pop in, after `delayMs`.
+ */
+export const justDelivered = signal<{
+  from: 'client' | 'stock' | 'crew';
+  slots: readonly number[];
+  delayMs: number;
+  id: number;
+} | null>(null);
 
 /**
  * The board registers these, so the director can wobble pieces, shake the screen, lean the
@@ -284,6 +321,8 @@ let bannerKeptUntil = -Infinity;
 export function skip(): void {
   if (busy.value) skipping = true;
   dismissBanner();
+  // D-182: the client's visit goes with it.
+  clientVisit.value = null;
 }
 
 /** A click on the banner, or a skip: it goes, unless a hurried milestone's is still new. */
@@ -569,11 +608,61 @@ function animates(events: readonly GameEvent[]): boolean {
       e.t === 'demolished' ||
       e.t === 'installed' ||
       e.t === 'renovated' ||
+      e.t === 'extended' ||
       e.t === 'moved' ||
       e.t === 'findClaimed' ||
       e.t === 'toolUsed' ||
       e.t === 'changeOrderAnswered',
   );
+}
+
+/** D-181: the rooms an action finished: finished after it, not before (a new room never is). */
+function finishedBy(before: RunState, after: RunState): number[] {
+  const was = new Set(before.house.pieces.filter((p) => isFinished(p)).map((p) => p.uid));
+  return after.house.pieces
+    .filter((p) => CONTENT.pieces[p.defId].category === 'indoor')
+    .filter((p) => isFinished(p) && !was.has(p.uid))
+    .map((p) => p.uid);
+}
+
+/** D-181: rooms' lights off until their beat, or (`on`) back on. */
+function holdLights(uids: readonly number[], on = false): void {
+  const held = lightsHeld.value;
+  if (on ? !uids.some((u) => held.has(u)) : uids.length === 0) return;
+  lightsHeld.value = on
+    ? new Set([...held].filter((u) => !uids.includes(u)))
+    : new Set([...held, ...uids]);
+}
+
+/**
+ * D-181: a room the action finished lights up, after the beat that finished it: its lamp clicks
+ * on with a small pop and flickers on (HouseLayers.tsx RoomLight), and the find's glints fly
+ * from it.
+ * Skipped, the light is just on.
+ */
+async function lightBeat(uid: number, after: RunState): Promise<void> {
+  holdLights([uid], true);
+  if (skipping) return;
+  lightSwitched.value = { uid, id: nextId++ };
+  audio.play('light-on');
+  // The house as the board draws it, the client's own things in their room too (D-183) and the
+  // held sets' doors (D-176).
+  const model = houseModel(
+    after.house,
+    hallLinks(after),
+    sunLight(after),
+    after.setup.clientId,
+    heldSets(after),
+  );
+  const at = lampSpot(model, uid);
+  if (at) {
+    boardBurst(
+      'glints',
+      { x: at.x / CELL, y: at.y / CELL },
+      { delayMs: FEEL.lightOn.burstDelayMs, scale: 0.7 },
+    );
+  }
+  await wait(FEEL.lightOn.beatMs);
 }
 
 /**
@@ -810,7 +899,7 @@ function checkBurst(id: string, name: BurstName): void {
 }
 
 /**
- * "Topped out!" (D-127): the first week Under one roof holds, the house is topped out as a
+ * "Topped out!" (D-127): the first week A compact house holds, the house is topped out as a
  * builder's would be. A plaque over the house with a sprig on top, stars, and a cheer, in real
  * time; the tally goes on under it.
  */
@@ -1118,10 +1207,15 @@ function milestoneBanner(e: Extract<GameEvent, { t: 'milestone' }>, ended: boole
     ? `${left.budget} budget left: +${formatNumber(left.score)} ${SCORE_LABELS.total}.`
     : '';
   const reward = left ? ` ${leftover}` : e.reward.budget > 0 ? ` +${e.reward.budget} budget.` : '';
+  // D-157: the strikes it gave, once Strike is on the plank (the first job's first milestone
+  // comes before it, first-job.ts).
+  const n = e.reward.strikes ?? 0;
+  const strikes =
+    n > 0 && (!firstJob.value || e.phase >= 1) ? ` +${n} ${n === 1 ? 'strike' : 'strikes'}.` : '';
   let ms: number;
   switch (e.result) {
     case 'onTime':
-      ms = showBanner(`${e.name} complete!`, `${onTo}${reward}`, 'good');
+      ms = showBanner(`${e.name} complete!`, `${onTo}${reward}${strikes}`, 'good');
       break;
     case 'early': {
       const weeks = `${e.weeksSaved} ${e.weeksSaved === 1 ? 'week' : 'weeks'}`;
@@ -1129,14 +1223,14 @@ function milestoneBanner(e: Extract<GameEvent, { t: 'milestone' }>, ended: boole
         `${e.name} complete, ${weeks} early!`,
         left
           ? `+${formatNumber(e.reward.score)} ${SCORE_LABELS.total} early bonus. ${leftover} ${onTo}`
-          : `+${formatNumber(e.reward.score)} ${SCORE_LABELS.total} early bonus, and +${e.reward.budget} budget. ${onTo}`,
+          : `+${formatNumber(e.reward.score)} ${SCORE_LABELS.total} early bonus, and +${e.reward.budget} budget.${strikes} ${onTo}`,
         'good',
         FEEL.bannerMs * FEEL.longBannerScale,
       );
       break;
     }
     case 'overtime':
-      ms = showBanner(`${e.name} complete, in overtime`, `${onTo}${reward}`, 'good');
+      ms = showBanner(`${e.name} complete, in overtime`, `${onTo}${reward}${strikes}`, 'good');
       break;
     case 'failed':
       ms = showBanner(
@@ -1154,6 +1248,22 @@ function milestoneBanner(e: Extract<GameEvent, { t: 'milestone' }>, ended: boole
   return ms;
 }
 
+/**
+ * D-178: one of a dropping room's thocking landings (piece-fx.ts dropPlan) has come: thock `k`,
+ * a slit drum's thock as a room has always landed with, each one a step higher than the one
+ * before; dust puffs from the room with the first.
+ */
+export function dropLanded(uid: number, k: number): void {
+  const f = FEEL.drop;
+  audio.play(
+    'place-room',
+    k === 0 ? undefined : { rate: 2 ** ((k * f.thockSemitones) / 12), gain: f.thockGain },
+  );
+  if (k !== 0) return;
+  const at = pieceMiddle([run.peek()], uid);
+  if (at) boardBurst('dust', at, { scale: f.dust });
+}
+
 async function play(events: GameEvent[], before: RunState, after: RunState): Promise<void> {
   const gen = generation;
   const animated = animates(events);
@@ -1168,6 +1278,13 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
   // shop, a reroll, a purchase) finishes in this one call, and setting busy for it flicked every
   // reader of busy on and off: the music's scene, and the week's stamp, which a tally takes down.
   if (animated) busy.value = true;
+  // D-181: the rooms this action finished, each lit after the last of its beats that did it.
+  const lit = finishedBy(before, after);
+  const lightAt = new Map<number, number>();
+  for (const [i, e] of events.entries()) {
+    if ((e.t === 'installed' || e.t === 'renovated' || e.t === 'extended') && lit.includes(e.uid))
+      lightAt.set(e.uid, i);
+  }
   try {
     const newSets = new Set(events.flatMap((e) => (e.t === 'setCompleted' ? [e.key] : [])));
     const ended = events.some((e) => e.t === 'runEnded');
@@ -1203,12 +1320,37 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
       if (gen !== generation) return;
       switch (e.t) {
         case 'placed': {
-          justPlaced.value = { uid: e.uid, id: nextId++ };
           const yard = CONTENT.pieces[e.defId].category !== 'indoor';
-          audio.play(yard ? 'place-yard' : 'place-room');
+          // D-178: a room's furniture drops in on the board, item by item, and thocks as it lands
+          // (dropLanded), playing on past this beat. Not with a newer action waiting, nor on the
+          // ?debug panel's instant tally.
+          const drop = !yard && !skipping && !instantTally.value && motion();
+          justPlaced.value = drop
+            ? { uid: e.uid, id: nextId++, drop }
+            : { uid: e.uid, id: nextId++ };
+          if (!drop) audio.play(yard ? 'place-yard' : 'place-room');
           if (e.free && !skipping) {
             const c = pieceCenter([after, base], e.uid);
             popup(c.x, c.y - 0.6, 'Weekend Crew!', 'note', FEEL.installMs);
+          }
+          await wait(FEEL.placeMs);
+          break;
+        }
+        case 'extended': {
+          // D-168: the room settles into its new outline, with a knock of building work and dust
+          // from the new tiles, and says what it became.
+          justPlaced.value = { uid: e.uid, id: nextId++ };
+          audio.play('place-room');
+          if (!skipping) {
+            const n = Math.max(1, e.cells.length);
+            const x = e.cells.reduce((a, q) => a + q.x + 0.5, 0) / n;
+            const y = e.cells.reduce((a, q) => a + q.y + 0.5, 0) / n;
+            if (e.free) popup(x, y - 0.6, 'Weekend Crew!', 'note', FEEL.installMs);
+            popup(x, y, `Bigger ${CONTENT.pieces[e.defId].name}!`, 'points', FEEL.installMs);
+            audio.play('place-room', { rate: 1.25, delay: 0.1 });
+            audio.play('chime', { delay: 0.18, rate: 1.1 });
+            boardBurst('dust', { x, y });
+            if (motion()) fxHooks.wobble(e.uid);
           }
           await wait(FEEL.placeMs);
           break;
@@ -1396,8 +1538,11 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
           if (hurried) bannerKeptUntil = performance.now() + FEEL.milestoneBannerMinMs;
           // The shop (or a change order) opens over the board, banner and all, so it waits the
           // banner out in real time, as the banner stays up, at any tally speed: holding hurries
-          // it, a click skips.
-          if (hurried) await waitBanner(toSheet ? shown : FEEL.milestoneHoldMs, gone);
+          // it, a click skips. D-182: a milestone met that isn't the last brings the client to
+          // the door over the banner's last second, and the sheet waits for them too.
+          const visit = toSheet && !ended ? visitDue(e, after) : null;
+          if (visit) await visitBeat(visit, shown, hurried, gone);
+          else if (hurried) await waitBanner(toSheet ? shown : FEEL.milestoneHoldMs, gone);
           else if (toSheet) await wait(shown, undefined, gone, realSpeed);
           else await wait(FEEL.milestoneHoldMs, undefined, gone);
           break;
@@ -1479,6 +1624,8 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
         default:
           break;
       }
+      // D-181: a room this beat finished switches its light on.
+      for (const [uid, at] of lightAt) if (at === i) await lightBeat(uid, after);
     }
     // The shop appears as this finishes, so its beats (its chime, a Rare's sparkle) play now,
     // not at the click, before the tally and the milestone could give a Rare away. So does a
@@ -1494,6 +1641,8 @@ async function play(events: GameEvent[], before: RunState, after: RunState): Pro
       }
     }
   } finally {
+    // D-181: a light no beat switched on (a skipped or interrupted play) is just on.
+    holdLights(lit, true);
     batch(() => {
       tallyView.value = null;
       highlighted.value = [];
@@ -1587,9 +1736,48 @@ function sheetBeat(e: GameEvent, after: RunState): void {
     case 'arrived':
       arrivalBeat(e, after);
       break;
+    case 'delivered':
+      deliveredBeat(e, after);
+      break;
+    case 'crewTool': {
+      // D-171: the crew's tool is in the supplies as the milestone's first week opens (or sold,
+      // with the supplies full): a neutral flash names it, with the delivery's shimmer.
+      const name = CONTENT.tools[e.tool].name;
+      flash.value = {
+        id: nextId++,
+        text:
+          e.sold === undefined
+            ? `Your crew brought a ${name}`
+            : `Supplies full: ${name} sold for ${num(e.sold)}`,
+        tone: 'note',
+      };
+      audio.play('sparkle', { gain: 0.5 });
+      break;
+    }
     default:
       break;
   }
+}
+
+/**
+ * D-160: the standing stock tops up, or a client's cards land (week 1's come with the run, so
+ * they never play): the cards pop into the reserve's extra slots with a soft shimmer, and nothing
+ * holds the week up. They're the reserve's last cards of their mark. A member arriving the same
+ * week comes first in the events: then they wait for the doorbell and pop with the member's, and
+ * the arrival's shimmer is theirs too.
+ */
+function deliveredBeat(e: Extract<GameEvent, { t: 'delivered' }>, after: RunState): void {
+  const marked = after.reserve.flatMap((r, i) =>
+    (e.from === 'stock' ? r.stock : e.from === 'crew' ? r.crew : r.client) ? [i] : [],
+  );
+  const withMember = justArrived.value !== null;
+  const delayMs = withMember ? FEEL.arrival.landDelayMs : 0;
+  const pop = { from: e.from, slots: marked.slice(-e.cards.length), delayMs, id: nextId++ };
+  justDelivered.value = pop;
+  setTimeout(() => {
+    if (justDelivered.value?.id === pop.id) justDelivered.value = null;
+  }, delayMs + FEEL.delivered.popMs);
+  if (!withMember) audio.play('sparkle', { gain: 0.5 });
 }
 
 /**
@@ -1597,7 +1785,8 @@ function sheetBeat(e: GameEvent, after: RunState): void {
  * and a ring spreading from the doormat), their card slides in over the board with their room's
  * picture (ArrivalCard.tsx), and their cards pop into the reserve's extra slots (Inventory.tsx).
  * It doesn't hold the week up: the card goes on its own (or with a click on it), and the
- * first-time hints wait for it.
+ * first-time hints wait for it. Then the member walks up from the street to wait at the door
+ * (D-177, board/PeopleLayer.tsx).
  */
 function arrivalBeat(e: Extract<GameEvent, { t: 'arrived' }>, after: RunState): void {
   const a = arrivalOf(after.setup.clientId, e.arrival);
@@ -1633,6 +1822,70 @@ function arrivalBeat(e: Extract<GameEvent, { t: 'arrived' }>, after: RunState): 
       boardBurst('ring', door, { delayMs: f.dongMs });
     });
   }
+  // D-177: then they walk up from the street to wait at the door (FEEL.arrival.walk). Hurried or
+  // with Reduce motion, they're simply there.
+  if (!skipping && motion()) walkIn.value = { arrival: e.arrival, id: nextId++ };
+}
+
+/**
+ * D-182: what a milestone's visit shows (fx/visit.ts), if it brings one: a milestone met (the
+ * caller sees to it that it isn't the last), outside the guided first job, with Reduce motion
+ * off, at a house with a door to come to.
+ */
+function visitDue(e: Extract<GameEvent, { t: 'milestone' }>, after: RunState): Visit | null {
+  if (e.result === 'failed' || firstJob.value || !motion()) return null;
+  return visitOf(after);
+}
+
+/**
+ * D-182: the client at the door. They come `FEEL.visit.underBannerMs` before the milestone's
+ * banner would go and stay `FEEL.visit.ms`, in real time, as the banner does: holding hurries
+ * them, and after a hurried week they come under its banner even though the tally is skipped. A
+ * click takes them down with the banner; a click before they come, a newer action or the
+ * instant tally, and they never come. The sheet after the milestone waits for them.
+ */
+async function visitBeat(
+  v: Visit,
+  shown: number,
+  hurried: boolean,
+  gone: () => boolean,
+): Promise<void> {
+  const f = FEEL.visit;
+  const gen = generation;
+  const hold = (ms: number, until: () => boolean) =>
+    hurried ? waitBanner(ms, until) : wait(ms, undefined, until, realSpeed);
+  const lead = Math.max(0, shown - f.underBannerMs);
+  await hold(lead, gone);
+  if (gone() || gen !== generation || (skipping && !hurried)) return;
+  const id = nextId++;
+  clientVisit.value = { ...v, id };
+  const away = () => clientVisit.value?.id !== id || gen !== generation;
+  visitSounds(v, id);
+  await hold(shown - lead, () => gone() || away());
+  await hold(Math.max(0, f.ms - (shown - lead)), away);
+  if (clientVisit.value?.id === id) clientVisit.value = null;
+}
+
+/** The major pentatonic's steps up an octave, as playback rates: the hearts' pops climb them. */
+const VISIT_STEPS = [0, 2, 4, 7, 9, 12].map((semitones) => 2 ** (semitones / 12));
+
+/**
+ * D-182: the visit's pops, each as its bubble opens (its pop-in frames done): the client's own,
+ * lower for a question, then each heart a step up the scale. None after the visit is skipped.
+ */
+function visitSounds(v: Visit, id: number): void {
+  const f = FEEL.visit;
+  const opens = bubbleOpensMs();
+  const at = (ms: number, play: () => void) =>
+    setTimeout(() => {
+      if (clientVisit.value?.id === id) play();
+    }, ms);
+  audio.play('bubble', { rate: 0.75, gain: 0.6 });
+  at(f.bubbleMs + opens, () => audio.play('bubble', { rate: v.bubble === 'ask' ? 0.85 : 1 }));
+  v.hearts.forEach((_, i) => {
+    const rate = VISIT_STEPS[Math.min(i, VISIT_STEPS.length - 1)]!;
+    at(f.heartsMs + i * f.heartStaggerMs + opens, () => audio.play('bubble', { rate }));
+  });
 }
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -1688,9 +1941,100 @@ function growBeats(events: readonly GameEvent[], after: RunState, gen: number): 
   }, FEEL.transform.afterArrivalMs);
 }
 
+// ---------------------------------------------------------------------------------------
+// A strike from the hand (D-157). Its beat plays on the hand, outside the chain: a free action
+// never holds the game up (D-154), and the next action finishes it at once.
+
+/** The strike's beat: the slots that hold their struck card under its stamp, and its words. */
+export const strikeView = signal<{
+  id: number;
+  text: string;
+  cards: readonly { i: number; was: Card }[];
+  leaving: boolean;
+} | null>(null);
+/** The slots whose new card is sliding in. */
+export const struckIn = signal<{ id: number; slots: readonly number[] } | null>(null);
+/** What a screen reader hears after a strike (Hand.tsx's status line). */
+export const struckSaid = signal('');
+
+let strikeTimers: ReturnType<typeof setTimeout>[] = [];
+
+/** Ends a strike's beat at once: the new cards in their slots. */
+export function finishStrike(): void {
+  for (const t of strikeTimers) clearTimeout(t);
+  strikeTimers = [];
+  batch(() => {
+    strikeView.value = null;
+    struckIn.value = null;
+  });
+}
+
+const nameOf = (c: Card) =>
+  c.kind === 'fixture' ? CONTENT.fixtures[c.id].name : CONTENT.pieces[c.id].name;
+
+/**
+ * A strike's beat (FEEL.strike): the struck slots keep their old cards, dimmed, under a red plate
+ * and its slip; red ink spatters as the plate lands; the cards drop and fade; then the new ones
+ * slide in. In real time, and never busy: any action ends it at once (finishStrike).
+ */
+function strikeBeat(e: Extract<GameEvent, { t: 'cardStruck' }>): void {
+  const text = strikeText(CONTENT, e.type);
+  const names = e.slots.map((x) => nameOf(x.card));
+  struckSaid.value =
+    `${text}. New ${names.length === 1 ? 'card' : 'cards'}: ${names.join(', ')}. ` +
+    `${e.strikesLeft} ${e.strikesLeft === 1 ? 'strike' : 'strikes'} left.`;
+  audio.play('strike');
+  if (instantTally.value) return;
+  const f = FEEL.strike;
+  const id = nextId++;
+  const gen = generation;
+  const at = (ms: number, fn: () => void) =>
+    strikeTimers.push(setTimeout(() => gen === generation && fn(), ms));
+  strikeView.value = { id, text, cards: e.slots.map(({ i, was }) => ({ i, was })), leaving: false };
+  // Red ink where the plate lands, as on a change order's stamp.
+  afterPaint(() => {
+    if (strikeView.value?.id !== id) return;
+    for (const el of document.querySelectorAll('.hand .strike-stamp')) {
+      burstAt('ink', el, { colors: ['--danger', '--danger-shade'], scale: f.inkScale });
+    }
+  }, f.stampInMs);
+  at(f.stampInMs + f.holdMs, () => {
+    const v = strikeView.value;
+    if (v?.id !== id) return;
+    strikeView.value = { ...v, leaving: true };
+    audio.play('rotate', { rate: 0.7 });
+  });
+  at(f.stampInMs + f.holdMs + f.outMs, () => {
+    if (strikeView.value?.id !== id) return;
+    batch(() => {
+      strikeView.value = null;
+      struckIn.value = { id, slots: e.slots.map((x) => x.i) };
+    });
+    audio.play('select', { rate: 0.7, delay: (f.inMs * 0.7) / 1000 });
+  });
+  at(f.stampInMs + f.holdMs + f.outMs + f.inMs, () => {
+    if (struckIn.value?.id === id) struckIn.value = null;
+  });
+}
+
 onEvents((events, before, after) => {
+  // D-157: a strike's beat starts now, before this action's render, so its slot never shows the
+  // new card first; any action finishes the last one's at once; and one that strikes nothing
+  // clears the strike's words, so the hand's status line never reads them out again (with a
+  // count of strikes left that may be stale by then).
+  finishStrike();
+  let struck = false;
+  for (const e of events) {
+    if (e.t !== 'cardStruck') continue;
+    struck = true;
+    strikeBeat(e);
+  }
+  if (!struck) struckSaid.value = '';
   // A new action while a tally plays finishes that one at once, then plays its own.
   if (busy.value) skipping = true;
+  // D-181: a room this action finishes keeps its light off until its beat switches it on (with
+  // Reduce motion it's just on).
+  if (animates(events) && motion() && !instantTally.value) holdLights(finishedBy(before, after));
   chain = chain.then(() => play(events, before, after)).catch((e) => console.error(e));
   if (animates(events)) {
     // Its starting state goes on show now, not when play() starts a microtask later: the
@@ -1704,6 +2048,9 @@ onEvents((events, before, after) => {
 onRunReset(() => {
   generation++;
   skipping = true;
+  // D-157: a strike's beat and its words go with the run.
+  finishStrike();
+  struckSaid.value = '';
   batch(() => {
     popups.value = [];
     checkFlashes.value = [];
@@ -1714,11 +2061,15 @@ onRunReset(() => {
     justRenovated.value = null;
     orderStamp.value = null;
     justArrived.value = null;
+    walkIn.value = null;
     wash.value = null;
     targetHit.value = null;
     toppedOut.value = null;
     arrivalCard.value = null;
     chainArc.value = null;
+    lightsHeld.value = new Set();
+    lightSwitched.value = null;
+    clientVisit.value = null;
   });
   clearParticles();
 });

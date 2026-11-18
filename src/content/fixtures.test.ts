@@ -4,12 +4,13 @@
 // pieces.ts; when tuning changes a number, change the test with it.
 
 import { describe, expect, it } from 'vitest';
-import type { BlueprintId, FixtureId, HouseState, Rarity, Tally } from '../rules/index.ts';
+import type { BlueprintId, FixtureId, HouseState, PieceId, Rarity, Tally } from '../rules/index.ts';
 import { drawWeights } from '../rules/draw.ts';
 import { checkInstall, withFixture } from '../rules/fixtures.ts';
-import { computeLayout, isLayoutModifier, type Layout } from '../rules/layout.ts';
+import { computeLayout, isLayoutModifier, isRoom, type Layout } from '../rules/layout.ts';
 import { runModifiers } from '../rules/modifiers.ts';
 import { NO_CONTEXT, tallyHouse } from '../rules/scoring.ts';
+import { matchesDef, rootType } from '../rules/selectors.ts';
 import { fixtureText } from '../rules/text.ts';
 import { emptyRows, houseFrom, setup, type Placement } from '../rules/testing.ts';
 import { PRICES } from './balance.ts';
@@ -31,11 +32,12 @@ function build(
 
 /** The house's tally in `week`, with these blueprints (bought in week 1) if any. */
 function tallyOf(house: HouseState, week = 1, blueprints: readonly BlueprintId[] = []): Tally {
-  // The fixtures alone: no client's tastes (the Hendersons like Lawns).
+  // The fixtures alone: no client's tastes (the Hendersons like Lawns), and none of the house
+  // rules that pay on the rooms (D-165; room-rules.test.ts has those).
   const mods = runModifiers(CONTENT, {
     setup: setup('fixtures'),
     blueprints: blueprints.map((id) => ({ id, boughtWeek: 1 })),
-  }).filter((m) => m.source.kind !== 'client');
+  }).filter((m) => m.source.kind !== 'client' && m.source.kind !== 'house');
   const layout = computeLayout(CONTENT, house, mods.map((m) => m.mod).filter(isLayoutModifier));
   return tallyHouse(CONTENT, layout, week, true, { ...NO_CONTEXT, mods });
 }
@@ -137,8 +139,8 @@ describe('fixtures', () => {
 });
 
 describe('Fireplace', () => {
-  it('+50% in any room; +100% in a Living Room or a Library', () => {
-    expectText('fireplace', 'Fits any room', [
+  it('+50% in its room; +100% in a Living Room or a Library', () => {
+    expectText('fireplace', 'Fits most rooms', [
       'Earns +50%',
       '+50% more in a Living Room or Library',
     ]);
@@ -177,9 +179,83 @@ describe('Fireplace', () => {
     expect(fits(open, placements, 'fireplace', 1)).toEqual({ legal: true });
     expect(fits(open, placements, 'fireplace', 2)).toEqual({
       legal: false,
-      reason: 'A Fireplace goes in any room, not a Hallway.',
+      reason: 'A Fireplace goes in most rooms, not a Hallway.',
     });
     expect(fits(open, placements, 'fireplace', 3)).toMatchObject({ legal: false });
+  });
+});
+
+// D-172: the room fixtures leave out the rooms they'd look wrong in. A variant and a member's
+// room go by their type (an L-Kitchen is a Kitchen, Grandma's Room a Bedroom).
+describe('where the room fixtures go (D-172)', () => {
+  const OUT: Partial<Record<FixtureId, readonly PieceId[]>> = {
+    fireplace: ['bathroom', 'closet', 'garage', 'mudroom'],
+    blackoutCurtains: ['bathroom', 'closet', 'garage'],
+    // A skylit Bathroom and a soundproofed Garage are real things.
+    skylight: [],
+    soundproofing: [],
+  };
+
+  // The Bay Window leaves out a Bathroom, Closet and Garage too; it needs an outside wall, which
+  // only a house has, so the next test asks checkInstall.
+  it('each takes every room type but the ones it leaves out', () => {
+    const rooms = Object.values(CONTENT.pieces).filter(isRoom);
+    expect(rooms.length).toBeGreaterThan(15);
+    for (const [id, out] of Object.entries(OUT) as [FixtureId, readonly PieceId[]][]) {
+      for (const room of rooms) {
+        expect(matchesDef(CONTENT.fixtures[id].fits, room), `${id} in ${room.id}`).toBe(
+          !out.includes(rootType(room)),
+        );
+      }
+    }
+    expect(matchesDef(CONTENT.fixtures.fireplace.fits, CONTENT.pieces.lKitchen)).toBe(true);
+    expect(matchesDef(CONTENT.fixtures.fireplace.fits, CONTENT.pieces.grandmasRoom)).toBe(true);
+  });
+
+  it('a refused install names the room', () => {
+    const placements: Placement[] = [
+      ['bathroom', 0, 0],
+      ['closet', 2, 0],
+      ['garage', 4, 0],
+      ['mudroom', 0, 3],
+      ['bedroom', 4, 3],
+    ];
+    const no = (reason: string) => ({ legal: false, reason });
+    expect(fits(open, placements, 'fireplace', 1)).toEqual(
+      no('A Fireplace goes in most rooms, not a Bathroom.'),
+    );
+    expect(fits(open, placements, 'fireplace', 2)).toEqual(
+      no('A Fireplace goes in most rooms, not a Closet.'),
+    );
+    expect(fits(open, placements, 'fireplace', 3)).toEqual(
+      no('A Fireplace goes in most rooms, not a Garage.'),
+    );
+    expect(fits(open, placements, 'fireplace', 4)).toEqual(
+      no('A Fireplace goes in most rooms, not a Mudroom.'),
+    );
+    expect(fits(open, placements, 'fireplace', 5)).toEqual({ legal: true });
+    expect(fits(open, placements, 'blackoutCurtains', 1)).toEqual(
+      no('Blackout Curtains go in most rooms, not a Bathroom.'),
+    );
+    // Curtains in a Mudroom are fine: it has a window by the door.
+    expect(fits(open, placements, 'blackoutCurtains', 4)).toEqual({ legal: true });
+    expect(fits(open, placements, 'bayWindow', 1)).toEqual(
+      no('A Bay Window goes in most exterior rooms, not a Bathroom.'),
+    );
+    expect(fits(open, placements, 'bayWindow', 2)).toEqual(
+      no('A Bay Window goes in most exterior rooms, not a Closet.'),
+    );
+    expect(fits(open, placements, 'bayWindow', 3)).toEqual(
+      no('A Bay Window goes in most exterior rooms, not a Garage.'),
+    );
+    expect(fits(open, placements, 'bayWindow', 4)).toEqual({ legal: true });
+    expect(fits(open, placements, 'bayWindow', 5)).toEqual({ legal: true });
+    for (const uid of [1, 2, 3, 4, 5]) {
+      expect(fits(open, placements, 'skylight', uid), `skylight in ${uid}`).toEqual({
+        legal: true,
+      });
+      expect(fits(open, placements, 'soundproofing', uid)).toEqual({ legal: true });
+    }
   });
 });
 
@@ -215,7 +291,7 @@ describe('Skylight', () => {
 
 describe('Blackout Curtains', () => {
   it('makes its room Dark, and +25%', () => {
-    expectText('blackoutCurtains', 'Fits any room', [
+    expectText('blackoutCurtains', 'Fits most rooms', [
       'Makes it Dark',
       'It’s never Sunny',
       'Earns +25%',
@@ -279,7 +355,7 @@ describe('Soundproofing', () => {
         ],
         [[2, 'soundproofing']],
       ),
-    ).toEqual([3, 1, 2]); // the L-Kitchen in the sun: +2 (D-120)
+    ).toEqual([3, 1, 5]); // the L-Kitchen in the sun: +2 (D-120), and +3 of its own (D-165)
   });
 });
 
@@ -297,12 +373,14 @@ describe('Kitchen Island', () => {
       'Earns +25%',
       'Neighbors count it as a Dining Room (sets and the checklist don’t)',
     ]);
-    // All three face the sun, +2 each (D-120). Without it: the middle Kitchen is +4 at the
-    // Dining Room's +50% (6); the far one has no Dining Room (2).
-    expect(earned(open, row)).toEqual([2, 6, 2]);
-    // With it: the middle Kitchen is +4 at +75% (7), and the far Kitchen gets its +2 per Dining
-    // Room for the middle one (4). The Island adds no aura: it isn't a Dining Room's effects.
-    expect(earned(open, row, [[2, 'kitchenIsland']])).toEqual([2, 7, 4]);
+    // All three face the sun, +2 each (D-120), and each Kitchen earns +3 of its own (D-165).
+    // Without it: the middle Kitchen is +7 at the Dining Room's +50% (10.5 → 11); the far one
+    // has no Dining Room (5).
+    expect(earned(open, row)).toEqual([2, 11, 5]);
+    // With it: the middle Kitchen is +7 at +75% (12.25 → 12), and the far Kitchen gets its +2
+    // per Dining Room for the middle one (7). The Island adds no aura: it isn't a Dining Room's
+    // effects.
+    expect(earned(open, row, [[2, 'kitchenIsland']])).toEqual([2, 12, 7]);
     const layout = layoutOf(open, row, [[2, 'kitchenIsland']]);
     expect(layout.countsAs.get(2)).toEqual(new Map([['diningRoom', 1]]));
   });
@@ -358,7 +436,7 @@ describe('Bunk Beds', () => {
 
 describe('Bay Window', () => {
   it('gives its room a view, which is one more view for its own per-view bonus', () => {
-    expectText('bayWindow', 'Fits an exterior room', [
+    expectText('bayWindow', 'Fits most exterior rooms', [
       'Gives it a view, which counts as one more view',
     ]);
     // A Living Room with no view, in the sun (D-120): 2, then 4 with the window.
@@ -389,7 +467,8 @@ describe('Bay Window', () => {
         ],
         [[1, 'bayWindow']],
       ),
-    ).toEqual([4, 2]); // the window's view and the sun
+      // The window's view and the sun; the Patio's +2 for the Living Room and +1 out back (D-166).
+    ).toEqual([4, 3]);
   });
 
   it('fits an exterior room, checked when it’s installed; it stays if the room becomes interior', () => {
@@ -446,13 +525,14 @@ describe('Pergola', () => {
     expect(earned(open, closet, [[1, 'pergola']])).toEqual([2, 1]);
     // Alone it touches no room, so it earns nothing, Pergola or not (the Patio rule, D-105).
     expect(earned(open, [['patio', 0, 0]], [[1, 'pergola']])).toEqual([0]);
-    // Beside a Kitchen (in the sun, +2): (2 + 1) at +50% is 4.5 → 5.
+    // Beside a Kitchen (in the sun, +2, and +3 of its own, D-165), out back (+1, D-166): the
+    // Patio's (2 + 1 + 1) at +50% is 6.
     const kitchen: Placement[] = [
       ['patio', 2, 0],
       ['kitchen', 0, 0],
     ];
-    expect(earned(open, kitchen)).toEqual([2, 2]);
-    expect(earned(open, kitchen, [[1, 'pergola']])).toEqual([5, 2]);
+    expect(earned(open, kitchen)).toEqual([3, 5]);
+    expect(earned(open, kitchen, [[1, 'pergola']])).toEqual([6, 5]);
     // Three Trees and the Pergola's view, beside a Closet: four views, three count: 3 at +50%.
     const trees = ['.TT.', 'T...', ...emptyRows(4, 2)];
     const wooded: Placement[] = [
@@ -472,7 +552,7 @@ describe('Garden Lights', () => {
       '+50% more in the front yard',
     ]);
     // The Bedroom's front row is row 1: a Lawn in rows 4–5 is front yard (1 at +50%: 2); one
-    // in rows 0–1 is back yard (1).
+    // in rows 0–1 is back yard (1, and +1 out back, D-166).
     const placements: Placement[] = [
       ['bedroom', 0, 0],
       ['lawn', 4, 4],
@@ -482,7 +562,7 @@ describe('Garden Lights', () => {
       [2, 'gardenLights'],
       [3, 'gardenLights'],
     ];
-    expect(earned(open, placements, installs)).toEqual([3, 2, 1]);
+    expect(earned(open, placements, installs)).toEqual([3, 2, 2]);
     const layout = layoutOf(open, placements, installs);
     expect(layout.tags.get(2)!.has('Pretty')).toBe(true);
     expect(layout.tags.get(3)!.has('Pretty')).toBe(true);
@@ -501,9 +581,9 @@ describe('Garden Lights', () => {
 });
 
 describe('Chandelier', () => {
-  // An Entertainer, all three in the sun (+2 each, D-120): the Kitchen (4 at the Dining Room's
-  // +50%: 6), the Dining Room (uid 2: 2), and the Living Room (uid 3: 2 at +50%, 3). The set
-  // adds 25 Points and +1 Mult: 36 × 2 = 72.
+  // An Entertainer, all three in the sun (+2 each, D-120): the Kitchen (7 with its own +3, D-165,
+  // at the Dining Room's +50%: 10.5 → 11), the Dining Room (uid 2: 2), and the Living Room (uid
+  // 3: 2 at +50%, 3). The set adds 25 Points and +1 Mult: 41 × 2 = 82.
   const entertainer: Placement[] = [
     ['kitchen', 0, 0],
     ['diningRoom', 2, 0],
@@ -515,10 +595,10 @@ describe('Chandelier', () => {
       '×1.25 Charm while it’s part of an Entertainer',
     ]);
     const plain = tallyOf(build(open, entertainer));
-    expect(plain).toMatchObject({ points: 36, mult: 200, total: 72, xMults: [] });
-    // 200 × 1.25 = 250; 36 × 2.5 = 90.
+    expect(plain).toMatchObject({ points: 41, mult: 200, total: 82, xMults: [] });
+    // 200 × 1.25 = 250; 41 × 2.5 = 102.5 → 103.
     const t = tallyOf(build(open, entertainer, [[2, 'chandelier']]));
-    expect(t).toMatchObject({ points: 36, mult: 250, total: 90 });
+    expect(t).toMatchObject({ points: 41, mult: 250, total: 103 });
     expect(t.xMults).toEqual([
       {
         source: { kind: 'fixture', id: 'chandelier', uid: 2 },
@@ -538,20 +618,20 @@ describe('Chandelier', () => {
       ]),
     );
     expect(both.xMults).toHaveLength(1);
-    expect(both).toMatchObject({ mult: 250, total: 90 });
+    expect(both).toMatchObject({ mult: 250, total: 103 });
     // A second Dining Room (uid 4) by the Kitchen isn't in the set (it has no Kitchen left), and
-    // it's in the Kitchen's shade. The Kitchen is now 6 at +100%: 12, and (17 + 25) × 2 = 84.
+    // it's in the Kitchen's shade. The Kitchen is now 9 at +100%: 18, and (23 + 25) × 2 = 96.
     const extra: Placement[] = [...entertainer, ['diningRoom', 0, 2]];
-    expect(tallyOf(build(open, extra))).toMatchObject({ points: 42, total: 84 });
+    expect(tallyOf(build(open, extra))).toMatchObject({ points: 48, total: 96 });
     expect(tallyOf(build(open, extra, [[4, 'chandelier']]))).toMatchObject({
       mult: 200,
-      total: 84,
+      total: 96,
       xMults: [],
     });
-    // In the set's Dining Room: 42 × 2.5 = 105.
+    // In the set's Dining Room: 48 × 2.5 = 120.
     expect(tallyOf(build(open, extra, [[2, 'chandelier']]))).toMatchObject({
       mult: 250,
-      total: 105,
+      total: 120,
     });
     // A lone Living Room: no set, no ×Mult.
     expect(tallyOf(build(open, [['livingRoom', 0, 0]], [[1, 'chandelier']]))).toMatchObject({

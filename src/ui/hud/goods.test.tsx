@@ -24,8 +24,8 @@ describe("a piece's kind", () => {
 });
 
 /**
- * What a tree says, in order: its words, and `[name]` for an icon. A Tip has hooks, so its
- * children are read from its props; the other components are called in place.
+ * What a tree says, in order: its words, and `[name]` for an icon. A Tip's words are its
+ * children, read from its props; the other components are called in place.
  */
 function words(node: ComponentChildren): string {
   if (node == null || typeof node === 'boolean') return '';

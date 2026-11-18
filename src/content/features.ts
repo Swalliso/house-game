@@ -33,6 +33,17 @@ export const FEATURES: Readonly<Record<FeatureId, FeatureDef>> = {
     viewSource: true,
     body: true,
   },
+  // D-174: a lake along a lakeside lot's back edge, running on past it. One body, like the pond:
+  // a piece touching it touches the Lake once, and it's a view from its shore.
+  lake: {
+    id: 'lake',
+    name: 'Lake',
+    tier: 'core',
+    tags: [],
+    blocks: true,
+    viewSource: true,
+    body: true,
+  },
   // A demolition clears one. Each Boulder is its own neighbor, like a Tree, with no tags and no
   // view (D-145): only the pieces that name it count it (a Lawn, a Flower Bed, the Fire Pit).
   boulder: {

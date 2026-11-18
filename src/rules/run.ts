@@ -4,9 +4,10 @@
 // input and throws IllegalAction with a reason. resolveWeek() is the one end-of-week step;
 // apply() and preview() both call it, so they can't disagree.
 //
-// A week: place a card from the hand or the reserve, install a fixture from the hand, or pass
-// (each ends the week), with free actions before that: install from the supplies, sell, reroll,
-// demolish, complete early, and the auto-complete toggle.
+// A week: place a card from the hand, install a fixture from the hand, or pass (each ends the
+// week), with free actions before that: place a piece from the reserve (D-163: Your goods don't
+// use the week), install from the supplies, sell, reroll, demolish, complete early, and the
+// auto-complete toggle.
 //
 // End of week: the tally adds to the score and budget. If auto-complete is on, the target is
 // met, and weeks remain, the milestone completes early. At the phase's last week (or an
@@ -15,16 +16,25 @@
 //
 // Milestones: after milestones 1–6 the shop opens (D-051); leaving it starts the next phase.
 // After the last one the run is won. Tools (M3b) are free actions; Weekend Crew makes the
-// week's next play free too (D-075). Finds pay once: the Old Shed when demolished, a Time
-// Capsule when first built over.
+// week's next card from the hand free too (D-075, D-163). Finds pay once: the Old Shed when
+// demolished, a Time Capsule when first built over.
 //
 // Start of week: transforms resolve (a Sapling old enough becomes a Tree), the household's
 // arrivals move in at their phase's first week (M4b, D-103: their cards go into the reserve's
-// extra slots), and the hand is drawn in two rows, Rooms then Layout (D-121). A card with no
-// play at all (no spot, no host, no Renovation) is swapped for another from its row, trying up
-// to `swapTries` cards; that replaced D-070's free redraw. A reroll redraws both rows, then
-// swaps (D-132; D-121 had a reroll per row). Neither its draw nor its swaps deal back a card it
-// replaced while its row's pool has enough others.
+// extra slots), what the client brings for that phase follows them, and the standing stock fills
+// those slots up to a Hallway and a Fence (D-160: only what's missing): once, in week 1 (D-162; a
+// first job's in Foundation's third week), and again at each milestone's first week only with
+// `refill` (D-163). Then the hand is drawn in two rows, Rooms then Layout (D-121).
+// A card with no play at all (no spot, no host, no Renovation) is swapped for another from its
+// row, trying up to `swapTries` cards; that replaced D-070's free redraw. A reroll redraws both
+// rows, then swaps (D-132; D-121 had a reroll per row). Neither its draw nor its swaps deal back
+// a card it replaced while its row's pool has enough others.
+//
+// Strikes (D-157): a free action on a hand card. Its type (a piece's root type, or a fixture)
+// is never drawn again this run (D-084's per-row floors hold), and it and any other hand card
+// of that type leave at once, each slot taking a card from its row as a swap would, on a
+// stream of its own. The run starts with the `strikes` rule's count and gains
+// `strikesPerMilestone` at each milestone it goes on from; the shop's service is +1 strike.
 //
 // Change orders (M4b): when a milestone resolves, the phase effects that ran through it end
 // and its requests and restrictions resolve (a request met and a restriction kept pay their
@@ -47,8 +57,10 @@ import type {
   BlueprintValue,
   BuyAction,
   Card,
+  CardType,
   DrawRow,
   Cell,
+  ExtendAction,
   ChangeOrderDef,
   ChangeOrderId,
   ChangeOrderOffer,
@@ -91,6 +103,8 @@ import type {
   RunSetup,
   RunState,
   SellAction,
+  StrikePreview,
+  StruckSlot,
   SwappedCard,
   SetId,
   SetProgress,
@@ -111,6 +125,7 @@ import {
   meetsHouse,
   neededTypes,
   newPiecesNeeded,
+  perHouseLimits,
   progressOf,
   typeLimits,
   typesAtLimit,
@@ -127,12 +142,24 @@ import {
   scoresWeek,
   totalWithOneMore,
 } from './blueprint-value.ts';
-import { DRAW_ROWS, drawHand, drawWeights, rowOf, slotKey, swapCandidates } from './draw.ts';
+import {
+  DRAW_ROWS,
+  drawableTypes,
+  drawHand,
+  drawWeights,
+  isStruck,
+  rowOf,
+  slotKey,
+  strikeCandidates,
+  swapCandidates,
+} from './draw.ts';
 import { estimatePlay, type Estimate } from './estimate.ts';
 import { checkInstall, installHosts, withFixture } from './fixtures.ts';
 import {
   bounds,
   cellIndex,
+  cellsToShape,
+  ORTHOGONAL,
   packShapeProblem,
   placedCells,
   rotateShape,
@@ -152,7 +179,7 @@ import {
   type Layout,
   type LayoutModifier,
 } from './layout.ts';
-import { generateLot } from './lot.ts';
+import { generateLot, withTraits } from './lot.ts';
 import {
   earlyBonus,
   isRunMode,
@@ -167,6 +194,7 @@ import {
 import { ruleFrom, runModifiers, setupRule, type ActiveMod } from './modifiers.ts';
 import {
   addPiece,
+  clearTiles,
   checkDemolish as checkDemolishOn,
   checkMove,
   checkPlacement,
@@ -178,12 +206,13 @@ import { stream } from './rng.ts';
 import { canUseTool, useTool, type ToolCtx } from './tools.ts';
 import { wowParts } from './attribution.ts';
 import { ageOf, onCadence, tallyHouse, unmetRequirement, type TallyContext } from './scoring.ts';
-import { isType, matchesPiece, rootType } from './selectors.ts';
+import { isType, matchesPiece, rootType, type Yard } from './selectors.ts';
 import { setProgress as setProgressOf } from './sets.ts';
 import { isRoom } from './layout.ts';
 import {
   canStrike,
   crateOptions,
+  inExtraSlot,
   offerPrice,
   openVisit,
   refreshPrice,
@@ -205,8 +234,11 @@ import {
   conditionText,
   definite,
   ordinal,
+  perHouseOf,
+  plural,
   selectorText,
   specText,
+  strikeText,
 } from './text.ts';
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -241,7 +273,7 @@ export interface Rules {
   cardFits(state: RunState, i: number): boolean;
   /** Whether a reserve piece has any legal spot. */
   reserveFits(state: RunState, i: number): boolean;
-  checkPlay(state: RunState, play: PlaceAction | InstallAction | RenovateAction): Legality;
+  checkPlay(state: RunState, play: NonNullable<Play>): Legality;
   /** A play's effect on this week's total. A supplies install previews as the same change. */
   preview(state: RunState, play: Play): Preview;
   /** The week's total with this play, without breakdown lines (the sim's cheap path). */
@@ -275,10 +307,25 @@ export interface Rules {
   pieceTimers(state: RunState, uid: number): string[];
   /** Every legal placement of every card in the hand and the reserve (distinct rotations). */
   legalPlacements(state: RunState): PlaceAction[];
-  /** Every legal play that ends the week: placements, hand fixtures in each host, and Renovations. */
-  legalPlays(state: RunState): (PlaceAction | InstallAction | RenovateAction)[];
+  /**
+   * D-163: whether a play ends the week. A play from Your goods (the reserve) never does; nor
+   * does the next hand card while Weekend Crew is ready (D-083).
+   */
+  endsWeek(state: RunState, play: NonNullable<Play>): boolean;
+  /**
+   * Every legal play: placements, hand fixtures in each host, Renovations, and extensions
+   * (D-168). `endsWeek` says which end the week (D-163: a play from Your goods doesn't).
+   */
+  legalPlays(state: RunState): NonNullable<Play>[];
   /** The rooms a hand or reserve card could renovate now (empty unless its type is at its limit). */
   renovateTargets(state: RunState, from: RenovateAction['from'], i: number): number[];
+  /**
+   * D-168: every legal extension by a hand or reserve card, of room `uid` or of every room it
+   * can extend, rooms in placement order, then by rotation and spot.
+   */
+  extendSpots(state: RunState, from: ExtendAction['from'], i: number, uid?: number): ExtendAction[];
+  /** D-168: the rooms a hand or reserve card could extend now, in placement order. */
+  extendTargets(state: RunState, from: ExtendAction['from'], i: number): number[];
   /** The checklist's ceilings as they stand (M4a): types at their limit can renovate. */
   limits(state: RunState): readonly TypeLimit[];
   /** The client's checklist with progress, as the house stands (or with a play, as it would). */
@@ -325,6 +372,11 @@ export interface Rules {
   fencedYards(state: RunState): readonly number[];
   /** Every tile in a fenced yard, as lot indexes (y × width + x), for the board's tint. */
   fencedTiles(state: RunState): readonly number[];
+  /**
+   * D-166: every tile of the front or the back yard as the house stands, as lot indexes, for the
+   * board's shading while a card that reads one is picked.
+   */
+  yardTiles(state: RunState, yard: Yard): readonly number[];
   describePiece(state: RunState, uid: number): PieceInfo | null;
   describeTile(state: RunState, x: number, y: number): TileInfo | null;
   /**
@@ -338,8 +390,17 @@ export interface Rules {
   canRefresh(state: RunState): Availability & { price: number };
   /** What selling a blueprint or a supply pays now. */
   sellPrice(state: RunState, from: SellAction['from'], i: number): number;
-  /** Card types the strike service could name now (D-076). */
+  /** Card types a strike could take now (D-076, D-157): each row keeps its floor. */
   strikeOptions(state: RunState): readonly Card[];
+  /** D-157: whether Strike can be used at all now (the plank's button, S), and why not. */
+  canStrikeAny(state: RunState): Availability;
+  /** D-157: whether hand card i can be struck now, and why not. */
+  canStrikeCard(state: RunState, i: number): Availability;
+  /**
+   * D-157: what striking hand card i would do, for the hand's strike mode: whether it can,
+   * the type, the hand cards that would leave (it, and any other of its type), and the words.
+   */
+  previewStrike(state: RunState, i: number): StrikePreview;
   /** Whether a tool can be used now, with this target. */
   canUseTool(state: RunState, action: UseToolAction): Availability;
   /**
@@ -388,6 +449,7 @@ interface WeekResult {
   placed: Extract<GameEvent, { t: 'placed' }> | null;
   installed: Extract<GameEvent, { t: 'installed' }> | null;
   renovated: Extract<GameEvent, { t: 'renovated' }> | null;
+  extended: Extract<GameEvent, { t: 'extended' }> | null;
 }
 
 /** One shape a card is listed at: a rotation of its own, or a pack's tiles at rot 0. */
@@ -401,6 +463,8 @@ interface PlacementShape {
 type PlayCheck = PlacementCheck & {
   install?: { uid: number; fixture: FixtureId; replaces?: FixtureId };
   renovate?: { uid: number; level: number; card: PieceId };
+  /** D-168: the room that grows, and its outline once it has (its box's corner and rows). */
+  extend?: { uid: number; card: PieceId; x: number; y: number; shape: string[] };
 };
 
 const NO_PLAY: Legality = { legal: false, cells: [], clearedTrees: [] };
@@ -415,6 +479,16 @@ const ORDER_PICK_REASON = 'Pick one of the change orders on offer.';
 interface RunMods {
   active: readonly ActiveMod[];
   layout: readonly LayoutModifier[];
+}
+
+/** D-168: how many tiles of wall two sets of cells share (pairs of tiles side by side). */
+function sharedWall(a: readonly Cell[], b: readonly Cell[]): number {
+  const inB = new Set(b.map((c) => `${c.x},${c.y}`));
+  let n = 0;
+  for (const c of a) {
+    for (const [dx, dy] of ORTHOGONAL) if (inB.has(`${c.x + dx},${c.y + dy}`)) n++;
+  }
+  return n;
 }
 
 export function createRules(content: Content): Rules {
@@ -461,14 +535,32 @@ export function createRules(content: Content): Rules {
   const targetOf = (state: RunState) => phaseTarget(b, state.phase, pctOf(state));
 
   const limitsCache = new WeakMap<RunState, TypeLimit[]>();
-  /** The checklist's ceilings as they stand: a type at its limit can renovate, and draws less. */
+  /**
+   * The checklist's ceilings as they stand, then the cards' per-house caps (D-165): a type at
+   * its limit can renovate, and draws less.
+   */
   function limitsOf(state: RunState): TypeLimit[] {
     let l = limitsCache.get(state);
     if (!l) {
-      l = typeLimits(content, layoutFor(state), clientOf(state).specs, { phase: state.phase });
+      const layout = layoutFor(state);
+      l = [
+        ...typeLimits(content, layout, clientOf(state).specs, { phase: state.phase }),
+        ...perHouseLimits(content, layout),
+      ];
       limitsCache.set(state, l);
     }
     return l;
+  }
+
+  /** D-165: the per-house cap a card's type has reached (one Kitchen), if any. */
+  function capReached(state: RunState, def: PieceDef): TypeLimit | null {
+    const cap = perHouseOf(content, def);
+    if (cap === undefined) return null;
+    const root = rootType(def);
+    return (
+      limitsOf(state).find((l) => l.max === cap && l.count >= l.max && l.types.includes(root)) ??
+      null
+    );
   }
 
   /** A phase's last week or an overtime week, actually played: Last-Minute Push's ×2. */
@@ -496,8 +588,14 @@ export function createRules(content: Content): Rules {
     return tallyHouse(content, layoutFor(state, house), state.week, withLines, tallyCtx(state, ff));
   }
 
-  /** The piece a placement would build (or a Renovation spend): a hand card or a reserve piece. */
-  function placeDef(state: RunState, play: PlaceAction | RenovateAction): PieceDef | null {
+  /**
+   * The piece a placement would build (or a Renovation or an extension spend): a hand card or a
+   * reserve piece.
+   */
+  function placeDef(
+    state: RunState,
+    play: PlaceAction | RenovateAction | ExtendAction,
+  ): PieceDef | null {
     if (!Number.isInteger(play.i)) return null;
     if (play.from === 'hand') {
       const card = state.hand[play.i];
@@ -524,12 +622,10 @@ export function createRules(content: Content): Rules {
     return null;
   }
 
-  function checkPlay(
-    state: RunState,
-    play: PlaceAction | InstallAction | RenovateAction,
-  ): PlayCheck {
+  function checkPlay(state: RunState, play: NonNullable<Play>): PlayCheck {
     if (state.screen !== 'build') return { ...NO_PLAY, reason: offScreen(state) };
     if (play.t === 'renovate') return checkRenovate(state, play);
+    if (play.t === 'extend') return checkExtend(state, play);
     if (play.t === 'install') {
       const fixture = installFixture(state, play);
       if (!fixture) return { ...NO_PLAY, reason: 'There is no fixture there.' };
@@ -543,6 +639,23 @@ export function createRules(content: Content): Rules {
     }
     const def = placeDef(state, play);
     if (!def) return { ...NO_PLAY, reason: 'There is no card there.' };
+    // D-171: an Addition is never a room of its own.
+    if (def.addition) {
+      const rooms = selectorText(content, { piece: [...b.extend.types] }, 'one');
+      return { ...NO_PLAY, reason: `An Addition grows a room: lay it beside ${article(rooms)}.` };
+    }
+    // D-165: a house holds one Kitchen; another Kitchen card extends it where it can grow
+    // (D-168), and renovates it otherwise (D-169).
+    if (capReached(state, def)) {
+      const room = content.pieces[rootType(def)].name;
+      return {
+        ...NO_PLAY,
+        reason:
+          perHouseOf(content, def) === 1
+            ? `The house has its ${room}: this card extends or renovates it.`
+            : `The house has its ${plural(room)}: this card extends or renovates one.`,
+      };
+    }
     if (
       ![0, 1, 2, 3].includes(play.rot) ||
       !Number.isInteger(play.x) ||
@@ -567,6 +680,15 @@ export function createRules(content: Content): Rules {
     } else if (play.shape !== undefined) {
       return { ...NO_PLAY, reason: `A ${def.name} has its own shape.` };
     }
+    return checkSpot(state, def, play);
+  }
+
+  /**
+   * Where a placement can go, once its card, spot, and shape are known to be well formed:
+   * checkPlay's last step, and all eachLegalSpot needs, since placementShapes lists only
+   * shapes that pass. Skipping the pack shape check there keeps a Fence's scan cheap (D-161).
+   */
+  function checkSpot(state: RunState, def: PieceDef, play: PlaceAction): PlacementCheck {
     return checkPlacement(
       content,
       layoutFor(state),
@@ -582,7 +704,8 @@ export function createRules(content: Content): Rules {
 
   /**
    * Renovate (M4a): a room card whose type is at its limit, on a room of that type below the
-   * top level. The limit comes from the client's checklist (one Kitchen, …).
+   * top level. The limit comes from the client's checklist (one Kitchen, …). D-168: only on a
+   * room the card can't extend.
    */
   function checkRenovate(state: RunState, play: RenovateAction): PlayCheck {
     const def = placeDef(state, play);
@@ -592,18 +715,19 @@ export function createRules(content: Content): Rules {
     if (def.member) {
       return { ...NO_PLAY, reason: `${card} card can’t renovate: it’s a household member’s room.` };
     }
-    // A room card on a room (house-systems-review.md §4), whose type the checklist caps.
+    // A room card on a room (house-systems-review.md §4), whose type the checklist or its own
+    // card caps (D-165).
     const root = rootType(def);
     const capped = isRoom(def) && limitsOf(state).some((l) => l.types.includes(root));
     if (!capped) {
-      return { ...NO_PLAY, reason: `${card} card can’t renovate: the checklist doesn’t cap them.` };
+      return { ...NO_PLAY, reason: `${card} card can’t renovate: a house takes any number.` };
     }
     const limit = limitReached(limitsOf(state), root);
     if (!limit) {
       const many = selectorText(content, { piece: root }, 'some');
       return {
         ...NO_PLAY,
-        reason: `${card} card can renovate once the house has all the ${many} it wants.`,
+        reason: `${card} card can renovate once the house has all the ${many} it takes.`,
       };
     }
     const target = Number.isInteger(play.uid) ? layoutFor(state).byUid.get(play.uid) : undefined;
@@ -614,6 +738,13 @@ export function createRules(content: Content): Rules {
       return { ...NO_PLAY, reason: `${card} card renovates ${article(rooms)}.` };
     }
     const level = target.level ?? 0;
+    // D-168: a room that can grow grows; Renovate is for one boxed in or grown as far as it goes.
+    if (extendSpots(state, play.from, play.i, target.uid).length > 0) {
+      return {
+        ...NO_PLAY,
+        reason: `${capitalize(definite(targetDef.name, 'that'))} can still grow.`,
+      };
+    }
     if (level >= b.renovate.maxLevel) {
       // "That Kitchen", but "Grandma’s Room": a possessive name takes no determiner.
       const room = capitalize(definite(targetDef.name, 'that'));
@@ -628,10 +759,118 @@ export function createRules(content: Content): Rules {
     };
   }
 
+  /** D-168: the room types a card can extend, by root type. */
+  const extendable: ReadonlySet<PieceId> = new Set(b.extend.types);
+
+  /**
+   * D-168: a room card that could extend a room: an extendable type, and not a member's card.
+   * D-171: or the Addition, which extends a room of any extendable type.
+   */
+  function extendsAny(def: PieceDef | null): def is PieceDef {
+    if (!def) return false;
+    return !!def.addition || (!def.member && isRoom(def) && extendable.has(rootType(def)));
+  }
+
+  /** D-168, D-171: whether this card extends a room of that type. */
+  function extendsType(card: PieceDef, room: PieceDef): boolean {
+    return card.addition
+      ? isRoom(room) && extendable.has(rootType(room))
+      : isType(room, rootType(card));
+  }
+
+  /**
+   * D-168, Extend a room: a room card of an extendable type, laid on open ground beside a room of
+   * its type with room for another card, sharing at least `minShared` tiles of wall with it.
+   * Placement's own rules hold for the card's tiles (on the lot, nothing built there, no water,
+   * boulder or Old Shed; Trees under it go, and finds pay). Its tiles join the room.
+   */
+  function checkExtend(state: RunState, play: ExtendAction): PlayCheck {
+    const def = placeDef(state, play);
+    if (!def) return { ...NO_PLAY, reason: 'There is no card there.' };
+    const card = capitalize(article(def.name));
+    // A member's room is placed, never spent on another room (D-103).
+    if (def.member) {
+      return {
+        ...NO_PLAY,
+        reason: `${card} card can’t extend a room: it’s a household member’s room.`,
+      };
+    }
+    if (!extendsAny(def)) return { ...NO_PLAY, reason: `${card} card can’t extend a room.` };
+    const root = rootType(def);
+    const layout = layoutFor(state);
+    const target = Number.isInteger(play.uid) ? layout.byUid.get(play.uid) : undefined;
+    if (!target) return { ...NO_PLAY, reason: 'Pick a room to extend.' };
+    const targetDef = content.pieces[target.defId];
+    if (!extendsType(def, targetDef)) {
+      const rooms = selectorText(
+        content,
+        { piece: def.addition ? [...b.extend.types] : root },
+        'one',
+      );
+      return {
+        ...NO_PLAY,
+        reason: `${card} ${def.addition ? '' : 'card '}extends ${article(rooms)}.`,
+      };
+    }
+    if ((target.extended ?? 0) >= b.extend.maxPerRoom) {
+      // "That Kitchen", but "Grandma’s Room": a possessive name takes no determiner.
+      const room = capitalize(definite(targetDef.name, 'that'));
+      return { ...NO_PLAY, reason: `${room} is as big as it gets.` };
+    }
+    if (
+      ![0, 1, 2, 3].includes(play.rot) ||
+      !Number.isInteger(play.x) ||
+      !Number.isInteger(play.y)
+    ) {
+      return { ...NO_PLAY, reason: 'That is not a spot on the lot.' };
+    }
+    const roomCells = layout.cells.get(target.uid)!;
+    const cells = placedCells(def.shape, play.x, play.y, play.rot);
+    const { width } = state.house.lot;
+    const own = new Set(roomCells.map((c) => cellIndex(width, c.x, c.y)));
+    if (cells.some((c) => own.has(cellIndex(width, c.x, c.y)))) {
+      // Laid on the room itself (the board's way of asking about a room that can't grow).
+      const room = definite(targetDef.name);
+      return {
+        ...NO_PLAY,
+        reason:
+          extendSpots(state, play.from, play.i, target.uid).length === 0
+            ? `There’s no open ground beside ${room} to grow into.`
+            : `Lay the card beside ${room}, not on it.`,
+      };
+    }
+    const spot = checkPlacement(
+      content,
+      layout,
+      def,
+      play.x,
+      play.y,
+      play.rot,
+      state.week,
+      (house) => layoutFor(state, house),
+    );
+    if (!spot.legal) return { ...NO_PLAY, reason: spot.reason, cells: spot.cells };
+    if (sharedWall(spot.cells, roomCells) < b.extend.minShared) {
+      return {
+        ...NO_PLAY,
+        reason: `It must share ${b.extend.minShared} tiles of wall with ${definite(targetDef.name)}.`,
+        cells: spot.cells,
+      };
+    }
+    const grown = cellsToShape([...roomCells, ...spot.cells]);
+    return {
+      legal: true,
+      cells: spot.cells,
+      clearedTrees: spot.clearedTrees,
+      ...(spot.finds ? { finds: spot.finds } : {}),
+      extend: { uid: target.uid, card: def.id, x: grown.x, y: grown.y, shape: grown.shape },
+    };
+  }
+
   /** A play's change to the house (checked here), with its event. */
   function applyPlay(
     state: RunState,
-    play: PlaceAction | InstallAction | RenovateAction,
+    play: NonNullable<Play>,
     legality?: PlayCheck,
   ): Omit<WeekResult, 'tally'> {
     const check = legality ?? checkPlay(state, play);
@@ -647,6 +886,39 @@ export function createRules(content: Content): Rules {
         placed: null,
         installed: null,
         renovated: { t: 'renovated', uid, defId: piece.defId, level, card },
+        extended: null,
+      };
+    }
+    if (play.t === 'extend') {
+      // D-168: the room takes the card's tiles. It keeps its uid, fixture, timers, level and
+      // place in the placement order; its own shape is the whole outline, unturned.
+      const { uid, card, x, y, shape } = check.extend!;
+      const piece = state.house.pieces.find((p) => p.uid === uid)!;
+      const grown: PlacedPiece = {
+        ...piece,
+        x,
+        y,
+        rot: 0,
+        shape,
+        extended: (piece.extended ?? 0) + 1,
+      };
+      return {
+        house: {
+          ...state.house,
+          lot: clearTiles(state.house.lot, [...check.clearedTrees, ...(check.finds ?? [])]),
+          pieces: state.house.pieces.map((p) => (p.uid === uid ? grown : p)),
+        },
+        placed: null,
+        installed: null,
+        renovated: null,
+        extended: {
+          t: 'extended',
+          uid,
+          defId: piece.defId,
+          card,
+          cells: check.cells,
+          clearedTrees: check.clearedTrees,
+        },
       };
     }
     if (play.t === 'install') {
@@ -655,6 +927,7 @@ export function createRules(content: Content): Rules {
         house: withFixture(state.house, uid, fixture, state.week),
         placed: null,
         renovated: null,
+        extended: null,
         installed: {
           t: 'installed',
           uid,
@@ -682,6 +955,7 @@ export function createRules(content: Content): Rules {
       house,
       installed: null,
       renovated: null,
+      extended: null,
       placed: {
         t: 'placed',
         uid: piece.uid,
@@ -709,6 +983,7 @@ export function createRules(content: Content): Rules {
         placed: null,
         installed: null,
         renovated: null,
+        extended: null,
       };
     }
     const result = applyPlay(state, play, legality);
@@ -770,6 +1045,8 @@ export function createRules(content: Content): Rules {
       special,
       atLimit: typesAtLimit(limitsOf(state)),
       row,
+      // D-166: a standard run deals the lot's cards at full weight from week 1.
+      lotCardsFull: b.lotCardsFullIn.includes(state.setup.mode),
     };
   }
 
@@ -805,9 +1082,13 @@ export function createRules(content: Content): Rules {
     return DRAW_ROWS.flatMap((row) => drawRowFor(state, n, row, special, held));
   }
 
-  /** A card has a play: a spot, a host, or a Renovation (D-102). */
+  /** A card has a play: a spot, a host, a Renovation (D-102), or an extension (D-168). */
   function cardHasPlay(state: RunState, i: number): boolean {
-    return cardFits(state, i) || renovateTargets(state, 'hand', i).length > 0;
+    return (
+      cardFits(state, i) ||
+      renovateTargets(state, 'hand', i).length > 0 ||
+      extendTargets(state, 'hand', i).length > 0
+    );
   }
 
   /**
@@ -975,14 +1256,146 @@ export function createRules(content: Content): Rules {
     };
   }
 
-  /** Start of week, step 2: in the first week of an arrival's phase, its member moves in. */
+  /**
+   * Start of week, step 2: in the first week of an arrival's phase, its member moves in; then
+   * what the client brings for that phase, and the standing stock's top-up (D-160).
+   */
   function arrive(state: RunState, events: GameEvent[]): RunState {
-    if (state.slot !== 1 || state.overtimeWeek !== 0) return state;
+    if (state.overtimeWeek !== 0) return state;
     let s = state;
-    for (const a of clientOf(state).household.arrivals) {
-      if (a.phase === s.phase && !s.arrived.includes(a.id)) s = land(s, a, events);
+    if (s.slot === 1) {
+      for (const a of clientOf(state).household.arrivals) {
+        if (a.phase === s.phase && !s.arrived.includes(a.id)) s = land(s, a, events);
+      }
+      s = deliver(s, events);
     }
-    return s;
+    return crewTool(crewStock(restock(s, events), events), events);
+  }
+
+  /** Cards into the reserve's extra slots, marked by where they came from (D-160, D-171). */
+  function addExtra(
+    s: RunState,
+    from: 'client' | 'stock' | 'crew',
+    cards: readonly PieceId[],
+    events: GameEvent[],
+  ): RunState {
+    if (cards.length === 0) return s;
+    events.push({ t: 'delivered', from, phase: s.phase, cards: [...cards] });
+    const mark =
+      from === 'client'
+        ? { client: true as const }
+        : from === 'crew'
+          ? { crew: true as const }
+          : { stock: true as const };
+    return { ...s, reserve: [...s.reserve, ...cards.map((id): ReservePiece => ({ id, ...mark }))] };
+  }
+
+  /**
+   * D-160: what the client brings in the first week of this phase. Not a member: nothing joins
+   * `arrived`, and Room for everyone is as it was. A week starts once, so no list is kept.
+   */
+  function deliver(s: RunState, events: GameEvent[]): RunState {
+    const due = (clientOf(s).deliveries ?? []).filter((d) => d.phase === s.phase);
+    return addExtra(
+      s,
+      'client',
+      due.flatMap((d) => d.cards),
+      events,
+    );
+  }
+
+  /**
+   * D-160: whether the standing stock comes this week: the first week of `fromPhase` (D-162:
+   * week 1; a first job's is week `firstJobSlot` of `firstJobPhase`), then each later
+   * milestone's first with `refill`. Without it (D-163) the stock comes once: a first job that
+   * completed that milestone before its week gets it at the next milestone's first.
+   */
+  function stockDue(s: RunState): boolean {
+    const stock = b.standingStock;
+    if (s.overtimeWeek !== 0) return false;
+    if (s.stocked && !stock.refill) return false;
+    const [phase, slot] =
+      s.setup.mode === 'firstJob'
+        ? [stock.firstJobPhase, stock.firstJobSlot]
+        : [stock.fromPhase, 1];
+    if (s.phase < phase) return false;
+    return s.slot === (s.phase === phase ? slot : 1);
+  }
+
+  /**
+   * D-160: the standing stock fills the reserve's extra slots up to one of each of its pieces. A
+   * piece of that type already waiting in an extra slot (the Landscaper's Fence, an arrival's or
+   * the client's card) counts, so it only adds what's missing. A strike never touches the
+   * reserve.
+   */
+  /**
+   * D-171: a crew's stock in the order it comes this run: drawn once from `crew/stock`, every
+   * card before any comes again.
+   */
+  function crewStockOrder(seed: string, pool: readonly PieceId[]): PieceId[] {
+    const rng = stream(seed, 'crew/stock');
+    const left = [...pool];
+    const order: PieceId[] = [];
+    while (left.length > 0) order.push(...left.splice(rng.int(left.length), 1));
+    return order;
+  }
+
+  /**
+   * D-171: the week the crew's own card and the standing stock's first cards come is the same;
+   * after it the crew's comes at each milestone's first week, whether or not the standing stock
+   * refills.
+   */
+  function crewStockDue(s: RunState): boolean {
+    const stock = b.standingStock;
+    if (s.overtimeWeek !== 0) return false;
+    const [phase, slot] =
+      s.setup.mode === 'firstJob'
+        ? [stock.firstJobPhase, stock.firstJobSlot]
+        : [stock.fromPhase, 1];
+    if (s.phase < phase) return false;
+    return s.slot === (s.phase === phase ? slot : 1);
+  }
+
+  /**
+   * D-171: the crew's own card (CrewDef.stock): one into the reserve's extra slots when it's
+   * due, the milestone's in the run's order, unless one of the crew's still waits there.
+   */
+  function crewStock(s: RunState, events: GameEvent[]): RunState {
+    const pool = content.crews[s.setup.crewId].stock;
+    if (!pool || pool.length === 0 || !crewStockDue(s)) return s;
+    if (s.reserve.some((r) => r.crew)) return s;
+    const order = crewStockOrder(s.setup.seed, pool);
+    return addExtra(s, 'crew', [order[s.phase % order.length]!], events);
+  }
+
+  /**
+   * D-171: the crew's tool (CrewDef.orderTool), in the first week of each milestone that
+   * follows a change order. Into the supplies, or sold at once when they're full (payReward's
+   * rule for a reward's tool).
+   */
+  function crewTool(s: RunState, events: GameEvent[]): RunState {
+    const tool = content.crews[s.setup.crewId].orderTool;
+    if (!tool || s.overtimeWeek !== 0 || s.slot !== 1) return s;
+    if (!b.changeOrderAfter.includes(s.phase)) return s;
+    if (s.supplies.length < slotsFor(content, s).supplies) {
+      events.push({ t: 'crewTool', tool, phase: s.phase });
+      return { ...s, supplies: [...s.supplies, { kind: 'tool', id: tool }] };
+    }
+    const sold = sellPrice(content, s, content.tools[tool].price);
+    events.push({ t: 'crewTool', tool, phase: s.phase, sold });
+    return { ...s, budget: s.budget + sold, budgetEarned: s.budgetEarned + sold };
+  }
+
+  function restock(s: RunState, events: GameEvent[]): RunState {
+    if (!stockDue(s)) return s;
+    const waiting = s.reserve.filter(inExtraSlot).map((r) => r.id);
+    const missing: PieceId[] = [];
+    for (const id of b.standingStock.pieces) {
+      const k = waiting.indexOf(id);
+      if (k >= 0) waiting.splice(k, 1);
+      else missing.push(id);
+    }
+    return { ...addExtra(s, 'stock', missing, events), stocked: true };
   }
 
   // -------------------------------------------------------------------------------------
@@ -1002,9 +1415,9 @@ export function createRules(content: Content): Rules {
   /**
    * Why a change order isn't offered now (Appendix A · M4b), or null: a request whose
    * condition the house already meets, or that clearly can't be met (more new pieces than a
-   * phase has weeks, more demolitions than are left, or a piece type it needs that's neither in
-   * the draw for this phase nor in the reserve). Restrictions and phase effects are always
-   * offered.
+   * phase has weeks, more demolitions than are left, a piece type it needs that's neither in
+   * the draw for this phase nor in the reserve, or, D-165, one whose per-house cap the house
+   * has reached). Restrictions and phase effects are always offered.
    */
   function skipReason(state: RunState, def: ChangeOrderDef): string | null {
     if (def.kind !== 'request') return null;
@@ -1020,8 +1433,13 @@ export function createRules(content: Content): Rules {
     const available = (id: PieceId) =>
       pool.some((w) => w.card.kind === 'piece' && isType(content.pieces[w.card.id], id)) ||
       state.reserve.some((r) => isType(content.pieces[r.id], id));
+    const capped = (id: PieceId) => {
+      const def = content.pieces[id];
+      return !!def && capReached(state, def) !== null;
+    };
     for (const types of neededTypes(cond)) {
       if (!types.some(available)) return 'A piece it needs isn’t in the draw or the reserve.';
+      if (types.every(capped)) return 'The house can’t take another of a piece it needs.';
     }
     return null;
   }
@@ -1418,15 +1836,18 @@ export function createRules(content: Content): Rules {
       result === 'failed'
         ? 0
         : Math.min(Math.floor(s.budget / b.shop.interestPer), rule(s, 'interestMax'));
-    const paid =
+    const last = s.phase === phaseCount(b) - 1;
+    // D-157: strikes at each milestone the run goes on from (1–6), never the last.
+    const strikes = result === 'failed' || last ? 0 : b.strikesPerMilestone;
+    const paid: MilestoneReward =
       result === 'failed'
         ? { budget: 0, score: 0, interest: 0 }
         : {
             budget: b.milestoneBudget + (bonus?.budget ?? 0) + interest,
             score: bonus?.score ?? 0,
             interest,
+            ...(strikes > 0 ? { strikes } : {}),
           };
-    const last = s.phase === phaseCount(b) - 1;
     // D-145: no shop follows the last milestone, so the budget held when it's met, this payout
     // included, pays Wow. It comes after the target is met, so it never turns a loss into a win.
     const held = s.budget + paid.budget;
@@ -1477,6 +1898,7 @@ export function createRules(content: Content): Rules {
       draws: 0,
       phaseStartScore: next.score,
       rerollsLeft: rule(s, 'rerollsPerPhase'),
+      strikesLeft: next.strikesLeft + strikes,
     };
     // M4b, D-144: after milestones 2, 4, and 6, two change orders first, from
     // `co/<milestone>`, to pick one of; with none eligible, straight to the shop.
@@ -1546,6 +1968,140 @@ export function createRules(content: Content): Rules {
     return { ok: true };
   }
 
+  // -------------------------------------------------------------------------------------
+  // Strikes from the hand (D-157).
+
+  /** A card's type as a strike names it: a piece's root type (the L-Kitchen is a Kitchen). */
+  function strikeType(card: Card): CardType {
+    return card.kind === 'piece'
+      ? { kind: 'piece', id: rootType(content.pieces[card.id]) }
+      : { kind: 'fixture', id: card.id };
+  }
+
+  const sameType = (a: Card, c: Card) => a.kind === c.kind && a.id === c.id;
+
+  /** The hand cards a strike of `type` takes out, in hand order. */
+  const struckSlots = (state: RunState, type: CardType): number[] =>
+    state.hand.flatMap((c, j) => (isStruck(content, [type], c) ? [j] : []));
+
+  const NOT_IN_DRAW = 'That card never comes up in the weekly draw.';
+
+  function canStrikeCard(state: RunState, i: number): Availability {
+    if (state.screen !== 'build') return { ok: false, reason: offScreen(state) };
+    if (state.strikesLeft <= 0) return { ok: false, reason: 'No strikes left.' };
+    const card = Number.isInteger(i) ? state.hand[i] : undefined;
+    if (!card) return { ok: false, reason: 'Pick a card in your hand.' };
+    // Only what the weekly draw deals: not a member's room (the ?debug panel's), nor a special
+    // piece this run's client and crew don't draw (the Catalog's).
+    const known =
+      card.kind === 'piece'
+        ? Object.hasOwn(content.pieces, card.id)
+        : Object.hasOwn(content.fixtures, card.id);
+    if (!known || (card.kind === 'piece' && content.pieces[card.id].member)) {
+      return { ok: false, reason: NOT_IN_DRAW };
+    }
+    const type = strikeType(card);
+    const mods = modsOf(state).active.map((a) => a.mod);
+    if (!drawableTypes(content, [], undefined, mods).some((t) => sameType(t, type))) {
+      return { ok: false, reason: NOT_IN_DRAW };
+    }
+    // Already struck (a ?debug card), the row at its floor, or nothing left to strike.
+    const can = canStrike(content, state, type, mods);
+    if (!can.ok) return can;
+    // Each slot it empties takes a card from its row: the hand never shrinks.
+    const gone = struckSlots(state, type);
+    for (const row of DRAW_ROWS) {
+      const need = gone.filter((j) => rowOf(content, state.hand[j]!) === row).length;
+      if (need === 0) continue;
+      const inRow = state.hand.filter((c) => rowOf(content, c) === row);
+      const pool = drawWeights(content, state.phase, {
+        ...drawOpts(state, row),
+        struck: [...state.struck, type],
+      }).filter((p) => !inRow.some((c) => sameType(c, p.card)));
+      if (pool.length < need) {
+        return { ok: false, reason: 'Nothing else in its row can come up this week.' };
+      }
+    }
+    return { ok: true };
+  }
+
+  /** D-157: whether Strike can be used at all (the plank's button and S), and why not. */
+  function canStrikeAny(state: RunState): Availability {
+    if (state.screen !== 'build') return { ok: false, reason: offScreen(state) };
+    if (state.strikesLeft <= 0) return { ok: false, reason: 'No strikes left.' };
+    const mods = modsOf(state).active.map((a) => a.mod);
+    if (strikeOptions(content, state, mods).length === 0) {
+      return { ok: false, reason: SHOP_REASONS.noStrike };
+    }
+    // A hand none of whose cards can go (special pieces the run doesn't draw, rows at their
+    // floor, nothing else in a row this week): the mode would only hatch every card.
+    if (!state.hand.some((_, i) => canStrikeCard(state, i).ok)) {
+      return { ok: false, reason: 'No card in your hand can be struck.' };
+    }
+    return { ok: true };
+  }
+
+  function previewStrike(state: RunState, i: number): StrikePreview {
+    const can = canStrikeCard(state, i);
+    const card = Number.isInteger(i) ? state.hand[i] : undefined;
+    const known =
+      card &&
+      (card.kind === 'piece'
+        ? Object.hasOwn(content.pieces, card.id)
+        : Object.hasOwn(content.fixtures, card.id));
+    if (!card || !known) return { ...can, type: null, cards: [], text: '' };
+    const type = strikeType(card);
+    return { ...can, type, cards: struckSlots(state, type), text: strikeText(content, type) };
+  }
+
+  /**
+   * D-157: strikes hand card i (already checked). Its type is never drawn again this run; it
+   * and every other hand card of that type leave, and each slot takes a card from its row as
+   * a swap does: the first of up to `swapTries` with a play, else the last tried, from
+   * `draw/<phase>/<slot>/<n>/<row>/strike<m>/<k>` (n: the hand's draw, m: the run's struck
+   * types with this one, k: the slot's place in its row). No other card moves, and the week's
+   * draws don't count it, so nothing else shifts.
+   */
+  function strikeFromHand(state: RunState, i: number, events: GameEvent[]): RunState {
+    const type = strikeType(state.hand[i]!);
+    const gone = struckSlots(state, type);
+    const struck = [...state.struck, type];
+    const n = Math.max(0, state.draws - 1);
+    const slot = slotKey(state.slot, state.overtimeWeek);
+    let s: RunState = {
+      ...state,
+      struck,
+      strikesLeft: state.strikesLeft - 1,
+      // A swapped-in card's note (D-121) goes with it.
+      swapped: state.swapped.filter((w) => !gone.includes(w.i)),
+    };
+    const slots: StruckSlot[] = [];
+    for (const j of gone) {
+      const was = s.hand[j]!;
+      const row = rowOf(content, was);
+      const at = s.hand.flatMap((c, x) => (rowOf(content, c) === row ? [x] : []));
+      const tries = strikeCandidates(
+        content,
+        s.setup.seed,
+        s.phase,
+        slot,
+        n,
+        struck.length,
+        at.indexOf(j),
+        b.swapTries,
+        at.map((x) => s.hand[x]!),
+        drawOpts(s, row),
+      );
+      for (const card of tries) {
+        s = { ...s, hand: s.hand.map((c, x) => (x === j ? card : c)) };
+        if (cardHasPlay(s, j)) break;
+      }
+      slots.push({ i: j, was, card: s.hand[j]! });
+    }
+    events.push({ t: 'cardStruck', i, type, slots, strikesLeft: s.strikesLeft });
+    return s;
+  }
+
   function canCompleteEarly(state: RunState): EarlyOffer {
     const weeksSaved = state.screen === 'build' && state.overtimeWeek === 0 ? weeksLeft(state) : 0;
     const bonus = earlyBonus(
@@ -1607,8 +2163,12 @@ export function createRules(content: Content): Rules {
         if (offer.service === 'reroll') s = { ...s, bonusRerolls: s.bonusRerolls + 1 };
         else if (offer.service === 'demolition')
           s = { ...s, demolitionsLeft: s.demolitionsLeft + 1 };
-        else {
-          const strike = action.strike!;
+        else if (action.strike === undefined) {
+          // D-157: +1 strike, used from the hand.
+          s = { ...s, strikesLeft: s.strikesLeft + 1 };
+        } else {
+          // A run code from before D-157 names the type, and replays as D-076 struck it.
+          const strike = action.strike;
           const can = canStrike(content, state, strike);
           if (!can.ok) throw new IllegalAction(can.reason!);
           s = { ...s, struck: [...s.struck, { kind: strike.kind, id: strike.id } as Card] };
@@ -1631,7 +2191,9 @@ export function createRules(content: Content): Rules {
       price,
       budgetBefore: state.budget,
       budget: s.budget,
-      ...(offer.kind === 'service' && offer.service === 'strike' ? { strike: action.strike! } : {}),
+      ...(offer.kind === 'service' && offer.service === 'strike' && action.strike
+        ? { strike: action.strike }
+        : {}),
     });
     if (offer.kind === 'crate') {
       const v = s.offers!.shop!;
@@ -1777,7 +2339,10 @@ export function createRules(content: Content): Rules {
     ) {
       throw new Error('Bad run setup');
     }
-    const lot = generateLot(setup.seed, b.lot);
+    // A run keeps the traits its lot begins with (D-166). The first job's lot stays plain, in
+    // any mode: it's the lot, not the run, that the guided job was built on (D-149).
+    const plain = !!b.jobBoard.firstSeed && setup.seed === b.jobBoard.firstSeed;
+    const lot = withTraits(content, generateLot(setup.seed, b.lot, { plain }));
     const clean: RunSetup = {
       seed: setup.seed,
       clientId: setup.clientId,
@@ -1811,6 +2376,7 @@ export function createRules(content: Content): Rules {
       freePlay: 'none',
       servicesBought: { reroll: 0, demolition: 0, strike: 0 },
       struck: [],
+      strikesLeft: setupRule(content, clean, 'strikes'),
       rerollsLeft: setupRule(content, clean, 'rerollsPerPhase'),
       bonusRerolls: 0,
       demolitionsLeft: setupRule(content, clean, 'demolitions'),
@@ -1962,7 +2528,8 @@ export function createRules(content: Content): Rules {
       case 'pass':
       case 'place':
       case 'install':
-      case 'renovate': {
+      case 'renovate':
+      case 'extend': {
         const play = action.t === 'pass' ? null : action;
         if (play?.t === 'install' && play.from === 'supplies') {
           // A free action: the fixture goes in, and the week goes on.
@@ -1975,15 +2542,22 @@ export function createRules(content: Content): Rules {
           });
         }
         const check = play ? checkPlay(state, play) : undefined;
-        const fromReserve =
-          (play?.t === 'place' || play?.t === 'renovate') && play.from === 'reserve';
-        if (play && state.freePlay === 'ready') {
-          // Weekend Crew (D-075): this play doesn't end the week. A Renovation can be it (D-083).
+        const fromReserve = !!play && fromGoods(play);
+        if (play && !endsWeek(state, play)) {
+          // D-163: a piece from Your goods goes down at once, and the week goes on: placed,
+          // renovating, or extending a room (D-168, D-169). So does Weekend Crew's next card
+          // (D-075), which a Renovation (D-083) or an extension can be: `free` marks it.
+          // D-171: the Handyman's install isn't Weekend Crew's card: that stays ready.
+          const crew = !fromReserve && !freeInstall(state, play);
           const result = applyPlay(state, play, check);
-          if (result.placed) events.push({ ...result.placed, free: true });
-          if (result.installed) events.push({ ...result.installed, free: true });
-          if (result.renovated) events.push({ ...result.renovated, free: true });
-          let s: RunState = { ...state, house: result.house, freePlay: 'used' };
+          const mark = crew ? { free: true as const } : {};
+          if (result.placed) events.push({ ...result.placed, ...mark });
+          if (result.installed) events.push({ ...result.installed, ...mark });
+          if (result.renovated) events.push({ ...result.renovated, ...mark });
+          if (result.extended) events.push({ ...result.extended, ...mark });
+          let s: RunState = crew
+            ? { ...state, house: result.house, freePlay: 'used' }
+            : { ...state, house: result.house };
           s = fromReserve
             ? { ...s, reserve: s.reserve.filter((_, k) => k !== play.i) }
             : { ...s, hand: s.hand.filter((_, k) => k !== play.i) };
@@ -1998,10 +2572,9 @@ export function createRules(content: Content): Rules {
         if (week.placed) events.push(week.placed);
         if (week.installed) events.push(week.installed);
         if (week.renovated) events.push(week.renovated);
+        if (week.extended) events.push(week.extended);
+        // Only a hand card or a pass gets here: a piece from Your goods never ends the week.
         let s = state;
-        if (play && fromReserve) {
-          s = { ...s, reserve: s.reserve.filter((_, k) => k !== play.i) };
-        }
         // M4b: a piece a running restriction forbids breaks it, before the milestone can resolve.
         if (week.placed) {
           const uid = week.placed.uid;
@@ -2043,6 +2616,11 @@ export function createRules(content: Content): Rules {
           ...swapNote(after.swapped),
         });
         return done(after.state);
+      }
+      case 'strikeCard': {
+        const can = canStrikeCard(state, action.i);
+        if (!can.ok) throw new IllegalAction(can.reason!);
+        return done(strikeFromHand(state, action.i, events));
       }
       case 'demolish': {
         if (state.demolitionsLeft <= 0) throw new IllegalAction(REASONS.noDemolitions);
@@ -2171,7 +2749,8 @@ export function createRules(content: Content): Rules {
   ): void {
     if (state.screen !== 'build') return;
     const def = placeDef(state, { t: 'place', from, i, x: 0, y: 0, rot: 0 });
-    if (!def) return;
+    // D-171: an Addition has no spot of its own.
+    if (!def || def.addition || capReached(state, def)) return;
     const { width, height } = state.house.lot;
     for (const ps of placementShapes(def)) {
       const { w, h } = bounds(ps.cells);
@@ -2180,7 +2759,7 @@ export function createRules(content: Content): Rules {
           const play: PlaceAction = ps.shape
             ? { t: 'place', from, i, x, y, rot: ps.rot, shape: ps.shape }
             : { t: 'place', from, i, x, y, rot: ps.rot };
-          if (checkPlay(state, play).legal && visit(play) === true) return;
+          if (checkSpot(state, def, play).legal && visit(play) === true) return;
         }
       }
     }
@@ -2370,8 +2949,108 @@ export function createRules(content: Content): Rules {
     return out;
   }
 
-  function legalPlays(state: RunState): (PlaceAction | InstallAction | RenovateAction)[] {
-    const out: (PlaceAction | InstallAction | RenovateAction)[] = legalPlacements(state);
+  /**
+   * D-163: a play from Your goods: a reserve piece placed, renovating with one, or extending a
+   * room with one (D-168, D-169). It never ends the week, and it isn't Weekend Crew's next play
+   * either.
+   */
+  const fromGoods = (play: NonNullable<Play>): boolean =>
+    play.t !== 'install' && play.from === 'reserve';
+
+  /**
+   * D-163: whether a play ends the week. A play from Your goods never does, nor does the next
+   * hand card while Weekend Crew is ready (D-083), nor (D-171) a fixture from the hand under
+   * `freeInstalls`. Every other play does, as a pass does.
+   */
+  /** D-171: a fixture from the hand under `freeInstalls` (the Handyman): the week goes on. */
+  const freeInstall = (state: RunState, play: NonNullable<Play>): boolean =>
+    play.t === 'install' && play.from === 'hand' && rule(state, 'freeInstalls') > 0;
+
+  function endsWeek(state: RunState, play: NonNullable<Play>): boolean {
+    return !fromGoods(play) && !freeInstall(state, play) && state.freePlay !== 'ready';
+  }
+
+  /** D-168: extension spots by state, then by card and room. */
+  const spotsCache = new WeakMap<RunState, Map<string, ExtendAction[]>>();
+
+  function extendSpots(
+    state: RunState,
+    from: ExtendAction['from'],
+    i: number,
+    uid?: number,
+  ): ExtendAction[] {
+    if (state.screen !== 'build') return [];
+    const def = placeDef(state, { t: 'extend', from, i, uid: 0, x: 0, y: 0, rot: 0 });
+    if (!extendsAny(def)) return [];
+    let byKey = spotsCache.get(state);
+    if (!byKey) spotsCache.set(state, (byKey = new Map()));
+    const key = `${from}/${i}/${uid ?? '*'}`;
+    const hit = byKey.get(key);
+    if (hit) return hit;
+    const out: ExtendAction[] = [];
+    const layout = layoutFor(state);
+    const { width: w, height: h } = state.house.lot;
+    const root = rootType(def);
+    for (const room of state.house.pieces) {
+      if (uid !== undefined && room.uid !== uid) continue;
+      if (!extendsType(def, content.pieces[room.defId])) continue;
+      if ((room.extended ?? 0) >= b.extend.maxPerRoom) continue;
+      const roomCells = layout.cells.get(room.uid)!;
+      const own = new Set(roomCells.map((c) => cellIndex(w, c.x, c.y)));
+      // The open tiles around the room: a spot must cover one of them, so each of the card's
+      // tiles on each of them is a candidate corner.
+      const around: { x: number; y: number }[] = [];
+      for (const c of roomCells) {
+        for (const [dx, dy] of ORTHOGONAL) {
+          const x = c.x + dx;
+          const y = c.y + dy;
+          if (x < 0 || y < 0 || x >= w || y >= h) continue;
+          const k = cellIndex(w, x, y);
+          if (own.has(k) || layout.occupant[k]! >= 0) continue;
+          around.push({ x, y });
+        }
+      }
+      for (const rot of uniqueRotations(def.shape)) {
+        const cells = shapeCells(def.shape, rot);
+        const seen = new Set<string>();
+        const spots: { x: number; y: number }[] = [];
+        for (const a of around) {
+          for (const c of cells) {
+            const x = a.x - c.x;
+            const y = a.y - c.y;
+            const k = `${x},${y}`;
+            if (seen.has(k)) continue;
+            seen.add(k);
+            spots.push({ x, y });
+          }
+        }
+        spots.sort((p, q) => p.y - q.y || p.x - q.x);
+        for (const { x, y } of spots) {
+          // Off the lot or on something built (the room itself included): no spot. checkExtend
+          // would say so too, but asking it about the room itself asks for these spots again.
+          const clear = cells.every((c) => {
+            const cx = c.x + x;
+            const cy = c.y + y;
+            return (
+              cx >= 0 && cy >= 0 && cx < w && cy < h && layout.occupant[cellIndex(w, cx, cy)]! < 0
+            );
+          });
+          if (!clear) continue;
+          const play: ExtendAction = { t: 'extend', from, i, uid: room.uid, x, y, rot };
+          if (checkExtend(state, play).legal) out.push(play);
+        }
+      }
+    }
+    byKey.set(key, out);
+    return out;
+  }
+
+  function extendTargets(state: RunState, from: ExtendAction['from'], i: number): number[] {
+    return [...new Set(extendSpots(state, from, i).map((p) => p.uid))];
+  }
+
+  function legalPlays(state: RunState): NonNullable<Play>[] {
+    const out: NonNullable<Play>[] = legalPlacements(state);
     state.hand.forEach((card, i) => {
       if (card.kind !== 'fixture') return;
       for (const uid of hostsFor(state, 'hand', i))
@@ -2387,6 +3066,11 @@ export function createRules(content: Content): Rules {
       for (const uid of renovateTargets(state, 'reserve', i))
         out.push({ t: 'renovate', from: 'reserve', i, uid });
     });
+    // D-168: extensions, after the Renovations.
+    state.hand.forEach((card, i) => {
+      if (card.kind === 'piece') out.push(...extendSpots(state, 'hand', i));
+    });
+    state.reserve.forEach((_, i) => out.push(...extendSpots(state, 'reserve', i)));
     return out;
   }
 
@@ -2410,12 +3094,8 @@ export function createRules(content: Content): Rules {
     }
     if (state.screen === 'shop') {
       const out: Action[] = [];
-      for (const o of viewOffers(content, state)) {
-        if (!o.ok) continue;
-        if (o.offer.kind === 'service' && o.offer.service === 'strike') {
-          for (const t of strikeOptions(content, state)) out.push({ t: 'buy', i: o.i, strike: t });
-        } else out.push({ t: 'buy', i: o.i });
-      }
+      // The strike service is +1 strike (D-157): a run code's typed strike is never listed.
+      for (const o of viewOffers(content, state)) if (o.ok) out.push({ t: 'buy', i: o.i });
       state.blueprints.forEach((_, i) => out.push({ t: 'sell', from: 'blueprints', i }));
       state.supplies.forEach((_, i) => out.push({ t: 'sell', from: 'supplies', i }));
       if (canRefresh(state).ok) out.push({ t: 'refreshShop' });
@@ -2446,6 +3126,9 @@ export function createRules(content: Content): Rules {
     state.blueprints.forEach((_, i) => out.push({ t: 'sell', from: 'blueprints', i }));
     state.supplies.forEach((_, i) => out.push({ t: 'sell', from: 'supplies', i }));
     if (canReroll(state).ok) out.push({ t: 'reroll' });
+    state.hand.forEach((_, i) => {
+      if (canStrikeCard(state, i).ok) out.push({ t: 'strikeCard', i });
+    });
     if (canCompleteEarly(state).ok) out.push({ t: 'completeEarly' });
     if (state.demolitionsLeft > 0) {
       const layout = layoutFor(state);
@@ -2558,12 +3241,13 @@ export function createRules(content: Content): Rules {
     const week = resolveWeek(state, play, true, check);
     // M4b: a running restriction this placement would break, for the warning.
     const breaks = week.placed ? breaksOf(state, week.house, week.placed.uid)[0] : undefined;
-    const focus = week.placed?.uid ?? week.installed?.uid ?? week.renovated!.uid;
+    const focus =
+      week.placed?.uid ?? week.installed?.uid ?? week.renovated?.uid ?? week.extended!.uid;
     const beforeEarned = new Map<number, PieceScore>(beforeTally.pieces.map((p) => [p.uid, p]));
     const lines: PreviewLine[] = [];
     let newPiece: PieceScore | null = null;
     for (const p of week.tally.pieces) {
-      // The new piece, or an install's host, or the room a Renovation levels.
+      // The new piece, or an install's host, or the room a Renovation levels or an extension grows.
       const isNew = p.uid === focus;
       if (isNew) newPiece = p;
       const was = beforeEarned.get(p.uid)?.earned ?? 0;
@@ -2620,6 +3304,14 @@ export function createRules(content: Content): Rules {
         : {}),
       ...(week.renovated
         ? { renovates: { uid: week.renovated.uid, level: week.renovated.level } }
+        : {}),
+      ...(week.extended
+        ? {
+            extends: {
+              uid: week.extended.uid,
+              cells: layoutFor(state, week.house).cells.get(week.extended.uid) ?? [],
+            },
+          }
         : {}),
       ...(breaks ? { breaks } : {}),
       parts: wowParts(content, beforeTally, week.tally, focus, specName),
@@ -2794,6 +3486,7 @@ export function createRules(content: Content): Rules {
     legalActions,
     cardFits,
     reserveFits,
+    endsWeek,
     checkPlay,
     preview,
     scoreOnly,
@@ -2820,6 +3513,8 @@ export function createRules(content: Content): Rules {
     legalPlacements,
     legalPlays,
     renovateTargets,
+    extendSpots,
+    extendTargets,
     limits: limitsOf,
     checklist,
     installHosts: hostsFor,
@@ -2844,6 +3539,12 @@ export function createRules(content: Content): Rules {
       const ids = layoutFor(state).fencedId;
       const out: number[] = [];
       ids.forEach((id, i) => id >= 0 && out.push(i));
+      return out;
+    },
+    yardTiles: (state, yard) => {
+      const bit = REGION_BIT[yard];
+      const out: number[] = [];
+      layoutFor(state).regionBits.forEach((bits, i) => bits & bit && out.push(i));
       return out;
     },
     describePiece: (state, uid) => {
@@ -2893,7 +3594,15 @@ export function createRules(content: Content): Rules {
       const s = state.supplies[i];
       return s ? sellPrice(content, state, supplyPrice(content, s)) : 0;
     },
-    strikeOptions: (state) => strikeOptions(content, state),
+    strikeOptions: (state) =>
+      strikeOptions(
+        content,
+        state,
+        modsOf(state).active.map((a) => a.mod),
+      ),
+    canStrikeAny,
+    canStrikeCard,
+    previewStrike,
     canUseTool: (state, action) => canUseTool(toolCtx, state, action),
     previewTool: (state, action) => {
       const before = state.screen === 'build' ? score(passTally(state)) : NO_SCORE;

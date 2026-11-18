@@ -18,7 +18,7 @@ import type {
   RunState,
   Selector,
 } from '../src/rules/index.ts';
-import { cellsToShape, placedCells, terrainAt } from '../src/rules/index.ts';
+import { cellsToShape, placedCells, protectedTerrain, terrainAt } from '../src/rules/index.ts';
 
 const DIRS = [
   [1, 0],
@@ -93,13 +93,15 @@ export function drivePlans(
   const W = lot.width;
   const H = lot.height;
   const N = W * H;
-  // What a tile costs to pave: Infinity where the pack can't go.
+  const kept = protectedTerrain(content, lot);
+  // What a tile costs to pave: Infinity where the pack can't go (D-174: nor over kept Trees).
   const cost = new Float64Array(N).fill(1);
   for (let k = 0; k < N; k++) {
     const t = terrainAt(lot, k % W, Math.floor(k / W));
     if (t === null) continue;
     const f = content.features[t];
-    if (f.clear === 'buildOver') cost[k] = f.reward ? 1 : TREE_COST;
+    if (kept.has(t)) cost[k] = Infinity;
+    else if (f.clear === 'buildOver') cost[k] = f.reward ? 1 : TREE_COST;
     else if (f.blocks && !def.canCover?.includes(t)) cost[k] = Infinity;
   }
   for (const p of state.house.pieces) {

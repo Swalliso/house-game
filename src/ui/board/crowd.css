@@ -1,0 +1,7 @@
+/* A won run's open house (Crowd.tsx, D-175): the crowd and the parked cars, in boxes like the
+   street's regulars (life.css: on the canopy's layer, clipped at the view's reach, never the
+   pointer, and dimmed past the lot's columns). Under the shop's sheet or a change order's, it
+   holds still as the rest of the life does; the end of a run has neither. */
+.board.covered > .life .arrive {
+  animation-play-state: paused;
+}

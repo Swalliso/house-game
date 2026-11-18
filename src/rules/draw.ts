@@ -7,9 +7,10 @@
 // (D-121), Rooms and Layout, each drawn from its own cards on its own stream,
 // `draw/<phase>/<slot>/<n>/<row>` (an overtime week's slot is `ot<k>`), so a reroll, a swap,
 // or an extra week never shifts any later hand, and drawing one row never shifts the other: a
-// strike changes the pool, never the stream. A reroll (D-132) leaves out the cards each row
-// holds, and its swaps the cards it replaced, while enough others remain. A member's room (M4b,
-// D-103) is never drawn, not even by the Catalog: it arrives with its member.
+// strike changes the pool, never the stream. A strike from the hand (D-157) draws each card it
+// replaces on a stream of its own, `.../<row>/strike<m>/<k>`. A reroll (D-132) leaves out the
+// cards each row holds, and its swaps the cards it replaced, while enough others remain. A
+// member's room (M4b, D-103) is never drawn, not even by the Catalog: it arrives with its member.
 
 import type { Card, CardType, Content, DrawRow, Modifier, PieceDef, PieceId } from './index.ts';
 import { stream, type Rng } from './rng.ts';
@@ -53,6 +54,15 @@ function weighted(def: PieceDef, base: number, mods: readonly Modifier[]): numbe
   return Math.max(0, Math.floor(((base + add) * Math.max(0, 100 + pct)) / 100));
 }
 
+/**
+ * A lot card (D-166): a Layout piece that reads the lot, so the yard pieces, the outbuildings
+ * and the Garage. The Hallways (connectors) and the Fence (a wall) are build-arounds that read
+ * the house, and keep D-055's ramp in every run.
+ */
+export function isLotCard(content: Content, def: PieceDef): boolean {
+  return rowOf(content, { kind: 'piece', id: def.id }) === 'layout' && !def.connector && !def.wall;
+}
+
 export interface DrawOptions {
   struck?: readonly CardType[];
   /** The run's modifiers; only `drawWeight` ones count. */
@@ -63,6 +73,8 @@ export interface DrawOptions {
   atLimit?: ReadonlySet<PieceId>;
   /** Only this row's cards (D-121); unset, every card. */
   row?: DrawRow;
+  /** Lot cards at full weight, outside D-055's ramp (D-166: a standard run's draw). */
+  lotCardsFull?: boolean;
   /**
    * A reroll's (D-132): the cards it replaces. They're left out while enough others remain;
    * when too few do, the rest are drawn from them. The pool's weights don't change.
@@ -81,7 +93,7 @@ export function drawWeights(
   const mods = opts.mods ?? [];
   const out: { card: Card; weight: number }[] = [];
   for (const def of Object.values(content.pieces)) {
-    if (def.fromPhase > phase || def.member) continue;
+    if (def.fromPhase > phase || def.member || def.addition) continue;
     const card: Card = { kind: 'piece', id: def.id };
     if (opts.row && rowOf(content, card) !== opts.row) continue;
     if (isStruck(content, struck, card)) continue;
@@ -90,8 +102,10 @@ export function drawWeights(
       weight = def.drawWeight === 0 ? 100 : 0;
     } else {
       // Weights in hundredths (drawWeight × percent), so nothing rounds away: a weight-10
-      // complexity-3 piece at 5% stays drawable, just rarely (D-055).
-      weight = weighted(def, def.drawWeight, mods) * row[def.complexity - 1]!;
+      // complexity-3 piece at 5% stays drawable, just rarely (D-055). A standard run's lot
+      // cards skip the ramp (D-166).
+      const pct = opts.lotCardsFull && isLotCard(content, def) ? 100 : row[def.complexity - 1]!;
+      weight = weighted(def, def.drawWeight, mods) * pct;
     }
     if (opts.atLimit?.has(rootType(def))) {
       weight = Math.floor((weight * content.balance.drawAtLimitPct) / 100);
@@ -121,6 +135,21 @@ export function drawKey(phase: number, slot: string, n: number, row?: DrawRow): 
 /** The stream for the swaps into a row's k-th card (D-121): its draw's key, then `swap<k>`. */
 export function swapKey(phase: number, slot: string, n: number, row: DrawRow, k: number): string {
   return `${drawKey(phase, slot, n, row)}/swap${k}`;
+}
+
+/**
+ * The stream for a strike's draw into a row's k-th card (D-157): the hand's draw's key, then
+ * `strike<m>/<k>`, m counting the run's struck types (this one included).
+ */
+export function strikeKey(
+  phase: number,
+  slot: string,
+  n: number,
+  row: DrawRow,
+  m: number,
+  k: number,
+): string {
+  return `${drawKey(phase, slot, n, row)}/strike${m}/${k}`;
 }
 
 type Pool = { card: Card; weight: number }[];
@@ -202,18 +231,44 @@ export function swapCandidates(
 }
 
 /**
+ * The cards a strike from the hand can draw into a row's k-th card (D-157), in the order
+ * they're tried: up to `tries` distinct cards from the row's pool (the struck type is out of it
+ * already), leaving out every card in `exclude` (the row as it stands), on the strike's own
+ * stream, so it never shifts another draw.
+ */
+export function strikeCandidates(
+  content: Content,
+  seed: string,
+  phase: number,
+  slot: string,
+  n: number,
+  m: number,
+  k: number,
+  tries: number,
+  exclude: readonly Card[],
+  opts: DrawOptions & { row: DrawRow },
+): Card[] {
+  const rng = stream(seed, strikeKey(phase, slot, n, opts.row, m, k));
+  const pool = drawWeights(content, phase, opts).filter((p) => !holds(exclude, p.card));
+  return pickDistinct(rng, pool, tries);
+}
+
+/**
  * Every card type that can come up in the weekly draw at some point in the run, by its root
- * type: what D-076's strike can name, and what its floor counts. With `row`, only that row's.
+ * type: what a strike can name, and what its floor counts. With `row`, only that row's. With
+ * the run's modifiers, a special piece a client or crew puts in the draw counts too (the
+ * Architect's Library, D-157); without them, only the base pool's.
  */
 export function drawableTypes(
   content: Content,
   struck: readonly CardType[] = [],
   row?: DrawRow,
+  mods: readonly Modifier[] = [],
 ): CardType[] {
   const out: CardType[] = [];
   const seen = new Set<string>();
   for (const def of Object.values(content.pieces)) {
-    if (def.drawWeight === 0 || def.member) continue;
+    if (def.member || weighted(def, def.drawWeight, mods) === 0) continue;
     const root = rootType(def);
     if (seen.has(root)) continue;
     seen.add(root);

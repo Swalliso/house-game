@@ -45,7 +45,7 @@ function MenuSheet() {
             block
             icon="copy"
             onClick={() => void copyRunCode()}
-            title="Copy a code that replays this run exactly"
+            tip="Copy a code that replays this run exactly"
           >
             Copy run code
           </Button>
@@ -73,11 +73,11 @@ function MenuSheet() {
             block
             icon="flag"
             onClick={reportBug}
-            title="Open a bug report on GitHub with this run's code"
+            tip="Open a bug report on GitHub with this run's code"
           >
             Report a bug
           </Button>
-          <Button block icon="exit" onClick={quit} title="Back to the title screen">
+          <Button block icon="exit" onClick={quit} tip="Back to the title screen">
             Quit to title
           </Button>
           {inProgress() && <p class="menu-note">Your run is saved: Continue picks it up.</p>}

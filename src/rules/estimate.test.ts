@@ -318,7 +318,7 @@ describe('the sun in the estimate (D-120)', () => {
 });
 
 describe('the checklist in the estimate', () => {
-  it('ranks a play that keeps Under one roof above an otherwise-equal one that breaks it', () => {
+  it('ranks a play that keeps A compact house above an otherwise-equal one that breaks it', () => {
     // Two Bedrooms side by side: a 4 × 2 box, at 2:1. A Closet under the first makes it 4 × 3;
     // one right of the second makes it 5 × 2, too long. Either way it touches one Bedroom.
     const { R, s, plain } = withLines(

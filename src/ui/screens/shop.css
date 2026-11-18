@@ -179,6 +179,27 @@
   align-items: flex-start;
   gap: var(--space-4);
 }
+/* A first job's staged shop (D-158): what's still to come, under what it shows. With the gift
+   alone it's the body's only line, so it reads as the yard's sign, not a footnote. */
+.shop-later {
+  margin: var(--space-3) 0 0;
+  max-width: calc(var(--offer-w) * 3 + var(--space-3) * 2);
+  color: var(--ink-soft);
+}
+.shop-later.gift {
+  margin-top: 0;
+  max-width: 44ch;
+  color: var(--ink);
+  text-align: center;
+}
+/* The gift's shop has no shelves: its one line stands in the middle of the sheet, not in a
+   corner of an empty page. */
+.panel-body.shop-body.gift-only {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
 .shelf {
   display: flex;
   flex-direction: column;
@@ -460,7 +481,7 @@
     var(--shadow-float);
 }
 
-/* --- A crate's options and the strike picker: a sheet over the shelves --------------------- */
+/* --- A crate's options: a sheet over the shelves -------------------------------------------- */
 
 /* The scrim's one row is the scrim's own height (a definite row, where an auto one would
    grow with the sheet), so the sheet's max-height holds and its options scroll inside it on a
@@ -516,14 +537,6 @@
   justify-content: flex-end;
   padding: var(--space-2) var(--space-3);
   box-shadow: inset 0 var(--px) 0 var(--paper-line);
-}
-.strike-sheet {
-  width: min(calc(var(--px) * 300), 100%);
-}
-.strike-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1);
 }
 .crate-options {
   display: flex;

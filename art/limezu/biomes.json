@@ -1,0 +1,2720 @@
+{
+  "grass-0-autumn": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png",
+    "rect": [16, 112, 16, 16],
+    "ops": [
+      {
+        "op": "tile",
+        "size": [32, 32]
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#479757": "#5a8a5e",
+          "#37854e": "#4c7a52",
+          "#2d7256": "#436b52"
+        }
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#be843d",
+          "#329d37": "#c39245",
+          "#4ca434": "#c5a458",
+          "#2a874a": "#b96d3f",
+          "#1b6c4a": "#af473b",
+          "#225e4e": "#944045",
+          "#1c5047": "#783c4a",
+          "#5a8a5e": "#7b8657",
+          "#4c7a52": "#6b764c",
+          "#436b52": "#5e6847",
+          "#6a9a67": "#8f955c",
+          "#86a571": "#aaa365",
+          "#517f57": "#86704a",
+          "#46724c": "#786342",
+          "#3e6549": "#6a573b",
+          "#537155": "#6b6e4f",
+          "#47644a": "#5d6045",
+          "#607f5e": "#7a7c56",
+          "#3e5848": "#535340",
+          "#538261": "#6f7c50",
+          "#4a7356": "#69704b",
+          "#3d6951": "#5a6446"
+        }
+      }
+    ],
+    "note": "D-174: grass-0 in the autumn woods: its terrain.json cut, then our meadow colors to LimeZu's own autumn colorway (the Camping trees' autumn twins), muted like ours, and the grass to a warmer green."
+  },
+  "tuft-0-autumn": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png",
+    "rect": [400, 32, 16, 16],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#53a65d": "#6a9a67",
+          "#37854e": "#4c7a52",
+          "#479757": "#5a8a5e",
+          "#2d7256": "#436b52"
+        }
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#be843d",
+          "#329d37": "#c39245",
+          "#4ca434": "#c5a458",
+          "#2a874a": "#b96d3f",
+          "#1b6c4a": "#af473b",
+          "#225e4e": "#944045",
+          "#1c5047": "#783c4a",
+          "#5a8a5e": "#7b8657",
+          "#4c7a52": "#6b764c",
+          "#436b52": "#5e6847",
+          "#6a9a67": "#8f955c",
+          "#86a571": "#aaa365",
+          "#517f57": "#86704a",
+          "#46724c": "#786342",
+          "#3e6549": "#6a573b",
+          "#537155": "#6b6e4f",
+          "#47644a": "#5d6045",
+          "#607f5e": "#7a7c56",
+          "#3e5848": "#535340",
+          "#538261": "#6f7c50",
+          "#4a7356": "#69704b",
+          "#3d6951": "#5a6446"
+        }
+      }
+    ],
+    "note": "D-174: tuft-0 in the autumn woods: its terrain.json cut, then our meadow colors to LimeZu's own autumn colorway (the Camping trees' autumn twins), muted like ours, and the grass to a warmer green."
+  },
+  "tuft-1-autumn": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png",
+    "rect": [416, 32, 16, 16],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#53a65d": "#6a9a67",
+          "#37854e": "#4c7a52",
+          "#479757": "#5a8a5e",
+          "#2d7256": "#436b52"
+        }
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#be843d",
+          "#329d37": "#c39245",
+          "#4ca434": "#c5a458",
+          "#2a874a": "#b96d3f",
+          "#1b6c4a": "#af473b",
+          "#225e4e": "#944045",
+          "#1c5047": "#783c4a",
+          "#5a8a5e": "#7b8657",
+          "#4c7a52": "#6b764c",
+          "#436b52": "#5e6847",
+          "#6a9a67": "#8f955c",
+          "#86a571": "#aaa365",
+          "#517f57": "#86704a",
+          "#46724c": "#786342",
+          "#3e6549": "#6a573b",
+          "#537155": "#6b6e4f",
+          "#47644a": "#5d6045",
+          "#607f5e": "#7a7c56",
+          "#3e5848": "#535340",
+          "#538261": "#6f7c50",
+          "#4a7356": "#69704b",
+          "#3d6951": "#5a6446"
+        }
+      }
+    ],
+    "note": "D-174: tuft-1 in the autumn woods: its terrain.json cut, then our meadow colors to LimeZu's own autumn colorway (the Camping trees' autumn twins), muted like ours, and the grass to a warmer green."
+  },
+  "wildflowers-0-autumn": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/3_City_Props_16x16.png",
+    "rect": [432, 176, 16, 16],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#be843d",
+          "#329d37": "#c39245",
+          "#4ca434": "#c5a458",
+          "#2a874a": "#b96d3f",
+          "#1b6c4a": "#af473b",
+          "#225e4e": "#944045",
+          "#1c5047": "#783c4a",
+          "#5a8a5e": "#7b8657",
+          "#4c7a52": "#6b764c",
+          "#436b52": "#5e6847",
+          "#6a9a67": "#8f955c",
+          "#86a571": "#aaa365",
+          "#517f57": "#86704a",
+          "#46724c": "#786342",
+          "#3e6549": "#6a573b",
+          "#537155": "#6b6e4f",
+          "#47644a": "#5d6045",
+          "#607f5e": "#7a7c56",
+          "#3e5848": "#535340",
+          "#538261": "#6f7c50",
+          "#4a7356": "#69704b",
+          "#3d6951": "#5a6446"
+        }
+      }
+    ],
+    "note": "D-174: wildflowers-0 in the autumn woods: its terrain.json cut, then our meadow colors to LimeZu's own autumn colorway (the Camping trees' autumn twins), muted like ours, and the grass to a warmer green."
+  },
+  "wildflowers-1-autumn": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/3_City_Props_16x16.png",
+    "rect": [432, 192, 16, 16],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#be843d",
+          "#329d37": "#c39245",
+          "#4ca434": "#c5a458",
+          "#2a874a": "#b96d3f",
+          "#1b6c4a": "#af473b",
+          "#225e4e": "#944045",
+          "#1c5047": "#783c4a",
+          "#5a8a5e": "#7b8657",
+          "#4c7a52": "#6b764c",
+          "#436b52": "#5e6847",
+          "#6a9a67": "#8f955c",
+          "#86a571": "#aaa365",
+          "#517f57": "#86704a",
+          "#46724c": "#786342",
+          "#3e6549": "#6a573b",
+          "#537155": "#6b6e4f",
+          "#47644a": "#5d6045",
+          "#607f5e": "#7a7c56",
+          "#3e5848": "#535340",
+          "#538261": "#6f7c50",
+          "#4a7356": "#69704b",
+          "#3d6951": "#5a6446"
+        }
+      }
+    ],
+    "note": "D-174: wildflowers-1 in the autumn woods: its terrain.json cut, then our meadow colors to LimeZu's own autumn colorway (the Camping trees' autumn twins), muted like ours, and the grass to a warmer green."
+  },
+  "wildflowers-2-autumn": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/3_City_Props_16x16.png",
+    "rect": [432, 208, 16, 16],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#be843d",
+          "#329d37": "#c39245",
+          "#4ca434": "#c5a458",
+          "#2a874a": "#b96d3f",
+          "#1b6c4a": "#af473b",
+          "#225e4e": "#944045",
+          "#1c5047": "#783c4a",
+          "#5a8a5e": "#7b8657",
+          "#4c7a52": "#6b764c",
+          "#436b52": "#5e6847",
+          "#6a9a67": "#8f955c",
+          "#86a571": "#aaa365",
+          "#517f57": "#86704a",
+          "#46724c": "#786342",
+          "#3e6549": "#6a573b",
+          "#537155": "#6b6e4f",
+          "#47644a": "#5d6045",
+          "#607f5e": "#7a7c56",
+          "#3e5848": "#535340",
+          "#538261": "#6f7c50",
+          "#4a7356": "#69704b",
+          "#3d6951": "#5a6446"
+        }
+      }
+    ],
+    "note": "D-174: wildflowers-2 in the autumn woods: its terrain.json cut, then our meadow colors to LimeZu's own autumn colorway (the Camping trees' autumn twins), muted like ours, and the grass to a warmer green."
+  },
+  "wildflowers-3-autumn": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/3_City_Props_16x16.png",
+    "rect": [432, 224, 16, 16],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#be843d",
+          "#329d37": "#c39245",
+          "#4ca434": "#c5a458",
+          "#2a874a": "#b96d3f",
+          "#1b6c4a": "#af473b",
+          "#225e4e": "#944045",
+          "#1c5047": "#783c4a",
+          "#5a8a5e": "#7b8657",
+          "#4c7a52": "#6b764c",
+          "#436b52": "#5e6847",
+          "#6a9a67": "#8f955c",
+          "#86a571": "#aaa365",
+          "#517f57": "#86704a",
+          "#46724c": "#786342",
+          "#3e6549": "#6a573b",
+          "#537155": "#6b6e4f",
+          "#47644a": "#5d6045",
+          "#607f5e": "#7a7c56",
+          "#3e5848": "#535340",
+          "#538261": "#6f7c50",
+          "#4a7356": "#69704b",
+          "#3d6951": "#5a6446"
+        }
+      }
+    ],
+    "note": "D-174: wildflowers-3 in the autumn woods: its terrain.json cut, then our meadow colors to LimeZu's own autumn colorway (the Camping trees' autumn twins), muted like ours, and the grass to a warmer green."
+  },
+  "wildflowers-4-autumn": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/3_City_Props_16x16.png",
+    "rect": [432, 240, 16, 16],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#be843d",
+          "#329d37": "#c39245",
+          "#4ca434": "#c5a458",
+          "#2a874a": "#b96d3f",
+          "#1b6c4a": "#af473b",
+          "#225e4e": "#944045",
+          "#1c5047": "#783c4a",
+          "#5a8a5e": "#7b8657",
+          "#4c7a52": "#6b764c",
+          "#436b52": "#5e6847",
+          "#6a9a67": "#8f955c",
+          "#86a571": "#aaa365",
+          "#517f57": "#86704a",
+          "#46724c": "#786342",
+          "#3e6549": "#6a573b",
+          "#537155": "#6b6e4f",
+          "#47644a": "#5d6045",
+          "#607f5e": "#7a7c56",
+          "#3e5848": "#535340",
+          "#538261": "#6f7c50",
+          "#4a7356": "#69704b",
+          "#3d6951": "#5a6446"
+        }
+      }
+    ],
+    "note": "D-174: wildflowers-4 in the autumn woods: its terrain.json cut, then our meadow colors to LimeZu's own autumn colorway (the Camping trees' autumn twins), muted like ours, and the grass to a warmer green."
+  },
+  "shore-autumn": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/Animated_16x16/Animated_Terrains_16x16/Water_Tileset_16x16.png",
+    "rect": [0, 0, 48, 48],
+    "frames": {
+      "count": 8,
+      "dx": 48,
+      "dy": 0,
+      "ms": 130
+    },
+    "ops": [
+      {
+        "op": "keyOut",
+        "colors": ["#479757"]
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#37854e": "#4c7a52",
+          "#53a65d": "#6a9a67",
+          "#79a15c": "#86a571"
+        }
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#be843d",
+          "#329d37": "#c39245",
+          "#4ca434": "#c5a458",
+          "#2a874a": "#b96d3f",
+          "#1b6c4a": "#af473b",
+          "#225e4e": "#944045",
+          "#1c5047": "#783c4a",
+          "#5a8a5e": "#7b8657",
+          "#4c7a52": "#6b764c",
+          "#436b52": "#5e6847",
+          "#6a9a67": "#8f955c",
+          "#86a571": "#aaa365",
+          "#517f57": "#86704a",
+          "#46724c": "#786342",
+          "#3e6549": "#6a573b",
+          "#537155": "#6b6e4f",
+          "#47644a": "#5d6045",
+          "#607f5e": "#7a7c56",
+          "#3e5848": "#535340",
+          "#538261": "#6f7c50",
+          "#4a7356": "#69704b",
+          "#3d6951": "#5a6446"
+        }
+      }
+    ],
+    "note": "D-174: shore in the autumn woods: its terrain.json cut, then our meadow colors to LimeZu's own autumn colorway (the Camping trees' autumn twins), muted like ours, and the grass to a warmer green."
+  },
+  "shore-corners-autumn": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/Animated_16x16/Animated_Terrains_16x16/Water_Tileset_Outer_Corners_16x16.png",
+    "rect": [0, 0, 32, 32],
+    "frames": {
+      "count": 8,
+      "dx": 32,
+      "dy": 0,
+      "ms": 130
+    },
+    "ops": [
+      {
+        "op": "keyOut",
+        "colors": ["#479757"]
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#37854e": "#4c7a52",
+          "#53a65d": "#6a9a67",
+          "#79a15c": "#86a571"
+        }
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#be843d",
+          "#329d37": "#c39245",
+          "#4ca434": "#c5a458",
+          "#2a874a": "#b96d3f",
+          "#1b6c4a": "#af473b",
+          "#225e4e": "#944045",
+          "#1c5047": "#783c4a",
+          "#5a8a5e": "#7b8657",
+          "#4c7a52": "#6b764c",
+          "#436b52": "#5e6847",
+          "#6a9a67": "#8f955c",
+          "#86a571": "#aaa365",
+          "#517f57": "#86704a",
+          "#46724c": "#786342",
+          "#3e6549": "#6a573b",
+          "#537155": "#6b6e4f",
+          "#47644a": "#5d6045",
+          "#607f5e": "#7a7c56",
+          "#3e5848": "#535340",
+          "#538261": "#6f7c50",
+          "#4a7356": "#69704b",
+          "#3d6951": "#5a6446"
+        }
+      }
+    ],
+    "note": "D-174: shore-corners in the autumn woods: its terrain.json cut, then our meadow colors to LimeZu's own autumn colorway (the Camping trees' autumn twins), muted like ours, and the grass to a warmer green."
+  },
+  "tree-round-autumn": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_Singles_16x16/ME_Singles_Camping_16x16_Tree_170.png",
+    "rect": [0, 11, 32, 37],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#21983d": "#269340",
+          "#2da233": "#329d37",
+          "#49a92f": "#4ca434",
+          "#268b49": "#2a874a",
+          "#17704b": "#1b6c4a",
+          "#1f614f": "#225e4e",
+          "#1a5249": "#1c5047",
+          "#479757": "#5a8a5e",
+          "#37854e": "#4c7a52",
+          "#2d7256": "#436b52"
+        }
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#be843d",
+          "#329d37": "#c39245",
+          "#4ca434": "#c5a458",
+          "#2a874a": "#b96d3f",
+          "#1b6c4a": "#af473b",
+          "#225e4e": "#944045",
+          "#1c5047": "#783c4a",
+          "#5a8a5e": "#7b8657",
+          "#4c7a52": "#6b764c",
+          "#436b52": "#5e6847",
+          "#6a9a67": "#8f955c",
+          "#86a571": "#aaa365",
+          "#517f57": "#86704a",
+          "#46724c": "#786342",
+          "#3e6549": "#6a573b",
+          "#537155": "#6b6e4f",
+          "#47644a": "#5d6045",
+          "#607f5e": "#7a7c56",
+          "#3e5848": "#535340",
+          "#538261": "#6f7c50",
+          "#4a7356": "#69704b",
+          "#3d6951": "#5a6446"
+        }
+      }
+    ],
+    "note": "D-174: tree-round in the autumn woods: its terrain.json cut, then our meadow colors to LimeZu's own autumn colorway (the Camping trees' autumn twins), muted like ours, and the grass to a warmer green."
+  },
+  "tree-bushy-autumn": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_Singles_16x16/ME_Singles_Camping_16x16_Tree_260.png",
+    "rect": [0, 3, 32, 29],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#21983d": "#269340",
+          "#2da233": "#329d37",
+          "#49a92f": "#4ca434",
+          "#268b49": "#2a874a",
+          "#17704b": "#1b6c4a",
+          "#1f614f": "#225e4e",
+          "#1a5249": "#1c5047",
+          "#479757": "#5a8a5e",
+          "#37854e": "#4c7a52",
+          "#2d7256": "#436b52"
+        }
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#be843d",
+          "#329d37": "#c39245",
+          "#4ca434": "#c5a458",
+          "#2a874a": "#b96d3f",
+          "#1b6c4a": "#af473b",
+          "#225e4e": "#944045",
+          "#1c5047": "#783c4a",
+          "#5a8a5e": "#7b8657",
+          "#4c7a52": "#6b764c",
+          "#436b52": "#5e6847",
+          "#6a9a67": "#8f955c",
+          "#86a571": "#aaa365",
+          "#517f57": "#86704a",
+          "#46724c": "#786342",
+          "#3e6549": "#6a573b",
+          "#537155": "#6b6e4f",
+          "#47644a": "#5d6045",
+          "#607f5e": "#7a7c56",
+          "#3e5848": "#535340",
+          "#538261": "#6f7c50",
+          "#4a7356": "#69704b",
+          "#3d6951": "#5a6446"
+        }
+      }
+    ],
+    "note": "D-174: tree-bushy in the autumn woods: its terrain.json cut, then our meadow colors to LimeZu's own autumn colorway (the Camping trees' autumn twins), muted like ours, and the grass to a warmer green."
+  },
+  "tree-bush-autumn": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_Singles_16x16/ME_Singles_Camping_16x16_Tree_266.png",
+    "rect": [0, 8, 32, 24],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#21983d": "#269340",
+          "#2da233": "#329d37",
+          "#49a92f": "#4ca434",
+          "#268b49": "#2a874a",
+          "#17704b": "#1b6c4a",
+          "#1f614f": "#225e4e",
+          "#1a5249": "#1c5047",
+          "#479757": "#5a8a5e",
+          "#37854e": "#4c7a52",
+          "#2d7256": "#436b52"
+        }
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#be843d",
+          "#329d37": "#c39245",
+          "#4ca434": "#c5a458",
+          "#2a874a": "#b96d3f",
+          "#1b6c4a": "#af473b",
+          "#225e4e": "#944045",
+          "#1c5047": "#783c4a",
+          "#5a8a5e": "#7b8657",
+          "#4c7a52": "#6b764c",
+          "#436b52": "#5e6847",
+          "#6a9a67": "#8f955c",
+          "#86a571": "#aaa365",
+          "#517f57": "#86704a",
+          "#46724c": "#786342",
+          "#3e6549": "#6a573b",
+          "#537155": "#6b6e4f",
+          "#47644a": "#5d6045",
+          "#607f5e": "#7a7c56",
+          "#3e5848": "#535340",
+          "#538261": "#6f7c50",
+          "#4a7356": "#69704b",
+          "#3d6951": "#5a6446"
+        }
+      }
+    ],
+    "note": "D-174: tree-bush in the autumn woods: its terrain.json cut, then our meadow colors to LimeZu's own autumn colorway (the Camping trees' autumn twins), muted like ours, and the grass to a warmer green."
+  },
+  "tree-conifer-autumn": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_Singles_16x16/ME_Singles_Camping_16x16_Tree_182.png",
+    "rect": [0, 3, 32, 45],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#21983d": "#269340",
+          "#2da233": "#329d37",
+          "#49a92f": "#4ca434",
+          "#268b49": "#2a874a",
+          "#17704b": "#1b6c4a",
+          "#1f614f": "#225e4e",
+          "#1a5249": "#1c5047",
+          "#479757": "#5a8a5e",
+          "#37854e": "#4c7a52",
+          "#2d7256": "#436b52"
+        }
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#be843d",
+          "#329d37": "#c39245",
+          "#4ca434": "#c5a458",
+          "#2a874a": "#b96d3f",
+          "#1b6c4a": "#af473b",
+          "#225e4e": "#944045",
+          "#1c5047": "#783c4a",
+          "#5a8a5e": "#7b8657",
+          "#4c7a52": "#6b764c",
+          "#436b52": "#5e6847",
+          "#6a9a67": "#8f955c",
+          "#86a571": "#aaa365",
+          "#517f57": "#86704a",
+          "#46724c": "#786342",
+          "#3e6549": "#6a573b",
+          "#537155": "#6b6e4f",
+          "#47644a": "#5d6045",
+          "#607f5e": "#7a7c56",
+          "#3e5848": "#535340",
+          "#538261": "#6f7c50",
+          "#4a7356": "#69704b",
+          "#3d6951": "#5a6446"
+        }
+      }
+    ],
+    "note": "D-174: tree-conifer in the autumn woods: its terrain.json cut, then our meadow colors to LimeZu's own autumn colorway (the Camping trees' autumn twins), muted like ours, and the grass to a warmer green."
+  },
+  "tree-conifer-cones-autumn": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_Singles_16x16/ME_Singles_Camping_16x16_Tree_185.png",
+    "rect": [0, 3, 32, 45],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#21983d": "#269340",
+          "#2da233": "#329d37",
+          "#49a92f": "#4ca434",
+          "#268b49": "#2a874a",
+          "#17704b": "#1b6c4a",
+          "#1f614f": "#225e4e",
+          "#1a5249": "#1c5047",
+          "#479757": "#5a8a5e",
+          "#37854e": "#4c7a52",
+          "#2d7256": "#436b52"
+        }
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#be843d",
+          "#329d37": "#c39245",
+          "#4ca434": "#c5a458",
+          "#2a874a": "#b96d3f",
+          "#1b6c4a": "#af473b",
+          "#225e4e": "#944045",
+          "#1c5047": "#783c4a",
+          "#5a8a5e": "#7b8657",
+          "#4c7a52": "#6b764c",
+          "#436b52": "#5e6847",
+          "#6a9a67": "#8f955c",
+          "#86a571": "#aaa365",
+          "#517f57": "#86704a",
+          "#46724c": "#786342",
+          "#3e6549": "#6a573b",
+          "#537155": "#6b6e4f",
+          "#47644a": "#5d6045",
+          "#607f5e": "#7a7c56",
+          "#3e5848": "#535340",
+          "#538261": "#6f7c50",
+          "#4a7356": "#69704b",
+          "#3d6951": "#5a6446"
+        }
+      }
+    ],
+    "note": "D-174: tree-conifer-cones in the autumn woods: its terrain.json cut, then our meadow colors to LimeZu's own autumn colorway (the Camping trees' autumn twins), muted like ours, and the grass to a warmer green."
+  },
+  "tree-pine-autumn": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_Singles_16x16/ME_Singles_Camping_16x16_Tree_206.png",
+    "rect": [0, 11, 32, 53],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#21983d": "#269340",
+          "#2da233": "#329d37",
+          "#49a92f": "#4ca434",
+          "#268b49": "#2a874a",
+          "#17704b": "#1b6c4a",
+          "#1f614f": "#225e4e",
+          "#1a5249": "#1c5047",
+          "#479757": "#5a8a5e",
+          "#37854e": "#4c7a52",
+          "#2d7256": "#436b52"
+        }
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#be843d",
+          "#329d37": "#c39245",
+          "#4ca434": "#c5a458",
+          "#2a874a": "#b96d3f",
+          "#1b6c4a": "#af473b",
+          "#225e4e": "#944045",
+          "#1c5047": "#783c4a",
+          "#5a8a5e": "#7b8657",
+          "#4c7a52": "#6b764c",
+          "#436b52": "#5e6847",
+          "#6a9a67": "#8f955c",
+          "#86a571": "#aaa365",
+          "#517f57": "#86704a",
+          "#46724c": "#786342",
+          "#3e6549": "#6a573b",
+          "#537155": "#6b6e4f",
+          "#47644a": "#5d6045",
+          "#607f5e": "#7a7c56",
+          "#3e5848": "#535340",
+          "#538261": "#6f7c50",
+          "#4a7356": "#69704b",
+          "#3d6951": "#5a6446"
+        }
+      }
+    ],
+    "note": "D-174: tree-pine in the autumn woods: its terrain.json cut, then our meadow colors to LimeZu's own autumn colorway (the Camping trees' autumn twins), muted like ours, and the grass to a warmer green."
+  },
+  "tree-apple-autumn": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_Singles_16x16/ME_Singles_Camping_16x16_Tree_257.png",
+    "rect": [0, 0, 32, 32],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#21983d": "#269340",
+          "#2da233": "#329d37",
+          "#49a92f": "#4ca434",
+          "#268b49": "#2a874a",
+          "#17704b": "#1b6c4a",
+          "#1f614f": "#225e4e",
+          "#1a5249": "#1c5047",
+          "#479757": "#5a8a5e",
+          "#37854e": "#4c7a52",
+          "#2d7256": "#436b52"
+        }
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#be843d",
+          "#329d37": "#c39245",
+          "#4ca434": "#c5a458",
+          "#2a874a": "#b96d3f",
+          "#1b6c4a": "#af473b",
+          "#225e4e": "#944045",
+          "#1c5047": "#783c4a",
+          "#5a8a5e": "#7b8657",
+          "#4c7a52": "#6b764c",
+          "#436b52": "#5e6847",
+          "#6a9a67": "#8f955c",
+          "#86a571": "#aaa365",
+          "#517f57": "#86704a",
+          "#46724c": "#786342",
+          "#3e6549": "#6a573b",
+          "#537155": "#6b6e4f",
+          "#47644a": "#5d6045",
+          "#607f5e": "#7a7c56",
+          "#3e5848": "#535340",
+          "#538261": "#6f7c50",
+          "#4a7356": "#69704b",
+          "#3d6951": "#5a6446"
+        }
+      }
+    ],
+    "note": "D-174: tree-apple in the autumn woods: its terrain.json cut, then our meadow colors to LimeZu's own autumn colorway (the Camping trees' autumn twins), muted like ours, and the grass to a warmer green."
+  },
+  "tree-bushy-apple-autumn": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_Singles_16x16/ME_Singles_Camping_16x16_Tree_263.png",
+    "rect": [0, 3, 32, 29],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#21983d": "#269340",
+          "#2da233": "#329d37",
+          "#49a92f": "#4ca434",
+          "#268b49": "#2a874a",
+          "#17704b": "#1b6c4a",
+          "#1f614f": "#225e4e",
+          "#1a5249": "#1c5047",
+          "#479757": "#5a8a5e",
+          "#37854e": "#4c7a52",
+          "#2d7256": "#436b52"
+        }
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#be843d",
+          "#329d37": "#c39245",
+          "#4ca434": "#c5a458",
+          "#2a874a": "#b96d3f",
+          "#1b6c4a": "#af473b",
+          "#225e4e": "#944045",
+          "#1c5047": "#783c4a",
+          "#5a8a5e": "#7b8657",
+          "#4c7a52": "#6b764c",
+          "#436b52": "#5e6847",
+          "#6a9a67": "#8f955c",
+          "#86a571": "#aaa365",
+          "#517f57": "#86704a",
+          "#46724c": "#786342",
+          "#3e6549": "#6a573b",
+          "#537155": "#6b6e4f",
+          "#47644a": "#5d6045",
+          "#607f5e": "#7a7c56",
+          "#3e5848": "#535340",
+          "#538261": "#6f7c50",
+          "#4a7356": "#69704b",
+          "#3d6951": "#5a6446"
+        }
+      }
+    ],
+    "note": "D-174: tree-bushy-apple in the autumn woods: its terrain.json cut, then our meadow colors to LimeZu's own autumn colorway (the Camping trees' autumn twins), muted like ours, and the grass to a warmer green."
+  },
+  "tree-big-autumn": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_Singles_16x16/ME_Singles_Camping_16x16_Tree_1.png",
+    "rect": [0, 11, 64, 52],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#21983d": "#269340",
+          "#2da233": "#329d37",
+          "#49a92f": "#4ca434",
+          "#268b49": "#2a874a",
+          "#17704b": "#1b6c4a",
+          "#1f614f": "#225e4e",
+          "#1a5249": "#1c5047",
+          "#479757": "#5a8a5e",
+          "#37854e": "#4c7a52",
+          "#2d7256": "#436b52"
+        }
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#be843d",
+          "#329d37": "#c39245",
+          "#4ca434": "#c5a458",
+          "#2a874a": "#b96d3f",
+          "#1b6c4a": "#af473b",
+          "#225e4e": "#944045",
+          "#1c5047": "#783c4a",
+          "#5a8a5e": "#7b8657",
+          "#4c7a52": "#6b764c",
+          "#436b52": "#5e6847",
+          "#6a9a67": "#8f955c",
+          "#86a571": "#aaa365",
+          "#517f57": "#86704a",
+          "#46724c": "#786342",
+          "#3e6549": "#6a573b",
+          "#537155": "#6b6e4f",
+          "#47644a": "#5d6045",
+          "#607f5e": "#7a7c56",
+          "#3e5848": "#535340",
+          "#538261": "#6f7c50",
+          "#4a7356": "#69704b",
+          "#3d6951": "#5a6446"
+        }
+      }
+    ],
+    "note": "D-174: tree-big in the autumn woods: its terrain.json cut, then our meadow colors to LimeZu's own autumn colorway (the Camping trees' autumn twins), muted like ours, and the grass to a warmer green."
+  },
+  "tree-big-apple-autumn": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_Singles_16x16/ME_Singles_Camping_16x16_Tree_16.png",
+    "rect": [0, 12, 64, 51],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#21983d": "#269340",
+          "#2da233": "#329d37",
+          "#49a92f": "#4ca434",
+          "#268b49": "#2a874a",
+          "#17704b": "#1b6c4a",
+          "#1f614f": "#225e4e",
+          "#1a5249": "#1c5047",
+          "#479757": "#5a8a5e",
+          "#37854e": "#4c7a52",
+          "#2d7256": "#436b52"
+        }
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#be843d",
+          "#329d37": "#c39245",
+          "#4ca434": "#c5a458",
+          "#2a874a": "#b96d3f",
+          "#1b6c4a": "#af473b",
+          "#225e4e": "#944045",
+          "#1c5047": "#783c4a",
+          "#5a8a5e": "#7b8657",
+          "#4c7a52": "#6b764c",
+          "#436b52": "#5e6847",
+          "#6a9a67": "#8f955c",
+          "#86a571": "#aaa365",
+          "#517f57": "#86704a",
+          "#46724c": "#786342",
+          "#3e6549": "#6a573b",
+          "#537155": "#6b6e4f",
+          "#47644a": "#5d6045",
+          "#607f5e": "#7a7c56",
+          "#3e5848": "#535340",
+          "#538261": "#6f7c50",
+          "#4a7356": "#69704b",
+          "#3d6951": "#5a6446"
+        }
+      }
+    ],
+    "note": "D-174: tree-big-apple in the autumn woods: its terrain.json cut, then our meadow colors to LimeZu's own autumn colorway (the Camping trees' autumn twins), muted like ours, and the grass to a warmer green."
+  },
+  "grass-woods-autumn": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png",
+    "rect": [16, 112, 16, 16],
+    "ops": [
+      {
+        "op": "tile",
+        "size": [32, 32]
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#479757": "#517f57",
+          "#37854e": "#46724c",
+          "#2d7256": "#3e6549"
+        }
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#be843d",
+          "#329d37": "#c39245",
+          "#4ca434": "#c5a458",
+          "#2a874a": "#b96d3f",
+          "#1b6c4a": "#af473b",
+          "#225e4e": "#944045",
+          "#1c5047": "#783c4a",
+          "#5a8a5e": "#7b8657",
+          "#4c7a52": "#6b764c",
+          "#436b52": "#5e6847",
+          "#6a9a67": "#8f955c",
+          "#86a571": "#aaa365",
+          "#517f57": "#86704a",
+          "#46724c": "#786342",
+          "#3e6549": "#6a573b",
+          "#537155": "#6b6e4f",
+          "#47644a": "#5d6045",
+          "#607f5e": "#7a7c56",
+          "#3e5848": "#535340",
+          "#538261": "#6f7c50",
+          "#4a7356": "#69704b",
+          "#3d6951": "#5a6446"
+        }
+      }
+    ],
+    "note": "D-174: grass-woods in the autumn woods: its terrain.json cut, then our meadow colors to LimeZu's own autumn colorway (the Camping trees' autumn twins), muted like ours, and the grass to a warmer green."
+  },
+  "woods-edge-autumn": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/Autotiles_16x16/Godot_Autotiles_16x16.png",
+    "rect": [0, 320, 192, 64],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#479757": "#5a8a5e",
+          "#37854e": "#4c7a52",
+          "#53a65d": "#6a9a67",
+          "#79a15c": "#86a571",
+          "#34555d": "#436b52"
+        }
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#be843d",
+          "#329d37": "#c39245",
+          "#4ca434": "#c5a458",
+          "#2a874a": "#b96d3f",
+          "#1b6c4a": "#af473b",
+          "#225e4e": "#944045",
+          "#1c5047": "#783c4a",
+          "#5a8a5e": "#7b8657",
+          "#4c7a52": "#6b764c",
+          "#436b52": "#5e6847",
+          "#6a9a67": "#8f955c",
+          "#86a571": "#aaa365",
+          "#517f57": "#86704a",
+          "#46724c": "#786342",
+          "#3e6549": "#6a573b",
+          "#537155": "#6b6e4f",
+          "#47644a": "#5d6045",
+          "#607f5e": "#7a7c56",
+          "#3e5848": "#535340",
+          "#538261": "#6f7c50",
+          "#4a7356": "#69704b",
+          "#3d6951": "#5a6446"
+        }
+      }
+    ],
+    "note": "D-174: woods-edge in the autumn woods: its terrain.json cut, then our meadow colors to LimeZu's own autumn colorway (the Camping trees' autumn twins), muted like ours, and the grass to a warmer green."
+  },
+  "rocks-autumn": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_16x16.png",
+    "rect": [304, 592, 48, 48],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#479757": "#5a8a5e",
+          "#37854e": "#4c7a52",
+          "#2d7256": "#436b52",
+          "#46a44d": "#6a9a67"
+        }
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#be843d",
+          "#329d37": "#c39245",
+          "#4ca434": "#c5a458",
+          "#2a874a": "#b96d3f",
+          "#1b6c4a": "#af473b",
+          "#225e4e": "#944045",
+          "#1c5047": "#783c4a",
+          "#5a8a5e": "#7b8657",
+          "#4c7a52": "#6b764c",
+          "#436b52": "#5e6847",
+          "#6a9a67": "#8f955c",
+          "#86a571": "#aaa365",
+          "#517f57": "#86704a",
+          "#46724c": "#786342",
+          "#3e6549": "#6a573b",
+          "#537155": "#6b6e4f",
+          "#47644a": "#5d6045",
+          "#607f5e": "#7a7c56",
+          "#3e5848": "#535340",
+          "#538261": "#6f7c50",
+          "#4a7356": "#69704b",
+          "#3d6951": "#5a6446"
+        }
+      }
+    ],
+    "note": "D-174: rocks in the autumn woods: its terrain.json cut, then our meadow colors to LimeZu's own autumn colorway (the Camping trees' autumn twins), muted like ours, and the grass to a warmer green."
+  },
+  "time-capsule-autumn": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/Autotiles_16x16/Godot_Autotiles_16x16.png",
+    "rect": [128, 64, 16, 16],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [32, 32],
+        "layers": [
+          {
+            "rect": [176, 64, 16, 16],
+            "at": [16, 0]
+          },
+          {
+            "rect": [128, 112, 16, 16],
+            "at": [0, 16]
+          },
+          {
+            "rect": [176, 112, 16, 16],
+            "at": [16, 16]
+          },
+          {
+            "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/19_Graveyard_16x16.png",
+            "rect": [402, 245, 13, 22],
+            "at": [12, 3]
+          }
+        ]
+      },
+      {
+        "op": "keyOut",
+        "colors": ["#479757"]
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#37854e": "#4c7a52",
+          "#53a65d": "#6a9a67",
+          "#79a15c": "#86a571",
+          "#34555d": "#436b52"
+        }
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#be843d",
+          "#329d37": "#c39245",
+          "#4ca434": "#c5a458",
+          "#2a874a": "#b96d3f",
+          "#1b6c4a": "#af473b",
+          "#225e4e": "#944045",
+          "#1c5047": "#783c4a",
+          "#5a8a5e": "#7b8657",
+          "#4c7a52": "#6b764c",
+          "#436b52": "#5e6847",
+          "#6a9a67": "#8f955c",
+          "#86a571": "#aaa365",
+          "#517f57": "#86704a",
+          "#46724c": "#786342",
+          "#3e6549": "#6a573b",
+          "#537155": "#6b6e4f",
+          "#47644a": "#5d6045",
+          "#607f5e": "#7a7c56",
+          "#3e5848": "#535340",
+          "#538261": "#6f7c50",
+          "#4a7356": "#69704b",
+          "#3d6951": "#5a6446"
+        }
+      }
+    ],
+    "note": "D-174: time-capsule in the autumn woods: its terrain.json cut, then our meadow colors to LimeZu's own autumn colorway (the Camping trees' autumn twins), muted like ours, and the grass to a warmer green."
+  },
+  "grass-outside-autumn": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png",
+    "rect": [16, 112, 16, 16],
+    "ops": [
+      {
+        "op": "tile",
+        "size": [256, 256]
+      },
+      {
+        "op": "compose",
+        "size": [256, 256],
+        "layers": [
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [235, 1]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [116, 8]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [166, 12],
+            "ops": [
+              {
+                "op": "flipX"
+              }
+            ]
+          },
+          {
+            "rect": [400, 32, 16, 16],
+            "at": [43, 31]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [204, 32],
+            "ops": [
+              {
+                "op": "flipX"
+              }
+            ]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [96, 41]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [167, 62],
+            "ops": [
+              {
+                "op": "flipX"
+              }
+            ]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [23, 64],
+            "ops": [
+              {
+                "op": "flipX"
+              }
+            ]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [237, 86],
+            "ops": [
+              {
+                "op": "flipX"
+              }
+            ]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [89, 89],
+            "ops": [
+              {
+                "op": "flipX"
+              }
+            ]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [138, 95],
+            "ops": [
+              {
+                "op": "flipX"
+              }
+            ]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [189, 97]
+          },
+          {
+            "rect": [400, 32, 16, 16],
+            "at": [21, 102],
+            "ops": [
+              {
+                "op": "flipX"
+              }
+            ]
+          },
+          {
+            "rect": [400, 32, 16, 16],
+            "at": [58, 136]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [4, 145],
+            "ops": [
+              {
+                "op": "flipX"
+              }
+            ]
+          },
+          {
+            "rect": [400, 32, 16, 16],
+            "at": [125, 148]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [163, 152],
+            "ops": [
+              {
+                "op": "flipX"
+              }
+            ]
+          },
+          {
+            "rect": [400, 32, 16, 16],
+            "at": [201, 159]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [102, 177],
+            "ops": [
+              {
+                "op": "flipX"
+              }
+            ]
+          },
+          {
+            "rect": [400, 32, 16, 16],
+            "at": [47, 181]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [5, 203]
+          },
+          {
+            "rect": [400, 32, 16, 16],
+            "at": [134, 204],
+            "ops": [
+              {
+                "op": "flipX"
+              }
+            ]
+          },
+          {
+            "rect": [400, 32, 16, 16],
+            "at": [216, 208]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [169, 212]
+          },
+          {
+            "rect": [400, 32, 16, 16],
+            "at": [95, 213]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [195, 235]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [145, 239],
+            "ops": [
+              {
+                "op": "flipX"
+              }
+            ]
+          },
+          {
+            "rect": [400, 32, 16, 16],
+            "at": [39, 240],
+            "ops": [
+              {
+                "op": "flipX"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#479757": "#537155",
+          "#37854e": "#47644a",
+          "#2d7256": "#3e5848",
+          "#53a65d": "#607f5e"
+        }
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#be843d",
+          "#329d37": "#c39245",
+          "#4ca434": "#c5a458",
+          "#2a874a": "#b96d3f",
+          "#1b6c4a": "#af473b",
+          "#225e4e": "#944045",
+          "#1c5047": "#783c4a",
+          "#5a8a5e": "#7b8657",
+          "#4c7a52": "#6b764c",
+          "#436b52": "#5e6847",
+          "#6a9a67": "#8f955c",
+          "#86a571": "#aaa365",
+          "#517f57": "#86704a",
+          "#46724c": "#786342",
+          "#3e6549": "#6a573b",
+          "#537155": "#6b6e4f",
+          "#47644a": "#5d6045",
+          "#607f5e": "#7a7c56",
+          "#3e5848": "#535340",
+          "#538261": "#6f7c50",
+          "#4a7356": "#69704b",
+          "#3d6951": "#5a6446"
+        }
+      }
+    ],
+    "note": "D-174: grass-outside in the autumn woods: its terrain.json cut, then our meadow colors to LimeZu's own autumn colorway (the Camping trees' autumn twins), muted like ours, and the grass to a warmer green."
+  },
+  "grass-0-dry": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png",
+    "rect": [16, 112, 16, 16],
+    "ops": [
+      {
+        "op": "tile",
+        "size": [32, 32]
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#479757": "#5a8a5e",
+          "#37854e": "#4c7a52",
+          "#2d7256": "#436b52"
+        }
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#a4863e",
+          "#329d37": "#ab9639",
+          "#4ca434": "#b2a844",
+          "#2a874a": "#92752c",
+          "#1b6c4a": "#88613c",
+          "#225e4e": "#6f402f",
+          "#1c5047": "#573930",
+          "#5a8a5e": "#a69a64",
+          "#4c7a52": "#958859",
+          "#436b52": "#877a50",
+          "#6a9a67": "#b8a96c",
+          "#86a571": "#c9b87a",
+          "#517f57": "#8e8456",
+          "#46724c": "#7f764d",
+          "#3e6549": "#726945",
+          "#537155": "#857c5a",
+          "#47644a": "#766e50",
+          "#607f5e": "#958b63",
+          "#3e5848": "#696249",
+          "#538261": "#93885d",
+          "#4a7356": "#857a54",
+          "#3d6951": "#776d4c"
+        }
+      }
+    ],
+    "note": "D-174: grass-0 in a dry lot: its terrain.json cut, then our meadow colors to LimeZu's own olive colorway (the Camping trees' olive twins), muted like ours, and the grass to a straw green."
+  },
+  "tuft-0-dry": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png",
+    "rect": [400, 32, 16, 16],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#53a65d": "#6a9a67",
+          "#37854e": "#4c7a52",
+          "#479757": "#5a8a5e",
+          "#2d7256": "#436b52"
+        }
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#a4863e",
+          "#329d37": "#ab9639",
+          "#4ca434": "#b2a844",
+          "#2a874a": "#92752c",
+          "#1b6c4a": "#88613c",
+          "#225e4e": "#6f402f",
+          "#1c5047": "#573930",
+          "#5a8a5e": "#a69a64",
+          "#4c7a52": "#958859",
+          "#436b52": "#877a50",
+          "#6a9a67": "#b8a96c",
+          "#86a571": "#c9b87a",
+          "#517f57": "#8e8456",
+          "#46724c": "#7f764d",
+          "#3e6549": "#726945",
+          "#537155": "#857c5a",
+          "#47644a": "#766e50",
+          "#607f5e": "#958b63",
+          "#3e5848": "#696249",
+          "#538261": "#93885d",
+          "#4a7356": "#857a54",
+          "#3d6951": "#776d4c"
+        }
+      }
+    ],
+    "note": "D-174: tuft-0 in a dry lot: its terrain.json cut, then our meadow colors to LimeZu's own olive colorway (the Camping trees' olive twins), muted like ours, and the grass to a straw green."
+  },
+  "tuft-1-dry": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png",
+    "rect": [416, 32, 16, 16],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#53a65d": "#6a9a67",
+          "#37854e": "#4c7a52",
+          "#479757": "#5a8a5e",
+          "#2d7256": "#436b52"
+        }
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#a4863e",
+          "#329d37": "#ab9639",
+          "#4ca434": "#b2a844",
+          "#2a874a": "#92752c",
+          "#1b6c4a": "#88613c",
+          "#225e4e": "#6f402f",
+          "#1c5047": "#573930",
+          "#5a8a5e": "#a69a64",
+          "#4c7a52": "#958859",
+          "#436b52": "#877a50",
+          "#6a9a67": "#b8a96c",
+          "#86a571": "#c9b87a",
+          "#517f57": "#8e8456",
+          "#46724c": "#7f764d",
+          "#3e6549": "#726945",
+          "#537155": "#857c5a",
+          "#47644a": "#766e50",
+          "#607f5e": "#958b63",
+          "#3e5848": "#696249",
+          "#538261": "#93885d",
+          "#4a7356": "#857a54",
+          "#3d6951": "#776d4c"
+        }
+      }
+    ],
+    "note": "D-174: tuft-1 in a dry lot: its terrain.json cut, then our meadow colors to LimeZu's own olive colorway (the Camping trees' olive twins), muted like ours, and the grass to a straw green."
+  },
+  "wildflowers-0-dry": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/3_City_Props_16x16.png",
+    "rect": [432, 176, 16, 16],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#a4863e",
+          "#329d37": "#ab9639",
+          "#4ca434": "#b2a844",
+          "#2a874a": "#92752c",
+          "#1b6c4a": "#88613c",
+          "#225e4e": "#6f402f",
+          "#1c5047": "#573930",
+          "#5a8a5e": "#a69a64",
+          "#4c7a52": "#958859",
+          "#436b52": "#877a50",
+          "#6a9a67": "#b8a96c",
+          "#86a571": "#c9b87a",
+          "#517f57": "#8e8456",
+          "#46724c": "#7f764d",
+          "#3e6549": "#726945",
+          "#537155": "#857c5a",
+          "#47644a": "#766e50",
+          "#607f5e": "#958b63",
+          "#3e5848": "#696249",
+          "#538261": "#93885d",
+          "#4a7356": "#857a54",
+          "#3d6951": "#776d4c"
+        }
+      }
+    ],
+    "note": "D-174: wildflowers-0 in a dry lot: its terrain.json cut, then our meadow colors to LimeZu's own olive colorway (the Camping trees' olive twins), muted like ours, and the grass to a straw green."
+  },
+  "wildflowers-1-dry": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/3_City_Props_16x16.png",
+    "rect": [432, 192, 16, 16],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#a4863e",
+          "#329d37": "#ab9639",
+          "#4ca434": "#b2a844",
+          "#2a874a": "#92752c",
+          "#1b6c4a": "#88613c",
+          "#225e4e": "#6f402f",
+          "#1c5047": "#573930",
+          "#5a8a5e": "#a69a64",
+          "#4c7a52": "#958859",
+          "#436b52": "#877a50",
+          "#6a9a67": "#b8a96c",
+          "#86a571": "#c9b87a",
+          "#517f57": "#8e8456",
+          "#46724c": "#7f764d",
+          "#3e6549": "#726945",
+          "#537155": "#857c5a",
+          "#47644a": "#766e50",
+          "#607f5e": "#958b63",
+          "#3e5848": "#696249",
+          "#538261": "#93885d",
+          "#4a7356": "#857a54",
+          "#3d6951": "#776d4c"
+        }
+      }
+    ],
+    "note": "D-174: wildflowers-1 in a dry lot: its terrain.json cut, then our meadow colors to LimeZu's own olive colorway (the Camping trees' olive twins), muted like ours, and the grass to a straw green."
+  },
+  "wildflowers-2-dry": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/3_City_Props_16x16.png",
+    "rect": [432, 208, 16, 16],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#a4863e",
+          "#329d37": "#ab9639",
+          "#4ca434": "#b2a844",
+          "#2a874a": "#92752c",
+          "#1b6c4a": "#88613c",
+          "#225e4e": "#6f402f",
+          "#1c5047": "#573930",
+          "#5a8a5e": "#a69a64",
+          "#4c7a52": "#958859",
+          "#436b52": "#877a50",
+          "#6a9a67": "#b8a96c",
+          "#86a571": "#c9b87a",
+          "#517f57": "#8e8456",
+          "#46724c": "#7f764d",
+          "#3e6549": "#726945",
+          "#537155": "#857c5a",
+          "#47644a": "#766e50",
+          "#607f5e": "#958b63",
+          "#3e5848": "#696249",
+          "#538261": "#93885d",
+          "#4a7356": "#857a54",
+          "#3d6951": "#776d4c"
+        }
+      }
+    ],
+    "note": "D-174: wildflowers-2 in a dry lot: its terrain.json cut, then our meadow colors to LimeZu's own olive colorway (the Camping trees' olive twins), muted like ours, and the grass to a straw green."
+  },
+  "wildflowers-3-dry": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/3_City_Props_16x16.png",
+    "rect": [432, 224, 16, 16],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#a4863e",
+          "#329d37": "#ab9639",
+          "#4ca434": "#b2a844",
+          "#2a874a": "#92752c",
+          "#1b6c4a": "#88613c",
+          "#225e4e": "#6f402f",
+          "#1c5047": "#573930",
+          "#5a8a5e": "#a69a64",
+          "#4c7a52": "#958859",
+          "#436b52": "#877a50",
+          "#6a9a67": "#b8a96c",
+          "#86a571": "#c9b87a",
+          "#517f57": "#8e8456",
+          "#46724c": "#7f764d",
+          "#3e6549": "#726945",
+          "#537155": "#857c5a",
+          "#47644a": "#766e50",
+          "#607f5e": "#958b63",
+          "#3e5848": "#696249",
+          "#538261": "#93885d",
+          "#4a7356": "#857a54",
+          "#3d6951": "#776d4c"
+        }
+      }
+    ],
+    "note": "D-174: wildflowers-3 in a dry lot: its terrain.json cut, then our meadow colors to LimeZu's own olive colorway (the Camping trees' olive twins), muted like ours, and the grass to a straw green."
+  },
+  "wildflowers-4-dry": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/3_City_Props_16x16.png",
+    "rect": [432, 240, 16, 16],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#a4863e",
+          "#329d37": "#ab9639",
+          "#4ca434": "#b2a844",
+          "#2a874a": "#92752c",
+          "#1b6c4a": "#88613c",
+          "#225e4e": "#6f402f",
+          "#1c5047": "#573930",
+          "#5a8a5e": "#a69a64",
+          "#4c7a52": "#958859",
+          "#436b52": "#877a50",
+          "#6a9a67": "#b8a96c",
+          "#86a571": "#c9b87a",
+          "#517f57": "#8e8456",
+          "#46724c": "#7f764d",
+          "#3e6549": "#726945",
+          "#537155": "#857c5a",
+          "#47644a": "#766e50",
+          "#607f5e": "#958b63",
+          "#3e5848": "#696249",
+          "#538261": "#93885d",
+          "#4a7356": "#857a54",
+          "#3d6951": "#776d4c"
+        }
+      }
+    ],
+    "note": "D-174: wildflowers-4 in a dry lot: its terrain.json cut, then our meadow colors to LimeZu's own olive colorway (the Camping trees' olive twins), muted like ours, and the grass to a straw green."
+  },
+  "shore-dry": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/Animated_16x16/Animated_Terrains_16x16/Water_Tileset_16x16.png",
+    "rect": [0, 0, 48, 48],
+    "frames": {
+      "count": 8,
+      "dx": 48,
+      "dy": 0,
+      "ms": 130
+    },
+    "ops": [
+      {
+        "op": "keyOut",
+        "colors": ["#479757"]
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#37854e": "#4c7a52",
+          "#53a65d": "#6a9a67",
+          "#79a15c": "#86a571"
+        }
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#a4863e",
+          "#329d37": "#ab9639",
+          "#4ca434": "#b2a844",
+          "#2a874a": "#92752c",
+          "#1b6c4a": "#88613c",
+          "#225e4e": "#6f402f",
+          "#1c5047": "#573930",
+          "#5a8a5e": "#a69a64",
+          "#4c7a52": "#958859",
+          "#436b52": "#877a50",
+          "#6a9a67": "#b8a96c",
+          "#86a571": "#c9b87a",
+          "#517f57": "#8e8456",
+          "#46724c": "#7f764d",
+          "#3e6549": "#726945",
+          "#537155": "#857c5a",
+          "#47644a": "#766e50",
+          "#607f5e": "#958b63",
+          "#3e5848": "#696249",
+          "#538261": "#93885d",
+          "#4a7356": "#857a54",
+          "#3d6951": "#776d4c"
+        }
+      }
+    ],
+    "note": "D-174: shore in a dry lot: its terrain.json cut, then our meadow colors to LimeZu's own olive colorway (the Camping trees' olive twins), muted like ours, and the grass to a straw green."
+  },
+  "shore-corners-dry": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/Animated_16x16/Animated_Terrains_16x16/Water_Tileset_Outer_Corners_16x16.png",
+    "rect": [0, 0, 32, 32],
+    "frames": {
+      "count": 8,
+      "dx": 32,
+      "dy": 0,
+      "ms": 130
+    },
+    "ops": [
+      {
+        "op": "keyOut",
+        "colors": ["#479757"]
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#37854e": "#4c7a52",
+          "#53a65d": "#6a9a67",
+          "#79a15c": "#86a571"
+        }
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#a4863e",
+          "#329d37": "#ab9639",
+          "#4ca434": "#b2a844",
+          "#2a874a": "#92752c",
+          "#1b6c4a": "#88613c",
+          "#225e4e": "#6f402f",
+          "#1c5047": "#573930",
+          "#5a8a5e": "#a69a64",
+          "#4c7a52": "#958859",
+          "#436b52": "#877a50",
+          "#6a9a67": "#b8a96c",
+          "#86a571": "#c9b87a",
+          "#517f57": "#8e8456",
+          "#46724c": "#7f764d",
+          "#3e6549": "#726945",
+          "#537155": "#857c5a",
+          "#47644a": "#766e50",
+          "#607f5e": "#958b63",
+          "#3e5848": "#696249",
+          "#538261": "#93885d",
+          "#4a7356": "#857a54",
+          "#3d6951": "#776d4c"
+        }
+      }
+    ],
+    "note": "D-174: shore-corners in a dry lot: its terrain.json cut, then our meadow colors to LimeZu's own olive colorway (the Camping trees' olive twins), muted like ours, and the grass to a straw green."
+  },
+  "tree-round-dry": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_Singles_16x16/ME_Singles_Camping_16x16_Tree_170.png",
+    "rect": [0, 11, 32, 37],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#21983d": "#269340",
+          "#2da233": "#329d37",
+          "#49a92f": "#4ca434",
+          "#268b49": "#2a874a",
+          "#17704b": "#1b6c4a",
+          "#1f614f": "#225e4e",
+          "#1a5249": "#1c5047",
+          "#479757": "#5a8a5e",
+          "#37854e": "#4c7a52",
+          "#2d7256": "#436b52"
+        }
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#a4863e",
+          "#329d37": "#ab9639",
+          "#4ca434": "#b2a844",
+          "#2a874a": "#92752c",
+          "#1b6c4a": "#88613c",
+          "#225e4e": "#6f402f",
+          "#1c5047": "#573930",
+          "#5a8a5e": "#a69a64",
+          "#4c7a52": "#958859",
+          "#436b52": "#877a50",
+          "#6a9a67": "#b8a96c",
+          "#86a571": "#c9b87a",
+          "#517f57": "#8e8456",
+          "#46724c": "#7f764d",
+          "#3e6549": "#726945",
+          "#537155": "#857c5a",
+          "#47644a": "#766e50",
+          "#607f5e": "#958b63",
+          "#3e5848": "#696249",
+          "#538261": "#93885d",
+          "#4a7356": "#857a54",
+          "#3d6951": "#776d4c"
+        }
+      }
+    ],
+    "note": "D-174: tree-round in a dry lot: its terrain.json cut, then our meadow colors to LimeZu's own olive colorway (the Camping trees' olive twins), muted like ours, and the grass to a straw green."
+  },
+  "tree-bushy-dry": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_Singles_16x16/ME_Singles_Camping_16x16_Tree_260.png",
+    "rect": [0, 3, 32, 29],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#21983d": "#269340",
+          "#2da233": "#329d37",
+          "#49a92f": "#4ca434",
+          "#268b49": "#2a874a",
+          "#17704b": "#1b6c4a",
+          "#1f614f": "#225e4e",
+          "#1a5249": "#1c5047",
+          "#479757": "#5a8a5e",
+          "#37854e": "#4c7a52",
+          "#2d7256": "#436b52"
+        }
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#a4863e",
+          "#329d37": "#ab9639",
+          "#4ca434": "#b2a844",
+          "#2a874a": "#92752c",
+          "#1b6c4a": "#88613c",
+          "#225e4e": "#6f402f",
+          "#1c5047": "#573930",
+          "#5a8a5e": "#a69a64",
+          "#4c7a52": "#958859",
+          "#436b52": "#877a50",
+          "#6a9a67": "#b8a96c",
+          "#86a571": "#c9b87a",
+          "#517f57": "#8e8456",
+          "#46724c": "#7f764d",
+          "#3e6549": "#726945",
+          "#537155": "#857c5a",
+          "#47644a": "#766e50",
+          "#607f5e": "#958b63",
+          "#3e5848": "#696249",
+          "#538261": "#93885d",
+          "#4a7356": "#857a54",
+          "#3d6951": "#776d4c"
+        }
+      }
+    ],
+    "note": "D-174: tree-bushy in a dry lot: its terrain.json cut, then our meadow colors to LimeZu's own olive colorway (the Camping trees' olive twins), muted like ours, and the grass to a straw green."
+  },
+  "tree-bush-dry": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_Singles_16x16/ME_Singles_Camping_16x16_Tree_266.png",
+    "rect": [0, 8, 32, 24],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#21983d": "#269340",
+          "#2da233": "#329d37",
+          "#49a92f": "#4ca434",
+          "#268b49": "#2a874a",
+          "#17704b": "#1b6c4a",
+          "#1f614f": "#225e4e",
+          "#1a5249": "#1c5047",
+          "#479757": "#5a8a5e",
+          "#37854e": "#4c7a52",
+          "#2d7256": "#436b52"
+        }
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#a4863e",
+          "#329d37": "#ab9639",
+          "#4ca434": "#b2a844",
+          "#2a874a": "#92752c",
+          "#1b6c4a": "#88613c",
+          "#225e4e": "#6f402f",
+          "#1c5047": "#573930",
+          "#5a8a5e": "#a69a64",
+          "#4c7a52": "#958859",
+          "#436b52": "#877a50",
+          "#6a9a67": "#b8a96c",
+          "#86a571": "#c9b87a",
+          "#517f57": "#8e8456",
+          "#46724c": "#7f764d",
+          "#3e6549": "#726945",
+          "#537155": "#857c5a",
+          "#47644a": "#766e50",
+          "#607f5e": "#958b63",
+          "#3e5848": "#696249",
+          "#538261": "#93885d",
+          "#4a7356": "#857a54",
+          "#3d6951": "#776d4c"
+        }
+      }
+    ],
+    "note": "D-174: tree-bush in a dry lot: its terrain.json cut, then our meadow colors to LimeZu's own olive colorway (the Camping trees' olive twins), muted like ours, and the grass to a straw green."
+  },
+  "tree-conifer-dry": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_Singles_16x16/ME_Singles_Camping_16x16_Tree_182.png",
+    "rect": [0, 3, 32, 45],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#21983d": "#269340",
+          "#2da233": "#329d37",
+          "#49a92f": "#4ca434",
+          "#268b49": "#2a874a",
+          "#17704b": "#1b6c4a",
+          "#1f614f": "#225e4e",
+          "#1a5249": "#1c5047",
+          "#479757": "#5a8a5e",
+          "#37854e": "#4c7a52",
+          "#2d7256": "#436b52"
+        }
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#a4863e",
+          "#329d37": "#ab9639",
+          "#4ca434": "#b2a844",
+          "#2a874a": "#92752c",
+          "#1b6c4a": "#88613c",
+          "#225e4e": "#6f402f",
+          "#1c5047": "#573930",
+          "#5a8a5e": "#a69a64",
+          "#4c7a52": "#958859",
+          "#436b52": "#877a50",
+          "#6a9a67": "#b8a96c",
+          "#86a571": "#c9b87a",
+          "#517f57": "#8e8456",
+          "#46724c": "#7f764d",
+          "#3e6549": "#726945",
+          "#537155": "#857c5a",
+          "#47644a": "#766e50",
+          "#607f5e": "#958b63",
+          "#3e5848": "#696249",
+          "#538261": "#93885d",
+          "#4a7356": "#857a54",
+          "#3d6951": "#776d4c"
+        }
+      }
+    ],
+    "note": "D-174: tree-conifer in a dry lot: its terrain.json cut, then our meadow colors to LimeZu's own olive colorway (the Camping trees' olive twins), muted like ours, and the grass to a straw green."
+  },
+  "tree-conifer-cones-dry": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_Singles_16x16/ME_Singles_Camping_16x16_Tree_185.png",
+    "rect": [0, 3, 32, 45],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#21983d": "#269340",
+          "#2da233": "#329d37",
+          "#49a92f": "#4ca434",
+          "#268b49": "#2a874a",
+          "#17704b": "#1b6c4a",
+          "#1f614f": "#225e4e",
+          "#1a5249": "#1c5047",
+          "#479757": "#5a8a5e",
+          "#37854e": "#4c7a52",
+          "#2d7256": "#436b52"
+        }
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#a4863e",
+          "#329d37": "#ab9639",
+          "#4ca434": "#b2a844",
+          "#2a874a": "#92752c",
+          "#1b6c4a": "#88613c",
+          "#225e4e": "#6f402f",
+          "#1c5047": "#573930",
+          "#5a8a5e": "#a69a64",
+          "#4c7a52": "#958859",
+          "#436b52": "#877a50",
+          "#6a9a67": "#b8a96c",
+          "#86a571": "#c9b87a",
+          "#517f57": "#8e8456",
+          "#46724c": "#7f764d",
+          "#3e6549": "#726945",
+          "#537155": "#857c5a",
+          "#47644a": "#766e50",
+          "#607f5e": "#958b63",
+          "#3e5848": "#696249",
+          "#538261": "#93885d",
+          "#4a7356": "#857a54",
+          "#3d6951": "#776d4c"
+        }
+      }
+    ],
+    "note": "D-174: tree-conifer-cones in a dry lot: its terrain.json cut, then our meadow colors to LimeZu's own olive colorway (the Camping trees' olive twins), muted like ours, and the grass to a straw green."
+  },
+  "tree-pine-dry": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_Singles_16x16/ME_Singles_Camping_16x16_Tree_206.png",
+    "rect": [0, 11, 32, 53],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#21983d": "#269340",
+          "#2da233": "#329d37",
+          "#49a92f": "#4ca434",
+          "#268b49": "#2a874a",
+          "#17704b": "#1b6c4a",
+          "#1f614f": "#225e4e",
+          "#1a5249": "#1c5047",
+          "#479757": "#5a8a5e",
+          "#37854e": "#4c7a52",
+          "#2d7256": "#436b52"
+        }
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#a4863e",
+          "#329d37": "#ab9639",
+          "#4ca434": "#b2a844",
+          "#2a874a": "#92752c",
+          "#1b6c4a": "#88613c",
+          "#225e4e": "#6f402f",
+          "#1c5047": "#573930",
+          "#5a8a5e": "#a69a64",
+          "#4c7a52": "#958859",
+          "#436b52": "#877a50",
+          "#6a9a67": "#b8a96c",
+          "#86a571": "#c9b87a",
+          "#517f57": "#8e8456",
+          "#46724c": "#7f764d",
+          "#3e6549": "#726945",
+          "#537155": "#857c5a",
+          "#47644a": "#766e50",
+          "#607f5e": "#958b63",
+          "#3e5848": "#696249",
+          "#538261": "#93885d",
+          "#4a7356": "#857a54",
+          "#3d6951": "#776d4c"
+        }
+      }
+    ],
+    "note": "D-174: tree-pine in a dry lot: its terrain.json cut, then our meadow colors to LimeZu's own olive colorway (the Camping trees' olive twins), muted like ours, and the grass to a straw green."
+  },
+  "tree-apple-dry": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_Singles_16x16/ME_Singles_Camping_16x16_Tree_257.png",
+    "rect": [0, 0, 32, 32],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#21983d": "#269340",
+          "#2da233": "#329d37",
+          "#49a92f": "#4ca434",
+          "#268b49": "#2a874a",
+          "#17704b": "#1b6c4a",
+          "#1f614f": "#225e4e",
+          "#1a5249": "#1c5047",
+          "#479757": "#5a8a5e",
+          "#37854e": "#4c7a52",
+          "#2d7256": "#436b52"
+        }
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#a4863e",
+          "#329d37": "#ab9639",
+          "#4ca434": "#b2a844",
+          "#2a874a": "#92752c",
+          "#1b6c4a": "#88613c",
+          "#225e4e": "#6f402f",
+          "#1c5047": "#573930",
+          "#5a8a5e": "#a69a64",
+          "#4c7a52": "#958859",
+          "#436b52": "#877a50",
+          "#6a9a67": "#b8a96c",
+          "#86a571": "#c9b87a",
+          "#517f57": "#8e8456",
+          "#46724c": "#7f764d",
+          "#3e6549": "#726945",
+          "#537155": "#857c5a",
+          "#47644a": "#766e50",
+          "#607f5e": "#958b63",
+          "#3e5848": "#696249",
+          "#538261": "#93885d",
+          "#4a7356": "#857a54",
+          "#3d6951": "#776d4c"
+        }
+      }
+    ],
+    "note": "D-174: tree-apple in a dry lot: its terrain.json cut, then our meadow colors to LimeZu's own olive colorway (the Camping trees' olive twins), muted like ours, and the grass to a straw green."
+  },
+  "tree-bushy-apple-dry": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_Singles_16x16/ME_Singles_Camping_16x16_Tree_263.png",
+    "rect": [0, 3, 32, 29],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#21983d": "#269340",
+          "#2da233": "#329d37",
+          "#49a92f": "#4ca434",
+          "#268b49": "#2a874a",
+          "#17704b": "#1b6c4a",
+          "#1f614f": "#225e4e",
+          "#1a5249": "#1c5047",
+          "#479757": "#5a8a5e",
+          "#37854e": "#4c7a52",
+          "#2d7256": "#436b52"
+        }
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#a4863e",
+          "#329d37": "#ab9639",
+          "#4ca434": "#b2a844",
+          "#2a874a": "#92752c",
+          "#1b6c4a": "#88613c",
+          "#225e4e": "#6f402f",
+          "#1c5047": "#573930",
+          "#5a8a5e": "#a69a64",
+          "#4c7a52": "#958859",
+          "#436b52": "#877a50",
+          "#6a9a67": "#b8a96c",
+          "#86a571": "#c9b87a",
+          "#517f57": "#8e8456",
+          "#46724c": "#7f764d",
+          "#3e6549": "#726945",
+          "#537155": "#857c5a",
+          "#47644a": "#766e50",
+          "#607f5e": "#958b63",
+          "#3e5848": "#696249",
+          "#538261": "#93885d",
+          "#4a7356": "#857a54",
+          "#3d6951": "#776d4c"
+        }
+      }
+    ],
+    "note": "D-174: tree-bushy-apple in a dry lot: its terrain.json cut, then our meadow colors to LimeZu's own olive colorway (the Camping trees' olive twins), muted like ours, and the grass to a straw green."
+  },
+  "tree-big-dry": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_Singles_16x16/ME_Singles_Camping_16x16_Tree_1.png",
+    "rect": [0, 11, 64, 52],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#21983d": "#269340",
+          "#2da233": "#329d37",
+          "#49a92f": "#4ca434",
+          "#268b49": "#2a874a",
+          "#17704b": "#1b6c4a",
+          "#1f614f": "#225e4e",
+          "#1a5249": "#1c5047",
+          "#479757": "#5a8a5e",
+          "#37854e": "#4c7a52",
+          "#2d7256": "#436b52"
+        }
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#a4863e",
+          "#329d37": "#ab9639",
+          "#4ca434": "#b2a844",
+          "#2a874a": "#92752c",
+          "#1b6c4a": "#88613c",
+          "#225e4e": "#6f402f",
+          "#1c5047": "#573930",
+          "#5a8a5e": "#a69a64",
+          "#4c7a52": "#958859",
+          "#436b52": "#877a50",
+          "#6a9a67": "#b8a96c",
+          "#86a571": "#c9b87a",
+          "#517f57": "#8e8456",
+          "#46724c": "#7f764d",
+          "#3e6549": "#726945",
+          "#537155": "#857c5a",
+          "#47644a": "#766e50",
+          "#607f5e": "#958b63",
+          "#3e5848": "#696249",
+          "#538261": "#93885d",
+          "#4a7356": "#857a54",
+          "#3d6951": "#776d4c"
+        }
+      }
+    ],
+    "note": "D-174: tree-big in a dry lot: its terrain.json cut, then our meadow colors to LimeZu's own olive colorway (the Camping trees' olive twins), muted like ours, and the grass to a straw green."
+  },
+  "tree-big-apple-dry": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_Singles_16x16/ME_Singles_Camping_16x16_Tree_16.png",
+    "rect": [0, 12, 64, 51],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#21983d": "#269340",
+          "#2da233": "#329d37",
+          "#49a92f": "#4ca434",
+          "#268b49": "#2a874a",
+          "#17704b": "#1b6c4a",
+          "#1f614f": "#225e4e",
+          "#1a5249": "#1c5047",
+          "#479757": "#5a8a5e",
+          "#37854e": "#4c7a52",
+          "#2d7256": "#436b52"
+        }
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#a4863e",
+          "#329d37": "#ab9639",
+          "#4ca434": "#b2a844",
+          "#2a874a": "#92752c",
+          "#1b6c4a": "#88613c",
+          "#225e4e": "#6f402f",
+          "#1c5047": "#573930",
+          "#5a8a5e": "#a69a64",
+          "#4c7a52": "#958859",
+          "#436b52": "#877a50",
+          "#6a9a67": "#b8a96c",
+          "#86a571": "#c9b87a",
+          "#517f57": "#8e8456",
+          "#46724c": "#7f764d",
+          "#3e6549": "#726945",
+          "#537155": "#857c5a",
+          "#47644a": "#766e50",
+          "#607f5e": "#958b63",
+          "#3e5848": "#696249",
+          "#538261": "#93885d",
+          "#4a7356": "#857a54",
+          "#3d6951": "#776d4c"
+        }
+      }
+    ],
+    "note": "D-174: tree-big-apple in a dry lot: its terrain.json cut, then our meadow colors to LimeZu's own olive colorway (the Camping trees' olive twins), muted like ours, and the grass to a straw green."
+  },
+  "grass-woods-dry": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png",
+    "rect": [16, 112, 16, 16],
+    "ops": [
+      {
+        "op": "tile",
+        "size": [32, 32]
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#479757": "#517f57",
+          "#37854e": "#46724c",
+          "#2d7256": "#3e6549"
+        }
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#a4863e",
+          "#329d37": "#ab9639",
+          "#4ca434": "#b2a844",
+          "#2a874a": "#92752c",
+          "#1b6c4a": "#88613c",
+          "#225e4e": "#6f402f",
+          "#1c5047": "#573930",
+          "#5a8a5e": "#a69a64",
+          "#4c7a52": "#958859",
+          "#436b52": "#877a50",
+          "#6a9a67": "#b8a96c",
+          "#86a571": "#c9b87a",
+          "#517f57": "#8e8456",
+          "#46724c": "#7f764d",
+          "#3e6549": "#726945",
+          "#537155": "#857c5a",
+          "#47644a": "#766e50",
+          "#607f5e": "#958b63",
+          "#3e5848": "#696249",
+          "#538261": "#93885d",
+          "#4a7356": "#857a54",
+          "#3d6951": "#776d4c"
+        }
+      }
+    ],
+    "note": "D-174: grass-woods in a dry lot: its terrain.json cut, then our meadow colors to LimeZu's own olive colorway (the Camping trees' olive twins), muted like ours, and the grass to a straw green."
+  },
+  "woods-edge-dry": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/Autotiles_16x16/Godot_Autotiles_16x16.png",
+    "rect": [0, 320, 192, 64],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#479757": "#5a8a5e",
+          "#37854e": "#4c7a52",
+          "#53a65d": "#6a9a67",
+          "#79a15c": "#86a571",
+          "#34555d": "#436b52"
+        }
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#a4863e",
+          "#329d37": "#ab9639",
+          "#4ca434": "#b2a844",
+          "#2a874a": "#92752c",
+          "#1b6c4a": "#88613c",
+          "#225e4e": "#6f402f",
+          "#1c5047": "#573930",
+          "#5a8a5e": "#a69a64",
+          "#4c7a52": "#958859",
+          "#436b52": "#877a50",
+          "#6a9a67": "#b8a96c",
+          "#86a571": "#c9b87a",
+          "#517f57": "#8e8456",
+          "#46724c": "#7f764d",
+          "#3e6549": "#726945",
+          "#537155": "#857c5a",
+          "#47644a": "#766e50",
+          "#607f5e": "#958b63",
+          "#3e5848": "#696249",
+          "#538261": "#93885d",
+          "#4a7356": "#857a54",
+          "#3d6951": "#776d4c"
+        }
+      }
+    ],
+    "note": "D-174: woods-edge in a dry lot: its terrain.json cut, then our meadow colors to LimeZu's own olive colorway (the Camping trees' olive twins), muted like ours, and the grass to a straw green."
+  },
+  "rocks-dry": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/11_Camping_16x16.png",
+    "rect": [304, 592, 48, 48],
+    "ops": [
+      {
+        "op": "recolor",
+        "map": {
+          "#479757": "#5a8a5e",
+          "#37854e": "#4c7a52",
+          "#2d7256": "#436b52",
+          "#46a44d": "#6a9a67"
+        }
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#a4863e",
+          "#329d37": "#ab9639",
+          "#4ca434": "#b2a844",
+          "#2a874a": "#92752c",
+          "#1b6c4a": "#88613c",
+          "#225e4e": "#6f402f",
+          "#1c5047": "#573930",
+          "#5a8a5e": "#a69a64",
+          "#4c7a52": "#958859",
+          "#436b52": "#877a50",
+          "#6a9a67": "#b8a96c",
+          "#86a571": "#c9b87a",
+          "#517f57": "#8e8456",
+          "#46724c": "#7f764d",
+          "#3e6549": "#726945",
+          "#537155": "#857c5a",
+          "#47644a": "#766e50",
+          "#607f5e": "#958b63",
+          "#3e5848": "#696249",
+          "#538261": "#93885d",
+          "#4a7356": "#857a54",
+          "#3d6951": "#776d4c"
+        }
+      }
+    ],
+    "note": "D-174: rocks in a dry lot: its terrain.json cut, then our meadow colors to LimeZu's own olive colorway (the Camping trees' olive twins), muted like ours, and the grass to a straw green."
+  },
+  "time-capsule-dry": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/Autotiles_16x16/Godot_Autotiles_16x16.png",
+    "rect": [128, 64, 16, 16],
+    "ops": [
+      {
+        "op": "compose",
+        "size": [32, 32],
+        "layers": [
+          {
+            "rect": [176, 64, 16, 16],
+            "at": [16, 0]
+          },
+          {
+            "rect": [128, 112, 16, 16],
+            "at": [0, 16]
+          },
+          {
+            "rect": [176, 112, 16, 16],
+            "at": [16, 16]
+          },
+          {
+            "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/19_Graveyard_16x16.png",
+            "rect": [402, 245, 13, 22],
+            "at": [12, 3]
+          }
+        ]
+      },
+      {
+        "op": "keyOut",
+        "colors": ["#479757"]
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#37854e": "#4c7a52",
+          "#53a65d": "#6a9a67",
+          "#79a15c": "#86a571",
+          "#34555d": "#436b52"
+        }
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#a4863e",
+          "#329d37": "#ab9639",
+          "#4ca434": "#b2a844",
+          "#2a874a": "#92752c",
+          "#1b6c4a": "#88613c",
+          "#225e4e": "#6f402f",
+          "#1c5047": "#573930",
+          "#5a8a5e": "#a69a64",
+          "#4c7a52": "#958859",
+          "#436b52": "#877a50",
+          "#6a9a67": "#b8a96c",
+          "#86a571": "#c9b87a",
+          "#517f57": "#8e8456",
+          "#46724c": "#7f764d",
+          "#3e6549": "#726945",
+          "#537155": "#857c5a",
+          "#47644a": "#766e50",
+          "#607f5e": "#958b63",
+          "#3e5848": "#696249",
+          "#538261": "#93885d",
+          "#4a7356": "#857a54",
+          "#3d6951": "#776d4c"
+        }
+      }
+    ],
+    "note": "D-174: time-capsule in a dry lot: its terrain.json cut, then our meadow colors to LimeZu's own olive colorway (the Camping trees' olive twins), muted like ours, and the grass to a straw green."
+  },
+  "grass-outside-dry": {
+    "pack": "me",
+    "file": "Modern_Exteriors_16x16/ME_Theme_Sorter_16x16/1_Terrains_and_Fences_16x16.png",
+    "rect": [16, 112, 16, 16],
+    "ops": [
+      {
+        "op": "tile",
+        "size": [256, 256]
+      },
+      {
+        "op": "compose",
+        "size": [256, 256],
+        "layers": [
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [235, 1]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [116, 8]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [166, 12],
+            "ops": [
+              {
+                "op": "flipX"
+              }
+            ]
+          },
+          {
+            "rect": [400, 32, 16, 16],
+            "at": [43, 31]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [204, 32],
+            "ops": [
+              {
+                "op": "flipX"
+              }
+            ]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [96, 41]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [167, 62],
+            "ops": [
+              {
+                "op": "flipX"
+              }
+            ]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [23, 64],
+            "ops": [
+              {
+                "op": "flipX"
+              }
+            ]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [237, 86],
+            "ops": [
+              {
+                "op": "flipX"
+              }
+            ]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [89, 89],
+            "ops": [
+              {
+                "op": "flipX"
+              }
+            ]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [138, 95],
+            "ops": [
+              {
+                "op": "flipX"
+              }
+            ]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [189, 97]
+          },
+          {
+            "rect": [400, 32, 16, 16],
+            "at": [21, 102],
+            "ops": [
+              {
+                "op": "flipX"
+              }
+            ]
+          },
+          {
+            "rect": [400, 32, 16, 16],
+            "at": [58, 136]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [4, 145],
+            "ops": [
+              {
+                "op": "flipX"
+              }
+            ]
+          },
+          {
+            "rect": [400, 32, 16, 16],
+            "at": [125, 148]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [163, 152],
+            "ops": [
+              {
+                "op": "flipX"
+              }
+            ]
+          },
+          {
+            "rect": [400, 32, 16, 16],
+            "at": [201, 159]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [102, 177],
+            "ops": [
+              {
+                "op": "flipX"
+              }
+            ]
+          },
+          {
+            "rect": [400, 32, 16, 16],
+            "at": [47, 181]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [5, 203]
+          },
+          {
+            "rect": [400, 32, 16, 16],
+            "at": [134, 204],
+            "ops": [
+              {
+                "op": "flipX"
+              }
+            ]
+          },
+          {
+            "rect": [400, 32, 16, 16],
+            "at": [216, 208]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [169, 212]
+          },
+          {
+            "rect": [400, 32, 16, 16],
+            "at": [95, 213]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [195, 235]
+          },
+          {
+            "rect": [416, 32, 16, 16],
+            "at": [145, 239],
+            "ops": [
+              {
+                "op": "flipX"
+              }
+            ]
+          },
+          {
+            "rect": [400, 32, 16, 16],
+            "at": [39, 240],
+            "ops": [
+              {
+                "op": "flipX"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#479757": "#537155",
+          "#37854e": "#47644a",
+          "#2d7256": "#3e5848",
+          "#53a65d": "#607f5e"
+        }
+      },
+      {
+        "op": "recolor",
+        "map": {
+          "#269340": "#a4863e",
+          "#329d37": "#ab9639",
+          "#4ca434": "#b2a844",
+          "#2a874a": "#92752c",
+          "#1b6c4a": "#88613c",
+          "#225e4e": "#6f402f",
+          "#1c5047": "#573930",
+          "#5a8a5e": "#a69a64",
+          "#4c7a52": "#958859",
+          "#436b52": "#877a50",
+          "#6a9a67": "#b8a96c",
+          "#86a571": "#c9b87a",
+          "#517f57": "#8e8456",
+          "#46724c": "#7f764d",
+          "#3e6549": "#726945",
+          "#537155": "#857c5a",
+          "#47644a": "#766e50",
+          "#607f5e": "#958b63",
+          "#3e5848": "#696249",
+          "#538261": "#93885d",
+          "#4a7356": "#857a54",
+          "#3d6951": "#776d4c"
+        }
+      }
+    ],
+    "note": "D-174: grass-outside in a dry lot: its terrain.json cut, then our meadow colors to LimeZu's own olive colorway (the Camping trees' olive twins), muted like ours, and the grass to a straw green."
+  }
+}

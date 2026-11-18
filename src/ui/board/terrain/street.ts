@@ -10,6 +10,7 @@ import { type SpriteId } from '../../sprites.ts';
 import { blobTile, E, N, NE, NW, S, SE, SUB, SUBTILE, SW, W } from '../autotile.ts';
 import { ROAD_ROWS } from '../geometry.ts';
 import { drawSprite, drawSubtile } from './atlas.ts';
+import { inLook, lotLook } from './biome.ts';
 
 /** One 16 px tile of the street: a whole sprite, or a tile of a set. */
 export interface StreetTile {
@@ -71,7 +72,7 @@ export function streetTiles(lot: Lot, front: readonly boolean[] = []): StreetTil
   for (let sx = 0; sx < width; sx++) {
     const t = terrainAt(lot, cell(sx), lot.height - 1);
     if (t === 'pond' || t === 'creek' || front[cell(sx)]) continue;
-    out.push({ id: 'woods-edge', ...blades, sx, sy: top });
+    out.push({ id: inLook('woods-edge', lotLook(lot)), ...blades, sx, sy: top });
   }
   return out;
 }

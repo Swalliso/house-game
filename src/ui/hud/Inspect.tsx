@@ -6,16 +6,20 @@
 // restriction a placement would break, whose a member's room is, where a granted tag comes from
 // ("Dark · from Eternal night"), and the sets a demolition or a tool would break. The board's
 // terms (regions, requirements, links, timers, Renovate) explain themselves on hover (D-077).
-// From D-156, whose a house on the street is, and its lot to play again.
+// From D-156, whose a house on the street is, and its lot to play again. From D-157, in strike
+// mode, what striking the card pointed at (or armed) would do: its scope, the other cards of its
+// type that go with it, a placement that goes too, or why it can't be struck.
 
 import type { ComponentChildren } from 'preact';
 import {
   cardText,
   CONTENT,
   definite,
+  growGain,
   featureWantedText,
   fixtureText,
   glossary,
+  protectedTerrain,
   rewardText,
   regionText,
   rules,
@@ -27,8 +31,10 @@ import {
   sunSideText,
   terrainAt,
   type BreakdownLine,
+  type Card,
   type ChangeOrderId,
   type ModSource,
+  type PieceDef,
   type PieceId,
   type PieceInfo,
   type Region,
@@ -46,6 +52,7 @@ import { clientName, crewName, lotOf } from '../screens/Portfolio.tsx';
 import { playLotAgain } from './actions.ts';
 import {
   activePlay,
+  cardsPlace,
   currentTally,
   demolishArmed,
   demolishPreview,
@@ -54,11 +61,16 @@ import {
   inspected,
   preview,
   renovateUids,
+  reservePlace,
+  extendUids,
   run,
   selected,
   movingUid,
   selection,
   sell,
+  source,
+  strikeArmed,
+  strikeViews,
   tentative,
   tool,
   toolPreview,
@@ -69,7 +81,7 @@ import { Button, Icon } from '../kit/kit.tsx';
 import { BLUEPRINT_ICONS } from '../sprites.ts';
 import type { IconName } from '../theme/art.ts';
 import { BlueprintWorth, GoodBody, goodName, offerGood, type GoodRef } from './goods.tsx';
-import { arrivalOf, midName } from './household.ts';
+import { extraSlotWords } from './household.ts';
 import { Tip } from './Tip.tsx';
 import './inspect.css';
 
@@ -129,25 +141,44 @@ function tagReason(s: TagSource, sun: SunSide): string | null {
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
+/**
+ * What a piece that earns nothing yet is waiting for: a Fence, a fenced yard (D-162: the stock's
+ * comes in week 1, before there's a house to close one against); anything else, its neighbors.
+ */
+export function NothingYet({ def }: { def?: PieceDef }) {
+  const pays = def?.effects.filter((e) => e.kind !== 'link' && e.kind !== 'requires') ?? [];
+  if (pays.length > 0 && pays.every((e) => e.kind === 'enclosure')) {
+    return (
+      <p class="muted">
+        Nothing yet: it needs a <Tip term="fencedYard">fenced yard</Tip>.
+      </p>
+    );
+  }
+  return <p class="muted">Nothing yet: it needs the right neighbors.</p>;
+}
+
 function Lines({
   lines,
   voided = false,
+  def,
 }: {
   lines: readonly BreakdownLine[];
   /** The piece's requirement is unmet, so none of these pay. */
   voided?: boolean;
+  /** The piece, for what it waits for while nothing pays. */
+  def?: PieceDef;
 }) {
   // An unmet requirement's line is shown as its own warning row.
   const shown = lines.filter((l) => l.op !== 'none');
   if (shown.length === 0) {
     if (voided) return null;
-    return <p class="muted">Nothing yet: it needs the right neighbors.</p>;
+    return <NothingYet def={def} />;
   }
   return (
     <ul class={`lines ${voided ? 'voided' : ''}`}>
       {shown.map((l, i) => (
         <li key={i} class={l.value < 0 ? 'bad' : 'good'}>
-          <span>{l.label}</span>
+          <span>{l.rule ? <RuleName line={l} /> : l.label}</span>
           <span class="value">
             {l.value < 0 ? '−' : '+'}
             {Math.abs(l.value)}
@@ -156,6 +187,17 @@ function Lines({
         </li>
       ))}
     </ul>
+  );
+}
+
+/** D-165: a house rule's line on a room ("Cozy") says the rule in its tip. */
+function RuleName({ line }: { line: BreakdownLine }) {
+  const rule = line.rule && CONTENT.roomRules[line.rule];
+  if (!rule) return <>{line.label}</>;
+  return (
+    <Tip title={rule.name} text={rule.text}>
+      {line.label}
+    </Tip>
   );
 }
 
@@ -208,7 +250,7 @@ function TagChips({ info }: { info: PieceInfo }) {
           <span
             key={t}
             class={cls.filter(Boolean).join(' ')}
-            title={why.length > 0 ? why.join(' · ') : undefined}
+            data-tip={why.length > 0 ? why.join(' · ') : undefined}
           >
             <Icon name={t as IconName} />
             {t}
@@ -367,10 +409,18 @@ function SpecChanges({ gained, lost }: { gained: readonly string[]; lost: readon
   );
 }
 
-/** A member's room (M4b, D-103): whose it is, that it counts as a Bedroom, and from when. */
+/**
+ * A member's room (M4b, D-103): whose it is, that it counts as a Bedroom, and from when. A
+ * room the house takes so many of (D-165): "One per house: extend or renovate."
+ */
 function MemberNote({ id }: { id: PieceId }) {
-  const member = cardText(CONTENT, CONTENT.pieces[id]).member;
-  return member ? <p class="member-note">{member}</p> : null;
+  const { member, perHouse } = cardText(CONTENT, CONTENT.pieces[id]);
+  return (
+    <>
+      {member && <p class="member-note">{member}</p>}
+      {perHouse && <p class="member-note">{perHouse}</p>}
+    </>
+  );
 }
 
 /**
@@ -436,14 +486,17 @@ export function SetProgressLines({ id }: { id: PieceId }) {
   );
 }
 
-/** A card in the reserve's extra slots (M4b): a household member's or the crew's. */
+/**
+ * A card in the reserve's extra slots (M4b, D-160): where it came from (the crew, a household
+ * member, the client, or the standing stock), and that it doesn't take a slot of the reserve's.
+ */
 function ExtraSlotNote({ r }: { r: ReservePiece }) {
-  const member = r.arrival !== undefined ? arrivalOf(run.value.setup.clientId, r.arrival) : null;
-  if (!member && !r.crew) return null;
+  const words = extraSlotWords(run.value.setup.clientId, r, run.value.setup.crewId);
+  if (!words) return null;
   return (
     <p class="muted">
-      {member ? `Came with ${midName(member)}` : 'Your crew’s, from the start'}: in an extra slot,
-      so it doesn’t take one of your reserve’s.
+      {words.note ??
+        `${words.from}. It’s in an extra slot, so it doesn’t take one of your reserve’s.`}
     </p>
   );
 }
@@ -542,14 +595,36 @@ function RenovateStars({ level }: { level: number }) {
  * (M4a, D-102): the board outlines those rooms while the card is picked. Not while a placement
  * waits for End week: the outlines are hidden then, and pointing doesn't renovate.
  */
-function RenovateHint({ id }: { id: PieceId }) {
+/** `only`: the card has no spot on the lot, so renovating is its one play (D-165's caps). */
+function RenovateHint({ id, only = false }: { id: PieceId; only?: boolean }) {
   if (renovateUids.value.length === 0 || tentative.value) return null;
   const def = CONTENT.pieces[id];
   const type = CONTENT.pieces[def.countsAs ?? def.id].name;
   return (
     <p class="muted">
-      Or <Tip term="renovate">renovate</Tip> one in place, with nothing torn down: point at an
-      outlined {type} ({RENOVATE_GAIN}).
+      {only ? '' : 'Or '}
+      <Tip term="renovate">{only ? 'Renovate' : 'renovate'}</Tip> one in place, with nothing torn
+      down: point at an outlined {type} ({RENOVATE_GAIN}).
+    </p>
+  );
+}
+
+/**
+ * D-168: a room card that can grow a room of its type: the board outlines those rooms while the
+ * card is picked, and pointing at one grows it toward the pointer. Not while a play waits for
+ * End week.
+ */
+/** `only`: the card has no spot on the lot (D-165's caps), so growing a room leads (D-169). */
+function ExtendHint({ id, only = false }: { id: PieceId; only?: boolean }) {
+  if (extendUids.value.length === 0 || tentative.value) return null;
+  const def = CONTENT.pieces[id];
+  // D-171: an Addition grows a room of any type that can grow.
+  const type = def.addition ? 'room' : CONTENT.pieces[def.countsAs ?? def.id].name;
+  return (
+    <p class="muted">
+      {only ? '' : 'Or '}
+      <Tip term="extend">{only ? 'Extend' : 'extend'}</Tip> one: point at an outlined {type} (+
+      {growGain(CONTENT, def)} {SCORE_LABELS.points}).
     </p>
   );
 }
@@ -561,36 +636,62 @@ function PlacingInfo() {
   if (sel.kind === 'tool') return <ToolInfo id={sel.id} i={sel.i} />;
   const name = sel.kind === 'piece' ? CONTENT.pieces[sel.id].name : CONTENT.fixtures[sel.id].name;
   const install = sel.kind === 'fixture';
-  // A room card over a room its type is capped at: a Renovation (M4a, D-102).
+  // A room card over a room its type is capped at: a Renovation (M4a, D-102); over a room of its
+  // type it can grow: an extension (D-168).
   const play = activePlay.value;
   const renovate = play?.t === 'renovate';
-  const room = renovate ? run.value.house.pieces.find((q) => q.uid === play.uid) : undefined;
+  const grow = play?.t === 'extend';
+  const room =
+    renovate || grow ? run.value.house.pieces.find((q) => q.uid === play.uid) : undefined;
   const roomName = room ? CONTENT.pieces[room.defId].name : 'room';
-  const hint = sel.kind === 'piece' && !renovate ? <RenovateHint id={sel.id} /> : null;
-  const fromLine = renovate
-    ? sel.from === 'reserve'
-      ? 'From your reserve: renovating is this week’s build.'
-      : 'Renovating is this week’s build, instead of placing the card.'
-    : sel.from === 'reserve'
-      ? 'From your reserve: placing it is this week’s build.'
-      : sel.from === 'supplies'
-        ? 'From your supplies: installing it is free, so the week goes on.'
-        : install
-          ? 'From your hand: installing it is this week’s build.'
-          : null;
+  // A card with no spot on the lot (its type is capped, D-165) can only extend a room or renovate
+  // one: the first of those it can do leads (D-169).
+  const placeable =
+    sel.kind !== 'piece' ||
+    (sel.from === 'hand'
+      ? cardsPlace.value[sel.i]
+      : sel.from === 'reserve'
+        ? reservePlace.value[sel.i]
+        : true) !== false;
+  const hint =
+    sel.kind === 'piece' && !renovate && !grow ? (
+      <>
+        <ExtendHint id={sel.id} only={!placeable} />
+        <RenovateHint id={sel.id} only={!placeable && extendUids.value.length === 0} />
+      </>
+    ) : null;
+  // D-163: a piece from the reserve is free: it doesn't use the week, placed, renovating, or
+  // extending a room (D-169).
+  const fromLine =
+    sel.from === 'reserve'
+      ? 'From your reserve: it doesn’t use your week.'
+      : grow
+        ? 'Extending is this week’s build, instead of placing the card.'
+        : renovate
+          ? 'Renovating is this week’s build, instead of placing the card.'
+          : sel.from === 'supplies'
+            ? 'From your supplies: installing it is free, so the week goes on.'
+            : install
+              ? // D-171: the Handyman's installs are free, as a supply's are for every crew.
+                rules.rule(run.value, 'freeInstalls') > 0
+                ? 'From your hand: installing it is free, so the week goes on.'
+                : 'From your hand: installing it is this week’s build.'
+              : null;
   // A member's room (M4b): whose it is.
-  const member = sel.kind === 'piece' && !renovate ? <MemberNote id={sel.id} /> : null;
+  const member = sel.kind === 'piece' && !renovate && !grow ? <MemberNote id={sel.id} /> : null;
   if (!p) {
     return (
       <>
         <h2>{name}</h2>
         {fromLine && <p class="muted">{fromLine}</p>}
         {member}
-        <p class="muted">
-          {install
-            ? 'Point at a piece on the lot to see what it would do there.'
-            : 'Point at the lot to see what it would earn.'}
-        </p>
+        {(install || placeable) && (
+          <p class="muted">
+            {install
+              ? 'Point at a piece on the lot to see what it would do there.'
+              : 'Point at the lot to see what it would earn.'}
+          </p>
+        )}
         {hint}
         {install && <GoodBody good={{ kind: 'fixture', id: sel.id }} />}
         {sel.kind === 'piece' && sel.from === 'hand' && <SetProgressLines id={sel.id} />}
@@ -601,7 +702,13 @@ function PlacingInfo() {
     // The rules say why: not at the limit yet, the wrong room, or fully renovated.
     return (
       <>
-        <h2>{renovate ? `Renovate ${definite(roomName)}?` : name}</h2>
+        <h2>
+          {renovate
+            ? `Renovate ${definite(roomName)}?`
+            : grow
+              ? `Extend ${definite(roomName)}?`
+              : name}
+        </h2>
         <p class="reason">
           <Icon name="cross" />
           <span>{p.reason}</span>
@@ -617,8 +724,9 @@ function PlacingInfo() {
     install && p.host !== undefined
       ? run.value.house.pieces.find((q) => q.uid === p.host)
       : undefined;
-  // An install's host, or the room a Renovation levels: what it earns, before and after.
-  const hostLine = install || renovate ? p.lines.find((l) => l.isNew) : undefined;
+  // An install's host, or the room a Renovation levels or an extension grows: what it earns,
+  // before and after.
+  const hostLine = install || renovate || grow ? p.lines.find((l) => l.isNew) : undefined;
   const earns = hostLine
     ? `${hostLine.before} → ${hostLine.after}`
     : `earns ${p.newPiece?.earned ?? 0}`;
@@ -632,6 +740,10 @@ function PlacingInfo() {
       ) : renovate ? (
         <h2>
           Renovate {definite(roomName)} <span class="earns">{earns}</span>
+        </h2>
+      ) : grow ? (
+        <h2>
+          Extend {definite(roomName)} <span class="earns">{earns}</span>
         </h2>
       ) : (
         <h2>
@@ -656,7 +768,11 @@ function PlacingInfo() {
         </p>
       )}
       <Unmet why={unmet} />
-      <Lines lines={p.newPiece?.lines ?? []} voided={unmet !== undefined} />
+      <Lines
+        lines={p.newPiece?.lines ?? []}
+        voided={unmet !== undefined}
+        def={sel.kind === 'piece' ? CONTENT.pieces[sel.id] : undefined}
+      />
       {others.length > 0 && (
         <>
           <h3>Changes nearby</h3>
@@ -732,7 +848,7 @@ function ItemInfo({
           class="sell-button"
           icon="coin"
           onClick={() => sell(sellAs.from, sellAs.i)}
-          title="Selling pays half its price, rounded down"
+          tip="Selling pays half its price, rounded down"
           aria-label={`Sell for ${price} budget`}
         >
           Sell for {price}
@@ -783,11 +899,73 @@ function DemolishInfo() {
   );
 }
 
+const handName = (c: Card) =>
+  c.kind === 'piece' ? CONTENT.pieces[c.id].name : CONTENT.fixtures[c.id].name;
+
+/** Strike mode (D-157): what striking the card pointed at, or the one armed, would do. */
+function StrikeInfo() {
+  const s = run.value;
+  const armed = strikeArmed.value;
+  const at = inspected.value;
+  const i = armed ?? (at?.kind === 'card' ? at.i : null);
+  const v = i === null ? undefined : strikeViews.value[i];
+  const left = `${s.strikesLeft} ${s.strikesLeft === 1 ? 'strike' : 'strikes'} left.`;
+  if (i === null || !v?.type) {
+    return (
+      <>
+        <h2>Strike a card</h2>
+        <p class="muted">
+          Point at a card in your hand. Its type is never drawn again this run, and a card from its
+          row takes its place. {left}
+        </p>
+      </>
+    );
+  }
+  const name = handName(s.hand[i]!);
+  if (!v.ok) {
+    return (
+      <>
+        <h2>Strike the {name}?</h2>
+        <p class="reason">
+          <Icon name="cross" />
+          <span>{v.reason ?? 'That card can’t be struck.'}</span>
+        </p>
+      </>
+    );
+  }
+  const others = v.cards.filter((j) => j !== i).map((j) => handName(s.hand[j]!));
+  const pick = source.value === 'hand' ? selected.value : null;
+  const placement = pick !== null && v.cards.includes(pick) && tentative.value !== null;
+  return (
+    <>
+      <h2>Strike the {name}?</h2>
+      <p>
+        <b>{v.text}.</b>
+      </p>
+      <p class="muted">
+        {others.length === 0
+          ? 'A new card from its row takes its place.'
+          : `The ${others.join(' and the ')} in your hand ${others.length === 1 ? 'goes' : 'go'} too: a new card from its row takes each place.`}
+        {placement && ' Its placement this week goes too.'} It doesn’t end the week. {left}
+      </p>
+      <p class="demolish-confirm">
+        {armed === i
+          ? `Click it again (or press ${i + 1}) to strike it.`
+          : 'Click it twice to strike it.'}
+      </p>
+    </>
+  );
+}
+
 const FEATURE_TEXT: Record<string, string> = {
   tree: 'Quiet and Green, and a view. Each Tree tile counts as its own neighbor. Building here clears it.',
+  // D-174: on an Old Woods lot the Trees stay, in placement's own words.
+  keptTree:
+    'Quiet and Green, and a view. Each Tree tile counts as its own neighbor. These old Trees stay: build around them.',
   pond: 'Water, and a view. It counts once as a neighbor, however much of it a piece touches. Nothing can be built on it.',
   creek:
     'Water, and a view. It counts once as a neighbor. Nothing can be built on it, except a Driveway.',
+  lake: 'Water, and a view. It counts once as a neighbor, however much of it a piece touches. Nothing can be built on it.',
   // Who earns beside each comes first, from the content (featureWantedText, D-145): at 1280×720
   // the panel shows about five lines before it scrolls.
   boulder: 'It blocks building; a demolition clears it.',
@@ -801,6 +979,8 @@ const FEATURE_TEXT: Record<string, string> = {
  * placement, install or Renovation, a tool that can be used, or a legal demolition. Else null.
  */
 export function playTotals(): { before: number; after: number } | null {
+  // A strike changes no score this week (D-157).
+  if (tool.value === 'strike') return null;
   if (tool.value === 'demolish') {
     const d = demolishPreview.value;
     return d?.legal ? { before: d.before.total, after: d.after.total } : null;
@@ -841,7 +1021,7 @@ function LetGo({ what = 'piece' }: { what?: 'piece' | 'house' }) {
         heldPiece.value = null;
         heldNeighbor.value = null;
       }}
-      title={`Let go (Esc, or click the ${what} again)`}
+      tip={`Let go (Esc, or click the ${what} again)`}
       aria-label={`Let go of this ${what}`}
     />
   );
@@ -884,7 +1064,7 @@ function NeighborInfo({ k, held }: { k: string; held: boolean }) {
       {lot && (
         <Button
           class="play-again"
-          title="A new run on this lot, for the same client with the same crew"
+          tip="A new run on this lot, for the same client with the same crew"
           onClick={() => playLotAgain(lot)}
         >
           Play this lot again
@@ -896,6 +1076,14 @@ function NeighborInfo({ k, held }: { k: string; held: boolean }) {
 }
 
 export function Inspect() {
+  // First, so a placement waiting for End week can't hide it (D-157).
+  if (tool.value === 'strike') {
+    return (
+      <InspectPanel foot={null}>
+        <StrikeInfo />
+      </InspectPanel>
+    );
+  }
   if (tool.value === 'demolish') {
     return (
       <InspectPanel foot={playTotals()}>
@@ -955,7 +1143,7 @@ export function Inspect() {
           )}
           {info ? <TagChips info={info} /> : <p class="muted">{def.tags.join(' · ')}</p>}
           <Unmet why={score.unmet} />
-          <Lines lines={score.lines} voided={score.unmet !== undefined} />
+          <Lines lines={score.lines} voided={score.unmet !== undefined} def={def} />
           {score.pct !== 0 && score.points > 0 && score.unmet === undefined && (
             <p class="muted">
               {score.points} × {100 + score.pct}% = {score.earned}
@@ -970,6 +1158,7 @@ export function Inspect() {
             ))}
           </ul>
           {text.member && <p class="member-note">{text.member}</p>}
+          {text.perHouse && <p class="member-note">{text.perHouse}</p>}
           {piece.fixture && (
             <>
               <h3>Fixture: {CONTENT.fixtures[piece.fixture.id].name}</h3>
@@ -992,7 +1181,7 @@ export function Inspect() {
         <h2>{CONTENT.features[t].name}</h2>
         <p>
           {(t === 'boulder' || t === 'oldShed') && <>{featureWantedText(CONTENT, t)} </>}
-          {FEATURE_TEXT[t]}
+          {FEATURE_TEXT[protectedTerrain(CONTENT, s.house.lot).has(t) ? 'keptTree' : t]}
         </p>
         {where}
       </>

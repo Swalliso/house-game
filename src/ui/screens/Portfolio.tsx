@@ -37,7 +37,7 @@ const count = (n: number, one: string, many: string) =>
 function BestCell({ best, label }: { best: Best | null; label: string }) {
   if (!best) {
     return (
-      <td class="none" aria-label={`${label}: not built yet`} title="Not built yet">
+      <td class="none" aria-label={`${label}: not built yet`} data-tip="Not built yet">
         <Icon name="pending" />
       </td>
     );
@@ -126,7 +126,7 @@ export function House({ job }: { job: Job }) {
           block
           class="portfolio-again"
           aria-label={`Play this lot again: ${client}, ${crewName(job.crewId)}`}
-          title="A new run on this lot, for the same client with the same crew"
+          tip="A new run on this lot, for the same client with the same crew"
           onClick={() => playLotAgain(lot)}
         >
           Play this lot again

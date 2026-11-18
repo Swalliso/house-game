@@ -4,6 +4,73 @@
 .sheet.howto {
   width: min(calc(var(--px) * 300), 94vw);
 }
+
+/* It opens short (D-158): the game in five lines, then every section folded under its plank. */
+.howto-first {
+  padding: var(--space-1) var(--space-2);
+  border: var(--px) solid transparent;
+  border-image: var(--art-ringSoft) 1 / var(--px);
+  background: var(--paper-inset);
+  background-clip: padding-box;
+}
+/* The planks stand close together, as a list, and the sheet's own padding is a little tighter,
+   so the folded sheet is one screen at 1600×900 with nothing to scroll to. */
+.sheet.howto .sheet-scroll {
+  gap: var(--px);
+  padding-block: var(--space-3);
+}
+.howto-short {
+  margin-bottom: var(--space-1);
+}
+.howto-head {
+  margin: 0;
+  display: flex;
+}
+/* A section's plank is a button, the sheet's width, that opens and folds it: a caret, the
+   section's icon, its name. (app.css's plain button leaves it alone.) */
+.howto-fold {
+  flex: 1 1 auto;
+  align-self: stretch;
+  display: flex;
+  cursor: pointer;
+  text-align: left;
+}
+.howto-fold:hover {
+  background-color: var(--wood-shine);
+  filter: brightness(1.05);
+}
+.howto-fold:focus-visible {
+  outline: var(--px) solid var(--focus-outer);
+  outline-offset: 0;
+  box-shadow: 0 0 0 calc(var(--px) * 2) var(--focus-inner);
+}
+.howto-caret {
+  flex: none;
+}
+/* An open section stands a little apart from the planks under it. */
+.howto-section.open {
+  padding-bottom: var(--space-3);
+}
+/* Tips so far: each first-time hint's title, then what it said. */
+.howto-tips {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.howto-tips dt {
+  font-weight: 700;
+}
+.howto-tips dd {
+  margin: 0 0 var(--space-2);
+}
+.howto-section .howto-tips ol {
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-5);
+}
+/* Open all sits at the footer's left, away from the sheet's own button. */
+.sheet.howto .howto-all {
+  margin-right: auto;
+}
 .howto-section {
   display: flex;
   flex-direction: column;

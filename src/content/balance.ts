@@ -42,6 +42,24 @@ export const BALANCE: Balance = {
     oldSheds: [1, 1],
     timeCapsules: [1, 2],
     findStreetGap: 4,
+    // D-166: most lots are shaped toward a trait once they pass their checks. Rocky has 14–22
+    // Boulders (a plain lot 6–10), Open only its lone Trees, a pond lot a pond of 14–20 tiles
+    // (a plain one 4–9). With the creek and the woods' own Wooded, about one meadow lot in five
+    // is plain, and most carry one trait or two.
+    // D-174: a run's lot comes from a biome, its look and its family of kinds. The meadow is
+    // D-166's lots and today's look, and the first job's. The lakeside deals a lake along the
+    // back, a big pond, or a creek through the middle; the autumn woods grow more woods (most of
+    // its lots are Wooded), and some keep every Tree (Old Woods); a dry lot is Rocky or Open,
+    // and seldom has a creek.
+    biomes: {
+      meadow: { weight: 40, kinds: { plain: 35, rocky: 25, open: 20, pond: 20 } },
+      lakeside: { weight: 20, kinds: { lake: 40, pond: 30, split: 30 } },
+      autumn: { weight: 20, kinds: { plain: 60, oldWoods: 40 }, woodsClusters: [4, 5] },
+      dry: { weight: 20, kinds: { rocky: 50, open: 50 }, creekPct: 10 },
+    },
+    rockyBoulders: [8, 12],
+    pondTiles: [14, 20],
+    lakeRows: [2, 5],
   },
 
   weeksPerPhase: 4, // D-042
@@ -49,21 +67,22 @@ export const BALANCE: Balance = {
   // D-018's seven milestones. The targets are written by `npm run sim -- --suggest-targets`
   // (D-044): α × the greedy bot's median cumulative Wow at each milestone. Keep the markers.
   // sim:targets:start
-  // From `npm run sim -- --suggest-targets --runs 2000 --crew all` (D-072, D-089), then set
-  // against played runs (D-146): α × the greedy bot's median cumulative Wow at each milestone on
-  // seeds sim-*. The fit's estimate overstates what an overtime week rescues (in play the next
-  // shop hasn't opened yet), so α sits where greedy's played survival follows 100%, 98%, 95%,
-  // 85%, 72%, 58%, 45%: on 2,000 runs of check-* it was 100, 98.6, 96.0, 86.7, 74.1, 58.4 and
-  // 45.6%, and 45.7% won on 2,000 runs no fit had seen (hold-*). Milestone 2 keeps 560: the
-  // median at week 8 hasn't moved. Each client's targetPct scales these.
+  // From `npm run sim -- --suggest-targets --runs 2000 --crew all` (D-072, D-089) with the
+  // biomes' lots and Creekside at +100% (D-174), on D-171's crews, then set against played runs
+  // (D-146): α × the greedy bot's median cumulative Wow at each milestone on seeds sim-*. The
+  // fit's estimate overstates what an overtime week rescues (in play the next shop hasn't opened
+  // yet), so α sits where greedy's played survival follows 100%, 98%, 95%, 85%, 72%, 58%, 45%: on
+  // 2,000 runs of check-* it was 100, 99.5, 94.5, 86.2, 71.8, 59.9 and 46.4%, and 48.0% won on
+  // 2,000 runs no fit had seen (hold-*). Each client's targetPct scales these, D-169's factors
+  // held: the fit's own (120, 75, 95, 70, 140) played the clients 17 points apart.
   phases: [
-    { name: 'Groundbreaking', target: 20 }, // median 93, α 0.21
-    { name: 'Foundation', target: 560 }, // median 720, α 0.78
-    { name: 'Framing', target: 1900 }, // median 2520, α 0.75
-    { name: 'Roofing', target: 5200 }, // median 5447, α 0.95
-    { name: 'Drywall', target: 11300 }, // median 10577, α 1.07
-    { name: 'Finishes', target: 20500 }, // median 17763, α 1.15
-    { name: 'Final Walkthrough', target: 35700 }, // median 29891, α 1.19
+    { name: 'Groundbreaking', target: 40 }, // median 208, α 0.19
+    { name: 'Foundation', target: 800 }, // median 1513, α 0.53
+    { name: 'Framing', target: 3850 }, // median 5209, α 0.74
+    { name: 'Roofing', target: 10700 }, // median 11736, α 0.91
+    { name: 'Drywall', target: 25100 }, // median 24252, α 1.03
+    { name: 'Finishes', target: 47800 }, // median 42380, α 1.13
+    { name: 'Final Walkthrough', target: 91300 }, // median 74315, α 1.23
   ],
   // sim:targets:end
 
@@ -84,6 +103,11 @@ export const BALANCE: Balance = {
     shopPricePct: 100, // Supplier Discount: −25
     specBonus: 25, // +0.25 Mult per spec met (M4a; Dream Home raises it)
     interestMax: 0, // Savings Account: +3
+    // D-157: strikes to use from the hand at the run's start (a crew could add more); each
+    // milestone adds strikesPerMilestone, and unused ones are kept.
+    strikes: 1,
+    // D-171: 0 = a fixture from the hand is the week's turn (D-050). The Handyman adds 1.
+    freeInstalls: 0,
   },
 
   // D-040, per week saved, by phase (the last entry repeats): +4 budget, and 30% of this phase's
@@ -158,7 +182,7 @@ export const BALANCE: Balance = {
     services: {
       reroll: { base: 1, step: 1, max: 4 },
       demolition: { base: 1, step: 1, max: 4 },
-      strike: { base: 2, step: 1, max: 5 }, // D-076, D-084
+      strike: { base: 2, step: 1, max: 5 }, // D-157: +1 strike (D-076, D-084 named a type)
     },
     skipReward: 1, // leaving without buying anything
     strikeMinTypes: { rooms: 5, layout: 4 }, // in each row (D-121)
@@ -178,6 +202,9 @@ export const BALANCE: Balance = {
     [100, 85, 60],
     [100, 100, 100],
   ],
+  // D-166: in a standard run the lot's cards (the yard, the outbuildings, the Garage) come at
+  // full weight from week 1, while the house is sited; a first job keeps the ramp (D-149).
+  lotCardsFullIn: ['standard'],
 
   // The run-end verdict by final score, as a percentage of the last target (§12).
   verdicts: [
@@ -189,8 +216,20 @@ export const BALANCE: Balance = {
   ],
 
   // Renovate (house-systems-review.md §4, D-093 option B): a room card whose type is at its
-  // limit levels up a room of that type instead: +4 Comfort a level, up to 2 levels.
+  // limit levels up a room of that type instead: +4 Comfort a level, up to 2 levels. D-168: only
+  // a room the card can't extend (boxed in, or grown already).
   renovate: { pointsPerLevel: 4, maxLevel: 2 },
+  // D-168, Extend a room: a Bedroom, Kitchen, Living Room or Dining Room card laid beside a room
+  // of its type, sharing 2 or more tiles of wall with it, joins that room, once a room, any week.
+  // A bigger room earns +2 Comfort a tile beyond its own card's (a Bedroom or Kitchen card: +8, a
+  // Living Room card: +12). In the sim (200 held-out runs), +1 a tile left greedy extending about
+  // once a run and winning as often as without it; +2 made it a real choice, 2.3 a run.
+  extend: {
+    types: ['bedroom', 'kitchen', 'livingRoom', 'diningRoom'],
+    maxPerRoom: 1,
+    pointsPerTile: 2,
+    minShared: 2,
+  },
   // A type at its limit draws at half weight while it stays there (D-043, amended by D-093).
   drawAtLimitPct: 50,
   // A card with no play is swapped for one from its row, trying up to 3 cards (D-121).
@@ -203,28 +242,58 @@ export const BALANCE: Balance = {
   // lots, 348 have no creek and deal the Hendersons a Bedroom, then a Bathroom, then a Closet or
   // a second Bedroom in weeks 1 to 3. This one has no trait, a first hand with neither a Bathroom
   // nor a Closet to play out of order, and the same four hands wherever the three go: a Suite by
-  // week 3 in 300 of 300 random placements, 41 to 61 Wow against Groundbreaking's 22 (16 at
-  // D-151's targets). With those three weeks played as the guide says, a bot that then picks a
-  // random card met Foundation in 19 of 24 runs and Framing in 14 (12% and 5% on any lot,
-  // unguided). src/ui/hud/first-job.test.ts holds the hands, so a change to the draw says to pick
-  // again.
+  // week 3 in 300 of 300 random placements, 58 to 82 Wow against Groundbreaking's 44 (24 at a
+  // first job's targets; D-174). With those three weeks played as the guide says, a bot that
+  // then picks a random card met Foundation in 19 of 24 runs and Framing in 14 on D-149's
+  // targets (12% and 5% on any lot, unguided). src/ui/hud/first-job.test.ts holds the hands, so
+  // a change to the draw says to pick again.
   //
   // firstTargetPct (D-151): a first job's client needs this percent of its usual targets. The
   // guided opening gets a newcomer through Framing, but the 2026-11-11 survey's casual bot
   // (greedy's move half the time) then met Roofing 52% and Drywall 20% of the time on this lot
-  // and won 3%. At 73% the Hendersons' 110% of the curve is 80%: it meets Roofing 86% and
-  // Drywall 56% of the time and wins 28% (at 80% of their own, 88%, it won 15.5%). Milestone 2
-  // alone at 450 only moved the wall. A percent of the client's own, so every client keeps its
-  // place in the order.
+  // and won 3%. At 73% it won 28% (D-151). On D-169's targets, fitted with the stock topped up
+  // at each milestone, 66% left it 18% (400 runs), so it was 60% (28%). On D-171's targets,
+  // with the General Contractor's Weekend Crews from the third milestone, 60% left it 25% (400
+  // runs), so it was 57% (29%). On D-174's targets, fitted again with the biomes' lots, 57% left
+  // it 26.8% and 53% 33.5%, so it's 55%: the Hendersons' 110% of the curve is 61%, and the bot
+  // meets Roofing 90% and Drywall 70% of the time and wins 28% (400 runs). Milestone 2 alone at
+  // 450 only moved the wall. A percent of the client's own, so every client keeps its place in
+  // the order.
   jobBoard: {
     contracts: 3,
     rarity: { common: 65, uncommon: 27, rare: 8 },
     firstClient: 'hendersons',
     firstSeed: 'oh-4243',
-    firstTargetPct: 73,
+    firstTargetPct: 55,
   },
 
   // Change orders (M4b; jam-scope.md, implementation-plan.md §7): one is offered after each of
   // these milestones (1-based), before the shop. The rewards are in change-orders.ts.
   changeOrderAfter: [2, 4, 6],
+
+  // D-157: a strike at each milestone the run goes on from (1–6), on top of the rules' strikes.
+  strikesPerMilestone: 1,
+
+  // D-160: the standing stock, the pieces a house always needs and the draw holds back early
+  // (D-055 has complexity 3 at 5% in milestone 1 and 25% in milestone 2). It fills the reserve's
+  // extra slots up to one Hallway and one Fence pack, adding only what's missing. Both stay in
+  // the weekly draw at their usual weights.
+  //
+  // D-162: from week 1, so a house can open up from its first rooms. A first job keeps D-160's
+  // timing, Foundation's third week: its first three weeks are the guided opening, Foundation's
+  // first week brings in Demolish, the budget, overtime and Complete early, and its second
+  // Strike (first-job.ts).
+  //
+  // D-163: placing one doesn't use the week, so it came once (`refill: false`). Topped up at
+  // every milestone (D-160's `refill: true`), the free stock was about two more builds a
+  // milestone: greedy won 85% of the check's runs against develop's 49.5%, with six Hallways a
+  // run. D-169: the user chose the top-ups (2026-11-12), so it comes in week 1 and again at
+  // each milestone's start, only what's missing, and the targets are fitted with it.
+  standingStock: {
+    fromPhase: 0,
+    pieces: ['hallway', 'fence'],
+    firstJobPhase: 1,
+    firstJobSlot: 3,
+    refill: true,
+  },
 };

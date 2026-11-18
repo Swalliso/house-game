@@ -132,9 +132,11 @@
 
 /* The sections: the house rules under their row, which folds them (playtest 4), and the
    client's wishes and the change orders, each under a plank tag (kit.css); the house rules'
-   groups under their names. */
+   groups under their names. Once a wish holds, the wishes' tag is a row like the house rules',
+   which the wishes that hold fold into (D-167). */
 .check-scroll > .plank-tag,
-.check-scroll > .check-fold[data-fold='rules'] {
+.check-scroll > .check-fold[data-fold='rules'],
+.check-scroll > .check-fold[data-fold='wishes'] {
   margin-top: var(--space-2);
 }
 .checklist .check-group-name {

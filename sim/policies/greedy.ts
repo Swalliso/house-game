@@ -10,30 +10,35 @@
 // (enclosure.ts) and Driveways that run to an unreached Garage (drive.ts, D-140). Estimate ties
 // break by a seeded key per play (rankPlays), never by list position: legalPlacements runs
 // from the back row, so ranking by position built every house against the back of the lot.
+// A Fence card's plays out in the open all estimate alike, so only the few that key first are
+// ranked (withoutLookalikes, D-161): the shortlist is the same, for a fraction of the estimates.
 // Exact ties go to a random one of the best, from the same stream, so houses vary between runs.
 //
+// A piece from Your goods doesn't end the week (D-163): the best such play goes down first when
+// it raises the week's total, and the week's play comes after it, from the same shortlist.
+// The free plays are scored first, and the week's plays only once no free play is taken (D-171).
 // When even the best placement wouldn't raise this week's total, it rerolls if it can, and
 // passes rather than lose score. A reroll redraws both rows (D-132). It never demolishes. Its
 // options (makeGreedy) set when it completes a milestone early ('never' by default; 'always'
-// as soon as it can; 'last' only in the phase's last week) and whether it buys the strike
-// service. It shops with the shop bot, uses tools and supplies first (shop.ts), places reserve
-// pieces, and scores hand fixtures' installs exactly (there are few).
+// as soon as it can; 'last' only in the phase's last week) and whether it strikes (D-157:
+// 'none' by default; 'fixed' strikes hand cards by STRIKE_ORDER before anything else in the
+// week, and buys +1 strike). It shops with the shop bot, uses tools and supplies first
+// (shop.ts), places reserve pieces, and scores hand fixtures' installs exactly (there are few).
 
 import type {
   Action,
   Estimate,
-  InstallAction,
   PlaceAction,
-  RenovateAction,
+  Play,
   Rng,
   Rules,
   RunState,
 } from '../../src/rules/index.ts';
 import type { Policy } from './index.ts';
 import { drivePlans } from '../drive.ts';
-import { fencePlans } from '../enclosure.ts';
+import { fencePlans, openGround } from '../enclosure.ts';
 import { pickChangeOrder } from './orders.ts';
-import { shopAct, useTools, type StrikeMode } from './shop.ts';
+import { shopAct, strikeAct, useTools, type StrikeMode } from './shop.ts';
 
 export const TOP_K = 12;
 const PER_CARD = 2;
@@ -51,7 +56,7 @@ export type EarlyMode = 'never' | 'always' | 'last';
 export interface GreedyOptions {
   /** Default 'never'. */
   early?: EarlyMode;
-  /** Default 'none': it never buys the strike service. 'fixed' strikes by STRIKE_ORDER. */
+  /** Default 'none': it never strikes. 'fixed' strikes hand cards by STRIKE_ORDER (D-157). */
   strikes?: StrikeMode;
 }
 
@@ -99,6 +104,43 @@ export function rankPlays(
     .sort((a, b) => b.est.delta - a.est.delta || a.key - b.key);
 }
 
+/**
+ * The plays without each card's open-ground Fence plays (enclosure.ts) but the `keep` that
+ * rankPlays would put first, in their order (D-161). The estimate values a card's open-ground
+ * plays alike, with no hint, so they rank by tie key alone: a ranking that takes at most `keep`
+ * plays of a card, or `keep` in all, never reaches the others, and leaving them out moves no
+ * other play into or out of its first `keep`. That's most of a Fence card's plays, and the
+ * standing stock (D-160) keeps one in the reserve nearly every week.
+ */
+export function withoutLookalikes(
+  rules: Rules,
+  state: RunState,
+  plays: readonly PlaceAction[],
+  salt: number,
+  keep: number,
+): readonly PlaceAction[] {
+  const ground = openGround(rules, state, plays);
+  const byCard = new Map<number, number[]>();
+  ground.forEach((g, n) => {
+    if (!g) return;
+    const card = plays[n]!.i * 2 + (plays[n]!.from === 'reserve' ? 1 : 0);
+    const list = byCard.get(card);
+    if (list) list.push(n);
+    else byCard.set(card, [n]);
+  });
+  const drop = new Uint8Array(plays.length);
+  let dropped = false;
+  for (const list of byCard.values()) {
+    if (list.length <= keep) continue;
+    // rankPlays' order among equal estimates: the key, then the list's (its sort is stable).
+    const order = list.map((n) => ({ n, key: tieKey(salt, plays[n]!) }));
+    order.sort((a, b) => a.key - b.key || a.n - b.n);
+    for (let k = keep; k < order.length; k++) drop[order[k]!.n] = 1;
+    dropped = true;
+  }
+  return dropped ? plays.filter((_, n) => drop[n] === 0) : plays;
+}
+
 const hinted = (est: Estimate) => est.setHint || est.yardHint || est.linkHint || est.specHint;
 
 /** The plays worth scoring exactly, by the cheap estimate, in rank order. */
@@ -108,7 +150,12 @@ export function shortlist(
   plays: readonly PlaceAction[],
   salt: number,
 ): PlaceAction[] {
-  const ranked = rankPlays(rules, state, plays, salt);
+  const few = withoutLookalikes(rules, state, plays, salt, Math.max(TOP_K, PER_CARD));
+  return shortlistOf(rankPlays(rules, state, few, salt));
+}
+
+/** The shortlist from a ranking of every play (shortlist's last step). */
+export function shortlistOf(ranked: readonly RankedPlay[]): PlaceAction[] {
   const chosen = new Uint8Array(ranked.length);
   const perCard = new Map<number, number>();
   let hints = 0;
@@ -163,13 +210,16 @@ export function makeGreedy(opts: GreedyOptions = {}): Policy {
       const salt = rng.u32();
       if (state.screen === 'shop') return shopAct(rules, state, rng, { salt, strikes, early });
       if (completesEarly(rules, state, early)) return { t: 'completeEarly' };
-      const free = useTools(rules, state, salt);
-      if (free) return free;
+      // D-157: a strike first, so the card that takes the struck one's slot is in the week.
+      const strike = strikes === 'fixed' ? strikeAct(rules, state) : null;
+      if (strike) return strike;
+      const tool = useTools(rules, state, salt);
+      if (tool) return tool;
       const plays: PlaceAction[] = [];
-      // Installs and Renovations are few, so each is scored exactly. So are Fence packs that
-      // close a yard (D-106): the rules list only a pack's suggested shapes, and the first
-      // Fence earns nothing until its yard closes.
-      const exact: (PlaceAction | InstallAction | RenovateAction)[] = [];
+      // Installs, Renovations and extensions (D-168) are few, so each is scored exactly. So are
+      // Fence packs that close a yard (D-106): the rules list only a pack's suggested shapes,
+      // and the first Fence earns nothing until its yard closes.
+      const exact: NonNullable<Play>[] = [];
       for (const p of rules.legalPlays(state)) {
         // A single tile of a pack isn't worth ranking: the planner below finds the ones that
         // close a yard, and a lone Fence or Driveway tile earns next to nothing.
@@ -186,9 +236,28 @@ export function makeGreedy(opts: GreedyOptions = {}): Policy {
         );
       }
       const passTotal = rules.scoreOnly(state, null);
-      let best: (PlaceAction | InstallAction | RenovateAction)[] = [];
+      // D-163: a piece from Your goods doesn't end the week: the best such play goes down first
+      // if it adds to this week's total; then the week's. D-171: the free plays are scored first,
+      // and the week's plays only when no free play is taken. The next call scores those again on
+      // the house as it then stands, so scoring them here as well was work thrown away (most of
+      // a week with free builds in it). The same plays in the same order, so the same picks.
+      const candidates = [...shortlist(rules, state, plays, salt), ...exact];
+      const weekEnding: NonNullable<Play>[] = [];
+      let free: NonNullable<Play>[] = [];
+      let freeTotal = -Infinity;
+      for (const play of candidates) {
+        if (rules.endsWeek(state, play)) {
+          weekEnding.push(play);
+          continue;
+        }
+        const total = rules.scoreOnly(state, play);
+        if (total > freeTotal) [freeTotal, free] = [total, [play]];
+        else if (total === freeTotal) free.push(play);
+      }
+      if (free.length > 0 && freeTotal > passTotal) return rng.pick(free);
+      let best: NonNullable<Play>[] = [];
       let bestTotal = -Infinity;
-      for (const play of [...shortlist(rules, state, plays, salt), ...exact]) {
+      for (const play of weekEnding) {
         const total = rules.scoreOnly(state, play);
         if (total > bestTotal) {
           bestTotal = total;

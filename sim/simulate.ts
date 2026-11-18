@@ -4,7 +4,8 @@
 // cumulative Wow after every tallied week, each milestone, lot fill, fence use, the enclosure
 // probe after milestone 3, and the economy; and for §8's M3 and M4 reports, per-piece offers,
 // picks and earnings, the score layers, flat points by source, house siting, early
-// completions, and strikes.
+// completions, strikes used from the hand (D-157), and reserve cards played by where they came
+// from (D-160: the standing stock and what the client brought among them).
 //
 // A bot that loops or breaks must not hang CI or sink a sweep without a trace (§9): each run
 // caps its steps per week and in all, and any throw from the policy or from apply() comes back
@@ -25,6 +26,7 @@ import type {
   MilestoneResult,
   PieceId,
   PickOption,
+  ReservePiece,
   Rules,
   RunState,
   ShopOffer,
@@ -36,6 +38,17 @@ import { contentHash, encodeRunCode, placedCells, stream, weekTotal } from '../s
 import { enclosureCost, type EnclosureCost } from './enclosure.ts';
 import { houseStats, type HouseStats } from './house.ts';
 import type { Policy } from './policies/index.ts';
+
+/** Where a reserve card came from (D-160): bought, picked or copied (own), or an extra slot's. */
+export type ReserveSource = 'own' | 'crew' | 'arrival' | 'client' | 'stock';
+
+export function reserveSource(r: ReservePiece): ReserveSource {
+  if (r.crew) return 'crew';
+  if (r.arrival !== undefined) return 'arrival';
+  if (r.client) return 'client';
+  if (r.stock) return 'stock';
+  return 'own';
+}
 
 export interface RunRecord {
   seed: string;
@@ -83,8 +96,16 @@ export interface RunRecord {
   siting: Siting;
   /** Each milestone completed early: weeks saved and the bonus it paid. */
   early: { phase: number; weeksSaved: number; score: number; budget: number }[];
-  /** Each strike bought: the card type (a piece's countsAs root, or a fixture) and the shop. */
-  struck: { type: string; shop: number }[];
+  /**
+   * Each strike used from the hand (D-157), in order: the type struck (a piece's countsAs root,
+   * or a fixture), the run's week, and the milestone it was in (0-based phase).
+   */
+  struck: { type: string; week: number; phase: number }[];
+  /**
+   * D-160: reserve cards played (placed or renovated with), by where they came from: bought,
+   * picked or copied (`own`), a crew's, an arrival's, what the client brought, the stock's.
+   */
+  reservePlays: Record<ReserveSource, number>;
   /** Fence-type (wall) cards in each week's first hand, summed per phase (index = phase). */
   wallOffers: number[];
   /** The score when the run ended (early bonuses included). */
@@ -110,17 +131,24 @@ export interface RunRecord {
 export interface BuildStats {
   /** Room pieces placed in each milestone, overtime included (Hallways left out). */
   roomsByPhase: number[];
+  /** Yard pieces and outbuildings placed in each milestone, overtime included (D-164). */
+  yardByPhase: number[];
   /** Week-ending plays in weeks 17–28 of the run (each week's play counts once). */
   late: {
     rooms: number;
     arrivals: number;
     renovations: number;
+    /** D-168: extensions. */
+    extensions: number;
     yard: number;
     fixtures: number;
     hallways: number;
     passes: number;
   };
   renovations: number;
+  /** D-168: extensions, and the run's week of each. */
+  extensions: number;
+  extensionWeeks: number[];
   /** Tallied weeks (fast-forwarded ones included). */
   tallies: number;
   /** Weeks each checklist line held, by spec id; the week it first held (absent: never). */
@@ -128,6 +156,13 @@ export interface BuildStats {
   specFirst: Record<string, number>;
   /** The lines held at the last tally. */
   specEnd: Record<string, boolean>;
+  /**
+   * D-164: weeks each set type held (one instance or more), by set id; the week it first held
+   * (absent: never); and its instances at the last tally.
+   */
+  setWeeks: Record<string, number>;
+  setFirst: Record<string, number>;
+  setEnd: Record<string, number>;
   /** Wow from pieces placed in milestones 1–2, attributed as PieceStats.wow is. */
   earlyPieceWow: number;
   /** Weeks 5 on whose total is at least 15% above the week before. */
@@ -140,9 +175,9 @@ export interface BuildStats {
 }
 
 /**
- * One piece type over a run. "Offered" counts each week's first draw, never rerolls or the
- * Catalog's special hand. A card the draw swapped out (D-121) counts as offered and dead, and
- * the card it brought as offered too.
+ * One piece type over a run. "Offered" counts each week's first draw, never rerolls, the card
+ * a strike brings (D-157), or the Catalog's special hand. A card the draw swapped out (D-121)
+ * counts as offered and dead, and the card it brought as offered too.
  */
 export interface PieceStats {
   offered: number;
@@ -200,6 +235,8 @@ export interface Economy {
   /** Rerolls taken with no phase rerolls left, so a bonus one was spent. */
   bonusRerollsUsed: number;
   bonusRerollsHeld: number;
+  /** D-157: strikes still held when the run ended (bought ones are `bought['service:strike']`). */
+  strikesHeld: number;
   /**
    * Each fixture install: where from, and the change to that week's total. `weeksLeft` counts
    * the run's regular weeks still to tally, this one included.
@@ -347,12 +384,27 @@ export function simulateRun(
   const specIds = content.clients[s.setup.clientId].specs.map((sp) => sp.id);
   const build: BuildStats = {
     roomsByPhase: Array.from({ length: phaseCount }, () => 0),
-    late: { rooms: 0, arrivals: 0, renovations: 0, yard: 0, fixtures: 0, hallways: 0, passes: 0 },
+    yardByPhase: Array.from({ length: phaseCount }, () => 0),
+    late: {
+      rooms: 0,
+      arrivals: 0,
+      renovations: 0,
+      extensions: 0,
+      yard: 0,
+      fixtures: 0,
+      hallways: 0,
+      passes: 0,
+    },
     renovations: 0,
+    extensions: 0,
+    extensionWeeks: [],
     tallies: 0,
     specWeeks: {},
     specFirst: {},
     specEnd: {},
+    setWeeks: {},
+    setFirst: {},
+    setEnd: {},
     earlyPieceWow: 0,
     bigWeeks: 0,
     dead: opts.deadCards ? {} : null,
@@ -360,6 +412,8 @@ export function simulateRun(
   /** The milestone each piece was placed in, by uid (transforms keep the uid). */
   const placedPhase = new Map<number, number>();
   let lastTotal: number | null = null;
+  /** The set instances held at the latest tally, by set id. */
+  let lastSets: Record<string, number> = {};
   let deadWeek = -1;
   const { width, height } = s.house.lot;
   const rowsFromStreet = (y: number) => height - 1 - y;
@@ -394,6 +448,7 @@ export function simulateRun(
     bonusRerollsBought: 0,
     bonusRerollsUsed: 0,
     bonusRerollsHeld: 0,
+    strikesHeld: 0,
     installs: [],
     tools: [],
   };
@@ -403,6 +458,13 @@ export function simulateRun(
   let setWow = 0;
   const early: RunRecord['early'] = [];
   const struck: RunRecord['struck'] = [];
+  const reservePlays: RunRecord['reservePlays'] = {
+    own: 0,
+    crew: 0,
+    arrival: 0,
+    client: 0,
+    stock: 0,
+  };
   const wallOffers = Array.from({ length: phaseCount }, () => 0);
   let firstRow = NaN;
   let firstIndoorRow: number | null = null;
@@ -511,7 +573,10 @@ export function simulateRun(
     const pending =
       failed &&
       action &&
-      (action.t === 'place' || action.t === 'install' || action.t === 'renovate')
+      (action.t === 'place' ||
+        action.t === 'install' ||
+        action.t === 'renovate' ||
+        action.t === 'extend')
         ? action
         : undefined;
     const runCode = encodeRunCode({
@@ -556,13 +621,20 @@ export function simulateRun(
           if (a.from === 'reserve' && 'arrival' in card) build.late.arrivals++;
           else build.late.rooms++;
         }
-      } else if (late) {
-        if (def.connector) build.late.hallways++;
-        else build.late.yard++;
+      } else {
+        if (def.category !== 'indoor') build.yardByPhase[Math.min(st.phase, phaseCount - 1)]!++;
+        if (late) {
+          if (def.connector) build.late.hallways++;
+          else build.late.yard++;
+        }
       }
     } else if (a.t === 'renovate') {
       build.renovations++;
       if (late) build.late.renovations++;
+    } else if (a.t === 'extend') {
+      build.extensions++;
+      build.extensionWeeks.push(st.week);
+      if (late) build.late.extensions++;
     } else if (late && a.t === 'install' && a.from === 'hand') build.late.fixtures++;
     else if (late && a.t === 'pass') build.late.passes++;
   };
@@ -628,6 +700,13 @@ export function simulateRun(
         countDead(s);
       }
       classify(s, action);
+      if (
+        (action.t === 'place' || action.t === 'renovate' || action.t === 'extend') &&
+        action.from === 'reserve'
+      ) {
+        const r = s.reserve[action.i];
+        if (r) reservePlays[reserveSource(r)]++;
+      }
     }
     let applied: { state: RunState; events: GameEvent[] };
     try {
@@ -652,7 +731,10 @@ export function simulateRun(
       // Weekend Crew's gain is the free build it makes room for.
       if (
         s.freePlay === 'ready' &&
-        (action.t === 'place' || action.t === 'install' || action.t === 'renovate')
+        (action.t === 'place' ||
+          action.t === 'install' ||
+          action.t === 'renovate' ||
+          action.t === 'extend')
       ) {
         const crew = economy.tools.findLast((t) => t.id === 'weekendCrew');
         if (crew) crew.gain = rules.preview(s, action).delta;
@@ -678,6 +760,12 @@ export function simulateRun(
           if (!sp.met) continue;
           build.specWeeks[sp.id] = (build.specWeeks[sp.id] ?? 0) + 1;
           build.specFirst[sp.id] ??= e.week;
+        }
+        lastSets = {};
+        for (const set of e.tally.sets) lastSets[set.set] = (lastSets[set.set] ?? 0) + 1;
+        for (const id of Object.keys(lastSets)) {
+          build.setWeeks[id] = (build.setWeeks[id] ?? 0) + 1;
+          build.setFirst[id] ??= e.week;
         }
         if (e.week >= 5 && lastTotal !== null && e.tally.total * 100 >= lastTotal * 115) {
           build.bigWeeks++;
@@ -720,7 +808,8 @@ export function simulateRun(
         if (e.offer.kind === 'service' && e.offer.service === 'reroll') {
           economy.bonusRerollsBought++;
         }
-        if (e.strike) struck.push({ type: e.strike.id, shop: s.offers?.shop?.number ?? 0 });
+      } else if (e.t === 'cardStruck') {
+        struck.push({ type: e.type.id, week: s.week, phase: s.phase });
       } else if (e.t === 'picked') {
         if (e.option) bump(economy.picked, goodKey(e.option));
       } else if (e.t === 'sold') {
@@ -759,6 +848,7 @@ export function simulateRun(
   (s.lastTally?.specsMet ?? []).forEach((met, k) => {
     if (specIds[k]) build.specEnd[specIds[k]] = met;
   });
+  build.setEnd = lastSets;
   return {
     record: {
       seed,
@@ -786,6 +876,7 @@ export function simulateRun(
         budgetLeft: s.budget,
         heldAtEnd: s.supplies.flatMap((x) => (x.kind === 'tool' ? [x.id] : [])),
         bonusRerollsHeld: s.bonusRerolls,
+        strikesHeld: s.strikesLeft,
       },
       pieces,
       layers,
@@ -794,6 +885,7 @@ export function simulateRun(
       siting: { firstRow, firstIndoorRow, frontGap, touchesStreet },
       early,
       struck,
+      reservePlays,
       wallOffers,
       finalScore: s.score,
       house: houseStats(content, s.house),

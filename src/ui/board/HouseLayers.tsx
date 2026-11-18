@@ -5,7 +5,8 @@
 //   piece's props (yard.ts)
 // - walls: one canvas of wall bands, doorways, windows and garage rails
 // - overhang: the parts of tall items that rise over their room's north wall, or above a yard
-//   piece's own cells (outbuildings' roofs, the Treehouse, a Birdhouse's box)
+//   piece's own cells (outbuildings' roofs, the Treehouse, a Birdhouse's box), and each finished
+//   room's light right after its own tops (RoomLight, D-181), ordered by bottom row
 // - highlights: the tally's active piece, a set's members, the placement's new sets, and each
 //   piece's flash, as outlines (never CSS filters on whole pieces)
 // - labels: each piece's digit and its fixture, ⚠ and Renovate level badges, inside its walls
@@ -27,6 +28,7 @@ import {
   type PlacedPiece,
   type Rot,
 } from '../../rules/index.ts';
+import { audio } from '../audio/audio.ts';
 import {
   artFrames,
   artSize,
@@ -38,6 +40,7 @@ import {
 import {
   Canvas,
   paintFloors,
+  paintLight,
   paintPiece,
   paintWalls,
   paintYardPiece,
@@ -46,8 +49,18 @@ import {
 } from '../art/house-paint.ts';
 import { itemRows, roomItems, roomLayout, type Item } from '../art/rooms.ts';
 import { carSpot, isCar, risingParts, yardPieceLayout, type YardModel } from '../art/yard.ts';
-import { highlighted, justPlaced, justRenovated, played, tallyView } from '../fx/director.ts';
+import {
+  dropLanded,
+  highlighted,
+  justPlaced,
+  justRenovated,
+  lightsHeld,
+  lightSwitched,
+  played,
+  tallyView,
+} from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
+import { lightOnFrames } from '../fx/light.ts';
 import { settings } from '../settings.ts';
 import { atlasImage, CELL, FIXTURE_ICONS, spriteStyle } from '../sprites.ts';
 import { ICON_SIZES, type IconName } from '../theme/art.ts';
@@ -55,7 +68,9 @@ import { currentTally, heldPiece, preview, tool } from '../store.ts';
 import { cellsOutline, isIndoor, type Occupancy } from './geometry.ts';
 import { inset, pieceModel, type HouseModel, type PieceLook, type Rect } from './house-model.ts';
 import { pieceLabels, type BadgeSpot, type Side } from './label-layout.ts';
-import { register, settle as settleFx } from './piece-fx.ts';
+import { withPeople } from './people.ts';
+import { drop as dropFx, finishDrop, register, settle as settleFx, wobble } from './piece-fx.ts';
+import { asleepIn, wokenUp, type Seen } from './wake-up.ts';
 import { seedSalt } from './terrain/hash.ts';
 import { canopyParts, lotObjects } from './terrain/objects.ts';
 import './house.css';
@@ -105,18 +120,24 @@ function put(ctx: CanvasRenderingContext2D, p: Pixels | null): void {
     ctx.putImageData(new ImageData(p.data as Uint8ClampedArray<ArrayBuffer>, p.w, p.h), p.x, p.y);
 }
 
-/** A canvas over the whole board (the lot and its street row), at art resolution. */
+/**
+ * A canvas over the whole board (the lot and its street row), at art resolution. On the walls
+ * canvas, a finished room's hanging lamp stays behind a member standing in front of it (D-177,
+ * `people`), whose pixels come from the atlas.
+ */
 function HouseCanvas({
   lot,
   scale,
   model,
   yard,
+  people,
   layer,
 }: {
   lot: Lot;
   scale: number;
   model: HouseModel;
   yard?: YardModel;
+  people?: ReadonlyMap<number, readonly Item[]> | undefined;
   layer: 'floor' | 'walls';
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -126,15 +147,21 @@ function HouseCanvas({
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
     if (layer === 'walls') {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      put(ctx, paintWalls(model));
-      return;
+      const paint = (atlas?: AtlasPixels) => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        put(ctx, paintWalls(model, atlas && people ? { people, atlas } : undefined));
+      };
+      if (!people?.size) {
+        paint();
+        return;
+      }
+      return withAtlas(paint);
     }
     return withAtlas((atlas) => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       put(ctx, paintFloors(model, atlas, { ...(yard ? { yard } : {}) }));
     });
-  }, [model, yard, layer]);
+  }, [model, yard, people, layer]);
   return (
     <canvas
       ref={ref}
@@ -155,14 +182,23 @@ export function FloorLayer(p: { lot: Lot; scale: number; model: HouseModel; yard
   return <HouseCanvas {...p} layer="floor" />;
 }
 
-export function WallsLayer(p: { lot: Lot; scale: number; model: HouseModel }) {
+/**
+ * The walls canvas: bands, doorways, windows, the sun, and the fixtures and lamps that hang.
+ * `people` (D-177): the members in their rooms, as ItemsLayer's, in front of a lamp that hangs.
+ */
+export function WallsLayer(p: {
+  lot: Lot;
+  scale: number;
+  model: HouseModel;
+  people?: ReadonlyMap<number, readonly Item[]>;
+}) {
   return <HouseCanvas {...p} layer="walls" />;
 }
 
 const drawingUrls = new Map<DrawingId, string>();
 
 /** One of our drawings (drawings.ts) as an image, made once. */
-function drawingUrl(id: DrawingId): string {
+export function drawingUrl(id: DrawingId): string {
   let url = drawingUrls.get(id);
   if (!url) {
     const d = drawingPixels(id);
@@ -203,21 +239,30 @@ function artStyle(id: ArtId, scale: number): { style: JSX.CSSProperties; bx: num
 /**
  * An item's rows under the walls (`bottom`: all of them, unless it rises above its cells) or over
  * them (`top`). An animated item's frames sit side by side in a strip that slides behind the
- * item's box (transform only), under the walls; its top stays on the first frame.
+ * item's box (transform only), in both parts: its rows over the walls step with the rest, so a
+ * flame on a wall's band flickers (the Count's wall candle, D-183). The two parts start together
+ * and step as one: both layers key an item's parts by its place in its piece's list, and the
+ * strip by the item (its sprite and where it stands), so a part's strip is only ever made anew in
+ * the same render as the other's. D-178: `whole` is a copy of all of it, on its first frame (an
+ * animated item's too, so it's always the plain `item-drop` the drop looks for), hidden except
+ * while it drops in (piece-fx.ts drop); `i` is its place in its room's list, so a drop finds its
+ * parts.
  */
-function ItemPart({
+export function ItemPart({
   item,
   box,
   scale,
   part,
+  i,
 }: {
   item: Item;
   box: { x: number; y: number };
   scale: number;
-  part: 'top' | 'bottom';
+  part: 'top' | 'bottom' | 'whole';
+  i?: number;
 }) {
-  const { w } = artSize(item.sprite);
-  const rows = itemRows(item)[part];
+  const { w, h } = artSize(item.sprite);
+  const rows = part === 'whole' ? ([0, h] as const) : itemRows(item)[part];
   if (!rows) return null;
   const [from, to] = rows;
   const { style, bx, by } = artStyle(item.sprite, scale);
@@ -227,13 +272,14 @@ function ItemPart({
     width: `${w * scale}px`,
     height: `${(to - from) * scale}px`,
   };
-  const anim = part === 'bottom' ? artFrames(item.sprite) : null;
+  const anim = part === 'whole' ? null : artFrames(item.sprite);
   // The parked car's parts, so they can slide together when it moves (useCarSlide).
-  const car = isCar(item.sprite) ? '' : undefined;
+  const car = isCar(item.sprite) && part !== 'whole' ? '' : undefined;
   if (anim) {
     return (
-      <div class="item" data-car={car} style={{ ...place, overflow: 'hidden' }}>
+      <div class="item" data-car={car} data-i={i} style={{ ...place, overflow: 'hidden' }}>
         <div
+          key={`${item.sprite}@${item.x},${item.y}`}
           class="item-frames"
           style={{
             ...style,
@@ -250,8 +296,9 @@ function ItemPart({
   }
   return (
     <div
-      class="item"
+      class={part === 'whole' ? 'item item-drop' : 'item'}
       data-car={car}
+      data-i={i}
       style={{ ...style, ...place, backgroundPosition: `${bx}px ${by - from * scale}px` }}
     />
   );
@@ -293,6 +340,34 @@ function useCarSlide(
   }, [spot?.x, spot?.y, lot]);
 }
 
+/**
+ * Which Doghouses the board last showed on their lead, and in which run (wake-up.ts): none before
+ * its first draw. Like lastCar, it outlives a remount (Menu, then Continue), so that plays nothing.
+ */
+let lastSeen: Seen | null = null;
+
+/**
+ * D-179: a Doghouse whose fenced yard has just closed wakes up. Its picture swaps the dog on its
+ * lead for the loose one with the house (yard.ts), in the frame the Fence appears; then, as the
+ * Fence settles (`FEEL.dog.wakeDelayMs`), the piece wobbles once and the dog barks. A load, a new
+ * run and a Doghouse placed straight into a fenced yard play nothing. Reduce motion keeps the bark
+ * and leaves the wobble out. `run` is the run's setup, whose identity is the run's: unlike the
+ * lot, a placement that clears a Tree doesn't replace it.
+ */
+export function useWakeUps(run: object, house: HouseState, unmet: ReadonlySet<number>): void {
+  const asleep = asleepIn(house, unmet);
+  const key = [...asleep].join(',');
+  useLayoutEffect(() => {
+    const woken = wokenUp(lastSeen, run, house, unmet);
+    lastSeen = { run, asleep };
+    if (woken.length === 0) return;
+    window.setTimeout(() => {
+      if (!settings.value.reduceMotion) for (const uid of woken) wobble(uid);
+      audio.play('bark', { gain: FEEL.dog.barkGain });
+    }, FEEL.dog.wakeDelayMs);
+  }, [run, key]);
+}
+
 /** A piece's items under the walls: a room's furniture, or a yard piece's props. */
 function PieceItems({
   uid,
@@ -300,12 +375,15 @@ function PieceItems({
   items,
   scale,
   settle,
+  drop,
 }: {
   uid: number;
   box: Rect;
   items: readonly Item[];
   scale: number;
   settle?: number | undefined;
+  /** D-178: a room just placed drops its furniture in, item by item, rather than settle. */
+  drop?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   // Registered and settled before the browser paints, so the first frame a placed piece is seen
@@ -314,7 +392,26 @@ function PieceItems({
   useLayoutEffect(() => {
     if (!settle || settle <= played.settle || settings.value.reduceMotion) return;
     played.settle = settle;
-    settleFx(uid);
+    if (!drop) {
+      settleFx(uid);
+      return;
+    }
+    // D-178: once this render has mounted every layer's parts (the overhang's copies too), and
+    // still before the browser paints. The next piece placed, or the room going, finishes it.
+    let live = true;
+    queueMicrotask(() => {
+      if (!live) return;
+      dropFx(uid, {
+        count: items.length,
+        scale,
+        rate: settings.value.tallySpeed,
+        onLand: (k) => dropLanded(uid, k),
+      });
+    });
+    return () => {
+      live = false;
+      finishDrop(uid);
+    };
   }, [settle]);
   return (
     <div
@@ -329,7 +426,7 @@ function PieceItems({
       }}
     >
       {items.map((item, i) => (
-        <ItemPart key={i} item={item} box={box} scale={scale} part="bottom" />
+        <ItemPart key={i} item={item} box={box} scale={scale} part="bottom" i={i} />
       ))}
     </div>
   );
@@ -337,18 +434,21 @@ function PieceItems({
 
 /**
  * One container per piece: a room's furniture, or a yard piece's props. Each orders itself by its
- * bottom row, so things further south are in front.
+ * bottom row, so things further south are in front. `people` (D-177): the household's members in
+ * their rooms, by room uid, sorted in with its furniture (people.ts withPeople).
  */
 export function ItemsLayer({
   house,
   model,
   yard,
   scale,
+  people,
 }: {
   house: HouseState;
   model: HouseModel;
   yard: YardModel;
   scale: number;
+  people?: ReadonlyMap<number, readonly Item[]>;
 }) {
   const placed = justPlaced.value;
   const ref = useRef<HTMLDivElement>(null);
@@ -359,7 +459,7 @@ export function ItemsLayer({
         const settle = placed?.uid === p.uid ? placed.id : undefined;
         const room = model.rooms.get(p.uid);
         const at = room
-          ? { box: room.box, items: roomItems(model, p.uid) }
+          ? { box: room.box, items: withPeople(roomItems(model, p.uid), people?.get(p.uid)) }
           : yard.pieces.get(p.uid);
         if (!at) return null;
         return (
@@ -370,6 +470,7 @@ export function ItemsLayer({
             items={at.items}
             scale={scale}
             settle={settle}
+            drop={!!room && settle !== undefined && placed?.drop === true}
           />
         );
       })}
@@ -379,33 +480,75 @@ export function ItemsLayer({
 
 /**
  * The parts of items above their own cells, above the walls: tall furniture over its room's north
- * wall, and a yard piece's parts above its cells (outbuildings' roofs, the Treehouse, a car's roof).
+ * wall, and a yard piece's parts above its cells (outbuildings' roofs, the Treehouse, a car's
+ * roof). Each piece's are ordered by its bottom row, further south in front, and a finished room's
+ * light comes right after its own tops (D-181): over its room, and behind a piece further south
+ * that rises into it (a Treehouse's deck, a Greenhouse's roof).
  */
 export function OverhangLayer({
   model,
   yard,
   scale,
+  people,
 }: {
   model: HouseModel;
   yard: YardModel;
   scale: number;
+  /** D-177: the members in their rooms, as ItemsLayer's: a figure's head over a north wall. */
+  people?: ReadonlyMap<number, readonly Item[]>;
 }) {
-  const tops = (items: readonly Item[]) => items.filter((it) => itemRows(it).top);
+  const hasTop = (items: readonly Item[]) => items.some((it) => itemRows(it).top);
+  // D-178: the room just placed also has a copy of each of its items here, to drop in over the
+  // walls (piece-fx.ts drop). Hidden except while it plays, they stay until the next placement.
+  const placed = justPlaced.value;
+  const dropUid = placed?.drop ? placed.uid : null;
   const parts = [
     ...[...model.rooms.values()].map((r) => ({
       uid: r.uid,
       box: r.box,
-      items: tops(roomItems(model, r.uid)),
+      items: withPeople(roomItems(model, r.uid), people?.get(r.uid)),
+      copies: r.uid === dropUid,
+      lit: !!r.finished,
+      people: people?.get(r.uid),
     })),
-    ...[...yard.pieces.values()].map((l) => ({ uid: l.uid, box: l.box, items: tops(l.items) })),
+    ...[...yard.pieces.values()].map((l) => ({
+      uid: l.uid,
+      box: l.box,
+      items: l.items,
+      copies: false,
+      lit: false,
+      people: undefined,
+    })),
   ];
   return (
     <div class="overhang">
-      {parts.map((p) =>
-        p.items.length > 0 ? (
-          <PieceOverhang key={p.uid} uid={p.uid} box={p.box} items={p.items} scale={scale} />
-        ) : null,
-      )}
+      {parts.flatMap((p) => {
+        const z = (p.box.y + p.box.h) / CELL;
+        return [
+          p.copies || hasTop(p.items) ? (
+            <PieceOverhang
+              key={p.uid}
+              uid={p.uid}
+              box={p.box}
+              items={p.items}
+              scale={scale}
+              copies={p.copies}
+              z={z}
+            />
+          ) : null,
+          p.lit ? (
+            <RoomLight
+              key={`light-${p.uid}`}
+              model={model}
+              uid={p.uid}
+              box={p.box}
+              scale={scale}
+              z={z}
+              people={p.people}
+            />
+          ) : null,
+        ];
+      })}
     </div>
   );
 }
@@ -415,11 +558,21 @@ function PieceOverhang({
   box,
   items,
   scale,
+  copies,
+  z,
 }: {
   uid: number;
   box: Rect;
+  /**
+   * All its items, as under the walls (PieceItems): those that rise above their cells show their
+   * tops, each keyed by its place in this list, so an item's two parts mount together (ItemPart).
+   */
   items: readonly Item[];
   scale: number;
+  /** D-178: a copy of each item too, after the tops, for its drop. */
+  copies: boolean;
+  /** Its bottom row: further south in front. */
+  z: number;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => (ref.current ? register(uid, 'overhang', ref.current) : undefined), [uid]);
@@ -432,12 +585,103 @@ function PieceOverhang({
         top: `${box.y * scale}px`,
         width: `${box.w * scale}px`,
         height: `${box.h * scale}px`,
-        zIndex: (box.y + box.h) / CELL,
+        zIndex: z,
       }}
     >
       {items.map((item, i) => (
-        <ItemPart key={i} item={item} box={box} scale={scale} part="top" />
+        <ItemPart key={i} item={item} box={box} scale={scale} part="top" i={i} />
       ))}
+      {copies &&
+        items.map((item, i) => (
+          <ItemPart key={i} item={item} box={box} scale={scale} part="whole" i={i} />
+        ))}
+    </div>
+  );
+}
+
+/**
+ * D-181: a finished room's light (house-paint.ts paintLight), in the overhang layer at the room's
+ * bottom row, right after its tall tops, so a lamp's shade glows over the wall band it rises
+ * across and a piece further south stands in front. Two canvases over the room's box: the glow
+ * (the pool and the halo, and a hanging lamp lit) stays still, as the floor and the walls do, so
+ * no wobble spreads it over the walls; a standing lamp's lit shade moves with the furniture when
+ * the room wobbles or settles (piece-fx.ts's 'light' part).
+ *
+ * A room an action has just finished keeps its light off until the director's beat switches it
+ * on (lightsHeld, lightSwitched): it flickers on, or fades in with Flashing off (fx/light.ts). A
+ * loaded run shows it on, with no beat, and so does Reduce motion.
+ *
+ * D-177: a member of the household standing in front of the lamp covers it, as the furniture in
+ * front of it does: its lit shade, or the hanging lamp lit, isn't drawn over them (`people`, the
+ * room's members as items), nor is the hanging lamp on the walls canvas (WallsLayer).
+ */
+function RoomLight({
+  model,
+  uid,
+  box,
+  scale,
+  z,
+  people,
+}: {
+  model: HouseModel;
+  uid: number;
+  box: Rect;
+  scale: number;
+  z: number;
+  people?: readonly Item[] | undefined;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const glow = useRef<HTMLCanvasElement>(null);
+  const shade = useRef<HTMLCanvasElement>(null);
+  const held = lightsHeld.value.has(uid);
+  const on = lightSwitched.value?.uid === uid ? lightSwitched.value.id : 0;
+  const stands = !!roomLayout(model, uid).lamp;
+  const plans = useMemo(
+    () => ({
+      glow: {
+        frame: box,
+        paint: (atlas: AtlasPixels) => paintLight(model, uid, atlas, 'glow', people),
+      },
+      shade: {
+        frame: box,
+        paint: (atlas: AtlasPixels) => paintLight(model, uid, atlas, 'shade', people),
+      },
+    }),
+    [model, uid, box, people],
+  );
+  // Before the browser paints, so the light changes in the same frame as the room.
+  useLayoutEffect(() => paintPieceArt(glow.current, plans.glow), [plans]);
+  useLayoutEffect(
+    () => (stands ? paintPieceArt(shade.current, plans.shade) : undefined),
+    [plans, stands],
+  );
+  useLayoutEffect(
+    () => (stands && shade.current ? register(uid, 'light', shade.current) : undefined),
+    [uid, stands],
+  );
+  // Its switch: once per id, so remounting the game screen doesn't play it again.
+  useLayoutEffect(() => {
+    if (!on || on <= played.light || !ref.current || settings.value.reduceMotion) return;
+    played.light = on;
+    const { frames, ms, easing } = lightOnFrames(settings.value.flashing);
+    ref.current.animate(frames, { duration: ms, easing });
+  }, [on]);
+  return (
+    <div
+      ref={ref}
+      class="room-light"
+      style={{
+        left: `${box.x * scale}px`,
+        top: `${box.y * scale}px`,
+        width: `${box.w * scale}px`,
+        height: `${box.h * scale}px`,
+        zIndex: z,
+        ...(held ? { opacity: 0 } : {}),
+      }}
+      aria-hidden="true"
+    >
+      <canvas ref={glow} width={box.w} height={box.h} />
+      {stands && <canvas ref={shade} class="room-light-shade" width={box.w} height={box.h} />}
     </div>
   );
 }
@@ -470,7 +714,7 @@ export function HighlightsLayer({
   const active = tallyView.value?.activeUid ?? null;
   const held = heldPiece.value;
   const lit = highlighted.value;
-  const p = tool.value === 'demolish' ? null : preview.value;
+  const p = tool.value !== 'build' ? null : preview.value;
   const gained = p?.setsGained.flatMap((s) => s.members) ?? [];
   const flashes = useMemo(
     () =>
@@ -525,7 +769,7 @@ function Digit({ uid, value, style }: { uid: number; value: number; style: JSX.C
 /**
  * A badge on a piece (label-layout.ts places it): a square in LimeZu's ink, one icon pixel wide,
  * its icon on whole device pixels; just the ring and its fill where the cell has no room for the
- * icon. Its title says what it is.
+ * icon. Its tip says what it is.
  */
 function Badge({
   spot,
@@ -542,7 +786,7 @@ function Badge({
   return (
     <div
       class={`board-badge ${cls}`}
-      title={label}
+      data-tip={label}
       aria-label={label}
       style={{
         left: `${spot.x}px`,
@@ -600,7 +844,7 @@ function LevelStars({
     <div
       ref={ref}
       class="board-badge level-badge"
-      title={label}
+      data-tip={label}
       aria-label={label}
       style={{
         left: `${spot.x}px`,
@@ -756,6 +1000,13 @@ export function pieceArtPlan(
   /** A pack's own tiles (D-106), when they aren't the card's shape. */
   shape?: readonly string[],
 ): PieceArtPlan {
+  // D-171: an Addition is never built as a piece of its own (it becomes part of the room it
+  // grows), so its card shows a bare room on the hall's floor: walls, and nothing in it yet.
+  if (CONTENT.pieces[defId].addition) {
+    const model = pieceModel('hallway', rot, look, shape ?? CONTENT.pieces[defId].shape);
+    const frame = { x: 0, y: 0, w: model.width * CELL, h: model.height * CELL };
+    return { frame, paint: (a: AtlasPixels) => paintPiece(model, a, []) };
+  }
   if (isIndoor(defId)) {
     const model = pieceModel(defId, rot, look, shape);
     const frame = { x: 0, y: 0, w: model.width * CELL, h: model.height * CELL };
@@ -846,7 +1097,18 @@ export function GhostPiece({
   const shapeKey = shape?.join('/');
   const art = useMemo(
     () => pieceArtPlan(defId, rot, look, shape),
-    [defId, rot, shapeKey, look?.color, look?.flip, look?.fixture],
+    [
+      defId,
+      rot,
+      shapeKey,
+      look?.color,
+      look?.flip,
+      look?.fixture,
+      look?.style,
+      look?.unmet,
+      look?.lit,
+      look?.client,
+    ],
   );
   const { frame } = art;
   const bw = Math.max(...cells.map((c) => c.x)) - minX + 1;

@@ -91,7 +91,7 @@
    drawn, top right, and an unmet requirement's ⚠, top left. A square of paper in LimeZu's ink
    ring, one icon pixel wide, with the fixture's or the warning's pixel icon on whole device
    pixels; where a cell is too small for the icon, just the ring and its fill. A fixture's paper
-   takes its rarity's tint (and its title says which), the ⚠'s is warning yellow. The digits draw
+   takes its rarity's tint (and its tip says which), the ⚠'s is warning yellow. The digits draw
    over the badges, though label-layout.ts keeps the two apart. */
 .labels .board-badge {
   position: absolute;

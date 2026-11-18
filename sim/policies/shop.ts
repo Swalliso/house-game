@@ -4,9 +4,11 @@
 // room for a much better one, refreshes once when it's rich and nothing is worth buying, and
 // otherwise leaves. The reroll service is worth nothing while it still holds a bonus reroll
 // (it used 1 of the 212 it bought in 100 runs when it bought them freely; it still buys about
-// one a run, and the state can't tell it whether the last phase ran out). It buys the strike
-// service only with strikes 'fixed', by STRIKE_ORDER; by default it never strikes, so reports
-// on the struck types (Driveway, Fence) aren't the bot's own doing.
+// one a run, and the state can't tell it whether the last phase ran out). Strikes (D-157) are
+// used from the hand only with strikes 'fixed': a card whose type is in STRIKE_ORDER, earliest
+// first (strikeAct), and +1 strike is bought only while the bot holds fewer strikes than the
+// STRIKE_ORDER types it could still strike. By default it never strikes and never buys one, so
+// reports on the struck types aren't the bot's own doing.
 //
 // During a week it uses tools by simple rules (useTools): Remodel Plans and the Dumpster at
 // once, Fertilizer and the Copy Machine when they help, Weekend Crew when a placement would
@@ -27,6 +29,7 @@ import {
   countedSelector,
   countingMod,
   DRAW_ROWS,
+  inExtraSlot,
   matchesDef,
   rowOf,
   ruleValue,
@@ -45,9 +48,12 @@ import {
   type ShopOffer,
   type UseToolAction,
 } from '../../src/rules/index.ts';
-import { rankPlays, type EarlyMode } from './greedy.ts';
+import { rankPlays, withoutLookalikes, type EarlyMode } from './greedy.ts';
 
-/** Whether the bot buys the strike service: 'none' never; 'fixed' by STRIKE_ORDER. */
+/**
+ * Whether the bot uses its strikes (D-157): 'none' never strikes and never buys +1 strike;
+ * 'fixed' strikes hand cards by STRIKE_ORDER and buys +1 strike while it's short of them.
+ */
 export type StrikeMode = 'none' | 'fixed';
 
 /** What the shop and tool rules need from the policy besides its stream: the salt and options. */
@@ -74,14 +80,13 @@ export const BOT_BLIND: Readonly<Record<string, string>> = {
   // fired: greedy bought 21 Catalogs in 100 runs and used none. So it's valued at 0, and a
   // Catalog it's given still goes on such a hand.
   'tool:catalog': 'no fair rule for when a special hand beats this one',
+  'service:strike': 'only --strikes fixed',
 };
 
 /** A good must earn at least this many weeks of current income per budget to be bought. */
 const BAR_WEEKS_PER_BUDGET = 0.12;
 /** Blueprints keep paying on pieces built later, so their value is scaled up a little. */
 const FUTURE_PIECES = 1.25;
-/** A reserve piece takes a week's build, so it's worth a share of what it adds. */
-const RESERVE_SHARE = 0.5;
 /** The share of the cards a counting blueprint counts that the bot expects to build (D-143). */
 const TAKE_RATE = 0.5;
 /**
@@ -89,8 +94,17 @@ const TAKE_RATE = 0.5;
  * Mood Lighting's Dark rooms): greedy installs about 3.8 fixtures in a 28-week run.
  */
 const UNSEEN_RATE = 0.12;
-/** D-076's strike order for strikes 'fixed': the types M2's greedy found least worth building. */
-export const STRIKE_ORDER = ['driveway', 'fence', 'hallway', 'doghouse', 'sapling'] as const;
+/**
+ * The root types strikes 'fixed' strikes from the hand, earliest first: D-084's order, the types
+ * M2's greedy found least worth building. A shape variant goes with its root (D-157).
+ */
+export const STRIKE_ORDER: readonly PieceId[] = [
+  'driveway',
+  'fence',
+  'hallway',
+  'doghouse',
+  'sapling',
+];
 
 const total = (rules: Rules, s: RunState) => rules.currentTally(s).total;
 
@@ -115,7 +129,9 @@ function bestPlacement(rules: Rules, s: RunState, salt: number): number {
   if (plays.length === 0) return 0;
   const pass = rules.scoreOnly(s, null);
   let best = 0;
-  for (const r of rankPlays(rules, s, plays, salt).slice(0, 8)) {
+  // The same top 8 without ranking most of a Fence card's plays (D-161).
+  const few = withoutLookalikes(rules, s, plays, salt, 8);
+  for (const r of rankPlays(rules, s, few, salt).slice(0, 8)) {
     best = Math.max(best, rules.scoreOnly(s, r.play) - pass);
   }
   return best;
@@ -230,8 +246,9 @@ export function goodValue(rules: Rules, s: RunState, good: Good, rng: Rng, bot: 
       return now + plannedValue(rules, withIt, good.id, left);
     }
     case 'piece': {
+      // D-163: placing it doesn't use the week, so it's worth all it adds (half before).
       const b = asBuild(s, { hand: [{ kind: 'piece', id: good.id }], reserve: [] });
-      return bestPlacement(rules, b, bot.salt) * left * RESERVE_SHARE;
+      return bestPlacement(rules, b, bot.salt) * left;
     }
     case 'fixture': {
       const b = asBuild(s, { supplies: [{ kind: 'fixture', id: good.id }] });
@@ -263,7 +280,7 @@ export function goodValue(rules: Rules, s: RunState, good: Good, rng: Rng, bot: 
           return (weekly / Math.max(1, s.house.pieces.length)) * left * 0.8;
         case 'copy': {
           const top = Math.max(0, ...rules.currentTally(s).pieces.map((p) => p.earned));
-          return top * left * RESERVE_SHARE * 0.6;
+          return top * left * 0.6;
         }
         case 'advanceTimers':
           return weekly * 0.4;
@@ -305,8 +322,9 @@ export function goodValue(rules: Rules, s: RunState, good: Good, rng: Rng, bot: 
         case 'foreman':
           return weekly * phasesLeft(rules, s) * 0.3;
         case 'storageUnit': {
-          // Only bought pieces fill the slots (a crew's and an arrival's cards sit in extra ones).
-          const used = s.reserve.filter((r) => !r.crew && !r.arrival).length;
+          // Only bought pieces fill the slots: a crew's, an arrival's, the client's and the
+          // stock's cards sit in extra ones (D-160).
+          const used = s.reserve.filter((r) => !inExtraSlot(r)).length;
           return used >= slots.reserve ? weekly * left * 0.04 : weekly * 0.5;
         }
         case 'toolBelt':
@@ -328,20 +346,34 @@ function offerValue(rules: Rules, s: RunState, o: OfferView, rng: Rng, bot: Shop
   const weekly = Math.max(1, total(rules, s));
   // It rarely runs out of the phase's own rerolls, so one in hand is plenty.
   if (offer.service === 'reroll') return s.bonusRerolls >= 1 ? 0 : weekly * 0.4;
+  // D-157: +1 strike, while it holds fewer than the STRIKE_ORDER types it could still strike.
   if (offer.service === 'strike') {
-    return bot.strikes === 'fixed' ? weekly * 0.25 * phasesLeft(rules, s) : 0;
+    if (bot.strikes !== 'fixed' || s.strikesLeft >= strikesWanted(rules, s)) return 0;
+    return weekly * 0.25 * phasesLeft(rules, s);
   }
   return 0;
 }
 
-/** The strike service's target: the first card type in STRIKE_ORDER still in the draws. */
-function strikeTarget(rules: Rules, s: RunState) {
+/** STRIKE_ORDER's types still in the draws, with their row above its floor (D-121). */
+export function strikesWanted(rules: Rules, s: RunState): number {
   const options = rules.strikeOptions(s);
-  for (const id of STRIKE_ORDER) {
-    const t = options.find((o) => o.kind === 'piece' && o.id === id);
-    if (t) return t;
-  }
-  return null;
+  return STRIKE_ORDER.filter((id) => options.some((o) => o.kind === 'piece' && o.id === id)).length;
+}
+
+/**
+ * Strikes 'fixed' (D-157): strike the hand card whose root type comes earliest in STRIKE_ORDER,
+ * when the bot holds a strike and the rules allow it; else null.
+ */
+export function strikeAct(rules: Rules, s: RunState): Action | null {
+  if (s.strikesLeft <= 0) return null;
+  let best = -1;
+  let rank = STRIKE_ORDER.length;
+  s.hand.forEach((card, i) => {
+    if (card.kind !== 'piece') return;
+    const k = STRIKE_ORDER.indexOf(rules.content.pieces[card.id].countsAs ?? card.id);
+    if (k >= 0 && k < rank && rules.canStrikeCard(s, i).ok) [best, rank] = [i, k];
+  });
+  return best >= 0 ? { t: 'strikeCard', i: best } : null;
 }
 
 /** One shop action: a pick, a buy, a sell to make room, a refresh, or leaving. */
@@ -363,19 +395,10 @@ export function shopAct(rules: Rules, s: RunState, rng: Rng, bot: ShopBot): Acti
   let pick: { o: OfferView; ratio: number } | null = null;
   for (const o of offers) {
     if (!o.ok) continue;
-    if (o.offer.kind === 'service' && o.offer.service === 'strike') {
-      if (bot.strikes !== 'fixed' || !strikeTarget(rules, s)) continue;
-    }
     const ratio = offerValue(rules, s, o, rng, bot) / Math.max(1, o.price);
     if (ratio >= bar && (!pick || ratio > pick.ratio)) pick = { o, ratio };
   }
-  if (pick) {
-    const offer = pick.o.offer;
-    if (offer.kind === 'service' && offer.service === 'strike') {
-      return { t: 'buy', i: pick.o.i, strike: strikeTarget(rules, s)! };
-    }
-    return { t: 'buy', i: pick.o.i };
-  }
+  if (pick) return { t: 'buy', i: pick.o.i };
   // Blueprint slots full: sell the weakest for a much better one it can then afford.
   const full = s.blueprints.length >= rules.slots(s).blueprints;
   if (full && s.blueprints.length > 0) {

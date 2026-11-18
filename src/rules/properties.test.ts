@@ -2,6 +2,7 @@
 // - preview(s, p).after equals the tally from apply(s, p), and .before the tally from a pass
 // - scoreOnly equals preview().after
 // - replay(log) reproduces the state
+// - a strike from the hand (D-157) is a free action that keeps the hand's size
 // - the same seed gives the same game
 
 import fc from 'fast-check';
@@ -177,6 +178,38 @@ describe('properties', () => {
     expect(result.error).toBe("That's off the lot.");
     expect(result.state).toEqual(states[3]);
   });
+
+  // D-157: with strikes to use (TEST_CONTENT has none), each strike listed applies, and it's a
+  // free action: the hand keeps its length, and the week and the draws stay.
+  it('a strike keeps the hand’s length, the week and the draws, and legalActions lists only strikes that apply', () => {
+    const striking = createRules({
+      ...content,
+      balance: { ...content.balance, rules: { ...content.balance.rules, strikes: 2 } },
+    });
+    let listed = 0;
+    fc.assert(
+      fc.property(seedArb, fc.integer({ min: 0, max: 11 }), (seed, steps) => {
+        const end = playOut(seed, steps).states.at(-1)!;
+        if (end.screen !== 'build') return;
+        // The same run with two strikes in hand: the content differs only in the start.
+        const s = { ...end, strikesLeft: 2 };
+        const strikes = striking.legalActions(s).filter((a) => a.t === 'strikeCard');
+        s.hand.forEach((_, i) => {
+          expect(strikes.some((a) => a.i === i)).toBe(striking.canStrikeCard(s, i).ok);
+        });
+        const clock = (x: RunState) => [x.screen, x.phase, x.slot, x.week, x.overtimeWeek, x.draws];
+        for (const a of strikes) {
+          const out = striking.apply(s, a).state;
+          expect(out.hand).toHaveLength(s.hand.length);
+          expect(clock(out)).toEqual(clock(s));
+          expect(out.strikesLeft).toBe(1);
+          listed++;
+        }
+      }),
+      { numRuns: 40 },
+    );
+    expect(listed).toBeGreaterThan(0);
+  }, 60_000);
 
   it('the same seed gives the same game', () => {
     fc.assert(

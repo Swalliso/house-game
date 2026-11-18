@@ -89,7 +89,7 @@ describe("the end panel's plank", () => {
       expect(title && text(title as Host)).toBe(screen === 'won' ? 'Job done!' : 'Run over');
       const copy = parts.find((v) => typeof v !== 'string' && v.type === 'button') as Host;
       expect(copy.props['aria-label']).toBe('Copy run code');
-      expect(copy.props.title).toBe('Copy run code');
+      expect(copy.props['data-tip']).toBe('Copy run code');
       // Its words, the long and the short (end.css shows the one the plank has room for).
       expect(text(copy)).toBe('Copy run codeCopy code');
       expect(parts.indexOf(copy)).toBeGreaterThan(parts.indexOf(title!));

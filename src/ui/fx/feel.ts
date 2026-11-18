@@ -13,8 +13,8 @@ export const FEEL = {
     /** And no popup is shorter than this. */
     popupMinMs: 350,
     /**
-     * Each set held lights up, adding Comfort, then Charm. Also how long the score panel's
-     * folded sets row stays lit when the sets change outside a tally (D-098's 2026-11-08 change).
+     * Each set held lights up, adding Comfort, then Charm, and the score panel's sets row with
+     * it.
      */
     setStepMs: 700,
     /** The pause before Comfort × Charm collapse into the week's total. */
@@ -98,7 +98,7 @@ export const FEEL = {
     rhythm: 1.6,
     /** A find dug up: the dirt flies, then its reward pops out after this long. */
     findRewardMs: 160,
-    /** "Topped out!" over the house, the first week Under one roof holds: real time. */
+    /** "Topped out!" over the house, the first week A compact house holds: real time. */
     toppedOutMs: 1700,
     /** A crate's lid shakes, glowing in its best option's rarity, for this long before it opens. */
     crateShakeMs: 520,
@@ -278,6 +278,14 @@ export const FEEL = {
   /** Squash-and-wobble on a triggering piece. */
   wobble: { ms: 260, scale: 1.12 },
   /**
+   * The Doghouse wakes up (D-179). When a Fence closes its yard, the dog on its lead is let loose
+   * as the house changes, and `wakeDelayMs` later, as the Fence has settled (placeMs), the piece
+   * wobbles once and the dog barks (`barkGain`). The loose dog sits on the kennel's roof for
+   * `roofMs`, hops down to the grass, sits there for `grassMs` and hops back up: a hop is one
+   * frame in the air, and every frame lasts `hopMs`, so it moves a whole art px at a time.
+   */
+  dog: { wakeDelayMs: 220, barkGain: 0.9, hopMs: 140, roofMs: 2380, grassMs: 1680 },
+  /**
    * A piece's floor flashes white as it wobbles or settles, peaking at this opacity: its floor
    * and walls are drawn with the whole house, so the flash shows which room is reacting.
    */
@@ -290,6 +298,15 @@ export const FEEL = {
   levelPop: { ms: 420, scale: 1.6 },
   /** A Renovation's beat (M4a): the room wobbles, says its new level, and knocks twice. */
   renovateMs: 480,
+  /**
+   * D-181: a finished room's lamp coming on, right after the beat that finished it (a fixture
+   * installed, a Renovation, an extension): the switch's click and a small pop, the find's glints
+   * from the lamp after `burstDelayMs`, and the light flickering on over `flickerMs`, on at once,
+   * then down to each of `dips` (an opacity) and back (fx/light.ts). Two dips in under a second
+   * stay under 3 flashes a second; with Flashing off it fades in over `fadeMs`. `beatMs` is its
+   * beat, at tally speed.
+   */
+  lightOn: { flickerMs: 760, dips: [0.2, 0.55], fadeMs: 420, beatMs: 560, burstDelayMs: 60 },
 
   /**
    * The client's checklist in the tally (M4a), after the sets: each line held lights its row
@@ -343,6 +360,24 @@ export const FEEL = {
    */
   milestoneHoldMs: 900,
   /**
+   * The client at the door (D-182, fx/visit.ts): at a milestone met that isn't the last, the
+   * client pops in at the front door `underBannerMs` before the milestone's banner goes, and
+   * stays `ms` in all, so the shop opens `ms − underBannerMs` later than it did. In real time, as
+   * the banner is (holding hurries it, a click skips it). They grow up from their feet over
+   * `popMs`; their bubble starts `bubbleMs` in and the hearts over their wishes' pieces from
+   * `heartsMs`, `heartStaggerMs` apart, each popping up through its frames; all of it fades
+   * over the last `outMs`.
+   */
+  visit: {
+    ms: 1500,
+    underBannerMs: 1000,
+    popMs: 220,
+    bubbleMs: 160,
+    heartsMs: 300,
+    heartStaggerMs: 110,
+    outMs: 220,
+  },
+  /**
    * A click that hurried the milestone week's tally hurries the tally, not the milestone: its
    * banner still comes up and holds as above, and only a click after it's been up this long
    * takes it down. Steady clicking through the tally used to leave no banner at all.
@@ -380,6 +415,36 @@ export const FEEL = {
 
   /** The placed piece's settle. */
   placeMs: 220,
+
+  /**
+   * A placed room's furniture drops in (D-178, piece-fx.ts drop), back to front: each item falls
+   * `fallPx` art px over `fallMs`, a whole art px at a time and faster as it goes, fading in over
+   * `fadeMs` (no longer than the fall), then lands on its foot with a `squash` and a `stretch`
+   * (scale x, y) over `landMs`: in its own place, or a tall item as its copy, which at rest hands
+   * over to the item itself over `swapMs` (the walls' light on it fades in).
+   * Each starts `staggerMs` after the one before, or sooner in a room of many, so the last starts
+   * within `budgetMs` of the first. Up to `thocks` landings thock (the first, the middle, the
+   * last), each `thockSemitones` above the one before and the later ones at `thockGain`, and
+   * `dust` puffs with the first. It plays at the tally speed setting and never holds input: the
+   * placement's beat still waits `placeMs`, and the rest plays on while the player moves on. A
+   * click, a key, the wheel or the next placement finishes it. None with Reduce motion.
+   */
+  drop: {
+    budgetMs: 330,
+    staggerMs: 60,
+    fallMs: 80,
+    fallPx: 8,
+    fadeMs: 40,
+    landMs: 120,
+    squash: [1.14, 0.84],
+    stretch: [0.96, 1.05],
+    swapMs: 60,
+    thocks: 3,
+    thockSemitones: 2,
+    thockGain: 0.85,
+    /** The dust preset's count, scaled: a room landing, not a find dug up. */
+    dust: 0.7,
+  },
 
   /**
    * Budget counts coin by coin (§12, Shop and crates; Balatro's): 0.18 s a coin, faster above
@@ -421,6 +486,25 @@ export const FEEL = {
   },
 
   /**
+   * A strike from the hand (D-157), in real time, outside the tally (it never sets busy): the
+   * plate stamps onto the card in `stampInMs` (the card thumps to `thumpScale`; red ink at
+   * `inkScale` of the ink burst's count), holds `holdMs`, the card drops `dropPx` UI px and tilts
+   * `tiltDeg` as it fades over `outMs`, and the new card slides down `fromPx` UI px into its slot
+   * over `inMs`. 860 ms in all; the next action finishes it at once.
+   */
+  strike: {
+    stampInMs: 160,
+    holdMs: 280,
+    outMs: 180,
+    inMs: 240,
+    thumpScale: 0.97,
+    dropPx: 8,
+    tiltDeg: 2,
+    fromPx: 5,
+    inkScale: 0.8,
+  },
+
+  /**
    * A household member arriving (M4b, D-103; D-126): the doorbell rings at the front door, their
    * card slides in (`cardInMs`) and stays up `cardMs` in real time, and their cards pop into the
    * reserve once it has rung, with a shimmer.
@@ -432,6 +516,40 @@ export const FEEL = {
     popScale: 1.25,
     cardInMs: 380,
     cardMs: 3400,
+    /**
+     * D-177: once the bell has rung twice (`delayMs`), the member walks up from the road, over
+     * the kerb, to the front door's doormat in `ms`, pulling their suitcase, and waits there
+     * (board/people.ts walkPlan). A deeper front yard takes longer, never faster than
+     * `maxPxPerSecond` art px a second, and never longer than `maxMs`: in a deeper yard still
+     * they set off partway up it (people.ts walkStart). Their steps keep pace with the ground, a
+     * walk cycle to `cyclePx`, each frame shown within `frameMs`. They fade in over `fadeMs` as
+     * they set off. With something in the yard in their way (a Fence, a parked car, a Tree, the
+     * water) they set off just north of it, if that leaves `minPx` art px or more to walk (at
+     * `ms`, slower than that and their steps would outrun the ground). A walk that can't come up
+     * from the street (the house in the way, or too little left) fades them in where they wait
+     * over `standInMs`.
+     */
+    walk: {
+      delayMs: 600,
+      ms: 1500,
+      maxMs: 2500,
+      maxPxPerSecond: 72,
+      cyclePx: 16,
+      frameMs: [60, 130] as const,
+      fadeMs: 180,
+      minPx: 32,
+      standInMs: 400,
+    },
+  },
+
+  /**
+   * D-160: the standing stock topping up, or a client's cards landing, after week 1: they pop
+   * into the reserve's extra slots with a soft shimmer, and no banner. With a member arriving the
+   * same week, they wait for the doorbell (`arrival.landDelayMs`) and pop with the member's.
+   */
+  delivered: {
+    popMs: 520,
+    popScale: 1.2,
   },
 
   /** A ×Mult source's gold stamp in the tally (D-056): each lands on its own beat. */
@@ -466,6 +584,11 @@ export const FEEL = {
     modal: 180,
     /** The milestone meter's fill and forecast sliding to a new value. */
     meter: 250,
+    /**
+     * The score panel's sets and checklist rows sliding in under its equation as a tally starts,
+     * and away once it ends (D-167): at rest the panel is the equation alone.
+     */
+    detail: 200,
     /** The shop's sheet sliding up over the board. */
     sheet: 260,
     /** A milestone's ribbon stamping in (it stays up for bannerMs). */
@@ -477,6 +600,16 @@ export const FEEL = {
      */
     stamp: 280,
   },
+
+  /**
+   * The tip bubble (D-077's 2026-11-12 note, hud/Tip.tsx), the game's one kind of tooltip. A
+   * control's tip (a button, a chip, a card, a badge) shows once the pointer has rested on it
+   * for `delayMs`, as the browser's tooltips did, so sweeping across the hand doesn't flash a
+   * note on every card. A term's dotted underline asks for its tip, so a term's shows at once,
+   * as it always has, and so does keyboard focus. Moving from one tip straight onto another
+   * shows the next at once, within `warmMs` of the last one going.
+   */
+  tip: { delayMs: 400, warmMs: 300 },
 
   /**
    * The end screen's photos (M6, D-136): a polaroid for each milestone, dealt onto the table one
@@ -565,6 +698,32 @@ export const FEEL = {
   },
 
   /**
+   * Weather for a change order (S06, D-180, board/WeatherLayer.tsx): rain on the lot while Rainy
+   * season runs, and a puddle on each Patio it zeroes. Decoration only, never the rules. Still
+   * under a sheet over the board; no rain with Reduce motion, and the puddles hold still.
+   */
+  weather: {
+    rain: {
+      /** It fades in as the change order's sheet closes, and out as the phase's milestone lands. */
+      inMs: 1600,
+      outMs: 1100,
+      /**
+       * Two sheets of streaks (board/weather.ts SHEETS), the far one fainter and slower. Each steps
+       * a whole art px or two at a time, every `stepMs`: `across` × `down` streaks a tile, where
+       * fewer thin the rain out.
+       */
+      far: { stepMs: 42, across: 1, down: 4 },
+      near: { stepMs: 36, across: 2, down: 3 },
+    },
+    puddle: {
+      /** Fading in on a Patio the rain has just zeroed. */
+      inMs: 500,
+      /** Each frame of a drop landing in it (art/drawings.ts own-puddle). */
+      frameMs: 150,
+    },
+  },
+
+  /**
    * The end of a run's look down the street (D-156): `delayMs` after the last tally, the view
    * pulls back over `outMs` to show the houses around the lot, holds `holdMs`, and comes back
    * over `backMs`; a click or a key hurries it back. It pulls back far enough to show `beside`
@@ -586,6 +745,51 @@ export const FEEL = {
   },
 
   /**
+   * A won run's open house (D-175, fx/open-house.ts, board/crowd.ts): as the look down the street
+   * pulls back, the fanfare plays, a crowd walks in along the sidewalk and stops in front of the
+   * house, and cars pull up at the kerb; as it's pulled back, confetti bursts at the front door
+   * and hearts rise over the last tally's best earners. The view holds `holdMs` for a win
+   * (FEEL.streetView's otherwise), so the crowd stands a moment before it comes back. Off with
+   * Reduce motion but for the fanfare.
+   */
+  openHouse: {
+    /** Visitors and parked cars for each verdict, Fixer-Upper to Dream Home (balance.verdicts). */
+    visitors: [1, 3, 5, 7, 10],
+    cars: [1, 1, 2, 2, 3],
+    holdMs: 2300,
+    /**
+     * A visitor walks `walkPx` art px to their spot, briskly, their steps quickened to keep pace
+     * with the sidewalk; each sets off `staggerMs` after the one before, nearest the door first,
+     * fading in over `fadeMs`.
+     */
+    walkPx: 64,
+    walkPxPerSecond: 28,
+    staggerMs: 80,
+    fadeMs: 240,
+    /**
+     * Where they stop, in art px by the run's seed: the nearest either side `innerPx` from the
+     * front door's middle, the next ones `gapPx` further out each (a walker is 16 wide).
+     */
+    innerPx: [5, 10],
+    gapPx: [16, 22],
+    /**
+     * A car rolls in `rollPx` art px at the street's car speed and parks `carGapPx` past the
+     * crowd or the car before it, the westmost first, `carStaggerMs` apart.
+     */
+    rollPx: 96,
+    carGapPx: [10, 18],
+    carStaggerMs: 300,
+    /**
+     * Hearts rise over this many of the last tally's best earners, and the confetti from the
+     * front door is a Huge week's fountain (its count times `confetti`).
+     */
+    hearts: 3,
+    confetti: 1.6,
+    /** A hurried look: the rest of the crowd's walk plays this many times as fast. */
+    hurry: 4,
+  },
+
+  /**
    * The job board and the crew pick (M4, D-110): the cards are pinned up one after another,
    * `staggerMs` apart, each landing in `inMs` (jobs.css reads them as --beat and --jobs-in).
    */
@@ -604,6 +808,18 @@ export const FEEL = {
     arriveMs: 320,
     ringMs: 1600,
     pulseMs: 1200,
+  },
+
+  /**
+   * The first-time hints (D-158; hud/first-hints.css reads --hint-pulse and --hint-pulses). A
+   * card's gold ring breathes `pulses` times as it comes up, once every `pulseMs`, then rests.
+   * A hint nobody sends away goes with its week once it has been up for `readMs`; one the week
+   * left behind sooner comes up again.
+   */
+  hints: {
+    pulseMs: 1200,
+    pulses: 3,
+    readMs: 4000,
   },
 
   /** The camera (§12, Art; D-057): wheel zoom in whole steps, drag to pan. */

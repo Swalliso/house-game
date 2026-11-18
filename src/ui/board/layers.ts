@@ -23,32 +23,42 @@ export const LAYER = {
    * faces and floor shadows (canvas).
    */
   floor: 2,
+  /** Puddles on the paving a change order's rain zeroes (D-180), under what stands there. */
+  puddles: 3,
   /** The front and back yard tint (SVG). */
-  yardTint: 3,
+  yardTint: 4,
   /** One DOM container per piece: furniture, props, fixtures. */
-  items: 4,
+  items: 5,
   /** Wall bands, door gaps, window glass, garage rails, the painted fixtures (canvas). */
-  walls: 5,
-  /** Tall items above their own footprint: furniture over the north wall, outbuilding roofs. */
-  overhang: 6,
+  walls: 6,
+  /**
+   * Tall items above their own footprint: furniture over the north wall, outbuilding roofs.
+   * D-181: each finished room's light shares it, right after its own tops (HouseLayers.tsx).
+   */
+  overhang: 7,
   /** Kept for a roof over the house (D-097). Nothing draws here since D-147 took the roof out. */
-  roof: 7,
+  roof: 8,
   /** Tree tops above their own cells, over the lot and the row above it (canvas). */
-  canopy: 8,
+  canopy: 9,
+  /**
+   * A change order's rain over the lot (D-180): over the tree tops and the lot's life, under the
+   * highlights, the labels and the ghost, so they read through it.
+   */
+  weather: 10,
   /** The tally's active piece, a held set's and the preview's sets, each piece's flash (SVG). */
-  highlights: 9,
+  highlights: 11,
   /** Digits, fixture and unmet badges, the street's label. */
-  labels: 10,
+  labels: 12,
   /** Demolish, install, and tool targets. */
-  targets: 11,
+  targets: 13,
   /** The piece being placed. */
-  ghost: 12,
+  ghost: 14,
   /** The placement preview's per-piece badges. */
-  badges: 13,
+  badges: 15,
   /** The ghost's score change and its reason. */
-  ghostText: 14,
+  ghostText: 16,
   /** Tally popups. */
-  popups: 15,
+  popups: 17,
 } as const;
 
 export type LayerName = keyof typeof LAYER;

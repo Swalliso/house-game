@@ -1,6 +1,6 @@
 // Count Vladislav's witness layout (implementation-plan.md §5 and §9, M4a): a house built by
 // hand from the real content that meets every line of his checklist at every milestone, which
-// proves his specs can be met without a solver. His checklist is the seven house rules in his
+// proves his specs can be met without a solver. His checklist is the house rules in his
 // numbers (house-rules.ts) and his two wishes, Three Dark rooms and A Library.
 //
 // The numbers that shape it:
@@ -185,7 +185,7 @@ describe('Count Vladislav’s witness house', () => {
     );
     expect(dark.map((p) => p.defId)).toEqual(['bedroom', 'library', 'homeOffice']);
 
-    // It reads as a house: no visible repeats, as the household rules demand too.
+    // It reads as a house: no visible repeats, as the cards' caps demand too (D-165).
     const ofType = (type: PieceId) =>
       house.pieces.filter((p) => (CONTENT.pieces[p.defId].countsAs ?? p.defId) === type).length;
     expect(ofType('kitchen')).toBeLessThanOrEqual(1); // an L-Kitchen counts as one
@@ -193,17 +193,16 @@ describe('Count Vladislav’s witness house', () => {
     expect(ofType('diningRoom')).toBeLessThanOrEqual(1);
   });
 
-  it('loses exactly one line when one piece is added or taken away, or Renfield’s room', () => {
+  it('loses exactly one line when one piece is taken away, or Renfield’s room', () => {
     // One piece fewer: without the side Hallway, the Library touches the yard and isn't Dark.
     const noSideHall = PLACEMENTS.filter((p) => p !== SIDE_HALL);
-    // One piece more: a second Kitchen (an L-Kitchen past the Bathroom, a legal play).
+    // A second Kitchen card (an L-Kitchen past the Bathroom) can't be placed (D-165).
     const lKitchen: Placement = ['lKitchen', 12, 9, 1];
-    expect(checkPlace(PLACEMENTS, lKitchen).legal).toBe(true);
+    expect(checkPlace(PLACEMENTS, lKitchen).legal).toBe(false);
     // Renfield left in the reserve: from Framing, Room for everyone needs his room.
     PHASES.forEach(({ name }, phase) => {
       const ids = (house: HouseState) => missed(house, phase).map((line) => line.id);
       expect(ids(houseAt(phase, noSideHall)), `at ${name}`).toEqual(['darkRooms']);
-      expect(ids(houseAt(phase, [...PLACEMENTS, lKitchen])), `at ${name}`).toEqual(['oneKitchen']);
       const noRenfield = houseFrom(CONTENT, LOT, PLACEMENTS);
       expect(ids(noRenfield), `at ${name}`).toEqual(phase >= 2 ? ['roomForEveryone'] : []);
     });

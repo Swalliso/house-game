@@ -16,6 +16,10 @@
 //   the Hot Tub's bubbles, the Fire Pit's fire and stumps, planters, the Sapling, the outbuildings,
 //   the hens, a Porch's bench and pot of flowers. Fixtures: the Sprinkler on its Lawn, the Pergola over its Patio, Garden Lights as
 //   two bollards with their glow; a fixture's badge shows only where a door keeps it off.
+// - A piece's picture can depend on whether its requirement is met, from the rules' tally
+//   (yardModel's `unmet`; D-179): the Doghouse's dog sits on its lead in the kennel's doorway
+//   while it earns nothing outside a fenced yard, and once the yard closes it's loose, hopping
+//   between the kennel's roof and the grass. No other piece has an "off" look.
 // - Nothing stands on an outside door's mat or in front of its opening: a Patio's seats move
 //   clear of the door that opens onto it (under a small parasol in place of the full one), the
 //   car parks further along its Driveway, or on the next one, and a Pergola, which reaches every
@@ -27,9 +31,15 @@
 //   Birdhouse's box, a car's roof) carry `over`, and go on the overhang layer above the walls.
 //
 // A Fence is a picket line through the middle of its cells, out to the edges at its ends, with a
-// post at each end and turn. Where an end of one Fence meets another, their lines join (a corner,
-// a T); end to end, each keeps its end post, so each stays countable; side by side along their
-// lengths they stay two fences, not a grid. A Fence's ghost is the Fence alone.
+// post at each end and turn (D-159). Where an end of one Fence meets another, their lines join (a
+// corner, a T, or end to end, where the run goes on with no post between them, so it reads as one
+// fence); side by side along their lengths they stay two fences, not a grid. A one-tile pack joins
+// every Fence beside it, so it stands upright where those are north or south of it. The house
+// closes a yard as a Fence does, so a Fence reaches its walls: an arm from its line to a wall
+// beside one of its ends, and to the wall at each end of a stretch it runs alongside, and a
+// corner post where it touches the house only at a corner. The lines meet the house wherever the
+// rules' fenced-yard fill sees them touch, so a yard looks closed exactly when it is. A Fence's
+// ghost is the Fence alone.
 //
 // Fences and Driveways are packs (D-106): each is the tiles its player clicked out
 // (PlacedPiece.shape), so they're laid out from their own cells, never the card's shape. A lone
@@ -118,19 +128,36 @@ const SHADE: Rgb = [0x3a, 0x3a, 0x50];
 // ---------------------------------------------------------------------------------------
 // The cache.
 
-const cache = new WeakMap<HouseModel, YardModel>();
+const cache = new WeakMap<HouseModel, { unmet: string; yard: YardModel }>();
+
+const NONE: ReadonlySet<number> = new Set();
 
 /**
  * The yard of the house `m` was built from (houseModel): every yard piece's ground and items, and
- * the curb cuts. Cached per model, so it's built once per placement, not per render.
+ * the curb cuts. `unmet` holds the pieces whose requirement isn't met, from the rules' tally
+ * (unmetOf): the Doghouse draws its dog on its lead there (D-179). Cached per model and unmet
+ * set, so it's built once per placement, not per render: a requirement is met or not by where
+ * the pieces stand, so the set changes only with the house.
  */
-export function yardModel(house: HouseState, m: HouseModel): YardModel {
-  let y = cache.get(m);
-  if (!y) {
-    y = build(house, m, { street: true, car: true });
-    cache.set(m, y);
-  }
-  return y;
+export function yardModel(
+  house: HouseState,
+  m: HouseModel,
+  unmet: ReadonlySet<number> = NONE,
+): YardModel {
+  const key = [...unmet].sort((a, b) => a - b).join(',');
+  const hit = cache.get(m);
+  if (hit?.unmet === key) return hit.yard;
+  const yard = build(house, m, { street: true, car: true, edges: true, unmet });
+  cache.set(m, { unmet: key, yard });
+  return yard;
+}
+
+/**
+ * The pieces whose requirement isn't met (D-179): those the rules' tally gives an `unmet` text
+ * (PieceScore.unmet, the ⚠'s), for yardModel. The UI never works out a requirement itself.
+ */
+export function unmetOf(pieces: readonly { uid: number; unmet?: string }[]): ReadonlySet<number> {
+  return new Set(pieces.flatMap((p) => (p.unmet === undefined ? [] : [p.uid])));
 }
 
 const solo = new Map<string, YardLayout>();
@@ -142,7 +169,8 @@ export type Look = PieceLook;
  * One yard piece alone, for the ghost: in its own frame (its bounding box's top-left cell is
  * (0, 0)), in the color and with the fixture `look` gives it (pieceLook, newPieceLook), in a
  * pack's own tiles (D-106) when `own` gives them, with no curb cut and no parked car (the house
- * has one, on the oldest Driveway with room for it).
+ * has one, on the oldest Driveway with room for it). With `look.unmet` it's drawn as a piece
+ * whose requirement isn't met (D-179): the ghost lands as the preview says the piece will.
  */
 export function yardPieceLayout(
   defId: PieceId,
@@ -151,7 +179,7 @@ export function yardPieceLayout(
   /** A pack's own tiles (PlacedPiece.shape), when they aren't the card's shape. */
   own?: readonly string[],
 ): YardLayout {
-  const key = `${defId}:${rot}:${own?.join('/') ?? ''}:${look.color}:${look.fixture ?? ''}`;
+  const key = `${defId}:${rot}:${own?.join('/') ?? ''}:${look.color}:${look.fixture ?? ''}:${look.unmet ? 'unmet' : ''}`;
   let l = solo.get(key);
   if (!l) {
     const shape = own ?? CONTENT.pieces[defId].shape;
@@ -179,7 +207,13 @@ export function yardPieceLayout(
       ],
       nextUid: 2,
     };
-    l = build(house, null, { street: false, car: false, color: look.color }).pieces.get(1)!;
+    l = build(house, null, {
+      street: false,
+      car: false,
+      edges: false,
+      color: look.color,
+      unmet: look.unmet ? new Set([1]) : NONE,
+    }).pieces.get(1)!;
     solo.set(key, l);
   }
   return l;
@@ -202,7 +236,14 @@ const isDriveway = (id: PieceId) => kind(id) === 'driveway';
 function build(
   house: HouseState,
   m: HouseModel | null,
-  opts: { street: boolean; car: boolean; color?: number },
+  opts: {
+    street: boolean;
+    car: boolean;
+    edges: boolean;
+    color?: number;
+    /** The pieces whose requirement isn't met (yardModel). */
+    unmet: ReadonlySet<number>;
+  },
 ): YardModel {
   const occ = occupancy(house);
   const { width: W, height: H } = house.lot;
@@ -218,8 +259,8 @@ function build(
   const keepOut = m ? m.windows.flatMap((w) => (w.bay ? [w.bay] : [])) : [];
   const doors = m ? m.exits.flatMap((e) => [grow(e.mat, 2), grow(e.gap, 2)]) : [];
   const color = colors(house);
-  // The Fences' cells, so a Fence's arms can join another's.
-  const fenceCells = new Map<string, { uid: number; own: number }>();
+  // The Fences' cells, so a Fence's arms can join another's and reach the house.
+  const fenceCells = new Map<string, FenceCell>();
   for (const p of house.pieces) {
     if (kind(p.defId) !== 'fence') continue;
     const cells = occ.cells.get(p.uid)!;
@@ -231,7 +272,15 @@ function build(
       });
     }
   }
-  const fence = { masks: fenceMasks(fenceCells) };
+  // What a Fence meets as a wall: the house, and on the board the lot's back and side edges,
+  // which close a yard in the rules' fill as the house does. Not the street's edge: a yard that
+  // reaches the street is never fenced, so the grass in front of a Fence there can stay open.
+  const walled = (x: number, yy: number) => {
+    if (x < 0 || x >= W || yy < 0) return opts.edges;
+    const q = pieceAt(x, yy);
+    return !!q && isIndoor(q.defId);
+  };
+  const fence = { arms: fenceArms(fenceCells, walled) };
 
   const pieces = new Map<number, YardLayout>();
   const curbs: Ground[] = [];
@@ -269,6 +318,7 @@ function build(
       color: opts.color ?? color.get(p.uid) ?? 0,
       ...(east !== west ? { toward: east } : {}),
       fence,
+      unmet: opts.unmet.has(p.uid),
     });
     LAYOUTS[p.defId]?.(y);
     if (p.fixture?.id === 'gardenLights') y.lights();
@@ -378,12 +428,16 @@ export function risingParts(l: YardLayout): Rect[] {
   });
 }
 
-/** A placed yard piece's look, for its ghost while the Moving Truck carries it. */
-export function pieceLook(house: HouseState, uid: number): Look {
+/**
+ * A placed yard piece's look, for its ghost while the Moving Truck carries it: as it stands now,
+ * its requirement unmet if `unmet` (yardModel's) holds it.
+ */
+export function pieceLook(house: HouseState, uid: number, unmet: ReadonlySet<number> = NONE): Look {
   const p = house.pieces.find((q) => q.uid === uid);
   return {
     color: colors(house).get(uid) ?? 0,
     ...(p?.fixture ? { fixture: p.fixture.id } : {}),
+    ...(unmet.has(uid) ? { unmet: true } : {}),
   };
 }
 
@@ -447,8 +501,10 @@ interface YardCtx {
   color: number;
   /** For a piece running across: the house is at its east end (true) or its west end (false). */
   toward?: boolean;
-  /** Every Fence cell's arms on the lot, joined across pieces (fenceMasks). */
-  fence: { masks: ReadonlyMap<string, number> };
+  /** Every Fence cell's arms on the lot, joined across pieces and out to the house (fenceArms). */
+  fence: { arms: ReadonlyMap<string, FenceArms> };
+  /** Its requirement isn't met (yardModel's `unmet`): the Doghouse's dog is on its lead (D-179). */
+  unmet: boolean;
 }
 
 /** One yard piece being laid out. */
@@ -551,7 +607,8 @@ class Yard {
    * Stands an outbuilding's own building (the Treehouse, the Greenhouse, the coop, the Doghouse,
    * the Birdhouse) with its top-left at (x, y), always: it's the piece itself, and no door opens
    * onto an outbuilding, so only its roof rising over the row behind it can meet a door's mat,
-   * which it hides as anything tall in front of it would.
+   * which it hides as anything tall in front of it would. The Doghouse's dog stands the same way
+   * (D-179): it says whether the piece earns, so it always shows, and it stays on the cell.
    */
   stand(sprite: Item['sprite'], x: number, y: number): void {
     this.items.push({ sprite, x, y });
@@ -817,6 +874,12 @@ const LAYOUTS: Partial<Record<PieceId, (y: Yard) => void>> = {
 
   doghouse: (y) => {
     y.stand('own-doghouse', y.box.x + 1, y.box.y + 7);
+    // Its dog (D-179): outside a fenced yard, where the Doghouse earns nothing, it sits on its
+    // lead in the kennel's doorway; in one, it's loose, hopping between the kennel's roof and the
+    // grass by its corner (drawings.ts). Both keep to the cell, clear of the ⚠ at its top left
+    // and the digit at its bottom right.
+    if (y.ctx.unmet) y.stand('own-dog-on-lead', y.box.x + 3, y.box.y + 20);
+    else y.stand('own-dog-loose', y.box.x, y.box.y + 3);
   },
 
   treehouse: (y) => {
@@ -935,48 +998,63 @@ function driveway(y: Yard): void {
 
 /**
  * A Fence: pickets east and west of each cell's middle, the end-on strip north and south of it,
- * out to the cell's edge at the fence's ends, and a post at each end and turn. Its arms join
- * another Fence's where an end of one meets the other (a corner, a T, or end to end), so fences
- * that meet read as one line; side by side along their lengths they stay two. Where two meet
- * end to end, each keeps its end post, so each stays countable. A cell with no arms at all (a
- * one-tile pack, D-106) is a short run across, with a post at each end.
+ * out to the cell's edge at the fence's ends, and a post at each end and turn (fenceArms says
+ * which arms each cell has). Where its line runs on into another Fence there's no post: the
+ * joint of two end to end is plain run, and a turn's post marks a corner or a T. Where it meets
+ * a wall it ends in a post, or turns into it at its middle. A cell with no arms at all (a lone
+ * one-tile pack, D-106) is a short run across, with a post at each end. A corner where it touches
+ * a wall only diagonally gets a post on its edge there and the strip out to that corner.
+ *
+ * Every part is drawn, like an outbuilding's own building (Yard.stand): no door opens onto a
+ * Fence, and an arm that meets a wall under a Bay Window's bay tucks under the bay.
  */
 function fence(y: Yard): void {
-  const { masks } = y.ctx.fence;
-  const mask = (x: number, yy: number) => masks.get(`${x},${yy}`) ?? 0;
+  const all = y.ctx.fence.arms;
   for (const c of y.cells) {
     const X = c.x * CELL;
     const Y = c.y * CELL;
-    const m = mask(c.x, c.y);
+    const a = all.get(`${c.x},${c.y}`) ?? NO_ARMS;
+    // A corner it reaches gets an arm toward its side, out to the edge where the post stands.
+    const spur = (a.corners & (NE | SE) ? E : 0) | (a.corners & (NW | SW) ? W : 0);
+    const m = a.fence | a.wall | spur;
     const n = (m & N) !== 0;
     const e = (m & E) !== 0;
     const s = (m & S) !== 0;
     const w = (m & W) !== 0;
-    const own = ownMask(y.ctx.own, c.x, c.y);
-    // A post at this piece's own end, unless the line runs on into a turn of another Fence
-    // there (that turn's post marks the joint).
-    const endPost = (bit: number, nx: number, ny: number, axis: number) =>
-      !(own & bit) && (!(m & bit) || (mask(nx, ny) & ~axis) === 0);
-    const across = ((e || w) && !n && !s) || m === 0;
-    const upright = (n || s) && !e && !w;
-    // Across: pickets the cell's width, ends out to its edge with a post.
-    if (across || w) y.put('picket-run', X, Y + 8);
-    if (across || e) y.put('picket-run', X + 16, Y + 8);
-    if (across && endPost(W, c.x - 1, c.y, E | W)) y.put('picket-post', X + 1, Y + 8);
-    if (across && endPost(E, c.x + 1, c.y, E | W)) y.put('picket-post', X + 26, Y + 8);
-    // Upright: the strip the cell's height, ends out to its edge with a post.
+    // A post where its line stops at this cell's edge: at nothing, or at a wall. Not where it
+    // runs on into a Fence, nor where it turns to a corner.
+    const post = (bit: number) => !(a.fence & bit) && !(spur & bit);
+    const across = m === 0 || ((e || w) && !n && !s);
+    const upright = !across && !e && !w;
     const strip = (from: number, to: number) => {
-      for (let sy = from; sy < to; sy += 8) y.put('picket-strip', X + 14, Y + sy);
+      for (let sy = from; sy < to; sy += 8) y.stand('picket-strip', X + 14, Y + sy);
     };
-    if (upright) {
+    if (across) {
+      // Pickets the cell's width, out to its edges.
+      y.stand('picket-run', X, Y + 8);
+      y.stand('picket-run', X + 16, Y + 8);
+      if (post(W)) y.stand('picket-post', X + 1, Y + 8);
+      if (post(E)) y.stand('picket-post', X + 26, Y + 8);
+    } else if (upright) {
+      // The strip the cell's height, out to its edges.
       strip(n ? 0 : 16, s ? 32 : 16);
-      if (endPost(N, c.x, c.y - 1, N | S)) y.put('picket-post', X + 14, Y);
-      if (endPost(S, c.x, c.y + 1, N | S)) y.put('picket-post', X + 14, Y + 16);
-    } else if (!across) {
+      if (post(N)) y.stand('picket-post', X + 14, Y);
+      if (post(S)) y.stand('picket-post', X + 14, Y + 16);
+    } else {
       // A turn or a branch: its arms, and a post where they meet.
+      if (w) y.stand('picket-run', X, Y + 8);
+      if (e) y.stand('picket-run', X + 16, Y + 8);
       if (n) strip(0, 8);
       if (s) strip(24, 32);
-      y.put('picket-post', X + 14, Y + 8);
+      y.stand('picket-post', X + 14, Y + 8);
+    }
+    // A corner: a post on the edge where the run reaches it, and the strip on out to the corner,
+    // so it meets the wall's corner there pixel to pixel.
+    for (const k of [NE, SE, SW, NW]) {
+      if (!(a.corners & k)) continue;
+      const cx = k === NE || k === SE ? X + CELL - 5 : X;
+      y.stand('picket-post', cx, Y + 8);
+      y.stand('picket-strip', cx, k === NE || k === NW ? Y : Y + 24);
     }
   }
 }
@@ -985,6 +1063,11 @@ const N = 1;
 const E = 2;
 const S = 4;
 const W = 8;
+/** A Fence cell's corners, for where it touches a wall only diagonally. */
+const NE = 1;
+const SE = 2;
+const SW = 4;
+const NW = 8;
 
 /** Which of a cell's neighbors are its own piece's. */
 function ownMask(own: (x: number, y: number) => boolean, x: number, y: number): number {
@@ -999,29 +1082,98 @@ function ownMask(own: (x: number, y: number) => boolean, x: number, y: number): 
 /** The side opposite `bit`. */
 const opposite = (bit: number) => (bit === N ? S : bit === S ? N : bit === E ? W : E);
 
+/** The four sides, with their steps. */
+const SIDES = [
+  [N, 0, -1],
+  [E, 1, 0],
+  [S, 0, 1],
+  [W, -1, 0],
+] as const;
+/** The four corners, with their steps. */
+const CORNERS = [
+  [NE, 1, -1],
+  [SE, 1, 1],
+  [SW, -1, 1],
+  [NW, -1, -1],
+] as const;
+
+/** A Fence cell: its piece, and which of its neighbors are that piece's (ownMask). */
+interface FenceCell {
+  uid: number;
+  own: number;
+}
+
+/** A Fence cell's arms (fenceArms). */
+export interface FenceArms {
+  /** Into its own piece's cells, and into another Fence's where they join. */
+  fence: number;
+  /** Out to a wall of the house beside it. */
+  wall: number;
+  /** The corners where it touches a wall only diagonally (NE, SE, SW, NW). */
+  corners: number;
+}
+
+const NO_ARMS: FenceArms = { fence: 0, wall: 0, corners: 0 };
+
 /**
- * Every Fence cell's arms on a lot: toward its own piece's cells, and toward another Fence's cell
- * through an end of one of them: the side an end's line runs on into (opposite its own arm). So a
- * corner, a T or two Fences end to end join, and two side by side never close into a pen.
+ * Every Fence cell's arms on a lot (D-159), so the lines meet one another and the house wherever
+ * the rules' fenced-yard fill sees them touch (its walls are the house's tiles and the Fences',
+ * and it stops at the lot's edges), and a yard looks closed exactly when it is:
+ * - Its own piece's cells, and another Fence's cell where an end of one runs on into the other
+ *   (the side opposite its own arm), so a corner, a T or two Fences end to end join; a one-tile
+ *   pack joins every Fence beside it. Two side by side along their lengths stay two, never a pen.
+ * - A wall beside it (`walled`: the house's, or the lot's edge), unless it runs straight past
+ *   that wall and the corridor between them goes on in the next Fence cell both ways (along the
+ *   wall, or round the house's corner): so a line reaches the wall from each of its ends beside
+ *   one, and at each end of a stretch it runs alongside, and the strip between is closed off.
+ * - A corner it touches a wall at (the house, or a Fence) where the two tiles beside both are
+ *   open: the fill can't pass between tiles that touch only at a corner, so neither can the eye.
  */
-function fenceMasks(cells: ReadonlyMap<string, { uid: number; own: number }>): Map<string, number> {
-  const out = new Map<string, number>();
+function fenceArms(
+  cells: ReadonlyMap<string, FenceCell>,
+  walled: (x: number, y: number) => boolean,
+): Map<string, FenceArms> {
   const isEnd = (own: number) => own === N || own === E || own === S || own === W;
+  const at = (x: number, y: number) => `${x},${y}`;
+  const fence = new Map<string, number>();
   for (const [k, f] of cells) {
     const [x, y] = k.split(',').map(Number) as [number, number];
     let m = f.own;
-    for (const [bit, dx, dy] of [
-      [N, 0, -1],
-      [E, 1, 0],
-      [S, 0, 1],
-      [W, -1, 0],
-    ] as const) {
-      const q = cells.get(`${x + dx},${y + dy}`);
+    for (const [bit, dx, dy] of SIDES) {
+      const q = cells.get(at(x + dx, y + dy));
       if (!q || q.uid === f.uid) continue;
-      // This end runs on toward q, or q's end runs on toward this cell.
-      if ((isEnd(f.own) && bit === opposite(f.own)) || (isEnd(q.own) && q.own === bit)) m |= bit;
+      // This end runs on toward q, or q's end toward this cell, or either is a lone tile.
+      if (
+        f.own === 0 ||
+        q.own === 0 ||
+        (isEnd(f.own) && bit === opposite(f.own)) ||
+        (isEnd(q.own) && q.own === bit)
+      )
+        m |= bit;
     }
-    out.set(k, m);
+    fence.set(k, m);
+  }
+  const isWall = (x: number, y: number) => walled(x, y) || cells.has(at(x, y));
+  const out = new Map<string, FenceArms>();
+  for (const k of cells.keys()) {
+    const [x, y] = k.split(',').map(Number) as [number, number];
+    const m = fence.get(k)!;
+    let wall = 0;
+    for (const [p, dx, dy] of SIDES) {
+      if (!walled(x + dx, y + dy)) continue;
+      // Along the wall: the corridor goes on into the next cell if that one's beside the wall
+      // too, or turns toward it (round the house's corner).
+      const goesOn = SIDES.filter(([q]) => q !== p && q !== opposite(p)).every(([q, qx, qy]) => {
+        if (!(m & q)) return false;
+        return walled(x + qx + dx, y + qy + dy) || ((fence.get(at(x + qx, y + qy)) ?? 0) & p) !== 0;
+      });
+      if (!goesOn) wall |= p;
+    }
+    let corners = 0;
+    for (const [c, dx, dy] of CORNERS) {
+      if (isWall(x + dx, y + dy) && !isWall(x + dx, y) && !isWall(x, y + dy)) corners |= c;
+    }
+    out.set(k, { fence: m, wall, corners });
   }
   return out;
 }

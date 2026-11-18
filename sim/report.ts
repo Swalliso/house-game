@@ -10,7 +10,7 @@
 // smaller difference between two sets of runs is noise until more runs, or paired seeds, say
 // otherwise. Kept to about 100 columns for a terminal.
 
-import type { Content } from '../src/rules/index.ts';
+import { SERVICE_NAMES, type Content, type ServiceId } from '../src/rules/index.ts';
 import { SCORE_LABELS } from '../src/content/labels.ts';
 import { BOT_BLIND } from './policies/shop.ts';
 import type { RunRecord } from './simulate.ts';
@@ -237,14 +237,32 @@ export function houseReport(content: Content, records: readonly RunRecord[]): st
       ),
     ],
     [
+      '  Yard pieces by milestone, mean',
+      ...cols((rs) =>
+        rs.length === 0
+          ? '–'
+          : Array.from({ length: phases }, (_, k) =>
+              fix(avgOf(rs.map((r) => r.build.yardByPhase?.[k] ?? 0)), 1),
+            ).join(' '),
+      ),
+    ],
+    [
       '  House-building plays, weeks 17–28',
       ...cols((rs) =>
-        mean(rs, (r) => r.build.late.rooms + r.build.late.arrivals + r.build.late.renovations),
+        mean(
+          rs,
+          (r) =>
+            r.build.late.rooms +
+            r.build.late.arrivals +
+            r.build.late.renovations +
+            (r.build.late.extensions ?? 0),
+        ),
       ),
     ],
     ['    rooms from the hand', ...cols((rs) => mean(rs, (r) => r.build.late.rooms))],
     ["    the arrivals' rooms", ...cols((rs) => mean(rs, (r) => r.build.late.arrivals))],
     ['    Renovations', ...cols((rs) => mean(rs, (r) => r.build.late.renovations))],
+    ['    extensions (D-168)', ...cols((rs) => mean(rs, (r) => r.build.late.extensions ?? 0))],
     [
       '    yard, fixtures, Hallways, passes',
       ...cols((rs) =>
@@ -258,6 +276,7 @@ export function houseReport(content: Content, records: readonly RunRecord[]): st
       ),
     ],
     ['  Renovations per run', ...cols((rs) => mean(rs, (r) => r.build.renovations))],
+    ['  Extensions per run (D-168)', ...cols((rs) => mean(rs, (r) => r.build.extensions ?? 0))],
     ['  Big weeks, median', ...cols((rs) => median(rs, (r) => r.build.bigWeeks))],
     [
       '  Wow from pieces placed in milestones 1–2',
@@ -329,7 +348,35 @@ export function houseReport(content: Content, records: readonly RunRecord[]): st
     }
   }
   if (lines.length > 1) out.push(table(lines));
+  out.push(setsTable(content, records));
   return out.join('\n\n');
+}
+
+/**
+ * D-164: each set type, how often the runs held it: at the last tally (wins, all), its share of
+ * the tallied weeks, the week it first held, and its instances at the end.
+ */
+function setsTable(content: Content, records: readonly RunRecord[]): string {
+  const wins = records.filter((r) => r.result === 'won');
+  const tallies = sumOf(records.map((r) => r.build.tallies));
+  const rows: (string | number)[][] = [
+    ['Set', 'Held at the end (wins)', 'Held at the end (all)', 'Weeks held', 'First held, p50'],
+  ];
+  for (const set of Object.values(content.sets)) {
+    const held = (r: RunRecord) => (r.build.setEnd?.[set.id] ?? 0) > 0;
+    const weeks = sumOf(records.map((r) => r.build.setWeeks?.[set.id] ?? 0));
+    const first = records.flatMap((r) =>
+      r.build.setFirst?.[set.id] ? [r.build.setFirst[set.id]!] : [],
+    );
+    rows.push([
+      `  ${set.name}`,
+      share(wins, held),
+      share(records, held),
+      tallies === 0 ? '–' : `${Math.round((weeks * 100) / tallies)}%`,
+      first.length === 0 ? 'never' : `week ${fix(percentile(first, 50), 0)}`,
+    ]);
+  }
+  return table(rows);
 }
 
 function groupBy<K>(records: readonly RunRecord[], key: (r: RunRecord) => K): Map<K, RunRecord[]> {
@@ -849,7 +896,22 @@ function fenceReport(records: readonly RunRecord[]): string {
       ` ${atLeast2(f.byM4)} of ${f.byM4.length} runs`,
     `  by milestone 4, at least the probe’s count: ${fmtRate(f.covered.k, f.covered.n)}`,
   );
+  out.push(reserveReport(records));
   return out.join('\n');
+}
+
+/**
+ * D-160: reserve cards played per run, by where they came from. The standing stock's and what
+ * the client brought are the ones a bot could leave waiting all run.
+ */
+function reserveReport(records: readonly RunRecord[]): string {
+  const n = Math.max(1, records.length);
+  const per = (k: keyof RunRecord['reservePlays']) =>
+    (sumOf(records.map((r) => r.reservePlays[k])) / n).toFixed(2);
+  return (
+    `Reserve cards played per run: the stock ${per('stock')} · the client’s ${per('client')}` +
+    ` · the crew’s ${per('crew')} · arrivals’ ${per('arrival')} · bought or copied ${per('own')}`
+  );
 }
 
 // ---------------------------------------------------------------------------------------
@@ -866,8 +928,7 @@ function goodName(content: Content, key: string): string {
     crate: content.crates,
     upgrade: content.upgrades,
   };
-  if (kind === 'service')
-    return { reroll: '+1 reroll', demolition: '+1 demolition', strike: 'Strike a card' }[id] ?? id;
+  if (kind === 'service') return SERVICE_NAMES[id as ServiceId] ?? id;
   return table[kind]?.[id]?.name ?? key;
 }
 
@@ -996,32 +1057,39 @@ export function economyReport(content: Content, records: readonly RunRecord[]): 
   return out.join('\n');
 }
 
+/**
+ * D-157's strikes: how many a run used from the hand, bought (+1 strike) and still held at the
+ * end, then each struck type: the runs that struck it, and the week and milestone (p50). A type
+ * struck is gone for the run, so a run strikes it once.
+ */
 function strikesReport(content: Content, records: readonly RunRecord[]): string {
-  const byType = new Map<string, { strikes: number; runs: number; firstShop: number[] }>();
+  const n = Math.max(1, records.length);
+  const used = sumOf(records.map((r) => r.struck.length));
+  const bought = sumOf(records.map((r) => r.economy.bought['service:strike'] ?? 0));
+  const held = sumOf(records.map((r) => r.economy.strikesHeld));
+  const line =
+    `Strikes per run: used ${(used / n).toFixed(2)} · bought ${(bought / n).toFixed(2)}` +
+    ` · held at the end ${(held / n).toFixed(2)}`;
+  const byType = new Map<string, { weeks: number[]; phases: number[] }>();
   for (const r of records) {
-    const seen = new Set<string>();
     for (const s of r.struck) {
-      const t = byType.get(s.type) ?? { strikes: 0, runs: 0, firstShop: [] };
-      t.strikes++;
-      if (!seen.has(s.type)) {
-        seen.add(s.type);
-        t.runs++;
-        t.firstShop.push(s.shop);
-      }
+      const t = byType.get(s.type) ?? { weeks: [], phases: [] };
+      t.weeks.push(s.week);
+      t.phases.push(s.phase + 1);
       byType.set(s.type, t);
     }
   }
-  if (byType.size === 0) return 'Strikes: none bought';
-  const rows: (string | number)[][] = [['Struck type', 'Strikes', 'Runs', 'First at shop (p50)']];
-  for (const [type, t] of [...byType].sort((a, b) => b[1].runs - a[1].runs)) {
+  if (byType.size === 0) return `${line} (none used)`;
+  const rows: (string | number)[][] = [['Struck type', 'Runs', 'Week (p50)', 'Milestone (p50)']];
+  for (const [type, t] of [...byType].sort((a, b) => b[1].weeks.length - a[1].weeks.length)) {
     rows.push([
       typeName(content, type),
-      t.strikes,
-      pct1(t.runs, records.length),
-      rankQuantile(t.firstShop, 50),
+      pct1(t.weeks.length, records.length),
+      rankQuantile(t.weeks, 50),
+      rankQuantile(t.phases, 50),
     ]);
   }
-  return `\n${table(rows)}`;
+  return `${line}\n${table(rows)}`;
 }
 
 function fixturesReport(content: Content, records: readonly RunRecord[]): string {

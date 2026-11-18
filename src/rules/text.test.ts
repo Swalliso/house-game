@@ -90,7 +90,9 @@ describe('card text', () => {
     ]);
     expect(cardText(C, C.pieces.livingRoom)).toEqual({
       effects: ['+2 per touching view (up to 3)'],
-      notes: ['Views: Trees, the Pond, the Creek, Flower Beds, Herb Gardens, and Greenhouses.'],
+      notes: [
+        'Views: Trees, the Pond, the Creek, the Lake, Flower Beds, Herb Gardens, and Greenhouses.',
+      ],
     });
     expect(cardText(C, C.pieces.lawn).effects).toEqual([
       '+1 every week',
@@ -199,6 +201,8 @@ describe('a compact hand card (D-121)', () => {
       henhouse: ['+1 budget every 2nd week'],
       birdhouse: ['+1 per touching Tree (up to 3)'],
       porch: ['+25% to touching rooms'],
+      // D-171: the Architect's card, which only ever waits in Your goods.
+      addition: ['+8 to the room it grows'],
     });
     // Each leads with its number (D-148), so a line cut short still shows what the card pays.
     for (const p of pieces) {
@@ -212,16 +216,16 @@ describe('a compact hand card (D-121)', () => {
       fixtures.map((f) => [f.id, handCardLines(CONTENT, { kind: 'fixture', id: f.id })]),
     );
     expect(shown).toEqual({
-      fireplace: ['Fits any room', 'Earns +50%'],
+      fireplace: ['Fits most rooms', 'Earns +50%'],
       skylight: ['Fits any room', 'Makes it Sunny'],
-      blackoutCurtains: ['Fits any room', 'Makes it Dark'],
+      blackoutCurtains: ['Fits most rooms', 'Makes it Dark'],
       // Who is Loud, and "can’t take points off it", are in Inspect (D-148).
       soundproofing: ['Fits any room', 'Loud neighbors can’t lower it'],
       // What it earns (D-148): "Counts as a Dining Room too" read as an Entertainer or the
       // Hendersons' wish, and it fills neither.
       kitchenIsland: ['Fits a Kitchen', 'Earns +25%'],
       bunkBeds: ['Fits a Bedroom', 'Counts as 2 Bedrooms'],
-      bayWindow: ['Fits an exterior room', 'Gives it a view'],
+      bayWindow: ['Fits most exterior rooms', 'Gives it a view'],
       sprinkler: ['Fits a Lawn', 'Earns +100%'],
       pergola: ['Fits a Patio', 'Gives it a view'],
       gardenLights: ['Fits any yard piece', 'Makes it Pretty'],
@@ -284,12 +288,16 @@ describe('set chips (D-122)', () => {
     expect(setsOfPiece(CONTENT, 'closet')).toEqual(['suite', 'fullHouse']);
     expect(setsOfPiece(CONTENT, 'bedroom')).toEqual(['jackAndJill', 'suite', 'fullHouse']);
     expect(setsOfPiece(CONTENT, 'lKitchen')).toEqual(setsOfPiece(CONTENT, 'kitchen'));
-    expect(setsOfPiece(CONTENT, 'patio')).toEqual([]);
+    // D-164: yard pieces and outbuildings name their yard sets; a Lawn is in three.
+    expect(setsOfPiece(CONTENT, 'patio')).toEqual(['backyard']);
+    expect(setsOfPiece(CONTENT, 'lawn')).toEqual(['backyard', 'dogRun', 'playYard']);
+    expect(setsOfPiece(CONTENT, 'garage')).toEqual(['driveIn', 'fullHouse']);
+    expect(setsOfPiece(CONTENT, 'sapling')).toEqual([]);
   });
 
   it('says what a set needs and pays', () => {
     expect(setText(CONTENT, 'suite')).toBe(
-      'Suite: a Bedroom, a Bathroom, and a Closet, touching. +15 Comfort and +0.5 Charm every week. A house can have more than one.',
+      'Suite: a Bedroom, a Bathroom, and a Closet, touching. +15 Comfort and +0.5 Charm every week. A house can have more than one, each with its own rooms.',
     );
     expect(setText(CONTENT, 'jackAndJill')).toContain(
       '2 Bedrooms and a Bathroom, each touching the Bathroom',
@@ -330,7 +338,7 @@ describe('set chips (D-122)', () => {
     expect(cardText(CONTENT, CONTENT.pieces.driveway).effects).toEqual([
       'Must be built touching the street or a Driveway',
       '+3 if touching a Garage',
-      '+1 every week',
+      '+2 every week in the front yard', // D-166
     ]);
   });
 });

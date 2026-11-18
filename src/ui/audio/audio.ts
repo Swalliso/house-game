@@ -63,7 +63,17 @@ export type SoundId =
   | 'week-start'
   | 'last-week'
   // Life on the lot (D-155): the flock taking off.
-  | 'flap';
+  | 'flap'
+  // A strike from the hand (D-157): a heavier stamp on card stock.
+  | 'strike'
+  // A won run's open house (D-175): the fanfare.
+  | 'run-won'
+  // The Doghouse wakes up (D-179): its dog, let off its lead, barks.
+  | 'bark'
+  // A finished room's lamp coming on (D-181).
+  | 'light-on'
+  // The client at the door (D-182): a thought bubble popping up.
+  | 'bubble';
 
 export interface PlayOptions {
   /** Exact playback rate. Giving one also turns off the random rate and gain spread. */
@@ -140,6 +150,8 @@ const notes = <const T extends readonly number[]>(midi: T) =>
 const [C3, C4, E4, G4, C5, E5, G5, C6, E6, G6, A6, C7, E7, G7] = notes([
   48, 60, 64, 67, 72, 76, 79, 84, 88, 91, 93, 96, 100, 103,
 ]);
+// The open house's fanfare (D-175) walks up A and B to its last C.
+const [A5, B5] = notes([81, 83]);
 
 const one = (params: ZzfxParams): readonly Layer[] => [{ at: 0, params }];
 /** A soft, low-passed triangle note for jingles. */
@@ -306,6 +318,14 @@ const SOUNDS: Record<SoundId, readonly Layer[]> = {
     { at: 0, params: [0.6, 0, 90, 0.001, 0.01, 0.12, 1, 1, -1, , , , , , , , , 0.5, 0.02, , -600] },
     { at: 0, params: [0.2, 0, 500, 0.001, 0, 0.05, 4, 1, , , , , , , , , , 1, , , -1200] },
   ],
+  // A strike from the hand (D-157): the change order's thunk, lower and drier, with a paper snap.
+  strike: [
+    {
+      at: 0,
+      params: [0.65, 0, 75, 0.001, 0.01, 0.14, 1, 1, -1, , , , , , , , , 0.5, 0.02, , -600],
+    },
+    { at: 0, params: [0.22, 0, 420, 0.001, 0, 0.06, 4, 1, , , , , , , , , , 1, , , -1200] },
+  ],
   // Topped out: a quick rising cheer and a ring on top.
   'topped-out': [
     note(0, G4, 0.3, 0.12),
@@ -330,6 +350,45 @@ const SOUNDS: Record<SoundId, readonly Layer[]> = {
   // ---- Life on the lot (D-155) ----
   // The flock taking off: a soft flutter of low-passed noise, a few wingbeats fading out.
   flap: one([0.3, 0, 300, 0.01, 0.16, 0.1, 4, 1, , , , , 0.07, , , , , 0.8, , 0.9, -1100]),
+
+  // ---- A won run's open house (D-175) ----
+  // The fanfare: G G G up to a C chord, then A B up to the held chord with a shimmer on top,
+  // landing about as the look down the street has pulled back.
+  'run-won': [
+    note(0, G5, 0.3, 0.1),
+    note(0.12, G5, 0.3, 0.1),
+    note(0.24, G5, 0.3, 0.1),
+    note(0.36, C6, 0.34, 0.3),
+    note(0.36, E5, 0.2, 0.3),
+    note(0.66, A5, 0.3, 0.1),
+    note(0.78, B5, 0.3, 0.1),
+    note(0.92, C6, 0.36, 0.9),
+    note(0.92, G5, 0.26, 0.9),
+    note(0.92, E5, 0.24, 0.9),
+    { at: 0.97, params: [0.1, 0, C7, 0.005, 0.1, 0.5, 0, 1, , , , , 0.035, , , , , 1, , 0.5] },
+  ],
+
+  // ---- The Doghouse wakes up (D-179) ----
+  // Its dog barks once: a rough, low-passed "ruff" from 460 Hz whose pitch falls by about a
+  // third in its 0.13 s, over a breath of noise at its start.
+  bark: [
+    {
+      at: 0,
+      params: [0.5, 0, 460, 0.004, 0.03, 0.08, 2, 1, -2.5, , , , , 0.35, , , , 0.6, 0.02, , -1400],
+    },
+    { at: 0, params: [0.14, 0, 900, 0.002, 0.01, 0.04, 4, 1, , , , , , , , , , 1, , , -2400] },
+  ],
+
+  // A finished room's lamp coming on (D-181): a switch's click, a small pop, and a warm E.
+  'light-on': [
+    { at: 0, params: [0.3, 0, 1400, 0.001, 0, 0.02, 1, 1, , , , , , , , , , 1, , , -2500] },
+    { at: 0.05, params: [0.3, 0, 400, 0.001, 0.01, 0.06, 4, 1, , , , , , , , , , 1, , , -1500] },
+    note(0.09, E6, 0.22, 0.45),
+  ],
+
+  // ---- The client at the door (D-182) ----
+  // A thought bubble popping up: a quick, soft sine blip that bends upward.
+  bubble: one([0.3, 0, 620, 0.002, 0.01, 0.07, 0, 1, 14, , , , , , , , , 0.6, 0.02]),
 };
 
 export const SOUND_IDS = Object.keys(SOUNDS) as readonly SoundId[];

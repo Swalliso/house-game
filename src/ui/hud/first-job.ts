@@ -12,6 +12,10 @@
 // - Week 4, once the opening's three weeks are played: the client's checklist, and Reroll.
 // - Foundation: budget, overtime, Demolish, and Complete early with its Auto switch. Budget shows
 //   sooner if a find pays some, and overtime if Groundbreaking needs a week of it.
+// - Foundation's second week: Strike (D-157). If Foundation is completed in its first week,
+//   Strike shows from the next milestone without its entrance.
+// - The shop, a shop behind (D-158): the first is the housewarming gift alone, the second has the
+//   shelves any run's first shop has, and from the third it's the whole yard (shopStageOf).
 //
 // No DOM, so it tests in Node. FirstHints.tsx words the opening's hints.
 
@@ -26,7 +30,7 @@ export interface Shown {
   /** The score panel: Comfort × Charm = Wow. */
   score: boolean;
   inspect: boolean;
-  /** The top bar's forecast, beside the target. */
+  /** The top bar's forecast: the meter's pale fill and tick, its number in the meter's tip. */
   forecast: boolean;
   /** The client's panel: tastes, house rules, and wishes. */
   checklist: boolean;
@@ -36,6 +40,8 @@ export interface Shown {
   overtime: boolean;
   /** Complete early, its Auto switch, and its hint. */
   early: boolean;
+  /** D-157: Strike on the plank, and its S key. */
+  strike: boolean;
 }
 
 const EVERYTHING: Shown = {
@@ -48,10 +54,14 @@ const EVERYTHING: Shown = {
   budget: true,
   overtime: true,
   early: true,
+  strike: true,
 };
 
 /** The weeks the opening walks through: the checklist and Reroll come in after them. */
 export const OPENING_WEEKS = 3;
+
+/** Strike arrives in Foundation's second week (D-157): a week after Demolish. */
+export const STRIKE_SLOT = 2;
 
 /** What the build screen shows for run `s`: everything, unless it's the first job. */
 export function shownIn(s: RunState, first: boolean): Shown {
@@ -67,11 +77,59 @@ export function shownIn(s: RunState, first: boolean): Shown {
     budget: founded || s.budget > 0 || s.screen === 'shop',
     overtime: founded || s.overtimeWeek > 0,
     early: founded,
+    strike: s.phase > 1 || (s.phase === 1 && s.slot >= STRIKE_SLOT),
   };
 }
 
 /** What the build screen shows now. */
 export const shown = computed(() => shownIn(run.value, firstJob.value));
+
+/**
+ * How much of the shop a visit shows (D-158). An outside playtester met the whole yard at the
+ * end of week 4, a week after the checklist: "I don't know if I know enough about the game ...
+ * to be let loose in a place with this much possibility".
+ * - gift: the housewarming gift and the way on, nothing for sale.
+ * - basics: the shelves any run's first shop has (blueprints, pieces and fixtures, services).
+ * - full: every shelf the visit stocks.
+ */
+export type ShopStage = 'gift' | 'basics' | 'full';
+
+/**
+ * The first job's shops run a shop behind: its first is the gift alone, its second what any
+ * run's first shop holds, and from its third the whole yard. The goods a stage leaves out are
+ * still in the visit's stock (the rules never know): they just aren't on a shelf. Every other
+ * run, and a shop the ?debug panel opened, shows everything.
+ */
+export function shopStageOf(s: RunState, first: boolean): ShopStage {
+  const visit = s.offers?.shop;
+  if (!first || !visit || visit.forced) return 'full';
+  return visit.number <= 1 ? 'gift' : visit.number === 2 ? 'basics' : 'full';
+}
+
+/** How much of the shop shows now. */
+export const shopStage = computed(() => shopStageOf(run.value, firstJob.value));
+
+/** The shop's shelves, by what they hold. */
+export type ShelfId = 'blueprints' | 'cards' | 'tools' | 'crates' | 'upgrades' | 'services';
+
+const BASIC_SHELVES: ReadonlySet<ShelfId> = new Set(['blueprints', 'cards', 'services']);
+
+/** Whether a stage of the shop has a shelf up (D-158). */
+export function shelfShown(stage: ShopStage, shelf: ShelfId): boolean {
+  return stage === 'full' || (stage === 'basics' && BASIC_SHELVES.has(shelf));
+}
+
+/**
+ * What a staged shop says under what it shows (D-158): where the rest of the yard is, and when
+ * it opens. `next` is the milestone about to start. Nothing for a shop that shows everything.
+ */
+export function stageNote(stage: ShopStage, next: string): string | null {
+  if (stage === 'gift') {
+    return `That’s the yard for now. Its shelves open after ${next}, and your budget keeps until then.`;
+  }
+  if (stage === 'basics') return `Tools, crates and company upgrades arrive after ${next}.`;
+  return null;
+}
 
 /**
  * The part of the screen that arrives this week, for its entrance (first-job.css): a part comes
@@ -85,6 +143,9 @@ export function arrivingIn(s: RunState, first: boolean): ReadonlySet<keyof Shown
   if (s.phase === 1 && s.slot === 1 && s.overtimeWeek === 0) {
     for (const k of ['demolish', 'budget', 'overtime', 'early'] as const) out.add(k);
   }
+  // A Foundation completed in its first week never gets here: Strike then shows from the next
+  // milestone without its entrance (D-157's known gap).
+  if (s.phase === 1 && s.slot === STRIKE_SLOT && s.overtimeWeek === 0) out.add('strike');
   return out;
 }
 

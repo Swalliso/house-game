@@ -1,6 +1,6 @@
 // The shop between milestones (D-051; implementation-plan.md §7, M3a): a section per kind of
 // good with rarity borders and labels, the sale, the rising refresh, the services (rerolls,
-// demolitions, and D-076's strike), and Leave, which starts the next milestone. Selling is in
+// demolitions, and D-157's strikes), and Leave, which starts the next milestone. Selling is in
 // the inventory beside it. The UI never prices anything: the rules' shopOffers() does. Each
 // fixture, on sale or in a crate, says what it's worth in your house (D-107): the rules'
 // fixtureValue() does that. So does each blueprint, the free Housewarming pick included (D-141):
@@ -11,6 +11,10 @@
 // rarity, a coin price, and Buy), a plank tag per section, and full slots said once at each
 // shelf's tag instead of on every card (shelves.ts). Hidden, the shop leaves a handle at the
 // board's foot.
+//
+// The first job's shops run a shop behind (D-158; first-job.ts shopStageOf): its first is the
+// housewarming gift alone, its second has the shelves any run's first shop has, and from its
+// third it's the whole yard. A line under the shelves says what's still to come.
 
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { computed, signal } from '@preact/signals';
@@ -19,7 +23,6 @@ import {
   lastShopText,
   rules,
   type BlueprintId,
-  type CardType,
   type FixtureId,
   type FixtureValue,
   type OfferView,
@@ -32,6 +35,7 @@ import { burstAt } from '../fx/particles.ts';
 import { settings } from '../settings.ts';
 import { shopHidden } from '../hud/actions.ts';
 import { BudgetCount } from '../hud/BudgetCount.tsx';
+import { shelfShown, shopStage, stageNote, type ShelfId } from '../hud/first-job.ts';
 import { TagChips } from '../hud/Hand.tsx';
 import { FixtureArt, PieceArt, ShapeGlyph } from '../hud/PieceArt.tsx';
 import { BLUEPRINT_ICONS, TOOL_ICONS } from '../sprites.ts';
@@ -69,8 +73,6 @@ import {
 } from './shelves.ts';
 import './shop.css';
 
-/** The strike service's picker is open. */
-const striking = signal<number | null>(null);
 /** Offers just bought, for their pop. */
 const justBought = signal<number | null>(null);
 
@@ -106,23 +108,18 @@ const noFocus = (e: MouseEvent) => e.preventDefault();
 const SERVICE_TEXT: Record<ServiceId, string> = {
   reroll: 'One more reroll, to keep. Bought rerolls never run out.',
   demolition: 'One more demolition: clear a piece, a boulder, or something in the way.',
-  strike: 'Pick a card type: it’s never drawn again this run.',
+  strike: 'One more strike, to keep: a hand card’s type, gone for the run.',
 };
 
 const SERVICE_ICON: Record<ServiceId, IconName> = {
   reroll: 'reroll',
   demolition: 'hammer',
-  strike: 'cross',
+  strike: 'strike',
 };
 
 function buyOffer(o: OfferView): void {
   if (!o.ok) {
     audio.play('illegal');
-    return;
-  }
-  if (o.offer.kind === 'service' && o.offer.service === 'strike') {
-    striking.value = o.i;
-    audio.play('select');
     return;
   }
   if (buy(o.i)) {
@@ -236,6 +233,12 @@ function OfferCard({ o, mixed }: { o: OfferView; mixed: boolean }) {
       lines={good ? goodLines(good) : undefined}
       note={service ? SERVICE_TEXT[service] : undefined}
       alert={alert}
+      // D-157: the strikes held, since the hand's plank isn't on screen in the shop.
+      tip={
+        service === 'strike'
+          ? `You hold ${run.value.strikesLeft} ${run.value.strikesLeft === 1 ? 'strike' : 'strikes'}.`
+          : undefined
+      }
       onMouseEnter={() => good && (inspected.value = { kind: 'offer', i: o.i })}
     >
       {o.rarity === 'rare' && <span class="offer-shine" aria-hidden="true" ref={rareRef} />}
@@ -258,7 +261,7 @@ function OfferCard({ o, mixed }: { o: OfferView; mixed: boolean }) {
               onMouseDown={noFocus}
               onClick={() => buyOffer(o)}
               disabled={!o.ok}
-              title={
+              tip={
                 o.ok
                   ? `Buy ${o.name}`
                   : short > 0
@@ -276,6 +279,7 @@ function OfferCard({ o, mixed }: { o: OfferView; mixed: boolean }) {
 }
 
 interface Shelf {
+  id: ShelfId;
   title: string;
   offers: readonly OfferView[];
   term?: Parameters<typeof Tip>[0]['term'];
@@ -284,7 +288,13 @@ interface Shelf {
 }
 
 /** A shelf of one kind of good, with what full slots keep you from buying said at its tag. */
-function Section({ title, offers, term, compact = false, full }: Shelf & { full: ShelfNote[] }) {
+function Section({
+  title,
+  offers,
+  term,
+  compact = false,
+  full,
+}: Omit<Shelf, 'id'> & { full: ShelfNote[] }) {
   if (offers.length === 0) return null;
   const mixed = new Set(offers.map((o) => o.offer.kind)).size > 1;
   return (
@@ -306,70 +316,6 @@ function Section({ title, offers, term, compact = false, full }: Shelf & { full:
         ))}
       </div>
     </section>
-  );
-}
-
-/** D-076: pick a card type to strike from the draws for the rest of the run. */
-function StrikePicker() {
-  const i = striking.value;
-  const s = run.value;
-  if (i === null || s.screen !== 'shop') return null;
-  const options = rules.strikeOptions(s);
-  const offer = rules.shopOffers(s)[i];
-  const close = () => (striking.value = null);
-  const pick = (t: CardType) => {
-    striking.value = null;
-    // The purchase's sound comes with its 'bought' event, as for any good (director.ts).
-    buy(i, t);
-  };
-  const name = (t: CardType) =>
-    t.kind === 'piece' ? CONTENT.pieces[t.id].name : CONTENT.fixtures[t.id].name;
-  const pieces = options.filter((t) => t.kind === 'piece');
-  const fixtures = options.filter((t) => t.kind === 'fixture');
-  const struck = s.struck.map(name);
-  return (
-    <div class="shop-scrim" role="dialog" aria-label="Strike a card type">
-      <Panel
-        class="shop-pick strike-sheet"
-        title={
-          <>
-            Strike a card <Price price={offer?.price ?? 0} />
-          </>
-        }
-      >
-        <div class="pick-scroll">
-          <p class="pick-note">
-            It’s never drawn again this run. Shape variants go with it (Kitchen takes the
-            L-Kitchen).
-          </p>
-          <h3 class="plank-tag">Pieces</h3>
-          <div class="strike-options">
-            {pieces.map((t) => (
-              <Button key={t.id} size="sm" onClick={() => pick(t)}>
-                {name(t)}
-              </Button>
-            ))}
-          </div>
-          {fixtures.length > 0 && (
-            <>
-              <h3 class="plank-tag">Fixtures</h3>
-              <div class="strike-options">
-                {fixtures.map((t) => (
-                  <Button key={t.id} size="sm" onClick={() => pick(t)}>
-                    {name(t)}
-                  </Button>
-                ))}
-              </div>
-            </>
-          )}
-          {struck.length > 0 && <p class="pick-note">Already struck: {struck.join(', ')}.</p>}
-        </div>
-        {/* Out of the scrolling part, so Cancel shows on any window. */}
-        <div class="pick-foot">
-          <Button onClick={close}>Cancel</Button>
-        </div>
-      </Panel>
-    </div>
   );
 }
 
@@ -420,7 +366,7 @@ function CrateOption({
           size="sm"
           class="buy"
           disabled={!ok}
-          title={ok ? `Keep ${goodName(good)}` : 'No room: sell something first'}
+          tip={ok ? `Keep ${goodName(good)}` : 'No room: sell something first'}
           onClick={() => (pickOption(i) ? audio.play('buy') : audio.play('illegal'))}
         >
           Keep
@@ -469,6 +415,14 @@ function CrateLid({ best }: { best: 'common' | 'uncommon' | 'rare' }) {
 }
 
 /**
+ * The housewarming gift's line: a new player's first blueprint, so it says what one is. An
+ * outside playtester read the word as "a thing I would build" (D-158).
+ */
+export const GIFT_NOTE =
+  'Free: keep one. A blueprint is a bonus that stays on for the whole run; you don’t build it.';
+const CRATE_NOTE = 'Keep one. Sell from your goods on the right to make room.';
+
+/**
  * An opened crate (or the Housewarming gift): its options turn over one at a time, each with
  * a glow by rarity (§12, Shop and crates), and one can be kept. Sell first to make room.
  */
@@ -490,10 +444,7 @@ function CratePickSheet() {
       : 'common';
   const lidMs = FEEL.moments.crateShakeMs;
   const lidKey = open.options.map((o) => o.id).join(',');
-  const detail =
-    open.source === 'housewarming'
-      ? 'Free: keep one Common blueprint, to start your rule book.'
-      : 'Keep one. Sell from your goods on the right to make room.';
+  const detail = open.source === 'housewarming' ? GIFT_NOTE : CRATE_NOTE;
   return (
     <div class="shop-scrim" role="dialog" aria-label={title}>
       <Panel
@@ -547,7 +498,7 @@ function ShopHandle() {
         variant="wood"
         class="shop-handle"
         onClick={() => (shopHidden.value = false)}
-        title="The shop is still open"
+        tip="The shop is still open"
       >
         <span aria-hidden="true">↑</span> Back to the shop
       </Button>
@@ -568,14 +519,24 @@ export function ShopScreen() {
   const leaveLabel = visit.forced ? `Back to week ${s.slot}` : `Start ${next}`;
   const of = (kind: OfferView['offer']['kind']) => offers.filter((o) => o.offer.kind === kind);
   const cards = offers.filter((o) => o.offer.kind === 'piece' || o.offer.kind === 'fixture');
-  const shelves: Shelf[] = [
-    { title: 'Blueprints', offers: of('blueprint'), term: 'blueprints' },
-    { title: 'Pieces and fixtures', offers: cards, term: 'fixture' },
-    { title: 'Tools', offers: of('tool'), term: 'tools' },
-    { title: 'Crates', offers: of('crate'), term: 'crates' },
-    { title: 'Company upgrade', offers: of('upgrade'), term: 'upgrades' },
-    { title: 'Services', offers: of('service'), term: 'services', compact: true },
+  // The first job's shops (D-158): the gift alone, then a first shop's shelves, then all of it.
+  const stage = shopStage.value;
+  const every: Shelf[] = [
+    { id: 'blueprints', title: 'Blueprints', offers: of('blueprint'), term: 'blueprints' },
+    { id: 'cards', title: 'Pieces and fixtures', offers: cards, term: 'fixture' },
+    { id: 'tools', title: 'Tools', offers: of('tool'), term: 'tools' },
+    { id: 'crates', title: 'Crates', offers: of('crate'), term: 'crates' },
+    { id: 'upgrades', title: 'Company upgrade', offers: of('upgrade'), term: 'upgrades' },
+    {
+      id: 'services',
+      title: 'Services',
+      offers: of('service'),
+      term: 'services',
+      compact: true,
+    },
   ];
+  const shelves = every.filter((shelf) => shelfShown(stage, shelf.id));
+  const later = stageNote(stage, next);
   const full = shelfReasons(shelves.map((shelf) => shelf.offers));
   const skip = CONTENT.balance.shop.skipReward;
   // The shop before the last phase (D-148): what budget kept past it is worth, from the rules.
@@ -599,22 +560,25 @@ export function ShopScreen() {
           <BudgetCount value={s.budget} quiet />
         </div>
         <div class="shop-tools">
-          <Button
-            icon="reroll"
-            onMouseDown={noFocus}
-            onClick={refreshOnce}
-            disabled={!refresh.ok}
-            title={refresh.ok ? 'New goods (not the services)' : refresh.reason}
-          >
-            <Tip term="refresh">Refresh</Tip>
-            <Price price={refresh.price} short={!refresh.ok && refresh.price > s.budget} />
-          </Button>
+          {/* Nothing to refresh while the gift is the whole shop (D-158). */}
+          {stage !== 'gift' && (
+            <Button
+              icon="reroll"
+              onMouseDown={noFocus}
+              onClick={refreshOnce}
+              disabled={!refresh.ok}
+              tip={refresh.ok ? 'New goods (not the services)' : refresh.reason}
+            >
+              <Tip term="refresh">Refresh</Tip>
+              <Price price={refresh.price} short={!refresh.ok && refresh.price > s.budget} />
+            </Button>
+          )}
           <Button
             icon="fit"
             class="shop-look"
             onMouseDown={noFocus}
             onClick={() => (shopHidden.value = true)}
-            title="Hide the shop to look at the lot (it stays open)"
+            tip="Hide the shop to look at the lot (it stays open)"
             aria-label="Look at the lot"
           >
             <span class="shop-look-text">Look at the lot</span>
@@ -622,12 +586,17 @@ export function ShopScreen() {
         </div>
       </header>
       <Notes docked />
-      <div class="panel-body shop-body">
+      <div class={`panel-body shop-body ${stage === 'gift' ? 'gift-only' : ''}`}>
         <div class="shelves">
-          {shelves.map((shelf, k) => (
-            <Section key={shelf.title} {...shelf} full={full[k]!} />
+          {shelves.map(({ id, ...shelf }, k) => (
+            <Section key={id} {...shelf} full={full[k]!} />
           ))}
         </div>
+        {later && (
+          <p class={`shop-later ${stage}`} role="note">
+            {later}
+          </p>
+        )}
       </div>
       {lastShop && (
         <p class="shop-last">
@@ -637,18 +606,21 @@ export function ShopScreen() {
       )}
       {/* Leaving is the sheet's one primary action, at its foot like End week's (D-087). */}
       <footer class="shop-foot">
-        <p class="shop-foot-hint">
-          <span class="hint-long">Sell from your goods on the right </span>
-          <span class="hint-short">Sell on the right </span>
-          <span aria-hidden="true">→</span>
-        </p>
+        {/* With the gift alone there's nothing worth selling yet (D-158). */}
+        {stage !== 'gift' && (
+          <p class="shop-foot-hint">
+            <span class="hint-long">Sell from your goods on the right </span>
+            <span class="hint-short">Sell on the right </span>
+            <span aria-hidden="true">→</span>
+          </p>
+        )}
         <Button
           variant="primary"
           size="lg"
           class="leave"
           onMouseDown={noFocus}
           onClick={() => leaveShop()}
-          title={visit.boughtAny ? leaveLabel : `${leaveLabel}, and +${skip} budget for saving up`}
+          tip={visit.boughtAny ? leaveLabel : `${leaveLabel}, and +${skip} budget for saving up`}
         >
           {leaveLabel}
           {!visit.boughtAny && skip > 0 && (
@@ -660,7 +632,6 @@ export function ShopScreen() {
           )}
         </Button>
       </footer>
-      <StrikePicker />
       <CratePickSheet />
     </section>
   );

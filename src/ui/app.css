@@ -25,10 +25,10 @@ body {
 }
 
 /* The plain button, for what the kit doesn't draw (the crash card, the debug panel, the board's
-   camera buttons). The kit's buttons, cards, slots and segments (kit.css), and the checklist's
-   fold rows (hud/checklist.css), draw every state of their own, so these rules leave them
-   alone: :where() keeps each at the specificity it had. */
-button:where(:not(.btn, .pcard, .inv-slot, .seg, .check-fold)),
+   camera buttons). The kit's buttons, cards, slots and segments (kit.css), the checklist's fold
+   rows (hud/checklist.css) and How to play's section planks (screens/howto.css) draw every state
+   of their own, so these rules leave them alone: :where() keeps each at the specificity it had. */
+button:where(:not(.btn, .pcard, .inv-slot, .seg, .check-fold, .howto-fold)),
 .button {
   font: inherit;
   font-size: 14px;
@@ -44,20 +44,22 @@ button:where(:not(.btn, .pcard, .inv-slot, .seg, .check-fold)),
 }
 /* The plain button's hover. :where() keeps it at the base rule's specificity, so a variant's
    own fill always wins: a hover never replaces it. */
-button:where(:not(.btn, .pcard, .inv-slot, .seg, .check-fold)):where(:hover:not(:disabled)),
+button:where(:not(.btn, .pcard, .inv-slot, .seg, .check-fold, .howto-fold)):where(
+    :hover:not(:disabled)
+  ),
 .button:where(:hover) {
   background: #fff3df;
 }
-button:where(:not(.btn, .pcard, .inv-slot, .seg, .check-fold)):active:not(:disabled) {
+button:where(:not(.btn, .pcard, .inv-slot, .seg, .check-fold, .howto-fold)):active:not(:disabled) {
   transform: translateY(1px);
   border-bottom-width: 2px;
 }
-button:where(:not(.btn, .pcard, .inv-slot, .seg, .check-fold)):disabled {
+button:where(:not(.btn, .pcard, .inv-slot, .seg, .check-fold, .howto-fold)):disabled {
   opacity: 0.45;
   cursor: default;
 }
 /* Focus is an ink ring with gold inside it, on paper and on wood alike. */
-button:where(:not(.btn, .pcard, .inv-slot, .seg, .check-fold)):focus-visible,
+button:where(:not(.btn, .pcard, .inv-slot, .seg, .check-fold, .howto-fold)):focus-visible,
 .button:focus-visible {
   outline: var(--px) solid var(--focus-outer);
   outline-offset: 0;
@@ -228,21 +230,14 @@ button:where(:not(.btn, .pcard, .inv-slot, .seg, .check-fold)):focus-visible,
   min-height: 0;
   max-height: calc(100% - var(--first-hint-room, 0px) - var(--space-2));
 }
-/* Under 1000 px tall (D-098, amended 2026-11-08), the score panel's sets fold into one row
-   (ScorePanel.tsx SetsFold), the whole list in its tip, so late in a run the checklist keeps its
-   room: the list took up to 612 px of a 1280×720 column's 656. While a play is looked at, the
-   panel keeps to its equation (2026-11-09: the list came back between 800 and 1000 px, and late
-   in a run pushed Inspect's total below a 1536×864 window): Inspect's notes say which sets,
-   checklist lines and budget the play would change, and the checklist marks the lines. With
-   nothing looked at, the idle Inspect gives way first, down to its plank (its body scrolls). */
+/* The score panel is its equation at rest and while a play is looked at, its sets' and
+   checklist's rows only in a tally (D-167, score.css; before it, the sets folded into one row
+   under 1000 px tall, D-098's 2026-11-08 change). Under 1000 px tall, while a play is looked at,
+   its budget line goes too (2026-11-09: late in a run it pushed Inspect's total below a
+   1536×864 window): Inspect's notes say which sets, checklist lines and budget the play would
+   change, and the checklist marks the lines. With nothing looked at, the idle Inspect gives way
+   first, down to its plank (its body scrolls). */
 @media (height < 1000px) {
-  .score-panel .sets-full {
-    display: none;
-  }
-  .score-panel .sets-fold {
-    display: block;
-  }
-  .left.looking .score-detail,
   .left.looking .score-panel .budget-line {
     display: none;
   }

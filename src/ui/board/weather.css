@@ -1,0 +1,94 @@
+/* A change order's weather (WeatherLayer.tsx, D-180): the rain on the weather's layer, over the
+   tree tops and under the highlights, the labels and the ghost, and the puddles on theirs, on the
+   paving under what stands there (board/layers.ts). Each box is the lot's, and clips, so nothing
+   in it makes the view scroll further, and none of it takes the pointer. */
+
+.board > .weather,
+.board > .puddles {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: clip;
+  pointer-events: none;
+}
+.board > .weather {
+  z-index: var(--z-weather);
+  animation: weather-in var(--weather-in) ease-out both;
+}
+.board > .puddles {
+  z-index: var(--z-puddles);
+}
+@keyframes weather-in {
+  from {
+    opacity: 0;
+  }
+}
+/* It stops at the milestone: the rain and the puddles fade out together. */
+.board > .weather.leaving,
+.board > .puddles.leaving {
+  animation: weather-out var(--weather-out) ease-in both;
+}
+@keyframes weather-out {
+  to {
+    opacity: 0;
+  }
+}
+
+/* A sheet of streaks, its tile repeated, stepping down and to the left a whole art px or two at
+   a time (its steps() and duration are set in WeatherLayer.tsx). Transform only, so the
+   compositor runs it; a tile's width in steps brings it round to where it began. */
+.rain-sheet {
+  position: absolute;
+  left: 0;
+  background-repeat: repeat;
+  image-rendering: pixelated;
+  will-change: transform;
+  animation-name: rain-fall;
+  animation-iteration-count: infinite;
+}
+@keyframes rain-fall {
+  to {
+    transform: translate(var(--rain-x), var(--rain-y));
+  }
+}
+
+/* A puddle fades in on a Patio the rain has just zeroed; its frames, side by side, step left one
+   at a time inside it, as a drop lands. */
+.puddle {
+  position: absolute;
+  overflow: hidden;
+  animation: puddle-in var(--puddle-in) ease-out both;
+}
+@keyframes puddle-in {
+  from {
+    opacity: 0;
+  }
+}
+.puddle-frames {
+  image-rendering: pixelated;
+  animation-name: puddle-frames;
+  animation-iteration-count: infinite;
+}
+@keyframes puddle-frames {
+  to {
+    transform: translateX(var(--puddle-frames));
+  }
+}
+
+/* Reduce motion: no rain is drawn at all (WeatherLayer.tsx), and a puddle lies still, in its
+   first frame, as it comes and goes. */
+.reduce-motion .puddle,
+.reduce-motion .puddle-frames,
+.reduce-motion .board > .puddles.leaving {
+  animation: none;
+}
+
+/* Under the shop's sheet or a change order's, it all holds still, as the lot's life does: rain
+   that starts as the change order's sheet closes waits under the shop to fade in. */
+.board.covered > .weather,
+.board.covered > .weather > .rain-sheet,
+.board.covered > .puddles,
+.board.covered > .puddles > .puddle,
+.board.covered > .puddles .puddle-frames {
+  animation-play-state: paused;
+}

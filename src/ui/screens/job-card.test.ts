@@ -5,6 +5,8 @@
 import { describe, expect, it } from 'vitest';
 import { CONTENT, modifierText, specText } from '../../rules/index.ts';
 import {
+  deliveryLine,
+  deliveryTip,
   helps,
   householdLine,
   householdTip,
@@ -36,6 +38,21 @@ describe("a card's household line", () => {
   });
 });
 
+describe('what a client brings for a wish (D-160)', () => {
+  it('is a line of its own on Dale’s and the Barkers’ cards, with the verb their number takes', () => {
+    expect(deliveryLine(dale)).toBe('Dale brings a Home Office');
+    expect(deliveryLine(CONTENT.clients.barkers)).toBe('The Barkers bring a Doghouse');
+    for (const client of [hendersons, vladislav, juniper]) expect(deliveryLine(client)).toBeNull();
+  });
+
+  it('says when in its tip, as an arrival’s does, and where it waits', () => {
+    const lines = deliveryTip(dale).split('\n');
+    expect(lines[0]).toBe(`Groundbreaking (week 1): ${dale.deliveries![0]!.text}`);
+    expect(lines[1]).toMatch(/reserve/);
+    expect(lines).toHaveLength(2);
+  });
+});
+
 describe("a card's tastes", () => {
   it('are counted: likes, dislikes, and what the draw has more of', () => {
     expect(tasteCounts(hendersons)).toEqual({ likes: 2, dislikes: 1, draws: 1 });
@@ -56,7 +73,7 @@ describe("a card's tastes", () => {
 });
 
 describe('the house rules a client has in numbers of their own', () => {
-  it('are Juniper’s Under one roof, for 4–8 rooms, and no one else’s', () => {
+  it('are Juniper’s A compact house, for 4–8 rooms, and no one else’s', () => {
     expect(ownHouseRules(juniper).map((s) => s.id)).toEqual(['underOneRoof']);
     for (const client of [hendersons, vladislav, dale, CONTENT.clients.barkers]) {
       expect(ownHouseRules(client)).toEqual([]);

@@ -14,16 +14,15 @@ import {
   rules,
   shapeCells,
   type Action,
-  type CardType,
   type Cell,
   type DebugAction,
   type DemolishPreview,
   type EarlyOffer,
+  type ExtendAction,
   type GameEvent,
   type InstallAction,
   type InstallGain,
   type Play,
-  type RenovateAction,
   type PieceId,
   type FixtureId,
   type PlaceAction,
@@ -33,6 +32,7 @@ import {
   type RunSetup,
   type RunState,
   type SellAction,
+  type StrikePreview,
   type ToolId,
   type ToolPreview,
   type UseToolAction,
@@ -214,10 +214,28 @@ export const crash = signal<{ message: string; stack?: string; action?: Action }
 // ---------------------------------------------------------------------------------------
 // What the player is doing this week.
 
-/** What a click on the lot does: build the selected card, or demolish (a free action). */
-export const tool = signal<'build' | 'demolish'>('build');
+/**
+ * What the player is doing: build the selected card, demolish, or strike a hand card (D-157);
+ * the last two are free actions.
+ */
+export const tool = signal<'build' | 'demolish' | 'strike'>('build');
 /** In demolish mode, the tile clicked once: a second click (or Demolish) confirms. */
 export const demolishArmed = signal<Cell | null>(null);
+/** In strike mode (D-157), the hand card clicked once: a second click (or its key) strikes it. */
+export const strikeArmed = signal<number | null>(null);
+/** In strike mode, what striking each hand card would do (the rules' previewStrike); else none. */
+export const strikeViews = computed<readonly StrikePreview[]>(() => {
+  const s = run.value;
+  if (tool.value !== 'strike' || s.screen !== 'build') return [];
+  return s.hand.map((_, i) => rules.previewStrike(s, i));
+});
+/**
+ * How many types were struck when this week's hand was dealt (D-157): whether the struck types
+ * bring Your goods in (inventory-rows.ts). Taken as a new week's hand is dealt, as a run loads
+ * or replays, and as one starts; never on a reroll or a strike, so a strike never brings the
+ * panel in mid-week, pushing the hand down under its stamp. The next week's hand does.
+ */
+export const struckAtDeal = signal(0);
 
 /** Where the selected item comes from: a hand card, a reserve piece, or a supply. */
 export type Source = 'hand' | 'reserve' | 'supplies';
@@ -228,10 +246,24 @@ export const rotation = signal<Rot>(0);
 /** The lot cell under the pointer. */
 export const hoverCell = signal<Cell | null>(null);
 /**
- * A placement (or a hand install, or a Renovation) waiting for End week (D-036): a tap places
- * tentatively. A pack (D-106) grows here a tile per click.
+ * D-168: where in its cell the pointer is, in quarter cells (0–3 across and down), so pointing
+ * at a room picks the side it grows toward. Only the board's pointer sets it.
  */
-export const tentative = signal<PlaceAction | InstallAction | RenovateAction | null>(null);
+export const hoverQuarter = signal<{ x: number; y: number }>({ x: 2, y: 2 });
+/**
+ * A placement (or a hand install, a Renovation, or an extension) waiting for End week (D-036):
+ * a tap places tentatively. A pack (D-106) grows here a tile per click.
+ */
+export const tentative = signal<NonNullable<Play> | null>(null);
+/**
+ * D-163: the play waiting doesn't end the week: a piece from Your goods (placed, renovating, or
+ * extending a room), or Weekend Crew's next card. End week reads Build then, and builds it at once.
+ */
+export const pendingFree = computed(() => {
+  const play = tentative.value;
+  const s = run.value;
+  return !!play && s.screen === 'build' && !rules.endsWeek(s, play);
+});
 /** A supply install's first click: a second click on the same piece installs it (D-073). */
 export const installArmed = signal<number | null>(null);
 /** The Moving Truck: the piece picked up to move, by uid. */
@@ -254,7 +286,7 @@ effect(() => {
   if (uid === null) return;
   const s = run.value;
   const gone = !s.house.pieces.some((p) => p.uid === uid);
-  if (gone || s.screen !== 'build' || selected.value !== null || tool.value === 'demolish') {
+  if (gone || s.screen !== 'build' || selected.value !== null || tool.value !== 'build') {
     heldPiece.value = null;
   }
 });
@@ -267,7 +299,7 @@ effect(() => {
  */
 export const heldNeighbor = signal<string | null>(null);
 effect(() => {
-  if (heldNeighbor.value !== null && (selected.value !== null || tool.value === 'demolish')) {
+  if (heldNeighbor.value !== null && (selected.value !== null || tool.value !== 'build')) {
     heldNeighbor.value = null;
   }
 });
@@ -323,6 +355,48 @@ export const renovateUids = computed<readonly number[]>(() => {
   if (!sel || sel.kind !== 'piece' || run.value.screen !== 'build') return [];
   return rules.renovateTargets(run.value, sel.from, sel.i);
 });
+
+/** D-168: the rooms the selected card can extend now: its type, with open ground beside them. */
+export const extendUids = computed<readonly number[]>(() => {
+  const sel = selection.value;
+  if (!sel || sel.kind !== 'piece' || run.value.screen !== 'build') return [];
+  return rules.extendTargets(run.value, sel.from, sel.i);
+});
+
+/**
+ * D-168: the extension the pointer means over room `uid`: of the card's spots beside it, the one
+ * nearest the pointer, so the room grows toward the side pointed at. The card's turn (R) picks
+ * between spots near enough alike (a Living Room card along a wall or across it).
+ */
+function extendToward(
+  card: { id: PieceId; from: 'hand' | 'reserve'; i: number },
+  uid: number,
+  cell: Cell,
+): ExtendAction | null {
+  const spots = rules.extendSpots(run.value, card.from, card.i, uid);
+  if (spots.length === 0) return null;
+  const q = hoverQuarter.value;
+  const px = cell.x + (q.x + 0.5) / 4;
+  const py = cell.y + (q.y + 0.5) / 4;
+  const def = CONTENT.pieces[card.id];
+  let best: ExtendAction | null = null;
+  let bestD = Infinity;
+  for (const spot of spots) {
+    const cells = placedCells(def.shape, spot.x, spot.y, spot.rot);
+    let cx = 0;
+    let cy = 0;
+    for (const c of cells) {
+      cx += c.x + 0.5;
+      cy += c.y + 0.5;
+    }
+    cx /= cells.length;
+    cy /= cells.length;
+    // Turned as the card is: preferred, by most of a tile.
+    const d = Math.hypot(cx - px, cy - py) + (spot.rot === rotation.value ? 0 : 0.75);
+    if (d < bestD) [best, bestD] = [spot, d];
+  }
+  return best;
+}
 
 /**
  * D-107: while a fixture is selected (hand or supplies), every legal host with what installing
@@ -398,6 +472,11 @@ export const activePlay = computed<Play>(() => {
   // the card leaves the pointer's cell empty (an L's notch) and fits there: that places it
   // beside the room.
   const under = covers || !rules.checkPlay(run.value, place).legal ? pieceAt(run.value, cell) : 0;
+  // D-168: over a room of its type that can grow, the card extends it, toward the pointer.
+  if (under && extendUids.value.includes(under)) {
+    const spot = extendToward(sel, under, cell);
+    if (spot) return spot;
+  }
   if (under && renovateUids.value.includes(under)) {
     return { t: 'renovate', from: sel.from, i: sel.i, uid: under };
   }
@@ -408,8 +487,31 @@ export const activePlay = computed<Play>(() => {
       return { t: 'renovate', from: sel.from, i: sel.i, uid: under };
     }
   }
+  // D-168: over a room of its type that can't grow, the rules say why (pointing at the room
+  // itself: as big as it gets, or no open ground beside it).
+  const room = under ? run.value.house.pieces.find((p) => p.uid === under) : undefined;
+  if (room && growsType(sel.id, room.defId)) {
+    return { t: 'extend', from: sel.from, i: sel.i, uid: under, x: room.x, y: room.y, rot: 0 };
+  }
   return place;
 });
+
+/**
+ * D-168: whether a card of this piece could grow a room of that one (its type, extendable).
+ * D-171: an Addition grows a room of any extendable type.
+ */
+function growsType(card: PieceId, room: PieceId): boolean {
+  const def = CONTENT.pieces[card];
+  const root = def.countsAs ?? def.id;
+  const r = CONTENT.pieces[room];
+  if (def.addition) return CONTENT.balance.extend.types.includes(r.countsAs ?? r.id);
+  return (
+    !def.member &&
+    def.category === 'indoor' &&
+    CONTENT.balance.extend.types.includes(root) &&
+    (r.countsAs ?? r.id) === root
+  );
+}
 
 /**
  * What a click on the tile under the pointer would do to a pack being clicked out (D-106), for
@@ -527,18 +629,34 @@ export const cardsRenovate = computed(() =>
   run.value.hand.map((_, i) => rules.renovateTargets(run.value, 'hand', i).length > 0),
 );
 
+/** Which hand cards have a spot on the lot (D-165: a card whose type is capped has none). */
+export const cardsPlace = computed(() =>
+  run.value.hand.map((_, i) => rules.cardFits(run.value, i)),
+);
+/** D-168: which hand cards can extend a room now: they show an Extend chip. */
+export const cardsExtend = computed(() =>
+  run.value.hand.map((_, i) => rules.extendTargets(run.value, 'hand', i).length > 0),
+);
+
 /**
- * Which cards have somewhere to go, for greying out the rest: a spot, or a room to renovate
- * (a renovate-only card still doesn't count for the free redraw, D-070).
+ * Which cards have somewhere to go, for greying out the rest: a spot, a room to renovate (a
+ * renovate-only card still doesn't count for the free redraw, D-070), or one to extend (D-168).
  */
 export const cardsFit = computed(() =>
-  run.value.hand.map((_, i) => rules.cardFits(run.value, i) || !!cardsRenovate.value[i]),
+  run.value.hand.map(
+    (_, i) => !!cardsPlace.value[i] || !!cardsRenovate.value[i] || !!cardsExtend.value[i],
+  ),
 );
-/** The same for reserve pieces and supplies. */
+/** The same for reserve pieces: a spot, then a spot, a room to renovate, or one to extend. */
+export const reservePlace = computed(() =>
+  run.value.reserve.map((_, i) => rules.reserveFits(run.value, i)),
+);
 export const reserveFit = computed(() =>
   run.value.reserve.map(
     (_, i) =>
-      rules.reserveFits(run.value, i) || rules.renovateTargets(run.value, 'reserve', i).length > 0,
+      !!reservePlace.value[i] ||
+      rules.renovateTargets(run.value, 'reserve', i).length > 0 ||
+      rules.extendTargets(run.value, 'reserve', i).length > 0,
   ),
 );
 export const suppliesFit = computed(() =>
@@ -713,6 +831,7 @@ function resetWeek(): void {
   toolArmed.value = null;
   rotation.value = 0;
   demolishArmed.value = null;
+  strikeArmed.value = null;
   tool.value = 'build';
 }
 
@@ -764,6 +883,8 @@ export function startRun(
     log.value = result.failedAt === undefined ? actions : actions.slice(0, result.failedAt);
     resetWeek();
     inspected.value = null;
+    // A run loaded, replayed or started: its hand as dealt (D-157).
+    struckAtDeal.value = result.state.struck.length;
     // Another run takes the first job's place (D-149): the first job is behind this browser.
     if (firstJobSeed.value !== null && firstJobSeed.value !== result.state.setup.seed) {
       setFirstJob(null);
@@ -853,13 +974,17 @@ export function dispatch(action: Action, opts: { keepWeek?: boolean } = {}): boo
     log.value = [...log.value, action];
     if (opts.keepWeek) {
       // A free action keeps the card being placed, unless the list it came from changed: a
-      // reroll redraws the whole hand (D-132).
+      // reroll redraws the whole hand (D-132); a strike (D-157) replaces its type's cards, and
+      // the placement of one of them goes with it.
+      const struck = result.events.find((e) => e.t === 'cardStruck');
+      const replaced = struck?.t === 'cardStruck' ? struck.slots.map((x) => x.i) : [];
       const changed =
         action.t === 'reroll' ||
         action.t === 'debug' ||
         action.t === 'sell' ||
         action.t === 'useTool' ||
-        (action.t === 'install' && action.from === 'supplies');
+        (action.t === 'install' && action.from === 'supplies') ||
+        (source.value === 'hand' && selected.value !== null && replaced.includes(selected.value));
       if (changed) {
         selected.value = null;
         source.value = 'hand';
@@ -871,8 +996,17 @@ export function dispatch(action: Action, opts: { keepWeek?: boolean } = {}): boo
       movingUid.value = null;
       toolArmed.value = null;
       demolishArmed.value = null;
+      strikeArmed.value = null;
+      // Inspect lets go of a card a strike replaced.
+      const seen = inspected.value;
+      if (seen?.kind === 'card' && replaced.includes(seen.i)) inspected.value = null;
     } else {
       resetWeek();
+    }
+    // A new week's hand (D-157): whether struck types bring Your goods in is read from here on.
+    // Not a reroll's, nor the Catalog's mid-week hand.
+    if (result.events.some((e) => e.t === 'handDrawn' && !e.reroll && !e.special)) {
+      struckAtDeal.value = result.state.struck.length;
     }
   });
   save();
@@ -885,6 +1019,16 @@ export function dispatch(action: Action, opts: { keepWeek?: boolean } = {}): boo
 /** Redraws the whole hand, both rows (D-132). */
 export function reroll(): boolean {
   return dispatch({ t: 'reroll' }, { keepWeek: true });
+}
+
+/** D-157: strikes hand card i: its type is gone for the run, a card from its row takes its place. */
+export function strikeCard(i: number): boolean {
+  const ok = dispatch({ t: 'strikeCard', i }, { keepWeek: true });
+  if (ok) {
+    tool.value = 'build';
+    strikeArmed.value = null;
+  }
+  return ok;
 }
 
 export function demolishAt(x: number, y: number): boolean {
@@ -926,8 +1070,9 @@ export function pickOption(i: number): boolean {
 
 // The shop (D-051).
 
-export function buy(i: number, strike?: CardType): boolean {
-  return dispatch(strike ? { t: 'buy', i, strike } : { t: 'buy', i });
+/** Buys shop offer i. The strike service is +1 strike, used from the hand (D-157). */
+export function buy(i: number): boolean {
+  return dispatch({ t: 'buy', i });
 }
 
 export function refreshShop(): boolean {
@@ -1135,8 +1280,9 @@ export function loadRunCode(code: string): boolean {
     notes.push(`It stopped replaying at action ${failedAt + 1}: ${error}`);
   else notes.push(`Replayed ${data.actions.length} actions.`);
   const pending = data.pending;
-  if (pending?.t === 'place' && pending.from === 'hand' && failedAt === undefined) {
-    // Show the placement the report was looking at.
+  const shown = pending?.t === 'place' || pending?.t === 'extend';
+  if (shown && pending.from === 'hand' && failedAt === undefined) {
+    // Show the placement (or D-168's extension) the report was looking at.
     batch(() => {
       selected.value = pending.i;
       rotation.value = pending.rot;

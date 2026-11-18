@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import { CONTENT, rules, stream, type BlueprintId, type RunState } from '../src/rules/index.ts';
 import { emptyRows, houseFrom, type Placement } from '../src/rules/testing.ts';
-import { goodValue } from './policies/shop.ts';
+import { goodValue, strikeAct, strikesWanted, STRIKE_ORDER } from './policies/shop.ts';
 
 // Two Bedrooms and a Living Room, well back from the street: rooms that earn, and no "-house"
 // piece, Dark room, or fixture.
@@ -68,5 +68,26 @@ describe('the shop bot', () => {
     // And a blueprint it already holds is worth nothing more.
     const held = { ...run(ROOMS), blueprints: [{ id: 'itsAHouse' as const, boughtWeek: 1 }] };
     expect(value(held, 'itsAHouse')).toBe(0);
+  });
+
+  it('strikes with strikes fixed: the hand card earliest in STRIKE_ORDER, by its root (D-157)', () => {
+    const s: RunState = {
+      ...run(ROOMS),
+      hand: [
+        { kind: 'piece', id: 'sapling' },
+        { kind: 'piece', id: 'kitchen' },
+        { kind: 'piece', id: 'longHallway' },
+      ],
+    };
+    // The Long Hallway is a Hallway, which comes before the Sapling.
+    expect(s.strikesLeft).toBe(1);
+    expect(strikeAct(rules, s)).toEqual({ t: 'strikeCard', i: 2 });
+    expect(strikeAct(rules, { ...s, strikesLeft: 0 })).toBeNull();
+    expect(strikeAct(rules, { ...s, hand: [{ kind: 'piece', id: 'kitchen' }] })).toBeNull();
+    // +1 strike is wanted while it holds fewer than the STRIKE_ORDER types it could strike.
+    expect(strikesWanted(rules, s)).toBe(STRIKE_ORDER.length);
+    const struck = STRIKE_ORDER.slice(0, 3).map((id) => ({ kind: 'piece' as const, id }));
+    expect(strikesWanted(rules, { ...s, struck })).toBe(2);
+    expect(strikeAct(rules, { ...s, struck })).toEqual({ t: 'strikeCard', i: 0 });
   });
 });

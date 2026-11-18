@@ -178,7 +178,7 @@ describe('arrivals', () => {
     });
   });
 
-  it('a member card is placed from the reserve like any reserve piece, ending the week', () => {
+  it('a member card is placed from the reserve like any reserve piece: the week goes on (D-163)', () => {
     const s: RunState = {
       ...r.newRun(setup('place')),
       house: houseFrom(C3, emptyRows(8, 8), [['bedroom', 0, 0]]),
@@ -187,8 +187,9 @@ describe('arrivals', () => {
     expect(r.reserveFits(s, 0)).toBe(true);
     const { state, events } = r.apply(s, { t: 'place', from: 'reserve', i: 0, x: 2, y: 0, rot: 0 });
     expect(events[0]).toMatchObject({ t: 'placed', defId: 'nursery' });
-    expect(events.some((e) => e.t === 'tally')).toBe(true);
+    expect(events.some((e) => e.t === 'tally')).toBe(false);
     expect(state.reserve).toEqual([]);
+    expect(state).toMatchObject({ week: s.week, hand: s.hand });
   });
 });
 

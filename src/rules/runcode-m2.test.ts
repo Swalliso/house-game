@@ -335,8 +335,9 @@ describe('decoded codes from other builds replay without crashing', () => {
   // decodeRunCode accepts any crewId string; replay checks it against the content and fails
   // softly at step 0 (§4: replay "returns the step where it fails instead of throwing").
   it('a crew this build does not have makes replay fail softly, not throw', () => {
-    // M4b added the Landscaper and the Architect, so these are crews no build has.
-    for (const crewId of ['handyman', 'constructor']) {
+    // M4b added the Landscaper and the Architect and D-171 the Handyman, so these are crews no
+    // build has.
+    for (const crewId of ['plumber', 'constructor']) {
       const decoded = safeDecode(
         encodeRunCode({ ...BASE, setup: { ...SETUP, crewId: crewId as never } }),
       );
@@ -464,7 +465,8 @@ function playRun(seed: string, steps: number): Played {
 describe('a real run replays exactly from its run code', () => {
   // Seeds whose random stream reaches every kind of action; a content change can move a seed
   // off one (M4b's targets moved determinism-a), so pick another that covers them all.
-  const SEEDS = ['determinism-i', 'determinism-f', 'determinism-c'];
+  // The batch (D-169) moved i, f and c off, and the stock's top-ups moved n.
+  const SEEDS = ['determinism-e', 'determinism-k', 'determinism-o'];
 
   it.each(SEEDS)('seed %s', (seed) => {
     // M3b's Housewarming pick takes a step, so the run is a little longer than M2's 24.

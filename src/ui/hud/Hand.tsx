@@ -11,18 +11,27 @@
 // fit beside Your goods: the name, the line that says what it pays (handCardLines), and the
 // chips beside a thumbnail of the piece (a fixture: where it goes, and what it does). Inspect
 // shows the whole text on hover.
+//
+// D-157: Strike sits on the plank between Reroll and Demolish. In strike mode the cards are the
+// targets: a card clicked twice (or its number pressed twice) is struck, its type gone for the
+// run. The struck card holds its slot under a stamp, then the card from its row that took its
+// place slides in (the director's beat, which any action ends at once).
 
 import type { RefObject } from 'preact';
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import {
+  article,
   CONTENT,
   DRAW_ROWS,
+  growGain,
   handCardLines,
   rules,
   rowOf,
+  SCORE_LABELS,
   setProgressText,
   setsOfPiece,
   setText,
+  struckText,
   type Card as CardData,
   type DrawRow,
   type PieceId,
@@ -30,21 +39,24 @@ import {
 } from '../../rules/index.ts';
 import {
   cardsFit,
+  cardsExtend,
   cardsRenovate,
-  demolishArmed,
   inspected,
   reroll,
   rotation,
   run,
   movingUid,
+  pendingFree,
   selected,
   selection,
   source,
+  strikeArmed,
+  strikeViews,
   tentative,
   tool,
 } from '../store.ts';
 import { rotate } from '../board/Board.tsx';
-import { busy } from '../fx/director.ts';
+import { busy, strikeView, struckIn, struckSaid } from '../fx/director.ts';
 import { stakesOf } from '../screens/week-stamp.ts';
 import { settings } from '../settings.ts';
 import { Button, Card, Chip, Icon, Keycap, Panel } from '../kit/kit.tsx';
@@ -55,6 +67,9 @@ import {
   passArmed,
   requestEndWeek,
   selectCard,
+  strikeFocus,
+  toggleDemolish,
+  toggleStrike,
 } from './actions.ts';
 import { guideCard, shown } from './first-job.ts';
 import { PieceArt, ShapeGlyph } from './PieceArt.tsx';
@@ -69,13 +84,14 @@ const noFocus = (e: MouseEvent) => e.preventDefault();
 
 /**
  * A card's tags as chips, each with its icon (the icon set is named after the tags). A narrow
- * hand card shows just the icons (hand.css), so each chip names its tag in its title too.
+ * hand card shows just the icons (hand.css), so each chip names its tag in its tip, and to
+ * screen readers, too.
  */
 export function TagChips({ tags }: { tags: readonly Tag[] }) {
   return (
     <>
       {tags.map((t) => (
-        <Chip key={t} icon={t as IconName} class="tag-chip" title={t}>
+        <Chip key={t} icon={t as IconName} class="tag-chip" tip={t} label={t}>
           <span class="chip-word">{t}</span>
         </Chip>
       ))}
@@ -106,6 +122,7 @@ export function SetChip({ id }: { id: PieceId }) {
   const shown = pool.reduce((a, b) =>
     CONTENT.sets[b].name.length < CONTENT.sets[a].name.length ? b : a,
   );
+  // D-164: in its own span, which a narrow Lawn hides beside its two tags (hand.css).
   const more = touching.length > 1 ? ` +${touching.length - 1}` : '';
   const p = rules.setProgress(s, shown);
   const tip = sets.map((set) => {
@@ -113,10 +130,14 @@ export function SetChip({ id }: { id: PieceId }) {
     return q ? `${setText(CONTENT, set)} ${setProgressText(CONTENT, q)}` : setText(CONTENT, set);
   });
   return (
-    <Chip tone="charm" icon={p?.held ? 'check' : undefined} class="set-chip" title={tip.join('\n')}>
+    <Chip tone="charm" icon={p?.held ? 'check' : undefined} class="set-chip" tip={tip.join('\n')}>
       {CONTENT.sets[shown].name}
       {p && !p.held && <span class="set-count">{` ${p.have}/${p.need}`}</span>}
-      {more}
+      {more && (
+        <span class="set-more" data-n={touching.length - 1}>
+          {more}
+        </span>
+      )}
     </Chip>
   );
 }
@@ -128,7 +149,7 @@ const cardName = (card: CardData): string =>
 
 /**
  * A card the week's draw swapped in (D-121): what it replaced, which had no play. A badge on the
- * card's corner, the reroll icon with its words in its title and read out, so it takes no room:
+ * card's corner, the reroll icon with its words in its tip and read out, so it takes no room:
  * as a chip it wrapped a narrow card's Renovate and tags onto a second line, and beside the name
  * it wrapped the name (the note over the lot names the cards swapped out in words).
  */
@@ -145,41 +166,108 @@ function SwapMark({ i }: { i: number }) {
   );
 }
 
-/** Back to building, leaving demolish mode. */
-function stopDemolishing(): void {
-  tool.value = 'build';
-  demolishArmed.value = null;
+/** A struck card held in its slot under the stamp (D-157): the stamp's words, and if it's going. */
+interface Held {
+  text: string;
+  leaving: boolean;
 }
 
-function pickCard(i: number): void {
-  if (tool.value === 'demolish') {
-    stopDemolishing();
-    // The card being placed stays picked: the click means "build", not "put it back".
-    if (isPicked('hand', i)) return;
+/**
+ * The new card in a slot whose struck card had the keyboard's focus takes it as it comes in
+ * (D-157): at the beat's end, at once with no beat, or when a click ends the beat (actions.ts
+ * strikeFocus). A held card's `held` is a new object each render, so its effect returns at once;
+ * the new card mounts fresh (HandRow's key names the card), so its effect runs once.
+ */
+function useStrikeFocus(i: number, held: Held | undefined): void {
+  useLayoutEffect(() => {
+    if (held || strikeFocus.peek() !== i) return;
+    strikeFocus.value = null;
+    document.querySelector<HTMLElement>(`.hand [data-card="${i}"]`)?.focus({ preventScroll: true });
+  }, [held]);
+}
+
+/** The strike's stamp on a card as it goes (D-157): the plate, and what it means for the run. */
+function StrikeStamp({ text }: { text: string }) {
+  return (
+    <span class="strike-stamp" aria-hidden="true">
+      <span class="strike-plate">
+        <Icon name="cross" />
+        Struck
+      </span>
+      <span class="strike-slip">{text}</span>
+    </span>
+  );
+}
+
+/**
+ * A hand card's look in strike mode (D-157), or held under its stamp: its classes, whether it's
+ * hatched, and what its alert and title say. Not in strike mode, the card's own.
+ */
+function strikeLook(i: number, held: Held | undefined, entering: boolean | undefined) {
+  const striking = tool.value === 'strike' && !held;
+  const view = striking ? strikeViews.value[i] : undefined;
+  const fits = held ? true : (cardsFit.value[i] ?? true);
+  const isSelected = !held && !striking && isPicked('hand', i);
+  const armed = striking && strikeArmed.value === i;
+  const blocked = striking ? !view?.ok : !fits;
+  const cls = [
+    'hand-card',
+    armed ? 'strike-armed' : '',
+    held ? 'is-struck' : '',
+    held?.leaving ? 'strike-out' : '',
+    entering ? 'strike-in' : '',
+  ];
+  return { striking, view, fits, isSelected, armed, blocked, cls };
+}
+
+/** The armed card's band (D-157): the second click strikes it. */
+function StrikeBand() {
+  return (
+    <span class="strike-band" aria-hidden="true">
+      Click again to strike
+    </span>
+  );
+}
+
+function CardView({
+  card,
+  i,
+  held,
+  entering,
+}: {
+  card: CardData;
+  i: number;
+  /** D-157: a struck card holding its slot under the stamp. */
+  held?: Held;
+  /** D-157: the new card in a struck slot, sliding in. */
+  entering?: boolean;
+}) {
+  if (card.kind === 'fixture') {
+    return <FixtureCardView card={card} i={i} held={held} entering={entering} />;
   }
-  selectCard(i);
-}
-
-function CardView({ card, i }: { card: CardData; i: number }) {
-  if (card.kind === 'fixture') return <FixtureCardView id={card.id} i={i} />;
   const def = CONTENT.pieces[card.id];
-  const fits = cardsFit.value[i] ?? true;
+  const { striking, view, fits, isSelected, armed, blocked, cls } = strikeLook(i, held, entering);
   const renovates = cardsRenovate.value[i] ?? false;
-  const isSelected = isPicked('hand', i);
+  // D-168: a card that can grow a room of its type says so, where Renovate's chip was.
+  const grows = cardsExtend.value[i] ?? false;
+  const gain = growGain(CONTENT, def);
   const kind = pieceKind(def);
   const type = CONTENT.pieces[def.countsAs ?? def.id].name;
   // A pack (D-106) doesn't turn, so it never shows a turn left from another card this week.
   const rot = isSelected && !def.pack ? rotation.value : 0;
+  useStrikeFocus(i, held);
   // A compact card (D-121): the line that says what it pays. The rest, the notes, and a
   // member's room (M4b, D-103: whose it is) are in Inspect.
   return (
     <Card
       as="button"
       // Week 1's guide (D-149) points at the card to pick first.
-      class={guideCard.value === i ? 'hand-card guide-now' : 'hand-card'}
+      class={[...cls, !held && !striking && guideCard.value === i ? 'guide-now' : '']
+        .filter(Boolean)
+        .join(' ')}
       tone={kind}
       selected={isSelected}
-      blocked={!fits}
+      blocked={blocked}
       lead={<Keycap>{i + 1}</Keycap>}
       title={def.name}
       aside={<ShapeGlyph id={card.id} rot={rot} square />}
@@ -187,12 +275,22 @@ function CardView({ card, i }: { card: CardData; i: number }) {
       lines={handCardLines(CONTENT, card)}
       chips={
         <>
-          {renovates && (
+          {grows && !held && !striking && (
+            <Chip
+              tone="uncommon"
+              icon="plus"
+              class="renovate-chip extend-chip"
+              tip={`It can extend ${article(type)} you have, +${gain} ${SCORE_LABELS.points}: pick it, then point at an outlined room`}
+            >
+              Extend
+            </Chip>
+          )}
+          {renovates && !grows && !held && !striking && (
             <Chip
               tone="uncommon"
               icon="star"
               class="renovate-chip"
-              title={`It can renovate a ${type} you have, in place: pick it, then point at an outlined room`}
+              tip={`It can renovate a ${type} you have, in place: pick it, then point at an outlined room`}
             >
               Renovate
             </Chip>
@@ -204,38 +302,59 @@ function CardView({ card, i }: { card: CardData; i: number }) {
           <TagChips tags={def.tags} />
         </>
       }
-      alert={fits ? undefined : 'Nowhere fits'}
+      alert={striking ? (view?.ok ? undefined : 'Can’t strike') : fits ? undefined : 'Nowhere fits'}
       onMouseDown={noFocus}
-      onClick={() => pickCard(i)}
-      onMouseEnter={() => selected.value === null && (inspected.value = { kind: 'card', i })}
-      aria-pressed={isSelected}
+      // A held card's click ends the beat and picks the new card in its slot (actions.ts).
+      onClick={() => selectCard(i)}
+      onMouseEnter={
+        held
+          ? undefined
+          : () => (striking || selected.value === null) && (inspected.value = { kind: 'card', i })
+      }
+      aria-pressed={striking ? armed : isSelected}
+      aria-disabled={striking && !view?.ok ? true : undefined}
       data-card={i}
-      tooltip={fits ? undefined : 'There’s nowhere on the lot this fits right now'}
+      tip={
+        striking
+          ? view?.ok
+            ? view.text
+            : view?.reason
+          : fits
+            ? undefined
+            : 'There’s nowhere on the lot this fits right now'
+      }
     >
       <SwapMark i={i} />
+      {armed && <StrikeBand />}
+      {held && <StrikeStamp text={held.text} />}
     </Card>
   );
 }
 
 /** A fixture card: it goes in a placed piece, as the week's turn (D-050). */
 function FixtureCardView({
-  id,
+  card,
   i,
+  held,
+  entering,
 }: {
-  id: Extract<CardData, { kind: 'fixture' }>['id'];
+  card: Extract<CardData, { kind: 'fixture' }>;
   i: number;
+  held?: Held;
+  entering?: boolean;
 }) {
+  const id = card.id;
   const def = CONTENT.fixtures[id];
-  const fits = cardsFit.value[i] ?? true;
-  const isSelected = isPicked('hand', i);
+  const { striking, view, fits, isSelected, armed, blocked, cls } = strikeLook(i, held, entering);
+  useStrikeFocus(i, held);
   return (
     <Card
       as="button"
-      class="hand-card"
+      class={cls.filter(Boolean).join(' ')}
       tone="fixture"
       rarity={def.rarity}
       selected={isSelected}
-      blocked={!fits}
+      blocked={blocked}
       lead={<Keycap>{i + 1}</Keycap>}
       title={def.name}
       lines={handCardLines(CONTENT, { kind: 'fixture', id })}
@@ -245,15 +364,38 @@ function FixtureCardView({
           <Chip tone={def.rarity}>{RARITY_LABEL[def.rarity]}</Chip>
         </>
       }
-      alert={fits ? undefined : 'Nothing to put it in'}
+      alert={
+        striking
+          ? view?.ok
+            ? undefined
+            : 'Can’t strike'
+          : fits
+            ? undefined
+            : 'Nothing to put it in'
+      }
       onMouseDown={noFocus}
-      onClick={() => pickCard(i)}
-      onMouseEnter={() => selected.value === null && (inspected.value = { kind: 'card', i })}
-      aria-pressed={isSelected}
+      onClick={() => selectCard(i)}
+      onMouseEnter={
+        held
+          ? undefined
+          : () => (striking || selected.value === null) && (inspected.value = { kind: 'card', i })
+      }
+      aria-pressed={striking ? armed : isSelected}
+      aria-disabled={striking && !view?.ok ? true : undefined}
       data-card={i}
-      tooltip={fits ? undefined : 'Nothing on the lot can hold it yet'}
+      tip={
+        striking
+          ? view?.ok
+            ? view.text
+            : view?.reason
+          : fits
+            ? undefined
+            : 'Nothing on the lot can hold it yet'
+      }
     >
       <SwapMark i={i} />
+      {armed && <StrikeBand />}
+      {held && <StrikeStamp text={held.text} />}
     </Card>
   );
 }
@@ -275,15 +417,54 @@ function RerollButton() {
       onClick={() => void reroll()}
       disabled={!can.ok}
       aria-label={`Reroll: new cards for both rows, ${rerolls} left`}
-      title={
+      tip={
         can.ok
           ? `New cards for both rows. It doesn’t end the week. ${s.rerollsLeft} left this milestone${s.bonusRerolls > 0 ? `, and ${s.bonusRerolls} kept` : ''}.`
           : (can.reason ?? 'You can’t reroll now.')
       }
     >
       <span class="free-action-word">Reroll</span>
-      <span class="count" aria-hidden="true">
+      <span class={`count ${rerolls >= 10 ? 'wide' : ''}`} aria-hidden="true">
         {rerolls}
+      </span>
+    </Button>
+  );
+}
+
+/**
+ * Strikes (D-157): a free action, so the week goes on. Click it (or S), then a hand card twice:
+ * its type is never drawn again this run, and a card from its row takes its place. It sits on
+ * the plank between Reroll and Demolish.
+ */
+function StrikeButton() {
+  const s = run.value;
+  const striking = tool.value === 'strike';
+  const can = rules.canStrikeAny(s);
+  const n = s.strikesLeft;
+  const struck = struckText(CONTENT, s.struck);
+  const after = struck ? ` ${struck}.` : '';
+  return (
+    <Button
+      size="sm"
+      icon="strike"
+      variant={striking ? 'danger' : 'secondary'}
+      class={`free-action strike ${striking ? 'active' : ''}`}
+      onMouseDown={noFocus}
+      onClick={toggleStrike}
+      disabled={!can.ok && !striking}
+      aria-pressed={striking}
+      aria-label={`Strike a card, ${n} left`}
+      tip={
+        striking
+          ? 'Back to building (Esc)'
+          : can.ok
+            ? `Strike a card: no more of its type this run, and a new card takes its place. It doesn’t end the week. ${n} left (S).${after}`
+            : `${can.reason ?? 'You can’t strike now.'}${after}`
+      }
+    >
+      <span class="free-action-word">{striking ? 'Stop' : 'Strike'}</span>
+      <span class={`count ${n >= 10 ? 'wide' : ''}`} aria-hidden="true">
+        {n}
       </span>
     </Button>
   );
@@ -294,17 +475,6 @@ function DemolishButton() {
   const s = run.value;
   const demolishing = tool.value === 'demolish';
   const canDemolish = s.demolitionsLeft > 0;
-  const toggleDemolish = () => {
-    if (demolishing) {
-      stopDemolishing();
-      return;
-    }
-    if (!canDemolish) return;
-    demolishArmed.value = null;
-    // A card only being looked at goes back to the hand; a placement waiting for End week stays.
-    if (!tentative.value) selected.value = null;
-    tool.value = 'demolish';
-  };
   return (
     <Button
       size="sm"
@@ -315,7 +485,7 @@ function DemolishButton() {
       onClick={toggleDemolish}
       disabled={!canDemolish && !demolishing}
       aria-pressed={demolishing}
-      title={
+      tip={
         demolishing
           ? 'Back to building (Esc)'
           : canDemolish
@@ -324,25 +494,46 @@ function DemolishButton() {
       }
     >
       <span class="free-action-word">{demolishing ? 'Stop' : 'Demolish'}</span>
-      <span class="count" aria-label={`${s.demolitionsLeft} left`}>
+      <span
+        class={`count ${s.demolitionsLeft >= 10 ? 'wide' : ''}`}
+        aria-label={`${s.demolitionsLeft} left`}
+      >
         {s.demolitionsLeft}
       </span>
     </Button>
   );
 }
 
-/** One row of the hand (D-121): its label, then its cards, numbered across rows. */
+/**
+ * One row of the hand (D-121): its label, then its cards, numbered across rows. During a
+ * strike's beat (D-157) a struck slot shows its old card under the stamp: a replacement always
+ * comes from the same row, so the slot stays in place. Each card's key names it, so the old
+ * card keeps its stamp and the new one mounts fresh and slides in.
+ */
 function HandRow({ row }: { row: DrawRow }) {
   const s = run.value;
+  const beat = strikeView.value;
+  const sliding = struckIn.value?.slots ?? [];
   const cards = s.hand.flatMap((card, i) => (rowOf(CONTENT, card) === row ? [{ card, i }] : []));
   return (
     <section class={`hand-row hand-row-${row}`} aria-label={`${ROW_LABEL[row]} cards`}>
       <div class="hand-row-head">
         <h3 class="hand-row-label">{ROW_LABEL[row]}</h3>
       </div>
-      {cards.map(({ card, i }) => (
-        <CardView key={`${s.week}-${s.draws}-${i}`} card={card} i={i} />
-      ))}
+      {cards.map(({ card, i }) => {
+        // D-157: a struck card holds its slot under its stamp, then the new one slides in.
+        const was = beat?.cards.find((c) => c.i === i)?.was;
+        const shown = was ?? card;
+        return (
+          <CardView
+            key={`${s.week}-${s.draws}-${i}-${shown.kind}:${shown.id}`}
+            card={shown}
+            i={i}
+            held={was && beat ? { text: beat.text, leaving: beat.leaving } : undefined}
+            entering={!was && sliding.includes(i)}
+          />
+        );
+      })}
     </section>
   );
 }
@@ -454,29 +645,52 @@ export function Hand() {
   const pending = tentative.value;
   const armed = passArmed.value;
   const demolishing = tool.value === 'demolish';
+  const striking = tool.value === 'strike';
+  // For screen readers: the mode, then the armed card's scope and how to confirm it (D-157).
+  // Strike mode has no hint over the cards, as Demolish's mode has: the cards are its targets,
+  // and a hint coming in and going with the mode moved them, the second time under the stamp.
+  // The key strip, the band on the card under the pointer and Inspect say what to do.
+  const a = strikeArmed.value;
+  const av = a === null ? undefined : strikeViews.value[a];
+  const modeSaid =
+    a !== null && av?.ok
+      ? `${cardName(s.hand[a]!)}: ${av.text}. Click it again, or press ${a + 1}, to strike it.`
+      : striking
+        ? 'Strike: click a card twice to strike its type. Esc to stop.'
+        : null;
   // Only pieces turn: a fixture or a tool doesn't, except the Moving Truck's carried piece, and
   // nor does a pack (D-106), which is the tiles clicked out, or a card waiting to renovate a
   // room (D-102) (rotate() does nothing for them).
   const sel = selection.value;
   const canTurn =
-    (sel?.kind === 'piece' && !CONTENT.pieces[sel.id].pack && pending?.t !== 'renovate') ||
+    (sel?.kind === 'piece' &&
+      !CONTENT.pieces[sel.id].pack &&
+      pending?.t !== 'renovate' &&
+      pending?.t !== 'extend') ||
     (sel?.kind === 'tool' && movingUid.value !== null);
   // The long label, and a short one for a narrow column (hand.css, whose container queries are
-  // measured on these words). What End week will do, build or renovate, is in its title.
-  const [endLabel, endShort] = pending
-    ? ['End week', 'End week']
-    : armed
-      ? ['Pass? Press again', 'Again?']
-      : ['Pass this week', 'Pass'];
-  const endTitle =
-    pending?.t === 'renovate'
+  // measured on these words). What End week will do, build or renovate, is in its tip.
+  // D-163: a piece from Your goods doesn't end the week, so the button builds it: Build.
+  const free = pendingFree.value;
+  const [endLabel, endShort] = free
+    ? ['Build', 'Build']
+    : pending
+      ? ['End week', 'End week']
+      : armed
+        ? ['Pass? Press again', 'Again?']
+        : ['Pass this week', 'Pass'];
+  const endTitle = free
+    ? 'Build it now: the week goes on (Enter)'
+    : pending?.t === 'renovate'
       ? 'End the week and renovate the room (Enter)'
-      : pending
-        ? 'End the week and build it (Enter)'
-        : undefined;
+      : pending?.t === 'extend'
+        ? 'End the week and extend the room (Enter)'
+        : pending
+          ? 'End the week and build it (Enter)'
+          : undefined;
   // A milestone's last week, or an overtime week (D-154): the press that checks the target.
   // End week wears a "Last week" tag on its top edge, which stamps in as the week comes up (once
-  // its tally is done) and again as a card is placed, the moment that press is next. Its title
+  // its tally is done) and again as a card is placed, the moment that press is next. Its tip
   // says what the target still needs. Its words stay: with a card held it's narrowest, and
   // "End week" is all that fits at 1440 and 1728 px wide.
   const stakes = stakesOf(s);
@@ -485,7 +699,7 @@ export function Hand() {
   const packing = pending?.t === 'place' && !!pending.shape;
   return (
     <Panel
-      class="hand"
+      class={`hand ${striking ? 'striking' : ''}`}
       title={
         <>
           <span class="hand-title-long">Pick a card</span>
@@ -497,6 +711,7 @@ export function Hand() {
       head={
         <>
           {shown.value.reroll && <RerollButton />}
+          {shown.value.strike && <StrikeButton />}
           {shown.value.demolish && <DemolishButton />}
         </>
       }
@@ -509,6 +724,11 @@ export function Hand() {
           <span>Click a piece or boulder twice to demolish it · Esc to stop</span>
         </p>
       )}
+      {/* For screen readers: strike mode, the armed card's scope and how to confirm, or what a
+          strike did. */}
+      <p class="strike-sr" role="status">
+        {modeSaid ?? struckSaid.value}
+      </p>
       {DRAW_ROWS.map((row) => (
         <HandRow key={row} row={row} />
       ))}
@@ -524,14 +744,14 @@ export function Hand() {
             class="more-cards"
             onMouseDown={noFocus}
             onClick={showCardsUnder}
-            title="Scroll down to the rest of this week’s cards"
+            tip="Scroll down to the rest of this week’s cards"
           >
             {under === 1 ? '1 more card' : `${under} more cards`}
           </Button>
         )}
         {/* Rotate shows only while a card is held (D-148): standing beside Pass with nothing to
             turn, its round arrow read as the reroll. */}
-        {placing && !demolishing && (
+        {placing && tool.value === 'build' && (
           <Button
             iconOnly
             size="lg"
@@ -540,11 +760,11 @@ export function Hand() {
             onMouseDown={noFocus}
             onClick={rotate}
             disabled={!canTurn}
-            title="Rotate (R or right-click)"
+            tip="Rotate (R or right-click)"
             aria-label="Rotate"
           />
         )}
-        {placing && !demolishing && (
+        {placing && tool.value === 'build' && (
           <Button
             iconOnly
             size="lg"
@@ -552,7 +772,7 @@ export function Hand() {
             class="cancel"
             onMouseDown={noFocus}
             onClick={cancelPlacement}
-            title={
+            tip={
               packing ? 'Clear the tiles (Esc)' : pending ? 'Move it (Esc)' : 'Put it back (Esc)'
             }
             aria-label={packing ? 'Clear the tiles' : pending ? 'Move it' : 'Put it back'}
@@ -564,7 +784,7 @@ export function Hand() {
           class={`end-week ${pending ? 'ready' : ''} ${armed ? 'confirm' : ''} ${tagged ? 'deciding' : ''}`}
           onMouseDown={noFocus}
           onClick={requestEndWeek}
-          title={[stakes, endTitle].filter(Boolean).join(' ') || undefined}
+          tip={[stakes, endTitle].filter(Boolean).join(' ') || undefined}
         >
           {tagged && (
             // Keyed on the card placed, so placing one stamps it in again.

@@ -93,6 +93,7 @@ function run(seed: string, cleared: number, over: Partial<RunRecord> = {}): RunR
       bonusRerollsBought: 0,
       bonusRerollsUsed: 0,
       bonusRerollsHeld: 0,
+      strikesHeld: 0,
       installs: [],
       tools: [],
     },
@@ -103,17 +104,33 @@ function run(seed: string, cleared: number, over: Partial<RunRecord> = {}): RunR
     siting: { firstRow: 5, firstIndoorRow: 5, frontGap: 5, touchesStreet: false },
     early: [],
     struck: [],
+    reservePlays: { own: 0, crew: 0, arrival: 0, client: 0, stock: 0 },
     wallOffers: Array.from({ length: PHASES }, () => 0),
     finalScore: 1000,
     house: houseStats(CONTENT, { lot: lotFromRows(['....', '....']), pieces: [], nextUid: 1 }),
     build: {
       roomsByPhase: Array.from({ length: PHASES }, () => 0),
-      late: { rooms: 0, arrivals: 0, renovations: 0, yard: 0, fixtures: 0, hallways: 0, passes: 0 },
+      yardByPhase: Array.from({ length: PHASES }, () => 0),
+      late: {
+        rooms: 0,
+        arrivals: 0,
+        renovations: 0,
+        extensions: 0,
+        yard: 0,
+        fixtures: 0,
+        hallways: 0,
+        passes: 0,
+      },
       renovations: 0,
+      extensions: 0,
+      extensionWeeks: [],
       tallies: 4,
       specWeeks: {},
       specFirst: {},
       specEnd: {},
+      setWeeks: {},
+      setFirst: {},
+      setEnd: {},
       earlyPieceWow: 0,
       bigWeeks: 0,
       dead: null,
@@ -272,14 +289,14 @@ describe('the aggregation', () => {
     },
     layers: { comfort: 50, charm: 40, sparkle: 10 },
     sources: { terrain: 10, street: -2, piece: 4, plain: 8, sets: 0 },
-    struck: [{ type: 'bedroom', shop: 2 }],
+    struck: [{ type: 'bedroom', week: 6, phase: 1 }],
   });
   const b = run('b', 3, {
     pieces: { bedroom: piece({ offered: 2, dead: 1, placed: 1, wow: 40, pieceWeeks: 4 }) },
     layers: { comfort: 100, charm: 0, sparkle: 0 },
     sources: { terrain: 0, street: 0, piece: 0, plain: 20, sets: 20 },
     setWow: 60,
-    struck: [{ type: 'kitchen', shop: 1 }],
+    struck: [{ type: 'kitchen', week: 2, phase: 0 }],
   });
 
   it('pools pieces over runs', () => {
@@ -336,7 +353,8 @@ describe('the aggregation', () => {
       economy: {
         ...a.economy,
         offered: { 'tool:movingTruck': 2, 'tool:rushOrder': 1, 'service:reroll': 3 },
-        bought: { 'tool:rushOrder': 1, 'service:reroll': 1 },
+        bought: { 'tool:rushOrder': 1, 'service:reroll': 1, 'service:strike': 1 },
+        strikesHeld: 3,
         inCrates: { 'blueprint:fengShui': 1 },
         picked: { 'blueprint:fengShui': 1 },
         budgetAtLeave: [1, 0],
@@ -358,6 +376,9 @@ describe('the aggregation', () => {
       'bought, never used',
       'Remodel Plans: Entertainer',
       '+1 reroll',
+      // D-157: per run, then each struck type (a run strikes a type once).
+      'Strikes per run: used 1.00 · bought 0.50 · held at the end 1.50',
+      'Struck type',
     ]) {
       expect(text).toContain(part);
     }
@@ -368,6 +389,9 @@ describe('the aggregation', () => {
     expect(() => report(CONTENT, [], 'empty')).not.toThrow();
     expect(report(CONTENT, [b], 'never early')).toContain(
       'Early completion: never taken by greedy',
+    );
+    expect(report(CONTENT, [run('none', 2)], 'no strikes')).toContain(
+      'Strikes per run: used 0.00 · bought 0.00 · held at the end 0.00 (none used)',
     );
   });
 });
@@ -403,8 +427,9 @@ describe('a real run’s record', () => {
   });
 
   it('shares all of the Wow between the pieces and the sets', () => {
-    // A greedy run builds sets, so the sets' row is tested with real Points in it.
-    const { record } = simulateRun(rules, 'sim-3', POLICIES.greedy!, { probePhase: null });
+    // A greedy run builds sets, so the sets' row is tested with real Points in it. (sim-3 was
+    // the seed until D-166's draw lost it, and sim-5 until D-169's targets did.)
+    const { record } = simulateRun(rules, 'sim-9', POLICIES.greedy!, { probePhase: null });
     const pieceWow = Object.values(record.pieces).reduce((n, p) => n + p.wow, 0);
     expect(record.setWow).toBeGreaterThan(0);
     // The run was won, so its leftover budget paid Wow at the last milestone (D-145): the one
@@ -414,7 +439,9 @@ describe('a real run’s record', () => {
       record.economy.budgetLeft * CONTENT.balance.leftoverBudgetWow,
     );
     expect(pieceWow + record.setWow + record.economy.leftoverWow).toBeCloseTo(record.finalScore, 6);
-  });
+    // A whole greedy run: 4.1 s on CI before D-160, 6.1 s with the stock's Fence to rank every
+    // week, past the default 5 s.
+  }, 20_000);
 });
 
 describe('the change orders table (M4b, D-144)', () => {

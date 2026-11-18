@@ -39,8 +39,12 @@ import {
   OPENING,
   OPENING_WEEKS,
   openingCard,
+  shelfShown,
+  shopStageOf,
   shown,
   shownIn,
+  stageNote,
+  type ShelfId,
   type Shown,
 } from './first-job.ts';
 
@@ -65,7 +69,7 @@ describe('what the first job shows', () => {
   const all = on(shownIn(at(1), false));
 
   it('is everything, from week 1, for any other run', () => {
-    expect(all).toHaveLength(9);
+    expect(all).toHaveLength(10);
     expect(on(shownIn(at(3), false))).toEqual(all);
   });
 
@@ -88,10 +92,13 @@ describe('what the first job shows', () => {
     ]);
   });
 
-  it('shows everything from Foundation', () => {
-    expect(on(shownIn(at(5, { phase: 1, slot: 1 }), true))).toEqual(all);
+  it('shows everything from Foundation, Strike from its second week', () => {
+    const noStrike = all.filter((k) => k !== 'strike');
+    expect(on(shownIn(at(5, { phase: 1, slot: 1 }), true))).toEqual(noStrike);
     // And in the first shop, which opens before Foundation's first week.
-    expect(on(shownIn(at(5, { phase: 1, slot: 1, screen: 'shop' }), true))).toEqual(all);
+    expect(on(shownIn(at(5, { phase: 1, slot: 1, screen: 'shop' }), true))).toEqual(noStrike);
+    // D-157: one new thing a week, so Strike comes a week after Demolish.
+    expect(on(shownIn(at(6, { phase: 1, slot: 2 }), true))).toEqual(all);
   });
 
   it('shows budget as soon as a find pays some, and overtime in an overtime week', () => {
@@ -103,7 +110,50 @@ describe('what the first job shows', () => {
 
   it('keeps Demolish and Complete early for Foundation, target met or not', () => {
     const met = at(4, { score: 500 });
-    expect(shownIn(met, true)).toMatchObject({ demolish: false, early: false });
+    expect(shownIn(met, true)).toMatchObject({ demolish: false, early: false, strike: false });
+  });
+});
+
+describe('the first job’s shops (D-158)', () => {
+  /** A run in shop `number`, with nothing on its shelves: only the visit's number matters. */
+  const inShop = (number: number, forced?: true): RunState => ({
+    ...at(number * 4 + 1, { phase: number, slot: 1, screen: 'shop' }),
+    offers: {
+      shop: { number, offers: [], sale: null, refreshes: 0, boughtAny: false, forced },
+    },
+  });
+  const SHELVES: ShelfId[] = ['blueprints', 'cards', 'tools', 'crates', 'upgrades', 'services'];
+  const up = (number: number, first: boolean) =>
+    SHELVES.filter((shelf) => shelfShown(shopStageOf(inShop(number), first), shelf));
+
+  it('run a shop behind: the gift alone, then a first shop’s shelves, then the whole yard', () => {
+    expect(shopStageOf(inShop(1), true)).toBe('gift');
+    expect(shopStageOf(inShop(2), true)).toBe('basics');
+    expect(shopStageOf(inShop(3), true)).toBe('full');
+    expect(shopStageOf(inShop(6), true)).toBe('full');
+    expect(up(1, true)).toEqual([]);
+    // What any run's first shop stocks (balance.ts shop.stock[0]): no tools, crates or upgrades.
+    expect(up(2, true)).toEqual(['blueprints', 'cards', 'services']);
+    expect(up(3, true)).toEqual(SHELVES);
+    const first = CONTENT.balance.shop.stock[0]!;
+    expect([first.tools, first.crates, first.upgrades]).toEqual([0, 0, 0]);
+  });
+
+  it('are the whole yard in any other run, and in a shop the ?debug panel opened', () => {
+    for (const number of [1, 2, 3]) expect(up(number, false)).toEqual(SHELVES);
+    expect(shopStageOf(inShop(1, true), true)).toBe('full');
+    // Off the shop there's nothing to stage.
+    expect(shopStageOf(at(3), true)).toBe('full');
+  });
+
+  it('say what’s still to come, and when, by the milestone about to start', () => {
+    expect(stageNote('gift', 'Foundation')).toBe(
+      'That’s the yard for now. Its shelves open after Foundation, and your budget keeps until then.',
+    );
+    expect(stageNote('basics', 'Framing')).toBe(
+      'Tools, crates and company upgrades arrive after Framing.',
+    );
+    expect(stageNote('full', 'Roofing')).toBeNull();
   });
 });
 
@@ -121,7 +171,8 @@ describe('what arrives this week', () => {
       'early',
       'overtime',
     ]);
-    expect(parts(at(6, { phase: 1, slot: 2 }))).toEqual([]);
+    expect(parts(at(6, { phase: 1, slot: 2 }))).toEqual(['strike']);
+    expect(parts(at(7, { phase: 1, slot: 3 }))).toEqual([]);
   });
 
   it('is nothing in any other run, or off the build screen', () => {

@@ -54,7 +54,7 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
         pct: 100,
       },
     ],
-    targetPct: 110, // fitted by npm run sim -- --suggest-targets, then checked held out (D-146)
+    targetPct: 110, // fitted by npm run sim -- --suggest-targets, set against played runs (D-169)
   },
   vladislav: {
     id: 'vladislav',
@@ -87,7 +87,7 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
       { kind: 'earn', target: { piece: 'herbGarden' }, pct: -100 }, // garlic
     ],
     pool: [{ kind: 'drawWeight', target: { piece: 'library' }, add: 20 }],
-    targetPct: 95, // fitted by npm run sim -- --suggest-targets, then checked held out (D-146)
+    targetPct: 80, // fitted by npm run sim -- --suggest-targets, set against played runs (D-169)
   },
   barkers: {
     id: 'barkers',
@@ -127,7 +127,12 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
       { kind: 'drawWeight', target: { piece: 'mudroom' }, add: 20 },
       { kind: 'drawWeight', target: { piece: ['doghouse', 'fence'] }, pct: 100 },
     ],
-    targetPct: 90, // fitted by npm run sim -- --suggest-targets, then checked held out (D-146)
+    // D-160: the first of their two Doghouses comes with them; the big fenced yard's Fence is
+    // the standing stock's, from week 1 too (D-162).
+    deliveries: [
+      { phase: 0, cards: ['doghouse'], text: 'The Barkers bring one of their two Doghouses.' },
+    ],
+    targetPct: 90, // fitted by npm run sim -- --suggest-targets, set against played runs (D-169)
   },
   juniper: {
     id: 'juniper',
@@ -138,7 +143,7 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
     household: HOUSEHOLDS.juniper,
     changeOrders: ['declutter', 'teaGarden', 'magazineShoot'],
     specs: [
-      // Her "a house of 4–8 rooms" (Appendix A · M4a) is her Under one roof.
+      // Her "a house of 4–8 rooms" (Appendix A · M4a) is her numbers for A compact house.
       ...houseRules({ household: HOUSEHOLDS.juniper, rooms: { min: 4, max: 8 } }),
       {
         id: 'viewRooms',
@@ -154,7 +159,7 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
       { kind: 'rule', key: 'earlyRewardPct', add: 100 },
     ],
     pool: [],
-    targetPct: 95, // fitted by npm run sim -- --suggest-targets, then checked held out (D-146)
+    targetPct: 75, // fitted by npm run sim -- --suggest-targets, set against played runs (D-169)
   },
   dale: {
     id: 'dale',
@@ -188,6 +193,11 @@ export const CLIENTS: Readonly<Record<ClientId, ClientDef>> = {
     ],
     tastes: [{ kind: 'budget', target: 'all', pct: 100 }],
     pool: [{ kind: 'drawWeight', target: { piece: 'homeOffice' }, pct: 100 }],
-    targetPct: 115, // fitted by npm run sim -- --suggest-targets, then checked held out (D-146)
+    // D-160: the first of his two Home Offices comes with him, so the wish never waits on the
+    // draw for both (a novice bot was offered none in 11% of runs on develop at dcad8da).
+    deliveries: [
+      { phase: 0, cards: ['homeOffice'], text: 'Dale brings one of his two Home Offices.' },
+    ],
+    targetPct: 140, // fitted by npm run sim -- --suggest-targets, set against played runs (D-169)
   },
 };

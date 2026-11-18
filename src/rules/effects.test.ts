@@ -607,8 +607,14 @@ describe('conditional', () => {
     expect(earnedByWeek(c, emptyRows(4, 4), [['closet', 0, 0]], 1, [1, 2, 3, 4])).toEqual([
       0, 0, 0, 0,
     ]);
+    // The line names what it touches (D-165), so the preview marks the Tree.
     expect(scoreOf(tallyAt(c, rows, [['closet', 0, 0]], 2), 1).lines).toEqual([
-      { label: 'Every 2nd week (touching a Tree)', op: 'add', value: 4, from: [] },
+      {
+        label: 'Every 2nd week (touching a Tree)',
+        op: 'add',
+        value: 4,
+        from: [{ kind: 'terrain', feature: 'tree', x: 1, y: 0 }],
+      },
     ]);
   });
 });

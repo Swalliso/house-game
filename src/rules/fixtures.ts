@@ -9,7 +9,7 @@
 import type { Content, FeatureId, FixtureId, HouseState, PieceDef } from './index.ts';
 import { pieceDef, type Layout } from './layout.ts';
 import { matchesPiece } from './selectors.ts';
-import { selectorText } from './text.ts';
+import { fitsPhrase } from './text.ts';
 
 export type InstallCheck =
   { legal: true; replaces?: FixtureId } | { legal: false; reason: string; replaces?: FixtureId };
@@ -70,14 +70,9 @@ function becomesFeature(def: PieceDef): FeatureId | undefined {
   return undefined;
 }
 
-/** "any room", "a Kitchen", "an exterior room". */
+/** "any room", "a Kitchen", "an exterior room", "most rooms" (D-172): text.ts's fitsPhrase. */
 export function fitsText(content: Content, fixture: FixtureId): string {
-  const def = content.fixtures[fixture];
-  const sel = def.fits;
-  if (sel !== 'all' && 'property' in sel && sel.property === 'room') return 'any room';
-  if (sel !== 'all' && 'property' in sel && sel.property === 'yard') return 'any yard piece';
-  const text = selectorText(content, sel, 'one');
-  return /^[AEIOU]/i.test(text) ? `an ${text}` : `a ${text}`;
+  return fitsPhrase(content, content.fixtures[fixture].fits);
 }
 
 /** The pieces a fixture could go in now, by uid, in placement order. */

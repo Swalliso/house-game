@@ -685,8 +685,10 @@ describe('crates', () => {
     const base = withGoods(SHOP1, []);
     const defs = Object.values(C.pieces);
     const garden = defs.filter((d) => d.category !== 'indoor').map((d) => d.id);
-    // Member rooms (M4b) are weight 0 too, but never in a crate.
-    const special = defs.filter((d) => d.drawWeight === 0 && !d.member).map((d) => d.id);
+    // Member rooms (M4b) and the Addition (D-171) are weight 0 too, but never in a crate.
+    const special = defs
+      .filter((d) => d.drawWeight === 0 && !d.member && !d.addition)
+      .map((d) => d.id);
     expect(garden).toHaveLength(16); // 11 yard pieces (2 of them packs) and 5 outbuildings
     expect(special).toHaveLength(10); // the test content's Porch is weight 0 (D-145)
     const cases: [CrateId, PieceId[]][] = [
@@ -1232,12 +1234,12 @@ describe('Time Capsules', () => {
     expect(state.budget).toBe(3);
   });
 
-  it('from the reserve too', () => {
+  it('from the reserve too, and the week goes on (D-163)', () => {
     const s = onLot(CAPSULE, [], { reserve: [{ id: 'closet' }] });
     const { state, events } = RB.apply(s, { ...CLOSET_THERE, from: 'reserve' });
-    expect(types(events).slice(0, 3)).toEqual(['placed', 'findClaimed', 'tally']);
+    expect(types(events)).toEqual(['placed', 'findClaimed']);
     expect(events[1]).toEqual(CLAIM);
-    expect(state).toMatchObject({ budget: 3, reserve: [] });
+    expect(state).toMatchObject({ budget: 3, reserve: [], week: s.week });
   });
 
   it('a piece over two capsules pays each', () => {

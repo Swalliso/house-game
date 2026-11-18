@@ -1,9 +1,11 @@
-// The company's goods (M3a HUD): the reserve (bought pieces, placed as a week's build), the
+// The company's goods (M3a HUD): the reserve (bought pieces, placed free: D-163), the
 // supplies (fixtures, installed for free), and the blueprint slots (always on). Hover shows an
 // item in the inspect panel, with Sell for blueprints and supplies; on the build screen a
 // click picks a reserve piece or a supply to place or install. A crew's starting cards and a
-// household member's (M4b) sit in extra slots after the reserve's own, tagged, and don't count
-// against it; a member's pop in as they arrive.
+// household member's (M4b), and what the client brought and the standing stock (D-160), sit in
+// extra slots after the reserve's own, tagged with where they came from ("Crew", "Twins",
+// "Dale", "Stock"), and don't count against it; a member's pop in as they arrive, and the
+// stock's as it tops up.
 //
 // M5a: a wood panel with a row per kind of good. Empty slots are recessed wells, and a row
 // stays hidden until it matters: until the supply yard first opens, an empty row says nothing
@@ -14,18 +16,37 @@
 // and the supplies, so the hand's two rows fit beside it: on a window under 1100 px tall (a
 // 1080p screen's included), or when the player folds it (the caret). A click on the plank
 // opens it again. In the shop it's always open.
+//
+// D-157: the types struck this run, once there are some: a Struck row in the open panel and the
+// shop, and folded, a count on the plank, named in its tip and the fold button's. A strike
+// brings the panel in only with the next week's hand (inventory-rows.ts).
 
 import { signal } from '@preact/signals';
-import { CONTENT, rules, type ReservePiece } from '../../rules/index.ts';
-import { justArrived } from '../fx/director.ts';
+import {
+  CONTENT,
+  inExtraSlot,
+  rules,
+  struckNames,
+  struckText,
+  type ReservePiece,
+} from '../../rules/index.ts';
+import { justArrived, justDelivered } from '../fx/director.ts';
 import { FEEL } from '../fx/feel.ts';
 import { Button, Icon, Panel, Well } from '../kit/kit.tsx';
-import type { IconName } from '../theme/art.ts';
 import { BLUEPRINT_ICONS, supplyIcon } from '../sprites.ts';
-import { inspected, reserveFit, run, selected, sell, suppliesFit, tool } from '../store.ts';
+import {
+  inspected,
+  reserveFit,
+  run,
+  selected,
+  sell,
+  struckAtDeal,
+  suppliesFit,
+  tool,
+} from '../store.ts';
 import { isSelected, selectCard } from './actions.ts';
-import { arrivalOf, arrivalTag, midName } from './household.ts';
-import { inventoryRows, showsInventory } from './inventory-rows.ts';
+import { extraSlotWords } from './household.ts';
+import { foldCounts, foldedEmpty, inventoryRows, showsInventory } from './inventory-rows.ts';
 import { Tip } from './Tip.tsx';
 import './inventory.css';
 
@@ -43,7 +64,7 @@ shortQuery?.addEventListener('change', (e) => (shortWindow.value = e.matches));
 function FreePlayNote() {
   return (
     <p class="free-play" role="status">
-      Weekend Crew is here: your next build doesn’t end the week.
+      Weekend Crew is here: your next card doesn’t end the week.
     </p>
   );
 }
@@ -53,23 +74,19 @@ export function isFolded(shop: boolean): boolean {
   return !shop && (goodsFolded.value ?? shortWindow.value);
 }
 
-/** The folded plank's counts: what's waiting to be used, in the reserve and the supplies. */
+/**
+ * The folded plank's counts: what's waiting to be used in the reserve and the supplies, and how
+ * many types are struck this run (D-157), each named in its tip (inventory-rows.ts).
+ */
 function FoldCounts() {
-  const s = run.value;
-  const counts: readonly [IconName, number, string][] = [
-    ['House', s.reserve.length, 'in the reserve'],
-    ['tool', s.supplies.length, 'in the supplies'],
-  ];
   return (
     <span class="inv-fold-counts">
-      {counts
-        .filter(([, n]) => n > 0)
-        .map(([icon, n, what]) => (
-          <span key={icon} class="inv-fold-count" title={`${n} ${what}`}>
-            <Icon name={icon} />
-            {n}
-          </span>
-        ))}
+      {foldCounts(run.value).map(([icon, n, title]) => (
+        <span key={icon} class="inv-fold-count" data-tip={title} role="img" aria-label={title}>
+          <Icon name={icon} />
+          {n}
+        </span>
+      ))}
     </span>
   );
 }
@@ -85,32 +102,46 @@ function Empty({ n }: { n: number }) {
 }
 
 function hover(kind: 'reserve' | 'supply' | 'blueprint' | 'upgrade', i: number): void {
-  if (selected.value === null && tool.value !== 'demolish') inspected.value = { kind, i };
+  if (selected.value === null && tool.value === 'build') inspected.value = { kind, i };
 }
 
-/** A card in an extra slot (M4b): the crew's, or a household member's. */
-const isExtra = (r: ReservePiece) => !!r.crew || r.arrival !== undefined;
+/**
+ * How a reserve card pops in (inventory.css' slot-arrive), or null: a member's cards after the
+ * doorbell (FEEL.arrival), and the stock's or the client's at once as they land (FEEL.delivered;
+ * D-160), only the cards that just came.
+ */
+function popOf(r: ReservePiece, i: number): { ms: number; delayMs: number; scale: number } | null {
+  const member = justArrived.value;
+  if (member && r.arrival === member.arrival) {
+    const f = FEEL.arrival;
+    return { ms: f.popMs, delayMs: f.landDelayMs, scale: f.popScale };
+  }
+  const came = justDelivered.value;
+  if (came?.slots.includes(i)) {
+    const f = FEEL.delivered;
+    return { ms: f.popMs, delayMs: came.delayMs, scale: f.popScale };
+  }
+  return null;
+}
 
 /**
- * A reserve card's slot: its name, and an extra slot's tag ("Crew", "Twins") with whose it is in
- * its title. A member's cards pop in as they arrive, after the doorbell (FEEL.arrival).
+ * A reserve card's slot: its name, and an extra slot's tag ("Crew", "Twins", "Dale", "Stock")
+ * with where it came from in its tip (household.ts extraSlotWords). A card that just came pops
+ * in (popOf).
  */
 function ReserveSlot({ r, i, building }: { r: ReservePiece; i: number; building: boolean }) {
   const s = run.value;
   const def = CONTENT.pieces[r.id];
   const fits = reserveFit.value[i] ?? true;
-  const member = r.arrival !== undefined ? arrivalOf(s.setup.clientId, r.arrival) : undefined;
-  const tag = r.crew ? 'Crew' : member ? arrivalTag(member) : null;
-  const pop = justArrived.value;
-  const popping = !!pop && r.arrival === pop.arrival;
-  const f = FEEL.arrival;
-  const whose = member ? ` (with ${midName(member)})` : r.crew ? ' (your crew’s)' : '';
+  const extra = extraSlotWords(s.setup.clientId, r, s.setup.crewId);
+  const pop = popOf(r, i);
+  const whose = extra?.whose ?? '';
   const classes = [
     'inv-slot',
     'slot-piece',
     def.category,
-    isExtra(r) ? 'slot-extra' : '',
-    popping ? 'just-arrived' : '',
+    inExtraSlot(r) ? 'slot-extra' : '',
+    pop ? 'just-arrived' : '',
     isSelected('reserve', i) ? 'selected' : '',
     building && !fits ? 'no-fit' : '',
   ];
@@ -119,11 +150,11 @@ function ReserveSlot({ r, i, building }: { r: ReservePiece; i: number; building:
       type="button"
       class={classes.filter(Boolean).join(' ')}
       style={
-        popping
+        pop
           ? {
-              animationDuration: `${f.popMs}ms`,
-              animationDelay: `${f.landDelayMs}ms`,
-              '--pop-scale': `${f.popScale}`,
+              animationDuration: `${pop.ms}ms`,
+              animationDelay: `${pop.delayMs}ms`,
+              '--pop-scale': `${pop.scale}`,
             }
           : undefined
       }
@@ -131,16 +162,16 @@ function ReserveSlot({ r, i, building }: { r: ReservePiece; i: number; building:
       onMouseEnter={() => hover('reserve', i)}
       onClick={() => (building ? selectCard(i, 'reserve') : hover('reserve', i))}
       aria-pressed={isSelected('reserve', i)}
-      title={
+      data-tip={
         building
           ? fits
-            ? `${def.name}${whose}: place it as this week’s build`
+            ? `${def.name}${whose}: placing it doesn’t use your week`
             : `${def.name}${whose}: nowhere on the lot fits it right now`
           : `${def.name}${whose}`
       }
     >
       <span class="inv-name">{def.name}</span>
-      {tag && <span class="inv-tag">{tag}</span>}
+      {extra && <span class="inv-tag">{extra.tag}</span>}
     </button>
   );
 }
@@ -152,7 +183,7 @@ function SellButton({ price, name, onSell }: { price: number; name: string; onSe
       class="inv-sell"
       onMouseDown={noFocus}
       onClick={onSell}
-      title={`Sell ${name} for ${price} budget`}
+      tip={`Sell ${name} for ${price} budget`}
     >
       Sell {price}
     </Button>
@@ -165,11 +196,12 @@ export function Inventory({ shop = false }: { shop?: boolean }) {
   const building = s.screen === 'build';
   // The reserve's own slots first, then the extra ones, which don't count against it (M4b).
   const indexed = s.reserve.map((r, i) => ({ r, i }));
-  const own = indexed.filter(({ r }) => !isExtra(r));
-  const extra = indexed.filter(({ r }) => isExtra(r));
-  const rows = inventoryRows(s, shop);
+  const own = indexed.filter(({ r }) => !inExtraSlot(r));
+  const extra = indexed.filter(({ r }) => inExtraSlot(r));
+  const rows = inventoryRows(s, shop, struckAtDeal.value);
   if (!showsInventory(rows)) return null;
   const folded = isFolded(shop);
+  const struck = struckText(CONTENT, s.struck);
   const title = shop ? (
     'Your goods'
   ) : (
@@ -179,7 +211,11 @@ export function Inventory({ shop = false }: { shop?: boolean }) {
       onMouseDown={noFocus}
       onClick={() => (goodsFolded.value = !folded)}
       aria-expanded={!folded}
-      title={folded ? 'Show your goods' : 'Fold your goods away, so the hand has more room'}
+      data-tip={
+        folded
+          ? `Show your goods${struck ? ` (${struck})` : ''}`
+          : 'Fold your goods away, so the hand has more room'
+      }
     >
       <Icon name={folded ? 'caretRight' : 'caretDown'} />
       <span class="inv-fold-long">Your goods</span>
@@ -187,8 +223,9 @@ export function Inventory({ shop = false }: { shop?: boolean }) {
     </button>
   );
   if (folded) {
-    // On a short window a folded panel with nothing to use goes, as the empty rows do.
-    const empty = s.reserve.length === 0 && s.supplies.length === 0 && !rows.freePlay;
+    // On a short window a folded panel with nothing to use goes, as the empty rows do; never
+    // with something struck, whose count is on its plank (D-157).
+    const empty = foldedEmpty(s, rows);
     return (
       <Panel
         class={`inventory is-folded ${empty ? 'is-empty' : ''}`}
@@ -196,7 +233,7 @@ export function Inventory({ shop = false }: { shop?: boolean }) {
         head={<FoldCounts />}
         label="Your company’s goods, folded"
       >
-        {/* Weekend Crew's note stays in view: it's about this week's build. */}
+        {/* Weekend Crew's note stays in view: it's about this week's card. */}
         {rows.freePlay && <FreePlayNote />}
       </Panel>
     );
@@ -247,7 +284,7 @@ export function Inventory({ shop = false }: { shop?: boolean }) {
                     onMouseEnter={() => hover('supply', i)}
                     onClick={() => (building ? selectCard(i, 'supplies') : hover('supply', i))}
                     aria-pressed={isSelected('supplies', i)}
-                    title={
+                    data-tip={
                       building
                         ? fits
                           ? `${def.name}: ${verb}`
@@ -291,7 +328,7 @@ export function Inventory({ shop = false }: { shop?: boolean }) {
                     onMouseDown={noFocus}
                     onMouseEnter={() => hover('blueprint', i)}
                     onClick={() => hover('blueprint', i)}
-                    title={`${def.name}: always on`}
+                    data-tip={`${def.name}: always on`}
                   >
                     <Icon name={BLUEPRINT_ICONS[b.id]} class="inv-glyph" />
                     <span class="inv-name">{def.name}</span>
@@ -319,12 +356,21 @@ export function Inventory({ shop = false }: { shop?: boolean }) {
                 key={id}
                 class="inv-slot slot-upgrade"
                 onMouseEnter={() => hover('upgrade', i)}
-                title={CONTENT.upgrades[id].name}
+                data-tip={CONTENT.upgrades[id].name}
               >
                 <span class="inv-name">{CONTENT.upgrades[id].name}</span>
               </span>
             ))}
           </div>
+        </div>
+      )}
+      {/* D-157: the types struck this run, in the order struck. */}
+      {rows.struck && (
+        <div class="inv-row struck">
+          <h3 class="inv-label">
+            <Tip term="strike">Struck</Tip>
+          </h3>
+          <p class="inv-struck">{struckNames(CONTENT, s.struck).join(', ')}</p>
         </div>
       )}
       {rows.freePlay && <FreePlayNote />}

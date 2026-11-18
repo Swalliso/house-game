@@ -385,7 +385,7 @@ function playM3bRun(): Played {
   act({ t: 'leaveShop' });
 
   // Phase 2, week 3: copy the Bedroom, level Jack-and-Jill, move a piece, redraw from the
-  // Catalog, then place the copy from the reserve.
+  // Catalog, then place the copy from the reserve, free (D-163), and pass to end the week.
   const bedroom = state.house.pieces.find((p) => p.defId === 'bedroom')!.uid;
   useNow('copyMachine', { uid: bedroom });
   useNow('remodelJackAndJill');
@@ -395,6 +395,7 @@ function playM3bRun(): Played {
   const fromReserve = rules.legalPlacements(state).find((p) => p.from === 'reserve');
   if (!fromReserve) throw new Error('No legal placement from the reserve');
   act(fromReserve);
+  act({ t: 'pass' });
 
   // Week 4: a Dumpster and an Open House Party, then the milestone.
   useNow('dumpster');

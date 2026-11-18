@@ -11,8 +11,9 @@
 // A card leads with what differs between the clients on offer (D-142): who they are, their
 // wishes, and a map of the lot with its sun and traits (D-119: Creekside pays, so the lot can be
 // a reason to take the job). The household and the tastes are a line each, the whole of each in
-// its tip (job-card.ts). The seven house rules are the same on every card, so the board names
-// them once, in its lede; a rule a client has in numbers of their own sits with their wishes.
+// its tip (job-card.ts). The house rules are the same on every card (D-165: three on the
+// checklist, two on the rooms), so the board names them once, in its lede; a rule a client has
+// in numbers of their own sits with their wishes.
 //
 // In the pixel UI (D-110): a wood panel standing on the title's street (Title.tsx's
 // TitleBackdrop), its cards the kit's paper Cards, rarity a band and a chip as in the shop. A
@@ -23,6 +24,7 @@ import './jobs.css';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import {
   CONTENT,
+  houseRuleNames,
   houseRulesText,
   jobBoard,
   lotTraits,
@@ -44,10 +46,18 @@ import { PieceArt } from '../hud/PieceArt.tsx';
 import { Tip } from '../hud/Tip.tsx';
 import { SunChip } from '../hud/sun.tsx';
 import { Button, Card, Chip, Icon, Keycap, Panel, type IconName } from '../kit/kit.tsx';
-import { CREW_ICONS, LOT_TRAIT_ICONS } from '../sprites.ts';
+import { CREW_ICONS, LOT_TRAIT_ICONS, TOOL_ICONS } from '../sprites.ts';
 import { appScreen, firstVisit, jobBoardSeed, takeContract } from '../store.ts';
-import { householdLine, householdTip, ownHouseRules, tasteCounts, tastesTip } from './job-card.ts';
-import { LOT_COLORS, lotMapKind, lotMapSize, lotSummary } from './lot-map.ts';
+import {
+  deliveryLine,
+  deliveryTip,
+  householdLine,
+  householdTip,
+  ownHouseRules,
+  tasteCounts,
+  tastesTip,
+} from './job-card.ts';
+import { lotMapColor, lotMapSize, lotSummary } from './lot-map.ts';
 import { TitleBackdrop } from './Title.tsx';
 
 /** "the Hendersons", "Count Vladislav": the client mid-sentence. */
@@ -153,7 +163,12 @@ export function JobBoard() {
               </>
             )}
           </p>
-          <ol class="jobs-list" ref={list}>
+          {/* D-171: four crews stand in one row, as the three contracts do. */}
+          <ol
+            class="jobs-list"
+            ref={list}
+            style={client ? { '--jobs-cols': crews.length } : undefined}
+          >
             {client
               ? crews.map((crew, i) => (
                   <CrewCard key={crew.id} crew={crew} index={i} onHire={() => hire(crew.id)} />
@@ -174,7 +189,7 @@ export function JobBoard() {
           <footer class="jobs-foot">
             <Button
               onClick={back}
-              title={client ? 'Back to the job board (Esc)' : 'Back to the title (Esc)'}
+              tip={client ? 'Back to the job board (Esc)' : 'Back to the title (Esc)'}
             >
               Back
             </Button>
@@ -210,10 +225,15 @@ function FirstJobTag() {
 /** The card's stagger, as it's pinned up (FEEL.jobs). */
 const beat = (index: number) => ({ '--beat': `${index * FEEL.jobs.staggerMs}ms` });
 
-/** A crew (D-012, D-109): its icon, what it does all run, and the cards it starts with. */
+/**
+ * A crew (D-012, D-109): its icon, what it does all run, and the cards it starts with. D-171:
+ * and what it brings, in pictures: its own card each milestone, or its tool with a change order.
+ */
 function CrewCard(props: { crew: CrewDef; index: number; onHire: () => void }) {
   const { crew, index } = props;
   const starts = crew.startReserve ?? [];
+  const stock = crew.stock ?? [];
+  const tool = crew.orderTool ? CONTENT.tools[crew.orderTool] : null;
   return (
     <li class="jobs-item">
       <Card
@@ -227,6 +247,43 @@ function CrewCard(props: { crew: CrewDef; index: number; onHire: () => void }) {
         aria-label={crew.name}
       >
         <div class="contract-scroll">
+          {/* D-171: what the crew brings leads, in pictures; the numbers follow. */}
+          {stock.length > 0 && (
+            <section class="contract-section">
+              <h3>Each milestone</h3>
+              <ul
+                class="crew-starts"
+                aria-label={stock.map((id) => CONTENT.pieces[id].name).join(', ')}
+              >
+                {stock.map((id) => (
+                  <li key={id}>
+                    <span
+                      class={`pcard-art ${CONTENT.pieces[id].category === 'indoor' ? '' : 'yard'}`}
+                    >
+                      <PieceArt id={id} />
+                    </span>
+                    {stock.length === 1 && <span>{CONTENT.pieces[id].name}</span>}
+                  </li>
+                ))}
+              </ul>
+              <p class="contract-quiet">
+                {stock.length === 1 ? 'It waits' : 'One of these waits'} in Your goods, free to
+                build.
+              </p>
+            </section>
+          )}
+          {tool && (
+            <section class="contract-section">
+              <h3>With each change order</h3>
+              <ul class="crew-starts">
+                <li>
+                  <Icon name={TOOL_ICONS[tool.id]} class="crew-icon" />
+                  <span>{tool.name}</span>
+                </li>
+              </ul>
+              <p class="contract-quiet">Build two cards in one week.</p>
+            </section>
+          )}
           <section class="contract-section">
             <h3>All run</h3>
             <ul class="contract-tastes">
@@ -363,13 +420,13 @@ function LockedCard({ contract, index }: { contract: Contract; index: number }) 
 }
 
 /**
- * The house rules, named once for the whole board (D-142): every client has the same seven
- * (D-101), so they're a term in the lede, not a list on each card. Its tip names them, in the
- * rules' words.
+ * The house rules, named once for the whole board (D-142): every client has the same three on
+ * the checklist (D-101, D-165), so they're a term in the lede, not a list on each card. Its tip
+ * names them, in the rules' words, and the two that pay on the rooms.
  */
 function HouseRulesTip() {
   const text = houseRulesText(CONTENT);
-  const count = text.split('\n').length - 1;
+  const count = houseRuleNames(CONTENT).length;
   return (
     <Tip title="The house rules" text={text}>
       the same {count} house rules
@@ -379,12 +436,14 @@ function HouseRulesTip() {
 
 /**
  * A card's last lines (D-142): the household and the tastes, a line each, with the whole of each
- * in its tip (job-card.ts). Who moves in, and when, and what they bring; what the client likes
- * and dislikes, counted, and what their jobs draw more of.
+ * in its tip (job-card.ts). Who moves in, and when, and what they bring; what the client brings
+ * for a wish, if anything (D-160); what the client likes and dislikes, counted, and what their
+ * jobs draw more of.
  */
 function FinePrint({ client }: { client: ClientDef }) {
   const { likes, dislikes, draws } = tasteCounts(client);
   const tastes = likes + dislikes + draws > 0;
+  const brings = deliveryLine(client);
   return (
     <ul class="contract-fine">
       <li>
@@ -398,6 +457,18 @@ function FinePrint({ client }: { client: ClientDef }) {
           </Tip>
         </span>
       </li>
+      {brings && (
+        <li>
+          <span class="taste-mark">
+            <Icon name="crate" />
+          </span>
+          <span>
+            <Tip title="What they bring" text={deliveryTip(client)}>
+              {brings}
+            </Tip>
+          </span>
+        </li>
+      )}
       {tastes && (
         <li>
           <span class="taste-mark">
@@ -484,7 +555,7 @@ function TasteLine({
 
 /**
  * The lot, one canvas pixel per tile with the street a row below it (lot-map.ts), drawn at
- * --map-px per tile in an ink ring. Its summary in words is its title and its label.
+ * --map-px per tile in an ink ring. Its summary in words is its tip and its label.
  */
 function LotMap({ lot }: { lot: Lot }) {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -495,14 +566,14 @@ function LotMap({ lot }: { lot: Lot }) {
     if (!ctx) return;
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
-        ctx.fillStyle = LOT_COLORS[lotMapKind(lot, x, y)];
+        ctx.fillStyle = lotMapColor(lot, x, y);
         ctx.fillRect(x, y, 1, 1);
       }
     }
   }, [lot]);
   const summary = lotSummary(lot);
   return (
-    <span class="contract-map" title={summary}>
+    <span class="contract-map" data-tip={summary}>
       <canvas
         ref={ref}
         width={w}

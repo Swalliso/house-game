@@ -61,14 +61,48 @@ function modelOf(h: HouseState): HouseModel {
 const uidOf = (h: HouseState, defId: PieceId, nth = 0) =>
   h.pieces.filter((p) => p.defId === defId)[nth]!.uid;
 
-/** Rooms joined by doorways, from each outside door: every room should be in one of these. */
+/** The pieces open into each other with no wall between them (touching Hallways, D-159), both ways. */
+function openJoints(m: HouseModel): Map<number, Set<number>> {
+  const out = new Map<number, Set<number>>();
+  const add = (a: number, b: number) => {
+    let s = out.get(a);
+    if (!s) out.set(a, (s = new Set()));
+    s.add(b);
+  };
+  for (let y = 0; y < m.height; y++) {
+    for (let x = 0; x < m.width; x++) {
+      const a = roomAt(m, x, y);
+      if (!a) continue;
+      for (const [nx, ny, side] of [
+        [x + 1, y, 'E'],
+        [x, y + 1, 'S'],
+      ] as const) {
+        const b = roomAt(m, nx, ny);
+        if (b && b !== a && edge(m, x, y, side) === EDGE.none) {
+          add(a, b);
+          add(b, a);
+        }
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Rooms joined by doorways, or open into each other (touching Hallways), from each outside door:
+ * every room should be in one of these.
+ */
 function reachable(m: HouseModel): Set<number> {
   const seen = new Set<number>(m.exits.map((e) => e.uid));
   const stack = [...seen];
+  const open = openJoints(m);
   while (stack.length > 0) {
     const u = stack.pop()!;
-    for (const d of m.doors) {
-      const o = d.a === u ? d.b : d.b === u ? d.a : 0;
+    const next = [
+      ...m.doors.map((d) => (d.a === u ? d.b : d.b === u ? d.a : 0)),
+      ...(open.get(u) ?? []),
+    ];
+    for (const o of next) {
       if (o && !seen.has(o)) {
         seen.add(o);
         stack.push(o);
@@ -167,6 +201,42 @@ describe('Hallways', () => {
     expect(m.doors.filter((d) => d.why === 'hall').every((d) => d.a === hall || d.b === hall)).toBe(
       true,
     );
+  });
+
+  it('open into touching Hallways with no wall between them, and never into a room (D-159)', () => {
+    // A Hallway and a Long Hallway end to end, a Hallway down from its east end, a Bedroom above.
+    const h2 = house([
+      ['hallway', 2, 3],
+      ['longHallway', 4, 3],
+      ['hallway', 6, 4, 1],
+      ['bedroom', 2, 1],
+    ]);
+    const m2 = modelOf(h2);
+    const [a, b, c, bed] = [1, 2, 3, 4];
+    // End to end, and round the corner: open. Each cell is still its own piece's.
+    expect(edge(m2, 3, 3, 'E')).toBe(EDGE.none);
+    expect(edge(m2, 6, 3, 'S')).toBe(EDGE.none);
+    expect([roomAt(m2, 3, 3), roomAt(m2, 4, 3), roomAt(m2, 6, 4)]).toEqual([a, b, c]);
+    // No doorway between them: they're one corridor.
+    for (const [p, q] of [
+      [a, b],
+      [b, c],
+    ] as const) {
+      expect(doorBetween(m2, p, q)).toBeUndefined();
+    }
+    // A room keeps its wall, with its doorway from the hall.
+    expect(edge(m2, 2, 2, 'S')).toBe(EDGE.inner);
+    expect(doorBetween(m2, a, bed)).toBeDefined();
+    // Every piece is reached, through the doorway and the open joints.
+    expect(reachable(m2).size).toBe(m2.rooms.size);
+    // Two rooms of a type still never merge.
+    const twin = modelOf(
+      house([
+        ['bedroom', 2, 2],
+        ['bedroom', 4, 2],
+      ]),
+    );
+    expect(edge(twin, 3, 2, 'E')).toBe(EDGE.inner);
   });
 });
 
@@ -472,6 +542,68 @@ describe('the ghost’s model', () => {
     // The card's own shape is another model: a 2 × 2 Kitchen.
     expect(pieceModel('kitchen', 1).bounds).toEqual({ x: 0, y: 0, w: 2, h: 2 });
   });
+
+  // D-179's unmet, D-181's lit and D-183's client all ride on the look, each alone or together.
+  it('is cached apart for a look that differs in any one thing, and is that look’s', () => {
+    const base = { color: 2, style: 1, fixture: 'fireplace' as const };
+    const looks = [
+      base,
+      { ...base, unmet: true },
+      { ...base, lit: true },
+      { ...base, client: 'barkers' as const },
+      { ...base, client: 'vladislav' as const },
+      { ...base, unmet: true, lit: true, client: 'barkers' as const },
+    ];
+    const models = looks.map((look) => pieceModel('livingRoom', 0, look));
+    expect(new Set(models).size).toBe(looks.length);
+    models.forEach((m, i) => {
+      expect(m.look, JSON.stringify(looks[i])).toEqual(looks[i]);
+      // The same look again: the same model.
+      expect(pieceModel('livingRoom', 0, { ...looks[i]! })).toBe(m);
+    });
+    // Only a lit look's room is finished (D-181).
+    expect(models.map((m) => !!m.rooms.get(1)!.finished)).toEqual([
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+    ]);
+  });
+});
+
+describe('the house’s model', () => {
+  it('is cached per house, links, sun and client, and tells two clients apart', () => {
+    const h = house([
+      ['kitchen', 4, 4],
+      ['livingRoom', 6, 4],
+    ]);
+    const state = {
+      ...rules.newRun({
+        seed: 'house',
+        clientId: 'barkers',
+        crewId: 'generalContractor',
+        mode: 'standard',
+      }),
+      house: h,
+    };
+    const links = hallLinks(state);
+    const barkers = houseModel(h, links, null, 'barkers');
+    expect(barkers.client).toBe('barkers');
+    expect(houseModel(h, links, null, 'barkers')).toBe(barkers);
+    // Another client, or none, is another model: the Barkers' dogs' bed is theirs alone.
+    const count = houseModel(h, links, null, 'vladislav');
+    expect(count).not.toBe(barkers);
+    expect(count.client).toBe('vladislav');
+    const none = houseModel(h, links, null);
+    expect(none).not.toBe(barkers);
+    expect(none).not.toBe(count);
+    expect(none.client).toBeUndefined();
+    // And each, asked for again, is that client's (the cache keeps the last one asked for).
+    expect(houseModel(h, links, null, 'barkers').client).toBe('barkers');
+    expect(houseModel(h, links, null, 'vladislav').client).toBe('vladislav');
+  });
 });
 
 /**
@@ -549,8 +681,9 @@ function joined(m: HouseModel): boolean {
 
 // Random connected houses on a lot with a little terrain and yard, for the rules that must
 // always hold.
+// The Addition (D-171) never stands on the lot: it becomes part of the room it extends.
 const INDOOR = (Object.keys(CONTENT.pieces) as PieceId[]).filter(
-  (id) => CONTENT.pieces[id].category === 'indoor',
+  (id) => CONTENT.pieces[id].category === 'indoor' && !CONTENT.pieces[id].addition,
 );
 const YARD: readonly PieceId[] = ['patio', 'driveway', 'fence', 'lawn', 'hotTub', 'doghouse'];
 

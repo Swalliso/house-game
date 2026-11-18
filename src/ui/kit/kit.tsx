@@ -2,7 +2,8 @@
 // Keycap, Well, and for the sheets and Settings: Sheet, Switch, Slider, Segmented, and Price.
 // Their look is in kit.css; every screen builds from these, so the pixel style, the
 // readable-font switch, and the states stay the same everywhere. useDialogFocus keeps the
-// keyboard inside a sheet or the menu while it's open.
+// keyboard inside a sheet or the menu while it's open. A component's `tip` (an Icon's label) is
+// shown in the game's tip note (hud/Tip.tsx, through data-tip), never as the browser's title.
 
 import type { ComponentChildren, JSX, RefObject } from 'preact';
 import { useEffect, useRef } from 'preact/hooks';
@@ -11,14 +12,17 @@ import { ICON_SIZES, type IconName } from '../theme/art.ts';
 
 export type { IconName };
 
-/** An icon from theme/icons.ts, one art px per UI pixel. Decorative unless it has a label. */
+/**
+ * An icon from theme/icons.ts, one art px per UI pixel. Decorative unless it has a label, which
+ * is also its tip, unless the term it's in or the element it makes up has one (hud/Tip.tsx).
+ */
 export function Icon({
   name,
   label,
   class: cls,
 }: {
   name: IconName;
-  /** Read out by screen readers, and shown on hover. Omit for a decorative icon. */
+  /** Read out by screen readers, and its tip. Omit for a decorative icon. */
   label?: string;
   class?: string;
 }) {
@@ -30,7 +34,7 @@ export function Icon({
       role={label ? 'img' : undefined}
       aria-label={label}
       aria-hidden={label ? undefined : 'true'}
-      title={label}
+      data-tip={label}
     />
   );
 }
@@ -93,8 +97,8 @@ type CardProps = Omit<JSX.HTMLAttributes<HTMLElement>, 'title' | 'as'> & {
   selected?: boolean;
   /** Hatched: it can't be used now. */
   blocked?: boolean;
-  /** Shown on hover (the element's title attribute; `title` is the card's heading). */
-  tooltip?: string;
+  /** Its tip (hud/Tip.tsx): why it can't be played now, say. `title` is the card's heading. */
+  tip?: string;
   class?: string;
 };
 
@@ -118,7 +122,7 @@ export function Card({
   rarity,
   selected = false,
   blocked = false,
-  tooltip,
+  tip,
   class: cls,
   children,
   ...rest
@@ -136,7 +140,7 @@ export function Card({
   return (
     <Tag
       class={classes.filter(Boolean).join(' ')}
-      title={tooltip}
+      data-tip={tip}
       {...(as === 'button' ? { type: 'button' } : {})}
       {...rest}
     >
@@ -170,7 +174,7 @@ export function Card({
 
 export type ButtonVariant = 'secondary' | 'primary' | 'danger' | 'armed' | 'wood';
 
-type ButtonProps = Omit<JSX.ButtonHTMLAttributes<HTMLButtonElement>, 'icon' | 'size'> & {
+type ButtonProps = Omit<JSX.ButtonHTMLAttributes<HTMLButtonElement>, 'icon' | 'size' | 'title'> & {
   variant?: ButtonVariant;
   size?: 'sm' | 'md' | 'lg';
   /** A square button with just an icon: give it a label. */
@@ -178,6 +182,11 @@ type ButtonProps = Omit<JSX.ButtonHTMLAttributes<HTMLButtonElement>, 'icon' | 's
   icon?: IconName;
   block?: boolean;
   class?: string;
+  /**
+   * Its tip (hud/Tip.tsx): what it does, its key, or why it can't now. A button with just an
+   * icon needs an aria-label as well: the tip isn't its name.
+   */
+  tip?: string;
 };
 
 /**
@@ -193,6 +202,7 @@ export function Button({
   class: cls,
   children,
   type = 'button',
+  tip,
   ...rest
 }: ButtonProps) {
   const classes = [
@@ -204,7 +214,7 @@ export function Button({
     cls ?? '',
   ];
   return (
-    <button type={type} class={classes.filter(Boolean).join(' ')} {...rest}>
+    <button type={type} class={classes.filter(Boolean).join(' ')} data-tip={tip} {...rest}>
       {icon && <Icon name={icon} />}
       {children}
     </button>
@@ -218,17 +228,25 @@ export function Chip({
   icon,
   tone = 'plain',
   class: cls,
-  title,
+  tip,
+  label,
   children,
 }: {
   icon?: IconName;
   tone?: ChipTone;
   class?: string;
-  title?: string;
+  /** Its tip (hud/Tip.tsx); its lines each start a new line in the note. */
+  tip?: string;
+  /** Its name for screen readers, when its words can be hidden (a narrow hand card's tags). */
+  label?: string;
   children?: ComponentChildren;
 }) {
   return (
-    <span class={`chip ${tone === 'plain' ? '' : `chip-${tone}`} ${cls ?? ''}`} title={title}>
+    <span
+      class={`chip ${tone === 'plain' ? '' : `chip-${tone}`} ${cls ?? ''}`}
+      data-tip={tip}
+      aria-label={label}
+    >
       {icon && <Icon name={icon} />}
       {children}
     </span>
@@ -409,7 +427,7 @@ export function Sheet({
                 class="sheet-close"
                 onClick={onClose}
                 aria-label="Close"
-                title="Close (Esc)"
+                tip="Close (Esc)"
               />
             </>
           }
@@ -431,7 +449,7 @@ export function Switch({
   onChange,
   disabled = false,
   class: cls,
-  title,
+  tip,
   onMouseDown,
   children,
 }: {
@@ -440,7 +458,8 @@ export function Switch({
   onChange: (on: boolean) => boolean | void;
   disabled?: boolean;
   class?: string;
-  title?: string;
+  /** Its tip (hud/Tip.tsx), on the whole switch with its label. */
+  tip?: string;
   onMouseDown?: (e: MouseEvent) => void;
   /** The switch's label, after it. */
   children?: ComponentChildren;
@@ -448,7 +467,7 @@ export function Switch({
   return (
     <label
       class={`switch ${checked ? 'on' : ''} ${disabled ? 'disabled' : ''} ${cls ?? ''}`}
-      title={title}
+      data-tip={tip}
       onMouseDown={onMouseDown}
     >
       <input
@@ -517,7 +536,8 @@ export function Segmented<T extends string | number>({
   onChange,
   label,
 }: {
-  options: readonly { value: T; label: ComponentChildren; title?: string }[];
+  /** Each choice, and its tip (hud/Tip.tsx). */
+  options: readonly { value: T; label: ComponentChildren; tip?: string }[];
   value: T;
   onChange: (v: T) => void;
   /** The group's name for screen readers. */
@@ -531,7 +551,7 @@ export function Segmented<T extends string | number>({
           type="button"
           class={`seg ${o.value === value ? 'on' : ''}`}
           aria-pressed={o.value === value}
-          title={o.title}
+          data-tip={o.tip}
           onClick={() => onChange(o.value)}
         >
           {o.label}

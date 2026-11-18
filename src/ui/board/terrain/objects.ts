@@ -16,6 +16,7 @@ import { terrainAt, type Lot } from '../../../rules/index.ts';
 import { CELL, type SpriteId } from '../../sprites.ts';
 import { SUBTILE } from '../autotile.ts';
 import { sheetRect } from './atlas.ts';
+import { inLook, lotLook } from './biome.ts';
 import { tileHash } from './hash.ts';
 
 /** A sprite, or one 16 px tile of a set, standing on the lot. All sizes in art px. */
@@ -202,12 +203,14 @@ export function finds(lot: Lot): Placed[] {
 
 /**
  * Everything that stands on the lot, in drawing order: by bottom edge, then left to right.
- * `salt` is the run's (hash.ts seedSalt): which tree grows where, and how the rocks lie.
+ * `salt` is the run's (hash.ts seedSalt): which tree grows where, and how the rocks lie. Each
+ * is in the lot's look (D-174): a biome's cut is the same size as the meadow's.
  */
 export function lotObjects(lot: Lot, salt = 0): Placed[] {
-  return [...trees(lot, salt), ...boulders(lot, salt), ...finds(lot)].sort(
-    (a, b) => a.y + a.h - (b.y + b.h) || a.x - b.x,
-  );
+  const look = lotLook(lot);
+  return [...trees(lot, salt), ...boulders(lot, salt), ...finds(lot)]
+    .map((p) => ({ ...p, id: inLook(p.id, look) }))
+    .sort((a, b) => a.y + a.h - (b.y + b.h) || a.x - b.x);
 }
 
 /** A box in art px. */

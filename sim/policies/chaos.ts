@@ -9,7 +9,7 @@
 // it with every crew and client.
 //
 // It picks a kind of action first and an action of that kind second, so a kind with many
-// listed actions (a placement at every spot, a strike per card type) can't crowd out the rest.
+// listed actions (a placement at every spot, a strike per hand card) can't crowd out the rest.
 // Now and then it picks a kind it hasn't used yet this run. Its cheats keep the run going: in
 // a phase's last week (and each overtime week) an addScore covers the shortfall most of the
 // time, a rare one mid-phase opens early completion, addBudget keeps it shopping, and giveGood
@@ -32,6 +32,7 @@ import type {
   ShopOffer,
   UseToolAction,
 } from '../../src/rules/index.ts';
+import { inExtraSlot } from '../../src/rules/index.ts';
 import type { Policy } from './index.ts';
 
 export interface ChaosOptions {
@@ -72,7 +73,7 @@ function goodsNow(rules: Rules, s: RunState): Good[] {
       if (!s.blueprints.some((b) => b.id === id)) out.push({ kind: 'blueprint', id });
     }
   }
-  if (s.reserve.filter((r) => !r.crew && !r.arrival).length < slots.reserve) {
+  if (s.reserve.filter((r) => !inExtraSlot(r)).length < slots.reserve) {
     for (const d of Object.values(c.pieces)) {
       // Special pieces; a member's room (M4b) only ever arrives with its member.
       if (d.drawWeight === 0 && !d.member) out.push({ kind: 'piece', id: d.id });
@@ -161,6 +162,8 @@ function buildGroups(
     },
     // A Renovation (M4a), when a card's type is at its limit: a few rooms, like a fixture's hosts.
     { kind: 'renovate', weight: 12 * end, actions: of((a) => a.t === 'renovate') },
+    // D-168: an extension, when a card of a room type can grow a room of its type.
+    { kind: 'extend', weight: 12 * end, actions: of((a) => a.t === 'extend') },
     { kind: 'pass', weight: 6 * end, actions: [{ t: 'pass' }] },
     {
       kind: 'install:supplies',
@@ -170,6 +173,8 @@ function buildGroups(
     ...[...tools].map(([kind, actions]): Group => ({ kind, weight: 12, actions })),
     { kind: 'sell', weight: 6, actions: of((a) => a.t === 'sell') },
     { kind: 'reroll', weight: 10, actions: of((a) => a.t === 'reroll') },
+    // D-157: a strike from the hand, when it holds one and the card's row is above its floor.
+    { kind: 'strike', weight: 10, actions: of((a) => a.t === 'strikeCard') },
     { kind: 'completeEarly', weight: 10, actions: of((a) => a.t === 'completeEarly') },
     { kind: 'demolish', weight: 10, actions: of((a) => a.t === 'demolish') },
     {

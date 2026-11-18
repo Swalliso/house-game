@@ -8,9 +8,14 @@
 // - the queries agree with apply(): preview() and scoreOnly() with the tally a play makes (or
 //   the house's tally after a free play), previewTool() and canUseTool() with using the tool,
 //   previewDemolish() with demolishing, and cardFits, reserveFits, canReroll,
-//   canCompleteEarly, canRefresh, and the shop's offers with whether apply() accepts them;
+//   canCompleteEarly, canStrikeCard, canRefresh, and the shop's offers with whether apply()
+//   accepts them;
 // - a tool use is a free action (§9): the week and the hand stay (the Catalog redraws), and
 //   next week's first hand is the same as without it;
+// - a strike from the hand (D-157) is a free action too: it uses one strike, every hand card
+//   of the struck type leaves and its slot takes a card of another type from its row, the rest
+//   of the hand stays, and no later hand deals the type; +1 strike adds one, and an old run
+//   code's typed strike (D-084) strikes its type and adds none;
 // - malformed actions throw IllegalAction (never a TypeError) and change nothing, and a
 //   sample of listed legal actions apply;
 // - no query or apply() changes the state it's given;
@@ -24,6 +29,7 @@
 import { describe, expect, it } from 'vitest';
 import type {
   Action,
+  Card,
   ClientId,
   CrewId,
   DebugAction,
@@ -46,7 +52,9 @@ import {
   decodeRunCode,
   encodeRunCode,
   IllegalAction,
+  inExtraSlot,
   placedCells,
+  rowOf,
   rules,
   stream,
   weekTotal,
@@ -65,7 +73,7 @@ interface Seed {
 }
 
 const CLIENTS: readonly ClientId[] = ['hendersons', 'vladislav', 'barkers', 'juniper', 'dale'];
-const CREWS: readonly CrewId[] = ['generalContractor', 'landscaper', 'architect'];
+const CREWS: readonly CrewId[] = ['generalContractor', 'landscaper', 'architect', 'handyman'];
 
 /** Runs with cheats (most reach the end), and one without (it plays on to a loss). */
 const SEEDS: readonly Seed[] = [
@@ -88,6 +96,10 @@ const SEEDS: readonly Seed[] = [
       { kind: 'fixture', id: 'chandelier' },
     ],
   },
+  // An Addition growing a room (D-171) needs the Architect and a room with space to grow, which
+  // random play misses about one run in three: chaos-2 and chaos-6 both missed it on D-174's
+  // lots, and the coverage test then played ten more seeds. This Architect run reaches it.
+  { seed: 'chaos-addition', cheat: true, crewId: 'architect' },
 ];
 
 /** Problems kept per run: past this the run is broken enough. */
@@ -146,6 +158,7 @@ const ACTION_KINDS: Record<Action['t'], true> = {
   place: true,
   install: true,
   renovate: true,
+  extend: true,
   pass: true,
   reroll: true,
   demolish: true,
@@ -158,6 +171,7 @@ const ACTION_KINDS: Record<Action['t'], true> = {
   pick: true,
   useTool: true,
   answerChangeOrder: true,
+  strikeCard: true,
   debug: true,
 };
 const DEBUG_OPS: Record<DebugAction['op'], true> = {
@@ -233,10 +247,42 @@ class Checker {
     this.where = 'the first state';
     this.see(`crew:${s.setup.crewId}`);
     this.see(`client:${s.setup.clientId}`);
-    // M4b: a crew's starting cards are in the reserve's extra slots from week 1.
-    const start = CONTENT.crews[s.setup.crewId].startReserve ?? [];
-    if (J(s.reserve.map((r) => [r.id, r.crew])) !== J(start.map((id) => [id, true]))) {
-      this.fail('the crew’s starting cards aren’t in the reserve', s.reserve);
+    // M4b: a crew's starting cards are in the reserve's extra slots from week 1, and D-160:
+    // then what the client brings in week 1.
+    const start = (CONTENT.crews[s.setup.crewId].startReserve ?? []).map((id) => ({
+      id,
+      crew: true,
+    }));
+    const brought = (CONTENT.clients[s.setup.clientId].deliveries ?? [])
+      .filter((d) => d.phase === 0)
+      .flatMap((d) => d.cards.map((id) => ({ id, client: true })));
+    // D-162: then the standing stock, from week 1 in any run but a first job, only what a card
+    // already in an extra slot (the Landscaper's Fence) doesn't stand for.
+    const stock = CONTENT.balance.standingStock;
+    const waiting: string[] = [...start, ...brought].map((r) => r.id);
+    const stocked: { id: string; stock: true }[] = [];
+    if (s.setup.mode === 'standard' && stock.fromPhase === 0) {
+      for (const id of stock.pieces) {
+        const k = waiting.indexOf(id);
+        if (k >= 0) waiting.splice(k, 1);
+        else stocked.push({ id, stock: true });
+      }
+    }
+    // D-171: then the crew's own card, one from its stock, the week the standing stock comes.
+    const own = CONTENT.crews[s.setup.crewId].stock ?? [];
+    const crewCard = s.setup.mode === 'standard' && stock.fromPhase === 0 && own.length > 0;
+    const fixed = [...start, ...brought, ...stocked];
+    const last = s.reserve[fixed.length];
+    if (
+      J(s.reserve.slice(0, fixed.length)) !== J(fixed) ||
+      s.reserve.length !== fixed.length + (crewCard ? 1 : 0) ||
+      (crewCard &&
+        !(last?.crew && own.includes(last.id) && J(last) === J({ id: last.id, crew: true })))
+    ) {
+      this.fail(
+        'the crew’s, the client’s and the stock’s first cards aren’t in the reserve',
+        s.reserve,
+      );
     }
     this.invariants(s, s, null, []);
   }
@@ -264,6 +310,7 @@ class Checker {
       this.fail('the sim applied this action, but the walk could not', (e as Error).message);
       return s;
     }
+    if (a.t === 'strikeCard') this.checkStrike(s, a, out.state, out.events);
     this.invariants(out.state, s, a, out.events);
     if (J(s) !== before) this.fail('a query or apply() changed the state it was given');
     this.record(s, a, out.events);
@@ -311,7 +358,8 @@ class Checker {
   }
 
   checkPlay(s: RunState, play: PlaceAction | InstallAction | RenovateAction, pass: Tally) {
-    const free = (play.t === 'install' && play.from === 'supplies') || s.freePlay === 'ready';
+    // A supply install, a piece from Your goods (D-163) and Weekend Crew's card don't end the week.
+    const free = (play.t === 'install' && play.from === 'supplies') || !rules.endsWeek(s, play);
     const kind = `${play.t}:${play.from}${s.freePlay === 'ready' ? ':free' : ''}`;
     this.see(`check:preview:${kind}`);
     const p = rules.preview(s, play);
@@ -492,6 +540,56 @@ class Checker {
     };
     agree('canReroll', rules.canReroll(s).ok, { t: 'reroll' });
     agree('canCompleteEarly', rules.canCompleteEarly(s).ok, { t: 'completeEarly' });
+    // D-157: canStrikeCard agrees with apply for each hand card, and one past the end.
+    for (let i = 0; i <= s.hand.length; i++) {
+      agree('canStrikeCard', rules.canStrikeCard(s, i).ok, { t: 'strikeCard', i });
+    }
+  }
+
+  /**
+   * D-157: a strike is a free action that uses one strike and strikes the card's root type:
+   * every hand card of that type leaves, each slot taking a card of another type from its own
+   * row; the rest of the hand stays, and no later hand deals the type again.
+   */
+  checkStrike(
+    s: RunState,
+    a: Extract<Action, { t: 'strikeCard' }>,
+    out: RunState,
+    events: readonly GameEvent[],
+  ) {
+    this.see('check:strike');
+    const rootOf = (c: Card) =>
+      c.kind === 'piece' ? (CONTENT.pieces[c.id].countsAs ?? c.id) : c.id;
+    const card = s.hand[a.i]!;
+    const root = { kind: card.kind, id: rootOf(card) };
+    const same = (c: Card) => c.kind === root.kind && rootOf(c) === root.id;
+    const clock = (x: RunState) => [x.screen, x.week, x.slot, x.phase, x.overtimeWeek, x.draws];
+    if (J(clock(out)) !== J(clock(s))) this.fail('a strike moved the week or the draws');
+    if (out.strikesLeft !== s.strikesLeft - 1) this.fail('a strike didn’t use one strike');
+    if (J(out.struck.at(-1)) !== J(root))
+      this.fail('a strike struck another type', { struck: out.struck.at(-1), root });
+    const e = events.find((x) => x.t === 'cardStruck');
+    if (e?.t !== 'cardStruck') {
+      this.fail('a strike sent no cardStruck event');
+      return;
+    }
+    const slots = e.slots.map((x) => x.i);
+    const gone = s.hand.flatMap((c, j) => (same(c) ? [j] : []));
+    if (J(slots) !== J(gone))
+      this.fail('a strike took other cards than its type’s', { gone, slots });
+    if (out.hand.length !== s.hand.length) this.fail('a strike changed the hand’s size');
+    out.hand.forEach((c, j) => {
+      if (!slots.includes(j)) {
+        if (J(c) !== J(s.hand[j])) this.fail('a strike changed another hand card', { j });
+      } else if (same(c)) this.fail('a struck slot holds its type', c);
+      else if (rowOf(CONTENT, c) !== rowOf(CONTENT, s.hand[j]!))
+        this.fail('a struck slot took a card from another row', c);
+    });
+    const pass = rules.apply(out, { t: 'pass' });
+    for (const x of pass.events) {
+      if (x.t === 'handDrawn' && x.hand.some(same))
+        this.fail('a struck type was drawn again', root);
+    }
   }
 
   /** M4b: the change-order queries agree with the screen, the state, and apply(). */
@@ -541,11 +639,22 @@ class Checker {
     const refresh = rules.canRefresh(s);
     if (accepts(s, { t: 'refreshShop' }) !== refresh.ok)
       this.fail('canRefresh disagrees with apply');
-    const strikes = rules.strikeOptions(s);
+    // D-157: the strike service is +1 strike, bought like any other service. An old run code's
+    // typed strike (D-084) still applies as it did: the type is struck, and no strike is added.
     for (const o of rules.shopOffers(s)) {
-      const strike = o.offer.kind === 'service' && o.offer.service === 'strike';
-      if (strike && strikes.length === 0) continue;
-      const a: Action = strike ? { t: 'buy', i: o.i, strike: strikes[0]! } : { t: 'buy', i: o.i };
+      if (o.ok && o.offer.kind === 'service' && o.offer.service === 'strike') {
+        this.see('check:strikeBuys');
+        const plain = rules.apply(s, { t: 'buy', i: o.i }).state;
+        if (plain.strikesLeft !== s.strikesLeft + 1 || J(plain.struck) !== J(s.struck))
+          this.fail('+1 strike didn’t add one strike', { o });
+        const type = rules.strikeOptions(s)[0];
+        if (type) {
+          const typed = rules.apply(s, { t: 'buy', i: o.i, strike: type }).state;
+          if (typed.strikesLeft !== s.strikesLeft || J(typed.struck) !== J([...s.struck, type]))
+            this.fail('an old code’s typed strike didn’t replay as D-084 had it', { type });
+        }
+      }
+      const a: Action = { t: 'buy', i: o.i };
       const ok = accepts(s, a);
       if (ok !== o.ok)
         this.fail('shopOffers disagrees with apply', {
@@ -585,6 +694,12 @@ class Checker {
       { t: 'pick', i: 99 },
       { t: 'demolish', x: -1, y: -1 },
       { t: 'demolish', x: 1.5, y: 0 },
+      // D-157.
+      { t: 'strikeCard', i: hand },
+      { t: 'strikeCard', i: -1 },
+      { t: 'strikeCard', i: 0.5 },
+      { t: 'strikeCard', i: '0' },
+      { t: 'strikeCard' },
       { t: 'debug', op: 'giveGood', good: { kind: 'tool', id: 'zzz' } },
       { t: 'debug', op: 'giveGood', good: null },
       { t: 'debug', op: 'giveGood', good: { kind: 'nothing', id: 'bedroom' } },
@@ -615,6 +730,7 @@ class Checker {
             { t: 'completeEarly' },
             { t: 'useTool', i: 0 },
             { t: 'demolish', x: 0, y: 0 },
+            { t: 'strikeCard', i: 0 },
           ]),
     ];
     const maybe: unknown[] = [
@@ -656,6 +772,7 @@ class Checker {
       'demolitionsLeft',
       'rerollsLeft',
       'bonusRerolls',
+      'strikesLeft',
       'overtimeLeft',
       'week',
       'draws',
@@ -673,8 +790,9 @@ class Checker {
       const slots = rules.slots(s);
       if (s.supplies.length > slots.supplies)
         this.fail('supplies over their slots', [s.supplies.length, slots]);
-      // A crew's and an arrival's cards sit in extra slots (M4b).
-      if (s.reserve.filter((r) => !r.crew && !r.arrival).length > slots.reserve)
+      // A crew's, an arrival's, the client's and the stock's cards sit in extra slots (M4b,
+      // D-160).
+      if (s.reserve.filter((r) => !inExtraSlot(r)).length > slots.reserve)
         this.fail('reserve over its slots');
       if (s.blueprints.length > slots.blueprints)
         this.fail('blueprints over their slots', [s.blueprints.length, slots]);
@@ -775,10 +893,18 @@ class Checker {
     if (a.t === 'debug') this.see(`debug:${a.op}`);
     if (a.t === 'place' || a.t === 'install' || a.t === 'sell') this.see(`${a.t}:${a.from}`);
     if ((a.t === 'place' || a.t === 'install') && s.freePlay === 'ready') this.see('play:free');
+    // D-171: the Handyman's fixture from the hand, and the Architect's Addition.
+    if (a.t === 'install' && a.from === 'hand' && !rules.endsWeek(s, a)) this.see('install:free');
+    if (a.t === 'extend' && a.from === 'reserve' && s.reserve[a.i]?.id === 'addition') {
+      this.see('extend:addition');
+    }
     if (a.t === 'place' && a.from === 'reserve') {
-      // M4b: a member's room (D-103) or a crew's starting card, from the extra slots.
+      // M4b: a member's room (D-103) or a crew's starting card, from the extra slots; D-160:
+      // what the client brought, or the standing stock.
       if (s.reserve[a.i]?.arrival) this.see('place:arrival');
       if (s.reserve[a.i]?.crew) this.see('place:crew');
+      if (s.reserve[a.i]?.client) this.see('place:client');
+      if (s.reserve[a.i]?.stock) this.see('place:stock');
     }
     if (a.t === 'answerChangeOrder') this.see(`answer:${a.i === 0 ? 'first' : 'second'}`);
     if (a.t === 'useTool') {
@@ -802,6 +928,7 @@ class Checker {
       }
       if (e.t === 'changeOrderResolved') this.see(`changeOrder:${e.result}`);
       if (e.t === 'arrived') this.see(e.forced ? 'arrived:forced' : 'arrived:due');
+      if (e.t === 'delivered') this.see(`delivered:${e.from}`);
     }
   }
 }
@@ -862,6 +989,16 @@ const COVERAGE: readonly string[] = [
   ...prefixed('event', ['changeOrderAnswered', 'changeOrderResolved']),
   ...prefixed('arrived', ['due', 'forced']),
   ...prefixed('place', ['arrival', 'crew']),
+  // D-160: the standing stock's cards and the client's are played. The stock lands with the
+  // run (D-162), and D-169's top-ups at each later milestone are `delivered` events.
+  ...prefixed('place', ['client', 'stock']),
+  ...prefixed('delivered', ['stock']),
+  // D-171: a crew's own card comes at a later milestone, the General Contractor's tool comes,
+  // the Handyman installs from the hand without ending the week, and an Addition grows a room.
+  ...prefixed('delivered', ['crew']),
+  ...prefixed('event', ['crewTool']),
+  ...prefixed('install', ['free']),
+  ...prefixed('extend', ['addition']),
 ];
 
 /** The kinds of check that must each have run. */
@@ -877,6 +1014,8 @@ const CHECKS: readonly string[] = [
   'check:previewDemolish',
   'check:shopQueries',
   'check:malformed',
+  'check:strike',
+  'check:strikeBuys',
   ...keys(TOOL_USES).map((k) => `check:previewTool:${k}`),
   'check:toolRefused:move',
   'check:changeOrderOffer',

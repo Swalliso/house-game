@@ -41,11 +41,11 @@ describe('rhythmPaid', () => {
 });
 
 describe('isHouseRule', () => {
-  it('tells the seven house rules from a client’s wishes', () => {
+  it('tells the three house rules on the checklist from a client’s wishes (D-165)', () => {
     for (const id of Object.keys(CONTENT.clients) as (keyof typeof CONTENT.clients)[]) {
       const specs = CONTENT.clients[id].specs;
       const rules = specs.filter((_, k) => isHouseRule(id, k));
-      expect(rules.length, id).toBe(7);
+      expect(rules.length, id).toBe(3);
       expect(rules.map((s) => s.id)).toContain('underOneRoof');
       expect(isHouseRule(id, specs.length)).toBe(false);
     }
@@ -56,7 +56,7 @@ describe('the milestones', () => {
   it("finds the target a tally crosses, and not the next tally's", () => {
     const tally = { t: 'tally' } as GameEvent;
     const reached = { t: 'targetReached', phase: 1, target: 560, score: 600 } as GameEvent;
-    const met = { t: 'specMet', id: 'cozy', index: 5 } as GameEvent;
+    const met = { t: 'specMet', id: 'tidyYard', index: 2 } as GameEvent;
     expect(targetCrossed([tally, met, reached], 0)).toBe(560);
     expect(targetCrossed([tally, tally, reached], 0)).toBeNull();
     expect(targetCrossed([tally], 0)).toBeNull();

@@ -21,9 +21,12 @@ import {
   type PlacedPiece,
   type Rot,
 } from '../../rules/index.ts';
+import { computeLayout } from '../../rules/layout.ts';
 import { lotFromRows } from '../../rules/lot.ts';
 import { grow, houseModel, overlaps, type Rect } from '../board/house-model.ts';
-import { CELL, spritePos } from '../sprites.ts';
+import { digitBox, pieceLabels } from '../board/label-layout.ts';
+import { FEEL } from '../fx/feel.ts';
+import { CELL, spritePos, type SpriteId } from '../sprites.ts';
 import {
   artFrames,
   artSize,
@@ -42,6 +45,7 @@ import {
   newPieceLook,
   pieceLook,
   risingParts,
+  unmetOf,
   yardModel,
   yardPieceLayout,
   type Ground,
@@ -162,6 +166,35 @@ function problems(l: YardLayout): string[] {
   return out;
 }
 
+/**
+ * A placed piece's layout moved into its own frame (its bounding box's top-left cell at (0, 0)), as
+ * its ghost is drawn: placed one cell in from the lot's corner, since on the board a Fence meets the
+ * lot's back and side edges as it does a wall (D-159), and the ghost is the piece alone.
+ */
+function framed(l: YardLayout): YardLayout {
+  const dx = l.box.x;
+  const dy = l.box.y;
+  const ground = l.ground.map((g): Ground =>
+    g.op === 'sprite'
+      ? { ...g, x: g.x - dx, y: g.y - dy }
+      : g.op === 'rect'
+        ? { ...g, rect: { ...g.rect, x: g.rect.x - dx, y: g.rect.y - dy } }
+        : { ...g, cx: g.cx - dx, cy: g.cy - dy },
+  );
+  return {
+    ...l,
+    cells: l.cells.map((c) => ({ x: c.x - dx / CELL, y: c.y - dy / CELL })),
+    box: { ...l.box, x: 0, y: 0 },
+    ground,
+    items: l.items.map((i) => ({
+      ...i,
+      x: i.x - dx,
+      y: i.y - dy,
+      ...(i.over === undefined ? {} : { over: i.over - dy }),
+    })),
+  };
+}
+
 describe('yard layouts', () => {
   it('lay out every yard piece in every rotation on its own cells', () => {
     for (const id of YARD) {
@@ -255,9 +288,9 @@ describe('yard layouts', () => {
   it('look the same as their ghost, but for the parked car', () => {
     for (const id of YARD) {
       for (const rot of [0, 1, 2, 3] as const) {
-        const h = house([[id, 0, 0, rot]]);
+        const h = house([[id, 1, 1, rot]]);
         const ghost = yardPieceLayout(id, rot, pieceLook(h, 1));
-        const placed = yardOf(h).pieces.get(1)!;
+        const placed = framed(yardOf(h).pieces.get(1)!);
         const items = (l: YardLayout) => l.items.filter((i) => !i.sprite.startsWith('car-'));
         expect(items(ghost), `${id} r${rot}`).toEqual(items(placed));
         expect(ghost.ground, `${id} r${rot}`).toEqual(placed.ground);
@@ -694,7 +727,7 @@ describe('fences', () => {
     expect(sprites(l).filter((s) => s === 'picket-strip').length).toBeGreaterThan(4);
   });
 
-  it('meet end to end post to post, so each stays countable', () => {
+  it('meet end to end as one run, with no post between them (D-159)', () => {
     const alone = yardOf(house([['fence', 0, 2]])).pieces.get(1)!;
     const touching = yardOf(
       house([
@@ -702,13 +735,21 @@ describe('fences', () => {
         ['fence', 4, 2],
       ]),
     );
-    expect(touching.pieces.get(1)!.items).toEqual(alone.items);
+    // The first is as it is alone, but for its east end post; the second is its mirror.
+    const seam = (i: Item) => i.sprite === 'picket-post' && i.x === 3 * CELL + 26;
+    expect(touching.pieces.get(1)!.items).toEqual(alone.items.filter((i) => !seam(i)));
     const posts = [...touching.pieces.values()].flatMap((l) =>
       l.items.filter((i) => i.sprite === 'picket-post').map((i) => i.x),
     );
-    // The first's east end post and the second's west end post, side by side at the seam.
-    expect(posts).toContain(3 * CELL + 26);
-    expect(posts).toContain(4 * CELL + 1);
+    // Only the run's two far ends have posts.
+    expect(posts.sort((a, b) => a - b)).toEqual([0 * CELL + 1, 7 * CELL + 26]);
+    // Pickets the whole way: two runs in each of the eight cells.
+    const runs = [...touching.pieces.values()].flatMap((l) =>
+      l.items.filter((i) => i.sprite === 'picket-run').map((i) => i.x),
+    );
+    expect(runs.sort((a, b) => a - b)).toEqual(
+      Array.from({ length: 16 }, (_, k) => k * (CELL / 2)),
+    );
   });
 
   it('turn a corner where one’s end meets another’s, with one post at the joint', () => {
@@ -749,6 +790,100 @@ describe('fences', () => {
     );
     expect(l.pieces.get(2)!.items).toEqual(alone(3));
     expect(l.pieces.get(2)!.items.some((i) => i.sprite === 'picket-strip')).toBe(false);
+  });
+
+  /** Whether a layout has `sprite` at (x, y). */
+  const has = (l: YardLayout, sprite: string, x: number, y: number) =>
+    l.items.some((i) => i.sprite === sprite && i.x === x && i.y === y);
+
+  it('reach a wall beside an end: straight into it with a post, or turning into it (D-159)', () => {
+    // A Bedroom on (4..5, 3..4). Fences: one running west into its east wall, one running up
+    // into its south wall, and one along its north side whose ends turn down into the wall.
+    const y = yardOf(
+      house([
+        ['bedroom', 4, 3],
+        ['fence', 6, 3, 0, undefined, ['###']],
+        ['fence', 4, 5, 0, undefined, ['#', '#']],
+        ['fence', 4, 2, 0, undefined, ['##']],
+      ]),
+    );
+    const into = y.pieces.get(2)!;
+    // Across to its west edge, with its end post there, against the wall.
+    expect(has(into, 'picket-run', 6 * CELL, 3 * CELL + 8)).toBe(true);
+    expect(has(into, 'picket-post', 6 * CELL + 1, 3 * CELL + 8)).toBe(true);
+    const up = y.pieces.get(3)!;
+    // Up to its top edge, with its end post there.
+    expect(has(up, 'picket-post', 4 * CELL + 14, 5 * CELL)).toBe(true);
+    const along = y.pieces.get(4)!;
+    // Each end turns south at its middle, down to the wall: a post and the strip below it.
+    for (const x of [4, 5]) {
+      expect(has(along, 'picket-post', x * CELL + 14, 2 * CELL + 8), `${x}`).toBe(true);
+      expect(has(along, 'picket-strip', x * CELL + 14, 2 * CELL + 24), `${x}`).toBe(true);
+    }
+    // So it's a pen against the wall, with no end posts of its own.
+    expect(along.items.filter((i) => i.sprite === 'picket-post').length).toBe(2);
+  });
+
+  it('tie a run alongside the house to the wall at each end of the stretch (D-159)', () => {
+    // A Fence up the east side of a Hallway column (6, 2..4), and on past it to row 6.
+    const y = yardOf(
+      house([
+        ['hallway', 6, 2, 1],
+        ['closet', 6, 4],
+        ['fence', 7, 2, 0, undefined, ['#', '#', '#', '#', '#']],
+      ]),
+    );
+    const l = y.pieces.get(3)!;
+    const westArm = (row: number) => has(l, 'picket-run', 7 * CELL, row * CELL + 8);
+    // Its north end turns west into the wall; the last cell beside the house is a T to it; the
+    // cell between them runs straight past, the strip between it and the wall closed off.
+    expect([2, 3, 4, 5, 6].map(westArm)).toEqual([true, false, true, false, false]);
+    expect(has(l, 'picket-post', 7 * CELL + 14, 4 * CELL + 8)).toBe(true);
+  });
+
+  it('stand a one-tile pack upright to meet a wall or a Fence north or south of it (D-159)', () => {
+    const y = yardOf(
+      house([
+        ['bedroom', 4, 3],
+        // Under the Bedroom: upright, a post at each end.
+        ['fence', 4, 5, 0, undefined, ['#']],
+        // Under that one: upright too, joined to it, with no post between them.
+        ['fence', 4, 6, 0, undefined, ['#']],
+        // Beside nothing: a short run across, as alone.
+        ['fence', 8, 8, 0, undefined, ['#']],
+      ]),
+    );
+    const under = y.pieces.get(2)!;
+    expect(under.items.map((i) => i.sprite)).not.toContain('picket-run');
+    expect(has(under, 'picket-post', 4 * CELL + 14, 5 * CELL)).toBe(true);
+    expect(has(under, 'picket-post', 4 * CELL + 14, 5 * CELL + 16)).toBe(false);
+    const below = y.pieces.get(3)!;
+    expect(below.items.map((i) => i.sprite)).not.toContain('picket-run');
+    expect(has(below, 'picket-strip', 4 * CELL + 14, 6 * CELL)).toBe(true);
+    expect(has(below, 'picket-post', 4 * CELL + 14, 6 * CELL + 16)).toBe(true);
+    const lone = y.pieces.get(4)!;
+    expect(lone.items).toEqual(
+      yardPieceLayout('fence', 0, undefined, ['#']).items.map((i) => ({
+        ...i,
+        x: i.x + 8 * CELL,
+        y: i.y + 8 * CELL,
+      })),
+    );
+  });
+
+  it('reach a corner of the house they touch only diagonally, as the rules close it (D-159)', () => {
+    // A Fence's east end at (3, 2), the Bedroom's corner at (4, 3).
+    const y = yardOf(
+      house([
+        ['bedroom', 4, 3],
+        ['fence', 0, 2],
+      ]),
+    );
+    const l = y.pieces.get(2)!;
+    // A post on its east edge, and the strip under it down to the corner, for its end post.
+    expect(has(l, 'picket-post', 3 * CELL + 27, 2 * CELL + 8)).toBe(true);
+    expect(has(l, 'picket-strip', 3 * CELL + 27, 2 * CELL + 24)).toBe(true);
+    expect(has(l, 'picket-post', 3 * CELL + 26, 2 * CELL + 8)).toBe(false);
   });
 });
 
@@ -813,7 +948,7 @@ describe('ghosts', () => {
       ['driveway', ['#####']],
     ] as const) {
       const ghost = yardPieceLayout(id, 0, undefined, shape);
-      const placed = yardOf(house([[id, 0, 0, 0, undefined, shape]])).pieces.get(1)!;
+      const placed = framed(yardOf(house([[id, 1, 1, 0, undefined, shape]])).pieces.get(1)!);
       expect(ghost.box, id).toEqual(placed.box);
       expect(ghost.items, id).toEqual(placed.items.filter((i) => !i.sprite.startsWith('car-')));
       expect(ghost.ground, id).toEqual(placed.ground);
@@ -845,9 +980,9 @@ describe('our own drawings', () => {
     }
   });
 
-  it('cover what LimeZu doesn’t draw: the Doghouse, the hens, the Sprinkler', () => {
+  it('cover what LimeZu doesn’t draw: the Doghouse and its dog, the hens, the Sprinkler', () => {
     const dog = yardOf(house([['doghouse', 3, 3]])).pieces.get(1)!;
-    expect(dog.items.map((i) => i.sprite)).toEqual(['own-doghouse']);
+    expect(dog.items.map((i) => i.sprite)).toEqual(['own-doghouse', 'own-dog-loose']);
     const hens = yardOf(house([['henhouse', 3, 3]])).pieces.get(1)!;
     expect(hens.items.filter((i) => i.sprite.startsWith('own-hen')).length).toBe(2);
     expect(hens.items.some((i) => i.sprite.startsWith('coop-'))).toBe(true);
@@ -856,6 +991,127 @@ describe('our own drawings', () => {
     for (const hen of hens.items.filter((i) => i.sprite.startsWith('own-hen'))) {
       expect(Math.floor(hen.x / CELL) === Math.floor(coop.x / CELL)).toBe(false);
     }
+  });
+});
+
+describe('the Doghouse’s dog (D-179)', () => {
+  const h = house([['doghouse', 3, 3]]);
+  const m = houseModel(h);
+  const lead = yardModel(h, m, new Set([1])).pieces.get(1)!;
+  const loose = yardModel(h, m).pieces.get(1)!;
+  const dog = (l: YardLayout) => l.items.find((i) => i.sprite.startsWith('own-dog-'))!;
+
+  it('sits on its lead while its requirement isn’t met, and is loose once it is', () => {
+    expect(lead.items.map((i) => i.sprite)).toEqual(['own-doghouse', 'own-dog-on-lead']);
+    expect(loose.items.map((i) => i.sprite)).toEqual(['own-doghouse', 'own-dog-loose']);
+    for (const l of [lead, loose]) {
+      expect(problems(l)).toEqual([]);
+      // In front of the kennel, and never above its own cell: no other piece's labels move.
+      expect(l.items.at(-1)).toBe(dog(l));
+      expect(risingParts(l)).toEqual([]);
+    }
+  });
+
+  it('is the only “off” look: every other yard piece draws the same either way', () => {
+    for (const id of YARD) {
+      if (id === 'doghouse') continue;
+      for (const rot of [0, 1] as const) {
+        const one = house([[id, 3, 3, rot]]);
+        const model = houseModel(one);
+        const off = yardModel(one, model, new Set([1])).pieces.get(1);
+        expect(off, `${id} r${rot}`).toEqual(yardModel(one, model).pieces.get(1));
+      }
+    }
+  });
+
+  it('keeps clear of its own ⚠ and digit at 1× and up', () => {
+    /** A label's box in lot art px, grown to whole art px. */
+    const art = (b: { x: number; y: number; w: number; h: number }, px: number): Rect => {
+      const k = CELL / px;
+      const x = Math.floor(b.x * k);
+      const y = Math.floor(b.y * k);
+      return { x, y, w: Math.ceil((b.x + b.w) * k) - x, h: Math.ceil((b.y + b.h) * k) - y };
+    };
+    for (const [px, dpr] of [
+      [32, 1],
+      [64, 1],
+      [96, 1],
+      [32, 2],
+      [48, 2],
+    ] as const) {
+      const labels = (unmet: boolean, digit: number) =>
+        pieceLabels({
+          cells: [{ x: 3, y: 3 }],
+          inset: () => 0,
+          px,
+          dpr,
+          digit,
+          fixture: false,
+          unmet,
+        });
+      // On its lead it earns nothing: the ⚠, and a 0.
+      const off = labels(true, 1);
+      expect(pixelOn(dog(lead), art(off.unmet!, px)), `${px}/${dpr}`).toBeNull();
+      expect(pixelOn(dog(lead), art(digitBox(off.digit!, 1), px)), `${px}/${dpr}`).toBeNull();
+      // Loose, in any frame of its hop, off a score of one figure or two.
+      for (const n of [1, 2]) {
+        const on = labels(false, n);
+        expect(
+          pixelOn(dog(loose), art(digitBox(on.digit!, n), px)),
+          `${px}/${dpr} ${n}`,
+        ).toBeNull();
+      }
+    }
+  });
+
+  it('hops between the roof and the grass, frame by frame, and stands on the roof in its first', () => {
+    const roof = Math.round(FEEL.dog.roofMs / FEEL.dog.hopMs);
+    const grass = Math.round(FEEL.dog.grassMs / FEEL.dog.hopMs);
+    expect(artFrames('own-dog-loose')).toEqual({
+      frames: roof + 1 + grass + 1,
+      stride: artSize('own-dog-loose').w,
+      ms: FEEL.dog.hopMs,
+    });
+    // Its first frame (what Reduce motion, the cards and the photos show) is on the kennel's
+    // roof, above the kennel's front wall; later ones reach the grass at the cell's foot.
+    const it = dog(loose);
+    const { w } = artSize(it.sprite);
+    const front = { x: it.x, y: 3 * CELL + 19, w, h: CELL - 19 };
+    const d = drawingPixels('own-dog-loose');
+    const firstFrameOnly = (r: Rect) => {
+      for (let y = r.y; y < r.y + r.h; y++)
+        for (let x = r.x; x < r.x + r.w; x++) {
+          const i = ((y - it.y) * d.w * d.frames + (x - it.x)) * 4 + 3;
+          if (d.data[i]! > 0) return `${x},${y}`;
+        }
+      return null;
+    };
+    expect(firstFrameOnly(front)).toBeNull();
+    expect(pixelOn(it, front)).not.toBeNull();
+  });
+
+  it('shows on the ghost as the preview says the Doghouse will land, and loose on its card', () => {
+    const one = house([['doghouse', 1, 1]]);
+    const placed = framed(yardModel(one, houseModel(one), new Set([1])).pieces.get(1)!);
+    const look = pieceLook(one, 1, new Set([1]));
+    expect(look.unmet).toBe(true);
+    expect(pieceLook(one, 1).unmet).toBeUndefined();
+    expect(yardPieceLayout('doghouse', 0, look).items).toEqual(placed.items);
+    // A card's picture has no look: the dog loose, as on a Doghouse that earns.
+    expect(yardPieceLayout('doghouse', 0).items.map((i) => i.sprite)).toContain('own-dog-loose');
+  });
+
+  it('is cached per house model and unmet set', () => {
+    const asleep = yardModel(h, m, new Set([1]));
+    expect(yardModel(h, m, new Set([1]))).toBe(asleep);
+    const awake = yardModel(h, m);
+    expect(awake).not.toBe(asleep);
+    expect(yardModel(h, m, new Set())).toBe(awake);
+  });
+
+  it('reads the rules’ tally for which requirements aren’t met', () => {
+    const pieces = [{ uid: 1 }, { uid: 2, unmet: 'in a fenced yard' }, { uid: 4, unmet: 'x' }];
+    expect([...unmetOf(pieces)]).toEqual([2, 4]);
   });
 });
 
@@ -1006,11 +1262,196 @@ describe('packs (D-106): any tiles a player can click out', () => {
     expect(shapes.length).toBe(2725);
   }, 60_000);
 
+  /**
+   * The open tiles' regions as the board draws them (-1 on the house's and the Fences' tiles):
+   * the grass the house and the Fences' pickets leave, flood-filled pixel by pixel through its
+   * sides (so pickets that touch only at a corner close it, as the eye reads them), each tile
+   * by the pixel in its middle.
+   */
+  function drawnRegions(h: HouseState): Int32Array {
+    const m = houseModel(h);
+    const { width: W, height: H } = h.lot;
+    const PW = W * CELL;
+    const PH = H * CELL;
+    const wall = new Uint8Array(PW * PH);
+    for (let py = 0; py < PH; py++) {
+      for (let px = 0; px < PW; px++) {
+        if (m.room[Math.floor(py / CELL) * W + Math.floor(px / CELL)]) wall[py * PW + px] = 1;
+      }
+    }
+    for (const l of yardModel(h, m).pieces.values()) {
+      if (l.defId !== 'fence') continue;
+      for (const it of l.items) {
+        const s = spritePos(it.sprite as SpriteId);
+        for (let y = 0; y < s.h; y++) {
+          for (let x = 0; x < s.w; x++) {
+            if (atlas.rgba[((s.y + y) * atlas.width + s.x + x) * 4 + 3] === 0) continue;
+            wall[(it.y + y) * PW + it.x + x] = 1;
+          }
+        }
+      }
+    }
+    const label = new Int32Array(PW * PH).fill(-1);
+    let next = 0;
+    for (let start = 0; start < PW * PH; start++) {
+      if (wall[start] || label[start]! >= 0) continue;
+      label[start] = next;
+      const stack = [start];
+      while (stack.length > 0) {
+        const i = stack.pop()!;
+        const x = i % PW;
+        for (const j of [x > 0 ? i - 1 : -1, x < PW - 1 ? i + 1 : -1, i - PW, i + PW]) {
+          if (j < 0 || j >= PW * PH || wall[j] || label[j]! >= 0) continue;
+          label[j] = next;
+          stack.push(j);
+        }
+      }
+      next++;
+    }
+    const out = new Int32Array(W * H).fill(-1);
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        const mid = (y * CELL + CELL / 2) * PW + x * CELL + CELL / 2;
+        if (!wall[mid]) out[y * W + x] = label[mid]!;
+      }
+    }
+    return out;
+  }
+
+  /**
+   * The open tiles' regions as the rules' fenced-yard fill sees them: walls are the house's and the
+   * Fences' tiles, and the lot's edges. Every region that reaches the street's row is one, the
+   * street: none of them is ever fenced, so the grass between a Fence and the street may join them.
+   */
+  function ruledRegions(h: HouseState): Int32Array {
+    const layout = computeLayout(CONTENT, h);
+    const { width: W, height: H } = h.lot;
+    const walled = (i: number) =>
+      layout.indoorTile[i] === 1 ||
+      (layout.occupant[i]! > 0 && layout.byUid.get(layout.occupant[i]!)!.defId === 'fence');
+    const out = new Int32Array(W * H).fill(-1);
+    let next = 0;
+    for (let start = 0; start < W * H; start++) {
+      if (walled(start) || out[start]! >= 0) continue;
+      out[start] = next;
+      const stack = [start];
+      while (stack.length > 0) {
+        const i = stack.pop()!;
+        const x = i % W;
+        for (const j of [x > 0 ? i - 1 : -1, x < W - 1 ? i + 1 : -1, i - W, i + W]) {
+          if (j < 0 || j >= W * H || walled(j) || out[j]! >= 0) continue;
+          out[j] = next;
+          stack.push(j);
+        }
+      }
+      next++;
+    }
+    const street = new Set([...out.subarray((H - 1) * W)].filter((r) => r >= 0));
+    return out.map((r) => (street.has(r) ? -2 : r));
+  }
+
+  /** Rooms (Closets and Bedrooms) and Fence packs on a 9 × 9 lot, none on another. */
+  const scenes = fc
+    .tuple(
+      fc.array(
+        fc.record({
+          id: fc.constantFrom<PieceId>('closet', 'closet', 'bedroom'),
+          x: fc.integer({ min: 0, max: 8 }),
+          y: fc.integer({ min: 0, max: 7 }),
+        }),
+        { minLength: 1, maxLength: 6 },
+      ),
+      fc.array(
+        fc.record({
+          shape: tiles(6),
+          x: fc.integer({ min: 0, max: 8 }),
+          y: fc.integer({ min: 0, max: 8 }),
+        }),
+        { minLength: 1, maxLength: 5 },
+      ),
+    )
+    .map(([rooms, fences]) => {
+      const taken = new Set<string>();
+      /** A Fence cell's own arms, by "x,y": for keeping out two packs side by side. */
+      const own = new Map<string, { pack: number; ends: number[] }>();
+      const specs: Spec[] = [];
+      const fits = (cells: readonly Cell[]) =>
+        cells.every((c) => c.x < 9 && c.y < 9 && !taken.has(`${c.x},${c.y}`));
+      for (const r of rooms) {
+        const cells = placedCells(CONTENT.pieces[r.id].shape, r.x, r.y, 0);
+        if (!fits(cells)) continue;
+        for (const c of cells) taken.add(`${c.x},${c.y}`);
+        specs.push([r.id, r.x, r.y]);
+      }
+      fences.forEach((f, k) => {
+        const cells = placedCells(f.shape, f.x, f.y, 0);
+        if (!fits(cells)) return;
+        const mine = new Set(cells.map((c) => `${c.x},${c.y}`));
+        // Its cells' open sides: where a lone tile or an end's line runs on (the Fences join there).
+        const runsOn = (c: Cell): number[] => {
+          const arms = STEPS.filter(([dx, dy]) => mine.has(`${c.x + dx},${c.y + dy}`));
+          if (arms.length === 0) return [0, 1, 2, 3];
+          if (arms.length > 1) return [];
+          return [STEPS.findIndex(([dx, dy]) => dx === -arms[0]![0] && dy === -arms[0]![1])];
+        };
+        // Leave out a pack that would lie side by side with another (they stay two lines): a
+        // pair of tiles that touch where neither one's line runs on toward the other.
+        const sideBySide = cells.some((c) =>
+          STEPS.some(([dx, dy], d) => {
+            const o = own.get(`${c.x + dx},${c.y + dy}`);
+            if (!o) return false;
+            const back = STEPS.findIndex(([ex, ey]) => ex === -dx && ey === -dy);
+            return !runsOn(c).includes(d) && !o.ends.includes(back);
+          }),
+        );
+        if (sideBySide) return;
+        for (const c of cells) {
+          taken.add(`${c.x},${c.y}`);
+          own.set(`${c.x},${c.y}`, { pack: k, ends: runsOn(c) });
+        }
+        specs.push(['fence', f.x, f.y, 0, undefined, f.shape]);
+      });
+      return specs;
+    });
+
+  it('look closed exactly where the rules’ fenced-yard fill sees a closed yard (D-159)', () => {
+    fc.assert(
+      fc.property(scenes, (specs) => {
+        const h = house(specs, 9);
+        const drawn = drawnRegions(h);
+        const ruled = ruledRegions(h);
+        const name = specs.map((s) => `${s[0]}@${s[1]},${s[2]}${s[5] ? ` ${s[5].join('/')}` : ''}`);
+        // The same regions: two open tiles look joined just when the fill joins them. Open
+        // tiles are never drawn over, so the fill's joins always show; this is the other way.
+        const ruleOf = new Map<number, number>();
+        for (let i = 0; i < ruled.length; i++) {
+          if (ruled[i] === -1) continue;
+          expect(drawn[i], `${name.join('; ')}: tile ${i} drawn over`).toBeGreaterThanOrEqual(0);
+          const r = ruleOf.get(drawn[i]!);
+          if (r === undefined) ruleOf.set(drawn[i]!, ruled[i]!);
+          else expect(r, `${name.join('; ')}: tile ${i % 9},${Math.floor(i / 9)}`).toBe(ruled[i]);
+        }
+        // So each fenced yard the rules count is one region on the board, with nothing else in it.
+        const layout = computeLayout(CONTENT, h);
+        for (let i = 0; i < ruled.length; i++) {
+          const yardId = layout.fencedId[i]!;
+          if (yardId < 0) continue;
+          for (let j = 0; j < ruled.length; j++) {
+            if (drawn[j] === drawn[i]) expect(layout.fencedId[j], name.join('; ')).toBe(yardId);
+          }
+        }
+      }),
+      { numRuns: 400 },
+    );
+  }, 30_000);
+
   it('look the same as their ghost, but for the parked car', () => {
     fc.assert(
       fc.property(packs, ({ pack, rot }) => {
         const ghost = yardPieceLayout(pack.id, rot, undefined, pack.shape);
-        const placed = yardOf(house([[pack.id, 0, 0, rot, undefined, pack.shape]])).pieces.get(1)!;
+        const placed = framed(
+          yardOf(house([[pack.id, 1, 1, rot, undefined, pack.shape]])).pieces.get(1)!,
+        );
         const name = `${pack.id} ${pack.shape.join('/')} r${rot}`;
         expect(ghost.cells, name).toEqual(placed.cells);
         expect(ghost.box, name).toEqual(placed.box);

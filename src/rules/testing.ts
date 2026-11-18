@@ -524,6 +524,17 @@ export const TEST_PIECES: Record<PieceId, PieceDef> = {
     drawWeight: 0,
     effects: [{ kind: 'steady', amount: 3 }],
   }),
+  // D-171: it only extends a room; no crew here has it in its stock (crew-stock.test.ts adds it).
+  addition: piece({
+    id: 'addition',
+    name: 'Addition',
+    category: 'indoor',
+    addition: true,
+    shape: ['##', '##'],
+    tags: [],
+    drawWeight: 0,
+    effects: [],
+  }),
 };
 
 const HOST = { host: true } as const;
@@ -645,7 +656,7 @@ export const TEST_BLUEPRINTS: Record<BlueprintId, BlueprintDef> = {
     { kind: 'earn', target: { tag: 'Social' }, pct: 50 },
   ]),
   waterfront: bp('waterfront', 'Waterfront', 'common', [
-    { kind: 'earn', target: { touching: { feature: ['pond', 'creek'] } }, pct: 50 },
+    { kind: 'earn', target: { touching: { feature: ['pond', 'creek', 'lake'] } }, pct: 50 },
   ]),
   openConcept: bp('openConcept', 'Open Concept', 'uncommon', [
     { kind: 'link', among: ['kitchen', 'diningRoom', 'livingRoom'] },
@@ -729,6 +740,14 @@ export const TEST_CREWS: Record<CrewId, CrewDef> = {
       { kind: 'setBonus', pct: 50 },
     ],
   },
+  // D-171: fixtures from the hand go in without ending the week.
+  handyman: {
+    id: 'handyman',
+    name: 'Handyman',
+    tier: 'core',
+    blurb: 'Fixtures from the hand are free to install.',
+    modifiers: [{ kind: 'rule', key: 'freeInstalls', add: 1 }],
+  },
 };
 
 export const TEST_FEATURES: Record<FeatureId, FeatureDef> = {
@@ -754,6 +773,15 @@ export const TEST_FEATURES: Record<FeatureId, FeatureDef> = {
   creek: {
     id: 'creek',
     name: 'Creek',
+    tier: 'core',
+    tags: [],
+    blocks: true,
+    viewSource: true,
+    body: true,
+  },
+  lake: {
+    id: 'lake',
+    name: 'Lake',
     tier: 'core',
     tags: [],
     blocks: true,
@@ -846,6 +874,62 @@ export const TEST_SETS: Record<SetId, SetDef> = {
     times: 200,
     level: { points: 20, mult: 50 },
   },
+  // The yard sets (D-164), as the real content has them: one per house, members touching.
+  backyard: {
+    id: 'backyard',
+    name: 'Backyard',
+    tier: 'core',
+    members: { livingRoom: 1, patio: 1, lawn: 1 },
+    connected: true,
+    maxInstances: 1,
+    points: 15,
+    mult: 50,
+    level: { points: 10, mult: 25 },
+  },
+  harvest: {
+    id: 'harvest',
+    name: 'Harvest',
+    tier: 'core',
+    members: { kitchen: 1, herbGarden: 1, greenhouse: 1 },
+    connected: true,
+    maxInstances: 1,
+    points: 15,
+    mult: 50,
+    level: { points: 10, mult: 25 },
+  },
+  dogRun: {
+    id: 'dogRun',
+    name: 'Dog Run',
+    tier: 'core',
+    members: { doghouse: 1, lawn: 1, fence: 1 },
+    connected: true,
+    maxInstances: 1,
+    points: 10,
+    mult: 50,
+    level: { points: 8, mult: 25 },
+  },
+  playYard: {
+    id: 'playYard',
+    name: 'Play Yard',
+    tier: 'core',
+    members: { treehouse: 1, lawn: 1, fence: 1 },
+    connected: true,
+    maxInstances: 1,
+    points: 10,
+    mult: 50,
+    level: { points: 8, mult: 25 },
+  },
+  driveIn: {
+    id: 'driveIn',
+    name: 'Drive-In',
+    tier: 'core',
+    members: { garage: 1, driveway: 1 },
+    connected: true,
+    maxInstances: 1,
+    points: 10,
+    mult: 25,
+    level: { points: 8, mult: 25 },
+  },
 };
 
 const testClient = (id: ClientId, name: string): ClientDef => ({
@@ -895,6 +979,17 @@ export const TEST_LOT_BALANCE: LotBalance = {
   oldSheds: [0, 0],
   timeCapsules: [0, 0],
   findStreetGap: 4,
+  // Generated test lots stay plain meadow lots (D-166, D-174), as they were drawn before lot
+  // kinds and biomes.
+  biomes: {
+    meadow: { weight: 1, kinds: { plain: 1 } },
+    lakeside: { weight: 0, kinds: {} },
+    autumn: { weight: 0, kinds: {} },
+    dry: { weight: 0, kinds: {} },
+  },
+  rockyBoulders: [8, 12],
+  pondTiles: [14, 20],
+  lakeRows: [2, 5],
 };
 
 export const TEST_BALANCE: Balance = {
@@ -917,6 +1012,9 @@ export const TEST_BALANCE: Balance = {
     shopPricePct: 100,
     specBonus: 25,
     interestMax: 0,
+    // D-157: none, so legalActions and the bots' runs here are as before; strike tests add some.
+    strikes: 0,
+    freeInstalls: 0,
   },
   early: { budgetPerWeek: [2], scorePct: [10] },
   milestoneBudget: 3,
@@ -964,12 +1062,22 @@ export const TEST_BALANCE: Balance = {
     [100, 30, 5],
     [100, 60, 25],
   ],
+  // Test draws keep D-055's ramp for every card (D-166's draw is tested with the real content).
+  lotCardsFullIn: [],
   verdicts: [
     { name: 'Fixer-Upper', minPctOfTarget: 0 },
     { name: 'Starter Home', minPctOfTarget: 100 },
     { name: 'Dream Home', minPctOfTarget: 200 },
   ],
   renovate: { pointsPerLevel: 4, maxLevel: 2 },
+  // D-168: no room extends unless a test turns it on (extend.test.ts does), so a room card on a
+  // room of its type renovates, as Renovate's tests expect.
+  extend: {
+    types: [],
+    maxPerRoom: 1,
+    pointsPerTile: 1,
+    minShared: 2,
+  },
   drawAtLimitPct: 50,
   swapTries: 3,
   jobBoard: {
@@ -981,6 +1089,10 @@ export const TEST_BALANCE: Balance = {
   },
   // No change orders unless a test turns them on (two phases: after milestone 1 is the one).
   changeOrderAfter: [],
+  strikesPerMilestone: 0,
+  // D-160: no standing stock, so the test content's reserves are as before; stock.test.ts
+  // turns it on.
+  standingStock: { fromPhase: 1, pieces: [], firstJobPhase: 1, firstJobSlot: 1, refill: false },
 };
 
 const testTool = (
@@ -1311,8 +1423,9 @@ export const TEST_CHANGE_ORDERS: Record<ChangeOrderId, ChangeOrderDef> = {
 };
 
 /**
- * The lot traits (D-119), without modifiers: generated test lots have creeks on 70% of seeds,
- * and Creekside would change their scores. Tests of Creekside give it its pay (modifiers.test.ts).
+ * The lot traits (D-119, D-166), without modifiers: generated test lots have creeks on 70% of
+ * seeds, and Creekside would change their scores. Tests of a trait's pay give it its modifiers
+ * (modifiers.test.ts).
  */
 export const TEST_LOT_TRAITS: Record<LotTraitId, LotTraitDef> = {
   creekside: {
@@ -1322,6 +1435,13 @@ export const TEST_LOT_TRAITS: Record<LotTraitId, LotTraitDef> = {
     when: { terrain: 'creek', min: 1 },
     modifiers: [],
   },
+  pondside: {
+    id: 'pondside',
+    name: 'Pondside',
+    blurb: 'A big pond.',
+    when: { kind: 'pond' },
+    modifiers: [],
+  },
   wooded: {
     id: 'wooded',
     name: 'Wooded',
@@ -1329,6 +1449,35 @@ export const TEST_LOT_TRAITS: Record<LotTraitId, LotTraitDef> = {
     when: { terrain: 'tree', min: 100 },
     modifiers: [],
     suits: ['vladislav'],
+  },
+  rocky: {
+    id: 'rocky',
+    name: 'Rocky',
+    blurb: 'Lots of Boulders.',
+    when: { kind: 'rocky' },
+    modifiers: [],
+  },
+  open: {
+    id: 'open',
+    name: 'Open',
+    blurb: 'Few Trees.',
+    when: { kind: 'open' },
+    modifiers: [],
+  },
+  lakefront: {
+    id: 'lakefront',
+    name: 'Lakefront',
+    blurb: 'A lake.',
+    when: { kind: 'lake' },
+    modifiers: [],
+  },
+  oldWoods: {
+    id: 'oldWoods',
+    name: 'Old Woods',
+    blurb: 'Its Trees stay.',
+    when: { kind: 'oldWoods' },
+    protects: ['tree'],
+    modifiers: [],
   },
 };
 
@@ -1345,6 +1494,7 @@ export const TEST_CONTENT: Content = {
   crates: TEST_CRATES,
   changeOrders: TEST_CHANGE_ORDERS,
   lotTraits: TEST_LOT_TRAITS,
+  roomRules: {},
   balance: TEST_BALANCE,
 };
 

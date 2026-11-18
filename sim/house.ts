@@ -40,6 +40,8 @@ export interface HouseStats {
   buildBox: number;
   /** Yard pieces (yard and outbuildings) wedged inside the house's box. */
   wedged: number;
+  /** D-164: the wedged pieces by type (the countsAs root). */
+  wedgedTypes: Partial<Record<PieceId, number>>;
   /** Tiles inside the box that aren't indoor and can't reach outside it. */
   courtyard: number;
   /** The most of one yard type (Fences, Driveways, and Saplings left out). */
@@ -172,6 +174,7 @@ export function houseStats(content: Content, house: HouseState): HouseStats {
 
   // The yard: wedged pieces, repeats, outbuildings, outdoor rooms by the house.
   let wedged = 0;
+  const wedgedTypes: Partial<Record<PieceId, number>> = {};
   let outdoorAway = 0;
   let outbuildings = 0;
   const yardTypes = new Map<PieceId, number>();
@@ -199,7 +202,10 @@ export function houseStats(content: Content, house: HouseState): HouseStats {
     }
     const inside =
       tiles > 0 && cells.every((c) => c.x >= bx0 && c.x <= bx1 && c.y >= by0 && c.y <= by1);
-    if (inside && touchingIndoor.size >= 2) wedged++;
+    if (inside && touchingIndoor.size >= 2) {
+      wedged++;
+      wedgedTypes[t] = (wedgedTypes[t] ?? 0) + 1;
+    }
     if (OUTDOOR_ROOMS.includes(t) && !touchesHouse) outdoorAway++;
   }
   const yardRepeat = Math.max(0, ...yardTypes.values());
@@ -232,6 +238,7 @@ export function houseStats(content: Content, house: HouseState): HouseStats {
     box: { w: bw, h: bh },
     buildBox,
     wedged,
+    wedgedTypes,
     courtyard,
     yardRepeat,
     treehouses,

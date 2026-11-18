@@ -212,7 +212,7 @@ describe('the water', () => {
   });
 
   it('has no canvas without water', () => {
-    expect(waterPlan(open(4, 4))).toEqual({ box: null, tiles: [], lilies: [] });
+    expect(waterPlan(open(4, 4))).toEqual({ box: null, look: 'meadow', tiles: [], lilies: [] });
   });
 });
 

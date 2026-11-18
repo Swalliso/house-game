@@ -464,14 +464,16 @@ describe('Copy Machine (copy)', () => {
     });
   });
 
-  it('the copy can be placed later as a week’s turn', () => {
+  it('the copy can be placed later, free: it doesn’t use the week (D-163)', () => {
     const s = build(placements, { tools: ['copyMachine'] });
     const copied = R.apply(s, use(0, { uid: 1 })).state;
     // A second Bedroom beside the first: both earn 3 + 1 (a Quiet neighbor).
     const { state, events } = R.apply(copied, place(0, 2, 0, 'reserve'));
     expect(state.reserve).toEqual([]);
+    expect(types(events)).toEqual(['placed']);
     expect(eventsOf(events, 'placed')[0]!.defId).toBe('bedroom');
-    expect(eventsOf(events, 'tally')[0]!.tally.total).toBe(4 + 4 + 1);
+    const week = R.apply(state, { t: 'pass' });
+    expect(eventsOf(week.events, 'tally')[0]!.tally.total).toBe(4 + 4 + 1);
   });
 });
 
@@ -944,15 +946,16 @@ describe('Weekend Crew (extraPlay, D-075)', () => {
     expect(state.freePlay).toBe('none');
   });
 
-  it('works from the reserve', () => {
+  it('isn’t used up by a piece from the reserve, which is free anyway (D-163)', () => {
     const s = build([], { tools: ['weekendCrew'], hand, reserve: [{ id: 'lawn' }] });
     const ready = R.apply(s, use(0)).state;
     const { state, events } = R.apply(ready, place(0, 5, 5, 'reserve'));
     expect(types(events)).toEqual(['placed']);
-    expect(eventsOf(events, 'placed')[0]).toMatchObject({ defId: 'lawn', free: true });
+    expect(eventsOf(events, 'placed')[0]).toMatchObject({ defId: 'lawn' });
+    expect(eventsOf(events, 'placed')[0]!.free).toBeUndefined();
     expect(state.reserve).toEqual([]);
     expect(state.hand).toEqual(hand);
-    expect(state.freePlay).toBe('used');
+    expect(state.freePlay).toBe('ready');
     expect(state.week).toBe(1);
   });
 

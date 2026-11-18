@@ -1105,6 +1105,8 @@ const RULE_KEYS: Record<RuleKey, true> = {
   shopPricePct: true,
   specBonus: true,
   interestMax: true,
+  strikes: true,
+  freeInstalls: true,
 };
 
 describe('rule', () => {
@@ -1366,7 +1368,7 @@ const CREEKSIDE: Content = {
     ...C.lotTraits,
     creekside: {
       ...C.lotTraits.creekside,
-      modifiers: [{ kind: 'earn', target: { touching: { feature: 'creek' } }, pct: 50 }],
+      modifiers: [{ kind: 'earn', target: { touching: { feature: 'creek' } }, pct: 100 }],
     },
   },
 };
@@ -1393,7 +1395,7 @@ describe('lot traits (D-119)', () => {
     expect(sourceName(CREEKSIDE, { kind: 'lot', id: 'creekside' })).toBe('Creekside');
   });
 
-  it('Creekside: a piece touching the creek earns +50%, on a Creekside line', () => {
+  it('Creekside: a piece touching the creek earns +100%, on a Creekside line', () => {
     const r = createRules(CREEKSIDE);
     // The right Bedroom (x 3–4) touches the creek; the left one (x 1–2) touches only it.
     const s = {
@@ -1404,20 +1406,24 @@ describe('lot traits (D-119)', () => {
       ]),
     };
     const t = r.currentTally(s);
-    // Each 3 + 1 (a Quiet neighbor) = 4; by the creek × 1.5 = 6.
-    expect(scoreOf(t, 1)).toMatchObject({ points: 4, pct: 50, earned: 6 });
+    // Each 3 + 1 (a Quiet neighbor) = 4; by the creek × 2 = 8.
+    expect(scoreOf(t, 1)).toMatchObject({ points: 4, pct: 100, earned: 8 });
     expect(scoreOf(t, 1).lines.filter((l) => l.op === 'pct')).toEqual([
-      { label: 'Creekside', op: 'pct', value: 50, from: [] },
+      { label: 'Creekside', op: 'pct', value: 100, from: [] },
     ]);
     expect(scoreOf(t, 2)).toMatchObject({ points: 4, pct: 0, earned: 4 });
   });
 
-  it('read as a tip: what they pay, all run, then the blurb', () => {
+  it('read as a tip: what they pay, all run, what they deal more of (D-166), then the blurb', () => {
     const creekside = CONTENT.lotTraits.creekside;
     expect(lotTraitText(CONTENT, creekside)).toBe(
-      'Pieces touching the Creek earn +50%, all run. Only a Driveway crosses it.',
+      'Pieces touching the Creek earn +100%, all run. More Patios in the draw. Only a Driveway crosses it.',
     );
-    expect(lotTraitText(CONTENT, CONTENT.lotTraits.wooded)).toBe(CONTENT.lotTraits.wooded.blurb);
+    expect(lotTraitText(CONTENT, CONTENT.lotTraits.wooded)).toBe(
+      'Pieces touching a Tree earn +25%, all run. More Treehouses and Birdhouses in the draw. Building over a Tree clears it.',
+    );
+    // A trait that only hints reads as its blurb (the test content's).
+    expect(lotTraitText(C, C.lotTraits.wooded)).toBe(C.lotTraits.wooded.blurb);
   });
 });
 

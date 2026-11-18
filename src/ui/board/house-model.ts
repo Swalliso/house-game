@@ -2,9 +2,12 @@
 // by fixed rules, never by chance, so the same house always looks the same (photos and
 // replays depend on it). Pure: no DOM. Cached per house, like occupancy() in geometry.ts.
 //
-// - Edges. Every cell edge is no wall (one piece on both sides, or no room on either), a wall
-//   between two rooms (any two pieces, same type included, so rooms never merge: D-093), an
-//   outside wall (a room next to anything else, or the lot's edge), or a garage door.
+// - Edges. Every cell edge is no wall (one piece on both sides, two Hallway pieces, or no room on
+//   either), a wall between two rooms (any two pieces, same type included, so rooms never merge:
+//   D-093), an outside wall (a room next to anything else, or the lot's edge), or a garage door.
+//   Touching connectors (Hallway, Long Hallway) open into each other (D-159): a hall reads as one
+//   corridor, while each piece stays its own for hover, Inspect and its label. A room never
+//   opens into a hall that way, nor into another room.
 // - Doorways are decoration and change no score. Hallways open into every room the rules link
 //   through them (rules.describePiece's `linked`). A front door goes in a street-facing wall of
 //   the best entry room (a garage, a bathroom or a closet only when no other room can have one;
@@ -12,6 +15,12 @@
 //   Tub, and a garage door faces a Driveway or the street. Then a spanning tree from the entry,
 //   public rooms first, adds as few doors as it takes to reach every room. Doors keep to side
 //   walls and the ends of north walls: a north wall's middle is for furniture.
+// - Set doors (D-176): the rooms of a held set (rules.currentTally's `sets`) open into each other
+//   where they share a wall, before the tree: a Suite's Bedroom into its Bathroom and Closet,
+//   each Bedroom of a Jack-and-Jill into the Bathroom they share, and the Entertainer's rooms
+//   through a wider opening (OPENING) with a stub of wall at each end. The wall stays (D-093):
+//   only its band opens. The tree goes through a set door rather than add a second one, and
+//   enters a suite through its Bedroom when it can.
 // - Windows go in outside walls, about one per two cells of straight wall, except in closets,
 //   garages and hallways. A Bay Window (fixture) turns one cell of outside wall into glass with a
 //   bay outside it, the street side first.
@@ -22,14 +31,17 @@
 
 import {
   CONTENT,
+  isFinished,
   rules,
   terrainAt,
   type Cell,
+  type ClientId,
   type FixtureId,
   type HouseState,
   type PieceId,
   type PlacedPiece,
   type RunState,
+  type SetId,
   type SunSide,
   type TerrainId,
 } from '../../rules/index.ts';
@@ -68,6 +80,16 @@ export const WALL = {
   bay: 4,
 } as const;
 
+/**
+ * The opening between two rooms of the Entertainer where they share a wall (D-176), in art px:
+ * `width` wide, or at 0 all of the stretch a door may take (below the north faces, inside the
+ * walls at its ends); either way it leaves `stub` px of wall at each end, so each room still
+ * reads as its own (D-093). Where that leaves no more than a door's width, it's an ordinary
+ * door. Awaiting the user's pick from stage 1's sheet: 14 (a door), 28 (about a cell, as built)
+ * or 0 (the wall but its stubs).
+ */
+export const OPENING = { width: 28, stub: 6 } as const;
+
 export interface Rect {
   x: number;
   y: number;
@@ -86,8 +108,8 @@ export interface Doorway {
   gap: Rect;
   /** The floor around it to keep clear of furniture. */
   clear: Rect;
-  /** Why it's there: a Hallway's link, or the tree that reaches every room. */
-  why: 'hall' | 'tree';
+  /** Why it's there: a Hallway's link, a held set's rooms (D-176), or the tree that reaches every room. */
+  why: 'hall' | 'set' | 'tree';
 }
 
 /** A door in an outside wall. */
@@ -132,16 +154,32 @@ export interface Room {
   box: Rect;
   /** Its fixture, if it has one. */
   fixture?: FixtureId;
+  /** D-181: finished (rules' isFinished: a fixture, and grown), so its lamp is lit. */
+  finished?: true;
 }
 
 /**
  * How a piece will look once it's placed, for its ghost: its color (an index into its type's
- * palette, as the house will give it), which way its small choices go, and its fixture.
+ * palette, as the house will give it), which way its small choices go, its fixture, and a room's
+ * arrangement (D-173: an index into its type's, as the house will give it; the first without one).
  */
 export interface PieceLook {
   color: number;
   flip?: boolean;
   fixture?: FixtureId;
+  style?: number;
+  /**
+   * D-179: a yard piece whose requirement won't be met there (the preview's `unmet`): the
+   * Doghouse's dog on its lead (yard.ts). Rooms don't read it.
+   */
+  unmet?: boolean;
+  /** D-181: a finished room's lamp is lit (the Moving Truck carrying one). */
+  lit?: boolean;
+  /**
+   * D-183: the client whose own things this room takes (the Count's coffin): set only when it is,
+   * or will be once placed, the first room of the type their things go in (rooms.ts THEIRS).
+   */
+  client?: ClientId;
 }
 
 export interface HouseModel {
@@ -166,6 +204,11 @@ export interface HouseModel {
   bounds: Rect | null;
   /** Where the sun falls (sunLight): on the board's house, not on a piece alone. */
   sun?: SunLight;
+  /**
+   * D-183: the run's client, whose own things move into the first room of their type (rooms.ts
+   * THEIRS): on the board's house, not on a piece alone (its look says whether it takes them).
+   */
+  client?: ClientId;
 }
 
 /** Where the sun falls in the house (D-120): the walls that face it, and the Sunny rooms' tiles in it. */
@@ -179,6 +222,14 @@ export interface SunLight {
 export type HallLinks = ReadonlyMap<number, readonly number[]>;
 
 const NO_LINKS: HallLinks = new Map();
+
+/** The house's held sets (rules.currentTally's `sets`): each instance's set and its members by uid. */
+export type HeldSets = readonly { readonly set: SetId; readonly members: readonly number[] }[];
+
+const NO_SETS: HeldSets = [];
+
+/** The sets whose rooms open into each other (D-176), in the order their doors are laid. */
+const DOOR_SETS: readonly SetId[] = ['entertainer', 'suite', 'jackAndJill'];
 
 const STEP: Readonly<Record<Side, readonly [number, number]>> = {
   N: [0, -1],
@@ -303,7 +354,14 @@ export function uidHash(n: number, salt = 0): number {
 
 const cache = new WeakMap<
   HouseState,
-  { links: HallLinks; sun: SunLight | null; key: string; model: HouseModel }
+  {
+    links: HallLinks;
+    sun: SunLight | null;
+    client: ClientId | undefined;
+    sets: HeldSets;
+    key: string;
+    model: HouseModel;
+  }
 >();
 
 function linksKey(links: HallLinks): string {
@@ -322,27 +380,42 @@ function sunKey(sun: SunLight | null): string {
     .join(';')}`;
 }
 
+/** The held sets that open doors (D-176), as their instances' keys. */
+function setsKey(sets: HeldSets): string {
+  return sets
+    .filter((s) => DOOR_SETS.includes(s.set))
+    .map((s) => `${s.set}:${[...s.members].sort((a, b) => a - b).join(',')}`)
+    .sort()
+    .join(';');
+}
+
 /**
- * The house's model, with Hallway doors from `links` (hallLinks) and the sun's light from `sun`
- * (sunLight). Cached per house object, and a house never changes once made, so it's computed
- * once per placement, not per render.
+ * The house's model, with Hallway doors from `links` (hallLinks), the sun's light from `sun`
+ * (sunLight), the run's client (D-183: their own things in the first room of their type) and the
+ * set doors from `sets` (heldSets, D-176). Cached per house object, and a house never changes
+ * once made, so it's computed once per placement, not per render.
  */
 export function houseModel(
   house: HouseState,
   links: HallLinks = NO_LINKS,
   sun: SunLight | null = null,
+  client?: ClientId,
+  sets: HeldSets = NO_SETS,
 ): HouseModel {
   const hit = cache.get(house);
-  if (hit && hit.links === links && hit.sun === sun) return hit.model;
-  const key = `${linksKey(links)}|${sunKey(sun)}`;
+  if (hit && hit.links === links && hit.sun === sun && hit.client === client && hit.sets === sets)
+    return hit.model;
+  const key = `${linksKey(links)}|${sunKey(sun)}|${client ?? ''}|${setsKey(sets)}`;
   if (hit && hit.key === key) {
     hit.links = links;
     hit.sun = sun;
+    hit.sets = sets;
     return hit.model;
   }
-  const model = buildModel(house, links, true);
+  const model = buildModel(house, links, true, sets);
   if (sun && sun.rooms.size > 0) model.sun = sun;
-  cache.set(house, { links, sun, key, model });
+  if (client) model.client = client;
+  cache.set(house, { links, sun, client, sets, key, model });
   return model;
 }
 
@@ -371,6 +444,11 @@ export function sunLight(state: RunState): SunLight {
   return { side: SUN_WALL[state.house.lot.sun], rooms };
 }
 
+/** The house's held sets, from the rules: where set doors open (D-176). */
+export function heldSets(state: RunState): HeldSets {
+  return rules.currentTally(state).sets;
+}
+
 const solo = new Map<string, HouseModel>();
 
 /**
@@ -385,7 +463,11 @@ export function pieceModel(
   /** A pack's own tiles (PlacedPiece.shape), when they aren't the card's shape. */
   own?: readonly string[],
 ): HouseModel {
-  const looks = look ? `${look.color}:${look.flip ?? ''}:${look.fixture ?? ''}` : '';
+  // Every field of the look, so the model's own `look` is always the one asked for.
+  const looks = look
+    ? `${look.color}:${look.flip ?? ''}:${look.fixture ?? ''}:${look.style ?? ''}:` +
+      `${look.unmet ? 'unmet' : ''}:${look.lit ? 'lit' : ''}:${look.client ?? ''}`
+    : '';
   const key = `${defId}:${rot}:${own?.join('/') ?? ''}:${looks}`;
   let m = solo.get(key);
   if (!m) {
@@ -416,6 +498,9 @@ export function pieceModel(
     };
     m = buildModel(house, NO_LINKS, false);
     if (look) m.look = look;
+    // D-181: a finished room carried by the Moving Truck keeps its lamp lit.
+    const room = m.rooms.get(1);
+    if (look?.lit && room) room.finished = true;
     solo.set(key, m);
   }
   return m;
@@ -526,6 +611,16 @@ const isConnector = (id: PieceId) => !!CONTENT.pieces[id].connector;
 /** How far down a side wall a door goes, from its top (0) to its bottom (1): clear of north-wall furniture. */
 const SIDE_DOOR = 0.7;
 
+/**
+ * The door tree around set doors (D-176), in its keys' units (a parentScore point is 10). Going
+ * through a set door already there beats a new door from a Bedroom or a back room, but a Bedroom
+ * still takes its own door from a public room (a Jack-and-Jill's second Bedroom isn't reached
+ * through the Bathroom while it has one); and a new door into a set's back room (its Bathroom, a
+ * Suite's Closet) comes after every other, so a suite is entered through its Bedroom.
+ */
+const THROUGH_SET = 25;
+const INTO_SET_BACK = 1000;
+
 /** A run of wall between two pieces along one line. */
 interface Run {
   a: number;
@@ -538,7 +633,12 @@ interface Run {
   to: number;
 }
 
-function buildModel(house: HouseState, links: HallLinks, openings: boolean): HouseModel {
+function buildModel(
+  house: HouseState,
+  links: HallLinks,
+  openings: boolean,
+  sets: HeldSets = NO_SETS,
+): HouseModel {
   const { width: W, height: H } = house.lot;
   const occ = occupancy(house);
   const room = new Int32Array(W * H);
@@ -567,6 +667,7 @@ function buildModel(house: HouseState, links: HallLinks, openings: boolean): Hou
       cells,
       box: { x: x0 * CELL, y: y0 * CELL, w: (x1 - x0) * CELL, h: (y1 - y0) * CELL },
       ...(p.fixture ? { fixture: p.fixture.id } : {}),
+      ...(isFinished(p) ? { finished: true as const } : {}),
     });
     bx0 = Math.min(bx0, x0);
     by0 = Math.min(by0, y0);
@@ -575,8 +676,9 @@ function buildModel(house: HouseState, links: HallLinks, openings: boolean): Hou
   }
 
   const at = (x: number, y: number) => (x < 0 || y < 0 || x >= W || y >= H ? 0 : room[y * W + x]!);
+  const hall = (uid: number) => isConnector(rooms.get(uid)!.defId);
   const kindOf = (a: number, b: number): EdgeKind =>
-    a === b ? EDGE.none : a && b ? EDGE.inner : EDGE.outer;
+    a === b || (a && b && hall(a) && hall(b)) ? EDGE.none : a && b ? EDGE.inner : EDGE.outer;
   const h = new Uint8Array(W * (H + 1));
   for (let y = 0; y <= H; y++) {
     for (let x = 0; x < W; x++) h[y * W + x] = kindOf(at(x, y - 1), at(x, y));
@@ -599,7 +701,7 @@ function buildModel(house: HouseState, links: HallLinks, openings: boolean): Hou
     windows: [],
     bounds: rooms.size > 0 ? { x: bx0, y: by0, w: bx1 - bx0, h: by1 - by0 } : null,
   };
-  if (openings && rooms.size > 0) addOpenings(model, house, links);
+  if (openings && rooms.size > 0) addOpenings(model, house, links, sets);
   return model;
 }
 
@@ -611,7 +713,7 @@ function setEdge(m: HouseModel, x: number, y: number, side: Side, k: EdgeKind): 
   else m.v[y * (w + 1) + x + 1] = k;
 }
 
-function addOpenings(m: HouseModel, house: HouseState, links: HallLinks): void {
+function addOpenings(m: HouseModel, house: HouseState, links: HallLinks, sets: HeldSets): void {
   const occ = occupancy(house);
   const W = m.width;
   const H = m.height;
@@ -953,6 +1055,80 @@ function addOpenings(m: HouseModel, house: HouseState, links: HallLinks): void {
     return { a: run.a, b: run.b, dir: run.dir, gap, clear, why: 'tree' };
   };
 
+  /**
+   * The Entertainer's opening in a run (D-176): the stretch a door may take (doorIn's first
+   * level: below the north faces, inside the walls at the run's ends) less OPENING's stub at each
+   * end; OPENING.width of it, placed as a door is, or all of it. Null when it can't be wider than
+   * a door, or isn't clear of the openings so far.
+   */
+  const openingIn = (run: Run): { gap: Rect; clear: Rect; pref: number } | null => {
+    const half = WALL.in / 2;
+    let lo: number;
+    let end: number;
+    if (run.dir === 'v') {
+      const x = run.line / CELL;
+      const yTop = run.from / CELL;
+      const yBot = run.to / CELL - 1;
+      const zone = (cx: number) => inset(m, cx, yTop, 'N') + (hasFace(m, cx, yTop) ? WALL.face : 1);
+      lo = run.from + Math.max(zone(x - 1), zone(x));
+      end = run.to - Math.max(inset(m, x - 1, yBot, 'S'), inset(m, x, yBot, 'S')) - 1;
+    } else {
+      const y = run.line / CELL;
+      const xFirst = run.from / CELL;
+      const xLast = run.to / CELL - 1;
+      lo = run.from + Math.max(inset(m, xFirst, y - 1, 'W'), inset(m, xFirst, y, 'W')) + 1;
+      end = run.to - Math.max(inset(m, xLast, y - 1, 'E'), inset(m, xLast, y, 'E')) - 1;
+    }
+    lo += OPENING.stub;
+    end -= OPENING.stub;
+    const size = OPENING.width > 0 ? Math.min(OPENING.width, end - lo) : end - lo;
+    if (size <= WALL.door) return null;
+    const hi = end - size;
+    // Where it goes along the run, best first: as a door goes (doorIn), or the one place there
+    // is when it takes the whole stretch.
+    let order: number[];
+    if (run.dir === 'v') {
+      const mid = Math.floor(lo + (hi - lo) * SIDE_DOOR);
+      order = [];
+      for (let d = 0; d <= hi - lo; d++) {
+        if (mid - d >= lo) order.push(mid - d);
+        if (d > 0 && mid + d <= hi) order.push(mid + d);
+      }
+    } else {
+      const [r0, r1] = northRun(run.b, run.line, run.from / CELL);
+      const mid = (r0 + r1) / 2;
+      const dLo = Math.abs(lo + size / 2 - mid);
+      const dHi = Math.abs(hi + size / 2 - mid);
+      const fromLo = dLo > dHi || (dLo === dHi && uidHash(run.b) % 2 === 0);
+      order = [];
+      for (let d = 0; d <= hi - lo; d++) order.push(fromLo ? lo + d : hi - d);
+    }
+    for (const off of order) {
+      const gap: Rect =
+        run.dir === 'v'
+          ? { x: run.line - half, y: off, w: WALL.in, h: size }
+          : { x: off, y: run.line - half, w: size, h: WALL.in };
+      if (!free(gap)) continue;
+      const clear: Rect =
+        run.dir === 'v'
+          ? { x: run.line - half - 4, y: off, w: WALL.in + 8, h: size }
+          : { x: off, y: run.line - half - 4, w: size, h: WALL.in + WALL.face + 8 };
+      return { gap, clear, pref: (run.dir === 'h' ? 24 : 0) - (run.to - run.from) / CELL };
+    }
+    return null;
+  };
+  /** The Entertainer's opening between two of its rooms, over all their runs, or null. */
+  const openingBetween = (a: number, b: number): Doorway | null => {
+    let best: { run: Run; gap: Rect; clear: Rect; pref: number } | null = null;
+    for (const run of runsOf.get(pairKey(a, b)) ?? []) {
+      const o = openingIn(run);
+      if (o && (!best || o.pref < best.pref)) best = { run, ...o };
+    }
+    if (!best) return null;
+    const { run, gap, clear } = best;
+    return { a: run.a, b: run.b, dir: run.dir, gap, clear, why: 'set' };
+  };
+
   // Union-find over the pieces, joined by doorways.
   const parent = new Map<number, number>();
   for (const uid of m.rooms.keys()) parent.set(uid, uid);
@@ -969,18 +1145,81 @@ function addOpenings(m: HouseModel, house: HouseState, links: HallLinks): void {
     join(d.a, d.b);
   };
 
-  // Hallways open into every room the rules link through them, and into touching Hallways.
-  // (A room linked to nothing, the only one on its Hallways, gets its door from the tree.)
+  // Touching Hallways are one corridor, open into each other with no wall between them
+  // (buildModel, D-159), so the door tree takes them as joined. Hallways open into every room
+  // the rules link through them. (A room linked to nothing, the only one on its Hallways, gets
+  // its door from the tree.)
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const a = at(x, y);
+      if (!a || !isConnector(defOf(a))) continue;
+      for (const b of [at(x + 1, y), at(x, y + 1)]) {
+        if (b && b !== a && isConnector(defOf(b))) join(a, b);
+      }
+    }
+  }
   const touching = [...runsOf.keys()].map((k) => k.split('-').map(Number) as [number, number]);
   touching.sort((p, q) => p[0] - q[0] || p[1] - q[1]);
   const linked = (u: number) => (links.get(u)?.length ?? 0) > 0;
   for (const [a, b] of touching) {
     const ca = isConnector(defOf(a));
     const cb = isConnector(defOf(b));
-    if (!ca && !cb) continue;
-    if ((ca && cb) || (ca && linked(b)) || (cb && linked(a))) {
+    if ((ca && linked(b)) || (cb && linked(a))) {
       const d = doorBetween(a, b);
       if (d) addDoor({ ...d, why: 'hall' });
+    }
+  }
+
+  // Set doors (D-176): a held set's rooms open into each other where they share a wall. A
+  // Suite's Bedroom opens into its Bathroom and its Closet, and one of those with no wall on the
+  // Bedroom opens off the other; each Bedroom of a Jack-and-Jill opens into the Bathroom they
+  // share; each two rooms of the Entertainer share an opening (openingBetween, or a door where
+  // the wall's too short). Members the rules join only through a Hallway get none. They aren't
+  // joined for the tree yet: it goes through one where it reaches a room that way (below).
+  const setDoors = new Map<string, Doorway>();
+  /** A set's back rooms, a set door opens into: a Suite's Bathroom and Closet, a Jack-and-Jill's Bathroom. */
+  const setBacks = new Set<number>();
+  /** A set door between two rooms that share a wall, if one fits: an opening when `wide`. */
+  const laySetDoor = (a: number, b: number, back: readonly number[], wide = false): boolean => {
+    const k = pairKey(a, b);
+    if (setDoors.has(k) || !runsOf.has(k)) return setDoors.has(k);
+    const d = (wide ? openingBetween(a, b) : null) ?? doorBetween(a, b);
+    if (!d) return false;
+    const door: Doorway = { ...d, why: 'set' };
+    doors.push(door);
+    gaps.push(door.gap);
+    setDoors.set(k, door);
+    for (const u of back) setBacks.add(u);
+    return true;
+  };
+  const held = sets
+    .filter((s) => DOOR_SETS.includes(s.set))
+    .map((s) => ({ set: s.set, members: [...s.members].sort((p, q) => p - q) }))
+    .sort(
+      (p, q) =>
+        DOOR_SETS.indexOf(p.set) - DOOR_SETS.indexOf(q.set) || p.members[0]! - q.members[0]!,
+    );
+  for (const s of held) {
+    const of = (type: PieceId) =>
+      s.members.filter((u) => m.rooms.has(u) && typeOf(defOf(u)) === type);
+    if (s.set === 'entertainer') {
+      const rooms = s.members.filter((u) => m.rooms.has(u));
+      for (let i = 0; i < rooms.length; i++) {
+        for (let j = i + 1; j < rooms.length; j++) laySetDoor(rooms[i]!, rooms[j]!, [], true);
+      }
+      continue;
+    }
+    const beds = of('bedroom');
+    const backs = s.set === 'suite' ? [...of('bathroom'), ...of('closet')] : of('bathroom');
+    const off = new Set<number>();
+    for (const x of backs) {
+      for (const bed of beds) if (laySetDoor(bed, x, [x])) off.add(x);
+    }
+    // A Suite's Bathroom or Closet with no door of its own on the Bedroom: through the other.
+    for (const x of backs) {
+      if (off.has(x)) continue;
+      const y = backs.find((o) => off.has(o) && runsOf.has(pairKey(o, x)));
+      if (y !== undefined) laySetDoor(y, x, [x]);
     }
   }
 
@@ -991,28 +1230,46 @@ function addOpenings(m: HouseModel, house: HouseState, links: HallLinks): void {
     [...all].sort((p, q) => hub(q.defId) - hub(p.defId) || p.uid - q.uid)[0]!.uid;
 
   // The spanning tree: reach every room, the most public first, each through its best parent.
+  // Through a set door already there (D-176) rather than a second door between the same two
+  // rooms, and into a set's back room only through its set door when it can (THROUGH_SET).
   const reached = () => new Set(all.map((r) => r.uid).filter((u) => find(u) === find(entry)));
   let inside = reached();
   while (inside.size < all.length) {
-    let best: { door: Doorway; key: number } | null = null;
+    let best: { door: Doorway; key: number; there: boolean } | null = null;
     for (const [a, b] of touching) {
       const ia = inside.has(a);
       if (ia === inside.has(b)) continue;
       const [from, to] = ia ? [a, b] : [b, a];
-      const key = parentScore(defOf(to), defOf(from)) * 10 + hub(defOf(to)) * 2;
+      const there = setDoors.get(pairKey(a, b));
+      const key =
+        parentScore(defOf(to), defOf(from)) * 10 +
+        hub(defOf(to)) * 2 +
+        (there ? THROUGH_SET : setBacks.has(to) ? -INTO_SET_BACK : 0);
       // Ties keep the earlier pair (touching is sorted), so it's deterministic.
       if (best && key <= best.key) continue;
-      const door = doorBetween(a, b);
-      if (door) best = { door, key };
+      const door = there ?? doorBetween(a, b);
+      if (door) best = { door, key, there: !!there };
     }
     if (best) {
-      addDoor(best.door);
+      if (best.there) join(best.door.a, best.door.b);
+      else addDoor(best.door);
       inside = reached();
       continue;
     }
     // A part of the house no doorway can reach gets its own door outside, if it can.
     const rest = all.filter((r) => !inside.has(r.uid));
     const own = new Set(rest.filter((r) => find(r.uid) === find(rest[0]!.uid)).map((r) => r.uid));
+    // With the rooms its set doors open into (D-176), so a suite's door is its Bedroom's. (No set
+    // door joins this part to the rest: the tree would have gone through it.)
+    for (let grew = true; grew;) {
+      grew = false;
+      for (const d of setDoors.values()) {
+        if (own.has(d.a) === own.has(d.b)) continue;
+        own.add(d.a);
+        own.add(d.b);
+        grew = true;
+      }
+    }
     const side = exitCands(false).find((c) => own.has(c.uid) && free(c.gap));
     if (side) addExit(side, 'side');
     for (const u of own) join(u, entry);
