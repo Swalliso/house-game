@@ -951,6 +951,34 @@
     "ms": 200,
     "spec": "19e44f8c3cb17c19"
   },
+  "life-fish-1": {
+    "w": 16,
+    "h": 16,
+    "frames": 11,
+    "ms": 110,
+    "spec": "8288a4cc1073b04b"
+  },
+  "life-fish-2": {
+    "w": 16,
+    "h": 16,
+    "frames": 14,
+    "ms": 110,
+    "spec": "d580af47a8973c6c"
+  },
+  "life-fish-3": {
+    "w": 16,
+    "h": 16,
+    "frames": 14,
+    "ms": 110,
+    "spec": "4d2e60ddf1313496"
+  },
+  "life-frog": {
+    "w": 16,
+    "h": 16,
+    "frames": 6,
+    "ms": 120,
+    "spec": "e6d63405f22311a9"
+  },
   "life-walker-1": {
     "w": 16,
     "h": 32,

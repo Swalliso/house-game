@@ -1604,6 +1604,26 @@
     "author": "LimeZu",
     "license": "LicenseRef-LimeZu-Modern-Exteriors"
   },
+  "limezu/life-fish-1.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/Animated_16x16/Animated_sheets_16x16/Fishes_1_16x16.png [0, 0, 16, 16], 11 frames [16, 0] apart",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/life-fish-2.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/Animated_16x16/Animated_sheets_16x16/Fishes_2_16x16.png [0, 0, 16, 16], 14 frames [16, 0] apart",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/life-fish-3.png": {
+    "source": "https://limezu.itch.io/modernexteriors (modernexteriors-win.zip): Modern_Exteriors_16x16/Animated_16x16/Animated_sheets_16x16/Fishes_3_16x16.png [0, 0, 16, 16], 14 frames [16, 0] apart",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Exteriors"
+  },
+  "limezu/life-frog.png": {
+    "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 3_Animated_objects/16x16/spritesheets/animated_frog_idle.png [0, 0, 16, 16], 6 frames [16, 0] apart",
+    "author": "LimeZu",
+    "license": "LicenseRef-LimeZu-Modern-Interiors"
+  },
   "limezu/life-walker-1.png": {
     "source": "https://limezu.itch.io/moderninteriors (moderninteriors-win.zip): 2_Characters/Character_Generator/0_Premade_Characters/16x16/Premade_Character_05.png [0, 64, 16, 32], 6 frames [16, 0] apart",
     "author": "LimeZu",

@@ -10,6 +10,10 @@
 //   painted side by side once per lot and stepped through by CSS (transform only, like the
 //   Fireplace's flame), so the animation never wakes the main thread. Still under Reduce motion,
 //   and paused while the shop's sheet covers the board.
+// - D-185: the water's life, over the water canvas (terrain/water.ts waterLife): a frog on some
+//   of a pond's big lily pads, breathing now and then, and fish coming by under the surface of
+//   each pond, creek and lake every so often, each in a small canvas of its own frames stepped
+//   by CSS the same way. A frog holds still under Reduce motion and the fish stay away.
 // - Past the board's edges, in the garden around the lot: the road and each creek mouth running
 //   on (terrain/outside.ts), as slices painted once per lot and repeated by CSS.
 // The group is a stacking context below everything else on the board, so the water stays
@@ -31,9 +35,10 @@ import {
   type RunState,
   type Yard,
 } from '../../rules/index.ts';
+import { FEEL } from '../fx/feel.ts';
 import { atlasImage, CELL, withAtlasImage } from '../sprites.ts';
 import { boardRows, cellsOutline, occupancy, uidAt } from './geometry.ts';
-import { sheetRect } from './terrain/atlas.ts';
+import { drawSprite, sheetRect } from './terrain/atlas.ts';
 import { paintGrass } from './terrain/grass.ts';
 import { seedSalt, tileHash } from './terrain/hash.ts';
 import {
@@ -47,7 +52,15 @@ import {
 import { outsideSlices, paintSlice, sliceSize, type Slice } from './terrain/outside.ts';
 import { paintStreet, streetTiles } from './terrain/street.ts';
 import { lotShade, paintShade } from './terrain/shade.ts';
-import { paintWater, waterPlan, type WaterPlan } from './terrain/water.ts';
+import {
+  lifeBeat,
+  lifeStrip,
+  paintWater,
+  waterLife,
+  waterPlan,
+  type WaterCritter,
+  type WaterPlan,
+} from './terrain/water.ts';
 import { paintWoodsFloor, woodsFloor } from './terrain/woods.ts';
 import './terrain/terrain.css';
 
@@ -87,6 +100,19 @@ export function streetFront(house: HouseState | undefined): boolean[] {
   if (!house) return [];
   const occ = occupancy(house);
   return Array.from({ length: occ.width }, (_, x) => uidAt(occ, x, occ.height - 1) !== 0);
+}
+
+/** D-185: the cells of water a piece stands over (a Driveway's bridge), as a key: no fish there. */
+function bridgedKey(house: HouseState | undefined): string {
+  if (!house) return '';
+  const occ = occupancy(house);
+  const { terrain } = house.lot;
+  const out: number[] = [];
+  for (let i = 0; i < terrain.length; i++) {
+    const t = terrain[i];
+    if ((t === 'creek' || t === 'pond' || t === 'lake') && occ.uids[i] !== 0) out.push(i);
+  }
+  return out.join(',');
 }
 
 /**
@@ -130,6 +156,12 @@ export function TerrainLayer({
     [lot, objects, canopy, salt, front],
   );
   const water = useMemo(() => waterPlan(lot, salt), [lot, salt]);
+  // D-185: its frogs and fish, moving off a cell of creek a Driveway bridges.
+  const bridged = bridgedKey(house);
+  const life = useMemo(
+    () => waterLife(lot, water, salt, bridged ? bridged.split(',').map(Number) : []),
+    [lot, water, salt, bridged],
+  );
   const slices = useMemo(() => outsideSlices(lot), [lot]);
   const rows = boardRows(lot.height);
   const px = CELL * scale;
@@ -145,6 +177,12 @@ export function TerrainLayer({
           style={{ width: `${lot.width * px}px`, height: `${rows * px}px` }}
         />
         {water.box && <WaterCanvas plan={water} scale={scale} />}
+        {life.frogs.map((c) => (
+          <Critter key={`${c.id}@${c.x},${c.y}`} critter={c} kind="frog" scale={scale} />
+        ))}
+        {life.fish.map((c) => (
+          <Critter key={`${c.id}@${c.x},${c.y}`} critter={c} kind="fish" scale={scale} />
+        ))}
         <div
           class="lot-line"
           style={{ width: `${lot.width * px}px`, height: `${lot.height * px}px` }}
@@ -319,6 +357,75 @@ function WaterCanvas({ plan, scale }: { plan: WaterPlan; scale: number }) {
           animationDuration: `${ms * n}ms`,
           animationTimingFunction: `steps(${n})`,
           '--water-frames': `${-box.w * px * n}px`,
+        }}
+      />
+    </div>
+  );
+}
+
+/**
+ * D-185: a frog on a lily pad, or a spot where fish come by under the surface, in a box over the
+ * part of its frame that shows (terrain/water.ts waterLife). Its strip (lifeStrip: a frog's
+ * breath and then its first frame, held; a stretch of open water and then the fish) is painted
+ * once into its own canvas, mirrored if it is, and CSS steps it left a frame at a time, transform
+ * only, as the water's frames, so it never wakes the main thread. Reduce motion holds a frog on
+ * its first frame and hides the fish; the shop's sheet pauses both (terrain.css).
+ */
+function Critter({
+  critter: c,
+  kind,
+  scale,
+}: {
+  critter: WaterCritter;
+  kind: 'frog' | 'fish';
+  scale: number;
+}) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  const { w, h, frames, ms } = sheetRect(c.id);
+  const f = FEEL.life.water;
+  const every = kind === 'frog' ? f.frogEveryMs : f.fishEveryMs;
+  const { positions, delayMs } = lifeBeat(c.beat, frames, ms, every);
+  useLayoutEffect(
+    () =>
+      withAtlasImage((img) => {
+        const ctx = ref.current?.getContext('2d');
+        if (!ctx) return;
+        ctx.imageSmoothingEnabled = false;
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        lifeStrip(kind, frames, positions).forEach((frame, k) => {
+          if (frame < 0) return;
+          ctx.setTransform(c.flip ? -1 : 1, 0, 0, 1, (c.flip ? k + 1 : k) * w, 0);
+          drawSprite(ctx, img, c.id, 0, 0, frame);
+        });
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+      }),
+    [c, kind, frames, positions, w],
+  );
+  const { clip } = c;
+  return (
+    <div
+      class={`water-life ${kind}`}
+      style={{
+        left: `${(c.x + clip.x) * scale}px`,
+        top: `${(c.y + clip.y) * scale}px`,
+        width: `${clip.w * scale}px`,
+        height: `${clip.h * scale}px`,
+      }}
+    >
+      <canvas
+        ref={ref}
+        class="life-strip"
+        width={w * positions}
+        height={h}
+        style={{
+          left: `${-clip.x * scale}px`,
+          top: `${-clip.y * scale}px`,
+          width: `${w * positions * scale}px`,
+          height: `${h * scale}px`,
+          animationDuration: `${ms * positions}ms`,
+          animationTimingFunction: `steps(${positions})`,
+          animationDelay: `${-delayMs}ms`,
+          '--life-strip': `${-w * positions * scale}px`,
         }}
       />
     </div>

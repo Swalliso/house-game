@@ -683,6 +683,17 @@ export const FEEL = {
       flyAwayCells: 3,
     },
     /**
+     * D-185: life at the water (TerrainLayer.tsx WaterLife, terrain/water.ts). A frog on a lily
+     * pad breathes (its frames, at the cut's pace) once every `frogEveryMs`, sitting still
+     * between; under the surface of each pond, creek and lake, fish come by once every
+     * `fishEveryMs`. Each takes its own time in the range, and its own phase, by hash, so no two
+     * move together.
+     */
+    water: {
+      frogEveryMs: [5000, 9000],
+      fishEveryMs: [10000, 20000],
+    },
+    /**
      * The street's regulars: each lane's next car or walker comes by this long after the last
      * one has gone. Sparse, so the street moves in the corner of the eye but never streams past
      * the cards: about one thing in view at a time.

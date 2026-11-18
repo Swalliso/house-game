@@ -41,6 +41,36 @@
 .board.covered .item-frames {
   animation-play-state: paused;
 }
+/* D-185: life at the water (TerrainLayer.tsx Critter), over the water canvas: a frog on a lily
+   pad, a spot where fish come by. Each is a box over the part of its frame that shows, its strip
+   (holds and gaps painted in) stepping left a frame at a time, transform only, as the water's.
+   Reduce motion holds a frog on its first frame and hides the fish; the shop's sheet pauses them. */
+.ground > .water-life {
+  position: absolute;
+  z-index: var(--z-water);
+  overflow: hidden;
+}
+.water-life > .life-strip {
+  position: absolute;
+  display: block;
+  image-rendering: pixelated;
+  animation-name: water-life;
+  animation-iteration-count: infinite;
+}
+@keyframes water-life {
+  to {
+    transform: translateX(var(--life-strip));
+  }
+}
+.reduce-motion .water-life > .life-strip {
+  animation: none;
+}
+.reduce-motion .ground > .water-life.fish {
+  display: none;
+}
+.board.covered .water-life > .life-strip {
+  animation-play-state: paused;
+}
 /* Before the terrain canvas in the group, so its first cell, tucked under the board's edge, is
    hidden by the board. */
 .ground > .outside {
