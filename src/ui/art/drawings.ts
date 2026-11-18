@@ -1,13 +1,15 @@
 // Our own pixel drawings, for what LimeZu doesn't draw (D-097): the Doghouse, the Henhouse's hens,
-// the Sprinkler, and the dogs' bed in Nana's Room (D-111). They're in LimeZu's style: its palette,
-// its ink (#3a3a50) for outlines, light from the top left, and its shadow (the ink at 100/255)
-// under things that stand on the ground.
+// the Sprinkler, the dogs' bed in Nana's Room (D-111), the Doghouse's dog, on its lead and loose
+// (D-179), and rain and its puddles (D-180, drawn by board/WeatherLayer.tsx rather than as items).
+// They're in LimeZu's style: its palette, its ink (#3a3a50) for outlines, light from the top
+// left, and its shadow (the ink at 100/255) under things that stand on the ground.
 // Pure: each is rows of characters, one per art px, each a color from KEY ('.' is clear). The
 // painters read their pixels; the board shows them as images (HouseLayers.tsx).
 //
 // Ids start with "own-", so they never collide with the atlas's sprites. ArtId is either kind:
 // items in rooms and yards may be one or the other.
 
+import { FEEL } from '../fx/feel.ts';
 import { spriteFrames, spritePos, type SpriteId } from '../sprites.ts';
 
 type Rgba = readonly [number, number, number, number];
@@ -39,6 +41,18 @@ export const KEY: Readonly<Record<string, Rgba>> = {
   U: [0xc7, 0x8c, 0x59, 255], // a brown hen
   u: [0x91, 0x6e, 0x41, 255],
   y: [0xf2, 0xb2, 0x2b, 255], // beaks and feet
+  p: [0xee, 0xa5, 0xb8, 255], // a dog's tongue
+  // S06 (D-180): rain, see-through, its tail faintest and its head brightest.
+  j: [0xc4, 0xd7, 0xe3, 90], // rain's tail
+  J: [0xe2, 0xf2, 0xf3, 150],
+  l: [0xf8, 0xf8, 0xf8, 205], // rain's head
+  // A puddle: a wet rim, the water, the sky in it and a glint, and the rings a drop makes.
+  f: [0x50, 0x85, 0xb4, 140], // a puddle's wet rim
+  F: [0x74, 0xaa, 0xbf, 235], // its water
+  i: [0xa4, 0xbb, 0xd5, 240], // the sky in it
+  I: [0xe2, 0xf2, 0xf3, 255], // a glint
+  n: [0xf8, 0xf8, 0xf8, 230], // a drop's ring
+  N: [0xe2, 0xf2, 0xf3, 160], // the ring, spreading
 };
 
 /**
@@ -165,6 +179,155 @@ const DOG_BED = [
   '......ssssssssssss....',
 ] as const;
 
+/**
+ * The Doghouse's dog on its lead (D-179), while the Doghouse earns nothing outside a fenced yard:
+ * the Barkers' brown dog with a white blaze, in the dogs' bed's colors, sitting in the kennel's
+ * doorway, facing us, its red lead sagging from its collar to a ring on the kennel's corner post.
+ * Drawn to stand at (3, 20) in the Doghouse's cell, over the kennel (yard.ts).
+ */
+const DOG_ON_LEAD = [
+  '.......kkkkkkk...',
+  '......kkvvUUUkk..',
+  '.g...kBBvUUUUBBk.',
+  '.kr..kBkUkUkUkBk.',
+  '..r..kBBUhhhUBBk.',
+  '...r..kkUhkhUkk..',
+  '....rrrrkrrrkk...',
+  '......kUUhhhUUk..',
+  '.....kUUkhhhkUUk.',
+  '.....kUUkhhhkUUk.',
+  '......kkkhkhkkk..',
+  '.......sssssss...',
+] as const;
+
+/** The dog let loose: sitting up, its tongue out and its tail up. */
+const DOG_UP = [
+  '..kkkkkkk...',
+  '.kkvvUUUkk..',
+  'kBBvUUUUBBk.',
+  'kBkUkUkUkBk.',
+  'kBBUhhhUBBk.',
+  '.kkUhkhUkk..',
+  '..kkhphkk.k.',
+  '..krrprrkkUk',
+  '.kUUhhhUUkk.',
+  'kUUkhhhkUUk.',
+  'kUUkhhhkUUk.',
+  '.kkkhkhkkk..',
+] as const;
+
+/** The same dog in the air, mid-hop, its legs tucked under it. */
+const DOG_HOP = [...DOG_UP.slice(0, 9), 'kUUhhhhhUUk.', '.kkkkkkkkk..'];
+
+/** Rows laid into a clear frame `w` × `h`, each drawing at its spot (x, y), later ones on top. */
+function laid(
+  w: number,
+  h: number,
+  parts: readonly (readonly [readonly string[], number, number])[],
+): string[] {
+  const rows = Array.from({ length: h }, () => Array.from({ length: w }, () => '.'));
+  for (const [grid, x, y] of parts) {
+    grid.forEach((row, j) => {
+      [...row].forEach((ch, i) => {
+        if (ch !== '.') rows[y + j]![x + i] = ch;
+      });
+    });
+  }
+  return rows.map((r) => r.join(''));
+}
+
+/**
+ * The loose dog (D-179) as one animation in a box 15 × 29 that stands at (0, 3) in the Doghouse's
+ * cell (yard.ts): sitting up on the kennel's roof, hopping down to the grass by the kennel's
+ * corner, sitting there, and hopping back up. Every frame lasts FEEL.dog.hopMs: a hop is one
+ * frame in the air, a rest as many frames as its time takes. Its first frame, on the roof, is the
+ * one that stands still under Reduce motion and that the cards, the ghost and the photos show.
+ */
+const DOG_LOOSE = (() => {
+  const on = (ms: number) => Math.max(1, Math.round(ms / FEEL.dog.hopMs));
+  const roof = laid(15, 29, [[DOG_UP, 3, 0]]);
+  const air = laid(15, 29, [
+    [DOG_HOP, 1, 8],
+    [['...ssssss...'], 1, 27],
+  ]);
+  const grass = laid(15, 29, [
+    [DOG_UP, 0, 16],
+    [['..ssssssss..'], 0, 28],
+  ]);
+  return [
+    ...Array.from({ length: on(FEEL.dog.roofMs) }, () => roof),
+    air,
+    ...Array.from({ length: on(FEEL.dog.grassMs) }, () => grass),
+    air,
+  ];
+})();
+
+/**
+ * Rain (S06, D-180): a streak falling down and to the left, 3 px down for each 1 across, as its
+ * sheet steps (board/weather.ts). The near one is two steps of three; the far one is one, fainter.
+ */
+const RAIN_NEAR = ['.j', '.J', '.J', 'J.', 'l.', 'l.'] as const;
+const RAIN_FAR = ['j', 'j', 'J'] as const;
+
+/**
+ * A puddle on the paving where it rains (S06): a wide one with a small one beside it, a wet rim,
+ * the sky in the water and a glint from the top left. Its frames are drops landing in it, each
+ * spreading in a flat ring, in one puddle and then the other.
+ */
+const PUDDLE = [
+  '.....ffffff...........',
+  '..fffFFFFFFfff........',
+  '.ffFiIIiFFFFFff.......',
+  'fFFiIiiFFFFFFFFf......',
+  'fFFFiFFFFFFFFFFf..fff.',
+  '.ffFFFFFFFFFFff..fFFFf',
+  '..fffFFFFFFfff...fiFFf',
+  '.....ffffff.......fff.',
+] as const;
+
+/** A drop's ring, as offsets from where it lands: the drop, then rings spreading flat. */
+const RINGS: readonly (readonly (readonly [number, number])[])[] = [
+  [[0, 0]],
+  [
+    [-2, 0],
+    [2, 0],
+    [-1, -1],
+    [0, -1],
+    [1, -1],
+    [-1, 1],
+    [0, 1],
+    [1, 1],
+  ],
+  [
+    [-4, 0],
+    [4, 0],
+    [-3, -1],
+    [3, -1],
+    [-3, 1],
+    [3, 1],
+    [-2, -2],
+    [-1, -2],
+    [0, -2],
+    [1, -2],
+    [2, -2],
+    [-2, 2],
+    [-1, 2],
+    [0, 2],
+    [1, 2],
+    [2, 2],
+  ],
+];
+
+/** `rows` with ring `r` of a drop landing at (cx, cy), on its water only (never its rim). */
+function ripple(rows: readonly string[], cx: number, cy: number, r: number): string[] {
+  const out = rows.map((row) => [...row]);
+  for (const [dx, dy] of RINGS[r]!) {
+    const row = out[cy + dy];
+    if (row && 'FiI'.includes(row[cx + dx] ?? '.')) row[cx + dx] = r === 2 ? 'N' : 'n';
+  }
+  return out.map((row) => row.join(''));
+}
+
 /** Rows mirrored left to right. */
 function mirror(rows: readonly string[]): string[] {
   return rows.map((r) => [...r].reverse().join(''));
@@ -185,6 +348,24 @@ export const DRAWINGS = {
   'own-hen-brown-e': { frames: [mirror(BROWN_HEN)] },
   'own-sprinkler': { frames: SPRINKLER, ms: 180 },
   'own-dog-bed': { frames: [DOG_BED] },
+  'own-dog-on-lead': { frames: [DOG_ON_LEAD] },
+  'own-dog-loose': { frames: DOG_LOOSE, ms: FEEL.dog.hopMs },
+  'own-rain-near': { frames: [RAIN_NEAR] },
+  'own-rain-far': { frames: [RAIN_FAR] },
+  // Still in its first frame: the rest are drops landing, in the big puddle and then the small.
+  'own-puddle': {
+    frames: [
+      PUDDLE,
+      ripple(PUDDLE, 9, 4, 0),
+      ripple(PUDDLE, 9, 4, 1),
+      ripple(PUDDLE, 9, 4, 2),
+      PUDDLE,
+      ripple(PUDDLE, 19, 5, 0),
+      ripple(PUDDLE, 19, 5, 1),
+      PUDDLE,
+    ],
+    ms: FEEL.weather.puddle.frameMs,
+  },
 } as const satisfies Record<string, Drawing>;
 
 export type DrawingId = keyof typeof DRAWINGS;

@@ -128,3 +128,83 @@ export function Drive({
     </span>
   );
 }
+
+/**
+ * One way, and stop (D-175's open house), in art px: a sprite `|from|` before its spot comes
+ * in at `speed` a second, a whole art px a step. `distance` is how far it moves, and `ms` how
+ * long that takes.
+ */
+export function arrivePlan(from: number, speed: number): { distance: number; ms: number } {
+  const distance = Math.abs(Math.round(from));
+  return { distance, ms: Math.round((distance / speed) * 1000) };
+}
+
+/**
+ * A sprite that walks or drives in to its spot and stays (arrivePlan): from `from` art px before
+ * it (negative: from the west), fading in over `fadeMs` as it sets off `delayMs` from now
+ * (negative: it set off that long ago), then standing on its frame `stand` where it stopped.
+ * `frameMs` quickens a walker's steps to keep pace with the ground under them. Its box is placed
+ * by `style` at the spot.
+ */
+export function Arrive({
+  id,
+  scale,
+  from,
+  speed,
+  delayMs,
+  fadeMs,
+  stand,
+  frameMs,
+  flip = false,
+  style,
+}: {
+  id: SpriteId;
+  scale: number;
+  from: number;
+  speed: number;
+  delayMs: number;
+  fadeMs: number;
+  stand: number;
+  frameMs?: number;
+  flip?: boolean;
+  style?: JSX.CSSProperties;
+}) {
+  const { w, h } = spritePos(id);
+  const anim = spriteFrames(id);
+  const { distance, ms } = arrivePlan(from, speed);
+  const box: JSX.CSSProperties = { width: `${w * scale}px`, height: `${h * scale}px` };
+  const cls = flip ? 'fx-sprite flip' : 'fx-sprite';
+  return (
+    <span
+      class="arrive"
+      style={{
+        ...style,
+        ...box,
+        '--arrive-from': `${Math.round(from) * scale}px`,
+        '--arrive-steps': String(Math.max(1, distance)),
+        '--arrive-ms': `${Math.max(1, ms)}ms`,
+        '--arrive-delay': `${Math.round(delayMs)}ms`,
+        '--arrive-fade': `${fadeMs}ms`,
+      }}
+    >
+      {anim ? (
+        <span class={cls} style={box}>
+          <span
+            class="fx-frames arrive-frames"
+            style={{
+              ...spriteStyle(id, scale),
+              width: `${anim.stride * anim.frames * scale}px`,
+              animationDuration: `${Math.round((frameMs ?? anim.ms) * anim.frames)}ms`,
+              animationTimingFunction: `steps(${anim.frames})`,
+              '--fx-frames': `${-anim.stride * anim.frames * scale}px`,
+              '--stand': `${-anim.stride * stand * scale}px`,
+              '--stand-at': `${Math.round(delayMs + ms)}ms`,
+            }}
+          />
+        </span>
+      ) : (
+        <span class={cls} style={{ ...spriteStyle(id, scale), ...box }} />
+      )}
+    </span>
+  );
+}

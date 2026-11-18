@@ -79,8 +79,9 @@ These are on top of CLAUDE.md's rules.
 ## Logging it and opening the pull request
 
 - Add a decision-log entry, Proposed, with the next free number (D-175 when this was written;
-  check develop), in the same pull request as the change. Put a dated note on each entry the
-  story lists under **Decision log**.
+  D-175 to D-183 went to S01 to S09 on 2026-11-16, so D-184 next; check develop), in the same
+  pull request as the change. Put a dated note on each entry the story lists under **Decision
+  log**.
 - Branch `phase/<slug>`, a phase pull request into develop, the PR monitor on, auto-merge
   off. The user merges after a look or a playtest.
 - The pull request says what to look at and how to get there in under a minute (the debug
@@ -93,15 +94,15 @@ reading the code, not from building anything.
 
 | Story | What the player gets | Size | Kind | Needs first | Status |
 |---|---|---|---|---|---|
-| [S01](s01-open-house-day.md) | A win brings a crowd to the kerb, hearts and a fanfare | M | UI only | | Not started |
-| [S02](s02-set-doors.md) | Rooms in a set open into each other | M | UI only | The user's pick from a sheet | Not started |
-| [S03](s03-household-walks-in.md) | An arriving member walks up and waits at the door | M | UI and art | | Not started |
-| [S04](s04-furniture-drops-in.md) | A placed room's furniture drops in piece by piece | S | UI only | | Not started |
-| [S05](s05-doghouse-wakes-up.md) | The Doghouse's dog is on a lead until the fence closes | M | UI and art | | Not started |
-| [S06](s06-rain-for-rainy-season.md) | It rains while Rainy season runs, with puddles on the Patios | S | UI only | | Not started |
-| [S07](s07-finished-rooms-light-up.md) | A fitted and grown room turns its lights on | S, then M | UI only, then rules | Stage 2 waits for the batch | Not started |
-| [S08](s08-client-at-the-door.md) | The client appears at each milestone, with hearts on their wishes | M | UI and art | Easier after S03 | Not started |
-| [S09](s09-their-things-move-in.md) | The Count's coffin and the Barkers' dog bed | M | UI and art | | Not started |
+| [S01](s01-open-house-day.md) | A win brings a crowd to the kerb, hearts and a fanfare | M | UI only | | Awaits playtest: #94, batch #93 (D-175) |
+| [S02](s02-set-doors.md) | Rooms in a set open into each other | M | UI only | The user's pick from a sheet | Stage 1 waits for the user's pick: draft #102 (D-176) |
+| [S03](s03-household-walks-in.md) | An arriving member walks up and waits at the door | M | UI and art | | Awaits playtest: #95, batch #93 (D-177) |
+| [S04](s04-furniture-drops-in.md) | A placed room's furniture drops in piece by piece | S | UI only | | Awaits playtest: #96, batch #93 (D-178) |
+| [S05](s05-doghouse-wakes-up.md) | The Doghouse's dog is on a lead until the fence closes | M | UI and art | | Awaits playtest: #97, batch #93 (D-179) |
+| [S06](s06-rain-for-rainy-season.md) | It rains while Rainy season runs, with puddles on the Patios | S | UI only | | Awaits playtest: #98, batch #93 (D-180) |
+| [S07](s07-finished-rooms-light-up.md) | A fitted and grown room turns its lights on | S, then M | UI only, then rules | Stage 2 waits for the batch | Stage 1 awaits playtest: #99, batch #93 (D-181) |
+| [S08](s08-client-at-the-door.md) | The client appears at each milestone, with hearts on their wishes | M | UI and art | Easier after S03 | Awaits playtest: #100, batch #93 (D-182) |
+| [S09](s09-their-things-move-in.md) | The Count's coffin and the Barkers' dog bed | M | UI and art | | Awaits playtest: #101, batch #93 (D-183) |
 | [S10](s10-house-builds-itself.md) | The house rebuilds itself on the end screen | M | UI only | S01 played | Not started |
 | [S11](s11-walkthrough-tour.md) | The camera tours the rooms after a win | M | UI only | S01 played | Not started |
 | [S12](s12-dusk-when-you-win.md) | Evening falls and the rooms light up after a win | S, then M | UI only | S01 played; a mockup the user likes | Not started |

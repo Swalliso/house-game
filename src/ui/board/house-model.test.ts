@@ -542,6 +542,68 @@ describe('the ghost’s model', () => {
     // The card's own shape is another model: a 2 × 2 Kitchen.
     expect(pieceModel('kitchen', 1).bounds).toEqual({ x: 0, y: 0, w: 2, h: 2 });
   });
+
+  // D-179's unmet, D-181's lit and D-183's client all ride on the look, each alone or together.
+  it('is cached apart for a look that differs in any one thing, and is that look’s', () => {
+    const base = { color: 2, style: 1, fixture: 'fireplace' as const };
+    const looks = [
+      base,
+      { ...base, unmet: true },
+      { ...base, lit: true },
+      { ...base, client: 'barkers' as const },
+      { ...base, client: 'vladislav' as const },
+      { ...base, unmet: true, lit: true, client: 'barkers' as const },
+    ];
+    const models = looks.map((look) => pieceModel('livingRoom', 0, look));
+    expect(new Set(models).size).toBe(looks.length);
+    models.forEach((m, i) => {
+      expect(m.look, JSON.stringify(looks[i])).toEqual(looks[i]);
+      // The same look again: the same model.
+      expect(pieceModel('livingRoom', 0, { ...looks[i]! })).toBe(m);
+    });
+    // Only a lit look's room is finished (D-181).
+    expect(models.map((m) => !!m.rooms.get(1)!.finished)).toEqual([
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+    ]);
+  });
+});
+
+describe('the house’s model', () => {
+  it('is cached per house, links, sun and client, and tells two clients apart', () => {
+    const h = house([
+      ['kitchen', 4, 4],
+      ['livingRoom', 6, 4],
+    ]);
+    const state = {
+      ...rules.newRun({
+        seed: 'house',
+        clientId: 'barkers',
+        crewId: 'generalContractor',
+        mode: 'standard',
+      }),
+      house: h,
+    };
+    const links = hallLinks(state);
+    const barkers = houseModel(h, links, null, 'barkers');
+    expect(barkers.client).toBe('barkers');
+    expect(houseModel(h, links, null, 'barkers')).toBe(barkers);
+    // Another client, or none, is another model: the Barkers' dogs' bed is theirs alone.
+    const count = houseModel(h, links, null, 'vladislav');
+    expect(count).not.toBe(barkers);
+    expect(count.client).toBe('vladislav');
+    const none = houseModel(h, links, null);
+    expect(none).not.toBe(barkers);
+    expect(none).not.toBe(count);
+    expect(none.client).toBeUndefined();
+    // And each, asked for again, is that client's (the cache keeps the last one asked for).
+    expect(houseModel(h, links, null, 'barkers').client).toBe('barkers');
+    expect(houseModel(h, links, null, 'vladislav').client).toBe('vladislav');
+  });
 });
 
 /**

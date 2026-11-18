@@ -748,5 +748,18 @@
       }
     ],
     "note": "A clothes rail of pink and red shirts, under the first rail’s bar."
+  },
+  "coffin": {
+    "pack": "mi",
+    "file": "1_Interiors/16x16/Theme_Sorter/11_Halloween_16x16.png",
+    "rect": [198, 68, 23, 38],
+    "note": "A dark coffin with a cross on its lid: Count Vladislav's bed, where the bed would stand in his first Bedroom (D-183)."
+  },
+  "wall-candle": {
+    "pack": "mi",
+    "file": "3_Animated_objects/16x16/spritesheets/animated_wall_candle.png",
+    "rect": [3, 6, 10, 14],
+    "frames": { "count": 3, "dx": 16, "dy": 0, "ms": 160 },
+    "note": "A candle in a wall sconce, its flame flickering over three frames: the Count's light on the wall beside his coffin (D-183). The halo's top three faint rows are left out, so it hangs within an outside wall's band and face, clear of the floor in front."
   }
 }

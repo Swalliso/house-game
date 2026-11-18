@@ -2,12 +2,16 @@
 // rotation, inside its walls, off its doorways and off each other; the same every time; rooms
 // of a type that don't look copy-pasted; fixtures drawn where they fit, badged where not.
 
+import { readFileSync } from 'node:fs';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { decodePng } from '../../../scripts/png.ts';
 import {
   CONTENT,
+  isFinished,
   placedCells,
   rules,
+  type ClientId,
   type FixtureId,
   type HouseState,
   type PieceId,
@@ -29,6 +33,7 @@ import {
 } from '../board/house-model.ts';
 import { CELL, spritePos } from '../sprites.ts';
 import { artSize } from './drawings.ts';
+import { paintPiece, type AtlasPixels, type Pixels } from './house-paint.ts';
 import {
   arrangements,
   byType,
@@ -37,6 +42,7 @@ import {
   roomItems,
   roomLayout,
   roomLook,
+  theirsIn,
   type Item,
 } from './rooms.ts';
 
@@ -68,8 +74,8 @@ function house(specs: readonly Spec[], size = 12): HouseState {
   return { lot: lotFromRows(rows), pieces, nextUid: pieces.length + 1 };
 }
 
-/** The model with the rules' Hallway links, as the board builds it. */
-function modelOf(h: HouseState): HouseModel {
+/** The model with the rules' Hallway links, as the board builds it (for `client`'s run, D-183). */
+function modelOf(h: HouseState, client?: ClientId): HouseModel {
   const state = {
     ...rules.newRun({
       seed: 'rooms',
@@ -79,7 +85,7 @@ function modelOf(h: HouseState): HouseModel {
     }),
     house: h,
   };
-  return houseModel(h, hallLinks(state));
+  return houseModel(h, hallLinks(state), null, client);
 }
 
 const FLAT = /^(rug-|runner-|mat-|bath-mat)/;
@@ -1180,4 +1186,393 @@ describe('a grown room (D-168)', () => {
     const living = roomItems(modelOf(grown('livingRoom', ['######', '######'])), 1);
     expect(living.filter((it) => it.sprite.startsWith('sofa-'))).toHaveLength(2);
   });
+});
+
+describe('the client’s own things (D-183)', () => {
+  const CLIENTS = Object.keys(CONTENT.clients) as ClientId[];
+  const sprites = (m: HouseModel, uid: number) => roomItems(m, uid).map((it) => it.sprite);
+  const SIDES = ['', 'N', 'E', 'NS', 'EW', 'NESW'];
+
+  /** Room 1 of `id` grown to `shape` (D-168), turned `rot`, at (3, 3), with Closets along `sides`. */
+  function grownTo(
+    id: PieceId,
+    shape: readonly string[],
+    rot: Rot,
+    sides: string,
+    fixture?: FixtureId,
+  ): HouseState {
+    const cells = placedCells(shape, 3, 3, rot);
+    const used = new Set(cells.map((c) => `${c.x},${c.y}`));
+    const specs: Spec[] = [[id, 3, 3, rot, fixture]];
+    for (const s of sides) {
+      const [dx, dy] = ({ N: [0, -1], S: [0, 1], W: [-1, 0], E: [1, 0] } as const)[s as 'N']!;
+      for (const c of cells) {
+        const k = `${c.x + dx},${c.y + dy}`;
+        if (used.has(k)) continue;
+        used.add(k);
+        specs.push(['closet', c.x + dx, c.y + dy]);
+      }
+    }
+    const h = house(specs, 14);
+    return { ...h, pieces: h.pieces.map((p) => (p.uid === 1 ? { ...p, shape, extended: 1 } : p)) };
+  }
+
+  /**
+   * A type's rooms for a client's things: every arrangement, with each fixture, alone and boxed
+   * in, on each footprint its card's shape or a grown one (D-168) takes in a turn (a turn that
+   * leaves its cells as they were lays it out as before: sprites never turn).
+   */
+  function cases(
+    id: PieceId,
+    fixtures: readonly (FixtureId | undefined)[],
+    grown: readonly (readonly string[])[],
+  ): (readonly [string, HouseState, number])[] {
+    const out: (readonly [string, HouseState, number])[] = [];
+    for (const shape of [CONTENT.pieces[id].shape, ...grown]) {
+      const seen = new Set<string>();
+      for (const rot of [0, 1, 2, 3] as Rot[]) {
+        const key = JSON.stringify(placedCells(shape, 0, 0, rot));
+        if (seen.has(key)) continue;
+        seen.add(key);
+        for (let style = 0; style < arrangements(id); style++) {
+          for (const fixture of fixtures) {
+            for (const sides of SIDES) {
+              const h =
+                shape === CONTENT.pieces[id].shape
+                  ? boxedIn(id, rot, sides, fixture)
+                  : grownTo(id, shape, rot, sides, fixture);
+              const at = `${id} ${shape.join('/')} r${rot} ${style} ${fixture ?? ''} ${sides}`;
+              out.push([at, restyle(h, style), style]);
+            }
+          }
+        }
+      }
+    }
+    return out;
+  }
+
+  it('stand Count Vladislav’s coffin and candle in his first Bedroom, in every arrangement, footprint and fixture', () => {
+    const fixtures: readonly (FixtureId | undefined)[] = [undefined, 'bunkBeds', ...ROOM_FIXTURES];
+    for (const [at, h] of cases('bedroom', fixtures, [['####', '####']])) {
+      const uid = h.pieces[0]!.uid;
+      const m = modelOf(h, 'vladislav');
+      const items = sprites(m, uid);
+      // His coffin where the bed would stand; Bunk Beds win where they fit (D-172).
+      const bunks = items.some((sp) => sp.startsWith('bunk-bed'));
+      expect(items.includes('coffin') !== bunks, at).toBe(true);
+      expect(
+        items.some((sp) => sp.startsWith('bed-double')),
+        at,
+      ).toBe(false);
+      // His candle on the wall beside it, or his candles on the floor where the wall is taken.
+      expect(
+        items.some((sp) => sp === 'wall-candle' || sp === 'candles'),
+        at,
+      ).toBe(true);
+      expect(problems(m, uid), at).toEqual([]);
+    }
+  });
+
+  it('lay the Barkers’ dogs’ bed in their first Living Room, in every arrangement, footprint and fixture', () => {
+    const fixtures: readonly (FixtureId | undefined)[] = [
+      undefined,
+      'chandelier',
+      ...ROOM_FIXTURES,
+    ];
+    const grown = [
+      ['######', '######'],
+      ['#####', '#####', '##...'],
+      ['##..', '####', '####', '..##'],
+    ];
+    // Each arrangement's key piece (D-173) stays where it stood.
+    const KEY = [/^sofa-\d/, /^bookcase-/, /^tv-/];
+    for (const [at, h, style] of cases('livingRoom', fixtures, grown)) {
+      const uid = h.pieces[0]!.uid;
+      const key = sprites(modelOf(h), uid).some((sp) => KEY[style]!.test(sp));
+      const m = modelOf(h, 'barkers');
+      const items = sprites(m, uid);
+      expect(items, at).toContain('own-dog-bed');
+      expect(key && !items.some((sp) => KEY[style]!.test(sp)), at).toBe(false);
+      expect(problems(m, uid), at).toEqual([]);
+    }
+  }, 20_000); // 2.3 s here, and over 5 s on a slow CI runner: the 5 s default timed out
+
+  it('show in the ghost of the room that will be theirs, in every arrangement, turn and color', () => {
+    for (let style = 0; style < 3; style++) {
+      for (const rot of [0, 1, 2, 3] as Rot[]) {
+        for (const color of [0, 1, 2, 3]) {
+          for (const fixture of [undefined, 'fireplace', 'bunkBeds'] as const) {
+            const look = { color, style, ...(fixture ? { fixture } : {}) };
+            const at = `${style} r${rot} c${color} ${fixture ?? ''}`;
+            const count = pieceModel('bedroom', rot, { ...look, client: 'vladislav' });
+            const items = sprites(count, 1);
+            const bunks = items.some((sp) => sp.startsWith('bunk-bed'));
+            expect(items.includes('coffin') !== bunks, at).toBe(true);
+            expect(
+              items.some((sp) => sp === 'wall-candle' || sp === 'candles'),
+              at,
+            ).toBe(true);
+            expect(problems(count, 1), at).toEqual([]);
+            // Without the client's things, the ghost is as it was: the bed.
+            expect(sprites(pieceModel('bedroom', rot, look), 1).includes('coffin'), at).toBe(false);
+            if (fixture === 'bunkBeds') continue;
+            const barkers = pieceModel('livingRoom', rot, { ...look, client: 'barkers' });
+            expect(sprites(barkers, 1), at).toContain('own-dog-bed');
+            expect(problems(barkers, 1), at).toEqual([]);
+          }
+        }
+      }
+    }
+  });
+
+  it('let Bunk Beds win: the coffin stands in for them only where they don’t fit, as the bed would', () => {
+    for (let style = 0; style < 3; style++) {
+      // They fit: drawn, and no coffin; his candle hangs beside them all the same.
+      const fits = restyle(house([['bedroom', 4, 4, 0, 'bunkBeds']]), style);
+      const a = fits.pieces[0]!.uid;
+      const shown = roomLayout(modelOf(fits, 'vladislav'), a);
+      expect(shown.fixtureShown, `${style}`).toBe(true);
+      expect(shown.items.map((it) => it.sprite)).not.toContain('coffin');
+      expect(shown.items.map((it) => it.sprite)).toContain('wall-candle');
+      // A Hallway along the north wall leaves them no wall: the bed stands in, so the coffin does.
+      const tight = restyle(
+        house([
+          ['bedroom', 4, 4, 0, 'bunkBeds'],
+          ['hallway', 4, 3],
+        ]),
+        style,
+      );
+      const b = tight.pieces[0]!.uid;
+      expect(roomLayout(modelOf(tight), b).fixtureShown, `${style}`).toBe(false);
+      expect(sprites(modelOf(tight), b).some((sp) => sp.startsWith('bed-double'))).toBe(true);
+      const count = sprites(modelOf(tight, 'vladislav'), b);
+      expect(count).toContain('coffin');
+      expect(count.some((sp) => sp.startsWith('bed-double'))).toBe(false);
+    }
+  });
+
+  it('hang the Count’s candle on an outside north wall: over its band and its face, off the floor', () => {
+    for (let style = 0; style < 3; style++) {
+      const h = restyle(house([['bedroom', 4, 4]]), style);
+      const uid = h.pieces[0]!.uid;
+      const candle = roomItems(modelOf(h, 'vladislav'), uid).find(
+        (it) => it.sprite === 'wall-candle',
+      );
+      // The wardrobe's arrangement fills that wall in a two-cell-wide room: his candles stand on the floor.
+      if (!candle) {
+        expect(sprites(modelOf(h, 'vladislav'), uid), `${style}`).toContain('candles');
+        continue;
+      }
+      expect(candle.y).toBe(4 * CELL);
+      expect(candle.over).toBe(4 * CELL + WALL.out);
+      expect(candle.y + artSize('wall-candle').h).toBe(4 * CELL + WALL.out + WALL.face);
+    }
+  });
+
+  it('go in the first room of their type only: never a newer one, nor a member’s room (D-111)', () => {
+    const count = house([
+      ['bedroom', 2, 2],
+      ['bedroom', 4, 2],
+      ['renfieldsRoom', 2, 4],
+      ['livingRoom', 6, 2],
+    ]);
+    expect(theirsIn(count.pieces, 'vladislav')).toBe(1);
+    const plain = modelOf(count);
+    const roomsOf = (m: HouseModel) => [1, 2, 3, 4].map((uid) => roomLayout(m, uid));
+    const before = roomsOf(plain);
+    const after = roomsOf(modelOf(count, 'vladislav'));
+    expect(after[0]!.items.map((it) => it.sprite)).toContain('coffin');
+    // His second Bedroom, Renfield's Room (with its cot) and the Living Room: as they were.
+    for (const i of [1, 2, 3]) expect(after[i], `room ${i + 1}`).toEqual(before[i]);
+    expect(before[2]!.items.some((it) => it.sprite.startsWith('cot'))).toBe(true);
+    // Renfield's Room counts as a Bedroom but is his own type: the first Bedroom after it takes them.
+    const renfield = house([
+      ['renfieldsRoom', 2, 2],
+      ['bedroom', 2, 3],
+    ]);
+    expect(theirsIn(renfield.pieces, 'vladislav')).toBe(2);
+    // The Barkers: Nana's Room keeps her dogs' bed beside hers; the second Living Room is plain.
+    const barkers = house([
+      ['nanasRoom', 2, 2],
+      ['livingRoom', 4, 2],
+      ['livingRoom', 6, 2],
+    ]);
+    const was = modelOf(barkers);
+    const nana = roomLayout(was, 1);
+    const second = roomLayout(was, 3);
+    const is = modelOf(barkers, 'barkers');
+    expect(sprites(is, 2)).toContain('own-dog-bed');
+    expect(roomLayout(is, 1)).toEqual(nana);
+    expect(nana.items.map((it) => it.sprite)).toContain('own-dog-bed');
+    expect(roomLayout(is, 3)).toEqual(second);
+    expect(second.items.map((it) => it.sprite)).not.toContain('own-dog-bed');
+  });
+
+  it('stay when a newer room of their type is built, and pass on when theirs is demolished', () => {
+    const h = house([
+      ['bedroom', 2, 2],
+      ['bedroom', 4, 2],
+    ]);
+    const more = house([
+      ['bedroom', 2, 2],
+      ['bedroom', 4, 2],
+      ['bedroom', 6, 2],
+    ]);
+    expect(theirsIn(more.pieces, 'vladislav')).toBe(1);
+    expect(sprites(modelOf(more, 'vladislav'), 1)).toContain('coffin');
+    expect(sprites(modelOf(more, 'vladislav'), 3)).not.toContain('coffin');
+    const gone = { ...h, pieces: h.pieces.filter((p) => p.uid !== 1) };
+    expect(theirsIn(gone.pieces, 'vladislav')).toBe(2);
+    expect(sprites(modelOf(gone, 'vladislav'), 2)).toContain('coffin');
+  });
+
+  it('mark the look of the room that is or will be theirs, and no other', () => {
+    const empty = house([]);
+    expect(newRoomLook(empty, 'bedroom', 'vladislav').client).toBe('vladislav');
+    expect(newRoomLook(empty, 'livingRoom', 'barkers').client).toBe('barkers');
+    expect(newRoomLook(empty, 'livingRoom', 'vladislav').client).toBeUndefined();
+    const one = house([['bedroom', 2, 2]]);
+    expect(newRoomLook(one, 'bedroom', 'vladislav').client).toBeUndefined();
+    expect(roomLook(one, 1, 'vladislav').client).toBe('vladislav');
+    expect(newRoomLook(house([['renfieldsRoom', 2, 2]]), 'bedroom', 'vladislav').client).toBe(
+      'vladislav',
+    );
+    // The other clients', and every look without a client, are as they were.
+    for (const client of CLIENTS.filter((c) => c !== 'vladislav' && c !== 'barkers')) {
+      for (const id of INDOOR) {
+        expect(newRoomLook(empty, id, client), `${client} ${id}`).toStrictEqual(
+          newRoomLook(empty, id),
+        );
+      }
+      expect(roomLook(one, 1, client)).toStrictEqual(roomLook(one, 1));
+    }
+    expect('client' in roomLook(one, 1)).toBe(false);
+  });
+
+  it('cache the board’s model per client, and the ghost’s per look', () => {
+    const h = house([['bedroom', 2, 2]]);
+    const a = modelOf(h, 'vladislav');
+    expect(modelOf(h, 'vladislav')).toBe(a);
+    expect(a.client).toBe('vladislav');
+    expect(modelOf(h).client).toBeUndefined();
+    const look = { color: 1, style: 2 };
+    const ghost = pieceModel('bedroom', 0, { ...look, client: 'vladislav' });
+    expect(pieceModel('bedroom', 0, { ...look, client: 'vladislav' })).toBe(ghost);
+    expect(pieceModel('bedroom', 0, look)).not.toBe(ghost);
+  });
+
+  it('leave the other clients’ houses, and every other room, pixel for pixel as they were', () => {
+    const png = decodePng(
+      readFileSync(new URL('../../../assets/atlas.png', import.meta.url)),
+      'atlas',
+    );
+    const atlas: AtlasPixels = { width: png.width, height: png.height, data: png.rgba };
+    /** The whole house painted as a piece alone is: floors, every room's furniture, walls, tops. */
+    const paint = (m: HouseModel): Pixels =>
+      paintPiece(
+        m,
+        atlas,
+        [...m.rooms.keys()].flatMap((uid) => roomItems(m, uid)),
+      )!;
+    /** How many pixels differ, outside room `skip`'s cells and inside them. */
+    const differ = (m: HouseModel, a: Pixels, b: Pixels, skip: number | undefined) => {
+      expect([b.x, b.y, b.w, b.h]).toEqual([a.x, a.y, a.w, a.h]);
+      let out = 0;
+      let inside = 0;
+      for (let i = 0; i < a.w * a.h; i++) {
+        const cx = Math.floor((a.x + (i % a.w)) / CELL);
+        const cy = Math.floor((a.y + Math.floor(i / a.w)) / CELL);
+        const own = skip !== undefined && m.room[cy * m.width + cx] === skip;
+        for (let k = 0; k < 4; k++) {
+          if (a.data[i * 4 + k] === b.data[i * 4 + k]) continue;
+          if (own) inside++;
+          else out++;
+          break;
+        }
+      }
+      return { out, inside };
+    };
+    const changed = new Map<ClientId, number>();
+    for (let seed = 1; seed <= 40; seed++) {
+      const h = randomHouse(seed * 7919);
+      const plain = modelOf(h);
+      const before = paint(plain);
+      const layouts = [...plain.rooms.keys()].map((uid) => roomLayout(plain, uid));
+      for (const client of CLIENTS) {
+        const m = modelOf(h, client);
+        const theirs = theirsIn(h.pieces, client);
+        // Every room but theirs lays out as before, so it paints as before.
+        [...m.rooms.keys()].forEach((uid, i) => {
+          if (uid !== theirs) expect(roomLayout(m, uid), `${seed} ${client}`).toEqual(layouts[i]);
+        });
+        const { out, inside } = differ(m, before, paint(m), theirs);
+        expect(out, `seed ${seed} ${client}`).toBe(0);
+        if (inside > 0) changed.set(client, (changed.get(client) ?? 0) + 1);
+      }
+    }
+    // Only the two clients with things of their own change a room, and they do in most houses.
+    expect([...changed.keys()].sort()).toEqual(['barkers', 'vladislav']);
+    expect(changed.get('vladislav')).toBeGreaterThan(10);
+    expect(changed.get('barkers')).toBeGreaterThan(10);
+  }, 20_000); // 1.1 s here and 2.5 s on CI: as close to the 5 s default as the dog-bed test
+
+  // D-181 × D-183: a finished room lights its lamp after everything else, their things included.
+  it('keep their things in their first room once it’s finished, its lamp lit and the rest where it stood', () => {
+    const lit = (h: HouseState): HouseState => ({
+      ...h,
+      pieces: h.pieces.map((p) => (p.uid === h.pieces[0]!.uid ? { ...p, level: 1 } : p)),
+    });
+    const unlit = (h: HouseState): HouseState => ({
+      ...h,
+      pieces: h.pieces.map((p) => {
+        if (p.uid !== h.pieces[0]!.uid) return p;
+        const { level: _level, extended: _extended, ...rest } = p;
+        return rest;
+      }),
+    });
+    const KINDS = [
+      ['bedroom', 'vladislav', ['bunkBeds', ...ROOM_FIXTURES], [['####', '####']]],
+      [
+        'livingRoom',
+        'barkers',
+        ['chandelier', ...ROOM_FIXTURES],
+        [
+          ['######', '######'],
+          ['#####', '#####', '##...'],
+          ['##..', '####', '####', '..##'],
+        ],
+      ],
+    ] as const;
+    for (const [id, client, fixtures, grown] of KINDS) {
+      for (const [at, h] of cases(id, fixtures, grown)) {
+        const done = lit(h);
+        const uid = done.pieces[0]!.uid;
+        expect(isFinished(done.pieces[0]!), at).toBe(true);
+        const m = modelOf(done, client);
+        const layout = roomLayout(m, uid);
+        const items = layout.items.map((it) => it.sprite);
+        if (client === 'vladislav') {
+          const bunks = items.some((sp) => sp.startsWith('bunk-bed'));
+          expect(items.includes('coffin') !== bunks, at).toBe(true);
+          expect(
+            items.some((sp) => sp === 'wall-candle' || sp === 'candles'),
+            at,
+          ).toBe(true);
+        } else {
+          expect(items, at).toContain('own-dog-bed');
+        }
+        expect(layout.lamp !== undefined || layout.pendant === true, at).toBe(true);
+        expect(problems(m, uid), at).toEqual([]);
+        // Everything that stood in the room before it was finished stands where it did.
+        const before = roomLayout(modelOf(unlit(done), client), uid).items;
+        for (const it of before) {
+          expect(
+            layout.items.some((x) => x.sprite === it.sprite && x.x === it.x && x.y === it.y),
+            `${at}: ${it.sprite} at ${it.x},${it.y}`,
+          ).toBe(true);
+        }
+        expect(layout.items.length - before.length, at).toBeLessThanOrEqual(1);
+      }
+    }
+  }, 20_000); // 2.7 s here, and over 5 s on a slow CI runner: the 5 s default timed out
 });

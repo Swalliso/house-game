@@ -1,0 +1,65 @@
+/* The household at the front door (PeopleLayer.tsx, D-177): the members waiting at the doormat or
+   the kerb, and the walk up from the street. After the overhang on its z-index, so a figure at the
+   door stands in front of the house; never takes the pointer. */
+
+.board > .people {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: var(--z-overhang);
+  pointer-events: none;
+}
+.people .person,
+.people .suitcase,
+.people .walker,
+.people .stand-in {
+  position: absolute;
+  display: block;
+  image-rendering: pixelated;
+}
+.people .stand-in {
+  left: 0;
+  top: 0;
+  animation: people-fade var(--stand-in-ms) linear var(--walk-delay) both;
+}
+
+/* The walk: up from the road a whole art px a step (transform only), fading in as they set off. */
+.people .walker {
+  animation:
+    people-walk var(--walk-ms) steps(var(--walk-steps), end) var(--walk-delay) both,
+    people-fade var(--walk-fade-ms) linear var(--walk-delay) both;
+}
+@keyframes people-walk {
+  from {
+    transform: translateY(var(--walk-from));
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes people-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+/* Their walk cycle steps behind the figure's box; the suitcase rolls along after them, in front. */
+.people .walker-figure {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.people .walker-frames {
+  display: block;
+  height: 100%;
+  image-rendering: pixelated;
+  animation-name: walker-frames;
+  animation-iteration-count: infinite;
+}
+@keyframes walker-frames {
+  to {
+    transform: translateX(var(--walker-frames));
+  }
+}
