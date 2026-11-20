@@ -27,6 +27,10 @@
 //   whose `stockIf` fails is never stocked, on a shelf or in a crate, and the Showroom skips a
 //   special piece at its limit. The streams are the same, so the same seed and state stock the
 //   same shelf, and with every weight equal a pick lands where it did before the lean.
+// - D-196: one good, any but a service, can be held for the next visit (run.ts's `hold`). Each
+//   stocking after that, the next visit's and a refresh's, puts it back in place of a fresh good
+//   of its kind (withHeld), at that stocking's price, and the sale may land on it. The streams
+//   are the same, so a run with no hold stocks as it did before.
 
 import type {
   Availability,
@@ -44,6 +48,7 @@ import type {
   ReservePiece,
   RunState,
   ServiceId,
+  ShelfGood,
   ShopOffer,
   ShopStock,
   ShopVisit,
@@ -74,6 +79,30 @@ export const SHOP_REASONS = {
   notOpen: 'The shop isn’t open.',
   picking: 'Pick from your crate first.',
 } as const;
+
+/** D-196: why a good can't be held. */
+export const HOLD_REASONS = {
+  nothing: 'There’s nothing there to hold.',
+  service: 'A service can’t be held.',
+  lastShop: 'No shop comes after this one.',
+  atLimit: 'Your house has as many of these as it can take.',
+} as const;
+
+/** D-196: whether two goods are the same good (a sold mark aside). */
+export function sameGood(a: ShopOffer | ShelfGood, b: ShelfGood): boolean {
+  return a.kind === b.kind && 'id' in a && a.id === b.id;
+}
+
+/** D-196: a good as a hold keeps it: its kind and id, with no sold mark. */
+export function shelfGood(offer: Exclude<ShopOffer, { kind: 'service' }>): ShelfGood {
+  return { kind: offer.kind, id: offer.id } as ShelfGood;
+}
+
+/** D-196: the held good's place on the visit's shelf, or -1 when it isn't there (or is sold). */
+export function heldIndex(visit: ShopVisit, held: ShelfGood | undefined): number {
+  if (!held) return -1;
+  return visit.offers.findIndex((o) => o.kind !== 'service' && !o.sold && sameGood(o, held));
+}
 
 export function slotsFor(content: Content, state: RunState): Slots {
   return {
@@ -287,6 +316,7 @@ export function roomFor(content: Content, state: RunState, offer: ShopOffer): Av
 export function viewOffers(content: Content, state: RunState): OfferView[] {
   const visit = state.offers?.shop;
   if (state.screen !== 'shop' || !visit) return [];
+  const held = heldIndex(visit, state.held);
   return visit.offers.map((offer, i) => {
     const { price, fullPrice, onSale } = offerPrice(content, state, visit, i);
     const base = {
@@ -297,6 +327,7 @@ export function viewOffers(content: Content, state: RunState): OfferView[] {
       price,
       fullPrice,
       onSale,
+      ...(i === held ? { held: true as const } : {}),
     };
     if (offer.kind !== 'service' && offer.sold) {
       return { ...base, ok: false, reason: SHOP_REASONS.sold };
@@ -596,6 +627,36 @@ function pickSale(state: RunState, shop: number, refresh: number, goods: number)
   return stream(state.setup.seed, `shop/${shop}/${refresh}/sale`).int(goods);
 }
 
+/**
+ * D-196: a stocking's goods and upgrade with the held good back among them: in place of the
+ * same good if the stocking drew it too, else of the first good of its kind. Pieces and fixtures
+ * share the card slots, so with none of its own kind it takes the first card's place; with
+ * nothing of its kind to stand in for, it goes after the goods. A held upgrade is the visit's.
+ */
+export function withHeld(
+  goods: readonly ShopOffer[],
+  upgrade: readonly ShopOffer[],
+  held: ShelfGood | undefined,
+): { goods: ShopOffer[]; upgrade: ShopOffer[] } {
+  if (!held) return { goods: [...goods], upgrade: [...upgrade] };
+  const back = { ...held } as ShopOffer;
+  if (held.kind === 'upgrade') {
+    return {
+      goods: [...goods],
+      upgrade: upgrade.some((o) => sameGood(o, held)) ? [...upgrade] : [back],
+    };
+  }
+  const isCard = (o: ShopOffer) => o.kind === 'piece' || o.kind === 'fixture';
+  let at = goods.findIndex((o) => sameGood(o, held));
+  if (at < 0) at = goods.findIndex((o) => o.kind === held.kind);
+  if (at < 0 && isCard(back)) at = goods.findIndex(isCard);
+  const out = [...goods];
+  if (at < 0) out.push(back);
+  else out[at] = back;
+  return { goods: out, upgrade: [...upgrade] };
+}
+
+/** A visit's shelf: the goods, the held good back among them (D-196), and the sale. */
 export function openVisit(
   content: Content,
   state: RunState,
@@ -603,10 +664,14 @@ export function openVisit(
   forced = false,
   shelf: Shelf = shelfFor(content, state),
 ): ShopVisit {
-  const goods = stockGoods(content, state, shop, 0, shelf);
+  const { goods, upgrade } = withHeld(
+    stockGoods(content, state, shop, 0, shelf),
+    stockUpgrade(content, state, shop),
+    state.held,
+  );
   return {
     number: shop,
-    offers: withServices(goods, stockUpgrade(content, state, shop)),
+    offers: withServices(goods, upgrade),
     sale: pickSale(state, shop, 0, goods.length),
     refreshes: 0,
     boughtAny: false,
@@ -614,7 +679,10 @@ export function openVisit(
   };
 }
 
-/** A refresh rerolls every good (not the services); the sale moves with it. */
+/**
+ * A refresh rerolls every good (not the services) but the one held (D-196), which is back in
+ * place of a fresh good of its kind, as at the next visit; the sale moves with it.
+ */
 export function refreshVisit(
   content: Content,
   state: RunState,
@@ -622,8 +690,11 @@ export function refreshVisit(
   shelf: Shelf = shelfFor(content, state),
 ): ShopVisit {
   const refreshes = visit.refreshes + 1;
-  const goods = stockGoods(content, state, visit.number, refreshes, shelf);
-  const upgrade = visit.offers.filter((o) => o.kind === 'upgrade');
+  const { goods, upgrade } = withHeld(
+    stockGoods(content, state, visit.number, refreshes, shelf),
+    visit.offers.filter((o) => o.kind === 'upgrade'),
+    state.held,
+  );
   return {
     ...visit,
     offers: withServices(goods, upgrade),

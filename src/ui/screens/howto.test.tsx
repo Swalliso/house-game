@@ -159,6 +159,13 @@ describe('How to play', () => {
       'The shelf leans toward what can pay in your house now, such as a fixture with a room to take it or Remodel Plans for a set you hold.',
     );
   });
+
+  it('says how to hold a good for the next shop (D-196)', () => {
+    open('shop');
+    expect(text(HowToPlayText())).toContain(
+      'Pin a good you can’t buy yet to hold it: it stays through a refresh, and at the next shop it’s back in place of a new good of its kind, at that shop’s price. One hold at a time.',
+    );
+  });
 });
 
 describe('Tips so far', () => {

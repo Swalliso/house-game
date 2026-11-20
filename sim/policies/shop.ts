@@ -2,7 +2,9 @@
 // applied, times the weeks left in the run, per unit of budget. It buys the best value while
 // the value clears a bar, picks from crates the same way, sells its weakest blueprint to make
 // room for a much better one, refreshes once when it's rich and nothing is worth buying, and
-// otherwise leaves. The reroll service is worth nothing while it still holds a bonus reroll
+// otherwise leaves. D-196: as it leaves, it holds the good it valued most of those it would buy
+// but couldn't afford, for the next visit (`holds`, on by default); a good it holds and can then
+// afford it buys by the same bar as any other. The reroll service is worth nothing while it still holds a bonus reroll
 // (it used 1 of the 212 it bought in 100 runs when it bought them freely; it still buys about
 // one a run, and the state can't tell it whether the last phase ran out). Strikes (D-157) are
 // used from the hand only with strikes 'fixed': a card whose type is in STRIKE_ORDER, earliest
@@ -33,6 +35,7 @@ import {
   matchesDef,
   rowOf,
   ruleValue,
+  SHOP_REASONS,
   totalWithOneMore,
   weekTotal,
   type Action,
@@ -63,6 +66,8 @@ export interface ShopBot {
   strikes?: StrikeMode;
   /** With an early mode, Ahead of Schedule is valued as if one more milestone were early. */
   early?: EarlyMode;
+  /** D-196: hold the good it valued most but couldn't afford as it leaves (default true). */
+  holds?: boolean;
 }
 
 /**
@@ -424,7 +429,38 @@ export function shopAct(rules: Rules, s: RunState, rng: Rng, bot: ShopBot): Acti
   if (refresh.ok && visit && visit.refreshes === 0 && s.budget >= refresh.price + 8) {
     return { t: 'refreshShop' };
   }
-  return { t: 'leaveShop' };
+  // D-196: hold what it would buy but can't afford yet, before it goes.
+  const hold = bot.holds === false ? null : holdPick(rules, s, offers, rng, bot, bar);
+  return hold === null ? { t: 'leaveShop' } : { t: 'hold', i: hold };
+}
+
+/**
+ * D-196: the good to hold as it leaves, or null: of the goods it couldn't afford whose value
+ * clears the bar at their price, the one it values most. A hold it would still buy at its price
+ * stays put, so a crate's sampled value can't move it back and forth. None in the last shop,
+ * where nothing can be held.
+ */
+function holdPick(
+  rules: Rules,
+  s: RunState,
+  offers: readonly OfferView[],
+  rng: Rng,
+  bot: ShopBot,
+  bar: number,
+): number | null {
+  const worth = (o: OfferView) =>
+    o.offer.kind === 'service' ? 0 : goodValue(rules, s, o.offer, rng, bot) / Math.max(1, o.price);
+  let best: { o: OfferView; value: number } | null = null;
+  for (const o of offers) {
+    if (o.held || o.ok || o.reason !== SHOP_REASONS.budget || o.offer.kind === 'service') continue;
+    if (!rules.canHold(s, o.i).ok) continue;
+    const value = goodValue(rules, s, o.offer, rng, bot);
+    if (value / Math.max(1, o.price) < bar) continue;
+    if (!best || value > best.value) best = { o, value };
+  }
+  if (!best) return null;
+  const held = offers.find((o) => o.held);
+  return held && worth(held) >= bar ? null : best.o.i;
 }
 
 // ---------------------------------------------------------------------------------------

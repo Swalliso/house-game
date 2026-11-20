@@ -13,7 +13,7 @@
 import { SERVICE_NAMES, type Content, type ServiceId } from '../src/rules/index.ts';
 import { SCORE_LABELS } from '../src/content/labels.ts';
 import { BOT_BLIND } from './policies/shop.ts';
-import type { RunRecord, ShelfCount } from './simulate.ts';
+import type { HoldCount, RunRecord, ShelfCount } from './simulate.ts';
 
 export function percentile(values: readonly number[], p: number): number {
   if (values.length === 0) return NaN;
@@ -1068,6 +1068,7 @@ export function economyReport(content: Content, records: readonly RunRecord[]): 
         sum((r) => r.economy.visits),
       )}` + ` · goods sold per run ${(sum((r) => r.economy.sold) / n).toFixed(2)}`,
       shelfLine(records),
+      holdsLine(records),
       `Bonus rerolls per run: bought ${(sum((r) => r.economy.bonusRerollsBought) / n).toFixed(2)}` +
         ` · used ${(sum((r) => r.economy.bonusRerollsUsed) / n).toFixed(2)}` +
         ` · held at the end ${(sum((r) => r.economy.bonusRerollsHeld) / n).toFixed(2)}`,
@@ -1077,6 +1078,21 @@ export function economyReport(content: Content, records: readonly RunRecord[]): 
   out.push(fixturesReport(content, records));
   out.push(toolsReport(content, records));
   return out.join('\n');
+}
+
+/**
+ * D-196: holds per run, the share whose good was back on a later visit's shelf, the share of
+ * those bought, and how many were dropped (the run came to own the good, or its type reached
+ * its limit).
+ */
+function holdsLine(records: readonly RunRecord[]): string {
+  const n = Math.max(1, records.length);
+  const total = (k: keyof HoldCount) => sumOf(records.map((r) => r.economy.holds?.[k] ?? 0));
+  return (
+    `Holds per run: ${(total('made') / n).toFixed(2)}` +
+    ` · back on a later shelf ${pct(total('back'), total('made'))}` +
+    ` · bought ${pct(total('bought'), total('back'))} of those · dropped ${total('dropped')}`
+  );
 }
 
 /** The kinds of good on a shelf, in the shop's order, for the shelf line (D-192). */
