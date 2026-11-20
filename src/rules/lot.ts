@@ -4,7 +4,8 @@
 // the next `lot/<attempt>` stream. Then its kind (D-166) shapes most lots toward a trait: more
 // Boulders, no woods, a bigger pond, a lake, a creek through the middle, old woods. Its biome
 // (D-174), drawn first, is its look and the kinds it deals. Its traits (D-119), read from its
-// terrain, are chips on the contract, and a run keeps the ones it began with.
+// terrain, are chips on the contract, and a run keeps the ones it began with. Its water takes
+// natural shapes (D-191): a pond rounds off, a lake's shore curves, and a creek bends gently.
 
 import type {
   BiomeId,
@@ -14,6 +15,7 @@ import type {
   LotBalance,
   LotKind,
   LotTraitDef,
+  Range,
   ShapedKind,
   SunSide,
   TerrainId,
@@ -354,7 +356,8 @@ const SHAPES: Record<ShapedKind, (lot: Lot, rng: Rng, b: LotBalance) => Lot | nu
 
 /**
  * A lake lot (D-174): the back rows are a lake that runs on past the lot's back edge, `lakeRows`
- * deep with a wandering shore. The lot's pond and creek go: the lake is its water.
+ * deep. D-191: its shore curves, easing from bay to point and back every `bendEvery` columns
+ * (wanderMarks, easeThrough). The lot's pond and creek go: the lake is its water.
  */
 function carveLake(lot: Lot, rng: Rng, b: LotBalance): Lot {
   const { width: w } = lot;
@@ -362,47 +365,26 @@ function carveLake(lot: Lot, rng: Rng, b: LotBalance): Lot {
     t === 'pond' || t === 'creek' ? null : t,
   );
   const [lo, hi] = b.lakeRows;
-  let d = rng.range(lo + 1, Math.max(lo + 1, hi - 1));
-  for (let x = 0; x < w; x++) {
-    const r = rng.int(6);
-    if (r === 0) d--;
-    else if (r === 5) d++;
-    d = Math.max(lo, Math.min(hi, d));
+  const step = rng.range(b.bendEvery[0], b.bendEvery[1]);
+  easeThrough(wanderMarks(rng, w, step, lo, hi), step, w).forEach((d, x) => {
     for (let y = 0; y < d; y++) terrain[cellIndex(w, x, y)] = 'lake';
-  }
+  });
   return { ...lot, terrain };
 }
 
 /**
  * A split lot (D-174): its creek runs side to side through the middle rows, so the house stands
- * on the street's side of it or crosses it with a Driveway. A pond beside its path goes.
+ * on the street's side of it or crosses it with a Driveway. A pond beside its path goes. D-191:
+ * it bends as creekPath's side-to-side creek does (acrossPath).
  */
-function splitCreek(lot: Lot, rng: Rng): Lot {
+function splitCreek(lot: Lot, rng: Rng, b: LotBalance): Lot {
   const { width: w, height: h } = lot;
   const terrain: (TerrainId | null)[] = lot.terrain.map((t) => (t === 'creek' ? null : t));
   const top = Math.floor(h * 0.36);
   const bottom = Math.floor(h * 0.58);
-  const fromLeft = rng.chance(50);
-  const dx = fromLeft ? 1 : -1;
-  let x = fromLeft ? 0 : w - 1;
-  let y = rng.range(top + 1, bottom - 1);
-  const path: Cell[] = [{ x, y }];
-  // As creekPath's side-to-side creek: its drift may reverse only after three steps across.
-  let drift = rng.chance(50) ? 1 : -1;
-  let acrossSinceDrift = 3;
-  while (fromLeft ? x < w - 1 : x > 0) {
-    if (acrossSinceDrift >= 3 && rng.chance(25)) drift = -drift;
-    const canDrift = drift > 0 ? y < bottom : y > top;
-    if (canDrift && rng.chance(35)) {
-      y += drift;
-      acrossSinceDrift = 0;
-    } else {
-      x += dx;
-      acrossSinceDrift++;
-    }
-    path.push({ x, y });
+  for (const c of acrossPath(rng, w, top, bottom, b.bendEvery)) {
+    terrain[cellIndex(w, c.x, c.y)] = 'creek';
   }
-  for (const c of path) terrain[cellIndex(w, c.x, c.y)] = 'creek';
   // A pond keeps a tile clear of the creek (tryLot's margin): one beside the path goes.
   const nearCreek = (i: number) => {
     const px = i % w;
@@ -450,48 +432,52 @@ function clearWoods(lot: Lot): Lot {
 }
 
 /**
- * A pond lot (D-166): the pond grows a tile at a time onto open ground or Trees, where the most
- * of its tiles touch, so it stays round. It keeps tryLot's margins: off the lot's edges, two
- * rows from the street, and a tile clear of the creek. Null when it can't reach `pondTiles`.
+ * A pond lot (D-166): the pond grows onto open ground or Trees. D-191: it grows round, into one
+ * of ROUND_PONDS with `pondTiles` tiles, set over the pond's middle (or a tile off it, if that
+ * fits where the middle doesn't); the pond's tiles it leaves out are open ground. It keeps
+ * tryLot's margins: off the lot's edges, two rows from the street, and a tile clear of the creek
+ * (pondGround). Null when no shape fits.
  */
 function growPond(lot: Lot, rng: Rng, b: LotBalance): Lot | null {
   const { width: w, height: h } = lot;
-  const terrain = lot.terrain.slice();
-  let size = terrain.filter((t) => t === 'pond').length;
-  if (size === 0) return null;
-  const goal = rng.range(b.pondTiles[0], b.pondTiles[1]);
-  const nearCreek = (x: number, y: number) => {
-    for (let dy = -1; dy <= 1; dy++) {
-      for (let dx = -1; dx <= 1; dx++) if (terrainAt(lot, x + dx, y + dy) === 'creek') return true;
-    }
-    return false;
-  };
-  while (size < goal) {
-    let best: number[] = [];
-    let most = 0;
-    for (let y = 1; y <= h - 3; y++) {
-      for (let x = 1; x <= w - 2; x++) {
-        const i = cellIndex(w, x, y);
-        const t = terrain[i] ?? null;
-        if ((t !== null && t !== 'tree') || nearCreek(x, y)) continue;
-        let n = 0;
-        for (const [dx, dy] of ORTHOGONAL) {
-          if (inBounds(w, h, x + dx, y + dy) && terrain[cellIndex(w, x + dx, y + dy)] === 'pond')
-            n++;
-        }
-        if (n === 0 || n < most) continue;
-        if (n > most) {
-          most = n;
-          best = [];
-        }
-        best.push(i);
-      }
-    }
-    if (best.length === 0) return null;
-    terrain[best[rng.int(best.length)]!] = 'pond';
-    size++;
+  const start: number[] = [];
+  lot.terrain.forEach((t, i) => {
+    if (t === 'pond') start.push(i);
+  });
+  if (start.length === 0) return null;
+  const shapes = ROUND_PONDS.filter((s) => {
+    const n = cutBox(w, 0, 0, s).length;
+    return n >= b.pondTiles[0] && n <= b.pondTiles[1];
+  });
+  if (shapes.length === 0) return null;
+  // Its middle, in half cells: the mean of its tiles' middles.
+  let sx = 0;
+  let sy = 0;
+  for (const i of start) {
+    const x = i % w;
+    sx += 2 * x + 1;
+    sy += 2 * ((i - x) / w) + 1;
   }
-  return { ...lot, terrain };
+  const cx2 = sx / start.length;
+  const cy2 = sy / start.length;
+  const ground = pondGround(lot.terrain, w, h);
+  for (let tries = 0; tries < 24; tries++) {
+    const shape = rng.pick(shapes);
+    const x = Math.floor((cx2 - shape.w) / 2 + 0.5) + (tries < 8 ? 0 : rng.range(-1, 1));
+    const y = Math.floor((cy2 - shape.h) / 2 + 0.5) + (tries < 8 ? 0 : rng.range(-1, 1));
+    const cells = cutBox(w, x, y, shape);
+    const fits =
+      x >= 0 &&
+      y >= 0 &&
+      x + shape.w <= w &&
+      y + shape.h <= h &&
+      cells.every((i) => ground(i % w, Math.floor(i / w)));
+    if (!fits) continue;
+    const terrain: (TerrainId | null)[] = lot.terrain.map((t) => (t === 'pond' ? null : t));
+    for (const i of cells) terrain[i] = 'pond';
+    return { ...lot, terrain };
+  }
+  return null;
 }
 
 /**
@@ -550,12 +536,14 @@ function tryLot(rng: Rng, b: LotBalance, attempt: number, allowCreek: boolean, s
   };
 
   if (allowCreek && rng.chance(b.creekPct)) {
-    for (const c of creekPath(rng, w, h, b.creekStreetGap)) set(c.x, c.y, 'creek');
+    for (const c of creekPath(rng, w, h, b.creekStreetGap, b.bendEvery)) set(c.x, c.y, 'creek');
   }
 
-  // One pond, 2×2 to 3×3, never touching the creek (a one-tile margin around it is creek-free).
+  // One pond, its box 2×2 to 3×3, never touching the creek (a one-tile margin around it is
+  // creek-free). D-191: it rounds off once the rest of the lot is drawn (roundPond, below).
   const pw = rng.range(b.pondSize[0], b.pondSize[1]);
   const ph = rng.range(b.pondSize[0], b.pondSize[1]);
+  let pondBox: { x: number; y: number } | null = null;
   for (let tries = 0; tries < 60; tries++) {
     const px = rng.range(1, w - pw - 1);
     const py = rng.range(1, h - ph - 2);
@@ -567,6 +555,7 @@ function tryLot(rng: Rng, b: LotBalance, attempt: number, allowCreek: boolean, s
     }
     if (!clear) continue;
     for (let y = py; y < py + ph; y++) for (let x = px; x < px + pw; x++) set(x, y, 'pond');
+    pondBox = { x: px, y: py };
     break;
   }
 
@@ -620,6 +609,9 @@ function tryLot(rng: Rng, b: LotBalance, attempt: number, allowCreek: boolean, s
     if (c) set(c.x, c.y, 'boulder');
   }
 
+  // D-191: last, so every draw before it is as it was and only the pond's own tiles move.
+  if (pondBox) roundPond(terrain, w, { ...pondBox, w: pw, h: ph }, rng);
+
   return { width: w, height: h, terrain, sun, attempt };
 }
 
@@ -638,61 +630,213 @@ function randomEmpty(
 }
 
 /**
- * A 1-tile-wide meandering creek from the back edge to a side edge, or from side to side.
- * It steps orthogonally and never doubles back: from the back it only moves down and toward
- * its side; side to side it only moves across, and its up-or-down drift can switch only after
- * three steps across. It stays `streetGap` rows clear of the street edge.
+ * A creek a cell wide (D-191), from the back edge to a side edge, or from side to side. From the
+ * back it heads straight down at first and bends round toward its side (bendPath); side to side
+ * it wanders up and down in the back part of the lot, easing from one turn to the next every
+ * `bend` columns (wanderMarks, easeThrough). It never doubles back, and it stays `streetGap` rows
+ * clear of the street edge.
  */
-function creekPath(rng: Rng, w: number, h: number, streetGap: number): Cell[] {
+function creekPath(rng: Rng, w: number, h: number, streetGap: number, bend: Range): Cell[] {
   const maxY = h - 1 - streetGap;
-  const path: Cell[] = [];
   if (rng.chance(50)) {
     // Back edge → side edge.
     const toRight = rng.chance(50);
-    const dx = toRight ? 1 : -1;
-    let x = rng.range(4, w - 5);
-    let y = 0;
+    const x0 = rng.range(4, w - 5);
+    const ye = rng.range(Math.min(maxY, BEND_FROM_ROW), maxY);
+    return bendPath(x0, toRight ? w - 1 : 0, ye, rng.int(BEND_LEAN + 1), rng.int(BEND_LEAN + 1));
+  }
+  // Side edge → side edge, in the back part of the lot.
+  const top = 1;
+  const bottom = Math.min(maxY, Math.floor((h * 2) / 5));
+  return acrossPath(rng, w, top, bottom, bend);
+}
+
+// ---------------------------------------------------------------------------------------
+// Natural water (D-191): a pond rounds off, a lake's shore curves, and a creek bends gently.
+
+/** A creek from the back edge reaches its side this many rows down or more (to the street gap). */
+const BEND_FROM_ROW = 6;
+/** How far a creek's bend may lean toward the straight diagonal, in hundredths (bendPath). */
+const BEND_LEAN = 40;
+/** A shore or a creek's turns: each this many rows from the last, or fewer (one at least). */
+const MAX_TURN = 3;
+
+/**
+ * Heights for `length` columns that ease through `marks`, one every `step` columns from the
+ * first: between two marks, smoothstep's curve (3t² − 2t³), rounded to a whole row. With marks
+ * MAX_TURN rows apart or fewer and `step` 5 or more, each mark lies flat a column either side,
+ * so a turn is three columns wide or more and nothing spikes. Plain arithmetic on doubles, which
+ * every browser does alike (no Math.sin).
+ */
+export function easeThrough(marks: readonly number[], step: number, length: number): number[] {
+  const out: number[] = [];
+  for (let x = 0; x < length; x++) {
+    const k = Math.floor(x / step);
+    const a = marks[k]!;
+    const b = marks[Math.min(k + 1, marks.length - 1)]!;
+    const t = (x - k * step) / step;
+    out.push(Math.floor(a + (b - a) * t * t * (3 - 2 * t) + 0.5));
+  }
+  return out;
+}
+
+/**
+ * Marks for easeThrough over `length` columns, one every `step` and one past the end: the first
+ * anywhere in lo..hi, and each after it 1 to MAX_TURN rows up or down from the last, turning
+ * back at lo or hi.
+ */
+function wanderMarks(rng: Rng, length: number, step: number, lo: number, hi: number): number[] {
+  const marks = [rng.range(lo, hi)];
+  while ((marks.length - 1) * step < length) {
+    const last = marks[marks.length - 1]!;
+    const d = Math.min(rng.range(1, MAX_TURN), hi - lo);
+    const up = rng.chance(50);
+    let next = up ? last - d : last + d;
+    if (next < lo || next > hi) next = up ? last + d : last - d;
+    marks.push(Math.max(lo, Math.min(hi, next)));
+  }
+  return marks;
+}
+
+/**
+ * A creek a cell wide from one side to the other through rows top..bottom, from either side:
+ * it eases from turn to turn (wanderMarks, every `bend` columns), and where its row changes it
+ * steps up or down in the column it comes to. Its last column keeps the row before it, so it
+ * leaves the lot straight, as it came in: the shore past each edge runs on straight (outside.ts).
+ */
+function acrossPath(rng: Rng, w: number, top: number, bottom: number, bend: Range): Cell[] {
+  const fromLeft = rng.chance(50);
+  const step = rng.range(bend[0], bend[1]);
+  const rows = easeThrough(wanderMarks(rng, w, step, top, bottom), step, w);
+  const path: Cell[] = [];
+  for (let i = 0; i < w; i++) {
+    const x = fromLeft ? i : w - 1 - i;
+    const y = rows[Math.min(i, w - 2)]!;
+    const last = path[path.length - 1];
+    if (last) for (let yy = last.y; yy !== y; yy += Math.sign(y - last.y)) path.push({ x, y: yy });
     path.push({ x, y });
-    let run = 0;
-    let down = true;
-    while (x > 0 && x < w - 1) {
-      if (run <= 0) {
-        // Head down more at first, then more toward the side.
-        const downPct = Math.max(20, 75 - Math.floor((y * 50) / Math.max(1, maxY)));
-        down = y < maxY && rng.chance(downPct);
-        run = rng.range(1, 3);
-      }
-      if (down && y >= maxY) down = false;
-      if (down) y++;
-      else x += dx;
-      run--;
-      path.push({ x, y });
-    }
-  } else {
-    // Side edge → side edge, in the back part of the lot.
-    const fromLeft = rng.chance(50);
-    const dx = fromLeft ? 1 : -1;
-    const top = 1;
-    const bottom = Math.min(maxY, Math.floor((h * 2) / 5));
-    let x = fromLeft ? 0 : w - 1;
-    let y = rng.range(top, bottom);
-    path.push({ x, y });
-    let drift = rng.chance(50) ? 1 : -1;
-    // Steps across since the last step up or down: the drift may reverse only after three,
-    // so the creek never runs back alongside itself.
-    let acrossSinceDrift = 3;
-    while (fromLeft ? x < w - 1 : x > 0) {
-      if (acrossSinceDrift >= 3 && rng.chance(25)) drift = -drift;
-      const canDrift = drift > 0 ? y < bottom : y > top;
-      if (canDrift && rng.chance(35)) {
-        y += drift;
-        acrossSinceDrift = 0;
-      } else {
-        x += dx;
-        acrossSinceDrift++;
-      }
-      path.push({ x, y });
-    }
   }
   return path;
+}
+
+/**
+ * A creek a cell wide from (x0, 0) on the back edge to the side at column `xs`, a quarter bend:
+ * it heads straight down, then eases round toward the side, and reaches it by row `ye`. `leanX`
+ * and `leanY` (0 to BEND_LEAN hundredths) straighten it toward the diagonal. Where both its
+ * column and row change, it steps the way the bend runs there: down while it's steep, across
+ * once it's shallow, and always down before its last step onto the side. It ends at the first
+ * cell on the side, so it leaves the lot straight at both ends (outside.ts).
+ */
+function bendPath(x0: number, xs: number, ye: number, leanX: number, leanY: number): Cell[] {
+  const a = leanX / 100;
+  const c = leanY / 100;
+  const dx = xs - x0;
+  const steps = 8 * (Math.abs(dx) + ye) + 8;
+  const path: Cell[] = [{ x: x0, y: 0 }];
+  for (let k = 1; k <= steps; k++) {
+    const t = k / steps;
+    const x = Math.floor(x0 + dx * ((1 - a) * t * t + a * t) + 0.5);
+    const y = Math.floor(ye * ((1 - c) * (2 * t - t * t) + c * t) + 0.5);
+    const last = path[path.length - 1]!;
+    if (x === last.x && y === last.y) continue;
+    if (x !== last.x && y !== last.y) {
+      // Its slope here: down while it's steep, across once it's shallow.
+      const across = Math.abs(dx * (2 * (1 - a) * t + a));
+      const down = ye * ((1 - c) * (2 - 2 * t) + c);
+      path.push(down >= across || x === xs ? { x: last.x, y } : { x, y: last.y });
+    }
+    path.push({ x, y });
+    if (x === xs) break;
+  }
+  return path;
+}
+
+/**
+ * A round shape's tiles (D-191): a box `w` × `h` with its corners cut off in steps, `cuts` deep
+ * at its top-left, top-right, bottom-right and bottom-left corners (1 cuts the corner tile, 2
+ * the three tiles of a step), as tile indices on a lot `lotWidth` wide.
+ */
+export function cutBox(
+  lotWidth: number,
+  x: number,
+  y: number,
+  shape: { w: number; h: number; cuts: readonly number[] },
+): number[] {
+  const { w, h, cuts } = shape;
+  const out: number[] = [];
+  for (let j = 0; j < h; j++) {
+    for (let i = 0; i < w; i++) {
+      // How far the tile is from each corner, in steps: within a cut, it's cut.
+      const from = [i + j, w - 1 - i + j, w - 1 - i + (h - 1 - j), i + (h - 1 - j)];
+      if (from.some((d, k) => d < cuts[k]!)) continue;
+      out.push(cellIndex(lotWidth, x + i, y + j));
+    }
+  }
+  return out;
+}
+
+/**
+ * A pond lot's round ponds (D-191): boxes with their corners cut in steps (cutBox), 16 to 20
+ * tiles, so no side runs straight for long and no tile sticks out alone. The 3 × 6 ones lean.
+ */
+export const ROUND_PONDS: readonly { w: number; h: number; cuts: readonly number[] }[] = [
+  { w: 4, h: 5, cuts: [1, 1, 1, 1] },
+  { w: 5, h: 4, cuts: [1, 1, 1, 1] },
+  { w: 5, h: 5, cuts: [2, 1, 1, 1] },
+  { w: 5, h: 5, cuts: [1, 2, 1, 1] },
+  { w: 5, h: 5, cuts: [1, 1, 2, 1] },
+  { w: 5, h: 5, cuts: [1, 1, 1, 2] },
+  { w: 5, h: 5, cuts: [2, 1, 2, 1] },
+  { w: 5, h: 5, cuts: [1, 2, 1, 2] },
+  { w: 4, h: 6, cuts: [1, 1, 1, 1] },
+  { w: 6, h: 4, cuts: [1, 1, 1, 1] },
+  { w: 3, h: 6, cuts: [1, 0, 1, 0] },
+  { w: 3, h: 6, cuts: [0, 1, 0, 1] },
+  { w: 6, h: 3, cuts: [1, 0, 1, 0] },
+  { w: 6, h: 3, cuts: [0, 1, 0, 1] },
+];
+
+/**
+ * Where a pond may lie (D-191, as tryLot placed it and growPond grew it): on open ground, Trees
+ * or pond, off the lot's edges, two rows clear of the street, and a tile clear of the creek.
+ */
+function pondGround(terrain: readonly (TerrainId | null)[], w: number, h: number) {
+  return (x: number, y: number) => {
+    if (x < 1 || y < 1 || x > w - 2 || y > h - 3) return false;
+    const t = terrain[cellIndex(w, x, y)] ?? null;
+    if (t !== null && t !== 'tree' && t !== 'pond') return false;
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if (inBounds(w, h, x + dx, y + dy) && terrain[cellIndex(w, x + dx, y + dy)] === 'creek') {
+          return false;
+        }
+      }
+    }
+    return true;
+  };
+}
+
+/**
+ * The pond rounds off (D-191): a 3 × 3 pond loses a corner tile, or two across from each
+ * other, so it leans; 2 × 2 and 2 × 3 ponds are as round as their tiles go already (the shore
+ * rounds their corners). The tiles it loses are open ground.
+ */
+function roundPond(
+  terrain: (TerrainId | null)[],
+  w: number,
+  box: { x: number; y: number; w: number; h: number },
+  rng: Rng,
+): void {
+  if (box.w !== 3 || box.h !== 3) return;
+  const corner = rng.int(4);
+  const cuts = [0, 0, 0, 0];
+  cuts[corner] = 1;
+  if (rng.chance(50)) cuts[(corner + 2) % 4] = 1;
+  const keep = new Set(cutBox(w, box.x, box.y, { w: 3, h: 3, cuts }));
+  for (let j = 0; j < 3; j++) {
+    for (let i = 0; i < 3; i++) {
+      const k = cellIndex(w, box.x + i, box.y + j);
+      if (!keep.has(k)) terrain[k] = null;
+    }
+  }
 }

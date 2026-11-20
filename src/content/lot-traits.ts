@@ -28,7 +28,7 @@ export const LOT_TRAITS: Readonly<Record<LotTraitId, LotTraitDef>> = {
   },
   // D-166: a pond lot's pond is 14–20 tiles (a plain lot's 4–9). Its bank is short beside a
   // creek's, so it paid double the creek's +50%: at +50% it cost greedy wins on the lots it
-  // shaped. D-174 pays the creek +100% too.
+  // shaped. D-174 pays the creek +100% too. D-191: it's round, 16–20 tiles (a plain lot's 4–9).
   pondside: {
     id: 'pondside',
     name: 'Pondside',

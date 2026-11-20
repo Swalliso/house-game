@@ -879,6 +879,11 @@ export interface LotBalance {
   pondTiles: Range;
   /** A lake lot's lake (D-174): this many rows from the back edge, its shore wandering. */
   lakeRows: Range;
+  /**
+   * D-191: a lake's shore and a creek running across the lot ease from one turn to the next
+   * over this many columns.
+   */
+  bendEvery: Range;
 }
 
 /** A biome's lots (D-174): how often it comes up, its kinds, and its own draw. */
