@@ -241,10 +241,6 @@ type TipProps =
   | { term?: never; title: string; text: string; children: ComponentChildren };
 
 /**
- * A term with a tip: dotted-underlined, and reached by Tab. It has no hooks (the layer's
- * listener shows its note), so a component that tests call in place may render one.
- */
-/**
  * `text` with its term's name (the glossary title, in any case) as a Tip: "In the [front
  * yard]", "Each tile becomes a [Tree] after 4 weeks". The whole text is the Tip if the name
  * isn't in it.
@@ -262,6 +258,10 @@ export function withTerm(text: string, term: Term): ComponentChildren {
   );
 }
 
+/**
+ * A term with a tip: dotted-underlined, and reached by Tab. It has no hooks (the layer's
+ * listener shows its note), so a component that tests call in place may render one.
+ */
 export function Tip(props: TipProps) {
   const title = props.term ? GLOSSARY[props.term].title : props.title!;
   const text = props.term ? GLOSSARY[props.term].text : props.text!;
