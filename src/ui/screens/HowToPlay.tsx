@@ -283,7 +283,7 @@ const CONTROLS: readonly (readonly [keys: string, does: string])[] = [
   ['R or right-click', 'Rotate'],
   ['Click', 'Place'],
   // M4: a pack's tiles (D-106).
-  ['Click a tile again', 'Take it off a Fence or Driveway'],
+  ['Click a tile again', 'Take it off a Fence, Driveway or Sapling'],
   ['Enter', 'End week'],
   ['D', 'Demolish'],
   // D-157: a hand card's type, gone for the run.
@@ -321,6 +321,8 @@ export function HowToPlayText() {
   const roomRules = Object.values(CONTENT.roomRules);
   const fenceTiles = CONTENT.pieces.fence.pack?.maxTiles;
   const drivewayTiles = CONTENT.pieces.driveway.pack?.maxTiles;
+  // D-195: the Sapling joins the packs.
+  const saplingTiles = CONTENT.pieces.sapling.pack?.maxTiles;
   // D-160: the standing stock, and the milestone it starts at: none from week 1 (D-162), and
   // Foundation in a first job.
   const stock = b.standingStock.pieces.length > 0 ? stockText(CONTENT) : null;
@@ -385,11 +387,12 @@ export function HowToPlayText() {
             cards (hallways, the Garage, the yard, and outbuildings). A card with nowhere to go is
             swapped for another from its row, free.
           </li>
-          {fenceTiles && drivewayTiles && (
+          {fenceTiles && drivewayTiles && saplingTiles && (
             <li>
-              <b>A Fence or a Driveway</b> is a pack: click out its tiles one by one, up to{' '}
-              {fenceTiles} Fence tiles, or {drivewayTiles} Driveway tiles that reach the street or a
-              Driveway. Click a tile again to take it off. It builds as one piece.
+              <b>A Fence, a Driveway or a Sapling</b> is a pack: click out its tiles one by one, up
+              to {fenceTiles} Fence tiles, {drivewayTiles} Driveway tiles that reach the street or a
+              Driveway, or {saplingTiles} Saplings. Click a tile again to take it off. It builds as
+              one piece.
             </li>
           )}
           <li>

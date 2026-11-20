@@ -196,7 +196,7 @@ describe('Fertilizer', () => {
   it('ages every piece two weeks: a Sapling becomes a Tree two weeks sooner', () => {
     const s = build(
       [
-        ['sapling', 5, 0],
+        ['sapling', 5, 0, 0, ['#']],
         ['bedroom', 0, 0],
       ],
       { supplies: [tool('fertilizer')] },

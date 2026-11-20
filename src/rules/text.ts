@@ -32,6 +32,7 @@ import type {
   UpgradeDef,
 } from './index.ts';
 import { SCORE_LABELS } from '../content/labels.ts';
+import { matchesFeature } from './selectors.ts';
 
 const PROPERTY_NOUNS: Record<Property, [one: string, many: string]> = {
   indoor: ['indoor piece', 'indoor pieces'],
@@ -445,7 +446,11 @@ export function effectText(content: Content, effect: Effect): string {
         'borders' in effect.when &&
         effect.effect.kind === 'aura' &&
         effect.effect.scope === 'region';
-      return said ? inner : `${inner} ${conditionPhrase(content, effect.when)}`;
+      if (said) return inner;
+      // One "if touching" for two (D-195): the Garage's workshop is "+3 if touching the Old
+      // Shed and the street or a Driveway".
+      const also = alsoTouching(content, effect);
+      return also ? `${inner} and ${also}` : `${inner} ${conditionPhrase(content, effect.when)}`;
     }
     case 'served': {
       // D-165: "+4 with a Bathroom in reach (each serves 2)".
@@ -453,6 +458,21 @@ export function effectText(content: Content, effect: Effect): string {
       return `${signed(effect.amount)} with ${by} in reach (each serves ${effect.capacity})`;
     }
   }
+}
+
+/**
+ * What a conditional on touching adds to an inner line that already reads "if touching …" (a
+ * neighbor bonus that counts once): "the street or a Driveway", for "+3 if touching the Old Shed
+ * and the street or a Driveway". Null for any other pair.
+ */
+function alsoTouching(
+  content: Content,
+  effect: Extract<Effect, { kind: 'conditional' }>,
+): string | null {
+  const { when, effect: inner } = effect;
+  if (inner.kind !== 'neighbor' || inner.max !== 1) return null;
+  if (!('touching' in when) || (when.min ?? 1) !== 1) return null;
+  return conditionText(content, when).replace(/^touching /, '');
 }
 
 /** A condition as a trailing phrase: "in the front yard", "if touching a Tree", "while Sunny". */
@@ -504,6 +524,11 @@ export interface CardText {
   member?: string;
   /** D-165: how many of its type a house holds: "One per house: extend or renovate." */
   perHouse?: string;
+  /**
+   * The glossary term each effect line links, by the line's index (D-195: the Sapling's line
+   * links the Tree, so a tip says what one does). Left out when no line links one.
+   */
+  terms?: readonly (Term | null)[];
 }
 
 /** The possessive of a member's name: "The twins’", "Grandma’s". */
@@ -541,6 +566,11 @@ export function cardText(content: Content, def: PieceDef): CardText {
     };
   }
   const effects = def.effects.map((e) => {
+    // A pack's tiles each change (D-195: a Sapling of three becomes three Trees).
+    if (e.kind === 'transform' && def.pack && 'feature' in e.into) {
+      const into = article(content.features[e.into.feature].name);
+      return `Each tile becomes ${into} after ${e.afterWeeks} weeks`;
+    }
     const text = effectText(content, e);
     // A room must join the house too, which "Must be built touching …" leaves out (playtest 4:
     // a Garage by the street read as if the street alone would do; since D-140 the Garage is
@@ -581,13 +611,20 @@ export function cardText(content: Content, def: PieceDef): CardText {
     ];
     notes.push(`Views: ${joinWords(sources, 'and')}.`);
   }
+  const terms = def.effects.map(effectTerm);
   return {
     effects,
     notes,
     ...(pack ? { pack } : {}),
     ...(member ? { member } : {}),
     ...(perHouse ? { perHouse } : {}),
+    ...(terms.some((t) => t !== null) ? { terms } : {}),
   };
+}
+
+/** The glossary term an effect's line links: a change into a Tree links the Tree (D-195). */
+function effectTerm(e: Effect): Term | null {
+  return e.kind === 'transform' && 'feature' in e.into && e.into.feature === 'tree' ? 'tree' : null;
 }
 
 /** D-165: the most of a card's type a house holds, from the type's own card (an L-Kitchen's is the Kitchen's). */
@@ -719,7 +756,9 @@ function handEffectText(content: Content, effect: Effect): string {
         'borders' in effect.when &&
         effect.effect.kind === 'aura' &&
         effect.effect.scope === 'region';
-      return said ? inner : `${inner} ${conditionPhrase(content, effect.when)}`;
+      if (said) return inner;
+      const also = alsoTouching(content, effect);
+      return also ? `${inner} and ${also}` : `${inner} ${conditionPhrase(content, effect.when)}`;
     }
     default:
       return effectText(content, effect);
@@ -758,9 +797,10 @@ function handModifierText(content: Content, mod: Modifier): string {
  * Driveway what it pays rather than where it must start (the lot shows that). Each line is the
  * hand's own short wording, number first, within HAND_LINE_CHARS (D-148). A requirement that
  * isn't about placement follows the pay where both fit, since without it the piece earns
- * nothing: the Doghouse's "+1 every week in a fenced yard", and the Garage's "+5 by the street
- * or a Driveway" (D-140). Where they don't fit (a Patio's "if touching a room"), Inspect and the
- * lot's warning say it. A piece with no line that pays shows its first.
+ * nothing: the Doghouse's "+1 every week in a fenced yard". Where they don't fit (a Patio's "if
+ * touching a room"), Inspect and the lot's warning say it. A steady earner that earns more by
+ * something it touches says what it earns there: the Garage's "+5 by the street or a Driveway"
+ * (D-140, D-195). A piece with no line that pays shows its first.
  * A fixture shows where it goes and its first effect: what it does to its room (Makes it Sunny,
  * Counts as 2 Bedrooms) or, for the Kitchen Island, what it earns.
  */
@@ -804,13 +844,24 @@ export function handCardLines(content: Content, card: Card): string[] {
   if (i < 0) return cardText(content, def).effects.slice(0, 1);
   const pay = def.effects[i]!;
   const line = handEffectText(content, pay);
+  // A steady earner that earns more while touching something says what it earns there, in a
+  // few words (D-140): the Garage's "+5 by the street or a Driveway", where "+5 every week if
+  // touching the street or a Driveway" lost its last words. (Beside a thumbnail even the short
+  // line can lose its end.) Since D-195, +2 of it comes anywhere: "+2, +5 by the street or a
+  // Driveway" runs a letter past the budget, so Inspect says that.
+  const more = def.effects.find(
+    (e): e is Extract<Effect, { kind: 'conditional' }> =>
+      e.kind === 'conditional' && 'touching' in e.when && e.effect.kind === 'steady',
+  );
+  if (pay.kind === 'steady' && more?.effect.kind === 'steady' && 'touching' in more.when) {
+    const what = conditionText(content, more.when).replace(/^touching /, '');
+    return [`${signed(pay.amount + more.effect.amount)} by ${what}`];
+  }
   const unless = def.effects.find(
     (e): e is Extract<Effect, { kind: 'requires' }> => e.kind === 'requires' && !e.blocksPlacement,
   );
   if (!unless) return [line];
-  // A steady earner that waits on touching something says both in a few words (D-140): the
-  // Garage's "+5 by the street or a Driveway", where "+5 every week if touching the street or a
-  // Driveway" lost its last words. (Beside a thumbnail even the short line can lose its end.)
+  // The same for a steady earner that earns nothing until it touches something.
   if (pay.kind === 'steady' && 'touching' in unless.condition) {
     const what = conditionText(content, unless.condition).replace(/^touching /, '');
     return [`${signed(pay.amount)} by ${what}`];
@@ -839,33 +890,76 @@ export function neighborName(content: Content, feature: FeatureId): string {
   return featureNoun(content, feature, false);
 }
 
-/** Does the selector name this lot feature, on its own or as one of several? */
-function namesFeature(sel: Selector, id: FeatureId): boolean {
-  if (sel === 'all') return false;
-  if ('feature' in sel)
-    return typeof sel.feature === 'string' ? sel.feature === id : sel.feature.includes(id);
-  if ('any' in sel) return sel.any.some((s) => namesFeature(s, id));
-  return false;
+/** What a piece's effect pays for a lot feature beside it, by name, tag or view: else 0. */
+function besideAmount(content: Content, e: Effect, id: FeatureId): number {
+  if (e.kind === 'conditional') return besideAmount(content, e.effect, id);
+  return e.kind === 'neighbor' && matchesFeature(content, e.match, id) ? e.amount : 0;
 }
 
-function paysBeside(e: Effect, id: FeatureId): boolean {
-  if (e.kind === 'conditional') return paysBeside(e.effect, id);
-  return e.kind === 'neighbor' && e.amount > 0 && namesFeature(e.match, id);
+/**
+ * The cards that earn more beside a lot feature, and the ones that earn less (D-145, D-195), in
+ * the content's order. Shape variants and members' rooms are left out: the lists are what a
+ * player will see in a hand or the shop.
+ */
+function besideFeature(content: Content, id: FeatureId): { more: string[]; less: string[] } {
+  const more: string[] = [];
+  const less: string[] = [];
+  for (const p of Object.values(content.pieces)) {
+    if (p.countsAs || p.member) continue;
+    const amounts = p.effects.map((e) => besideAmount(content, e, id));
+    if (amounts.some((a) => a > 0)) more.push(plural(p.name));
+    else if (amounts.some((a) => a < 0)) less.push(plural(p.name));
+  }
+  return { more, less };
 }
 
 /**
  * Who wants a lot feature beside them (D-145), for the tile's panel: the cards that pay for
- * touching it by name, read from the content so the panel can't drift from the cards. "Lawns,
- * Flower Beds, and Fire Pits earn more beside one." A feature that counts once (the Old Shed)
- * reads "beside it". Null when no card names it. Shape variants and members' rooms are left
- * out: the list is what a player will see in a hand or the shop.
+ * touching it, by name or (D-195) for its tags and its view, read from the content so the panel
+ * can't drift from the cards. "Lawns, Flower Beds, and Fire Pits earn more beside one." A
+ * feature that counts once (the Old Shed) reads "beside it". Null when no card wants it.
  */
 export function featureWantedText(content: Content, id: FeatureId): string | null {
-  const names = Object.values(content.pieces)
-    .filter((p) => !p.countsAs && !p.member && p.effects.some((e) => paysBeside(e, id)))
-    .map((p) => plural(p.name));
-  if (names.length === 0) return null;
-  return `${joinWords(names, 'and')} earn more beside ${content.features[id].body ? 'it' : 'one'}.`;
+  const { more } = besideFeature(content, id);
+  if (more.length === 0) return null;
+  return `${joinWords(more, 'and')} earn more beside ${content.features[id].body ? 'it' : 'one'}.`;
+}
+
+/**
+ * What a Tree is and does (D-195), for its glossary tip on the Sapling's card and for its tile's
+ * panel, from the content: its tags and its view, the cards that earn more or less beside one,
+ * and the ones that must be built touching one.
+ */
+function treeText(content: Content): string {
+  const tree = content.features.tree;
+  const is = `${joinWords(tree.tags, 'and')}${tree.viewSource ? ', and a view' : ''}.`;
+  const { more, less } = besideFeature(content, 'tree');
+  const fans =
+    more.length > 0
+      ? `: ${joinWords(more, 'and')} earn more beside one` +
+        (less.length > 0 ? `, and ${joinWords(less, 'and')} less` : '')
+      : '';
+  const must = Object.values(content.pieces)
+    .filter(
+      (p) =>
+        !p.countsAs &&
+        !p.member &&
+        p.effects.some(
+          (e) =>
+            e.kind === 'requires' &&
+            e.blocksPlacement &&
+            'touching' in e.condition &&
+            matchesFeature(content, e.condition.touching, 'tree'),
+        ),
+    )
+    .map((p) => article(p.name));
+  const built =
+    must.length > 0 ? ` ${capitalize(joinWords(must, 'and'))} must be built touching one.` : '';
+  return `${is} Each Tree tile counts as its own neighbor${fans}.${built}`;
+}
+
+function capitalize(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 // ---------------------------------------------------------------------------------------
@@ -1232,6 +1326,7 @@ export type Term =
   | 'backYard'
   | 'fencedYard'
   | 'sunny'
+  | 'tree'
   | 'requirement'
   | 'link'
   | 'timer';
@@ -1247,8 +1342,16 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
   const earlyPct = b.early.scorePct[0] ?? 0;
   // D-169: a stock that's topped up at each milestone, as the reserve's entry says.
   const refills = b.standingStock.pieces.length > 0 && b.standingStock.refill;
+  // D-195: the Garage's garage sales wait for its drive, and still count.
   const economy = Object.values(content.pieces)
-    .filter((p) => p.drawWeight > 0 && !p.countsAs && p.effects.some((e) => e.kind === 'economy'))
+    .filter(
+      (p) =>
+        p.drawWeight > 0 &&
+        !p.countsAs &&
+        p.effects.some(
+          (e) => e.kind === 'economy' || (e.kind === 'conditional' && e.effect.kind === 'economy'),
+        ),
+    )
     .map((p) => p.name);
   // The base pool's requirements, as "a Garage touching the street or a Driveway".
   const needs = Object.values(content.pieces)
@@ -1407,6 +1510,8 @@ export function glossary(content: Content): Record<Term, { title: string; text: 
         'outbuilding is Sunny when one of its walls faces the sun with nothing in front of it: ' +
         'no Tree and no other building. Yard pieces aren’t.',
     },
+    // D-195: what a Sapling grows into, linked from its card.
+    tree: { title: 'Tree', text: treeText(content) },
     requirement: {
       title: 'Requirements',
       text:

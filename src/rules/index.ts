@@ -2457,6 +2457,7 @@ export {
   modifierText,
   multNumber,
   ordinal,
+  plural,
   regionText,
   rewardText,
   selectorText,

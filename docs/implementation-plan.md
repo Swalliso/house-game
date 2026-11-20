@@ -556,7 +556,7 @@ Derived from `HouseState`, cached by house object identity:
   - If any indoor piece exists, a new indoor piece must touch one.
   - Demolishing an indoor piece that would split the house is illegal ("This would split the house").
   - If the last indoor piece is demolished, the next can go anywhere.
-- **Garage and Driveway:** the Garage (indoor) is built like any room, touching the house, and earns only while it touches the street or a Driveway (D-140; until then it couldn't be built anywhere else). A Driveway must touch the street or another Driveway, so driveways always connect to the street.
+- **Garage and Driveway:** the Garage (indoor) is built like any room, touching the house. It earns +2 a week wherever it stands, and the rest of its keep (+3 a week, its budget, and the Old Shed's +3) only while it touches the street or a Driveway (D-195; from D-140 it earned nothing until then, and before D-140 it couldn't be built anywhere else). A Driveway must touch the street or another Driveway, so driveways always connect to the street.
 - **Effective tags**, resolved in a fixed order:
   1. layout facts
   2. own tags, plus **Dark** if interior and **Sunny** if a building (a room, a Hallway or an outbuilding) with a tile in the sun (D-120)
@@ -709,7 +709,7 @@ The ten types from `content-brainstorm.md` become eight kinds here: the neighbor
 |---|---|---|
 | `steady` | `amount` | Closet |
 | `neighbor` | `match`, `amount` (negative = penalty), `max?` | Bedroom next to Trees; next to the street; Lawn per adjacent Lawn |
-| `aura` | `match`, `pct?` or `amount?`, `scope: 'adjacent' \| 'region'` | Dining Room boosts the Kitchen; Playroom penalizes Quiet neighbors; Mudroom boosts Pet pieces in the fenced yard it borders |
+| `aura` | `match`, `pct?` or `amount?`, `scope: 'adjacent' \| 'region'` | Dining Room boosts the Kitchen; Fire Pit boosts Social neighbors; Mudroom boosts Pet pieces in the fenced yard it borders |
 | `rhythm` | `every`, `amount` | Pool |
 | `growth` | `perWeek`, `max?` | Good Bones (granted by a blueprint; counts from the later of placement and purchase) |
 | `enclosure` | `perTile`, `cap?` | Fence: per tile of the fenced yards it borders, with the cap on the total |
@@ -717,8 +717,8 @@ The ten types from `content-brainstorm.md` become eight kinds here: the neighbor
 | `economy` | `budget`, `every?` | Garage, Home Office |
 | **`perTile`** *(new)* | `region`, `amount` | Herb Garden on tiles in the sun |
 | **`link`** *(new)* | — | Hallway |
-| **`requires`** *(new)* | `condition: PieceCondition`, `blocksPlacement` | Driveway must touch the street or a Driveway (blocks placement); Doghouse earns only in a fenced yard, and the Garage only touching the street or a Driveway (don't block; D-140) |
-| **`conditional`** *(new)* | `when: PieceCondition`, `effect` | Flower Bed bonus in the front yard |
+| **`requires`** *(new)* | `condition: PieceCondition`, `blocksPlacement` | Driveway must touch the street or a Driveway (blocks placement); Doghouse earns only in a fenced yard (doesn't block) |
+| **`conditional`** *(new)* | `when: PieceCondition`, `effect` | Flower Bed bonus in the front yard; the Garage's lines that wait for the drive (D-195) |
 | **`served`** *(D-165)* | `by`, `amount`, `capacity` | A Bathroom nearby: a Bedroom earns `amount` with a `by` in reach, each serving `capacity` (a maximum matching, ties to the earlier taker) |
 | `custom` | `id` | Escape hatch |
 
@@ -1753,7 +1753,7 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
   - points already earned are kept
   - can't split the house
 - **Requirements that break later:** checked when placing only if `blocksPlacement` is set. An unmet requirement means no score and no budget, shown with a warning icon.
-- **Timers:** Rhythm and economy cadence count from the week a piece was placed (`week − placedWeek`). Growth counts from the later of placement and the week it was granted. A Sapling becomes a Tree after 4 weeks, at the start of a week, and turns into a lot feature, so it no longer counts as a piece.
+- **Timers:** Rhythm and economy cadence count from the week a piece was placed (`week − placedWeek`). Growth counts from the later of placement and the week it was granted. A Sapling becomes a Tree after 4 weeks, at the start of a week, and turns into a lot feature, so it no longer counts as a piece: each of its tiles becomes a Tree (a Sapling pack plants 1 to 3, D-195).
 - **A loss** still shows the house captioned "It's a house.", with the score and the milestone reached.
 - **Fence:** two cards, a 1×4 and a 5-tile L (was one 1×3; D-049). It takes tiles and earns +1 per tile of the fenced yards it borders, capped at 6 in total. A fenced yard must also border the house (§4).
 - **Driveway:** two cards, 1×3 and 1×5 (was 1×2), so a house set back from the street can still have a Garage. It's the only piece that can be built over the Creek.
@@ -1939,7 +1939,7 @@ Each trait's modifiers join the run's (source `lot`), and its `drawWeight` ones 
 | Living Room | `neighbor {property viewSource} +2 max 3`; `conditional {is Sunny} → steady 2` (D-120) | M1 |
 | Closet | `steady 1`; Suite member | M2 |
 | Hallway (1×2, 1×3) | Two cards, `connector`, `link`; `neighbor {property room} +2 max 4` (D-114) | M2 |
-| Garage | `requires {touching: [street, driveway]}` (doesn't block: built like any room, D-140); `steady 5`; `economy 1 every 2`; `neighbor oldShed +3, max 1` (D-145) | M2 (D-140: was a blocking requirement, `steady 1`, `economy 1 every 3`) |
+| Garage | `steady 2`; and `conditional {touching: [street, driveway]}` on each of `steady 3`, `economy 1 every 2` and `neighbor oldShed +3, max 1` (D-145), so it earns +2 off the drive and +5 on it (D-195) | M2 (D-140: was a blocking requirement, `steady 1`, `economy 1 every 3`; D-195: was a non-blocking `requires` on `steady 5` and the rest) |
 | Home Office | `steady 2`; `neighbor {tag Loud} −2`; `economy 1 every 2` | M2 |
 | **Sunroom** (2×2) | Weight 5 from Foundation (D-120; it was a special piece, Sunny by its tag, `perTile sunny +2`); `conditional {is Sunny} → steady 6` | M3a (D-120: the draw) |
 
@@ -1948,7 +1948,7 @@ Each trait's modifiers join the run's (source `lot`), and its `drawWeight` ones 
 | Item | Encoding | Built in |
 |---|---|---|
 | Lawn (2×2) | `steady 1`; `neighbor [lawn, boulder] +1 max 4` (D-145: Boulders count); `conditional {in: backYard} → steady 1` (D-166); tags Outdoor and Green | M1 |
-| Sapling | `steady 1`; `transform into tree after 4` | M2 |
+| Sapling | A pack of 1 to 3 tiles in a line (`pack { maxTiles 3, shapes [#, ##, ###] }`, D-195); `steady 1` for the pack; `transform into tree after 4`, every tile a Tree | M2 (D-195: was one tile) |
 | Flower Bed | `givesView`; `steady 1`; `conditional {in: frontYard} → steady 2`; `neighbor [flowerBed, boulder] +1` (D-145: Boulders count) | M2 |
 | Herb Garden | `givesView`; `perTile sunny +1` (its tiles in the sun, D-120); `aura kitchen +25% adjacent`; `neighbor oldShed +2, max 1` (D-145) | M2 |
 | Patio | `requires {touching {property room}}` (doesn't block: the Patio rule, D-105); `neighbor [livingRoom, kitchen] +2`; `neighbor {property viewSource} +1 max 3`; `conditional {in: backYard} → steady 1` (D-166) | M2 (M4a: the Patio rule) |
@@ -1969,12 +1969,12 @@ The last four were Stretch in `content-brainstorm.md`, with the Sunroom. They're
 
 | Item | Encoding | Built in |
 |---|---|---|
-| Playroom | Indoor; tags Loud and Kid; `neighbor bedroom +2`; `aura {tag Quiet} −2 flat adjacent` | M3a |
+| Playroom | Indoor; tags Loud and Kid; `neighbor bedroom +2` | M3a (D-195: its `aura {tag Quiet} −2 flat adjacent` is gone) |
 | Library | Indoor; tag Quiet; `neighbor {tag Quiet} +2 max 3` | M3a |
 | Mudroom | Indoor; tag Pet; `conditional {borders: fencedYard} → aura {tag Pet} +50% region` | M3a |
 | Pool | Yard; tags Wet, Sunny, Loud; `rhythm every 3 +12`; `neighbor tree −2 max 3`; `conditional {in: backYard} → steady 1` (D-166) | M3a |
-| **Hot Tub** (1×1) | Yard; tags Wet and Social; the Patio rule (D-105); `neighbor patio +3`; `conditional {in: backYard} → steady 1` (D-166) | M3a |
-| **Fire Pit** (1×1) | Weight 5 in the Layout row from Drywall (D-145; it was a special piece). Yard; tag Social; the Patio rule (D-105); `aura patio +50% adjacent`; `neighbor boulder +2 max 2` (D-145); `conditional {in: backYard} → steady 1` (D-166) | M3a (D-145: the draw) |
+| **Hot Tub** (1×1) | Yard; tags Wet and Social; the Patio rule (D-105); `neighbor [patio, pool, firePit] +3` (D-195; was `patio`); `conditional {in: backYard} → steady 1` (D-166) | M3a |
+| **Fire Pit** (1×1) | Weight 5 in the Layout row from Drywall (D-145; it was a special piece). Yard; tag Social; the Patio rule (D-105); `aura {tag Social} +50% adjacent` (D-195; was `patio`); `neighbor boulder +2 max 2` (D-145); `conditional {in: backYard} → steady 1` (D-166) | M3a (D-145: the draw) |
 | **Henhouse** (1×2) | Outbuilding; tag House; `economy 1 every 2`; `neighbor [herbGarden, flowerBed] +1`; `neighbor oldShed +2, max 1` (D-145) | M3a |
 | **Birdhouse** (1×1) | Weight 5 in the Layout row from Roofing (D-145; it was a special piece). Outbuilding; tag House; `neighbor tree +1 max 3` | M3a (D-145: the draw) |
 | **Porch** (1×2) *(new, D-145)* | Weight 5 in the Layout row from Drywall, never a special piece. Yard; tag Outdoor; `aura {property room} +25% adjacent`; `neighbor {property room} +1 max 4`; `conditional {in: frontYard} → steady 2` (D-166). Drawn from cuts already in the atlas: the wood floor, a bench and a pot of flowers | D-145 |

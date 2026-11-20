@@ -21,6 +21,7 @@ import {
   CONTENT,
   definite,
   isFinished,
+  plural,
   rewardText,
   rules,
   SCORE_LABELS,
@@ -1918,10 +1919,12 @@ function transformBeat(e: Extract<GameEvent, { t: 'transformed' }>, after: RunSt
   const from = capitalize(definite(CONTENT.pieces[e.defId].name));
   const into =
     'feature' in e.into ? CONTENT.features[e.into.feature].name : CONTENT.pieces[e.into.piece].name;
+  // A pack's tiles each become one (D-195): "The Sapling grew into 3 Trees!"
+  const n = 'feature' in e.into ? cells.length : 1;
   popup(
     Math.min(w * 0.75, Math.max(w * 0.25, x)),
     Math.max(1.5, y),
-    `${from} grew into ${article(into)}!`,
+    `${from} grew into ${n > 1 ? `${n} ${plural(into)}` : article(into)}!`,
     'note',
     FEEL.transform.stepMs,
   );

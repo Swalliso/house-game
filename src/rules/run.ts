@@ -221,7 +221,7 @@ import { stream } from './rng.ts';
 import { canUseTool, useTool, type ToolCtx } from './tools.ts';
 import { wowParts } from './attribution.ts';
 import { ageOf, onCadence, tallyHouse, unmetRequirement, type TallyContext } from './scoring.ts';
-import { isType, matchesPiece, rootType, type Yard } from './selectors.ts';
+import { isType, matchesPiece, meetsCondition, rootType, type Yard } from './selectors.ts';
 import { setProgress as setProgressOf } from './sets.ts';
 import { shelfFor, type Shelf } from './shelf.ts';
 import { isRoom } from './layout.ts';
@@ -1069,8 +1069,9 @@ export function createRules(content: Content): Rules {
   // Transitions.
 
   /**
-   * Start of week, step 1: pieces old enough transform. The Sapling becomes a Tree tile; it
-   * never holds a fixture (checkInstall, D-095), so none is lost with it.
+   * Start of week, step 1: pieces old enough transform. Each of a Sapling's tiles becomes a Tree
+   * (a pack since D-195: one to three); it never holds a fixture (checkInstall, D-095), so none
+   * is lost with it.
    */
   function resolveTransforms(state: RunState, events: GameEvent[]): RunState {
     let house = state.house;
@@ -3846,22 +3847,33 @@ export function createRules(content: Content): Rules {
     // enough (Fertilizer, mid-week) changes at the next one; in a shop or change order a
     // milestone opened, the next phase's first week is still to start, so it changes then.
     const soonest = weekStarted(state) ? 1 : 0;
-    const unmet = unmetRequirement(content, layoutFor(state), def, uid);
+    const layout = layoutFor(state);
+    const unmet = unmetRequirement(content, layout, def, uid);
     const next = (every: number) => {
       for (let a = age; a < age + every; a++)
         if (onCadence(a, every)) return state.week + (a - age);
       return state.week;
     };
-    for (const e of def.effects) {
+    for (const outer of def.effects) {
+      // A timer under a condition (D-195: the Garage's garage sales, once its drive comes) waits
+      // while the condition doesn't hold, as one under a requirement does.
+      const waits =
+        outer.kind === 'conditional' && !meetsCondition(content, layout, outer.when, uid)
+          ? outer.when
+          : null;
+      const e = outer.kind === 'conditional' ? outer.effect : outer;
       if (e.kind === 'transform') {
         const into =
           'piece' in e.into
             ? content.pieces[e.into.piece].name
             : content.features[e.into.feature].name;
         const when = state.week + Math.max(soonest, e.afterWeeks - age);
-        out.push(`Becomes a ${into} at the start of week ${when}`);
-      } else if (unmet && (e.kind === 'rhythm' || e.kind === 'economy')) {
-        out.push(`Paused: it must be ${conditionText(content, unmet.condition)}`);
+        // A pack's tiles each become one (D-195: a Sapling of three becomes three Trees).
+        const n = shapeCells(piece.shape ?? def.shape, 0).length;
+        const what = n > 1 && 'feature' in e.into ? `${n} ${plural(into)}` : article(into);
+        out.push(`Becomes ${what} at the start of week ${when}`);
+      } else if ((unmet || waits) && (e.kind === 'rhythm' || e.kind === 'economy')) {
+        out.push(`Paused: it must be ${conditionText(content, unmet?.condition ?? waits!)}`);
       } else if (e.kind === 'rhythm') {
         const w = next(e.every);
         out.push(w === state.week ? `Pays +${e.amount} this week` : `Next +${e.amount}: week ${w}`);
