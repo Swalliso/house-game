@@ -393,7 +393,7 @@ describe('toolValue: a tool’s worth in the house as it stands (D-193)', () => 
 
   it('says what a Fertilizer would bring forward', () => {
     // A Sapling becomes a Tree 4 weeks after it's planted; Fertilizer jumps its timer 2 weeks.
-    const s = build([...HOUSE, ['sapling', 10, 6]], { rows: HOUSE_ROWS });
+    const s = build([...HOUSE, ['sapling', 10, 6, 0, ['#']]], { rows: HOUSE_ROWS });
     expect(value(s, 'fertilizer')).toEqual({
       kind: 'note',
       note: 'Your Sapling becomes a Tree 2 weeks sooner',
@@ -403,7 +403,15 @@ describe('toolValue: a tool’s worth in the house as it stands (D-193)', () => 
       kind: 'note',
       note: 'Your Sapling becomes a Tree the week after you use it',
     });
-    const two = build([...HOUSE, ['sapling', 10, 6], ['sapling', 10, 8]], { rows: HOUSE_ROWS });
+    // A pack of three becomes three Trees (D-195).
+    const row = build([...HOUSE, ['sapling', 9, 6, 0, ['###']]], { rows: HOUSE_ROWS });
+    expect(value(row, 'fertilizer')).toEqual({
+      kind: 'note',
+      note: 'Your Sapling becomes 3 Trees 2 weeks sooner',
+    });
+    const two = build([...HOUSE, ['sapling', 10, 6, 0, ['#']], ['sapling', 9, 8, 0, ['###']]], {
+      rows: HOUSE_ROWS,
+    });
     expect(value(at(two, 0, 3), 'fertilizer')).toEqual({
       kind: 'note',
       note: 'Your 2 Saplings become Trees the week after you use it',
