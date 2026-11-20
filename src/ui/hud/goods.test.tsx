@@ -5,7 +5,7 @@
 import type { ComponentChildren, VNode } from 'preact';
 import { describe, expect, it } from 'vitest';
 import { CONTENT, type BlueprintValue, type PieceId } from '../../rules/index.ts';
-import { BlueprintWorth, goodKind, PIECE_KIND_LABEL, pieceKind } from './goods.tsx';
+import { BlueprintWorth, GoodBody, goodKind, PIECE_KIND_LABEL, pieceKind } from './goods.tsx';
 import { Tip } from './Tip.tsx';
 
 describe("a piece's kind", () => {
@@ -130,5 +130,30 @@ describe("a blueprint's line (D-141)", () => {
     expect(strip.props.class).toBe('pcard-worth none');
     expect(words(strip).trim()).toBe('No Dark rooms yet');
     expect(BlueprintWorth({ value: null })).toBeNull();
+  });
+});
+
+describe("a piece's lines", () => {
+  /** The Tips in a tree, with their terms and words. */
+  function tips(node: ComponentChildren, out: [unknown, string][] = []): [unknown, string][] {
+    if (node == null || typeof node !== 'object') return out;
+    if (Array.isArray(node)) {
+      for (const n of node) tips(n, out);
+      return out;
+    }
+    const v = node as VNode<Record<string, unknown>>;
+    if (v.type === Tip) out.push([v.props.term, words(v.props.children as ComponentChildren)]);
+    else if (typeof v.type === 'function') {
+      tips((v.type as (p: unknown) => ComponentChildren)(v.props), out);
+    } else tips(v.props.children as ComponentChildren, out);
+    return out;
+  }
+
+  it('link the Tree on the Sapling’s, so a tip says what one does (D-195)', () => {
+    const body = GoodBody({ good: { kind: 'piece', id: 'sapling' } });
+    expect(words(body)).toContain('Each tile becomes a Tree after 4 weeks');
+    expect(tips(body)).toEqual([['tree', 'Tree']]);
+    // A card that links no term has no tip in its lines.
+    expect(tips(GoodBody({ good: { kind: 'piece', id: 'garage' } }))).toEqual([]);
   });
 });

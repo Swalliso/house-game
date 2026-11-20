@@ -28,7 +28,7 @@ import {
 } from '../../rules/index.ts';
 import { signed } from '../format.ts';
 import { Icon } from '../kit/kit.tsx';
-import { Tip } from './Tip.tsx';
+import { Tip, withTerm } from './Tip.tsx';
 import './goods.css';
 
 export const RARITY_LABEL: Record<Rarity, string> = {
@@ -146,6 +146,7 @@ export function offerGood(o: ShopOffer): GoodRef | null {
 export function GoodBody({ good, where = false }: { good: GoodRef; where?: boolean }) {
   const rarity = goodRarity(good);
   const tags = good.kind === 'piece' ? CONTENT.pieces[good.id].tags : [];
+  const terms = good.kind === 'piece' ? cardText(CONTENT, CONTENT.pieces[good.id]).terms : null;
   return (
     <>
       <p class="good-kind">
@@ -154,9 +155,11 @@ export function GoodBody({ good, where = false }: { good: GoodRef; where?: boole
         {tags.length > 0 && <span class="muted"> · {tags.join(' · ')}</span>}
       </p>
       <ul class="effects">
-        {goodLines(good).map((t) => (
-          <li key={t}>{t}</li>
-        ))}
+        {goodLines(good).map((t, i) => {
+          // A piece's effect lines come first, each with any glossary term it links (D-195).
+          const term = terms?.[i];
+          return <li key={t}>{term ? withTerm(t, term) : t}</li>;
+        })}
       </ul>
       {where && <p class="muted good-where">{goodWhere(good)}</p>}
     </>

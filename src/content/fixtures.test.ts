@@ -336,13 +336,14 @@ describe('Soundproofing', () => {
     expect(earned(rows, [['homeOffice', 0, 5]], [[1, 'soundproofing']])).toEqual([2]);
   });
 
-  it('blocks a Loud piece’s negative aura (the Playroom), but not other penalties', () => {
-    // A Bedroom by a Playroom: 3 − 2 (Loud) − 2 (aura) without it; 3 with it.
+  it('blocks a Loud room’s noise (a Playroom’s), but not other penalties', () => {
+    // A Bedroom by a Playroom: 3 − 2 (Loud) without it; 3 with it. (Until D-195 the Playroom's
+    // aura took 2 more, which it blocked too; the rules' tests keep an aura's case.)
     const playroom: Placement[] = [
       ['bedroom', 0, 0],
       ['playroom', 2, 0],
     ];
-    expect(earned(open, playroom)).toEqual([0, 2]);
+    expect(earned(open, playroom)).toEqual([1, 2]);
     expect(earned(open, playroom, [[1, 'soundproofing']])).toEqual([3, 2]);
     // A Kitchen isn't Loud: the Bathroom still loses 2 for it (3 − 2).
     expect(

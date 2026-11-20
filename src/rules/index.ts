@@ -2325,6 +2325,7 @@ export {
   featureWantedText,
   modifierText,
   multNumber,
+  plural,
   regionText,
   rewardText,
   selectorText,
