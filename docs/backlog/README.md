@@ -125,7 +125,7 @@ reading the code, not from building anything.
 | [S24](s24-fixtures-always-pay.md) | Five fixtures pay something wherever they fit | S | Content | | Built 2026-11-20 (D-194, `phase/fixtures-always-pay`); waiting on the user's playtest |
 | [S25](s25-pieces-that-pay-off.md) | A Sapling plants up to three; the Garage, Fire Pit, Playroom and Hot Tub pay more often | M | Content | | Not started |
 | [S26](s26-upgrades-that-deliver.md) | Storage Unit, Tool Belt and Drafting Table bring something you can see | M | Rules and content | The user's playtest of S16 | Not started |
-| [S27](s27-hold-a-good.md) | Hold one good for the next shop | M | Rules and UI | After S22 | Not started |
+| [S27](s27-hold-a-good.md) | Hold one good for the next shop | M | Rules and UI | After S22 | Built 2026-11-20 (D-196, #PRNUM, on S22's branch); waiting on the user's playtest |
 | [S28](s28-new-goods.md) | A Photo Shoot, a Dog Door, and Weekend Crew at 3 | M | Content and art | The playtest of S22 to S25, and the user's pick | Not started |
 | [S29](s29-fewer-repeat-halls.md) | The hand repeats your free Hallway and Fence half as often | S | Content | | Not started; the user OK'd it 2026-11-20 |
 | [S30](s30-bunk-beds-cap.md) | Bunk Beds never break Room for everyone | S | Rules | | Not started; the user OK'd it 2026-11-20 |

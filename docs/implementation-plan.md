@@ -366,6 +366,7 @@ interface RunState {
   swapped: { i: number; was: Card }[]  // D-121: the hand's cards that replaced a card with no play, and what each replaced
   pinned?: number                      // D-186: the hand card pinned for next week; one at a time, gone with its card or the hand
   kept?: number                        // D-186: the hand card last week's pin kept; it can't be pinned again, and swaps skip it
+  held?: ShelfGood                     // D-196: the shop good held for the next shop; one at a time, until bought, moved, let go, or dropped
   blueprints: { id: BlueprintId; boughtWeek: number }[]   // 4 slots; sells for half its list price
   upgrades: UpgradeId[]                // company upgrades, permanent for the run
   servicesBought: { reroll: number; demolition: number; strike: number }   // their prices rise per purchase
@@ -410,6 +411,7 @@ type Action =
   | { t: 'pick'; i: number }                          // choose from an opened crate
   | { t: 'sell'; from: 'blueprints' | 'supplies'; i: number }
   | { t: 'refreshShop' }
+  | { t: 'hold'; i: number }                          // D-196: shop good i held for the next shop, the hold moved to it, or let go
   | { t: 'leaveShop' }
 ```
 
@@ -435,7 +437,7 @@ type Action =
 - `overtimeUsed`
 - `milestone` (phase, result `'onTime' | 'early' | 'overtime' | 'failed'`, weeks saved, overtime used, reward)
 - `changeOrderOffered` (the orders to pick from), `changeOrderAnswered` (the one picked and the ones passed over, D-144), `changeOrderResolved`
-- `shopOpened`, `bought`, `sold`, `crateOpened`, `picked`
+- `shopOpened`, `bought`, `sold`, `crateOpened`, `picked`; `goodHeld` (D-196: the good, and whether it's now held or let go) and `holdDropped` (D-196: the held good, and why it couldn't come back)
 - `runEnded`
 
 Each phase writes out the full payload of the events and types it adds in `rules/index.ts` (§7, Contracts as we go).
@@ -466,6 +468,7 @@ The UI keeps an event queue and plays it through an animation director (place �
 | | `completeEarly` if score ≥ target, weeks remain in the phase, and it isn't an overtime week | → fast-forward (below) |
 | `changeOrder` | `answerChangeOrder`: one of the two orders on offer (D-144) | → `shop` |
 | `shop` | `buy`, `sell`, `refreshShop`, `leaveShop`; while a crate is open, only `pick` (an option, or `i = -1` to discard) and `sell` | `leaveShop` → `build`, next phase, week 1. Leaving without buying anything pays the skip reward. |
+| | `hold` on any good but a service or a sold one, unless the run couldn't own it at the next shop or no shop follows this one (D-196) | the hold set on it, moved to it, or let go; nothing else changes |
 | `won` / `lost` | none; every action throws | |
 
 `setAutoComplete` is legal on every screen except `won` and `lost`, and takes effect from the next tally.
@@ -834,6 +837,7 @@ type ShopOffer =
 - **Prices:** generated from the item's price, the `shopPricePct` rule, and the sale. Services rise by 1 per purchase for the rest of the run, up to a cap. The refresh price rises within a visit and resets at the next.
 - **Stock:** each visit's slot counts and rarity weights per phase are numbers in `balance.ts` (Appendix A).
 - **The shelf stocks for the house** (D-192, `rules/shelf.ts`): once a pick's rarity is rolled, a good that can pay in the house as it stands counts `shop.relevantWeight` times (3), one that can't yet once. Can pay: a fixture some placed piece could take; Remodel Plans for a set the house holds, or Full House one member short; a special piece under its limit; a blueprint whose `paysOn` (Waterfront: a piece touching the water) has a piece, or that has none; every other tool, crate and upgrade. A blueprint whose `stockIf` fails (`{ lotHas: TerrainId[] }`: Waterfront without water) is never stocked, on a shelf or in a crate. The Blueprint Folio, the Housewarming crate and the Fixture Crate lean the same way, and the Showroom offers a special piece at its limit only when the rest can't fill it. The streams are unchanged, and with every weight in a pick alike it lands where it did before.
+- **A hold** (D-196): one good on the shelf, any but a service, held for free for the next shop (`RunState.held`, the good's kind and id). Each stocking after it, a refresh's and the next visit's, puts it back in place of the same good if the stocking drew it, else the first fresh good of its kind (`withHeld`: a held upgrade replaces the visit's upgrade; a piece or a fixture with none of its kind on the shelf takes the first card's place, piece or fixture; any other good with none of its kind is added), at that stocking's price, and the sale may land on it. It stays held until it's bought, the hold moves, it's let go, or the run couldn't own it when a shelf is stocked (a blueprint or an upgrade it owns, a special piece whose type is at its limit): then it's dropped, with `holdDropped` and the visit's `dropped` line. No hold in a shop no shop follows. With no hold, a shelf is stocked exactly as before.
 - **Rarity** is shown on every blueprint, fixture, and tool as a colored border plus a label, not color alone. Blueprint, fixture, and tool slots, and the Folio and Fixture Crate, all roll rarity with the current shop's blueprint weights.
 - **Full slots:** buying needs a free slot where the good goes, and a crate needs a free slot of its contents' kind; otherwise the offer is greyed out with the reason. Offers and crate options never include a blueprint or upgrade you already own. An opened crate can be discarded instead of picked.
 
