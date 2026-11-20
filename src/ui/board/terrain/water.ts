@@ -6,7 +6,8 @@
 // bounding box, redrawn only to change frames; its shore's grass is keyed out, so the terrain
 // canvas's grass shows around it, and the blades at the water's edge take that grass's colors.
 // D-190: lily pads in a lake's shallows too (its cells beside the lot's open ground), and logs
-// adrift on a lake and on a big pond.
+// adrift on a lake and on a big pond. D-191: the water takes natural shapes (rules/lot.ts), and a
+// pond's lilies make room for its log.
 
 import { terrainAt, type Lot } from '../../../rules/index.ts';
 import { CELL, type SpriteId } from '../../sprites.ts';
@@ -149,14 +150,20 @@ export function waterPlan(lot: Lot, salt = 0): WaterPlan {
     }
   }
   const box = x1 < 0 ? null : { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 };
-  return { box, look: lotLook(lot), tiles, lilies, logs: driftLogs(lot, tiles, lilies, salt) };
+  const logs = driftLogs(lot, tiles, lilies, salt);
+  // D-191: a pond's lilies make room for its log (driftLogs), so none floats in its room.
+  const room = new Set(logs.flatMap((l) => logRoom(l, w * SUB)));
+  const floating = lilies.filter((l) => !room.has(l.sy * w * SUB + l.sx));
+  return { box, look: lotLook(lot), tiles, lilies: floating, logs };
 }
 
 /**
  * D-190: two logs adrift on a lake and one on a pond of LOG_POND_CELLS or more, longest first,
- * each where its box and a subtile round it lie on the lot's open water, a cell in from the lot's
- * edge and clear of the lilies and the other log. Their places are the water's subtiles in an
- * order hashed from the run's salt.
+ * each where its box and a subtile round it (its room, logRoom) lie on the lot's open water, a
+ * cell in from the lot's edge and clear of the other log. A lake's logs keep clear of its lilies
+ * too. D-191: a round pond seldom had room for its log, so on a pond the lilies make room for it
+ * (waterPlan takes those out), and one too narrow for the long log takes a short one. Their
+ * places are the water's subtiles in an order hashed from the run's salt.
  */
 function driftLogs(
   lot: Lot,
@@ -170,7 +177,7 @@ function driftLogs(
   for (const t of tiles)
     if (t.piece.block === 'outer' && t.piece.col === 1 && t.piece.row === 1)
       open.add(t.sy * sw + t.sx);
-  for (const l of lilies) open.delete(l.sy * sw + l.sx);
+  const lily = new Set(lilies.map((l) => l.sy * sw + l.sx));
   const logs: SubtileSprite[] = [];
   for (const body of waterBodies(lot)) {
     const want =
@@ -180,34 +187,52 @@ function driftLogs(
           ? 1
           : 0;
     if (want === 0) continue;
+    const clearOf = body.kind === 'lake' ? lily : new Set<number>();
     const cells = new Set(body.cells);
     const places = tiles
       .filter((t) => cells.has(Math.floor(t.sy / SUB) * lot.width + Math.floor(t.sx / SUB)))
       .map((t) => ({ sx: t.sx, sy: t.sy, h: tileHash(t.sx, t.sy, salt ^ LOG_SALT) }))
       .sort((a, b) => a.h - b.h || a.sy - b.sy || a.sx - b.sx);
     let placed = 0;
-    for (const p of places) {
-      if (placed === want) break;
-      const id = LOGS[placed % LOGS.length]!;
-      const r = sheetRect(id);
-      // The log's box and a subtile round it, a cell in from the lot's edge.
-      const left = p.sx - 1;
-      const top = p.sy - 1;
-      const right = p.sx + Math.ceil(r.w / SUBTILE);
-      const bottom = p.sy + Math.ceil(r.h / SUBTILE);
-      if (left < SUB - 1 || top < SUB - 1 || right > sw - SUB || bottom > sh - SUB) continue;
-      let clear = true;
-      for (let y = top; y <= bottom && clear; y++) {
-        for (let x = left; x <= right && clear; x++) clear = open.has(y * sw + x);
+    // A pond with no room for the long log takes a short one (D-191): it tries each in turn.
+    const tries = body.kind === 'pond' ? LOGS.length : 1;
+    for (let k = 0; k < tries && placed < want; k++) {
+      for (const p of places) {
+        if (placed === want) break;
+        const id = LOGS[(placed + k) % LOGS.length]!;
+        const r = sheetRect(id);
+        // The log's box and a subtile round it, a cell in from the lot's edge.
+        const left = p.sx - 1;
+        const top = p.sy - 1;
+        const right = p.sx + Math.ceil(r.w / SUBTILE);
+        const bottom = p.sy + Math.ceil(r.h / SUBTILE);
+        if (left < SUB - 1 || top < SUB - 1 || right > sw - SUB || bottom > sh - SUB) continue;
+        let clear = true;
+        for (let y = top; y <= bottom && clear; y++) {
+          for (let x = left; x <= right && clear; x++)
+            clear = open.has(y * sw + x) && !clearOf.has(y * sw + x);
+        }
+        if (!clear) continue;
+        for (let y = top; y <= bottom; y++)
+          for (let x = left; x <= right; x++) open.delete(y * sw + x);
+        logs.push({ sx: p.sx, sy: p.sy, id });
+        placed++;
       }
-      if (!clear) continue;
-      for (let y = top; y <= bottom; y++)
-        for (let x = left; x <= right; x++) open.delete(y * sw + x);
-      logs.push({ sx: p.sx, sy: p.sy, id });
-      placed++;
     }
   }
   return logs;
+}
+
+/** A log's room: its box and a subtile round it, as indices on the lot's subtile grid. */
+function logRoom(log: SubtileSprite, subtilesWide: number): number[] {
+  const r = sheetRect(log.id);
+  const out: number[] = [];
+  for (let y = log.sy - 1; y <= log.sy + Math.ceil(r.h / SUBTILE); y++) {
+    for (let x = log.sx - 1; x <= log.sx + Math.ceil(r.w / SUBTILE); x++) {
+      out.push(y * subtilesWide + x);
+    }
+  }
+  return out;
 }
 
 /** The subtiles a log's box covers, as indices on the lot's subtile grid. */

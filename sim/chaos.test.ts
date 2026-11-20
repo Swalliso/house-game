@@ -1250,6 +1250,11 @@ const CHECKS: readonly string[] = [
  */
 // M4b's balance moved a Weekend Crew free play past the first six extra seeds.
 const MAX_EXTRA = 16;
+/**
+ * Room for every extra seed: a chaos run takes about 5 s here and up to twice that on CI. D-191's
+ * lots moved check:keptRedraw (a pin's redraw) to the eighth extra seed, past a 60 s limit on CI.
+ */
+const COVERAGE_TIMEOUT = 180_000;
 
 let coverage: { runs: Played[]; missing: string[] } | null = null;
 function covered(): { runs: Played[]; missing: string[] } {
@@ -1299,14 +1304,22 @@ describe('the chaos bot on the real content', () => {
     30_000,
   );
 
-  it('reaches every action, tool use, milestone result, good, and shop, a win and a loss', () => {
-    const { runs, missing } = covered();
-    expect(missing.filter((k) => !k.startsWith('check:'))).toEqual([]);
-    // Any extra seeds played for coverage pass the same step checks.
-    for (const r of runs.slice(SEEDS.length)) expect(r.problems, r.seed).toEqual([]);
-  }, 60_000);
+  it(
+    'reaches every action, tool use, milestone result, good, and shop, a win and a loss',
+    () => {
+      const { runs, missing } = covered();
+      expect(missing.filter((k) => !k.startsWith('check:'))).toEqual([]);
+      // Any extra seeds played for coverage pass the same step checks.
+      for (const r of runs.slice(SEEDS.length)) expect(r.problems, r.seed).toEqual([]);
+    },
+    COVERAGE_TIMEOUT,
+  );
 
-  it('ran each kind of check', () => {
-    expect(covered().missing.filter((k) => k.startsWith('check:'))).toEqual([]);
-  }, 60_000);
+  it(
+    'ran each kind of check',
+    () => {
+      expect(covered().missing.filter((k) => k.startsWith('check:'))).toEqual([]);
+    },
+    COVERAGE_TIMEOUT,
+  );
 });

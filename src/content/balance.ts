@@ -58,8 +58,13 @@ export const BALANCE: Balance = {
       dry: { weight: 20, kinds: { rocky: 50, open: 50 }, creekPct: 10 },
     },
     rockyBoulders: [8, 12],
-    pondTiles: [14, 20],
+    // D-191: a pond lot's pond is one of the round shapes (lot.ts ROUND_PONDS), 16 to 20 tiles.
+    pondTiles: [16, 20],
     lakeRows: [2, 5],
+    // D-191: water in natural shapes. A lake's shore and a creek running across the lot ease
+    // from one turn to the next over 5 to 8 columns, a creek from the back edge bends round to
+    // its side, and a pond rounds off (a pond lot's grows round).
+    bendEvery: [5, 8],
   },
 
   weeksPerPhase: 4, // D-042

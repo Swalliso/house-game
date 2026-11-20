@@ -990,6 +990,7 @@ export const TEST_LOT_BALANCE: LotBalance = {
   rockyBoulders: [8, 12],
   pondTiles: [14, 20],
   lakeRows: [2, 5],
+  bendEvery: [5, 8],
 };
 
 export const TEST_BALANCE: Balance = {

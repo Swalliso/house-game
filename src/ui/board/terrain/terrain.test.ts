@@ -214,7 +214,7 @@ describe('the water', () => {
     expect(lilies.lake).toBeGreaterThan(0);
   });
 
-  it('sets logs adrift on lakes and big ponds, clear of the shore and the lilies (D-190)', () => {
+  it('sets logs adrift on lakes and big ponds, clear of the shore and the lilies (D-190, D-191)', () => {
     const lots = Array.from({ length: 160 }, (_, i) => {
       const seed = `log-${i}`;
       const l = generateLot(seed, BALANCE.lot);
@@ -222,6 +222,8 @@ describe('the water', () => {
     });
     let lakes = 0;
     let lakeLogs = 0;
+    let bigPonds = 0;
+    let pondLogs = 0;
     for (const { l, p } of lots) {
       const sw = l.width * SUB;
       const open = new Set(
@@ -263,6 +265,8 @@ describe('the water', () => {
           expect(mine).toBeLessThanOrEqual(2);
         } else if (body.kind === 'pond' && body.cells.length >= LOG_POND_CELLS) {
           expect(mine).toBeLessThanOrEqual(1);
+          bigPonds++;
+          pondLogs += mine;
         } else {
           expect(mine, `${body.kind} of ${body.cells.length}`).toBe(0);
         }
@@ -271,6 +275,10 @@ describe('the water', () => {
     expect(lakes).toBeGreaterThan(5);
     // Most lakes have room for both.
     expect(lakeLogs).toBeGreaterThan(1.5 * lakes);
+    // And every big pond for its own: its lilies make room, and a short log fits where the long
+    // one doesn't (D-191).
+    expect(bigPonds).toBeGreaterThan(5);
+    expect(pondLogs).toBe(bigPonds);
   });
 
   it('gives every shore the lawn’s own blades: the sun has no band (D-120)', () => {

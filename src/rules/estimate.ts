@@ -105,7 +105,7 @@ export interface Estimate {
 export interface EstimateOptions {
   /**
    * What the new piece would touch, where the run's modifiers and the house rules ask for it
-   * (Creekside's +100% for a piece by the creek), which the estimate otherwise counts as never.
+   * (Creekside's +150% for a piece by the creek), which the estimate otherwise counts as never.
    */
   touching?: boolean;
   /**
