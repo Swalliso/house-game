@@ -6,3 +6,6 @@ develop against the natural-water variants. `bash lab/run-all.sh <repo> <out-dir
   creeks across drop two rows where they turn steeply, and leaning round ponds.
 - v1c: v1's creeks with v2's ponds. v1c-125 and v1c-150: Creekside earns +125% and +150%.
 - v1d: v1c with its back-edge creeks reaching their side 11 rows down or more.
+
+`analyze.ts`: a pair of greedy runs on the same seeds (a base worktree against a branch worktree),
+overall and by each seed's lot as the branch draws it: `node lab/analyze.ts <base> <branch> <base.json> <branch.json>`.
