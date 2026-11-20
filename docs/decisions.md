@@ -1162,6 +1162,8 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 
 *Changed by D-165 (2026-11-12; Accepted 2026-11-13, playtest 8):* the checklist keeps three house rules: Room for everyone, A compact house, and A tidy yard. Cozy and the Bathroom rule pay on the rooms instead, as Comfort: "A room touching 2 or more rooms earns +2" and "A Bedroom earns +8 with a Bathroom in reach, and each Bathroom serves two". One Kitchen and A living room or two become the cards' own limits (`perHouse`): one Kitchen, one Dining Room, and two Living Rooms.
 
+*Changed by D-198 (Proposed 2026-11-20):* a count with a top reads max(once, min(weighted, top)), where once counts each piece once: Bunk Beds count their Bedroom twice only up to the top of a range, so at the top they keep Room for everyone, and below it they still add a Bedroom. A house over the top on plain Bedrooms still fails, and the limits (D-102, D-104) read the weighted count as before.
+
 ### D-102 · Renovate
 **Status:** Accepted · 2026-11-06 (D-093's option B; the team chose +4 a level, up to 2, and the name Renovate).
 **Decision:**
@@ -1256,6 +1258,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - While installing, the host under the pointer drops its badge so its own label stands alone. A crate's fixture options get the shop's line too.
 **2026-11-10 (D-141, Proposed):** a blueprint gets the same kind of line, from `blueprintValue(state, id)`. Its run figure adds up each week left instead of multiplying one week, so it can differ from a fixture's for the same weekly gain. A fixture's line is unchanged.
 *2026-11-20 (D-194, Proposed):* the value lines read D-194's numbers through `preview()` with no change: the five fixtures it changes show their new gains in the shop and on the board while installing (a Pergola picked from the supplies badges each Lawn it fits). The Kitchen Island's card names the line it doubles ("Doubles its +2 per touching Dining Room or Herb Garden").
+*Changed by D-198 (Proposed 2026-11-20):* late Bunk Beds no longer lose Wow once the house has all its Bedrooms: they count twice only up to the top of the range, so there their line shows their +25%, not a loss in orange.
 
 ### D-081 · M3 rules structure
 **Status:** Accepted · 2026-11-06 (proposed with the M3 pull request; held up in playtest 3, confirmed by the team). Implementation details within D-050, D-051, D-056, and Appendix A · M3a and M3b.
@@ -1290,6 +1293,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **2026-11-06 (confirmed by the team):** Bunk Beds keep counting twice toward a household's Bedrooms. The systems review tested counting them once, and it didn't help (D-101).
 *Changed by D-188 (Proposed 2026-11-20):* the shop's special pieces aren't its alone: once a run, at Framing's start, one of the Pool, the Hot Tub and the Henhouse comes free to Your goods, so the 2×3 Pool can turn up without a purchase.
 *2026-11-20 (D-194, Proposed):* the +25% floor reaches Soundproofing, the Bay Window and Garden Lights (which keep +50% in the front yard), for the same reason: each paid only in a few houses. Every fixture but the Chandelier now earns something on its host wherever it fits.
+*Changed by D-198 (Proposed 2026-11-20):* Bunk Beds count twice only up to the top of a range: at the top of Room for everyone they keep the line, and a house a Bedroom short of the bottom still reaches it with them. Their card says "Counts as 2 Bedrooms for the client, up to the top of a range".
 
 ### D-086 · Tooltips, first pass (with the shop)
 **Status:** Accepted · 2026-11-06 (proposed with the M3 pull request, as D-077's light pass; held up in playtest 3, confirmed by the team).
@@ -4815,7 +4819,7 @@ What the columns mean:
 - **Nothing else moves.** The Long Hallway stays at 10: the stock never brings it. The Driveway stays at 10, so the two packs no longer draw alike (D-121). The ramp (D-055: both are complexity 3, so a twentieth of their weight in the first milestone, a quarter in the second and 60% in the third; D-166's lot cards skip it, but not these two), strikes and the strike floor (D-157), and the clients' pools stand: the Hendersons' and the Barkers' +100% on the Fence make it 10 on their jobs, where it was 20. `validateContent`'s check that the stock's pieces are in the weekly draw passes at 5.
 - **The sim's Fence check counts the stock.** §8's "fences pay their way" asks that half of greedy runs see their enclosure probe's count of Fence cards by milestone 4, and it counted only the weeks' first hands (`wallOffers`), where the Fence now shows half as often. It now counts the Fences the standing stock brought to Your goods by then too: `stockWallOffers` in the run record, per milestone, from what a run starts with and each of the stock's `delivered` events. The probe and its 50% are unchanged. The user's pick (2026-11-20), on a card in this story's thread once the trial failed the check: "Count Your goods' Fences in the sim's 'fences pay their way' check?": "Count the stock's Fences".
 
-**The sim** (greedy, a paired-seed trial as D-188's was: 600 runs an arm on `check-0` to `check-599`, every client and crew in turn, on develop's targets; off is develop at `bbccfb3`, the code of `c92de7b`, and on is this branch; run in the cloud container, about 24 minutes an arm side by side. Develop has since taken D-194, which changes five fixtures' pay and no draw weight):
+**The sim** (greedy, a paired-seed trial as D-188's was: 600 runs an arm on `check-0` to `check-599`, every client and crew in turn, on develop's targets; off is develop at `bbccfb3`, the code of `c92de7b`, and on is this branch; run in the cloud container, about 24 minutes an arm side by side. Develop has since taken D-194, which changes five fixtures' pay, and D-198, which caps what Bunk Beds count toward the top of a range; neither changes a draw weight):
 
 | | Off | On | Paired |
 |---|---|---|---|
@@ -4859,13 +4863,61 @@ What the columns mean:
 
 **Changes:** D-160 (Accepted): the stock's two types draw at half weight. D-121 (Accepted): the Fence pack draws at 5 and the Driveway at 10. D-106 (Accepted): the packs' weights. D-089 (Accepted): the Fence check counts the stock's Fences. Dated notes on each. `implementation-plan.md` (the draw weights, and §8's Fence criterion).
 
-**Checked:** `npm test` (158 files; 2,666 tests pass and 1 is skipped, and 2,676 with develop's D-194 merged in), `npm run typecheck`, `npm run format:check`. The new test in `households.test.ts` holds the four weights at milestone 4, the Fence on the Hendersons', the Barkers' and Count Vladislav's jobs, and the stock in Your goods in week 1; `pieces.test.ts` lists the Hallway and the Fence at half weight. No seeded test changed its expectation: the rules tests draw from their own test content, and the real content's seeded tests pass as they were. `validateContent` passes (`content.test.ts`). The Fence check's tests (`sim/report.test.ts`): too few Fences in the hand and one from the stock pass it, and a run's record holds the stock's Fence from its first week and at most one a milestone. On 12 of the trial's runs, the record's new count of the stock's Fences by milestone 4 matched the trial's own count, and the hand's matched `wallOffers`. Not looked at in the browser: no screen changed.
+**Checked:** `npm test` (158 files; 2,666 tests pass and 1 is skipped, 2,676 with develop's D-194 merged in, and 2,686 in 159 files with D-198 too), `npm run typecheck`, `npm run format:check`. The new test in `households.test.ts` holds the four weights at milestone 4, the Fence on the Hendersons', the Barkers' and Count Vladislav's jobs, and the stock in Your goods in week 1; `pieces.test.ts` lists the Hallway and the Fence at half weight. No seeded test changed its expectation: the rules tests draw from their own test content, and the real content's seeded tests pass as they were. `validateContent` passes (`content.test.ts`). The Fence check's tests (`sim/report.test.ts`): too few Fences in the hand and one from the stock pass it, and a run's record holds the stock's Fence from its first week and at most one a milestone. On 12 of the trial's runs, the record's new count of the stock's Fences by milestone 4 matched the trial's own count, and the hand's matched `wallOffers`. Not looked at in the browser: no screen changed.
 
 **Known gaps:**
 - **The Fence check is easy to pass now:** the stock alone brings 2.43 Fences a run by milestone 4, at or above the probe's p50 of 2, so the check no longer tells how often the hand shows them. The trial's hand counts (above) do.
 - **Not played by a person.**
 - **First jobs weren't in the trial.** Their stock comes at Foundation's third week (D-162), so until then the hand is their only Hallway or Fence, and it shows them half as often. The ramp already keeps them rare that early (a twentieth and then a quarter of their weight).
 - **Runs in progress drop** when this merges, and an old run code replays only up to the first week its seed would have drawn one of these.
+
+### D-198 · Bunk Beds count twice only up to the top of a range, so they never break Room for everyone
+**Status:** Proposed · 2026-11-20, a phase pull request (`phase/bunk-beds-cap`) for the user's playtest: the backlog's S30 (`docs/backlog/s30-bunk-beds-cap.md`), from the 2026-11-20 review of rarely used goods. It changes Accepted D-101, which the user OK'd on 2026-11-20 on a card in the review thread ("Also change the two settled rules: hand Hallways and Fences, and Bunk Beds?": "Yes, build both"), with dated notes on it, D-082 and D-107. Built side by side with S29 (D-197) and five shop stories (D-192 to D-196). Part of the rules batch: it reports its own paired-seed trial and leaves the targets alone; the batch is fitted once, by D-169's method, when the user has picked its stories. A rules change with no content change: `contentHash(CONTENT)` stays develop's (`bf0c1515`, with D-194), so saves and run codes carry over, but a replayed run that put Bunk Beds in a house at the top of its range scores more than it did.
+**Decision:**
+- **A count with a top reads `max(once, min(weighted, top))`** (`countFor` in `conditions.ts`). `weighted` is the count as before, with Bunk Beds' Bedroom counting as two (D-082), and `once` counts each matching piece once. So Bunk Beds lift a count to the top of its range and never past it. Below the top they still add a Bedroom, and a house a Bedroom short of the bottom still reaches it with them. At the top they keep the line. A house over the top on plain Bedrooms still fails, and a count with no top reads the weighted count, both as before.
+- **Where it reads:** wherever a `count` condition is checked (`meetsHouse`) and in its checklist line (`progressOf`), so the line shows what it checks: two Bedrooms, one with Bunk Beds, read "2 Bedrooms (1–2)". The rules' estimate (`estimate.ts`), which the bots rank plays by, caps the same way, so it agrees with the exact preview. Today only Room for everyone has both a top and a room that counts twice: the Count's Library, the Barkers' Mudroom and Dale's two Home Offices have tops, and nothing counts twice there.
+- **The limits stay** (`typeLimits`, for Renovate and the half-weight draws, D-102 and D-104): a type is at its limit once its weighted count reaches the top, and the capped count reaches the top at the same moment, so they read the weighted count as before, and a comment says so. Sets still count each piece once (D-081), and so does D-189's house report.
+- **The once count is cached apart** (`onceCache`, beside `countCache`), so a capped read never leaks into a weighted read of the same selector, and it's counted only at or past a top.
+- **The card:** Bunk Beds' line reads "Counts as 2 Bedrooms for the client, up to the top of a range" (`countsAs` in `text.ts`, for any count of 2 or more). D-107's value line shows the rest: at the top of a range, an install is worth its +25% and no longer shows a loss.
+
+**The sim** (greedy, a paired-seed trial as D-188's was: 600 runs an arm on `check-0` to `check-599`, every client and crew in turn, on develop's targets, with `--dead`; off is develop at `bbccfb3`, the code of `c92de7b`, and on is this branch; run in the cloud container, about 24 minutes an arm side by side. Develop has since taken D-194, whose fixtures neither count as a room nor touch a count with a top):
+
+| | Off | On | Paired |
+|---|---|---|---|
+| **Wins** | 49.5% [45.5–53.5] | 50.0% [46.0–54.0] | +0.5 points [−0.6, 1.6]: 7 runs won only with it, 4 only without (p = 0.55) |
+| Milestones 3 to 7 met | 95.3, 86.2, 75.0, 64.0, 49.5% | 95.5, 86.3, 75.2, 63.8, 50.0% | The first two are the same in both |
+| Room for everyone held at the end | 77.8% | 79.5% | +1.7 points [0.1, 3.2]: 16 runs only with it, 6 only without (p = 0.052) |
+| Weeks Room for everyone held, a run | 19.08 | 19.32 | +0.23 [0.08, 0.39] |
+| Wow at the end, median | 75,685 | 75,734 | A pair's ratio, median: 1.000 |
+
+| Bunk Beds | Off | On |
+|---|---|---|
+| Installed from the hand, of the hands that showed them | 10.3% (127 of 1,229) | **19.4%** (240 of 1,236) |
+| Hands where their best install scores below a pass (`--dead`) | 55.5% (682) | **12.1%** (149) |
+| Bought, of the times on a shelf | 5.2% (14 of 271) | 4.8% (13 of 271) |
+| Installed from the supplies, all 600 runs | 20 | 21 |
+| An install's gain that week, median | 28 | 23 |
+
+- **They're installed from the hand nearly twice as often,** 19.4% of the hands that show them, and in 12.1% of those hands no install beats a pass, from 55.5%. The installs the change adds are the smaller ones, so an install's median gain falls from 28 to 23; none loses in either arm, since greedy never installs at a loss.
+- **The shop doesn't move:** the shop bot bought them 13 times of 271 shelf offers, against 14.
+- **Room for everyone holds a little more often:** at the end in 1.7 points more runs, and 0.23 more weeks a run.
+- **Wins** move +0.5 points, noise: every client and crew within 1.7 points, and the trial's spread of clients goes from 7.5 to 8.3 points. Every §8 verdict on these runs reads as develop's: greedy clears milestones 1 to 3 in 95.5% and wins 50.0% (PASS, unsure), the fences pay their way at 61.9% (develop 62.1%: one run whose path the change moved), and the clients' and crews' spread passes, unsure.
+
+**Why:** Room for everyone has a top as well as a bottom, and the ranges are tight: 1–2 Bedrooms for most households, rising by one at each end at each arrival (D-103). So in a house at the top of its range, the Bedroom that Bunk Beds doubled broke the line. In the 2026-11-20 review of rarely used goods, Bunk Beds were installed from the hand 12% of the times they were offered (a fixture's average is 25%) and bought 3% of the times they were on a shelf, and in half the hands that offered them their best install scored below a pass. D-101 kept the double count (2026-11-06) because counting once didn't help a household reach the bottom of its range. This keeps it where it helps and drops it only past the top.
+
+**Considered:**
+- *Counting them once:* the systems review tried it (D-082's note of 2026-11-06, `house-systems-review.md` §5.7). It didn't help, and cost 4 points of what was then the Bathroom ratio.
+- *Capping the weighted count for every reader, the limits included:* a type reaches its limit at the same moment either way, so it would change nothing there, and sets and the house report count once already.
+- *The Kitchen Island's `countsAs`:* D-194 (S24) gave it a line that pays instead, so Bunk Beds are the one fixture that counts as a room.
+
+**Changes:** D-101 (Accepted): Bunk Beds count twice up to the top of a range. D-082 (Accepted): the Bunk Beds' count. D-107 (Accepted): their value line no longer shows a loss at the top. Dated notes on each. `implementation-plan.md` (the counting comment in the data format, and Bunk Beds' row in the fixtures' appendix).
+
+**Checked:** `npm test` (159 files; 2,675 tests pass and 1 is skipped, and 2,685 with develop's D-194 merged in), `npm run typecheck`, `npm run format:check`. New tests: `src/rules/bunk-beds-cap.test.ts` (9, on the test content: the top kept, with Bunk Beds in one Bedroom or both and at exactly 2; a Bedroom added below the top and the bottom reached; plain Bedrooms over the top still failing; a count with no top; a staged range, which caps at the current stage's top; the read and its two caches; `typeLimits` unchanged for Renovate and the half-weight draws; `fixtureValue` and an install's preview no longer a loss at the top; and the estimate agreeing with the exact preview), and one in `fixtures.test.ts` on the real content (the Hendersons at the top of their range, where Bunk Beds are now worth their +25%), with the card's new text. `conditions.test.ts` expected D-101's reading at a top of 2 and now expects this one. In the dev build at 1920 × 1200 (1), from a run code of Juniper's job with two Bedrooms built in week 1 and Bunk Beds given to the supplies, on develop and on this branch: develop's badges read an orange −1 on both Bedrooms, and installing them broke Room for everyone ("3 Bedrooms (1–2)", Charm 1.25 to 1, Wow 10 to 9); here the badges read ★ +1 and the line holds (Charm 1.25, Wow 11). No console errors. The shots are `docs/playtests/s30-bunk-beds.png`.
+
+**Known gaps:**
+- **Not played by a person,** and only the one run code was looked at on screen: not the shop's value line, a staged range after an arrival, touch, Firefox or Safari.
+- **The cap reads any count with a top,** and today only Bunk Beds count twice under one. A future fixture or piece that counts twice gets the same cap, and a count line that should let it pass the top would need a flag.
+- **A replayed run scores more** than it did where Bunk Beds sat at the top of a range, so from there its milestones can go differently.
 
 ### D-190 · The lot's ground: the grass in patches, wildflowers in drifts, undergrowth in the woods, and a softer shade
 **Status:** Proposed · 2026-11-20, a phase pull request (`phase/ground-pass`), from a review the user asked for: "I'm also wondering if there's anything we can do to make the plots themselves a bit more exciting. Currently they seem sort of uniform and boring outside of the trees." The review (a doc, "Making the lots more exciting: a visual review", with a prototype) found 80.4% of a lot's tiles are open grass (95% of an Open lot's), all of it one repeated 16 px tile with tufts and flowers strewn evenly over it. Of its options the user picked "Ground pass, then natural water" (2026-11-20): this is the first part, and D-191 (rounder ponds, a curved lake shore and a bending creek) the second, which changes how lots are drawn. UI only: nothing under `src/rules` or `src/content` changed and `contentHash(CONTENT)` stays develop's (`4c677dcf` with D-188), so saves and run codes carry over, and the same lot is only dressed differently. D-189 went to the house report's checks (#112), so this takes D-190. The user OK'd merging it into develop for their playtest on /dev/ (2026-11-20: "Merge it for a playtest"); it stays Proposed until they've played it.
