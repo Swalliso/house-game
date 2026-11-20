@@ -3,9 +3,10 @@
 //   lot): the lot, the street row, and the road below it (geometry.ts ROAD_ROWS). Smoothing
 //   off, shown at that size × scale with image-rendering: pixelated. It redraws only when the
 //   lot changes (building over a Tree replaces it, a Sapling grows into one) or a piece comes
-//   or goes on the street's edge: the grass, the woods' floor, the shade the Trees cast away from
-//   the sun (D-120), then what stands on the lot (terrain/objects.ts) on its own cells, and the
-//   street (terrain/).
+//   or goes on the street's edge: the ground (terrain/ground.ts, D-190: the grass in patches,
+//   the woods' floor spilling into the lush grass, bare earth, wildflowers in drifts), the shade
+//   the Trees cast away from the sun (D-120), then what stands on the lot (terrain/objects.ts) on
+//   its own cells, the woods' undergrowth in front of the trunks, and the street (terrain/).
 // - The water canvas, above it at LAYER.water: only over the water's bounding box, its frames
 //   painted side by side once per lot and stepped through by CSS (transform only, like the
 //   Fireplace's flame), so the animation never wakes the main thread. Still under Reduce motion,
@@ -39,7 +40,7 @@ import { FEEL } from '../fx/feel.ts';
 import { atlasImage, CELL, withAtlasImage } from '../sprites.ts';
 import { boardRows, cellsOutline, occupancy, uidAt } from './geometry.ts';
 import { drawSprite, sheetRect } from './terrain/atlas.ts';
-import { paintGrass } from './terrain/grass.ts';
+import { groundPlan, paintGround, paintUndergrowth } from './terrain/ground.ts';
 import { seedSalt, tileHash } from './terrain/hash.ts';
 import {
   canopyBox,
@@ -61,7 +62,6 @@ import {
   type WaterCritter,
   type WaterPlan,
 } from './terrain/water.ts';
-import { paintWoodsFloor, woodsFloor } from './terrain/woods.ts';
 import './terrain/terrain.css';
 
 export { tileHash };
@@ -75,9 +75,9 @@ export interface Around {
 }
 
 /**
- * The terrain canvas's paint: the grass, the woods' floor, the Trees' shade, what stands on the
- * lot, and the street. It never clears, so it can paint into part of a bigger picture (the end
- * screen's photos, D-136, translate the context to their frame).
+ * The terrain canvas's paint: the ground, the Trees' shade, what stands on the lot, the woods'
+ * undergrowth, and the street. It never clears, so it can paint into part of a bigger picture
+ * (the end screen's photos, D-136, translate the context to their frame).
  */
 export function draw(
   ctx: CanvasRenderingContext2D,
@@ -88,10 +88,11 @@ export function draw(
   front: readonly boolean[],
 ): void {
   ctx.imageSmoothingEnabled = false;
-  paintGrass(ctx, img, lot, salt);
-  paintWoodsFloor(ctx, img, woodsFloor(lot));
+  const ground = groundPlan(lot, salt);
+  paintGround(ctx, img, lot, ground);
   paintShade(ctx, lot, lotShade(lot));
   paintObjects(ctx, img, objects);
+  paintUndergrowth(ctx, img, ground);
   paintStreet(ctx, img, streetTiles(lot, front));
 }
 

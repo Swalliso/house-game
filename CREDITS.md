@@ -56,6 +56,12 @@ Open House is a game jam entry for the theme "It's a house," built with Claude C
   Exteriors to LimeZu's own autumn and olive colorways of its Camping trees (their pixel twins,
   muted as our greens are) and to grass that matches. LimeZu's art, cut, edited as its licenses
   allow, and credited as above.
+- **The lot's ground** (D-190, `art/limezu/ground.json`): the short grass's patches and the bare
+  earth's edges, the wildflower drifts, clover, sprouts, pebbles, mushrooms, twigs, fallen
+  leaves, ferns, shrubs, moss and the logs adrift, cut from Modern Exteriors' terrain sheet,
+  autotiles and its Camping, Garden, Graveyard and Terrains theme singles, muted as our greens
+  are, with autumn and dry recolors where they have greens. LimeZu's art, cut, edited as its
+  licenses allow, and credited as above.
 - **Rooms in more than one arrangement** (D-173, `art/limezu/interiors.json`): the wardrobes,
   nightlamps, desks, bookcases, televisions, side-on sofas, piano, fish tank, cuckoo clock,
   pictures, hutch, round and cloth-covered tables, plants, rugs, mats and clothes rails that give
