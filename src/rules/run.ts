@@ -76,6 +76,7 @@ import type {
   FixtureId,
   FixtureValue,
   GameEvent,
+  HoldDrop,
   HouseState,
   InstallAction,
   InstallGain,
@@ -111,6 +112,7 @@ import type {
   SetProgress,
   SetScore,
   ShelfGood,
+  ShopVisit,
   Slots,
   Tag,
   TagSource,
@@ -226,6 +228,8 @@ import { isRoom } from './layout.ts';
 import {
   canStrike,
   crateOptions,
+  heldIndex,
+  HOLD_REASONS,
   inExtraSlot,
   offerPrice,
   openVisit,
@@ -235,6 +239,7 @@ import {
   roomFor,
   roomForOption,
   sellPrice,
+  shelfGood,
   SHOP_REASONS,
   slotsFor,
   stockFor,
@@ -446,6 +451,11 @@ export interface Rules {
    * not: the card last week's pin kept can't be pinned again.
    */
   canPin(state: RunState, i: number): Availability;
+  /**
+   * D-196: whether shop offer i can be held for the next visit now, or let go, and why not: not
+   * a service, a sold good, one the run couldn't own by then, or in a shop no shop follows.
+   */
+  canHold(state: RunState, i: number): Availability;
   /** Whether a tool can be used now, with this target. */
   canUseTool(state: RunState, action: UseToolAction): Availability;
   /**
@@ -2011,7 +2021,11 @@ export function createRules(content: Content): Rules {
   }
 
   function openShop(s: RunState, number: number, forced: boolean, events: GameEvent[]): RunState {
-    const shop = openVisit(content, s, number, forced, shelfOf(s));
+    // D-196: a held good the run can't own by now is dropped as the shelf is stocked.
+    const kept = dropHold(s, events);
+    s = kept.state;
+    const stocked = openVisit(content, s, number, forced, shelfOf(s));
+    const shop = kept.dropped ? { ...stocked, dropped: kept.dropped } : stocked;
     events.push({ t: 'shopOpened', number, offers: shop.offers, sale: shop.sale });
     // The hand is set aside, and a pin with it (D-186): it doesn't cross a shop.
     let next: RunState = { ...unpinned(s), screen: 'shop', hand: [], offers: { shop } };
@@ -2396,6 +2410,8 @@ export function createRules(content: Content): Rules {
     // The sale ends when its good is sold.
     const sale = visit.sale === action.i && offer.kind !== 'service' ? null : visit.sale;
     s = { ...s, offers: { ...s.offers, shop: { ...visit, offers, sale, boughtAny: true } } };
+    // D-196: buying the held good lets its hold go.
+    if (action.i === heldIndex(visit, state.held)) s = unheld(s);
     events.push({
       t: 'bought',
       i: action.i,
@@ -2537,6 +2553,81 @@ export function createRules(content: Content): Rules {
       return after.state;
     }
     return startPhase(s, events);
+  }
+
+  // -------------------------------------------------------------------------------------
+  // Holds (D-196): one shop good kept for the next visit, in place of a fresh good of its kind.
+
+  /**
+   * Why a good couldn't come back to the shelf now, or null if it can: the run owns it (a
+   * blueprint or an upgrade), or its type is at its limit (a special piece, as the draw reads
+   * the limits).
+   */
+  function holdDrop(state: RunState, good: ShelfGood): HoldDrop | null {
+    switch (good.kind) {
+      case 'blueprint':
+        return state.blueprints.some((o) => o.id === good.id) ? 'owned' : null;
+      case 'upgrade':
+        return state.upgrades.includes(good.id) ? 'owned' : null;
+      case 'piece': {
+        const root = rootType(content.pieces[good.id]);
+        return typesAtLimit(limitsOf(state)).has(root) ? 'limit' : null;
+      }
+      default:
+        return null;
+    }
+  }
+
+  function canHold(state: RunState, i: number): Availability {
+    const visit = state.screen === 'shop' ? state.offers?.shop : undefined;
+    if (!visit) return { ok: false, reason: SHOP_REASONS.notOpen };
+    if (state.offers?.pick) return { ok: false, reason: SHOP_REASONS.picking };
+    // No shop follows the last phase's milestone (D-051), so a hold there would keep nothing.
+    if (state.phase >= phaseCount(b) - 1) return { ok: false, reason: HOLD_REASONS.lastShop };
+    const offer = Number.isInteger(i) ? visit.offers[i] : undefined;
+    if (!offer) return { ok: false, reason: HOLD_REASONS.nothing };
+    if (offer.kind === 'service') return { ok: false, reason: HOLD_REASONS.service };
+    if (offer.sold) return { ok: false, reason: SHOP_REASONS.sold };
+    // The held good can always be let go.
+    if (i === heldIndex(visit, state.held)) return { ok: true };
+    // One the next stocking would drop can't be held.
+    const drop = holdDrop(state, offer);
+    if (drop === 'owned') return { ok: false, reason: SHOP_REASONS.owned };
+    if (drop === 'limit') return { ok: false, reason: HOLD_REASONS.atLimit };
+    return { ok: true };
+  }
+
+  /** Holds offer i (already checked), moving the hold from another good, or lets it go. */
+  function hold(state: RunState, i: number, events: GameEvent[]): RunState {
+    const visit = state.offers!.shop!;
+    const offer = visit.offers[i]!;
+    if (offer.kind === 'service') return state;
+    const good = shelfGood(offer);
+    const on = i !== heldIndex(visit, state.held);
+    events.push({ t: 'goodHeld', i, good, held: on });
+    return on ? { ...state, held: good } : unheld(state);
+  }
+
+  /** The state with no hold. */
+  function unheld(state: RunState): RunState {
+    if (state.held === undefined) return state;
+    const { held: _held, ...rest } = state;
+    return rest;
+  }
+
+  /**
+   * As a shelf is stocked (a visit's, or a refresh's): the hold let go if its good can't come
+   * back now, with an event, and the visit's line about it.
+   */
+  function dropHold(
+    state: RunState,
+    events: GameEvent[],
+  ): { state: RunState; dropped?: ShopVisit['dropped'] } {
+    const good = state.held;
+    const why = good ? holdDrop(state, good) : null;
+    if (!good || !why) return { state };
+    events.push({ t: 'holdDropped', good, why });
+    return { state: unheld(state), dropped: { good, why } };
   }
 
   // -------------------------------------------------------------------------------------
@@ -2703,6 +2794,7 @@ export function createRules(content: Content): Rules {
     'buy',
     'sell',
     'refreshShop',
+    'hold',
     'leaveShop',
     'pick',
     'setAutoComplete',
@@ -2727,6 +2819,7 @@ export function createRules(content: Content): Rules {
     const shopOnly =
       action.t === 'buy' ||
       action.t === 'refreshShop' ||
+      action.t === 'hold' ||
       action.t === 'leaveShop' ||
       action.t === 'pick';
     if (state.screen === 'build' && shopOnly) throw new IllegalAction(SHOP_REASONS.notOpen);
@@ -2909,8 +3002,12 @@ export function createRules(content: Content): Rules {
         const can = canRefresh(state);
         if (!can.ok) throw new IllegalAction(can.reason!);
         const visit = visitOf(state);
-        const next = refreshVisit(content, state, visit, shelfOf(state));
-        const budget = state.budget - can.price;
+        // D-196: the held good stays on the shelf, unless the run came to own it this visit.
+        const kept = dropHold(state, events);
+        const s = kept.state;
+        const refreshed = refreshVisit(content, s, visit, shelfOf(s));
+        const next = kept.dropped ? { ...refreshed, dropped: kept.dropped } : refreshed;
+        const budget = s.budget - can.price;
         events.push({
           t: 'shopRefreshed',
           refreshes: next.refreshes,
@@ -2919,7 +3016,12 @@ export function createRules(content: Content): Rules {
           offers: next.offers,
           sale: next.sale,
         });
-        return done({ ...state, budget, offers: { ...state.offers, shop: next } });
+        return done({ ...s, budget, offers: { ...s.offers, shop: next } });
+      }
+      case 'hold': {
+        const can = canHold(state, action.i);
+        if (!can.ok) throw new IllegalAction(can.reason!);
+        return done(hold(state, action.i, events));
       }
       case 'pick':
         return done(pick(state, action.i, events));
@@ -3038,7 +3140,7 @@ export function createRules(content: Content): Rules {
 
   /**
    * D-193: what no good's value reads. A click in the shop (buying, selling, a refresh, opening
-   * a crate) changes only these, so its values carry over from the state before.
+   * a crate, a hold) changes only these, so its values carry over from the state before.
    */
   const VALUE_BLIND: ReadonlySet<string> = new Set<keyof RunState>([
     'budget',
@@ -3050,6 +3152,8 @@ export function createRules(content: Content): Rules {
     'demolitionsLeft',
     'strikesLeft',
     'struck',
+    // D-196: the good held for the next shop only changes what a shelf stocks.
+    'held',
   ]);
   let valuedLast: RunState | null = null;
 
@@ -3657,6 +3761,10 @@ export function createRules(content: Content): Rules {
       for (const o of viewOffers(content, state)) if (o.ok) out.push({ t: 'buy', i: o.i });
       state.blueprints.forEach((_, i) => out.push({ t: 'sell', from: 'blueprints', i }));
       state.supplies.forEach((_, i) => out.push({ t: 'sell', from: 'supplies', i }));
+      // D-196: a hold on any good but a service, moved to it, or let go; none in the last shop.
+      (state.offers?.shop?.offers ?? []).forEach((_, i) => {
+        if (canHold(state, i).ok) out.push({ t: 'hold', i });
+      });
       if (canRefresh(state).ok) out.push({ t: 'refreshShop' });
       out.push({ t: 'leaveShop' });
       return out;
@@ -4182,6 +4290,7 @@ export function createRules(content: Content): Rules {
     canStrikeCard,
     previewStrike,
     canPin,
+    canHold,
     canUseTool: (state, action) => canUseTool(toolCtx, state, action),
     previewTool: (state, action) => {
       const before = state.screen === 'build' ? score(passTally(state)) : NO_SCORE;

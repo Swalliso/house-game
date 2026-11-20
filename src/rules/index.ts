@@ -1241,7 +1241,15 @@ export interface ShopVisit {
   boughtAny: boolean;
   /** Opened by the ?debug panel mid-phase: leaving goes back to the same week. */
   forced?: true;
+  /** D-196: the held good this visit couldn't put back on the shelf, and why, for its line. */
+  dropped?: { good: ShelfGood; why: HoldDrop };
 }
+
+/**
+ * D-196: why a held good can't come back: the run owns it (a blueprint or an upgrade), or its
+ * type is at its limit (a special piece).
+ */
+export type HoldDrop = 'owned' | 'limit';
 
 /** An opened crate waiting for a choice: only `pick` (or -1 to discard) and `sell` until then. */
 export interface CratePick {
@@ -1423,6 +1431,14 @@ export interface RunState {
    * redraw leave it where it is, and the week's swaps (D-121) skip it.
    */
   kept?: number;
+  /**
+   * D-196: the shop good held for the next visit, any but a service. One at a time, set, moved
+   * and let go by `hold`. Each stocking after it, the next visit's and a refresh's, puts it back
+   * on the shelf in place of a fresh good of its kind; buying it lets it go, and so does a
+   * stocking it can't come back to (the run owns it, or a special piece's type is at its limit).
+   * Until then it stays held: a good can wait several visits.
+   */
+  held?: ShelfGood;
   /** D-040: complete each milestone as soon as its target is met. Starts off. */
   autoComplete: boolean;
   /** A run stat for scaling ×Mult (Ahead of Schedule, M3). */
@@ -1529,6 +1545,11 @@ export type SellAction = { t: 'sell'; from: 'blueprints' | 'supplies'; i: number
  */
 export type BuyAction = { t: 'buy'; i: number; strike?: CardType };
 export type RefreshShopAction = { t: 'refreshShop' };
+/**
+ * D-196: holds shop offer i for the next visit, or lets it go. One hold at a time: holding
+ * another good moves it. A free action, on any good but a service, in any shop a shop follows.
+ */
+export type HoldAction = { t: 'hold'; i: number };
 /** Keeps one of an opened crate's options; -1 discards the crate. */
 export type PickAction = { t: 'pick'; i: number };
 /**
@@ -1595,6 +1616,7 @@ export type Action =
   | SellAction
   | BuyAction
   | RefreshShopAction
+  | HoldAction
   | LeaveShopAction
   | PickAction
   | UseToolAction
@@ -1916,6 +1938,14 @@ export type GameEvent =
       sale: number | null;
     }
   | { t: 'shopClosed'; number: number; skipReward: number; budgetBefore: number; budget: number }
+  /** D-196: shop offer i was held for the next visit (`held`), or let go. */
+  | { t: 'goodHeld'; i: number; good: ShelfGood; held: boolean }
+  /**
+   * D-196: the held good couldn't come back to the shelf, so its hold is gone: the run owns it
+   * (a blueprint or an upgrade), or (a special piece) its type is at its limit. It comes as the
+   * stocking does, before `shopOpened` or `shopRefreshed`.
+   */
+  | { t: 'holdDropped'; good: ShelfGood; why: HoldDrop }
   /**
    * M4b: a household member arrived (D-103), at the start of their phase's first week (after
    * transforms, before the draw): their cards went into the reserve's extra slots.
@@ -2372,6 +2402,8 @@ export interface OfferView extends Availability {
   /** Before the sale (the discount included), for the struck-through price. */
   fullPrice: number;
   onSale: boolean;
+  /** D-196: the good held for the next visit. */
+  held?: true;
 }
 
 /** How many of each slot the run has, after upgrades. */
@@ -2448,7 +2480,7 @@ export { ruleValue, sourceName } from './modifiers.ts';
 export { meetsHouse, outlineOf, progressOf } from './conditions.ts';
 export { jobBoard, type Contract } from './jobs.ts';
 export { fitsText } from './fixtures.ts';
-export { inExtraSlot, SERVICE_NAMES, SHOP_REASONS } from './shop.ts';
+export { HOLD_REASONS, inExtraSlot, SERVICE_NAMES, SHOP_REASONS } from './shop.ts';
 export { countedSelector, countingMod, totalWithOneMore } from './blueprint-value.ts';
 export { matchesDef, yardsRead, type Yard } from './selectors.ts';
 export { isFinished } from './finished.ts';

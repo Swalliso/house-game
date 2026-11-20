@@ -314,6 +314,11 @@ describe('pieceValue: a piece’s worth in the house as it stands (D-193)', () =
     const library = R.apply(shop, { t: 'buy', i: 1 }).state;
     expect(R.pieceValue(library, 'pool')).toBe(pool);
     expect(R.toolValue(library, 'rushOrder')).toBe(rush);
+    // D-196: so does holding a good for the next shop.
+    const held = R.apply(library, { t: 'hold', i: 2 }).state;
+    expect(held.held).toEqual({ kind: 'blueprint', id: 'quietHours' });
+    expect(R.pieceValue(held, 'pool')).toBe(pool);
+    expect(R.toolValue(held, 'rushOrder')).toBe(rush);
     // A blueprint changes what the house earns, so the values are worked out again.
     const quiet = R.apply(library, { t: 'buy', i: 2 }).state;
     expect(R.pieceValue(quiet, 'pool')).not.toBe(pool);

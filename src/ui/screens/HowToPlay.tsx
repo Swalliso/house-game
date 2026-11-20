@@ -650,6 +650,11 @@ export function HowToPlayText() {
             buying and you get +{b.shop.skipReward} for saving up.
           </li>
           <li>
+            Pin a good you can’t buy yet to <b>hold</b> it: it stays through a refresh, and at the
+            next shop it’s back in place of a new good of its kind, at that shop’s price. One hold
+            at a time.
+          </li>
+          <li>
             <b>Fixtures</b> also turn up in your hand from the second milestone: installing one from
             the hand is your week's build. Each piece holds one; a new one replaces it.
           </li>

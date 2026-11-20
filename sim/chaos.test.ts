@@ -21,6 +21,10 @@
 //   at the slot it was pinned from, in place of a card of that week's own draw, which nothing
 //   else shifts; a reroll and the Catalog leave the kept card where it is and take a pin with
 //   its card, and so does a strike of its type;
+// - a hold (D-196) is a free action too: it holds a shop good, moves the hold, or lets it go,
+//   and nothing else changes; canHold agrees with apply(); in the shop the held good is on the
+//   shelf once, unsold; and each stocking after it, a refresh's or the next visit's, puts it back
+//   on the shelf once, or drops it with an event when the run can't own it any more;
 // - malformed actions throw IllegalAction (never a TypeError) and change nothing, and a
 //   sample of listed legal actions apply;
 // - no query or apply() changes the state it's given;
@@ -133,6 +137,15 @@ const firstHand = (events: readonly GameEvent[]) => {
   return e ? drawnBefore(e) : undefined;
 };
 
+/** D-196: a shop offer as a hold keeps it, its kind and id (null for a service). */
+const goodOf = (o: { kind: string; id?: string } | undefined) =>
+  o && o.kind !== 'service' ? { kind: o.kind, id: o.id } : null;
+/** D-196: the unsold offers on the shelf that are this good. */
+const onShelf = (s: RunState, good: unknown) =>
+  (s.offers?.shop?.offers ?? []).filter(
+    (o) => o.kind !== 'service' && !o.sold && J(goodOf(o)) === J(good),
+  ).length;
+
 /** The state without its pin (D-186), as if the pinned card had been left alone. */
 function withoutPin(s: RunState): RunState {
   const { pinned: _pinned, ...rest } = s;
@@ -184,6 +197,7 @@ const ACTION_KINDS: Record<Action['t'], true> = {
   answerChangeOrder: true,
   strikeCard: true,
   pin: true,
+  hold: true,
   debug: true,
 };
 const DEBUG_OPS: Record<DebugAction['op'], true> = {
@@ -324,6 +338,8 @@ class Checker {
     }
     if (a.t === 'strikeCard') this.checkStrike(s, a, out.state, out.events);
     if (a.t === 'pin') this.checkPin(s, a, out.state, out.events);
+    if (a.t === 'hold') this.checkHold(s, a, out.state, out.events);
+    this.checkHeldBack(s, out.state, out.events);
     if (a.t === 'reroll' || (a.t === 'useTool' && out.events.some((e) => e.t === 'handDrawn'))) {
       this.checkRedraw(s, out.state);
     }
@@ -615,6 +631,66 @@ class Checker {
   }
 
   /**
+   * D-196: a hold is a free action. It holds shop offer i, moves the hold there, or lets it go,
+   * and nothing else changes. A refresh after it, when one can be bought, keeps the held good on
+   * the shelf, once.
+   */
+  checkHold(
+    s: RunState,
+    a: Extract<Action, { t: 'hold' }>,
+    out: RunState,
+    events: readonly GameEvent[],
+  ) {
+    this.see('check:hold');
+    const good = goodOf(s.offers?.shop?.offers[a.i]);
+    if (!good) {
+      this.fail('a hold on a service or on nothing applied', a);
+      return;
+    }
+    const on = J(s.held) !== J(good);
+    if (J(out.held) !== J(on ? good : undefined))
+      this.fail('a hold didn’t hold or let go the good', { was: s.held, now: out.held });
+    if (J({ ...out, held: undefined }) !== J({ ...s, held: undefined }))
+      this.fail('a hold changed more than the hold');
+    const e = events.find((x) => x.t === 'goodHeld');
+    if (e?.t !== 'goodHeld' || e.i !== a.i || e.held !== on || J(e.good) !== J(good))
+      this.fail('a hold sent no goodHeld event, or the wrong one', e);
+    if (!on || !rules.canRefresh(out).ok) return;
+    this.see('check:holdRefresh');
+    const next = rules.apply(out, { t: 'refreshShop' }).state;
+    if (J(next.held) !== J(good) || onShelf(next, good) !== 1)
+      this.fail('a refresh didn’t keep the held good on the shelf', { good, held: next.held });
+  }
+
+  /**
+   * D-196: each stocking after a hold, a refresh's or the next visit's, puts the held good back
+   * on the shelf once, or drops it with an event when the run owns it or (a special piece) its
+   * type is at its limit.
+   */
+  checkHeldBack(s: RunState, out: RunState, events: readonly GameEvent[]) {
+    if (!s.held || !events.some((e) => e.t === 'shopOpened' || e.t === 'shopRefreshed')) return;
+    const drop = events.find((e) => e.t === 'holdDropped');
+    if (drop?.t === 'holdDropped') {
+      const owned =
+        (drop.good.kind === 'blueprint' && out.blueprints.some((b) => b.id === drop.good.id)) ||
+        (drop.good.kind === 'upgrade' && out.upgrades.includes(drop.good.id));
+      if (out.held !== undefined || J(drop.good) !== J(s.held))
+        this.fail('a dropped hold stayed, or the wrong one went', drop);
+      if (
+        (drop.why === 'owned') !== owned ||
+        (drop.why === 'limit') !== (drop.good.kind === 'piece')
+      )
+        this.fail('a hold dropped for the wrong reason', drop);
+      return;
+    }
+    this.see('check:holdBack');
+    if (J(out.held) !== J(s.held))
+      this.fail('a stocking moved the hold', { was: s.held, now: out.held });
+    if (onShelf(out, s.held) !== 1)
+      this.fail('a stocking didn’t put the held good back on the shelf once', s.held);
+  }
+
+  /**
    * D-186: a reroll or the Catalog's redraw leaves the card a pin kept where it is, and takes a
    * card pinned this week with the rest, and its pin with it.
    */
@@ -754,6 +830,12 @@ class Checker {
           reason: o.reason,
           ok,
         });
+      // D-196: canHold agrees with apply, and the view marks the held good.
+      const hold = rules.canHold(s, o.i);
+      if (accepts(s, { t: 'hold', i: o.i }) !== hold.ok)
+        this.fail('canHold disagrees with apply', { i: o.i, hold });
+      if (!!o.held !== (s.held !== undefined && J(goodOf(o.offer)) === J(s.held)))
+        this.fail('shopOffers marks the wrong good held', { i: o.i, held: s.held });
     }
   }
 
@@ -797,6 +879,13 @@ class Checker {
       { t: 'pin', i: '0' },
       { t: 'pin' },
       ...(s.kept !== undefined ? [{ t: 'pin', i: s.kept }] : []),
+      // D-196.
+      { t: 'hold', i: s.offers?.shop?.offers.length ?? 0 },
+      { t: 'hold', i: -1 },
+      { t: 'hold', i: 0.5 },
+      { t: 'hold', i: '0' },
+      { t: 'hold' },
+      ...(strikeAt >= 0 ? [{ t: 'hold', i: strikeAt }] : []),
       { t: 'debug', op: 'giveGood', good: { kind: 'tool', id: 'zzz' } },
       { t: 'debug', op: 'giveGood', good: null },
       { t: 'debug', op: 'giveGood', good: { kind: 'nothing', id: 'bedroom' } },
@@ -820,7 +909,13 @@ class Checker {
       ...(strikeAt >= 0 ? [{ t: 'buy', i: strikeAt, strike: { kind: 'piece', id: 'nope' } }] : []),
       // The wrong screen.
       ...(isBuild(s)
-        ? [{ t: 'leaveShop' }, { t: 'refreshShop' }, { t: 'buy', i: 0 }, { t: 'pick', i: 0 }]
+        ? [
+            { t: 'leaveShop' },
+            { t: 'refreshShop' },
+            { t: 'buy', i: 0 },
+            { t: 'pick', i: 0 },
+            { t: 'hold', i: 0 },
+          ]
         : [
             { t: 'pass' },
             { t: 'reroll' },
@@ -896,6 +991,9 @@ class Checker {
         this.fail('blueprints over their slots', [s.blueprints.length, slots]);
     }
     if (s.screen === 'shop' && !s.offers?.shop) this.fail('the shop screen has no visit');
+    // D-196: in the shop, the held good is on the shelf once, unsold.
+    if (s.screen === 'shop' && s.held && onShelf(s, s.held) !== 1)
+      this.fail('the held good isn’t on the shelf once', s.held);
     if ((s.screen === 'changeOrder') !== !!s.offers?.changeOrder) {
       this.fail('a change order offer off its screen, or the screen without one');
     }
@@ -1133,6 +1231,9 @@ const CHECKS: readonly string[] = [
   'check:pin',
   'check:pinKept',
   'check:keptRedraw',
+  'check:hold',
+  'check:holdRefresh',
+  'check:holdBack',
   ...keys(TOOL_USES).map((k) => `check:previewTool:${k}`),
   'check:toolRefused:move',
   'check:changeOrderOffer',

@@ -58,6 +58,11 @@ export interface GreedyOptions {
   early?: EarlyMode;
   /** Default 'none': it never strikes. 'fixed' strikes hand cards by STRIKE_ORDER (D-157). */
   strikes?: StrikeMode;
+  /**
+   * D-196: default true: as it leaves a shop, it holds the good it valued most but couldn't
+   * afford. False never holds (the paired trial's other arm).
+   */
+  holds?: boolean;
 }
 
 export interface RankedPlay {
@@ -187,10 +192,11 @@ function completesEarly(rules: Rules, state: RunState, mode: EarlyMode): boolean
 }
 
 /** The policy's label for reports: 'greedy', or 'greedy · early always · strikes fixed'. */
-function labelOf(early: EarlyMode, strikes: StrikeMode): string {
+function labelOf(early: EarlyMode, strikes: StrikeMode, holds: boolean): string {
   const parts = ['greedy'];
   if (early !== 'never') parts.push(`early ${early}`);
   if (strikes !== 'none') parts.push(`strikes ${strikes}`);
+  if (!holds) parts.push('no holds');
   return parts.join(' · ');
 }
 
@@ -214,14 +220,17 @@ function listsLoneTile(rules: Rules, state: RunState, p: PlaceAction): boolean {
 export function makeGreedy(opts: GreedyOptions = {}): Policy {
   const early = opts.early ?? 'never';
   const strikes = opts.strikes ?? 'none';
+  const holds = opts.holds ?? true;
   return {
     name: 'greedy',
-    label: labelOf(early, strikes),
+    label: labelOf(early, strikes, holds),
     act(rules: Rules, state: RunState, rng: Rng): Action {
       // M4b, D-144: one of the two change orders, by what its card says (orders.ts).
       if (state.screen === 'changeOrder') return pickChangeOrder(rules, state);
       const salt = rng.u32();
-      if (state.screen === 'shop') return shopAct(rules, state, rng, { salt, strikes, early });
+      if (state.screen === 'shop') {
+        return shopAct(rules, state, rng, { salt, strikes, early, holds });
+      }
       if (completesEarly(rules, state, early)) return { t: 'completeEarly' };
       // D-157: a strike first, so the card that takes the struck one's slot is in the week.
       const strike = strikes === 'fixed' ? strikeAct(rules, state) : null;

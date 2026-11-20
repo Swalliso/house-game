@@ -300,6 +300,9 @@ function cleanAction(v: unknown): Action | null {
     }
     case 'refreshShop':
       return { t: 'refreshShop' };
+    case 'hold':
+      // D-196: a shop good held for the next visit, or let go.
+      return isInt(v.i) ? { t: 'hold', i: v.i } : null;
     case 'pick':
       return isInt(v.i) ? { t: 'pick', i: v.i } : null;
     case 'useTool': {
