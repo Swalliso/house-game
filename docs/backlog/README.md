@@ -103,7 +103,7 @@ reading the code, not from building anything.
 | [S07](s07-finished-rooms-light-up.md) | A fitted and grown room turns its lights on | S, then M | UI only, then rules | Stage 2 waits for the batch | Stage 1 Accepted 2026-11-18: #99, batch #93 (D-181); stage 2 waits for the user's go |
 | [S08](s08-client-at-the-door.md) | The client appears at each milestone, with hearts on their wishes | M | UI and art | Easier after S03 | Accepted 2026-11-18: #100, batch #93 (D-182) |
 | [S09](s09-their-things-move-in.md) | The Count's coffin and the Barkers' dog bed | M | UI and art | | Accepted 2026-11-18: #101, batch #93 (D-183) |
-| [S10](s10-house-builds-itself.md) | The house rebuilds itself on the end screen | M | UI only | S01 played | Not started; S01 played 2026-11-18 |
+| [S10](s10-house-builds-itself.md) | The house rebuilds itself on the end screen | M | UI only | S01 played | Built 2026-11-20 (D-187): Play in the photo viewer, then the rebuild on the board the user asked for after it; waiting on their playtest on /dev/ |
 | [S11](s11-walkthrough-tour.md) | The camera tours the rooms after a win | M | UI only | S01 played | Not started; S01 played 2026-11-18 |
 | [S12](s12-dusk-when-you-win.md) | Evening falls and the rooms light up after a win | S, then M | UI only | S01 played; a mockup the user likes | Not started; S01 played 2026-11-18 |
 | [S13](s13-listing-on-the-end-screen.md) | The end screen writes a short listing for the house | S | UI only | The user's OK on the tone | Not started |

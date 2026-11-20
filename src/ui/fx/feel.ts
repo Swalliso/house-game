@@ -653,6 +653,13 @@ export const FEEL = {
     spinDeg: -9,
     /** A hovered or focused polaroid rises this far, in CSS px (whole pixels: crisp text). */
     liftPx: 6,
+    /**
+     * S10's first test (D-187): the viewer's Play steps through the strip, a photo every
+     * `playMs` (about two a second), each with a thock a little higher than the last
+     * (`playRate` more each time, from 1).
+     */
+    playMs: 500,
+    playRate: 0.08,
   },
 
   /**
@@ -825,6 +832,32 @@ export const FEEL = {
     confetti: 1.6,
     /** A hurried look: the rest of the crowd's walk plays this many times as fast. */
     hurry: 4,
+  },
+
+  /**
+   * The house builds itself (S10, D-187, board/TimelapseLayer.tsx): `delayMs` after the look down
+   * the street comes back (or the last tally, with no look), the lot is cleared to how the run
+   * began for `startMs`, and the house goes up again build by build (screens/photos.ts
+   * buildSteps), plain cuts `stepMs` apart, each with its place sound a little higher. All of it
+   * keeps within `maxMs`: with more builds than fit, each is shorter. The finished house holds
+   * `holdMs`, then the board is live again and the photos deal in. A click, a key or the wheel
+   * skips it at once. Off with Reduce motion, for a debug run and for a run loaded already over,
+   * as the look down the street is.
+   */
+  timelapse: {
+    delayMs: 250,
+    startMs: 300,
+    stepMs: 120,
+    holdMs: 300,
+    maxMs: 5000,
+    /**
+     * The place sounds (`place-room`, `place-yard`) climb the tally's ladder from `rate`, this many
+     * of its steps over the rebuild (four steps of a major pentatonic: up a major sixth), at
+     * `gain`.
+     */
+    rate: 0.85,
+    ladderSteps: 4,
+    gain: 0.5,
   },
 
   /**

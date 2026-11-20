@@ -25,6 +25,17 @@ describe('the board layers', () => {
     expect(LAYER.weather).toBeLessThan(LAYER.ghost);
   });
 
+  it('put the house building itself over the live lot, under the tree tops and the interface', () => {
+    // D-187: the time-lapse covers the lot's ground, walls and household; the tree tops and the
+    // lot's life (the crowd on the sidewalk, on the canopy's layer) stay in front of it.
+    expect(LAYER.overhang).toBeLessThan(LAYER.timelapse);
+    expect(LAYER.timelapse).toBeLessThan(LAYER.roof);
+    expect(LAYER.timelapse).toBeLessThan(LAYER.canopy);
+    expect(LAYER.timelapse).toBeLessThan(LAYER.highlights);
+    expect(LAYER.timelapse).toBeLessThan(LAYER.labels);
+    expect(layerVars()['--z-timelapse']).toBe(String(LAYER.timelapse));
+  });
+
   it('give CSS a --z variable for every layer', () => {
     const vars = layerVars();
     expect(Object.keys(vars)).toHaveLength(Object.keys(LAYER).length);
