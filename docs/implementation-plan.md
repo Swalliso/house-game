@@ -691,11 +691,11 @@ type HouseCondition =                             // about the house: specs, req
   | { stages: { fromPhase: number; condition: HouseCondition }[] }   // by milestone: a household that grows
   | { and: HouseCondition[] } | { or: HouseCondition[] } | { not: HouseCondition }
 // Counts over piece types count rooms by their own card, weighted by countsAs modifiers for
-// that type: Bunk Beds make a Bedroom count twice, and a Kitchen Island doesn't add a Dining
-// Room (D-101). A count with a `max` reads max(once, min(weighted, max)), each piece once in
-// `once` (D-198): Bunk Beds lift it to the max, never past it. A count with a `max` over piece
-// types is that type's limit (D-102, D-104), at the weighted count, and so is a card's
-// `perHouse` (D-165).
+// that type: Bunk Beds make a Bedroom count twice (D-101). (A Kitchen Island never added a
+// Dining Room, and since D-194 it doesn't count as one at all.) A count with a `max` reads
+// max(once, min(weighted, max)), each piece once in `once` (D-198): Bunk Beds lift it to the
+// max, never past it. A count with a `max` over piece types is that type's limit (D-102, D-104),
+// at the weighted count, and so is a card's `perHouse` (D-165).
 ```
 
 ### Effect kinds
@@ -756,7 +756,7 @@ type Modifier =
   | { kind: 'blockPenalties'; target: Selector; from: Selector }     // Soundproofing: Loud neighbors' penalties don't apply
   | { kind: 'countsAs'; target: Selector; as: PieceId; times?: number }
   | { kind: 'link'; among: PieceId[] }                             // touching pieces of these types link (no content since D-143)
-  | { kind: 'grantEffect'; target: Selector; effect: Effect }        // Good Bones; counts from the grant week
+  | { kind: 'grantEffect'; target: Selector; effect: Effect }        // Good Bones, Kitchen Island (D-194); counts from the grant week
   | { kind: 'perCountOver'; match: Selector; over: number; pct: number }  // Juniper's room limit
   | { kind: 'setBonus'; set?: SetId; pct: number }                   // +N% to a set's Points and +Mult (Thanksgiving, Architect)
   | { kind: 'budget'; target: Selector | 'all'; pct: number }        // Dale: economy output doubled
@@ -1607,7 +1607,7 @@ Intensity is measured against **pace**: `max(1, (this phase's target − the sco
   - an installed fixture shows where it fits, and as its badge otherwise, so a purchase is always visible:
     - furniture: the Fireplace (LimeZu's animated stove and flue, 32 px wide, so a one-cell or one-cell-deep room, or a Bedroom or Dining Room whose bed or table takes the room, keeps its badge). It takes a Living Room's north wall, with the sofa beside it where the wall is long enough (a landscape room) or in front of it; a Library's beside a bookcase (a narrow one where a full one won't fit beside it; where neither fits, the bookcase stays and the Fireplace shows as its badge); a Kitchen's beside the range, in the counter's place; a Sunroom's with pots of flowers; elsewhere beside the key piece. Bunk Beds stand in place of the bed, against the north wall or in the middle of the floor. The Kitchen Island is a counter with a bowl of fruit in the middle of the kitchen, 24 or 16 px wide where the full one won't fit (an L-Kitchen's arm, beside a door's walkway).
     - painted with the room, our own drawings in LimeZu's palette: Soundproofing pads the room's side of its wall bands (on the walls canvas, over the furniture, so it always shows) and its north faces; Blackout Curtains draw drapes over the room's windows and hang across the widest stretch of north face the furniture leaves in view (a room with neither, like a Closet, keeps the badge); a Skylight lays a four-pane patch of sun over the floor and furniture (and a Sunny room has the sun along its sunny wall, deeper under its windows, D-120); the Chandelier hangs over the room in its own light; and a Bay Window turns one cell of outside wall to glass, with its bay outside, the street side first
-    - the yard's fixtures show unless a door keeps them off (then their badge does): the Sprinkler on its Lawn with a wet patch round it, the Pergola over its Patio (in place of the parasol; where a door opens onto the Patio, a shallower or narrower cut of it on the far side, its badge only where doors open onto two sides), and Garden Lights as a bollard at each front corner of the piece, each with its light on the ground
+    - the yard's fixtures show unless a door keeps them off (then their badge does): the Sprinkler on its Lawn with a wet patch round it, the Pergola over its Patio (in place of the parasol; where a door opens onto the Patio, a shallower or narrower cut of it on the far side, its badge only where doors open onto two sides) or its Lawn (D-194: the same cuts, with nothing under it), and Garden Lights as a bollard at each front corner of the piece, each with its light on the ground
 - **The yard pieces** are laid out by rules from the placed pieces too, never by chance (`src/ui/art/yard.ts`):
   - Their ground goes on the floor canvas, under the house's shadow: a Lawn's mown stripes, a Patio's herringbone pavers, a Driveway's concrete with a curb cut through the sidewalk where it meets the street, and a Pool's and a Hot Tub's water inside LimeZu's white coping (a 3 × 3 sheet of its tiles, laid over any rectangle). A flat piece has a darker 1 px edge, softer where it meets another piece of its kind (two Lawns, or two Driveways), so touching pieces read as one patch and each stays countable (D-093). A piece's ground stays on its own cells.
   - Their props stand on their cells as items, so they wobble and settle with their piece: a parasol over a table and two chairs on a Patio; the house's one parked car on its oldest Driveway with room for it (nose in, or side on facing the house), standing only on that Driveway's own tiles, in another row or column of a ragged pack if it must (a lone tile has no room for it, D-111), orange or grey so it never matches the Garage's; a Pool's ladder and float; the Hot Tub's foam; the Fire Pit's animated fire in front of two stumps; a planter on a Flower Bed, and one per cell of a Herb Garden with greens instead of flowers; the Sapling on its soil; LimeZu's Greenhouse and modular Treehouse; a shed's front as the Henhouse's coop, with two hens on straw behind a picket front in its other cell; a Birdhouse on its pole.
@@ -1981,13 +1981,13 @@ Every fixture's modifiers target `{ host: true }`, written as "host" here. Draw 
 | Fireplace | most rooms (D-172: not a Bathroom, Closet, Garage or Mudroom) | `earn host +50`; `earn {host ∧ piece [livingRoom, library]} +50` (so +100 there) | Common | M3a |
 | Skylight | any room | `grantTag host Sunny`; `removeTag host Dark` | Common | M3a |
 | Blackout Curtains | most rooms (D-172: not a Bathroom, Closet or Garage) | `grantTag host Dark`; `removeTag host Sunny` (D-120) | Common | M3a |
-| Soundproofing | any room | `blockPenalties host from {tag Loud}` (the street included) | Common | M3a |
-| Kitchen Island | kitchen | `countsAs host diningRoom`; `earn host +25` | Uncommon | M3a |
+| Soundproofing | any room | `blockPenalties host from {tag Loud}` (the street included); `earn host +25` (D-194) | Common | M3a |
+| Kitchen Island | kitchen | `earn host +25`; `grantEffect host neighbor [diningRoom, herbGarden] +2`, so its Kitchen's +2 for each becomes +4 (D-194; it was `countsAs host diningRoom`) | Uncommon | M3a |
 | Bunk Beds | bedroom | `countsAs host bedroom times 2` (counts twice in `count` conditions, such as the Hendersons' 4 Bedrooms, up to a `max` and never past it, D-198; once in sets) | Uncommon | M3a |
-| Bay Window | most exterior rooms (D-172: not a Bathroom, Closet or Garage) | `grantView host` | Common | M3a |
+| Bay Window | most exterior rooms (D-172: not a Bathroom, Closet or Garage) | `grantView host`; `earn host +25` (D-194) | Common | M3a |
 | Sprinkler | lawn | `earn host +100` | Common | M3a |
-| Pergola | patio | `grantView host`; `earn host +50` | Uncommon | M3a |
-| Garden Lights | any yard piece | `grantTag host Pretty`; `earn {host ∧ in frontYard} +50` | Common | M3a |
+| Pergola | patio or lawn (D-194) | `grantView host`; `earn host +50` | Uncommon | M3a |
+| Garden Lights | any yard piece | `grantTag host Pretty`; `earn host +25`; `earn {host ∧ in frontYard} +25` (so +50 in front; D-194) | Common | M3a |
 | **Chandelier** *(D-056)* | dining room or living room | `xMult times 125 when {host: {inSet: entertainer}}`: ×1.25 Mult while its room is part of an Entertainer. Shop only (draw weight 0). | Rare | M3a |
 
 `fits` is checked when a fixture is installed. A Bay Window stays if its room later becomes interior. D-172: a fixture that leaves a few room types out (`{ all: [room, { not: { piece: […] } }] }`) reads "most rooms" on its card, a variant or a member's room goes by its type, and a refused install names the room ("A Fireplace goes in most rooms, not a Bathroom."). No fixture goes in a Sapling, which becomes a Tree, so Garden Lights fit every yard piece but that one (D-095).
