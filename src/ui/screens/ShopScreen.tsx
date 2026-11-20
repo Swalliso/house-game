@@ -5,6 +5,9 @@
 // fixture, on sale or in a crate, says what it's worth in your house (D-107): the rules'
 // fixtureValue() does that. So does each blueprint, the free Housewarming pick included (D-141):
 // the rules' blueprintValue() does that, and each has its own icon (sprites.ts BLUEPRINT_ICONS).
+// And so does each piece and tool, on the shelf or in an open crate (D-193): the rules'
+// pieceValue() and toolValue(), a piece's just after the shop paints, as its search is the
+// dearest. A crate itself and an upgrade have no line.
 //
 // M5a draws it as a wood sheet over the board: the budget as the header's hero counter, the
 // goods as paper cards of one size packed onto shelves (each with its art, its kind and
@@ -17,7 +20,7 @@
 // third it's the whole yard. A line under the shelves says what's still to come.
 
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { computed, signal } from '@preact/signals';
+import { computed, effect, signal } from '@preact/signals';
 import {
   CONTENT,
   lastShopText,
@@ -26,7 +29,12 @@ import {
   type FixtureId,
   type FixtureValue,
   type OfferView,
+  type PieceId,
+  type PieceValue,
+  type RunState,
   type ServiceId,
+  type ToolId,
+  type ToolValue,
 } from '../../rules/index.ts';
 import { audio } from '../audio/audio.ts';
 import { busy } from '../fx/director.ts';
@@ -42,6 +50,8 @@ import { BLUEPRINT_ICONS, TOOL_ICONS } from '../sprites.ts';
 import {
   BlueprintWorth,
   FixtureWorth,
+  PieceWorth,
+  ToolWorth,
   goodKind,
   goodLines,
   goodName,
@@ -93,6 +103,85 @@ const fixtureValues = computed(() => {
 /** A fixture's line: its best host in your house and what it would add (D-107). */
 function Worth({ id }: { id: FixtureId }) {
   return <FixtureWorth value={fixtureValues.value.get(id) ?? null} />;
+}
+
+/** The goods on the shelf not yet sold, and an open crate's options. */
+function goodsOnOffer(s: RunState) {
+  const shelf = (s.offers?.shop?.offers ?? []).filter((o) => !('sold' in o && o.sold));
+  return [...shelf, ...(s.offers?.pick?.options ?? [])];
+}
+
+/**
+ * D-193: what each tool on offer (or in an open crate) would do for your house, from the rules'
+ * toolValue(): once per state, not per render.
+ */
+const toolValues = computed(() => {
+  const s = run.value;
+  const out = new Map<ToolId, ToolValue | null>();
+  if (s.screen !== 'shop') return out;
+  for (const o of goodsOnOffer(s)) {
+    if (o.kind === 'tool' && !out.has(o.id)) out.set(o.id, rules.toolValue(s, o.id));
+  }
+  return out;
+});
+
+/** A tool's line: what it would add the week it's used, or what it would do here (D-193). */
+function ToolLine({ id }: { id: ToolId }) {
+  return <ToolWorth value={toolValues.value.get(id) ?? null} />;
+}
+
+/**
+ * D-193: what each piece on offer (or in an open crate) would add at its best spot, from the
+ * rules' pieceValue(). A piece's search is the dearest of the lines (its best few spots tallied,
+ * then each week left), so its line lands just after the shop paints, a piece a task: opening
+ * the shop or a crate, or a refresh, never waits on them. A piece keeps its line from earlier in
+ * the visit until its new one lands, and a click that changes nothing they read (buying a
+ * fixture) costs nothing, as the rules carry the values over.
+ */
+const pieceValues = signal<{ visit: string; values: ReadonlyMap<PieceId, PieceValue | null> }>({
+  visit: '',
+  values: new Map(),
+});
+let pieceJob = 0;
+
+/** After the next paint, as Preact's effects run, or soon where nothing paints (tests). */
+function afterPaint(fn: () => void): void {
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => setTimeout(fn));
+  else setTimeout(fn);
+}
+
+effect(() => {
+  const s = run.value;
+  const job = ++pieceJob;
+  if (s.screen !== 'shop') return;
+  const shop = s.offers?.shop;
+  const visit = `${s.phase}/${shop?.number ?? 0}/${shop?.forced ? s.week : ''}`;
+  if (pieceValues.peek().visit !== visit) pieceValues.value = { visit, values: new Map() };
+  const ids = [...new Set(goodsOnOffer(s).flatMap((o) => (o.kind === 'piece' ? [o.id] : [])))];
+  const next = () => {
+    const id = ids.shift();
+    if (job !== pieceJob || id === undefined) return;
+    const values = new Map(pieceValues.peek().values).set(id, rules.pieceValue(s, id));
+    pieceValues.value = { visit, values };
+    if (ids.length > 0) afterPaint(next);
+  };
+  if (ids.length > 0) afterPaint(next);
+});
+
+/**
+ * A piece's line: what it would add at its best spot, and over the run (D-193). Until it lands,
+ * an empty strip holds its place.
+ */
+function PieceLine({ id }: { id: PieceId }) {
+  const { values } = pieceValues.value;
+  if (!values.has(id)) {
+    return (
+      <div class="pcard-worth none" aria-hidden="true">
+        {'\u00a0'}
+      </div>
+    );
+  }
+  return <PieceWorth value={values.get(id) ?? null} />;
 }
 
 /**
@@ -249,6 +338,8 @@ function OfferCard({ o, mixed }: { o: OfferView; mixed: boolean }) {
       )}
       {o.offer.kind === 'fixture' && !sold && <Worth id={o.offer.id} />}
       {o.offer.kind === 'blueprint' && !sold && <Plan id={o.offer.id} />}
+      {o.offer.kind === 'piece' && !sold && <PieceLine id={o.offer.id} />}
+      {o.offer.kind === 'tool' && !sold && <ToolLine id={o.offer.id} />}
       <footer class="offer-foot">
         {sold ? (
           <span class="sold-stamp">Sold</span>
@@ -361,6 +452,7 @@ function CrateOption({
       {rarity === 'rare' && <span class="offer-shine" aria-hidden="true" />}
       {good.kind === 'fixture' && <Worth id={good.id} />}
       {good.kind === 'blueprint' && <Plan id={good.id} />}
+      {good.kind === 'piece' && <PieceLine id={good.id} />}
       <footer class="offer-foot">
         <Button
           size="sm"

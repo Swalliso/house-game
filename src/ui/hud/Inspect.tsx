@@ -80,7 +80,16 @@ import {
 import { Button, Icon } from '../kit/kit.tsx';
 import { BLUEPRINT_ICONS } from '../sprites.ts';
 import type { IconName } from '../theme/art.ts';
-import { BlueprintWorth, GoodBody, goodName, offerGood, type GoodRef } from './goods.tsx';
+import {
+  BlueprintWorth,
+  FixtureWorth,
+  GoodBody,
+  goodName,
+  offerGood,
+  PieceWorth,
+  ToolWorth,
+  type GoodRef,
+} from './goods.tsx';
 import { extraSlotWords } from './household.ts';
 import { Tip } from './Tip.tsx';
 import './inspect.css';
@@ -819,6 +828,29 @@ function PlacingInfo() {
   );
 }
 
+/**
+ * What a good would do for your house, from the rules (D-107, D-141, D-193): a blueprint you hold
+ * says what it's adding; one on offer, a fixture, a piece in Your goods or on offer, and a tool
+ * say what they'd add (in the shop, the next week's). Crates and upgrades have no line, and
+ * nothing does off the build and shop screens.
+ */
+function GoodWorth({ good }: { good: GoodRef }) {
+  const s = run.value;
+  if (s.screen !== 'build' && s.screen !== 'shop') return null;
+  switch (good.kind) {
+    case 'blueprint':
+      return <BlueprintWorth value={rules.blueprintValue(s, good.id)} where="panel" />;
+    case 'fixture':
+      return <FixtureWorth value={rules.fixtureValue(s, good.id)} where="panel" />;
+    case 'piece':
+      return <PieceWorth value={rules.pieceValue(s, good.id)} where="panel" />;
+    case 'tool':
+      return <ToolWorth value={rules.toolValue(s, good.id)} where="panel" />;
+    default:
+      return null;
+  }
+}
+
 /** A blueprint, supply, reserve piece, or shop offer: what it does, and Sell where it can be sold. */
 function ItemInfo({
   good,
@@ -837,10 +869,7 @@ function ItemInfo({
         {goodName(good)}
       </h2>
       <GoodBody good={good} where={!sellAs && good.kind !== 'piece'} />
-      {/* D-141: what a blueprint you hold is adding, from the rules. */}
-      {good.kind === 'blueprint' && sellAs && (
-        <BlueprintWorth value={rules.blueprintValue(s, good.id)} where="panel" />
-      )}
+      <GoodWorth good={good} />
       {good.kind === 'blueprint' && sellAs && (
         <p class="muted">Bought in week {s.blueprints[sellAs.i]?.boughtWeek}.</p>
       )}

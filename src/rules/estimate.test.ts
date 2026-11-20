@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import type { PieceId, PlaceAction, RunState, SpecDef } from './index.ts';
+import type {
+  BlueprintDef,
+  BlueprintId,
+  Content,
+  PieceId,
+  PlaceAction,
+  RunState,
+  SpecDef,
+} from './index.ts';
 import { followedLines } from './estimate.ts';
 import { withFixture } from './fixtures.ts';
 import { computeLayout } from './layout.ts';
@@ -524,5 +532,70 @@ describe('the checklist in the estimate', () => {
     const held = withLines([KITCHEN_DINING], [...house, ['diningRoom', 0, 6]], 'diningRoom');
     expect(held.R.checklist(held.s).find((l) => l.id === 'kitchenDining')?.met).toBe(true);
     expect(held.R.estimatePlay(held.s, place(0, 0, 2)).specHint).toBe(false);
+  });
+});
+
+describe('what the value lines’ estimate reads beyond the bots’ (D-193)', () => {
+  /** A run on these rows with these pieces built and this hand, under these rules. */
+  const on = (R: Rules, rows: string[], placements: Placement[], ...ids: PieceId[]): RunState => ({
+    ...R.newRun(setup('estimate')),
+    house: houseFrom(R.content, rows, placements),
+    hand: ids.map((id) => ({ kind: 'piece', id })),
+  });
+
+  it('reads what a new piece would touch, where a modifier asks: a Creekside lot', () => {
+    // Creekside: a piece touching the creek earns +100%. Here the creek runs down the right edge.
+    const content: Content = {
+      ...C,
+      lotTraits: {
+        ...C.lotTraits,
+        creekside: {
+          id: 'creekside',
+          name: 'Creekside',
+          blurb: '',
+          when: { terrain: 'creek', min: 1 },
+          modifiers: [{ kind: 'earn', target: { touching: { feature: 'creek' } }, pct: 100 }],
+        },
+      },
+    };
+    const R = createRules(content);
+    const s = on(
+      R,
+      emptyRows(8, 8).map((r) => `${r.slice(0, 7)}C`),
+      [],
+      'sapling',
+    );
+    // A Sapling's +1 by the creek is +2; the bots' estimate counts "touching" as never.
+    const by = place(0, 6, 3);
+    expect(exactIn(R, s, by)).toBe(2);
+    expect(R.estimatePlay(s, by, { touching: true }).delta).toBe(2);
+    expect(R.estimatePlay(s, by).delta).toBe(1);
+    // Away from it, both agree.
+    const away = place(0, 2, 3);
+    expect(R.estimatePlay(s, away, { touching: true }).delta).toBe(exactIn(R, s, away));
+  });
+
+  it('reads a modifier that has a piece earn nothing: its own pay, and its neighbor’s', () => {
+    // A blueprint as A litter of puppies is: Flower Beds earn nothing.
+    const puppies: BlueprintDef = {
+      id: 'puppies' as BlueprintId,
+      name: 'Puppies',
+      tier: 'core',
+      rarity: 'common',
+      price: 4,
+      modifiers: [{ kind: 'earnNothing', target: { piece: 'flowerBed' } }],
+      offered: false,
+    };
+    const R = createRules({ ...C, blueprints: { ...C.blueprints, [puppies.id]: puppies } });
+    const s: RunState = {
+      ...on(R, emptyRows(8, 8), [['flowerBed', 2, 2]], 'flowerBed'),
+      blueprints: [{ id: 'puppies' as BlueprintId, boughtWeek: 1 }],
+    };
+    // Beside the other Flower Bed: its own pay, and +1 for the other, all earning nothing. The
+    // bots' estimate counts both.
+    const beside = place(0, 3, 2);
+    expect(exactIn(R, s, beside)).toBe(0);
+    expect(R.estimatePlay(s, beside, { earnNothing: true }).delta).toBe(0);
+    expect(R.estimatePlay(s, beside).delta).toBeGreaterThan(0);
   });
 });
