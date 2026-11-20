@@ -1,6 +1,7 @@
 // The drive planner for the Driveway pack (D-140), as enclosure.ts plans Fences (D-106).
 //
-// A Garage is built like any room and earns only while the street or a Driveway touches it.
+// A Garage is built like any room, and earns most of its keep only while the street or a
+// Driveway touches it (D-195: +2 of its own anywhere; its +3, garage sales and workshop wait).
 // The rules list only a pack's suggested shapes (a straight 3 and 5), and a Driveway's worth is
 // in the Garage it reaches, so the greedy bot would never lay one on purpose. drivePlans()
 // finds, for each piece that stands unreached, the cheapest run of free tiles from the street
@@ -40,26 +41,71 @@ function names(sel: Selector, def: PieceDef): boolean {
   return false;
 }
 
-/** The pieces that earn nothing until one of `pack` touches them (an unreached Garage). */
+/** Whether a selector names the street (the Garage's "the street"). */
+function namesStreet(sel: Selector): boolean {
+  if (sel === 'all') return false;
+  if ('feature' in sel) {
+    return typeof sel.feature === 'string'
+      ? sel.feature === 'street'
+      : sel.feature.includes('street');
+  }
+  if ('any' in sel) return sel.any.some(namesStreet);
+  return false;
+}
+
+/**
+ * What a piece waits to touch, where that names `pack`: a requirement (it earns nothing till
+ * then), or a conditional (D-195: the Garage's +3, garage sales and workshop). Null if nothing.
+ */
+function waitsFor(def: PieceDef, pack: PieceDef): Selector | null {
+  for (const e of def.effects) {
+    const cond =
+      e.kind === 'requires' && !e.blocksPlacement
+        ? e.condition
+        : e.kind === 'conditional'
+          ? e.when
+          : null;
+    if (cond && 'touching' in cond && names(cond.touching, pack)) return cond.touching;
+  }
+  return null;
+}
+
+/**
+ * The pieces whose pay waits for one of `pack` to touch them, and that nothing they touch
+ * reaches yet: an unreached Garage. A tile on the lot's bottom row touches the street, as
+ * sim/house.ts reads it (house.test.ts checks that against the rules' tally).
+ */
 export function unreached(rules: Rules, state: RunState, pack: PieceDef): PlacedPiece[] {
-  const waiting = (def: PieceDef) =>
-    def.effects.some(
-      (e) =>
-        e.kind === 'requires' &&
-        !e.blocksPlacement &&
-        'touching' in e.condition &&
-        names(e.condition.touching, pack),
+  const { content } = rules;
+  const waiting = state.house.pieces.flatMap((p) => {
+    const sel = waitsFor(content.pieces[p.defId], pack);
+    return sel ? [{ p, sel }] : [];
+  });
+  if (waiting.length === 0) return [];
+  const { lot } = state.house;
+  const W = lot.width;
+  const H = lot.height;
+  const at = new Map<number, PlacedPiece>();
+  const cells = new Map<number, ReturnType<typeof placedCells>>();
+  for (const p of state.house.pieces) {
+    const d = content.pieces[p.defId];
+    const mine = placedCells(p.shape ?? d.shape, p.x, p.y, p.rot);
+    cells.set(p.uid, mine);
+    for (const c of mine) at.set(c.y * W + c.x, p);
+  }
+  const reached = (p: PlacedPiece, sel: Selector) =>
+    cells.get(p.uid)!.some(
+      (c) =>
+        (c.y === H - 1 && namesStreet(sel)) ||
+        DIRS.some(([dx, dy]) => {
+          const nx = c.x + dx;
+          const ny = c.y + dy;
+          if (nx < 0 || ny < 0 || nx >= W || ny >= H) return false;
+          const o = at.get(ny * W + nx);
+          return !!o && o.uid !== p.uid && names(sel, content.pieces[o.defId]);
+        }),
     );
-  if (!state.house.pieces.some((p) => waiting(rules.content.pieces[p.defId]))) return [];
-  const unmet = new Set(
-    rules
-      .currentTally(state)
-      .pieces.filter((p) => p.unmet !== undefined)
-      .map((p) => p.uid),
-  );
-  return state.house.pieces.filter(
-    (p) => unmet.has(p.uid) && waiting(rules.content.pieces[p.defId]),
-  );
+  return waiting.filter(({ p, sel }) => !reached(p, sel)).map(({ p }) => p);
 }
 
 export interface DrivePlan {

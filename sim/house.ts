@@ -12,9 +12,10 @@
 // - An outdoor room is "beside the house" (Y1) when it touches an indoor tile.
 // - D-189: a house has extra Bathrooms when it has more than the Bathroom ratio's floor and a
 //   spare: more than 2 for up to 2 Bedrooms, 3 for 3–4, 4 for 5–6.
-// - D-189: a Garage is reached as the rules read D-140's requirement: a tile of it on the
-//   street edge (the lot's bottom row), or beside a Driveway's tile. house.test.ts checks this
-//   against the rules' own tally, so a change to the Garage's requirement shows there.
+// - D-189: a Garage is reached as the rules read D-140's drive: a tile of it on the street
+//   edge (the lot's bottom row), or beside a Driveway's tile. Unreached, it earns its +2 alone
+//   (D-195; nothing before). house.test.ts checks this against the rules' own tally, so a change
+//   to the Garage's condition shows there.
 
 import type { Content, HouseState, PieceDef, PieceId } from '../src/rules/index.ts';
 import { placedCells } from '../src/rules/index.ts';
@@ -76,8 +77,9 @@ export interface HouseStats {
   /** D-189: more Bathrooms than the Bathroom ratio's floor plus one. */
   extraBathrooms: boolean;
   /**
-   * D-189: a Garage that neither the street nor a Driveway reaches (D-140). It earns nothing and
-   * has no drive, but still counts for Full House. False when there's no Garage.
+   * D-189: a Garage that neither the street nor a Driveway reaches (D-140). It has no drive, so
+   * it earns only its own +2 (D-195; nothing before), but still counts for Full House. False when
+   * there's no Garage.
    */
   garageUnreached: boolean;
   tiny: boolean;

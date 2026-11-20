@@ -920,12 +920,16 @@ const LAYOUTS: Partial<Record<PieceId, (y: Yard) => void>> = {
     butterfly(y);
   },
 
+  // A pack of one to three tiles (D-195): a sapling on each, the two looks taking turns.
   sapling: (y) => {
-    const { x, y: top } = y.box;
-    y.oval(x + 16, top + 27, 9, 3, SOIL, 0.55);
-    const s: SpriteId = y.hash % 2 ? 'sapling-1' : 'sapling-0';
-    const { w, h } = artSize(s);
-    y.put(s, x + Math.floor((CELL - w) / 2), top + 28 - h);
+    y.cells.forEach((c, k) => {
+      const x = c.x * CELL;
+      const top = c.y * CELL;
+      y.oval(x + 16, top + 27, 9, 3, SOIL, 0.55);
+      const s: SpriteId = (y.hash + k) % 2 ? 'sapling-1' : 'sapling-0';
+      const { w, h } = artSize(s);
+      y.put(s, x + Math.floor((CELL - w) / 2), top + 28 - h);
+    });
   },
 
   doghouse: (y) => {

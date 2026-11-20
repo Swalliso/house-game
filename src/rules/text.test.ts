@@ -184,8 +184,9 @@ describe('a compact hand card (D-121)', () => {
       // Playtest 4's fix (D-114), behind "Links the rooms it touches…" before this.
       hallway: ['+2 per touching room (up to 4)'],
       longHallway: ['+2 per touching room (up to 4)'],
-      // Built like any room (D-140), so its requirement is about pay: both in one short line
-      // ("…if touching the street or a Driveway" lost its last words).
+      // Built like any room (D-140), so its drive is about pay: what it earns there, in one
+      // short line ("…if touching the street or a Driveway" lost its last words). D-195: +2 of
+      // it comes anywhere, which Inspect says ("+2, +5 by…" runs a letter over the budget).
       garage: ['+5 by the street or a Driveway'],
       homeOffice: ['+2 every week'],
       lawn: ['+1 every week'],
@@ -209,8 +210,9 @@ describe('a compact hand card (D-121)', () => {
       mudroom: ['+50% to fenced Pet pieces'],
       pool: ['+12 every 3rd week'],
       sunroom: ['+6 every week while Sunny'],
-      hotTub: ['+3 per touching Patio'],
-      firePit: ['+50% to touching Patios'],
+      // D-195: "+3 per touching Patio, Pool, or Fire Pit" runs 41 letters.
+      hotTub: ['+3 per Patio, Pool, or Fire Pit'],
+      firePit: ['+50% to touching Social pieces'],
       henhouse: ['+1 budget every 2nd week'],
       birdhouse: ['+1 per touching Tree (up to 3)'],
       porch: ['+25% to touching rooms'],
@@ -370,19 +372,23 @@ describe('set chips (D-122)', () => {
     );
   });
 
-  it('the glossary names the Sparkle set at the content’s number, and the Garage’s requirement (D-140)', () => {
+  it('the glossary names the Sparkle set at the content’s number, and the Garage’s drive (D-140, D-195)', () => {
     const g = glossary(CONTENT);
     // Generated from the set, so a tuned number can't leave "×2" behind.
     expect(g.sparkle.text).toBe(
       'Multiplies Charm itself. Rare: the Full House set (×1.5) and a few Rare goods have it, and each needs a setup. Each source counts once a week.',
     );
-    expect(g.requirement.text).toContain('a Garage touching the street or a Driveway');
-    // The Garage's card says it plainly: built like any room, paid once it's reached.
+    // D-195: the Garage earns +2 off its drive, so it isn't among the pieces that earn nothing
+    // without something; its garage sales still count for the budget.
+    expect(g.requirement.text).not.toContain('Garage');
+    expect(g.budget.text).toContain('from Garage and Home Office');
+    // The Garage's card says it plainly: built like any room, +2 anywhere, and the rest once
+    // it's reached, each line with what it waits for.
     expect(cardText(CONTENT, CONTENT.pieces.garage).effects).toEqual([
-      'Earns nothing unless touching the street or a Driveway',
-      '+5 every week',
-      '+1 budget every 2nd week',
-      '+3 if touching the Old Shed', // D-145
+      '+2 every week',
+      '+3 every week if touching the street or a Driveway',
+      '+1 budget every 2nd week if touching the street or a Driveway',
+      '+3 if touching the Old Shed and the street or a Driveway', // D-145
     ]);
     expect(cardText(CONTENT, CONTENT.pieces.driveway).effects).toEqual([
       'Must be built touching the street or a Driveway',

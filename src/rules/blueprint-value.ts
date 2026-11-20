@@ -10,7 +10,8 @@
 //   and the week's total with one more counted (D-143), so the line can say what each adds.
 // - blueprintNeeds: when a blueprint would add nothing in the weeks left, what it's waiting
 //   for, in a few words ("No Dark rooms yet", "Green pieces here earn too little yet"), so its
-//   line points at a build.
+//   line points at a build. modifiersNeeds words any list of modifiers the same way, so a
+//   one-week tool's line says it too (D-193).
 
 import type {
   BlueprintDef,
@@ -213,12 +214,27 @@ export function blueprintNeeds(
   tally: Tally,
   stats: Readonly<Record<RunStat, number>>,
 ): string {
-  for (const mod of def.modifiers) {
+  return modifiersNeeds(content, def.modifiers, layout, tally, stats);
+}
+
+/**
+ * What a list of modifiers that would add nothing is waiting for, as blueprintNeeds words it: a
+ * blueprint's, or a one-week tool's (D-193: an Open House Party with no Social pieces yet).
+ * `layout` and `tally` are the house's with the modifiers in play.
+ */
+export function modifiersNeeds(
+  content: Content,
+  modifiers: readonly Modifier[],
+  layout: Layout,
+  tally: Tally,
+  stats: Readonly<Record<RunStat, number>>,
+): string {
+  for (const mod of modifiers) {
     if (!scoresWeek(mod)) continue;
     const needs = modifierNeeds(content, layout, tally, stats, mod);
     if (needs) return needs;
   }
-  for (const mod of def.modifiers) {
+  for (const mod of modifiers) {
     if (mod.kind !== 'earn' || mod.when) continue;
     const who = piecesText(content, mod.target);
     return `${who.charAt(0).toUpperCase()}${who.slice(1)} here earn too little yet`;

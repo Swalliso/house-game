@@ -148,28 +148,23 @@ describe('special pieces', () => {
 });
 
 describe('Playroom', () => {
-  it('+2 per touching Bedroom, and the Bedrooms lose 2 for the noise on top of its Loud tag', () => {
-    expectCard(
-      'playroom',
-      'indoor',
-      ['Loud', 'Kid'],
-      ['+2 per touching Bedroom', 'Touching Quiet neighbors get −2'],
-    );
+  it('+2 per touching Bedroom; Loud, so a Bedroom beside it loses 2, and that’s all (D-195)', () => {
+    expectCard('playroom', 'indoor', ['Loud', 'Kid'], ['+2 per touching Bedroom']);
     expect(earned(open, [['playroom', 0, 0]])).toEqual([0]);
-    // Between two Bedrooms: 2 + 2. Each Bedroom is 3, −2 for a Loud neighbor, and −2 from the
-    // aura: −1, which floors at 0.
+    // Between two Bedrooms: 2 + 2. Each Bedroom is 3, −2 for a Loud neighbor: 1. Until D-195 its
+    // aura took 2 more from each Quiet room, so every Bedroom it paid for netted −2.
     const t = tally(open, [
       ['playroom', 2, 0],
       ['bedroom', 0, 0],
       ['bedroom', 4, 0],
     ]);
-    expect(t.pieces.map((p) => p.earned)).toEqual([4, 0, 0]);
-    expect(t.pieces.map((p) => p.points)).toEqual([4, -1, -1]);
+    expect(t.pieces.map((p) => p.earned)).toEqual([4, 1, 1]);
+    expect(t.pieces.map((p) => p.points)).toEqual([4, 1, 1]);
   });
 
-  it('its aura is a flat −2 on Quiet pieces only, and it’s a Kid neighbor', () => {
-    // A Library with three Quiet Bedrooms: 2 × 3, −2 from the Playroom above it. The Bedrooms
-    // (+1 for the Library) don't touch the Playroom; the Closet does, but has no tags.
+  it('costs other Quiet pieces nothing, and it’s a Kid neighbor', () => {
+    // A Library with three Quiet Bedrooms: 2 × 3, and the Playroom above it takes nothing (its
+    // aura took 2 until D-195). The Closet beside the Playroom has no tags.
     const t = tally(open, [
       ['library', 2, 2],
       ['bedroom', 0, 2],
@@ -178,13 +173,8 @@ describe('Playroom', () => {
       ['playroom', 2, 0],
       ['closet', 4, 0],
     ]);
-    expect(t.pieces.map((p) => p.earned)).toEqual([4, 4, 4, 4, 0, 1]);
-    expect(t.pieces[0]!.lines).toContainEqual({
-      label: 'Playroom next door',
-      op: 'add',
-      value: -2,
-      from: [{ kind: 'piece', uid: 5 }],
-    });
+    expect(t.pieces.map((p) => p.earned)).toEqual([6, 4, 4, 4, 0, 1]);
+    expect(t.pieces[0]!.lines.map((l) => l.label)).toEqual(['Touching 3 Bedrooms']);
     // A Treehouse by a Tree gets its +2 per Kid neighbor: 2 + 2, and +1 out back (D-166).
     expect(
       earned(
@@ -322,14 +312,14 @@ describe('Sunroom', () => {
 });
 
 describe('Hot Tub', () => {
-  it('+3 per touching Patio, while it touches a room', () => {
+  it('+3 per touching Patio, Pool, or Fire Pit, while it touches a room (D-195)', () => {
     expectCard(
       'hotTub',
       'yard',
       ['Wet', 'Social'],
       [
         'Earns nothing unless touching a room',
-        '+3 per touching Patio',
+        '+3 per touching Patio, Pool, or Fire Pit',
         '+1 every week in the back yard',
       ],
     );
@@ -345,27 +335,47 @@ describe('Hot Tub', () => {
     // The Patio rule (D-105): with no room it earns nothing, and a Hallway isn't a room.
     expect(tally(open, patios).pieces[1]).toMatchObject({ earned: 0, unmet: 'touching a room' });
     expect(earned(open, [...patios, ['hallway', 2, 1, 1]])).toEqual([0, 0, 0, 0]);
+    // Since D-195 a Pool beside it counts as a Patio does (the Pool pays in its 3rd week), and so
+    // does a Fire Pit, here one touching no room, so its own aura is off: 3 + 1.
+    const tub = (by: Placement) => earned(open, [by, ['hotTub', 2, 0], ['closet', 2, 1]]);
+    expect(tub(['pool', 0, 0])).toEqual([0, 4, 1]);
+    expect(tub(['firePit', 1, 0])).toEqual([0, 4, 1]);
   });
 });
 
 describe('Fire Pit', () => {
-  it('touching Patios earn +50% while it touches a room; nothing else does', () => {
+  it('touching Social pieces earn +50% while it touches a room; nothing else does (D-195)', () => {
     expectCard(
       'firePit',
       'yard',
       ['Social'],
       [
         'Earns nothing unless touching a room',
-        'Touching Patios earn +50%',
+        'Touching Social neighbors earn +50%',
         '+2 per touching Boulder (up to 2)',
         '+1 every week in the back yard',
       ],
     );
     expect(earned(open, [['firePit', 0, 0]])).toEqual([0]);
+    // Beside a Living Room, a Social room: its +2 in the sun at +50% is 3. Until D-195 only a
+    // Patio was warmed. A Bedroom isn't Social, so it earns its plain 3.
+    expect(
+      earned(open, [
+        ['livingRoom', 0, 0],
+        ['firePit', 2, 0],
+      ]),
+    ).toEqual([3, 1]);
+    expect(
+      earned(open, [
+        ['bedroom', 0, 0],
+        ['firePit', 2, 0],
+      ]),
+    ).toEqual([3, 1]);
     // The Patio: +2 for the Kitchen, +2 for the Living Room and +1 out back (D-166), at +50%:
-    // 7.5 → 8. The Fire Pit earns its +1 out back, and the Hot Tub beside it its plain 3 + 1.
-    // Each touches a room (the Fire Pit the Kitchen, the Hot Tub the Living Room), as the Patio
-    // rule (D-105) asks.
+    // 7.5 → 8. The Kitchen beside the Fire Pit is Social too: its +2 in the sun and +3 of its
+    // own, 7.5 → 8. The Hot Tub: +3 for the Patio, +3 for the Fire Pit (D-195), +1 out back, at
+    // +50%: 10.5 → 11. The Fire Pit earns its +1 out back. Each outdoor room touches a room (the
+    // Fire Pit the Kitchen, the Hot Tub the Living Room), as the Patio rule (D-105) asks.
     const house: Placement[] = [
       ['patio', 2, 0],
       ['kitchen', 0, 1],
@@ -373,10 +383,9 @@ describe('Fire Pit', () => {
       ['firePit', 2, 2],
       ['hotTub', 3, 2],
     ];
-    // The Kitchen and the Living Room are in the sun (+2), and the Kitchen earns +3 of its own.
-    expect(earned(open, house)).toEqual([8, 5, 2, 1, 4]);
-    // With the Kitchen a row up, the Fire Pit touches no room, so its aura doesn't apply and
-    // the Patio earns its plain 5.
+    expect(earned(open, house)).toEqual([8, 8, 2, 1, 11]);
+    // With the Kitchen a row up, the Fire Pit touches no room, so its aura doesn't apply: the
+    // Patio earns its plain 5, the Kitchen 5, and the Hot Tub 3 + 3 + 1.
     const away = tally(open, [
       ['patio', 2, 0],
       ['kitchen', 0, 0],
@@ -384,7 +393,7 @@ describe('Fire Pit', () => {
       ['firePit', 2, 2],
       ['hotTub', 3, 2],
     ]);
-    expect(away.pieces.map((p) => p.earned)).toEqual([5, 5, 2, 0, 4]);
+    expect(away.pieces.map((p) => p.earned)).toEqual([5, 5, 2, 0, 7]);
     expect(away.pieces[3]!.unmet).toBe('touching a room');
     // Two Fire Pits, each touching the Kitchen too, add up: 2 + 1 at +100% is 6, shown as one
     // aura line.
