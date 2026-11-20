@@ -354,7 +354,7 @@ interface RunState {
   phaseStartScore: number
   budget: number
   hand: Card[]                         // this week's cards, the Rooms row then the Layout row (D-121: roomsRow 2, layoutRow 2); a Card is a piece or a fixture
-  reserve: ReservePiece[]              // bought pieces (2 slots) + extra slots: the crew's cards (crew: a starting piece, or one from its stock, D-171), an arrival's cards (arrival, D-103), the client's (client) and the standing stock (stock, D-160)
+  reserve: ReservePiece[]              // bought pieces (2 slots) + extra slots: the crew's cards (crew: a starting piece, or one from its stock, D-171), an arrival's cards (arrival, D-103), the client's (client), the standing stock (stock, D-160) and the wrong delivery's piece (surprise, D-188)
   stocked?: true                       // D-163: the standing stock has come (without `refill`, it comes once)
   supplies: (FixtureId | ToolId)[]     // bought fixtures and tools (3 slots), used as free actions
   rerollsLeft: number                  // reset to rerollsPerPhase at each phase start
@@ -426,7 +426,7 @@ type Action =
 - `toolUsed`, `findClaimed` (a find's reward, for its own little moment)
 - `tally` (week, per-piece lines, set lines, points, mult, each ×Mult source, total, budget, `fastForward`)
 - `setCompleted`, `specMet`, `specLost` (distinct moments for juice), `renovated`, `extended` (D-168)
-- `delivered` (D-160: the client's cards, the standing stock's top-up, and D-171 the crew's own card) and `crewTool` (D-171: the crew's tool came, or was sold with the supplies full)
+- `delivered` (D-160: the client's cards, the standing stock's top-up, D-171 the crew's own card, and D-188 the wrong delivery's piece, `from: 'surprise'`) and `crewTool` (D-171: the crew's tool came, or was sold with the supplies full)
 - `targetReached` (fires when the score first crosses the target)
 - `overtimeUsed`
 - `milestone` (phase, result `'onTime' | 'early' | 'overtime' | 'failed'`, weeks saved, overtime used, reward)
@@ -478,7 +478,7 @@ The UI keeps an event queue and plays it through an animation director (place �
 **Start of week:**
 
 1. Transforms resolve (a Sapling old enough becomes a Tree), so the board the player sees is the board that scores.
-2. In a phase's first week (never an overtime week), the household members due move in with their cards (D-103), then the client's deliveries for that phase land (D-160). In week 1 the standing stock then fills the reserve's extra slots up to one Hallway and one Fence pack, only what's missing, once (D-160, D-162, D-163; a first job's comes in Foundation's third week, and `refill` tops it up again at each later milestone).
+2. In a phase's first week (never an overtime week), the household members due move in with their cards (D-103), then the client's deliveries for that phase land (D-160). In week 1 the standing stock then fills the reserve's extra slots up to one Hallway and one Fence pack, only what's missing, once (D-160, D-162, D-163; a first job's comes in Foundation's third week, and `refill` tops it up again at each later milestone). Then the crew's own card (D-171), and in Framing's first week the wrong delivery's piece (D-188).
 3. The hand is drawn in two rows (D-121): `roomsRow` distinct Rooms cards (2) and `layoutRow` distinct Layout cards (2), each from its own pool: pieces, plus fixtures from phase 2. A type at its limit in the checklist draws at half weight (D-104).
 4. Each card with no play (no legal spot, no legal host, no Renovation and no extension) is swapped for another card from its row, up to `swapTries` (3) tries: the first with a play, else the last tried. A reroll redraws both rows (D-132) and swaps the same way; the reserve doesn't count. Its draw and its swaps leave out the cards it replaces, topping a row up from them only when its pool has too few others.
 
@@ -1780,7 +1780,7 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
     - crates: 4
     - company upgrades: 6–8
 - **Slots:**
-  - **Reserve:** 2 pieces. A reserved piece can be placed in any later week, and placing it doesn't use the week (D-163). Crew starting pieces, an arrival's cards, the client's deliveries, the standing stock and the crew's own card (D-171) use extra slots (D-103, D-160).
+  - **Reserve:** 2 pieces. A reserved piece can be placed in any later week, and placing it doesn't use the week (D-163). Crew starting pieces, an arrival's cards, the client's deliveries, the standing stock, the crew's own card (D-171) and the wrong delivery's piece (D-188) use extra slots (D-103, D-160).
   - **Supplies:** 3, shared by bought fixtures and tools, used as free actions in a build week.
   - **Blueprints:** 4, no duplicates.
   - Company upgrades add one of each (Storage Unit, Tool Belt, Drafting Table).
@@ -1824,6 +1824,7 @@ Grouped by the phase that builds them. Numbers are placeholders in `balance.ts` 
 - **Packs** (D-106): one Fence card places 1–8 connected tiles, and one Driveway card 1–8 (D-140; 1–6 before), in one week, as one piece.
 - **The standing stock** (D-160, D-162, D-163): in week 1 the reserve's extra slots are filled to hold one Hallway and one Fence pack, only what's missing (`standingStock` in `balance.ts`), once: `refill: false` (D-163). With `refill: true` they're topped up again at the start of each later milestone (never in overtime), as D-160 had it. A card of the type already in an extra slot counts (the Landscaper's Fence, an arrival's or the client's); one bought or copied doesn't. A first job's comes in Foundation's third week (`firstJobPhase`, `firstJobSlot`). Placing one doesn't use the week (D-163), and a strike of the type leaves the stock alone.
 - **Deliveries** (D-160): `ClientDef.deliveries` land at the start of their phase's first week, after the arrivals, marked `client`, in extra slots: Dale's Home Office and the Barkers' Doghouse in week 1. A delivery isn't a household member: it moves no Room for everyone and isn't in `arrived`.
+- **The wrong delivery** (D-188): once a run, in Framing's first week, a Pool, a Hot Tub or a Henhouse lands free in the reserve's extra slots, marked `surprise`, after the stock and the crew's card (`surpriseDelivery` in `balance.ts`: the phase and the pieces, all of draw weight 0). Which one comes from the seed alone: the first, in an order drawn once a run from `delivery/surprise`, whose type isn't at a limit for the client; if none fits, nothing comes. Never in a first job or an overtime week; a struck type still comes, as the stock does.
 - **Juniper:**
   - her limit becomes the spec "a house of 4–8 rooms", so it's an achievement rather than free from week 1, plus a −10% taste per room over 8. Under D-101 it's her A compact house (D-160's name): 4–8 rooms, filling 60% of their box
   - early-completion rewards doubled
@@ -1948,7 +1949,7 @@ Each trait's modifiers join the run's (source `lot`), and its `drawWeight` ones 
 
 ### Special pieces (shop, clients, crews; weight 0)
 
-The last four were Stretch in `content-brainstorm.md`, with the Sunroom. They're promoted to Core as shop pieces, so the shop has buildings worth buying (D-051). Every one uses existing effect kinds. The Sunroom has been a room of the weekly draw since D-120 (the rooms table above). The Birdhouse and the Fire Pit left the shop for the weekly draw's Layout row in D-145, arriving late (from Roofing and from Drywall) at half a card's weight, with the Porch, which was never a special piece; the shop, the Showroom and the Catalog hold the other six.
+The last four were Stretch in `content-brainstorm.md`, with the Sunroom. They're promoted to Core as shop pieces, so the shop has buildings worth buying (D-051). Every one uses existing effect kinds. The Sunroom has been a room of the weekly draw since D-120 (the rooms table above). The Birdhouse and the Fire Pit left the shop for the weekly draw's Layout row in D-145, arriving late (from Roofing and from Drywall) at half a card's weight, with the Porch, which was never a special piece; the shop, the Showroom and the Catalog hold the other six. Once a run, at Framing's start, one of the Pool, the Hot Tub and the Henhouse also comes free as the wrong delivery (D-188).
 
 | Item | Encoding | Built in |
 |---|---|---|
