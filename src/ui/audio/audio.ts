@@ -73,7 +73,9 @@ export type SoundId =
   // A finished room's lamp coming on (D-181).
   | 'light-on'
   // The client at the door (D-182): a thought bubble popping up.
-  | 'bubble';
+  | 'bubble'
+  // A hand card pinned for next week (D-186): a pushpin pressed into cork.
+  | 'pin';
 
 export interface PlayOptions {
   /** Exact playback rate. Giving one also turns off the random rate and gain spread. */
@@ -389,6 +391,16 @@ const SOUNDS: Record<SoundId, readonly Layer[]> = {
   // ---- The client at the door (D-182) ----
   // A thought bubble popping up: a quick, soft sine blip that bends upward.
   bubble: one([0.3, 0, 620, 0.002, 0.01, 0.07, 0, 1, 14, , , , , , , , , 0.6, 0.02]),
+
+  // ---- Pins (D-186) ----
+  // A pushpin pressed into cork: a high, dry tick over a short, soft knock.
+  pin: [
+    { at: 0, params: [0.3, 0, 1800, 0.001, 0, 0.015, 1, 1, , , , , , , , , , 1, , , -2500] },
+    {
+      at: 0.012,
+      params: [0.4, 0, 260, 0.001, 0.005, 0.06, 1, 1, -1, , , , , , , , , 0.5, 0.02, , -800],
+    },
+  ],
 };
 
 export const SOUND_IDS = Object.keys(SOUNDS) as readonly SoundId[];

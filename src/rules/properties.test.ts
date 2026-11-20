@@ -3,6 +3,7 @@
 // - scoreOnly equals preview().after
 // - replay(log) reproduces the state
 // - a strike from the hand (D-157) is a free action that keeps the hand's size
+// - a pin (D-186) is a free action, and next week's draw is the pin-less one with the kept card
 // - the same seed gives the same game
 
 import fc from 'fast-check';
@@ -10,7 +11,7 @@ import { describe, expect, it } from 'vitest';
 import type { Action, InstallAction, PlaceAction, RunState } from './index.ts';
 import { stream } from './rng.ts';
 import { createRules } from './run.ts';
-import { TEST_CONTENT } from './testing.ts';
+import { drawnBefore, keptInto, rowSlot, TEST_CONTENT } from './testing.ts';
 
 // Targets high enough that most random runs reach the second phase, low enough that some win.
 const content = {
@@ -27,9 +28,11 @@ const content = {
 };
 const rules = createRules(content);
 
+const clock = (x: RunState) => [x.screen, x.phase, x.slot, x.week, x.overtimeWeek, x.draws];
+
 /**
  * A random legal placement (a few tries near the house), or a pass; with `free`, sometimes a
- * free action instead (a reroll, a demolition, early completion, the auto-complete toggle).
+ * free action instead (a reroll, a demolition, early completion, the auto-complete toggle, a pin).
  * Driven by a seeded stream.
  */
 function randomAction(state: RunState, seed: string, step: number, free = false): Action {
@@ -58,6 +61,10 @@ function randomAction(state: RunState, seed: string, step: number, free = false)
       const p = rng.pick(state.house.pieces);
       const d = rules.previewDemolish(state, p.x, p.y);
       if (d.legal) return { t: 'demolish', x: p.x, y: p.y };
+    }
+    if (roll < 25 && state.hand.length > 0) {
+      const i = rng.int(state.hand.length);
+      if (rules.canPin(state, i).ok) return { t: 'pin', i };
     }
   }
   if (rng.chance(10)) return { t: 'pass' };
@@ -197,7 +204,6 @@ describe('properties', () => {
         s.hand.forEach((_, i) => {
           expect(strikes.some((a) => a.i === i)).toBe(striking.canStrikeCard(s, i).ok);
         });
-        const clock = (x: RunState) => [x.screen, x.phase, x.slot, x.week, x.overtimeWeek, x.draws];
         for (const a of strikes) {
           const out = striking.apply(s, a).state;
           expect(out.hand).toHaveLength(s.hand.length);
@@ -209,6 +215,47 @@ describe('properties', () => {
       { numRuns: 40 },
     );
     expect(listed).toBeGreaterThan(0);
+  }, 60_000);
+
+  // D-186: a pin keeps the hand, the week and the draws. When the pass after it starts another
+  // week with no milestone between, that week's draw is the one it makes with no pin, with the
+  // pinned card in its row, at its slot, in place of one of the draw's cards.
+  it('a pin is a free action, and next week’s draw is the pin-less one with the kept card in it', () => {
+    let kept = 0;
+    fc.assert(
+      fc.property(seedArb, fc.integer({ min: 0, max: 11 }), fc.nat(), (seed, steps, pick) => {
+        const end = playOut(seed, steps).states.at(-1)!;
+        if (end.screen !== 'build') return;
+        const pins = rules.legalActions(end).filter((a) => a.t === 'pin');
+        end.hand.forEach((_, i) => {
+          expect(pins.some((a) => a.i === i)).toBe(rules.canPin(end, i).ok);
+        });
+        if (pins.length === 0) return;
+        const a = pins[pick % pins.length]!;
+        const out = rules.apply(end, a).state;
+        expect(out.hand).toEqual(end.hand);
+        expect(clock(out)).toEqual(clock(end));
+        expect(out.pinned).toBe(end.pinned === a.i ? undefined : a.i);
+        if (out.pinned === undefined) return;
+        const { pinned: _pinned, ...bare } = out;
+        const withPin = rules.apply(out, { t: 'pass' });
+        const plain = rules.apply(bare, { t: 'pass' });
+        if (withPin.state.screen !== 'build' || withPin.events.some((e) => e.t === 'milestone')) {
+          expect(withPin.state.kept).toBeUndefined();
+          return;
+        }
+        const drawn = (events: typeof plain.events) =>
+          drawnBefore(events.find((e) => e.t === 'handDrawn'));
+        const card = end.hand[a.i]!;
+        const want = keptInto(content, drawn(plain.events), card, rowSlot(content, end.hand, a.i));
+        expect(drawn(withPin.events)).toEqual(want.hand);
+        expect(withPin.state.kept).toBe(want.i);
+        expect(withPin.state.hand[want.i]).toEqual(card);
+        kept++;
+      }),
+      { numRuns: 60 },
+    );
+    expect(kept).toBeGreaterThan(10);
   }, 60_000);
 
   it('the same seed gives the same game', () => {

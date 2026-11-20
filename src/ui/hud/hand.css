@@ -230,15 +230,93 @@
 .hand-card .pcard-alert {
   margin-top: var(--space-1);
 }
-/* A card swapped in (D-121): the reroll die as a badge on its top corner, over the ring, so it
-   takes no room from the name or the chips. Small enough to clear the shape glyph under it and
-   the row's label over a row's first card. Its words are its tip, and read out. */
-.hand-card .swap-mark {
+/* The card's top corner, over the ring, so its badges take no room from the name or the chips:
+   a card swapped in (D-121), the reroll die; and every card's pushpin (D-186), at the corner,
+   with the die beside it. They stand on one line, 5 UI px under the card's top, where the head
+   starts: the die's top 2 px over the edge, as it always stood, and the pin's cap 5 px over it,
+   its needle in the ring. Small enough to clear the shape glyph under them and the row's label
+   over a row's first card. Their words are their tips, and read out. */
+.hand-card .card-corner {
   position: absolute;
-  top: calc(var(--px) * -2);
+  bottom: calc(100% - var(--px) * 5);
   right: calc(var(--px) * -2);
   display: flex;
+  align-items: flex-end;
+  gap: var(--px);
+}
+.hand-card .swap-mark {
+  display: flex;
   filter: drop-shadow(0 var(--px) 0 var(--shade));
+}
+/* D-186: the pushpin. Grey and faint on a card not pinned, darker on the card under the pointer
+   or the keyboard, and red under the pointer or once pinned, when it stabs in from above. Its
+   hit area reaches a little past it. */
+.hand-card .pin-toggle {
+  position: relative;
+  display: flex;
+  opacity: 0.6;
+  filter: drop-shadow(0 var(--px) 0 var(--shade));
+  transition: opacity var(--dur-hover) ease-out;
+}
+.hand-card .pin-toggle::before {
+  content: '';
+  position: absolute;
+  inset: calc(var(--px) * -2);
+}
+.hand-card .pin-toggle .pin-on,
+.hand-card .pin-toggle:is(:hover, .is-pinned) .pin-off {
+  display: none;
+}
+.hand-card .pin-toggle:is(:hover, .is-pinned) .pin-on {
+  display: inline-block;
+}
+.hand-card:is(:hover, :focus-visible) .pin-toggle,
+.hand-card .pin-toggle.is-pinned {
+  opacity: 1;
+}
+.hand-card .pin-toggle.is-pinned {
+  animation: pin-stick var(--dur-pin-stick) cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+@keyframes pin-stick {
+  from {
+    transform: translateY(calc(var(--px) * var(--pin-stick-from) * -1));
+  }
+}
+/* The card last week's pin kept (D-186): its pushpin and a paper tag, "Kept", on the edge. It
+   stamps in as the hand deals around it. */
+.hand-card .kept-tag {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--px);
+  filter: drop-shadow(0 var(--px) 0 var(--shade));
+}
+.hand-card .kept-word {
+  padding: 0 var(--px);
+  background: var(--paper);
+  box-shadow: 0 0 0 var(--px) var(--ink);
+  color: var(--ink);
+  font-size: var(--fs-body);
+  line-height: calc(var(--px) * 9);
+  font-weight: 400;
+  white-space: nowrap;
+}
+.hand .hand-card.deal-kept .kept-tag {
+  animation: end-week-tag-in var(--dur-kept-in) cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+/* A hand dealt around a kept card (D-186, the director's deal): the others slide in from the
+   right in hand order, one after another, at rest and untransformed once in (D-059). */
+.hand .hand-card.deal-in {
+  animation: deal-in var(--dur-deal) cubic-bezier(0.2, 1.3, 0.4, 1) backwards;
+  animation-delay: calc(var(--deal-at) * var(--dur-deal-stagger));
+}
+@keyframes deal-in {
+  from {
+    opacity: 0;
+    transform: translateX(calc(var(--px) * var(--deal-from)));
+  }
+}
+.reduce-motion .hand-card .pin-toggle.is-pinned {
+  animation: none;
 }
 /* The line, in three lines at most (D-148, 2026-11-11; four beside a 2× thumbnail, below):
    Inspect has the rest. Two lines cut 40 of 69 week-1 lines at 1470×840 at 2×, and 6 at

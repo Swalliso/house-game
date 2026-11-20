@@ -279,6 +279,9 @@ function cleanAction(v: unknown): Action | null {
     case 'strikeCard':
       // D-157: a hand card, struck with its type.
       return isInt(v.i) ? { t: 'strikeCard', i: v.i } : null;
+    case 'pin':
+      // D-186: a hand card pinned for next week, or its pin taken off.
+      return isInt(v.i) ? { t: 'pin', i: v.i } : null;
     case 'completeEarly':
       return { t: 'completeEarly' };
     case 'demolish':

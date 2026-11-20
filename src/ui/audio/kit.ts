@@ -437,6 +437,15 @@ export const RECIPES: Partial<Record<SoundId, Recipe>> = {
   // The client at the door (D-182): a thought bubble popping up, Kenney's pop, small and soft.
   // The director plays the hearts' up the scale by rate.
   bubble: { layers: [{ set: 'pop', db: -13, rate: 1.25 }] },
+
+  // A hand card pinned for next week (D-186): a pushpin pressed into cork, the click's tick over
+  // the slit drum's thock up high and soft. Taken out, the director plays it higher.
+  pin: {
+    layers: [
+      { set: 'click', db: -9, rate: 1.2 },
+      { at: 0.015, set: 'thock', db: -14, rate: 1.6 },
+    ],
+  },
 };
 
 // ---- Pitch ----
