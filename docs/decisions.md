@@ -252,6 +252,7 @@ Also: D-036 and D-043 (Accepted), where hand size becomes the `handSize` rule (3
 *Changed by D-121 (Proposed 2026-11-09):* hand size is two rules, `roomsRow` (2) and `layoutRow` (2); the Bigger Truck adds a Rooms card.
 *Changed by D-163 (2026-11-12; Accepted 2026-11-13, playtest 8):* placing a bought or crated piece doesn't use the week, so a shop piece adds a piece to a week. Tools still add none, Weekend Crew aside (D-083).
 *Changed by D-188 (Proposed 2026-11-20):* three of the special pieces aren't only bought any more: once a run, in Framing's first week, a Pool, a Hot Tub or a Henhouse turns up free in Your goods (the wrong delivery). The shop, the Showroom crate and the Catalog still offer all three.
+*2026-11-20 (D-195, Proposed):* two of the special pieces pay more often: the Playroom keeps its +2 per touching Bedroom and loses its aura on Quiet rooms (−2 each), so a Playroom and a Bedroom side by side net 0 (+2 to it, −2 to the Bedroom for the noise) where they netted −2; and the Hot Tub's +3 counts a touching Pool or Fire Pit as well as a Patio.
 
 ### D-052 · Schedule: feature freeze at the end of day 4
 **Status:** Superseded by D-053 · 2026-11-05 (the team is two people with no day timeboxes)
@@ -1238,6 +1239,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 *Changed by D-140 (Proposed 2026-11-10):* a Driveway pack is 1–8 tiles, as the Fence, and the Garage it runs to no longer has to be built beside it.
 
 **2026-11-12 (D-159, Proposed):** Fences share a line and reach the wall. Two that meet end to end in one line draw no post between them, and a one-tile pack joins every Fence beside it. An end beside the house runs into its wall, a stretch alongside the house is tied to the wall at each end, and a corner touch gets a corner post, so a yard looks closed exactly where the rules count it fenced. Each pack is still its own piece, with its own payout.
+*2026-11-20 (D-195, Proposed):* the Sapling is a pack too: one card plants 1 to 3 tiles in a line, clicked out as a Fence is (`pack { maxTiles 3, shapes [#, ##, ###] }`, the card's own shape being three in a row). It's one piece earning +1 a week, and at its transform every tile becomes a Tree. The painters draw a sapling on each tile: the ghost, the board and the card's thumbnail.
 
 ### D-107 · Showing what a fixture is worth
 **Status:** Accepted · 2026-11-06 (the team chose it, resolving D-092). Built with M4b's UI.
@@ -4833,6 +4835,76 @@ What the columns mean:
 - **The ground shows wherever a piece's art leaves it bare,** as the tufts did before, so a Fence stands on whatever patch is there.
 - **Not played by a person,** and only the eleven lots, one won run and Fit were looked at: not Safari, Firefox, touch, other zooms or screens.
 
+### D-195 · Pieces that pay off: one Sapling card plants up to three, the Garage earns off its drive, and the Fire Pit, the Playroom and the Hot Tub pay more often
+**Status:** Proposed · 2026-11-20, a phase pull request (`phase/pieces-pay-off`), from the backlog's S25 (`docs/backlog/s25-pieces-that-pay-off.md`), one of the stories the 2026-11-20 shop and content review added at the user's ask ("These sound like a good list of suggestions. Can we get these added in as stories or implemented in some sub-sessions/threads now?"). D-192 to D-196 were held for S22 to S25 and S27, built side by side; this is S25's. A content change: `contentHash(CONTENT)` goes from `bf0c1515` (develop with D-194) to `4fc924f8`, so runs in progress drop when it merges. The targets are untouched: the user's pick of S22 to S25 gets one fit (D-169's method), as the backlog says. For the user's playtest before it merges.
+**Decision:**
+- **The Sapling is a pack,** as the Fence and the Driveway are (D-106): one card plants 1 to 3 tiles in a line, across or down (`pack: { maxTiles: 3, shapes: [['#'], ['##'], ['###']] }`). It stays one piece earning +1 a week, and after 4 weeks every tile becomes a Tree. Its card's own shape is the three in a row, so its thumbnail shows three.
+  - Inspect's timer counts them ("Becomes 3 Trees at the start of week 5"), and so does the board's popup ("The Sapling grew into 3 Trees!"; one tile still grows into "a Tree").
+  - **The Tree gets a glossary entry, built from the content** (`glossary()` in `text.ts`): "Quiet and Green, and a view. Each Tree tile counts as its own neighbor: Bedrooms, Living Rooms, Patios, Libraries, and Birdhouses earn more beside one, and Pools less. A Treehouse must be built touching one." It reads the Tree's tags and view and every card's lines for a Tree, so it follows the content. The Sapling's line, "Each tile becomes a Tree after 4 weeks", links it in Inspect and in Your goods (the Landscaper's stock), and a Tree tile's Inspect shows the same words, then "Building here clears it." (on an Old Woods lot, whose Trees stay: "These old Trees stay: build around them.").
+  - The painters draw a sapling on each tile (`yard.ts`): the ghost as it's clicked out, the board, and the card's thumbnail. How to play names the Sapling with the Fence and the Driveway as packs.
+- **The Garage earns part of its keep off the drive** (D-140). Its `requires` is gone: +2 every week wherever it stands, and +3 every week, +1 budget every 2nd week and the Old Shed's +3 (D-145) each under a `conditional` on touching the street or a Driveway. Reached by the drive, it earns +5 and its budget, as before.
+  - Off the drive it shows no ⚠ (D-179's unmet look). Its card says what waits: "+3 every week if touching the street or a Driveway", "+1 budget every 2nd week if touching the street or a Driveway" and "+3 if touching the Old Shed and the street or a Driveway". Inspect's timer reads "Paused: it must be touching the street or a Driveway" while the budget waits.
+  - The hand card keeps D-140's short line, "+5 by the street or a Driveway", the most it earns. "+2, +5 by the street or a Driveway" runs a letter past the hand's 33 characters (D-148), so Inspect and the placing preview show the +2.
+- **The Fire Pit's +50% reaches every touching Social piece** (`aura { tag: 'Social' }`, was a Patio only): a Kitchen, a Dining Room, a Living Room, a Patio, a Hot Tub or another Fire Pit.
+- **The Playroom loses its aura on Quiet rooms** (−2 each). It stays Loud and keeps +2 per touching Bedroom, so a Playroom and a Bedroom side by side net 0 (+2 to it, −2 to the Bedroom for the noise) where they netted −2.
+- **The Hot Tub's +3 counts a touching Pool or Fire Pit** as well as a Patio (`neighbor { piece: ['patio', 'pool', 'firePit'] }`).
+- **The greedy bot:** its drive planner (`sim/drive.ts`) finds a Garage the drive hasn't reached by its tiles (none on the street edge or beside a Driveway), as D-189's report does, now that such a Garage isn't unmet. It ranks a one-tile Sapling with the pack's other shapes, since its +1 is the piece's whatever its size; a lone Fence or Driveway tile it still leaves to its planners.
+
+**Sim:** a paired-seed trial, greedy, 600 runs an arm on `check-0` to `check-599` (every client with every crew in turn, as `npm run sim -- --crew all` deals them), develop before D-194 merged (`bbccfb3`) against this branch before it took D-194 in (`5008a0c`), on the same seeds, in the cloud container, so the numbers are S25's alone. Two more arms on this branch change one number each: the Playroom at +3 a Bedroom, and the Fire Pit's aura at +25%. "From the hand" is: of the cards of a type in the weeks' first hands, the share played from the hand. A piece's Wow is its share of each week's points, as the sim counts it, so what an aura adds counts to the piece it warms.
+
+| | develop | this branch |
+|---|---|---|
+| Wins | 49.5% | **50.2%**: +0.7 points [−1.3, +2.7], 21 seeds won only with it and 17 only without (p = 0.63) |
+| Milestones 3 to 7 met | 95.3, 86.2, 75.0, 64.0, 49.5% | 95.0, 85.8, 72.8, 64.7, 50.2% |
+| Every piece card, from the hand | 22.2% | 22.3% |
+| The Drive-In held at the end | 6.7% | 8.3% |
+| Full House held at the end | 33.0% | 35.0% |
+
+| Piece | From the hand | Placed a run | Wow a copy | Its weeks that earned nothing |
+|---|---|---|---|---|
+| Sapling | 7.2% → 7.1% | 0.48 → 0.47 | 190 → 196 | none in either |
+| Garage | 10.0% → 11.2% | 0.36 → 0.40 | 411 → **1,062** | 66.5% → **10.2%** |
+| Fire Pit | 10.5% → **37.7%** | 0.08 → 0.29 | 309 → 206 | 1.9% → 1.1% |
+| Playroom | 2.4% → 4.6% | 0.08 → 0.11 | 934 → 1,130 | 11.0% → 7.4% |
+| Hot Tub | shop only | 0.44 → 0.46 | 556 → 706 | none in either |
+| Pool | 2.6% → 4.5% | 0.36 → 0.38 | 1,207 → 1,176 | 4.1% → 6.8% |
+
+| This branch, with | Wins, paired with develop | Fire Pit from the hand | Living Rooms a Fire Pit warms at the end | Playroom from the hand | Playroom's Wow a copy |
+|---|---|---|---|---|---|
+| nothing else | +0.7 points (p = 0.63) | 37.7% | 12.0% (94 of 783) | 4.6% (13 of 285) | 1,130 |
+| the Playroom at +3 a Bedroom | +0.8 [−1.2, +2.9] (p = 0.52) | 37.4% | 11.8% | 5.7% (16 of 283) | 1,577 |
+| the Fire Pit at +25% | +0.8 [−1.2, +2.8] (p = 0.51) | 24.0% | 8.1% (63 of 781) | 4.6% | 1,137 |
+
+- **The Sapling's pick rate holds** (7.2% → 7.1%). Greedy rates a card by what it earns this week, and a pack earns +1 a week at any size, so the bot doesn't see the Trees coming. When it plants one, it plants 2.2 tiles (109 of 285 packs are three, 123 two), and what those Trees earn counts to the pieces beside them. Whether people plant it now is the playtest's question.
+- **The Garage pays where it stands:** its weeks with nothing fall from 66.5% to 10.2% (two in three of those left are Juniper's, whose taste takes all a Garage earns), and its Wow a copy is 2.6 times develop's. Seven in ten Garages still end the run off the drive in both arms, as D-189's report counts them.
+- **The Fire Pit goes down 3.6 times as often** (0.08 → 0.29 a run), beside whichever Social room it finds. Its own lines earn less a copy, since its +50% counts to the room. It warms 12% of the Living Rooms at the end, nowhere near every one, so the +50% stays; at +25% it's picked 24.0% of the time.
+- **The Playroom and the Hot Tub earn more where they go:** the Playroom 934 → 1,130 a copy, with its weeks of nothing 11.0% → 7.4%; the Hot Tub (from the shop and D-188's wrong delivery) 556 → 706. At +3 a Bedroom the Playroom is picked 16 times in 283 offers, against 13, and earns 1,577 a copy; wins don't move.
+- **Milestone 5 is the one place the pairs lean:** 20 seeds met it only on develop and 7 only on this branch (p = 0.02 on its own, with five milestones compared), and 8 of the 20 went on to win on develop. Replayed, those 27 runs part between weeks 1 and 19: at a Sapling (6 of the 20, and 2 of the 7), at a Garage built off the drive for its +2 where develop built a room or planted a Sapling (5, and 2), at a shop or crate pick (4, and 1), and elsewhere (5, and 2). Wins at the end come out level, and 181 of the 600 seeds played out the same to the last point.
+
+**Why:** the review's (S25's). From the hand, the Sapling was played 8% of the times it was offered, the Fire Pit 9% and the Garage 12%, against 26% for the average piece card; the Playroom and the Hot Tub were seldom bought. Each had one cause the card could fix: the Sapling earned the least of any piece placed and never said what its Tree gives; a Garage earned nothing in 63% of its weeks, waiting for a drive that starts at the street; every Playroom beside a Bedroom netted −2; and the Fire Pit's and the Hot Tub's lines read only a Patio, which greedy builds about once a run.
+
+**Considered:**
+- *"+2, +5 by the street or a Driveway" on the Garage's hand card:* 34 characters, one past the budget that keeps a hand line inside the card's three rows (D-148). Two lines ("+2 every week", "+3 by the street or a Driveway") make the card a row taller in a hand that already scrolls at 1280×720. Inspect and the preview say +2.
+- *The Fire Pit at +25%,* the story's fallback if it warmed every Living Room: at +50% it warms 12% of them, and at +25% it's picked 24.0% of the time against 37.7% (the trial's third table).
+- *The Playroom at +3 a Bedroom:* 3 more picks in 283 offers is within noise, and +2 already ends the −2 a pairing cost. The playtest can say if it needs more.
+- *Country Living and the clients who like shade in the Tree's tip:* the tip says what a Tree does in every house. A blueprint's card (Country Living: every piece +1 per touching Tree) and a client's tastes say what they add.
+- *A Sapling pack in any connected shape, as a Fence's:* the story's lines keep its trees in a row, and a pack of three can't close or break anything (a tidy yard counts Saplings toward its 6 and never against it).
+- *Left out, as the story says:* the Doghouse (its requirement drives D-179's wake-up), the Patio and the Sunroom, the draw weights (S29) and D-094's Sapling wave (Parked).
+
+**Changes:** D-106 (Accepted): the Sapling is a pack (a note). D-140 (Proposed): the Garage earns +2 off the drive (a note). D-145 (Proposed): the Fire Pit's aura, and the Garage's shed line on its own condition (a note). D-051 (Accepted): the Playroom and the Hot Tub (a note). D-189 (Proposed): its Garage line counts the same Garages (a note). `implementation-plan.md`: §4's Garage line, the `aura`, `requires` and `conditional` examples, the timers' Sapling, and Appendix B's Garage, Sapling, Playroom, Hot Tub and Fire Pit rows.
+
+**Checked:** `npm test` (158 files: 2,679 tests and 1 skipped; the smoke sim's Hendersons runs and a people test timed out while the trial ran beside them, and pass on their own), `npm run typecheck`, `npm run format:check` and `npm run build`; `contentHash(CONTENT)` is `4fc924f8`.
+- **New tests:** `packs.test.ts`: a three-tile Sapling is one piece and becomes three Trees at its timer, and the pack lists a lone tile, a pair and a row of three in each rotation. `pieces.test.ts`: the Garage's +2 anywhere and the rest once the street or a Driveway reaches it, a Driveway laid later bringing the rest, a run where it goes down off the street and completes Full House, and the workshop's +3 for a reached Garage only. `special-pieces.test.ts`: the Playroom's +2 a Bedroom and nothing on other Quiet pieces, the Hot Tub's +3 per touching Patio, Pool or Fire Pit, and the Fire Pit's +50% on Social neighbors only. `content.test.ts`: the Tree's tip, from the cards. `text.test.ts`: the glossary's Garage. `goods.test.tsx`: the Sapling's line in Your goods links the Tree. `house.test.ts`: the report's unreached Garage agrees with the rules' tally.
+- **The dev build,** in headless Chromium at 1280×720, 1440×900 (2×), 1728×963 (2×) and 1920×1080, the same opening on develop (`bbccfb3`) and on this branch before it took D-194 in (its corner reads `612d52f`, an earlier merge of develop's backlog notes), as in the trial (seed `s25-shots`, the Hendersons with the General Contractor, ?debug's Give): no console errors at any size. The five cards (`docs/playtests/s25-cards-1440x2.png`); a Sapling clicked out, three tiles here and one on develop (`s25-sapling-before-1440x2.png`, `s25-sapling-after-1440x2.png`); week 5, the Trees it grew into, and the Garage off its drive earning 2 where it earned 0 (`s25-trees-before-1440x2.png`, `s25-trees-after-1440x2.png`); the Tree's tip from the Sapling's Inspect (`s25-tree-tip-1440x2.png`); and the house at week 8 with the Hot Tub beside the Fire Pit, a Living Room it warms, and the Playroom beside a Bedroom (`s25-house-before-1440x2.png`, `s25-house-after-1440x2.png`). Rechecked on the merged branch at 1440×900 (2×): the same screens, and the same words in every card, tip and Inspect panel the round reads.
+
+**Known gaps:**
+- **Not played by a person.**
+- **The trial ran in the cloud container,** not on the user's Mac as long runs should (this thread couldn't reach it), and on this branch before it took D-194 in. CI's `npm run sim -- --check` is the merged branch's only check of §8's criteria.
+- **The trial can't say whether people plant the Sapling,** since greedy rates a card by this week's points.
+- **The hand card says "+5 by the street or a Driveway",** the most a Garage earns. Its full card, Inspect and the placing preview say +2 off the drive.
+- **At 1280×720 the board's popup for the Trees** ("The Sapling grew into 3 Trees!") sits on the board's bottom edge, under the zoom buttons, when the Sapling is low in the view; develop's popup for one Tree sits in the same place.
+- **Not looked at on screen:** Your goods' Sapling (a test holds its link), a Fertilizer on its timer, the photos, the shop's offers, touch, Firefox and Safari.
+
 ### D-194 · Fixtures that always pay: five fixtures earn something wherever they fit
 **Status:** Proposed · 2026-11-20, a phase pull request (`phase/fixtures-always-pay`), from the backlog's S24 (`docs/backlog/s24-fixtures-always-pay.md`), one of the stories the 2026-11-20 shop and content review added at the user's ask ("These sound like a good list of suggestions. Can we get these added in as stories or implemented in some sub-sessions/threads now?"). D-192 to D-196 were held for S22 to S25 and S27, built side by side; this is S24's. A content change: `contentHash(CONTENT)` goes from `4c677dcf` to `bf0c1515`, so runs in progress drop when it merges. The targets are untouched: the user's pick of S22 to S25 gets one fit (D-169's method), as the backlog says.
 **Decision:**
@@ -4979,6 +5051,7 @@ What the columns mean:
 **Known gaps:**
 - **The reach is read from the tiles,** as the rules read D-140's requirement today (the tests hold the two together).
 - **Bunk Beds count once,** as in the report's other room counts, so a Bedroom they double can show a spare Bathroom as extra.
+*2026-11-20 (D-195, Proposed):* a Garage nothing reaches now earns +2 a week; its other lines still wait for the drive. The report's line counts the same Garages, by the same tiles, and its tests and the smoke sim check it against the rules' tally by the Garage's conditional line ("Every week (touching the street or a Driveway)") where they used its unmet requirement.
 
 ### D-187 · The house builds itself: after the look down the street, the house goes up again on the board, and the photo viewer plays the strip
 **Status:** Proposed · 2026-11-20, a phase pull request (`phase/house-builds-itself`), backlog story S10 (`docs/backlog/s10-house-builds-itself.md`), built while S14 (D-186) and S16 (D-188) were built beside it. Stage 1, the story's cheaper first test (Play in the photo viewer), went up first; the user looked at it and asked for the full rebuild in the same pull request (2026-11-20: "Build the full rebuild"), stage 2. UI only: nothing under `src/rules` or `src/content` changed and `contentHash(CONTENT)` stays `afeff7e3`, so saves and run codes carry over. The user OK'd merging it into develop for their playtest on /dev/ (2026-11-20: "Merge it for a playtest"); it stays Proposed until they've played it.
@@ -5385,6 +5458,7 @@ A review of the merged branch in four parts (where the four builds meet, the mot
 - `yard.test.ts` parks the car on every pack of up to 8 tiles (2,725 shapes of 8, from 216 of 6): about 3 seconds alone and 6 to 7 in the full suite, so that test has a longer timeout.
 
 *2026-11-20 (D-189):* the first Considered line above, tried in the sim on develop 6182321: with Full House counting a Garage only once the street or a Driveway reaches it, greedy wins 32.5% of 200 held-out runs (`check-0` to `check-199`) against 46.5% (28 seeds won only today, none only with it). Full House holds at the end in 8.5% of runs against 36.5%, and the Garages built end unreached in 30% of houses against 74%. Greedy still plans no drive (0.32 Driveways a run against 0.35), so it mostly stops building the Garage. The user kept today's rule; the house report now counts the Garages nothing reaches.
+*2026-11-20 (D-195, Proposed):* the Garage earns part of its keep off the drive. Its `requires` is gone: +2 every week wherever it stands, and +3 a week, the budget every 2nd week and the Old Shed's +3 each under a `conditional` on touching the street or a Driveway, so reached it earns what it did (+5). Off the drive it shows no ⚠; its card says what waits ("+3 every week if touching the street or a Driveway"), Inspect's timers say its budget is paused until then, and the hand card still reads "+5 by the street or a Driveway". Full House and the Drive-In are unchanged, and the house report's "a Garage nothing reaches" (D-189) counts the same Garages.
 
 ### D-133 · The roof view: the reveal's roof stays on, a Roof button brings it back, and the end screen opens with it
 **Status:** Superseded by D-147 · 2026-11-10: the user took the roof out before the first showing. Was Proposed · 2026-11-10, after playtest 5 (`docs/playtests/playtest-5-findings.md`), with its fix pull request, extending D-127.
@@ -5511,6 +5585,7 @@ A review of the merged branch in four parts (where the four builds meet, the mot
 - The Porch's boards are the bedrooms' floor cut. It has no walls and a darker edge, but it could read as a room at a glance.
 - Nothing at the last shop says that budget kept pays 100 Wow each. The Budget tip and How to play do. *2026-11-10 (D-148, Proposed): the last shop says it now, with "but only after the last target is met".*
 - One browser pass, in headless Chrome at 1280×720 and 1920×1080. Not checked: the pane itself, touch, devicePixelRatio 2, Firefox, Safari.
+*2026-11-20 (D-195, Proposed):* the Fire Pit's +50% reaches every touching Social piece (a Kitchen, a Dining Room, a Living Room, a Patio, a Hot Tub or another Fire Pit), not a Patio alone, which greedy builds about once a run. Greedy plays 37.7% of the Fire Pits in its hands, against 10.5% on develop (D-195's trial). The Garage's +3 beside the Old Shed now needs the street or a Driveway on its own line ("+3 if touching the Old Shed and the street or a Driveway"), as it did through the Garage's requirement.
 
 ## Parked
 
