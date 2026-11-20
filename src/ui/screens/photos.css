@@ -281,3 +281,14 @@
   align-self: center;
   color: var(--ink-soft);
 }
+/* Play and Pause (S10's first test, D-187) stack in one cell, the one not said hidden. */
+.photo-play-label {
+  display: inline-grid;
+  justify-items: center;
+}
+.photo-play-label > * {
+  grid-area: 1 / 1;
+}
+.photo-play-label > [aria-hidden='true'] {
+  visibility: hidden;
+}
