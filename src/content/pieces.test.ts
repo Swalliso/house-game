@@ -154,9 +154,11 @@ describe('the base pool', () => {
     // The two packs (D-106) took the weight of the two cards each one replaced, 20, until the
     // draw's two rows (D-121): in a two-card Layout row they draw at 10, like every card. The
     // Sapling joined them at its own weight (D-195). The Sunroom, in the Rooms row, draws at
-    // half that (D-120).
+    // half that (D-120). The Hallway and the Fence draw at half too (D-197): Your goods always
+    // holds one of each (D-160). The Long Hallway, which the stock never brings, and the
+    // Driveway keep 10.
     expect(base.filter((d) => d.pack).map((d) => d.id)).toEqual(['sapling', 'fence', 'driveway']);
-    const half = ['sunroom', 'birdhouse', 'firePit', 'porch'];
+    const half = ['sunroom', 'birdhouse', 'firePit', 'porch', 'hallway', 'fence'];
     for (const def of base) expect(def.drawWeight, def.id).toBe(half.includes(def.id) ? 5 : 10);
     for (const def of Object.values(CONTENT.pieces)) {
       expect(def.complexity).toBe(COMPLEXITY[def.id]);

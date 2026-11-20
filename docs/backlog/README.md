@@ -132,7 +132,7 @@ reading the code, not from building anything.
 | [S26](s26-upgrades-that-deliver.md) | Storage Unit, Tool Belt and Drafting Table bring something you can see | M | Rules and content | The user's playtest of S16 | Not started |
 | [S27](s27-hold-a-good.md) | Hold one good for the next shop | M | Rules and UI | After S22 | Not started |
 | [S28](s28-new-goods.md) | A Photo Shoot, a Dog Door, and Weekend Crew at 3 | M | Content and art | The playtest of S22 to S25, and the user's pick | Not started |
-| [S29](s29-fewer-repeat-halls.md) | The hand repeats your free Hallway and Fence half as often | S | Content | | Not started; the user OK'd it 2026-11-20 |
+| [S29](s29-fewer-repeat-halls.md) | The hand repeats your free Hallway and Fence half as often | S | Content | | Built 2026-11-20 (D-197); waiting on the user's playtest |
 | [S30](s30-bunk-beds-cap.md) | Bunk Beds never break Room for everyone | S | Rules | | Built 2026-11-20 (D-198); waiting on the user's playtest |
 | [S31](s31-landmarks-with-reach.md) | A Pool, a Library, a Henhouse and a new Fountain pay what's within 2 tiles, shaded while you place them | M | Rules, content, UI and one sprite | | Not started; the user picked it 2026-11-20 |
 | [S32](s32-specials-in-the-hand.md) | The shop's special pieces turn up in the hand from Framing, once each pays its way | S per stage | Content and a little rules | Stage 2: S31 and S25 played | Not started; the user picked it 2026-11-20 |

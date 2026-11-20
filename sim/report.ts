@@ -860,19 +860,25 @@ export interface FenceStats {
   byM3: number[];
   /** The same through milestone 4. */
   byM4: number[];
-  /** Runs with a probe that resolved milestone 4, and those offered at least the probe's count. */
+  /**
+   * Runs with a probe that resolved milestone 4, and those offered at least the probe's count by
+   * then: the hand's Fence-type cards and, since D-197, the standing stock's.
+   */
   covered: { k: number; n: number };
 }
 
 export function fenceStats(records: readonly RunRecord[]): FenceStats {
   const through = (r: RunRecord, k: number) => sumOf(r.wallOffers.slice(0, k));
+  // D-197: the hand shows the Fence at half weight because Your goods always holds one, so the
+  // stock's count beside the hand's.
+  const offered = (r: RunRecord, k: number) => through(r, k) + sumOf(r.stockWallOffers.slice(0, k));
   const withProbe = records.filter((r) => r.enclosure !== null && resolved(r, 4));
   return {
     probes: records.flatMap((r) => (r.enclosure ? [r.enclosure.placements] : [])),
     byM3: records.filter((r) => resolved(r, 3)).map((r) => through(r, 3)),
     byM4: records.filter((r) => resolved(r, 4)).map((r) => through(r, 4)),
     covered: {
-      k: withProbe.filter((r) => through(r, 4) >= r.enclosure!.placements).length,
+      k: withProbe.filter((r) => offered(r, 4) >= r.enclosure!.placements).length,
       n: withProbe.length,
     },
   };
@@ -907,7 +913,7 @@ function fenceReport(records: readonly RunRecord[]): string {
       ` ${atLeast2(f.byM3)} of ${f.byM3.length} runs`,
     `  by milestone 4: p50 ${fix(rankQuantile(f.byM4, 50), 0)}, 2 or more in` +
       ` ${atLeast2(f.byM4)} of ${f.byM4.length} runs`,
-    `  by milestone 4, at least the probe’s count: ${fmtRate(f.covered.k, f.covered.n)}`,
+    `  by milestone 4, with the stock’s, at least the probe’s count: ${fmtRate(f.covered.k, f.covered.n)}`,
   );
   out.push(reserveReport(records));
   return out.join('\n');
@@ -1445,7 +1451,7 @@ export function criteria(content: Content, input: CriteriaInput): Criterion[] {
     });
   }
   const fenceText =
-    'fences pay their way: probe p50 2–3; ≥ 50% of runs see that many by milestone 4';
+    'fences pay their way: probe p50 2–3; ≥ 50% of runs see that many by milestone 4, in the hand or Your goods';
   const f = greedy ? fenceStats(greedy) : null;
   if (f && f.probes.length > 0 && f.covered.n > 0) {
     const med = medianInterval(f.probes);
@@ -1458,7 +1464,7 @@ export function criteria(content: Content, input: CriteriaInput): Criterion[] {
       text: fenceText,
       measured:
         `enclosure probe p50 ${med.est} Fence cards [${med.lo}–${med.hi}] n=${f.probes.length}\n` +
-        `offered their probe’s count by milestone 4: ${fmtRate(f.covered.k, f.covered.n)}`,
+        `offered their probe’s count by milestone 4, the hand’s and the stock’s: ${fmtRate(f.covered.k, f.covered.n)}`,
       verdict: pass ? 'PASS' : 'FAIL',
       sure: pass
         ? a.sure && b.sure
