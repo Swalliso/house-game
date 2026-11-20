@@ -5,7 +5,7 @@
 | Size | S, a day and a sim trial |
 | Kind | Content. The content hash changes |
 | Branch | `phase/fewer-repeat-halls` |
-| Needs first | The user's OK (Ask the user first): it changes D-160 and D-121, both Accepted |
+| Needs first | Nothing. The user OK'd changing D-160 and D-121 on 2026-11-20 |
 
 ## Story
 
@@ -24,12 +24,13 @@ each. The hand shows something new more often.
 - D-169 found that the free Hallways already make houses sprawl, so fewer in the hand doesn't
   cost a house its halls.
 
-## Ask the user first
+## Already asked
 
-"Halve the Hallway's and the Fence's draw weight, from 10 to 5?" D-160 kept both types in the
-draw with their weights as they were, and D-121 set the Fence pack at 10. Both are Accepted.
-The user was asked on 2026-11-20; if they said yes, the thread that builds this has their
-message.
+The user said yes on 2026-11-20, on a card in the review thread: "Also change the two settled
+rules: hand Hallways and Fences, and Bunk Beds?", "Yes, build both". D-160 kept both types in
+the draw with their weights as they were, and D-121 set the Fence pack at 10. Both are
+Accepted, and that yes covers changing them as **Build** says. It doesn't cover changing the
+"fences pay their way" check (Watch for).
 
 ## Build
 
