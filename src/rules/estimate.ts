@@ -89,6 +89,24 @@ export interface Estimate {
   sunHint: boolean;
 }
 
+/**
+ * D-193: what the estimate can read beyond what the bots ask of it. The shop's value lines ask
+ * for both; the bots ask for neither, so their play and the sim's numbers stay as they were.
+ */
+export interface EstimateOptions {
+  /**
+   * What the new piece would touch, where the run's modifiers and the house rules ask for it
+   * (Creekside's +100% for a piece by the creek), which the estimate otherwise counts as never.
+   */
+  touching?: boolean;
+  /**
+   * The modifiers that have a piece earn nothing (a change order's "A litter of puppies" on
+   * Flower Beds): the new piece's own pay is then nothing, and so is what it adds to a
+   * neighbor that earns nothing, so only what it does for the others counts.
+   */
+  earnNothing?: boolean;
+}
+
 /** The client's checklist and the current milestone, as the week's tally reads them. */
 export interface ChecklistCtx {
   specs: readonly SpecDef[];
@@ -171,7 +189,10 @@ function neighborsOf(
   return { neighbors: out, connectors };
 }
 
-/** Does a selector match the piece being placed? Layout-dependent terms are approximated. */
+/**
+ * Does a selector match the piece being placed? Layout-dependent terms are approximated: what
+ * it would touch counts only when `near` is given (D-193's values), and never for the bots.
+ */
 function matchesNew(
   content: Content,
   layout: Layout,
@@ -179,11 +200,16 @@ function matchesNew(
   def: PieceDef,
   cells: readonly Cell[],
   sun: PlaySun,
+  near?: (sel: Selector) => number,
 ): boolean {
   if (sel === 'all') return true;
-  if ('any' in sel) return sel.any.some((s) => matchesNew(content, layout, s, def, cells, sun));
-  if ('all' in sel) return sel.all.every((s) => matchesNew(content, layout, s, def, cells, sun));
-  if ('not' in sel) return !matchesNew(content, layout, sel.not, def, cells, sun);
+  if ('any' in sel) {
+    return sel.any.some((s) => matchesNew(content, layout, s, def, cells, sun, near));
+  }
+  if ('all' in sel) {
+    return sel.all.every((s) => matchesNew(content, layout, s, def, cells, sun, near));
+  }
+  if ('not' in sel) return !matchesNew(content, layout, sel.not, def, cells, sun, near);
   if ('piece' in sel) {
     return typeof sel.piece === 'string'
       ? isType(def, sel.piece)
@@ -192,7 +218,7 @@ function matchesNew(
   if ('feature' in sel || 'host' in sel || 'hasFixture' in sel) return false;
   if ('tag' in sel) return def.tags.includes(sel.tag) || (sel.tag === 'Sunny' && sun.sunny);
   if ('in' in sel) return allInRegion(layout, cells, sel.in, sun);
-  if ('touching' in sel) return false;
+  if ('touching' in sel) return near ? near(sel.touching) >= (sel.min ?? 1) : false;
   switch (sel.property) {
     case 'indoor':
     case 'yard':
@@ -330,12 +356,14 @@ export function estimatePlay(
   cells: readonly Cell[],
   mods: readonly ActiveMod[] = [],
   checklist?: ChecklistCtx,
+  opts: EstimateOptions = {},
 ): Estimate {
   const { neighbors, connectors } = neighborsOf(content, layout, def, cells);
   const sun = playSun(layout, def, cells);
   const scoreOf = new Map(tally.pieces.map((p) => [p.uid, p]));
   const matchN = (sel: Selector) =>
     neighbors.filter((n) => matchesNeighbor(content, layout, sel, n)).length;
+  const near = opts.touching ? matchN : undefined;
   const grants = houseGrants(mods);
   /** The room rules' effects on a placed piece (D-165). */
   const grantedOn = (uid: number): Effect[] =>
@@ -401,7 +429,7 @@ export function estimatePlay(
           : 'in' in w
             ? allInRegion(layout, cells, w.in, sun)
             : 'is' in w
-              ? matchesNew(content, layout, w.is, def, cells, sun)
+              ? matchesNew(content, layout, w.is, def, cells, sun, near)
               : true;
         if (holds) addOwn(e.effect);
         break;
@@ -431,17 +459,32 @@ export function estimatePlay(
     } else addOwn(e);
   }
   for (const g of grants) {
-    if (matchesNew(content, layout, g.target, def, cells, sun)) addOwn(g.effect);
+    if (matchesNew(content, layout, g.target, def, cells, sun, near)) addOwn(g.effect);
   }
 
-  // The run's percentage modifiers that would match the new piece (blueprints, the crew).
+  // The run's percentage modifiers that would match the new piece (blueprints, the crew, the
+  // lot's traits).
+  let nothing = false;
+  const zeroing = opts.earnNothing ? mods.filter(({ mod }) => mod.kind === 'earnNothing') : [];
+  /** A placed piece that earns nothing whatever it touches (the view's read). */
+  const zeroed = (uid: number) =>
+    zeroing.some(
+      ({ mod, host }) =>
+        mod.kind === 'earnNothing' && matchesPiece(content, layout, mod.target, uid, host),
+    );
   for (const { mod } of mods) {
     if (
       mod.kind === 'earn' &&
       !mod.when &&
-      matchesNew(content, layout, mod.target, def, cells, sun)
+      matchesNew(content, layout, mod.target, def, cells, sun, near)
     ) {
       pct += mod.pct;
+    } else if (
+      opts.earnNothing &&
+      mod.kind === 'earnNothing' &&
+      matchesNew(content, layout, mod.target, def, cells, sun, near)
+    ) {
+      nothing = true;
     }
   }
 
@@ -476,7 +519,7 @@ export function estimatePlay(
     const odef = pieceDef(content, other);
     if (odef.connector) continue;
     const score = scoreOf.get(n.uid);
-    if (!score || score.unmet) continue;
+    if (!score || score.unmet || zeroed(n.uid)) continue;
     let dPoints = sunPoints.get(n.uid) ?? 0;
     let dPct = 0;
     for (const e of odef.effects) {
@@ -510,12 +553,12 @@ export function estimatePlay(
   // they touch (D-114).
   for (const uid of connectors) {
     const score = scoreOf.get(uid);
-    if (!score || score.unmet) continue;
+    if (!score || score.unmet || zeroed(uid)) continue;
     let dPoints = 0;
     for (const e of pieceDef(content, layout.byUid.get(uid)!).effects) dPoints += gain(uid, e);
     if (dPoints !== 0) delta += earnedFor(score.points + dPoints, score.pct) - score.earned;
   }
-  if (!blocked) delta += earnedFor(points, pct);
+  if (!blocked && !nothing) delta += earnedFor(points, pct);
 
   // Might it complete a set? A member type touching another member of the same set. Only sets
   // whose members must touch (a hub or one connected group): where an unconnected set's member
