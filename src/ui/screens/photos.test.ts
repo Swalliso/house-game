@@ -40,6 +40,11 @@ const won = firstRun((r) => {
   return r.state.screen === 'won' && res.has('early') && res.has('overtime') && res.has('onTime');
 });
 const lost = firstRun((r) => r.state.screen === 'lost' && r.state.milestones.length > 1);
+// A won run with a fixture installed, for the time-lapse's sounds: a fixture's build sounds as
+// its host does. The first won run need not install one (D-188's delivery left photo0's without).
+const fitted = firstRun(
+  (r) => r.state.screen === 'won' && r.actions.some((a) => a.t === 'install'),
+);
 
 describe('the milestones’ photos', () => {
   it('has a photo for every milestone of a won run, in order', () => {
@@ -154,12 +159,6 @@ describe('the time-lapse’s builds', () => {
   }
 
   it('says whether each build was a room or the yard, for its sound', () => {
-    // A won run with a fixture installed, since a fixture's build sounds as its host does. Found
-    // by search like the runs above: the first won run need not install one (D-188's delivery
-    // left photo0's without).
-    const fitted = firstRun(
-      (r) => r.state.screen === 'won' && r.actions.some((a) => a.t === 'install'),
-    );
     const { steps } = buildSteps(fitted.state.setup, fitted.actions);
     const want = replayed(fitted);
     expect(new Set(steps.map((s) => s.kind))).toEqual(new Set(['room', 'yard']));
