@@ -83,9 +83,9 @@ These are on top of CLAUDE.md's rules.
 ## Logging it and opening the pull request
 
 - Add a decision-log entry, Proposed, with the next free number (D-175 when this was written;
-  D-175 to D-183 went to S01 to S09 on 2026-11-16. On 2026-11-20 D-192 to D-196 were held for
-  S22, S23, S24, S25 and S27; check develop and the open pull requests), in the same pull
-  request as the change. Put a dated note on each entry the story lists under **Decision
+  D-175 to D-183 went to S01 to S09 on 2026-11-16. On 2026-11-20 D-192 to D-198 were held for
+  S22, S23, S24, S25, S27, S29 and S30; check develop and the open pull requests), in the same
+  pull request as the change. Put a dated note on each entry the story lists under **Decision
   log**.
 - Branch `phase/<slug>`, a phase pull request into develop, the PR monitor on, auto-merge
   off. The user merges after a look or a playtest.
@@ -127,8 +127,8 @@ reading the code, not from building anything.
 | [S26](s26-upgrades-that-deliver.md) | Storage Unit, Tool Belt and Drafting Table bring something you can see | M | Rules and content | The user's playtest of S16 | Not started |
 | [S27](s27-hold-a-good.md) | Hold one good for the next shop | M | Rules and UI | After S22 | Not started |
 | [S28](s28-new-goods.md) | A Photo Shoot, a Dog Door, and Weekend Crew at 3 | M | Content and art | The playtest of S22 to S25, and the user's pick | Not started |
-| [S29](s29-fewer-repeat-halls.md) | The hand repeats your free Hallway and Fence half as often | S | Content | The user's OK (D-160, D-121) | Not started |
-| [S30](s30-bunk-beds-cap.md) | Bunk Beds never break Room for everyone | S | Rules | The user's OK (D-101) | Not started |
+| [S29](s29-fewer-repeat-halls.md) | The hand repeats your free Hallway and Fence half as often | S | Content | | Not started; the user OK'd it 2026-11-20 |
+| [S30](s30-bunk-beds-cap.md) | Bunk Beds never break Room for everyone | S | Rules | | Not started; the user OK'd it 2026-11-20 |
 
 ## The groups
 
@@ -170,7 +170,8 @@ feels flat for the same reason. Its order: the shop first (S22, S23), then the b
   side.
 - S26 waits for the user's playtest of S16, so they judge one new source of free cards at a
   time. S28 waits for the playtest of S22 to S25, then the user's pick.
-- S29 and S30 change Accepted decisions (D-160 and D-121; D-101), so each asks first.
+- S29 and S30 change Accepted decisions (D-160 and D-121; D-101). The user OK'd both on
+  2026-11-20.
 - As with S15 to S21, none of them changes the milestone targets. Each reports a paired-seed
   trial, and once the user has chosen which to keep, one fit by D-169's method follows.
 - S15 is replaced by S26: the user keeps the Storage Unit and the Tool Belt (2026-11-20), and
