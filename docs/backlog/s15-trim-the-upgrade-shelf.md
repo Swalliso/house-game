@@ -7,6 +7,9 @@
 | Branch | `phase/upgrade-shelf-trim` |
 | Needs first | The user's answer to one question. Ship it with the rules batch |
 
+*2026-11-20: replaced by [S26](s26-upgrades-that-deliver.md). The user keeps both upgrades
+("okay to have and could be useful"), so S26 makes them deliver instead. Don't build this.*
+
 ## Story
 
 The shop's one company-upgrade slot stops offering Storage Unit and Tool Belt, so it more
