@@ -184,7 +184,9 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     connector: true,
     shape: ['##'],
     tags: [],
-    drawWeight: 10,
+    // D-197: half weight. Your goods always holds one (the standing stock, D-160), so one in the
+    // hand repeats it. The Long Hallway keeps 10: the stock never brings it.
+    drawWeight: 5,
     complexity: 3,
     fromPhase: 0,
     // D-114 (playtest 4): a link alone paid almost nothing, so the hall pays for the rooms it
@@ -373,7 +375,9 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     pack: { maxTiles: 8, shapes: [['####'], ['#..', '#..', '###']] },
     tags: [],
     // 10 in the two-card Layout row (D-121), where 20 would show it more often than one pool did.
-    drawWeight: 10,
+    // D-197: 5, since Your goods always holds one (the standing stock, D-160). The Hendersons'
+    // and the Barkers' +100% make it 10 on their jobs.
+    drawWeight: 5,
     complexity: 3,
     fromPhase: 0,
     effects: [{ kind: 'enclosure', perTile: 1, cap: 6 }],
@@ -396,7 +400,7 @@ export const PIECES: Readonly<Record<PieceId, PieceDef>> = {
     shape: ['###'],
     pack: { maxTiles: 8, shapes: [['###'], ['#####']] },
     tags: [],
-    drawWeight: 10, // as the Fence (D-121)
+    drawWeight: 10, // as the Fence was (D-121); D-197 halved the Fence alone
     complexity: 2,
     fromPhase: 0,
     effects: [

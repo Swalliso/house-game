@@ -112,6 +112,11 @@ export interface RunRecord {
   reservePlays: Record<ReserveSource, number>;
   /** Fence-type (wall) cards in each week's first hand, summed per phase (index = phase). */
   wallOffers: number[];
+  /**
+   * D-197: Fence-type cards the standing stock (D-160) brought to Your goods, per phase (index =
+   * the phase they came in): what the run started with, then each of the stock's deliveries.
+   */
+  stockWallOffers: number[];
   /** The score when the run ended (early bonuses included). */
   finalScore: number;
   /** The finished house, by the systems review's measures (house.ts). */
@@ -521,6 +526,17 @@ export function simulateRun(
     surprise: 0,
   };
   const wallOffers = Array.from({ length: phaseCount }, () => 0);
+  const stockWallOffers = Array.from({ length: phaseCount }, () => 0);
+  /** D-197: the stock's Fence-type cards, from a `delivered` event or the run's first state. */
+  const stockWalls = (phase: number, ids: readonly PieceId[]) => {
+    if (phase >= phaseCount) return;
+    for (const id of ids) if (content.pieces[id].wall) stockWallOffers[phase]!++;
+  };
+  // The stock a run starts with comes with newRun(), which returns no events.
+  stockWalls(
+    s.phase,
+    s.reserve.filter((r) => r.stock).map((r) => r.id),
+  );
   let firstRow = NaN;
   let firstIndoorRow: number | null = null;
   let occ: Occupancy | null = null;
@@ -837,6 +853,8 @@ export function simulateRun(
         if (firstIndoorRow === null && def.category === 'indoor') firstIndoorRow = row;
       } else if (e.t === 'handDrawn') {
         drawn ||= !e.reroll && !e.special;
+      } else if (e.t === 'delivered') {
+        if (e.from === 'stock') stockWalls(e.phase, e.cards);
       } else if (e.t === 'milestone') {
         milestones.push({ phase: e.phase, result: e.result, score: e.score, target: e.target });
         overtimeUsed += e.overtimeUsed;
@@ -958,6 +976,7 @@ export function simulateRun(
       struck,
       reservePlays,
       wallOffers,
+      stockWallOffers,
       finalScore: s.score,
       house: houseStats(content, s.house),
       build,
