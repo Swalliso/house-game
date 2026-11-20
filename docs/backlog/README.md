@@ -122,7 +122,7 @@ reading the code, not from building anything.
 | [S21](s21-house-already-on-the-lot.md) | Some lots start with a tired cottage | L | Rules, content and art | D-174's and D-145's verdicts | Not started; D-174 Accepted 2026-11-18, D-145 still Proposed |
 | [S22](s22-shop-for-your-house.md) | The shelf leans toward goods that can pay in your house | M | Rules and content | Before S27 | Built 2026-11-20 (D-192, #119); waiting on the user's playtest |
 | [S23](s23-every-good-shows-its-worth.md) | Every piece and tool on the shelf says what it's worth | M to L | Rules views and UI | | Not started |
-| [S24](s24-fixtures-always-pay.md) | Five fixtures pay something wherever they fit | S | Content | | Not started |
+| [S24](s24-fixtures-always-pay.md) | Five fixtures pay something wherever they fit | S | Content | | Built 2026-11-20 (D-194, `phase/fixtures-always-pay`); waiting on the user's playtest |
 | [S25](s25-pieces-that-pay-off.md) | A Sapling plants up to three; the Garage, Fire Pit, Playroom and Hot Tub pay more often | M | Content | | Not started |
 | [S26](s26-upgrades-that-deliver.md) | Storage Unit, Tool Belt and Drafting Table bring something you can see | M | Rules and content | The user's playtest of S16 | Not started |
 | [S27](s27-hold-a-good.md) | Hold one good for the next shop | M | Rules and UI | After S22 | Not started |
