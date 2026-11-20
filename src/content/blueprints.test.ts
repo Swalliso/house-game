@@ -204,9 +204,11 @@ describe('Feng Shui', () => {
       [6, 5, 3],
       [9, 5, 3],
     ]);
-    // A Bay Window is one more view for the second: 5 at +50% is 7.5 → 8.
+    // A Bay Window is one more view for the second, and its own +25% (D-194): 5 at +75% is
+    // 8.75 → 9.
     const house = build(rows, placements, { installs: [[2, 'bayWindow']] });
-    expect(tallyOf(house, ['fengShui']).pieces.map((p) => p.earned)).toEqual([9, 8, 3]);
+    expect(tallyOf(house, ['fengShui']).pieces.map((p) => p.earned)).toEqual([9, 9, 3]);
+    expect(tallyOf(house, ['fengShui']).pieces[1]).toMatchObject({ points: 5, pct: 75 });
   });
 });
 

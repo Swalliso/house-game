@@ -216,6 +216,7 @@ With these rules, where to put the house becomes the run's first big decision.
 **2026-11-06 (D-095, Proposed):** Garden Lights in a Sapling vanished when it became a Tree, since a Tree is a lot feature, not a piece. A piece that becomes a lot feature now can't hold a fixture. How a fixture leaves is unchanged.
 *Proposed change by D-172 (2026-11-13, awaiting the user's OK):* three fixtures leave rooms out. The Fireplace no longer fits a Bathroom, Closet, Garage or Mudroom, and Blackout Curtains and the Bay Window no longer fit a Bathroom, Closet or Garage. Their cards read "Fits most rooms".
 *Proposed change by D-171 (2026-11-13, awaiting the user's OK):* with the Handyman as the crew, installing a drawn fixture doesn't end the week (`freeInstalls`); for every other crew it's still the week's turn.
+*2026-11-20 (D-194, Proposed):* five fixtures change what they do, so each pays something wherever it fits: Soundproofing and the Bay Window earn +25% too, Garden Lights +25% anywhere and +25% more in the front yard (still +50% there), the Kitchen Island gives its Kitchen a second +2 for each Dining Room or Herb Garden beside it in place of counting as a Dining Room, and the Pergola fits a Lawn as well as a Patio.
 
 ### D-051 · The shop: five kinds of goods
 **Status:** Accepted · 2026-11-05 (confirmed by the team)
@@ -1252,6 +1253,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - A tie goes to the first host placed. ★ marks every host tied for best, and only when the gain is above 0. A loss is shown in orange (late Bunk Beds can lose Wow once the house has all its Bedrooms).
 - While installing, the host under the pointer drops its badge so its own label stands alone. A crate's fixture options get the shop's line too.
 **2026-11-10 (D-141, Proposed):** a blueprint gets the same kind of line, from `blueprintValue(state, id)`. Its run figure adds up each week left instead of multiplying one week, so it can differ from a fixture's for the same weekly gain. A fixture's line is unchanged.
+*2026-11-20 (D-194, Proposed):* the value lines read D-194's numbers through `preview()` with no change: the five fixtures it changes show their new gains in the shop and on the board while installing (a Pergola picked from the supplies badges each Lawn it fits). The Kitchen Island's card names the line it doubles ("Doubles its +2 per touching Dining Room or Herb Garden").
 
 ### D-081 · M3 rules structure
 **Status:** Accepted · 2026-11-06 (proposed with the M3 pull request; held up in playtest 3, confirmed by the team). Implementation details within D-050, D-051, D-056, and Appendix A · M3a and M3b.
@@ -1270,6 +1272,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 - **Budget earned** for the end screen counts income, not refunds from selling.
 
 **Why:** Choices §4, §5, and Appendix A leave open. Each keeps the preview equal to the tally and every run replayable.
+*2026-11-20 (D-194, Proposed):* the Kitchen Island no longer counts as a Dining Room. It gives its Kitchen a second `neighbor [diningRoom, herbGarden] +2` (a `grantEffect` on its host) instead, since the only reader of its Dining Room was another Kitchen, and a house holds one (D-165). The Bunk Beds are the one `countsAs` modifier left.
 
 ### D-082 · M3 content defaults
 **Status:** Accepted · 2026-11-06 (proposed with the M3 pull request; held up in playtest 3, confirmed by the team).
@@ -1284,6 +1287,7 @@ Build with simple shapes and labels until the core loop is fun, then do an art a
 **2026-11-06 (systems review):** counting Bunk Beds once toward a household's Bedroom range was simulated with the review's house rules. It didn't help, and cost 4 points of the Bathroom ratio, so the review keeps them counting twice (`house-systems-review.md` §5.7).
 **2026-11-06 (confirmed by the team):** Bunk Beds keep counting twice toward a household's Bedrooms. The systems review tested counting them once, and it didn't help (D-101).
 *Changed by D-188 (Proposed 2026-11-20):* the shop's special pieces aren't its alone: once a run, at Framing's start, one of the Pool, the Hot Tub and the Henhouse comes free to Your goods, so the 2×3 Pool can turn up without a purchase.
+*2026-11-20 (D-194, Proposed):* the +25% floor reaches Soundproofing, the Bay Window and Garden Lights (which keep +50% in the front yard), for the same reason: each paid only in a few houses. Every fixture but the Chandelier now earns something on its host wherever it fits.
 
 ### D-086 · Tooltips, first pass (with the shop)
 **Status:** Accepted · 2026-11-06 (proposed with the M3 pull request, as D-077's light pass; held up in playtest 3, confirmed by the team).
@@ -4249,6 +4253,8 @@ What the columns mean:
 
 **Checked:** `npm test`, `npm run typecheck`, `npm run format:check`. One round in the dev build (the store and the board on a running page, 1024×768): with a Fireplace picked from the supplies, only the Bedroom has a gain badge; pointing at the Bathroom is refused with "A Fireplace goes in most rooms, not a Bathroom."; the Skylight is offered both rooms; no console errors. Not looked at: the card's "Fits most rooms" line on screen (tests hold the text), Blackout Curtains and the Bay Window on screen, the shop's cards, touch, other browsers.
 
+*2026-11-20 (D-194, Proposed):* the Pergola fits a Lawn as well as a Patio ("Fits a Patio or Lawn"), standing over the grass as over a Patio. Soundproofing still fits any room and the Bay Window most exterior rooms; both now earn +25% there too.
+
 ### D-173 · Rooms in three arrangements: what stands where differs, not just the colors
 **Status:** Accepted · 2026-11-18, the user's playtest verdict (playtest 9: a run for the Hendersons on /dev/, build 1020c9f, with the General Contractor on an autumn Creekside lot, won as a Charmer at 125,734 Wow): "I think things looked pretty nice this play test." And: "everything this run felt good to me though". Proposed 2026-11-13, a phase pull request (`phase/room-variety`), from playtest 8. The user: "One thing that I think might be worth exploring more are some of the variations we have for the rooms, whether that's additional layouts or furniture in them to give things a little more variety." Stage 1 drew three directions as contact sheets with the game's own layout code: A, two more arrangements for each common type; B, each client's taste restyling the same layouts; C, a Renovation that shows. The user picked A ("Build A"). **Looks only:** no rule, content, score, save or run-code change; `contentHash` is unchanged, so saves and run codes carry over. For the user's look before it merges.
 **Decision:**
@@ -4826,6 +4832,60 @@ What the columns mean:
 - **The autumn woods' lush grass is leaf litter,** the woods' floor's autumn look (D-174), so by an autumn pond it reads as a brown bank.
 - **The ground shows wherever a piece's art leaves it bare,** as the tufts did before, so a Fence stands on whatever patch is there.
 - **Not played by a person,** and only the eleven lots, one won run and Fit were looked at: not Safari, Firefox, touch, other zooms or screens.
+
+### D-194 · Fixtures that always pay: five fixtures earn something wherever they fit
+**Status:** Proposed · 2026-11-20, a phase pull request (`phase/fixtures-always-pay`), from the backlog's S24 (`docs/backlog/s24-fixtures-always-pay.md`), one of the stories the 2026-11-20 shop and content review added at the user's ask ("These sound like a good list of suggestions. Can we get these added in as stories or implemented in some sub-sessions/threads now?"). D-192 to D-196 were held for S22 to S25 and S27, built side by side; this is S24's. A content change: `contentHash(CONTENT)` goes from `4c677dcf` to `bf0c1515`, so runs in progress drop when it merges. The targets are untouched: the user's pick of S22 to S25 gets one fit (D-169's method), as the backlog says.
+**Decision:**
+- **Soundproofing earns +25%** after its `blockPenalties`, so it pays in a room nothing Loud touches. Its card: "Loud neighbors (the street, Garages, Playrooms, and Pools) can't take points off it" and "Earns +25%".
+- **The Bay Window earns +25%** beside its view, which pays only in a room with a "per view" bonus of its own. Its card: "Gives it a view, which counts as one more view" and "Earns +25%".
+- **Garden Lights earn +25% anywhere and +25% more in the front yard,** so they're +50% in front as before, and pay out back, where they paid nothing. Their card: "Makes it Pretty", "Earns +25%" and "+25% more in the front yard".
+- **The Kitchen Island gives its Kitchen a second line,** in place of counting as a Dining Room: `grantEffect` on its host, the Kitchen's own `neighbor [diningRoom, herbGarden] +2`, so a Kitchen beside a Dining Room and an Herb Garden earns +8 where it earned +4. Its `earn` +25% stays first, so its hand card still reads "Fits a Kitchen" and "Earns +25%" (D-148).
+  - **The card says what it adds:** "Earns +25%" and "Doubles its +2 per touching Dining Room or Herb Garden". `fixtureText` (`text.ts`) words a fixture's grant to its own room that way when every type it fits (the Kitchen and the L-Kitchen) already has the line on its card; another grant to its room would read "+2 more per …" (`modifierText`). No other fixture grants anything.
+  - **Inspect** lists the line under the Kitchen's own, with the Island's name, as a granted line reads (Good Bones' do too): "Touching a Dining Room (Kitchen Island) +2".
+- **The Pergola fits a Lawn** as well as a Patio (`fits: { piece: ['patio', 'lawn'] }`), so the card reads "Fits a Patio or Lawn". Both are 2×2, so the painter (`yard.ts`, `pergola()`) stands it over a Lawn with the Patio's cuts: the whole one, or a shallower or narrower one clear of a door's mat, with nothing under it. Its badge shows only where doors open onto two sides, as on a Patio. A Sprinkler's Lawn swaps the Sprinkler for it, as any second fixture does (D-050).
+- **The greedy bot's placements see the Island** (`estimate.ts`): a fixture's grant to its own piece counts as that piece's own effects do, so a Dining Room or an Herb Garden placed beside a Kitchen with an Island is worth its +4 there. Installs were already scored exactly. Other grants (Good Bones) stay out of the estimate, as before.
+- **D-107's value lines** come from `preview()`, so the shop's line and the install flow's badges read the new numbers with no change.
+
+**Sim:** a paired-seed trial, greedy, 600 runs an arm on `check-0` to `check-599` (every client with every crew in turn, as `npm run sim -- --crew all` deals them), develop (`bbccfb3`) against this branch on the same seeds, in the cloud container. Each week's first hand was logged, so "from the hand" is: of the weeks whose first hand held the fixture, the share it went in that week.
+
+| | develop | this branch |
+|---|---|---|
+| Wins | 49.5% | **51.2%**: +1.7 points [−1.2, +4.5], 43 seeds won only with it and 33 only without (p = 0.30) |
+| Milestones 1 to 7 met | 100, 99.3, 95.3, 86.2, 75.0, 64.0, 49.5% | 100, 99.7, 95.7, 87.2, 75.7, 64.2, 51.2% |
+| Fixture installs a run, all | 5.74 | 7.09 |
+| The five's installs a run | 1.37 | **3.04** |
+| The five from the hand | 13.5% | **28.4%** (every drawn fixture: 24.5% → 29.9%) |
+
+| Fixture | From the hand | Installs a run (hand + bought) | Bought, of its shelf offers | Picked from a crate | The week's gain as it goes in (Wow, mean) |
+|---|---|---|---|---|---|
+| Soundproofing | 10.0% → 34.8% | 0.25 → 0.97 | 4.4% → 26.9% | 6.8% → 25.4% | 416 → 130 |
+| Bay Window | 13.4% → 28.2% | 0.38 → 0.85 | 13.2% → 35.6% | 24.5% → 38.5% | 187 → 107 |
+| Garden Lights | 17.3% → 24.3% | 0.35 → 0.48 | 10.2% → 14.3% | 25.0% → 24.5% | 194 → 158 |
+| Kitchen Island | 10.0% → 26.7% | 0.19 → 0.44 | 2.1% → 9.7% | 13.0% → 39.2% | 91 → 80 |
+| Pergola | 25.1% → 23.5% | 0.20 → 0.30 | 0.7% → 3.1% | 21.1% → 20.3% | 136 → 184 |
+
+- **Each of the five goes in more often,** and Soundproofing and the Bay Window now go in from the hand about as often as the Skylight (28%) and Blackout Curtains (35%) do. The mean gain as each goes in falls where it now goes into rooms its old line skipped: Soundproofing pays as it did where it blocks a Loud neighbor, plus 25%.
+- **The Pergola is dealt more:** it reached a first hand in 676 weeks against 402, since a card with no host is swapped out (D-121) and a Lawn is now one, so its installs from the hand rise (0.18 → 0.27 a run) at much the same rate. The Island reached fewer (798 against 1,011): once its house's one Kitchen has one, it has no host left.
+- **The other fixtures give a little ground:** the Skylight 0.89 → 0.77 installs a run, Blackout Curtains 1.09 → 1.01, the Sprinkler 0.35 → 0.31 and the Bunk Beds 0.25 → 0.18. The Fireplace (1.55 → 1.53) and the Chandelier hold.
+- **Wins move within noise:** by crew, the General Contractor +4.0, the Landscaper −3.3, the Architect +1.3 and the Handyman +4.7 points; by client, from −0.8 (Juniper) to +5.0 (Dale). Every interval holds 0. 115 of the 600 seeds played out the same to the last point.
+
+**Why:** the review's (S24's): the five rarely went in, from the hand (9 to 16%, against 25% for the average fixture) or the shelf (the Kitchen Island 0 of 184), for one cause: the line that pays works in a few houses, and anywhere else the card is blank. D-082 gave the Skylight, Blackout Curtains and the Bunk Beds +25% for exactly this. The Kitchen Island's Dining Room was read only by another Kitchen's "+2 per Dining Room", and since D-165 a house holds one Kitchen, so the line never paid.
+
+**Considered:**
+- *"+2 more per touching Dining Room or Herb Garden" on the Island's card:* true, but it doesn't say the Kitchen already earns that +2. "Doubles its +2 …" names the line it doubles, as the story's Watch for asks, and is as short.
+- *A Pergola over a Hot Tub:* it's 1×1 and needs new art (the story leaves it out). Bunk Beds (S30), the Chandelier, the Sprinkler, the Fireplace and new fixtures (S28) are left out too.
+- *A re-fit here:* the backlog fits the user's pick of S22 to S25 once, so this reports the trial and leaves the targets.
+
+**Changes:** D-082 (Accepted): the +25% floor reaches Soundproofing, the Bay Window and Garden Lights (a note). D-050 (Accepted): what five fixtures do (a note). D-081 (Accepted): the Kitchen Island no longer counts as a Dining Room (a note). D-172 (Accepted): where the Pergola fits (a note). D-107 (Accepted): the value lines read the new numbers (a note). `implementation-plan.md`: Appendix B's five rows, the count note and the yard's painter.
+
+**Checked:** `npm test` (158 files, 2,675 tests and 1 skipped), `npm run typecheck` and `npm run format:check`; `contentHash(CONTENT)` is `bf0c1515`.
+- **New tests:** `fixtures.test.ts`: every fixture but the Chandelier has a +% on its host with no condition, the three new ones +25%; Soundproofing's +25% where nothing Loud touches; the Island's +4 for each Dining Room and Herb Garden on a Kitchen beside both, and no Dining Room for its neighbors; the Bay Window's +25% in a room with no per-view bonus; the Pergola over a Lawn at +50%; Garden Lights at +25% out back and +50% in front. `modifiers.test.ts`: a fixture's grant reaches its own piece only. `text.test.ts`: the five cards' lines, and a grant to its own room's wording. `estimate.test.ts`: the estimate sees the Island's grant. `yard.test.ts`: a Pergola stands over a Lawn as over a Patio, clear of a door's mat. `blueprints.test.ts`: Feng Shui's worked example earns 9 where it earned 8, from the Bay Window's +25%.
+- **The dev build,** in headless Chromium at 1280×720, 1440×900 (2×), 1728×963 (2×) and 1920×1080, through run codes (seed `look-10`, the Hendersons with the General Contractor, greedy to week 18, then the ?debug panel's giveGood and the installs): no console errors at any size. The Kitchen's Inspect shows the Island's +2 line and its +25% (`docs/playtests/s24-inspect-kitchen-1728x2.png`). With the Pergola picked from the supplies, both back-yard Lawns show a gain badge (+9, and ★ +18); pointing at one reads "Pergola → Lawn, 12 → 14" and "This week: 2,151 → 2,160 Wow", and a second click installs it, the Pergola standing over the grass. The two Lawns before and after the Pergola and Garden Lights: `docs/playtests/s24-lawns-before-1728x2.png` and `s24-lawns-after-1728x2.png`.
+
+**Known gaps:**
+- **Not played by a person.**
+- **The trial ran in the cloud container,** not on the user's Mac as long runs should (this thread couldn't reach it), and CI's `npm run sim -- --check` is its only check of §8's criteria.
+- **Not looked at on screen:** the shop's offers with their value lines, the hand card, a Pergola on a Lawn a door opens onto, the photos, other zoom levels, touch, Firefox and Safari. Tests hold the card text and the cut beside a door.
 
 ### D-188 · The wrong delivery: once a run, a Pool, a Hot Tub or a Henhouse turns up free at Framing
 **Status:** Proposed · 2026-11-20, a phase pull request (`phase/wrong-delivery`) for the user's playtest: the backlog's S16 (`docs/backlog/s16-wrong-delivery.md`), built once D-171 was Accepted (2026-11-18, playtest 9), so the user judges one new source of free cards at a time. Part of the rules batch: it reports its own paired-seed trial and leaves the targets alone; the batch is fitted once, by D-169's method, when the user has picked its stories. It changes Accepted D-051, D-082, D-098, D-103 and D-160, as proposed changes awaiting the user's OK, with a dated note on each, and adds a line to D-089's report. A rules and content change: `contentHash(CONTENT)` goes from `afeff7e3` to `4c677dcf`, so runs in progress drop when it merges. The user OK'd merging it into develop for their playtest on /dev/ (2026-11-20: "Merge it for a playtest"); it stays Proposed until they've played it.

@@ -56,6 +56,19 @@ describe('modifier text', () => {
     ).toBe('Bedrooms come up more often (+5)');
   });
 
+  it('says a fixture’s grant to its own piece adds to what the piece earns (D-194)', () => {
+    const grant = {
+      kind: 'grantEffect',
+      target: { host: true },
+      effect: { kind: 'neighbor', match: { piece: ['diningRoom', 'herbGarden'] }, amount: 2 },
+    } as const;
+    expect(modifierText(CONTENT, grant)).toBe('+2 more per touching Dining Room or Herb Garden');
+    // A grant to other pieces names them, as before (Good Bones).
+    expect(modifierText(CONTENT, { ...grant, target: { property: 'room' } })).toBe(
+      'Rooms: +2 per touching Dining Room or Herb Garden',
+    );
+  });
+
   it('names what an earn modifier is for, for telling breakdown lines apart', () => {
     expect(earnTargetText(C, { piece: 'pool' })).toBe('Pools');
     expect(earnTargetText(C, { tag: 'Dark' })).toBe('Dark pieces');
@@ -227,7 +240,7 @@ describe('a compact hand card (D-121)', () => {
       bunkBeds: ['Fits a Bedroom', 'Counts as 2 Bedrooms'],
       bayWindow: ['Fits most exterior rooms', 'Gives it a view'],
       sprinkler: ['Fits a Lawn', 'Earns +100%'],
-      pergola: ['Fits a Patio', 'Gives it a view'],
+      pergola: ['Fits a Patio or Lawn', 'Gives it a view'],
       gardenLights: ['Fits any yard piece', 'Makes it Pretty'],
     });
     // One the draw never deals (the Catalog's hand can): its set, in a few words.
@@ -262,7 +275,43 @@ describe('a compact hand card (D-121)', () => {
     );
     expect(fixtureText(CONTENT, CONTENT.fixtures.soundproofing).effects).toEqual([
       'Loud neighbors (the street, Garages, Playrooms, and Pools) can’t take points off it',
+      'Earns +25%',
     ]);
+  });
+
+  // D-194: each of the five says what it pays in any room or yard piece it fits.
+  it('says what the five fixtures of D-194 pay wherever they fit', () => {
+    const effects = (id: keyof typeof CONTENT.fixtures) =>
+      fixtureText(CONTENT, CONTENT.fixtures[id]).effects;
+    expect(effects('soundproofing')).toContain('Earns +25%');
+    expect(effects('bayWindow')).toEqual([
+      'Gives it a view, which counts as one more view',
+      'Earns +25%',
+    ]);
+    expect(effects('gardenLights')).toEqual([
+      'Makes it Pretty',
+      'Earns +25%',
+      '+25% more in the front yard',
+    ]);
+    // The Island's grant is a line its Kitchen (and an L-Kitchen) already has: the card names it.
+    expect(effects('kitchenIsland')).toEqual([
+      'Earns +25%',
+      'Doubles its +2 per touching Dining Room or Herb Garden',
+    ]);
+    expect(fixtureText(CONTENT, CONTENT.fixtures.pergola).fits).toBe('Fits a Patio or Lawn');
+    // A grant its rooms don't have on their cards just adds: "+3 more per…".
+    const island = CONTENT.fixtures.kitchenIsland;
+    const other = {
+      ...island,
+      modifiers: [
+        {
+          kind: 'grantEffect' as const,
+          target: { host: true as const },
+          effect: { kind: 'neighbor' as const, match: { piece: 'livingRoom' as const }, amount: 3 },
+        },
+      ],
+    };
+    expect(fixtureText(CONTENT, other).effects).toEqual(['+3 more per touching Living Room']);
   });
 
   it('falls back to the first line when nothing pays', () => {
