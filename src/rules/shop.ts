@@ -22,6 +22,11 @@
 //   `crate/<shop>/<refresh>/<slot>` stream), and one company upgrade per visit from shop 2,
 //   from `shop/<shop>/upgrade` so a refresh keeps it. Shop 1 opens with the free Housewarming
 //   crate: 1 of 3 Common blueprints.
+// - D-192: the shelf leans toward goods that can pay in the house as it stands (shelf.ts): once
+//   a pick's rarity is rolled, each such good counts `relevantWeight` times in it. A blueprint
+//   whose `stockIf` fails is never stocked, on a shelf or in a crate, and the Showroom skips a
+//   special piece at its limit. The streams are the same, so the same seed and state stock the
+//   same shelf, and with every weight equal a pick lands where it did before the lean.
 
 import type {
   Availability,
@@ -52,6 +57,7 @@ import { ruleValue, runModifiers } from './modifiers.ts';
 import { stream, type Rng } from './rng.ts';
 import { roundHalfUp } from './scoring.ts';
 import { matchesDef } from './selectors.ts';
+import { shelfFor, type Shelf } from './shelf.ts';
 
 export const RARITIES: readonly Rarity[] = ['common', 'uncommon', 'rare'];
 export const SERVICES: readonly ServiceId[] = ['reroll', 'demolition', 'strike'];
@@ -317,12 +323,30 @@ function rollRarity(rng: Rng, weights: readonly [number, number, number]): Rarit
   return 'rare';
 }
 
-/** One item of the rolled rarity, or of the likeliest rarity that still has one. */
+/**
+ * One of the items, each counted `weightOf` times (D-192). With every weight the same, it's the
+ * item `rng.pick` would give, from the same draw.
+ */
+function pickWeighted<T>(rng: Rng, items: readonly T[], weightOf: (x: T) => number): T {
+  const weights = items.map(weightOf);
+  let r = rng.int(weights.reduce((a, w) => a + w, 0));
+  for (let i = 0; i < items.length; i++) {
+    if (r < weights[i]!) return items[i]!;
+    r -= weights[i]!;
+  }
+  return items[items.length - 1]!;
+}
+
+/**
+ * One item of the rolled rarity, or of the likeliest rarity that still has one; within it,
+ * each counts `weightOf` times (D-192: a good that can pay here, `relevantWeight`).
+ */
 function pickByRarity<T extends string>(
   rng: Rng,
   weights: readonly [number, number, number],
   candidates: readonly T[],
   rarityOf: (id: T) => Rarity,
+  weightOf: (id: T) => number = () => 1,
 ): T | null {
   if (candidates.length === 0) return null;
   const rolled = rollRarity(rng, weights);
@@ -334,17 +358,21 @@ function pickByRarity<T extends string>(
   ];
   for (const r of order) {
     const of = candidates.filter((id) => rarityOf(id) === r);
-    if (of.length > 0) return rng.pick(of);
+    if (of.length > 0) return pickWeighted(rng, of, weightOf);
   }
   return null;
 }
 
-/** The goods a visit offers (everything but the services, which `openShop` adds). */
+/**
+ * The goods a visit offers (everything but the services, which `openShop` adds). `shelf` is
+ * what it leans toward (D-192); the rules pass theirs, read from the run's own layout.
+ */
 export function stockGoods(
   content: Content,
   state: RunState,
   shop: number,
   refresh: number,
+  shelf: Shelf = shelfFor(content, state),
 ): ShopOffer[] {
   const rng = stream(state.setup.seed, `shop/${shop}/${refresh}`);
   const stock = stockFor(content, shop);
@@ -353,10 +381,16 @@ export function stockGoods(
 
   const owned = new Set<BlueprintId>(state.blueprints.map((o) => o.id));
   let blueprints = (Object.keys(content.blueprints) as BlueprintId[]).filter(
-    (id) => content.blueprints[id].offered && !owned.has(id),
+    (id) => content.blueprints[id].offered && !owned.has(id) && shelf.stocks(id),
   );
   for (let k = 0; k < stock.blueprints; k++) {
-    const id = pickByRarity(rng, stock.rarity, blueprints, (x) => content.blueprints[x].rarity);
+    const id = pickByRarity(
+      rng,
+      stock.rarity,
+      blueprints,
+      (x) => content.blueprints[x].rarity,
+      (x) => shelf.weight({ kind: 'blueprint', id: x }),
+    );
     if (!id) break;
     out.push({ kind: 'blueprint', id });
     blueprints = blueprints.filter((x) => x !== id);
@@ -373,7 +407,13 @@ export function stockGoods(
   for (let k = 0; k < stock.cards; k++) {
     const wantFixture = rng.chance(b.cardFixturePct);
     const fixture = wantFixture
-      ? pickByRarity(rng, stock.rarity, fixtures, (x) => content.fixtures[x].rarity)
+      ? pickByRarity(
+          rng,
+          stock.rarity,
+          fixtures,
+          (x) => content.fixtures[x].rarity,
+          (x) => shelf.weight({ kind: 'fixture', id: x }),
+        )
       : null;
     if (fixture) {
       out.push({ kind: 'fixture', id: fixture });
@@ -381,14 +421,20 @@ export function stockGoods(
       continue;
     }
     if (pieces.length === 0) continue;
-    const id = rng.pick(pieces);
+    const id = pickWeighted(rng, pieces, (x) => shelf.weight({ kind: 'piece', id: x }));
     out.push({ kind: 'piece', id });
     pieces = pieces.filter((x) => x !== id);
   }
 
   let tools = (Object.keys(content.tools) as ToolId[]).filter((id) => content.tools[id].offered);
   for (let k = 0; k < stock.tools; k++) {
-    const id = pickByRarity(rng, stock.rarity, tools, (x) => content.tools[x].rarity);
+    const id = pickByRarity(
+      rng,
+      stock.rarity,
+      tools,
+      (x) => content.tools[x].rarity,
+      (x) => shelf.weight({ kind: 'tool', id: x }),
+    );
     if (!id) break;
     out.push({ kind: 'tool', id });
     tools = tools.filter((x) => x !== id);
@@ -415,7 +461,10 @@ function stockUpgrade(content: Content, state: RunState, shop: number): ShopOffe
 
 /**
  * The options in a crate: distinct, never an owned blueprint. Blueprints and fixtures roll
- * rarity with the shop's weights; pieces come from the crate's pool, filtered.
+ * rarity with the shop's weights; pieces come from the crate's pool, filtered. D-192: a
+ * blueprint whose `stockIf` fails is never an option, a fixture that can pay here counts
+ * `relevantWeight` times in its pick, and the Showroom offers a special piece at its limit only
+ * when the others can't fill it.
  */
 export function crateOptions(
   content: Content,
@@ -423,6 +472,7 @@ export function crateOptions(
   source: CratePick['source'],
   key: string,
   n: number = content.balance.shop.crateOptions,
+  shelf: Shelf = shelfFor(content, state),
 ): PickOption[] {
   const rng = stream(state.setup.seed, key);
   const shop = state.offers?.shop?.number ?? Math.max(1, state.phase);
@@ -438,7 +488,8 @@ export function crateOptions(
       (id) =>
         content.blueprints[id].offered &&
         !state.blueprints.some((b) => b.id === id) &&
-        (source !== 'housewarming' || content.blueprints[id].rarity === 'common'),
+        (source !== 'housewarming' || content.blueprints[id].rarity === 'common') &&
+        shelf.stocks(id),
     );
     // The free gift prefers what the shop beside it isn't selling, and fills up from the rest.
     const pools =
@@ -447,7 +498,13 @@ export function crateOptions(
         : [all];
     for (let left of pools) {
       while (out.length < n) {
-        const id = pickByRarity(rng, weights, left, (x) => content.blueprints[x].rarity);
+        const id = pickByRarity(
+          rng,
+          weights,
+          left,
+          (x) => content.blueprints[x].rarity,
+          (x) => shelf.weight({ kind: 'blueprint', id: x }),
+        );
         if (!id) break;
         out.push({ kind: 'blueprint', id });
         left = left.filter((x) => x !== id);
@@ -456,23 +513,40 @@ export function crateOptions(
   } else if (contents === 'fixture') {
     let left = Object.keys(content.fixtures) as FixtureId[];
     while (out.length < n) {
-      const id = pickByRarity(rng, weights, left, (x) => content.fixtures[x].rarity);
+      const id = pickByRarity(
+        rng,
+        weights,
+        left,
+        (x) => content.fixtures[x].rarity,
+        (x) => shelf.weight({ kind: 'fixture', id: x }),
+      );
       if (!id) break;
       out.push({ kind: 'fixture', id });
       left = left.filter((x) => x !== id);
     }
   } else {
     const crate = content.crates[source as CrateId];
-    let left = (Object.keys(content.pieces) as PieceId[]).filter((id) => {
+    const all = (Object.keys(content.pieces) as PieceId[]).filter((id) => {
       const def = content.pieces[id];
       if (def.member || def.addition) return false;
       if (crate.pool === 'special' && def.drawWeight !== 0) return false;
       return !crate.filter || matchesDef(crate.filter, def);
     });
-    while (out.length < n && left.length > 0) {
-      const id = rng.pick(left);
-      out.push({ kind: 'piece', id });
-      left = left.filter((x) => x !== id);
+    // The Showroom's special pieces at their limit wait behind the rest (D-192), while the
+    // shelf leans at all.
+    const pools =
+      crate.pool === 'special' && content.balance.shop.relevantWeight > 1
+        ? [
+            all.filter((id) => shelf.canPay({ kind: 'piece', id })),
+            all.filter((id) => !shelf.canPay({ kind: 'piece', id })),
+          ]
+        : [all];
+    for (let left of pools) {
+      while (out.length < n && left.length > 0) {
+        const id = rng.pick(left);
+        out.push({ kind: 'piece', id });
+        left = left.filter((x) => x !== id);
+      }
     }
   }
   return out;
@@ -527,8 +601,9 @@ export function openVisit(
   state: RunState,
   shop: number,
   forced = false,
+  shelf: Shelf = shelfFor(content, state),
 ): ShopVisit {
-  const goods = stockGoods(content, state, shop, 0);
+  const goods = stockGoods(content, state, shop, 0, shelf);
   return {
     number: shop,
     offers: withServices(goods, stockUpgrade(content, state, shop)),
@@ -540,9 +615,14 @@ export function openVisit(
 }
 
 /** A refresh rerolls every good (not the services); the sale moves with it. */
-export function refreshVisit(content: Content, state: RunState, visit: ShopVisit): ShopVisit {
+export function refreshVisit(
+  content: Content,
+  state: RunState,
+  visit: ShopVisit,
+  shelf: Shelf = shelfFor(content, state),
+): ShopVisit {
   const refreshes = visit.refreshes + 1;
-  const goods = stockGoods(content, state, visit.number, refreshes);
+  const goods = stockGoods(content, state, visit.number, refreshes, shelf);
   const upgrade = visit.offers.filter((o) => o.kind === 'upgrade');
   return {
     ...visit,

@@ -96,6 +96,7 @@ function run(seed: string, cleared: number, over: Partial<RunRecord> = {}): RunR
       strikesHeld: 0,
       installs: [],
       tools: [],
+      shelf: {},
     },
     pieces: {},
     layers: { comfort: 0, charm: 0, sparkle: 0 },
@@ -361,6 +362,10 @@ describe('the aggregation', () => {
         heldAtEnd: ['rushOrder'],
         installs: [{ id: 'fireplace', from: 'hand', gain: 5, week: 6, weeksLeft: 20 }],
         tools: [{ id: 'remodelEntertainer', gain: 30, week: 9, weeksLeft: 18 }],
+        shelf: {
+          tool: { offered: 3, couldPay: 2, zero: 1 },
+          fixture: { offered: 1, couldPay: 0, zero: 1 },
+        },
       },
     });
     const text = report(CONTENT, [rich, b], 'synthetic');
@@ -376,6 +381,10 @@ describe('the aggregation', () => {
       'bought, never used',
       'Remodel Plans: Entertainer',
       '+1 reroll',
+      // D-192: per visit (neither record counts a visit, so it's per one), then by kind.
+      'Goods on offer per visit: 4.0 · could pay in the house 50% · the shop bot values at 0 50%',
+      'tools 3 (67%, 33%)',
+      'fixtures 1 (0%, 100%)',
       // D-157: per run, then each struck type (a run strikes a type once).
       'Strikes per run: used 1.00 · bought 0.50 · held at the end 1.50',
       'Struck type',

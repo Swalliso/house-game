@@ -13,7 +13,7 @@
 import { SERVICE_NAMES, type Content, type ServiceId } from '../src/rules/index.ts';
 import { SCORE_LABELS } from '../src/content/labels.ts';
 import { BOT_BLIND } from './policies/shop.ts';
-import type { RunRecord } from './simulate.ts';
+import type { RunRecord, ShelfCount } from './simulate.ts';
 
 export function percentile(values: readonly number[], p: number): number {
   if (values.length === 0) return NaN;
@@ -1061,6 +1061,7 @@ export function economyReport(content: Content, records: readonly RunRecord[]): 
         sum((r) => r.economy.skips),
         sum((r) => r.economy.visits),
       )}` + ` · goods sold per run ${(sum((r) => r.economy.sold) / n).toFixed(2)}`,
+      shelfLine(records),
       `Bonus rerolls per run: bought ${(sum((r) => r.economy.bonusRerollsBought) / n).toFixed(2)}` +
         ` · used ${(sum((r) => r.economy.bonusRerollsUsed) / n).toFixed(2)}` +
         ` · held at the end ${(sum((r) => r.economy.bonusRerollsHeld) / n).toFixed(2)}`,
@@ -1070,6 +1071,60 @@ export function economyReport(content: Content, records: readonly RunRecord[]): 
   out.push(fixturesReport(content, records));
   out.push(toolsReport(content, records));
   return out.join('\n');
+}
+
+/** The kinds of good on a shelf, in the shop's order, for the shelf line (D-192). */
+const SHELF_KINDS: readonly (readonly [string, string])[] = [
+  ['blueprint', 'blueprints'],
+  ['piece', 'pieces'],
+  ['fixture', 'fixtures'],
+  ['tool', 'tools'],
+  ['crate', 'crates'],
+  ['upgrade', 'upgrades'],
+];
+
+/**
+ * D-192: the goods on offer per visit (refreshes count), the share the rules said could pay in
+ * the house as it stood, and the share the shop bot valued at 0 there; then each kind's offers
+ * with those two shares.
+ */
+function shelfLine(records: readonly RunRecord[]): string {
+  const visits = sumOf(records.map((r) => r.economy.visits + r.economy.refreshes));
+  const total = (kind: string | null, f: (c: ShelfCount) => number) =>
+    sumOf(
+      records.flatMap((r) =>
+        Object.entries(r.economy.shelf ?? {})
+          .filter(([k]) => kind === null || k === kind)
+          .map(([, c]) => f(c)),
+      ),
+    );
+  const offered = total(null, (c) => c.offered);
+  const kinds = SHELF_KINDS.flatMap(([kind, name]) => {
+    const n = total(kind, (c) => c.offered);
+    if (n === 0) return [];
+    const could = pct(
+      total(kind, (c) => c.couldPay),
+      n,
+    );
+    return [
+      `${name} ${n} (${could}, ${pct(
+        total(kind, (c) => c.zero),
+        n,
+      )})`,
+    ];
+  });
+  return [
+    `Goods on offer per visit: ${(offered / Math.max(1, visits)).toFixed(1)}` +
+      ` · could pay in the house ${pct(
+        total(null, (c) => c.couldPay),
+        offered,
+      )}` +
+      ` · the shop bot values at 0 ${pct(
+        total(null, (c) => c.zero),
+        offered,
+      )}`,
+    `  by kind (could pay, bot 0): ${kinds.join(' · ') || 'none'}`,
+  ].join('\n');
 }
 
 /**

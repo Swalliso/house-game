@@ -799,6 +799,22 @@ export interface BlueprintDef {
   modifiers: readonly Modifier[];
   /** False for goods the shop holds back until their mechanic exists (Dream Home needs M4a's specs). */
   offered: boolean;
+  /**
+   * D-192: the shop and the crates stock it only where this holds (Waterfront only on a lot
+   * with water). Unset: anywhere.
+   */
+  stockIf?: StockIf;
+  /**
+   * D-192: the pieces it pays on, for the shelf's lean: until a placed piece matches, it counts
+   * once in its pick rather than `relevantWeight` times (Waterfront: a piece touching the
+   * water). Unset: it counts as able to pay wherever it's stocked.
+   */
+  paysOn?: Selector;
+}
+
+/** D-192: where the shop stocks a good: the lot has a tile of one of these features. */
+export interface StockIf {
+  lotHas: readonly TerrainId[];
 }
 
 export interface ToolDef {
@@ -838,6 +854,15 @@ export type PickOption =
   | { kind: 'blueprint'; id: BlueprintId }
   | { kind: 'fixture'; id: FixtureId }
   | { kind: 'piece'; id: PieceId };
+
+/** D-192: a good on a shelf or in a crate (every shop offer but a service). */
+export type ShelfGood =
+  | { kind: 'blueprint'; id: BlueprintId }
+  | { kind: 'piece'; id: PieceId }
+  | { kind: 'fixture'; id: FixtureId }
+  | { kind: 'tool'; id: ToolId }
+  | { kind: 'crate'; id: CrateId }
+  | { kind: 'upgrade'; id: UpgradeId };
 
 export type Range = readonly [min: number, max: number];
 
@@ -1055,6 +1080,12 @@ export interface ShopBalance {
   crateOptions: number;
   /** Savings Account interest: +1 budget per this many held, up to the `interestMax` rule. */
   interestPer: number;
+  /**
+   * D-192: a good that can pay in the house as it stands (shelf.ts) counts this many times in
+   * its pick, on a shelf or in a Fixture Crate, against 1 for one that can't yet. 1 turns the
+   * lean off.
+   */
+  relevantWeight: number;
 }
 
 export interface Content {
