@@ -128,7 +128,7 @@ reading the code, not from building anything.
 | [S27](s27-hold-a-good.md) | Hold one good for the next shop | M | Rules and UI | After S22 | Not started |
 | [S28](s28-new-goods.md) | A Photo Shoot, a Dog Door, and Weekend Crew at 3 | M | Content and art | The playtest of S22 to S25, and the user's pick | Not started |
 | [S29](s29-fewer-repeat-halls.md) | The hand repeats your free Hallway and Fence half as often | S | Content | | Not started; the user OK'd it 2026-11-20 |
-| [S30](s30-bunk-beds-cap.md) | Bunk Beds never break Room for everyone | S | Rules | | Not started; the user OK'd it 2026-11-20 |
+| [S30](s30-bunk-beds-cap.md) | Bunk Beds never break Room for everyone | S | Rules | | Built 2026-11-20 (D-198); waiting on the user's playtest |
 
 ## The groups
 
