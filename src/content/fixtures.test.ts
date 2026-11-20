@@ -4,7 +4,16 @@
 // pieces.ts; when tuning changes a number, change the test with it.
 
 import { describe, expect, it } from 'vitest';
-import type { BlueprintId, FixtureId, HouseState, PieceId, Rarity, Tally } from '../rules/index.ts';
+import type {
+  BlueprintId,
+  FixtureId,
+  HouseState,
+  PieceId,
+  Rarity,
+  RunState,
+  Tally,
+} from '../rules/index.ts';
+import { rules } from '../rules/index.ts';
 import { drawWeights } from '../rules/draw.ts';
 import { checkInstall, withFixture } from '../rules/fixtures.ts';
 import { computeLayout, isLayoutModifier, isRoom, type Layout } from '../rules/layout.ts';
@@ -463,7 +472,11 @@ describe('Kitchen Island', () => {
 
 describe('Bunk Beds', () => {
   it('+25%, and its Bedroom counts as 2 for count conditions but once in sets', () => {
-    expectText('bunkBeds', 'Fits a Bedroom', ['Counts as 2 Bedrooms for the client', 'Earns +25%']);
+    // D-198: up to the top of a range (Room for everyone's), and never past it.
+    expectText('bunkBeds', 'Fits a Bedroom', [
+      'Counts as 2 Bedrooms for the client, up to the top of a range',
+      'Earns +25%',
+    ]);
     // 3 at +25% is 3.75: 4.
     expect(earned(open, [['bedroom', 0, 0]], [[1, 'bunkBeds']])).toEqual([4]);
     expect(layoutOf(open, [['bedroom', 0, 0]], [[1, 'bunkBeds']]).countsAs.get(1)).toEqual(
@@ -484,6 +497,39 @@ describe('Bunk Beds', () => {
     const half = tallyOf(build(open, jj.slice(0, 2), [[1, 'bunkBeds']]));
     expect(half.sets).toEqual([]);
     expect(half.pieces.map((p) => p.earned)).toEqual([4, 3]);
+  });
+
+  it('at the top of Room for everyone keep the line, so they’re worth their +25% (D-198)', () => {
+    // The Hendersons start at 2–3 Bedrooms, so three is the top. D-101 read four with Bunk Beds
+    // in one, which broke the line, and the shop's value line showed the loss (D-107).
+    const start = rules.newRun({
+      seed: 'bunk-beds',
+      clientId: 'hendersons',
+      crewId: 'generalContractor',
+      mode: 'standard',
+    });
+    const three: Placement[] = [
+      ['bedroom', 0, 0],
+      ['bedroom', 2, 0],
+      ['bedroom', 4, 0],
+    ];
+    const s: RunState = { ...start, house: build(open, three) };
+    const line = (st: RunState) => rules.checklist(st).find((l) => l.id === 'roomForEveryone')!;
+    expect(line(s)).toMatchObject({ met: true, progress: [{ text: '3 Bedrooms (2–3)' }] });
+    const value = rules.fixtureValue(s, 'bunkBeds')!;
+    expect(value.gain).toBeGreaterThan(0);
+    const bought: RunState = { ...s, supplies: [{ kind: 'fixture', id: 'bunkBeds' }] };
+    const install = { t: 'install', from: 'supplies', i: 0, uid: value.host } as const;
+    expect(rules.preview(bought, install)).toMatchObject({
+      delta: value.gain,
+      specsGained: [],
+      specsLost: [],
+    });
+    const installed = rules.apply(bought, install).state;
+    expect(line(installed)).toMatchObject({ met: true, progress: [{ text: '3 Bedrooms (2–3)' }] });
+    // Two Bedrooms with Bunk Beds in one still read three, as before.
+    const two: RunState = { ...start, house: build(open, three.slice(0, 2), [[1, 'bunkBeds']]) };
+    expect(line(two)).toMatchObject({ met: true, progress: [{ text: '3 Bedrooms (2–3)' }] });
   });
 
   it('fits a Bedroom only', () => {

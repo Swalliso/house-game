@@ -1159,7 +1159,8 @@ export function modifierText(content: Content, mod: Modifier): string {
         return `Neighbors count it as ${what} (sets and the checklist don’t)`;
       }
       const subject = isHost(mod.target) ? 'Counts' : `${subjectText(content, mod.target)} count`;
-      return `${subject} as ${what}${times === 1 ? ' too' : ' for the client'}`;
+      // D-198: a count with a top takes the extra only up to it (conditions.ts's countFor).
+      return `${subject} as ${what}${times === 1 ? ' too' : ' for the client, up to the top of a range'}`;
     }
     case 'link': {
       const names = mod.among.map((id) => plural(content.pieces[id].name));
