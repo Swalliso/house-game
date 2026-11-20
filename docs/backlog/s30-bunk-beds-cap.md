@@ -5,7 +5,7 @@
 | Size | S, a day and a sim trial |
 | Kind | Rules (one counting rule) and a card line. No content change, so the hash holds |
 | Branch | `phase/bunk-beds-cap` |
-| Needs first | The user's OK (Ask the user first): it changes D-101, which is Accepted |
+| Needs first | Nothing. The user OK'd changing D-101 on 2026-11-20 |
 
 ## Story
 
@@ -26,11 +26,11 @@ A house at the top no longer breaks the line by putting them in.
   what was then the Bathroom ratio. This keeps it where it helps, reaching the bottom of a
   range, and drops it only past the top.
 
-## Ask the user first
+## Already asked
 
-"Let Bunk Beds count twice only up to the top of Room for everyone's range?" D-101 is Accepted,
-and this is a third way the team hasn't tried. The user was asked on 2026-11-20; if they said
-yes, the thread that builds this has their message.
+The user said yes on 2026-11-20, on a card in the review thread: "Also change the two settled
+rules: hand Hallways and Fences, and Bunk Beds?", "Yes, build both". D-101 is Accepted, and
+this is a third way the team hasn't tried; that yes covers changing it as **Build** says.
 
 ## Build
 

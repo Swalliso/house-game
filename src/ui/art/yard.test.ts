@@ -572,6 +572,32 @@ describe('outside doors', () => {
     expect(both.items.some((i) => i.sprite.startsWith('parasol-'))).toBe(true);
   });
 
+  it('stand a Pergola over a Lawn as over a Patio, clear of a door’s mat (D-194)', () => {
+    const pergolas = (l: YardLayout) =>
+      l.items.map((i) => i.sprite).filter((sp) => sp.startsWith('pergola'));
+    // Alone, the whole Pergola over the grass, and nothing else stands on the Lawn.
+    const alone = yardOf(house([['lawn', 4, 4, 0, 'pergola']])).pieces.get(1)!;
+    expect(alone.fixtureShown).toBe(true);
+    expect(alone.items.map((i) => i.sprite)).toEqual(['pergola']);
+    // The front door can open onto a Lawn (only a front door does): from a Bedroom on its north
+    // edge, the shallower cut stands at the Lawn's front, clear of the door's mat.
+    const h = house([
+      ['bedroom', 4, 2],
+      ['lawn', 4, 4, 0, 'pergola'],
+    ]);
+    const m = houseModel(h);
+    const door = m.exits.find((e) => e.onto === 2)!;
+    expect(door).toBeDefined();
+    expect(door.side).toBe('S');
+    const l = yardModel(h, m).pieces.get(2)!;
+    expect(l.fixtureShown).toBe(true);
+    expect(pergolas(l)).toEqual(['pergola-short']);
+    for (const it of l.items) {
+      expect(overlaps(rect(it), door.mat), it.sprite).toBe(false);
+      expect(overlaps(rect(it), door.gap), it.sprite).toBe(false);
+    }
+  });
+
   it('stand an outbuilding beside a door: it’s the piece itself', () => {
     // The playtest review's cases: a Treehouse or a Greenhouse whose roof rises over a door's mat
     // or opening in the row behind it, which used to leave only its shadow and its digit.

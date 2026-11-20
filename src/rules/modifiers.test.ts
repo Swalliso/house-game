@@ -878,6 +878,56 @@ describe('grantEffect', () => {
     expect(earned(rules.currentTally(state), 1)).toBe(5);
   });
 
+  it('a fixture’s grant reaches its own piece only (D-194: the Kitchen Island)', () => {
+    // TEST_CONTENT's Island, giving its Kitchen a second +2 per touching Dining Room.
+    const content: Content = {
+      ...C,
+      fixtures: {
+        ...C.fixtures,
+        kitchenIsland: {
+          ...C.fixtures.kitchenIsland,
+          modifiers: [
+            {
+              kind: 'grantEffect',
+              target: { host: true },
+              effect: { kind: 'neighbor', match: { piece: 'diningRoom' }, amount: 2 },
+            },
+          ],
+        },
+      },
+    };
+    // Two Kitchens (uids 1 and 3) either side of a Dining Room, the Island in the first.
+    const house = installed(
+      houseFrom(content, L, [
+        ['kitchen', 0, 0],
+        ['diningRoom', 2, 0],
+        ['kitchen', 4, 0],
+      ]),
+      [1, 'kitchenIsland'],
+    );
+    const t = tally(content, house);
+    // Each Kitchen: +2 for the Dining Room, at its +50%: 3. The Island's Kitchen twice that.
+    expect(earned(t, 1)).toBe(6);
+    expect(earned(t, 3)).toBe(3);
+    expect(scoreOf(t, 1).lines).toContainEqual({
+      label: 'Touching a Dining Room (Kitchen Island)',
+      op: 'add',
+      value: 2,
+      from: [{ kind: 'piece', uid: 2 }],
+    });
+    expect(scoreOf(t, 3).lines.some((l) => l.label.endsWith('(Kitchen Island)'))).toBe(false);
+    // Without the Island, both are 3.
+    const plain = tally(
+      content,
+      houseFrom(content, L, [
+        ['kitchen', 0, 0],
+        ['diningRoom', 2, 0],
+        ['kitchen', 4, 0],
+      ]),
+    );
+    expect([earned(plain, 1), earned(plain, 3)]).toEqual([3, 3]);
+  });
+
   it('Country Living: every piece earns +1 per touching Tree, up to 3, on top of its own', () => {
     const rows = withTrees([2, 4], [2, 5]);
     // A Lawn (uid 1) and a Bedroom (uid 2) on either side of two Trees.
