@@ -6,7 +6,8 @@
 //   reach shop 3 and use a tool or install a supply, so later shops and the real tools run in
 //   npm test (counted over the 5, so one harsh seed after a content change doesn't fail it).
 //   Over all 5 greedy sets a floor: it beats random at the same week on every seed, meets
-//   milestone 1 on every seed, and meets milestone 3 on most;
+//   milestone 1 on every seed, and meets milestone 3 on most. On each finished house the house
+//   report's Garage reach (D-189) agrees with the rules' tally;
 // - the same seed and policy give the same results (§8, Determinism);
 // - a bot that loops or breaks stops with a SimError that names the seed and carries a run
 //   code that replays to where it stopped, so a sweep can’t hang CI.
@@ -115,6 +116,10 @@ describe.each(CLIENTS)('the smoke sim for %s', (client) => {
         probed++;
         if (record.enclosure) measured++;
       }
+      // D-189: the house report reads a Garage as unreached exactly when the rules' tally says
+      // it earns nothing for its requirement.
+      const garage = rules.currentTally(state).pieces.find((p) => p.defId === 'garage');
+      expect(record.house.garageUnreached, seed).toBe(garage?.unmet !== undefined);
       expectReplays(run);
     }
     expect(economy).toBeGreaterThanOrEqual(3);

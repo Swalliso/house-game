@@ -17,6 +17,7 @@ import {
   anyModalOpen,
   cancelPlacement,
   closeTopModal,
+  pinKey,
   requestEndWeek,
   selectCard,
   toggleDemolish,
@@ -144,6 +145,10 @@ function useKeyboard(): void {
       } else if (e.key === 's' || e.key === 'S') {
         // The first job brings Strike in at Foundation's second week (D-149, D-157).
         if (run.value.screen === 'build' && shown.value.strike) toggleStrike();
+      } else if (e.key === 'p' || e.key === 'P') {
+        // D-186: pins the card picked, or the one Tab is on, or under the pointer. Never in the
+        // first job.
+        if (run.value.screen === 'build' && shown.value.pin) pinKey();
       } else if (e.key === '+' || e.key === '=') zoomIn();
       else if (e.key === '-' || e.key === '_') zoomOut();
       else if (e.key === 'f' || e.key === 'F') toggleFit();

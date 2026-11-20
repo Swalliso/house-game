@@ -14,6 +14,7 @@
 //   sooner if a find pays some, and overtime if Groundbreaking needs a week of it.
 // - Foundation's second week: Strike (D-157). If Foundation is completed in its first week,
 //   Strike shows from the next milestone without its entrance.
+// - Never: the hand cards' pushpins and their P key (D-186). Every later run has them.
 // - The shop, a shop behind (D-158): the first is the housewarming gift alone, the second has the
 //   shelves any run's first shop has, and from the third it's the whole yard (shopStageOf).
 //
@@ -42,6 +43,8 @@ export interface Shown {
   early: boolean;
   /** D-157: Strike on the plank, and its S key. */
   strike: boolean;
+  /** D-186: the pushpin on each hand card, and its P key. Never in the first job. */
+  pin: boolean;
 }
 
 const EVERYTHING: Shown = {
@@ -55,6 +58,7 @@ const EVERYTHING: Shown = {
   overtime: true,
   early: true,
   strike: true,
+  pin: true,
 };
 
 /** The weeks the opening walks through: the checklist and Reroll come in after them. */
@@ -78,6 +82,7 @@ export function shownIn(s: RunState, first: boolean): Shown {
     overtime: founded || s.overtimeWeek > 0,
     early: founded,
     strike: s.phase > 1 || (s.phase === 1 && s.slot >= STRIKE_SLOT),
+    pin: false,
   };
 }
 

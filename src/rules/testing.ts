@@ -39,7 +39,7 @@ import type {
   UpgradeDef,
   UpgradeId,
 } from './index.ts';
-import { DRAW_ROWS, drawHand, type DrawOptions } from './draw.ts';
+import { DRAW_ROWS, drawHand, rowOf, type DrawOptions } from './draw.ts';
 import { placedCells } from './grid.ts';
 import { lotFromRows, terrainAt } from './lot.ts';
 import { addPiece } from './placement.ts';
@@ -1582,4 +1582,39 @@ export function beforeSwaps(hand: readonly Card[], swapped: readonly SwappedCard
 export function drawnBefore(e: GameEvent | undefined): Card[] {
   if (e?.t !== 'handDrawn') throw new Error(`not a handDrawn event: ${e?.t}`);
   return beforeSwaps(e.hand, e.swapped);
+}
+
+/** D-186: hand card i's place in its row (0 for the row's first). */
+export function rowSlot(content: Content, hand: readonly Card[], i: number): number {
+  const row = rowOf(content, hand[i]!);
+  return hand.slice(0, i).filter((c) => rowOf(content, c) === row).length;
+}
+
+/**
+ * D-186: where a drawn hand should hold last week's kept card, worked out here apart from the
+ * rules: in its row's k-th slot (the row's last when the row is shorter), in place of the card
+ * drawn there; the slot that dealt the same card, if another one did, takes that card instead. A
+ * row the draw left empty gets the card on its own (Rooms first, Layout last). Returns the hand
+ * and the kept card's slot.
+ */
+export function keptInto(
+  content: Content,
+  hand: readonly Card[],
+  card: Card,
+  k: number,
+): { hand: Card[]; i: number } {
+  const row = rowOf(content, card);
+  const out = [...hand];
+  const at = out.flatMap((c, j) => (rowOf(content, c) === row ? [j] : []));
+  if (at.length === 0) {
+    const i = row === 'rooms' ? 0 : out.length;
+    out.splice(i, 0, card);
+    return { hand: out, i };
+  }
+  const i = at[Math.min(k, at.length - 1)]!;
+  const same = (c: Card | undefined) => c?.kind === card.kind && c.id === card.id;
+  const dealt = at.find((j) => j !== i && same(out[j]));
+  if (dealt !== undefined) out[dealt] = out[i]!;
+  out[i] = card;
+  return { hand: out, i };
 }

@@ -16,6 +16,10 @@
 // targets: a card clicked twice (or its number pressed twice) is struck, its type gone for the
 // run. The struck card holds its slot under a stamp, then the card from its row that took its
 // place slides in (the director's beat, which any action ends at once).
+//
+// D-186: a pushpin on each card's top edge, beside a swapped-in card's die, pins it for next
+// week: a click on it (or P) never picks the card. Next week the card the pin kept wears a Kept
+// tag, and stays put while the rest of the hand deals in around it (the director's deal).
 
 import type { RefObject } from 'preact';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
@@ -56,7 +60,7 @@ import {
   tool,
 } from '../store.ts';
 import { rotate } from '../board/Board.tsx';
-import { busy, strikeView, struckIn, struckSaid } from '../fx/director.ts';
+import { busy, dealView, strikeView, struckIn, struckSaid } from '../fx/director.ts';
 import { stakesOf } from '../screens/week-stamp.ts';
 import { settings } from '../settings.ts';
 import { Button, Card, Chip, Icon, Keycap, Panel } from '../kit/kit.tsx';
@@ -65,6 +69,8 @@ import {
   cancelPlacement,
   isSelected as isPicked,
   passArmed,
+  pinAt,
+  placingSlot,
   requestEndWeek,
   selectCard,
   strikeFocus,
@@ -166,6 +172,78 @@ function SwapMark({ i }: { i: number }) {
   );
 }
 
+const PIN_TIP =
+  'Pin it for next week: it stays in your hand, in place of a new card from its row. One pin at a time (P).';
+const PINNED_TIP =
+  'Pinned for next week: it stays in your hand, in place of a new card from its row. Click to unpin (P).';
+const KEPT_TIP = 'Kept from last week. It can’t be pinned again.';
+
+/**
+ * D-186: a hand card's pushpin, stuck in its top edge. Grey on a card not pinned, so the choice
+ * is in view before a card is placed; red on the one pinned for next week, stabbing in as it's
+ * pinned. The card last week's pin kept wears a Kept tag instead: it can't be pinned again. Both
+ * are read out with the card, and their words are their tips.
+ */
+function PinMark({ i }: { i: number }) {
+  const s = run.value;
+  if (s.kept === i) {
+    return (
+      <span class="kept-tag" role="img" aria-label="Kept from last week" data-tip={KEPT_TIP}>
+        <Icon name="pin" />
+        <span class="kept-word">Kept</span>
+      </span>
+    );
+  }
+  // The card waiting to be placed goes at End week, and a pin on it with it: none to set.
+  if (placingSlot() === i) return null;
+  const on = s.pinned === i;
+  return (
+    <span
+      class={`pin-toggle ${on ? 'is-pinned' : ''}`}
+      role="img"
+      aria-label={on ? 'Pinned for next week (P to unpin)' : 'Pin it for next week (P)'}
+      data-tip={on ? PINNED_TIP : PIN_TIP}
+    >
+      {/* Grey, or red under the pointer and once pinned (hand.css). */}
+      <Icon name="pinOff" class="pin-off" />
+      <Icon name="pin" class="pin-on" />
+    </span>
+  );
+}
+
+/**
+ * The card's top corner: the die of a card swapped in (D-121), and its pushpin (D-186). The pin
+ * shows on every card from the start of the week (placing a card ends it), but not in strike
+ * mode, whose targets the cards are, on a struck card under its stamp, on the card waiting to
+ * be placed, or in the first job.
+ */
+function CardCorner({ i, pin }: { i: number; pin: boolean }) {
+  return (
+    <span class="card-corner">
+      <SwapMark i={i} />
+      {pin && shown.value.pin && <PinMark i={i} />}
+    </span>
+  );
+}
+
+/** A hand card's click: on its pushpin or Kept tag, the pin (D-186); anywhere else, the card. */
+function cardClick(e: MouseEvent, i: number): void {
+  const at = e.target instanceof Element ? e.target : null;
+  if (at?.closest('.pin-toggle, .kept-tag')) pinAt(i);
+  else selectCard(i);
+}
+
+/**
+ * D-186: a card's part in a deal around a kept card: the kept card stays put, and the others
+ * slide in in hand order (`deal`, their place in it, sets the delay; hand.css).
+ */
+function dealLook(deal: number | undefined, keptStill: boolean | undefined) {
+  return {
+    cls: [deal === undefined ? '' : 'deal-in', keptStill ? 'deal-kept' : ''],
+    style: deal === undefined ? undefined : { '--deal-at': String(deal) },
+  };
+}
+
 /** A struck card held in its slot under the stamp (D-157): the stamp's words, and if it's going. */
 interface Held {
   text: string;
@@ -234,6 +312,8 @@ function CardView({
   i,
   held,
   entering,
+  deal,
+  keptStill,
 }: {
   card: CardData;
   i: number;
@@ -241,12 +321,26 @@ function CardView({
   held?: Held;
   /** D-157: the new card in a struck slot, sliding in. */
   entering?: boolean;
+  /** D-186: dealt in around a kept card, this many cards after the first. */
+  deal?: number;
+  /** D-186: the kept card a deal plays around. */
+  keptStill?: boolean;
 }) {
   if (card.kind === 'fixture') {
-    return <FixtureCardView card={card} i={i} held={held} entering={entering} />;
+    return (
+      <FixtureCardView
+        card={card}
+        i={i}
+        held={held}
+        entering={entering}
+        deal={deal}
+        keptStill={keptStill}
+      />
+    );
   }
   const def = CONTENT.pieces[card.id];
   const { striking, view, fits, isSelected, armed, blocked, cls } = strikeLook(i, held, entering);
+  const dealt = dealLook(deal, keptStill);
   const renovates = cardsRenovate.value[i] ?? false;
   // D-168: a card that can grow a room of its type says so, where Renovate's chip was.
   const grows = cardsExtend.value[i] ?? false;
@@ -262,9 +356,10 @@ function CardView({
     <Card
       as="button"
       // Week 1's guide (D-149) points at the card to pick first.
-      class={[...cls, !held && !striking && guideCard.value === i ? 'guide-now' : '']
+      class={[...cls, ...dealt.cls, !held && !striking && guideCard.value === i ? 'guide-now' : '']
         .filter(Boolean)
         .join(' ')}
+      style={dealt.style}
       tone={kind}
       selected={isSelected}
       blocked={blocked}
@@ -304,8 +399,9 @@ function CardView({
       }
       alert={striking ? (view?.ok ? undefined : 'Can’t strike') : fits ? undefined : 'Nowhere fits'}
       onMouseDown={noFocus}
-      // A held card's click ends the beat and picks the new card in its slot (actions.ts).
-      onClick={() => selectCard(i)}
+      // A held card's click ends the beat and picks the new card in its slot (actions.ts). A
+      // click on its pushpin pins it instead (D-186).
+      onClick={(e) => cardClick(e, i)}
       onMouseEnter={
         held
           ? undefined
@@ -324,7 +420,7 @@ function CardView({
             : 'There’s nowhere on the lot this fits right now'
       }
     >
-      <SwapMark i={i} />
+      <CardCorner i={i} pin={!held && !striking} />
       {armed && <StrikeBand />}
       {held && <StrikeStamp text={held.text} />}
     </Card>
@@ -337,20 +433,26 @@ function FixtureCardView({
   i,
   held,
   entering,
+  deal,
+  keptStill,
 }: {
   card: Extract<CardData, { kind: 'fixture' }>;
   i: number;
   held?: Held;
   entering?: boolean;
+  deal?: number;
+  keptStill?: boolean;
 }) {
   const id = card.id;
   const def = CONTENT.fixtures[id];
   const { striking, view, fits, isSelected, armed, blocked, cls } = strikeLook(i, held, entering);
+  const dealt = dealLook(deal, keptStill);
   useStrikeFocus(i, held);
   return (
     <Card
       as="button"
-      class={cls.filter(Boolean).join(' ')}
+      class={[...cls, ...dealt.cls].filter(Boolean).join(' ')}
+      style={dealt.style}
       tone="fixture"
       rarity={def.rarity}
       selected={isSelected}
@@ -374,7 +476,7 @@ function FixtureCardView({
             : 'Nothing to put it in'
       }
       onMouseDown={noFocus}
-      onClick={() => selectCard(i)}
+      onClick={(e) => cardClick(e, i)}
       onMouseEnter={
         held
           ? undefined
@@ -393,7 +495,7 @@ function FixtureCardView({
             : 'Nothing on the lot can hold it yet'
       }
     >
-      <SwapMark i={i} />
+      <CardCorner i={i} pin={!held && !striking} />
       {armed && <StrikeBand />}
       {held && <StrikeStamp text={held.text} />}
     </Card>
@@ -408,6 +510,8 @@ function RerollButton() {
   const s = run.value;
   const can = rules.canReroll(s);
   const rerolls = s.rerollsLeft + s.bonusRerolls;
+  // D-186: what a reroll does to the pins.
+  const pins = `${s.kept === undefined ? '' : ' The card kept from last week stays.'}${s.pinned === undefined ? '' : ' The pinned card goes with the rest.'}`;
   return (
     <Button
       size="sm"
@@ -419,7 +523,7 @@ function RerollButton() {
       aria-label={`Reroll: new cards for both rows, ${rerolls} left`}
       tip={
         can.ok
-          ? `New cards for both rows. It doesn’t end the week. ${s.rerollsLeft} left this milestone${s.bonusRerolls > 0 ? `, and ${s.bonusRerolls} kept` : ''}.`
+          ? `New cards for both rows. It doesn’t end the week. ${s.rerollsLeft} left this milestone${s.bonusRerolls > 0 ? `, and ${s.bonusRerolls} kept` : ''}.${pins}`
           : (can.reason ?? 'You can’t reroll now.')
       }
     >
@@ -508,12 +612,14 @@ function DemolishButton() {
  * One row of the hand (D-121): its label, then its cards, numbered across rows. During a
  * strike's beat (D-157) a struck slot shows its old card under the stamp: a replacement always
  * comes from the same row, so the slot stays in place. Each card's key names it, so the old
- * card keeps its stamp and the new one mounts fresh and slides in.
+ * card keeps its stamp and the new one mounts fresh and slides in. D-186: dealt around a kept
+ * card, the others slide in one after another, in hand order across the rows.
  */
 function HandRow({ row }: { row: DrawRow }) {
   const s = run.value;
   const beat = strikeView.value;
   const sliding = struckIn.value?.slots ?? [];
+  const deal = dealView.value;
   const cards = s.hand.flatMap((card, i) => (rowOf(CONTENT, card) === row ? [{ card, i }] : []));
   return (
     <section class={`hand-row hand-row-${row}`} aria-label={`${ROW_LABEL[row]} cards`}>
@@ -531,6 +637,8 @@ function HandRow({ row }: { row: DrawRow }) {
             i={i}
             held={was && beat ? { text: beat.text, leaving: beat.leaving } : undefined}
             entering={!was && sliding.includes(i)}
+            deal={deal && i !== deal.kept ? i - (i > deal.kept ? 1 : 0) : undefined}
+            keptStill={deal?.kept === i}
           />
         );
       })}
