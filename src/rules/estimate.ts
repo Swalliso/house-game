@@ -27,7 +27,7 @@
 // lines a card's definition decides, from per-layout caches, so each play costs O(lines):
 // - count and none over static selectors (piece types, room, indoor, yard, outbuilding,
 //   viewSource, and any/all/not of them), weighted as conditions.ts counts (countsAs
-//   modifiers, the piece's own card);
+//   modifiers, the piece's own card), and capped at a line's max as it caps them (D-198);
 // - ratio (a Bathroom for every two Bedrooms), outline (A compact house: its rooms, the fill
 //   of their box, the box's aspect), and variety (a tidy yard, exempt types included);
 // - the current phase's stage of a staged line, and and/or/not of any of these.
@@ -39,7 +39,9 @@
 // piece and its neighbors as their own effects do (Cozy's rooms touched; a room reaching a
 // "touching 2+" threshold), and A Bathroom nearby from the house's matching as it stands: a new
 // Bedroom is served if a Bathroom in reach has room, a new Bathroom serves unserved Bedrooms in
-// reach up to its capacity. Other grants (Good Bones) stay out, as before.
+// reach up to its capacity. A fixture's grant to its own piece counts as that piece's own
+// effects do (D-194: the Kitchen Island's second +2 per Dining Room or Herb Garden). Other grants
+// (Good Bones) stay out, as before.
 
 import type {
   Cell,
@@ -56,7 +58,14 @@ import type {
   SpecDef,
   Tally,
 } from './index.ts';
-import { countMatching, currentStage, outlineOf, type Outline } from './conditions.ts';
+import {
+  cappedCount,
+  countMatching,
+  countOnce,
+  currentStage,
+  outlineOf,
+  type Outline,
+} from './conditions.ts';
 import { cellIndex, inBounds, ORTHOGONAL } from './grid.ts';
 import { SUN_STEP, terrainAt } from './lot.ts';
 import {
@@ -337,9 +346,11 @@ export function estimatePlay(
   const matchN = (sel: Selector) =>
     neighbors.filter((n) => matchesNeighbor(content, layout, sel, n)).length;
   const grants = houseGrants(mods);
-  /** The room rules' effects on a placed piece (D-165). */
-  const grantedOn = (uid: number): Effect[] =>
-    grants.filter((g) => matchesPiece(content, layout, g.target, uid)).map((g) => g.effect);
+  /** The room rules' effects on a placed piece (D-165), and its fixture's grants (D-194). */
+  const grantedOn = (uid: number): Effect[] => [
+    ...grants.filter((g) => matchesPiece(content, layout, g.target, uid)).map((g) => g.effect),
+    ...fixtureGrants(content, layout, uid),
+  ];
   /** Takers the new piece would serve, per served effect's key (its capacity runs out). */
   const newServes = new Map<string, number>();
   /** What a placed piece's effect gains from the new piece as a neighbor, under its cap. */
@@ -579,6 +590,15 @@ function houseGrants(mods: readonly ActiveMod[]): Grant[] {
   );
 }
 
+/** D-194: what a placed piece's fixture grants it (the Kitchen Island's line). */
+function fixtureGrants(content: Content, layout: Layout, uid: number): Effect[] {
+  const id = layout.byUid.get(uid)?.fixture?.id;
+  if (!id) return [];
+  return content.fixtures[id].modifiers.flatMap((m) =>
+    m.kind === 'grantEffect' && matchesPiece(content, layout, m.target, uid, uid) ? [m.effect] : [],
+  );
+}
+
 /** A condition on what the piece touches: its selector and how many it needs. */
 function touchingOf(cond: PieceCondition): { sel: Selector; min: number } | null {
   if ('touching' in cond) return { sel: cond.touching, min: cond.min ?? 1 };
@@ -768,7 +788,8 @@ type VarietyRule = Extract<HouseCondition, { variety: unknown }>['variety'];
  */
 type Line =
   | { k: 'const'; v: boolean }
-  | { k: 'count'; sel: Selector; n: number; min?: number; max?: number }
+  // n: the weighted count; once: each piece once (D-198 caps the weighted count at max).
+  | { k: 'count'; sel: Selector; n: number; once: number; min?: number; max?: number }
   | {
       k: 'ratio';
       count: Selector;
@@ -934,11 +955,19 @@ function compile(
   if ('count' in cond) {
     if (!fixed(cond.count)) return null;
     const n = countMatching(content, layout, cond.count);
-    return { k: 'count', sel: cond.count, n, min: cond.min, max: cond.max };
+    const once = onceFor(content, layout, cond.count, n, cond.max);
+    return { k: 'count', sel: cond.count, n, once, min: cond.min, max: cond.max };
   }
   if ('none' in cond) {
     if (!fixed(cond.none)) return null;
-    return { k: 'count', sel: cond.none, n: countMatching(content, layout, cond.none), max: 0 };
+    const n = countMatching(content, layout, cond.none);
+    return {
+      k: 'count',
+      sel: cond.none,
+      n,
+      once: onceFor(content, layout, cond.none, n, 0),
+      max: 0,
+    };
   }
   if ('ratio' in cond) {
     const r = cond.ratio;
@@ -961,6 +990,14 @@ function compile(
   }
   // countNew, adjacentPair, fencedYardTiles, group, set, demolishedSinceAccepted.
   return null;
+}
+
+/**
+ * A count line's pieces each counted once, for D-198's cap. The cap reads it only once a play
+ * takes the weighted count past the max, so below the max the weighted count stands in for it.
+ */
+function onceFor(content: Content, layout: Layout, sel: Selector, n: number, max?: number): number {
+  return max !== undefined && n >= max && n > 0 ? countOnce(content, layout, sel) : n;
 }
 
 function readsOutline(line: Line): boolean {
@@ -998,8 +1035,11 @@ function holds(line: Line, def: PieceDef | null, outline: Outline | null): boole
       return line.parts.some((p) => holds(p, def, outline));
     case 'not':
       return !holds(line.part, def, outline);
-    case 'count':
-      return inRange(line.n + w(line.sel), line.min, line.max);
+    case 'count': {
+      // conditions.ts's count: the weighted count, capped at the line's max (D-198).
+      const add = w(line.sel);
+      return inRange(cappedCount(line.n + add, line.once + add, line.max), line.min, line.max);
+    }
     case 'ratio': {
       const per = line.perN + w(line.per);
       return line.have + w(line.count) >= Math.max(line.min ?? 0, Math.ceil(per / line.every));

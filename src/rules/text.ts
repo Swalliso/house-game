@@ -1058,20 +1058,26 @@ export function modifierText(content: Content, mod: Modifier): string {
       const name = content.pieces[mod.as].name;
       const times = mod.times ?? 1;
       const what = times === 1 ? article(name) : `${times} ${plural(name)}`;
-      // The Kitchen Island: only what touches it reads it as a Dining Room. It fills no set
-      // and no checklist line (sets.ts, conditions.ts), which "Counts as a Dining Room too"
-      // promised (D-148).
+      // Only what touches it reads it as the type. It fills no set and no checklist line
+      // (sets.ts, conditions.ts), which "Counts as a Dining Room too" promised (D-148). The
+      // Kitchen Island read so until D-194 gave it a line that pays; no fixture does now.
       if (isHost(mod.target) && times === 1) {
         return `Neighbors count it as ${what} (sets and the checklist don’t)`;
       }
       const subject = isHost(mod.target) ? 'Counts' : `${subjectText(content, mod.target)} count`;
-      return `${subject} as ${what}${times === 1 ? ' too' : ' for the client'}`;
+      // D-198: a count with a top takes the extra only up to it (conditions.ts's countFor).
+      return `${subject} as ${what}${times === 1 ? ' too' : ' for the client, up to the top of a range'}`;
     }
     case 'link': {
       const names = mod.among.map((id) => plural(content.pieces[id].name));
       return `Touching ${joinWords(names, 'and')} are linked: each counts as touching the whole group`;
     }
     case 'grantEffect': {
+      // A fixture's grant to its own room adds to what the room earns (D-194): "+2 more per
+      // touching Dining Room or Herb Garden". fixtureText says more where it can.
+      if (isHost(mod.target)) {
+        return effectText(content, mod.effect).replace(/^([+−]\d+)/, '$1 more');
+      }
       const who = mod.target === 'all' ? 'Every piece' : subjectText(content, mod.target);
       return `${who}: ${effectText(content, mod.effect).replace(/^./, (c) => c.toLowerCase())}`;
     }
@@ -1140,8 +1146,40 @@ export function fitsPhrase(content: Content, sel: Selector): string {
 export function fixtureText(content: Content, def: FixtureDef): FixtureText {
   return {
     fits: `Fits ${fitsPhrase(content, def.fits)}`,
-    effects: def.modifiers.map((m) => modifierText(content, m)),
+    effects: def.modifiers.map((m) => fixtureModifierText(content, def, m)),
   };
+}
+
+/**
+ * A fixture's modifier as its card says it. D-194: an effect it gives its room that every room
+ * it fits already has on its card doubles that line, and the card names the line it doubles:
+ * the Kitchen Island's "Doubles its +2 per touching Dining Room or Herb Garden". Anything else
+ * reads as modifierText says it.
+ */
+function fixtureModifierText(content: Content, def: FixtureDef, mod: Modifier): string {
+  if (mod.kind === 'grantEffect' && isHost(mod.target)) {
+    const granted = JSON.stringify(mod.effect);
+    const hosts = hostTypes(content, def.fits);
+    if (
+      hosts.length > 0 &&
+      hosts.every((p) => p.effects.some((e) => JSON.stringify(e) === granted))
+    ) {
+      return `Doubles its ${effectText(content, mod.effect)}`;
+    }
+  }
+  return modifierText(content, mod);
+}
+
+/**
+ * The piece types a fixture names where it fits, with their variants (an L-Kitchen for a
+ * Kitchen): none for a fit by property ("any room"), which the card can't speak for.
+ */
+function hostTypes(content: Content, fits: Selector): PieceDef[] {
+  const ids = pieceIds(fits);
+  if (!ids) return [];
+  return Object.values(content.pieces).filter(
+    (p) => ids.includes(p.id) || (p.countsAs !== undefined && ids.includes(p.countsAs)),
+  );
 }
 
 export function blueprintText(content: Content, def: BlueprintDef): string[] {

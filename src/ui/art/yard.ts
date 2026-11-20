@@ -14,8 +14,9 @@
 //   the Driveway nearest the front door or a Garage with room for it (D-126; it slides there as
 //   the drive grows, HouseLayers.tsx), a Fence's pickets and posts, a Pool's ladder and float,
 //   the Hot Tub's bubbles, the Fire Pit's fire and stumps, planters, the Sapling, the outbuildings,
-//   the hens, a Porch's bench and pot of flowers. Fixtures: the Sprinkler on its Lawn, the Pergola over its Patio, Garden Lights as
-//   two bollards with their glow; a fixture's badge shows only where a door keeps it off.
+//   the hens, a Porch's bench and pot of flowers. Fixtures: the Sprinkler on its Lawn, the
+//   Pergola over its Patio or (D-194) its Lawn, Garden Lights as two bollards with their glow; a
+//   fixture's badge shows only where a door keeps it off.
 // - The yard's pieces live (D-185): a butterfly flutters over each Flower Bed and Herb Garden,
 //   the Pool's float bobs, and the hens peck, each on its own beat. All of it is items' frames,
 //   stepped a whole art px at a time, and their first frames are the pieces at rest.
@@ -26,7 +27,7 @@
 // - Nothing stands on an outside door's mat or in front of its opening: a Patio's seats move
 //   clear of the door that opens onto it (under a small parasol in place of the full one), the
 //   car parks further along its Driveway, or on the next one, and a Pergola, which reaches every
-//   edge of its Patio, gives way to a shallower or narrower cut of it on the Patio's far side
+//   edge of its Patio or Lawn, gives way to a shallower or narrower cut of it on the far side
 //   (its badge only where doors open onto two sides). Every prop keeps its whole box off them,
 //   so no pixel of one can hide a mat. An outbuilding's own building always stands (no door
 //   opens onto one): only its roof, rising over the row behind it, can hide part of a mat there.
@@ -736,10 +737,10 @@ const PARASOLS: readonly SpriteId[] = ['parasol-0', 'parasol-1', 'parasol-2'];
 const SMALL_PARASOLS: readonly SpriteId[] = ['parasol-small-0', 'parasol-small-1'];
 
 /**
- * Where a Patio's Pergola may stand, best first: the whole one (64 × 61, its legs on the patio's
- * front edge); the shallower cut (64 × 51) at the front, clear of a north door's mat, or at the
- * back, clear of a south one's; the narrower cut (50 × 61) on the west side, clear of an east
- * door's mat, or on the east side, clear of a west one's.
+ * Where a Pergola may stand over its Patio or Lawn (both 2 × 2), best first: the whole one (64 ×
+ * 61, its legs on the piece's front edge); the shallower cut (64 × 51) at the front, clear of a
+ * north door's mat, or at the back, clear of a south one's; the narrower cut (50 × 61) on the
+ * west side, clear of an east door's mat, or on the east side, clear of a west one's.
  */
 function pergolas(box: Rect): [SpriteId, number, number][] {
   const { x, y, w, h } = box;
@@ -754,6 +755,22 @@ function pergolas(box: Rect): [SpriteId, number, number][] {
     ['pergola-narrow', x, y + h - narrow.h],
     ['pergola-narrow', x + w - narrow.w, y + h - narrow.h],
   ];
+}
+
+/**
+ * Stands the Pergola over its piece: the first of its cuts (pergolas()) clear of every door,
+ * after what goes under it (`under`, the Patio's table and seats, given the cut and where it
+ * stands). False where none is clear, with nothing placed: its badge shows instead.
+ */
+function pergola(y: Yard, under?: (sprite: SpriteId, x: number, y: number) => void): boolean {
+  for (const [sprite, px, py] of pergolas(y.box)) {
+    if (!y.fits(sprite, px, py)) continue;
+    under?.(sprite, px, py);
+    y.put(sprite, px, py);
+    y.fixtureShown = true;
+    return true;
+  }
+  return false;
 }
 const PLANTERS: readonly SpriteId[] = ['planter-0', 'planter-1', 'planter-2', 'planter-3'];
 const POTS: readonly SpriteId[] = ['pot-flowers-0', 'pot-flowers-1', 'pot-flowers-2'];
@@ -824,6 +841,8 @@ const LAYOUTS: Partial<Record<PieceId, (y: Yard) => void>> = {
       y.oval(cx, cy + 2, 22, 16, WET, 0.22);
       y.fixtureShown = y.put('own-sprinkler', cx - 13, cy - 8);
     }
+    // D-194: a Pergola over the grass, as over a Patio, with nothing under it.
+    if (y.fixture === 'pergola') pergola(y);
   },
 
   patio: (y) => {
@@ -847,15 +866,14 @@ const LAYOUTS: Partial<Record<PieceId, (y: Yard) => void>> = {
     // south edge, narrower for one on its east or west edge, on the patio's far side. With doors
     // on two sides none fits, so its badge shows (HouseLayers.tsx) and the patio keeps its
     // parasol and seats.
-    if (y.fixture === 'pergola') {
-      for (const [sprite, px, py] of pergolas(y.box)) {
-        if (!y.fits(sprite, px, py)) continue;
+    if (
+      y.fixture === 'pergola' &&
+      pergola(y, (sprite, px, py) => {
         const { w: pw, h: ph } = artSize(sprite);
         seats(y, px + pw / 2 - 6, py + ph - 9, moves);
-        y.put(sprite, px, py);
-        y.fixtureShown = true;
-        return;
-      }
+      })
+    ) {
+      return;
     }
     // The parasol's stand behind the table, its canopy over the seats.
     const parasol = y.put(pick(PARASOLS, y.ctx.color), x + Math.floor((w - 47) / 2), base - 61 - 4);

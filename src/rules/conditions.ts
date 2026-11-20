@@ -8,6 +8,12 @@
 // for another type doesn't add a room (a Kitchen with an Island is still one Kitchen, not a
 // Dining Room). Any other selector counts each matching piece once. Lot features never count.
 //
+// A count with a `max` (D-198) lets that weight lift it to the max and never past it: it reads
+// max(once, min(weighted, max)), where `once` counts each matching piece once. So Bunk Beds
+// still help a house reach the bottom of Room for everyone's range, and never break the line at
+// its top, while a house with more plain Bedrooms than the top still fails it. `countFor` is
+// that read; `countMatching` stays the weighted count, which the limits use (below).
+//
 // Limits: a `count` with a `max` over piece types (reached through `and` and the current
 // stage) is that type's limit, and so is a type's per-house cap on its card (D-165: one
 // Kitchen). A card whose type is at its limit can renovate a room of that type instead
@@ -87,6 +93,45 @@ export function countMatching(
   }
   cache?.set(sel, n);
   return n;
+}
+
+/** Counts of each matching piece once, per layout and selector, apart from `countCache`'s. */
+const onceCache = new WeakMap<Layout, Map<Selector, number>>();
+
+/** The number of pieces matching a selector, each once (a Bedroom with Bunk Beds is one). */
+export function countOnce(content: Content, layout: Layout, sel: Selector): number {
+  let cache: Map<Selector, number> | undefined;
+  if (typeof sel === 'object') {
+    cache = onceCache.get(layout);
+    if (!cache) onceCache.set(layout, (cache = new Map()));
+    const hit = cache.get(sel);
+    if (hit !== undefined) return hit;
+  }
+  let n = 0;
+  for (const p of layout.house.pieces) if (counts(content, layout, sel, p.uid)) n++;
+  cache?.set(sel, n);
+  return n;
+}
+
+/**
+ * D-198: the weighted count, lifted by countsAs weights only up to `max`: max(once, min(weighted,
+ * max)). Bunk Beds in a house at the top of its range keep it there, and plain Bedrooms past the
+ * top still count each. Without a max it's the weighted count.
+ */
+export function cappedCount(weighted: number, once: number, max?: number): number {
+  return max === undefined || weighted <= max ? weighted : Math.max(once, max);
+}
+
+/** What a `count` condition reads: its weighted count, capped at its max (D-198). */
+export function countFor(
+  content: Content,
+  layout: Layout,
+  cond: Extract<HouseCondition, { count: unknown }>,
+): number {
+  const weighted = countMatching(content, layout, cond.count);
+  // Only past the max does `once` matter (it's never more than the weighted count).
+  if (cond.max === undefined || weighted <= cond.max) return weighted;
+  return cappedCount(weighted, countOnce(content, layout, cond.count), cond.max);
 }
 
 /** The current stage of a staged condition: the last one whose phase has begun. */
@@ -251,9 +296,7 @@ export function meetsHouse(
     const stage = currentStage(cond, ctx.phase);
     return stage !== null && meetsHouse(content, layout, stage, ctx);
   }
-  if ('count' in cond) {
-    return inRange(countMatching(content, layout, cond.count), cond.min, cond.max);
-  }
+  if ('count' in cond) return inRange(countFor(content, layout, cond), cond.min, cond.max);
   if ('countNew' in cond) {
     if (!ctx.order) return false;
     return countMatching(content, layout, cond.countNew, ctx.order.sinceUid) >= cond.min;
@@ -322,8 +365,9 @@ export function progressOf(
   }
   const ok = meetsHouse(content, layout, cond, ctx);
   if ('count' in cond) {
-    // Number first: "3 Bedrooms (3–4)", "1 Kitchen (exactly 1)", "4 Dark rooms (≥ 3)".
-    const n = countMatching(content, layout, cond.count);
+    // Number first: "3 Bedrooms (3–4)", "1 Kitchen (exactly 1)", "4 Dark rooms (≥ 3)". The
+    // count the line checks (D-198): Bunk Beds at the top of a range read as the top.
+    const n = countFor(content, layout, cond);
     return [{ text: `${n} ${noun(cond.count, n)} (${rangeText(cond.min, cond.max)})`, ok }];
   }
   if ('countNew' in cond) {
@@ -422,7 +466,12 @@ function verbPhrase(sel: Selector, noun: NounFn): string {
 // ---------------------------------------------------------------------------------------
 // Limits (Renovate, and half-weight draws).
 
-/** The count-with-a-max conditions over piece types, as they stand now. */
+/**
+ * The count-with-a-max conditions over piece types, as they stand now. Each limit's count is
+ * the weighted count, not the capped one the line checks (D-198): a type is at its limit once
+ * the weighted count reaches the max, and the capped count reaches the max at the same moment
+ * (below the max the two are equal), so Renovate and the half-weight draws see no change.
+ */
 export function typeLimits(
   content: Content,
   layout: Layout,

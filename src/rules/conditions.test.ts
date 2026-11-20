@@ -220,7 +220,11 @@ describe('counting weights', () => {
     const layout = layoutOf(row('bedroom', 2), [[1, 'bunkBeds']]);
     expect(countMatching(C, layout, BEDROOM)).toBe(3); // 2 (Bunk Beds) + 1
     expect(meets(layout, { count: BEDROOM, min: 3, max: 3 })).toBe(true);
-    expect(meets(layout, { count: BEDROOM, max: 2 })).toBe(false);
+    // D-198: past a max, Bunk Beds lift the count only up to it. Two Bedrooms read as 2 for
+    // "at most 2" and hold it, where D-101 read 3 and failed it; three plain ones still fail.
+    expect(meets(layout, { count: BEDROOM, max: 2 })).toBe(true);
+    const three = layoutOf(row('bedroom', 3), [[1, 'bunkBeds']]);
+    expect(meets(three, { count: BEDROOM, max: 2 })).toBe(false);
   });
 
   it('counts a Kitchen with a Kitchen Island once as a Kitchen, and not as a Dining Room', () => {
