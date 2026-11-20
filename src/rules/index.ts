@@ -1082,8 +1082,8 @@ export interface ShopBalance {
   interestPer: number;
   /**
    * D-192: a good that can pay in the house as it stands (shelf.ts) counts this many times in
-   * its pick, on a shelf or in a Fixture Crate, against 1 for one that can't yet. 1 turns the
-   * lean off.
+   * its pick, on a shelf, in the Blueprint Folio or in the Fixture Crate, against 1 for one
+   * that can't yet. 1 turns the lean off.
    */
   relevantWeight: number;
 }

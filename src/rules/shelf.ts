@@ -1,8 +1,9 @@
 // The shelf stocks for the house (D-192). A good that can pay in the house as it stands counts
-// `shop.relevantWeight` times in its pick, on a shelf or in a Fixture Crate, against 1 for one
-// that can't yet, so a good that can't pay yet may still turn up and pay later. A blueprint
-// whose `stockIf` fails (Waterfront on a lot without water) isn't stocked at all, nor offered
-// in a crate.
+// `shop.relevantWeight` times in its pick, on a shelf, in the Blueprint Folio or in the Fixture
+// Crate, against 1 for one that can't yet, so a good that can't pay yet may still turn up and
+// pay later; the Showroom offers a special piece at its limit only when the others can't fill
+// it. A blueprint whose `stockIf` fails (Waterfront on a lot without water) isn't stocked at
+// all, nor offered in a crate.
 //
 // Whether a good can pay here:
 // - a blueprint: its `stockIf` holds and, if it names the pieces it pays on (`paysOn`), one is

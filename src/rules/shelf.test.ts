@@ -1,7 +1,7 @@
 // D-192: the shelf stocks for the house (shelf.ts, shop.ts). A good that can pay in the house as
-// it stands counts `relevantWeight` times in its rarity's pick, on a shelf or in a Fixture
-// Crate; the Showroom skips a special piece at its limit while others can fill it; and a
-// blueprint whose `stockIf` fails is never stocked. TEST_CONTENT's lean is off
+// it stands counts `relevantWeight` times in its rarity's pick, on a shelf, in the Blueprint
+// Folio or in the Fixture Crate; the Showroom skips a special piece at its limit while others
+// can fill it; and a blueprint whose `stockIf` fails is never stocked. TEST_CONTENT's lean is off
 // (relevantWeight 1), so its shelves are what they always were; these tests turn it on at the
 // real content's 3, and give the test Waterfront the real one's `stockIf`.
 // src/content/shop-for-your-house.test.ts holds it on the real content.
