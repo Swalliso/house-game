@@ -91,7 +91,7 @@ import {
   type GoodRef,
 } from './goods.tsx';
 import { extraSlotWords } from './household.ts';
-import { Tip } from './Tip.tsx';
+import { Tip, withTerm } from './Tip.tsx';
 import './inspect.css';
 
 const GLOSSARY = glossary(CONTENT);
@@ -110,23 +110,6 @@ const REGION_TERM: Partial<Record<Region, Term>> = {
   backYard: 'backYard',
   fencedYard: 'fencedYard',
 };
-
-/**
- * `text` with its term's name (the glossary title, in any case) as a Tip: "In the [front
- * yard]". The whole text is the Tip if the name isn't in it.
- */
-function withTerm(text: string, term: Term): ComponentChildren {
-  const words = GLOSSARY[term].title.toLowerCase();
-  const at = text.toLowerCase().indexOf(words);
-  if (at < 0) return <Tip term={term}>{text}</Tip>;
-  return (
-    <>
-      {text.slice(0, at)}
-      <Tip term={term}>{text.slice(at, at + words.length)}</Tip>
-      {text.slice(at + words.length)}
-    </>
-  );
-}
 
 /** A region's words, as a Tip where the glossary has the region. */
 function regionWords(text: string, region: Region): ComponentChildren {
@@ -988,10 +971,10 @@ function StrikeInfo() {
 }
 
 const FEATURE_TEXT: Record<string, string> = {
-  tree: 'Quiet and Green, and a view. Each Tree tile counts as its own neighbor. Building here clears it.',
+  // D-195: what a Tree does is its glossary tip's text (the Sapling's card links it).
+  tree: `${GLOSSARY.tree.text} Building here clears it.`,
   // D-174: on an Old Woods lot the Trees stay, in placement's own words.
-  keptTree:
-    'Quiet and Green, and a view. Each Tree tile counts as its own neighbor. These old Trees stay: build around them.',
+  keptTree: `${GLOSSARY.tree.text} These old Trees stay: build around them.`,
   pond: 'Water, and a view. It counts once as a neighbor, however much of it a piece touches. Nothing can be built on it.',
   creek:
     'Water, and a view. It counts once as a neighbor. Nothing can be built on it, except a Driveway.',
@@ -1183,9 +1166,10 @@ export function Inspect() {
           <Timers lines={timers} />
           <h3>Card</h3>
           <ul class="effects">
-            {text.effects.map((t) => (
-              <li key={t}>{t}</li>
-            ))}
+            {text.effects.map((t, i) => {
+              const term = text.terms?.[i];
+              return <li key={t}>{term ? withTerm(t, term) : t}</li>;
+            })}
           </ul>
           {text.member && <p class="member-note">{text.member}</p>}
           {text.perHouse && <p class="member-note">{text.perHouse}</p>}
